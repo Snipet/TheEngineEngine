@@ -12,4 +12,13 @@ target_compile_definitions(tee-tests-exhaust PRIVATE
   "TEE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
   "TEE_SOURCE_SIM_DIR=\"${PROJECT_SOURCE_DIR}/sim/ref\""
   "TEE_SOURCE_CONTENT_DIR=\"${PROJECT_SOURCE_DIR}/content/ref\"")
-catch_discover_tests(tee-tests-exhaust DISCOVERY_MODE PRE_TEST ADD_TAGS_AS_LABELS TEST_PREFIX "exhaust." PROPERTIES TIMEOUT 900)
+# One compile a process (01-rules.md section 3): the fast cases run as two ctest entries, so each program compiles once:
+# exhaust.engine (the [engine] cases, on EngineTest.cpp's one kept player, reset or rendered afresh at every case's
+# start) and exhaust.harness (the rest, each case on a fresh Rig instance of the one compiled harness, Rig.h). Proved
+# once by running each group's cases in reverse order. The nightly forms are discovered one by one.
+catch_discover_tests(tee-tests-exhaust DISCOVERY_MODE PRE_TEST ADD_TAGS_AS_LABELS TEST_PREFIX "exhaust."
+  TEST_SPEC "[nightly]" PROPERTIES TIMEOUT 3600)
+add_test(NAME exhaust.engine COMMAND tee-tests-exhaust "[engine]~[nightly]")
+set_tests_properties(exhaust.engine PROPERTIES TIMEOUT 900 LABELS "exhaust;engine")
+add_test(NAME exhaust.harness COMMAND tee-tests-exhaust "~[engine]~[nightly]")
+set_tests_properties(exhaust.harness PROPERTIES TIMEOUT 900 LABELS "exhaust;harness")

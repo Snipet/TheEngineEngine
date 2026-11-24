@@ -272,7 +272,11 @@ module Intake
         if (itbs == 1)
         {
             // each trumpet's outside: the box's pressure (over the air; with the boost) or the air's
-            const float pOut = pBox - 101325.0f + (spec->trumpets == 0 ? box.p : 0.0f);
+            // (held at 8 kPa absolute at the least, the floor the cylinder's valve and the reading take: a boost machine's
+            // charge pipe drawn near empty by open throttles (X-022: a half-litre charge pipe behind an intercooler at its
+            // least flow fell to 14 Pa) would otherwise drive the linear runners a whole atmosphere below vacuum, and the
+            // engine diverged; the supply's own collapse is the boost's)
+            const float pOut = fmaxf(pBox + (spec->trumpets == 0 ? box.p : 0.0f), 8000.0f) - 101325.0f;
             float q = 0.0f;
             float snd = 0.0f;
             float pSum = 0.0f;
@@ -288,7 +292,12 @@ module Intake
             // the trumpets draw from the box (q out of the runners: negative while they draw)
             box.tick(spec->trumpets == 0 ? -q : 0.0f);
             sound = spec->trumpets == 0 ? box.sound : snd;
-            qThr = haveValves != 0 ? -mValves * 287.0f * tAir / pBox : -q;
+            // (the box, or a boost machine's charge pipe, is drawn by the trumpets' own flow, which answers its pressure.
+            // Drawn by the valves' mass (5fdc5ad), which does not, a half-litre pipe behind a boost machine rang up and
+            // diverged in 60 ms (X-022); a slow correction toward the valves' mass, even bounded and faded as the pipe
+            // empties, still faulted it under throttle blips. So the throttles' books here are the trumpets' flow: with
+            // throttles a runner the air the valves take can differ from it by what the runners' linear waves carry)
+            qThr = -q;
             pEnds += (101325.0f + pSum / (float)np - pEnds) * fminf(dt * 6.2831853f * 20.0f, 1.0f);
             // (the runners' far ends are sums of linear waves, whose rarefaction is not bounded by vacuum: on the lift
             // after the limiter, the closed plates and the cylinders still drawing, it read -11 kPa absolute, and the

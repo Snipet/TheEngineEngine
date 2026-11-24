@@ -512,3 +512,32 @@ As free angles: 146.7 / 362 / 362 / 583.3.
 
 The target is 211 to 216 N m at 5500 rpm. The curve is flat, as the real engine's is, about 7 % over. Its rise at
 8500 comes with the two-stage intake's short runner.
+
+## K. X-022: throttles a runner behind a tiny boosted charge pipe diverged (my regression of 5fdc5ad; fixed)
+
+X's reduced build: ITBs, a supercharger, the charge pipe at its least volume (0.5 l), the intercooler at its least
+flow. Under throttle blips the box's pressure rang up within 60 ms of the first opening: 99, 156, 10, 0, 69, 973 and
+1738 kPa, on to 30 MPa. Then FLAG_FAULT.
+
+The cause: since 5fdc5ad the ITB branch drew the charge pipe by the valves' mass, which does not answer the pipe's
+pressure, and on a half-litre volume the boost machine's explicit step rang up. Two softer forms were tried and
+dropped, each with a measurement:
+
+- a per-cycle correction toward the valves' mass, bounded: faulted at 3.4 s;
+- the same, faded with the pipe's pressure: faulted at 7.3 s.
+
+So for ITBs the trumpets' own flow draws the box, as before 5fdc5ad. The throttles' outside pressure is also held at
+8 kPa absolute at the least (the cylinder's and the reading's floor).
+
+| Check | Result |
+|---|---|
+| tee-fuzz seed 3 on the reduced build | ok |
+| `X022Test.cpp`: ten seconds of idle, and of blips | no fault, all finite |
+
+**Open:** with ITBs the throttle's books and the valves' differ, since the runners' linear waves keep volume, not
+mass. On the 3.2 six, throttle over valves reads 0.69 at idle, 1.03 at 3000 rpm and 0.89 at 6000. The cylinders take
+the right air (the valves' side is exact). Only the throttle's figure, and a boost machine's draw on ITBs, carry the
+error.
+
+The charge pipe still empties under blips on this build (0 to 12 kPa): a supercharger behind an intercooler at its
+least flow cannot keep up. That supply is the boost's, N2's.

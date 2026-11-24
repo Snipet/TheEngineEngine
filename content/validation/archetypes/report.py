@@ -195,6 +195,18 @@ def main():
            "on the scenarios of "
            "`content/validation/scenarios/` (`p-*`), in the build's own air (15 C, 101.3 kPa).", ""]
 
+    # the invariants that fail, by name, at the top (the lead's ask: a regression must be visible here, not in row 400)
+    failing = {}
+    for s_ in slugs:
+        for t, v, st in results[s_] or []:
+            if t["name"].startswith("Invariant") and st != "pass":
+                failing.setdefault(t["name"].replace("Invariant: ", ""), []).append(builds[s_]["name"])
+    if failing:
+        out += ["**Invariants failing:** " + "; ".join("%s: %s" % (k, ", ".join(v)) for k, v in failing.items()) + ".", ""]
+    else:
+        out += ["**Invariants failing:** none: every archetype starts warm and runs, stays within full scale, holds its "
+                "limiter, pulls away and stops at the key.", ""]
+
     # the summary
     out += ["## The archetypes at a glance", "",
             "| Archetype | Peak power (target) | Peak torque (target) | Warm idle (target) | Quarter mile | Top speed | Invariants |",
