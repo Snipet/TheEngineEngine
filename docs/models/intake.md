@@ -66,3 +66,14 @@ Each runner's far end is an open pipe's end, its trumpet in the box or the air, 
 Everything that needs `Intake` (K3b's carve of `pipes()` and `sampleTick`'s intake): the runners' ends with ITBs in
 the order of work, the plenum and runner fields, the air box in place of `Extras`' filter, upstream from card F's
 last volume, the sources to `Listen`, `tel.intake` (manifold pressure and its ripple). The handoff lists the seams.
+
+## Integrated (intake.model 1 in the engine)
+
+- ITBs (test 11), the default V8 at 4000 rpm wide open: the trumpets in the air radiate +31.2 dB against the single
+  throttle's snorkel; the idle's manifold ripple 23.4 kPa against 2.3 (**measured**). What Intake radiates (`sound`)
+  is not yet mixed: Extras still rings its own box filter (a change wave 2 or the lead must make).
+- The runner's length (test 12, the four at 1500 rpm): the intake port rings at 115 Hz with 0.75 m (its quarter wave
+  with the end correction: 113 Hz) and 135 Hz with 0.45 m (185 Hz predicted): the direction is right, the card's 20 %
+  is not met (the shorter runner's ring is pulled toward the cycle's strong low orders), and the torque curves'
+  peaks are too ragged to read a tuning peak from.
+- The single throttle is solved with its plenum (one Newton step on the end pressure), as F asked.
