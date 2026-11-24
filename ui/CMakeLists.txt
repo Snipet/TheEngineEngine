@@ -67,14 +67,20 @@ if(NOT TARGET FunkGui::core)
   message(FATAL_ERROR "ui/: FunkGui::core is not defined (the root adds FunkGui before ui/; alone, ui/ fetches it)")
 endif()
 
-# Our warnings, on our code (docs/plan/01-rules.md §4).
+# Our warnings, on our code (docs/plan/01-rules.md section 4): the root's own rule (cmake/TeeFlags.cmake) when ui/ is
+# built by the root, the same flags when it is built alone.
 function(tee_ui_warnings target)
-  if(MSVC)
-    target_compile_options(${target} PRIVATE /W4 /WX /permissive-)
+  if(COMMAND tee_target_defaults)
+    tee_target_defaults(${target})
+    return()
+  endif()
+  target_compile_features(${target} PUBLIC cxx_std_20)
+  if(CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
+    target_compile_options(${target} PRIVATE /W4 /WX)
+    target_compile_definitions(${target} PRIVATE _CRT_SECURE_NO_WARNINGS NOMINMAX)
   else()
     target_compile_options(${target} PRIVATE -Wall -Wextra -Wshadow -Wpedantic -Werror -ffp-contract=off)
   endif()
-  target_compile_features(${target} PUBLIC cxx_std_20)
 endfunction()
 
 # FunkGui's headers and definitions without its sources (above).

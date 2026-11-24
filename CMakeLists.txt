@@ -78,14 +78,15 @@ endif()
 if(TEE_BUILD_TESTS)
   add_subdirectory(tests)
 endif()
-if(TEE_BUILD_APP)
-  if(EXISTS "${PROJECT_SOURCE_DIR}/shell/CMakeLists.txt")
-    add_subdirectory(shell)
-  else()
-    message(WARNING "TheEngineEngine: TEE_BUILD_APP is ON, and there is no shell/ yet: the application arrives with "
-                    "FunkGui's desktop host (docs/plan/w1-a-funkgui-desktop.md)")
-  endif()
+# The interface kit (card J): its libraries (tee_ui) and, with TEE_BUILD_TESTS, its headless tests (ui.*). It needs
+# FunkGui's core alone, so it is built whether or not the application is.
+if(NOT TARGET tee_ui)
+  add_subdirectory(ui)
 endif()
+# shell/ and app/ (docs/plan/w1-b-shell.md): the shell's libraries, tee-headless and their tests in every build; the
+# window, TheEngineEngine, with TEE_BUILD_APP.
+add_subdirectory(shell)
+add_subdirectory(app)
 
 message(STATUS "TheEngineEngine ${PROJECT_VERSION}: ${CMAKE_BUILD_TYPE}, tools ${TEE_BUILD_TOOLS}, tests "
                "${TEE_BUILD_TESTS}, app ${TEE_BUILD_APP}, deps cache ${TEE_DEPS_DIR}")

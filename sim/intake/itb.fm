@@ -1,0 +1,93 @@
+// itb.fm: an individual throttle body: a plate at the far end of each runner, its trumpet open to the air box or the
+// air, so each runner's far end is an open pipe's end with a throttle in it.
+//
+// The reference's runners open into a plenum through the end-reflection filter of an open pipe (Silva et al.'s fit,
+// pipes() in sim/ref/engine.fm): the lows come back inverted, the highs go out. With ITBs there is no plenum: each
+// runner's far end is that open end in the air (the box's, or outside), with the plate in it. The plate is an orifice
+// (quasi-steady, Bernoulli's: q = K sgn(dp) sqrt(|dp|), K = Cd A sqrt(2 / rho), Cd 0.8, judgement), solved with the
+// runner's arriving wave in closed form: the end's pressure is 2a - z q (a the arriving wave, z the runner's
+// impedance), so with x = p_end - P (P outside the plate), x + z K sgn(x) sqrt|x| = 2a - P, a quadratic in sqrt|x|.
+// Its wave back is b = a - z q. Wide open (K large) that is P - a, an ideal open end; the open end's radiation (the
+// filter, as the reference designs it, in air at the outside's temperature on both sides) then adds what an ideal
+// end leaves out (the highs that escape, the end correction), in the share the plate is open. The orifice only takes
+// energy; the radiation's share is a passive filter's: the soak test (tests/sim/intake/) holds the wave's energy out
+// under what went in.
+//
+// Idle air: through a small common rail, a share of the plate's area each runner (the reference's bypass, spread).
+// What the trumpet radiates (sound) is its flow's rate of change, a monopole, at the reference's intake scale.
+//
+//   end.setup(runnerArea, z, rate)            the runner's area (m^2) and impedance (Pa s/m^3), the rate
+//   end.tick(a, P, aPlate)                    a sample: the arriving wave a (Pa), the outside's pressure (Pa above
+//                                             the air's) and the plate's open area (m^2): returns the wave back;
+//                                             leaves q (m^3/s out of the runner's end) and sound
+#pragma once
+
+module ItbEnd
+{
+    float aRun;         // the runner's area (m^2)
+    float z;            // its impedance
+    float rate;
+    // the open end's reflection (a biquad, as the reference's endRun)
+    float b0;
+    float b1;
+    float b2;
+    float a1;
+    float a2;
+    float s1;
+    float s2;
+    float q;            // m^3/s out through the trumpet (negative: drawn in)
+    float qPrev;
+    float sound;
+
+    void setup(float runnerArea, float zIn, float rateIn)
+    {
+        aRun = runnerArea;
+        z = zIn;
+        rate = rateIn;
+        // Silva's fit for an unflanged end, R = -(1 + 0.167 ts) / (1 + 1.393 ts + 0.457 t^2 s^2), t = a / c, by the
+        // bilinear transform (as the reference's runner ends)
+        const float kb = 2.0f * rate;
+        const float t = sqrtf(aRun * 0.31830989f) / 347.2f;
+        const float rn1 = -0.167f * t * kb;
+        const float rd1 = 1.393f * t * kb;
+        const float rd2 = 0.457f * t * t * kb * kb;
+        const float d0 = 1.0f + rd1 + rd2;
+        b0 = (-1.0f + rn1) / d0;
+        b1 = -2.0f / d0;
+        b2 = (-1.0f - rn1) / d0;
+        a1 = (2.0f - 2.0f * rd2) / d0;
+        a2 = (1.0f - rd1 + rd2) / d0;
+    }
+
+    void clear()
+    {
+        s1 = 0.0f;
+        s2 = 0.0f;
+        q = 0.0f;
+        qPrev = 0.0f;
+        sound = 0.0f;
+    }
+
+    float tick(float a, float pOut, float aPlate)
+    {
+        // the open end's wave back, and what it adds to an ideal open end's (P - a)
+        const float x0 = a - 0.5f * pOut;
+        const float y = b0 * x0 + s1;
+        s1 = b1 * x0 - a1 * y + s2;
+        s2 = b2 * x0 - a2 * y;
+        const float corr = (0.5f * pOut + y) - (pOut - a);
+        // the plate: the orifice, solved with the runner
+        const float k = 0.8f * fmaxf(aPlate, 1.0e-7f) * 1.2888f;        // sqrt(2 / 1.204)
+        const float c0 = 2.0f * a - pOut;
+        const float zk = z * k;
+        const float r = 0.5f * (-zk + sqrtf(zk * zk + 4.0f * fabsf(c0)));
+        q = c0 >= 0.0f ? k * r : -k * r;
+        const float open = fminf(aPlate / aRun, 1.0f);
+        const float back = a - z * q + open * corr;
+        // (the share the radiation adds leaves as flow too)
+        q += open * (-corr) / z;
+        sound = (q - qPrev) * rate * 0.02f;
+        qPrev = q;
+        return back;
+    }
+};

@@ -9,9 +9,10 @@
 
 namespace tee::tools
 {
-    // A directory by, in order: the command line's flag; the environment variable; `beside` next to the directory
-    // that holds the executable's bin/ (an unpacked artefact: bin/tee-render, sim/ref/, content/ref/); the checkout
-    // this was built from.
+    // A directory by, in order: the command line's flag; the environment variable; the checkout this was built from,
+    // while it is there (so a developer's edit is read without a build copying it anywhere); `beside` in the
+    // executable's own directory (where an unpacked CI artefact has sim/ and content/, as the application looks for
+    // them: app/Engine.h) or one above it (bin/ beside sim/ and content/).
     inline std::filesystem::path findDirectory(const std::string& flag, const char* variable, const char* argv0,
                                                const char* beside, const char* source)
     {
@@ -20,12 +21,17 @@ namespace tee::tools
         if (const char* env = std::getenv(variable); env != nullptr && *env != '\0')
             return env;
         std::error_code ec;
+        if (std::filesystem::is_directory(source, ec))
+            return source;
         const std::filesystem::path exe = std::filesystem::weakly_canonical(std::filesystem::path(argv0), ec);
         if (!ec && exe.has_parent_path())
         {
-            const std::filesystem::path sibling = exe.parent_path().parent_path() / beside;
-            if (std::filesystem::is_directory(sibling, ec))
-                return sibling;
+            for (const std::filesystem::path& holder : {exe.parent_path(), exe.parent_path().parent_path()})
+            {
+                const std::filesystem::path sibling = holder / beside;
+                if (std::filesystem::is_directory(sibling, ec))
+                    return sibling;
+            }
         }
         return source;
     }

@@ -263,6 +263,8 @@ namespace tee::ui
                                      + (n.wheels ? kGuiWheelsW : 0.0f), 72.0f };
                     case GuiKind::shader:                // width= and height= its size (a 72 px dial), else 200 x 120
                         return { n.width > 0.0f ? n.width : 200.0f, n.height > 0.0f ? n.height : 120.0f };
+                    case GuiKind::widget:                // J2: width= and height= its size, else its kind's
+                        return guiWidgetSize(n);
                     case GuiKind::area:                  // width= and height= its size, else 120 x 80
                         return { n.width > 0.0f ? n.width : 120.0f, n.height > 0.0f ? n.height : 80.0f };
                     case GuiKind::display:
@@ -417,7 +419,7 @@ namespace tee::ui
                     return false;
                 if (isContainer(c.kind) || c.kind == GuiKind::label || c.kind == GuiKind::divider || c.kind == GuiKind::spacer
                     || c.kind == GuiKind::envelope || c.kind == GuiKind::shader || c.kind == GuiKind::keyboard
-                    || c.kind == GuiKind::area)
+                    || c.kind == GuiKind::area || c.kind == GuiKind::widget)
                     return true;
                 if (c.kind == GuiKind::display && c.display >= 0 && static_cast<std::size_t>(c.display) < spec_.displays.size())
                 {
@@ -612,6 +614,24 @@ namespace tee::ui
         return guiTextStyle(n.textSize);
     }
 
+    GuiExtent guiWidgetSize(const GuiNode& n)
+    {
+        GuiExtent e{ 120.0f, 80.0f };
+        if (n.widget == "plot")
+            e = { 320.0f, 180.0f };
+        else if (n.widget == "curve")
+            e = { 320.0f, 200.0f };
+        else if (n.widget == "map")
+            e = { 560.0f, 300.0f };
+        else if (n.widget == "gauge")
+            e = { 170.0f, 170.0f };
+        else if (n.widget == "bar")
+            e = { 150.0f, 44.0f };
+        else if (n.widget == "lamp")
+            e = { 64.0f, 44.0f };
+        return { n.width > 0.0f ? n.width : e.w, n.height > 0.0f ? n.height : e.h };
+    }
+
     GuiKnobGeom guiKnobGeom(const GuiNode& n, float labelWidth)
     {
         GuiKnobGeom g;
@@ -744,6 +764,7 @@ namespace tee::ui
             case GuiKind::keyboard: return "keyboard from " + std::to_string(n.from) + ", " + std::to_string(n.keys) + " keys";
             case GuiKind::shader:   return "shader \"" + n.file + "\"";
             case GuiKind::area:     return "area";
+            case GuiKind::widget:   return n.widget + " " + n.file;
         }
         return "element";
     }

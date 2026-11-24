@@ -1,0 +1,9 @@
+// A program that does not compile, for the test of what the application does then: the message is FMinus's, in
+// clang's words, and the Panel shows it.
+module Voice
+{
+    void start(float n, float v)
+    {
+        missing = n + v;
+    }
+};
