@@ -87,7 +87,11 @@ same (told T). With D's x2 and the gates of 2 and 2b the boost is held (above); 
 ## 4. Not boost: what is left after 1 and 2 (leads, not yet causes)
 
 - The 3.0 L twin-turbo six breathes at 0.51 to 0.65 on the manifold at 2 bar (VE air 1.03 to 1.19; the four 0.84):
-  404 N m for 450 to 600. A breathing question (N1's, or the build's), not the boost.
+  404 N m for 450 to 600. CAUSE FOUND, in the boost after all: on one bank housingOf sent every collector to turbo 0;
+  turbo 1 stood (0 rad/s) and turbo 0 choked. Now group 0 feeds turbo 0, group 1 turbo 1, and sideOf(t) folds an
+  outlet onto side 0 on a one-sided exhaust (Boost::exhaustSides, called by G). With primaryTo [0,0,0,1,1,1], two
+  collectors, a dual exhaust: 507 / 475 / 442 N m at 2866 / 4297 / 5729 rpm, boost 106 to 113 kPa, both shafts about
+  15000 rad/s. Test: GateTest.cpp, "twin turbos on one bank". Listen: two whines at one pitch, no backflow chuff.
 - The 2.0 four's power at 6528 rpm with engine.wallHeat 1: 260 kW for 155 to 230, its boost held flat to the
   limiter (P's target map has no taper; production two-litres trim the boost above some 5000 rpm).
 - The supercharged V8's boost rises 58 to 135 kPa from 2000 to 5500 rpm (pulley 2.4, no loop).
