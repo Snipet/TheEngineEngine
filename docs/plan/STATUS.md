@@ -14,7 +14,8 @@
 | F: forced induction | running | local agent, `/home/user/work/boost` | 12:00 | the same |
 | E: valvetrain and induction | running | local agent, `/home/user/work/valvetrain` | 12:00 | the same |
 | H: combustion and ECU | running | local agent, `/home/user/work/ecu` | 12:00 | the same |
-| D, G | waiting for K3b | | | |
+| D: mechanics and layouts | running | cloud session `session_01LFAGgTFpHiA9YGryQgFytL` | 12:07 | standalone first (layouts from geometry, inertia, shaking, friction, work); the integrator's job after K3b |
+| G: exhaust builder | running | cloud session `session_01LFAGgSkq1paVPmFHkoNNei` | 12:08 | standalone first (the network on the reference's `Duct`); integrated after K3b |
 | J2: widgets, binding, the frame | running | cloud session `session_01LFAGgQnadEqmEkF3xi2V1S` | 12:05 | widgets and units first; the binding when card C's Schema lands |
 | Wave 2 | after the gate (M2) | | | Q (performance) as soon as K3b lands |
 
@@ -29,5 +30,8 @@
 
 - Resolved 12:10: cloud sessions could not fetch FMinus's prebuilt LLVM (their GitHub access covers only this
   repository). The owner published the Linux archive as the pre-release `deps-llvm-23.1.3` here, and
-  `scripts/fetch-llvm.sh` falls back to it. Packages started from now on can run in their own cloud sessions; the
-  nine already running locally stay where they are.
+  `scripts/fetch-llvm.sh` falls back to it. A cloud session then bootstrapped in 25 s and built in 3.5 min
+  (12:06). It fetched the archive by plain URL from FMinus's own release: release assets of a public repository
+  are reachable after all (only the API and source archives are refused), so the mirror is a fallback that has
+  not yet been needed. Packages started from now on run in their own cloud sessions; the nine already running
+  locally stay where they are.
