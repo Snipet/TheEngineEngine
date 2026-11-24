@@ -596,7 +596,22 @@ namespace tee::ui
                     g->setRedline(units.toUser(q, telemetry.value(red)));
             }
             else
+            {
+                // Divisions at round values: the first count from 5 to 10 whose step is 1, 2, 2.5 or 5 times a power of
+                // ten (300 km/h: 6 of 50).
+                const double span = units.toUser(q, look.hi) - units.toUser(q, look.lo);
+                for (int n = 5; n <= 10; ++n)
+                {
+                    const double step = span / n, mag = std::pow(10.0, std::floor(std::log10(step)));
+                    const double k = step / mag;
+                    if (std::fabs(k - std::round(k * 2.0) / 2.0) < 1e-9 && (k == 1.0 || k == 2.0 || k == 2.5 || k == 5.0))
+                    {
+                        g->setTicks(n, 2);
+                        break;
+                    }
+                }
                 g->setReadout([&units, q](double v) { return formatNumber(v, units.unit(q).decimals); });
+            }
             return g;
         }
         if (w == "bar")

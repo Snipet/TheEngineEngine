@@ -80,6 +80,8 @@ namespace tee::ui
         virtual void arrange() {}
         // The ground under everything (the theme's).
         virtual void drawGround(funkgui::Canvas& c, const funkgui::Theme& th) const;
+        // Drawn over the inner Panel and under the items (a frame's bars, whose ground the inner Panel would cover).
+        virtual void drawOver(funkgui::Canvas& /*c*/, const funkgui::Theme& /*th*/) const {}
         // The Panel under the items; nullptr: none.
         virtual funkgui::Panel* inner() const { return nullptr; }
         // Called once the host is known (an inner Panel is attached here).

@@ -1,0 +1,678 @@
+// refexhaust.fm: the reference's exhaust, alone (a test's copy, card G).
+//
+// The exhaust half of sim/ref/engine.fm (Shared): its pipes, pipes(), soak(), node(), the exhaust part of its
+// control16 and of its sampleTick, copied as they are, with the cylinders replaced by the flows a test gives each
+// port. The builder's reference-topology test runs this and the builder side by side on the same flows. What differs
+// from the reference: nothing in the arithmetic; the Pop is XPop (the same code); the intake's runners, the plenum and
+// the rest are left out (they do not touch the exhaust's state).
+#pragma once
+#include "../../../sim/ref/pipes.fm"
+#include "../../../sim/ref/layouts.fm"
+#include "../../../sim/exhaust/ends.fm"
+
+module RefExh
+{
+    Layout lay;
+    Duct prim[12];
+    Duct sec[2];
+    Duct pipe[2];
+    Duct ch1[2];
+    Duct mid[2];
+    Duct ch2[2];
+    Duct tail[2];
+    Duct cross;
+    XPop pop[2];
+    Biquad endR[2];
+    float rate;
+    int nDuals;
+    int portBank[12];
+    float bore;
+    float smMuf;
+    float smHdr;
+    float smPipe;
+    float smXp;
+    float smTb;
+    float smTs;
+    int aspUse;
+    float tAmb;
+    float vAir;
+    float radPrev[2];
+    float outL;
+    float outR;
+    float noiseTrim;
+    OnePole vnHp;
+    OnePole vnLp;
+    OnePole tnHp[2];
+    OnePole tnLp[2];
+    float jetN[2];
+    float nScale;
+    OnePole fnHp[8];
+    OnePole fnLp[8];
+    OnePole fnLp2[8];
+    float fnN[8];
+    float fnG[8];
+    float flowK;
+    float qHd[12];
+    float qPp[2];
+    float qM1[2];
+    float qM4[2];
+    float kInM;
+    float kOutM;
+    float tGas[5];
+    float tWall[5];
+    float tUse[5];
+    float kUse;
+    float jetK;
+    float jetA;
+    float qJet[2];
+    float valveK;
+    float kHin;
+    float kHout;
+    float kSin;
+    float kSout;
+    float kXp;
+    float rCat;
+    float rPerf;
+    float kMuf[8];
+    float kExit[2];
+    float sHd[12];
+    float sMg[2];
+    float sXp[2];
+    float sMf[8];
+    float sEx[2];
+    float xiWall;
+    float k16Flow;
+    int rs;
+    int ready;
+
+    float rnd()
+    {
+        const int hi = rs / 127773;
+        const int lo = rs % 127773;
+        rs = 16807 * lo - 2836 * hi;
+        if (rs <= 0)
+            rs += 2147483647;
+        return 2.0f * ((float)rs / 2147483647.0f) - 1.0f;
+    }
+
+    void setup(float rateIn)
+    {
+        rate = rateIn;
+        rs = 123456789;
+        const float k = rate / 300.0f;
+        for (int i = 0; i < 12; ++i)
+            prim[i].configure((int)(3.0f * k) + 16);
+        for (int i = 0; i < 2; ++i)
+        {
+            sec[i].configure((int)(1.0f * k) + 16);
+            pipe[i].configure((int)(4.6f * k) + 16);
+            ch1[i].configure((int)(0.9f * k) + 16);
+            mid[i].configure((int)(0.5f * k) + 16);
+            ch2[i].configure((int)(0.7f * k) + 16);
+            tail[i].configure((int)(1.0f * k) + 16);
+            pop[i].rs = 1000 + 7777 * i;
+        }
+        cross.configure((int)(0.6f * k) + 16);
+        vnHp.set(700.0f, rate);
+        vnLp.set(20000.0f, rate);
+        nScale = sqrtf(rate / 48000.0f);
+        jetA = 1.0f - expf(-1.0f / (0.06f * rate));
+        for (int i = 0; i < 2; ++i)
+            jetBand(i, 300.0f);
+        jetK = 0.005f;
+        flowK = 0.017f;
+        valveK = 0.15f;
+        xiWall = 0.025f;
+        k16Flow = 1.0f - expf(-16.0f / (0.06f * rate));
+        kUse = 1.0f - expf(-16.0f / (0.3f * rate));
+        ready = 1;
+    }
+
+    void release()
+    {
+        if (ready != 0)
+        {
+            for (int i = 0; i < 12; ++i)
+                prim[i].release();
+            for (int i = 0; i < 2; ++i)
+            {
+                sec[i].release();
+                pipe[i].release();
+                ch1[i].release();
+                mid[i].release();
+                ch2[i].release();
+                tail[i].release();
+            }
+            cross.release();
+        }
+        ready = 0;
+    }
+
+    // The layout at its own size (the reference's configure, the exhaust's part), stopped, as warm as `warm`
+    void configure(int layout, float warm, float mdotSlow)
+    {
+        lay.load(layout);
+        nDuals = lay.topo == 2 ? 2 : 1;
+        bore = expf(0.33333333f * logf(1.2732395f * lay.swept));
+        for (int i = 0; i < 12; ++i)
+            portBank[i] = 0;
+        for (int c = 0; c < lay.n; ++c)
+            portBank[lay.port[c]] = lay.bank[c];
+        for (int i = 0; i < 12; ++i)
+            prim[i].clear();
+        for (int i = 0; i < 2; ++i)
+        {
+            sec[i].clear();
+            pipe[i].clear();
+            ch1[i].clear();
+            mid[i].clear();
+            ch2[i].clear();
+            tail[i].clear();
+            radPrev[i] = 0.0f;
+            endR[i].clear();
+        }
+        cross.clear();
+        for (int i = 0; i < 12; ++i)
+        {
+            sHd[i] = 0.0f;
+            qHd[i] = 0.0f;
+        }
+        for (int i = 0; i < 2; ++i)
+        {
+            qPp[i] = 0.0f;
+            qM1[i] = 0.0f;
+            qM4[i] = 0.0f;
+            qJet[i] = 0.0f;
+        }
+        for (int g = 0; g < 8; ++g)
+        {
+            fnG[g] = 0.0f;
+            flowBand(g, 300.0f);
+        }
+        for (int i = 0; i < 8; ++i)
+            sMf[i] = 0.0f;
+        for (int i = 0; i < 2; ++i)
+        {
+            sMg[i] = 0.0f;
+            sXp[i] = 0.0f;
+            sEx[i] = 0.0f;
+        }
+        const float exT[17] = {0.923f, 1.249f, 1.388f, 1.815f, 3.380f, 3.990f, 4.603f, 1.741f, 5.346f, 5.230f, 5.831f, 3.722f, 8.169f, 3.613f, 4.332f, 5.947f, 1.226f};
+        const float exT1[17] = {0.288f, 0.348f, 0.402f, 0.400f, 0.884f, 0.995f, 0.999f, 0.439f, 1.527f, 1.113f, 1.609f, 0.501f, 1.415f, 0.853f, 0.837f, 1.123f, 0.401f};
+        const int li = layout < 0 ? 0 : (layout > 16 ? 16 : layout);
+        noiseTrim = sqrtf(sqrtf(exT1[li] / exT[li]));
+        for (int i = 0; i < 5; ++i)
+            tWall[i] = tAmb + 120.0f * warm;
+        for (int it = 0; it < 400; ++it)
+            soak(tAmb + 350.0f * warm, mdotSlow, 3.0f * warm);
+        for (int i = 0; i < 5; ++i)
+            tUse[i] = tGas[i];
+        pipes();
+    }
+
+    void soak(float tIn, float m, float dt)
+    {
+        const float hk = expf(0.9808293f * (smHdr - 0.5f));
+        const float pk = expf(1.3862944f * (smPipe - 0.5f));
+        const float dHead = 0.46f * bore;
+        const float dSec = lay.topo == 0 ? lay.pipeD : 0.922f * lay.pipeD;
+        float len[5];
+        float dia[5];
+        float br[5];
+        len[0] = lay.hdr * hk;
+        len[1] = lay.bike > 0.5f ? 0.25f : 0.38f;
+        len[2] = lay.mainLen * pk;
+        len[3] = lay.muff * 1.6f + 0.12f + 0.08f * (1.0f - lay.bike);
+        len[4] = lay.bike > 0.5f ? 0.10f : 0.40f;
+        dia[0] = dHead;
+        dia[1] = dSec;
+        dia[2] = lay.pipeD;
+        dia[3] = lay.pipeD;
+        dia[4] = lay.tailD;
+        br[0] = (float)lay.ports;
+        br[1] = lay.topo == 0 ? 1.0f : 2.0f;
+        br[2] = (float)nDuals;
+        br[3] = (float)nDuals;
+        br[4] = (float)nDuals;
+        const float enh[5] = {1.5f, 1.2f, 1.0f, 2.0f, 1.0f};
+        const float shellK[5] = {1.0f, 1.0f, 1.0f, 4.0f, 1.0f};
+        const float heat[5] = {9000.0f, 6000.0f, 12000.0f, 10000.0f, 5000.0f};
+        float t = tIn;
+        for (int i = 0; i < 5; ++i)
+        {
+            const float mb = fmaxf(m / br[i], 2.0e-5f);
+            const float ntu = 0.01352f * enh[i] * len[i] * expf(-0.2f * logf(mb) - 0.8f * logf(dia[i]));
+            const float e = expf(-ntu);
+            const float tw = tWall[i];
+            tGas[i] = tw + (t - tw) * (1.0f - e) / ntu;
+            t = tw + (t - tw) * e;
+            const float sOut = 3.14159265f * dia[i] * len[i] * shellK[i];
+            const float gIn = ntu * mb * 1150.0f;
+            const float gOut = (20.0f + 4.0f * vAir + 4.536e-8f * (tw * tw + tAmb * tAmb) * (tw + tAmb)) * sOut;
+            const float tEq = (gIn * tGas[i] + gOut * tAmb) / (gIn + gOut);
+            tWall[i] = tw + (tEq - tw) * fminf(dt * (gIn + gOut) / (heat[i] * sOut), 1.0f);
+        }
+    }
+
+    float backFc(float c, float len)
+    {
+        return fmaxf(500.0f, 0.25f * c / fmaxf(len, 0.01f));
+    }
+
+    void pipes()
+    {
+        const float hk = expf(0.9808293f * (smHdr - 0.5f));
+        const float pk = expf(1.3862944f * (smPipe - 0.5f));
+        const float dHead = 0.46f * bore;
+        const float aHead = 0.785398f * dHead * dHead;
+        const float aPipe = 0.785398f * lay.pipeD * lay.pipeD;
+        const float aTail = 0.785398f * lay.tailD * lay.tailD;
+        const float aSec = lay.topo == 0 ? aPipe : 0.85f * aPipe;
+        const float tH = tUse[0];
+        const float tS = tUse[1];
+        const float tP = tUse[2];
+        const float tM = tUse[3];
+        const float tT = tUse[4];
+        const float cH = sqrtf(1.35f * 287.0f * tH);
+        const float cS = sqrtf(1.35f * 287.0f * tS);
+        const float cP = sqrtf(1.35f * 287.0f * tP);
+        const float cM = sqrtf(1.35f * 287.0f * tM);
+        const float cT = sqrtf(1.35f * 287.0f * tT);
+        const float mu = smMuf;
+        const float ratio1 = 1.0f + 15.0f * mu;
+        const float ratio2 = 1.0f + 9.0f * mu;
+        const float chamb = fminf(fmaxf((mu - 0.25f) / 0.35f, 0.0f), 1.0f);
+        const float chambs = chamb * chamb * (3.0f - 2.0f * chamb);
+        const float graze = 1.0f / (1.0f + 1.5f * ch1[0].mach);
+        const float lk1 = (lay.muff / 0.45f) * graze;
+        const float lk2 = 0.6f * lk1;
+        const float dPipe = lay.pipeD;
+        const float keepH = 0.878f;
+        const float keepP = 0.769f;
+        for (int i = 0; i < lay.ports; ++i)
+        {
+            const int b = portBank[i];
+            const float own = 1.0f + 0.06f * (float)((i * 7) % 5 - 2) / 2.0f;
+            const float len = lay.hdr * hk * own * (b == 1 ? lay.hdrBank1 : 1.0f);
+            prim[i].set(len, dHead, aHead, cH, rate);
+            prim[i].extra(0.0f, keepH, rate);
+            prim[i].steep = 0.87f / 101325.0f;
+        }
+        const float tb = aspUse >= 1 && aspUse <= 3 ? smTb : 0.0f;
+        const float tsr = expf(-0.5f * logf(smTs));
+        const float aS = aSec * fmaxf(1.0f - (aspUse == 2 ? 0.45f : (aspUse == 3 ? 0.5f : 0.55f)) * tb * tsr, 0.15f);
+        const float tbHz = tb > 0.001f ? (1320.0f + 22680.0f * (1.0f - tb) * (1.0f - tb) * (1.0f - tb)) * (aspUse == 2 ? 1.25f : (aspUse == 3 ? 1.1f : 1.0f)) * tsr : 0.0f;
+        for (int k = 0; k < 2; ++k)
+        {
+            sec[k].set(lay.bike > 0.5f ? 0.25f : 0.38f, sqrtf(aS * 1.2732395f), aS, cS, rate);
+            sec[k].extra(tbHz, 1.0f, rate);
+            sec[k].steep = 0.87f / 101325.0f;
+            const float pl = lay.mainLen * pk;
+            pipe[k].set(pl, dPipe, aPipe, cP, rate);
+            pipe[k].extra(0.0f, keepP, rate);
+            pipe[k].pack(700.0f, 2.5f, 4000.0f, 5.0f, rate);
+            pipe[k].steep = 0.87f / 101325.0f;
+            ch1[k].set(lay.muff, dPipe * sqrtf(ratio1), aPipe * ratio1, cM, rate);
+            ch1[k].extra(0.0f, expf(0.8f * logf(0.92f - 0.25f * mu)), rate);
+            ch1[k].pack(1100.0f, (1.5f + 5.0f * mu) * lk1, 5000.0f, (3.0f + 14.0f * mu) * lk1, rate);
+            mid[k].set(0.12f + 0.08f * (1.0f - lay.bike), dPipe, aPipe, cM, rate);
+            mid[k].extra(0.0f, 0.935f, rate);
+            ch2[k].set(0.6f * lay.muff, dPipe * sqrtf(ratio2), aPipe * ratio2, cM, rate);
+            ch2[k].extra(0.0f, expf(0.8f * logf(0.93f - 0.20f * mu)), rate);
+            ch2[k].pack(1100.0f, (1.5f + 5.0f * mu) * lk2, 5000.0f, (3.0f + 14.0f * mu) * lk2, rate);
+            tail[k].set(lay.bike > 0.5f ? 0.10f : 0.40f, lay.tailD, aTail, cT, rate);
+            tail[k].extra(0.0f, 0.960f, rate);
+            const float sc1 = 40.0f * (1.0f - 1.0f / ratio1);
+            const float sc2 = 40.0f * (1.0f - 1.0f / ratio2);
+            pipe[k].back(backFc(pipe[k].c, pipe[k].len), sc1, rate);
+            ch1[k].back(backFc(ch1[k].c, ch1[k].len), sc1, rate);
+            mid[k].back(backFc(mid[k].c, mid[k].len), sc2, rate);
+            ch2[k].back(backFc(ch2[k].c, ch2[k].len), sc2, rate);
+            tail[k].back(backFc(tail[k].c, tail[k].len), sc2, rate);
+        }
+        const float xa = fmaxf(smXp, 0.001f);
+        cross.set(0.25f, dPipe * sqrtf(xa), xa * aPipe, cP, rate);
+        cross.extra(0.0f, 0.960f, rate);
+        const float rhoH = prim[0].rho;
+        const float rhoS = sec[0].rho;
+        const float rhoM = ch1[0].rho;
+        kHin = lossKap(0.25f, rhoH, aHead);
+        kHout = lossKap(0.45f, rhoH, aHead);
+        kSin = lossKap(0.15f, rhoS, aS);
+        kSout = lossKap(0.30f, rhoS, aS);
+        kXp = lossKap(0.5f, sec[0].rho, xa * aPipe);
+        const float e1 = 1.0f - 1.0f / ratio1;
+        const float e2 = 1.0f - 1.0f / ratio2;
+        const float aCh2 = aPipe * ratio2;
+        const float e3 = 1.0f - fminf(aTail / aCh2, 1.0f);
+        kMuf[0] = lossKap(chambs * e1 * e1, rhoM, aPipe);
+        kMuf[1] = lossKap(chambs * 0.5f * e1, rhoM, aPipe);
+        kMuf[2] = lossKap(chambs * 0.5f * e1, rhoM, aPipe);
+        kMuf[3] = lossKap(chambs * e1 * e1, rhoM, aPipe);
+        kMuf[4] = lossKap(chambs * e2 * e2, rhoM, aPipe);
+        kMuf[5] = lossKap(chambs * 0.5f * e2, rhoM, aPipe);
+        kMuf[6] = lossKap(0.5f * e3, rhoM, aTail);
+        kMuf[7] = lossKap(e3 * e3, rhoM, aTail);
+        kInM = fmaxf(chambs * e1 * e1, 0.1f);
+        kOutM = fmaxf(0.5f * e3, 0.1f);
+        kExit[0] = lossKap(1.0f, tail[0].rho, aTail);
+        kExit[1] = lossKap(0.5f, tail[0].rho, aTail);
+        rPerf = (0.05f + 0.15f * mu) * ch1[0].rho * cM / aPipe;
+        rCat = 60.0f * expf(0.7f * logf(tP / 700.0f)) / aPipe;
+        const float aEnd = 0.5f * lay.tailD;
+        const float tau = aEnd / 347.2f;
+        const float kEnd = 1.018f * sqrtf(tT / tAmb);
+        const float nb1 = (0.613f * kEnd - 0.78f) * tau;
+        const float nb2 = 0.2285f * (kEnd - 1.0f) * tau * tau;
+        const float da1 = (0.613f * kEnd + 0.78f) * tau;
+        const float da2 = 0.2285f * (kEnd + 1.0f) * tau * tau;
+        const float kb = 2.0f * rate;
+        const float kb2 = kb * kb;
+        for (int k = 0; k < 2; ++k)
+            endR[k].design(-1.0f + nb1 * kb + nb2 * kb2, -2.0f - 2.0f * nb2 * kb2, -1.0f - nb1 * kb + nb2 * kb2,
+                           1.0f + da1 * kb + da2 * kb2, 2.0f - 2.0f * da2 * kb2, 1.0f - da1 * kb + da2 * kb2);
+    }
+
+    float coneNoise(int k)
+    {
+        const float u = qPp[k] / pipe[k].area;
+        return flowK * noiseTrim * 0.6f * 0.5f * pipe[k].rho * u * u * fnG[2 + k];
+    }
+
+    float node(int n, float* a, float* z, float* kf, float* kr, float* sl, float* al, float* q, float src)
+    {
+        float sy = 0.0f;
+        float sa = src;
+        float h[14];
+        for (int i = 0; i < n; ++i)
+        {
+            const float x = sl[i];
+            h[i] = lossHold(x, z[i], x >= 0.0f ? kf[i] : kr[i]);
+            sy += 1.0f / z[i];
+            sa += 2.0f * a[i] / z[i] - h[i];
+        }
+        const float p = sa / sy;
+        for (int i = 0; i < n; ++i)
+        {
+            const float d = 2.0f * a[i] - p;
+            q[i] = d / z[i] - h[i];
+            sl[i] += al[i] * (d - sl[i]);
+        }
+        return p;
+    }
+
+    void flowBand(int g, float fPeak)
+    {
+        const float f = fminf(fmaxf(fPeak, 80.0f), 3000.0f);
+        fnHp[g].set(0.5f * f, rate);
+        fnLp[g].set(2.0f * f, rate);
+        fnLp2[g].set(2.0f * f, rate);
+        fnN[g] = sqrtf(rate / (0.67f * f));
+    }
+
+    void jetBand(int k, float fPeak)
+    {
+        const float f = fminf(fmaxf(fPeak, 60.0f), 2500.0f);
+        tnHp[k].set(0.5f * f, rate);
+        tnLp[k].set(3.0f * f, rate);
+        jetN[k] = sqrtf(rate / (2.693f * f));
+    }
+
+    // The exhaust's part of the reference's control16 (the gas's temperature and flow given)
+    void control16(float d16, float tPort, float mdotSlow)
+    {
+        soak(tPort, mdotSlow, d16);
+        for (int i = 0; i < 5; ++i)
+            tUse[i] += (tGas[i] - tUse[i]) * kUse;
+        pipes();
+        for (int i = 0; i < lay.ports; ++i)
+            prim[i].flow16(xiWall, k16Flow);
+        for (int k = 0; k < 2; ++k)
+        {
+            sec[k].flow16(xiWall, k16Flow);
+            pipe[k].flow16(xiWall, k16Flow);
+            ch1[k].flow16(xiWall, k16Flow);
+            mid[k].flow16(xiWall, k16Flow);
+            ch2[k].flow16(xiWall, k16Flow);
+            tail[k].flow16(xiWall, k16Flow);
+        }
+        cross.flow16(xiWall, k16Flow);
+        for (int k = 0; k < nDuals; ++k)
+        {
+            const float u = fmaxf(qJet[k], 0.0f) / tail[k].area;
+            jetBand(k, 0.3f * u / sqrtf(tail[k].area * 1.2732395f));
+        }
+        const int nb = lay.topo == 0 ? 1 : 2;
+        for (int k = 0; k < nb; ++k)
+            flowBand(k, 0.4f * prim[0].mach * prim[0].c / prim[0].diam);
+        for (int k = 0; k < nDuals; ++k)
+        {
+            flowBand(2 + k, 0.4f * pipe[k].mach * pipe[k].c / pipe[k].diam);
+            flowBand(4 + k, 0.4f * pipe[k].mach * pipe[k].c / pipe[k].diam);
+            flowBand(6 + k, 0.4f * tail[k].mach * tail[k].c / tail[k].diam);
+        }
+    }
+
+    // The exhaust's part of the reference's sampleTick: the pipes read, the ports' flows qe[port] in, the junctions,
+    // the pipes written. Leaves outL, outR (the tails' radiation).
+    void sampleTick(float* qe)
+    {
+        const int np = lay.ports;
+        for (int i = 0; i < np; ++i)
+            prim[i].read();
+        const int nb = lay.topo == 0 ? 1 : 2;
+        for (int k = 0; k < nb; ++k)
+            sec[k].read();
+        for (int k = 0; k < nDuals; ++k)
+        {
+            pipe[k].read();
+            ch1[k].read();
+            mid[k].read();
+            ch2[k].read();
+            tail[k].read();
+        }
+        if (nDuals == 2)
+            cross.read();
+        float hNear[12];
+        const float wn = nScale * vnLp.lowpass(vnHp.highpass(rnd()));
+        for (int i = 0; i < np; ++i)
+        {
+            const float jet = prim[i].z * qe[i];
+            hNear[i] = prim[i].near + jet * (1.0f + valveK * wn * fminf(fabsf(jet) * 0.00004f, 1.0f));
+        }
+        float hFar[12];
+        float sNear[2];
+        float na[14];
+        float nz[14];
+        float nkf[14];
+        float nkr[14];
+        float nq[14];
+        float ns[14];
+        float nal[14];
+        int ni[14];
+        for (int k = 0; k < nb; ++k)
+            fnG[k] = fnN[k] * fnLp2[k].lowpass(fnLp[k].lowpass(fnHp[k].highpass(rnd())));
+        for (int k = 0; k < nDuals; ++k)
+        {
+            fnG[2 + k] = fnN[2 + k] * fnLp2[2 + k].lowpass(fnLp[2 + k].lowpass(fnHp[2 + k].highpass(rnd())));
+            fnG[4 + k] = fnN[4 + k] * fnLp2[4 + k].lowpass(fnLp[4 + k].lowpass(fnHp[4 + k].highpass(rnd())));
+            fnG[6 + k] = fnN[6 + k] * fnLp2[6 + k].lowpass(fnLp[6 + k].lowpass(fnHp[6 + k].highpass(rnd())));
+        }
+        for (int k = 0; k < nb; ++k)
+        {
+            int m = 0;
+            for (int i = 0; i < np; ++i)
+            {
+                if (portBank[i] == k || lay.topo == 0)
+                {
+                    const float uh = qHd[i] / prim[i].area;
+                    const float eh = flowK * noiseTrim * (uh >= 0.0f ? 0.25f : 0.45f) * 0.5f * prim[i].rho * uh * uh * fnG[k];
+                    na[m] = prim[i].far - 0.5f * eh;
+                    nz[m] = prim[i].z;
+                    nkf[m] = kHin;
+                    nkr[m] = kHout;
+                    ns[m] = sHd[i];
+                    nal[m] = prim[i].qsA;
+                    ni[m] = i;
+                    m += 1;
+                }
+            }
+            na[m] = sec[k].near;
+            nz[m] = sec[k].z;
+            nkf[m] = 0.0f;
+            nkr[m] = 0.0f;
+            ns[m] = 0.0f;
+            nal[m] = 0.0f;
+            float sy = 0.0f;
+            for (int j = 0; j <= m; ++j)
+                sy += 1.0f / nz[j];
+            node(m + 1, na, nz, nkf, nkr, ns, nal, nq, pop[k].tick() * sy);
+            for (int j = 0; j < m; ++j)
+            {
+                hFar[ni[j]] = prim[ni[j]].far - prim[ni[j]].z * nq[j];
+                sHd[ni[j]] = ns[j];
+                qHd[ni[j]] = nq[j];
+            }
+            sNear[k] = sec[k].near - sec[k].z * nq[m];
+        }
+        float sFar[2];
+        float pNear[2];
+        float xNear = 0.0f;
+        float xFar = 0.0f;
+        if (lay.topo == 0)
+        {
+            na[0] = sec[0].far;
+            nz[0] = sec[0].z;
+            nkf[0] = kSin;
+            nkr[0] = kSout;
+            ns[0] = sMg[0];
+            nal[0] = sec[0].qsA;
+            na[1] = pipe[0].near - 0.5f * coneNoise(0);
+            nz[1] = pipe[0].z + rCat;
+            nkf[1] = 0.0f;
+            nkr[1] = 0.0f;
+            ns[1] = 0.0f;
+            nal[1] = 0.0f;
+            node(2, na, nz, nkf, nkr, ns, nal, nq, 0.0f);
+            sMg[0] = ns[0];
+            sFar[0] = sec[0].far - sec[0].z * nq[0];
+            pNear[0] = pipe[0].near - pipe[0].z * nq[1];
+            qPp[0] = -nq[1];
+        }
+        else if (lay.topo == 1)
+        {
+            for (int k = 0; k < 2; ++k)
+            {
+                na[k] = sec[k].far;
+                nz[k] = sec[k].z;
+                nkf[k] = kSin;
+                nkr[k] = kSout;
+                ns[k] = sMg[k];
+                nal[k] = sec[k].qsA;
+            }
+            na[2] = pipe[0].near - 0.5f * coneNoise(0);
+            nz[2] = pipe[0].z + rCat;
+            nkf[2] = 0.0f;
+            nkr[2] = 0.0f;
+            ns[2] = 0.0f;
+            nal[2] = 0.0f;
+            node(3, na, nz, nkf, nkr, ns, nal, nq, 0.0f);
+            sMg[0] = ns[0];
+            sMg[1] = ns[1];
+            sFar[0] = sec[0].far - sec[0].z * nq[0];
+            sFar[1] = sec[1].far - sec[1].z * nq[1];
+            pNear[0] = pipe[0].near - pipe[0].z * nq[2];
+            qPp[0] = -nq[2];
+        }
+        else
+        {
+            for (int k = 0; k < 2; ++k)
+            {
+                na[0] = sec[k].far;
+                nz[0] = sec[k].z;
+                nkf[0] = kSin;
+                nkr[0] = kSout;
+                ns[0] = sMg[k];
+                nal[0] = sec[k].qsA;
+                na[1] = pipe[k].near - 0.5f * coneNoise(k);
+                nz[1] = pipe[k].z + rCat;
+                nkf[1] = 0.0f;
+                nkr[1] = 0.0f;
+                ns[1] = 0.0f;
+                nal[1] = 0.0f;
+                na[2] = k == 0 ? cross.near : cross.far;
+                nz[2] = cross.z;
+                nkf[2] = kXp;
+                nkr[2] = kXp;
+                ns[2] = sXp[k];
+                nal[2] = cross.qsA;
+                node(3, na, nz, nkf, nkr, ns, nal, nq, 0.0f);
+                sMg[k] = ns[0];
+                sXp[k] = ns[2];
+                sFar[k] = sec[k].far - sec[k].z * nq[0];
+                pNear[k] = pipe[k].near - pipe[k].z * nq[1];
+                qPp[k] = -nq[1];
+                if (k == 0)
+                    xNear = cross.near - cross.z * nq[2];
+                else
+                    xFar = cross.far - cross.z * nq[2];
+            }
+        }
+        for (int k = 0; k < nDuals; ++k)
+        {
+            const int j = 4 * k;
+            const float z1 = pipe[k].z + ch1[k].z;
+            const float d1 = 2.0f * (pipe[k].far - ch1[k].near);
+            const float u1 = qM1[k] / pipe[k].area;
+            const float e1n = flowK * noiseTrim * kInM * 0.5f * ch1[k].rho * u1 * u1 * fnG[4 + k];
+            const float q1 = (d1 - e1n) / z1 - lossHold(sMf[j], z1, sMf[j] >= 0.0f ? kMuf[0] : kMuf[1]);
+            qM1[k] = q1;
+            sMf[j] += pipe[k].qsA * (d1 - sMf[j]);
+            const float z2 = ch1[k].z + mid[k].z + rPerf;
+            const float d2 = 2.0f * (ch1[k].far - mid[k].near);
+            const float q2 = d2 / z2 - lossHold(sMf[j + 1], z2, sMf[j + 1] >= 0.0f ? kMuf[2] : kMuf[3]);
+            sMf[j + 1] += mid[k].qsA * (d2 - sMf[j + 1]);
+            const float z3 = mid[k].z + ch2[k].z + rPerf;
+            const float d3 = 2.0f * (mid[k].far - ch2[k].near);
+            const float q3 = d3 / z3 - lossHold(sMf[j + 2], z3, sMf[j + 2] >= 0.0f ? kMuf[4] : kMuf[5]);
+            sMf[j + 2] += mid[k].qsA * (d3 - sMf[j + 2]);
+            const float z4 = ch2[k].z + tail[k].z;
+            const float d4 = 2.0f * (ch2[k].far - tail[k].near);
+            const float u4 = qM4[k] / tail[k].area;
+            const float e4n = flowK * noiseTrim * kOutM * 0.5f * tail[k].rho * u4 * u4 * fnG[6 + k];
+            const float q4 = (d4 - e4n) / z4 - lossHold(sMf[j + 3], z4, sMf[j + 3] >= 0.0f ? kMuf[6] : kMuf[7]);
+            qM4[k] = q4;
+            sMf[j + 3] += tail[k].qsA * (d4 - sMf[j + 3]);
+            const float a = tail[k].far;
+            const float dq = a - endR[k].tick(a);
+            const float q = dq / tail[k].z - lossHold(sEx[k], tail[k].z, sEx[k] >= 0.0f ? kExit[0] : kExit[1]);
+            sEx[k] += tail[k].qsA * (dq - sEx[k]);
+            const float b = a - tail[k].z * q;
+            float rad = (q - radPrev[k]) * rate;
+            radPrev[k] = q;
+            qJet[k] += jetA * (q - qJet[k]);
+            const float qm = fmaxf(qJet[k], 1.0e-5f);
+            const float un = fminf(qm / tail[k].area * 0.025f, 4.0f);
+            const float puff = fminf(fmaxf(q / (2.0f * qm), 0.0f), 1.6f);
+            const float noise = jetN[k] * tnLp[k].lowpass(tnHp[k].highpass(rnd()));
+            rad += jetK * noiseTrim * un * un * un * puff * noise * 14400.0f * tail[k].area;
+            if (k == 0)
+                outL = rad;
+            else
+                outR = rad;
+            pipe[k].write(pNear[k], pipe[k].far - pipe[k].z * q1);
+            ch1[k].write(ch1[k].near + ch1[k].z * q1, ch1[k].far - ch1[k].z * q2);
+            mid[k].write(mid[k].near + mid[k].z * q2, mid[k].far - mid[k].z * q3);
+            ch2[k].write(ch2[k].near + ch2[k].z * q3, ch2[k].far - ch2[k].z * q4);
+            tail[k].write(tail[k].near + tail[k].z * q4, b);
+        }
+        if (nDuals == 1)
+            outR = outL;
+        else
+            cross.write(xNear, xFar);
+        for (int k = 0; k < nb; ++k)
+            sec[k].write(sNear[k], sFar[k]);
+        for (int i = 0; i < np; ++i)
+            prim[i].write(hNear[i], hFar[i]);
+    }
+};
