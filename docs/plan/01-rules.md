@@ -106,6 +106,13 @@ allocation or logging on the audio thread. No JUCE, anywhere. Third-party code o
 - **Found on macOS, 2026-11-24**: never keep a `tee::Program`, or anything that owns one, in a static with a
   destructor. At exit it is destroyed after FMinus's and LLVM's own statics and its destructor runs on a JIT that is
   gone (38 tests crashed at exit on macOS; Linux's order hides it). Free it before `main` returns.
+- **Found the hard way, 2026-11-24** (X-007, X-019): a float is never an index (or a loop's bound) without a clamp at
+  both ends and a non-finite check. A NaN's cast to int is INT_MIN on x86 and 0 on arm64, so macOS hides the read
+  off a table that Linux and Windows crash on, in a shipped build, on a Spec inside its ranges. `if (i > last) i =
+  last;` alone does not stop it (a NaN compares false with everything). Call `tableIndex(x, last)` or write
+  `(int)fminf(fmaxf(x, 0.0f), (float)last)` (FMinus's fminf and fmaxf return the other operand for a NaN); wrap an
+  angle with `wrapCycle` (sim/core/mathx.fm), never `while (a >= cyc) a -= cyc;`. `scripts/lint.sh` (rule 8)
+  fails on a new one. CI's soak tier runs the fuzz at the corners without bounds checks, so a crash is a crash there.
 - No transcendental function per sample where a table or a control-rate update will do. Your card gives a CPU
   budget; `tee-bench` measures it.
 - Every Spec field has `[[fminus::range]]`, `[[fminus::default]]`, `[[ui::label]]` and says what its number is:
