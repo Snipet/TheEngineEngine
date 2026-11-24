@@ -1,0 +1,130 @@
+// ui/kit/gui/GuiSpec.h: from TestingPlayground, Source/fminus/GuiSpec.h at 47bac40327ed9e8e59928500de9f3beb63fe8636 (ui/kit/SEED.tsv); what was changed: docs/ui-kit.md.
+// Source/fminus/GuiSpec.h: a program's interface from a .gui file (JUCE-free), richer than #pragma panel lines
+// (PanelSpec.h): containers that lay their children out as CSS's flexbox does, pages behind tabs, controls of every
+// kind with their own labels, units and tapers, displays, and text. A program has one: the first of its files whose
+// name ends in .gui (panel.gui). FMinus never reads it; with one, the program's #pragma panel lines are left out.
+//
+// The language, a line an element (or several, between ;), a block of children between { and }:
+//
+//   element argument argument key=value key="value" {
+//       child ...
+//   }
+//
+// An argument or a value is a name (cutoff, log), a "text", a number (12, -0.5) or a colour (#e07b39). // and /* */
+// are comments. The file's elements stack top to bottom, as in a column; `panel` may hold them instead, with the
+// panel's own colours (background=#1d1b19 accent=orange).
+//
+// Containers (props: gap= between children, pad= inside, align= across: stretch (the default), start, center, end;
+// justify= along: start, center, end, between, around; grow= its share of the room left in its parent; width= and
+// height= at least that many px; wrap: a row's children onto more lines when it is too narrow):
+//   row { }                 its children left to right
+//   column { }              top to bottom
+//   grid cols=4 { }         in rows of cols, each column as wide as its widest child
+//   section "FILTER" { }    a frame, its title cut into the top edge (color=, layout=row (the default) or column)
+//   box { }                 a filled frame without a title (color=, layout=column (the default) or row)
+//   tabs { page "OSC" { } page "FILTER" { } }   pages, one shown at a time, chosen by the tabs over them
+//   spacer                  room (width=, height=; without them it grows)
+//   divider                 a line across a row or down a column (color=, thickness=)
+//   label "TEXT"            text (size=small, normal, large, title or px 10 to 44; align=left, center, right; color=)
+// Any element: margin= (room around it), self= (its own align=), minwidth= maxwidth= minheight= maxheight=.
+//
+// Looks. section and box: look=frame (a section's default), card, inset or plate; radius=, fill=, border= (a colour or
+// none), borderwidth=, shadow=; a section's titlecolor=, titlealign=, titlesize=. row and column: fill=, border=,
+// radius=. tabs: look=tabs (the default), bar (a header bar), pills or side (a list at the left). panel: background=,
+// gradient= (the ground's colour at the bottom), accent=.
+//
+// Controls, each a parameter's (one control a parameter), with label="..." (else the parameter's name) and color=:
+//   knob cutoff             size=small, medium, large or a face's px (24 to 240); look= (style=) modern (the default),
+//                           vintage, flat, minimal, ring, led, chicken, soft or dot; arc=, track=, cap=, pointer=line,
+//                           dot, triangle or none, pointercolor=, thickness=, sweep= (degrees), ticks=, tickcolor=,
+//                           bipolar, labelpos=top, bottom or none, value=always, hover or never, valuecolor=,
+//                           labelcolor=, shadow=; for a float also unit="Hz" decimals=1 scale=100 (shows 0..1 as
+//                           0..100) taper=log (a frequency's or a time's: every octave the same turn; its range must be
+//                           above 0), which the host's text and its automation follow too
+//   slider level            vertical, or `slider pan horizontal`; length= px; unit=, decimals=, scale=, taper=; arc=,
+//                           track=, cap=, thickness=, bipolar, labelpos=, value=
+//   switch sync "OFF" "ON"  a bool, or an int of two values; the texts name them
+//   buttons wave "SAW" "SQUARE" "TRI"   a lit button a value (2 to 8), in a column, or a row: buttons wave horizontal
+//   menu mode "A" "B" "C"   a drop-down of an int's values (or a bool's), the texts their names
+//   xy cutoff resonance     a pad: x the first parameter, y the second; size= px (120)
+//   envelope attack decay sustain release   the ADSR shape its four parameters make, drawn (width=, height=)
+//   keyboard from=48 keys=25   an instrument's keys, which play notes (octaves= instead of keys=; color=)
+//   shader "glow.sc" inputs="cutoff env out"   a fragment shader of the program's own files, drawn by the GPU over
+//                           its cell (width=, height= its size, else 200 x 120; it stretches as a scope does), four
+//                           at most: its inputs (up to
+//                           16: parameters, fields, in, out) are its in0..in15 (fminus/Shaders.h); it may #include
+//                           the library (funk/text.sh, funk/shapes.sh: fminus/ShaderLib.h) and the program's .sh
+//                           files; the compiler builds it, and a shader that does not compile is a note on its own line
+//   area x=padX y=padY     room that draws nothing (width=, height=; else 120 x 80): what the pointer does there,
+//                           its pointer properties below, alone
+//
+// The pointer, on area, shader, row, column, grid, section, box, label and the displays (the elements that take no
+// press of their own; a container gets the presses its children do not take, so a knob in it still turns), each the
+// name of a parameter it writes:
+//   x=  y=                  a float: the pointer's place across (left 0, right 1) and up (bottom 0, top 1), as a knob's
+//                           turn maps its range and taper; drag=absolute (the default: they jump to the press and
+//                           follow it) or relative (they move by its travel, 200 px the range, Shift ten times finer);
+//                           release=keep (the default) or spring (back to their defaults when let go)
+//   down=                   a bool, int or float: its highest value while pressed, its lowest when let go
+//   wheel=                  a float or an int, nudged by the wheel as a knob is
+//   hover=                  a panel-only parameter (one after the program's 32nd: no host parameter), its highest while
+//                           the pointer is over it
+//   cursor=                 the pointer's shape there: hand, cross, grab, leftright or updown
+// One press is one gesture of x, y and down together (the host's automation, the journal, undo), a double-click puts x
+// and y back to their defaults, a right-click opens the first one's dial menu (MIDI learn). A parameter a pointer writes
+// may have a control too; one without comes in no section of the rest. 16 elements with pointer properties at most.
+// A shader's inputs may also be the pointer over it, with no parameter: pointer.x and pointer.y (0 to 1 across and up
+// its rect, the last place while the pointer is elsewhere), pointer.down (1 while it is pressed), pointer.hover (1
+// while the pointer is over it): in_pointer_x ... in its code, counted among its 16. A dial drawn by a shader:
+//   shader "dial.sc" inputs="cutoff pointer.hover pointer.down" y=cutoff drag=relative cursor=updown width=72 height=72
+//
+// A knob's or a slider's live=field marks where a field of the program has the parameter now (a hidden display's tap;
+// Shared's too, shared->x, as a display names it).
+//
+// Classes and defaults, anywhere in the file (read first): `class "big" size=72 arc=yellow` gives its properties to an
+// element with class="big" (several: class="big warm", in order); `defaults knob look=ring` gives them to every knob.
+// An element's own properties come last, so they win; a class's or the defaults' property an element does not take is
+// left out without a note.
+//
+// Displays, of `in` or `out` (the plugin's audio: an effect's input, the output) or a float, double, int or bool field
+// the program writes: the main module's (an instrument's from its newest sounding voice), or the module Shared's through
+// the main module's Shared* field, `shared->level` (its one Shared, whether a voice sounds or not), or one element of an
+// array of them, an index a dimension (`bands[2]`, `grid[1][3]`: PanelSpec.h's displaySource), with label= (else
+// the source's name; Shared's field's own, LEVEL), color=, and min= max= for a field (0 and 1 when unsaid):
+//   meter out   vu out   led gate   number cutoffHz   scope out   spectrum out
+// scope and spectrum (an analyser of in or out) take width= and height=. A number shows an int's or a bool's field as
+// a whole number, and takes a knob's unit=, decimals= and scale= for a field (`number rpm unit="rpm" decimals=0`); its
+// cell is wide enough for a sign, four digits, its decimals and unit, and a longer readout is drawn smaller.
+//
+// A parameter that no control names comes last, in a section without a title. What the plugin cannot use is a note,
+// "panel.gui:12:5: note: ...", and the rest stands.
+#pragma once
+
+#include "kit/gui/PanelSpec.h"
+
+#include <string>
+#include <string_view>
+#include <vector>
+
+namespace tee::ui
+{
+    inline constexpr int kMaxGuiNodes = 400;             // elements a .gui file may have
+    inline constexpr int kMaxGuiDepth = 12;              // containers in containers
+    inline constexpr int kMaxMenuOptions = 32;
+    inline constexpr std::size_t kMaxGuiShaders = 4;     // shader elements a panel draws
+    inline constexpr std::size_t kMaxGuiText = 48;       // a label's characters
+
+    // Whether a file's name makes it a .gui file.
+    bool isGuiFile(std::string_view name);
+
+    // The interface `gui` asks for, for the program's `controls` (the taper, unit, decimals and scale it gives a dial
+    // go into them), `fields` (its main module's; an instrument has no `in`) and `fileNames` (the program's files, which
+    // a shader names). Notes, a line each, are appended.
+    PanelSpec readGuiSpec(const SourceFile& gui, Controls& controls, const std::vector<PanelField>& fields,
+                          bool instrument, const std::vector<std::string>& fileNames, std::string& notes);
+
+    // The shaders `gui` asks for, read before the program compiles (the Compiler builds them meanwhile: Shaders.h):
+    // as readGuiSpec reads them, but each input taken at its word, where readGuiSpec keeps only the parameters and
+    // fields the program has; their binaries empty. No notes (readGuiSpec's to give).
+    std::vector<PanelShader> readGuiShaders(const SourceFile& gui, bool instrument);
+}
