@@ -72,6 +72,9 @@ namespace tee
         double simulatedSeconds = 0.0;
         double wallSeconds = 0.0;
         bool cancelled = false;
+        // The simulator found its engine diverged (FLAG_FAULT in tel.engine.flags) and put it at rest: the run
+        // stopped there, the point it was measuring dropped. A failure of the program's invariant, never normal.
+        int faults = 0;
         std::uint64_t key = 0;         // the build's hash with the plan's
 
         double realTime() const noexcept { return wallSeconds > 0.0 ? simulatedSeconds / wallSeconds : 0.0; }

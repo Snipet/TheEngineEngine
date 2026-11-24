@@ -110,6 +110,10 @@ namespace tee
         std::uint8_t pad[6] = {};
         std::uint32_t clippedBlocks = 0;  // blocks with a sample beyond full scale, clamped (no fault)
         float largestSample = 0.0f;       // the largest sample the simulator wrote since load, before the clamp
+        // Calls in which the simulator found its engine diverged (a crank not finite or past five times its redline,
+        // an output not finite) and put it at rest afresh: tel.engine.flags' FLAG_FAULT (4), counted since load. The
+        // host then cranks it back as after a restart. Never in normal running: a failure of the program's invariant.
+        std::uint32_t engineFaults = 0;
     };
 
     // The newest whole block's telemetry: the `tel` block's bytes and the host's numbers. Read field by field.

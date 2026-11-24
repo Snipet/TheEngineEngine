@@ -56,6 +56,13 @@ bit for bit, for spark, lambda, boost and the pedal.
   (1.5, 15, 2: the reference's numbers, which it applied to all cylinders at once); off at the user's risk.
 - **Boost control**: the target is the map's (above); the loop that moves the gate or the vanes is card F's (agreed
   seam below).
+- **Over-boost cut** (added by card N2): the fuel is cut once the boost (the manifold over the air) has stood over
+  `spec.ecu.overBoost` for 0.2 s, until it falls under 85 % of it; 0 takes the boost machine's own over-boost level
+  (`Boost::overBoostLevel()`: 1.4 times its target or spring, turbos only, handed over by Engine as `Ecu::overBoostRef`),
+  -1 never. Production ECUs have such a boost limit (Bosch ME7's and its kind's); the 0.2 s and 85 % are judgement. It
+  is the net under a build whose gate cannot hold its boost: the 2 L four with a 26.3 mm gate, spooled at 5271 rpm,
+  runs away to 249 kPa and 434 N m with it off, 151 kPa and 250 N m with it at 150 kPa
+  (tests/sim/calibration/boost/GateTest.cpp).
 
 Test H4 (the one-line engine: `tests/sim/ecu/oneline.fm`, eight cylinders, 0.2 kg m^2, 300 N m at a full manifold,
 a 40 ms manifold, a plate 30 ms behind, the torque two firings after the intake closes): the warm idle holds at 750
@@ -136,7 +143,7 @@ stalls under a 400 N m load, and runs down to rest with the key off.
 `advanceAsked` and `advance` (degrees before the top: asked, and the last firing's with its knock retard), `knockByCylinder[16]`,
 `knock` (a count since the start), `lambdaTarget`, `lambda` (the sensor's), `injectorDuty`, `fuelFlow` (kg/s),
 `halfBurn`, `peakPressure`, `peakAngle` (cylinder 1's last cycle), `flags` (`ECU_FLAG_*`: 1 limiter, 2 fuel cut, 4
-spark cut, 8 overrun, 16 launch, 32 flat-shift, 64 anti-lag, 128 nitrous, 256 traction, 512 pit, 1024 knock retard),
+spark cut, 8 overrun, 16 launch, 32 flat-shift, 64 anti-lag, 128 nitrous, 256 traction, 512 pit, 1024 knock retard, 2048 over-boost cut),
 `idleValve`, `idleTarget` (rad/s), `boostTarget` (Pa), `state`, `smoke` (0: the diesel's is not wired yet), `limiter`
 (1 while a limiter acts), `load` (the maps' y axis now). Exhaust temperature is `exhaust.portTemperature`.
 

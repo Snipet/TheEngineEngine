@@ -92,6 +92,8 @@ namespace tee
         std::vector<Slot> controls;
         std::size_t stateOffset = 0;   // tel.engine.state, for the crank after a fault
         Scalar stateScalar = Scalar::None;
+        std::size_t flagsOffset = 0;   // tel.engine.flags: FLAG_FAULT (4), the engine put at rest after it diverged
+        Scalar flagsScalar = Scalar::None;
         struct Held
         {
             Schema::Handle handle;
@@ -108,6 +110,8 @@ namespace tee
 
     namespace
     {
+        constexpr long kFlagFault = 4;   // sim/spec/telemetry.fm's FLAG_FAULT
+
         // LoadOptions::hold's paths, found in the program (a path it lacks is skipped)
         template <typename LiveT>
         void resolveHeld(LiveT& live, const Sim& sim, const std::vector<HeldValue>& hold)
@@ -290,6 +294,11 @@ namespace tee
         {
             live->stateOffset = state->offset;
             live->stateScalar = state->scalar;
+        }
+        if (const FieldInfo* flags = fields.find("tel.engine.flags"); flags != nullptr && flags->count == 1)
+        {
+            live->flagsOffset = flags->offset;
+            live->flagsScalar = flags->scalar;
         }
 
         // the Spec: what the host has sent (its defaults and every write since), when it is of this program
@@ -520,6 +529,14 @@ namespace tee
         for (auto& slot : retired_)
             if (Live* l = slot.exchange(nullptr, std::memory_order_acq_rel))
                 destroyLive(l);
+
+        if (const std::uint32_t n = engineFaultsNow_.load(std::memory_order_relaxed); n != engineFaultsTold_)
+        {
+            engineFaultsTold_ = n;
+            const std::lock_guard<std::mutex> lock(reasonMutex_);
+            stopReason_ = "the engine diverged and was restarted (" + std::to_string(n) + (n == 1 ? " time" : " times")
+                          + " since load): the simulator put it at rest afresh (FLAG_FAULT)";
+        }
 
         if (restartWanted_.load(std::memory_order_acquire) && sim_)
         {
@@ -956,7 +973,23 @@ namespace tee
                 }
                 fadeInLeft_ = 0;
             }
-            else if (fading_ != nullptr)
+            else
+            {
+                // the program put a diverged engine at rest (FLAG_FAULT): counted, and cranked back as after a restart
+                if (live->flagsScalar != Scalar::None)
+                {
+                    const double flags = readScalar(static_cast<const unsigned char*>(live->instance->data())
+                                                        + live->flagsOffset,
+                                                    live->flagsScalar);
+                    if ((static_cast<long>(flags) & kFlagFault) != 0)
+                    {
+                        ++stats_.engineFaults;
+                        engineFaultsNow_.store(stats_.engineFaults, std::memory_order_relaxed);
+                        crankLeft_ = static_cast<std::int64_t>(options_.restartCrankSeconds * rate_);
+                    }
+                }
+            }
+            if (ok && fading_ != nullptr)
             {
                 float* ol = scratchLeft_.data();
                 float* orr = scratchRight_.data();
