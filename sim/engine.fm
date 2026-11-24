@@ -1128,6 +1128,15 @@ module Engine
         }
     }
 
+    // Cylinder c's exhaust valve's open area at its angle a (m^2, its discharge coefficient in): the valvetrain's (the
+    // reference's cam table at valve.model 0, card E's lab at 1), with card D2's compression brake's lobe added while it
+    // is on. The intake's is the valvetrain's alone (vt.areaIn)
+    float areaExhaust(int c, float a)
+    {
+        const float ae = vt.areaEx(&cyl[c], c, a);
+        return hd.on != 0 ? ae + hd.brakeArea(c, a) : ae;
+    }
+
     void sampleTick()
     {
         const int np = lay.ports;
@@ -1177,16 +1186,8 @@ module Engine
             {
                 const float a = wrapCycle(crank.theta + lay.fire[c], lay.cyc);
                 const int pi = lay.port[c];
-                if (spec.valve.model != 0)
-                {
-                    qE0[c] = cyl[c].exhaustFlowArea(vt.areaEx(&cyl[c], c, a), exh.prim[pi].near, exh.prim[pi].z, tH);
-                    qI0[c] = cyl[c].intakeFlowArea(vt.areaIn(&cyl[c], c, a), intk.run[pi].near, intk.run[pi].z, intk.tAir);
-                }
-                else
-                {
-                    qE0[c] = cyl[c].exhaustFlowAt(a, exh.prim[pi].near, exh.prim[pi].z, tH);
-                    qI0[c] = cyl[c].intakeFlowAt(a, intk.run[pi].near, intk.run[pi].z, intk.tAir);
-                }
+                qE0[c] = cyl[c].exhaustFlowArea(areaExhaust(c, a), exh.prim[pi].near, exh.prim[pi].z, tH);
+                qI0[c] = cyl[c].intakeFlowArea(vt.areaIn(&cyl[c], c, a), intk.run[pi].near, intk.run[pi].z, intk.tAir);
                 eShare[pi] += qE0[c];
                 iShare[pi] += qI0[c];
             }
@@ -1205,18 +1206,11 @@ module Engine
                 bE += 0.5f * exh.prim[pi].z * (eShare[pi] - qE0[c]);
                 bI += 0.5f * intk.run[pi].z * (iShare[pi] - qI0[c]);
             }
-            // (valve.model 1: the valvetrain gives the valves' areas; card E)
+            // (the valves' areas: areaExhaust and the valvetrain's; card D2's exhaust brake's back pressure)
+            cy->stepAreas(a, dDeg, dt, areaExhaust(c, a), vt.areaIn(cy, c, a), hd.on != 0 ? bE + hd.back : bE, exh.prim[pi].z, tH,
+                          bI, intk.run[pi].z, intk.tAir);
             if (hd.on != 0)
-            {
-                // (card D2: the compression brake's lobe added to the exhaust valve's area; the exhaust brake's back pressure)
-                cy->stepAreas(a, dDeg, dt, vt.areaEx(cy, c, a) + hd.brakeArea(c, a), vt.areaIn(cy, c, a), bE + hd.back, exh.prim[pi].z, tH,
-                              bI, intk.run[pi].z, intk.tAir);
                 hd.sample(cy, c, a);
-            }
-            else if (spec.valve.model != 0)
-                cy->stepAreas(a, dDeg, dt, vt.areaEx(cy, c, a), vt.areaIn(cy, c, a), bE, exh.prim[pi].z, tH, bI, intk.run[pi].z, intk.tAir);
-            else
-                cy->step(a, dDeg, dt, bE, exh.prim[pi].z, tH, bI, intk.run[pi].z, intk.tAir);
             work.sample(c, a, cy->p, cy->v);
             comb.sample(cy, c, dt);                     // card H: nothing under fuel.model 0 and ecu.model 0
             qe[pi] += cy->qEa;
