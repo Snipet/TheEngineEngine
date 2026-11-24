@@ -1,0 +1,18 @@
+# The simulator (sim/engine.fm, through tee::SimHost: --engine sim) in the application's frame, through a start, a rev
+# and a stop. Its key is a car's: the start key held on a running engine for a second says off when it is let go.
+0.20  key return down
+0.50  key return up
+3.50  expect engine.state == 2
+3.50  expect rpm > 400
+3.50  expect rpm < 1600
+3.50  shot out/shell/sim-idle.png
+4.00  key w down
+6.50  expect rpm > 3000
+6.50  shot out/shell/sim-rev.png
+6.50  key w up
+9.00  expect rpm < 2000
+9.00  print
+9.20  key return down
+10.60 key return up
+13.00 expect engine.state != 2
+14.00 end

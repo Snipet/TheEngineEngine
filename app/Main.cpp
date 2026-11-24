@@ -59,8 +59,9 @@ namespace
         return engine.name + "   " + audio;
     }
 
-    int run(const app::Options& o)
+    int run(const app::Options& given)
     {
+        app::Options o = given;
         SDL_SetMainReady();
         SDL_SetAppMetadata("TheEngineEngine", TEE_VERSION, "com.snipet.theengineengine");
 
@@ -70,7 +71,7 @@ namespace
             std::fprintf(stderr, "%s", engine.notes.c_str());
         if (!engine.error.empty())
             std::fprintf(stderr, "error: the program did not start\n%s\n", engine.error.c_str());
-        else if (engine.ref != nullptr)
+        else if (engine.ref != nullptr || engine.sim != nullptr)
             std::printf("engine: %s, compiled in %.2f s\n", engine.name.c_str(), engine.compileSeconds);
         if (!engine.warnings.empty())
             std::fprintf(stderr, "%s\n", engine.warnings.c_str());
@@ -80,6 +81,7 @@ namespace
         const settings::Loaded remembered = settings::load();
         if (!remembered.note.empty())
             std::fprintf(stderr, "settings: %s\n", remembered.note.c_str());
+        o.unitChoices = remembered.settings.unitChoices;
 
         input::Controls controls(player, player);
         controls.bindings() = remembered.settings.bindings;
@@ -145,7 +147,8 @@ namespace
         std::size_t nextEvent = 0;
 
         // ---- the window ---------------------------------------------------------------------------------------------
-        const std::unique_ptr<funkgui::Panel> panel = app::makePanel(o, player, controls.services());
+        const app::Shown shown = app::makePanel(o, engine, controls.services());
+        funkgui::Panel* const panel = shown.panel.get();
         const bool machine = o.frames >= 0 || !o.shot.empty();
         const std::uint32_t frames = static_cast<std::uint32_t>(o.frames >= 0 ? o.frames : 120);
 
@@ -180,14 +183,15 @@ namespace
                         params.set(i, e.a);
                 }
             }
+            engine.frame();
             controls.tick(dt);
             bool changed = device.pump();
             if (changed)
                 audioLine = device.isOpen() ? device.info().line() : "the audio device went away: waiting for one";
-            if (stopped.empty() && engine.ref != nullptr && engine.ref->stopped())
+            if (stopped.empty())
             {
-                stopped = engine.ref->why();
-                changed = true;
+                stopped = engine.stopped();
+                changed = changed || !stopped.empty();
             }
             if (changed)
                 controls.setStatus(statusOf(engine, audioLine, stopped));
@@ -226,7 +230,7 @@ namespace
             std::printf("window: %d x %d logical px, %d x %d pixels, scale %.3f (display scale %.3f)\n", d.logicalW,
                         d.logicalH, d.physW, d.physH, d.scale, d.displayScale);
             std::printf("engine: %s%s\n", engine.name.c_str(), engine.error.empty() ? "" : " (it did not start)");
-            if (engine.ref != nullptr)
+            if (engine.ref != nullptr || engine.sim != nullptr)
                 std::printf("compile: %.2f s\n", engine.compileSeconds);
             std::printf("audio: %s\n", audioLine.c_str());
             const std::string pad = sdlInput.gamepadName();
@@ -286,12 +290,15 @@ namespace
                         recorder.dropped() != 0 ? " (some frames were dropped: the disk kept the writer waiting)" : "",
                         whole ? "" : " (the file is not whole: a write failed)");
         }
-        // a first run leaves the settings file behind, with the defaults, for a person to find and edit; a file that
-        // is there is a person's and is left as it is (nothing in the window changes a setting yet)
-        if (!remembered.found && !machine)
+        // A first run leaves the settings file behind, with the defaults, for a person to find and edit. After that
+        // the file is written only when something the window can change did: the units chosen in the frame.
+        settings::Settings now = remembered.settings;
+        if (shown.unitChoices)
+            now.unitChoices = shown.unitChoices();
+        if (!machine && (!remembered.found || now.unitChoices != remembered.settings.unitChoices))
         {
             std::string notSaved;
-            if (!settings::save(remembered.settings, notSaved))
+            if (!settings::save(now, notSaved))
                 std::fprintf(stderr, "settings: %s\n", notSaved.c_str());
         }
         std::printf("tee-app: %s renderer=%s frames=%u ticks=%u fps=%.1f audio-callbacks=%llu audio-frames=%llu "

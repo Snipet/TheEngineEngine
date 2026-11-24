@@ -1,28 +1,36 @@
-// ui/app/AppFrame.h: the application's frame of screens (card J2, item 9; docs/plan/00-abstract-plan.md section 6).
+// ui/app/AppFrame.h: the application's window (docs/plan/ui-design.md section 2; package U1, grown from J2's frame).
 //
-//   +------+--------------------------------------------------------------------+
-//   | rail | top bar: the build's name, what plays, the engine's state, the      |
-//   |      | output's level, undo, redo, START (held)                            |
-//   | BUILD|--------------------------------------------------------------------+
-//   | VALVE| (a strip of the screen's pages, when it has more than one)          |
-//   | BOOST|                                                                    |
-//   | ...  | the screen: a FieldPage (a .gui page of generated sections, until   |
-//   |      | wave 2 gives the screen its own view)                              |
-//   |      +--------------------------------------------------------------------+
-//   |      | bottom strip: the pedals as bars, the gear, the speed, the engine   |
-//   +------+--------------------------------------------------------------------+
+//   +------+---------------------------------------------------------------------------------------------+
+//   | top bar: the wordmark, the build's name (* unsaved), the engine in a sentence; load, output, units, |
+//   |          undo, redo                                                                                  |
+//   +------+------------------------------------------------------------+--------------------------------+
+//   | rail |  STAGE: the workspace's picture of its part of the machine  |  INSPECTOR: what is selected,  |
+//   |GARAGE|  (a Workspace, Workspace.h), live; click a part to select it|  its fields (J2's generated    |
+//   |ENGINE|                                                            |  pages, or the workspace's     |
+//   | ...  |                                                            |  .gui page), tabs when several |
+//   |      |                                                            +--------------------------------+
+//   |      |                                                            |  DYNO RIBBON (folds away)      |
+//   +------+------------------------------------------------------------+--------------------------------+
+//   | cockpit: START, mode, the rpm bar (numerals, redline, shift lights), gear, speed, boost, lambda,     |
+//   |          temperatures, the three pedals                                                            |
+//   +---------------------------------------------------------------------------------------------------+
 //
-// The screens: Build, Valvetrain, Boost, Exhaust, Tune, Dyno, Drive, Scope, Garage. Each but the Garage is either a
-// list of Spec sections (a generated page each, cut into pages of at most 60 controls) or a .gui text (with `auto`
-// sections, gauges, plots). A section no screen names goes to the Build screen, so every field that is not hidden can
-// be seen and set from the frame with no hand-written C++ for it. The Garage lists the builds, loads and saves them,
-// renames this one, and chooses the units (Units.h); a change of units makes the pages again.
+// The workspaces: GARAGE ENGINE VALVES AIR EXHAUST TUNE CAR DYNO DRIVE SCOPE. Each is the one its package registered
+// (ui/views/<id>/register.h), or until then a placeholder (Placeholders.h) whose stage says what will be there and
+// whose inspector is the generated pages of its Spec sections, so every field is reachable from the first day. A
+// section no workspace names is added to ENGINE's inspector.
 //
-// The frame is a Board (ui/kit/widgets/Board.h): its own items are the rail, the bars and the garage; the screen's
-// page is the inner Panel. Dark, an instrument's look, one accent (funkgui::Theme::graphite). As every Panel: time only
-// from tick(dt), draw() changes nothing. UI thread only.
+// The frame is a Board (its own items: the rail, the top bar, the inspector's header and tabs, the ribbon, the
+// cockpit) over Panes (the workspace's stage and the inspector's FieldPage). Smallest window 1100 x 700; the rail
+// narrows to short words under 1280 wide. needsDraw() is true only when something drawn changed: an input, an ease
+// still moving, a live value, a field, the dyno. As every Panel: time only from tick(dt), draw() changes nothing.
+// The keys of docs/controls.md are the shell's: the frame takes only Cmd/Ctrl-Z (undo, Shift: redo) and Cmd/Ctrl-Y,
+// and lets every other key through unless a text field has the caret.
 #pragma once
 
+#include "app/Cockpit.h"
+#include "app/Panes.h"
+#include "app/Workspace.h"
 #include "kit/bind/Binding.h"
 #include "kit/bind/Fields.h"
 #include "kit/bind/Units.h"
@@ -38,120 +46,158 @@
 
 namespace tee::ui
 {
-    struct Screen
+    // A workspace on the rail: its id, its words (whole and short), the Spec sections a placeholder shows, what its
+    // stage will show (a placeholder's text), and the package that makes it.
+    struct WorkspaceSlot
     {
-        std::string name;                    // on the rail: "Build"
-        std::vector<std::string> sections;   // a generated page each (in order); or
-        std::string gui;                     // a .gui text, one page
-        bool garage = false;                 // the garage (its own items)
+        std::string id, title, shortTitle;
+        std::vector<std::string> sections;
+        std::string promise;
+        std::string package;
+        bool ribbon = true;
     };
-
-    // The nine of 00-abstract-plan.md section 6, as wave 1 has them.
-    std::vector<Screen> defaultScreens();
-
-    // What the frame asks of the application, besides the document, the units and the telemetry. Any may be empty.
-    struct FrameServices
-    {
-        AppServices app;                                          // the start button, the pedals, the status line
-        std::function<std::string()> buildName;
-        std::function<bool(const std::string&)> rename;
-        std::function<void()> undo, redo;
-        std::function<std::vector<std::string>()> builds;         // the garage's list
-        std::function<bool(const std::string& name, std::string& error)> load;
-        std::function<bool(const std::string& name, std::string& error)> save;   // as that name
-        std::function<float()> outputLevel;                       // 0..1; none: the telemetry's output peak
-    };
+    // The ten of ui-design.md section 3, in the rail's order.
+    std::vector<WorkspaceSlot> defaultSlots();
 
     class AppFrame final : public Board
     {
     public:
-        static constexpr float kRailW = 124.0f, kTopH = 52.0f, kPagesH = 32.0f, kBottomH = 62.0f;
+        static constexpr float kTopH = 48.0f, kRailW = 112.0f, kRailNarrowW = 64.0f, kCockpitH = 78.0f;
+        static constexpr float kInspectorW = 340.0f, kRibbonH = 210.0f, kRibbonFoldedH = 30.0f, kHeadH = 34.0f;
+        static constexpr int kMinW = 1100, kMinH = 700;
 
+        // `dyno` and `scope` may be null (a source that has none: an empty curve, no arrays).
         AppFrame(FieldDoc& doc, Units& units, TelemetrySource& telemetry, FrameServices services,
-                 std::vector<Screen> screens = defaultScreens(), int width = 1280, int height = 800);
+                 DynoSource* dyno = nullptr, ScopeSource* scope = nullptr, std::vector<WorkspaceSlot> slots = defaultSlots(),
+                 int width = 1280, int height = 800);
         ~AppFrame() override;
 
-        int screenCount() const noexcept { return static_cast<int>(screens_.size()); }
-        const Screen& screenDef(int s) const { return screens_[static_cast<std::size_t>(s)]; }
-        int screen() const noexcept { return screen_; }
-        int page() const noexcept { return page_; }
-        int pageCount(int s) const;
-        // A screen's page (nullptr for the garage's, or none).
-        FieldPage* pageOf(int s, int p) const;
-        // The page shown (nullptr on the garage).
-        FieldPage* shownPage() const { return pageOf(screen_, page_); }
-        void show(int screen, int page = 0);
-        // The title of a screen's page ("BOOST", "BOOST 2").
-        const std::string& pageTitle(int s, int p) const;
+        // The workspaces.
+        int workspaceCount() const noexcept { return static_cast<int>(workspaces_.size()); }
+        Workspace& workspace(int i) const { return *workspaces_[static_cast<std::size_t>(i)]; }
+        const WorkspaceSlot& slot(int i) const { return slots_[static_cast<std::size_t>(i)]; }
+        int find(std::string_view id) const;                 // -1: none
+        int shown() const noexcept { return shown_; }
+        Workspace& current() const { return workspace(shown_); }
+        void show(int i);
+        bool placeholder(int i) const;                       // the stand-in of a package not here yet
 
-        // Where things are, for tests and probes.
-        funkgui::Rect railRect(int s) const;
-        funkgui::Rect pageTabRect(int p) const;
+        // The selection and the inspector.
+        Selection& selection() noexcept { return selection_; }
+        void select(std::string path) { selection_.select(std::move(path)); }
+        int inspectorPageCount() const noexcept { return static_cast<int>(pages_.size()); }
+        int inspectorPageIndex() const noexcept { return page_; }
+        const std::string& inspectorTitle(int p) const;
+        FieldPage* inspector() const;                        // the page shown (nullptr: the units page)
+        void showInspectorPage(int p);
+        bool unitsShown() const noexcept { return unitsPage_; }
+        void showUnits(bool on);
+        bool ribbonFolded() const noexcept { return folded_; }
+        void foldRibbon(bool folded);
+
+        // Where things are (window px), for tests and probes.
+        float railWidth() const noexcept;
+        funkgui::Rect railRect(int i) const;
+        funkgui::Rect stageRect() const;
+        funkgui::Rect inspectorRect() const;                 // the page's room (under the header and tabs)
+        funkgui::Rect ribbonRect() const;                    // empty: no ribbon in this workspace
+        funkgui::Rect cockpitRect() const;
         funkgui::Rect startRect() const;
-        funkgui::Rect contentRect() const;
-        // The garage's items.
-        List& garageList() const { return *garageList_; }
-        Button& garageLoad() const { return *garageLoad_; }
-        Button& garageSave() const { return *garageSave_; }
-        TextField& garageName() const { return *garageName_; }
-        const std::string& garageMessage() const noexcept { return message_; }
-        // Every field the frame's pages show a control or a widget for, by the document's index (a test's: every field
-        // not hidden must be in it).
-        std::vector<int> fieldsShown() const;
+        funkgui::Rect pedalRect(int pedal) const;            // 0 throttle, 1 brake, 2 clutch
+        funkgui::Rect inspectorTabRect(int p) const;
+        RpmBar& rpmBar() const { return *rpm_; }
+        PedalBar& pedal(int i) const { return *pedals_[static_cast<std::size_t>(i)]; }
+        const PanelControls& panelControls() const noexcept { return controls_; }
+        std::string engineSentence() const;
+
+        // Every field an inspector page shows a control or a widget for, by the document's index, over every workspace
+        // with nothing selected (it shows each in turn and comes back): every field that is not hidden must be in it.
+        std::vector<int> fieldsShown();
+
+        // How many frames were drawn (draw() calls), and whether one is wanted now.
+        int drawCount() const noexcept { return draws_; }
 
         // funkgui::Panel
         void tick(float dt) override;
+        void draw(funkgui::Canvas& c, const funkgui::Theme& th) override;
+        bool needsDraw() const override;
         bool key(const funkgui::KeyEvent& e) override;
+        void pointerDown(const funkgui::PointerEvent& e) override;
+        void pointerDrag(const funkgui::PointerEvent& e) override;
+        void pointerUp(const funkgui::PointerEvent& e) override;
+        void pointerMove(const funkgui::PointerEvent& e) override;
+        bool wheel(const funkgui::WheelEvent& e) override;
+        bool wantsFullRate() const override;
 
     protected:
         void arrange() override;
         void attached() override;
-        funkgui::Panel* inner() const override;
+        funkgui::Panel* inner() const override { return panes_.get(); }
+        void drawGround(funkgui::Canvas& c, const funkgui::Theme& th) const override;
         void drawOver(funkgui::Canvas& c, const funkgui::Theme& th) const override;
 
     private:
         struct Page
         {
-            std::string title;
-            std::string gui;
+            std::string title, gui;
             std::unique_ptr<FieldPage> panel;
         };
-        struct ScreenState
-        {
-            std::vector<Page> pages;
-        };
-
-        void makePages();
-        void makeGarage();
-        void placeGarage(bool shown);
-        std::string stateText() const;
+        void makeWorkspaces();
+        void makeCockpit();
+        void makeInspector();                                // the pages for the current workspace and selection
+        void placeInspector();
+        void setPanes();
+        std::vector<std::string> sectionsOf(int ws) const;
+        std::uint64_t frameKey() const;
+        void report();
 
         FieldDoc& doc_;
         Units& units_;
         TelemetrySource& telemetry_;
         FrameServices services_;
-        std::vector<Screen> screens_;
-        std::vector<ScreenState> states_;
-        std::vector<Button*> rail_, pageTabs_;
-        int screen_ = 0, page_ = 0;
-        std::uint32_t unitsSeen_ = 0;
-        int stateHandle_ = -1, gearHandle_ = -1, speedHandle_ = -1, rpmHandle_ = -1;
-        // the top bar and the strip
-        Label *name_ = nullptr, *status_ = nullptr, *state_ = nullptr, *gear_ = nullptr, *speed_ = nullptr, *rpm_ = nullptr;
-        Bar *level_ = nullptr, *throttle_ = nullptr, *brake_ = nullptr, *clutch_ = nullptr;
-        Button *start_ = nullptr, *undo_ = nullptr, *redo_ = nullptr;
-        // the garage
-        List* garageList_ = nullptr;
-        Button *garageLoad_ = nullptr, *garageSave_ = nullptr;
-        TextField* garageName_ = nullptr;
-        Label* garageNote_ = nullptr;
+        std::unique_ptr<DynoSource> ownDyno_;
+        std::unique_ptr<ScopeSource> ownScope_;
+        DynoSource* dyno_;
+        ScopeSource* scope_;
+        Selection selection_;
+        std::unique_ptr<WorkspaceContext> ctx_;
+        std::vector<WorkspaceSlot> slots_;
+        std::vector<std::unique_ptr<Workspace>> workspaces_;
+        std::vector<bool> placeholders_;
+        std::vector<std::string> rest_;                      // sections no workspace names (ENGINE's inspector)
+        std::unique_ptr<Panes> panes_;
+        int shown_ = 0;
+        // the inspector
+        std::vector<Page> pages_;
+        int page_ = 0;
+        bool unitsPage_ = false, folded_ = false;
+        std::uint32_t selectionSeen_ = 0, unitsSeen_ = 0;
+        std::string inspectorHead_, pagesFor_;
+        std::vector<Button*> tabs_;
+        Button *clear_ = nullptr, *fold_ = nullptr, *unitsButton_ = nullptr;
         std::vector<Stepper*> unitSteppers_;
         std::vector<std::unique_ptr<funkgui::ParamPort>> unitPorts_;
-        std::string message_;
-        std::vector<std::string> builds_;
+        DynoRibbon* ribbon_ = nullptr;
+        // the top bar and the rail
+        std::vector<Button*> rail_;
+        Label *name_ = nullptr, *sentence_ = nullptr, *status_ = nullptr;
+        Bar *level_ = nullptr, *load_ = nullptr;
+        Button *undo_ = nullptr, *redo_ = nullptr;
+        // the cockpit
+        Button* start_ = nullptr;
+        std::vector<Button*> modes_;
+        RpmBar* rpm_ = nullptr;
+        std::vector<Readout*> readouts_;
+        std::vector<PedalBar*> pedals_;
         PanelControls controls_{};
+        int localMode_ = 0;
+        // drawing only when something changed
+        bool dirty_ = true;
+        std::uint64_t drawnKey_ = 0;
+        int draws_ = 0;
     };
 
-    // The frame over a document: what the shell shows once it has a Build (docs/ui-kit.md, "The application's frame").
-    std::unique_ptr<AppFrame> makeAppFrame(FieldDoc& doc, Units& units, TelemetrySource& telemetry, FrameServices services);
+    // The frame over a document: what the shell shows once it has a Build (docs/handoffs/u1-frame.md).
+    std::unique_ptr<AppFrame> makeAppFrame(FieldDoc& doc, Units& units, TelemetrySource& telemetry, FrameServices services,
+                                           DynoSource* dyno = nullptr, ScopeSource* scope = nullptr);
 }

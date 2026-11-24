@@ -42,13 +42,13 @@ tee_pin(fminus
   VERSION 0.1.0-5b665d7
   LICENSE GPL-3.0-only)
 
-# FunkGui: the interface library, at the commit of its branch claude/awesome-gates-ntdb58 that has the desktop host's
-# first stage (FunkGui::desktop: a Panel in an SDL3 window on bgfx, with no JUCE; docs/plan/w1-a-funkgui-desktop.md).
-# The pin moves to the tag v0.28.0 when that release is made.
+# FunkGui: the interface library, at the commit of its main that is version 0.28.0: FunkGui::desktop, a Panel in an
+# SDL3 window on bgfx with no JUCE, with menus drawn by the Canvas, file choosers, the clipboard and a preferences
+# file (pull request 38, merged 2026-11-24). Pinned by commit: the tag v0.28.0 is to name this commit once it exists.
 tee_pin(funkgui
   REPOSITORY "https://github.com/Snipet/FunkGui.git"
-  COMMIT 15e3775088203e2893b471f80f77b8d57c50fc4b      # claude/awesome-gates-ntdb58, 2026-11-24: desktop stage 1 and
-  VERSION 0.28.0-15e3775                               # menus, file choosers, preferences; run by a person on Windows
+  COMMIT 19d06ab7e610894ccd9342d8dfbc3ac116fc2d7b      # main, 2026-11-24: version 0.28.0
+  VERSION 0.28.0
   LICENSE GPL-3.0-only)
 
 # bgfx, under FunkGui's GPU layer (TEE_BUILD_APP only): bgfx.cmake and the three repositories it holds as submodules,
