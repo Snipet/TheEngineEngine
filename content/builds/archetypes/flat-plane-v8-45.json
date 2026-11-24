@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "Flat-plane 4.5 L V8",
-  "notes": "A high-revving flat-plane V8: 94 x 81 mm (4497 cc), 12.5:1, direct injection, four valves, 9000 rpm (the published figures of the 4.5 L 90-degree flat-plane V8 of 2009, F136-type: 419 kW at 9000 rpm, 540 N m at 6000; Wikipedia and the maker's site). Variable-length runners. In a mid-engined coupe.",
+  "notes": "A high-revving flat-plane V8: 94 x 81 mm (4497 cc), 12.5:1, direct injection, four valves, 9000 rpm (the published figures of the 4.5 L 90-degree flat-plane V8 of 2009, F136-type: 419 kW at 9000 rpm, 540 N m at 6000; Wikipedia and the maker's site). Variable-length runners. In a mid-engined coupe. Its exhaust: tuned long-primary headers, the primaries 1.63 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its intake: the sports class's runner, 0.30 m from the valve to the plenum (a high-revving engine's short runners or a throttle a cylinder); a second, short runner of 0.20 m above 5850 rpm, as the real engine switches (the 458's three throttle valves between its two plenums giving four configurations, with short, almost straight tracts (Ferrari's launch text, pistonheads.com): a plenum's geometry switched, here as a second runner; its lengths and speed the class's judgement): JUDGEMENT, a class default, not the real engine's (no source found).",
   "spec": {
     "engine": {
       "layout": "V8 flat-plane",
@@ -88,9 +88,9 @@
     },
     "intake": {
       "model": 1,
-      "runnerLength": 0.26,
-      "runnerLength2": 0.18,
-      "runnerSwitch": 649.2624817418905
+      "runnerLength": 0.3,
+      "runnerLength2": 0.2,
+      "runnerSwitch": 612.6
     },
     "boost": {
       "model": "Machine",
@@ -108,7 +108,8 @@
       "mufKind": [
         1,
         1
-      ]
+      ],
+      "headers": 1.0
     },
     "fuel": {
       "kind": "Gasoline",

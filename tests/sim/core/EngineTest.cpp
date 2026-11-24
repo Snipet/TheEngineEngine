@@ -341,11 +341,17 @@ namespace
 {
     // The books over `seconds` (g/s, from the engine's running totals): the air through the throttle, the net mass in
     // through the intake valves and through the exhaust valves, the unburned gas trapped at the intakes' closing
+    // (and, card G's: what the exhaust's pipes were given over what its valves let out, a volume ratio: 1 when the pipes
+    // are given the valves' mean flow)
+    double pipesGiven = 0.0;
+
     void airBooks(Bench& b, double seconds, double& thr, double& fresh, double& valves, double& exhaust)
     {
         const double t0 = b.field("airThrottle"), v0 = b.field("airValves"), e0 = b.field("gasExhaust"), f0 = b.field("airTrapped");
         const double p0 = b.field("intk.mPlenum");
+        const double g0 = b.field("exh.flowGiven"), l0 = b.field("exh.flowLet");
         b.play(seconds);
+        pipesGiven = (b.field("exh.flowGiven") - g0) / std::max(b.field("exh.flowLet") - l0, 1e-12);
         const double k = 1000.0 / seconds;
         // (the throttle's air less what the plenum stored over the window: it is not quite steady on a boosted diesel;
         // N1's point)
@@ -385,6 +391,8 @@ TEST_CASE("the physical cylinder conserves the gas its valves push back, and the
     airBooks(b, 3.0, thrW, frW, vW, eW);
     std::printf("backflow: idle %.0f rpm: throttle %.2f, intake valves %.2f, exhaust valves %.2f, trapped unburned %.2f g/s; "
                 "full throttle at 3000: %.1f, %.1f, %.1f, %.1f g/s\n", idle, thrI, vI, eI, frI, thrW, vW, eW, frW);
+    std::printf("  the exhaust's pipes given over the valves' let out at full throttle: %.4f\n", pipesGiven);
+    CHECK(std::fabs(pipesGiven - 1.0) < 0.01);
     CHECK(std::fabs(vI / thrI - 1.0) < 0.01);
     CHECK(std::fabs(vW / thrW - 1.0) < 0.01);
     CHECK(std::fabs(eI / vI - 1.0) < 0.01);
@@ -455,6 +463,8 @@ static void booksOn(const std::vector<const char*>& builds, double settle = 4.0)
         const double tq = b.tel("engine.torque");
         std::printf("%s at 1800 rpm, full load: %.0f N m; throttle %.2f, intake valves %.2f, exhaust valves %.2f g/s\n", build, tq,
                     thr, v, x);
+        std::printf("  the exhaust's pipes given over the valves' let out: %.4f\n", pipesGiven);
+        CHECK(std::fabs(pipesGiven - 1.0) < 0.01);
         CHECK(tq > 50.0);
         CHECK(std::fabs(v / thr - 1.0) < 0.01);
         CHECK(std::fabs(x / v - 1.0) < 0.01);

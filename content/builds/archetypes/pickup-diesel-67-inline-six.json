@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "6.7 L straight-six turbo diesel pickup",
-  "notes": "A 6.7 L straight-six turbo diesel, 107 x 124 mm (6690 cc), 16.2:1, pushrods and four valves, a variable-vane turbo that doubles as an exhaust brake (engines of the kind: 260 to 310 kW at 2800 to 3000 rpm, 1000 to 1460 N m at 1600 to 1800; makers' figures). In a heavy-duty pickup, six-speed automatic. Its intake runner, 0.35 m from the valve to the plenum, is a hand-set length: JUDGEMENT, not the real engine's (no source found).",
+  "notes": "A 6.7 L straight-six turbo diesel, 107 x 124 mm (6690 cc), 16.2:1, pushrods and four valves, a variable-vane turbo that doubles as an exhaust brake (engines of the kind: 260 to 310 kW at 2800 to 3000 rpm, 1000 to 1460 N m at 1600 to 1800; makers' figures). In a heavy-duty pickup, six-speed automatic. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT.",
   "spec": {
     "engine": {
       "layout": "Inline 6",
@@ -101,7 +101,8 @@
       "mufKind": [
         2,
         2
-      ]
+      ],
+      "headers": 0.0
     },
     "fuel": {
       "kind": "Diesel",

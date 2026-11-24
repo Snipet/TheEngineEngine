@@ -133,8 +133,8 @@
         445000
       ],
       "unit": "W",
-      "source": "published figures of its kind (the maker's figures, firm): 4497 cc; 89 to 99 kW a litre; looked up: en.wikipedia.org/wiki/Ferrari_458 (419 kW at 9000, 540 N m at 6000)",
-      "basis": "cited"
+      "source": "published figures of its kind (the maker's figures, firm): 4497 cc; 89 to 99 kW a litre; looked up: en.wikipedia.org/wiki/Ferrari_458 (419 kW at 9000, 540 N m at 6000); JUDGEMENT here: its head's port quality is a class fitted by N1 to measured torque over the target (content/builds/archetypes/generate.py PORTS)",
+      "basis": "judgement"
     },
     {
       "name": "Speed at peak power",
@@ -148,8 +148,8 @@
         942.5
       ],
       "unit": "rad/s",
-      "source": "published figures of its kind (the maker's figures, firm): 4497 cc: 8000 to 9000 rpm; looked up: en.wikipedia.org/wiki/Ferrari_458 (419 kW at 9000, 540 N m at 6000)",
-      "basis": "cited"
+      "source": "published figures of its kind (the maker's figures, firm): 4497 cc: 8000 to 9000 rpm; looked up: en.wikipedia.org/wiki/Ferrari_458 (419 kW at 9000, 540 N m at 6000); JUDGEMENT here: its head's port quality is a class fitted by N1 to measured torque over the target (content/builds/archetypes/generate.py PORTS)",
+      "basis": "judgement"
     },
     {
       "name": "Peak torque",
@@ -163,8 +163,8 @@
         560
       ],
       "unit": "N m",
-      "source": "published figures of its kind (the maker's figures, firm): 4497 cc; BMEP 14.5 to 15.6 bar (a naturally aspirated petrol engine 10 to 13 bar, turbocharged 18 to 25, a modern truck diesel 20 to 25: Heywood, Internal Combustion Engine Fundamentals, ch. 2); looked up: en.wikipedia.org/wiki/Ferrari_458 (419 kW at 9000, 540 N m at 6000)",
-      "basis": "cited"
+      "source": "published figures of its kind (the maker's figures, firm): 4497 cc; BMEP 14.5 to 15.6 bar (a naturally aspirated petrol engine 10 to 13 bar, turbocharged 18 to 25, a modern truck diesel 20 to 25: Heywood, Internal Combustion Engine Fundamentals, ch. 2); looked up: en.wikipedia.org/wiki/Ferrari_458 (419 kW at 9000, 540 N m at 6000); JUDGEMENT here: its head's port quality is a class fitted by N1 to measured torque over the target (content/builds/archetypes/generate.py PORTS)",
+      "basis": "judgement"
     },
     {
       "name": "Speed at peak torque",
@@ -178,8 +178,8 @@
         680.7
       ],
       "unit": "rad/s",
-      "source": "published figures of its kind (the maker's figures, firm): 4497 cc: 5500 to 6500 rpm (a turbocharged engine's plateau: its whole span); looked up: en.wikipedia.org/wiki/Ferrari_458 (419 kW at 9000, 540 N m at 6000)",
-      "basis": "cited"
+      "source": "published figures of its kind (the maker's figures, firm): 4497 cc: 5500 to 6500 rpm (a turbocharged engine's plateau: its whole span); looked up: en.wikipedia.org/wiki/Ferrari_458 (419 kW at 9000, 540 N m at 6000); JUDGEMENT here: its head's port quality is a class fitted by N1 to measured torque over the target (content/builds/archetypes/generate.py PORTS)",
+      "basis": "judgement"
     },
     {
       "name": "Warm idle",
@@ -246,8 +246,8 @@
         1.02
       ],
       "unit": "fraction",
-      "source": "a naturally aspirated four-stroke's VE at full load near its torque peak is 0.85 to 1.0 (Heywood, Internal Combustion Engine Fundamentals, ch. 6, fig. 6-9 and the text); measured at 6000 rpm",
-      "basis": "recalled"
+      "source": "a naturally aspirated four-stroke's VE at full load near its torque peak is 0.85 to 1.0 (Heywood, Internal Combustion Engine Fundamentals, ch. 6, fig. 6-9 and the text); measured at 6000 rpm; JUDGEMENT here: its head's port quality is a class fitted by N1 to measured torque over the target (content/builds/archetypes/generate.py PORTS)",
+      "basis": "judgement"
     },
     {
       "name": "Volumetric efficiency low down",
@@ -263,7 +263,7 @@
         0.95
       ],
       "unit": "fraction",
-      "source": "VE's shape: below the torque peak it falls away, the more so the hotter the cam (Heywood, Internal Combustion Engine Fundamentals, ch. 6); measured at 2000 rpm",
+      "source": "VE's shape: below the torque peak it falls away, the more so the hotter the cam (Heywood, Internal Combustion Engine Fundamentals, ch. 6); measured at 2000 rpm; JUDGEMENT here: its head's port quality is a class fitted by N1 to measured torque over the target (content/builds/archetypes/generate.py PORTS)",
       "basis": "judgement"
     },
     {

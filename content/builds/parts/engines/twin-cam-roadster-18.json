@@ -68,7 +68,7 @@
     },
     "intake": {
       "model": 1,
-      "runnerLength": 0.4
+      "runnerLength": 0.45
     },
     "boost": {
       "model": "Machine",
@@ -86,7 +86,8 @@
       "mufKind": [
         2,
         2
-      ]
+      ],
+      "headers": 0.5
     },
     "fuel": {
       "kind": "Gasoline",

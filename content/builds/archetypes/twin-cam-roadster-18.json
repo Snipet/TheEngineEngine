@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "1.8 L twin-cam roadster",
-  "notes": "A 1.8 L twin-cam 16-valve four: 83 x 85 mm (1839 cc), 10:1 (engines of the kind in light roadsters: 96 to 110 kW at 6500 to 7000 rpm, 160 to 170 N m at 5000; makers' figures). Rear drive, six-speed manual. Its intake runner, 0.40 m from the valve to the plenum, is a hand-set length: JUDGEMENT, not the real engine's (no source found).",
+  "notes": "A 1.8 L twin-cam 16-valve four: 83 x 85 mm (1839 cc), 10:1 (engines of the kind in light roadsters: 96 to 110 kW at 6500 to 7000 rpm, 160 to 170 N m at 5000; makers' figures). Rear drive, six-speed manual. Its exhaust: short tubular headers, the primaries 1.00 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its intake: the long-runner class's runner, 0.45 m from the valve to the plenum (a port-injected road engine's tuned long runners, 1985 to 2005): JUDGEMENT, a class default, not the real engine's (no source found).",
   "spec": {
     "engine": {
       "layout": "Inline 4",
@@ -67,7 +67,7 @@
     },
     "intake": {
       "model": 1,
-      "runnerLength": 0.4
+      "runnerLength": 0.45
     },
     "boost": {
       "model": "Machine",
@@ -85,7 +85,8 @@
       "mufKind": [
         2,
         2
-      ]
+      ],
+      "headers": 0.5
     },
     "fuel": {
       "kind": "Gasoline",

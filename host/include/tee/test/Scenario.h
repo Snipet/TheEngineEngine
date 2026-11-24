@@ -46,6 +46,10 @@ namespace tee
 
 namespace tee::test
 {
+    // (declared here so that Run's `friend class Scenario` names this namespace's Scenario, not tee::Scenario, the
+    // scenario file's struct, when a translation unit includes both headers: clang-cl refused it on Windows)
+    class Scenario;
+
     // A click: a step between two samples this many times the RMS of the steps around it (Measures.h, largestStep).
     // A smooth sound stays under about 4; the firing pulses of a loud engine may reach 6 to 8.
     inline constexpr double clickLimit = 12.0;
@@ -148,7 +152,7 @@ namespace tee::test
         const std::vector<LogEvent>& log() const noexcept { return log_; }
 
     private:
-        friend class Scenario;
+        friend class ::tee::test::Scenario;
         RunResult result_;
         std::shared_ptr<std::vector<float>> left_, right_, mid_;
         std::string error_;
@@ -216,7 +220,8 @@ namespace tee::test
     void setContentDirectory(std::filesystem::path directory);
     std::filesystem::path simDirectory();
     std::filesystem::path contentDirectory();
-    // The Sim of a directory and options, compiled once a process (a Sim with the checks is compiled for each caller:
-    // it belongs to one host). nullptr, with `errors`, when it does not compile.
+    // The Sim of a directory and options, compiled once a process. A Sim with the checks plays for one host at a time
+    // (Sim::claim): one that no host holds is lent again, and another is compiled only while every one kept is held
+    // (a test's two hosts at once). nullptr, with `errors`, when it does not compile.
     std::shared_ptr<Sim> compiled(const std::filesystem::path& directory, const Sim::Options& options, std::string& errors);
 } // namespace tee::test

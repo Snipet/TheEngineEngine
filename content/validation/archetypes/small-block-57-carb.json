@@ -133,8 +133,8 @@
         160000
       ],
       "unit": "W",
-      "source": "published figures of its kind (SAE net ratings, looked up): 4.00 x 3.48 in: 101.6 x 88.4 mm, 5733 cc; 21 to 28 kW a litre; looked up: corvsport.com/1977-corvette-specifications (L48 134 kW at 4000, 366 N m at 2400; L82 157 kW at 5200, 346 N m at 3600); corvetteactioncenter.com/specs/c3/c3power.html (1975 to 1980)",
-      "basis": "cited"
+      "source": "published figures of its kind (SAE net ratings, looked up): 4.00 x 3.48 in: 101.6 x 88.4 mm, 5733 cc; 21 to 28 kW a litre; looked up: corvsport.com/1977-corvette-specifications (L48 134 kW at 4000, 366 N m at 2400; L82 157 kW at 5200, 346 N m at 3600); corvetteactioncenter.com/specs/c3/c3power.html (1975 to 1980); JUDGEMENT here: its head's port quality is a class fitted by N1 to measured torque over the target (content/builds/archetypes/generate.py PORTS)",
+      "basis": "judgement"
     },
     {
       "name": "Speed at peak power",
@@ -148,8 +148,8 @@
         544.5
       ],
       "unit": "rad/s",
-      "source": "published figures of its kind (SAE net ratings, looked up): 4.00 x 3.48 in: 101.6 x 88.4 mm, 5733 cc: 4000 to 5200 rpm; looked up: corvsport.com/1977-corvette-specifications (L48 134 kW at 4000, 366 N m at 2400; L82 157 kW at 5200, 346 N m at 3600); corvetteactioncenter.com/specs/c3/c3power.html (1975 to 1980)",
-      "basis": "cited"
+      "source": "published figures of its kind (SAE net ratings, looked up): 4.00 x 3.48 in: 101.6 x 88.4 mm, 5733 cc: 4000 to 5200 rpm; looked up: corvsport.com/1977-corvette-specifications (L48 134 kW at 4000, 366 N m at 2400; L82 157 kW at 5200, 346 N m at 3600); corvetteactioncenter.com/specs/c3/c3power.html (1975 to 1980); JUDGEMENT here: its head's port quality is a class fitted by N1 to measured torque over the target (content/builds/archetypes/generate.py PORTS)",
+      "basis": "judgement"
     },
     {
       "name": "Peak torque",
@@ -163,8 +163,8 @@
         385
       ],
       "unit": "N m",
-      "source": "published figures of its kind (SAE net ratings, looked up): 4.00 x 3.48 in: 101.6 x 88.4 mm, 5733 cc; BMEP 7.5 to 8.4 bar (a naturally aspirated petrol engine 10 to 13 bar, turbocharged 18 to 25, a modern truck diesel 20 to 25: Heywood, Internal Combustion Engine Fundamentals, ch. 2); looked up: corvsport.com/1977-corvette-specifications (L48 134 kW at 4000, 366 N m at 2400; L82 157 kW at 5200, 346 N m at 3600); corvetteactioncenter.com/specs/c3/c3power.html (1975 to 1980)",
-      "basis": "cited"
+      "source": "published figures of its kind (SAE net ratings, looked up): 4.00 x 3.48 in: 101.6 x 88.4 mm, 5733 cc; BMEP 7.5 to 8.4 bar (a naturally aspirated petrol engine 10 to 13 bar, turbocharged 18 to 25, a modern truck diesel 20 to 25: Heywood, Internal Combustion Engine Fundamentals, ch. 2); looked up: corvsport.com/1977-corvette-specifications (L48 134 kW at 4000, 366 N m at 2400; L82 157 kW at 5200, 346 N m at 3600); corvetteactioncenter.com/specs/c3/c3power.html (1975 to 1980); JUDGEMENT here: its head's port quality is a class fitted by N1 to measured torque over the target (content/builds/archetypes/generate.py PORTS)",
+      "basis": "judgement"
     },
     {
       "name": "Speed at peak torque",
@@ -178,8 +178,8 @@
         377.0
       ],
       "unit": "rad/s",
-      "source": "published figures of its kind (SAE net ratings, looked up): 4.00 x 3.48 in: 101.6 x 88.4 mm, 5733 cc: 2400 to 3600 rpm (a turbocharged engine's plateau: its whole span); looked up: corvsport.com/1977-corvette-specifications (L48 134 kW at 4000, 366 N m at 2400; L82 157 kW at 5200, 346 N m at 3600); corvetteactioncenter.com/specs/c3/c3power.html (1975 to 1980)",
-      "basis": "cited"
+      "source": "published figures of its kind (SAE net ratings, looked up): 4.00 x 3.48 in: 101.6 x 88.4 mm, 5733 cc: 2400 to 3600 rpm (a turbocharged engine's plateau: its whole span); looked up: corvsport.com/1977-corvette-specifications (L48 134 kW at 4000, 366 N m at 2400; L82 157 kW at 5200, 346 N m at 3600); corvetteactioncenter.com/specs/c3/c3power.html (1975 to 1980); JUDGEMENT here: its head's port quality is a class fitted by N1 to measured torque over the target (content/builds/archetypes/generate.py PORTS)",
+      "basis": "judgement"
     },
     {
       "name": "Warm idle",
@@ -246,8 +246,8 @@
         1.02
       ],
       "unit": "fraction",
-      "source": "a naturally aspirated four-stroke's VE at full load near its torque peak is 0.85 to 1.0 (Heywood, Internal Combustion Engine Fundamentals, ch. 6, fig. 6-9 and the text); measured at 4000 rpm",
-      "basis": "recalled"
+      "source": "a naturally aspirated four-stroke's VE at full load near its torque peak is 0.85 to 1.0 (Heywood, Internal Combustion Engine Fundamentals, ch. 6, fig. 6-9 and the text); measured at 4000 rpm; JUDGEMENT here: its head's port quality is a class fitted by N1 to measured torque over the target (content/builds/archetypes/generate.py PORTS)",
+      "basis": "judgement"
     },
     {
       "name": "Volumetric efficiency low down",
@@ -263,7 +263,7 @@
         0.95
       ],
       "unit": "fraction",
-      "source": "VE's shape: below the torque peak it falls away, the more so the hotter the cam (Heywood, Internal Combustion Engine Fundamentals, ch. 6); measured at 2000 rpm",
+      "source": "VE's shape: below the torque peak it falls away, the more so the hotter the cam (Heywood, Internal Combustion Engine Fundamentals, ch. 6); measured at 2000 rpm; JUDGEMENT here: its head's port quality is a class fitted by N1 to measured torque over the target (content/builds/archetypes/generate.py PORTS)",
       "basis": "judgement"
     },
     {

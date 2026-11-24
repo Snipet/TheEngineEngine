@@ -8,6 +8,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <cmath>
+#include <cstdlib>
 #include <filesystem>
 #include <memory>
 #include <string>
@@ -24,13 +25,40 @@ namespace tee::test::lab
 
         explicit Rig(const std::string& build = "v8", const std::vector<std::pair<std::string, double>>& spec = {})
         {
-            EnginePlayer::Options options;
-            options.directory = std::filesystem::path(TEE_SOURCE_DIR) / "sim";
-            options.sampleRate = kRate;
+            // One compile a process (docs/plan/01-rules.md section 3): the first Rig compiles sim/ and keeps that player
+            // for good (never deleted: a static owning a compiled program is destroyed after the JIT at exit on macOS);
+            // each later Rig resets it (every Spec and Controls field at its default, Engine::init again: core's "a kept
+            // player reset is a fresh player, to the bit"). A Rig made while another is alive gets a fresh player of its
+            // own. TEE_SIM_FRESH=1 gives every Rig a fresh one.
+            static EnginePlayer* kept = nullptr;
+            static const bool fresh = std::getenv("TEE_SIM_FRESH") != nullptr;
             std::string errors;
-            player_ = EnginePlayer::create(options, errors);
-            INFO(errors);
-            REQUIRE(player_ != nullptr);
+            if (!fresh && !keptInUse() && kept != nullptr)
+            {
+                kept->reset(kRate);
+                player_ = kept;
+            }
+            else
+            {
+                EnginePlayer::Options options;
+                options.directory = std::filesystem::path(TEE_SOURCE_DIR) / "sim";
+                options.sampleRate = kRate;
+                auto made = EnginePlayer::create(options, errors);
+                INFO(errors);
+                REQUIRE(made != nullptr);
+                if (!fresh && !keptInUse())
+                    player_ = kept = made.release();
+                else
+                {
+                    owned_ = std::move(made);
+                    player_ = owned_.get();
+                }
+            }
+            if (player_ == kept)
+            {
+                keptInUse() = true;
+                usesKept_ = true;
+            }
             EngineBuild b;
             std::string warnings;
             const auto file = std::filesystem::path(TEE_SOURCE_DIR) / "content" / "builds" / (build + ".json");
@@ -40,6 +68,14 @@ namespace tee::test::lab
             applyBuild(*player_, b);
             for (const auto& [path, value] : spec)
                 set(path, value);
+        }
+
+        Rig(const Rig&) = delete;
+        Rig& operator=(const Rig&) = delete;
+        ~Rig()
+        {
+            if (usesKept_)
+                keptInUse() = false;
         }
 
         EnginePlayer& player() { return *player_; }
@@ -130,7 +166,14 @@ namespace tee::test::lab
         const std::vector<float>& output() const { return out_; }
 
     private:
-        std::unique_ptr<EnginePlayer> player_;
+        static bool& keptInUse()
+        {
+            static bool inUse = false;
+            return inUse;
+        }
+        EnginePlayer* player_ = nullptr;   // the kept player or owned_
+        std::unique_ptr<EnginePlayer> owned_;
+        bool usesKept_ = false;
         std::vector<float> left_ = std::vector<float>(kBlock), right_ = std::vector<float>(kBlock);
         std::vector<float> out_;
         bool keep_ = false;
