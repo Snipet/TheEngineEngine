@@ -8,11 +8,13 @@
 #include "ExhaustStage.h"
 
 #include "app/Look.h"
+#include "kit/bind/Binding.h"
 #include "kit/widgets/Basic.h"
 
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstdlib>
 #include <cstdio>
 #include <string>
 #include <vector>
@@ -79,6 +81,18 @@ namespace tee::ui
         const char* id() const override { return "exhaust"; }
         const char* title() const override { return "EXHAUST"; }
         std::vector<std::string> sections() const override { return { "exhaust" }; }
+
+        // The selected element's fields, on a page of their own (those the build has; none: the frame's pages).
+        std::string inspectorPage() const override
+        {
+            std::string title;
+            const std::vector<std::string> paths = elementFields(ctx_.selection.path(), title);
+            std::vector<int> fields;
+            for (const std::string& path : paths)
+                if (const int f = ctx_.doc.find(path); f >= 0 && !ctx_.doc.info(f).hidden)
+                    fields.push_back(f);
+            return fields.empty() ? std::string() : pageGui(ctx_.doc, fields, title);
+        }
 
         bool moving() const override
         {
@@ -173,6 +187,81 @@ namespace tee::ui
         }
 
     private:
+        // An element's selection path to its Spec fields: "exhaust.muffler[1]" -> the muffler's kind, size and chamber
+        // on side 1, and its bypass. The section's own dials and shared fields come after the element's.
+        static std::vector<std::string> elementFields(const std::string& sel, std::string& title)
+        {
+            const auto index = [&](std::string_view prefix) -> int {
+                if (sel.size() <= prefix.size() + 2 || sel.compare(0, prefix.size(), prefix) != 0 || sel[prefix.size()] != '[')
+                    return -1;
+                return std::atoi(sel.c_str() + prefix.size() + 1);
+            };
+            const auto at = [](const char* base, int i) { return std::string(base) + "[" + std::to_string(i) + "]"; };
+            int i = -1;
+            if ((i = index("exhaust.primary")) >= 0)
+            {
+                title = "Primary " + std::to_string(i + 1);
+                return { at("exhaust.primaryTo", i), at("exhaust.primLen", i), at("exhaust.primD", i), "exhaust.primSpread",
+                         "exhaust.primStepAt", "exhaust.primStepD", "exhaust.headers" };
+            }
+            if ((i = index("exhaust.collector")) >= 0)
+            {
+                title = "Collector " + std::to_string(i + 1);
+                return { at("exhaust.collectorTo", i), at("exhaust.colLen", i), at("exhaust.colD", i), at("exhaust.colVol", i) };
+            }
+            const auto side = [](int s) { return std::string(s == 0 ? " (left)" : " (right)"); };
+            if ((i = index("exhaust.converter")) >= 0)
+            {
+                title = "Converter" + side(i);
+                return { at("exhaust.converter", i), "exhaust.cat" };
+            }
+            if ((i = index("exhaust.main")) >= 0)
+            {
+                title = "Main pipe" + side(i);
+                return { "exhaust.sides", at("exhaust.mainLen", i), at("exhaust.mainD", i), "exhaust.pipe" };
+            }
+            if ((i = index("exhaust.resonator")) >= 0)
+            {
+                title = "Resonator" + side(i);
+                return { at("exhaust.resonator", i), at("exhaust.resHz", i), at("exhaust.resD", i), at("exhaust.resVol", i),
+                         at("exhaust.resLen", i), "exhaust.linkLen" };
+            }
+            if ((i = index("exhaust.muffler")) >= 0)
+            {
+                title = "Muffler" + side(i);
+                return { at("exhaust.muffler", i), at("exhaust.mufSize", i), at("exhaust.mufLen", i), at("exhaust.bypass", i),
+                         "exhaust.muffler" };
+            }
+            if ((i = index("exhaust.bypass")) >= 0)
+            {
+                title = "Bypass valve" + side(i);
+                return { at("exhaust.bypass", i), "exhaust.bypassD", "exhaust.bypassRpm", "exhaust.bypassLoad", "exhaust.bypassTime" };
+            }
+            if ((i = index("exhaust.tail")) >= 0)
+            {
+                title = "Tail" + side(i);
+                return { at("exhaust.tailLen", i), at("exhaust.tailD", i), at("exhaust.tips", i), at("exhaust.exitAt", i) };
+            }
+            if (sel == "exhaust.crossover")
+            {
+                title = "Crossover";
+                return { "exhaust.crossover", "exhaust.crossAt", "exhaust.crossD", "exhaust.crossLen", "exhaust.postLen" };
+            }
+            if (sel == "boost")
+            {
+                title = "Turbines";
+                return { "boost.kind", "boost.layout", "boost.turbWheel", "boost.turbAR", "boost.turbEta", "boost.scrolls",
+                         "boost.housingVolume", "boost.vanes", "boost.vaneMin", "boost.gate", "boost.gateDiameter",
+                         "exhaust.gateLen", "exhaust.gateD" };
+            }
+            if (sel == "engine")
+            {
+                title = "Layout";
+                return { "engine.layout", "exhaust.model" };
+            }
+            return {};
+        }
+
         struct Snap
         {
             double t = 0;

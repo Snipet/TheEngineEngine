@@ -7,6 +7,7 @@
 #include "AirModel.h"
 
 #include "app/Look.h"
+#include "kit/bind/Binding.h"
 
 #include <algorithm>
 #include <array>
@@ -91,6 +92,50 @@ namespace tee::ui
         const char* title() const override { return "AIR"; }
         std::vector<std::string> sections() const override { return { "intake", "boost" }; }
         bool moving() const override { return wantsFullRate(); }
+
+        // The selected part's fields on a page of their own (those the build has; none: the frame's pages).
+        std::string inspectorPage() const override
+        {
+            struct Group
+            {
+                const char* sel;
+                const char* title;
+                std::vector<const char*> fields;
+            };
+            static const std::vector<const char*> kCompressor = { "boost.kind", "boost.layout", "boost.size", "boost.compInducer",
+                                                                 "boost.compExducer", "boost.compAR", "boost.compEta" };
+            static const Group kGroups[] = {
+                { "intake.airbox", "Filter and air box", { "intake.boxVolume", "intake.snorkelLength", "intake.snorkelBore", "intake.filter" } },
+                { "boost.turbo", "Turbo", { "boost.kind", "boost.layout", "boost.size", "boost.compInducer", "boost.compExducer",
+                                            "boost.compAR", "boost.compEta", "boost.turbWheel", "boost.turbAR", "boost.scrolls",
+                                            "boost.vanes", "boost.vaneMin", "boost.seqFlow" } },
+                { "boost.compressor", "Compressor", kCompressor },
+                { "boost.supercharger", "Supercharger", { "boost.kind", "boost.charger", "boost.scDisplacement", "boost.scRatio",
+                                                          "boost.scVolumeRatio", "boost.scStepUp", "boost.scBypass" } },
+                { "boost.intercooler", "Intercooler", { "boost.icEffect", "boost.icDrop", "boost.icFlow", "boost.icMass",
+                                                        "boost.chargeVolume" } },
+                { "intake.throttle", "Throttle", { "intake.throttleKind", "intake.throttleArea", "intake.trumpets", "intake.throttle" } },
+                { "intake.plenum", "Plenum", { "intake.plenumVolume", "intake.plenum" } },
+                { "intake.runners", "Runners", { "intake.throttleKind", "intake.trumpets", "intake.runnerLength", "intake.runnerBore",
+                                                 "intake.runnerLength2", "intake.runnerSwitch", "intake.runner" } },
+                { "boost.shaft", "Shaft", { "boost.inertia", "boost.bearing", "boost.assist", "boost.maxSpeed" } },
+                { "boost.gate", "Wastegate", { "boost.gate", "boost.gateDiameter", "boost.gateSpring", "boost.target",
+                                               "boost.overBoost", "boost.level", "boost.wastegateSpring" } },
+                { "boost.blowOff", "Blow-off valve", { "boost.blowOffKind", "boost.blowOffSpring", "boost.blowOffDiameter", "boost.blowOff" } },
+                { "boost.antiLag", "Anti-lag", { "boost.antiLag" } },
+                { "boost.nitrous", "Nitrous", { "boost.nitrousShot", "boost.nitrousBottle" } },
+            };
+            for (const Group& g : kGroups)
+                if (ctx_.selection.is(g.sel))
+                {
+                    std::vector<int> fields;
+                    for (const char* path : g.fields)
+                        if (const int f = ctx_.doc.find(path); f >= 0 && !ctx_.doc.info(f).hidden)
+                            fields.push_back(f);
+                    return fields.empty() ? std::string() : pageGui(ctx_.doc, fields, g.title);
+                }
+            return {};
+        }
 
         std::uint64_t drawKey() const override
         {
@@ -739,16 +784,25 @@ namespace tee::ui
                 if (!std::isfinite(target))
                     target = b.target > 0 ? b.target : b.gateSpring;
                 const double scale = std::max({ 100e3, target * 1.4, std::isfinite(boost) ? boost * 1.1 : 0.0 });
-                const float x = bovR_.right() + 18.0f, w = std::max(60.0f, valveR_.right() - 12.0f - x);
-                const float y = gateR_.y + 4.0f;
-                if (w > 60.0f && x + w <= valveR_.right())
+                // beside the valves where there is room, else under them
+                float x = bovR_.right() + 18.0f, w = valveR_.right() - 12.0f - x, y = gateR_.y + 4.0f, below = gateR_.bottom();
+                const bool narrow = w < 90.0f;
+                if (narrow)
                 {
-                    look::readout(c, p, x, y, "BOOST", pres(boost), {}, look::kNumberS);
-                    look::level(c, p, { x, y + 34.0f, w, 6.0f }, std::isfinite(boost) ? boost / scale : std::nan(""), p.hot,
-                                target / scale);
-                    look::readout(c, p, x, y + 48.0f, "TARGET", pres(target), {}, look::kNumberS);
+                    x = in.x;
+                    w = in.w;
+                    y = gateR_.bottom() + 8.0f;
                 }
-                const float ty = gateR_.bottom() + 24.0f;
+                look::readout(c, p, x, y, "BOOST", pres(boost), {}, look::kNumberS);
+                look::level(c, p, { x, y + 34.0f, w, 6.0f }, std::isfinite(boost) ? boost / scale : std::nan(""), p.hot, target / scale);
+                if (narrow)
+                {
+                    look::readout(c, p, x + w * 0.5f, y, "TARGET", pres(target), {}, look::kNumberS);
+                    below = y + 44.0f;
+                }
+                else
+                    look::readout(c, p, x, y + 48.0f, "TARGET", pres(target), {}, look::kNumberS);
+                const float ty = below + 24.0f;
                 trace(c, p, { in.x, ty, in.w, valveR_.bottom() - 52.0f - ty }, false, scale, target, p.hot,
                       "BOOST, THE TARGET DOTTED");
             }
