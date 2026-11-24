@@ -17,6 +17,8 @@
       "exCentre": 110,
       "inPhaseRange": 50,
       "exPhaseRange": 40,
+      "portIn": 1.65,
+      "portEx": 1.8,
       "springRate": 41700.0,
       "springPreload": 260.0
     }

@@ -185,6 +185,9 @@ namespace tee
         // carried, the engine's state is not (its rates differ), and an ignition left on cranks it back. Never
         // switched by the host itself. False, with `errors`, when the program does not compile, was compiled from
         // memory, or does not take the define. A development reload (Reload.h) compiles at the options it was given.
+        // A build on the edge of lighting (a diesel's charge that only just lights, the owner's large diesel between
+        // 1300 and 1650 rpm) may sit on the other branch (lit or misfiring) after a quality change, as after any
+        // reload: the rate does not decide it, the history does.
         enum class Quality
         {
             Full,
