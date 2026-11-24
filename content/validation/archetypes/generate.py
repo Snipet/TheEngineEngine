@@ -196,6 +196,8 @@ def targets(slug, b):
             range=[round(trap * 0.92, 1), round(trap * 1.06, 1)], unit="m/s",
             source="Hale's rule, trap = 234 (hp/lb)^(1/3) mph: %.1f m/s (%.0f km/h), within 8 %% under to 6 %% over"
                    % (trap, trap * 3.6))
+    if slug.startswith("tractor"):
+        return out     # a 36 t tractor needs minutes to reach its cruising speed: no top-speed run is that long
     vmax, aero = top_speed(car, pmid, red)
     add(name="Top speed", scenario=SC + ("p-top-speed-own.json" if auto else "p-top-speed.json"), tel="car.speed", measure="max",
         range=[round(vmax / 3.6 * 0.93, 1), round(vmax / 3.6 * 1.07, 1)], unit="m/s",
