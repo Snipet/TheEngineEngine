@@ -19,11 +19,25 @@
       "displayName": "release: Release; the host library, the tools and the tests",
       "inherits": [ "base" ],
       "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
+    },
+    {
+      "name": "tsan",
+      "displayName": "tsan: RelWithDebInfo under ThreadSanitizer; the host's tests (card C)",
+      "inherits": [ "base" ],
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "CMAKE_C_FLAGS": "-fsanitize=thread -fno-omit-frame-pointer",
+        "CMAKE_CXX_FLAGS": "-fsanitize=thread -fno-omit-frame-pointer",
+        "CMAKE_EXE_LINKER_FLAGS": "-fsanitize=thread",
+        "CMAKE_SHARED_LINKER_FLAGS": "-fsanitize=thread",
+        "TEE_BUILD_APP": "OFF"
+      }
     }
   ],
   "buildPresets": [
     { "name": "dev",     "configurePreset": "dev",     "jobs": 3 },
-    { "name": "release", "configurePreset": "release", "jobs": 3 }
+    { "name": "release", "configurePreset": "release", "jobs": 3 },
+    { "name": "tsan",    "configurePreset": "tsan",    "jobs": 3, "targets": [ "tee-host-tests" ] }
   ],
   "testPresets": [
     {
@@ -37,6 +51,14 @@
       "configurePreset": "release",
       "output": { "outputOnFailure": true },
       "execution": { "jobs": 3, "timeout": 900 }
+    },
+    {
+      "name": "tsan",
+      "configurePreset": "tsan",
+      "output": { "outputOnFailure": true },
+      "filter": { "include": { "name": "made-up audio thread|simhost|commands" } },
+      "environment": { "TSAN_OPTIONS": "halt_on_error=1 second_deadlock_stack=1" },
+      "execution": { "jobs": 2, "timeout": 1800 }
     }
   ],
   "workflowPresets": [
@@ -56,6 +78,15 @@
         { "type": "configure", "name": "release" },
         { "type": "build",     "name": "release" },
         { "type": "test",      "name": "release" }
+      ]
+    },
+    {
+      "name": "tsan-verify",
+      "displayName": "tsan: the host's tests built under ThreadSanitizer; the threaded ones run",
+      "steps": [
+        { "type": "configure", "name": "tsan" },
+        { "type": "build",     "name": "tsan" },
+        { "type": "test",      "name": "tsan" }
       ]
     }
   ]

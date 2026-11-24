@@ -28,7 +28,7 @@ namespace tee
         // The Controls' fields, in the order EnginePlayer::Controls holds them and writeControls writes them.
         constexpr const char* kControls[] = {"ignition", "throttle", "brake", "clutch", "handbrake", "steer", "lever",
                                              "shiftUp", "shiftDown", "buttons", "mode", "dynoSpeed", "dynoRate",
-                                             "holdSpeed", "strip", "scopeOn"};
+                                             "holdSpeed", "strip", "scopeOn", "bakeMaps"};
         constexpr std::size_t kControlCount = sizeof(kControls) / sizeof(kControls[0]);
 
         // A control's value, by its index in kControls.
@@ -52,6 +52,7 @@ namespace tee
                 case 13: return c.holdSpeed;
                 case 14: return c.strip;
                 case 15: return c.scopeOn;
+                case 16: return c.bakeMaps;
                 default: return 0.0;
             }
         }
@@ -86,6 +87,7 @@ namespace tee
                 case 13: c.holdSpeed = f; break;
                 case 14: c.strip = i; break;
                 case 15: c.scopeOn = i; break;
+                case 16: c.bakeMaps = i; break;
                 default: break;
             }
         }
@@ -745,9 +747,9 @@ namespace tee
                         names.push_back(n.is_string() ? n.get<std::string>() : std::string());
                 for (const std::string& name : names)
                 {
-                    if (name != "shiftUp" && name != "shiftDown" && name != "strip")
+                    if (name != "shiftUp" && name != "shiftDown" && name != "strip" && name != "bakeMaps")
                     {
-                        error = at + ": \"press\" names counters: shiftUp, shiftDown, strip";
+                        error = at + ": \"press\" names counters: shiftUp, shiftDown, strip, bakeMaps";
                         return false;
                     }
                     scenario.events.push_back({t, EngineEvent::Kind::Count, name, 1.0});
@@ -871,23 +873,41 @@ namespace tee
 
     namespace
     {
-        // The reference's dials, and what of Shared's Set each is read into (sim/ref/program.fm, Voice::readDials)
-        struct DialOfSet
+        // The reference's dials, and the Spec field each is made from as the adapter makes it (sim/README.md, "The
+        // first Spec"): as is, or converted back to the dial's unit with the same float arithmetic (FMinus compiles
+        // without contraction, as this file is)
+        enum class Back
+        {
+            Same,
+            Litres,       // m^3 to L: x 1000
+            Fahrenheit,   // K to the reference's F: (K - 300) x 1.8 + 80.33
+        };
+        struct DialOfSpec
         {
             const char* dial;
-            const char* set;
+            const char* spec;
+            Back back;
         };
-        constexpr DialOfSet kDialsOfSet[] = {
-            {"engine", "layout"}, {"size", "size"}, {"idle", "idle"}, {"redline", "redline"}, {"cam", "cam"},
-            {"inertia", "inertia"}, {"load", "load"}, {"turbo", "turbo"}, {"bov", "bov"}, {"headers", "headers"},
-            {"pipe", "pipe"}, {"xpipe", "xpipe"}, {"muffler", "muffler"}, {"pops", "pops"}, {"rough", "rough"},
-            {"view", "view"}, {"distance", "distance"}, {"intake", "intake"}, {"mech", "mech"}, {"room", "room"},
-            {"level", "level"}, {"timing", "timing"}, {"turbosize", "tsize"}, {"starter", "starter"},
-            {"hold", "hold"}, {"mass", "mass"}, {"aspiration", "asp"}, {"fuel", "fuel"}, {"compression", "comp"},
-            {"borestroke", "bs"}, {"ambient", "ambF"}};
-        constexpr const char* kInputsOfSet[] = {"gas", "modwheel", "pressure", "bend", "brake", "clutch", "lever",
-                                                "buttons", "drive", "keys"};
+        constexpr DialOfSpec kDialsOfSpec[] = {
+            {"engine", "engine.layout", Back::Same}, {"size", "engine.displacement", Back::Litres},
+            {"idle", "engine.idleTrim", Back::Same}, {"redline", "engine.redlineTrim", Back::Same},
+            {"cam", "valve.cam", Back::Same}, {"inertia", "engine.flywheel", Back::Same},
+            {"load", "engine.benchLoad", Back::Same}, {"turbo", "boost.level", Back::Same},
+            {"bov", "boost.blowOff", Back::Same}, {"headers", "exhaust.headers", Back::Same},
+            {"pipe", "exhaust.pipe", Back::Same}, {"xpipe", "exhaust.crossover", Back::Same},
+            {"muffler", "exhaust.muffler", Back::Same}, {"pops", "ecu.pops", Back::Same},
+            {"rough", "engine.rough", Back::Same}, {"view", "sound.view", Back::Same},
+            {"distance", "sound.distance", Back::Same}, {"intake", "sound.intake", Back::Same},
+            {"mech", "sound.mechanical", Back::Same}, {"room", "sound.room", Back::Same},
+            {"level", "sound.level", Back::Same}, {"timing", "ecu.timing", Back::Same},
+            {"turbosize", "boost.size", Back::Same}, {"starter", "ecu.starter", Back::Same},
+            {"mass", "car.mass", Back::Same}, {"aspiration", "boost.kind", Back::Same},
+            {"fuel", "fuel.kind", Back::Same}, {"compression", "engine.compression", Back::Same},
+            {"borestroke", "engine.boreStroke", Back::Same}, {"ambient", "env.temperature", Back::Fahrenheit}};
     } // namespace
+
+    // Where the engine's state (0 off, 1 cranking, 2 running, 3 running down) is in Engine, for the twin
+    constexpr const char* kStatePath = "mono.state";
 
     bool playTwin(EnginePlayer& engine, RefPlayer& ref, const Build& build, const EngineScenario& scenario,
                   const TwinOptions& options, TwinResult& result, std::string& error)
@@ -909,21 +929,24 @@ namespace tee
             error = "the twin wants " + path + " in Engine: " + error;
             return false;
         };
-        std::vector<Schema::Handle> dialSet(std::size(kDialsOfSet));
-        std::vector<int> dialIndex(std::size(kDialsOfSet));
-        for (std::size_t k = 0; k < std::size(kDialsOfSet); ++k)
+        std::vector<int> dialSpec(std::size(kDialsOfSpec));
+        std::vector<int> dialIndex(std::size(kDialsOfSpec));
+        for (std::size_t k = 0; k < std::size(kDialsOfSpec); ++k)
         {
-            dialIndex[k] = ref.dialIndex(kDialsOfSet[k].dial);
-            if (!find(std::string("mono.set.") + kDialsOfSet[k].set, dialSet[k]) || dialIndex[k] < 0)
+            dialIndex[k] = ref.dialIndex(kDialsOfSpec[k].dial);
+            dialSpec[k] = engine.specIndex(kDialsOfSpec[k].spec);
+            if (dialIndex[k] < 0 || dialSpec[k] < 0)
+            {
+                error = std::string("the twin cannot map the dial ") + kDialsOfSpec[k].dial;
                 return false;
+            }
         }
-        std::vector<Schema::Handle> inputSet(std::size(kInputsOfSet));
-        for (std::size_t k = 0; k < std::size(kInputsOfSet); ++k)
-            if (!find(std::string("mono.set.") + kInputsOfSet[k], inputSet[k]))
-                return false;
-        Schema::Handle heldHandle, stateHandle;
-        if (!find("held", heldHandle) || !find("mono.state", stateHandle))
+        // the adapter's own state (sim/engine.fm): the start key, the paddles' pulses, holdSpeed's key; the engine's
+        Schema::Handle heldHandle, stateHandle, upHandle, downHandle, ghostHandle;
+        if (!find("held", heldHandle) || !find(kStatePath, stateHandle) || !find("upPulse", upHandle)
+            || !find("downPulse", downHandle) || !find("ghost", ghostHandle))
             return false;
+        const int holdDial = ref.dialIndex("hold");
         const int driveDial = ref.dialIndex("drive");
         Schema::Handle refState, refStall, refArmed;
         if (!sharedSchema.find("state", refState, error) || !sharedSchema.find("stallT", refStall, error)
@@ -976,20 +999,30 @@ namespace tee
             const int heldBefore = static_cast<int>(in.read(heldHandle));
             const int stateBefore = static_cast<int>(in.read(stateHandle));
             engine.process(none, none, 0);
-            for (std::size_t k = 0; k < std::size(kDialsOfSet); ++k)
-                ref.setDial(static_cast<std::size_t>(dialIndex[k]), in.read(dialSet[k]));
-            const int drive = static_cast<int>(in.read(inputSet[8]));
-            const int keys = static_cast<int>(in.read(inputSet[9]));
-            ref.setDial(static_cast<std::size_t>(driveDial), drive != 0 ? drive : (keys != 0 ? 3 : 0));
+            for (std::size_t k = 0; k < std::size(kDialsOfSpec); ++k)
+            {
+                float v = static_cast<float>(engine.spec(static_cast<std::size_t>(dialSpec[k])));
+                if (kDialsOfSpec[k].back == Back::Litres)
+                    v = v * 1000.0f;
+                else if (kDialsOfSpec[k].back == Back::Fahrenheit)
+                    v = (v - 300.0f) * 1.8f + 80.33f;
+                ref.setDial(static_cast<std::size_t>(dialIndex[k]), static_cast<double>(v));
+            }
+            ref.setDial(static_cast<std::size_t>(holdDial), 1.0e9);
+            const EnginePlayer::Controls& c = engine.controls();
+            const bool driven = c.mode == EnginePlayer::kModeDrive;
+            const int truck = static_cast<int>(engine.spec(static_cast<std::size_t>(engine.specIndex("car.kind"))));
+            const int keys = static_cast<int>(in.read(ghostHandle));
+            ref.setDial(static_cast<std::size_t>(driveDial), driven ? (truck == 1 ? 2 : 1) : (keys != 0 ? 3 : 0));
             RefPlayer::Input& input = ref.input();
-            input.throttle = static_cast<float>(in.read(inputSet[0]));
-            input.modwheel = static_cast<float>(in.read(inputSet[1]));
-            input.aftertouch = static_cast<float>(in.read(inputSet[2]));
-            input.pitchbend = static_cast<float>(in.read(inputSet[3]));
-            input.brake = static_cast<float>(in.read(inputSet[4]));
-            input.clutch = static_cast<float>(in.read(inputSet[5]));
-            input.gear = static_cast<int>(in.read(inputSet[6]));
-            input.buttons = static_cast<int>(in.read(inputSet[7]));
+            input.throttle = driven ? c.throttle : 0.0f;
+            input.modwheel = driven ? 0.0f : c.throttle;
+            input.aftertouch = 0.0f;
+            input.pitchbend = 0.0f;
+            input.brake = c.brake;
+            input.clutch = c.clutch;
+            input.gear = c.lever;
+            input.buttons = (in.read(upHandle) == 1.0 ? 16 : 0) + (in.read(downHandle) == 1.0 ? 32 : 0);
             // the key, and the adapter's own writes of Shared's state (sim/engine.fm, Engine::ignition)
             const auto poke = [&](int state) {
                 shared.write(refState, static_cast<double>(state));

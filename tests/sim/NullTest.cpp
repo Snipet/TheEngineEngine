@@ -72,8 +72,23 @@ TEST_CASE("null: every preset: on the bench by the throttle", "[sim][null]")
         nullOf(build, "bench", 48000.0, 512);
 }
 
+TEST_CASE("null: every preset: the five views", "[sim][null]")
+{
+    for (const char* build : {"default", "v8", "v10", "large-diesel"})
+        nullOf(build, "views", 48000.0, 512);
+}
+
 TEST_CASE("null: other rates and blocks", "[sim][null]")
 {
     nullOf("v8", "free-revs", 44100.0, 333, 8.0);
     nullOf("default", "drive-car", 96000.0, 64, 8.0);
+}
+
+TEST_CASE("null: quick, a pair of each kind", "[sim][null][quick]")
+{
+    nullOf("default", "free-revs", 48000.0, 512, 8.0);
+    nullOf("large-diesel", "truck", 48000.0, 512, 8.0);
+    nullOf("v10", "drive-car", 48000.0, 512, 8.0);
+    nullOf("v8", "bench", 48000.0, 512, 8.0);
+    nullOf("default", "views", 48000.0, 512);
 }

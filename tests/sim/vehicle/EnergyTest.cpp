@@ -22,7 +22,7 @@ namespace
     }
 } // namespace
 
-TEST_CASE("vehicle.coastdown: in neutral the car slows as drag and rolling resistance say", "[vehicle][energy]")
+TEST_CASE("coastdown: in neutral the car slows as drag and rolling resistance say", "[vehicle][energy]")
 {
     Rig rig;
     rig.seconds(0.2);
@@ -48,7 +48,7 @@ TEST_CASE("vehicle.coastdown: in neutral the car slows as drag and rolling resis
     }
 }
 
-TEST_CASE("vehicle.topspeed: a car of constant power tops out where power meets drag and rolling", "[vehicle][energy]")
+TEST_CASE("topspeed: a car of constant power tops out where power meets drag and rolling", "[vehicle][energy]")
 {
     Rig rig;
     rig.set("curve", 1);
@@ -85,7 +85,7 @@ TEST_CASE("vehicle.topspeed: a car of constant power tops out where power meets 
     CHECK(vEnd < v);
 }
 
-TEST_CASE("vehicle.energy: the engine's work is the energy gained plus every loss, to 1 %", "[vehicle][energy]")
+TEST_CASE("energy: the engine's work is the energy gained plus every loss, to 1 %", "[vehicle][energy]")
 {
     for (int drive = 0; drive < 3; ++drive)
     {

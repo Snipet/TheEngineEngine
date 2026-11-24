@@ -1,9 +1,9 @@
-// sounds.fm: what an engine sounds like besides its exhaust: the intake, the valvetrain and injectors, the block, the
+// sound/extras.fm: what an engine sounds like besides its exhaust (module Extras): the intake, the valvetrain and injectors, the block,
 // turbos and their blow-off valve or a supercharger, the starter. Each is driven by what the engine model does (flows,
 // pressures, events), not by a clock of its own, so it follows the engine wherever it goes.
 #pragma once
-#include "biquad.fm"
-#include "onepole.fm"
+#include "lib/biquad.fm"
+#include "lib/onepole.fm"
 
 module Extras
 {

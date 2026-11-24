@@ -23,6 +23,7 @@
 #include "input/Keys.h"
 #include "input/SdlInput.h"
 #include "player/RefAdapter.h"
+#include "settings/Settings.h"
 
 #include <funkgui/core/Version.h>
 #include <funkgui/desktop/DesktopHost.h>
@@ -74,7 +75,14 @@ namespace
             std::fprintf(stderr, "%s\n", engine.warnings.c_str());
         Player& player = *engine.player;
 
+        // ---- what was remembered: the bindings, the pedals' times, the audio buffer (shell/settings/Settings.h) ------
+        const settings::Loaded remembered = settings::load();
+        if (!remembered.note.empty())
+            std::fprintf(stderr, "settings: %s\n", remembered.note.c_str());
+
         input::Controls controls(player, player);
+        controls.bindings() = remembered.settings.bindings;
+        controls.driver().setSettings(remembered.settings.driver);
         input::SdlInput sdlInput(controls);
 
         // ---- the audio device ---------------------------------------------------------------------------------------
@@ -83,7 +91,8 @@ namespace
         if (!o.noAudio)
         {
             audio::Request request;
-            request.bufferFrames = o.buffer;
+            request.bufferFrames = o.bufferGiven ? o.buffer : remembered.settings.audioBuffer;
+            request.rate = remembered.settings.audioRate;
             std::string why;
             if (device.open(request, why))
             {
@@ -205,6 +214,8 @@ namespace
             std::printf("audio: %s\n", audioLine.c_str());
             const std::string pad = sdlInput.gamepadName();
             std::printf("gamepad: %s\n", pad.empty() ? "none" : pad.c_str());
+            std::printf("settings: %s (%s)\n", settings::file().string().c_str(),
+                        remembered.found ? "read" : "not there: the defaults");
             host.close();
             return 0;
         }
@@ -251,6 +262,14 @@ namespace
         const int largest = device.largestRequest();
         host.close();
         device.close();
+        // a first run leaves the settings file behind, with the defaults, for a person to find and edit; a file that
+        // is there is a person's and is left as it is (nothing in the window changes a setting yet)
+        if (!remembered.found && !machine)
+        {
+            std::string notSaved;
+            if (!settings::save(remembered.settings, notSaved))
+                std::fprintf(stderr, "settings: %s\n", notSaved.c_str());
+        }
         std::printf("tee-app: %s renderer=%s frames=%u ticks=%u fps=%.1f audio-callbacks=%llu audio-frames=%llu "
                     "largest-request=%d engine-state=%.0f rpm=%.0f\n",
                     code == 0 ? "ok" : "FAILED", d.renderer.c_str(), static_cast<unsigned>(d.frames),

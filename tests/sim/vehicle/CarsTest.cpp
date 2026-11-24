@@ -89,7 +89,7 @@ namespace
     const std::vector<std::string> kArchetypes = {"light-fwd-four", "rwd-v8-coupe", "awd-turbo-six"};
 } // namespace
 
-TEST_CASE("vehicle.cars.files: every car build uses the vehicle model and names only its fields, within range",
+TEST_CASE("cars.files: every car build uses the vehicle model and names only its fields, within range",
           "[vehicle][cars]")
 {
     int files = 0;
@@ -113,7 +113,7 @@ TEST_CASE("vehicle.cars.files: every car build uses the vehicle model and names 
     CHECK(files >= 3);
 }
 
-TEST_CASE("vehicle.cars.traction: at equal power and weight on equal tyres, all-wheel drive pulls hardest, then rear, "
+TEST_CASE("cars.traction: at equal power and weight on equal tyres, all-wheel drive pulls hardest, then rear, "
           "then front", "[vehicle][cars]")
 {
     // Each archetype at 1500 kg on street tyres with a manual gearbox and the same engine (220 kW, 450 N m), rolling

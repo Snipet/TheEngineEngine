@@ -1,0 +1,20 @@
+{
+  "format": "tee-scenario",
+  "version": 1,
+  "name": "rev-limit",
+  "description": "In neutral: start, settle, then flat out for six seconds against the limiter, lifted, and off.",
+  "seconds": 14,
+  "events": [
+    { "t": 0.0, "spec": { "env.temperature": 300 }, "ctl": { "mode": 1, "lever": 0, "clutch": 0, "ignition": 1 } },
+    { "t": 0.25, "ctl": { "ignition": 2 } },
+    { "t": 2.0, "ctl": { "ignition": 1 } },
+    { "t": 4.0, "ctl": { "throttle": 1 }, "ramp": 0.15 },
+    { "t": 10.0, "ctl": { "throttle": 0 }, "ramp": 0.05 },
+    { "t": 12.5, "ctl": { "ignition": 0 } }
+  ],
+  "assertions": [
+    { "tel": "engine.speed", "measure": "max", "during": [6, 10], ">": 0, "source": "it revs" },
+    { "audio": "finite" },
+    { "audio": "peak", "<=": 1, "source": "02-contracts.md, section 1: within +-1" }
+  ]
+}

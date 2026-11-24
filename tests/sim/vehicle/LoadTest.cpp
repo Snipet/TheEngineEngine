@@ -25,7 +25,7 @@ namespace
     }
 } // namespace
 
-TEST_CASE("vehicle.loads.rest: at rest each axle carries its share of the weight", "[vehicle][loads]")
+TEST_CASE("loads.rest: at rest each axle carries its share of the weight", "[vehicle][loads]")
 {
     Rig rig;
     rig.seconds(0.5);
@@ -47,7 +47,7 @@ TEST_CASE("vehicle.loads.rest: at rest each axle carries its share of the weight
     CHECK(rear(hill) == Catch::Approx(0.47 * w * c + moved).epsilon(2e-3));
 }
 
-TEST_CASE("vehicle.loads.accel: accelerating, m a h / L moves rearward through the pitch's lag", "[vehicle][loads]")
+TEST_CASE("loads.accel: accelerating, m a h / L moves rearward through the pitch's lag", "[vehicle][loads]")
 {
     Rig rig;
     rig.set("car.spec.drive", AWD);
@@ -70,7 +70,7 @@ TEST_CASE("vehicle.loads.accel: accelerating, m a h / L moves rearward through t
     CHECK(rig.get("car.tel.pitch") == Catch::Approx(moved).epsilon(1e-3));
 }
 
-TEST_CASE("vehicle.loads.lag: the load follows a step of acceleration over about 0.2 s", "[vehicle][loads]")
+TEST_CASE("loads.lag: the load follows a step of acceleration over about 0.2 s", "[vehicle][loads]")
 {
     Rig rig;
     rig.set("car.spec.drive", AWD);
@@ -96,7 +96,7 @@ TEST_CASE("vehicle.loads.lag: the load follows a step of acceleration over about
     CHECK(r2 > 0.95);
 }
 
-TEST_CASE("vehicle.loads.downforce: downforce at speed adds to each axle by the balance", "[vehicle][loads]")
+TEST_CASE("loads.downforce: downforce at speed adds to each axle by the balance", "[vehicle][loads]")
 {
     Rig rig;
     rig.set("car.spec.clA", 2.0);
@@ -114,7 +114,7 @@ TEST_CASE("vehicle.loads.downforce: downforce at speed adds to each axle by the 
     CHECK(rear(rig) == Catch::Approx(0.47 * 1400.0 * 9.81 + 0.6 * down + moved).epsilon(2e-3));
 }
 
-TEST_CASE("vehicle.loads.liveaxle: a live axle's torque reaction unloads the right rear tyre", "[vehicle][loads]")
+TEST_CASE("loads.liveaxle: a live axle's torque reaction unloads the right rear tyre", "[vehicle][loads]")
 {
     Rig rig;
     rig.set("car.spec.liveAxle", 1);
@@ -129,7 +129,7 @@ TEST_CASE("vehicle.loads.liveaxle: a live axle's torque reaction unloads the rig
     CHECK(rig.get("car.fz[2]") - rig.get("car.fz[3]") == Catch::Approx(2.0 * live).epsilon(0.05));
 }
 
-TEST_CASE("vehicle.loads.wheelie: the front cannot go below zero; the acceleration is what the wheelie allows",
+TEST_CASE("loads.wheelie: the front cannot go below zero; the acceleration is what the wheelie allows",
           "[vehicle][loads]")
 {
     Rig rig;
