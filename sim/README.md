@@ -92,8 +92,8 @@ What replaces the reference's keys (`Engine::readControls`, `Engine::ignition`, 
 
 | Control | What the engine does |
 |---|---|
-| `mode` MODE_BENCH (and the dynos, which do nothing yet) | no vehicle (`set.drive` 0); `ctl.throttle` is the throttle by hand (`set.modwheel`) |
-| `mode` MODE_DRIVE | the car (`spec.car.kind` Car) or the truck: `set.drive` 1 or 2; `ctl.throttle` is the pedal (`set.gas`) |
+| `mode` MODE_BENCH (and MODE_DYNO_ENGINE: below) | no vehicle (`set.drive` 0); `ctl.throttle` is the throttle by hand (`set.modwheel`) |
+| `mode` MODE_DRIVE (and MODE_DYNO_CHASSIS: the vehicle model's rollers) | the car (`spec.car.kind` Car) or the truck: `set.drive` 1 or 2; `ctl.throttle` is the pedal (`set.gas`) |
 | `brake`, `clutch`, `lever` | `set.brake`, `set.clutch`, `set.lever` |
 | `shiftUp`, `shiftDown` | each increase a press of the right (bit 16) or left (bit 32) paddle: down until `car.lastButtons` shows Car's `drive16` saw it, then up until it saw that; a press counted meanwhile waits its turn |
 | `ignition` 2, start | while stopped or running down (state 0 or 3): `keyDown(36, 1)`, the reference's start key: it cranks (without a starter it runs at its idle at once). Held: started again if it stops |
@@ -110,7 +110,8 @@ Telemetry stands still.
 Telemetry (`Engine::writeTelemetry`, after each call): `engine.state` (0 off, 1 cranking, 2 running, 3 running down),
 `.speed`, `.redline`, `.idle` (rad/s), `.throttle` (the plate), `.manifold` (Pa absolute), `.coolant` (K),
 `.oilPressure` (Pa over the air), `.flags` (`FLAG_LIMITER` 1, `FLAG_FUEL_CUT` 2), `.cycle` (0 to 1), `.crank`
-(degrees, 0 to 2160); `boost.pressure` (Pa over the air); `exhaust.portTemperature` (K); `ecu.knockRetard` (degrees);
+(degrees, 0 to 2160: modulo the cycle, 720 or a rotary's 1080, it is cylinder 1's angle, 0 at its firing top dead
+centre, for every layout, custom ones too); `boost.pressure` (Pa over the air); `exhaust.portTemperature` (K); `ecu.knockRetard` (degrees);
 `car.speed` (m/s), `.gear`, `.brake`, `.clutch`; `sound.peak` (the call's largest sample).
 
 Card D's, appended to `tel.engine` (`Engine::mechanicsTelemetry`, every engine unless said): `torque` (the brake
