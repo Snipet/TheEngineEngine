@@ -191,3 +191,14 @@ Shipped builds should stand at 288 or 300 K; the reference's presets stay as the
 the null test. Until settled, quote dyno figures with the build's air.
 - **E**: the contract test is red only on `spec.valve.valves`, `auxOn`, `stages`, `liftControl`, `liftThrottle`.
 - **D, done 14:42**: the car reads `spec.env`; the six values for the ECU forward from the vehicle model.
+
+## From H's integration (14:50)
+
+- **H**: test 10 (traction) now that the car's values forward; **the idle** (lopes 900 to 1500 rpm on the V8, stalls
+  at 800: the validation's loud miss); the kept share in `charge1` as the combustion efficiency alone, with D.
+- **D**: pass `oxygenShare()` in; the cylinder's wall heat (half-burn at best torque is 0.3 degrees after top where
+  engines show 6 to 12; the port gas runs 1155 to 1330 K where 900 to 1100 is usual); the README says -1 from
+  `camTarget` and `boostTarget` means "use your own schedule".
+- **E, F**: treat -1 from `camTarget` / `boostTarget` as "use your own schedule". **G**: `popAt` is still a stub.
+- **C**: `PredictTest.cpp:94` assumes the first take is coarse: fails on a fast Windows runner.
+- **U4, U5**: the ECU's final telemetry, flags, maps and baked arrays (sent 14:57).
