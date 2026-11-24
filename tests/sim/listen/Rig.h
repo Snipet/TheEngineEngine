@@ -99,6 +99,8 @@ namespace tee::test::listen
             init_(inst_->data(), float(kRate));
             // the balance is compared without model 1's headroom stage (its own test has it)
             set("ln.kHead", 1.0);
+            // and with true levels: the auto level would hide the laws these tests measure
+            set("ss.autoLevel", 0.0);
         }
 
         ~Rig()

@@ -150,6 +150,20 @@ module Listen
     float inside;       // the place's reflections' share: a third in the cabin with the windows shut
     float loud;         // the whole's level, model 1: the V8's
     float kHead;        // model 1's headroom: its last stage's gain (finish1)
+    float autoP;        // the auto level: the peak exposed for, the gain wanted and as glided, the glide's rates (up),
+    float autoT;        // the fall of P and the rise of Q (a sample's)
+    float autoS;
+    float autoK;
+    float autoRel;
+    float autoHold;     // since P last met a peak (samples)
+    float autoQ;
+    float autoRise;
+    float autoKd;
+    float autoKey;
+    float autoCrank;    // the starter's largest in this call, and the time left of a start (samples)
+    float autoStart;
+    float autoWin;      // the window's peak so far, and its length (samples)
+    int autoN;
     float limLeast;     // the limiter's least gain since the telemetry last took it
     float prePeak;      // the largest sample before the limiter (since setup: for measuring)
     int ceilingParts;   // parts in which the ceiling bent a sample, counted
@@ -264,6 +278,20 @@ module Listen
         // 0.116: it is some 20 dB louder than a typical build, which left the rest 23 to 30 dB under the reference's
         // mix. The reference's own path lives on its limiter: 24 dB of reduction on a free rev)
         kHead = 0.58f;
+        autoP = 0.0f;
+        autoT = 1.0f;
+        autoS = 1.0f;
+        autoHold = 0.0f;
+        autoQ = 0.0f;
+        autoRise = 0.115129255f * 0.3f / rate;
+        autoKd = 1.0f - expf(-1.0f / (0.005f * rate));
+        autoKey = -1.0f;
+        autoWin = 0.0f;
+        autoN = 0;
+        autoCrank = 0.0f;
+        autoStart = 0.0f;
+        autoK = 1.0f - expf(-1.0f / (0.5f * rate));
+        autoRel = 0.115129255f * 4.0f / rate;
         limLeast = 1.0f;
         loudSig = -1.0f;
         driveHeld = 100000;
@@ -717,6 +745,7 @@ module Listen
         st->roadPosition = sc.camUse == CAM_TRACKSIDE ? 2.2f - sc.rel : 0.0f;
         st->loudness = 8.6858896f * logf(fmaxf(exLoud, 1.0e-9f));
         st->ceilingParts = ceilingParts;
+        st->autoGain = 8.6858896f * logf(fmaxf(autoS, 1.0e-6f));
         st->srcCount = LS_N;
         st->rearAxleY = sc.moto != 0 ? 0.3f : 0.85f;
         st->frontAxleY = st->rearAxleY + wheelbaseNow;
@@ -807,6 +836,75 @@ module Listen
             extraIn[where] += x;
     }
 
+    // The auto level (spec.sound.autoLevel, on by default): like a camera's exposure, it brings whatever is heard to
+    // one loudness, over seconds, so a far camera, the cabin or a quiet build are not 20 or 30 dB down for good, while
+    // the balance within a setting stays true. P is the loudness exposed for, from the peaks before the auto level:
+    // it rises to a peak at once (the gain follows over 5 ms), holds 1.5 s, then falls at 4 dB a second (in a start,
+    // the starter turning and 1.5 s after, 12 dB a second without the hold), but never below 4 times Q, the
+    // level of what is heard lately (Q follows 0.1 s windows' peaks, down over 1 s, up 0.3 dB a
+    // second; in a start, as they come).
+    // So a steady sound sits 12 dB under the target, room for a rev; an idle under a rev keeps up to 12 dB, a wider
+    // range is closed slowly. The gain is 0.4 / P (a rev's peaks some 8 dB under full scale), within -30 to +30 dB
+    // of the staged level, rising over 0.5 s. Silence holds it; a cut (another camera, place, the windows) starts
+    // afresh. With the switch off it is 1: true levels. tel.sound.autoGain shows it
+    void autoLevel(float pk, int m)
+    {
+        if (ss->autoLevel == 0)
+        {
+            autoT = 1.0f;
+            return;
+        }
+        const float key = (float)(sc.camUse * 100 + ss->place * 10) + (ss->windows > 0.5f ? 1.0f : 0.0f);
+        if (key != autoKey)
+        {
+            autoKey = key;
+            autoP = 0.0f;
+        }
+        // a start (the starter turning, and 1.5 s after): what it is loud with is not exposed for long
+        if (autoCrank > 1.0e-6f)
+            autoStart = 1.5f * rate;
+        else
+            autoStart = fmaxf(autoStart - (float)m, 0.0f);
+        autoCrank = 0.0f;
+        if (pk < 1.0e-5f)
+            return;
+        if (autoP <= 0.0f)
+        {
+            autoP = 4.0f * pk;
+            autoQ = pk;
+            autoHold = 0.0f;
+            autoWin = 0.0f;
+            autoN = 0;
+        }
+        if (pk > autoP)
+            autoP = pk;
+        autoWin = fmaxf(autoWin, pk);
+        autoN += m;
+        if ((float)autoN >= 0.1f * rate)
+        {
+            const float n = (float)autoN;
+            if (autoStart > 0.0f)
+                autoQ = autoWin;
+            else
+                autoQ = autoWin < autoQ ? autoQ * expf(logf(autoWin / autoQ) * fminf(n / rate, 1.0f))
+                                        : fminf(autoQ * expf(n * autoRise), autoWin);
+            if (autoStart > 0.0f)
+                autoP *= expf(-3.0f * n * autoRel);
+            else if (autoWin > 0.5f * autoP)
+                autoHold = 0.0f;
+            else
+            {
+                autoHold += n;
+                if (autoHold > 1.5f * rate)
+                    autoP *= expf(-n * autoRel);
+            }
+            autoWin = 0.0f;
+            autoN = 0;
+        }
+        autoP = fmaxf(autoP, 4.0f * autoQ);
+        autoT = fminf(fmaxf(0.4f / autoP, 0.031623f), 31.623f);
+    }
+
     // x if it is finite (and not absurd), else 0
     float finite(float x)
     {
@@ -828,6 +926,7 @@ module Listen
         const float blockN = finite(blockN0);
         const float turbo = finite(turbo0);
         const float starter = finite(starter0);
+        autoCrank = fmaxf(autoCrank, fabsf(starter));
         const float comb = finite(comb0);
         const float sh0 = finite(sh00);
         const float sh1 = finite(sh10);
@@ -913,11 +1012,17 @@ module Listen
             sD[i] = kHead * expf(-0.115129255f * (over * 0.4f - 5.0f));
         }
         int bent = 0;
+        // the auto level (an exposure, autoLevel below): its gain glides toward 0.45 / P, down over 20 ms, up 0.5 s
+        float partPk = 0.0f;    // this call's peak, before the auto level
         for (int i = 0; i < m; ++i)
         {
             const float gc = sD[i];
             float L = sA[i] * gc;
             float R = sB[i] * gc;
+            partPk = fmaxf(partPk, fmaxf(fabsf(L), fabsf(R)));
+            autoS += (autoT - autoS) * (autoT < autoS ? autoKd : autoK);
+            L *= autoS;
+            R *= autoS;
             prePeak = fmaxf(prePeak, fmaxf(fabsf(L), fabsf(R)));
             const float pk = fmaxf(fabsf(L), fabsf(R)) * lim;
             if (pk > 0.7f)
@@ -937,6 +1042,7 @@ module Listen
             peakOut = fmaxf(peakOut, fmaxf(yL, yR));
         }
         ceilingParts += bent;
+        autoLevel(partPk, m);
     }
 
     // ---- the resampler, round Engine's render of 16-sample parts ----
