@@ -1,0 +1,143 @@
+// sound/drives.fm: what the crank drives at the front of the engine: the accessory belt, the cam drive (a toothed belt
+// or gears; the chain is the reference's own, in extras.fm), a supercharger's belt or gears (module DriveVoice).
+//
+// The accessory belt (a poly-V, the crank's pulley some 150 mm across) turns:
+//   the alternator, 2.8 times the crank: a claw-pole machine of 12 poles (6 pairs) and three phases, rectified by six
+//     diodes: its whine at 36 a turn of its own (6 pairs x 6 pulses), 100.8 a turn of the crank, its level with the
+//     electrical load (taken as steady, 40 %) and with its speed (Bosch, "Automotive Handbook", the alternator; the
+//     ratio 2.5 to 3 is the usual one);
+//   the water pump, 1.2 times the crank, 6 vanes: 7.2 a turn;
+//   the power steering's vane pump, 1.1 times, 10 vanes: 11 a turn;
+//   and the belt itself: its ribs entering and leaving the pulleys' grooves, a broad hiss near 3 kHz rising with its
+//   speed squared.
+// The cam drive: a toothed belt meshes its 21 teeth a turn of the crank's pulley as the reference's chain does, more
+// quietly (its rubber teeth: half the chain's level); gears (a race engine's, a diesel's) are straight-cut spurs, the
+// crank's of 30 teeth: a whine at 30 a turn with the harmonics of a straight-cut gear, swelling once a turn of the cam
+// (its run-out: half the crank's speed), loaded by the valve springs (a constant 0.5 of a full load here, judgement).
+// A supercharger's drive: a belt (a wide one: its hiss, rising with the boost it carries) or a gear train (the
+// crank's 40 teeth, straight cut, loaded by the boost over the most it makes). The blower's own whine is the boost's
+// (boost/sound.fm); this is only its drive.
+// Levels are judgement against the reference's chain (0.004 at 100 turns a second and above).
+#pragma once
+#include "lib/biquad.fm"
+#include "lib/noise.fm"
+#include "osc.fm"
+
+module DriveVoice
+{
+    float rate;
+    float dt;
+    Noise noise;
+    SineTable* sn;
+    float nScale;
+    Shaft crank;
+    Shaft alt;
+    Shaft water;
+    Shaft steer;
+    Shaft cam;
+    Biquad hiss;
+    Biquad blowHiss;
+    Glide aAlt;
+    Glide aWater;
+    Glide aSteer;
+    Glide aBelt;
+    Glide aTiming;
+    Glide aBlowBelt;
+    Glide aBlowGear;
+    int timing;         // 0 chain (extras.fm's), 1 toothed belt, 2 gears
+    // out
+    float belt;         // the accessory drive
+    float timingOut;    // the cam drive
+    float blower;       // a supercharger's drive
+
+    void setup(float rateIn, SineTable* table)
+    {
+        rate = rateIn;
+        dt = 1.0f / rate;
+        sn = table;
+        noise.rs = 314159;
+        nScale = sqrtf(rate / 48000.0f);
+        hiss.setBandpass(3000.0f, 0.8f, rate);
+        blowHiss.setBandpass(2200.0f, 0.7f, rate);
+        clear();
+    }
+
+    void clear()
+    {
+        aAlt.clear();
+        aWater.clear();
+        aSteer.clear();
+        aBelt.clear();
+        aTiming.clear();
+        aBlowBelt.clear();
+        aBlowGear.clear();
+        hiss.clear();
+        blowHiss.clear();
+        belt = 0.0f;
+        timingOut = 0.0f;
+        blower = 0.0f;
+        timing = 0;
+    }
+
+    // Every 16 samples. hz: the crank's turns a second; kBelt, kTiming: their gains; timingKind: 0 chain, 1 belt, 2
+    // gears; blower: a supercharger fitted (1); blowerGears: its drive by gears (1) or a belt (0); boostShare: its boost
+    // over the most it makes (0 to 1)
+    void control(float hz, float kBelt, float kTiming, int timingKind, int blower, int blowerGears, float boostShare)
+    {
+        timing = timingKind;
+        const float cr = fminf(hz * 0.01f, 1.0f);
+        const float sp = fminf(hz * 0.01f, 1.6f);
+        aAlt.to(kBelt * 0.0012f * 0.4f * sp);
+        aWater.to(kBelt * 0.0006f * sp * sp);
+        aSteer.to(kBelt * 0.0008f * sp * sp);
+        aBelt.to(kBelt * 0.004f * sp * sp);
+        if (timingKind == 1)
+            aTiming.to(kTiming * 0.002f * cr * cr);
+        else if (timingKind == 2)
+            aTiming.to(kTiming * 0.0025f * 4.0f * fminf(hz * 30.0f * 0.001f, 4.0f) * (0.12f + 0.5f));
+        else
+            aTiming.to(0.0f);
+        const float b = fminf(fmaxf(boostShare, 0.0f), 1.0f);
+        aBlowBelt.to(blower != 0 && blowerGears == 0 ? kBelt * 0.006f * sp * sp * (0.3f + 0.7f * b) : 0.0f);
+        aBlowGear.to(blower != 0 && blowerGears != 0 ? kBelt * 0.0025f * 4.0f * fminf(hz * 40.0f * 0.001f, 4.0f) * (0.12f + b) : 0.0f);
+    }
+
+    // a straight-cut gear's tone at phase m
+    float spur(float m)
+    {
+        const float s = sn->at(m);
+        const float c = sn->cosAt(m);
+        return s + 0.6f * (2.0f * s * c) + 0.35f * s * (3.0f - 4.0f * s * s);
+    }
+
+    // One sample at the crank's own speed
+    void tick(float crankHz)
+    {
+        crank.turn(crankHz, dt);
+        alt.turn(crankHz * 2.8f, dt);
+        water.turn(crankHz * 1.2f, dt);
+        steer.turn(crankHz * 1.1f, dt);
+        cam.turn(crankHz * 0.5f, dt);
+        // the accessories
+        const float n = noise.rnd();
+        const float h = hiss.tick(nScale * n);
+        belt = aAlt.next() * sn->at(alt.mesh(36.0f)) + aWater.next() * sn->at(water.mesh(6.0f)) + aSteer.next() * sn->at(steer.mesh(10.0f))
+               + aBelt.next() * h;
+        // the cam drive
+        const float at = aTiming.next();
+        timingOut = 0.0f;
+        if (at != 0.0f)
+        {
+            if (timing == 1)
+                timingOut = at * sn->at(crank.mesh(21.0f));
+            else
+                timingOut = at * (1.0f + 0.12f * sn->at(cam.ph)) * spur(crank.mesh(30.0f));
+        }
+        // a supercharger's drive
+        const float bb = aBlowBelt.next();
+        const float bg = aBlowGear.next();
+        blower = bb * blowHiss.tick(nScale * n);
+        if (bg != 0.0f)
+            blower += bg * (1.0f + 0.12f * sn->at(crank.ph)) * spur(crank.mesh(40.0f));
+    }
+};

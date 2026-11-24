@@ -31,8 +31,8 @@ Telemetry: `engine.speed/state/manifold/throttle/redline/flags`, `car.speed/gear
 `car.wheelLoad[i]`, `wheelSlip[i]`, `wheelTorque[i]` do not (names I chose: one line each in the tables). Scope:
 `bakeCount`, `bakedNx/Ny/X/Y`, `baked` (in scope.fm; not in the demo: BAKE says so).
 **Wanted**: U1 gave the run's partial trace (DYNO draws it), steps, dwell and gear (SWEEP/STEPS, gear passed), saveText
-(SAVE CSV when the shell fills it) and the demo hook (TuneDemo.cpp, CarDemo.cpp). Still wanted: a way to press
-`ctl.bakeMaps` (BAKE only reads a bake made); `look::carProfile` in Look.h (CAR keeps DRIVE's shape locally); the
-inspector's tab strip eliding titles; card C's DynoPlan a gear. H/I: the telemetry names above, or theirs.
+(SAVE CSV when the shell fills it) and the demo hook (TuneDemo.cpp, CarDemo.cpp). Since: BAKE asks through
+`services->bakeMaps` and copies the bake in when it lands (`ui.tune.bake`); CAR draws `look::carProfile` (DRIVE's car).
+Still wanted: card C's DynoPlan a gear; the host adapter's `runSoFar()`. H/I: the telemetry names above, or theirs.
 **Not done**: GPU path under Xvfb not run;
 macOS/Windows only by CI. Others' failures seen: `ui.frame.workspaces`, `ui.build.frame` (scope.gui notes), `ui.exhaust.*` once.

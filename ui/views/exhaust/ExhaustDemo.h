@@ -8,6 +8,7 @@
 #include "app/Demo.h"
 
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace tee::ui::exhaust
@@ -18,6 +19,8 @@ namespace tee::ui::exhaust
     // Builds over those fields: "na4-421", "tt-v8-x", "sc-v8-180", "single-stack", "v12-log", "flat4"; false for none.
     bool setExhaustDemoBuild(FieldDoc& doc, std::string_view name);
 
-    // The telemetry the stage reads that the simulator does not yet write, from the demo engine's throttle and speed.
+    // The telemetry the stage reads that the simulator does not yet write, at a speed (rpm) and a load (0..1).
+    std::vector<std::pair<const char*, double>> exhaustLiveValues(double rpm, double load);
+    // The same from the demo engine's throttle and speed, held (DemoEngine::set).
     void exhaustDemoLive(DemoEngine& engine);
 }

@@ -3,6 +3,7 @@
 // ControlsFrame as the simulator's Controls: a start, an idle, a rev, a stop.
 #include "audio/Ftz.h"
 #include "player/SimAdapter.h"
+#include "tee/SimHost.h"
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -119,4 +120,29 @@ TEST_CASE("shell: the simulator's Spec as parameters, its telemetry by name, and
     CHECK(finite);
     CHECK(peak <= 1.0);
     CHECK(sim->why().empty());
+}
+
+TEST_CASE("shell: a counter of the simulator's Controls pressed once, what the frame does not carry kept",
+          "[shell][sim]")
+{
+    player::SimAdapter::Options o;
+    o.directory = std::filesystem::path(TEE_SOURCE_SIM_DIR);
+    std::string errors;
+    const std::unique_ptr<player::SimAdapter> sim = player::SimAdapter::create(o, errors);
+    REQUIRE(sim != nullptr);
+    REQUIRE(sim->hasControl("strip"));
+    CHECK(sim->hasControl("bakeMaps"));          // TUNE's BAKE (card C's SimControls carries it since 2a63c2d)
+    CHECK_FALSE(sim->hasControl("no such control"));
+    CHECK_FALSE(sim->pressCounter("no such control"));
+    REQUIRE(sim->pressCounter("strip"));
+    REQUIRE(sim->pressCounter("strip"));
+    double strip = 0.0;
+    REQUIRE(getControl(sim->host().controls(), "strip", strip));
+    CHECK(strip == 2.0);
+    // a frame of the driver's does not undo it
+    ControlsFrame f;
+    f.throttle = 0.5f;
+    sim->setControls(f);
+    REQUIRE(getControl(sim->host().controls(), "strip", strip));
+    CHECK(strip == 2.0);
 }

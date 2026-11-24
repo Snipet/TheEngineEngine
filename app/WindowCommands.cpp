@@ -318,6 +318,33 @@ namespace tee::app
         });
     }
 
+    bool WindowCommands::saveText(const std::string& suggestedName, const std::string& text, std::string& error)
+    {
+        if (host_ == nullptr)
+        {
+            error = "the window is not open";
+            return false;
+        }
+        funkgui::FileRequest r;
+        r.mode = funkgui::FileRequest::Mode::save;
+        r.title = "Save as";
+        const std::string ext = std::filesystem::path(suggestedName).extension().string();
+        r.pattern = ext.empty() ? std::string() : "*" + ext;
+        r.suggestedName = suggestedName;
+        const bool opened = host_->chooseFiles(r, [this, text](const std::vector<std::string>& paths) {
+            if (paths.empty())
+                return;
+            std::FILE* f = std::fopen(paths.front().c_str(), "wb");
+            const bool ok = f != nullptr && std::fwrite(text.data(), 1, text.size(), f) == text.size();
+            if (f != nullptr)
+                std::fclose(f);
+            say(ok ? "file: saved " + paths.front() : "file: " + paths.front() + " could not be written");
+        });
+        if (!opened)
+            error = "this window has no file chooser";
+        return opened;
+    }
+
     // ---- the audio device ---------------------------------------------------------------------------------------
     void WindowCommands::reopenAudio(const audio::Request& wanted)
     {
