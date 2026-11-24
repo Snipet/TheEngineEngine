@@ -7,7 +7,7 @@
 | A: FunkGui desktop | running | local agent, `/home/user/FunkGui` | 11:22 | five commits pushed by 11:47 (GPU layer without JUCE, `DesktopHost`, the gallery tool, CI); its first CI run is building |
 | K1, K2: the keel | running | local agent, `/home/user/work/keel` | 11:27 | pushed by 11:52: build, bootstrap, `sim/ref/`, `tee_host`, `tee-render`, CI; finishing the bench and tests |
 | B: shell and application | running | local agent, `/home/user/work/shell` | 11:30 | interfaces pushed (`Sources.h`, `MainPanel.h`) |
-| J1: interface kit | running | cloud session `session_01LFAGgRcCpuSF1ZriF9Koax` | 11:32 | first push 11:52: the panel code ported, 28 headless tests |
+| J1: interface kit | **landed 12:04** | cloud session | 11:32 | the panel code ported (36 files, provenance in `ui/kit/SEED.tsv`), `RefPanel`, shaders compiled for Metal and SPIR-V; 29 headless tests; no shader drawn yet (no GPU path ran) |
 | K3: the split | running | local agent, `/home/user/work/split` | 11:55 | K3a first (the new contract over the unchanged reference) |
 | C: host and tools | running | local agent, `/home/user/work/hosttools` | 11:55 | Schema lint and the scenario library first |
 | I: vehicle | running | local agent, `/home/user/work/vehicle` | 12:00 | standalone first, integrated after K3b |
@@ -15,13 +15,15 @@
 | E: valvetrain and induction | running | local agent, `/home/user/work/valvetrain` | 12:00 | the same |
 | H: combustion and ECU | running | local agent, `/home/user/work/ecu` | 12:00 | the same |
 | D, G | waiting for K3b | | | |
-| J2 | waiting for J1's structure | | | |
+| J2: widgets, binding, the frame | running | cloud session `session_01LFAGgQnadEqmEkF3xi2V1S` | 12:05 | widgets and units first; the binding when card C's Schema lands |
 | Wave 2 | after the gate (M2) | | | Q (performance) as soon as K3b lands |
 
 ## Landed
 
 - 11:19 stage 1: the abstract plan, reviewed; the answers recorded.
 - 11:45 stage 2: every file of this folder.
+- 11:52 the keel's first slice: the build, the bootstrap, `sim/ref/`, `tee_host`, `tee-render`, CI (first run green).
+- 12:04 J1: the interface kit's first slice (`docs/handoffs/j1-ui-kit.md`).
 
 ## Blocked, or wanting a decision
 
