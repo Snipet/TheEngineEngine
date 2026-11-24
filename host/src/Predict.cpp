@@ -402,6 +402,10 @@ namespace tee
                                 p.torque = 0.5 * (last + before);
                                 p.retardMin = *std::min_element(retards.end() - static_cast<long>(2 * w), retards.end());
                                 p.retardMax = *std::max_element(retards.end() - static_cast<long>(2 * w), retards.end());
+                                double r = 0.0;
+                                for (std::size_t i = m - 2 * w; i < m; ++i)
+                                    r += retards[i];
+                                p.retardMean = r / static_cast<double>(2 * w);
                                 const bool agree = std::fabs(last - before)
                                                    <= options_.tolerance * std::max(std::fabs(p.torque), 1.0);
                                 if (agree && boostSteady && held >= options_.holdSeconds && held >= options_.minHoldSeconds)
@@ -465,6 +469,8 @@ namespace tee
                 }
                 p.power = p.torque * speed;
                 p.knockRetard = knockRetard();
+                if (!p.knockLimited)
+                    p.retardMean = p.knockRetard;
                 for (const auto& [f, at] : extra_)
                     p.fields.push_back(readScalar(static_cast<const unsigned char*>(instance_->data()) + f->offset
                                                       + at * scalarBytes(f->scalar),
@@ -735,6 +741,11 @@ namespace tee
         bool speedsOf(const std::shared_ptr<Sim>& sim, const Build& build, const PredictOptions& options,
                       std::vector<double>& speeds, std::string& error)
         {
+            if (!options.speeds.empty())
+            {
+                speeds = options.speeds;
+                return true;
+            }
             double from = options.from, to = options.to;
             if (from <= 0.0 || to <= 0.0)
             {
@@ -901,6 +912,8 @@ namespace tee
         for (const double v : {static_cast<double>(o.coarse), static_cast<double>(o.points), o.from, o.to, o.pedal,
                                o.tolerance, static_cast<double>(o.minCycles), static_cast<double>(o.maxCycles),
                                o.sampleRate, static_cast<double>(o.block), o.startSeconds, o.warm ? 1.0 : 0.0, o.warmupSeconds, o.settleExhaust ? 1.0 : 0.0, o.holdSeconds, o.brake == "host" ? 1.0 : o.brake == "program" ? 2.0 : 0.0, o.innerRate, static_cast<double>(o.fields.size()), o.minHoldSeconds, o.knockLimit, o.knockWindowSeconds, o.knockMostSeconds})
+            h = mix(h, v);
+        for (const double v : o.speeds)
             h = mix(h, v);
         return h;
     }

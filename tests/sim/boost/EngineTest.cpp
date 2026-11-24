@@ -6,6 +6,7 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <string>
@@ -149,11 +150,13 @@ TEST_CASE("boost engine: a supercharger takes torque from the crank, the machine
     CHECK(power == Catch::Approx(tq * 4500.0 * 0.10471976).epsilon(0.1));
 }
 
-// (marked [!mayfail] by N2: surges once the exhaust's mean flow is closed (G 8bb2c80f, D's stepLet lines): the turbine
-// had a fifth more gas than its engine made; N2 re-derives the valve)
-TEST_CASE("boost engine: a throttle chop on boost with no blow-off valve surges, with one it does not",
-          "[boost][engine][!mayfail]")
+TEST_CASE("boost engine: a throttle chop on boost with no blow-off valve surges, with one it does not", "[boost][engine]")
 {
+    // The property is "no surge cycle" (the lead's ruling, restated on the closed exhaust, G's 8bb2c80f): with the valve,
+    // no block with reverse flow through the compressor and no run of flagged blocks longer than two (some 21 ms: the
+    // valve is plenum-referenced and opens on the plenum's decay, some 30 ms after the chop, while the compressor's
+    // point may cross the knee line once with forward flow: measured, one block at 32 ms, 0.062 kg/s forward). Without
+    // it the same chop surges on: most blocks flagged, the flow reversing.
     for (int bov : {0, 1})
     {
         Engine e;
@@ -164,19 +167,30 @@ TEST_CASE("boost engine: a throttle chop on boost with no blow-off valve surges,
         REQUIRE(e.run(6.0));
         const double before = e.tel("boost.pressure");
         e.player->controls().throttle = 0.0f;   // (the dyno holds the speed: the throttle shuts on boost)
-        int surging = 0;
+        int surging = 0, reverse = 0, run = 0, longest = 0;
         for (int i = 0; i < 100; ++i)
         {
             REQUIRE(e.run(512.0 / 48000.0));
-            if (static_cast<int>(e.tel("boost.flags")) & 1)
-                ++surging;
+            const bool flagged = (static_cast<int>(e.tel("boost.flags")) & 1) != 0;
+            surging += flagged ? 1 : 0;
+            run = flagged ? run + 1 : 0;
+            longest = std::max(longest, run);
+            if (e.tel("boost.flow[0]") < 0.0)
+                ++reverse;
         }
-        std::printf("chop from %.1f kPa, blow-off %s: surge flagged in %d of 100 blocks (1 s)\n", before / 1000.0,
-                    bov ? "to the air" : "none", surging);
+        std::printf("chop from %.1f kPa, blow-off %s: surge flagged in %d of 100 blocks (1 s), the longest run %d, reverse "
+                    "flow in %d\n",
+                    before / 1000.0, bov ? "to the air" : "none", surging, longest, reverse);
         if (bov == 0)
+        {
             CHECK(surging > 5);
+            CHECK(reverse > 5);
+        }
         else
-            CHECK(surging == 0);
+        {
+            CHECK(reverse == 0);
+            CHECK(longest <= 2);
+        }
     }
 }
 
