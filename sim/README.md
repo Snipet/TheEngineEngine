@@ -360,7 +360,9 @@ with an auto-blip's); `step` and `road` go to `b1`. A change of kind or model pu
 `blipRequest()` give the bike's. For the mechanical voices: `float lashStrike()` each sample (rad/s at the rear wheel
 with which the driveline's play closed this sample, 0 otherwise; `tel.car.chainLashSide` says on or off the throttle)
 and `float sprocketSpeed()` (the front sprocket, rad/s; its teeth are `spec.car.frontSprocket`, the rear's
-`rearSprocket`; `spec.car.clutchDry` a dry clutch), both 0 without the motorcycle.
+`rearSprocket`; `spec.car.clutchDry` a dry clutch), `float bikeGearboxInput()` (the gearbox's input shaft, rad/s; in
+neutral the clutch's basket) and `float bikeGearboxRatio()` (the gearbox's own ratio in the gear in, 0 in neutral or
+between dogs), all 0 without the motorcycle.
 
 **Extras** (`sound/extras.fm`): the engine bay's sources; its own `Noise noise` (Boost draws from it too). `setup(float
 rate, float boxHz, VoicesSpec* voices)`; `setClatter(int diesel, float swept)` and `pumpOn` in configure; the clicks at
