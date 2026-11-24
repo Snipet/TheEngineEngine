@@ -1,6 +1,8 @@
 // ui/kit/widgets/Basic.cpp: see Basic.h.
 #include "kit/widgets/Basic.h"
 
+#include <funkgui/widgets/Scroll.h>
+
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -566,7 +568,7 @@ namespace tee::ui
     bool List::wheel(const funkgui::WheelEvent& e, funkgui::GestureController&, double)
     {
         const float before = scroll_;
-        scrollTo(scroll_ - e.dy * (e.smooth ? 50.0f : 3.0f * kRowH));
+        scrollTo(scroll_ - funkgui::scroll::wheelPx(e.dy, e.smooth, kRowH));   // as everything scrolls (Scroll.h)
         return scroll_ != before;
     }
 

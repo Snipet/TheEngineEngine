@@ -7,6 +7,8 @@
 #include "views/garage/Describe.h"
 #include "views/garage/GarageWorkspace.h"
 
+#include <funkgui/widgets/Scroll.h>
+
 #include <cmath>
 #include <vector>
 #include <string>
@@ -309,6 +311,28 @@ namespace
         CHECK(garage::layoutWords("Inline 6") == "straight six" && garage::layoutWords("Flat 4") == "flat four");
         CHECK(garage::layoutWords("V8 crossplane") == "V8 crossplane" && garage::layoutWords("Rotary") == "twin rotor");
         CHECK(garage::layoutWords("V-twin 45") == "V-twin");
+        return 0;
+    }
+
+    // A trackpad scrolls the cards a px a point, as everything does (funkgui::scroll::wheelPx): FunkGui's desktop host
+    // on macOS gives each of its events as a smooth delta of 0.5 / 256 a point (wheelFromSdl), which once moved the
+    // cards a fraction of a px. A notched wheel's notch scrolls 48 px.
+    VIEW_TEST(testGarageTrackpad, "garage.trackpad")
+    {
+        StageRig rig(tee::ui::makeGarageWorkspace, 1100, 700);
+        GarageWorkspace& g = garageOf(rig);
+        const funkgui::Rect r = g.cardRect(0);
+        constexpr float kFivePoints = -5.0f * 0.5f / 256.0f;           // a swipe's event: five points toward the end
+        for (int i = 0; i < 6; ++i)
+            rig.host->wheel(r.centreX(), r.centreY(), kFivePoints, true);
+        rig.settle();
+        CHECK_MSG(std::fabs(g.cardRect(0).y - (r.y - 30.0f)) < 0.5f, std::to_string(r.y - g.cardRect(0).y) + " px");
+        rig.host->wheel(r.centreX(), r.centreY(), 2.0f * funkgui::scroll::kWheelNotch);   // two notches: the top
+        rig.settle();
+        CHECK(g.cardRect(0).y == r.y);
+        rig.host->wheel(r.centreX(), r.centreY(), -funkgui::scroll::kWheelNotch);        // one toward the end
+        rig.settle();
+        CHECK_MSG(std::fabs(g.cardRect(0).y - (r.y - 48.0f)) < 0.5f, std::to_string(r.y - g.cardRect(0).y) + " px");
         return 0;
     }
 
