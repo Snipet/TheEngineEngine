@@ -33,6 +33,8 @@ module Ecu
     float throttle;     // the throttle plate, 0 to 1
     float pedal;
     float bypass;       // the idle valve, 0 to 1
+    float fillShare;    // set by Engine each tick: the plenum's volume over the displacement (0: no plenum, throttles a
+                        // runner, or unknown), for model 1's idle spark (its look-ahead, the manifold's filling time)
     float idleInt;
     float govInt;
     float rpmRate;      // how fast the speed changes, rpm/s (smoothed)
@@ -347,6 +349,10 @@ module Ecu
         in->boostLimit = spec->overBoost > 0.0f ? spec->overBoost : (spec->overBoost == 0.0f ? overBoostRef : 0.0f);
         one.maps.tune.maxLoad = 1.0f;
         one.maps.tune.gears = 6;
+        // the manifold's filling time at the idle, (Vp / Vd) 120 / N: the plenum's volume over what the cylinders draw
+        // a second (eta 1: judgement; a real idle's volumetric efficiency against the manifold is some 0.8 to 1),
+        // held within 0.05 to 0.25 s; with no plenum the reference's 0.08
+        one.idle.look = fillShare > 0.0f ? fminf(fmaxf(fillShare * 120.0f / fmaxf(one.idle.target, 300.0f), 0.05f), 0.25f) : 0.08f;
         one.control(in, spec, d16);
         // its outputs over the reference's
         throttle = plateWas + (one.plate - plateWas) * (1.0f - expf(-d16 / 0.03f));

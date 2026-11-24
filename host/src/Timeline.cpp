@@ -171,6 +171,7 @@ namespace tee
         t.block = root.value("block", 512);
         t.seconds = root.value("seconds", 0.0);
         t.warm = root.value("warm", false);
+        t.warmTyres = root.value("warmTyres", false);
         if (!(t.rate > 0.0) || t.block < 1 || !(t.seconds >= 0.0))
         {
             error = where + "\"rate\", \"block\" and \"seconds\" are numbers above 0";

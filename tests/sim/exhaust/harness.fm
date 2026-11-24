@@ -98,6 +98,7 @@ module XTest
         spec.flapRelief = 350000.0f;
         spec.flapTime = 0.15f;
         spec.portHeat = 1;
+        spec.flowClose = 1;
         for (int s = 0; s < XS_SIDES; ++s)
         {
             spec.mainLen[s] = 0.0f;

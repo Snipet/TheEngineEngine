@@ -60,6 +60,8 @@ namespace tee
         // The engine held warm (Warm.h) from the start: whoever attaches the host for it sets LoadOptions::hold to
         // warmEngine() (tee-render, tee-validate do).
         bool warm = false;
+        // The tyres warm (Warm.h's warmTyres(), held likewise): a timed run after its burnout. Apart from `warm`.
+        bool warmTyres = false;
         std::vector<TimelineEvent> events;   // by time; of one time in the order written
         std::vector<Assertion> assertions;
 

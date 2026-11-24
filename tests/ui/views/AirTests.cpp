@@ -159,6 +159,9 @@ namespace
                                "boost.vanes[0]", "boost.intercoolerTemperature", "boost.blowOff", "intake.boxPressure",
                                "intake.plenumTemperature" })
             rig.demo.engine.forget(n);
+        // the demo's held values are numbered by their place: a name forgotten moves the rest, so the handles the
+        // context keeps are asked afresh (else the picture shows other names' values)
+        rig.ctx.live.reset();
         rig.ws = tee::ui::makeAirWorkspace(rig.ctx);
         rig.host = std::make_unique<funkgui::HeadlessHost>(*rig.ws, 0, 2.0f);
         rig.host->resize(rig.w, rig.h);
@@ -341,6 +344,34 @@ namespace
     // The Scope's map, as card F's simulator sends it, is drawn in place of the mirror of its arithmetic: here a map
     // made from other sizes (a larger wheel), so the picture must differ from the mirror's; its trail is the
     // simulator's ring (newest at boostTrailAt - 1). Without the arrays, the mirror again.
+    // Card N2's mismatch: the cooler, the gate's spring and the charge pipes, each an amber outline on its part and a
+    // line of words under the row (no bits: nothing); every text clear of every other at the frame's narrowest stage.
+    VIEW_TEST(testAirMismatch, "air.mismatch")
+    {
+        const funkgui::Rect st = tee::test::u3::frameStage(1100, 700);
+        AirRig rig("turbo4", static_cast<int>(st.w), static_cast<int>(st.h), 2.0f);
+        const std::uint64_t k = rig.ws->drawKey();
+        rig.demo.engine.set("boost.mismatch", 7.0);
+        rig.demo.engine.set("boost.coolerHas", 0.25);
+        rig.demo.engine.set("boost.coolerWants", 0.68);
+        rig.demo.engine.set("boost.springHas", 10e3);
+        rig.demo.engine.set("boost.springWants", 120e3);
+        rig.demo.engine.set("boost.volumeHas", 0.005);
+        rig.demo.engine.set("boost.volumeWants", 0.037);
+        rig.host->tick(2);
+        CHECK(rig.ws->drawKey() != k);
+        const std::string hits = tee::test::u3::textCollisions(rig.host->draw());
+        CHECK_MSG(hits.empty(), hits);
+        golden("air.mismatch", *rig.host);
+        // the bits cleared: the row as it was
+        rig.demo.engine.set("boost.mismatch", 0.0);
+        rig.host->tick(2);
+        CHECK(rig.ws->drawKey() == k);
+        // the values the stage shows are the demo's, not disturbed by the warnings' names (held from the start)
+        CHECK(std::fabs(rig.ctx.live.get("boost.coolerHas") - 0.25) < 1e-9);
+        return 0;
+    }
+
     VIEW_TEST(testAirScopeMap, "air.scopemap")
     {
         AirRig rig("turbo4", 696, 574, 2.0f);
