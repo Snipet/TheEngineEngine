@@ -1068,6 +1068,9 @@ module Engine
         // the bore, judgement; the reference's plenum gives its idle valve 4.5 %, too little for a two-stroke to idle)
         const float thr = fminf(ecu.throttle + 0.12f * ecu.bypass, 1.0f);
         const float torque = two.step(&spec.engine, crank.theta, dDeg, dt, crank.omega, thr, ecu.fuelCut ? 0 : 1, 101325.0f, heat.tAmb);
+        // (each cylinder's p dV: IMEP, BMEP, the cycle's peak; core/work.fm, its cycle 360 degrees from top dead centre)
+        for (int c = 0; c < two.n; ++c)
+            work.sample(c, two.angleOf(c, crank.theta), two.cy[c].p, two.cy[c].v);
         if (ctl.scopeOn != 0)
             scopeTwo();
         intk.qThr = two.mIn / 1.18f;

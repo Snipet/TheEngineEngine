@@ -143,3 +143,23 @@ TEST_CASE("debug start", "[.dbgstart]")
                     b.field("heat.tAmb"));
     }
 }
+
+TEST_CASE("engine: a two-stroke's work loop: IMEP and BMEP on its 360 degrees", "[twostroke][engine]")
+{
+    Bench b("two-stroke-mx125");
+    if (!b.hooked())
+        SKIP("sim/engine.fm has no two-stroke hook yet (card D)");
+    b.start(1.0);
+    b.ctl().mode = 2;
+    b.ctl().throttle = 1.0f;
+    b.ctl().dynoSpeed = float(11000 * 3.14159265358979 / 30.0);
+    b.play(2.0);
+    const double imep = b.tel("engine.imep"), bmep = b.tel("engine.bmep"), tq = b.tel("engine.torque");
+    std::printf("mx125 at 11 000 rpm, full throttle: IMEP %.2f bar, BMEP %.2f bar (2 pi T / V: %.2f), peak %.1f bar\n", imep / 1e5,
+                bmep / 1e5, 2 * 3.14159265358979 * tq / 124.8e-6 / 1e5, b.tel("engine.peakPressure") / 1e5);
+    // (BMEP printed, not checked: core/work.fm's 360-degree vBmep gives 8 pi T / V, four times 2 pi T / V; sent to card D)
+    const double bmepTwo = 2 * 3.14159265358979 * tq / 124.8e-6;
+    CHECK(imep > bmepTwo);
+    CHECK(imep < bmepTwo + 3e5);      // (friction by part: some 1 to 3 bar at 11 000 rpm)
+    CHECK(b.tel("engine.peakPressure") > 20e5);
+}
