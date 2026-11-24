@@ -38,6 +38,9 @@ namespace tee::ui
         const char* id() const override { return "listen"; }
         const char* title() const override { return "LISTEN"; }
         std::vector<std::string> sections() const override { return { "sound" }; }
+        // The listener's fields in the stage's order: the mode and the camera, the place, the Free listener's position,
+        // the room, the levels; the reference's view first with the reference's model, else last, named for it.
+        std::string inspectorPage() const override;
         bool moving() const override;
         std::uint64_t drawKey() const override;
 

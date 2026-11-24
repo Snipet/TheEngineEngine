@@ -210,6 +210,28 @@ namespace
         return 0;
     }
 
+    // The inspector: the stage's order, each control named for what it is; the reference's view first with its model,
+    // else last under REFERENCE MODE ONLY (every field stays on a page).
+    VIEW_TEST(testListenInspector, "listen.inspector")
+    {
+        ListenRig rig;
+        std::string page = rig.ws->inspectorPage();
+        CHECK_MSG(inspectorNotes(*rig.ws, rig.demo).empty(), inspectorNotes(*rig.ws, rig.demo));
+        CHECK(page.find("label=\"MODE\"") != std::string::npos && page.find("label=\"CAMERA\"") != std::string::npos);
+        CHECK(page.find("REFERENCE VIEW") > page.find("\"LEVELS\""));   // last, under its mode's name
+        const auto at = [&](const char* w) { return page.find(w); };
+        CHECK(at("\"HEARD FROM\"") < at("\"PLACE\"") && at("\"PLACE\"") < at("THE FREE LISTENER") && at("THE FREE LISTENER") < at("\"ROOM\"")
+              && at("\"ROOM\"") < at("\"LEVELS\""));
+        const int f = rig.demo.doc.find("sound.model");
+        rig.demo.doc.beginGesture();
+        rig.demo.doc.set(f, 0.0);
+        rig.demo.doc.endGesture();
+        page = rig.ws->inspectorPage();
+        CHECK_MSG(inspectorNotes(*rig.ws, rig.demo).empty(), inspectorNotes(*rig.ws, rig.demo));
+        CHECK(page.find("REFERENCE VIEW") != std::string::npos && page.find("label=\"CAMERA\"") == std::string::npos);
+        return 0;
+    }
+
     // At rest: nothing moves, the key stands; a telemetry value moved moves it.
     VIEW_TEST(testListenRest, "listen.rest")
     {

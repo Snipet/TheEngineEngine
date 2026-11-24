@@ -259,7 +259,8 @@ TEST_CASE("the curve at 48 kHz inside is the 96 kHz curve within 3 % of the peak
         for (std::size_t i = 0; i < full.points.size(); ++i)
         {
             CHECK(full.points[i].speed == half.points[i].speed);
-            if (diesel && full.points[i].torque < 0.9 * peak)
+            // (a point on the band's edge can be lit at one rate and not at the other: the plateau is where both are)
+            if (diesel && (full.points[i].torque < 0.9 * peak || half.points[i].torque < 0.9 * peak))
                 continue;
             worst = std::max(worst, std::fabs(half.points[i].torque - full.points[i].torque) / peak);
         }
