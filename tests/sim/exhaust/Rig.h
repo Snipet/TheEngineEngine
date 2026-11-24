@@ -103,6 +103,34 @@ namespace tee::test::exhaust
         }
 
         void noise(double k) { noise_(inst_->data(), static_cast<float>(k)); }
+
+        void rebuild()
+        {
+            std::string error;
+            auto* fn = program().function<void(void*)>("XTest::rebuild", error);
+            INFO(error);
+            REQUIRE(fn != nullptr);
+            tee::ScopedFlushDenormals flush;
+            fn(inst_->data());
+        }
+
+        // Any method of XTest's taking two floats, or none and giving one
+        void call(const std::string& name, float a, float b)
+        {
+            std::string error;
+            auto* fn = program().function<void(void*, float, float)>(name, error);
+            INFO(error);
+            REQUIRE(fn != nullptr);
+            fn(inst_->data(), a, b);
+        }
+        double callf(const std::string& name)
+        {
+            std::string error;
+            auto* fn = program().function<float(void*)>(name, error);
+            INFO(error);
+            REQUIRE(fn != nullptr);
+            return fn(inst_->data());
+        }
         void dials(float hdr, float pipe, float xp, float muf) { dials_(inst_->data(), hdr, pipe, xp, muf); }
         void configure()
         {

@@ -3,7 +3,8 @@
 #   tee-shell-tests   Catch2: the controls, the files, the script, the reference as a Player, the audio device on SDL's
 #                     dummy driver. Every .cpp here is a source (adding a file edits no CMake).
 #   shell.headless.*  tee-headless itself, run on a script: the reference through a start, a rev and a stop to a WAV
-#                     and a PNG under out/shell/; the stand-in tone; a program that does not compile, shown in the Panel.
+#                     and a PNG under out/shell/; the simulator (sim/engine.fm) the same way, in the application's
+#                     frame; the stand-in tone; a program that does not compile, shown in the Panel.
 include(Catch)
 file(GLOB _tee_shell_tests CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
 add_executable(tee-shell-tests ${_tee_shell_tests})
@@ -23,6 +24,10 @@ add_test(NAME shell.headless.ref
   COMMAND tee-headless --sim "${PROJECT_SOURCE_DIR}/sim" --script "${_scripts}/start-rev-stop.txt"
           --wav "${_out}/ref-start-rev-stop.wav" --shot "${_out}/ref-end.png"
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
+add_test(NAME shell.headless.sim
+  COMMAND tee-headless --engine sim --sim "${PROJECT_SOURCE_DIR}/sim" --script "${_scripts}/sim-start-rev-stop.txt"
+          --wav "${_out}/sim-start-rev-stop.wav" --shot "${_out}/sim-end.png"
+  WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
 add_test(NAME shell.headless.drive
   COMMAND tee-headless --sim "${PROJECT_SOURCE_DIR}/sim" --script "${_scripts}/drive.txt" --wav "${_out}/ref-drive.wav"
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
@@ -40,7 +45,8 @@ add_test(NAME shell.headless.refuses
   COMMAND tee-headless --sim "${CMAKE_CURRENT_SOURCE_DIR}/fixtures/broken" --frames 6
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
 set_tests_properties(shell.headless.refuses PROPERTIES WILL_FAIL TRUE)
-set_tests_properties(shell.headless.ref shell.headless.drive shell.headless.tone shell.headless.error shell.headless.refuses
+set_tests_properties(shell.headless.ref shell.headless.sim shell.headless.drive shell.headless.tone shell.headless.error
+                     shell.headless.refuses
   PROPERTIES TIMEOUT 900 LABELS shell)
 
 # The window itself, where there is one to test and a headless desktop to open it on (Linux, scripts/xvfb-run.sh: Xvfb,

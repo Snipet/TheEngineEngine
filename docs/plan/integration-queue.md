@@ -32,9 +32,12 @@ behind its switch, model 0 staying the reference bit for bit; the lead settles a
 | H | Cylinder (D) | `burned()`; leave for `Combustion` to set `qTot`, `burnDur`, `cBurn`, `knock` at intake closing | |
 | H | Boost (F) | `oxygenShare()` (1 without nitrous) | nitrous |
 | H gives | F | `Ecu::boostTarget()` (Pa over ambient), `antiLag()`, `nitrous()` | the gate's or vanes' loop is F's, toward H's target |
-| H | Exhaust (G) | `pop(int bank, float amplitude)` (Pa), `gasTemperature(int bank)` (K) | bangs by account |
+| H | Exhaust (G) | `pop(int bank, float amplitude)` (Pa), `gasTemperature(int bank)` (K) | bangs by account; **G provides both** (`XBuild::pop`, `gasTemperature`) |
 | H | Car (I) | `drivenSlip()`, `speed()` (m/s), `gear()`, `upshifts()`, `cutRequest()` (s), `blipRequest()` (plate 0 to 1) | I named them `slip()`, `speedNow()`, `gearNow()`, `cutWanted()`, `blipSpeed()` (crank rad/s): **the integrator picks one set** |
-| F | Exhaust (G) | each feeding pipe end's arriving wave, impedance and gas temperature; G solves its ends against the housing's pressure F returns; F gives the downpipe's flow and temperature, and an external gate's flow | to be written by F and G into `sim/README.md` |
+| F gives | Exhaust (G) | `int Boost::housingOf(int bank, int group, int banks)` (which housing a collector ends in; -1 none); `float Boost::housing(int h, float drive, float admit, float tGas)` (drive = sum of 2a/z, admit = sum of 1/z over the feeding ends; returns the housing's pressure over outside; G writes b = p - a); `float Boost::downpipe(int side, float a, float z)` (the end's pressure; what went in is `dpMass[side]`, `dpTemp[side]`); `float Boost::gatePipe(int t, float a, float z)` (an external gate's own pipe; `gateMass[t]`, `gateTemp[t]`) | F's proposal, **accepted by G** (docs/handoffs/g-exhaust.md) with one refinement: `drive` includes each pipe's junction-loss hold, and the downpipe's `z` includes the converter in series. Per sample: `exhaust.read()`; cylinders; `exhaust.prepare()`; `setHouse(h, Boost::housing(...))`; `setDown(s, Boost::downpipe(...))`; `setGate(t, Boost::gatePipe(...))`; `exhaust.step(q)`. The integrator fills the housings from `Boost::housingOf` and zeroes the reference's restriction |
+| F gives | Intake (E) | `Boost::pressure()`, `temperature()` in place of `pBox` and `tAir`; `draw(m)`, then `tick(omegaCrank, pPlenum)` each sample; `control(d16)` every 16 | |
+| F gives | Combustion (H), Mechanics (D) | `oxygen()` (H asked for `oxygenShare()`: one name, the integrator's choice); `crankTorque` | |
+| F | Ecu (H) | `cmdTarget`, `cmdVanes`, `cmdAntiLag`, `cmdNitrous`, `cmdPurge`; the gate's PI loop is F's | H gives `boostTarget()`, `antiLag()`, `nitrous()`: the integrator maps them |
 | D | Crank (K3's) | with `engine.custom` on, the crank is stepped by `MovingMasses::advance` (energy-exact with a varying inertia); off, the reference's step | |
 
 ## Tidying, at each package's integration
@@ -52,6 +55,23 @@ fixes its own when it next touches its tests, and deletes its hook.
 - The reference's `car.fm` keeps the car's speed in a `float`: at 96 kHz small forces (rolling resistance in a
   coast-down) fall below its resolution. The new vehicle model uses `double` for speeds, distance and tyre
   deflection. The reference stays as it is behind `car.model = 0`.
+- Every orifice between two volumes in `sim/boost/` is solved implicitly (`boostOrificeStep`) and volumes keep their
+  mass in `double`; F suggests the intake's throttle be solved the same way when E integrates.
+- From the exhaust builder: the reference clears its pipes before sizing them in `configure`, so a steepening pipe
+  starts timed for its old delay and leaks the first pulse as a ramp; the builder settles after sizing, model 0 keeps
+  the reference's order. A one-dimensional resonator must carry its end correction in its length. A bypass joined at
+  a chamber is shorted by the chamber's volume.
+- **Over budget**: a typical dual exhaust with an X, stubs and valves costs +0.31 R against the card's 0.25 R, nearly
+  all of it the eleven extra pipes at the reference's cost a pipe (54 to 62 ns). For package Q with G after K3b:
+  skip the filter loops and the tracker on bare pipes, or a tier without the bypass tubes.
 - FMinus has no `atanf` and a program may declare no external function: a package that needs one writes it
   (`sim/vehicle/` has `vehAtan`, a polynomial good to 2e-6 rad). Candidates for a shared `sim/core/mathx.fm` at
   integration, so there is one copy.
+
+## FunkGui, after card A (13:19)
+
+- The owner pushes the tag `v0.28.0` on FunkGui's main (19d06ab); then card B names the tag beside its pinned commit.
+- The lead looks at `fg.desktop.menu`'s 40 candidate golden rows and adopts them or says why not.
+- Card A's requests outside its paths (`tools/check-headers.sh`, `tools/GalleryApp/CMakeLists.txt`, the POSIX-only
+  tools and tests on Windows): `docs/handoffs/a-funkgui-desktop.md`. None blocks TheEngineEngine.
+- A notched mouse wheel scrolls slowly on macOS (SDL does not tell it from a trackpad): ask the owner at the Mac test.

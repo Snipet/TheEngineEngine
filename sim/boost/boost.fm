@@ -220,4 +220,10 @@ module Boost
             }
         }
     }
+
+    // A supercharger takes what it pumps from the crank: its boost times the air it moves, at some 60 % (N m; asp 4)
+    float drag(int asp, float vTotal, float omega)
+    {
+        return asp == 4 ? boost * 1.0e5f * vTotal * (1.0f + boost) * 0.1326f * fminf(omega / 5.0f, 1.0f) : 0.0f;
+    }
 };

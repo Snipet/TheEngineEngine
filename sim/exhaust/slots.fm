@@ -42,6 +42,11 @@
 #include "heat2.fm"
 #include "buildspec.fm"
 
+enum
+{
+    XB_SCOPE = 64
+};
+
 // Each pipe's slot: its index in XNet's ducts
 enum
 {
@@ -51,7 +56,8 @@ enum
     XD_VOL = 40,        // a log manifold's chamber at its collector
     XD_SIDE = 48,       // each side's chain: XD_SIDE + side * XD_SIDEN + XO_*
     XD_SIDEN = 15,
-    XD_CROSS = 78       // the H pipe
+    XD_CROSS = 78,      // the H pipe
+    XD_GATE = 79        // an external wastegate's own pipe: 79 to 82
 };
 
 enum
@@ -119,6 +125,12 @@ module XBuild
     int jJoin[XS_SIDES];
     int jTips[XS_SIDES];
     int prevMuf[XS_SIDES];      // the pipe the muffler's inlet follows
+    int jHouse[8];              // each turbine housing's junction (-1: none)
+    int jDown[XS_SIDES];        // each side's downpipe's head, at the turbine's outlet (-1: none: a node, the reference's)
+    int jGate[4];               // each external wastegate's pipe's head
+    int eGate[4];
+    int nGates;
+    int turbSide[XS_SIDES];     // 1: this side's collectors end in housings
     int eTail[XS_SIDES * 2];    // each side's radiating ends
     int ePrim[XS_PORTS];        // each open stack's
     // flow noise's bands
@@ -141,6 +153,16 @@ module XBuild
     float pTurb;                // mean pressure at the collectors (before a turbine), Pa over the air outside
     float pConv[XS_SIDES];      // at each side's head (before the converter)
     float pMuf[XS_SIDES];       // before the muffler (back pressure)
+    float mach[XH_SECT];        // each section's mean Mach number (its pipes', smoothed as theirs are)
+    // the Scope: the pressure (Pa over the air outside) at XB_SCOPE points along the gas's path from one port to its
+    // tail, spaced by length, refreshed every 128 samples while scopeOn; scopeX the distance of each from the port (m)
+    int scopeOn;
+    int scopePort;
+    int pathD[16];
+    int nPath;
+    float scopeP[XB_SCOPE];
+    float scopeX[XB_SCOPE];
+    int scopeTick;
     float qIn;                  // the ports' flow in and the ends' flow out, smoothed (m^3/s)
     float qOut;
     int ready;
@@ -180,6 +202,8 @@ module XBuild
             cap[b + XO_MIN] = (int)(0.6f * k) + 16;
         }
         cap[XD_CROSS] = (int)(1.1f * k) + 16;
+        for (int t = 0; t < 4; ++t)
+            cap[XD_GATE + t] = (int)(1.1f * k) + 16;
         net.setup(rate, cap);
         xiWall = 0.025f;
         k16Flow = 1.0f - expf(-16.0f / (0.06f * rate));
@@ -403,11 +427,43 @@ module XBuild
             eTail[2 * s] = -1;
             eTail[2 * s + 1] = -1;
         }
+        // card F's turbines: a side whose collectors end in housings has its main pipe begin at the turbine's
+        // outlet (a pressure F solves) instead of at a node; a crossover there sits after the main pipes
+        for (int h = 0; h < 8; ++h)
+            jHouse[h] = -1;
+        for (int s = 0; s < XS_SIDES; ++s)
+        {
+            jDown[s] = -1;
+            turbSide[s] = 0;
+        }
+        for (int c = 0; c < XS_COLL; ++c)
+        {
+            if (colOn[c] != 0 && colTo[c] < 2 && eng.housing[c] >= 0 && eng.housing[c] < 8)
+                turbSide[colTo[c]] = 1;
+        }
+        if ((turbSide[0] != 0 || turbSide[1] != 0) && crossK != 0)
+            crossPos = 1;
         const int oneHead = crossK == 2 && crossPos == 0 ? 1 : 0;
         for (int s = 0; s < nSides; ++s)
         {
             if (sideOn[s] == 0)
                 continue;
+            if (turbSide[s] != 0)
+            {
+                for (int c = 0; c < XS_COLL; ++c)
+                {
+                    if (colOn[c] == 0 || colTo[c] != s)
+                        continue;
+                    const int h = eng.housing[c] >= 0 && eng.housing[c] < 8 ? eng.housing[c] : 0;
+                    if (jHouse[h] < 0)
+                        jHouse[h] = net.junction(XJ_HOUSE);
+                    kColUp[c] = net.branch(jHouse[h], XD_COLL + c, 1);
+                }
+                jDown[s] = net.extp(slot(s, XO_MAIN));
+                jHead[s] = jDown[s];
+                kMain[s] = jDown[s] * XN_BR;
+                continue;
+            }
             int j = 0;
             if (oneHead != 0 && s == 1)
                 j = jHead[0];
@@ -564,6 +620,19 @@ module XBuild
             else
                 eTail[2 * s] = net.open(tl, tag[s]);
         }
+        // external wastegates' own pipes, to the air (where a screamer pipe exits: the front)
+        nGates = eng.gates < 0 ? 0 : (eng.gates > 4 ? 4 : eng.gates);
+        for (int t = 0; t < 4; ++t)
+        {
+            jGate[t] = -1;
+            eGate[t] = -1;
+        }
+        for (int t = 0; t < nGates; ++t)
+        {
+            jGate[t] = net.extp(XD_GATE + t);
+            eGate[t] = net.open(XD_GATE + t, XTAG_FRONT);
+        }
+        path();
         for (int i = 0; i < XH_SECT; ++i)
             heat.on[i] = 0;
         pTurb = 0.0f;
@@ -583,6 +652,100 @@ module XBuild
         net.settle();
         qIn = 0.0f;
         qOut = 0.0f;
+    }
+
+    // The Scope's path: from scopePort's primary, through its collectors, down its side's chain to the (first) tail
+    void path()
+    {
+        nPath = 0;
+        const int i = scopePort < 0 || scopePort >= nPorts ? 0 : scopePort;
+        if (nPorts == 0)
+            return;
+        pathD[nPath] = XD_PRIM + i;
+        nPath += 1;
+        if (hasStep != 0)
+        {
+            pathD[nPath] = XD_STEP + i;
+            nPath += 1;
+        }
+        int c = portTo[i];
+        if (c < 0)
+            return;
+        pathD[nPath] = XD_COLL + c;
+        nPath += 1;
+        if (colTo[c] >= 2)
+        {
+            c = colTo[c] - 2;
+            pathD[nPath] = XD_COLL + c;
+            nPath += 1;
+        }
+        const int s = colTo[c] < 2 ? colTo[c] : 0;
+        if (sideOn[s] == 0)
+            return;
+        pathD[nPath] = slot(s, XO_MAIN);
+        nPath += 1;
+        if (jMid[s] >= 0)
+        {
+            pathD[nPath] = slot(s, XO_POST);
+            nPath += 1;
+        }
+        if (res[s] != 0)
+        {
+            pathD[nPath] = slot(s, XO_LINK);
+            nPath += 1;
+        }
+        if (byp[s] != 0)
+        {
+            pathD[nPath] = slot(s, XO_MIN);
+            nPath += 1;
+        }
+        const int nm = muf[s] == 1 ? 1 : (muf[s] == 2 ? 3 : (muf[s] == 3 ? 4 : 0));
+        for (int m = 0; m < nm; ++m)
+        {
+            pathD[nPath] = slot(s, XO_MUF + m);
+            nPath += 1;
+        }
+        if (byp[s] != 0)
+        {
+            pathD[nPath] = slot(s, XO_MUF + 4);
+            nPath += 1;
+        }
+        pathD[nPath] = slot(s, XO_TAIL);
+        nPath += 1;
+    }
+
+    // The pressure along the path: at each point the wave going out written there a while ago plus the one coming
+    // back (the lines as written, before their losses: what a view shows of the waves travelling)
+    void scope()
+    {
+        float total = 0.0f;
+        for (int k = 0; k < nPath; ++k)
+            total += net.d[pathD[k]].len;
+        if (total <= 0.0f)
+            return;
+        int k = 0;
+        float x0 = 0.0f;
+        for (int n = 0; n < XB_SCOPE; ++n)
+        {
+            const float x = total * ((float)n + 0.5f) / (float)XB_SCOPE;
+            while (k + 1 < nPath && x > x0 + net.d[pathD[k]].len)
+            {
+                x0 += net.d[pathD[k]].len;
+                k += 1;
+            }
+            const Duct* p = &net.d[pathD[k]];
+            const float f = fminf(fmaxf((x - x0) / p->len, 0.0f), 1.0f);
+            const int df = 1 + (int)(f * p->dNom);
+            const int db = 1 + (int)((1.0f - f) * (float)p->bdi);
+            int jf = p->w - df;
+            int jb = p->w - db;
+            if (jf < 0)
+                jf += p->cap;
+            if (jb < 0)
+                jb += p->cap;
+            scopeP[n] = p->fw[jf] + p->bw[jb];
+            scopeX[n] = x;
+        }
     }
 
     // ---- the sizes: the reference's pipes(), over the chain as built ----
@@ -841,7 +1004,7 @@ module XBuild
             float aSec = nColOn == 1 ? aPipe0 : 0.85f * aPipe0;
             if (sp.colD[c] > 0.0f)
                 aSec = 0.785398f * sp.colD[c] * sp.colD[c];
-            const int direct = colTo[c] < 2 ? 1 : 0;
+            const int direct = colTo[c] < 2 && (eng.housing[c] < 0 || eng.housing[c] >= 8) ? 1 : 0;
             const float aS = direct != 0 ? aSec * turbK : aSec;
             Duct* p = &net.d[XD_COLL + c];
             p->set(sp.colLen[c] > 0.0f ? sp.colLen[c] : (eng.bike > 0.5f ? 0.25f : 0.38f), sqrtf(aS * 1.2732395f), aS,
@@ -1219,6 +1382,20 @@ module XBuild
             else
                 net.ends[eTail[2 * s]].design(dTail, tl->rho, tT, eng.tAmb, rate);
         }
+        // the housings' gas, and the external gates' pipes
+        for (int h = 0; h < 8; ++h)
+        {
+            if (jHouse[h] >= 0)
+                net.jT[jHouse[h]] = heat.tUse[XH_COLL];
+        }
+        for (int t = 0; t < nGates; ++t)
+        {
+            Duct* g = &net.d[XD_GATE + t];
+            const float ag = 0.785398f * sp.gateD * sp.gateD;
+            g->set(sp.gateLen, sp.gateD, ag, cS, rate);
+            g->extra(0.0f, 0.96f, rate);
+            net.ends[eGate[t]].design(sp.gateD, g->rho, heat.tUse[XH_COLL], eng.tAmb, rate);
+        }
         // the H: a pipe between the sides, sharp-edged at both ends
         if (crossK == 1)
         {
@@ -1276,6 +1453,59 @@ module XBuild
         {
             if (net.dUse[i] != 0)
                 net.d[i].flow16(xiWall, k16Flow);
+        }
+        // each section's mean Mach number
+        for (int i = 0; i < XH_SECT; ++i)
+            mach[i] = 0.0f;
+        int nm[XH_SECT];
+        for (int i = 0; i < XH_SECT; ++i)
+            nm[i] = 0;
+        for (int i = 0; i < nPorts; ++i)
+        {
+            mach[XH_PRIM] += net.d[XD_PRIM + i].mach;
+            nm[XH_PRIM] += 1;
+        }
+        for (int c = 0; c < XS_COLL; ++c)
+        {
+            if (colOn[c] != 0)
+            {
+                const int sc = colFed[c] != 0 ? XH_COLL2 : XH_COLL;
+                mach[sc] += net.d[XD_COLL + c].mach;
+                nm[sc] += 1;
+            }
+        }
+        for (int s = 0; s < nSides; ++s)
+        {
+            if (sideOn[s] == 0)
+                continue;
+            mach[XH_MAIN] += net.d[slot(s, XO_MAIN)].mach;
+            nm[XH_MAIN] += 1;
+            mach[XH_TAIL] += net.d[slot(s, XO_TAIL)].mach;
+            nm[XH_TAIL] += 1;
+            if (muf[s] != 0)
+            {
+                mach[XH_MUFF] += net.d[slot(s, XO_MUF)].mach;
+                nm[XH_MUFF] += 1;
+            }
+            if (jMid[s] >= 0 || res[s] != 0)
+            {
+                mach[XH_LINK] += net.d[slot(s, jMid[s] >= 0 ? XO_POST : XO_LINK)].mach;
+                nm[XH_LINK] += 1;
+            }
+        }
+        for (int i = 0; i < XH_SECT; ++i)
+        {
+            if (nm[i] > 0)
+                mach[i] /= (float)nm[i];
+        }
+        if (scopeOn != 0)
+        {
+            scopeTick += 1;
+            if (scopeTick >= 8)
+            {
+                scopeTick = 0;
+                scope();
+            }
         }
         // the jets' noise peaks where their Strouhal number is about 0.3 (no higher than 2.5 kHz)
         for (int e = 0; e < net.ne; ++e)
@@ -1361,6 +1591,90 @@ module XBuild
                 pm = net.arriving(k) + (net.bE[k] == 0 ? net.nearIn[net.bD[k]] : net.farIn[net.bD[k]]);
             }
             pMuf[s] += kMean * (pm - pMuf[s]);
+        }
+    }
+
+    // ---- the seams (sim/README.md): per sample, after read() and before step() ----
+
+    // Card F's turbine housing h: its pipes' drive (m^3/s), admittance (m^3/s/Pa) and gas temperature (K), for
+    // Boost::housing; then setHouse(h, the pressure it returned)
+    float houseDrive(int h)
+    {
+        return h >= 0 && h < 8 && jHouse[h] >= 0 ? net.jDrive[jHouse[h]] : 0.0f;
+    }
+
+    float houseAdmit(int h)
+    {
+        return h >= 0 && h < 8 && jHouse[h] >= 0 ? net.jAdmit[jHouse[h]] : 0.0f;
+    }
+
+    float houseT(int h)
+    {
+        return h >= 0 && h < 8 && jHouse[h] >= 0 ? net.jT[jHouse[h]] : 300.0f;
+    }
+
+    void setHouse(int h, float p)
+    {
+        if (h >= 0 && h < 8 && jHouse[h] >= 0)
+            net.jPx[jHouse[h]] = p;
+    }
+
+    // Side s's downpipe at the turbine's outlet: the wave arriving at its head (Pa) and its impedance with the
+    // converter in series (Pa s / m^3), for Boost::downpipe; then setDown(s, the pressure it returned)
+    float downWave(int s)
+    {
+        return s >= 0 && s < XS_SIDES && jDown[s] >= 0 ? net.jDrive[jDown[s]] : 0.0f;
+    }
+
+    float downZ(int s)
+    {
+        return s >= 0 && s < XS_SIDES && jDown[s] >= 0 ? net.jAdmit[jDown[s]] : 1.0f;
+    }
+
+    void setDown(int s, float p)
+    {
+        if (s >= 0 && s < XS_SIDES && jDown[s] >= 0)
+            net.jPx[jDown[s]] = p;
+    }
+
+    // External wastegate t's own pipe: the same, for Boost::gatePipe
+    float gateWave(int t)
+    {
+        return t >= 0 && t < nGates ? net.jDrive[jGate[t]] : 0.0f;
+    }
+
+    float gateZ(int t)
+    {
+        return t >= 0 && t < nGates ? net.jAdmit[jGate[t]] : 1.0f;
+    }
+
+    void setGate(int t, float p)
+    {
+        if (t >= 0 && t < nGates)
+            net.jPx[jGate[t]] = p;
+    }
+
+    void prepare() [[clang::nonblocking]]
+    {
+        net.prepare();
+    }
+
+    // Card H: the gas's temperature where the bank's bangs light (its collector's, K)
+    float gasTemperature(int bank)
+    {
+        return bank >= 0 ? heat.tGas[XH_COLL] : heat.tGas[XH_PRIM];
+    }
+
+    // Card H: a bang on a bank (amp: Pa, as the reference's Pop::fire's), at the collector its first port joins
+    void pop(int bank, float amp)
+    {
+        for (int i = 0; i < nPorts; ++i)
+        {
+            if (eng.bank[i] == bank && portTo[i] >= 0)
+            {
+                popAt(portTo[i], amp);
+                return;
+            }
         }
     }
 

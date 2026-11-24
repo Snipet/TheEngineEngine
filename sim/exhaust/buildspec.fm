@@ -100,6 +100,10 @@ module XSpec
     float tailD [[fminus::range(0, 0.13)]] [[fminus::default(0)]] [[ui::label("Tailpipe bore")]]
         [[ui::quantity("length")]] [XS_SIDES];
     int tips [[fminus::range(1, 2)]] [[fminus::default(1)]] [[ui::label("Tips")]] [XS_SIDES];
+    float gateLen [[fminus::range(0.05, 1)]] [[fminus::default(0.3)]] [[ui::label("Wastegate pipe length")]]
+        [[ui::quantity("length")]] [[ui::help("An external wastegate's own pipe, to the air")]];
+    float gateD [[fminus::range(0.015, 0.08)]] [[fminus::default(0.038)]] [[ui::label("Wastegate pipe bore")]]
+        [[ui::quantity("length")]];
     int exitAt [[fminus::range(-1, 6)]] [[fminus::default(-1)]] [[ui::label("Exits")]]
         [[ui::choices("The layout's", "Rear centre", "Rear left", "Rear right", "Side left", "Side right", "Front", "Up")]]
         [XS_SIDES];
@@ -134,4 +138,9 @@ module XEngine
     float rpm;
     float load;         // 0 to 1: what the bypass valve's rule goes by
     float ecuValve;     // 0 to 1: the ECU's word on the valve
+    // card F's turbines (its model on): the housing each collector's pipe ends in (Boost::housingOf; -1: none, the
+    // pipe goes on to its side as the reference's does), and how many external wastegates have a pipe of their own.
+    // With these in use the reference's restriction (aspUse, smTb) is left at 0 by the owner.
+    int housing[XS_COLL];
+    int gates;
 };

@@ -1,8 +1,8 @@
 geometry 09f2375e9bdbef84
-text cf058debc5667d40
-statics 878
+text 57ec0ef8a8fe134a
+statics 872
 live 0
-texts 415
+texts 409
 rrects 143
 segments 225
 areas 95

@@ -18,37 +18,38 @@
 #pragma once
 #include "exhaust/duct.fm"
 #include "lib/biquad.fm"
+#include "spec/limits.fm"
 
 module Intake
 {
-    Duct run[12];       // the intake runners
-    Biquad endRun[12];  // each intake runner's end in the plenum: the same, in the air of the plenum
-    float aThrottle;    // the ecu.throttle's area wide open, m^2
+    Duct run[MAX_PORTS];       // the intake runners
+    Biquad endRun[MAX_PORTS];  // each intake runner's end in the plenum: the same, in the air of the plenum
+    float aThrottle;    // the throttle's area wide open, m^2
     float aBypass;      // the idle valve's
     float vPlenum;
     float pPlenum;      // Pa absolute
     float mPlenum;
     float tAir;
     float pBox;         // the air box (with the turbo's boost), Pa
-    float qThr;         // the volume flow through the ecu.throttle, m^3/s
+    float qThr;         // the volume flow through the throttle, m^3/s
 
     void setup(float rate)
     {
         // the longest each runner could be, cold (330 m/s), at this rate
         const float k = rate / 300.0f;
-        for (int i = 0; i < 12; ++i)
+        for (int i = 0; i < MAX_PORTS; ++i)
             run[i].configure((int)(0.8f * k) + 16);
     }
 
     void release()
     {
-        for (int i = 0; i < 12; ++i)
+        for (int i = 0; i < MAX_PORTS; ++i)
             run[i].release();
     }
 
     void clear()
     {
-        for (int i = 0; i < 12; ++i)
+        for (int i = 0; i < MAX_PORTS; ++i)
         {
             run[i].clear();
             endRun[i].clear();
