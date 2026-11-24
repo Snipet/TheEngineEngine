@@ -1,0 +1,17 @@
+// spec/ecu.fm: the engine's control (spec.ecu). Owner: package H.
+//
+// The reference's TIMING, POPS and STARTER dials: the spark (a diesel's injection) advanced over its map, crank
+// degrees; how much fuel the overrun and the limiter let through to bang in the hot pipes; whether it has a starter
+// (without one, the key puts it straight to its idle speed). All act at once.
+#pragma once
+
+module EcuSpec
+{
+    int rev [[ui::hidden]];
+    float timing [[fminus::range(-20, 20)]] [[fminus::default(0)]] [[ui::label("Timing")]] [[ui::quantity("angle")]]
+        [[ui::decimals(1)]] [[ui::help("The spark advanced over its map, crank degrees")]];
+    float pops [[fminus::range(0, 1)]] [[fminus::default(0.3)]] [[ui::label("Pops")]] [[ui::quantity("fraction")]]
+        [[ui::help("Fuel let through on the overrun and the limiter, to light in the pipes")]];
+    bool starter [[fminus::default(1)]] [[ui::label("Starter")]]
+        [[ui::help("Off, the key puts the engine straight to its idle speed")]];
+};

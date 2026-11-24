@@ -1,0 +1,173 @@
+// compressor.fm: a centrifugal compressor, its map made from its sizes, and the air in its duct.
+//
+// Physically: an impeller (inducer diameter at the eye, exducer at the tip) in a volute whose A/R sets how wide its map
+// is. What it does is a map: for each shaft speed, the pressure ratio it makes against the flow through it (a speed
+// line), and its efficiency over that plane. Here the map is not someone's product's table but a family fitted to
+// the shapes such maps have (Watson and Janota ch. 4; Moore and Greitzer's compression-system model):
+//
+//   - The work's scale is the tip speed U = omega d_ex / 2: the ideal temperature rise at the speed line's knee (its
+//     highest ratio) is tauK = psiK U^2 / (cp T1), psiK = 0.45 (judgement: a backswept wheel's slip and work
+//     coefficient times its efficiency, so that a 60 mm wheel at 150,000 rpm makes about 2.8, as such wheels do).
+//     The map is written in that rise, tau = PR^(1/3.5) - 1, so the ratio is (1 + tau)^3.5: a cube and a root a
+//     sample, no power function, and the outlet's temperature T2 = T1 (1 + tau / eta) follows at once.
+//   - The flow's scale is the choke flow, mc = 0.45 rho01 a01 A_inducer (the eye's annulus, its hub 0.3 of it) at a
+//     tip Mach number of 1.2 and above, less at low speed (0.3 of it standing still), and wider with the housing's
+//     A/R (as (A/R / 0.6)^0.25: judgement). phi = mdot / mc.
+//   - A speed line: from shut-off (phi 0, tau0 = 0.88 tauK: flat toward surge) up to the knee (phiK, 0.5 at an A/R of
+//     0.6, smaller with a larger one: a wider map) as a smooth step (3x^2 - 2x^3: its slope positive between, which is
+//     what makes surge); from the knee down to choke (phi 1) a quarter ellipse to tauC = 0.35 tauK, vertical there;
+//     past choke a steep fall (the wheel a restriction); below phi 0 the reversed flow's branch, a rise with phi^2
+//     (Moore and Greitzer's: pushing air back through a spinning wheel takes pressure).
+//   - Efficiency: an island, etaMax less 0.9 (phi - phiB)^2 less 0.25 (M - 1.1)^2, phiB 0.45 of the way from the knee
+//     to choke, M the tip Mach number; never under 0.3. (Judgement: the shape real islands have, with their peak
+//     near a ratio of 2.)
+//
+// Surge is not an effect. The air in the compressor's duct (its inducer's area, a length of ten inducer diameters
+// and 0.2 m) has inertia: d mdot / dt = (A / L) (p1 PR(mdot, U) - p2), p2 the volume it fills. Left of the knee the
+// line's slope is positive, and with the volume behind it that system oscillates by itself (Greitzer's B parameter
+// above about 0.8 at these sizes): the flow reverses, the volume empties back through the wheel, the flow recovers,
+// fills it again. Solved semi-implicitly in the flow (the map's slope taken at the last flow), so the steep choke side
+// cannot make it unstable.
+//
+// Left out: the inducer's recirculation and ported shrouds; the map's Reynolds and size effects; a diffuser's stall
+// before surge; inlet swirl; heat from the turbine through the housing.
+#pragma once
+#include "gas.fm"
+
+module BoostCompressor
+{
+    // sizes (size())
+    float rTip;         // exducer radius, m
+    float aInd;         // the inducer's annulus, m^2
+    float arWide;       // (A/R / 0.6)^0.25: the choke flow's widening
+    float phiK;         // the knee, a share of the choke flow
+    float phiB;         // the best efficiency's flow
+    float etaMax;
+    float kDuct;        // dt A / L, m s
+    // the speed's part (speed(), every 16 samples)
+    float u;            // tip speed, m/s
+    float mach;         // tip Mach number
+    float mc;           // choke flow now, kg/s
+    float tauK;
+    float tau0;
+    float tauC;
+    float etaM;         // etaMax less the Mach number's term
+    float windage;      // W: the wheel's churning, flow or none
+    // state
+    float mdot;         // kg/s through it (negative: surging back)
+    float p1;           // its inlet, Pa absolute and K
+    float t1;
+    float pr;           // what it makes now
+    float tau;
+    float dtau;         // d tau / d phi
+    float eta;
+    float t2;           // its outlet's temperature, K
+    float power;        // W it takes from its shaft
+
+    void size(float dInd, float dEx, float ar, float etaPeak)
+    {
+        const float ri = 0.5f * fmaxf(dInd, 0.005f);
+        rTip = 0.5f * fmaxf(dEx, dInd * 1.05f);
+        aInd = 3.14159265f * ri * ri * 0.91f;
+        arWide = expf(0.25f * logf(fmaxf(ar, 0.2f) / 0.6f));
+        phiK = fminf(fmaxf(0.5f * expf(-0.3f * logf(fmaxf(ar, 0.2f) / 0.6f)), 0.3f), 0.7f);
+        phiB = phiK + 0.45f * (1.0f - phiK);
+        etaMax = etaPeak;
+        const float len = 10.0f * 2.0f * ri + 0.2f;
+        kDuct = kBoostDt * aInd / len;
+    }
+
+    // The choke flow (kg/s) at a tip Mach number and an inlet's state
+    float chokeFlow(float m, float p, float t)
+    {
+        const float a01 = sqrtf(1.4f * kBoostR * t);
+        const float rho01 = p / (kBoostR * t);
+        return 0.45f * rho01 * a01 * aInd * arWide * (0.3f + 0.7f * fminf(m / 1.2f, 1.0f));
+    }
+
+    // Every 16 samples: the map at this shaft speed (rad/s) and inlet
+    void speed(float omega, float pIn, float tIn)
+    {
+        p1 = pIn;
+        t1 = tIn;
+        u = omega * rTip;
+        const float a01 = sqrtf(1.4f * kBoostR * t1);
+        mach = u / a01;
+        mc = chokeFlow(mach, p1, t1);
+        tauK = 0.45f * u * u / (kBoostCpA * t1);
+        tau0 = 0.88f * tauK;
+        tauC = 0.35f * tauK;
+        const float dm = mach - 1.1f;
+        etaM = etaMax - 0.25f * dm * dm;
+        // (a disc's churning: some hundreds of watts at full speed, about rho U^3 r^2 / 500)
+        windage = 0.002f * (p1 / (kBoostR * t1)) * u * u * u * rTip * rTip;
+    }
+
+    // The map's rise tau at a share phi of the choke flow, and its slope (in dtau)
+    float rise(float phi)
+    {
+        if (phi < 0.0f)
+        {
+            const float c = 1.2f * (tauK + 0.03f) / (phiK * phiK);
+            dtau = 2.0f * c * phi;
+            return tau0 + c * phi * phi;
+        }
+        if (phi < phiK)
+        {
+            const float x = phi / phiK;
+            dtau = (tauK - tau0) * 6.0f * x * (1.0f - x) / phiK;
+            return tau0 + (tauK - tau0) * x * x * (3.0f - 2.0f * x);
+        }
+        if (phi < 1.0f)
+        {
+            const float w = 1.0f - phiK;
+            const float y = (phi - phiK) / w;
+            const float s = sqrtf(fmaxf(1.0f - y * y, 1.0e-4f));
+            dtau = fmaxf(-(tauK - tauC) * y / (s * w), -60.0f * (tauK + 0.05f));
+            return tauC + (tauK - tauC) * s;
+        }
+        const float sl = 8.0f * (tauK + 0.1f);
+        dtau = -sl;
+        return fmaxf(tauC - sl * (phi - 1.0f), -0.6f);
+    }
+
+    // Its efficiency at a share phi of the choke flow, at this speed
+    float efficiency(float phi)
+    {
+        const float d = phi - phiB;
+        return fmaxf(etaM - 0.9f * d * d, 0.3f);
+    }
+
+    // One sample: the flow through it against the volume it fills (p2, Pa absolute). Then mdot, pr, t2 and power
+    // are this sample's.
+    void step(float p2)
+    {
+        const float im = 1.0f / fmaxf(mc, 1.0e-5f);
+        const float phi = mdot * im;
+        tau = rise(phi);
+        const float c = 1.0f + tau;
+        const float sc = sqrtf(c);
+        pr = c * c * c * sc;
+        const float dpr = 3.5f * c * c * sc * dtau * im;
+        const float den = fmaxf(1.0f - kDuct * p1 * dpr, 0.5f);
+        mdot += kDuct * (p1 * pr - p2) / den;
+        eta = efficiency(mdot * im);
+        const float tr = fmaxf(tau, 0.0f) / eta;
+        t2 = t1 * (1.0f + tr);
+        power = fabsf(mdot) * kBoostCpA * t1 * tr + windage;
+    }
+
+    void reset(float pIn, float tIn)
+    {
+        mdot = 0.0f;
+        p1 = pIn;
+        t1 = tIn;
+        pr = 1.0f;
+        tau = 0.0f;
+        dtau = 0.0f;
+        eta = 0.3f;
+        t2 = tIn;
+        power = 0.0f;
+        speed(0.0f, pIn, tIn);
+    }
+};

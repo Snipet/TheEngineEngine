@@ -1,0 +1,286 @@
+// engine.fm: the simulator's one main module, Engine: what the host sees of it (02-contracts.md, section 1).
+//
+// The host writes `spec` (what the machine is) between calls, adding one to a section's `rev` after it writes any of
+// its fields; writes `ctl` (what the driver does) before each call; reads `tel` (what the machine does) after each call,
+// and `scope` (the taps) when someone looks. It calls init once off the audio thread, process on it, end off it.
+//
+// Phase 0, part K3a: inside is still the reference's engine, its module Shared copied unchanged into core/monolith.fm
+// (with the files it includes beside it), driven as the reference's Voice drove it (sim/ref/program.fm) through the
+// adapter below: the Spec's sections, when their rev moved, into Shared's Set (its dials, units converted back); ctl
+// into the pedals, the lever, the paddles and a key; Shared's state out into tel after each call. sim/README.md has
+// the mapping, and how each of the null test's scenarios is written both ways. K3b carves Shared into the modules of
+// 02-contracts.md, section 6, one at a time, and this adapter goes away piece by piece.
+#pragma once
+#include "spec/spec.fm"
+#include "spec/controls.fm"
+#include "spec/telemetry.fm"
+#include "spec/scope.fm"
+#include "core/monolith.fm"
+
+enum
+{
+    SPEC_SECTIONS = 10,    // engine, valve, intake, boost, exhaust, fuel, ecu, car, env, sound: their revs' slots
+    START_NOTE = 36,       // the reference's start key (C2: the idle speed, so the key's driver asks for nothing)
+};
+
+module Engine
+{
+    Spec spec [[ui::label("Build")]];
+    Controls ctl [[ui::label("Controls")]];
+    Telemetry tel [[ui::label("Telemetry")]];
+    Scope scope [[ui::label("Scope")]];
+    // the reference's engine, whole (core/monolith.fm), until K3b carves it
+    Shared mono [[ui::hidden]];
+    // the adapter's own state
+    int revSeen [[ui::hidden]] [SPEC_SECTIONS];   // each section's rev as last applied
+    int fresh [[ui::hidden]];                     // 1 until the first call has applied every section
+    int held [[ui::hidden]];                      // the start key is down in Shared (ignition at start)
+    int sounding [[ui::hidden]];                  // Shared renders: from a start until it is silent with no key held
+    int ghost [[ui::hidden]];                     // holdSpeed's key is down in Shared (its driver aims at the speed)
+    int upSeen [[ui::hidden]];                    // the paddles' presses acted on, and each one's pulse on its button:
+    int downSeen [[ui::hidden]];                  // 0 none, 1 down (until Shared's shift logic has seen it), 2 up again
+    int upPulse [[ui::hidden]];                   // (until it has seen that)
+    int downPulse [[ui::hidden]];
+
+    void init(float hostRate)
+    {
+        mono.init(hostRate);
+        for (int k = 0; k < SPEC_SECTIONS; ++k)
+            revSeen[k] = 0;
+        fresh = 1;
+        held = 0;
+        sounding = 0;
+        ghost = 0;
+        upSeen = ctl.shiftUp;
+        downSeen = ctl.shiftDown;
+        upPulse = 0;
+        downPulse = 0;
+    }
+
+    void end()
+    {
+        mono.end();
+    }
+
+    // Whether section k's rev has moved since it was last applied (and now it has been)
+    bool moved(int k, int rev)
+    {
+        if (fresh == 0 && revSeen[k] == rev)
+            return false;
+        revSeen[k] = rev;
+        return true;
+    }
+
+    // The Spec into Shared's Set: each section whose rev moved, units converted back to the reference's dials'
+    void readSpec()
+    {
+        Set* s = &mono.set;
+        if (moved(0, spec.engine.rev))
+        {
+            s->layout = spec.engine.layout;
+            s->size = spec.engine.displacement * 1000.0f;                  // m^3 to litres
+            s->bs = spec.engine.boreStroke;
+            s->comp = spec.engine.compression;
+            s->inertia = spec.engine.flywheel;
+            s->idle = spec.engine.idleTrim;
+            s->redline = spec.engine.redlineTrim;
+            s->rough = spec.engine.rough;
+            s->load = spec.engine.benchLoad;
+        }
+        if (moved(1, spec.valve.rev))
+            s->cam = spec.valve.cam;
+        moved(2, spec.intake.rev);
+        if (moved(3, spec.boost.rev))
+        {
+            s->asp = spec.boost.kind;
+            s->turbo = spec.boost.level;
+            s->tsize = spec.boost.size;
+            s->bov = spec.boost.blowOff;
+        }
+        if (moved(4, spec.exhaust.rev))
+        {
+            s->headers = spec.exhaust.headers;
+            s->pipe = spec.exhaust.pipe;
+            s->xpipe = spec.exhaust.crossover;
+            s->muffler = spec.exhaust.muffler;
+        }
+        if (moved(5, spec.fuel.rev))
+            s->fuel = spec.fuel.kind;
+        if (moved(6, spec.ecu.rev))
+        {
+            s->timing = spec.ecu.timing;
+            s->pops = spec.ecu.pops;
+            s->starter = spec.ecu.starter ? 1 : 0;
+        }
+        if (moved(7, spec.car.rev))
+            s->mass = spec.car.mass;
+        if (moved(8, spec.env.rev))
+            s->ambF = (spec.env.temperature - 300.0f) * 1.8f + 80.33f;    // K to the reference's F (80.33 F its 300 K)
+        if (moved(9, spec.sound.rev))
+        {
+            s->view = spec.sound.view;
+            s->distance = spec.sound.distance;
+            s->room = spec.sound.room;
+            s->level = spec.sound.level;
+            s->intake = spec.sound.intake;
+            s->mech = spec.sound.mechanical;
+        }
+        fresh = 0;
+    }
+
+    // A paddle's press as the reference's wheel made it: its button down until Shared's shift logic (drive16) has seen
+    // it, then up until it has seen that; a press counted meanwhile waits its turn
+    int paddle(int pulse, int bit)
+    {
+        if (pulse == 1 && (mono.lastButtons & bit) != 0)
+            return 2;
+        if (pulse == 2 && (mono.lastButtons & bit) == 0)
+            return 0;
+        return pulse;
+    }
+
+    // ctl into Shared's Set, and the key the reference's player would hold
+    void readControls()
+    {
+        Set* s = &mono.set;
+        const bool driven = ctl.mode == MODE_DRIVE;
+        s->drive = driven ? (spec.car.kind == 1 ? 2 : 1) : 0;
+        s->hold = 1.0e9f;            // it never switches itself off (the reference's HOLD idled it out)
+        s->bendRange = 12.0f;
+        s->bend = 0.0f;
+        s->pressure = 0.0f;
+        s->modwheel = driven ? 0.0f : ctl.throttle;   // MODE_BENCH: the throttle by hand (the mod wheel's path)
+        s->gas = driven ? ctl.throttle : 0.0f;
+        s->brake = ctl.brake;
+        s->clutch = ctl.clutch;
+        s->lever = ctl.lever;
+        // the paddles: a press is a counter's increase
+        if (driven)
+        {
+            upPulse = paddle(upPulse, 16);
+            downPulse = paddle(downPulse, 32);
+            if (upPulse == 0 && ctl.shiftUp != upSeen)
+            {
+                upSeen += 1;
+                upPulse = 1;
+            }
+            if (downPulse == 0 && ctl.shiftDown != downSeen)
+            {
+                downSeen += 1;
+                downPulse = 1;
+            }
+        }
+        else
+        {
+            upSeen = ctl.shiftUp;
+            downSeen = ctl.shiftDown;
+            upPulse = 0;
+            downPulse = 0;
+        }
+        s->buttons = (upPulse == 1 ? 16 : 0) + (downPulse == 1 ? 32 : 0);
+        // holdSpeed (MODE_BENCH, running): the reference's key driver aimed at it, by a key of the pitch whose firing
+        // that speed is (its DRIVE PITCH), held as the newest key
+        const bool aim = !driven && ctl.holdSpeed > 0.0f && mono.state == 2;
+        if (aim)
+        {
+            const float perRev = mono.lay.rotary != 0 ? 2.0f : 0.5f * (float)mono.lay.n;
+            const float hz = ctl.holdSpeed * 0.15915494f * perRev;
+            const float note = 69.0f + logf(fmaxf(hz, 1.0f) / 440.0f) / 0.0577622650f;
+            if (ghost == 0)
+            {
+                if (mono.keyCount >= 16)
+                    mono.keyCount = 15;
+                mono.keyCount += 1;
+                ghost = 1;
+            }
+            mono.keyNote[mono.keyCount - 1] = note;
+            mono.keyVel[mono.keyCount - 1] = 1.0f;
+        }
+        else if (ghost != 0)
+        {
+            mono.keyCount = mono.keyCount > 0 ? mono.keyCount - 1 : 0;
+            ghost = 0;
+        }
+        s->keys = ghost;
+    }
+
+    // The ignition as the reference's start key: start, held while the engine is not running, is the key down (it
+    // cranks; without a starter it runs at once); let go while it still cranks, the starter stops; off runs it down
+    void ignition()
+    {
+        const int ign = ctl.ignition;
+        if (ign == IGN_START)
+        {
+            if (mono.state == 0 || mono.state == 3)
+            {
+                if (held != 0)
+                    mono.keyUp((float)START_NOTE);
+                mono.keyDown((float)START_NOTE, 1.0f);
+                held = 1;
+                sounding = 1;
+            }
+            return;
+        }
+        if (held != 0)
+        {
+            mono.keyUp((float)START_NOTE);
+            held = 0;
+            if (mono.state == 1)
+                mono.state = 0;
+        }
+        if (ign == IGN_OFF && (mono.state == 1 || mono.state == 2))
+        {
+            mono.state = 3;
+            mono.stallT = 0.0f;
+            mono.offArmed = false;
+        }
+    }
+
+    // What the machine did, from Shared's state (its show* fields unpacked, in SI)
+    void writeTelemetry(float peak)
+    {
+        const bool driven = mono.set.drive != 0;
+        tel.engine.state = mono.state;
+        tel.engine.speed = mono.rpm * 0.10471976f;
+        tel.engine.redline = mono.redRpm * 0.10471976f;
+        tel.engine.idle = mono.idleRpm * 0.10471976f;
+        tel.engine.throttle = mono.throttle;
+        tel.engine.manifold = mono.pPlenum;
+        tel.engine.coolant = mono.tCool;
+        tel.engine.oilPressure = mono.pOil;
+        tel.engine.flags = (mono.limiting || mono.droop < 0.95f ? FLAG_LIMITER : 0)
+                           + (mono.fuelCut && mono.state == 2 ? FLAG_FUEL_CUT : 0);
+        tel.engine.cycle = mono.showCycle;
+        tel.engine.crank = mono.theta;
+        tel.boost.pressure = mono.ex.boost * 100000.0f;
+        tel.exhaust.portTemperature = mono.tPort;
+        tel.ecu.knockRetard = mono.kRet;
+        tel.car.speed = driven ? fabsf(mono.car.v) : 0.0f;
+        tel.car.gear = driven ? mono.car.gear : 0;
+        tel.car.brake = fminf(fmaxf(mono.set.brake, 0.0f), 1.0f);
+        tel.car.clutch = fminf(fmaxf(mono.set.clutch, 0.0f), 1.0f);
+        tel.sound.peak = peak;
+    }
+
+    // n samples at the host's rate into left and right (whatever they held): the engine's sound, within +-1
+    void process(float* restrict left, float* restrict right, int n) [[clang::nonblocking]]
+    {
+        for (int i = 0; i < n; ++i)
+        {
+            left[i] = 0.0f;
+            right[i] = 0.0f;
+        }
+        readSpec();
+        readControls();
+        ignition();
+        float peak = 0.0f;
+        if (sounding != 0 && n > 0)
+        {
+            mono.render(left, right, n);
+            sounding = held != 0 || mono.audible() ? 1 : 0;
+            for (int i = 0; i < n; ++i)
+                peak = fmaxf(peak, fmaxf(fabsf(left[i]), fabsf(right[i])));
+        }
+        writeTelemetry(peak);
+    }
+};

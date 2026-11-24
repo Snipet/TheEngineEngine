@@ -79,19 +79,19 @@ module EcuNitrousSpec
 // the air), but the boost target's speed and gear, the pedal map's speed and pedal
 module EcuMapsSpec
 {
-    EcuMap16 spark [[ui::label("Spark advance")]] [[ui::axes("rotation", "ratio")]] [[ui::unit("deg")]];
+    Map16 spark [[ui::label("Spark advance")]] [[ui::axes("rotation", "ratio")]] [[ui::unit("deg")]];
     bool sparkAuto [[fminus::default(1)]] [[ui::label("Spark: formula")]];
-    EcuMap16 lambda [[ui::label("Lambda")]] [[ui::axes("rotation", "ratio")]];
+    Map16 lambda [[ui::label("Lambda")]] [[ui::axes("rotation", "ratio")]];
     bool lambdaAuto [[fminus::default(1)]] [[ui::label("Lambda: formula")]];
-    EcuMap16 boost [[ui::label("Boost target")]] [[ui::axes("rotation", "ratio")]] [[ui::unit("Pa")]];
+    Map16 boost [[ui::label("Boost target")]] [[ui::axes("rotation", "ratio")]] [[ui::unit("Pa")]];
     bool boostAuto [[fminus::default(1)]] [[ui::label("Boost: formula")]];
-    EcuMap16 camIn [[ui::label("Intake cam")]] [[ui::axes("rotation", "ratio")]] [[ui::unit("deg")]];
+    Map16 camIn [[ui::label("Intake cam")]] [[ui::axes("rotation", "ratio")]] [[ui::unit("deg")]];
     bool camInAuto [[fminus::default(1)]] [[ui::label("Intake cam: formula")]];
-    EcuMap16 camEx [[ui::label("Exhaust cam")]] [[ui::axes("rotation", "ratio")]] [[ui::unit("deg")]];
+    Map16 camEx [[ui::label("Exhaust cam")]] [[ui::axes("rotation", "ratio")]] [[ui::unit("deg")]];
     bool camExAuto [[fminus::default(1)]] [[ui::label("Exhaust cam: formula")]];
-    EcuMap16 pedal [[ui::label("Pedal to plate")]] [[ui::axes("rotation", "fraction")]];
+    Map16 pedal [[ui::label("Pedal to plate")]] [[ui::axes("rotation", "fraction")]];
     bool pedalAuto [[fminus::default(1)]] [[ui::label("Pedal: formula")]];
-    EcuMap16 lift [[ui::label("Lift command")]] [[ui::axes("rotation", "ratio")]];
+    Map16 lift [[ui::label("Lift command")]] [[ui::axes("rotation", "ratio")]];
     bool liftAuto [[fminus::default(1)]] [[ui::label("Lift: formula")]];
 };
 

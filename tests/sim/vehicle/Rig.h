@@ -14,6 +14,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <cmath>
 #include <filesystem>
 #include <fstream>
 #include <memory>
@@ -190,6 +191,32 @@ namespace tee::vehicle
             INFO(errors);
             REQUIRE(f != nullptr);
             return f;
+        }
+
+        // A driver pulling away: in `gear` with the clutch down, the throttle at `throttle`; the pedal comes up while the
+        // engine stays above `holdW` (rad/s) and goes back a little when it sags, until the clutch has locked. The
+        // seconds it took.
+        double pullAway(int gear, double throttle, double holdW = 180.0, double limit = 8.0)
+        {
+            set("clutch", 1.0);
+            seconds(0.2);
+            set("lever", gear);
+            seconds(0.2);
+            set("throttle", throttle);
+            seconds(0.3);
+            double pedal = 0.75;
+            const double t0 = get("t");
+            while (get("t") - t0 < limit)
+            {
+                pedal += get("w") > holdW ? -0.003 : 0.02;
+                pedal = pedal < 0.0 ? 0.0 : (pedal > 1.0 ? 1.0 : pedal);
+                set("clutch", pedal);
+                seconds(0.005);
+                if (pedal <= 0.0 && std::fabs(get("car.slipC")) < 0.5)
+                    break;
+            }
+            set("clutch", 0.0);
+            return get("t") - t0;
         }
 
         double rate() const { return rate_; }

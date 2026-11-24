@@ -1,0 +1,244 @@
+// gas.fm: what the forced induction's parts share: the gas's constants, the compressible orifice, a volume that
+// holds mass and energy, a pipe's end solved against a volume, and a band filter and noise for the sounds.
+//
+// Two gases. Air (gamma 1.4: cp 1004.5 J/kg K, R 287) through the compressor and the charge path; burned gas (gamma
+// 4/3: cp 1148, R 287, the reference's R everywhere) through the turbine, where gamma 4/3 makes the isentropic
+// expansion's (gamma - 1) / gamma exactly 1/4, a root of a root a sample and no power function.
+//
+// The orifice is the reference's (sim/ref/pipes.fm, Valve): mass flow = A p0 / sqrt(R T0) psi(r), r the pressure ratio
+// across it, psi = sqrt(2 g / (g - 1) (r^(2/g) - r^((g+1)/g))) down to the critical ratio and flat (choked) below
+// it, tabulated as psi / sqrt(1 - r) in 64 steps of r. The two tables are the reference's own numbers (burned gas at
+// gamma 1.30, air at 1.39), copied under names of their own so that this file and the reference's can live in one
+// program. A discharge coefficient is the caller's, in the area.
+#pragma once
+
+enum
+{
+    BOOST_TURBOS = 4,        // shafts simulated, at most (MAX_TURBOS)
+    BOOST_HOUSINGS = 8,      // a turbine's housing is one volume, or two (a twin scroll): two a shaft
+    BOOST_SIDES = 2,         // downpipes: one a bank
+    BOOST_TRAIL = 256,       // the operating point's trail on the map
+    BOOST_LINES = 8,         // the map's speed lines, drawn
+    BOOST_LINEPTS = 16,      // points along each
+    BOOST_LEVELS = 5,        // efficiency contours, drawn
+    BOOST_CONTOUR = 16       // points on each: a line's left crossing and its right, BOOST_LINES of each
+};
+
+const float kBoostR = 287.0f;
+const float kBoostCpA = 1004.5f;     // air
+const float kBoostCvA = 717.5f;
+const float kBoostCpE = 1148.0f;     // burned gas, gamma 4/3
+const float kBoostCvE = 861.0f;
+const float kBoostDt = 1.0f / 96000.0f;
+
+const float kBoostPsiE[65] = {0.66726f, 0.67254f, 0.67794f, 0.68347f, 0.68915f, 0.69496f, 0.70093f, 0.70705f, 0.71333f, 0.71979f, 0.72642f, 0.73324f, 0.74026f, 0.74748f, 0.75492f, 0.76259f, 0.77049f, 0.77864f, 0.78706f, 0.79576f, 0.80475f, 0.81405f, 0.82369f, 0.83367f, 0.84403f, 0.85478f, 0.86595f, 0.87758f, 0.88968f, 0.90230f, 0.91548f, 0.92924f, 0.94365f, 0.95875f, 0.97460f, 0.99126f, 1.00816f, 1.02484f, 1.04131f, 1.05758f, 1.07366f, 1.08954f, 1.10525f, 1.12078f, 1.13614f, 1.15134f, 1.16637f, 1.18126f, 1.19599f, 1.21057f, 1.22501f, 1.23932f, 1.25349f, 1.26753f, 1.28144f, 1.29523f, 1.30890f, 1.32245f, 1.33588f, 1.34920f, 1.36241f, 1.37552f, 1.38852f, 1.40142f, 1.41421f};
+const float kBoostPsiA[65] = {0.68304f, 0.68844f, 0.69397f, 0.69963f, 0.70544f, 0.71139f, 0.71750f, 0.72376f, 0.73020f, 0.73681f, 0.74360f, 0.75058f, 0.75776f, 0.76515f, 0.77277f, 0.78061f, 0.78870f, 0.79705f, 0.80567f, 0.81457f, 0.82377f, 0.83330f, 0.84316f, 0.85338f, 0.86398f, 0.87499f, 0.88643f, 0.89832f, 0.91072f, 0.92363f, 0.93712f, 0.95121f, 0.96596f, 0.98142f, 0.99764f, 1.01405f, 1.03024f, 1.04620f, 1.06194f, 1.07747f, 1.09280f, 1.10794f, 1.12288f, 1.13765f, 1.15224f, 1.16666f, 1.18092f, 1.19502f, 1.20896f, 1.22276f, 1.23640f, 1.24991f, 1.26328f, 1.27651f, 1.28962f, 1.30260f, 1.31545f, 1.32819f, 1.34081f, 1.35331f, 1.36570f, 1.37799f, 1.39017f, 1.40224f, 1.41421f};
+
+// psi / sqrt(1 - r) for burned gas (ex 1) or air (0)
+float boostPsiT(float rr, int ex)
+{
+    const float x = fminf(fmaxf(rr, 0.0f), 1.0f) * 64.0f;
+    int i = (int)x;
+    if (i > 63)
+        i = 63;
+    const float f = x - (float)i;
+    const float t0 = ex != 0 ? kBoostPsiE[i] : kBoostPsiA[i];
+    const float t1 = ex != 0 ? kBoostPsiE[i + 1] : kBoostPsiA[i + 1];
+    return t0 + (t1 - t0) * f;
+}
+
+// The mass flow (kg/s) through an orifice of effective area `area` (m^2) from a gas at p1 (Pa absolute), t1 (K) to one
+// at p2, t2: positive from 1 to 2, negative the other way (with the other side's gas)
+float boostOrifice(float p1, float t1, float p2, float t2, float area, int ex)
+{
+    if (area <= 1.0e-10f)
+        return 0.0f;
+    if (p1 >= p2)
+    {
+        const float r = p2 / fmaxf(p1, 1.0f);
+        return area * p1 * boostPsiT(r, ex) * sqrtf(fmaxf(1.0f - r, 0.0f)) / sqrtf(kBoostR * t1);
+    }
+    const float r = p1 / fmaxf(p2, 1.0f);
+    return -area * p2 * boostPsiT(r, ex) * sqrtf(fmaxf(1.0f - r, 0.0f)) / sqrtf(kBoostR * t2);
+}
+
+// A volume of gas: its mass and energy, filled and emptied every sample (explicit: what flows this sample is summed by
+// flow() and heat(), then step() moves the state). Its pressure and temperature follow from the two (p = m R T / V).
+module BoostVolume
+{
+    float vol;          // m^3
+    float m;            // kg
+    float t;            // K
+    float p;            // Pa absolute
+    float cp;
+    float cv;
+    float dm;           // this sample's sums: mass in (kg/s), enthalpy and heat in (W)
+    float dh;
+    float o2;           // the oxygen's share of its mass (0.232 for air)
+    float do2;          // this sample's oxygen in (kg/s)
+
+    void setup(float v, float pIn, float tIn, float cpIn, float cvIn)
+    {
+        vol = v;
+        cp = cpIn;
+        cv = cvIn;
+        reset(pIn, tIn);
+    }
+
+    void reset(float pIn, float tIn)
+    {
+        p = pIn;
+        t = tIn;
+        m = p * vol / (kBoostR * t);
+        dm = 0.0f;
+        dh = 0.0f;
+        o2 = 0.232f;
+        do2 = 0.0f;
+    }
+
+    // a resize keeps the pressure and temperature (the gas in it changes)
+    void resize(float v)
+    {
+        vol = fmaxf(v, 1.0e-6f);
+        m = p * vol / (kBoostR * t);
+    }
+
+    // mass flow in (kg/s; negative: out, at the volume's own temperature) at temperature tIn, its oxygen's share x
+    void flow(float mdot, float tIn, float x)
+    {
+        dm += mdot;
+        if (mdot >= 0.0f)
+        {
+            dh += mdot * cp * tIn;
+            do2 += mdot * x;
+        }
+        else
+        {
+            dh += mdot * cp * t;
+            do2 += mdot * o2;
+        }
+    }
+
+    void heat(float q)
+    {
+        dh += q;
+    }
+
+    void step(float dt)
+    {
+        const float mn = fmaxf(m + dm * dt, 1.0e-7f);
+        const float u = m * cv * t + dh * dt;
+        o2 = fminf(fmaxf((m * o2 + do2 * dt) / mn, 0.0f), 1.0f);
+        m = mn;
+        t = fminf(fmaxf(u / (m * cv), 150.0f), 3000.0f);
+        p = m * kBoostR * t / vol;
+        dm = 0.0f;
+        dh = 0.0f;
+        do2 = 0.0f;
+    }
+};
+
+// The flow out of a volume of gas (pc Pa absolute, tc K) through an effective area into the end of a pipe whose
+// pressure with nothing flowing is pq (Pa absolute: the outside's plus twice the arriving wave) and impedance z: the
+// volume flow at the pipe's end (m^3/s; negative: from the pipe into the volume, its gas at tp), solved with the pipe
+// at once. The reference's Valve.flow (sim/ref/pipes.fm) without its finite-wave factor g: above the critical ratio,
+// q = k sqrt(pc - pq - z q) with k from the last pass's ratio, a quadratic, three passes from the pipe at rest;
+// below it choked, in closed form. `ratio` keeps the ratio across it (downstream over upstream) for the caller.
+module BoostEnd
+{
+    float ratio;
+
+    float flow(float pc, float tc, float pq, float z, float area, float tp)
+    {
+        if (area <= 1.0e-10f)
+        {
+            ratio = 1.0f;
+            return 0.0f;
+        }
+        const float rc = 0.5457f;
+        const float psiS = 0.66726f;
+        if (pc >= pq)
+        {
+            const float cq = area * sqrtf(pc * kBoostR * tc);
+            const float d = pc - pq;
+            float q = 0.0f;
+            float rr = pq / pc;
+            float pp = pq;
+            for (int it = 0; it < 3; ++it)
+            {
+                const float k = cq * boostPsiT(rr, 1) / pp;
+                const float zk = z * k;
+                q = k * 0.5f * (sqrtf(zk * zk + 4.0f * d) - zk);
+                pp = pq + z * q;
+                rr = pp / pc;
+            }
+            if (rr < rc)
+            {
+                const float c = area * pc * sqrtf(kBoostR * tc) * psiS;
+                q = (sqrtf(pq * pq + 4.0f * z * c) - pq) / (2.0f * z);
+                rr = (pq + z * q) / pc;
+            }
+            ratio = rr;
+            return q;
+        }
+        const float ci = area * sqrtf(kBoostR * tp);
+        const float d = pq - pc;
+        float qi = 0.0f;
+        float pp = pq;
+        float rr = pc / pq;
+        for (int it = 0; it < 3; ++it)
+        {
+            const float k = ci * boostPsiT(rr, 1) / sqrtf(pp);
+            const float zk = z * k;
+            qi = k * 0.5f * (sqrtf(zk * zk + 4.0f * d) - zk);
+            pp = fmaxf(pq - z * qi, 1000.0f);
+            rr = pc / pp;
+        }
+        if (rr < rc)
+        {
+            qi = ci * psiS;
+            rr = pc / fmaxf(pq - z * qi, 1000.0f);
+        }
+        ratio = rr;
+        return -qi;
+    }
+};
+
+// A band-pass (a state-variable filter, Simper's trapezoidal form): stable however its centre moves; set() at the
+// control rate, tick() a sample.
+module BoostBand
+{
+    float g;
+    float k;
+    float a1;
+    float a2;
+    float a3;
+    float s1;
+    float s2;
+
+    void set(float fc, float q, float rate)
+    {
+        const float w = 3.14159265f * fminf(fmaxf(fc, 10.0f), 0.45f * rate) / rate;
+        g = sinf(w) / cosf(w);
+        k = 1.0f / fmaxf(q, 0.1f);
+        a1 = 1.0f / (1.0f + g * (g + k));
+        a2 = g * a1;
+        a3 = g * a2;
+    }
+
+    float tick(float x)
+    {
+        const float v3 = x - s2;
+        const float v1 = a1 * s1 + a2 * v3;
+        const float v2 = s2 + a2 * s1 + a3 * v3;
+        s1 = 2.0f * v1 - s1;
+        s2 = 2.0f * v2 - s2;
+        return k * v1;      // unity gain at the centre
+    }
+
+    void clear()
+    {
+        s1 = 0.0f;
+        s2 = 0.0f;
+    }
+};

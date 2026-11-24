@@ -1,0 +1,21 @@
+// spec/sound.fm: where the engine is heard from, and how (spec.sound). Owner: wave 2 (the lead until then).
+//
+// The reference's VIEW, DISTANCE, ROOM, LEVEL, INTAKE and MECHANICAL dials. A new view is taken under the fade (12 ms
+// back up); the distance, the room and the level glide; intake and mechanical act at once.
+#pragma once
+
+module SoundSpec
+{
+    int rev [[ui::hidden]];
+    int view [[fminus::range(0, 4)]] [[fminus::default(0)]] [[ui::label("View")]]
+        [[ui::choices("Exhaust", "Rear", "Side", "Engine", "Cabin")]];
+    float distance [[fminus::range(0, 1)]] [[fminus::default(0.3)]] [[ui::label("Distance")]]
+        [[ui::quantity("fraction")]] [[ui::help("0.5 m to 30 m: the level, the highs and the room's share go with it")]];
+    float room [[fminus::range(0, 1)]] [[fminus::default(0.15)]] [[ui::label("Room")]] [[ui::quantity("fraction")]];
+    float level [[fminus::range(-24, 12)]] [[fminus::default(0)]] [[ui::label("Level")]] [[ui::unit("dB")]]
+        [[ui::decimals(1)]];
+    float intake [[fminus::range(0, 1)]] [[fminus::default(0.5)]] [[ui::label("Intake")]] [[ui::quantity("fraction")]]
+        [[ui::help("The intake's level against the exhaust")]];
+    float mechanical [[fminus::range(0, 1)]] [[fminus::default(0.4)]] [[ui::label("Mechanical")]]
+        [[ui::quantity("fraction")]] [[ui::help("The valvetrain's, the block's and the combustion's level")]];
+};
