@@ -193,9 +193,57 @@
       "source": "the build's own target (1.00 bar); a wastegate or vane loop holds a steady full load within some 0.1 bar of its target once spooled (makers' boost-control tolerances; judgement)"
     },
     {
+      "name": "Charge temperature under boost",
+      "scenario": "validation/scenarios/p-full-load-4000.json",
+      "tel": "boost.throttleIn",
+      "measure": "mean",
+      "during": [
+        8,
+        10
+      ],
+      "range": [
+        293,
+        340
+      ],
+      "unit": "K",
+      "source": "an air-to-air intercooler of 0.6 to 0.8 effectiveness leaves the charge some 10 to 50 K over the outside air at full boost (makers' and tuners' intake-air-temperature logs; judgement): reported so the over-delivery at a given boost can be judged (the lead's ask)"
+    },
+    {
+      "name": "Lambda at full load under boost",
+      "scenario": "validation/scenarios/p-full-load-4000.json",
+      "tel": "ecu.lambda",
+      "measure": "mean",
+      "during": [
+        8,
+        10
+      ],
+      "range": [
+        0.76,
+        0.88
+      ],
+      "unit": "ratio",
+      "source": "a boosted petrol engine at full load is enriched to lambda 0.76 to 0.88 to cool the charge and the turbine (factory calibrations; Heywood, Internal Combustion Engine Fundamentals, ch. 7)"
+    },
+    {
       "name": "Port gas at full load",
       "scenario": "validation/scenarios/p-full-load-4000.json",
       "tel": "exhaust.portTemperature",
+      "measure": "mean",
+      "during": [
+        8,
+        10
+      ],
+      "range": [
+        1100,
+        1300
+      ],
+      "unit": "K",
+      "source": "the gas at the exhaust valve at full load, before the port and pipe cool it: some 1100 to 1300 K for a spark-ignition engine (Heywood, Internal Combustion Engine Fundamentals, ch. 14; card C's target on default.json, which this follows)"
+    },
+    {
+      "name": "Header gas at full load",
+      "scenario": "validation/scenarios/p-full-load-4000.json",
+      "tel": "exhaust.headerTemperature",
       "measure": "mean",
       "during": [
         8,
@@ -206,7 +254,7 @@
         1100
       ],
       "unit": "K",
-      "source": "a spark-ignition engine's exhaust at the port at full load is some 900 to 1100 K (Heywood, Internal Combustion Engine Fundamentals, ch. 14; makers' EGT data for petrol engines)"
+      "source": "a thermocouple a little way down a primary reads 900 to 1100 K at full load on a petrol engine (makers' exhaust-gas-temperature data; Heywood, Internal Combustion Engine Fundamentals, ch. 14); n/a until the exhaust reports it"
     },
     {
       "name": "Quarter mile: time",

@@ -42,6 +42,16 @@ While stage B is engaged the handles edit stage B's fields. The lift axis holds 
 reference's CAM dial (no lab fields) the curves are the dial's (224 degrees on 112 when mild, 300 on 106 when wild)
 and there are no handles; with the lab's model switched off, the editor says the engine runs the dial.
 
+## A two-stroke: PORT TIMING
+
+With `engine.cycle` 1 the stage is PORT TIMING (the rail still says VALVES): the ports' open shares against one turn
+(the Scope's when it is a two-stroke's, else from the geometry: a port's top edge stands where the slider-crank puts
+the crown at its opening angle), the exhaust's with the power valve shut and open ghosted, a timed inlet's window shaded
+(a reed's has no fixed timing, said in words), the crankcase's pressure on its own scale; marks to drag at each port's
+opening and closing (its duration about bottom dead centre: `tsExhaustDur`, `tsTransferDur`, one undo step); the
+port-timing ring (exhaust outside, transfers inside, a timed inlet innermost); the power valve's duration against speed
+with the speed now; the crankcase and scavenging. Pages: Ports, Power valve, Crankcase, Scavenging. `ui.valves.twostroke`.
+
 ## E's integration
 
 The fields and telemetry are E's own now (`sim/spec/valve.fm`, `tel.valve`): the phasers' targets show as a ring beside

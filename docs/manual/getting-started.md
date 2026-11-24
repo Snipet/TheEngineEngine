@@ -10,7 +10,7 @@ gearbox, aerodynamics) and the **tune** (the ECU's maps and settings).
 
 The thirty archetypes are a good place to start: each is a kind of engine you will recognise in the car it usually
 lives in, with its real dimensions. Try **"Small-block 5.7 L, carburettor-like"** first: a simple, forgiving engine.
-Click its card, then **Open**.
+Click its card, then **LOAD THIS BUILD**.
 
 Want the same engine in another car? Open the car you want, then load only the **engine** part of another build
 (the parts are listed apart in GARAGE, and under File > Load part).
