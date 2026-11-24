@@ -124,8 +124,8 @@ module ValveTel
     float exPhaseTarget [[ui::label("Exhaust phase asked")]] [[ui::quantity("angle")]] [[ui::help("Crank degrees of retard from parked")]];
     float exPhase [[ui::label("Exhaust phase")]] [[ui::quantity("angle")]];
     int stage [[fminus::range(0, 1)]] [[ui::label("Cam stage")]] [[ui::choices("A", "B")]];
-    float liftCommand [[ui::label("Lift command")]] [[ui::quantity("fraction")]];
-    int activeMask [[ui::label("Active cylinders")]] [[ui::help("A bit a cylinder, in the layout's order")]];
+    float lift [[ui::label("Lift command")]] [[ui::quantity("fraction")]];
+    int active [[ui::label("Active cylinders")]] [[ui::help("A bit a cylinder, in the layout's order")]];
     int floating [[fminus::range(0, 1)]] [[ui::label("Valve float")]];
     float floatSpeed [[ui::label("Float speed")]] [[ui::quantity("rotation")]] [[ui::help("Where the intake valves begin to float; 0: never")]];
     float ivo [[ui::label("Intake opens")]] [[ui::quantity("angle")]] [[ui::help("Cylinder 1's, now: degrees of its cycle, 0 the firing top")]];

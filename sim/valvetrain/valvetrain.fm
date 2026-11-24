@@ -212,7 +212,7 @@ module Valvetrain
                 t->evo = cyl[0].evo;
                 t->evc = vtWrap(cyl[0].evo + cyl[0].edur, cycNow);
             }
-            t->activeMask = (1 << nCyl) - 1;
+            t->active = (1 << nCyl) - 1;
             return;
         }
         t->inPhaseTarget = lab.phIn.target;
@@ -220,8 +220,8 @@ module Valvetrain
         t->exPhaseTarget = lab.phEx.target;
         t->exPhase = lab.phEx.phase;
         t->stage = lab.stageWant;
-        t->liftCommand = lab.liftOn != 0 ? lab.liftCmd : 1.0f;
-        t->activeMask = lab.activeMask;
+        t->lift = lab.liftOn != 0 ? lab.liftCmd : 1.0f;
+        t->active = lab.activeMask;
         t->floating = lab.floating;
         t->floatSpeed = lab.flt.omegaIn;
         t->ivo = lab.showIvo;
