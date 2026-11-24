@@ -82,3 +82,14 @@ its generic junction path (profile, drive-car: `xNode` 113, `XNet::step` 101, `s
 of about 250) plus 115 ns more in the pipes' reads and writes. The pipes as arrays inside the builder (`XNet::read`
 over `used[]`, prototyped): exact, 0.981 / 0.986 at the reference topology, 1.023 / 1.001 on the dual X: nothing
 measurable; not landed. Compile with the builder: 4.8 to 6.4 s here (586 to 597 kB of code).
+
+**The junction path, first try (about 17:15 UTC)**: the builder's junctions solved grouped by kind (nodes, pairs, open
+ends, the rest), each group in the junctions' own order, so the per-junction dispatch goes and the open ends' noise
+draws keep their order: exact (reference topology and dual X identical to the bit), and **no faster**: 1.008 to 1.017
+by wall time, 1.011 by processor time (7 runs). The dispatch is not the cost; what is left is the general node solve
+over its branch lists (`xNode`, its gathers) and the per-pipe work, spread thinly. Not landed. Specialised two- and
+three-arm node solves (as the reference unrolls them) are the remaining exact idea, a larger rewrite, unproven.
+
+**X-016 (fuzz seeds at 3 to 5 R)**: seed 1 reduced (X's reducer, its bound lowered to 2 R locally) keeps its cost with
+no exhaust field set: a custom engine with four rotors, twelve faces on four shared ports, each face's valves solved
+twice a sample (the reference's method for a rotary's shared ports); `Valve::flow` 45 % of its time. Not the builder.

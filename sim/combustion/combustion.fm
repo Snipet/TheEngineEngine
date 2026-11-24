@@ -393,9 +393,21 @@ module Combustion
         const bool f1 = fuel->model == 1;
         if (!f1 && !ecu->model1())
             return;
+        // the hottest recent blowdown, each bank's: what the unburned fuel in that bank's pipe meets (the ECU's bangs).
+        // An exhaust valve's opening raises it to its gas when hotter; it falls over some 50 ms otherwise, so a full cut's
+        // cool air lets it go and a fired cylinder among cut ones holds it up
+        if (cy->evoNow)
+        {
+            const int b = lay->topo == 0 ? 0 : (lay->bank[c] == 1 ? 1 : 0);
+            ecu->blow[b] = fmaxf(ecu->blow[b], cy->t);
+            if (lay->topo == 0)
+                ecu->blow[1] = ecu->blow[0];
+        }
         if (c == 0)
         {
             ticks += 1;
+            ecu->blow[0] -= (ecu->blow[0] - 300.0f) * dt * 20.0f;
+            ecu->blow[1] -= (ecu->blow[1] - 300.0f) * dt * 20.0f;
             const float a = cy->ang > 0.5f * lay->cyc ? cy->ang - lay->cyc : cy->ang;
             ecu->watch.tick(cy->p, a, cy->burnAt >= 0.0f ? cy->xPrev : 0.0f);
             if (ecu->model1())

@@ -1737,7 +1737,8 @@ module Engine
             boost.scope(&scope);
         tel.exhaust.portTemperature = exh.tPort;
         tel.ecu.knockRetard = ecu.kRet;
-        tel.ecu.advance = lay.cyc - cyl[0].sparkAt;
+        // (degrees before the top; a spark after it, retarded past the top, negative, not a cycle less a little: X-011)
+        tel.ecu.advance = lay.cyc - cyl[0].sparkAt > 0.5f * lay.cyc ? -cyl[0].sparkAt : lay.cyc - cyl[0].sparkAt;
         tel.sound.rate = hostRateSeen;
         tel.car.speed = driven ? fabsf(car.v) : 0.0f;
         tel.car.gear = driven ? car.gear : 0;

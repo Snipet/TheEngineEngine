@@ -438,6 +438,8 @@ for _a in A:
         _a.setdefault("exhaust", {}).update({"converter": [2, 2], "mufKind": [1, 1]})
 # the torque-peak speeds of each kind (rpm), from the validation's table, for the runners
 import importlib.util as _iu
+import sys as _sys
+_sys.dont_write_bytecode = True    # no __pycache__ beside the validation's generator
 _spec = _iu.spec_from_file_location("_val", os.path.join(ROOT, "content", "validation", "archetypes", "generate.py"))
 _val = _iu.module_from_spec(_spec)
 _spec.loader.exec_module(_val)
