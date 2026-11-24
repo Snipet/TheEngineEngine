@@ -102,12 +102,15 @@ namespace
         GuiPanel panel;
         funkgui::HeadlessHost host;
 
-        explicit Rig(int w = 0, int h = 0, Sources files = kindsFiles())
+        // `shaders` false (the default): the panel's shaders are its placeholders whatever the build has, so that a
+        // golden is the same with and without a GPU layer (GuiPanel::Options::shaders).
+        explicit Rig(int w = 0, int h = 0, Sources files = kindsFiles(), bool shaders = false)
             : panel(std::move(files), player, player, [&] {
                   GuiPanel::Options o;
                   o.width = w;
                   o.height = h;
                   o.name = "kinds";
+                  o.shaders = shaders;
                   return o;
               }()),
               host(panel, 0, 2.0f)
@@ -798,7 +801,7 @@ namespace
     // With no GPU layer in the build a shader element is a placeholder that says why, and is still laid out.
     TEST(testShaderPlaceholder, "shader.placeholder")
     {
-        Rig rig;
+        Rig rig(0, 0, kindsFiles(), true);              // the build's own shaders, if it has any
         CHECK(rig.page("DISPLAYS"));
         CHECK(rig.panel.view().shaders().size() >= 1);
         const auto& item = static_cast<const GuiShaderItem&>(*rig.panel.items()[static_cast<std::size_t>(rig.panel.view().shaders()[0])]);
@@ -855,7 +858,7 @@ namespace
     {
         MockPlayer player;
         Services app;
-        RefPanel panel(Sources{ { "panel.gui", kWithKeys } }, player, app.make(), {});
+        RefPanel panel(Sources{ { "panel.gui", kWithKeys } }, player, app.make(), { 0, 0, {}, false });
         funkgui::HeadlessHost host(panel, 0, 2.0f);
         host.tick(2);
         CHECK_MSG(panel.notes().find("left out") == std::string::npos, panel.notes());
@@ -930,7 +933,7 @@ namespace
     {
         MockPlayer player;
         Services app;
-        RefPanel panel(Sources{ { "panel.gui", kNoKeys } }, player, app.make(), {});
+        RefPanel panel(Sources{ { "panel.gui", kNoKeys } }, player, app.make(), { 0, 0, {}, false });
         funkgui::HeadlessHost host(panel, 0, 2.0f);
         host.tick(2);
         const funkgui::Rect strip = panel.stripRect();
