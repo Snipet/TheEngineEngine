@@ -47,16 +47,22 @@ namespace
 
     // For a cut that sends fuel to the pipe (a spark cut, a dog box's shift cut, traction control's cut on the new ECU):
     // the bang's bound is the reference's own limiter with its pops at their default (0.3) through the same scenario
-    // (the lead's ruling with card H, 15:26), with 10 % for the run-to-run spread of a chaotic engine (Q's rule,
-    // docs/measurements/q-rule.md: a bang is never the same twice). judge() bounds at twice its refStep: 0.55 of it.
+    // (the lead's ruling with card H, 15:26). One run of it is no bound: the reference's largest step there ranged 11.9
+    // to 20.5 over six copies 0.01 K apart in the air (measured 16:40; Q's rule, docs/measurements/q-rule.md: judge a
+    // chaotic engine against an ensemble). So: the largest of three such copies. judge() bounds at twice its refStep.
     template <class Make>
     double bangBaseline(Make make, const Times& tm)
     {
-        tee::test::Scenario s = make(false);
-        s.at(0.0).spec("ecu.pops", 0.3);
-        const tee::test::Run r = s.run(tm.end);
-        const double from = tm.started + 0.5, to = tm.off > 0.0 ? tm.off : tm.end;
-        return 0.55 * std::max(r.left().during(from, to).largestStep(), r.right().during(from, to).largestStep());
+        double worst = 0.0;
+        for (double dT : {0.0, 0.01, 0.02})
+        {
+            tee::test::Scenario s = make(false);
+            s.at(0.0).spec("ecu.pops", 0.3).spec("env.temperature", 293.15 + dT);
+            const tee::test::Run r = s.run(tm.end);
+            const double from = tm.started + 0.5, to = tm.off > 0.0 ? tm.off : tm.end;
+            worst = std::max({worst, r.left().during(from, to).largestStep(), r.right().during(from, to).largestStep()});
+        }
+        return 0.5 * worst;
     }
 
     // the share of [from, to] for which a telemetry bit is set
