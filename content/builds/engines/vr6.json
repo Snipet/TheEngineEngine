@@ -1,0 +1,74 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "VR6, 15 degrees",
+  "notes": "One head, two staggered rows 15 degrees apart; six pins offset so it fires evenly, 1-5-3-6-2-4.",
+  "spec": {
+    "engine": {
+      "custom": true,
+      "cylinders": 6,
+      "bankAngle": [
+        7.5,
+        -7.5
+      ],
+      "bank": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        1
+      ],
+      "pin": [
+        7.5,
+        232.5,
+        127.5,
+        112.5,
+        247.5,
+        352.5
+      ],
+      "fireRev": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        1
+      ],
+      "place": [
+        0.0,
+        0.05,
+        0.1,
+        0.15,
+        0.2,
+        0.25
+      ]
+    }
+  },
+  "expect": {
+    "firingOrder": [
+      1,
+      5,
+      3,
+      6,
+      2,
+      4
+    ],
+    "firingIntervals": [
+      120,
+      120,
+      120,
+      120,
+      120,
+      120
+    ],
+    "firingAngles": [
+      0.0,
+      480.0,
+      240.0,
+      600.0,
+      120.0,
+      360.0
+    ]
+  }
+}

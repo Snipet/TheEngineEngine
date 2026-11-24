@@ -7,6 +7,10 @@
 
 #include <algorithm>
 #include <chrono>
+#include <filesystem>
+#include <fstream>
+#include <iterator>
+#include <regex>
 #include <cmath>
 #include <cstdio>
 #include <vector>
@@ -200,6 +204,17 @@ TEST_CASE("area against lift: the curtain low down, flat past a quarter of the d
                 "four valves %.0f CFM\n", cfm500, bench4.get("flowIn[9]") * 2118.88);
     CHECK(cfm500 > 120.0);
     CHECK(cfm500 < 300.0);
+    // the lab at its defaults (ports 1.35 and 1.5, 10 mm of lift) gives the reference V8's areas: 0.118 and 0.091 of
+    // the piston's (sim/ref/engine.fm, valves)
+    Obj spec(labProgram(), "ValveLabSpec");
+    spec.defaults();
+    Obj lab(labProgram(), "ValveLab");
+    lab.call<void>("setup", bore, 8, 720.0f);
+    lab.call<void>("reset");
+    lab.call<void>("apply", spec.data(), 1);
+    const double piston = 0.785398 * bore * bore;
+    CHECK(lab.get("tab[0].peak") == Catch::Approx(0.118 * piston).epsilon(0.005));
+    CHECK(lab.get("tab[2].peak") == Catch::Approx(0.091 * piston).epsilon(0.005));
 }
 
 TEST_CASE("phaser: a step at its slew rate, slower cold, parked colder, never out of its range", "[valvetrain][phaser]")
@@ -616,4 +631,64 @@ TEST_CASE("cost: what the lab adds to a sample of a V8, against the reference's 
                 "%.1f ns more\n", lab8, ref8, lab8 - ref8);
     // card E's share is 0.05 R; R is some 3400 ns here (tee-bench, the V8): 170 ns. A loose bound, the machine shared
     CHECK(lab8 - ref8 < 170.0);
+}
+
+TEST_CASE("the cam presets: every field is the lab's, in its range, and every cam they ask for is made", "[valvetrain][content]")
+{
+    namespace fs = std::filesystem;
+    const fs::path dir = fs::path(TEE_SOURCE_DIR) / "content" / "builds" / "cams";
+    int files = 0;
+    for (const auto& entry : fs::directory_iterator(dir))
+    {
+        if (entry.path().extension() != ".json")
+            continue;
+        files += 1;
+        std::ifstream in(entry.path());
+        const std::string text((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+        const auto at = text.find("\"valve\"");
+        REQUIRE(at != std::string::npos);
+        const std::string body = text.substr(at, text.find('}', at) - at);
+        V8Lab v;
+        const std::regex pair("\"(\\w+)\"\\s*:\\s*(\"[^\"]*\"|[-0-9.eE]+)");
+        for (auto it = std::sregex_iterator(body.begin(), body.end(), pair); it != std::sregex_iterator(); ++it)
+        {
+            const std::string key = (*it)[1];
+            std::string value = (*it)[2];
+            INFO(entry.path().filename().string() << ": " << key << " = " << value);
+            tee::Schema::Handle h;
+            std::string error;
+            REQUIRE(v.spec.schema->find(key, h, error));
+            double x = 0.0;
+            if (value.front() == '"')
+            {
+                value = value.substr(1, value.size() - 2);
+                const auto* choices = h.node->attribute("ui::choices");
+                REQUIRE(choices != nullptr);
+                const auto* range = h.node->attribute("fminus::range");
+                int found = -1;
+                for (std::size_t i = 0; i < choices->arguments.size(); ++i)
+                    if (choices->arguments[i].text == value)
+                        found = static_cast<int>(i);
+                REQUIRE(found >= 0);
+                x = range->arguments[0].number + found;
+            }
+            else
+                x = std::stod(value);
+            const auto* range = h.node->attribute("fminus::range");
+            REQUIRE(range != nullptr);
+            CHECK(x >= range->arguments[0].number);
+            CHECK(x <= range->arguments[1].number);
+            v.spec.set(key, x);
+        }
+        v.start();
+        INFO(entry.path().filename().string());
+        CHECK(v.lab.get("cam[0].reached") == 1.0);
+        CHECK(v.lab.get("cam[2].reached") == 1.0);
+        if (v.spec.get("stages") == 1.0)
+        {
+            CHECK(v.lab.get("cam[1].reached") == 1.0);
+            CHECK(v.lab.get("cam[3].reached") == 1.0);
+        }
+    }
+    CHECK(files >= 10);
 }

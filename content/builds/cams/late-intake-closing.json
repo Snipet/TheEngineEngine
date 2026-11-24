@@ -1,0 +1,8 @@
+{
+  "format": "tee-build", "version": 1,
+  "name": "Late intake closing (Atkinson)",
+  "notes": "A free intake valve shut 100 degrees after the bottom (640 in the cycle), pushing part of each charge back: a shorter compression than expansion, as a hybrid's Atkinson engine.",
+  "spec": { "valve": {
+    "model": "Lab", "inKind": "Free valve", "freeInOpen": 352, "freeInClose": 640, "freeFlank": 40, "inLift": 0.0095
+  } }
+}

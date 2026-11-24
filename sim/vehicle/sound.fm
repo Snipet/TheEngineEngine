@@ -1,0 +1,144 @@
+// sound.fm: what the road and the driveline sound like, as signals for the listener (wave 2), mixed today as the
+// reference mixes its road().
+//
+//   the rumble: the tyres' tread on the road's texture, noise between 110 and 700 Hz rising with the square of the
+//   speed (the reference's), scaled by the surface (a wet road hisses more, snow is quiet, a prepared strip sticky);
+//   the squeal: a tyre that slips more than 1.2 m/s on a firm surface rings near 950 Hz (the reference's band), its
+//   strength the slip's, summed over the tyres in proportion to their loads;
+//   the clunk: the driveline's play closing (the shafts' thud at 140 Hz and the gearbox case's ring at 1350 Hz,
+//   the reference's), struck as hard as the play closed;
+//   the wind: noise above 300 Hz, its amplitude rising with the cube of the speed (aeroacoustic noise's power rises
+//   with about the sixth power of the speed), negligible below 60 km/h.
+//
+// The filters are this file's own (VehLowpass, VehHighpass, VehBand), so the model needs nothing outside sim/vehicle/.
+// None of this is a recording or a measurement: the levels are the reference's where it has them, and judgement
+// otherwise. Nobody has listened to it.
+#pragma once
+
+module VehOnePole
+{
+    float a;
+    float z;
+
+    void set(float hz, float rate)
+    {
+        a = 1.0f - expf(-6.2831853f * hz / rate);
+        z = 0.0f;
+    }
+
+    float lowpass(float x)
+    {
+        z += a * (x - z);
+        return z;
+    }
+
+    float highpass(float x)
+    {
+        z += a * (x - z);
+        return x - z;
+    }
+};
+
+// A band-pass (RBJ's, constant peak gain 1)
+module VehBand
+{
+    float b0;
+    float a1;
+    float a2;
+    float x1;
+    float x2;
+    float y1;
+    float y2;
+
+    void set(float hz, float q, float rate)
+    {
+        const float w = 6.2831853f * hz / rate;
+        const float al = sinf(w) / (2.0f * q);
+        const float n = 1.0f / (1.0f + al);
+        b0 = al * n;
+        a1 = -2.0f * cosf(w) * n;
+        a2 = (1.0f - al) * n;
+        x1 = 0.0f;
+        x2 = 0.0f;
+        y1 = 0.0f;
+        y2 = 0.0f;
+    }
+
+    float tick(float x)
+    {
+        const float y = b0 * (x - x2) - a1 * y1 - a2 * y2;
+        x2 = x1;
+        x1 = x;
+        y2 = y1;
+        y1 = y;
+        return y;
+    }
+};
+
+// How each surface sounds under a tyre: the rumble's level and how much a slipping tyre squeals there
+const float VEH_SURFACE_RUMBLE[5] = {1.0f, 1.2f, 1.5f, 0.5f, 0.9f};
+const float VEH_SURFACE_SQUEAL[5] = {1.0f, 0.6f, 0.25f, 0.0f, 1.0f};
+
+module VehSound
+{
+    int rs;
+    VehOnePole rdHp;
+    VehOnePole rdLp;
+    VehBand squealBand;
+    VehBand thud;
+    VehBand ring;
+    VehOnePole windHp;
+    VehOnePole windLp;
+    float clunk;        // the next strike
+    float kStrike;
+    // the last sample's parts, for whoever wants them apart
+    float rumble;
+    float squeal;
+    float knock;
+    float wind;
+
+    void setup(float rate)
+    {
+        rs = 4242;
+        rdHp.set(110.0f, rate);
+        rdLp.set(700.0f, rate);
+        squealBand.set(950.0f, 9.0f, rate);
+        thud.set(140.0f, 2.5f, rate);
+        ring.set(1350.0f, 14.0f, rate);
+        windHp.set(300.0f, rate);
+        windLp.set(4000.0f, rate);
+        kStrike = rate / 48000.0f;
+        clunk = 0.0f;
+    }
+
+    float rnd()
+    {
+        const int hi = rs / 127773;
+        const int lo = rs % 127773;
+        rs = 16807 * lo - 2836 * hi;
+        if (rs <= 0)
+            rs += 2147483647;
+        return 2.0f * ((float)rs / 2147483647.0f) - 1.0f;
+    }
+
+    // The play closed this sample at a speed difference dw (rad/s at the wheels)
+    void strike(float dw)
+    {
+        clunk += kStrike * fminf(fabsf(dw), 8.0f);
+    }
+
+    // One sample. v: the car's speed (m/s); surface: 0 to 4; sq: the tyres' squeal, 0 to about 1
+    float tick(float v, int surface, float sq)
+    {
+        const int s = surface < 0 ? 0 : (surface > 4 ? 4 : surface);
+        const float sp = fminf(fabsf(v) / 30.0f, 1.6f);
+        const float n = rnd();
+        rumble = sp * sp * VEH_SURFACE_RUMBLE[s] * rdLp.lowpass(rdHp.highpass(n));
+        squeal = sq > 0.0f ? 32.0f * VEH_SURFACE_SQUEAL[s] * sq * squealBand.tick(n) : 0.0f;
+        knock = 4.0f * thud.tick(clunk) + ring.tick(clunk);
+        clunk = 0.0f;
+        const float vw = fminf(fabsf(v) / 50.0f, 1.6f);
+        wind = 0.25f * vw * vw * vw * windHp.highpass(windLp.lowpass(rnd()));
+        return rumble + squeal + knock + wind;
+    }
+};

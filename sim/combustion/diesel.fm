@@ -1,0 +1,65 @@
+// diesel.fm: what the diesel's charge (the reference's chargeDiesel, which stays as it is) takes from the fields of
+// fuel.model 1: the injection's timing, a pilot injection, the rail's pressure, and the smoke limit with an over-fuel
+// allowance. At their defaults each leaves the reference's numbers as they were.
+//
+// The reference's diesel: at full fuel an equivalence ratio of 0.75 (the smoke limit), injecting some degrees before the
+// top (4 + 14 times the speed over the redline + 3 times the lever, plus TIMING), lighting after Wolfer's delay; what
+// was injected during the delay burns at once (Watson's premixed share, beta), the rest as it mixes (the diffusion
+// burn, over 35 + 30 times the lever degrees).
+//
+// Injection timing: degrees added to the start of injection (earlier: more of the fuel in before it lights, a larger
+// premixed share, louder; later: quieter, cooler, smokier). A pilot: a small share of the fuel (0 to 10 %) injected
+// ahead of the main; it lights first and heats the charge, so the main's delay is short and its premixed share small
+// (the clatter goes): the premixed share falls by 70 % with a pilot of 3 % or more (judgement after common-rail
+// engines' published heat release, where a pilot all but removes the premixed spike). The rail's pressure: the
+// spray's speed goes as its square root and the mixing (the diffusion burn's rate) with it, so the diffusion burn
+// takes (1000 bar / rail)^0.5 times as long (Heywood §10.5: mixing-controlled; 1000 bar is the reference's, judgement).
+// The smoke limit: the most equivalence ratio the governor allows, 0.75 (the reference's) times 1 plus the over-fuel
+// allowance (a tuner's "smoke" setting: more torque, black smoke). The smoke number (a Bosch filter smoke number, 0 to
+// 10) rises from none at 0.6 to 4 at an equivalence ratio of 0.9 and more beyond (judgement, the shape of published
+// FSN against air-fuel ratio).
+#pragma once
+
+module DieselFields
+{
+    float soiAdd;       // degrees added to the start of injection
+    float pilot;        // the pilot's share of the fuel
+    float rail;         // bar
+    float overFuel;     // the smoke limit's allowance, 0 to 0.4
+    // what it gave the last charge
+    float phiMax;
+    float smoke;
+
+    void defaults()
+    {
+        soiAdd = 0.0f;
+        pilot = 0.0f;
+        rail = 1000.0f;
+        overFuel = 0.0f;
+        phiMax = 0.75f;
+        smoke = 0.0f;
+    }
+
+    // The equivalence ratio at the lever (0 to 1): the reference's 0.75 lever at no allowance
+    float phiAt(float lever)
+    {
+        phiMax = 0.75f * (1.0f + fminf(fmaxf(overFuel, 0.0f), 0.4f));
+        const float phi = phiMax * lever;
+        const float x = fmaxf(phi - 0.6f, 0.0f) / 0.3f;
+        smoke = fminf(4.0f * x * x, 10.0f);
+        return phi;
+    }
+
+    // The premixed share, from the reference's (Watson's)
+    float premixed(float beta)
+    {
+        const float p = fminf(fmaxf(pilot, 0.0f), 0.1f);
+        return fminf(fmaxf(beta * (1.0f - 0.7f * fminf(p / 0.03f, 1.0f)), 0.02f), 0.9f);
+    }
+
+    // The diffusion burn's degrees, from the reference's
+    float diffusion(float dur2)
+    {
+        return dur2 * sqrtf(1000.0f / fminf(fmaxf(rail, 200.0f), 3000.0f));
+    }
+};
