@@ -21,8 +21,10 @@
 //                           and calls events when it moved by 0.0005)
 //   apply(spec)             the section, when its rev moved (Engine::readSpec)
 //   events(cyl, n, rotary, cyc, bore, vTotal)   the events and areas of the n cylinders at cyl (configure, the dial)
-//   control(d16, omega, redline, load, pOil, tOil, theta, fire, inTarget, exTarget, liftTarget)   every 16 samples
-//   areaEx(c, a), areaIn(c, a)   each sample: the area (m^2) cylinder c's valves open at its angle a
+//   oil(pressure, temperature), then control16(d16, omega, redline, load, theta, fire, inTarget, exTarget, lift)
+//                           every 16 samples, with valve.model 1 (the integrator's hooks)
+//   areaEx(cy, c, a), areaIn(cy, c, a)   each sample, with valve.model 1: the area (m^2) cylinder c's valves open at
+//                           its angle a
 //   active(c)               does cylinder c fire this cycle (no: deactivated)
 //   plateOpen()             1: the lift is the load control, the throttle's plate is to stand open
 //   liftEx(c, a), liftIn(c, a)   the lift at an angle, 0 to 1 of the valve's largest (the Scope)
@@ -137,9 +139,11 @@ module Valvetrain
     // Every 16 samples: the lab's phasers, stages, lift, deactivation and float. theta: the crank's angle (degrees),
     // fire: each cylinder's offset; load 0 to 1; the oil's pressure (Pa over the air) and temperature (K); the ECU's
     // targets (-1: none)
-    void control(float d16, float omega, float redline, float load, float pOil, float tOil, float theta, float* fire,
-                 float inT, float exT, float liftT)
+    // (the ECU's lift command: one of 0 or less is none until card H's Ecu gives one: its stub's 0)
+    void control16(float d16, float omega, float redline, float load, float theta, float* fire, float inT, float exT,
+                   float liftCmd)
     {
+        const float liftT = liftCmd > 0.0f ? liftCmd : -1.0f;
         inTarget = inT;
         exTarget = exT;
         if (model == 0)
@@ -156,19 +160,36 @@ module Valvetrain
         place();
     }
 
-    // ---- each sample ----
-    float areaEx(int c, float a)
+    // ---- each sample (the integrator's hook, called with valve.model 1): cylinder c's valves' areas (m^2) at its angle
+    // a; the reference's until the lab is taken (events) ----
+    float areaEx(Cylinder* cy, int c, float a)
     {
         if (model == 0)
-            return cyl[c].aE * cyl[c].areaAt(a, cyl[c].evo, cyl[c].edur);
+        {
+            const float le = cy->areaAt(a, cy->evo, cy->edur);
+            return le > 0.0f ? cy->aE * le : 0.0f;
+        }
         return lab.areaEx(c, a);
     }
 
-    float areaIn(int c, float a)
+    float areaIn(Cylinder* cy, int c, float a)
     {
         if (model == 0)
-            return cyl[c].aI * cyl[c].areaAt(a, cyl[c].ivo, cyl[c].idur);
+        {
+            const float li = cy->areaAt(a, cy->ivo, cy->idur);
+            return li > 0.0f ? cy->aI * li : 0.0f;
+        }
         return lab.areaIn(c, a);
+    }
+
+    // The oil's pressure (Pa over the air) and temperature (K), every 16 samples before control16 (the hook)
+    float pOil;
+    float tOil;
+
+    void oil(float pressure, float temperature)
+    {
+        pOil = pressure;
+        tOil = temperature;
     }
 
     bool active(int c)

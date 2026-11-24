@@ -91,6 +91,8 @@ namespace tee::ui
     GarageWorkspace::GarageWorkspace(WorkspaceContext& c, garage::Library* library) : Workspace(c), lib_(library)
     {
         if (lib_ == nullptr)
+            lib_ = ctx_.library;   // the application's (the shell's, over its files)
+        if (lib_ == nullptr)
         {
             // The frame's own services when they list builds (the application today); else made-up builds.
             if (garage::ServicesLibrary::usable(ctx_))
@@ -468,23 +470,48 @@ namespace tee::ui
 
     void GarageWorkspace::layout(const Rect& s)
     {
-        bar_ = { s.x + kGap, s.y + kGap, s.w - 2 * kGap, kBarH };
-        const float by = bar_.y + (kBarH - kButtonH) * 0.5f;
-        // The bar: search, sort, show (the cards); or the way back (compare).
-        float x = bar_.x + look::kPad;
-        search_->setPlace({ x, by, 230.0f, kButtonH }, !comparing_);
-        x += 230.0f + 22.0f + 40.0f;   // "SORT" is drawn in the gap
-        for (Button* b : sorts_)
+        // The bar: search, sort, show (the cards), each a group kept whole, on as many lines as the width needs;
+        // or the way back (compare).
+        const float right = s.right() - kGap - look::kPad;
+        const float x0 = s.x + kGap + look::kPad;
+        const auto groupWidth = [&](auto& buttons, float lead) {
+            float w = lead;
+            for (Button* bt : buttons)
+                w += wordsWidth(bt->title()) + 4.0f;
+            return w;
+        };
+        const float searchW = std::min(230.0f, s.w - 2 * kGap - 2 * look::kPad);
+        const float wSort = groupWidth(sorts_, 40.0f), wShow = groupWidth(filters_, 42.0f);
+        float x = x0, line = 0.0f;
+        const auto place = [&](float w) {
+            if (x > x0 && x + w > right)
+            {
+                x = x0;
+                line += 1.0f;
+            }
+            const float at = x;
+            x += w + 18.0f;
+            return at;
+        };
+        const float sx = place(searchW), sl = line;
+        const float ox = place(wSort), ol = line;
+        const float fx = place(wShow), fl = line;
+        const float lines = comparing_ ? 1.0f : line + 1.0f;
+        bar_ = { s.x + kGap, s.y + kGap, s.w - 2 * kGap, kBarH + (lines - 1.0f) * (kButtonH + 8.0f) };
+        const float by = bar_.y + (kBarH - kButtonH) * 0.5f, step = kButtonH + 8.0f;
+        search_->setPlace({ sx, by + sl * step, searchW, kButtonH }, !comparing_);
+        x = ox + 40.0f;                // "SORT" is drawn before them
+        for (Button* bt : sorts_)
         {
-            const float w = wordsWidth(b->title());
-            b->setPlace({ x, by, w, kButtonH }, !comparing_);
+            const float w = wordsWidth(bt->title());
+            bt->setPlace({ x, by + ol * step, w, kButtonH }, !comparing_);
             x += w + 4.0f;
         }
-        x += 18.0f + 42.0f;            // "SHOW"
-        for (Button* b : filters_)
+        x = fx + 42.0f;                // "SHOW"
+        for (Button* bt : filters_)
         {
-            const float w = wordsWidth(b->title());
-            b->setPlace({ x, by, w, kButtonH }, !comparing_);
+            const float w = wordsWidth(bt->title());
+            bt->setPlace({ x, by + fl * step, w, kButtonH }, !comparing_);
             x += w + 4.0f;
         }
         back_->setPlace({ bar_.x + look::kPad, by, wordsWidth(back_->title()), kButtonH }, comparing_);
@@ -802,7 +829,7 @@ namespace tee::ui
     {
         const look::Palette p = look::Palette::of(th);
         c.rrect(bar_.x, bar_.y, bar_.w, bar_.h, look::kRadius, p.panel, 1.0f, p.edge);
-        const float cy = c.capCentreTop(bar_.centreY(), look::kCaps);
+        const float cy = c.capCentreTop(bar_.y + kBarH * 0.5f, look::kCaps);
         if (comparing_)
         {
             const BuildSummary* a = currentBuild();
@@ -815,8 +842,10 @@ namespace tee::ui
             drawDiffs(c, p);
             return;
         }
-        c.text("SORT", sorts_[0]->bounds().x - 40.0f, cy, look::kCaps, p.label);
-        c.text("SHOW", filters_[0]->bounds().x - 42.0f, cy, look::kCaps, p.label);
+        c.text("SORT", sorts_[0]->bounds().x - 40.0f, c.capCentreTop(sorts_[0]->bounds().centreY(), look::kCaps), look::kCaps,
+               p.label);
+        c.text("SHOW", filters_[0]->bounds().x - 42.0f, c.capCentreTop(filters_[0]->bounds().centreY(), look::kCaps),
+               look::kCaps, p.label);
         // The cards.
         {
             const Canvas::ClipScope clip(c, { grid_.x - 6.0f, grid_.y - 6.0f, grid_.w + 12.0f, grid_.h + 12.0f });
@@ -844,7 +873,8 @@ namespace tee::ui
         {
             // Said plainly: these are not the user's files.
             const float x = bar_.right() - look::kPad;
-            if (x - c.textWidth("DEMO LIBRARY", look::kCaps) > filters_[4]->bounds().right() + 12.0f)
+            if (x - c.textWidth("DEMO LIBRARY", look::kCaps) > filters_[4]->bounds().right() + 12.0f
+                && filters_[4]->bounds().centreY() < bar_.y + kBarH)
                 c.text("DEMO LIBRARY", x, cy, look::kCaps, p.warning, funkgui::Align::right);
             else
                 c.text("DEMO LIBRARY", detail_.right() - look::kPad, detail_.y + 9.0f, look::kCaps, p.warning,

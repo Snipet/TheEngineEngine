@@ -3,12 +3,11 @@
 
 #include "tee/Denormals.h"
 #include "tee/Instance.h"
+#include "tee/Warm.h"
 
 #include <algorithm>
 #include <chrono>
 #include <cmath>
-#include <cstdio>
-#include <cstdlib>
 #include <cstring>
 #include <functional>
 
@@ -48,26 +47,41 @@ namespace tee
                 const Fields& fields = sim_->fields();
                 std::string e;
                 const auto find = [&](const char* path, Schema::Handle& h) { return schema.find(path, h, e); };
-                hasTorque_ = find("tel.engine.torque", torque_);
+                const bool programDyno = find("tel.engine.torque", torque_) && find("ctl.mode", mode_)
+                                         && find("ctl.dynoSpeed", dynoSpeed_) && find("ctl.dynoRate", dynoRate_);
                 if (!find("tel.engine.speed", speed_) || !find("ctl.throttle", throttle_)
                     || !find("ctl.ignition", ignition_))
                 {
                     error = "the program has no tel.engine.speed, ctl.throttle or ctl.ignition: it cannot be put on a dyno";
                     return false;
                 }
-                if (hasTorque_)
+                // the crank's speed, held by the host while the engine starts (and throughout, with the host's brake)
+                holdCrank_ = find("crank.omega", omega_);
+                hasState_ = find("tel.engine.state", state_);
+                const bool custom = build.fieldOf("engine.custom") >= 0 && build.get("engine.custom") != 0.0;
+                const bool hostCan = holdCrank_ && find("mech.jBase", jBase_) && find("set.inertia", dialJ_)
+                                     && find("set.load", dialLoad_) && !custom;
+                if (options_.brake == "host" || (options_.brake == "auto" && hostCan))
                 {
-                    if (!find("ctl.mode", mode_) || !find("ctl.dynoSpeed", dynoSpeed_) || !find("ctl.dynoRate", dynoRate_))
+                    if (!hostCan)
                     {
-                        error = "the program has tel.engine.torque but no ctl.mode, ctl.dynoSpeed or ctl.dynoRate";
+                        error = custom ? "the host's brake does not know a custom engine's inertia (engine.custom is on)"
+                                       : "the program lacks what the host brakes by (crank.omega, mech.jBase, set.inertia, "
+                                         "set.load)";
                         return false;
                     }
+                    hasTorque_ = false;
                 }
-                else if (!find("crank.omega", omega_) || !find("mech.jBase", jBase_) || !find("set.inertia", dialJ_)
-                         || !find("set.load", dialLoad_))
+                else if (programDyno)
                 {
-                    error = "the program has neither a dyno (tel.engine.torque) nor the crank and inertia the host brakes "
-                            "by (crank.omega, mech.jBase, set.inertia, set.load)";
+                    hasTorque_ = true;
+                    // the absorber's torque now (core/dyno.fm), averaged here over whole cycles; else tel's mean
+                    absorber_ = find("dyno.tqAbs", absorberH_);
+                }
+                else
+                {
+                    error = "the program has no dyno (tel.engine.torque, ctl.mode, ctl.dynoSpeed, ctl.dynoRate)"
+                            + std::string(hostCan || options_.brake == "program" ? "" : ", nor what the host brakes by");
                     return false;
                 }
                 // the exhaust gas's lags (exhaust/exhaust.fm): the ports' temperature over 0.8 s, the pipes' over 0.3 s
@@ -125,6 +139,13 @@ namespace tee
                     std::memcpy(data + s.revOffset, &rev, 4);
                 }
                 if (options_.warm)
+                    for (const HeldValue& h : warmEngine())
+                    {
+                        Schema::Handle handle;
+                        if (schema.find(h.path, handle, e) && handle.scalar() != Scalar::None)
+                            held_.emplace_back(handle, h.value);
+                    }
+                if (options_.warm)
                     warm();
                 left_.assign(static_cast<std::size_t>(std::max(options_.block, 1)), 0.0f);
                 right_ = left_;
@@ -141,16 +162,21 @@ namespace tee
             }
 
             // Starts the engine held at `speed`: the key in start for a moment, then on, and the pedal down.
+            // (the crank held at `speed` by the host meanwhile, where it can be, so the engine fires at once: the
+            // program's dyno takes it only once it runs), until it runs or three seconds have gone
             void start(double speed)
             {
                 set(ignition_, 2.0);
                 set(throttle_, 0.0);
-                const int n = static_cast<int>(options_.startSeconds * options_.sampleRate);
-                for (int done = 0; done < n;)
+                const long least = std::lround(options_.startSeconds * options_.sampleRate);
+                const long most = std::lround(3.0 * options_.sampleRate);
+                for (long done = 0; done < most; done += options_.block)
                 {
-                    const int k = std::min(options_.block, n - done);
-                    step(speed, k);
-                    done += k;
+                    if (done >= least && (!hasState_ || instance_->read(state_) == 2.0))
+                        break;
+                    if (holdCrank_)
+                        set(omega_, speed);
+                    step(speed, options_.block);
                 }
                 set(ignition_, 1.0);
                 set(throttle_, options_.pedal);
@@ -162,7 +188,11 @@ namespace tee
                 const double w = 0.5 * (speeds.front() + speeds.back());
                 const long n = std::lround(options_.warmupSeconds * options_.sampleRate);
                 for (long done = 0; done < n; done += options_.block)
+                {
+                    if (options_.warm && done % (64 * options_.block) == 0)
+                        warm();
                     step(w, options_.block);
+                }
             }
 
             // One point: held at `speed`, cycle after cycle until two agree or the most are run.
@@ -172,12 +202,14 @@ namespace tee
                 p.speed = speed;
                 const double perCycle = kFourPi / std::max(speed, 1.0) * options_.sampleRate;   // samples
                 double previous = 0.0, held = 0.0;
-                const int settling = slow_.empty() ? 0 : 6;
+                const int settling = slow_.empty() ? 0 : fresh_ ? 8 : 6;
                 const int most = options_.holdSeconds > 0.0 ? 1 << 30 : options_.maxCycles + settling;
                 for (int c = 0; c < most; ++c)
                 {
                     if (cancel != nullptr && cancel->load(std::memory_order_relaxed))
                         return p;
+                    if (options_.warm)
+                        warm();   // the cell holds the engine at its working temperatures
                     double sum = 0.0;
                     long run = 0;
                     const long total = std::lround(perCycle * (c + 1)) - std::lround(perCycle * c);
@@ -189,7 +221,7 @@ namespace tee
                     }
                     const double t = sum / static_cast<double>(std::max(total, 1L));
                     held += total / options_.sampleRate;
-                    // the settling cycles (above): 1 to 6 after the first; their torque is not counted
+                    // the settling cycles (above), after the first; their torque is not counted
                     if (c >= 1 && c <= settling)
                     {
                         settleStep(c - 1, total / options_.sampleRate);
@@ -218,6 +250,7 @@ namespace tee
                     previous = t;
                 }
                 p.power = p.torque * speed;
+                fresh_ = false;
                 return p;
             }
 
@@ -238,6 +271,8 @@ namespace tee
                         step(w, options_.block);
                 while (w <= speeds.back() + 1e-9)
                 {
+                    if (options_.warm && blocks.size() % 64 == 0)
+                        warm();
                     const double t = step(w, options_.block);
                     blocks.push_back({time + 0.5 * dt, w + 0.5 * rate * dt, t});
                     time += dt;
@@ -283,7 +318,7 @@ namespace tee
                     set(dynoRate_, 0.0);
                     sim_->process()(data, left_.data(), right_.data(), n);
                     samples_ += n;
-                    return instance_->read(torque_);
+                    return instance_->read(absorber_ ? absorberH_ : torque_);
                 }
                 set(omega_, speed);
                 sim_->process()(data, left_.data(), right_.data(), n);
@@ -295,24 +330,14 @@ namespace tee
                 return j * gained * options_.sampleRate / n;
             }
 
-            // A warm engine: the coolant at its thermostat, the oil 10 K and the chamber's walls 87 K over it, as Heat
-            // has a running engine's (core/heat.fm); the rest follows at the next control step.
+            // A warm engine, held so as a dyno cell's conditioning holds it: the coolant at its thermostat, the oil 10 K
+            // and the chamber's walls 87 K over it, as Heat has a running engine's (core/heat.fm); the rest (the oil's
+            // thickness, the friction) follows at the next control step. Left alone at full load the coolant climbs
+            // past the thermostat over minutes, the oil thins and the friction falls: a curve that drifts with time.
             void warm()
             {
-                const Schema& schema = sim_->schema();
-                std::string e;
-                Schema::Handle h;
-                const double coolant = 368.0;
-                if (schema.find("heat.tCool", h, e))
-                    instance_->write(h, coolant);
-                if (schema.find("heat.tOil", h, e))
-                    instance_->write(h, coolant + 10.0);
-                if (schema.find("heat.tSurf", h, e))
-                    instance_->write(h, coolant + 87.0);
-                if (schema.find("heat.warm", h, e))
-                    instance_->write(h, 1.0);
-                if (schema.find("heat.warmS", h, e))
-                    instance_->write(h, 1.0);
+                for (const auto& [handle, value] : held_)
+                    instance_->write(handle, value);
             }
 
             // The exhaust's slow temperatures (exhaust/exhaust.fm: the gas at the ports over 0.8 s, the pipes' walls
@@ -338,11 +363,14 @@ namespace tee
                     v.x0 = instance_->read(v.handle, v.index);
             }
 
-            // After each settling cycle (phase 0 to 5): the gas's round (0, 1), then the walls' two (2, 3 and 4, 5).
+            // After each settling cycle (phase 0 up): the gas's rounds, then the walls' two.
             void settleStep(int phase, double cycle)
             {
-                const int group = phase < 2 ? 0 : 1;
-                const double nudge = phase < 2 ? 60.0 : phase < 4 ? 150.0 : 40.0;
+                // the gas's rounds come first (two after a start: the gas is still rising), then the walls' two
+                const int gasRounds = fresh_ ? 2 : 1;
+                const int group = phase < 2 * gasRounds ? 0 : 1;
+                const double nudge = group == 0 ? 60.0 : phase < 2 * gasRounds + 2 ? 150.0 : 40.0;
+                const double gas = slow_.front().group == 0 ? instance_->read(slow_.front().handle, 0) : 1500.0;
                 for (Slow& v : slow_)
                 {
                     const double x = instance_->read(v.handle, v.index);
@@ -369,14 +397,13 @@ namespace tee
                         if (std::fabs(dm) > 1e-6 && ds * dm > 0.0)
                         {
                             const double target = v.m0 + v.s0 * dm / ds;
+                            // a wall ends between the air and the gas that reaches it
+                            const double top = v.group == 1 ? std::max(gas, 300.0) : 1500.0;
                             if (std::isfinite(target))
-                                instance_->write(v.handle, std::clamp(target, 250.0, 1500.0), v.index);
+                                instance_->write(v.handle, std::clamp(target, 250.0, top), v.index);
                         }
                         v.x0 = instance_->read(v.handle, v.index);
                     }
-                    if (std::getenv("TEE_PREDICT_DEBUG") != nullptr)
-                        std::fprintf(stderr, "phase %d [%d] x %.2f drift %.3f -> %.2f\n", phase, static_cast<int>(v.index), x,
-                                     drift, instance_->read(v.handle, v.index));
                 }
             }
 
@@ -391,8 +418,12 @@ namespace tee
             PredictOptions options_;
             std::unique_ptr<Instance> instance_;
             bool begun_ = false;
-            bool hasTorque_ = false, redline_ = false, idle_ = false;
+            bool hasTorque_ = false, redline_ = false, idle_ = false, holdCrank_ = false, hasState_ = false,
+                 absorber_ = false;
+            Schema::Handle state_, absorberH_;
             std::vector<Slow> slow_;
+            std::vector<std::pair<Schema::Handle, double>> held_;   // Warm.h's warm engine
+            bool fresh_ = true;   // no point made yet since the start
             Schema::Handle torque_, speed_, throttle_, ignition_, mode_, dynoSpeed_, dynoRate_, omega_, jBase_, dialJ_,
                 dialLoad_, redlineH_, idleH_;
             std::vector<float> left_, right_;
@@ -573,7 +604,7 @@ namespace tee
         std::uint64_t h = build.hash();
         for (const double v : {static_cast<double>(o.coarse), static_cast<double>(o.points), o.from, o.to, o.pedal,
                                o.tolerance, static_cast<double>(o.minCycles), static_cast<double>(o.maxCycles),
-                               o.sampleRate, static_cast<double>(o.block), o.startSeconds, o.warm ? 1.0 : 0.0, o.warmupSeconds, o.settleExhaust ? 1.0 : 0.0, o.holdSeconds})
+                               o.sampleRate, static_cast<double>(o.block), o.startSeconds, o.warm ? 1.0 : 0.0, o.warmupSeconds, o.settleExhaust ? 1.0 : 0.0, o.holdSeconds, o.brake == "host" ? 1.0 : o.brake == "program" ? 2.0 : 0.0})
             h = mix(h, v);
         return h;
     }

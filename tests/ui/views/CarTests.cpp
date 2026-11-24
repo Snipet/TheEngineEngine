@@ -4,7 +4,6 @@
 #include "ViewKit.h"
 
 #include "views/car/Car.h"
-#include "views/car/CarDemo.h"
 
 #include <funkgui/core/Theme.h>
 
@@ -14,38 +13,10 @@ namespace
 
     void live(StageRig& rig)
     {
-        tee::ui::cardemo::setLive(rig.demo.engine);
         rig.settle();
     }
 
-    VIEW_TEST(testCarStage, "car.stage")
-    {
-        for (float dpi : { 2.0f, 1.0f })
-        {
-            StageRig rig(tee::ui::makeCarWorkspace, 1100, 700, dpi, 4.6);
-            live(rig);
-            golden(dpi > 1.5f ? "car.stage" : "car.stage.dpi1", *rig.host);
-        }
-        return 0;
-    }
-
-    VIEW_TEST(testCarLarge, "car.large")
-    {
-        for (float dpi : { 2.0f, 1.0f })
-        {
-            StageRig rig(tee::ui::makeCarWorkspace, 1600, 1000, dpi, 4.6);
-            live(rig);
-            golden(dpi > 1.5f ? "car.large" : "car.large.dpi1", *rig.host);
-        }
-        StageRig paper(tee::ui::makeCarWorkspace, 1100, 700, 2.0f, 4.6);
-        tee::ui::cardemo::setLive(paper.demo.engine);
-        paper.host = std::make_unique<funkgui::HeadlessHost>(*paper.ws, 1, 2.0f);
-        paper.host->resize(1100, 700);
-        paper.ws->place({ 0.0f, 0.0f, 1100.0f, 700.0f });
-        paper.settle();
-        golden("car.paper", *paper.host);
-        return 0;
-    }
+    // The stage's goldens (at the frame's stage rects) are made in DynoTests.cpp, with DYNO's.
 
     // A press on each drawing selects its group; the inspector's page lists that group's fields the build has.
     VIEW_TEST(testCarSelect, "car.select")

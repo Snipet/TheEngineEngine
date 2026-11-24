@@ -14,6 +14,16 @@ namespace tee::ui
         return -1;
     }
 
+    std::vector<int> arrayElements(const FieldDoc& doc, std::string_view arrayPath)
+    {
+        std::vector<int> out;
+        for (int i = 0; i < doc.count(); ++i)
+            if (!arrayPath.empty() && doc.info(i).array == arrayPath)
+                out.push_back(i);
+        std::sort(out.begin(), out.end(), [&](int a, int b) { return doc.info(a).element < doc.info(b).element; });
+        return out;
+    }
+
     std::vector<std::string> sectionsOf(const FieldDoc& doc)
     {
         std::vector<std::string> out;

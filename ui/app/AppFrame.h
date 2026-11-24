@@ -111,6 +111,12 @@ namespace tee::ui
         bool ribbonFolded() const noexcept { return folded_; }
         void foldRibbon(bool folded);
 
+        // The builds on disk (GARAGE's; the shell's implementation): ticked once a frame. None: GARAGE uses its own.
+        void setLibrary(garage::Library* library);
+        // The stage the frame gives a workspace in a window of w x h (the same whatever the ribbon does): at the
+        // smallest window, 1100 x 700, {64, 48, 696, 574}; at 1600 x 1000, {112, 48, 1128, 874}.
+        static funkgui::Rect stageFor(int w, int h);
+
         // Where things are (window px), for tests and probes.
         float railWidth() const noexcept;
         funkgui::Rect railRect(int i) const;

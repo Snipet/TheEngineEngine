@@ -10,6 +10,7 @@
 module IntakeSpec
 {
     int rev [[ui::hidden]];
+    // the package's model (the integrator's switch, sim/README.md): 0 the reference's, bit for bit; 1 the package's own
     int model [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Induction model")]]
         [[ui::choices("Reference", "Lab")]];
     int throttleKind [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Throttle")]] [[ui::group("Throttle")]]

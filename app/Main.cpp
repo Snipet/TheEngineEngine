@@ -34,6 +34,12 @@
 
 #if defined(TEE_HAS_UI)
  #include "kit/shaders/Registry.h"       // the interface package's panel shaders (ui/)
+ // U5's atmosphere shaders (shaders/fx: glow, flame, smoke, shimmer), where the build made their table
+ #if __has_include("tee/ui/shaders/fx.h") && __has_include("views/fx/Fx.h")
+  #include "tee/ui/shaders/fx.h"
+  #include "views/fx/Fx.h"
+  #define TEE_HAS_FX 1
+ #endif
 #endif
 
 #define SDL_MAIN_HANDLED         // main() below is the program's own: SDL_main.h is taken only for SDL_SetMainReady
@@ -267,10 +273,34 @@ namespace
             return o.info ? 0 : 1;
         }
        #if defined(TEE_HAS_UI)
-        // the panels' own shaders to the GPU, now that there is one, so that the first frame compiles nothing
-        if (std::string refused; !ui::shaders::registerAll(refused))
-            std::fprintf(stderr, "shaders: the GPU refused some (they draw as placeholders):\n%s\n", refused.c_str());
+        // the panels' own shaders to the GPU, now that there is one, so that the first frame compiles nothing; with them
+        // the atmosphere's (an effect the GPU refuses draws nothing at all: no placeholder, no error, the launch goes on)
+       #if defined(TEE_HAS_FX)
+        ui::shaders::add(ui::shaders::fxShaders());
        #endif
+        if (std::string refused; !ui::shaders::registerAll(refused))
+            std::fprintf(stderr, "shaders: the GPU refused some (a panel's draw as placeholders; an effect draws "
+                                 "nothing):\n%s\n", refused.c_str());
+       #endif
+        // The effects present, a word each: "glow flame smoke shimmer", or what is missing and why.
+        const auto effectsLine = [] {
+           #if defined(TEE_HAS_FX)
+            std::string on, off;
+            for (const ui::fx::Effect e : { ui::fx::Effect::glow, ui::fx::Effect::flame, ui::fx::Effect::smoke,
+                                            ui::fx::Effect::shimmer })
+            {
+                std::string name = ui::fx::fileOf(e);
+                name = name.substr(0, name.find('.'));
+                (ui::fx::available(e) ? on : off) += (name + " ");
+            }
+            std::string line = on.empty() ? std::string("none") : on.substr(0, on.size() - 1);
+            if (!off.empty())
+                line += " (not drawn: " + off.substr(0, off.size() - 1) + ")";
+            return line;
+           #else
+            return std::string("none (this build has no atmosphere shaders)");
+           #endif
+        };
         std::string padWhy;
         if (!sdlInput.openGamepads(padWhy))
             std::fprintf(stderr, "gamepads: none will be read: %s\n", padWhy.c_str());
@@ -290,6 +320,7 @@ namespace
             if (engine.ref != nullptr || engine.sim != nullptr)
                 std::printf("compile: %.2f s\n", engine.compileSeconds);
             std::printf("audio: %s\n", audioLine.c_str());
+            std::printf("effects: %s\n", effectsLine().c_str());
             const std::string pad = sdlInput.gamepadName();
             std::printf("gamepad: %s\n", pad.empty() ? "none" : pad.c_str());
             std::printf("settings: %s (%s)\n", settings::file().string().c_str(),

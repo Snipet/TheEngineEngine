@@ -629,6 +629,8 @@ namespace tee::ui
             e = { 150.0f, 44.0f };
         else if (n.widget == "lamp")
             e = { 64.0f, 44.0f };
+        else if (n.widget == "array")
+            e = { 640.0f, 76.0f };
         return { n.width > 0.0f ? n.width : e.w, n.height > 0.0f ? n.height : e.h };
     }
 

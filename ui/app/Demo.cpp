@@ -20,9 +20,10 @@ namespace tee::ui
             "engine.coolant", "engine.oilPressure", "engine.flags", "engine.cycle", "engine.crank",
             "boost.pressure", "exhaust.portTemperature", "ecu.knockRetard",
             "car.speed", "car.gear", "car.brake", "car.clutch", "sound.peak",
+            "ecu.advance", "sound.rate",
         };
         const char* const kScope[] = { "degrees", "cycles", "pressure", "volume", "liftExhaust", "liftIntake",
-                                       "pipePoints", "pipePressure" };
+                                       "pipePoints", "pipePressure", "portIntake", "portExhaust" };
 
         double smooth(double x) { x = std::clamp(x, 0.0, 1.0); return x * x * (3.0 - 2.0 * x); }
 
@@ -47,7 +48,7 @@ namespace tee::ui
         }
     }
 
-    std::vector<FieldInfo> demoFields()
+    std::vector<FieldInfo> demoFields(bool hooks)
     {
         std::vector<FieldInfo> out;
         std::string group;
@@ -170,12 +171,26 @@ namespace tee::ui
         add("sound.distance", FieldKind::number, 0.5, 100, 5, "Distance", Quantity::length).logTaper = true;
         add("sound.room", FieldKind::number, 0, 1, 0.2, "Room", Quantity::fraction);
         add("sound.level", FieldKind::number, 0, 1, 0.7, "Level", Quantity::fraction);
+        if (hooks)
+            for (const DemoHook h : registeredDemos())
+            {
+                DemoExtras x;
+                x.fields = &out;
+                h(x);
+            }
         return out;
     }
 
     // ---- the engine ------------------------------------------------------------------------------------------------
-    DemoEngine::DemoEngine(const FieldDoc* doc) : doc_(doc)
+    DemoEngine::DemoEngine(const FieldDoc* doc, bool hooks) : doc_(doc)
     {
+        if (hooks)
+            for (const DemoHook h : registeredDemos())
+            {
+                DemoExtras x;
+                x.engine = this;
+                h(x);
+            }
         for (const char* n : kNames)
             names_.emplace_back(n);
         values_.assign(names_.size(), 0.0);
@@ -237,6 +252,19 @@ namespace tee::ui
                 predicted_ = curveFor(fieldOr("engine.compression", 10.0), fieldOr("boost.level", 80e3), "predicted");
             }
         }
+        if (runLeft_ > 0.0)
+        {
+            // The run so far: the points of the whole curve up to where 2 s of running have reached.
+            DynoTrace whole = curveFor(fieldOr("engine.compression", 10.0), fieldOr("boost.level", 80e3) * runPlan_.pedal, "so far");
+            const auto n = static_cast<std::size_t>(static_cast<double>(whole.speed.size()) * std::clamp(1.0 - runLeft_ / 2.0, 0.0, 1.0));
+            whole.speed.resize(n);
+            whole.torque.resize(n);
+            whole.power.resize(n);
+            for (auto& v : whole.values)
+                v.resize(n);
+            partial_ = std::move(whole);
+            ++dynoRevision_;
+        }
         if (runLeft_ > 0.0 && (runLeft_ -= dt) <= 0.0)
         {
             runLeft_ = 0.0;
@@ -274,9 +302,20 @@ namespace tee::ui
             manifold - 101325.0,   // boost: over the air outside, negative (vacuum) under a closed throttle
             720.0 + 420.0 * throttle_ + 0.03 * rpm_, rpm_ > 5200.0 && throttle_ > 0.9 ? 1.5 : 0.0,
             carSpeed, gear, 0.0, 0.0, 0.25 + 0.5 * throttle_,
+            12.0 + 22.0 * std::min(1.0, rpm_ / 5000.0) - 8.0 * throttle_, 48000.0,
         };
         for (std::size_t i = 0; i < values_.size(); ++i)
             values_[i] = v[i];
+    }
+
+    void DemoEngine::addTelemetry(std::string name, std::function<double(const DemoEngine&)> value)
+    {
+        extraTel_.emplace_back(std::move(name), std::move(value));
+    }
+
+    void DemoEngine::addScope(std::string name, std::function<int(const DemoEngine&, float*, int)> read)
+    {
+        extraScope_.emplace_back(std::move(name), std::move(read));
     }
 
     void DemoEngine::set(std::string_view name, double v)
@@ -300,11 +339,19 @@ namespace tee::ui
         for (std::size_t i = 0; i < names_.size(); ++i)
             if (names_[i] == name)
                 return static_cast<int>(i);
+        for (std::size_t i = 0; i < extraTel_.size(); ++i)
+            if (extraTel_[i].first == name)
+                return 2000 + static_cast<int>(i);
         return -1;
     }
 
     double DemoEngine::value(int handle) const
     {
+        if (handle >= 2000)
+        {
+            const auto k = static_cast<std::size_t>(handle - 2000);
+            return k < extraTel_.size() ? extraTel_[k].second(*this) : 0.0;
+        }
         if (handle >= 1000)
         {
             auto it = held_.begin();
@@ -342,6 +389,9 @@ namespace tee::ui
         for (int i = 0; i < static_cast<int>(std::size(kScope)); ++i)
             if (name == kScope[i])
                 return i;
+        for (std::size_t i = 0; i < extraScope_.size(); ++i)
+            if (extraScope_[i].first == name)
+                return 100 + static_cast<int>(i);
         return -1;
     }
 
@@ -350,6 +400,11 @@ namespace tee::ui
         ++reads_;
         if (handle < 0 || max <= 0)
             return 0;
+        if (handle >= 100)
+        {
+            const auto k = static_cast<std::size_t>(handle - 100);
+            return k < extraScope_.size() ? extraScope_[k].second(*this, out, max) : 0;
+        }
         const double bore = fieldOr("engine.bore", 0.1016), stroke = fieldOr("engine.stroke", 0.0884);
         const double rod = fieldOr("engine.rod", 0.1554), cr = fieldOr("engine.compression", 10.0);
         const double swept = kPi / 4.0 * bore * bore * stroke, clearance = swept / (cr - 1.0);
@@ -403,6 +458,15 @@ namespace tee::ui
                 case 3: out[i] = static_cast<float>(vol); break;
                 case 4: out[i] = static_cast<float>(lift(deg, 130.0, 254.0)); break;
                 case 5: out[i] = static_cast<float>(lift(deg, 345.0, 248.0)); break;
+                case 8:   // the intake port: the manifold, pulled down while the valve is open, a ringing after it shuts
+                    out[i] = static_cast<float>(manifold * (1.0 - 0.18 * lift(deg, 345.0, 248.0))
+                                                + 6e3 * std::exp(-std::fmod(deg - 593.0 + 720.0, 720.0) / 90.0)
+                                                      * std::sin(std::fmod(deg - 593.0 + 720.0, 720.0) / 18.0));
+                    break;
+                case 9:   // the exhaust port: the blowdown's pulse as the valve opens, then the stroke's push
+                    out[i] = static_cast<float>(104e3 + (60e3 + 120e3 * throttle_) * lift(deg, 130.0, 254.0)
+                                                            * std::exp(-std::max(0.0, deg - 140.0) / 60.0));
+                    break;
                 default: return 0;
             }
         }
@@ -432,7 +496,7 @@ namespace tee::ui
     }
 
     // ---- the rig ----------------------------------------------------------------------------------------------------
-    DemoRig::DemoRig(double t) { at(t); }
+    DemoRig::DemoRig(double t, bool hooks) : doc(demoFields(hooks)), engine(&doc, hooks) { at(t); }
 
     void DemoRig::at(double t)
     {

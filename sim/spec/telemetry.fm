@@ -76,6 +76,7 @@ module EcuTel
 {
     float knockRetard [[ui::label("Knock retard")]] [[ui::quantity("angle")]]
         [[ui::help("The spark taken back for knock")]];
+    float advance [[ui::label("Spark advance")]] [[ui::quantity("angle")]] [[ui::help("Cylinder 1's, degrees before top dead centre")]];
 };
 
 module CarTel
@@ -114,6 +115,7 @@ module CarTel
 module SoundTel
 {
     float peak [[ui::label("Peak")]] [[ui::quantity("fraction")]] [[ui::help("The call's largest sample, either channel")]];
+    float rate [[ui::label("Sample rate")]] [[ui::quantity("frequency")]] [[ui::help("The host's, the sound's")]];
 };
 
 // tel.valve: card E's valvetrain (model 1; at model 0 the events are the CAM dial's, the rest 0)

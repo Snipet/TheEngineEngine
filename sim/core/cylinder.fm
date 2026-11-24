@@ -182,17 +182,18 @@ module Cylinder
         return fminf(fmaxf(1.39f - 7.5e-5f * (tk - 300.0f), 1.24f), 1.40f);
     }
 
-    // The flows its ports would pass now (their open areas areaE and areaI, m^2: the valvetrain's) into pipes whose
-    // arriving waves are bE and bI, its state unchanged: for faces that share a port (a rotary's), so each can be solved
-    // with the others' flows in the pipe
-    float exhaustFlowAt(float areaE, float bE, float zE, float tPipe)
+    // The flows its ports would pass now (at angle a) into pipes whose arriving waves are bE and bI, its state unchanged:
+    // for faces that share a port (a rotary's), so each can be solved with the others' flows in the pipe
+    float exhaustFlowAt(float a, float bE, float zE, float tPipe)
     {
-        return areaE > 0.0f ? vE.flow(p, t, bE, zE, areaE, tPipe, 1) * vE.g : 0.0f;
+        const float ae = areaAt(a, evo, edur);
+        return ae > 0.0f ? vE.flow(p, t, bE, zE, aE * ae, tPipe, 1) * vE.g : 0.0f;
     }
 
-    float intakeFlowAt(float areaI, float bI, float zI, float tAir)
+    float intakeFlowAt(float a, float bI, float zI, float tAir)
     {
-        return areaI > 0.0f ? vI.flow(p, t, bI, zI, areaI, tAir, 0) * vI.g : 0.0f;
+        const float ai = areaAt(a, ivo, idur);
+        return ai > 0.0f ? vI.flow(p, t, bI, zI, aI * ai, tAir, 0) * vI.g : 0.0f;
     }
 
     // Did the angle pass ev between the last sample and this one?
@@ -234,13 +235,18 @@ module Cylinder
         vI.g = 1.0f;
     }
 
-    // One sample. a: its angle now; dDeg: degrees the crank turned this sample; dt: seconds a sample; areaE, areaI: its
-    // valves' open areas now (m^2: the valvetrain's, Valvetrain::areaEx and areaIn; at valve.model 0 aE times areaAt of
-    // its exhaust's event, aI of its intake's, as the reference computed them here). The exhaust header's arriving wave
-    // and impedance (and its gas's temperature), the runner's (and the intake air's). Returns nothing: it leaves the
-    // flows, the torque and the events in its fields.
-    void step(float a, float dDeg, float dt, float areaE, float areaI, float bE, float zE, float tPipe, float bI, float zI,
-              float tAir)
+    // One sample. a: its angle now; dDeg: degrees the crank turned this sample; dt: seconds a sample. The exhaust header's
+    // arriving wave and impedance (and its gas's temperature), the runner's (and the intake air's). Returns nothing: it
+    // leaves the flows, the torque and the events in its fields.
+    void step(float a, float dDeg, float dt, float bE, float zE, float tPipe, float bI, float zI, float tAir)
+    {
+        stepAreas(a, dDeg, dt, -1.0f, -1.0f, bE, zE, tPipe, bI, zI, tAir);
+    }
+
+    // The same with its valves' effective areas (m^2) given (the valvetrain's: card E, valve.model 1); an area below 0
+    // is its own table's, as step has it
+    void stepAreas(float a, float dDeg, float dt, float areaE, float areaI, float bE, float zE, float tPipe, float bI, float zI,
+                   float tAir)
     {
         const float before = ang;
         ang = a;
@@ -268,10 +274,12 @@ module Cylinder
         const float vNew = volumeSlope(a);
         const float dv = vNew - v;
         // the valves, each solved with its pipe
-        qE = areaE > 0.0f ? vE.flow(p, t, bE, zE, areaE, tPipe, 1) : 0.0f;
-        qI = areaI > 0.0f ? vI.flow(p, t, bI, zI, areaI, tAir, 0) : 0.0f;
-        qEa = areaE > 0.0f ? qE * vE.g : 0.0f;
-        qIa = areaI > 0.0f ? qI * vI.g : 0.0f;
+        const float le = areaE < 0.0f ? areaAt(a, evo, edur) : areaE;
+        const float li = areaI < 0.0f ? areaAt(a, ivo, idur) : areaI;
+        qE = le > 0.0f ? vE.flow(p, t, bE, zE, areaE < 0.0f ? aE * le : areaE, tPipe, 1) : 0.0f;
+        qI = li > 0.0f ? vI.flow(p, t, bI, zI, areaI < 0.0f ? aI * li : areaI, tAir, 0) : 0.0f;
+        qEa = le > 0.0f ? qE * vE.g : 0.0f;
+        qIa = li > 0.0f ? qI * vI.g : 0.0f;
         // their mass flows (out of the cylinder positive) at the pipes' pressures, and the heat they carry
         const float ppE = fmaxf(101325.0f + 2.0f * bE + zE * qEa, 8000.0f);
         const float ppI = fmaxf(101325.0f + 2.0f * bI + zI * qIa, 8000.0f);
@@ -354,5 +362,22 @@ module Cylinder
         p = m * 287.0f * t / v;
         dpdt = p - pOld;
         tq = (p - 101325.0f) * slopeNow;
+    }
+
+    // The flows a shared port's faces would pass with their areas given (m^2): exhaustFlowAt's and intakeFlowAt's
+    float exhaustFlowArea(float area, float bE, float zE, float tPipe)
+    {
+        return area > 0.0f ? vE.flow(p, t, bE, zE, area, tPipe, 1) * vE.g : 0.0f;
+    }
+
+    float intakeFlowArea(float area, float bI, float zI, float tAir)
+    {
+        return area > 0.0f ? vI.flow(p, t, bI, zI, area, tAir, 0) * vI.g : 0.0f;
+    }
+
+    // The burned gas in it now (kg): what Combustion's charge reads (card H)
+    float burned()
+    {
+        return mInert;
     }
 };

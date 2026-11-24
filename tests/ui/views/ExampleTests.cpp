@@ -19,7 +19,7 @@ namespace
     // Pressing the drawn part selects its section; the gauge reads the demo's speed; a name the source lacks is a dash.
     VIEW_TEST(testExampleSelect, "example.select")
     {
-        StageRig rig(tee::ui::makeExampleWorkspace, 800, 400);
+        StageRig rig(tee::ui::makeExampleWorkspace, 800, 400, 2.0f, 4.6, false);
         CHECK(rig.demo.selection.empty());
         rig.host->click(400.0f, 110.0f);                 // the TURBO region
         CHECK(rig.demo.selection.path() == "boost" && rig.demo.selection.is("boost"));

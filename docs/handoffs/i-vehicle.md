@@ -44,3 +44,51 @@ within 2e-6 rad, used only when a compound is chosen. Attributes go before an ar
 
 **Look at / listen to** (after integration): the dog box's clunk on an upshift, a burnout's squeal, an open differential
 spinning one wheel on a split surface, the buck of a dumped clutch on the shafts. Nobody has heard any of it.
+
+# I: integration (after K3b), 14:06
+
+Branch `claude/awesome-gates-ntdb58`. `spec.car.model` (0 the reference, default; 1 the vehicle) wired in `Car`
+(`sim/vehicle/car.fm`): with 1, `drive16`/`step`/`road` go to `Car::m1` (`Vehicle`); model 0 untouched. One edit to
+`sim/engine.fm`: `car.setup(rate, &spec.car, &spec.env, &ctl, &tel.car)`. `sim/README.md`'s Car entry updated.
+Null test: full `[null]` green (every pair identical to the bit) before the first push; `[null][quick]` before each.
+
+**Integrated tests** (`tee-tests-vehicle "[engine]"`, tee::test::Scenario): `engine.launch` (reference V8, RWD coupe on
+street tyres: spins all of first, none in third), `engine.shift` (dog box: car flag 32 and the ECU's fuel cut on in the
+upshift, off after; downshift blips the engine 217 -> 354 rad/s), `engine.coastdown` (analytic to 0.01 %),
+`engine.stall` (clutch dumped at idle in fourth: stalls), `engine.quartermile` (drag radials, automatic, burnout; ET /
+trap against 5.825 (lb/hp)^(1/3), 234 (hp/lb)^(1/3)): FWD 1.6 L four 17.25 s / 79.9 mph (rule 17.71 / 76.9), RWD V8
+14.63 / 103.3 (13.73 / 99.3), AWD turbo six 12.07 / 120.7 (11.93 / 114.3): all within 8 %. Whole `ctest -R '^vehicle\.'`:
+37 of 37. **Cost** (`tee-bench --engine`, drive-car, 3 runs): default build 1.049 R, the same with the RWD coupe on
+model 1 1.089 R: the model adds about 0.04 R (budget 0.05).
+
+**Spec paths** (spec.car, appended after `kind`, `mass`): `model` (Reference, Vehicle), `drive` (Front, Rear, All),
+`wheelbase`, `cgHeight`, `frontWeight`, `track`, `cdA`, `clA`, `aeroBalance`, `tyre` (Economy, Street, Sport, Semi-slick,
+Slick, Drag radial, Drag slick, Winter, Truck, Motorcycle), `tyreRadius`, `wheelInertia`, `brakeDecel`, `brakeBias`,
+`abs`, `gearbox` (Manual, Sequential, Dual clutch, Automatic, CVT), `gears`, `autoGearing`, `ratio[0..17]`,
+`reverseRatio`, `finalDrive`, `clutchTorque`, `gearEfficiency`, `shiftTime`, `converterK`, `converterRatio`,
+`couplingPoint`, `lockUp`, `cvtLow`, `cvtHigh`, `cvtEfficiency`, `centreSplit`, `centrePreload`, `centreKSpeed`,
+`centreKTorque`, `centreLocked`, `frontPreload`, `frontKSpeed`, `frontKTorque`, `frontLocked`, `rearPreload`,
+`rearKSpeed`, `rearKTorque`, `rearLocked`, `liveAxle`, `proTree`.
+**Telemetry** (tel.car, after speed, gear, brake, clutch): `accel` (m/s^2), `distance`, `shift` (None, Up, Down,
+Refused), `wheelSpeed[4]`, `wheelSlip[4]` (slip ratio), `wheelLoad[4]` (N), `wheelForce[4]` (N), `wheelTorque[4]`
+(N m), `wheelTemp[4]` (K) (FL, FR, RL, RR), `clutchSlip`, `shaftTorque`, `wheelPower`, `pitch` (N moved rearward),
+`flags` (1 wheelspin, 2 wheelie, 4 ABS, 8 a locked wheel, 16 shifting, 32 cut asked, 64 blip asked, 128 traction
+limited), `ratio`, `stripState` (Off, Staged, Ambers, Green, Running, Finished, Red light), `tReaction`, `t60`,
+`t330`, `t660`, `v660`, `t1000`, `t1320`, `v1320` (s, m/s).
+**The tyre curve** for the interface: `Fx = Fz * mu * S(kappa) / Speak`, `S(k) = sin(C atan(B k - E (B k - atan(B k))))`,
+odd in k, held at S(1) beyond |k| = 1, B C E per compound in `sim/vehicle/tyre.fm` (`VEH_COMPOUND` columns 0-2),
+normalised by its peak; mu = column 3 x `VEH_SURFACE[compound][surface]` x temperature factor x load factor.
+
+**Not done / wanted**:
+- `spec.env` `pressure`, `surface`, `surfaceLeft`, `grade`: not on the branch yet. Editing the lead's `env.fm` myself
+  was refused by my session's permission check. Until D adds them, model 1 runs on dry asphalt, 1.2 kg/m^3, level
+  ground; `Car::takeSpec` has the four lines to change (density = pressure / (287.05 T)).
+- The chassis dyno in the engine: `Engine::readControls` treats only MODE_DRIVE as driven; MODE_DYNO_CHASSIS needs
+  `set.drive` too (D's line).
+- The ECU's names: D's choice not on the branch yet; Car forwards `m1.slip()`, `speedNow()`, `gearNow()`,
+  `cutWanted()`, `blipSpeed()` as soon as the names land. The cut already reaches the ECU through `car.shiftCut`, the
+  blip through `drive16`'s pedal.
+- Card C: a run keeps only scalar telemetry (`Timeline.cpp`), so `car.wheelSlip[2]` etc. are not columns; my tests
+  read the flags instead. Asking for array elements as columns.
+- Known gap: an automatic whose tyres spin shifts up on the flaring output speed and can shift down again as they hook.
+- `vehAtan` is the candidate for a shared `sim/core/mathx.fm` (to D, through the lead).

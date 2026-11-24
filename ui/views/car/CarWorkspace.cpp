@@ -349,28 +349,38 @@ namespace tee::ui
             float k = 1.0f, ground = 0.0f, front = 0.0f, rear = 0.0f, r = 0.0f;   // px a metre, the ground's y, the axles' x
             Rect body, cabin, wheel[2], brake[2], drag;
         };
+        // The profile of a car, front at the left (x in metres from the front axle, y up from the ground): nose, bonnet,
+        // screen, roof, back window, deck, tail, sill. The same shape as DRIVE's scene; to move to ui/app/Look.h (asked
+        // of U1) so that both draw one car.
+        static constexpr int kProfile = 11;
+        static void profile(double wb, std::array<double, kProfile>& x, std::array<double, kProfile>& y)
+        {
+            x = { -0.85, -0.90, -0.62, 0.30 * wb, 0.46 * wb, 0.80 * wb, wb + 0.35, wb + 0.93, wb + 0.97, wb + 0.85, -0.85 };
+            y = { 0.30, 0.62, 0.82, 0.94, 1.36, 1.36, 1.02, 0.94, 0.48, 0.30, 0.30 };
+        }
+
         Side side() const
         {
             Side s;
             const Rect a = sideBox_;
             const double wb = field(fWheelbase), r = field(fTyreRadius);
-            const double front = 0.85, rear = 0.95, length = wb + front + rear;
-            s.k = static_cast<float>(std::min((a.w - 2.0f * look::kPad - 150.0f) / length, (a.h - 150.0) / 1.5));
+            const double front = 0.90, rear = 0.97, length = wb + front + rear;
+            // Room: two lines of words at the top, the wheelbase over the roof, the axle bars under the ground.
+            const float top = a.y + 62.0f + 28.0f;
             s.ground = a.bottom() - 66.0f;
-            s.front = a.x + look::kPad + 20.0f + static_cast<float>(front) * s.k;
+            s.k = static_cast<float>(std::min((a.w - 2.0f * look::kPad - 130.0f) / length, (s.ground - top) / 1.36));
+            s.front = a.x + look::kPad + 8.0f + static_cast<float>(front) * s.k;
             s.rear = s.front + static_cast<float>(wb) * s.k;
             s.r = static_cast<float>(r) * s.k;
-            const float bodyTop = s.ground - 1.0f * s.k, bodyBottom = s.ground - 0.28f * s.k;
-            s.body = { s.front - static_cast<float>(front) * s.k, bodyTop, static_cast<float>(length) * s.k, bodyBottom - bodyTop };
-            const float c0 = s.front + static_cast<float>(wb * 0.28) * s.k, c1 = s.rear - static_cast<float>(wb * 0.06) * s.k;
-            s.cabin = { c0, s.ground - 1.38f * s.k, c1 - c0, 0.42f * s.k };
+            s.body = { s.front - static_cast<float>(front) * s.k, s.ground - 1.36f * s.k, static_cast<float>(length) * s.k, 1.06f * s.k };
+            s.cabin = { s.front + static_cast<float>(0.46 * wb) * s.k, s.ground - 1.36f * s.k, static_cast<float>(0.34 * wb) * s.k, 0.4f * s.k };
             for (int i = 0; i < 2; ++i)
             {
                 const float x = i == 0 ? s.front : s.rear;
                 s.wheel[i] = { x - s.r, s.ground - 2.0f * s.r, 2.0f * s.r, 2.0f * s.r };
                 s.brake[i] = { x - s.r * 0.25f, s.ground - s.r - s.r * 0.55f, s.r * 0.5f, s.r * 0.35f };
             }
-            s.drag = { s.body.right() + 4.0f, s.body.y, 120.0f, s.body.h };
+            s.drag = { s.body.right() + 4.0f, s.ground - 1.0f * s.k, 120.0f, 0.7f * s.k };
             return s;
         }
 
@@ -387,11 +397,25 @@ namespace tee::ui
             const auto star = [](bool from) { return from ? "" : "*"; };
             // The ground.
             c.segment(sideBox_.x + look::kPad, s.ground, sideBox_.right() - look::kPad, s.ground, 1.0f, p.edge);
-            // The body and the cabin, outlined; the selected part ringed.
-            c.rrect(s.cabin.x, s.cabin.y, s.cabin.w, s.cabin.h, 0.22f * s.k, p.panel, 1.5f, p.label);
-            c.rrect(s.body.x, s.body.y, s.body.w, s.body.h, 0.2f * s.k, p.raised, 1.5f, p.text);
-            if (ctx_.selection.is("car.body"))
-                look::selectRing(c, p, { s.body.x, s.cabin.y, s.body.w, s.body.bottom() - s.cabin.y }, 0.2f * s.k);
+            // The body as its profile (a polyline), the side window's line; selected: in the accent, and ringed.
+            {
+                std::array<double, kProfile> px{}, py{};
+                profile(wb, px, py);
+                float xs[kProfile], ys[kProfile];
+                for (int i = 0; i < kProfile; ++i)
+                {
+                    xs[i] = s.front + static_cast<float>(px[static_cast<std::size_t>(i)]) * s.k;
+                    ys[i] = s.ground - static_cast<float>(py[static_cast<std::size_t>(i)]) * s.k;
+                }
+                const bool sel = ctx_.selection.is("car.body");
+                c.polyline(xs, ys, kProfile, 2.0f, sel ? p.selected : p.value);
+                c.segment(s.front + static_cast<float>(0.36 * wb) * s.k, s.ground - 0.98f * s.k, s.rear + 0.30f * s.k,
+                          s.ground - 1.0f * s.k, 1.25f, p.label);
+                c.segment(s.front + static_cast<float>(0.50 * wb) * s.k, s.ground - 1.30f * s.k,
+                          s.front + static_cast<float>(0.75 * wb) * s.k, s.ground - 1.30f * s.k, 1.25f, p.label);
+                if (sel)
+                    look::selectRing(c, p, s.body, 6.0f);
+            }
             // The wheels: tyre, rim, the brake's caliper.
             for (int i = 0; i < 2; ++i)
             {
@@ -404,7 +428,7 @@ namespace tee::ui
                     c.disc(w.centreX(), w.centreY(), s.r + 4.0f, kClear, 2.0f, p.selected);
             }
             // The wheelbase, over the roof.
-            const float dy = s.cabin.y - 16.0f;
+            const float dy = s.body.y - 14.0f;
             c.segment(s.front, dy, s.rear, dy, 1.0f, p.label);
             c.segment(s.front, dy - 5.0f, s.front, dy + 5.0f, 1.0f, p.label);
             c.segment(s.rear, dy - 5.0f, s.rear, dy + 5.0f, 1.0f, p.label);
@@ -417,10 +441,9 @@ namespace tee::ui
             c.segment(cx, cy - 7.0f, cx, cy + 7.0f, 1.5f, p.value);
             c.segment(cx, cy + 9.0f, cx, s.ground, 1.0f, p.dim);
             c.text("CM", cx - 8.0f, cy - 22.0f, look::kCaps, p.value);
-            const std::string cgWords = "CENTRE OF MASS (CM) " + u.format(Quantity::length, cg, 0) + star(fromCg) + " UP, " +
-                                    u.format(Quantity::length, (1.0 - fw) * wb, 0) + " BEHIND THE FRONT AXLE   " +
-                                    u.format(Quantity::mass, mass, 0) + star(fromMass) + ", " + look::num(fw * 100.0) +
-                                    star(fromFw) + " % ON THE FRONT";
+            const std::string cgWords = u.format(Quantity::mass, mass, 0) + star(fromMass) + ", " + look::num(fw * 100.0) +
+                                    star(fromFw) + " % ON THE FRONT; CM " + u.format(Quantity::length, cg, 0) + star(fromCg) +
+                                     " HIGH";
             // The load on each axle, live: a bar under it, a tick at the load at rest, the number and its share.
             const double weight = mass * kG;
             const double rest[2] = { weight * fw, weight * (1.0 - fw) };
@@ -477,30 +500,31 @@ namespace tee::ui
                 for (int a = 0; a < 2; ++a)
                 {
                     const double f = down * (a == 0 ? bal : 1.0 - bal);
-                    const float x = (a == 0 ? s.front : s.rear) + (a == 0 ? 22.0f : -22.0f);
-                    const float l = static_cast<float>(std::min(40.0, 10.0 + std::fabs(f) / 30.0));
-                    const float y0 = s.cabin.y - 34.0f - l, y1 = s.cabin.y - 34.0f;
+                    // Down onto the bonnet over the front axle and onto the deck over the rear one.
+                    const float x = a == 0 ? s.front : s.rear;
+                    const float surface = s.ground - (a == 0 ? 0.86f : 1.14f) * s.k - 3.0f;
+                    const float l = static_cast<float>(std::min(26.0, 10.0 + std::fabs(f) / 30.0));
+                    const float y0 = surface - l, y1 = surface;
                     const float tip = f >= 0.0 ? y1 : y0, tail = f >= 0.0 ? y0 : y1, d = f >= 0.0 ? -6.0f : 6.0f;
                     c.segment(x, tail, x, tip, 2.0f, p.cold);
                     c.segment(x, tip, x - 5.0f, tip + d, 2.0f, p.cold);
                     c.segment(x, tip, x + 5.0f, tip + d, 2.0f, p.cold);
-                    c.text((look::num(f / 1000.0, "%.2f") + " kN").c_str(), x + 8.0f, y0, look::kUnit, p.text);
+                    // The number beside it, outward: left of the front arrow, right of the rear one, at its tail.
+                    c.text((look::num(f / 1000.0, "%.2f") + " kN").c_str(), a == 0 ? x - 8.0f : x + 8.0f, y0 - 6.0f, look::kUnit,
+                           p.text, a == 0 ? funkgui::Align::right : funkgui::Align::left);
                 }
-            // The words: what the aero is drawn from, the centre of mass, and the note on starred values, wrapped to
-            // the box (the note at the title's right when there is room for both).
-            const std::string at = "AT " + (std::isfinite(v) ? u.format(Quantity::speed, v, 0) : std::string("-")) + ": DRAG FROM CD A " +
-                                   look::num(cdA, "%.2f") + star(fromCd) + " M2, DOWNFORCE FROM CL A " + look::num(clA, "%.2f") + star(fromCl);
+            // The words: two lines (what the aero is drawn from; the mass and the centre of mass), and the note on
+            // starred values at the title's right.
             const float ix = sideBox_.x + look::kPad, iw = sideBox_.w - 2.0f * look::kPad;
-            int n = chart::wrap(c, at, ix, sideBox_.y + 30.0f, iw, look::kUnit, p.label, 13.0f, 2);
-            n += chart::wrap(c, cgWords, ix, sideBox_.y + 30.0f + 13.0f * static_cast<float>(n), iw, look::kUnit, p.label, 13.0f, 2);
+            const std::string l1 = "AERO AT " + (std::isfinite(v) ? u.format(Quantity::speed, v, 0) : std::string("-")) + ": CD A " +
+                                   look::num(cdA, "%.2f") + star(fromCd) + ", CL A " + look::num(clA, "%.2f") + star(fromCl) + " M2";
+            chart::wrap(c, l1, ix, sideBox_.y + 30.0f, iw, look::kUnit, p.label, 13.0f, 1);
+            chart::wrap(c, cgWords, ix, sideBox_.y + 44.0f, iw, look::kUnit, p.label, 13.0f, 1);
             if (any)
             {
-                const char* note = "* not in this build yet: the Spec's default";
-                const float title = c.textWidth("THE CAR FROM THE SIDE, TO SCALE", look::kCaps);
-                if (title + 24.0f + c.textWidth(note, look::kUnit) <= iw)
-                    c.text(note, sideBox_.right() - look::kPad, sideBox_.y + 9.0f, look::kUnit, p.dim, funkgui::Align::right);
-                else
-                    chart::wrap(c, note, ix, sideBox_.y + 30.0f + 13.0f * static_cast<float>(n), iw, look::kUnit, p.dim, 13.0f, 1);
+                const char* note = c.textWidth("THE CAR FROM THE SIDE, TO SCALE", look::kCaps) + 200.0f < iw
+                                       ? "* NOT IN THIS BUILD: THE SPEC'S DEFAULT" : "* SPEC DEFAULT";
+                c.text(note, sideBox_.right() - look::kPad, sideBox_.y + 9.0f, look::kUnit, p.dim, funkgui::Align::right);
             }
         }
 
@@ -570,11 +594,17 @@ namespace tee::ui
                 const float x = xs.px(kap), y = ys.px(f);
                 c.disc(x, y, 5.5f, past ? p.warning : p.ok, 2.0f, p.ground);
                 const std::string lab = std::string(kWheelName[w]) + (past ? " PAST THE PEAK" : "");
-                c.text(lab.c_str(), x + 6.0f, y + 10.0f + 13.0f * static_cast<float>(shown), look::kCaps, past ? p.warning : p.ok);
+                const float ly = y + 10.0f + 14.0f * static_cast<float>(shown);
+                c.rrect(x + 2.0f, ly - 2.0f, c.textWidth(lab.c_str(), look::kCaps) + 8.0f, 14.0f, 3.0f, p.panel);
+                c.text(lab.c_str(), x + 6.0f, ly, look::kCaps, past ? p.warning : p.ok);
                 ++shown;
             }
             if (shown == 0)
-                c.text("- no wheel's slip in this program yet", a.x + 8.0f, a.y + 4.0f, look::kUnit, p.dim);
+            {
+                const char* w = "- NO WHEEL'S SLIP IN THIS PROGRAM YET";
+                c.rrect(a.x + 6.0f, a.bottom() - 28.0f, c.textWidth(w, look::kUnit) + 8.0f, 16.0f, 3.0f, p.panel);
+                c.text(w, a.x + 10.0f, a.bottom() - 25.0f, look::kUnit, p.dim);
+            }
         }
 
         // ---- the driveline -----------------------------------------------------------------------------------------
@@ -632,11 +662,11 @@ namespace tee::ui
             if (locked >= 0.5)
                 return "LOCKED";
             if (kt > 0.0)
-                return "TORQUE BIAS";
+                return "T. BIAS";
             if (ks > 0.0)
                 return "VISCOUS";
             if (pre > 0.0)
-                return "CLUTCH LSD";
+                return "LSD";
             return "OPEN";
         }
 
@@ -727,14 +757,16 @@ namespace tee::ui
             {
                 box(l.front, "FRONT", diffKind("front"), dsel);
                 const double t = axleTorque(0);
-                c.text(std::isfinite(t) ? u.format(Quantity::torque, t, 0).c_str() : "- N m", l.front.right() + 6.0f, l.front.y - 14.0f,
+                c.text("FRONT AXLE TORQUE", l.front.right() + 6.0f, l.front.y - 30.0f, look::kCaps, p.label);
+                c.text(std::isfinite(t) ? u.format(Quantity::torque, t, 0).c_str() : "- N m", l.front.right() + 6.0f, l.front.y - 16.0f,
                        look::kNumberS, std::isfinite(t) ? p.value : p.dim);
             }
             if (!l.rear.isEmpty())
             {
                 box(l.rear, "REAR", diffKind("rear"), dsel);
                 const double t = axleTorque(2);
-                c.text(std::isfinite(t) ? u.format(Quantity::torque, t, 0).c_str() : "- N m", l.rear.x - 6.0f, l.rear.y - 14.0f,
+                c.text("REAR AXLE TORQUE", l.rear.x - 6.0f, l.rear.y - 30.0f, look::kCaps, p.label, funkgui::Align::right);
+                c.text(std::isfinite(t) ? u.format(Quantity::torque, t, 0).c_str() : "- N m", l.rear.x - 6.0f, l.rear.y - 16.0f,
                        look::kNumberS, std::isfinite(t) ? p.value : p.dim, funkgui::Align::right);
             }
             if (!l.centre.isEmpty())

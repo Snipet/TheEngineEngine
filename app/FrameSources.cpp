@@ -24,7 +24,7 @@ namespace tee::app
         {
             dyno.tick(dt);
             dt = 0.02f;
-            if (!dyno.error().empty() && !dyno.busy())
+            if (!dyno.error().empty())      // (a dyno that cannot run says so at once: the program lacks the torque)
                 return false;
             if (std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count() > seconds)
                 return false;
