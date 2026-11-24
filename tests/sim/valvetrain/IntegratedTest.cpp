@@ -1,8 +1,13 @@
 // tests/sim/valvetrain/IntegratedTest.cpp: card E's integrated tests (8 to 13; test 7, model 0, is the null test,
 // tests/sim/NullTest.cpp): the whole engine through tee::EnginePlayer, held on its engine dyno, with the valvetrain
 // lab (valve.model 1) and the induction (intake.model 1). Each prints what it measured.
+//
+// The fast tier's budget (01-rules.md §3; moved by the build steward at the lead's leave, no assertion or bound
+// changed): 8's quick form runs the default build alone, its full form both builds [nightly]; 12 (three VE sweeps of
+// 27 speeds, 48 s; its assertions read the whole sweep, so it has no smaller form) is [nightly] whole.
 #include "Engine.h"
 
+#include <initializer_list>
 #include <catch2/catch_approx.hpp>
 
 #include <algorithm>
@@ -74,11 +79,13 @@ namespace
     }
 } // namespace
 
-TEST_CASE("8: an advanced intake cam fills in the torque low down and costs it at the top; later closing moves the peak up",
-          "[valvetrain][integrated]")
+namespace
+{
+    // the body of "8: an advanced intake cam...": every case of `cases` (the quick form takes the first, the full form all)
+    void caseOf_8__an_advanced_intake_ca(std::initializer_list<const char*> cases)
 {
     const std::vector<double> rpms = {1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000};
-    for (const char* build : {"default", "engines/ref-05-inline-4"})
+    for (const char* build : cases)
     {
         const auto adv = curve(build, with(kHot, {{"valve.inCentre", 95.0}}), rpms);
         const auto ret = curve(build, with(kHot, {{"valve.inCentre", 125.0}}), rpms);
@@ -98,6 +105,19 @@ TEST_CASE("8: an advanced intake cam fills in the torque low down and costs it a
         // a later intake closing moves the peak up (or keeps it)
         CHECK(peakOf(rpms, ret) >= peakOf(rpms, adv) - 100.0);
     }
+}
+} // namespace
+
+// The quick form, in every run (01-rules.md §3, the build steward at the lead's leave): the default build alone.
+TEST_CASE("8: an advanced intake cam fills in the torque low down and costs it at the top; later closing moves the peak up (quick: the default build alone)", "[valvetrain][integrated]")
+{
+    caseOf_8__an_advanced_intake_ca({"default"});
+}
+
+// The full form, nightly: every case.
+TEST_CASE("8: an advanced intake cam fills in the torque low down and costs it at the top; later closing moves the peak up", "[valvetrain][integrated][nightly]")
+{
+    caseOf_8__an_advanced_intake_ca({"default", "engines/ref-05-inline-4"});
 }
 
 TEST_CASE("9: two stages: the curves cross, and a change set at the crossing shows no dip", "[valvetrain][integrated]")
@@ -256,7 +276,7 @@ TEST_CASE("11: throttles a runner: the trumpets louder at full throttle than the
 }
 
 TEST_CASE("12: the runner's tuning: VE's bump moves with the runner's length as the acoustics say, above 1 where tuned, "
-          "and two lengths give the envelope of both", "[valvetrain][integrated]")
+          "and two lengths give the envelope of both", "[valvetrain][integrated][nightly]")
 {
     // A 2.0 L four (the inline four's layout at 2 L, a 280-degree cam, four valves, its redline raised 1500 rpm so the
     // limiter stays out of the sweep), 300 K air, wide open on the engine dyno. VE (tel.engine.veAir: the mass trapped

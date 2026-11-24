@@ -1,8 +1,13 @@
 // tests/sim/ecu/IntegratedTest.cpp: card H's integrated tests on the whole simulator (Sim.h): 9 (bangs by account),
 // 11 (random pedals through every limiter kind), the bake, and model 0's telemetry left alone. Test 5, the null test
 // with both models at 0, is tests/sim/NullTest.cpp's; test 10 (traction on card I's car) waits for card I's slip.
+//
+// The fast tier's budget (01-rules.md §3; moved by the build steward at the lead's leave, no assertion or bound changed):
+// the cold start's quick form runs at -20 C alone, its full form also at the coldest air [nightly]; and this
+// package now registers with ADD_TAGS_AS_LABELS, so the [nightly] tags H gave H6 to H11 take effect in ctest.
 #include "Sim.h"
 
+#include <initializer_list>
 #include <catch2/catch_test_macros.hpp>
 
 #include <catch2/catch_approx.hpp>
@@ -242,12 +247,15 @@ TEST_CASE("H10: traction control holds a spinning car's slip near its target", "
     CHECK(onState == 2.0);                               // and no stall
 }
 
-TEST_CASE("H: both models on, the V8 starts at -20 C and at the coldest air", "[ecu][integrated][cold]")
+namespace
+{
+    // the body of "H: both models on, the V8 starts at -20 C...": every case of `cases` (the quick form takes the first, the full form all)
+    void caseOf_H__both_models_on__the_V(std::initializer_list<double> cases)
 {
     // X-003: with fuel.model 1 and ecu.model 1 the cold start's enrichment made the burn's own mixture lambda 0.62
     // (0.88 at the cranking's full manifold times 0.7), at gasoline's rich limit, where no heat comes: it cranked for
     // ever. The enrichment is now fuel for the cold walls (Ecu1::fuelFactor), the burn seeing the lambda asked
-    for (double air : {253.15, 233.15})
+    for (double air : cases)
     {
         Sim s("v8");
         s.set("ecu.model", 1);
@@ -271,6 +279,19 @@ TEST_CASE("H: both models on, the V8 starts at -20 C and at the coldest air", "[
         CHECK(s.tel("engine.state") == 2.0);
         CHECK(rpm > 1000.0);
     }
+}
+} // namespace
+
+// The quick form, in every run (01-rules.md §3, the build steward at the lead's leave): at -20 C alone.
+TEST_CASE("H: both models on, the V8 starts at -20 C and at the coldest air (quick: at -20 C alone)", "[ecu][integrated][cold]")
+{
+    caseOf_H__both_models_on__the_V({253.15});
+}
+
+// The full form, nightly: every case.
+TEST_CASE("H: both models on, the V8 starts at -20 C and at the coldest air", "[ecu][integrated][cold][nightly]")
+{
+    caseOf_H__both_models_on__the_V({253.15, 233.15});
 }
 
 namespace
