@@ -32,6 +32,7 @@ namespace
 
         explicit FrameRig(int w = 1280, int h = 800, float dpi = 2.0f, double t = 4.6) : demo(t)
         {
+            demo.engine.hold(true);   // every picture at the same moment of the script
             tee::ui::FrameServices s;
             s.app = demo.app;
             s.buildName = [this] { return name; };
