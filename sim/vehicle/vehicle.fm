@@ -780,7 +780,8 @@ module Vehicle
             tClutch = tcA + tcB;
             slipC = w - (box.shifting ? gB : gA) * wo;
         }
-        // the differentials: the centre's between the axles, then each axle's between its wheels
+        // the differentials: the centre's between the axles, then each axle's between its wheels (a locking torque is the
+        // most the two sides' torques may differ by: the coupling takes half of it from one and gives it to the other)
         float tdC = 0.0f;
         float tdF = 0.0f;
         float tdR = 0.0f;
@@ -788,7 +789,7 @@ module Vehicle
         {
             const float wF = 0.5f * (ww[0] + ww[1]);
             const float wR = 0.5f * (ww[2] + ww[3]);
-            const float cap = centre.capacity(wF - wR, ts);
+            const float cap = 0.5f * centre.capacity(wF - wR, ts);
             tdC = vehCouple(wF, wR, tw[0] + tw[1], tw[2] + tw[3], 0.5f * iw, 0.5f * iw, 1.0f, cap, dt);
             tw[0] -= 0.5f * tdC;
             tw[1] -= 0.5f * tdC;
@@ -801,7 +802,7 @@ module Vehicle
         }
         if (share[0] > 0.0f)
         {
-            const float cap = front.capacity(ww[0] - ww[1], (share[0] + share[1]) * ts);
+            const float cap = 0.5f * front.capacity(ww[0] - ww[1], (share[0] + share[1]) * ts);
             tdF = vehCouple(ww[0], ww[1], tw[0], tw[1], iw, iw, 1.0f, cap, dt);
             tw[0] -= tdF;
             tw[1] += tdF;
@@ -810,7 +811,7 @@ module Vehicle
         }
         if (share[2] > 0.0f)
         {
-            const float cap = rear.capacity(ww[2] - ww[3], (share[2] + share[3]) * ts);
+            const float cap = 0.5f * rear.capacity(ww[2] - ww[3], (share[2] + share[3]) * ts);
             tdR = vehCouple(ww[2], ww[3], tw[2], tw[3], iw, iw, 1.0f, cap, dt);
             tw[2] -= tdR;
             tw[3] += tdR;
