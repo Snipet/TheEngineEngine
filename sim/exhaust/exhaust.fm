@@ -175,6 +175,13 @@ module Exhaust
     float tcPlain;      // the plain time mean of the port's local gas, K
     float qSur[MAX_PORTS];  // stepLet: what each port's pipe has been given beyond what its valve let out (m^3/s),
     float kSur;             // followed over 20 ms
+    float tLet;             // stepLet's target over what the valves let out, by volume: 1, or with the turbines fed, what
+                            // makes the mass Boost books into its housings what the valves let out (bookLet)
+    double houseSeen;       // bookLet's window: Boost's mass from the pipes at its start (kg), the valves' since (kg)
+    double letSince;
+    int letN;
+    float bookRatio;
+    float backBlk;          // the backflow's mass (kg, negative) since gas() last ran: Engine's mSum has only the outflow
     // stepLet's books (for D's): the volume the ports' pipes were given and what the valves let out, m^3 since the
     // last configure, summed in blocks of 1024 samples (a float sum of a million samples drifts a few per cent)
     float flowGiven;
@@ -246,11 +253,18 @@ module Exhaust
         for (int i = 0; i < MAX_PORTS; ++i)
             qSur[i] = 0.0f;
         kSur = 1.0f - expf(-1.0f / (0.02f * rateIn));
+        tLet = 1.0f;
+        houseSeen = -1.0;
+        letSince = 0.0;
+        letN = 0;
+        backBlk = 0.0f;
         flowGiven = 0.0f;
         flowLet = 0.0f;
         blkGiven = 0.0f;
         blkLet = 0.0f;
         blkN = 0;
+        tLet = 1.0f;
+        houseSeen = -1.0;
         kTc = 1.0f - expf(-16.0f / (0.5f * rateIn));
         kStag = 1.0f - expf(-1.0f / (0.036f * rateIn));
         rate = rateIn;
@@ -727,6 +741,8 @@ module Exhaust
         }
         else
             tPort += (heat->tAmb - tPort) * (1.0f - expf(-d16 / 4.0f));
+        bookLet(mSum / rate + backBlk);
+        backBlk = 0.0f;
         eSum = 0.0f;
         mSum = 0.0f;
         portLoss(d16);
@@ -1040,13 +1056,20 @@ module Exhaust
             stepPipes(qe, np);
             return;
         }
+        // (with the turbines fed: the volume that puts the let-out mass into the housings, tLet: bookLet)
+        const float r = tLet;
+        // (the backflow's mass as the cylinder reckons it: at the port's pressure now, 101325 + 2 a + z q, and the
+        // primaries' gas, tUse[0], Engine's tH)
+        const float rtBack = 287.0f * fmaxf(tUse[0], 300.0f);
         float qc[MAX_PORTS];
         for (int i = 0; i < np; ++i)
         {
-            qSur[i] += (qe[i] - qeLet[i] - qSur[i]) * kSur;
+            if (qeLet[i] < 0.0f)
+                backBlk += qeLet[i] * fmaxf(101325.0f + 2.0f * prim[i].near + prim[i].z * qe[i], 8000.0f) / rtBack / rate;
+            qSur[i] += (qe[i] - qeLet[i] * r - qSur[i]) * kSur;
             qc[i] = qe[i] - qSur[i];
             blkGiven += qc[i];
-            blkLet += qeLet[i];
+            blkLet += qeLet[i] * r;
         }
         blkN += 1;
         if (blkN >= 1024)
@@ -1058,6 +1081,45 @@ module Exhaust
             blkN = 0;
         }
         stepPipes(qc, np);
+    }
+
+    // With the turbines fed (every 16 samples, from gas()): the pipes carry volume, linearly, and mass is volume times
+    // the local pressure over R T. The gas cools from the valve to the collectors, and the valves' mass is reckoned at
+    // the port's pressure in the blowdown while a housing books its own at its own: so the valves' volume, delivered,
+    // put 1.13 to 1.14 of their mass into the turbo four's housing at 3050 rpm (N3's books, 24 Nov; the cooling alone
+    // 1.148) and some 0.87 into the twin-turbo V8's split housings once scaled by the cooling. So the target is closed
+    // by mass where it is booked: every 50 ms, tLet moves by a fifth of Boost's mass from the pipes over the
+    // valves' (mach.sumMPipes against Engine's mE) less one, a slow integral loop (some 0.25 s), bounded 0.3 to 1.5 (the
+    // error itself, not its log: a window's ratio is noisy, and the log's mean zero leaves the ratio's mean high). The books
+    // then close to the housings' mass; the pulse keeps its shape.
+    void bookLet(float mBlock)
+    {
+        if (model == 0 || spec->flowClose == 0 || fed == 0)
+        {
+            tLet = 1.0f;
+            houseSeen = -1.0;
+            return;
+        }
+        if (houseSeen < 0.0)
+        {
+            houseSeen = bo->mach.sumMPipes;
+            letSince = 0.0;
+            letN = 0;
+            return;
+        }
+        letSince += (double)mBlock;
+        letN += 16;
+        if ((float)letN >= 0.05f * rate)
+        {
+            const double inHouse = bo->mach.sumMPipes - houseSeen;
+            if (letSince > 1.0e-7)
+                bookRatio = (float)(inHouse / letSince);
+            if (letSince > 1.0e-7 && inHouse > 1.0e-7)
+                tLet = fminf(fmaxf(tLet * (1.0f - 0.2f * fminf(fmaxf((float)(inHouse / letSince) - 1.0f, -1.0f), 1.0f)), 0.3f), 1.5f);
+            houseSeen = bo->mach.sumMPipes;
+            letSince = 0.0;
+            letN = 0;
+        }
     }
 
     // (stepLet's: the pipes given qe, each sample)

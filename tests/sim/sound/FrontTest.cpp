@@ -99,16 +99,16 @@ TEST_CASE("drives: a supercharger's gear drive at the crank's 40 teeth, louder w
 TEST_CASE("fan: an electric fan comes in at its temperature, out 5 K below, its blades' line at 7 x 40 Hz", "[sound][fan]")
 {
     Rig rig;
-    rig.set("coolant", 360.0);
+    rig.set("coolant", 365.0);
     CHECK(rms(steady(rig, Fan, 0.5, 0.5)) == 0.0);
-    rig.set("coolant", 369.0);
+    rig.set("coolant", 374.0);
     rig.run(2.0, Fan);                              // spun up (0.35 s)
     const auto on = rig.run(1.0, Fan);
     CHECK(rms(on) > 1e-4);
     near(on, 7.0 * 40.0, 0.005);
-    rig.set("coolant", 365.0);                      // within the 5 K: stays on
+    rig.set("coolant", 370.0);                      // within the 5 K: stays on
     CHECK(rms(steady(rig, Fan, 0.5, 0.5)) > 1e-4);
-    rig.set("coolant", 362.0);                      // off: it coasts down
+    rig.set("coolant", 367.0);                      // off: it coasts down
     const auto down = rig.run(8.0, Fan);
     CHECK(rms(down, 0, 9600) > rms(down, down.size() - 9600) * 100.0);
     CHECK(rms(down, down.size() - 9600) == 0.0);
@@ -136,7 +136,7 @@ TEST_CASE("fan: a viscous clutch's roar grows with the coolant's heat and with t
         return rms(rig.run(0.5, Fan));
     };
     double last = 0.0;
-    for (double t : {330.0, 356.0, 362.0, 370.0})
+    for (double t : {330.0, 361.0, 367.0, 375.0})
     {
         const double a = level(t, 50.0);
         INFO(t << " K: " << a);
