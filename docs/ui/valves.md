@@ -61,6 +61,13 @@ the margin's label while `valve.floating` is set; the ring and the overlap take 
 `overlap`, phased) when telemetry has them; the bench takes the simulator's (`valve.benchLift[i]` ...) when every
 element is in telemetry, else this port of `bench.fm` from the head's fields, and says which.
 
+## The overlap's pressure
+
+N1's `tel.valve.dpOverlap` (the intake port's pressure over the exhaust port's across the overlap, all cylinders,
+smoothed) is a stat over the cam editor beside the overlap: "OVERLAP PRESSURE +12.0 kPa SCAVENGES" in the intake's ink,
+"-63.0 kPa BACK-FILLS" in amber where the exhaust pushes back into the intake. Nothing is shown with no reading (absent,
+or N1's 0 under valve.model 0). `ui.valves.overlap`.
+
 ## What holds the cams back
 
 The simulator says why the cams are not where asked (N1's `tel.valve.waiting`, a bit each: 1 the intake phaser parked

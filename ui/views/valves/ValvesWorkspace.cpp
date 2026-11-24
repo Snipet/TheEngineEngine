@@ -86,6 +86,10 @@ namespace tee::ui
             // the oil, as the words say it: whole degrees, and whether it holds the phasers or stage B
             const double oilT = ctx_.live.get(kTelOilTemp);
             k.mix(std::isfinite(oilT) ? static_cast<std::int64_t>(std::lround(oilT)) : -1);
+            {
+                const double dp = ctx_.live.get(kTelDpOverlap);   // as the ring says it: whole kPa
+                k.mix(std::isfinite(dp) ? static_cast<std::int64_t>(std::lround(dp / 1000.0)) : -999999);
+            }
             for (const char* n : { kTelWaiting, kTelWaitTemp, kTelCoolant })
             {
                 const double v = ctx_.live.get(n);
@@ -366,6 +370,32 @@ namespace tee::ui
 
         // Stage B is what runs (and what the handles edit) while telemetry says it is engaged.
         // What holds the cams back, in the words the PHASERS AND STAGES panel shows ("" : nothing)
+        // The overlap's pressure in words: { "-63 kPa", "BACK-FILLS" } or { "+12 kPa", "SCAVENGES" }; empty with no
+        // reading (absent, or N1's 0)
+        struct OverlapPressure
+        {
+            std::string number, unit, word;
+            bool backfills = false;
+        };
+        OverlapPressure overlapPressure() const
+        {
+            OverlapPressure o;
+            const double dp = ctx_.live.get(kTelDpOverlap);
+            if (!std::isfinite(dp) || dp == 0.0)
+                return o;
+            o.backfills = dp < 0.0;
+            o.number = (dp > 0.0 ? "+" : "-") + ctx_.units.number(Quantity::pressure, std::fabs(dp));
+            o.unit = ctx_.units.unit(Quantity::pressure).name;
+            o.word = o.backfills ? "BACK-FILLS" : "SCAVENGES";
+            return o;
+        }
+    public:
+        std::string overlapWords() const
+        {
+            const OverlapPressure o = overlapPressure();
+            return o.number.empty() ? std::string() : o.number + " " + o.unit + " " + o.word;
+        }
+    private:
         std::string phaserHeldText(bool intake = true) const { return phaserWaitWords(ctx_.live, ctx_.units, intake); }
         std::string stageHeldText() const { return stageWaitWords(ctx_.live, ctx_.units); }
     public:
@@ -609,16 +639,20 @@ namespace tee::ui
                 std::string unit;
                 Col ink;
             };
-            const Stat stats[] = {
+            std::vector<Stat> stats = {
                 { "OVERLAP", deg(ev.overlap), "deg", kClear },
                 { "ROOM, INTAKE", len(leastIn), lu, std::isfinite(leastIn) && leastIn < 0.001 ? p.warning : kClear },
                 { "ROOM, EXHAUST", len(leastEx), lu, std::isfinite(leastEx) && leastEx < 0.001 ? p.warning : kClear },
                 { "LOBE SEPARATION", lk::num(ev.lsa, "%.1f"), "deg", kClear },
             };
+            // what the overlap does now (N1's tel.valve.dpOverlap): scavenges (the intake's ink) or back-fills (amber)
+            if (const OverlapPressure op = overlapPressure(); !op.number.empty())
+                stats.push_back({ "OVERLAP PRESSURE", op.number, op.unit + " " + op.word, op.backfills ? p.warning : p.cold });
             float x = e.x;
             for (const Stat& st : stats)
             {
-                const float w = std::max(c.textWidth(st.label, lk::kCaps), c.textWidth(st.value.c_str(), lk::kNumberS) + 30.0f);
+                const float w = std::max(c.textWidth(st.label, lk::kCaps),
+                                         c.textWidth(st.value.c_str(), lk::kNumberS) + 8.0f + c.textWidth(st.unit.c_str(), lk::kCaps));
                 if (x + w > e.right())
                     break;
                 stage::readout(c, p, x, e.y - 4.0f, st.label, st.value, st.unit, lk::kNumberS, st.ink);
@@ -740,8 +774,16 @@ namespace tee::ui
             band(li, t.inPhaseRange, inPh, true, plot_.y + 8.0f);
             band(le, t.exPhaseRange, exPh, false, plot_.y + 8.0f);
             const char* st = t.stages ? (stageB(t) ? " B" : " A") : "";
-            put(c, std::string("EXHAUST") + st, X(le.centre + exShift), Y(le.liftAt(le.centre)) - 24.0f, lk::kCaps, p.hot, Align::centre);
-            put(c, std::string("INTAKE") + st, X(li.centre + inShift), Y(li.liftAt(li.centre)) - 24.0f, lk::kCaps, p.cold, Align::centre);
+            // each lobe's name over its peak; beside it where a peak stands so tall the name would meet the phaser's band
+            const auto lobeName = [&](const std::string& name, double centre, double peakLift, Col ink) {
+                const float px = X(centre), py = Y(peakLift);
+                if (py - 24.0f < plot_.y + 22.0f)
+                    put(c, name, px + 12.0f, py + 4.0f, lk::kCaps, ink, Align::left);
+                else
+                    put(c, name, px, py - 24.0f, lk::kCaps, ink, Align::centre);
+            };
+            lobeName(std::string("EXHAUST") + st, le.centre + exShift, le.liftAt(le.centre), p.hot);
+            lobeName(std::string("INTAKE") + st, li.centre + inShift, li.liftAt(li.centre), p.cold);
             if (std::isfinite(ev.overlap) && ev.overlap > 0.0)
                 put(c, "OVERLAP", X(360.0), plot_.bottom() - 30.0f, lk::kCaps, p.value, Align::centre);
             // the key to what is faint, under the axis: as many to a line as fit
@@ -1469,6 +1511,12 @@ namespace tee::ui
     };
 
     std::unique_ptr<Workspace> makeValvesWorkspace(WorkspaceContext& c) { return std::make_unique<ValvesWorkspace>(c); }
+
+    std::string valvesOverlapWords(const Workspace& w)
+    {
+        const auto* v = dynamic_cast<const ValvesWorkspace*>(&w);
+        return v != nullptr ? v->overlapWords() : std::string();
+    }
 
     std::string valvesOilWords(const Workspace& w)
     {
