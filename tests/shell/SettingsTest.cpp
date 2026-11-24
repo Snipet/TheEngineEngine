@@ -44,6 +44,7 @@ TEST_CASE("shell: settings read back as they were written", "[shell][settings]")
     s.unitChoices = "pressure=psi\npower=hp\n";
     s.lastBuild = "builds/my v8.json";
     s.tryFirstSeen = true;
+    s.coldStart = true;
     s.audioQuality = "economy";
     s.recentBuilds = { "builds/my v8.json", "C:\\Users\\me\\a diesel.json" };
     s.windowWidth = 1280;
@@ -71,6 +72,7 @@ TEST_CASE("shell: settings read back as they were written", "[shell][settings]")
     CHECK(l.settings.unitChoices == "pressure=psi\npower=hp\n");
     CHECK(l.settings.lastBuild == s.lastBuild);
     CHECK(l.settings.tryFirstSeen);
+    CHECK(l.settings.coldStart);
     CHECK(l.settings.recentBuilds == s.recentBuilds);
     CHECK(l.settings.audioQuality == "economy");
     CHECK(l.settings.windowWidth == 1280);

@@ -187,12 +187,23 @@ if(TARGET TheEngineEngine AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set_tests_properties(shell.window.edits PROPERTIES TIMEOUT 600 LABELS "shell;window;nightly" RUN_SERIAL TRUE
       ENVIRONMENT "SDL_AUDIODRIVER=dummy;TEE_SETTINGS_DIR=${_out}/edits-no-settings"
       PASS_REGULAR_EXPRESSION "checks: [0-9]+, 0 failed.*tee-app: ok")
-    # The owner's two-stage-cam four in the window, warm: the stage at 6,000 rpm on opening, after QUALITY and back, and
+    # A warm launch's cam stage changing across its speed (scripts/first-stage.txt: the owner's report), on the first
+    # build. Waits for the simulator: a build whose air is not the default's (first.json: 288.15 K) is made cold again
+    # at its first configure (sim/core/heat.fm, stood()), over the launch's warm start; until then, the soak tier's.
+    add_test(NAME shell.window.stage
+      COMMAND "${PROJECT_SOURCE_DIR}/scripts/xvfb-run.sh" $<TARGET_FILE:TheEngineEngine>
+              --first-build "${PROJECT_SOURCE_DIR}/content/builds/first.json" --script "${_scripts}/first-stage.txt"
+              --frames 30
+      WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
+    set_tests_properties(shell.window.stage PROPERTIES TIMEOUT 600 LABELS "shell;window;nightly" RUN_SERIAL TRUE
+      ENVIRONMENT "SDL_AUDIODRIVER=dummy;TEE_SETTINGS_DIR=${_out}/stage-no-settings"
+      PASS_REGULAR_EXPRESSION "checks: [0-9]+, 0 failed.*tee-app: ok")
+    # The owner's two-stage-cam four in the window, warm as a launch is: the stage at 6,000 rpm on opening, after QUALITY and back, and
     # opened over first.json (tests/shell/scripts/two-stage-cams.txt; the lead's 21:56 question). The soak tier's.
     add_test(NAME shell.window.twostage
       COMMAND "${PROJECT_SOURCE_DIR}/scripts/xvfb-run.sh" $<TARGET_FILE:TheEngineEngine>
               --first-build "${PROJECT_SOURCE_DIR}/content/builds/archetypes/two-stage-cam-20.json"
-              --hold-value heat.tOil=378 --script "${_scripts}/two-stage-cams.txt" --frames 30
+              --script "${_scripts}/two-stage-cams.txt" --frames 30
       WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
     set_tests_properties(shell.window.twostage PROPERTIES TIMEOUT 600 LABELS "shell;window;nightly" RUN_SERIAL TRUE
       ENVIRONMENT "SDL_AUDIODRIVER=dummy;TEE_SETTINGS_DIR=${_out}/twostage-no-settings"

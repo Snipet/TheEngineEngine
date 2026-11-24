@@ -367,20 +367,8 @@ namespace tee::ui
             return ctx_.units.format(Quantity::temperature, kelvin, 0);
         }
         // What the oil holds back, in the words the PHASERS AND STAGES panel shows ("" : nothing)
-        std::string phaserHeldText() const
-        {
-            const OilHold oil = oilHold(ctx_.live, kPhaserOilTemp, kPhaserOilPressure);
-            if (!oil.held)
-                return {};
-            return oil.cold ? "PARKED: OIL " + oilText(oil.temp) + ", MOVES AT " + oilText(kPhaserOilTemp) : "PARKED: OIL PRESSURE LOW";
-        }
-        std::string stageHeldText() const
-        {
-            const OilHold oil = oilHold(ctx_.live, kStageOilTemp, kStageOilPressure);
-            if (!oil.held)
-                return {};
-            return oil.cold ? "B WAITS: OIL " + oilText(oil.temp) + ", NEEDS " + oilText(kStageOilTemp) : "B WAITS: OIL PRESSURE LOW";
-        }
+        std::string phaserHeldText() const { return phaserParkedWords(ctx_.live, ctx_.units); }
+        std::string stageHeldText() const { return stageWaitWords(ctx_.live, ctx_.units); }
     public:
         // For tests: the oil's words as drawn now (the phasers' and stage B's, where the build has them)
         std::string oilWords() const

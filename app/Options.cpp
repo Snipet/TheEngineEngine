@@ -203,6 +203,8 @@ namespace tee::app
             }
             else if (arg == "--expect-fault")
                 o.expectFault = true;
+            else if (arg == "--cold")
+                o.cold = true;
             else if (arg == "--reference")
                 o.reference = true;
             else if (arg == "--first-build")
@@ -275,6 +277,7 @@ namespace tee::app
              "  --keep-going           with --seconds or --frames: go on when the program does not compile\n"
              "  --quality full|economy the simulator inside at 96 kHz (full, the default) or 48 kHz (economy: about half\n"
              "                         the CPU, the top octave lost); the settings file's when not given\n"
+             "  --cold                 the engine starts cold (the oil and water at the air's), not warm\n"
              "  --reference            the window opens no build: the simulator's defaults, every model at Reference\n"
              "                         (without it: the remembered build, else content/builds/first.json)\n"
              "  --first-build FILE     the build a first launch opens, in place of content/builds/first.json (a test's)\n"

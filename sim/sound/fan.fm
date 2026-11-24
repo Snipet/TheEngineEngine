@@ -84,6 +84,13 @@ module FanVoice
         return hzSet > 0.5f;
     }
 
+    // The air it draws through the radiator, as a share of an electric fan's at full speed (its flow goes as its
+    // speed): for card D's heat model, so that the fan cools what switched it on (sim/README.md, the hooks)
+    float air()
+    {
+        return fminf(hzSet / 40.0f, 1.5f);
+    }
+
     // Every 16 samples. d16: seconds; kind: FAN_*; crankHz; coolant (K); onAt (K); nBlades; k: its gain; power: the
     // car's electrics live (the key on), for an electric fan
     void control(float d16, int kind, float crankHz, float coolant, float onAt, int nBlades, float k, int power)

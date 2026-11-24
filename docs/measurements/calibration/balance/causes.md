@@ -783,3 +783,64 @@ valve to the collectors (1396 → 1216 K on the four), so the turbines' housings
 holds Boost's mass from the pipes equal to the valves' let-out. Checked on the tip, the turbo four at 3050 rpm (2 s):
 0.1991 kg into the housings against 0.1995 out of the valves, 0.998; boost 107 kPa (was 117), torque 335 N m (was 357).
 N2's matching to be re-taken on it (told).
+
+## Two facts from their owners, and the V12's low-speed curve (22:21 by `date -u`)
+
+- G closed the housings' gap by mass (0.997 on the turbo four, 1.007 on the twin V8, 2 s); N2 re-takes the design point.
+- G: the NA tail's mean flow taken by mass at the tail's own state moves torque 0.4 to 0.7 % and the residual by 0.001 at
+  most (small block 4000, 3.2 six 7000, four-cam 6500): the tuned four-valves' shortfall is not in the exhaust's mean
+  flow. Struck from the candidates.
+
+**The V12 at 2049 rpm (the lead's question for the car work).** On settled steps it is a dip, not a peak: 637 / 457 / 647
+/ 670 / 551 / 478 / 712 N m at 1500 / 2049 / 2500 / 3000 / 3500 / 4500 / 6000 rpm, VE 0.911 / 0.656 / 0.878 / 0.897 /
+0.744 / 0.660 / 0.961, the residual 13.1 % at 2049 against 0.2 to 0.8 % beside it. The intake cam map is baked (advance
+47 / 42 / 36 degrees at 1500 / 2049 / 2500: a large overlap low down), knock retard 8 to 9 degrees below 2100.
+One change at a time, at 1500 / 2049 / 2500 rpm (N m, VE, residual):
+- primaries 0.5 m: 635 / **650** / 635, VE 0.90 at 2049, residual 0.4 %: the dip gone;
+- primaries 0.9 m: 646 / 552 / 509: the dip moves up;
+- the runner 0.5 m: 651 / 454 / 630: no change at 2049;
+- the phaser parked: 394 / 470 / 459 (VE 0.58 to 0.66): the baked map's overlap is what makes the low end strong, and
+  what lets the exhaust's wave in.
+So the dip is the 0.705 m primaries' (the layout's default) pressure wave arriving during the baked map's large
+low-speed overlap, pushing burned gas back. Not the runner, not knock. A maker's map would take overlap out where its
+headers revert; the bake's speeds may straddle 2049 without one there (to N1, whose bake rule it is). The model's light
+damping (N3-6) keeps these low-speed teeth sharp (VE swinging 0.66 to 0.91 within 500 rpm): it bears on the open ram
+item, as does any published low-speed curve for this engine.
+
+## N3-15. The waves' damping: one item, with a bound from the sources (22:22 by `date -u`; the lead's 22:23)
+
+Three findings point the same way: the intake's ram 12 to 18 % at its tune (N3-6); the V12's reversion dip, VE 0.66 to
+0.91 within 500 rpm (above); the tuned four-valves' curves in teeth (N3-10). What the published measurements bound:
+
+| Source (kind) | What it measured | Result |
+|---|---|---|
+| SI engine, runner length and diameter sweep (ResearchGate 394849080; experiment) | VE against runner length | up to **+8.7 %** at mid speed with a 528 mm runner; +4.2 % at high speed by diameter |
+| Turbocharged multi-cylinder diesel, variable-length manifold (ResearchGate 287040569; experiment) | VE | up to **+6 %** at the optimum length |
+| Two-step runner length with two valve timings (ScienceDirect S187661021931210X; simulation with test) | VE across the speed range | **+5.4 %** on average; +1.4 % from two lengths alone (another study) |
+| Single-cylinder CFR, variable intake length (Colorado State thesis; 1-D model) | VE | about +10 % at low speed against a fixed length |
+| 4-2-1 against 4-1 headers, the same engine (Racefix, a maker's bolt-on test; forum dynos) | torque | the 4-2-1 filled a 4-1's mid-range dip by 25 N m at the same peak; forum peaks +8 to +16 % (bases unstated) |
+| Winterbone and co. (Int. J. Mech. Sci. 1992); a 1-D exhaust pipe study | pressure traces, predicted against measured | no simple relation between the friction and heat-transfer factors; a straight pipe's exhaust pressure error not cured by the discharge coefficient |
+
+The bound, for the intake: a tuned runner's VE gain at its tune of **6 to 9 %** over an untuned one at the same speed
+(the two experimental rows; the simulations at or under 10 %). The model gives 12 to 18 % (the flat six, 0.53 against
+0.30 m), so its resonance stands about twice as tall. For the exhaust's reversion dip no measured depth was found (only
+makers' and forum dynos): no bound yet.
+
+What the model should then show for the same hardware: the flat six's 0.53 m runner some 6 to 9 % over its 0.30 m one at
+4750 rpm (it shows 17.7 %). As a damping: the ram's height goes near the resonance's Q, so the ringing that loses about
+10 % a period after the valve shuts (N3-6) should lose some 20 to 25 %.
+
+Where that loss may physically be (for G and N1 to size, each with its source): (1) the friction of an oscillating flow
+exceeds the quasi-steady friction the duct takes from the mean speed (the unsteady-friction models of water hammer:
+Zielke, Brunone, Vardy and Brown); (2) the port's and the valve seat's losses per pass while the valve is open; (3) the
+heat exchanged in the oscillating thermal layer beyond Kirchhoff's (the wall's temperature swing); (4) for the exhaust,
+the junctions' loss and the radiation of the open end. Not to be sized to our own targets: the 6 to 9 % is the target,
+the archetypes' curves then are the result.
+
+*G on the exhaust's side of N3-15:* no measured trace or VE curve held with its numbers. SAE 2001-01-1797 (Blair et al.,
+"Exhaust tuning on a four-stroke engine; experimentation and simulation": measured exhaust pressure diagrams and power
+on a YZ400 with three exhaust ends) is the right kind of data; only its abstract was reachable. The model's exhaust
+damping today: the junctions' K 0.3 to 0.6 a merge (judgement but the Borda area changes), the open end's radiation and
+jet loss, Kirchhoff's quasi-steady wall shelves and a mean-flow friction ξ 0.025; no unsteady friction beyond
+Kirchhoff's √f. G will measure the reflected pulse at the port against the junction K and the end loss once a bound
+exists. Open until that paper's full text (or another measured trace) is found.

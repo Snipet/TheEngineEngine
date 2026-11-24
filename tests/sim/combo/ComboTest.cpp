@@ -101,7 +101,7 @@ TEST_CASE("the switches the program has", "[fast][fast-1][combo]")
     }
 
 ARCHETYPE_CASES("small-four", "[nightly]")
-ARCHETYPE_CASES("v8", "[fast][fast-4][combo]")
+ARCHETYPE_CASES("v8", "[fast][fast-2][combo]")
 ARCHETYPE_CASES("turbo-six", "[nightly]")
 ARCHETYPE_CASES("large-diesel", "[nightly]")
 ARCHETYPE_CASES("turbo-v8-dual", "[nightly]")
@@ -203,7 +203,7 @@ CORPUS_CASE("small-block-57-carb", "[nightly]")
 CORPUS_CASE("twin-turbo-hot-vee-v8-40", "[nightly]")
 CORPUS_CASE("diesel-20-common-rail", "[nightly]")
 CORPUS_CASE("rotary-twin-13", "[nightly]")
-CORPUS_CASE("v12-65", "[fast][fast-4][combo]")
+CORPUS_CASE("v12-65", "[nightly][combo]")
 
 TEST_CASE("the archetype corpus: every build of content/builds/archetypes through the tour", "[nightly][corpus]")
 {
@@ -218,7 +218,7 @@ TEST_CASE("the archetype corpus: every build of content/builds/archetypes throug
         corpusBuild(f);
 }
 
-TEST_CASE("a handful of pairs where packages meet: fuel and ECU then boost and exhaust then ECU and car", "[fast][fast-3][combo][pairs]")
+TEST_CASE("a handful of pairs where packages meet: fuel and ECU then boost and exhaust then ECU and car", "[nightly][combo][pairs]")
 {
     // the fast tier's pairs (every pair is nightly): those whose meeting has produced findings today (X-003, X-006,
     // X-014, X-015, X-011, X-018)

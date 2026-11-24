@@ -14,6 +14,7 @@
 #include "views/engine/EngineModel.h"
 
 #include <array>
+#include <string>
 #include <vector>
 
 namespace tee::ui::valves
@@ -115,6 +116,10 @@ namespace tee::ui::valves
         double temp = kNaN;         // K now
     };
     OilHold oilHold(const Live& live, double temp, double pressure);
+    // The words VALVES and ENGINE both say while the oil holds something back ("" : nothing held), temperatures in the
+    // person's units: "PARKED: OIL 15 C, MOVES AT 40 C", "B WAITS: OIL 15 C, NEEDS 60 C" (or "... OIL PRESSURE LOW").
+    std::string phaserParkedWords(const Live& live, const Units& units);
+    std::string stageWaitWords(const Live& live, const Units& units);
     inline constexpr const char* kTelLift = "valve.lift";             // the continuous lift's share now, 0..1
     inline constexpr const char* kTelFloat = "valve.floatSpeed";      // rad/s: the speed the valves float at
     inline constexpr const char* kTelFloating = "valve.floating";     // 1 while they float
