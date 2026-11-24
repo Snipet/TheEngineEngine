@@ -36,8 +36,9 @@
 #      says `// lint: index-ok: <why>`. The places known on 2026-11-24 are in scripts/lint-index.allow, reported.
 #  10. a file under tests/ or tools/ that calls tee::loadBuild or parseBuild reads its `warnings` (beyond declaring
 #      it and passing it): the loader drops what it cannot take there (a nested ecu.limiter, ecu.idle, ecu.knock), and
-#      until 2026-11-24 the rigs ran 62 archetypes without their own idle and limiter so. A note, not a failure, until
-#      the one strict loader lands.
+#      until 2026-11-24 the rigs ran 62 archetypes without their own idle and limiter so. Since C's one strict loader
+#      (127c350) a field the program lacks is an error by default, and `warnings` holds only values out of their range:
+#      a note, unless the call passes strict = false (the field is then kept and only `warnings` says so): a failure.
 #
 # Our files are the ones git knows (the dependencies are not in the checkout).
 set -euo pipefail
@@ -159,13 +160,17 @@ while IFS= read -r cm; do
 done < <(git ls-files -- 'tests/*CMakeLists.txt')
 
 # ---- 10. a rig that loads a build reads what the loader dropped ------------------------------------------------------
-# tee::loadBuild / parseBuild put what they could not take (a nested ecu.limiter, ecu.idle, ecu.knock: 62 archetypes
-# ran without their own idle and limiter so) in `warnings`; a caller that never reads it measures another engine.
+# tee::loadBuild / parseBuild put in `warnings` what they kept without taking (strict = false) and values out of range;
+# a non-strict caller that never reads it measures another engine (rule text at the top).
 while IFS= read -r f; do
   [ -n "$f" ] || continue
-  if ! grep -vE '(loadBuild|parseBuild)[[:space:]]*\(|^[[:space:]]*std::string[^;(]*warnings[^;(]*;' "$f" | grep -q 'warnings'; then
-    # a note until C's one strict loader lands (then a failure): the lead's call, 2026-11-24
-    echo "lint: note: $f: calls loadBuild/parseBuild and never reads its warnings (what the build had that the loader dropped): fail on them, or print them"
+  reads=$(grep -vE '(loadBuild|parseBuild)[[:space:]]*\(|^[[:space:]]*std::string[^;(]*warnings[^;(]*;' "$f" | grep -c 'warnings' || true)
+  if [ "${reads:-0}" = 0 ]; then   # (no grep -q in a pipe: under pipefail its early exit fails the pipe)
+    if grep -qE '(loadBuild|parseBuild)[[:space:]]*\([^;]*,[[:space:]]*false[[:space:]]*\)' "$f"; then
+      say "$f: calls loadBuild/parseBuild with strict = false and never reads its warnings (the fields the program lacks): fail on them, or print them"
+    else
+      echo "lint: note: $f: never reads loadBuild/parseBuild's warnings (values out of their range): print them"
+    fi
   fi
 done < <(git grep -lE '(loadBuild|parseBuild)[[:space:]]*\(' -- 'tests/*' 'tools/*' || true)
 
