@@ -1098,3 +1098,50 @@ the target), the compressors choked (efficiency 0.54 and 0.33), and the turbine'
 matched one's at the same boost: 220 N m at 64 kPa on the 0.50. On this model's map family no one set holds both ends:
 the low end wants 0.30 to 0.40, the top 0.5 or more. For N2 (the map's width, the tip-speed limit of 560 m/s:
 judgement) and P (the boost taper: 62 kPa at 6200 on the matched turbo).
+
+**B-3, P's sources tried in the model** (23:16 `date -u`; P's docs/measurements/validation/2026-11-24-2314-ea888-gen3-sources.md).
+(a) *The AVS small exhaust lobe* (gen 2's, SSP 922903: 6.35 mm, 180 degrees, closing 2 degrees after TDC, below
+about 3100 rpm; whether the 180 is at the seat or at 1 mm is not stated): set in place of the build's exhaust cam
+(exLift 6.35 mm, centre 88 degrees before TDC), designShare 0.40, 1800 rpm, one run each:
+
+| exhaust cam, intake | N m | boost kPa | residual | fresh g/L/cycle | T_ivc K | knock ret. | p3 kPa | gate |
+|---|---|---|---|---|---|---|---|---|
+| the build's (236 seat), N1's rule (49 degrees) | 181 | 53 | 0.157 | | 462 | 14.9 | 128 | 0 |
+| 180 at the seat (150 at 1 mm), N1's rule (48) | **316** | 119.7 | 0.073 | 2.065 | 399 | 15.0 | 154 | 0.24 |
+| the same, knock control off | 317 | 119.9 | 0.100 | 1.953 | 410 | 0 | 155 | 0.15 |
+| 180 at 1 mm (212 seat), N1's rule (49) | 225 | 98.7 | 0.157 | 1.473 | 465 | 15.0 | 147 | 0 |
+| 180 at 1 mm, phaser parked | 292 | 118.8 | 0.058 | 1.814 | 423 | 13.1 | 155 | 0.10 |
+| 180 at 1 mm, phaser at 20 | 302 | 118.1 | 0.069 | 1.925 | 415 | 14.8 | 155 | 0.18 |
+
+The short lobe at the seat reading scavenges in the model: with the rule's 48 degrees of intake advance the fresh charge
+reaches 2.07 g per litre per cycle (the 0.87 of the plenum that 350 N m needs), the boost reaches the target and the
+gate opens. 316 N m against 333 to 368; knock at its cap. The lobe read at 1 mm (32 degrees longer at the seat) does
+not: it closes the exhaust 16 degrees later, inside the intake's opening. So item 1 has a cited hardware answer the model
+already holds (valve.stages: a second lobe by speed) once the lobe's seat duration is known: P's (the build's exhaust
+cam), with N1's rule left as is for this engine. Scavenging is not missing from the model; the build's long exhaust
+lobe was.
+
+(b) *The top at the real boost*: an owner's stock VCDS log (P: carworklog.com, a transient pull, enthusiast) reads
+81 kPa at 6048 rpm and 76 at 6400: the build's held 81 kPa at 6200 is the real boost, so 276 against 237 to 262 N m is
+the model's at that boost, not a taper. At 6200, 81 kPa held, by the turbine's size (the turbine's nozzle by turbAR as
+the match's at that share; the compressor and gate the 0.85 match's):
+
+| turbine | N m | p3 kPa | gate | residual | etaC |
+|---|---|---|---|---|---|
+| 0.85 (as built) | 276 | 172 | 0.61 | 0.046 | 0.76 |
+| 0.40 | 233 | 238 | 0.57 | 0.071 | 0.76 |
+| 0.30 | 207 | 287 | 0.47 | 0.085 | 0.75 |
+
+The top's torque at the real boost is set by the turbine's back pressure; the cited 250 lies between the 0.85 and the
+0.40 turbines (about 0.5 to 0.6 of the redline by the match's rule). With the field's whole match at 0.40 or 0.50 the
+compressor chokes at the top (the shaft at its limit; with the limit lifted by 1.3 the 0.40 reaches 81 kPa at p3 407 kPa,
+etaC 0.18, 101 N m; the 0.50 at p3 249, 0.35, 198 N m). The 0.85 compressor with a 0.40 turbine holds the top (233 at
+6200, 313 at 4000) but not the low end (1800 with the short lobe 171 N m at 36 kPa, etaC 0.46; 1500 179 at 22): the
+compressor that holds 6200 runs far left of its island at 1800. **The one conflict left is the compressor's map
+width**: the low end wants the 0.40 match's wheel (0.67 at 1800), the top the 0.85's. The real IS20's maps are not
+published (P). N2's: the model's family's width (A/R term and the island's shape, judgement) against a published
+compressor map of a wheel this size.
+
+The ranking after P's sources: the exhaust lobe (content, P; the model has the stage), then the compressor's map width
+(N2), then the turbine's size by the cited top (P with N2), then knock (C: at its cap with the lobe in; costs about
+nothing in torque at 1800 there, knock off 317). N1's rule stands on this engine with the short lobe.
