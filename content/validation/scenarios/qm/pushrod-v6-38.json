@@ -48,17 +48,23 @@
       ]
     },
     {
-      "t": 9.0,
+      "t": 9.5,
       "ctl": {
-        "throttle": 1
-      },
-      "ramp": 0.3
+        "throttle": 0.2
+      }
     },
     {
       "t": 10.5,
       "ctl": {
         "brake": 0
       }
+    },
+    {
+      "t": 10.5,
+      "ctl": {
+        "throttle": 1
+      },
+      "ramp": 0.6
     }
   ],
   "assertions": [
