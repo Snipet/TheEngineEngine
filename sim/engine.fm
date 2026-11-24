@@ -1214,10 +1214,12 @@ module Engine
         }
         // the cylinders
         float qe[MAX_PORTS];
+        float qeLet[MAX_PORTS];     // (card G: the volume each port's valves let out, without the simple wave's gain)
         float qi[MAX_PORTS];
         for (int i = 0; i < np; ++i)
         {
             qe[i] = 0.0f;
+            qeLet[i] = 0.0f;
             qi[i] = 0.0f;
         }
         float torque = 0.0f;
@@ -1275,6 +1277,7 @@ module Engine
             work.sample(c, a, cy->p, cy->v);
             comb.sample(cy, c, dt);                     // card H: nothing under fuel.model 0 and ecu.model 0
             qe[pi] += cy->qEa;
+            qeLet[pi] += cy->qE;
             qi[pi] += cy->qIa;
             airValves -= (double)(cy->mI * dt);
             intk.mValves += cy->mI;                     // (N1, for card E: the plenum gives up the valves' own mass)
@@ -1317,7 +1320,7 @@ module Engine
         }
         if (ctl.scopeOn != 0)
             scopeTap();
-        exh.step(qe, np);       // (with boost.model 1 the builder runs, its collectors ending in the turbines' housings)
+        exh.stepLet(qe, qeLet, np);       // (exhaust.model 1: the pipes given the valves' mean flow, card G's; with boost.model 1 the builder runs, its collectors ending in the turbines' housings)
         float rNear[MAX_PORTS];
         for (int i = 0; i < np; ++i)
             rNear[i] = intk.run[i].near + intk.run[i].z * qi[i];
