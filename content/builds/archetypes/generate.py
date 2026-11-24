@@ -565,6 +565,14 @@ def build(a):
             if a.get("gateDiameter"):
                 bo["gateDiameter"] = a["gateDiameter"]
             bo["icEffect"] = 0.75
+        # the intercooler sized for the engine's air at its rated power and the charge pipes for its size (N2, 19:55:
+        # the defaults, 0.25 kg/s and 5 L, suit 2 to 3 L): air some 1.1 g/s a kW for petrol near lambda 0.85, 1.7 for a
+        # diesel's lean full load (D2's 15 L truck: 0.8 kg/s); the pipes twice the swept volume, 1 to 20 L
+        kw = _val.T[a["slug"]][0][1] if a["slug"] in _val.T else 200
+        bo["icFlow"] = round(min(max(kw * (0.0017 if a.get("diesel") else 0.0011), 0.05), 2.0), 3)
+        bo["chargeVolume"] = round(min(max(2.0 * a["displacement"] if "displacement" in a else
+                                           2.0 * n * math.pi / 4 * (a["bore"] / 1000) ** 2 * a["stroke"] / 1000,
+                                           0.001), 0.02), 4)
     else:
         bo["model"] = "Machine"
 
