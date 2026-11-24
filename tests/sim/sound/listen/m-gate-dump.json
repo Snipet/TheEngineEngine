@@ -1,0 +1,52 @@
+{
+ "format": "tee-engine-scenario/1",
+ "name": "m-gate-dump",
+ "description": "Turbo four with an external gate at full load: into the exhaust, then to the air from 9 s.",
+ "seconds": 14,
+ "events": [
+  {
+   "t": 0.0,
+   "spec": {
+    "sound.view": 3,
+    "voices.model": 1,
+    "boost.gate": 1,
+    "voices.gateDump": 0
+   },
+   "ctl": {
+    "mode": 0,
+    "lever": 0,
+    "clutch": 0,
+    "brake": 0,
+    "throttle": 0,
+    "ignition": 1
+   }
+  },
+  {
+   "t": 0.25,
+   "ctl": {
+    "ignition": 2
+   }
+  },
+  {
+   "t": 2.0,
+   "ctl": {
+    "ignition": 1
+   }
+  },
+  {
+   "t": 3.0,
+   "ctl": {
+    "mode": 2,
+    "dynoSpeed": 576,
+    "throttle": 1
+   }
+  },
+  {
+   "t": 9.0,
+   "spec": {
+    "voices.gateDump": 1
+   },
+   "note": "the external gate vented to the air (screamer pipe)"
+  }
+ ]
+}

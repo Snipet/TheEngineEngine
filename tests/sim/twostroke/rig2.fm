@@ -1,15 +1,16 @@
-// tests/sim/twostroke/rig2.fm: a two-stroke single on a bench of its own: the cylinder and its crankcase
-// (sim/core/twostroke/cylinder2.fm) on a crank held at a set speed (a made-up crank: a dyno's, stiff), breathing out
-// through the expansion chamber (chamber.fm). What a run measured is left in its fields.
-#include "core/twostroke/spec2.fm"
-#include "core/twostroke/cylinder2.fm"
-#include "core/twostroke/chamber.fm"
+// tests/sim/twostroke/rig2.fm: a two-stroke on a bench of its own: the engine (sim/core/twostroke/twostroke.fm: its
+// cylinders and crankcases, each breathing out through its expansion chamber) on a crank held at a set speed (a
+// dyno's, stiff). What a run measured, cylinder 1's, is left in its fields.
+#include "core/twostroke/twostroke.fm"
 
 module TsRig
 {
-    TwoStrokeSpec spec;
-    TwoStrokeCylinder cy;
-    ExpansionChamber ch;
+    EngineSpec spec;
+    TwoStroke eng;
+    float bore;         // the geometry (a 125 cc racing single's, 54 by 54.5 mm, unless a test sets it)
+    float stroke;
+    float rod;
+    float compression;
     float rate;
     float tPipe;
     float theta;        // degrees, 0 to 360
@@ -29,9 +30,12 @@ module TsRig
     int samples;
     double pEpcSum;     // the port's pressure as the exhaust port closes, summed over the measured cycles
     float pPortMax;
+    float flowMax;      // the largest mass flow through any port or inlet (kg/s) over a still run's tail
     float pPortMin;
     float pCylMax;
     int bad;            // samples where something was not finite
+    float rec[32768];   // the last samples of a run: what the stingers radiate, both sides summed
+    int recN;
     float trace[360];   // the last cycle, by degree: the port's pressure (Pa over the air), the cylinder's, the
     float traceCyl[360];    // exhaust's mass flow (kg/s) and the transfers'
     float traceE[360];
@@ -40,23 +44,26 @@ module TsRig
     void init(float rateIn)
     {
         rate = rateIn;
-        ch.configure(rate);
+        eng.setup(rate);
+        bore = 0.054f;
+        stroke = 0.0545f;
+        rod = 0.110f;
+        compression = 13.5f;
     }
 
     void end()
     {
-        ch.release();
+        eng.release();
     }
 
-    // The engine for the spec, its pipe's gas at tp (K), at rest
+    // The engine for the spec, its pipes' gas held at tp (K; 0: following the ports' gas), at rest
     void build(float tp)
     {
         tPipe = tp;
-        cy.setup(&spec);
-        cy.reset(0.0f, 101325.0f, 300.0f);
-        ch.build(&spec, sqrtf(1.35f * 287.0f * tp));
+        eng.tFixed = tp;
+        eng.configure(&spec, bore, stroke, rod, compression, 0.0f, 101325.0f, 300.0f);
         theta = 0.0f;
-        exDur = spec.exhaustDur;
+        exDur = eng.exDur;
     }
 
     // n samples at rpm and throttle; the last `tail` cycles measured
@@ -66,8 +73,8 @@ module TsRig
         const float dt = 1.0f / rate;
         const int perCycle = (int)(360.0f / dDeg);
         const int from = n - tail * perCycle;
-        const float k16 = 1.0f - expf(-16.0f / (0.05f * rate));
         tqSum = 0.0;
+        recN = 0;
         trappedSum = 0.0;
         freshSum = 0.0;
         freshSq = 0.0;
@@ -84,80 +91,92 @@ module TsRig
         pPortMin = 1.0e9f;
         pCylMax = 0.0f;
         bad = 0;
-        exDur = cy.exhaustDurAt(&spec, rpm * 0.10471976f);
-        cy.exhaustEdge(exDur);
+        const float omega = rpm * 0.10471976f;
         for (int i = 0; i < n; ++i)
         {
             if ((i & 15) == 0)
-                ch.flow16(k16);
+                eng.control16(&spec, omega, 16.0f * dt, 450.0f, 300.0f);
+            exDur = eng.exDur;
             const float before = theta;
             theta += dDeg;
             if (theta >= 360.0f)
                 theta -= 360.0f;
-            ch.read();
-            cy.step(&spec, theta, dDeg, dt, rpm, ch.seg[0].near, ch.seg[0].z, tPipe, 101325.0f, 300.0f, throttle, exDur);
-            const float pp = ch.write(cy.qEa);
-            if (!(fabsf(cy.p) < 1.0e8f) || !(fabsf(pp) < 1.0e8f) || !(fabsf(cy.pc) < 1.0e8f))
+            eng.step(&spec, theta, dDeg, dt, omega, throttle, 1, 101325.0f, 300.0f);
+            const float pp = eng.pPort[0];
+            if (i >= n - 32768)
+            {
+                rec[i - (n - 32768)] = eng.outL + eng.outR;
+                recN = i - (n - 32768) + 1;
+            }
+            if (!(fabsf(eng.cy[0].p) < 1.0e8f) || !(fabsf(pp) < 1.0e8f) || !(fabsf(eng.cy[0].pc) < 1.0e8f))
                 bad += 1;
             if (i >= from)
             {
-                tqSum += (double)cy.tq;
+                tqSum += (double)eng.torque;
                 samples += 1;
                 pPortMax = fmaxf(pPortMax, pp);
                 pPortMin = fminf(pPortMin, pp);
-                pCylMax = fmaxf(pCylMax, cy.p);
+                pCylMax = fmaxf(pCylMax, eng.cy[0].p);
                 const float epc = 180.0f + 0.5f * exDur;
                 if (before < epc && theta >= epc)
                     pEpcSum += (double)pp;
                 const int d = (int)theta;
                 trace[d] = pp;
-                traceCyl[d] = cy.p;
-                traceE[d] = cy.mE;
-                traceT[d] = cy.mT;
+                traceCyl[d] = eng.cy[0].p;
+                traceE[d] = eng.cy[0].mE;
+                traceT[d] = eng.cy[0].mT;
                 // each cycle's trapping, at its start (top dead centre)
                 if (theta < before)
                 {
-                    trappedSum += (double)cy.trapped;
-                    freshSum += (double)cy.trappedFresh;
-                    freshSq += (double)cy.trappedFresh * (double)cy.trappedFresh;
-                    deliveredSum += (double)cy.delivered;
-                    puritySum += (double)cy.purity;
-                    burnSum += (double)cy.cBurn;
-                    burnSq += (double)cy.cBurn * (double)cy.cBurn;
-                    if ((cy.cBurn < 0.5f) != (burnLast < 0.5f))
+                    trappedSum += (double)eng.cy[0].trapped;
+                    freshSum += (double)eng.cy[0].trappedFresh;
+                    freshSq += (double)eng.cy[0].trappedFresh * (double)eng.cy[0].trappedFresh;
+                    deliveredSum += (double)eng.cy[0].delivered;
+                    puritySum += (double)eng.cy[0].purity;
+                    burnSum += (double)eng.cy[0].cBurn;
+                    burnSq += (double)eng.cy[0].cBurn * (double)eng.cy[0].cBurn;
+                    if ((eng.cy[0].cBurn < 0.5f) != (burnLast < 0.5f))
                         flips += 1;
-                    burnLast = cy.cBurn;
+                    burnLast = eng.cy[0].cBurn;
                     cyc += 1;
                 }
             }
         }
     }
 
+    // The gas's internal energy in cylinder 1 and its crankcase (J)
+    float energy()
+    {
+        return eng.cy[0].energy();
+    }
+
     // The engine stopped at a crank angle (degrees), its cylinder's gas at p (Pa) and t (K): n samples, nothing
     // turning; the port pressure's largest magnitude over the last `tail` samples
     void still(int n, float a, float p, float t, int tail)
     {
-        cy.reset(a, 101325.0f, 300.0f);
-        cy.tWall = 300.0f;      // (walls at the air's temperature: nothing heats the gas)
-        cy.p = p;
-        cy.t = t;
-        cy.m = p * cy.v / (287.0f * t);
-        cy.fresh = 0.0f;
+        eng.reset(&spec, a, 101325.0f, 300.0f);
+        eng.cy[0].p = p;
+        eng.cy[0].t = t;
+        eng.cy[0].m = p * eng.cy[0].v / (287.0f * t);
+        eng.cy[0].fresh = 0.0f;
         theta = a;
         pPortMax = 0.0f;
+        flowMax = 0.0f;
         bad = 0;
-        const float k16 = 1.0f - expf(-16.0f / (0.05f * rate));
         for (int i = 0; i < n; ++i)
         {
+            // (walls at the air's temperature: nothing heats the gas)
             if ((i & 15) == 0)
-                ch.flow16(k16);
-            ch.read();
-            cy.step(&spec, a, 0.0f, 1.0f / rate, 0.0f, ch.seg[0].near, ch.seg[0].z, tPipe, 101325.0f, 300.0f, 0.0f, spec.exhaustDur);
-            const float pp = ch.write(cy.qEa);
+                eng.control16(&spec, 0.0f, 16.0f / rate, 300.0f, 300.0f);
+            eng.step(&spec, a, 0.0f, 1.0f / rate, 0.0f, 0.0f, 1, 101325.0f, 300.0f);
+            const float pp = eng.pPort[0];
             if (!(fabsf(pp) < 1.0e8f))
                 bad += 1;
             if (i >= n - tail)
+            {
                 pPortMax = fmaxf(pPortMax, fabsf(pp));
+                flowMax = fmaxf(flowMax, fmaxf(fabsf(eng.cy[0].mE), fmaxf(fabsf(eng.cy[0].mT), fabsf(eng.cy[0].mI))));
+            }
         }
     }
 };

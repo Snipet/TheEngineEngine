@@ -7,13 +7,18 @@
 // docs/models/vehicle.md) and the model's fields, read only when `model` is 1. None is glided: each takes effect at the
 // next 16-sample step; `model`, `gearbox`, `drive` and `gears` put the vehicle in neutral at rest. `mass` is the
 // reference's, shared. The model reads them through its own VehSpec (vehicle/vspec.fm), whose fields have these names.
+//
+// Card B2's block (the motorcycle: kind Motorcycle with model 1; read by vehicle/bike.fm through its BikeSpec,
+// vehicle/bspec.fm, whose fields have these names): the rider, the tuck, the pitch, the tyres, the primary drive and
+// the sprockets, the chain's lash and efficiency, the slipper clutch, the quickshifter, the auto-blipper, the wheelie
+// control. None is glided. With any other kind or model 0 none is read.
 #pragma once
 
 module CarSpec
 {
     int rev [[ui::hidden]];
-    int kind [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Vehicle")]] [[ui::choices("Car", "Truck")]]
-        [[ui::help("A car: six gears; a semi truck: eighteen")]];
+    int kind [[fminus::range(0, 2)]] [[fminus::default(0)]] [[ui::label("Vehicle")]] [[ui::choices("Car", "Truck", "Motorcycle")]]
+        [[ui::help("A car: six gears; a semi truck: eighteen; a motorcycle (with the vehicle model; the reference's model takes it as a car)")]];
     float mass [[fminus::range(100, 50000)]] [[fminus::default(1400)]] [[ui::label("Mass")]] [[ui::quantity("mass")]]
         [[ui::taper("log")]] [[ui::decimals(0)]];
     int model [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Vehicle model")]]
@@ -48,7 +53,7 @@ module CarSpec
     bool abs [[fminus::default(1)]] [[ui::label("ABS")]];
     int gearbox [[fminus::range(0, 4)]] [[fminus::default(0)]] [[ui::label("Gearbox")]] [[ui::group("Gearbox")]]
         [[ui::choices("Manual", "Sequential", "Dual clutch", "Automatic", "CVT")]];
-    int gears [[fminus::range(1, 18)]] [[fminus::default(6)]] [[ui::label("Forward gears")]];
+    int gears [[fminus::range(1, 18)]] [[fminus::default(6)]] [[ui::label("Forward gears")]] [[ui::unit("gears")]];
     bool autoGearing [[fminus::default(1)]] [[ui::label("Gear it for the engine")]]
         [[ui::help("The reference's rule: the ratios and final drive chosen for the engine's power and redline")]];
     float ratio [[fminus::range(0.3, 20)]] [[fminus::default(1)]] [[ui::label("Ratios")]]
@@ -104,4 +109,43 @@ module CarSpec
         [[ui::help("The propeller shaft's torque reaction unloads the right rear tyre")]];
     bool proTree [[fminus::default(0)]] [[ui::label("Pro tree")]] [[ui::group("Strip")]]
         [[ui::help("The three ambers together, green 0.4 s later; otherwise half a second apart")]];
+    // ---- card B2: the motorcycle (kind Motorcycle, model 1; sim/vehicle/bspec.fm's BikeSpec, the same names) ----
+    float riderMass [[fminus::range(0, 200)]] [[fminus::default(80)]] [[ui::label("Rider")]] [[ui::quantity("mass")]]
+        [[ui::group("Motorcycle")]] [[ui::help("The rider and their kit; the bike's own mass is Mass above")]];
+    float riderHeight [[fminus::range(0.4, 1.6)]] [[fminus::default(1.0)]] [[ui::label("Rider's centre of mass height")]]
+        [[ui::quantity("length")]] [[ui::help("Sitting up; a full tuck lowers it 0.12 m")]];
+    float riderForward [[fminus::range(0, 1)]] [[fminus::default(0.42)]] [[ui::label("Rider ahead of the rear axle")]]
+        [[ui::quantity("fraction")]] [[ui::help("Their centre of mass, as a share of the wheelbase; a full tuck moves it 0.06 forward")]];
+    float tuck [[fminus::range(0, 1)]] [[fminus::default(1)]] [[ui::label("Tuck")]] [[ui::quantity("fraction")]]
+        [[ui::help("0 sitting up (Cd A above), 1 flat on the tank (Cd A tucked)")]];
+    float cdATuck [[fminus::range(0.1, 1.5)]] [[fminus::default(0.32)]] [[ui::label("Drag area tucked in")]]
+        [[ui::quantity("area")]];
+    float pitchInertia [[fminus::range(5, 300)]] [[fminus::default(50)]] [[ui::label("Pitch inertia")]]
+        [[ui::quantity("inertia")]] [[ui::help("The bike and rider about their centre of mass, nose up and down")]];
+    int bikeTyre [[fminus::range(0, 5)]] [[fminus::default(1)]] [[ui::label("Motorcycle tyres")]]
+        [[ui::choices("Touring", "Sport", "Hypersport", "Race slick", "Dual sport", "Cruiser")]];
+    float primaryRatio [[fminus::range(1, 4)]] [[fminus::default(1.7)]] [[ui::label("Primary drive")]]
+        [[ui::quantity("ratio")]] [[ui::group("Chain and clutch")]] [[ui::help("The crank's gear to the clutch's basket")]];
+    int frontSprocket [[fminus::range(10, 30)]] [[fminus::default(16)]] [[ui::label("Front sprocket")]]
+        [[ui::unit("teeth")]];
+    int rearSprocket [[fminus::range(25, 70)]] [[fminus::default(42)]] [[ui::label("Rear sprocket")]] [[ui::unit("teeth")]];
+    float chainEfficiency [[fminus::range(0.85, 1)]] [[fminus::default(0.97)]] [[ui::label("Chain efficiency")]]
+        [[ui::quantity("fraction")]] [[ui::help("A clean O-ring chain's is about 0.97 to 0.98; a belt's 0.95 to 0.97")]];
+    float chainLash [[fminus::range(0, 0.25)]] [[fminus::default(0.035)]] [[ui::label("Driveline lash")]]
+        [[ui::unit("rad")]] [[ui::help("The play between throttle on and off, at the rear wheel: the dogs, the chain's slack, the cush drive")]];
+    bool slipper [[fminus::default(1)]] [[ui::label("Slipper clutch")]]
+        [[ui::help("Lets the clutch slip when the rear wheel drives the engine hard, as on a clumsy downshift")]];
+    float slipperTorque [[fminus::range(0.05, 1)]] [[fminus::default(0.15)]] [[ui::label("Slipper's back torque")]]
+        [[ui::quantity("fraction")]] [[ui::help("The most it passes backwards, as a share of the clutch's capacity")]];
+    bool quickshifter [[fminus::default(1)]] [[ui::label("Quickshifter")]] [[ui::group("Shifting")]]
+        [[ui::help("Upshifts under power without the clutch: the ignition is cut while the dogs change over")]];
+    float quickshiftCut [[fminus::range(0.02, 0.12)]] [[fminus::default(0.05)]] [[ui::label("Quickshift cut")]]
+        [[ui::quantity("time")]];
+    bool autoBlip [[fminus::default(1)]] [[ui::label("Auto-blipper")]]
+        [[ui::help("Downshifts without the clutch: the throttle is blipped to the lower gear's speed")]];
+    int wheelieControl [[fminus::range(0, 2)]] [[fminus::default(1)]] [[ui::label("Wheelie control")]]
+        [[ui::choices("Off", "By the throttle", "By the clutch")]] [[ui::group("Wheelie")]]
+        [[ui::help("What holds the front up at the angle below: a rider or an anti-wheelie control easing the throttle, or a rider slipping the clutch")]];
+    float wheelieAngle [[fminus::range(0, 40)]] [[fminus::default(4)]] [[ui::label("Wheelie held at")]] [[ui::unit("deg")]];
+    // ---- end of card B2's block ----
 };

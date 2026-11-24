@@ -6,6 +6,7 @@
 
 #include <funkgui/canvas/Canvas.h>
 #include <funkgui/core/Theme.h>
+#include <funkgui/prefs/UiPreferences.h>
 
 #include <algorithm>
 #include <cmath>
@@ -72,6 +73,30 @@ namespace tee::ui
         }
 
         const char* const kModes[3] = { "BENCH", "DYNO", "DRIVE" };
+
+        // The rail's pictograms, drawn over its buttons (an item of no input and no accessibility of its own: each
+        // button says its workspace's name).
+        class RailMarks final : public Widget
+        {
+        public:
+            RailMarks(uint32_t id, std::function<void(funkgui::Canvas&, const look::Palette&)> paint, std::function<uint64_t()> key)
+                : Widget(id), paint_(std::move(paint)), key_(std::move(key))
+            {
+            }
+            void draw(funkgui::Canvas& c, const funkgui::Theme& th, bool) const override { paint_(c, look::Palette::of(th)); }
+            bool focusable() const override { return false; }
+            bool contains(funkgui::Point) const override { return false; }
+            void accessibility(std::vector<funkgui::A11yItem>&) const override {}
+            bool a11yAction(uint32_t, funkgui::A11yAction, double, funkgui::GestureController&) override { return false; }
+            uint64_t drawKey() const override { return key_(); }
+
+        protected:
+            const char* kind() const override { return "rail marks"; }
+
+        private:
+            std::function<void(funkgui::Canvas&, const look::Palette&)> paint_;
+            std::function<uint64_t()> key_;
+        };
 
         funkgui::Col pedalThrottle(const look::Palette& p) { return p.value; }
         funkgui::Col pedalBrake(const look::Palette& p) { return p.hotter; }
@@ -168,7 +193,7 @@ namespace tee::ui
             const float p = peak();
             return p <= 0.001f ? std::string("-60 dB") : look::num(20.0 * std::log10(static_cast<double>(p)), "%.0f") + " dB";
         });
-        unitsButton_ = &make<Button>("Units", [this] { showUnits(!unitsPage_); });
+        unitsButton_ = &make<Button>("Settings", [this] { showUnits(!unitsPage_); });
         unitsButton_->setLit([this] { return unitsPage_; });
         undo_ = &make<Button>("Undo", [this] { if (services_.undo) services_.undo(); });
         redo_ = &make<Button>("Redo", [this] { if (services_.redo) services_.redo(); });
@@ -179,8 +204,21 @@ namespace tee::ui
         {
             Button& b = make<Button>(slots_[static_cast<std::size_t>(i)].title, [this, i] { show(i); });
             b.setLit([this, i] { return shown_ == i; });
+            b.setLeftRoom(24.0f);
             rail_.push_back(&b);
         }
+        railMarks_ = &make<RailMarks>([this](funkgui::Canvas& c, const look::Palette& p) {
+            if (railWidth() < kRailW)
+                return;
+            for (std::size_t i = 0; i < rail_.size(); ++i)
+            {
+                const funkgui::Rect r = rail_[i]->bounds();
+                const std::string& id = slots_[i].id;
+                const std::string_view plain = std::string_view(id).substr(id.rfind('-') == std::string::npos ? 0 : id.rfind('-') + 1);
+                look::pictogram(c, plain, r.x + 15.0f, r.centreY(), 12.0f, shown_ == static_cast<int>(i) ? p.value : p.label);
+            }
+        }, [this] { return DrawKey{}.mix(shown_).mix(railWidth()).h; });
+        railMarks_->setShown(true);
         // The inspector's header, tabs and units page; the ribbon.
         clear_ = &make<Button>("All", [this] { selection_.clear(); });
         for (int p = 0; p < kMaxTabs; ++p)
@@ -199,6 +237,17 @@ namespace tee::ui
             unitPorts_.push_back(std::move(port));
             unitSteppers_.push_back(&make<Stepper>(u, std::string(nameOf(qq)), [&u](float v) { return u.text(v); }));
         }
+        audioLine_ = &make<Label>([this] {
+            if (services_.audioInfo)
+                return services_.audioInfo();
+            return services_.app.status ? firstLine(services_.app.status()) : std::string("No audio device.");
+        }, kWidgetText, Label::Ink::text);
+        audioMenu_ = &make<Button>("Audio device...", [this] { if (services_.audioMenu) services_.audioMenu(); });
+        // The theme: FunkGui's preference, which the window follows (as FunkGui's own theme cells write it).
+        graphite_ = &make<Button>("Graphite", [] { funkgui::UiPreferences::get().setTheme(0); });
+        paper_ = &make<Button>("Paper", [] { funkgui::UiPreferences::get().setTheme(1); });
+        graphite_->setLit([this] { return host() != nullptr && host()->themeIndex() == 0; });
+        paper_->setLit([this] { return host() != nullptr && host()->themeIndex() == 1; });
         ribbon_ = &make<DynoRibbon>(*dyno_, units_);
         fold_ = &make<Button>("Fold", [this] { foldRibbon(!folded_); });
         makeCockpit();
@@ -452,12 +501,12 @@ namespace tee::ui
                 }
             }
             if (pages_.empty())
-                unitsPage_ = true;   // nothing of the Spec here (the garage): the units
+                unitsPage_ = true;   // nothing of the Spec here: the settings
         }
         if (unitsPage_)
         {
             pages_.clear();
-            inspectorHead_ = "UNITS";
+            inspectorHead_ = "SETTINGS";
         }
         const funkgui::Rect room = inspectorRect();
         for (Page& page : pages_)
@@ -469,6 +518,7 @@ namespace tee::ui
             o.minHeight = kMinH;
             o.name = "app";
             o.dimAtDefault = false;   // a value is what a person reads, at its default or not
+            o.tabWraps = false;       // Tab goes on from the page's last control to the frame's
             o.insetLeft = static_cast<int>(room.x) + 4;
             o.insetTop = static_cast<int>(room.y) + 2;
             o.insetRight = std::max(0, width() - static_cast<int>(room.right()) + 4);
@@ -559,11 +609,19 @@ namespace tee::ui
 
     funkgui::Rect AppFrame::ribbonRect() const
     {
-        if (!current().ribbon())
+        if (!current().ribbon() || unitsPage_)   // the settings take the whole column
             return {};
         const funkgui::Rect s = stageRect();
         const float h = folded_ ? kRibbonFoldedH : kRibbonH;
         return { s.right(), s.bottom() - h, static_cast<float>(width()) - s.right(), h };
+    }
+
+    int AppFrame::railFocus() const
+    {
+        for (std::size_t i = 0; i < rail_.size(); ++i)
+            if (focus() >= 0 && &const_cast<AppFrame*>(this)->item(focus()) == rail_[i])
+                return static_cast<int>(i);
+        return -1;
     }
 
     int AppFrame::tabRows() const noexcept
@@ -613,7 +671,9 @@ namespace tee::ui
             const WorkspaceSlot& s = slots_[i];
             rail_[i]->setTitle(narrow ? s.shortTitle : s.title);
             rail_[i]->setPlace(railRect(static_cast<int>(i)), true);
+            rail_[i]->setLeftRoom(narrow ? 0.0f : 24.0f);   // narrow: the short words alone; wide: a pictogram and the word
         }
+        railMarks_->setPlace({ 0.0f, kTopH, railWidth(), static_cast<float>(height()) - kTopH - kCockpitH }, true);
         // The top bar, from the right: redo, undo, units, the output's level, the load, the status line.
         float x = w - 12.0f;
         const auto right = [&](Item* it, float iw, float y, float h) {
@@ -695,14 +755,30 @@ namespace tee::ui
                                std::max(0, width() - static_cast<int>(room.right()) + 4),
                                std::max(0, height() - static_cast<int>(room.bottom())));
         }
-        // The units page: one column of steppers where it fits, else two.
-        const bool one = 10.0f + 32.0f * static_cast<float>(unitSteppers_.size()) + 30.0f <= room.h;
-        const float cw = one ? room.w - 24.0f : (room.w - 36.0f) / 2.0f;
+        // The settings page, top down: AUDIO (the device in a line, its menu), THEME, UNITS (two columns of steppers),
+        // KEYS (drawn: drawOver).
+        const bool on = unitsPage_;
+        const float x = room.x + 12.0f, w = room.w - 24.0f;
+        float y = room.y + 8.0f;
+        settingsHeads_.clear();
+        settingsHeads_.push_back({ "AUDIO", y });
+        audioLine_->setPlace({ x, y + 16.0f, w, 18.0f }, on);
+        audioMenu_->setPlace({ x, y + 38.0f, 150.0f, 26.0f }, on && static_cast<bool>(services_.audioMenu));
+        y += services_.audioMenu ? 76.0f : 44.0f;
+        settingsHeads_.push_back({ "THEME", y });
+        graphite_->setPlace({ x, y + 16.0f, 110.0f, 26.0f }, on);
+        paper_->setPlace({ x + 118.0f, y + 16.0f, 110.0f, 26.0f }, on);
+        y += 54.0f;
+        settingsHeads_.push_back({ "UNITS", y });
+        const float cw = (w - 12.0f) / 2.0f;
         for (std::size_t i = 0; i < unitSteppers_.size(); ++i)
         {
-            const float col = one ? 0.0f : static_cast<float>(i % 2), row = one ? static_cast<float>(i) : static_cast<float>(i / 2);
-            unitSteppers_[i]->setPlace({ room.x + 12.0f + col * (cw + 12.0f), room.y + 8.0f + row * 32.0f, cw, 28.0f }, unitsPage_);
+            const float col = static_cast<float>(i % 2), row = static_cast<float>(i / 2);
+            unitSteppers_[i]->setPlace({ x + col * (cw + 12.0f), y + 16.0f + row * 31.0f, cw, 27.0f }, on);
         }
+        y += 16.0f + 31.0f * static_cast<float>((unitSteppers_.size() + 1) / 2) + 8.0f;
+        settingsHeads_.push_back({ "KEYS", y });
+        keysY_ = y + 16.0f;
     }
 
     // ---- drawing ----------------------------------------------------------------------------------------------------
@@ -740,9 +816,27 @@ namespace tee::ui
         // The inspector's header: what is selected (or the workspace), in the accent while something is.
         const std::string head = fitText(c, inspectorHead_, look::kTitle, w - stage.right() - 90.0f);
         c.text(head.c_str(), stage.right() + 14.0f, stage.y + 11.0f, look::kTitle, selection_.empty() || unitsPage_ ? p.text : p.selected);
-        if (unitsPage_ && !unitSteppers_.empty())
-            c.text("Units for every page; saved with the settings.", stage.right() + 14.0f,
-                   unitSteppers_.back()->bounds().bottom() + 12.0f, look::kBody, p.label);
+        if (unitsPage_)
+        {
+            const funkgui::Rect room = inspectorRect();
+            for (const auto& [heading, hy] : settingsHeads_)
+                c.text(heading.c_str(), room.x + 12.0f, hy, look::kCaps, p.label);
+            // The keys of docs/controls.md (the shell reads them; they work in every workspace but a text field).
+            static const char* const kKeys[][2] = {
+                { "Up / W", "throttle" }, { "Down / S", "brake" }, { "Left Shift", "clutch" }, { "Return", "start (hold: stop)" },
+                { "E / Page Up", "shift up" }, { "Q / Page Down", "shift down" }, { "N, 1 to 6", "neutral, a gear" },
+                { "F9", "the audio device" }, { "Cmd/Ctrl Z", "undo (Shift: redo)" },
+            };
+            float ky = keysY_;
+            for (const auto& k : kKeys)
+            {
+                if (ky + 14.0f > room.bottom())
+                    break;
+                c.text(k[0], room.x + 12.0f, ky, look::kUnit, p.value);
+                c.text(k[1], room.x + 130.0f, ky, look::kUnit, p.label);
+                ky += 15.0f;
+            }
+        }
         // The ribbon's title row.
         if (const funkgui::Rect rib = ribbonRect(); !rib.isEmpty())
         {

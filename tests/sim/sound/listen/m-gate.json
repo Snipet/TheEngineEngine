@@ -1,0 +1,52 @@
+{
+ "format": "tee-engine-scenario/1",
+ "name": "m-gate",
+ "description": "Turbo four (build boost/turbo-four) at full load on the dyno: the gate's chatter off, on from 9 s.",
+ "seconds": 14,
+ "events": [
+  {
+   "t": 0.0,
+   "spec": {
+    "sound.view": 3,
+    "voices.model": 1,
+    "voices.gate": -60
+   },
+   "ctl": {
+    "mode": 0,
+    "lever": 0,
+    "clutch": 0,
+    "brake": 0,
+    "throttle": 0,
+    "ignition": 1
+   }
+  },
+  {
+   "t": 0.25,
+   "ctl": {
+    "ignition": 2
+   }
+  },
+  {
+   "t": 2.0,
+   "ctl": {
+    "ignition": 1
+   }
+  },
+  {
+   "t": 3.0,
+   "ctl": {
+    "mode": 2,
+    "dynoSpeed": 576,
+    "throttle": 1
+   },
+   "note": "full load on the dyno at 5500 rpm"
+  },
+  {
+   "t": 9.0,
+   "spec": {
+    "voices.gate": 0
+   },
+   "note": "the internal gate's chatter on"
+  }
+ ]
+}

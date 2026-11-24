@@ -503,6 +503,11 @@ namespace tee::ui
         int at = focus_;
         for (int k = 0; k < n; ++k)
         {
+            if (!options_.tabWraps && at >= 0 && (at + step < 0 || at + step >= n))
+            {
+                setFocus(-1);   // past the end: the owner's turn
+                return false;
+            }
             at = at < 0 ? (step > 0 ? 0 : n - 1) : (at + step + n) % n;
             const Item& it = *items_[static_cast<std::size_t>(at)];
             if (it.shown() && it.focusable() && std::find(keyboards.begin(), keyboards.end(), at) == keyboards.end())

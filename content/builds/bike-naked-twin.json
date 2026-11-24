@@ -1,0 +1,100 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Naked twin (parallel, 270)",
+  "notes": "A middleweight naked: 184 kg wet, 1.40 m, an 80 kg rider sitting up, sport tyres, a 270-degree parallel twin of 689 cc. No quickshifter, no slipper.",
+  "spec": {
+    "engine": {
+      "layout": "Twin 270",
+      "displacement": 0.0006896,
+      "compression": 11.5,
+      "custom": true,
+      "cylinders": 2,
+      "bankAngle": [
+        0.0
+      ],
+      "bank": [
+        0,
+        0
+      ],
+      "pin": [
+        0.0,
+        90.0
+      ],
+      "fireRev": [
+        0,
+        0
+      ],
+      "place": [
+        0.0,
+        0.09
+      ],
+      "bore": 0.08,
+      "stroke": 0.0686,
+      "redlineSpeed": 1047.198
+    },
+    "intake": {
+      "model": "Lab",
+      "throttleKind": "A body a runner",
+      "trumpets": "The air box"
+    },
+    "exhaust": {
+      "headers": 0.25,
+      "pipe": 0.2,
+      "muffler": 0.15
+    },
+    "valve": {
+      "cam": 0.55
+    },
+    "fuel": {
+      "kind": "Gasoline"
+    },
+    "car": {
+      "kind": "Motorcycle",
+      "model": "Vehicle",
+      "mass": 184,
+      "wheelbase": 1.4,
+      "cgHeight": 0.56,
+      "frontWeight": 0.5,
+      "cdA": 0.58,
+      "tyreRadius": 0.31,
+      "wheelInertia": 0.75,
+      "brakeDecel": 1.1,
+      "brakeBias": 0.5,
+      "gears": 6,
+      "autoGearing": false,
+      "ratio": [
+        2.85,
+        2.06,
+        1.64,
+        1.38,
+        1.21,
+        1.08
+      ],
+      "gearEfficiency": 0.97,
+      "riderMass": 80,
+      "riderHeight": 1.05,
+      "riderForward": 0.4,
+      "tuck": 0.3,
+      "cdATuck": 0.4,
+      "pitchInertia": 45,
+      "bikeTyre": "Sport",
+      "primaryRatio": 1.9,
+      "frontSprocket": 16,
+      "rearSprocket": 43,
+      "chainEfficiency": 0.97,
+      "chainLash": 0.04,
+      "slipper": false,
+      "quickshifter": false,
+      "autoBlip": false,
+      "wheelieControl": "By the throttle",
+      "wheelieAngle": 6
+    },
+    "sound": {
+      "view": "Exhaust"
+    }
+  },
+  "expect": {
+    "engine": "bike-twin-270"
+  }
+}

@@ -78,9 +78,6 @@ namespace tee::ui::exhaust
                 f.def = 2;
             }
         }
-        out.erase(std::remove_if(out.begin(), out.end(),
-                                 [](const FieldInfo& f) { return f.path == "exhaust.crossover" || f.path == "exhaust.muffler"; }),
-                  out.end());
         out.push_back(choice("boost.layout", "Arrangement",
                              { "As the aspiration says", "One", "Two, a bank each", "Sequential", "Compound", "Four, two a bank" }, 0));
         using Q = Quantity;
@@ -101,13 +98,13 @@ namespace tee::ui::exhaust
         array(out, field("exhaust.mainLen", FieldKind::number, 0, 5, 0, "Main pipe length", Q::length, ch), kSides);
         array(out, field("exhaust.mainD", FieldKind::number, 0, 0.13, 0, "Main pipe bore", Q::length, ch), kSides);
         array(out, choice("exhaust.converter", "Converter", { "None", "Standard", "High-flow" }, 1, 0, ch), kSides);
-        out.push_back(choice("exhaust.crossover", "Crossover", { "None", "H", "X" }, 1, 0, ch));
+        out.push_back(choice("exhaust.crossKind", "Crossover kind", { "None", "H", "X" }, 1, 0, ch));
         out.push_back(choice("exhaust.crossAt", "Crossover at", { "Head", "After main pipe" }, 0, 0, ch));
         out.push_back(field("exhaust.crossD", FieldKind::number, 0, 0.13, 0, "Crossover bore", Q::length, ch));
         out.push_back(field("exhaust.crossLen", FieldKind::number, 0.05, 1, 0.25, "H pipe length", Q::length, ch));
         array(out, choice("exhaust.resonator", "Resonator", { "None", "Quarter-wave", "Helmholtz", "Packed bottle" }, 0, 0, ch), kSides);
         array(out, field("exhaust.resHz", FieldKind::number, 40, 2000, 200, "Resonator note", Q::frequency, ch), kSides);
-        array(out, choice("exhaust.muffler", "Muffler", { "None", "Straight-through", "Chambered", "Three-pass" }, 2, 0, ch), kSides);
+        array(out, choice("exhaust.mufKind", "Muffler kind", { "None", "Straight-through", "Chambered", "Three-pass" }, 2, 0, ch), kSides);
         array(out, field("exhaust.mufSize", FieldKind::number, -1, 1, -1, "Muffler size", Q::fraction, ch), kSides);
         array(out, field("exhaust.mufLen", FieldKind::number, 0, 1, 0, "Muffler chamber", Q::length, ch), kSides);
         array(out, choice("exhaust.bypass", "Bypass valve", { "None", "Shut", "Open", "By speed and load", "By the ECU" }, 0, 0, ch), kSides);
@@ -148,18 +145,18 @@ namespace tee::ui::exhaust
             setAt(doc, "exhaust.collectorTo", 2, 0);
             set(doc, "exhaust.sides", 1);
             setAt(doc, "exhaust.resonator", 0, 1);
-            setAt(doc, "exhaust.muffler", 0, 2);
+            setAt(doc, "exhaust.mufKind", 0, 2);
         }
         else if (name == "tt-v8-x")        // a twin-turbo V8, dual with an X, straight-through cans on valves, two tips
         {
             set(doc, "engine.layout", 12);
             set(doc, "boost.kind", 2);
             set(doc, "exhaust.sides", 2);
-            set(doc, "exhaust.crossover", 2);
+            set(doc, "exhaust.crossKind", 2);
             for (int s = 0; s < 2; ++s)
             {
                 setAt(doc, "exhaust.converter", s, 2);
-                setAt(doc, "exhaust.muffler", s, 1);
+                setAt(doc, "exhaust.mufKind", s, 1);
                 setAt(doc, "exhaust.bypass", s, 3);
                 setAt(doc, "exhaust.tips", s, 2);
             }
@@ -176,12 +173,12 @@ namespace tee::ui::exhaust
                 setAt(doc, "exhaust.primLen", i, to[i] == (i & 1) ? 0.82 : 1.02);   // the crossing ones are longer
             }
             set(doc, "exhaust.sides", 2);
-            set(doc, "exhaust.crossover", 1);
+            set(doc, "exhaust.crossKind", 1);
             set(doc, "exhaust.crossAt", 1);
             for (int s = 0; s < 2; ++s)
             {
                 setAt(doc, "exhaust.resonator", s, 2);
-                setAt(doc, "exhaust.muffler", s, 3);
+                setAt(doc, "exhaust.mufKind", s, 3);
             }
         }
         else if (name == "single-stack")   // a thumper with an open stack: one port, its pipe ends in air
@@ -200,7 +197,7 @@ namespace tee::ui::exhaust
             setAt(doc, "exhaust.colVol", 0, 0.0015);
             setAt(doc, "exhaust.colVol", 1, 0.0015);
             set(doc, "exhaust.sides", 2);
-            set(doc, "exhaust.crossover", 1);
+            set(doc, "exhaust.crossKind", 1);
             for (int s = 0; s < 2; ++s)
             {
                 setAt(doc, "exhaust.resonator", s, 3);
@@ -224,17 +221,106 @@ namespace tee::ui::exhaust
         load = std::clamp(load, 0.0, 1.0);
         const double hot = std::clamp(0.35 + 0.65 * load * std::min(1.0, rpm / 6000.0), 0.0, 1.0);
         const double port = 820.0 + 330.0 * hot;
-        // the gas cools along the system; the walls sit below it
+        // the gas cools along the system; the walls sit below it (card G's sections, in the gas's order)
         const double valve = rpm > 3500.0 && load > 0.5 ? 1.0 : 0.0;
+        const double db = -24.0 + 18.0 * hot;
         return {
-            { "exhaust.collectorTemperature", port - 70.0 }, { "exhaust.tailTemperature", 420.0 + 190.0 * hot },
-            { "exhaust.wallPrimaries", port - 120.0 },       { "exhaust.wallCollectors", port - 170.0 },
-            { "exhaust.wallMerges", port - 200.0 },          { "exhaust.wallMain", port - 330.0 },
-            { "exhaust.wallLink", port - 400.0 },            { "exhaust.wallMufflers", 430.0 + 160.0 * hot },
-            { "exhaust.wallTails", 390.0 + 140.0 * hot },    { "exhaust.tailLevel[0]", 0.18 + 0.55 * hot },
-            { "exhaust.tailLevel[1]", 0.16 + 0.52 * hot },   { "exhaust.valve[0]", valve },
-            { "exhaust.valve[1]", valve },
+            { "exhaust.gasTemperature[1]", port - 70.0 },    { "exhaust.gasTemperature[6]", 420.0 + 190.0 * hot },
+            { "exhaust.wallTemperature[0]", port - 120.0 },  { "exhaust.wallTemperature[1]", port - 170.0 },
+            { "exhaust.wallTemperature[2]", port - 200.0 },  { "exhaust.wallTemperature[3]", port - 330.0 },
+            { "exhaust.wallTemperature[4]", port - 400.0 },  { "exhaust.wallTemperature[5]", 430.0 + 160.0 * hot },
+            { "exhaust.wallTemperature[6]", 390.0 + 140.0 * hot },
+            // six ends: each side's tail and its two tips (slots.fm: 48 + side * 15 + 11, 12, 13); a reader takes those
+            // the build has
+            { "exhaust.ends", 6.0 },
+            { "exhaust.endSlot[0]", 59.0 }, { "exhaust.endSlot[1]", 60.0 }, { "exhaust.endSlot[2]", 61.0 },
+            { "exhaust.endSlot[3]", 74.0 }, { "exhaust.endSlot[4]", 75.0 }, { "exhaust.endSlot[5]", 76.0 },
+            { "exhaust.endLevel[0]", db }, { "exhaust.endLevel[1]", db - 3.0 }, { "exhaust.endLevel[2]", db - 3.2 },
+            { "exhaust.endLevel[3]", db - 1.0 }, { "exhaust.endLevel[4]", db - 4.0 }, { "exhaust.endLevel[5]", db - 4.1 },
+            { "exhaust.valve[0]", valve }, { "exhaust.valve[1]", valve }, { "exhaust.flame", 0.0 },
         };
+    }
+
+    namespace
+    {
+        // The demo's fields read through the engine (it watches the document): enough of a FieldDoc for resolveExhaust.
+        class EngineFields final : public FieldDoc
+        {
+        public:
+            EngineFields(const DemoEngine& e, const std::vector<FieldInfo>& infos) : e_(e), infos_(infos) {}
+            int count() const override { return static_cast<int>(infos_.size()); }
+            const FieldInfo& info(int i) const override { return infos_[static_cast<std::size_t>(i)]; }
+            double get(int i) const override
+            {
+                const FieldInfo& f = infos_[static_cast<std::size_t>(i)];
+                return e_.field(f.path, f.def);
+            }
+            void set(int, double) override {}
+            Curve16 curve(int) const override { return {}; }
+            void setCurve(int, const Curve16&) override {}
+            Map16 map(int) const override { return {}; }
+            void setMap(int, const Map16&) override {}
+            void beginGesture() override {}
+            void endGesture() override {}
+            std::uint64_t revision() const override { return 1; }
+
+        private:
+            const DemoEngine& e_;
+            const std::vector<FieldInfo>& infos_;
+        };
+        // the fields as the demo's document has them: U1's, then this package's that it lacks (as the hook adds them)
+        const std::vector<FieldInfo>& hookInfos()
+        {
+            static const std::vector<FieldInfo> infos = [] {
+                std::vector<FieldInfo> v = demoFields(false);
+                for (const FieldInfo& f : exhaustDemoFields())
+                    if (f.section() == "exhaust"
+                        && std::none_of(v.begin(), v.end(), [&](const FieldInfo& g) { return g.path == f.path; }))
+                        v.push_back(f);
+                return v;
+            }();
+            return infos;
+        }
+        // A blowdown at a port: the pressure (gauge Pa) `deg` degrees after its cylinder fired.
+        double blowdown(double deg, double load)
+        {
+            const double a = std::fmod(deg + 7200.0, 720.0);
+            return (8e3 + 34e3 * load) * std::exp(-((a - 190.0) / 38.0) * ((a - 190.0) / 38.0)) - 3e3;
+        }
+    }
+
+    void exhaustDucts(const ExhaustBuild& b, double phase, double rpm, double load, float* used, float* nearP, float* farP)
+    {
+        for (int i = 0; i < 84; ++i)
+            used[i] = nearP[i] = farP[i] = 0.0f;
+        const double deg = phase * b.cycle;
+        const double degPerMetre = rpm * 6.0 / 520.0;   // a pulse's travel at some 520 m/s, in crank degrees a metre
+        double side[2] = { 0.0, 0.0 };
+        for (int i = 0; i < b.ports; ++i)
+        {
+            const auto k = static_cast<std::size_t>(i);
+            const double a = deg - b.fire[k];
+            used[i] = 1.0f;
+            nearP[i] = static_cast<float>(blowdown(a, load));
+            farP[i] = static_cast<float>(0.75 * blowdown(a - b.primLen[k] * degPerMetre, load));
+            const int c = b.portTo[k];
+            if (c >= 0)
+            {
+                const int to = b.colTo[static_cast<std::size_t>(c)];
+                side[to >= 2 ? 0 : std::min(to, 1)] += farP[i];
+            }
+        }
+        for (int s = 0; s < 2; ++s)
+        {
+            if (!b.sideOn[static_cast<std::size_t>(s)])
+                continue;
+            const int base = 48 + s * 15;
+            used[base] = used[base + 11] = 1.0f;
+            nearP[base] = static_cast<float>(0.6 * side[s]);
+            farP[base] = static_cast<float>(0.35 * side[s] * std::cos(deg * 0.05));
+            nearP[base + 11] = static_cast<float>(0.2 * side[s] * std::sin(deg * 0.04));
+            farP[base + 11] = 0.0f;   // an open end
+        }
     }
 
     void exhaustDemoLive(DemoEngine& engine)
@@ -260,6 +346,25 @@ namespace tee::ui
                 if (f.section() == "exhaust"
                     && std::none_of(x.fields->begin(), x.fields->end(), [&](const FieldInfo& g) { return g.path == f.path; }))
                     x.fields->push_back(f);
+        if (x.engine != nullptr)
+        {
+            // every pipe's pressure at its two ends (card G's Scope arrays), each primary pulsing in its firing order
+            const auto ducts = [](int which) {
+                return [which](const DemoEngine& e, float* out, int max) {
+                    const exhaust::EngineFields doc(e, exhaust::hookInfos());
+                    float u[84], n[84], f[84];
+                    exhaust::exhaustDucts(exhaust::resolveExhaust(doc), e.phase(), e.rpm(), e.throttle(), u, n, f);
+                    const float* src = which == 0 ? u : which == 1 ? n : f;
+                    const int m = std::min(max, 84);
+                    for (int i = 0; i < m; ++i)
+                        out[i] = src[i];
+                    return m;
+                };
+            };
+            x.engine->addScope("ductUsed", ducts(0));
+            x.engine->addScope("ductNear", ducts(1));
+            x.engine->addScope("ductFar", ducts(2));
+        }
         if (x.engine != nullptr)
             for (const auto& [name, v0] : exhaust::exhaustLiveValues(3000.0, 0.5))
             {

@@ -1,0 +1,53 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Parallel twin, 180-degree crank",
+  "notes": "Pins opposed: 180-540. 83 x 68.6 mm (742 cc), 11.5:1, redline 10,500.",
+  "spec": {
+    "engine": {
+      "layout": "Twin 270",
+      "displacement": 0.0007423,
+      "compression": 11.5,
+      "custom": true,
+      "cylinders": 2,
+      "bankAngle": [
+        0.0
+      ],
+      "bank": [
+        0,
+        0
+      ],
+      "pin": [
+        0.0,
+        180.0
+      ],
+      "fireRev": [
+        0,
+        0
+      ],
+      "place": [
+        0.0,
+        0.09
+      ],
+      "bore": 0.083,
+      "stroke": 0.0686,
+      "redlineSpeed": 1099.557
+    }
+  },
+  "expect": {
+    "firingOrder": [
+      1,
+      2
+    ],
+    "firingIntervals": [
+      180.0,
+      540.0
+    ],
+    "firingAngles": [
+      0.0,
+      180.0
+    ],
+    "redlineRpm": 10500,
+    "displacementCc": 742.3
+  }
+}

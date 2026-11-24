@@ -1,0 +1,110 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Supersport 600",
+  "notes": "A 600 cc supersport: 190 kg wet, 1.38 m, an 80 kg rider, sport tyres, a quickshifter, a slipper clutch. Its four screams to 16,000 rpm.",
+  "spec": {
+    "engine": {
+      "layout": "Crossplane I4",
+      "displacement": 0.0005994,
+      "compression": 13.1,
+      "custom": true,
+      "cylinders": 4,
+      "bankAngle": [
+        0.0
+      ],
+      "bank": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "pin": [
+        0.0,
+        180.0,
+        180.0,
+        0.0
+      ],
+      "fireRev": [
+        0,
+        0,
+        1,
+        1
+      ],
+      "place": [
+        0.0,
+        0.075,
+        0.15,
+        0.225
+      ],
+      "bore": 0.067,
+      "stroke": 0.0425,
+      "redlineSpeed": 1675.516
+    },
+    "intake": {
+      "model": "Lab",
+      "throttleKind": "A body a runner",
+      "trumpets": "The air box"
+    },
+    "exhaust": {
+      "headers": 0.25,
+      "pipe": 0.2,
+      "muffler": 0.15
+    },
+    "valve": {
+      "cam": 0.55
+    },
+    "fuel": {
+      "kind": "Gasoline"
+    },
+    "car": {
+      "kind": "Motorcycle",
+      "model": "Vehicle",
+      "mass": 190,
+      "wheelbase": 1.38,
+      "cgHeight": 0.55,
+      "frontWeight": 0.53,
+      "cdA": 0.5,
+      "tyreRadius": 0.31,
+      "wheelInertia": 0.75,
+      "brakeDecel": 1.15,
+      "brakeBias": 0.5,
+      "gears": 6,
+      "autoGearing": false,
+      "ratio": [
+        2.67,
+        2.06,
+        1.75,
+        1.53,
+        1.39,
+        1.28
+      ],
+      "gearEfficiency": 0.97,
+      "riderMass": 80,
+      "riderHeight": 1.0,
+      "riderForward": 0.42,
+      "tuck": 1.0,
+      "cdATuck": 0.31,
+      "pitchInertia": 48,
+      "bikeTyre": "Sport",
+      "primaryRatio": 2.07,
+      "frontSprocket": 16,
+      "rearSprocket": 44,
+      "chainEfficiency": 0.97,
+      "chainLash": 0.035,
+      "slipper": true,
+      "slipperTorque": 0.15,
+      "quickshifter": true,
+      "quickshiftCut": 0.05,
+      "autoBlip": false,
+      "wheelieControl": "By the throttle",
+      "wheelieAngle": 4
+    },
+    "sound": {
+      "view": "Exhaust"
+    }
+  },
+  "expect": {
+    "engine": "bike-i4-600"
+  }
+}

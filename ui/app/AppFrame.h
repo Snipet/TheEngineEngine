@@ -106,8 +106,12 @@ namespace tee::ui
         const std::string& inspectorTitle(int p) const;
         FieldPage* inspector() const;                        // the page shown (nullptr: the units page)
         void showInspectorPage(int p);
+        // The settings page (the top bar's SETTINGS; the inspector of a workspace with no Spec section): the audio
+        // device, the theme, the units, the keys. unitsShown/showUnits are J2's names for it.
         bool unitsShown() const noexcept { return unitsPage_; }
+        bool settingsShown() const noexcept { return unitsPage_; }
         void showUnits(bool on);
+        void showSettings(bool on) { showUnits(on); }
         bool ribbonFolded() const noexcept { return folded_; }
         void foldRibbon(bool folded);
 
@@ -128,6 +132,7 @@ namespace tee::ui
         funkgui::Rect pedalRect(int pedal) const;            // 0 throttle, 1 brake, 2 clutch
         funkgui::Rect inspectorTabRect(int p) const;
         RpmBar& rpmBar() const { return *rpm_; }
+        int railFocus() const;                               // the rail button with the keyboard's focus; -1: none
         PedalBar& pedal(int i) const { return *pedals_[static_cast<std::size_t>(i)]; }
         const PanelControls& panelControls() const noexcept { return controls_; }
         std::string engineSentence() const;
@@ -198,11 +203,17 @@ namespace tee::ui
         std::string inspectorHead_, pagesFor_;
         std::vector<Button*> tabs_;
         Button *clear_ = nullptr, *fold_ = nullptr, *unitsButton_ = nullptr;
+        // the settings page (unitsPage_): audio, theme, units, keys
+        Label* audioLine_ = nullptr;
+        Button *audioMenu_ = nullptr, *graphite_ = nullptr, *paper_ = nullptr;
+        std::vector<std::pair<std::string, float>> settingsHeads_;   // a heading and its y (arrange's)
+        float keysY_ = 0.0f;
         std::vector<Stepper*> unitSteppers_;
         std::vector<std::unique_ptr<funkgui::ParamPort>> unitPorts_;
         DynoRibbon* ribbon_ = nullptr;
         // the top bar and the rail
         std::vector<Button*> rail_;
+        Widget* railMarks_ = nullptr;
         Label *name_ = nullptr, *sentence_ = nullptr, *status_ = nullptr;
         Bar *level_ = nullptr, *load_ = nullptr;
         Button *undo_ = nullptr, *redo_ = nullptr;
