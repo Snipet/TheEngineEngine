@@ -64,6 +64,19 @@ namespace tee::ui
             std::string name = "panel";          // the name its shaders were built under (cmake/TeeShaders.cmake's)
             // The output's last n samples, oldest first, for a scope or a spectrum of `out`; none: silence.
             std::function<void(float* out, int n)> scope;
+
+            // ---- J2 (card J, items 8 and 9) ----
+            // A widget element's item (plot, gauge, map, curve, bar, lamp: GuiNode::widget, what it shows in
+            // GuiNode::file), made once with its accessibility id; none (or a null item) shows nothing there. The item
+            // is placed in the element's cell after every layout and scroll (Item::setPlace), and drawn clipped to the
+            // interface's area.
+            std::function<std::unique_ptr<Item>(const GuiNode& node, uint32_t id)> widget;
+            // `auto "boost"`: the .gui text that stands for a generated page, on one line (`;` between elements), so
+            // the file's line numbers hold. None: an `auto` line is a note.
+            std::function<std::string(std::string_view section)> autoPage;
+            // Room kept around the interface for an owner's own things (the application's frame: its rail, top bar and
+            // bottom strip): the interface is laid out inside it, and the natural size grows by it.
+            int insetLeft = 0, insetTop = 0, insetRight = 0, insetBottom = 0;
         };
 
         // `files`: the panel's .gui file (the first whose name ends in .gui) and the shaders and .sh files it names.
@@ -81,6 +94,13 @@ namespace tee::ui
         int naturalHeight() const noexcept { return naturalH_; }
         // Where the file's keyboards would be (see above), in the panel's px; those on the pages shown.
         std::vector<funkgui::Rect> keyboardRects() const;
+        // J2: the widget elements' items (Options::widget), with their nodes, in the file's order.
+        struct WidgetAt
+        {
+            int item = -1;
+            int node = -1;
+        };
+        const std::vector<WidgetAt>& widgets() const noexcept { return widgets_; }
 
         // For tests and probes: a control's place by its parameter's id (an empty rect: not shown), a tabs element's
         // tab by its page's title, the item with the focus (-1: none), an item by index.
@@ -139,6 +159,8 @@ namespace tee::ui
         void setFocus(int item);
         bool moveFocus(int step);
         void scrollBy(float dx, float dy);
+        void placeWidgets();
+        bool isWidget(std::size_t item) const noexcept;
 
         static constexpr uint32_t kA11yStride = 64;      // item i's ids are kA11yStride * (i + 1) + 0..63
         mutable std::size_t idItems_ = static_cast<std::size_t>(-1);
@@ -156,7 +178,8 @@ namespace tee::ui
         GuiView::Items items_;
         std::vector<int> displays_;
         GuiView view_;
-        std::size_t firstOwn_ = 0;                       // items_ from here on are the subclass's
+        std::size_t firstOwn_ = 0;                       // items_ from here on are the subclass's (J2's widgets first)
+        std::vector<WidgetAt> widgets_;
         std::vector<int> tapHandle_;                     // by tap: the telemetry's handle (-1: none)
         Meters meters_{};
         DisplayFeed feed_;

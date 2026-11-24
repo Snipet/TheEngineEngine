@@ -1,0 +1,130 @@
+// airbox.fm: the air box and its snorkel, as a Helmholtz resonator: a volume of air (the spring) and the air in the
+// snorkel's neck (the mass), between the air outside and the throttle.
+//
+// The reference rings the throttle's flow through a resonant low-pass (sounds.fm, Extras: 90 Hz, Q 2.2) and hears its
+// rate of change as the intake's sound. A volume V drawn on by the throttle and fed through a neck of area A and
+// length L is that same second-order low-pass, from the air's own equations:
+//
+//   V / (rho c^2) dp/dt = qn - qt                      the box: what the snorkel lets in less what the throttle draws
+//   rho Le / A   dqn/dt = -p - R qn                    the neck: the air outside at 0, the box at p (Pa above it)
+//
+// so the snorkel's flow follows the throttle's with a resonance at f0 = c / (2 pi) sqrt(A / (V Le)), and Q =
+// sqrt(rho Le / A * rho c^2 / V) / R. Le is the neck's length with its two end corrections (0.85 r inside the box, a
+// flanged end; 0.61 r at the open mouth, Levine and Schwinger's), R the neck's and the filter's resistance, set for the
+// reference's Q of 2.2 (judgement: a paper element's and the neck's losses together). The box's pressure is what the
+// throttle draws from (upstream: the air outside, or card F's last volume), so a small box and a long thin snorkel
+// starve a big engine, as they do. What the snorkel lets out is its sound: the radiation of an open end small against
+// the wave is a monopole, its pressure as the flow's rate of change (dqn/dt), heard at the reference's scale.
+//
+// Solved by the trapezoidal rule on the 2 by 2 linear system, in closed form each sample (its matrices made when the
+// box changes): A-stable, and passive for any R >= 0: the discrete energy (p^2 V / 2 rho c^2 + rho Le qn^2 / 2A) never
+// grows but by what the throttle's flow puts in. At its defaults (0: from the engine) the box is twice the
+// displacement and its neck 1.3 times the throttle's bore, its length set for the reference's 90 Hz.
+//
+//   box.setup(volume, neckLength, neckBore, displacement, throttleArea, rate)     (0s: from the engine)
+//   box.tick(qThrottle)       a sample: the throttle's volume flow out of the box (m^3/s); leaves p, qn, sound
+//   box.clear()               at rest
+//
+// Leaves out: the box's own acoustic modes (a 10 L box's first is near 500 Hz), the filter's flow loss growing with
+// the flow's square.
+#pragma once
+
+module AirBox
+{
+    float vol;          // m^3
+    float neckLen;      // m (as built; Le adds the end corrections)
+    float neckArea;     // m^2
+    float le;           // m: the effective length
+    float res;          // Pa s / m^3
+    float f0;           // Hz, its resonance
+    float rate;
+    // the trapezoidal rule's matrices: x' = M x + N (u + u'), x = (p, qn)
+    float m00;
+    float m01;
+    float m10;
+    float m11;
+    float n0;
+    float n1;
+    // state
+    float p;            // Pa above the air outside
+    float qn;           // m^3/s in through the snorkel
+    float qtPrev;
+    float qnPrev;
+    float sound;        // what the snorkel radiates this sample (the reference's intake scale)
+
+    void setup(float volIn, float lenIn, float boreIn, float displacement, float throttleArea, float rateIn)
+    {
+        rate = rateIn;
+        const float rho = 1.204f;
+        const float c = 343.0f;
+        vol = volIn > 0.0f ? volIn : fmaxf(2.0f * displacement, 0.002f);
+        const float tb = sqrtf(fmaxf(throttleArea, 1.0e-4f) * 1.2732395f);
+        const float bore = boreIn > 0.0f ? boreIn : 1.3f * tb;
+        neckArea = 0.785398f * bore * bore;
+        const float r = 0.5f * bore;
+        const float ends = (0.85f + 0.61f) * r;
+        if (lenIn > 0.0f)
+            neckLen = lenIn;
+        else
+        {
+            // the length for 90 Hz: A / (V Le) = (2 pi 90 / c)^2
+            const float w = 6.2831853f * 90.0f / c;
+            neckLen = fminf(fmaxf(neckArea / (vol * w * w) - ends, 0.02f), 1.5f);
+        }
+        le = neckLen + ends;
+        f0 = c / 6.2831853f * sqrtf(neckArea / (vol * le));
+        // the resistance for Q 2.2: R = sqrt(mass / compliance) / Q
+        const float mass = rho * le / neckArea;
+        const float comp = vol / (rho * c * c);
+        res = sqrtf(mass / comp) / 2.2f;
+        // x' = A x + B u, A = [[0, -1/C], [-1/M, -R/M]] with p' = (qn - u)/C, qn' = (-p - R qn)/M
+        const float h = 0.5f / rate;
+        const float a01 = 1.0f / comp;
+        const float a10 = -1.0f / mass;
+        const float a11 = -res / mass;
+        // I - hA = [[1, -h a01], [-h a10, 1 - h a11]]; its inverse
+        const float d00 = 1.0f;
+        const float d01 = -h * a01;
+        const float d10 = -h * a10;
+        const float d11 = 1.0f - h * a11;
+        const float det = d00 * d11 - d01 * d10;
+        const float i00 = d11 / det;
+        const float i01 = -d01 / det;
+        const float i10 = -d10 / det;
+        const float i11 = d00 / det;
+        // I + hA
+        const float e00 = 1.0f;
+        const float e01 = h * a01;
+        const float e10 = h * a10;
+        const float e11 = 1.0f + h * a11;
+        m00 = i00 * e00 + i01 * e10;
+        m01 = i00 * e01 + i01 * e11;
+        m10 = i10 * e00 + i11 * e10;
+        m11 = i10 * e01 + i11 * e11;
+        // B = (-1/C, 0): times h, through the inverse
+        n0 = i00 * (-h / comp);
+        n1 = i10 * (-h / comp);
+    }
+
+    void clear()
+    {
+        p = 0.0f;
+        qn = 0.0f;
+        qtPrev = 0.0f;
+        qnPrev = 0.0f;
+        sound = 0.0f;
+    }
+
+    // One sample: the throttle draws qt (m^3/s) out of the box
+    void tick(float qt)
+    {
+        const float u = qt + qtPrev;
+        const float pn = m00 * p + m01 * qn + n0 * u;
+        const float qnn = m10 * p + m11 * qn + n1 * u;
+        p = pn;
+        qn = qnn;
+        qtPrev = qt;
+        sound = (qn - qnPrev) * rate * 0.02f;
+        qnPrev = qn;
+    }
+};

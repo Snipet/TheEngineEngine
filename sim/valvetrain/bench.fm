@@ -1,0 +1,32 @@
+// bench.fm: the flow bench, the number tuners quote for a head.
+//
+// A head on a flow bench draws air through one cylinder's ports at a fixed depression, 28 inches of water (6.97 kPa),
+// with the valves held at a lift, and the bench reads the flow in cubic feet a minute. Here: the head's effective area
+// at each lift (area.fm, Head) through an orifice at that depression, in air at 20 C and the sea's pressure (1.204
+// kg/m^3): Q = A sqrt(2 dp / rho), 107.6 m/s through the effective area. The lifts are the cards' 0.050 in steps,
+// 0.050 to 0.800 in. A tuner's figure is in CFM: m^3/s times 2118.88.
+//
+// Computed when the Spec changes, never per sample.
+#pragma once
+#include "area.fm"
+
+enum { VT_BENCH = 16 };
+
+module FlowBench
+{
+    float lift[VT_BENCH];       // m
+    float flowIn[VT_BENCH];     // m^3/s of air, the intake's valves
+    float flowEx[VT_BENCH];     // the exhaust's
+
+    void measure(Head* head)
+    {
+        const float v = sqrtf(2.0f * 6974.0f / 1.204f);
+        for (int i = 0; i < VT_BENCH; ++i)
+        {
+            const float l = 0.00127f * (float)(i + 1);
+            lift[i] = l;
+            flowIn[i] = head->areaIn(l) * v;
+            flowEx[i] = head->areaEx(l) * v;
+        }
+    }
+};

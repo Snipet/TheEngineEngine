@@ -72,6 +72,9 @@ namespace tee::ui
         // A text field holding the caret: every key is its own first (Tab too), Escape (when it does not use it)
         // leaves it.
         virtual bool takesAllKeys() const { return false; }
+        // J2: where its owner puts it and whether it is shown (a widget a .gui element places: GuiPanel::Options::widget;
+        // the application's frame). An item that places itself ignores it.
+        virtual void setPlace(const funkgui::Rect& /*bounds*/, bool /*shown*/) {}
     };
 
     // A draw key's mix (Item::drawKey, Panel::needsDraw): FNV-1a over what is added, in order.
