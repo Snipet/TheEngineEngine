@@ -24,7 +24,7 @@
 // What it leaves out: the oil's shear heating, the rings' tension as a field, the boundary-lubrication rise at very
 // low speeds, a dry sump's lower churning.
 #pragma once
-#include "mechspec.fm"
+#include "../spec/engine.fm"
 
 module FrictionModel
 {
@@ -41,19 +41,19 @@ module FrictionModel
     float torqueNow;
     float pistonSpeed;  // mean, m/s
 
-    void setup(const MechSpec* s, float displacement, float strokeM, int rotary)
+    void setup(const EngineSpec* s, float displacement, float strokeM, int rotary)
     {
         vTotal = displacement;
         stroke = rotary > 0 ? 0.07f : strokeM;
         const float vk[4] = {20000.0f, 10000.0f, 12000.0f, 0.0f};
-        int k = s->valvetrain < 0 ? 0 : (s->valvetrain > 3 ? 3 : s->valvetrain);
+        int k = s->frictionValvetrain < 0 ? 0 : (s->frictionValvetrain > 3 ? 3 : s->frictionValvetrain);
         if (rotary > 0)
             k = 3;
         kValve = vk[k];
     }
 
     // The friction torque (N m) at a speed (rad/s), the last cycle's peak pressure (Pa) and the oil's thickness factor
-    float torque(const MechSpec* s, float omega, float pPeak, float oil)
+    float torque(const EngineSpec* s, float omega, float pPeak, float oil)
     {
         const float w = fmaxf(omega, 0.0f);
         const float rpm = w * 9.5492966f;
