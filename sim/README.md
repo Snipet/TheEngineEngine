@@ -19,8 +19,8 @@ file true for them.
 | `core/heat.fm` | `Heat` | D | the air, the coolant, the oil, the chamber's walls |
 | `core/cylinder.fm` | `Cylinder` | D | one cylinder's gas (or a rotor's face): volume, valves' flows, burn, torque |
 | `core/layouts.fm` | `Layout` | D | the seventeen layouts: firing, banks, ports, sizes |
-| `valvetrain/valvetrain.fm` | `Valvetrain` | E | each cylinder's valve events and areas (the CAM dial) |
-| `intake/intake.fm` | `Intake` | E | runners, plenum, throttle, idle valve |
+| `valvetrain/valvetrain.fm` | `Valvetrain` | E | each cylinder's valve events and areas: the CAM dial (model 0) or the lab (`valvetrain/lab.fm`, model 1) |
+| `intake/intake.fm` | `Intake` | E | runners, plenum, throttle, idle valve; model 1: the air box, throttles a runner, two-length runners |
 | `boost/boost.fm` | `Boost` | F | turbos or a supercharger: shaft, boost, valves, drag, sounds |
 | `exhaust/exhaust.fm` | `Exhaust` | G | every pipe after a port, the junctions, flow noise, the system's heat, the tails |
 | `exhaust/duct.fm` | `Duct`, `Valve`, `lossFlow`, `lossKap`, `lossHold` | G | a pipe as a waveguide; a valve solved with its pipe; a junction's loss |
@@ -120,13 +120,15 @@ engine's change at the fade's quiet, where `configure` runs; `Listen::block`; th
 
 1. `exh.read()`, `intk.read(np)`: the waves arriving at every end.
 2. `crank.advance(dt)`: the angle.
-3. Each cylinder: its angle; `cyl[c].step(a, dDeg, dt, bE, zE, tH, bI, zI, tAir)` with its header's and runner's
-   arriving waves and impedances (a rotary's faces sharing a port solved together first: `exhaustFlowAt`,
-   `intakeFlowAt`); its flows summed per port into `qe`, `qi`; its torque into the total; its gas into `exh.eSum`,
-   `exh.mSum`; at intake closing `comb.charge(...)`; its events to `ex.*Click`; then `scopeTap()` while scopeOn.
+3. Each cylinder: its angle; `cyl[c].step(a, dDeg, dt, vt.areaEx(c, a), vt.areaIn(c, a), bE, zE, tH, bI, zI, tAir)`
+   with its valves' areas and its header's and runner's arriving waves and impedances (a rotary's faces sharing a
+   port solved together first: `exhaustFlowAt`, `intakeFlowAt`, with the areas too); its flows summed per port into `qe`, `qi`; its torque into the total; its gas into `exh.eSum`,
+   `exh.mSum`; at intake closing `comb.charge(...)` if `vt.active(c)`; its events to `ex.*Click` (the valves' louder while they
+   float: `vt.clatter`); then `scopeTap()` while scopeOn.
 4. `exh.step(qe, np)`: the ports' waves in, the collectors, the merge, the converter, the muffler, the tails out
    (`exh.outL`, `exh.outR`), every pipe written.
-5. The runners' near ends; `intk.plenum(np, rNear, fuel, ecu.throttle, ecu.bypass, dt)`.
+5. The runners' near ends; `intk.plenum(np, rNear, fuel, plate, ecu.bypass, dt)`, the plate `ecu.throttle` (1 while
+   `vt.plateOpen()`: the lift is the load control).
 6. `mech.torques(...)`, `heat.fricJ`, `boost.drag(...)`; `crank.bench(...)` or, driven, `crank.omega = car.step(...)`;
    `crank.ripple(torque)`.
 7. `ex.tick(qThr, drop, crankHz, dps)`, `boost.sound(crankHz, mdot, bov)`, `ex.tickStarter(crankHz, starterOn)`.
@@ -134,8 +136,8 @@ engine's change at the fade's quiet, where `configure` runs; `Listen::block`; th
 **Every 16 samples** (`Engine::control16`): `crank.sense()`; `heat.control(...)` and the walls into the cylinders;
 `ecu.sense(...)`; the size and the layout watched (the fade); the dials glided (`exh.sm*`, `boost.glide`, `vt.smCam` →
 `valves()`, the compression → `cyl[c].setup`, the bore/stroke → `boreStroke`, `valves`); `ecu.driver(...)`; driven,
-`car.drive16(...)`; `ecu.control(...)` (true: the engine has come to rest, `crank.omega` 0); `exh.flowRate()`;
-`boost.control(...)`, `intk.pBox`, `intk.tAir`; `exh.gas(d16)`; the cylinders' wall heat transfer (`hA`);
+`car.drive16(...)`; `ecu.control(...)` (true: the engine has come to rest, `crank.omega` 0); `vt.control(...)`; `exh.flowRate()`;
+`boost.control(...)`, `intk.pBox`, `intk.tAir`, `intk.control(...)`; `exh.gas(d16)`; the cylinders' wall heat transfer (`hA`);
 `exh.heatUp(...)`; `pipes()` (`exh.pipes`, `intk.runners`); `exh.flow16()`, `intk.flow16(...)`; `exh.bands()`.
 
 **`configure`** (the engine for the layout and the size: at init, at a start while stopped, under the fade): the
@@ -167,21 +169,36 @@ burns', written by Combustion) and `fricJ` (the friction's, written by Engine). 
 state, float ambF)` in configure; `void control(float d16, float ambF, float vTotal, int state, float rpm, float
 omega)` every 16 and in configure (d16 0); `float coldIdle(int fuelUse)`.
 
-**Cylinder** (`core/cylinder.fm`, the reference's, unchanged; `MAX_CYL` of them): its gas and events. `setup(...)` in
-configure (and as the compression glides), `reset(float a)` in configure, `step(...)` each sample; `exhaustFlowAt`,
-`intakeFlowAt` for a rotary's shared ports; `lift`, `volumeAt` read by Combustion and the Scope. Valvetrain writes its
+**Cylinder** (`core/cylinder.fm`, the reference's; `MAX_CYL` of them): its gas and events. `setup(...)` in
+configure (and as the compression glides), `reset(float a)` in configure, `void step(float a, float dDeg, float dt,
+float areaE, float areaI, float bE, float zE, float tPipe, float bI, float zI, float tAir)` each sample, its valves'
+open areas (m^2) the valvetrain's; `float exhaustFlowAt(float areaE, float bE, float zE, float tPipe)`, `float
+intakeFlowAt(float areaI, float bI, float zI, float tAir)` for a rotary's shared ports; `lift`, `volumeAt` read by Combustion and the Scope. Valvetrain writes its
 `evo`, `edur`, `ivo`, `idur`, `aE`, `aI`, `sparkAt`, `burnDur`; Combustion its charge (`qTot`, `sparkAt`, `burnDur`,
 `knock`, `cBurn`, `beta`, `dur2`); Engine its `tw` (Heat's `tSurf`) and `hA`.
 
-**Valvetrain** (`valvetrain/valvetrain.fm`): `smCam`, `lastCam`. `void events(Cylinder* cyl, int n, int rotary, float
-cyc, float bore, float vTotal)`, from `Engine::valves()` (configure; when `smCam` or the bore moved). The lift's shape
-is one table for all (`kCamArea`, `core/cylinder.fm`), which the cylinders read by their events.
+**Valvetrain** (`valvetrain/valvetrain.fm`, card E): `smCam`, `lastCam`, `model` (in use), `lab` (`ValveLab`),
+`clatter`. `void apply(ValveSpec* s)` from `readSpec` when `spec.valve`'s rev moved; `void events(Cylinder* cyl, int n,
+int rotary, float cyc, float bore, float vTotal)` from `Engine::valves()` (configure; when `smCam` or the bore moved):
+the reference's events and areas, and there `spec.valve.model` is taken (model 1 builds the lab's tables then, and
+writes each cylinder's `evo`, `edur`, `ivo`, `idur`, `aE`, `aI` from them every 16 samples, so the cylinders detect
+their events by the lab's); `void control(float d16, float omega, float redline, float load, float pOil, float tOil,
+float theta, float* fire, float inTarget, float exTarget, float liftTarget)` every 16 after `ecu.control` (load:
+`ecu.throttle`; the oil: Heat's; the targets -1 until card H's `Ecu` gives them: the lab's own schedule); each sample
+`float areaEx(int c, float a)`, `float areaIn(int c, float a)` (model 0: `aE * areaAt(a, evo, edur)`, the reference's to
+the bit; model 1: the lab's tables, the auxiliary event summed into the exhaust); `bool active(int c)` (false: the
+cylinder rests, no charge); `int plateOpen()`; `float liftEx(int c, float a)`, `float liftIn(int c, float a)` (the
+Scope's, 0 to 1 of the valve's largest); `void telemetry(ValveTel* t)` after each call.
 
-**Intake** (`intake/intake.fm`): `run[MAX_PORTS]`, `endRun[]`, `pPlenum`, `mPlenum`, `tAir`, `pBox`, `qThr`,
-`aThrottle`, `aBypass`, `vPlenum` (the last three, `tAir` and `pBox` set by Engine). `void setup(float rate)`, `void
-release()`, `void clear()`; `void runners(int np, float bike, float bore, float rate)` from `pipes()`; `void
-flow16(int np, float xi, float k16)` every 16; `void read(int np)` each sample, first; `void plenum(int np, float*
-rNear, int fuelUse, float throttle, float bypass, float dt)` each sample, after the exhaust.
+**Intake** (`intake/intake.fm`, card E): `run[MAX_PORTS]`, `endRun[]`, `pPlenum`, `mPlenum`, `tAir`, `pBox`, `qThr`,
+`aThrottle`, `aBypass`, `vPlenum` (the last three, `tAir` and `pBox` set by Engine), `model`, `itbs`, `box`, `itb[]`,
+`len`, `sound` (model 1's snorkel or trumpets, not yet mixed: wave 2's Extras still rings its own box). `void
+setup(float rate)`, `void release()`, `void clear()` (there `spec.intake.model` and the throttle's kind are taken);
+`void apply(IntakeSpec* s)` from `readSpec`; `void runners(int np, float bike, float bore, float rate)` from
+`pipes()`; `void control(float d16, float omega, float vTotal, float cycle)` every 16 after `intk.tAir` (model 1's
+sizes, the runner's length, the box, the ripple); `void flow16(int np, float xi, float k16)` every 16; `void read(int
+np)` each sample, first; `void plenum(int np, float* rNear, int fuelUse, float throttle, float bypass, float dt)` each
+sample, after the exhaust; `void telemetry(IntakeTel* t)` after each call.
 
 **Boost** (`boost/boost.fm`): `smTb`, `smTs`, `boost` (bar), the shaft, the valves, `turbo` (this sample's sound).
 `void setup(float rate, Noise* noise)` (Extras' stream); `float tsOf(float tsize)`; `void glide(float level, float
