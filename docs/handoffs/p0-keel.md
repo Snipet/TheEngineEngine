@@ -8,21 +8,20 @@ SHA-256, every source by git: 24 s; 2 s run again), `cmake --workflow --preset d
 jobs, every test), `build-dev/bin/tee-render --preset v8 --scenario free-revs` (`out/v8-free-revs.wav`, `.csv`),
 `build-dev/bin/tee-bench --quick`, `scripts/ci-status.sh`. A new test is a `.cpp` dropped in `tests/` (README, "Tests").
 
-**Done.** K1: layout, README, LICENSE; the CMake project (`cmake/TeePins.cmake`, `TeeDeps.cmake`, `TeeFlags.cmake`,
-presets `dev` and `release` with `*-verify`): FMinus, FunkGui's core, Catch2 and nlohmann/json by git at pinned
-commits into `TEE_DEPS_DIR`, LLVM found and never built; `bootstrap-cloud.sh`, `fetch-llvm.sh`, `xvfb-run.sh`,
-`ci-status.sh`; CI on three platforms, sources and compiler cached. K2: `sim/ref/` with `SEED.tsv`; `tee_host`
-(`Program`, `Schema`, `Instance`, `RefPlayer`, `Scenario`, `Render`, `Wav`, `Clock`); `tee-render`, `tee-bench`; five
-presets, four scenarios; `docs/formats.md`. Tests (`tee-tests`: 20 of mine pass here, 19 on CI's three systems so far):
-- `the reference compiles with no error and no warning`; `start, process and stop are proven nonblocking; init and end
-  are not, and need not be`; `with the checks the reference plays the same samples, and a budget too small stops it`
-- each scenario `renders finite and within full scale`; `the same samples whatever the block size` (bit for bit)
-- `the same sound at 44.1, 48 and 96 kHz, resampled, to a stated tolerance` (start and idle 30 dB under: measured 41
-  and 55; a second's level 1.5 dB: 0.3; an octave on the limiter 2 dB: 0.3)
-- `the engine starts, idles near its idle speed, reaches its limiter flat out in neutral, and stops` (880 of 880 rpm;
-  6557 against 6500); `the strongest low line at a held speed sits where the layout's firing predicts` (nine layouts
-  within 0.01 %, allowed 0.5 %; the crossplane V8 on its cycle's third harmonic)
-- the host's own (Program, Schema, Instance, the checks, the formats) and `tee::test::nullDepth` for K3
+**Done.** K1: layout, README, LICENSE; CMake (`cmake/TeePins.cmake`, `TeeDeps.cmake`, `TeeFlags.cmake`, presets `dev`
+and `release` with `*-verify`): FMinus, FunkGui's core, Catch2 and nlohmann/json by git at pinned commits into
+`TEE_DEPS_DIR`, LLVM found and never built; `bootstrap-cloud.sh`, `fetch-llvm.sh`, `xvfb-run.sh`, `ci-status.sh`; CI on
+three platforms, sources and compiler cached. K2: `sim/ref/` with `SEED.tsv`; `tee_host` (`Program`, `Schema`,
+`Instance`, `RefPlayer`, `Scenario`, `Render`, `Wav`, `Clock`); `tee-render`, `tee-bench`; five presets, four
+scenarios; `docs/formats.md`. Tests (`tee-tests`: 20 of mine pass here, 19 on CI's three systems so far):
+`the reference compiles with no error and no warning`; `start, process and stop are proven nonblocking; init and end
+are not, and need not be`; `with the checks the reference plays the same samples, and a budget too small stops it`;
+each scenario `renders finite and within full scale`; `the same samples whatever the block size` (bit for bit);
+`the same sound at 44.1, 48 and 96 kHz, resampled, to a stated tolerance` (start and idle 30 dB under: measured 41
+and 55; a second's level 1.5 dB: 0.3); `the engine starts, idles near its idle speed, reaches its limiter flat out in
+neutral, and stops` (880 of 880 rpm; 6557 against 6500); `the strongest low line at a held speed sits where the
+layout's firing predicts` (nine layouts within 0.01 %; the crossplane V8 on its cycle's third harmonic); the host's
+own (Program, Schema, Instance, the checks, the formats) and `tee::test::nullDepth` for K3.
 
 **Measured** (a Xeon at 2.1 GHz, shared with other sessions' builds: processor time, the least of three): R, the V8,
 2.3 us a 96 kHz sample: 22 to 23 % of a core at 48 kHz in blocks of 512. The V12 (ours: the V10's dials, twelve
@@ -37,14 +36,12 @@ green; macOS and Windows have failed on other packages' code. `scripts/ci-status
 **Not done.** macOS and Windows have only CI behind them. No test holds the single's, the inline five's, the
 flat-plane V8's or the rotary's strongest line (seen once: 2, 3 and 1.5 times the firing frequency; the rotary's 0.93
 of it, unexplained). The plugin's way of playing (smoothed dials, calls of 16 samples, its frozen copy) is not
-reproduced, so the user's 30 to 40 % is bracketed, not explained. The application's CI steps are card B's.
+reproduced: the user's 30 to 40 % is bracketed, not explained. The application's CI steps are card B's.
 
 **FMinus, FunkGui.** (1) FMinus's four runtime dependencies are archives by URL, refused here: the bootstrap clones
-them at the same commits where FMinus unpacks and points it there; FMinus then writes its `.fminus-populated` marker
-with a hash nobody checked. (2) `FMINUS_PARSER_TOOLS_MODE` is a cache variable defaulting to `fetch`: a consumer's
-normal variable wins on the first configure only (8a62eb8 sets it every time). (3) The LLVM archive's Bison needs
-`libtextstyle.so.0`, its `opt` glibc 2.44: Ubuntu's Bison and Flex are used, `opt` never runs. (4) Catch2 must be
-compiled as C++20 for macOS and Windows (a19fbc1). FunkGui: nothing in the way. **Wanted outside my paths**: nothing.
-
-**For a person**: listen to `out/v8-free-revs.wav`, `v8-drive-gears.wav`, `v8-cold-start-idle.wav` and
+them where FMinus unpacks and points it there; FMinus then writes its `.fminus-populated` marker with a hash nobody
+checked. (2) `FMINUS_PARSER_TOOLS_MODE` is a cache variable defaulting to `fetch`: a consumer's normal variable wins
+on the first configure only (8a62eb8). (3) The LLVM archive's Bison needs `libtextstyle.so.0`, its `opt` glibc 2.44:
+Ubuntu's Bison and Flex are used. (4) Catch2 must be C++20 on macOS and Windows (a19fbc1). FunkGui: nothing.
+**Wanted outside my paths**: nothing. **For a person**: listen to `out/v8-free-revs.wav`, `v8-drive-gears.wav` and
 `large-diesel-truck-pull-away.wav` against the plugin; run `./tee-bench --quick` from CI's `tee-macos-arm64` on the Mac.
