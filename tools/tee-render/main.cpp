@@ -27,7 +27,7 @@ namespace
         "  --set <dial>=<v>  a dial, over the preset's (may be given again)\n"
         "  -O <0..3>         FMinus's optimisation level (2)\n"
         "  --checks          compile with the loop budget and the bounds checks\n"
-XX
+        "  --sim <dir>       the program's directory (sim/ref)\n"
         "  --content <dir>   where presets/ and scenarios/ are (content/ref)\n"
         "\n"
         "  tee-render --list             the presets and the scenarios there are\n"
