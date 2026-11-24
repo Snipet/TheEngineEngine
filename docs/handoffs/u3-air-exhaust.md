@@ -2,8 +2,8 @@
 
 Package U3, branch `claude/awesome-gates-ntdb58`. Pages: `docs/ui/air.md` and `docs/ui/exhaust.md`. Paths: `ui/views/{air,exhaust}/`, `tests/ui/views/{Air,Exhaust}Tests.cpp`.
 
-**Done** (`tee-view-tests`, 27 U3 tests, all pass on Linux):
-- `ui.exhaust.*`: model, stage, builds, select, absent, rest, slow, sizes, inspector, sheet, framestage, text, effects, twostroke.
+**Done** (`tee-view-tests`, 28 U3 tests, all pass on Linux):
+- `ui.exhaust.*`: model, stage, builds, select, absent, rest, slow, sizes, inspector, sheet, framestage, text, effects, twostroke, ductmid.
 - `ui.air.*`: model, stage, builds, select, absent, rest, sizes, inspector, framestage, text, textcheck, scopemap, ram.
 - Text checks: no two texts meet on any build at both frame stages. On the two-stroke, no trace crosses a label either
   (the port plot's OPENS and CLOSES now sit above its frame).
@@ -25,11 +25,12 @@ Package U3, branch `claude/awesome-gates-ntdb58`. Pages: `docs/ui/air.md` and `d
 - `engine.tsPipeTemperature` (pipe gas, else 680 K assumed and said so).
 - `tsPortPressure` (port pressure each degree, else U1's `portExhaust`).
   Waiting on card T's names.
-- Card G's per-pipe wiring: ductNear/Far bind when it lands. Asked: a mid-pipe value (ductMid) would let a long pipe
-  show its middle.
 
-**Not mine, seen today**: `ui.frame.cockpit`, `ui.frame.garage`, `ui.frame.ribbon` fail at the merged HEAD with or
-without my change (U1's goldens, likely the new LISTEN workspace in the rail).
+**Checked live**: card G's wiring (cf267fb, 95d7d16) under the real simulator, exhaust.model 1, default V8: every
+tel.exhaust and Scope name above reads; ductUsed's slots (0-7, 32-33, 48, 53-55, 59, 63, 68-70, 74, 78) are slots.fm's.
+G's `ductMid` (dacb9f8) bound: each pipe's trace bends through its middle (`ui.exhaust.ductmid`).
+
+**Whole suite**: `tee-view-tests all` 111 of 111 pass after U1's LISTEN re-bless.
 
 **Wanted from the lead**: a simulator "slow time" control would let SLOW show the waves truly slowed. Today SLOW replays
 the frame-rate copies at an eighth of their pace.

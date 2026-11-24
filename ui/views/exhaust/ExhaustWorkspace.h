@@ -48,6 +48,7 @@ namespace tee::ui
             static constexpr const char* ductUsed = "ductUsed";              // [84]
             static constexpr const char* ductNear = "ductNear";              // [84], gauge Pa at the upstream end
             static constexpr const char* ductFar = "ductFar";                // [84]
+            static constexpr const char* ductMid = "ductMid";                // [84], at the pipe's middle (else drawn straight)
             static constexpr const char* ambient = "env.pressure";     // a field: the air outside
             // card T's two-stroke (engine.cycle 1)
             static constexpr const char* tsPipeTemp = "engine.tsPipeTemperature";   // K, the pipes' gas

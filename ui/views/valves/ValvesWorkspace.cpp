@@ -78,7 +78,8 @@ namespace tee::ui
             k.mix(ctx_.doc.revision()).mix(ctx_.selection.revision()).mix(ctx_.units.revision());
             const double a = crankAngle();
             k.mix(std::isfinite(a) ? static_cast<std::int64_t>(std::lround(a * 2.0)) : -1);
-            for (const char* n : { kTelInPhase, kTelExPhase, kTelInTarget, kTelExTarget, kTelStage, kTelLift, kTelFloat, kTelFloating,
+            for (const char* n : { en::kTelPurity, en::kTelDelivery, en::kTelTrapping, en::kTelPowerValve, en::kTelCrankcase,
+                                   kTelInPhase, kTelExPhase, kTelInTarget, kTelExTarget, kTelStage, kTelLift, kTelFloat, kTelFloating,
                                    kTelActive, en::kTelSpeed, kTelEvents[0], kTelEvents[1], kTelEvents[2], kTelEvents[3], kTelEvents[4] })
                 k.mix(static_cast<float>(ctx_.live.get(n)));
             k.mix(drag_).mix(hot_).mix(static_cast<float>(yMax_)).mix(two_).mix(scopeVersion_).mix(tab_);
@@ -1045,11 +1046,17 @@ namespace tee::ui
             const int e = get("liftExhaust", shareEx_);
             get("liftIntake", shareTr_);
             get("portIntake", crankcase_);
+            get("inletOpen", inlet_);   // the inlet's measured opening by degree (card T; 0 to 1)
             portDeg_ = e;
             ++scopeVersion_;
         }
         // The Scope's arrays are a two-stroke's (360 degrees) and so can be drawn here.
         bool portScope() const { return portDeg_ == 360; }
+        // The Scope has the inlet's measured opening over this turn (a two-stroke's, not all shut).
+        bool inletMeasured() const
+        {
+            return portScope() && inlet_.size() >= 360 && *std::max_element(inlet_.begin(), inlet_.end()) > 0.0f;
+        }
 
         // The ports' open shares against the crank's angle over one turn: the exhaust's (with the power valve shut,
         // ghosted), the transfers', a timed inlet's window; the crankcase's pressure on its own scale at the right.
@@ -1062,8 +1069,7 @@ namespace tee::ui
             const bool geo = cyl.known() && std::isfinite(t.exDur);
             const double r = cyl.radius(), L = std::isfinite(cyl.rod) ? cyl.rod : 3.3 * r;
             const Units& u = ctx_.units;
-            const double speed = ctx_.live.get(en::kTelSpeed);
-            const double exNow = t.exDurAt(speed);
+            const double exNow = en::exhaustDurationNow(t, ctx_.live);
             // the numbers a tuner quotes
             const auto len = [&](double m) { return std::isfinite(m) ? u.number(Quantity::length, m) : std::string("-"); };
             const std::string lu = u.unit(Quantity::length).name;
@@ -1117,7 +1123,8 @@ namespace tee::ui
             // a timed inlet's window, shaded behind
             double from = 0.0, dur = 0.0;
             const bool timed = t.inletWindow(from, dur);
-            if (timed)
+            const bool measured = inletMeasured();
+            if (timed && !measured)
             {
                 const auto band = [&](double a0, double a1) {
                     if (a1 > a0)
@@ -1149,6 +1156,18 @@ namespace tee::ui
                 shareCurve(t.exDur, nullptr, p.over(p.hot, 0.45f), 1.25f, false);       // the valve open
             shareCurve(exNow, &shareEx_, p.hot, lk::kTrace, true);
             shareCurve(t.trDur, &shareTr_, p.cold, lk::kTrace, true);
+            // the inlet's opening as the simulator measured it (a reed's by the crankcase's pull, a disc's or port's by
+            // its window), in place of the window drawn from the fields
+            if (measured)
+            {
+                std::vector<float> xs, ys;
+                for (int i = 0; i <= 360; ++i)
+                {
+                    xs.push_back(X(i));
+                    ys.push_back(Ys(inlet_[static_cast<std::size_t>(i % 360)]));
+                }
+                c.polyline(xs.data(), ys.data(), static_cast<int>(xs.size()), 1.5f, lk::Palette::mix(p.cold, p.value, 0.45f));
+            }
             // the crankcase's pressure, when the Scope has it, on its own scale (kPa at the right)
             if (portScope() && crankcase_.size() >= 360)
             {
@@ -1189,7 +1208,9 @@ namespace tee::ui
             std::vector<std::string> keys;
             if (t.hasValve())
                 keys.push_back("FAINT: THE EXHAUST WITH THE POWER VALVE SHUT AND OPEN");
-            if (timed)
+            if (measured)
+                keys.push_back(std::string("PALE: THE ") + t.inletName() + "'S OPENING, MEASURED");
+            else if (timed)
                 keys.push_back(std::string("SHADED: THE ") + t.inletName() + " OPEN");
             else
                 keys.push_back("THE REED OPENS BY THE CRANKCASE'S PULL: NO FIXED TIMING");
@@ -1221,7 +1242,7 @@ namespace tee::ui
         {
             lk::region(c, p, ring_, "PORT TIMING", ctx_.selection.is("valve.ports"));
             const Rect in = content(ring_);
-            const double exNow = t.exDurAt(ctx_.live.get(en::kTelSpeed));
+            const double exNow = en::exhaustDurationNow(t, ctx_.live);
             const float R = std::max(20.0f, std::min(in.w * 0.5f - 24.0f, (in.h - 84.0f) * 0.5f));
             const Point ctr{ in.centreX(), in.y + 18.0f + R };
             c.arc(ctr, R + 10.0f, 0.0f, static_cast<float>(2.0 * stage::kPi), 1.0f, p.grid);
@@ -1233,7 +1254,36 @@ namespace tee::ui
             if (std::isfinite(t.trDur))
                 c.arc(ctr, R - 13.0f, stage::arcAngle(180.0 - 0.5 * t.trDur), stage::arcAngle(180.0 + 0.5 * t.trDur), 7.0f, p.cold);
             double from = 0.0, dur = 0.0;
-            if (t.inletWindow(from, dur))
+            bool inletKnown = t.inletWindow(from, dur);
+            if (inletMeasured())
+            {
+                // the measured opening's span: from where it rises above a twentieth to where it falls back
+                int start = -1, len = 0, bestStart = -1, bestLen = 0;
+                for (int i = 0; i < 720; ++i)
+                {
+                    const bool open = inlet_[static_cast<std::size_t>(i % 360)] > 0.05f;
+                    if (open)
+                    {
+                        if (start < 0)
+                            start = i;
+                        ++len;
+                        if (len > bestLen && len <= 360)
+                        {
+                            bestLen = len;
+                            bestStart = start;
+                        }
+                    }
+                    else
+                    {
+                        start = -1;
+                        len = 0;
+                    }
+                }
+                inletKnown = bestLen > 0;
+                from = bestStart % 360;
+                dur = bestLen;
+            }
+            if (inletKnown)
                 c.arc(ctr, R - 26.0f, stage::arcAngle(from), stage::arcAngle(from + dur), 5.0f, p.over(p.cold, 0.6f));
             const auto corner = [&](float x, float y, Align al, const char* name, const std::string& v, Col ink) {
                 put(c, name, x, y, lk::kCaps, ink, al);
@@ -1243,7 +1293,7 @@ namespace tee::ui
             corner(in.right(), in.y, Align::right, "TRANSFERS", deg(t.trDur) + " deg", p.cold);
             corner(in.x, in.bottom() - 26.0f, Align::left, "BLOWDOWN", deg(0.5 * (exNow - t.trDur)) + " deg", p.label);
             corner(in.right(), in.bottom() - 26.0f, Align::right, "INLET",
-                   t.inletWindow(from, dur) ? deg(dur) + " deg" : std::string("reed"), p.label);
+                   inletKnown ? deg(dur) + " deg" : std::string("reed"), p.label);
             putCentred(c, "EXHAUST OPENS", ctr.x, ctr.y - 8.0f, lk::kCaps, p.label);
             putCentred(c, deg(180.0 - 0.5 * exNow) + " ATDC", ctr.x, ctr.y + 8.0f, lk::kNumberS, p.value);
         }
@@ -1290,7 +1340,7 @@ namespace tee::ui
             {
                 const float sx = Xs(std::clamp(speed, 0.0, w1));
                 c.segment(sx, plot.y, sx, plot.bottom(), 1.5f, p.value);
-                c.disc(sx, Yd(t.exDurAt(speed)), 4.5f, p.hot, 1.5f, p.ground);
+                c.disc(sx, Yd(en::exhaustDurationNow(t, ctx_.live)), 4.5f, p.hot, 1.5f, p.ground);
             }
         }
 
@@ -1317,6 +1367,8 @@ namespace tee::ui
                 lo = *std::min_element(crankcase_.begin(), crankcase_.end());
                 hi = *std::max_element(crankcase_.begin(), crankcase_.end());
             }
+            if (const double now = ctx_.live.get(en::kTelCrankcase); std::isfinite(now) && now > 0.0)
+                put(c, "NOW " + u.format(Quantity::pressure, now), cell(3).x, cell(3).y + 30.0f, lk::kCaps, p.label);
             item(3, "PRESSURE, A TURN",
                  std::isfinite(lo) ? u.number(Quantity::pressure, lo) + " to " + u.format(Quantity::pressure, hi) : std::string("-"),
                  std::isfinite(lo) ? p.value : p.dim);
@@ -1333,11 +1385,21 @@ namespace tee::ui
                 const int f = ctx_.doc.find(path);
                 return f < 0 ? en::kNaN : ctx_.doc.get(f);
             };
+            // live, the simulator's: how much fresh charge stays, how much was sent, how pure what stays is
+            const float c3 = std::floor(in.w / 3.0f);
+            const auto pct = [&](const char* name) {
+                const double v = ctx_.live.get(name);
+                return std::isfinite(v) ? lk::num(v * 100.0, "%.0f") : std::string("-");
+            };
+            stage::readout(c, p, in.x, top, "PURITY", pct(en::kTelPurity), "%", lk::kNumberS);
+            stage::readout(c, p, in.x + c3, top, "DELIVERY", pct(en::kTelDelivery), "%", lk::kNumberS);
+            stage::readout(c, p, in.x + 2 * c3, top, "TRAPPING", pct(en::kTelTrapping), "%", lk::kNumberS);
+            // the build's: how the fresh charge meets the burnt
             const double mix = field("engine.tsMixing"), shortc = field("engine.tsShortCircuit");
-            stage::readout(c, p, in.x, top, "MIXING", lk::num(mix * 100.0, "%.0f"), "%", lk::kNumberS);
-            stage::readout(c, p, in.x + cw, top, "SHORT-CIRCUITED", lk::num(shortc * 100.0, "%.0f"), "%", lk::kNumberS);
-            put(c, "0 %: THE FRESH CHARGE PUSHES THE BURNT OUT", in.x, top + 44.0f, lk::kUnit, p.dim);
-            put(c, "100 %: IT MIXES WITH IT AT ONCE", in.x, top + 58.0f, lk::kUnit, p.dim);
+            stage::readout(c, p, in.x, top + 42.0f, "MIXING", lk::num(mix * 100.0, "%.0f"), "%", lk::kNumberS);
+            stage::readout(c, p, in.x + cw, top + 42.0f, "SHORT-CIRCUITED", lk::num(shortc * 100.0, "%.0f"), "%", lk::kNumberS);
+            if (in.h > 110.0f)
+                put(c, "MIXING 0 %: THE FRESH CHARGE PUSHES THE BURNT OUT", in.x, top + 84.0f, lk::kUnit, p.dim);
         }
 
         int drag_ = -1, hot_ = -1;
@@ -1346,7 +1408,7 @@ namespace tee::ui
         bool compact_ = false, hasPhasers_ = false, hasLive_ = false, two_ = false;
         // a two-stroke's Scope: the cycle's length, the exhaust's and transfers' shares, the crankcase's pressure
         int portDeg_ = 0;
-        std::vector<float> shareEx_, shareTr_, crankcase_;
+        std::vector<float> shareEx_, shareTr_, crankcase_, inlet_;
         std::uint64_t scopeGen_ = 0;
         bool scopeRead_ = false;
         std::uint32_t scopeVersion_ = 0;

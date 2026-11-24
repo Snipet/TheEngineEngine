@@ -26,8 +26,8 @@
 enum
 {
     RR_LEVER_L = 5,     // ctl.lever's position for the L (low-low) slot
-    RR_BTN_SPLIT = 16,  // ctl.buttons: the splitter's button (held: high split); asked of the lead for controls.fm
-    RR_BTN_RANGE = 32,  // the range's (held: high range)
+    RR_BTN_SPLIT = 16,  // ctl.buttons' BTN_SPLITTER (held: high split)
+    RR_BTN_RANGE = 32,  // BTN_RANGE (held: high range)
     RR_GEARS = 18
 };
 
