@@ -783,3 +783,26 @@ valve to the collectors (1396 → 1216 K on the four), so the turbines' housings
 holds Boost's mass from the pipes equal to the valves' let-out. Checked on the tip, the turbo four at 3050 rpm (2 s):
 0.1991 kg into the housings against 0.1995 out of the valves, 0.998; boost 107 kPa (was 117), torque 335 N m (was 357).
 N2's matching to be re-taken on it (told).
+
+## Two facts from their owners, and the V12's low-speed curve (22:21 by `date -u`)
+
+- G closed the housings' gap by mass (0.997 on the turbo four, 1.007 on the twin V8, 2 s); N2 re-takes the design point.
+- G: the NA tail's mean flow taken by mass at the tail's own state moves torque 0.4 to 0.7 % and the residual by 0.001 at
+  most (small block 4000, 3.2 six 7000, four-cam 6500): the tuned four-valves' shortfall is not in the exhaust's mean
+  flow. Struck from the candidates.
+
+**The V12 at 2049 rpm (the lead's question for the car work).** On settled steps it is a dip, not a peak: 637 / 457 / 647
+/ 670 / 551 / 478 / 712 N m at 1500 / 2049 / 2500 / 3000 / 3500 / 4500 / 6000 rpm, VE 0.911 / 0.656 / 0.878 / 0.897 /
+0.744 / 0.660 / 0.961, the residual 13.1 % at 2049 against 0.2 to 0.8 % beside it. The intake cam map is baked (advance
+47 / 42 / 36 degrees at 1500 / 2049 / 2500: a large overlap low down), knock retard 8 to 9 degrees below 2100.
+One change at a time, at 1500 / 2049 / 2500 rpm (N m, VE, residual):
+- primaries 0.5 m: 635 / **650** / 635, VE 0.90 at 2049, residual 0.4 %: the dip gone;
+- primaries 0.9 m: 646 / 552 / 509: the dip moves up;
+- the runner 0.5 m: 651 / 454 / 630: no change at 2049;
+- the phaser parked: 394 / 470 / 459 (VE 0.58 to 0.66): the baked map's overlap is what makes the low end strong, and
+  what lets the exhaust's wave in.
+So the dip is the 0.705 m primaries' (the layout's default) pressure wave arriving during the baked map's large
+low-speed overlap, pushing burned gas back. Not the runner, not knock. A maker's map would take overlap out where its
+headers revert; the bake's speeds may straddle 2049 without one there (to N1, whose bake rule it is). The model's light
+damping (N3-6) keeps these low-speed teeth sharp (VE swinging 0.66 to 0.91 within 500 rpm): it bears on the open ram
+item, as does any published low-speed curve for this engine.
