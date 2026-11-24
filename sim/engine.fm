@@ -1326,6 +1326,10 @@ module Engine
         float rNear[MAX_PORTS];
         for (int i = 0; i < np; ++i)
             rNear[i] = intk.run[i].near + intk.run[i].z * qi[i];
+        // (boost.model 1: the boost's volume read each sample, as the intake draws from it each sample: with a small
+        // volume behind runner throttles it moved far in the 16 samples between control ticks, X-022; N1's line)
+        if (spec.boost.model != 0)
+            intk.pBox = boost.pressure();
         intk.haveValves = 1;
         intk.plenum(np, rNear, fuelUse, vt.plateOpen() != 0 ? 1.0f : ecu.throttle, ecu.bypass, dt);
         intk.mValves = 0.0f;
