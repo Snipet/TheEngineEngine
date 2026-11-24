@@ -392,6 +392,16 @@ Combustion's scatter and pops, the exhaust's valve, flow and jet noise, in the o
 Boost's sounds), and Car's and each Pop's own. The order of the draws is part of the sound: a module that draws from
 a shared stream draws where the reference did.
 
+## Safety on the audio thread (card D)
+
+Nothing in `process` loops a number of times set by a state's value: an angle is wrapped by `wrapCycle`
+(`core/mathx.fm`: the same subtraction as before at most eight times, the remainder in closed form past that, a
+non-finite angle 0), the valvetrain's included. A table read from a state clamps its index both ways. Once a call
+(`Engine::guard`), before and after the render: a crank whose speed is not finite, negative or past five times the
+redline (at least 3000 rad/s), or whose angle is not finite, is put at rest and the engine made afresh (`recover`:
+configure, the car reset); and a call whose output has a sample that is not finite is silenced and recovered the same
+way. Either sets `FLAG_FAULT` in `tel.engine.flags` for the host's guard. Never in normal running.
+
 ## The hooks (the integrator's, card D)
 
 Each package's model is switched by its Spec section's `model` (0: the reference's, bit for bit; 1: the package's):
