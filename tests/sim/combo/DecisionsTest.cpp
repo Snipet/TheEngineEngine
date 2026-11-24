@@ -68,10 +68,12 @@ namespace
 
     // D's sequence (content/scenarios/core/stopped-switch.json): the key on; `late` written at 0.1 s, the engine
     // stopped, with no layout or size change (so nothing configures again); the start at 0.2 s; idle; the engine dyno
-    // at 3000 rpm, full throttle. The idle is read from 8 s, after the ECU's cold-idle glide: a stopped engine that
+    // at 3000 rpm, full throttle. The idle is read from 7 s, after the ECU's cold-idle glide: a stopped engine that
     // renders (voices.model on at the key) glides it before the start, so an early idle depends on when the voices came
     // on (96.0 against 91.1 rad/s at 2.2 to 3 s before D's c93c3391, 90.8 both from 8 s; whether a resting render
-    // should glide the idle at all is the lead's and H's).
+    // should glide the idle at all is the lead's and H's). Over 7 to 9 s, two seconds: a voices route renders from a
+    // different instant, so a chaotic idle that is still falling (the turbo six: 148 to 130 rad/s over 20 s) wanders
+    // apart by up to 3.7 rad/s over one second (8 to 9 s: 131.8 against 135.5, the first soak) and 1 over two.
     Reached reach(const std::string& build, const Values& late)
     {
         tee::test::Scenario s(build);
@@ -86,7 +88,7 @@ namespace
         const tee::test::Run r = s.run(12.0);
         REQUIRE(r.ok());
         Reached out;
-        out.idle = r.tel("engine.speed").during(8.0, 9.0).mean();
+        out.idle = r.tel("engine.speed").during(7.0, 9.0).mean();
         out.torque = r.tel("engine.torque").during(10.5, 12.0).mean();
         return out;
     }
