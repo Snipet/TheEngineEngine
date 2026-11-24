@@ -417,6 +417,7 @@ TEST_CASE("probe: an overrun's gas temperatures", "[.probe-overrun]")
                         fired += 1, burning += pr.get("cyl[" + std::to_string(k) + "].burnAt") >= 0.0 ? 1 : 0;
                 }
         });
+        std::printf("       dilution (burned share at intake closing) cyl 0 %.3f, cyl 1 %.3f; manifold %.1f kPa\n", pr.get("comb.dilution[0]"), pr.get("comb.dilution[1]"), pr.get("intk.pPlenum") * 1e-3);
         std::printf("       cyl 0: conserve %.0f, exUnburnedJ most %.2f J, its last most %.2f J, burnOut %.2f; burn %.0f deg, spark %.1f deg BTDC, EVO %.0f\n", pr.get("cyl[0].conserve"), exMax, lastMax, pr.get("cyl[0].bookOut"), pr.get("cyl[0].burnDur"), pr.tel("ecu.advance"), pr.get("cyl[0].evo"));
         std::printf("       exhaust openings of fired charges %.0f, still burning %.0f; to the store %.1f J (popJ), the store's fuel %.2f mg\n",
                     fired, burning, pr.get("comb.popJ") - pj0, (pr.get("ecu.one.account.fuel[0]") + pr.get("ecu.one.account.fuel[1]")) * 1e6);
@@ -766,5 +767,143 @@ TEST_CASE("probe: the idle's torque against speed, valve and spark held", "[.pro
         });
         std::printf("%6s %9.1f %8.1f %8.3f\n", s.c_str(), tq / n, kp / n * 1e-3, ve / n);
     }
+    SUCCEED();
+}
+
+// The boost machine's charge path from the key, every PROBE_STEP (0.001) s for PROBE_SECONDS (0.5), until anything is
+// non-finite (X-024, X-026: an explicit step around a small volume). PROBE_BUILD (a file), PROBE_SIM, PROBE_THROTTLE (0).
+TEST_CASE("probe: the boost charge path from the key", "[.probe-boost]")
+{
+    const std::string file = std::getenv("PROBE_BUILD") ? std::getenv("PROBE_BUILD")
+                                                        : std::string(TEE_SOURCE_DIR) + "/content/builds/combo/findings/x026-single-big-blower.json";
+    const double step = std::getenv("PROBE_STEP") ? std::atof(std::getenv("PROBE_STEP")) : 0.001;
+    const double secs = std::getenv("PROBE_SECONDS") ? std::atof(std::getenv("PROBE_SECONDS")) : 0.5;
+    Probe pr;
+    tee::EnginePlayer::Options options;
+    options.directory = std::getenv("PROBE_SIM") ? std::filesystem::path(std::getenv("PROBE_SIM"))
+                                                  : std::filesystem::path(TEE_SOURCE_DIR) / "sim";
+    options.sampleRate = 48000.0;
+    std::string errors, warnings;
+    pr.p = tee::EnginePlayer::create(options, errors);
+    REQUIRE(pr.p != nullptr);
+    tee::EngineBuild b;
+    REQUIRE(tee::loadBuild(*pr.p, file, b, errors, warnings));
+    tee::applyBuild(*pr.p, b);
+    auto& c = pr.p->controls();
+    c.ignition = 2;
+    c.throttle = std::getenv("PROBE_THROTTLE") ? float(std::atof(std::getenv("PROBE_THROTTLE"))) : 0.0f;
+    std::printf("%6s %6s %9s %9s %9s %9s %9s %9s %9s\n", "t s", "rpm", "v1 kPa", "v2 kPa", "mIc g/s", "pdDel", "mDraw", "v1 K",
+                "vol1 L");
+    const int n = int(secs / step + 0.5);
+    const bool blips = std::getenv("PROBE_BLIPS") != nullptr;
+    const double from = std::getenv("PROBE_FROM") ? std::atof(std::getenv("PROBE_FROM")) : 0.0;
+    for (int i = 0; i < n; ++i)
+    {
+        const double tNow = step * i;
+        if (blips)
+        {
+            c.ignition = tNow < 1.0 ? 2 : 1;
+            c.throttle = tNow > 2.0 && std::fmod(tNow, 1.0) < 0.5 ? 1.0f : 0.0f;
+        }
+        pr.play(step);
+        if (tNow + step < from)
+            continue;
+        const double v1 = pr.get("boost.mach.v1.p"), v2 = pr.get("boost.mach.v2.p");
+        std::printf("%6.3f %6.0f %9.2f %9.2f %9.3f %9.3f %9.3f %9.1f %9.4f\n", step * (i + 1), pr.tel("engine.speed") * 30.0 / M_PI,
+                    v1 * 1e-3, v2 * 1e-3, pr.get("boost.mach.mIc") * 1e3, pr.get("boost.mach.pd.mDel") * 1e3,
+                    pr.get("boost.mach.mDraw") * 1e3, pr.get("boost.mach.v1.t"), pr.get("boost.mach.v1.vol") * 1e3);
+        std::printf("       p1 %.2f kPa, leak %.3f g/s, inlet net %.3f g/s, bypass open %.3f, scBypass %.0f, v1 mass %.4f g\n",
+                    pr.get("boost.mach.p1") * 1e-3, pr.get("boost.mach.pd.mLeak") * 1e3, pr.get("boost.mach.mInlet") * 1e3,
+                    pr.get("boost.mach.bypassOpen"), pr.get("boost.mach.scBypass"), pr.get("boost.mach.v1.m") * 1e3);
+        std::printf("       c %.4g m %.4g a %.4g b %.4g kF %.4g sc %.0f turbos %.0f\n", pr.get("boost.mach.dbgC"), pr.get("boost.mach.dbgM"), pr.get("boost.mach.dbgA"), pr.get("boost.mach.dbgB"), pr.get("boost.mach.kFilter"), pr.get("boost.mach.sc"), pr.get("boost.mach.turbos"));
+        if (!std::isfinite(v1) || !std::isfinite(v2) || std::fabs(v1) > 1e8)
+            break;
+    }
+    SUCCEED();
+}
+
+// X022Test's fast form against PROBE_SIM (a bisect): the X-022 build, the key, two blips, 4 s, the guard's faults
+TEST_CASE("probe: X-022's blips against a tree", "[.probe-x022t]")
+{
+    tee::EnginePlayer::Options options;
+    options.directory = std::getenv("PROBE_SIM") ? std::filesystem::path(std::getenv("PROBE_SIM"))
+                                                  : std::filesystem::path(TEE_SOURCE_DIR) / "sim";
+    options.sampleRate = 48000.0;
+    std::string errors, warnings;
+    auto p = tee::EnginePlayer::create(options, errors);
+    REQUIRE(p != nullptr);
+    tee::EngineBuild b;
+    REQUIRE(tee::loadBuild(*p, std::filesystem::path(TEE_SOURCE_DIR) / "content" / "builds" / "combo" / "findings" /
+                                   "x022-supercharger-itb-small-charge.json", b, errors, warnings));
+    tee::applyBuild(*p, b);
+    auto& c = p->controls();
+    const int block = 256;
+    float l[block], r[block];
+    const int flags = p->telemetryIndex("engine.flags");
+    int faults = 0;
+    double first = -1.0;
+    for (int i = 0; i < int(4.0 * options.sampleRate / block); ++i)
+    {
+        const double t = i * block / options.sampleRate;
+        c.ignition = t < 1.0 ? 2 : 1;
+        c.throttle = t > 2.0 && std::fmod(t, 1.0) < 0.5 ? 1.0f : 0.0f;
+        p->process(l, r, block);
+        if ((int(p->telemetry(std::size_t(flags))) & 4) != 0)
+        {
+            if (first < 0.0)
+                first = t;
+            ++faults;
+        }
+    }
+    std::printf("X-022 blips: faults %d, the first at %.3f s\n", faults, first);
+    SUCCEED();
+}
+
+// The boosted books on the dyno (N3's finding: the machine draws ~8 % more than the throttle and the valves book):
+// PROBE_BUILD (slug), PROBE_RPM (1700), full load, 6 s to settle then 2 s booked: the machine's draw (sumMDraw), the
+// throttle's (airThrottle), the valves' (airValves), and what each is taken at: pBox, the box's depression, the
+// machine's v2, the intake's tAir and its heating
+TEST_CASE("probe: the boosted books", "[.probe-boostbooks]")
+{
+    const std::string slug = std::getenv("PROBE_BUILD") ? std::getenv("PROBE_BUILD") : "pickup-diesel-67-inline-six";
+    const double rpm = std::getenv("PROBE_RPM") ? std::atof(std::getenv("PROBE_RPM")) : 1700.0;
+    Probe pr;
+    tee::EnginePlayer::Options options;
+    options.directory = std::getenv("PROBE_SIM") ? std::filesystem::path(std::getenv("PROBE_SIM"))
+                                                  : std::filesystem::path(TEE_SOURCE_DIR) / "sim";
+    options.sampleRate = 48000.0;
+    std::string errors, warnings;
+    pr.p = tee::EnginePlayer::create(options, errors);
+    REQUIRE(pr.p != nullptr);
+    tee::EngineBuild b;
+    const std::filesystem::path file = std::filesystem::path(TEE_SOURCE_DIR) / "content" / "builds" / "archetypes" / (slug + ".json");
+    REQUIRE(tee::loadBuild(*pr.p, file, b, errors, warnings));
+    tee::applyBuild(*pr.p, b);
+    auto& c = pr.p->controls();
+    c.mode = 2;
+    c.dynoSpeed = float(rpm * M_PI / 30.0);
+    c.ignition = 2;
+    pr.play(1.0, [&] { pr.warm(); });
+    c.ignition = 1;
+    c.throttle = 1.0f;
+    pr.play(5.0, [&] { pr.warm(); });
+    const double d0 = pr.get("boost.mach.sumMDraw"), t0 = pr.get("airThrottle"), v0 = pr.get("airValves"),
+                 c0 = pr.get("boost.mach.sumMComp"), m0 = pr.get("intk.mPlenum"), vm0 = pr.get("boost.mach.v2.m") + pr.get("boost.mach.v1.m");
+    double pBox = 0, boxP = 0, v2p = 0, v2t = 0, tAir = 0, rise = 0;
+    long n = 0;
+    pr.play(2.0, [&] {
+        pr.warm();
+        pBox += pr.get("intk.pBox"); boxP += pr.get("intk.box.p"); v2p += pr.get("boost.mach.v2.p"); v2t += pr.get("boost.mach.v2.t");
+        tAir += pr.get("intk.tAir"); rise += pr.get("intk.heatRise"); ++n;
+    });
+    const double k = 1e3 / 2.0;
+    std::printf("%s at %.0f rpm, full load, 2 s (g/s): compressor %.2f, machine's draw %.2f, throttle %.2f, valves %.2f; "
+                "plenum store %.3f, the machine's v1+v2 store %.3f\n",
+                slug.c_str(), rpm, (pr.get("boost.mach.sumMComp") - c0) * k, (pr.get("boost.mach.sumMDraw") - d0) * k,
+                (pr.get("airThrottle") - t0) * k, (pr.get("airValves") - v0) * k, (pr.get("intk.mPlenum") - m0) * k,
+                (pr.get("boost.mach.v2.m") + pr.get("boost.mach.v1.m") - vm0) * k);
+    std::printf("  means: intk.pBox %.2f kPa, box.p %.2f kPa, machine's v2.p %.2f kPa; intk.tAir %.1f K (heatRise %.1f), v2.t %.1f K; "
+                "intake.model %.0f, itbs %.0f\n", pBox / n * 1e-3, boxP / n * 1e-3, v2p / n * 1e-3, tAir / n, rise / n, v2t / n,
+                pr.get("intk.model"), pr.get("intk.itbs"));
     SUCCEED();
 }

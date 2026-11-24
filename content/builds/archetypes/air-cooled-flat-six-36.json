@@ -157,8 +157,7 @@
       "camera": "Rear",
       "place": "Field",
       "ground": "Asphalt",
-      "enginePlace": "Rear",
-      "level": 1.7
+      "enginePlace": "Rear"
     }
   }
 }

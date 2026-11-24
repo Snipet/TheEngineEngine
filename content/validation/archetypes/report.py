@@ -39,6 +39,49 @@ def run(bin_dir, slug, out_dir):
         return f.read()
 
 
+TONE = {"name": "Idle: no standing tone", "range": [-60, -10], "unit": "dB", "basis": "judgement",
+        "source": "the lead's ruling (21:57, the owner heard the first build hum: the in-tank pump at 3.9 kHz, the fan "
+                  "at 280 Hz): at warm idle (8 to 14 s) the strongest line above 300 Hz (within 0.2 Hz), A-weighted, "
+                  "stands at least 10 dB under the exhaust's whole band from 20 to 300 Hz, A-weighted (judgement: a "
+                  "tone within 10 dB of the engine's own note is heard as a hum); measured by report.py on a "
+                  "tee-render of p-idle-warm"}
+
+
+def tone(bin_dir, slug, out_dir, build_path):
+    """The idle's strongest line above 300 Hz against its exhaust band, dB, A-weighted (TONE), cached in out_dir."""
+    import struct
+    import numpy as np
+    path = os.path.join(out_dir, slug + ".tone.txt")
+    if not os.path.exists(path):
+        wav = os.path.join(out_dir, slug + ".idle.wav")
+        cmd = [os.path.join(bin_dir, "tee-render"), "--build", build_path, "--scenario",
+               os.path.join(ROOT, "content", "validation", "scenarios", "p-idle-warm.json"), "--out", wav,
+               "--tel", "engine.speed"] + (["--sim", SIM] if SIM else [])
+        subprocess.run(cmd, capture_output=True, text=True, cwd=ROOT)
+        raw = open(wav, "rb").read()
+        i = raw.find(b"data")
+        n = struct.unpack("<I", raw[i + 4:i + 8])[0]
+        x = np.frombuffer(raw[i + 8:i + 8 + n], dtype="<f4").reshape(-1, 2).mean(1)
+        sr = 48000
+        seg = x[8 * sr:14 * sr]
+        pw = np.abs(np.fft.rfft(seg * np.hanning(len(seg)))) ** 2
+        f = np.maximum(np.fft.rfftfreq(len(seg), 1.0 / sr), 1.0)
+        f2 = f ** 2
+        ra = 12194.0 ** 2 * f2 ** 2 / ((f2 + 20.6 ** 2) * np.sqrt((f2 + 107.7 ** 2) * (f2 + 737.9 ** 2)) * (f2 + 12194.0 ** 2))
+        pw = pw * (ra / 0.7943) ** 2
+        k = int(np.argmax(pw * (f > 300)))
+        line = pw[max(k - 1, 0):k + 2].sum()
+        band = pw[(f > 20) & (f < 300)].sum()
+        with open(path, "w") as fh:
+            fh.write("%.2f %.1f\n" % (10 * np.log10(line / band), f[k]))
+        os.remove(wav)
+        for extra in (wav[:-4] + ".csv",):
+            if os.path.exists(extra):
+                os.remove(extra)
+    d, hz = (float(v) for v in open(path).read().split())
+    return d, hz
+
+
 def basis(t):
     """A target's kind of source: cited, recalled or judgement (judgement where its file says none, as the curve's
     sharpest point, the lead's ruling)."""
@@ -182,6 +225,16 @@ def main():
     with ThreadPoolExecutor(a.jobs) as ex:
         texts = dict(zip(slugs, ex.map(lambda s: run(a.bin, s, a.src), slugs)))
     results = {s: parse(texts[s], docs[s]["targets"]) for s in slugs}
+    # the idle's standing tone, measured here (tee-validate has no spectral measure)
+    content_dir = a.content or os.path.join(ROOT, "content")
+    with ThreadPoolExecutor(a.jobs) as ex:
+        tones = dict(zip(slugs, ex.map(lambda s: tone(a.bin, s, a.src, os.path.join(content_dir, docs[s]["build"])),
+                                       slugs)))
+    for s_ in slugs:
+        if results[s_] is not None:
+            d = tones[s_][0]
+            results[s_].append((dict(TONE, line=tones[s_][1]), d, "pass" if TONE["range"][0] <= d <= TONE["range"][1]
+                                else "FAIL"))
     content = a.content or os.path.join(ROOT, "content")
     for s_ in slugs:
         plan = next((t["dyno"] for t in docs[s_]["targets"] if "dyno" in t and "steps" not in t["dyno"]), None)
