@@ -37,7 +37,7 @@ namespace tee
     {
         std::uint64_t h = 1469598103934665603ull;
         for (const double v : {chassis ? 1.0 : 0.0, from, to, rate, spacing, settle, measure, pedal, warmup, sampleRate,
-                               static_cast<double>(block), warm ? 1.0 : 0.0})
+                               static_cast<double>(block), warm ? 1.0 : 0.0, settleExhaust ? 1.0 : 0.0})
             h = mix(h, v);
         for (const double s : steps)
             h = mix(h, s);
@@ -187,6 +187,17 @@ namespace tee
         at(std::max(1.0, std::min(2.0, 0.5 * warmup)), "ignition", 1);
         at(0.5 * warmup, "throttle", plan.pedal);
         const double start = warmup + plan.settle;
+        // the exhaust's heat settled (G's spec.exhaust.heatSettle, a counter: each increase puts the gas and the walls
+        // where the present flow holds them), as the predictor settles it: a held step then reads the steady state,
+        // the same quantity as a predicted point, not a step's first seconds with the walls still warming
+        const bool settleHeat = plan.settleExhaust && build.fieldOf("exhaust.heatSettle") >= 0;
+        double heatCount = settleHeat ? build.get("exhaust.heatSettle") : 0.0;
+        const auto settleAt = [&](double time) {
+            if (!settleHeat)
+                return;
+            heatCount += 1.0;
+            t.events.push_back({time, TimelineEvent::Kind::Spec, "exhaust.heatSettle", heatCount, {}, 0.0});
+        };
         struct Window
         {
             double from, to;
@@ -196,6 +207,7 @@ namespace tee
         if (plan.steps.empty())
         {
             const double rate = std::max(1e-6, std::fabs(plan.rate)) * (plan.to >= plan.from ? 1.0 : -1.0);
+            settleAt(start - 0.5 * plan.settle);   // at the sweep's start (a sweep's walls then follow the sweep)
             at(start, "dynoRate", rate);
             end = start + (plan.to - plan.from) / rate;
         }
@@ -205,6 +217,9 @@ namespace tee
             for (const double s : plan.steps)
             {
                 at(time, "dynoSpeed", s);
+                // twice: once the speed is there, and again later in the hold, the flow then the speed's own
+                settleAt(time + std::min(0.3, 0.3 * plan.settle));
+                settleAt(time + 0.6 * plan.settle);
                 windows.push_back({time + plan.settle, time + plan.settle + plan.measure});
                 time += plan.settle + plan.measure;
             }
@@ -297,6 +312,7 @@ namespace tee
         curve.simulatedSeconds = result.simulatedSeconds;
         curve.wallSeconds = result.wallSeconds;
         curve.cancelled = result.cancelled && !faulted;
+        curve.settled = plan.settleExhaust && build.fieldOf("exhaust.heatSettle") >= 0;
         if (progress)
             progress(1.0);
         return true;
