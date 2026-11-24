@@ -183,3 +183,34 @@ namespace
         return 0;
     }
 }
+
+namespace
+{
+    // Each part's inspector page holds its fields; a part's page has none of another's.
+    VIEW_TEST(testAirInspector, "air.inspector")
+    {
+        AirRig rig("turbo4");
+        CHECK(rig.ws->inspectorPage().empty());
+        const struct
+        {
+            const char* id;
+            const char* has;
+            const char* hasNot;
+        } cases[] = {
+            { "boost.turbo[0]", "boost.compInducer", "boost.icEffect" },
+            { "boost.intercooler", "boost.icEffect", "boost.compAR" },
+            { "intake.runners", "intake.runnerLength", "boost.kind" },
+            { "boost.gate", "boost.gateSpring", "boost.blowOffKind" },
+            { "boost.nitrous", "boost.nitrousShot", "boost.antiLag" },
+            { "boost.shaft", "boost.maxSpeed", "boost.compAR" },
+        };
+        for (const auto& k : cases)
+        {
+            rig.demo.selection.select(k.id);
+            const std::string page = rig.ws->inspectorPage();
+            CHECK_MSG(page.find(k.has) != std::string::npos, std::string(k.id) + " lacks " + k.has);
+            CHECK_MSG(page.find(k.hasNot) == std::string::npos, std::string(k.id) + " has " + k.hasNot);
+        }
+        return 0;
+    }
+}

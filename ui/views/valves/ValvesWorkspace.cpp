@@ -14,6 +14,7 @@
 #include "views/valves/ValvesWorkspace.h"
 
 #include "views/engine/EngineModel.h"
+#include "views/engine/PageText.h"
 #include "views/engine/StageDraw.h"
 #include "views/valves/ValvesModel.h"
 
@@ -69,6 +70,63 @@ namespace tee::ui
                 k.mix(static_cast<float>(ctx_.live.get(n)));
             k.mix(drag_).mix(hot_).mix(static_cast<float>(yMax_));
             return k.h;
+        }
+
+        // The inspector for what is selected: a cam (both its stages and its phaser), the timing (both cams and the
+        // model), the head (the bench's), the phasers and stages, the springs and deactivation. Nothing selected: the
+        // generated pages of `valve`.
+        std::string inspectorPage() const override
+        {
+            const std::string& s = ctx_.selection.path();
+            // the sections, each field's label short (its section names the valve): the order a cam card reads in
+            const auto sec = [&](const char* title, std::initializer_list<VF> l, std::vector<std::string> labels) {
+                pages::Section s;
+                s.title = title;
+                std::size_t k = 0;
+                for (VF x : l)
+                {
+                    if (std::string q = en::fieldPath(ctx_.doc, path(x)); !q.empty())
+                    {
+                        s.paths.push_back(std::move(q));
+                        s.labels.push_back(k < labels.size() ? labels[k] : std::string());
+                    }
+                    ++k;
+                }
+                return s;
+            };
+            const std::vector<std::string> cam = { "ACTUATION", "DURATION, SEAT", "DURATION, 1 MM", "LIFT", "CENTRELINE", "FATNESS" };
+            const std::vector<std::string> camB = { "DURATION, SEAT", "DURATION, 1 MM", "LIFT", "CENTRELINE" };
+            const pages::Section inA = sec("INTAKE CAM", { VF::inKind, VF::inDurSeat, VF::inDur1mm, VF::inLift, VF::inCentre, VF::inFat }, cam);
+            const pages::Section exA = sec("EXHAUST CAM", { VF::exKind, VF::exDurSeat, VF::exDur1mm, VF::exLift, VF::exCentre, VF::exFat }, cam);
+            const pages::Section inB = sec("INTAKE, STAGE B", { VF::inDurSeatB, VF::inDur1mmB, VF::inLiftB, VF::inCentreB }, camB);
+            const pages::Section exB = sec("EXHAUST, STAGE B", { VF::exDurSeatB, VF::exDur1mmB, VF::exLiftB, VF::exCentreB }, camB);
+            const pages::Section model = sec("MODEL", { VF::model, VF::cam }, { "MODEL", "CAM DIAL" });
+            const pages::Section timing = sec("VARIABLE TIMING", { VF::inPhaseRange, VF::exPhaseRange, VF::phaseRate },
+                                              { "INTAKE RANGE", "EXHAUST RANGE", "SPEED" });
+            const pages::Section stages = sec("TWO STAGES", { VF::stages, VF::stageSpeed, VF::stageHyst }, { "TWO STAGES", "CHANGE AT", "HYSTERESIS" });
+            const pages::Section lift = sec("LIFT CONTROL", { VF::liftControl, VF::liftMin, VF::liftThrottle },
+                                            { "CONTINUOUS", "LEAST LIFT", "LOAD BY LIFT" });
+            const pages::Section deac = sec("DEACTIVATION", { VF::deacMask, VF::deacLow, VF::deacHigh, VF::deacLoad },
+                                            { "MAY REST", "FROM", "TO", "BELOW LOAD" });
+            const pages::Section springs = sec("SPRINGS", { VF::train, VF::springRate, VF::springPreload, VF::valveMass },
+                                               { "TRAIN", "RATE", "PRELOAD", "VALVE MASS" });
+            const pages::Section head = sec("HEAD", { VF::valves, VF::dIn, VF::dEx, VF::portIn, VF::portEx },
+                                            { "VALVES", "INTAKE DIA", "EXHAUST DIA", "INTAKE PORT", "EXHAUST PORT" });
+            const Train t = trainOf(ctx_.doc);
+            const std::string labNote = t.labOff ? "THE LAB IS OFF: THESE TAKE EFFECT WITH THE LAB MODEL" : "";
+            if (s == "valve.intake")
+                return pages::page(ctx_.doc, stageB(t) ? std::vector{ inB, inA, timing } : std::vector{ inA, inB, timing }, labNote);
+            if (s == "valve.exhaust")
+                return pages::page(ctx_.doc, stageB(t) ? std::vector{ exB, exA, timing } : std::vector{ exA, exB, timing }, labNote);
+            if (s == "valve.timing")
+                return pages::page(ctx_.doc, { model, inA, exA }, labNote);
+            if (s == "valve.head")
+                return pages::page(ctx_.doc, { head }, "THE BENCH IS FROM THESE AND THE BORE");
+            if (s == "valve.phasers")
+                return pages::page(ctx_.doc, { timing, stages, lift }, labNote);
+            if (s == "valve.springs")
+                return pages::page(ctx_.doc, { springs, deac }, labNote);
+            return {};
         }
 
         void pointerDown(const funkgui::PointerEvent& e) override
