@@ -190,13 +190,21 @@ namespace tee
         // the exhaust's heat settled (G's spec.exhaust.heatSettle, a counter: each increase puts the gas and the walls
         // where the present flow holds them), as the predictor settles it: a held step then reads the steady state,
         // the same quantity as a predicted point, not a step's first seconds with the walls still warming
-        const bool settleHeat = plan.settleExhaust && build.fieldOf("exhaust.heatSettle") >= 0;
-        double heatCount = settleHeat ? build.get("exhaust.heatSettle") : 0.0;
+        // (with them the intake's charge heating and the boost's intercooler, where the program has their settles)
+        std::vector<std::pair<std::string, double>> settles;   // each heatSettle field and its count
+        if (plan.settleExhaust)
+            for (const char* section : {"exhaust", "intake", "boost"})
+            {
+                const std::string field = std::string(section) + ".heatSettle";
+                if (build.fieldOf(field) >= 0)
+                    settles.emplace_back(field, build.get(field));
+            }
         const auto settleAt = [&](double time) {
-            if (!settleHeat)
-                return;
-            heatCount += 1.0;
-            t.events.push_back({time, TimelineEvent::Kind::Spec, "exhaust.heatSettle", heatCount, {}, 0.0});
+            for (auto& [field, count] : settles)
+            {
+                count += 1.0;
+                t.events.push_back({time, TimelineEvent::Kind::Spec, field, count, {}, 0.0});
+            }
         };
         struct Window
         {
@@ -312,7 +320,7 @@ namespace tee
         curve.simulatedSeconds = result.simulatedSeconds;
         curve.wallSeconds = result.wallSeconds;
         curve.cancelled = result.cancelled && !faulted;
-        curve.settled = plan.settleExhaust && build.fieldOf("exhaust.heatSettle") >= 0;
+        curve.settled = plan.settleExhaust && build.fieldOf("exhaust.heatSettle") >= 0;   // (the exhaust's: the one that matters most)
         if (progress)
             progress(1.0);
         return true;

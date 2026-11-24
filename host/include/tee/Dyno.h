@@ -49,7 +49,9 @@ namespace tee
         // The exhaust's heat settled (spec.exhaust.heatSettle) at each step, twice, and at a sweep's start: a held step
         // reads the steady state, as a predicted point does (Predict.h), the walls as a minute at that speed leaves
         // them. Off: a step's first seconds, its walls still warming (some 3 % low on the V12 near 6700 rpm: 769
-        // against 779 after a minute). A run says which it is (DynoCurve::settled).
+        // against 779 after a minute). A run says which it is (DynoCurve::settled). The one switch for every slow heat
+        // the program can settle: with the exhaust's, the intake's charge heating (spec.intake.heatSettle) and the
+        // boost's intercooler (spec.boost.heatSettle) where it has them; the predictor's settleExhaust likewise.
         bool settleExhaust = true;
         std::string torque = "engine.torque";   // the tel field the absorbed torque is read from
         std::vector<std::string> fields;        // more tel fields at each point: "boost.pressure", "engine.manifold"

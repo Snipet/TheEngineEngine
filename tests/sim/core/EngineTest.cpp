@@ -565,3 +565,22 @@ TEST_CASE("a kept player reset is a fresh player, to the bit", "[core][engine][r
     REQUIRE(a.size() == b.size());
     CHECK(a == b);
 }
+
+TEST_CASE("a model switch written while stopped makes its decisions with no configure between (f89d40c)", "[core][engine][models]")
+{
+    // (the sequence that showed the hole before f89d40c: the player made and configured with every switch off (its
+    // init), the default build applied (same layout and size: no configure follows), the switch written while stopped,
+    // the key turned. holdModel took the switch at once; comb.walls, Cylinder::conserve and Exhaust::implied stayed as
+    // the configure had made them)
+    struct Case { const char* field; const char* decision; };
+    for (const Case& c : {Case{"fuel.model", "comb.walls"}, Case{"fuel.model", "cyl[0].conserve"}, Case{"engine.wallHeat", "comb.walls"},
+                          Case{"boost.model", "exh.implied"}})
+    {
+        Bench b("default");
+        std::string e;
+        REQUIRE(b.player().setSpec(c.field, 1, e));
+        b.start(0.5);
+        INFO(c.field << " -> " << c.decision);
+        CHECK(b.field(c.decision) == 1.0);
+    }
+}
