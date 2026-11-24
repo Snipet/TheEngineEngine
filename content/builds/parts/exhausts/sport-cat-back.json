@@ -1,0 +1,27 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Sport cat-back",
+  "notes": "Straight-through mufflers behind the standard converters: louder, a harder edge. Loaded as a part, it replaces only the exhaust fields it sets. Today the engine hears the four dials (headers, pipe, crossover, muffler); the builder's pipes are kept for when it runs them.",
+  "spec": {
+    "exhaust": {
+      "headers": 0.5,
+      "pipe": 0.5,
+      "crossover": 0.0,
+      "muffler": 0.35,
+      "model": "Builder",
+      "converter": [
+        1,
+        1
+      ],
+      "resonator": [
+        0,
+        0
+      ],
+      "mufKind": [
+        1,
+        1
+      ]
+    }
+  }
+}

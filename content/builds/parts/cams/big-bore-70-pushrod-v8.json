@@ -1,0 +1,20 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "7.0 L pushrod V8, dry sump cams",
+  "notes": "The cams, springs and phasers of the archetype \"7.0 L pushrod V8, dry sump\" alone (intake 282/230 degrees at the seat/1 mm, 15.0 mm; exhaust 288/234, 14.0 mm): loaded as a part, they replace only the valvetrain's cam fields.",
+  "spec": {
+    "valve": {
+      "model": "Lab",
+      "train": "Pushrod",
+      "inDurSeat": 282,
+      "inDur1mm": 230,
+      "inLift": 0.015,
+      "inCentre": 112,
+      "exDurSeat": 288,
+      "exDur1mm": 234,
+      "exLift": 0.014,
+      "exCentre": 116
+    }
+  }
+}

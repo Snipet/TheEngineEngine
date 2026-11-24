@@ -129,7 +129,8 @@
         0.85
       ],
       "brakeDecel": 1.1,
-      "abs": true
+      "abs": true,
+      "converterK": 24.0
     },
     "env": {
       "temperature": 288.15,

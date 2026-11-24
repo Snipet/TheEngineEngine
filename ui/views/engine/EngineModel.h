@@ -45,7 +45,7 @@ namespace tee::ui::engine
     {
         layout, custom, cylinders, rotors, bankAngle, bank, pin, fireRev, place,
         displacement, boreStroke, bore, stroke, rod, compression,
-        pistonMass, rodMass, rodRecip, flywheel, limiter,
+        pistonMass, rodMass, rodRecip, flywheel, limiter, cycle,
         count
     };
     inline constexpr FieldPath kEngineFields[] = {
@@ -69,6 +69,7 @@ namespace tee::ui::engine
         { "engine.rodRecip", "" },
         { "engine.flywheelInertia", "engine.flywheel" },   // D's kg m^2; else the reference's dial (and the demo's)
         { "ecu.limiter", "engine.redline" },
+        { "engine.cycle", "" },             // card T: 1 a two-stroke (views/engine/TwoStroke.h reads its own fields)
     };
     static_assert(std::size(kEngineFields) == static_cast<std::size_t>(EF::count));
 
@@ -120,6 +121,7 @@ namespace tee::ui::engine
         std::array<int, kMaxCyl> order{};            // the firing order: indexes from 0
         std::array<double, kMaxCyl> interval{};      // degrees from each firing (in order) to the next
         bool custom = false;
+        bool twoStroke = false;           // fires every turn: cyc 360
         bool ok = true;                   // false: two cylinders fire together, or a bank has no angle
 
         bool empty() const noexcept { return n <= 0; }

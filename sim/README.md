@@ -379,11 +379,13 @@ driven, float vTotal, int nCyl, float fx, float fy, float mx, float my, float* f
 passes `&spec.sound`, `&tel.sound`, `car.speedNow()`, `set.drive != 0`, `vTotal`, `lay.n`, a custom engine's `shake.fx`,
 `fy`, `mx`, `my` (else 0), `lay.fire`, `lay.cyc`, `lay.rotary`); each sample `mix(int i, float xL, float xR, float in,
 float tqNow, float mech, float block, float turbo, float starter, float comb, float sh0, float sh1, int driven, float
-road, float cutG, float drive)` (`drive`: package M's `vo.gearbox + vo.axle` with spec.voices.model 1, else 0); per
+road, float cutG, float gearbox, float axle, float front, float head, float tank, float gate, float voices, float
+mouth)` (package M's `ex.vo.gearbox`, `axle`, `front`, `head`, `tank`, `gateOut` and their sum `all` with
+spec.voices.model 1, else 0; `ex.mouth`); per
 part `finish(float* left, float* right, int at, int m)`; the resampler `needs()`, `pushPart()`, `resampled(float* left,
 float* right, int i)`. With `spec.sound.model` 0 the new arguments are not read: the reference's path. With 1:
 `Scene` (`listen/scene.fm`), `CabinBoom` (`listen/cabin.fm`), `Place` (`listen/places.fm`); it writes `tel.sound`'s
-`camera`, `range`, `doppler`, `roadPosition`, `loudness`, `exhaustLevel`, `mixLevel`.
+`camera`, `range`, `doppler`, `roadPosition`, `loudness`, `exhaustLevel`, `mixLevel`, `limiter`, `ceilingParts`.
 
 **Noise** (`lib/noise.fm`): the reference's streams, as it has them: Engine's (`Engine::noise`: the cylinders' bias,
 Combustion's scatter and pops, the exhaust's valve, flow and jet noise, in the order of the work above), Extras' (and
@@ -394,7 +396,9 @@ a shared stream draws where the reference did.
 
 Each package's model is switched by its Spec section's `model` (0: the reference's, bit for bit; 1: the package's):
 `valve.model` (E), `intake.model` (E), `boost.model` (F), `exhaust.model` (G), `fuel.model` (H: combustion),
-`ecu.model` (H), `car.model` (I), and `engine.custom` (D). A hook is called only when its model is 1, so at the
+`ecu.model` (H), `car.model` (I), and `engine.custom` (D). A switch changed while the engine runs is made under the fade, as a new layout is (`Engine::holdModel`: the Spec
+keeps the model in use until the fade's quiet, where `configure` makes the change and moves the section's rev; stopped,
+at once). A hook is called only when its model is 1, so at the
 defaults nothing below runs. Its body is a stub, in the owner's module, that the owner fills; the call's place is the
 integrator's.
 

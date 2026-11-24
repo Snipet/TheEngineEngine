@@ -5,7 +5,8 @@
 // A's signal (dB, as the null test's nullDepth) and the worst sample's difference; and each one's cost, ns a 96 kHz
 // sample: the wall time of the calls in which the engine sounded (as tee-bench --engine reads it: measure on a
 // quiet machine), the least of --repeat runs and the
-// spread (most over least), the runs alternated A, B, A, B so that a drift of the machine falls on both. The engine is
+// spread (most over least), and the ratio of the least processor time of the whole renders (which a busy host's
+// stolen time does not lengthen), the runs alternated A, B, A, B so that a drift of the machine falls on both. The engine is
 // a chaotic system: a change in the last bit of one number makes the two waveforms part company within a second or
 // two, though they sound alike, so beside the difference sample for sample (which then reads near 0 dB) it reports
 // how long the two stayed within -80 dB of each other, the long-term spectrum's third-octave bands' worst difference,
@@ -13,7 +14,7 @@
 //
 //   qbench [--a <dir>] [--b <dir>] [--aenv K=V,K=V] [--benv K=V,...] [--builds a,b] [--scenarios a,b]
 //          [--repeat n] [--rate hz] [--block n] [--seconds s]
-//   TEE_Q_OPT=0..3, TEE_Q_MATH=vector|libm|fast, TEE_Q_DENORM=flush|preserve, TEE_Q_KNOBS=n, TEE_Q_IR=<file>
+//   TEE_Q_OPT=0..3, TEE_Q_MATH=vector|libm|fast, TEE_Q_DENORM=flush|preserve, TEE_Q_KNOBS=n, TEE_Q_IR=<file>, TEE_Q_DEFINES=NAME[=v];NAME (the program's macros: TEE_FAST)
 #include "tee/Clock.h"
 #include "tee/EnginePlayer.h"
 #include "tee/Render.h"
@@ -42,7 +43,7 @@ namespace
         return out;
     }
 
-    const char* kVars[] = {"TEE_Q_OPT", "TEE_Q_MATH", "TEE_Q_DENORM", "TEE_Q_KNOBS", "TEE_Q_IR"};
+    const char* kVars[] = {"TEE_Q_OPT", "TEE_Q_MATH", "TEE_Q_DENORM", "TEE_Q_KNOBS", "TEE_Q_IR", "TEE_Q_DEFINES"};
 
     void applyEnv(const std::string& list)
     {
@@ -274,9 +275,9 @@ int main(int argc, char** argv)
                 aenv.c_str(), A.createSeconds, A.compileSeconds, A.linkSeconds, A.codeBytes);
     std::printf("B: %s [%s]: create %.2f s (compile %.2f, machine code %.2f), %zu bytes of code\n\n", b.c_str(),
                 benv.c_str(), B.createSeconds, B.compileSeconds, B.linkSeconds, B.codeBytes);
-    std::printf("| build | scenario | A ns | A spread | B ns | B spread | B / A | to the bit | difference under the signal, dB | together for, s | bands, worst dB | quarter-second level, worst dB | speed apart, worst / mean rpm |\n");
-    std::printf("|---|---|---:|---:|---:|---:|---:|---|---:|---:|---:|---:|---:|\n");
-    double sumA = 0.0, sumB = 0.0;
+    std::printf("| build | scenario | A ns | A spread | B ns | B spread | B / A | to the bit | difference under the signal, dB | together for, s | bands, worst dB | quarter-second level, worst dB | speed apart, worst / mean rpm | B / A, processor time |\n");
+    std::printf("|---|---|---:|---:|---:|---:|---:|---|---:|---:|---:|---:|---:|---:|\n");
+    double sumA = 0.0, sumB = 0.0, sumCa = 0.0, sumCb = 0.0;
     for (const std::string& bn : split(builds))
     {
         const std::string bfile = bn.find('/') != std::string::npos ? bn : root + "/content/builds/" + bn + ".json";
@@ -294,7 +295,7 @@ int main(int argc, char** argv)
             tee::RenderOptions ro;
             ro.blockSize = block;
             ro.seconds = seconds;
-            double bestA = 1e30, worstA = 0.0, bestB = 1e30, worstB = 0.0;
+            double bestA = 1e30, worstA = 0.0, bestB = 1e30, worstB = 0.0, cpuA = 1e30, cpuB = 1e30;
             tee::RenderResult ra, rb;
             for (int r = 0; r < repeat; ++r)
             {
@@ -303,7 +304,10 @@ int main(int argc, char** argv)
                 {
                     tee::RenderResult res;
                     tee::EnginePlayer& p = side == 0 ? *A.player : *B.player;
+                    const double c0 = tee::threadCpuSeconds();
                     const bool ok = tee::renderEngine(p, side == 0 ? buildA : buildB, sc, ro, res, err);
+                    const double cpu = tee::threadCpuSeconds() - c0;
+                    (side == 0 ? cpuA : cpuB) = std::min(side == 0 ? cpuA : cpuB, cpu);
                     if (!ok)
                     {
                         std::fprintf(stderr, "qbench: %s\n", err.c_str());
@@ -331,13 +335,15 @@ int main(int argc, char** argv)
             sumB += bestB;
             char dtext[32];
             std::snprintf(dtext, sizeof dtext, "%.1f", std::min(dl, dr));
-            std::printf("| %s | %s | %.0f | %.1f %% | %.0f | %.1f %% | %.3f | %s | %s | %.2f | %.2f | %.2f | %.0f / %.1f |\n", bn.c_str(), sn.c_str(), bestA,
+            std::printf("| %s | %s | %.0f | %.1f %% | %.0f | %.1f %% | %.3f | %s | %s | %.2f | %.2f | %.2f | %.0f / %.1f | %.3f |\n", bn.c_str(), sn.c_str(), bestA,
                         100.0 * (worstA / bestA - 1.0), bestB, 100.0 * (worstB / bestB - 1.0), bestB / bestA,
-                        same ? "yes" : "no", same ? "-" : dtext, tog, bd, ld, sw, sm);
+                        same ? "yes" : "no", same ? "-" : dtext, tog, bd, ld, sw, sm, cpuB / cpuA);
+            sumCa += cpuA;
+            sumCb += cpuB;
             (void)worst;
             std::fflush(stdout);
         }
     }
-    std::printf("| all | | %.0f | | %.0f | | %.3f | | | | | | |\n", sumA, sumB, sumB / sumA);
+    std::printf("| all | | %.0f | | %.0f | | %.3f | | | | | | | %.3f |\n", sumA, sumB, sumB / sumA, sumCb / sumCa);
     return 0;
 }

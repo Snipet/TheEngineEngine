@@ -125,6 +125,19 @@ namespace
                                              out[i] = src[i];
                                          return m;
                                      });
+            // a two-stroke's port pressure over a turn (gauge Pa, each degree after top dead centre): the blowdown as
+            // the port opens, the diffuser's suction about bottom dead centre, the baffle's plugging pulse just before
+            // the port closes (the pipe on song)
+            demo.engine.addScope("tsPortPressure", [this](const tee::ui::DemoEngine&, float* out, int max) {
+                const ex::ExhaustBuild b = ex::resolveExhaust(doc);
+                const double epo = 180.0 - 0.5 * b.ts.exhaustDur, epc = 180.0 + 0.5 * b.ts.exhaustDur;
+                const auto bump = [](double x, double at, double w) { return std::exp(-((x - at) / w) * ((x - at) / w)); };
+                const int m = std::min(max, 360);
+                for (int i = 0; i < m; ++i)
+                    out[i] = static_cast<float>(70e3 * bump(i, epo + 25.0, 14.0) - 28e3 * bump(i, 180.0, 26.0)
+                                                + 34e3 * bump(i, epc - 12.0, 12.0));
+                return m;
+            });
             ws = tee::ui::makeExhaustWorkspace(ctx);
             host = std::make_unique<funkgui::HeadlessHost>(*ws, theme, dpi);
             host->resize(w, h);
@@ -207,7 +220,7 @@ namespace
     // The four builds the card names, and two more, each its own picture and golden (density 2; the first also at 1).
     VIEW_TEST(testExhaustBuilds, "exhaust.builds")
     {
-        const char* const builds[] = { "na4-421", "tt-v8-x", "sc-v8-180", "single-stack", "v12-log", "flat4" };
+        const char* const builds[] = { "na4-421", "tt-v8-x", "sc-v8-180", "single-stack", "v12-log", "flat4", "ts-125", "ts-twin" };
         for (const char* b : builds)
         {
             ExRig rig(b);
@@ -463,7 +476,7 @@ namespace
             const funkgui::Rect st = tee::test::u3::frameStage(win.first, win.second);
             CHECK(st.w > 400.0f && st.h > 400.0f);
             const int w = static_cast<int>(st.w), h = static_cast<int>(st.h);
-            for (const char* b : { "na4-421", "tt-v8-x", "sc-v8-180", "single-stack", "v12-log", "flat4" })
+            for (const char* b : { "na4-421", "tt-v8-x", "sc-v8-180", "single-stack", "v12-log", "flat4", "ts-125", "ts-twin" })
             {
                 ExRig rig(b, w, h, 1.0f);
                 for (const tee::ui::exhaust::Hit& x : rig.geo().hits)
@@ -493,7 +506,7 @@ namespace
         for (const auto& win : { std::pair<int, int>{ 1100, 700 }, std::pair<int, int>{ 1600, 1000 } })
         {
             const funkgui::Rect st = tee::test::u3::frameStage(win.first, win.second);
-            for (const char* b : { "na4-421", "tt-v8-x", "sc-v8-180", "single-stack", "v12-log", "flat4" })
+            for (const char* b : { "na4-421", "tt-v8-x", "sc-v8-180", "single-stack", "v12-log", "flat4", "ts-125", "ts-twin" })
             {
                 ExRig rig(b, static_cast<int>(st.w), static_cast<int>(st.h), 1.0f);
                 const std::string hits = tee::test::u3::textCollisions(rig.host->draw());
@@ -524,6 +537,39 @@ namespace
         CHECK(on.size() == b.prims.size() && onShaders == b.shaders.size() && b.shaders.empty());
         CHECK(on.size() == b.prims.size() && std::memcmp(on.data(), b.prims.data(), on.size() * sizeof(funkgui::Prim)) == 0);
         CHECK(!rig.ws->moving());
+        return 0;
+    }
+}
+
+namespace
+{
+    // A two-stroke (engine.cycle 1): its pipes drawn to scale instead of the four-stroke's system; the speed the pipe
+    // is tuned for as card T computes it (PipeTest's predicted(): its default pipe at 800 K, 10614 rpm); a press on a
+    // section selects it, its page its fields.
+    VIEW_TEST(testExhaustTwoStroke, "exhaust.twostroke")
+    {
+        tee::ui::MemoryDoc doc{ ex::exhaustDemoFields() };
+        CHECK(ex::setExhaustDemoBuild(doc, "ts-125"));
+        const ex::ExhaustBuild b = ex::resolveExhaust(doc);
+        CHECK(b.ts.on && b.ts.cylinders == 1 && b.ts.chamber);
+        CHECK_NEAR(b.ts.tunedLength(), 0.73, 1e-6);
+        CHECK_MSG(std::fabs(b.ts.tunedRpm(800.0) / 10614.0 - 1.0) < 0.01, std::to_string(b.ts.tunedRpm(800.0)));
+        CHECK(b.ts.tunedRpm(900.0) > b.ts.tunedRpm(700.0));   // a hotter pipe is tuned higher
+        CHECK(ex::setExhaustDemoBuild(doc, "ts-twin"));
+        const ex::ExhaustBuild t = ex::resolveExhaust(doc);
+        CHECK(t.ts.cylinders == 2 && t.ts.silencer && t.ts.tunedRpm(800.0) < b.ts.tunedRpm(800.0));   // longer: lower
+        CHECK(ex::setExhaustDemoBuild(doc, "tt-v8-x") && !ex::resolveExhaust(doc).ts.on);   // a four-stroke again
+
+        ExRig rig("ts-125", 696, 574, 2.0f);
+        rig.demo.engine.set("engine.tsPipeTemperature", 760.0);
+        rig.host->tick(3);
+        golden("exhaust.twostroke", *rig.host);
+        // the belly: a click in the middle of the pipe's length selects a section, its page its own fields
+        rig.host->click(696.0f * 0.5f, 84.0f + (574.0f - 84.0f - 74.0f - std::clamp((574.0f - 84.0f - 74.0f) * 0.34f, 110.0f, 200.0f) - 16.0f) * 0.5f);
+        CHECK_MSG(rig.demo.selection.path().rfind("engine.ts", 0) == 0, rig.demo.selection.path());
+        CHECK(!rig.ws->inspectorPage().empty());
+        ExRig twin("ts-twin", 1128, 874, 1.0f);
+        golden("exhaust.twostroke.twin.dpi1", *twin.host);
         return 0;
     }
 }
