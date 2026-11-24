@@ -440,11 +440,11 @@ module BoostMachine
         // sizes: matched to the engine where left at 0
         // (the design point, the lead's (a'): only what the build states (docs/measurements/calibration/boost/
         // design-point.md, written before its table): the ratio its own boost asks (the target, else the spring; at
-        // least 1.3), at 0.85 of its redline for spark ignition or a governed diesel's rated speed, its swept air at
+        // least 1.3), at spec.boost.designShare of its redline (0.85 unstated) for spark ignition or a governed diesel's rated speed, its swept air at
         // 0.9 against the charge's density at that ratio; the turbine's inlet then 1.247 times the boost's absolute
         // (the old match's 2.4 bar at 1.9 atm), its gas 1150 K, a diesel's 900 K)
         const int dsl = designRpm > 0.0f ? 1 : 0;
-        const float nDesign = dsl != 0 ? designRpm : 0.85f * redRpm;
+        const float nDesign = dsl != 0 ? designRpm : s->designShare * redRpm;
         const float asked = s->target > 0.0f ? s->target : s->gateSpring;
         const float prDesign = fmaxf((pOut + asked) / pOut, 1.3f);
         const float p3Design = 1.247f * prDesign * pOut;

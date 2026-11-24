@@ -982,3 +982,43 @@ TEST_CASE("probe: the cam bake's midpoints", "[.probe-bakemid]")
     }
     SUCCEED();
 }
+
+// The bake with its defaults, applied and saved (PROBE_OUT, a file) for an idle render, and its full-load curve at its
+// own speeds against the auto schedule's: PROBE_BUILD (flat-plane-v8-45)
+TEST_CASE("probe: a cam bake applied, against the auto schedule", "[.probe-bakeaccept]")
+{
+    const std::string slug = std::getenv("PROBE_BUILD") ? std::getenv("PROBE_BUILD") : "flat-plane-v8-45";
+    std::string errors;
+    const auto sim = tee::Sim::compile(std::filesystem::path(TEE_SOURCE_DIR) / "sim", {}, errors);
+    REQUIRE(sim != nullptr);
+    tee::Build build(sim->fields());
+    std::vector<std::string> warnings;
+    REQUIRE(build.loadFile(std::filesystem::path(TEE_SOURCE_DIR) / "content" / "builds" / "archetypes" / (slug + ".json"),
+                           tee::BuildPart::Whole, warnings, errors));
+    build.set("ecu.maps.camInAuto", 1.0);
+    tee::CamBakeOptions o;
+    tee::CamBakeResult r;
+    REQUIRE(tee::bakeIntakeCam(sim, build, o, r, errors));
+    tee::Build baked(build.fields());
+    REQUIRE(baked.load(build.save(), tee::BuildPart::Whole, warnings, errors));
+    REQUIRE(tee::applyIntakeCam(baked, r, errors));
+    std::printf("%s: %d rows fell back to the auto schedule; rows rpm/deg:", slug.c_str(), r.fellBack);
+    for (std::size_t i = 0; i < r.speeds.size(); ++i)
+        std::printf(" %.0f/%.0f", r.speeds[i] * 30.0 / M_PI, r.best[i]);
+    std::printf("\n");
+    if (const char* out = std::getenv("PROBE_OUT"))
+    {
+        std::ofstream f(out);
+        f << baked.save();
+    }
+    tee::PredictOptions po = o.predict;
+    po.speeds = r.speeds;
+    tee::PredictCurve autoC, mapC;
+    REQUIRE(tee::predictCurve(sim, build, po, autoC, errors));
+    REQUIRE(tee::predictCurve(sim, baked, po, mapC, errors));
+    std::printf("  full load, N m, auto / baked:");
+    for (std::size_t i = 0; i < autoC.points.size() && i < mapC.points.size(); ++i)
+        std::printf(" %.0f:%.0f/%.0f", autoC.points[i].speed * 30.0 / M_PI, autoC.points[i].torque, mapC.points[i].torque);
+    std::printf("\n");
+    SUCCEED();
+}

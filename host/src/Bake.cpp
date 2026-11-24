@@ -184,6 +184,88 @@ namespace tee
             if (result.added == addedBefore)
                 break;   // (again over the intervals the new rows made, to three passes: a row can spoil its neighbours')
         }
+        // smooth across speed: the advances chosen together, the most torque less a cost for each step between
+        // neighbouring rows (stepCost of the best torque per 10 degrees: judgement), so the map does not swing back and
+        // forth between cells chasing the waves' teeth (a turbo four's grid bake read 20, 20, 0, 30, 0, 20, 30, 20; the
+        // lead's 22:35). Cells set aside for knock stay set aside
+        if (options.stepCost > 0.0 && result.speeds.size() >= 2)
+        {
+            const std::size_t ns = result.speeds.size(), na = result.advances.size();
+            double tMax = 0.0;
+            for (std::size_t s = 0; s < ns; ++s)
+                if (std::isfinite(result.bestTorque[s]))
+                    tMax = std::fmax(tMax, result.bestTorque[s]);
+            const double cost = options.stepCost * tMax / 10.0;
+            const double bad = -std::numeric_limits<double>::infinity();
+            auto ok = [&](std::size_t a, std::size_t s) {
+                return std::isfinite(result.torque[a][s]) && result.knock[a][s] <= result.knock.front()[s] + options.knockLimit;
+            };
+            std::vector<std::vector<double>> score(ns, std::vector<double>(na, bad));
+            std::vector<std::vector<std::size_t>> from(ns, std::vector<std::size_t>(na, 0));
+            for (std::size_t a = 0; a < na; ++a)
+                if (ok(a, 0))
+                    score[0][a] = result.torque[a][0];
+            for (std::size_t s = 1; s < ns; ++s)
+                for (std::size_t a = 0; a < na; ++a)
+                {
+                    if (!ok(a, s))
+                        continue;
+                    for (std::size_t b = 0; b < na; ++b)
+                    {
+                        if (score[s - 1][b] == bad)
+                            continue;
+                        const double v = score[s - 1][b] + result.torque[a][s]
+                                         - cost * std::fabs(result.advances[a] - result.advances[b]);
+                        if (v > score[s][a])
+                            score[s][a] = v, from[s][a] = b;
+                    }
+                }
+            std::size_t last = 0;
+            for (std::size_t a = 1; a < na; ++a)
+                if (score[ns - 1][a] > score[ns - 1][last])
+                    last = a;
+            if (score[ns - 1][last] != bad)
+                for (std::size_t s = ns; s-- > 0;)
+                {
+                    result.best[s] = result.advances[last];
+                    result.bestTorque[s] = result.torque[last][s];
+                    last = from[s][last];
+                }
+        }
+        // acceptance: the map applied against the auto schedule at full load, at the map's own speeds; where it makes more
+        // than acceptLoss less (the knock control's state moves a settled point by up to some 3 %: card N1), that row
+        // takes the auto schedule's own phase there. The idle and light load are parked by the map's load axis
+        // (applyIntakeCam), as the auto schedule is at idle (the lead's 22:35: the bake's own acceptance before it writes)
+        if (options.accept && !result.speeds.empty() && build.fieldOf("ecu.maps.camInAuto") >= 0)
+        {
+            Build autoB(build.fields());
+            std::vector<std::string> warnings;
+            if (!autoB.load(build.save(), BuildPart::Whole, warnings, error))
+                return false;
+            autoB.set("ecu.maps.camInAuto", 1.0);
+            Build mapB(build.fields());
+            if (!mapB.load(build.save(), BuildPart::Whole, warnings, error) || !applyIntakeCam(mapB, result, error))
+                return false;
+            PredictOptions po = options.predict;
+            po.speeds = result.speeds;
+            po.fields = {"valve.inPhaseTarget"};
+            PredictCurve autoC, mapC;
+            if (!predictCurve(sim, autoB, po, autoC, error, cancel) || !predictCurve(sim, mapB, po, mapC, error, cancel))
+                return false;
+            for (std::size_t s = 0; s < result.speeds.size() && s < autoC.points.size() && s < mapC.points.size(); ++s)
+            {
+                const PredictPoint& pa = autoC.points[s];
+                const PredictPoint& pm = mapC.points[s];
+                if (!pa.valid || !pm.valid || pa.torque <= 0.0)
+                    continue;
+                if (pm.torque < (1.0 - options.acceptLoss) * pa.torque && !pa.fields.empty())
+                {
+                    result.best[s] = pa.fields[0];
+                    result.bestTorque[s] = pa.torque;
+                    result.fellBack += 1;
+                }
+            }
+        }
         result.wallSeconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
         return true;
     }
@@ -200,17 +282,22 @@ namespace tee
             error = "the program has no ecu.maps.camIn to bake into";
             return false;
         }
-        // speeds as the map's x (at most 16), the same full-load row at no load and at three times the air's pressure
+        // speeds as the map's x (at most 16)
         std::vector<double> x = result.speeds, best = result.best;
         if (x.size() > 16)
         {
             x.resize(16);
             best.resize(16);
         }
-        const std::vector<double> y = {0.0, 3.0};
-        std::vector<std::vector<double>> z(x.size(), std::vector<double>{0.0, 0.0});
+        // the load axis (the manifold over the air's): the bake measures full load only, so the map asks its advance at
+        // full load and none (parked: the least overlap, as the auto schedule and a maker's map at idle and light load;
+        // idle is the most throttled condition and the most residual, the burn's least stable: SAE 2004-01-1356 counts it
+        // stable under 3 % CoV of IMEP) up to 0.75, the advance coming in by 0.95. Before: one row for every load asked
+        // the full-load phase at idle, and a flat-plane V8 idled at 95 kPa, sd 108 rpm (the lead's 22:35)
+        const std::vector<double> y = {0.0, 0.75, 0.95, 3.0};
+        std::vector<std::vector<double>> z(x.size(), std::vector<double>{0.0, 0.0, 0.0, 0.0});
         for (std::size_t i = 0; i < x.size(); ++i)
-            z[i] = {best[i], best[i]};
+            z[i] = {0.0, 0.0, best[i], best[i]};
         build.beginGesture();
         const bool ok = build.setMap("ecu.maps.camIn", x, y, z) && build.set("ecu.maps.camInAuto", 0.0);
         build.endGesture();
