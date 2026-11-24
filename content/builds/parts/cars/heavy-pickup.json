@@ -1,0 +1,38 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "part": "car",
+  "name": "Car: heavy pickup",
+  "notes": "A car of its class alone (card P's archetypes' cars), to take any engine.",
+  "spec": {
+    "car": {
+      "model": "Vehicle",
+      "kind": "Car",
+      "mass": 3400,
+      "drive": "Rear",
+      "wheelbase": 3.79,
+      "cgHeight": 0.8,
+      "frontWeight": 0.6,
+      "track": 1.73,
+      "cdA": 1.35,
+      "tyre": "Truck",
+      "tyreRadius": 0.4,
+      "gearbox": "Automatic",
+      "finalDrive": 3.42,
+      "liveAxle": true,
+      "wheelInertia": 3.0,
+      "gears": 6,
+      "autoGearing": false,
+      "ratio": [
+        3.23,
+        2.19,
+        1.41,
+        1.0,
+        0.82,
+        0.62
+      ],
+      "brakeDecel": 1.1,
+      "abs": true
+    }
+  }
+}

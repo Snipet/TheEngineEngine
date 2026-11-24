@@ -1,0 +1,62 @@
+{
+  "format": "tee-scenario",
+  "version": 1,
+  "name": "p-top-speed",
+  "description": "Card P's top-speed run: warm, the gearbox made an automatic for the run (the ratios are the build's), the lever in D and the pedal floored from 3 s for 110 s on level ground in the build's air. Read car.speed's max.",
+  "seconds": 115,
+  "warm": true,
+  "events": [
+    {
+      "t": 0.0,
+      "ctl": {
+        "mode": 1,
+        "lever": 0,
+        "clutch": 0,
+        "throttle": 0,
+        "brake": 0,
+        "ignition": 1
+      }
+    },
+    {
+      "t": 0.25,
+      "ctl": {
+        "ignition": 2
+      }
+    },
+    {
+      "t": 2.0,
+      "ctl": {
+        "ignition": 1
+      }
+    },
+    {
+      "t": 0.0,
+      "spec": {
+        "car.gearbox": "Automatic"
+      }
+    },
+    {
+      "t": 2.5,
+      "ctl": {
+        "lever": 1
+      }
+    },
+    {
+      "t": 3.0,
+      "ctl": {
+        "throttle": 1
+      },
+      "ramp": 0.5
+    }
+  ],
+  "assertions": [
+    {
+      "audio": "finite"
+    },
+    {
+      "audio": "peak",
+      "<=": 1,
+      "source": "02-contracts.md, section 1: within +-1"
+    }
+  ]
+}

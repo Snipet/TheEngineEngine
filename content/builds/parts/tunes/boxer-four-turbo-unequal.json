@@ -1,0 +1,25 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "part": "tune",
+  "name": "Boxer four turbo with unequal headers (tune)",
+  "notes": "The tune of the archetype \"Boxer four turbo with unequal headers\" alone.",
+  "spec": {
+    "ecu": {
+      "model": "Maps",
+      "timing": 0,
+      "pops": 0.1,
+      "starter": true,
+      "limiter": {
+        "kind": "Fuel cut",
+        "speed": 733.038
+      },
+      "idle": {
+        "speed": 83.776
+      },
+      "knock": {
+        "on": true
+      }
+    }
+  }
+}

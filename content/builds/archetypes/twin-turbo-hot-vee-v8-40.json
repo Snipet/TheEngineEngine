@@ -1,0 +1,173 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Twin-turbo 4.0 L hot-vee V8",
+  "notes": "A 4.0 L crossplane V8 with both turbos in the vee (hot-vee): 86 x 86 mm (3996 cc), 10.5:1, direct injection (engines of the kind: 350 to 470 kW at 5500 to 6500 rpm, 700 to 850 N m from 2000 to 4500; makers' figures). All-wheel drive, eight-speed automatic.",
+  "spec": {
+    "engine": {
+      "layout": "V8 crossplane",
+      "custom": true,
+      "compression": 10.5,
+      "cylinders": 8,
+      "bankAngle": [
+        45,
+        -45
+      ],
+      "bank": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1
+      ],
+      "pin": [
+        45,
+        45,
+        135,
+        135,
+        315,
+        315,
+        225,
+        225
+      ],
+      "fireRev": [
+        0,
+        1,
+        0,
+        0,
+        1,
+        1,
+        1,
+        0
+      ],
+      "place": [
+        0.0,
+        0.033,
+        0.1,
+        0.133,
+        0.2,
+        0.233,
+        0.3,
+        0.333
+      ],
+      "displacement": 0.0039965,
+      "boreStroke": 1.0,
+      "bore": 0.086,
+      "stroke": 0.086,
+      "rodLength": 0.143,
+      "redlineSpeed": 712.094,
+      "frictionValvetrain": "Finger follower",
+      "rough": 0.2,
+      "benchLoad": 0.3
+    },
+    "valve": {
+      "model": "Lab",
+      "valves": 4,
+      "dIn": 0.033,
+      "dEx": 0.028,
+      "train": "Finger",
+      "inDurSeat": 244,
+      "inDur1mm": 212,
+      "inLift": 0.0105,
+      "inCentre": 110,
+      "exDurSeat": 240,
+      "exDur1mm": 208,
+      "exLift": 0.0095,
+      "exCentre": 112,
+      "inPhaseRange": 42,
+      "exPhaseRange": 42
+    },
+    "intake": {
+      "model": 1
+    },
+    "boost": {
+      "model": "Machine",
+      "kind": "Twin turbos",
+      "level": 0.81,
+      "blowOff": 0.7,
+      "size": 1.0,
+      "layout": "Two, a bank each",
+      "target": 120000.0,
+      "gateSpring": 60000.0,
+      "blowOffKind": "Recirculating",
+      "scrolls": "Twin scroll",
+      "icEffect": 0.75
+    },
+    "exhaust": {
+      "model": "Builder",
+      "sides": 2,
+      "converter": [
+        1,
+        1
+      ],
+      "mufKind": [
+        2,
+        2
+      ]
+    },
+    "fuel": {
+      "kind": "Gasoline",
+      "model": "Fuels",
+      "grade": "Premium (91)",
+      "direct": 1
+    },
+    "ecu": {
+      "model": "Maps",
+      "timing": 0,
+      "pops": 0.1,
+      "starter": true,
+      "limiter": {
+        "kind": "Fuel cut",
+        "speed": 712.094
+      },
+      "idle": {
+        "speed": 68.068
+      },
+      "knock": {
+        "on": true
+      }
+    },
+    "car": {
+      "model": "Vehicle",
+      "kind": "Car",
+      "mass": 2050,
+      "drive": "All",
+      "wheelbase": 2.92,
+      "cgHeight": 0.52,
+      "frontWeight": 0.55,
+      "track": 1.63,
+      "cdA": 0.7,
+      "tyre": "Sport",
+      "tyreRadius": 0.345,
+      "gearbox": "Automatic",
+      "finalDrive": 3.15,
+      "centreSplit": 0.4,
+      "wheelInertia": 1.5,
+      "gears": 8,
+      "autoGearing": false,
+      "ratio": [
+        5.0,
+        3.2,
+        2.14,
+        1.72,
+        1.31,
+        1.0,
+        0.82,
+        0.64
+      ],
+      "brakeDecel": 1.1,
+      "abs": true
+    },
+    "env": {
+      "temperature": 288.15,
+      "pressure": 101325.0
+    },
+    "voices": {
+      "timing": "Chain",
+      "injection": "Direct"
+    }
+  }
+}
