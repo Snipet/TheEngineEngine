@@ -10,4 +10,6 @@ namespace tee::ui
     // The table of the map shown (nullptr: the map is not in this build), and the map chosen by its row (0 spark ...).
     MapEdit* tuneMapEdit(Workspace& w);
     void tuneChoose(Workspace& w, int map);
+    // Where the BAKE button is (empty: not shown).
+    funkgui::Rect tuneBakeButton(Workspace& w);
 }
