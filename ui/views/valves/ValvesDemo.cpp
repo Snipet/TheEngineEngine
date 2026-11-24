@@ -4,6 +4,10 @@
 // labels and groups are the lab spec's; the values set here are the picture's (ValvesDemo.h says which).
 #include "views/valves/ValvesDemo.h"
 
+#include "app/Demo.h"
+
+#include <algorithm>
+
 namespace tee::ui
 {
     std::vector<FieldInfo> valvesDemoFields()
@@ -84,5 +88,31 @@ namespace tee::ui
         add("valve.springPreload", FieldKind::number, 0, 2000, 470, "Spring preload", Quantity::none, "N");
         add("valve.valveMass", FieldKind::number, 0, 0.3, 0, "Valve mass", Quantity::mass);
         return out;
+    }
+}
+
+namespace tee::ui
+{
+    // The hook (ui/app/Demo.h): E's lab fields into the made-up Spec, and E's telemetry (named as ValvesModel.h guesses)
+    // following the script: the intake phaser advancing with speed, stage B above 5500 rpm, the springs floating at
+    // 7200 rpm, cylinders 2, 3, 6 and 7 resting at light load under 3000 rpm.
+    void valvesDemo(DemoExtras& x)
+    {
+        constexpr double kRpm = 3.14159265358979323846 / 30.0;
+        if (x.fields != nullptr)
+            for (FieldInfo& f : valvesDemoFields())
+                x.fields->push_back(std::move(f));
+        if (x.engine != nullptr)
+        {
+            x.engine->addTelemetry("valve.inPhase", [](const DemoEngine& e) {
+                return std::clamp((e.rpm() - 1200.0) / 3000.0, 0.0, 1.0) * 40.0 * std::min(1.0, 0.3 + e.throttle());
+            });
+            x.engine->addTelemetry("valve.exPhase", [](const DemoEngine&) { return 0.0; });
+            x.engine->addTelemetry("valve.stage", [](const DemoEngine& e) { return e.rpm() > 5500.0 ? 1.0 : 0.0; });
+            x.engine->addTelemetry("valve.floatSpeed", [](const DemoEngine&) { return 7200.0 * kRpm; });
+            x.engine->addTelemetry("valve.active", [](const DemoEngine& e) {
+                return e.rpm() < 3000.0 && e.throttle() < 0.35 ? static_cast<double>(0xFF & ~0x66) : 255.0;
+            });
+        }
     }
 }

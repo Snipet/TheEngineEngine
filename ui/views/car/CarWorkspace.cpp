@@ -88,11 +88,21 @@ namespace tee::ui
             { "Motorcycle", 13.5, 1.55, -0.2, 1.10, 0.0120, { 1.00, 0.82, 0.65, 0.15, 1.08 } },
         };
         const char* const kSurfaces[] = { "dry", "damp", "wet", "snow", "prepared strip" };
-        // S(kappa): the Magic Formula's shape, peak 1 (tyre.fm).
+        // The force over the load's share of mu at slip kappa, as tyre.fm tabulates it: the Magic Formula's
+        // S(k) = sin(C atan(B k - E (B k - atan(B k)))) over its peak for k in 0..1, odd in k, held at its k = 1 value
+        // beyond.
+        double rawShape(const Compound& k, double kappa)
+        {
+            const double bk = k.b * std::min(std::fabs(kappa), 1.0);
+            return std::sin(k.c * std::atan(bk - k.e * (bk - std::atan(bk))));
+        }
         double shape(const Compound& k, double kappa)
         {
-            const double bk = k.b * kappa;
-            return std::sin(k.c * std::atan(bk - k.e * (bk - std::atan(bk))));
+            double peak = 0.0;
+            for (int i = 0; i <= 128; ++i)
+                peak = std::max(peak, rawShape(k, i / 128.0));
+            const double s = peak > 0.0 ? rawShape(k, kappa) / peak : 0.0;
+            return kappa < 0.0 ? -s : s;
         }
 
         // Telemetry, by name: wheels are front left, front right, rear left, rear right (VEH_WHEELS).
@@ -179,7 +189,7 @@ namespace tee::ui
         {
             DrawKey k;
             k.mix(ctx_.doc.revision()).mix(ctx_.selection.revision()).mix(ctx_.units.revision()).mix(ctx_.dyno.revision());
-            for (const char* n : { kTel.speed, kTel.accel, kTel.gear, kTel.engine })
+            for (const char* n : { kTel.speed, kTel.accel, kTel.gear, kTel.engine, "car.pitch" })
                 k.mix(static_cast<float>(ctx_.live.get(n)));
             for (int i = 0; i < 4; ++i)
                 k.mix(static_cast<float>(wheelTel(kTel.load, i))).mix(static_cast<float>(wheelTel(kTel.slip, i)))
@@ -469,7 +479,9 @@ namespace tee::ui
             // Squat or dive, in words: the load moved from where it rests.
             if (std::isfinite(live[1]))
             {
-                const double moved = live[1] - rest[1];
+                // The load moved: the simulator's own (car.pitch, N to the rear) where it gives it, else the loads' sum.
+                const double pitch = ctx_.live.get("car.pitch");
+                const double moved = std::isfinite(pitch) ? pitch : live[1] - rest[1];
                 const std::string w = std::fabs(moved) < 50.0 ? "LOADS AT REST"
                                     : moved > 0.0 ? "SQUAT: " + look::num(moved / 1000.0, "%.2f") + " kN MOVED TO THE REAR"
                                                   : "DIVE: " + look::num(-moved / 1000.0, "%.2f") + " kN MOVED TO THE FRONT";

@@ -57,6 +57,9 @@ namespace tee::ui
         // from 1), the element's index from 0 and how many the array holds. `array` empty: no array's element.
         std::string array, arrayLabel;
         int element = -1, extent = 0;
+        // An array of arrays ("engine.gain[1][2]"): its outer and inner extents (element = outer * shape[1] + inner);
+        // { 0, 0 } for an array of one dimension.
+        std::array<int, 2> shape{ 0, 0 };
 
         std::string_view section() const noexcept { return std::string_view(path).substr(0, path.find('.')); }
         bool table() const noexcept { return kind == FieldKind::curve || kind == FieldKind::map; }

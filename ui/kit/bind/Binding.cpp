@@ -434,7 +434,7 @@ namespace tee::ui
 
     bool arrayAsTable(const FieldInfo& f) noexcept
     {
-        return !f.array.empty() && f.extent > kArrayKnobs && f.extent <= kTableMax;
+        return !f.array.empty() && f.shape[0] == 0 && f.extent > kArrayKnobs && f.extent <= kTableMax;
     }
 
     std::vector<std::vector<int>> splitPages(const FieldDoc& doc, const std::vector<int>& fields, int maxControls)
@@ -777,18 +777,39 @@ namespace tee::ui
                 std::size_t b = i;
                 while (b > 0 && (std::isalnum(static_cast<unsigned char>(t[b - 1])) || t[b - 1] == '_' || t[b - 1] == '.'))
                     --b;
-                std::size_t e = i + 1;
-                while (e < t.size() && std::isdigit(static_cast<unsigned char>(t[e])))
-                    ++e;
-                if (e == i + 1 || e >= t.size() || t[e] != ']')
+                // Its indexes: one, or two for an array of arrays.
+                std::vector<long> index;
+                std::size_t e = i;
+                while (e < t.size() && t[e] == '[' && index.size() < 2)
+                {
+                    std::size_t d = e + 1;
+                    while (d < t.size() && std::isdigit(static_cast<unsigned char>(t[d])))
+                        ++d;
+                    if (d == e + 1 || d >= t.size() || t[d] != ']')
+                        break;
+                    index.push_back(std::strtol(t.substr(e + 1, d - e - 1).c_str(), nullptr, 10));
+                    e = d + 1;
+                }
+                if (index.empty() || b == i)
                     continue;
                 const std::string base = t.substr(b, i - b);
                 const std::vector<int> elements = arrayElements(doc, base);
-                const long index = std::strtol(t.substr(i + 1, e - i - 1).c_str(), nullptr, 10);
-                if (!elements.empty() && index >= static_cast<long>(elements.size()))
-                    addNote(f.name + ":" + std::to_string(line) + ":" + std::to_string(b - lineStart + 1) + ": note: " + base
-                            + "[" + std::to_string(index) + "] is past the array: it has " + std::to_string(elements.size())
-                            + " elements, " + base + "[0] to " + base + "[" + std::to_string(elements.size() - 1) + "]\n");
+                if (elements.empty())
+                    continue;
+                const std::array<int, 2> shape = doc.info(elements.front()).shape;
+                const std::string at = f.name + ":" + std::to_string(line) + ":" + std::to_string(b - lineStart + 1) + ": note: ";
+                const std::string named = t.substr(b, e - b);
+                if (shape[0] > 0)
+                {
+                    if (index.size() != 2 || index[0] >= shape[0] || index[1] >= shape[1])
+                        addNote(at + named + " is not an element: " + base + " has " + std::to_string(shape[0]) + " x "
+                                + std::to_string(shape[1]) + " elements, " + base + "[0][0] to " + base + "["
+                                + std::to_string(shape[0] - 1) + "][" + std::to_string(shape[1] - 1) + "]\n");
+                }
+                else if (index.size() != 1 || index[0] >= static_cast<long>(elements.size()))
+                    addNote(at + named + " is past the array: it has " + std::to_string(elements.size()) + " elements, "
+                            + base + "[0] to " + base + "[" + std::to_string(elements.size() - 1) + "]\n");
+                i = e - 1;
             }
         }
     }

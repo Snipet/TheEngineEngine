@@ -1,13 +1,25 @@
 // tests/host/Alloc.cpp: operator new counted on the threads that ask (Support.h's AllocationCounter): the proof that
-// nothing on the audio thread allocates. Replaces the global operator new and delete for this test executable.
+// nothing on the audio thread allocates. Replaces the global operator new and delete for this test executable, on
+// Linux and macOS only: not on Windows (replaced operators in an executable pair badly with the C runtime's and with
+// what LLVM allocates in its own code: tee-host-tests died of heap corruption, 0xc0000374, before its first test), and
+// not under ThreadSanitizer, which replaces them itself.
 #include "Support.h"
+
+#if !defined(__has_feature)
+#define TEE_HAS_FEATURE(x) 0
+#else
+#define TEE_HAS_FEATURE(x) __has_feature(x)
+#endif
+#if defined(_WIN32) || TEE_HAS_FEATURE(thread_sanitizer) || defined(__SANITIZE_THREAD__)
+#define TEE_COUNT_ALLOCATIONS 0
+#else
+#define TEE_COUNT_ALLOCATIONS 1
+#endif
 
 #include <cstdlib>
 #include <new>
-#if defined(_WIN32)
-#include <malloc.h>
-#endif
 
+#if TEE_COUNT_ALLOCATIONS
 namespace
 {
     thread_local bool tCounting = false;
@@ -46,8 +58,11 @@ namespace
     }
 } // namespace
 
+#endif
+
 namespace tee::test
 {
+#if TEE_COUNT_ALLOCATIONS
     void AllocationCounter::countThisThread(bool on) noexcept
     {
         tCounting = on;
@@ -57,8 +72,27 @@ namespace tee::test
     {
         return gCount.load();
     }
+
+    bool AllocationCounter::available() noexcept
+    {
+        return true;
+    }
+#else
+    void AllocationCounter::countThisThread(bool) noexcept {}
+
+    long AllocationCounter::count() noexcept
+    {
+        return 0;
+    }
+
+    bool AllocationCounter::available() noexcept
+    {
+        return false;
+    }
+#endif
 } // namespace tee::test
 
+#if TEE_COUNT_ALLOCATIONS
 void* operator new(std::size_t n)
 {
     return allocate(n, 0);
@@ -129,3 +163,4 @@ void operator delete[](void* p, std::size_t, std::align_val_t) noexcept
 {
     freeAligned(p);
 }
+#endif

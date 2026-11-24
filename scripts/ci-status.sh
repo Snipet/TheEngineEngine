@@ -5,9 +5,10 @@
 #   scripts/ci-status.sh                       # the branch checked out (the integration branch, normally)
 #   scripts/ci-status.sh main
 #
-# Why "the newest run in which the job finished": pushes to one branch queue behind the run in flight, and a run
-# still waiting is replaced by a newer push, so with many people pushing most runs are "cancelled" without having
-# built anything. Those say nothing and are skipped. A run in flight is never cancelled by a push; it is listed first.
+# Why "the newest run in which the job finished": each platform's job queues behind that platform's job in flight, and
+# one still waiting is replaced by a newer push, so with many people pushing most jobs are "cancelled" without having
+# built anything, and a run can be "cancelled" for one platform and finished for another. Cancelled and skipped jobs
+# say nothing and are skipped; a job in flight is never cancelled by a push.
 #
 # Linux is the only system an agent in a cloud container can build on: macOS (Apple's clang, arm64) and Windows
 # (clang-cl) are built here and nowhere else, so look at them after you push, not only at Linux.
@@ -16,15 +17,16 @@
 set -euo pipefail
 
 repo=${TEE_CI_REPO:-Snipet/TheEngineEngine}
-branch=${1:-$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo claude/awesome-gates-ntdb58)}
+branch=${1:-$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)}
+case "$branch" in ''|HEAD) branch=claude/awesome-gates-ntdb58 ;; esac   # a detached checkout: the integration branch
 platforms=(linux-x64 macos-arm64 windows-x64)
 command -v gh >/dev/null || { echo "ci-status: no gh on the PATH" >&2; exit 1; }
 
-# The Build runs of the branch that were not replaced while they waited, newest first.
+# The Build runs of the branch, newest first (a run cancelled as a whole may still hold one platform's finished job).
 runs=$(gh api "repos/$repo/actions/runs?branch=$branch&per_page=60" \
-  --jq '.workflow_runs[] | select(.name == "Build" and .conclusion != "cancelled")
+  --jq '.workflow_runs[] | select(.name == "Build")
         | "\(.id) \(.status) \(.head_sha[0:7]) \(.created_at)"')
-[ -n "$runs" ] || { echo "ci-status: no Build run on $branch of $repo that was not cancelled while it waited"; exit 0; }
+[ -n "$runs" ] || { echo "ci-status: no Build run on $branch of $repo"; exit 0; }
 
 echo "CI on $branch of $repo (https://github.com/$repo/actions)"
 declare -A found=()

@@ -195,6 +195,8 @@ module Engine
     float geoSig;       // a custom engine's geometry as read (geometry()), and as configured: a change is made under the fade
     float geoUsed;
     float hostRateSeen; // the host's rate, as init was given it
+    float clickRpm;     // the speed the valves' click amplitude was last worked out at, and that amplitude
+    float clickAmpC;
     float oilK;         // the oil's thickness factor on the friction (the reference's: its 0.15th power, at most 3)
     Extras ex;
     Boost boost;        // turbos or a supercharger: their shafts, boost, valves and sounds (boost/boost.fm)
@@ -890,7 +892,13 @@ module Engine
         }
         float torque = 0.0f;
         float dps = 0.0f;
-        const float clickAmp = 0.15f + 0.5f * expf(0.8f * logf(fmaxf(fminf(crank.rpm / 4000.0f, 1.6f), 0.01f)));
+        // (its expf and logf only when the speed they follow has moved: crank.rpm changes every 16 samples, and at a start)
+        if (crank.rpm != clickRpm)
+        {
+            clickRpm = crank.rpm;
+            clickAmpC = 0.15f + 0.5f * expf(0.8f * logf(fmaxf(fminf(crank.rpm / 4000.0f, 1.6f), 0.01f)));
+        }
+        const float clickAmp = clickAmpC;
         // (a piston's slap: its skirt hits the bore as the side thrust changes sides at the top, harder with the gas's
         // pressure there and the piston's speed)
         const float slapAmp = 0.4f + 0.6f * fminf(crank.rpm / 3000.0f, 2.0f);
@@ -1139,6 +1147,7 @@ module Engine
 
     void init(float hostRate)
     {
+        clickRpm = -1.0f;
         hostRateSeen = hostRate;
         setupAll(hostRate);
         for (int k = 0; k < SPEC_SECTIONS; ++k)
@@ -1241,7 +1250,8 @@ module Engine
     void readControls()
     {
         Dials* s = &set;
-        const bool driven = ctl.mode == MODE_DRIVE;
+        // (the chassis dyno is the vehicle's: driven, as on the road)
+        const bool driven = ctl.mode == MODE_DRIVE || ctl.mode == MODE_DYNO_CHASSIS;
         s->drive = driven ? (spec.car.kind == 1 ? 2 : 1) : 0;
         s->hold = 1.0e9f;            // it never switches itself off (the reference's HOLD idled it out)
         s->bendRange = 12.0f;

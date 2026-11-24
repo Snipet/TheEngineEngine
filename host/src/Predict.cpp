@@ -89,10 +89,13 @@ namespace tee
                 {
                     Schema::Handle h;
                     if (find("exh.tPort", h))
-                        slow_.push_back({h, 0, 0, 0.0, 0.0, 0.0});
+                        slow_.push_back({h, 0, 0, 1.0, 250.0, 1500.0, 0.0, 0.0, 0.0});
+                    // the reference's turbo: its shaft's speed, 0 to 1 (boost/boost.fm), spooling over seconds
+                    if (build.fieldOf("boost.kind") >= 0 && build.get("boost.kind") != 0.0 && find("boost.spool", h))
+                        slow_.push_back({h, 0, 0, 0.15 / 60.0, 0.0, 1.0, 0.0, 0.0, 0.0});
                     if (find("exh.tWall", h))
                         for (std::size_t i = 0; i < h.count; ++i)
-                            slow_.push_back({h, i, 1, 0.0, 0.0, 0.0});
+                            slow_.push_back({h, i, 1, 1.0, 250.0, 1500.0, 0.0, 0.0, 0.0});
                 }
                 redline_ = find("tel.engine.redline", redlineH_);
                 idle_ = find("tel.engine.idle", idleH_);
@@ -152,11 +155,28 @@ namespace tee
                 return true;
             }
 
-            // A few blocks at rest, so that the Spec is taken; then the redline and the idle as the engine says them.
+            // The engine started (held at 1000 rpm until it runs, then 50 ms more: the simulator says its redline and
+            // idle for the build only once it runs); then the redline and the idle as it says them.
             void probe(double& idle, double& redline)
             {
-                run(std::max(options_.block, 32));
-                run(std::max(options_.block, 32));
+                const double w = 1000.0 * kFourPi / 120.0;
+                set(ignition_, 2.0);
+                long done = 0;
+                for (; done < std::lround(3.0 * options_.sampleRate); done += options_.block)
+                {
+                    if (done > 0 && (!hasState_ || instance_->read(state_) == 2.0))
+                        break;
+                    if (holdCrank_)
+                        set(omega_, w);
+                    run(options_.block);
+                }
+                set(ignition_, 1.0);
+                for (long more = 0; more < std::lround(0.05 * options_.sampleRate); more += options_.block)
+                {
+                    if (holdCrank_)
+                        set(omega_, w);
+                    run(options_.block);
+                }
                 idle = idle_ ? instance_->read(idleH_) : 0.0;
                 redline = redline_ ? instance_->read(redlineH_) : 0.0;
             }
@@ -180,6 +200,26 @@ namespace tee
                 }
                 set(ignition_, 1.0);
                 set(throttle_, options_.pedal);
+                // then until it runs steadily: three cycles in a row that give torque and agree within 5 % (a
+                // diesel held from cold misfires for many before its charge lights every time, and a turbo spools
+                // over seconds), at most eight seconds
+                const double perCycle = kFourPi / std::max(speed, 1.0) * options_.sampleRate;
+                int steady = 0;
+                double last = 0.0;
+                for (double ran = 0.0; ran < 8.0 * options_.sampleRate && steady < 3; ran += perCycle)
+                {
+                    double sum = 0.0;
+                    const long total = std::lround(perCycle);
+                    for (long run = 0; run < total;)
+                    {
+                        const int k = static_cast<int>(std::min<long>(options_.block, total - run));
+                        sum += step(speed, k) * k;
+                        run += k;
+                    }
+                    const double t = sum / static_cast<double>(total);
+                    steady = t > 0.0 && std::fabs(t - last) <= 0.05 * t ? steady + 1 : 0;
+                    last = t;
+                }
             }
 
             // Full throttle at the middle of the range for warmupSeconds: the exhaust's gas and pipes warm.
@@ -352,7 +392,9 @@ namespace tee
             {
                 Schema::Handle handle;
                 std::size_t index = 0;
-                int group = 0;           // 0 the ports' gas, 1 the walls (settled after the gas)
+                int group = 0;           // 0 the ports' gas and the turbo's shaft, 1 the walls (settled after the gas)
+                double scale = 1.0;      // its nudge over a temperature's (K)
+                double low = 250.0, high = 1500.0;
                 double x0 = 0.0, s0 = 0.0, m0 = 0.0;
             };
 
@@ -386,7 +428,7 @@ namespace tee
                         // the first drift: kept, then the nudge toward where it heads
                         v.s0 = drift;
                         v.m0 = mid;
-                        const double nudged = x + (drift >= 0.0 ? 1.0 : -1.0) * nudge;
+                        const double nudged = std::clamp(x + (drift >= 0.0 ? 1.0 : -1.0) * nudge * v.scale, v.low, v.high);
                         instance_->write(v.handle, nudged, v.index);
                         v.x0 = nudged;
                     }
@@ -398,9 +440,9 @@ namespace tee
                         {
                             const double target = v.m0 + v.s0 * dm / ds;
                             // a wall ends between the air and the gas that reaches it
-                            const double top = v.group == 1 ? std::max(gas, 300.0) : 1500.0;
+                            const double top = v.group == 1 ? std::max(gas, 300.0) : v.high;
                             if (std::isfinite(target))
-                                instance_->write(v.handle, std::clamp(target, 250.0, top), v.index);
+                                instance_->write(v.handle, std::clamp(target, v.low, top), v.index);
                         }
                         v.x0 = instance_->read(v.handle, v.index);
                     }
@@ -547,7 +589,7 @@ namespace tee
                     const double w = speeds[static_cast<std::size_t>(i)];
                     if (!started)
                     {
-                        rig.start(w);
+                        rig.start(speeds.front());   // the lowest: where an engine lights best
                         rig.warmup(speeds);
                         started = true;
                     }
