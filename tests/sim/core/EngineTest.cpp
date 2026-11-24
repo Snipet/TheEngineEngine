@@ -406,3 +406,35 @@ TEST_CASE("boost.model 1 implies the builder's exhaust, at a build and when swit
     CHECK(b.field("exh.model") == 1.0);
     CHECK(std::isfinite(b.tel("engine.speed")));
 }
+
+TEST_CASE("the books hold, and the engine makes torque, on diesels and a boosted petrol engine", "[core][engine][backflow]")
+{
+    // (the lead's ask, 24 Nov: the backflow test ran green while every diesel archetype was dead on the dyno; each of
+    // these must make torque at full load, and its throttle's (or intake's) air, its intake valves' and its exhaust
+    // valves' mass agree within 1 %)
+    for (const char* build : {"archetypes/tractor-15-inline-six", "archetypes/diesel-20-common-rail",
+                              "archetypes/pickup-diesel-67-inline-six", "archetypes/turbo-four-20-gdi"})
+    {
+        Bench b(build);
+        std::string e;
+        REQUIRE(b.player().setSpec("car.model", 0, e));
+        b.ctl().ignition = 1;
+        b.play(0.1);
+        b.ctl().ignition = 2;
+        b.play(2.0);
+        b.ctl().ignition = 1;
+        b.play(1.0);
+        b.ctl().mode = 2;
+        b.ctl().throttle = 1.0f;
+        b.ctl().dynoSpeed = float(1800.0 / 9.5492966);
+        b.play(4.0);
+        double thr = 0, fr = 0, v = 0, x = 0;
+        airBooks(b, 2.0, thr, fr, v, x);
+        const double tq = b.tel("engine.torque");
+        std::printf("%s at 1800 rpm, full load: %.0f N m; throttle %.2f, intake valves %.2f, exhaust valves %.2f g/s\n", build, tq,
+                    thr, v, x);
+        CHECK(tq > 50.0);
+        CHECK(std::fabs(v / thr - 1.0) < 0.01);
+        CHECK(std::fabs(x / v - 1.0) < 0.01);
+    }
+}

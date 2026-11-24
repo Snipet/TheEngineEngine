@@ -11,6 +11,7 @@
 #include "tee/Telemetry.h"
 #include "tee/Warm.h"
 
+#include <algorithm>
 #include <cstdlib>
 #include <filesystem>
 #include <map>
@@ -52,12 +53,23 @@ namespace tee::calib
         std::vector<std::string> warnings;
         if (!build.loadFile(std::filesystem::path(TEE_SOURCE_DIR) / buildFile, BuildPart::Whole, warnings, error))
             return false;
-        for (const auto& [p, v] : sets)
-            if (!build.set(p, v))
+        for (const auto& [p0, v] : sets)
+        {
+            // ("path[i]" sets element i of an array field)
+            std::string p = p0;
+            std::size_t index = 0;
+            const auto open = p.find('[');
+            if (open != std::string::npos)
             {
-                error = "cannot set " + p;
+                index = static_cast<std::size_t>(std::atoi(p.c_str() + open + 1));
+                p = p.substr(0, open);
+            }
+            if (!build.set(p, v, index))
+            {
+                error = "cannot set " + p0;
                 return false;
             }
+        }
         build.attach(&host);
 
         struct Bound
@@ -115,11 +127,13 @@ namespace tee::calib
             }
         };
         const auto nothing = [] {};
-        play(0.1, nothing);
+        // (as tee::runDyno starts: the key on 0.25 s, cranked until max(1, min(2, warmup / 2)) s)
+        const double crankEnd = std::max(1.0, std::min(2.0, 0.5 * warmup));
+        play(0.25, nothing);
         c.ignition = 2;
-        play(1.0, nothing);
+        play(crankEnd - 0.25, nothing);
         c.ignition = 1;
-        play(0.5 * warmup - 1.0, nothing);
+        play(0.5 * warmup - crankEnd, nothing);
         c.throttle = 1.0f;
         play(0.5 * warmup, nothing);
         for (const double rpm : rpms)

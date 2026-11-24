@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "3.0 L straight six, twin turbo",
-  "notes": "A modern 3 L twin-turbo straight six with direct injection: 84 x 89.6 mm (2979 cc), 10.2:1, four valves, both cams phased, two twin-scroll turbos each fed by three cylinders at about 1 bar. Production engines of this kind make 250 to 340 kW and 450 to 600 N m (makers' figures). In a rear-drive sports sedan with a seven-speed dual clutch.",
+  "notes": "A modern 3 L twin-turbo straight six with direct injection: 84 x 89.6 mm (2979 cc), 10.2:1, four valves, both cams phased, two twin-scroll turbos each fed by three cylinders at about 1 bar (cylinders 1-3 and 4-6 each into its own collector and turbo, a dual exhaust). Production engines of this kind make 250 to 340 kW and 450 to 600 N m (makers' figures). In a rear-drive sports sedan with a seven-speed dual clutch.",
   "spec": {
     "engine": {
       "layout": "Inline 6",
@@ -92,7 +92,7 @@
     },
     "exhaust": {
       "model": "Builder",
-      "sides": 1,
+      "sides": 2,
       "converter": [
         1,
         1
@@ -100,6 +100,18 @@
       "mufKind": [
         2,
         2
+      ],
+      "primaryTo": [
+        0,
+        0,
+        0,
+        1,
+        1,
+        1
+      ],
+      "collectorTo": [
+        0,
+        1
       ]
     },
     "fuel": {

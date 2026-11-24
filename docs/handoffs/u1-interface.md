@@ -113,3 +113,7 @@ sheet will include every registered workspace.
   `exhaustOn` (`tel.exhaust.flap` past 5 % where present, else `tel.ecu.backPressure` over 1 kPa).
   `drawEngineBrake(c, p, x, y, state, words)` draws the lamps (DRIVE's scene, top left); the cockpit has them as
   `BrakeLamp` left of the readouts (narrow, in lambda's place). Tests `ui.frame.truck`, `ui.drive.truck`.
+- **Pictures cost no budget** (01-rules.md section 3: 150 CPU-s a package, no default test over 30 s): a VIEW_TEST
+  whose name ends `.pictures` is labelled `nightly`, so the default run leaves it out and the soak tier makes it
+  at every push. Put pictures that check nothing there (the frame's: `ui.frame.pictures`, the contact sheets and
+  `frame.real.*`); goldens stay in the default run.

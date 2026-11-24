@@ -572,6 +572,10 @@ jobs:
               fi
             } >> "$GITHUB_STEP_SUMMARY"
             [ -z "$slow" ] || { echo "---- default-run tests over 30 s (docs/plan/01-rules.md §3):"; echo "$slow"; }
+            # each package's CPU-seconds against its budget (scripts/test-budget.sh: the lead's budgets)
+            budget=$(scripts/test-budget.sh "$log" || true)
+            { echo; echo "### The fast tier's time by package, against its budget (Linux's is the one that binds)"; echo; echo "$budget"; } >> "$GITHUB_STEP_SUMMARY"
+            echo "---- the fast tier's time by package (docs/plan/01-rules.md §3):"; echo "$budget"
           fi
           exit $rc
 
