@@ -422,6 +422,9 @@ namespace tee::app
                     case ScriptEvent::Kind::wheel:
                         host.wheel(static_cast<float>(e.a), static_cast<float>(e.b), static_cast<float>(e.c));
                         break;
+                    case ScriptEvent::Kind::open:
+                        openInScript(shown.document, e);
+                        break;
                     case ScriptEvent::Kind::quality:
                         if (engine.sim != nullptr)
                             engine.sim->requestQuality(static_cast<int>(e.a));
