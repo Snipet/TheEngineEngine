@@ -52,4 +52,8 @@ module XEngine
     // With these in use the reference's restriction (aspUse, smTb) is left at 0 by the owner.
     int housing[XS_COLL];
     int gates;
+    // or, when useHousings: the housing a collector of bank b (0, 1) that is the g-th (0, 1) of its bank to end at a
+    // side ends in (Boost::housingOf(b, g, banks)); the builder fills housing[] from it as it resolves the topology
+    int useHousings;
+    int hmap[4];
 };

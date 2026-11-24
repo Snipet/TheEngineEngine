@@ -262,7 +262,7 @@ module Engine
         noise.rs = 123456789;
         intk.setup(rate);
         // the longest each pipe could be, cold (330 m/s), at this rate
-        exh.setup(rate, &noise, &lay, &heat);
+        exh.setup(rate, &noise, &lay, &heat, &spec.exhaust, &tel.exhaust, &scope, &boost);
         ex.setup(rate, 90.0f, &spec.voices);
         boost.setup(rate, &ex.noise);
         quiet = 1.0e9f;
@@ -830,7 +830,7 @@ module Engine
                 cy->hA = wall.coefficient(c, a, cy->p, cy->t, cy->v, sp, burning, exchanging);
             }
         }
-        exh.heatUp(d16, bore, set.drive != 0 ? fabsf(car.v) : 0.0f);
+        exh.heatUp(d16, bore, set.drive != 0 ? fabsf(car.v) : 0.0f, crank.rpm, ecu.throttle);
         pipes();
         exh.flow16();
         intk.flow16(lay.ports, exh.xiWall, exh.k16Flow);
@@ -1088,9 +1088,10 @@ module Engine
         if (ctl.scopeOn != 0)
             scopeTap();
         exh.step(qe, np);
-        // (card F, model 1: until card G's network ends its collectors in the turbine's housings, the cylinders' gas
-        // this sample feeds them as a flow, and the downpipes are open ends of the collector pipe's impedance)
-        if (spec.boost.model != 0)
+        // (card F, model 1: unless card G's network ends its collectors in the turbine's housings (exhaust.model 1, whose
+        // step calls the housings), the cylinders' gas this sample feeds them as a flow, and the downpipes are open
+        // ends of the collector pipe's impedance)
+        if (spec.boost.model != 0 && exh.turbinesFed() == 0)
             boost.exhaustStandIn(exh.mSum - exM0, exh.eSum - exE0, exh.sec[0].z);
         float rNear[MAX_PORTS];
         for (int i = 0; i < np; ++i)
