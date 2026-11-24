@@ -844,3 +844,121 @@ damping today: the junctions' K 0.3 to 0.6 a merge (judgement but the Borda area
 jet loss, Kirchhoff's quasi-steady wall shelves and a mean-flow friction ξ 0.025; no unsteady friction beyond
 Kirchhoff's √f. G will measure the reflected pulse at the port against the junction K and the end loss once a bound
 exists. Open until that paper's full text (or another measured trace) is found.
+
+## B-3. The turbo four's low end: matching or model (the lead's 23:10 request; measured 22:52 to 23:00 by `date -u`)
+
+turbo-four-20-gdi on HEAD (G's housing mass closing 15fcdd84 in), the probe on the tip, 4.5 s settle, 2 s window, 96 kHz.
+No design-share field exists (machine.fm: nDesign = 0.85 x redRpm; asked N2). The turbine scaled as the rule would:
+the nozzle `aNoz x share / 0.85` through `boost.turbAR` (rc = 1.2 x rWheel = 0.0322 m; A/R 0.198 / 0.264 / 0.330 /
+0.561 in), the housing's volume following the nozzle as the rule's; the compressor and the gate left as matched. The
+energy terms are running sums added to a scratch copy of sim/boost (nothing committed there): the nozzle's isentropic
+power m cp T3 (1 - r^(1/4)) per scroll per sample, the enthalpy the pipes bring into the housings, the gas's
+mass-weighted T3 and expansion ratio. "etaT" is the turbine's work over that isentropic power; etaC the compressor's
+time mean. Residual: trapped burned share at intake closing.
+
+**As built (the phaser on N1's rule)**
+
+| share | rpm | N m | boost kPa | shaft krpm | T3 mass K (time) | p3 kPa | ER mass | etaT | etaC | gate | residual | knock ret. |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 0.30 | 1500 | 128 | 14.8 | 54 | 944 (620) | 117 | 1.35 | 0.57 | 0.40 | 0 | 0.173 | 9.9 |
+| 0.30 | 1800 | 116 | 20.7 | 63 | 1000 (646) | 121 | 1.46 | 0.58 | 0.42 | 0 | 0.220 | 13.7 |
+| 0.30 | 2500 | 153 | 95.0 | 126 | 1168 (758) | 212 | 3.66 | 0.60 | 0.48 | 0 | 0.213 | 15.0 |
+| 0.30 | 4000 | 282 | 120.1 | 131 | 1313 | 293 | 3.91 | 0.58 | 0.71 | 0.30 | 0.088 | 8.1 |
+| 0.30 | 6000 | 210 | 85.1 | 118 | 1356 | 282 | 3.69 | 0.55 | 0.75 | 0.42 | 0.086 | 0 |
+| 0.40 | 1500 | 134 | 10.9 | 47 | 921 | 112 | 1.22 | 0.59 | 0.38 | 0 | 0.155 | 6.7 |
+| 0.40 | 1800 | 134 | 17.1 | 58 | 974 | 116 | 1.32 | 0.60 | 0.42 | 0 | 0.184 | 9.1 |
+| 0.40 | 2500 | 198 | 94.4 | 125 | 1168 | 178 | 3.01 | 0.62 | 0.51 | 0 | 0.165 | 15.0 |
+| 0.40 | 4000 | 313 | 119.9 | 131 | 1314 | 236 | 3.30 | 0.60 | 0.72 | 0.33 | 0.073 | 8.3 |
+| 0.40 | 6000 | 235 | 84.9 | 118 | 1337 | 235 | 3.08 | 0.57 | 0.75 | 0.47 | 0.072 | 0 |
+| 0.50 | 1500 | 138 | 9.0 | 43 | 918 | 110 | 1.17 | 0.59 | 0.37 | 0 | 0.149 | 4.5 |
+| 0.50 | 1800 | 142 | 13.7 | 52 | 957 | 113 | 1.23 | 0.61 | 0.41 | 0 | 0.165 | 6.5 |
+| 0.50 | 2500 | 229 | 89.1 | 122 | 1155 | 161 | 2.46 | 0.64 | 0.52 | 0 | 0.131 | 14.9 |
+| 0.50 | 4000 | 333 | 119.5 | 131 | 1306 | 209 | 2.79 | 0.63 | 0.72 | 0.37 | 0.063 | 7.9 |
+| 0.50 | 6000 | 251 | 85.7 | 119 | 1317 | 209 | 2.65 | 0.60 | 0.76 | 0.56 | 0.063 | 0 |
+| 0.85 | 1500 | 137 | 4.1 | 30 | 874 | 106 | 1.09 | 0.52 | 0.35 | 0 | 0.143 | 1.7 |
+| 0.85 | 1800 | 140 | 5.2 | 33 | 900 (603) | 107 | 1.10 | 0.56 | 0.36 | 0 | 0.152 | 1.1 |
+| 0.85 | 2500 | 235 | 37.9 | 84 | 1068 | 123 | 1.37 | 0.68 | 0.52 | 0 | 0.076 | 3.4 |
+| 0.85 | 4000 | 366 | 120.2 | 132 | 1219 | 169 | 2.09 | 0.68 | 0.73 | 0.33 | 0.047 | 6.6 |
+| 0.85 | 6000 | 279 | 84.8 | 120 | 1280 | 172 | 1.96 | 0.66 | 0.76 | 0.56 | 0.047 | 0 |
+
+A smaller turbine raises the boost at 1800 only from 5 to 21 kPa and *loses* torque (140 to 116 N m): the residual
+rises 0.15 to 0.22, the charge at intake closing 443 to 512 K, the knock retard 1 to 14 degrees (spark 1 BTDC).
+
+**The cause: the intake phaser's advance under boost.** At 1800 N1's scheduleIntake (valvetrain/phaser.fm: the closing
+asked 20 degrees after bottom at a quarter of the redline, load 1) advances this cam 48 degrees: the intake opens 38
+before top against the exhaust's closing 6 after, 44 degrees of seat overlap, while the turbine's pressure stands at
+the plenum's (121 against 122 kPa time mean on the 0.30): the overlap fills the cylinder with exhaust. The rule was
+fitted on three NA engines (its comment); nothing in it reads the pressure across the engine. Second measurement, the
+phaser parked (`valve.inPhaseRange=0`), one change:
+
+| share | rpm | N m (as built) | boost kPa | residual | knock ret. | etaT | etaC |
+|---|---|---|---|---|---|---|---|
+| 0.30 | 1500 | 168 (128) | 23.4 | 0.063 | 0 | 0.58 | 0.44 |
+| 0.30 | 1800 | 203 (116) | 58.4 | 0.075 | 3.3 | 0.58 | 0.48 |
+| 0.30 | 2500 | 246 (153) | 117.9 | 0.087 | 10.1 | 0.60 | 0.53 |
+| 0.30 | 4000 | 276 (282) | 120.2 | 0.079 | 3.9 | 0.59 | 0.70 |
+| 0.40 | 1800 | 185 (134) | 30.5 | 0.061 | 0 | 0.61 | 0.46 |
+| 0.40 | 2500 | 274 (198) | 118.0 | 0.072 | 9.6 | 0.63 | 0.53 |
+| 0.50 | 1800 | 174 (142) | 20.2 | 0.057 | 0 | 0.62 | 0.45 |
+| 0.50 | 2500 | 291 (229) | 117.6 | 0.064 | 9.1 | 0.65 | 0.53 |
+| 0.85 | 1500 | 150 (137) | 4.9 | 0.054 | 0 | 0.53 | 0.34 |
+| 0.85 | 1800 | 160 (140) | 8.2 | 0.055 | 0 | 0.60 | 0.40 |
+| 0.85 | 2500 | 203 (235) | 29.1 | 0.051 | 0 | 0.67 | 0.50 |
+| 0.85 | 4000 | 339 (366) | 121.3 | 0.046 | 4.8 | 0.68 | 0.69 |
+
+Parked, the 1800 point gains 14 % on the matched turbine and 76 % on the 0.30; at 4000 the phaser's advance is worth
+7 to 8 % (it helps there). Real engines run this overlap at low speed for scavenging only where the intake's pressure
+beats the turbine's through the overlap (twin scroll, pulse separation); here the time means are equal and the overlap
+back-fills. Owner: N1 (the rule), told with this table; whether the model's twin scroll gives a low-pressure window at
+each cylinder's overlap (the scavenging) is the second half, unmeasured yet (G's pipes, N2's housings).
+
+**The energy book at 1800, 0.30 turbine** (kW; enthalpy above 298 K; 2 s):
+
+| | as built | phaser parked |
+|---|---|---|
+| fuel (LHV) | 81.3 | 138.1 |
+| exhaust out of the valves (the probe's h_out - h_in, the cylinder's own cp) | 29.5 | 51.9 |
+| into the turbine's housings (the pipes' q p cp T / R, cp 1148) | 17.5 (T 1003 K) | 33.6 (T 1075 K) |
+| through the nozzle, isentropic (what the turbine could take) | 2.26 | 9.89 |
+| the turbine takes | 1.31 (0.58) | 5.74 (0.58) |
+| the compressor takes | 1.22 (etaC 0.42, PR 1.21, 23 g/s) | 5.57 (etaC 0.48, PR 1.59, 39 g/s) |
+
+The class's boost, about 100 kPa at 1800: some 50 g/s of air at PR about 2.05; isentropic 68 kJ/kg, so 3.4 kW, 4.7 kW
+at etaC 0.72 and 7.1 kW at the model's 0.48 here. At etaT 0.58 the turbine must then be offered 8.2 or 12.2 kW
+isentropic. The parked 0.30 already offers 9.9 kW at 39 g/s (ER 2.6 mass-weighted): a compressor at a matched map's
+efficiency would carry it to about the class's boost; the model's does not.
+
+**What is missing, with its size** (each a measurement, none a tuning):
+1. *The phaser under boost* (above): 14 to 76 % of torque at 1800, by turbine. N1's.
+2. *The compressor's efficiency at low tip speed*: 0.36 to 0.48 below 2500 against 0.69 to 0.76 at 4000 and over. The
+   island's Mach term (0.25 (M - 1.1)^2: judgement, compressor.fm) costs 0.10 to 0.16 at these tip speeds. At 0.72 the
+   compressor's need at 1800 falls by a third. Sensitivity (compEta 0.85, one change, 0.30 as built): 20.7 to 25.4 kPa.
+   A cited low-speed map is wanted (N2, P).
+3. *The turbine's efficiency at low flow*: 0.52 to 0.62 mass-weighted below 2500 (etaMax 0.72; the blade speed ratio off
+   its 0.7). turbEta 0.85 (one change, 0.30 as built): 20.7 to 27.0 kPa. Not the first-order cause.
+4. *The exhaust's heat before the turbine*: 41 % (as built) and 35 % (parked) of the valves' exhaust enthalpy is gone
+   at the housings (out of the valves about 1480 K by enthalpy over mass, an estimate on a mean cp; into the housings 1003 to 1075 K mass-weighted). The port's cooling is about a third
+   of it (`exhaust.portHeat=0`: 17.5 to 21.5 kW, boost 20.7 to 25.3 kPa). No cited low-speed figure for a cast or
+   integrated manifold: G's walls, open.
+5. *Pulse energy*: present in the model (ER mass-weighted 2.6 against 1.5 on time means, parked 0.30); a cited pulse
+   factor not found, so not sized against one. Twin scroll is on in this build.
+6. *Low-speed scavenging*: absent (p3 = p2 on time means, residual 0.15 to 0.22 with the overlap): item 1's second half.
+
+**Boost from a step** (throttle 0.15 held 3 s at the speed, then 1; time to 50 and 90 % of the last second's boost):
+
+| | 1800: from / to kPa, t50 / t90 s | 2500 |
+|---|---|---|
+| 0.30 | 19 / 21, at once | 29 / 90, 0.07 / 0.55 |
+| 0.40 | 12 / 18, 0.03 | 18 / 94, 0.30 / 0.79 |
+| 0.50 | 8 / 14, 0.03 | 11 / 89, 0.42 / 1.17 |
+| 0.85 | 3 / 5, 0.03 | 6 / 42, 0.42 / 1.08 |
+| 0.30 parked | 20 / 56, 0.11 / 0.89 | 23 / 118, 0.36 / 0.77 |
+| 0.85 parked | 3 / 9, 0.03 | 6 / 30, 0.27 / 0.68 |
+
+Where boost comes at all it comes within a second: the low end is the settled balance, not the spool's lag.
+
+**Conclusion.** Both. The first-order cause is the model's: the intake phaser's rule advances the cam into an overlap
+the exhaust's pressure back-fills (N1). With it parked, matching matters as expected (5 to 58 kPa at 1800 from the
+matched turbine to the 0.30), and the rest of the gap at 1800 is the compressor's low-speed efficiency (model,
+judgement), then the turbine's, then the exhaust's heat. A smaller design point alone (P's cited hardware) does not
+reach the class's figure on this model while items 1 and 2 stand.

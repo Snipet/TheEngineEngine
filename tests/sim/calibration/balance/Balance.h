@@ -79,6 +79,7 @@ namespace tee::balance
         double rpm = 3000.0;
         double settle = 2.0;    // s at the speed before the window (tee-dyno's default step settle)
         double measure = 1.0;   // s
+        double hold = 1.0;      // the throttle through the start and the hold; the window steps it to 1 (a tip-in)
         double sampleRate = 96000.0;   // the engine's own rate (engine.fm): one engine step a call, no resampler
         std::vector<std::pair<std::string, double>> set;   // Spec writes after the build ("fuel.model", 1)
         std::vector<std::pair<std::string, double>> raw;   // any instance path written after the build ("spec.ecu.maps.lambda.nx")
