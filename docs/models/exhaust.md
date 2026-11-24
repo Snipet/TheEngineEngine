@@ -249,6 +249,26 @@ and thermocouples`):
 
 On the turbo four the two agree because its ports never stop flowing (the turbine's back pressure).
 
+**The bead's radiation error** (`Exhaust::bead`): a bead in hot gas inside a cooler wall reads below the gas. Its
+balance is h (tg - tb) = eps sigma (tb^4 - tw^4) (Mills; Incropera's thermocouple example).
+- h is from Ranz and Marshall's sphere at the mean speed past the bead.
+- The bead is a 1.5 mm sheathed junction with emissivity 0.8 (judgement, an instrument's).
+- The walls: the port's wall for the port reading, the primaries' for the header reading.
+- The gas and the walls are untouched.
+
+The port's correction is the larger, because its water-cooled wall (460 to 600 K) is far cooler than a primary's
+(900 to 1000 K). After a845b07f (the cylinder's new gamma), full throttle, port / header thermocouple, before and after
+the radiation error:
+
+| build | rpm | before | after |
+|---|---|---|---|
+| flat six | 5000 | 1242 / 1190 K | 1147 / 1119 K |
+| small-block | 4500 | 1303 / 1227 K | 1196 / 1165 K |
+| 3.2 six | 6500 | 1256 / 1211 K | 1173 / 1169 K |
+| V12 | 6000 | 1218 / 1157 K | 1128 / 1106 K |
+| 2.0 turbo four | 5500 | 1315 / 1287 K | 1230 / 1239 K |
+| 6.7 pickup diesel | 2800 | 872 / 858 K | 846 / 842 K |
+
 ## What the network costs, by element (the typical build, 19:30)
 
 The build: the twin-turbo V8 with every switch, with `content/builds/exhausts/dual-x-resonated-valved.json`, on
