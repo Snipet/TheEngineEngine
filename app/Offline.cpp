@@ -184,6 +184,13 @@ namespace tee::app
                     return hooks->saveText(name, text, error);
                 };
                 frameServices.audioInfo = [hooks] { return hooks->audioInfo ? hooks->audioInfo() : std::string(); };
+                const auto setQuality = frameServices.setQuality;
+                frameServices.setQuality = [hooks, setQuality](int q) {
+                    if (setQuality)
+                        setQuality(q);
+                    if (hooks->qualityChosen)
+                        hooks->qualityChosen(q);
+                };
                 frameServices.audioMenu = [hooks] {
                     if (hooks->audioMenu)
                         hooks->audioMenu();
@@ -268,6 +275,15 @@ namespace tee::app
         Engine engine = loadEngine(o, static_cast<double>(o.rate));
         // --hold-compile S: the machine code is not taken until S seconds into the run (a test of the window's wait)
         const bool holding = engine.sim != nullptr && o.holdCompile > 0.0;
+        // --quality: the engine's inner rate, made before the first frame (it compiles the program again)
+        if (engine.sim != nullptr && !o.quality.empty())
+        {
+            engine.sim->requestQuality(o.quality == "economy" ? 1 : 0);
+            if (!holding && !engine.sim->waitQuality(600.0))
+                std::fprintf(stderr, "error: --quality %s was not made\n", o.quality.c_str());
+            if (!engine.sim->qualityError().empty())
+                std::fprintf(stderr, "error: --quality %s: %s\n", o.quality.c_str(), engine.sim->qualityError().c_str());
+        }
         if (holding)
             engine.sim->holdCompile(true);
         if (!engine.notes.empty())
@@ -524,9 +540,10 @@ namespace tee::app
         }
 
         std::printf("tee-offline: %s frames=%d seconds=%.3f rate=%d block=%d peak=%.5f rms=%.5f checks=%d failed=%d shots=%d"
-                    " compile=%.2fs faults=%u%s%s\n",
+                    " compile=%.2fs faults=%u inner=%.0f%s%s\n",
                     failures == 0 && wroteAll ? "ok" : "FAILED", frame, static_cast<double>(rendered) / o.rate, o.rate, o.block,
-                    whole.peak, whole.rms(), checks, failures, shots, engine.compileSeconds, faults, o.wav.empty() ? "" : " wav=",
+                    whole.peak, whole.rms(), checks, failures, shots, engine.compileSeconds, faults,
+                    engine.sim != nullptr ? engine.sim->innerRate() : 0.0, o.wav.empty() ? "" : " wav=",
                     o.wav.c_str());
         return failures == 0 && wroteAll ? 0 : 1;
     }

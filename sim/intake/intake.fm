@@ -62,6 +62,10 @@ module Intake
     float since;        // seconds since the ripple was last taken
     float sound;        // what model 1 radiates this sample (the reference's intake scale)
     float soundMs;      // its mean square, over some 50 ms (for measuring)
+    // model 1: the charge's heating in the manifold and the ports (Engine sets tCoolant before control; 0: unknown,
+    // none), and the rise it gives, K
+    float tCoolant;
+    float heatRise;
 
     void setup(float rate)
     {
@@ -131,6 +135,26 @@ module Intake
             mPlenum = pPlenum * vPlenum / (287.0f * tAir);
         }
         len.control(d16, omega);
+        // The charge's heating. The manifold's and the ports' walls stand near the coolant's temperature (water-jacketed
+        // heads and manifolds) and the charge flowing past them takes heat, as a stream through a heated pipe does:
+        // the rise is (T_wall - T_air)(1 - exp(-NTU)), NTU = hA / (m cp). For turbulent flow h grows as the flow's
+        // 0.8th power, so NTU falls as the flow's -0.2th power: the charge is heated more at low speed and part load,
+        // where it lingers. NTU is 0.29 at a reference flow (1.2 kg/m^3 through the displacement at 4800 rpm), a rise
+        // of some 19 K at full load on a warm engine, 35 K at idle: inside the 10 to 40 K Heywood gives (Internal
+        // Combustion Engine Fundamentals, section 6.2.1: the charge heated in the manifold and ports lowers the
+        // volumetric efficiency by a few to ten percent); the 0.29 is judgement within that range. Cold, none. The
+        // walls follow the coolant at once; the rise follows the flow over some 0.5 s (the walls' own lag left out).
+        // Taken into tAir, which Engine set this tick from the air (or the boost's charge): so the plenum's air, the
+        // throttle's density and the cylinders' intake all see it (the throttle's density should be the cold air's:
+        // a choked throttle passes some 3 % less for a 20 K rise; left so).
+        {
+            const float mRef = 1.2f * vTotal * 500.0f * 0.0795775f;
+            const float m = fmaxf(fabsf(qThr) * pBox / (287.0f * fmaxf(tAir, 200.0f)), 0.02f * mRef);
+            const float ntu = 0.29f * expf(-0.2f * logf(m / mRef));
+            const float want = tCoolant > tAir ? (tCoolant - tAir) * (1.0f - expf(-ntu)) : 0.0f;
+            heatRise += (want - heatRise) * fminf(d16 * 2.0f, 1.0f);
+            tAir += heatRise;
+        }
         box.setup(spec->boxVolume, spec->snorkelLength, spec->snorkelBore, vTotal, aThrottle, rateNow);
         since += d16;
         if (since >= cycle)

@@ -48,9 +48,9 @@
 // passes the whole of the turbo's share alone at that state (a gate sized at 0.85 of the nozzle could not hold its
 // spring at the redline: the 2 L four spooled at 5300 rpm ran away to 2.6 bar with it wide open; card N2's
 // docs/measurements/calibration/boost/gate.md). A 2 L four at 7000 rpm gets a 45 mm inducer, a 61 mm exducer (a
-// GT28's class) and a 35 mm gate. `vd` is meant as the four-stroke-equivalent displacement: the volume whose
-// four-stroke air at redRpm is the engine's (a rotary's and a two-stroke's twice their swept volume; asked of the
-// integrator: until then a rotary's turbo is matched to half its air).
+// GT28's class) and a 35 mm gate. `vd` is the four-stroke-equivalent displacement: the volume whose four-stroke air
+// at redRpm is the engine's (Engine passes a rotary's and a two-stroke's swept volume twice: 2df7ea6, d9c5544). A
+// sequential pair's first gate passes the whole engine's flow (every collector ends in its housing).
 //
 // Left out: the turbine's housing walls' heat; heat between the turbine and the compressor; the compressor inlet's
 // swirl and recirculation; the gate's flutter; the intercooler's own volume's Helmholtz (folded into v2); a second
@@ -152,6 +152,9 @@ module BoostMachine
     float bovArea;
     float bovSpring;
     float bovLift;
+    float bovAt;        // the blow-off valve's opening the air sees: bovLift followed every sample by two 1 ms stages
+    float bovMid;
+    float kAt;          // that following's step a sample
     float mBov;
     // control
     float gateSpring;
@@ -258,6 +261,7 @@ module BoostMachine
     {
         rate = rateIn;
         dt = 1.0f / rate;
+        kAt = 1.0f - expf(-dt / 0.001f);
         pOut = 101325.0f;
         tOut = 293.15f;
         vd = vdIn;
@@ -303,7 +307,11 @@ module BoostMachine
             shaft[t].omega = 0.0f;
             turb[t].begin();
             turb[t].lift = 0.0f;
+            turb[t].liftAt = 0.0f;
+            turb[t].liftMid = 0.0f;
             turb[t].vanes = 1.0f;
+            turb[t].vanesAt = 1.0f;
+            turb[t].vanesMid = 1.0f;
             gateMass[t] = 0.0f;
             gateTemp[t] = tOut;
         }
@@ -325,6 +333,8 @@ module BoostMachine
         mDraw = 0.0f;
         pPlenum = pOut;
         bovLift = 0.0f;
+        bovAt = 0.0f;
+        bovMid = 0.0f;
         mBov = 0.0f;
         duty = 0.0f;
         integ = 0.0f;
@@ -441,7 +451,10 @@ module BoostMachine
             // nozzle's design state (2.4 bar, 1150 K, choked), whatever the turbo's size: a wastegate must bypass
             // nearly all the exhaust when the turbine at full flow could make several times the compressor's need
             // (Bell, Maximum Boost, ch. 6; Watson and Janota, ch. 9). 0.85 is the poppet's discharge coefficient.
-            const float mGate = mMatch * share * (layout == BOOST_COMPOUND && t == 0 ? 0.65f : 1.0f);
+            // (a sequential pair's first housing takes every collector, the second turbine fed from it only through the
+            // transfer valve: its gate bypasses the whole engine's flow)
+            const float mGate = mMatch * (layout == BOOST_SEQUENTIAL && t == 0 ? 1.0f : share)
+                                * (layout == BOOST_COMPOUND && t == 0 ? 0.65f : 1.0f);
             const float aGateMatched = mGate * sqrtf(kBoostR * 1150.0f) / (2.4e5f * 0.667f);
             const float dg = s->gateDiameter > 0.0f ? s->gateDiameter : sqrtf(aGateMatched / (0.785398f * 0.85f));
             turb[t].aGate = 0.785398f * dg * dg * 0.85f;
@@ -557,7 +570,7 @@ module BoostMachine
                 if (turbOut[t] >= 0 || turbSide[t] != s)
                     continue;
                 const int h = 2 * t;
-                const float area = turb[t].nozzle() + (turb[t].gateExt == 0 ? turb[t].aGate * turb[t].lift : 0.0f);
+                const float area = turb[t].nozzle() + (turb[t].gateExt == 0 ? turb[t].aGate * turb[t].liftAt : 0.0f);
                 float pc = house[h].p;
                 float tc = house[h].t;
                 float vh = house[h].vol;
@@ -581,7 +594,7 @@ module BoostMachine
                 continue;
             const int h0 = 2 * t;
             const float an = turb[t].nozzle() / (float)scrolls;
-            const float area = an + (turb[t].gateExt == 0 ? turb[t].aGate * turb[t].lift / (float)scrolls : 0.0f);
+            const float area = an + (turb[t].gateExt == 0 ? turb[t].aGate * turb[t].liftAt / (float)scrolls : 0.0f);
             const float q = qSrc[h0];
             const float tc = scrolls == 2 ? 0.5f * (house[h0].t + house[h0 + 1].t) : house[h0].t;
             const float mt = q * pp / (kBoostR * (q >= 0.0f ? tc : dpTemp[s]));
@@ -634,7 +647,7 @@ module BoostMachine
             return 0.0f;
         }
         const float pq = pOut + 2.0f * a;
-        const float area = turb[t].aGate * turb[t].lift;
+        const float area = turb[t].aGate * turb[t].liftAt;
         const int h0 = 2 * t;
         float pc = house[h0].p;
         float tc = house[h0].t;
@@ -710,6 +723,18 @@ module BoostMachine
             crankTorque = 0.0f;
             return;
         }
+        // the valves' and the vanes' openings as the gas sees them: the actuators' (moved every 16 samples, and snapped
+        // shut or open by the relief) followed every sample by two 1 ms stages, so neither the flow through them nor its
+        // rate of change steps (a step is a click; the inlet's sound is the flow's rate of change)
+        for (int t = 0; t < turbos; ++t)
+        {
+            turb[t].liftMid += (turb[t].lift - turb[t].liftMid) * kAt;
+            turb[t].liftAt += (turb[t].liftMid - turb[t].liftAt) * kAt;
+            turb[t].vanesMid += (turb[t].vanes - turb[t].vanesMid) * kAt;
+            turb[t].vanesAt += (turb[t].vanesMid - turb[t].vanesAt) * kAt;
+        }
+        bovMid += (bovLift - bovMid) * kAt;
+        bovAt += (bovMid - bovAt) * kAt;
         exhaustSide();
         chargeSide();
         // the shafts
@@ -764,7 +789,7 @@ module BoostMachine
                 if (layout == BOOST_COMPOUND)
                 {
                     an = turb[0].nozzle() / (float)scrolls;
-                    area = an + turb[0].aGate * turb[0].lift / (float)scrolls;
+                    area = an + turb[0].aGate * turb[0].liftAt / (float)scrolls;
                 }
                 else
                     area = aTransfer * seqOpen / (float)scrolls;
@@ -921,10 +946,10 @@ module BoostMachine
         }
         // the blow-off valve, from before the throttle: to the air, or back to the compressor's inlet
         mBov = 0.0f;
-        if (bovKind != 0 && bovLift > 0.0f)
+        if (bovKind != 0 && bovAt > 1.0e-6f)
         {
             const float pd2 = bovKind == 1 ? pOut : p1;
-            mBov = fmaxf(boostOrificeStep(v2.p, v2.t, pd2, tOut, bovArea * bovLift, 0, boostStiff(v2.vol, v2.t, 1.4f, dt)), 0.0f);
+            mBov = fmaxf(boostOrificeStep(v2.p, v2.t, pd2, tOut, bovArea * bovAt, 0, boostStiff(v2.vol, v2.t, 1.4f, dt)), 0.0f);
             v2.flow(-mBov, 0.0f, 0.0f);
             if (bovKind == 2)
             {

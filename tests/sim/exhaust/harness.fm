@@ -40,7 +40,7 @@ module XTest
     void init(float rateIn)
     {
         rate = rateIn;
-        b.sp = &spec;
+        b.follow(&spec);
         b.setup(rate);
         probe.configure((int)(rate / 300.0f) + 16);
         r.setup(rate);
