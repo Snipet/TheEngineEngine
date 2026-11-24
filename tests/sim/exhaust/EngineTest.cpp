@@ -50,6 +50,7 @@ TEST_CASE("model 1 at its defaults is model 0 in the engine, every layout", "[ex
         b.values["exhaust.model"] = {0.0};
         const Audio a = render(b, scenario, 8.0);
         b.values["exhaust.model"] = {1.0};
+        b.values["exhaust.portHeat"] = {0.0};   // (the port's cooling off: the reference has none)
         const Audio m = render(b, scenario, 8.0);
         const double dl = test::nullDepth(a.left, m.left);
         const double dr = test::nullDepth(a.right, m.right);
@@ -514,4 +515,47 @@ TEST_CASE("lengths and bores dragged glide, kinds rebuild", "[exhaust][engine][g
     CHECK(std::fabs(lenNow - 3.0) < 0.003);
     CHECK(std::fabs(dNow - 0.08) < 0.00008);
     CHECK(fadeKind < 0.5);
+}
+
+// The exhaust port's cooling (spec.exhaust.portHeat, Caton and Heywood's correlation): the V8 on the engine dyno, the
+// throttle open, warm, at 1500, 3000 and 5000 rpm (8 s each): the gas at the valve against the gas leaving the port,
+// and the heat the port walls take against the brake power. Measured and printed; checked: the port cools the gas
+// (never warms it), by less than 400 K, and the header reads under the valve.
+TEST_CASE("the exhaust port's walls cool the gas", "[exhaust][engine][port]")
+{
+    EnginePlayer& p = player();
+    p.reset();
+    EngineBuild b = test::engineBuild(p, "v8");
+    b.values["exhaust.model"] = {1.0};
+    applyBuild(p, b);
+    EnginePlayer::Controls& c = p.controls();
+    c.mode = EnginePlayer::kModeBench;
+    c.ignition = EnginePlayer::kIgnitionStart;
+    std::vector<float> l(512), r(512);
+    auto run = [&](double s) {
+        for (int k = 0; k < static_cast<int>(s * 48000.0 / 512.0); ++k)
+            p.process(l.data(), r.data(), 512);
+    };
+    run(1.5);
+    c.ignition = EnginePlayer::kIgnitionOn;
+    run(1.0);
+    for (double rpm : {1500.0, 3000.0, 5000.0})
+    {
+        c.mode = 2;
+        c.dynoSpeed = static_cast<float>(rpm * 0.10471976);
+        c.throttle = 1.0f;
+        run(8.0);
+        const double tv = test::field(p, "tel.exhaust.portTemperature");
+        const double te = test::field(p, "tel.exhaust.portExitTemperature");
+        const double th = test::field(p, "tel.exhaust.headerTemperature");
+        const double q = test::field(p, "tel.exhaust.portHeat");
+        const double power = test::field(p, "tel.engine.torque") * rpm * 0.10471976;
+        std::printf("port at %.0f rpm full throttle: at the valve %.0f K, leaving the port %.0f K (%.0f K less), the "
+                    "header %.0f K; the port walls take %.1f kW (brake %.1f kW)\n", rpm, tv, te, tv - te, th, q / 1000.0,
+                    power / 1000.0);
+        CHECK(te <= tv);
+        CHECK(tv - te < 400.0);
+        CHECK(q > 0.0);
+        CHECK(th < tv);
+    }
 }

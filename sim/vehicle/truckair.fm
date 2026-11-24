@@ -12,8 +12,8 @@
 // levels are judgement (a purge is the loudest, some 10 dB over a brake's release).
 //
 // No engine in it: every 16 samples it is given the crank's speed, the brake pedal and the parking brake (0 released,
-// 1 set); each sample out() is its sound. Tested alone (tests/sim/diesel/rig.fm); not yet mixed (a hook asked of the
-// integrator: docs/handoffs/d2-diesels.md).
+// 1 set); each sample out() is its sound (lastPurge, lastBrakes its parts). Tested alone (tests/sim/diesel/rig.fm). In
+// the engine with spec.car.truckAir on: Engine steps it and hands the parts to card L's places (Listen::extra).
 #pragma once
 #include "lib/noise.fm"
 
@@ -34,6 +34,8 @@ module TruckAir
     float springK;
     float hp1;          // a one-pole high-pass's state (the hiss's colour)
     float hpX;
+    float lastPurge;    // this sample's two parts, for two places (card L): the dryer's purge, the brakes' valves
+    float lastBrakes;
     int purges;         // counts
     int releases;
 
@@ -55,6 +57,8 @@ module TruckAir
         hpX = 0.0f;
         purges = 0;
         releases = 0;
+        lastPurge = 0.0f;
+        lastBrakes = 0.0f;
     }
 
     // Every 16 samples. omega: the crank (rad/s); brake: the service pedal 0 to 1; park: the parking brake 0 released, 1 set
@@ -96,10 +100,12 @@ module TruckAir
         p = fmaxf(p, 0.0f);
     }
 
-    // Each sample: the bursts' hiss
+    // Each sample: the bursts' hiss (their sum); its two parts are left in lastPurge and lastBrakes
     float out()
     {
         const float level = purge + relay + spring;
+        lastPurge = 0.0f;
+        lastBrakes = 0.0f;
         if (level < 1.0e-5f)
             return 0.0f;
         purge *= purgeK;
@@ -108,6 +114,8 @@ module TruckAir
         const float x = nz.rnd();
         hp1 = 0.9f * (hp1 + x - hpX);
         hpX = x;
+        lastPurge = purge * hp1;
+        lastBrakes = (relay + spring) * hp1;
         return level * hp1;
     }
 };

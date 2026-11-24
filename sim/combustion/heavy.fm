@@ -90,6 +90,7 @@ module HeavyDiesel
     float back;         // Pa added to the headers' arriving waves (half the back pressure)
     float backP;        // the back pressure over the outside (Pa)
     int exOn;
+    int flapReal;       // 1: card G's butterfly is fitted (exh.flapFitted()): it makes the back pressure, not this
     // the measures (cylinder 1)
     float aPrev;
     float pPrev;
@@ -128,6 +129,7 @@ module HeavyDiesel
         back = 0.0f;
         backP = 0.0f;
         exOn = 0;
+        flapReal = 0;
         aPrev = 0.0f;
         pPrev = 101325.0f;
         pPrev2 = 101325.0f;
@@ -195,7 +197,7 @@ module HeavyDiesel
         exOn = spec->exhaustBrake != 0 && spec->exBrakeSwitch != 0 && may ? 1 : 0;
         // the exhaust brake's back pressure: the flow through the leak, at most the limit, the manifold filling
         float target = 0.0f;
-        if (exOn != 0)
+        if (exOn != 0 && flapReal == 0)
         {
             const float aLeak = fmaxf(spec->exBrakeLeak * 0.85f * vTotal, 1.0e-6f);
             const float rho = (101325.0f + backP) / (287.0f * fmaxf(tGas, 300.0f));
@@ -247,6 +249,12 @@ module HeavyDiesel
         if (braking != 0 || exOn != 0)
             fuel = 0.0f;
         lever = fuel;
+    }
+
+    // Card G's butterfly (exh.setFlap): 1 shut while the flap kind of exhaust brake is on
+    float flapCommand()
+    {
+        return on != 0 && exOn != 0 && spec->exhaustBrake == 1 ? 1.0f : 0.0f;
     }
 
     // The turbine's vanes as the brakes want them (card F's Boost::vanesAndPurge, boost.model 1): -1 its own loop; 0 shut

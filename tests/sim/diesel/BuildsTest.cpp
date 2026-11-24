@@ -7,10 +7,9 @@
 
 using d2::Engine;
 
-TEST_CASE("diesel builds: each starts, idles, and makes power on the dyno", "[diesel][builds]")
+namespace
 {
-    for (const char* name : {"truck-15l-six", "truck-15l-six-bobtail", "diesel-v8-truck", "diesel-mechanical-classic",
-                             "diesel-pickup-tuned", "diesel-marine-v12"})
+    void buildCase(const char* name)
     {
         INFO(name);
         Engine e(name);
@@ -39,6 +38,18 @@ TEST_CASE("diesel builds: each starts, idles, and makes power on the dyno", "[di
         CHECK(idle < 900.0);
         CHECK(best > 100.0);
     }
+} // namespace
+
+TEST_CASE("diesel builds: the 36 t truck starts, idles, and makes power on the dyno", "[diesel][builds]")
+{
+    buildCase("truck-15l-six");
+}
+
+TEST_CASE("diesel builds, full: each of D2's builds starts, idles, and makes power on the dyno", "[diesel][builds][nightly]")
+{
+    for (const char* name : {"truck-15l-six", "truck-15l-six-bobtail", "diesel-v8-truck", "diesel-mechanical-classic",
+                             "diesel-pickup-tuned", "diesel-marine-v12"})
+        buildCase(name);
 }
 
 TEST_CASE("diesel builds: the tuned pickup smokes while its turbo spools; with the limiter it does not", "[diesel][builds][smoke]")
