@@ -40,4 +40,7 @@ module IntakeSpec
         [[ui::quantity("length")]] [[ui::help("0: for the reference's 90 Hz")]];
     float snorkelBore [[fminus::range(0, 0.15)]] [[fminus::default(0)]] [[ui::label("Snorkel bore")]]
         [[ui::quantity("length")]] [[ui::help("0: 1.3 times the throttle's")]];
+    int heatSettle [[fminus::range(0, 1000000)]] [[fminus::default(0)]] [[ui::label("Settle the intake's heat")]]
+        [[ui::unit("presses")]] [[ui::hidden]]
+        [[ui::help("Counts requests: at each increase the charge's heating in the manifold and ports is put at where the present flow would hold it")]];
 };

@@ -221,3 +221,7 @@ drive-car, 1834 free-revs; the simulator's own V8 read 1.032 / 1.034 of it); hos
 | `straight-six-twin-turbo-30.json` (3.0 L, two twin-scroll turbos, dual exhaust) | 1.46 R | 1.48 R |
 | `turbo-four-20-gdi.json` | 0.92 R | 0.92 R |
 | `three-cylinder-10-turbo.json` | 0.78 R | 0.80 R |
+
+**D's row after 3990ee4 and a845b07 (the physical cylinder's gamma)**, 20:10 UTC, two profiles of the typical build,
+drive-car: D's modules 567 / 565 ns (Cylinder 322 / 329, `stepAreas` 274 / 267) against 596 (Cylinder 365, stepAreas
+291) at 19:30: no cost from the change (within the profiles' spread; if anything a little lower).

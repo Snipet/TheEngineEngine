@@ -622,7 +622,8 @@ def build(a):
         t["maps.boostAuto"] = False
         t["maps.boost"] = {"x": xs, "y": gears, "z": [[k * 1000.0] * len(gears) for _, k in a["boostTaper"]]}
 
-    vo = {"timing": a.get("timing", "Chain")}
+    # the mechanical voices (package M) on, with what belongs to this engine (the lead, 20:09: every model switch on)
+    vo = {"model": "Voices", "timing": a.get("timing", "Chain")}
     if a.get("lifters"):
         vo["lifters"] = a["lifters"]
     if a.get("fan"):
@@ -642,9 +643,49 @@ def build(a):
     # estimated peak) slips under the real torque (the lead, 19:36: the NA rotary's after its launch)
     if "clutchTorque" in a:
         car["clutchTorque"] = a["clutchTorque"]
+    # Woschni's walls, said outright (fuel.model 1 brings them anyway: engine.fm's walls()); four strokes
+    e["wallHeat"] = "Woschni"
+    e["cycle"] = "Four-stroke"
+    # package L's listener on: every source where it is on the car; the first camera behind the car in the open,
+    # the engine where the class carries it
+    snd = {"model": "Places", "camera": "Rear", "place": "Field", "ground": "Asphalt",
+           "enginePlace": ENGINE_PLACE.get(a["car"], "Front")}
     spec = {"engine": e, "valve": v, "intake": i, "boost": bo, "exhaust": x, "fuel": f, "ecu": nest(t),
-            "car": car, "env": {"temperature": 288.15, "pressure": 101325.0}, "voices": vo}
+            "car": car, "env": {"temperature": 288.15, "pressure": 101325.0}, "voices": vo, "sound": snd}
+    switches_on(spec, a["slug"])
     return {"format": "tee-build", "version": 1, "name": a["name"], "notes": a["notes"], "spec": spec}
+
+
+# where each class carries its engine (the listener's paths to each camera)
+ENGINE_PLACE = {"mid-engine": "Mid", "awd-supercar": "Mid", "rear-engine-classic": "Rear"}
+
+
+def _switches():
+    """Every model switch the Schema has (each spec field named `model`, and engine.wallHeat), from tee-schema --json;
+    None where the tool is not built."""
+    tool = os.environ.get("TEE_SCHEMA", os.path.join(ROOT, "build-dev", "bin", "tee-schema"))
+    if not os.path.exists(tool):
+        return None
+    import subprocess
+    d = json.loads(subprocess.run([tool, "--json"], capture_output=True, text=True).stdout)
+    return {f["path"][len("spec."):]: f.get("choices") for f in d["fields"]
+            if f["path"].startswith("spec.") and f["path"].split(".")[-1] in ("model", "wallHeat")}
+
+
+SWITCHES = _switches()
+
+
+def switches_on(spec, slug):
+    """Fails unless every model switch the Schema has is set on (not its first choice, the reference) in `spec`: so
+    "every switch on" is true by construction (the lead, 20:09). Warns and passes where tee-schema is not built."""
+    if SWITCHES is None:
+        print("warning: tee-schema not built: the model switches are not checked")
+        return
+    for path, choices in SWITCHES.items():
+        sec, field = path.split(".", 1)
+        val = spec.get(sec, {}).get(field)
+        if val is None or val == 0 or (choices and val == choices[0]):
+            raise SystemExit("%s: spec.%s is not on (%r): every archetype sets every model switch" % (slug, path, val))
 
 
 def nest(flat):
