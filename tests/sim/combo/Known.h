@@ -34,9 +34,9 @@ const Known kKnown[] = {
     {"X-006", "2026-11-24", "H (via the lead)", "ecu.model+car.model", "v8", "limiter-1", "click",
      "the new ECU's shift cut and spark-cut limiter step the output 2 to 3 times the reference at the same moments "
      "(content/scenarios/combo/findings/x006-*.json)"},
-    {"X-007", "2026-11-24", "X (reducing)", "random 2", "fuzz", "random", "guard",
-     "random Spec seed 2: core/cylinder.fm:176 indexes kCamArea with -2147483648 (a NaN made an int); without the "
-     "checks the process dies (SIGSEGV in the JIT's code)"},
+    {"X-007", "2026-11-24", "D and I (via the lead)", "random 2", "fuzz", "random", "guard",
+     "random Spec seed 2, reduced to 8 fields (findings/x007-heavy-piston.json): a custom single with an 18 kg "
+     "piston and the new vehicle's automatic runs away; without the checks process hangs (or, earlier, SIGSEGV)"},
     {"X-008", "2026-11-24", "X (reducing)", "corners 3", "fuzz", "corners", "guard",
      "the ranges' corners, seed 3: a block beyond full scale or not finite; the guard restarts it"},
     {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},   // the end (an array is never empty)

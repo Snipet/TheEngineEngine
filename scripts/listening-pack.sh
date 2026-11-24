@@ -66,7 +66,9 @@ group=""
 files=()
 flush() {
   if [ ${#files[@]} -gt 0 ]; then
-    if [ -n "$fuzz" ]; then
+    if [ "${group%-raw}" != "$group" ]; then
+      echo "  $group: not loudness-matched (its question is the loudness)" >> "$readme"
+    elif [ -n "$fuzz" ]; then
       "$fuzz" --match "$level" "${files[@]}" >> "$readme" 2>&1 || echo "  (the level match failed)" >> "$readme"
     else
       echo "  (no tee-fuzz beside tee-render: this group is not loudness-matched)" >> "$readme"

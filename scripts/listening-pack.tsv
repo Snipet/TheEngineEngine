@@ -1,7 +1,8 @@
 # scripts/listening-pack.tsv: the listening pack's renders (checkpoint M2, docs/checkpoints/M2.md says what to listen
 # for in each group). One render a line, tab-separated:
 #   group  label  quick  build  scenario
-# group: the files of one group are loudness-matched together and named <group>-<label>.wav, so they sort side by side.
+# group: the files of one group are loudness-matched together (not a group whose name ends in -raw: its question is
+# the loudness) and named <group>-<label>.wav, so they sort side by side.
 # quick: 1 for the ten most telling files (--quick). build: under content/builds/. scenario: a path from the checkout's
 # root. A line whose build is missing (a package not landed yet) is skipped and listed in the pack's README.txt.
 01-vehicle-launch	a-reference-car	1	combo/v8.json	content/scenarios/combo/launch.json
@@ -27,7 +28,7 @@
 09-pops	c-100	0	combo/pack/v8-pops-100.json	content/scenarios/combo/tour.json
 10-pops-ecu	a-0	0	combo/pack/v8-pops-0-ecu.json	content/scenarios/combo/tour.json
 10-pops-ecu	b-50	0	combo/pack/v8-pops-50-ecu.json	content/scenarios/combo/tour.json
-10-pops-ecu	c-100	1	combo/pack/v8-pops-100-ecu.json	content/scenarios/combo/tour.json
+10-pops-ecu	c-100	0	combo/pack/v8-pops-100-ecu.json	content/scenarios/combo/tour.json
 11-small-four	a-reference	0	combo/small-four.json	content/scenarios/combo/tour.json
 11-small-four	b-every-package	0	combo/pack/small-four-all.json	content/scenarios/combo/tour.json
 12-v8	a-reference	0	combo/v8.json	content/scenarios/combo/pull.json
@@ -50,3 +51,14 @@
 17-voices-belt	a-off-then-on	0	v8.json	tests/sim/sound/listen/m-belt.json
 17-voices-gate	a-off-then-on	0	boost/turbo-four.json	tests/sim/sound/listen/m-gate.json
 17-voices-gate-dump	a-off-then-on	0	boost/turbo-four.json	tests/sim/sound/listen/m-gate-dump.json
+18-listen-trackside	a-drive-past	0	listeners/v8-trackside.json	content/scenarios/combo/pack/drive-past.json
+19-listen-cameras	a-tailpipe-to-chase	1	listeners/v8-tailpipe.json	content/scenarios/combo/pack/cameras.json
+20-listen-driver	a-lug-then-windows	0	listeners/v8-driver.json	content/scenarios/combo/pack/lug-windows.json
+21-listen-tunnel-chase	a-drive	0	listeners/v8-tunnel-chase.json	content/scenarios/combo/pack/drive-past.json
+22-listen-places	a-street	0	listeners/v8-tailpipe.json	content/scenarios/combo/pack/place-street.json
+22-listen-places	b-garage	0	listeners/v8-tailpipe.json	content/scenarios/combo/pack/place-garage.json
+22-listen-places	c-field	0	listeners/v8-tailpipe.json	content/scenarios/combo/pack/place-field.json
+23-listen-distance	a-field-sweep	0	listeners/v8-tailpipe.json	content/scenarios/combo/pack/distance-sweep.json
+24-listen-loudness-raw	a-single	0	engines/ref-00-single.json	content/scenarios/combo/pack/full-load-listener.json
+24-listen-loudness-raw	b-flat-4	0	engines/ref-06-flat-4.json	content/scenarios/combo/pack/full-load-listener.json
+24-listen-loudness-raw	c-v12	0	engines/ref-15-v12-60.json	content/scenarios/combo/pack/full-load-listener.json
