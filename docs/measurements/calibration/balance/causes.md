@@ -628,3 +628,30 @@ air at their torque peaks (VE 0.82 to 0.83). Four-cam (runner 0.38 m, P's modern
 0.60 m **541 (0.969)** (band 520 to 575). The 3.5 V6 (0.38 m, switching to 0.25 m above 4350 rpm): at 4750 / 6350 rpm
 as built 302 / 279; second runner 0.38 (or never switching) 311 / 337 (0.848 / 0.965); 0.50 m and never switching **348
 / 358** (0.945 / 1.027) (band 335 to 365 at 4750). Not the model's: the runner class and its switch (P's judgement).
+
+## N3-14. The overrun charge's burn (the lead's item 1; worked, not yet measured: 21:12 by `date -u`)
+
+N1 found H9's fuelled overrun (the V8 preset, overrun fuel 0.25, the spark 11.5 degrees after the top) burning in 53 to
+55 degrees, 99 % done by 66 after the top, the exhaust opening at 104: nothing left to light in the pipe.
+
+What the model's burn length holds (`combustion.fm`, charge1): (44 + 11 (0.8 - p_manifold / 1 atm)) x (1 + 2.5 (dilution
+- 0.15)) x the mixture's flame (S_L ratio^-0.5) x bore-stroke x CR^-0.3 x (rpm / 3000)^(1/3). Two dependences a real
+burn has are missing or weaker:
+
+1. *Where the burn sits.* A charge lit after the top burns in gas that the expansion cools and thins. With the laminar
+   flame speed as Metghalchi and Keck have it, S_L ∝ T_u^α p^β (α 2.18, β -0.16 near stoichiometric), the unburned gas
+   expanded isentropically (γ 1.35), and the model's own convention (the burn's length as S_L^-0.5), the length goes as
+   (V_mid / V_ref)^0.27, V_mid the volume at the burn's middle and V_ref at a best-torque burn's (8 degrees after the
+   top). Worked for H9's charge (CR 10, rod ratio 3.5): 54 → about 70 degrees (iterated). A Wiebe burn of 70 degrees lit
+   at 11.5 after the top is still more than 99 % done by the exhaust's opening at 104: this alone does not make the
+   overrun's crackle. (It does lengthen every late-spark burn by up to a third, the knock retard's and the catalyst-
+   heating cases' included, and is worth adding for that.)
+2. *The burned gas's dilution.* The model's (1 + 2.5 dx) is linear. Metghalchi and Keck's flame speed falls as (1 -
+   2.1 x_b) (linear); Rhodes and Keck's (SAE 850047) as (1 - 2.06 x_b^0.77), much steeper at high dilution. At x_b 0.35
+   against 0.15 the burn's length (S_L^-0.5) grows 1.61 times by the first, 2.54 by the second; the model gives 1.50.
+   An overrun charge behind a shut throttle carries some 30 to 40 % burned gas; by the steeper form its burn would run
+   past the exhaust's opening. Which form, and the overrun charge's own burned share, decide it: the first not
+   reachable here (Heywood §9.3 quotes the flame-speed correlations), the second to be read off the overrun.
+
+Proposed (not changed): (1) as above in charge1, model-on only; (2) once the overrun's burned share is read (N1 has the
+scenario) and a source for the dilution term's form is open. Both are mine to make (H's path) under card N's rule.
