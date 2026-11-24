@@ -37,5 +37,4 @@
    another directory the shaderc commands are not attached (found here).
 
 **Not done / not run**: no workspace calls the fx helpers yet (U3, U1 asked). Nobody has seen any of it on a real display
-or GPU; macOS and Windows by CI only.
-**Measured**: my view tests all pass here.
+or GPU; macOS and Windows by CI only. **Measured**: my view tests all pass here.
