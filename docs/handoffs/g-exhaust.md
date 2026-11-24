@@ -38,3 +38,29 @@ model 0 keeps the reference's start. (2) A 1-D model's resonators must carry the
 
 **Outside my paths**: none needed. **FMinus issues**: none met. **Listen to** (after integration): V8 bank vs
 180-degree headers at 2500-3500 rpm; the bypass opening at 0.3 s travel (level overshoot, no click measured).
+
+## Integration (appended)
+
+Card G, branch `claude/awesome-gates-ntdb58`, pushed at cf267fb.
+- **Done in the engine** (`tee-tests-exhaust`, `exhaust.*`). Test 1: the null test, every pair identical. Test 2
+  (`model 1 at its defaults is model 0 in the engine, every layout`): identical to the bit on 17 layouts, 8 s of free
+  revs. Test 10 (`the turbine's housing`) with F's machine: 2 L four 65.5 kPa, V8 twin 46.2 kPa; downpipe swings
+  16-17 dB less than the collector. Test 11 (`random exhaust topologies changed while the engine runs`): 10 min,
+  finite, nothing left after the key is off. `every exhaust build plays`: 8 part builds in `content/builds/exhausts/`.
+- **Wiring**: `Exhaust` dispatches on `spec.exhaust.model` itself (sim/README.md, Exhaust). engine.fm: only my
+  calls' arguments (`setup` takes the section, Telemetry, Scope, `&boost`; `heatUp` takes rpm and throttle), and F's
+  stand-in is skipped while `exh.turbinesFed()`. Turbine seam: as F wrote it, the drive including each pipe's loss hold.
+- **Spec** (spec.exhaust, appended; `crossKind`, `mufKind` renamed from the card's names), **telemetry**
+  (tel.exhaust: model, pTurbine, pConverter[2], pMuffler[2], gasTemperature[7], wallTemperature[7], mach[7], valve[2],
+  ends, endLevel[24], endTag[24], endSlot[24], flame) and **Scope** (exhaustPoints, exhaustX[64], exhaustPressure[64],
+  exhaustRefreshes, ductUsed/Length/Near/Far[84]): final; sent to U3 with the slot numbering.
+- **Cost** (`tee-bench --engine`, free revs, least of 3, this container): model 0 1.04-1.05 R. Model 1 with the
+  reference's topology 1.22 R (+0.17 R). V8 with an X, quarter-wave stubs and valved mufflers 1.48 R against 1.04 R
+  at model 0 (+0.44 R). **Over the card's 0.25 R**: the extra pipes, plus `shape()` every 16 samples (as the
+  reference's `pipes()`). Proposed for the performance package: shape only when something moved; skip bare pipes' filters.
+- **Not done**: glides (every builder field change rebuilds under the fade, 6 + 12 ms); the external gates' pipes not fed
+  (Boost lists no count); `tee-bench --profile` not run; the full suite not run on cf267fb (the null test, exhaust and boost ran on
+  the tree merged just before).
+- **Seen, not mine**: combo `every choice and switch of spec.boost / spec.exhaust stepped` fail on
+  `boost.intercoolerOut` and `boost.throttleIn` = 0 at 0.01 s (card F's telemetry range).
+- FMinus: `0` is not a null pointer (use a flag beside it). Listen to: V8 bank vs `v8-180-degree`; the bypass at 0.3 s.

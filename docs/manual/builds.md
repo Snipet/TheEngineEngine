@@ -19,7 +19,7 @@ Thirty archetypes in `content/builds/archetypes/`, each a whole build (engine, c
 | Inline five turbo rally | 2.23 L Inline 5 | 81.0 x 86.4 mm | 9.3:1 | Turbo, 1.3 bar | 7000 rpm | All-drive, 1300 kg | Sequential, 6 gears |
 | Boxer four turbo with unequal headers | 2.46 L Flat 4 | 99.5 x 79.0 mm | 8.2:1 | Turbo, 1.0 bar | 7000 rpm | All-drive, 1550 kg | Manual, 6 gears |
 | Two-stage-cam 2.0 L | 2.00 L Inline 4 | 87.0 x 84.0 mm | 11.7:1 | Natural | 9000 rpm | Rear-drive, 1250 kg | Manual, 6 gears |
-| Kei 660 cc triple turbo | 0.66 L Inline 3 | 68.0 x 60.4 mm | 8.6:1 | Turbo, 0.9 bar | 8000 rpm | Rear-drive, 780 kg | Manual, 5 gears |
+| Kei 660 cc triple turbo | 0.66 L Inline 3 | 68.0 x 60.4 mm | 8.6:1 | Turbo, 0.7 bar | 8000 rpm | Rear-drive, 780 kg | Manual, 5 gears |
 | Diesel 2.0 L common rail | 1.97 L Inline 4 | 81.0 x 95.5 mm | 16.5:1 | Turbo, 1.4 bar | 4800 rpm | Front-drive, 1500 kg | Manual, 6 gears |
 | Highway tractor 15 L | 14.95 L Inline 6 | 137.0 x 169.0 mm | 17.0:1 | Turbo, 2.6 bar | 2250 rpm | Rear-drive, 36000 kg | Manual, 18 gears |
 | 1.0 L three-cylinder turbo | 1.00 L Inline 3 | 71.9 x 82.0 mm | 10.0:1 | Turbo, 1.0 bar | 6500 rpm | Front-drive, 1200 kg | Manual, 6 gears |
@@ -65,7 +65,7 @@ Thirty archetypes in `content/builds/archetypes/`, each a whole build (engine, c
 
 **Two-stage-cam 2.0 L** (`two-stage-cam-20.json`). A 2.0 L four with two cam profiles a valve switched at 6000 rpm: 87 x 84 mm (1997 cc), 11.7:1, 9000 rpm (the F20C kind: 176 kW at 8300 rpm, 208 N m at 7500; makers' figures, from memory, firm to 5 %; the B16A's switch point of 5500 rpm: global.honda). In a light rear-drive roadster.
 
-**Kei 660 cc triple turbo** (`kei-660-triple-turbo.json`). A Japanese kei-class three: 68 x 60.4 mm (658 cc), 8.6:1, four valves, a small turbo (the K6A kind: 47 kW (the class's 64 PS cap) at 6500 rpm, 103 to 108 N m at 3500; Wikipedia, goo-net-exchange). In a 780 kg rear-drive sports kei.
+**Kei 660 cc triple turbo** (`kei-660-triple-turbo.json`). A Japanese kei-class three: 68 x 60.4 mm (658 cc), 8.6:1, four valves, a small turbo at a production 0.65 bar (the class's power cap is met by boost and timing; the K6A kind: 47 kW (the class's 64 PS cap) at 6500 rpm, 103 to 108 N m at 3500; Wikipedia, goo-net-exchange). In a 780 kg rear-drive sports kei.
 
 **Diesel 2.0 L common rail** (`diesel-20-common-rail.json`). A 2.0 L four-valve common-rail diesel with a variable-vane turbo: 81 x 95.5 mm (1968 cc), 16.5:1 (engines of the kind: 103 to 125 kW at 3500 to 4000 rpm, 320 to 380 N m from 1750; makers' figures). Balance shafts. In a front-drive family car, six-speed manual.
 
@@ -112,6 +112,10 @@ Made by the packages that built each part of the simulator, to show or test thei
 | `bike-superbike.json` | Superbike (litre four, crossplane) | A litre superbike: 201 kg wet, 1.41 m, an 80 kg rider, hypersport tyres, a quickshifter and an auto-blipper, a slipper clutch, wheelie control. The ... |
 | `bike-supersport-600.json` | Supersport 600 | A 600 cc supersport: 190 kg wet, 1.38 m, an 80 kg rider, sport tyres, a quickshifter, a slipper clutch. Its four screams to 16,000 rpm. |
 | `default.json` | Default | Every field at its default: the reference's Init V8 (5.76 L crossplane V8). |
+| `diesel-marine-v12.json` | Marine 27 L V12 | Card D2. A medium-speed marine V12 within the model's limits: 27 L (137 x 152 mm, 15:1, a turbo a bank), a mechanical governor with 5 % droop, rated 1800 ... |
+| `diesel-mechanical-classic.json` | Classic 14 L mechanical six | Card D2. A 1980s 14 L inline six (140 x 152 mm, 14.5:1, one turbo) on a mechanical in-line pump: an all-speed flyweight governor that hunts at idle, low ... |
+| `diesel-pickup-tuned.json` | Tuned 6.7 L pickup | Card D2. A pickup's 6.7 L inline six (107 x 124 mm, 17.3:1, one turbo) on a common rail (1800 bar, a 3 % pilot) tuned: 30 % over-fuel with the smoke limiter ... |
+| `diesel-v8-truck.json` | Truck 16 L V8 | Card D2. A 16.4 L V8 truck engine (130 x 154 mm, 17.3:1, a turbo a bank as the reference's twin), electronic governor, rated 1900 rpm, a compression brake ... |
 | `large-diesel.json` | Large Diesel | The reference's preset Large Diesel, converted (its DRIVE CAR as the vehicle Car; HOLD is no part of a build). |
 | `truck-15l-six-bobtail.json` | Truck 15 L six, bobtail | Card D2. A highway tractor alone (a bobtail, 9 t): a 15 L inline six (137 x 169 mm, 17:1, twin turbos as the reference has them), an electronic governor, a ... |
 | `truck-15l-six.json` | Truck 15 L six, 36 t | Card D2. A highway tractor and loaded trailer, 36 t: a 15 L inline six (137 x 169 mm, 17:1, twin turbos as the reference has them), an electronic governor, ... |

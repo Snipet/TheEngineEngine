@@ -228,12 +228,14 @@ namespace
             return tee::ui::fieldsOfGui(rig.demo.doc, gui);
         };
         const std::vector<int> geo = open("engine.bore", "engine.inspector.cylinder");
-        // the demo's: bore, stroke, rod, compression, flywheel, friction, in that order
+        // the demo's: bore, stroke, rod, compression, flywheel, friction; the hook's piston and rod masses
         std::vector<std::string> names;
         for (int f : geo)
             names.push_back(rig.demo.doc.info(f).path);
-        CHECK(names.size() == 6 && names[0] == "engine.bore" && names[1] == "engine.stroke" && names[2] == "engine.rod"
-              && names[3] == "engine.compression" && names[4] == "engine.flywheel" && names[5] == "engine.friction");
+        // (in the document's order: the demo's own, then the masses ENGINE's hook adds)
+        CHECK(names.size() == 8 && names[0] == "engine.bore" && names[1] == "engine.stroke" && names[2] == "engine.rod"
+              && names[3] == "engine.compression" && names[4] == "engine.flywheel" && names[5] == "engine.friction"
+              && names[6] == "engine.pistonMass" && names[7] == "engine.rodMass");
         const std::vector<int> lay = open("engine.layout", "engine.inspector.layout");
         CHECK(lay.size() == 3);   // the layout menu, the cycle (card T's, through the hook) and the demo's cylinders
         const std::vector<int> cyl = open("engine.cylinder[2]", "engine.inspector.cylinder3");
@@ -561,6 +563,51 @@ namespace
             CHECK_MSG(why.empty(), std::string(kinds[k]) + ": " + why);
             picture(std::string("engine.twostroke.") + kinds[k], *rig.host);
         }
+        return 0;
+    }
+}
+
+namespace
+{
+    // Geometry no engine has: amber words in the cylinder's page beside the fields concerned, appearing with the
+    // oddity and going with it (the engine survives it; the interface warns). Four rules: a piston too heavy for its
+    // bore, stroke / bore outside 0.5 to 2, a mean piston speed over 30 m/s at the limiter, rod / stroke under 1.4.
+    VIEW_TEST(testEngineWarnings, "engine.warnings")
+    {
+        StageRig rig(tee::ui::makeEngineWorkspace, 1100, 700, 1.0f);
+        auto& doc = rig.demo.doc;
+        const auto set = [&](const char* path, double v) { doc.set(doc.find(path), v); };
+        rig.demo.selection.select("engine.bore");
+        const auto page = [&] { return rig.ws->inspectorPage(); };
+        const char* words[] = { "A PISTON THIS HEAVY", "THIS FAR OVER- OR", "MEAN PISTON SPEED OVER 30", "A ROD THIS SHORT" };
+        const auto has = [&](int i) { return page().find(words[i]) != std::string::npos; };
+        for (int i = 0; i < 4; ++i)
+            CHECK_MSG(!has(i), words[i]);   // the demo's V8: none
+        set("engine.pistonMass", 18.4);       // the diverging build's piston (X-007)
+        CHECK(has(0));
+        set("engine.bore", 0.12);
+        set("engine.stroke", 0.05);           // stroke / bore 0.42
+        CHECK(has(1));
+        set("engine.bore", 0.07);
+        set("engine.stroke", 0.12);           // a long stroke at 6600 rpm: 26 m/s, at 9000: 36
+        set("ecu.limiter", 9000.0 * en::kPi / 30.0);
+        CHECK(has(2));
+        set("engine.rod", 0.15);              // 1.25 of the stroke
+        CHECK(has(3));
+        CHECK(page().find("color=yellow") != std::string::npos);
+        // the page still reads clean, and pictures
+        {
+            tee::ui::GuiPanel::Options o;
+            o.width = 320;
+            tee::ui::FieldPage fp(doc, rig.demo.units, rig.demo.engine, { { "page.gui", page() } }, o);
+            CHECK_MSG(fp.notes().empty(), fp.notes());
+            funkgui::HeadlessHost host(fp, 0, 1.0f);
+            host.tick(2);
+            picture("engine.inspector.warnings", host);
+        }
+        doc.reset();                          // the defaults: every warning gone
+        for (int i = 0; i < 4; ++i)
+            CHECK_MSG(!has(i), words[i]);
         return 0;
     }
 }

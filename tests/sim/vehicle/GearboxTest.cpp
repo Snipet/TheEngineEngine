@@ -196,3 +196,41 @@ TEST_CASE("gearbox.manual: a gear will not go in with the clutch up and the spee
     rig.seconds(0.2);
     CHECK(rig.get("car.tel.gear") == 0.0);
 }
+
+TEST_CASE("gearbox.nohunt: an automatic under a full pedal on spinning tyres only shifts up", "[vehicle][gearbox]")
+{
+    // (the content package's 3.5 L V6 hunted 1-2-1: its tyres spun, the output flared and fell back, and a schedule
+    // on the output's speed went up and down again)
+    for (int drive : {FWD, RWD})
+    {
+        Rig rig;
+        rig.set("car.spec.gearbox", Automatic);
+        rig.set("car.spec.drive", drive);
+        rig.set("car.spec.tyre", Economy);
+        rig.set("curve", 1);
+        rig.set("power", 200000.0);
+        rig.set("peak", 420.0);
+        rig.settle();
+        rig.set("lever", 1);
+        rig.seconds(0.5);
+        rig.set("throttle", 1.0);
+        int gear = static_cast<int>(rig.get("car.tel.gear"));
+        int downs = 0, ups = 0;
+        double spun = 0.0;
+        for (int i = 0; i < 15 * 600; ++i)
+        {
+            rig.samples(160);
+            const int g = static_cast<int>(rig.get("car.tel.gear"));
+            downs += g < gear ? 1 : 0;
+            ups += g > gear ? 1 : 0;
+            gear = g;
+            if ((static_cast<int>(rig.get("car.tel.flags")) & 1) != 0)
+                spun += 160.0 / 96000.0;
+        }
+        std::printf("no hunting (drive %d): %d up, %d down in 15 s, the tyres spinning %.1f s of it, %.1f m/s\n", drive,
+                    ups, downs, spun, rig.get("car.v"));
+        CHECK(spun > 0.5);
+        CHECK(ups >= 2);
+        CHECK(downs == 0);
+    }
+}

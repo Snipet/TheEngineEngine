@@ -51,6 +51,27 @@ module VehConverter
         return VEH_CONVERTER_Q[i] + (VEH_CONVERTER_Q[i + 1] - VEH_CONVERTER_Q[i]) * f;
     }
 
+    // The torques torques() set, scaled down (never up) so that within one sample they bring the impeller's and the
+    // turbine's speeds together at most, never past each other: free, the slip after the sample (every other torque
+    // applied) would be `slipFree`; each newton metre of the impeller's torque takes iP from the impeller's speed, each
+    // of the turbine's gives iT to the turbine's (at the impeller's axis). An explicit torque from the last sample's
+    // slip would otherwise overshoot where the inertia on either side is small against the torque (a light crank, a
+    // free turbine in neutral, a crank whose inertia torque is large), and the two would ring and run away: with this the
+    // converter is passive at its junction, as a coupling is.
+    void limit(float slipFree, float iP, float iT, float dt)
+    {
+        const float k = (tPump * iP + tTurb * iT) * dt;
+        if (k == 0.0f)
+            return;
+        float sc = 1.0f;
+        if (k * slipFree <= 0.0f)
+            sc = 0.0f;                          // the rest of the step closes or reverses the slip by itself
+        else if (fabsf(k) > fabsf(slipFree))
+            sc = slipFree / k;
+        tPump *= sc;
+        tTurb *= sc;
+    }
+
     // One sample: the impeller's speed wp (the crank's) and the turbine's wt. Sets tPump and tTurb.
     void torques(float wp, float wt)
     {

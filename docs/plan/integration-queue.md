@@ -202,3 +202,41 @@ the null test. Until settled, quote dyno figures with the build's air.
 - **E, F**: treat -1 from `camTarget` / `boostTarget` as "use your own schedule". **G**: `popAt` is still a stub.
 - **C**: `PredictTest.cpp:94` assumes the first take is coarse: fails on a fast Windows runner.
 - **U4, U5**: the ECU's final telemetry, flags, maps and baked arrays (sent 14:57).
+
+## FunkGui's 40 candidate rows (`fg.desktop.menu`): looked at, not adopted here (16:07)
+
+The lead looked at the menu overlay's pictures in `/home/user/FunkGui/build-desktop/sandbox/fg.desktop.menu/`
+(both themes: the header, the tick, the bullet, the disabled rows, the open submenu with its hover) and they are
+right. `tools/golden.py report build-desktop` says: 68 tests, 67 pass, 1 MISSING (these 40 rows), nothing drifted.
+They are **not adopted from this machine**: FunkGui's goldens have a base written from the owner's arm64 Mac and
+overlays by architecture; this container is x86_64 Linux, and adopting needs the bless variable that FunkGui's own
+rules keep for its lead. For the owner, on the Mac, in FunkGui at v0.28.0 or later, after a `desktop` build and a
+look at the two pictures:
+`FUNKGUI_ALLOW_BLESS=1 python3 tools/golden.py adopt build-desktop --only fg.desktop.menu --reason "the menu overlay, new in 0.28.0"`.
+Until then the test reports MISSING and fails nothing.
+
+## For FMinus's owner: the launch wait, and three wishes (16:24, from Q's `docs/measurements/q7-compile.md`)
+
+With every package in, the program is 466 kB of machine code and takes 3.4 to 4.2 s to compile on the cloud
+machine (the reference: 158 kB, 1.4 s; the owner's Windows machine compiled the reference in 2.11 s, so expect
+about 5 to 6 s there). The front end is 0.12 s of it; the rest is LLVM at -O2, in proportion to the code. Measured
+and struck: -O0 compiles in 0.30 s and runs at 2.6 to 2.8 times the cost (a twin-turbo V8 at about 160 % of a slow
+core): no "first sound unoptimised, then swap"; -O1 saves 8 %; there is no `param` in the program.
+
+What we can do ourselves: define a switched-off model out of the program (`Program::Options::defines` per model):
+measured on boost, the listener's model 1 and the voices together: 23 % less code, 0.72 s less, the running cost
+unchanged; about 2.1 s for a build that uses none of the new models. The price is a recompile with a crossfade
+when a switch flips, and a test matrix per set of defines. **Held** (the lead): not until the launch wait is
+judged on the owner's machines.
+
+What only FMinus can do (wishes, not bugs; the user writes the compiler, and nobody here edits it):
+1. **An object cache keyed by the source and the options**: an unchanged program loads in milliseconds, which is
+   every launch but the first after an update. The largest gain for a person using the application.
+2. **Compiling in parallel** (modules split, ORC's concurrent compile): about 1 to 1.3 s on four cores, nothing
+   for any package to change.
+3. **Compiling a function on its first call**: a model that is switched off is never compiled; it needs care with
+   `[[clang::nonblocking]]` (nothing may compile on the audio thread: the host would have to warm the paths a
+   switch can reach before it is flipped).
+
+Meanwhile the application opens its window first and says that it is compiling (card B).
+

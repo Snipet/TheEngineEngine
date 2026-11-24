@@ -549,7 +549,8 @@ namespace tee::ui
         void drawPortPlot(Canvas& c, const Palette& p) const
         {
             const Rect in = look::region(c, p, tsPlot_, "AT THE EXHAUST PORT, OVER A TURN");
-            const Rect pl{ in.x + 34.0f, in.y + 2.0f, in.w - 44.0f, in.h - 18.0f };
+            // the plot under a row of its own for the port's two edges in words (so no trace runs through them)
+            const Rect pl{ in.x + 34.0f, in.y + 16.0f, in.w - 44.0f, in.h - 32.0f };
             const float epo = 180.0f - 0.5f * build_.ts.exhaustDur, epc = 180.0f + 0.5f * build_.ts.exhaustDur;
             const auto X = [&](float deg) { return pl.x + pl.w * deg / 360.0f; };
             c.hairlineH(pl.x, pl.centreY(), pl.w, p.grid);
@@ -562,8 +563,8 @@ namespace tee::ui
             c.rrect(X(epo), pl.y, X(epc) - X(epo), pl.h, 0.0f, Palette::mix(p.panel, p.hot, 0.10f));
             c.segment(X(epo), pl.y, X(epo), pl.bottom(), 1.25f, p.hot);
             c.segment(X(epc), pl.y, X(epc), pl.bottom(), 2.0f, p.selected);
-            c.text("OPENS", X(epo) + 4.0f, pl.y + 2.0f, look::kCaps, p.hot);
-            c.text("CLOSES", X(epc) - 4.0f - c.textWidth("CLOSES", look::kCaps), pl.y + 2.0f, look::kCaps, p.selected);
+            c.text("OPENS", X(epo) - 0.5f * c.textWidth("OPENS", look::kCaps), pl.y - 15.0f, look::kCaps, p.hot);
+            c.text("CLOSES", X(epc) - 0.5f * c.textWidth("CLOSES", look::kCaps), pl.y - 15.0f, look::kCaps, p.selected);
             if (portTrace_.size() < 2)
             {
                 c.text("no port pressure from the Scope yet", pl.x + 8.0f, pl.centreY() + 6.0f, look::kBody, p.dim);
@@ -584,7 +585,7 @@ namespace tee::ui
                 ys.push_back(pl.centreY() - (portTrace_[static_cast<std::size_t>(i)] - mid) / span * pl.h * 0.9f);
             }
             c.polyline(xs.data(), ys.data(), n, 1.5f, p.value);
-            c.text(ctx_.units.format(Quantity::pressure, hi - lo).c_str(), pl.x - 30.0f, pl.y, look::kUnit, p.label);
+            c.text(ctx_.units.format(Quantity::pressure, hi - lo).c_str(), pl.x - 30.0f, pl.y - 14.0f, look::kUnit, p.label);
         }
 
         void readScope()
