@@ -178,7 +178,7 @@ namespace tee::ui
                 {
                     const float y = cv.snapY(pl.pxY(ctx_.units.toUser(Quantity::pressure, kAtm)));
                     cv.hairlineH(pl.plotArea().x, y, pl.plotArea().w, p.label);
-                    cv.text("AIR OUTSIDE", pl.plotArea().x + 4.0f, y - 13.0f, look::kCaps, p.label);
+                    cv.text("AIR OUTSIDE", pl.plotArea().right() - 4.0f, y + 3.0f, look::kCaps, p.label, funkgui::Align::right);
                 }
             },
             [](Canvas& cv, const look::Palette& p, const ScopePlot& pl) {
@@ -537,7 +537,7 @@ namespace tee::ui
         {
             const double lo = u.toUser(Quantity::pressure, std::min(qmin, kAtm)), hi = u.toUser(Quantity::pressure, qmax);
             const double span = niceUp((hi - lo) * 0.25);
-            ports_->setAxes(-half, half, false, std::floor(lo / span) * span, std::ceil(hi / span) * span, false);
+            ports_->setAxes(-half, half, false, std::floor(lo / span) * span - span, std::ceil(hi / span) * span, false);   // room under the air outside for the valves' bands
         }
         else
             ports_->setAxes(-half, half, false, 0.0, niceUp(u.toUser(Quantity::pressure, 2.0 * kAtm)), false);
