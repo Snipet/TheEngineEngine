@@ -1,0 +1,67 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Inline four, 600 cc, 180-degree crank",
+  "notes": "A supersport 600's four: 67 x 42.5 mm (599 cc), 13.1:1, redline 16,000 rpm: the highest-revving engine here.",
+  "spec": {
+    "engine": {
+      "layout": "Crossplane I4",
+      "displacement": 0.0005994,
+      "compression": 13.1,
+      "custom": true,
+      "cylinders": 4,
+      "bankAngle": [
+        0.0
+      ],
+      "bank": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "pin": [
+        0.0,
+        180.0,
+        180.0,
+        0.0
+      ],
+      "fireRev": [
+        0,
+        0,
+        1,
+        1
+      ],
+      "place": [
+        0.0,
+        0.075,
+        0.15,
+        0.225
+      ],
+      "bore": 0.067,
+      "stroke": 0.0425,
+      "redlineSpeed": 1675.516
+    }
+  },
+  "expect": {
+    "firingOrder": [
+      1,
+      2,
+      4,
+      3
+    ],
+    "firingIntervals": [
+      180.0,
+      180.0,
+      180.0,
+      180.0
+    ],
+    "firingAngles": [
+      0.0,
+      180.0,
+      360.0,
+      540.0
+    ],
+    "redlineRpm": 16000,
+    "displacementCc": 599.4
+  }
+}

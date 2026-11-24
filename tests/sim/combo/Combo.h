@@ -5,7 +5,7 @@
 //   `spec.engine.custom`), so a package's switch is covered the moment it lands, with no edit here.
 // - Builds are the archetypes of content/builds/combo/ (every switch at 0 there; a test switches them on).
 // - Scenarios are made here in C++ (tour, pull, launch, cold), and the same ones are written as files under
-//   content/scenarios/combo/ for tee-render.
+//   content/scenarios/combo/ for tee-render (tee-fuzz --write-scenarios).
 // - Each run is judged by `judge` (the measures every combination must pass) into a list of failures, each a short
 //   name and its numbers; a failure that is in the known list (Known.h) is reported and does not fail the test.
 //
@@ -73,8 +73,7 @@ namespace combo
     tee::test::Scenario scenario(Kind kind, const std::string& build, std::uint32_t mask, Times& times);
     // Its timeline as a tee-scenario file (for the tools and the listening pack).
     std::string scenarioJson(Kind kind, std::uint32_t mask);
-    // Where those files are: tests/sim/combo/scenarios/ of this checkout. They move to content/scenarios/combo/ when
-    // card C's validation test (tests/host/ValidationTest.cpp) passes over a directory there (asked 2026-11-24).
+    // Where those files are: content/scenarios/combo/ (tee-render takes them by path, not by name).
     std::filesystem::path scenarioDirectory();
 
     // What a run is judged against. Every bound is stated where it is set (Combo.cpp, judge).

@@ -1,0 +1,67 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Inline four, crossplane crank (270-180-90-180)",
+  "notes": "Pins at 0, 270, 90 and 180 degrees: 1-3-2-4 at 270-180-90-180, the uneven beat of a crossplane superbike four. 79 x 50.9 mm (998 cc), 13.0:1, redline 14,000.",
+  "spec": {
+    "engine": {
+      "layout": "Crossplane I4",
+      "displacement": 0.000998,
+      "compression": 13.0,
+      "custom": true,
+      "cylinders": 4,
+      "bankAngle": [
+        0.0
+      ],
+      "bank": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "pin": [
+        0.0,
+        270.0,
+        90.0,
+        180.0
+      ],
+      "fireRev": [
+        0,
+        1,
+        0,
+        1
+      ],
+      "place": [
+        0.0,
+        0.085,
+        0.17,
+        0.255
+      ],
+      "bore": 0.079,
+      "stroke": 0.0509,
+      "redlineSpeed": 1466.077
+    }
+  },
+  "expect": {
+    "firingOrder": [
+      1,
+      3,
+      2,
+      4
+    ],
+    "firingIntervals": [
+      270.0,
+      180.0,
+      90.0,
+      180.0
+    ],
+    "firingAngles": [
+      0.0,
+      270.0,
+      450.0,
+      540.0
+    ],
+    "redlineRpm": 14000,
+    "displacementCc": 998.0
+  }
+}

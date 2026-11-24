@@ -117,7 +117,7 @@ TEST_CASE("nightly: every triple of switches on every archetype through the tour
         }
 }
 
-TEST_CASE("the scenario files of tests/sim/combo/scenarios are the ones the tests play", "[combo]")
+TEST_CASE("the scenario files of content/scenarios/combo are the ones the tests play", "[combo]")
 {
     for (Kind k : allKinds())
     {

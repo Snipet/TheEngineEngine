@@ -154,6 +154,25 @@ module CarTel
     float t1000 [[ui::label("1000 ft")]] [[ui::quantity("time")]];
     float t1320 [[ui::label("1/4 mile")]] [[ui::quantity("time")]];
     float v1320 [[ui::label("Trap speed")]] [[ui::quantity("speed")]];
+    // ---- card B2's, filled while the motorcycle (car.kind Motorcycle, car.model 1) drives, every 16 samples. The wheel
+    // arrays above then hold the front in [0] and the rear in [2] ----
+    float liftAngle [[ui::label("Front lifted")]] [[ui::unit("deg")]]
+        [[ui::help("The bike's pitch about its rear tyre: 0 with both wheels down")]];
+    float liftRate [[ui::label("Front lifting at")]] [[ui::unit("deg/s")]];
+    int bikeFlags [[ui::label("Motorcycle flags")]]
+        [[ui::help("1 the rear hopping or locked on the overrun, 2 looped, 4 the wheelie control acting, 8 the slipper slipping, 16 a quickshift's cut, 32 an auto-blip, 64 a stoppie")]];
+    int chainLash [[ui::label("Lash events")]] [[ui::help("A counter: one more each time the driveline's play closes")]];
+    float chainLashSpeed [[ui::label("Last lash's closing speed")]] [[ui::quantity("rotation")]]
+        [[ui::help("At the rear wheel: how hard the play closed")]];
+    int chainLashSide [[ui::label("Last lash's side")]] [[ui::choices("Drive", "Overrun")]];
+    float backTorque [[ui::label("Back torque")]] [[ui::quantity("torque")]]
+        [[ui::help("At the crank: what the rear wheel drives the engine with through the clutch (0 under power)")]];
+    float slipperSlip [[ui::label("Slipper slipping")]] [[ui::quantity("rotation")]];
+    int quickshifts [[ui::label("Quickshifts")]] [[ui::help("A counter")]];
+    int blips [[ui::label("Auto-blips")]] [[ui::help("A counter")]];
+    float wheelieLimit [[ui::label("Wheelie limit")]] [[ui::unit("m/s^2")]]
+        [[ui::help("The acceleration at which the front leaves the road now")]];
+    // ---- end of card B2's block ----
 };
 
 module SoundTel
