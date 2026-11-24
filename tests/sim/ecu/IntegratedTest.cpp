@@ -57,7 +57,7 @@ namespace
     }
 } // namespace
 
-TEST_CASE("H9: a spark-cut limiter and a fuelled overrun bang as the fuel sent; a full cut makes none", "[ecu][integrated]")
+TEST_CASE("H9: a spark-cut limiter and a fuelled overrun bang as the fuel sent; a full cut makes none", "[ecu][integrated][nightly]")
 {
     {
         Sim s = car();                                   // the fuel-cut limiter, a clean overrun: nothing to burn
@@ -86,37 +86,52 @@ TEST_CASE("H9: a spark-cut limiter and a fuelled overrun bang as the fuel sent; 
     CHECK(much > 2.0 * little);
 }
 
-TEST_CASE("H11: random pedals through every limiter kind: finite, bounded, never runs away", "[ecu][integrated][soak]")
+namespace
 {
-    // ctest runs 40 s a kind; the card's ten minutes is the same test with H_SOAK_SECONDS=600 (run by hand)
-    const char* env = std::getenv("H_SOAK_SECONDS");
-    const double seconds = env != nullptr ? std::atof(env) : 40.0;
-    for (int kind = 0; kind < 4; ++kind)
+    // Random pedals (and the launch button) for `seconds` on each of `kinds` of the limiter: finite, within +-1, never past
+    // the redline by 500 rpm, still running
+    void soak(std::initializer_list<int> kinds, double seconds)
     {
-        Sim s = car();
-        s.set("ecu.limiter.kind", kind);
-        s.set("ecu.overrun.fuel", 0.3);
-        s.set("ecu.launch.on", 1);
-        std::mt19937 rng(1234u + static_cast<unsigned>(kind));
-        std::uniform_real_distribution<double> u(0.0, 1.0);
-        const double red = s.tel("engine.redline") * 9.5492966;
-        double most = 0.0;
-        for (double t = 0.0; t < seconds; t += 0.25)
+        for (int kind : kinds)
         {
-            if (u(rng) < 0.3)
-                s.ctl().throttle = static_cast<float>(u(rng) < 0.5 ? 1.0 : u(rng));
-            if (u(rng) < 0.05)
-                s.ctl().buttons = u(rng) < 0.5 ? 2 : 0;          // the launch button
-            s.run(0.25);
-            most = std::fmax(most, s.tel("engine.speed") * 9.5492966);
+            Sim s = car();
+            s.set("ecu.limiter.kind", kind);
+            s.set("ecu.overrun.fuel", 0.3);
+            s.set("ecu.launch.on", 1);
+            std::mt19937 rng(1234u + static_cast<unsigned>(kind));
+            std::uniform_real_distribution<double> u(0.0, 1.0);
+            const double red = s.tel("engine.redline") * 9.5492966;
+            double most = 0.0;
+            for (double t = 0.0; t < seconds; t += 0.25)
+            {
+                if (u(rng) < 0.3)
+                    s.ctl().throttle = static_cast<float>(u(rng) < 0.5 ? 1.0 : u(rng));
+                if (u(rng) < 0.05)
+                    s.ctl().buttons = u(rng) < 0.5 ? 2 : 0;          // the launch button
+                s.run(0.25);
+                most = std::fmax(most, s.tel("engine.speed") * 9.5492966);
+            }
+            std::printf("H11 kind %d: %.0f s, the most %.0f rpm (redline %.0f), peak %.3f, state %g\n", kind, seconds, most, red,
+                        s.peak, s.tel("engine.state"));
+            CHECK(s.finite);
+            CHECK(s.peak <= 1.0);
+            CHECK(most < red + 500.0);
+            CHECK(s.tel("engine.state") == 2.0);
         }
-        std::printf("H11 kind %d: %.0f s, the most %.0f rpm (redline %.0f), peak %.3f, state %g\n", kind, seconds, most, red,
-                    s.peak, s.tel("engine.state"));
-        CHECK(s.finite);
-        CHECK(s.peak <= 1.0);
-        CHECK(most < red + 500.0);
-        CHECK(s.tel("engine.state") == 2.0);
     }
+} // namespace
+
+TEST_CASE("H11: random pedals on the fuel-cut and spark-cut limiters, briefly", "[ecu][integrated]")
+{
+    // the quick form of the soak below (CI's default run: under 30 s)
+    soak({0, 1}, 8.0);
+}
+
+TEST_CASE("H11: random pedals through every limiter kind: finite, bounded, never runs away", "[ecu][integrated][nightly]")
+{
+    // 40 s a kind; the card's ten minutes is the same with H_SOAK_SECONDS=600 (run by hand)
+    const char* env = std::getenv("H_SOAK_SECONDS");
+    soak({0, 1, 2, 3}, env != nullptr ? std::atof(env) : 40.0);
 }
 
 TEST_CASE("H: a bake writes every map's formula at its breakpoints into the Scope", "[ecu][integrated][bake]")
@@ -245,4 +260,95 @@ TEST_CASE("H: both models on, the V8 starts at -20 C and at the coldest air", "[
         CHECK(s.tel("engine.state") == 2.0);
         CHECK(rpm > 1000.0);
     }
+}
+
+namespace
+{
+    struct Wet
+    {
+        double speedAt2 = 0.0, slipMean = 0.0, state = 0.0;
+    };
+
+    // The reference V8 in the coupe (combo/v8: card I's vehicle, its manual on the paddles), a wet road, ecu.model 1:
+    // into first at a standstill; from rolling (two seconds at 0.15 of the pedal) or not, floored for two seconds. The
+    // slip is the driven wheels' (Car::drivenSlip); its mean from half a second after the pedal goes down
+    Wet wetLaunch(bool tc, bool rolling)
+    {
+        Sim s("combo/v8");
+        s.set("ecu.model", 1);
+        s.set("car.model", 1);
+        s.set("env.surface", 2);
+        s.set("env.temperature", 300.0);
+        s.set("ecu.traction.on", tc ? 1 : 0);
+        s.ctl().mode = tee::EnginePlayer::kModeDrive;
+        s.ctl().ignition = tee::EnginePlayer::kIgnitionStart;
+        s.run(1.5);
+        s.ctl().ignition = tee::EnginePlayer::kIgnitionOn;
+        s.run(1.5);
+        s.ctl().shiftUp += 1;
+        s.run(0.3);
+        if (rolling)
+        {
+            s.ctl().throttle = 0.15f;
+            s.run(2.0);
+        }
+        s.ctl().throttle = 1.0f;
+        Wet w;
+        int n = 0;
+        for (int i = 0; i < 40; ++i)
+        {
+            s.run(0.05);
+            if (i >= 10)
+            {
+                w.slipMean += s.read("ecu.vSlip");
+                n += 1;
+            }
+        }
+        w.slipMean /= n;
+        w.speedAt2 = s.tel("car.speed");
+        w.state = s.tel("engine.state");
+        std::printf("H10 wet, %s, traction %s: %.2f m/s at 2 s, slip %.3f, state %g\n", rolling ? "rolling" : "standstill",
+                    tc ? "on" : "off", w.speedAt2, w.slipMean, w.state);
+        return w;
+    }
+} // namespace
+
+TEST_CASE("H10: on a wet road from rolling, traction control holds the slip and the car is faster", "[ecu][integrated][traction]")
+{
+    // X-011: its authority faded from 1500 rpm over the idle, so on a wet road it held the engine at 2650 rpm in first
+    // and the wheels spun as without it. It now takes the torque down to none (the plate, the spark, then every firing)
+    // and lets go only near where the automatic clutch opens
+    const Wet off = wetLaunch(false, true);
+    const Wet on = wetLaunch(true, true);
+    CHECK(off.slipMean > 0.5);
+    CHECK(std::fabs(on.slipMean - 0.10) < 0.05);
+    CHECK(on.speedAt2 > off.speedAt2);
+    CHECK(on.state == 2.0);
+}
+
+TEST_CASE("H10: on a wet road from a standstill: no stall, no slower", "[ecu][integrated][traction]")
+{
+    const Wet off = wetLaunch(false, false);
+    const Wet on = wetLaunch(true, false);
+    CHECK(on.state == 2.0);
+    CHECK(on.speedAt2 >= off.speedAt2 * 0.98);
+}
+
+TEST_CASE("H10: on a wet road from a standstill the slip is held", "[ecu][integrated][traction][!mayfail]")
+{
+    // Expected to fail: at walking pace the wheels' speed for 10 % slip is the engine's under the speed where the clutch
+    // closes, so only a slipping clutch holds it (a launch: card I's automatic clutch, or launch control's hold);
+    // traction control alone keeps the engine above where the clutch lets go (measured: slip 0.88)
+    const Wet on = wetLaunch(true, false);
+    CHECK(std::fabs(on.slipMean - 0.10) < 0.05);
+}
+
+TEST_CASE("H9 (quick): a spark-cut limiter bangs; a clean overrun after it does not", "[ecu][integrated]")
+{
+    Sim s = car();
+    s.set("ecu.limiter.kind", 1);
+    const Bangs cut = bangs(s, 1.5, 0.0, true);
+    const Bangs clean = bangs(s, 0.5, 1.0, false);
+    CHECK(cut.count > 5.0);
+    CHECK(clean.count == 0.0);
 }

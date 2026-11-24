@@ -107,9 +107,9 @@ the pipe.
 
 The bangs by account (`FuelAccount`, per bank): fuel and air leaving a cylinder unburned are added to the bank's store;
 both flow out with a 0.25 s time constant (judgement); a hazard rises at `40 /s x hot x burnable / 2 mg`, hot = 0 under
-650 K to 1 at 900 K of the simulator's port temperature (`exh.tPort`, which reads some 770 K at full load on the
-limiter, some 300 K under measured exhaust temperatures: judgement, for the self-ignition of a rich exhaust's CO, H2
-and fuel with air at some 950 to 1200 K), burnable = the
+900 K to 1 at 1200 K of the hottest recent blowdown (each exhaust valve's opening raises it to the cylinder's gas,
+falling over 50 ms: the gas the unburned fuel meets, whatever the exhaust's and the walls' models; judgement, for the
+self-ignition of a rich exhaust's CO, H2 and fuel with air at some 950 to 1200 K), burnable = the
 fuel the store's air can burn; at 1 the burnable fuel burns and card G's pop gets an amplitude of 3e9 Pa a kg
 (now saturating: 30 kPa (1 - exp(-m / 7 mg)), the reference's largest pop; X-006). Standalone test (part of the card's 9): at 3000 rpm,
 1100 K, 2 mg a firing gives 133 bangs in 2 s, 1.9 mg burned a firing, the largest 23 kPa; 8 mg gives 199 bangs, 7.8 mg
@@ -118,11 +118,15 @@ a firing, the largest 47 kPa (four times the fuel: four times what burns, larger
 
 ## Traction control, the pit limiter, anti-lag, nitrous
 
-Traction control (`ecu.traction`): `reduce = clamp(3 e + I, 0, 1)`, `I += 6 e dt` within 0 to 1, e = slip - target;
-retard `20 min(2 reduce, 1)`, firings cut by fuel `0.75 clamp(2 reduce - 1, 0, 1)` (judgement: spark first, then
-cylinders, as factory systems take torque out). Standalone (part of the card's 10, on a toy wheel whose slip settles
-over 50 ms toward 0.4 (torque share x 2 - 1)): held at 0.101 against a target of 0.10; off, 0.40. The pit limiter: the
-soft hold on the car's speed over its last 2 m/s.
+Traction control (`ecu.traction`): `reduce = clamp(e + I + 0 de/dt, 0, 1)`, `I += 4 e dt` within 0 to 1, e = slip -
+target; the torque comes out by the throttle plate (its ceiling 1 - 0.85 reduce: a drive-by-wire plate closes), the
+spark (20 min(2 reduce, 1) degrees) and, past 0.7 of the reduction, cut firings up to every one (no torque), until
+the wheels come back. It lets go only near where the automatic clutch opens (its authority from 500 to 200 rpm over
+the idle). Finding X-011: its authority had faded from 1500 rpm over the idle, so on a wet road it held the engine at
+2650 rpm in first and the wheels spun as without it. Test 10 on the reference V8 in card I's coupe, wet: from rolling
+the slip held at 0.134 against 0.10, 9.71 m/s at 2 s against 8.48 without; from a standstill no stall and no slower
+(4.38 against 4.31) but the slip at 0.88: at walking pace only a slipping clutch (a launch) holds it, which is card
+I's clutch's (an expected failure). Dry, the coupe on street tyres: 0.093, 15.6 m/s against 12.5.
 
 Anti-lag (`ecu.antiLag`): inside its speed window with the pedal under 0.2, running: retard 30, lambda 0.85 (defaults;
 judgement). Nitrous (`ecu.nitrous`): armed (its button) above its speed, the pedal over 0.95, in or above its gear:
