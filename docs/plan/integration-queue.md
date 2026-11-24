@@ -240,6 +240,26 @@ What only FMinus can do (wishes, not bugs; the user writes the compiler, and nob
 
 Meanwhile the application opens its window first and says that it is compiling (card B).
 
+**Added 16:57, from Q's `docs/measurements/q8-aot.md`: a fourth, smaller wish, and what it would buy.** The program
+has grown to about 600 kB and 5 to 6 s here. Shipping the engine compiled ahead of time is feasible as FMinus stands
+except for one thing: FMinus always targets the machine it runs on (`detectHost`; the driver has no `-mcpu` or
+`--target`), so an object made on a CI runner carries that runner's processor (here AVX-512) and would die with an
+illegal instruction on an older one.
+
+4. **`-mcpu` / target features on `fminus -c`** (applied to the optimiser and the code generator: x86-64-v3 for
+   Windows and Linux, apple-m1 for macOS), or a public `Program::emitObject` taking the same. With it: CI makes one
+   engine library a platform for each set of defines we ship (about 6 s each); at launch only the front end runs
+   (0.12 to 0.26 s: the Schema, the layout, the nonblocking proof) and the library is loaded; the JIT remains for a
+   `sim/` that has been edited. Our side then: C (a front-end-only `tee::Program` binding entry points from a
+   loaded library, keyed by FMinus's version, the defines and a hash of every file read), B and the steward (CI),
+   and the proof that every null pair and X's combinations are identical to the bit between the JIT and the
+   library. Not measured: the library's speed against the JIT's (a generic processor loses AVX-512).
+
+The lead's reading, for the owner to overrule: the object cache (wish 1) is the simplest for everyone (nothing in
+CI, nothing to prove equal, it follows each user's own processor, and it covers a `sim/` a person has edited); it
+leaves only the first launch after an install or an update slow. Wish 4 makes even that one instant, at the price
+of the machinery above. Either makes per-model defines unnecessary.
+
 ## From calibration (N1, N2; 16:10 to 16:26)
 
 - **For C, later**: the host bakes an `auto` cam map (`ecu.maps.camIn`, `camEx`) by a sweep with the fast dyno

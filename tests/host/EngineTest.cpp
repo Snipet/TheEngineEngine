@@ -3,6 +3,7 @@
 #include "Support.h"
 
 #include "EngineTwin.h"
+#include "tee/Dyno.h"
 
 #include <set>
 #include <catch2/catch_test_macros.hpp>
@@ -267,4 +268,41 @@ TEST_CASE("a quality change swaps the engine at 48 kHz inside under a crossfade,
     REQUIRE(host.telemetry(t));
     CHECK(tel(host, t, "tel.engine.state") == 2);
     CHECK(finite);
+}
+
+TEST_CASE("the dyno runner starts a common-rail diesel and holds a twin turbo's boost on steps", "[engine][sim][dyno]")
+{
+    if (!haveSim())
+        SKIP("sim/engine.fm is not there yet");
+    std::string error;
+    const auto sim = compiled(simDir(), {}, error);
+    REQUIRE(sim != nullptr);
+    const auto run = [&](const char* name, std::vector<double> steps) {
+        Build build(sim->fields());
+        std::vector<std::string> warnings;
+        REQUIRE(build.loadFile(std::filesystem::path(TEE_SOURCE_DIR) / "content/builds/archetypes" / name, BuildPart::Whole,
+                               warnings, error));
+        DynoPlan plan;
+        plan.steps = std::move(steps);
+        plan.settle = 3.0;
+        plan.measure = 0.5;
+        plan.fields = {"engine.state", "boost.pressure"};
+        DynoCurve curve;
+        REQUIRE(runDyno(sim, build, plan, curve, error));
+        INFO(error);
+        return curve;
+    };
+    // P's two: from the key off straight to start, the diesel never cranked, and the twin turbo's boost wandered
+    const DynoCurve diesel = run("diesel-20-common-rail.json", {300.0});
+    REQUIRE(diesel.points.size() == 1);
+    CHECK(diesel.points[0].fields[0] == 2.0);
+    CHECK(diesel.points[0].torque > 50.0);
+    const DynoCurve six = run("straight-six-twin-turbo-30.json", {300.0, 450.0});
+    REQUIRE(six.points.size() == 2);
+    for (const DynoPoint& p : six.points)
+    {
+        CHECK(p.fields[0] == 2.0);
+        CHECK(p.fields[1] > 80000.0);    // near the build's 1.0 bar (P measured 2.99 bar at 4297 rpm before)
+        CHECK(p.fields[1] < 120000.0);
+    }
 }
