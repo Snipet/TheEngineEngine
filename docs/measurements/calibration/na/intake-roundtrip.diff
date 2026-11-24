@@ -1,0 +1,61 @@
+--- a/sim/core/cylinder.fm	2026-11-24 16:32:25.306336900 +0000
++++ b/sim/core/cylinder.fm	2026-11-24 16:29:05.857878196 +0000
+@@ -54,6 +54,7 @@
+                         // its intake pushed back into the runner during the overlap and drew in again
+     float rvMass;       // the gas the intake pushed back into its runner, waiting to be drawn in first, and the burned
+     float rvInert;      // part of it
++    float rvT;          // its temperature (K), mass-weighted
+     float cBurn;        // how much of what could burn this cycle's burn will burn (the dilution's toll)
+     float exOut;        // this exhaust event's gas out and its burned part, and the burned share of the last event's:
+     float exInert;      // what the header holds by the port, and gives back when it flows back in
+@@ -287,7 +288,18 @@
+         const float ppE = fmaxf(101325.0f + 2.0f * bE + zE * qEa, 8000.0f);
+         const float ppI = fmaxf(101325.0f + 2.0f * bI + zI * qIa, 8000.0f);
+         const float mOutE = qE >= 0.0f ? qE * ppE / (287.0f * t) : qE * ppE / (287.0f * tPipe);
+-        const float mOutI = qI >= 0.0f ? qI * ppI / (287.0f * t) : qI * ppI / (287.0f * tAir);
++        // (drawn in: first the gas it pushed back, at that gas's own density, then the runner's air)
++        float mOutI = qI >= 0.0f ? qI * ppI / (287.0f * t) : qI * ppI / (287.0f * tAir);
++        float mRvIn = 0.0f;
++        if (qI < 0.0f && rvMass > 1.0e-12f)
++        {
++            const float tr = fmaxf(rvT, tAir);
++            const float volRv = rvMass * 287.0f * tr / ppI;
++            const float vol = -qI * dt;
++            const float vFromRv = fminf(vol, volRv);
++            mRvIn = vFromRv * ppI / (287.0f * tr);
++            mOutI = -(mRvIn + (vol - vFromRv) * ppI / (287.0f * tAir)) / dt;
++        }
+         // the heat they carry: each gas's own (cp = R g / (g - 1) at its temperature)
+         const float gc = gammaAt(t);
+         const float gp = gammaAt(tPipe);
+@@ -295,7 +307,14 @@
+         const float cpC = 287.0f * gc / (gc - 1.0f);
+         float hOut = 0.0f;
+         hOut += mOutE >= 0.0f ? cpC * t * mOutE : 287.0f * gp / (gp - 1.0f) * tPipe * mOutE;
+-        hOut += mOutI >= 0.0f ? cpC * t * mOutI : 287.0f * ga / (ga - 1.0f) * tAir * mOutI;
++        if (mOutI >= 0.0f)
++            hOut += cpC * t * mOutI;
++        else
++        {
++            const float tr = fmaxf(rvT, tAir);
++            const float gr = gammaAt(tr);
++            hOut += -287.0f * gr / (gr - 1.0f) * tr * mRvIn / dt + 287.0f * ga / (ga - 1.0f) * tAir * (mOutI + mRvIn / dt);
++        }
+         mE = mOutE;
+         // the burned gas: what leaves takes its share (the gas well mixed); what comes back from the header is
+         // burned; what the intake pushes back into its runner waits there, and is the first drawn in again
+@@ -313,12 +332,13 @@
+             if (mOutI >= 0.0f)
+             {
+                 di -= mOutI * dt * fr;
++                rvT = (rvT * rvMass + t * mOutI * dt) / fmaxf(rvMass + mOutI * dt, 1.0e-12f);
+                 rvMass += mOutI * dt;
+                 rvInert += mOutI * dt * fr;
+             }
+             else
+             {
+-                const float take = fminf(rvMass, -mOutI * dt);
++                const float take = fminf(rvMass, mRvIn > 0.0f ? mRvIn : -mOutI * dt);
+                 const float fi = rvMass > 1.0e-12f ? rvInert / rvMass : 0.0f;
+                 di += take * fi;
+                 rvInert = fmaxf(rvInert - take * fi, 0.0f);
