@@ -17,6 +17,7 @@
 #include "lib/onepole.fm"
 #include "lib/biquad.fm"
 #include "sound/extras.fm"
+#include "boost/boost.fm"
 #include "listen/listen.fm"
 #include "vehicle/car.fm"
 
@@ -151,8 +152,6 @@ module Shared
     float smHdr;
     float smPipe;
     float smXp;
-    float smTb;
-    float smTs;         // TURBO SIZE, smoothed
     float smCam;
     float kDial;
     float smCR;         // the compression ratio, smoothed, and as the cylinders were last set
@@ -244,6 +243,7 @@ module Shared
     OnePole tnLp[2];
     Heat heat;          // the coolant, the oil, the chamber's walls (core/heat.fm)
     Extras ex;
+    Boost boost;        // turbos or a supercharger: their shafts, boost, valves and sounds (boost/boost.fm)
     Listen listen;      // where it is heard from, the room, the level, the resampler (listen/listen.fm)
     float pBox;         // the air box (with the turbo's boost), Pa
     float qThr;         // the volume flow through the throttle, m^3/s
@@ -368,6 +368,7 @@ module Shared
         }
         cross.configure((int)(0.6f * k) + 16);
         ex.setup(rate, 90.0f);
+        boost.setup(rate, &ex.noise);
         for (int i = 0; i < 2; ++i)
             shellHp[i].set(500.0f, rate);
         quiet = 1.0e9f;
@@ -491,8 +492,8 @@ module Shared
         smHdr = set.headers;
         smPipe = set.pipe;
         smXp = set.xpipe;
-        smTb = set.turbo;
-        smTs = tsOf();
+        boost.smTb = set.turbo;
+        boost.smTs = boost.tsOf(set.tsize);
         smCam = set.cam;
         sizeSeen = set.size;
         sizeRest = 0.0f;
@@ -701,12 +702,6 @@ module Shared
         }
     }
 
-    // The TURBO SIZE dial as the engine takes it: 0.5 to 2 (unset: 1, matched)
-    float tsOf()
-    {
-        return set.tsize > 0.0f ? fminf(fmaxf(set.tsize, 0.5f), 2.0f) : 1.0f;
-    }
-
     // The BORE/STROKE dial as the engine takes it: 0.5 to 2 (a rotary, or the dial unset: 1, square)
     float bsOf()
     {
@@ -843,8 +838,8 @@ module Shared
         // (a turbo's turbine sits at each collector: a restriction that smooths the pulses; one turbo for the engine is
         // the most of both, twins less, four between; a supercharger leaves the exhaust free)
         // (a smaller turbine than the match chokes more and smooths less: its housing's volume; as the root of its size)
-        const float tb = aspUse >= 1 && aspUse <= 3 ? smTb : 0.0f;
-        const float tsr = expf(-0.5f * logf(smTs));
+        const float tb = aspUse >= 1 && aspUse <= 3 ? boost.smTb : 0.0f;
+        const float tsr = expf(-0.5f * logf(boost.smTs));
         const float aS = aSec * fmaxf(1.0f - (aspUse == 2 ? 0.45f : (aspUse == 3 ? 0.5f : 0.55f)) * tb * tsr, 0.15f);
         const float tbHz = tb > 0.001f ? (1320.0f + 22680.0f * (1.0f - tb) * (1.0f - tb) * (1.0f - tb)) * (aspUse == 2 ? 1.25f : (aspUse == 3 ? 1.1f : 1.0f)) * tsr : 0.0f;
         for (int k = 0; k < 2; ++k)
@@ -1105,8 +1100,7 @@ module Shared
         smHdr += (set.headers - smHdr) * kDial;
         smPipe += (set.pipe - smPipe) * kDial;
         smXp += (set.xpipe - smXp) * kDial;
-        smTb += (set.turbo - smTb) * kDial;
-        smTs += (tsOf() - smTs) * kDial;
+        boost.glide(set.turbo, set.tsize, kDial);
         smCam += (set.cam - smCam) * kDial;
         if (fabsf(smCam - lastCam) > 0.0005f)
             valves();
@@ -1244,10 +1238,10 @@ module Shared
         // the exhaust's mass flow and its power, for the turbo
         mdot += (mSum / 16.0f - mdot) * 0.15f;         // (mSum: 16 samples of kg/s)
         const float mRef = 1.2f * vTotal * redRpm / 120.0f * 0.9f;
-        ex.turbo16(aspUse, smTb, mdot * tPort / 1100.0f / fmaxf(mRef, 1.0e-6f), fuelUse != 0 ? 1.0f : throttle, throttle,
-                   set.bov, rpm / redRpm, rpm * 0.016666667f, smTs, d16);
-        pBox = 101325.0f + 100000.0f * ex.boost;
-        tAir = heat.tAmb + 5.0f * heat.warm + 25.0f * ex.boost;
+        boost.control(aspUse, boost.smTb, mdot * tPort / 1100.0f / fmaxf(mRef, 1.0e-6f), fuelUse != 0 ? 1.0f : throttle, throttle,
+                   set.bov, rpm / redRpm, rpm * 0.016666667f, boost.smTs, d16);
+        pBox = 101325.0f + 100000.0f * boost.boost;
+        tAir = heat.tAmb + 5.0f * heat.warm + 25.0f * boost.boost;
         // the exhaust's temperature: what the ports let out, slowly
         if (mSum > 1.0e-9f)
         {
@@ -1709,7 +1703,7 @@ module Shared
         const float tf = fmep * vTotal * 0.0795775f * fminf(omega / 5.0f, 1.0f);
         heat.fricJ += tf * omega * dt;
         // (a supercharger takes what it pumps from the crank: its boost times the air it moves, at some 60 %)
-        const float tsc = aspUse == 4 ? ex.boost * 1.0e5f * vTotal * (1.0f + ex.boost) * 0.1326f * fminf(omega / 5.0f, 1.0f) : 0.0f;
+        const float tsc = aspUse == 4 ? boost.boost * 1.0e5f * vTotal * (1.0f + boost.boost) * 0.1326f * fminf(omega / 5.0f, 1.0f) : 0.0f;
         const float tl = set.load * idleTq * (0.15f + 0.85f * (rpm / redRpm) * (rpm / redRpm));
         // (a cold battery gives less: 65 % at -40 F, all of it from 80 F)
         const float bat = 1.0f - 0.35f * (1.0f - fminf(fmaxf((heat.tAmb - 233.15f) / 66.85f, 0.0f), 1.0f));
@@ -1724,7 +1718,9 @@ module Shared
         tqMean += (torque - tqMean) * 0.0005f;
         tqNow = torque - tqMean;
         const float drop = fminf(fmaxf(1.0f - pPlenum / pBox, 0.0f), 1.0f);
-        ex.tick(qThr, drop, omega * 0.15915494f, dps, starterOn, set.bov, mdot);
+        ex.tick(qThr, drop, omega * 0.15915494f, dps);
+        boost.sound(omega * 0.15915494f, mdot, set.bov);
+        ex.tickStarter(omega * 0.15915494f, starterOn);
     }
 
     // When the intake valve shuts: the fuel for this cycle (none when the ECU cuts it), from what of the charge can
@@ -1940,7 +1936,7 @@ module Shared
                 const float rd = set.drive != 0 ? car.road(v == 4 ? 0.45f : 1.0f) : 0.0f;
                 // (the fade's gain eased: a smooth step)
                 cutG = cutWant != 0 ? fmaxf(cutG - cutDn, 0.0f) : fminf(cutG + cutUp, 1.0f);
-                listen.mix(i, outL, outR, ex.intake, tqNow, ex.mech, ex.block, ex.turbo, ex.starter, ex.comb, shell[0],
+                listen.mix(i, outL, outR, ex.intake, tqNow, ex.mech, ex.block, boost.turbo, ex.starter, ex.comb, shell[0],
                            lay.topo == 0 ? shell[0] : shell[1], set.drive, rd, cutG);
             }
             listen.finish(left, right, at, m);
@@ -1968,8 +1964,8 @@ module Shared
         const float visHz = cycHz < 2.4f ? cycHz : fminf(2.4f * expf(0.25f * logf(cycHz / 2.4f)), 4.0f);
         showCycle += visHz * (float)n * dt;
         showCycle -= floorf(showCycle);
-        showBoost = ex.boost;
-        showAir = (aspUse != 0 ? (float)aspUse + fminf(smTb, 0.99f) : 0.0f)
+        showBoost = boost.boost;
+        showAir = (aspUse != 0 ? (float)aspUse + fminf(boost.smTb, 0.99f) : 0.0f)
                   + 10.0f * (floorf(66.0f * (smBs - 0.5f) + 0.5f) + 1.0f);
         showPipes = floorf(99.0f * fminf(fmaxf(smHdr, 0.0f), 1.0f) + 0.5f) * 10000.0f
                     + floorf(99.0f * fminf(fmaxf(smPipe, 0.0f), 1.0f) + 0.5f) * 100.0f

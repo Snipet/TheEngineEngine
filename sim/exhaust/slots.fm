@@ -91,6 +91,7 @@ module XBuild
     int byp[XS_SIDES];
     int tips[XS_SIDES];
     int tag[XS_SIDES];
+    int sideOn[XS_SIDES];       // 1: something feeds this side (zoomies feed none: no chain is built)
     int hasStep;
     // the junctions and branches the sizes and the meters need
     int jCol[XS_COLL];          // each collector's node
@@ -270,7 +271,22 @@ module XBuild
                 }
             }
         }
+        for (int s = 0; s < XS_SIDES; ++s)
+            sideOn[s] = 0;
+        for (int c = 0; c < XS_COLL; ++c)
+        {
+            if (colOn[c] != 0 && colTo[c] < 2)
+                sideOn[colTo[c]] = 1;
+        }
         crossK = nSides == 2 ? (sp.crossover < 0 ? 0 : (sp.crossover > 2 ? 2 : sp.crossover)) : 0;
+        // a crossover feeds the other side; with nothing on either side, there is no chain at all
+        if (crossK != 0 && (sideOn[0] != 0 || sideOn[1] != 0))
+        {
+            sideOn[0] = 1;
+            sideOn[1] = 1;
+        }
+        if (crossK != 0 && sideOn[0] == 0)
+            crossK = 0;
         crossPos = sp.crossAt != 0 ? 1 : 0;
         hasStep = sp.primStepAt > 0.01f ? 1 : 0;
         for (int s = 0; s < XS_SIDES; ++s)
@@ -386,6 +402,8 @@ module XBuild
         const int oneHead = crossK == 2 && crossPos == 0 ? 1 : 0;
         for (int s = 0; s < nSides; ++s)
         {
+            if (sideOn[s] == 0)
+                continue;
             int j = 0;
             if (oneHead != 0 && s == 1)
                 j = jHead[0];
@@ -394,7 +412,7 @@ module XBuild
             jHead[s] = j;
             for (int c = 0; c < XS_COLL; ++c)
             {
-                if (colOn[c] != 0 && colTo[c] == s)
+                if (colOn[c] != 0 && colTo[c] == s && (oneHead == 0 || s == 0))
                     kColUp[c] = net.branch(j, XD_COLL + c, 1);
             }
             if (oneHead != 0 && s == 0)
@@ -452,6 +470,8 @@ module XBuild
         }
         for (int s = 0; s < nSides; ++s)
         {
+            if (sideOn[s] == 0)
+                continue;
             int c = cur[s];
             // the resonator
             if (res[s] == 1 || res[s] == 2)
@@ -549,13 +569,13 @@ module XBuild
             vPos[s] = byp[s] == 2 ? 1.0f : 0.0f;
             vT[s] = vPos[s];
         }
-        // (at rest first, then sized: the reference's order in its configure, so a build of its topology starts as
-        // it does)
+        // (at rest, sized, then the steepening pipes' timing settled to their sizes: network.fm, settle)
         sections();
         if (atRest != 0)
             heat.rest(eng.tAmb, warm, eng.mdotSlow, eng.vAir);
         net.clear();
         shape();
+        net.settle();
         qIn = 0.0f;
         qOut = 0.0f;
     }
@@ -668,13 +688,17 @@ module XBuild
             float lf0 = 0.0f;
             float lt0 = 0.0f;
             float dt0 = 0.0f;
+            int nOn = 0;
             for (int s = 0; s < nSides; ++s)
             {
+                if (sideOn[s] == 0)
+                    continue;
+                nOn += 1;
                 const float lms = sp.mainLen[s] > 0.0f ? sp.mainLen[s] : eng.mainLen * pk;
                 const float dms = sp.mainD[s] > 0.0f ? sp.mainD[s] : eng.pipeD;
                 const float lts = sp.tailLen[s] > 0.0f ? sp.tailLen[s] : (eng.bike > 0.5f ? 0.10f : 0.40f);
                 const float dts = sp.tailD[s] > 0.0f ? sp.tailD[s] : eng.tailD;
-                if (s == 0)
+                if (nOn == 1)
                 {
                     lm0 = lms;
                     dm0 = dms;
@@ -709,15 +733,20 @@ module XBuild
                 lt += lts;
                 dt += dts;
             }
-            const float ns = (float)nSides;
-            heat.kind(XH_MAIN, meanOf(lm, nSides, lm0), meanOf(dm, nSides, dm0), ns);
+            const float ns = (float)nOn;
+            heat.on[XH_MAIN] = 0;
             heat.on[XH_LINK] = 0;
-            if (nk > 0)
-                heat.kind(XH_LINK, meanOf(lk, nk, lk0), meanOf(dm, nSides, dm0), ns);
             heat.on[XH_MUFF] = 0;
-            if (nf > 0)
-                heat.kind(XH_MUFF, meanOf(lf, nf, lf0), meanOf(dm, nSides, dm0), ns);
-            heat.kind(XH_TAIL, meanOf(lt, nSides, lt0), meanOf(dt, nSides, dt0), ns);
+            heat.on[XH_TAIL] = 0;
+            if (nOn > 0)
+            {
+                heat.kind(XH_MAIN, meanOf(lm, nOn, lm0), meanOf(dm, nOn, dm0), ns);
+                if (nk > 0)
+                    heat.kind(XH_LINK, meanOf(lk, nk, lk0), meanOf(dm, nOn, dm0), ns);
+                if (nf > 0)
+                    heat.kind(XH_MUFF, meanOf(lf, nf, lf0), meanOf(dm, nOn, dm0), ns);
+                heat.kind(XH_TAIL, meanOf(lt, nOn, lt0), meanOf(dt, nOn, dt0), ns);
+            }
         }
     }
 
@@ -812,7 +841,11 @@ module XBuild
             Duct* p = &net.d[XD_COLL + c];
             p->set(sp.colLen[c] > 0.0f ? sp.colLen[c] : (eng.bike > 0.5f ? 0.25f : 0.38f), sqrtf(aS * 1.2732395f), aS,
                    colFed[c] != 0 ? cS2 : cS, rate);
-            p->extra(direct != 0 ? tbHz : 0.0f, 1.0f, rate);
+            // (a pipe of a merge, into a second collector or out of one, loses a share of each pass as the
+            // reference's headers and main pipe do: its bends and slip joints, its boundary layer; judgement, 0.4 dB.
+            // The reference's own collectors' pipes, between the headers and the main pipe, keep theirs at none.)
+            const float keepM = colTo[c] >= 2 || colFed[c] != 0 ? 0.955f : 1.0f;
+            p->extra(direct != 0 ? tbHz : 0.0f, keepM, rate);
             p->steep = 0.87f / 101325.0f;
             if (kColUp[c] >= 0)
             {
@@ -823,16 +856,19 @@ module XBuild
             }
             if (kVol[c] >= 0)
             {
-                // a log manifold's chamber: a short wide pipe shut at its far end, the collector's own volume
+                // a log manifold's chamber: a short wide pipe shut at its far end, the collector's own volume; its
+                // rough cast walls and the ports' cross flow take a share of each pass (judgement: 0.4 dB)
                 const float av = sp.colVol[c] / 0.06f;
                 Duct* v = &net.d[XD_VOL + c];
                 v->set(0.06f, sqrtf(av * 1.2732395f), av, colFed[c] != 0 ? cS2 : cS, rate);
-                v->extra(0.0f, 1.0f, rate);
+                v->extra(0.0f, 0.955f, rate);
             }
         }
         // each side's chain
         for (int s = 0; s < nSides; ++s)
         {
+            if (sideOn[s] == 0)
+                continue;
             const float dPipe = sp.mainD[s] > 0.0f ? sp.mainD[s] : eng.pipeD;
             const float aPipe = 0.785398f * dPipe * dPipe;
             const float dTail = sp.tailD[s] > 0.0f ? sp.tailD[s] : eng.tailD;
@@ -1198,7 +1234,7 @@ module XBuild
         // transmission is smooth in its travel: smoothstep)
         for (int s = 0; s < nSides; ++s)
         {
-            if (byp[s] == 0)
+            if (byp[s] == 0 || sideOn[s] == 0)
                 continue;
             float want = 0.0f;
             if (byp[s] == 2)
@@ -1247,6 +1283,8 @@ module XBuild
         }
         for (int s = 0; s < nSides; ++s)
         {
+            if (sideOn[s] == 0)
+                continue;
             const Duct* p = &net.d[slot(s, XO_MAIN)];
             if (gCone[s] >= 0)
                 net.flowBand(gCone[s], 0.4f * p->mach * p->c / p->diam);
@@ -1291,6 +1329,8 @@ module XBuild
         qOut += kMean * (qo - qOut);
         for (int s = 0; s < nSides; ++s)
         {
+            if (sideOn[s] == 0)
+                continue;
             pConv[s] += kMean * (net.jP[jHead[s]] - pConv[s]);
             const int j0 = jMuf[s * 5];
             float pm = net.jP[j0];

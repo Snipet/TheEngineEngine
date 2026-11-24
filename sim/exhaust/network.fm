@@ -350,6 +350,27 @@ module XNet
         level = 0.0f;
     }
 
+    // After the pipes are sized at rest: each steepening pipe's arrivals set to its delay as it now is. (The reference
+    // clears its pipes before it sizes them, so a steepening pipe's line is timed for its old delay, 4 samples after
+    // init: the first pulse down it then leaks out as a ramp over the pipe's whole delay, which puts energy in that
+    // was never given. The builder clears, sizes, then settles.)
+    void settle()
+    {
+        for (int i = 0; i < XN_DUCTS; ++i)
+        {
+            if (dUse[i] == 0 || d[i].steep <= 0.0f)
+                continue;
+            Duct* p = &d[i];
+            const float d0 = fminf(fmaxf(p->dNom, 4.0f), (float)(p->cap - 4));
+            for (int j = 0; j < p->cap; ++j)
+                p->fd[j] = d0;
+            const int i0 = (int)d0;
+            p->rF = (p->w - i0 - 1 + 2 * p->cap) % p->cap;
+            p->ageF = i0 + 1;
+            p->dPrevF = d0;
+        }
+    }
+
     // ---- each sample ----
 
     float portWave(int i)

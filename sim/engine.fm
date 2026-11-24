@@ -252,7 +252,7 @@ module Engine
                            + (mono.fuelCut && mono.state == 2 ? FLAG_FUEL_CUT : 0);
         tel.engine.cycle = mono.showCycle;
         tel.engine.crank = mono.theta;
-        tel.boost.pressure = mono.ex.boost * 100000.0f;
+        tel.boost.pressure = mono.boost.boost * 100000.0f;
         tel.exhaust.portTemperature = mono.tPort;
         tel.ecu.knockRetard = mono.kRet;
         tel.car.speed = driven ? fabsf(mono.car.v) : 0.0f;
