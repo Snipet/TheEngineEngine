@@ -97,6 +97,8 @@ namespace tee::test::listen
             REQUIRE(reset_ != nullptr);
             tee::ScopedFlushDenormals flush;
             init_(inst_->data(), float(kRate));
+            // the balance is compared without model 1's headroom stage (its own test has it)
+            set("ln.kHead", 1.0);
         }
 
         ~Rig()

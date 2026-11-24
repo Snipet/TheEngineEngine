@@ -1147,7 +1147,10 @@ module Engine
                 cutG = cutWant != 0 ? fmaxf(cutG - cutDn, 0.0f) : fminf(cutG + cutUp, 1.0f);
                 listen.mix(i, exh.outL, exh.outR, ex.intake, crank.tqNow, ex.mech, ex.block, boost.turbo, ex.starter, ex.comb, exh.shell[0],
                            lay.topo == 0 ? exh.shell[0] : exh.shell[1], set.drive, rd, cutG,
-                           spec.voices.model != 0 ? ex.vo.gearbox + ex.vo.axle : 0.0f);
+                           spec.voices.model != 0 ? ex.vo.gearbox : 0.0f, spec.voices.model != 0 ? ex.vo.axle : 0.0f,
+                           spec.voices.model != 0 ? ex.vo.front : 0.0f, spec.voices.model != 0 ? ex.vo.head : 0.0f,
+                           spec.voices.model != 0 ? ex.vo.tank : 0.0f, spec.voices.model != 0 ? ex.vo.gateOut : 0.0f,
+                           spec.voices.model != 0 ? ex.vo.all : 0.0f, ex.mouth);
             }
             listen.finish(left, right, at, m);
             at += m;
