@@ -104,18 +104,19 @@ TEST_CASE("calibration boost: one state: stepped up from 1500 rpm or spooled at 
 
 TEST_CASE("calibration boost: the ECU's over-boost cut is the net under a gate too small", "[calibration][boost]")
 {
-    // ecu.model 1 (every archetype): the 2 L four with the gate it had before (26.3 mm) runs away spooled at 5271 rpm
-    // (255 kPa, 421 N m) with the cut off; with the cut at 150 kPa the fuel is cut each time the boost has stood over
+    // ecu.model 1 (every archetype): the 2 L four with a gate too small (18 mm) runs away spooled at 5271 rpm (251 kPa,
+    // 409 N m) with the cut off (the gate it had before, 26.3 mm, ran away only on the exhaust's phantom fifth of flow:
+    // closed, G's 8bb2c80f, it holds 105 kPa); with the cut at 150 kPa the fuel is cut each time the boost has stood over
     // it for a second, and the mean torque falls (the cut cycles, as a production ECU's does). With the matched gate the
     // boost never reaches the cut (the build's own target map, 105 kPa at 5300 rpm, P's taper).
     Sims s;
     const char* build = "content/builds/archetypes/turbo-four-20-gdi.json";
     std::vector<Row> off, cut, matched;
     std::string error;
-    REQUIRE(tee::calib::dyno(s.sim, build, {5271.0}, {{"boost.gateDiameter", 0.0263}, {"ecu.overBoost", -1.0}},
+    REQUIRE(tee::calib::dyno(s.sim, build, {5271.0}, {{"boost.gateDiameter", 0.018}, {"ecu.overBoost", -1.0}},
                              {"boost.pressure", "engine.torque"}, off, error, 3.0, 3.0, 4.0));
     INFO(error);
-    REQUIRE(tee::calib::dyno(s.sim, build, {5271.0}, {{"boost.gateDiameter", 0.0263}, {"ecu.overBoost", 150000.0}},
+    REQUIRE(tee::calib::dyno(s.sim, build, {5271.0}, {{"boost.gateDiameter", 0.018}, {"ecu.overBoost", 150000.0}},
                              {"boost.pressure", "engine.torque"}, cut, error, 3.0, 3.0, 4.0));
     REQUIRE(tee::calib::dyno(s.sim, build, {5271.0}, {{"ecu.overBoost", 150000.0}}, {"boost.pressure", "engine.torque"},
                              matched, error, 3.0, 1.0, 4.0));
