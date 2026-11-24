@@ -1,0 +1,37 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "part": "car",
+  "name": "Car: coupe six",
+  "notes": "A car of its class alone (card P's archetypes' cars), to take any engine.",
+  "spec": {
+    "car": {
+      "model": "Vehicle",
+      "kind": "Car",
+      "mass": 1550,
+      "drive": "Rear",
+      "wheelbase": 2.73,
+      "cgHeight": 0.5,
+      "frontWeight": 0.51,
+      "track": 1.52,
+      "cdA": 0.63,
+      "tyre": "Sport",
+      "tyreRadius": 0.335,
+      "gearbox": "Manual",
+      "finalDrive": 3.62,
+      "wheelInertia": 1.3,
+      "gears": 6,
+      "autoGearing": false,
+      "ratio": [
+        4.23,
+        2.53,
+        1.67,
+        1.23,
+        1.0,
+        0.83
+      ],
+      "brakeDecel": 1.1,
+      "abs": true
+    }
+  }
+}

@@ -1,0 +1,101 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "part": "engine",
+  "name": "Air-cooled flat six (engine)",
+  "notes": "The engine of the archetype \"Air-cooled flat six\" alone, to put in another car.",
+  "spec": {
+    "engine": {
+      "layout": "Flat 6",
+      "custom": true,
+      "compression": 11.3,
+      "cylinders": 6,
+      "bankAngle": [
+        90,
+        -90
+      ],
+      "bank": [
+        0,
+        0,
+        0,
+        1,
+        1,
+        1
+      ],
+      "pin": [
+        90,
+        210,
+        330,
+        270,
+        30,
+        150
+      ],
+      "fireRev": [
+        0,
+        0,
+        1,
+        1,
+        1,
+        0
+      ],
+      "place": [
+        0.0,
+        0.12,
+        0.24,
+        0.05,
+        0.17,
+        0.29
+      ],
+      "displacement": 0.0036003,
+      "boreStroke": 1.3089,
+      "bore": 0.1,
+      "stroke": 0.07640000000000001,
+      "rodLength": 0.127,
+      "redlineSpeed": 701.622,
+      "frictionValvetrain": "Finger follower",
+      "rough": 0.2,
+      "benchLoad": 0.3
+    },
+    "valve": {
+      "model": "Lab",
+      "valves": 2,
+      "dIn": 0.049,
+      "dEx": 0.0425,
+      "train": "Rocker",
+      "inDurSeat": 256,
+      "inDur1mm": 222,
+      "inLift": 0.0115,
+      "inCentre": 108,
+      "exDurSeat": 252,
+      "exDur1mm": 216,
+      "exLift": 0.0105,
+      "exCentre": 112
+    },
+    "intake": {
+      "model": 1
+    },
+    "boost": {
+      "model": "Machine",
+      "kind": "Natural",
+      "level": 0.0,
+      "blowOff": 0.7
+    },
+    "exhaust": {
+      "model": "Builder",
+      "sides": 2,
+      "converter": [
+        1,
+        1
+      ],
+      "mufKind": [
+        2,
+        2
+      ]
+    },
+    "fuel": {
+      "kind": "Gasoline",
+      "model": "Fuels",
+      "grade": "Premium (91)"
+    }
+  }
+}

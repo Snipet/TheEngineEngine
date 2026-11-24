@@ -1,0 +1,36 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "part": "car",
+  "name": "Car: light coupe rotary",
+  "notes": "A car of its class alone (card P's archetypes' cars), to take any engine.",
+  "spec": {
+    "car": {
+      "model": "Vehicle",
+      "kind": "Car",
+      "mass": 1330,
+      "drive": "Rear",
+      "wheelbase": 2.43,
+      "cgHeight": 0.46,
+      "frontWeight": 0.5,
+      "track": 1.46,
+      "cdA": 0.55,
+      "tyre": "Sport",
+      "tyreRadius": 0.315,
+      "gearbox": "Manual",
+      "finalDrive": 4.1,
+      "wheelInertia": 1.1,
+      "gears": 5,
+      "autoGearing": false,
+      "ratio": [
+        3.48,
+        2.02,
+        1.39,
+        1.0,
+        0.72
+      ],
+      "brakeDecel": 1.1,
+      "abs": true
+    }
+  }
+}

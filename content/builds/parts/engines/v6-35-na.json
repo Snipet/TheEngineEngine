@@ -1,0 +1,103 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "part": "engine",
+  "name": "3.5 L V6 (engine)",
+  "notes": "The engine of the archetype \"3.5 L V6\" alone, to put in another car.",
+  "spec": {
+    "engine": {
+      "layout": "V6",
+      "custom": true,
+      "compression": 10.8,
+      "cylinders": 6,
+      "bankAngle": [
+        -30,
+        30
+      ],
+      "bank": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        1
+      ],
+      "pin": [
+        330,
+        270,
+        90,
+        30,
+        210,
+        150
+      ],
+      "fireRev": [
+        0,
+        0,
+        0,
+        1,
+        1,
+        1
+      ],
+      "place": [
+        0.0,
+        0.033,
+        0.1,
+        0.133,
+        0.2,
+        0.233
+      ],
+      "displacement": 0.003456,
+      "boreStroke": 1.1325,
+      "bore": 0.094,
+      "stroke": 0.083,
+      "rodLength": 0.152,
+      "redlineSpeed": 701.622,
+      "frictionValvetrain": "Finger follower",
+      "rough": 0.2,
+      "benchLoad": 0.3
+    },
+    "valve": {
+      "model": "Lab",
+      "valves": 4,
+      "dIn": 0.035,
+      "dEx": 0.029,
+      "train": "Finger",
+      "inDurSeat": 240,
+      "inDur1mm": 208,
+      "inLift": 0.010199999999999999,
+      "inCentre": 110,
+      "exDurSeat": 236,
+      "exDur1mm": 204,
+      "exLift": 0.0094,
+      "exCentre": 112,
+      "inPhaseRange": 40,
+      "exPhaseRange": 30
+    },
+    "intake": {
+      "model": 1
+    },
+    "boost": {
+      "model": "Machine",
+      "kind": "Natural",
+      "level": 0.0,
+      "blowOff": 0.7
+    },
+    "exhaust": {
+      "model": "Builder",
+      "sides": 2,
+      "converter": [
+        1,
+        1
+      ],
+      "mufKind": [
+        2,
+        2
+      ]
+    },
+    "fuel": {
+      "kind": "Gasoline",
+      "model": "Fuels",
+      "grade": "Regular (87)"
+    }
+  }
+}

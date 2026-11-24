@@ -318,6 +318,13 @@ namespace combo
                 lo = -0.05;
                 hi = 4.0;
             }
+            else if (q == "pressure" && f.path.find("mep") != std::string::npos)
+            {
+                // a mean effective pressure from the brake torque carries the inertia's torque in a transient: the
+                // engine dyno pulling the diesel up from idle reads -63 bar, a build swapped while running -21 bar
+                lo = -1.0e7;
+                hi = 1.0e7;
+            }
             else if (q == "pressure")
             {
                 lo = -2.0e6;   // gauge readings may be below 0; never this far

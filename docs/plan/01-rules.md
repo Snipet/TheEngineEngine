@@ -29,6 +29,11 @@ and the lead (the session that wrote these files) settles what a card leaves ope
 - Commit messages: `area: what changed` in the imperative, a body when the why is not obvious. End every message
   with the trailers your own session's instructions give. No model names anywhere else in the repository.
 - Push after every step that builds and passes its tests. Unpushed work is lost when a container is reclaimed.
+- **Green before a push** (the lead's rule, policed by the build steward): on a freshly merged tree, your own
+  package's tests and every test of a package whose files you touched pass (`ctest --preset dev -R '^<package>\.'`),
+  and `scripts/lint.sh` is clean. A test that fails for a filed finding is skipped with the finding's number in its
+  reason (`SKIP("finding F-12: ...")`), never left red. A soak or a fuzz is tagged `[nightly]` (§3). The steward
+  messages each owner its own failing tests after every full run and every finished CI job.
 - Never commit build trees, dependency caches, rendered audio or pictures. `.gitignore` covers `build-*/`, `out/`
   and `.tee-deps/`; test artefacts go under `out/`.
 
