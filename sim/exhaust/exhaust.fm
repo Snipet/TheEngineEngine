@@ -358,17 +358,21 @@ module Exhaust
         aspNow = aspUse;
         smTbNow = smTb;
         smTsNow = smTs;
+        const int configuring = needBuild;
         if (model != 0)
+            builderPipes();
+        else
         {
-            builderPipes();
-            return;
+            refPipes(bore, aspUse, smTb, smTs, rate);
+            // (at a configure the builder is built too, though it does no work a sample: its pipes then carry the
+            // history the reference's carry, whose old timings a configure's clear keeps, so a later configure into
+            // model 1 starts as the reference would)
+            if (needBuild != 0)
+                builderPipes();
         }
-        refPipes(bore, aspUse, smTb, smTs, rate);
-        // (at a configure the builder is built too, though it does no work a sample: its pipes then carry the history
-        // the reference's carry, whose old timings a configure's clear keeps, so a later configure into model 1 starts
-        // as the reference would)
-        if (needBuild != 0)
-            builderPipes();
+        // (a configure: the Telemetry true from the first block, before the first 16 samples have run)
+        if (configuring != 0)
+            writeTelemetry();
     }
 
     // The reference's pipes() (model 0)
