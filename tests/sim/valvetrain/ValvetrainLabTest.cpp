@@ -206,7 +206,7 @@ TEST_CASE("area against lift: the curtain low down, flat past a quarter of the d
     CHECK(cfm500 < 300.0);
     // the lab at its defaults (ports 1.35 and 1.5, 10 mm of lift) gives the reference V8's areas: 0.118 and 0.091 of
     // the piston's (sim/ref/engine.fm, valves)
-    Obj spec(labProgram(), "ValveLabSpec");
+    Obj spec(labProgram(), "ValveSpec");
     spec.defaults();
     Obj lab(labProgram(), "ValveLab");
     lab.call<void>("setup", bore, 8, 720.0f);
@@ -266,7 +266,7 @@ namespace
     // A V8's lab, its Spec at the defaults (valve.model 1) and what a test changes
     struct V8Lab
     {
-        Obj spec{labProgram(), "ValveLabSpec"};
+        Obj spec{labProgram(), "ValveSpec"};
         Obj lab{labProgram(), "ValveLab"};
         float theta = 0.0f;
         std::vector<float> ang = std::vector<float>(16, 0.0f);
@@ -582,7 +582,7 @@ namespace
     // program's own, beside the reference's (cylinder.fm, areaAt on its table): what the lab adds to a sample. Its
     // run is [[clang::nonblocking]], so FMinus proves the lab's per-sample and control path allocate nothing.
     const char* kBench = R"(
-#include "ref/cylinder.fm"
+#include "core/cylinder.fm"
 module LabBench
 {
     ValveLab lab;
@@ -641,7 +641,7 @@ module LabBench
 TEST_CASE("cost: what the lab adds to a sample of a V8, against the reference's areas", "[valvetrain][cost]")
 {
     tee::Program& prog = tee::test::lab::program("valvetrain/lab.fm", kBench);
-    Obj spec(prog, "ValveLabSpec");
+    Obj spec(prog, "ValveSpec");
     spec.defaults();
     spec.set("inPhaseRange", 40.0);
     spec.set("exPhaseRange", 30.0);

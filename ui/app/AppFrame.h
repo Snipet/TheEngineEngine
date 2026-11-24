@@ -169,6 +169,7 @@ namespace tee::ui
         void makeInspector();                                // the pages for the current workspace and selection
         void placeInspector();
         void setPanes();
+        int tabRows() const noexcept;
         std::vector<std::string> sectionsOf(int ws) const;
         std::uint64_t frameKey() const;
         void report();

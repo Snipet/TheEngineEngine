@@ -20,6 +20,8 @@
 //   fx::shimmer(c, rect, heat, p.text, phase);      // above hot pipes
 #pragma once
 
+#include "app/Look.h"
+
 #include <funkgui/canvas/Canvas.h>
 #include <funkgui/core/Col.h>
 #include <funkgui/core/Geometry.h>
@@ -43,4 +45,23 @@ namespace tee::ui::fx
     bool flame(funkgui::Canvas& c, const funkgui::Rect& r, float strength, float phase, bool fromRight = false);
     bool smoke(funkgui::Canvas& c, const funkgui::Rect& r, float density, funkgui::Col color, float phase);
     bool shimmer(funkgui::Canvas& c, const funkgui::Rect& r, float heat, funkgui::Col color, float phase);
+
+    // The same from the quantities a stage already reads (SI), each a one-line call:
+    //   hotWall      a wall's temperature, K: no glow under 700 K, full at 1100 K (a header glows dull red from about
+    //                800 K). Colour: the palette's hot, turning hotter above 1000 K.
+    //   overrunPop   a pop's size 0..1 (the caller eases it down over about 0.15 s after the pop).
+    //   tyreSmoke    the wheel's slip ratio (0 rolling, 1 locked or spinning freely): none under 0.12, full at 0.45.
+    //   heatHaze     a surface's temperature, K: none under 450 K, full at 900 K.
+    // `phase` in cycles (0..1 wraps), moved by the caller's step(dt): about 0.7 a second for a glow's breathing,
+    // 3 for a flame's flicker, 0.4 for smoke's drift, 0.6 for shimmer.
+    bool hotWall(funkgui::Canvas& c, const funkgui::Rect& r, double kelvin, const look::Palette& p, float phase,
+                 float inner = 0.4f);
+    bool overrunPop(funkgui::Canvas& c, const funkgui::Rect& r, double size01, float phase, bool fromRight = false);
+    bool tyreSmoke(funkgui::Canvas& c, const funkgui::Rect& r, double slip, const look::Palette& p, float phase);
+    bool heatHaze(funkgui::Canvas& c, const funkgui::Rect& r, double kelvin, const look::Palette& p, float phase);
+
+    // The amounts those use, for tests and for a stage that wants to know whether anything would show.
+    float hotWallAmount(double kelvin) noexcept;
+    float tyreSmokeAmount(double slip) noexcept;
+    float heatHazeAmount(double kelvin) noexcept;
 }
