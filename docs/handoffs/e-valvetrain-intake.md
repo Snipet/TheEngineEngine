@@ -24,3 +24,36 @@ Also tested: `ITB:` (passive at every opening), `runner of two lengths:`, and `t
 **Wanted outside my paths:** `tests/CMakeLists.txt` should glob `tests/sim/**` recursively.
 **FMinus:** no issues.
 **To listen to, once integrated:** `hot-street` at idle, `two-stage` through 5500 rpm, `cylinder-deactivation` at 2000 rpm, and an ITB build.
+
+# Card E, integrated: handoff (appended; supersedes the "Not done" above)
+Status: integrated on the branch. Model 0 matches the reference to the bit (null test run before every push). Model 1 runs in the engine through D's hooks. Tests 7 to 11 and 13 pass; test 12 is only partly met.
+**Tests:** `tee-tests-valvetrain` has 16 cases and `tee-tests-intake` has 4; all pass.
+- 7: the null test.
+- 8 (phasing), 9 (two stages: no dip; the output steps 2.8 dB at the change against at most 9.8 dB elsewhere), 10 (deactivation: manifold 45.9 → 69.7 kPa at 90 N m; the half-firing line +24 dB), 11 (ITB trumpets +31 dB over the plenum's snorkel; idle ripple 23 against 2 kPa), and 13 (float): all pass. Numbers are in docs/models/*.md.
+- 12: **not met.** A longer runner lowers the port's ring (135 → 115 Hz), but the ratio is not within 20 % of the acoustics' prediction, and no torque peak can be read off the curves. Only the direction is asserted.
+- 13: the power falls past the float speed, but only by 4.5 % at 1.25 times the float speed. That is mild: I made the bounce larger, but the effect remains small.
+**Cost:** `tee-bench --engine` (free-revs and drive-car) gives the simulator at 1.04 × the reference at the defaults, and 1.07 to 1.11 × with the lab on. That is about +0.03 to +0.07 R against a 0.05 R share, on a shared machine.
+**Spec paths (final).**
+- `spec.valve.`:
+  - `model`; head: `valves`, `dIn`, `dEx`, `portIn`, `portEx`.
+  - Intake cam: `inKind`, `inDurSeat`, `inDur1mm`, `inLift`, `inCentre`, `inFat`. Exhaust cam: the same with `ex`.
+  - Free valves: `freeInOpen`, `freeInClose`, `freeExOpen`, `freeExClose`, `freeFlank`. Second exhaust event: `auxOn`, `auxOpen`, `auxDur`, `auxLift`.
+  - Phasers: `inPhaseRange`, `exPhaseRange`, `phaseRate`.
+  - Stages: `stages`, `inDurSeatB`, `inDur1mmB`, `inLiftB`, `inCentreB`, `exDurSeatB`, `exDur1mmB`, `exLiftB`, `exCentreB`, `stageSpeed`, `stageHyst`.
+  - Lift control: `liftControl`, `liftMin`, `liftThrottle`.
+  - Deactivation: `deacMask`, `deacLow`, `deacHigh`, `deacLoad`.
+  - Springs: `train`, `springRate`, `springPreload`, `valveMass`.
+  - Units are SI. Angles are crank degrees: centrelines from the overlap TDC, free angles in the cycle.
+- `spec.intake.`: `model`, `throttleKind`, `throttleArea`, `trumpets`, `plenumVolume`, `runnerLength`, `runnerBore`, `runnerLength2`, `runnerSwitch`, `boxVolume`, `snorkelLength`, `snorkelBore`.
+**Telemetry.**
+- `tel.valve.`: `inPhaseTarget`, `inPhase`, `exPhaseTarget`, `exPhase` (crank degrees from parked), `stage` (0 A, 1 B), `lift` (0–1), `active` (bits), `floating` (0/1), `floatSpeed` (rad/s), `ivo`, `ivc`, `evo`, `evc`, `overlap` (degrees), `benchLift[16]` (m), `benchIntake[16]`, `benchExhaust[16]` (m^3/s at 28 inH2O).
+- `tel.intake.`: `manifold` (Pa absolute), `ripple` (Pa peak to peak over a cycle), `runnerLength` (m), `box` (Pa over the air).
+**Scope:** `liftIntake` and `liftExhaust` are filled from the lab's real profile, 0–1 of the valve's largest lift. `portIntake` is the integrator's; it already shows the runner model's pressure.
+**Wanted outside my paths:**
+- Extras should take `intk.sound` in place of its own box filter at `intake.model` 1 (wave 2 or the lead).
+- `Ecu::liftCommand()` should return -1 when it has no command; I read 0 or less as "none" until then.
+- A change of `valve.model` or `intake.model` while running should go under the fade; it is taken on the next tick, with a click.
+**Known gaps:**
+- Test 12 is not met.
+- The float effect is mild.
+- ITB idle air uses the reference's bypass shared among the runners. No idle control was tuned for it.

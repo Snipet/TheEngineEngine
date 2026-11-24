@@ -36,10 +36,13 @@ namespace tee::ui::exhaust
         static constexpr const char* sides = "exhaust.sides";           // 0 the layout's
         static constexpr const char* mainLen = "exhaust.mainLen";       // [2]
         static constexpr const char* converter = "exhaust.converter";   // [2] none, standard, high-flow
-        static constexpr const char* crossover = "exhaust.crossover";   // none, H, X (a toggle: X; the old dial: H)
+        static constexpr const char* crossKind = "exhaust.crossKind";   // none, H, X (card G's)
+        static constexpr const char* crossover = "exhaust.crossover";   // without crossKind: the reference's dial (an H
+                                                                        // when open), or the demo's switch (an X)
         static constexpr const char* crossAt = "exhaust.crossAt";
         static constexpr const char* resonator = "exhaust.resonator";   // [2] none, quarter-wave, Helmholtz, bottle
-        static constexpr const char* muffler = "exhaust.muffler";       // [2] none, straight, chambered, three-pass
+        static constexpr const char* mufKind = "exhaust.mufKind";       // [2] none, straight, chambered, three-pass
+        static constexpr const char* muffler = "exhaust.muffler";       // [2] its name before card G's rename
         static constexpr const char* mufLen = "exhaust.mufLen";         // [2]
         static constexpr const char* bypass = "exhaust.bypass";         // [2] none, shut, open, by speed, by the ECU
         static constexpr const char* tailLen = "exhaust.tailLen";       // [2]
@@ -58,6 +61,8 @@ namespace tee::ui::exhaust
         int layout = 12;                    // sim/core/layouts.fm's index
         int ports = 8;
         std::array<int, kPorts> bank{};     // each port's bank, 0 or 1
+        std::array<float, kPorts> fire{};   // where each port's cylinder fires, degrees after the first's (layouts.fm)
+        float cycle = 720.0f;               // degrees a cycle (a rotary's face: 1080)
         std::array<float, kPorts> primLen{};   // m, as built (the spread included)
         std::array<int, kPorts> portTo{};   // its collector, -1 an open stack
         int sides = 2;

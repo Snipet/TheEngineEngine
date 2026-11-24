@@ -125,6 +125,9 @@ namespace tee
         std::string error() const;    // why the newest request has no curve ("" : none)
         // Moves when a curve, the error or busy changes.
         std::uint64_t revision() const noexcept { return revision_.load(); }
+        // The curves made for the newest request so far, coarse and partial ones with the refined: take() gives only
+        // the newest of them, so a fast machine may hand out the refined one first; this counts them all.
+        int curvesMade() const noexcept { return made_.load(); }
 
         int threads() const noexcept { return threads_; }
         const PredictOptions& options() const noexcept { return options_; }
@@ -147,6 +150,7 @@ namespace tee
         std::atomic<bool> busy_{false};
         std::atomic<double> progress_{0.0};
         std::atomic<std::uint64_t> revision_{0};
+        std::atomic<int> made_{0};
         std::list<PredictCurve> cache_;   // newest first
         bool ready_ = false;
         PredictCurve done_;

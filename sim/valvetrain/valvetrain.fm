@@ -15,7 +15,8 @@
 // rotary keeps the reference's ports whatever the model.
 //
 // The model is taken where the events are made (events: at configure, under the fade, and when the CAM dial or the
-// bore moves); the lab's other fields are taken on the tick after their section's rev moves (apply).
+// bore moves), or on the next tick when it is asked between configures; the lab's other fields are taken on the tick
+// after their section's rev moves (apply).
 //
 //   smCam, lastCam          the dial as heard, and as the events were last made (Engine glides smCam every 16 samples
 //                           and calls events when it moved by 0.0005)
@@ -69,6 +70,7 @@ module Valvetrain
         nCyl = n;
         rotary = rotaryIn;
         cycNow = cyc;
+        boreNow = bore;
         const float c = smCam;
         lastCam = c;
         const float ap = 0.785398f * bore * bore;
@@ -105,7 +107,7 @@ module Valvetrain
         }
         // the lab: taken here, where the engine makes its events (configure, under the fade)
         const int want = haveSpec != 0 && rotaryIn == 0 && spec->model == 1 ? 1 : 0;
-        if (want == 1 && (model == 0 || bore != boreNow || n != lab.nCyl))
+        if (want == 1 && (model == 0 || bore != lab.bore || n != lab.nCyl))
         {
             lab.setup(bore, n, cyc);
             if (model == 0)
@@ -113,7 +115,6 @@ module Valvetrain
             lab.apply(spec, 1);
         }
         model = want;
-        boreNow = bore;
         if (model == 1)
             place();
     }
@@ -144,6 +145,15 @@ module Valvetrain
                    float liftCmd)
     {
         const float liftT = liftCmd > 0.0f ? liftCmd : -1.0f;
+        // (a model asked between configures, as a build that keeps the layout and the size does: taken here)
+        if (model == 0 && haveSpec != 0 && spec->model == 1 && rotary == 0 && nCyl > 0)
+        {
+            lab.setup(boreNow, nCyl, cycNow);
+            lab.reset();
+            lab.apply(spec, 1);
+            model = 1;
+            place();
+        }
         inTarget = inT;
         exTarget = exT;
         if (model == 0)

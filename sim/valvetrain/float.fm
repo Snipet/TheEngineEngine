@@ -14,9 +14,9 @@
 // spring (Formula 1's) never floats here. A valve's own mass left at 0 is a steel valve's for its diameter, 0.10 kg at
 // 49 mm (a small-block's intake) as the diameter's 2.5th power.
 //
-// Beyond it (s = (w / w_float)^2 - 1 above 0) the valve lands late and bounces: a little area for some degrees after it
-// should be shut, a tail on the area table (AreaTable::tail): bounces of a fifth of the lift's area falling away over
-// 10 + 30 s degrees (at most 40), as high as 0.15 s of the most area (at most 0.3). The cylinder loses its charge back
+// Beyond it (s = (w / w_float)^2 - 1 above 0) the valve lands late and bounces: area for some degrees after it should
+// be shut, a tail on the area table (AreaTable::tail): two bounces, the second a third of the first, over 10 + 60 s
+// degrees (at most 60), the first as high as 0.6 s of the most area (at most 0.4). The cylinder loses its charge back
 // into the runner and the overlap draws exhaust back: the power falls over, from the gas model itself. Each landing is
 // a clatter for the sound (clatter, 0 to 1). No damage. The bounce's size and length are judgement.
 #pragma once
@@ -87,9 +87,9 @@ module ValveFloat
             t->noTail();
             return;
         }
-        t->tailDeg = fminf(10.0f + 30.0f * sev, 40.0f);
+        t->tailDeg = fminf(10.0f + 60.0f * sev, 60.0f);
         t->tailK = (float)VT_TAIL / t->tailDeg;
-        const float amp = fminf(0.15f * sev, 0.3f) * t->peak;
+        const float amp = fminf(0.6f * sev, 0.4f) * t->peak;
         for (int i = 0; i <= VT_TAIL; ++i)
         {
             // two bounces, each a half sine, the second a third of the first

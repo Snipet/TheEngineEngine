@@ -43,16 +43,16 @@ namespace
     Sweep run(double scale, int steps, int chamber, double from, double to, double by)
     {
         Rig rig;
-        for (const char* f : {"spec.headerLen", "spec.diffuserLen", "spec.bellyLen", "spec.baffleLen", "spec.stingerLen"})
+        for (const char* f : {"spec.tsHeaderLen", "spec.tsDiffuserLen", "spec.tsBellyLen", "spec.tsBaffleLen", "spec.tsStingerLen"})
             rig.set(f, rig.get(f) * scale);
-        rig.set("spec.coneSteps", steps);
-        rig.set("spec.chamber", chamber < 0 ? 0 : chamber);
+        rig.set("spec.tsConeSteps", steps);
+        rig.set("spec.tsChamber", chamber < 0 ? 0 : chamber);
         rig.build();
         if (chamber < 0)
-            rig.set("ch.anechoic", 1);
+            rig.set("eng.ch[0].anechoic", 1);
         Sweep s;
-        s.tuned = rig.get("ch.tuned");
-        s.c = rig.get("ch.c");
+        s.tuned = rig.get("eng.ch[0].tuned");
+        s.c = rig.get("eng.ch[0].c");
         for (double rpm = from; rpm <= to + 1; rpm += by)
         {
             rig.run(rpm, 1.0, 1.0, 50);
