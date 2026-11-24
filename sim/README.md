@@ -121,7 +121,7 @@ centre, for every layout, custom ones too); `boost.pressure` (Pa over the air); 
 Card D's, appended to `tel.engine` (`Engine::mechanicsTelemetry`, every engine unless said): `torque` (the brake
 torque: the gases' less friction and a supercharger's drag over some 0.1 s; on the dyno, the absorber's mean),
 `gasTorque` (the gases', its 20 ms mean), `firing` (Hz: firings a second, every cylinder's), `power`, `imep` (gross), `pmep`, `fmep`, `bmep` (4 pi torque / displacement), `veManifold`,
-`veAir` (the fresh charge at intake closing over the swept volume at those densities), `peakPressure`, `pistonSpeed`,
+`veAir` (the fresh charge at intake closing over the swept volume at those densities; each bounded to 0 to 4, and `veManifold` held at its last value while the manifold reads below 5 kPa, where its density is no reference), `peakPressure`, `pistonSpeed`,
 `ripple` (the crank's speed's spread over the last cycle), `dynoTorque`, `dynoSpeed`, `shake1`, `shake2` (N), `rock1`,
 `rock2` (N m: a reference layout's cylinders taken upright); a custom engine's only: `inertiaTorque`; `cylinders`; `layoutRefused` (1: a custom geometry was refused); `oilTemperature` (K); and the arrays (readable by path, not
 gauges) `firingAngle[c]` (degrees after cylinder 1's at which it fires), `cylPeak[c]`, `cylPeakAngle[c]`.
@@ -379,7 +379,7 @@ controls, CarTel* carTel)` (Engine passes `&spec.car`, `&spec.env`, `&ctl`, `&te
 `spec.car.model` 1); `void followLever(int drive, int lever)` at a key
 and in `drive16`; `float drive16(int drive, float d16, float jEngine, float peak, float gearTorque, float kg, float
 redRpm, float bike, float clutch, float brake, int lever, int buttons, float gas, float rpm, float idleRpm, float
-rpmAvg)` every 16 when driven; `float step(float w, float tq, float dt)` and `float road(float kSq)` each sample when
+rpmAvg)` every 16 when driven; `float step(float w, float tq, float dt, float jCrank)` (jCrank: the crank's inertia at this sample, `mm.jNow` for a custom engine, whose inertia torque is in `tq`; 0: the one `drive16` was given. Model 1 steps the crank with it; model 0 ignores it) and `float road(float kSq)` each sample when
 driven; `kmh()`, `moving()`. With `spec.car.model` 1 (card I) `drive16` hands everything to its `Vehicle m1`
 (`vehicle/vehicle.fm`, docs/models/vehicle.md): it copies spec.car and spec.env into `m1.spec`, `m1.env` when their revs
 move, reads ctl's counters, buttons, mode, strip and dyno itself, writes its fields of tel.car, and keeps `v`, `gear`,

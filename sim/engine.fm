@@ -1121,12 +1121,13 @@ module Engine
             if (set.drive == 0)
                 crank.omega = mm.advance(crank.omega, torque - tf - tsc - (dynoOn != 0 ? tqAbs : mech.tl) + mech.ts, dt, sn, cs);
             else
-                crank.omega = car.step(crank.omega, torque + mm.torque(sn, cs, crank.omega) - tf - tsc + mech.ts, dt);
+                crank.omega = car.step(crank.omega, torque + mm.torque(sn, cs, crank.omega) - tf - tsc + mech.ts, dt,
+                                       mm.jNow);     // (the crank's inertia at this angle, this sample's or the last's)
         }
         else if (set.drive == 0)
             crank.bench(torque, tf, tsc, dynoOn != 0 ? tqAbs : mech.tl, mech.ts, dynoOn != 0 ? jFly : mech.inertia(set.inertia, set.load), dt);
         else
-            crank.omega = car.step(crank.omega, torque - tf - tsc + mech.ts, dt);      // (the car is the load: the load dial rests)
+            crank.omega = car.step(crank.omega, torque - tf - tsc + mech.ts, dt, 0.0f);   // (the car is the load: the load dial rests)
         crank.ripple(torque);
         // what it reports (no effect on the sound): the brake torque's mean, the speed's spread over a cycle
         tqBrake += (torque - tf - tsc - tqBrake) * 1.0e-4f;

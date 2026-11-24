@@ -55,7 +55,7 @@ With card T's two-stroke the stage draws each cylinder's pipe instead of the fou
   cones diverge and converge.
 - **The pulse:** the pulse and its returning wave ride cylinder 1's pipe.
 - **The exhaust port over a turn:** a plot under the pipes, with the port's opening and closing marked (port open
-  `tsExhaustDur` about bottom dead centre). The baffle's plugging pulse should arrive just before CLOSES. The plot
+  `tsExhaustDur` about bottom dead centre); OPENS and CLOSES sit above the plot's frame, clear of the trace. The baffle's plugging pulse should arrive just before CLOSES. The plot
   reads card T's port pressure (`tsPortPressure`, asked), else U1's `portExhaust`.
 - **ON THE PIPE NEAR n rpm, DERIVED:** card T's returning wave (`TwoStrokePipe::tunedRpm`, mirroring PipeTest.cpp's
   `predicted()`: c (exhaust duration - 25) / (12 L), L to the baffle cone's middle as chamber.fm's `tuned`, c as

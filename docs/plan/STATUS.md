@@ -10,7 +10,7 @@
 | J1: interface kit | **landed 12:04** | cloud session | 11:32 | the panel code ported (36 files, provenance in `ui/kit/SEED.tsv`), `RefPanel`, shaders compiled for Metal and SPIR-V; 29 headless tests; no shader drawn yet (no GPU path ran) |
 | K3: the split | **landed**: K3a 12:30, K3b 13:20 (handoff written by the lead 13:43) | (finished) | 11:55 | every module of 02-contracts.md §6 carved; `sim/README.md` is the seam document; verified by the lead at 45474be: 272 of 272 tests, the null test identical to the bit, the cost 1.03 of the reference |
 | C: host and tools | second slice landed; follow-ups as they come | cloud session `session_01LFAGgSy2V7eFxcA5Jr8M6s` | 11:55 | the fast dyno (`PredictService`: a V8's curve in 0.4 s, refined in 0.6); one `tee::Build`; array elements as telemetry names; `bakeMaps` carried; Windows' test crash fixed (389 of 390 there); **the guard clamps and counts a finite overshoot and cranks back after a true fault** (233c730); validation measures torque, power and port temperature. Open: 48 kHz for the ribbon; the large diesel's negative torques on a sweep; targets moved to the builds they are true of |
-| I: vehicle | **integrated 14:06** (`docs/handoffs/i-vehicle.md`) | local agent (finished) | 12:00 | behind `car.model` (0 the reference to the bit, 1 the new vehicle); 37 tests: a launch that spins in first and hooks up, a dog box's cut and blip with the ECU, a coast-down within 0.01 % of the analytic one, a stall; quarter miles within 8 % of the rule of thumb (front-drive 1.6: 17.25 s at 80 mph; rear-drive V8: 14.63 s at 103; all-wheel-drive turbo six: 12.07 s at 121); cost about 0.04 R. Waits on D: the env fields (it runs on dry asphalt at 1.2 kg/m^3 meanwhile), the chassis dyno as a driven mode |
+| I: vehicle | **integrated 14:06**; **X-007 fixed at its cause 16:14** (f9e26f1; `docs/handoffs/i-vehicle.md`) | local agent (finished 16:14) | 12:00 | behind `car.model` (0 the reference to the bit, 1 the new vehicle); 37 tests: a launch that spins in first and hooks up, a dog box's cut and blip with the ECU, a coast-down within 0.01 % of the analytic one, a stall; quarter miles within 8 % of the rule of thumb (front-drive 1.6: 17.25 s at 80 mph; rear-drive V8: 14.63 s at 103; all-wheel-drive turbo six: 12.07 s at 121); cost about 0.04 R. Waits on D: the env fields (it runs on dry asphalt at 1.2 kg/m^3 meanwhile), the chassis dyno as a driven mode |
 | F: forced induction | **integrated 14:33, corrected 14:50** (`docs/handoffs/f-boost.md`), two things open | local agent (finished) | 12:00 | behind `boost.model`; 30 tests, all on the dyno with the **matched** turbo: a 2 L four makes 69 kPa at 3500 rpm and 68 at 5500 (the gate's spring is 70), the shaft at 104,000 to 106,000 rpm, 17.3 bar BMEP against 8.9 without; a Roots blower 29 kPa for 7.0 N m off the crank; a chop from 94 kPa surges without a blow-off valve and not with one. Its "cool port gas" was its own misreading (the bench under `holdSpeed` carries no load). **Open**: the housing's hook-up with G's network (a stand-in feeds it); **over budget**: 0.24 R against 0.12 R (Q has it) |
 | E: valvetrain and induction | **integrated 15:00** (`docs/handoffs/e-valvetrain-intake.md`); the runner's ram, the float and the cost running | local agent (resumed 15:02) | 12:00 | behind `valve.model` and `intake.model`; 21 tests on the engine dyno: advancing a 280-degree cam gives +13.8 % torque at 1500 rpm on the V8 and moves the peak 240 rpm; two stages cross at 5500 with no dip; deactivation raises the manifold from 46 to 70 kPa; ITBs radiate 31 dB over a plenum's snorkel. **Open**: the runner's tuned frequency is right at 0.75 m and 27 % low at 0.45 m, and VE tops out near 0.9 (no ram); float is too mild; cost +0.03 to +0.07 R of 0.05. **Breathing targets missed**: a 6.2 L V8 257 kW (300 to 330), a litre superbike four 59 kW at 13,500 (125 to 145): mostly friction at piston speed (D) |
 | H: combustion and ECU | **on the branch 15:55** (five fixes that had sat unpushed for an hour; verified on origin by the lead); handed off, resumable | local agent (finished 16:00) | 12:00 | cold start X-003 (b09a0a6: the V8 starts at 253 K in 0.35 s), idle (8096b73), traction never stalls (3649de4), a bang capped at 30 kPa, X-006 (3d00883), the full burn with Woschni walls and the spark at the half-burn (f8be3c8: default V8 +16 to 26 %, 12.6 bar; superbike 81 to 111 kW at 13,500 rpm). Open: idle manifold 21 to 22 kPa (25 to 50 wanted); port gas hotter (1433 K); two expected failures. Earlier: with `ecu.model` 1 the default build idles at 700 rpm within 20, a V8 with a mild or medium cam at 700 or 835, the large diesel at 710 within 10. Open: X-003 (no start at 253 K with both models on); the kept share becomes a combustion efficiency when `fuel.model` 1 implies D's Woschni walls; test 10 |
@@ -36,6 +36,37 @@
 
 ## Landed
 
+- **16:14 X-007 fixed at its cause** (card I, f9e26f1, checked on origin): the car stepped the crank with the
+  flywheel dial's inertia while the engine's torque carried the moving masses' inertia torque, which made energy
+  (a heavy piston on a light flywheel ran away to 8809 rad/s); and a converter's torque could overshoot in one
+  sample. Property tests hold both (`vehicle.passive`, `vehicle.passive.engine`); the automatic no longer hunts
+  1-2-1 on spinning tyres. D's guard stays as the net. Open ends: X closes it on its own reduction; the motorcycle's
+  crank step takes no `jCrank` yet (B2).
+- **16:11 to 16:13 calibration's first measurements** (both on the branch): N1's ledger (`scripts/ledger.py`,
+  3fa490a): the tuned four-valves trap 0.71 to 0.90 of their air where their kind traps 1.0 to 1.1, the mild
+  economy four 0.98 to 1.06 and still rising at its limiter; gross IMEP per unit of air is the same on all three:
+  pattern 1 is in the breathing. N2 (`docs/measurements/calibration/boost/backpressure.md`, 8575568): the 2.0 L
+  turbo four's cylinder exhausts at 0.61 to 0.87 of its intake port's pressure while its turbine's housing stands
+  at 0.98 to 1.32 of the plenum (the stand-in hands no pressure back): PMEP negative to 5000 rpm. G's housing
+  wiring is the fix; G was interrupted at 16:10 and told to push at once. With e9a9748 that engine's torque is
+  already in range (383 to 387 N m for 350 to 400); its power is not (247 kW for 155 to 230).
+- 16:11 D: `tel.engine.veManifold` fixed (a4ca362); the ITB intake's manifold reading goes below zero absolute
+  after a limiter lift (E's module: N1 has it). 16:12 U1: settings labels in full, the status line cut at words,
+  LSN, one bike outline for CAR and DRIVE (b743f1a). 16:13 U2: amber geometry warnings in ENGINE's inspector
+  (d2500aa).
+- **16:09 decided: a QUALITY setting** (Full, 96 kHz inside, the default; Economy, 48 kHz inside: 0.49 of the cost,
+  torque within 1.2 %, the top octave lost). Q's ceiling for a twin-turbo V8 with a dual X: about 1.49 R today, 1.40
+  with every exact change (56 % of the owner's core if R is 40 % there, 42 % if 30 %: under 60 with no margin), 1.27
+  with the valves in two passes (waits for the owner's ears). Exact work cannot make the target certain; Economy
+  can (about 0.7 R). C builds it into `SimHost`, B stores it, U1 shows it; it ships once C has explained why the
+  48 kHz comparison fails on macOS alone (0.116 against 0.05). Q also: the pipes as arrays are exact and save 3 to
+  8 % on 8 to 12 cylinders (not the 8 to 12 estimated), waiting for G's wiring; the turbo's machine costs about
+  0.17 R (not 0.24).
+- 16:09 decided: the rotary gets its own losses under `fuel.model` 1 (D): the reference's rotary is about 1.3
+  times strong before any boost (18 bar BMEP at 70 kPa for a real 14), and the turbo is matched on a four-stroke's
+  air, half a rotary's (N2). Three separate terms with sources, checked at two points (boosted and not), no
+  factor fitted to a number. D's guard: a diverged engine is put at rest, restarted and flags FLAG_FAULT (C and B
+  show it); ENGINE's inspector will warn of geometry no engine has (U2). The steward's help sweep: 243 help texts.
 - **16:06 the first finished CI job on every platform**: Linux 593 of 596 and Windows 593 of 596 (both at 08ae4f8),
   macOS 594 of 598 (6bbc346). The same three whole-program tests fail on all three, with the same numbers to the
   digit on Linux and Windows (small-four and turbo-six with every switch on: no cold start, X-003, and steps of 18

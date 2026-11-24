@@ -30,5 +30,6 @@ believed until it holds that way. A figure measured otherwise is marked **"one r
 - [q3-q4-changes.md](q3-q4-changes.md): the changes made and proposed, with their numbers.
 - [q5-design-note.md](q5-design-note.md): parallel parts, the pipes as arrays, 48 kHz inside.
 - [q-rule.md](q-rule.md): the rule for changes made for speed.
+- [q6-all-models.md](q6-all-models.md): every landed model on, the typical build against the 1.6 R budget.
 - `proto/`: patches for modules whose owners have not landed (`duct-lanes.patch`: the pipes as arrays, G's).
 - `tools/`: qbench, the region benchmark (`par/`).

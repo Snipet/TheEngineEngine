@@ -25,6 +25,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <vector>
 
 namespace tee::ui::engine
 {
@@ -172,4 +173,17 @@ namespace tee::ui::engine
         double compression = kNaN;
     };
     Derived derive(const Layout& l, const Cylinder& c, double limiter);
+
+    // Geometry no engine has (the rule the lead and package D settled: the engine survives it, the interface warns):
+    // each warning in words, and the fields it concerns. Derived from the build, never a block on a value.
+    //   a piston heavier than about 1500 kg/m^3 x bore^3 (about twice a real one's)
+    //   stroke / bore outside 0.5 to 2 (no production engine is so far over- or under-square)
+    //   a mean piston speed at the limiter over 30 m/s (past any race engine's)
+    //   rod / stroke under 1.4 (shorter than any production engine's)
+    struct Warning
+    {
+        std::string text;
+        std::vector<EF> fields;
+    };
+    std::vector<Warning> geometryWarnings(const FieldDoc& doc, const Layout& l, const Cylinder& c, const Derived& d);
 }
