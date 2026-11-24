@@ -60,6 +60,9 @@ module Boost
     float thrSlow;      // the throttle a tenth of a second behind
     float turbo;        // this sample's sound
     int model;          // spec.boost.model: 0 the reference above, 1 the machine
+    BoostSpec* spec;    // the Spec's section, from applyMachine (haveSpec 1): read every 16 samples for heatSettle
+    int haveSpec;
+    int seenSettle;     // spec.boost.heatSettle as last acted on
     BoostMachine mach;
     int mapRev;         // the map's lines last copied to the Scope
     float crankTorque;  // N m the machine takes from the crank (model 1), as of the last sample
@@ -67,6 +70,8 @@ module Boost
     void setup(float rateIn, Noise* noise)
     {
         mach.setup(rateIn, 0.002f, 7000.0f);   // (the engine's own rate: 96 kHz, or a lighter tier's)
+        haveSpec = 0;
+        seenSettle = 0;
         rate = rateIn;
         nz = noise;
         nScale = sqrtf(rate / 48000.0f);
@@ -266,6 +271,10 @@ module Boost
     void applyMachine(BoostSpec* s, float vd, float redRpm, float pAmb, float tAmb)
     {
         model = s->model;
+        if (haveSpec == 0)
+            seenSettle = s->heatSettle;
+        spec = s;
+        haveSpec = 1;
         mach.vd = vd;
         mach.redRpm = redRpm;
         mach.ambient(pAmb, tAmb);
@@ -375,6 +384,12 @@ module Boost
         mach.cmdNitrous = nitrousOn > 0.5f ? 1 : 0;
         mach.control(d16);
         crankTorque = mach.crankTorque;
+        // (card C's settle: at each press, the intercooler's core where the present flow holds it)
+        if (haveSpec != 0 && spec->heatSettle != seenSettle)
+        {
+            seenSettle = spec->heatSettle;
+            mach.settleCore();
+        }
     }
 
     // The vanes' position from the ECU's map (below 0: the machine's own loop), and purges counted (a press counter)
@@ -388,6 +403,13 @@ module Boost
     void airSpeed(float v)
     {
         mach.airSpeed = v;
+    }
+
+    // 1: on an engine test cell (MODE_DYNO_ENGINE with the absorber on): the cell's charge-air cooling holds the
+    // intercooler's core at the air's temperature (SAE J1349; machine.fm, the core)
+    void testCell(int on)
+    {
+        mach.cellHeld = on != 0 ? 1 : 0;
     }
 
     // tel.boost's card F fields (model 0: zeros, the shafts none). tCharge: the charge air's temperature as the engine
