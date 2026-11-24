@@ -5,7 +5,10 @@
 #include "Presets.h"
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
+#include <utility>
+#include <vector>
 #include <cstdio>
 
 using tee::test::core::Bench;
@@ -223,4 +226,44 @@ TEST_CASE("a package's model switch made while running waits for the fade, and i
     CHECK(held == 0.0);
     CHECK(after == 1.0);
     CHECK(b.tel("engine.state") == 2.0);
+}
+
+TEST_CASE("X-007: a diverging model never hangs the call or reads out of bounds; the engine is put at rest and says so", "[core][engine][guard]")
+{
+    // tee-fuzz's reduction: a custom single, 37 by 153 mm, an 18.4 kg piston, the new vehicle with an automatic, in neutral
+    Bench b("default");
+    std::string e;
+    for (const auto& [path, value] : std::vector<std::pair<const char*, double>>{
+             {"engine.custom", 1}, {"engine.layout", 0}, {"engine.bore", 0.0373}, {"engine.stroke", 0.1529},
+             {"engine.pistonMass", 18.42}, {"engine.flywheel", 0.244}, {"car.model", 1}, {"car.gearbox", 3}, {"env.temperature", 300}})
+        REQUIRE(b.player().setSpec(path, value, e));
+    b.ctl().mode = 1;
+    b.ctl().lever = 0;
+    b.ctl().throttle = 0.3f;
+    b.ctl().ignition = tee::EnginePlayer::kIgnitionStart;
+    b.play(3.0);
+    b.ctl().ignition = tee::EnginePlayer::kIgnitionOn;
+    b.play(1.0);
+    std::printf("X-007 after the start: state %g, %.0f rad/s, cylinders %g, refused %g\n", b.tel("engine.state"), b.tel("engine.speed"),
+                b.tel("engine.cylinders"), b.tel("engine.layoutRefused"));
+    b.ctl().throttle = 1.0f;
+    int faults = 0;
+    double top = 0;
+    bool finite = true;
+    const auto t0 = std::chrono::steady_clock::now();
+    b.play(6.0, [&] {
+        faults += (int(b.tel("engine.flags")) & 4) != 0 ? 1 : 0;
+        const double w = b.tel("engine.speed");
+        finite = finite && std::isfinite(w);
+        top = std::max(top, w);
+        for (float s : b.left())
+            finite = finite && std::isfinite(s);
+    });
+    const double secs = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+    std::printf("X-007: 6 s played in %.2f s of wall time; calls flagged a fault: %d; the fastest the crank was seen %.0f rad/s; all finite %d\n",
+                secs, faults, top, finite ? 1 : 0);
+    CHECK(secs < 30.0);
+    CHECK(finite);
+    CHECK(top < 20000.0);
+    CHECK(std::isfinite(b.tel("engine.speed")));
 }

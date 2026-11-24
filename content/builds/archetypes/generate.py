@@ -200,6 +200,7 @@ arch(slug="supercharged-v8-62", runner=0.3, name="Supercharged 6.2 L V8", geo="r
      cam=(270, 213, 12.6, 113, 270, 220, 12.4, 118), train="Pushrod", redline=6200, idle=700,
      boost=dict(kind="Supercharger", charger="Twin-screw", target=0.62, scDisplacement=0.0019),
      friction="Roller", grade="Premium (91)", car="super-coupe", timing="Chain", blowerDrive="Belt",
+     limiter="Soft",
      notes="The 6.2 L pushrod V8 of 103.25 x 92 mm (6162 cc) at 9.1:1 under a 1.9 L positive-displacement blower at "
            "some 0.6 bar (the LSA kind: 415 kW at 6100 rpm, 746 N m at 3800; gmauthority.com, a community spec "
            "table for the compression). In a heavy six-speed coupe.")
