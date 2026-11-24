@@ -809,6 +809,11 @@ module Engine
         {
             const int m1 = spec.car.model != 0 ? 1 : 0;
             const float bShare = boost.boost / fmaxf(boost.maxB, 0.01f);
+            // (boost.model 1: card F's gates, the most open of them, and its kind; else the reference turbo's, open as its
+            // boost reaches its most)
+            const int bm1 = spec.boost.model != 0 && boost.mach.active != 0 ? 1 : 0;
+            const float gateNow = bm1 != 0 ? fmaxf(fmaxf(boost.mach.telGate[0], boost.mach.telGate[1]), fmaxf(boost.mach.telGate[2], boost.mach.telGate[3]))
+                                           : fminf(fmaxf((bShare - 0.95f) * 20.0f, 0.0f), 1.0f);
             ex.control16(d16, ctl.ignition, ecu.state, crank.omega * 0.15915494f, heat.tCool, set.drive != 0 ? 1 : 0,
                          m1 != 0 ? spec.car.gearbox : 0, car.truck, car.gear,
                          m1 != 0 ? crank.omega - car.m1.slipC : car.wG,
@@ -816,7 +821,7 @@ module Engine
                          m1 != 0 ? car.m1.box.fd : car.finalDrive,
                          m1 != 0 ? (float)car.m1.v / fmaxf(car.m1.radius, 0.05f) * car.m1.box.fd : car.wW * car.finalDrive,
                          tqBrake, peakTorque(), m1 != 0 ? car.m1.engage * car.m1.box.robot : car.engage * car.robot,
-                         aspUse, bShare, fminf(fmaxf((bShare - 0.95f) * 20.0f, 0.0f), 1.0f), 0, exh.mdot / fmaxf(mRef, 1.0e-6f),
+                         aspUse, bShare, gateNow, bm1 != 0 ? spec.boost.gate : 0, exh.mdot / fmaxf(mRef, 1.0e-6f),
                          lay.n, lay.cyc, vt.clatter, vTotal, fuelUse);
         }
     }

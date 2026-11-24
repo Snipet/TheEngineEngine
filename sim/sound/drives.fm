@@ -136,7 +136,9 @@ module DriveVoice
         // a supercharger's drive
         const float bb = aBlowBelt.next();
         const float bg = aBlowGear.next();
-        blower = bb * blowHiss.tick(nScale * n);
+        blower = 0.0f;
+        if (bb != 0.0f)
+            blower = bb * blowHiss.tick(nScale * n);
         if (bg != 0.0f)
             blower += bg * (1.0f + 0.12f * sn->at(crank.ph)) * spur(crank.mesh(40.0f));
     }

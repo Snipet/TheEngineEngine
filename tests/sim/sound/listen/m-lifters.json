@@ -1,0 +1,55 @@
+{
+ "format": "tee-engine-scenario/1",
+ "name": "m-lifters",
+ "description": "Idle on the bench: hydraulic, solid lifters from 6 s, wide lash from 11 s, 4000 rpm from 16 s.",
+ "seconds": 20,
+ "events": [
+  {
+   "t": 0.0,
+   "spec": {
+    "sound.view": 3,
+    "voices.model": 1
+   },
+   "ctl": {
+    "mode": 0,
+    "lever": 0,
+    "clutch": 0,
+    "brake": 0,
+    "throttle": 0,
+    "ignition": 1
+   }
+  },
+  {
+   "t": 0.25,
+   "ctl": {
+    "ignition": 2
+   }
+  },
+  {
+   "t": 2.0,
+   "ctl": {
+    "ignition": 1
+   }
+  },
+  {
+   "t": 6.0,
+   "spec": {
+    "voices.lifters": 1
+   },
+   "note": "solid lifters, 0.25 mm lash"
+  },
+  {
+   "t": 11.0,
+   "spec": {
+    "voices.lash": 0.0005
+   },
+   "note": "0.5 mm lash"
+  },
+  {
+   "t": 16.0,
+   "ctl": {
+    "holdSpeed": 420
+   }
+  }
+ ]
+}

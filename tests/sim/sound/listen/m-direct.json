@@ -1,0 +1,42 @@
+{
+ "format": "tee-engine-scenario/1",
+ "name": "m-direct",
+ "description": "Idle on the bench: port injection, then direct from 6 s.",
+ "seconds": 11,
+ "events": [
+  {
+   "t": 0.0,
+   "spec": {
+    "sound.view": 3,
+    "voices.model": 1
+   },
+   "ctl": {
+    "mode": 0,
+    "lever": 0,
+    "clutch": 0,
+    "brake": 0,
+    "throttle": 0,
+    "ignition": 1
+   }
+  },
+  {
+   "t": 0.25,
+   "ctl": {
+    "ignition": 2
+   }
+  },
+  {
+   "t": 2.0,
+   "ctl": {
+    "ignition": 1
+   }
+  },
+  {
+   "t": 6.0,
+   "spec": {
+    "voices.injection": 1
+   },
+   "note": "direct injection: the injectors' tick and the cam's pump"
+  }
+ ]
+}

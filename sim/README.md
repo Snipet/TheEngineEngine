@@ -38,6 +38,7 @@ its place and its default that does nothing) has added the custom engine, the en
 | `ecu/ecu.fm` | `Ecu` | H | the state, the speed it goes by, idle and redline, the driver, idle valve, trim, limiter, cuts, stall |
 | `vehicle/car.fm` | `Car` | I | clutch, gearbox, driveline, tyres, the road; the shifter and paddles; the road's sound |
 | `sound/extras.fm` | `Extras` | wave 2 | intake mouth, valvetrain, injectors, block, knock, clatter, pump, chain, starter |
+| `sound/voices.fm` and `sound/*.fm` | `Voices` (`GearVoice`, `DriveVoice`, `FanVoice`, `FuelVoice`, `ValveVoice`, `GateVoice`, `StarterVoice`) | M | spec.voices.model 1: gear whine and rattle, final drive, belts and cam drive, fan, fuel pump and direct injectors, lifters and float, wastegate, starter (docs/models/voices.md) |
 | `listen/listen.fm`, `listen/hall.fm` | `Listen`, `Hall` | wave 2 | views, distance, room, compressor, limiter, ceiling, resampler |
 | `lib/` | `OnePole`, `DcBlock`, `Biquad`, `Noise` | anyone (read) | filters; the reference's white noise |
 
@@ -167,7 +168,7 @@ engine's change at the fade's quiet, where `configure` runs; `Listen::block`; th
 `car.drive16(...)`; `ecu.control(...)` (true: the engine has come to rest, `crank.omega` 0); `exh.flowRate()`;
 `boost.control(...)`, `intk.pBox`, `intk.tAir`, `intk.control(...)`; `exh.gas(d16)`; the cylinders' wall heat transfer (`hA`);
 `exh.heatUp(...)`; `pipes()` (`exh.pipes`, `intk.runners`); `exh.flow16()`, `intk.flow16(...)`; `exh.bands()`; `mechanics16()` (the cycle's speed spread; a custom engine's inertia with the
-bench's load, its oil factor and its shaking at this speed; the dyno stopped when its mode ends).
+bench's load, its oil factor and its shaking at this speed; the dyno stopped when its mode ends); then, with `spec.voices.model` 1 or the voices gliding out, `ex.control16(...)` (card M's voices' inputs).
 
 **`configure`** (the engine for the layout and the size: at init, at a start while stopped, under the fade): the
 layout, the fuel and the induction taken; the heat stood (`heat.stood`); every size (each cylinder's displacement, the
@@ -350,9 +351,13 @@ pedal with a downshift's blip in it. `step`, `road` go to `m1`; `followLever` do
 reference's code, untouched (the null test).
 
 **Extras** (`sound/extras.fm`): the engine bay's sources; its own `Noise noise` (Boost draws from it too). `setup(float
-rate, float boxHz)`; `setClatter(int diesel, float swept)` and `pumpOn` in configure; the clicks at the cylinders'
-events; `void tick(float qThrottle, float dropRatio, float crankHz, float dpdt)` then `void tickStarter(float crankHz,
-float starterOn)` each sample; out: `intake`, `mech`, `block`, `comb`, `starter`.
+rate, float boxHz, VoicesSpec* voices)`; `setClatter(int diesel, float swept)` and `pumpOn` in configure; the clicks at
+the cylinders' events (`valveClick(amp, intake)`: 1 at intake closing, 0 at exhaust closing); `void tick(float qThrottle,
+float dropRatio, float crankHz, float dpdt)` then `void tickStarter(float crankHz, float starterOn)` each sample;
+`control16(...)` last in `Engine::control16`, only while `spec.voices.model` is 1 or the voices glide out (card M: the
+car's gearbox, the torque, the coolant, the key, the boost and gate, `vt.clatter`); `busy()` (the pump's prime, a fan,
+the starter running down); out: `intake`, `mech`, `block`, `comb`, `starter`, and with model 1 each voice's own:
+`vo.gearbox`, `vo.axle`, `vo.front`, `vo.head`, `vo.tank`, `vo.gateOut`, `vo.starter` (docs/models/voices.md).
 
 **Listen** (`listen/listen.fm`): `setup(float rate, float hostRate)`, `release()`, `resetPaths()`; per part `block(int
 v, float intakeK, float mechK, float distance, float room, float levelDb, int asp, float exTrim, float gainNorm, int
@@ -392,6 +397,8 @@ integrator's.
 | F (done) | `void Boost::applyMachine(BoostSpec* s, float vd, float redRpm, float pAmb, float tAmb)`; `void airSpeed(float v)`; `void exhaustStandIn(float m, float mt, float z)`; `void telemetry(BoostTel*)`, `void scope(Scope*)` | the machine sized to the engine; the car's m/s through the intercooler; this sample's cylinder gas (kg/s, kg K/s) into the housings until G's network calls them; tel.boost's and the Scope's card F fields | in configure and when spec.boost's rev moves; every 16 before control16; each sample after `exh.step`; after each call (the Scope while scopeOn); all but the last two only with boost.model 1 |
 | F, G | `int Boost::housingOf(int bank, int group, int banks)`, `float housing(int h, float drive, float admit, float tGas)`, `float downpipe(int side, float a, float z)`, `float gatePipe(int t, float a, float z)` | as docs/plan/integration-queue.md has them (stubs: -1, 0) | not yet: with exhaust.model or boost.model 1, the sequence `exh.read()`; cylinders; `exh.prepare()`; the housings, downpipes and gates; `exh.step(q)` goes in `sampleTick` step 4, in place of `exh.step(qe, np)`: G and F add it there together and tell the integrator |
 | G | `void Exhaust::popAt(int bank, float amplitude)`, `float gasTemperature(int bank)` | Pa; K (stubs: nothing; `tPort`). Named popAt: `Exhaust::pop` is its Pops | by Combustion (card H) |
+| M | `void Extras::control16(float d16, int ignition, int state, float crankHz, float coolant, int driven, int boxKind, int truck, int gear, float wIn, float ratioTotal, float fd, float wOut, float torque, float peak, float engaged, int asp, float boostShare, float gateOpen, int gateExternal, float flowShare, int cylinders, float cycleDeg, float clatter, float displacement, int diesel)` | s; ctl.ignition; ecu.state; Hz; K; 0 bench; `spec.car.gearbox` (model 0: 0); car.truck; -1 R, 0 N; rad/s at the gearbox's input; crank turns to the wheels' (0 in N); the final drive; rad/s of the propshaft; N m (tqBrake) and the engine's most (peakTorque()); the clutch 0 out to 1 in; aspUse; boost over its most; the gate's opening 0 to 1 (boost.model 1: card F's most open gate, else the reference turbo's at its most boost); `spec.boost.gate` with boost.model 1; exhaust mass flow over its most; lay.n, lay.cyc; vt.clatter; m^3; fuelUse | every 16, last, with spec.voices.model 1 (and 16 samples after it returns to 0, to glide out) |
+| M | `bool Extras::busy()` | the pump's prime, a fan or the starter running down | `audible()`, voices.model 1 (card D, with rendering from the ignition's rise) |
 
 The lead's fields, added by the integrator: `spec.env.pressure` (Pa), `.surface`, `.surfaceLeft` (-1 the same),
 `.grade` (rise over run), not read by the reference's engine; `scope.portIntake`, `scope.portExhaust` (cylinder 1's

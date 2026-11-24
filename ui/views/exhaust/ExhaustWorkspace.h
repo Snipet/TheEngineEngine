@@ -24,19 +24,30 @@ namespace tee::ui
         struct ExhaustNames
         {
             static constexpr const char* port = "exhaust.portTemperature";         // on the branch
-            static constexpr const char* collector = "exhaust.collectorTemperature";
-            static constexpr const char* tail = "exhaust.tailTemperature";
-            // each heat section's wall (sim/exhaust/heat2.fm tWall), in the gas's order
-            static constexpr const char* walls[7] = { "exhaust.wallPrimaries", "exhaust.wallCollectors",
-                                                      "exhaust.wallMerges",    "exhaust.wallMain",
-                                                      "exhaust.wallLink",      "exhaust.wallMufflers",
-                                                      "exhaust.wallTails" };
-            static constexpr const char* level[2] = { "exhaust.tailLevel[0]", "exhaust.tailLevel[1]" };   // 0..1 of full scale
+            // card G's tel.exhaust: by heat section (sim/exhaust/heat2.fm), in the gas's order: 0 primaries, 1 collectors'
+            // pipes, 2 second merges' pipes, 3 main pipes, 4 pipes after a crossover or resonator, 5 mufflers, 6 tails
+            static constexpr const char* collector = "exhaust.gasTemperature[1]";
+            static constexpr const char* tail = "exhaust.gasTemperature[6]";
+            static constexpr const char* walls[7] = { "exhaust.wallTemperature[0]", "exhaust.wallTemperature[1]",
+                                                      "exhaust.wallTemperature[2]", "exhaust.wallTemperature[3]",
+                                                      "exhaust.wallTemperature[4]", "exhaust.wallTemperature[5]",
+                                                      "exhaust.wallTemperature[6]" };
+            // the radiating ends: how many, each one's level (dB) and the pipe slot it ends (slots.fm's numbering)
+            static constexpr const char* ends = "exhaust.ends";
+            static constexpr const char* endLevel = "exhaust.endLevel";   // [24], "<name>[i]"
+            static constexpr const char* endSlot = "exhaust.endSlot";     // [24]
             static constexpr const char* valve[2] = { "exhaust.valve[0]", "exhaust.valve[1]" };           // 0 shut .. 1 open
-            static constexpr const char* pop = "exhaust.pop";          // 0..1, a bang at the tails (card H's account)
+            static constexpr const char* pop = "exhaust.flame";        // 1 while a bang burns near a hot tail
             static constexpr const char* flags = "engine.flags";       // on the branch: FLAG_FUEL_CUT = 2
             static constexpr const char* throttle = "engine.throttle"; // on the branch
-            static constexpr const char* scopePipe = "pipePressure";   // sim/spec/scope.fm, over cylinder 1's path
+            static constexpr const char* scopePipe = "pipePressure";   // K3's, the reference's (absolute or gauge)
+            // card G's Scope (exhaust.model 1): cylinder 1's path (gauge Pa, and each point's distance from the port),
+            // and every pipe slot's pressure at its two ends
+            static constexpr const char* pathPressure = "exhaustPressure";   // [64]
+            static constexpr const char* pathX = "exhaustX";                 // [64], m
+            static constexpr const char* ductUsed = "ductUsed";              // [84]
+            static constexpr const char* ductNear = "ductNear";              // [84], gauge Pa at the upstream end
+            static constexpr const char* ductFar = "ductFar";                // [84]
             static constexpr const char* ambient = "env.pressure";     // a field: the air outside
         };
     }

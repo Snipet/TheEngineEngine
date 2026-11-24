@@ -110,7 +110,10 @@ namespace tee::ui
             k.mix(ctx_.doc.revision()).mix(ctx_.selection.revision()).mix(ctx_.units.revision()).mix(slow_ ? 1 : 0);
             for (float v : shown_)
                 k.mix(v);
-            k.mix(static_cast<int>(shown_.size()));
+            k.mix(static_cast<int>(shown_.size())).mix(ducts_ ? 1 : 0);
+            if (ducts_)
+                for (int i = 0; i < kDucts; ++i)
+                    k.mix(ductNear_[static_cast<std::size_t>(i)]).mix(ductFar_[static_cast<std::size_t>(i)]);
             for (const double v : liveValues())
                 k.mix(static_cast<float>(v));
             return k.h;
@@ -189,6 +192,7 @@ namespace tee::ui
             drawHeader(c, p);
             drawPipes(c, p);
             drawParts(c, p);
+            drawDucts(c, p);
             drawPulse(c, p);
             drawReadouts(c, p);
             drawMarks(c, p);
@@ -237,7 +241,7 @@ namespace tee::ui
             if ((i = index("exhaust.muffler")) >= 0)
             {
                 title = "Muffler" + side(i);
-                return { at("exhaust.muffler", i), at("exhaust.mufSize", i), at("exhaust.mufLen", i), at("exhaust.bypass", i),
+                return { at("exhaust.mufKind", i), at("exhaust.mufSize", i), at("exhaust.mufLen", i), at("exhaust.bypass", i),
                          "exhaust.muffler" };
             }
             if ((i = index("exhaust.bypass")) >= 0)
@@ -253,7 +257,8 @@ namespace tee::ui
             if (sel == "exhaust.crossover")
             {
                 title = "Crossover";
-                return { "exhaust.crossover", "exhaust.crossAt", "exhaust.crossD", "exhaust.crossLen", "exhaust.postLen" };
+                return { "exhaust.crossKind", "exhaust.crossAt", "exhaust.crossD", "exhaust.crossLen", "exhaust.postLen",
+                         "exhaust.crossover" };
             }
             if (sel == "boost")
             {
@@ -288,9 +293,9 @@ namespace tee::ui
         }
         double pop() const
         {
-            const double v = ctx_.live.get(N::pop);
+            const double v = ctx_.live.get(N::pop);   // card G's flame: 1 while a bang burns near a hot tail
             if (std::isfinite(v))
-                return std::clamp(v, 0.0, 1.0);
+                return v > 0.5 ? 0.8 : 0.0;
             const double flags = ctx_.live.get(N::flags), th = ctx_.live.get(N::throttle);
             const bool cut = std::isfinite(flags) && (static_cast<int>(flags) & 2) != 0;   // FLAG_FUEL_CUT
             return cut && std::isfinite(th) && th < 0.05 ? 0.5 : 0.0;
@@ -347,36 +352,78 @@ namespace tee::ui
 
         void readScope()
         {
-            if (scopeHandle_ < 0 || ctx_.scope.generation() != scopeGen_ || history_.empty())
+            ScopeSource& sc = ctx_.scope;
+            if (scopeGen_ == sc.generation() && !history_.empty())
+                return;
+            scopeGen_ = sc.generation();
+            float buf[256];
+            int n = 0;
+            double ambient = 0.0;
+            // card G's path (gauge Pa, with each point's distance), else K3's pipePressure (absolute in the demo)
+            pathX_.clear();
+            if (const int h = sc.find(N::pathPressure); h >= 0 && (n = sc.read(h, buf, 256)) > 1)
             {
-                if (scopeHandle_ < 0)
-                    scopeHandle_ = ctx_.scope.find(N::scopePipe);
-                if (scopeHandle_ < 0)
-                    return;
-                float buf[256];
-                const int n = ctx_.scope.read(scopeHandle_, buf, 256);
-                scopeGen_ = ctx_.scope.generation();
-                if (n <= 1)
-                    return;
-                // over the air outside (the demo gives absolute pressures; the simulator's are over the air)
-                double ambient = fieldOr(ctx_.doc, N::ambient, -1, kAmbient);
+                float xs[256];
+                const int hx = sc.find(N::pathX);
+                if (hx >= 0 && sc.read(hx, xs, 256) == n && xs[n - 1] > xs[0])
+                    pathX_.assign(xs, xs + n);
+            }
+            else if (const int h2 = sc.find(N::scopePipe); h2 >= 0 && (n = sc.read(h2, buf, 256)) > 1)
+            {
+                ambient = fieldOr(ctx_.doc, N::ambient, -1, kAmbient);
                 double mean = 0;
                 for (int i = 0; i < n; ++i)
                     mean += buf[i];
-                mean /= n;
-                if (mean < ambient * 0.5)
+                if (mean / n < ambient * 0.5)
                     ambient = 0.0;
-                Snap snap;
-                snap.t = clock_;
-                snap.p.resize(static_cast<std::size_t>(n));
-                for (int i = 0; i < n; ++i)
-                    snap.p[static_cast<std::size_t>(i)] = static_cast<float>(buf[i] - ambient);
-                if (!history_.empty() && history_.back().p == snap.p)
-                    return;
-                history_.push_back(std::move(snap));
-                if (history_.size() > kHistory)
-                    history_.erase(history_.begin());
             }
+            else
+                n = 0;
+            // every pipe slot's pressure at its two ends (card G's)
+            ducts_ = false;
+            {
+                const int hu = sc.find(N::ductUsed), hn = sc.find(N::ductNear), hf = sc.find(N::ductFar);
+                if (hu >= 0 && hn >= 0 && hf >= 0 && sc.read(hu, ductUsed_.data(), kDucts) == kDucts
+                    && sc.read(hn, ductNear_.data(), kDucts) == kDucts && sc.read(hf, ductFar_.data(), kDucts) == kDucts)
+                    ducts_ = true;
+            }
+            if (n <= 1)
+                return;
+            Snap snap;
+            snap.t = clock_;
+            snap.p.resize(static_cast<std::size_t>(n));
+            for (int i = 0; i < n; ++i)
+                snap.p[static_cast<std::size_t>(i)] = static_cast<float>(buf[i] - ambient);
+            if (!history_.empty() && history_.back().p == snap.p)
+                return;
+            history_.push_back(std::move(snap));
+            if (history_.size() > kHistory)
+                history_.erase(history_.begin());
+        }
+
+        // A side's radiating ends' level (dB): the loudest of the ends whose pipe slot is that side's tail or tips.
+        double endDb(int side) const
+        {
+            const double ends = ctx_.live.get(N::ends);
+            if (!std::isfinite(ends))
+                return std::nan("");
+            const int base = 48 + side * 15;
+            double best = std::nan("");
+            for (int i = 0; i < std::min(24, static_cast<int>(ends)); ++i)
+            {
+                const std::string idx = "[" + std::to_string(i) + "]";
+                const double slot = ctx_.live.get(std::string(N::endSlot) + idx);
+                if (!std::isfinite(slot))
+                    continue;
+                const int sl = static_cast<int>(slot);
+                if (sl == base + 11 || sl == base + 12 || sl == base + 13)
+                {
+                    const double db = ctx_.live.get(std::string(N::endLevel) + idx);
+                    if (std::isfinite(db) && !(db <= best))
+                        best = db;
+                }
+            }
+            return best;
         }
 
         std::array<double, 15> liveValues() const
@@ -387,11 +434,11 @@ namespace tee::ui
             v[2] = ctx_.live.get(N::tail);
             for (int i = 0; i < 7; ++i)
                 v[static_cast<std::size_t>(3 + i)] = ctx_.live.get(N::walls[i]);
-            v[10] = ctx_.live.get(N::level[0]);
-            v[11] = ctx_.live.get(N::level[1]);
+            v[10] = endDb(0);
+            v[11] = endDb(1);
             v[12] = ctx_.live.get(N::valve[0]);
             v[13] = ctx_.live.get(N::valve[1]);
-            v[14] = 0;
+            v[14] = ctx_.live.get(N::pop);
             return v;
         }
 
@@ -507,32 +554,8 @@ namespace tee::ui
             {
                 const auto k = static_cast<std::size_t>(i);
                 const float y = g.portY[k];
-                std::vector<Point> pts{ { g.headX, y }, { g.primEnd[k], y } };
+                const std::vector<Point> pts = primaryPts(i);
                 const int to = b.portTo[k];
-                if (to >= 0)
-                {
-                    const auto ck = static_cast<std::size_t>(to);
-                    // each primary into its own place in the cone's mouth, in the order they come
-                    int n = 0, m = 0;
-                    for (int j = 0; j < b.ports; ++j)
-                        if (b.portTo[static_cast<std::size_t>(j)] == to)
-                        {
-                            if (g.portY[static_cast<std::size_t>(j)] < y)
-                                m += 1;
-                            n += 1;
-                        }
-                    const bool log = b.colVol[ck] > 0.0f;
-                    const float mouth = log ? g.colH[ck] - 18.0f : g.colH[ck] - 8.0f;
-                    const float off = n > 1 ? (static_cast<float>(m) / static_cast<float>(n - 1) - 0.5f) * mouth : 0.0f;
-                    const Point end{ g.colX[ck], log ? y : g.colY[ck] + off };
-                    if (std::fabs(end.y - y) < 0.5f)
-                        pts.push_back(end);
-                    else
-                    {
-                        const std::vector<Point> bend = sBendPts({ g.primEnd[k], y }, end);
-                        pts.insert(pts.end(), bend.begin() + 1, bend.end());
-                    }
-                }
                 pipeLine(c, pts, 6.0f, pipeFill(p, kPrim), edge);
                 if (to < 0)
                     drawStack(c, p, g.primEnd[k], y);
@@ -544,6 +567,42 @@ namespace tee::ui
                 const float tx = g.primEnd[k] + 34.0f, ty = g.portY[k] - 16.0f;
                 c.text(b.openStacks() && b.ports > 1 ? "OPEN STACKS, FRONT" : "OPEN STACK, FRONT", tx, ty, look::kCaps, p.text);
             }
+        }
+
+        // A primary's centreline: its straight run, then its bend into its own place in its collector's mouth.
+        std::vector<Point> primaryPts(int i) const
+        {
+            const ExhaustBuild& b = build_;
+            const Geo& g = geo_;
+            const auto k = static_cast<std::size_t>(i);
+            const float y = g.portY[k];
+            std::vector<Point> pts{ { g.headX, y }, { g.primEnd[k], y } };
+            const int to = b.portTo[k];
+            if (to >= 0)
+            {
+                const auto ck = static_cast<std::size_t>(to);
+                // each primary into its own place in the cone's mouth, in the order they come
+                int n = 0, m = 0;
+                for (int j = 0; j < b.ports; ++j)
+                    if (b.portTo[static_cast<std::size_t>(j)] == to)
+                    {
+                        if (g.portY[static_cast<std::size_t>(j)] < y)
+                            m += 1;
+                        n += 1;
+                    }
+                const bool log = b.colVol[ck] > 0.0f;
+                const float mouth = log ? g.colH[ck] - 18.0f : g.colH[ck] - 8.0f;
+                const float off = n > 1 ? (static_cast<float>(m) / static_cast<float>(n - 1) - 0.5f) * mouth : 0.0f;
+                const Point end{ g.colX[ck], log ? y : g.colY[ck] + off };
+                if (std::fabs(end.y - y) < 0.5f)
+                    pts.push_back(end);
+                else
+                {
+                    const std::vector<Point> bend = sBendPts({ g.primEnd[k], y }, end);
+                    pts.insert(pts.end(), bend.begin() + 1, bend.end());
+                }
+            }
+            return pts;
         }
 
         // One side's lane: the pipe through every column, the crossover's bends, the tips.
@@ -817,12 +876,17 @@ namespace tee::ui
             }
             else
                 radiating(c, p, ex, y);
-            const double lv = ctx_.live.get(N::level[s]);
+            // its level in dB (card G's endLevel), the bar 30 dB deep under the loudest end
+            const double db = endDb(s);
+            double loudest = db;
+            for (int o = 0; o < b.sides; ++o)
+                if (const double d = endDb(o); std::isfinite(d) && !(d <= loudest))
+                    loudest = d;
             const float tx = ex + 22.0f, ty = y - 16.0f;
             c.text(tagName(b.tag[k]), tx, ty, look::kCaps, p.text);
-            look::level(c, p, { tx, ty + 15.0f, 54.0f, 4.0f }, lv, p.text);
-            const std::string db = std::isfinite(lv) && lv > 0.0 ? look::num(20.0 * std::log10(lv), "%.0f dB") : "- dB";
-            c.text(db.c_str(), tx, ty + 22.0f, look::kUnit, std::isfinite(lv) ? p.label : p.dim);
+            look::level(c, p, { tx, ty + 15.0f, 54.0f, 4.0f }, std::isfinite(db) ? (db - loudest + 30.0) / 30.0 : std::nan(""), p.text);
+            const std::string dbs = std::isfinite(db) ? look::num(db, "%.0f dB") : "- dB";
+            c.text(dbs.c_str(), tx, ty + 22.0f, look::kUnit, std::isfinite(db) ? p.label : p.dim);
         }
 
         // The bypass round the muffler, its butterfly drawn as it stands: along the pipe open, across it shut.
@@ -895,8 +959,20 @@ namespace tee::ui
             for (int i = 0; i < m; ++i)
             {
                 const float f = (static_cast<float>(i) + 0.5f) / static_cast<float>(m);
-                // the Scope's points are spaced evenly by length, each at (k + 0.5) / n of the path
-                const float u = std::clamp(f * static_cast<float>(n) - 0.5f, 0.0f, static_cast<float>(n - 1));
+                // where along the Scope's points this is: by their distances when card G gives them, else spaced evenly
+                // by length, each at (k + 0.5) / n of the path
+                float u = std::clamp(f * static_cast<float>(n) - 0.5f, 0.0f, static_cast<float>(n - 1));
+                if (static_cast<int>(pathX_.size()) == n)
+                {
+                    const float tot = pathX_[static_cast<std::size_t>(n - 1)]
+                                    + 0.5f * (pathX_[static_cast<std::size_t>(n - 1)] - pathX_[static_cast<std::size_t>(n - 2)]);
+                    const float x = f * tot;
+                    int k = 0;
+                    while (k + 2 < n && pathX_[static_cast<std::size_t>(k + 1)] < x)
+                        ++k;
+                    const float x0 = pathX_[static_cast<std::size_t>(k)], x1 = pathX_[static_cast<std::size_t>(k + 1)];
+                    u = std::clamp(static_cast<float>(k) + (x - x0) / std::max(1e-6f, x1 - x0), 0.0f, static_cast<float>(n - 1));
+                }
                 const int k0 = static_cast<int>(u);
                 const int k1 = std::min(k0 + 1, n - 1);
                 const float w = u - static_cast<float>(k0);
@@ -910,6 +986,57 @@ namespace tee::ui
             }
             if (xs.size() >= 2)
                 c.polyline(xs.data(), ys.data(), static_cast<int>(xs.size()), 1.75f, p.value);
+        }
+
+        // Every other pipe's own pressure (card G's ductNear and ductFar, at each slot's two ends), riding it as a fainter
+        // trace: the primaries in their firing order, the main pipes and the tails. Between its ends a pipe's pressure
+        // is drawn straight (the two ends are what the Scope gives).
+        void drawDucts(Canvas& c, const Palette& p) const
+        {
+            if (!ducts_)
+                return;
+            const ExhaustBuild& b = build_;
+            const Geo& g = geo_;
+            const Col ink = Palette::mix(p.ground, p.value, 0.85f);
+            const auto ride = [&](const std::vector<Point>& pts, int slot) {
+                const auto k = static_cast<std::size_t>(slot);
+                if (slot < 0 || slot >= kDucts || ductUsed_[k] < 0.5f || pts.size() < 2)
+                    return;
+                float total = 0;
+                for (std::size_t i = 1; i < pts.size(); ++i)
+                    total += std::hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+                std::vector<float> xs, ys;
+                float along = 0;
+                for (std::size_t i = 0; i < pts.size(); ++i)
+                {
+                    if (i > 0)
+                        along += std::hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+                    const std::size_t a = i == 0 ? 0 : i - 1, z = i == 0 ? 1 : i;
+                    const float dx = pts[z].x - pts[a].x, dy = pts[z].y - pts[a].y, l = std::max(1e-4f, std::hypot(dx, dy));
+                    const float t = total > 0 ? along / total : 0.0f;
+                    const float pa = ductNear_[k] + (ductFar_[k] - ductNear_[k]) * t;
+                    const float off = std::clamp(pa / kPulseScale, -1.0f, 1.0f) * kPulseSwing;
+                    xs.push_back(pts[i].x + dy / l * off);
+                    ys.push_back(pts[i].y - dx / l * off);
+                }
+                c.polyline(xs.data(), ys.data(), static_cast<int>(xs.size()), 1.25f, ink);
+            };
+            for (int i = 0; i < b.ports; ++i)
+                if (i != 0 || shown_.size() < 2)   // cylinder 1's primary is the path's
+                    ride(primaryPts(i), i);
+            for (int sd = 0; sd < b.sides; ++sd)
+            {
+                if (!b.sideOn[static_cast<std::size_t>(sd)] || g.endX <= 0)
+                    continue;
+                const float y = g.laneY[static_cast<std::size_t>(sd)];
+                const int base = 48 + sd * 15;
+                const bool path = shown_.size() >= 2 && sd == std::min(b.colTo[static_cast<std::size_t>(std::max(0, b.portTo[0]))], 1);
+                if (!path)
+                {
+                    ride({ { g.mainX0, y }, { g.mainX1, y } }, base);
+                    ride({ { g.tailX0, y }, { g.endX, y } }, base + 11);
+                }
+            }
         }
 
         // ---- the numbers at the port, the collector and the tail; the pulses' legend ------------------------------
@@ -997,7 +1124,10 @@ namespace tee::ui
         bool slow_ = false;
         double clock_ = 0, play_ = 0;
         float phase_ = 0.0f;
-        int scopeHandle_ = -1;
+        static constexpr int kDucts = 84;
+        bool ducts_ = false;
+        std::array<float, kDucts> ductUsed_{}, ductNear_{}, ductFar_{};
+        std::vector<float> pathX_;   // card G's distances of the path's points from the port (m), when it gives them
         std::uint64_t scopeGen_ = ~0ull;
         std::vector<Snap> history_;
         std::vector<float> shown_;
