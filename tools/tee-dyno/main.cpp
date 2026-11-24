@@ -100,6 +100,8 @@ namespace
         {
             std::printf("%8.0f %10.1f %10.1f %7d %8s", rpm(p.speed), p.torque, p.power / 1000.0, p.cycles,
                         p.settled ? "yes" : "NO");
+            if (p.knockRetard > 0.0)
+                std::printf("  knock %.1f deg", p.knockRetard);
             if (history)
                 for (const double t : p.history)
                     std::printf(" %.1f", t);
