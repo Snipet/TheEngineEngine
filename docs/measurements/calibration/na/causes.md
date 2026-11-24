@@ -419,3 +419,77 @@ H9 is unskipped and passes:
 The fuelled overrun has little margin. The limit is now the store's fuel, not the lighting: the store receives each
 overrun charge's unburned share as estimated at its spark, not the share still unburned when its valve opens. That
 would take the cylinder handing its remainder over at the opening (D's cylinder, H's account). Proposed, not done.
+
+## I. The V12's torque spike: the runner's resonance, too lightly damped (the lead's 18:13; measured)
+
+**What it is.** Held steps (2 s each, so not the predictor's nine cycles), on the V12 with its 0.36 m runner:
+
+| rpm | 6000 | 6330 | 6500 | 6670 | 6850 | 7020 | 7300 |
+|---|---|---|---|---|---|---|---|
+| Torque, N m | 486 | 551 | 722 | 771 | 692 | 642 | 608 |
+| VE | 0.665 | 0.756 | 0.963 | 1.016 | 0.912 | 0.854 | 0.822 |
+
+The spike is real, and it moves with the runner. A 0.44 m runner puts it at 5500 rpm with VE 1.13; a 0.30 m one moves
+it above 8000. The primaries' length does not touch it. The phaser rule and the burn's speed term are smooth through
+it.
+
+**The fix.** The runner's end in the plenum now loses K ½ρu|u|, solved with the waves as the exhaust's ends do
+(`lossFlow`):
+
+- K 1 for what leaves the runner (a jet loses its whole head; G's `ends.fm` convention);
+- K 0.2 for what is drawn in (Idelchik: a bellmouth 0.05, a square edge 0.5; judgement between them).
+
+V12 torque at 6000 to 6850 rpm: 492 / 550 / 722 / 770 / 691 → 543 / 608 / 657 / 678 / 662 N m. Peak torque over its
+target, sixteen NA archetypes: V12 1.02 → 0.96, V10 1.02 → 0.93, four-cam 1.19 → 1.12; the rest move 0 to 3 %.
+
+E's valvetrain test 12 (the runner's tuning) reads both bumps at the acoustics' ratio: 0.701 and 0.726 against 0.729
+predicted (the tip read 0.843 and 0.723). Its lower-bump window now ends at the lower of 4000 rpm and three quarters
+of the main bump's speed; the reason is in the test.
+
+**A regression of mine, fixed.** 5fdc5ad's mass books fed the plenum the valves' flow directly. That cut the runners'
+coupling, so the throttle and plenum swung on their own: a V8's idle plenum rippled 24 kPa against the runners' 2, and
+valvetrain test 11 failed from then on. Now:
+
+- the runners' waves feed the plenum from instant to instant;
+- the mismatch with the valves over the last whole cycle is made up after it, followed over some 0.5 s and bounded to
+  half the valves' mean flow.
+
+| Check | Result |
+|---|---|
+| Plenum idle ripple | 3.4 kPa (test 11 passes) |
+| Books at full load | 1.000 (flat-plane V8, economy four) |
+| Books at idle | 0.997 to 1.003 |
+
+| Idle (rpm, sd) | This tree | Tip |
+|---|---|---|
+| Economy four | 750, 6 | |
+| Flat-plane V8 | 1001, 9 | |
+| V12 | 902, 34 | 31 to 78 |
+| Four-cam | 698, 45 | 5 |
+
+The four-cam's idle sits on its dilution edge and moves with any change to the plenum.
+
+**The rotary's books balance** (P's side-port NA twin: throttle = valves within 0.2 %, the exhaust 2 % less for its
+seals' leakage). The plenum does not pay twice for a shared port: its low VE is something else.
+
+## J. The NA side-port rotary under-breathes: its ports' overlap (measured; content to P, ports to D)
+
+The probe on P's rotary-twin-na-side-port, at intake closing:
+
+- the charge is 425 to 450 K and 13 to 18 % burned, at about the air's pressure, so VE is 0.56 to 0.70;
+- `valvetrain.fm` keeps the reference's rotary ports whatever the model (a peripheral exhaust port, side intake
+  ports), with the cam dial setting the overlap: 18 degrees of the eccentric shaft at 0, 47 at the build's 0.55, 68
+  at 1.
+
+| Dial | VE at 3000 / 5500 / 8000 rpm | Torque, N m | Burned share | Charge |
+|---|---|---|---|---|
+| 0.55 | 0.56 / 0.66 / 0.70 | 130 / 164 / 179 | 13 to 18 % | 425 to 450 K |
+| 0.35 | 0.63 / 0.71 / 0.77 | 149 / 182 / 201 | | |
+| 0.15 | 0.71 / 0.76 / 0.83 | 171 / 201 / 219 | 7 to 11 % | 383 to 391 K |
+
+The target is 211 to 216 N m at 5500 rpm.
+
+A Renesis-type side exhaust port has almost no overlap, which the reference's peripheral exhaust cannot express.
+
+- Content (P): the side-port build's dial at 0.15 or 0.
+- Model (D, or E's path): side exhaust ports for a rotary.

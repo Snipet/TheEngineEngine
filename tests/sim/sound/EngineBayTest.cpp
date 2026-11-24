@@ -228,7 +228,9 @@ TEST_CASE("clicks: no voice steps when it starts or stops", "[sound][clicks]")
     CHECK(maxStep(x, 1, 3) <= 1.05 * maxStep(x, 38400, 48000) + 1e-9);
 }
 
-TEST_CASE("soak: ten minutes of every voice under random inputs stays finite and within bounds", "[sound][soak]")
+namespace
+{
+void soak(int seconds)
 {
     Rig rig;
     rig.set("spec.timing", 2);
@@ -238,7 +240,7 @@ TEST_CASE("soak: ten minutes of every voice under random inputs stays finite and
     rig.set("spec.blowerDrive", 1);
     std::mt19937 gen(12345);
     std::uniform_real_distribution<double> u(0.0, 1.0);
-    for (int step = 0; step < 600; ++step)
+    for (int step = 0; step < seconds; ++step)
     {
         const int g = static_cast<int>(u(gen) * 8.0) - 1;
         rig.inGear(g > 6 ? 6 : g, 50.0 + 700.0 * u(gen), 1.5 * u(gen) - 0.3);
@@ -260,4 +262,99 @@ TEST_CASE("soak: ten minutes of every voice under random inputs stays finite and
     INFO("peak " << rig.get("peakAbs"));
     CHECK(rig.get("finite") == 1.0);
     CHECK(rig.get("peakAbs") < 1.0);
+}
+}
+
+TEST_CASE("soak: a minute of every voice under random inputs stays finite and within bounds", "[sound][soak]")
+{
+    soak(60);
+}
+
+TEST_CASE("soak: ten minutes of every voice under random inputs stays finite and within bounds", "[sound][soak][nightly]")
+{
+    soak(600);
+}
+
+TEST_CASE("robust: a NaN or an infinity in any input reads no table out of bounds, and the voices come back after it",
+          "[sound][robust]")
+{
+    // card X's X-019: a NaN crank speed (from a build at the Spec's corners) gave the sine table the index INT_MIN
+    const double nan = std::nan("");
+    const double inf = HUGE_VAL;
+    for (const char* field : {"crankHz", "wIn", "wSprocket", "ratioTotal", "torque", "coolant", "gateOpen", "flowShare"})
+        for (double bad : {nan, inf, -inf})
+        {
+            Rig rig;
+            rig.inGear(3, 300.0, 0.5);
+            rig.set("spec.timing", 2);
+            rig.set("spec.lifters", 1);
+            rig.set("spec.injection", 1);
+            rig.set("asp", 1);
+            rig.set("gateOpen", 0.5);
+            rig.set("flowShare", 1.0);
+            rig.set("bike", 1);
+            rig.set("wSprocket", 100.0);
+            rig.set("dryClutch", 1);
+            rig.set("starterOn", 1.0);
+            rig.set("coolant", 380.0);
+            rig.run(0.1, All);
+            const double before = rig.get(field);
+            rig.set(field, bad);
+            rig.run(0.1, All);
+            rig.set(field, before);
+            rig.run(0.2, All);
+            const auto after = rig.run(0.3, All);
+            bool finite = true;
+            for (float v : after)
+                finite = finite && std::isfinite(v);
+            INFO(field << " = " << bad);
+            CHECK(finite);
+            CHECK(rms(after) > 0.0);
+        }
+}
+
+TEST_CASE("robust: every voices field at a corner of its range, under extreme but finite inputs, stays finite", "[sound][robust]")
+{
+    // (the lead's request after X-019: no corner of the declared ranges may make a voice non-finite from finite inputs)
+    std::mt19937 gen(19);
+    std::uniform_real_distribution<double> u(0.0, 1.0);
+    for (int seed = 0; seed < 24; ++seed)
+    {
+        Rig rig;
+        rig.corners([&] { return u(gen) > 0.5; });
+        auto ends = [&](double lo, double hi) { return u(gen) > 0.5 ? hi : lo; };
+        const int g = static_cast<int>(u(gen) * 8.0) - 1;
+        rig.inGear(g > 6 ? 6 : g, ends(0.0, 1200.0), ends(-1.5, 1.5));
+        rig.set("ratioTotal", ends(0.0, 240.0));
+        rig.set("fd", ends(1.0, 12.0));
+        rig.set("wOut", ends(0.0, 2000.0));
+        rig.set("boxKind", static_cast<int>(u(gen) * 5.0));
+        rig.set("ripple", ends(0.0, 0.5));
+        rig.set("engaged", ends(0.0, 1.0));
+        rig.set("coolant", ends(230.0, 420.0));
+        rig.set("asp", static_cast<int>(u(gen) * 5.0));
+        rig.set("gateExternal", u(gen) > 0.5 ? 1 : 0);
+        rig.set("gateOpen", ends(0.0, 1.0));
+        rig.set("flowShare", ends(0.0, 1.5));
+        rig.set("boostShare", ends(0.0, 1.0));
+        rig.set("clatter", ends(0.0, 1.0));
+        rig.set("starterOn", ends(0.0, 1.0));
+        rig.set("cylinders", ends(1.0, 16.0));
+        rig.set("displacement", ends(5e-5, 0.03));
+        rig.set("diesel", u(gen) > 0.5 ? 1 : 0);
+        rig.set("bike", u(gen) > 0.5 ? 1 : 0);
+        rig.set("wSprocket", ends(0.0, 800.0));
+        rig.set("frontTeeth", ends(10.0, 30.0));
+        rig.set("primaryRatio", ends(1.0, 4.0));
+        rig.set("dryClutch", u(gen) > 0.5 ? 1 : 0);
+        rig.set("lever", ends(0.0, 1.0));
+        rig.set("strike", ends(0.0, 50.0));
+        const auto x = rig.run(0.5, All);
+        bool finite = true;
+        for (float v : x)
+            finite = finite && std::isfinite(v);
+        INFO("seed " << seed);
+        CHECK(finite);
+        CHECK(rig.get("finite") == 1.0);
+    }
 }

@@ -162,6 +162,19 @@ module Exhaust
     float tPortNow;     // the ports' gas as the cylinders give it now (gas(), before its 0.8 s smoothing)
     float tExit;        // the gas leaving the ports into the headers, after the port walls' cooling (portLoss()), K
     float qPort;        // the heat the port walls take from it, W (for the coolant's owner; telemetry)
+    float qCool;        // the heat the port walls give the coolant, W
+    float tWallPort;    // the port's wall (every port alike), K
+    float capPort;      // the port walls' heat capacity, all ports, J/K
+    // a thermocouple's reading (telemetry only): each port's local gas, and a bead's mean of it (thermocouple())
+    float tLoc[MAX_PORTS];
+    float tcW;
+    float tcWT;
+    float tcT;
+    int tcN;
+    float tcPort;       // the bead's reading at the port's exit, K (over some 0.5 s)
+    float tcPlain;      // the plain time mean of the port's local gas, K
+    float kTc;
+    float kStag;
     int prepared;       // 1: prepare() was called this sample (the turbines' seam), before step()
 
     void setup(float rateIn, Noise* noise, Layout* layIn, Heat* heatIn, ExhaustSpec* specIn, ExhaustTel* telIn,
@@ -206,6 +219,19 @@ module Exhaust
         tPortNow = 0.0f;
         tExit = 0.0f;
         qPort = 0.0f;
+        qCool = 0.0f;
+        tWallPort = 300.0f;
+        capPort = 0.0f;
+        for (int i = 0; i < MAX_PORTS; ++i)
+            tLoc[i] = 300.0f;
+        tcW = 0.0f;
+        tcWT = 0.0f;
+        tcT = 0.0f;
+        tcN = 0;
+        tcPort = 0.0f;
+        tcPlain = 0.0f;
+        kTc = 1.0f - expf(-16.0f / (0.5f * rateIn));
+        kStag = 1.0f - expf(-1.0f / (0.036f * rateIn));
         rate = rateIn;
         noiseSrc = noise;
         lay = layIn;
@@ -675,33 +701,103 @@ module Exhaust
             tPort += (heat->tAmb - tPort) * (1.0f - expf(-d16 / 4.0f));
         eSum = 0.0f;
         mSum = 0.0f;
-        portLoss();
+        portLoss(d16);
     }
 
     // The exhaust port's walls (model 1, spec.exhaust.portHeat 1): the gas from the valve to the header's flange gives
-    // heat to the water-cooled head. Caton and Heywood's exhaust-port correlation (Heywood, ICE Fundamentals, ch. 12):
-    // Nu = 0.0483 Re^0.783 on the port's diameter, Re from each port's mean mass flow; the burned gas's viscosity
-    // 3.3e-7 T^0.7 Pa s, cp 1150 J/kg K, Pr 0.7; the port's diameter the primary's (0.46 of the bore), its length 1.6
-    // diameters (judgement: some 75 mm on a 100 mm bore); its wall the coolant's temperature plus 60 K (judgement).
-    // The gas leaves at tW + (tPort - tW) exp(-NTU). tPort stays the gas at the valve (tel.exhaust.portTemperature);
-    // tExit feeds the headers (and so tel.exhaust.headerTemperature). Model 0 and portHeat 0: none (the reference's).
-    void portLoss()
+    // heat to the head's port wall, and the wall to the coolant.
+    // The gas side: Caton and Heywood's exhaust-port correlation (Heywood, ICE Fundamentals, ch. 12): Nu = 0.0483
+    // Re^0.783 on the port's diameter, Re from each port's mean mass flow (their fit is of time-averaged heat transfer
+    // against time-averaged Re: the blowdown's high-speed spurt is inside it, and applied per sample the same law would
+    // give less, Re^0.783 being concave); times the entrance region's (Mills, abrupt entrance: Nu_L / Nu = 1 + 2.4254
+    // (L/D)^-0.676; a port is a short duct entered through the valve's jet: 2.77 at L 1.6 D). The burned gas: viscosity
+    // 3.3e-7 T^0.7 Pa s, cp 1150 J/kg K, Pr 0.7. The port: its diameter the primary's (0.46 of the bore), its length 1.6
+    // diameters (judgement: some 75 mm on a 100 mm bore). The gas leaves at tW + (tPort - tW) exp(-NTU).
+    // The wall: cast iron 6 mm to the water jacket (k 50 W/m K), the jacket's side 10 kW/m^2 K (forced convection with
+    // local boiling: judgement), so G = 1 / (t / k A + 1 / h A) to the coolant; its heat capacity 7200 kg/m^3 x 460 J/kg K
+    // over that area and thickness. It warms by what the gas gives less what the coolant takes: the energy accounted
+    // (qPort = the walls' gain + qCool). d16 0: the wall where it would settle (card C's settle).
+    // tPort stays the gas at the valve (tel.exhaust.portTemperature); tExit feeds the headers (headerTemperature).
+    void portLoss(float d16)
     {
         tExit = tPort;
         qPort = 0.0f;
-        if (model == 0 || spec->portHeat == 0 || mdotSlow < 1.0e-5f || lay->ports < 1)
+        const float tC = heat->tCool;
+        if (model == 0 || spec->portHeat == 0 || lay->ports < 1)
+        {
+            tWallPort = tC;
+            qCool = 0.0f;
             return;
-        const float m1 = mdotSlow / (float)lay->ports;
+        }
+        const float np = (float)lay->ports;
         const float dP = 0.46f * boreNow;
-        const float mu = 3.3e-7f * expf(0.7f * logf(fmaxf(tPort, 300.0f)));
-        const float re = 4.0f * m1 / (3.14159265f * dP * mu);
-        const float nu = 0.0483f * expf(0.783f * logf(fmaxf(re, 1.0f)));
-        const float h = nu * (mu * 1150.0f / 0.7f) / dP;
-        const float ntu = h * 3.14159265f * dP * 1.6f * dP / (m1 * 1150.0f);
-        const float tW = heat->tCool + 60.0f;
-        if (tPort > tW)
-            tExit = tW + (tPort - tW) * expf(-ntu);
-        qPort = mdotSlow * 1150.0f * (tPort - tExit);
+        const float area = 3.14159265f * dP * 1.6f * dP;
+        const float g = 1.0f / (0.006f / (50.0f * area) + 1.0f / (10000.0f * area));
+        const float cap = 7200.0f * 460.0f * area * 0.006f;
+        capPort = np * cap;
+        float hA = 0.0f;
+        const float m1 = mdotSlow / np;
+        if (m1 > 1.0e-6f)
+        {
+            const float mu = 3.3e-7f * expf(0.7f * logf(fmaxf(tPort, 300.0f)));
+            const float re = 4.0f * m1 / (3.14159265f * dP * mu);
+            const float nu = 0.0483f * expf(0.783f * logf(fmaxf(re, 1.0f))) * (1.0f + 2.4254f * expf(-0.676f * logf(1.6f)));
+            hA = nu * (mu * 1150.0f / 0.7f) / dP * area;
+        }
+        if (d16 <= 0.0f && hA > 0.0f)
+        {
+            // settled: the wall where the gas's heat in equals the coolant's out (a few passes: the gas's side is
+            // exponential in NTU)
+            for (int it = 0; it < 20; ++it)
+            {
+                const float ex = expf(-hA / (m1 * 1150.0f));
+                const float q1 = m1 * 1150.0f * (tPort - tWallPort) * (1.0f - ex);
+                tWallPort = tC + fmaxf(q1, 0.0f) / g;
+            }
+        }
+        if (hA > 0.0f)
+        {
+            tExit = tWallPort + (tPort - tWallPort) * expf(-hA / (m1 * 1150.0f));
+            qPort = mdotSlow * 1150.0f * (tPort - tExit);
+        }
+        qCool = np * g * (tWallPort - tC);
+        if (d16 > 0.0f)
+            tWallPort += (qPort / np - g * (tWallPort - tC)) * d16 / cap;
+    }
+
+    // What a thermocouple at the port's exit reads, against the enthalpy means above (portTemperature: the mass mean of
+    // the gas the valves pass; portExitTemperature and headerTemperature follow it). The blowdown is most of the mass in
+    // little of the time, so a bead, which sits in the port all the time, reads less. A first form (judgement throughout):
+    // each port's gas a mixing cup of the port's volume (0.46 bore across, 1.6 of that long); what the valve passes
+    // replaces it at the gas's temperature now less the port's mean drop, a backflow at the port's exit gas; between
+    // the pulses it cools toward the port's wall (some 36 ms: hot gas still in a 47 mm duct). The bead's mean weights
+    // that local temperature by its heat transfer, sqrt(u + 2 m/s) (a sphere's h as Re^0.5; 2 m/s for the stirring
+    // left between pulses), no radiation, no lag beyond the mean (some 0.5 s); tcPlain the plain time mean.
+    void thermocouple(float* qe, int np) [[clang::nonblocking]]
+    {
+        const float tF = mSum > 1.0e-9f ? eSum / mSum : tPort;
+        const float tX = exitTemperature();
+        const float drop = tPort - tX;
+        const float dP = 0.46f * boreNow;
+        const float aP = 0.785398f * dP * dP;
+        const float vP = aP * 1.6f * dP;
+        const float dts = 1.0f / rate;
+        for (int i = 0; i < np; ++i)
+        {
+            const float q = qe[i];
+            float tl = tLoc[i];
+            if (q > 0.0f)
+                tl += (tF - drop - tl) * fminf(q * dts / vP, 1.0f);
+            else if (q < 0.0f)
+                tl += (tX - tl) * fminf(-q * dts / vP, 1.0f);
+            tl += (tWallPort - tl) * kStag;
+            tLoc[i] = tl;
+            const float w = sqrtf(fabsf(q) / aP + 2.0f);
+            tcW += w;
+            tcWT += w * tl;
+            tcT += tl;
+            tcN += 1;
+        }
     }
 
     // The gas as it leaves the ports for the headers and the turbine (after the port's walls): card F's turbine's
@@ -881,6 +977,7 @@ module Exhaust
         for (int i = 0; i < np; ++i)
             pPortSum += 2.0f * prim[i].near + prim[i].z * qe[i];
         pPortN += np;
+        thermocouple(qe, np);
         if (model != 0)
             builderStep(qe);
         else
@@ -1411,7 +1508,7 @@ module Exhaust
         if (tPortNow > 0.0f)
             tPort = tPortNow;
         mdotSlow = mdot;
-        portLoss();
+        portLoss(0.0f);
         if (model != 0)
         {
             fillEngine();
@@ -1451,6 +1548,23 @@ module Exhaust
         }
         t->portPressure = 101325.0f + pPortMean;
         t->portHeat = qPort;
+        if (tcN > 0)
+        {
+            const float tb = tcWT / fmaxf(tcW, 1.0e-9f);
+            const float tp = tcT / (float)tcN;
+            tcPort = tcPort > 0.0f ? tcPort + (tb - tcPort) * kTc : tb;
+            tcPlain = tcPlain > 0.0f ? tcPlain + (tp - tcPlain) * kTc : tp;
+            tcW = 0.0f;
+            tcWT = 0.0f;
+            tcT = 0.0f;
+            tcN = 0;
+        }
+        // (before the bead's mean has had a sample, the gas's own: physical from the first block)
+        const float tcNow = tcPort > 0.0f ? tcPort : exitTemperature();
+        t->portThermocouple = tcNow;
+        t->headerThermocouple = tcNow + (t->headerTemperature - exitTemperature());
+        t->portCoolantHeat = qCool;
+        t->portWallTemperature = tWallPort;
         t->portExitTemperature = exitTemperature();
         t->flap = flapFitted() != 0 ? b.fEff[0] : 0.0f;
         t->pFlap = flapFitted() != 0 ? b.pFl[0] : 0.0f;

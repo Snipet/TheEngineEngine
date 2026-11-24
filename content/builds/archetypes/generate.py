@@ -80,7 +80,7 @@ CARS = {
                           cdA=0.66, tyre="Economy", tyreRadius=0.315, gearbox="Manual",
                           ratio=[3.77, 2.09, 1.32, 0.98, 0.76, 0.64], finalDrive=3.39, wheelInertia=1.1),
     "tractor": dict(kind="Truck", truckAir=True, mass=36000, drive="Rear", wheelbase=5.8, cgHeight=1.5, frontWeight=0.25, track=2.0,
-                    cdA=6.0, tyre="Truck", tyreRadius=0.51, gearbox="Manual",
+                    cdA=6.0, tyre="Truck", tyreRadius=0.51, gearbox="Eighteen-speed",
                     ratio=[14.4, 12.29, 8.51, 7.26, 6.05, 5.16, 4.38, 3.74, 3.20, 2.73, 2.29, 1.95, 1.62, 1.38, 1.17,
                            1.00, 0.86, 0.73], finalDrive=3.55, wheelInertia=40.0),
     "small-hatch": dict(mass=1200, drive="Front", wheelbase=2.56, cgHeight=0.54, frontWeight=0.62, track=1.52, cdA=0.62,
@@ -190,7 +190,7 @@ arch(slug="rotary-twin-13", name="Rotary twin", geo="ref-16-rotary-2", layout="R
      notes="A twin-rotor Wankel, 2 x 654 cc, 9.0:1, with two sequential turbos (the 13B-REW kind: 206 to 280 PS, "
            "the latter at 6500 rpm, some 294 N m at 5000; Wikipedia, makers' figures, firm to 10 %). In a light "
            "rear-drive coupe.")
-arch(slug="rotary-twin-na-side-port", name="Rotary twin, side ports", geo="ref-16-rotary-2", layout="Rotary",
+arch(slug="rotary-twin-na-side-port", rotaryCam=0.15, name="Rotary twin, side ports", geo="ref-16-rotary-2", layout="Rotary",
      displacement=0.001308, cr=10.0, redline=9000, idle=800,
      intake=dict(runnerLength=0.45, runnerLength2=0.30, runnerSwitch=5500 * RPM),
      exhaust={"converter": [2, 2], "mufKind": [1, 1]}, grade="Premium (91)", car="light-coupe-rotary", timing="Gears",
@@ -512,7 +512,9 @@ def build(a):
         if a.get("compressionBrake") == "release":
             v.update(auxOpen=695, auxDur=100, auxLift=0.0025)
     else:
-        v["cam"] = 0.55    # a rotary's ports: the cam dial's, mid-way (street port)
+        # a rotary's ports by the cam dial: a peripheral-exhaust turbo rotary mid-way (0.55); a side-exhaust-port
+        # rotary has almost no overlap: 0.15 (N1: 47 degrees of overlap at 0.55 cost it a quarter of its torque)
+        v["cam"] = a.get("rotaryCam", 0.55)
 
     # the runners' length: what the kind has (long for low-speed torque, short for high revs, two lengths where the
     # real ones had them): the loaded-pipe relation x tan x = A L / V puts the ram's bump where the kind wants it

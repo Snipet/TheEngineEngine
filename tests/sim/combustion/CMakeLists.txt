@@ -13,4 +13,4 @@ target_include_directories(tee-tests-combustion PRIVATE "${CMAKE_CURRENT_SOURCE_
 target_link_libraries(tee-tests-combustion PRIVATE Tee::host Catch2::Catch2WithMain)
 target_compile_definitions(tee-tests-combustion PRIVATE "TEE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
   "TEE_SOURCE_SIM_DIR=\"${PROJECT_SOURCE_DIR}/sim/ref\"" "TEE_SOURCE_CONTENT_DIR=\"${PROJECT_SOURCE_DIR}/content/ref\"")
-catch_discover_tests(tee-tests-combustion DISCOVERY_MODE PRE_TEST TEST_PREFIX "combustion." PROPERTIES TIMEOUT 900)
+catch_discover_tests(tee-tests-combustion DISCOVERY_MODE PRE_TEST ADD_TAGS_AS_LABELS TEST_PREFIX "combustion." PROPERTIES TIMEOUT 900)

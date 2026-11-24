@@ -622,7 +622,8 @@ namespace
 {
     // A custom layout the simulator refused (D's tel.engine.layoutRefused, finding X-001): while the flag reads 1 an
     // amber line in words on the stage and in the layout's page, and the block draws the layout dial's (what runs),
-    // not the custom one asked for; both go when the flag does. The demo hook gives the flag as 0.
+    // not the custom one asked for; both go when the flag does. The reason is D's (tel.engine.layoutReason) when it
+    // gives one, else the build's. The demo hook gives both as 0.
     VIEW_TEST(testEngineRefused, "engine.refused")
     {
         tee::ui::DemoRig base;
@@ -671,7 +672,13 @@ namespace
             ph.tick(2);
             picture("engine.inspector.refused", ph);
         }
+        // D's reason, when it gives one, in its words
+        base.engine.set(en::kTelLayoutReason, 3.0);
+        ctx.live.reset();
+        host.tick(1);
+        CHECK(ws->inspectorPage().find("BANK IS OUTSIDE THE BANKS") != std::string::npos);
         base.engine.set(en::kTelLayoutRefused, 0.0);
+        base.engine.set(en::kTelLayoutReason, 0.0);
         ctx.live.reset();
         host.tick(1);
         CHECK(!refusedText());
