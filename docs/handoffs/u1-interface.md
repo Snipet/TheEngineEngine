@@ -75,3 +75,14 @@ sheet will include every registered workspace.
   `predicted()` with `revision()` moving; `before()` is the curve before the edit, not before the refinement.
 - **Saving a file**: `FrameServices::saveText(suggestedName, text, error)` (`ctx_.services`, may be null or empty): the
   host's save dialog when the shell fills it; until then copy the text (`HostServices::copyText`).
+- **Later still**: `look::carProfile(fx, rx, wy, r, squat, xs, ys)` and `look::carWindow(...)` (one car for DRIVE and
+  CAR; front to either side); `FrameServices::bakeMaps()` (TUNE's BAKE presses `ctl.bakeMaps`; may be empty); the
+  clutch pedal also goes through `PanelControls::clutch`; inspector tabs wrap to two rows past three and a `Button`'s
+  title is cut with an ellipsis to its width.
+- **Host adapters, revised**: `ServiceDyno` predicts through card C's `tee::PredictService` (coarse curve within about
+  0.4 s, refined about 0.6 s, a build seen before at once): `predicted()` is the newest curve for the build as it
+  stands (coarse, partial or refined: `refined()` says), `before()` the last refined curve of the build before the
+  edit. Runs stay on `tee::DynoService`. `SimScope::generation()` itself asks the host for a newer copy, so a reader
+  that waits for it to move (as ENGINE does) gets one (`ui.build.scope`, over a real SimHost).
+- **Telemetry names**: `Live::first({...})` and `Live::lambda()` (exhaust.lambda, ecu.lambda, engine.lambda: none is
+  settled in telemetry.fm yet). The demo adds `engine.torque`, `power`, `firing`, `imep`, `bmep`, `veAir`.

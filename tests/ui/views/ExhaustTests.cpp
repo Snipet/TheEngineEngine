@@ -343,10 +343,18 @@ namespace
             CHECK_MSG(page.find(k.has) != std::string::npos, std::string(k.id) + " lacks " + k.has);
             CHECK_MSG(page.find(k.hasNot) == std::string::npos, std::string(k.id) + " has " + k.hasNot);
         }
-        // U1's demo Spec has none of the builder's fields: a muffler's page is the demo's own dial, or nothing
-        StageRig plain(tee::ui::makeExhaustWorkspace, 1100, 700, 1.0f);
-        plain.demo.selection.select("exhaust.tail[0]");
-        CHECK(plain.ws->inspectorPage().empty());
+        // U1's demo with this package's hook (ExhaustDemo.cpp) has the builder's fields: a tail's page is its own
+        StageRig hooked(tee::ui::makeExhaustWorkspace, 1100, 700, 1.0f);
+        hooked.demo.selection.select("exhaust.tail[0]");
+        CHECK(hooked.ws->inspectorPage().find("exhaust.exitAt[0]") != std::string::npos);
+        for (const char* id : { "exhaust.primary[0]", "exhaust.collector[0]", "boost", "exhaust.converter[1]", "exhaust.main[0]",
+                                "exhaust.crossover", "exhaust.resonator[0]", "exhaust.muffler[1]", "exhaust.bypass[0]",
+                                "exhaust.tail[1]", "engine" })
+        {
+            hooked.demo.selection.select(id);
+            const std::string notes = inspectorNotes(*hooked.ws, hooked.demo);
+            CHECK_MSG(notes.empty(), std::string(id) + ": " + notes);
+        }
         return 0;
     }
 }

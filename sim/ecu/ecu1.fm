@@ -12,7 +12,8 @@
 // What it leaves out: closed-loop lambda (the lambda asked is the lambda delivered: no sensor's trim), the injectors'
 // own dynamics, a gear's own maps beyond boost, the shift light, the automatic clutch and shifts (later).
 #pragma once
-#include "settings.fm"
+#include "spec/ecu.fm"
+#include "maps.fm"
 #include "limiter.fm"
 #include "idle.fm"
 #include "state.fm"
@@ -65,6 +66,8 @@ module EcuIn
     float coolant;      // K
     float warm;         // 0 at the air outside, 1 at the thermostat
     int key;            // ctl.ignition
+    bool external;      // the engine keeps the state (the reference's key mapping): stateIn is it
+    int stateIn;
     bool mayStart;      // neutral, or the clutch down
     float holdSpeed;    // ctl.holdSpeed, rad/s (0 none)
     bool driven;        // the car is driven (a car's idle spark)
@@ -142,13 +145,17 @@ module Ecu1
         flags = 0;
     }
 
-    void control(EcuIn* in, EcuSettings* set, float d16)
+    void control(EcuIn* in, EcuSpec* set, float d16)
     {
         speed.control(in->omega, d16);
         const float rpm = speed.rpm;
-        idle.speed(in->idleBase, in->cam, in->coolant, (in->gasoline ? 1.0f : 0.5f) * set->idle.coldRise * 9.5492966f);
+        const float w = in->omega;
+        idle.speed(set->idle.speed > 0.0f ? set->idle.speed * 9.5492966f : in->idleBase, set->idle.speed > 0.0f ? 0.35f : in->cam, in->coolant, (in->gasoline ? 1.0f : 0.5f) * set->idle.coldRise * 9.5492966f);
         const float redRpm = fmaxf(in->redBase, idle.target + 1500.0f);
-        key.control(in->key, in->mayStart, in->omega, speed.avg, idle.target, in->warm, in->coolant, d16);
+        if (in->external)
+            key.follow(in->stateIn, in->omega, speed.avg, in->warm, in->coolant, d16);
+        else
+            key.control(in->key, in->mayStart, in->omega, speed.avg, idle.target, in->warm, in->coolant, d16);
         const bool running = key.state == ENGINE_RUNNING;
         // the pedal: the driver's, or the driver for a held speed (a bench's)
         driver.control(running && !in->driven ? in->holdSpeed * 9.5492966f : 0.0f, &speed, idle.target, 1.0f, d16);
@@ -176,13 +183,13 @@ module Ecu1
         EcuMapsSpec* m = &set->maps;
         maps.tune.redRpm = redRpm;
         maps.tune.idleRpm = idle.target;
-        spark = maps.read(&m->spark, m->sparkAuto, MAP_SPARK, rpm, m->sparkAuto ? loadRef : load) + in->timing;
-        lambda = maps.read(&m->lambda, m->lambdaAuto, MAP_LAMBDA, rpm, load) * key.enrich;
-        boost = maps.read(&m->boost, m->boostAuto, MAP_BOOST, rpm, (float)(in->gear < 1 ? 1 : in->gear));
-        camIn = maps.read(&m->camIn, m->camInAuto, MAP_CAM_IN, rpm, load);
-        camEx = maps.read(&m->camEx, m->camExAuto, MAP_CAM_EX, rpm, load);
-        lift = maps.read(&m->lift, m->liftAuto, MAP_LIFT, rpm, load);
-        plate = running ? maps.read(&m->pedal, m->pedalAuto, MAP_PEDAL, rpm, pedal) : 0.0f;
+        spark = maps.read(&m->spark, m->sparkAuto, MAP_SPARK, w, m->sparkAuto ? loadRef : load) + in->timing;
+        lambda = maps.read(&m->lambda, m->lambdaAuto, MAP_LAMBDA, w, load) * key.enrich;
+        boost = maps.read(&m->boost, m->boostAuto, MAP_BOOST, w, (float)(in->gear < 1 ? 1 : in->gear));
+        camIn = maps.read(&m->camIn, m->camInAuto, MAP_CAM_IN, w, load);
+        camEx = maps.read(&m->camEx, m->camExAuto, MAP_CAM_EX, w, load);
+        lift = maps.read(&m->lift, m->liftAuto, MAP_LIFT, w, load);
+        plate = running ? maps.read(&m->pedal, m->pedalAuto, MAP_PEDAL, w, pedal) : 0.0f;
         plate = fmaxf(fminf(plate, limiter.plateMax), launch.plateMin);
         bypass = idle.bypass;
         // what is taken back and cut

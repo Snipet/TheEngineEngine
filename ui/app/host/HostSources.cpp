@@ -8,8 +8,9 @@
 namespace tee::ui
 {
     // ---- the dyno ---------------------------------------------------------------------------------------------------
-    ServiceDyno::ServiceDyno(std::shared_ptr<tee::Sim> sim, const tee::Build& build, tee::DynoPlan plan)
-        : build_(build), plan_(std::move(plan)), service_(sim), sim_(std::move(sim))
+    ServiceDyno::ServiceDyno(std::shared_ptr<tee::Sim> sim, const tee::Build& build, tee::DynoPlan plan,
+                             tee::PredictOptions predict)
+        : build_(build), plan_(std::move(plan)), sim_(sim), predict_(std::move(sim), std::move(predict))
     {
         if (plan_.fields.empty())
             plan_.fields = { "boost.pressure", "engine.manifold" };
@@ -32,20 +33,23 @@ namespace tee::ui
         return t;
     }
 
-    void ServiceDyno::take(const DynoTrace& t)
+    DynoTrace ServiceDyno::traceOf(const tee::PredictCurve& c, std::string name)
     {
-        if (!predicted_.empty())
+        DynoTrace t;
+        t.name = std::move(name);
+        for (const tee::PredictPoint& p : c.points)
         {
-            before_ = predicted_;
-            before_.name = "before";
+            t.speed.push_back(p.speed);
+            t.torque.push_back(p.torque);
+            t.power.push_back(p.power);
         }
-        predicted_ = t;
-        ++revision_;
+        return t;
     }
 
     void ServiceDyno::tick(float dt)
     {
-        // An edit (any change of the build's hash, an undo and a load too): wait for a quiet, then ask.
+        // An edit (any change of the build's hash, an undo and a load too): wait for a quiet, then ask. The first
+        // build is asked for at once.
         const std::uint64_t h = build_.hash();
         if (h != seen_)
         {
@@ -57,23 +61,36 @@ namespace tee::ui
         if (quiet_ > 0.0 && (quiet_ -= dt) <= 0.0)
         {
             quiet_ = 0.0;
-            tee::DynoCurve cached;
-            if (service_.request(build_, plan_, cached))
-                take(traceOf(cached, "predicted"));
-            else
-                waiting_ = true;
+            request_ = predict_.request(build_);
             ++revision_;
         }
-        tee::DynoCurve done;
-        if (service_.take(done))
+        // Each curve for the newest request: the coarse one at once, then filled in, then refined. The first curve of
+        // a new build keeps the last refined one before it as the ghost.
+        tee::PredictCurve curve;
+        while (predict_.take(curve))
         {
-            waiting_ = false;
-            if (!done.cancelled)
-                take(traceOf(done, "predicted"));
+            if (curve.request != request_)
+                continue;
+            if (refinedFor_ != request_)   // the first curve of this request
+            {
+                if (!lastRefined_.empty())
+                {
+                    before_ = lastRefined_;
+                    before_.name = "before";
+                }
+                refinedFor_ = request_;
+            }
+            predicted_ = traceOf(curve, "predicted");
+            refined_ = curve.refined;
+            if (refined_)
+                lastRefined_ = predicted_;
             ++revision_;
         }
-        if (waiting_)
-            ++revision_;   // its progress moves
+        if (predict_.revision() != predictRevision_)
+        {
+            predictRevision_ = predict_.revision();   // its progress, busy or error moved
+            ++revision_;
+        }
         if (runner_ != nullptr)
         {
             tee::DynoCurve run;
@@ -148,20 +165,32 @@ namespace tee::ui
         return f != nullptr && have_ ? frame_.get(*f) : 0.0;
     }
 
-    int SimScope::read(int handle, float* out, int max)
+    void SimScope::poll() const
     {
-        if (handle < 0 || handle >= static_cast<int>(fields_.size()) || max <= 0)
-            return 0;
         // Asking keeps the host copying for about half a second; the newest copy is kept.
+        if (!host_.loaded())
+            return;
         tee::ScopeFrame f;
-        if (host_.scope(f))
+        if (host_.scope(f) && (!have_ || f.block != lastBlock_))
         {
-            if (!have_ || f.block != lastBlock_)
-                ++generation_;
+            ++generation_;
             frame_ = std::move(f);
             lastBlock_ = frame_.block;
             have_ = true;
         }
+    }
+
+    std::uint64_t SimScope::generation() const
+    {
+        poll();
+        return generation_;
+    }
+
+    int SimScope::read(int handle, float* out, int max)
+    {
+        if (handle < 0 || handle >= static_cast<int>(fields_.size()) || max <= 0)
+            return 0;
+        poll();
         if (!have_)
             return 0;
         const tee::FieldInfo& field = *fields_[static_cast<std::size_t>(handle)];

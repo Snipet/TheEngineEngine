@@ -16,6 +16,7 @@
 #include "car.fm"
 #include "env.fm"
 #include "sound.fm"
+#include "voices.fm"
 
 module Spec
 {
@@ -29,4 +30,5 @@ module Spec
     CarSpec car [[ui::label("Vehicle")]];
     EnvSpec env [[ui::label("Environment")]];
     SoundSpec sound [[ui::label("Sound")]];
+    VoicesSpec voices [[ui::label("Mechanical voices")]];
 };

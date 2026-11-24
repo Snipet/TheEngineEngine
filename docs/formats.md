@@ -173,6 +173,13 @@ scenarios/` holds the shipped ones. `tee::parseTimeline` also reads K3a's `tee-e
   an element as `name[i]`), a number, a switch or a choice's name. `"ramp"`: the event's numbers move there in a
   straight line over that many seconds from the value before, a step every 5 ms. Events of one time apply in the
   file's order.
+- A telemetry name, wherever one is taken (an assertion's `"tel"`, a validation target's `"tel"` and `"relativeTo"`,
+  `tee-render --tel`, `tee-dyno --fields` and `--torque`, the test library's `Run::tel`): a field's path under tel
+  (`engine.speed`; `tel.` optional), or an element of an array field by its index (`car.wheelSlip[2]`,
+  `engine.cylPeak[3]`, `a.b[1][2]` for two dimensions). An array named without an index, an index outside its extent
+  ("car.wheelSlip[7]: car.wheelSlip has 4 elements, 0 to 3") or an index on a field that is no array is an error that
+  says so. A run that names no telemetry keeps every number and each element of every array of at most 64, a column
+  each (`car.wheelSlip[2]`).
 - An assertion: `"tel"` a telemetry field with a `"measure"` (`max`, `min`, `mean`, `last`), or `"audio"` (`finite`;
   `peak`; `rms` in dB; `step`, the largest step between samples over the local level, `tee::measure::largestStep`),
   over `"during"` (seconds; the whole run by default), compared by `"<"`, `"<="`, `">"`, `">="` or `"within": [a, b]`;
@@ -206,9 +213,10 @@ What a build should measure as, each target with its source (card C, section 8).
   `speedAtMaxPower` or `torqueAt` (with `"at"`).
 - Every target says its `"source"` in words; a target the program cannot be measured for yet (a field it lacks) is
   `n/a`, no failure.
-- A dyno target on a program with no brake of its own (no `tel.engine.torque` yet) is measured on the predicted
-  curve's steady points (`tee/Predict.h`, the host braking the crank, every 15 rad/s over the plan's speeds), and the
-  table says so.
+- A dyno target is measured on the predicted curve's steady points (`tee/Predict.h`: the engine warm, the exhaust's
+  temperatures settled, every 15 rad/s over the plan's `from` to `to`), the curve the interface's ribbon shows; with
+  `"sweep": true` (or `steps`) on the dyno runner instead (`tee::runDyno`, the program's MODE_DYNO_ENGINE), whose
+  curve depends on how long the sweep took (the exhaust's walls warm over minutes).
 - `tee-validate` runs each file twice: the build with every model switch at the reference's setting (Spec switches
   named `model` or `custom`, and those whose help starts "Off: the reference": `tee::referenceSettings`) and the build
   as it is; it prints both columns and which targets each misses. A miss of the reference's is reported, not failed;

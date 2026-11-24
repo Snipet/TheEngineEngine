@@ -1,0 +1,16 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "2.0 inline four, turbo (the machine)",
+  "notes": "A 2 L four with one turbo as card F's machine (boost.model 1), its sizes matched to the engine.",
+  "spec": {
+    "engine": {
+      "layout": "Inline 4",
+      "displacement": 0.002
+    },
+    "boost": {
+      "kind": "Turbo",
+      "model": "Machine"
+    }
+  }
+}

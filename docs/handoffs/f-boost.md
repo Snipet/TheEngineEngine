@@ -41,3 +41,39 @@ integrated tests (2 L turbo four's boost and BMEP, drive pressure 1-2x boost, sh
 
 **Outside my paths**: none needed. Suggest card E solve its throttle implicitly (`boostOrificeStep`, as the rig).
 FMinus issues: none. Listen to: surge after a chop with no valve; blow-off; Roots vs twin-screw whine; anti-lag.
+
+## F: integrated (after K3b), corrected 15:00
+
+Branch `claude/awesome-gates-ntdb58`, null test identical before each push. **Done**: my Spec fields in `spec.boost`
+(`sim/spec/boost.fm`; `machinespec.fm` gone); `tel.boost` and the Scope's map fields; `Boost` holds the machine and
+fills the integrator's hooks (`pressure()`, `temperature()`, `draw`, `tick`, `control16`, `crankTorque`,
+`oxygenShare()`, the housing seam's four), model 0 the reference's code untouched; my calls in `engine.fm` at my hooks
+only (`applyMachine` in configure and on rev, `airSpeed`, the exhaust stand-in, `telemetry`, `scope`, model 1's
+restriction off); README's Boost section and hook table; tests to the glob's rule (`tee-tests-boost`, 30 cases);
+builds `content/builds/boost/{turbo-four,twin-turbo-v8,roots-v8}.json`, all at matched sizes.
+**Integrated tests** (`EngineTest.cpp`, 2 L inline four, full load on the engine dyno, 8 s a point): the matched turbo
+makes 69 kPa at 3500 rpm and 68 at 5500 (charge pipe 65 and 72: its 70 kPa spring), shaft 104,000 to 106,000 rpm,
+drive ratio 1.04 and 1.18 (mean over 100 blocks), 305 and 272 N m, the ports' gas 1194 and 1333 K; BMEP 17.3 bar at
+5500 rpm against 8.9 natural (production 2 L turbo fours 15 to 25; makers' torques); Roots at 4500 rpm 29 kPa, 7.0 N m
+off the crank; a chop from 94 kPa without a blow-off valve flags surge in 93 of 100 blocks, with one in none.
+**Correction**: the "cool port gas" (450 to 560 K) of my first integrated handoff was my error: it was read on the
+bench under `holdSpeed`, whose driver holds the speed at almost no brake torque (-2 to 2 N m). At full load the gas is
+1190 to 1330 K, as the integrator measured; the turbine is matched as designed (no 0.55 sizing anywhere).
+**Cost** (`tee-bench --engine`, free-revs): V8 1.062 of the reference, twin-turbo V8 1.198, Roots V8 1.102, turbo four
+1.203. `--profile` (twin-turbo V8): BoostMachine 297 ns, BoostEnd 152, BoostCompressor 54, Boost 47, BoostSound 12:
+about 560 ns, **0.24 R against the 0.12 R share: over**. Levers: warm-start BoostEnd's pipe-end solve (one pass, not
+three: about -100 ns); the charge path's volumes in float with a double residual; the sounds' noise at 48 kHz.
+**Not done, with card G**: the housing's per-sample sequence in `sampleTick` step 4 (my side in the README; G's
+network not wired yet). Until then `Boost::exhaustStandIn` feeds the housings; remove it when G's calls go in.
+**For the interface (U3)**: Spec paths `boost.model, layout, compInducer, compExducer, compAR, compEta, turbWheel,
+turbAR, turbEta, scrolls, housingVolume, vanes, vaneMin, inertia, bearing, assist, maxSpeed, gate, gateDiameter,
+gateSpring, target, overBoost, blowOffKind, blowOffSpring, blowOffDiameter, icEffect, icDrop, icFlow, icMass,
+chargeVolume, charger, scDisplacement, scRatio, scVolumeRatio, scStepUp, scBypass, antiLag, nitrousShot,
+nitrousBottle, seqFlow` (and K3's kind, level, size, blowOff). Telemetry `tel.boost.pressure, turbos,
+shaftSpeed[4], ratio[4], flow[4], efficiency[4], compressorOut[4], gate[4], vanes[4], turbineIn[4],
+turbineInTemp[4], drive[4]` (instantaneous: average a pulsing one), `chargePipe, intercoolerOut, throttleIn,
+blowOffValve, superchargerPower, oxygen, flags`. Scope `boostMapRev, boostLineSpeed[8], boostLineFlow[8][16],
+boostLineRatio[8][16], boostSurgeFlow[8], boostSurgeRatio[8], boostContourEta[5], boostContourFlow[5][16],
+boostContourRatio[5][16], boostTrailAt, boostTrailFlow[256], boostTrailRatio[256]` (while ctl.scopeOn). The same map
+without the Scope: mirror `BoostCompressor::size/speed/rise/efficiency` as `BoostMachine::mapLines` loops them.
+**Not run**: the whole suite after the last merges (my targets and `tee-tests [null]` only).
