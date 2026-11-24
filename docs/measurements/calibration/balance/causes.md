@@ -1199,3 +1199,66 @@ the tool must bake each stage on its own lobe. Its step needs to be finer than 1
 4. *The exhaust phaser*: retard only in the model and it costs at full load; the real one's direction and range unknown.
 5. *Knock*: costs nothing at the best cells (control off is no better).
 At 1800 the best is 319 against 333 to 368 (-4 to -13 %); at 1500 253 (-24 %).
+
+**B-3, the exhaust cam's phase on the ruled lobe** (the lead's 23:19 ruling: the small lobe 6.35 mm, 180 at 1 mm, about
+212 at the seat, centre 88; measured 23:22 to 23:26 by `date -u`). The model's exhaust phaser retards only (phaser.fm:
+the exhaust's later); the earlier closing the lead asks for was made by advancing the lobe's centre (exCentre 88 + 0 /
+10 / 20 / 30, the phaser's range 0), the intake fixed through camIn at 0 / 15 / 30 / 45 / 60. "Share" is the fresh
+charge trapped (g per litre per cycle) over the plenum's density (its mass over its volume, mean over the window).
+Each cell: N m / share / residual / boost kPa, the columns the exhaust's advance 0 / 10 / 20 / 30.
+
+0.40 match, 1800 rpm:
+
+| intake | 0 | 10 | 20 | 30 |
+|---|---|---|---|---|
+| 0 | 292/0.78/0.058/119 | 301/0.80/0.050/117 | 300/0.80/0.048/116 | 300/0.80/0.053/119 |
+| 15 | 303/0.82/0.065/120 | 316/0.85/0.055/120 | 325/0.87/0.049/120 | 319/0.87/0.050/117 |
+| 30 | **332/0.88/0.059/125** | 310/0.85/0.071/116 | 328/0.88/0.062/120 | 331/0.89/0.059/121 |
+| 45 | 231/0.70/0.149/101 | 319/0.86/0.078/120 | 315/0.85/0.085/119 | 316/0.86/0.082/120 |
+| 60 | 217/0.68/0.154/108 | 221/0.70/0.156/90 | 233/0.70/0.154/100 | 290/0.80/0.113/120 |
+
+0.40 match, 1500 rpm:
+
+| intake | 0 | 10 | 20 | 30 |
+|---|---|---|---|---|
+| 0 | 194/0.76/0.064/39 | 258/0.78/0.053/85 | 237/0.79/0.051/64 | 197/0.78/0.057/39 |
+| 15 | 254/0.81/0.070/83 | 286/0.83/0.060/104 | **303/0.86/0.053/112** | 289/0.86/0.052/101 |
+| 30 | 268/0.79/0.095/102 | 290/0.81/0.089/118 | 302/0.85/0.073/116 | 301/0.88/0.063/108 |
+| 45 | 242/0.79/0.105/83 | 253/0.79/0.109/91 | 260/0.81/0.100/91 | 253/0.83/0.089/78 |
+| 60 | 224/0.79/0.107/64 | 234/0.77/0.122/82 | 232/0.78/0.118/74 | 229/0.80/0.110/67 |
+
+0.50 match, 1800 rpm (best 320/0.89/0.058/110 at intake 30, exhaust +30); 1500 rpm (best 255/0.92/0.057/57 at
+intake 45, exhaust +10; shares 0.84 to 0.92 from intake 15 up, the boost 27 to 57 kPa). Full grids in the scratch run
+(80 points); the cells move about 10 N m between neighbours that should be close (0.40, 1800, intake 30: 332 / 310 /
+328 / 331), so read the best to about that.
+
+**The 0.87 share is reached**: at 1800 on both matches (0.88 to 0.89), at 1500 on the 0.40 (0.86 to 0.88) and on the 0.50
+(0.92, with little boost). The exhaust's earlier closing is what lets the intake open early without the back-fill: at
+intake 45 the 0.40 at 1800 goes from 231 N m (residual 0.149) at the lobe's own phase to 316 to 319 (0.08) with 10 to 30
+degrees of advance, and at intake 60 from 217 to 290. The best cell needs little of it at intake 30 (the lobe alone
+holds the residual near 0.06 there).
+
+**But the share was not the whole of it** (my figure of 0.87 for 350 N m was wrong: it took the torque per gram from
+the knock-free run, 169 N m per g/L at spark 11 BTDC; at these cells knock holds the retard at its cap, 14.3 to 15
+degrees, and the torque per gram is 158). At the best cells:
+- *1800, 0.40*: 332 N m at 2.106 g/L, share 0.88, boost 125 kPa (at its 120 target), knock at the cap: 1 to 21 N m
+  short of 333 to 368 (0 to 6 %). 350 at this efficiency needs about 2.22 g/L, share 0.93 at this boost, or a 6 %
+  denser plenum (about 135 kPa) or a 6 % better burn (the retard's cost: about 9 % at the cap if the knock-free torque
+  per gram held, which it did not in the earlier knock-off runs, where the spark's return cost trapped mass).
+- *1500, 0.40*: 303 N m, share 0.86, boost 112 (short of its 120): 30 to 65 N m short (9 to 18 %), of which the boost's
+  8 kPa is about 3 % and the share's 0.01 to 0.02 about 2 %; the rest the same efficiency as at 1800.
+- *the 0.50 at 1500*: the share is 0.92 but the boost 57 kPa: 255 N m, the turbo's spool (N2) alone.
+
+So with the ruled lobe and an exhaust cam that closes earlier, the trapped share is no longer what is short. At 1800 the
+gap is within the grid's noise of the cited curve's bottom; at 1500 the 0.40's boost (spool) and the knock-limited burn
+are what remain. Owners: the exhaust phaser's direction (advance: N1, the valvetrain's; today it only retards), the
+spool at 1500 (N2), the knock-limited efficiency at this charge (C's table, with the DI cooling note).
+
+**B-3, N1's overlap pressure on both lobes** (23:28 by `date -u`; tel.valve.dpOverlap, 6d531f72; 0.40 match). Under
+N1's rule (intake 38 to 49 degrees), 1500 / 1800 rpm: the build's long lobe -28.3 / -28.9 kPa (164 / 190 N m, residual
+0.131 / 0.160); the ruled short lobe -8.5 / -15.9 kPa (214 / 233 N m, 0.086 / 0.142). The short lobe cuts the push-back
+by a half to two thirds and does not turn it positive: the long lobe is a part of the fault, not all of it. With the
+intake fixed through camIn the reading is 0.0 exactly in every run (it is taken over the overlap the rule asks: not a
+reading at fixed phases). On this tree (merged at 23:27) the short lobe at intake 30 reads 309 N m at 1800 (332 in the
+grid above, run before the merge; with the exhaust +30, 326 against 331): the branch moved between, or the cells
+scatter by up to 7 %; read the grid's best to about 20 N m.
