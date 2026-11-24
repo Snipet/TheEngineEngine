@@ -328,6 +328,19 @@
 | `maps.pedalAuto` | Pedal: formula | switch |  | 1 |  |  |
 | `maps.lift` | Lift command | map |  |  | rotation by ratio |  |
 | `maps.liftAuto` | Lift: formula | switch |  | 1 |  |  |
+| `governor` | Diesel governor | choice: Reference, Mechanical, Electronic | 0 to 2 | Reference |  | Mechanical: flyweights and a rack (all-speed, it hunts at idle); Electronic: the pedal asks for fuel, a PI idle |
+| `droop` | Governor droop | number | 0.01 to 0.15 | 0.06 | fraction | The speed the governor gives up from no load to full, over the rated speed |
+| `highIdle` | High idle | number | 0 to 2100 | 0 | rotation | 0: the rated speed (the redline) times 1 + droop |
+| `fuelBoost` | Pump set for boost | number | 0 to 400000 | 150000 | pressure | Full rack is an equivalence ratio of 0.75 at this boost (over the air) |
+| `afc` | Smoke limiter | number | 0 to 1.2 | 0.8 | ratio | The boost compensator: the most equivalence ratio of the air there; 0: removed (it smokes while the turbo spools) |
+| `engineBrake` | Engine brake | choice: None, Compression release | 0 to 1 | None |  | Opens the exhaust valve near the top of compression, fuel off: its lobe is the second exhaust event's |
+| `brakeSwitch` | Engine brake switch | choice: Off, Low, Medium, High | 0 to 3 | Off |  | A third, two thirds or all of the cylinders; it acts with the pedal up and the clutch in |
+| `brakeValve` | Brake valve diameter | number | 0 to 0.08 | 0 | length | Each of the two exhaust valves it opens; 0: 0.3 of the bore |
+| `brakeMin` | Brakes cut out below | number | 0 to 300 | 94.24778 | rotation |  |
+| `exhaustBrake` | Exhaust brake | choice: None, Flap, Turbine vanes | 0 to 2 | None |  |  |
+| `exBrakeSwitch` | Exhaust brake switch | choice: Off, On | 0 to 1 | Off |  |  |
+| `exBrakeLimit` | Exhaust brake pressure | number | 50000 to 500000 | 300000 | pressure | The most back pressure its spring lets the flap hold, over the air |
+| `exBrakeLeak` | Exhaust brake leak | number | 0.005 to 0.5 | 0.03 | fraction | The closed flap's open area over the pipe's |
 
 ## `spec.car`
 
@@ -400,6 +413,7 @@
 | `autoBlip` | Auto-blipper | switch |  | 1 |  | Downshifts without the clutch: the throttle is blipped to the lower gear's speed |
 | `wheelieControl` | Wheelie control | choice: Off, By the throttle, By the clutch | 0 to 2 | By the throttle |  | What holds the front up at the angle below: a rider or an anti-wheelie control easing the throttle, or a rider slipping the clutch |
 | `wheelieAngle` | Wheelie held at | number | 0 to 40 | 4 | deg |  |
+| `clutchDry` | Dry clutch | switch |  | 0 |  | Off: a wet multi-plate clutch in oil (it drags a little when open); on: a dry one (no drag; it rattles at idle) |
 
 ## `spec.env`
 
@@ -459,3 +473,6 @@
 | `starter` | Starter | choice: Direct drive, Gear reduction | 0 to 1 | Gear reduction |  |  |
 | `starterPower` | Starter power | number | 0 to 10000 | 0 | power | 0: by the engine's size |
 | `starterLevel` | Starter level | number | -60 to 12 | 0 | dB |  |
+| `chain` | Chain whine | number | -60 to 12 | 0 | dB |  |
+| `lashLevel` | Chain lash clunk | number | -60 to 12 | 0 | dB | The drive's play closing as the throttle opens or shuts |
+| `dryClutch` | Dry clutch rattle | number | -60 to 12 | 0 | dB | Heard only with a dry clutch, at idle, the lever out |

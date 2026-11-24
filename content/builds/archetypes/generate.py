@@ -269,8 +269,9 @@ arch(slug="tractor-15-inline-six", runner=0.4, name="Highway tractor 15 L", geo=
      cam=(232, 200, 14.0, 112, 232, 200, 13.0, 112), train="Rocker", redline=2250, idle=700, diesel=True,
      boost=dict(kind="Turbo", target=2.6, spring=2.0, vanes=True), car="tractor", timing="Gears",
      compressionBrake=True,
-     notes="A 15 L straight-six truck diesel: 137 x 169 mm (14.9 L), 17:1, one variable-vane turbo; its compression "
-           "brake is left off until the ECU can switch it (the X15 kind: 298 to 451 kW, 1966 to 2779 N m at 900 to 1000 rpm, governed at 1900 to 2100, "
+     notes="A 15 L straight-six truck diesel: 137 x 169 mm (14.9 L), 17:1, one variable-vane turbo whose vanes "
+           "close as an exhaust brake on the overrun (the compression brake is left off: it cannot be switched yet) "
+           "(the X15 kind: 298 to 451 kW, 1966 to 2779 N m at 900 to 1000 rpm, governed at 1900 to 2100, "
            "idle 600 to 700; cummins.com, international.com); its limiter is the governed no-load speed, 2250 rpm, some 12 % over the rated 2000. In a 36 t tractor-trailer, eighteen speeds.")
 # ---- the second batch ----
 arch(slug="three-cylinder-10-turbo", runner=0.3, convK=17.0, name="1.0 L three-cylinder turbo", geo="ref-04-inline-3", layout="Inline 3",
@@ -321,7 +322,7 @@ arch(slug="pickup-diesel-67-inline-six", runner=0.35, name="6.7 L straight-six t
      boost=dict(kind="Turbo", target=2.0, spring=1.6, vanes=True), car="heavy-pickup", timing="Gears",
      compressionBrake=True,
      notes="A 6.7 L straight-six turbo diesel, 107 x 124 mm (6690 cc), 16.2:1, pushrods and four valves, a "
-           "variable-vane turbo (engines of the kind: 260 to 310 kW at 2800 to 3000 rpm, 1000 "
+           "variable-vane turbo that doubles as an exhaust brake (engines of the kind: 260 to 310 kW at 2800 to 3000 rpm, 1000 "
            "to 1460 N m at 1600 to 1800; makers' figures). In a heavy-duty pickup, six-speed automatic.")
 arch(slug="twin-turbo-hot-vee-v8-40", runner=0.25, name="Twin-turbo 4.0 L hot-vee V8", geo="ref-12-v8-cross",
      layout="V8 crossplane", bore=86.0, stroke=86.0, rod=143.0, cr=10.5, valves=4, dIn=33.0, dEx=28.0,
@@ -463,6 +464,11 @@ def build(a):
     t = {"model": "Maps", "timing": 0, "pops": 0.1, "starter": True,
          "limiter.kind": a.get("limiter", "Fuel cut"), "limiter.speed": e["redlineSpeed"],
          "idle.speed": round(a["idle"] * RPM, 3)}
+    if a.get("compressionBrake"):
+        # the exhaust brake by the turbine's vanes, armed on the dash (card D2's); the compression brake (valve.auxOn)
+        # stays off, see above
+        t["exhaustBrake"] = "Turbine vanes"
+        t["exBrakeSwitch"] = "On"
     if a.get("antiLag"):
         t["antiLag.on"] = True
         t["launch.on"] = True

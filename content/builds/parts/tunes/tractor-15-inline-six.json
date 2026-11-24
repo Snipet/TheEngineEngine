@@ -17,6 +17,8 @@
       "idle": {
         "speed": 73.304
       },
+      "exhaustBrake": "Turbine vanes",
+      "exBrakeSwitch": "On",
       "knock": {
         "on": true
       }

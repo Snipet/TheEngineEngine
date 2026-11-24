@@ -69,7 +69,7 @@ Thirty archetypes in `content/builds/archetypes/`, each a whole build (engine, c
 
 **Diesel 2.0 L common rail** (`diesel-20-common-rail.json`). A 2.0 L four-valve common-rail diesel with a variable-vane turbo: 81 x 95.5 mm (1968 cc), 16.5:1 (engines of the kind: 103 to 125 kW at 3500 to 4000 rpm, 320 to 380 N m from 1750; makers' figures). Balance shafts. In a front-drive family car, six-speed manual.
 
-**Highway tractor 15 L** (`tractor-15-inline-six.json`). A 15 L straight-six truck diesel: 137 x 169 mm (14.9 L), 17:1, one variable-vane turbo; its compression brake is left off until the ECU can switch it (the X15 kind: 298 to 451 kW, 1966 to 2779 N m at 900 to 1000 rpm, governed at 1900 to 2100, idle 600 to 700; cummins.com, international.com); its limiter is the governed no-load speed, 2250 rpm, some 12 % over the rated 2000. In a 36 t tractor-trailer, eighteen speeds.
+**Highway tractor 15 L** (`tractor-15-inline-six.json`). A 15 L straight-six truck diesel: 137 x 169 mm (14.9 L), 17:1, one variable-vane turbo whose vanes close as an exhaust brake on the overrun (the compression brake is left off: it cannot be switched yet) (the X15 kind: 298 to 451 kW, 1966 to 2779 N m at 900 to 1000 rpm, governed at 1900 to 2100, idle 600 to 700; cummins.com, international.com); its limiter is the governed no-load speed, 2250 rpm, some 12 % over the rated 2000. In a 36 t tractor-trailer, eighteen speeds.
 
 **1.0 L three-cylinder turbo** (`three-cylinder-10-turbo.json`). A downsized 1.0 L three with a small turbo and direct injection: 71.9 x 82 mm (999 cc), 10:1 (engines of the kind: 74 to 103 kW at 5500 to 6000 rpm, 170 to 205 N m from 1500; makers' figures). In a small hatch, six-speed manual.
 
@@ -83,7 +83,7 @@ Thirty archetypes in `content/builds/archetypes/`, each a whole build (engine, c
 
 **1.8 L twin-cam roadster** (`twin-cam-roadster-18.json`). A 1.8 L twin-cam 16-valve four: 83 x 85 mm (1839 cc), 10:1 (engines of the kind in light roadsters: 96 to 110 kW at 6500 to 7000 rpm, 160 to 170 N m at 5000; makers' figures). Rear drive, six-speed manual.
 
-**6.7 L straight-six turbo diesel pickup** (`pickup-diesel-67-inline-six.json`). A 6.7 L straight-six turbo diesel, 107 x 124 mm (6690 cc), 16.2:1, pushrods and four valves, a variable-vane turbo (engines of the kind: 260 to 310 kW at 2800 to 3000 rpm, 1000 to 1460 N m at 1600 to 1800; makers' figures). In a heavy-duty pickup, six-speed automatic.
+**6.7 L straight-six turbo diesel pickup** (`pickup-diesel-67-inline-six.json`). A 6.7 L straight-six turbo diesel, 107 x 124 mm (6690 cc), 16.2:1, pushrods and four valves, a variable-vane turbo that doubles as an exhaust brake (engines of the kind: 260 to 310 kW at 2800 to 3000 rpm, 1000 to 1460 N m at 1600 to 1800; makers' figures). In a heavy-duty pickup, six-speed automatic.
 
 **Twin-turbo 4.0 L hot-vee V8** (`twin-turbo-hot-vee-v8-40.json`). A 4.0 L crossplane V8 with both turbos in the vee (hot-vee): 86 x 86 mm (3996 cc), 10.5:1, direct injection (engines of the kind: 350 to 470 kW at 5500 to 6500 rpm, 700 to 850 N m from 2000 to 4500; makers' figures). All-wheel drive, eight-speed automatic.
 
