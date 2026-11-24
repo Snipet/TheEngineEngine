@@ -41,3 +41,41 @@ integrated tests (2 L turbo four's boost and BMEP, drive pressure 1-2x boost, sh
 
 **Outside my paths**: none needed. Suggest card E solve its throttle implicitly (`boostOrificeStep`, as the rig).
 FMinus issues: none. Listen to: surge after a chop with no valve; blow-off; Roots vs twin-screw whine; anti-lag.
+
+## F: integrated (after K3b), 14:30
+
+Branch `claude/awesome-gates-ntdb58`; pushed with the null test identical (10 cases, every pair) before each push.
+**Done**: my Spec fields appended to `spec.boost` (`sim/spec/boost.fm`; `machinespec.fm` gone); `tel.boost` and the
+Scope's map fields; `Boost` (`sim/boost/boost.fm`) holds the machine and fills the integrator's hooks (`pressure()`,
+`temperature()`, `draw`, `tick`, `control16`, `crankTorque`, `oxygenShare()`, `housingOf/housing/downpipe/gatePipe`),
+model 0 the reference's code untouched; my calls added to `engine.fm` at my hooks only (`applyMachine` in configure and
+on rev, `airSpeed`, the exhaust stand-in, `telemetry`, `scope`, model 1's restriction off); `sim/README.md`'s Boost
+section and hook table; tests to the glob's rule (`tee-tests-boost`, 30 cases, all pass); builds
+`content/builds/boost/{turbo-four,twin-turbo-v8,roots-v8}.json`.
+**Integrated tests** (`EngineTest.cpp`, 2 L inline four, bench and dyno): matched turbo 19 kPa at 5500 rpm, 63,000 rpm;
+size 0.55: 59 kPa (charge pipe 65, spring 70), 168,000 rpm, drive ratio 1.46; dyno 5500 rpm: 17.3 bar BMEP at 72
+kPa against 9.0 natural (production 2 L turbo fours 15-25; makers' torques); Roots: 32 kPa, 8.7 N m off the crank;
+a chop without a blow-off valve flags surge in 82 of 100 blocks, with one in none.
+**Finding for D/G/H**: the engine's port gas is cool, `exh.tPort` 450-560 K at full throttle (real: 900-1100 K), so
+turbos matched to the engine make little; the turbine takes what the engine gives.
+**Cost** (`tee-bench --engine`, free-revs, load ~4.5): V8 1.062 of the reference, twin-turbo V8 1.198, Roots V8 1.102,
+turbo four 1.203. `--profile` (twin-turbo V8): BoostMachine 297 ns, BoostEnd 152, BoostCompressor 54, Boost 47,
+BoostSound 12: about 560 ns, **0.24 R against the 0.12 R share: over**. Levers: warm-start BoostEnd's pipe-end solve
+from last sample's ratio (one pass, not three: about -100 ns); the charge path's volumes in float with a double
+residual; the sounds' noise at 48 kHz. For package Q.
+**Not done, with card G**: the housing's per-sample sequence in `sampleTick` step 4 (README, Boost and the hook table:
+my side written; G's network not wired yet). Until then `Boost::exhaustStandIn` feeds the housings with the cylinders'
+gas; remove it when G's calls go in. Nothing else outstanding with G: its handoff accepted my signatures.
+**For the interface (U3)**: Spec paths `boost.model, layout, compInducer, compExducer, compAR, compEta, turbWheel,
+turbAR, turbEta, scrolls, housingVolume, vanes, vaneMin, inertia, bearing, assist, maxSpeed, gate, gateDiameter,
+gateSpring, target, overBoost, blowOffKind, blowOffSpring, blowOffDiameter, icEffect, icDrop, icFlow, icMass,
+chargeVolume, charger, scDisplacement, scRatio, scVolumeRatio, scStepUp, scBypass, antiLag, nitrousShot,
+nitrousBottle, seqFlow` (plus K3's kind, level, size, blowOff). Telemetry `tel.boost.pressure, turbos,
+shaftSpeed[4], ratio[4], flow[4], efficiency[4], compressorOut[4], gate[4], vanes[4], turbineIn[4],
+turbineInTemp[4], drive[4], chargePipe, intercoolerOut, throttleIn, blowOffValve, superchargerPower, oxygen, flags`.
+Scope `boostMapRev, boostLineSpeed[8], boostLineFlow[8][16], boostLineRatio[8][16], boostSurgeFlow[8],
+boostSurgeRatio[8], boostContourEta[5], boostContourFlow[5][16], boostContourRatio[5][16], boostTrailAt,
+boostTrailFlow[256], boostTrailRatio[256]` (while ctl.scopeOn). The same map without the Scope: mirror
+`BoostCompressor::size/speed/rise/efficiency` as `BoostMachine::mapLines` loops them (docs/models/boost.md).
+**Not run**: the whole suite after the last merges (my targets, `tee-tests [null]` and the engine tests only;
+`tests/sim/core/Engine.h` did not compile at one merge: D's, from the Build rename).

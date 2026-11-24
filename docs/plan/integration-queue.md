@@ -141,3 +141,32 @@ package's integration has landed.
 - **Card C**: array elements (`car.wheelSlip[2]`) as columns and assertions in a Scenario.
 - **I, later**: an automatic whose tyres spin shifts up on the flaring output speed and can shift down again when
   they hook up.
+
+## The exhaust gas is too cool (found by F, 14:33): D and H, then G, C and U3
+
+At full throttle the reference's port gas (`exh.tPort`, from the cylinders' `eSum` / `mSum`) is 450 to 560 K; a
+real petrol engine's is 900 to 1100 K, a diesel's 700 to 1000 K. The work is right (BMEP 10.2 to 10.8 bar), so the
+heat goes somewhere else or the sum is not the gas's temperature. **D**: one cylinder's energy balance over a cycle on
+the dyno. **H**: the charge's energy against the fuel's heating value, the wall's share. **The lead's decision in
+principle**: with the new models on, the gas temperature is physical and validated; model 0 stays the reference.
+Depends on it: F's turbine matching (its tests use a turbine at 0.55 of the matched size), G's wave speeds and wall
+temperatures, H's overrun and anti-lag, C's validation (a target to add), U3's heat tints.
+
+## From F's integration (14:33)
+
+- **G**: the housing seam's per-sample calls in `sampleTick` step 4; remove `Boost::exhaustStandIn` when they go in.
+- **Q**: the boost machine costs 0.24 R against 0.12 R (the pipe-end solve's three passes; double volumes; the
+  sounds' noise at 96 kHz); `sim/boost/**` is Q's to change for cost now.
+- **U3**: the Spec, telemetry and Scope names (sent 14:35); the compressor's map comes from the Scope's arrays.
+
+## The lead's decision on non-exact optimisations (14:40, from Q's `docs/measurements/q2-levers.md`)
+
+The engine is chaotic: any change that is not exact to the bit decorrelates the waveform at the first sound (even
+the air nudged by 1e-4 K), so no sample-level tolerance can judge one. Rule: (1) a non-exact change is judged against
+the engine's own sensitivity, an ensemble of at least 8 harmlessly perturbed runs a null-test pair, measure by
+measure (band levels, speed trace, idle, steady dyno torque, clicks), and its long-term spectra and steady torque
+must agree far more tightly than the fast measures' floor; (2) it lives beside the exact code behind one switch for
+the whole program, off in the null test, on in the application only after it passed (1) and the owner has listened
+to named before-and-after pairs (in X's listening pack); (3) exact changes come first and need neither.
+FMinus's own levers give nothing: -O2 with denormals flushed stays; no `param` on the fuel and cycle switches.
+Later, for the shell: compile at -O0 (0.13 s) for a first sound and swap to -O2 at a part boundary.

@@ -23,10 +23,84 @@ namespace tee
                          [](const TimelineEvent& a, const TimelineEvent& b) { return a.time < b.time; });
     }
 
-    int RunResult::column(std::string_view path) const noexcept
+    std::string telemetryColumn(std::string_view name)
     {
-        if (path.substr(0, 4) == "tel.")
-            path.remove_prefix(4);
+        std::string out;
+        for (const char c : name)
+            if (c != ' ')
+                out += c;
+        if (out.rfind("tel.", 0) == 0)
+            out.erase(0, 4);
+        return out;
+    }
+
+    bool telemetryElement(const Fields& fields, std::string_view name, const FieldInfo*& field, std::size_t& index,
+                          std::string& error)
+    {
+        const std::string column = telemetryColumn(name);
+        const std::size_t bracket = column.find('[');
+        const std::string path = "tel." + column.substr(0, bracket);
+        field = fields.find(path);
+        index = 0;
+        if (field == nullptr || field->block != "tel" || field->table() || field->scalar == Scalar::None)
+        {
+            error = "no telemetry field '" + column.substr(0, bracket) + "'";
+            field = nullptr;
+            return false;
+        }
+        std::vector<std::size_t> at;
+        for (std::size_t i = bracket; i != std::string::npos && i < column.size();)
+        {
+            const std::size_t close = column.find(']', i);
+            if (column[i] != '[' || close == std::string::npos)
+            {
+                error = "'" + column + "': an index is written [n]";
+                field = nullptr;
+                return false;
+            }
+            const std::string digits = column.substr(i + 1, close - i - 1);
+            if (digits.empty() || digits.find_first_not_of("0123456789") != std::string::npos)
+            {
+                error = "'" + column + "': an index is a whole number";
+                field = nullptr;
+                return false;
+            }
+            at.push_back(static_cast<std::size_t>(std::stoul(digits)));
+            i = close + 1;
+        }
+        const std::vector<std::size_t>& extents = field->extents;
+        const std::string base = column.substr(0, bracket);
+        if (extents.empty() && !at.empty())
+        {
+            error = "'" + column + "': " + base + " is no array";
+            field = nullptr;
+            return false;
+        }
+        if (!extents.empty() && at.size() != extents.size())
+        {
+            error = "'" + column + "': " + base + " is an array of " + std::to_string(field->count)
+                    + " elements: name one, as " + base + "[0]" + (extents.size() > 1 ? "[0]" : "");
+            field = nullptr;
+            return false;
+        }
+        for (std::size_t d = 0; d < at.size(); ++d)
+        {
+            if (at[d] >= extents[d])
+            {
+                error = "'" + column + "': " + base + " has " + std::to_string(extents[d]) + " elements"
+                        + (extents.size() > 1 ? " in dimension " + std::to_string(d + 1) : "") + ", 0 to "
+                        + std::to_string(extents[d] - 1);
+                field = nullptr;
+                return false;
+            }
+            index = index * extents[d] + at[d];
+        }
+        return true;
+    }
+
+    int RunResult::column(std::string_view name) const noexcept
+    {
+        const std::string path = telemetryColumn(name);
         for (std::size_t c = 0; c < columns.size(); ++c)
             if (columns[c] == path)
                 return static_cast<int>(c);
@@ -271,27 +345,51 @@ namespace tee
         std::stable_sort(events.begin(), events.end(),
                          [](const TimelineEvent& a, const TimelineEvent& b) { return a.time < b.time; });
 
-        // the telemetry kept
-        std::vector<const FieldInfo*> kept;
+        // the telemetry kept: a field and an element each
+        struct Kept
+        {
+            const FieldInfo* field;
+            std::size_t index;
+        };
+        std::vector<Kept> kept;
         if (options.telemetry.empty())
         {
             for (const FieldInfo& f : fields.all())
-                if (f.block == "tel" && f.count == 1 && !f.table())
-                    kept.push_back(&f);
+            {
+                if (f.block != "tel" || f.table() || f.scalar == Scalar::None || f.scalar == Scalar::Pointer)
+                    continue;
+                if (f.count == 1 && f.extents.empty())
+                {
+                    kept.push_back({&f, 0});
+                    result.columns.push_back(f.path.substr(4));
+                }
+                else if (f.count <= 64)
+                    for (std::size_t i = 0; i < f.count; ++i)
+                    {
+                        // the element's name: its indexes in each dimension, outermost first
+                        std::string name = f.path.substr(4);
+                        std::size_t rest = i, stride = f.count;
+                        for (const std::size_t e : f.extents)
+                        {
+                            stride /= std::max<std::size_t>(e, 1);
+                            name += "[" + std::to_string(rest / std::max<std::size_t>(stride, 1)) + "]";
+                            rest %= std::max<std::size_t>(stride, 1);
+                        }
+                        kept.push_back({&f, i});
+                        result.columns.push_back(name);
+                    }
+            }
         }
         else
             for (const std::string& p : options.telemetry)
             {
-                const FieldInfo* f = fields.find(p.substr(0, 4) == "tel." ? p : "tel." + p);
-                if (f == nullptr)
-                {
-                    error = "no telemetry field '" + p + "'";
+                const FieldInfo* f = nullptr;
+                std::size_t index = 0;
+                if (!telemetryElement(fields, p, f, index, error))
                     return false;
-                }
-                kept.push_back(f);
+                kept.push_back({f, index});
+                result.columns.push_back(telemetryColumn(p));
             }
-        for (const FieldInfo* f : kept)
-            result.columns.push_back(f->path.substr(4));
 
         const double seconds = options.seconds > 0.0 ? options.seconds : timeline.seconds;
         const std::int64_t total = static_cast<std::int64_t>(std::llround(seconds * rate));
@@ -367,8 +465,8 @@ namespace tee
             {
                 const double time = static_cast<double>(pos) / rate;
                 result.rowTime.push_back(time);
-                for (const FieldInfo* f : kept)
-                    result.rows.push_back(static_cast<float>(frame.get(*f)));
+                for (const Kept& k : kept)
+                    result.rows.push_back(static_cast<float>(frame.get(*k.field, k.index)));
                 result.host = frame.host;
                 if (options.afterBlock)
                     options.afterBlock(time, frame);
