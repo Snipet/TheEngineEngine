@@ -11,6 +11,7 @@ namespace tee::ui
         {
             // card T's telemetry as its 125 cc single gives it at 11 000 rpm (0 for a four-stroke: the stages read
             // these only for a two-stroke)
+            x.engine->addTelemetry("engine.layoutRefused", [](const DemoEngine&) { return 0.0; });   // D's: none refused
             x.engine->addTelemetry("engine.tsPurity", [](const DemoEngine&) { return 0.95; });
             x.engine->addTelemetry("engine.tsDelivery", [](const DemoEngine&) { return 0.85; });
             x.engine->addTelemetry("engine.tsTrapping", [](const DemoEngine&) { return 0.65; });
