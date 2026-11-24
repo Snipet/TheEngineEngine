@@ -16,6 +16,7 @@
 #include "views/engine/EngineModel.h"
 #include "views/engine/PageText.h"
 #include "views/engine/StageDraw.h"
+#include "views/engine/TwoStroke.h"
 #include "views/valves/ValvesModel.h"
 
 #include "app/Look.h"
@@ -80,7 +81,7 @@ namespace tee::ui
             for (const char* n : { kTelInPhase, kTelExPhase, kTelInTarget, kTelExTarget, kTelStage, kTelLift, kTelFloat, kTelFloating,
                                    kTelActive, en::kTelSpeed, kTelEvents[0], kTelEvents[1], kTelEvents[2], kTelEvents[3], kTelEvents[4] })
                 k.mix(static_cast<float>(ctx_.live.get(n)));
-            k.mix(drag_).mix(hot_).mix(static_cast<float>(yMax_));
+            k.mix(drag_).mix(hot_).mix(static_cast<float>(yMax_)).mix(two_).mix(scopeVersion_).mix(tab_);
             return k.h;
         }
 
@@ -124,6 +125,31 @@ namespace tee::ui
                                                { "TRAIN", "RATE", "PRELOAD", "VALVE MASS" });
             const pages::Section head = sec("HEAD", { VF::valves, VF::dIn, VF::dEx, VF::portIn, VF::portEx },
                                             { "VALVES", "INTAKE DIA", "EXHAUST DIA", "INTAKE PORT", "EXHAUST PORT" });
+            if (engine::twoStrokeOf(ctx_.doc).on)
+            {
+                const pages::Section ports{ "PORTS", { "engine.tsExhaustDur", "engine.tsExhaustWidth", "engine.tsExhaustRadius",
+                                                       "engine.tsTransferDur", "engine.tsTransferWidth", "engine.tsTransferRadius",
+                                                       "engine.tsPortCd" },
+                                            { "EXHAUST OPEN", "EXHAUST WIDTH", "EXHAUST CORNERS", "TRANSFERS OPEN", "TRANSFER WIDTH",
+                                              "TRANSFER CORNERS", "DISCHARGE" } };
+                const pages::Section valve{ "POWER VALVE", { "engine.tsValveDur", "engine.tsValveFrom", "engine.tsValveTo" },
+                                            { "SHUT: OPEN FOR", "OPENS FROM", "FULLY OPEN AT" } };
+                const pages::Section cc{ "CRANKCASE", { "engine.tsCrankcaseRatio", "engine.tsInletKind", "engine.tsInletArea",
+                                                        "engine.tsReedFull", "engine.tsReedHz", "engine.tsReedDamping",
+                                                        "engine.tsDiscOpen", "engine.tsDiscDur", "engine.tsPistonDur", "engine.tsCarbArea" },
+                                         { "COMPRESSION", "INLET", "INLET AREA", "REED FULL AT", "REED HZ", "REED DAMPING",
+                                           "DISC OPENS", "DISC OPEN FOR", "PORT OPEN FOR", "CARB AREA" } };
+                const pages::Section scav{ "SCAVENGING", { "engine.tsMixing", "engine.tsShortCircuit" }, { "MIXING", "SHORT-CIRCUITED" } };
+                if (s == "valve.ports")
+                    return pages::page(ctx_.doc, { ports, valve });
+                if (s == "valve.powervalve")
+                    return pages::page(ctx_.doc, { valve, ports });
+                if (s == "valve.crankcase")
+                    return pages::page(ctx_.doc, { cc });
+                if (s == "valve.scavenging")
+                    return pages::page(ctx_.doc, { scav });
+                return pages::page(ctx_.doc, { ports, valve, cc, scav }, "A TWO-STROKE: PORTS IN PLACE OF VALVES");
+            }
             const Train t = trainOf(ctx_.doc);
             const std::string labNote = t.labOff ? "THE LAB IS OFF: THESE TAKE EFFECT WITH THE LAB MODEL" : "";
             if (s == "valve.intake")
@@ -149,7 +175,7 @@ namespace tee::ui
             {
                 drag_ = h;
                 ctx_.doc.beginGesture();
-                ctx_.selection.select(h < exPeak ? "valve.intake" : "valve.exhaust");
+                ctx_.selection.select(h >= kPortHandle ? "valve.ports" : h < exPeak ? "valve.intake" : "valve.exhaust");
                 return;
             }
             const std::string hit = regionAt(pt);
@@ -179,7 +205,9 @@ namespace tee::ui
         void pointerMove(const funkgui::PointerEvent& e) override
         {
             hot_ = handleAt({ e.x, e.y });
-            ctx_.selection.hover(hot_ >= 0 ? (hot_ < exPeak ? "valve.intake" : "valve.exhaust") : regionAt({ e.x, e.y }));
+            ctx_.selection.hover(hot_ >= kPortHandle ? "valve.ports"
+                                 : hot_ >= 0             ? (hot_ < exPeak ? "valve.intake" : "valve.exhaust")
+                                                         : regionAt({ e.x, e.y }));
             Board::pointerMove(e);
         }
         void closeGestures() override
@@ -198,6 +226,11 @@ namespace tee::ui
             const float pad = 16.0f;
             const Rect in{ s.x + pad, s.y + pad, s.w - 2 * pad, s.h - 2 * pad };
             compact_ = in.w < 980.0f;
+            two_ = engine::twoStrokeOf(ctx_.doc).on;
+            const char* four[3] = { "Bench", "Phasers", "Springs" };
+            const char* twoNames[3] = { "Power valve", "Crankcase", "Scavenge" };
+            for (int i = 0; i < 3; ++i)
+                tabs_[i]->setTitle(two_ ? twoNames[i] : four[i]);
             hasPhasers_ = hasPhasers();
             hasLive_ = hasLive();
             if (compact_)
@@ -233,6 +266,8 @@ namespace tee::ui
 
         bool hasPhasers() const
         {
+            if (engine::twoStrokeOf(ctx_.doc).on)
+                return true;
             for (VF f : { VF::inPhaseRange, VF::exPhaseRange, VF::stages, VF::liftControl })
                 if (en::findField(ctx_.doc, path(f)) >= 0)
                     return true;
@@ -240,6 +275,8 @@ namespace tee::ui
         }
         bool hasLive() const
         {
+            if (engine::twoStrokeOf(ctx_.doc).on)
+                return true;
             return en::findField(ctx_.doc, path(VF::springRate)) >= 0 || en::findField(ctx_.doc, path(VF::deacMask)) >= 0
                 || ctx_.live.has(kTelFloat) || ctx_.live.has(kTelActive);
         }
@@ -247,8 +284,19 @@ namespace tee::ui
         void step(float) override
         {
             // a build that gains or loses the lower panels' fields lays out again
-            if (hasPhasers() != hasPhasers_ || hasLive() != hasLive_)
+            if (hasPhasers() != hasPhasers_ || hasLive() != hasLive_ || engine::twoStrokeOf(ctx_.doc).on != two_)
                 arrange();
+            if (two_)
+            {
+                // the Scope's two-stroke arrays (the ports' shares, the crankcase's pressure), read while shown
+                const std::uint64_t g = ctx_.scope.generation();
+                if (g != scopeGen_ || !scopeRead_)
+                {
+                    scopeGen_ = g;
+                    scopeRead_ = true;
+                    readPortScope();
+                }
+            }
             // the lift axis: the larger lobe and a quarter, held still while a handle is dragged
             if (drag_ < 0)
             {
@@ -264,6 +312,19 @@ namespace tee::ui
         void drawStage(Canvas& c, const funkgui::Theme& th) const override
         {
             const lk::Palette p = lk::Palette::of(th);
+            if (two_)
+            {
+                const engine::TwoStroke ts = engine::twoStrokeOf(ctx_.doc);
+                drawPorts(c, p, ts);
+                drawPortRing(c, p, ts);
+                if (!compact_ || tab_ == 0)
+                    drawPowerValve(c, p, ts);
+                if (!compact_ || tab_ == 1)
+                    drawCrankcase(c, p, ts);
+                if (!compact_ || tab_ == 2)
+                    drawScavenging(c, p, ts);
+                return;
+            }
             const Train t = trainOf(ctx_.doc);
             drawEditor(c, p, t);
             drawRing(c, p, t);
@@ -277,9 +338,11 @@ namespace tee::ui
 
     private:
         // ---- the editor's axes ---------------------------------------------------------------------------------------
-        static constexpr double kA0 = 0.0, kA1 = 720.0;
-        float X(double a) const { return plot_.x + static_cast<float>((a - kA0) / (kA1 - kA0)) * plot_.w; }
-        double angleAt(float x) const { return kA0 + (x - plot_.x) / plot_.w * (kA1 - kA0); }
+        static constexpr double kA0 = 0.0;
+        // the cycle across the plot: a four-stroke's 720 degrees, a two-stroke's 360
+        double span() const { return two_ ? 360.0 : 720.0; }
+        float X(double a) const { return plot_.x + static_cast<float>((a - kA0) / (span() - kA0)) * plot_.w; }
+        double angleAt(float x) const { return kA0 + (x - plot_.x) / plot_.w * (span() - kA0); }
         bool metres(const Lobe& l) const { return std::isfinite(l.lift); }
         float Y(double lift) const { return plot_.bottom() - static_cast<float>(lift / yMax_) * plot_.h; }
         double liftAt(float y) const { return (plot_.bottom() - y) / plot_.h * yMax_; }
@@ -311,8 +374,26 @@ namespace tee::ui
                 return { X(l.centre), Y(l.liftAt(l.centre)) };
             return { X(k == 1 ? l.centre - 0.5 * l.durSeat : l.centre + 0.5 * l.durSeat), plot_.bottom() };
         }
+        // A two-stroke's handles: each port's opening and closing marks (the exhaust's, then the transfers').
+        static constexpr int kPortHandle = 100;
+        Point portHandle(int h, const engine::TwoStroke& t) const
+        {
+            const double dur = h < 2 ? t.exDur : t.trDur;
+            return { X(h % 2 == 0 ? 180.0 - 0.5 * dur : 180.0 + 0.5 * dur), plot_.bottom() };
+        }
         int handleAt(Point pt) const
         {
+            if (two_)
+            {
+                const engine::TwoStroke t = engine::twoStrokeOf(ctx_.doc);
+                for (int h = 0; h < 4; ++h)
+                {
+                    const Point q = portHandle(h, t);
+                    if (std::isfinite(q.x) && std::fabs(pt.x - q.x) < 8.0f && std::fabs(pt.y - q.y) < 11.0f)
+                        return kPortHandle + h;
+                }
+                return -1;
+            }
             const Train t = trainOf(ctx_.doc);
             if (!t.editable)
                 return -1;
@@ -339,10 +420,19 @@ namespace tee::ui
         }
         void dragTo(Point pt)
         {
+            if (drag_ >= kPortHandle)
+            {
+                // a port's mark: its duration about bottom dead centre (the other mark moves with it)
+                const double a = std::clamp(angleAt(pt.x), 0.0, 360.0);
+                const int f = ctx_.doc.find(drag_ - kPortHandle < 2 ? "engine.tsExhaustDur" : "engine.tsTransferDur");
+                if (f >= 0)
+                    ctx_.doc.set(f, 2.0 * std::fabs(180.0 - a));
+                return;
+            }
             const Train t = trainOf(ctx_.doc);
             const bool intake = drag_ < exPeak, b = stageB(t);
             const Lobe& l = lobe(t, intake);
-            const double a = std::clamp(angleAt(pt.x), kA0, kA1);
+            const double a = std::clamp(angleAt(pt.x), kA0, span());
             if (l.free)
             {
                 // a free valve is where it opens and closes: the peak moves both, a seat mark its own; the lift as a cam's
@@ -380,6 +470,20 @@ namespace tee::ui
 
         std::string regionAt(Point pt) const
         {
+            if (two_)
+            {
+                if (editor_.contains(pt) || ring_.contains(pt))
+                    return "valve.ports";
+                if (compact_ && bench_.contains(pt))
+                    return pt.y < bench_.y + 30.0f ? "" : tab_ == 0 ? "valve.powervalve" : tab_ == 1 ? "valve.crankcase" : "valve.scavenging";
+                if (bench_.contains(pt))
+                    return "valve.powervalve";
+                if (phasers_.contains(pt))
+                    return "valve.crankcase";
+                if (live_.contains(pt))
+                    return "valve.scavenging";
+                return {};
+            }
             if (plot_.contains(pt))
             {
                 // the nearer lobe under the pointer
@@ -406,7 +510,7 @@ namespace tee::ui
             if (!l.known())
                 return;
             std::vector<float> xs, ys;
-            for (double a = kA0; a <= kA1 + 1e-9; a += 2.0)
+            for (double a = kA0; a <= span() + 1e-9; a += 2.0)
             {
                 xs.push_back(X(a));
                 ys.push_back(Y(l.liftAt(a - shift)));
@@ -418,7 +522,7 @@ namespace tee::ui
             if (!l.known())
                 return;
             std::vector<float> xs, ys;
-            for (double a = kA0; a <= kA1 + 1e-9; a += 2.0)
+            for (double a = kA0; a <= span() + 1e-9; a += 2.0)
             {
                 xs.push_back(X(a));
                 ys.push_back(Y(l.liftAt(a - shift)));
@@ -928,10 +1032,324 @@ namespace tee::ui
             put(c, "OUTLINED: MAY REST", in.right(), y + 48.0f, lk::kCaps, p.dim, Align::right);
         }
 
+        // ==== a two-stroke: PORT TIMING ====================================================================================
+        void readPortScope()
+        {
+            auto get = [&](const char* name, std::vector<float>& out) {
+                out.assign(1080, 0.0f);
+                const int h = ctx_.scope.find(name);
+                const int n = h < 0 ? 0 : ctx_.scope.read(h, out.data(), 1080);
+                out.resize(static_cast<std::size_t>(std::max(0, n)));
+                return n;
+            };
+            const int e = get("liftExhaust", shareEx_);
+            get("liftIntake", shareTr_);
+            get("portIntake", crankcase_);
+            portDeg_ = e;
+            ++scopeVersion_;
+        }
+        // The Scope's arrays are a two-stroke's (360 degrees) and so can be drawn here.
+        bool portScope() const { return portDeg_ == 360; }
+
+        // The ports' open shares against the crank's angle over one turn: the exhaust's (with the power valve shut,
+        // ghosted), the transfers', a timed inlet's window; the crankcase's pressure on its own scale at the right.
+        void drawPorts(Canvas& c, const lk::Palette& p, const engine::TwoStroke& t) const
+        {
+            lk::region(c, p, editor_, "PORTS: OPEN AGAINST CRANK ANGLE", ctx_.selection.is("valve.ports"));
+            const Rect e = content(editor_);
+            const en::Layout lay = en::layoutOf(ctx_.doc);
+            const en::Cylinder cyl = en::cylinderOf(ctx_.doc, lay);
+            const bool geo = cyl.known() && std::isfinite(t.exDur);
+            const double r = cyl.radius(), L = std::isfinite(cyl.rod) ? cyl.rod : 3.3 * r;
+            const Units& u = ctx_.units;
+            const double speed = ctx_.live.get(en::kTelSpeed);
+            const double exNow = t.exDurAt(speed);
+            // the numbers a tuner quotes
+            const auto len = [&](double m) { return std::isfinite(m) ? u.number(Quantity::length, m) : std::string("-"); };
+            const std::string lu = u.unit(Quantity::length).name;
+            struct Stat
+            {
+                const char* label;
+                std::string value, unit;
+            };
+            const Stat stats[] = {
+                { "EXHAUST OPEN", deg(exNow), "deg" },
+                { "TRANSFERS OPEN", deg(t.trDur), "deg" },
+                { "BLOWDOWN", deg(0.5 * (exNow - t.trDur)), "deg" },
+                { "EXHAUST HEIGHT", len(geo ? en::portHeight(exNow, r, L) : en::kNaN), lu },
+                { "TRANSFER HEIGHT", len(geo ? en::portHeight(t.trDur, r, L) : en::kNaN), lu },
+            };
+            float x = e.x;
+            for (const Stat& st : stats)
+            {
+                const float w = std::max(c.textWidth(st.label, lk::kCaps), c.textWidth(st.value.c_str(), lk::kNumberS) + 30.0f);
+                if (x + w > e.right())
+                    break;
+                stage::readout(c, p, x, e.y - 4.0f, st.label, st.value, st.unit, lk::kNumberS);
+                x += w + 20.0f;
+            }
+            put(c, "DRAG A PORT'S MARK", editor_.right() - lk::kPad, editor_.y + 9.0f, lk::kCaps, p.label, Align::right);
+            // the axes: top, bottom and top again; the share open up the side
+            c.rrect(plot_.x, plot_.y, plot_.w, plot_.h, 0.0f, kClear, 1.0f, p.grid);
+            const char* marks[3] = { "TDC", "BDC", "TDC" };
+            for (int i = 0; i < 3; ++i)
+            {
+                const float mx = X(180.0 * i);
+                c.hairlineV(mx, plot_.y, plot_.h, p.dim);
+                put(c, marks[i], mx, plot_.bottom() + 6.0f, lk::kCaps, p.text, i == 0 ? Align::left : i == 2 ? Align::right : Align::centre);
+            }
+            for (int d = 90; d < 360; d += 180)
+                put(c, std::to_string(d), X(d), plot_.bottom() + 6.0f, lk::kUnit, p.dim, Align::centre);
+            const auto Ys = [&](double share) { return plot_.bottom() - static_cast<float>(std::clamp(share, 0.0, 1.0) * 0.82) * plot_.h; };
+            for (int i = 1; i <= 4; ++i)
+            {
+                const float y = Ys(i * 0.25);
+                c.hairlineH(plot_.x, y, plot_.w, p.over(p.grid, 0.6f));
+                put(c, std::to_string(i * 25), plot_.x - 6.0f, c.capCentreTop(y, lk::kUnit), lk::kUnit, p.label, Align::right);
+            }
+            put(c, "OPEN, %", plot_.x - 44.0f, plot_.y - 16.0f, lk::kCaps, p.label);
+            if (!geo)
+            {
+                putCentred(c, "NO BORE AND STROKE IN THIS BUILD YET", plot_.centreX(), plot_.centreY(), lk::kCaps, p.dim);
+                return;
+            }
+            const funkgui::Canvas::ClipScope clip(c, { plot_.x, plot_.y, plot_.w, plot_.h + 62.0f });
+            // a timed inlet's window, shaded behind
+            double from = 0.0, dur = 0.0;
+            const bool timed = t.inletWindow(from, dur);
+            if (timed)
+            {
+                const auto band = [&](double a0, double a1) {
+                    if (a1 > a0)
+                        c.rrect(X(a0), plot_.y + 1.0f, X(a1) - X(a0), plot_.h - 2.0f, 0.0f, p.over(p.cold, 0.1f));
+                };
+                const double a0 = en::wrap(from, 360.0), a1 = a0 + dur;
+                band(a0, std::min(a1, 360.0));
+                if (a1 > 360.0)
+                    band(0.0, a1 - 360.0);
+            }
+            // a share's curve over the turn: the Scope's when it is a two-stroke's, else from the geometry
+            const auto shareCurve = [&](double d, const std::vector<float>* fromScope, Col ink, float width, bool fillUnder) {
+                std::vector<float> xs, ys;
+                for (double a = 0.0; a <= 360.0 + 1e-9; a += 1.0)
+                {
+                    const double v = fromScope != nullptr && portScope()
+                        ? (*fromScope)[static_cast<std::size_t>(std::min(359, static_cast<int>(a)))]
+                        : en::portShare(a, d, r, L);
+                    xs.push_back(X(a));
+                    ys.push_back(Ys(v));
+                }
+                if (fillUnder)
+                    c.areaStrip(xs.data(), static_cast<int>(xs.size()), ys.data(), nullptr, plot_.bottom(), p.over(ink, 0.14f));
+                c.polyline(xs.data(), ys.data(), static_cast<int>(xs.size()), width, ink);
+            };
+            if (t.hasValve() && std::fabs(exNow - t.valveDur) > 0.5)
+                shareCurve(t.valveDur, nullptr, p.over(p.hot, 0.45f), 1.25f, false);    // the valve shut
+            if (t.hasValve() && std::fabs(exNow - t.exDur) > 0.5)
+                shareCurve(t.exDur, nullptr, p.over(p.hot, 0.45f), 1.25f, false);       // the valve open
+            shareCurve(exNow, &shareEx_, p.hot, lk::kTrace, true);
+            shareCurve(t.trDur, &shareTr_, p.cold, lk::kTrace, true);
+            // the crankcase's pressure, when the Scope has it, on its own scale (kPa at the right)
+            if (portScope() && crankcase_.size() >= 360)
+            {
+                double lo = 1e9, hi = 0.0;
+                for (float v : crankcase_)
+                {
+                    lo = std::min(lo, static_cast<double>(v));
+                    hi = std::max(hi, static_cast<double>(v));
+                }
+                lo = std::min(lo, 101325.0) - 5e3;
+                hi = std::max(hi, 101325.0) + 5e3;
+                const auto Yp = [&](double pa) { return plot_.bottom() - static_cast<float>((pa - lo) / (hi - lo) * 0.82) * plot_.h; };
+                std::vector<float> xs, ys;
+                for (int i = 0; i <= 360; ++i)
+                {
+                    xs.push_back(X(i));
+                    ys.push_back(Yp(crankcase_[static_cast<std::size_t>(i % 360)]));
+                }
+                c.polyline(xs.data(), ys.data(), static_cast<int>(xs.size()), 1.25f, p.label);
+                c.segment(plot_.right() - 6.0f, Yp(101325.0), plot_.right(), Yp(101325.0), 1.0f, p.label);
+            }
+            // labels at each curve, the crank now, the marks to drag
+            put(c, "EXHAUST", X(180.0), Ys(1.0) - 14.0f, lk::kCaps, p.hot, Align::centre);
+            put(c, "TRANSFERS", X(180.0), Ys(0.35), lk::kCaps, p.cold, Align::centre);
+            const double a = crankAngle360();
+            if (std::isfinite(a))
+            {
+                c.segment(X(a), plot_.y, X(a), plot_.bottom(), 1.5f, p.value);
+                c.disc(X(a), plot_.y, 3.5f, p.value);
+            }
+            for (int h = 0; h < 4; ++h)
+            {
+                const Point q = portHandle(h, t);
+                const bool on = kPortHandle + h == drag_ || kPortHandle + h == hot_;
+                c.rrect(q.x - 4.0f, q.y - 9.0f, 8.0f, 12.0f, 2.0f, on ? p.selected : (h < 2 ? p.hot : p.cold), 1.0f, p.ground);
+            }
+            // the key, under the axis
+            std::vector<std::string> keys;
+            if (t.hasValve())
+                keys.push_back("FAINT: THE EXHAUST WITH THE POWER VALVE SHUT AND OPEN");
+            if (timed)
+                keys.push_back(std::string("SHADED: THE ") + t.inletName() + " OPEN");
+            else
+                keys.push_back("THE REED OPENS BY THE CRANKCASE'S PULL: NO FIXED TIMING");
+            if (portScope() && crankcase_.size() >= 360)
+                keys.push_back("GREY: THE CRANKCASE'S PRESSURE, THE TICK AT THE AIR OUTSIDE");
+            float kx = plot_.x, ky = plot_.bottom() + 22.0f;
+            for (const std::string& k : keys)
+            {
+                const float w = c.textWidth(k.c_str(), lk::kCaps);
+                if (kx > plot_.x && kx + w > plot_.right())
+                {
+                    kx = plot_.x;
+                    ky += 14.0f;
+                }
+                put(c, k, kx, ky, lk::kCaps, p.label);
+                kx += w + 18.0f;
+            }
+        }
+
+        double crankAngle360() const
+        {
+            const double c = ctx_.live.get(en::kTelCrank);
+            return std::isfinite(c) ? en::wrap(c, 360.0) : en::kNaN;
+        }
+
+        // The classic port-timing diagram: one turn, top up, bottom down; the exhaust's open period the outer arc, the
+        // transfers' inside it, a timed inlet's innermost; each about bottom dead centre.
+        void drawPortRing(Canvas& c, const lk::Palette& p, const engine::TwoStroke& t) const
+        {
+            lk::region(c, p, ring_, "PORT TIMING", ctx_.selection.is("valve.ports"));
+            const Rect in = content(ring_);
+            const double exNow = t.exDurAt(ctx_.live.get(en::kTelSpeed));
+            const float R = std::max(20.0f, std::min(in.w * 0.5f - 24.0f, (in.h - 84.0f) * 0.5f));
+            const Point ctr{ in.centreX(), in.y + 18.0f + R };
+            c.arc(ctr, R + 10.0f, 0.0f, static_cast<float>(2.0 * stage::kPi), 1.0f, p.grid);
+            put(c, "TDC", ctr.x, ctr.y - R - 30.0f, lk::kCaps, p.text, Align::centre);
+            put(c, "BDC", ctr.x, ctr.y + R + 18.0f, lk::kCaps, p.text, Align::centre);
+            c.segment(ctr.x, ctr.y - R - 16.0f, ctr.x, ctr.y + R + 16.0f, 1.0f, p.dim);
+            if (std::isfinite(exNow))
+                c.arc(ctr, R, stage::arcAngle(180.0 - 0.5 * exNow), stage::arcAngle(180.0 + 0.5 * exNow), 7.0f, p.hot);
+            if (std::isfinite(t.trDur))
+                c.arc(ctr, R - 13.0f, stage::arcAngle(180.0 - 0.5 * t.trDur), stage::arcAngle(180.0 + 0.5 * t.trDur), 7.0f, p.cold);
+            double from = 0.0, dur = 0.0;
+            if (t.inletWindow(from, dur))
+                c.arc(ctr, R - 26.0f, stage::arcAngle(from), stage::arcAngle(from + dur), 5.0f, p.over(p.cold, 0.6f));
+            const auto corner = [&](float x, float y, Align al, const char* name, const std::string& v, Col ink) {
+                put(c, name, x, y, lk::kCaps, ink, al);
+                put(c, v, x, y + 13.0f, lk::kBody, p.value, al);
+            };
+            corner(in.x, in.y, Align::left, "EXHAUST", deg(exNow) + " deg", p.hot);
+            corner(in.right(), in.y, Align::right, "TRANSFERS", deg(t.trDur) + " deg", p.cold);
+            corner(in.x, in.bottom() - 26.0f, Align::left, "BLOWDOWN", deg(0.5 * (exNow - t.trDur)) + " deg", p.label);
+            corner(in.right(), in.bottom() - 26.0f, Align::right, "INLET",
+                   t.inletWindow(from, dur) ? deg(dur) + " deg" : std::string("reed"), p.label);
+            putCentred(c, "EXHAUST OPENS", ctr.x, ctr.y - 8.0f, lk::kCaps, p.label);
+            putCentred(c, deg(180.0 - 0.5 * exNow) + " ATDC", ctr.x, ctr.y + 8.0f, lk::kNumberS, p.value);
+        }
+
+        // The power valve: the exhaust's duration (and its port's height) against the engine's speed, the speed now.
+        void drawPowerValve(Canvas& c, const lk::Palette& p, const engine::TwoStroke& t) const
+        {
+            lk::region(c, p, bench_, compact_ ? "" : "POWER VALVE", ctx_.selection.is("valve.powervalve"));
+            const Rect in = content(bench_);
+            const float down = compact_ ? 10.0f : 0.0f;
+            if (!t.hasValve())
+            {
+                putCentred(c, "NO POWER VALVE: THE EXHAUST OPENS " + deg(t.exDur) + " DEG AT EVERY SPEED", bench_.centreX(),
+                           bench_.centreY(), lk::kCaps, p.dim);
+                return;
+            }
+            const Rect plot{ in.x + 40.0f, in.y + 14.0f + down, in.w - 44.0f, in.h - 14.0f - down - 30.0f };
+            const Units& u = ctx_.units;
+            const double w1 = std::max(t.valveTo, t.valveFrom) * 1.4;
+            const double d0 = std::min(t.valveDur, t.exDur) - 6.0, d1 = std::max(t.valveDur, t.exDur) + 6.0;
+            const auto Xs = [&](double w) { return plot.x + static_cast<float>(w / w1) * plot.w; };
+            const auto Yd = [&](double d) { return plot.bottom() - static_cast<float>((d - d0) / (d1 - d0)) * plot.h; };
+            c.rrect(plot.x, plot.y, plot.w, plot.h, 0.0f, kClear, 1.0f, p.grid);
+            put(c, "EXHAUST OPEN, DEG", plot.x - 40.0f, in.y - 2.0f + down, lk::kCaps, p.label);
+            for (const double d : { t.valveDur, t.exDur })
+                put(c, deg(d), plot.x - 5.0f, c.capCentreTop(Yd(d), lk::kUnit), lk::kUnit, p.label, Align::right);
+            // the speed axis ticked where the valve starts and ends its travel
+            for (const double w : { t.valveFrom, t.valveTo })
+            {
+                c.hairlineV(Xs(w), plot.y, plot.h, p.over(p.grid, 0.6f));
+                put(c, u.number(Quantity::rotation, w, 0), Xs(w), plot.bottom() + 4.0f, lk::kUnit, p.label,
+                    w == t.valveFrom ? Align::right : Align::left);
+            }
+            put(c, "0", plot.x, plot.bottom() + 4.0f, lk::kUnit, p.label);
+            put(c, std::string("SPEED, ") + u.unit(Quantity::rotation).name, plot.right(), plot.bottom() + 16.0f, lk::kCaps, p.label,
+                Align::right);
+            const float xs[4] = { plot.x, Xs(t.valveFrom), Xs(t.valveTo), plot.right() };
+            const float ys[4] = { Yd(t.valveDur), Yd(t.valveDur), Yd(t.exDur), Yd(t.exDur) };
+            c.polyline(xs, ys, 4, lk::kTrace, p.hot);
+            put(c, "SHUT", plot.x + 6.0f, Yd(t.valveDur) - 16.0f, lk::kCaps, p.hot);
+            put(c, "OPEN", plot.right() - 6.0f, Yd(t.exDur) - 16.0f, lk::kCaps, p.hot, Align::right);
+            const double speed = ctx_.live.get(en::kTelSpeed);
+            if (std::isfinite(speed))
+            {
+                const float sx = Xs(std::clamp(speed, 0.0, w1));
+                c.segment(sx, plot.y, sx, plot.bottom(), 1.5f, p.value);
+                c.disc(sx, Yd(t.exDurAt(speed)), 4.5f, p.hot, 1.5f, p.ground);
+            }
+        }
+
+        // The crankcase: its compression, the inlet, the areas, its pressure over the turn.
+        void drawCrankcase(Canvas& c, const lk::Palette& p, const engine::TwoStroke& t) const
+        {
+            lk::region(c, p, phasers_, compact_ ? "" : "CRANKCASE", ctx_.selection.is("valve.crankcase"));
+            const Rect in = content(phasers_);
+            const Units& u = ctx_.units;
+            const float cw = std::floor(in.w * 0.5f), ch = std::floor(in.h * 0.5f);
+            const float top = in.y + (compact_ ? 10.0f : 0.0f);
+            const auto cell = [&](int i) { return Point{ in.x + cw * static_cast<float>(i % 2), top + ch * static_cast<float>(i / 2) }; };
+            const auto item = [&](int i, const char* label, const std::string& value, Col ink) {
+                const Point at = cell(i);
+                put(c, label, at.x, at.y, lk::kCaps, p.label);
+                put(c, value, at.x, at.y + 14.0f, lk::kBody, ink);
+            };
+            item(0, "COMPRESSION", lk::num(t.crankcaseRatio, "%.2f") + " : 1", p.value);
+            item(1, "INLET", t.inletName(), p.value);
+            item(2, "INLET AREA", std::isfinite(t.inletArea) ? u.format(Quantity::area, t.inletArea) : "-", p.value);
+            double lo = en::kNaN, hi = en::kNaN;
+            if (portScope() && !crankcase_.empty())
+            {
+                lo = *std::min_element(crankcase_.begin(), crankcase_.end());
+                hi = *std::max_element(crankcase_.begin(), crankcase_.end());
+            }
+            item(3, "PRESSURE, A TURN",
+                 std::isfinite(lo) ? u.number(Quantity::pressure, lo) + " to " + u.format(Quantity::pressure, hi) : std::string("-"),
+                 std::isfinite(lo) ? p.value : p.dim);
+        }
+
+        // Scavenging: how the fresh charge meets the burnt (the fields; the simulator's measures when telemetry has them).
+        void drawScavenging(Canvas& c, const lk::Palette& p, const engine::TwoStroke&) const
+        {
+            lk::region(c, p, live_, compact_ ? "" : "SCAVENGING", ctx_.selection.is("valve.scavenging"));
+            const Rect in = content(live_);
+            const float cw = std::floor(in.w * 0.5f);
+            const float top = in.y + (compact_ ? 10.0f : 0.0f);
+            const auto field = [&](const char* path) {
+                const int f = ctx_.doc.find(path);
+                return f < 0 ? en::kNaN : ctx_.doc.get(f);
+            };
+            const double mix = field("engine.tsMixing"), shortc = field("engine.tsShortCircuit");
+            stage::readout(c, p, in.x, top, "MIXING", lk::num(mix * 100.0, "%.0f"), "%", lk::kNumberS);
+            stage::readout(c, p, in.x + cw, top, "SHORT-CIRCUITED", lk::num(shortc * 100.0, "%.0f"), "%", lk::kNumberS);
+            put(c, "0 %: THE FRESH CHARGE PUSHES THE BURNT OUT", in.x, top + 44.0f, lk::kUnit, p.dim);
+            put(c, "100 %: IT MIXES WITH IT AT ONCE", in.x, top + 58.0f, lk::kUnit, p.dim);
+        }
+
         int drag_ = -1, hot_ = -1;
         double yMax_ = 0.015;
         Rect editor_{}, plot_{}, ring_{}, bench_{}, phasers_{}, live_{};
-        bool compact_ = false, hasPhasers_ = false, hasLive_ = false;
+        bool compact_ = false, hasPhasers_ = false, hasLive_ = false, two_ = false;
+        // a two-stroke's Scope: the cycle's length, the exhaust's and transfers' shares, the crankcase's pressure
+        int portDeg_ = 0;
+        std::vector<float> shareEx_, shareTr_, crankcase_;
+        std::uint64_t scopeGen_ = 0;
+        bool scopeRead_ = false;
+        std::uint32_t scopeVersion_ = 0;
         int tab_ = 0;
         Button* tabs_[3] = {};
 
@@ -940,6 +1358,9 @@ namespace tee::ui
         // Where handle h is now (0..2 the intake's peak, opening, closing; 3..5 the exhaust's); {-1, -1}: no handles.
         Point handle(int h) const
         {
+            if (two_)
+                return h >= kPortHandle && h < kPortHandle + 4 ? portHandle(h - kPortHandle, engine::twoStrokeOf(ctx_.doc))
+                                                              : Point{ -1.0f, -1.0f };
             const Train t = trainOf(ctx_.doc);
             return t.editable && h >= 0 && h < handleCount ? handlePoint(h, t) : Point{ -1.0f, -1.0f };
         }

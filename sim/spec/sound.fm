@@ -26,8 +26,8 @@ module SoundSpec
     int model [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Listener")]]
         [[ui::choices("Reference", "Places")]]
         [[ui::help("Reference: the five views as they were. Places: every source where it is on the car, heard by its paths")]];
-    int camera [[fminus::range(0, 6)]] [[fminus::default(0)]] [[ui::label("Camera")]]
-        [[ui::choices("Tailpipe", "Rear", "Side", "Engine bay", "Driver", "Trackside", "Chase")]];
+    int camera [[fminus::range(0, 7)]] [[fminus::default(0)]] [[ui::label("Camera")]]
+        [[ui::choices("Tailpipe", "Rear", "Side", "Engine bay", "Driver", "Trackside", "Chase", "Free")]];
     int place [[fminus::range(0, 4)]] [[fminus::default(0)]] [[ui::label("Place")]]
         [[ui::choices("Hall", "Field", "Street", "Tunnel", "Garage")]]
         [[ui::help("Hall: the reference's room; the others their own reflections and reverberation")]];
@@ -37,4 +37,15 @@ module SoundSpec
         [[ui::help("How far open: shut, the cabin hears the outside through its floor, firewall and glass")]];
     int ground [[fminus::range(0, 2)]] [[fminus::default(0)]] [[ui::label("Ground")]]
         [[ui::choices("Asphalt", "Grass", "None")]] [[ui::help("What the ground reflects: the comb outdoor sound has")]];
+    // the FREE camera (camera 8th choice): where the listener stands in the car's frame (x right, y forward from the
+    // rear bumper's middle, z up), and which way it faces (degrees from forward, toward the right). It walks there at
+    // 8 m/s at most
+    float listenerX [[fminus::range(-60, 60)]] [[fminus::default(3)]] [[ui::label("Listener across")]]
+        [[ui::quantity("length")]];
+    float listenerY [[fminus::range(-60, 60)]] [[fminus::default(2.2)]] [[ui::label("Listener along")]]
+        [[ui::quantity("length")]];
+    float listenerZ [[fminus::range(0.1, 10)]] [[fminus::default(1.5)]] [[ui::label("Listener height")]]
+        [[ui::quantity("length")]];
+    float facing [[fminus::range(-180, 180)]] [[fminus::default(-90)]] [[ui::label("Listener facing")]]
+        [[ui::unit("deg")]] [[ui::help("From the car's forward, toward its right: -90 faces the car from its right side")]];
 };

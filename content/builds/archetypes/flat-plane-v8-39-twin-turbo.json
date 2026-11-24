@@ -81,7 +81,8 @@
       "exPhaseRange": 40
     },
     "intake": {
-      "model": 1
+      "model": 1,
+      "runnerLength": 0.25
     },
     "boost": {
       "model": "Machine",
