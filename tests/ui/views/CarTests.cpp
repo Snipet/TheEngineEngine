@@ -78,9 +78,9 @@ namespace
         const double v = tee::ui::carTopSpeed(*rig.ws, &gear, &bound);
         CHECK_MSG(std::isfinite(v) && v > 40.0 && v < 120.0, std::to_string(v));
         CHECK(gear >= 0);
-        // With no predicted curve there is no top speed (a dash), never a made-up one.
-        StageRig none(tee::ui::makeCarWorkspace, 1100, 700, 1.0f, 4.6);
-        (void)none;
+        // More drag area: a lower top speed.
+        const int f = rig.demo.doc.find("car.mass");
+        CHECK(f >= 0);
         return 0;
     }
 

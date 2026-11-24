@@ -153,3 +153,30 @@ namespace
         return 0;
     }
 }
+
+#include "kit/bind/Binding.h"
+
+namespace
+{
+    // Pressing a map's row selects its field, and the inspector's page names it (and its formula switch when the build
+    // has one); a lamp selects its part of the ECU; a lane its quantity's section.
+    VIEW_TEST(testTuneInspector, "tune.inspector")
+    {
+        StageRig rig(tee::ui::makeTuneWorkspace, 1100, 700, 1.0f, 4.6);
+        tee::ui::tunedemo::fillDocument(rig.demo.doc);
+        rig.settle();
+        auto& sel = rig.demo.selection;
+        rig.host->click(100.0f, 60.0f);                  // the first row: spark advance
+        CHECK_MSG(sel.path() == "ecu.spark", sel.path());
+        const std::string page = rig.ws->inspectorPage();
+        const std::vector<int> fields = tee::ui::fieldsOfGui(rig.demo.doc, page);
+        CHECK_MSG(fields.size() == 1 && fields[0] == rig.demo.doc.find("ecu.spark"), page);
+        rig.host->click(100.0f, 340.0f);                 // wastegate duty
+        CHECK_MSG(sel.path() == "boost.duty", sel.path());
+        // The lamps, at the traces' right: the limiter first.
+        rig.host->click(1100.0f - 16.0f - 12.0f - 150.0f, 700.0f - 16.0f - 210.0f + 30.0f + 15.0f);
+        CHECK_MSG(sel.path() == "ecu.limiter", sel.path());
+        CHECK(rig.ws->inspectorPage().empty());          // the frame's generated page of that prefix
+        return 0;
+    }
+}
