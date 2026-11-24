@@ -493,3 +493,22 @@ A Renesis-type side exhaust port has almost no overlap, which the reference's pe
 
 - Content (P): the side-port build's dial at 0.15 or 0.
 - Model (D, or E's path): side exhaust ports for a rotary.
+
+**Rotary ports from the build (the lead's 18:59).** With the lab model, a rotary whose intake or exhaust is set to free
+actuation now takes that port's opening and closing from the free valve's angles, read as four-stroke equivalents (a
+rotary stroke is 270 degrees of the eccentric shaft, a piston's 180, so the port's angle is 1.5 times the field's).
+The reference's peripheral exhaust closes some 50 degrees after the top; a side exhaust port closes near it.
+
+P's NA side-port twin with RENESIS-like timing, in eccentric degrees from memory (I would put them at ±10 degrees):
+the exhaust opens 50 before bottom and closes 3 after top, the intake opens 3 after top and closes 65 after bottom.
+As free angles: 146.7 / 362 / 362 / 583.3.
+
+| rpm | 2500 | 4000 | 5500 | 7000 | 8500 |
+|---|---|---|---|---|---|
+| Torque with the reference's ports (dial 0.15), N m | 165 | 195 | 201 | 202 | 221 |
+| VE, reference's ports | 0.69 | 0.76 | 0.77 | 0.76 | 0.84 |
+| Torque with side-port timing, N m | 198 | 224 | 231 | 233 | 238 |
+| VE, side-port timing | 0.82 | 0.85 | 0.85 | 0.85 | 0.88 |
+
+The target is 211 to 216 N m at 5500 rpm. The curve is flat, as the real engine's is, about 7 % over. Its rise at
+8500 comes with the two-stage intake's short runner.

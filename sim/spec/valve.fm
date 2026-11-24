@@ -71,7 +71,7 @@ module ValveSpec
         [[ui::quantity("fraction")]];
     // free valves: where each opens and closes outright (the cycle's degrees, 0 the firing top, 360 the overlap's)
     float freeInOpen [[fminus::range(0, 720)]] [[fminus::default(350)]] [[ui::label("Free intake opens")]]
-        [[ui::help("A free intake valve opens here, in degrees of the cycle")]]
+        [[ui::help("A free intake valve opens here, in degrees of the cycle. On a rotary (with the lab) the side intake port's opening, in four-stroke-equivalent degrees: 1.5 times this in degrees of the eccentric shaft")]]
         [[ui::quantity("angle")]] [[ui::group("Free valves")]];
     float freeInClose [[fminus::range(0, 720)]] [[fminus::default(590)]] [[ui::label("Free intake closes")]]
         [[ui::help("A free intake valve closes here, in degrees of the cycle")]]
