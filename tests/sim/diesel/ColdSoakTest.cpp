@@ -39,14 +39,21 @@ namespace
 
 namespace
 {
+    // The bounds: each case starts within a stated time with margin over its good values (on the gas before 8b20b176:
+    // 253 K 0.6 to 1.9 s every case; 233 K 1.1 to 4.5 s, but the mechanical governor on H's fuel model 1 12.7 s, the
+    // slowest). Asserted since the lead found a 233 K no-start that no assertion caught (2026-11-24).
     void coldCase(int g, int m)
     {
+        const double limit233 = (g == 0 && m == 1) ? 15.0 : 8.0;
         const double at253 = startAt(253.15, g, m, m, 15.0);
-        const double at233 = startAt(233.15, g, m, m, 15.0);
+        const double at233 = startAt(233.15, g, m, m, 20.0);
         std::printf("governor %d, fuel and ecu models %d: runs after %.1f s cranking at 253 K; at 233 K %s%.1f s\n", g, m, at253,
-                    at233 < 0.0 ? "no start in 15 s " : "", at233 < 0.0 ? 15.0 : at233);
+                    at233 < 0.0 ? "no start in 20 s " : "", at233 < 0.0 ? 20.0 : at233);
+        INFO("governor " << g << ", fuel and ecu models " << m);
         CHECK(at253 > 0.0);
-        CHECK(at253 < 10.0);
+        CHECK(at253 < 4.0);
+        CHECK(at233 > 0.0);
+        CHECK(at233 < limit233);
     }
 } // namespace
 
