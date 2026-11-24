@@ -379,3 +379,33 @@ four-valve ones under).
 **The small block, stopped (the lead's call).** Open: some 14 % unexplained after P's L48 parts. Sized: accessories 1 to
 3 % (forum figures only: no change to friction.fm until a better source), the chamber's burn about 1 %, the spark about
 1.5 % (no source); unmeasured: the carburettor's spread of mixture between cylinders, an older engine's friction.
+
+## N3-8. The runners are tuned to the targets' own peak speeds (20:45 by `date -u`)
+
+The 7.0 (cited +9.9 %) across its range, full load (tip, tee::Build path):
+
+| rpm | 2000 | 3000 | 3600 | 4200 | 4800 | 5400 | 6000 | 6300 | 6800 |
+|---|---|---|---|---|---|---|---|---|---|
+| Torque, N m | 564 | 573 | 659 | 642 | 701 | 656 | 628 | 560 | 510 |
+| Power, kW | 118 | 180 | 249 | 282 | 352 | 371 | 395 | 369 | 363 |
+| VE | 0.748 | 0.758 | 0.871 | 0.869 | 0.955 | 0.933 | 0.940 | 0.855 | 0.808 |
+| Brake efficiency | 0.325 | 0.328 | 0.329 | 0.322 | 0.322 | 0.310 | 0.297 | 0.289 | 0.279 |
+
+The torque comes in teeth (VE 0.76 → 0.87 → 0.955 → 0.85), its top at 4800 rpm: the target's peak-torque speed. Its
+power peaks at 395 kW at 6000 rpm (377 cited, at 6300). Every cited engine's runner but the small block's is P's rule,
+0.5 (5000 / the target's peak-torque rpm)^1.3 m, which puts the runner's tune exactly at the speed the torque is
+measured at:
+
+| Archetype | Runner | Target's torque peak | The rule's length |
+|---|---|---|---|
+| Flat six | 0.53 m | 4750 rpm | 0.53 |
+| VR6 | 0.63 | 4200 | 0.63 |
+| 7.0 V8 | 0.53 | 4800 | 0.53 |
+| 3.8 V6 | 0.67 | 4000 | 0.67 |
+| Four-cam V8 | 0.57 | 4500 | 0.57 |
+| Roadster | 0.50 | 5000 | 0.50 |
+| Small block | 0.18 | 3000 | (0.97: not the rule) |
+
+So each cited engine is measured on the top of its own ram (N3-6: 12 to 18 % on the flat six). Whether the ram's height
+or the runner is wrong, the fix is a cited runner: each real engine's port-plus-runner length (the LS7's, the VR6's, the
+3800's, the Coyote's, the MX-5's are documented engines), so the model's tooth falls where the real one does. Asked of P.
