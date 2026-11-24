@@ -73,6 +73,16 @@ the fields concerned on the cylinder's page (`engine.bore`), never blocking a va
 1500 kg/m^3 x bore^3 (about twice a real one's); stroke / bore outside 0.5 to 2; a mean piston speed over 30 m/s at
 the limiter; rod / stroke under 1.4 (a rod set outright, not the reference's 3.3 r). `ui.engine.warnings`.
 
+## A custom layout refused
+
+While package D's `engine.layoutRefused` reads 1 (finding X-001: the simulator refused the custom layout and runs the
+layout dial's preset in its place), the block from above draws the dial's layout, which is what runs, under two amber
+lines: "CUSTOM LAYOUT REFUSED: THE DIAL'S RUNS" and, when the build shows why, the reason ("TWO OF ITS CYLINDERS FIRE
+TOGETHER", or a cylinder in a bank with no angle). The layout's inspector page carries the whole sentence under its
+LAYOUT group: "THIS CUSTOM LAYOUT WAS REFUSED: THE ENGINE IS RUNNING THE LAYOUT DIAL'S INSTEAD". Both go when the flag
+does. The reason is derived from the build here; D exposes none by name. ENGINE's demo hook gives the flag as 0.
+`ui.engine.refused`.
+
 ## Derived, not set
 
 Displacement, the two ratios, piston speed, the clearance height, the pins of a preset, the firing order and intervals

@@ -3,7 +3,7 @@
 Package U3, branch `claude/awesome-gates-ntdb58`. Pages: `docs/ui/air.md` and `docs/ui/exhaust.md`. Paths: `ui/views/{air,exhaust}/`, `tests/ui/views/{Air,Exhaust}Tests.cpp`.
 
 **Done** (`tee-view-tests`, 28 U3 tests, all pass on Linux):
-- `ui.exhaust.*`: model, stage, builds, select, absent, rest, slow, sizes, inspector, sheet, framestage, text, effects, twostroke, ductmid.
+- `ui.exhaust.*`: model, stage, builds, select, absent, rest, slow, sizes, inspector, framestage, text, effects, twostroke, ductmid; sheet.pictures (nightly).
 - `ui.air.*`: model, stage, builds, select, absent, rest, sizes, inspector, framestage, text, textcheck, scopemap, ram.
 - Text checks: no two texts meet on any build at both frame stages. On the two-stroke, no trace crosses a label either
   (the port plot's OPENS and CLOSES now sit above its frame).
@@ -12,7 +12,7 @@ Package U3, branch `claude/awesome-gates-ntdb58`. Pages: `docs/ui/air.md` and `d
 
 **Goldens**: `air.*` and `exhaust.*` at density 1 and 2, 1100x700 and 1600x1000, graphite and paper.
 - All from the software rasteriser (no GPU here); every PNG looked at before blessing.
-- Contact sheet: `out/ui/sheet.u3.png` (`ui.exhaust.sheet`).
+- Contact sheet: `out/ui/sheet.u3.png` (`ui.exhaust.sheet.pictures`: nightly, a picture only).
 
 **Bound to the simulator's names**:
 - EXHAUST, card G: crossKind, mufKind; tel.exhaust gas/wallTemperature[7], ends/endLevel/endSlot, valve, flame.
