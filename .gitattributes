@@ -1,0 +1,4 @@
+# Text is LF in every checkout (a Windows runner's git would otherwise write CRLF), and the reference's files are
+# never converted at all: sim/ref/SEED.tsv records their bytes.
+* text=auto eol=lf
+sim/ref/** -text

@@ -1,0 +1,13 @@
+# Build trees, the in-tree dependency cache, and what tools and tests write (docs/plan/01-rules.md, section 2).
+build-*/
+out/
+.tee-deps/
+
+# Editors and systems
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+compile_commands.json
+CMakeUserPresets.json

@@ -1,0 +1,21 @@
+{
+  "format": "tee-ref-scenario/1",
+  "name": "free-revs",
+  "description": "Free revs in neutral: start, idle, blips, flat out to the limiter and held on it, the overrun, and off.",
+  "seconds": 24,
+  "events": [
+    { "t": 0.0, "note": "in the car, in neutral, the clutch up; a warm day, so that it settles soon",
+      "dials": { "drive": 1, "starter": 1, "ambient": 80, "mass": 1500, "load": 0 },
+      "input": { "gear": 0, "clutch": 0, "brake": 0, "throttle": 0 } },
+    { "t": 0.25, "note": "the start key (the synth holds note 36 while the wheel's PS button is down)", "key": 36, "velocity": 1.0 },
+    { "t": 0.75, "keyUp": true },
+    { "t": 4.0, "note": "two blips", "input": { "throttle": 0.6 }, "ramp": 0.08 },
+    { "t": 4.35, "input": { "throttle": 0 }, "ramp": 0.08 },
+    { "t": 5.6, "input": { "throttle": 0.8 }, "ramp": 0.08 },
+    { "t": 6.0, "input": { "throttle": 0 }, "ramp": 0.08 },
+    { "t": 8.0, "note": "flat out, and held on the limiter", "input": { "throttle": 1 }, "ramp": 0.15 },
+    { "t": 14.0, "note": "lifted: the overrun", "input": { "throttle": 0 }, "ramp": 0.05 },
+    { "t": 19.0, "note": "the start key held a second switches it off", "key": 36, "velocity": 1.0 },
+    { "t": 20.3, "keyUp": true }
+  ]
+}
