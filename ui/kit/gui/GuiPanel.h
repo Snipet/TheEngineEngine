@@ -8,7 +8,7 @@
 //   parameters   the source's parameter i is slot i (kMaxControls at most; a source with more shows its first 64 and
 //                says so in notes()). The .gui file names a parameter by its ParamInfo::id.
 //   fields       a display (or live=, or a shader's input) names a telemetry value: `rpm`, or `shared->rpm` as the
-//                reference's panel writes it (the part after -> is the name asked of TelemetrySource::find). A name
+//                reference's panel writes it (the part after -> is the name asked of TelemetrySource::findValue). A name
 //                the source does not have is a note, as an unknown field was in the plugin.
 //   out          the output's peak (TelemetrySource::outputPeak). There is no input (`in` is left out) and, until the
 //                shell gives one, no access to the output's samples: a scope or a spectrum of `out` reads what

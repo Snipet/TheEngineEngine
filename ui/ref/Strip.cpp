@@ -27,7 +27,6 @@ namespace tee::ui
         switch (what_)
         {
             case What::start:     return "START";
-            case What::off:       return "OFF";
             case What::shiftDown: return "-";
             case What::shiftUp:   return "+";
         }
@@ -38,19 +37,18 @@ namespace tee::ui
     {
         switch (what_)
         {
-            case What::start:     model_.frame.ignition = 2; break;
-            case What::off:       model_.frame.ignition = 0; break;
-            case What::shiftDown: ++model_.frame.shiftDown; break;
-            case What::shiftUp:   ++model_.frame.shiftUp; break;
+            case What::start:     model_.out.startHeld = true; break;
+            case What::shiftDown: ++model_.out.shiftDown; break;
+            case What::shiftUp:   ++model_.out.shiftUp; break;
         }
         model_.push();
     }
 
     void StripButton::release()
     {
-        if (what_ == What::start && model_.frame.ignition == 2)
+        if (what_ == What::start && model_.out.startHeld)
         {
-            model_.frame.ignition = 1;                   // the key springs back from start to on
+            model_.out.startHeld = false;                // the key springs back
             model_.push();
         }
     }
@@ -71,7 +69,7 @@ namespace tee::ui
         if (!shown_)
             return;
         const bool held = down_ || keyHeld_ > 0.0f;
-        const bool lit = what_ == What::start ? model_.frame.ignition >= 1 : false;
+        const bool lit = what_ == What::start && model_.running;
         const funkgui::Col face = held ? funkgui::premix(th.ground, th.accent, 0.55f)
                                 : hovered_ ? funkgui::premix(th.ground, th.ink100, 0.14f)
                                            : funkgui::premix(th.ground, th.ink100, 0.07f);
@@ -104,7 +102,7 @@ namespace tee::ui
         if (e.key != funkgui::Key::space && e.key != funkgui::Key::enter)
             return false;
         // A key's repeat keeps the starter held; the other buttons act once a press.
-        if (what_ != What::start || model_.frame.ignition != 2)
+        if (what_ != What::start || !model_.out.startHeld)
             press();
         if (what_ == What::start)
             keyHeld_ = kKeyHold;
@@ -119,8 +117,7 @@ namespace tee::ui
         it.bounds = rect_;
         switch (what_)
         {
-            case What::start:     it.title = "Start"; it.help = "Hold to run the starter; let go and the ignition stays on"; break;
-            case What::off:       it.title = "Ignition off"; break;
+            case What::start:     it.title = "Start"; it.help = "Hold to run the starter; with the engine running, hold to switch off"; break;
             case What::shiftDown: it.title = "Shift down"; break;
             case What::shiftUp:   it.title = "Shift up"; break;
         }
@@ -139,7 +136,7 @@ namespace tee::ui
 
     void StripButton::specLine(char* out, std::size_t n) const
     {
-        std::snprintf(out, n, "%s   IGNITION %d", label(), model_.frame.ignition);
+        std::snprintf(out, n, "%s%s", label(), what_ == What::start && model_.out.startHeld ? "   HELD" : "");
     }
 
     // ---- StripThrottle -----------------------------------------------------------------------------------------------
@@ -154,20 +151,10 @@ namespace tee::ui
         return t.w > 0.0f ? std::clamp((x - t.x) / t.w, 0.0f, 1.0f) : 0.0f;
     }
 
-    void StripThrottle::set(float throttle)
-    {
-        throttle = std::clamp(throttle, 0.0f, 1.0f);
-        if (throttle == model_.frame.throttle)
-            return;
-        model_.frame.throttle = throttle;
-        model_.push();
-    }
-
     void StripThrottle::setRest(float rest)
     {
         model_.rest = std::clamp(rest, 0.0f, 1.0f);
-        if (!dragging_)
-            set(model_.rest);
+        model_.push();
     }
 
     void StripThrottle::draw(funkgui::Canvas& c, const funkgui::Theme& th, bool ring) const
@@ -176,15 +163,15 @@ namespace tee::ui
             return;
         const funkgui::Rect t = track();
         char value[16];
-        std::snprintf(value, sizeof value, "%d %%", static_cast<int>(std::lround(model_.frame.throttle * 100.0f)));
-        c.text("THROTTLE", rect_.x, rect_.y + 2.0f, kGuiControlLabel, hovered_ || dragging_ ? th.ink70 : th.ink52);
+        std::snprintf(value, sizeof value, "%d %%", static_cast<int>(std::lround(model_.pedal * 100.0f)));
+        c.text("THROTTLE", rect_.x, rect_.y + 2.0f, kGuiControlLabel, hovered_ || model_.dragging ? th.ink70 : th.ink52);
         c.text(value, rect_.right(), rect_.y + 2.0f, kGuiControlLabel, th.ink70, funkgui::Align::right);
         c.rrect(t.x, t.y, t.w, t.h, kRadius, funkgui::premix(th.ground, th.ink100, 0.06f), 1.0f,
                 funkgui::premix(th.ground, th.ink100, 0.22f));
         const funkgui::Rect in = inset(t, 3.0f);
-        const float w = in.w * std::clamp(model_.frame.throttle, 0.0f, 1.0f);
+        const float w = in.w * std::clamp(model_.pedal, 0.0f, 1.0f);
         if (w > 0.5f)
-            c.rrect(in.x, in.y, w, in.h, 2.0f, dragging_ ? th.accent : funkgui::premix(th.ground, th.accent, 0.75f));
+            c.rrect(in.x, in.y, w, in.h, 2.0f, model_.dragging ? th.accent : funkgui::premix(th.ground, th.accent, 0.75f));
         if (model_.rest > 0.0f)                           // where it comes back to
             c.hairlineV(in.x + in.w * model_.rest, in.y, in.h, th.ink100);
         if (ring)
@@ -195,21 +182,24 @@ namespace tee::ui
     {
         if (e.popup)
             return;
-        dragging_ = true;
-        set(at(e.x));
+        model_.dragging = true;
+        model_.drag = at(e.x);
+        model_.push();
     }
 
     void StripThrottle::pointerDrag(const funkgui::PointerEvent& e, funkgui::GestureController&)
     {
-        if (dragging_)
-            set(at(e.x));
+        if (!model_.dragging)
+            return;
+        model_.drag = at(e.x);
+        model_.push();
     }
 
     void StripThrottle::pointerUp(const funkgui::PointerEvent&, funkgui::GestureController&)
     {
-        if (!std::exchange(dragging_, false))
+        if (!std::exchange(model_.dragging, false))
             return;
-        set(model_.rest);                                // the pedal comes back up
+        model_.push();                                   // the pedal comes back up, to its rest
     }
 
     void StripThrottle::doubleClick(const funkgui::PointerEvent&, funkgui::GestureController&) { setRest(0.0f); }
@@ -245,9 +235,9 @@ namespace tee::ui
         it.bounds = rect_;
         it.title = "Throttle";
         char value[16];
-        std::snprintf(value, sizeof value, "%d %%", static_cast<int>(std::lround(model_.frame.throttle * 100.0f)));
+        std::snprintf(value, sizeof value, "%d %%", static_cast<int>(std::lround(model_.pedal * 100.0f)));
         it.value = value;
-        it.v = model_.frame.throttle;
+        it.v = model_.pedal;
         it.step = kStep;
         out.push_back(std::move(it));
     }
@@ -267,7 +257,7 @@ namespace tee::ui
 
     void StripThrottle::specLine(char* out, std::size_t n) const
     {
-        std::snprintf(out, n, "THROTTLE   %d %%   REST %d %%", static_cast<int>(std::lround(model_.frame.throttle * 100.0f)),
+        std::snprintf(out, n, "THROTTLE   %d %%   REST %d %%", static_cast<int>(std::lround(model_.pedal * 100.0f)),
                       static_cast<int>(std::lround(model_.rest * 100.0f)));
     }
 

@@ -58,7 +58,7 @@ namespace tee::test
             steps.max = 4;
             steps.def = 2;
             add(steps);
-            telemetry_ = { { "showRpm", 850.0 }, { "gate", 0.0 }, { "boost", 0.4 }, { "showGear", 0.0 } };
+            telemetry_ = { { "showRpm", 850.0 }, { "gate", 0.0 }, { "boost", 0.4 }, { "car.gear", 0.0 } };
         }
 
         // ParamSource
@@ -70,32 +70,36 @@ namespace tee::test
             values_[static_cast<std::size_t>(i)] = value;
             ++sets;
         }
-        // ParamSource's and TelemetrySource's at once: both declare find(std::string_view) const, so a Player has one
-        // (the card's text as it stands). A parameter's index is 0..count()-1; a telemetry value's handle starts at
-        // kTelemetry, so that neither is taken for the other.
-        static constexpr int kTelemetry = 1000;
-        int find(std::string_view id) const override
+        int findParam(std::string_view id) const override
         {
             for (std::size_t i = 0; i < params_.size(); ++i)
                 if (params_[i].id == id)
                     return static_cast<int>(i);
-            for (std::size_t i = 0; i < telemetry_.size(); ++i)
-                if (telemetry_[i].first == id)
-                    return kTelemetry + static_cast<int>(i);
             return -1;
         }
-        double plain(std::string_view id) const { return get(find(id)); }
+        double plain(std::string_view id) const { return get(findParam(id)); }
 
         // TelemetrySource
+        int findValue(std::string_view name) const override
+        {
+            for (std::size_t i = 0; i < telemetry_.size(); ++i)
+                if (telemetry_[i].first == name)
+                    return static_cast<int>(i);
+            return -1;
+        }
         double value(int handle) const override
         {
-            const int i = handle - kTelemetry;
-            return i >= 0 && i < static_cast<int>(telemetry_.size()) ? telemetry_[static_cast<std::size_t>(i)].second : 0.0;
+            return handle >= 0 && handle < static_cast<int>(telemetry_.size()) ? telemetry_[static_cast<std::size_t>(handle)].second : 0.0;
         }
         float outputPeak() const override { return peak; }
+        // Sets a telemetry value, adding it when the player has none of that name.
         void setTelemetry(std::string_view name, double v)
         {
-            telemetry_[static_cast<std::size_t>(find(name) - kTelemetry)].second = v;
+            const int i = findValue(name);
+            if (i >= 0)
+                telemetry_[static_cast<std::size_t>(i)].second = v;
+            else
+                telemetry_.emplace_back(std::string(name), v);
         }
 
         // ControlSink, AudioSource
