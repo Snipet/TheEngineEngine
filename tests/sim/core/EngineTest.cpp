@@ -866,10 +866,11 @@ TEST_CASE("a warm idle in still air cycles the radiator's fan, and the voices le
     CHECK(low[1] == low[0]);
 }
 
-TEST_CASE("a 2 L engine warms from 20 to 90 C in some 8 minutes at idle, the fan's switch not reached", "[core][engine][heat][nightly]")
+TEST_CASE("a 2 L engine warms from 20 to 90 C in some 5 minutes at idle, the fan's switch not reached", "[core][engine][heat][nightly]")
 {
     // (sim/core/heat.fm's documented warm-up, under the physical switches (engine.wallHeat 1), the radiator's air the
-    // fan's: the thermostat opens from 363 K, so the fan, at 373, never comes in on the way)
+    // fan's: the thermostat opens from 363 K, so the fan, at 373, never comes in on the way. Measured 24 Nov: 289 s
+    // (4.8 min) on the 2 L turbo four, the same with the reference's walls; heat.fm first said some 8 minutes, now some 5)
     Bench b("archetypes/turbo-four-20-gdi");
     std::string e;
     REQUIRE(b.player().setSpec("engine.wallHeat", 1, e));
@@ -885,7 +886,7 @@ TEST_CASE("a 2 L engine warms from 20 to 90 C in some 8 minutes at idle, the fan
         fan |= int(b.field("heat.fanSwitch"));
     });
     std::printf("2 L at idle from 20 C: 90 C at %.0f s (%.1f min), the fan %s\n", at90, at90 / 60.0, fan ? "came on" : "stayed off");
-    CHECK(at90 > 5.0 * 60.0);
-    CHECK(at90 < 12.0 * 60.0);
+    CHECK(at90 > 3.5 * 60.0);
+    CHECK(at90 < 8.0 * 60.0);
     CHECK(fan == 0);
 }
