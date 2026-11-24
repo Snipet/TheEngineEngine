@@ -841,15 +841,18 @@ module Engine
             const int bm1 = spec.boost.model != 0 && boost.mach.active != 0 ? 1 : 0;
             const float gateNow = bm1 != 0 ? fmaxf(fmaxf(boost.mach.telGate[0], boost.mach.telGate[1]), fmaxf(boost.mach.telGate[2], boost.mach.telGate[3]))
                                            : fminf(fmaxf((bShare - 0.95f) * 20.0f, 0.0f), 1.0f);
+            // (card B2's motorcycle: its own sequential box, its input and ratio from Car; the chain is its final drive, so
+            // the final drive's whine gets no speed)
+            const int bk = car.model == 1 && car.bikeOn != 0 ? 1 : 0;
             ex.control16(d16, ctl.ignition, ecu.state, crank.omega * 0.15915494f, heat.tCool, set.drive != 0 ? 1 : 0,
-                         m1 != 0 ? spec.car.gearbox : 0, car.truck, car.gear,
-                         m1 != 0 ? crank.omega - car.m1.slipC : car.wG,
-                         m1 != 0 ? car.m1.box.ratioOf(car.gear) : car.ratioOf(car.gear),
-                         m1 != 0 ? car.m1.box.fd : car.finalDrive,
-                         m1 != 0 ? (float)car.m1.v / fmaxf(car.m1.radius, 0.05f) * car.m1.box.fd : car.wW * car.finalDrive,
-                         tqBrake, peakTorque(), m1 != 0 ? car.m1.engage * car.m1.box.robot : car.engage * car.robot,
+                         bk != 0 ? 1 : (m1 != 0 ? spec.car.gearbox : 0), car.truck, bk != 0 ? car.gearNow() : car.gear,
+                         bk != 0 ? car.bikeGearboxInput() : (m1 != 0 ? crank.omega - car.m1.slipC : car.wG),
+                         bk != 0 ? car.bikeGearboxRatio() : (m1 != 0 ? car.m1.box.ratioOf(car.gear) : car.ratioOf(car.gear)),
+                         bk != 0 ? 1.0f : (m1 != 0 ? car.m1.box.fd : car.finalDrive),
+                         bk != 0 ? 0.0f : (m1 != 0 ? (float)car.m1.v / fmaxf(car.m1.radius, 0.05f) * car.m1.box.fd : car.wW * car.finalDrive),
+                         tqBrake, peakTorque(), bk != 0 ? 1.0f - set.clutch : (m1 != 0 ? car.m1.engage * car.m1.box.robot : car.engage * car.robot),
                          aspUse, bShare, gateNow, bm1 != 0 ? spec.boost.gate : 0, exh.mdot / fmaxf(mRef, 1.0e-6f),
-                         lay.n, lay.cyc, vt.clatter, vTotal, fuelUse, car.model == 1 && car.bikeOn != 0 ? 1 : 0, car.sprocketSpeed(),
+                         lay.n, lay.cyc, vt.clatter, vTotal, fuelUse, bk, car.sprocketSpeed(),
                          spec.car.frontSprocket, spec.car.clutchDry ? 1 : 0, spec.car.primaryRatio, 1.0f - set.clutch);
         }
     }
