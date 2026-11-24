@@ -178,7 +178,11 @@ arch(slug="air-cooled-flat-six-36", runner=0.35, name="Air-cooled flat six", geo
      grade="Premium (91)", car="rear-engine-classic", timing="Chain", fan="Viscous clutch",
      notes="A 3.6 L air- and oil-cooled flat six, two valves a cylinder on rockers, dry sump: 100 x 76.4 mm "
            "(3600 cc), 11.3:1; 184 kW at 6100 rpm and 310 N m at 4800 (the 1989 M64-type engine; Wikipedia, "
-           "auto-data.net). The cooling fan's whir is the viscous fan. In a rear-engined coupe, five-speed manual.")
+           "auto-data.net). Its intake here is one 0.53 m runner a cylinder from the generator's rule, 0.5 x (5000 / "
+           "torque-peak rpm)^1.3: JUDGEMENT, not the real engine's. The real one is a two-stage resonance intake, a "
+           "flap between its two plenum halves (closed some 3000 to 5000-5500 rpm at large throttle: forums only, "
+           "Rennlist, Pelican Parts), its runners' lengths not found in any source. The cooling fan's whir is the "
+           "viscous fan. In a rear-engined coupe, five-speed manual.")
 arch(slug="big-block-74-pushrod-v8", name="Big-block 7.4 L pushrod V8", geo="ref-12-v8-cross",
      layout="V8 crossplane", bore=107.95, stroke=101.6, rod=155.8, cr=10.25, valves=2, dIn=52.6, dEx=44.5,
      cam=(282, 224, 11.9, 110, 290, 234, 11.9, 114), train="Pushrod", redline=5600, idle=650,
