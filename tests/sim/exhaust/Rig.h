@@ -58,6 +58,7 @@ namespace tee::test::exhaust
             dials_ = p.function<void(void*, float, float, float, float)>("XTest::dials", error);
             runB_ = p.function<void(void*, float*, float*, float*, int)>("XTest::runB", error);
             runR_ = p.function<void(void*, float*, float*, float*, int)>("XTest::runR", error);
+            runE_ = p.function<void(void*, float*, float*, int)>("XTest::runE", error);
             flowIn_ = p.function<float(void*)>("XTest::flowIn", error);
             flowOut_ = p.function<float(void*)>("XTest::flowOut", error);
             ends_ = p.function<int(void*)>("XTest::ends", error);
@@ -102,6 +103,34 @@ namespace tee::test::exhaust
         }
 
         void noise(double k) { noise_(inst_->data(), static_cast<float>(k)); }
+
+        void rebuild()
+        {
+            std::string error;
+            auto* fn = program().function<void(void*)>("XTest::rebuild", error);
+            INFO(error);
+            REQUIRE(fn != nullptr);
+            tee::ScopedFlushDenormals flush;
+            fn(inst_->data());
+        }
+
+        // Any method of XTest's taking two floats, or none and giving one
+        void call(const std::string& name, float a, float b)
+        {
+            std::string error;
+            auto* fn = program().function<void(void*, float, float)>(name, error);
+            INFO(error);
+            REQUIRE(fn != nullptr);
+            fn(inst_->data(), a, b);
+        }
+        double callf(const std::string& name)
+        {
+            std::string error;
+            auto* fn = program().function<float(void*)>(name, error);
+            INFO(error);
+            REQUIRE(fn != nullptr);
+            return fn(inst_->data());
+        }
         void dials(float hdr, float pipe, float xp, float muf) { dials_(inst_->data(), hdr, pipe, xp, muf); }
         void configure()
         {
@@ -116,12 +145,18 @@ namespace tee::test::exhaust
             left.assign(static_cast<std::size_t>(n), 0.0f);
             right.assign(static_cast<std::size_t>(n), 0.0f);
             tee::ScopedFlushDenormals flush;
-            const int block = 4096;
+            const int block = 512;
             for (int t = 0; t < n; t += block)
             {
                 const int m = std::min(block, n - t);
                 auto fn = reference ? runR_ : runB_;
                 fn(inst_->data(), q.data() + static_cast<std::size_t>(t) * kPorts, left.data() + t, right.data() + t, m);
+                // (the harness sums a block's flows in floats; the run's sums are kept here, in doubles)
+                if (!reference)
+                {
+                    inSum_ += flowIn_(inst_->data());
+                    outSum_ += flowOut_(inst_->data());
+                }
             }
         }
 
@@ -130,21 +165,31 @@ namespace tee::test::exhaust
         {
             const int n = static_cast<int>(q.size() / kPorts);
             energy.assign(static_cast<std::size_t>(n), 0.0);
-            float l = 0.0f;
-            float r = 0.0f;
+            std::vector<float> e(static_cast<std::size_t>(n), 0.0f);
             tee::ScopedFlushDenormals flush;
+            runE_(inst_->data(), q.data(), e.data(), n);
             double peak = 0.0;
             for (int t = 0; t < n; ++t)
             {
-                runB_(inst_->data(), q.data() + static_cast<std::size_t>(t) * kPorts, &l, &r, 1);
-                energy[static_cast<std::size_t>(t)] = get("energy");
+                energy[static_cast<std::size_t>(t)] = e[static_cast<std::size_t>(t)];
                 peak = std::max(peak, energy[static_cast<std::size_t>(t)]);
             }
             return peak;
         }
 
-        double flowIn() { return flowIn_(inst_->data()); }
-        double flowOut() { return flowOut_(inst_->data()); }
+        // The flow in at the ports and out at the ends (m^3/s samples) since the last call
+        double flowIn()
+        {
+            const double v = inSum_ + flowIn_(inst_->data());
+            inSum_ = 0.0;
+            return v;
+        }
+        double flowOut()
+        {
+            const double v = outSum_ + flowOut_(inst_->data());
+            outSum_ = 0.0;
+            return v;
+        }
         int ends() { return ends_(inst_->data()); }
         int cylinders() { return cylinders_(inst_->data()); }
         float fireAngle(int c) { return fire_(inst_->data(), c); }
@@ -155,6 +200,8 @@ namespace tee::test::exhaust
 
     private:
         std::unique_ptr<tee::Schema> schema_;
+        double inSum_ = 0.0;
+        double outSum_ = 0.0;
         std::unique_ptr<tee::Instance> inst_;
         void (*init_)(void*, float) = nullptr;
         void (*end_)(void*) = nullptr;
@@ -164,6 +211,7 @@ namespace tee::test::exhaust
         void (*dials_)(void*, float, float, float, float) = nullptr;
         void (*runB_)(void*, float*, float*, float*, int) = nullptr;
         void (*runR_)(void*, float*, float*, float*, int) = nullptr;
+        void (*runE_)(void*, float*, float*, int) = nullptr;
         float (*flowIn_)(void*) = nullptr;
         float (*flowOut_)(void*) = nullptr;
         int (*ends_)(void*) = nullptr;

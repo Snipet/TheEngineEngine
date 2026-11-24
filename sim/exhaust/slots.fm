@@ -42,6 +42,11 @@
 #include "heat2.fm"
 #include "buildspec.fm"
 
+enum
+{
+    XB_SCOPE = 64
+};
+
 // Each pipe's slot: its index in XNet's ducts
 enum
 {
@@ -51,7 +56,8 @@ enum
     XD_VOL = 40,        // a log manifold's chamber at its collector
     XD_SIDE = 48,       // each side's chain: XD_SIDE + side * XD_SIDEN + XO_*
     XD_SIDEN = 15,
-    XD_CROSS = 78       // the H pipe
+    XD_CROSS = 78,      // the H pipe
+    XD_GATE = 79        // an external wastegate's own pipe: 79 to 82
 };
 
 enum
@@ -64,7 +70,8 @@ enum
     XO_MUF = 5,         // the muffler's pipes: XO_MUF to XO_MUF + 4
     XO_BYP = 10,        // the bypass
     XO_TAIL = 11,
-    XO_TIP = 12         // two tips: 12, 13
+    XO_TIP = 12,        // two tips: 12, 13
+    XO_MIN = 14         // with a bypass: the muffler's inlet tube (its outlet tube: XO_MUF + 4)
 };
 
 module XBuild
@@ -91,6 +98,7 @@ module XBuild
     int byp[XS_SIDES];
     int tips[XS_SIDES];
     int tag[XS_SIDES];
+    int sideOn[XS_SIDES];       // 1: something feeds this side (zoomies feed none: no chain is built)
     int hasStep;
     // the junctions and branches the sizes and the meters need
     int jCol[XS_COLL];          // each collector's node
@@ -113,12 +121,16 @@ module XBuild
     int nMufJ[XS_SIDES];
     int kBypIn[XS_SIDES];       // the bypass's branches (inlet: the valve)
     int kBypOut[XS_SIDES];
-    int kMufIn[XS_SIDES];       // with a bypass: the muffler's inlet and outlet as nodes, their branches
-    int kMufPrev[XS_SIDES];
-    int kMufLast[XS_SIDES];
-    int kMufTail[XS_SIDES];
+    int jSplit[XS_SIDES];       // with a bypass: where it leaves, before the can's inlet tube, and where it joins
+    int jJoin[XS_SIDES];
     int jTips[XS_SIDES];
     int prevMuf[XS_SIDES];      // the pipe the muffler's inlet follows
+    int jHouse[8];              // each turbine housing's junction (-1: none)
+    int jDown[XS_SIDES];        // each side's downpipe's head, at the turbine's outlet (-1: none: a node, the reference's)
+    int jGate[4];               // each external wastegate's pipe's head
+    int eGate[4];
+    int nGates;
+    int turbSide[XS_SIDES];     // 1: this side's collectors end in housings
     int eTail[XS_SIDES * 2];    // each side's radiating ends
     int ePrim[XS_PORTS];        // each open stack's
     // flow noise's bands
@@ -135,11 +147,22 @@ module XBuild
     float kUse;
     float keepH;
     float keepP;
-    float kMean;                // the meters' smoothing, every sample (some 0.2 s)
+    float kMean;                // the meters' smoothing, every 4th sample (some 0.2 s)
+    int tick4;
     // telemetry: means and what a view shows
     float pTurb;                // mean pressure at the collectors (before a turbine), Pa over the air outside
     float pConv[XS_SIDES];      // at each side's head (before the converter)
     float pMuf[XS_SIDES];       // before the muffler (back pressure)
+    float mach[XH_SECT];        // each section's mean Mach number (its pipes', smoothed as theirs are)
+    // the Scope: the pressure (Pa over the air outside) at XB_SCOPE points along the gas's path from one port to its
+    // tail, spaced by length, refreshed every 128 samples while scopeOn; scopeX the distance of each from the port (m)
+    int scopeOn;
+    int scopePort;
+    int pathD[16];
+    int nPath;
+    float scopeP[XB_SCOPE];
+    float scopeX[XB_SCOPE];
+    int scopeTick;
     float qIn;                  // the ports' flow in and the ends' flow out, smoothed (m^3/s)
     float qOut;
     int ready;
@@ -176,13 +199,17 @@ module XBuild
             cap[b + XO_TAIL] = (int)(2.1f * k) + 16;
             cap[b + XO_TIP] = (int)(0.6f * k) + 16;
             cap[b + XO_TIP + 1] = (int)(0.6f * k) + 16;
+            cap[b + XO_MIN] = (int)(0.6f * k) + 16;
         }
         cap[XD_CROSS] = (int)(1.1f * k) + 16;
+        for (int t = 0; t < 4; ++t)
+            cap[XD_GATE + t] = (int)(1.1f * k) + 16;
         net.setup(rate, cap);
         xiWall = 0.025f;
         k16Flow = 1.0f - expf(-16.0f / (0.06f * rate));
         kUse = 1.0f - expf(-16.0f / (0.3f * rate));
-        kMean = 1.0f - expf(-1.0f / (0.2f * rate));
+        kMean = 1.0f - expf(-4.0f / (0.2f * rate));
+        tick4 = 0;
         keepH = 0.878f;
         keepP = 0.769f;
         for (int s = 0; s < XS_SIDES; ++s)
@@ -270,7 +297,22 @@ module XBuild
                 }
             }
         }
+        for (int s = 0; s < XS_SIDES; ++s)
+            sideOn[s] = 0;
+        for (int c = 0; c < XS_COLL; ++c)
+        {
+            if (colOn[c] != 0 && colTo[c] < 2)
+                sideOn[colTo[c]] = 1;
+        }
         crossK = nSides == 2 ? (sp.crossover < 0 ? 0 : (sp.crossover > 2 ? 2 : sp.crossover)) : 0;
+        // a crossover feeds the other side; with nothing on either side, there is no chain at all
+        if (crossK != 0 && (sideOn[0] != 0 || sideOn[1] != 0))
+        {
+            sideOn[0] = 1;
+            sideOn[1] = 1;
+        }
+        if (crossK != 0 && sideOn[0] == 0)
+            crossK = 0;
         crossPos = sp.crossAt != 0 ? 1 : 0;
         hasStep = sp.primStepAt > 0.01f ? 1 : 0;
         for (int s = 0; s < XS_SIDES; ++s)
@@ -376,6 +418,8 @@ module XBuild
             nMufJ[s] = 0;
             kBypIn[s] = -1;
             kBypOut[s] = -1;
+            jSplit[s] = -1;
+            jJoin[s] = -1;
             jTips[s] = -1;
             gCone[s] = -1;
             gMin[s] = -1;
@@ -383,9 +427,43 @@ module XBuild
             eTail[2 * s] = -1;
             eTail[2 * s + 1] = -1;
         }
+        // card F's turbines: a side whose collectors end in housings has its main pipe begin at the turbine's
+        // outlet (a pressure F solves) instead of at a node; a crossover there sits after the main pipes
+        for (int h = 0; h < 8; ++h)
+            jHouse[h] = -1;
+        for (int s = 0; s < XS_SIDES; ++s)
+        {
+            jDown[s] = -1;
+            turbSide[s] = 0;
+        }
+        for (int c = 0; c < XS_COLL; ++c)
+        {
+            if (colOn[c] != 0 && colTo[c] < 2 && eng.housing[c] >= 0 && eng.housing[c] < 8)
+                turbSide[colTo[c]] = 1;
+        }
+        if ((turbSide[0] != 0 || turbSide[1] != 0) && crossK != 0)
+            crossPos = 1;
         const int oneHead = crossK == 2 && crossPos == 0 ? 1 : 0;
         for (int s = 0; s < nSides; ++s)
         {
+            if (sideOn[s] == 0)
+                continue;
+            if (turbSide[s] != 0)
+            {
+                for (int c = 0; c < XS_COLL; ++c)
+                {
+                    if (colOn[c] == 0 || colTo[c] != s)
+                        continue;
+                    const int h = eng.housing[c] >= 0 && eng.housing[c] < 8 ? eng.housing[c] : 0;
+                    if (jHouse[h] < 0)
+                        jHouse[h] = net.junction(XJ_HOUSE);
+                    kColUp[c] = net.branch(jHouse[h], XD_COLL + c, 1);
+                }
+                jDown[s] = net.extp(slot(s, XO_MAIN));
+                jHead[s] = jDown[s];
+                kMain[s] = jDown[s] * XN_BR;
+                continue;
+            }
             int j = 0;
             if (oneHead != 0 && s == 1)
                 j = jHead[0];
@@ -394,7 +472,7 @@ module XBuild
             jHead[s] = j;
             for (int c = 0; c < XS_COLL; ++c)
             {
-                if (colOn[c] != 0 && colTo[c] == s)
+                if (colOn[c] != 0 && colTo[c] == s && (oneHead == 0 || s == 0))
                     kColUp[c] = net.branch(j, XD_COLL + c, 1);
             }
             if (oneHead != 0 && s == 0)
@@ -452,6 +530,8 @@ module XBuild
         }
         for (int s = 0; s < nSides; ++s)
         {
+            if (sideOn[s] == 0)
+                continue;
             int c = cur[s];
             // the resonator
             if (res[s] == 1 || res[s] == 2)
@@ -496,11 +576,13 @@ module XBuild
                 const int last = slot(s, XO_MUF + nm - 1);
                 if (byp[s] != 0)
                 {
+                    // the bypass leaves before the can: the split, then the can's inlet tube into it
                     const int j = net.node();
-                    jMuf[s * 5] = j;
-                    kMufPrev[s] = net.branch(j, c, 1);
-                    kMufIn[s] = net.branch(j, first, 0);
+                    jSplit[s] = j;
+                    net.branch(j, c, 1);
+                    net.branch(j, slot(s, XO_MIN), 0);
                     kBypIn[s] = net.branch(j, slot(s, XO_BYP), 0);
+                    jMuf[s * 5] = net.pair(slot(s, XO_MIN), 1, first, 0);
                 }
                 else
                     jMuf[s * 5] = net.pair(c, 1, first, 0);
@@ -508,10 +590,12 @@ module XBuild
                     jMuf[s * 5 + 1 + m] = net.pair(slot(s, XO_MUF + m), 1, slot(s, XO_MUF + m + 1), 0);
                 if (byp[s] != 0)
                 {
+                    // and rejoins after it: the can's outlet tube, then the join
+                    jMuf[s * 5 + nm] = net.pair(last, 1, slot(s, XO_MUF + 4), 0);
                     const int j = net.node();
-                    jMuf[s * 5 + nm] = j;
-                    kMufLast[s] = net.branch(j, last, 1);
-                    kMufTail[s] = net.branch(j, tl, 0);
+                    jJoin[s] = j;
+                    net.branch(j, slot(s, XO_MUF + 4), 1);
+                    net.branch(j, tl, 0);
                     kBypOut[s] = net.branch(j, slot(s, XO_BYP), 1);
                 }
                 else
@@ -519,11 +603,8 @@ module XBuild
                 nMufJ[s] = nm + 1;
                 gMin[s] = net.band();
                 gMout[s] = net.band();
-                if (byp[s] == 0)
-                {
-                    net.bBand[jMuf[s * 5] * XN_BR] = gMin[s];
-                    net.bBand[jMuf[s * 5 + nm] * XN_BR] = gMout[s];
-                }
+                net.bBand[jMuf[s * 5] * XN_BR] = gMin[s];
+                net.bBand[jMuf[s * 5 + nm] * XN_BR] = gMout[s];
             }
             // the tail and its tips
             if (tips[s] == 2)
@@ -539,6 +620,19 @@ module XBuild
             else
                 eTail[2 * s] = net.open(tl, tag[s]);
         }
+        // external wastegates' own pipes, to the air (where a screamer pipe exits: the front)
+        nGates = eng.gates < 0 ? 0 : (eng.gates > 4 ? 4 : eng.gates);
+        for (int t = 0; t < 4; ++t)
+        {
+            jGate[t] = -1;
+            eGate[t] = -1;
+        }
+        for (int t = 0; t < nGates; ++t)
+        {
+            jGate[t] = net.extp(XD_GATE + t);
+            eGate[t] = net.open(XD_GATE + t, XTAG_FRONT);
+        }
+        path();
         for (int i = 0; i < XH_SECT; ++i)
             heat.on[i] = 0;
         pTurb = 0.0f;
@@ -549,15 +643,109 @@ module XBuild
             vPos[s] = byp[s] == 2 ? 1.0f : 0.0f;
             vT[s] = vPos[s];
         }
-        // (at rest first, then sized: the reference's order in its configure, so a build of its topology starts as
-        // it does)
+        // (at rest, sized, then the steepening pipes' timing settled to their sizes: network.fm, settle)
         sections();
         if (atRest != 0)
             heat.rest(eng.tAmb, warm, eng.mdotSlow, eng.vAir);
         net.clear();
         shape();
+        net.settle();
         qIn = 0.0f;
         qOut = 0.0f;
+    }
+
+    // The Scope's path: from scopePort's primary, through its collectors, down its side's chain to the (first) tail
+    void path()
+    {
+        nPath = 0;
+        const int i = scopePort < 0 || scopePort >= nPorts ? 0 : scopePort;
+        if (nPorts == 0)
+            return;
+        pathD[nPath] = XD_PRIM + i;
+        nPath += 1;
+        if (hasStep != 0)
+        {
+            pathD[nPath] = XD_STEP + i;
+            nPath += 1;
+        }
+        int c = portTo[i];
+        if (c < 0)
+            return;
+        pathD[nPath] = XD_COLL + c;
+        nPath += 1;
+        if (colTo[c] >= 2)
+        {
+            c = colTo[c] - 2;
+            pathD[nPath] = XD_COLL + c;
+            nPath += 1;
+        }
+        const int s = colTo[c] < 2 ? colTo[c] : 0;
+        if (sideOn[s] == 0)
+            return;
+        pathD[nPath] = slot(s, XO_MAIN);
+        nPath += 1;
+        if (jMid[s] >= 0)
+        {
+            pathD[nPath] = slot(s, XO_POST);
+            nPath += 1;
+        }
+        if (res[s] != 0)
+        {
+            pathD[nPath] = slot(s, XO_LINK);
+            nPath += 1;
+        }
+        if (byp[s] != 0)
+        {
+            pathD[nPath] = slot(s, XO_MIN);
+            nPath += 1;
+        }
+        const int nm = muf[s] == 1 ? 1 : (muf[s] == 2 ? 3 : (muf[s] == 3 ? 4 : 0));
+        for (int m = 0; m < nm; ++m)
+        {
+            pathD[nPath] = slot(s, XO_MUF + m);
+            nPath += 1;
+        }
+        if (byp[s] != 0)
+        {
+            pathD[nPath] = slot(s, XO_MUF + 4);
+            nPath += 1;
+        }
+        pathD[nPath] = slot(s, XO_TAIL);
+        nPath += 1;
+    }
+
+    // The pressure along the path: at each point the wave going out written there a while ago plus the one coming
+    // back (the lines as written, before their losses: what a view shows of the waves travelling)
+    void scope()
+    {
+        float total = 0.0f;
+        for (int k = 0; k < nPath; ++k)
+            total += net.d[pathD[k]].len;
+        if (total <= 0.0f)
+            return;
+        int k = 0;
+        float x0 = 0.0f;
+        for (int n = 0; n < XB_SCOPE; ++n)
+        {
+            const float x = total * ((float)n + 0.5f) / (float)XB_SCOPE;
+            while (k + 1 < nPath && x > x0 + net.d[pathD[k]].len)
+            {
+                x0 += net.d[pathD[k]].len;
+                k += 1;
+            }
+            const Duct* p = &net.d[pathD[k]];
+            const float f = fminf(fmaxf((x - x0) / p->len, 0.0f), 1.0f);
+            const int df = 1 + (int)(f * p->dNom);
+            const int db = 1 + (int)((1.0f - f) * (float)p->bdi);
+            int jf = p->w - df;
+            int jb = p->w - db;
+            if (jf < 0)
+                jf += p->cap;
+            if (jb < 0)
+                jb += p->cap;
+            scopeP[n] = p->fw[jf] + p->bw[jb];
+            scopeX[n] = x;
+        }
     }
 
     // ---- the sizes: the reference's pipes(), over the chain as built ----
@@ -668,13 +856,17 @@ module XBuild
             float lf0 = 0.0f;
             float lt0 = 0.0f;
             float dt0 = 0.0f;
+            int nOn = 0;
             for (int s = 0; s < nSides; ++s)
             {
+                if (sideOn[s] == 0)
+                    continue;
+                nOn += 1;
                 const float lms = sp.mainLen[s] > 0.0f ? sp.mainLen[s] : eng.mainLen * pk;
                 const float dms = sp.mainD[s] > 0.0f ? sp.mainD[s] : eng.pipeD;
                 const float lts = sp.tailLen[s] > 0.0f ? sp.tailLen[s] : (eng.bike > 0.5f ? 0.10f : 0.40f);
                 const float dts = sp.tailD[s] > 0.0f ? sp.tailD[s] : eng.tailD;
-                if (s == 0)
+                if (nOn == 1)
                 {
                     lm0 = lms;
                     dm0 = dms;
@@ -709,15 +901,20 @@ module XBuild
                 lt += lts;
                 dt += dts;
             }
-            const float ns = (float)nSides;
-            heat.kind(XH_MAIN, meanOf(lm, nSides, lm0), meanOf(dm, nSides, dm0), ns);
+            const float ns = (float)nOn;
+            heat.on[XH_MAIN] = 0;
             heat.on[XH_LINK] = 0;
-            if (nk > 0)
-                heat.kind(XH_LINK, meanOf(lk, nk, lk0), meanOf(dm, nSides, dm0), ns);
             heat.on[XH_MUFF] = 0;
-            if (nf > 0)
-                heat.kind(XH_MUFF, meanOf(lf, nf, lf0), meanOf(dm, nSides, dm0), ns);
-            heat.kind(XH_TAIL, meanOf(lt, nSides, lt0), meanOf(dt, nSides, dt0), ns);
+            heat.on[XH_TAIL] = 0;
+            if (nOn > 0)
+            {
+                heat.kind(XH_MAIN, meanOf(lm, nOn, lm0), meanOf(dm, nOn, dm0), ns);
+                if (nk > 0)
+                    heat.kind(XH_LINK, meanOf(lk, nk, lk0), meanOf(dm, nOn, dm0), ns);
+                if (nf > 0)
+                    heat.kind(XH_MUFF, meanOf(lf, nf, lf0), meanOf(dm, nOn, dm0), ns);
+                heat.kind(XH_TAIL, meanOf(lt, nOn, lt0), meanOf(dt, nOn, dt0), ns);
+            }
         }
     }
 
@@ -807,12 +1004,16 @@ module XBuild
             float aSec = nColOn == 1 ? aPipe0 : 0.85f * aPipe0;
             if (sp.colD[c] > 0.0f)
                 aSec = 0.785398f * sp.colD[c] * sp.colD[c];
-            const int direct = colTo[c] < 2 ? 1 : 0;
+            const int direct = colTo[c] < 2 && (eng.housing[c] < 0 || eng.housing[c] >= 8) ? 1 : 0;
             const float aS = direct != 0 ? aSec * turbK : aSec;
             Duct* p = &net.d[XD_COLL + c];
             p->set(sp.colLen[c] > 0.0f ? sp.colLen[c] : (eng.bike > 0.5f ? 0.25f : 0.38f), sqrtf(aS * 1.2732395f), aS,
                    colFed[c] != 0 ? cS2 : cS, rate);
-            p->extra(direct != 0 ? tbHz : 0.0f, 1.0f, rate);
+            // (a pipe of a merge, into a second collector or out of one, loses a share of each pass as the
+            // reference's headers and main pipe do: its bends and slip joints, its boundary layer; judgement, 0.4 dB.
+            // The reference's own collectors' pipes, between the headers and the main pipe, keep theirs at none.)
+            const float keepM = colTo[c] >= 2 || colFed[c] != 0 ? 0.955f : 1.0f;
+            p->extra(direct != 0 ? tbHz : 0.0f, keepM, rate);
             p->steep = 0.87f / 101325.0f;
             if (kColUp[c] >= 0)
             {
@@ -823,16 +1024,19 @@ module XBuild
             }
             if (kVol[c] >= 0)
             {
-                // a log manifold's chamber: a short wide pipe shut at its far end, the collector's own volume
+                // a log manifold's chamber: a short wide pipe shut at its far end, the collector's own volume; its
+                // rough cast walls and the ports' cross flow take a share of each pass (judgement: 0.4 dB)
                 const float av = sp.colVol[c] / 0.06f;
                 Duct* v = &net.d[XD_VOL + c];
                 v->set(0.06f, sqrtf(av * 1.2732395f), av, colFed[c] != 0 ? cS2 : cS, rate);
-                v->extra(0.0f, 1.0f, rate);
+                v->extra(0.0f, 0.955f, rate);
             }
         }
         // each side's chain
         for (int s = 0; s < nSides; ++s)
         {
+            if (sideOn[s] == 0)
+                continue;
             const float dPipe = sp.mainD[s] > 0.0f ? sp.mainD[s] : eng.pipeD;
             const float aPipe = 0.785398f * dPipe * dPipe;
             const float dTail = sp.tailD[s] > 0.0f ? sp.tailD[s] : eng.tailD;
@@ -885,26 +1089,28 @@ module XBuild
             // the resonator
             if (res[s] == 1)
             {
-                // a quarter-wave stub: a closed side branch a quarter of the note's wavelength long, less the tee's end
-                // correction (some 0.3 of its bore: judgement, between a flanged end's 0.85 r and a tee's)
+                // a quarter-wave stub: a closed side branch a quarter of the note's wavelength long. (Its length in the
+                // model is the acoustic one: a plane-wave junction has no end correction, so the tee's, some 0.3 of the
+                // bore, is in it; a real stub for this note is that much shorter.)
                 const float dS = sp.resD[s] > 0.0f ? sp.resD[s] : dPipe;
                 const float aS = 0.785398f * dS * dS;
                 Duct* st = &net.d[slot(s, XO_STUB)];
-                const float ls = fmaxf(cP / (4.0f * sp.resHz[s]) - 0.3f * dS, 0.03f);
+                const float ls = fmaxf(cP / (4.0f * sp.resHz[s]), 0.03f);
                 st->set(ls, dS, aS, cP, rate);
                 st->extra(0.0f, 1.0f, rate);
             }
             else if (res[s] == 2)
             {
-                // a Helmholtz chamber on a neck: f = c / 2 pi sqrt(An / (V Leff)), Leff the neck's length and its two
-                // ends' corrections (0.85 r each); the chamber a short wide pipe shut at its end (its length 0.12 m,
-                // well under a quarter wave at its note, so it is a volume)
+                // a Helmholtz chamber on a neck: f = c / 2 pi sqrt(An / (V Leff)); the chamber a short wide pipe shut
+                // at its end (0.12 m, well under a quarter wave at its note, so it is a volume). The neck in the model
+                // is Leff long: a plane-wave junction has no end correction, so the two ends' (0.85 r each) are in it,
+                // and a real neck for this note is that much shorter. (Built shorter by them, it rang 1.3 times high.)
                 const float dn = sp.resD[s] > 0.0f ? sp.resD[s] : 0.5f * dPipe;
                 const float an = 0.785398f * dn * dn;
                 const float v = sp.resVol[s];
                 const float w = 6.28318531f * sp.resHz[s];
                 const float lEff = an * cP * cP / (v * w * w);
-                const float ln = fminf(fmaxf(lEff - 0.85f * dn, 0.02f), 2.0f);
+                const float ln = fminf(fmaxf(lEff, 0.02f), 2.0f);
                 Duct* nk = &net.d[slot(s, XO_STUB)];
                 nk->set(ln, dn, an, cP, rate);
                 nk->extra(0.0f, 1.0f, rate);
@@ -942,6 +1148,22 @@ module XBuild
             const int j0 = jMuf[s * 5];
             float scIn = 0.0f;
             float scOut = 0.0f;
+            // the pipes the can is entered from and left into: the pipe before it and the tail, or with a bypass its
+            // own inlet and outlet tubes (the pipe's bore, 0.25 m each: where a valved system splits and rejoins,
+            // judgement), whose mass keeps the can's volume from shorting the bypass's drive at the lows
+            int muIn = prev;
+            int muOut = slot(s, XO_TAIL);
+            if (byp[s] != 0)
+            {
+                muIn = slot(s, XO_MIN);
+                muOut = slot(s, XO_MUF + 4);
+                Duct* ti = &net.d[muIn];
+                ti->set(0.25f, dPipe, aPipe, cM, rate);
+                ti->extra(0.0f, 0.98f, rate);
+                Duct* to = &net.d[muOut];
+                to->set(0.25f, dPipe, aPipe, cM, rate);
+                to->extra(0.0f, 0.98f, rate);
+            }
             if (muf[s] == 2)
             {
                 // the reference's: from a straight-through tube (0) to big packed chambers (1). Below about a third it
@@ -982,7 +1204,8 @@ module XBuild
                 const float e1 = 1.0f - 1.0f / ratio1;
                 const float e2 = 1.0f - 1.0f / ratio2;
                 const float aCh2 = aPipe * ratio2;
-                const float e3 = 1.0f - fminf(aTail / aCh2, 1.0f);
+                const float aOut = net.d[muOut].area;
+                const float e3 = 1.0f - fminf(aOut / aCh2, 1.0f);
                 const float rPerf = (0.05f + 0.15f * mu) * rhoM * cM / aPipe;
                 const float kInM = fmaxf(chambs * e1 * e1, 0.1f);
                 const float kOutM = fmaxf(0.5f * e3, 0.1f);
@@ -997,32 +1220,22 @@ module XBuild
                 net.bKf[k2] = lossKap(chambs * e2 * e2, rhoM, aPipe);
                 net.bKr[k2] = lossKap(chambs * 0.5f * e2, rhoM, aPipe);
                 net.bA[k2] = slot(s, XO_MUF + 1);
-                if (byp[s] == 0)
                 {
                     const int k0 = j0 * XN_BR;
                     net.bKf[k0] = lossKap(chambs * e1 * e1, rhoM, aPipe);
                     net.bKr[k0] = lossKap(chambs * 0.5f * e1, rhoM, aPipe);
-                    net.bA[k0] = prev;
+                    net.bA[k0] = muIn;
                     net.bNin[k0] = kInM;
                     net.bNout[k0] = kInM;
-                    net.bNa[k0] = pv->area;
+                    net.bNa[k0] = net.d[muIn].area;
                     net.bNrho[k0] = slot(s, XO_MUF);
-                    net.bKf[k3] = lossKap(0.5f * e3, rhoM, aTail);
-                    net.bKr[k3] = lossKap(e3 * e3, rhoM, aTail);
-                    net.bA[k3] = slot(s, XO_TAIL);
+                    net.bKf[k3] = lossKap(0.5f * e3, rhoM, aOut);
+                    net.bKr[k3] = lossKap(e3 * e3, rhoM, aOut);
+                    net.bA[k3] = muOut;
                     net.bNin[k3] = kOutM;
                     net.bNout[k3] = kOutM;
-                    net.bNa[k3] = tl->area;
-                    net.bNrho[k3] = slot(s, XO_TAIL);
-                }
-                else
-                {
-                    net.bKf[kMufPrev[s]] = lossKap(chambs * e1 * e1, rhoM, aPipe);
-                    net.bKr[kMufPrev[s]] = lossKap(chambs * 0.5f * e1, rhoM, aPipe);
-                    net.bA[kMufPrev[s]] = prev;
-                    net.bKf[kMufLast[s]] = lossKap(0.5f * e3, rhoM, aTail);
-                    net.bKr[kMufLast[s]] = lossKap(e3 * e3, rhoM, aTail);
-                    net.bA[kMufLast[s]] = slot(s, XO_MUF + 2);
+                    net.bNa[k3] = net.d[muOut].area;
+                    net.bNrho[k3] = muOut;
                 }
             }
             else if (muf[s] == 1)
@@ -1040,23 +1253,20 @@ module XBuild
                 scOut = 6.0f;
                 cn->back(backFc(cn->c, cn->len), 6.0f, rate);
                 const int kl = jMuf[s * 5 + 1] * XN_BR;
-                if (byp[s] == 0)
-                {
-                    const int k0 = j0 * XN_BR;
-                    net.bKf[k0] = lossKap(0.05f, cn->rho, aPipe);
-                    net.bKr[k0] = lossKap(0.05f, cn->rho, aPipe);
-                    net.bA[k0] = prev;
-                    net.bNin[k0] = 0.1f;
-                    net.bNout[k0] = 0.1f;
-                    net.bNa[k0] = pv->area;
-                    net.bNrho[k0] = slot(s, XO_MUF);
-                    areaLoss(kl, aPipe, aTail, cn->rho, 1.0f);
-                    net.bA[kl] = slot(s, XO_TAIL);
-                    net.bNin[kl] = 0.1f;
-                    net.bNout[kl] = 0.1f;
-                    net.bNa[kl] = tl->area;
-                    net.bNrho[kl] = slot(s, XO_TAIL);
-                }
+                const int k0 = j0 * XN_BR;
+                net.bKf[k0] = lossKap(0.05f, cn->rho, aPipe);
+                net.bKr[k0] = lossKap(0.05f, cn->rho, aPipe);
+                net.bA[k0] = muIn;
+                net.bNin[k0] = 0.1f;
+                net.bNout[k0] = 0.1f;
+                net.bNa[k0] = net.d[muIn].area;
+                net.bNrho[k0] = slot(s, XO_MUF);
+                areaLoss(kl, aPipe, net.d[muOut].area, cn->rho, 1.0f);
+                net.bA[kl] = muOut;
+                net.bNin[kl] = 0.1f;
+                net.bNout[kl] = 0.1f;
+                net.bNa[kl] = net.d[muOut].area;
+                net.bNrho[kl] = muOut;
             }
             else if (muf[s] == 3)
             {
@@ -1085,22 +1295,21 @@ module XBuild
                 c2->back(backFc(c2->c, c2->len), sc, rate);
                 t2->back(backFc(t2->c, t2->len), sc, rate);
                 const float rho = c1->rho;
-                if (byp[s] == 0)
                 {
                     const int k0 = j0 * XN_BR;
-                    areaLoss(k0, pv->area, c1->area, rho, 1.0f);
-                    net.bA[k0] = prev;
+                    areaLoss(k0, net.d[muIn].area, c1->area, rho, 1.0f);
+                    net.bA[k0] = muIn;
                     net.bNin[k0] = fmaxf(e * e, 0.1f);
                     net.bNout[k0] = fmaxf(e * e, 0.1f);
-                    net.bNa[k0] = pv->area;
+                    net.bNa[k0] = net.d[muIn].area;
                     net.bNrho[k0] = slot(s, XO_MUF);
                     const int k4 = jMuf[s * 5 + 4] * XN_BR;
-                    areaLoss(k4, aPipe, aTail, rho, 1.0f);
-                    net.bA[k4] = slot(s, XO_TAIL);
+                    areaLoss(k4, aPipe, net.d[muOut].area, rho, 1.0f);
+                    net.bA[k4] = muOut;
                     net.bNin[k4] = 0.1f;
                     net.bNout[k4] = 0.1f;
-                    net.bNa[k4] = tl->area;
-                    net.bNrho[k4] = slot(s, XO_TAIL);
+                    net.bNa[k4] = net.d[muOut].area;
+                    net.bNrho[k4] = muOut;
                 }
                 for (int m = 1; m < 4; ++m)
                 {
@@ -1123,8 +1332,15 @@ module XBuild
             }
             if (scIn > 0.0f)
             {
-                pv->back(backFc(pv->c, pv->len), scIn, rate);
-                tl->back(backFc(tl->c, tl->len), scOut, rate);
+                Duct* bi = &net.d[muIn];
+                Duct* bo = &net.d[muOut];
+                bi->back(backFc(bi->c, bi->len), scIn, rate);
+                bo->back(backFc(bo->c, bo->len), scOut, rate);
+                if (byp[s] != 0)
+                {
+                    pv->back(500.0f, 0.0f, rate);
+                    tl->back(500.0f, 0.0f, rate);
+                }
             }
             else
             {
@@ -1138,8 +1354,8 @@ module XBuild
                 const float db = sp.bypassD > 0.0f ? sp.bypassD : dPipe;
                 const float ab = 0.785398f * db * db;
                 Duct* bp = &net.d[slot(s, XO_BYP)];
-                float lb = 0.0f;
-                for (int m = 0; m < 5; ++m)
+                float lb = 0.5f;
+                for (int m = 0; m < 4; ++m)
                 {
                     if (m < nMufJ[s] - 1)
                         lb += net.d[slot(s, XO_MUF + m)].len;
@@ -1165,6 +1381,20 @@ module XBuild
             }
             else
                 net.ends[eTail[2 * s]].design(dTail, tl->rho, tT, eng.tAmb, rate);
+        }
+        // the housings' gas, and the external gates' pipes
+        for (int h = 0; h < 8; ++h)
+        {
+            if (jHouse[h] >= 0)
+                net.jT[jHouse[h]] = heat.tUse[XH_COLL];
+        }
+        for (int t = 0; t < nGates; ++t)
+        {
+            Duct* g = &net.d[XD_GATE + t];
+            const float ag = 0.785398f * sp.gateD * sp.gateD;
+            g->set(sp.gateLen, sp.gateD, ag, cS, rate);
+            g->extra(0.0f, 0.96f, rate);
+            net.ends[eGate[t]].design(sp.gateD, g->rho, heat.tUse[XH_COLL], eng.tAmb, rate);
         }
         // the H: a pipe between the sides, sharp-edged at both ends
         if (crossK == 1)
@@ -1198,7 +1428,7 @@ module XBuild
         // transmission is smooth in its travel: smoothstep)
         for (int s = 0; s < nSides; ++s)
         {
-            if (byp[s] == 0)
+            if (byp[s] == 0 || sideOn[s] == 0)
                 continue;
             float want = 0.0f;
             if (byp[s] == 2)
@@ -1224,6 +1454,59 @@ module XBuild
             if (net.dUse[i] != 0)
                 net.d[i].flow16(xiWall, k16Flow);
         }
+        // each section's mean Mach number
+        for (int i = 0; i < XH_SECT; ++i)
+            mach[i] = 0.0f;
+        int nm[XH_SECT];
+        for (int i = 0; i < XH_SECT; ++i)
+            nm[i] = 0;
+        for (int i = 0; i < nPorts; ++i)
+        {
+            mach[XH_PRIM] += net.d[XD_PRIM + i].mach;
+            nm[XH_PRIM] += 1;
+        }
+        for (int c = 0; c < XS_COLL; ++c)
+        {
+            if (colOn[c] != 0)
+            {
+                const int sc = colFed[c] != 0 ? XH_COLL2 : XH_COLL;
+                mach[sc] += net.d[XD_COLL + c].mach;
+                nm[sc] += 1;
+            }
+        }
+        for (int s = 0; s < nSides; ++s)
+        {
+            if (sideOn[s] == 0)
+                continue;
+            mach[XH_MAIN] += net.d[slot(s, XO_MAIN)].mach;
+            nm[XH_MAIN] += 1;
+            mach[XH_TAIL] += net.d[slot(s, XO_TAIL)].mach;
+            nm[XH_TAIL] += 1;
+            if (muf[s] != 0)
+            {
+                mach[XH_MUFF] += net.d[slot(s, XO_MUF)].mach;
+                nm[XH_MUFF] += 1;
+            }
+            if (jMid[s] >= 0 || res[s] != 0)
+            {
+                mach[XH_LINK] += net.d[slot(s, jMid[s] >= 0 ? XO_POST : XO_LINK)].mach;
+                nm[XH_LINK] += 1;
+            }
+        }
+        for (int i = 0; i < XH_SECT; ++i)
+        {
+            if (nm[i] > 0)
+                mach[i] /= (float)nm[i];
+        }
+        if (scopeOn != 0)
+        {
+            scopeTick += 1;
+            if (scopeTick >= 8)
+            {
+                scopeTick = 0;
+                scope();
+            }
+        }
         // the jets' noise peaks where their Strouhal number is about 0.3 (no higher than 2.5 kHz)
         for (int e = 0; e < net.ne; ++e)
         {
@@ -1247,6 +1530,8 @@ module XBuild
         }
         for (int s = 0; s < nSides; ++s)
         {
+            if (sideOn[s] == 0)
+                continue;
             const Duct* p = &net.d[slot(s, XO_MAIN)];
             if (gCone[s] >= 0)
                 net.flowBand(gCone[s], 0.4f * p->mach * p->c / p->diam);
@@ -1268,7 +1553,10 @@ module XBuild
     void step(float* q) [[clang::nonblocking]]
     {
         net.step(q);
-        // the meters
+        // the meters: every 4th sample (means over some 0.2 s)
+        tick4 = tick4 + 1 >= 4 ? 0 : tick4 + 1;
+        if (tick4 != 0)
+            return;
         float pc = 0.0f;
         int nc = 0;
         for (int c = 0; c < XS_COLL; ++c)
@@ -1291,6 +1579,8 @@ module XBuild
         qOut += kMean * (qo - qOut);
         for (int s = 0; s < nSides; ++s)
         {
+            if (sideOn[s] == 0)
+                continue;
             pConv[s] += kMean * (net.jP[jHead[s]] - pConv[s]);
             const int j0 = jMuf[s * 5];
             float pm = net.jP[j0];
@@ -1301,6 +1591,90 @@ module XBuild
                 pm = net.arriving(k) + (net.bE[k] == 0 ? net.nearIn[net.bD[k]] : net.farIn[net.bD[k]]);
             }
             pMuf[s] += kMean * (pm - pMuf[s]);
+        }
+    }
+
+    // ---- the seams (sim/README.md): per sample, after read() and before step() ----
+
+    // Card F's turbine housing h: its pipes' drive (m^3/s), admittance (m^3/s/Pa) and gas temperature (K), for
+    // Boost::housing; then setHouse(h, the pressure it returned)
+    float houseDrive(int h)
+    {
+        return h >= 0 && h < 8 && jHouse[h] >= 0 ? net.jDrive[jHouse[h]] : 0.0f;
+    }
+
+    float houseAdmit(int h)
+    {
+        return h >= 0 && h < 8 && jHouse[h] >= 0 ? net.jAdmit[jHouse[h]] : 0.0f;
+    }
+
+    float houseT(int h)
+    {
+        return h >= 0 && h < 8 && jHouse[h] >= 0 ? net.jT[jHouse[h]] : 300.0f;
+    }
+
+    void setHouse(int h, float p)
+    {
+        if (h >= 0 && h < 8 && jHouse[h] >= 0)
+            net.jPx[jHouse[h]] = p;
+    }
+
+    // Side s's downpipe at the turbine's outlet: the wave arriving at its head (Pa) and its impedance with the
+    // converter in series (Pa s / m^3), for Boost::downpipe; then setDown(s, the pressure it returned)
+    float downWave(int s)
+    {
+        return s >= 0 && s < XS_SIDES && jDown[s] >= 0 ? net.jDrive[jDown[s]] : 0.0f;
+    }
+
+    float downZ(int s)
+    {
+        return s >= 0 && s < XS_SIDES && jDown[s] >= 0 ? net.jAdmit[jDown[s]] : 1.0f;
+    }
+
+    void setDown(int s, float p)
+    {
+        if (s >= 0 && s < XS_SIDES && jDown[s] >= 0)
+            net.jPx[jDown[s]] = p;
+    }
+
+    // External wastegate t's own pipe: the same, for Boost::gatePipe
+    float gateWave(int t)
+    {
+        return t >= 0 && t < nGates ? net.jDrive[jGate[t]] : 0.0f;
+    }
+
+    float gateZ(int t)
+    {
+        return t >= 0 && t < nGates ? net.jAdmit[jGate[t]] : 1.0f;
+    }
+
+    void setGate(int t, float p)
+    {
+        if (t >= 0 && t < nGates)
+            net.jPx[jGate[t]] = p;
+    }
+
+    void prepare() [[clang::nonblocking]]
+    {
+        net.prepare();
+    }
+
+    // Card H: the gas's temperature where the bank's bangs light (its collector's, K)
+    float gasTemperature(int bank)
+    {
+        return bank >= 0 ? heat.tGas[XH_COLL] : heat.tGas[XH_PRIM];
+    }
+
+    // Card H: a bang on a bank (amp: Pa, as the reference's Pop::fire's), at the collector its first port joins
+    void pop(int bank, float amp)
+    {
+        for (int i = 0; i < nPorts; ++i)
+        {
+            if (eng.bank[i] == bank && portTo[i] >= 0)
+            {
+                popAt(portTo[i], amp);
+                return;
+            }
         }
     }
 

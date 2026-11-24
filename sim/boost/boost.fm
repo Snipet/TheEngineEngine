@@ -1,0 +1,229 @@
+// boost/boost.fm: forced induction (module Boost). Owner: package F.
+//
+// One turbo, two or four (two smaller ones spool sooner, four sooner still: sequential pairs), or a supercharger. A
+// turbo's shaft spins up on the exhaust's energy with lag, the wastegate holds the boost, the blow-off valve opens when
+// the throttle shuts on boost (without one, the compressor surges); its turbine at each collector is a restriction that
+// smooths the pulses (turbineArea, turbineHz: the exhaust's pipes take them). A supercharger's rotors turn with the crank:
+// a twin-screw's boost comes with the revs at once, and it takes what it pumps from the crank. Its sounds: each turbo's
+// whistle at its compressor's blades and the rush of air, the blow-off valve, the surge; a supercharger's whine at its
+// pockets' passing. What it leaves out: the compressor's map (surge line, choke), the intercooler, the turbine's own
+// work on the exhaust's waves (it is a fixed restriction and a low-pass).
+//
+//   setup(rate, noise)     in init; noise: the stream its sounds draw from (Extras')
+//   glide(level, tsize, kDial)  every 16 samples: the BOOST and TURBO SIZE dials smoothed (smTb, smTs)
+//   control(...)           every 16 samples: the shaft, the boost, the valves (the reference's turbo16)
+//   sound(crankHz, massFlow, bovLevel)   each sample, after Extras' tick and before its tickStarter: into turbo
+//   tsOf(tsize)            the TURBO SIZE dial as the engine takes it
+// Its state read by others: boost (bar over the air), smTb, smTs.
+#pragma once
+#include "lib/biquad.fm"
+#include "lib/noise.fm"
+
+module Boost
+{
+    float rate;
+    float nScale;       // white noise's strength for the same loudness at any sample rate
+    Noise* nz;
+    float smTb;         // BOOST, smoothed
+    float smTs;         // TURBO SIZE, smoothed
+    // the forced induction: one turbo, two or four (each whistling a little apart), or a supercharger
+    int kind;           // 0 none, 1 a turbo, 2 twin turbos, 3 quad turbos, 4 a supercharger
+    float tbSize;       // how much boost it is set for, 0 to 1
+    float spool;        // shaft speed, 0 to 1 (a supercharger's rotors: with the crank)
+    float boost;        // bar above the air outside
+    float maxB;         // the most it makes
+    float bov;          // the blow-off valve's breath, 0 to 1
+    float flutter;      // the compressor surging against a shut throttle (no blow-off valve)
+    float flPh;
+    float whPh[4];
+    float scRatio;      // a supercharger's drive: its rotors' turns a turn of the crank (its pulley's)
+    float tsK;          // the turbos' size over the match: their whistle's pitch and their rush's band go with it
+    float scW[6];       // its whine's harmonics: how strong each comes out (every 16 samples)
+    Biquad tnoise;
+    Biquad bovf;
+    float lastThrottle;
+    float thrSlow;      // the throttle a tenth of a second behind
+    float turbo;        // this sample's sound
+
+    void setup(float rateIn, Noise* noise)
+    {
+        rate = rateIn;
+        nz = noise;
+        nScale = sqrtf(rate / 48000.0f);
+        tnoise.setBandpass(5000.0f, 2.5f, rate);
+        bovf.setBandpass(3200.0f, 0.9f, rate);
+        spool = 0.0f;
+        boost = 0.0f;
+        bov = 0.0f;
+        flutter = 0.0f;
+    }
+
+    // The TURBO SIZE dial as the engine takes it: 0.5 to 2 (unset: 1, matched)
+    float tsOf(float tsize)
+    {
+        return tsize > 0.0f ? fminf(fmaxf(tsize, 0.5f), 2.0f) : 1.0f;
+    }
+
+    // The dials smoothed, every 16 samples (kDial: the 80 ms one-pole's coefficient)
+    void glide(float level, float tsize, float kDial)
+    {
+        smTb += (level - smTb) * kDial;
+        smTs += (tsOf(tsize) - smTs) * kDial;
+    }
+
+    // Every 16 samples: the forced induction (kindIn: 0 none, 1 a turbo, 2 twin turbos, 3 quad turbos, 4 a
+    // supercharger; size 0 to 1: how much boost). A turbo's shaft spins up on the exhaust's energy, with lag (two
+    // smaller ones sooner, four sooner still: sequential pairs), the wastegate holds the boost, the blow-off valve
+    // opens when the throttle shuts on boost (falling some 0.15 under where it was a tenth of a second before). A
+    // supercharger's rotors turn with the crank (rpmFrac: the revs over the redline): a twin-screw's boost comes with
+    // the revs at once, most of it by a third of the redline, and its bypass valve lets it go as the load (the
+    // throttle; a diesel's fuel) falls. Its pulley turns the rotors 2 to 2.8 times the crank with the boost it is
+    // set for (a smaller pulley: more boost, a higher whine); two rotors of three lobes let six pockets of air through
+    // a turn of the rotors, each meeting the boost as it opens to the outlet: a pulse, sharper with more boost (its
+    // harmonics fall off less), its harmonics ringing the case and the outlet near 2.6 kHz on their way out (the
+    // whine's colour changes as it rises through there).
+    void control(int kindIn, float size, float exhaustPower, float throttle, float load, float bovLevel, float rpmFrac,
+                 float crankHz, float tsz, float d16)
+    {
+        kind = kindIn;
+        tbSize = size;
+        tsK = tsz;
+        if (kind == 0 || size <= 0.001f)
+        {
+            spool = 0.0f;
+            boost = 0.0f;
+            bov = 0.0f;
+            flutter = 0.0f;
+            lastThrottle = throttle;
+            return;
+        }
+        if (kind == 4)
+        {
+            spool += (fminf(fmaxf(rpmFrac, 0.0f), 1.25f) - spool) * (1.0f - expf(-d16 / 0.03f));
+            maxB = 0.25f + 0.75f * size;
+            const float sp = fminf(spool / 0.35f, 1.0f);
+            const float bs = maxB * expf(0.6f * logf(fmaxf(sp, 1.0e-4f))) * (0.1f + 0.9f * load * load);
+            bov = 0.0f;
+            flutter = 0.0f;
+            lastThrottle = throttle;
+            boost += (bs - boost) * (1.0f - expf(-d16 / 0.05f));
+            scRatio = 2.0f + 0.8f * size;
+            const float f0 = 6.0f * scRatio * fmaxf(crankHz, 1.0f);
+            const float slope = 1.5f - 0.7f * fminf(boost / fmaxf(maxB, 0.05f), 1.0f);
+            for (int k = 0; k < 6; ++k)
+            {
+                const float fk = (float)(k + 1) * f0;
+                const float x = fk / 2600.0f - 2600.0f / fk;
+                const float res = 1.0f / sqrtf(1.0f + 6.0f * x * x);
+                const float top = fminf(fmaxf((18000.0f - fk) / 4000.0f, 0.0f), 1.0f);  // (faded out by 18 kHz)
+                scW[k] = top * expf(-slope * logf((float)(k + 1))) * (0.5f + 0.5f * res);
+            }
+            return;
+        }
+        const float kz = kind == 1 ? 1.0f : (kind == 2 ? 0.72f : 0.55f);
+        // (its size, tsz, over the match: a small one spins nearer its top on the same exhaust, as the size's -0.6th
+        // power, its lag as the 1.3th; past its flow it lets the boost go: near the redline for one half the size)
+        const float lts = logf(tsz);
+        const float target = fminf(sqrtf(fmaxf(exhaustPower, 0.0f)) * (1.25f - 0.45f * size) * expf(-0.6f * lts), 1.0f);
+        const float tauUp = (0.35f + 1.5f * size) * kz * expf(1.3f * lts);
+        const float tau = target > spool ? tauUp : 1.2f;
+        spool += (target - spool) * (1.0f - expf(-d16 / tau));
+        const float maxBoost = 0.35f + 1.05f * size;
+        maxB = maxBoost;
+        float b = maxBoost * spool * spool * 1.6f;
+        if (b > maxBoost)
+            b = maxBoost;                                   // the wastegate opens
+        b = fminf(b, maxBoost * fminf(1.3f * expf(1.5f * lts) / fmaxf(rpmFrac, 0.01f), 1.0f));   // (a small one chokes)
+        // the throttle shut on boost: the blow-off valve (or, without one, the compressor surges)
+        thrSlow += (throttle - thrSlow) * (1.0f - expf(-d16 / 0.1f));
+        if (throttle < thrSlow - 0.15f && boost > 0.25f)
+        {
+            if (bovLevel > 0.15f)
+                bov = fmaxf(bov, fminf(boost / maxBoost, 1.0f));
+            else
+                flutter = fmaxf(flutter, fminf(boost / maxBoost, 1.0f));
+        }
+        lastThrottle = throttle;
+        bov *= expf(-d16 / 0.28f);
+        flutter *= expf(-d16 / 0.45f);
+        if (bov > 0.05f || flutter > 0.05f)
+        {
+            b *= 0.5f;                                      // the boost vents
+            spool *= expf(-d16 / 0.9f);
+        }
+        boost += (b - boost) * (1.0f - expf(-d16 / 0.08f));
+    }
+
+    // One sample of the turbos' (or the supercharger's) sound, into turbo
+    void sound(float crankHz, float massFlow, float bovLevel)
+    {
+        // the turbos: each one's whistle at its compressor's blades (smaller ones higher, each a little apart from the
+        // others), the rush of air, the blow-off valve, the surge
+        turbo = 0.0f;
+        if (kind == 4 && tbSize > 0.001f)
+        {
+            // a supercharger: its rotors whine at their pockets' passing (six a turn of the rotors: turbo16 sets
+            // their harmonics), louder with the speed and the boost (off the boost, its bypass open, the rotors still
+            // turn: some 30 % of it), a little uneven over a turn of the rotors (their lobes are not quite alike); the
+            // air rushing through them
+            whPh[0] += 6.0f * scRatio * crankHz / rate;
+            if (whPh[0] >= 1.0f)
+                whPh[0] -= floorf(whPh[0]);
+            whPh[1] += scRatio * crankHz / rate;
+            if (whPh[1] >= 1.0f)
+                whPh[1] -= floorf(whPh[1]);
+            const float sp = fminf(crankHz / 100.0f, 1.0f);
+            const float ld = fminf(boost / fmaxf(maxB, 0.05f), 1.0f);
+            const float ph = 6.28318531f * whPh[0];
+            // (the harmonics' sines by the recurrence sin (k + 1) x = 2 cos x sin k x - sin (k - 1) x)
+            const float c1 = cosf(ph);
+            float s0 = 0.0f;
+            float s1 = sinf(ph);
+            float w = scW[0] * s1;
+            for (int k = 1; k < 6; ++k)
+            {
+                const float s2 = 2.0f * c1 * s1 - s0;
+                w += scW[k] * s2;
+                s0 = s1;
+                s1 = s2;
+            }
+            turbo = 0.15f * sp * (0.3f + 0.7f * ld) * (1.0f + 0.12f * sinf(6.28318531f * whPh[1])) * w;
+            tnoise.setBandpass(1200.0f + 3000.0f * sp, 1.5f, rate);
+            turbo += 0.09f * sp * ld * tnoise.tick(nScale * nz->rnd());
+        }
+        else if (kind != 0 && tbSize > 0.001f)
+        {
+            const int nv = kind == 1 ? 1 : (kind == 2 ? 2 : 4);
+            const float fw = (900.0f + 7200.0f * spool) * (kind == 1 ? 1.0f : (kind == 2 ? 1.2f : 1.4f)) * expf(-0.8f * logf(tsK));
+            const float det[4] = {1.0f, 1.012f, 0.991f, 1.021f};
+            float ws = 0.0f;
+            for (int j = 0; j < nv; ++j)
+            {
+                whPh[j] += fw * det[j] / rate;
+                if (whPh[j] >= 1.0f)
+                    whPh[j] -= floorf(whPh[j]);
+                ws += sinf(6.28318531f * whPh[j]) + 0.25f * sinf(12.5663706f * whPh[j]);
+            }
+            const float s2 = spool * spool;
+            turbo = 0.09f * s2 * ws / sqrtf((float)nv);
+            tnoise.setBandpass((1500.0f + 5500.0f * spool) * expf(-0.5f * logf(tsK)), 2.5f, rate);
+            turbo += 0.15f * s2 * fminf(massFlow * 8.0f, 1.0f) * tnoise.tick(nScale * nz->rnd());
+            if (bov > 0.001f)
+                turbo += 0.35f * bovLevel * bov * bov * bovf.tick(nScale * nz->rnd());
+            if (flutter > 0.001f)
+            {
+                flPh += (16.0f + 6.0f * flutter) / rate;
+                if (flPh >= 1.0f)
+                    flPh -= 1.0f;
+                const float pulse = fmaxf(sinf(6.28318531f * flPh), 0.0f);
+                turbo += 0.25f * flutter * pulse * pulse * pulse * bovf.tick(nScale * nz->rnd());
+            }
+        }
+    }
+
+    // A supercharger takes what it pumps from the crank: its boost times the air it moves, at some 60 % (N m; asp 4)
+    float drag(int asp, float vTotal, float omega)
+    {
+        return asp == 4 ? boost * 1.0e5f * vTotal * (1.0f + boost) * 0.1326f * fminf(omega / 5.0f, 1.0f) : 0.0f;
+    }
+};

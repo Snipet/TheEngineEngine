@@ -1,0 +1,121 @@
+// intake/intake.fm: the intake (module Intake). Owner: package E.
+//
+// Each cylinder breathes through its runner (a Duct: exhaust/duct.fm, a waveguide; a rotary's rotor shares one) from a
+// plenum that the throttle fills from the air box (with the turbo's boost: pBox). The plenum is a volume of air whose
+// mass the throttle's flow and the runners' flows change, its pressure what the runners see at their ends; a runner's
+// end radiates into it as an open pipe's does. The throttle is an orifice, choked below the critical ratio, its plate's
+// area as the 1.8th power of its opening, with the idle valve beside it; a diesel has none (its plate stands open). The
+// throttle's area goes with the engine's size, the plenum's volume too (Engine's configure sets aThrottle, aBypass,
+// vPlenum). What it leaves out: the air box's own waves (Extras' box resonance stands for them), the air filter's loss,
+// individual throttles, variable runners (package E's).
+//
+//   setup(rate) in init; release() in end; clear() a new engine's runners at rest
+//   runners(np, bike, bore, rate)        the runners' sizes and their ends (Engine's pipes(), every 16 samples)
+//   flow16(np, xi, k16)                  every 16 samples: the runners' flow losses
+//   read(np)                             each sample, first: the waves arriving at the runners' ends
+//   plenum(np, rNear, fuel, throttle, bypass, dt)   each sample, after the cylinders: the runners' far ends, the plenum
+// Its state read by others: run[] (the cylinders' intake ends), pPlenum, tAir (set by Engine from the boost), pBox, qThr.
+#pragma once
+#include "exhaust/duct.fm"
+#include "lib/biquad.fm"
+#include "spec/limits.fm"
+
+module Intake
+{
+    Duct run[MAX_PORTS];       // the intake runners
+    Biquad endRun[MAX_PORTS];  // each intake runner's end in the plenum: the same, in the air of the plenum
+    float aThrottle;    // the throttle's area wide open, m^2
+    float aBypass;      // the idle valve's
+    float vPlenum;
+    float pPlenum;      // Pa absolute
+    float mPlenum;
+    float tAir;
+    float pBox;         // the air box (with the turbo's boost), Pa
+    float qThr;         // the volume flow through the throttle, m^3/s
+
+    void setup(float rate)
+    {
+        // the longest each runner could be, cold (330 m/s), at this rate
+        const float k = rate / 300.0f;
+        for (int i = 0; i < MAX_PORTS; ++i)
+            run[i].configure((int)(0.8f * k) + 16);
+    }
+
+    void release()
+    {
+        for (int i = 0; i < MAX_PORTS; ++i)
+            run[i].release();
+    }
+
+    void clear()
+    {
+        for (int i = 0; i < MAX_PORTS; ++i)
+        {
+            run[i].clear();
+            endRun[i].clear();
+        }
+    }
+
+    void runners(int np, float bike, float bore, float rate)
+    {
+        const float aRun = 0.9f * 0.27f * 0.785398f * bore * bore / 0.62f;
+        for (int i = 0; i < np; ++i)
+        {
+            run[i].set(bike > 0.5f ? 0.16f : 0.30f, sqrtf(aRun * 1.2732395f), aRun, 350.0f, rate);
+            run[i].extra(0.0f, 1.0f, rate);
+        }
+        const float kb = 2.0f * rate;
+        const float kb2 = kb * kb;
+        // each runner's end in the plenum radiates into it as an open pipe's end does (the same fit, the same air
+        // inside and out): the lows come back inverted, the highs go out. (A runner whose ends both reflected whole,
+        // its valve shut at one end, rang at its high modes with nothing to stop it: a squeal at idle, the reversion
+        // of a big cam's overlap striking them every cycle; a real one loses some 3 dB a round trip at 2.6 kHz there.)
+        const float tR = sqrtf(aRun * 0.31830989f) / 347.2f;
+        const float rn1 = -0.167f * tR * kb;
+        const float rd1 = 1.393f * tR * kb;
+        const float rd2 = 0.457f * tR * tR * kb2;
+        for (int i = 0; i < np; ++i)
+            endRun[i].design(-1.0f + rn1, -2.0f, -1.0f - rn1, 1.0f + rd1 + rd2, 2.0f - 2.0f * rd2, 1.0f - rd1 + rd2);
+    }
+
+    void flow16(int np, float xi, float k16)
+    {
+        for (int i = 0; i < np; ++i)
+            run[i].flow16(xi, k16);
+    }
+
+    void read(int np)
+    {
+        for (int i = 0; i < np; ++i)
+            run[i].read();
+    }
+
+    void plenum(int np, float* rNear, int fuelUse, float throttle, float bypass, float dt)
+    {
+        // the intake: the runners open into the plenum (its pressure is what they see there; the highs go on into it)
+        const float pg = pPlenum - 101325.0f;
+        float qIn = 0.0f;
+        for (int i = 0; i < np; ++i)
+        {
+            const float back = 0.5f * pg + endRun[i].tick(run[i].far - 0.5f * pg);
+            qIn += (run[i].far - back) / run[i].z;
+            run[i].write(rNear[i], back);
+        }
+        // the throttle fills the plenum from the air box (a diesel has none: its plate stands open, and the throttle is
+        // its fuel)
+        const float plate = fuelUse != 0 ? 1.0f : throttle;
+        const float aT = aThrottle * (expf(1.8f * logf(fmaxf(plate, 1.0e-4f))) + 0.0006f) + (fuelUse != 0 ? 0.0f : aBypass * bypass);
+        float mT = 0.0f;
+        const float dp = pBox - pPlenum;
+        if (dp > 0.0f)
+        {
+            const float rho = pBox / (287.0f * tAir);
+            mT = aT * fminf(sqrtf(2.0f * rho * dp), 0.676f * pBox / sqrtf(287.0f * tAir));
+        }
+        else
+            mT = -aT * sqrtf(-2.0f * (pPlenum / (287.0f * tAir)) * dp);
+        mPlenum = fmaxf(mPlenum + (mT + qIn * pPlenum / (287.0f * tAir)) * dt, 1.0e-6f);
+        pPlenum = mPlenum * 287.0f * tAir / vPlenum;
+        qThr = mT * 287.0f * tAir / pBox;
+    }
+};

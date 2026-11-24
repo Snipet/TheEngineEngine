@@ -87,7 +87,9 @@ TEST_CASE("the test library drives the simulator: a start, an idle, a rev to the
     const Signal held = r.audio().during(7.0, 9.0);
     WARN("v8 on the limiter: firing " << r.firingHz(7.0, 9.0) << " Hz, its line " << held.line(r.firingHz(7.0, 9.0)).db
                                       << " dB over a floor of " << held.floor().db << " dB; largest step "
-                                      << r.audio().largestStep() << "; " << r.speed() << " times real time; load mean "
+                                      << r.audio().largestStep() << "; " << r.speed() << " times real time; the host's own"
+                                      << " work a block " << r.host().hostMicrosMean << " us mean, "
+                                      << r.host().hostMicrosPeak << " us peak; load mean "
                                       << r.host().loadMean);
     CHECK(held.line(r.firingHz(7.0, 9.0)).above(held.floor(), 12));
     std::string steps;

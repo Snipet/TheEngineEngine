@@ -42,17 +42,20 @@ module BoostSupercharger
         disp = fmaxf(d, 1.0e-5f);
         vi = fmaxf(vIn, 1.0f);
         vi4 = expf(0.4f * logf(vi));
-        // (clearances some 0.15 mm along the rotors' edges: an area that grows as D^(2/3))
-        leakArea = 0.012f * expf(0.6666667f * logf(disp));
+        // (clearances some 0.1 mm along the rotors' edges: an area that grows as D^(2/3); judgement, set so that a
+        // blower's volumetric efficiency is some 75 % at a third of its speed and 90 % near its top, as Roots blowers'
+        // published maps have it)
+        leakArea = 0.005f * expf(0.6666667f * logf(disp));
     }
 
-    // One sample: rotor turns a second, the inlet's state, the outlet's pressure. Returns the net flow into the outlet.
-    float step(float turns, float p1, float t1, float p2, float t2out)
+    // One sample: rotor turns a second, the inlet's state, the outlet's pressure and temperature, and the outlet
+    // volume's stiffness (boostStiff: the leak is solved with it). Returns the net flow into the outlet.
+    float step(float turns, float p1, float t1, float p2, float t2out, float kk)
     {
         n = fmaxf(turns, 0.0f);
         const float rho1 = p1 / (kBoostR * t1);
         mDel = rho1 * disp * n;
-        mLeak = boostOrifice(p2, t2out, p1, t1, leakArea, 0);
+        mLeak = boostOrificeStep(p2, t2out, p1, t1, leakArea, 0, kk);
         // (the pockets' pressure when they open: Vi^1.4 = Vi * Vi^0.4)
         pi = p1 * vi * vi4;
         float w = p1 * disp * 3.5f * (vi4 - 1.0f);

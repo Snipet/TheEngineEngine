@@ -1,0 +1,11 @@
+geometry bec968522fcda550
+text f307e8e59910e2df
+statics 173
+live 0
+texts 63
+rrects 4
+segments 106
+areas 0
+shaders 0
+images 0
+size 800 x 400

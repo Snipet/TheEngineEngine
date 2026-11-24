@@ -1,0 +1,26 @@
+// lib/noise.fm: the reference's white noise (module Noise): Park and Miller's minimal standard generator, a float in
+// [-1, 1) a call. Several modules may draw from one Noise (a pointer to it), as the reference's parts of one module drew
+// from one stream: the order of the draws is then part of the sound, and the null test holds it.
+//
+//   Noise n;  n.rs = seed (not 0);  x = n.rnd();  g = n.gauss() (three summed: about a unit normal)
+#pragma once
+
+module Noise
+{
+    int rs;
+
+    float rnd()
+    {
+        const int hi = rs / 127773;
+        const int lo = rs % 127773;
+        rs = 16807 * lo - 2836 * hi;
+        if (rs <= 0)
+            rs += 2147483647;
+        return 2.0f * ((float)rs / 2147483647.0f) - 1.0f;
+    }
+
+    float gauss()
+    {
+        return 0.57735f * (rnd() + rnd() + rnd());
+    }
+};

@@ -158,7 +158,8 @@ module BoostRig
             const float aT = aThrottle * (expf(1.8f * logf(fmaxf(plate, 1.0e-4f))) + 0.0006f);
             const float pB = boost.pressure();
             const float tB = boost.temperature();
-            mThr = boostOrifice(pB, tB, plenum.p, plenum.t, aT, 0);
+            mThr = boostOrificeStep(pB, tB, plenum.p, plenum.t, aT, 0,
+                                    (boost.active != 0 ? boostStiff(boost.v2.vol, tB, 1.4f, dt) : 0.0f) + boostStiff(plenum.vol, plenum.t, 1.4f, dt));
             boost.draw(mThr);
             plenum.flow(mThr, tB, boost.oxygen());
             mAir = ve * plenum.p / (kBoostR * plenum.t) * vd * rpm / 120.0f;
@@ -198,10 +199,13 @@ module BoostRig
                 drive[h] = 0.0f;
                 admit[h] = 0.0f;
             }
+            // (two banks for the arrangements that want them: a pipe each, or two each for four turbos)
+            const int banks = boost.layout == BOOST_TWIN || boost.layout == BOOST_QUAD ? 2 : 1;
+            pipes = boost.layout == BOOST_QUAD ? 4 : 2;
             for (int k = 0; k < pipes; ++k)
             {
                 pipe[k].read();
-                const int h = boost.housingOf(0, k, 1);
+                const int h = boost.housingOf(k % banks, k / banks, banks);
                 if (h >= 0)
                 {
                     drive[h] += 2.0f * pipe[k].far / zPipe;
@@ -213,7 +217,7 @@ module BoostRig
                 pg[h] = admit[h] > 0.0f ? boost.housing(h, drive[h], admit[h], tExhaust) : 0.0f;
             for (int k = 0; k < pipes; ++k)
             {
-                const int h = boost.housingOf(0, k, 1);
+                const int h = boost.housingOf(k % banks, k / banks, banks);
                 const float back = h >= 0 ? pg[h] - pipe[k].far : -pipe[k].far;
                 pipe[k].mean += 0.0005f * (pipe[k].near - pipe[k].mean);
                 const float q = qPort[k] * kBoostR * tExhaust / (boost.pOut + pipe[k].pMean);
@@ -289,6 +293,7 @@ module PassRig
     int seed;
     float lp;
     float level;
+    float tGas;         // the arriving gas's temperature: the housing's own (no heat brought in)
 
     void init()
     {
@@ -312,7 +317,7 @@ module PassRig
             seed += 1;
             lp += 0.2f * (randf(seed) - lp);
             const float a = level * lp;
-            const float pg = boost.housing(0, 2.0f * a / z, 1.0f / z, 900.0f);
+            const float pg = boost.housing(0, 2.0f * a / z, 1.0f / z, tGas);
             const float b = pg - a;
             eIn += (double)(a * a / z);
             eOut += (double)(b * b / z);

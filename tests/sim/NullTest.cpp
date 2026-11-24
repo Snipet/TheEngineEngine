@@ -29,12 +29,15 @@ namespace
         return p;
     }
 
-    // Plays one pair, prints its depth, and checks it
-    void nullOf(const std::string& build, const std::string& scenario, double rate, int block, double seconds = 0.0)
+    // Plays one pair, prints its depth, and checks it (with `over`: these Spec values over the build's)
+    void nullOf(const std::string& build, const std::string& scenario, double rate, int block, double seconds = 0.0,
+                const std::map<std::string, double>& over = {})
     {
         Players& p = players(rate);
-        const test::Null r = test::twin(*p.engine, *p.ref, test::engineBuild(*p.engine, build),
-                                              test::engineScenario(scenario), block, seconds);
+        Build b = test::engineBuild(*p.engine, build);
+        for (const auto& [path, value] : over)
+            b.values[path] = {value};
+        const test::Null r = test::twin(*p.engine, *p.ref, b, test::engineScenario(scenario), block, seconds);
         std::printf("null %-13s %-10s %6.0f Hz /%4d: depth L %s R %s dB, worst difference %.3g, peak %.3f, %d start(s)\n",
                     build.c_str(), scenario.c_str(), rate, block,
                     std::isinf(r.depthLeft) ? "inf" : std::to_string(r.depthLeft).c_str(),
@@ -84,6 +87,25 @@ TEST_CASE("null: every preset: a start in its own air", "[sim][null]")
         nullOf(build, "cold-start", 48000.0, 512);
 }
 
+TEST_CASE("null: every preset: forced induction", "[sim][null]")
+{
+    for (const char* build : {"default", "v8", "v10", "large-diesel"})
+    {
+        nullOf(build, "supercharged", 48000.0, 512);
+        nullOf(build, "quad-turbo", 48000.0, 512);
+    }
+}
+
+TEST_CASE("null: every layout, a wild cam, free revs", "[sim][null][layouts]")
+{
+    for (int layout = 0; layout <= 16; ++layout)
+    {
+        std::printf("layout %d: ", layout);
+        nullOf("default", "free-revs", 48000.0, 512, 8.0,
+               {{"engine.layout", layout}, {"valve.cam", 0.9}, {"engine.displacement", 0.002 + 0.0005 * layout}});
+    }
+}
+
 TEST_CASE("null: other rates and blocks", "[sim][null]")
 {
     nullOf("v8", "free-revs", 44100.0, 333, 8.0);
@@ -98,4 +120,6 @@ TEST_CASE("null: quick, a pair of each kind", "[sim][null][quick]")
     nullOf("v8", "bench", 48000.0, 512, 8.0);
     nullOf("default", "views", 48000.0, 512);
     nullOf("v8", "cold-start", 48000.0, 512);
+    nullOf("default", "supercharged", 48000.0, 512);
+    nullOf("v10", "quad-turbo", 48000.0, 512);
 }

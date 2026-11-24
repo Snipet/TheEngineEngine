@@ -25,6 +25,7 @@ module BoostShaft
     float friction;     // W, this sample
     float motor;        // W the motor gave this sample
     int locked;         // held at rest (a test's)
+    float hold;         // held at this speed when above 0 (a test's: a dyno for the rotor)
 
     void size(float jGiven, float dTurb, float dComp, int ball, float assistW)
     {
@@ -40,9 +41,9 @@ module BoostShaft
     // One sample: the turbine's torque (N m), the compressor's power (W), the motor's command (0 to 1)
     void step(float tTurb, float pComp, float assist, float dt)
     {
-        if (locked != 0)
+        if (locked != 0 || hold > 0.0f)
         {
-            omega = 0.0f;
+            omega = locked != 0 ? 0.0f : hold;
             friction = 0.0f;
             motor = 0.0f;
             return;

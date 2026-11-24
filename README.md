@@ -5,17 +5,20 @@ in each cylinder, the valves, the pipes as waveguides, the crank, the clutch, th
 [FMinus](https://github.com/Snipet/FMinus) program, compiled when the application starts by the FMinus JIT it carries;
 the window is [FunkGui](https://github.com/Snipet/FunkGui)'s. The plan is in [docs/plan/](docs/plan/README.md).
 
-What is here today is the keel: the build, and a C++ host that plays the reference engine program to a file.
+What is here is the keel and what is being built on it. Each directory's own files say more: the table is where to
+start.
 
 | Directory | What it holds |
 |---|---|
 | `sim/ref/` | The reference: the engine program this project starts from, copied byte for byte (`SEED.tsv` says from where). Never edited: it is the baseline the tests compare with |
-| `host/` | `tee_host`, the C++ that compiles and plays the simulator, on FMinus's public header alone: `tee::Program`, `Schema`, `Instance`, `RefPlayer`, the offline renderer |
-| `tools/` | `tee-render` (a preset and a scenario to a WAV and a CSV) and `tee-bench` (CPU and compile times) |
-| `content/ref/` | The reference's presets and the scenarios ([docs/formats.md](docs/formats.md)) |
-| `tests/` | Catch2 tests, run by `ctest` |
-| `cmake/`, `scripts/` | The pins, the dependencies, the flags; the cloud bootstrap and CI's helpers |
-| `docs/` | The plan, the formats, the measurements, the handoffs |
+| `sim/` (the rest) | The simulator being grown from it, by subsystem ([sim/README.md](sim/README.md), [docs/plan/02-contracts.md](docs/plan/02-contracts.md)) |
+| `host/` | `tee_host`, the C++ that compiles and plays the simulator, on FMinus's public header alone: `tee::Program`, `Schema`, `Instance`, `RefPlayer`, the offline renderer, and the new engine's players |
+| `tools/` | `tee-render` (a preset and a scenario to a WAV and a CSV), `tee-bench` (CPU and compile times), and the tools the other packages add |
+| `shell/`, `app/`, `ui/` | The application: the audio device and the inputs, the executables (`tee-headless`, and `TheEngineEngine` with `TEE_BUILD_APP`), the interface ([docs/plan/](docs/plan/README.md)'s cards B and J) |
+| `content/` | `content/ref/`: the reference's presets and scenarios ([docs/formats.md](docs/formats.md)); the rest: builds, scenarios and validation files for the new engine |
+| `tests/` | Catch2 tests, run by `ctest` (below, "Tests") |
+| `cmake/`, `scripts/` | The pins, the dependencies, the flags; the cloud bootstrap, the LLVM fetch, CI's status |
+| `docs/` | The plan, the formats, the measurements, the models, the handoffs |
 
 ## Building
 
@@ -100,6 +103,40 @@ Catch2, run by `ctest` (`ctest --preset dev`; one test by name with `-R`). Addin
 
 Nobody here can listen, and nobody has a screen: a test claims what it measured (samples equal, a difference in dB,
 a speed, a spectrum's line), never that something sounds or looks right.
+
+## CI status
+
+Every push to the integration branch builds and tests on Linux, macOS (Apple's clang, arm64) and Windows (clang-cl):
+[.github/workflows/build.yml](.github/workflows/build.yml). An agent in a cloud container can build Linux only, so
+**after you push, look at macOS and Windows yourself**: a warning that Linux's clang 18 does not give, or a C++
+library function Apple's deployment target does not have, shows nowhere else.
+
+```bash
+scripts/ci-status.sh            # each platform: the newest run in which its job finished, and its first errors
+```
+
+It prints, for each platform, whether the newest finished job passed, the commit it built, its link, and for a
+failure the step it failed in and the first error lines of its log. Reading it:
+
+- Pushes to one branch queue behind the run in flight, and **a run that is still waiting is replaced by a newer
+  push**: most runs therefore show as "cancelled" without having built anything, and the script skips them. A run
+  **in flight is never cancelled** by a push, and its three platforms do not cancel one another. So a commit of
+  yours may never be built by itself: it is built with whatever was newest when a run next started. Find your commit
+  at or before the commit a result names (`git merge-base --is-ancestor <yours> <theirs> && echo included`).
+- A run takes some ten minutes with warm caches. The script lists the run in flight and the one waiting.
+- The same by hand, with nothing but `gh`:
+
+  ```bash
+  repo=Snipet/TheEngineEngine
+  gh api "repos/$repo/actions/runs?branch=claude/awesome-gates-ntdb58&per_page=60" --jq \
+    '.workflow_runs[] | select(.conclusion != "cancelled") | "\(.id) \(.status) \(.conclusion // "-") \(.head_sha[0:7])"' | head -5
+  gh api "repos/$repo/actions/runs/<run>/jobs" --jq \
+    '.jobs[] | "\(.id) \(.name) \(.conclusion // .status) " + ([.steps[]? | select(.conclusion == "failure") | .name] | join("; "))'
+  gh api "repos/$repo/actions/jobs/<job>/logs" | grep -nE "error:|FAILED:|\*\*\*Failed|undefined symbol|Undefined symbols" | head -20
+  ```
+
+Each run uploads what it built for each platform (the tools, and the application where it builds), also when a test
+failed afterwards.
 
 ## A window without a screen
 
