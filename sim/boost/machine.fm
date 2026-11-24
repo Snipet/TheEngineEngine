@@ -128,6 +128,7 @@ module BoostMachine
     // (card N2: the charge system against the engine it is on, for the telemetry's warnings: has, wants; see apply)
     float icFlowHas;
     float chargeVolHas;
+    float compFlowHas;              // the compressors' choke flows in standard air, summed where they draw from the air
     // the inlet
     float kFilter;
     float mInlet;       // through the filter (negative: out of it), kg/s
@@ -450,6 +451,11 @@ module BoostMachine
                 dEx = fmaxf(dInd / 0.8f, 600.0f / fmaxf(wRed, 100.0f));
             }
             comp[t].size(dInd, dEx, s->compAR, s->compEta, dt);
+            // (the warnings' compressor: its choke flow, std air, as aAnn's rule reads it backward: 0.45 rho a A wide)
+            if (t == 0)
+                compFlowHas = 0.0f;
+            if (t < turbos && !(layout == BOOST_COMPOUND && t == 0))
+                compFlowHas += 0.45f * 1.204f * 343.2f * wide * 0.91f * 3.14159265f * 0.25f * dInd * dInd;
             const float dT = s->turbWheel > 0.0f ? s->turbWheel : 0.9f * dEx;
             const float rc = 0.6f * dT;
             float aNoz = 0.0f;
@@ -873,6 +879,13 @@ module BoostMachine
         // passes far more only past any filter's choke; unbounded, a 50 cc engine's blower put the inlet below 0 and
         // the machine diverged at the start, card X's X-026. Normal builds never come near it)
         p1 = turbos == 0 && sc == 0 ? pOut : fmaxf(pOut - kFilter * mInlet * fabsf(mInlet), 0.5f * pOut);
+        // (the inlet has no volume: its pressure is the filter's loss. What flows back into it (a recirculating
+        // blow-off valve, a supercharger's bypass, a sequential pair's bleed) changes that loss as it flows, by
+        // 2 kFilter |m| a kg/s: those orifices are solved with it as with a volume's stiffness, and the compressors'
+        // ducts likewise. Taken a sample late instead, on a small engine's filter (kFilter as 1/mMatch^2) with a big
+        // compressor the loop through the valve gains: card X's X-024, an 85 mm inducer on 0.23 L, ran to megapascals
+        // standing still)
+        const float kIn = turbos == 0 && sc == 0 ? 0.0f : 2.0f * kFilter * fabsf(mInlet);
         const float mFresh = fmaxf(mInlet, 0.0f);
         // (what was sent back out of the inlet comes back in warm: mixed with the fresh air by their flows)
         t1 = mBack > 1.0e-6f ? (mFresh * tOut + mBack * tBack) / fmaxf(mFresh + mBack, 1.0e-6f) : tOut;
@@ -931,7 +944,7 @@ module BoostMachine
         }
         if (sc != 0 && scBypass != 0)
         {
-            const float m = boostOrificeStep(v1.p, v1.t, p1, t1, bypassArea * bypassOpen, 0, boostStiff(v1.vol, v1.t, 1.4f, dt));
+            const float m = boostOrificeStep(v1.p, v1.t, p1, t1, bypassArea * bypassOpen, 0, boostStiff(v1.vol, v1.t, 1.4f, dt) + kIn);
             v1.flow(-m, t1, 0.232f);
             mIn -= m;
             if (m > 0.0f)
@@ -948,7 +961,7 @@ module BoostMachine
             const float m = fmaxf(boostOrificeStep(vSec.p, vSec.t, v1.p, v1.t, aSecValve * seqOpen, 0, kk), 0.0f);
             vSec.flow(-m, 0.0f, 0.0f);
             v1.flow(m, vSec.t, 0.232f);
-            const float mb = boostOrificeStep(vSec.p, vSec.t, p1, t1, 0.15f * comp[1].aInd * (1.0f - seqOpen), 0, boostStiff(vSec.vol, vSec.t, 1.4f, dt));
+            const float mb = boostOrificeStep(vSec.p, vSec.t, p1, t1, 0.15f * comp[1].aInd * (1.0f - seqOpen), 0, boostStiff(vSec.vol, vSec.t, 1.4f, dt) + kIn);
             vSec.flow(-mb, t1, 0.232f);
             mIn -= mb;
             if (mb > 0.0f)
@@ -980,7 +993,7 @@ module BoostMachine
         if (bovKind != 0 && bovAt > 1.0e-6f)
         {
             const float pd2 = bovKind == 1 ? pOut : p1;
-            mBov = fmaxf(boostOrificeStep(v2.p, v2.t, pd2, tOut, bovArea * bovAt, 0, boostStiff(v2.vol, v2.t, 1.4f, dt)), 0.0f);
+            mBov = fmaxf(boostOrificeStep(v2.p, v2.t, pd2, tOut, bovArea * bovAt, 0, boostStiff(v2.vol, v2.t, 1.4f, dt) + (bovKind == 1 ? 0.0f : kIn)), 0.0f);
             v2.flow(-mBov, 0.0f, 0.0f);
             if (bovKind == 2)
             {
