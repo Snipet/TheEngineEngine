@@ -1,9 +1,11 @@
 # scripts/listening-pack.tsv: the listening pack's renders (checkpoint M2, docs/checkpoints/M2.md says what to listen
 # for in each group). One render a line, tab-separated:
-#   group  label  quick  build  scenario
-# group: the files of one group are loudness-matched together and named <group>-<label>.wav, so they sort side by side.
+#   group  label  quick  build  scenario  [define]
+# group: the files of one group are loudness-matched together (not a group whose name ends in -raw: its question is
+# the loudness) and named <group>-<label>.wav, so they sort side by side.
 # quick: 1 for the ten most telling files (--quick). build: under content/builds/. scenario: a path from the checkout's
-# root. A line whose build is missing (a package not landed yet) is skipped and listed in the pack's README.txt.
+# root. define (optional): a compile-time define for the simulator (tee-render --define), as Q's TEE_FAST.
+# A line whose build is missing (a package not landed yet) is skipped and listed in the pack's README.txt.
 01-vehicle-launch	a-reference-car	1	combo/v8.json	content/scenarios/combo/launch.json
 01-vehicle-launch	b-new-vehicle	1	combo/pack/v8-vehicle.json	content/scenarios/combo/launch.json
 02-vehicle-pull	a-reference-car	0	combo/v8.json	content/scenarios/combo/pull.json
@@ -18,16 +20,16 @@
 06-exhaust	b-builder-4-2-1	0	exhausts/v8-4-2-1.json	content/scenarios/combo/tour.json
 06-exhaust	c-builder-x-pipe	1	exhausts/v8-x-pipe.json	content/scenarios/combo/tour.json
 06-exhaust	d-builder-straight	0	exhausts/v8-straight.json	content/scenarios/combo/tour.json
-07-cam	a-stock	1	cams/stock-v8.json	content/scenarios/combo/tour.json
+07-cam	a-stock	0	cams/stock-v8.json	content/scenarios/combo/tour.json
 07-cam	b-hot-street	0	cams/hot-street.json	content/scenarios/combo/tour.json
-07-cam	c-race	1	cams/race.json	content/scenarios/combo/tour.json
+07-cam	c-race	0	cams/race.json	content/scenarios/combo/tour.json
 08-two-stage	a-two-stage	0	cams/two-stage.json	content/scenarios/combo/tour.json
 09-pops	a-0	0	combo/pack/v8-pops-0.json	content/scenarios/combo/tour.json
 09-pops	b-50	0	combo/pack/v8-pops-50.json	content/scenarios/combo/tour.json
 09-pops	c-100	0	combo/pack/v8-pops-100.json	content/scenarios/combo/tour.json
 10-pops-ecu	a-0	0	combo/pack/v8-pops-0-ecu.json	content/scenarios/combo/tour.json
 10-pops-ecu	b-50	0	combo/pack/v8-pops-50-ecu.json	content/scenarios/combo/tour.json
-10-pops-ecu	c-100	1	combo/pack/v8-pops-100-ecu.json	content/scenarios/combo/tour.json
+10-pops-ecu	c-100	0	combo/pack/v8-pops-100-ecu.json	content/scenarios/combo/tour.json
 11-small-four	a-reference	0	combo/small-four.json	content/scenarios/combo/tour.json
 11-small-four	b-every-package	0	combo/pack/small-four-all.json	content/scenarios/combo/tour.json
 12-v8	a-reference	0	combo/v8.json	content/scenarios/combo/pull.json
@@ -50,3 +52,39 @@
 17-voices-belt	a-off-then-on	0	v8.json	tests/sim/sound/listen/m-belt.json
 17-voices-gate	a-off-then-on	0	boost/turbo-four.json	tests/sim/sound/listen/m-gate.json
 17-voices-gate-dump	a-off-then-on	0	boost/turbo-four.json	tests/sim/sound/listen/m-gate-dump.json
+18-listen-pull-cameras	a-tailpipe	1	v8.json	tests/sim/listen/scenarios/listen-pull-tailpipe.json
+18-listen-pull-cameras	b-rear	0	v8.json	tests/sim/listen/scenarios/listen-pull-rear.json
+18-listen-pull-cameras	c-side	0	v8.json	tests/sim/listen/scenarios/listen-pull-side.json
+18-listen-pull-cameras	d-engine-bay	0	v8.json	tests/sim/listen/scenarios/listen-pull-engine-bay.json
+18-listen-pull-cameras	e-driver	0	v8.json	tests/sim/listen/scenarios/listen-pull-driver.json
+18-listen-pull-cameras	f-trackside	0	v8.json	tests/sim/listen/scenarios/listen-pull-trackside.json
+18-listen-pull-cameras	g-chase	1	v8.json	tests/sim/listen/scenarios/listen-pull-chase.json
+19-listen-pass	a-second	0	v8.json	tests/sim/listen/scenarios/listen-pass-second.json
+19-listen-pass	b-third	0	v8.json	tests/sim/listen/scenarios/listen-pass-third.json
+19-listen-pass	c-fourth	0	v8.json	tests/sim/listen/scenarios/listen-pass-fourth.json
+20-listen-cabin	a-windows-at-9s	0	v8.json	tests/sim/listen/scenarios/listen-cabin-windows.json
+21-listen-places	a-hall	0	v8.json	tests/sim/listen/scenarios/listen-place-hall.json
+21-listen-places	b-field	0	v8.json	tests/sim/listen/scenarios/listen-place-field.json
+21-listen-places	c-street	0	v8.json	tests/sim/listen/scenarios/listen-place-street.json
+21-listen-places	d-tunnel	0	v8.json	tests/sim/listen/scenarios/listen-place-tunnel.json
+21-listen-places	e-garage	0	v8.json	tests/sim/listen/scenarios/listen-place-garage.json
+23-listen-distance	a-field-sweep	0	listeners/v8-tailpipe.json	content/scenarios/combo/pack/distance-sweep.json
+24-listen-loudness-raw	a-single	0	engines/ref-00-single.json	content/scenarios/combo/pack/full-load-listener.json
+24-listen-loudness-raw	b-flat-4	0	engines/ref-06-flat-4.json	content/scenarios/combo/pack/full-load-listener.json
+24-listen-loudness-raw	c-v12	0	engines/ref-15-v12-60.json	content/scenarios/combo/pack/full-load-listener.json
+25-bike-quickshift	a-12000	1	bike-superbike.json	tests/sim/bike/listen/bike-quickshift-12000.json
+26-bike-autoblip	a-downshifts	0	bike-superbike.json	tests/sim/bike/listen/bike-autoblip.json
+27-bike-crossplane-vs-screamer	a-at-9000	0	bike-superbike.json	tests/sim/bike/listen/bike-crossplane-vs-screamer.json
+28-bike-v4-bigbang	a-revs	0	engines/bike-v4-bigbang.json	tests/sim/bike/listen/bike-v4-bigbang.json
+29-bike-vtwin45-idle	a-idle	0	bike-cruiser.json	tests/sim/bike/listen/bike-vtwin45-idle.json
+30-bike-600	a-limiter-16000	0	bike-supersport-600.json	tests/sim/bike/listen/bike-600-16000.json
+31-bike-chain	a-clunk	0	bike-naked-twin.json	tests/sim/bike/listen/bike-chain-clunk.json
+32-bike-downshift	a-no-slipper	0	bike-superbike.json	tests/sim/bike/listen/bike-downshift-no-slipper.json
+33-fast-v8-free-revs	a-three-passes	0	v8.json	tests/sim/scenarios/free-revs.json
+33-fast-v8-free-revs	b-tee-fast	0	v8.json	tests/sim/scenarios/free-revs.json	TEE_FAST
+34-fast-v8-drive	a-three-passes	0	v8.json	tests/sim/scenarios/drive-car.json
+34-fast-v8-drive	b-tee-fast	0	v8.json	tests/sim/scenarios/drive-car.json	TEE_FAST
+35-fast-default-free-revs	a-three-passes	0	default.json	tests/sim/scenarios/free-revs.json
+35-fast-default-free-revs	b-tee-fast	0	default.json	tests/sim/scenarios/free-revs.json	TEE_FAST
+36-fast-default-drive	a-three-passes	0	default.json	tests/sim/scenarios/drive-car.json
+36-fast-default-drive	b-tee-fast	0	default.json	tests/sim/scenarios/drive-car.json	TEE_FAST

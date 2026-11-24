@@ -34,10 +34,29 @@ const Known kKnown[] = {
     {"X-006", "2026-11-24", "H (via the lead)", "ecu.model+car.model", "v8", "limiter-1", "click",
      "the new ECU's shift cut and spark-cut limiter step the output 2 to 3 times the reference at the same moments "
      "(content/scenarios/combo/findings/x006-*.json)"},
-    {"X-007", "2026-11-24", "X (reducing)", "random 2", "fuzz", "random", "guard",
-     "random Spec seed 2: core/cylinder.fm:176 indexes kCamArea with -2147483648 (a NaN made an int); without the "
-     "checks the process dies (SIGSEGV in the JIT's code)"},
+    {"X-007", "2026-11-24", "D and I (via the lead)", "random 2", "fuzz", "random", "guard",
+     "random Spec seed 2, reduced to 8 fields (findings/x007-heavy-piston.json): a custom single with an 18 kg "
+     "piston and the new vehicle's automatic runs away; without the checks process hangs (or, earlier, SIGSEGV)"},
     {"X-008", "2026-11-24", "X (reducing)", "corners 3", "fuzz", "corners", "guard",
      "the ranges' corners, seed 3: a block beyond full scale or not finite; the guard restarts it"},
+    {"X-006", "2026-11-24", "H (via the lead)", "+fuel.model+ecu.model", "*", "tour", "click",
+     "the new ECU's cut sends a whole charge to the pipe and its bang is five times too loud (H's fix, not yet on "
+     "the branch at 15:45): with fuel.model and ecu.model both on the limiter's steps reach 22 against 11"},
+    {"X-006", "2026-11-24", "H (via the lead)", "+fuel.model+ecu.model", "*", "pull", "click",
+     "the new ECU's cut sends a whole charge to the pipe and its bang is five times too loud (H's fix, not yet on "
+     "the branch at 15:45): with fuel.model and ecu.model both on the limiter's steps reach 22 against 11"},
+    {"X-006", "2026-11-24", "H (via the lead)", "+fuel.model+ecu.model", "*", "launch", "click",
+     "the new ECU's cut sends a whole charge to the pipe and its bang is five times too loud (H's fix, not yet on "
+     "the branch at 15:45): with fuel.model and ecu.model both on the limiter's steps reach 22 against 11"},
+    {"X-006", "2026-11-24", "H (via the lead)", "+fuel.model+ecu.model", "*", "cold", "click",
+     "the new ECU's cut sends a whole charge to the pipe and its bang is five times too loud (H's fix, not yet on "
+     "the branch at 15:45): with fuel.model and ecu.model both on the limiter's steps reach 22 against 11"},
+    {"X-006", "2026-11-24", "H (via the lead)", "as built", "*", "tour", "click",
+     "the archetype corpus has fuel.model and ecu.model on: with both, the output steps 24 to 41 at the throttle's "
+     "onset and the blip (8 without either)"},
+    {"X-009", "2026-11-24", "D (via the lead)", "as built", "*", "tour", "tel-range:engine.veManifold",
+     "tel.engine.veManifold reads -5.8 on the lift after the limiter (straight-six-32-high-rev)"},
+    {"X-006", "2026-11-24", "H (via the lead)", "+fuel.model+ecu.model", "v8", "load", "click",
+     "the same with every switch on while builds are loaded over each other: 24.2 against a bound of 23.8"},
     {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},   // the end (an array is never empty)
 };

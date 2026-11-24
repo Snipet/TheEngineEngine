@@ -1,0 +1,59 @@
+{
+  "format": "tee-scenario",
+  "version": 1,
+  "name": "distance-sweep",
+  "description": "A fast idle on a field while the camera walks away (distance 0 to 1 over 20 s) (package X's listening pack, for card L)",
+  "seconds": 24,
+  "events": [
+    {
+      "t": 0,
+      "spec": {
+        "env.temperature": 293.15,
+        "sound.place": 1,
+        "sound.distance": 0
+      },
+      "ctl": {
+        "mode": 1,
+        "lever": 0,
+        "clutch": 0,
+        "throttle": 0,
+        "ignition": 1
+      }
+    },
+    {
+      "t": 0.25,
+      "ctl": {
+        "ignition": 2
+      }
+    },
+    {
+      "t": 2.0,
+      "ctl": {
+        "ignition": 1
+      }
+    },
+    {
+      "t": 2.5,
+      "ctl": {
+        "throttle": 0.3
+      },
+      "ramp": 0.3
+    },
+    {
+      "t": 3.0,
+      "spec": {
+        "sound.distance": 1
+      },
+      "ramp": 20.0
+    }
+  ],
+  "assertions": [
+    {
+      "audio": "finite"
+    },
+    {
+      "audio": "peak",
+      "<=": 1
+    }
+  ]
+}
