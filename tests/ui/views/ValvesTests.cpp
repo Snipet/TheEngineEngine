@@ -21,7 +21,7 @@ namespace
     std::vector<tee::ui::FieldInfo> labFields(bool withLab = true, bool withDemoValves = true)
     {
         std::vector<tee::ui::FieldInfo> f;
-        for (tee::ui::FieldInfo& i : tee::ui::demoFields())
+        for (tee::ui::FieldInfo& i : tee::ui::demoFields(false))
             if (withDemoValves || i.section() != "valve")
                 f.push_back(std::move(i));
         if (withLab)
