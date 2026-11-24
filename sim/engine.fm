@@ -295,7 +295,7 @@ module Engine
         set.bs = 1.0f;
         set.ambF = 80.33f;
         set.timing = 0.0f;
-        comb.setup(rate, &noise, &ecu, &heat, &lay, &exh.pop[0], &spec.fuel);
+        comb.setup(rate, &noise, &ecu, &heat, &lay, &exh.pop[0], &spec.fuel, &spec.engine);
         comb.oxygen = 1.0f;
         hd.setup(rate, &spec.ecu, &spec.valve);                                             // card D2
         ecu.setup(16.0f / rate, &spec.ecu, &spec.fuel, &ctl, &tel.ecu, &scope, &heat);     // card H's model 1
@@ -1205,7 +1205,8 @@ module Engine
                            spec.voices.model != 0 ? ex.vo.gearbox : 0.0f, spec.voices.model != 0 ? ex.vo.axle : 0.0f,
                            spec.voices.model != 0 ? ex.vo.front : 0.0f, spec.voices.model != 0 ? ex.vo.head : 0.0f,
                            spec.voices.model != 0 ? ex.vo.tank : 0.0f, spec.voices.model != 0 ? ex.vo.gateOut : 0.0f,
-                           spec.voices.model != 0 ? ex.vo.all : 0.0f, ex.mouth);
+                           spec.voices.model != 0 ? ex.vo.all : 0.0f, ex.mouth, spec.voices.model != 0 ? ex.vo.chain : 0.0f,
+                           spec.voices.model != 0 ? ex.vo.clutch : 0.0f);
             }
             listen.finish(left, right, at, m);
             at += m;

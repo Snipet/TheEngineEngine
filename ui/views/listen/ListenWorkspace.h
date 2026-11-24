@@ -52,8 +52,9 @@ namespace tee::ui
         {
             int model = 1, camera = 0, place = 0, enginePlace = 0;
             bool bike = false;
+            double lift = 0;            // a bike's pitch about its rear tyre (car.liftAngle), radians
             double wheelbase = 2.6, track = 1.55, rearAxle = 0.85, length = 4.35, width = 1.8;
-            double lx = 0, ly = 0, facing = 0, range = 0;   // the listener (m, rad: 0 faces forward, + turns right)
+            double lx = 0, ly = 0, facing = 0, range = 0;   // the listener (m; radians here, degrees in the Spec: 0 faces forward, + turns right)
             bool listenerPublished = false;
             std::array<Source, kSources> src{};
         };

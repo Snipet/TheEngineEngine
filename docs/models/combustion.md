@@ -164,3 +164,34 @@ square, so the settled speed stands for the torque at a fixed throttle of 0.35; 
 
 Cost (`tee-bench --engine`, the V8 on free revs, least of two runs on a machine other builds shared): both models 0
 1.046 of the reference, both models 1 1.067: models 1 add some 0.02 R, the end gas's ticks among it.
+
+## The full burn with Woschni's walls, and the spark at the half-burn (after integration)
+
+**Energy, counted once.** With `fuel.model` 1 and Woschni's walls (`spec.engine.wallHeat` 1, which `fuel.model` 1 is
+to imply), the gas keeps the burn's own efficiency, 0.97, of the mixture's heat; the mixture's heat has already left
+out what goes unburned, and the walls take their share through the cylinder. With the reference's walls it keeps the
+reference's `0.60 + 0.20 x manifold` (its walls' and its unburned share at once), whichever `fuel.model` is.
+
+**The spark** (ecu.model 1, the spark map on its formula): the half of the burn 8 degrees after the top (`kHalfBurn`,
+judgement within the 6 to 12 of best torque, Heywood ch. 9): advance = 0.517 x the burn's length (the Wiebe curve's
+first half; the length the reference's, with the mixture's flame under fuel.model 1) + the diluted charge's late
+lighting (25 x the dilution over 0.15, as the reference delays it) - 8, then `ecu.timing` (an offset over the
+formula) and the retards. `EcuTune.spark` (what a bake writes) is the same without the charge's own dilution and flame.
+
+Measured (300 K, engine dyno; the reference against both models 1 with Woschni's walls):
+
+| | the reference | both models 1 |
+|---|---|---|
+| default V8, torque at 2000 / 4000 / 6000 rpm | 482 / 482 / 371 N m | 557 / 577 / 467 N m (+16 to 26 %) |
+| its half-burn | | 11.3 / 8.0 / 8.0 after the top |
+| its port gas | 1012 / 1205 / 1277 K | 1211 / 1433 / 1513 K |
+| the litre four (bike-i4-screamer), power at 6000 / 10,000 / 13,500 | 54 / 74 / 66 kW | 66 / 95 / 94 kW |
+| its half-burn | | 14.9 / 11.5 / 8.1 after the top |
+
+The spark sweep (test 6, the V8 at 0.35 throttle on the bench, now with Woschni's walls) has its best torque at 15 to
+17.5 degrees of advance with the half-burn 3 to 5 after the top (before Woschni: 20 degrees, 0.3 after), on a flat
+top: within 0.3 % from the half-burn at 0 to 8. The port gas runs hotter, not cooler (a full burn, and later): the
+walls' share is the integrator's to re-check against 1150 to 1250 K at the valve. `fuel.knockDelay` stays 3 (on free
+revs regular knocks 4 times in 3.5 s at full load, no retard standing; premium none). The bangs' lighting threshold
+stays 650 to 900 K of the port's mixed gas (on a spark-cut limiter the cut cylinders' cold charge holds it near 800
+K; a physical 900 to 1200 K lit nothing there); the cold start's wall film no longer reaches the bangs' store.

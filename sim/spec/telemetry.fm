@@ -208,6 +208,13 @@ module SoundTel
     float srcX [[ui::label("Source across")]] [[ui::quantity("length")]] [[ui::help("Each source's place: tailpipes, intake, bay, bay (carrying), tyres, wind, gearbox, axle, tank")]] [10];
     float srcY [[ui::label("Source along")]] [[ui::quantity("length")]] [10];
     float srcLevel [[ui::label("Source level")]] [[ui::unit("dB")]] [[ui::help("Each source at the listener, 0.4 s mean, before the cabin's ways in; -200 silent")]] [10];
+    int srcCount [[ui::label("Sources")]] [[ui::help("How many of srcX, srcY, srcLevel are in use")]];
+    float pathFloor [[ui::label("Through the floor")]] [[ui::unit("dB")]] [[ui::help("Camera Driver: the exhaust, tyres and driveline as they come through the floor (and an open window), 0.4 s; -200 otherwise")]];
+    float pathFirewall [[ui::label("Through the firewall")]] [[ui::unit("dB")]];
+    float pathGlass [[ui::label("Through the glass")]] [[ui::unit("dB")]];
+    float pathStructure [[ui::label("Through the mounts")]] [[ui::unit("dB")]] [[ui::help("The boom: the engine's shaking through its mounts into the cabin's modes")]];
+    float rearAxleY [[ui::label("Rear axle")]] [[ui::quantity("length")]] [[ui::help("The car's outline for a plan: the rear axle's y (0.85 m; a bike's rear contact 0.3) and the front's (that plus spec.car.wheelbase)")]];
+    float frontAxleY [[ui::label("Front axle")]] [[ui::quantity("length")]];
     int ceilingParts [[ui::label("Ceiling")]] [[ui::help("How many 16-sample parts the soft ceiling has bent, counted from the start")]];
 };
 
