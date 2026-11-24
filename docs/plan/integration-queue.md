@@ -105,3 +105,30 @@ fixes its own when it next touches its tests, and deletes its hook.
 - **G**: pipe pressures per element of the system as built, so EXHAUST (U3) can draw every primary's pulse along its
   own pipe; wall temperatures per element.
 - **U1**: `garage::Library* library` on `WorkspaceContext` (U5's `ui/views/garage/Library.h`); the shell implements it.
+
+## From U3 and U4's handoffs (13:45 to 13:52)
+
+- **G with D**: `XSpec`'s `crossover` and `muffler` collide with `spec.exhaust`'s dials of the same names (the
+  reference's `xpipe` and `muffler`). One meaning a name: the builder's fields get their own names, or the dials
+  become the model-0 fields under names that say so. U3's EXHAUST handles both readings until it is settled.
+- **H and I**: the telemetry names the interface reads (sent to both, 13:46): `ecu.lambda`, `ecu.lambdaTarget`,
+  `ecu.knock`, `ecu.knockRetard`, one of `ecu.spark` / `ecu.advance`, `ecu.flags`; `car.accel`, `car.flags`,
+  `car.wheelLoad[i]`, `car.wheelSlip[i]`, `car.wheelTorque[i]`, `car.stripState`, the time slip's fields.
+- **Card C**: on Windows `tee-host-tests.exe --list-tests` exits with heap corruption, which stops every test
+  there (the tests' replacement of global `new` and `delete`); the same replacement must be compiled out under
+  ThreadSanitizer.
+- **An idea for the owner, not for today** (from U3): a slow-time control in the simulator, so the SLOW switches of
+  ENGINE and EXHAUST show the waves truly slowed (the sound would fall in pitch with it), instead of replaying the
+  Scope's last cycle.
+
+## From Q's profile (14:04; `docs/measurements/q1-profile.md`)
+
+On a quiet cloud core R is **1.79 us a sample** for the reference V8 (the 2.3 us of the keel's handoff was taken
+beside builds); the split simulator is 1.00 to 1.03 R. Where it goes, V8 free-revs: `Valve::flow` 24 % (three
+dependent passes of a square root and two divisions a solve: G's file, called by D's cylinder); `Duct::read` and
+`write` 23 % (29 pipes at about 21 ns: G); `Cylinder::step` and `volumeSlope` 15 % (sin, cos, sqrt a cylinder a
+sample, `expf` in the burn: D); `Exhaust::step` 12 % (junctions, noise filters: G); the pipes' coefficients every 16
+samples 5 to 6 % (recomputed whether moved or not: G). Smaller: `Listen::resampled` 2.4 % (Q's own, next);
+`Boost::sound` 7 % of the twin-turbo diesel (F); `clickAmp`'s `expf`/`logf` a sample in `Engine::sampleTick`, which
+moves to `control16` to the bit (D). Q proposes patches for G's, D's and F's modules through the lead once each
+package's integration has landed.

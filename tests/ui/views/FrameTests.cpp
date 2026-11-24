@@ -36,7 +36,7 @@ namespace
         bool own;
         std::string idOf(const std::string& id) const { return own && id != "drive" ? "own-" + id : id; }
 
-        explicit FrameRig(int w = 1280, int h = 800, float dpi = 2.0f, double t = 4.6, bool ownSlots = true) : demo(t), own(ownSlots)
+        explicit FrameRig(int w = 1280, int h = 800, float dpi = 2.0f, double t = 4.6, bool ownSlots = true) : demo(t, !ownSlots), own(ownSlots)
         {
             demo.engine.hold(true);   // every picture at the same moment of the script
             tee::ui::FrameServices s;
