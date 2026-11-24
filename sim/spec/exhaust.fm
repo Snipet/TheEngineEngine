@@ -138,4 +138,7 @@ module ExhaustSpec
         [[ui::help("Where the tailpipes leave the car; it sets where the sound comes from")]]
         [[ui::choices("The layout's", "Rear centre", "Rear left", "Rear right", "Side left", "Side right", "Front", "Up")]]
         [MAX_SIDES];
+    int heatSettle [[fminus::range(0, 1000000)]] [[fminus::default(0)]] [[ui::label("Settle the exhaust's heat")]]
+        [[ui::unit("presses")]] [[ui::hidden]]
+        [[ui::help("Counts requests: at each increase the gas at the ports and every wall of the exhaust are put at where the present flow would hold them (for a tool: a dyno's sweep without waiting minutes)")]];
 };
