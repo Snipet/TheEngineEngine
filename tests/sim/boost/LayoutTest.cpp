@@ -3,6 +3,7 @@
 // the shaft's speed off the throttle; electric assist spools sooner.
 #include "Rig.h"
 
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 #include <cstdio>
@@ -120,4 +121,46 @@ TEST_CASE("boost: electric assist spools the shaft sooner", "[boost][layout]")
         std::printf("assist %s: 15 kPa at 2500 rpm after %.3f s\n", a ? "5 kW" : "none", t[a]);
     }
     CHECK(t[1] < 0.7 * t[0]);
+}
+
+TEST_CASE("boost: a variable nozzle's back-pressure limit holds the turbine's inlet and leaves a loop that holds its target alone",
+          "[boost][layout]")
+{
+    // (card N2) At a target the turbo can make the vanes are the boost loop's: the limit (spec.backPressure, p3 over p2,
+    // absolute) changes nothing. Asked for more than the compressor gives, the loop shuts the vanes and the housing's
+    // pressure climbs: the limit then opens them, holding the ratio near it.
+    for (double target : {60000.0, 400000.0})
+    {
+        double boost[2], ratio[2];
+        int k = 0;
+        for (double limit : {1.4, 4.0})
+        {
+            Rig rig;
+            build(rig, 1, 5000.0);
+            rig.set("spec.vanes", 1);
+            rig.set("spec.target", target);
+            rig.set("spec.gateSpring", target);
+            rig.set("spec.backPressure", limit);
+            rig.spec("rev", 0);
+            rig.run(4.0);
+            rig.clear();
+            rig.run(1.0);
+            boost[k] = rig.mean("sBoost");
+            ratio[k] = rig.mean("sPTurb") / (rig.mean("sBoost") + rig.get("boost.pOut"));
+            std::printf("vanes, target %.0f kPa, limit %.1f: boost %.1f kPa, turbine in over boost %.2f, vanes %.2f\n",
+                        target / 1000.0, limit, boost[k] / 1000.0, ratio[k], rig.get("boost.turb[0].vanes"));
+            ++k;
+        }
+        INFO("target " << target);
+        if (target < 100000.0)
+        {
+            CHECK(boost[0] == Catch::Approx(boost[1]).epsilon(0.03));
+            CHECK(ratio[1] < 1.4);
+        }
+        else
+        {
+            CHECK(ratio[1] > 1.5);
+            CHECK(ratio[0] < 1.55);
+        }
+    }
 }
