@@ -308,3 +308,17 @@ its matched values give 206. The fields mean what they say, so the defaults do n
   the combination build (X's file).
 - **Later**: N2 writes the sizing rule with its sources in the boost model's doc; C's host applies it when asked
   (as it bakes a cam); U3's AIR workspace shows the warning and offers "match to this engine" beside it.
+
+## Open, not reproduced: the V12's slow hot start (card I, 22:40)
+
+Card I saw `v12-65` still cranking at 1.5 s in 318 K air inside its tyre test's start (driven), before d17d6808. D
+could not reproduce it at the tip: running at 0.23 to 0.28 s of cranking in 288, 300 and 318 K air, cold and held
+warm, on the bench and driven (hidden probe `[.v12start]`, tests/sim/core/EngineExplore.cpp). Parked; it comes back
+with its command if it shows again.
+
+## Open, for the owner's ears (lead, 23:17)
+
+M's four (docs/models/voices.md, "Levels at idle"): the pump's prime at key-on and at idle; the fan forced on; the
+DI tick against Port; the belt at +12 against 0. And: whether a shift on the reference's burn with ecu.model on
+should cut half its firings instead of all (the steward's option 2); whether the key-on prime should be plainly
+heard. Asked together once the fixes are in `main`.

@@ -115,7 +115,14 @@ module IdleControl
         // (0.075); on a 7.0 L V8's 5.6 L plenum (0.128) it was too short and the idle loped 640 to 860 rpm (card N1))
         const float tr = 1.0f + 1.6f * (target - s->avg - look * s->rate) * 0.001f + trimInt;
         if (driven)
-            trim = pedal < 0.02f ? fminf(fmaxf(tr, 0.3f), 1.35f) : fminf(fmaxf(tr, 1.0f), 1.35f);
+        {
+            // (near the idle only, faded out over the 200 rpm up to target + 450 as the undriven trim is cut off there:
+            // off it the look-ahead read a shift's fall in speed as a stall coming and added up to 35 % torque for a
+            // quarter of a second at each upshift (N1 agreed, 2026-11-24: it was meant for a driven idle and creep only))
+            const float nearIdle = fminf(fmaxf((target + 450.0f - s->avg) / 200.0f, 0.0f), 1.0f);
+            const float t = pedal < 0.02f ? fminf(fmaxf(tr, 0.3f), 1.35f) : fminf(fmaxf(tr, 1.0f), 1.35f);
+            trim = 1.0f + nearIdle * (t - 1.0f);
+        }
         else
             trim = s->avg < target + 450.0f ? fminf(fmaxf(tr, 0.3f), 1.35f) : 1.0f;
         // after the start, the valve closes no faster than its start position decays (2 s): an idle actuator gives

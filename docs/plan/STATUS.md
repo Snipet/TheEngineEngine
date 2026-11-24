@@ -37,6 +37,42 @@
 
 ## Landed
 
+- **23:17 the lead's check-in; `main` not moved (40be51d2)**: the newest finished fast jobs (Linux and macOS at
+  609198db, run 45503965919) have four reds, each fixed or marked at the tip (host.sim.cases: C's de49e456; the
+  listen quick case at Side: L's 59b95981; diesel.brakes and diesel.turbo: marked in 4c253094 on G's finding); main
+  moves when the macOS job in flight on a commit holding them has built and passed. A correction of the lead's: from
+  about 22:36 to 22:50 the times written on the lead's messages were estimates that ran up to 24 minutes fast; the
+  agents were told; times here are from `date -u`. **The owner's reports, on the branch:** *the cam and VVT*: done
+  and in the default run (B's shell.window.first: warm oil at launch, stage 0 to 1 across its speed, the phaser
+  moving; warm start: C 8c698820, B 1a7eadcc and 0488157b, D d17d6808; the gates: N1 83f34ce5; the words and the
+  drawing: U2). *The hum*: the cause was the path: Places radiated the in-tank pump as if in open air (L's tank
+  wall by the mass law, f6bf38ec: 27 dB at 760 Hz, 38 dB at 3.9 kHz); M's source level ends 20 dB down
+  (2e9cd96a) on a masking criterion (every pump line at least 10 dB under the engine's third octave, four cameras,
+  the lead's first criterion "3 dB over the bins" having been wrong: it moved with the transform's length).
+  *Airy, the engine quieter*: the camera: first.json opened on Side; it now opens on Tailpipe, model 1's form of
+  the reference's default view. The lead's renders of first.json as shipped at the tip, cold idle, 6 to 11.5 s:
+  pump lines at the voices-off floor (760 Hz -97.6 against -97.0 dBFS, 3895 Hz -103.6 against -102.9; the owner's
+  build: -54.7 and -56.1), voices on against off within 1 dB in every octave (the owner's build: +19.5 dB at 1 kHz,
+  +16.2 at 4 kHz). **Found on the way:** P's baked cam maps had no load axis (full-load phase at idle; the
+  flat-plane V8 hunting at sd 108 rpm): undone (a15f710), the generator now refuses to write unless every archetype
+  idles, N1's bake reworked (load axis, smoothing, acceptance equal to P's gate: df52688b, 2b04859c), BAKED_CAMS off
+  until N1 says why the bake missed the turbo four's 14 % at 1800. G's housings closed by mass (15fcdd84) took away
+  gas that did not exist: **the first-launch engine makes 139 to 144 N m at 1500 to 1800 rpm where the maker's EA888
+  gen 3 makes 350 (P, cited), and 276 at 6200 against about 250.** N3's ranking (causes.md B-3): N1's auto phaser
+  rule asks 44 degrees of overlap at 1800 with the exhaust level with the manifold (parked: 181 to 293 N m on a 0.40
+  turbine); the compressor's low-speed efficiency and the matching (N2: published maps; one match cannot hold both
+  ends on the model's map family); what remains is trapped air (scavenging), not knock (14 N m) nor the exhaust's
+  heat (G: 29 % lost before the turbine at 1800, the right order, a hotter port wall worth nothing). The VGTs on
+  true mass really surge at the ratios their builds ask: ruled: the boost target capped at the surge line for the
+  present flow, the map's width from published maps, no change to idle vanes without a source. Key-on with the
+  engine standing rang (the stores gliding from 300 K to the build's air): D's part fixed (f6a8b88d), the boost
+  machine's part with N2. X-028: voices.model changed the engine's path (the standing engine's control ticks): D:
+  ticks always from the key, bit-equal (local, pushing). The shift's spark cut: a ramp on the spark's return
+  (steward, 0cb535ae); X-027 closed on the cut's own bound for the reference's burn (42). Card I: the automatic
+  shifted up on the engine's speed while the tyres spun (35ef028e): big block 16.85 to 15.54 s, pickup 22.80 to
+  19.53. D2: the clatter's cycle-to-cycle spread (4c253094; its k from an unread paper, marked). Table J (86f1574):
+  124 of 772 missed (19 of 187 cited), power 16 and torque 12 of 31. The first soak to finish: 88 minutes, 6 of 187
+  red, each with its owner.
 - **22:30 the lead's check-in; `main` fast-forwarded** 445453da to 40be51d2, the newest commit green on Linux and
   macOS together (run 45496629256; Windows' newest green is 69c633d, run 45494891308): it carries M's first pump cut
   and core's restated backflow check. Not moved to the tip: the steward has core's engine cases red locally at

@@ -216,23 +216,49 @@ TEST_CASE("targets: traction control on a wet road from rolling: more speed and 
         Times tm = runningTimes(10.0);
         tm.driveFrom = 3.3;
         tm.driveTo = 9.5;
-        auto make = [tc](bool on) {
-            tee::test::Scenario s = started("v8");
-            s.at(0.0).spec("ecu.model", on ? 1 : 0).spec("car.model", on ? 1 : 0).spec("env.surface", 2);
-            s.at(0.0).spec("ecu.traction.on", tc);
-            s.at(3.0).shiftUp();
-            s.at(3.2).throttle(0.25).ramp(0.3);
-            s.at(4.5).shiftUp();
-            s.at(5.0).throttle(0.2);
-            s.at(6.0).throttle(1.0).ramp(0.1);
-            return s;
+        // the upshift to second at 4.5 s and five more phases 1 ms apart (a firing interval at 2500 rpm on the V8 is
+        // 6 ms): the shift cut's bang depends on where its end falls among the firings (D's measure: 15 to 29 times
+        // the local level by its phase), so the case is judged on the worst of the six, not one draw (the lead's and
+        // the steward's ask). The bound for it at the cut: 42 (the lead's ruling, combo::shiftCutRuled).
+        auto makeAt = [tc](double shift) {
+            return [tc, shift](bool on) {
+                tee::test::Scenario s = started("v8");
+                s.at(0.0).spec("ecu.model", on ? 1 : 0).spec("car.model", on ? 1 : 0).spec("env.surface", 2);
+                s.at(0.0).spec("ecu.traction.on", tc);
+                s.at(3.0).shiftUp();
+                s.at(3.2).throttle(0.25).ramp(0.3);
+                s.at(shift).shiftUp();
+                s.at(5.0).throttle(0.2);
+                s.at(6.0).throttle(1.0).ramp(0.1);
+                return s;
+            };
         };
-        const tee::test::Run r = make(true).run(tm.end);
-        // the new ECU cuts on a shift and traction control cuts the spark: both bang (the bang's bound)
-        Verdict v = judge(r, tm, archetype("v8"), true, bangBaseline(make, tm));
-        const auto l = r.tel("car.wheelSlip[2]").during(6.5, 9.5), rr = r.tel("car.wheelSlip[3]").during(6.5, 9.5);
-        slip[tc] = 0.5 * (l.mean() + rr.mean());
-        speed[tc] = r.tel("car.speed").at(9.5);
+        // the new ECU cuts on a shift and traction control cuts the spark: both bang (the bang's bound, from the
+        // first phase's reference copies)
+        const double refStep = bangBaseline(makeAt(4.5), tm);
+        Verdict v;
+        double worstAt = 4.5;
+        for (int k = 0; k < 6; ++k)
+        {
+            const double shift = 4.5 + 0.001 * k;
+            const tee::test::Run r = makeAt(shift)(true).run(tm.end);
+            Verdict one = judge(r, tm, archetype("v8"), true, refStep);
+            std::printf("targets: wet rolling, traction %s, the upshift at %.3f s: largest step %.1f\n",
+                        tc ? "on" : "off", shift, one.stepMax);
+            if (k == 0)
+            {
+                const auto l = r.tel("car.wheelSlip[2]").during(6.5, 9.5), rr = r.tel("car.wheelSlip[3]").during(6.5, 9.5);
+                slip[tc] = 0.5 * (l.mean() + rr.mean());
+                speed[tc] = r.tel("car.speed").at(9.5);
+            }
+            if (k == 0 || one.stepMax > v.stepMax)
+            {
+                v = one;
+                worstAt = shift;
+            }
+        }
+        std::printf("targets: wet rolling, traction %s: the worst of six phases %.1f (the upshift at %.3f s)\n",
+                    tc ? "on" : "off", v.stepMax, worstAt);
         report(v, "ecu.model+car.model", "v8", tc ? "wet-rolling-traction-on" : "wet-rolling-traction-off");
     }
     std::printf("targets: on a wet road from rolling, floored in second: slip %.3f without traction control, %.3f with "
