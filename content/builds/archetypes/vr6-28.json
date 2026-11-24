@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "Narrow-angle VR6 2.8 L",
-  "notes": "A 15-degree narrow-angle six, one head over both banks, two valves a cylinder: 81 x 90.3 mm (2792 cc), 10:1 (the 12-valve VR6 of 1991: 128 kW at 5800 rpm, 235 N m at 4200; makers' figures, from memory, firm to 5 %). In a front-drive hatch.",
+  "notes": "A 15-degree narrow-angle six, one head over both banks, two valves a cylinder: 81 x 90.3 mm (2792 cc), 10:1 (the 12-valve VR6 of 1991: 128 kW at 5800 rpm, 235 N m at 4200; makers' figures, from memory, firm to 5 %). In a front-drive hatch. Its intake runner, 0.63 m from the valve to the plenum, is the generator's rule 0.5 x (5000 / torque-peak rpm)^1.3, tuned to its own torque peak: JUDGEMENT, not the real engine's (no source found yet).",
   "spec": {
     "engine": {
       "layout": "Inline 6",

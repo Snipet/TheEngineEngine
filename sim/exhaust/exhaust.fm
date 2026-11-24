@@ -1014,10 +1014,11 @@ module Exhaust
     // the exhaust, 3 to 5 kPa of back pressure on an NA V8 and 10 to 14 at a turbine's inlet. Model 1: each port's
     // surplus (qe - qeLet) followed over 20 ms (as the intake's plenum does, intake.fm, mStiff) and taken off what its
     // pipe is given: the pulse keeps its gain (its pressure is the stiffening's physics), its mean is what was let
-    // out. Model 0: qe as given (the reference, to the bit). qeLet: each port's sum of the cylinders' qE.
+    // out. Model 0, or spec.exhaust.flowClose 0: qe as given (the reference, to the bit). qeLet: each port's sum of the
+    // cylinders' qE.
     void stepLet(float* qe, float* qeLet, int np)
     {
-        if (model == 0)
+        if (model == 0 || spec->flowClose == 0)
         {
             step(qe, np);
             return;
