@@ -690,9 +690,10 @@ namespace tee::ui
             return best;
         }
 
-        std::array<double, 19> liveValues() const
+        std::array<double, 20> liveValues() const
         {
-            std::array<double, 19> v{};
+            std::array<double, 20> v{};
+            v[19] = simLoad();
             for (int i = 0; i < 4; ++i)
                 v[static_cast<std::size_t>(15 + i)] = ctx_.live.get(N::cost[i]);
             v[0] = ctx_.live.get(N::port);
@@ -1308,6 +1309,14 @@ namespace tee::ui
             }
         }
 
+        // The simulator's mean share of a core (the frame's; 0 while it compiles, NaN without a frame): 0 is absent.
+        double simLoad() const
+        {
+            const FrameServices* f = ctx_.services;
+            const double v = f != nullptr && f->simLoad ? static_cast<double>(f->simLoad()) : std::nan("");
+            return std::isfinite(v) && v > 0.0 ? v : 0.0;
+        }
+
         // The network's counts as built, if the simulator gives all four (else nothing is invented: a dash).
         std::optional<NetworkCost> networkCost() const
         {
@@ -1370,7 +1379,7 @@ namespace tee::ui
                 const float cy = s.bottom() - 16.0f;
                 c.text("NETWORK", s.x + 20.0f, cy, look::kCaps, p.label);
                 const auto cost = networkCost();
-                c.text(cost ? cost->line().c_str() : "-", s.x + 28.0f + c.textWidth("NETWORK", look::kCaps), cy, look::kUnit,
+                c.text(cost ? cost->line(simLoad()).c_str() : "-", s.x + 28.0f + c.textWidth("NETWORK", look::kCaps), cy, look::kUnit,
                        p.dim);
             }
             // on the diagram: the numbers at cylinder 1's port and its collector, only where there are numbers

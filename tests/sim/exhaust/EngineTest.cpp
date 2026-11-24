@@ -767,7 +767,8 @@ TEST_CASE("measure: the exhaust's temperatures at full load, mass means and ther
         double rpm;
     };
     for (const Case& k : {Case{"air-cooled-flat-six-36.json", 5000.0}, Case{"turbo-four-20-gdi.json", 5500.0},
-                          Case{"small-block-57-carb.json", 4500.0}, Case{"pickup-diesel-67-inline-six.json", 2800.0}})
+                          Case{"small-block-57-carb.json", 4500.0}, Case{"pickup-diesel-67-inline-six.json", 2800.0},
+                          Case{"straight-six-32-high-rev.json", 6500.0}, Case{"v12-65.json", 6000.0}})
     {
         EnginePlayer& p = player();
         p.reset();
