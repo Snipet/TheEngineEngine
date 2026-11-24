@@ -77,7 +77,7 @@ namespace
         CHECK(a.engine.find("nothing") == -1);
         const tee::ui::DynoTrace first = a.engine.predicted();
         CHECK(!first.empty() && a.engine.before().empty());
-        CHECK(first.walls == -1 && std::string(first.wallsWord()).empty());   // a prediction says nothing of the walls
+        CHECK(first.settled == -1 && std::string(first.wallsWord()).empty());   // a prediction says nothing of the walls
         const int f = a.doc.find("boost.level");
         a.doc.beginGesture();
         a.doc.set(f, 150e3);
@@ -90,6 +90,19 @@ namespace
         CHECK(!a.engine.busy() && !a.engine.before().empty());
         CHECK(a.engine.predicted().peakTorque().value > first.peakTorque().value);
         CHECK(a.engine.before().peakTorque().value == first.peakTorque().value);
+        // A run says its exhaust walls: a sweep not at all, a stepped run settled or cold as asked.
+        const auto runOf = [&](std::vector<double> steps, bool settle) {
+            tee::ui::DynoRequest r;
+            r.steps = std::move(steps);
+            r.settleExhaust = settle;
+            a.engine.startRun(r);
+            for (int i = 0; i < 200 && a.engine.running(); ++i)
+                a.engine.tick(1.0f / 60.0f);
+            return a.engine.run(a.engine.runCount() - 1);
+        };
+        CHECK(runOf({}, true).settled == -1);
+        CHECK(runOf({ 300.0, 400.0 }, true).settled == 1 && std::string(a.engine.run(a.engine.runCount() - 1).wallsWord()) == "walls settled");
+        CHECK(runOf({ 300.0, 400.0 }, false).settled == 0);
         return 0;
     }
 
