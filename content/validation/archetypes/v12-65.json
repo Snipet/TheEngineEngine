@@ -133,8 +133,8 @@
         590000
       ],
       "unit": "W",
-      "source": "published figures of its kind (makers' figures, firm): 6496 cc; 77 to 91 kW a litre",
-      "basis": "recalled"
+      "source": "published figures of its kind (makers' figures, looked up): 6496 cc; 77 to 91 kW a litre; looked up: en.wikipedia.org/wiki/Ferrari_F140_engine (F12 544 kW at 8250, 690 N m at 6000; 812 588 kW at 8500, 718 N m at 6750); en.wikipedia.org/wiki/Lamborghini_Aventador (515-566 kW, 690-720 N m at 5500-6750)",
+      "basis": "cited"
     },
     {
       "name": "Speed at peak power",
@@ -148,8 +148,8 @@
         932.0
       ],
       "unit": "rad/s",
-      "source": "published figures of its kind (makers' figures, firm): 6496 cc: 8250 to 9000 rpm",
-      "basis": "recalled"
+      "source": "published figures of its kind (makers' figures, looked up): 6496 cc: 8250 to 9000 rpm; looked up: en.wikipedia.org/wiki/Ferrari_F140_engine (F12 544 kW at 8250, 690 N m at 6000; 812 588 kW at 8500, 718 N m at 6750); en.wikipedia.org/wiki/Lamborghini_Aventador (515-566 kW, 690-720 N m at 5500-6750)",
+      "basis": "cited"
     },
     {
       "name": "Peak torque",
@@ -163,8 +163,8 @@
         730
       ],
       "unit": "N m",
-      "source": "published figures of its kind (makers' figures, firm): 6496 cc; BMEP 13.1 to 14.1 bar (a naturally aspirated petrol engine 10 to 13 bar, turbocharged 18 to 25, a modern truck diesel 20 to 25: Heywood, Internal Combustion Engine Fundamentals, ch. 2)",
-      "basis": "recalled"
+      "source": "published figures of its kind (makers' figures, looked up): 6496 cc; BMEP 13.1 to 14.1 bar (a naturally aspirated petrol engine 10 to 13 bar, turbocharged 18 to 25, a modern truck diesel 20 to 25: Heywood, Internal Combustion Engine Fundamentals, ch. 2); looked up: en.wikipedia.org/wiki/Ferrari_F140_engine (F12 544 kW at 8250, 690 N m at 6000; 812 588 kW at 8500, 718 N m at 6750); en.wikipedia.org/wiki/Lamborghini_Aventador (515-566 kW, 690-720 N m at 5500-6750)",
+      "basis": "cited"
     },
     {
       "name": "Speed at peak torque",
@@ -174,12 +174,12 @@
       },
       "measure": "speedAtMaxTorque",
       "range": [
-        628.3,
+        576.0,
         733.0
       ],
       "unit": "rad/s",
-      "source": "published figures of its kind (makers' figures, firm): 6496 cc: 6000 to 7000 rpm (a turbocharged engine's plateau: its whole span)",
-      "basis": "recalled"
+      "source": "published figures of its kind (makers' figures, looked up): 6496 cc: 5500 to 7000 rpm (a turbocharged engine's plateau: its whole span); looked up: en.wikipedia.org/wiki/Ferrari_F140_engine (F12 544 kW at 8250, 690 N m at 6000; 812 588 kW at 8500, 718 N m at 6750); en.wikipedia.org/wiki/Lamborghini_Aventador (515-566 kW, 690-720 N m at 5500-6750)",
+      "basis": "cited"
     },
     {
       "name": "Warm idle",

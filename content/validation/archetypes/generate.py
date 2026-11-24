@@ -45,6 +45,23 @@ CITED = {
     "big-bore-70-pushrod-v8": "corvetteactioncenter.com/specs/c6/2006/2006ls7.html (377 kW at 6300, 637 N m at 4800, "
                               "SAE J2723)",
     "four-cam-v8-50": "en.wikipedia.org/wiki/Ford_Modular_engine (343 kW at 7000, 569 N m at 4600)",
+    "flat-plane-v8-45": "en.wikipedia.org/wiki/Ferrari_458 (419 kW at 9000, 540 N m at 6000)",
+    "two-stage-cam-20": "en.wikipedia.org/wiki/Honda_F20C_engine (JDM 184 kW at 8300, 218 N m at 7500; US 179 kW, 210 N m)",
+    "v6-35-na": "en.wikipedia.org/wiki/Honda_J_engine (J35Z2 200 kW at 6200, 336 N m at 5000; J35Y1 207 kW, 342 N m at "
+                "4900); en.wikipedia.org/wiki/Toyota_GR_engine (2GR-FE 200-234 kW at 6200, 336-353 N m at 4700)",
+    "v10-52": "en.wikipedia.org/wiki/Audi_R8_(Type_42) (386-412 kW at 8000, 530-540 N m at 6500); "
+              "en.wikipedia.org/wiki/Lamborghini_Gallardo (LP560-4 412 kW, 540 N m)",
+    "big-block-74-pushrod-v8": "carnut.com/specs/gen/vette70.html (LS5 1972 201 kW at 4000, 529 N m at 3200; LS4 1973-74 "
+                               "201-205 kW at 4000-4400, 515-536 N m at 2800)",
+    "economy-four-15": "en.wikipedia.org/wiki/Honda_L_engine (L15B 97 kW at 6600, 155 N m at 4600); auto-data.net Mazda2 "
+                       "1.5 (85 kW at 6000, 148 N m at 4000); en.wikipedia.org/wiki/Toyota_NR_engine (2NR-FKE 80 kW, 136 N m)",
+    "hot-hatch-16-16v": "en.wikipedia.org/wiki/Honda_B_engine (B16A 110-118 kW at 7600, 144-150 N m at 7000-7100); "
+                        "en.wikipedia.org/wiki/Toyota_A_engine (4A-GE 91-103 kW at 6600-7200, 142-147 N m at 5200-6000)",
+    "straight-six-32-high-rev": "en.wikipedia.org/wiki/BMW_S54 (252 kW at 7900, 365 N m at 4900)",
+    "v12-65": "en.wikipedia.org/wiki/Ferrari_F140_engine (F12 544 kW at 8250, 690 N m at 6000; 812 588 kW at 8500, 718 "
+              "N m at 6750); en.wikipedia.org/wiki/Lamborghini_Aventador (515-566 kW, 690-720 N m at 5500-6750)",
+    "rotary-twin-na-side-port": "newsroom.mazda.com 2003 release (184 kW at 8500, 216 N m at 5500); "
+                                "en.wikipedia.org/wiki/Mazda_RX-8 (US 173 kW at 8250, 216 N m at 5500)",
 }
 
 # slug: published peak power (kW range, rpm range), torque (N m range, rpm range), warm idle (rpm range),
@@ -54,23 +71,28 @@ T = {
     "straight-six-twin-turbo-30": ((250, 340), (5000, 6800), (450, 600), (1500, 5200), (600, 750), 5000, "makers' figures, firm"),
     "flat-plane-v8-45": ((400, 445), (8000, 9000), (520, 560), (5500, 6500), (900, 1100), 0, "the maker's figures, firm"),
     "air-cooled-flat-six-36": ((180, 195), (5800, 6300), (300, 320), (4500, 5000), (800, 950), 0, "makers' figures, firm"),
-    "big-block-74-pushrod-v8": ((240, 310), (4400, 5600), (600, 690), (3000, 4000), (550, 750), 0, "net ratings of the era, loose (gross and net ratings differ by 20 %)"),
+    # (moved from 240-310 kW at 4400-5600 and 600-690 N m at 3000-4000, gross-like: the 454's SAE net ratings 1972-74, looked up)
+    "big-block-74-pushrod-v8": ((195, 210), (4000, 4400), (510, 540), (2800, 3200), (550, 750), 0, "SAE net ratings, looked up"),
     "rotary-twin-13": ((190, 210), (6300, 7000), (290, 315), (4500, 5500), (750, 900), 5000, "makers' figures, firm to 10 % (variants differ)"),
     "rotary-twin-na-side-port": ((165, 190), (8000, 8800), (205, 220), (5000, 6000), (750, 900), 0, "makers' figures by market and year, from memory, firm to 5 %"),
-    "hot-hatch-16-16v": ((85, 120), (6500, 7600), (140, 165), (4500, 6000), (800, 950), 0, "makers' figures of the kind, loose (the kind's spread)"),
+    # (moved from 140-165 N m at 4500-6000: the B16A's 144-150 at 7000-7100 and the 4A-GE's 142-147 at 5200-6000, looked up)
+    "hot-hatch-16-16v": ((85, 120), (6500, 7600), (140, 155), (5000, 7100), (800, 950), 0, "makers' figures of the kind, looked up"),
     "supercharged-v8-62": ((395, 435), (5800, 6300), (720, 780), (3500, 4200), (650, 750), 5000, "makers' figures, firm"),
     # (the L48 and L82's SAE net ratings, looked up 24 Nov: the old 140-210 kW and 380-470 N m were above both)
     "small-block-57-carb": ((120, 160), (4000, 5200), (340, 385), (2400, 3600), (600, 800), 0, "SAE net ratings, looked up"),
     "v10-52": ((385, 475), (8000, 8700), (520, 570), (6000, 7000), (850, 1000), 0, "makers' figures, firm"),
-    "v12-65": ((500, 590), (8250, 9000), (680, 730), (6000, 7000), (850, 1000), 0, "makers' figures, firm"),
+    # (moved from 6000-7000 rpm at peak torque: the Aventador LP700-4's 690 N m at 5500, looked up)
+    "v12-65": ((500, 590), (8250, 9000), (680, 730), (5500, 7000), (850, 1000), 0, "makers' figures, looked up"),
     "inline-five-turbo-rally": ((200, 265), (5500, 7000), (380, 520), (3500, 5500), (900, 1150), 5000, "rally engines of the kind, loose (homologation rules and restrictors vary)"),
     "boxer-four-turbo-unequal": ((210, 235), (5800, 6400), (380, 410), (3600, 4400), (700, 900), 5000, "makers' figures, firm"),
-    "two-stage-cam-20": ((165, 185), (8000, 8600), (200, 215), (7000, 8000), (850, 950), 0, "makers' figures from memory, firm to 5 %"),
+    # (moved from 165-185 kW and 200-215 N m: the F20C's JDM 184 kW / 218 N m and US 179 kW / 210 N m, looked up)
+    "two-stage-cam-20": ((170, 185), (8000, 8600), (205, 220), (7000, 8000), (850, 950), 0, "makers' figures, looked up"),
     "kei-660-triple-turbo": ((44, 50), (6000, 7000), (100, 110), (3000, 4000), (750, 950), 5000, "makers' figures, firm (the class's 47 kW cap)"),
     "diesel-20-common-rail": ((100, 130), (3500, 4200), (320, 380), (1700, 3000), (750, 900), 2000, "makers' figures, firm"),
     "tractor-15-inline-six": ((300, 450), (1600, 2000), (2000, 2780), (900, 1300), (600, 700), 1200, "the maker's ratings, firm (the range covers its ratings)"),
     "three-cylinder-10-turbo": ((74, 105), (5000, 6000), (170, 210), (1500, 4500), (700, 900), 3000, "makers' figures, firm"),
-    "economy-four-15": ((80, 97), (6000, 6600), (140, 156), (4000, 4800), (650, 800), 0, "makers' figures, firm"),
+    # (moved from 140-156 N m: the 2NR-FKE's 136, looked up)
+    "economy-four-15": ((80, 97), (6000, 6600), (135, 156), (4000, 4800), (650, 800), 0, "makers' figures, looked up"),
     "turbo-four-20-gdi": ((155, 230), (5000, 6500), (350, 400), (1600, 4500), (650, 850), 5000, "makers' figures, firm"),
     "v6-35-na": ((195, 225), (6000, 6700), (335, 365), (4500, 5000), (600, 750), 0, "makers' figures, firm"),
     "v6-35-twin-turbo-pickup": ((275, 305), (5000, 6000), (630, 700), (3000, 4000), (550, 700), 4000, "makers' figures, firm"),
