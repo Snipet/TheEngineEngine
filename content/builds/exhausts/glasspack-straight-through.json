@@ -1,0 +1,23 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Glasspacks and straight-throughs",
+  "notes": "A packed bottle in each pipe and straight-through mufflers, high-flow converters. A part build: only spec.exhaust; every other field keeps its default.",
+  "spec": {
+    "exhaust": {
+      "model": "Builder",
+      "converter": [
+        "High-flow",
+        "High-flow"
+      ],
+      "resonator": [
+        "Packed bottle",
+        "Packed bottle"
+      ],
+      "mufKind": [
+        "Straight-through",
+        "Straight-through"
+      ]
+    }
+  }
+}

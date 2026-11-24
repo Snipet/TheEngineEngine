@@ -9,6 +9,7 @@ enum
 {
     SCOPE_DEGREES = 1080,      // the longest cycle, in degrees
     SCOPE_PIPE_POINTS = 64,
+    SCOPE_EXHAUST_DUCTS = 84,  // card G: the builder's pipe slots (sim/exhaust/slots.fm, XD_* and XO_*)
 };
 
 module Scope
@@ -50,4 +51,17 @@ module Scope
     int boostTrailAt [[ui::label("Trail's next")]];
     float boostTrailFlow [[ui::label("Trail flow")]] [[ui::quantity("flow")]] [256];
     float boostTrailRatio [[ui::label("Trail ratio")]] [[ui::quantity("ratio")]] [256];
+    // ---- card G (Exhaust, every 128 samples while it runs model 1): the pressure, over the air outside, along the
+    // gas's path from one port (spec.exhaust's scope port: 0) to its tail at exhaustPoints points spaced by length
+    // (exhaustX: m from the port), and at both ends of every pipe slot in use (ductUsed), with its length: a view
+    // draws the system as built and the pulses travelling in it ----
+    int exhaustPoints [[ui::label("Exhaust path points")]];
+    float exhaustX [[ui::label("Exhaust path position")]] [[ui::quantity("length")]] [SCOPE_PIPE_POINTS];
+    float exhaustPressure [[ui::label("Exhaust path pressure")]] [[ui::quantity("pressure")]] [SCOPE_PIPE_POINTS];
+    int exhaustRefreshes [[ui::label("Exhaust refreshes")]] [[ui::help("Counts the exhaust's refreshes")]];
+    int ductUsed [[ui::label("Pipe in use")]] [SCOPE_EXHAUST_DUCTS];
+    float ductLength [[ui::label("Pipe length")]] [[ui::quantity("length")]] [SCOPE_EXHAUST_DUCTS];
+    float ductNear [[ui::label("Pressure at the pipe's near end")]] [[ui::quantity("pressure")]] [SCOPE_EXHAUST_DUCTS];
+    float ductFar [[ui::label("Pressure at the pipe's far end")]] [[ui::quantity("pressure")]] [SCOPE_EXHAUST_DUCTS];
+    float ductMid [[ui::label("Pressure at the pipe's middle")]] [[ui::quantity("pressure")]] [SCOPE_EXHAUST_DUCTS];
 };

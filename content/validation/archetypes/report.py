@@ -107,7 +107,10 @@ def main():
            "textbook ranges and rules of thumb, each target with its source in its file. Only the invariants (it "
            "starts, stays within full scale, holds its limiter, pulls away, stops at the key) must pass; every other "
            "miss is reported, not failed. **The misses are the simulator's to-do list.**", "",
-           "Measured on the predicted dyno curve (steady full-throttle points, warm) and on the scenarios of "
+           "Peak power and torque: naturally aspirated archetypes on the predicted dyno curve (steady full-throttle points, "
+           "warm, `tee-dyno --predict`); boosted ones on the full engine dyno, nine steps held 5 s and measured 1 s "
+           "(the predicted curve reads a boosted engine some 10 % high: its slow states do not settle). The rest "
+           "on the scenarios of "
            "`content/validation/scenarios/` (`p-*`), in the build's own air (15 C, 101.3 kPa).", ""]
 
     # the summary
