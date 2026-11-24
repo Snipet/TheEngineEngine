@@ -152,8 +152,14 @@ namespace
     }
 } // namespace
 
+// tee-bench --engine: the simulator against the reference (engine.cpp)
+int engineBenchMain(int argc, char** argv);
+
 int main(int argc, char** argv)
 {
+    for (int i = 1; i < argc; ++i)
+        if (std::string(argv[i]) == "--engine")
+            return engineBenchMain(argc, argv);
     using namespace tee;
     tools::Arguments args(argc, argv);
     std::string simFlag, contentFlag, outName, value;

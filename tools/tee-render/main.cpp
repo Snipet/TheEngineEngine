@@ -32,7 +32,8 @@ namespace
         "\n"
         "  tee-render --list             the presets and the scenarios there are\n"
         "  tee-render --defaults         the program's dials at their defaults, as a preset\n"
-        "  tee-render --schema <module>  a module's fields: offset, size, type, name, attributes\n";
+        "  tee-render --schema <module>  a module's fields: offset, size, type, name, attributes\n"
+        "  tee-render --engine ...       the simulator (sim/engine.fm) through its contract: --engine --help\n";
 
     int fail(const std::string& message)
     {
@@ -41,8 +42,14 @@ namespace
     }
 } // namespace
 
+// tee-render --engine: the simulator through its contract (engine.cpp)
+int engineMain(int argc, char** argv);
+
 int main(int argc, char** argv)
 {
+    for (int i = 1; i < argc; ++i)
+        if (std::string(argv[i]) == "--engine")
+            return engineMain(argc, argv);
     using namespace tee;
     tools::Arguments args(argc, argv);
     std::string presetName, scenarioName, outName, csvName, simFlag, contentFlag, schemaModule, value;

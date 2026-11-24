@@ -1,0 +1,47 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "V-twin, 45 degrees, one pin",
+  "notes": "The rear cylinder 45 degrees behind the front on a shared pin.",
+  "spec": {
+    "engine": {
+      "custom": true,
+      "layout": 3,
+      "cylinders": 2,
+      "bankAngle": [
+        22.5,
+        -22.5
+      ],
+      "bank": [
+        0,
+        1
+      ],
+      "pin": [
+        22.5,
+        22.5
+      ],
+      "fireRev": [
+        0,
+        0
+      ],
+      "place": [
+        0.0,
+        0.033
+      ]
+    }
+  },
+  "expect": {
+    "firingOrder": [
+      1,
+      2
+    ],
+    "firingIntervals": [
+      315,
+      405
+    ],
+    "firingAngles": [
+      0.0,
+      315.0
+    ]
+  }
+}

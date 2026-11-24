@@ -1,0 +1,105 @@
+// watch.fm: what a tuner reads of the burn (fuel.model 1's telemetry): each cylinder's peak pressure and its angle,
+// the angle of half the burn; lambda as a sensor sees it; the injectors' duty and the fuel's flow.
+//
+// The peak and the half-burn angle are found over each cycle from the samples the cylinder already makes (a compare
+// a sample; the half-burn angle is the angle where its burned share passes a half), and published at the cycle's end.
+// A wide-band lambda sensor in the collector sees the mixture late: the gas's way from the port (a transport delay of
+// some two crank revolutions, as at the collector of a header some 0.5 m long) and the sensor's own first order of
+// 80 ms (judgement: a Bosch LSU 4.9's response time is under 100 ms). The injectors' duty is the time each is open
+// over a cycle's (the fuel a firing takes at the injector's flow, plus 0.5 ms of opening), the fuel's flow what all of
+// them pass, smoothed over 0.2 s.
+#pragma once
+
+module BurnWatch
+{
+    float peak;         // this cycle's so far: Pa, at degrees after the top
+    float peakAt;
+    float half;
+    bool halfSeen;
+    float lastPeak;     // the last whole cycle's
+    float lastPeakAt;
+    float lastHalf;     // degrees after the top (999: it did not burn half)
+
+    // A sample: the pressure (Pa), the angle (degrees after the top, -360 to 360), the burned share
+    void tick(float p, float a, float burned)
+    {
+        if (p > peak)
+        {
+            peak = p;
+            peakAt = a;
+        }
+        if (!halfSeen && burned >= 0.5f)
+        {
+            half = a;
+            halfSeen = true;
+        }
+    }
+
+    // The cycle ended (at its intake valve's closing)
+    void cycle()
+    {
+        lastPeak = peak;
+        lastPeakAt = peakAt;
+        lastHalf = halfSeen ? half : 999.0f;
+        peak = 0.0f;
+        halfSeen = false;
+    }
+};
+
+module LambdaSensor
+{
+    float line[64];     // the lambda of each firing, on its way to the sensor
+    int head;
+    float seen;         // what the sensor reads
+    float kSensor;
+
+    void setup(float d16)
+    {
+        kSensor = 1.0f - expf(-d16 / 0.08f);
+        seen = 1.0f;
+        for (int i = 0; i < 64; ++i)
+            line[i] = 1.0f;
+    }
+
+    // Each firing: its lambda (a cut cylinder's air: 10)
+    void firing(float lambda)
+    {
+        line[head] = lambda;
+        head = (head + 1) & 63;
+    }
+
+    // Every 16 samples: the sensor follows what arrives, `behind` firings after it left the port (at most 63)
+    void control(int behind)
+    {
+        const int k = behind < 1 ? 1 : (behind > 63 ? 63 : behind);
+        seen += (line[(head - k) & 63] - seen) * kSensor;
+    }
+};
+
+module InjectorMeter
+{
+    float duty;         // 0 to 1
+    float flow;         // kg/s, all of them
+    float acc;          // fuel since the last control
+    float kFlow;
+
+    void setup(float d16)
+    {
+        kFlow = 1.0f - expf(-d16 / 0.2f);
+    }
+
+    void firing(float fuel)
+    {
+        acc += fuel;
+    }
+
+    // Every 16 samples: the fuel a firing takes now (kg), the injector's flow (kg/s), the crank (rad/s), degrees a cycle
+    void control(float perFiring, float injector, float omega, float cycleDeg, float d16)
+    {
+        const float open = perFiring / fmaxf(injector, 1.0e-7f) + (perFiring > 0.0f ? 0.0005f : 0.0f);
+        const float cycle = cycleDeg * 0.01745329f / fmaxf(omega, 1.0f);
+        duty = fminf(open / cycle, 1.0f);
+        flow += (acc / d16 - flow) * kFlow;
+        acc = 0.0f;
+    }
+};
