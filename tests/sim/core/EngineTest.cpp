@@ -344,9 +344,12 @@ namespace
     void airBooks(Bench& b, double seconds, double& thr, double& fresh, double& valves, double& exhaust)
     {
         const double t0 = b.field("airThrottle"), v0 = b.field("airValves"), e0 = b.field("gasExhaust"), f0 = b.field("airTrapped");
+        const double p0 = b.field("intk.mPlenum");
         b.play(seconds);
         const double k = 1000.0 / seconds;
-        thr = (b.field("airThrottle") - t0) * k;
+        // (the throttle's air less what the plenum stored over the window: it is not quite steady on a boosted diesel;
+        // N1's point)
+        thr = (b.field("airThrottle") - t0 - (b.field("intk.mPlenum") - p0)) * k;
         fresh = (b.field("airTrapped") - f0) * k;
         valves = (b.field("airValves") - v0) * k;
         exhaust = -(b.field("gasExhaust") - e0) * k;
@@ -427,7 +430,7 @@ TEST_CASE("boost.model 1 implies the builder's exhaust, at a build and when swit
     CHECK(std::isfinite(b.tel("engine.speed")));
 }
 
-static void booksOn(const std::vector<const char*>& builds)
+static void booksOn(const std::vector<const char*>& builds, double settle = 4.0)
 {
     // (the lead's ask, 24 Nov: the backflow test ran green while every diesel archetype was dead on the dyno; each of
     // these must make torque at full load, and its throttle's (or intake's) air, its intake valves' and its exhaust
@@ -446,7 +449,7 @@ static void booksOn(const std::vector<const char*>& builds)
         b.ctl().mode = 2;
         b.ctl().throttle = 1.0f;
         b.ctl().dynoSpeed = float(1800.0 / 9.5492966);
-        b.play(4.0);
+        b.play(settle);         // (a boosted diesel's plenum settles slowly: the full form gives it 10 s)
         double thr = 0, fr = 0, v = 0, x = 0;
         airBooks(b, 2.0, thr, fr, v, x);
         const double tq = b.tel("engine.torque");
@@ -477,7 +480,7 @@ TEST_CASE("the books hold, and the engine makes torque, on a diesel and a booste
 TEST_CASE("the books hold, and the engine makes torque, on every diesel archetype (the full form)", "[core][engine][backflow][nightly]")
 {
     booksOn({"archetypes/tractor-15-inline-six", "archetypes/diesel-20-common-rail", "archetypes/pickup-diesel-67-inline-six",
-             "archetypes/turbo-four-20-gdi"});
+             "archetypes/turbo-four-20-gdi"}, 10.0);
 }
 
 TEST_CASE("a burn still running at exhaust opening lets its unburned fuel out with the gas: its heat released once", "[core][engine][pop]")
