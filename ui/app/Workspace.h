@@ -32,6 +32,7 @@
 #include <cmath>
 #include <cstdint>
 #include <functional>
+#include <initializer_list>
 #include <limits>
 #include <map>
 #include <memory>
@@ -199,6 +200,16 @@ namespace tee::ui
         // Forget the handles (the source now plays another program).
         void reset() { handles_.clear(); }
         bool has(std::string_view name) const { return std::isfinite(get(name)); }
+        // The first of several names that the source has (a value whose name is not settled yet): NaN when none.
+        double first(std::initializer_list<std::string_view> names) const
+        {
+            for (const std::string_view n : names)
+                if (const double v = get(n); std::isfinite(v))
+                    return v;
+            return std::numeric_limits<double>::quiet_NaN();
+        }
+        // Lambda (the air-fuel ratio over stoichiometric) by whichever name the program gives it.
+        double lambda() const { return first({ "exhaust.lambda", "ecu.lambda", "engine.lambda" }); }
         TelemetrySource& source() const noexcept { return *source_; }
 
     private:

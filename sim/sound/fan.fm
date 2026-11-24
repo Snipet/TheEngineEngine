@@ -101,7 +101,7 @@ module FanVoice
             want = on != 0 ? 40.0f : 0.0f;
             const float tau = on != 0 ? 0.35f : 1.2f;
             hzSet += (want - hzSet) * (1.0f - expf(-d16 / tau));
-            if (hzSet < 0.05f && on == 0)
+            if (hzSet < 0.5f && on == 0)
                 hzSet = 0.0f;
             motor = on != 0 ? 1.0f : 0.0f;
         }
