@@ -77,12 +77,16 @@ namespace tee::balance
         double measure = 1.0;   // s
         double sampleRate = 96000.0;   // the engine's own rate (engine.fm): one engine step a call, no resampler
         std::vector<std::pair<std::string, double>> set;   // Spec writes after the build ("fuel.model", 1)
+        std::vector<std::pair<std::string, double>> raw;   // any instance path written after the build ("spec.ecu.maps.lambda.nx")
         std::filesystem::path sim;                         // another tree's sim/ (empty: this one's)
     };
 
     // Plays the archetype `slug` (a file name under content/builds/archetypes/, or a path) and returns its books;
     // false with `error` when it would not load or run.
     bool measure(const std::string& slug, const Options& options, Books& out, std::string& error);
+
+    // Loads a build file whole (tee::Build, as tee-dyno) into the player: every Spec field, sections moved.
+    bool loadWhole(EnginePlayer& player, const std::filesystem::path& file, std::string& error);
 
     // A player kept for several measurements (one compile a process): measure() makes one if it has none.
     void keepPlayer(bool keep);

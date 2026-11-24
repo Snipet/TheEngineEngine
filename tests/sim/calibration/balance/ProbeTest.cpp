@@ -3,7 +3,7 @@
 // script reads them) and as a short table for a person.
 //
 //   BAL_BUILD=air-cooled-flat-six-36 BAL_RPM=5199 build-dev/bin/tee-tests-calibration-balance "[.balance]"
-//   (BAL_SET="engine.wallHeat=1;..." Spec writes; BAL_SIM=DIR another tree's sim/; BAL_SETTLE, BAL_MEASURE seconds)
+//   (BAL_SET="engine.wallHeat=1;..." Spec writes; BAL_RAW="spec.ecu.maps.lambda.nx=1;..." any path; BAL_SIM=DIR another tree's sim/; BAL_SETTLE, BAL_MEASURE seconds)
 #include "Balance.h"
 
 #include <catch2/catch_test_macros.hpp>
@@ -37,6 +37,12 @@ TEST_CASE("probe: an engine's air and energy books", "[.balance]")
         {
             const auto eq = kv.find('=');
             o.set.emplace_back(kv.substr(0, eq), std::atof(kv.c_str() + eq + 1));
+        }
+    if (const char* s = std::getenv("BAL_RAW"))
+        for (const std::string& kv : split(s, ';'))
+        {
+            const auto eq = kv.find('=');
+            o.raw.emplace_back(kv.substr(0, eq), std::atof(kv.c_str() + eq + 1));
         }
     if (const char* s = std::getenv("BAL_SIM"))
         o.sim = s;
@@ -81,5 +87,40 @@ TEST_CASE("probe: an engine's air and energy books", "[.balance]")
             std::fflush(stdout);
         }
     keepPlayer(false);
+    SUCCEED();
+}
+
+// The two loaders against each other (hidden): every Spec number after loadWhole and after the older loadBuild; the
+// fields they differ in are printed (the older one drops nested sections: those should be all that differ).
+TEST_CASE("probe: the whole loader against loadBuild", "[.balance-loader]")
+{
+    const char* b = std::getenv("BAL_BUILD");
+    const std::string slug = b ? b : "four-cam-v8-50";
+    const std::filesystem::path file = std::filesystem::path(TEE_SOURCE_DIR) / "content" / "builds" / "archetypes" / (slug + ".json");
+    tee::EnginePlayer::Options po;
+    po.directory = std::filesystem::path(TEE_SOURCE_DIR) / "sim";
+    po.sampleRate = 96000.0;
+    std::string error, warnings;
+    auto p = tee::EnginePlayer::create(po, error);
+    REQUIRE(p);
+    tee::EngineBuild eb;
+    REQUIRE(tee::loadBuild(*p, file, eb, error, warnings));
+    tee::applyBuild(*p, eb);
+    std::vector<double> before;
+    for (std::size_t i = 0; i < p->specFields().size(); ++i)
+        for (std::size_t k = 0; k < p->specFields()[i].count; ++k)
+            before.push_back(p->spec(i, k));
+    p->reset(96000.0);
+    REQUIRE(tee::balance::loadWhole(*p, file, error));
+    std::size_t at = 0;
+    int differ = 0;
+    for (std::size_t i = 0; i < p->specFields().size(); ++i)
+        for (std::size_t k = 0; k < p->specFields()[i].count; ++k, ++at)
+            if (p->spec(i, k) != before[at])
+            {
+                if (++differ <= 40)
+                    std::printf("%s[%zu]: loadBuild %g, whole %g\n", p->specFields()[i].path.c_str(), k, before[at], p->spec(i, k));
+            }
+    std::printf("%d numbers differ\n", differ);
     SUCCEED();
 }

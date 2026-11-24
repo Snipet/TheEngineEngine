@@ -175,6 +175,12 @@ module Vehicle
     float aWheelie;     // the acceleration at which the front's load is zero, m/s^2
     bool lifting;       // the car is at that limit
     // a launch under traction control (launch(): the ECU's switch and slip target, given by Car every 16 samples)
+    // the tyres' start: tyresSeeded once they have taken the air's temperature after a reset (apply(), when spec.env
+    // has come in); warmTyres held by a host that times a warm car (tee::warmEngine's "car.m1.warmTyres"): each tyre
+    // then starts in its window, once after each reset (warmDone)
+    bool tyresSeeded;
+    bool warmTyres;
+    bool warmDone;
     bool tcOn;
     float tcTarget;
     float tqSum;        // the engine's torque summed over the 16 samples since control()
@@ -259,12 +265,16 @@ module Vehicle
         capLock = 0.0f;
         gearSeen = -1.0f;
         joinSeen = false;
+        // (the tyres at the air's temperature: a VehEnv already filled has it now; one not yet filled, at init, gets it
+        // at the first apply())
+        tyresSeeded = env.temperature > 150.0f && env.temperature < 400.0f;
+        warmDone = false;
         jO = fmaxf(0.05f * box.fd * box.fd, 0.01f);
         iO = 1.0f / jO;
         for (int i = 0; i < VEH_WHEELS; ++i)
         {
             ww[i] = 0.0f;
-            tyre[i].reset(env.temperature);
+            tyre[i].reset(ambient());
             brakeT[i] = 0.0f;
             hold[i] = 0.0f;
             absGain[i] = 1.0f;
@@ -305,8 +315,34 @@ module Vehicle
     }
 
     // The derived numbers, from spec and env
+    // The air's temperature for the tyres, K. A temperature outside 150 to 400 K is no air's (a VehEnv not yet filled:
+    // 0 at init, before the Car seam has copied spec.env in; a NaN): then the standard 293.15 K. Inside, clamped to 200
+    // to 350 K, the range a tyre's temperature is held to (tyre.fm's 200 K floor).
+    float ambient()
+    {
+        const float t = env.temperature;
+        if (!(t > 150.0f && t < 400.0f))
+            return 293.15f;
+        return fminf(fmaxf(t, 200.0f), 350.0f);
+    }
+
+    // Each tyre at the air's temperature (the car put at rest), or, warm, in the middle of its compound's working window
+    // (a car timed after its burnout or its out-lap)
+    void seedTyres(bool warm)
+    {
+        for (int i = 0; i < VEH_WHEELS; ++i)
+            tyre[i].temp = warm ? vehCompoundValue(spec.tyre, 7) : ambient();
+    }
+
     void apply()
     {
+        // (the tyres were put at rest before the air was known: they take its temperature now, once)
+        if (!tyresSeeded)
+        {
+            tyresSeeded = true;
+            seedTyres(false);
+            warmDone = false;
+        }
         mass = fmaxf(spec.mass, 50.0f);
         radius = fmaxf(spec.tyreRadius, 0.1f);
         jw = fmaxf(spec.wheelInertia, 0.05f);
@@ -650,6 +686,11 @@ module Vehicle
         aLag += (aNow - aLag) * (1.0f - expf(-d16 / 0.2f));
         loads(d16);
         launch(d16);
+        if (warmTyres && !warmDone)
+        {
+            warmDone = true;
+            seedTyres(true);
+        }
         telemetry(absOn, locked);
     }
 

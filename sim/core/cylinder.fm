@@ -76,6 +76,8 @@ module Cylinder
     float bookCharged;  // the last finished burn's three, for the energy account
     float bookReleased;
     float bookOut;
+    float phi;          // the charge's equivalence ratio (fuel over the stoichiometric fuel), as Combustion charged it:
+                        // the physical cylinder's gamma reads it (1 until a charge)
     int conserve;       // 1 (the physical cylinder: Engine::woschniWalls): what the intake pushed back comes back as itself,
                         // its mass at the temperature it left at; 0: the reference's, as the same volume of the air
     float cBurn;        // how much of what could burn this cycle's burn will burn (the dilution's toll)
@@ -209,14 +211,18 @@ module Cylinder
     }
 
     // The ratio of the gas's specific heats at a temperature (air near 1.39 cold; hot burned gas 1.25 to 1.3)
-    // The physical cylinder (conserve 1): the single-zone fit for an engine's cylinder gas, the fuel-air mixture, the
-    // residual and the equilibrium products with their dissociation together: Gatowski et al., "Heat Release Analysis of
-    // Engine Pressure Data", SAE 841359 (1984): 1.392 - 8.13e-5 T (N3's finding, 24 Nov: the reference's ran 0.025 to
-    // 0.04 higher from 500 to 2500 K, its expansion giving too much work). The reference's line otherwise, to the bit.
+    // The physical cylinder (conserve 1): the single-zone fit for a spark-ignition engine's cylinder gas near
+    // stoichiometric, the fuel-air mixture, the residual and the equilibrium products with their dissociation together:
+    // Gatowski et al., "Heat Release Analysis of Engine Pressure Data", SAE 841359 (1984): 1.392 - 8.13e-5 T (N3's finding,
+    // 24 Nov: the reference's ran 0.025 to 0.04 higher from 500 to 2500 K, its expansion giving too much work). A lean
+    // charge's gas is nearer air: + 0.037 (1 - phi) below phi 1 (N3, from frozen products of CH1.8 with JANAF heat
+    // capacities: 0.011 higher at phi 0.7 at every temperature from 1000 to 2500 K; Ceviz and Kaymaz, 2005, give the
+    // direction): a diesel's. Rich, Gatowski's. Every gas this cylinder's energy reads (its own, what comes back from the
+    // header and the runner, the air) takes it. The reference's line otherwise, to the bit.
     float gammaAt(float tk)
     {
         if (conserve != 0)
-            return fminf(fmaxf(1.392f - 8.13e-5f * tk, 1.15f), 1.40f);
+            return fminf(fmaxf(1.392f - 8.13e-5f * tk + 0.037f * (1.0f - fminf(phi, 1.0f)), 1.15f), 1.40f);
         return fminf(fmaxf(1.39f - 7.5e-5f * (tk - 300.0f), 1.24f), 1.40f);
     }
 
@@ -255,6 +261,7 @@ module Cylinder
         rvMass = 0.0f;
         rvInert = 0.0f;
         rvMT = 0.0f;
+        phi = 1.0f;
         exStore = 0.0f;
         exStoreMT = 0.0f;
         exStoreIn = 0.0f;

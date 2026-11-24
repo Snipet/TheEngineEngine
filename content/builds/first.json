@@ -1,0 +1,182 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "3.0 L twin-turbo six",
+  "notes": "Try first: turn the key, then floor it on the dyno and watch the two turbos spool in AIR (each fed by three cylinders) and the pulses split between the two collectors in EXHAUST.\nThen drive: in first, hold the brake, bring the revs up and let go for a standing start (traction control holds the wheelspin), and listen to the straight six through its dual exhaust as the dual clutch shifts.\n\nA modern 3 L twin-turbo straight six with direct injection: 84 x 89.6 mm (2979 cc), 10.2:1, four valves, both cams phased, two twin-scroll turbos each fed by three cylinders at about 1 bar (cylinders 1-3 and 4-6 each into its own collector and turbo, a dual exhaust). Production engines of this kind make 250 to 340 kW and 450 to 600 N m (makers' figures). In a rear-drive sports sedan with a seven-speed dual clutch.",
+  "spec": {
+    "engine": {
+      "layout": "Inline 6",
+      "custom": true,
+      "compression": 10.2,
+      "cylinders": 6,
+      "bankAngle": [
+        0.0
+      ],
+      "bank": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "pin": [
+        0,
+        240,
+        120,
+        120,
+        240,
+        0
+      ],
+      "fireRev": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        1
+      ],
+      "place": [
+        0.0,
+        0.1,
+        0.2,
+        0.3,
+        0.4,
+        0.5
+      ],
+      "displacement": 0.0029793,
+      "boreStroke": 0.9375,
+      "bore": 0.084,
+      "stroke": 0.0896,
+      "rodLength": 0.14435,
+      "redlineSpeed": 733.038,
+      "frictionValvetrain": "Finger follower",
+      "rough": 0.2,
+      "benchLoad": 0.3
+    },
+    "valve": {
+      "model": "Lab",
+      "valves": 4,
+      "dIn": 0.0314,
+      "dEx": 0.028,
+      "train": "Finger",
+      "inDurSeat": 252,
+      "inDur1mm": 220,
+      "inLift": 0.009699999999999999,
+      "inCentre": 125.0,
+      "exDurSeat": 252,
+      "exDur1mm": 220,
+      "exLift": 0.009699999999999999,
+      "exCentre": 105,
+      "inPhaseRange": 70,
+      "exPhaseRange": 55,
+      "springRate": 25000.0,
+      "springPreload": 150.0
+    },
+    "intake": {
+      "model": 1,
+      "runnerLength": 0.3
+    },
+    "boost": {
+      "model": "Machine",
+      "kind": "Twin turbos",
+      "level": 0.619,
+      "blowOff": 0.7,
+      "size": 1.0,
+      "layout": "Two, a bank each",
+      "target": 100000.0,
+      "gateSpring": 70000.0,
+      "blowOffKind": "Recirculating",
+      "scrolls": "Twin scroll",
+      "icEffect": 0.75,
+      "icFlow": 0.374,
+      "chargeVolume": 0.006
+    },
+    "exhaust": {
+      "model": "Builder",
+      "sides": 2,
+      "converter": [
+        1,
+        1
+      ],
+      "mufKind": [
+        2,
+        2
+      ],
+      "primaryTo": [
+        0,
+        0,
+        0,
+        1,
+        1,
+        1
+      ],
+      "collectorTo": [
+        0,
+        1
+      ]
+    },
+    "fuel": {
+      "kind": "Gasoline",
+      "model": "Fuels",
+      "grade": "Premium (91)",
+      "direct": 1
+    },
+    "ecu": {
+      "model": "Maps",
+      "timing": 0,
+      "pops": 0.1,
+      "starter": true,
+      "limiter": {
+        "kind": "Fuel cut",
+        "speed": 733.038
+      },
+      "idle": {
+        "speed": 68.068
+      },
+      "launch": {
+        "on": true
+      },
+      "knock": {
+        "on": true
+      }
+    },
+    "car": {
+      "model": "Vehicle",
+      "kind": "Car",
+      "mass": 1700,
+      "drive": "Rear",
+      "wheelbase": 2.85,
+      "cgHeight": 0.52,
+      "frontWeight": 0.52,
+      "track": 1.58,
+      "cdA": 0.66,
+      "tyre": "Sport",
+      "tyreRadius": 0.335,
+      "gearbox": "Dual clutch",
+      "finalDrive": 3.15,
+      "wheelInertia": 1.4,
+      "gears": 7,
+      "autoGearing": false,
+      "ratio": [
+        4.81,
+        2.59,
+        1.7,
+        1.28,
+        1.0,
+        0.84,
+        0.67
+      ],
+      "brakeDecel": 1.1,
+      "abs": true
+    },
+    "env": {
+      "temperature": 288.15,
+      "pressure": 101325.0
+    },
+    "voices": {
+      "timing": "Chain",
+      "injection": "Direct"
+    }
+  }
+}
