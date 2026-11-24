@@ -62,7 +62,8 @@ namespace
     }
 } // namespace
 
-TEST_CASE("X-022: throttles a runner behind a tiny charge pipe blip twice without a fault", "[calibration][na]")
+// (nightly since the fast tier holds X-022 with X-024 and X-026 in one case: BoostInletTest.cpp)
+TEST_CASE("X-022: throttles a runner behind a tiny charge pipe blip twice without a fault", "[nightly][calibration][na]")
 {
     x022(true, 4.0);
 }
