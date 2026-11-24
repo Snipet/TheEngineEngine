@@ -26,8 +26,8 @@ The exhaust as built, drawn from the same rules the simulator's builder uses to 
 - **Open stacks** end in a bell with radiating arcs and the words "OPEN STACK, FRONT".
 - **Radiating ends** are three arcs, the position tag (REAR LEFT, SIDE RIGHT, ...) and the end's level as a bar and
   in dB.
-- **Heat.** Every wall is tinted by its section's temperature, cold blue through ink to orange and red; the scale is
-  in the header.
+- **Heat.** Every wall is tinted by its section's temperature, cold blue through ink to orange and red up to 1100 C
+  (the gas at the ports reaches 1100 to 1330 K at full load); the scale is in the header.
   - The gas temperatures are numbers, each with its label: under the stage, and on the drawing at the port and the
     collector (only where there is a number).
   - Without wall temperatures, the pipes are outlines and the header says "NO WALL TEMPERATURES YET" once. The tinted

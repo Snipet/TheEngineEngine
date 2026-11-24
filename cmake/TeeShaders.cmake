@@ -1,6 +1,12 @@
 # cmake/TeeShaders.cmake: a panel's shaders, built when the application is built (card J, item 3).
 #
-#   tee_add_panel_shaders(<target> GUI <file.gui> SHADERS <a.sc> ... [HEADERS <x.sh> ...] [NAME <panel>])
+#   tee_add_panel_shaders(<target> GUI <file.gui> SHADERS <a.sc> ... [HEADERS <x.sh> ...] [NAME <panel>] [OPTIONAL])
+#
+# OPTIONAL: a shader that one back end's shaderc refuses does not fail the build. That back end gets an empty program
+# in its place (size 0 in the table, so the kit leaves it unregistered) and the build prints a warning naming the
+# shader, the back end and shaderc's message, and a line "TEE_SHADER_REFUSED <panel>/<file> <profile>"
+# (cmake/TeeShaderc.cmake). For effects the panel can draw without (the atmosphere's fx set). Without OPTIONAL (the
+# reference panel's shaders) a refusal fails the build, everywhere it can be compiled.
 #
 # <target> gets a source that defines
 #
@@ -31,6 +37,7 @@
 #   bgfx_shader.sh TEE_BGFX_SRC/bgfx/src, else the bgfx sources FunkGui fetched (bgfx_SOURCE_DIR)
 #   the prelude    TEE_FUNKGUI_SHADERS, else FunkGui's own shaders/ (FunkGui_SOURCE_DIR)
 include_guard(GLOBAL)
+set(_TEE_SHADERS_DIR "${CMAKE_CURRENT_LIST_DIR}")   # where TeeShaderc.cmake is
 
 option(TEE_UI_BUILD_SHADERS "Build panel shaders although no GPU layer is in the build (needs TEE_SHADERC, TEE_BGFX_SRC)" OFF)
 set(TEE_SHADERC "" CACHE FILEPATH "bgfx's shaderc, prebuilt, for panel shaders (else FunkGui's)")
@@ -91,7 +98,7 @@ function(_tee_shader_tools out_shaderc out_dep out_bgfx out_funkgui)
 endfunction()
 
 function(tee_add_panel_shaders target)
-  cmake_parse_arguments(PARSE_ARGV 1 _tp "" "GUI;NAME" "SHADERS;HEADERS")
+  cmake_parse_arguments(PARSE_ARGV 1 _tp "OPTIONAL" "GUI;NAME" "SHADERS;HEADERS")
   if(NOT TARGET ${target})
     message(FATAL_ERROR "tee_add_panel_shaders: '${target}' is not a target")
   endif()
@@ -160,21 +167,48 @@ function(tee_add_panel_shaders target)
         set(_ext ${CMAKE_MATCH_1})
         set(_platform ${CMAKE_MATCH_2})
         set(_profile ${CMAKE_MATCH_3})
-        add_custom_command(OUTPUT "${_out}/${_sym}.${_ext}.h"
-          COMMAND "${_shaderc}" -f "${_out}/${_stem}/fs.sc" -o "${_out}/${_sym}.${_ext}.h"
-                  --type fragment --platform ${_platform} -p ${_profile}
-                  --varyingdef "${_fg}/varying_custom.def.sc"
-                  -i "${_out}/${_stem}" -i "${_bgfx}/bgfx/src" --bin2c ${_sym}_${_ext}
-          DEPENDS ${_shaderc_dep} "${_out}/${_stem}/fs.sc" "${_fg}/varying_custom.def.sc"
-          COMMENT "shaderc: ${_name}/${_file} -> ${_profile}"
-          VERBATIM)
+        if(_tp_OPTIONAL)
+          add_custom_command(OUTPUT "${_out}/${_sym}.${_ext}.h"
+            COMMAND "${CMAKE_COMMAND}" "-DSHADERC=${_shaderc}" "-DSRC=${_out}/${_stem}/fs.sc"
+                    "-DOUT=${_out}/${_sym}.${_ext}.h" "-DSYM=${_sym}_${_ext}" "-DPLATFORM=${_platform}"
+                    "-DPROFILE=${_profile}" "-DVARYING=${_fg}/varying_custom.def.sc" "-DINC1=${_out}/${_stem}"
+                    "-DINC2=${_bgfx}/bgfx/src" "-DWHAT=${_name}/${_file}" -P "${_TEE_SHADERS_DIR}/TeeShaderc.cmake"
+            DEPENDS ${_shaderc_dep} "${_out}/${_stem}/fs.sc" "${_fg}/varying_custom.def.sc"
+                    "${_TEE_SHADERS_DIR}/TeeShaderc.cmake"
+            COMMENT "shaderc: ${_name}/${_file} -> ${_profile} (optional)"
+            VERBATIM)
+        else()
+          add_custom_command(OUTPUT "${_out}/${_sym}.${_ext}.h"
+            COMMAND "${_shaderc}" -f "${_out}/${_stem}/fs.sc" -o "${_out}/${_sym}.${_ext}.h"
+                    --type fragment --platform ${_platform} -p ${_profile}
+                    --varyingdef "${_fg}/varying_custom.def.sc"
+                    -i "${_out}/${_stem}" -i "${_bgfx}/bgfx/src" --bin2c ${_sym}_${_ext}
+            DEPENDS ${_shaderc_dep} "${_out}/${_stem}/fs.sc" "${_fg}/varying_custom.def.sc"
+            COMMENT "shaderc: ${_name}/${_file} -> ${_profile}"
+            VERBATIM)
+        endif()
         list(APPEND _headers "${_out}/${_sym}.${_ext}.h")
       endforeach()
       # The platform's own: Direct3D 11 on Windows, Metal on macOS, SPIR-V (Vulkan) elsewhere, as FunkGui's renderer.
-      string(APPEND _cpp "#if defined(_WIN32)\n#include \"${_sym}.dx11.h\"\n#define TEE_SHADER_${_sym} ${_sym}_dx11\n")
-      string(APPEND _cpp "#elif defined(__APPLE__)\n#include \"${_sym}.mtl.h\"\n#define TEE_SHADER_${_sym} ${_sym}_mtl\n")
-      string(APPEND _cpp "#else\n#include \"${_sym}.spv.h\"\n#define TEE_SHADER_${_sym} ${_sym}_spv\n#endif\n")
-      string(APPEND _rows "            { \"${_name}\", \"${_file}\", TEE_SHADER_${_sym}, static_cast<uint32_t>(sizeof TEE_SHADER_${_sym}) },\n")
+      # (an optional shader the back end refused has <array>_refused defined: its size is 0, and the kit skips it)
+      foreach(_pe "_WIN32;dx11" "__APPLE__;mtl" ";spv")
+        list(GET _pe 0 _macro)
+        list(GET _pe 1 _e)
+        if(_macro)
+          if(_e STREQUAL "dx11")
+            string(APPEND _cpp "#if defined(${_macro})\n")
+          else()
+            string(APPEND _cpp "#elif defined(${_macro})\n")
+          endif()
+        else()
+          string(APPEND _cpp "#else\n")
+        endif()
+        string(APPEND _cpp "#include \"${_sym}.${_e}.h\"\n#define TEE_SHADER_${_sym} ${_sym}_${_e}\n")
+        string(APPEND _cpp "#if defined(${_sym}_${_e}_refused)\n#define TEE_SHADER_SIZE_${_sym} 0u\n#else\n")
+        string(APPEND _cpp "#define TEE_SHADER_SIZE_${_sym} static_cast<uint32_t>(sizeof ${_sym}_${_e})\n#endif\n")
+      endforeach()
+      string(APPEND _cpp "#endif\n")
+      string(APPEND _rows "            { \"${_name}\", \"${_file}\", TEE_SHADER_${_sym}, TEE_SHADER_SIZE_${_sym} },\n")
     endforeach()
   endif()
   string(APPEND _cpp "\nnamespace tee::ui::shaders\n{\n    std::span<const Built> ${_name}Shaders()\n    {\n")
