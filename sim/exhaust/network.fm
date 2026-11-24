@@ -15,7 +15,14 @@
 //   XJ_CLOSED  a pipe's far end shut (a quarter-wave resonator's stub, a volume's back wall): the wave comes back whole
 //              (the pipe's own wall loss is all that takes it);
 //   XJ_PORT    a pipe's near end at an engine's port: the flow the cylinder solved goes in (the reference: z q), with
-//              the valve's jet's hiss.
+//              the valve's jet's hiss;
+//   XJ_HOUSE   pipe ends meeting in a turbine's housing, whose pressure another module solves (card F's): the network
+//              gives it, before step(), the ends' drive (sum of 2 a_i / z_i less what their losses hold back, m^3/s)
+//              and admittance (sum of 1 / z_i) and their gas's temperature; it gives back the housing's pressure, and
+//              each pipe then takes p - a_i (and its loss's share), as at a node;
+//   XJ_EXTP    a pipe's near end at a pressure another module solves (a turbine's outlet into its downpipe, an
+//              external wastegate into its own pipe): the network gives the arriving wave and the impedance before
+//              step(); the pipe takes p - a.
 // Each junction is passive by construction: a lossless scattering of the waves by the impedances, less the losses
 // (lossHold takes flow away from what passes, never adds; a resistance in series only dissipates), so the network can
 // only lose what it holds (tests/sim/exhaust: the passivity property test).
@@ -28,6 +35,7 @@
 //
 //   net.setup(rate)                 in init (allocates); net.release() in end
 //   net.portWave(i), net.portZ(i)   the wave arriving at port i, its pipe's impedance (for the cylinder's solve)
+//   net.prepare()                   after read(): the housings' drives and admittances, the outside pressures' ends
 //   net.step(q)                     q[i]: port i's volume flow into the pipe (m^3/s), this sample; leaves outL, outR
 #pragma once
 #include "../ref/pipes.fm"
@@ -35,8 +43,8 @@
 
 enum
 {
-    XN_DUCTS = 80,
-    XN_JUNC = 80,
+    XN_DUCTS = 84,
+    XN_JUNC = 96,
     XN_BR = 14,
     XN_ENDS = 24,
     XN_BANDS = 24,
@@ -50,7 +58,9 @@ enum
     XJ_PAIR = 1,
     XJ_OPEN = 2,
     XJ_CLOSED = 3,
-    XJ_PORT = 4
+    XJ_PORT = 4,
+    XJ_HOUSE = 5,
+    XJ_EXTP = 6
 };
 
 // The reference's node() (sim/ref/engine.fm), as a free function, with each branch's transmission t (1: as the
@@ -108,6 +118,10 @@ module XNet
     int jPop[XN_JUNC];      // a pop's index (-1: none): its gas is a source at the node
     int jRef[XN_JUNC];      // XJ_OPEN: its end's index; XJ_PORT: its port's
     float jP[XN_JUNC];      // its pressure this sample (Pa over the air outside; a node's, or the end's)
+    float jDrive[XN_JUNC];  // XJ_HOUSE: its pipes' drive and admittance (prepare()); XJ_EXTP: the arriving wave and
+    float jAdmit[XN_JUNC];  // the impedance
+    float jPx[XN_JUNC];     // XJ_HOUSE, XJ_EXTP: the pressure given back (Pa over the air outside), before step()
+    float jT[XN_JUNC];      // XJ_HOUSE: the gas's temperature arriving (K), as the builder last set it
     // each junction's branches, junction j's at j * XN_BR
     int bD[XN_JUNC * XN_BR];        // the pipe
     int bE[XN_JUNC * XN_BR];        // its end here: 0 near, 1 far
@@ -224,6 +238,10 @@ module XNet
         jPop[j] = -1;
         jRef[j] = -1;
         jP[j] = 0.0f;
+        jDrive[j] = 0.0f;
+        jAdmit[j] = 0.0f;
+        jPx[j] = 0.0f;
+        jT[j] = 300.0f;
         return j;
     }
 
@@ -283,6 +301,14 @@ module XNet
     {
         const int j = junction(XJ_CLOSED);
         branch(j, duct, 1);
+        return j;
+    }
+
+    // A pipe's near end at a pressure another module gives (XJ_EXTP)
+    int extp(int duct)
+    {
+        const int j = junction(XJ_EXTP);
+        branch(j, duct, 0);
         return j;
     }
 
@@ -536,6 +562,64 @@ module XNet
         farIn[bD[k]] = b;
     }
 
+    // After read(), before step(): what the housings and the outside pressures need (drive and admittance; the
+    // arriving wave and the impedance)
+    void prepare() [[clang::nonblocking]]
+    {
+        for (int j = 0; j < nj; ++j)
+        {
+            const int kind = jKind[j];
+            if (kind == XJ_HOUSE)
+            {
+                float dr = 0.0f;
+                float ad = 0.0f;
+                for (int b = 0; b < jN[j]; ++b)
+                {
+                    const int k = j * XN_BR + b;
+                    const Duct* p = &d[bD[k]];
+                    const float a = bE[k] == 0 ? p->near : p->far;
+                    const float z = p->z + bR[k];
+                    const float x = bS[k];
+                    dr += 2.0f * a / z - lossHold(x, z, x >= 0.0f ? bKf[k] : bKr[k]);
+                    ad += 1.0f / z;
+                }
+                jDrive[j] = dr;
+                jAdmit[j] = ad;
+            }
+            else if (kind == XJ_EXTP)
+            {
+                const int k = j * XN_BR;
+                jDrive[j] = d[bD[k]].near;
+                jAdmit[j] = d[bD[k]].z + bR[k];
+            }
+        }
+    }
+
+    // A housing's pipes take its pressure (jPx), each its flow and its loss's slow part, as at a node
+    void solveHouse(int j)
+    {
+        const float p = jPx[j];
+        jP[j] = p;
+        for (int b = 0; b < jN[j]; ++b)
+        {
+            const int k = j * XN_BR + b;
+            const Duct* pd = &d[bD[k]];
+            const float a = bE[k] == 0 ? pd->near : pd->far;
+            const float z = pd->z + bR[k];
+            const float x = bS[k];
+            const float h = lossHold(x, z, x >= 0.0f ? bKf[k] : bKr[k]);
+            const float dd = 2.0f * a - p;
+            const float q = dd / z - h;
+            if (bA[k] >= 0)
+                bS[k] += d[bA[k]].qsA * (dd - x);
+            bQ[k] = q;
+            if (bE[k] == 0)
+                nearIn[bD[k]] = a - pd->z * q;
+            else
+                farIn[bD[k]] = a - pd->z * q;
+        }
+    }
+
     // One sample: the ports' flows q[i] (m^3/s into each port's pipe) in, every junction solved, the pipes written.
     // Leaves outL and outR: the radiating ends summed by their tags.
     void step(float* q) [[clang::nonblocking]]
@@ -557,6 +641,18 @@ module XNet
                 solvePair(j);
             else if (kind == XJ_OPEN)
                 solveOpen(j);
+            else if (kind == XJ_HOUSE)
+                solveHouse(j);
+            else if (kind == XJ_EXTP)
+            {
+                // the pressure given is behind any resistance in series (a converter at the downpipe's head)
+                const int k = j * XN_BR;
+                const Duct* p = &d[bD[k]];
+                const float qx = (jPx[j] - 2.0f * p->near) / (p->z + bR[k]);
+                nearIn[bD[k]] = p->near + p->z * qx;
+                bQ[k] = qx;
+                jP[j] = jPx[j];
+            }
             else if (kind == XJ_CLOSED)
             {
                 const int k = j * XN_BR;

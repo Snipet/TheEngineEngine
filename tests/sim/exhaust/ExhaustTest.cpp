@@ -288,3 +288,91 @@ TEST_CASE("what a sample costs", "[exhaust][cost]")
                     "a pipe)\n", b, n, b / n);
     }
 }
+
+// Card G, test 10 (standalone form): a stand-in turbine on each bank of the crossplane V8 (a 0.5 L housing whose gas
+// leaves through a linear nozzle into the downpipe, harness.fm's standIn; card F's own is fitted at integration). The
+// housing's junction is passive: with the engine off, a pulse into a port, the energy of the waves in flight and of
+// the housings' gas never rises (5 ms windows, 3 % for what the filters hold) and is gone within 4 s. Driven, the
+// downpipe's head swings less than the collector's housing.
+TEST_CASE("a turbine housing's junction is passive; the downpipe is smoother", "[exhaust][turbine]")
+{
+    {
+        Rig rig(12);
+        rig.noise(0.0);
+        rig.set("tPort", 300.0);
+        rig.set("warm", 0.0);
+        rig.set("mdot", 1.0e-4);
+        rig.call("XTest::standIn", 0.0005f, 60000.0f);
+        rig.configure();
+        CHECK(rig.get("b.jHouse[0]") >= 0);
+        CHECK(rig.get("b.jDown[1]") >= 0);
+        const int n = static_cast<int>(4.0 * kRate);
+        std::vector<float> q(static_cast<std::size_t>(n) * kPorts, 0.0f);
+        const int np = static_cast<int>(0.001 * kRate);
+        for (int t = 0; t < np; ++t)
+            q[static_cast<std::size_t>(t) * kPorts] = static_cast<float>(0.002 * (0.5 - 0.5 * std::cos(6.2831853 * t / np)));
+        std::vector<double> e;
+        const double peak = rig.energyAfter(q, e);
+        const int w = static_cast<int>(0.005 * kRate);
+        double prev = 0.0;
+        double rise = 0.0;
+        for (int t = np; t + w <= n; t += w)
+        {
+            double m = 0.0;
+            for (int k = t; k < t + w; ++k)
+                m += e[static_cast<std::size_t>(k)];
+            m /= w;
+            if (t > np && prev > 1.0e-12 * peak)
+                rise = std::max(rise, m / prev);
+            prev = m;
+        }
+        int last = 0;
+        for (int k = 0; k < n; ++k)
+            if (e[static_cast<std::size_t>(k)] > 1.0e-6 * peak)
+                last = k;
+        std::printf("turbine housing: worst window-to-window rise %.4f, gone after %.2f s\n", rise, last / kRate);
+        CHECK(rise <= 1.03);
+        CHECK(last < n - w);
+    }
+    {
+        Rig rig(12);
+        rig.noise(0.0);
+        rig.call("XTest::standIn", 0.0005f, 60000.0f);
+        rig.configure();
+        std::vector<float> q = pulses(rig, 3000.0, 1.0, 0.15, 0.01);
+        std::vector<float> l, r;
+        rig.run(q, l, r);
+        const double house = rig.callf("XTest::swingHouse");
+        const double down = rig.callf("XTest::swingDown");
+        std::printf("turbine housing: pressure swing in the housing %.0f Pa, at the downpipe's head %.0f Pa (%.1f dB)\n",
+                    house, down, db(down * down / (house * house)));
+        CHECK(down < house);
+    }
+}
+
+// The Scope: 64 points from port 0 to its tail, spaced by length, finite, with the pulse visible along them
+TEST_CASE("the scope shows the path's pressures", "[exhaust][scope]")
+{
+    Rig rig(12);
+    rig.noise(0.0);
+    rig.set("b.scopeOn", 1);
+    rig.configure();
+    std::vector<float> q = pulses(rig, 3000.0, 0.3, 0.15, 0.01);
+    std::vector<float> l, r;
+    rig.run(q, l, r);
+    const int n = static_cast<int>(rig.get("b.nPath"));
+    double lo = 1e30, hi = -1e30, xPrev = -1.0;
+    for (int i = 0; i < 64; ++i)
+    {
+        const double p = rig.get("b.scopeP[" + std::to_string(i) + "]");
+        const double x = rig.get("b.scopeX[" + std::to_string(i) + "]");
+        CHECK(std::isfinite(p));
+        CHECK(x > xPrev);
+        xPrev = x;
+        lo = std::min(lo, p);
+        hi = std::max(hi, p);
+    }
+    std::printf("scope: %d pipes from port 0 to its tail, %.2f m; pressures %.0f to %.0f Pa\n", n, xPrev, lo, hi);
+    CHECK(n == 7);
+    CHECK(hi - lo > 100.0);
+}
