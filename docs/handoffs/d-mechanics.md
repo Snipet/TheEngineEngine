@@ -39,3 +39,11 @@ fire); a custom layout fires in its geometry's order. `tel.engine.firingAngle` r
 
 **FMinus issues**: none. **To listen to**: the V16 and the custom V8 on free-revs (out/ via tee-render --engine
 --build content/builds/engines/v16-45.json); the dyno sweep of the V8 build (its cam's surges at low speed).
+
+**Since (to 6612cd9)**: X-007 safety (wrapCycle, guard/recover, FLAG_FAULT = 4); `fuel.model` 1 and custom imply
+Chen-Flynn friction, and `fuel.model` 1 implies Woschni walls; shaking for every engine; `TEE_ENGINE_RATE_48000`;
+`veManifold` and `veAir` bounded to 0 to 4, `veManifold` held below 5 kPa of manifold (E's ITB plenum reads -4330 Pa on
+the lift). The rotary twin's torque: 320/380 N m at 4000/6500 rpm with every model 0 (the reference's rotary, ~1.3 times
+a real 13B's BMEP); boost.model 1 doubles its boost at 4000 rpm (F's). Hidden `[.rotary]` in EngineExplore prints it.
+Open: a rotary wall heat under fuel.model 1 and the engine.fm tidies (areasFor, walls if/else, voicesInputs,
+crankStep), both awaiting the lead.
