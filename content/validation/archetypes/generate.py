@@ -146,6 +146,16 @@ def targets(slug, b):
             during=[8, 10], range=[tgt - 15000, tgt + 15000], unit="Pa over the air",
             source="the build's own target (%.2f bar); a wastegate or vane loop holds a steady full load within some "
                    "0.1 bar of its target once spooled (makers' boost-control tolerances; judgement)" % (tgt / 1e5))
+        add(name="Charge temperature under boost", scenario=SC + "p-full-load-%d.json" % fl, tel="boost.throttleIn",
+            measure="mean", during=[8, 10], range=[293, 340], unit="K",
+            source="an air-to-air intercooler of 0.6 to 0.8 effectiveness leaves the charge some 10 to 50 K over the "
+                   "outside air at full boost (makers' and tuners' intake-air-temperature logs; judgement): reported so "
+                   "the over-delivery at a given boost can be judged (the lead's ask)")
+        add(name="Lambda at full load under boost", scenario=SC + "p-full-load-%d.json" % fl, tel="ecu.lambda",
+            measure="mean", during=[8, 10], range=[1.2, 2.0] if diesel else [0.76, 0.88], unit="ratio",
+            source=("a turbo diesel at full load runs lambda 1.2 to 2 (smoke-limited; %s, ch. 10)" if diesel else
+                    "a boosted petrol engine at full load is enriched to lambda 0.76 to 0.88 to cool the charge and the "
+                    "turbine (factory calibrations; %s, ch. 7)") % HEYWOOD)
     else:
         add(name="Volumetric efficiency at its torque peak", scenario=SC + "p-full-load-%d.json" % fl, tel="engine.veAir",
             measure="mean", during=[8, 10], range=[0.82, 1.02], unit="fraction",

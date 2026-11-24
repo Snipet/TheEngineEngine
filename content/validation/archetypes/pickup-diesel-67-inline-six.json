@@ -193,6 +193,38 @@
       "source": "the build's own target (2.00 bar); a wastegate or vane loop holds a steady full load within some 0.1 bar of its target once spooled (makers' boost-control tolerances; judgement)"
     },
     {
+      "name": "Charge temperature under boost",
+      "scenario": "validation/scenarios/p-full-load-2000.json",
+      "tel": "boost.throttleIn",
+      "measure": "mean",
+      "during": [
+        8,
+        10
+      ],
+      "range": [
+        293,
+        340
+      ],
+      "unit": "K",
+      "source": "an air-to-air intercooler of 0.6 to 0.8 effectiveness leaves the charge some 10 to 50 K over the outside air at full boost (makers' and tuners' intake-air-temperature logs; judgement): reported so the over-delivery at a given boost can be judged (the lead's ask)"
+    },
+    {
+      "name": "Lambda at full load under boost",
+      "scenario": "validation/scenarios/p-full-load-2000.json",
+      "tel": "ecu.lambda",
+      "measure": "mean",
+      "during": [
+        8,
+        10
+      ],
+      "range": [
+        1.2,
+        2.0
+      ],
+      "unit": "ratio",
+      "source": "a turbo diesel at full load runs lambda 1.2 to 2 (smoke-limited; Heywood, Internal Combustion Engine Fundamentals, ch. 10)"
+    },
+    {
       "name": "Port gas at full load",
       "scenario": "validation/scenarios/p-full-load-2000.json",
       "tel": "exhaust.portTemperature",
