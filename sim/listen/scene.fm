@@ -100,6 +100,12 @@ module SceneView
     float gS[LS_TAPS];
     float fc[LS_TAPS];  // each tap's low-pass, as last set
     OnePole f[LS_TAPS];
+    int still[LS_TAPS]; // 1: this part the tap neither moves nor changes its level (a still camera, a car standing):
+    int di[LS_TAPS];    // its whole delay and its four Lagrange weights are computed once, in target, not each sample
+    float w0[LS_TAPS];
+    float w1[LS_TAPS];
+    float w2[LS_TAPS];
+    float w3[LS_TAPS];
     float range;        // the listener's distance from the car's middle (m) and the path's slope (samples a sample) of
     float slope;        // tailpipe 0's ear 0, for the telemetry
 };
@@ -654,6 +660,22 @@ module Scene
             v->fc[j] = fc;
             v->f[j].set(fc, rate);
         }
+        // (the weights as hear computes them, each product in the same order: the same sample to the bit)
+        v->still[j] = v->dS[j] == 0.0f && v->gS[j] == 0.0f ? 1 : 0;
+        if (v->still[j] != 0)
+        {
+            const float dd2 = v->d[j];
+            const int i0 = (int)dd2;
+            const float fr = dd2 - (float)i0;
+            const float tm1 = fr - 1.0f;
+            const float tm2 = fr - 2.0f;
+            const float tp1 = fr + 1.0f;
+            v->di[j] = i0;
+            v->w0[j] = -fr * tm1 * tm2 * 0.16666667f;
+            v->w1[j] = tp1 * tm1 * tm2 * 0.5f;
+            v->w2[j] = tp1 * fr * tm2 * 0.5f;
+            v->w3[j] = tp1 * fr * tm1 * 0.16666667f;
+        }
     }
 
     // Every 16 samples: the camera (c), its distance (r, m), the car's speed (m/s), the ground (0 asphalt, 1 grass,
@@ -768,6 +790,14 @@ module Scene
             for (int t = 0; t < taps; ++t)
             {
                 const int j = s * 3 + t;
+                if (v->still[j] != 0)
+                {
+                    const int bs = w - v->di[j];
+                    const float x = v->w0[j] * buf[base + ((bs + 1) & LS_MASK)] + v->w1[j] * buf[base + (bs & LS_MASK)]
+                                    - v->w2[j] * buf[base + ((bs - 1) & LS_MASK)] + v->w3[j] * buf[base + ((bs - 2) & LS_MASK)];
+                    y[t] = v->f[j].lowpass(x * v->g[j]);
+                    continue;
+                }
                 const float dd = v->d[j];
                 const int di = (int)dd;
                 const float fr = dd - (float)di;

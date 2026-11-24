@@ -10,7 +10,14 @@ target_compile_definitions(tee-host-tests PRIVATE
   "TEE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
   "TEE_STANDIN_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/fixtures/standin\""
   "TEE_HOST_TESTS_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}\"")
-catch_discover_tests(tee-host-tests DISCOVERY_MODE PRE_TEST ADD_TAGS_AS_LABELS PROPERTIES TIMEOUT 900)
+# The cases tagged [sim] compile the real simulator (seconds each; tee::test::compiled() keeps one per process): they
+# run as two tests, one process each, sharing the compiles (the default run's and the [nightly] ones); ctest would run
+# each discovered case in a process of its own, a compile each. The rest are discovered one by one.
+add_test(NAME host.sim.cases COMMAND tee-host-tests "[sim]~[nightly]" WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
+set_tests_properties(host.sim.cases PROPERTIES TIMEOUT 900 LABELS "host;sim")
+add_test(NAME host.sim.nightly COMMAND tee-host-tests "[sim][nightly]" WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
+set_tests_properties(host.sim.nightly PROPERTIES TIMEOUT 3600 LABELS "host;sim;nightly")
+catch_discover_tests(tee-host-tests DISCOVERY_MODE PRE_TEST ADD_TAGS_AS_LABELS TEST_SPEC "~[sim]" PROPERTIES TIMEOUT 900)
 # the tools a test runs, beside the tests in bin/
 target_compile_definitions(tee-host-tests PRIVATE "TEE_BIN_DIR=\"$<TARGET_FILE_DIR:tee-host-tests>\"")
 foreach(_tool tee-dyno tee-render)

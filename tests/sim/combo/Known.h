@@ -11,12 +11,5 @@ const Known kKnown[] = {
      "the ranges' corners seed 1: 2.1 to 4.9 R (Q measured 2.1 to 2.4 on a quieter host); reported as the heavy case"},
     {"X-020", "2026-11-24", "N2 (boost, for card F)", "load, all on", "v8", "load", "tel-finite",
      "tel.boost.efficiency[1] goes non-finite from the moment the twin-turbo large diesel is loaded over a running build"},
-    {"X-022", "2026-11-24", "N2 and E (via the lead)", "corners 3", "fuzz", "corners", "guard",
-     "the ranges' corners seed 3 (findings/x022-supercharger-itb-small-charge.json): a charge volume at its minimum into "
-     "ITBs diverges; the engine's guard puts it at rest (FLAG_FAULT)"},
-    {"X-022", "2026-11-24", "N2 and E (via the lead)", "corners 3", "fuzz", "corners", "tel-finite",
-     "the same run: torque, bmep, shake, rock and supercharger power non-finite from the divergence"},
-    {"X-022", "2026-11-24", "N2 and E (via the lead)", "corners 3", "fuzz", "corners", "silent",
-     "the same run: silent after the guard's reset"},
     {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},   // the end (an array is never empty)
 };

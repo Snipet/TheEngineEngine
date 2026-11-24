@@ -518,3 +518,69 @@ TEST_CASE("a burn still running at exhaust opening lets its unburned fuel out wi
     CHECK(worst < 0.01);
     CHECK(outShare / n > 0.001);
 }
+
+TEST_CASE("X-025: a two-stroke rotary is refused, says so, and runs as the rotary it is", "[core][engine][custom]")
+{
+    // (X's reduced build: a custom one-rotor rotary with engine.cycle 1, in the vehicle. No model defines a two-stroke
+    // rotary: refused, tel.engine.layoutReason 4, the rotary run as a four-stroke-equivalent, never a silent engine
+    // that reports itself running)
+    Bench b("combo/findings/x025-two-stroke-rotary-silent");
+    b.start();
+    b.ctl().throttle = 0.3f;
+    double peak = 0.0;
+    b.play(2.0, [&] {
+        for (float s : b.left())
+            peak = std::max(peak, double(std::fabs(s)));
+    });
+    std::printf("X-025: state %g, %.0f rpm, refused %g, reason %g, cycleUse %g, faces %g, peak %.4f\n", b.tel("engine.state"),
+                b.tel("engine.speed") * 9.549, b.tel("engine.layoutRefused"), b.tel("engine.layoutReason"), b.field("cycleUse"),
+                b.field("lay.n"), peak);
+    CHECK(b.tel("engine.layoutRefused") == 1.0);
+    CHECK(b.tel("engine.layoutReason") == 4.0);
+    CHECK(b.field("cycleUse") == 0.0);
+    if (b.tel("engine.state") == 2.0)
+        CHECK(peak > 1e-3);
+}
+
+TEST_CASE("a kept player reset is a fresh player, to the bit", "[core][engine][reset]")
+{
+    // (the cases share one compiled player, reset between them (Engine.h): the default V8's first second from a fresh
+    // player and from the kept one reset after another build has run on it are the same samples)
+    auto second = [](Bench& b) {
+        std::vector<float> out;
+        b.start(0.0);
+        b.ctl().throttle = 0.6f;
+        b.play(1.0, [&] { out.insert(out.end(), b.left().begin(), b.left().end()); });
+        return out;
+    };
+    {
+        Bench other("archetypes/turbo-four-20-gdi");
+        other.start();
+        other.play(1.0);
+    }
+    Bench kept("default");
+    const std::vector<float> a = second(kept);
+    Bench fresh("default", true);
+    const std::vector<float> b = second(fresh);
+    REQUIRE(a.size() == b.size());
+    CHECK(a == b);
+}
+
+TEST_CASE("a model switch written while stopped makes its decisions with no configure between (f89d40c)", "[core][engine][models]")
+{
+    // (the sequence that showed the hole before f89d40c: the player made and configured with every switch off (its
+    // init), the default build applied (same layout and size: no configure follows), the switch written while stopped,
+    // the key turned. holdModel took the switch at once; comb.walls, Cylinder::conserve and Exhaust::implied stayed as
+    // the configure had made them)
+    struct Case { const char* field; const char* decision; };
+    for (const Case& c : {Case{"fuel.model", "comb.walls"}, Case{"fuel.model", "cyl[0].conserve"}, Case{"engine.wallHeat", "comb.walls"},
+                          Case{"boost.model", "exh.implied"}})
+    {
+        Bench b("default");
+        std::string e;
+        REQUIRE(b.player().setSpec(c.field, 1, e));
+        b.start(0.5);
+        INFO(c.field << " -> " << c.decision);
+        CHECK(b.field(c.decision) == 1.0);
+    }
+}

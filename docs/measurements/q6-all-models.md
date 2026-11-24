@@ -125,3 +125,81 @@ rotors the same way, after 4845579 (4 runs; R 1840 ns drive-car, 1913 free-revs)
 "one switch at a time" row for `boost.model` above was measured before it (+0.14 R); with it, a boost.model 1 build
 also pays the builder's +0.13 to 0.14 R at the reference's topology. The "every switch on" rows are unchanged (they
 had the builder on already, though it was not wired then: re-measure when the dual X is the typical build's).
+
+## Re-measured at 19:15 UTC, after D's f89d40c (model switches' decisions taken each call)
+
+At the tip with f89d40c. The host was busy (the reference V8 read 2092 ns, against 1840 to 1955 earlier), so each
+figure here is against the simulator's own V8 in the same qbench run, which `tee-bench --engine` read at 1.045 of the
+reference in the same session: R = 1801 ns drive-car, 1856 free-revs. 4 runs a side (8 renders), least kept.
+
+| Build | before (16:20 / 16:55) | now, drive-car | now, free-revs |
+|---|---:|---:|---:|
+| Builder at the reference's topology (default V8's block) | 1.09 / 1.13 R | **1.28 R** | **1.26 R** |
+| Builder, dual X, stubs, valved mufflers (default V8's block) | 1.32 / 1.43 R | **1.53 R** | **1.54 R** |
+| Twin-turbo V8, every switch on (X's combo, 6.2 L: configured right before too) | 1.44 / 1.47 R | **1.82 R** | **1.84 R** |
+| Turbo six, every switch on (its own layout: configured right before too) | 1.10 / 1.10 R | **1.33 R** | **1.37 R** |
+
+The rise is mostly not D's fix: the two combo builds had their own sizes and were configured right before. At 16:20
+`exhaust.model` 1 was not yet wired (it did nothing); now the builder runs in every one of these (profile of the
+twin-turbo V8, every switch on: `XNet` 322, `XBuild` 115, `Duct` 649 ns, together some 0.3 R over the reference's
+exhaust), and the listener's model 1 has grown (`Scene` 239 ns, from about 164). The two exhaust rows on the default
+V8's block are the ones D's fix could touch; they moved +0.13 to +0.21 R, of which the builder's own changes since
+(passivity gain check, glides) are part: not separable without a second run on the commit before f89d40c.
+
+**The typical build** (twin-turbo V8, every model on, the dual X): 1.82 R + (1.53 - 1.28) = **about 2.1 R** against
+the 1.6 R budget. Economy (0.49): **about 1.0 R**: 40 % of the owner's core on their slower figure, 30 % on the faster.
+
+## The overrun by owner (about 19:30 UTC; the host quiet: load average under 0.7)
+
+The typical build (`out/q/b/typical.json`: X's twin-turbo V8 combo with every switch on and the exhaust of
+`exhausts/dual-x-resonated-valved.json`), drive-car, `tee-bench --profile --engine` (the sampler's own cost included,
+about +10 %), against the simulator at model 0 (the reference, to the bit: 1.045 of the reference's own player by
+`tee-bench --engine` in the same session, 1986 against 1901 ns). R in the profile's units: 2050 / 1.045 = 1962 ns.
+Whole build: 4390 ns, **2.24 R** in these units (2.1 R by qbench without the sampler).
+
+| Owner (modules) | model 0, ns | typical, ns | over model 0 | in R | card's budget | over budget |
+|---|---:|---:|---:|---:|---:|---:|
+| G, the exhaust (Duct, XNet, XBuild, Exhaust, XHeat, xNode) | 765 | 1863 | +1098 | +0.56 | +0.25 | **+0.31** |
+| F, boost (BoostMachine 282, BoostEnd 127, compressor 43, the rest) | 1 | 463 | +462 | +0.24 | 0.12 | **+0.12** |
+| L, the listener (Scene 258, Listen, Hall, Place, CabinBoom) | 129 | 425 | +296 | +0.15 | none stated | (+0.15) |
+| M, the voices (GearVoice 56, DriveVoice 33, FuelVoice 28, ...) | 28 | 199 | +171 | +0.09 | none stated | (+0.09) |
+| D, engine and mechanics (Cylinder 365, MovingMasses 45, CycleWork 42, WallHeat 11, ...) | 472 | 596 | +124 | +0.06 | 0.06 | 0 |
+| E, valvetrain and intake (Intake 94, ValveLab 61, CamShape 7, AirBox) | 55 | 166 | +111 | +0.06 | 0.05 | +0.01 |
+| I, the vehicle (Vehicle 102, VehSound 18, ...) | 19 | 124 | +105 | +0.05 | 0.05 | 0 |
+| H, combustion and ECU (Combustion, Ecu1, EndGas, idle and launch control) | 10 | 33 | +23 | +0.01 | 0.06 | -0.05 |
+| The valves (`Valve::flow`, G's file, the cylinders' calls) | 565 | 524 | -41 | -0.02 | (the reference's) | |
+| **total** | 2044 | 4390 | +2346 | **+1.20** | **+0.59** | **+0.61** |
+
+**The three largest overruns, and what each could give:**
+
+1. **G, +0.31 R over its 0.25.** The builder's own path at the reference's topology is +0.13 to 0.14 R before any
+   extra pipe (q6 above); the dual X's eleven extra pipes are the rest. *Exact, reachable*: `XBuild::passGain`
+   (63 ns, the passivity gain check over 48 frequencies a pipe, every 32 control steps) only when `shape()` changed a
+   coefficient beyond a threshold the check itself can bound (0.03 R); the junctions' general solve (`xNode` 236,
+   `solveNode` 167, `solvePair` 98 ns) specialised for two and three arms, as the reference unrolls them (unproven;
+   grouping by kind gave nothing: perhaps 0.02 to 0.05 R). Together **about 0.05 to 0.08 R**. *For the owner's ears*:
+   the wall's shelves off on short pipes (stubs, links, the X: they shape only the highs) and `back`/`flow16` every
+   64 samples: some 0.1 R.
+2. **F, +0.12 R over its 0.12.** *Exact*: none found (the pipe-end solve's early exit fires too rarely, under 1 %).
+   *For the owner's ears*: F's own three (the pipe-end solve started from the last sample's ratio in one pass, about
+   0.05 R; the charge path's volumes in float with a double remainder; the sounds' noise at 48 kHz, 0.01 R).
+3. **L, +0.15 R, no stated share** (the reference's listener was 0.07 R). *Exact*: `Scene::hear` (195 ns) reads three
+   Lagrange taps a source a sample and steps each path's delay and gain by `dS`, `gS`; while a camera stands still
+   (`dS` and `gS` 0) the taps' weights are the same every sample and can be computed once a part (the same products in
+   the same order): **up to about 0.05 R** with a still camera, nothing with a moving one. *For the owner's ears*: two
+   taps (linear) for the far, quiet sources.
+
+**Within budget**: D (the physical cylinder, the moving masses and the walls: +0.06 R against 0.06), I, H; E 0.01 over.
+
+**After G's c4ce28f** (the passivity check skipped while its inputs stand within 1e-4 of the last; 19:21 UTC, quiet
+host): `XBuild::passGain` 63 -> 12 ns a sample on the typical build (one profile, drive-car), about 0.026 R saved; the
+whole build's profile read 4020 ns against 4390 (one run each: the rest is run-to-run spread, not claimed).
+
+**After L's change** (a still tap's delay and Lagrange weights computed once a part; L's measurement, byte-identical
+WAVs on three listening scenarios): `Scene::hear` 167 -> 96 ns on the V8 free-revs at the tailpipe camera, 128 on
+drive-car (the retarded time moves the taps while the car accelerates): about 0.02 to 0.04 R. Not re-measured by Q.
+
+**The listener's row re-measured by Q after 5ce0d1b** (19:26 UTC, quiet host, two profiles of the typical build,
+drive-car): listener 334 and 369 ns (Scene 212 / 228, of which `Scene::hear` 152 / 156; Listen 79 / 84; Hall 37 / 53),
+against 425 (hear 195) at 19:30's table: **+0.10 to +0.12 R over model 0, from +0.15**. The whole build 4021 and 4042
+ns in the profile's units (2.05 to 2.06 R).
