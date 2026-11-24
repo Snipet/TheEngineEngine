@@ -195,7 +195,7 @@ shaking, work integral and dyno for the engine as configured).
 **The physical cylinder**: friction by part (Chen and Flynn's, `core/friction.fm`, by mean piston speed) is used for a
 custom engine and whenever `fuel.model` is 1; Woschni's wall heat (`core/wallheat.fm`) whenever `fuel.model` is 1 or
 `engine.wallHeat` is 1 (a rotary's faces: the chamber's walls, `coefficientRotary`; with `fuel.model` 1 its seals'
-leakage, `Cylinder::leakA`; docs/models/mechanics.md). The new combustion implies the physical cylinder, its walls and its friction together; the
+leakage, `Cylinder::leakA`; docs/models/mechanics.md). The same decision, `Engine::woschniWalls()`, sets Combustion's share of the fuel's heat (`comb.walls`: 0.97, else the reference's 0.60 + 0.20 x manifold, so the walls' loss is counted once) and `Cylinder::conserve`: the gas a valve pushes back into its runner or header comes back first as itself (its mass at the temperature it left at, its burned share), where the reference brings the same volume back at the air's or the header's density and so makes mass. Running totals for the books: `Engine::airThrottle`, `airValves`, `gasExhaust`, `airTrapped` (kg). The new combustion implies the physical cylinder, its walls and its friction together; the
 reference's one friction curve (fitted to its V8, too high for small bores: 4.5 bar at 24.8 m/s on a 250 cc cylinder)
 and its one wall coefficient only under the reference's models. `engine.custom` means only that the geometry is the
 build's own. The engine runs at 96 kHz; compiled with `TEE_ENGINE_RATE_48000` defined (card C's prediction service

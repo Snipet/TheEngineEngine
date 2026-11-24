@@ -184,6 +184,10 @@ module Engine
     FrictionModel fric; // friction by part (core/friction.fm)
     CycleWork work;     // p dV per cylinder per cycle: IMEP, PMEP, peak pressure, VE (core/work.fm); every engine
     Dyno dyno;          // MODE_DYNO_ENGINE's absorber (core/dyno.fm); every engine
+    double airThrottle; // running totals (kg), for the books (tests, N1's ledger): the air through the throttle, the net
+    double airValves;   // mass in through the intake valves, the net mass in through the exhaust valves
+    double gasExhaust;
+    double airTrapped;  // and the unburned gas the cylinders hold at their intakes' closing
     WallHeat wall;      // Woschni's wall heat, with spec.engine.wallHeat 1 (core/wallheat.fm)
     HeavyDiesel hd;     // card D2: a diesel's governor, compression and exhaust brakes (combustion/heavy.fm); hd.on 0 at the defaults
     TwoStroke two;      // card T: a two-stroke's cylinders, crankcases and pipes (core/twostroke/), with spec.engine.cycle 1
@@ -304,7 +308,7 @@ module Engine
         set.timing = 0.0f;
         comb.setup(rate, &noise, &ecu, &heat, &lay, &exh.pop[0], &spec.fuel, &spec.engine);
         comb.oxygen = 1.0f;
-        comb.walls = woschniWalls() ? 1 : 0;
+        physicalCylinder();
         hd.setup(rate, &spec.ecu, &spec.valve);                                             // card D2
         ecu.setup(16.0f / rate, &spec.ecu, &spec.fuel, &ctl, &tel.ecu, &scope, &heat);     // card H's model 1
         set.bov = 0.7f;
@@ -533,6 +537,16 @@ module Engine
     bool woschniWalls()
     {
         return spec.engine.wallHeat == 1 || spec.fuel.model != 0;
+    }
+
+    // The one decision handed on: Combustion's share of the fuel's heat (comb.walls) and the cylinders' intake backflow
+    // conserved (Cylinder::conserve): both with Woschni's walls, the physical cylinder, and neither under the reference's
+    void physicalCylinder()
+    {
+        const int w = woschniWalls() ? 1 : 0;
+        comb.walls = w;
+        for (int c = 0; c < MAX_CYL; ++c)
+            cyl[c].conserve = w;
     }
 
     // A sum of what makes a custom engine (spec.engine's custom fields, each with its own weight), to see it changed: 0
@@ -1194,6 +1208,8 @@ module Engine
             comb.sample(cy, c, dt);                     // card H: nothing under fuel.model 0 and ecu.model 0
             qe[pi] += cy->qEa;
             qi[pi] += cy->qIa;
+            airValves -= (double)(cy->mI * dt);
+            gasExhaust -= (double)(cy->mE * dt);
             torque += cy->tq;
             if (cy->mE > 0.0f)
             {
@@ -1203,6 +1219,7 @@ module Engine
             if (cy->ivcNow)
             {
                 work.trapped(c, fmaxf(cy->m - cy->mInert, 0.0f), intk.pPlenum, intk.tAir, 101325.0f, heat.tAmb);
+                airTrapped += (double)fmaxf(cy->m - cy->mInert, 0.0f);
                 wall.ivc(c, cy->p, cy->v, cy->t);
                 if (vt.active(c))
                     comb.charge(&cyl[c], c, fuelUse, intk.pPlenum, crank.rpm, smCR, crBs, burnK, set.pops, set.rough, set.timing);
@@ -1241,6 +1258,7 @@ module Engine
         for (int i = 0; i < np; ++i)
             rNear[i] = intk.run[i].near + intk.run[i].z * qi[i];
         intk.plenum(np, rNear, fuelUse, vt.plateOpen() != 0 ? 1.0f : ecu.throttle, ecu.bypass, dt);
+        airThrottle += (double)(intk.qThr * intk.pBox / (287.0f * intk.tAir) * dt);
         mech.torques(crank.rpm, crank.omega, strokeK, heat.viscK, fuelUse, smCR, vTotal, set.load, ecu.redRpm, heat.tAmb, ecu.starterOn,
                      cyl[0].vd);
         // (a custom engine's friction by part: core/friction.fm, on the last cycle's peak pressure)
@@ -1563,7 +1581,7 @@ module Engine
         modelUse[7] = applyModel(7, &spec.voices.model, &spec.voices.rev);
         modelUse[8] = applyModel(8, &spec.engine.wallHeat, &spec.engine.rev);
         modelUse[9] = applyModel(9, &spec.sound.model, &spec.sound.rev);
-        comb.walls = woschniWalls() ? 1 : 0;
+        physicalCylinder();
     }
 
     // A paddle's press as the reference's wheel made it: its button down until Car's shift logic (drive16) has seen

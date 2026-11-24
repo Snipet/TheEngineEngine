@@ -316,3 +316,63 @@ TEST_CASE("the derived telemetry stays finite and bounded through the limiter an
     CHECK(veaLo >= 0.0);
     CHECK(veaHi <= 4.0);
 }
+
+namespace
+{
+    // The books over `seconds` (g/s, from the engine's running totals): the air through the throttle, the net mass in
+    // through the intake valves and through the exhaust valves, the unburned gas trapped at the intakes' closing
+    void airBooks(Bench& b, double seconds, double& thr, double& fresh, double& valves, double& exhaust)
+    {
+        const double t0 = b.field("airThrottle"), v0 = b.field("airValves"), e0 = b.field("gasExhaust"), f0 = b.field("airTrapped");
+        b.play(seconds);
+        const double k = 1000.0 / seconds;
+        thr = (b.field("airThrottle") - t0) * k;
+        fresh = (b.field("airTrapped") - f0) * k;
+        valves = (b.field("airValves") - v0) * k;
+        exhaust = -(b.field("gasExhaust") - e0) * k;
+    }
+} // namespace
+
+TEST_CASE("the physical cylinder conserves the gas its valves push back: the valves pass about the throttle's air, not twenty times it",
+          "[core][engine][backflow]")
+{
+    // N1's finding (24 Nov): the reference converts the gas its intake pushed back into the runner at the air's density
+    // when it comes back, making mass each round trip (and the exhaust's at the header's). The physical cylinder
+    // (fuel.model 1) brings each back as itself first. A big-overlap build, idling on the bench and at full throttle on
+    // the dyno, over 3 s: the net mass in through the intake valves against the air through the throttle. The reference
+    // passes some 20 times the throttle's air at idle (measured: 10.95 against 0.54 g/s); the physical cylinder 1.32
+    // times, 1.11 at full throttle (against 1.39). What is left is upstream of the valves: the runners and the plenum
+    // carry volume, not mass (card E's; N1 acts for it), and it is printed, bounded loosely here. The unburned gas
+    // trapped is printed too (it counts what a cylinder kept unburned from its last cycle, not only new air).
+    double ratioI[2] = {0, 0}, ratioW[2] = {0, 0};
+    for (int model = 0; model < 2; ++model)
+    {
+        Bench b("archetypes/flat-plane-v8-45");
+        std::string e;
+        REQUIRE(b.player().setSpec("car.model", 0, e));
+        REQUIRE(b.player().setSpec("fuel.model", model, e));
+        REQUIRE(b.player().setSpec("engine.wallHeat", 0, e));
+        b.start();
+        b.warm();
+        b.ctl().throttle = 0.0f;
+        b.play(3.0);
+        double thrI = 0, frI = 0, vI = 0, eI = 0, thrW = 0, frW = 0, vW = 0, eW = 0;
+        airBooks(b, 3.0, thrI, frI, vI, eI);
+        const double idle = b.tel("engine.speed") * 9.5492966;
+        b.ctl().mode = 2;
+        b.ctl().throttle = 1.0f;
+        b.ctl().dynoSpeed = float(3000.0 / 9.5492966);
+        b.play(3.0);
+        airBooks(b, 3.0, thrW, frW, vW, eW);
+        std::printf("backflow, fuel.model %d: idle %.0f rpm: throttle %.2f, intake valves %.2f, exhaust valves %.2f, trapped unburned %.2f g/s; "
+                    "full throttle at 3000: %.1f, %.1f, %.1f, %.1f g/s\n", model, idle, thrI, vI, eI, frI, thrW, vW, eW, frW);
+        CHECK(std::fabs(eI / vI - 1.0) < 0.01);      // (the cylinders hold no mass over whole cycles)
+        CHECK(std::fabs(eW / vW - 1.0) < 0.01);
+        ratioI[model] = vI / thrI;
+        ratioW[model] = vW / thrW;
+    }
+    CHECK(ratioI[0] > 10.0);
+    CHECK(ratioI[1] < 1.5);
+    CHECK(ratioW[1] < 1.2);
+    CHECK(ratioW[1] < ratioW[0] - 0.15);
+}
