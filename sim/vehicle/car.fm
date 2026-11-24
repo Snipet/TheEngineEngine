@@ -522,6 +522,18 @@ module Car
         return model == 1 && bikeOn != 0 ? b1.sprocketSpeed() : 0.0f;
     }
 
+    // card B2: the motorcycle's gearbox: its input shaft's speed (rad/s) and its own ratio in the gear in (0 in neutral
+    // and between dogs); gearNow() is its gear. 0 without the motorcycle.
+    float bikeGearboxInput()
+    {
+        return model == 1 && bikeOn != 0 ? b1.gearboxInput() : 0.0f;
+    }
+
+    float bikeGearboxRatio()
+    {
+        return model == 1 && bikeOn != 0 ? b1.gearboxRatio() : 0.0f;
+    }
+
     bool moving()
     {
         return fabsf(v) > 0.05f;

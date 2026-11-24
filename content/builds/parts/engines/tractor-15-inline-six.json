@@ -50,7 +50,7 @@
       "bore": 0.137,
       "stroke": 0.169,
       "rodLength": 0.262,
-      "redlineSpeed": 209.44,
+      "redlineSpeed": 235.619,
       "frictionValvetrain": "Finger follower",
       "rough": 0.2,
       "benchLoad": 0.3
@@ -68,10 +68,13 @@
       "exDurSeat": 232,
       "exDur1mm": 200,
       "exLift": 0.013,
-      "exCentre": 112
+      "exCentre": 112,
+      "springRate": 25000.0,
+      "springPreload": 150.0
     },
     "intake": {
-      "model": 1
+      "model": 1,
+      "runnerLength": 0.4
     },
     "boost": {
       "model": "Machine",

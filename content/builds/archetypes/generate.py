@@ -149,7 +149,7 @@ def arch(**k):
     A.append(k)
 
 
-arch(slug="straight-six-twin-turbo-30", name="3.0 L straight six, twin turbo", geo="ref-10-inline-6",
+arch(slug="straight-six-twin-turbo-30", runner=0.3, name="3.0 L straight six, twin turbo", geo="ref-10-inline-6",
      layout="Inline 6", bore=84.0, stroke=89.6, rod=144.35, cr=10.2, valves=4, dIn=31.4, dEx=28.0,
      cam=(252, 220, 9.7, 105, 252, 220, 9.7, 105), train="Finger", phase=(70, 55), redline=7000, idle=650,
      boost=dict(kind="Twin turbos", layout="Two, a bank each", target=1.0, spring=0.7, scrolls="Twin scroll"),
@@ -166,7 +166,7 @@ arch(slug="flat-plane-v8-45", name="Flat-plane 4.5 L V8", geo="ref-13-v8-flat", 
      notes="A high-revving flat-plane V8: 94 x 81 mm (4497 cc), 12.5:1, direct injection, four valves, 9000 rpm "
            "(the published figures of the 4.5 L 90-degree flat-plane V8 of 2009, F136-type: 419 kW at 9000 rpm, "
            "540 N m at 6000; Wikipedia and the maker's site). Variable-length runners. In a mid-engined coupe.")
-arch(slug="air-cooled-flat-six-36", name="Air-cooled flat six", geo="ref-11-flat-6", layout="Flat 6",
+arch(slug="air-cooled-flat-six-36", runner=0.35, name="Air-cooled flat six", geo="ref-11-flat-6", layout="Flat 6",
      bore=100.0, stroke=76.4, rod=127.0, cr=11.3, valves=2, dIn=49.0, dEx=42.5,
      cam=(256, 222, 11.5, 108, 252, 216, 10.5, 112), train="Rocker", redline=6700, idle=850,
      grade="Premium (91)", car="rear-engine-classic", timing="Chain", fan="Viscous clutch",
@@ -189,17 +189,18 @@ arch(slug="rotary-twin-13", name="Rotary twin", geo="ref-16-rotary-2", layout="R
      notes="A twin-rotor Wankel, 2 x 654 cc, 9.0:1, with two sequential turbos (the 13B-REW kind: 206 to 280 PS, "
            "the latter at 6500 rpm, some 294 N m at 5000; Wikipedia, makers' figures, firm to 10 %). In a light "
            "rear-drive coupe.")
-arch(slug="hot-hatch-16-16v", convK=18.0, name="1.6 L 16-valve hot hatch", geo="ref-05-inline-4", layout="Inline 4",
+arch(slug="hot-hatch-16-16v", runner=0.35, convK=18.0, name="1.6 L 16-valve hot hatch", geo="ref-05-inline-4", layout="Inline 4",
      bore=81.0, stroke=77.4, rod=134.0, cr=10.4, valves=4, dIn=31.0, dEx=27.0,
      cam=(256, 224, 9.6, 108, 248, 216, 8.8, 110), train="Bucket", redline=7200, idle=850,
      car="hot-hatch-light", timing="Toothed belt",
      notes="A light front-drive hatch with a twin-cam 16-valve 1.6: 81 x 77.4 mm (1595 cc), 10.4:1; engines of the "
            "kind made 85 to 118 kW at 6500 to 7600 rpm and 140 to 160 N m (makers' figures of the 1980s and 90s).")
-arch(slug="supercharged-v8-62", name="Supercharged 6.2 L V8", geo="ref-12-v8-cross", layout="V8 crossplane",
+arch(slug="supercharged-v8-62", runner=0.3, name="Supercharged 6.2 L V8", geo="ref-12-v8-cross", layout="V8 crossplane",
      bore=103.25, stroke=92.0, rod=154.0, cr=9.1, valves=2, dIn=54.0, dEx=40.4,
      cam=(270, 213, 12.6, 113, 270, 220, 12.4, 118), train="Pushrod", redline=6200, idle=700,
      boost=dict(kind="Supercharger", charger="Twin-screw", target=0.62, scDisplacement=0.0019),
      friction="Roller", grade="Premium (91)", car="super-coupe", timing="Chain", blowerDrive="Belt",
+     limiter="Soft",
      notes="The 6.2 L pushrod V8 of 103.25 x 92 mm (6162 cc) at 9.1:1 under a 1.9 L positive-displacement blower at "
            "some 0.6 bar (the LSA kind: 415 kW at 6100 rpm, 746 N m at 3800; gmauthority.com, a community spec "
            "table for the compression). In a heavy six-speed coupe.")
@@ -211,20 +212,20 @@ arch(slug="small-block-57-carb", name="Small-block 5.7 L, carburettor-like", geo
      notes="A 350 cubic inch small block (4.00 x 3.48 in: 101.6 x 88.4 mm, 5733 cc), 9:1, two valves on pushrods, a "
            "flat-tappet cam, one big throttle over an open plenum as a four-barrel carburettor's. Some 150 to 200 kW "
            "net and 400 to 450 N m (makers' net ratings of the 1970s and 80s). Four-speed manual, live axle.")
-arch(slug="v10-52", name="V10 5.2 L", geo="v10-90", layout="V10", bore=84.5, stroke=92.8, rod=154.0, cr=12.5,
+arch(slug="v10-52", runner=0.28, name="V10 5.2 L", geo="v10-90", layout="V10", bore=84.5, stroke=92.8, rod=154.0, cr=12.5,
      valves=4, dIn=33.8, dEx=28.0, cam=(268, 240, 11.8, 108, 260, 232, 10.8, 112), train="Finger", phase=(42, 42),
      redline=8700, idle=900, direct=True, grade="Premium (91)", car="awd-supercar", timing="Chain",
      notes="A 90-degree V10 with split crankpins for even firing: 84.5 x 92.8 mm (5204 cc), 12.5:1, direct and port "
            "injection, 8700 rpm (the 5.2 L V10 of 2008 on: 386 to 470 kW at 8000 to 8700 rpm, 530 to 565 N m at "
            "6500; makers' figures). In an all-wheel-drive mid-engined car.")
-arch(slug="v12-65", name="V12 6.5 L", geo="ref-15-v12-60", layout="V12", bore=95.0, stroke=76.4, rod=145.0,
+arch(slug="v12-65", runner=0.28, name="V12 6.5 L", geo="ref-15-v12-60", layout="V12", bore=95.0, stroke=76.4, rod=145.0,
      cr=13.5, valves=4, dIn=37.0, dEx=31.0, cam=(272, 246, 12.2, 106, 264, 238, 11.2, 110), train="Finger",
      phase=(50, 40), redline=8900, idle=900, direct=True, grade="Premium (91)", car="front-mid-gt", timing="Chain",
      lifters="Solid",
      notes="A naturally aspirated 6.5 L V12 of the 2010s: 95 x 76.4 mm (6496 cc), 13.5:1, direct injection, four "
            "valves, all cams phased (engines of the kind: 515 to 588 kW at 8250 to 9000 rpm, 690 to 720 N m at "
            "6000 to 7000; makers' figures). In a front-mid-engined GT with a seven-speed dual clutch.")
-arch(slug="inline-five-turbo-rally", name="Inline five turbo rally", geo="ref-08-inline-5", layout="Inline 5",
+arch(slug="inline-five-turbo-rally", runner=0.3, name="Inline five turbo rally", geo="ref-08-inline-5", layout="Inline 5",
      bore=81.0, stroke=86.4, rod=144.0, cr=9.3, valves=4, dIn=30.0, dEx=26.5,
      cam=(252, 220, 10.0, 108, 248, 216, 9.5, 110), train="Bucket", redline=7000, idle=1000,
      boost=dict(kind="Turbo", target=1.3, spring=0.8, antiLag=True, blowOff="Recirculating"),
@@ -232,7 +233,7 @@ arch(slug="inline-five-turbo-rally", name="Inline five turbo rally", geo="ref-08
      notes="A 2.2 L 20-valve straight five, 81 x 86.4 mm (2226 cc), 9.3:1 (the 3B kind: 162 kW at 5700 rpm, 309 N m "
            "road trim; audiworld.com), here in rally trim: 1.3 bar, anti-lag, a spark-cut limiter, race fuel; "
            "rally engines of the kind made some 220 to 260 kW. Sequential gearbox, all-wheel drive.")
-arch(slug="boxer-four-turbo-unequal", name="Boxer four turbo with unequal headers", geo="ref-06-flat-4",
+arch(slug="boxer-four-turbo-unequal", runner=0.3, name="Boxer four turbo with unequal headers", geo="ref-06-flat-4",
      layout="Flat 4", bore=99.5, stroke=79.0, rod=130.5, cr=8.2, valves=4, dIn=36.0, dEx=32.0,
      cam=(256, 228, 10.0, 110, 252, 224, 9.6, 112), train="Bucket", phase=(35, 0), redline=7000, idle=800,
      boost=dict(kind="Turbo", target=1.0, spring=0.7), grade="Premium (91)", car="awd-sedan-turbo",
@@ -241,7 +242,7 @@ arch(slug="boxer-four-turbo-unequal", name="Boxer four turbo with unequal header
            "393 N m at 4000; Wikipedia and enthusiasts' tables). Its headers' primaries of unequal length are the "
            "burble: written in the exhaust builder (primSpread), which the program does not yet run. All-wheel "
            "drive, six-speed manual.")
-arch(slug="two-stage-cam-20", convK=16.0, name="Two-stage-cam 2.0 L", geo="ref-05-inline-4", layout="Inline 4",
+arch(slug="two-stage-cam-20", runner=0.3, convK=16.0, name="Two-stage-cam 2.0 L", geo="ref-05-inline-4", layout="Inline 4",
      bore=87.0, stroke=84.0, rod=153.0, cr=11.7, valves=4, dIn=34.0, dEx=29.0,
      cam=(236, 204, 8.5, 110, 232, 200, 8.0, 112), train="Rocker", redline=9000, idle=900,
      stages=dict(inDurSeatB=290, inDur1mmB=258, inLiftB=0.0118, exDurSeatB=284, exDur1mmB=252, exLiftB=0.0112,
@@ -250,44 +251,45 @@ arch(slug="two-stage-cam-20", convK=16.0, name="Two-stage-cam 2.0 L", geo="ref-0
      notes="A 2.0 L four with two cam profiles a valve switched at 6000 rpm: 87 x 84 mm (1997 cc), 11.7:1, 9000 rpm "
            "(the F20C kind: 176 kW at 8300 rpm, 208 N m at 7500; makers' figures, from memory, firm to 5 %; the "
            "B16A's switch point of 5500 rpm: global.honda). In a light rear-drive roadster.")
-arch(slug="kei-660-triple-turbo", convK=24.0, name="Kei 660 cc triple turbo", geo="ref-04-inline-3", layout="Inline 3",
+arch(slug="kei-660-triple-turbo", runner=0.28, convK=24.0, name="Kei 660 cc triple turbo", geo="ref-04-inline-3", layout="Inline 3",
      bore=68.0, stroke=60.4, rod=110.0, cr=8.6, valves=4, dIn=24.5, dEx=21.0,
      cam=(240, 208, 7.5, 110, 236, 204, 7.0, 112), train="Bucket", redline=8000, idle=850,
      boost=dict(kind="Turbo", target=0.9, spring=0.6), car="kei", timing="Chain",
      notes="A Japanese kei-class three: 68 x 60.4 mm (658 cc), 8.6:1, four valves, a small turbo (the K6A kind: "
            "47 kW (the class's 64 PS cap) at 6500 rpm, 103 to 108 N m at 3500; Wikipedia, goo-net-exchange). In a "
            "780 kg rear-drive sports kei.")
-arch(slug="diesel-20-common-rail", name="Diesel 2.0 L common rail", geo="ref-05-inline-4", layout="Inline 4",
+arch(slug="diesel-20-common-rail", runner=0.3, name="Diesel 2.0 L common rail", geo="ref-05-inline-4", layout="Inline 4",
      bore=81.0, stroke=95.5, rod=144.0, cr=16.5, valves=4, dIn=27.0, dEx=24.0,
      cam=(228, 196, 8.0, 112, 228, 196, 8.0, 112), train="Finger", redline=4800, idle=800, diesel=True,
      boost=dict(kind="Turbo", target=1.4, spring=1.0, vanes=True), car="family-diesel", timing="Toothed belt",
      notes="A 2.0 L four-valve common-rail diesel with a variable-vane turbo: 81 x 95.5 mm (1968 cc), 16.5:1 (engines "
            "of the kind: 103 to 125 kW at 3500 to 4000 rpm, 320 to 380 N m from 1750; makers' figures). Balance "
            "shafts. In a front-drive family car, six-speed manual.", balance2=True)
-arch(slug="tractor-15-inline-six", name="Highway tractor 15 L", geo="ref-10-inline-6", layout="Inline 6",
+arch(slug="tractor-15-inline-six", runner=0.4, name="Highway tractor 15 L", geo="ref-10-inline-6", layout="Inline 6",
      bore=137.0, stroke=169.0, rod=262.0, cr=17.0, valves=4, dIn=46.0, dEx=43.0,
-     cam=(232, 200, 14.0, 112, 232, 200, 13.0, 112), train="Rocker", redline=2000, idle=650, diesel=True,
+     cam=(232, 200, 14.0, 112, 232, 200, 13.0, 112), train="Rocker", redline=2250, idle=700, diesel=True,
      boost=dict(kind="Turbo", target=2.6, spring=2.0, vanes=True), car="tractor", timing="Gears",
      compressionBrake=True,
-     notes="A 15 L straight-six truck diesel: 137 x 169 mm (14.9 L), 17:1, one variable-vane turbo; its compression "
-           "brake is left off until the ECU can switch it (the X15 kind: 298 to 451 kW, 1966 to 2779 N m at 900 to 1000 rpm, governed at 1900 to 2100, "
-           "idle 600 to 700; cummins.com, international.com). In a 36 t tractor-trailer, eighteen speeds.")
+     notes="A 15 L straight-six truck diesel: 137 x 169 mm (14.9 L), 17:1, one variable-vane turbo whose vanes "
+           "close as an exhaust brake on the overrun (the compression brake is left off: it cannot be switched yet) "
+           "(the X15 kind: 298 to 451 kW, 1966 to 2779 N m at 900 to 1000 rpm, governed at 1900 to 2100, "
+           "idle 600 to 700; cummins.com, international.com); its limiter is the governed no-load speed, 2250 rpm, some 12 % over the rated 2000. In a 36 t tractor-trailer, eighteen speeds.")
 # ---- the second batch ----
-arch(slug="three-cylinder-10-turbo", convK=17.0, name="1.0 L three-cylinder turbo", geo="ref-04-inline-3", layout="Inline 3",
+arch(slug="three-cylinder-10-turbo", runner=0.3, convK=17.0, name="1.0 L three-cylinder turbo", geo="ref-04-inline-3", layout="Inline 3",
      bore=71.9, stroke=82.0, rod=137.0, cr=10.0, valves=4, dIn=27.0, dEx=23.0,
      cam=(232, 200, 8.0, 112, 228, 196, 7.5, 112), train="Finger", phase=(50, 50), redline=6500, idle=800,
      boost=dict(kind="Turbo", target=1.0, spring=0.6), direct=True, car="small-hatch", timing="Toothed belt",
      notes="A downsized 1.0 L three with a small turbo and direct injection: 71.9 x 82 mm (999 cc), 10:1 (engines of "
            "the kind: 74 to 103 kW at 5500 to 6000 rpm, 170 to 205 N m from 1500; makers' figures). In a small "
            "hatch, six-speed manual.")
-arch(slug="economy-four-15", convK=18.0, name="1.5 L economy four", geo="ref-05-inline-4", layout="Inline 4",
+arch(slug="economy-four-15", runner=0.45, convK=18.0, name="1.5 L economy four", geo="ref-05-inline-4", layout="Inline 4",
      bore=75.0, stroke=84.7, rod=137.0, cr=11.0, valves=4, dIn=28.0, dEx=23.5,
      cam=(232, 200, 8.3, 112, 228, 196, 7.8, 112), train="Finger", phase=(40, 0), redline=6600, idle=750,
      car="compact-cvt", timing="Chain",
      notes="A 1.5 L naturally aspirated four of a compact car: 75 x 84.7 mm (1497 cc), 11:1, an intake cam phaser "
            "(engines of the kind: 80 to 96 kW at 6000 to 6600 rpm, 140 to 155 N m at 4300; makers' figures). "
            "Through a CVT.")
-arch(slug="turbo-four-20-gdi", name="2.0 L turbo four, direct injection", geo="ref-05-inline-4", layout="Inline 4",
+arch(slug="turbo-four-20-gdi", runner=0.3, name="2.0 L turbo four, direct injection", geo="ref-05-inline-4", layout="Inline 4",
      bore=82.5, stroke=92.8, rod=144.0, cr=9.6, valves=4, dIn=33.8, dEx=28.0,
      cam=(240, 208, 10.7, 110, 236, 204, 9.0, 112), train="Finger", phase=(60, 0), redline=6800, idle=750,
      boost=dict(kind="Turbo", target=1.2, spring=0.6, scrolls="Twin scroll"), direct=True, grade="Premium (91)",
@@ -295,13 +297,13 @@ arch(slug="turbo-four-20-gdi", name="2.0 L turbo four, direct injection", geo="r
      notes="A 2.0 L direct-injection turbo four: 82.5 x 92.8 mm (1984 cc), 9.6:1 (engines of the kind in hot "
            "hatches: 155 to 228 kW at 5000 to 6500 rpm, 350 to 400 N m from 1600 to 4500; makers' figures). "
            "Front drive, six-speed dual clutch.", balance2=True)
-arch(slug="v6-35-na", name="3.5 L V6", geo="ref-09-v6-60", layout="V6", bore=94.0, stroke=83.0, rod=152.0,
+arch(slug="v6-35-na", intake=dict(runnerLength=0.50, runnerLength2=0.30, runnerSwitch=4000 * RPM), name="3.5 L V6", geo="ref-09-v6-60", layout="V6", bore=94.0, stroke=83.0, rod=152.0,
      cr=10.8, valves=4, dIn=35.0, dEx=29.0, cam=(240, 208, 10.2, 110, 236, 204, 9.4, 112), train="Finger",
      phase=(40, 30), redline=6700, idle=700, car="family-sedan-auto", timing="Toothed belt",
      notes="A 60-degree 3.5 L V6 of a family car: 94 x 83 mm (3456 cc), 10.8:1, four valves and phased cams (engines "
            "of the kind: 195 to 224 kW at 6200 to 6600 rpm, 340 to 360 N m at 4700; makers' figures). Front drive, "
            "six-speed automatic.")
-arch(slug="v6-35-twin-turbo-pickup", name="3.5 L twin-turbo V6 pickup", geo="ref-09-v6-60", layout="V6",
+arch(slug="v6-35-twin-turbo-pickup", runner=0.3, name="3.5 L twin-turbo V6 pickup", geo="ref-09-v6-60", layout="V6",
      bore=92.5, stroke=86.6, rod=152.0, cr=10.5, valves=4, dIn=34.0, dEx=28.0,
      cam=(236, 204, 9.5, 112, 232, 200, 9.0, 112), train="Finger", phase=(50, 40), redline=6000, idle=650,
      boost=dict(kind="Twin turbos", layout="Two, a bank each", target=1.0, spring=0.6), direct=True,
@@ -309,21 +311,21 @@ arch(slug="v6-35-twin-turbo-pickup", name="3.5 L twin-turbo V6 pickup", geo="ref
      notes="A 3.5 L twin-turbo V6 of a full-size pickup: 92.5 x 86.6 mm (3497 cc), 10.5:1, direct injection, a turbo "
            "a bank (engines of the kind: 280 to 300 kW at 5000 to 6000 rpm, 640 to 690 N m at 3500; makers' "
            "figures). Four-wheel drive, ten-speed automatic.")
-arch(slug="twin-cam-roadster-18", convK=17.0, name="1.8 L twin-cam roadster", geo="ref-05-inline-4", layout="Inline 4",
+arch(slug="twin-cam-roadster-18", runner=0.4, convK=17.0, name="1.8 L twin-cam roadster", geo="ref-05-inline-4", layout="Inline 4",
      bore=83.0, stroke=85.0, rod=133.0, cr=10.0, valves=4, dIn=33.0, dEx=28.0,
      cam=(244, 212, 9.0, 110, 240, 208, 8.5, 112), train="Bucket", redline=7000, idle=850, car="roadster",
      timing="Toothed belt",
      notes="A 1.8 L twin-cam 16-valve four: 83 x 85 mm (1839 cc), 10:1 (engines of the kind in light roadsters: 96 "
            "to 110 kW at 6500 to 7000 rpm, 160 to 170 N m at 5000; makers' figures). Rear drive, six-speed manual.")
-arch(slug="pickup-diesel-67-inline-six", name="6.7 L straight-six turbo diesel pickup", geo="ref-10-inline-6",
+arch(slug="pickup-diesel-67-inline-six", runner=0.35, name="6.7 L straight-six turbo diesel pickup", geo="ref-10-inline-6",
      layout="Inline 6", bore=107.0, stroke=124.0, rod=192.0, cr=16.2, valves=4, dIn=36.0, dEx=33.0,
      cam=(228, 196, 11.0, 112, 228, 196, 10.5, 112), train="Pushrod", redline=3200, idle=750, diesel=True,
      boost=dict(kind="Turbo", target=2.0, spring=1.6, vanes=True), car="heavy-pickup", timing="Gears",
      compressionBrake=True,
      notes="A 6.7 L straight-six turbo diesel, 107 x 124 mm (6690 cc), 16.2:1, pushrods and four valves, a "
-           "variable-vane turbo (engines of the kind: 260 to 310 kW at 2800 to 3000 rpm, 1000 "
+           "variable-vane turbo that doubles as an exhaust brake (engines of the kind: 260 to 310 kW at 2800 to 3000 rpm, 1000 "
            "to 1460 N m at 1600 to 1800; makers' figures). In a heavy-duty pickup, six-speed automatic.")
-arch(slug="twin-turbo-hot-vee-v8-40", name="Twin-turbo 4.0 L hot-vee V8", geo="ref-12-v8-cross",
+arch(slug="twin-turbo-hot-vee-v8-40", runner=0.25, name="Twin-turbo 4.0 L hot-vee V8", geo="ref-12-v8-cross",
      layout="V8 crossplane", bore=86.0, stroke=86.0, rod=143.0, cr=10.5, valves=4, dIn=33.0, dEx=28.0,
      cam=(244, 212, 10.5, 110, 240, 208, 9.5, 112), train="Finger", phase=(42, 42), redline=6800, idle=650,
      boost=dict(kind="Twin turbos", layout="Two, a bank each", target=1.2, spring=0.6, scrolls="Twin scroll"),
@@ -331,7 +333,7 @@ arch(slug="twin-turbo-hot-vee-v8-40", name="Twin-turbo 4.0 L hot-vee V8", geo="r
      notes="A 4.0 L crossplane V8 with both turbos in the vee (hot-vee): 86 x 86 mm (3996 cc), 10.5:1, direct "
            "injection (engines of the kind: 350 to 470 kW at 5500 to 6500 rpm, 700 to 850 N m from 2000 to 4500; "
            "makers' figures). All-wheel drive, eight-speed automatic.")
-arch(slug="vr6-28", name="Narrow-angle VR6 2.8 L", geo="vr6", layout="Inline 6", bore=81.0, stroke=90.3,
+arch(slug="vr6-28", runner=0.45, name="Narrow-angle VR6 2.8 L", geo="vr6", layout="Inline 6", bore=81.0, stroke=90.3,
      rod=164.0, cr=10.0, valves=2, dIn=40.0, dEx=35.0, cam=(240, 206, 10.0, 110, 236, 202, 9.5, 112),
      train="Rocker", redline=6500, idle=750, car="hatch-vr", timing="Chain",
      notes="A 15-degree narrow-angle six, one head over both banks, two valves a cylinder: 81 x 90.3 mm (2792 cc), "
@@ -345,27 +347,27 @@ arch(slug="straight-six-32-high-rev", name="3.2 L straight six, high-revving", g
      notes="A naturally aspirated 3.2 L straight six with a throttle body a cylinder: 87 x 91 mm (3246 cc), 11.5:1, "
            "8000 rpm (the S54 kind: 252 kW at 7900 rpm, 365 N m at 4900; makers' figures, from memory, firm to 5 %). "
            "Rear drive, six-speed manual.")
-arch(slug="four-cam-v8-50", name="Four-cam 5.0 L V8", geo="ref-12-v8-cross", layout="V8 crossplane",
+arch(slug="four-cam-v8-50", runner=0.35, name="Four-cam 5.0 L V8", geo="ref-12-v8-cross", layout="V8 crossplane",
      bore=93.0, stroke=92.7, rod=150.7, cr=12.0, valves=4, dIn=37.0, dEx=31.0,
      cam=(260, 228, 12.0, 108, 256, 224, 11.0, 112), train="Finger", phase=(50, 50), redline=7500, idle=700,
      direct=True, grade="Premium (91)", car="pony-car", timing="Chain",
      notes="A 5.0 L four-cam crossplane V8: 93 x 92.7 mm (5038 cc), 12:1, all four cams phased (engines of the kind: "
            "300 to 343 kW at 6500 to 7000 rpm, 530 to 570 N m at 4250 to 4600; makers' figures). Rear drive, "
            "six-speed manual.")
-arch(slug="big-bore-70-pushrod-v8", name="7.0 L pushrod V8, dry sump", geo="ref-12-v8-cross",
+arch(slug="big-bore-70-pushrod-v8", runner=0.4, name="7.0 L pushrod V8, dry sump", geo="ref-12-v8-cross",
      layout="V8 crossplane", bore=104.8, stroke=101.6, rod=158.0, cr=11.0, valves=2, dIn=56.0, dEx=41.0,
      cam=(282, 230, 15.0, 112, 288, 234, 14.0, 116), train="Pushrod", redline=7000, idle=750,
      friction="Roller", grade="Premium (91)", car="front-engine-sports", timing="Chain", lifters="Hydraulic",
      notes="A 7.0 L small-block-sized pushrod V8 with titanium intake valves and a dry sump: 104.8 x 101.6 mm "
            "(7011 cc), 11:1, 7000 rpm (the LS7 kind: 377 kW at 6300 rpm, 637 N m at 4800; gmauthority.com). "
            "In a light front-engined sports car, six-speed manual.")
-arch(slug="pushrod-v6-38", name="3.8 L pushrod V6", geo="v6-90-split", layout="V6", bore=96.5, stroke=86.4,
+arch(slug="pushrod-v6-38", runner=0.45, name="3.8 L pushrod V6", geo="v6-90-split", layout="V6", bore=96.5, stroke=86.4,
      rod=145.0, cr=9.4, valves=2, dIn=46.0, dEx=38.0, cam=(240, 196, 9.4, 112, 244, 200, 9.4, 114), train="Pushrod",
      redline=5700, idle=650, friction="Roller", car="big-sedan-fwd", timing="Chain",
      notes="A 90-degree pushrod V6 with split pins for even firing: 96.5 x 86.4 mm (3791 cc), 9.4:1 (engines of the "
            "kind: 140 to 155 kW at 5200 rpm, 305 to 325 N m at 4000; makers' figures of the 1990s). A big "
            "front-drive sedan, four-speed automatic.", balance1=True)
-arch(slug="flat-plane-v8-39-twin-turbo", name="Flat-plane 3.9 L V8, twin turbo", geo="ref-13-v8-flat",
+arch(slug="flat-plane-v8-39-twin-turbo", runner=0.25, name="Flat-plane 3.9 L V8, twin turbo", geo="ref-13-v8-flat",
      layout="V8 flat-plane", bore=86.5, stroke=83.0, rod=148.0, cr=9.4, valves=4, dIn=33.0, dEx=28.0,
      cam=(252, 220, 10.5, 108, 248, 216, 10.0, 112), train="Finger", phase=(40, 40), redline=8000, idle=900,
      boost=dict(kind="Twin turbos", layout="Two, a bank each", target=1.3, spring=0.7, scrolls="Twin scroll"),
@@ -373,6 +375,47 @@ arch(slug="flat-plane-v8-39-twin-turbo", name="Flat-plane 3.9 L V8, twin turbo",
      notes="A 3.9 L flat-plane V8 with a turbo a bank: 86.5 x 83 mm (3902 cc), 9.4:1, direct injection (engines of "
            "the kind: 450 to 530 kW at 7500 to 8000 rpm, 760 to 800 N m at 3000 to 5750; makers' figures). In a "
            "mid-engined coupe, seven-speed dual clutch.")
+
+
+# ---- valve springs ------------------------------------------------------------------------------------------------
+# Rate (N/m) and preload (N) that put the intake valves' float speed (tel.valve.floatSpeed, card E's
+# w_float = sqrt((F0 + k L) / (m |L''|))) 10 % past each engine's limiter: measured with a trial spring of
+# 40 kN/m over 250 N, then both scaled by (1.10 x redline / float speed)^2 (w goes as the square root of the force).
+# Floored at a soft road spring (25 kN/m over 150 N). The pushrod engines need two to four times a real spring
+# (the 7.0 L: 228 kN/m, some 1300 lb/in, where the real one runs some 340): the float model reads pessimistic for a
+# pushrod train (reported to card E). The two-stage cam's figures are stage A's: its B profile is sharper, so it
+# carries half as much again.
+SPRINGS = {
+    "air-cooled-flat-six-36": (48500, 303),
+    "big-block-74-pushrod-v8": (123900, 774),
+    "big-bore-70-pushrod-v8": (228000, 1425),
+    "boxer-four-turbo-unequal": (28100, 175),
+    "diesel-20-common-rail": (9000, 56),
+    "economy-four-15": (17400, 109),
+    "flat-plane-v8-39-twin-turbo": (29200, 183),
+    "flat-plane-v8-45": (38900, 243),
+    "four-cam-v8-50": (30000, 187),
+    "hot-hatch-16-16v": (24300, 152),
+    "inline-five-turbo-rally": (23600, 147),
+    "kei-660-triple-turbo": (25000, 156),
+    "pickup-diesel-67-inline-six": (19900, 124),
+    "pushrod-v6-38": (88100, 550),
+    "small-block-57-carb": (119700, 748),
+    "straight-six-32-high-rev": (35900, 225),
+    "straight-six-twin-turbo-30": (20200, 126),
+    "supercharged-v8-62": (174500, 1090),
+    "three-cylinder-10-turbo": (16000, 100),
+    "tractor-15-inline-six": (8300, 52),
+    "turbo-four-20-gdi": (25000, 156),
+    "twin-cam-roadster-18": (25900, 162),
+    "twin-turbo-hot-vee-v8-40": (22900, 143),
+    "two-stage-cam-20": (54500, 340),
+    "v10-52": (34000, 213),
+    "v12-65": (41700, 260),
+    "v6-35-na": (24300, 152),
+    "v6-35-twin-turbo-pickup": (18600, 117),
+    "vr6-28": (37900, 237),
+}
 
 
 # ---- writing them ------------------------------------------------------------------------------------------------
@@ -407,6 +450,10 @@ def build(a):
                  exDurSeat=de, exDur1mm=d1e, exLift=le / 1000.0, exCentre=ce)
         if "phase" in a:
             v["inPhaseRange"], v["exPhaseRange"] = a["phase"]
+        if a["slug"] in SPRINGS:
+            k, f0 = SPRINGS[a["slug"]]
+            m = 1.5 if "stages" in a else 1.0
+            v["springRate"], v["springPreload"] = max(k * m, 25000.0), max(f0 * m, 150.0)
         if "stages" in a:
             v["stages"] = "On"
             v.update(a["stages"])
@@ -417,7 +464,11 @@ def build(a):
     else:
         v["cam"] = 0.55    # a rotary's ports: the cam dial's, mid-way (street port)
 
+    # the runners' length: what the kind has (long for low-speed torque, short for high revs, two lengths where the
+    # real ones had them): the loaded-pipe relation x tan x = A L / V puts the ram's bump where the kind wants it
     i = {"model": 1}
+    if "runner" in a:
+        i["runnerLength"] = a["runner"]
     i.update(a.get("intake", {}))
 
     bo = {"model": "Machine", "kind": "Natural", "level": 0.0, "blowOff": 0.7}
@@ -459,6 +510,11 @@ def build(a):
     t = {"model": "Maps", "timing": 0, "pops": 0.1, "starter": True,
          "limiter.kind": a.get("limiter", "Fuel cut"), "limiter.speed": e["redlineSpeed"],
          "idle.speed": round(a["idle"] * RPM, 3)}
+    if a.get("compressionBrake"):
+        # the exhaust brake by the turbine's vanes, armed on the dash (card D2's); the compression brake (valve.auxOn)
+        # stays off, see above
+        t["exhaustBrake"] = "Turbine vanes"
+        t["exBrakeSwitch"] = "On"
     if a.get("antiLag"):
         t["antiLag.on"] = True
         t["launch.on"] = True

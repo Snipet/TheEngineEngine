@@ -46,10 +46,12 @@ $commit = (& git rev-parse --short HEAD 2>$null)
 ) | Set-Content -Path $readme -Encoding UTF8
 
 $rendered = 0; $skipped = 0; $failed = 0
-$group = ""; $files = @()
+$script:group = ""; $script:files = @()
 function Flush-Group {
     if ($script:files.Count -gt 0) {
-        if ($fuzz) {
+        if ($script:group.EndsWith("-raw")) {
+            Add-Content -Path $readme "  $($script:group): not loudness-matched (its question is the loudness)"
+        } elseif ($fuzz) {
             & $fuzz --match $Level @script:files 2>&1 | Add-Content -Path $readme
         } else {
             Add-Content -Path $readme "  (no tee-fuzz beside tee-render: this group is not loudness-matched)"
@@ -62,8 +64,10 @@ foreach ($line in Get-Content "scripts\listening-pack.tsv") {
     if ($line -eq "" -or $line.StartsWith("#")) { continue }
     $f = $line.Split("`t")
     $g, $label, $q, $build, $scenario = $f[0], $f[1], $f[2], $f[3], $f[4]
+    $defines = @()
+    if ($f.Count -gt 5 -and $f[5] -ne "") { $defines = @("--define", $f[5]) }
     if ($Quick -and $q -ne "1") { continue }
-    if ($g -ne $group) { Flush-Group; $group = $g }
+    if ($g -ne $script:group) { Flush-Group; $script:group = $g }
     $wav = Join-Path $Out "$g-$label.wav"
     $buildPath = Join-Path "content\builds" $build
     if (-not (Test-Path $buildPath)) {
@@ -75,7 +79,7 @@ foreach ($line in Get-Content "scripts\listening-pack.tsv") {
     Write-Host "rendering $g-$label ($build, $(Split-Path -Leaf $scenario))"
     $log = Join-Path $Out ".$g-$label.log"
     & $render --build $buildPath --scenario $scenario --out $wav --csv - --sim (Join-Path $root "sim") `
-        --content (Join-Path $root "content") *> $log
+        --content (Join-Path $root "content") @defines *> $log
     if ($LASTEXITCODE -eq 0) {
         $script:files += $wav
         $rendered++

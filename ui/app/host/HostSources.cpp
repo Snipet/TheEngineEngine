@@ -62,6 +62,7 @@ namespace tee::ui
         {
             quiet_ = 0.0;
             request_ = predict_.request(build_);
+            ++requests_;
             ++revision_;
         }
         // Each curve for the newest request: the coarse one at once, then filled in, then refined. The first curve of

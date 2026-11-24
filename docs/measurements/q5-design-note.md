@@ -106,18 +106,19 @@ The pipes cost 23 % (reads and writes) plus 12 % (the junctions) of the V8. Each
 Lagrange read, the tracker, three wall shelves each way (one dependent chain), a few branches; FMinus vectorises it
 only in pairs (forward and backward). With the pipes' states as arrays across pipes (`float wsF[3][32]` for all of
 an engine's pipes, the delay lines as now) the shelves of eight pipes run as one `float8` chain: the same arithmetic
-per pipe in the same order, so **exact**, and some 3 to 4 times cheaper for the wall and the tracker (the reads
-themselves are gathers and stay scalar). Estimated 8 to 12 % of R on the V8, more on G's 32-pipe builds where it
-matters most (G's +0.31 R is nearly all per-pipe cost). G's builder already holds its pipes in a network
-(`exhaust/network.fm`); that is where the arrays belong. This is the change I would make first.
+per pipe in the same order, so **exact**, and cheaper for the wall and the tracker (the reads themselves are gathers and stay scalar). **Prototyped since**
+(q3-q4-changes.md, `proto/duct-lanes.patch`): exact, 3 to 8 % on eight to twelve cylinders, nothing on an inline six
+(the estimate of 8 to 12 % was too high). G's builder already holds its pipes in a network (`exhaust/network.fm`);
+that is where the arrays belong.
 
 ## 3. A second fidelity: 48 kHz inside, for the dyno ribbon
 
 The engine's rate is one number (`Engine::setupAll`: `rate = 96000.0f`); every module takes it. Changed to 48000 in
-a copy (with the exact valve exit applied; the host at 48 kHz, so no resampler), measured against the same copy at
+a copy (the host at 48 kHz, so no resampler), measured against the same copy at
 96 kHz:
 
-**Cost**: 0.48 of 96 kHz's a second of sound (qbench: V8 free-revs 0.536, drive-car 0.476, defaults 0.497 and 0.426).
+**Cost**: 0.488 of 96 kHz's a second of sound (qbench, 7 runs, both orders: 0.472 to 0.492 a pair; the twin-turbo V8
+0.491 and 0.492, now that the boost machine takes the rate).
 `tee-dyno` (11 points, 1300 to 6400 rpm, the V8): 11.9 s simulated in 2.29 s at 96 kHz, 1.69 s at 48 kHz (the dyno's
 settling is the same number of seconds either way; its overhead between points does not halve).
 
@@ -132,9 +133,8 @@ The worst points are at the lowest speeds, where the big cam's lope makes a poin
 the lower rate is good to about 1 %.** The sound is not: the third-octave bands near the top lose 13 to 24 dB (the
 engine's own Nyquist is 24 kHz, its filters' highs gone), the levels and the speed stay within the floor.
 
-**Not ready at 48 kHz**: F's boost machine hard-codes 96 kHz (`boost/boost.fm`: `mach.setup(96000.0f, ...)`;
-`boost/gas.fm`: `kBoostDt = 1 / 96000`): a turbo build at 48 kHz would run its machine at the wrong time step. F
-must take the engine's rate before a 48 kHz tier can carry turbos. And `tee-dyno` on the Large Diesel gave negative
+**Turbos at 48 kHz**: F's boost machine hard-coded 96 kHz; since b9fb66b it takes the engine's rate (exact at 96 kHz),
+so a 48 kHz tier carries turbos (the twin-turbo V8 measured above). And `tee-dyno` on the Large Diesel gave negative
 torques at 96 kHz already (from 1180 rpm up: the governor or the settling, card C's to look at), so the diesel's
 curve could not be compared.
 
@@ -143,10 +143,22 @@ on this core with tee-dyno's present settling; the rate halves the engine's part
 is the other half of the budget. Fewer pipe filters (the wall's shelves off: they shape the highs, not the tuning)
 would take a further 10 to 15 % off at 48 kHz, not measured. The compile is not in it (a Spec edit recompiles nothing).
 
+### As a quality setting for slow machines
+
+The same switch could be the user's: "Quality: full (96 kHz inside) / light (48 kHz inside)". What light costs: half
+the processor time (0.48 measured), so a build at 1.5 R plays at about 0.75 R. What it loses, measured on the V8 and
+the defaults: **the top octave**, the third-octave bands from about 10 kHz up 13 to 24 dB down (the engine's own
+Nyquist is then 24 kHz and its pipes' filters and the valves' jets lose their highs: the rasp and the hiss on top of
+the note thin out); the level of each quarter second and the engine's speed within the floor of the same engine on
+another day; the torque within 1.2 %. It is a different rendering, not a cheaper exact one: the null test's pairs
+would not apply to it, and every package's tests would need running at 48 kHz too (F's machine must take the rate
+first, as above). Offer it only to a machine that cannot play the full one in real time, with the highs' loss named
+in the setting.
+
 ## 4. In order
 
-1. The exact patches (q3-q4-changes.md): 11 % of R now, no decision needed beyond the owners'.
-2. The pipes as arrays (G, exact): 8 to 12 % more, most where the builder adds pipes.
+1. The exact changes (q3-q4-changes.md): about 3 % of R, committed.
+2. The pipes as arrays (G, exact): 3 to 8 % more on eight to twelve cylinders (prototyped, waits for G).
 3. The two-pass valve, if a person hears no difference (G): 10 to 13 %.
 4. 48 kHz inside for the dyno ribbon (C, D; F's rate first).
 5. The parallel parts (D, G, E), only if the heaviest builds still need it after 1 to 3.

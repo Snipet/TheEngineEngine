@@ -22,6 +22,9 @@ namespace tee::test::h
             applyBuild(*player, engineBuild(*player, build));
         }
 
+        // Another build's fields over these (a car's part over an engine's: "cars/rwd-v8-coupe")
+        void over(const std::string& build) { applyBuild(*player, engineBuild(*player, build)); }
+
         void set(const std::string& path, double value, std::size_t element = 0)
         {
             const int i = player->specIndex(path);

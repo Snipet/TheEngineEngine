@@ -18,31 +18,46 @@ module EcuLimiterSpec
         [[ui::help("How the rev limiter holds the speed: fuel cut is the reference's; a spark cut bangs in the pipe")]];
     float speed [[fminus::range(0, 2100)]] [[fminus::default(0)]] [[ui::label("Limiter speed")]] [[ui::quantity("rotation")]]
         [[ui::help("0: the layout's redline")]];
-    float soft [[fminus::range(5, 105)]] [[fminus::default(31.415927)]] [[ui::label("Soft band")]] [[ui::quantity("rotation")]];
-    float retard [[fminus::range(0, 30)]] [[fminus::default(15)]] [[ui::label("Soft retard")]] [[ui::quantity("angle")]];
+    float soft [[fminus::range(5, 105)]] [[fminus::default(31.415927)]] [[ui::label("Soft band")]]
+        [[ui::help("The soft limiter's band below the limit, where the spark is retarded before any cylinder is cut")]]
+        [[ui::quantity("rotation")]];
+    float retard [[fminus::range(0, 30)]] [[fminus::default(15)]] [[ui::label("Soft retard")]]
+        [[ui::help("How far the soft limiter retards the spark at the band's end")]] [[ui::quantity("angle")]];
 };
 
 module EcuLaunchSpec
 {
-    bool on [[fminus::default(0)]] [[ui::label("Launch control")]];
-    float speed [[fminus::range(100, 1050)]] [[fminus::default(418.879)]] [[ui::label("Launch speed")]] [[ui::quantity("rotation")]];
-    float retard [[fminus::range(0, 40)]] [[fminus::default(20)]] [[ui::label("Launch retard")]] [[ui::quantity("angle")]];
-    bool flatShift [[fminus::default(0)]] [[ui::label("Flat-shift")]];
+    bool on [[fminus::default(0)]] [[ui::label("Launch control")]]
+        [[ui::help("On: with the launch button, or the clutch down at a standstill and the pedal floored, the ECU holds the launch speed")]]
+        ;
+    float speed [[fminus::range(100, 1050)]] [[fminus::default(418.879)]] [[ui::label("Launch speed")]]
+        [[ui::help("The engine speed launch control holds on the line")]] [[ui::quantity("rotation")]];
+    float retard [[fminus::range(0, 40)]] [[fminus::default(20)]] [[ui::label("Launch retard")]]
+        [[ui::help("How far launch control retards the spark to hold the speed (and heat the turbo)")]]
+        [[ui::quantity("angle")]];
+    bool flatShift [[fminus::default(0)]] [[ui::label("Flat-shift")]]
+        [[ui::help("On: an upshift with the pedal held down cuts the sparks while the clutch is down instead of lifting")]]
+        ;
 };
 
 module EcuOverrunSpec
 {
     float fuel [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Overrun fuel")]] [[ui::quantity("fraction")]]
         [[ui::help("The share of the overrun's firings fuelled anyway, burned late: pops and bangs")]];
-    float retard [[fminus::range(0, 40)]] [[fminus::default(0)]] [[ui::label("Overrun retard")]] [[ui::quantity("angle")]];
+    float retard [[fminus::range(0, 40)]] [[fminus::default(0)]] [[ui::label("Overrun retard")]]
+        [[ui::help("How late the fuel let through on the overrun is lit; later burns more of it in the pipes")]]
+        [[ui::quantity("angle")]];
 };
 
 module EcuKnockSpec
 {
     bool on [[fminus::default(1)]] [[ui::label("Knock control")]] [[ui::help("Off at the engine's risk")]];
-    float step [[fminus::range(0, 5)]] [[fminus::default(1.5)]] [[ui::label("Retard a knock")]] [[ui::quantity("angle")]];
-    float most [[fminus::range(0, 30)]] [[fminus::default(15)]] [[ui::label("Most retard")]] [[ui::quantity("angle")]];
-    float recover [[fminus::range(0.1, 20)]] [[fminus::default(2)]] [[ui::label("Recovery")]] [[ui::unit("deg/s")]];
+    float step [[fminus::range(0, 5)]] [[fminus::default(1.5)]] [[ui::label("Retard a knock")]]
+        [[ui::help("How far a cylinder's spark is retarded at each knock")]] [[ui::quantity("angle")]];
+    float most [[fminus::range(0, 30)]] [[fminus::default(15)]] [[ui::label("Most retard")]]
+        [[ui::help("The most knock control may retard any cylinder")]] [[ui::quantity("angle")]];
+    float recover [[fminus::range(0.1, 20)]] [[fminus::default(2)]] [[ui::label("Recovery")]]
+        [[ui::help("How fast the knock retard is given back once the knocking stops")]] [[ui::unit("deg/s")]];
 };
 
 module EcuIdleSpec
@@ -55,48 +70,83 @@ module EcuIdleSpec
 
 module EcuTractionSpec
 {
-    bool on [[fminus::default(0)]] [[ui::label("Traction control")]];
-    float slip [[fminus::range(0.01, 0.5)]] [[fminus::default(0.1)]] [[ui::label("Slip target")]] [[ui::quantity("fraction")]];
+    bool on [[fminus::default(0)]] [[ui::label("Traction control")]]
+        [[ui::help("On: wheelspin past the slip target is cut back by retarding the spark, then by cutting cylinders")]]
+        ;
+    float slip [[fminus::range(0.01, 0.5)]] [[fminus::default(0.1)]] [[ui::label("Slip target")]]
+        [[ui::help("The wheelspin traction control allows, as slip (0.1: the wheel turns 10 % faster than the road)")]]
+        [[ui::quantity("fraction")]];
     float pitSpeed [[fminus::range(0, 40)]] [[fminus::default(0)]] [[ui::label("Pit limiter")]] [[ui::quantity("speed")]]
         [[ui::help("0: off")]];
 };
 
 module EcuAntiLagSpec
 {
-    bool on [[fminus::default(0)]] [[ui::label("Anti-lag")]];
-    float low [[fminus::range(0, 1050)]] [[fminus::default(209.4395)]] [[ui::label("Anti-lag from")]] [[ui::quantity("rotation")]];
-    float high [[fminus::range(0, 1050)]] [[fminus::default(837.758)]] [[ui::label("Anti-lag to")]] [[ui::quantity("rotation")]];
-    float retard [[fminus::range(0, 60)]] [[fminus::default(30)]] [[ui::label("Anti-lag retard")]] [[ui::quantity("angle")]];
-    float lambda [[fminus::range(0.6, 1)]] [[fminus::default(0.85)]] [[ui::label("Anti-lag lambda")]] [[ui::quantity("ratio")]];
+    bool on [[fminus::default(0)]] [[ui::label("Anti-lag")]]
+        [[ui::help("On: with the pedal lifted inside its speed window, the ECU retards the spark and enriches so the turbo keeps spinning")]]
+        ;
+    float low [[fminus::range(0, 1050)]] [[fminus::default(209.4395)]] [[ui::label("Anti-lag from")]]
+        [[ui::help("Anti-lag works only above this speed")]] [[ui::quantity("rotation")]];
+    float high [[fminus::range(0, 1050)]] [[fminus::default(837.758)]] [[ui::label("Anti-lag to")]]
+        [[ui::help("Anti-lag works only below this speed")]] [[ui::quantity("rotation")]];
+    float retard [[fminus::range(0, 60)]] [[fminus::default(30)]] [[ui::label("Anti-lag retard")]]
+        [[ui::help("How far anti-lag retards the spark")]] [[ui::quantity("angle")]];
+    float lambda [[fminus::range(0.6, 1)]] [[fminus::default(0.85)]] [[ui::label("Anti-lag lambda")]]
+        [[ui::help("The mixture anti-lag gives (under 1 is rich)")]] [[ui::quantity("ratio")]];
 };
 
 module EcuNitrousSpec
 {
     bool on [[fminus::default(0)]] [[ui::label("Nitrous")]] [[ui::help("Armed by the nitrous button")]];
-    float low [[fminus::range(0, 1050)]] [[fminus::default(314.159)]] [[ui::label("Nitrous from")]] [[ui::quantity("rotation")]];
-    int gear [[fminus::range(1, 18)]] [[fminus::default(2)]] [[ui::label("Nitrous from gear")]] [[ui::unit("gear")]];
-    float retard [[fminus::range(0, 20)]] [[fminus::default(4)]] [[ui::label("Nitrous retard")]] [[ui::quantity("angle")]];
-    float lambda [[fminus::range(0.6, 1)]] [[fminus::default(0.85)]] [[ui::label("Nitrous lambda")]] [[ui::quantity("ratio")]];
+    float low [[fminus::range(0, 1050)]] [[fminus::default(314.159)]] [[ui::label("Nitrous from")]]
+        [[ui::help("Nitrous is let in only above this speed")]] [[ui::quantity("rotation")]];
+    int gear [[fminus::range(1, 18)]] [[fminus::default(2)]] [[ui::label("Nitrous from gear")]]
+        [[ui::help("Nitrous is let in only in this gear or above")]] [[ui::unit("gear")]];
+    float retard [[fminus::range(0, 20)]] [[fminus::default(4)]] [[ui::label("Nitrous retard")]]
+        [[ui::help("How far the spark is retarded while the nitrous flows")]] [[ui::quantity("angle")]];
+    float lambda [[fminus::range(0.6, 1)]] [[fminus::default(0.85)]] [[ui::label("Nitrous lambda")]]
+        [[ui::help("The mixture while the nitrous flows")]] [[ui::quantity("ratio")]];
 };
 
 // The maps: each with its auto switch (on: the formula; maps.fm). The axes: speed (rad/s) and load (the manifold over
 // the air), but the boost target's speed and gear, the pedal map's speed and pedal
 module EcuMapsSpec
 {
-    Map16 spark [[ui::label("Spark advance")]] [[ui::axes("rotation", "ratio")]] [[ui::unit("deg")]];
-    bool sparkAuto [[fminus::default(1)]] [[ui::label("Spark: formula")]];
-    Map16 lambda [[ui::label("Lambda")]] [[ui::axes("rotation", "ratio")]] [[ui::quantity("ratio")]];
-    bool lambdaAuto [[fminus::default(1)]] [[ui::label("Lambda: formula")]];
-    Map16 boost [[ui::label("Boost target")]] [[ui::axes("rotation", "ratio")]] [[ui::unit("Pa")]];
-    bool boostAuto [[fminus::default(1)]] [[ui::label("Boost: formula")]];
-    Map16 camIn [[ui::label("Intake cam")]] [[ui::axes("rotation", "ratio")]] [[ui::unit("deg")]];
-    bool camInAuto [[fminus::default(1)]] [[ui::label("Intake cam: formula")]];
-    Map16 camEx [[ui::label("Exhaust cam")]] [[ui::axes("rotation", "ratio")]] [[ui::unit("deg")]];
-    bool camExAuto [[fminus::default(1)]] [[ui::label("Exhaust cam: formula")]];
-    Map16 pedal [[ui::label("Pedal to plate")]] [[ui::axes("rotation", "fraction")]] [[ui::quantity("fraction")]];
-    bool pedalAuto [[fminus::default(1)]] [[ui::label("Pedal: formula")]];
-    Map16 lift [[ui::label("Lift command")]] [[ui::axes("rotation", "ratio")]] [[ui::quantity("fraction")]];
-    bool liftAuto [[fminus::default(1)]] [[ui::label("Lift: formula")]];
+    Map16 spark [[ui::label("Spark advance")]]
+        [[ui::help("Spark advance by engine speed and load, crank degrees before top dead centre")]]
+        [[ui::axes("rotation", "ratio")]] [[ui::unit("deg")]];
+    bool sparkAuto [[fminus::default(1)]] [[ui::label("Spark: formula")]]
+        [[ui::help("On: the spark comes from the formula; off: from the map as drawn")]] ;
+    Map16 lambda [[ui::label("Lambda")]]
+        [[ui::help("The mixture asked for by engine speed and load (1 burns all the fuel; under 1 is rich)")]]
+        [[ui::axes("rotation", "ratio")]] [[ui::quantity("ratio")]];
+    bool lambdaAuto [[fminus::default(1)]] [[ui::label("Lambda: formula")]]
+        [[ui::help("On: lambda comes from the formula; off: from the map as drawn")]] ;
+    Map16 boost [[ui::label("Boost target")]]
+        [[ui::help("The boost asked for by engine speed and gear")]]
+        [[ui::axes("rotation", "ratio")]] [[ui::unit("Pa")]];
+    bool boostAuto [[fminus::default(1)]] [[ui::label("Boost: formula")]]
+        [[ui::help("On: the boost target is the build's boost level in every gear; off: the map as drawn")]] ;
+    Map16 camIn [[ui::label("Intake cam")]]
+        [[ui::help("The intake cam's phase by engine speed and load")]]
+        [[ui::axes("rotation", "ratio")]] [[ui::unit("deg")]];
+    bool camInAuto [[fminus::default(1)]] [[ui::label("Intake cam: formula")]]
+        [[ui::help("On: the phasers' own schedule; off: the map as drawn")]] ;
+    Map16 camEx [[ui::label("Exhaust cam")]]
+        [[ui::help("The exhaust cam's phase by engine speed and load")]]
+        [[ui::axes("rotation", "ratio")]] [[ui::unit("deg")]];
+    bool camExAuto [[fminus::default(1)]] [[ui::label("Exhaust cam: formula")]]
+        [[ui::help("On: the phasers' own schedule; off: the map as drawn")]] ;
+    Map16 pedal [[ui::label("Pedal to plate")]]
+        [[ui::help("How far the throttle opens for each pedal position and speed (drive by wire)")]]
+        [[ui::axes("rotation", "fraction")]] [[ui::quantity("fraction")]];
+    bool pedalAuto [[fminus::default(1)]] [[ui::label("Pedal: formula")]]
+        [[ui::help("On: the throttle follows the pedal one to one; off: the map as drawn")]] ;
+    Map16 lift [[ui::label("Lift command")]]
+        [[ui::help("The continuous-lift command by speed and load")]]
+        [[ui::axes("rotation", "ratio")]] [[ui::quantity("fraction")]];
+    bool liftAuto [[fminus::default(1)]] [[ui::label("Lift: formula")]]
+        [[ui::help("On: full lift always; off: the map as drawn")]] ;
 };
 
 
@@ -130,6 +180,8 @@ module EcuSpec
         [[ui::help("The speed the governor gives up from no load to full, over the rated speed")]];
     float highIdle [[fminus::range(0, 2100)]] [[fminus::default(0)]] [[ui::label("High idle")]] [[ui::quantity("rotation")]]
         [[ui::help("0: the rated speed (the redline) times 1 + droop")]];
+    float ratedSpeed [[fminus::range(0, 2100)]] [[fminus::default(0)]] [[ui::label("Rated speed")]] [[ui::quantity("rotation")]]
+        [[ui::help("Full rack up to here, then the droop line; 0: the redline")]];
     float fuelBoost [[fminus::range(0, 400000)]] [[fminus::default(150000)]] [[ui::label("Pump set for boost")]]
         [[ui::quantity("pressure")]] [[ui::help("Full rack is an equivalence ratio of 0.75 at this boost (over the air)")]];
     float afc [[fminus::range(0, 1.2)]] [[fminus::default(0.8)]] [[ui::label("Smoke limiter")]] [[ui::quantity("ratio")]]
@@ -141,10 +193,14 @@ module EcuSpec
     float brakeValve [[fminus::range(0, 0.08)]] [[fminus::default(0)]] [[ui::label("Brake valve diameter")]] [[ui::quantity("length")]]
         [[ui::help("Each of the two exhaust valves it opens; 0: 0.3 of the bore")]];
     float brakeMin [[fminus::range(0, 300)]] [[fminus::default(94.24778)]] [[ui::label("Brakes cut out below")]]
+        [[ui::help("Below this engine speed the engine and exhaust brakes let go, so they never stall the engine")]]
         [[ui::quantity("rotation")]];
     int exhaustBrake [[fminus::range(0, 2)]] [[fminus::default(0)]] [[ui::label("Exhaust brake")]]
+        [[ui::help("A heavy diesel's exhaust brake: none, a flap in the pipe, or the turbine's vanes closed to hold the engine back")]]
         [[ui::choices("None", "Flap", "Turbine vanes")]];
-    int exBrakeSwitch [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Exhaust brake switch")]] [[ui::choices("Off", "On")]];
+    int exBrakeSwitch [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Exhaust brake switch")]]
+        [[ui::help("The dash switch that arms the exhaust brake: on, it works whenever the pedal is up")]]
+        [[ui::choices("Off", "On")]];
     float exBrakeLimit [[fminus::range(50000, 500000)]] [[fminus::default(300000)]] [[ui::label("Exhaust brake pressure")]]
         [[ui::quantity("pressure")]] [[ui::help("The most back pressure its spring lets the flap hold, over the air")]];
     float exBrakeLeak [[fminus::range(0.005, 0.5)]] [[fminus::default(0.03)]] [[ui::label("Exhaust brake leak")]]

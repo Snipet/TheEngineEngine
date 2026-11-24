@@ -17,7 +17,7 @@ from concurrent.futures import ThreadPoolExecutor
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.normpath(os.path.join(HERE, "..", "..", ".."))
 RPM = math.pi / 30.0
-ROW = re.compile(r"\s(\S+)\s+(pass|FAIL|n/a)(\s|$)")
+ROW = re.compile(r"\s(\S+)\s+(pass|FAIL|MISS|n/a)(\s|$)")
 
 
 def run(bin_dir, slug, out_dir):
@@ -47,7 +47,7 @@ def parse(text, targets):
             val = float(m.group(1))
         except ValueError:
             val = None
-        rows.append((t, val, m.group(2)))
+        rows.append((t, val, "FAIL" if m.group(2) == "MISS" else m.group(2)))
     return rows
 
 

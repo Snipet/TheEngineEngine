@@ -435,3 +435,81 @@ namespace
         return 0;
     }
 }
+
+namespace tee::test::u2
+{
+    class TwoStrokeScope;
+    void makeTwoStroke(tee::ui::MemoryDoc& doc, int cylinders);
+    std::unique_ptr<tee::ui::ScopeSource> twoStrokeScope(const tee::ui::FieldDoc& doc);
+}
+
+namespace
+{
+    // A two-stroke (card T's engine.cycle 1): VALVES becomes PORT TIMING. At the frame's stages, every tab of the small
+    // one, no text out of place; the inspector's pages read clean; a port's mark dragged is one undo step that sets its
+    // duration about bottom dead centre.
+    VIEW_TEST(testValvesTwoStroke, "valves.twostroke")
+    {
+        const funkgui::Rect sizes[] = { { 64, 48, 696, 574 }, { 112, 48, 1128, 874 } };
+        for (const funkgui::Rect& st : sizes)
+        {
+            const std::string tag = st.w < 700.0f ? "small" : "large";
+            for (const float dpi : { 2.0f, 1.0f })
+            {
+                tee::ui::DemoRig demo;
+                tee::test::u2::makeTwoStroke(demo.doc, 1);
+                demo.engine.set("engine.crank", 150.0);
+                demo.engine.set("engine.speed", 9000.0 * vv::kPi / 30.0);
+                const auto scope = tee::test::u2::twoStrokeScope(demo.doc);
+                tee::ui::WorkspaceContext ctx{ demo.doc, demo.engine, *scope, demo.engine, demo.units, demo.selection, demo.app };
+                auto ws = tee::ui::makeValvesWorkspace(ctx);
+                funkgui::HeadlessHost host(*ws, 0, dpi);
+                host.resize(static_cast<int>(st.w), static_cast<int>(st.h));
+                ws->place({ 0, 0, st.w, st.h });
+                host.tick(60);
+                const auto faults = [&](const std::string& when) {
+                    const std::string why = tee::test::u2::textFaults(host.draw(), { 0, 0, st.w, st.h }, tee::ui::valvesPanels(*ws));
+                    CHECK_MSG(why.empty(), tag + ", " + when + ": " + why);
+                };
+                faults("at rest");
+                golden("valves.twostroke." + tag + (dpi == 1.0f ? ".dpi1" : ""), host);
+                if (dpi != 1.0f)
+                    continue;
+                if (tag == "small")
+                    for (int t = 0; t < 3; ++t)
+                    {
+                        const funkgui::Point c = ws->item(t).centre();
+                        host.click(c.x, c.y);
+                        host.tick(5);
+                        faults("tab " + std::to_string(t));
+                        picture("valves.twostroke.small.tab" + std::to_string(t), host);
+                    }
+                // the pages
+                for (const char* path : { "", "valve.ports", "valve.powervalve", "valve.crankcase", "valve.scavenging" })
+                {
+                    demo.selection.select(path);
+                    const std::string gui = ws->inspectorPage();
+                    tee::ui::GuiPanel::Options o;
+                    o.width = 320;
+                    tee::ui::FieldPage page(demo.doc, demo.units, demo.engine, { { "page.gui", gui } }, o);
+                    CHECK_MSG(page.notes().empty(), std::string(path) + ": " + page.notes());
+                    CHECK_MSG(!tee::ui::fieldsOfGui(demo.doc, gui).empty(), path);
+                }
+                // the exhaust's opening mark, dragged later: a shorter duration, one step of undo
+                if (tag == "large")
+                {
+                    const int f = demo.doc.find("engine.tsExhaustDur");
+                    const funkgui::Point at = tee::ui::valvesHandle(*ws, 100);
+                    CHECK(at.x > 0.0f);
+                    const int steps = demo.doc.steps();
+                    host.drag(at.x, at.y - 3.0f, at.x + 20.0f, at.y - 3.0f, 6);
+                    CHECK(demo.doc.steps() == steps + 1 && demo.doc.get(f) < 192.0 - 5.0);
+                    CHECK(demo.selection.path() == "valve.ports");
+                    demo.doc.undo();
+                    CHECK_NEAR(demo.doc.get(f), 192.0, 1e-9);
+                }
+            }
+        }
+        return 0;
+    }
+}

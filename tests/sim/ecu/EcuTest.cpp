@@ -29,6 +29,7 @@ namespace
         fm.set("ecu.maps.tune.burnK", 1.0);
         fm.set("ecu.maps.tune.maxLoad", 1.0);
         fm.set("ecu.maps.tune.gears", 6);
+        fm.set("ecu.maps.tune.compression", 10.0);
         return fm;
     }
 
@@ -139,8 +140,9 @@ TEST_CASE("H3: a baked map reproduces its formula at every breakpoint", "[h][ecu
             }
         CHECK(checked == nx * ny);
     }
-    // and the spark's formula is the reference's: 12 + 22 sqrt(rpm / red) - 8 (load - 0.4) at a square engine
-    CHECK(fm.call<float>("OneLine::formula", MAP_SPARK, 3250.0f * 0.10471976f, 0.4f) == Catch::Approx(12.0 + 22.0 * std::sqrt(0.5)).epsilon(1e-5));
+    // and the spark's formula puts the half of the burn 8 degrees after the top: 0.517 of the burn's length (44 + 11
+    // (0.8 - load) degrees at a square 10:1 engine) less 8
+    CHECK(fm.call<float>("OneLine::formula", MAP_SPARK, 3250.0f * 0.10471976f, 0.4f) == Catch::Approx(0.517 * (44.0 + 11.0 * 0.4) - 8.0).epsilon(1e-5));
 }
 
 TEST_CASE("H4: each limiter holds its speed on a one-line engine", "[h][ecu][limiter]")

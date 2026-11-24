@@ -228,6 +228,12 @@ TEST_CASE("bike.quickshift: an upshift under power cuts the ignition for its tim
     CHECK(r.get("wMin") > 0.8 * before * ratio);
     CHECK(std::fabs(after / before - ratio) < 0.05);
     CHECK(r.get("running") == 1.0);
+    // the gearbox's values the mechanical voices read: the input shaft turns as the clutch's basket (the crank over the
+    // primary) with the clutch in, and the ratio is fourth's
+    auto* input = r.function<float(void*)>("Bike::gearboxInput");
+    auto* ratio4 = r.function<float(void*)>("Bike::gearboxRatio");
+    CHECK(ratio4(r.at("bike")) == static_cast<float>(r.get("bike.box.r[3]")));
+    CHECK(std::fabs(input(r.at("bike")) * r.get("bike.box.primary") / r.get("w") - 1.0) < 0.02);
 }
 
 TEST_CASE("bike.autoblip: a clutchless downshift blips the engine to the lower gear's speed; the rear tyre hardly feels "
