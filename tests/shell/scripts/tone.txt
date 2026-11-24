@@ -1,4 +1,6 @@
-# The stand-in tone: the start key, the throttle strip by the pointer, a dial by the pointer, the start key held.
+# The stand-in tone on the plain Panel (--panel plain: the pointer's points below are that Panel's start button and
+# throttle strip): the start key, the throttle strip pressed, the start button clicked, a parameter set, the start key
+# held. Every time here is the run's own simulated time (60 frames a second), never the machine's.
 0.10  tap return 0.2
 1.00  expect engine.state == 2
 1.00  pointer down 38 240                 # near the top of the throttle strip

@@ -1,0 +1,79 @@
+// fuels.fm: the fuels an engine can burn, a row each of a constant table (fuel.model 1; the reference's gasoline and
+// diesel stay as they were under fuel.model 0).
+//
+// A row is what the burn needs to know of a fuel: how much air a kilogram of it takes to burn completely (the
+// stoichiometric air-fuel ratio), the heat a kilogram gives (the lower heating value: the water leaves as steam), the
+// heat a kilogram takes to evaporate (the charge's cooling), how hard its end gas resists lighting on its own (its
+// research and motor octane numbers, read as an octane index by the knock rule, knock.fm), how fast its flame runs
+// against gasoline's and at which mixture it runs fastest, and the leanest and richest mixtures a spark still lights
+// in an engine. docs/models/combustion.md gives each number's source and says which are judgement.
+//
+// Pump gasoline is the US grades as sold, 10 % ethanol by volume (E10): its ratio and heats are the mass-weighted
+// mixture of gasoline's (Heywood, Internal Combustion Engine Fundamentals, 2nd ed., appendix D: 14.6, 44.0 MJ/kg)
+// and ethanol's (9.0, 26.9 MJ/kg). E85 is 85 % ethanol by volume (85.8 % by mass); pump E85 is often less. Race
+// gasoline is a generic unleaded one without ethanol: brands differ. Propane and hydrogen are rows for later and are
+// untested: nothing here has run them through an engine.
+//
+// What is left out: the burned gas's own properties (the cylinder keeps air's gas constant and its ratio of specific
+// heats for every fuel), dissociation (folded into the rich side's heat share, mixture.fm), oxygenates' effect on the
+// flame beyond the flame-speed factor, and the octane numbers' change with temperature and pressure past the octane
+// index's one constant.
+#pragma once
+
+enum
+{
+    FUEL_REGULAR,       // pump gasoline, E10, 87 (R+M)/2
+    FUEL_MIDGRADE,      // 89
+    FUEL_PREMIUM,       // 91
+    FUEL_RACE,          // unleaded race gasoline, no ethanol
+    FUEL_E85,
+    FUEL_METHANOL,
+    FUEL_DIESEL,
+    FUEL_PROPANE,       // untested
+    FUEL_HYDROGEN,      // untested
+    FUEL_ROWS
+};
+
+// the stoichiometric air-fuel ratio, kg of air a kg of fuel
+const float kFuelAfr[FUEL_ROWS] = {14.0f, 14.0f, 14.0f, 14.6f, 9.80f, 6.47f, 14.5f, 15.6f, 34.3f};
+// the lower heating value, J/kg
+const float kFuelLhv[FUEL_ROWS] = {42.2e6f, 42.2e6f, 42.2e6f, 44.0e6f, 29.3e6f, 19.9e6f, 42.5e6f, 46.35e6f, 120.0e6f};
+// the heat of evaporation, J/kg (propane and hydrogen go in as gases: none)
+const float kFuelLatent[FUEL_ROWS] = {402.0e3f, 402.0e3f, 402.0e3f, 350.0e3f, 771.0e3f, 1100.0e3f, 250.0e3f, 0.0f, 0.0f};
+// research and motor octane numbers (a diesel has none: its knock is its premixed burn, chargeDiesel's)
+const float kFuelRon[FUEL_ROWS] = {91.0f, 93.0f, 96.0f, 104.0f, 108.0f, 109.0f, 0.0f, 112.0f, 130.0f};
+const float kFuelMon[FUEL_ROWS] = {83.0f, 85.0f, 86.0f, 96.0f, 89.0f, 89.0f, 0.0f, 97.0f, 130.0f};
+// the laminar flame's speed at its fastest mixture over gasoline's, the equivalence ratio of that mixture, and how
+// fast it falls away either side: S(phi) / S(peak) = 1 - curv (phi - peak)^2 (Metghalchi and Keck's form)
+const float kFuelFlame[FUEL_ROWS] = {1.0f, 1.0f, 1.0f, 1.0f, 1.12f, 1.25f, 1.0f, 1.08f, 6.0f};
+const float kFuelPhiPeak[FUEL_ROWS] = {1.12f, 1.12f, 1.12f, 1.12f, 1.10f, 1.11f, 1.0f, 1.08f, 1.8f};
+const float kFuelCurv[FUEL_ROWS] = {3.2f, 3.2f, 3.2f, 3.2f, 3.4f, 3.8f, 0.0f, 4.0f, 0.4f};
+// the leanest and the richest lambda a spark still lights in an engine (misfires come in by chance past them)
+const float kFuelLean[FUEL_ROWS] = {1.45f, 1.45f, 1.45f, 1.45f, 1.55f, 1.65f, 9.0f, 1.5f, 4.0f};
+const float kFuelRich[FUEL_ROWS] = {0.60f, 0.60f, 0.60f, 0.60f, 0.55f, 0.45f, 0.0f, 0.60f, 0.40f};
+// 1: a compression-ignition fuel (the diesel's burn, chargeDiesel's); 1 in kFuelUntested: a row no test has run
+const int kFuelCompression[FUEL_ROWS] = {0, 0, 0, 0, 0, 0, 1, 0, 0};
+const int kFuelUntested[FUEL_ROWS] = {0, 0, 0, 0, 0, 0, 0, 1, 1};
+
+// The octane index the knock rule reads, Kalghatgi's RON - K (RON - MON): K near 0.5 in the old engines the motor
+// method was made for, near 0 (and below) in today's at high load, where a fuel's sensitivity (ethanol's, methanol's)
+// helps it. K is 0 here (judgement: a modern engine)
+const float kOctaneK = 0.0f;
+
+int fuelRow(int kind)
+{
+    return kind < 0 ? 0 : (kind >= FUEL_ROWS ? FUEL_ROWS - 1 : kind);
+}
+
+float fuelOctane(int kind)
+{
+    const int f = fuelRow(kind);
+    return kFuelRon[f] - kOctaneK * (kFuelRon[f] - kFuelMon[f]);
+}
+
+// The heat a kilogram of air releases with this fuel at the stoichiometric mixture, burned completely, J/kg
+float fuelHeatPerAir(int kind)
+{
+    const int f = fuelRow(kind);
+    return kFuelLhv[f] / kFuelAfr[f];
+}
