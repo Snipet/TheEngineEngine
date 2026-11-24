@@ -1,14 +1,14 @@
 {
   "format": "tee-build",
   "version": 1,
-  "name": "3.0 L twin-turbo six",
-  "notes": "Try first: turn the key, then floor it on the dyno and watch the two turbos spool in AIR (each fed by three cylinders) and the pulses split between the two collectors in EXHAUST.\nThen drive: in first, hold the brake, bring the revs up and let go for a standing start (traction control holds the wheelspin), and listen to the straight six through its dual exhaust as the dual clutch shifts.\n\nA modern 3 L twin-turbo straight six with direct injection: 84 x 89.6 mm (2979 cc), 10.2:1, four valves, both cams phased, two twin-scroll turbos each fed by three cylinders at about 1 bar (cylinders 1-3 and 4-6 each into its own collector and turbo, a dual exhaust). Production engines of this kind make 250 to 340 kW and 450 to 600 N m (makers' figures). In a rear-drive sports sedan with a seven-speed dual clutch.",
+  "name": "2.0 L turbo four",
+  "notes": "Try first: turn the key, then floor it on the dyno and watch the turbo spool and the wastegate open in AIR, and the four pulses run down the exhaust in EXHAUST.\nThen drive: in first, hold the brake, press the launch button, floor the pedal and let go for a launch-control start (traction control holds the wheelspin), and listen to the direct injection's tick and the turbo's whistle as the dual clutch shifts.\n\nA 2.0 L direct-injection turbo four: 82.5 x 92.8 mm (1984 cc), 9.6:1 (engines of the kind in hot hatches: 155 to 228 kW at 5000 to 6500 rpm, 350 to 400 N m from 1600 to 4500; makers' figures). Its boost is trimmed above 4500 rpm (1.2 bar falling to 0.7), as production two-litres do. Front drive, six-speed dual clutch.",
   "spec": {
     "engine": {
-      "layout": "Inline 6",
+      "layout": "Inline 4",
       "custom": true,
-      "compression": 10.2,
-      "cylinders": 6,
+      "compression": 9.6,
+      "cylinders": 4,
       "bankAngle": [
         0.0
       ],
@@ -16,21 +16,15 @@
         0,
         0,
         0,
-        0,
-        0,
         0
       ],
       "pin": [
         0,
-        240,
-        120,
-        120,
-        240,
+        180,
+        180,
         0
       ],
       "fireRev": [
-        0,
-        1,
         0,
         1,
         0,
@@ -40,17 +34,16 @@
         0.0,
         0.1,
         0.2,
-        0.3,
-        0.4,
-        0.5
+        0.3
       ],
-      "displacement": 0.0029793,
-      "boreStroke": 0.9375,
-      "bore": 0.084,
-      "stroke": 0.0896,
-      "rodLength": 0.14435,
-      "redlineSpeed": 733.038,
+      "displacement": 0.0019843,
+      "boreStroke": 0.889,
+      "bore": 0.0825,
+      "stroke": 0.0928,
+      "rodLength": 0.144,
+      "redlineSpeed": 712.094,
       "frictionValvetrain": "Finger follower",
+      "balance2": true,
       "rough": 0.2,
       "benchLoad": 0.3,
       "wallHeat": "Woschni",
@@ -59,21 +52,21 @@
     "valve": {
       "model": "Lab",
       "valves": 4,
-      "dIn": 0.0314,
+      "dIn": 0.0338,
       "dEx": 0.028,
       "train": "Finger",
-      "inDurSeat": 252,
-      "inDur1mm": 220,
-      "inLift": 0.009699999999999999,
-      "inCentre": 125.0,
-      "exDurSeat": 252,
-      "exDur1mm": 220,
-      "exLift": 0.009699999999999999,
-      "exCentre": 105,
-      "inPhaseRange": 70,
-      "exPhaseRange": 55,
+      "inDurSeat": 240,
+      "inDur1mm": 208,
+      "inLift": 0.0107,
+      "inCentre": 130.0,
+      "exDurSeat": 236,
+      "exDur1mm": 204,
+      "exLift": 0.009,
+      "exCentre": 112,
+      "inPhaseRange": 60,
+      "exPhaseRange": 0,
       "springRate": 25000.0,
-      "springPreload": 150.0
+      "springPreload": 156.0
     },
     "intake": {
       "model": 1,
@@ -81,22 +74,21 @@
     },
     "boost": {
       "model": "Machine",
-      "kind": "Twin turbos",
-      "level": 0.619,
+      "kind": "Turbo",
+      "level": 0.81,
       "blowOff": 0.7,
       "size": 1.0,
-      "layout": "Two, a bank each",
-      "target": 100000.0,
-      "gateSpring": 70000.0,
+      "target": 120000.0,
+      "gateSpring": 60000.0,
       "blowOffKind": "Recirculating",
       "scrolls": "Twin scroll",
       "icEffect": 0.75,
-      "icFlow": 0.374,
-      "chargeVolume": 0.006
+      "icFlow": 0.253,
+      "chargeVolume": 0.004
     },
     "exhaust": {
       "model": "Builder",
-      "sides": 2,
+      "sides": 1,
       "converter": [
         1,
         1
@@ -104,18 +96,6 @@
       "mufKind": [
         2,
         2
-      ],
-      "primaryTo": [
-        0,
-        0,
-        0,
-        1,
-        1,
-        1
-      ],
-      "collectorTo": [
-        0,
-        1
       ]
     },
     "fuel": {
@@ -131,43 +111,113 @@
       "starter": true,
       "limiter": {
         "kind": "Fuel cut",
-        "speed": 733.038
+        "speed": 712.094
       },
       "idle": {
-        "speed": 68.068
+        "speed": 78.54
       },
       "launch": {
         "on": true
       },
       "knock": {
         "on": true
+      },
+      "maps": {
+        "boostAuto": false,
+        "boost": {
+          "x": [
+            157.08,
+            471.24,
+            555.01,
+            628.32,
+            680.68,
+            733.04
+          ],
+          "y": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "z": [
+            [
+              120000.0,
+              120000.0,
+              120000.0,
+              120000.0,
+              120000.0,
+              120000.0
+            ],
+            [
+              120000.0,
+              120000.0,
+              120000.0,
+              120000.0,
+              120000.0,
+              120000.0
+            ],
+            [
+              105000.0,
+              105000.0,
+              105000.0,
+              105000.0,
+              105000.0,
+              105000.0
+            ],
+            [
+              85000.0,
+              85000.0,
+              85000.0,
+              85000.0,
+              85000.0,
+              85000.0
+            ],
+            [
+              75000.0,
+              75000.0,
+              75000.0,
+              75000.0,
+              75000.0,
+              75000.0
+            ],
+            [
+              70000.0,
+              70000.0,
+              70000.0,
+              70000.0,
+              70000.0,
+              70000.0
+            ]
+          ]
+        }
       }
     },
     "car": {
       "model": "Vehicle",
       "kind": "Car",
-      "mass": 1700,
-      "drive": "Rear",
-      "wheelbase": 2.85,
-      "cgHeight": 0.52,
-      "frontWeight": 0.52,
-      "track": 1.58,
-      "cdA": 0.66,
+      "mass": 1450,
+      "drive": "Front",
+      "wheelbase": 2.63,
+      "cgHeight": 0.53,
+      "frontWeight": 0.62,
+      "track": 1.54,
+      "cdA": 0.68,
       "tyre": "Sport",
-      "tyreRadius": 0.335,
+      "tyreRadius": 0.32,
       "gearbox": "Dual clutch",
-      "finalDrive": 3.15,
-      "wheelInertia": 1.4,
-      "gears": 7,
+      "finalDrive": 3.65,
+      "wheelInertia": 1.1,
+      "gears": 6,
       "autoGearing": false,
       "ratio": [
-        4.81,
-        2.59,
-        1.7,
-        1.28,
-        1.0,
-        0.84,
-        0.67
+        3.56,
+        2.53,
+        1.68,
+        1.02,
+        0.79,
+        0.64
       ],
       "brakeDecel": 1.1,
       "abs": true
