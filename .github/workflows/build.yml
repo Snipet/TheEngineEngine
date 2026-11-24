@@ -133,7 +133,9 @@ jobs:
     name: ${{ matrix.platform }}${{ matrix.tier == 'soak' && '-soak' || '' }}
     needs: platforms
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 90
+    # the fast tier fits 90 minutes with room; the soak tier ([nightly], ctest --preset nightly) ran past 90 on
+    # 2026-11-24 and was stopped in its Test step with nothing reported, so it gets 240 (a hosted runner's limit is 360)
+    timeout-minutes: ${{ matrix.tier == 'soak' && 240 || 90 }}
     permissions:
       contents: read
     # a platform's job in flight finishes; only its newest waiting one is kept (a pull request's newer push replaces
