@@ -241,3 +241,108 @@ namespace
         return 0;
     }
 }
+
+namespace tee::test::u2
+{
+    // What a frame's text does wrong, in words ("" : nothing): a glyph outside the stage, a glyph across the edge of
+    // one of `panels` (inside one or outside all, never half), two glyphs of different words overlapping. The glyph
+    // boxes are the text prims' quads less their antialiasing apron (U5's way: tests/ui/views/ScopeTests.cpp).
+    std::string textFaults(const funkgui::PrimList& prims, const funkgui::Rect& stage, const std::vector<funkgui::Rect>& panels)
+    {
+        struct Box
+        {
+            float x0, y0, x1, y1;
+        };
+        std::vector<Box> glyphs;
+        for (const funkgui::Prim& p : prims.prims)
+            if (static_cast<int>(p.d2[2] + 0.5f) == static_cast<int>(funkgui::PrimKind::text))
+                glyphs.push_back({ p.x0 + 1.5f, p.y0 + 1.5f, p.x1 - 1.5f, p.y1 - 1.5f });
+        const auto inside = [](const Box& b, const funkgui::Rect& r) {
+            return b.x0 >= r.x - 0.5f && b.y0 >= r.y - 0.5f && b.x1 <= r.right() + 0.5f && b.y1 <= r.bottom() + 0.5f;
+        };
+        const auto meets = [](const Box& b, const funkgui::Rect& r) {
+            return b.x1 > r.x && b.x0 < r.right() && b.y1 > r.y && b.y0 < r.bottom();
+        };
+        char buf[160];
+        for (const Box& b : glyphs)
+        {
+            if (!inside(b, stage))
+            {
+                std::snprintf(buf, sizeof buf, "a glyph at %.0f,%.0f leaves the stage", b.x0, b.y0);
+                return buf;
+            }
+            for (const funkgui::Rect& r : panels)
+                if (!r.isEmpty() && meets(b, r) && !inside(b, r))
+                {
+                    std::snprintf(buf, sizeof buf, "a glyph at %.0f,%.0f crosses the edge of the panel at %.0f,%.0f", b.x0,
+                                  b.y0, r.x, r.y);
+                    return buf;
+                }
+        }
+        if (glyphs.size() < 20)
+            return "too few glyphs to judge: " + std::to_string(glyphs.size());
+        for (std::size_t i = 0; i < glyphs.size(); ++i)
+            for (std::size_t j = i + 1; j < glyphs.size(); ++j)
+            {
+                const Box& a = glyphs[i];
+                const Box& b = glyphs[j];
+                const float ox = std::min(a.x1, b.x1) - std::max(a.x0, b.x0), oy = std::min(a.y1, b.y1) - std::max(a.y0, b.y0);
+                if (ox > 1.0f && oy > 1.0f)
+                {
+                    std::snprintf(buf, sizeof buf, "glyphs overlap at %.0f,%.0f and %.0f,%.0f", a.x0, a.y0, b.x0, b.y0);
+                    return buf;
+                }
+            }
+        return {};
+    }
+}
+
+namespace
+{
+    // At the frame's own stages (its smallest window's and a 1600 x 1000 window's): the small one folds the ring, the
+    // loop and the numbers into one panel of tabs; no text leaves the stage, crosses a panel's edge or overlaps other
+    // text, on any tab, with the crank or without, at the SLOW switch, and with a cylinder selected. Goldens at both
+    // densities.
+    VIEW_TEST(testEngineFrameStage, "engine.framestage")
+    {
+        for (const FrameSize size : { FrameSize::smallest, FrameSize::large })
+        {
+            const std::string tag = size == FrameSize::smallest ? "small" : "large";
+            for (const float dpi : { 2.0f, 1.0f })
+            {
+                StageRig rig(tee::ui::makeEngineWorkspace, size, dpi);
+                CHECK(tee::ui::engineCompact(*rig.ws) == (size == FrameSize::smallest));
+                const funkgui::Rect st = rig.ws->stage();
+                const auto faults = [&](const std::string& when) {
+                    const std::string why = tee::test::u2::textFaults(rig.host->draw(), st, tee::ui::enginePanels(*rig.ws));
+                    CHECK_MSG(why.empty(), tag + ", " + when + ": " + why);
+                };
+                faults("at rest");
+                golden("engine.frame." + tag + (dpi == 1.0f ? ".dpi1" : ""), *rig.host);
+                if (dpi == 1.0f)
+                {
+                    if (size == FrameSize::smallest)
+                        for (int t = 5; t <= 7; ++t)   // the tabs: FIRING, P-V LOOP, DERIVED
+                        {
+                            pressWidget(rig, t);
+                            rig.settle();
+                            faults("tab " + std::to_string(t - 5));
+                            picture("engine.frame.small.tab" + std::to_string(t - 5), *rig.host);
+                        }
+                    pressWidget(rig, 1);   // SLOW
+                    rig.host->tick(20);
+                    faults("slow");
+                    rig.demo.selection.select("engine.cylinder[4]");
+                    rig.settle();
+                    faults("cylinder 5");
+                    rig.demo.engine.forget("engine.crank");
+                    rig.demo.ctx.live.reset();
+                    pressWidget(rig, 0);   // LIVE, with no crank
+                    rig.settle();
+                    faults("no crank");
+                }
+            }
+        }
+        return 0;
+    }
+}
