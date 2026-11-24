@@ -19,4 +19,6 @@ namespace tee::ui
     // For tests: what the oil holds back, in the words the stage shows ("" : nothing): the phasers parked below 313 K
     // or 70 kPa, stage B waiting for 333 K and 100 kPa.
     std::string valvesOilWords(const Workspace& w);
+    // For tests: the overlap's pressure as the ring says it ("-63 kPa BACK-FILLS", "+12 kPa SCAVENGES"; "" none).
+    std::string valvesOverlapWords(const Workspace& w);
 }
