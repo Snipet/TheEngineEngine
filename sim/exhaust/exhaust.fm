@@ -1559,8 +1559,10 @@ module Exhaust
             tcT = 0.0f;
             tcN = 0;
         }
-        t->portThermocouple = tcPort;
-        t->headerThermocouple = tcPort + (t->headerTemperature - exitTemperature());
+        // (before the bead's mean has had a sample, the gas's own: physical from the first block)
+        const float tcNow = tcPort > 0.0f ? tcPort : exitTemperature();
+        t->portThermocouple = tcNow;
+        t->headerThermocouple = tcNow + (t->headerTemperature - exitTemperature());
         t->portCoolantHeat = qCool;
         t->portWallTemperature = tWallPort;
         t->portExitTemperature = exitTemperature();
