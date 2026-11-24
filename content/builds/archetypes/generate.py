@@ -700,7 +700,7 @@ def build(a):
     # package L's listener on: every source where it is on the car; the first camera behind the car in the open,
     # the engine where the class carries it
     snd = {"model": "Places", "camera": "Rear", "place": "Field", "ground": "Asphalt",
-           "enginePlace": ENGINE_PLACE.get(a["car"], "Front"), "level": LEVELS.get(a["slug"], 0.0)}
+           "enginePlace": ENGINE_PLACE.get(a["car"], "Front")}
     spec = {"engine": e, "valve": v, "intake": i, "boost": bo, "exhaust": x, "fuel": f, "ecu": nest(t),
             "car": car, "env": {"temperature": 288.15, "pressure": 101325.0}, "voices": vo, "sound": snd}
     switches_on(spec, a["slug"])
@@ -726,15 +726,8 @@ def build(a):
     return {"format": "tee-build", "version": 1, "name": a["name"], "notes": notes, "spec": spec}
 
 
-# each build's sound.level trim (dB), measured by levels.py (L's scheme: a free rev to a 0.3 peak)
-def _levels():
-    path = os.path.join(HERE, "sound-levels.tsv")
-    if not os.path.exists(path):
-        return {}
-    return {r[0]: float(r[2]) for r in (l.rstrip("\n").split("\t") for l in open(path)) if r[0][:1] != "#"}
-
-
-LEVELS = _levels()
+# (no per-build sound.level: L's auto level on model 1 sets a free rev near 0.4 to 0.55 and the idle near 0.1,
+# c686d345, the lead's ruling; docs/models/listen.md, "Auto level")
 
 # The naturally aspirated engines' intake runners by the class of their manifold (the lead, 20:52), valve to plenum,
 # JUDGEMENT, written down before any table ran on them (24 Nov, 20:55 UTC) and never chosen from an engine's rows;
@@ -885,7 +878,6 @@ def main():
                       "tick and the turbo's whistle as the dual clutch shifts.\n\n" + first["notes"])
     # L (20:27): for the first minute standing, the Side camera hears the exhaust and the bay together
     first["spec"]["sound"]["camera"] = "Side"
-    first["spec"]["sound"]["level"] = LEVELS.get("first", 0.0)
     write(os.path.join(ROOT, "content", "builds", "first.json"), first)
     loose_parts(A)
     manual(A)

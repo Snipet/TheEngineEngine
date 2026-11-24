@@ -146,6 +146,14 @@ namespace tee
         }
     } // namespace
 
+    // Whether a field is written to a build's file and read from it: every one but the hidden, which are the program's
+    // or the host's working state (a section's rev, a settle's counter), except a hidden fingerprint (unit "hash":
+    // spec.ecu.maps.knockLimitKey, what a baked table was made from), which belongs to the file it describes.
+    bool inFile(const FieldInfo& f) noexcept
+    {
+        return !f.hidden || f.unit == "hash";
+    }
+
     const char* partName(BuildPart part) noexcept
     {
         switch (part)
@@ -531,7 +539,7 @@ namespace tee
         for (std::size_t i = 0; i < values_.size(); ++i)
         {
             const FieldInfo& f = fields_->all()[i];
-            if (values_[i].empty() || f.hidden || f.section < 0)
+            if (values_[i].empty() || !inFile(f) || f.section < 0)
                 continue;
             if (!inPart(fields_->sections()[static_cast<std::size_t>(f.section)].name, part))
                 continue;
@@ -670,7 +678,7 @@ namespace tee
             tokens.erase(tokens.begin());
             const ordered_json* at = find(*spec, tokens);
             std::vector<double> v = defaultsOf(f);
-            if (at != nullptr && !f.hidden)
+            if (at != nullptr && inFile(f))
             {
                 const auto number = [&](const ordered_json& j, double& out) {
                     if (j.is_number())

@@ -176,6 +176,27 @@ if(TARGET TheEngineEngine AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set_tests_properties(shell.window.last PROPERTIES LABELS "shell;window;nightly"
       ENVIRONMENT "SDL_AUDIODRIVER=dummy;TEE_SETTINGS_DIR=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/launch-last"
       PASS_REGULAR_EXPRESSION "build: \"1\\.6 L 16-valve hot hatch\" file=[^ ]*hot-hatch-16-16v\\.json unsaved=no .*\ntee-app: ok")
+    # An edit's path from the document to the host in the window, on the first build: valve fields edited before the
+    # first start, while running, after a restart and after a QUALITY change and back, each held and sent (the lead's
+    # 21:51 question; tests/shell/scripts/valve-edits.txt). A minute of real time and two compiles: the soak tier's.
+    add_test(NAME shell.window.edits
+      COMMAND "${PROJECT_SOURCE_DIR}/scripts/xvfb-run.sh" $<TARGET_FILE:TheEngineEngine>
+              --first-build "${PROJECT_SOURCE_DIR}/content/builds/first.json" --script "${_scripts}/valve-edits.txt"
+              --frames 30
+      WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
+    set_tests_properties(shell.window.edits PROPERTIES TIMEOUT 600 LABELS "shell;window;nightly" RUN_SERIAL TRUE
+      ENVIRONMENT "SDL_AUDIODRIVER=dummy;TEE_SETTINGS_DIR=${_out}/edits-no-settings"
+      PASS_REGULAR_EXPRESSION "checks: [0-9]+, 0 failed.*tee-app: ok")
+    # The owner's two-stage-cam four in the window, warm: the stage at 6,000 rpm on opening, after QUALITY and back, and
+    # opened over first.json (tests/shell/scripts/two-stage-cams.txt; the lead's 21:56 question). The soak tier's.
+    add_test(NAME shell.window.twostage
+      COMMAND "${PROJECT_SOURCE_DIR}/scripts/xvfb-run.sh" $<TARGET_FILE:TheEngineEngine>
+              --first-build "${PROJECT_SOURCE_DIR}/content/builds/archetypes/two-stage-cam-20.json"
+              --hold-value heat.tOil=378 --script "${_scripts}/two-stage-cams.txt" --frames 30
+      WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
+    set_tests_properties(shell.window.twostage PROPERTIES TIMEOUT 600 LABELS "shell;window;nightly" RUN_SERIAL TRUE
+      ENVIRONMENT "SDL_AUDIODRIVER=dummy;TEE_SETTINGS_DIR=${_out}/twostage-no-settings"
+      PASS_REGULAR_EXPRESSION "checks: [0-9]+, 0 failed.*tee-app: ok")
     set_tests_properties(shell.window.gpu shell.window.ref shell.window.plain shell.window.info PROPERTIES
       TIMEOUT 600 LABELS "shell;window" ENVIRONMENT "SDL_AUDIODRIVER=dummy" RUN_SERIAL TRUE)
     # (the reference's panel and the plain Panel in a window: the soak tier's; the frame's is the default run's)

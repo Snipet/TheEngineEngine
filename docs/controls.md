@@ -128,4 +128,6 @@ the simulator's defaults, as `--reference`, so its pictures and timings do not c
 
 `tee-headless` (and the window with `--script`) reads the same keys from a script, by name: `w`, `s`, `up`, `down`,
 `e`, `q`, `n`, `space`, `return`, `enter`, `lshift`, `pageup`, `pagedown`, `1` to `6`. `app/Script.h` has the
-format; `tests/shell/scripts/` has scripts that start, rev, drive and stop the engine.
+format (`expect sent PATH` reads a Spec field as the host was sent it, `quality full|economy` changes the
+QUALITY; the window checks a script's `expect`s as tee-headless does); `tests/shell/scripts/` has scripts that start,
+rev, drive and stop the engine.

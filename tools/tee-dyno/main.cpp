@@ -327,13 +327,20 @@ int main(int argc, char** argv)
         std::printf("knock limit baked: %d points, %.1f s of engine time in %.1f s; key %lld%s\n", r.points,
                     r.simulatedSeconds, r.wallSeconds, static_cast<long long>(r.key),
                     tee::knockLimitCurrent(build, *compiled) ? " (the build's bake was current)" : "");
-        std::printf("measured (pedal: load atm, mean retard deg, tooth deg, torque N m):\n");
+        std::printf("loads: %s\n", r.notes.c_str());
+        std::printf("measured (pedal[/boost target kPa]: load atm, mean retard deg, tooth deg, torque N m):\n");
         for (std::size_t s2 = 0; s2 < r.speeds.size(); ++s2)
         {
             std::printf("%8.0f", rpm(r.speeds[s2]));
             for (const tee::KnockBakeCell& c : r.measured[s2])
-                std::printf("  %.2f: %.2f %.1f %.1f %.0f%s", c.pedal, c.load, c.retardMean, c.retardTooth, c.torque,
+            {
+                if (c.boostTarget > 0.0)
+                    std::printf("  %.2f/%.0f", c.pedal, c.boostTarget / 1000.0);
+                else
+                    std::printf("  %.2f", c.pedal);
+                std::printf(": %.2f %.1f %.1f %.0f%s", c.load, c.retardMean, c.retardTooth, c.torque,
                             c.valid ? "" : " (fault)");
+            }
             std::printf("\n");
         }
         std::printf("degrees from best torque by load (atm; * extrapolated flat):\n%8s", "rpm");

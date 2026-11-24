@@ -2,6 +2,7 @@
 #include "Offline.h"
 
 #include "Engine.h"
+#include "Launch.h"
 #include "Script.h"
 
 #include "audio/Ftz.h"
@@ -53,20 +54,7 @@ namespace tee::app
         constexpr double kFrameRate = 60.0;
         constexpr double kRadToRpm = 9.549296585513721;
 
-        bool compare(double x, const std::string& op, double y)
-        {
-            if (op == ">")
-                return x > y;
-            if (op == "<")
-                return x < y;
-            if (op == ">=")
-                return x >= y;
-            if (op == "<=")
-                return x <= y;
-            if (op == "==")
-                return x == y;
-            return x != y;
-        }
+        bool compare(double x, const std::string& op, double y) { return compareScript(x, op, y); }
 
         // The folder a file goes into, made if it is not there.
         void makeFolderOf(const std::string& file)
@@ -434,6 +422,13 @@ namespace tee::app
                     case ScriptEvent::Kind::wheel:
                         host.wheel(static_cast<float>(e.a), static_cast<float>(e.b), static_cast<float>(e.c));
                         break;
+                    case ScriptEvent::Kind::open:
+                        openInScript(shown.document, e);
+                        break;
+                    case ScriptEvent::Kind::quality:
+                        if (engine.sim != nullptr)
+                            engine.sim->requestQuality(static_cast<int>(e.a));
+                        break;
                     case ScriptEvent::Kind::end:
                         ended = true;
                         break;
@@ -507,6 +502,8 @@ namespace tee::app
                         x = rpm();
                     else if (e->name == "ready")
                         x = engine.ready() ? 1.0 : 0.0;
+                    else if (e->name.rfind("sent ", 0) == 0)
+                        known = engine.sim != nullptr && readSent(*engine.sim, e->name.substr(5), x);
                     else if (e->name.rfind("param ", 0) == 0)
                     {
                         const int i = params.findParam(e->name.substr(6));
