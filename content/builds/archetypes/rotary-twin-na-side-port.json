@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "Rotary twin, side ports",
-  "notes": "A naturally aspirated twin-rotor Wankel with side exhaust ports, 2 x 654 cc, 10:1, a 9000 rpm limiter and a two-stage intake (the RENESIS kind of 2003: 170 to 184 kW at 8200 to 8500 rpm, 211 to 216 N m at 5500; makers' figures by market and year, from memory, firm to 5 %). High-flow converter, straight-through mufflers. In a light rear-drive coupe.",
+  "notes": "A naturally aspirated twin-rotor Wankel with side exhaust ports, 2 x 654 cc, 10:1, a 9000 rpm limiter and a two-stage intake; its side ports' timing EO 50 BBDC, EC 3 ATDC, IO 3 ATDC, IC 65 ABDC in eccentric-shaft degrees (N1, from memory, to some 10 degrees) (the RENESIS kind of 2003: 170 to 184 kW at 8200 to 8500 rpm, 211 to 216 N m at 5500; makers' figures by market and year, from memory, firm to 5 %). High-flow converter, straight-through mufflers. In a light rear-drive coupe.",
   "spec": {
     "engine": {
       "layout": "Rotary",
@@ -38,7 +38,13 @@
     },
     "valve": {
       "model": "Lab",
-      "cam": 0.55
+      "cam": 0.15,
+      "inKind": "Free valve",
+      "exKind": "Free valve",
+      "freeExOpen": 146.7,
+      "freeExClose": 362.0,
+      "freeInOpen": 362.0,
+      "freeInClose": 583.3
     },
     "intake": {
       "model": 1,

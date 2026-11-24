@@ -190,12 +190,12 @@ arch(slug="rotary-twin-13", name="Rotary twin", geo="ref-16-rotary-2", layout="R
      notes="A twin-rotor Wankel, 2 x 654 cc, 9.0:1, with two sequential turbos (the 13B-REW kind: 206 to 280 PS, "
            "the latter at 6500 rpm, some 294 N m at 5000; Wikipedia, makers' figures, firm to 10 %). In a light "
            "rear-drive coupe.")
-arch(slug="rotary-twin-na-side-port", name="Rotary twin, side ports", geo="ref-16-rotary-2", layout="Rotary",
+arch(slug="rotary-twin-na-side-port", rotaryCam=0.15, rotaryPorts=(146.7, 362.0, 362.0, 583.3), name="Rotary twin, side ports", geo="ref-16-rotary-2", layout="Rotary",
      displacement=0.001308, cr=10.0, redline=9000, idle=800,
      intake=dict(runnerLength=0.45, runnerLength2=0.30, runnerSwitch=5500 * RPM),
      exhaust={"converter": [2, 2], "mufKind": [1, 1]}, grade="Premium (91)", car="light-coupe-rotary", timing="Gears",
      notes="A naturally aspirated twin-rotor Wankel with side exhaust ports, 2 x 654 cc, 10:1, a 9000 rpm limiter and a "
-           "two-stage intake (the RENESIS kind of 2003: 170 to 184 kW at 8200 to 8500 rpm, 211 to 216 N m at 5500; "
+           "two-stage intake; its side ports' timing EO 50 BBDC, EC 3 ATDC, IO 3 ATDC, IC 65 ABDC in eccentric-shaft degrees (N1, from memory, to some 10 degrees) (the RENESIS kind of 2003: 170 to 184 kW at 8200 to 8500 rpm, 211 to 216 N m at 5500; "
            "makers' figures by market and year, from memory, firm to 5 %). High-flow converter, straight-through "
            "mufflers. In a light rear-drive coupe.")
 arch(slug="hot-hatch-16-16v", runner=0.35, convK=18.0, name="1.6 L 16-valve hot hatch", geo="ref-05-inline-4", layout="Inline 4",
@@ -512,7 +512,15 @@ def build(a):
         if a.get("compressionBrake") == "release":
             v.update(auxOpen=695, auxDur=100, auxLift=0.0025)
     else:
-        v["cam"] = 0.55    # a rotary's ports: the cam dial's, mid-way (street port)
+        # a rotary's ports by the cam dial: a peripheral-exhaust turbo rotary mid-way (0.55); a side-exhaust-port
+        # rotary has almost no overlap: 0.15 (N1: 47 degrees of overlap at 0.55 cost it a quarter of its torque)
+        v["cam"] = a.get("rotaryCam", 0.55)
+        if "rotaryPorts" in a:
+            # the ports' own timing, as free events in four-stroke-equivalent degrees (x1.5 the eccentric shaft's;
+            # N1's reading of the rotary's port fields): (exhaust opens, closes, intake opens, closes)
+            eo, ec, io, ic = a["rotaryPorts"]
+            v.update(inKind="Free valve", exKind="Free valve", freeExOpen=eo, freeExClose=ec, freeInOpen=io,
+                     freeInClose=ic)
 
     # the runners' length: what the kind has (long for low-speed torque, short for high revs, two lengths where the
     # real ones had them): the loaded-pipe relation x tan x = A L / V puts the ram's bump where the kind wants it

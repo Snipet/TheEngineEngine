@@ -55,7 +55,7 @@ FIELDS = [
     "boost.superchargerPower",
     # wanted, not yet in the telemetry (asked of their owners): read when they appear
     "engine.chargeTemperature", "engine.trappedMass", "exhaust.portPressure", "exhaust.portExitTemperature",
-    "exhaust.headerTemperature",
+    "exhaust.headerTemperature", "exhaust.portThermocouple", "exhaust.headerThermocouple",
 ]
 
 
@@ -203,15 +203,21 @@ LINES = [
     Line("portP", "Exhaust port, mean", "kPa", 1, {"na": (102.0, 135.0), "boost": (120.0, 350.0), "diesel": (110.0, 400.0)},
          f"{HEYWOOD}, §6.5; {BOSCH}: a road exhaust's back pressure 10 to 30 kPa over the air at rated power",
          "wants tel.exhaust.portPressure (card G)"),
-    Line("tPort", "Port gas", "K", 0, {"na": (1000.0, 1300.0), "boost": (1000.0, 1350.0), "diesel": (750.0, 1050.0)},
-         f"{HEYWOOD}, §14.? and fig. 6-?: a petrol engine's gas leaving the port at full load 1100 to 1300 K "
-         "(the header thermocouple's 900 to 1100 K is further down); diesel 750 to 1000 K"),
-    Line("tPortExit", "Port exit gas", "K", 0, {"na": (900.0, 1250.0), "boost": (900.0, 1300.0), "diesel": (650.0, 1000.0)},
+    Line("tPort", "Port gas at the valve, mass mean", "K", 0, {"*": (0.0, 1e9)},
+         "the gas through the exhaust valves, mass-flow (enthalpy) weighted (tel.exhaust.portTemperature): above what a "
+         "thermocouple reads, the blowdown's hot gas being most of the mass and little of the time; the targets are the "
+         "thermocouple lines below"),
+    Line("tcPort", "Port thermocouple", "K", 0, {"na": (1100.0, 1300.0), "boost": (1100.0, 1350.0), "diesel": (750.0, 1050.0)},
+         f"P's target table: what a thermocouple in the port reads at full load (makers' exhaust-gas-temperature data; "
+         f"{HEYWOOD}, ch. 14); card G's bead-weighted time mean of the port's gas (tel.exhaust.portThermocouple)"),
+    Line("tcHeader", "Header thermocouple", "K", 0, {"na": (900.0, 1100.0), "boost": (900.0, 1150.0), "diesel": (700.0, 950.0)},
+         "P's target table: a thermocouple a little way down a primary, 900 to 1100 K at full load on a petrol engine; "
+         "card G's tel.exhaust.headerThermocouple"),
+    Line("tPortExit", "Port exit gas, mass mean", "K", 0, {"*": (0.0, 1e9)},
          "the gas leaving the port after its walls (card G's Caton and Heywood port loss): between the valve's and the "
          "header's"),
-    Line("tHeader", "Header gas", "K", 0, {"na": (900.0, 1100.0), "boost": (900.0, 1150.0), "diesel": (700.0, 950.0)},
-         f"P's target table: a thermocouple a little way down a primary reads 900 to 1100 K at full load on a petrol engine "
-         f"(makers' exhaust-gas-temperature data; {HEYWOOD}, ch. 14)"),
+    Line("tHeader", "Header gas, mass mean", "K", 0, {"*": (0.0, 1e9)},
+         "the primaries' gas, mass-flow weighted (card G): above a thermocouple's reading, which the targets are"),
     # boosted (card N2 adds and tunes these)
     Line("boostOver", "Boost over target", "", 2, {"boost": (0.9, 1.1)},
          "the boost (tel.boost.pressure, over the air) over the build's spec.boost.target: a runaway, or a turbo out of "
@@ -274,6 +280,8 @@ def ledger_points(rows, spec, kind):
             "tPort": g("exhaust.portTemperature"),
             "tPortExit": g("exhaust.portExitTemperature"),
             "tHeader": g("exhaust.headerTemperature"),
+            "tcPort": g("exhaust.portThermocouple"),
+            "tcHeader": g("exhaust.headerThermocouple"),
         }
         if kind != "na":
             b = g("boost.pressure")

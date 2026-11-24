@@ -80,6 +80,14 @@ and the lead (the session that wrote these files) settles what a card leaves ope
   and `combo` what is left, 120. What does not fit goes to the soak tier, by the owner's choice of what
   guards most per second. `scripts/test-budget.sh <ctest log>` prints the table (each fast CI job's summary has it);
   run it on your own `ctest --preset dev | tee ctest.log` before a push that adds tests.
+- **One compile a process** (the lead's decision, 2026-11-24): compiling sim/ costs about 6.6 CPU-s, and
+  catch_discover_tests runs each case in a process of its own, so a package with ten simulator cases pays it ten
+  times. Group a package's simulator-heavy cases into one ctest entry (e.g. `add_test(NAME <pkg>.sim COMMAND
+  tee-tests-<pkg> "[sim]")`, the light ones discovered as before), with one kept player or Sim a process, as the
+  shell and the host do (D2's "one kept player a process, reset per test" took diesel from 321 to 202 CPU-s). The
+  caution: a kept player is **reset** between cases to the state a fresh one has, so that no case passes because of
+  what the one before it left behind; prove it once by running the cases in reverse order (`--order rand` or the
+  list reversed) and say so in the commit.
 
 ## 4. Code
 
@@ -113,7 +121,7 @@ allocation or logging on the audio thread. No JUCE, anywhere. Third-party code o
   last;` alone does not stop it (a NaN compares false with everything). Call `tableIndex(x, last)` or write
   `(int)fminf(fmaxf(x, 0.0f), (float)last)` (FMinus's fminf and fmaxf return the other operand for a NaN); wrap an
   angle with `wrapCycle` (sim/core/mathx.fm), never `while (a >= cyc) a -= cyc;`. `scripts/lint.sh` (rule 8)
-  fails on a new one. CI's soak tier runs the fuzz at the corners without bounds checks, so a crash is a crash there.
+  fails on a new one. CI's soak tier will run the fuzz at the corners without bounds checks (X's next push), so a crash is a crash there.
 - No transcendental function per sample where a table or a control-rate update will do. Your card gives a CPU
   budget; `tee-bench` measures it.
 - Every Spec field has `[[fminus::range]]`, `[[fminus::default]]`, `[[ui::label]]` and says what its number is:

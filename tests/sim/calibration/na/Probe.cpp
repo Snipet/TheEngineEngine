@@ -182,11 +182,14 @@ TEST_CASE("probe: a cylinder's gas exchange at intake closing", "[.probe]")
         }
         const double pI = sp / n, tI = st / n, vI = sv / n, xb = sx / n;
         const double f1 = pI / pAir, f2 = tAir / tI, f3 = vI / vd, f4 = 1.0 - xb;
-        double portI = 0, portE = 0;
+        double portI = 0, portE = 0, piLo = 1e9, piHi = 0;
         const int deg = int(pr.get("scope.degrees"));
         for (int d = 0; d < deg; ++d)
         {
-            portI += pr.get("scope.portIntake[" + std::to_string(d) + "]");
+            const double pi = pr.get("scope.portIntake[" + std::to_string(d) + "]");
+            piLo = std::min(piLo, pi);
+            piHi = std::max(piHi, pi);
+            portI += pi;
             portE += pr.get("scope.portExhaust[" + std::to_string(d) + "]");
         }
         portI /= std::max(deg, 1);
@@ -210,6 +213,7 @@ TEST_CASE("probe: a cylinder's gas exchange at intake closing", "[.probe]")
                 std::printf("        half-burn (tel, at each exhaust opening): min %.1f median %.1f max %.1f; %d of %zu over 20 deg; "
                             "%d burns under half the mean heat\n", h.front(), h[h.size() / 2], h.back(), over20, h.size(), weak);
         }
+        std::printf("        intake port over the cycle: %.0f to %.0f kPa (swing +-%.0f)\n", piLo / 1e3, piHi / 1e3, (piHi - piLo) / 2e3);
         std::printf("        at exhaust opening: gas %.0f K, %.0f kPa (cylinder 1's mean over %d openings)\n", tEvo / std::max(nEvo, 1.0),
                     pEvo / std::max(nEvo, 1.0) / 1e3, int(nEvo));
         std::printf("        walls %.3f of the burns' heat (%.0f J of %.0f J), port gas %.0f K\n", wall / std::max(heat, 1e-9), wall, heat,
