@@ -143,3 +143,44 @@ TEST_CASE("the cabin: shut windows take the highs, open ones let them in", "[lis
     std::printf("cabin at 2860 rpm: the highs' share %.1f dB with the windows shut, %.1f dB open\n", shut, open);
     CHECK(open > shut + 3.0);
 }
+
+TEST_CASE("the ceiling: every source at its loudest and the camera at its closest stays inside full scale", "[listen][engine]")
+{
+    // the reference's V8 (its loudest build) and the twin-turbo V8, LEVEL at its most (+12 dB), INTAKE and MECHANICAL
+    // at theirs, DISTANCE at its least (0.5 m), at the tailpipes and in the engine bay: free revs against the limiter
+    // and lifts (the turbo's blow-off valves), through the resampler (48 kHz)
+    const char* builds[] = {"v8", "v8", "boost/twin-turbo-v8"};
+    const int cams[] = {0, 3, 0};
+    for (int k0 = 0; k0 < 3; ++k0)
+    {
+        const int cam = cams[k0];
+        Bench b(builds[k0]);
+        model1(b);
+        sound(b, "camera", cam);
+        sound(b, "level", 12.0);
+        sound(b, "intake", 1.0);
+        sound(b, "mechanical", 1.0);
+        sound(b, "distance", 0.0);
+        b.start(1.0);
+        double peak = 0.0;
+        double worstLim = 0.0;
+        auto watch = [&] {
+            for (std::size_t i = 0; i < b.left().size(); ++i)
+                peak = std::max({peak, double(std::fabs(b.left()[i])), double(std::fabs(b.right()[i]))});
+            worstLim = std::min(worstLim, b.tel("sound.limiter"));
+        };
+        for (int k = 0; k < 4; ++k)
+        {
+            b.ctl().throttle = 1.0f;
+            b.play(2.0, watch);
+            b.ctl().throttle = 0.0f;
+            b.play(0.7, watch);
+        }
+        const double parts = b.tel("sound.ceilingParts");
+        std::printf("ceiling, %s, camera %d at 0.5 m, +12 dB: peak %.3f, the limiter down to %.1f dB, the ceiling bent %.0f parts\n",
+                    builds[k0], cam, peak, worstLim, parts);
+        CHECK(peak < 0.99);
+        if (k0 == 0)
+            CHECK(worstLim < -3.0);     // it was asked to work
+    }
+}

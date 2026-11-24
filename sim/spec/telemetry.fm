@@ -192,6 +192,8 @@ module SoundTel
     float loudness [[ui::label("Loudness trim")]] [[ui::unit("dB")]] [[ui::help("The level computed for this build, the reference's table replaced")]];
     float exhaustLevel [[ui::label("Exhaust radiation")]] [[ui::unit("dB")]] [[ui::help("The tailpipes' radiation before any gain, its mean square over the last 0.4 s")]];
     float mixLevel [[ui::label("Mix level")]] [[ui::unit("dB")]] [[ui::help("What the listener hears before the level and the compressor, its mean square over the last 0.4 s")]];
+    float limiter [[ui::label("Limiter")]] [[ui::unit("dB")]] [[ui::help("The last stage's deepest gain reduction over the last 0.4 s (0: not working)")]];
+    int ceilingParts [[ui::label("Ceiling")]] [[ui::help("How many 16-sample parts the soft ceiling has bent, counted from the start")]];
 };
 
 // tel.valve: card E's valvetrain (model 1; at model 0 the events are the CAM dial's, the rest 0)
