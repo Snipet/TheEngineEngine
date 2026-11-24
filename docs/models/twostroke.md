@@ -49,7 +49,7 @@ it is read.*
   bore at most, judgement), the ECU's cut as the spark's; the crank, friction, inertia and starter are the custom
   engine's. The stingers' radiation (the rate their flow out changes) goes to the mix in place of the tails'; the
   carburettors' draw to the intake's voice. The Scope's cycle is 360 degrees; its valve lifts carry the exhaust and
-  transfer ports' open shares; `portIntake` carries the crankcase's pressure; `inletOpen` the inlet's open share. The cycle switch is held to the fade's quiet as the model switches are.
+  transfer ports' open shares; `portIntake` carries the crankcase's pressure; `inletOpen` the inlet's open share; the work loop (core/work.fm) is fed per cylinder on its 360 degrees. The cycle switch is held to the fade's quiet as the model switches are.
 
 ## Measured
 
@@ -121,6 +121,5 @@ monopole and the reason racing two-strokes "ring".
 ## Not done
 
 - The inlet tract and transfers' inertia (the main cause of the low output, above).
-- IMEP and the work loops for a two-stroke (core/work.fm is fed only by the four-stroke's loop).
 - Nobody has listened. A shared chamber for several cylinders, a boost port, auxiliary exhaust ports as their own
   windows, and the oil's smoke are left out.

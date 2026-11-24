@@ -1,7 +1,7 @@
 # T: two-strokes (handoff)
 
 Card T, branch `claude/awesome-gates-ntdb58`. Model, sources and measurements: [docs/models/twostroke.md](../models/twostroke.md).
-**Done** (`tee-tests-twostroke`, 17 cases, all pass in this container; nothing run on macOS or Windows):
+**Done** (`tee-tests-twostroke`, 18 cases + 1 `[nightly]`, all pass in this container; nothing run on macOS or Windows):
 - Tuned length (`PipeTest`): the weak response was the measurement (straight-pipe baseline cut at 0.98 m, so x1 and x1.25
   were divided by the same pipe). Against an endless pipe: x0.8/x1/x1.25 centred -1.8/-1.4/-5.3 % from the returning
   wave (before: 11 548/9 627/9 320 rpm, now 13 033/10 466/8 044). On the pipe: +42 % torque in 1000 rpm. Cones: the
@@ -23,7 +23,7 @@ Card T, branch `claude/awesome-gates-ntdb58`. Model, sources and measurements: [
 - Spectrum: lines sit on multiples of the firing frequency (twins/triples cancel the rest by 100 dB), but the strongest
   radiated line on a chamber is the header's ~870 Hz ring, the firing line 7-27 dB under it (monopole +6 dB/octave,
   chamber cones pass highs). Physics, not the card's wording; flagged.
-- Not fed for a two-stroke: work.sample (IMEP, PMEP read 0), exh.mdot/tPort (the pipe's gas is tsPipeTemperature).
+- Not fed for a two-stroke: exh.mdot/tPort (the pipe's gas is tsPipeTemperature). The work loop is fed (IMEP, BMEP on 360 degrees, `EngineTest`).
 **Cost** (`tee-bench --engine`, free-revs, share of that run's reference V8): single with chamber 0.32 R (card: 0.35 R),
 twin 0.59 R, triple 0.87 R, utility 0.24 R. Rig alone: 0.28 R. Fewer cone steps (3) would roughly halve the ducts.
 **Wanted outside my paths**:
