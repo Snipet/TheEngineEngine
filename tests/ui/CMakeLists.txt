@@ -15,6 +15,16 @@ endif()
 funkgui_configure_product(tee_ui_test_funkgui PRODUCT TheEngineEngine OBJC_PREFIX TeeUiTests ENV_PREFIX TEE_
                           PREFS_FOLDER TheEngineEngine)
 funkgui_compile_shaders(tee_ui_test_funkgui)
+# FunkGui's sources are compiled here, with none of our flags: without this, Apple's clang on arm64 (which has FMA)
+# fuses multiplies and adds in FunkGui's geometry (its default is -ffp-contract=on) and every golden's geometry hash
+# differs from Linux's and Windows' (x86-64 without FMA fuses nothing). FunkGui's own tests build the same way.
+if(CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
+  if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    target_compile_options(tee_ui_test_funkgui PRIVATE /clang:-ffp-contract=off)
+  endif()
+else()
+  target_compile_options(tee_ui_test_funkgui PRIVATE -ffp-contract=off)
+endif()
 target_link_libraries(tee_ui_test_funkgui PUBLIC tee_ui_funkgui_headers
                       $<TARGET_PROPERTY:FunkGuiCore,INTERFACE_LINK_LIBRARIES>)
 
