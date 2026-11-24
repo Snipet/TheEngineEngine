@@ -6,7 +6,9 @@
 #include "tee/Bake.h"
 #include "tee/Dyno.h"
 
+#include <chrono>
 #include <set>
+#include <thread>
 #include <catch2/catch_test_macros.hpp>
 
 #include <cstring>
@@ -537,4 +539,52 @@ TEST_CASE("the knock limit baked on the turbo four: a knocking point's cell its 
         }
     }
     CHECK(someKnock);   // a turbo four on its archetype's boost knocks somewhere at full throttle
+}
+
+TEST_CASE("the background bake: a stale table set aside at once, baked when the edits rest, taken, current; an edit "
+          "of what moves the knock limit makes it stale again",
+          "[engine][sim][bake]")
+{
+    if (!haveSim())
+        SKIP("sim/engine.fm is not there yet");
+    std::string error;
+    const auto sim = compiled(simDir(), {}, error);
+    REQUIRE(sim != nullptr);
+    Build build(sim->fields());
+    std::vector<std::string> warnings;
+    REQUIRE(build.loadFile(std::filesystem::path(TEE_SOURCE_DIR) / "content/builds/archetypes/turbo-four-20-gdi.json",
+                           BuildPart::Whole, warnings, error));
+    if (build.fieldOf("ecu.maps.knockLimitAuto") < 0)
+        SKIP("the program has no knock-limit table yet");
+    KnockBakeOptions options;   // small, for the test: two speeds at full throttle
+    options.speeds = 2;
+    options.pedals = {1.0};
+    options.predict.threads = 2;
+    KnockBakeService bakes(sim, options, 0.05);
+
+    // a table of another build (a key not this one's), in use: set aside at once, a bake asked
+    build.set("ecu.maps.knockLimitAuto", 0.0);
+    build.set("ecu.maps.knockLimitKey", 12345.0);
+    const KnockBakeState asked = bakes.consider(build);
+    CHECK((asked == KnockBakeState::Waiting || asked == KnockBakeState::Baking));
+    CHECK(build.get("ecu.maps.knockLimitAuto") == 1.0);   // the engine on its knock control alone meanwhile
+    CHECK(bakes.consider(build) != KnockBakeState::Current);   // asked once: a second consider asks nothing new
+
+    KnockBakeResult r;
+    const auto until = std::chrono::steady_clock::now() + std::chrono::seconds(120);
+    while (!bakes.take(r) && std::chrono::steady_clock::now() < until)
+    {
+        REQUIRE(bakes.state() != KnockBakeState::Failed);
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    }
+    REQUIRE(r.speeds.size() == 2);
+    CHECK(r.key == knockLimitKey(build, *sim));
+    REQUIRE(applyKnockLimit(build, r, error));
+    CHECK(bakes.consider(build) == KnockBakeState::Current);
+    CHECK(std::string(knockBakeStateName(bakes.state())) == "baked");
+
+    // a control is not an edit of the build: nothing to consider. The compression is: stale, set aside, asked again
+    build.set("engine.compression", build.get("engine.compression") - 0.5);
+    CHECK(bakes.consider(build) != KnockBakeState::Current);
+    CHECK(build.get("ecu.maps.knockLimitAuto") == 1.0);
 }
