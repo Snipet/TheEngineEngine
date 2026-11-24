@@ -63,6 +63,10 @@ six (2.62, 2.00, 1.68, 1.45, 1.30, 1.18).
 **Brakes.** The lever (`ctl.brake`) on the front, `brakeDecel` g at a full pull; the pedal (`ctl.handbrake`) on the
 rear, (1 - `brakeBias`) of that. ABS as card I's.
 
+**For the mechanical voices.** `Car::lashStrike()` (above); `Car::sprocketSpeed()` and `tel.car.sprocketSpeed`, the
+front sprocket (the gearbox's output), rad/s: the chain's teeth pass at it times `frontSprocket` over 2 pi;
+`clutchDry` (off: wet, its oil drags 0.6 %; on: dry, no drag).
+
 **Not modelled.** Steering and lean; the suspension's travel (only its lag); squat from the chain's pull; a wheelie's
 gyroscopic effects; the rider falling off; a shaft drive's jacking (the adventure bike is a chain's numbers).
 
@@ -87,6 +91,41 @@ gives 25 m/s of piston speed (13,600 rpm for a 55 mm stroke), capped at 20,000.
 adventure boxer 62 kW (100), single 19 kW (32). The reference's breathing falls away above some 9,000 rpm (with friction
 taken out a litre four still tops out near 102 kW); the ITBs do not change that. So the bike model's validation against
 its classes (`ClassTest.cpp`) gives the rig's engine each class's published power curve.
+
+
+## The breathing each engine needs (card E's lab, on in every bike build)
+
+Every bike engine and bike build carries card E's hardware (`valve.model` Lab, `intake.model` Lab with a throttle body
+a runner, trumpets in the air box) and states its air (`env.temperature` 300 K, `env.pressure` 101,325 Pa: the
+reference's presets stand at 233 K, 28 % denser). The heads and cams are judgement within the class's ranges (a sport
+four's intake valves 0.38 to 0.40 of its bore, 250 to 270 degrees at 1 mm, 9 to 11 mm of lift on finger followers; a
+pushrod cruiser twin's 220 degrees and 12 mm). Intake valve area over bore area, and the runner's tuned speed by the
+quarter-wave rule taken at the third harmonic (rpm = 120 c / (4 L) / 3, c = 343 m/s): judgement, as is the rule.
+
+| Engine | Valves | Intake valve area / bore area | Duration at 1 mm | Lift, mm | Runner, m | Tuned near, rpm | Redline |
+|---|---|---|---|---|---|---|---|
+| bike-boxer-twin | 4 | 0.30 | 244 | 10.5 | 0.34 | 10,088 | 9,000 |
+| bike-i4-600 | 4 | 0.32 | 266 | 9.3 | 0.23 | 14,913 | 16,000 |
+| bike-i4-crossplane | 4 | 0.31 | 262 | 10.5 | 0.26 | 13,192 | 14,000 |
+| bike-i4-screamer | 4 | 0.33 | 262 | 10.5 | 0.26 | 13,192 | 14,500 |
+| bike-single | 4 | 0.29 | 244 | 9.5 | 0.32 | 10,719 | 10,500 |
+| bike-triple | 4 | 0.32 | 256 | 10.0 | 0.27 | 12,704 | 13,000 |
+| bike-twin-180 | 4 | 0.30 | 240 | 9.5 | 0.32 | 10,719 | 10,500 |
+| bike-twin-270 | 4 | 0.31 | 236 | 9.0 | 0.34 | 10,088 | 10,000 |
+| bike-twin-360 | 2 | 0.25 | 228 | 9.0 | 0.36 | 9,528 | 8,000 |
+| bike-v4-bigbang | 4 | 0.35 | 262 | 11.0 | 0.26 | 13,192 | 13,000 |
+| bike-v4-screamer | 4 | 0.35 | 264 | 11.0 | 0.25 | 13,720 | 14,500 |
+| bike-vtwin-45 | 4 | 0.31 | 220 | 12.0 | 0.42 | 8,167 | 5,500 |
+| bike-vtwin-90 | 4 | 0.35 | 250 | 11.5 | 0.32 | 10,719 | 11,000 |
+
+**What they make today with the lab on** (tee-dyno, steady points; `tee-validate`'s sweep reads a little higher):
+superbike 77 kW at 12,400 rpm (tee-validate 102 kW), 600 63 kW at 15,300 (82), naked twin 45 kW, cruiser 61 kW and
+148 N m (74, 160: within its class), adventure boxer 77 kW, single 22 kW. `content/validation/bike-superbike.json`,
+`bike-supersport-600.json`, `bike-cruiser.json`, `bike-vtwin-90.json` hold the class's peak power and torque as targets
+reported, not failed (their fast targets, the start, the level and the limiter, pass in ctest). The lead's diagnosis:
+at 25 m/s of piston speed the loss is mostly after the breathing (friction, perhaps the burn; the integrator is
+splitting it), and the runners do not ram yet (card E). When either lands, `bike.class.*` should be re-run with the
+real engine in place of the rig's curves.
 
 ## Tests (`tee-tests-bike`)
 

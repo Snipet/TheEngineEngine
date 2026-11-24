@@ -1,0 +1,113 @@
+{
+ "format": "tee-scenario",
+ "version": 1,
+ "name": "bike-downshift-no-slipper",
+ "description": "The superbike up to third at about 12,000 rpm, then braking hard (front lever 0.45) and down two gears on the clutch with no blip and no slipper (car.autoBlip 0, car.slipper 0): play it again with car.slipper 1 to hear the difference. Listen for: without the slipper the engine snatched up the revs at each downshift and the rear tyre chirping and chattering; with it, the clutch slipping and the rear quiet.",
+ "build": "bike-superbike",
+ "seconds": 17,
+ "events": [
+  {
+   "t": 0.0,
+   "spec": {
+    "env.temperature": 300,
+    "env.pressure": 101325
+   },
+   "ctl": {
+    "mode": 1,
+    "lever": 0,
+    "clutch": 0,
+    "brake": 0,
+    "throttle": 0,
+    "ignition": 1
+   }
+  },
+  {
+   "t": 0.0,
+   "spec": {
+    "car.autoBlip": 0,
+    "car.slipper": 0
+   }
+  },
+  {
+   "t": 0.25,
+   "ctl": {
+    "ignition": 2
+   }
+  },
+  {
+   "t": 2.0,
+   "ctl": {
+    "ignition": 1
+   }
+  },
+  {
+   "t": 2.5,
+   "ctl": {
+    "clutch": 1
+   }
+  },
+  {
+   "t": 2.7,
+   "press": "shiftUp"
+  },
+  {
+   "t": 2.9,
+   "ctl": {
+    "throttle": 0.5
+   },
+   "ramp": 0.2
+  },
+  {
+   "t": 3.1,
+   "ctl": {
+    "clutch": 0
+   },
+   "ramp": 0.8
+  },
+  {
+   "t": 3.6,
+   "ctl": {
+    "throttle": 1
+   },
+   "ramp": 0.3
+  },
+  {
+   "t": 8.9,
+   "press": "shiftUp"
+  },
+  {
+   "t": 11.6,
+   "press": "shiftUp"
+  },
+  {
+   "t": 13.5,
+   "ctl": {
+    "throttle": 0,
+    "brake": 0.45
+   }
+  },
+  {
+   "t": 14.0,
+   "press": "shiftDown"
+  },
+  {
+   "t": 14.7,
+   "press": "shiftDown"
+  },
+  {
+   "t": 16.0,
+   "ctl": {
+    "brake": 0
+   }
+  }
+ ],
+ "assertions": [
+  {
+   "audio": "finite"
+  },
+  {
+   "audio": "peak",
+   "<=": 1
+  }
+ ]
+}

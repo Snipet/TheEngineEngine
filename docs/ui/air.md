@@ -99,6 +99,12 @@ Each part's inspector page lists its fields (those the build has):
     `runnerLength`.
     - The ripple (the plenum's pulsing, peak to peak) is a number and a bar inside the plenum, or above an ITB's
       trumpets.
+    - **Where the runners are tuned (derived):** a third line under the runners, RAM NEAR 7640 AND 3180. A variable
+      manifold shows each length's main bump, the first length's / the second's. It is card E's loaded-pipe relation
+      (`ramTune`, mirroring `IntegratedTest.cpp` test 12's `ring()`: x tan x = A L / V, L plus 0.6 r, c 350 m/s), the
+      runner's area as `intake.fm` sizes it. The ring's frequency becomes the main and lower bumps' speeds at 46.2 and
+      19.7 rpm a hertz, calibrated on E's measured four (test `ui.air.ram`: within 10 % of all four bumps). It is
+      recomputed whenever a length is edited.
     - The runners are drawn at the length in use, against the longer of a variable manifold's two (dim). Their name
       says the length and the switch-over speed.
   - The air after the throttle takes `boost.throttleIn`'s temperature when a machine is in the path, else the air

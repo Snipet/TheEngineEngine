@@ -1,0 +1,22 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "3.2 L straight six, high-revving cams",
+  "notes": "The cams, springs and phasers of the archetype \"3.2 L straight six, high-revving\" alone (intake 264/236 degrees at the seat/1 mm, 11.8 mm; exhaust 260/232, 11.0 mm): loaded as a part, they replace only the valvetrain's cam fields.",
+  "spec": {
+    "valve": {
+      "model": "Lab",
+      "train": "Bucket",
+      "inDurSeat": 264,
+      "inDur1mm": 236,
+      "inLift": 0.011800000000000001,
+      "inCentre": 106,
+      "exDurSeat": 260,
+      "exDur1mm": 232,
+      "exLift": 0.011,
+      "exCentre": 110,
+      "inPhaseRange": 60,
+      "exPhaseRange": 45
+    }
+  }
+}
