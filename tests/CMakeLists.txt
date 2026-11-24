@@ -10,8 +10,10 @@
 #       endif()
 #   - it makes one executable, tee-tests-<package>, from the directory's own sources, with tee_target_defaults(),
 #     linking Tee::host and Catch2::Catch2WithMain;
-#   - it registers its tests with catch_discover_tests(tee-tests-<package> DISCOVERY_MODE PRE_TEST
-#     TEST_PREFIX "<package>." PROPERTIES TIMEOUT 900), so that ctest -R '^<package>\.' runs the package's alone.
+#   - it registers its tests with catch_discover_tests(tee-tests-<package> DISCOVERY_MODE PRE_TEST ADD_TAGS_AS_LABELS
+#     TEST_PREFIX "<package>." PROPERTIES TIMEOUT 900), so that ctest -R '^<package>\.' runs the package's alone;
+#   - a long soak (minutes, not seconds) carries the Catch tag [nightly]: ADD_TAGS_AS_LABELS makes it the ctest label
+#     "nightly", which the dev and release test presets (and so CI) leave out; ctest --preset nightly runs those alone.
 #
 # The tests find the simulator and the content in this checkout (compiled in), and write what they keep under out/.
 include(Catch)
@@ -24,7 +26,7 @@ target_compile_definitions(tee-tests PRIVATE
   "TEE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
   "TEE_SOURCE_SIM_DIR=\"${PROJECT_SOURCE_DIR}/sim/ref\""
   "TEE_SOURCE_CONTENT_DIR=\"${PROJECT_SOURCE_DIR}/content/ref\"")
-catch_discover_tests(tee-tests DISCOVERY_MODE PRE_TEST PROPERTIES TIMEOUT 900)
+catch_discover_tests(tee-tests DISCOVERY_MODE PRE_TEST ADD_TAGS_AS_LABELS PROPERTIES TIMEOUT 900)
 add_subdirectory(host)   # card C: the host's and the tools' tests (tests/host/CMakeLists.txt)
 
 # ---- the simulator packages' tests (the rule above) ------------------------------------------------------------------

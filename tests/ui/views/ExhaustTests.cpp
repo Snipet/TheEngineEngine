@@ -9,6 +9,7 @@
 #include "views/exhaust/ExhaustModel.h"
 #include "views/exhaust/ExhaustStage.h"
 #include "views/exhaust/ExhaustWorkspace.h"
+#include "views/fx/Fx.h"
 
 #include <funkgui/core/Theme.h>
 #include <funkgui/text/FontService.h>
@@ -18,12 +19,64 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <cstring>
 
 
 namespace tee::test::u3
 {
     // The stage the frame gives a workspace in a window of w x h (U1's AppFrame over the demo): the AIR and EXHAUST
     // stages are tested and pictured at the frame's smallest (1100 x 700) and at a 1600 x 1000 window's.
+    // Text that collides: each text() call's glyphs, taken as runs (glyph quads following each other on one line), and
+    // any two runs whose boxes overlap by more than a pixel. Returns a line for each collision ("" : none).
+    std::string textCollisions(const funkgui::PrimList& frame)
+    {
+        struct Run
+        {
+            float x0, y0, x1, y1, lastX;
+        };
+        std::vector<Run> runs;
+        bool open = false;
+        for (const funkgui::Prim& q : frame.prims)
+        {
+            if (static_cast<int>(q.d2[2]) != static_cast<int>(funkgui::PrimKind::text))
+            {
+                open = false;
+                continue;
+            }
+            if (open)
+            {
+                Run& r = runs.back();
+                const bool sameLine = std::fabs(q.y0 - r.y0) < 3.0f && std::fabs(q.y1 - r.y1) < 3.0f;
+                if (sameLine && q.x0 > r.lastX && q.x0 <= r.x1 + 14.0f)
+                {
+                    r.x1 = std::max(r.x1, q.x1);
+                    r.lastX = q.x0;
+                    r.y0 = std::min(r.y0, q.y0);
+                    r.y1 = std::max(r.y1, q.y1);
+                    continue;
+                }
+            }
+            runs.push_back({ q.x0, q.y0, q.x1, q.y1, q.x0 });
+            open = true;
+        }
+        std::string out;
+        const float in = 1.0f;   // the glyphs' quads carry an apron: overlaps smaller than this are no collision
+        for (std::size_t i = 0; i < runs.size(); ++i)
+            for (std::size_t j = i + 1; j < runs.size(); ++j)
+            {
+                const Run& a = runs[i];
+                const Run& b = runs[j];
+                if (a.x0 + in < b.x1 - in && b.x0 + in < a.x1 - in && a.y0 + in < b.y1 - in && b.y0 + in < a.y1 - in)
+                {
+                    char t[160];
+                    std::snprintf(t, sizeof t, "text at (%.0f,%.0f)-(%.0f,%.0f) meets text at (%.0f,%.0f)-(%.0f,%.0f)\n", a.x0,
+                                  a.y0, a.x1, a.y1, b.x0, b.y0, b.x1, b.y1);
+                    out += t;
+                }
+            }
+        return out;
+    }
+
     funkgui::Rect frameStage(int w, int h)
     {
         tee::ui::DemoRig demo(4.6);
@@ -408,6 +461,49 @@ namespace
             ExRig one("sc-v8-180", w, h, 1.0f);
             golden("exhaust.frame." + tag + ".dpi1", *one.host);
         }
+        return 0;
+    }
+}
+
+namespace
+{
+    // No two texts meet, on any build, at the frame's two stages, in both densities' layouts (density 1 drawn).
+    VIEW_TEST(testExhaustText, "exhaust.text")
+    {
+        for (const auto& win : { std::pair<int, int>{ 1100, 700 }, std::pair<int, int>{ 1600, 1000 } })
+        {
+            const funkgui::Rect st = tee::test::u3::frameStage(win.first, win.second);
+            for (const char* b : { "na4-421", "tt-v8-x", "sc-v8-180", "single-stack", "v12-log", "flat4" })
+            {
+                ExRig rig(b, static_cast<int>(st.w), static_cast<int>(st.h), 1.0f);
+                const std::string hits = tee::test::u3::textCollisions(rig.host->draw());
+                CHECK_MSG(hits.empty(), std::string(b) + " at " + std::to_string(win.first) + ":\n" + hits);
+            }
+        }
+        return 0;
+    }
+}
+
+namespace
+{
+    // The atmosphere carries no fact: with the effects on or off the software rasteriser's frame is the same, and a
+    // stage at rest is still at rest (the effects draw nothing here, so nothing flickers).
+    VIEW_TEST(testExhaustEffects, "exhaust.effects")
+    {
+        ExRig rig("tt-v8-x", 1100, 700, 1.0f);
+        rig.demo.engine.set("engine.flags", 2);      // the overrun's fuel cut
+        rig.demo.engine.set("engine.throttle", 0.0);
+        rig.host->tick(2);
+        tee::ui::fx::setEnabled(true);
+        const funkgui::PrimList& a = rig.host->draw();
+        const std::vector<funkgui::Prim> on = a.prims;
+        const std::size_t onShaders = a.shaders.size();
+        tee::ui::fx::setEnabled(false);
+        const funkgui::PrimList& b = rig.host->draw();
+        tee::ui::fx::setEnabled(true);
+        CHECK(on.size() == b.prims.size() && onShaders == b.shaders.size() && b.shaders.empty());
+        CHECK(on.size() == b.prims.size() && std::memcmp(on.data(), b.prims.data(), on.size() * sizeof(funkgui::Prim)) == 0);
+        CHECK(!rig.ws->moving());
         return 0;
     }
 }

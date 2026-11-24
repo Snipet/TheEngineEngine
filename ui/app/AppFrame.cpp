@@ -11,6 +11,11 @@
 #include <cmath>
 #include <set>
 
+#if __has_include("views/garage/Library.h")
+#include "views/garage/Library.h"
+#define TEE_UI_HAS_LIBRARY 1
+#endif
+
 namespace tee::ui
 {
     namespace
@@ -152,8 +157,16 @@ namespace tee::ui
                                return services_.simLoad ? std::to_string(static_cast<int>(std::lround(services_.simLoad() * 100.0f))) + " %"
                                                         : std::string("-");
                            });
-        level_ = &make<Bar>("Output", [this] {
+        // The output's peak: the bar on a scale of decibels (-60 to 0 dBFS), its number in dB.
+        const auto peak = [this] {
             return std::clamp(services_.outputLevel ? services_.outputLevel() : telemetry_.outputPeak(), 0.0f, 1.0f);
+        };
+        level_ = &make<Bar>("Output", [peak] {
+            const float p = peak();
+            return p <= 0.001f ? 0.0f : std::clamp(1.0f + 20.0f * std::log10(p) / 60.0f, 0.0f, 1.0f);
+        }, [peak] {
+            const float p = peak();
+            return p <= 0.001f ? std::string("-60 dB") : look::num(20.0 * std::log10(static_cast<double>(p)), "%.0f") + " dB";
         });
         unitsButton_ = &make<Button>("Units", [this] { showUnits(!unitsPage_); });
         unitsButton_->setLit([this] { return unitsPage_; });
@@ -320,7 +333,9 @@ namespace tee::ui
             report();
         }, &pedalBrake));
         pedals_.push_back(&make<PedalBar>("Clu", sent(&ControlsFrame::clutch), [this](bool held, float v) {
-            if (services_.clutch)
+            controls_.clutch = held ? v : -1.0f;   // PanelControls::clutch (card B, 920397d)
+            report();
+            if (services_.clutch)                  // the earlier route, while a shell still serves it
                 services_.clutch(held ? v : -1.0f);
         }, &pedalClutch));
     }
@@ -453,6 +468,7 @@ namespace tee::ui
             o.minWidth = kMinW;
             o.minHeight = kMinH;
             o.name = "app";
+            o.dimAtDefault = false;   // a value is what a person reads, at its default or not
             o.insetLeft = static_cast<int>(room.x) + 4;
             o.insetTop = static_cast<int>(room.y) + 2;
             o.insetRight = std::max(0, width() - static_cast<int>(room.right()) + 4);
@@ -529,12 +545,17 @@ namespace tee::ui
         return { 0.0f, static_cast<float>(height()) - kCockpitH, static_cast<float>(width()), kCockpitH };
     }
 
-    funkgui::Rect AppFrame::stageRect() const
+    funkgui::Rect AppFrame::stageFor(int w, int h)
     {
-        const float x = railWidth(), inspector = width() >= 1400 ? kInspectorW + 20.0f : kInspectorW;
-        return { x, kTopH, std::max(100.0f, static_cast<float>(width()) - x - inspector),
-                 static_cast<float>(height()) - kTopH - kCockpitH };
+        w = std::max(w, kMinW);
+        h = std::max(h, kMinH);
+        const float x = w >= 1280 ? kRailW : kRailNarrowW, inspector = w >= 1400 ? kInspectorW + 20.0f : kInspectorW;
+        return { x, kTopH, std::max(100.0f, static_cast<float>(w) - x - inspector), static_cast<float>(h) - kTopH - kCockpitH };
     }
+
+    funkgui::Rect AppFrame::stageRect() const { return stageFor(width(), height()); }
+
+    void AppFrame::setLibrary(garage::Library* library) { ctx_->library = library; }
 
     funkgui::Rect AppFrame::ribbonRect() const
     {
@@ -545,10 +566,16 @@ namespace tee::ui
         return { s.right(), s.bottom() - h, static_cast<float>(width()) - s.right(), h };
     }
 
+    int AppFrame::tabRows() const noexcept
+    {
+        const int n = unitsPage_ ? 0 : std::min(inspectorPageCount(), kMaxTabs);
+        return n <= 1 ? 0 : n <= 3 ? 1 : 2;   // more than three: two rows, so each title has room
+    }
+
     funkgui::Rect AppFrame::inspectorRect() const
     {
         const funkgui::Rect s = stageRect();
-        const float top = s.y + kHeadH + (inspectorPageCount() > 1 && !unitsPage_ ? 30.0f : 0.0f);
+        const float top = s.y + kHeadH + 28.0f * static_cast<float>(tabRows()) + (tabRows() > 0 ? 2.0f : 0.0f);
         const funkgui::Rect rib = ribbonRect();
         const float bottom = rib.isEmpty() ? s.bottom() : rib.y;
         return { s.right(), top, static_cast<float>(width()) - s.right(), std::max(40.0f, bottom - top) };
@@ -557,9 +584,10 @@ namespace tee::ui
     funkgui::Rect AppFrame::inspectorTabRect(int p) const
     {
         const funkgui::Rect s = stageRect();
-        const int n = std::min(inspectorPageCount(), kMaxTabs);
-        const float x0 = s.right() + 10.0f, w = (static_cast<float>(width()) - x0 - 10.0f) / static_cast<float>(std::max(1, n));
-        return { x0 + w * static_cast<float>(p), s.y + kHeadH, w - 4.0f, 24.0f };
+        const int n = std::min(inspectorPageCount(), kMaxTabs), rows = std::max(1, tabRows());
+        const int perRow = (n + rows - 1) / rows, row = p / std::max(1, perRow), col = p % std::max(1, perRow);
+        const float x0 = s.right() + 10.0f, w = (static_cast<float>(width()) - x0 - 10.0f) / static_cast<float>(std::max(1, perRow));
+        return { x0 + w * static_cast<float>(col), s.y + kHeadH + 2.0f + 28.0f * static_cast<float>(row), w - 4.0f, 24.0f };
     }
 
     funkgui::Rect AppFrame::startRect() const
@@ -597,7 +625,8 @@ namespace tee::ui
         right(undo_, 62.0f, 9.0f, 30.0f);
         right(unitsButton_, 68.0f, 9.0f, 30.0f);
         x -= 8.0f;
-        right(level_, 110.0f, 6.0f, 36.0f);
+        right(level_, 120.0f, 6.0f, 36.0f);
+        x -= 18.0f;                                       // a clear gap: each label with its own number and bar
         right(load_, 100.0f, 6.0f, 36.0f);
         const float left = railWidth() + 16.0f;
         const float statusW = std::clamp(x - left - 420.0f, 0.0f, 300.0f);
@@ -776,6 +805,10 @@ namespace tee::ui
     void AppFrame::tick(float dt)
     {
         dyno_->tick(dt);
+#ifdef TEE_UI_HAS_LIBRARY
+        if (ctx_->library != nullptr)
+            ctx_->library->tick(dt);
+#endif
         // The units changed: the pages again, with the new units' texts.
         if (units_.revision() != unitsSeen_ && !(gestures() != nullptr && gestures()->dragging()))
         {
@@ -910,11 +943,9 @@ namespace tee::ui
                 for (int i = 0; i < page.params().count(); ++i)   // a page scrolls: each of its controls is reachable
                     out.insert(page.params().field(i));
                 for (const GuiPanel::WidgetAt& wa : page.widgets())
-                {
-                    const int f = doc_.find(page.spec().gui.nodes[static_cast<std::size_t>(wa.node)].file);
-                    if (f >= 0 && page.items()[static_cast<std::size_t>(wa.item)]->shown())
-                        out.insert(f);
-                }
+                    if (page.items()[static_cast<std::size_t>(wa.item)]->shown())   // a table, or an array's elements
+                        for (const int f : fieldsOfWidget(doc_, page.spec().gui.nodes[static_cast<std::size_t>(wa.node)]))
+                            out.insert(f);
             }
         }
         show(wasShown);

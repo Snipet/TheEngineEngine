@@ -2,9 +2,9 @@
 
 *`sim/intake/`. `intake.model = 0` is the reference's: one throttle, a plenum of 0.8 times the displacement, runners
 of 0.30 m (a bike's 0.16) opening into it through an open end's reflection, the air box a resonant filter (90 Hz,
-Q 2.2) on the throttle's flow whose rate of change is the intake's sound. `intake.model = 1` is this card's. Until
-K3b carves `Intake` out of the reference, the new parts live beside it (`airbox.fm`, `itb.fm`, `runner.fm`, their
-fields in `lab-spec.fm`) and are tested standalone (`tests/sim/intake/`).*
+Q 2.2) on the throttle's flow whose rate of change is the intake's sound. `intake.model = 1` is this card's. The new
+parts (`airbox.fm`, `itb.fm`, `runner.fm`) are wired through `Intake` (`intake.fm`); their fields are
+`sim/spec/intake.fm`'s.*
 
 **measured**: a test measures it; **published**: a source; **judgement**: chosen.
 

@@ -33,6 +33,9 @@ namespace tee::ui
                                                       "exhaust.wallTails" };
             static constexpr const char* level[2] = { "exhaust.tailLevel[0]", "exhaust.tailLevel[1]" };   // 0..1 of full scale
             static constexpr const char* valve[2] = { "exhaust.valve[0]", "exhaust.valve[1]" };           // 0 shut .. 1 open
+            static constexpr const char* pop = "exhaust.pop";          // 0..1, a bang at the tails (card H's account)
+            static constexpr const char* flags = "engine.flags";       // on the branch: FLAG_FUEL_CUT = 2
+            static constexpr const char* throttle = "engine.throttle"; // on the branch
             static constexpr const char* scopePipe = "pipePressure";   // sim/spec/scope.fm, over cylinder 1's path
             static constexpr const char* ambient = "env.pressure";     // a field: the air outside
         };

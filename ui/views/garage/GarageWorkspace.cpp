@@ -91,6 +91,8 @@ namespace tee::ui
     GarageWorkspace::GarageWorkspace(WorkspaceContext& c, garage::Library* library) : Workspace(c), lib_(library)
     {
         if (lib_ == nullptr)
+            lib_ = ctx_.library;   // the application's (the shell's, over its files)
+        if (lib_ == nullptr)
         {
             // The frame's own services when they list builds (the application today); else made-up builds.
             if (garage::ServicesLibrary::usable(ctx_))
@@ -396,6 +398,18 @@ namespace tee::ui
     // ---- time -------------------------------------------------------------------------------------------------------
     void GarageWorkspace::step(float dt)
     {
+        // The application's library, once the frame has been given it (AppFrame::setLibrary comes after the
+        // workspaces are made): it takes the place of our own from then on. The frame ticks it.
+        if (ctx_.library != nullptr && lib_ != ctx_.library)
+        {
+            lib_ = ctx_.library;
+            own_.reset();
+            demo_ = false;
+            chosen_.clear();
+            compareId_.clear();
+            comparing_ = false;
+            libSeen_ = ~lib_->revision();
+        }
         if (own_ != nullptr)
             own_->tick(dt);
         if (lib_->revision() != libSeen_)

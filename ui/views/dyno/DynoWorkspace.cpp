@@ -122,6 +122,13 @@ namespace tee::ui
                 return ctx_.units.number(Quantity::rotation, ratePort_->at01(v), 0) + " " +
                        ctx_.units.unit(Quantity::rotation).name + "/s";
             });
+            sweepBtn_ = &make<Button>("Sweep", [this] { stepped_ = false; });
+            sweepBtn_->setLit([this] { return !stepped_; });
+            stepsBtn_ = &make<Button>("Steps", [this] { stepped_ = true; });
+            stepsBtn_->setLit([this] { return stepped_; });
+            dwellPort_ = std::make_unique<PlanPort>("dyno.dwell", [this] { return plan_.dwell; }, [this](double v) { plan_.dwell = v; },
+                                                    0.2, 3.0, 14, 0.6);
+            dwell_ = &make<Stepper>(*dwellPort_, "Dwell", [this](float v) { return look::num(dwellPort_->at01(v), "%.1f") + " s"; });
             pedal_ = &make<Stepper>(*pedalPort_, "Pedal", [this](float v) { return look::num(pedalPort_->at01(v) * 100.0) + " %"; });
             gearStep_ = &make<Stepper>(*gearPort_, "Gear", [this](float v) { return look::num(gearPort_->at01(v)); });
             start_ = &make<Button>("Start run", [this] { startRun(); });
@@ -134,7 +141,7 @@ namespace tee::ui
             });
             name_ = &make<TextField>("Name", [this] { return rowName(selected_); },
                                      [this](const std::string& s) { return rename(selected_, s); }, 24);
-            copy_ = &make<Button>("Copy CSV", [this] { copyCsv(); });
+            copy_ = &make<Button>(canSave() ? "Save CSV" : "Copy CSV", [this] { copyCsv(); });
             const char* extraNames[] = { "None", kExtras[0].label, kExtras[1].label, kExtras[2].label };
             for (int i = 0; i <= kExtraCount; ++i)
             {
@@ -157,7 +164,9 @@ namespace tee::ui
             k.mix(static_cast<float>(plan_.from)).mix(static_cast<float>(plan_.to)).mix(static_cast<float>(plan_.pedal));
             for (const RowView& r : rows_)
                 k.mix(r.shown).mix(r.name);
-            k.mix(showPredicted_).mix(showBefore_).mix(message_);
+            k.mix(showPredicted_).mix(showBefore_).mix(message_).mix(stepped_);
+            if (const DynoTrace* so = ctx_.dyno.runSoFar())
+                k.mix(static_cast<int>(so->speed.size()));
             return k.h;
         }
 
@@ -223,6 +232,11 @@ namespace tee::ui
             }
             if (gearStep_->shown() != plan_.chassis)
                 gearStep_->setPlace(gearStep_->bounds(), plan_.chassis);
+            if (rate_->shown() == stepped_)
+            {
+                rate_->setPlace(rate_->bounds(), !stepped_);
+                dwell_->setPlace(rate_->bounds(), stepped_);
+            }
             if (ctx_.dyno.running())
                 runTime_ += dt;
             else if (runTime_ > 0.0f)
@@ -231,7 +245,7 @@ namespace tee::ui
 
         void layout(const Rect& s) override
         {
-            const float pad = 16.0f, header = 58.0f;
+            const float pad = 16.0f, header = 52.0f;
             const float sideW = std::clamp(s.w * 0.3f, 220.0f, 330.0f);
             const Rect plotBox{ s.x + pad, s.y + pad + header, s.w - 3.0f * pad - sideW, s.h - 2.0f * pad - header };
             const float bandH = std::clamp(plotBox.h * 0.26f, 96.0f, 170.0f);
@@ -254,17 +268,22 @@ namespace tee::ui
 
             // The side: the plan at the bottom, the runs above it.
             const float sx = plotBox.right() + pad;
-            const float planH = 272.0f;
+            const float planH = 306.0f;
             planBox_ = { sx, s.bottom() - pad - planH, sideW, planH };
             runsBox_ = { sx, plotBox.y, sideW, planBox_.y - 10.0f - plotBox.y };
             const float ix = sx + look::kPad, iw = sideW - 2.0f * look::kPad;
             float y = planBox_.y + 30.0f;
             engineBtn_->setPlace({ ix, y, iw * 0.5f - 3.0f, 26.0f }, true);
             chassisBtn_->setPlace({ ix + iw * 0.5f + 3.0f, y, iw * 0.5f - 3.0f, 26.0f }, true);
-            y += 34.0f;
+            y += 30.0f;
+            sweepBtn_->setPlace({ ix, y, iw * 0.5f - 3.0f, 22.0f }, true);
+            stepsBtn_->setPlace({ ix + iw * 0.5f + 3.0f, y, iw * 0.5f - 3.0f, 22.0f }, true);
+            y += 30.0f;
             for (Stepper* st : { from_, to_, rate_, pedal_, gearStep_ })
             {
                 st->setPlace({ ix, y, iw, 24.0f }, true);
+                if (st == rate_)
+                    dwell_->setPlace({ ix, y, iw, 24.0f }, false);   // the same row: a sweep's rate or a step's dwell
                 y += 27.0f;
             }
             y += 4.0f;
@@ -371,6 +390,11 @@ namespace tee::ui
             if (ctx_.dyno.running())
                 return;
             DynoRequest r = plan_;
+            r.gear = plan_.chassis ? gear_ : 0;
+            r.steps.clear();
+            if (stepped_)   // every 500 rpm from `from` to `to`
+                for (double w = plan_.from; w <= plan_.to + 1e-6; w += 500.0 * chart::kRpm)
+                    r.steps.push_back(w);
             r.name = std::string(plan_.chassis ? "Chassis " : "Engine ") + std::to_string(rows_.size() + 1);
             runTime_ = 0.0f;
             if (ctx_.dyno.startRun(r))
@@ -411,10 +435,26 @@ namespace tee::ui
                 message_ = rowName(selected_) + " has no points to copy.";
                 return;
             }
+            if (canSave())
+            {
+                std::string error;
+                const bool saved = ctx_.services->saveText(rowName(selected_) + ".csv", csvOf(t), error);
+                message_ = saved ? rowName(selected_) + " saved as CSV, " + std::to_string(t.speed.size()) + " rows."
+                                 : "Not saved: " + (error.empty() ? std::string("cancelled") : error);
+                return;
+            }
             const bool ok = host() != nullptr && host()->copyText(csvOf(t));
             message_ = ok ? rowName(selected_) + " copied as CSV, " + std::to_string(t.speed.size()) + " rows."
                           : "This window cannot reach the clipboard.";
         }
+        // How far the run in progress has come (rad/s): the runner's newest point, else what the plan's rate says.
+        double runSpeedNow() const
+        {
+            if (const DynoTrace* so = ctx_.dyno.runSoFar(); so != nullptr && !so->speed.empty())
+                return so->speed.back();
+            return stepped_ ? plan_.from : std::min(plan_.to, plan_.from + plan_.rate * runTime_);
+        }
+        bool canSave() const { return ctx_.services != nullptr && static_cast<bool>(ctx_.services->saveText); }
         std::string peakWords(const DynoTrace& t) const
         {
             const auto tq = t.peakTorque(), pw = t.peakPower();
@@ -545,7 +585,7 @@ namespace tee::ui
             if (ctx_.dyno.running())
             {
                 const double x0 = u.toUser(Quantity::rotation, plan_.from);
-                const double now = std::min(plan_.to, plan_.from + plan_.rate * runTime_);
+                const double now = runSpeedNow();
                 const float px0 = xScale_.px(x0), px1 = xScale_.px(u.toUser(Quantity::rotation, now));
                 c.rrect(px0, a.y, std::max(0.0f, px1 - px0), a.h, 0.0f, p.over(p.selected, 0.08f));
                 c.segment(px1, a.y, px1, a.bottom(), 1.5f, p.selected);
@@ -592,6 +632,27 @@ namespace tee::ui
                 };
                 mark(tq.speed, tq.value, Chart::torque, Quantity::torque);
                 mark(pw.speed, pw.value, Chart::power, Quantity::power);
+            }
+            // The run as it draws: its points so far in the stroke it will have, a disc at its newest.
+            if (const DynoTrace* so = ctx_.dyno.runSoFar(); so != nullptr && !so->empty())
+            {
+                any = true;
+                const Stroke st = strokeOf(p, static_cast<int>(rows_.size()));
+                std::vector<float> xs, yt, yp;
+                for (std::size_t i = 0; i < so->speed.size(); ++i)
+                {
+                    xs.push_back(xScale_.px(u.toUser(Quantity::rotation, so->speed[i])));
+                    yt.push_back(i < so->torque.size() ? tqScale_.px(u.toUser(Quantity::torque, so->torque[i])) : std::nanf(""));
+                    yp.push_back(i < so->power.size() ? pwScale_.px(u.toUser(Quantity::power, so->power[i])) : std::nanf(""));
+                }
+                const Canvas::ClipScope clip(c, { a.x - 4.0f, a.y - 4.0f, a.w + 8.0f, a.h + 8.0f });
+                chart::stroke(c, xs, yt, kTorqueW, st.ink, st.dash);
+                chart::stroke(c, xs, yp, kPowerW, st.ink, st.dash);
+                if (!xs.empty())
+                {
+                    c.disc(xs.back(), yt.back(), 4.5f, st.ink, 1.5f, p.panel);
+                    c.disc(xs.back(), yp.back(), 3.5f, st.ink, 1.5f, p.panel);
+                }
             }
             if (!any)
             {
@@ -856,11 +917,11 @@ namespace tee::ui
             std::string words;
             if (ctx_.dyno.running())
             {
-                const double total = (plan_.to - plan_.from) / std::max(1e-6, plan_.rate);
-                const double now = std::min(plan_.to, plan_.from + plan_.rate * runTime_);
-                words = runName_ + ": sweeping " + u.format(Quantity::rotation, now, 0) + ", " + look::num(runTime_, "%.1f") +
-                        " s of about " + look::num(total, "%.1f") + " s";
-                look::level(c, p, { x, wordsY_ + 18.0f, w, 4.0f }, runTime_ / std::max(1e-6, total), p.selected);
+                const double now = runSpeedNow();
+                const double done = std::clamp((now - plan_.from) / std::max(1e-6, plan_.to - plan_.from), 0.0, 1.0);
+                words = runName_ + (stepped_ ? ": holding " : ": sweeping ") + u.format(Quantity::rotation, now, 0) + ", " +
+                        look::num(done * 100.0) + " % of the way to " + u.format(Quantity::rotation, plan_.to, 0);
+                look::level(c, p, { x, wordsY_ + 32.0f, w, 4.0f }, done, p.selected);
             }
             else if (!message_.empty())
                 words = message_;
@@ -882,20 +943,23 @@ namespace tee::ui
                 }
             }
             c.text(a.c_str(), x, wordsY_, look::kBody, p.text);
-            if (!b.empty() && !ctx_.dyno.running())
+            if (!b.empty())
                 c.text(b.c_str(), x, wordsY_ + 15.0f, look::kBody, p.text);
         }
 
         // ---- state -------------------------------------------------------------------------------------------------
-        DynoRequest plan_{ false, 1500.0 * chart::kRpm, 7000.0 * chart::kRpm, 600.0 * chart::kRpm, 1.0, {} };
+        DynoRequest plan_{ false, 1500.0 * chart::kRpm, 7000.0 * chart::kRpm, 600.0 * chart::kRpm, 1.0, {}, {}, 0.6, 0 };
         int gear_ = 4;
+        bool stepped_ = false;
         std::vector<RowView> rows_;
         bool showPredicted_ = true, showBefore_ = true;
         int selected_ = -2, extra_ = 0, cursorPx_ = -1;
         float runTime_ = 0.0f;
         std::string runName_, message_;
 
-        std::unique_ptr<PlanPort> fromPort_, toPort_, ratePort_, pedalPort_, gearPort_;
+        std::unique_ptr<PlanPort> fromPort_, toPort_, ratePort_, pedalPort_, gearPort_, dwellPort_;
+        Button *sweepBtn_ = nullptr, *stepsBtn_ = nullptr;
+        Stepper* dwell_ = nullptr;
         Button *engineBtn_ = nullptr, *chassisBtn_ = nullptr, *start_ = nullptr, *stop_ = nullptr, *copy_ = nullptr;
         Stepper *from_ = nullptr, *to_ = nullptr, *rate_ = nullptr, *pedal_ = nullptr, *gearStep_ = nullptr;
         TextField* name_ = nullptr;

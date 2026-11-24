@@ -20,6 +20,7 @@
 #include "kit/bind/Units.h"
 
 #include <cstdint>
+#include <functional>
 #include <map>
 #include <set>
 #include <string>
@@ -28,13 +29,45 @@
 
 namespace tee::ui
 {
-    std::vector<FieldInfo> demoFields();
+    class DemoEngine;
+
+    // ---- a workspace's own demo data ---------------------------------------------------------------------------
+    // A package adds to the demo what its stage reads and the demo lacks (fields, telemetry, Scope arrays), from its
+    // own directory: a function `void <fn>(DemoExtras&)` in namespace tee::ui, named on a second line of its
+    // register.h:
+    //     TEE_UI_DEMO(<id>, <fn>)
+    // It is called twice for each demo: once with `fields` (append FieldInfo, before the document is made) and once
+    // with `engine` (engine->addTelemetry / addScope / set). Every registered workspace's hook applies to every
+    // DemoRig made with hooks on (the default): the frame's contact sheet shows each stage with its data.
+    struct DemoExtras
+    {
+        std::vector<FieldInfo>* fields = nullptr;   // the first call's
+        DemoEngine* engine = nullptr;               // the second call's
+    };
+    using DemoHook = void (*)(DemoExtras&);
+    // The hooks this build found (generated from ui/views/*/register.h, as registeredWorkspaces()).
+    const std::vector<DemoHook>& registeredDemos();
+
+    // `hooks`: with every registered workspace's own fields (DemoHook).
+    std::vector<FieldInfo> demoFields(bool hooks = true);
 
     class DemoEngine final : public TelemetrySource, public ScopeSource, public DynoSource
     {
     public:
-        // `doc`: the document the dyno watches (nullptr: a fixed curve).
-        explicit DemoEngine(const FieldDoc* doc = nullptr);
+        // `doc`: the document the dyno watches (nullptr: a fixed curve). `hooks`: with the registered workspaces' own
+        // telemetry and Scope arrays (DemoHook).
+        explicit DemoEngine(const FieldDoc* doc = nullptr, bool hooks = true);
+
+        // A package's own (DemoHook): a telemetry value that follows the script (read when asked), a Scope array (the
+        // function writes up to max entries into out and answers how many).
+        void addTelemetry(std::string name, std::function<double(const DemoEngine&)> value);
+        void addScope(std::string name, std::function<int(const DemoEngine&, float* out, int max)> read);
+        // The script's state, for those functions: rpm, the throttle (0..1), the crank's phase over the cycle (0..1).
+        double rpm() const noexcept { return rpm_; }
+        double throttle() const noexcept { return throttle_; }
+        double phase() const noexcept { return phase_; }
+        // A field of the document it watches (SI), or `fallback`.
+        double field(std::string_view path, double fallback) const { return fieldOr(path, fallback); }
 
         // Time: the script's position (seconds, wraps at 8) and a step along it. tick(dt) (the DynoSource's, which the
         // frame calls each frame) steps the script, the Scope's generation and the dyno; while engine.state is held at
@@ -72,6 +105,7 @@ namespace tee::ui
         bool startRun(const DynoRequest& r) override;
         bool running() const override { return runLeft_ > 0.0; }
         void stopRun() override { runLeft_ = 0.0; }
+        const DynoTrace* runSoFar() const override { return runLeft_ > 0.0 ? &partial_ : nullptr; }
 
         static constexpr double kPeriod = 8.0;     // the script's length, seconds
 
@@ -81,6 +115,8 @@ namespace tee::ui
         double fieldOr(std::string_view path, double fallback) const;
 
         const FieldDoc* doc_;
+        std::vector<std::pair<std::string, std::function<double(const DemoEngine&)>>> extraTel_;
+        std::vector<std::pair<std::string, std::function<int(const DemoEngine&, float*, int)>>> extraScope_;
         double t_ = 0.0, rpm_ = 850.0, throttle_ = 0.0, phase_ = 0.0;
         bool frozen_ = false;
         std::vector<std::string> names_;
@@ -90,7 +126,7 @@ namespace tee::ui
         std::uint64_t generation_ = 0;
         int reads_ = 0;
         // the dyno
-        DynoTrace predicted_, before_;
+        DynoTrace predicted_, before_, partial_;
         std::vector<DynoTrace> runs_;
         DynoRequest runPlan_;
         std::uint64_t seenRevision_ = 0, dynoRevision_ = 1;
@@ -101,9 +137,9 @@ namespace tee::ui
     // remember the controls a Panel asks for.
     struct DemoRig
     {
-        MemoryDoc doc{ demoFields() };
+        MemoryDoc doc;
         Units units;
-        DemoEngine engine{ &doc };
+        DemoEngine engine;
         Selection selection;
         PanelControls asked{};
         int askedCount = 0;
@@ -113,7 +149,9 @@ namespace tee::ui
         WorkspaceContext ctx{ doc, engine, engine, engine, units, selection, app };
 
         // The script at `t` seconds, its dyno curve made, and the pedals as the application would send them.
-        explicit DemoRig(double t = 4.6);
+        // `hooks`: with the registered workspaces' own demo data (off: the demo alone, for pictures that must not move
+        // when another package adds to it).
+        explicit DemoRig(double t = 4.6, bool hooks = true);
         void at(double t);
     };
 }

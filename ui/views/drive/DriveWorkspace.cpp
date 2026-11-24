@@ -46,6 +46,7 @@ namespace tee::ui
         {
             tach_ = &make<Gauge>("Engine", [this] { return ctx_.live.get(telemetry::kSpeed) * kToRpm; }, 0.0, 8000.0);
             tach_->setTicks(8, 2);
+            tach_->setClearNumerals(true);
             tach_->setNumerals([](double v) { return std::to_string(static_cast<int>(std::lround(v / 1000.0))); });
             tach_->setUnit("X1000 RPM");
             tach_->setReadout([](double v) { return look::num(v, "%.0f"); });
@@ -53,6 +54,7 @@ namespace tee::ui
                 return ctx_.units.toUser(Quantity::speed, ctx_.live.get(telemetry::kCarSpeed));
             }, 0.0, 300.0);
             speedo_->setTicks(6, 2);
+            speedo_->setClearNumerals(true);
             speedo_->setReadout([](double v) { return look::num(v, "%.0f"); });
         }
 
@@ -244,23 +246,16 @@ namespace tee::ui
                 if (m >= 0.0f)
                     c.segment(s.x + m, roadY + 8.0f, s.x + m + scale * 0.45f, roadY + 8.0f, 2.0f, p.dim);
             // The car: wheels 2.7 m apart, radius 0.33 m; the body squats at the rear when it pulls.
-            const float r = gm.r, wb = gm.wb, cx = gm.cx, fx = gm.fx, rx = gm.rx, wy = gm.wy, x0 = gm.x0, x1 = gm.x1;
+            const float r = gm.r, fx = gm.fx, rx = gm.rx, wy = gm.wy;
             const float sq = squat_ * 7.0f;                     // the rear down (px), the front up by half
-            const float rideF = wy - r * 0.55f - sq * 0.5f, rideR = wy - r * 0.55f + sq;
             const funkgui::Col body = ctx_.selection.is("car") ? p.selected : p.value;
-            // The body as a profile: sill, nose, bonnet, screen, roof, back, tail (a polyline, opaque).
-            const auto yAt = [&](float x) { return rideR + (rideF - rideR) * (x - rx) / (fx - rx); };
-            const float bodyH = r * 1.25f, roofH = r * 2.35f;
-            const float xs[] = { x0, x0 - r * 0.1f, x0 + r * 0.3f, cx - wb * 0.28f, cx - wb * 0.05f, cx + wb * 0.22f,
-                                 cx + wb * 0.42f, x1 - r * 0.2f, x1, x1 - r * 0.05f, x0 };
-            const float ys[] = { yAt(x0), yAt(x0) - bodyH * 0.9f, yAt(x0 + r * 0.3f) - bodyH,
-                                 yAt(cx - wb * 0.28f) - roofH, yAt(cx - wb * 0.05f) - roofH, yAt(cx + wb * 0.22f) - bodyH * 1.02f,
-                                 yAt(cx + wb * 0.42f) - bodyH, yAt(x1 - r * 0.2f) - bodyH * 0.75f, yAt(x1) - bodyH * 0.25f,
-                                 yAt(x1), yAt(x0) };
-            c.polyline(xs, ys, 11, 2.0f, body);
-            // The windows' line.
-            c.segment(cx - wb * 0.25f, yAt(cx - wb * 0.25f) - roofH + 6.0f, cx + wb * 0.18f, yAt(cx + wb * 0.18f) - bodyH - 4.0f,
-                      1.25f, p.label);
+            // The body: Look's car profile (CAR draws the same one), front at the right.
+            float xs[look::kCarPoints], ys[look::kCarPoints];
+            look::carProfile(fx, rx, wy, r, sq, xs, ys);
+            c.polyline(xs, ys, look::kCarPoints, 2.0f, body);
+            float wx0, wy0, wx1, wy1;
+            look::carWindow(fx, rx, wy, r, sq, wx0, wy0, wx1, wy1);
+            c.segment(wx0, wy0, wx1, wy1, 1.25f, p.label);
             // Wheels: a tyre ring, a rim, five spokes turned by the wheel's angle; a spinning wheel's ring in amber.
             const double slipR = std::max(std::fabs(ctx_.live.get(idx("car.wheelSlip", 2))), std::fabs(ctx_.live.get(idx("car.wheelSlip", 3))));
             const double slipF = std::max(std::fabs(ctx_.live.get(idx("car.wheelSlip", 0))), std::fabs(ctx_.live.get(idx("car.wheelSlip", 1))));

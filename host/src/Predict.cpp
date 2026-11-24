@@ -8,8 +8,6 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
-#include <cstdio>
-#include <cstdlib>
 #include <cstring>
 #include <functional>
 
@@ -49,26 +47,41 @@ namespace tee
                 const Fields& fields = sim_->fields();
                 std::string e;
                 const auto find = [&](const char* path, Schema::Handle& h) { return schema.find(path, h, e); };
-                hasTorque_ = find("tel.engine.torque", torque_);
+                const bool programDyno = find("tel.engine.torque", torque_) && find("ctl.mode", mode_)
+                                         && find("ctl.dynoSpeed", dynoSpeed_) && find("ctl.dynoRate", dynoRate_);
                 if (!find("tel.engine.speed", speed_) || !find("ctl.throttle", throttle_)
                     || !find("ctl.ignition", ignition_))
                 {
                     error = "the program has no tel.engine.speed, ctl.throttle or ctl.ignition: it cannot be put on a dyno";
                     return false;
                 }
-                if (hasTorque_)
+                // the crank's speed, held by the host while the engine starts (and throughout, with the host's brake)
+                holdCrank_ = find("crank.omega", omega_);
+                hasState_ = find("tel.engine.state", state_);
+                const bool custom = build.fieldOf("engine.custom") >= 0 && build.get("engine.custom") != 0.0;
+                const bool hostCan = holdCrank_ && find("mech.jBase", jBase_) && find("set.inertia", dialJ_)
+                                     && find("set.load", dialLoad_) && !custom;
+                if (options_.brake == "host" || (options_.brake == "auto" && hostCan))
                 {
-                    if (!find("ctl.mode", mode_) || !find("ctl.dynoSpeed", dynoSpeed_) || !find("ctl.dynoRate", dynoRate_))
+                    if (!hostCan)
                     {
-                        error = "the program has tel.engine.torque but no ctl.mode, ctl.dynoSpeed or ctl.dynoRate";
+                        error = custom ? "the host's brake does not know a custom engine's inertia (engine.custom is on)"
+                                       : "the program lacks what the host brakes by (crank.omega, mech.jBase, set.inertia, "
+                                         "set.load)";
                         return false;
                     }
+                    hasTorque_ = false;
                 }
-                else if (!find("crank.omega", omega_) || !find("mech.jBase", jBase_) || !find("set.inertia", dialJ_)
-                         || !find("set.load", dialLoad_))
+                else if (programDyno)
                 {
-                    error = "the program has neither a dyno (tel.engine.torque) nor the crank and inertia the host brakes "
-                            "by (crank.omega, mech.jBase, set.inertia, set.load)";
+                    hasTorque_ = true;
+                    // the absorber's torque now (core/dyno.fm), averaged here over whole cycles; else tel's mean
+                    absorber_ = find("dyno.tqAbs", absorberH_);
+                }
+                else
+                {
+                    error = "the program has no dyno (tel.engine.torque, ctl.mode, ctl.dynoSpeed, ctl.dynoRate)"
+                            + std::string(hostCan || options_.brake == "program" ? "" : ", nor what the host brakes by");
                     return false;
                 }
                 // the exhaust gas's lags (exhaust/exhaust.fm): the ports' temperature over 0.8 s, the pipes' over 0.3 s
@@ -76,10 +89,13 @@ namespace tee
                 {
                     Schema::Handle h;
                     if (find("exh.tPort", h))
-                        slow_.push_back({h, 0, 0, 0.0, 0.0, 0.0});
+                        slow_.push_back({h, 0, 0, 1.0, 250.0, 1500.0, 0.0, 0.0, 0.0});
+                    // the reference's turbo: its shaft's speed, 0 to 1 (boost/boost.fm), spooling over seconds
+                    if (build.fieldOf("boost.kind") >= 0 && build.get("boost.kind") != 0.0 && find("boost.spool", h))
+                        slow_.push_back({h, 0, 0, 0.15 / 60.0, 0.0, 1.0, 0.0, 0.0, 0.0});
                     if (find("exh.tWall", h))
                         for (std::size_t i = 0; i < h.count; ++i)
-                            slow_.push_back({h, i, 1, 0.0, 0.0, 0.0});
+                            slow_.push_back({h, i, 1, 1.0, 250.0, 1500.0, 0.0, 0.0, 0.0});
                 }
                 redline_ = find("tel.engine.redline", redlineH_);
                 idle_ = find("tel.engine.idle", idleH_);
@@ -139,29 +155,71 @@ namespace tee
                 return true;
             }
 
-            // A few blocks at rest, so that the Spec is taken; then the redline and the idle as the engine says them.
+            // The engine started (held at 1000 rpm until it runs, then 50 ms more: the simulator says its redline and
+            // idle for the build only once it runs); then the redline and the idle as it says them.
             void probe(double& idle, double& redline)
             {
-                run(std::max(options_.block, 32));
-                run(std::max(options_.block, 32));
+                const double w = 1000.0 * kFourPi / 120.0;
+                set(ignition_, 2.0);
+                long done = 0;
+                for (; done < std::lround(3.0 * options_.sampleRate); done += options_.block)
+                {
+                    if (done > 0 && (!hasState_ || instance_->read(state_) == 2.0))
+                        break;
+                    if (holdCrank_)
+                        set(omega_, w);
+                    run(options_.block);
+                }
+                set(ignition_, 1.0);
+                for (long more = 0; more < std::lround(0.05 * options_.sampleRate); more += options_.block)
+                {
+                    if (holdCrank_)
+                        set(omega_, w);
+                    run(options_.block);
+                }
                 idle = idle_ ? instance_->read(idleH_) : 0.0;
                 redline = redline_ ? instance_->read(redlineH_) : 0.0;
             }
 
             // Starts the engine held at `speed`: the key in start for a moment, then on, and the pedal down.
+            // (the crank held at `speed` by the host meanwhile, where it can be, so the engine fires at once: the
+            // program's dyno takes it only once it runs), until it runs or three seconds have gone
             void start(double speed)
             {
                 set(ignition_, 2.0);
                 set(throttle_, 0.0);
-                const int n = static_cast<int>(options_.startSeconds * options_.sampleRate);
-                for (int done = 0; done < n;)
+                const long least = std::lround(options_.startSeconds * options_.sampleRate);
+                const long most = std::lround(3.0 * options_.sampleRate);
+                for (long done = 0; done < most; done += options_.block)
                 {
-                    const int k = std::min(options_.block, n - done);
-                    step(speed, k);
-                    done += k;
+                    if (done >= least && (!hasState_ || instance_->read(state_) == 2.0))
+                        break;
+                    if (holdCrank_)
+                        set(omega_, speed);
+                    step(speed, options_.block);
                 }
                 set(ignition_, 1.0);
                 set(throttle_, options_.pedal);
+                // then until it runs steadily: three cycles in a row that give torque and agree within 5 % (a
+                // diesel held from cold misfires for many before its charge lights every time, and a turbo spools
+                // over seconds), at most eight seconds
+                const double perCycle = kFourPi / std::max(speed, 1.0) * options_.sampleRate;
+                int steady = 0;
+                double last = 0.0;
+                for (double ran = 0.0; ran < 8.0 * options_.sampleRate && steady < 3; ran += perCycle)
+                {
+                    double sum = 0.0;
+                    const long total = std::lround(perCycle);
+                    for (long run = 0; run < total;)
+                    {
+                        const int k = static_cast<int>(std::min<long>(options_.block, total - run));
+                        sum += step(speed, k) * k;
+                        run += k;
+                    }
+                    const double t = sum / static_cast<double>(total);
+                    steady = t > 0.0 && std::fabs(t - last) <= 0.05 * t ? steady + 1 : 0;
+                    last = t;
+                }
             }
 
             // Full throttle at the middle of the range for warmupSeconds: the exhaust's gas and pipes warm.
@@ -213,20 +271,6 @@ namespace tee
                     }
                     if (settling > 0 && c == 0)
                         settleBegin();
-                    if (c == settling + 1 && std::getenv("TEE_PREDICT_FORCE") != nullptr)
-                    {
-                        std::string list = std::getenv("TEE_PREDICT_FORCE");
-                        std::size_t at = 0;
-                        for (Slow& v : slow_)
-                        {
-                            const double x = std::strtod(list.c_str() + at, nullptr);
-                            instance_->write(v.handle, x, v.index);
-                            at = list.find(',', at);
-                            if (at == std::string::npos)
-                                break;
-                            ++at;
-                        }
-                    }
                     p.cycles = c + 1;
                     p.history.push_back(t);
                     // the cycles counted: the first after the speed (or the settling) moved is not
@@ -247,13 +291,6 @@ namespace tee
                 }
                 p.power = p.torque * speed;
                 fresh_ = false;
-                if (std::getenv("TEE_PREDICT_DEBUG") != nullptr)
-                {
-                    std::fprintf(stderr, "end %.0f rpm:", speed * 30.0 / 3.14159265);
-                    for (const Slow& v : slow_)
-                        std::fprintf(stderr, " %.1f", instance_->read(v.handle, v.index));
-                    std::fprintf(stderr, "\n");
-                }
                 return p;
             }
 
@@ -321,7 +358,7 @@ namespace tee
                     set(dynoRate_, 0.0);
                     sim_->process()(data, left_.data(), right_.data(), n);
                     samples_ += n;
-                    return instance_->read(torque_);
+                    return instance_->read(absorber_ ? absorberH_ : torque_);
                 }
                 set(omega_, speed);
                 sim_->process()(data, left_.data(), right_.data(), n);
@@ -355,7 +392,9 @@ namespace tee
             {
                 Schema::Handle handle;
                 std::size_t index = 0;
-                int group = 0;           // 0 the ports' gas, 1 the walls (settled after the gas)
+                int group = 0;           // 0 the ports' gas and the turbo's shaft, 1 the walls (settled after the gas)
+                double scale = 1.0;      // its nudge over a temperature's (K)
+                double low = 250.0, high = 1500.0;
                 double x0 = 0.0, s0 = 0.0, m0 = 0.0;
             };
 
@@ -389,7 +428,7 @@ namespace tee
                         // the first drift: kept, then the nudge toward where it heads
                         v.s0 = drift;
                         v.m0 = mid;
-                        const double nudged = x + (drift >= 0.0 ? 1.0 : -1.0) * nudge;
+                        const double nudged = std::clamp(x + (drift >= 0.0 ? 1.0 : -1.0) * nudge * v.scale, v.low, v.high);
                         instance_->write(v.handle, nudged, v.index);
                         v.x0 = nudged;
                     }
@@ -401,15 +440,12 @@ namespace tee
                         {
                             const double target = v.m0 + v.s0 * dm / ds;
                             // a wall ends between the air and the gas that reaches it
-                            const double top = v.group == 1 ? std::max(gas, 300.0) : 1500.0;
+                            const double top = v.group == 1 ? std::max(gas, 300.0) : v.high;
                             if (std::isfinite(target))
-                                instance_->write(v.handle, std::clamp(target, 250.0, top), v.index);
+                                instance_->write(v.handle, std::clamp(target, v.low, top), v.index);
                         }
                         v.x0 = instance_->read(v.handle, v.index);
                     }
-                    if (std::getenv("TEE_PREDICT_DEBUG") != nullptr)
-                        std::fprintf(stderr, "phase %d [%d] x %.2f drift %.3f -> %.2f\n", phase, static_cast<int>(v.index), x,
-                                     drift, instance_->read(v.handle, v.index));
                 }
             }
 
@@ -424,7 +460,9 @@ namespace tee
             PredictOptions options_;
             std::unique_ptr<Instance> instance_;
             bool begun_ = false;
-            bool hasTorque_ = false, redline_ = false, idle_ = false;
+            bool hasTorque_ = false, redline_ = false, idle_ = false, holdCrank_ = false, hasState_ = false,
+                 absorber_ = false;
+            Schema::Handle state_, absorberH_;
             std::vector<Slow> slow_;
             std::vector<std::pair<Schema::Handle, double>> held_;   // Warm.h's warm engine
             bool fresh_ = true;   // no point made yet since the start
@@ -551,7 +589,7 @@ namespace tee
                     const double w = speeds[static_cast<std::size_t>(i)];
                     if (!started)
                     {
-                        rig.start(w);
+                        rig.start(speeds.front());   // the lowest: where an engine lights best
                         rig.warmup(speeds);
                         started = true;
                     }
@@ -608,7 +646,7 @@ namespace tee
         std::uint64_t h = build.hash();
         for (const double v : {static_cast<double>(o.coarse), static_cast<double>(o.points), o.from, o.to, o.pedal,
                                o.tolerance, static_cast<double>(o.minCycles), static_cast<double>(o.maxCycles),
-                               o.sampleRate, static_cast<double>(o.block), o.startSeconds, o.warm ? 1.0 : 0.0, o.warmupSeconds, o.settleExhaust ? 1.0 : 0.0, o.holdSeconds})
+                               o.sampleRate, static_cast<double>(o.block), o.startSeconds, o.warm ? 1.0 : 0.0, o.warmupSeconds, o.settleExhaust ? 1.0 : 0.0, o.holdSeconds, o.brake == "host" ? 1.0 : o.brake == "program" ? 2.0 : 0.0})
             h = mix(h, v);
         return h;
     }
