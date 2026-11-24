@@ -301,6 +301,7 @@ namespace tee::player
         if (ref_->stopped() && !stopped_.load(std::memory_order_relaxed))
             stopped_.store(true, std::memory_order_release);
         peak_.store(blockPeak(l, r, n), std::memory_order_relaxed);
+        tail_.write(l, r, n);
         publish();
     }
 

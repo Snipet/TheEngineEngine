@@ -71,6 +71,11 @@ namespace tee::input
     // An action went from up to down: what a press does at once (what a hold does is advance()'s).
     void Driver::pressed(Action action)
     {
+        if (action == Action::start)
+        {
+            startLatch_ = settings_.startLeast;
+            return;
+        }
         if (action == Action::shiftUp)
         {
             ++shiftUp_;
@@ -160,7 +165,8 @@ namespace tee::input
         handbrake_ = ease(handbrake_, held(Action::handbrake), settings_.handbrake, dt);
 
         // the start key (Driver.h)
-        const bool start = held(Action::start);
+        const bool start = held(Action::start) || startLatch_ > 0.0f;
+        startLatch_ = std::max(0.0f, startLatch_ - dt);
         if (start && !startWas_)
         {
             startOnRunning_ = seen.running;

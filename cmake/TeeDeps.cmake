@@ -235,9 +235,11 @@ set(FMINUS_WERROR OFF)                       # third-party code never gets -Werr
 set(FMINUS_JSON ON)
 add_subdirectory("${_tee_fminus_dir}" "${PROJECT_BINARY_DIR}/_deps/fminus" EXCLUDE_FROM_ALL SYSTEM)
 
-# ---- SDL3 (the shell's: shell/cmake/TeeSdl.cmake) --------------------------------------------------------------------
-# Before FunkGui, whose desktop host takes the SDL3::SDL3 it finds defined.
+# ---- SDL3, and FunkGui's GPU layer for the application (the shell's: shell/cmake/) -----------------------------------
+# Before FunkGui: its desktop host takes the SDL3::SDL3 it finds defined, and with TEE_BUILD_APP it is told to build
+# its GPU layer and its desktop host, on bgfx at its pins and a shader compiler (TeeGpu.cmake).
 include("${TEE_SOURCE_DIR}/shell/cmake/TeeSdl.cmake")
+include("${TEE_SOURCE_DIR}/shell/cmake/TeeGpu.cmake")
 
 # ---- FunkGui ---------------------------------------------------------------------------------------------------------
 # Its JUCE-free core for now: no JUCE, no bgfx, no tools, no tests, and nothing fetched. FunkGui::core is an INTERFACE

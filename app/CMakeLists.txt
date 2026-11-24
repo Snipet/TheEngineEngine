@@ -22,6 +22,32 @@ function(tee_app_gui target)
   funkgui_configure_product(${target} PRODUCT TheEngineEngine OBJC_PREFIX Tee ENV_PREFIX TEE_
                             PREFS_FOLDER TheEngineEngine)
   tee_target_defaults(${target})
+  # FunkGui's own sources compile in this target (its libraries are INTERFACE ones that carry their sources), and so
+  # under this target's flags. They are a dependency's: warnings there are not errors (docs/plan/01-rules.md,
+  # section 4), whatever TEE_WERROR says of ours.
+  set(_funkgui_sources "")
+  foreach(_library FunkGuiCore FunkGuiGpu FunkGuiDesktop)
+    if(TARGET ${_library})
+      get_target_property(_sources ${_library} INTERFACE_SOURCES)
+      if(_sources)
+        list(APPEND _funkgui_sources ${_sources})
+      endif()
+    endif()
+  endforeach()
+  list(FILTER _funkgui_sources EXCLUDE REGEX "\\$<")
+  if(_funkgui_sources)
+    if(TEE_MSVC_FRONTEND)
+      set(_no_werror "/WX-")
+    else()
+      set(_no_werror "-Wno-error")
+    endif()
+    set_property(SOURCE ${_funkgui_sources} TARGET_DIRECTORY ${target} APPEND PROPERTY COMPILE_OPTIONS "${_no_werror}")
+  endif()
+  if(TEE_MSVC_FRONTEND)
+    # as FunkGui's consumers build it on Windows: large objects, and windows.h without its rarely used parts
+    target_compile_options(${target} PRIVATE /bigobj /utf-8)
+    target_compile_definitions(${target} PRIVATE WIN32_LEAN_AND_MEAN)
+  endif()
   set_property(GLOBAL APPEND PROPERTY TEE_APP_GUI_TARGETS ${target})
 endfunction()
 
@@ -54,6 +80,13 @@ cmake_language(DEFER DIRECTORY "${PROJECT_SOURCE_DIR}" CALL tee_app_panels)
 add_executable(tee-headless Headless.cpp)
 target_link_libraries(tee-headless PRIVATE FunkGui::core)
 tee_app_gui(tee-headless)
+if(TEE_BUILD_APP)
+  # In a tree that builds the window, the interface package is built for the GPU (its shader registry calls FunkGui's
+  # GPU layer), so tee-headless links that layer too, and the desktop host under it (which defines the three
+  # functions the layer's context asks its host for). It opens no window and starts no GPU all the same.
+  target_link_libraries(tee-headless PRIVATE FunkGui::gpu FunkGui::desktop)
+  funkgui_compile_shaders(tee-headless)
+endif()
 
 # The simulator's source and the content beside the executables, where they look for them (app/Engine.h): copied at
 # every build, so an edited .fm file is the one the next run compiles.
