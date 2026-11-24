@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "3.5 L V6",
-  "notes": "A 60-degree 3.5 L V6 of a family car: 94 x 83 mm (3456 cc), 10.8:1, four valves and phased cams (engines of the kind: 195 to 224 kW at 6200 to 6600 rpm, 340 to 360 N m at 4700; makers' figures). Front drive, six-speed automatic. Its intake: the modern class's runner, 0.38 m from the valve to the plenum (a road engine's composite plenum manifold, 2005 on); a second, short runner of 0.25 m above 4355 rpm, as the real engine switches (the kind's two-stage intakes, Toyota's ACIS and Honda's (recalled); its lengths and speed the class's judgement): JUDGEMENT, a class default, not the real engine's (no source found).",
+  "notes": "A 60-degree 3.5 L V6 of a family car: 94 x 83 mm (3456 cc), 10.8:1, four valves and phased cams (engines of the kind: 195 to 224 kW at 6200 to 6600 rpm, 340 to 360 N m at 4700; makers' figures). Front drive, six-speed automatic. Its intake: the modern class's runner, 0.38 m from the valve to the plenum (a road engine's composite plenum manifold, 2005 on); a second, short runner of 0.25 m above 4355 rpm, as the real engine switches (the 2GR-FE's ACIS, a valve in the upper manifold closed at low and middle speeds (toyota-club.net; service-manual mirrors give some 3600 to 4450 rpm, unverified); its lengths and speed the class's judgement): JUDGEMENT, a class default, not the real engine's (no source found).",
   "spec": {
     "engine": {
       "layout": "V6",

@@ -1037,7 +1037,7 @@ module Exhaust
     {
         if (model == 0 || spec->flowClose == 0)
         {
-            step(qe, np);
+            stepPipes(qe, np);
             return;
         }
         float qc[MAX_PORTS];
@@ -1057,10 +1057,11 @@ module Exhaust
             blkLet = 0.0f;
             blkN = 0;
         }
-        step(qc, np);
+        stepPipes(qc, np);
     }
 
-    void step(float* qe, int np)
+    // (stepLet's: the pipes given qe, each sample)
+    void stepPipes(float* qe, int np)
     {
         // (the ports' pressure for the telemetry: the waves arriving there as read() left them, and the flows put in)
         for (int i = 0; i < np; ++i)
