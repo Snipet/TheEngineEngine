@@ -1,6 +1,6 @@
 // tests/sim/vehicle/BenchTest.cpp: what the vehicle model costs a sample (card I's budget: 0.05 of the reference's
 // cost, R), measured in processor time over the rig's run, less the same rig with the vehicle's step left out. Hidden
-// from ctest ("[.bench]": a busy machine makes it noisy); run it by hand: tee-vehicle-tests "[.bench]".
+// from ctest ("[.bench]": a busy machine makes it noisy); run it by hand: tee-tests-vehicle "[.bench]".
 #include "Rig.h"
 
 #include <cstdio>

@@ -1,0 +1,31 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Rear-drive V8 coupe",
+  "notes": "A front-engined rear-drive coupe with a manual six: 1700 kg, 54 % on the front, sport tyres, a clutch-pack limited-slip rear differential (80 N m of preload, a torque bias of 0.25), independent rear suspension. The numbers are a typical V8 coupe's, not one model's. The car part of a build: pair it with an engine of some 5 L.",
+  "spec": {
+    "car": {
+      "model": "Vehicle",
+      "mass": 1700,
+      "drive": "Rear",
+      "wheelbase": 2.72,
+      "cgHeight": 0.53,
+      "frontWeight": 0.54,
+      "track": 1.6,
+      "cdA": 0.77,
+      "clA": 0,
+      "aeroBalance": 0.45,
+      "tyre": "Sport",
+      "tyreRadius": 0.34,
+      "wheelInertia": 1.4,
+      "brakeDecel": 1.2,
+      "brakeBias": 0.62,
+      "abs": true,
+      "gearbox": "Manual",
+      "gears": 6,
+      "autoGearing": true,
+      "rearPreload": 80,
+      "rearKTorque": 0.25
+    }
+  }
+}
