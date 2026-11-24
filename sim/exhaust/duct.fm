@@ -37,6 +37,16 @@
 const float kWallFc[3] = {70.0f, 1250.0f, 8700.0f};
 const float kWallW[3] = {16.0f, 37.3f, 82.4f};
 
+// The program's one fast switch (docs/measurements/q-rule.md): TEE_FAST, defined by the host at compile time, turns on
+// the optimisations that are not exact to the bit and passed the ensemble floor's test. Undefined, the default and the
+// null test's, the code is the reference's. Here: a valve's solve in two passes instead of three (about 10 % of R; its
+// third-octave bands move 0.7 to 1.6 dB, beyond the floor's tenths: for the owner's ears first).
+#ifdef TEE_FAST
+const int kValvePasses = 2;
+#else
+const int kValvePasses = 3;
+#endif
+
 module Duct
 {
     float* fw;          // waves going away from the engine, written at the near end (doubled: no wrap when read)
@@ -593,7 +603,7 @@ module Valve
             float pp = pq;
             float rr = r0;
             float gg = 1.0f;
-            for (int it = 0; it < 3; ++it)
+            for (int it = 0; it < kValvePasses; ++it)
             {
                 const float k = cq * tOf(rr, ex) / pp;
                 const float zk = z * gg * k;
@@ -624,7 +634,7 @@ module Valve
         float pp = pq;
         float rr = pc / pq;
         float gg = 1.0f;
-        for (int it = 0; it < 3; ++it)
+        for (int it = 0; it < kValvePasses; ++it)
         {
             const float k = ci * tOf(rr, ex) / sqrtf(pp);
             const float zk = z * gg * k;
