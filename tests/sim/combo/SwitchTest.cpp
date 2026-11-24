@@ -142,11 +142,11 @@ namespace
 } // namespace
 
 #define FLIP_CASES(i)                                                                                                  \
-    TEST_CASE("switch " #i " flipped on and off while the V8 pulls in gear", "[combo][flip]")                          \
+    TEST_CASE("switch " #i " flipped on and off while the V8 pulls in gear", "[nightly][flip]")                          \
     {                                                                                                                  \
         flipCase(i, "v8");                                                                                             \
     }                                                                                                                  \
-    TEST_CASE("switch " #i " flipped on and off while the turbo six pulls in gear", "[combo][flip]")                   \
+    TEST_CASE("switch " #i " flipped on and off while the turbo six pulls in gear", "[nightly][flip]")                   \
     {                                                                                                                  \
         flipCase(i, "turbo-six");                                                                                      \
     }
@@ -166,7 +166,7 @@ FLIP_CASES(12)
 FLIP_CASES(13)
 
 #define STEP_CASE(section)                                                                                             \
-    TEST_CASE("every choice and switch of spec." section " stepped while the V8 revs", "[combo][step]")                \
+    TEST_CASE("every choice and switch of spec." section " stepped while the V8 revs", "[nightly][step]")                \
     {                                                                                                                  \
         stepCase(section);                                                                                             \
     }
@@ -214,7 +214,7 @@ namespace
 } // namespace
 
 TEST_CASE("a build loaded over another while it runs: V8 then small four then large diesel then turbo six then V8",
-          "[combo][load]")
+          "[nightly][load]")
 {
     loadCase(false);
 }
@@ -266,7 +266,7 @@ TEST_CASE("every switch flipped in the same block while the V8 pulls in gear", "
     flipAllCase("v8");
 }
 
-TEST_CASE("every switch flipped in the same block while the turbo six pulls in gear", "[combo][flip]")
+TEST_CASE("every switch flipped in the same block while the turbo six pulls in gear", "[nightly][flip]")
 {
     flipAllCase("turbo-six");
 }
