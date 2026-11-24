@@ -125,6 +125,11 @@ Where they came from:
   of a burnout on the line lock.
 - **Relaxation lengths** 0.15 to 0.4 m: judgement, of the order Pacejka gives for the longitudinal direction.
 
+Each tyre starts at the air's temperature (`spec.env.temperature`, clamped to 200 to 350 K; 293.15 K until spec.env is
+in) whenever the car is put at rest, and, for a timed run, in the middle of its compound's window (`car.m1.warmTyres`,
+held by the host: a car timed after its burnout or out-lap). Until 2026-11-24 they started near 200 K (VehEnv was
+empty when init reset them): every figure measured before then was taken on tyres at their full cold loss.
+
 ## Loads
 
 Static by the mass, the front's share and the grade (its normal part; its slope part moves `m g sin(theta) h / L`
