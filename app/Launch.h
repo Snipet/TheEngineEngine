@@ -28,6 +28,7 @@ namespace tee::player
 
 namespace tee::app
 {
+    struct ScriptEvent;
     struct LaunchBuild
     {
         std::filesystem::path file;     // empty: no build is opened
@@ -44,6 +45,10 @@ namespace tee::app
     // each model switch, as the document holds it and as the engine was sent it ("sent" once the engine is ready):
     //   build: "Economy four" file=.../economy-four-15.json unsaved=no models: valve=1/1 intake=1/1 ...
     std::string launchReadBack(files::BuildFile& document, player::SimAdapter* sim);
+
+    // A script's `open FILE`: the whole build opened over the document (BuildFile::open, as GARAGE and Ctrl+O), said
+    // on the console.
+    void openInScript(files::BuildFile* document, const ScriptEvent& e);
 
     // A Spec field ("valve.stages", "spec." optional) as the host was sent it; false while the engine is not ready or
     // for a path the program does not have.
