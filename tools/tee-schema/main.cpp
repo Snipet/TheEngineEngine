@@ -22,7 +22,9 @@ namespace
     {
         std::fprintf(stderr,
                      "usage: tee-schema [--sim DIR] [--entry FILE] [--module NAME] [--json | --snapshot | --markdown | "
-                     "--lint] [--out FILE]\n");
+                     "--lint | --compile] [--out FILE]\n"
+                     "  --compile: the program's compile and code generation time (wall and processor) and machine code\n"
+                     "             size, one line, for a CI job's summary beside R\n");
         return 2;
     }
 } // namespace
@@ -62,6 +64,8 @@ int main(int argc, char** argv)
             mode = "markdown";
         else if (args.is("--lint"))
             mode = "lint";
+        else if (args.is("--compile"))
+            mode = "compile";
         else if (args.is("--help") || args.is("-h"))
         {
             usage();
@@ -90,6 +94,23 @@ int main(int argc, char** argv)
                + fields.snapshot();
     else if (mode == "markdown")
         text = fields.markdown();
+    else if (mode == "compile")
+    {
+        // the program as the application compiles it, every model's code in it (the Spec switches them at run time)
+        tee::Program& program = compiled->program();
+        if (!program.link(errors))
+        {
+            std::fprintf(stderr, "%s", errors.c_str());
+            return 1;
+        }
+        char line[256];
+        std::snprintf(line, sizeof line,
+                      "compile %.2f s (%.2f s processor), machine code %.2f s (%.2f s processor), %.0f kB; total %.2f s\n",
+                      program.compileSeconds(), program.compileCpuSeconds(), program.linkSeconds(),
+                      program.linkCpuSeconds(), static_cast<double>(program.codeBytes()) / 1024.0,
+                      program.compileSeconds() + program.linkSeconds());
+        text = line;
+    }
     else
     {
         for (const std::string& problem : tee::lint(fields))
