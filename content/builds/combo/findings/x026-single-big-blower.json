@@ -1,0 +1,17 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "X-026 (a 50 cc single with a 4 L supercharger)",
+  "notes": "X-026's remainder after N2's inlet bound, reduced from corners seed 178: a 50 cc single with a 4 L supercharger on boost.model 1 goes non-finite at 0.27 s: tee-fuzz --build <this> --seed 178 --seconds 6",
+  "spec": {
+    "boost": {
+      "kind": 4,
+      "model": 1,
+      "scDisplacement": 0.004
+    },
+    "engine": {
+      "displacement": 5e-05,
+      "layout": 0
+    }
+  }
+}
