@@ -148,6 +148,14 @@ namespace tee::ui::exhaust
 
     std::string ExhaustBuild::sentence() const
     {
+        if (ts.on)
+        {
+            static const char* const kN[] = { "", "single", "twin", "triple", "four" };
+            std::string t = std::string("Two-stroke ") + kN[std::clamp(ts.cylinders, 1, 4)];
+            t += ts.chamber ? ", an expansion chamber a cylinder" : ", a straight pipe a cylinder";
+            t += ts.silencer ? ", silenced" : ", open stingers";
+            return t;
+        }
         std::string s = layoutName(layout);
         int first = 0, merges = 0;
         bool log = false;
@@ -190,6 +198,15 @@ namespace tee::ui::exhaust
             s += kMuf[std::clamp(muf[0], 0, 3)];
         }
         return s;
+    }
+
+    double TwoStrokePipe::tunedRpm(double gasK) const noexcept
+    {
+        const double l = tunedLength();
+        if (!(l > 0.0) || !(gasK > 0.0))
+            return 0.0;
+        const double c = std::sqrt(1.35 * 287.0 * gasK);
+        return c * (static_cast<double>(exhaustDur) - 25.0) / (12.0 * l);
     }
 
     ExhaustBuild resolveExhaust(const FieldDoc& doc)
@@ -344,6 +361,28 @@ namespace tee::ui::exhaust
             b.mainLen[k] = static_cast<float>(ml > 0.0 ? ml : kMain[layout] * pk);
             b.mufLen[k] = static_cast<float>(mu > 0.0 ? mu : kMuff[layout]);
             b.tailLen[k] = static_cast<float>(tl > 0.0 ? tl : (bike ? 0.10 : 0.40));
+        }
+        // a two-stroke's pipe (card T's fields, their defaults as sim/spec/engine.fm has them)
+        if (fieldOr(doc, P::cycle, -1, 0.0) > 0.5)
+        {
+            TwoStrokePipe& t = b.ts;
+            const auto f = [&](const char* name, double def) { return static_cast<float>(fieldOr(doc, std::string("engine.") + name, -1, def)); };
+            t.on = true;
+            t.cylinders = std::clamp(static_cast<int>(std::lround(f("tsCylinders", 1))), 1, 4);
+            t.chamber = f("tsChamber", 1) > 0.5f;
+            t.header = f("tsHeaderLen", 0.16);
+            t.diffuser = f("tsDiffuserLen", 0.33);
+            t.belly = f("tsBellyLen", 0.12);
+            t.baffle = f("tsBaffleLen", 0.24);
+            t.stinger = f("tsStingerLen", 0.22);
+            t.dHeader = f("tsHeaderDiam", 0.038);
+            t.dBelly = f("tsBellyDiam", 0.115);
+            t.dStinger = f("tsStingerDiam", 0.022);
+            t.silencer = f("tsSilencer", 0) > 0.5f;
+            t.silLen = f("tsSilencerLen", 0.40);
+            t.silDiam = f("tsSilencerDiam", 0.026);
+            t.exhaustDur = f("tsExhaustDur", 192);
+            b.ports = t.cylinders;
         }
         return b;
     }

@@ -165,7 +165,7 @@ namespace tee::ui
                                               "car.riderMass", "car.riderHeight", "car.riderForward", "car.tuck", "car.pitchInertia" } },
             { "car.tyres", "Tyres", { "car.bikeTyre", "car.tyreRadius", "car.wheelInertia", "env.surface" } },
             { "car.diffs", "Chain, clutch and wheelie", { "car.primaryRatio", "car.frontSprocket", "car.rearSprocket", "car.chainEfficiency",
-                                                         "car.chainLash", "car.slipper", "car.slipperTorque", "car.wheelieControl",
+                                                         "car.chainLash", "car.slipper", "car.slipperTorque", "car.clutchDry", "car.wheelieControl",
                                                          "car.wheelieAngle" } },
             { "car.gearbox", "Gearbox and shifting", { "car.gears", "car.autoGearing", "car.ratio[0]", "car.ratio[1]", "car.ratio[2]",
                                                        "car.ratio[3]", "car.ratio[4]", "car.ratio[5]", "car.clutchTorque",
