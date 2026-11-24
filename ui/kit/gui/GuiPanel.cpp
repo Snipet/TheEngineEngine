@@ -363,8 +363,21 @@ namespace tee::ui
         updateDisplays(items_, displays_, meters_,
                        [this](bool input, float* out, int n) {
                            std::fill(out, out + n, 0.0f);
-                           if (!input && options_.scope)
+                           if (input)
+                               return;
+                           if (options_.scope)
                                options_.scope(out, n);
+                           else
+                           {
+                               // The source's newest samples (TelemetrySource::outputTail), at the end: what it has
+                               // fewer of is silence before them.
+                               const int k = std::clamp(telemetry_.outputTail(out, n), 0, n);
+                               if (k < n)
+                               {
+                                   std::move_backward(out, out + k, out + n);
+                                   std::fill(out, out + (n - k), 0.0f);
+                               }
+                           }
                        },
                        feed_, dt);
         view_.tick(spec_, meters_, true);

@@ -5,6 +5,7 @@
 #include <tee/app/Sources.h>
 
 #include <algorithm>
+#include <cmath>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -92,6 +93,16 @@ namespace tee::test
             return handle >= 0 && handle < static_cast<int>(telemetry_.size()) ? telemetry_[static_cast<std::size_t>(handle)].second : 0.0;
         }
         float outputPeak() const override { return peak; }
+        // A tone of `tone` Hz at 48 kHz while tone > 0, else none.
+        int outputTail(float* mono, int max) const override
+        {
+            if (tone <= 0.0)
+                return 0;
+            for (int i = 0; i < max; ++i)
+                mono[i] = 0.5f * static_cast<float>(std::sin(6.283185307179586 * tone * static_cast<double>(i) / 48000.0));
+            return max;
+        }
+        double tone = 0.0;
         // Sets a telemetry value, adding it when the player has none of that name.
         void setTelemetry(std::string_view name, double v)
         {
