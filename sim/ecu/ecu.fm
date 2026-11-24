@@ -306,7 +306,8 @@ module Ecu
         in->carSpeed = vSeen != 0 && drive != 0 ? fabsf(vSpeed) : carSpeed;
         in->slip = vSeen != 0 && drive != 0 ? vSlip : 0.0f;
         in->dogCut = vSeen != 0 && drive != 0 ? vCut : 0.0f;
-        in->blip = vSeen != 0 && drive != 0 ? vBlip : 0.0f;
+        // (a downshift's blip: the crank speed card I asks; the plate the reference's paddle blip gives toward it)
+        in->blip = vSeen != 0 && drive != 0 && vBlip > 0.0f ? fminf(fmaxf((vBlip * 9.5492966f - rpmAvg) * 0.002f, 0.0f), 1.0f) : 0.0f;
         in->coolant = heatP->tCool;
         in->warm = warm;
         in->key = 1;
@@ -437,7 +438,8 @@ module Ecu
     }
 
     // Every 16 samples, driven, with ecu.model 1: the vehicle's values (Car's: the driven wheels' slip, the speed m/s,
-    // the gear, upshifts counted, seconds of cut a dog box asks, the plate a downshift's blip asks); control1 reads them
+    // the gear, upshifts counted, seconds of cut a dog box asks, the crank speed a downshift's blip asks, rad/s);
+    // control1 reads them
     void vehicle(float drivenSlip, float speed, int gear, int upshifts, float cutRequest, float blipRequest)
     {
         vSlip = drivenSlip;

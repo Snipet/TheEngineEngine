@@ -272,9 +272,15 @@ float gasT)` (manifold: `intk.pPlenum`; carSpeed: the car's, m/s, 0 on the bench
 light). `control` runs the reference's (`control0`) and, under ecu.model 1, `control1` over it: Ecu1's plate, idle
 valve, trim, idle speed, limiter, overrun and cut flags in the reference's fields, `kRet` the most of its per-cylinder
 retards, `tel.ecu`'s fields, and a bake into the Scope on each `ctl.bakeMaps` increase. The state machine, the key and
-the held-speed driver stay the reference's under both models. For other packages: `float boostTarget()` (Pa over
-the air; 0 under model 0), `bool antiLag()`, `bool nitrous()`, `float camTarget(int cam)` (0 intake advance, 1
-exhaust retard, crank degrees; 0 under model 0), `float liftCommand()` (1 under model 0). Engine's `keyDown`,
+the held-speed driver stay the reference's under both models. The hooks (card H fills them; each called only under its
+caller's model 1): `float camTarget(int cam)` (0 intake advance, 1 exhaust retard, crank degrees; -1 the valvetrain's
+own schedule: under ecu.model 0, or that cam's map on its formula), `float liftCommand()` (the lift map's, 1 on its
+formula; 0 under ecu.model 0), `float boostTarget()` (Pa over the air; -1 the boost section's own level: under ecu.model
+0 or the boost map on its formula), `float antiLag()`, `float nitrous()` (0 or 1), `void vehicle(float drivenSlip,
+float speed, int gear, int upshifts, float cutRequest, float blipRequest)` (every 16 samples, driven, ecu.model 1:
+stored for the next `control1`; the blip's crank speed made a plate as the reference's paddle blip does). Combustion
+fires the reference's `Pop`s for the bangs until G's `popAt` is filled, and reads `Exhaust::gasTemperature(0)` (through
+`control`'s gasT). Engine's `keyDown`,
 `keyUp`, `ignition` and `configure` write its state too.
 
 **Car** (`vehicle/car.fm`): the clutch, gearbox, driveline, tyres, the car's speed `v`, `gear`, the shifter and the

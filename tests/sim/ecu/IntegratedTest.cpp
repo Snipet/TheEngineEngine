@@ -137,14 +137,14 @@ TEST_CASE("H: a bake writes every map's formula at its breakpoints into the Scop
     CHECK(s.read("scope.bakeCount") == 2.0);
 }
 
-TEST_CASE("H: under ecu.model 0 and fuel.model 0 card H's telemetry stays at 0", "[ecu][integrated]")
+TEST_CASE("H: under ecu.model 0 and fuel.model 0 model 1's telemetry stays at 0", "[ecu][integrated]")
 {
     Sim s("v8");
     s.set("env.temperature", 300.0);
     s.start();
     s.ctl().throttle = 0.5f;
     s.run(1.0);
-    CHECK(s.tel("ecu.advance") == 0.0);
+    CHECK(s.tel("ecu.advance") > 5.0);                          // (the engine writes cylinder 1's under both models)
     CHECK(s.tel("ecu.lambda") == 0.0);
     CHECK(s.tel("ecu.flags") == 0.0);
     CHECK(s.tel("engine.speed") > 100.0);
