@@ -3,6 +3,7 @@
 // cursor reading the traces; a quantity the runs did not record drawn as a dash, not invented.
 #include "ViewKit.h"
 
+#include "app/AppFrame.h"
 #include "views/car/Car.h"
 #include "views/dyno/Dyno.h"
 #include "views/car/CarDemo.h"
@@ -15,19 +16,35 @@
 #include <algorithm>
 
 
+namespace tee::test::u4
+{
+    // The stage U1's frame gives a workspace in a window of w x h (the frame over the demo).
+    funkgui::Rect measure(int w, int h)
+    {
+        tee::ui::DemoRig demo(4.6);
+        tee::ui::FrameServices s;
+        s.app = demo.app;
+        tee::ui::AppFrame frame(demo.doc, demo.units, demo.engine, std::move(s), &demo.engine, &demo.engine,
+                                tee::ui::defaultSlots(), w, h);
+        funkgui::HeadlessHost host(frame, 0, 1.0f);
+        host.resize(w, h);
+        host.tick(2);
+        return frame.stageRect();
+    }
+    funkgui::Rect frameStage(int w, int h)
+    {
+        static funkgui::Rect small = measure(1100, 700), large = measure(1600, 1000);
+        return w >= 1600 ? large : w == 1100 && h == 700 ? small : measure(w, h);
+    }
+    int stageW(int window) { const funkgui::Rect r = frameStage(window, window >= 1600 ? 1000 : 700); return static_cast<int>(r.w); }
+    int stageH(int window) { const funkgui::Rect r = frameStage(window, window >= 1600 ? 1000 : 700); return static_cast<int>(r.h); }
+}
+
 namespace
 {
     using namespace tee::test::views;
 
     // The same rig on another theme (index 1: paper).
-    void retheme(StageRig& rig, int theme, int w, int h, float dpi)
-    {
-        rig.host = std::make_unique<funkgui::HeadlessHost>(*rig.ws, theme, dpi);
-        rig.host->resize(w, h);
-        rig.ws->place({ 0.0f, 0.0f, static_cast<float>(w), static_cast<float>(h) });
-        rig.settle();
-    }
-
     // An edit made and the predicted curve answered, so "before last edit" is there to overlay.
     void editBoost(StageRig& rig, double pa)
     {
@@ -79,55 +96,44 @@ namespace
         rig.settle();
     }
 
-    // A run started from the plan and ticked until it lands.
-    void runOnce(StageRig& rig)
+    // The stage at the frame's: in a 1100 x 700 window (dyno.stage) and a 1600 x 1000 one (dyno.large), density 2 and 1;
+    // the predicted curve, the one before an edit, a run, the cursor; and the small one on paper.
+    void stageGoldens(int row, const char* name)
     {
-        const funkgui::Rect b = tee::ui::dynoControl(*rig.ws, "start");
-        rig.host->click(b.centreX(), b.centreY());
-        for (int i = 0; i < 200 && rig.demo.engine.running(); ++i)
-        {
-            rig.demo.engine.tick(1.0f / 60.0f);
-            rig.host->tick(1);
-        }
-        rig.settle();
+        for (const int window : { 1100, 1600 })
+            for (float dpi : { 2.0f, 1.0f })
+            {
+                const int w = tee::test::u4::stageW(window), h = tee::test::u4::stageH(window);
+                StageRig rig(factoryOf(row), w, h, dpi, row == 1 ? 0.0 : 4.6);
+                prepare(row, rig, w, h);
+                golden(std::string(name) + (window == 1100 ? ".stage" : ".large") + (dpi > 1.5f ? "" : ".dpi1"), *rig.host);
+            }
+        const int w = tee::test::u4::stageW(1100), h = tee::test::u4::stageH(1100);
+        StageRig paper(factoryOf(row), w, h, 2.0f, row == 1 ? 0.0 : 4.6);
+        prepare(row, paper, w, h);
+        paper.host = std::make_unique<funkgui::HeadlessHost>(*paper.ws, 1, 2.0f);
+        paper.host->resize(w, h);
+        paper.ws->place({ 0.0f, 0.0f, static_cast<float>(w), static_cast<float>(h) });
+        if (row == 0)
+            paper.host->move(static_cast<float>(w) * 0.45f, static_cast<float>(h) * 0.4f);
+        paper.settle();
+        golden(std::string(name) + ".paper", *paper.host);
     }
 
-    // The stage over the demo: the predicted curve, the one before an edit, two runs, the cursor at 4500 rpm.
     VIEW_TEST(testDynoStage, "dyno.stage")
     {
-        for (float dpi : { 2.0f, 1.0f })
-        {
-            StageRig rig(tee::ui::makeDynoWorkspace, 1100, 700, dpi);
-            editBoost(rig, 110e3);
-            CHECK(!rig.demo.engine.before().empty());
-            runOnce(rig);
-            CHECK(rig.demo.engine.runCount() == 1);
-            editBoost(rig, 60e3);
-            runOnce(rig);
-            CHECK(rig.demo.engine.runCount() == 2);
-            editBoost(rig, 85e3);                        // the build edited since: predicted and before differ from the runs
-            rig.host->move(560.0f, 300.0f);
-            rig.settle();
-            golden(dpi > 1.5f ? "dyno.stage" : "dyno.stage.dpi1", *rig.host);
-        }
+        stageGoldens(0, "dyno");
         return 0;
     }
-
-    // At a large size, and on the paper theme.
-    VIEW_TEST(testDynoLarge, "dyno.large")
+    // TUNE's and CAR's are made here too, where the three share prepare() and the frame's stage rects.
+    VIEW_TEST(testTuneStage, "tune.stage")
     {
-        for (float dpi : { 2.0f, 1.0f })
-        {
-            StageRig rig(tee::ui::makeDynoWorkspace, 1600, 1000, dpi);
-            editBoost(rig, 120e3);
-            rig.host->move(800.0f, 420.0f);
-            rig.settle();
-            golden(dpi > 1.5f ? "dyno.large" : "dyno.large.dpi1", *rig.host);
-        }
-        StageRig paper(tee::ui::makeDynoWorkspace, 1100, 700, 2.0f);
-        editBoost(paper, 120e3);
-        retheme(paper, 1, 1100, 700, 2.0f);
-        golden("dyno.paper", *paper.host);
+        stageGoldens(1, "tune");
+        return 0;
+    }
+    VIEW_TEST(testCarStage, "car.stage")
+    {
+        stageGoldens(2, "car");
         return 0;
     }
 
@@ -202,12 +208,15 @@ namespace
             int w, h;
             float dpi;
         };
-        const Col cols[] = { { 1100, 700, 1.0f }, { 1600, 1000, 1.0f }, { 1100, 700, 2.0f }, { 1600, 1000, 2.0f } };
+        // The frame's stages in a 1100 x 700 and a 1600 x 1000 window.
+        const int sw = tee::test::u4::stageW(1100), sh = tee::test::u4::stageH(1100);
+        const int lw = tee::test::u4::stageW(1600), lh = tee::test::u4::stageH(1600);
+        const Col cols[] = { { sw, sh, 1.0f }, { lw, lh, 1.0f }, { sw, sh, 2.0f }, { lw, lh, 2.0f } };
         constexpr int kGap = 24;
         int sheetW = kGap;
         for (const Col& c : cols)
             sheetW += c.w / 2 + kGap;
-        const int rowH = 1000 / 2 + kGap, sheetH = kGap + 3 * rowH;
+        const int rowH = lh / 2 + kGap, sheetH = kGap + 3 * rowH;
         funkgui::Image out;
         out.w = sheetW;
         out.h = sheetH;
@@ -247,8 +256,8 @@ namespace
         }
         const std::string path = (outDir() / "sheet.u4.png").string();
         CHECK_MSG(tee::test::writePng(out, path), path);
-        std::printf("  contact sheet: %s (software rasteriser; rows DYNO, TUNE, CAR; columns 1100 x 700 and 1600 x 1000 "
-                    "at density 1, then at 2)\n", path.c_str());
+        std::printf("  contact sheet: %s (software rasteriser; rows DYNO, TUNE, CAR; columns the frame's stages in "
+                    "1100 x 700 and 1600 x 1000 windows at density 1, then at 2)\n", path.c_str());
         return 0;
     }
 
@@ -294,6 +303,44 @@ namespace
             prev = &p;
         }
         std::vector<std::string> out;
+        // Each string inside the smallest box (a panel, a card, a button, a cell: a rounded rect at least 30 x 16)
+        // that holds the middle of its first glyph.
+        struct Box
+        {
+            float x0, y0, x1, y1;
+        };
+        std::vector<Box> boxes;
+        for (const funkgui::Prim& p : list.prims)
+            if (static_cast<int>(p.d2[2] + 0.5f) == static_cast<int>(funkgui::PrimKind::rrect) && p.x1 - p.x0 >= 30.0f &&
+                p.y1 - p.y0 >= 16.0f)
+                boxes.push_back({ p.x0, p.y0, p.x1, p.y1 });
+        {
+            std::size_t i = 0;
+            char m[200];
+            while (i < gs.size())
+            {
+                std::size_t j = i;
+                Box sb{ gs[i].x0, gs[i].y0, gs[i].x1, gs[i].y1 };
+                while (j < gs.size() && gs[j].run == gs[i].run)
+                {
+                    sb = { std::min(sb.x0, gs[j].x0), std::min(sb.y0, gs[j].y0), std::max(sb.x1, gs[j].x1), std::max(sb.y1, gs[j].y1) };
+                    ++j;
+                }
+                const float cx = (gs[i].x0 + gs[i].x1) * 0.5f, cy = (gs[i].y0 + gs[i].y1) * 0.5f;
+                const Box* in = nullptr;
+                for (const Box& b : boxes)
+                    if (cx > b.x0 && cx < b.x1 && cy > b.y0 && cy < b.y1 &&
+                        (in == nullptr || (b.x1 - b.x0) * (b.y1 - b.y0) < (in->x1 - in->x0) * (in->y1 - in->y0)))
+                        in = &b;
+                if (in != nullptr && (sb.x0 < in->x0 - 1.0f || sb.x1 > in->x1 + 1.0f || sb.y0 < in->y0 - 1.0f || sb.y1 > in->y1 + 1.0f))
+                {
+                    std::snprintf(m, sizeof m, "text at %.0f, %.0f (to %.0f, %.0f) leaves its box %.0f, %.0f to %.0f, %.0f", sb.x0,
+                                  sb.y0, sb.x1, sb.y1, in->x0, in->y0, in->x1, in->y1);
+                    out.push_back(m);
+                }
+                i = j;
+            }
+        }
         if (std::getenv("U4_TEXT_DEBUG") != nullptr)
             std::printf("  %zu glyphs in %d strings\n", gs.size(), run + 1);
         std::vector<std::pair<int, int>> said;
@@ -349,18 +396,45 @@ namespace
             g.x0 = 95.0f, g.x1 = 103.0f;
             made.prims.push_back(g);
             CHECK(textClashes(made, 100.0f, 100.0f).size() == 2);
+            // A string that starts in a box and runs out of it.
+            funkgui::PrimList box;
+            funkgui::Prim b{};
+            b.d2[2] = static_cast<float>(funkgui::PrimKind::rrect);
+            b.x0 = 0.0f, b.y0 = 0.0f, b.x1 = 40.0f, b.y1 = 30.0f;
+            box.prims.push_back(b);
+            g.y0 = 5.0f, g.y1 = 17.0f;
+            for (float x : { 30.0f, 38.0f, 46.0f })
+            {
+                g.x0 = x, g.x1 = x + 8.0f;
+                box.prims.push_back(g);
+            }
+            CHECK(textClashes(box, 100.0f, 100.0f).size() == 1);
         }
         const char* names[] = { "dyno", "tune", "car" };
         for (int row = 0; row < 3; ++row)
-            for (const auto& [w, h] : { std::pair{ 660, 570 }, std::pair{ 1100, 700 }, std::pair{ 1100, 860 }, std::pair{ 1600, 1000 } })
+            for (const int window : { 1100, 1600 })
+                for (const float dpi : { 1.0f, 2.0f })
             {
-                StageRig rig(factoryOf(row), w, h, 1.0f, row == 1 ? 0.0 : 4.6);
+                const int w = tee::test::u4::stageW(window), h = tee::test::u4::stageH(window);
+                StageRig rig(factoryOf(row), w, h, dpi, row == 1 ? 0.0 : 4.6);
                 prepare(row, rig, w, h);
                 rig.host->move(-10.0f, -10.0f);          // no cursor card: it covers what is under it, by design
                 rig.settle();
                 for (const std::string& clash : textClashes(rig.host->draw(), static_cast<float>(w), static_cast<float>(h)))
-                    CHECK_MSG(false, std::string(names[row]) + " at " + std::to_string(w) + " x " + std::to_string(h) + ": " + clash);
+                    CHECK_MSG(false, std::string(names[row]) + " at " + std::to_string(w) + " x " + std::to_string(h) + " d" +
+                                         std::to_string(static_cast<int>(dpi)) + ": " + clash);
             }
+        return 0;
+    }
+
+    VIEW_TEST(testU4StageRects, "dyno.stagerects")
+    {
+        for (const auto& [w, h] : { std::pair{ 1100, 700 }, std::pair{ 1600, 1000 } })
+        {
+            const funkgui::Rect r = tee::test::u4::measure(w, h);
+            std::printf("  window %d x %d: stage %.0f x %.0f at %.0f, %.0f\n", w, h, r.w, r.h, r.x, r.y);
+            CHECK(r.w > 300.0f && r.h > 300.0f);
+        }
         return 0;
     }
 }
