@@ -70,6 +70,12 @@ namespace tee
         bool warm = true;             // start warm (above)
         bool settleExhaust = true;    // bring the exhaust's slow temperatures to where they head (below)
         double holdSeconds = 0.0;     // engine time each point is held at least (a reference's: a minute)
+        // Engine time each point runs at least, whatever its torque says: something about the engine (its charge's
+        // and its walls' temperatures besides the exhaust's) settles over about a second after a change of speed, and
+        // a point taken sooner reads some 3 % high near a runner's resonance (the V12 at 6500 to 6850 rpm against the
+        // stepped dyno with its exhaust settled: +3.5 % at none, within 1.7 % at 1 s, 1 % at 2 s). The V8's curve
+        // with it: first 0.78 s, refined 1.97 s on 3 workers.
+        double minHoldSeconds = 1.0;
         double warmupSeconds = 0.0;   // engine time a fresh instance runs at full throttle mid-range before its first point
         std::size_t cacheSize = 64;   // curves kept by key
     };
