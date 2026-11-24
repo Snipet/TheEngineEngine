@@ -271,7 +271,7 @@ namespace
 {
     struct Rev
     {
-        double idle = 0.0;      // the peak at idle, the throttle floored (from 0.5 s in), the whole run's
+        double idle = 0.0;      // the peak at idle, the throttle floored, the whole run's
         double rev = 0.0;
         double all = 0.0;
         bool finite = true;
@@ -299,11 +299,9 @@ namespace
         b.play(1.25, watch);
         into = &r.idle;
         b.play(2.0, watch);
-        into = &r.all;
-        b.ctl().throttle = 1.0f;
-        b.play(0.5, watch);
         into = &r.rev;
-        b.play(3.5, watch);
+        b.ctl().throttle = 1.0f;
+        b.play(4.0, watch);
         into = &r.all;
         b.ctl().throttle = 0.0f;
         b.play(3.0, watch);

@@ -158,7 +158,7 @@ into every build cannot.
 How it works (`Listen::autoLevel`, `finish1`): P, the loudness exposed for, is taken from the peaks after the
 compressor. P rises to any peak at once and the gain follows within 5 ms, so a rev's onset is caught by the gain, not
 the limiter. P holds 1.5 s, then falls at 4 dB a second. It never falls below 4 times Q, the level of what is heard
-lately (0.1 s windows' peaks: Q falls over 1 s and rises at 1 dB a second, so a 4 s rev barely moves it). The gain is
+lately (0.1 s windows' peaks: Q falls over 1 s and rises at 0.3 dB a second, so a 4 s rev moves it 1.2 dB). The gain is
 0.4 / P, within -30 to +30 dB of the staged level, and rises over 0.5 s. In a start (the starter turning and 1.5 s
 after) P falls at 12 dB a second without the hold and Q follows as it comes, so the crank and the catch do not set the
 exposure. A cut (another camera, place, or the windows past half) starts afresh; silence holds it.
@@ -169,21 +169,35 @@ wider than 12 dB within a setting is closed slowly: a V12's idle comes up some 3
 Faster changes are kept exactly: the gain moves at most 4 dB a second upward. Whatever passes the target is caught
 by the limiter, which reports in `tel.sound.limiter` as before. `tel.sound.autoGain` is the gain now (dB).
 
-Measured (p-free-rev, defaults, `the level at the defaults` test and tee-render):
+Measured (the `the level at the defaults` test after P's re-staging, 76e1b29: each build's own sound settings, a free
+rev's peak from the throttle's opening; true levels before it, at 35e355de, Rear):
 
 | build | true levels: idle / free rev peak | auto level: idle / free rev peak | auto gain |
 |---|---|---|---|
-| first.json (2.0 L turbo four) | 0.02 / 0.17 | 0.10 / 0.53 | +8.0 dB |
-| kei 660 triple turbo | 0.01 / 0.08 | 0.10 / 0.54 | +15.3 dB |
-| V12 6.5 | (limited) / 0.72 | 0.10 / 0.57 | -16.5 dB |
-| tractor 15 L six | 0.01 / 0.06 | 0.11 / 0.42 | +3.5 dB |
+| first.json (2.0 L turbo four, now Side, +7 dB) | 0.02 / 0.17 | 0.10 / 0.49 | +3.8 dB |
+| kei 660 triple turbo | 0.01 / 0.08 | 0.10 / 0.53 | +6.4 dB |
+| V12 6.5 | (limited) / 0.72 | 0.10 / 0.59 | -15.8 dB |
+| tractor 15 L six | 0.01 / 0.06 | 0.15 / 0.41 | +4.3 dB |
+
+The limiter on the loud builds, at first.json's sound settings (Side, Field, +7 dB), a free rev (p-free-rev, 5 to 9 s)
+and a launch (p-quarter-mile, 10.5 to 20 s); the share is of `tel.sound.limiter`'s 0.4 s reads under -0.5 dB:
+
+| build | auto: free rev | auto: launch | true levels: free rev | true levels: launch |
+|---|---|---|---|---|
+| truck 15 L six | never | never | -10.6 dB, 39 % | -10.3 dB, 12 % |
+| V12 6.5 | never | never | -19.9 dB, 91 % | -18.5 dB, 94 % |
+| big-block 7.4 | -1.2 dB once (the rev limiter's crack) | never | -4.2 dB, 72 % | never |
+| flat-plane V8 4.5 | never | never | -18.2 dB, 82 % | -18.1 dB, 94 % |
+
+With the auto level the limiter is a guard again: the one case is a single crack that jumps 9 dB inside a block,
+caught with 1.2 dB for 250 ms. With true levels at a staged +7 dB, the loud builds live on it, as the reference does.
+No straight-piped build is in content/builds with a sound of its own (exhausts/straight-pipes.json is an exhaust part).
 
 On first.json, by camera (free rev peak, true / auto): Rear 0.17 / 0.55, Tailpipe 0.24 / 0.59, Side 0.18 / 0.50,
-Engine bay 0.14 / 0.53, Driver 0.09 / 0.53, Trackside 0.11 / 0.53, Chase 0.16 / 0.53. The tractor's let-off
-transient (a governor's clatter) passes the target and meets the limiter at 0.7. It is short, and it is the only
-case. The whole run's peak stays under 0.7 everywhere. The rig's tests (ListenerTest) run with true levels, so the
+Engine bay 0.14 / 0.53, Driver 0.09 / 0.53, Trackside 0.11 / 0.53, Chase 0.16 / 0.53 (at 35e355de). The whole run's
+peak stays under 0.7 everywhere. The rig's tests (ListenerTest) run with true levels, so the
 distance law, the Doppler and the balance are measured unaltered; `the auto level` test checks that the Driver is
-7.5 dB under the Rear with it off and within 2 dB with it on.
+5 dB or more under the Rear with it off (5.1 now) and within 2 dB with it on (1.4).
 
 Cost: some five operations a sample in the last loop and one window's arithmetic every 0.1 s. tee-render on first.json
 does not resolve it (3.82 to 4.19 s with it off, 3.83 to 4.01 s on, for 14 s of audio).

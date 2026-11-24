@@ -16,7 +16,7 @@ Branch `claude/awesome-gates-ntdb58`, integrated. `spec.sound.model` 0 (default)
 - `no click...`: every camera, place and distance changed, largest step over local rms 0.017 (steady 0.012).
 - Headroom (X-004): `the last stage` (sources 60 dB too loud: peak 0.70), `the ceiling` (LEVEL +12, 0.5 m: 0.733).
   Auto level (lead 20:13, an exposure, on by default): `the level at the defaults` (first, kei, V12, tractor: free
-  rev 0.42-0.57, idle 0.10, whole run under 0.7), `the auto level` (Driver 7.5 dB under Rear off, within 2 dB on).
+  rev 0.41-0.59, idle 0.10-0.15, run under 0.7), `the auto level` (Driver 5.1 dB under Rear off, 1.4 on).
 - In the engine: `loudness` (16 piston layouts at full load: exhaust spread 11.3 dB computed, 17.1 by the reference's
   tables), `soak` (40 s driven, 40 listener changes, up to 26.5 m/s: finite, peak 0.718, Doppler 0.98-1.10), `the
   cabin` (highs' share -30.8 dB shut, -18.6 open). Null test `[null]` identical to the bit before every push.

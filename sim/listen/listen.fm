@@ -283,7 +283,7 @@ module Listen
         autoS = 1.0f;
         autoHold = 0.0f;
         autoQ = 0.0f;
-        autoRise = 0.115129255f / rate;
+        autoRise = 0.115129255f * 0.3f / rate;
         autoKd = 1.0f - expf(-1.0f / (0.005f * rate));
         autoKey = -1.0f;
         autoWin = 0.0f;
@@ -841,7 +841,7 @@ module Listen
     // the balance within a setting stays true. P is the loudness exposed for, from the peaks before the auto level:
     // it rises to a peak at once (the gain follows over 5 ms), holds 1.5 s, then falls at 4 dB a second (in a start,
     // the starter turning and 1.5 s after, 12 dB a second without the hold), but never below 4 times Q, the
-    // level of what is heard lately (Q follows 0.1 s windows' peaks, down over 1 s, up 1 dB a
+    // level of what is heard lately (Q follows 0.1 s windows' peaks, down over 1 s, up 0.3 dB a
     // second; in a start, as they come).
     // So a steady sound sits 12 dB under the target, room for a rev; an idle under a rev keeps up to 12 dB, a wider
     // range is closed slowly. The gain is 0.4 / P (a rev's peaks some 8 dB under full scale), within -30 to +30 dB
