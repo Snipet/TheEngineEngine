@@ -91,8 +91,19 @@
     {
       "name": "Peak power",
       "dyno": {
-        "from": 73.3,
-        "to": 680.7
+        "steps": [
+          157.1,
+          220.8,
+          284.6,
+          348.3,
+          412.1,
+          475.8,
+          539.6,
+          603.3,
+          667.1
+        ],
+        "settle": 5,
+        "measure": 1
       },
       "measure": "maxPower",
       "range": [
@@ -105,8 +116,19 @@
     {
       "name": "Speed at peak power",
       "dyno": {
-        "from": 73.3,
-        "to": 680.7
+        "steps": [
+          157.1,
+          220.8,
+          284.6,
+          348.3,
+          412.1,
+          475.8,
+          539.6,
+          603.3,
+          667.1
+        ],
+        "settle": 5,
+        "measure": 1
       },
       "measure": "speedAtMaxPower",
       "range": [
@@ -119,8 +141,19 @@
     {
       "name": "Peak torque",
       "dyno": {
-        "from": 73.3,
-        "to": 680.7
+        "steps": [
+          157.1,
+          220.8,
+          284.6,
+          348.3,
+          412.1,
+          475.8,
+          539.6,
+          603.3,
+          667.1
+        ],
+        "settle": 5,
+        "measure": 1
       },
       "measure": "maxTorque",
       "range": [
@@ -133,8 +166,19 @@
     {
       "name": "Speed at peak torque",
       "dyno": {
-        "from": 73.3,
-        "to": 680.7
+        "steps": [
+          157.1,
+          220.8,
+          284.6,
+          348.3,
+          412.1,
+          475.8,
+          539.6,
+          603.3,
+          667.1
+        ],
+        "settle": 5,
+        "measure": 1
       },
       "measure": "speedAtMaxTorque",
       "range": [
