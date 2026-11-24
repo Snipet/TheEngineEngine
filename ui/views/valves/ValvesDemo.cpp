@@ -57,6 +57,16 @@ namespace tee::ui
         add("valve.exLift", FieldKind::number, 0.002, 0.02, 0.0119, "Exhaust lift", L);
         add("valve.exCentre", FieldKind::number, 60, 160, 116, "Exhaust centreline", A);
         add("valve.exFat", FieldKind::number, 0, 1, 0.5, "Exhaust lobe fatness", F);
+        group = "Free valves";
+        add("valve.freeInOpen", FieldKind::number, 0, 720, 350, "Free intake opens", A);
+        add("valve.freeInClose", FieldKind::number, 0, 720, 590, "Free intake closes", A);
+        add("valve.freeExOpen", FieldKind::number, 0, 720, 130, "Free exhaust opens", A);
+        add("valve.freeExClose", FieldKind::number, 0, 720, 370, "Free exhaust closes", A);
+        add("valve.freeFlank", FieldKind::number, 10, 90, 40, "Free valve flank", A);
+        add("valve.auxOn", FieldKind::toggle, 0, 1, 0, "Second exhaust event");
+        add("valve.auxOpen", FieldKind::number, 0, 720, 680, "Second event opens", A);
+        add("valve.auxDur", FieldKind::number, 20, 200, 60, "Second event duration", A);
+        add("valve.auxLift", FieldKind::number, 0.0005, 0.01, 0.002, "Second event lift", L);
         group = "Variable timing";
         add("valve.inPhaseRange", FieldKind::number, 0, 80, 40, "Intake phaser range", A);
         add("valve.exPhaseRange", FieldKind::number, 0, 80, 0, "Exhaust phaser range", A);
@@ -108,6 +118,33 @@ namespace tee::ui
                 return std::clamp((e.rpm() - 1200.0) / 3000.0, 0.0, 1.0) * 40.0 * std::min(1.0, 0.3 + e.throttle());
             });
             x.engine->addTelemetry("valve.exPhase", [](const DemoEngine&) { return 0.0; });
+            // the target leads the phase a little while the speed rises
+            x.engine->addTelemetry("valve.inPhaseTarget", [](const DemoEngine& e) {
+                return std::clamp((e.rpm() - 900.0) / 3000.0, 0.0, 1.0) * 40.0 * std::min(1.0, 0.3 + e.throttle());
+            });
+            x.engine->addTelemetry("valve.exPhaseTarget", [](const DemoEngine&) { return 0.0; });
+            x.engine->addTelemetry("valve.floating", [](const DemoEngine& e) { return e.rpm() > 7200.0 ? 1.0 : 0.0; });
+            // cylinder 1's events now, the cycle's degrees: the cams' seat events, the intake's advanced by its phaser
+            const auto phase = [](const DemoEngine& e) {
+                return std::clamp((e.rpm() - 1200.0) / 3000.0, 0.0, 1.0) * 40.0 * std::min(1.0, 0.3 + e.throttle());
+            };
+            x.engine->addTelemetry("valve.ivo", [phase](const DemoEngine& e) {
+                return 360.0 + e.field("valve.inCentre", 108.0) - 0.5 * e.field("valve.inDurSeat", 268.0) - phase(e);
+            });
+            x.engine->addTelemetry("valve.ivc", [phase](const DemoEngine& e) {
+                return 360.0 + e.field("valve.inCentre", 108.0) + 0.5 * e.field("valve.inDurSeat", 268.0) - phase(e);
+            });
+            x.engine->addTelemetry("valve.evo", [](const DemoEngine& e) {
+                return 360.0 - e.field("valve.exCentre", 116.0) - 0.5 * e.field("valve.exDurSeat", 274.0);
+            });
+            x.engine->addTelemetry("valve.evc", [](const DemoEngine& e) {
+                return 360.0 - e.field("valve.exCentre", 116.0) + 0.5 * e.field("valve.exDurSeat", 274.0);
+            });
+            x.engine->addTelemetry("valve.overlap", [phase](const DemoEngine& e) {
+                const double ivo = 360.0 + e.field("valve.inCentre", 108.0) - 0.5 * e.field("valve.inDurSeat", 268.0) - phase(e);
+                const double evc = 360.0 - e.field("valve.exCentre", 116.0) + 0.5 * e.field("valve.exDurSeat", 274.0);
+                return std::max(0.0, evc - ivo);
+            });
             x.engine->addTelemetry("valve.stage", [](const DemoEngine& e) { return e.rpm() > 5500.0 ? 1.0 : 0.0; });
             x.engine->addTelemetry("valve.floatSpeed", [](const DemoEngine&) { return 7200.0 * kRpm; });
             x.engine->addTelemetry("valve.active", [](const DemoEngine& e) {

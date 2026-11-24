@@ -1,0 +1,57 @@
+{
+ "format": "tee-engine-scenario/1",
+ "name": "m-starter",
+ "description": "Key-on prime, a start with a direct-drive starter, off, then a start with a gear-reduction one.",
+ "seconds": 16,
+ "events": [
+  {
+   "t": 0.0,
+   "spec": {
+    "sound.view": 3,
+    "voices.model": 1,
+    "voices.starter": 0
+   },
+   "ctl": {
+    "mode": 0,
+    "throttle": 0,
+    "ignition": 1
+   },
+   "note": "key on: the pump's two-second prime"
+  },
+  {
+   "t": 3.0,
+   "ctl": {
+    "ignition": 2
+   },
+   "note": "a direct-drive starter"
+  },
+  {
+   "t": 4.5,
+   "ctl": {
+    "ignition": 0
+   }
+  },
+  {
+   "t": 8.0,
+   "spec": {
+    "voices.starter": 1
+   },
+   "ctl": {
+    "ignition": 1
+   },
+   "note": "key on again; a gear-reduction starter"
+  },
+  {
+   "t": 11.0,
+   "ctl": {
+    "ignition": 2
+   }
+  },
+  {
+   "t": 12.5,
+   "ctl": {
+    "ignition": 1
+   }
+  }
+ ]
+}

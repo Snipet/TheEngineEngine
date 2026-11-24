@@ -141,8 +141,15 @@ module Listen
     float shMx;
     float shMy;
     int placeUse;
+    int driveHeld;      // parts since the driveline last sounded
     float inside;       // the place's reflections' share: a third in the cabin with the windows shut
-    float loud;         // the computed level (loudness), as a gain
+    float loud;         // the whole's level, model 1: the V8's
+    float exLoud;       // the exhaust's computed level (loudness), as a gain against the V8's, and what it was computed for
+    float loudSig;
+    float nEff;         // the equal pulses a cycle it counted
+    float mExAcc;       // the meters: the tailpipes' raw radiation and the mix before the level, summed squares, samples
+    float mMixAcc;
+    int mCount;
 
     void setup(float rateIn, float hostIn)
     {
@@ -241,6 +248,9 @@ module Listen
         boomG = 0.0f;
         boomStep = 16.0f / (0.25f * rate);
         loud = 1.0f;
+        exLoud = 1.0f;
+        loudSig = -1.0f;
+        driveHeld = 100000;
         ready = 1;
     }
 
@@ -432,7 +442,8 @@ module Listen
     // trims (exTrim, gainNorm) and its tailpipes (nPipes, bike, tailD)
     void block(int v, float intakeK, float mechK, float distance, float room, float levelDb, int asp, float exTrim,
                float gainNorm, int nPipes, float bike, float tailD, SoundSpec* ssIn, SoundTel* stIn, float carSpeed,
-               int driven, float vTotal, int nCyl, float fx, float fy, float mx, float my)
+               int driven, float vTotal, int nCyl, float fx, float fy, float mx, float my, float* fire, float cyc,
+               int rotary)
     {
         ss = ssIn;
         st = stIn;
@@ -450,7 +461,7 @@ module Listen
         if (model != 0)
         {
             block1(intakeK, mechK, distance, room, levelDb, asp, exTrim, gainNorm, nPipes, bike, tailD, carSpeed, driven,
-                   vTotal, nCyl, fx, fy, mx, my);
+                   vTotal, nCyl, fx, fy, mx, my, fire, cyc, rotary);
             return;
         }
         vNow = v;
@@ -509,11 +520,11 @@ module Listen
     // cabin's boom), the engine bay's sources (mech, block, turbo, starter, comb: Extras'), the headers' walls (sh0,
     // sh1), the tyres (road; driven: 1, else 0) and the fade's gain (cutG), into the room's input
     void mix(int i, float xLin, float xRin, float inIn, float tqNow, float mech, float blockN, float turbo,
-             float starter, float comb, float sh0, float sh1, int driven, float road, float cutG)
+             float starter, float comb, float sh0, float sh1, int driven, float road, float cutG, float drive)
     {
         if (model != 0)
         {
-            mix1(i, xLin, xRin, inIn, tqNow, mech, blockN, turbo, starter, comb, sh0, sh1, road, cutG);
+            mix1(i, xLin, xRin, inIn, tqNow, mech, blockN, turbo, starter, comb, sh0, sh1, road, cutG, drive);
             return;
         }
         const int v = vNow;
@@ -612,15 +623,25 @@ module Listen
     // left); the paths do the rest
     void block1(float intakeK, float mechK, float distance, float room, float levelDb, int asp, float exTrim,
                 float gainNorm, int nPipes, float bike, float tailD, float carSpeed, int driven, float vTotal, int nCyl,
-                float fx, float fy, float mx, float my)
+                float fx, float fy, float mx, float my, float* fire, float cyc, int rotary)
     {
         const int cam = ss->camera < 0 ? 0 : (ss->camera > 6 ? 6 : ss->camera);
         const float rr = 0.5f * expf(4.0943446f * distance);
+        // (the driveline's line is read while package M's gearbox has sounded in the last second)
+        driveHeld = driveHeld < 100000 ? driveHeld + 1 : driveHeld;
         sc.block(cam, rr, driven != 0 ? carSpeed : 0.0f, ss->ground, fminf(fmaxf(ss->windows, 0.0f), 1.0f), tailD, nPipes,
-                 bike, ss->enginePlace, driven, 0);
+                 bike, ss->enginePlace, driven, driveHeld < (int)(rate / 16.0f) ? 1 : 0);
         // (the fitted strengths, dB: exhaust -4.85, intake +0.8, valvetrain +0.3, block -1.6, headers' walls +0.9,
         // turbo +2, starter -0.4, combustion +2.4, tyres -8.2; tests/sim/listen/ExploreTest.cpp makes the table)
-        sEx = kEx * exTrim * 0.572f;
+        // the level computed for the engine (loudness), in the reference's tables' place: the exhaust's as the V8's
+        // trims make it (8.169, 0.5 x 1.329), times the pulses' strength against the V8's
+        const float sig = (float)nCyl + cyc * 0.001f + (float)rotary * 0.5f + (nCyl > 1 ? fire[1] * 0.0001f : 0.0f);
+        if (sig != loudSig)
+        {
+            loudSig = sig;
+            exLoud = loudnessOf(fire, nCyl, cyc, rotary);
+        }
+        sEx = kEx * 8.169f * exLoud * 0.572f;
         sIn = kIn * (0.25f + 1.5f * intakeK) * (asp >= 1 && asp <= 3 ? 0.35f : 1.0f) * 1.094f;
         sMc = kMc * 2.0f * mechK * 1.039f;
         sBk = kBk * 2.0f * mechK * 0.832f;
@@ -644,7 +665,7 @@ module Listen
         rt = plc.rt(placeUse, room);
         wetT = plc.wet(placeUse, room) * (placeUse == PL_HALL ? 0.5f + 0.5f * fminf(sc.vw[sc.cur].range / 12.0f, 1.0f) : 1.0f)
                * (sc.camUse == CAM_DRIVER ? 0.3f + 0.7f * win : 1.0f);
-        loud = gainNorm;
+        loud = 0.6645f;
         outT = loud * expf(0.115129255f * levelDb);
         if (rS < 0.0f)
         {
@@ -658,20 +679,64 @@ module Listen
         st->range = sc.vw[sc.cur].range;
         st->doppler = 1.0f - sc.vw[sc.cur].slope;
         st->roadPosition = sc.camUse == CAM_TRACKSIDE ? 2.2f - sc.rel : 0.0f;
-        st->loudness = 8.6858896f * logf(fmaxf(loud, 1.0e-9f));
+        st->loudness = 8.6858896f * logf(fmaxf(exLoud, 1.0e-9f));
+        if ((float)mCount >= 0.4f * rate)
+        {
+            st->exhaustLevel = 4.3429448f * logf(fmaxf(mExAcc / (float)mCount, 1.0e-20f));
+            st->mixLevel = 4.3429448f * logf(fmaxf(mMixAcc / (float)mCount, 1.0e-20f));
+            mExAcc = 0.0f;
+            mMixAcc = 0.0f;
+            mCount = 0;
+        }
+    }
+
+    // The exhaust's level for an engine, against a V8's (model 1's loudness, in place of the reference's tables by
+    // layout). What an engine sends down its pipes is a train of pulses, one a firing; how loud it is at full load
+    // depends most on how many equal pulses a cycle it makes: n_eff, the lowest order of the cycle at which the firings'
+    // comb |sum exp(i 2 pi k fire_c / cycle)| reaches half its whole (n for an even-firing engine; fewer when the
+    // firings bunch, as a cross-plane four's do). Measured on the reference's seventeen layouts at full load, 0.75 of
+    // the redline, each with the reference's own pipes, the exhaust's radiation falls 26 dB a decade of n_eff (within
+    // +-4.5 dB for the even-firing ones; docs/models/listen.md); a rotary's peripheral port makes its pulses 16 dB
+    // stronger than that. The gain returned brings each to the V8's level: one loudness across builds
+    float loudnessOf(float* fire, int n, float cyc, int rotary)
+    {
+        int ne = n < 1 ? 1 : n;
+        for (int k = 1; k <= n; ++k)
+        {
+            float re = 0.0f;
+            float im = 0.0f;
+            for (int c = 0; c < n; ++c)
+            {
+                const float a = 6.28318531f * (float)k * fire[c] / fmaxf(cyc, 1.0f);
+                re += cosf(a);
+                im += sinf(a);
+            }
+            if (re * re + im * im >= 0.25f * (float)(n * n))
+            {
+                ne = k;
+                break;
+            }
+        }
+        nEff = (float)ne;
+        // 26 dB a decade: the level's ratio to the V8's (n_eff 8) is (n_eff / 8)^-1.3; the gain is its inverse
+        const float db = 26.0f * 0.43429448f * logf((float)ne / 8.0f) - (rotary != 0 ? 16.0f : 0.0f);
+        return expf(0.115129255f * db);
     }
 
     // Sample i: each source's signal into its place, heard; the cabin's boom; the fade's gain
     void mix1(int i, float xL, float xR, float in, float tqNow, float mech, float blockN, float turbo, float starter,
-              float comb, float sh0, float sh1, float road, float cutG)
+              float comb, float sh0, float sh1, float road, float cutG, float drive)
     {
         sc.in[LS_TAIL0] = sEx * xL;
         sc.in[LS_TAIL1] = sEx * xR;
         sc.in[LS_INTAKE] = sIn * in;
-        sc.in[LS_BAY] = sMc * mech + sBk * blockN + sSh * 0.5f * (sh0 + sh1);
+        // (package M's gearbox and final drive come in mech; they are heard from the driveline instead)
+        sc.in[LS_BAY] = sMc * (mech - drive) + sBk * blockN + sSh * 0.5f * (sh0 + sh1);
         sc.in[LS_BAYOPEN] = sTb * turbo + sSt * starter + sCo * comb;
         sc.in[LS_TYRES] = sRd * road;
-        sc.in[LS_DRIVE] = 0.0f;
+        sc.in[LS_DRIVE] = sMc * drive;
+        if (drive != 0.0f)
+            driveHeld = 0;
         sc.tick();
         float L = sc.outL;
         float R = sc.outR;
@@ -686,6 +751,9 @@ module Listen
         const float g = cutG * cutG * (3.0f - 2.0f * cutG);
         sA[i] = L * g;
         sB[i] = R * g;
+        mExAcc += 0.5f * (xL * xL + xR * xR);
+        mMixAcc += 0.5f * (L * L + R * R);
+        mCount += 1;
     }
 
     // The part through the place, the level, the compressor, the limiter and the ceiling (as finish's)

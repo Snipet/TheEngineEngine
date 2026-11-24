@@ -106,7 +106,10 @@ namespace tee
         std::uint32_t restarts = 0;       // instances made afresh after a trip or a stop
         std::uint32_t reloads = 0;        // programs swapped in by a reload
         std::uint8_t faulted = 0;         // silent now, waiting for a fresh instance
-        std::uint8_t pad[7] = {};
+        std::uint8_t restarting = 0;      // a fresh instance after a fault, being cranked back to running
+        std::uint8_t pad[6] = {};
+        std::uint32_t clippedBlocks = 0;  // blocks with a sample beyond full scale, clamped (no fault)
+        float largestSample = 0.0f;       // the largest sample the simulator wrote since load, before the clamp
     };
 
     // The newest whole block's telemetry: the `tel` block's bytes and the host's numbers. Read field by field.
