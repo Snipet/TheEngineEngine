@@ -1,0 +1,59 @@
+{
+ "format": "tee-engine-scenario/1",
+ "name": "d2-pilot",
+ "build": "truck-15l-six",
+ "description": "Full load at 1200 rpm on the dyno, card H's fuel model: no pilot, then a 4 % pilot from 8 s (the clatter softens), then injection 6 degrees later as well from 14 s.",
+ "seconds": 20,
+ "events": [
+  {
+   "t": 0.0,
+   "spec": {
+    "env.temperature": 300,
+    "env.pressure": 101325,
+    "fuel.model": 1,
+    "fuel.grade": 6
+   },
+   "ctl": {
+    "mode": 0,
+    "lever": 0,
+    "clutch": 0,
+    "brake": 0,
+    "throttle": 0,
+    "ignition": 1
+   }
+  },
+  {
+   "t": 0.2,
+   "ctl": {
+    "ignition": 2
+   }
+  },
+  {
+   "t": 2.2,
+   "ctl": {
+    "ignition": 1
+   }
+  },
+  {
+   "t": 3.0,
+   "ctl": {
+    "mode": 2,
+    "dynoSpeed": 125.664,
+    "dynoRate": 0,
+    "throttle": 1
+   }
+  },
+  {
+   "t": 8.0,
+   "spec": {
+    "fuel.pilot": 0.04
+   }
+  },
+  {
+   "t": 14.0,
+   "spec": {
+    "fuel.soiAdd": -6
+   }
+  }
+ ]
+}
