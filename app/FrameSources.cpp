@@ -7,7 +7,9 @@
 #include "input/Controls.h"
 #include "player/SimAdapter.h"
 
+#include "app/host/HostSources.h"
 #include "kit/bind/host/BuildDoc.h"
+#include "tee/SimHost.h"
 
 #include <algorithm>
 #include <chrono>
@@ -16,6 +18,41 @@
 
 namespace tee::app
 {
+    LateDyno::LateDyno(player::SimAdapter& player) : player_(player) {}
+    LateDyno::~LateDyno() = default;
+
+    void LateDyno::tick(float dt)
+    {
+        if (!inner_ && player_.ready() && player_.host().sim())
+        {
+            inner_ = std::make_unique<ui::ServiceDyno>(player_.host().sim(), player_.build());
+            made_ = 1000;                         // a revision past the ones said before
+        }
+        if (inner_)
+            inner_->tick(dt);
+    }
+
+    const ui::DynoTrace& LateDyno::predicted() const { return inner_ ? inner_->predicted() : none_; }
+    const ui::DynoTrace& LateDyno::before() const { return inner_ ? inner_->before() : none_; }
+    bool LateDyno::busy() const { return inner_ ? inner_->busy() : !player_.ready() && player_.compileError().empty(); }
+    double LateDyno::progress() const { return inner_ ? inner_->progress() : 0.0; }
+    std::string LateDyno::error() const
+    {
+        if (inner_)
+            return inner_->error();
+        return player_.compileError().empty() ? std::string("the engine is being compiled") : player_.compileError();
+    }
+    std::uint64_t LateDyno::revision() const { return inner_ ? made_ + inner_->revision() : 1; }
+    int LateDyno::runCount() const { return inner_ ? inner_->runCount() : 0; }
+    const ui::DynoTrace& LateDyno::run(int i) const { return inner_ ? inner_->run(i) : none_; }
+    bool LateDyno::startRun(const ui::DynoRequest& r) { return inner_ && inner_->startRun(r); }
+    bool LateDyno::running() const { return inner_ && inner_->running(); }
+    void LateDyno::stopRun()
+    {
+        if (inner_)
+            inner_->stopRun();
+    }
+
     bool waitForCurve(ui::DynoSource& dyno, double seconds)
     {
         const auto start = std::chrono::steady_clock::now();
@@ -24,7 +61,7 @@ namespace tee::app
         {
             dyno.tick(dt);
             dt = 0.02f;
-            if (!dyno.error().empty())      // (a dyno that cannot run says so at once: the program lacks the torque)
+            if (!dyno.error().empty() && !dyno.busy())   // (a dyno that cannot run says so at once)
                 return false;
             if (std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count() > seconds)
                 return false;

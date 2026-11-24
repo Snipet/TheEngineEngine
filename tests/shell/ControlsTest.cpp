@@ -361,3 +361,19 @@ TEST_CASE("shell: a Panel's clutch and handbrake bars, the frame's mode, the mou
     controls.tick(1.0f / 60.0f);
     CHECK(controls.frame().clutch == 0.0f);
 }
+
+TEST_CASE("shell: the start key does nothing while the engine is not ready (its compile), and works after",
+          "[shell][input]")
+{
+    Driver d;
+    d.setStartEnabled(false);
+    d.set(Source::keyboard, Action::start, true);
+    CHECK(run(d, 0.3).ignition == 0);
+    d.set(Source::keyboard, Action::start, false);
+    CHECK(run(d, 2.5).ignition == 0);          // nothing latched to crank later
+    d.setStartEnabled(true);
+    CHECK(run(d, 0.1).ignition == 0);
+    d.set(Source::keyboard, Action::start, true);
+    d.set(Source::keyboard, Action::start, false);
+    CHECK(run(d, 0.1).ignition == 2);
+}
