@@ -72,7 +72,7 @@ namespace
 
     Fields bothSides(const std::string& field, double v)
     {
-        return {{"b.sp." + field + "[0]", v}, {"b.sp." + field + "[1]", v}};
+        return {{"spec." + field + "[0]", v}, {"spec." + field + "[1]", v}};
     }
 } // namespace
 
@@ -84,9 +84,9 @@ TEST_CASE("180-degree headers take the burble out; unequal headers put it in", "
 {
     const Heard bank = listen(12, {});
     // the crossplane's firing angles: cylinders 0 3 5 6 at 0 180 360 540, 7 2 4 1 at 90 270 450 630
-    const Heard even = listen(12, {{"b.sp.primaryTo[0]", 0}, {"b.sp.primaryTo[3]", 0}, {"b.sp.primaryTo[5]", 0},
-                                   {"b.sp.primaryTo[6]", 0}, {"b.sp.primaryTo[7]", 1}, {"b.sp.primaryTo[2]", 1},
-                                   {"b.sp.primaryTo[4]", 1}, {"b.sp.primaryTo[1]", 1}});
+    const Heard even = listen(12, {{"spec.primaryTo[0]", 0}, {"spec.primaryTo[3]", 0}, {"spec.primaryTo[5]", 0},
+                                   {"spec.primaryTo[6]", 0}, {"spec.primaryTo[7]", 1}, {"spec.primaryTo[2]", 1},
+                                   {"spec.primaryTo[4]", 1}, {"spec.primaryTo[1]", 1}});
     const double bankL = offOrders(bank.left, 3000.0, 4);
     const double bankR = offOrders(bank.right, 3000.0, 4);
     const double evenL = offOrders(even.left, 3000.0, 4);
@@ -99,7 +99,7 @@ TEST_CASE("180-degree headers take the burble out; unequal headers put it in", "
     const Heard unequal = listen(6, {});
     Fields eq;
     for (int i = 0; i < 4; ++i)
-        eq.push_back({"b.sp.primLen[" + std::to_string(i) + "]", 0.45});
+        eq.push_back({"spec.primLen[" + std::to_string(i) + "]", 0.45});
     const Heard equal = listen(6, eq);
     const double u = offOrders(unequal.left, 3000.0, 4);
     const double e = offOrders(equal.left, 3000.0, 4);
@@ -112,9 +112,9 @@ TEST_CASE("180-degree headers take the burble out; unequal headers put it in", "
 // level at the tails above some frequencies, and to the difference between the two tails, against no crossover.
 TEST_CASE("an X and an H tie the sides together", "[exhaust][character]")
 {
-    const Heard none = listen(12, {{"b.sp.crossover", 0}});
-    const Heard h = listen(12, {{"b.sp.crossover", 1}, {"b.sp.crossAt", 1}, {"b.sp.crossD", 0.064}});
-    const Heard x = listen(12, {{"b.sp.crossover", 2}, {"b.sp.crossAt", 1}});
+    const Heard none = listen(12, {{"spec.crossKind", 0}});
+    const Heard h = listen(12, {{"spec.crossKind", 1}, {"spec.crossAt", 1}, {"spec.crossD", 0.064}});
+    const Heard x = listen(12, {{"spec.crossKind", 2}, {"spec.crossAt", 1}});
     auto diff = [](const Heard& k) {
         std::vector<float> d(k.left.size());
         for (std::size_t i = 0; i < d.size(); ++i)
@@ -144,12 +144,12 @@ TEST_CASE("resonators cut their notes", "[exhaust][character]")
 {
     const Heard plain = listen(12, {});
     Fields qw = bothSides("resonator", 1);
-    qw.push_back({"b.sp.resHz[0]", 200.0});
-    qw.push_back({"b.sp.resHz[1]", 200.0});
+    qw.push_back({"spec.resHz[0]", 200.0});
+    qw.push_back({"spec.resHz[1]", 200.0});
     const Heard quarter = listen(12, qw);
     Fields hz = bothSides("resonator", 2);
-    hz.push_back({"b.sp.resHz[0]", 150.0});
-    hz.push_back({"b.sp.resHz[1]", 150.0});
+    hz.push_back({"spec.resHz[0]", 150.0});
+    hz.push_back({"spec.resHz[1]", 150.0});
     const Heard helm = listen(12, hz);
     const double q200 = db(tone(quarter.sum, 200.0, 0, kAll) / tone(plain.sum, 200.0, 0, kAll));
     const double h150 = db(tone(helm.sum, 150.0, 0, kAll) / tone(plain.sum, 150.0, 0, kAll));
@@ -170,10 +170,10 @@ TEST_CASE("resonators cut their notes", "[exhaust][character]")
 // prints both).
 TEST_CASE("mufflers in their order; the bypass valve opens without a click", "[exhaust][character]")
 {
-    const Heard none = listen(12, bothSides("muffler", 0));
-    const Heard straight = listen(12, bothSides("muffler", 1));
-    const Heard chambered = listen(12, bothSides("muffler", 2));
-    const Heard three = listen(12, bothSides("muffler", 3));
+    const Heard none = listen(12, bothSides("mufKind", 0));
+    const Heard straight = listen(12, bothSides("mufKind", 1));
+    const Heard chambered = listen(12, bothSides("mufKind", 2));
+    const Heard three = listen(12, bothSides("mufKind", 3));
     const double r0 = rms(none.sum, 0, kAll);
     const double ilS = db(r0 * r0 / (rms(straight.sum, 0, kAll) * rms(straight.sum, 0, kAll)));
     const double ilC = db(r0 * r0 / (rms(chambered.sum, 0, kAll) * rms(chambered.sum, 0, kAll)));
@@ -213,9 +213,9 @@ TEST_CASE("mufflers in their order; the bypass valve opens without a click", "[e
     auto opening = [](double travel) {
         Rig rig(12);
         rig.noise(0.0);
-        rig.set("b.sp.bypass[0]", 4);
-        rig.set("b.sp.bypass[1]", 4);
-        rig.set("b.sp.bypassTime", travel);
+        rig.set("spec.bypass[0]", 4);
+        rig.set("spec.bypass[1]", 4);
+        rig.set("spec.bypassTime", travel);
         rig.configure();
         std::vector<float> q = pulses(rig, 3000.0, 1.0, 0.15, 0.01);
         std::vector<float> l1, r1, l2, r2, l3, r3;
@@ -267,7 +267,7 @@ TEST_CASE("no converter is freer and brighter; zoomies radiate from every cylind
         Rig rig(layout);
         const int n = rig.cylinders();
         for (int i = 0; i < n; ++i)
-            rig.set("b.sp.primaryTo[" + std::to_string(i) + "]", -1);
+            rig.set("spec.primaryTo[" + std::to_string(i) + "]", -1);
         rig.configure();
         INFO("layout " << layout);
         CHECK(rig.ends() == n);

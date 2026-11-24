@@ -7,6 +7,8 @@
 //   ... --bless                    write the goldens instead of comparing (after looking at the PNGs)
 #include "ViewKit.h"
 
+#include "kit/bind/Binding.h"
+
 #include <funkgui/panel/HeadlessGuiScope.h>
 #include <funkgui/text/FontService.h>
 
@@ -101,6 +103,18 @@ namespace tee::test::views
         else if (had != now)
             failAt(__FILE__, __LINE__, "the frame differs from " + path.string() + ":\n--- golden\n" + had + "--- now\n" + now
                                            + "(look at " + png + ")");
+    }
+
+    std::string inspectorNotes(const tee::ui::Workspace& ws, tee::ui::DemoRig& demo)
+    {
+        const std::string gui = ws.inspectorPage();
+        if (gui.empty())
+            return {};
+        tee::ui::GuiPanel::Options o;
+        o.width = 340;
+        o.height = 600;
+        tee::ui::FieldPage page(demo.doc, demo.units, demo.engine, tee::ui::Sources{ { std::string(ws.id()) + ".gui", gui } }, o);
+        return page.notes();
     }
 
     void typeKeys(funkgui::HeadlessHost& host, std::string_view spec)

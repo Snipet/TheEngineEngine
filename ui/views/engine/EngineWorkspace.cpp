@@ -7,6 +7,8 @@
 #include "views/engine/EngineWorkspace.h"
 
 #include "views/engine/EngineModel.h"
+#include "views/engine/PageText.h"
+#include "views/engine/StageDraw.h"
 
 #include "app/Look.h"
 #include "kit/widgets/Basic.h"
@@ -30,36 +32,13 @@ namespace tee::ui
         using funkgui::Rect;
         using namespace engine;
         namespace lk = look;
+        using stage::arcAngle;
+        using stage::polar;
+        using stage::put;
+        using stage::putCentred;
 
         constexpr float kGap = 12.0f;
         constexpr double kPaces[] = { 2.0, 4.0, 8.0 };   // SLOW: seconds a cycle
-
-        // A point at `deg` clockwise from up, `r` from c.
-        Point polar(Point c, double deg, double r)
-        {
-            const double a = deg * kPi / 180.0;
-            return { c.x + static_cast<float>(r * std::sin(a)), c.y - static_cast<float>(r * std::cos(a)) };
-        }
-        // Canvas arc angle (radians from +x, clockwise) of `deg` clockwise from up.
-        float arcAngle(double deg) { return static_cast<float>((deg - 90.0) * kPi / 180.0); }
-
-        // Text placed by its anchor: left, centre or right of x.
-        void put(Canvas& c, const std::string& s, float x, float y, const funkgui::TextStyle& st, Col ink,
-                 Align a = Align::left)
-        {
-            float x0 = x;
-            if (a != Align::left)
-            {
-                const float w = c.textWidth(s.c_str(), st);
-                x0 = a == Align::centre ? x - w * 0.5f : x - w;
-            }
-            c.text(s.c_str(), x0, y, st, ink);
-        }
-        // Text centred on a point (its capitals' middle at y).
-        void putCentred(Canvas& c, const std::string& s, float x, float cy, const funkgui::TextStyle& st, Col ink)
-        {
-            put(c, s, x, c.capCentreTop(cy, st), st, ink, Align::centre);
-        }
 
         std::string fmt(double v, const char* f)
         {
@@ -131,6 +110,58 @@ namespace tee::ui
         {
             ctx_.selection.hover(hitAt({ e.x, e.y }));
             Board::pointerMove(e);
+        }
+
+        // The inspector for what is selected: the layout (and its presets), one cylinder's place on the crank, or the
+        // cylinder's geometry with its masses and friction; nothing selected: the generated pages of `engine`.
+        std::string inspectorPage() const override
+        {
+            const std::string& s = ctx_.selection.path();
+            // the field's path in this build: the branch's, else the standalone's or the demo's (never both)
+            const auto both = [&](EF f, int i = -1) {
+                std::vector<std::string> v;
+                if (std::string x = fieldPath(ctx_.doc, f, i); !x.empty())
+                    v.push_back(std::move(x));
+                return v;
+            };
+            const auto cat = [](std::vector<std::vector<std::string>> parts) {
+                std::vector<std::string> v;
+                for (auto& p : parts)
+                    v.insert(v.end(), p.begin(), p.end());
+                return v;
+            };
+            const Layout& l = model().layout;
+            if (s == "engine.layout")
+            {
+                std::vector<std::string> banks;
+                for (int b = 0; b < kMaxBanks; ++b)
+                    for (const std::string& x : both(EF::bankAngle, b))
+                        banks.push_back(x);
+                return pages::page(ctx_.doc,
+                                   { { "LAYOUT", cat({ both(EF::layout), both(EF::custom) }) },
+                                     { "CUSTOM LAYOUT", cat({ both(EF::cylinders), both(EF::rotors), banks }) },
+                                     { "LIMITS", { "engine.idleTrim", "engine.redlineTrim", "engine.redlineSpeed", "engine.rough" } } },
+                                   "THE PRESETS ARE THE LAYOUT MENU; CUSTOM PLACES EACH CYLINDER");
+            }
+            if (const int k = selectedCylinder(); k >= 0)
+            {
+                const std::string title = "CYLINDER " + std::to_string(k + 1);
+                std::string note = l.custom ? "" : "THIS CYLINDER STANDS WHERE THE LAYOUT PUTS IT; CUSTOM MOVES IT";
+                return pages::page(ctx_.doc,
+                                   { { title, cat({ both(EF::bank, k), both(EF::pin, k), both(EF::fireRev, k), both(EF::place, k) }) },
+                                     { "LAYOUT", cat({ both(EF::layout), both(EF::custom) }) } },
+                                   note);
+            }
+            if (s == "engine.bore")
+                return pages::page(ctx_.doc,
+                                   { { "CYLINDER", cat({ both(EF::displacement), both(EF::boreStroke), both(EF::bore), both(EF::stroke),
+                                                         both(EF::rod), both(EF::compression) }) },
+                                     { "MOVING MASSES", cat({ both(EF::pistonMass), both(EF::rodMass), both(EF::rodRecip), both(EF::flywheel),
+                                                              { "engine.flywheel", "engine.balance1", "engine.balance2" } }) },
+                                     { "FRICTION", { "engine.friction", "engine.fricConst", "engine.fricPeak", "engine.fricSpeed",
+                                                     "engine.fricSpeed2", "engine.fricBearing", "engine.frictionValvetrain", "engine.alternator",
+                                                     "engine.airCon" } } });
+            return {};
         }
 
         // The selected cylinder (0-based), -1: none.
@@ -568,7 +599,7 @@ namespace tee::ui
             {
                 const float x = in.x + cw * static_cast<float>(i % cols), y = in.y + 4.0f + rh * static_cast<float>(i / cols);
                 const Cell& k = cells[i];
-                lk::readout(c, p, x, y, k.label, k.value, k.unit, lk::kNumberM);
+                stage::readout(c, p, x, y, k.label, k.value, k.unit, lk::kNumberM);
                 if (rh > 52.0f)
                     put(c, k.how, x, y + 38.0f, lk::kUnit, p.dim);
             }
@@ -588,7 +619,9 @@ namespace tee::ui
             // what drives it, in words
             const char* mode = slow_ ? "SLOW: THE SCOPE'S LAST CYCLE" : "LIVE: THE CRANK AS IT TURNS";
             put(c, mode, in.x, in.y + 30.0f, lk::kCaps, slow_ ? p.selected : p.label);
-            if (cyl != 0)
+            if (!slow_ && !std::isfinite(liveAngle()))
+                put(c, "NO CRANK ANGLE: AT REST AT TDC", in.x, in.y + 44.0f, lk::kCaps, p.dim);
+            else if (cyl != 0)
                 put(c, "CYLINDER 1'S SCOPE, AT ITS ANGLE", in.x, in.y + 44.0f, lk::kCaps, p.dim);
 
             const Rect draw{ in.x, in.y + 60.0f, in.w, in.h - 60.0f - 78.0f };
@@ -622,11 +655,12 @@ namespace tee::ui
             c.rrect(cx + hb, headBot, wall, linerBot - headBot, 2.0f, p.raised, 1.0f, p.edge);
             c.rrect(cx - hb - wall, headTop, 2 * (hb + wall), headBot - headTop, 3.0f, p.raised, 1.0f, p.edge);
             // the gas, tinted by its pressure (the number beside it)
-            const double pa = at(sp_, ca);
+            const bool turning = std::isfinite(a1);   // no angle: drawn at rest at TDC, nothing read
+            const double pa = turning ? at(sp_, ca) : kNaN;
             const Col gas = std::isfinite(pa) ? p.over(p.pressure(pa, 101325.0, 5.0e6), 0.55f) : p.panel;
             c.rrect(cx - hb + 1.0f, headBot, 2 * hb - 2.0f, std::max(1.0f, crown - headBot), 0.0f, gas);
             // the valves: intake at the left (cold), exhaust at the right (hot), each lifted by the Scope's curve
-            const double li = at(sli_, ca), le = at(sle_, ca);
+            const double li = turning ? at(sli_, ca) : kNaN, le = turning ? at(sle_, ca) : kNaN;
             const auto valve = [&](float vx, double dia, double lift01, double fullLift, Col ink) {
                 const double full = std::isfinite(fullLift) ? fullLift : 0.26 * dia;   // drawn to scale when the build says
                 const float lift = std::isfinite(lift01) ? static_cast<float>(lift01 * full * k) : 0.0f;
@@ -640,7 +674,7 @@ namespace tee::ui
             // the spark plug, and the spark at the firing top (a burst and a word)
             const float plugW = std::max(3.0f, static_cast<float>(0.05 * B * k));
             c.segment(cx, top + static_cast<float>(0.08 * B * k), cx, headBot + 1.0f, plugW, p.label);
-            const bool spark = ca > (l.cyc - 22.0) || ca < 6.0;
+            const bool spark = turning && (ca > (l.cyc - 22.0) || ca < 6.0);
             if (spark)
             {
                 const float s = std::max(5.0f, static_cast<float>(0.07 * B * k));
@@ -682,7 +716,7 @@ namespace tee::ui
             const float rx = cx + hb + wall + 10.0f;
             const float gy = std::max(headTop, (headBot + crown) * 0.5f - 16.0f);
             const std::string pv = std::isfinite(pa) ? u.number(Quantity::pressure, pa) : "-";
-            lk::readout(c, p, rx, gy, "GAS", pv, std::isfinite(pa) ? u.unit(Quantity::pressure).name : "", lk::kNumberS);
+            stage::readout(c, p, rx, gy, "GAS", pv, std::isfinite(pa) ? u.unit(Quantity::pressure).name : "", lk::kNumberS);
             const auto liftText = [&](double f, double full) -> std::pair<std::string, std::string> {
                 if (!std::isfinite(f))
                     return { "-", "" };
@@ -693,8 +727,8 @@ namespace tee::ui
             const auto [lin, lunit] = liftText(li, m.liftIn);
             const auto [lex, eunit] = liftText(le, m.liftEx);
             const float ly = std::max(gy + 40.0f, crankY - static_cast<float>(r * k) - 40.0f);
-            lk::readout(c, p, rx, ly, "IN LIFT", lin, lunit, lk::kNumberS, lin == "-" ? kClear : inInk);
-            lk::readout(c, p, rx, ly + 36.0f, "EX LIFT", lex, eunit, lk::kNumberS, lex == "-" ? kClear : exInk);
+            stage::readout(c, p, rx, ly, "IN LIFT", lin, lunit, lk::kNumberS, lin == "-" ? kClear : inInk);
+            stage::readout(c, p, rx, ly + 36.0f, "EX LIFT", lex, eunit, lk::kNumberS, lex == "-" ? kClear : exInk);
             put(c, "INTAKE", cx - static_cast<float>(0.24 * B * k), top - 14.0f, lk::kCaps, inInk, Align::centre);
             put(c, "EXHAUST", cx + static_cast<float>(0.25 * B * k), top - 14.0f, lk::kCaps, exInk, Align::centre);
 
@@ -702,12 +736,12 @@ namespace tee::ui
             const float ry = draw.bottom() + 6.0f;
             const float colW = in.w / 3.0f;
             const std::string ang = std::isfinite(a1) ? fmt(ca, "%.0f") : "-";
-            lk::readout(c, p, in.x, ry, "ANGLE", ang, "deg", lk::kNumberS);
-            lk::readout(c, p, in.x + colW, ry, "STROKE", std::isfinite(a1) ? strokeName(ca, false) : "-", "", lk::kNumberS);
+            stage::readout(c, p, in.x, ry, "ANGLE", ang, "deg", lk::kNumberS);
+            stage::readout(c, p, in.x + colW, ry, "STROKE", std::isfinite(a1) ? strokeName(ca, false) : "-", "", lk::kNumberS);
             const std::string lu = u.unit(Quantity::length).name;
-            lk::readout(c, p, in.x, ry + 38.0f, "BORE", u.number(Quantity::length, B), lu, lk::kNumberS);
-            lk::readout(c, p, in.x + colW, ry + 38.0f, "STROKE", u.number(Quantity::length, 2.0 * r), lu, lk::kNumberS);
-            lk::readout(c, p, in.x + 2 * colW, ry + 38.0f, cy.rodDerived ? "ROD, 3.3 r" : "ROD", u.number(Quantity::length, L), lu,
+            stage::readout(c, p, in.x, ry + 38.0f, "BORE", u.number(Quantity::length, B), lu, lk::kNumberS);
+            stage::readout(c, p, in.x + colW, ry + 38.0f, "STROKE", u.number(Quantity::length, 2.0 * r), lu, lk::kNumberS);
+            stage::readout(c, p, in.x + 2 * colW, ry + 38.0f, cy.rodDerived ? "ROD, 3.3 r" : "ROD", u.number(Quantity::length, L), lu,
                         lk::kNumberS);
         }
 

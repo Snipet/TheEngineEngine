@@ -160,7 +160,7 @@ module VehTel
     float shaftTorque [[ui::label("Driveline torque at the wheels")]] [[ui::quantity("torque")]];
     float wheelPower [[ui::label("Power at the wheels")]] [[ui::quantity("power")]];
     float pitch [[ui::label("Load moved to the rear")]] [[ui::unit("N")]];
-    int flags [[ui::label("Flags")]] [[ui::help("1 wheelspin, 2 wheelie, 4 ABS, 8 a locked wheel, 16 shifting, 32 cut asked, 64 blip asked")]];
+    int flags [[ui::label("Flags")]] [[ui::help("1 wheelspin, 2 wheelie, 4 ABS, 8 a locked wheel, 16 shifting, 32 cut asked, 64 blip asked, 128 traction limited")]];
     float ratio [[ui::label("Overall ratio")]] [[ui::quantity("ratio")]];
     int stripState [[ui::label("Strip")]] [[ui::choices("Off", "Staged", "Ambers", "Green", "Running", "Finished", "Red light")]];
     float tReaction [[ui::label("Reaction")]] [[ui::quantity("time")]];

@@ -84,6 +84,31 @@ module CarTel
     int gear [[ui::label("Gear")]] [[ui::help("-1 R, 0 N, 1 up")]];
     float brake [[ui::label("Brake")]] [[ui::quantity("fraction")]];
     float clutch [[ui::label("Clutch")]] [[ui::quantity("fraction")]];
+    // card I's, filled while the vehicle model (car.model 1) drives, every 16 samples
+    float accel [[ui::label("Acceleration")]] [[ui::unit("m/s^2")]];
+    float distance [[ui::label("Distance")]] [[ui::quantity("length")]];
+    int shift [[ui::label("Shift")]] [[ui::choices("None", "Up", "Down", "Refused")]];
+    float wheelSpeed [[ui::label("Wheel speed")]] [[ui::quantity("rotation")]] [MAX_WHEELS];
+    float wheelSlip [[ui::label("Wheel slip")]] [[ui::quantity("fraction")]] [MAX_WHEELS];
+    float wheelLoad [[ui::label("Wheel load")]] [[ui::unit("N")]] [MAX_WHEELS];
+    float wheelForce [[ui::label("Wheel force")]] [[ui::unit("N")]] [MAX_WHEELS];
+    float wheelTorque [[ui::label("Drive torque at the wheel")]] [[ui::quantity("torque")]] [MAX_WHEELS];
+    float wheelTemp [[ui::label("Tyre temperature")]] [[ui::quantity("temperature")]] [MAX_WHEELS];
+    float clutchSlip [[ui::label("Clutch or converter slip")]] [[ui::quantity("rotation")]];
+    float shaftTorque [[ui::label("Driveline torque at the wheels")]] [[ui::quantity("torque")]];
+    float wheelPower [[ui::label("Power at the wheels")]] [[ui::quantity("power")]];
+    float pitch [[ui::label("Load moved to the rear")]] [[ui::unit("N")]];
+    int flags [[ui::label("Flags")]] [[ui::help("1 wheelspin, 2 wheelie, 4 ABS, 8 a locked wheel, 16 shifting, 32 cut asked, 64 blip asked, 128 traction limited")]];
+    float ratio [[ui::label("Overall ratio")]] [[ui::quantity("ratio")]];
+    int stripState [[ui::label("Strip")]] [[ui::choices("Off", "Staged", "Ambers", "Green", "Running", "Finished", "Red light")]];
+    float tReaction [[ui::label("Reaction")]] [[ui::quantity("time")]];
+    float t60 [[ui::label("60 ft")]] [[ui::quantity("time")]];
+    float t330 [[ui::label("330 ft")]] [[ui::quantity("time")]];
+    float t660 [[ui::label("1/8 mile")]] [[ui::quantity("time")]];
+    float v660 [[ui::label("1/8 mile speed")]] [[ui::quantity("speed")]];
+    float t1000 [[ui::label("1000 ft")]] [[ui::quantity("time")]];
+    float t1320 [[ui::label("1/4 mile")]] [[ui::quantity("time")]];
+    float v1320 [[ui::label("Trap speed")]] [[ui::quantity("speed")]];
 };
 
 module SoundTel

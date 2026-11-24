@@ -36,9 +36,31 @@ engine past its redline). With the automatic clutch off, a gear key moves an H-p
 The times are `tee::input::DriverSettings`; they move to the settings file with the bindings in the shell's
 second slice.
 
+## Files and the audio device
+
+Taken before the keys above (so Ctrl+S saves and does not brake). On a Mac, Cmd in place of Ctrl.
+
+| Key | What it does |
+|---|---|
+| Ctrl+N | A new build, every field at its default. With unsaved changes it asks first (discard, or save them first). |
+| Ctrl+O | Open a build (a `.json` of `docs/formats.md`), through the system's file chooser. |
+| Ctrl+S | Save the build to its file; an untitled one asks for a file. |
+| Ctrl+Shift+S | Save it as another file. |
+| F2 | The File menu: the above, the recent files, the builds of the library (shipped and your own), and a part (engine, car, tune) loaded from or saved to a file apart from the rest. |
+| F9 | The Audio menu: the device by name (or the system's default), the rate (or the device's own), the buffer asked for; and the recorder, which writes what is heard to a WAV file in the user's folder (`recordings/` beside `builds/`). |
+
+The top bar shows the build's name with a star while it has unsaved changes. A build still unsaved when the window
+closes is kept as the build "Unsaved changes" in your folder of builds, and opens at the next start; otherwise the
+build last opened or saved opens. The device, the rate, the buffer and the recent files are remembered in the
+settings file (`shell/settings/Settings.h`). A device that is unplugged: the system's default plays in its place,
+and the named one is taken back when it returns.
+
 ## Mouse
 
-The Panel's own controls reach the same frame: its **START** button is the start key (hold it a second to switch
+In the frame, the cockpit's **START**, its mode (bench, dyno, drive) and its three pedal bars (throttle, brake,
+clutch: press and drag) reach the same frame as the keys.
+
+The reference's panel's own controls reach the same frame: its **START** button is the start key (hold it a second to switch
 off), its **throttle strip** is the throttle while it is pressed and dragged, and its gear control asks for a gear
 as the keys do. In the plain Panel (`--panel plain`) the strip is the tall bar at the left: press and drag it, and it
 springs back when let go; the wheel over it sets a throttle that stays where it is put, until it is wheeled back to
@@ -82,6 +104,12 @@ SOUND & DRIVE page) changes that:
   gearbox, so the shifts and the gear keys do nothing.
 
 ## For a machine
+
+`--workspace ID[:PAGE]` opens the frame on a workspace (garage, engine, valves, air, exhaust, tune, car, dyno,
+drive, scope), `--size WxH` gives the window or the picture a logical size, `--scale S` a headless picture's pixels
+a logical px, and `--dyno-wait S` has tee-headless wait for the dyno ribbon's first curve before it draws:
+
+    tee-headless --workspace exhaust --size 1280x800 --scale 2 --frames 120 --script tests/shell/scripts/workspace.txt --shot out/exhaust.png
 
 `tee-headless` (and the window with `--script`) reads the same keys from a script, by name: `w`, `s`, `up`, `down`,
 `e`, `q`, `n`, `space`, `return`, `enter`, `lshift`, `pageup`, `pagedown`, `1` to `6`. `app/Script.h` has the

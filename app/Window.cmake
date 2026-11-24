@@ -6,7 +6,8 @@
 # and the licences of what it holds (FunkGui's font and bgfx, by funkgui_add_font; the rest by the packaging step of
 # .github/workflows/build.yml). On macOS it is an application bundle, signed ad hoc at the end of its build with the
 # entitlement FMinus's JIT needs under the hardened runtime (macos/TheEngineEngine.entitlements).
-add_executable(TheEngineEngine MACOSX_BUNDLE "${CMAKE_CURRENT_LIST_DIR}/Main.cpp")
+add_executable(TheEngineEngine MACOSX_BUNDLE "${CMAKE_CURRENT_LIST_DIR}/Main.cpp"
+                                             "${CMAKE_CURRENT_LIST_DIR}/WindowCommands.cpp")
 target_link_libraries(TheEngineEngine PRIVATE FunkGui::core FunkGui::gpu FunkGui::desktop Tee::shell_sdl
                                               Tee::shell_settings)
 tee_app_gui(TheEngineEngine)

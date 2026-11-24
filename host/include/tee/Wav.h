@@ -22,6 +22,9 @@ namespace tee
     // with `error` set, when it cannot be written.
     bool writeWav(const std::filesystem::path& file, const Audio& audio, std::string& error);
 
+    // The same as 24-bit integer PCM (format 1), each sample rounded from the float clamped to +-1, no dither.
+    bool writeWav24(const std::filesystem::path& file, const Audio& audio, std::string& error);
+
     // Reads a WAV of 32-bit floats, mono (both channels the same) or stereo. False, with `error` set, for a file that
     // is not one.
     bool readWav(const std::filesystem::path& file, Audio& audio, std::string& error);

@@ -36,7 +36,7 @@ namespace tee::audio
         std::snprintf(text, sizeof text, "%s%s: %s, %d Hz, buffer %d frames (%.1f ms)", driver.c_str(),
                       silent ? " (silent)" : "", name.empty() ? "default device" : name.c_str(), rate, bufferFrames,
                       bufferMs);
-        return text;
+        return note.empty() ? std::string(text) : std::string(text) + " (" + note + ")";
     }
 
     Device::Device(AudioSource& source) : source_(source) {}
@@ -101,12 +101,25 @@ namespace tee::audio
         SDL_SetHint(SDL_HINT_AUDIO_DEVICE_SAMPLE_FRAMES, frames.c_str());
 
         // the device's own rate, so that SDL resamples nothing
+        // the device: the one of that name when it is there, else the system's default (which SDL follows)
+        SDL_AudioDeviceID target = SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK;
+        std::string note;
+        if (!request_.deviceName.empty())
+        {
+            int count = 0;
+            SDL_AudioDeviceID* ids = SDL_GetAudioPlaybackDevices(&count);
+            for (int i = 0; ids != nullptr && i < count && target == SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK; ++i)
+                if (const char* n = SDL_GetAudioDeviceName(ids[i]); n != nullptr && request_.deviceName == n)
+                    target = ids[i];
+            SDL_free(ids);
+            if (target == SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK)
+                note = "no audio device named '" + request_.deviceName + "' now: the default device";
+        }
         SDL_AudioSpec device{};
         int deviceFrames = 0;
         int rate = request_.rate;
         if (rate <= 0)
-            rate = SDL_GetAudioDeviceFormat(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &device, &deviceFrames) && device.freq > 0
-                       ? device.freq : 48000;
+            rate = SDL_GetAudioDeviceFormat(target, &device, &deviceFrames) && device.freq > 0 ? device.freq : 48000;
 
         // the blocks the source is asked for: the device's buffer where it is small, never more than 1024 frames
         maxBlock_ = std::clamp(std::max(request_.bufferFrames, deviceFrames), 64, 1024);
@@ -116,7 +129,7 @@ namespace tee::audio
         source_.prepare(static_cast<double>(rate), maxBlock_);
 
         const SDL_AudioSpec spec{ SDL_AUDIO_F32, kChannels, rate };
-        stream_ = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec, &Device::callback, this);
+        stream_ = SDL_OpenAudioDeviceStream(target, &spec, &Device::callback, this);
         if (stream_ == nullptr)
         {
             why = "no audio device opened: " + sdlError();
@@ -125,6 +138,8 @@ namespace tee::audio
         }
         deviceId_ = SDL_GetAudioStreamDevice(stream_);
         info_.rate = rate;
+        info_.isDefault = target == SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK;
+        info_.note = note;
         refreshInfo();
         if (!SDL_ResumeAudioStreamDevice(stream_))
         {
@@ -154,6 +169,24 @@ namespace tee::audio
             info_.bufferFrames = frames;
             info_.bufferMs = device.freq > 0 ? 1000.0 * static_cast<double>(frames) / static_cast<double>(device.freq) : 0.0;
         }
+    }
+
+    std::vector<std::string> Device::devices()
+    {
+        std::vector<std::string> out;
+        if (!audioInit_)
+        {
+            if (!SDL_InitSubSystem(SDL_INIT_AUDIO))
+                return out;
+            audioInit_ = true;
+        }
+        int count = 0;
+        SDL_AudioDeviceID* ids = SDL_GetAudioPlaybackDevices(&count);
+        for (int i = 0; ids != nullptr && i < count; ++i)
+            if (const char* n = SDL_GetAudioDeviceName(ids[i]); n != nullptr)
+                out.emplace_back(n);
+        SDL_free(ids);
+        return out;
     }
 
     void Device::close()
@@ -196,6 +229,15 @@ namespace tee::audio
         {
             if (lost_)
                 retryAt_ = SDL_GetTicks();          // something to try at once
+            // the device asked for by name is back while the default plays in its place: over to it
+            const char* added = e.adevice.recording ? nullptr : SDL_GetAudioDeviceName(e.adevice.which);
+            if (!lost_ && stream_ != nullptr && info_.isDefault && !request_.deviceName.empty() && added != nullptr
+                && request_.deviceName == added)
+            {
+                close();
+                lost_ = true;
+                retryAt_ = SDL_GetTicks();
+            }
             return true;
         }
         return false;

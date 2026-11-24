@@ -299,7 +299,7 @@ module Engine
         ecu.gTau = 0.15f;
         ecu.gTrim = 2.5f;
         ecu.gI = 0.8f;
-        car.setup(rate);
+        car.setup(rate, &spec.car, &spec.env, &ctl, &tel.car);
         set.drive = 0;
         set.mass = 1400.0f;
         configure();
