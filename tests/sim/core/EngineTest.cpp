@@ -584,3 +584,27 @@ TEST_CASE("a model switch written while stopped makes its decisions with no conf
         CHECK(b.field(c.decision) == 1.0);
     }
 }
+
+TEST_CASE("the redline shown is a stated limiter's speed, not the idle's floor (ecu.model 1)", "[core][engine][redline]")
+{
+    // (D2's finding: the tractor's limiter at 2014 rpm showed 2200, idle 700 + 1500; a petrol engine with a low limiter
+    // likewise)
+    {
+        Bench b("archetypes/tractor-15-inline-six");
+        // (written here: the build's own ecu.limiter block does not load today, a nested section: reported to the lead)
+        std::string e;
+        REQUIRE(b.player().setSpec("ecu.limiter.speed", 210.906, e));
+        b.start();
+        std::printf("tractor: redline %.0f rpm (limiter 2014)\n", b.tel("engine.redline") * kRpm);
+        CHECK(std::fabs(b.tel("engine.redline") * kRpm - 2014.0) < 5.0);
+    }
+    {
+        Bench b("default");
+        std::string e;
+        REQUIRE(b.player().setSpec("ecu.model", 1, e));
+        REQUIRE(b.player().setSpec("ecu.limiter.speed", 2000.0 / kRpm, e));
+        b.start();
+        std::printf("default V8, limiter at 2000: redline %.0f rpm\n", b.tel("engine.redline") * kRpm);
+        CHECK(std::fabs(b.tel("engine.redline") * kRpm - 2000.0) < 5.0);
+    }
+}
