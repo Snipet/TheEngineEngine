@@ -21,11 +21,12 @@
   (`DynoSource::runSoFar()`) in the stroke it will keep, the span swept so far shaded, and the plan's box says where it
   is in words with a bar; when it lands it is chosen and its peaks are said.
 
-- **Exhaust walls.** A run says whether its exhaust walls were settled at each step (`DynoTrace::walls`, card C's
+- **Exhaust walls.** A run says whether its exhaust walls were settled at each step (`DynoTrace::settled`, card C's
   `DynoCurve::settled`, the lead's ruling 1220ca3): "walls settled" or "cold walls" (amber too) at the right of its
   name, and the same on the first line of its CSV (`# exhaust cold walls`). When the runs shown are of both kinds a
   note over the plot says so ("MIXED: COLD AND SETTLED WALLS"): a cold-wall step reads a few percent low, so part of
-  their difference is not the engine's. A run that does not say (a prediction, the demo) shows nothing.
+  their difference is not the engine's. A run that does not say (a sweep, a prediction) shows nothing. A stepped run's plan has SETTLE (lit: settle the
+  walls at each step, card C's default; `DynoRequest::settleExhaust`).
 
 ## What is clickable
 

@@ -444,64 +444,49 @@ namespace
 
 namespace
 {
-    // Two runs of the demo's curve, one with its exhaust walls settled and one with cold walls (a step a few percent
-    // low), the rest of the demo's dyno as it is: what card C's runner reports through DynoTrace::walls.
-    class WallsDyno final : public tee::ui::DynoSource
-    {
-    public:
-        explicit WallsDyno(tee::ui::DemoEngine& e) : e_(e)
-        {
-            settled_ = e.predicted();
-            settled_.name = "Settled";
-            settled_.walls = 1;
-            cold_ = e.predicted();
-            cold_.name = "Cold";
-            cold_.walls = 0;
-            for (double& t : cold_.torque)
-                t *= 0.97;
-            for (double& p : cold_.power)
-                p *= 0.97;
-        }
-        void tick(float dt) override { e_.tick(dt); }
-        const tee::ui::DynoTrace& predicted() const override { return e_.predicted(); }
-        const tee::ui::DynoTrace& before() const override { return e_.before(); }
-        bool busy() const override { return false; }
-        double progress() const override { return 0.0; }
-        std::uint64_t revision() const override { return e_.revision(); }
-        int runCount() const override { return 2; }
-        const tee::ui::DynoTrace& run(int i) const override { return i == 0 ? settled_ : cold_; }
-
-    private:
-        tee::ui::DemoEngine& e_;
-        tee::ui::DynoTrace settled_, cold_;
-    };
-
     // Each run says its walls in words on its row and in its CSV; runs of both kinds shown together say so over the plot.
     VIEW_TEST(testDynoWalls, "dyno.walls")
     {
-        tee::ui::DemoRig demo(4.6);
-        WallsDyno dyno(demo.engine);
-        tee::ui::WorkspaceContext ctx{ demo.doc, demo.engine, demo.engine, dyno, demo.units, demo.selection, demo.app };
-        auto ws = tee::ui::makeDynoWorkspace(ctx);
+        // Two stepped runs made on the stage itself over the demo: SETTLE on (card C's default), then off.
+        const int w0 = tee::test::u4::stageW(1100), h0 = tee::test::u4::stageH(1100);
+        StageRig rig(tee::ui::makeDynoWorkspace, w0, h0, 1.0f);
+        const auto press = [&](const char* which) {
+            const funkgui::Rect r = tee::ui::dynoControl(*rig.ws, which);
+            CHECK_MSG(!r.isEmpty(), which);
+            rig.host->click(r.centreX(), r.centreY());
+        };
+        const auto run = [&] {
+            press("start");
+            for (int i = 0; i < 200 && rig.demo.engine.running(); ++i)
+            {
+                rig.demo.engine.tick(1.0f / 60.0f);
+                rig.host->tick(1);
+            }
+            rig.settle();
+        };
+        press("steps");
+        rig.settle();
+        run();
+        press("settle");
+        rig.settle();
+        run();
+        CHECK(rig.demo.engine.runCount() == 2);
+        CHECK(rig.demo.engine.run(0).settled == 1 && rig.demo.engine.run(1).settled == 0);
+        // The newest run (cold walls) is chosen: its CSV says so on its first line.
+        press("copy");
+        const std::string csv = rig.host->clipboardText();
+        CHECK_MSG(csv.rfind("# exhaust cold walls\nspeed_rad_s,", 0) == 0, csv.substr(0, 60));
         for (const int window : { 1100, 1600 })
             for (float dpi : { 2.0f, 1.0f })
             {
                 const int w = tee::test::u4::stageW(window), h = tee::test::u4::stageH(window);
-                funkgui::HeadlessHost host(*ws, 0, dpi);
-                host.resize(w, h);
-                ws->place({ 0.0f, 0.0f, static_cast<float>(w), static_cast<float>(h) });
-                host.tick(90);
-                for (const std::string& clash : textClashes(host.draw(), static_cast<float>(w), static_cast<float>(h)))
+                rig.host = std::make_unique<funkgui::HeadlessHost>(*rig.ws, 0, dpi);
+                rig.host->resize(w, h);
+                rig.ws->place({ 0.0f, 0.0f, static_cast<float>(w), static_cast<float>(h) });
+                rig.settle();
+                for (const std::string& clash : textClashes(rig.host->draw(), static_cast<float>(w), static_cast<float>(h)))
                     CHECK_MSG(false, std::to_string(w) + ": " + clash);
-                picture(std::string("dyno.walls") + (window == 1100 ? "" : ".large") + (dpi > 1.5f ? "" : ".dpi1"), host);
-                if (window == 1100 && dpi < 1.5f)
-                {
-                    // The newest run (cold walls) is chosen: its CSV says so on its first line.
-                    const funkgui::Rect copy = tee::ui::dynoControl(*ws, "copy");
-                    host.click(copy.centreX(), copy.centreY());
-                    const std::string csv = host.clipboardText();
-                    CHECK_MSG(csv.rfind("# exhaust cold walls\nspeed_rad_s,", 0) == 0, csv.substr(0, 60));
-                }
+                picture(std::string("dyno.walls") + (window == 1100 ? "" : ".large") + (dpi > 1.5f ? "" : ".dpi1"), *rig.host);
             }
         return 0;
     }

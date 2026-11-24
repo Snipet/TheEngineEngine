@@ -126,6 +126,9 @@ namespace tee::ui
             sweepBtn_->setLit([this] { return !stepped_; });
             stepsBtn_ = &make<Button>("Steps", [this] { stepped_ = true; });
             stepsBtn_->setLit([this] { return stepped_; });
+            // A stepped run: settle the exhaust's walls at each step (lit), or take cold-wall steps (card C's default: on).
+            settleBtn_ = &make<Button>("Settle", [this] { plan_.settleExhaust = !plan_.settleExhaust; });
+            settleBtn_->setLit([this] { return plan_.settleExhaust; });
             dwellPort_ = std::make_unique<PlanPort>("dyno.dwell", [this] { return plan_.dwell; }, [this](double v) { plan_.dwell = v; },
                                                     0.2, 3.0, 14, 0.6);
             dwell_ = &make<Stepper>(*dwellPort_, "Dwell", [this](float v) { return look::num(dwellPort_->at01(v), "%.1f") + " s"; });
@@ -201,7 +204,8 @@ namespace tee::ui
         {
             const Widget* w = which == "start" ? static_cast<const Widget*>(start_) : which == "stop" ? stop_
                             : which == "name" ? static_cast<const Widget*>(name_) : which == "copy" ? copy_
-                            : which == "engine" ? engineBtn_ : which == "chassis" ? chassisBtn_ : nullptr;
+                            : which == "engine" ? engineBtn_ : which == "chassis" ? chassisBtn_
+                            : which == "steps" ? stepsBtn_ : which == "sweep" ? sweepBtn_ : which == "settle" ? settleBtn_ : nullptr;
             const char* names[] = { "none", "boost", "lambda", "advance" };
             for (int i = 0; i <= kExtraCount && w == nullptr; ++i)
                 if (which == names[i])
@@ -232,6 +236,8 @@ namespace tee::ui
             }
             if (gearStep_->shown() != plan_.chassis)
                 gearStep_->setPlace(gearStep_->bounds(), plan_.chassis);
+            if (settleBtn_->shown() != stepped_)
+                settleBtn_->setPlace(settleBtn_->bounds(), stepped_);
             if (rate_->shown() == stepped_)
             {
                 rate_->setPlace(rate_->bounds(), !stepped_);
@@ -276,8 +282,9 @@ namespace tee::ui
             engineBtn_->setPlace({ ix, y, iw * 0.5f - 3.0f, 26.0f }, true);
             chassisBtn_->setPlace({ ix + iw * 0.5f + 3.0f, y, iw * 0.5f - 3.0f, 26.0f }, true);
             y += 30.0f;
-            sweepBtn_->setPlace({ ix, y, iw * 0.5f - 3.0f, 22.0f }, true);
-            stepsBtn_->setPlace({ ix + iw * 0.5f + 3.0f, y, iw * 0.5f - 3.0f, 22.0f }, true);
+            sweepBtn_->setPlace({ ix, y, iw / 3.0f - 4.0f, 22.0f }, true);
+            stepsBtn_->setPlace({ ix + iw / 3.0f + 2.0f, y, iw / 3.0f - 4.0f, 22.0f }, true);
+            settleBtn_->setPlace({ ix + iw * 2.0f / 3.0f + 4.0f, y, iw / 3.0f - 4.0f, 22.0f }, stepped_);
             y += 30.0f;
             for (Stepper* st : { from_, to_, rate_, pedal_, gearStep_ })
             {
@@ -554,8 +561,8 @@ namespace tee::ui
                 for (int row : allRows())
                     if (isShown(row) && !trace(row).empty())
                     {
-                        cold = cold || trace(row).walls == 0;
-                        settled = settled || trace(row).walls > 0;
+                        cold = cold || trace(row).settled == 0;
+                        settled = settled || trace(row).settled > 0;
                     }
                 if (cold && settled)
                 {
@@ -931,7 +938,7 @@ namespace tee::ui
                 {
                     const float ww = c.textWidth(t.wallsWord(), look::kUnit);
                     c.text(t.wallsWord(), r.right() - 6.0f, r.y + 3.0f, look::kUnit,
-                           !shown ? p.dim : t.walls == 0 ? p.warning : p.label, funkgui::Align::right);
+                           !shown ? p.dim : t.settled == 0 ? p.warning : p.label, funkgui::Align::right);
                     nameRoom -= ww + 8.0f;
                 }
                 {
@@ -972,7 +979,9 @@ namespace tee::ui
                 words = message_;
             else
                 words = std::string(plan_.chassis ? "A chassis run: the car's own speed on rollers, in gear " + std::to_string(gear_)
-                                                  : "An engine run: the crank held and swept") +
+                                    : stepped_ ? std::string(plan_.settleExhaust ? "An engine run in steps, walls settled at each"
+                                                                                 : "An engine run in steps, cold walls (reads low)")
+                                               : "An engine run: the crank held and swept") +
                         " at " + look::num(plan_.pedal * 100.0) + " % pedal.";
             // Two lines at most, cut at a space.
             std::string a = words, b;
@@ -1003,7 +1012,7 @@ namespace tee::ui
         std::string runName_, message_;
 
         std::unique_ptr<PlanPort> fromPort_, toPort_, ratePort_, pedalPort_, gearPort_, dwellPort_;
-        Button *sweepBtn_ = nullptr, *stepsBtn_ = nullptr;
+        Button *sweepBtn_ = nullptr, *stepsBtn_ = nullptr, *settleBtn_ = nullptr;
         Stepper* dwell_ = nullptr;
         Button *engineBtn_ = nullptr, *chassisBtn_ = nullptr, *start_ = nullptr, *stop_ = nullptr, *copy_ = nullptr;
         Stepper *from_ = nullptr, *to_ = nullptr, *rate_ = nullptr, *pedal_ = nullptr, *gearStep_ = nullptr;
