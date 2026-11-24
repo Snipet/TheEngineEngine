@@ -416,10 +416,15 @@ module Combustion
         // the hottest recent blowdown, each bank's: what the unburned fuel in that bank's pipe meets (the ECU's bangs).
         // An exhaust valve's opening raises it to its gas when hotter; it falls over some 50 ms otherwise, so a full cut's
         // cool air lets it go and a fired cylinder among cut ones holds it up
+        // A charge still burning as its exhaust valve opens carries its flame into the pipe: that lights what waits there
+        // whatever the gas's mean temperature (a burning mixture's flame, some 2000 K: judgement under the 2200 to 2400 K a
+        // stoichiometric petrol flame reaches; a late spark's pops are this, the flame burning on in the header). Card
+        // N1 measured H9's fuelled overrun (30 degrees retarded): every fired charge still burning at its opening, while
+        // its gas then read 650 to 1050 K and the hold fell to 530 to 690 K between them
         if (cy->evoNow)
         {
             const int b = lay->topo == 0 ? 0 : (lay->bank[c] == 1 ? 1 : 0);
-            ecu->blow[b] = fmaxf(ecu->blow[b], cy->t);
+            ecu->blow[b] = fmaxf(ecu->blow[b], cy->burnAt >= 0.0f && cy->qTot > 0.0f ? fmaxf(cy->t, 2000.0f) : cy->t);
             if (lay->topo == 0)
                 ecu->blow[1] = ecu->blow[0];
         }
