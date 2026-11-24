@@ -430,3 +430,74 @@ TEST_CASE("the dual X with stubs and valves soaks", "[exhaust][engine][soak]")
     CHECK(valveMoves > 2.0);
     CHECK(tail < 1.0e-3);
 }
+
+// The lead's ruling: the sizes a slider drags glide (XBuild::glide) instead of rebuilding under the fade. The V8 on
+// the dyno at 3000 rpm, half throttle, its main pipes 1.5 m: the main pipes dragged to 3 m and their bore from 60 to
+// 80 mm in 20 steps over a second. Measured: the fade never moves (no rebuild), the largest step between samples while
+// they glide against the second before, and the glide within 0.1 % of its target a second after the last step (0.2 s
+// its time constant). A kind (the
+// mufflers' change) still rebuilds: the fade goes down.
+TEST_CASE("lengths and bores dragged glide, kinds rebuild", "[exhaust][engine][glide]")
+{
+    EnginePlayer& p = player();
+    p.reset();
+    EngineBuild b = test::engineBuild(p, "v8");
+    b.values["exhaust.model"] = {1.0};
+    b.values["exhaust.mainLen"] = {1.5, 1.5};
+    b.values["exhaust.mainD"] = {0.06, 0.06};
+    applyBuild(p, b);
+    EnginePlayer::Controls& c = p.controls();
+    c.mode = EnginePlayer::kModeBench;
+    c.ignition = EnginePlayer::kIgnitionStart;
+    std::vector<float> l(512), r(512);
+    auto block = [&](double& step, double& fadeMin) {
+        p.process(l.data(), r.data(), 512);
+        for (int i = 1; i < 512; ++i)
+            step = std::max(step, static_cast<double>(std::fabs(l[i] - l[i - 1])));
+        fadeMin = std::min(fadeMin, test::field(p, "exh.fadeG"));
+    };
+    double unused = 0.0, fadeUnused = 1.0;
+    for (int k = 0; k < 140; ++k)
+        block(unused, fadeUnused);
+    c.ignition = EnginePlayer::kIgnitionOn;
+    c.mode = 2;
+    c.dynoSpeed = static_cast<float>(3000.0 * 0.10471976);
+    c.throttle = 0.5f;
+    for (int k = 0; k < 300; ++k)
+        block(unused, fadeUnused);
+    double stepBefore = 0.0, fadeBefore = 1.0;
+    for (int k = 0; k < 94; ++k)
+        block(stepBefore, fadeBefore);
+    double stepGlide = 0.0, fadeGlide = 1.0;
+    for (int k = 0; k < 100; ++k)
+    {
+        if (k % 5 == 0)
+        {
+            const double x = (k / 5 + 1) / 20.0;
+            for (std::size_t s = 0; s < 2; ++s)
+            {
+                p.setSpec(static_cast<std::size_t>(p.specIndex("exhaust.mainLen")), 1.5 + 1.5 * x, s);
+                p.setSpec(static_cast<std::size_t>(p.specIndex("exhaust.mainD")), 0.06 + 0.02 * x, s);
+            }
+        }
+        block(stepGlide, fadeGlide);
+    }
+    for (int k = 0; k < 94; ++k)
+        block(unused, fadeGlide);
+    const double lenNow = test::field(p, "exh.b.gs.mainLen[0]");
+    const double dNow = test::field(p, "exh.b.gs.mainD[1]");
+    for (std::size_t s = 0; s < 2; ++s)
+        p.setSpec(static_cast<std::size_t>(p.specIndex("exhaust.mufKind")), 1, s);
+    double fadeKind = 1.0;
+    for (int k = 0; k < 20; ++k)
+        block(unused, fadeKind);
+    std::printf("glide: the main pipes 1.5 to 3 m, 60 to 80 mm in a second: the fade's least %.3f (before %.3f), the "
+                "largest step between samples %.4f against %.4f the second before; a second after, %.4f m and %.4f m; a "
+                "muffler's kind changed: the fade's least %.3f\n", fadeGlide, fadeBefore, stepGlide, stepBefore, lenNow,
+                dNow, fadeKind);
+    CHECK(fadeGlide == 1.0);
+    CHECK(stepGlide <= 1.5 * stepBefore);
+    CHECK(std::fabs(lenNow - 3.0) < 0.003);
+    CHECK(std::fabs(dNow - 0.08) < 0.00008);
+    CHECK(fadeKind < 0.5);
+}
