@@ -203,6 +203,7 @@ module Engine
     int modelRev[11];    // for the fade (holdModel); each one's section's rev as holdModel last saw it
     int faults;         // the crank's state found absurd and the engine put at rest afresh (guard), since init
     int faultNow;       // in this call
+    int lastVoices;     // spec.voices.model at the last call (its rise with the key on renders the key's sounds too)
     int lastIgn;        // ctl.ignition at the last call (voices.model 1: its rise from off renders the key's sounds)
     int cycleRefused;   // 1: engine.cycle 1 asked of a rotary (X-025): refused, the rotary runs as itself
     int layoutWhy;      // why (LayoutGeom::reason: 1 cylinders fire together, 2 rotors, 3 a bank outside the banks)
@@ -1494,6 +1495,7 @@ module Engine
             modelRev[k] = -1;
         }
         lastIgn = IGN_OFF;
+        lastVoices = 0;
         hostRateSeen = hostRate;
         setupAll(hostRate);
         for (int k = 0; k < SPEC_SECTIONS; ++k)
@@ -1738,9 +1740,12 @@ module Engine
     {
         const int ign = ctl.ignition;
         // (mechanical voices, voices.model 1: the key turned on is heard before a start: the fuel pump's prime)
-        if (spec.voices.model != 0 && ign != IGN_OFF && lastIgn == IGN_OFF)
+        // (and voices switched on with the key already on: the same, so the order of the two makes the same engine: M's
+        // finding through X, 24 Nov)
+        if (spec.voices.model != 0 && ign != IGN_OFF && (lastIgn == IGN_OFF || lastVoices == 0))
             sounding = 1;
         lastIgn = ign;
+        lastVoices = spec.voices.model;
         if (ign == IGN_START)
         {
             if (ecu.state == 0 || ecu.state == 3)

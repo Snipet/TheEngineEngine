@@ -14,7 +14,7 @@
 #include <filesystem>
 #include <string>
 
-TEST_CASE("X-022: throttles a runner behind a tiny charge pipe idle and blip ten seconds without a fault", "[calibration][na]")
+TEST_CASE("X-022: throttles a runner behind a tiny charge pipe idle and blip ten seconds without a fault", "[nightly][calibration][na]")
 {
     for (const bool blips : {false, true})
     {

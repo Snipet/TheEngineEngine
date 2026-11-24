@@ -541,3 +541,60 @@ error.
 
 The charge pipe still empties under blips on this build (0 to 12 kPa): a supercharger behind an intercooler at its
 least flow cannot keep up. That supply is the boost's, N2's.
+
+## L. The warm no-starts and the 7.0's hunt: the plenum's books and the Valve's stiffening (measured; c40f041)
+
+P's p-idle-warm (in the car in neutral, held warm, the key from 0.25 to 2 s) stopped starting the air-cooled flat
+six and the 7.0 L pushrod V8 after ab65e06. There were two causes, each measured with tee-render --build:
+
+- **The plenum's correction, measured over a cycle (mine).** ab65e06 made the plenum give up what the intake valves
+  took beyond the runners' waves, measured over each whole cycle as an added flow. Measured over a cranking cycle, it
+  went on drawing through the start's flare: the flat six's plenum fell to 17 kPa and the engine stalled. b6676a5
+  made it a ratio, which started the flat six but magnified the back and forth: the 7.0 hunted at sd 107.
+- **The idle valve shut at the catch (the ECU's, model 1).** The proportional part, reading the flare's rate, shut
+  the valve as the engine caught. The 7.0 ran at 1100 rpm on a 39 kPa plenum and a tenth of a charge, and stalled.
+  ca76cd6: the valve keeps its start position (the integral as it cranked), decaying over 2 s (Bosch,
+  Gasoline-Engine Management: idle-speed control, start and post-start; the 2 s is judgement).
+
+Why the books part at all, measured on the bench (shut throttle, warm, 750 rpm, the clamp opened in a scratch tree):
+
+| Engine | Back into the runners | Drawn | Net qI at the plenum's density | Net qIa (what the runners were given) | Books' ratio |
+|---|---|---|---|---|---|
+| 7.0 L pushrod V8 | 15.1 g/s | 16.9 g/s | 2.12 g/s | 1.14 g/s | 1.83 |
+| 5.7 L carburetted V8 | 7.1 g/s | 8.6 g/s | 1.52 g/s | 1.06 g/s | 1.41 |
+
+Each cylinder's valve mass agrees with its net qI at the plenum's density within 4 %. The runner is given qIa = g qI
+(duct.fm, Valve: the pipe's stiffening, g = 1 + (gamma + 1)/4 u/c, the simple wave's pressure for a flow). Its
+square term rectifies the flow's back and forth toward the backflow. At a big cam's idle the back and forth is ten
+times the net, so the runners got half the net the cylinders took. The runners' friction and the end's loss change
+nothing (1.84 and 1.90 with each off).
+
+The fix (c40f041): the plenum gives up the waves' flow plus, each sample, the valves' mass less sum qIa at its
+density (qIa recovered from rNear), followed over 20 ms. The books close every sample, with no cycle to measure over.
+
+| p-idle-warm, 5-14 s | c8f2d54 | Tip before (ratio) | c40f041 |
+|---|---|---|---|
+| 7.0 L V8 | 750 rpm, sd 8 | 742, sd 107 | 749, sd 55 (8-14 s: sd 45, 641-846) |
+| Flat six | stalls (from ab65e06) | 850, sd 12 | 850, sd 9 |
+| 5.7 L V8 | 699, sd 4 | 699, sd 4 | 699, sd 4 |
+
+Core's books test, turbo four at 1800 wide open: throttle 37.70 against valves 37.92 g/s (it was 38.59 against
+37.94 under the ratio). Wide open at 3000 rpm the books are unchanged (1.000 to 1.003).
+
+Heard (the whole mix, levels by octave band, c40f041 against the ratio):
+
+| | 31.5 Hz | 63 | 125 | 250 | 500 | 1 k | 2 k to 16 k | Overall |
+|---|---|---|---|---|---|---|---|---|
+| 5.7 L V8 at 6000 rpm wide open | -0.1 dB | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | -17.6 dBFS both |
+| 7.0 L V8 idle, 8-14 s | -6.9 dB | -0.5 | +0.9 | +0.9 | +1.5 | +1.1 | -0.2 to -0.1 | -15.3 / -15.4 dBFS |
+
+The idle's difference is mostly its lope (sd 107 against 45), not the correction's own sound.
+
+**The reference has the same term** (sim/ref/cylinder.fm: qIa = qI vI.g). Its plenum gives up the waves' flow alone,
+so on a big cam at idle its plenum is given less than its cylinders take. Its throttle then passes less than its
+valves, and its idle valve holds the speed on less air than the cylinders burn. Nothing changes there: the reference
+is the null test's.
+
+**Still open: the 7.0's idle lopes** (8-14 s: sd 45, max less min 205 rpm, decaying). With the correction off at
+c8f2d54 it hunts at sd 43, so the idle loop itself is lightly damped on this engine. c8f2d54's per-cycle correction
+damped it, as a lag, by accident. The next step is to find what the loop's gains are scheduled on.
