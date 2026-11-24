@@ -110,10 +110,8 @@ PAIRS_CASE(12)
 PAIRS_CASE(13)
 PAIRS_CASE(14)
 
-TEST_CASE("nightly: every triple of switches on every archetype through the tour and the pull", "[.][nightly][triples]")
+TEST_CASE("nightly: every triple of switches on every archetype through the tour and the pull", "[nightly][triples]")
 {
-    if (std::getenv("TEE_NIGHTLY") == nullptr)
-        SKIP("set TEE_NIGHTLY to run");
     for (std::uint32_t m : subsetsOfSize(3))
         for (const Archetype& a : archetypes())
         {
