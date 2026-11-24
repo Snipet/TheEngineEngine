@@ -29,6 +29,7 @@
 #include <array>
 #include <cmath>
 #include <filesystem>
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -63,6 +64,7 @@ namespace tee::balance
         double lambda = 0.0, tAmb = 0.0, tAirHeated = 0.0, pPlenum = 0.0, tIvc = 0.0;
         double veAirTel = 0.0, veManTel = 0.0, fmepTel = 0.0, imepTel = 0.0, pmepTel = 0.0, bmepTel = 0.0;
         double sparkTel = 0.0;
+        std::map<std::string, double> reads;      // Options::read's paths at the window's end
 
         double walls() const { return wallCompression + wallBurn + wallExpansion + wallExchange; }
         double brakeWork() const { return torque * 2.0 * M_PI * rpm / 60.0 * seconds; }
@@ -78,6 +80,7 @@ namespace tee::balance
         double sampleRate = 96000.0;   // the engine's own rate (engine.fm): one engine step a call, no resampler
         std::vector<std::pair<std::string, double>> set;   // Spec writes after the build ("fuel.model", 1)
         std::vector<std::pair<std::string, double>> raw;   // any instance path written after the build ("spec.ecu.maps.lambda.nx")
+        std::vector<std::string> read;                     // instance paths to read at the window's end
         std::filesystem::path sim;                         // another tree's sim/ (empty: this one's)
     };
 

@@ -122,3 +122,35 @@ Against these the seven's BMEP at their target peak-torque speeds: flat six 14.6
 four-cam 14.8 bar, all out; the roadster's 12.5 and the small block's 10.7 inside their class (each is over its own
 target, which the ledger's per-archetype line already holds). Gross indicated efficiency would have flagged all
 sixteen.
+
+## N3-4. The two-stage cam's switch: it switches, and the high cam loses (measured; content or N1's B, routed)
+
+The lead's row (the switch not showing in the curve). Present tip, present γ, tee::Build path, full load:
+
+| rpm | 4000 | 5500 | 6500 | 7500 | 8500 |
+|---|---|---|---|---|---|
+| Torque, as built (stage B from 6000 rpm), N m | 202.8 | 193.0 | 141.7 | 136.3 | 155.5 |
+| VE | 0.907 | 0.885 | 0.714 | 0.718 | 0.831 |
+| Burned / fresh trapped | 0.027 | 0.024 | 0.078 | 0.078 | 0.053 |
+| Torque, stage A held (`valve.stages` 0) | 202.8 | 192.9 | 202.6 | 190.3 | 191.3 |
+| VE | 0.907 | 0.885 | 0.945 | 0.924 | 0.968 |
+
+The stage does switch (`vt.lab.stageWant` 1 above `stageSpeed`, 6000 rpm); no float (`vt.lab.floating` 0; float
+speeds 12 100 and 12 800 rpm). Stage B (290 / 284 degrees at the seat, 258 / 252 at 1 mm, 11.8 mm, centres 110 / 112)
+loses a quarter of the low cam's filling at 6500 and 14 % at 8500, where a real engine's high cam gains. The residual
+only triples, so the loss is mostly the late closing's push-back (the events the telemetry reports: intake 53 before
+the top to 93 after the bottom) with nothing in the pipes to hold the charge in. Candidates, not isolated: the
+exhaust's back pressure through the overlap (N1's B: 154 kPa mean at the port on the 3.2 six); the stage B cam larger
+than the real head's (P to check against the source engine). Routed to N1 and P.
+
+## N3-5. The 3.5 V6 peaks at 2778 rpm (measured; content, routed to P and N1)
+
+| rpm | 2000 | 2778 | 3500 | 4200 | 4750 | 5500 | 6350 |
+|---|---|---|---|---|---|---|---|
+| Torque, N m | 335.9 | 338.5 | 310.8 | 310.7 | 291.9 | 285.8 | 298.8 |
+| VE | 0.891 | 0.917 | 0.833 | 0.837 | 0.805 | 0.811 | 0.869 |
+| Intake phase, deg | 40 | 34 | 24 | 15 | 7 | 3 | 3 |
+
+The 0.50 m runner tunes near 2800 rpm; the switch to 0.30 m at 4000 rpm (`intake.runnerSwitch` 419 rad/s) does not
+lift 4200 to 5500, and only 6350 recovers. The target's peak torque is 335 to 365 N m near 4750. The runners' lengths
+and switch speed are the build's (P); the phaser's schedule is N1's rule (its advance falls to 3 degrees by 5500).
