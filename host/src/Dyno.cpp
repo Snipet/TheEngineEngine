@@ -114,24 +114,30 @@ namespace tee
         curve.fields = plan.fields;
         curve.key = build.hash() ^ (plan.hash() * 31u);
         const Fields& fields = sim->fields();
-        const FieldInfo* torque = fields.find("tel." + plan.torque);
+        const FieldInfo* torque = nullptr;
+        std::size_t torqueAt = 0;
         const FieldInfo* speed = fields.find("tel.engine.speed");
-        if (torque == nullptr || speed == nullptr)
+        std::string why;
+        if (speed == nullptr || !telemetryElement(fields, plan.torque, torque, torqueAt, why))
         {
             error = "the dyno reads tel.engine.speed and tel." + plan.torque + ", and the program lacks "
-                    + std::string(speed == nullptr ? "the first" : "the second");
+                    + std::string(speed == nullptr ? "the first" : "the second (" + why + ")");
             return false;
         }
+        // more telemetry at each point: a field or an element of one ("car.wheelSlip[2]")
         std::vector<const FieldInfo*> extra;
+        std::vector<std::size_t> extraAt;
         for (const std::string& f : plan.fields)
         {
-            const FieldInfo* info = fields.find("tel." + f);
-            if (info == nullptr)
+            const FieldInfo* info = nullptr;
+            std::size_t at = 0;
+            if (!telemetryElement(fields, f, info, at, why))
             {
-                error = "the dyno is asked for tel." + f + ", which the program has not";
+                error = "the dyno is asked for tel." + f + ": " + why;
                 return false;
             }
             extra.push_back(info);
+            extraAt.push_back(at);
         }
 
         SimHost host;
@@ -222,10 +228,10 @@ namespace tee
             if (sum != nullptr)
             {
                 sum->speed += w;
-                sum->torque += frame.get(*torque);
+                sum->torque += frame.get(*torque, torqueAt);
                 sum->fields.resize(extra.size(), 0.0);
                 for (std::size_t k = 0; k < extra.size(); ++k)
-                    sum->fields[k] += frame.get(*extra[k]);
+                    sum->fields[k] += frame.get(*extra[k], extraAt[k]);
                 ++sum->n;
             }
             if (progress && time - lastProgress > 0.25)
