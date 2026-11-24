@@ -28,6 +28,7 @@
 #include "lib/biquad.fm"
 #include "lib/onepole.fm"
 #include "lib/noise.fm"
+#include "spec/limits.fm"
 #include "core/layouts.fm"
 #include "core/heat.fm"
 
@@ -37,7 +38,7 @@ module Exhaust
     Noise* noiseSrc;    // Engine's noise (the reference's one stream)
     Layout* lay;
     Heat* heat;
-    Duct prim[12];      // the headers (a rotary's: one a rotor)
+    Duct prim[MAX_PORTS];      // the headers (a rotary's: one a rotor)
     Duct sec[2];        // from each bank's collector
     Duct pipe[2];       // the main pipe (two, when dual)
     Duct ch1[2];        // the muffler: a chamber, a tube, a chamber
@@ -51,7 +52,7 @@ module Exhaust
     float smPipe;
     float smXp;
     int nDuals;         // pipes after the collectors: 1 or 2
-    int portBank[12];   // each port's bank
+    int portBank[MAX_PORTS];   // each port's bank
     float tPort;        // the exhaust gas's temperature at the ports (smoothed), K
     float eSum;
     float mSum;
@@ -70,7 +71,7 @@ module Exhaust
     float fnN[8];       // each band's unit strength
     float fnG[8];       // this sample's noise in each band (0, 1: the collectors; 2, 3: the cones; 4, 5: the
     float flowK;
-    float qHd[12];      // the last sample's flows: each header into its collector, each main pipe away from its cone,
+    float qHd[MAX_PORTS];      // the last sample's flows: each header into its collector, each main pipe away from its cone,
     float qPp[2];       // each muffler's inlet and outlet
     float qM1[2];
     float qM4[2];
@@ -97,7 +98,7 @@ module Exhaust
     float rPerf;        // the muffler's perforated tube or baffles, where the gas passes from chamber to tube and on
     float kMuf[8];      // the muffler's four changes of area (pipe to chamber, chamber to tube, tube to chamber, chamber
     float kExit[2];     // the tail's open end: the jet out (its momentum lost), the air drawn in
-    float sHd[12];      // each junction's drive, its slow part (the losses act on it: quasi-steady): the headers' ends,
+    float sHd[MAX_PORTS];      // each junction's drive, its slow part (the losses act on it: quasi-steady): the headers' ends,
     float sMg[2];       // the collectors' pipes at the merge, the H-pipe's ends, the muffler's four changes of area each
     float sXp[2];       // side, the tails' ends
     float sMf[8];
@@ -116,7 +117,7 @@ module Exhaust
         heat = heatIn;
         // the longest each pipe could be, cold (330 m/s), at this rate
         const float k = rate / 300.0f;
-        for (int i = 0; i < 12; ++i)
+        for (int i = 0; i < MAX_PORTS; ++i)
             prim[i].configure((int)(3.0f * k) + 16);
         for (int i = 0; i < 2; ++i)
         {
@@ -150,7 +151,7 @@ module Exhaust
 
     void release()
     {
-        for (int i = 0; i < 12; ++i)
+        for (int i = 0; i < MAX_PORTS; ++i)
             prim[i].release();
         for (int i = 0; i < 2; ++i)
         {
@@ -167,7 +168,7 @@ module Exhaust
     // A new engine: every pipe and junction at rest
     void clear()
     {
-        for (int i = 0; i < 12; ++i)
+        for (int i = 0; i < MAX_PORTS; ++i)
         {
             prim[i].clear();
         }
@@ -182,7 +183,7 @@ module Exhaust
             radPrev[i] = 0.0f;
             endR[i].clear();
         }
-        for (int i = 0; i < 12; ++i)
+        for (int i = 0; i < MAX_PORTS; ++i)
         {
             sHd[i] = 0.0f;
             qHd[i] = 0.0f;
@@ -434,7 +435,7 @@ module Exhaust
     {
         float sy = 0.0f;
         float sa = src;
-        float h[14];
+        float h[MAX_PORTS + 2];
         for (int i = 0; i < n; ++i)
         {
             const float x = sl[i];
@@ -577,7 +578,7 @@ module Exhaust
     {
         const int nb = lay->topo == 0 ? 1 : 2;
         // the ports send their waves into the headers
-        float hNear[12];
+        float hNear[MAX_PORTS];
         const float wn = nScale * vnLp.lowpass(vnHp.highpass(noiseSrc->rnd()));
         for (int i = 0; i < np; ++i)
         {
@@ -587,16 +588,16 @@ module Exhaust
         }
         // the collectors: each bank's headers merge into its pipe, losing as they merge (pipes.fm, lossFlow); a pop is
         // the node's own gas
-        float hFar[12];
+        float hFar[MAX_PORTS];
         float sNear[2];
-        float na[14];
-        float nz[14];
-        float nkf[14];
-        float nkr[14];
-        float nq[14];
-        float ns[14];
-        float nal[14];
-        int ni[14];
+        float na[MAX_PORTS + 2];
+        float nz[MAX_PORTS + 2];
+        float nkf[MAX_PORTS + 2];
+        float nkr[MAX_PORTS + 2];
+        float nq[MAX_PORTS + 2];
+        float ns[MAX_PORTS + 2];
+        float nal[MAX_PORTS + 2];
+        int ni[MAX_PORTS + 2];
         for (int k = 0; k < nb; ++k)
             fnG[k] = fnN[k] * fnLp2[k].lowpass(fnLp[k].lowpass(fnHp[k].highpass(noiseSrc->rnd())));
         for (int k = 0; k < nDuals; ++k)

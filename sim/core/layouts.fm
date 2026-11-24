@@ -21,13 +21,14 @@
 // 15 V12        1-7-5-11-3-9-6-12-2-8-4-10                even, 60 (each bank 120)
 // 16 ROTARY     two rotors, three faces each              a pulse each 180 degrees of the shaft
 #pragma once
+#include "spec/limits.fm"
 
 module Layout
 {
     int n;              // cylinders (a rotary's faces)
-    float fire[12];     // where each fires (degrees after the first)
-    int bank[12];       // its exhaust bank: 0 or 1
-    int port[12];       // the port (header and runner) it breathes through: itself, or its rotor
+    float fire[MAX_CYL];     // where each fires (degrees after the first)
+    int bank[MAX_CYL];       // its exhaust bank: 0 or 1
+    int port[MAX_CYL];       // the port (header and runner) it breathes through: itself, or its rotor
     int ports;          // headers in use
     int topo;           // 0: all into one pipe; 1: each bank its own collector, then one pipe; 2: two pipes (dual)
     float swept;        // m^3 a cylinder
@@ -102,6 +103,7 @@ module Layout
         const float bi[17] = {1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
         n = ns[k];
         ports = n;
+        // (the tables hold 12 a layout, the most the seventeen layouts have; the arrays MAX_CYL)
         for (int i = 0; i < 12; ++i)
         {
             fire[i] = fa[k * 12 + i];

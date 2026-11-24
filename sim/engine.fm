@@ -108,7 +108,7 @@ module Engine
 
     Dials set;          // the reference's dials as the engine has taken them: readSpec and readControls fill it
     Layout lay;
-    Cylinder cyl[12];
+    Cylinder cyl[MAX_CYL];
     float rate;         // the engine's own: 96 kHz whatever the host's (render resamples)
     float dt;
     int ready;
@@ -357,7 +357,7 @@ module Engine
             cy->t = heat.tAmb + 30.0f * heat.warm;
             cy->m = cy->p * cy->v / (287.0f * cy->t);
         }
-        for (int i = 0; i < 12; ++i)
+        for (int i = 0; i < MAX_PORTS; ++i)
             exh.portBank[i] = 0;
         for (int c = 0; c < lay.n; ++c)
             exh.portBank[lay.port[c]] = lay.bank[c];
@@ -632,8 +632,8 @@ module Engine
         // the crank
         const float dDeg = crank.advance(dt);
         // the cylinders
-        float qe[12];
-        float qi[12];
+        float qe[MAX_PORTS];
+        float qi[MAX_PORTS];
         for (int i = 0; i < np; ++i)
         {
             qe[i] = 0.0f;
@@ -647,10 +647,10 @@ module Engine
         const float slapAmp = 0.4f + 0.6f * fminf(crank.rpm / 3000.0f, 2.0f);
         const float tH = exh.tUse[0];
         // faces that share a port (a rotary's) are solved together: each sees the pipe as the others' flows leave it
-        float eShare[12];
-        float iShare[12];
-        float qE0[12];
-        float qI0[12];
+        float eShare[MAX_PORTS];
+        float iShare[MAX_PORTS];
+        float qE0[MAX_CYL];
+        float qI0[MAX_CYL];
         if (np < lay.n)
         {
             for (int i = 0; i < np; ++i)
@@ -720,7 +720,7 @@ module Engine
                 dps += cy->dpdt;
         }
         exh.step(qe, np);
-        float rNear[12];
+        float rNear[MAX_PORTS];
         for (int i = 0; i < np; ++i)
             rNear[i] = intk.run[i].near + intk.run[i].z * qi[i];
         intk.plenum(np, rNear, fuelUse, ecu.throttle, ecu.bypass, dt);
