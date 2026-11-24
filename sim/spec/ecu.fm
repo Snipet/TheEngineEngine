@@ -74,7 +74,7 @@ module EcuNitrousSpec
 {
     bool on [[fminus::default(0)]] [[ui::label("Nitrous")]] [[ui::help("Armed by the nitrous button")]];
     float low [[fminus::range(0, 1050)]] [[fminus::default(314.159)]] [[ui::label("Nitrous from")]] [[ui::quantity("rotation")]];
-    int gear [[fminus::range(1, 18)]] [[fminus::default(2)]] [[ui::label("Nitrous from gear")]];
+    int gear [[fminus::range(1, 18)]] [[fminus::default(2)]] [[ui::label("Nitrous from gear")]] [[ui::unit("gear")]];
     float retard [[fminus::range(0, 20)]] [[fminus::default(4)]] [[ui::label("Nitrous retard")]] [[ui::quantity("angle")]];
     float lambda [[fminus::range(0.6, 1)]] [[fminus::default(0.85)]] [[ui::label("Nitrous lambda")]] [[ui::quantity("ratio")]];
 };
@@ -85,7 +85,7 @@ module EcuMapsSpec
 {
     Map16 spark [[ui::label("Spark advance")]] [[ui::axes("rotation", "ratio")]] [[ui::unit("deg")]];
     bool sparkAuto [[fminus::default(1)]] [[ui::label("Spark: formula")]];
-    Map16 lambda [[ui::label("Lambda")]] [[ui::axes("rotation", "ratio")]];
+    Map16 lambda [[ui::label("Lambda")]] [[ui::axes("rotation", "ratio")]] [[ui::quantity("ratio")]];
     bool lambdaAuto [[fminus::default(1)]] [[ui::label("Lambda: formula")]];
     Map16 boost [[ui::label("Boost target")]] [[ui::axes("rotation", "ratio")]] [[ui::unit("Pa")]];
     bool boostAuto [[fminus::default(1)]] [[ui::label("Boost: formula")]];
@@ -93,9 +93,9 @@ module EcuMapsSpec
     bool camInAuto [[fminus::default(1)]] [[ui::label("Intake cam: formula")]];
     Map16 camEx [[ui::label("Exhaust cam")]] [[ui::axes("rotation", "ratio")]] [[ui::unit("deg")]];
     bool camExAuto [[fminus::default(1)]] [[ui::label("Exhaust cam: formula")]];
-    Map16 pedal [[ui::label("Pedal to plate")]] [[ui::axes("rotation", "fraction")]];
+    Map16 pedal [[ui::label("Pedal to plate")]] [[ui::axes("rotation", "fraction")]] [[ui::quantity("fraction")]];
     bool pedalAuto [[fminus::default(1)]] [[ui::label("Pedal: formula")]];
-    Map16 lift [[ui::label("Lift command")]] [[ui::axes("rotation", "ratio")]];
+    Map16 lift [[ui::label("Lift command")]] [[ui::axes("rotation", "ratio")]] [[ui::quantity("fraction")]];
     bool liftAuto [[fminus::default(1)]] [[ui::label("Lift: formula")]];
 };
 

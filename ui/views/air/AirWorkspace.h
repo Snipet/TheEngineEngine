@@ -35,7 +35,8 @@ namespace tee::ui
         struct AirNames
         {
             static constexpr const char* boost = "boost.pressure";       // over the air outside, before the throttle
-            static constexpr const char* manifold = "engine.manifold";   // absolute
+            static constexpr const char* manifold = "intake.manifold";   // absolute (card E's; the runners' mean on ITBs)
+            static constexpr const char* engineManifold = "engine.manifold";   // the same before card E's
             static constexpr const char* throttle = "engine.throttle";   // 0..1
             static constexpr const char* turbos = "boost.turbos";        // shafts in use
             static constexpr const char* speed[2] = { "boost.shaftSpeed[0]", "boost.shaftSpeed[1]" };   // rad/s
@@ -53,8 +54,9 @@ namespace tee::ui
             static constexpr const char* blowOff = "boost.blowOffValve"; // 0..1 open
             static constexpr const char* flags = "boost.flags";          // 1 surge, 2 choke, 4 over-speed, 8 over-boost,
                                                                           // 16 blow-off open, 32 nitrous flowing
-            static constexpr const char* box = "intake.boxPressure";     // card E's, not integrated yet
-            static constexpr const char* plenumT = "intake.plenumTemperature";   // card E's, not integrated yet
+            static constexpr const char* box = "intake.box";             // over the air outside (card E's)
+            static constexpr const char* ripple = "intake.ripple";       // the manifold's pulsing, peak to peak
+            static constexpr const char* runner = "intake.runnerLength"; // m: the runner length in use
             // the Scope's map (sim/spec/scope.fm, card F's), while ctl.scopeOn
             static constexpr const char* mapRev = "boostMapRev";
             static constexpr const char* lineSpeed = "boostLineSpeed";        // [8]

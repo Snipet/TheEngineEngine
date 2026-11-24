@@ -115,6 +115,7 @@ namespace tee::ui
             k.mix(std::isfinite(a) ? static_cast<std::int64_t>(std::lround(a * 4.0)) : -1);
             k.mix(slow_).mix(log_).mix(paceIndex_).mix(scopeVersion_).mix(tab_).mix(compact_);
             k.mix(static_cast<float>(ctx_.live.get(kTelSpeed)));
+            k.mix(static_cast<float>(ctx_.live.get(kTelIvo))).mix(static_cast<float>(ctx_.live.get(kTelEvo)));
             return k.h;
         }
 
@@ -337,6 +338,16 @@ namespace tee::ui
             };
             inPeak_ = peak(sli_);
             exPeak_ = peak(sle_);
+            // where each lift leaves its seat (the first degree above 0 after one at 0)
+            const auto opens = [](const std::vector<float>& v) {
+                const int n = static_cast<int>(v.size());
+                for (int i = 0; i < n; ++i)
+                    if (v[static_cast<std::size_t>(i)] > 0.0f && v[static_cast<std::size_t>((i + n - 1) % n)] <= 0.0f)
+                        return static_cast<double>(i);
+                return kNaN;
+            };
+            inOpens_ = opens(sli_);
+            exOpens_ = opens(sle_);
             ++scopeVersion_;
         }
         // Scope array at a cylinder's angle (NaN when it has none)
@@ -735,7 +746,8 @@ namespace tee::ui
             c.rrect(vxEx - 4.0f, portY, cx + hb + wall - vxEx + 3.0f, portH, 3.0f, p.over(exInk, 0.25f));
             // the valves: intake at the left (cold), exhaust at the right (hot), each lifted by the Scope's curve, its
             // head opening into the chamber; over each stem its cam, turning at half the crank's speed
-            const double li = turning ? at(sli_, ca) : kNaN, le = turning ? at(sle_, ca) : kNaN;
+            const double inSlide = eventShift(kTelIvo, inOpens_), exSlide = eventShift(kTelEvo, exOpens_);
+            const double li = turning ? at(sli_, ca - inSlide) : kNaN, le = turning ? at(sle_, ca - exSlide) : kNaN;
             const float rb = std::max(4.0f, static_cast<float>(0.09 * B * k));
             const auto valve = [&](float vx, double dia, double lift01, double fullLift, double peakDeg, Col ink) {
                 const double full = std::isfinite(fullLift) ? fullLift : 0.26 * dia;   // to scale when the build says
@@ -758,8 +770,8 @@ namespace tee::ui
                 c.disc(vx, camY, rb, p.label);
                 c.disc(vx, camY, std::max(1.5f, rb * 0.25f), p.panel);
             };
-            valve(vxIn, 0.40 * B, li, m.liftIn, inPeak_, inInk);
-            valve(vxEx, 0.34 * B, le, m.liftEx, exPeak_, exInk);
+            valve(vxIn, 0.40 * B, li, m.liftIn, inPeak_ + inSlide, inInk);
+            valve(vxEx, 0.34 * B, le, m.liftEx, exPeak_ + exSlide, exInk);
             // each valve's name in its port, or over the cams when the port is too narrow for it
             const float inRoom = vxIn - static_cast<float>(0.2 * B * k) - (cx - hb - wall) - 6.0f;
             const float exRoom = (cx + hb + wall) - (vxEx + static_cast<float>(0.17 * B * k)) - 6.0f;
@@ -1082,7 +1094,16 @@ namespace tee::ui
         // the Scope as last read
         std::vector<float> sp_, sv_, sli_, sle_;
         int scopeN_ = 0;
-        double inPeak_ = kNaN, exPeak_ = kNaN;
+        double inPeak_ = kNaN, exPeak_ = kNaN, inOpens_ = kNaN, exOpens_ = kNaN;
+        // The Scope's lift slid to open where the simulator says it opens now (valve.ivo, valve.evo: the cycle's
+        // degrees, the phasers' included), so the section and VALVES' ring agree; 0 when either is absent.
+        double eventShift(const char* tel, double scopeOpens) const
+        {
+            const double now = ctx_.live.get(tel);
+            if (!std::isfinite(now) || !std::isfinite(scopeOpens))
+                return 0.0;
+            return wrap(now - scopeOpens + 360.0, 720.0) - 360.0;
+        }
         std::uint64_t seenGeneration_ = 0;
         bool scopeRead_ = false;
         std::uint32_t scopeVersion_ = 0;

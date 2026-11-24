@@ -90,6 +90,8 @@ namespace tee
             bool isFloat;
         };
         std::vector<Slot> controls;
+        std::size_t stateOffset = 0;   // tel.engine.state, for the crank after a fault
+        Scalar stateScalar = Scalar::None;
         struct Held
         {
             Schema::Handle handle;
@@ -284,6 +286,11 @@ namespace tee
                 live->controls.push_back({f->offset, f->scalar, c.offset, c.isFloat});
         }
         resolveHeld(*live, *sim, options_.hold);
+        if (const FieldInfo* state = fields.find("tel.engine.state"); state != nullptr && state->count == 1)
+        {
+            live->stateOffset = state->offset;
+            live->stateScalar = state->scalar;
+        }
 
         // the Spec: what the host has sent (its defaults and every write since), when it is of this program
         unsigned char* data = static_cast<unsigned char*>(live->instance->data());
@@ -534,7 +541,9 @@ namespace tee
                     words = sim_->options().module + "::process ran past its loop budget";
                 else
                     words = "the output guard refused a block: a sample not finite, or beyond "
-                            + std::to_string(options_.guardLimit) + " (the contract's full scale)";
+                            + std::to_string(options_.absurdLimit) + " (" + std::to_string(options_.absurdLimit)
+                            + " times full scale): the simulator was restarted"
+                            + (options_.restartCrankSeconds > 0.0 ? " and cranked back to running" : ", stopped: press start");
                 {
                     const std::lock_guard<std::mutex> lock(reasonMutex_);
                     stopReason_ = words;
@@ -759,6 +768,17 @@ namespace tee
             logEvent(LogEvent::Kind::Controls, 0, -1, &c, sizeof c);
         }
         c = controlsApplied_;
+        if (crankLeft_ > 0)
+        {
+            // a fresh instance after a fault: an ignition left on cranks it until it runs (LoadOptions)
+            const bool running = live.stateScalar != Scalar::None
+                                 && readScalar(static_cast<const unsigned char*>(live.instance->data()) + live.stateOffset,
+                                               live.stateScalar) == 2.0;
+            if (running || c.ignition < 1)
+                crankLeft_ = 0;
+            else
+                c.ignition = 2;
+        }
         const std::int64_t asked = scopeAskedAt_.load(std::memory_order_relaxed);
         if (asked >= 0 && static_cast<double>(stats_.samples - asked) < 0.5 * rate_)
             c.scopeOn = 1;
@@ -793,16 +813,31 @@ namespace tee
                 return false;
             }
         }
+        // the safety stage (LoadOptions): beyond absurdLimit or not finite is a fault; beyond guardLimit is clamped
         const float limit = options_.guardLimit;
+        const float absurd = std::max(options_.absurdLimit, limit);
+        float largest = 0.0f;
         for (int i = 0; i < n; ++i)
         {
-            if (!(std::fabs(left[i]) <= limit) || !(std::fabs(right[i]) <= limit))
+            const float a = std::fabs(left[i]), b = std::fabs(right[i]);
+            if (!(a <= absurd) || !(b <= absurd))
             {
                 int none = 0;
                 tripKind_.compare_exchange_strong(none, 1, std::memory_order_relaxed);
                 return false;
             }
+            largest = std::max(largest, std::max(a, b));
         }
+        if (largest > limit)
+        {
+            for (int i = 0; i < n; ++i)
+            {
+                left[i] = std::clamp(left[i], -limit, limit);
+                right[i] = std::clamp(right[i], -limit, limit);
+            }
+            clippedNow_ = true;
+        }
+        stats_.largestSample = std::max(stats_.largestSample, largest);
         return true;
     }
 
@@ -856,7 +891,10 @@ namespace tee
                     retire(live_);
                 fadeInTotal_ = fadeInLeft_ = std::max(1, static_cast<int>(options_.fadeInSeconds * rate_));
                 if (!isReload)
+                {
                     ++stats_.restarts;
+                    crankLeft_ = static_cast<std::int64_t>(options_.restartCrankSeconds * rate_);
+                }
                 else
                     ++stats_.reloads;
             }
@@ -960,6 +998,13 @@ namespace tee
         stats_.samples += frames;
         ++stats_.block;
         stats_.outputPeak = peak;
+        if (clippedNow_)
+        {
+            ++stats_.clippedBlocks;
+            clippedNow_ = false;
+        }
+        crankLeft_ = std::max<std::int64_t>(crankLeft_ - frames, 0);
+        stats_.restarting = crankLeft_ > 0 ? 1 : 0;
         samplesNow_.store(stats_.samples, std::memory_order_relaxed);
         if (snapshotState_.load(std::memory_order_acquire) == 1)
         {

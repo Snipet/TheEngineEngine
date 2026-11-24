@@ -146,3 +146,86 @@ TEST_CASE("shell: a counter of the simulator's Controls pressed once, what the f
     REQUIRE(getControl(sim->host().controls(), "strip", strip));
     CHECK(strip == 2.0);
 }
+
+TEST_CASE("shell: an element of each kind of telemetry array is found by name and reads a plausible number",
+          "[shell][sim]")
+{
+    player::SimAdapter::Options o;
+    o.directory = std::filesystem::path(TEE_SOURCE_SIM_DIR);
+    std::string errors;
+    const std::unique_ptr<player::SimAdapter> sim = player::SimAdapter::create(o, errors);
+    INFO(errors);
+    REQUIRE(sim != nullptr);
+    const audio::ScopedFtz ftz;
+    sim->prepare(48000.0, 256);
+    ParamSource& params = *sim;
+    TelemetrySource& tel = *sim;
+    // the models whose arrays these are: the vehicle's wheels, the boost's shafts (a turbocharger)
+    const auto set = [&](const char* id, double v) {
+        const int i = params.findParam(id);
+        INFO(id);
+        REQUIRE(i >= 0);
+        params.set(i, v);
+    };
+    set("car.model", 1.0);
+    set("boost.model", 1.0);
+    const int kind = params.findParam("boost.kind");
+    REQUIRE(kind >= 0);
+    for (std::size_t c = 0; c < params.info(kind).choices.size(); ++c)
+        if (params.info(kind).choices[c].find("Turbo") != std::string::npos)
+        {
+            params.set(kind, params.info(kind).min + static_cast<double>(c));
+            break;
+        }
+    sim->frame();
+
+    // the names: an element of each, one and two digits; a whole array, an index past the end, a typo: none
+    const char* names[] = { "engine.cylPeak[0]", "engine.firingAngle[1]", "car.wheelLoad[0]", "car.wheelSpeed[3]",
+                            "boost.shaftSpeed[0]", "boost.ratio[0]", "valve.benchLift[10]", "ecu.knockByCylinder[2]" };
+    for (const char* n : names)
+    {
+        INFO(n);
+        CHECK(tel.findValue(n) >= 0);
+    }
+    CHECK(tel.findValue("car.wheelLoad") == -1);
+    CHECK(tel.findValue("car.wheelLoad[4]") == -1);
+    CHECK(tel.findValue("car.wheelLoud[0]") == -1);
+    CHECK(tel.findValue("engine.speed[0]") == -1);
+    CHECK(tel.findValue("car.wheelLoad[0]") == tel.findValue("car.wheelLoad[0]"));   // found once, kept
+
+    // started and revved
+    std::vector<float> l(256), r(256);
+    ControlsFrame f;
+    f.mode = 1;                 // MODE_DRIVE: the car is stepped (in neutral)
+    f.ignition = 2;
+    const auto play = [&](double seconds) {
+        for (int b = 0; b < static_cast<int>(seconds * 48000.0 / 256.0); ++b)
+        {
+            sim->process(l.data(), r.data(), 256);
+            if (b % 8 == 0)
+                sim->frame();
+        }
+        sim->frame();
+    };
+    sim->setControls(f);
+    play(1.0);
+    f.ignition = 1;
+    f.throttle = 1.0f;
+    sim->setControls(f);
+    play(2.0);
+    const auto v = [&](const char* n) { return tel.value(tel.findValue(n)); };
+    INFO("rpm " << v("engine.speed") * 9.549 << " cylPeak[0] " << v("engine.cylPeak[0]") << " wheelLoad[0] "
+                << v("car.wheelLoad[0]") << " shaftSpeed[0] " << v("boost.shaftSpeed[0]") << " ratio[0] "
+                << v("boost.ratio[0]"));
+    CHECK(v("engine.speed") > 150.0);                       // running and revved
+    CHECK(v("engine.cylPeak[0]") > 1.0e6);                  // a cylinder's peak pressure, Pa: more than 10 bar
+    CHECK(v("engine.cylPeak[0]") < 3.0e7);
+    CHECK(v("car.wheelLoad[0]") > 1000.0);                  // a wheel carries a share of the car's weight, N
+    CHECK(v("boost.shaftSpeed[0]") > 100.0);                // the turbocharger's shaft turns, rad/s
+    CHECK(v("boost.ratio[0]") >= 1.0);                      // its compressor's pressure ratio
+    for (const char* n : names)
+    {
+        INFO(n);
+        CHECK(std::isfinite(v(n)));
+    }
+}
