@@ -426,8 +426,10 @@ TEST_CASE("predicted points are the stepped dyno's settled torque within 3 %: th
         SKIP("sim/engine.fm is not there yet");
     predictedMatchesSteps("v12-65.json", {680.68, 698.79, 717.33}, 0.03);   // 6500, 6673, 6850 rpm (D's)
     predictedMatchesSteps("economy-four-15.json", {560.0, 569.6, 579.0}, 0.03);
-    // knock-limited (its retard a sawtooth, at its ceiling at 2910 rpm): each side's mean over whole teeth of it
-    predictedMatchesSteps("turbo-four-20-gdi.json", {304.7, 423.8, 542.9}, 0.03);
+    // knock-limited (its retard a sawtooth): each side's mean over whole teeth of it. Not 2910 rpm: there the turbo's
+    // spool follows the exhaust's heat over minutes, and neither dyno has one answer within a minute (the stepped
+    // dyno 220 to 281 N m by its settle's timing, 235 and 247 after 60 s without and with the settles)
+    predictedMatchesSteps("turbo-four-20-gdi.json", {423.8, 542.9}, 0.03);
 }
 
 TEST_CASE("the knock limit's key moves with what moves the knock limit, and not with the air or the person's timing",

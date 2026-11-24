@@ -85,6 +85,10 @@ namespace tee
         double knockLimit = 0.5;
         double knockWindowSeconds = 1.0;
         double knockMostSeconds = 8.0;
+        // A turbo's boost still moving after this much engine time at a point hunts (its gate's loop a limit cycle):
+        // the point is then the mean over windows as a knock-limited one, the two windows' boosts agreeing too
+        // (PredictPoint::boostHunting). The turbo four at 6700 rpm: its last-two-cycles torque never settled in 10 s.
+        double boostHuntSeconds = 1.5;
         std::size_t cacheSize = 64;   // curves kept by key
     };
 
@@ -105,6 +109,7 @@ namespace tee
         bool knockLimited = false;
         double retardMin = 0.0, retardMax = 0.0;
         double retardMean = 0.0;      // the mean retard over those windows (else the retard at the point's end)
+        bool boostHunting = false;    // its boost hunted: the mean over windows (PredictOptions::boostHuntSeconds)
         std::vector<double> history;  // each cycle's mean torque there, in order (the first after a change of speed)
     };
 

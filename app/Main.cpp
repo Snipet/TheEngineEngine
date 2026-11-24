@@ -476,6 +476,8 @@ namespace
                 return shown.document->build().notes;
             };
             shown.window->tryFirstDone = [&now] { now.tryFirstSeen = true; };
+            shown.window->coldStart = [&now] { return now.coldStart; };
+            shown.window->setColdStart = [&now](bool cold) { now.coldStart = cold; };
         }
         std::string why;
         if (!host.open(why))
