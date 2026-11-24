@@ -820,7 +820,7 @@ module Engine
             crank.omega = 0.0f;
         // card D2: a diesel's governor and brakes (nothing at the defaults: hd.on 0, the lever the reference's)
         hd.control16(d16, fuelUse, ecu.state, ecu.throttle, crank.omega, ecu.idleRpm, ecu.redRpm, ecu.sinceStart,
-                     set.drive != 0 ? set.clutch : 0.0f, exh.mdot, exh.tPort, boost.boost, vTotal, lay.n, bore, heat.tAmb);
+                     set.drive != 0 ? set.clutch : 0.0f, exh.mdot, exh.tPort, boost.boost, vTotal, lay.n, bore, heat.tAmb, ctl.buttons);
         hd.feed(&comb.diesel);
         // the exhaust's mass flow and its power, for the turbo
         exh.flowRate();
@@ -1013,7 +1013,7 @@ module Engine
             crank.omega = mm.advance(crank.omega, torque - tf - (dynoOn != 0 ? tqAbs : mech.tl) + mech.ts, dt, sn, cs);
         else
             crank.omega = car.step(crank.omega, torque + mm.torque(sn, cs, crank.omega) - tf + mech.ts, dt,
-                                   mm.jNow);     // (as the custom engine's: the crank's inertia at this angle)
+                                   mm.jNow);         // (the crank's inertia at this angle, as the four-stroke's step below)
         crank.ripple(torque);
         tqBrake += (torque - tf - tqBrake) * 1.0e-4f;
         omMin = fminf(omMin, crank.omega);

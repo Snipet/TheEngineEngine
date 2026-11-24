@@ -113,7 +113,8 @@ namespace tee::ui
             k.mix(static_cast<int>(shown_.size())).mix(ducts_ ? 1 : 0);
             if (ducts_)
                 for (int i = 0; i < kDucts; ++i)
-                    k.mix(ductNear_[static_cast<std::size_t>(i)]).mix(ductFar_[static_cast<std::size_t>(i)]);
+                    k.mix(ductNear_[static_cast<std::size_t>(i)]).mix(ductFar_[static_cast<std::size_t>(i)])
+                        .mix(ductMidOn_ ? ductMid_[static_cast<std::size_t>(i)] : 0.0f);
             for (const double v : liveValues())
                 k.mix(static_cast<float>(v));
             return k.h;
@@ -638,6 +639,8 @@ namespace tee::ui
                 if (hu >= 0 && hn >= 0 && hf >= 0 && sc.read(hu, ductUsed_.data(), kDucts) == kDucts
                     && sc.read(hn, ductNear_.data(), kDucts) == kDucts && sc.read(hf, ductFar_.data(), kDucts) == kDucts)
                     ducts_ = true;
+                const int hm = sc.find(N::ductMid);
+                ductMidOn_ = ducts_ && hm >= 0 && sc.read(hm, ductMid_.data(), kDucts) == kDucts;
             }
             if (n <= 1)
                 return;
@@ -1241,8 +1244,8 @@ namespace tee::ui
         }
 
         // Every other pipe's own pressure (card G's ductNear and ductFar, at each slot's two ends), riding it as a fainter
-        // trace: the primaries in their firing order, the main pipes and the tails. Between its ends a pipe's pressure
-        // is drawn straight (the two ends are what the Scope gives).
+        // trace: the primaries in their firing order, the main pipes and the tails. Between its ends and its middle
+        // (ductMid) a pipe's pressure is drawn straight; without the middle, straight from end to end.
         void drawDucts(Canvas& c, const Palette& p) const
         {
             if (!ducts_)
@@ -1266,7 +1269,10 @@ namespace tee::ui
                     const std::size_t a = i == 0 ? 0 : i - 1, z = i == 0 ? 1 : i;
                     const float dx = pts[z].x - pts[a].x, dy = pts[z].y - pts[a].y, l = std::max(1e-4f, std::hypot(dx, dy));
                     const float t = total > 0 ? along / total : 0.0f;
-                    const float pa = ductNear_[k] + (ductFar_[k] - ductNear_[k]) * t;
+                    // near to middle to far when the Scope gives the middle; else straight between the ends
+                    const float pa = !ductMidOn_ ? ductNear_[k] + (ductFar_[k] - ductNear_[k]) * t
+                                     : t < 0.5f  ? ductNear_[k] + (ductMid_[k] - ductNear_[k]) * (2.0f * t)
+                                                 : ductMid_[k] + (ductFar_[k] - ductMid_[k]) * (2.0f * t - 1.0f);
                     const float off = std::clamp(pa / kPulseScale, -1.0f, 1.0f) * kPulseSwing;
                     xs.push_back(pts[i].x + dy / l * off);
                     ys.push_back(pts[i].y - dx / l * off);
@@ -1385,7 +1391,8 @@ namespace tee::ui
         std::vector<float> portTrace_;
         static constexpr int kDucts = 84;
         bool ducts_ = false;
-        std::array<float, kDucts> ductUsed_{}, ductNear_{}, ductFar_{};
+        bool ductMidOn_ = false;
+        std::array<float, kDucts> ductUsed_{}, ductNear_{}, ductFar_{}, ductMid_{};
         std::vector<float> pathX_;   // card G's distances of the path's points from the port (m), when it gives them
         std::uint64_t scopeGen_ = ~0ull;
         std::vector<Snap> history_;

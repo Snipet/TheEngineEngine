@@ -113,3 +113,18 @@ TEST_CASE("diesel brake: the exhaust brake holds its back pressure and retards, 
     CHECK(flap > motoring + 50000.0);
     CHECK(both > jake);
 }
+
+TEST_CASE("diesel brake: the driver's button engages it at High with the dash switch Off", "[diesel][brake]")
+{
+    Engine e("truck-15l-six");
+    e.start();
+    e.dyno(1800.0, 0.0f);
+    REQUIRE(e.run(1.0));
+    CHECK(e.tel("ecu.brakeCylinders") == 0.0);
+    e.ctl().buttons = 64;   // BTN_ENGINE_BRAKE
+    REQUIRE(e.run(1.0));
+    CHECK(e.tel("ecu.brakeCylinders") == 6.0);
+    e.ctl().buttons = 0;
+    REQUIRE(e.run(1.0));
+    CHECK(e.tel("ecu.brakeCylinders") == 0.0);
+}
