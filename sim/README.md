@@ -121,7 +121,7 @@ centre, for every layout, custom ones too); `boost.pressure` (Pa over the air); 
 Card D's, appended to `tel.engine` (`Engine::mechanicsTelemetry`, every engine unless said): `torque` (the brake
 torque: the gases' less friction and a supercharger's drag over some 0.1 s; on the dyno, the absorber's mean),
 `gasTorque` (the gases', its 20 ms mean), `firing` (Hz: firings a second, every cylinder's), `power`, `imep` (gross), `pmep`, `fmep`, `bmep` (4 pi torque / displacement), `veManifold`,
-`veAir` (the fresh charge at intake closing over the swept volume at those densities), `peakPressure`, `pistonSpeed`,
+`veAir` (the fresh charge at intake closing over the swept volume at those densities; each bounded to 0 to 4, and `veManifold` held at its last value while the manifold reads below 5 kPa, where its density is no reference), `peakPressure`, `pistonSpeed`,
 `ripple` (the crank's speed's spread over the last cycle), `dynoTorque`, `dynoSpeed`, `shake1`, `shake2` (N), `rock1`,
 `rock2` (N m: a reference layout's cylinders taken upright); a custom engine's only: `inertiaTorque`; `cylinders`; `layoutRefused` (1: a custom geometry was refused); `oilTemperature` (K); and the arrays (readable by path, not
 gauges) `firingAngle[c]` (degrees after cylinder 1's at which it fires), `cylPeak[c]`, `cylPeakAngle[c]`.

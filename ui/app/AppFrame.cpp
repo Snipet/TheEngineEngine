@@ -7,6 +7,8 @@
 #include <funkgui/canvas/Canvas.h>
 #include <funkgui/core/Theme.h>
 #include <funkgui/prefs/UiPreferences.h>
+#include <funkgui/text/FontService.h>
+#include <funkgui/text/TextFit.h>
 
 #include <algorithm>
 #include <cmath>
@@ -179,8 +181,22 @@ namespace tee::ui
             return services_.unsaved && services_.unsaved() ? n + " *" : n;
         }, funkgui::TextStyle{ 15.0f, 0.6f, 0.06f, false }, Label::Ink::value);
         sentence_ = &make<Label>([this] { return engineSentence(); }, kWidgetText, Label::Ink::text);
-        status_ = &make<Label>([this] { return services_.app.status ? firstLine(services_.app.status()) : std::string(); },
-                               kWidgetSmall, Label::Ink::label, funkgui::Align::right);
+        // The status line, cut at whole fields ("   " apart) then whole words to its room: never part of a word.
+        status_ = &make<Label>([this] {
+            std::string line = services_.app.status ? firstLine(services_.app.status()) : std::string();
+            const float room = status_ != nullptr ? status_->bounds().w : 0.0f;
+            const auto fits = [&](const std::string& t) {
+                return funkgui::text::width(funkgui::FontService::get().atlas(), t.c_str(), kWidgetSmall) <= room;
+            };
+            while (!line.empty() && !fits(line))
+            {
+                std::size_t cut = line.rfind("   ");
+                if (cut == std::string::npos)
+                    cut = line.rfind(' ');
+                line = cut == std::string::npos ? std::string() : line.substr(0, line.find_last_not_of(' ', cut) + 1);
+            }
+            return line;
+        }, kWidgetSmall, Label::Ink::label, funkgui::Align::right);
         load_ = &make<Bar>("Load", [this] { return services_.simLoad ? std::clamp(services_.simLoad(), 0.0f, 1.0f) : 0.0f; },
                            [this] {
                                return services_.simLoad ? std::to_string(static_cast<int>(std::lround(services_.simLoad() * 100.0f))) + " %"
@@ -785,13 +801,10 @@ namespace tee::ui
         paper_->setPlace({ x + 118.0f, y + 16.0f, 110.0f, 26.0f }, on);
         y += 54.0f;
         settingsHeads_.push_back({ "UNITS", y });
-        const float cw = (w - 12.0f) / 2.0f;
+        // One column: each quantity's name in full at the left, its stepper at the right.
         for (std::size_t i = 0; i < unitSteppers_.size(); ++i)
-        {
-            const float col = static_cast<float>(i % 2), row = static_cast<float>(i / 2);
-            unitSteppers_[i]->setPlace({ x + col * (cw + 12.0f), y + 16.0f + row * 31.0f, cw, 27.0f }, on);
-        }
-        y += 16.0f + 31.0f * static_cast<float>((unitSteppers_.size() + 1) / 2) + 8.0f;
+            unitSteppers_[i]->setPlace({ x, y + 16.0f + static_cast<float>(i) * 27.0f, w, 25.0f }, on);
+        y += 16.0f + 27.0f * static_cast<float>(unitSteppers_.size()) + 8.0f;
         settingsHeads_.push_back({ "KEYS", y });
         keysY_ = y + 16.0f;
     }

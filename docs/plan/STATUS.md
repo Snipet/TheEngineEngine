@@ -36,6 +36,19 @@
 
 ## Landed
 
+- **16:09 decided: a QUALITY setting** (Full, 96 kHz inside, the default; Economy, 48 kHz inside: 0.49 of the cost,
+  torque within 1.2 %, the top octave lost). Q's ceiling for a twin-turbo V8 with a dual X: about 1.49 R today, 1.40
+  with every exact change (56 % of the owner's core if R is 40 % there, 42 % if 30 %: under 60 with no margin), 1.27
+  with the valves in two passes (waits for the owner's ears). Exact work cannot make the target certain; Economy
+  can (about 0.7 R). C builds it into `SimHost`, B stores it, U1 shows it; it ships once C has explained why the
+  48 kHz comparison fails on macOS alone (0.116 against 0.05). Q also: the pipes as arrays are exact and save 3 to
+  8 % on 8 to 12 cylinders (not the 8 to 12 estimated), waiting for G's wiring; the turbo's machine costs about
+  0.17 R (not 0.24).
+- 16:09 decided: the rotary gets its own losses under `fuel.model` 1 (D): the reference's rotary is about 1.3
+  times strong before any boost (18 bar BMEP at 70 kPa for a real 14), and the turbo is matched on a four-stroke's
+  air, half a rotary's (N2). Three separate terms with sources, checked at two points (boosted and not), no
+  factor fitted to a number. D's guard: a diverged engine is put at rest, restarted and flags FLAG_FAULT (C and B
+  show it); ENGINE's inspector will warn of geometry no engine has (U2). The steward's help sweep: 243 help texts.
 - **16:06 the first finished CI job on every platform**: Linux 593 of 596 and Windows 593 of 596 (both at 08ae4f8),
   macOS 594 of 598 (6bbc346). The same three whole-program tests fail on all three, with the same numbers to the
   digit on Linux and Windows (small-four and turbo-six with every switch on: no cold start, X-003, and steps of 18
