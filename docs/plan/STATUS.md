@@ -27,6 +27,15 @@
 
 ## Landed
 
+- **13:48 CI, the first run with the three fixes** (45404725485 at 7c4871f; the build steward's report):
+  Linux builds, 290 of 297 pass, the 7 failures all interface tests (the frame's goldens against stages that have
+  since landed, SCOPE's page, four `rest`/`slow`/`freeze` tests: their owners are on them). Windows builds and its
+  application artefacts uploaded, but **no test runs there**: `tee-host-tests.exe --list-tests` exits with heap
+  corruption (0xc0000374) at discovery, which stops ctest; card C has it (its tests replace the global `new` and
+  `delete`). macOS: the job was still waiting for a runner at 13:48, so the exit-crash fix is not yet shown there.
+- 13:49 ThreadSanitizer ran for the first time (the steward, Linux, clang 18): `tee-host-tests` 45 of 45, 6696
+  assertions, zero reports, the command queue and the seqlock among them (with the tests' allocator replacement
+  compiled out, which the preset needs: card C guards it).
 - 13:45 to 13:50: nine of the ten workspaces have real stages (GARAGE is the placeholder left). The lead rendered
   the frame in each at both densities at 2743869 (64 view tests, 2 failing: the frame's golden and SCOPE's page),
   sent the owner eleven pictures in two batches, and sent each session its corrections. The common fault: stages
