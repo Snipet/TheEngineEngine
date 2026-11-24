@@ -64,7 +64,8 @@ enum
     XO_MUF = 5,         // the muffler's pipes: XO_MUF to XO_MUF + 4
     XO_BYP = 10,        // the bypass
     XO_TAIL = 11,
-    XO_TIP = 12         // two tips: 12, 13
+    XO_TIP = 12,        // two tips: 12, 13
+    XO_MIN = 14         // with a bypass: the muffler's inlet tube (its outlet tube: XO_MUF + 4)
 };
 
 module XBuild
@@ -114,10 +115,8 @@ module XBuild
     int nMufJ[XS_SIDES];
     int kBypIn[XS_SIDES];       // the bypass's branches (inlet: the valve)
     int kBypOut[XS_SIDES];
-    int kMufIn[XS_SIDES];       // with a bypass: the muffler's inlet and outlet as nodes, their branches
-    int kMufPrev[XS_SIDES];
-    int kMufLast[XS_SIDES];
-    int kMufTail[XS_SIDES];
+    int jSplit[XS_SIDES];       // with a bypass: where it leaves, before the can's inlet tube, and where it joins
+    int jJoin[XS_SIDES];
     int jTips[XS_SIDES];
     int prevMuf[XS_SIDES];      // the pipe the muffler's inlet follows
     int eTail[XS_SIDES * 2];    // each side's radiating ends
@@ -177,6 +176,7 @@ module XBuild
             cap[b + XO_TAIL] = (int)(2.1f * k) + 16;
             cap[b + XO_TIP] = (int)(0.6f * k) + 16;
             cap[b + XO_TIP + 1] = (int)(0.6f * k) + 16;
+            cap[b + XO_MIN] = (int)(0.6f * k) + 16;
         }
         cap[XD_CROSS] = (int)(1.1f * k) + 16;
         net.setup(rate, cap);
@@ -392,6 +392,8 @@ module XBuild
             nMufJ[s] = 0;
             kBypIn[s] = -1;
             kBypOut[s] = -1;
+            jSplit[s] = -1;
+            jJoin[s] = -1;
             jTips[s] = -1;
             gCone[s] = -1;
             gMin[s] = -1;
@@ -516,11 +518,13 @@ module XBuild
                 const int last = slot(s, XO_MUF + nm - 1);
                 if (byp[s] != 0)
                 {
+                    // the bypass leaves before the can: the split, then the can's inlet tube into it
                     const int j = net.node();
-                    jMuf[s * 5] = j;
-                    kMufPrev[s] = net.branch(j, c, 1);
-                    kMufIn[s] = net.branch(j, first, 0);
+                    jSplit[s] = j;
+                    net.branch(j, c, 1);
+                    net.branch(j, slot(s, XO_MIN), 0);
                     kBypIn[s] = net.branch(j, slot(s, XO_BYP), 0);
+                    jMuf[s * 5] = net.pair(slot(s, XO_MIN), 1, first, 0);
                 }
                 else
                     jMuf[s * 5] = net.pair(c, 1, first, 0);
@@ -528,10 +532,12 @@ module XBuild
                     jMuf[s * 5 + 1 + m] = net.pair(slot(s, XO_MUF + m), 1, slot(s, XO_MUF + m + 1), 0);
                 if (byp[s] != 0)
                 {
+                    // and rejoins after it: the can's outlet tube, then the join
+                    jMuf[s * 5 + nm] = net.pair(last, 1, slot(s, XO_MUF + 4), 0);
                     const int j = net.node();
-                    jMuf[s * 5 + nm] = j;
-                    kMufLast[s] = net.branch(j, last, 1);
-                    kMufTail[s] = net.branch(j, tl, 0);
+                    jJoin[s] = j;
+                    net.branch(j, slot(s, XO_MUF + 4), 1);
+                    net.branch(j, tl, 0);
                     kBypOut[s] = net.branch(j, slot(s, XO_BYP), 1);
                 }
                 else
@@ -539,11 +545,8 @@ module XBuild
                 nMufJ[s] = nm + 1;
                 gMin[s] = net.band();
                 gMout[s] = net.band();
-                if (byp[s] == 0)
-                {
-                    net.bBand[jMuf[s * 5] * XN_BR] = gMin[s];
-                    net.bBand[jMuf[s * 5 + nm] * XN_BR] = gMout[s];
-                }
+                net.bBand[jMuf[s * 5] * XN_BR] = gMin[s];
+                net.bBand[jMuf[s * 5 + nm] * XN_BR] = gMout[s];
             }
             // the tail and its tips
             if (tips[s] == 2)
@@ -921,26 +924,28 @@ module XBuild
             // the resonator
             if (res[s] == 1)
             {
-                // a quarter-wave stub: a closed side branch a quarter of the note's wavelength long, less the tee's end
-                // correction (some 0.3 of its bore: judgement, between a flanged end's 0.85 r and a tee's)
+                // a quarter-wave stub: a closed side branch a quarter of the note's wavelength long. (Its length in the
+                // model is the acoustic one: a plane-wave junction has no end correction, so the tee's, some 0.3 of the
+                // bore, is in it; a real stub for this note is that much shorter.)
                 const float dS = sp.resD[s] > 0.0f ? sp.resD[s] : dPipe;
                 const float aS = 0.785398f * dS * dS;
                 Duct* st = &net.d[slot(s, XO_STUB)];
-                const float ls = fmaxf(cP / (4.0f * sp.resHz[s]) - 0.3f * dS, 0.03f);
+                const float ls = fmaxf(cP / (4.0f * sp.resHz[s]), 0.03f);
                 st->set(ls, dS, aS, cP, rate);
                 st->extra(0.0f, 1.0f, rate);
             }
             else if (res[s] == 2)
             {
-                // a Helmholtz chamber on a neck: f = c / 2 pi sqrt(An / (V Leff)), Leff the neck's length and its two
-                // ends' corrections (0.85 r each); the chamber a short wide pipe shut at its end (its length 0.12 m,
-                // well under a quarter wave at its note, so it is a volume)
+                // a Helmholtz chamber on a neck: f = c / 2 pi sqrt(An / (V Leff)); the chamber a short wide pipe shut
+                // at its end (0.12 m, well under a quarter wave at its note, so it is a volume). The neck in the model
+                // is Leff long: a plane-wave junction has no end correction, so the two ends' (0.85 r each) are in it,
+                // and a real neck for this note is that much shorter. (Built shorter by them, it rang 1.3 times high.)
                 const float dn = sp.resD[s] > 0.0f ? sp.resD[s] : 0.5f * dPipe;
                 const float an = 0.785398f * dn * dn;
                 const float v = sp.resVol[s];
                 const float w = 6.28318531f * sp.resHz[s];
                 const float lEff = an * cP * cP / (v * w * w);
-                const float ln = fminf(fmaxf(lEff - 0.85f * dn, 0.02f), 2.0f);
+                const float ln = fminf(fmaxf(lEff, 0.02f), 2.0f);
                 Duct* nk = &net.d[slot(s, XO_STUB)];
                 nk->set(ln, dn, an, cP, rate);
                 nk->extra(0.0f, 1.0f, rate);
@@ -978,6 +983,22 @@ module XBuild
             const int j0 = jMuf[s * 5];
             float scIn = 0.0f;
             float scOut = 0.0f;
+            // the pipes the can is entered from and left into: the pipe before it and the tail, or with a bypass its
+            // own inlet and outlet tubes (the pipe's bore, 0.25 m each: where a valved system splits and rejoins,
+            // judgement), whose mass keeps the can's volume from shorting the bypass's drive at the lows
+            int muIn = prev;
+            int muOut = slot(s, XO_TAIL);
+            if (byp[s] != 0)
+            {
+                muIn = slot(s, XO_MIN);
+                muOut = slot(s, XO_MUF + 4);
+                Duct* ti = &net.d[muIn];
+                ti->set(0.25f, dPipe, aPipe, cM, rate);
+                ti->extra(0.0f, 0.98f, rate);
+                Duct* to = &net.d[muOut];
+                to->set(0.25f, dPipe, aPipe, cM, rate);
+                to->extra(0.0f, 0.98f, rate);
+            }
             if (muf[s] == 2)
             {
                 // the reference's: from a straight-through tube (0) to big packed chambers (1). Below about a third it
@@ -1018,7 +1039,8 @@ module XBuild
                 const float e1 = 1.0f - 1.0f / ratio1;
                 const float e2 = 1.0f - 1.0f / ratio2;
                 const float aCh2 = aPipe * ratio2;
-                const float e3 = 1.0f - fminf(aTail / aCh2, 1.0f);
+                const float aOut = net.d[muOut].area;
+                const float e3 = 1.0f - fminf(aOut / aCh2, 1.0f);
                 const float rPerf = (0.05f + 0.15f * mu) * rhoM * cM / aPipe;
                 const float kInM = fmaxf(chambs * e1 * e1, 0.1f);
                 const float kOutM = fmaxf(0.5f * e3, 0.1f);
@@ -1033,32 +1055,22 @@ module XBuild
                 net.bKf[k2] = lossKap(chambs * e2 * e2, rhoM, aPipe);
                 net.bKr[k2] = lossKap(chambs * 0.5f * e2, rhoM, aPipe);
                 net.bA[k2] = slot(s, XO_MUF + 1);
-                if (byp[s] == 0)
                 {
                     const int k0 = j0 * XN_BR;
                     net.bKf[k0] = lossKap(chambs * e1 * e1, rhoM, aPipe);
                     net.bKr[k0] = lossKap(chambs * 0.5f * e1, rhoM, aPipe);
-                    net.bA[k0] = prev;
+                    net.bA[k0] = muIn;
                     net.bNin[k0] = kInM;
                     net.bNout[k0] = kInM;
-                    net.bNa[k0] = pv->area;
+                    net.bNa[k0] = net.d[muIn].area;
                     net.bNrho[k0] = slot(s, XO_MUF);
-                    net.bKf[k3] = lossKap(0.5f * e3, rhoM, aTail);
-                    net.bKr[k3] = lossKap(e3 * e3, rhoM, aTail);
-                    net.bA[k3] = slot(s, XO_TAIL);
+                    net.bKf[k3] = lossKap(0.5f * e3, rhoM, aOut);
+                    net.bKr[k3] = lossKap(e3 * e3, rhoM, aOut);
+                    net.bA[k3] = muOut;
                     net.bNin[k3] = kOutM;
                     net.bNout[k3] = kOutM;
-                    net.bNa[k3] = tl->area;
-                    net.bNrho[k3] = slot(s, XO_TAIL);
-                }
-                else
-                {
-                    net.bKf[kMufPrev[s]] = lossKap(chambs * e1 * e1, rhoM, aPipe);
-                    net.bKr[kMufPrev[s]] = lossKap(chambs * 0.5f * e1, rhoM, aPipe);
-                    net.bA[kMufPrev[s]] = prev;
-                    net.bKf[kMufLast[s]] = lossKap(0.5f * e3, rhoM, aTail);
-                    net.bKr[kMufLast[s]] = lossKap(e3 * e3, rhoM, aTail);
-                    net.bA[kMufLast[s]] = slot(s, XO_MUF + 2);
+                    net.bNa[k3] = net.d[muOut].area;
+                    net.bNrho[k3] = muOut;
                 }
             }
             else if (muf[s] == 1)
@@ -1076,23 +1088,20 @@ module XBuild
                 scOut = 6.0f;
                 cn->back(backFc(cn->c, cn->len), 6.0f, rate);
                 const int kl = jMuf[s * 5 + 1] * XN_BR;
-                if (byp[s] == 0)
-                {
-                    const int k0 = j0 * XN_BR;
-                    net.bKf[k0] = lossKap(0.05f, cn->rho, aPipe);
-                    net.bKr[k0] = lossKap(0.05f, cn->rho, aPipe);
-                    net.bA[k0] = prev;
-                    net.bNin[k0] = 0.1f;
-                    net.bNout[k0] = 0.1f;
-                    net.bNa[k0] = pv->area;
-                    net.bNrho[k0] = slot(s, XO_MUF);
-                    areaLoss(kl, aPipe, aTail, cn->rho, 1.0f);
-                    net.bA[kl] = slot(s, XO_TAIL);
-                    net.bNin[kl] = 0.1f;
-                    net.bNout[kl] = 0.1f;
-                    net.bNa[kl] = tl->area;
-                    net.bNrho[kl] = slot(s, XO_TAIL);
-                }
+                const int k0 = j0 * XN_BR;
+                net.bKf[k0] = lossKap(0.05f, cn->rho, aPipe);
+                net.bKr[k0] = lossKap(0.05f, cn->rho, aPipe);
+                net.bA[k0] = muIn;
+                net.bNin[k0] = 0.1f;
+                net.bNout[k0] = 0.1f;
+                net.bNa[k0] = net.d[muIn].area;
+                net.bNrho[k0] = slot(s, XO_MUF);
+                areaLoss(kl, aPipe, net.d[muOut].area, cn->rho, 1.0f);
+                net.bA[kl] = muOut;
+                net.bNin[kl] = 0.1f;
+                net.bNout[kl] = 0.1f;
+                net.bNa[kl] = net.d[muOut].area;
+                net.bNrho[kl] = muOut;
             }
             else if (muf[s] == 3)
             {
@@ -1121,22 +1130,21 @@ module XBuild
                 c2->back(backFc(c2->c, c2->len), sc, rate);
                 t2->back(backFc(t2->c, t2->len), sc, rate);
                 const float rho = c1->rho;
-                if (byp[s] == 0)
                 {
                     const int k0 = j0 * XN_BR;
-                    areaLoss(k0, pv->area, c1->area, rho, 1.0f);
-                    net.bA[k0] = prev;
+                    areaLoss(k0, net.d[muIn].area, c1->area, rho, 1.0f);
+                    net.bA[k0] = muIn;
                     net.bNin[k0] = fmaxf(e * e, 0.1f);
                     net.bNout[k0] = fmaxf(e * e, 0.1f);
-                    net.bNa[k0] = pv->area;
+                    net.bNa[k0] = net.d[muIn].area;
                     net.bNrho[k0] = slot(s, XO_MUF);
                     const int k4 = jMuf[s * 5 + 4] * XN_BR;
-                    areaLoss(k4, aPipe, aTail, rho, 1.0f);
-                    net.bA[k4] = slot(s, XO_TAIL);
+                    areaLoss(k4, aPipe, net.d[muOut].area, rho, 1.0f);
+                    net.bA[k4] = muOut;
                     net.bNin[k4] = 0.1f;
                     net.bNout[k4] = 0.1f;
-                    net.bNa[k4] = tl->area;
-                    net.bNrho[k4] = slot(s, XO_TAIL);
+                    net.bNa[k4] = net.d[muOut].area;
+                    net.bNrho[k4] = muOut;
                 }
                 for (int m = 1; m < 4; ++m)
                 {
@@ -1159,8 +1167,15 @@ module XBuild
             }
             if (scIn > 0.0f)
             {
-                pv->back(backFc(pv->c, pv->len), scIn, rate);
-                tl->back(backFc(tl->c, tl->len), scOut, rate);
+                Duct* bi = &net.d[muIn];
+                Duct* bo = &net.d[muOut];
+                bi->back(backFc(bi->c, bi->len), scIn, rate);
+                bo->back(backFc(bo->c, bo->len), scOut, rate);
+                if (byp[s] != 0)
+                {
+                    pv->back(500.0f, 0.0f, rate);
+                    tl->back(500.0f, 0.0f, rate);
+                }
             }
             else
             {
@@ -1174,8 +1189,8 @@ module XBuild
                 const float db = sp.bypassD > 0.0f ? sp.bypassD : dPipe;
                 const float ab = 0.785398f * db * db;
                 Duct* bp = &net.d[slot(s, XO_BYP)];
-                float lb = 0.0f;
-                for (int m = 0; m < 5; ++m)
+                float lb = 0.5f;
+                for (int m = 0; m < 4; ++m)
                 {
                     if (m < nMufJ[s] - 1)
                         lb += net.d[slot(s, XO_MUF + m)].len;

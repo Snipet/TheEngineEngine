@@ -180,7 +180,7 @@ module Engine
         s->buttons = (upPulse == 1 ? 16 : 0) + (downPulse == 1 ? 32 : 0);
         // holdSpeed (MODE_BENCH, running): the reference's key driver aimed at it, by a key of the pitch whose firing
         // that speed is (its DRIVE PITCH), held as the newest key
-        const bool aim = !driven && ctl.holdSpeed > 0.0f && mono.state == 2;
+        const bool aim = !driven && ctl.holdSpeed > 0.0f && mono.ecu.state == 2;
         if (aim)
         {
             const float perRev = mono.lay.rotary != 0 ? 2.0f : 0.5f * (float)mono.lay.n;
@@ -188,17 +188,17 @@ module Engine
             const float note = 69.0f + logf(fmaxf(hz, 1.0f) / 440.0f) / 0.0577622650f;
             if (ghost == 0)
             {
-                if (mono.keyCount >= 16)
-                    mono.keyCount = 15;
-                mono.keyCount += 1;
+                if (mono.ecu.keyCount >= 16)
+                    mono.ecu.keyCount = 15;
+                mono.ecu.keyCount += 1;
                 ghost = 1;
             }
-            mono.keyNote[mono.keyCount - 1] = note;
-            mono.keyVel[mono.keyCount - 1] = 1.0f;
+            mono.ecu.keyNote[mono.ecu.keyCount - 1] = note;
+            mono.ecu.keyVel[mono.ecu.keyCount - 1] = 1.0f;
         }
         else if (ghost != 0)
         {
-            mono.keyCount = mono.keyCount > 0 ? mono.keyCount - 1 : 0;
+            mono.ecu.keyCount = mono.ecu.keyCount > 0 ? mono.ecu.keyCount - 1 : 0;
             ghost = 0;
         }
         s->keys = ghost;
@@ -211,7 +211,7 @@ module Engine
         const int ign = ctl.ignition;
         if (ign == IGN_START)
         {
-            if (mono.state == 0 || mono.state == 3)
+            if (mono.ecu.state == 0 || mono.ecu.state == 3)
             {
                 if (held != 0)
                     mono.keyUp((float)START_NOTE);
@@ -225,14 +225,14 @@ module Engine
         {
             mono.keyUp((float)START_NOTE);
             held = 0;
-            if (mono.state == 1)
-                mono.state = 0;
+            if (mono.ecu.state == 1)
+                mono.ecu.state = 0;
         }
-        if (ign == IGN_OFF && (mono.state == 1 || mono.state == 2))
+        if (ign == IGN_OFF && (mono.ecu.state == 1 || mono.ecu.state == 2))
         {
-            mono.state = 3;
-            mono.stallT = 0.0f;
-            mono.offArmed = false;
+            mono.ecu.state = 3;
+            mono.ecu.stallT = 0.0f;
+            mono.ecu.offArmed = false;
         }
     }
 
@@ -240,21 +240,21 @@ module Engine
     void writeTelemetry(float peak)
     {
         const bool driven = mono.set.drive != 0;
-        tel.engine.state = mono.state;
+        tel.engine.state = mono.ecu.state;
         tel.engine.speed = mono.rpm * 0.10471976f;
-        tel.engine.redline = mono.redRpm * 0.10471976f;
-        tel.engine.idle = mono.idleRpm * 0.10471976f;
-        tel.engine.throttle = mono.throttle;
+        tel.engine.redline = mono.ecu.redRpm * 0.10471976f;
+        tel.engine.idle = mono.ecu.idleRpm * 0.10471976f;
+        tel.engine.throttle = mono.ecu.throttle;
         tel.engine.manifold = mono.pPlenum;
         tel.engine.coolant = mono.heat.tCool;
         tel.engine.oilPressure = mono.heat.pOil;
-        tel.engine.flags = (mono.limiting || mono.droop < 0.95f ? FLAG_LIMITER : 0)
-                           + (mono.fuelCut && mono.state == 2 ? FLAG_FUEL_CUT : 0);
+        tel.engine.flags = (mono.ecu.limiting || mono.droop < 0.95f ? FLAG_LIMITER : 0)
+                           + (mono.ecu.fuelCut && mono.ecu.state == 2 ? FLAG_FUEL_CUT : 0);
         tel.engine.cycle = mono.showCycle;
         tel.engine.crank = mono.theta;
         tel.boost.pressure = mono.boost.boost * 100000.0f;
         tel.exhaust.portTemperature = mono.tPort;
-        tel.ecu.knockRetard = mono.kRet;
+        tel.ecu.knockRetard = mono.ecu.kRet;
         tel.car.speed = driven ? fabsf(mono.car.v) : 0.0f;
         tel.car.gear = driven ? mono.car.gear : 0;
         tel.car.brake = fminf(fmaxf(mono.set.brake, 0.0f), 1.0f);

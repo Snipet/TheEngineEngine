@@ -62,12 +62,40 @@ float boostOrifice(float p1, float t1, float p2, float t2, float area, int ex)
     return -area * p2 * boostPsiT(r, ex) * sqrtf(fmaxf(1.0f - r, 0.0f)) / sqrtf(kBoostR * t2);
 }
 
+// The same orifice solved over a sample with what its flow does to the volumes it joins, implicitly: kk is how much the
+// pressure difference falls a sample for each kg/s through it (dt gamma R T / V for each volume it joins: boostStiff;
+// nothing for the air outside). With the flow written m = ko sqrt(dp) (ko from this sample's ratio: the compressible
+// law's correction and its choking), m = ko sqrt(dp - kk m) is a quadratic, solved in closed form (the reference's
+// lossFlow's way). An explicit step of a square root of the last sample's drop overshoots wherever the drop is small
+// and chatters about zero for ever between two volumes at rest; this does not: the drop falls to nothing and stays.
+float boostOrificeStep(float p1, float t1, float p2, float t2, float area, int ex, float kk)
+{
+    if (area <= 1.0e-10f)
+        return 0.0f;
+    const int fwd = p1 >= p2 ? 1 : 0;
+    const float pu = fwd != 0 ? p1 : p2;
+    const float tu = fwd != 0 ? t1 : t2;
+    const float pd = fwd != 0 ? p2 : p1;
+    const float ko = area * boostPsiT(pd / fmaxf(pu, 1.0f), ex) * sqrtf(pu / (kBoostR * tu));
+    const float d = pu - pd;
+    const float zk = ko * kk;
+    const float m = 0.5f * ko * (sqrtf(zk * zk + 4.0f * d) - zk);
+    return fwd != 0 ? m : -m;
+}
+
+// A volume's stiffness for boostOrificeStep: how much its pressure moves a sample for each kg/s in or out
+float boostStiff(float vol, float t, float gamma, float dt)
+{
+    return dt * gamma * kBoostR * t / fmaxf(vol, 1.0e-7f);
+}
+
 // A volume of gas: its mass and energy, filled and emptied every sample (explicit: what flows this sample is summed by
 // flow() and heat(), then step() moves the state). Its pressure and temperature follow from the two (p = m R T / V).
 module BoostVolume
 {
     float vol;          // m^3
-    float m;            // kg
+    double m;           // kg, and the gas's internal energy, J: in double, as a sample's flow at rest is under a
+    double u;           // float's step on the mass a volume holds
     float t;            // K
     float p;            // Pa absolute
     float cp;
@@ -89,7 +117,8 @@ module BoostVolume
     {
         p = pIn;
         t = tIn;
-        m = p * vol / (kBoostR * t);
+        m = (double)p * (double)vol / (287.0 * (double)t);
+        u = m * (double)cv * (double)t;
         dm = 0.0f;
         dh = 0.0f;
         o2 = 0.232f;
@@ -100,7 +129,8 @@ module BoostVolume
     void resize(float v)
     {
         vol = fmaxf(v, 1.0e-6f);
-        m = p * vol / (kBoostR * t);
+        m = (double)p * (double)vol / (287.0 * (double)t);
+        u = m * (double)cv * (double)t;
     }
 
     // mass flow in (kg/s; negative: out, at the volume's own temperature) at temperature tIn, its oxygen's share x
@@ -126,12 +156,14 @@ module BoostVolume
 
     void step(float dt)
     {
-        const float mn = fmaxf(m + dm * dt, 1.0e-7f);
-        const float u = m * cv * t + dh * dt;
-        o2 = fminf(fmaxf((m * o2 + do2 * dt) / mn, 0.0f), 1.0f);
+        const double mn = fmax(m + (double)(dm * dt), 1.0e-9);
+        o2 = fminf(fmaxf((float)(((double)o2 * m + (double)(do2 * dt)) / mn), 0.0f), 1.0f);
+        u += (double)(dh * dt);
         m = mn;
-        t = fminf(fmaxf(u / (m * cv), 150.0f), 3000.0f);
-        p = m * kBoostR * t / vol;
+        const double tt = fmin(fmax(u / (m * (double)cv), 150.0), 3000.0);
+        u = tt * m * (double)cv;
+        t = (float)tt;
+        p = (float)(m * 287.0 * tt / (double)vol);
         dm = 0.0f;
         dh = 0.0f;
         do2 = 0.0f;
@@ -144,11 +176,13 @@ module BoostVolume
 // at once. The reference's Valve.flow (sim/ref/pipes.fm) without its finite-wave factor g: above the critical ratio,
 // q = k sqrt(pc - pq - z q) with k from the last pass's ratio, a quadratic, three passes from the pipe at rest;
 // below it choked, in closed form. `ratio` keeps the ratio across it (downstream over upstream) for the caller.
+// zc is the volume's own give over the sample (dt gamma p / V: m^3/s of flow lowers its pressure by zc q), solved
+// with the rest, so the volume and the pipe's end settle together instead of chattering at rest.
 module BoostEnd
 {
     float ratio;
 
-    float flow(float pc, float tc, float pq, float z, float area, float tp)
+    float flow(float pc, float tc, float pq, float z, float area, float tp, float zc)
     {
         if (area <= 1.0e-10f)
         {
@@ -167,10 +201,10 @@ module BoostEnd
             for (int it = 0; it < 3; ++it)
             {
                 const float k = cq * boostPsiT(rr, 1) / pp;
-                const float zk = z * k;
+                const float zk = (z + zc) * k;
                 q = k * 0.5f * (sqrtf(zk * zk + 4.0f * d) - zk);
                 pp = pq + z * q;
-                rr = pp / pc;
+                rr = pp / (pc - zc * q);
             }
             if (rr < rc)
             {
@@ -189,10 +223,10 @@ module BoostEnd
         for (int it = 0; it < 3; ++it)
         {
             const float k = ci * boostPsiT(rr, 1) / sqrtf(pp);
-            const float zk = z * k;
+            const float zk = (z + zc) * k;
             qi = k * 0.5f * (sqrtf(zk * zk + 4.0f * d) - zk);
             pp = fmaxf(pq - z * qi, 1000.0f);
-            rr = pc / pp;
+            rr = (pc + zc * qi) / pp;
         }
         if (rr < rc)
         {
