@@ -7,7 +7,10 @@
 // turn, faint. At key-on the ECU runs it for `prime` seconds (2 s is usual) to fill the rail; it spins up in some
 // 40 ms, then slows by a tenth as the pressure it pumps against rises over a quarter of a second, and stops when the
 // prime ends (spinning down in some 80 ms) unless the engine turns: it then runs as long as the crank does. Its
-// level is judgement: heard through the floor at the back of the car, about the chain's at idle.
+// level is judgement, stated against the exhaust (tests/sim/sound/EngineTest.cpp, "levels at idle"): an in-tank pump
+// is made to go unheard in a quiet cabin, so at the source, beside the idling exhaust, it is set at least 25 dB under
+// it in every octave and 40 dB A-weighted (it was 8 dB under in the 4 kHz octave, the owner's 21:32 report: 20 dB
+// down).
 // The pump is a sound only: it takes nothing from the engine (no electrical load on the crank, no rail pressure in
 // the model). With spec.voices.model 1 Engine renders from the key's turn (so the prime is heard), and rendering a
 // resting engine lets the ECU's idle target glide before the start (on a cold build, 92.9 to 162 rad/s in the second
@@ -99,7 +102,7 @@ module FuelVoice
         if (running == 0 && hz < 0.5f)
             hz = 0.0f;
         const float s = fminf(hz / 100.0f, 1.2f);
-        aPump.to(k * 0.0035f * s * s);
+        aPump.to(k * 0.00035f * s * s);
     }
 
     // A direct injector opened (amp: as the reference's 1 a click)
