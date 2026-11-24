@@ -225,3 +225,9 @@ drive-car, 1834 free-revs; the simulator's own V8 read 1.032 / 1.034 of it); hos
 **D's row after 3990ee4 and a845b07 (the physical cylinder's gamma)**, 20:10 UTC, two profiles of the typical build,
 drive-car: D's modules 567 / 565 ns (Cylinder 322 / 329, `stepAreas` 274 / 267) against 596 (Cylinder 365, stepAreas
 291) at 19:30: no cost from the change (within the profiles' spread; if anything a little lower).
+
+**`content/builds/first.json` after 36b4a24** (the twin-turbo six with L's listener at Places/Rear/Field and M's
+voices on; 20:12 UTC at c4c3a39; R 1857 / 1872 ns): **1.67 R drive-car, 1.65 R free-revs**, against 1.46 / 1.45 R for
+the same file before 36b4a24 in the same run: +0.20 R for the listener and the voices together (the lead's estimate
++0.19). Against P's host load (mean 30 to 32 % of this container's core): 1.66 R x R's 17.9 % of a core at 48 kHz
+(1.86 us x 96000) = 30 %: the two agree.
