@@ -12,12 +12,16 @@ module IntakeSpec
     int rev [[ui::hidden]];
     // the package's model (the integrator's switch, sim/README.md): 0 the reference's, bit for bit; 1 the package's own
     int model [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Induction model")]]
+        [[ui::help("Reference: the original intake. Lab: throttle bodies, plenum, runners, trumpets and the air box as sized here")]]
         [[ui::choices("Reference", "Lab")]];
-    int throttleKind [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Throttle")]] [[ui::group("Throttle")]]
+    int throttleKind [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Throttle")]]
+        [[ui::help("One throttle in front of a shared plenum, or a throttle body for each runner")]]
+        [[ui::group("Throttle")]]
         [[ui::choices("One body and a plenum", "A body a runner")]];
     float throttleArea [[fminus::range(0, 0.02)]] [[fminus::default(0)]] [[ui::label("Throttle area")]]
         [[ui::quantity("area")]] [[ui::help("wide open, all bodies together; 0: from the displacement (one body) or the runners' bores")]];
     int trumpets [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Trumpets open to")]]
+        [[ui::help("Where individual throttle bodies' trumpets draw from: a shared air box, or the open air")]]
         [[ui::choices("The air box", "The air")]];
     float plenumVolume [[fminus::range(0, 0.03)]] [[fminus::default(0)]] [[ui::label("Plenum volume")]]
         [[ui::quantity("volume")]] [[ui::group("Manifold")]] [[ui::help("0: 0.8 of the displacement, as the reference")]];
@@ -28,6 +32,7 @@ module IntakeSpec
     float runnerLength2 [[fminus::range(0, 1.2)]] [[fminus::default(0)]] [[ui::label("Second runner length")]]
         [[ui::quantity("length")]] [[ui::help("0: one length")]];
     float runnerSwitch [[fminus::range(0, 1100)]] [[fminus::default(0)]] [[ui::label("Second length from")]]
+        [[ui::help("Above this speed the runners switch to their second length")]]
         [[ui::quantity("rotation")]];
     float boxVolume [[fminus::range(0, 0.05)]] [[fminus::default(0)]] [[ui::label("Air box volume")]]
         [[ui::quantity("volume")]] [[ui::group("Air box")]] [[ui::help("0: twice the displacement")]];

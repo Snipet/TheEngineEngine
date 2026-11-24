@@ -1,0 +1,20 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "fuzz 2",
+  "notes": "tee-fuzz --reduce: the fields that still fail 'guard' under the seed's driving; every other field at its default",
+  "spec": {
+    "car": {
+      "gearbox": 3,
+      "model": 1
+    },
+    "engine": {
+      "bore": 0.0373441635,
+      "custom": 1,
+      "flywheel": 0.243940744,
+      "layout": 0,
+      "pistonMass": 18.4245411,
+      "stroke": 0.152920195
+    }
+  }
+}

@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "Classic 14 L mechanical six",
-  "notes": "Card D2. A 1980s 14 L inline six (140 x 152 mm, 14.5:1, one turbo) on a mechanical in-line pump: an all-speed flyweight governor that hunts at idle, low injection pressure (600 bar), injection advanced 4 degrees, no pilot: the hard clatter; a boost compensator (aneroid) at 0.8; an early compression brake; a straight stack (muffler 0). The 36 t rig. Air at 300 K, 101325 Pa.",
+  "notes": "Card D2. A 1980s 14 L inline six (140 x 152 mm, 14.5:1, one turbo) on a mechanical in-line pump: an all-speed flyweight governor that hunts at idle, low injection pressure (600 bar), injection advanced 4 degrees, no pilot: the hard clatter; a boost compensator (aneroid) at 0.8; an early compression brake; a straight stack (muffler 0). The 36 t rig. Air at 300 K, 101325 Pa. Card M's voices on: a viscous fan clutch, nine blades.",
   "spec": {
     "engine": {
       "layout": "Inline 6",
@@ -109,6 +109,11 @@
       "level": 2.8467,
       "intake": 0.5,
       "mechanical": 0.6503
+    },
+    "voices": {
+      "model": "Voices",
+      "fan": "Viscous clutch",
+      "fanBlades": 9
     }
   }
 }

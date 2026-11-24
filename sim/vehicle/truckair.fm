@@ -1,0 +1,113 @@
+// truckair.fm: a truck's air system as sounds (card D2): the compressor charging the tanks, its governor's cut-out and
+// the air dryer's purge, the spring brakes' release, and the service brakes' exhaust at the relay valve.
+//
+// The tanks (some 120 L in all) charge from the engine's compressor (some 0.5 L of free air a crank turn: some 3 bar a
+// minute at idle, 6 at 1400 rpm; judgement, near the inspectors' build-up test of 5.5 to 6.9 bar within 45 s at
+// 1200 rpm) to the governor's cut-out, 8.3 bar (120 psi: the American rule's 7.6 to 9.0); there the
+// compressor unloads and the dryer purges: a hard hiss of some 0.6 s, the "pssht" of a truck at rest, falling as the
+// purge tank empties. The governor cuts in again at 6.9 bar (100 psi). Each service brake application takes air from
+// the tanks (some 0.04 bar a tenth of the pedal) and its release is a hiss at the relay valve, as long as the pressure
+// in the chambers takes to fall (0.3 s). The spring (parking) brakes: released, a sharp blast as their chambers fill
+// (0.4 s, a pop and a hiss); set, a longer exhaust (0.8 s). Each is a burst of noise, high-passed and shaped; their
+// levels are judgement (a purge is the loudest, some 10 dB over a brake's release).
+//
+// No engine in it: every 16 samples it is given the crank's speed, the brake pedal and the parking brake (0 released,
+// 1 set); each sample out() is its sound. Tested alone (tests/sim/diesel/rig.fm); not yet mixed (a hook asked of the
+// integrator: docs/handoffs/d2-diesels.md).
+#pragma once
+#include "lib/noise.fm"
+
+module TruckAir
+{
+    float rate;
+    Noise nz;
+    float p;            // the tanks' pressure, Pa over the air
+    int loaded;         // 1: the compressor is pumping
+    float lastBrake;
+    float lastPark;
+    // the bursts: each an envelope and its decay a sample
+    float purge;
+    float purgeK;
+    float relay;
+    float relayK;
+    float spring;
+    float springK;
+    float hp1;          // a one-pole high-pass's state (the hiss's colour)
+    float hpX;
+    int purges;         // counts
+    int releases;
+
+    void setup(float rateIn)
+    {
+        rate = rateIn;
+        nz.rs = 90210;
+        p = 600000.0f;
+        loaded = 1;
+        lastBrake = 0.0f;
+        lastPark = 1.0f;
+        purge = 0.0f;
+        relay = 0.0f;
+        spring = 0.0f;
+        purgeK = expf(-1.0f / (0.25f * rate));
+        relayK = expf(-1.0f / (0.12f * rate));
+        springK = expf(-1.0f / (0.15f * rate));
+        hp1 = 0.0f;
+        hpX = 0.0f;
+        purges = 0;
+        releases = 0;
+    }
+
+    // Every 16 samples. omega: the crank (rad/s); brake: the service pedal 0 to 1; park: the parking brake 0 released, 1 set
+    void control(float d16, float omega, float brake, float park)
+    {
+        // the compressor: 0.5 L of free air a crank turn into 120 L of tanks
+        if (loaded != 0)
+            p += 101325.0f * 0.0005f * omega * 0.15915494f / 0.12f * d16 * (1.0f - p / 1.3e6f);
+        if (loaded != 0 && p >= 830000.0f)
+        {
+            loaded = 0;
+            purge = 1.0f;
+            purges += 1;
+        }
+        else if (loaded == 0 && p <= 690000.0f)
+            loaded = 1;
+        // the service brakes: air used as the pedal goes down; a hiss as it comes up
+        if (brake > lastBrake)
+            p -= (brake - lastBrake) * 40000.0f;
+        else if (lastBrake - brake > 0.05f)
+        {
+            relay = fmaxf(relay, fminf((lastBrake - brake) * 2.0f, 1.0f) * 0.35f);
+            releases += 1;
+        }
+        lastBrake = brake;
+        // the spring brakes: released, their chambers fill (a blast); set, they exhaust
+        if (park < 0.5f && lastPark >= 0.5f)
+        {
+            spring = 0.8f;
+            springK = expf(-1.0f / (0.15f * rate));
+            p -= 30000.0f;
+        }
+        else if (park >= 0.5f && lastPark < 0.5f)
+        {
+            spring = 0.6f;
+            springK = expf(-1.0f / (0.3f * rate));
+        }
+        lastPark = park;
+        p = fmaxf(p, 0.0f);
+    }
+
+    // Each sample: the bursts' hiss
+    float out()
+    {
+        const float level = purge + relay + spring;
+        if (level < 1.0e-5f)
+            return 0.0f;
+        purge *= purgeK;
+        relay *= relayK;
+        spring *= springK;
+        const float x = nz.rnd();
+        hp1 = 0.9f * (hp1 + x - hpX);
+        hpX = x;
+        return level * hp1;
+    }
+};

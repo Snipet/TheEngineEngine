@@ -13,11 +13,14 @@ module SoundSpec
 {
     int rev [[ui::hidden]];
     int view [[fminus::range(0, 4)]] [[fminus::default(0)]] [[ui::label("View")]]
+        [[ui::help("Where the listener is, as the reference's five views")]]
         [[ui::choices("Exhaust", "Rear", "Side", "Engine", "Cabin")]];
     float distance [[fminus::range(0, 1)]] [[fminus::default(0.3)]] [[ui::label("Distance")]]
         [[ui::quantity("fraction")]] [[ui::help("0.5 m to 30 m: the level, the highs and the room's share go with it")]];
-    float room [[fminus::range(0, 1)]] [[fminus::default(0.15)]] [[ui::label("Room")]] [[ui::quantity("fraction")]];
-    float level [[fminus::range(-24, 12)]] [[fminus::default(0)]] [[ui::label("Level")]] [[ui::unit("dB")]]
+    float room [[fminus::range(0, 1)]] [[fminus::default(0.15)]] [[ui::label("Room")]]
+        [[ui::help("How much of the room's reverberation is heard")]] [[ui::quantity("fraction")]];
+    float level [[fminus::range(-24, 12)]] [[fminus::default(0)]] [[ui::label("Level")]]
+        [[ui::help("The output's overall level")]] [[ui::unit("dB")]]
         [[ui::decimals(1)]];
     float intake [[fminus::range(0, 1)]] [[fminus::default(0.5)]] [[ui::label("Intake")]] [[ui::quantity("fraction")]]
         [[ui::help("The intake's level against the exhaust")]];
@@ -27,11 +30,13 @@ module SoundSpec
         [[ui::choices("Reference", "Places")]]
         [[ui::help("Reference: the five views as they were. Places: every source where it is on the car, heard by its paths")]];
     int camera [[fminus::range(0, 7)]] [[fminus::default(0)]] [[ui::label("Camera")]]
+        [[ui::help("Where the listener is: at the tailpipe, behind, beside, in the engine bay, in the driver's seat, at the trackside or chasing")]]
         [[ui::choices("Tailpipe", "Rear", "Side", "Engine bay", "Driver", "Trackside", "Chase", "Free")]];
     int place [[fminus::range(0, 4)]] [[fminus::default(0)]] [[ui::label("Place")]]
         [[ui::choices("Hall", "Field", "Street", "Tunnel", "Garage")]]
         [[ui::help("Hall: the reference's room; the others their own reflections and reverberation")]];
     int enginePlace [[fminus::range(0, 2)]] [[fminus::default(0)]] [[ui::label("Engine place")]]
+        [[ui::help("Where the engine sits in the car; it sets the paths its sound takes to each camera")]]
         [[ui::choices("Front", "Mid", "Rear")]];
     float windows [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Windows")]] [[ui::quantity("fraction")]]
         [[ui::help("How far open: shut, the cabin hears the outside through its floor, firewall and glass")]];
