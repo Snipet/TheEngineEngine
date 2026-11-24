@@ -312,6 +312,9 @@ module ValveTel
     float exPhaseTarget [[ui::label("Exhaust phase asked")]] [[ui::quantity("angle")]] [[ui::help("Crank degrees of retard from parked")]];
     float exPhase [[ui::label("Exhaust phase")]] [[ui::quantity("angle")]];
     int stage [[fminus::range(0, 1)]] [[ui::label("Cam stage")]] [[ui::choices("A", "B")]];
+    int waiting [[ui::label("Waiting")]]
+        [[ui::help("Why the cams are not where asked, a bit each: 1 the intake phaser parked (no oil pressure), 2 the exhaust phaser parked, 4 the phasers slowed by cold oil, 8 the cam stage waiting for the coolant, 16 for oil pressure")]];
+    float waitTemp [[fminus::range(0, 1000)]] [[ui::label("Stage waits for")]] [[ui::unit("K")]] [[ui::help("The coolant temperature the cam stage waits for; 0: not waiting")]];
     float lift [[ui::label("Lift command")]] [[ui::quantity("fraction")]];
     int active [[ui::label("Active cylinders")]] [[ui::help("A bit a cylinder, in the layout's order")]];
     int floating [[fminus::range(0, 1)]] [[ui::label("Valve float")]];

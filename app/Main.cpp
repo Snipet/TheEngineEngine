@@ -79,6 +79,14 @@ namespace
         SDL_SetMainReady();
         SDL_SetAppMetadata("TheEngineEngine", TEE_VERSION, "com.snipet.theengineengine");
 
+        // ---- what was remembered: the bindings, the pedals' times, the audio buffer (shell/settings/Settings.h) ------
+        const settings::Loaded remembered = settings::load();
+        if (!remembered.note.empty())
+            std::fprintf(stderr, "settings: %s\n", remembered.note.c_str());
+        // a cold start: --cold, or the settings' (a machine's run as a person's: the settings it was given)
+        if (remembered.settings.coldStart)
+            o.cold = true;
+
         // ---- the engine: its program read here (the front end, a tenth of a second: the document and the parameters),
         // its machine code made on a worker while the window opens (the simulator's; the reference's is made here) ----
         o.background = true;
@@ -96,10 +104,6 @@ namespace
             std::fprintf(stderr, "%s\n", engine.warnings.c_str());
         Player& player = *engine.player;
 
-        // ---- what was remembered: the bindings, the pedals' times, the audio buffer (shell/settings/Settings.h) ------
-        const settings::Loaded remembered = settings::load();
-        if (!remembered.note.empty())
-            std::fprintf(stderr, "settings: %s\n", remembered.note.c_str());
         o.unitChoices = remembered.settings.unitChoices;
         // the engine's quality: --quality, else the settings' (made once the engine is ready: never changed by itself)
         const std::string quality = !o.quality.empty() ? o.quality : remembered.settings.audioQuality;
@@ -267,6 +271,8 @@ namespace
                 now.audioQuality = q == 1 ? "economy" : "full";
             };
         }
+        commandsContext.coldStart = [&now] { return now.coldStart; };
+        commandsContext.setColdStart = [&now](bool cold) { now.coldStart = cold; };
         commandsContext.audioChanged = [&] {
             audioLine = device.isOpen() ? device.info().line() : "no audio device";
             showStatus();
@@ -287,7 +293,8 @@ namespace
                 std::string error;
                 if (shown.document->open(launch.file, BuildPart::Whole, warnings, error))
                 {
-                    std::printf("file: %s, %s\n", launch.what, launch.file.string().c_str());
+                    std::printf("file: %s, %s (%s)\n", launch.what, launch.file.string().c_str(),
+                                shown.document->dirty() ? "with unsaved changes" : "clean");
                     // a first launch's hand-hold: the first build's notes on the frame's TRY FIRST card (U1's), until
                     // it is closed once (the settings remember that); the console gets their first line
                     if (launch.first)

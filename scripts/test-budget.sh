@@ -6,7 +6,7 @@
 #
 # The budgets are the whole fast tier's cap of 2400 CPU-s on CI's Linux runner (ten minutes of wall on four cores),
 # shared out by the lead's weights scaled by 2400 / 4500: null 580 (the guardian, kept whole), diesel,
-# exhaust and the host 135, vehicle 100 (20 of null's, 2026-11-24), every other package 80, and combo what is left (120). What does not fit goes to the soak
+# exhaust and the host 135, vehicle 100 (20 of null's, 2026-11-24), every other package 80, and combo 165 (the lead, 22:18). What does not fit goes to the soak
 # tier ([nightly]), by the owner's choice of what guards most per second.
 # A hosted runner is one of several machines, up to 1.4 times apart (2026-11-24: a Xeon 6975P-C and a Xeon Platinum
 # 8573C ran the same tests 1.37 times apart). Given tee-bench --quick's table of the same job as a second argument, the
@@ -25,7 +25,7 @@ if [ -n "${2:-}" ] && [ -f "$2" ]; then
 fi
 sed -nE 's/^ *[0-9]+\/ *[0-9]+ Test +#[0-9]+: (.*[^ .]) \.+ *([A-Za-z*]+.*) +([0-9.]+) sec$/\3\t\1/p' "$log" |
 awk -F'\t' -v scale="$scale" '
-  BEGIN { b["combo"] = 120; b["null"] = 580; b["vehicle"] = 100; b["diesel"] = 135; b["exhaust"] = 135; b["host"] = 135; other = 80; whole = 2400 }
+  BEGIN { b["combo"] = 165; b["null"] = 580; b["vehicle"] = 100; b["diesel"] = 135; b["exhaust"] = 135; b["host"] = 135; other = 80; whole = 2400 }
   {
     p = $2
     if (match(p, /^[A-Za-z0-9-]+[.:]/)) p = substr(p, 1, RLENGTH - 1); else p = "host"

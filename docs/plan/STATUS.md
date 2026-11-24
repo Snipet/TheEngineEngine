@@ -37,6 +37,34 @@
 
 ## Landed
 
+- **22:30 the lead's check-in; `main` fast-forwarded** 445453da to 40be51d2, the newest commit green on Linux and
+  macOS together (run 45496629256; Windows' newest green is 69c633d, run 45494891308): it carries M's first pump cut
+  and core's restated backflow check. Not moved to the tip: the steward has core's engine cases red locally at
+  174881c0 (EngineTest.cpp:398, at idle the exhaust valves' air 3.8 % off the intake valves' against 1 %) and is
+  bisecting. **The owner's reports since 22:08.** *The cam and the VVT:* fixed at the source: N1 sourced the two
+  gates and both were too strict (83f34ce5, D's 47eb6794): the second stage on the coolant the ECU reads at 10 C with
+  the oil-pressure switch (Honda's service text), the phasers commanded from cold and parked only without oil
+  pressure (SAE 2007-01-1640); the lead's render from cold on two-stage-cam-20: stage 1 at 6053 rpm at 4.9 s, oil
+  300 K. U2: VALVES and ENGINE say why in words from N1's `tel.valve.waiting` / `waitTemp` (ec9c0cd1, 9b46ad10,
+  f8ca8200), and ENGINE's section drew B's lift shrunken (5.7 and 8.5 mm for 8.5 and 12.65): fixed, fcf41db7. The
+  warm start: C's `LoadOptions::initial` (8c698820) and B's app side (1a7eadcc, `--cold`, "coldStart") are in, but
+  `Heat::stood()` cools the warm engine at the first configure of any build whose air differs from the default:
+  D's line, asked 22:26. *The hum:* the lead's cold-idle renders of first.json through Side, main's tree against
+  the tip: pump lines 760 / 3895 Hz -54.7 / -56.1 dBFS to -74.0 / -75.2 (M's -20 dB), voices over the engine alone
+  +19.5 to +3.3 dB at 1 kHz; M then -30 dB in all by the lead's ruling (1a3812e6) and the fan on at 373 K
+  (f074ab47). *Airy, the engine quieter:* with no voice at all Side at the Field is 10 dB down at 500 Hz and 6 to
+  9 dB up from 4 to 16 kHz against the reference's balance: L's, asked 22:01 and 22:13; L has a tank wall for the
+  pump (the mass law, 38 dB at 3.9 kHz) passing its tests and is pushing it; with it the lead's extra 10 dB at the
+  source is to be reviewed (two cures for one fault). **Also:** D's per-sample boost read (b7e64fa0, no cost); G
+  closed the turbine housings' gas by mass (0.997, 1.007) and measured the NA tail's overstatement (0.4 to 0.7 % of
+  torque: recorded, left); N2's design-point rule adopted (its table to be re-run on G's closing) and its knock
+  table proof on 14 archetypes (9 at every speed; C adds a second bake pass where retard sat at its ceiling); D2's
+  VGT brake governed and unmarked (908bbecd) and the diesels' idle lines traced to the clatter struck at the same
+  point every cycle (D2 gives it the burn's own timing) and to the turbine taking 20 to 24 dB off the exhaust's lows
+  at idle (G, N2); N3: the V12's "peak at 2049 rpm" is a dip (the primaries' wave in the baked map's overlap: N1's
+  bake checks midpoints next) and the intake's ram is about twice the published 6 to 9 % (damping, N1); P's
+  one-change quarter mile (9 of 15 miss, none of it the run; the automatics' brake-torque launch to card I); X:
+  each switch's decisions back in the fast tier, combo's budget 165.
 - **22:08 the owner's two reports, where they stand.** (2) **The two-stage cam and the VVT: explained, nothing
   regressed.** B drove the window by script on first.json (a2605a16, the nightly `shell.window.edits`): every valve
   edit is held and sent in all four cases (before the first start, running, after a restart, after a QUALITY change

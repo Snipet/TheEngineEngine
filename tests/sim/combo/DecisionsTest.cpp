@@ -142,19 +142,19 @@ namespace
 } // namespace
 
 TEST_CASE("decisions: each switch turned on while stopped reaches the engine it reaches at start: the default block 1 of 3",
-          "[nightly][combo][decisions]")
+          "[fast][fast-3][combo][decisions]")
 {
     eachSwitch("", 0, 3);
 }
 
 TEST_CASE("decisions: each switch turned on while stopped reaches the engine it reaches at start: the default block 2 of 3",
-          "[nightly][combo][decisions]")
+          "[fast][fast-3][combo][decisions]")
 {
     eachSwitch("", 1, 3);
 }
 
 TEST_CASE("decisions: each switch turned on while stopped reaches the engine it reaches at start: the default block 3 of 3",
-          "[nightly][combo][decisions]")
+          "[fast][fast-3][combo][decisions]")
 {
     eachSwitch("", 2, 3);
 }

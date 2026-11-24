@@ -80,6 +80,110 @@ namespace tee
             result.best.push_back(bestA);
             result.bestTorque.push_back(std::isfinite(bestT) ? bestT : std::numeric_limits<double>::quiet_NaN());
         }
+        // between the rows: the map's interpolated advance against the better of its two neighbours' (above), at each
+        // interval's quarter points (a tooth narrower than the grid's spacing falls anywhere between two rows: the V12's
+        // at 2000 to 2100 rpm lay between its 1165 and 2256 rpm rows, the midpoint 1710 clear of it). Every cell is swept
+        // there once (one curve a cell, as the grid's); the interpolated advance's torque is read between the two cells
+        // about it. Where it loses more than midLoss, the point becomes a row with its own best cell, the worst first,
+        // to the map's 16 rows
+        for (int pass = 0; options.refine && pass < 3 && result.speeds.size() >= 2 && result.speeds.size() < 16; ++pass)
+        {
+            const int addedBefore = result.added;
+            struct Probe
+            {
+                double speed, frac;
+                std::size_t lo;
+            };
+            std::vector<Probe> probes;
+            std::vector<double> at;
+            for (std::size_t s = 0; s + 1 < result.speeds.size(); ++s)
+                for (const double f : {0.25, 0.5, 0.75})
+                {
+                    probes.push_back({result.speeds[s] + f * (result.speeds[s + 1] - result.speeds[s]), f, s});
+                    at.push_back(probes.back().speed);
+                }
+            std::vector<std::vector<double>> tAt(result.advances.size()), kAt(result.advances.size());
+            for (std::size_t a = 0; a < result.advances.size(); ++a)
+            {
+                if (cancel != nullptr && cancel->load())
+                {
+                    error = "cancelled";
+                    return false;
+                }
+                Build held(build.fields());
+                std::vector<std::string> warnings;
+                if (!held.load(build.save(), BuildPart::Whole, warnings, error))
+                    return false;
+                held.set("valve.inPhaseRange", 0.0);
+                held.set("valve.inCentre", result.parkedCentre - result.advances[a]);
+                PredictOptions po = options.predict;
+                po.speeds = at;
+                PredictCurve curve;
+                if (!predictCurve(sim, held, po, curve, error, cancel))
+                    return false;
+                for (const PredictPoint& p : curve.points)
+                {
+                    tAt[a].push_back(p.valid ? p.torque : std::numeric_limits<double>::quiet_NaN());
+                    kAt[a].push_back(p.knockRetard);
+                }
+            }
+            // the torque at advance adv at probe k: between the two cells about it
+            auto torqueAt = [&](double adv, std::size_t k) {
+                std::size_t i = 0;
+                while (i + 1 < result.advances.size() && result.advances[i + 1] < adv)
+                    ++i;
+                if (i + 1 >= result.advances.size())
+                    return tAt[i][k];
+                const double f = (adv - result.advances[i]) / (result.advances[i + 1] - result.advances[i]);
+                return tAt[i][k] + std::clamp(f, 0.0, 1.0) * (tAt[i + 1][k] - tAt[i][k]);
+            };
+            struct Add
+            {
+                double speed, loss, best, bestT;
+                std::size_t k;
+            };
+            std::vector<Add> adds;
+            const std::vector<double> gridBest = result.best;
+            for (std::size_t k = 0; k < probes.size() && k < tAt.front().size(); ++k)
+            {
+                const Probe& pr = probes[k];
+                const double aI = gridBest[pr.lo] + pr.frac * (gridBest[pr.lo + 1] - gridBest[pr.lo]);
+                const double tI = torqueAt(aI, k);
+                const double better = std::fmax(torqueAt(gridBest[pr.lo], k), torqueAt(gridBest[pr.lo + 1], k));
+                double bestT = -std::numeric_limits<double>::infinity(), bestA = 0.0;
+                for (std::size_t a = 0; a < result.advances.size(); ++a)
+                {
+                    const double t = tAt[a][k];
+                    if (!std::isfinite(t) || kAt[a][k] > kAt.front()[k] + options.knockLimit)
+                        continue;
+                    if (t > bestT)
+                        bestT = t, bestA = result.advances[a];
+                }
+                const double ref = std::fmax(better, bestT);
+                if (std::isfinite(tI) && std::isfinite(ref) && tI < (1.0 - options.midLoss) * ref && std::isfinite(bestT))
+                    adds.push_back({pr.speed, 1.0 - tI / ref, bestA, bestT, k});
+            }
+            std::sort(adds.begin(), adds.end(), [](const Add& x, const Add& y) { return x.loss > y.loss; });
+            for (const Add& ad : adds)
+            {
+                if (result.speeds.size() >= 16)
+                    break;
+                std::size_t pos = 0;
+                while (pos < result.speeds.size() && result.speeds[pos] < ad.speed)
+                    ++pos;
+                result.speeds.insert(result.speeds.begin() + static_cast<std::ptrdiff_t>(pos), ad.speed);
+                for (std::size_t a = 0; a < result.advances.size(); ++a)
+                {
+                    result.torque[a].insert(result.torque[a].begin() + static_cast<std::ptrdiff_t>(pos), tAt[a][ad.k]);
+                    result.knock[a].insert(result.knock[a].begin() + static_cast<std::ptrdiff_t>(pos), kAt[a][ad.k]);
+                }
+                result.best.insert(result.best.begin() + static_cast<std::ptrdiff_t>(pos), ad.best);
+                result.bestTorque.insert(result.bestTorque.begin() + static_cast<std::ptrdiff_t>(pos), ad.bestT);
+                result.added += 1;
+            }
+            if (result.added == addedBefore)
+                break;   // (again over the intervals the new rows made, to three passes: a row can spoil its neighbours')
+        }
         result.wallSeconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
         return true;
     }

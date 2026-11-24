@@ -34,7 +34,7 @@ car.speedNow(), set.drive != 0, vTotal, lay.n`, a custom engine's `shake.fx/fy/m
 lay.rotary`; `Listen::mix`: M's seven voices, `vo.all`, `ex.mouth`). `sim/README.md`: Listen's entry. Wanted: (1) D: `shake.update`
 for every engine, not only custom (the boom then has the free forces for the reference's layouts too); (2) G, at its
 integration: each radiating end's signal and tag to Listen (one source each: today the two channels); (3) lead:
-`spec/telemetry.fm` should include `limits.fm` itself. **Not done**: each turbo, each tyre as its own place; a rider
+`spec/telemetry.fm` should include `limits.fm` itself. **Open**: the cabin passes M's fan 8 dB over the reference's (`the voices through Places`, tolerance 9). **Not done**: each turbo, each tyre as its own place; a rider
 a replay (the host's). Scenarios for the pack: tests/sim/listen/scenarios/ (16). **FMinus**: no issue met.
 **Listen to** (nobody has): first the three of listen.md's "What a person should listen to" marked first; then the
 V8 past trackside, every camera while revving, the cabin shut and open, a single, a flat-plane four and a V12 in turn.
