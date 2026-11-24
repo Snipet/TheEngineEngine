@@ -16,21 +16,21 @@
   each run (cold, green, amber, hot, ... with long dash, dot-dash, dash, dots in turn): colour and dash differ, never
   colour alone. Each row has a box to show or hide it, a sample of its two strokes, its name and its peaks. The newest
   runs are listed when they do not all fit, with a count of those left out.
-- **A run.** The plan (engine or chassis; from, to, rate, pedal; gear for a chassis run), START RUN and STOP. While a
-  run goes the plot shades the span swept so far (from the plan's rate) and the plan's box says, in words, where it
-  is and how long it should take; when it lands it is chosen and its peaks are said.
+- **A run.** The plan (engine or chassis; a sweep at a rate, or steps every 500 rpm each held for a dwell; from, to,
+  pedal; the gear for a chassis run), START RUN and STOP. While a run goes it draws itself from the runner's points
+  (`DynoSource::runSoFar()`) in the stroke it will keep, the span swept so far shaded, and the plan's box says where it
+  is in words with a bar; when it lands it is chosen and its peaks are said.
 
 ## What is clickable
 
 A row (chooses it: the header's readouts, the NAME field and COPY CSV follow it); a row's box (shows or hides it);
-NAME (renames a run: Enter keeps it; the predicted and before curves are not renamable); COPY CSV (the chosen curve as
-`speed_rad_s,rpm,torque_N_m,power_kW,<fields>` to the clipboard); the band's four buttons; the plan's buttons and
+NAME (renames a run: Enter keeps it; the predicted and before curves are not renamable); SAVE CSV through the frame's save service, or COPY CSV to the clipboard
+without one (the chosen curve as `speed_rad_s,rpm,torque_N_m,power_kW,<fields>`); the band's four buttons; the plan's buttons and
 steppers.
 
 ## What is derived
 
-Nothing is invented: every number is a `DynoTrace`'s. The swept span of a run in progress is estimated from the plan
-(the source gives no partial trace yet). The plan is this workspace's state, not a Spec field, so it is on the stage
+Nothing is invented: every number is a `DynoTrace`'s. The plan is this workspace's state, not a Spec field, so it is on the stage
 and `sections()` is empty.
 
 Tests: `ui.dyno.stage`, `ui.dyno.large` (with `dyno.paper`), `ui.dyno.run`, `ui.dyno.absent`, `ui.dyno.sheet`.

@@ -1,7 +1,5 @@
-// ui/views/tune/TuneDemo.h: what the TUNE workspace's tests and pictures add to U1's demo (ui/app/Demo.h) until its
-// hook for a workspace's own demo data is there: a plausible spark map in the document, and the ECU's live values
-// the demo's telemetry does not have yet (lambda asked and measured, knock, advance, the ECU's flags), as functions
-// of the script's time. Kept here, in one place, so they move into the hook in a minute.
+// ui/views/tune/TuneDemo.h: what TUNE's tests and pictures put in the demo document: a plausible spark map (U1's demo
+// hook adds fields and telemetry, not a table's values). The live values are TuneDemo.cpp's hook.
 #pragma once
 
 #include "app/Demo.h"
@@ -41,22 +39,5 @@ namespace tee::ui::tunedemo
         doc.beginGesture();
         doc.setMap(f, m);
         doc.endGesture();
-    }
-
-    // The ECU's live values at the script's time t (seconds; the demo's pull is 2 to 6 s, the limiter 6 to 6.4).
-    inline void setLive(DemoEngine& e, double t)
-    {
-        const double rpm = e.value(e.findValue("engine.speed")) / chart::kRpm;
-        const double plate = e.value(e.findValue("engine.throttle"));
-        const double target = plate > 0.8 ? (rpm > 4000.0 ? 0.82 : 0.86) : 1.0;
-        e.set("ecu.lambda", target);
-        e.set("exhaust.lambda", target + 0.025 * std::sin(t * 9.0) + (plate > 0.8 ? 0.02 : 0.0));
-        const bool knocking = rpm > 4300.0 && rpm < 5600.0 && plate > 0.9;
-        e.set("ecu.knock", knocking ? 0.35 + 0.3 * std::fabs(std::sin(t * 23.0)) : 0.0);
-        e.set("ecu.knockRetard", knocking ? std::min(4.5, (t - 4.6) * 3.0 + 1.5) : (rpm > 5600.0 && plate > 0.9 ? 1.5 : 0.0));
-        e.set("ecu.spark", (plate > 0.8 ? 20.0 : 32.0) + rpm / 1000.0 - (knocking ? 3.0 : 0.0));
-        const bool limiter = t >= 6.0 && t < 6.4;
-        const bool overrun = t >= 6.6 && t < 7.4;
-        e.set("ecu.flags", (limiter ? 1 + 2 : 0) + (overrun ? 8 + 2 : 0) + (knocking ? 1024 : 0));
     }
 }
