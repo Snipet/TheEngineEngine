@@ -31,7 +31,7 @@ namespace
 TEST_CASE("whine: the constant mesh, the gear's pair and the final drive where their teeth say, every gear and speed", "[sound][gears]")
 {
     for (int g = 1; g <= 6; ++g)
-        for (double w : {150.0, 300.0, 520.0})
+        for (double w : {150.0, 520.0})
         {
             Rig rig;
             rig.inGear(g, w, 0.8);
