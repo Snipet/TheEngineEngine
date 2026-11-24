@@ -169,7 +169,9 @@ tee_ui_warnings(tee_ui_app)
 
 # J2: the binding to card C's tee::Build (ui/kit/bind/host/), where the host library is (the root's build).
 if(TARGET tee_host)
-  add_library(tee_ui_build STATIC "${TEE_UI_DIR}/kit/bind/host/BuildDoc.cpp" "${TEE_UI_DIR}/kit/bind/host/BuildDoc.h")
+  add_library(tee_ui_build STATIC "${TEE_UI_DIR}/kit/bind/host/BuildDoc.cpp" "${TEE_UI_DIR}/kit/bind/host/BuildDoc.h"
+    # U1: the frame's dyno and Scope over the host (ServiceDyno, SimScope)
+    "${TEE_UI_DIR}/app/host/HostSources.cpp" "${TEE_UI_DIR}/app/host/HostSources.h")
   target_link_libraries(tee_ui_build PUBLIC tee_ui_app tee_host)
   tee_ui_warnings(tee_ui_build)
 endif()

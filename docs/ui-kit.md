@@ -224,3 +224,32 @@ differently changes them. FunkGui's sources are compiled inside whatever links `
 library), with that target's flags: the tests' copy (`tee_ui_test_funkgui`) is built with `-ffp-contract=off`, as
 our own code is, because Apple's clang on arm64 otherwise fuses multiply-adds in FunkGui's geometry (its default
 is `-ffp-contract=on`, and arm64 has FMA) and the six J1 goldens failed there alone (run 45390597717).
+
+# U1: the frame and the workspaces
+
+*Package U1 (docs/plan/ui-design.md). How a workspace is written, registered, tested and pictured:
+[handoffs/u1-interface.md](handoffs/u1-interface.md).*
+
+| Path | What |
+|---|---|
+| `ui/app/Workspace.h` | `Workspace` (a `Board` keeping to its stage), `WorkspaceContext`, `Selection`, `ScopeSource`, `DynoSource`, `Live`, `FrameServices`, `registeredWorkspaces()`. |
+| `ui/app/Look.h` | `look::Palette` (colours by meaning for graphite and paper), the type and line styles, `region`, `readout`, `level`, `pipe`, `selectRing`, `lamp`, `placeholder`, `num`. |
+| `ui/app/AppFrame.*` | The window: top bar, rail, stage, inspector (selection, tabs, units page), dyno ribbon, cockpit; `needsDraw`. J2's screen names kept for the shell's `--workspace`. |
+| `ui/app/Panes.*` | The stage's workspace and the inspector's page side by side as one inner Panel (input routed by place, ids tagged). |
+| `ui/app/Cockpit.*` | `RpmBar`, `Readout`, `PedalBar`, `DynoRibbon`. |
+| `ui/app/Placeholders.*` | A workspace's stand-in until its package lands; the garage's (J2's list, load, rename, save); `NoDyno`, `NoScope`. |
+| `ui/app/Demo.*` | `demoFields()`, `DemoEngine` (telemetry, Scope, dyno; `set`, `forget`, `hold`), `DemoRig`. |
+| `ui/app/host/HostSources.*` | `ServiceDyno` (over `tee::DynoService`), `SimScope` (over `SimHost::scope`): in `tee_ui_build`, the root's build only. |
+| `ui/views/<id>/` | A workspace each; `register.h` puts it on the rail (generated `WorkspaceRegistry.cpp`). `drive/` is U1's. |
+| `tests/ui/views/` | `tee-view-tests`: `ViewKit.h`, the frame's tests (`frame.*`), DRIVE's (`drive.*`), each package's own file. |
+
+**The inspector.** With nothing selected (or a selection with no fields), a workspace's `sections()` (and, on ENGINE,
+every section no workspace names): a section's scalar fields on a generated page (cut at 60 controls), each table on a
+page of its own. A selection shows the fields under its path. A workspace's `inspectorPage()` replaces both. A
+workspace with no section and no page shows the units. The pages are J2's `FieldPage`s, laid into the inspector's room
+by `GuiPanel::setInsets` (added here).
+
+**Drawing only when something changed.** `AppFrame::needsDraw()` mixes every shown item's `drawKey()` (the frame's,
+the workspace's, the inspector page's), the workspace's own `drawKey()`, the document's, the selection's, the units'
+and the dyno's revisions, and is true after any input or while anything eases (`ui.frame.idle`). It runs at full rate
+while the engine cranks or runs (live values), while the dyno works, or while the workspace says `moving()`.

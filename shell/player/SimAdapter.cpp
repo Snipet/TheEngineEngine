@@ -194,6 +194,12 @@ namespace tee::player
         return have_ ? frame_->get(*tel_[static_cast<std::size_t>(handle)]) : 0.0;
     }
 
+    double SimAdapter::load() const
+    {
+        refresh();
+        return have_ ? frame_->host.loadMean : 0.0;
+    }
+
     float SimAdapter::outputPeak() const
     {
         refresh();
