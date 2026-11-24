@@ -215,7 +215,7 @@ namespace tee::ui
         std::vector<Button*> rail_;
         Widget* railMarks_ = nullptr;
         Label *name_ = nullptr, *sentence_ = nullptr, *status_ = nullptr;
-        Bar *level_ = nullptr, *load_ = nullptr;
+        Bar *level_ = nullptr, *load_ = nullptr, *limiter_ = nullptr;
         Button *undo_ = nullptr, *redo_ = nullptr;
         // the cockpit
         Button* start_ = nullptr;

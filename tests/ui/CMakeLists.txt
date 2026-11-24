@@ -89,14 +89,26 @@ endforeach()
 
 # J2: the binding over card C's tee::Build with the real Spec (sim/), where the host is (the root's build).
 if(TARGET tee_ui_build)
-  add_executable(tee-ui-build-tests BuildTests.cpp)
+  # Every tests/ui/build/*.cpp is compiled in beside BuildTests.cpp, and the names of their BUILD_TEST(ident, "name")
+  # lines are CTest tests "ui.<name>" (tests/ui/build/BuildKit.h): a package adds a file and nothing else.
+  file(GLOB _tee_build_test_sources CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/build/*.cpp")
+  set(TEE_BUILD_TESTS "")
+  foreach(_f IN LISTS _tee_build_test_sources ITEMS "${CMAKE_CURRENT_SOURCE_DIR}/BuildTests.cpp")
+    file(STRINGS "${_f}" _lines REGEX "^[ \t]*BUILD_TEST\\([A-Za-z0-9_]+, *\"[^\"]+\"\\)")
+    foreach(_l IN LISTS _lines)
+      string(REGEX REPLACE ".*BUILD_TEST\\([A-Za-z0-9_]+, *\"([^\"]+)\"\\).*" "\\1" _n "${_l}")
+      list(APPEND TEE_BUILD_TESTS "${_n}")
+    endforeach()
+  endforeach()
+  add_executable(tee-ui-build-tests BuildTests.cpp build/BuildKit.h ${_tee_build_test_sources})
+  target_include_directories(tee-ui-build-tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
   target_link_libraries(tee-ui-build-tests PRIVATE tee_ui_build tee_ui_test_funkgui)
   tee_ui_warnings(tee-ui-build-tests)
   target_compile_definitions(tee-ui-build-tests PRIVATE
     "TEE_UI_SIM_DIR=\"${TEE_UI_REPO}/sim\""
     "TEE_UI_BUILDS_DIR=\"${TEE_UI_REPO}/content/builds\""
     "TEE_UI_OUT_DIR=\"${TEE_UI_REPO}/out/ui\"")
-  foreach(_t build.frame build.set build.files build.dyno build.scope)
+  foreach(_t IN LISTS TEE_BUILD_TESTS)
     add_test(NAME ui.${_t} COMMAND tee-ui-build-tests ${_t})
   endforeach()
 endif()

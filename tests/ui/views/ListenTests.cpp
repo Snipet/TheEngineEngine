@@ -7,6 +7,7 @@
 #include "app/Look.h"
 #include "views/listen/ListenWorkspace.h"
 
+#include <funkgui/canvas/Prim.h>
 #include <funkgui/core/Theme.h>
 
 #include <cmath>
@@ -57,8 +58,19 @@ namespace
         }
         std::string faults()
         {
-            return tee::test::u5::textFaults(host->draw(), { 0.0f, 0.0f, static_cast<float>(w), static_cast<float>(h) },
-                                             { ws->plan(), ws->column(), ws->bar() });
+            const funkgui::PrimList& prims = host->draw();
+            std::string why = tee::test::u5::textFaults(prims, { 0.0f, 0.0f, static_cast<float>(w), static_cast<float>(h) },
+                                                        { ws->plan(), ws->column(), ws->bar() });
+            if (!why.empty())
+                return why;
+            // No glyph on a wheel (the lead found "TANK / silent" over the right rear one).
+            for (const funkgui::Prim& p : prims.prims)
+                if (static_cast<int>(p.d2[2] + 0.5f) == static_cast<int>(funkgui::PrimKind::text))
+                    for (const funkgui::Rect& r : ws->wheelRects())
+                        if (p.x1 - 1.5f > r.x && p.x0 + 1.5f < r.right() && p.y1 - 1.5f > r.y && p.y0 + 1.5f < r.bottom())
+                            return "a glyph at " + std::to_string(static_cast<int>(p.x0)) + "," + std::to_string(static_cast<int>(p.y0))
+                                 + " lies on a wheel";
+            return {};
         }
     };
 

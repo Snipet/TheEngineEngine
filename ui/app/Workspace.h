@@ -165,6 +165,8 @@ namespace tee::ui
         virtual double progress() const = 0;              // 0..1 of the one being made
         virtual std::string error() const { return {}; }  // why there is no curve ("" : no error)
         virtual std::uint64_t revision() const = 0;       // moves when any curve or the state above changes
+        // How many predicted curves were asked for so far (one drag: one request, after its quiet); 0: not counted.
+        virtual std::uint64_t requests() const { return 0; }
         // Runs (the DYNO workspace's): listed, started, stopped. A source with no runner has none and starts none.
         virtual int runCount() const { return 0; }
         virtual const DynoTrace& run(int i) const;

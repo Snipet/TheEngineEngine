@@ -6,7 +6,7 @@
 **The plan (FROM ABOVE)**: the car drawn to the build's `car.wheelbase` and `car.track` (a bike when `car.kind` is
 Motorcycle), its front marked in words; every sound source a dot at its place in the car's frame (x right, y forward
 from the rear bumper), its size its level at the listener, its name and level beside it (sources at one place share a
-label: "ENGINE, TURBO"); a silent source hollow and "silent", an unknown level "-". The listener: a point in the accent
+label: "ENGINE, TURBO"); a silent source a hollow dot without a label until it sounds, an unknown level "-"; no label on a wheel (the test checks). The listener: a point in the accent
 with its facing and a handle that turns it, rings of distance (1, 2, 5, 10, 20, 30 m) numbered where there is room,
 its camera in words. Drag the listener and the camera becomes FREE at the place it is dropped (`sound.listenerX`,
 `listenerY`, camera 7, one undo step); drag the handle to turn it (`sound.facing`, 5 degree steps). The place drawn
