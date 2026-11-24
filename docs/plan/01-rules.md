@@ -26,6 +26,11 @@ and the lead (the session that wrote these files) settles what a card leaves ope
   integration branch itself, commit small and often, and before every push run
   `git fetch origin claude/awesome-gates-ntdb58 && git merge --no-edit FETCH_HEAD`; never force-push, never rebase
   what you have pushed.
+- **`main`** is the repository's default branch (the owner's, since 2026-11-24 20:05 UTC). Only the lead moves it,
+  and only forward: at each lead check-in, when the integration branch's tip compiles, `scripts/lint.sh` is clean and
+  the newest finished fast-tier job on each platform is green, the lead fast-forwards `main` to that tip
+  (`git push origin <sha>:refs/heads/main`, never forced); otherwise `main` stays and the status file says why. No
+  package pushes to `main`, opens a pull request to it, or bases work on it: the integration branch is ahead of it.
 - Commit messages: `area: what changed` in the imperative, a body when the why is not obvious. End every message
   with the trailers your own session's instructions give. No model names anywhere else in the repository.
 - Push after every step that builds and passes its tests. Unpushed work is lost when a container is reclaimed.
