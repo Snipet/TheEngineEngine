@@ -54,6 +54,25 @@ namespace d2
         }
 
         double tel(const std::string& name) const { return get("tel." + name); }
+
+        // any field of the instance by path ("heat.tCool"), as tests/sim/core/Engine.h writes them
+        void write(const std::string& path, double v)
+        {
+            std::string error;
+            const bool ok = player->instance().write(player->schema(), path, v, error);
+            INFO(path << ": " << error);
+            REQUIRE(ok);
+        }
+
+        // held warm, as tee-render's "warm" scenarios hold it (host/include/tee/Warm.h)
+        void holdWarm()
+        {
+            write("heat.tCool", 368.0);
+            write("heat.tOil", 378.0);
+            write("heat.tSurf", 455.0);
+            write("heat.warm", 1.0);
+            write("heat.warmS", 1.0);
+        }
         tee::EnginePlayer::Controls& ctl() { return player->controls(); }
 
         // seconds of sound; false once it stops or writes something not finite or past full scale
