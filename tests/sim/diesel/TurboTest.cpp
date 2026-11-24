@@ -88,10 +88,11 @@ TEST_CASE("diesel turbo: a big single's lag you can count; variable vanes reach 
     CHECK(vgt.boost >= 0.95 * single.boost);
 }
 
-TEST_CASE("diesel turbo: at 1300 rpm variable vanes make at least a fixed big single's boost, and sooner", "[diesel][turbo][!mayfail]")
+TEST_CASE("diesel turbo: at 1300 rpm variable vanes make at least a fixed big single's boost, and sooner", "[diesel][turbo]")
 {
-    // FAILING ON A NAMED FINDING (sent to N2): on truck-15l-six with H's fuel model the vanes reach the single's 90 %
-    // (187 kPa) in 3.1 s against the single's 2.1 s at 1300 rpm, though they end higher (212 against 208 kPa).
+    // (marked [!mayfail] while the vanes lagged the single on H's fuel model: 3.1 against 2.1 s to 187 kPa; N2's
+    // e12b230, the surge guard retuned, gives 1.75 against 1.95 s, 211 against 208 kPa. The measure, agreed with N2:
+    // the same absolute boost for both, 90 % of the single's final)
     // Was "twice the single's" while the turbine's back pressure did not reach the cylinders (59 against 192 kPa); then
     // failed on card F's vane loop settling low (N2's back-pressure limit, 5eaac6f: lead's ruling 18:31). N2's surge
     // guard (cf888e2) fixed the loop: VGT 209 kPa, 90 % in 4.1 s; the single 184 kPa in 4.4 s. Now plain.
