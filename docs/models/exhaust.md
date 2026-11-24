@@ -174,7 +174,7 @@ path from `scopePort`'s primary to its tail, spaced by length, every 128 samples
 **Cost** (dev build, this container, R = 2549 ns a 96 kHz sample by `tee-bench --quick`): the reference's own exhaust
 some 920 to 1200 ns a sample on the V8 (the harness's copy, noisy with the machine's load); the builder on the same
 topology +220 to +300 ns (0.09 to 0.12 R): 21 pipes, 54 to 62 ns a pipe with its junctions. A dual system with an X,
-quarter-wave stubs and bypass valves: 32 pipes, +800 ns over the reference's exhaust (0.31 R): over the card's 0.25 R,
+quarter-wave stubs and bypass valves: 32 pipes, +800 ns over the reference's exhaust (0.31 R) standalone; in the engine 1.48 R against 1.04 R (+0.44 R, tee-bench --engine): over the card's 0.25 R,
 nearly all of it the 11 more pipes at the reference's own cost a pipe.
 
 ## In the engine (measured)
