@@ -118,6 +118,12 @@ if(TEE_COMPILER_CACHE AND NOT DEFINED CMAKE_CXX_COMPILER_LAUNCHER)
     message(STATUS "TheEngineEngine: compiling through ${TEE_CCACHE}")
   endif()
 endif()
+# A precompiled header makes each file compiled with it uncacheable (ccache: "could not use precompiled header";
+# sccache does not cache it either): SDL3 compiles its 270 files with one, in each of CI's two trees, every run. Under
+# a compiler cache nothing is precompiled (none of our targets asks; this reaches the dependencies).
+if(CMAKE_CXX_COMPILER_LAUNCHER OR CMAKE_C_COMPILER_LAUNCHER)
+  set(CMAKE_DISABLE_PRECOMPILE_HEADERS ON)
+endif()
 
 # ---- FMinus ----------------------------------------------------------------------------------------------------------
 # A subproject: its library and runtime only (it leaves its tests, tools and examples out when it is not the top

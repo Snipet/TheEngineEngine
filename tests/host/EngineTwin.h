@@ -1,5 +1,5 @@
 // tests/host/EngineTwin.h: K3a's EnginePlayer rendering a build and a scenario, behind a function, so that the test
-// that compares SimHost with it need not include EnginePlayer.h (whose tee::Build is another class than the document).
+// that compares SimHost with it need not include EnginePlayer.h (K3's renderer; tee::EngineBuild is its build).
 #pragma once
 
 #include <string>

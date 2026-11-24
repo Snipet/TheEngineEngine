@@ -31,7 +31,9 @@ namespace tee::app
         bool bufferGiven = false;       // without it, the settings file's
         int theme = 0;                  // --theme 0|1
         bool themeGiven = false;        // the window follows the saved preference without it
-        double dpi = 1.0;               // --dpi X: a headless picture's pixels a logical px
+        double dpi = 1.0;               // --scale S (or --dpi S): a headless picture's pixels a logical px
+        int width = 0, height = 0;      // --size WxH: the logical size (0: the Panel's own)
+        double dynoWait = 0.0;          // --dyno-wait S: tee-headless waits for the dyno's first curve
         std::string panel;              // --panel plain: the shell's own plain Panel, not the interface package's
         bool refPanel = false;          // --ref-panel: the reference engine in its own panel (as --engine ref)
         std::string workspace;          // --workspace ID[:PAGE]: the frame opens on that workspace (its name on the rail)

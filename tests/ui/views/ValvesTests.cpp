@@ -218,3 +218,41 @@ namespace
         return 0;
     }
 }
+
+#include "kit/bind/Binding.h"
+
+namespace
+{
+    // Each selection's page opens with no notes; a cam's page leads with the stage that runs.
+    VIEW_TEST(testValvesInspector, "valves.inspector")
+    {
+        LabRig rig(1100, 700, 1.0f);
+        CHECK(rig.ws->inspectorPage().empty());
+        const auto open = [&](const char* path, const char* picture) {
+            rig.selection.select(path);
+            const std::string gui = rig.ws->inspectorPage();
+            tee::ui::GuiPanel::Options o;
+            o.width = 320;
+            tee::ui::FieldPage page(rig.doc, rig.units, rig.engine, { { "page.gui", gui } }, o);
+            CHECK_MSG(page.notes().empty(), page.notes());
+            if (picture != nullptr)
+            {
+                funkgui::HeadlessHost host(page, 0, 1.0f);
+                host.tick(2);
+                tee::test::views::picture(picture, host);
+            }
+            return tee::ui::fieldsOfGui(rig.doc, gui);
+        };
+        std::vector<int> in = open("valve.intake", "valves.inspector.intake");
+        CHECK(!in.empty() && rig.doc.info(in.front()).path == "valve.inKind");
+        CHECK(rig.ws->inspectorPage().find("valve.inDurSeat ") < rig.ws->inspectorPage().find("valve.inDurSeatB"));
+        CHECK(rig.ws->inspectorPage().find("valve.intakeDuration") == std::string::npos);   // E's path, not the demo's too
+        rig.engine.set("valve.stage", 1.0);
+        in = open("valve.intake", nullptr);
+        CHECK(rig.ws->inspectorPage().find("valve.inDurSeatB") < rig.ws->inspectorPage().find("valve.inDurSeat "));
+        for (const char* p : { "valve.exhaust", "valve.timing", "valve.head", "valve.phasers", "valve.springs" })
+            CHECK_MSG(!open(p, nullptr).empty(), p);
+        open("valve.springs", "valves.inspector.springs");
+        return 0;
+    }
+}

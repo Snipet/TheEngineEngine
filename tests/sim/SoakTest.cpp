@@ -74,7 +74,7 @@ TEST_CASE("sim: random pedals and dials stay finite and within full scale", "[si
 TEST_CASE("sim: a reset gives what a fresh instance gives", "[sim][reset]")
 {
     auto player = test::enginePlayer(48000.0);
-    const Build build = test::engineBuild(*player, "v8");
+    const EngineBuild build = test::engineBuild(*player, "v8");
     const EngineScenario scenario = test::engineScenario("drive-car");
     RenderOptions options;
     options.seconds = 6.0;
