@@ -10,6 +10,7 @@
 #include "tee/Sim.h"
 #include "tee/SimHost.h"
 #include "tee/Telemetry.h"
+#include "tee/Warm.h"
 
 #include <algorithm>
 #include <array>
@@ -110,6 +111,8 @@ namespace tee::player
         lo.sampleRate = options.sampleRate;
         for (const auto& [path, value] : options.hold)
             lo.hold.push_back({ path, value });
+        if (options.warm)
+            lo.initial = warmEngine();
 
         // The front end alone, here: the program's errors, its Schema and its Fields (a tenth of a second). The
         // machine code is not made: no function is looked up.

@@ -248,12 +248,13 @@ TEST_CASE("phaser: a step at its slew rate, slower cold, parked colder, never ou
     const int at025 = static_cast<int>(0.25f / d16);
     CHECK(warm[static_cast<std::size_t>(at01)] == Catch::Approx(20.0).margin(0.5));
     CHECK(warm[static_cast<std::size_t>(at025)] == Catch::Approx(40.0).margin(1e-3));
-    // cold oil (50 C) moves it slower; colder than 40 C it stays parked
+    // cold oil (50 C) moves it slower; colder than 40 C it moves at a quarter of its rate, not parked (a phaser is
+    // commanded from a cold start, slower in thick oil: US 7,467,611, SAE 2007-01-1640; card N1, the owner's report)
     std::vector<float> cool;
     run(323.0f, 300000.0f, 40.0f, 0.4f, &cool);
     CHECK(cool[static_cast<std::size_t>(at01)] < 0.6f * warm[static_cast<std::size_t>(at01)]);
     CHECK(cool[static_cast<std::size_t>(at01)] > 0.0f);
-    CHECK(run(300.0f, 300000.0f, 40.0f, 0.4f, nullptr) == 0.0f);
+    CHECK(run(300.0f, 300000.0f, 40.0f, 0.4f, nullptr) == Catch::Approx(20.0).margin(0.5));
     // no oil pressure: parked
     CHECK(run(363.0f, 30000.0f, 40.0f, 0.4f, nullptr) == 0.0f);
     // a target past its stops: held at them
