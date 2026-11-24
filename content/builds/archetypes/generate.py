@@ -784,7 +784,7 @@ BAKED_CAMS = False
 
 def _cams():
     """{slug: the saved ecu.maps.camIn} from cam-maps.json, while BAKED_CAMS is on."""
-    path = os.path.join(HERE, "cam-maps.json")
+    path = os.path.join(HERE, "data", "cam-maps.json")
     return json.load(open(path)) if BAKED_CAMS and os.path.exists(path) else {}
 
 
