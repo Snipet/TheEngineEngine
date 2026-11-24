@@ -64,3 +64,21 @@ build-dev/q/qbench --a sim --b sim --builds out/q/b/turbo-v8-dual-none.json,out/
     --scenarios drive-car --repeat 4 --seconds 8
 build-dev/bin/tee-bench --engine --builds v8 --scenarios drive-car,free-revs --repeat 5
 ```
+
+## The exhaust builder in the engine (added at about 16:55 UTC, after G's wiring cf267fb)
+
+qbench, A = B, least of 8 renders of 8 s; R = the reference V8 in the same session (1854 ns free-revs, 1955 drive-car):
+
+| Build | free-revs | drive-car |
+|---|---:|---:|
+| `exhaust.model` 0 (v8) | 0.99 R | 0.95 R |
+| model 1, the reference's topology (`content/builds/exhausts/reference-topology.json`) | 1.13 R (+0.13) | 1.09 R (+0.14) |
+| model 1, dual X, quarter-wave stubs, valved mufflers (`dual-x-resonated-valved.json`) | 1.43 R (+0.44) | 1.32 R (+0.37) |
+
+G's own (tee-bench, least of 3, free-revs): +0.17 and +0.44 R: the same within the noise. The twin-turbo V8 with
+that exhaust and every model on is therefore about 1.85 R. The builder's overhead at the reference's own topology is
+its generic junction path (profile, drive-car: `xNode` 113, `XNet::step` 101, `solveNode` 94, `solvePair` 61,
+`solveOpen` 51, `builderStep` 47 ns, the bands, shape and heat some 60, against model 0's specialised `Exhaust::step`
+of about 250) plus 115 ns more in the pipes' reads and writes. The pipes as arrays inside the builder (`XNet::read`
+over `used[]`, prototyped): exact, 0.981 / 0.986 at the reference topology, 1.023 / 1.001 on the dual X: nothing
+measurable; not landed. Compile with the builder: 4.8 to 6.4 s here (586 to 597 kB of code).
