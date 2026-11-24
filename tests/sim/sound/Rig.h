@@ -139,6 +139,20 @@ namespace tee::test::sound
 
         void* data() { return instance_->data(); }
 
+        // Every spec.voices field at the minimum or the maximum of its fminus::range, chosen by `pick` (one call a field)
+        template <typename Pick>
+        void corners(Pick&& pick)
+        {
+            schema_->forEach([&](const std::string& path, const Schema::Node& node, std::size_t) {
+                if (path.rfind("spec.", 0) != 0 || path == "spec.rev" || path == "spec.model")
+                    return;
+                const auto* r = node.attribute("fminus::range");
+                if (r == nullptr || r->arguments.size() < 2)
+                    return;
+                set(path, pick() ? r->arguments[1].number : r->arguments[0].number);
+            });
+        }
+
         template <typename Signature>
         Signature* call(const std::string& name)
         {
