@@ -103,6 +103,9 @@ namespace tee::ui::valves
     inline constexpr const char* kTelStage = "valve.stage";           // 0 stage A, 1 stage B
     // Why the cams are not where asked (N1's tel.valve.waiting, a bit each), and the coolant the stage waits for
     // (tel.valve.waitTemp, K; 0 when not waiting): the simulator's own gates, read, not mirrored here.
+    // The intake port's pressure over the exhaust port's across the overlap, all cylinders, smoothed (N1's, Pa): above 0
+    // the overlap scavenges, below it the exhaust back-fills the intake; 0 when there is no reading (valve.model 0).
+    inline constexpr const char* kTelDpOverlap = "valve.dpOverlap";
     inline constexpr const char* kTelWaiting = "valve.waiting";
     inline constexpr const char* kTelWaitTemp = "valve.waitTemp";
     inline constexpr const char* kTelCoolant = "engine.coolant";          // K

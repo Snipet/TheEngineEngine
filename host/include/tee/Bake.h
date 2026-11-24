@@ -42,6 +42,11 @@ namespace tee
         // default: refined, the V12's hole at 2000 rpm filled +16 % but 1500-1750 fell 4 % (card N1).
         bool refine = false;
         double midLoss = 0.03;
+        // The half steps either side of each speed's best cell measured too (the optimum can be narrower than the grid:
+        // N3's turbo four at 1800 rpm, 28 degrees 302 N m, 35 degrees 319, 50 degrees 220), at the speeds beside them
+        bool halfSteps = true;
+        // A two-stage cam (spec.valve.stages): a row either side of the change, so the map steps there
+        bool stageRows = true;
         // Acceptance: the map against the auto schedule at full load, a row falling back to the auto's phase where it
         // makes more than acceptLoss less.
         bool accept = true;
@@ -63,6 +68,8 @@ namespace tee
         double wallSeconds = 0.0;
         int added = 0;                               // midpoints added as rows of their own (refine)
         int fellBack = 0;                            // rows given the auto schedule's phase by the acceptance
+        int halfSteps = 0;                           // points measured at the half steps beside the best cells
+        int stageRows = 0;                           // rows added either side of a two-stage cam's change
     };
 
     // Sweeps `build`'s intake cam (above). False, with `error`, when the program or the build has no intake phaser to
