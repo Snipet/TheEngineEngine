@@ -16,7 +16,7 @@ awk -F'\t' '
   BEGIN { b["combo"] = 600; b["null"] = 600; b["diesel"] = 250; b["exhaust"] = 250; b["host"] = 250; other = 150; whole = 2400 }
   {
     p = $2
-    if (match(p, /^[A-Za-z0-9]+[.:]/)) p = substr(p, 1, RLENGTH - 1); else p = "host"
+    if (match(p, /^[A-Za-z0-9-]+[.:]/)) p = substr(p, 1, RLENGTH - 1); else p = "host"
     s[p] += $1; n[p]++; tot += $1
   }
   END {
