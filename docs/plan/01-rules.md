@@ -82,7 +82,8 @@ and the lead (the session that wrote these files) settles what a card leaves ope
   fast tier's CPU-seconds on CI's Linux runner, the sum of a package's test times. The whole fast tier is capped at
   2400 (ten minutes of wall on four cores), and that cap binds: it is shared out by the lead's weights scaled by
   2400 / 4500: `null` 580 (the guardian, kept whole), `diesel`, `exhaust` and the host 135, `vehicle` 100, every
-  other package 80, and `combo` what is left, 120. (`vehicle` took 20 from `null`'s allowance, which used about 364 on
+  other package 80, and `combo` 165 (the lead's ruling, 2026-11-24 22:18: each switch's decisions back in the fast
+  tier; the whole tier has the room). (`vehicle` took 20 from `null`'s allowance, which used about 364 on
   the reference runner, on 2026-11-24: since card I's last two findings it carries the dry and wet launches, the tyres'
   start and six whole-engine cases.) What does not fit goes to the soak tier, by the owner's choice of what
   guards most per second. `scripts/test-budget.sh <ctest log>` prints the table (each fast CI job's summary has it);
