@@ -8,6 +8,7 @@
 //   tee-fuzz ... --checks                               the program compiled with FMinus's bounds checks and loop
 //                                                       budget: an access out of bounds stops the call with
 //                                                       FMinus's words (a crash without them)
+//   tee-fuzz --seeds 100-110 --dump                     each seed's whole Spec to out/combo/spec-<seed>.json, no run
 //   tee-fuzz --build file.json --seed 17                that build (and nothing random) under seed 17's driving
 //   tee-fuzz --play v8 tour car.model+engine.custom     one combination (switch paths joined by +, or none, or all)
 //                                                       on an archetype through a scenario, judged as the tests do
@@ -44,6 +45,7 @@ namespace
         std::uint64_t first = 1, last = 1;
         bool corners = false;
         bool reduce = false;
+        bool dump = false;   // --dump: write each seed's whole Spec to out/combo/spec-<seed>.json and run nothing
         double seconds = 6.0;
         std::string build;
     };
@@ -302,6 +304,8 @@ int main(int argc, char** argv)
             o.first = o.last = std::strtoull(next().c_str(), nullptr, 10);
         else if (a == "--checks")
             gChecks = true;
+        else if (a == "--dump")
+            o.dump = true;
         else if (a == "--corners")
             o.corners = true;
         else if (a == "--reduce")
@@ -350,6 +354,14 @@ int main(int argc, char** argv)
     for (std::uint64_t seed = o.first; seed <= o.last; ++seed)
     {
         const auto spec = o.build.empty() ? randomSpec(seed, o.corners) : fromFile(o.build);
+        if (o.dump)
+        {
+            std::filesystem::create_directories("out/combo");
+            const std::string file = "out/combo/spec-" + std::to_string(seed) + (o.corners ? "-corners" : "") + ".json";
+            std::ofstream(file) << buildJson(spec, "seed " + std::to_string(seed), "tee-fuzz --dump: the seed's whole Spec");
+            std::printf("wrote %s\n", file.c_str());
+            continue;
+        }
         const Verdict v = once(spec, seed, o.seconds);
         std::printf("seed %llu%s: %s, %.2f R", static_cast<unsigned long long>(seed), o.corners ? " (corners)" : "",
                     v.failures.empty() ? "ok" : "FAILED", v.costR);
