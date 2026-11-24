@@ -518,6 +518,7 @@ module Engine
         mechanicsSetup();
         // (card F: boost.model 1's machine sized to this engine, at rest, on its four-stroke-equivalent displacement: a
         // rotary's faces fire once a shaft turn and a two-stroke's cylinders once a turn, twice vTotal; nothing in model 0)
+        boost.designSpeed(fuelUse != 0 ? (spec.ecu.ratedSpeed > 0.0f ? spec.ecu.ratedSpeed * 9.5492966f : ecu.redRpm) : -1.0f);   // (N2: a governed diesel's rated speed; -1 spark ignition)
         boost.applyMachine(&spec.boost, vTotal * (lay.rotary != 0 || (spec.engine.cycle != 0 && customUse != 0) ? 2.0f : 1.0f), ecu.redRpm, 101325.0f, heat.tAmb);
         ecu.overBoostRef = boost.overBoostLevel();     // (N2: the machine's own over-boost level for ecu.model 1's cut)
         // (card T: a two-stroke, on a custom engine's geometry and mechanics: its cylinders and pipes at rest where the
@@ -1564,6 +1565,7 @@ module Engine
             s->turbo = spec.boost.level;
             s->tsize = spec.boost.size;
             s->bov = spec.boost.blowOff;
+            boost.designSpeed(fuelUse != 0 ? (spec.ecu.ratedSpeed > 0.0f ? spec.ecu.ratedSpeed * 9.5492966f : ecu.redRpm) : -1.0f);   // (N2: a governed diesel's rated speed; -1 spark ignition)
             boost.applyMachine(&spec.boost, vTotal * (lay.rotary != 0 || (spec.engine.cycle != 0 && customUse != 0) ? 2.0f : 1.0f), ecu.redRpm, 101325.0f, heat.tAmb);
             ecu.overBoostRef = boost.overBoostLevel();     // (N2: the machine's own over-boost level for ecu.model 1's cut)
         }
