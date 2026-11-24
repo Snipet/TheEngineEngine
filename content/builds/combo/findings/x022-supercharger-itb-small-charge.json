@@ -1,0 +1,18 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "X-022: a supercharger into ITBs through a tiny charge volume",
+  "notes": "Package X's finding X-022 (2026-11-24), reduced by tee-fuzz from the ranges' corners seed 3 (503 fields to 6; every other field at its default: the reference V8): the new intake with individual throttles, the new boost model's supercharger, the intercooler's flow and the charge volume at their minimum. The engine diverges and its guard puts it at rest (FLAG_FAULT).",
+  "spec": {
+    "boost": {
+      "chargeVolume": 0.0005,
+      "icFlow": 0.05,
+      "kind": 4,
+      "model": 1
+    },
+    "intake": {
+      "model": 1,
+      "throttleKind": 1
+    }
+  }
+}
