@@ -50,8 +50,8 @@ namespace tee::app
         // Once a frame, before the Panel ticks (the Scope's copy made stale); empty: nothing to do.
         std::function<void()> frame;
         // Waits up to `seconds` for the dyno's first predicted curve (a picture that should show it); false: none
-        // came, or there is no dyno. Empty function: no frame.
-        std::function<bool(double)> waitForDyno;
+        // came (`error`: the dyno's own words), or there is no dyno. Empty function: no frame.
+        std::function<bool(double, std::string& error)> waitForDyno;
         // Not empty: what the options asked for could not be shown (a --workspace that is none, or with no frame);
         // the run stops with it.
         std::string problem;
