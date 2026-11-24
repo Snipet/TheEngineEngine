@@ -191,6 +191,11 @@ namespace tee::app
                     if (hooks->qualityChosen)
                         hooks->qualityChosen(q);
                 };
+                frameServices.tryFirst = [hooks] { return hooks->tryFirst ? hooks->tryFirst() : std::string(); };
+                frameServices.tryFirstDone = [hooks] {
+                    if (hooks->tryFirstDone)
+                        hooks->tryFirstDone();
+                };
                 frameServices.audioMenu = [hooks] {
                     if (hooks->audioMenu)
                         hooks->audioMenu();

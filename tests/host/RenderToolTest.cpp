@@ -122,3 +122,30 @@ TEST_CASE("tee-render --build --scenario writes the host's run, and says whether
                   + quoted(out / "failing.json") + " --out - --csv -")
           == 3);
 }
+
+TEST_CASE("tee-render: an unknown --tel field is an error naming the nearest, and the last run's files are gone",
+          "[tools][render]")
+{
+    const std::filesystem::path out = std::filesystem::path(TEE_SOURCE_DIR) / "out" / "tests" / "render-unknown";
+    std::filesystem::create_directories(out);
+    const auto sim = standinSim();
+    Build build(sim->fields());
+    std::string error;
+    REQUIRE(build.saveFile(out / "build.json", BuildPart::Whole, error));
+    std::ofstream(out / "scenario.json") << R"({"format": "tee-scenario", "version": 1, "name": "start", "seconds": 1,
+        "rate": 32000, "block": 200, "events": [{"t": 0, "ctl": {"ignition": 2}}]})";
+    // the last run's files, which a failed run must not leave to be read as its own
+    std::ofstream(out / "u.wav") << "last run's";
+    std::ofstream(out / "u.csv") << "last run's";
+    const std::string common = "--sim " + quoted(standin()) + " --build " + quoted(out / "build.json") + " --scenario "
+                               + quoted(out / "scenario.json") + " --out " + quoted(out / "u.wav");
+    CHECK(runTool(common + " --tel engine.sped 2> " + quoted(out / "stderr.txt")) == 1);
+    std::ifstream in(out / "stderr.txt");
+    std::ostringstream said;
+    said << in.rdbuf();
+    INFO(said.str());
+    CHECK(said.str().find("engine.sped") != std::string::npos);
+    CHECK(said.str().find("nearest: engine.speed") != std::string::npos);
+    CHECK_FALSE(std::filesystem::exists(out / "u.wav"));
+    CHECK_FALSE(std::filesystem::exists(out / "u.csv"));
+}
