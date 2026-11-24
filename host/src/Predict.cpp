@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <cstdio>
 #include <cstring>
 #include <functional>
 
@@ -342,6 +343,13 @@ namespace tee
 
             double simulated() const noexcept { return samples_ / options_.sampleRate; }
             bool programBrake() const noexcept { return hasTorque_; }
+            // Engine::rate, the engine's own rate (0: the program has no such field)
+            double innerRate() const
+            {
+                Schema::Handle h;
+                std::string e;
+                return sim_->schema().find("rate", h, e) ? instance_->read(h) : 0.0;
+            }
 
         private:
             void set(const Schema::Handle& h, double v) noexcept { instance_->write(h, v); }
@@ -514,10 +522,14 @@ namespace tee
 
         // The curve, with `partial` called (on a worker's thread, under no lock of ours) once the coarse speeds are in
         // and after each speed past them.
-        bool makeCurve(const std::shared_ptr<Sim>& sim, const Build& build, const PredictOptions& options,
+        bool makeCurve(const std::shared_ptr<Sim>& programSim, const Build& build, const PredictOptions& options,
                        PredictCurve& curve, std::string& error, const std::atomic<bool>* cancel,
-                       const std::function<void(const PredictCurve&, double)>& partial)
+                       const std::function<void(const PredictCurve&, double)>& partial,
+                       const std::shared_ptr<Sim>& inner)
         {
+            // the engine's own rate: the inner Sim's where it was given and the build allows it
+            const bool machine = build.fieldOf("boost.model") >= 0 && build.get("boost.model") != 0.0;
+            const std::shared_ptr<Sim>& sim = inner && !machine ? inner : programSim;
             const Clock::time_point t0 = Clock::now();
             curve = PredictCurve{};
             curve.key = predictKey(build, options);
@@ -548,10 +560,10 @@ namespace tee
             std::vector<PredictPoint> done(static_cast<std::size_t>(n));
             std::vector<bool> have(static_cast<std::size_t>(n), false);
             int haveCoarse = 0, haveAll = 0;
-            std::atomic<int> next{0};
             std::atomic<double> simulated{0.0};
             std::string firstError;
             bool program = false;
+            double rateInside = 0.0;
 
             const auto publish = [&](bool final) {
                 // under `mutex`
@@ -562,12 +574,18 @@ namespace tee
                         p.points.push_back(done[static_cast<std::size_t>(i)]);
                 p.refined = final;
                 p.brake = program ? "program" : "host";
+                p.innerRate = rateInside;
                 p.wallSeconds = seconds(t0, Clock::now());
                 p.simulatedSeconds = simulated.load();
                 return p;
             };
 
-            const auto work = [&] {
+            // Each worker takes a fixed share of the speeds, the order's k-th, (k + threads)-th, ...: what a worker
+            // runs before a point is part of that point's history (a diesel's lighting, a turbo's spool carry from one
+            // speed to the next), so a share by who comes first would make the same build's curve differ from run to
+            // run (the large diesel's 1300 to 1650 rpm by up to 15 % of its peak).
+            const int threads = std::min(workersFor(options), n);
+            const auto work = [&](int worker) {
                 Rig rig(sim, options);
                 std::string e;
                 if (!rig.make(build, e))
@@ -578,12 +596,9 @@ namespace tee
                     return;
                 }
                 bool started = false;
-                while (true)
+                for (int k = worker; k < n; k += threads)
                 {
                     if (cancel != nullptr && cancel->load(std::memory_order_relaxed))
-                        break;
-                    const int k = next.fetch_add(1);
-                    if (k >= n)
                         break;
                     const int i = order[static_cast<std::size_t>(k)];
                     const double w = speeds[static_cast<std::size_t>(i)];
@@ -602,6 +617,7 @@ namespace tee
                     {
                         const std::lock_guard<std::mutex> lock(mutex);
                         program = rig.programBrake();
+                        rateInside = rig.innerRate();
                         done[static_cast<std::size_t>(i)] = p;
                         have[static_cast<std::size_t>(i)] = true;
                         ++haveAll;
@@ -623,11 +639,10 @@ namespace tee
                 }
             };
 
-            const int threads = std::min(workersFor(options), n);
             std::vector<std::thread> pool;
             for (int k = 1; k < threads; ++k)
-                pool.emplace_back(work);
-            work();
+                pool.emplace_back(work, k);
+            work(0);
             for (std::thread& t : pool)
                 t.join();
 
@@ -646,15 +661,47 @@ namespace tee
         std::uint64_t h = build.hash();
         for (const double v : {static_cast<double>(o.coarse), static_cast<double>(o.points), o.from, o.to, o.pedal,
                                o.tolerance, static_cast<double>(o.minCycles), static_cast<double>(o.maxCycles),
-                               o.sampleRate, static_cast<double>(o.block), o.startSeconds, o.warm ? 1.0 : 0.0, o.warmupSeconds, o.settleExhaust ? 1.0 : 0.0, o.holdSeconds, o.brake == "host" ? 1.0 : o.brake == "program" ? 2.0 : 0.0})
+                               o.sampleRate, static_cast<double>(o.block), o.startSeconds, o.warm ? 1.0 : 0.0, o.warmupSeconds, o.settleExhaust ? 1.0 : 0.0, o.holdSeconds, o.brake == "host" ? 1.0 : o.brake == "program" ? 2.0 : 0.0, o.innerRate})
             h = mix(h, v);
         return h;
     }
 
     bool predictCurve(const std::shared_ptr<Sim>& sim, const Build& build, const PredictOptions& options,
-                      PredictCurve& curve, std::string& error, const std::atomic<bool>* cancel)
+                      PredictCurve& curve, std::string& error, const std::atomic<bool>* cancel,
+                      const std::shared_ptr<Sim>& inner)
     {
-        return makeCurve(sim, build, options, curve, error, cancel, {});
+        return makeCurve(sim, build, options, curve, error, cancel, {}, inner);
+    }
+
+    std::shared_ptr<Sim> simAtInnerRate(const std::shared_ptr<Sim>& sim, double rate, std::string& error)
+    {
+        Sim::Options o = sim->options();
+        // FMinus reads a macro only in #if and #ifdef: the program picks its rate by which is defined
+        // (#ifdef TEE_ENGINE_RATE_48000 ... #else ... #endif)
+        o.defines["TEE_ENGINE_RATE_" + std::to_string(static_cast<long>(std::lround(rate)))] = "1";
+        std::shared_ptr<Sim> inner = Sim::compile(sim->directory(), o, error);
+        if (!inner)
+            return nullptr;
+        // does it take the define? Engine::rate after init
+        Schema::Handle h;
+        std::string e;
+        if (!inner->schema().find("rate", h, e))
+        {
+            error = "the program has no Engine::rate to check its inner rate by";
+            return nullptr;
+        }
+        Instance instance(inner->module());
+        inner->writeDefaults(instance.data());
+        inner->init()(instance.data(), 48000.0f);
+        const double seen = instance.read(h);
+        inner->end()(instance.data());
+        if (std::fabs(seen - rate) > 0.5)
+        {
+            error = "the program does not take TEE_ENGINE_RATE_" + std::to_string(static_cast<long>(std::lround(rate)))
+                    + " (its engine runs at " + std::to_string(seen) + " Hz)";
+            return nullptr;
+        }
+        return inner;
     }
 
     bool predictRamp(const std::shared_ptr<Sim>& sim, const Build& build, const PredictOptions& options, double rate,
@@ -776,6 +823,13 @@ namespace tee
             busy_ = true;
             progress_ = 0.0;
             revision_.fetch_add(1);
+            if (options_.innerRate > 0.0 && !innerTried_)
+            {
+                // once: the program again at the inner rate; a program that does not take it runs at its own
+                innerTried_ = true;
+                std::string why;
+                inner_ = simAtInnerRate(sim_, options_.innerRate, why);
+            }
             Build build(sim_->fields());
             std::vector<std::string> warnings;
             std::string error;
@@ -792,7 +846,7 @@ namespace tee
                 revision_.fetch_add(1);
             };
             const bool ok = build.load(json, BuildPart::Whole, warnings, error)
-                            && makeCurve(sim_, build, options_, curve, error, &cancel_, partial);
+                            && makeCurve(sim_, build, options_, curve, error, &cancel_, partial, inner_);
             {
                 const std::lock_guard<std::mutex> lock(mutex_);
                 if (number == number_)
