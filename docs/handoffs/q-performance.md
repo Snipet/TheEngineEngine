@@ -1,8 +1,7 @@
 # Q: performance (handoff, 2026-11-24)
 
-**Package Q, branch `claude/awesome-gates-ntdb58`.** Owns `docs/measurements/**`; exact changes committed in other
-modules under the lead's 14:58 rule. Machine: this container (Xeon 2.10 GHz, AVX-512, quiet locally, noisy host).
-
+**Package Q, `claude/awesome-gates-ntdb58`.** Owns `docs/measurements/**`; exact changes in others' modules under
+the lead's rule. Machine: this container (Xeon 2.10 GHz, quiet locally, noisy host).
 **Done** (each with numbers in `docs/measurements/`):
 - q1-profile.md: where R goes (V8, V12, Large Diesel; free-revs, drive-car): Valve::flow 24 %, Duct::read+write 23 %,
   Cylinder 15 %, Exhaust::step 12 %, the pipes' per-16 coefficients 5-6 %. R on a quiet core: **1.79 us**, not 2.3.
