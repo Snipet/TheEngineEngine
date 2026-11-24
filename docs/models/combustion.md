@@ -154,9 +154,13 @@ square, so the settled speed stands for the torque at a fixed throttle of 0.35; 
   **0.3 degrees after the top**, not 6 to 12 (a `[!mayfail]` test records it): the cylinder (card D's, the
   reference's single zone with little wall loss) has its best torque with half burned at the top, as the made-up trace
   did. Engines show 6 to 12 because of the heat the walls take near the top; that is the cylinder's to model.
-- **7**: lambda 0.70 to 1.20: torque peaks at **0.90** (inside 0.85 to 0.92). The exhaust temperature peaks at 0.90
+- **7**: lambda 0.70 to 1.20: torque peaks at **0.90** (inside 0.85 to 0.92), falling either side (5486 rpm at 1.0,
+  5136 at 1.2). The exhaust temperature peaks at 0.90
   too, not 1.0 to 1.05 (`[!mayfail]`): the heat's share peaks rich and the cylinder's gas has air's properties
   whatever burned in it.
 - **8**: at 0.6 throttle with the spark held flat, regular starts knocking at 27.5 degrees, E85 not by 40 (model 1's
   most); a supercharged V8 in neutral on the limiter at a flat 22 degrees knocks at a boost level of 0.1 (0.32 bar) on
   regular and 0.9 (0.92 bar) on methanol.
+
+Cost (`tee-bench --engine`, the V8 on free revs, least of two runs on a machine other builds shared): both models 0
+1.046 of the reference, both models 1 1.067: models 1 add some 0.02 R, the end gas's ticks among it.

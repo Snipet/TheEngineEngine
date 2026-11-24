@@ -151,7 +151,7 @@ Integrated tests (`tests/sim/ecu/IntegratedTest.cpp`, the V8 in neutral in the c
   burns 7.2 and 19.9 mg in the pipe over 2.5 s of lift (2 and 4 bangs: the pipe cools under its lighting threshold
   within a second or two of the lift).
 - **11**: random pedals (and the launch button) through each limiter kind, 40 s each in ctest (`H_SOAK_SECONDS=600` for
-  the card's ten minutes, by hand): finite, within +-1, the most speed 6462 to 6682 rpm against the 6500 redline, still
+  the card's ten minutes, by hand): finite, within +-1, the most speed 6457 to 6709 rpm against the 6500 redline (the throttle kind's the highest), still
   running.
 - The bake: each `ctl.bakeMaps` press writes all seven maps into the Scope; the spark's first point is the reference's
   formula.
