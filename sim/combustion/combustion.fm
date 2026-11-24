@@ -169,7 +169,10 @@ module Combustion
         dilution[ci] = fminf(cy->mInert / fmaxf(cy->m, 1.0e-9f), 0.95f);
         cy->cBurn = 1.0f;
         droop = fminf(fmaxf((ecu->redRpm + 50.0f - rpm) / 250.0f, 0.0f), 1.0f);
-        const float lever = fminf(fmaxf(fmaxf(ecu->throttle, 0.12f + 0.5f * ecu->bypass), 0.45f * expf(-ecu->sinceStart / 1.0f)), 1.0f) * droop;
+        // (ecu.model 1: its idle governor's fuel, 0.5 of full at the most, with no floor under it: the reference's 0.12
+        // floor held a heavy diesel above its idle)
+        const float idleFuel = ecu->model1() ? 0.5f * ecu->bypass : 0.12f + 0.5f * ecu->bypass;
+        const float lever = fminf(fmaxf(fmaxf(ecu->throttle, idleFuel), 0.45f * expf(-ecu->sinceStart / 1.0f)), 1.0f) * droop;
         const bool f1 = fuel->model == 1;
         if (f1)
         {
@@ -257,7 +260,13 @@ module Combustion
         {
             ecu->one.maps.tune.burnK = burnK;
             firing = ecu->one.fire(ci);
+            // (the spark's formula, when the map is on it, at this charge's speed and manifold, as the reference takes
+            // it: its load term answers the plenum's swing at once, which the idle's loop counts on; the ECU's timing
+            // and retards over it)
             adv = ecu->one.sparkFor;
+            if (ecu->spec->maps.sparkAuto)
+                adv += 12.0f + 22.0f * sqrtf(fminf(rpm / ecu->redRpm, 1.2f)) - 8.0f * (pPlenum / 101325.0f - 0.4f)
+                       + 22.0f * (burnK - 1.0f) - ecu->one.sparkBase;
             lambda = ecu->one.lambda;
             extra = ecu->one.fuelFactor;
             kRetC = ecu->one.knock.retard[ci < 16 ? ci : 15];
