@@ -4,9 +4,11 @@
 #include "sim/Twin.h"
 
 #include <catch2/catch_test_macros.hpp>
+#include <nlohmann/json.hpp>
 
 #include <cstdio>
 #include <filesystem>
+#include <fstream>
 #include <cstdlib>
 #include <random>
 
@@ -855,4 +857,57 @@ TEST_CASE("the pipes are given what the exhaust valves let out", "[exhaust][engi
         INFO(k.file << " at " << k.rpm);
         CHECK(std::fabs(ratio - 1.0) < 0.01);
     }
+}
+
+// content/builds/exhausts: every field of each part build, read back from the player after the build is applied,
+// equal to the file's, element by element, choices by name included (C's 127c350 found an array of choices given by
+// name dropped to its default: exhaust.mufKind, resonator, converter, bypass)
+TEST_CASE("every exhaust preset reads back as its file says", "[exhaust][engine][builds]")
+{
+    EnginePlayer& p = player();
+    int fields = 0, elements = 0;
+    for (const auto& entry : std::filesystem::directory_iterator(std::filesystem::path(TEE_SOURCE_DIR) / "content/builds/exhausts"))
+    {
+        if (entry.path().extension() != ".json")
+            continue;
+        p.reset();
+        EngineBuild b;
+        std::string error, warnings;
+        REQUIRE(loadBuild(p, entry.path(), b, error, warnings));
+        applyBuild(p, b);
+        std::ifstream in(entry.path());
+        const nlohmann::json doc = nlohmann::json::parse(in);
+        for (const auto& [key, value] : doc["spec"]["exhaust"].items())
+        {
+            const std::string path = "exhaust." + key;
+            const int idx = p.specIndex(path);
+            INFO(entry.path().filename().string() << ": " << path);
+            REQUIRE(idx >= 0);
+            const EnginePlayer::SpecField& f = p.specFields()[static_cast<std::size_t>(idx)];
+            auto expect = [&](const nlohmann::json& v) {
+                if (v.is_string())
+                {
+                    for (std::size_t c = 0; c < f.choices.size(); ++c)
+                        if (f.choices[c] == v.get<std::string>())
+                            return f.minimum + static_cast<double>(c);
+                    FAIL("no choice named " << v.get<std::string>());
+                }
+                if (v.is_boolean())
+                    return v.get<bool>() ? 1.0 : 0.0;
+                return v.get<double>();
+            };
+            const bool array = value.is_array();
+            const std::size_t n = array ? value.size() : 1;
+            for (std::size_t i = 0; i < n; ++i)
+            {
+                const double want = expect(array ? value[i] : value);
+                const double got = test::field(p, "spec." + path + (f.count > 1 ? "[" + std::to_string(i) + "]" : ""));
+                INFO("element " << i << ": file " << want << ", read back " << got);
+                CHECK(std::fabs(got - want) <= 1.0e-5 * std::max(1.0, std::fabs(want)));
+                ++elements;
+            }
+            ++fields;
+        }
+    }
+    std::printf("presets read back: %d fields, %d elements, each as its file says\n", fields, elements);
 }
