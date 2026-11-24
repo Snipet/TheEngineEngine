@@ -138,3 +138,11 @@ opening, every change made with the valve shut, all eight back under load.
   four, 0 % at 0.85 times it, -0.8 % at 1.1, -4.5 % at 1.25; finite at twice it. A real valvetrain falls harder.
 - Cost: `tee-bench --engine`, free-revs and drive-car: the simulator over the reference 1.04 at the defaults, 1.07 to
   1.11 with the lab (phasers, two stages, springs, a two-length runner): some +0.03 to +0.07 R, on a shared machine.
+- Breathing (`tests/sim/valvetrain/BreathingTest.cpp`, both models 1, 300 K, engine dyno, wide open; **measured**): the
+  6.2 L V8 with a mild cam peaks at 257 kW near 5000 rpm (248 at 6000; the target is 300 to 330), its VE (`veAir`)
+  0.86 to 0.92, 0.82 at 6000; the 998 cc superbike four (76 x 55, four valves, 9.5 mm, 270 at 1 mm, ITBs, 13:1) makes
+  59 kW at 13,500 rpm (the target 125 to 145), its VE 0.68 to 0.77. The bike's shortfall is not mostly breathing: at
+  VE 0.75 it should make some 85 N m, and makes 42 to 47. The torque per unit of air falls with speed: the burn's
+  fixed degrees and the friction by piston speed (cards H and D) take most of it at 12,000 rpm and 25 m/s. What the
+  breathing itself lacks: the VE peaks near 0.9, not 1.0 to 1.1, as no runner here is tuned to ram (test 12's ring
+  is right in direction, not in strength), and the port quality is the reference's.
