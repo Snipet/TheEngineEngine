@@ -37,6 +37,18 @@
 
 ## Landed
 
+- **19:43 the lead's check-in** (the tip: 1756 commits, compiles). **CI: the fast tier is green on all three
+  systems for the first time**: Linux and Windows run 45467052791 (46691a4), macOS run 45468737097 (48e9a17).
+  Those builds hold M's index guard, N1's runner damping, G's port law and D's f89d40c; not the warm-start fix
+  (02f2883), card I's launch (0078996) or U1's load meter (f53f564). **Card I's launch landed** (0078996): the
+  NA rotary no longer bogs (quarter 20.18 to 18.60 s), the 7.0 inside its quarter-mile target; what remains is
+  in how P's timed runs are made (shift points, pre-rev, warm tyres). **The 7.0's idle hunts** at the tip (742
+  sd 107; 750 sd 8 at c8f2d54): N1 confirmed the lead's render (its own steady figure was a stale csv); the
+  after-start air stays, the steadiness check goes in marked on the 7.0. **f89d40c, exactly** (D, 492e525: a test
+  that fails before it): a switch written while stopped with no configure after; the first launch was right, a
+  switch changed in the interface between runs was not. The interface at the tip: 124 of 124 view tests in the
+  lead's build; round 5 of pictures to the owner (the load meter's warning; DYNO's walls labels). Next check-in
+  20:25.
 - **19:35 the lead, between check-ins** (times from `date -u`). **Table E** (pin 8ff2bf3): 161 of 648 missed,
   power 12 and torque 13 of 31; **table F** (pin 30d2dfc, walls settled): 157 of 648, 12 and 13 of 31. The count
   falls, power and torque do not: the same seven NA engines 20 to 27 % strong each time, so **N3 was started**
