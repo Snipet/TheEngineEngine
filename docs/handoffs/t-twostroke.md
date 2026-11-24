@@ -11,21 +11,23 @@ Card T, branch `claude/awesome-gates-ntdb58`. Model, sources and measurements: [
   4000 rpm, none in the band); at rest nothing flows; mass kept to 1e-7, energy to 0.01 % of the burn (closed-form T
   from energy with gamma(T); the old update lost 4 %); 60 s random soak finite.
 - 1 to 4 cylinders, even or together, a chamber each; builds `content/builds/engines/two-stroke-{mx125,road-twin,triple,
-  kart,utility}.json`. `EngineTest` (needs the engine.fm hook below): each starts, idles 2280-2930 rpm, misfires on
+  kart,utility}.json`. `EngineTest`: each starts, idles 2280-2930 rpm, misfires on
   80-84 % of idle cycles unscripted and never on the pipe, peaks within 10 % of its class's speed; peak sample <= 0.92.
 - Spec: `spec.engine.cycle` + `ts*` fields, one marked block in sim/spec/engine.fm (D's later `wallHeat` follows it).
+- In the engine (988b442, allowed by the lead, for D's review): `cycle` 1 on a custom engine runs `twoStrokeTick` in
+  place of cylinders/exhaust/intake, lay.cyc 360, Scope 360, tel.engine.ts* (purity, delivery, trapping, power valve,
+  pipe gas, crankcase, reed). At `cycle` 0: one integer test a sample; whole null test green.
 **Not done / honest gaps**:
 - Output is 41 % (125 MX), 72 % (250 twin), 65 % (500 triple), 46 % (kart), 82 % (utility) of the classes' published
   powers: the crankcase pump delivers ~0.88 with no inlet-tract or transfer-duct inertia. Next: an inlet Duct to the reed.
 - Spectrum: lines sit on multiples of the firing frequency (twins/triples cancel the rest by 100 dB), but the strongest
   radiated line on a chamber is the header's ~870 Hz ring, the firing line 7-27 dB under it (monopole +6 dB/octave,
   chamber cones pass highs). Physics, not the card's wording; flagged.
-- No telemetry fields yet (purity, delivery, trapping, power valve: tel.engine is D's, asked).
+- Not fed for a two-stroke: work.sample (IMEP, PMEP read 0), exh.mdot/tPort (the pipe's gas is tsPipeTemperature).
 **Cost** (`tee-bench --engine`, free-revs, share of that run's reference V8): single with chamber 0.32 R (card: 0.35 R),
 twin 0.59 R, triple 0.87 R, utility 0.24 R. Rig alone: 0.28 R. Fewer cone steps (3) would roughly halve the ducts.
 **Wanted outside my paths**:
-- sim/engine.fm (D): the hook, sent to D as an exact patch (twoStrokeTick, scopeTwo, configure/control16/mix lines);
-  tested on HEAD with null quick + free-revs green. Status: see the lead's answer below if any.
+- sim/engine.fm, sim/spec/telemetry.fm, sim/README.md (D's): committed by me with the lead's leave; D to review.
 - sim/exhaust/duct.fm (G): `pack()` and `extra(lowpass)` pass up to 4.4 % more than they take near 25 Hz around the
   steady-flow tracker (|H(1-LP)+LP| > 1); a stopped pipe closed at one end rings for ever. Sent to G with numbers; I use
   a broadband gain meanwhile.
