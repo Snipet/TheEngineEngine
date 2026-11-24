@@ -322,10 +322,22 @@ namespace tee::ui::engine
         l.ok = l.ok && wasOk;
     }
 
+    bool twoStrokeRuns(const FieldDoc& doc)
+    {
+        const double cycle = fieldValue(doc, EF::cycle);
+        if (!std::isfinite(cycle) || cycle < 0.5)
+            return false;
+        const double custom = fieldValue(doc, EF::custom);
+        if (!std::isfinite(custom))
+            return true;   // no custom switch here (the demo's document): the cycle as asked
+        const double rotors = fieldValue(doc, EF::rotors);
+        return custom >= 0.5 && !(std::isfinite(rotors) && rotors >= 0.5);
+    }
+
     Layout layoutOf(const FieldDoc& doc, bool cycle2)
     {
         // a two-stroke (card T): its cylinders in a row, firing every turn, evenly or all together
-        if (const double cycle = fieldValue(doc, EF::cycle); cycle2 && std::isfinite(cycle) && cycle >= 0.5)
+        if (cycle2 && twoStrokeRuns(doc))
         {
             Layout l;
             l.twoStroke = true;
