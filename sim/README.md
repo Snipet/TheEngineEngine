@@ -38,6 +38,7 @@ its place and its default that does nothing) has added the custom engine, the en
 | `ecu/ecu.fm` | `Ecu` | H | the state, the speed it goes by, idle and redline, the driver, idle valve, trim, limiter, cuts, stall |
 | `vehicle/car.fm` | `Car` | I | clutch, gearbox, driveline, tyres, the road; the shifter and paddles; the road's sound |
 | `sound/extras.fm` | `Extras` | wave 2 | intake mouth, valvetrain, injectors, block, knock, clatter, pump, chain, starter |
+| `sound/voices.fm` and `sound/*.fm` | `Voices` (`GearVoice`, `DriveVoice`, `FanVoice`, `FuelVoice`, `ValveVoice`, `GateVoice`, `StarterVoice`) | M | spec.voices.model 1: gear whine and rattle, final drive, belts and cam drive, fan, fuel pump and direct injectors, lifters and float, wastegate, starter (docs/models/voices.md) |
 | `listen/listen.fm`, `listen/hall.fm` | `Listen`, `Hall` | wave 2 | views, distance, room, compressor, limiter, ceiling, resampler |
 | `lib/` | `OnePole`, `DcBlock`, `Biquad`, `Noise` | anyone (read) | filters; the reference's white noise |
 
@@ -99,6 +100,7 @@ What replaces the reference's keys (`Engine::readControls`, `Engine::ignition`, 
 | `ignition` 2, start | while stopped or running down (state 0 or 3): `keyDown(36, 1)`, the reference's start key: it cranks (without a starter it runs at its idle at once). Held: started again if it stops |
 | `ignition` leaves 2 | `keyUp(36)`; still cranking (state 1): state 0, the starter stops |
 | `ignition` 0, off | cranking or running: state 3, running down (`ecu.stallT` 0, `ecu.offArmed` false) |
+| `ignition` rising from off (voices.model 1 only) | the engine renders from the key's turn, so the fuel pump's prime is heard before a start; and it keeps rendering while `ex.busy()` (card M) |
 | `holdSpeed` > 0 (bench, running) | the key driver (`Ecu::driver`) aimed at that speed: a key of the pitch whose firing it is (`set.keys` 1), velocity 1 |
 | `mode` MODE_DYNO_ENGINE (running) | on the bench, the absorber (`Dyno`) holds `dynoSpeed`, or sweeps from where the crank is at `dynoRate` (rad/s^2); the bench's load dial and the inertia it adds rest meanwhile |
 | `buttons` (`BTN_LAUNCH`, `BTN_NITROUS`), `bakeMaps` | ecu.model 1 only: launch control, nitrous; a bake of the maps into the Scope on each increase |
@@ -120,7 +122,7 @@ torque: the gases' less friction and a supercharger's drag over some 0.1 s; on t
 `gasTorque` (the gases', its 20 ms mean), `firing` (Hz: firings a second, every cylinder's), `power`, `imep` (gross), `pmep`, `fmep`, `bmep` (4 pi torque / displacement), `veManifold`,
 `veAir` (the fresh charge at intake closing over the swept volume at those densities), `peakPressure`, `pistonSpeed`,
 `ripple` (the crank's speed's spread over the last cycle), `dynoTorque`, `dynoSpeed`; a custom engine's only:
-`inertiaTorque`, `shake1`, `shake2` (N), `rock1`, `rock2` (N m); `cylinders`; and the arrays (readable by path, not
+`inertiaTorque`, `shake1`, `shake2` (N), `rock1`, `rock2` (N m); `cylinders`; `layoutRefused` (1: a custom geometry was refused); `oilTemperature` (K); and the arrays (readable by path, not
 gauges) `firingAngle[c]` (degrees after cylinder 1's at which it fires), `cylPeak[c]`, `cylPeakAngle[c]`.
 
 Scope (`Engine::scopeTap`, each sample while `ctl.scopeOn`): cylinder 1's `pressure` (Pa), `volume` (m^3),
@@ -187,7 +189,9 @@ above 0) set the swept volume and the bore/stroke ratio the dial glides to (`bsO
 `Cylinder::setup` gets (`rodRatio`, else 3.3); the redline is `redlineSpeed` or 25 m/s of piston speed (13.5 a diesel)
 in `boreStroke`; a rotary's port fields override the cam dial's in `valves()` (`customPorts`). A change to any of
 these fields is seen through `geometry()` (a weighted sum of them, 0 while custom is off) and made as a new layout is:
-at a start while stopped, under the fade while running. With custom off nothing of this is read:
+at a start while stopped, under the fade while running. A geometry whose cylinders fire together cannot run (the
+Spec's own defaults, every pin 0, are one): it is refused, the layout dial's table runs with the custom sizes, masses
+and friction (`geo.fromTable`), and `tel.engine.layoutRefused` says so. With custom off nothing of this is read:
 `tests/sim/core/EngineTest.cpp` plays a build with every custom field filled in and custom off, to the bit the same.
 
 ## The modules, their functions and what they read
@@ -347,9 +351,13 @@ pedal with a downshift's blip in it. `step`, `road` go to `m1`; `followLever` do
 reference's code, untouched (the null test).
 
 **Extras** (`sound/extras.fm`): the engine bay's sources; its own `Noise noise` (Boost draws from it too). `setup(float
-rate, float boxHz)`; `setClatter(int diesel, float swept)` and `pumpOn` in configure; the clicks at the cylinders'
-events; `void tick(float qThrottle, float dropRatio, float crankHz, float dpdt)` then `void tickStarter(float crankHz,
-float starterOn)` each sample; out: `intake`, `mech`, `block`, `comb`, `starter`.
+rate, float boxHz, VoicesSpec* voices)`; `setClatter(int diesel, float swept)` and `pumpOn` in configure; the clicks at
+the cylinders' events (`valveClick(amp, intake)`: 1 at intake closing, 0 at exhaust closing); `void tick(float qThrottle,
+float dropRatio, float crankHz, float dpdt)` then `void tickStarter(float crankHz, float starterOn)` each sample;
+`control16(...)` last in `Engine::control16`, only while `spec.voices.model` is 1 or the voices glide out (card M: the
+car's gearbox, the torque, the coolant, the key, the boost and gate, `vt.clatter`); `busy()` (the pump's prime, a fan,
+the starter running down); out: `intake`, `mech`, `block`, `comb`, `starter`, and with model 1 each voice's own:
+`vo.gearbox`, `vo.axle`, `vo.front`, `vo.head`, `vo.tank`, `vo.gateOut`, `vo.starter` (docs/models/voices.md).
 
 **Listen** (`listen/listen.fm`): `setup(float rate, float hostRate)`, `release()`, `resetPaths()`; per part `block(int
 v, float intakeK, float mechK, float distance, float room, float levelDb, int asp, float exTrim, float gainNorm, int

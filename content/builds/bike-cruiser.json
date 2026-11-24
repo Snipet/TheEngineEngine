@@ -1,0 +1,88 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Cruiser (45-degree V-twin)",
+  "notes": "A big cruiser: 320 kg wet, 1.67 m, an 80 kg rider sitting up, cruiser tyres, a 1863 cc 45-degree twin, a belt of 30 to 70 teeth. No quickshifter, no slipper.",
+  "spec": {
+    "engine": {
+      "layout": "V-twin 45",
+      "displacement": 0.0018631,
+      "compression": 10.0,
+      "custom": true,
+      "cylinders": 2,
+      "bankAngle": [
+        22.5,
+        -22.5
+      ],
+      "bank": [
+        0,
+        1
+      ],
+      "pin": [
+        22.5,
+        22.5
+      ],
+      "fireRev": [
+        0,
+        0
+      ],
+      "place": [
+        0.0,
+        0.0
+      ],
+      "bore": 0.102,
+      "stroke": 0.114,
+      "redlineSpeed": 575.959
+    },
+    "fuel": {
+      "kind": "Gasoline"
+    },
+    "car": {
+      "kind": "Motorcycle",
+      "model": "Vehicle",
+      "mass": 320,
+      "wheelbase": 1.67,
+      "cgHeight": 0.52,
+      "frontWeight": 0.45,
+      "cdA": 0.75,
+      "tyreRadius": 0.33,
+      "wheelInertia": 1.1,
+      "brakeDecel": 1.0,
+      "brakeBias": 0.4,
+      "gears": 6,
+      "autoGearing": false,
+      "ratio": [
+        3.34,
+        2.3,
+        1.71,
+        1.35,
+        1.12,
+        0.89
+      ],
+      "gearEfficiency": 0.97,
+      "riderMass": 80,
+      "riderHeight": 0.95,
+      "riderForward": 0.4,
+      "tuck": 0.0,
+      "cdATuck": 0.65,
+      "pitchInertia": 80,
+      "bikeTyre": "Cruiser",
+      "primaryRatio": 1.45,
+      "frontSprocket": 30,
+      "rearSprocket": 70,
+      "chainEfficiency": 0.96,
+      "chainLash": 0.03,
+      "slipper": false,
+      "quickshifter": false,
+      "autoBlip": false,
+      "wheelieControl": "Off",
+      "wheelieAngle": 4
+    },
+    "sound": {
+      "view": "Exhaust"
+    }
+  },
+  "expect": {
+    "engine": "bike-vtwin-45"
+  }
+}
