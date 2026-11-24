@@ -14,12 +14,15 @@
 #include "tee/Warm.h"
 
 #include <catch2/catch_test_macros.hpp>
+#include <nlohmann/json.hpp>
 
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
+#include <fstream>
+#include <functional>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -35,6 +38,29 @@ namespace
             if (!item.empty())
                 out.push_back(item);
         return out;
+    }
+
+    // tee::loadBuild reads only spec.<section>.<field>: a nested section (ecu.idle, ecu.limiter, ecu.knock, ecu.maps'
+    // scalars) is dropped (the lead, 19:48). Writes the nested numbers and booleans by path after the load.
+    void applyNested(tee::EnginePlayer& p, const std::filesystem::path& file)
+    {
+        std::ifstream in(file);
+        const nlohmann::json doc = nlohmann::json::parse(in, nullptr, false);
+        if (doc.is_discarded() || !doc.contains("spec"))
+            return;
+        std::function<void(const nlohmann::json&, const std::string&, int)> walk = [&](const nlohmann::json& j,
+                                                                                         const std::string& path, int depth) {
+            for (auto it = j.begin(); it != j.end(); ++it)
+            {
+                const std::string sub = path.empty() ? it.key() : path + "." + it.key();
+                std::string e;
+                if (it->is_object())
+                    walk(*it, sub, depth + 1);
+                else if (depth >= 2 && (it->is_number() || it->is_boolean()))
+                    p.setSpec(sub, it->is_boolean() ? (it->get<bool>() ? 1.0 : 0.0) : it->get<double>(), e);
+            }
+        };
+        walk(doc["spec"], "", 0);
     }
 
     struct Probe
@@ -625,6 +651,114 @@ TEST_CASE("probe: backflow into the runners against the plenum's books", "[.prob
         const double k = 1e3 / n;
         std::printf("%7.0f %8.2f %8.2f %8.2f %8.2f %7.3f %7.3f %7.1f  netQIa %.3f netQI %.3f\n", rpm, -draw * k, back * k, -drawV * k, backV * k,
                     (draw + back) / (drawV + backV), ratio / n, plen / n * 1e-3, netA * k, (drawV + backV) * k);
+    }
+    SUCCEED();
+}
+
+// The idle loop's plant (the lead, 20:14): in the car in neutral, held warm, the key, 8 s of the ECU's own idle; then
+// the valve held at its mean over the last 2 s (needs a simulator with ecu.holdOn and ecu.holdValve: a scratch tree),
+// 3 s; then stepped by PROBE_STEP (0.02), 4 s. Prints the speed every 0.1 s after the hold. PROBE_BUILD (slug),
+// PROBE_SIM.
+TEST_CASE("probe: the idle valve's step on a warm idle", "[.probe-idlestep]")
+{
+    const char* buildEnv = std::getenv("PROBE_BUILD");
+    const std::string slug = buildEnv ? buildEnv : "big-bore-70-pushrod-v8";
+    const double dv = std::getenv("PROBE_STEP") ? std::atof(std::getenv("PROBE_STEP")) : 0.02;
+    Probe pr;
+    tee::EnginePlayer::Options options;
+    options.directory = std::getenv("PROBE_SIM") ? std::filesystem::path(std::getenv("PROBE_SIM"))
+                                                  : std::filesystem::path(TEE_SOURCE_DIR) / "sim";
+    options.sampleRate = 48000.0;
+    std::string errors, warnings;
+    pr.p = tee::EnginePlayer::create(options, errors);
+    INFO(errors);
+    REQUIRE(pr.p != nullptr);
+    tee::EngineBuild b;
+    const std::filesystem::path file =
+        std::filesystem::path(TEE_SOURCE_DIR) / "content" / "builds" / "archetypes" / (slug + ".json");
+    REQUIRE(tee::loadBuild(*pr.p, file, b, errors, warnings));
+    tee::applyBuild(*pr.p, b);
+    applyNested(*pr.p, file);
+    auto& c = pr.p->controls();
+    c.mode = 1;
+    c.ignition = 1;
+    pr.play(0.25, [&] { pr.warm(); });
+    c.ignition = 2;
+    pr.play(1.75, [&] { pr.warm(); });
+    c.ignition = 1;
+    pr.play(4.0, [&] { pr.warm(); });
+    double vs = 0.0, rs = 0.0;
+    long n = 0;
+    pr.play(2.0, [&] {
+        pr.warm();
+        vs += pr.tel("ecu.idleValve");
+        rs += pr.tel("engine.speed");
+        ++n;
+    });
+    const double v0 = vs / n;
+    std::printf("%s: the ECU's idle over 6-8 s: valve %.4f, %.0f rpm; idle target %.0f rpm\n", slug.c_str(), v0,
+                rs / n * 30.0 / M_PI, pr.tel("ecu.idleTarget") * 30.0 / M_PI);
+    std::string e;
+    pr.p->instance().write(pr.p->schema(), "ecu.holdOn", std::getenv("PROBE_HOLD") ? std::atof(std::getenv("PROBE_HOLD")) : 1.0, e);
+    pr.p->instance().write(pr.p->schema(), "ecu.holdValve", v0, e);
+    INFO(e);
+    std::printf("%5s %6s %7s\n", "t s", "rpm", "kPa");
+    for (int i = 0; i < 70; ++i)
+    {
+        if (i == 30)
+            pr.p->instance().write(pr.p->schema(), "ecu.holdValve", v0 + dv, e);
+        pr.play(0.1, [&] { pr.warm(); });
+        std::printf("%5.1f %6.0f %7.1f\n", 8.1 + 0.1 * i, pr.tel("engine.speed") * 30.0 / M_PI, pr.get("intk.pPlenum") * 1e-3);
+    }
+    SUCCEED();
+}
+
+// The idle's torque against speed on the dyno, the idle valve held at PROBE_VALVE (0.1) and the spark's trim at 1
+// (ecu.holdOn 2: a scratch tree), warm, 3 s at each of PROBE_RPM (500,600,700,800,900,1000), the mean of the last
+// second. A torque that rises with speed is an idle the engine cannot hold by itself. PROBE_BUILD, PROBE_SIM.
+TEST_CASE("probe: the idle's torque against speed, valve and spark held", "[.probe-idletorque]")
+{
+    const char* buildEnv = std::getenv("PROBE_BUILD");
+    const std::string slug = buildEnv ? buildEnv : "big-bore-70-pushrod-v8";
+    const double valve = std::getenv("PROBE_VALVE") ? std::atof(std::getenv("PROBE_VALVE")) : 0.1;
+    const char* rpmEnv = std::getenv("PROBE_RPM");
+    std::printf("%s, valve %.3f, trim 1\n%6s %9s %8s %8s\n", slug.c_str(), valve, "rpm", "torque", "kPa", "veAir");
+    for (const std::string& s : split(rpmEnv ? rpmEnv : "500,600,700,800,900,1000", ','))
+    {
+        Probe pr;
+        tee::EnginePlayer::Options options;
+        options.directory = std::getenv("PROBE_SIM") ? std::filesystem::path(std::getenv("PROBE_SIM"))
+                                                      : std::filesystem::path(TEE_SOURCE_DIR) / "sim";
+        options.sampleRate = 48000.0;
+        std::string errors, warnings;
+        pr.p = tee::EnginePlayer::create(options, errors);
+        REQUIRE(pr.p != nullptr);
+        tee::EngineBuild b;
+        const std::filesystem::path file =
+            std::filesystem::path(TEE_SOURCE_DIR) / "content" / "builds" / "archetypes" / (slug + ".json");
+        REQUIRE(tee::loadBuild(*pr.p, file, b, errors, warnings));
+        tee::applyBuild(*pr.p, b);
+        applyNested(*pr.p, file);
+        std::string e;
+        pr.p->instance().write(pr.p->schema(), "ecu.holdOn", 2.0, e);
+        pr.p->instance().write(pr.p->schema(), "ecu.holdValve", valve, e);
+        auto& c = pr.p->controls();
+        c.mode = 2;
+        c.dynoSpeed = float(std::atof(s.c_str()) * M_PI / 30.0);
+        c.ignition = 2;
+        pr.play(1.0, [&] { pr.warm(); });
+        c.ignition = 1;
+        pr.play(2.0, [&] { pr.warm(); });
+        double tq = 0.0, kp = 0.0, ve = 0.0;
+        long n = 0;
+        pr.play(1.0, [&] {
+            pr.warm();
+            tq += pr.tel("engine.torque");
+            kp += pr.get("intk.pPlenum");
+            ve += pr.tel("engine.veAir");
+            ++n;
+        });
+        std::printf("%6s %9.1f %8.1f %8.3f\n", s.c_str(), tq / n, kp / n * 1e-3, ve / n);
     }
     SUCCEED();
 }

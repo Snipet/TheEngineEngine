@@ -60,7 +60,8 @@ Taken before the keys above (so Ctrl+S saves and does not brake). On a Mac, Cmd 
 The top bar shows the build's name with a star while it has unsaved changes. A build still unsaved when the window
 closes is kept as the build "Unsaved changes" in your folder of builds, and opens at the next start; otherwise the
 build last opened or saved opens. A first launch (nothing remembered) opens the first build, `content/builds/first.json`:
-a whole engine with every model on, its name in the top bar, clean. The other archetypes are in GARAGE.
+a whole engine with every model on, its name in the top bar, clean, and a TRY FIRST card with its notes' opening
+paragraph (closed once, it is not shown again: `tryFirstSeen` in the settings). The other archetypes are in GARAGE.
 `--reference` opens no build: the simulator's defaults, every model switch at Reference, for comparisons; `--preset
 NAME` opens that build instead of either. The device, the rate, the buffer and the recent files are remembered in the
 settings file (`shell/settings/Settings.h`). A device that is unplugged: the system's default plays in its place,

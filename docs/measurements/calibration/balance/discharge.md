@@ -23,6 +23,13 @@ The model's effective area of n intake valves of diameter d at lift L is
 | LS6, 243 casting (cathedral, 2001-) | 2.00 in | 251 at 0.500 in | 0.54 | **1.36** |
 | LS7 (rectangular, CNC ports) | 2.20 in | about 370 at 0.600 in (0.27 d; test pressure not stated) | 0.66 | **1.6** (unconfirmed) |
 
+**How firm each figure is** (the lead's rule, 20:27: propose a value only where two independent figures agree). Every
+row is forum or blog data from benches whose method is not stated: weak (P's kind (c), single postings), not a maker's
+sheet. The LS6's has two postings that agree (the ProComp table's 251 at 0.500 in and 256 at 0.600; another poster's
+"255 to 260, peaking at 0.550"). The LS1's two disagree by 8 % (219 at 0.500 in one table, "peaks at 244" in a
+speed-parts test). The LS7's is one posting without its pressure. So the only value firm enough to propose would be the
+LS6's 1.36, and no archetype has that head: nothing is proposed to P from this table.
+
 Sources: LS1TECH's "Stock LS7 flow info" and "Any ProComp Motorsports LS1 head users?" threads (the 241's and 243's
 tables at 0.100 to 0.600 in), LS Engine DIY's head guides; to be checked against a maker's bench sheet. No stock
 Vortec or L98 (older small-block) table was found; those heads flow less than the LS1's (a smaller port, a 1.94 in
