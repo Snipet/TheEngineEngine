@@ -219,7 +219,7 @@ TEST_CASE("a build loaded over another while it runs: V8 then small four then la
     loadCase(false);
 }
 
-TEST_CASE("a build loaded over another while it runs with every switch on", "[fast][fast-4][combo][load]")
+TEST_CASE("a build loaded over another while it runs with every switch on", "[nightly][combo][load]")
 {
     loadCase(true);
 }
@@ -261,7 +261,7 @@ namespace
     }
 } // namespace
 
-TEST_CASE("every switch flipped in the same block while the V8 pulls in gear", "[fast][fast-4][combo][flip]")
+TEST_CASE("every switch flipped in the same block while the V8 pulls in gear", "[fast][fast-2][combo][flip]")
 {
     flipAllCase("v8");
 }
