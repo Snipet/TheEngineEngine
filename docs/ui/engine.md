@@ -29,7 +29,10 @@ edge or overlaps other text, on every tab.
 ## A two-stroke
 
 With card T's `engine.cycle` 1 the cycle is 360 degrees: `tsCylinders` in a row, firing evenly or together
-(`tsFiring`). The section has no valves: its ports are windows in the wall (the exhaust's at the right, the transfers'
+(`tsFiring`). As package D configures it, the cycle counts only with `engine.custom` on and no rotors: without custom
+it is ignored and the dial's layout runs, and a custom rotary runs as itself (see below). `twoStrokeRuns()` in
+EngineModel.h is that rule, for ENGINE and VALVES both; a document without D's custom switch (the demo's) runs the
+cycle as asked. The section has no valves: its ports are windows in the wall (the exhaust's at the right, the transfers'
 at the left with their passage down to the crankcase), each bright where the crown has passed its top edge, the
 exhaust's top lowered by the power valve's blade at low speed; the crankcase under the piston is a volume tinted by its
 own pressure (the Scope's `portIntake`), with the number under the drawing; the inlet by its kind (a reed's petals

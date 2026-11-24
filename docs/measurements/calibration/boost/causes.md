@@ -125,3 +125,17 @@ On the tip (7e0ce9d, the harness cranking as tee::runDyno does), limit on agains
 At the lowest speeds the limit costs 4 to 14 % (it opens vanes before the boost has built); everywhere above it gains
 12 to 63 %. The diesels are still short of their ranges: the fuelling's (the reference's 0.62 kept share under Woschni's
 walls, routed to D). Their lambda now reads 1 / phi (1.33): chargeDiesel told the sensor nothing before (71d7869).
+
+## 5. Variable vanes: two steady states (gain reversal), 24 Nov
+
+D2's 15 L truck at 1300 rpm, full load, a target the engine cannot reach (spring 220 kPa): the vane loop shut the vanes
+and the engine stood at 98 kPa and 882 N m (vanes 0.47, held by the 1.4 back-pressure limit), its compressor surging
+two thirds of the time (flow 0.09 kg/s, efficiency 0.47), against 209 kPa and 1945 N m with the vanes at 0.9 (a fixed
+nozzle: 206). Shutting further lowers the boost: the engine's air, the smoke-limited fuel and the turbine's energy fall
+together. Neither p3/p2 (1.4 in both the trap and the tractor's legitimate 1000 rpm point), a speed feed-forward, nor
+perturb-and-observe (opening first lowers the boost for a second) told them apart; the compressor's surge did (truck
+66 %, tractor at 1000 32 %). Fix (cf888e2): while the compressor surges an integral opens the vanes 0.5/s, giving back
+0.125/s while not. After: the truck 209.7/1937 from 800 rpm, 210.0/1930 from 2000; D2's spool 90 % in 4.10 s against the
+single's 4.40 (57 against 41 kPa at 1 s); tractor 1000/1300/1800 1222/2655/2327 N m (limit alone 1193/2682/2332);
+pickup within 0.3 %; brake 406 kW unchanged. Test: GateTest.cpp, "variable vanes past the surge line open".
+Listen: the truck's VGT tip-in at 1300 rpm, no surge chuff once spooled.

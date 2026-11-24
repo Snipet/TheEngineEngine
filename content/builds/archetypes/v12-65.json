@@ -139,6 +139,9 @@
       },
       "idle": {
         "speed": 94.248
+      },
+      "launch": {
+        "on": true
       }
     },
     "car": {
@@ -156,6 +159,8 @@
       "gearbox": "Dual clutch",
       "finalDrive": 4.8,
       "wheelInertia": 1.6,
+      "rearPreload": 100.0,
+      "rearKTorque": 0.5,
       "gears": 7,
       "autoGearing": false,
       "ratio": [
