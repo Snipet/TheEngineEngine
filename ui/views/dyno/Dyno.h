@@ -8,7 +8,8 @@
 namespace tee::ui
 {
     std::unique_ptr<Workspace> makeDynoWorkspace(WorkspaceContext& c);
-    // Where a control of the stage is: "start", "stop", "name", "copy", "engine", "chassis", "none", "boost",
+    // Where a control of the stage is: "start", "stop", "name", "copy", "engine", "chassis", "sweep", "steps", "settle",
+    // "none", "boost",
     // "lambda", "advance" (an empty rect: no such control).
     funkgui::Rect dynoControl(Workspace& w, const char* which);
 }

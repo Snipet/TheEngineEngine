@@ -222,6 +222,11 @@
         CHECK(l.scroll() > 0.0f);
         rig.settle();
         CHECK(l.settled());
+        // A trackpad's smooth delta is in JUCE's units, 1 / 512 of one a px (funkgui::scroll): ten px of it scroll ten.
+        typeKeys(rig.host, "home");
+        rig.host.wheel(100, 100, -10.0f / funkgui::scroll::kWheelPxPerUnit, true);
+        CHECK_MSG(std::fabs(l.scroll() - 10.0f) < 0.01f, std::to_string(l.scroll()));
+        rig.settle();
         const auto items = rig.host.accessibility();
         CHECK(!items.empty() && items[0].role == funkgui::a11yrole::list);
         return 0;

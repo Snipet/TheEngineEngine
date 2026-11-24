@@ -2,7 +2,7 @@
   "format": "tee-validation",
   "version": 1,
   "build": "builds/archetypes/tractor-15-inline-six.json",
-  "description": "Card P's targets for \"Highway tractor 15 L\": the invariants are hard; the rest are reported, never failed: their misses are the simulator's to-do list. Predicted strongest lines (not measured: the validation format has no line measure yet): the firing frequency, rpm/60 x 6/2, 35.0 Hz at the 700 rpm idle and 112 Hz at the 2249 rpm limiter.",
+  "description": "Card P's targets for \"Highway tractor 15 L\": the invariants are hard; the rest are reported, never failed: their misses are the simulator's to-do list. Predicted strongest lines (not measured: the validation format has no line measure yet): the firing frequency, rpm/60 x 6/2, 35.0 Hz at the 700 rpm idle and 101 Hz at the 2014 rpm limiter.",
   "targets": [
     {
       "name": "Invariant: starts warm and runs",
@@ -38,13 +38,12 @@
         6,
         9
       ],
-      "relativeTo": "engine.redline",
       "range": [
-        0.97,
-        1.03
+        204.6,
+        217.2
       ],
-      "unit": "of the redline",
-      "source": "a rev limiter holds the speed within a few percent of where it cuts (some 100 to 200 rpm at 6500)"
+      "unit": "rad/s",
+      "source": "a diesel's governor holds its high idle, the rated speed plus its 6 % droop (2014 rpm), within a few percent"
     },
     {
       "name": "Invariant: pulls away",
@@ -93,14 +92,14 @@
       "dyno": {
         "steps": [
           157.1,
-          166.3,
-          175.5,
-          184.8,
-          194.0,
-          203.2,
-          212.4,
-          221.7,
-          230.9
+          163.3,
+          169.5,
+          175.7,
+          181.9,
+          188.1,
+          194.3,
+          200.5,
+          206.7
         ],
         "settle": 5,
         "measure": 1
@@ -118,14 +117,14 @@
       "dyno": {
         "steps": [
           157.1,
-          166.3,
-          175.5,
-          184.8,
-          194.0,
-          203.2,
-          212.4,
-          221.7,
-          230.9
+          163.3,
+          169.5,
+          175.7,
+          181.9,
+          188.1,
+          194.3,
+          200.5,
+          206.7
         ],
         "settle": 5,
         "measure": 1
@@ -143,14 +142,14 @@
       "dyno": {
         "steps": [
           157.1,
-          166.3,
-          175.5,
-          184.8,
-          194.0,
-          203.2,
-          212.4,
-          221.7,
-          230.9
+          163.3,
+          169.5,
+          175.7,
+          181.9,
+          188.1,
+          194.3,
+          200.5,
+          206.7
         ],
         "settle": 5,
         "measure": 1
@@ -168,14 +167,14 @@
       "dyno": {
         "steps": [
           157.1,
-          166.3,
-          175.5,
-          184.8,
-          194.0,
-          203.2,
-          212.4,
-          221.7,
-          230.9
+          163.3,
+          169.5,
+          175.7,
+          181.9,
+          188.1,
+          194.3,
+          200.5,
+          206.7
         ],
         "settle": 5,
         "measure": 1

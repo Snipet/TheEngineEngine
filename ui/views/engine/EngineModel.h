@@ -142,14 +142,16 @@ namespace tee::ui::engine
     // A preset's index by a choice's text: the spec's names, and the short ones a build may use ("V8", "I4").
     int presetByName(std::string_view name);
 
-    // The layout the document describes (custom, a preset by its choice, or none).
-    Layout layoutOf(const FieldDoc& doc);
+    // The layout the document describes (custom, a preset by its choice, or none). `cycle2` false: as though the
+    // cycle were four-stroke (what runs when D refuses a two-stroke of a rotary).
+    Layout layoutOf(const FieldDoc& doc, bool cycle2 = true);
     // The layout dial's preset alone (what the simulator plays when it refuses a custom layout), or none.
     Layout dialLayoutOf(const FieldDoc& doc);
     // D's flag (finding X-001): 1 while a custom layout is refused and the dial's runs in its place.
     inline constexpr const char* kTelLayoutRefused = "engine.layoutRefused";
     // D's reason while refused: 1 cylinders fire together, 2 rotors fire together, 3 a cylinder's bank is outside the
-    // banks (0 or absent: none given; the stage then says why from the build when it can).
+    // banks, 4 a two-stroke asked of a rotary (it then runs as itself, a four-stroke-equivalent rotary) (0 or absent:
+    // none given; the stage then says why from the build when it can).
     inline constexpr const char* kTelLayoutReason = "engine.layoutReason";
 
     // The firing angles, order and intervals from banks, pins and firing revolutions (sim/core/layout.fm's derive()).

@@ -322,10 +322,10 @@ namespace tee::ui::engine
         l.ok = l.ok && wasOk;
     }
 
-    Layout layoutOf(const FieldDoc& doc)
+    Layout layoutOf(const FieldDoc& doc, bool cycle2)
     {
         // a two-stroke (card T): its cylinders in a row, firing every turn, evenly or all together
-        if (const double cycle = fieldValue(doc, EF::cycle); std::isfinite(cycle) && cycle >= 0.5)
+        if (const double cycle = fieldValue(doc, EF::cycle); cycle2 && std::isfinite(cycle) && cycle >= 0.5)
         {
             Layout l;
             l.twoStroke = true;

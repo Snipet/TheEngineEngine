@@ -166,7 +166,9 @@ namespace tee::ui
             {
                 pages::Section layoutSec{ "LAYOUT", cat({ both(EF::layout), both(EF::custom), both(EF::cycle) }) };
                 if (model().refused)
-                    layoutSec.warnings.push_back("THIS CUSTOM LAYOUT WAS REFUSED: THE ENGINE IS RUNNING THE LAYOUT DIAL'S INSTEAD"
+                    layoutSec.warnings.push_back(std::string(model().rotaryKept
+                                                     ? "THIS TWO-STROKE WAS REFUSED: THE ROTARY RUNS AS ITSELF, A FOUR-STROKE-EQUIVALENT ROTARY"
+                                                     : "THIS CUSTOM LAYOUT WAS REFUSED: THE ENGINE IS RUNNING THE LAYOUT DIAL'S INSTEAD")
                                                  + (model().why.empty() ? std::string() : " (" + model().why + ")"));
                 std::vector<std::string> banks;
                 for (int b = 0; b < kMaxBanks; ++b)
@@ -320,6 +322,7 @@ namespace tee::ui
             // A custom layout the simulator refused (D's tel.engine.layoutRefused): `layout` is then the dial's, which is
             // what runs; `asked` what the build asked for, and why it makes no engine when that can be said
             bool refused = false;
+            bool rotaryKept = false;   // the refusal is of a two-stroke rotary: the rotary runs, as itself
             Layout asked;
             std::string why;
         };
@@ -336,11 +339,18 @@ namespace tee::ui
                 model_.refused = refused;
                 reasonSeen_ = reasonNow;
                 model_.asked = layoutOf(ctx_.doc);
-                model_.layout = refused && model_.asked.custom ? dialLayoutOf(ctx_.doc) : model_.asked;
-                model_.why.clear();
                 const double code = ctx_.live.get(kTelLayoutReason);
                 const int reason = refused && std::isfinite(code) ? static_cast<int>(std::lround(code)) : 0;
-                if (reason == 1)
+                // D's reason 4: a two-stroke asked of a custom rotary, which runs as itself (four-stroke-equivalent);
+                // any other refusal runs the layout dial's
+                model_.rotaryKept = reason == 4;
+                model_.layout = model_.rotaryKept                      ? layoutOf(ctx_.doc, false)
+                                : refused && model_.asked.custom ? dialLayoutOf(ctx_.doc)
+                                                                 : model_.asked;
+                model_.why.clear();
+                if (reason == 4)
+                    model_.why = "A ROTARY HAS NO TWO-STROKE";
+                else if (reason == 1)
                     model_.why = "TWO OF ITS CYLINDERS FIRE TOGETHER";
                 else if (reason == 2)
                     model_.why = "ITS ROTORS FIRE TOGETHER";
@@ -601,7 +611,8 @@ namespace tee::ui
             if (m.refused)
             {
                 // the simulator refused the custom layout: the block shows the dial's, which is what runs
-                put(c, "CUSTOM LAYOUT REFUSED: THE DIAL'S RUNS", in.x, in.y + 14.0f, lk::kCaps, p.warning);
+                put(c, m.rotaryKept ? "TWO-STROKE REFUSED: THE ROTARY RUNS" : "CUSTOM LAYOUT REFUSED: THE DIAL'S RUNS", in.x, in.y + 14.0f,
+                    lk::kCaps, p.warning);
                 if (!m.why.empty())
                     put(c, m.why, in.x, in.y + 27.0f, lk::kCaps, p.warning);
             }
@@ -1107,14 +1118,32 @@ namespace tee::ui
                 c.segment(a.x, a.y, b.x, b.y, 1.0f, p.dim);
             }
             const int now = firingNow(l, a1);
+            // one tick an angle: cylinders that fire together share it, their numbers together ("1,4")
+            const auto together = [&](int x, int y) {
+                return std::fabs(l.fire[static_cast<std::size_t>(x)] - l.fire[static_cast<std::size_t>(y)]) < 0.5;
+            };
             for (int cyl = 0; cyl < l.n; ++cyl)
             {
+                bool first = true;
+                for (int o = 0; o < cyl && first; ++o)
+                    first = !together(o, cyl);
+                if (!first)
+                    continue;
+                std::string label;
+                bool lit = false;
+                for (int o = cyl; o < l.n; ++o)
+                    if (together(o, cyl))
+                    {
+                        label += (label.empty() ? "" : ",") + std::to_string(o + 1);
+                        lit = lit || (o == now && glowOf(l, o, a1) > 0.0);
+                    }
                 const double ang = l.fire[static_cast<std::size_t>(cyl)] / l.cyc * 360.0;
-                const bool lit = cyl == now && glowOf(l, cyl, a1) > 0.0;
                 const Point a = polar(ctr, ang, R - 9.0f), b = polar(ctr, ang, R + 9.0f);
                 c.segment(a.x, a.y, b.x, b.y, lit ? 3.0f : 2.0f, lit ? p.hot : p.value);
-                const Point t = polar(ctr, ang, R + 18.0f);
-                putCentred(c, std::to_string(cyl + 1), t.x, t.y, lk::kNumberS, lit ? p.hot : p.text);
+                // a longer label stands further out only to the sides, where its width would reach the ring
+                const float wide = 3.0f * static_cast<float>(label.size() - 1) * static_cast<float>(std::fabs(std::sin(ang * kPi / 180.0)));
+                const Point t = polar(ctr, ang, R + 18.0f + wide);
+                putCentred(c, label, t.x, t.y, lk::kNumberS, lit ? p.hot : p.text);
             }
             // a ring for each bank inside: its own intervals (a crossplane V8's 180-90-180-270 a bank)
             for (int b = 0; b < banks && banks > 1; ++b)

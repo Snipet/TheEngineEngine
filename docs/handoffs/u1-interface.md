@@ -124,3 +124,9 @@ sheet will include every registered workspace.
   walls, -1 not said: a sweep, a prediction) and `wallsWord()` ("walls settled", "cold walls", ""); a stepped run asks
   with `DynoRequest::settleExhaust` (default true). `ServiceDyno` and the demo fill it for runs. Label a run with it;
   never mix the two unlabelled.
+- **The top bar's load** (the lead's ask, 19:20; `app/LoadMeter.h`): "62 % of a core" from the PEAK
+  (`FrameServices::simLoadPeak`, HostStats::loadPeak; none: `simLoad`, the mean), a bar green under 70 %, amber to 90,
+  red past it, and the word (ok, tight, over); "dropouts: n" from `FrameServices::dropouts` when not 0. The verdict is
+  the host's `FrameServices::loadFits` (1, 0, -1) when served, else the peak held three seconds. Tight or over: the
+  sentence "This build is heavy for this machine at Full: Economy halves it" and a QUALITY button (the settings page)
+  in the status line's place; it never switches the quality and goes by itself. Tests `ui.frame.load`.
