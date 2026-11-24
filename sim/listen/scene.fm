@@ -126,6 +126,14 @@ module Scene
     float tailD;        // the tailpipes' bore (m)
     int pipes;
     int place;          // the engine's: 0 front, 1 mid, 2 rear
+    // a motorcycle (spec.car.kind Motorcycle with car.model 1: package B2's): its own places, the rider's head
+    int moto;
+    float motoK;        // its wheelbase over a superbike's 1.41 m
+    float motoTuck;     // 0 sitting up, 1 tucked
+    float motoLift;     // the front lifted, radians (a wheelie), about the rear tyre's contact
+    float headX;        // the rider's head (m, this frame), for the DRIVER camera
+    float headY;
+    float headZ;
     float groundR;      // the ground's reflection, and its low-pass (Hz)
     float groundFc;
     float windows;      // 0 shut to 1 open
@@ -278,6 +286,67 @@ module Scene
         bus[LS_TANK] = 0;
     }
 
+    // A motorcycle's places (package B2's geometry, a superbike's scaled by the wheelbase: B2's frame has x forward from
+    // the rear tyre's contact, which is 0.3 m ahead of the rear wheel's back, here y = 0.3 + x): the exhaust's can on
+    // the right (two: one each side), the ram-air mouth at the nose, the engine under the tank, the rider's head tucked
+    // or sitting up; all turned nose-up about the rear contact by a wheelie's angle
+    void placeMoto(int n)
+    {
+        const float k = motoK;
+        const float t = motoTuck;
+        float px[LS_N];
+        float py[LS_N];
+        float pz[LS_N];
+        for (int s = 0; s < LS_N; ++s)
+        {
+            px[s] = sx[s];
+            py[s] = 0.3f + 0.75f * k;
+            pz[s] = 0.5f;
+        }
+        px[LS_TAIL0] = n == 2 ? -0.2f : 0.2f;
+        px[LS_TAIL1] = 0.2f;
+        py[LS_TAIL0] = 0.3f + 0.30f * k;
+        py[LS_TAIL1] = 0.3f + 0.30f * k;
+        pz[LS_TAIL0] = 0.45f;
+        pz[LS_TAIL1] = 0.45f;
+        px[LS_INTAKE] = 0.0f;
+        py[LS_INTAKE] = 0.3f + 1.45f * k;
+        pz[LS_INTAKE] = 0.75f;
+        px[LS_BAY] = 0.0f;
+        px[LS_BAYOPEN] = 0.0f;
+        px[LS_TYRES] = 0.0f;
+        py[LS_TYRES] = 0.3f + 0.7f * k;
+        pz[LS_TYRES] = 0.05f;
+        px[LS_DRIVE] = 0.0f;
+        py[LS_DRIVE] = 0.3f + 0.55f * k;
+        pz[LS_DRIVE] = 0.4f;
+        px[LS_AXLE] = 0.15f;
+        py[LS_AXLE] = 0.3f;
+        pz[LS_AXLE] = 0.3f;
+        px[LS_TANK] = 0.0f;
+        py[LS_TANK] = 0.3f + 0.85f * k;
+        pz[LS_TANK] = 0.85f;
+        float hx = 0.0f;
+        float hy = 0.3f + (0.65f + 0.2f * t) * k;
+        float hz = 1.40f - 0.25f * t;
+        // the wind at the rider's helmet
+        px[LS_WIND] = 0.0f;
+        py[LS_WIND] = hy + 0.25f;
+        pz[LS_WIND] = hz;
+        const float cl = cosf(motoLift);
+        const float sl = sinf(motoLift);
+        for (int s = 0; s < LS_N; ++s)
+        {
+            const float yy = py[s] - 0.3f;
+            sx[s] = px[s];
+            sy[s] = 0.3f + yy * cl - pz[s] * sl;
+            sz[s] = fmaxf(yy * sl + pz[s] * cl, 0.02f);
+        }
+        headX = hx;
+        headY = 0.3f + (hy - 0.3f) * cl - hz * sl;
+        headZ = (hy - 0.3f) * sl + hz * cl;
+    }
+
     // The driver's head in the car's frame (y), by the engine's place
     float seatY()
     {
@@ -320,6 +389,15 @@ module Scene
             v->ly = sy[LS_BAY] + 0.5f * r;
             v->lz = 1.4f;
             v->fy = -1.0f;
+        }
+        else if (c == CAM_DRIVER && moto != 0)
+        {
+            // the rider's head, in the open air: a head's two ears, no cabin
+            v->lx = headX;
+            v->ly = headY;
+            v->lz = headZ;
+            v->head = 1;
+            v->cabin = 0;
         }
         else if (c == CAM_DRIVER)
         {
@@ -403,7 +481,12 @@ module Scene
             const float st = sqrtf(fmaxf(1.0f - ct * ct, 0.0f));
             const float se = ct >= 0.0f ? fmaxf(st, 0.02f) : 2.0f - st;
             fc = 2.5f * 347.2f / (3.14159265f * tailD * se);
-            gain = uy > 0.0f ? 1.0f - 0.67f * uy : 1.0f;
+            gain = uy > 0.0f && moto == 0 ? 1.0f - 0.67f * uy : 1.0f;
+        }
+        else if (moto != 0 && (s == LS_INTAKE || s == LS_BAY || s == LS_BAYOPEN))
+        {
+            // a motorcycle's engine is in the open: no bay, no cabin to shade it
+            gain = 1.0f;
         }
         else if (s == LS_INTAKE || s == LS_BAY || s == LS_BAYOPEN)
         {
@@ -574,8 +657,10 @@ module Scene
         tailD = fmaxf(bore, 0.02f);
         groundR = ground == 0 ? 0.9f : (ground == 1 ? 0.6f : 0.0f);
         groundFc = ground == 1 ? 1800.0f : 1.0e6f;
-        if (where != place || nPipes != pipes || camUse < 0)
+        if (where != place || nPipes != pipes || camUse < 0 || moto != 0)
             placeSources(where, nPipes, bike);
+        if (moto != 0)
+            placeMoto(nPipes);
         act[LS_TAIL0] = 1;
         act[LS_TAIL1] = nPipes == 2 ? 1 : 0;
         act[LS_INTAKE] = 1;

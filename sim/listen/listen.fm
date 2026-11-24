@@ -456,8 +456,12 @@ module Listen
     void block(int v, float intakeK, float mechK, float distance, float room, float levelDb, int asp, float exTrim,
                float gainNorm, int nPipes, float bike, float tailD, SoundSpec* ssIn, SoundTel* stIn, float carSpeed,
                int driven, float vTotal, int nCyl, float fx, float fy, float mx, float my, float* fire, float cyc,
-               int rotary)
+               int rotary, int moto, float wheelbase, float tuck, float liftDeg)
     {
+        sc.moto = moto;
+        sc.motoK = fmaxf(wheelbase, 0.5f) / 1.41f;
+        sc.motoTuck = fminf(fmaxf(tuck, 0.0f), 1.0f);
+        sc.motoLift = 0.01745329f * fminf(fmaxf(liftDeg, 0.0f), 80.0f);
         ss = ssIn;
         st = stIn;
         const int mWant = ss->model != 0 ? 1 : 0;

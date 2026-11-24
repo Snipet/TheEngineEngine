@@ -30,6 +30,9 @@ module LRig
     int nCyl;
     float fire[16];     // the engine's firing angles (a V8's, cross-plane, by default) and its cycle
     float cyc;
+    int moto;           // a motorcycle (package B2's), its tuck and its wheelie (degrees)
+    float tuck;
+    float lift;
     float shake;        // the free forces' amplitude (N), fed as a sine at freq into fy when src is 3
     // the test signal: src 0 the left tail, 1 the right, 2 the intake, 3 the torque (cabin), 4 mech, 5 block, 6 turbo,
     // 7 starter, 8 comb, 9 the headers' walls (both), 10 the road; 11 both tails; 12 the driveline (package M's)
@@ -121,7 +124,8 @@ module LRig
         {
             const float sh = src == 3 ? shake : 0.0f;
             ln.block(view, intakeK, mechK, distance, room, levelDb, asp, exTrim, gainNorm, nPipes, bike, tailD, &ss, &st,
-                     carSpeed, driven, vTotal, nCyl, 0.0f, 0.0f, 0.0f, 0.0f, fire, cyc, 0);
+                     carSpeed, driven, vTotal, nCyl, 0.0f, 0.0f, 0.0f, 0.0f, fire, cyc, 0, moto, 1.41f,
+                     tuck, lift);
             for (int i = 0; i < 16; ++i)
             {
                 const float x = signal();
