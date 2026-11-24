@@ -552,7 +552,7 @@ module Car
     {
         if (model == 1 && bikeOn != 0)
         {
-            const float wb = b1.step(w, tq, dt);
+            const float wb = b1.step(w, tq, dt, jCrank);
             v = (float)b1.v;
             return wb;
         }
