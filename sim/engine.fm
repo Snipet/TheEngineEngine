@@ -248,7 +248,7 @@ module Engine
         tel.engine.manifold = mono.pPlenum;
         tel.engine.coolant = mono.heat.tCool;
         tel.engine.oilPressure = mono.heat.pOil;
-        tel.engine.flags = (mono.ecu.limiting || mono.droop < 0.95f ? FLAG_LIMITER : 0)
+        tel.engine.flags = (mono.ecu.limiting || mono.comb.droop < 0.95f ? FLAG_LIMITER : 0)
                            + (mono.ecu.fuelCut && mono.ecu.state == 2 ? FLAG_FUEL_CUT : 0);
         tel.engine.cycle = mono.showCycle;
         tel.engine.crank = mono.theta;
