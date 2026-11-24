@@ -323,8 +323,10 @@ namespace
         f.showInspectorPage(1);
         rig.host->tick(2);
         const funkgui::Rect r = f.inspector()->controlRect("boost.level");
+        const std::uint64_t asked = rig.demo.engine.requests();
         rig.host->drag(r.centreX(), r.centreY(), r.centreX(), r.centreY() - 60.0f, 10);
         rig.host->tick(60);
+        CHECK(rig.demo.engine.requests() == asked + 1);   // one drag of many steps: one curve asked for, after its quiet
         CHECK(!rig.demo.engine.before().empty() && rig.demo.engine.predicted().peakTorque().value > before);
         golden("frame.ribbon", *rig.host);
         const float open = f.inspectorRect().h;

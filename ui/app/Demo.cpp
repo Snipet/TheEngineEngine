@@ -54,6 +54,32 @@ namespace tee::ui
         return all || std::find(only.begin(), only.end(), std::string_view(id)) != only.end();
     }
 
+    std::string demoFieldConflicts()
+    {
+        // Each hook is given the fields so far (as demoFields gives them) and may add; what it adds that is already
+        // there is the conflict.
+        std::vector<FieldInfo> acc = demoFields(DemoHooks::none());
+        std::map<std::string, std::string> owner;
+        for (const FieldInfo& f : acc)
+            owner[f.path] = "the base demo";
+        std::string out;
+        for (std::size_t k = 0; k < registeredDemos().size(); ++k)
+        {
+            const std::size_t before = acc.size();
+            DemoExtras x;
+            x.fields = &acc;
+            registeredDemos()[k](x);
+            const std::string who = std::string(registeredDemoIds()[k]) + "'s hook";
+            for (std::size_t i = before; i < acc.size(); ++i)
+            {
+                const auto [it, fresh] = owner.emplace(acc[i].path, who);
+                if (!fresh)
+                    out += "field " + acc[i].path + ": " + it->second + " and " + who + "\n";
+            }
+        }
+        return out;
+    }
+
     std::vector<FieldInfo> demoFields(const DemoHooks& hooks)
     {
         std::vector<FieldInfo> out;
@@ -184,19 +210,30 @@ namespace tee::ui
                 x.fields = &out;
                 registeredDemos()[k](x);
             }
-        return out;
+        // A field defined twice (the base and a hook, or two hooks): the first is kept (ui.demo.hooks says which).
+        std::vector<FieldInfo> unique;
+        for (FieldInfo& f : out)
+            if (std::none_of(unique.begin(), unique.end(), [&](const FieldInfo& u) { return u.path == f.path; }))
+                unique.push_back(std::move(f));
+        return unique;
     }
 
     // ---- the engine ------------------------------------------------------------------------------------------------
     DemoEngine::DemoEngine(const FieldDoc* doc, const DemoHooks& hooks) : doc_(doc)
     {
+        for (const char* n : kNames)
+            owner_[n] = "the base demo";
+        for (const char* n : kScope)
+            owner_[std::string("scope.") + n] = "the base demo";
         for (std::size_t k = 0; k < registeredDemos().size(); ++k)
             if (hooks.wants(registeredDemoIds()[k]))
             {
+                hookId_ = std::string(registeredDemoIds()[k]) + "'s hook";
                 DemoExtras x;
                 x.engine = this;
                 registeredDemos()[k](x);
             }
+        hookId_ = "a test";
         for (const char* n : kNames)
             names_.emplace_back(n);
         values_.assign(names_.size(), 0.0);
@@ -245,6 +282,7 @@ namespace tee::ui
         {
             quiet_ = 0.0;
             waiting_ = 0.4;
+            ++requests_;
             ++dynoRevision_;
         }
         if (waiting_ >= 0.0)
@@ -321,13 +359,25 @@ namespace tee::ui
 
     void DemoEngine::addTelemetry(std::string name, std::function<double(const DemoEngine&)> value)
     {
+        if (const auto it = owner_.find(name); it != owner_.end())
+            conflicts_ += "telemetry " + name + ": " + it->second + " and " + hookId_ + "\n";
+        else
+            owner_[name] = hookId_;
         extraTel_.emplace_back(std::move(name), std::move(value));
     }
 
     void DemoEngine::addScope(std::string name, std::function<int(const DemoEngine&, float*, int)> read)
     {
+        const std::string key = "scope." + name;
+        if (const auto it = owner_.find(key); it != owner_.end())
+            conflicts_ += "Scope " + name + ": " + it->second + " and " + hookId_ + "\n";
+        else
+            owner_[key] = hookId_;
         extraScope_.emplace_back(std::move(name), std::move(read));
     }
+
+    std::vector<std::string> DemoEngine::baseTelemetry() { return { std::begin(kNames), std::end(kNames) }; }
+    std::vector<std::string> DemoEngine::baseScope() { return { std::begin(kScope), std::end(kScope) }; }
 
     double DemoEngine::interpolate(const DynoTrace& c, double speed)
     {
