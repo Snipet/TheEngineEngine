@@ -39,6 +39,7 @@
 #include <funkgui/text/TextStyle.h>
 
 #include <functional>
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -95,9 +96,22 @@ namespace tee::ui
         float w = 60.0f, h = 80.0f;
     };
     GuiKnobGeom guiKnobGeom(const GuiNode& n, float labelWidth);
+
+    // J2: a table's places (MapEdit's): its title's strip, the header column of the rows' values and the header row of
+    // the columns'. A table of one row (an `array`) too narrow for its cells wraps them onto lines, each its numbers'
+    // header and its cells, as many cells a line as keep kGuiTableCellW each (no header column then: it says nothing
+    // for one row); a line is kGuiTableLineH tall at least.
+    inline constexpr float kGuiTableTitleH = 18.0f, kGuiTableHeaderW = 54.0f, kGuiTableHeaderH = 20.0f;
+    inline constexpr float kGuiTableCellW = 36.0f, kGuiTableLineH = 46.0f;
+    inline constexpr int kGuiArrayCells = 16;              // the most an `array` shows (Tables.h's kTableMax)
+    // The lines `cells` of one row take `width` wide: 1 while they keep kGuiTableCellW beside the header column.
+    int guiTableLines(int cells, float width) noexcept;
+
     // J2: a widget element's cell: its width= and height=, else its kind's (plot 320 x 180, curve 320 x 200, map
-    // 560 x 300, gauge 170 x 170, bar 150 x 44, lamp 64 x 44, array 640 x 76).
-    GuiExtent guiWidgetSize(const GuiNode& n);
+    // 560 x 300, gauge 170 x 170, bar 150 x 44, lamp 64 x 44, array 640 x 76). Without width= it takes at most
+    // `maxW` (it never widens what holds it past the room offered: the inspector's column); an `array` without
+    // height= is then as tall as the lines kGuiArrayCells wrap onto (guiTableLines).
+    GuiExtent guiWidgetSize(const GuiNode& n, float maxW = std::numeric_limits<float>::max());
 
     // White keys among `keys` from `from` (a keyboard's width in keys).
     int guiWhiteKeys(int from, int keys);

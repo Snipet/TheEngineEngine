@@ -1,6 +1,8 @@
 // ui/kit/widgets/Tables.cpp: see Tables.h.
 #include "kit/widgets/Tables.h"
 
+#include "kit/gui/GuiLayout.h"
+
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -37,7 +39,7 @@ namespace tee::ui
             return static_cast<float>(n - 1);
         }
 
-        constexpr float kHeaderW = 54.0f, kHeaderH = 20.0f, kTitleH = 18.0f;
+        constexpr float kHeaderW = kGuiTableHeaderW, kHeaderH = kGuiTableHeaderH, kTitleH = kGuiTableTitleH;
         constexpr int kIds = 63;
     }
 
@@ -279,9 +281,27 @@ namespace tee::ui
                                 : funkgui::ease::toward(liveShown_[k], liveTarget_[k], dt, 0.05f, 1e-3f);
     }
 
+    int MapEdit::lines() const noexcept
+    {
+        if (map_.ny != 1 || map_.nx <= 1)
+            return 1;
+        const int room = std::max(1, static_cast<int>((bounds_.h - kTitleH) / kGuiTableLineH));
+        return std::clamp(guiTableLines(map_.nx, bounds_.w), 1, room);
+    }
+
     Rect MapEdit::cellRect(int column, int row) const noexcept
     {
         const float top = bounds_.y + kTitleH;
+        if (const int n = lines(); n > 1)
+        {
+            // One row on n lines: each line its numbers' header and its cells, across the whole width.
+            if (column < 0 || column >= map_.nx)
+                return {};
+            const int perLine = (map_.nx + n - 1) / n;
+            const float cw = bounds_.w / static_cast<float>(perLine), lineH = (bounds_.h - kTitleH) / static_cast<float>(n);
+            const float x = bounds_.x + cw * static_cast<float>(column % perLine), y = top + lineH * static_cast<float>(column / perLine);
+            return row < 0 ? Rect{ x, y, cw, kHeaderH } : Rect{ x, y + kHeaderH, cw, lineH - kHeaderH };
+        }
         const float cw = map_.nx > 0 ? (bounds_.w - kHeaderW) / static_cast<float>(map_.nx) : 0.0f;
         const float ch = map_.ny > 0 ? (bounds_.h - kTitleH - kHeaderH) / static_cast<float>(map_.ny) : 0.0f;
         const float x = column < 0 ? bounds_.x : bounds_.x + kHeaderW + cw * static_cast<float>(column);
@@ -297,6 +317,18 @@ namespace tee::ui
         const float top = bounds_.y + kTitleH;
         if (p.y < top || p.x < bounds_.x || !bounds_.contains(p))
             return false;
+        if (const int n = lines(); n > 1)
+        {
+            const int perLine = (map_.nx + n - 1) / n;
+            const float lineH = (bounds_.h - kTitleH) / static_cast<float>(n);
+            const int line = std::min(n - 1, static_cast<int>((p.y - top) / lineH));
+            const int i = line * perLine + std::min(perLine - 1, static_cast<int>((p.x - bounds_.x) / first.w));
+            if (i >= map_.nx)
+                return false;                            // past the last cell of the last line
+            column = i;
+            row = p.y - top - lineH * static_cast<float>(line) < kHeaderH ? -1 : 0;
+            return true;
+        }
         column = p.x < first.x ? -1 : std::min(map_.nx - 1, static_cast<int>((p.x - first.x) / first.w));
         row = p.y < first.y ? -1 : std::min(map_.ny - 1, static_cast<int>((p.y - first.y) / first.h));
         return !(column < 0 && row < 0);                 // the corner is nothing
@@ -342,7 +374,7 @@ namespace tee::ui
     {
         if (editing_)
             commit();
-        sx_ = std::clamp(column, -1, std::max(0, map_.nx - 1));
+        sx_ = std::clamp(column, lines() > 1 ? 0 : -1, std::max(0, map_.nx - 1));   // wrapped: no y header
         sy_ = std::clamp(row, -1, std::max(0, map_.ny - 1));
         if (sx_ < 0 && sy_ < 0)
             sy_ = 0;
@@ -381,31 +413,38 @@ namespace tee::ui
     {
         const Look l = Look::of(th);
         const auto fmt = [](const Axis& a, double v) { return a.text.format ? a.text.format(v) : plainNumber(v); };
-        // The title, and what the axes are.
-        c.text(upper(title_).c_str(), bounds_.x, bounds_.y + 3.0f, kWidgetLabel, l.label);
-        const std::string axes = upper(z_.label) + " BY " + upper(x_.label) + " ACROSS, " + upper(y_.label) + " DOWN";
-        c.text(axes.c_str(), bounds_.right(), bounds_.y + 3.0f, kWidgetSmall, l.dim, funkgui::Align::right);
+        // The title, and what the axes are in the room beside it (none when too little: a narrow column).
+        const std::string title = upper(title_);
+        c.text(title.c_str(), bounds_.x, bounds_.y + 3.0f, kWidgetLabel, l.label);
+        const float axesRoom = bounds_.w - c.textWidth(title.c_str(), kWidgetLabel) - 16.0f;
+        if (axesRoom >= 60.0f)
+        {
+            const std::string axes = upper(z_.label) + " BY " + upper(x_.label) + " ACROSS, " + upper(y_.label) + " DOWN";
+            c.text(fitText(c, axes, kWidgetSmall, axesRoom).c_str(), bounds_.right(), bounds_.y + 3.0f, kWidgetSmall, l.dim,
+                   funkgui::Align::right);
+        }
         if (map_.nx <= 0 || map_.ny <= 0)
             return;
         const Canvas::ClipScope clip(c, bounds_);
         const funkgui::TextStyle cellText = kWidgetSmall;
+        const bool wrapped = lines() > 1;
         int liveX = -1, liveY = -1;
         const bool live = liveCell(liveX, liveY);
-        // The headers.
+        // The headers; text cut to its cell (a choice's name can be longer than a cell is wide).
         for (int i = 0; i < map_.nx; ++i)
         {
             const Rect r = cellRect(i, -1);
             const bool sel = sy_ < 0 && sx_ == i, lit = live && liveX == i;
             c.rrect(r.x + 0.5f, r.y + 0.5f, r.w - 1.0f, r.h - 1.0f, 2.0f, sel ? l.accentDim : l.faceHi);
-            c.text(fmt(x_, map_.x[static_cast<std::size_t>(i)]).c_str(), r.centreX(), c.capCentreTop(r.centreY(), cellText),
-                   cellText, lit ? l.accent : l.text, funkgui::Align::centre);
+            c.text(fitText(c, fmt(x_, map_.x[static_cast<std::size_t>(i)]), cellText, r.w - 4.0f).c_str(), r.centreX(),
+                   c.capCentreTop(r.centreY(), cellText), cellText, lit ? l.accent : l.text, funkgui::Align::centre);
         }
-        for (int j = 0; j < map_.ny; ++j)
+        for (int j = 0; j < map_.ny && !wrapped; ++j)
         {
             const Rect r = cellRect(-1, j);
             const bool sel = sx_ < 0 && sy_ == j, lit = live && liveY == j;
             c.rrect(r.x + 0.5f, r.y + 0.5f, r.w - 1.0f, r.h - 1.0f, 2.0f, sel ? l.accentDim : l.faceHi);
-            c.text(fmt(y_, map_.y[static_cast<std::size_t>(j)]).c_str(), r.right() - 5.0f,
+            c.text(fitText(c, fmt(y_, map_.y[static_cast<std::size_t>(j)]), cellText, r.w - 8.0f).c_str(), r.right() - 5.0f,
                    c.capCentreTop(r.centreY(), cellText), cellText, lit ? l.accent : l.text, funkgui::Align::right);
         }
         // The cells as a heat map, with their numbers when there is room.
@@ -421,24 +460,35 @@ namespace tee::ui
                 if (numbers)
                 {
                     const bool bright = fill.r + fill.g + fill.b > 3 * 150;
-                    c.text(fmt(z_, z).c_str(), r.centreX(), c.capCentreTop(r.centreY(), cellText), cellText,
-                           bright ? l.ground : l.value, funkgui::Align::centre);
+                    c.text(fitText(c, fmt(z_, z), cellText, r.w - 4.0f).c_str(), r.centreX(), c.capCentreTop(r.centreY(), cellText),
+                           cellText, bright ? l.ground : l.value, funkgui::Align::centre);
                 }
             }
-        // The live cell, and the operating point between the cells.
+        // The live cell, and the operating point between the cells (wrapped: at the live cell's centre, the places
+        // between cells being on other lines).
         if (live)
         {
             const Rect r = cellRect(liveX, liveY);
             c.rrect(r.x, r.y, r.w, r.h, 2.0f, kClear, 2.0f, l.value);
-            const float px = first.x + (liveShown_[0] + 0.5f) * first.w, py = first.y + (liveShown_[1] + 0.5f) * first.h;
+            const float px = wrapped ? r.centreX() : first.x + (liveShown_[0] + 0.5f) * first.w;
+            const float py = wrapped ? r.centreY() : first.y + (liveShown_[1] + 0.5f) * first.h;
             c.disc(px, py, 3.5f, l.value, 1.5f, l.ground);
         }
-        // The block, when it is more than one cell: its outline.
+        // The block, when it is more than one cell: its outline (wrapped: each cell's, the block crossing lines).
         int b0 = 0, r0 = 0, b1 = 0, r1 = 0;
         if (block(b0, r0, b1, r1) && (b1 > b0 || r1 > r0))
         {
-            const Rect a = cellRect(b0, r0), z = cellRect(b1, r1);
-            c.rrect(a.x - 1.0f, a.y - 1.0f, z.right() - a.x + 2.0f, z.bottom() - a.y + 2.0f, 3.0f, kClear, 2.0f, l.accent);
+            if (wrapped)
+                for (int i = b0; i <= b1; ++i)
+                {
+                    const Rect a = cellRect(i, 0);
+                    c.rrect(a.x, a.y, a.w, a.h, 2.0f, kClear, 2.0f, l.accent);
+                }
+            else
+            {
+                const Rect a = cellRect(b0, r0), z = cellRect(b1, r1);
+                c.rrect(a.x - 1.0f, a.y - 1.0f, z.right() - a.x + 2.0f, z.bottom() - a.y + 2.0f, 3.0f, kClear, 2.0f, l.accent);
+            }
         }
         // The selection, and the value being typed in it.
         const Rect s = cellRect(sx_, sy_);
