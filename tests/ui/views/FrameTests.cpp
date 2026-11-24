@@ -291,6 +291,43 @@ namespace
 
     // The garage's stand-in: the builds listed, one loaded, the name changed and saved; the units page: pressure in psi,
     // and the inspector's knob says so.
+    // A truck (spec.car.kind "Truck", card D2's brakes): the cockpit shows the engine brake's lamps, lit only while
+    // the brake acts, its stage as segments (tel.ecu.brakeCylinders over the cylinders); a car shows none.
+    VIEW_TEST(testFrameTruck, "frame.truck")
+    {
+        FrameRig rig(1100, 700);
+        const auto brakeItem = [&]() -> const funkgui::A11yItem* {
+            static funkgui::A11yItem found;
+            for (const funkgui::A11yItem& it : rig.host->accessibility())
+                if (it.title == "Engine brake" && it.visible)
+                    return &(found = it);
+            return nullptr;
+        };
+        CHECK(brakeItem() == nullptr);
+        CHECK(!tee::ui::engineBrakeState(rig.demo.ctx).shown);
+        rig.demo.doc.set(rig.demo.doc.find("car.kind"), 1.0);   // Truck
+        rig.host->tick(4);
+        const funkgui::A11yItem* lamp = brakeItem();
+        CHECK(lamp != nullptr && lamp->value.rfind("off", 0) == 0);
+        rig.demo.engine.set("ecu.brakeCylinders", 6.0);           // six of the demo's eight: two thirds, MEDIUM
+        rig.demo.engine.set("ecu.backPressure", 180e3);
+        rig.host->tick(4);
+        const tee::ui::EngineBrakeState s = tee::ui::engineBrakeState(rig.demo.ctx);
+        CHECK(s.shown && s.stage == 2 && s.exhaustOn);
+        lamp = brakeItem();
+        CHECK_MSG(lamp != nullptr && lamp->value == "on, MEDIUM; exhaust brake on", lamp ? lamp->value : std::string("none"));
+        CHECK(rig.frame->rpmBar().bounds().w >= 240.0f);   // lambda gives its room at this width: the rpm bar stays readable
+        picture("frame.truck", *rig.host);
+        rig.demo.engine.set("ecu.brakeCylinders", 0.0);
+        rig.demo.engine.forget("ecu.backPressure");
+        rig.host->tick(4);
+        CHECK(tee::ui::engineBrakeState(rig.demo.ctx).stage == 0 && !tee::ui::engineBrakeState(rig.demo.ctx).exhaustOn);
+        rig.demo.doc.set(rig.demo.doc.find("car.kind"), 0.0);
+        rig.host->tick(4);
+        CHECK(brakeItem() == nullptr);
+        return 0;
+    }
+
     VIEW_TEST(testFrameGarage, "frame.garage")
     {
         FrameRig rig;

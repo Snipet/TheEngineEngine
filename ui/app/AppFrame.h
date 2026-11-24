@@ -224,6 +224,7 @@ namespace tee::ui
         std::vector<Button*> modes_;
         RpmBar* rpm_ = nullptr;
         std::vector<Readout*> readouts_;
+        BrakeLamp* brake_ = nullptr;   // a truck's engine brake (card D2): shown while engineBrakeState(ctx).shown
         std::vector<PedalBar*> pedals_;
         PanelControls controls_{};
         int localMode_ = 0;

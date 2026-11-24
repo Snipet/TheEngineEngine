@@ -3,6 +3,8 @@
 // goldens at densities 2 and 1.
 #include "ViewKit.h"
 
+#include "app/Cockpit.h"
+
 namespace tee::ui
 {
     std::unique_ptr<Workspace> makeDriveWorkspace(WorkspaceContext& c);
@@ -82,6 +84,67 @@ namespace
         ws->place({ 0.0f, 0.0f, 900.0f, 640.0f });
         host.tick(90);
         golden("drive.bike", host);
+        return 0;
+    }
+}
+
+namespace
+{
+    using namespace tee::test::views;
+
+    // A truck with both brakes (card D2): the scene's top left shows ENGINE BRAKE with two of three segments and
+    // MEDIUM (four of six cylinders), the EXHAUST BRAKE lamp lit (the flap a quarter shut); off, the switch's setting.
+    VIEW_TEST(testDriveTruck, "drive.truck")
+    {
+        std::vector<tee::ui::FieldInfo> fields = tee::ui::demoFields(false);
+        const auto add = [&](const char* path, double v, std::vector<std::string> choices) {
+            tee::ui::FieldInfo f;
+            f.path = path;
+            f.kind = tee::ui::FieldKind::choice;
+            f.choices = std::move(choices);
+            f.min = 0.0;
+            f.max = static_cast<double>(f.choices.size() - 1);
+            f.def = v;
+            f.label = path;
+            fields.push_back(f);
+        };
+        for (tee::ui::FieldInfo& f : fields)
+        {
+            if (f.path == "car.kind")
+                f.def = 1.0;   // Truck
+            if (f.path == "engine.cylinders")
+                f.def = 6.0;
+        }
+        add("ecu.engineBrake", 1.0, { "None", "Compression release" });
+        add("ecu.brakeSwitch", 2.0, { "Off", "Low", "Medium", "High" });
+        add("ecu.exhaustBrake", 1.0, { "None", "Flap", "Turbine vanes" });
+        tee::ui::MemoryDoc doc(fields);
+        tee::ui::Units units;
+        tee::ui::DemoEngine engine(&doc, false);
+        engine.setTime(4.6);
+        engine.hold(true);
+        tee::ui::Selection selection;
+        tee::AppServices app;
+        tee::ui::WorkspaceContext ctx{ doc, engine, engine, engine, units, selection, app };
+        tee::ui::EngineBrakeState s = tee::ui::engineBrakeState(ctx);
+        CHECK(s.shown && s.compression && s.exhaust && s.stage == 0 && s.armed == 2 && !s.exhaustOn);
+        engine.set("ecu.brakeCylinders", 4.0);
+        engine.set("exhaust.flap", 0.25);
+        s = tee::ui::engineBrakeState(ctx);
+        CHECK(s.stage == 2 && s.exhaustOn);
+        engine.set("exhaust.flap", 0.0);   // a flap fitted and open: off, whatever the pressure
+        CHECK(!tee::ui::engineBrakeState(ctx).exhaustOn);
+        engine.set("exhaust.flap", 0.25);
+        std::unique_ptr<tee::ui::Workspace> ws = tee::ui::makeDriveWorkspace(ctx);
+        funkgui::HeadlessHost host(*ws, 0, 2.0f);
+        host.resize(900, 640);
+        ws->place({ 0.0f, 0.0f, 900.0f, 640.0f });
+        host.tick(90);
+        golden("drive.truck", host);
+        engine.set("ecu.brakeCylinders", 0.0);
+        engine.set("exhaust.flap", 0.0);
+        host.tick(4);
+        picture("drive.truck.armed", host);   // SET MEDIUM, dim
         return 0;
     }
 }
