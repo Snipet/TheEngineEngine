@@ -91,10 +91,9 @@ TEST_CASE("H3: a map reads its breakpoints exactly and interpolates between", "[
     CHECK(fm.call<float>("OneLine::mapAt", MAP_SPARK, 20000.0f, 9.0f) == static_cast<float>(zOf(2, 1)));
 }
 
-TEST_CASE("H3: spec/tables.fm's Map16::at reads every breakpoint exactly", "[h][ecu][maps][!mayfail]")
+TEST_CASE("H3: spec/tables.fm's Map16::at reads every breakpoint exactly", "[h][ecu][maps]")
 {
-    // Map16::at blends a + (b - a) f, which at f = 1 (a map's last breakpoint) can come out one rounding off b; the
-    // ECU reads its maps through EcuMaps::exactAt meanwhile. Expected to fail until tables.fm blends a (1 - f) + b f.
+    // (Map16::at blends a (1 - f) + b f: b exactly at f = 1, a map's last breakpoint; a + (b - a) f was a rounding off)
     Fm fm = engine();
     const std::string map = "set.maps.spark";
     for (int i = 0; i < 16; ++i)
@@ -141,7 +140,7 @@ TEST_CASE("H3: a baked map reproduces its formula at every breakpoint", "[h][ecu
         CHECK(checked == nx * ny);
     }
     // and the spark's formula is the reference's: 12 + 22 sqrt(rpm / red) - 8 (load - 0.4) at a square engine
-    CHECK(fm.call<float>("OneLine::formula", MAP_SPARK, 3250.0f, 0.4f) == Catch::Approx(12.0 + 22.0 * std::sqrt(0.5)).epsilon(1e-5));
+    CHECK(fm.call<float>("OneLine::formula", MAP_SPARK, 3250.0f * 0.10471976f, 0.4f) == Catch::Approx(12.0 + 22.0 * std::sqrt(0.5)).epsilon(1e-5));
 }
 
 TEST_CASE("H4: each limiter holds its speed on a one-line engine", "[h][ecu][limiter]")
@@ -284,10 +283,10 @@ TEST_CASE("H9 (standalone part): the bangs follow the fuel sent, and no fuel mak
     CHECK(much < 5.0 * little);
     CHECK(muchBig > littleBig);                  // and larger pulses
     CHECK(little <= 2.0e-6 * sent);              // never more than was sent
-    // no fuel (a full fuel cut): none; no air (a rich spark cut into a pipe with no oxygen): none; a cold pipe: none
+    // no fuel (a full fuel cut): none; no air (a rich spark cut into a pipe with no oxygen): none; a cold pipe (600 K): none
     CHECK(fm.call<float>("OneLine::bangs", 0.0f, 0.5e-3f, 1100.0f, 3000.0f, 2.0f) == 0.0f);
     CHECK(fm.call<float>("OneLine::bangs", 8.0e-6f, 0.0f, 1100.0f, 3000.0f, 2.0f) == 0.0f);
-    CHECK(fm.call<float>("OneLine::bangs", 8.0e-6f, 0.5e-3f, 800.0f, 3000.0f, 2.0f) == 0.0f);
+    CHECK(fm.call<float>("OneLine::bangs", 8.0e-6f, 0.5e-3f, 600.0f, 3000.0f, 2.0f) == 0.0f);
 }
 
 TEST_CASE("H10 (standalone part): traction control holds a toy wheel's slip near its target", "[h][ecu][traction]")

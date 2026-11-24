@@ -2,7 +2,7 @@
 // the throttle plate and the lift command, each a table of 16 by 16 over the engine's speed and its load, read with
 // bilinear interpolation every 16 samples.
 //
-// Load is the manifold's pressure over the air outside (above 1 boosted); for a throttle with no plenum to speak of
+// The speed axis is rad/s (the Spec's SI; the formulas work in rpm inside). Load is the manifold's pressure over the air outside (above 1 boosted); for a throttle with no plenum to speak of
 // (individual throttles), the pedal. The boost target's second axis is the gear, the pedal map's the pedal. Each map
 // has its `auto` switch, on by default: its output is then the reference's formula (or, for a map the reference does
 // not have, the formula that does what it did: lambda's enrichment, phasers at 0, the plate at the pedal, full lift),
@@ -12,9 +12,7 @@
 // none) are written to `baked`, with the breakpoints, which the host copies into the build as an editable map whose
 // `auto` it turns off: the starting point a tuner edits, reading the formula back exactly at every breakpoint.
 //
-// The maps are spec/tables.fm's Map16 (z[i][j] at x[i], y[j]), read here as its at() reads them but blending as
-// a (1 - f) + b f, which gives b exactly at f = 1: at() blends as a + (b - a) f, a rounding off at a map's last
-// breakpoint, which would keep a baked map from reading its formula back exactly there (asked of the lead).
+// The maps are spec/tables.fm's Map16 (z[i][j] at x[i], y[j]), read by its at(), exact at every breakpoint.
 //
 // What it leaves out: maps by gear or temperature beyond the boost target's, three-dimensional tables, and the
 // interpolation of other shapes (a map is linear between its breakpoints and flat beyond its ends).
@@ -70,9 +68,10 @@ module EcuTune
         return fminf(fmaxf(pedal, 0.0f), 1.0f);
     }
 
-    // The formula of a map at (u, v): its own axes' units (rpm; load, gear or pedal)
-    float formula(int which, float u, float v)
+    // The formula of a map at (w, v): its own axes' units (the speed in rad/s; load, gear or pedal)
+    float formula(int which, float w, float v)
     {
+        const float u = w * 9.5492966f;
         if (which == MAP_SPARK)
             return spark(u, v);
         if (which == MAP_LAMBDA)
@@ -86,11 +85,11 @@ module EcuTune
         return 0.0f;                                         // the phasers: the cams as ground
     }
 
-    // A map's default breakpoints: the speed from 500 rpm to 10 % past the redline; the load from 0.1 to the highest,
-    // the gear from 1 up, the pedal from 0 to 1
+    // A map's default breakpoints: the speed (rad/s) from 500 rpm to 10 % past the redline; the load from 0.1 to the
+    // highest, the gear from 1 up, the pedal from 0 to 1
     float xAt(int which, int i)
     {
-        return 500.0f + (1.1f * redRpm - 500.0f) * (float)i / 15.0f;
+        return (500.0f + (1.1f * redRpm - 500.0f) * (float)i / 15.0f) * 0.10471976f;
     }
 
     float yAt(int which, int j)
@@ -122,30 +121,13 @@ module EcuMaps
     int bakedNx[MAP_COUNT];
     int bakedNy[MAP_COUNT];
 
-    // A map at (u, v): Map16's at(), exact at every breakpoint
-    float exactAt(Map16* map, float u, float v)
-    {
-        const int kx = map->nx < 16 ? map->nx : 16;
-        const int ky = map->ny < 16 ? map->ny : 16;
-        if (kx <= 0 || ky <= 0)
-            return 0.0f;
-        float fx[1];
-        float fy[1];
-        const int i = map->cell(map->x, kx, u, fx);
-        const int j = map->cell(map->y, ky, v, fy);
-        const int i1 = kx > 1 ? i + 1 : i;
-        const int j1 = ky > 1 ? j + 1 : j;
-        const float a = map->z[i][j] * (1.0f - fy[0]) + map->z[i][j1] * fy[0];
-        const float b = map->z[i1][j] * (1.0f - fy[0]) + map->z[i1][j1] * fy[0];
-        return a * (1.0f - fx[0]) + b * fx[0];
-    }
-
-    // One map's output: the formula when `automatic`, else the map. Axis values: rpm, and the load, gear or pedal
-    float read(Map16* map, bool automatic, int which, float rpm, float v)
+    // One map's output: the formula when `automatic`, else the map. Axis values: the speed (rad/s), and the load,
+    // gear or pedal
+    float read(Map16* map, bool automatic, int which, float w, float v)
     {
         if (automatic || map->nx < 1 || map->ny < 1)
-            return tune.formula(which, rpm, v);
-        return exactAt(map, rpm, v);
+            return tune.formula(which, w, v);
+        return map->at(w, v);
     }
 
     // Writes the formula of map `which` at its breakpoints (the map's own when it has them, else the default ones)

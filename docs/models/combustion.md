@@ -2,8 +2,8 @@
 
 *What `sim/combustion/` models, with each equation, where each number comes from, and which numbers are judgement.
 `fuel.model 0` (the default) is the reference's `charge()` and `chargeDiesel()` unchanged; everything here is read
-only under `fuel.model 1`. Status: built and tested standalone (tests H1, H2 and the parts' tests below); not yet wired
-into the simulator, which waits for the split (K3b): see "Integration" at the end.*
+only under `fuel.model 1`. Status: built, tested standalone (H1, H2, the parts) and wired into the simulator's `Combustion`
+(`sim/combustion/combustion.fm`) behind `fuel.model`: see "Integrated" at the end.*
 
 ## Files
 
@@ -14,7 +14,8 @@ into the simulator, which waits for the split (K3b): see "Integration" at the en
 | `knock.fm` | `EndGas`: Livengood and Wu's integral over Douaud and Eyzat's delay, by tables; `knock_tables.py` writes them |
 | `diesel.fm` | `DieselFields`: injection timing, pilot, rail pressure, smoke limit over the reference's diesel |
 | `watch.fm` | `BurnWatch`, `LambdaSensor`, `InjectorMeter`: what a tuner reads |
-| `settings.fm` | `FuelSettings`: the fields appended to `spec.fuel` at integration |
+| `charge1.fm` | `Charge1`: a gasoline charge from explicit numbers and the ECU's decision for the firing |
+| `../spec/fuel.fm` | `spec.fuel`'s fields of model 1: `model`, `grade`, `direct`, `knockDelay`, `injector`, `soiAdd`, `pilot`, `rail`, `overFuel` |
 
 ## The fuel table
 
@@ -86,7 +87,7 @@ From the intake valve's closing to 98 % burned, every few samples:
 Livengood and Wu (1955); tau is Douaud and Eyzat's fit (SAE 780080, 1978), from knocking engines on primary reference
 fuels of octane 80 to 100 (above 100 it is extrapolated). `T_0`, `p_0`: the charge at the valve's closing less the
 evaporation's cooling. The exponent 0.25 is gamma 4/3 for the unburned mixture (judgement). `k_d` is
-`fuel.knockDelay`, the calibration (1: the published fit). `I` reaching 1 after the spark and before 98 % burned is a
+`fuel.knockDelay`, the calibration (1: the published fit; 3 by default, below). `I` reaching 1 after the spark and before 98 % burned is a
 knock of intensity `1 - x_b` (the unburned share that lights); before the spark, pre-ignition (intensity 1).
 
 The tables (`knock_tables.py`): `exp(-3800/T)` every 5 K from 250 K, `p^1.7` every 0.5 atm to 256 atm, `r^0.25` every
@@ -131,11 +132,31 @@ Peak pressure and its angle and the half-burn angle per cylinder per cycle (a co
 cycle's end); a lambda sensor two crank revolutions behind the port with its own 80 ms (judgement: a wide-band sensor
 answers in under 100 ms); injector duty `(m_f / injector + 0.5 ms) / cycle` and the fuel's flow smoothed over 0.2 s.
 
-## Integration (waits for K3b)
+## Integrated
 
-What is left, in order: append `FuelSettings`' fields to `spec.fuel` (`sim/spec/fuel.fm`); in the carved `Combustion`
-module, `fuel.model 1` takes the charge's air from the cylinder at intake closing, asks the ECU's lambda, sets the
-cylinder's `qTot` from `Mixture.heat` times the reference's walls share, its `burnDur` times `burnK`, starts each
-cylinder's `EndGas` and ticks it every 4 samples from the cylinder's pressure and burned share (the burned share is the
-cylinder's `xPrev`: a read the seam needs), sends a knock to the ECU and scrubs the heat as the reference does, and
-sends unburned fuel and air to the ECU's account; then tests 5 to 8 of the card.
+`Combustion::charge` takes the model-1 path (`charge1`) for a gasoline charge when `fuel.model` or `ecu.model` is 1;
+`Combustion::sample` ticks each cylinder's end gas every 4 samples (fuel.model 1, from the cylinder's own pressure and
+burned share, only while the engine runs: cranking's slow squeeze loses heat the isentropic end gas does not know). A
+knock lights the rest of the charge: `knock` for the ping, a tenth of the remaining heat per unit scrubbed, the ECU's
+retard; before the spark, pre-ignition (the burn starts there, 20 degrees long). Both models 0: the null test
+(`tests/sim/NullTest.cpp`, 59 pairs) identical to the bit.
+
+**The knock delay's calibration** (`fuel.knockDelay`, default 3): on the reference's V8 (10:1) through free revs with
+ecu.model 1: `k_d` 1 knocks everywhere (691 knocks in 3.5 s on the limiter, the retard at its 15-degree most); 2
+still 34 on regular; **3**: 14 knocks on regular and none on premium (no retard left standing); 4 and more, none on
+regular. 3 puts the reference's V8 on regular at its knock edge at full load and premium clean, where a 10:1 engine
+sits: judgement against that one engine.
+
+Integrated tests (`tests/sim/combustion/IntegratedTest.cpp`; the V8 on the bench, its load rising with the speed's
+square, so the settled speed stands for the torque at a fixed throttle of 0.35; race fuel, knock control off):
+
+- **6**: spark advance 0 to 40 in 2.5-degree steps: one maximum, at 20 degrees (5572 rpm). There the half-burn angle is
+  **0.3 degrees after the top**, not 6 to 12 (a `[!mayfail]` test records it): the cylinder (card D's, the
+  reference's single zone with little wall loss) has its best torque with half burned at the top, as the made-up trace
+  did. Engines show 6 to 12 because of the heat the walls take near the top; that is the cylinder's to model.
+- **7**: lambda 0.70 to 1.20: torque peaks at **0.90** (inside 0.85 to 0.92). The exhaust temperature peaks at 0.90
+  too, not 1.0 to 1.05 (`[!mayfail]`): the heat's share peaks rich and the cylinder's gas has air's properties
+  whatever burned in it.
+- **8**: at 0.6 throttle with the spark held flat, regular starts knocking at 27.5 degrees, E85 not by 40 (model 1's
+  most); a supercharged V8 in neutral on the limiter at a flat 22 degrees knocks at a boost level of 0.1 (0.32 bar) on
+  regular and 0.9 (0.92 bar) on methanol.

@@ -4,6 +4,101 @@
 // degrees; how much fuel the overrun and the limiter let through to bang in the hot pipes; whether it has a starter
 // (without one, the key puts it straight to its idle speed). All act at once.
 #pragma once
+#include "tables.fm"
+
+// ecu.model 1's settings (card H; docs/models/ecu.md), each block a field of EcuSpec below. Every default is "as
+// the reference": the fuel-cut limiter at the layout's redline, no launch control, a clean overrun cut, knock control
+// with the reference's numbers, the reference's cold idle, no traction control, every map on its formula. All act at
+// the next 16 samples. Under ecu.model 0 none is read.
+
+module EcuLimiterSpec
+{
+    int kind [[fminus::range(0, 3)]] [[fminus::default(0)]] [[ui::label("Limiter")]]
+        [[ui::choices("Fuel cut", "Spark cut", "Soft", "Throttle")]]
+        [[ui::help("How the rev limiter holds the speed: fuel cut is the reference's; a spark cut bangs in the pipe")]];
+    float speed [[fminus::range(0, 2100)]] [[fminus::default(0)]] [[ui::label("Limiter speed")]] [[ui::quantity("rotation")]]
+        [[ui::help("0: the layout's redline")]];
+    float soft [[fminus::range(5, 105)]] [[fminus::default(31.415927)]] [[ui::label("Soft band")]] [[ui::quantity("rotation")]];
+    float retard [[fminus::range(0, 30)]] [[fminus::default(15)]] [[ui::label("Soft retard")]] [[ui::quantity("angle")]];
+};
+
+module EcuLaunchSpec
+{
+    bool on [[fminus::default(0)]] [[ui::label("Launch control")]];
+    float speed [[fminus::range(100, 1050)]] [[fminus::default(418.879)]] [[ui::label("Launch speed")]] [[ui::quantity("rotation")]];
+    float retard [[fminus::range(0, 40)]] [[fminus::default(20)]] [[ui::label("Launch retard")]] [[ui::quantity("angle")]];
+    bool flatShift [[fminus::default(0)]] [[ui::label("Flat-shift")]];
+};
+
+module EcuOverrunSpec
+{
+    float fuel [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Overrun fuel")]] [[ui::quantity("fraction")]]
+        [[ui::help("The share of the overrun's firings fuelled anyway, burned late: pops and bangs")]];
+    float retard [[fminus::range(0, 40)]] [[fminus::default(0)]] [[ui::label("Overrun retard")]] [[ui::quantity("angle")]];
+};
+
+module EcuKnockSpec
+{
+    bool on [[fminus::default(1)]] [[ui::label("Knock control")]] [[ui::help("Off at the engine's risk")]];
+    float step [[fminus::range(0, 5)]] [[fminus::default(1.5)]] [[ui::label("Retard a knock")]] [[ui::quantity("angle")]];
+    float most [[fminus::range(0, 30)]] [[fminus::default(15)]] [[ui::label("Most retard")]] [[ui::quantity("angle")]];
+    float recover [[fminus::range(0.1, 20)]] [[fminus::default(2)]] [[ui::label("Recovery")]] [[ui::unit("deg/s")]];
+};
+
+module EcuIdleSpec
+{
+    float coldRise [[fminus::range(0, 105)]] [[fminus::default(52.359878)]] [[ui::label("Cold fast idle")]] [[ui::quantity("rotation")]]
+        [[ui::help("How much higher a cold engine idles (a diesel half of it)")]];
+    float speed [[fminus::range(0, 210)]] [[fminus::default(0)]] [[ui::label("Idle speed")]] [[ui::quantity("rotation")]]
+        [[ui::help("The warm idle; 0: the layout's (the reference's, trims and cam included)")]];
+};
+
+module EcuTractionSpec
+{
+    bool on [[fminus::default(0)]] [[ui::label("Traction control")]];
+    float slip [[fminus::range(0.01, 0.5)]] [[fminus::default(0.1)]] [[ui::label("Slip target")]] [[ui::quantity("fraction")]];
+    float pitSpeed [[fminus::range(0, 40)]] [[fminus::default(0)]] [[ui::label("Pit limiter")]] [[ui::quantity("speed")]]
+        [[ui::help("0: off")]];
+};
+
+module EcuAntiLagSpec
+{
+    bool on [[fminus::default(0)]] [[ui::label("Anti-lag")]];
+    float low [[fminus::range(0, 1050)]] [[fminus::default(209.4395)]] [[ui::label("Anti-lag from")]] [[ui::quantity("rotation")]];
+    float high [[fminus::range(0, 1050)]] [[fminus::default(837.758)]] [[ui::label("Anti-lag to")]] [[ui::quantity("rotation")]];
+    float retard [[fminus::range(0, 60)]] [[fminus::default(30)]] [[ui::label("Anti-lag retard")]] [[ui::quantity("angle")]];
+    float lambda [[fminus::range(0.6, 1)]] [[fminus::default(0.85)]] [[ui::label("Anti-lag lambda")]] [[ui::quantity("ratio")]];
+};
+
+module EcuNitrousSpec
+{
+    bool on [[fminus::default(0)]] [[ui::label("Nitrous")]] [[ui::help("Armed by the nitrous button")]];
+    float low [[fminus::range(0, 1050)]] [[fminus::default(314.159)]] [[ui::label("Nitrous from")]] [[ui::quantity("rotation")]];
+    int gear [[fminus::range(1, 18)]] [[fminus::default(2)]] [[ui::label("Nitrous from gear")]];
+    float retard [[fminus::range(0, 20)]] [[fminus::default(4)]] [[ui::label("Nitrous retard")]] [[ui::quantity("angle")]];
+    float lambda [[fminus::range(0.6, 1)]] [[fminus::default(0.85)]] [[ui::label("Nitrous lambda")]] [[ui::quantity("ratio")]];
+};
+
+// The maps: each with its auto switch (on: the formula; maps.fm). The axes: speed (rad/s) and load (the manifold over
+// the air), but the boost target's speed and gear, the pedal map's speed and pedal
+module EcuMapsSpec
+{
+    Map16 spark [[ui::label("Spark advance")]] [[ui::axes("rotation", "ratio")]] [[ui::unit("deg")]];
+    bool sparkAuto [[fminus::default(1)]] [[ui::label("Spark: formula")]];
+    Map16 lambda [[ui::label("Lambda")]] [[ui::axes("rotation", "ratio")]];
+    bool lambdaAuto [[fminus::default(1)]] [[ui::label("Lambda: formula")]];
+    Map16 boost [[ui::label("Boost target")]] [[ui::axes("rotation", "ratio")]] [[ui::unit("Pa")]];
+    bool boostAuto [[fminus::default(1)]] [[ui::label("Boost: formula")]];
+    Map16 camIn [[ui::label("Intake cam")]] [[ui::axes("rotation", "ratio")]] [[ui::unit("deg")]];
+    bool camInAuto [[fminus::default(1)]] [[ui::label("Intake cam: formula")]];
+    Map16 camEx [[ui::label("Exhaust cam")]] [[ui::axes("rotation", "ratio")]] [[ui::unit("deg")]];
+    bool camExAuto [[fminus::default(1)]] [[ui::label("Exhaust cam: formula")]];
+    Map16 pedal [[ui::label("Pedal to plate")]] [[ui::axes("rotation", "fraction")]];
+    bool pedalAuto [[fminus::default(1)]] [[ui::label("Pedal: formula")]];
+    Map16 lift [[ui::label("Lift command")]] [[ui::axes("rotation", "ratio")]];
+    bool liftAuto [[fminus::default(1)]] [[ui::label("Lift: formula")]];
+};
+
 
 module EcuSpec
 {
@@ -14,4 +109,16 @@ module EcuSpec
         [[ui::help("Fuel let through on the overrun and the limiter, to light in the pipes")]];
     bool starter [[fminus::default(1)]] [[ui::label("Starter")]]
         [[ui::help("Off, the key puts the engine straight to its idle speed")]];
+    // ecu.model 1 (card H): the ECU of sim/ecu/ (0: the reference's, bit for bit)
+    int model [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("ECU model")]] [[ui::choices("Reference", "Maps")]]
+        [[ui::help("Reference: the reference's ECU; Maps: maps, limiter kinds, launch, knock control by cylinder")]];
+    EcuLimiterSpec limiter [[ui::label("Limiter")]];
+    EcuLaunchSpec launch [[ui::label("Launch")]];
+    EcuOverrunSpec overrun [[ui::label("Overrun")]];
+    EcuKnockSpec knock [[ui::label("Knock control")]];
+    EcuIdleSpec idle [[ui::label("Idle")]];
+    EcuTractionSpec traction [[ui::label("Traction")]];
+    EcuAntiLagSpec antiLag [[ui::label("Anti-lag")]];
+    EcuNitrousSpec nitrous [[ui::label("Nitrous")]];
+    EcuMapsSpec maps [[ui::label("Maps")]];
 };

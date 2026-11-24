@@ -244,7 +244,8 @@ module Engine
         set.bs = 1.0f;
         set.ambF = 80.33f;
         set.timing = 0.0f;
-        comb.setup(rate, &noise, &ecu, &heat, &lay, &exh.pop[0]);
+        comb.setup(rate, &noise, &ecu, &heat, &lay, &exh.pop[0], &spec.fuel);
+        ecu.setup(16.0f / rate, &spec.ecu, &spec.fuel, &ctl, &tel.ecu, &scope, &heat);     // card H's model 1
         set.bov = 0.7f;
         set.intake = 0.5f;
         set.mech = 0.4f;
@@ -598,7 +599,7 @@ module Engine
         else
             car.lastDrive = 0;
         if (ecu.control(d16, ped, set.drive, set.modwheel, set.pressure, crank.rpm, fuelUse, heat.warm, car.shiftCut, car.gear,
-                        set.clutch, crank.omega))
+                        set.clutch, crank.omega, intk.pPlenum, set.drive != 0 ? fabsf(car.v) : 0.0f, exh.tPort))
             crank.omega = 0.0f;
         // the exhaust's mass flow and its power, for the turbo
         exh.flowRate();
@@ -735,6 +736,7 @@ module Engine
                 bI += 0.5f * intk.run[pi].z * (iShare[pi] - qI0[c]);
             }
             cy->step(a, dDeg, dt, bE, exh.prim[pi].z, tH, bI, intk.run[pi].z, intk.tAir);
+            comb.sample(cy, c, dt);                     // card H: nothing under fuel.model 0 and ecu.model 0
             qe[pi] += cy->qEa;
             qi[pi] += cy->qIa;
             torque += cy->tq;
