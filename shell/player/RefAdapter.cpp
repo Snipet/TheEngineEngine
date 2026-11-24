@@ -282,7 +282,7 @@ namespace tee::player
         in.steering = f.steer;
         in.gear = f.lever;
         in.modwheel = driven ? 0.0f : f.throttle;           // played from the keys, the throttle is "by hand"
-        int buttons = f.buttons & ~(RefPlayer::Buttons::paddleUp | RefPlayer::Buttons::paddleDown);
+        int buttons = 0;     // (the frame's buttons are the simulator's BTN_* switches: none of them is the reference's)
         if (pulse(up_, f.shiftUp, n))
             buttons |= RefPlayer::Buttons::paddleUp;
         if (pulse(down_, f.shiftDown, n))

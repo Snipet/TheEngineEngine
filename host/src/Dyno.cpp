@@ -221,7 +221,11 @@ namespace tee
         RunOptions options;
         options.keepAudio = false;
         options.telemetry = {"engine.speed"};
-        options.cancelled = [cancel] { return cancel != nullptr && cancel->load(std::memory_order_relaxed); };
+        const FieldInfo* flags = fields.find("tel.engine.flags");
+        bool faulted = false;
+        options.cancelled = [cancel, &faulted] {
+            return faulted || (cancel != nullptr && cancel->load(std::memory_order_relaxed));
+        };
         double lastProgress = -1.0;
         options.afterBlock = [&](double time, const TelemetryFrame& frame) {
             const double w = frame.get(*speed);
@@ -235,6 +239,15 @@ namespace tee
                 for (std::size_t k = 0; k < windows.size(); ++k)
                     if (time > windows[k].from && time <= windows[k].to)
                         sum = &stepSums[k];
+            if (flags != nullptr && (static_cast<long>(frame.get(*flags)) & 4) != 0)
+            {
+                // FLAG_FAULT: the engine was put at rest; the point being measured is no measure, and the run stops
+                faulted = true;
+                ++curve.faults;
+                if (sum != nullptr)
+                    sum->n = 0;
+                return;
+            }
             if (sum != nullptr)
             {
                 sum->speed += w;
@@ -279,7 +292,7 @@ namespace tee
                     point(s);
         curve.simulatedSeconds = result.simulatedSeconds;
         curve.wallSeconds = result.wallSeconds;
-        curve.cancelled = result.cancelled;
+        curve.cancelled = result.cancelled && !faulted;
         if (progress)
             progress(1.0);
         return true;

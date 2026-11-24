@@ -71,6 +71,13 @@ namespace tee::input
     // An action went from up to down: what a press does at once (what a hold does is advance()'s).
     void Driver::pressed(Action action)
     {
+        // the truck's switches: latching, a press each turns one on or off (sim/spec/controls.fm, BTN_*)
+        if (action == Action::splitter || action == Action::range || action == Action::engineBrake)
+        {
+            const int bit = action == Action::splitter ? kButtonSplitter : action == Action::range ? kButtonRange : kButtonEngineBrake;
+            latched_ ^= bit;
+            return;
+        }
         if (action == Action::start)
         {
             if (!startEnabled_)
@@ -260,7 +267,7 @@ namespace tee::input
         frame_.lever = settings_.autoClutch ? 0 : lever_;
         frame_.shiftUp = shiftUp_;
         frame_.shiftDown = shiftDown_;
-        frame_.buttons = 0;
+        frame_.buttons = latched_;
         frame_.mode = settings_.mode;
         return frame_;
     }

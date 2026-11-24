@@ -68,6 +68,9 @@ namespace tee
         bool pass = false;
         std::string why;
         std::string how;                  // how it was measured, when that is worth saying
+        // A failure of the program's invariant in the run it was measured in (the engine diverged: FLAG_FAULT): the
+        // row fails whatever it measured, and tee-validate fails the file.
+        std::string invariant;
     };
 
     // Runs `validation` (only its fast targets when `fastOnly`) on `sim`, its build and scenarios found under

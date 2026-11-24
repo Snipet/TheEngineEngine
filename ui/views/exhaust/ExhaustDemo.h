@@ -28,6 +28,11 @@ namespace tee::ui::exhaust
     // travelling its length. midP may be null.
     void exhaustDucts(const ExhaustBuild& b, double phase, double rpm, double load, float* used, float* nearP, float* farP,
                       float* midP = nullptr);
+    // A two-stroke's exhaust port pressure over a turn (Pa absolute, out[0..360), each degree after top dead centre):
+    // card T's 125 single on song (some 10 500 rpm, the pipe at 800 K), its port opening at 84 and closing at 276,
+    // stretched to this build's port timing (the blowdown, the diffuser's suction, the baffle's plug just before the
+    // port closes). Returns how many were written.
+    int exhaustTwoStrokePort(const ExhaustBuild& b, float* out, int max);
     // The telemetry from the demo engine's throttle and speed, held (DemoEngine::set).
     void exhaustDemoLive(DemoEngine& engine);
 }

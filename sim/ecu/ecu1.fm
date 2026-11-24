@@ -34,7 +34,8 @@ enum
     ECU_FLAG_NITROUS = 128,
     ECU_FLAG_TRACTION = 256,
     ECU_FLAG_PIT = 512,
-    ECU_FLAG_KNOCK = 1024
+    ECU_FLAG_KNOCK = 1024,
+    ECU_FLAG_OVER_BOOST = 2048
 };
 
 enum
@@ -80,6 +81,7 @@ module EcuIn
     float gasT1;
     float afr;          // the fuel's stoichiometric ratio
     int cylinders;
+    float boostLimit;   // the over-boost cut's level, Pa over the air (0: none)
 };
 
 module Ecu1
@@ -119,6 +121,8 @@ module Ecu1
     float overrunFuel;  // the share of the overrun's firings fuelled (while the overrun cut is in)
     float overrunRetard;
     int flags;          // ECU_FLAG_*
+    float overBoostT;   // seconds the boost has stood over its cut's level
+    bool overBoost;     // the over-boost fuel cut is in
     float limitRpm;     // the limiter's speed in force
     // the last firing
     float sparkFor;     // its spark, degrees
@@ -146,6 +150,8 @@ module Ecu1
         bypass = 0.0f;
         trim = 1.0f;
         flags = 0;
+        overBoostT = 0.0f;
+        overBoost = false;
     }
 
     void control(EcuIn* in, EcuSpec* set, float d16)
@@ -204,7 +210,21 @@ module Ecu1
         // what is taken back and cut
         spark -= limiter.retard + launch.retard + traction.retard + antiLag.retard + nitrous.retard;
         lambda = fminf(lambda, fminf(antiLag.lambda, nitrous.lambda));
-        fuelCut = key.noFuel || limiter.fuelCut;
+        // the over-boost cut (card N2): as a production ECU's, the fuel cut once the boost has stood over the level
+        // for 0.2 s, until it falls under 85 % of it: the net under a gate too small or a target raised too far
+        // (Bosch ME7's and its kind's boost limit; the 0.2 s and the 85 % are judgement)
+        {
+            const float over = in->manifold - in->ambient;
+            if (in->boostLimit > 0.0f && over > in->boostLimit)
+                overBoostT += d16;
+            else
+                overBoostT = 0.0f;
+            if (overBoostT > 0.2f)
+                overBoost = true;
+            if (in->boostLimit <= 0.0f || over < 0.85f * in->boostLimit)
+                overBoost = false;
+        }
+        fuelCut = key.noFuel || limiter.fuelCut || overBoost;
         sparkCut = !fuelCut && (limiter.sparkCut || launch.sparkCut);
         fuelShare = fmaxf(limiter.share, traction.share);
         sparkShare = launch.share;
@@ -214,7 +234,8 @@ module Ecu1
                 | (overrun.on ? ECU_FLAG_OVERRUN : 0) | (launch.launching ? ECU_FLAG_LAUNCH : 0)
                 | (launch.shifting ? ECU_FLAG_FLAT_SHIFT : 0) | (antiLag.active ? ECU_FLAG_ANTI_LAG : 0)
                 | (nitrous.active ? ECU_FLAG_NITROUS : 0) | (traction.active ? ECU_FLAG_TRACTION : 0)
-                | (traction.pitActive ? ECU_FLAG_PIT : 0) | (knock.most > 0.0f ? ECU_FLAG_KNOCK : 0);
+                | (traction.pitActive ? ECU_FLAG_PIT : 0) | (knock.most > 0.0f ? ECU_FLAG_KNOCK : 0)
+                | (overBoost ? ECU_FLAG_OVER_BOOST : 0);
     }
 
     // Cylinder c's firing (at its intake valve's closing): FIRE_*, its spark in sparkFor

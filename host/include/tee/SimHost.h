@@ -234,6 +234,8 @@ namespace tee
         float lastLeft_ = 0.0f, lastRight_ = 0.0f;
         std::int64_t crankLeft_ = 0;          // samples the host still cranks a fresh instance after a fault
         bool clippedNow_ = false;             // a sample of this chunk was clamped
+        std::atomic<std::uint32_t> engineFaultsNow_{0};   // HostStats::engineFaults, for service()'s words
+        std::uint32_t engineFaultsTold_ = 0;              // service()'s: the count stopReason last said
         std::vector<float> scratchLeft_, scratchRight_;
         std::vector<unsigned char> publishBuffer_;
         HostStats stats_;
