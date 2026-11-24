@@ -226,7 +226,7 @@
     },
     {
       "name": "Quarter mile: time",
-      "scenario": "validation/scenarios/p-quarter-mile.json",
+      "scenario": "validation/scenarios/p-quarter-mile-own.json",
       "tel": "car.t1320",
       "measure": "last",
       "range": [
@@ -238,7 +238,7 @@
     },
     {
       "name": "Quarter mile: trap speed",
-      "scenario": "validation/scenarios/p-quarter-mile.json",
+      "scenario": "validation/scenarios/p-quarter-mile-own.json",
       "tel": "car.v1320",
       "measure": "last",
       "range": [
@@ -250,7 +250,7 @@
     },
     {
       "name": "Top speed",
-      "scenario": "validation/scenarios/p-top-speed.json",
+      "scenario": "validation/scenarios/p-top-speed-own.json",
       "tel": "car.speed",
       "measure": "max",
       "range": [

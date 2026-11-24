@@ -166,20 +166,21 @@ def targets(slug, b):
 
     # ---- the car ----------------------------------------------------------------------------------------------
     pmid = 0.5 * (plo + phi)
+    qm = "p-quarter-mile-own.json" if auto else "p-quarter-mile.json"
     if not slug.startswith("tractor"):
         lb, hp = car["mass"] * 2.20462, pmid * 1.341
         et, trap = 5.825 * (lb / hp) ** (1 / 3), 234 * (hp / lb) ** (1 / 3) * 1.609344 / 3.6
-        add(name="Quarter mile: time", scenario=SC + "p-quarter-mile.json", tel="car.t1320", measure="last",
+        add(name="Quarter mile: time", scenario=SC + qm, tel="car.t1320", measure="last",
             range=[round(et * 0.95, 2), round(et * 1.15, 2)], unit="s",
             source="Hale's rule, ET = 5.825 (lb/hp)^(1/3) s, with the kind's published power (%.0f kW) and the build's "
                    "mass: %.2f s; 5 %% quicker to 15 %% slower for street tyres and an automatic's launch (card I's "
                    "test holds drag radials to 8 %%)" % (pmid, et))
-        add(name="Quarter mile: trap speed", scenario=SC + "p-quarter-mile.json", tel="car.v1320", measure="last",
+        add(name="Quarter mile: trap speed", scenario=SC + qm, tel="car.v1320", measure="last",
             range=[round(trap * 0.92, 1), round(trap * 1.06, 1)], unit="m/s",
             source="Hale's rule, trap = 234 (hp/lb)^(1/3) mph: %.1f m/s (%.0f km/h), within 8 %% under to 6 %% over"
                    % (trap, trap * 3.6))
     vmax, aero = top_speed(car, pmid, red)
-    add(name="Top speed", scenario=SC + "p-top-speed.json", tel="car.speed", measure="max",
+    add(name="Top speed", scenario=SC + ("p-top-speed-own.json" if auto else "p-top-speed.json"), tel="car.speed", measure="max",
         range=[round(vmax / 3.6 * 0.93, 1), round(vmax / 3.6 * 1.07, 1)], unit="m/s",
         source=("where 0.85 of the kind's published power (%.0f kW) meets the build's drag area and 1.2 %% rolling "
                 "resistance at 1.225 kg/m^3: %.0f km/h, within 7 %% (a power balance, not a test)" % (pmid, vmax))
