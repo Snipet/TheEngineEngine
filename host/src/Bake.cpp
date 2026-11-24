@@ -1,5 +1,8 @@
 // host/src/Bake.cpp: the intake cam baked by a sweep of the fast dyno (Bake.h).
 #include "tee/Bake.h"
+#include "tee/SimHost.h"
+#include "tee/Timeline.h"
+#include "tee/Warm.h"
 
 #include <algorithm>
 #include <chrono>
@@ -304,6 +307,95 @@ namespace tee
         if (!ok)
             error = "the baked cam does not fit ecu.maps.camIn";
         return ok;
+    }
+
+    bool checkIdle(const std::shared_ptr<Sim>& sim, const Build& build, const std::filesystem::path& scenarios,
+                   IdleCheck& result, std::string& error)
+    {
+        constexpr double kRpm = 60.0 / (2.0 * 3.14159265358979323846);
+        result = IdleCheck{};
+        if (build.fieldOf("ecu.idle.speed") < 0)
+        {
+            error = "the program has no ecu.idle.speed";
+            return false;
+        }
+        result.asked = build.get("ecu.idle.speed") * kRpm;
+        struct Case
+        {
+            const char* name;
+            double from, to;
+        };
+        for (const Case& c : {Case{"p-idle-warm", 8.0, 14.0}, Case{"p-cold-start", 8.0, 11.5}})
+        {
+            Timeline timeline;
+            if (!loadTimeline(scenarios / (std::string(c.name) + ".json"), timeline, error))
+                return false;
+            SimHost host;
+            LoadOptions load;
+            load.sim = sim->options();
+            load.sampleRate = timeline.rate;
+            load.maxBlock = std::max(16, timeline.block);
+            load.worker = false;
+            if (timeline.warm)
+                load.hold = warmEngine();
+            if (!host.attach(sim, load, error))
+                return false;
+            Build copy(sim->fields());
+            std::vector<std::string> warnings;
+            if (!copy.load(build.save(), BuildPart::Whole, warnings, error))
+                return false;
+            copy.attach(&host);
+            RunOptions options;
+            options.keepAudio = false;
+            options.telemetry = {"engine.speed", "engine.state"};
+            RunResult run;
+            if (!runTimeline(host, copy, timeline, options, run, error))
+                return false;
+            const int speed = run.column("engine.speed"), state = run.column("engine.state");
+            if (speed < 0 || state < 0)
+            {
+                error = "the idle check cannot read engine.speed and engine.state";
+                return false;
+            }
+            double sum = 0.0, squares = 0.0, lowest = 1e9;
+            std::size_t n = 0;
+            for (std::size_t r = 0; r < run.rowCount(); ++r)
+                if (run.rowTime[r] >= c.from && run.rowTime[r] <= c.to)
+                {
+                    const double rpm = run.at(r, static_cast<std::size_t>(speed)) * kRpm;
+                    sum += rpm;
+                    squares += rpm * rpm;
+                    lowest = std::min(lowest, static_cast<double>(run.at(r, static_cast<std::size_t>(state))));
+                    ++n;
+                }
+            const double mean = n > 0 ? sum / static_cast<double>(n) : 0.0;
+            const double sd = n > 0 ? std::sqrt(std::max(0.0, squares / static_cast<double>(n) - mean * mean)) : 0.0;
+            char line[160];
+            if (c.from == 8.0 && c.to == 14.0)
+            {
+                result.warmMean = mean;
+                result.warmSd = sd;
+                if (n == 0 || std::fabs(mean - result.asked) > 100.0 || sd > 25.0)
+                {
+                    std::snprintf(line, sizeof line, "warm idle %.0f rpm (asked %.0f), sd %.0f", mean, result.asked, sd);
+                    result.failures.push_back(line);
+                }
+            }
+            else
+            {
+                result.coldMean = mean;
+                result.coldSd = sd;
+                result.coldRunning = n > 0 && lowest >= 2.0;
+                if (!result.coldRunning || sd > 60.0)
+                {
+                    std::snprintf(line, sizeof line, "cold idle %.0f rpm, sd %.0f, %s", mean, sd,
+                                  result.coldRunning ? "running" : "NOT running");
+                    result.failures.push_back(line);
+                }
+            }
+        }
+        result.pass = result.failures.empty();
+        return true;
     }
 
     // ---- the knock limit ----------------------------------------------------------------------------------------------
