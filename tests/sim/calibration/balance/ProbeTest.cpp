@@ -48,6 +48,8 @@ TEST_CASE("probe: an engine's air and energy books", "[.balance]")
         o.read = split(s, ',');
     if (const char* s = std::getenv("BAL_TRACE"))
         o.trace = split(s, ',');
+    if (const char* s = std::getenv("BAL_MEAN"))
+        o.mean = split(s, ',');
     if (const char* s = std::getenv("BAL_SIM"))
         o.sim = s;
     if (const char* s = std::getenv("BAL_SETTLE"))
@@ -91,6 +93,9 @@ TEST_CASE("probe: an engine's air and energy books", "[.balance]")
             if (const char* rdEnv = std::getenv("BAL_READ"))
                 for (const std::string& path : split(rdEnv, ','))
                     std::printf("read %s %.6g\n", path.c_str(), k.reads.count(path) ? k.reads.at(path) : std::nan(""));
+            // BAL_MEAN="a,b": each path's mean over the window
+            for (const auto& [path, value] : k.means)
+                std::printf("mean %s %.6g\n", path.c_str(), value);
             // BAL_TRACE="a,b": each sample of the window, one line a sample ("trace" and the values)
             for (std::size_t n = 0; !k.traces.empty() && n < k.traces[0].size(); ++n)
             {
