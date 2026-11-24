@@ -804,6 +804,15 @@ module Car
 
     // ---- the integrator's names for the vehicle's values (sim/README.md), for the ECU (card H); card I fills them from
     // its model where it has them ----
+    // The ECU's traction control, every 16 samples before drive16 (Engine::control16): on, and its slip target. With
+    // car.model 1 a standing start on the car's own clutch holds the clutch's torque to the target slip
+    // (Vehicle::launch) until it has locked; the ECU's engine-side control then has it alone.
+    void traction(bool on, float slipTarget)
+    {
+        m1.tcOn = on;
+        m1.tcTarget = fminf(fmaxf(slipTarget, 0.01f), 0.5f);
+    }
+
     float drivenSlip()      // the driven wheels' slip ratio (0: rolling)
     {
         if (model == 1 && bikeOn != 0)
