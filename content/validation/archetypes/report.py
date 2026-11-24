@@ -21,6 +21,7 @@ ROW = re.compile(r"\s(\S+)\s+(pass|FAIL|MISS|n/a)(\s|$)")
 
 
 CONTENT = None
+SIM = None
 
 
 def run(bin_dir, slug, out_dir):
@@ -29,6 +30,8 @@ def run(bin_dir, slug, out_dir):
         cmd = [os.path.join(bin_dir, "tee-validate"), "--simulator", os.path.join(HERE, slug + ".json")]
         if CONTENT:
             cmd += ["--content", CONTENT]
+        if SIM:
+            cmd += ["--sim", SIM]
         r = subprocess.run(cmd, capture_output=True, text=True, cwd=ROOT)
         with open(path, "w") as f:
             f.write(r.stdout + r.stderr)
@@ -94,11 +97,13 @@ def main():
     ap.add_argument("--jobs", type=int, default=3)
     ap.add_argument("--existing", action="store_true", help="only the archetypes whose tables are in --from already")
     ap.add_argument("--out", default=os.path.join(ROOT, "docs", "manual", "validation.md"))
+    ap.add_argument("--sim", default=None, help="the simulator's directory (a worktree pinned at a commit)")
     ap.add_argument("--content", default=None, help="another content/ to run tee-validate on (its builds)")
     ap.add_argument("--commit", default=None, help="the commit the tables were run at (default: HEAD now)")
     a = ap.parse_args()
-    global CONTENT
+    global CONTENT, SIM
     CONTENT = a.content
+    SIM = a.sim
     os.makedirs(a.src, exist_ok=True)
     slugs = sorted(f[:-5] for f in os.listdir(HERE) if f.endswith(".json"))
     if a.existing:

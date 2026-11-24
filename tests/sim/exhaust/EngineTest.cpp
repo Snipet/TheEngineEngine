@@ -477,6 +477,11 @@ TEST_CASE("lengths and bores dragged glide, kinds rebuild", "[exhaust][engine][g
     double stepBefore = 0.0, fadeBefore = 1.0;
     for (int k = 0; k < 94; ++k)
         block(stepBefore, fadeBefore);
+    // (tel.exhaust.portPressure, N1's: the ports' mean, absolute, between the air and a few bar)
+    const double port = test::field(p, "tel.exhaust.portPressure");
+    std::printf("glide: before, at 3000 rpm half throttle, the ports' mean pressure %.0f Pa absolute\n", port);
+    CHECK(port > 101325.0);
+    CHECK(port < 400000.0);
     double stepGlide = 0.0, fadeGlide = 1.0;
     for (int k = 0; k < 100; ++k)
     {
