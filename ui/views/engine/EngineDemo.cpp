@@ -29,6 +29,10 @@ namespace tee::ui
             FieldInfo& f = add(std::move(path), FieldKind::choice, 0, static_cast<double>(names.size() - 1), def, std::move(label));
             f.choices = std::move(names);
         };
+        // package D's moving masses (the demo's made-up Spec lacks them): 0 is "from the bore", as D's are
+        group = "Moving masses";
+        add("engine.pistonMass", FieldKind::number, 0, 20, 0, "Piston, pin and rings", Quantity::mass);
+        add("engine.rodMass", FieldKind::number, 0, 20, 0, "Rod", Quantity::mass);
         group = "Two-stroke";
         choice("engine.cycle", "Cycle", { "Four-stroke", "Two-stroke" }, 0);
         add("engine.tsCylinders", FieldKind::integer, 1, 4, 1, "Cylinders", Quantity::none, "cyl");

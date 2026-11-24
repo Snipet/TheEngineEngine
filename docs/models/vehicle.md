@@ -47,6 +47,22 @@ and the tyres' deflections move by the new speeds (semi-implicit Euler). Speeds 
 distance and the tyres' deflections are doubles: in floats, at 96 kHz, a coast-down lost its rolling resistance below
 the speed's resolution (it decelerated in steps of 0.18 m/s^2) and a car held on a hill drifted by tens of micrometres.
 
+## Passivity at the crank (finding X-007)
+
+A custom single with a 18.4 kg piston on a light flywheel ran away through an automatic in neutral (1395 to 14,594
+rad/s in 8 ms). Two causes, both fixed: the crank was stepped with the inertia `drive16` gave (the dial's) while the
+moving masses' inertia torque, made for the crank's real inertia round the turn, was in its torque, which makes energy;
+`step` now takes the crank's inertia of the moment (`mm.jNow`). And the converter's torque, explicit from the speeds as
+they stand, could overshoot where the inertia on a side is small against it: `VehConverter::limit` scales it each
+sample to at most what brings the impeller and the turbine to one speed within the sample. A body that joins the
+gearbox's output (a gear's input by a synchromesh or a dog, a turbine at the end of a shift) is brought to its speed
+with the momentum taken from the wheels and the car, so the energy can only fall; the propeller shaft and the output
+turn with the wheels in neutral too. Tests `vehicle.passive` (a crank of varying inertia in the rig: the energy never
+stands above the engine's own work by more than 2 %, the crank's float rounding at a chattering limiter) and
+`vehicle.passive.engine` (custom singles at their Spec's corners with each gearbox, in neutral and in gear, the checks
+on: no stop, no refused block, the crank under 3000 rad/s); with the two fixes taken out, the latter fails on X-007's
+corner with the automatic and the CVT.
+
 ## Tyres
 
 `Fx = Fz mu S(kappa)`, with `S` Pacejka's Magic Formula `sin(C atan(B k - E (B k - atan(B k))))` scaled to a peak of 1
@@ -110,7 +126,7 @@ open, preload and torque term a clutch pack, speed term a viscous unit, `locked`
 
 ## Gearboxes
 
-`gearbox.fm`'s header says each kind's logic and timings. The ratios with `autoGearing` (default on) are the
+`gearbox.fm`'s header says each kind's logic and timings. An automatic shifts up on the engine's own speed and down on the speed the car's speed gives its input, never while a driven tyre is past its peak and only a tenth under the car's speed at the upshift (it hunted 1-2-1 on spinning tyres: test `gearbox.nohunt`). The ratios with `autoGearing` (default on) are the
 reference's rule: six gears are the reference's six; sixteen or more its truck's; otherwise geometric (first
 `3.15 sqrt(n/6)`, top `0.86 sqrt(6/n)` for six or more, 1.0 for four or fewer: judgement); the final drive puts the
 second-highest gear's redline at the speed the engine's power holds against the air and the rolling. Converter: the

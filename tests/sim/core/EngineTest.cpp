@@ -280,3 +280,39 @@ TEST_CASE("the engine compiles and links at 48 kHz inside (TEE_ENGINE_RATE_48000
     REQUIRE(p->link(errors));
     CHECK(p->function<void(void*, float*, float*, int)>("Engine::process", errors) != nullptr);
 }
+
+TEST_CASE("the derived telemetry stays finite and bounded through the limiter and a lift with throttles near vacuum",
+          "[core][engine][telemetry]")
+{
+    // The whole-program tester saw veManifold -5.8 on this build after the limiter, on the lift (its throttles' manifold
+    // fallen to or past 0 Pa); every derived figure is checked here through the same.
+    Bench b("archetypes/straight-six-32-high-rev");
+    b.start();
+    b.warm();
+    double veLo = 1e9, veHi = -1e9, veaLo = 1e9, veaHi = -1e9, pmLo = 1e12;
+    bool finite = true;
+    auto look = [&] {
+        const double vm = b.tel("engine.veManifold"), va = b.tel("engine.veAir");
+        veLo = std::min(veLo, vm);
+        veHi = std::max(veHi, vm);
+        veaLo = std::min(veaLo, va);
+        veaHi = std::max(veaHi, va);
+        pmLo = std::min(pmLo, b.tel("intake.manifold"));
+        for (const char* k : {"engine.imep", "engine.pmep", "engine.fmep", "engine.bmep", "engine.power", "engine.torque"})
+            finite = finite && std::isfinite(b.tel(k));
+    };
+    for (int i = 0; i < 3; ++i)
+    {
+        b.ctl().throttle = 1.0f;
+        b.play(2.5, look);
+        b.ctl().throttle = 0.0f;
+        b.play(1.5, look);
+    }
+    std::printf("limiter and lift: veManifold %.2f to %.2f, veAir %.2f to %.2f, the manifold's least %.0f Pa\n", veLo, veHi,
+                veaLo, veaHi, pmLo);
+    CHECK(finite);
+    CHECK(veLo >= 0.0);
+    CHECK(veHi <= 4.0);
+    CHECK(veaLo >= 0.0);
+    CHECK(veaHi <= 4.0);
+}
