@@ -112,10 +112,11 @@ def targets(slug, b):
     add(name="Invariant: holds its limiter", scenario=SC + "p-free-rev.json", tel="engine.speed", measure="max",
         during=[6, 9], relativeTo="engine.redline", range=[0.97, 1.03], unit="of the redline",
         source="a rev limiter holds the speed within a few percent of where it cuts (some 100 to 200 rpm at 6500)")
-    pull = SC + ("p-pull-auto.json" if auto else "p-pull-paddles.json")
+    pull = SC + ("p-pull-auto.json" if auto else "p-pull-eighteen.json" if car["gearbox"] == "Eighteen-speed"
+                 else "p-pull-paddles.json")
     add(name="Invariant: pulls away", scenario=pull, tel="car.speed", measure="max", during=[3, 13],
-        range=[3 if slug.startswith("tractor") else 8, 120], unit="m/s",
-        source="started, in gear and on the pedal, the car moves (a 36 t tractor at least 3 m/s in ten seconds)")
+        range=[1.5 if slug.startswith("tractor") else 8, 120], unit="m/s",
+        source="started, in gear and on the pedal, the car moves (a 36 t tractor in third of eighteen at least 1.5 m/s)")
     add(name="Invariant: stops at the key", scenario=pull, tel="engine.state", measure="last", range=[0, 0],
         source="the key off stops the engine (engine.state 0 by the run's end)")
     add(name="Starts cold", scenario=SC + "p-cold-start.json", tel="engine.state", measure="min", during=[6, 11.5],
