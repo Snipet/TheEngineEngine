@@ -29,6 +29,15 @@ module Rig
     bool honour;        // obeys the gearbox's cut and blip
     bool bare;          // runs the engine alone (the bench's baseline)
     bool noStall;       // never stalls (a test about the car, not the driver)
+    // a crank whose inertia varies round the turn, as a custom engine's moving masses make it: J = jE + jp sin^2, the
+    // inertia torque -jp sin cos w^2 (a single, its rod infinitely long), and the energy property's books
+    bool pistons;
+    float jp;
+    float theta;
+    double gasWork;     // the engine's torque's work less its friction's (no inertia torque), J
+    double e0;          // everything's energy when the books opened
+    double excessMax;   // the most the energy ever stood above e0 plus that work, J
+    double eMax;
     float idleInt;
     float tqEngine;     // what it gave last sample (less friction)
     // the controls
@@ -151,6 +160,19 @@ module Rig
             phase = (phase + 1) & 15;
             const float tq = torque();
             tqEngine = tq;
+            float ti = 0.0f;
+            float jc = 0.0f;
+            if (pistons)
+            {
+                theta += w * dt;
+                if (theta > 6.2831853f)
+                    theta -= 6.2831853f;
+                const float sn = sinf(theta);
+                const float cs = cosf(theta);
+                jc = jE + jp * sn * sn;
+                ti = -jp * sn * cs * w * w;
+                gasWork += (double)(tq * w * dt);
+            }
             if (bare)
             {
                 // (the bench's baseline: the rig without the vehicle)
@@ -158,7 +180,13 @@ module Rig
                 t += (double)dt;
                 continue;
             }
-            w = car.step(w, tq, dt);
+            w = car.step(w, tq + ti, dt, jc);
+            if (pistons && phase == 0)
+            {
+                const double e = energy();
+                excessMax = fmax(excessMax, e - e0 - gasWork);
+                eMax = fmax(eMax, e);
+            }
             if (running && w < 0.33f * idleW && !noStall)
                 running = false;
             const float y = car.road();
@@ -201,6 +229,22 @@ module Rig
         if (rs <= 0)
             rs += 2147483647;
         return (float)rs / 2147483647.0f;
+    }
+
+    // the crank's energy at its inertia of the moment, and the vehicle's
+    double energy()
+    {
+        const float sn = sinf(theta);
+        const double j = (double)(jE + jp * sn * sn);
+        return 0.5 * j * (double)w * (double)w + car.kinetic(0.0f);
+    }
+
+    void openBooks()
+    {
+        gasWork = 0.0;
+        e0 = energy();
+        excessMax = 0.0;
+        eMax = e0;
     }
 
     void startAudit()

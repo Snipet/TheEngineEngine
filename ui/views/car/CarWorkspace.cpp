@@ -500,32 +500,13 @@ namespace tee::ui
             s.drag = { s.body.right() + 4.0f, s.body.y, 120.0f, s.body.h };
             return s;
         }
-        // A motorcycle from the side, as polylines in px: swingarm, frame and tank, fairing, engine, fork, the rider (from
-        // the seat, tucked by car.tuck), each point in metres ahead of the rear axle and up from the ground, the whole
-        // turned about the rear tyre's contact by the lift (car.liftAngle): no Canvas rotation, the points are turned.
-        // The last line is the front wheel's centre (one point) and the head's (one point).
+        // A motorcycle from the side (look::bikeLines, DRIVE's bike): front at the left, lifted by car.liftAngle about the
+        // rear contact, tucked by car.tuck. The last line is the front wheel's centre and the head's.
         std::vector<std::vector<funkgui::Point>> bikeLines(const Side& s) const
         {
-            const double wb = field(fWheelbase), r = field(fTyreRadius);
             const int ti = ctx_.doc.find("car.tuck");
-            const double t = ti >= 0 ? std::clamp(ctx_.doc.get(ti), 0.0, 1.0) : 1.0;
-            const double a = s.lift * chart::kPi / 180.0, ca = std::cos(a), sa = std::sin(a);
-            const auto P = [&](double x, double y) {
-                const double xr = x * ca - y * sa, yr = x * sa + y * ca;   // turned about the contact, front up
-                return funkgui::Point{ s.rear - static_cast<float>(xr) * s.k, s.ground - static_cast<float>(yr) * s.k };
-            };
-            const double sx = 0.48 * wb + 0.08 * wb * t, sy = 1.38 - 0.25 * t;   // the rider's shoulder
-            return {
-                { P(0.0, r), P(0.36 * wb, r + 0.10) },                                                       // swingarm
-                { P(-0.12 * wb, 0.78), P(0.05 * wb, 0.80), P(0.30 * wb, 0.80), P(0.42 * wb, 0.86), P(0.58 * wb, 0.98),
-                  P(0.74 * wb, 0.95) },                                                                      // tail, seat, tank
-                { P(0.74 * wb, 0.95), P(0.88 * wb, 0.99), P(0.92 * wb, 0.72), P(0.80 * wb, 0.50) },            // fairing
-                { P(0.38 * wb, 0.30), P(0.68 * wb, 0.30), P(0.70 * wb, 0.62), P(0.42 * wb, 0.66), P(0.38 * wb, 0.30) },   // engine
-                { P(0.74 * wb, 0.95), P(wb, r) },                                                              // fork
-                { P(0.28 * wb, 0.88), P(sx, sy), P(0.74 * wb, 1.02) },                                         // back, arm
-                { P(0.28 * wb, 0.88), P(0.45 * wb, 0.62), P(0.32 * wb, 0.40) },                                // leg
-                { P(wb, r), P(sx + 0.06 * wb, sy + 0.16) },                                                    // centres
-            };
+            return look::bikeLines(s.rear, s.ground, s.k, field(fWheelbase), field(fTyreRadius), s.lift,
+                                   ti >= 0 ? ctx_.doc.get(ti) : 1.0, -1.0f);
         }
 
         // The top of the body at x (the profile's highest point over it).

@@ -77,6 +77,53 @@ namespace tee::test::u3
         return out;
     }
 
+    // Lines through text: a text run (as above) that a drawn segment (a trace, a mark) crosses by more than a pixel.
+    // Short segments only (a trace's pieces, each at most 24 px): a long rule's box would cover what it only passes.
+    std::string linesThroughText(const funkgui::PrimList& frame)
+    {
+        struct Box
+        {
+            float x0, y0, x1, y1;
+        };
+        std::vector<Box> texts, lines;
+        bool open = false;
+        for (const funkgui::Prim& q : frame.prims)
+        {
+            const int kind = static_cast<int>(q.d2[2]);
+            if (kind == static_cast<int>(funkgui::PrimKind::segment))
+            {
+                if (q.x1 - q.x0 <= 24.0f && q.y1 - q.y0 <= 24.0f)
+                    lines.push_back({ q.x0, q.y0, q.x1, q.y1 });
+            }
+            if (kind != static_cast<int>(funkgui::PrimKind::text))
+            {
+                open = false;
+                continue;
+            }
+            if (open && std::fabs(q.y0 - texts.back().y0) < 3.0f && q.x0 <= texts.back().x1 + 14.0f && q.x0 > texts.back().x0)
+            {
+                texts.back().x1 = std::max(texts.back().x1, q.x1);
+                texts.back().y1 = std::max(texts.back().y1, q.y1);
+                continue;
+            }
+            texts.push_back({ q.x0, q.y0, q.x1, q.y1 });
+            open = true;
+        }
+        std::string out;
+        const float in = 2.0f;   // both quads carry an apron
+        for (const Box& t : texts)
+            for (const Box& l : lines)
+                if (t.x0 + in < l.x1 - in && l.x0 + in < t.x1 - in && t.y0 + in < l.y1 - in && l.y0 + in < t.y1 - in)
+                {
+                    char m[160];
+                    std::snprintf(m, sizeof m, "a line at (%.0f,%.0f)-(%.0f,%.0f) crosses text at (%.0f,%.0f)-(%.0f,%.0f)\n", l.x0,
+                                  l.y0, l.x1, l.y1, t.x0, t.y0, t.x1, t.y1);
+                    out += m;
+                    break;
+                }
+        return out;
+    }
+
     funkgui::Rect frameStage(int w, int h)
     {
         tee::ui::DemoRig demo(4.6);
@@ -511,6 +558,12 @@ namespace
                 ExRig rig(b, static_cast<int>(st.w), static_cast<int>(st.h), 1.0f);
                 const std::string hits = tee::test::u3::textCollisions(rig.host->draw());
                 CHECK_MSG(hits.empty(), std::string(b) + " at " + std::to_string(win.first) + ":\n" + hits);
+                // the two-stroke's port plot: its OPENS and CLOSES stand clear of the trace
+                if (b[0] == 't' && b[1] == 's')
+                {
+                    const std::string lines = tee::test::u3::linesThroughText(rig.host->draw());
+                    CHECK_MSG(lines.empty(), std::string(b) + " at " + std::to_string(win.first) + ":\n" + lines);
+                }
             }
         }
         return 0;

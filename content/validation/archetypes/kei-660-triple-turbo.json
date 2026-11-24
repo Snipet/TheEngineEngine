@@ -91,8 +91,19 @@
     {
       "name": "Peak power",
       "dyno": {
-        "from": 78.5,
-        "to": 837.8
+        "steps": [
+          157.1,
+          240.1,
+          323.1,
+          406.1,
+          489.0,
+          572.0,
+          655.0,
+          738.0,
+          821.0
+        ],
+        "settle": 5,
+        "measure": 1
       },
       "measure": "maxPower",
       "range": [
@@ -105,8 +116,19 @@
     {
       "name": "Speed at peak power",
       "dyno": {
-        "from": 78.5,
-        "to": 837.8
+        "steps": [
+          157.1,
+          240.1,
+          323.1,
+          406.1,
+          489.0,
+          572.0,
+          655.0,
+          738.0,
+          821.0
+        ],
+        "settle": 5,
+        "measure": 1
       },
       "measure": "speedAtMaxPower",
       "range": [
@@ -119,8 +141,19 @@
     {
       "name": "Peak torque",
       "dyno": {
-        "from": 78.5,
-        "to": 837.8
+        "steps": [
+          157.1,
+          240.1,
+          323.1,
+          406.1,
+          489.0,
+          572.0,
+          655.0,
+          738.0,
+          821.0
+        ],
+        "settle": 5,
+        "measure": 1
       },
       "measure": "maxTorque",
       "range": [
@@ -133,8 +166,19 @@
     {
       "name": "Speed at peak torque",
       "dyno": {
-        "from": 78.5,
-        "to": 837.8
+        "steps": [
+          157.1,
+          240.1,
+          323.1,
+          406.1,
+          489.0,
+          572.0,
+          655.0,
+          738.0,
+          821.0
+        ],
+        "settle": 5,
+        "measure": 1
       },
       "measure": "speedAtMaxTorque",
       "range": [
@@ -186,11 +230,11 @@
         10
       ],
       "range": [
-        75000.0,
-        105000.0
+        50000.0,
+        80000.0
       ],
       "unit": "Pa over the air",
-      "source": "the build's own target (0.90 bar); a wastegate or vane loop holds a steady full load within some 0.1 bar of its target once spooled (makers' boost-control tolerances; judgement)"
+      "source": "the build's own target (0.65 bar); a wastegate or vane loop holds a steady full load within some 0.1 bar of its target once spooled (makers' boost-control tolerances; judgement)"
     },
     {
       "name": "Charge temperature under boost",
