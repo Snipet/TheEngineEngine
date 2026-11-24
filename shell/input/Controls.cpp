@@ -69,15 +69,20 @@ namespace tee::input
 
     void Controls::tick(float dt)
     {
+        // (a value not there yet, NaN while the engine compiles, reads as 0)
+        const auto read = [this](int handle) {
+            const double v = telemetry_->value(handle);
+            return std::isfinite(v) ? v : 0.0;
+        };
         EngineSeen seen;
         if (stateHandle_ >= 0)
-            seen.running = std::lround(telemetry_->value(stateHandle_)) == 2;
+            seen.running = std::lround(read(stateHandle_)) == 2;
         // a gearbox answers only while the engine is in a vehicle
-        const bool driven = drivenHandle_ < 0 || telemetry_->value(drivenHandle_) > 0.5;
+        const bool driven = drivenHandle_ < 0 || read(drivenHandle_) > 0.5;
         if (gearHandle_ >= 0 && driven)
         {
             seen.gearKnown = true;
-            seen.gear = static_cast<int>(std::lround(telemetry_->value(gearHandle_)));
+            seen.gear = static_cast<int>(std::lround(read(gearHandle_)));
         }
         sink_->setControls(driver_.advance(dt, seen));
     }
