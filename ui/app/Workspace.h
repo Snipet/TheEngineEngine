@@ -241,8 +241,9 @@ namespace tee::ui
         // The ECU's maps baked from its formulas now (ctl.bakeMaps pressed once; TUNE's BAKE). None: not here.
         std::function<void()> bakeMaps;
         // A text saved as a file the person chooses (a dyno run's CSV, an export): the host's save dialog, starting at
-        // `suggestedName`. False, with `error`, when it was not saved (cancelled: error empty). None: no saving here
-        // (a workspace then copies the text: HostServices::copyText).
+        // `suggestedName`. True once the dialog is open (the window's dialog answers later: whether it was saved or
+        // cancelled goes on the status line); false, with `error`, when no dialog can open. None: no saving here (a
+        // workspace then copies the text: HostServices::copyText).
         std::function<bool(const std::string& suggestedName, const std::string& text, std::string& error)> saveText;
     };
 
