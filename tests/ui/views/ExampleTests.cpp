@@ -3,6 +3,7 @@
 #include "ViewKit.h"
 
 #include "app/Look.h"
+#include "kit/bind/Binding.h"
 
 #include <funkgui/core/Theme.h>
 
@@ -121,6 +122,43 @@ namespace
         CHECK(tee::ui::DemoEngine::baseScope() == scope);
         CHECK_MSG(tee::ui::demoFields(tee::ui::DemoHooks::none()).size() == 57,
                   std::to_string(tee::ui::demoFields(tee::ui::DemoHooks::none()).size()));
+        return 0;
+    }
+
+    // A length field that prefers metres (a listener's distance) reads in m while the person's length unit is mm or
+    // cm; inches stay inches; a field with no preference (a bore) keeps the chosen unit. The inspector's parameter
+    // (FieldParams) carries it: its unit, its range and its value.
+    VIEW_TEST(testUnitsPrefer, "units.prefer")
+    {
+        using tee::ui::Quantity;
+        tee::ui::Units u;
+        CHECK(std::string(u.unit(Quantity::length).name) == "mm");
+        CHECK(std::string(u.unit(Quantity::length, "m").name) == "m");
+        CHECK(u.format(Quantity::length, 5.0, -1, "m") == "5.000 m");
+        CHECK(u.format(Quantity::length, 0.1016) == "101.6 mm");
+        u.choose(Quantity::length, "cm");
+        CHECK(std::string(u.unit(Quantity::length, "m").name) == "m");
+        u.choose(Quantity::length, "in");
+        CHECK(std::string(u.unit(Quantity::length, "m").name) == "in");   // another system: as chosen
+        CHECK(std::string(u.unit(Quantity::length, "furlong").name) == "in");   // a name it has not: as chosen
+        u.choose(Quantity::length, "mm");
+        double si = 0.0;
+        CHECK(u.parse(Quantity::length, "3", si, "m") && std::fabs(si - 3.0) < 1e-12);
+        tee::ui::FieldInfo d;
+        d.path = "sound.distance";
+        d.kind = tee::ui::FieldKind::number;
+        d.min = 0.5;
+        d.max = 100.0;
+        d.def = 5.0;
+        d.label = "Distance";
+        d.quantity = Quantity::length;
+        d.preferUnit = "m";
+        tee::ui::MemoryDoc doc({ d });
+        tee::ui::FieldParams params(doc, u, { 0 });
+        CHECK(params.info(0).unit == "m");
+        CHECK_NEAR(params.get(0), 5.0, 1e-12);
+        CHECK_NEAR(params.info(0).max, 100.0, 1e-12);
+        CHECK(tee::ui::fieldText(d, 5.0, u) == "5.000 m");
         return 0;
     }
 }

@@ -49,20 +49,26 @@ namespace tee::ui
         // The chosen unit's index among unitsOf(q).
         int chosen(Quantity q) const noexcept { return chosen_[static_cast<std::size_t>(q)]; }
         const Unit& unit(Quantity q) const noexcept;
+        // U1: a field's preferred unit (FieldInfo::preferUnit: a listener's distance in "m" while a bore is in mm). It
+        // applies when the person's chosen unit is of the same system (metric mm or cm: the preferred m); one of
+        // another system (inches) stays as chosen. "" or a name q has not: the chosen unit. Every call below takes the
+        // preference as its last, optional argument.
+        int chosen(Quantity q, std::string_view prefer) const noexcept;
+        const Unit& unit(Quantity q, std::string_view prefer) const noexcept;
         // False (and nothing changed) when the quantity has no unit of that name.
         bool choose(Quantity q, std::string_view unitName) noexcept;
         void choose(Quantity q, int index) noexcept;
 
-        double toUser(Quantity q, double si) const noexcept;
-        double toSi(Quantity q, double user) const noexcept;
+        double toUser(Quantity q, double si, std::string_view prefer = {}) const noexcept;
+        double toSi(Quantity q, double user, std::string_view prefer = {}) const noexcept;
 
         // The value in the chosen unit with its name: "14.7 psi". `decimals` -1: the unit's own, else by the size.
-        std::string format(Quantity q, double si, int decimals = -1) const;
+        std::string format(Quantity q, double si, int decimals = -1, std::string_view prefer = {}) const;
         // The number alone ("14.7").
-        std::string number(Quantity q, double si, int decimals = -1) const;
+        std::string number(Quantity q, double si, int decimals = -1, std::string_view prefer = {}) const;
         // Typed text to SI: a number, then optionally one of q's units ("1 bar", "30psi"), else the chosen unit is
         // meant. False for text that is no number or names a unit q does not have.
-        bool parse(Quantity q, std::string_view text, double& si) const;
+        bool parse(Quantity q, std::string_view text, double& si, std::string_view prefer = {}) const;
 
         // The choices as settings lines, "quantity=unit" each (only those not at the default), and back; a line that
         // names no quantity or unit is skipped and said in `notes`.
