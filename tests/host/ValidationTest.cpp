@@ -2,6 +2,8 @@
 // content/validation/, and content/scenarios/' own assertions, on the simulator once it is there.
 #include "Support.h"
 
+#include <algorithm>
+
 #include "tee/Validation.h"
 
 #include <catch2/catch_test_macros.hpp>
@@ -50,26 +52,45 @@ TEST_CASE("a validation file is read, refused without its sources, and run on th
     CHECK(validationTable(rows).find("FAIL") != std::string::npos);
 }
 
+namespace
+{
+    // The fast targets of the files named (empty: every file of content/validation/)
+    void fastTargetsPass(const std::vector<std::string>& names)
+    {
+        std::string error;
+        auto sim = compiled(kRoot / "sim", {}, error);
+        REQUIRE(sim != nullptr);
+        for (const auto& entry : std::filesystem::directory_iterator(kRoot / "content" / "validation"))
+        {
+            if (!entry.is_regular_file() || entry.path().extension() != ".json")
+                continue;   // another package's subdirectory, a note: only the files here are this test's
+            if (!names.empty()
+                && std::find(names.begin(), names.end(), entry.path().stem().string()) == names.end())
+                continue;
+            CAPTURE(entry.path().filename().string());
+            Validation v;
+            REQUIRE(Validation::loadFile(entry.path(), v, error));
+            std::vector<ValidationRow> rows;
+            REQUIRE(runValidation(sim, v, kRoot / "content", true, rows, error));
+            UNSCOPED_INFO(validationTable(rows));
+            for (const ValidationRow& r : rows)
+                CHECK((!r.measured || r.pass));
+        }
+    }
+} // namespace
+
 TEST_CASE("the fast targets of content/validation pass on the simulator", "[validation][sim]")
 {
     if (!haveSim())
         SKIP("sim/engine.fm is not there yet");
-    std::string error;
-    auto sim = compiled(kRoot / "sim", {}, error);
-    REQUIRE(sim != nullptr);
-    for (const auto& entry : std::filesystem::directory_iterator(kRoot / "content" / "validation"))
-    {
-        if (!entry.is_regular_file() || entry.path().extension() != ".json")
-            continue;   // another package's subdirectory, a note: only the files here are this test's
-        CAPTURE(entry.path().filename().string());
-        Validation v;
-        REQUIRE(Validation::loadFile(entry.path(), v, error));
-        std::vector<ValidationRow> rows;
-        REQUIRE(runValidation(sim, v, kRoot / "content", true, rows, error));
-        UNSCOPED_INFO(validationTable(rows));
-        for (const ValidationRow& r : rows)
-            CHECK((!r.measured || r.pass));
-    }
+    fastTargetsPass({"default"});   // the quick form; every file: [nightly] below
+}
+
+TEST_CASE("the fast targets of every file of content/validation pass on the simulator", "[validation][sim][nightly]")
+{
+    if (!haveSim())
+        SKIP("sim/engine.fm is not there yet");
+    fastTargetsPass({});
 }
 
 TEST_CASE("content/scenarios' assertions hold on the default build", "[scenario][sim]")

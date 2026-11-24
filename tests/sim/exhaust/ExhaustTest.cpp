@@ -117,12 +117,24 @@ namespace
 // than 3 % (the pipes' filters, the wall's and the packings' shelves and the steady flow's trackers, hold some energy
 // for a while and give it back, which this measure does not see; measured worst: 2.3 %), and all of it is gone (below
 // 1e-6 of its peak) within 4 s (measured longest: 0.62 s).
+static void randomPassive(bool full);
+
 TEST_CASE("every random topology is passive", "[exhaust][passive]")
+{
+    randomPassive(false);
+}
+
+TEST_CASE("every random topology is passive, in full", "[exhaust][passive][nightly]")
+{
+    randomPassive(true);
+}
+
+static void randomPassive(bool full)
 {
     Lcg g{12345u};
     double worstRise = 0.0;
     double worstTail = 0.0;
-    for (int trial = 0; trial < 50; ++trial)
+    for (int trial = 0; trial < (full ? 50 : 12); ++trial)
     {
         const int layout = randomLayout(g);
         Rig rig(layout);
@@ -389,7 +401,19 @@ TEST_CASE("the scope shows the path's pressures", "[exhaust][scope]")
 // Card G, test 11 (standalone form): three minutes of running flows (blowdown pulses, the speed wandering 1000 to
 // 7000 rpm, the gas warming and cooling) while the topology changes to a random one every 4 s (rebuilt as the engine
 // rebuilds under its fade). Every output finite and bounded; after the flows stop, no pressure stays in the pipes.
+static void harnessSoak(bool full);
+
 TEST_CASE("random topologies changed while running stay finite and bounded", "[exhaust][soak]")
+{
+    harnessSoak(false);
+}
+
+TEST_CASE("random topologies changed while running stay finite and bounded, in full", "[exhaust][soak][nightly]")
+{
+    harnessSoak(true);
+}
+
+static void harnessSoak(bool full)
 {
     Lcg g{777u};
     Rig rig(12);
@@ -398,7 +422,7 @@ TEST_CASE("random topologies changed while running stay finite and bounded", "[e
     double peak = 0.0;
     double peakLater = 0.0;
     bool finite = true;
-    for (int k = 0; k < 45; ++k)
+    for (int k = 0; k < (full ? 45 : 12); ++k)
     {
         randomTopology(rig, g);
         rig.set("tPort", 600.0 + 600.0 * g.unit());
@@ -503,7 +527,19 @@ TEST_CASE("a deeply packed pipe at rest is passive", "[exhaust][passive]")
 // decade), over a sweep of a pass's gain (0.9 to 1), a packing's depths and a low-pass, with the wall's shelves of a
 // 1 m pipe; its order chosen by the builder's rule (XBuild::filterFirst: the pass's own worst gain, from its
 // coefficients). And the reference's order where the rule changes it, to show the overshoot the rule removes.
+static void packedSweep(bool full);
+
 TEST_CASE("every packed pipe's pass is at or under unity, the sweep", "[exhaust][passive][sweep]")
+{
+    packedSweep(false);
+}
+
+TEST_CASE("every packed pipe's pass is at or under unity, the sweep, in full", "[exhaust][passive][sweep][nightly]")
+{
+    packedSweep(true);
+}
+
+static void packedSweep(bool full)
 {
     Rig rig(12);
     std::string error;
@@ -516,7 +552,7 @@ TEST_CASE("every packed pipe's pass is at or under unity, the sweep", "[exhaust]
     const int n = 1 << 15;
     std::vector<float> h(static_cast<std::size_t>(n));
     std::vector<double> freqs;
-    for (double f = 5.0; f < 20000.0; f *= std::pow(10.0, 1.0 / 60.0))
+    for (double f = 5.0; f < 20000.0; f *= std::pow(10.0, 1.0 / (full ? 60.0 : 20.0)))
         freqs.push_back(f);
     auto peakGain = [&](double& at) {
         double best = 0.0;
@@ -542,10 +578,15 @@ TEST_CASE("every packed pipe's pass is at or under unity, the sweep", "[exhaust]
     double worstRef = 0.0;
     int flagged = 0, cases = 0;
     tee::ScopedFlushDenormals flush;
-    for (float keep : {0.9f, 0.94f, 0.96f, 0.98f, 1.0f})
-        for (float dLow : {0.0f, 2.0f, 8.0f, 16.0f})
-            for (float dHigh : {0.0f, 2.0f, 8.0f})
-                for (float lpHz : {0.0f, 300.0f, 2000.0f})
+    // (quick: the grid's corners and the keeps near unity; in full all of it)
+    const std::vector<float> keeps = full ? std::vector<float>{0.9f, 0.94f, 0.96f, 0.98f, 1.0f} : std::vector<float>{0.96f, 1.0f};
+    const std::vector<float> lows = full ? std::vector<float>{0.0f, 2.0f, 8.0f, 16.0f} : std::vector<float>{0.0f, 2.0f, 16.0f};
+    const std::vector<float> highs = full ? std::vector<float>{0.0f, 2.0f, 8.0f} : std::vector<float>{0.0f, 8.0f};
+    const std::vector<float> lps = full ? std::vector<float>{0.0f, 300.0f, 2000.0f} : std::vector<float>{0.0f, 2000.0f};
+    for (float keep : keeps)
+        for (float dLow : lows)
+            for (float dHigh : highs)
+                for (float lpHz : lps)
                 {
                     set(inst, dLow, dHigh, lpHz, keep, -1);
                     const int ff = static_cast<int>(rig.get("probe.filtFirst"));

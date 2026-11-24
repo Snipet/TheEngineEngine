@@ -117,7 +117,6 @@ namespace
         rig.settle();
         CHECK(indexOf(g, "Hot Six") >= 0 && indexOf(g, "Tow Diesel") >= 0);   // "straight six" in its sentence
         CHECK(indexOf(g, "Street V8") < 0);
-        picture("garage.search", *rig.host);
         typeKeys(*rig.host, "escape");
         g.setSearch("");
         rig.settle();
@@ -161,7 +160,6 @@ namespace
         CHECK(field(rig, "car.mass") == mass);                                        // the car is this one
         CHECK(named(g, "Street V8")->current && g.library().unsaved());
         CHECK(g.message().find("engine") != std::string::npos);
-        picture("garage.parts", *rig.host);
         g.choose(named(g, "Track Tune")->id);
         rig.settle();
         CHECK(press(rig, "TRY THIS TUNE"));
@@ -251,7 +249,6 @@ namespace
         rig.settle();
         CHECK(press(rig, "DELETE"));
         CHECK(named(g, "My V10") != nullptr);    // asked, not done
-        picture("garage.confirm", *rig.host);
         CHECK(press(rig, "KEEP IT"));
         CHECK(press(rig, "DELETE") && press(rig, "CONFIRM DELETE"));
         CHECK(named(g, "My V10") == nullptr && g.shown().size() == 9);
@@ -312,6 +309,38 @@ namespace
         CHECK(garage::layoutWords("Inline 6") == "straight six" && garage::layoutWords("Flat 4") == "flat four");
         CHECK(garage::layoutWords("V8 crossplane") == "V8 crossplane" && garage::layoutWords("Rotary") == "twin rotor");
         CHECK(garage::layoutWords("V-twin 45") == "V-twin");
+        return 0;
+    }
+
+    // Pictures, no checks (labelled nightly by its name's ".pictures": the soak tier makes them at every push, the
+    // default run leaves them out, 01-rules.md section 3).
+    VIEW_TEST(testGaragePictures, "garage.pictures")
+    {
+        {
+            StageRig rig(tee::ui::makeGarageWorkspace, 1100, 700);
+            for (const funkgui::A11yItem& it : rig.host->accessibility())
+                if (it.title == "Search")
+                    rig.host->click(it.bounds.centreX(), it.bounds.centreY());
+            typeKeys(*rig.host, "s i x");
+            rig.settle();
+            picture("garage.search", *rig.host);
+        }
+        {
+            StageRig rig(tee::ui::makeGarageWorkspace, 1100, 700);
+            GarageWorkspace& g = garageOf(rig);
+            g.choose(named(g, "Hot Six")->id);
+            rig.settle();
+            press(rig, "ITS ENGINE");
+            picture("garage.parts", *rig.host);
+        }
+        {
+            StageRig rig(tee::ui::makeGarageWorkspace, 1100, 700);
+            GarageWorkspace& g = garageOf(rig);
+            g.choose(named(g, "My V10")->id);
+            rig.settle();
+            press(rig, "DELETE");
+            picture("garage.confirm", *rig.host);
+        }
         return 0;
     }
 }

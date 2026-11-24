@@ -197,7 +197,7 @@ namespace
 
     // The contact sheet of package U4: DYNO, TUNE and CAR a row each; across, each at 1100 x 700 and 1600 x 1000, at
     // density 1 then 2 (out/ui/sheet.u4.png). Every tile is the software rasteriser's, shrunk to half its logical size.
-    VIEW_TEST(testU4Sheet, "dyno.sheet")
+    VIEW_TEST(testU4Sheet, "dyno.sheet.pictures")
     {
         struct Col
         {
@@ -258,7 +258,7 @@ namespace
     }
 
     // At the frame's stage: about 660 x 570 in a 1100 x 700 window, about 1100 x 860 in a 1600 x 1000 one.
-    VIEW_TEST(testU4FrameStages, "dyno.framestages")
+    VIEW_TEST(testU4FrameStages, "dyno.framestages.pictures")
     {
         const char* names[] = { "dyno", "tune", "car" };
         for (int row = 0; row < 3; ++row)

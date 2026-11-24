@@ -59,16 +59,17 @@ TEST_CASE("boost: the housing with the wheel locked and no fuel returns no more 
     std::printf("passivity: the most a housing returned was %.3f of what it took\n", worst);
 }
 
-TEST_CASE("boost: ten minutes of random throttle chops stay finite and bounded", "[boost][soak]")
+// Random builds driven by random chops and stabs for `seconds` of simulated time, from `seed`.
+static void chops(double seconds, unsigned seed)
 {
-    std::mt19937 random(424242);
+    std::mt19937 random(seed);
     auto between = [&](double lo, double hi) { return std::uniform_real_distribution<double>(lo, hi)(random); };
     double simulated = 0.0;
     double peakBoost = 0.0;
     double peakShare = 0.0;
     int builds = 0;
     const auto t0 = std::chrono::steady_clock::now();
-    while (simulated < 600.0)
+    while (simulated < seconds)
     {
         // a build: a turbo (any layout), or a supercharger; random sizes; no blow-off valve half the time
         Rig rig;
@@ -94,7 +95,7 @@ TEST_CASE("boost: ten minutes of random throttle chops stay finite and bounded",
                               "gateSpring", "antiLag", "assist"})
             what += std::string(f) + " " + std::to_string(rig.get(std::string("spec.") + f)) + ", ";
         double rpm = between(1500.0, 7500.0);
-        for (int seg = 0; seg < 40 && simulated < 600.0; ++seg)
+        for (int seg = 0; seg < 40 && simulated < seconds; ++seg)
         {
             if (between(0.0, 1.0) < 0.3)
                 rpm = between(1000.0, 8000.0);
@@ -141,6 +142,18 @@ TEST_CASE("boost: ten minutes of random throttle chops stay finite and bounded",
     const double wall = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
     std::printf("soak: %.0f s simulated on %d builds in %.1f s; the most boost %.0f kPa, the fastest shaft %.2f of its "
                 "limit\n", simulated, builds, wall, peakBoost / 1000.0, peakShare);
+}
+
+// The quick form (the default run, 01-rules.md section 3): the same property on a minute, the same seed, so its first
+// builds are the soak's first.
+TEST_CASE("boost: a minute of random throttle chops stays finite and bounded", "[boost][soak]")
+{
+    chops(60.0, 424242);
+}
+
+TEST_CASE("boost: ten minutes of random throttle chops stay finite and bounded", "[boost][soak][nightly]")
+{
+    chops(600.0, 424242);
 }
 
 TEST_CASE("boost: what the machine costs a sample", "[boost][cost]")

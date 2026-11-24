@@ -339,7 +339,7 @@ TEST_CASE("bike.lash: the driveline's play closes as an event each time the thro
     CHECK(static_cast<int>(r.get("lashSeen")) - seen0 == static_cast<int>(events));
 }
 
-TEST_CASE("bike.soak: ten minutes of random riding stay finite and bounded", "[bike][soak]")
+TEST_CASE("bike.soak: ten minutes of random riding stay finite and bounded", "[bike][soak][nightly]")
 {
     Rig r;
     superbike(r);

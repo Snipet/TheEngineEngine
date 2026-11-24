@@ -12,4 +12,4 @@ target_compile_definitions(tee-tests-exhaust PRIVATE
   "TEE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
   "TEE_SOURCE_SIM_DIR=\"${PROJECT_SOURCE_DIR}/sim/ref\""
   "TEE_SOURCE_CONTENT_DIR=\"${PROJECT_SOURCE_DIR}/content/ref\"")
-catch_discover_tests(tee-tests-exhaust DISCOVERY_MODE PRE_TEST TEST_PREFIX "exhaust." PROPERTIES TIMEOUT 900)
+catch_discover_tests(tee-tests-exhaust DISCOVERY_MODE PRE_TEST ADD_TAGS_AS_LABELS TEST_PREFIX "exhaust." PROPERTIES TIMEOUT 900)

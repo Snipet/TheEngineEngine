@@ -44,6 +44,10 @@ namespace tee::bike
         for (const auto& entry : std::filesystem::directory_iterator(root / "sim/vehicle"))
             if (entry.path().extension() == ".fm")
                 files["vehicle/" + entry.path().filename().string()] = readFile(entry.path());
+        // (the vehicle's files include the library's: card I's truck reads lib/noise.fm)
+        for (const auto& entry : std::filesystem::directory_iterator(root / "sim/lib"))
+            if (entry.path().extension() == ".fm")
+                files["lib/" + entry.path().filename().string()] = readFile(entry.path());
         return files;
     }
 
