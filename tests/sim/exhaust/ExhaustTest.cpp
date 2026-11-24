@@ -424,3 +424,32 @@ TEST_CASE("random topologies changed while running stay finite and bounded", "[e
     CHECK(tail < 1.0e-3 * peak);
     CHECK(head < 1.0);
 }
+
+// At rest, nothing flows (01-rules.md §4): every element kind, no flow in for 2 s, the gas warm: the ends' flow and
+// what they radiate stay at nothing (no chatter at a junction, a chamber, a neck or a valve)
+TEST_CASE("at rest, nothing flows", "[exhaust][rest]")
+{
+    double worstQ = 0.0;
+    double worstOut = 0.0;
+    for (const Kind& k : everyKind())
+    {
+        Rig rig(k.layout);
+        rig.noise(0.0);
+        for (const auto& f : k.fields)
+            rig.set(f.first, f.second);
+        rig.configure();
+        std::vector<float> q(static_cast<std::size_t>(2.0 * kRate) * kPorts, 0.0f);
+        std::vector<float> l, r;
+        rig.run(q, l, r);
+        double out = 0.0;
+        for (std::size_t i = 0; i < l.size(); ++i)
+            out = std::max(out, static_cast<double>(std::max(std::fabs(l[i]), std::fabs(r[i]))));
+        const double flow = std::fabs(rig.flowOut()) / (2.0 * kRate);
+        worstQ = std::max(worstQ, flow);
+        worstOut = std::max(worstOut, out);
+        INFO(k.name);
+        CHECK(flow < 1.0e-9);
+        CHECK(out < 1.0e-6);
+    }
+    std::printf("at rest: largest mean flow out %.3g m^3/s, largest output %.3g\n", worstQ, worstOut);
+}
