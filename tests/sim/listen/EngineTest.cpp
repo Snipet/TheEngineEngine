@@ -203,6 +203,7 @@ namespace
         sound(b, "intake", 1.0);
         sound(b, "mechanical", 1.0);
         sound(b, "distance", 0.0);
+        sound(b, "autoLevel", 0);       // true levels: the auto level would take the +12 dB back
         b.start(1.0);
         double peak = 0.0;
         double worstLim = 0.0;
@@ -264,4 +265,102 @@ TEST_CASE("a motorcycle heard from the rider's seat, revved and launched", "[lis
     CHECK(finite);
     CHECK(peak < 0.99);
     CHECK(peak > 0.01);
+}
+
+namespace
+{
+    struct Rev
+    {
+        double idle = 0.0;      // the peak at idle, the throttle floored (from 0.5 s in), the whole run's
+        double rev = 0.0;
+        double all = 0.0;
+        bool finite = true;
+    };
+
+    // A free rev as content/validation/scenarios/p-free-rev.json has it: the key, idle, the throttle floored 4 s, let go
+    Rev freeRev(Bench& b)
+    {
+        Rev r;
+        double* into = &r.all;
+        auto watch = [&] {
+            for (std::size_t i = 0; i < b.left().size(); ++i)
+            {
+                const double l = b.left()[i];
+                const double rr = b.right()[i];
+                r.finite = r.finite && std::isfinite(l) && std::isfinite(rr);
+                const double a = std::max(std::fabs(l), std::fabs(rr));
+                r.all = std::max(r.all, a);
+                *into = std::max(*into, a);
+            }
+        };
+        b.ctl().ignition = tee::EnginePlayer::kIgnitionStart;
+        b.play(1.75, watch);
+        b.ctl().ignition = tee::EnginePlayer::kIgnitionOn;
+        b.play(1.25, watch);
+        into = &r.idle;
+        b.play(2.0, watch);
+        into = &r.all;
+        b.ctl().throttle = 1.0f;
+        b.play(0.5, watch);
+        into = &r.rev;
+        b.play(3.5, watch);
+        into = &r.all;
+        b.ctl().throttle = 0.0f;
+        b.play(3.0, watch);
+        return r;
+    }
+}
+
+namespace
+{
+    void atDefaults(const std::vector<const char*>& builds)
+    {
+    for (const char* name : builds)
+    {
+        Bench b(name);
+        const Rev r = freeRev(b);
+        std::printf("%-34s idle peak %.2f, free rev peak %.2f, whole run %.2f, auto level %+.1f dB\n", name, r.idle, r.rev,
+                    r.all, b.tel("sound.autoGain"));
+        CHECK(r.finite);
+        CHECK(r.rev > 0.3);
+        CHECK(r.rev < 0.6);
+        CHECK(r.idle > 0.05);           // within some 20 dB of the rev
+        CHECK(r.all < 1.0);
+    }
+    }
+}
+
+TEST_CASE("the level at the defaults: a free rev peaks at 0.3 to 0.6, the idle plainly heard, on builds far apart", "[listen][engine][nightly]")
+{
+    // first.json and three archetypes whose true levels span some 25 dB (the kei triple, the V12, the tractor), each
+    // at its own defaults (model 1, camera Rear, place Field, asphalt, the auto level on)
+    atDefaults({"first", "archetypes/kei-660-triple-turbo", "archetypes/v12-65", "archetypes/tractor-15-inline-six"});
+}
+
+TEST_CASE("the level at the defaults, quick: first.json and the tractor (a quiet idle, a loud let-off)", "[listen][engine]")
+{
+    atDefaults({"first", "archetypes/tractor-15-inline-six"});
+}
+
+TEST_CASE("the auto level: cameras near and far brought together; off, each its true level", "[listen][engine]")
+{
+    double rev[2][2];
+    const int cams[] = {1, 4};          // Rear, Driver (the cabin, some 6 dB down in truth)
+    for (int on = 0; on < 2; ++on)
+        for (int c = 0; c < 2; ++c)
+        {
+            Bench b("first");
+            sound(b, "camera", cams[c]);
+            sound(b, "autoLevel", on);
+            const Rev r = freeRev(b);
+            rev[on][c] = 20.0 * std::log10(r.rev);
+            CHECK(r.finite);
+            CHECK(r.all < 1.0);
+            if (on == 0)
+                CHECK(std::fabs(b.tel("sound.autoGain")) < 0.01);
+        }
+    std::printf("free rev, camera Rear and Driver: true levels %.1f and %.1f dB, auto %.1f and %.1f dB\n", rev[0][0],
+                rev[0][1], rev[1][0], rev[1][1]);
+    CHECK(rev[0][1] < rev[0][0] - 4.0);
+    CHECK(std::fabs(rev[1][1] - rev[1][0]) < 2.0);
 }

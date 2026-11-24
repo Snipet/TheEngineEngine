@@ -295,6 +295,7 @@ module SoundTel
     float rearAxleY [[ui::label("Rear axle")]] [[ui::quantity("length")]] [[ui::help("The car's outline for a plan: the rear axle's y (0.85 m; a bike's rear contact 0.3) and the front's (that plus spec.car.wheelbase)")]];
     float frontAxleY [[ui::label("Front axle")]] [[ui::quantity("length")]];
     int ceilingParts [[ui::label("Ceiling")]] [[ui::help("How many 16-sample parts the soft ceiling has bent, counted from the start")]];
+    float autoGain [[ui::label("Auto level")]] [[ui::unit("dB")]] [[ui::help("The auto level's gain now (spec.sound.autoLevel; 0 with true levels)")]];
 };
 
 // tel.valve: card E's valvetrain (model 1; at model 0 the events are the CAM dial's, the rest 0)

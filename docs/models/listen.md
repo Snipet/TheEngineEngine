@@ -138,9 +138,55 @@ build alone (0.116, -18.7 dB): that build is some 20 dB louder than a typical on
 dB under the reference's mix (P's measure, 20:10). Then a limiter at 0.7 whose attack is the sample (no sample leaves
 it above 0.7) and whose release is 250 ms; a soft ceiling past 0.75 toward 0.95, a guard; and a clamp at 0.99 after
 the resampler, whose ripple on a limited peak measures 0.73 to 0.75 (48 kHz). `tel.sound.limiter` is the deepest
-reduction over the last 0.4 s; `tel.sound.ceilingParts` counts the parts the ceiling bent. A build's own level
-(spec.sound.level, -24 to +12 dB) is where an archetype is brought to the others: 20 log10(0.3 / its free
-rev's peak) for one under the limiter. X-004 (a turbo six's launch with eight switches on): no guard trip.
+reduction over the last 0.4 s; `tel.sound.ceilingParts` counts the parts the ceiling bent. X-004 (a turbo six's
+launch with eight switches on): no guard trip. Between the compressor and the limiter sits the auto level (below), on
+by default; with it off (`spec.sound.autoLevel` 0, True levels) the stage is as described here and a build's own
+level (spec.sound.level, -24 to +12 dB) is where it is brought to the others.
+
+## Auto level (`spec.sound.autoLevel`)
+
+The ruling (lead, 20:13): at the defaults a free rev peaks at 0.3 to 0.6 of full scale and the idle is plainly
+heard; a far camera or the cabin is not left 20 to 30 dB down; within a setting, the levels stay true. Of the two
+schemes offered, a fixed make-up gain with trims, or an exposure, this is the exposure, for three reasons. The
+spread to close is not one number: the archetypes' free revs span 0.076 to 0.74 (20 dB) at one camera, and the
+cameras add 6 to 15 dB more (the cabin, trackside at 40 m), so fixed trims would be a table of builds by cameras that
+every new build and camera must extend, and any user's change of muffler or camera puts the result outside it. A trim
+is a guess made before the sound exists; the exposure measures the sound it is given. And it can be switched off for
+anyone comparing true levels (a muffler against a straight pipe, the cabin against the street), which a trim baked
+into every build cannot.
+
+How it works (`Listen::autoLevel`, `finish1`): P, the loudness exposed for, is taken from the peaks after the
+compressor. P rises to any peak at once and the gain follows within 5 ms, so a rev's onset is caught by the gain, not
+the limiter. P holds 1.5 s, then falls at 4 dB a second. It never falls below 4 times Q, the level of what is heard
+lately (0.1 s windows' peaks: Q falls over 1 s and rises at 1 dB a second, so a 4 s rev barely moves it). The gain is
+0.4 / P, within -30 to +30 dB of the staged level, and rises over 0.5 s. In a start (the starter turning and 1.5 s
+after) P falls at 12 dB a second without the hold and Q follows as it comes, so the crank and the catch do not set the
+exposure. A cut (another camera, place, or the windows past half) starts afresh; silence holds it.
+
+What that means for a listener: a steady sound (an idle, a cruise) sits near 0.1 (12 dB under the target), which
+leaves room for a rev. A rev peaks near 0.4 to 0.55, and the gain moves only when the rev outgrows the room. A range
+wider than 12 dB within a setting is closed slowly: a V12's idle comes up some 3 to 6 dB a few seconds after a rev.
+Faster changes are kept exactly: the gain moves at most 4 dB a second upward. Whatever passes the target is caught
+by the limiter, which reports in `tel.sound.limiter` as before. `tel.sound.autoGain` is the gain now (dB).
+
+Measured (p-free-rev, defaults, `the level at the defaults` test and tee-render):
+
+| build | true levels: idle / free rev peak | auto level: idle / free rev peak | auto gain |
+|---|---|---|---|
+| first.json (2.0 L turbo four) | 0.02 / 0.17 | 0.10 / 0.53 | +8.0 dB |
+| kei 660 triple turbo | 0.01 / 0.08 | 0.10 / 0.54 | +15.3 dB |
+| V12 6.5 | (limited) / 0.72 | 0.10 / 0.57 | -16.5 dB |
+| tractor 15 L six | 0.01 / 0.06 | 0.11 / 0.42 | +3.5 dB |
+
+On first.json, by camera (free rev peak, true / auto): Rear 0.17 / 0.55, Tailpipe 0.24 / 0.59, Side 0.18 / 0.50,
+Engine bay 0.14 / 0.53, Driver 0.09 / 0.53, Trackside 0.11 / 0.53, Chase 0.16 / 0.53. The tractor's let-off
+transient (a governor's clatter) passes the target and meets the limiter at 0.7. It is short, and it is the only
+case. The whole run's peak stays under 0.7 everywhere. The rig's tests (ListenerTest) run with true levels, so the
+distance law, the Doppler and the balance are measured unaltered; `the auto level` test checks that the Driver is
+7.5 dB under the Rear with it off and within 2 dB with it on.
+
+Cost: some five operations a sample in the last loop and one window's arithmetic every 0.1 s. tee-render on first.json
+does not resolve it (3.82 to 4.19 s with it off, 3.83 to 4.01 s on, for 14 s of audio).
 
 ## Level
 
@@ -183,6 +229,17 @@ R, model 1 1.112 to 1.131 R by camera: model 1 adds 0.07 to 0.09 R over the refe
 
 ## What a person should listen to
 
+Compare these three first (marked first in the handoff). Each answers a question no test can:
+
+1. **Model 0 against model 1** on first.json, Rear, Field, a free rev: does model 1 sound at least as real as the
+   reference? Also: is the idle plainly heard, and does the level breathe after the rev? It should not.
+2. **Rear against Driver** (windows shut) on first.json, cruising in third: one loudness, with the seat duller and
+   boomier. Does the cabin sound like a cabin, or like a muffled microphone?
+3. **The trackside pass** (`content/builds/listeners/v8-trackside.json`): the fall in pitch, the comb sweeping as the
+   car comes and goes. This is model 1's headline effect; if it sounds wrong, nothing else matters much.
+
+Then:
+
 - The V8 driven past trackside on the field (`content/builds/listeners/v8-trackside.json`): the pitch's fall at the
   pass, the comb sweeping as the car comes and goes.
 - Every camera in turn while revving: no click, the balance moving.
@@ -190,8 +247,11 @@ R, model 1 1.112 to 1.131 R by camera: model 1 adds 0.07 to 0.09 R over the refe
 - The chase through the tunnel (`v8-tunnel-chase.json`); the street and the garage at a revving idle.
 - DISTANCE swept slowly at the tailpipe on the field: the comb's notches moving.
 - A single, a flat-plane four and a V12 at full load, one after the other: one loudness?
-- Model 0 against model 1 on the same build: model 1 is quieter by design (its headroom) and far less limited; turn
-  the host's volume up rather than LEVEL.
+- Model 0 against model 1 on the same build: model 1 is far less limited. With the auto level on, it is as loud as
+  the reference's mix; with True levels it is quieter by design (its headroom).
+- The auto level against True levels on one build, Rear then Driver: with it on they should be one loudness, the
+  driver's seat duller; with it off the seat some 7 dB down. Listen for the gain breathing after a rev (it should
+  not: the idle under a rev keeps its distance).
 
 ## Savings that change the sound (for an Economy tier, never in Full silently)
 

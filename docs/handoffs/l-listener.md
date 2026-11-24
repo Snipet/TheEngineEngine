@@ -14,8 +14,9 @@ Branch `claude/awesome-gates-ntdb58`, integrated. `spec.sound.model` 0 (default)
   behind the car, -5.5 over the bay. M's gearbox, axle, tank, front, head, gate each at its place. `the free camera...`
   (camera 7 at SIDE's place within 0.3 dB; the chase 7.5 m back at 30 m/s); `the rider's seat` (B2's bikes).
 - `no click...`: every camera, place and distance changed, largest step over local rms 0.017 (steady 0.012).
-- Headroom (the lead's X-004 ruling): `the last stage` (sources 60 dB too loud, every camera: peak 0.70) and `the
-  ceiling` (engine, 48 kHz, LEVEL +12, 0.5 m: peak 0.733); X-004's repro: no guard trip, largest 0.795.
+- Headroom (X-004): `the last stage` (sources 60 dB too loud: peak 0.70), `the ceiling` (LEVEL +12, 0.5 m: 0.733).
+  Auto level (lead 20:13, an exposure, on by default): `the level at the defaults` (first, kei, V12, tractor: free
+  rev 0.42-0.57, idle 0.10, whole run under 0.7), `the auto level` (Driver 7.5 dB under Rear off, within 2 dB on).
 - In the engine: `loudness` (16 piston layouts at full load: exhaust spread 11.3 dB computed, 17.1 by the reference's
   tables), `soak` (40 s driven, 40 listener changes, up to 26.5 m/s: finite, peak 0.718, Doppler 0.98-1.10), `the
   cabin` (highs' share -30.8 dB shut, -18.6 open). Null test `[null]` identical to the bit before every push.
@@ -24,9 +25,9 @@ Branch `claude/awesome-gates-ntdb58`, integrated. `spec.sound.model` 0 (default)
 0.09 R over the reference's listening path (budget 0.15). Profile: about 7 ns a tap, 25 ns a source (3 taps), `Scene`
 150-200 ns, `CabinBoom` 14, `Place` 25. **Spec** (`spec.sound`, after `mechanical`): `model` (Reference, Places), `camera` (Tailpipe, Rear, Side, Engine bay,
 Driver, Trackside, Chase), `place` (Hall, Field, Street, Tunnel, Garage), `enginePlace` (Front, Mid, Rear), `windows`
-(fraction), `ground` (Asphalt, Grass, None). DISTANCE moves the camera; VIEW is not read in model 1.
+(fraction), `ground` (Asphalt, Grass, None), `listenerX/Y/Z`, `facing`, `autoLevel` (True levels, Auto). DISTANCE moves the camera; VIEW is not read in model 1.
 **tel.sound** (after `rate`): `camera`, `range` (m), `doppler` (ratio), `roadPosition` (m, trackside), `loudness` (dB),
-`exhaustLevel`, `mixLevel` (dB, 0.4 s means), `limiter` (dB), `ceilingParts`. Builds: `content/builds/listeners/` (V8 tailpipe, trackside, driver, chase).
+`exhaustLevel`, `mixLevel` (dB, 0.4 s means), `limiter` (dB), `ceilingParts`, `autoGain` (dB). Builds: `content/builds/listeners/` (V8 tailpipe, trackside, driver, chase).
 
 **Outside my paths**: `sim/engine.fm`: only my calls' arguments (`Listen::block`: `&spec.sound, &tel.sound,
 car.speedNow(), set.drive != 0, vTotal, lay.n`, a custom engine's `shake.fx/fy/mx/my`, `lay.fire, lay.cyc,
@@ -35,6 +36,5 @@ for every engine, not only custom (the boom then has the free forces for the ref
 integration: each radiating end's signal and tag to Listen (one source each: today the two channels); (3) lead:
 `spec/telemetry.fm` should include `limits.fm` itself. **Not done**: each turbo, each tyre as its own place; a rider
 a replay (the host's). Scenarios for the pack: tests/sim/listen/scenarios/ (16). **FMinus**: no issue met.
-**Listen to** (nobody has): the V8 past trackside on the field (the fall in pitch, the comb sweeping); every camera in
-turn while revving; the driver's seat, windows shut and open, lugging at 1200 rpm; the chase in the tunnel; DISTANCE
-swept at the tailpipe; a single, a flat-plane four and a V12 at full load one after another (one loudness?).
+**Listen to** (nobody has): first the three of listen.md's "What a person should listen to" marked first; then the
+V8 past trackside, every camera while revving, the cabin shut and open, a single, a flat-plane four and a V12 in turn.
