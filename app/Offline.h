@@ -11,7 +11,9 @@
 
 #include <funkgui/panel/Panel.h>
 
+#include <functional>
 #include <memory>
+#include <string>
 
 namespace tee::app
 {
@@ -22,7 +24,23 @@ namespace tee::app
     // The versions, a line each: the application, FMinus and FunkGui.
     void printVersions();
 
-    // The Panel for this run: the interface's (tee::ui::makeMainPanel), or the shell's plain one with --panel plain
-    // and when the program did not start.
-    std::unique_ptr<funkgui::Panel> makePanel(const Options&, Player&, const AppServices&);
+    // The Panel for this run, and what it needs kept alive beside it.
+    //   the simulator (--engine sim), in a build with the interface's frame: tee::ui::AppFrame over the engine's
+    //     tee::Build (a BuildDoc, the user's Units, the garage's builds);
+    //   the reference: the interface's tee::ui::makeMainPanel (the reference's own panel);
+    //   --panel plain, a program that did not start, or a build with no interface package: the shell's plain Panel.
+    struct Shown
+    {
+        std::shared_ptr<void> keep;                 // the frame's document and units; destroyed after the Panel
+        std::unique_ptr<funkgui::Panel> panel;
+        // The units as the frame has them now, as the settings file keeps them; empty function: no frame.
+        std::function<std::string()> unitChoices;
+
+        Shown() = default;
+        Shown(Shown&&) = default;
+        Shown& operator=(Shown&&) = default;
+        ~Shown() { panel.reset(); }                 // the Panel first: it holds references into `keep`
+    };
+    struct Engine;
+    Shown makePanel(const Options&, Engine&, const AppServices&);
 }

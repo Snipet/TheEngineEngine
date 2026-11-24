@@ -4,7 +4,7 @@
 #   tee_shell_core   nothing but the standard library: the interfaces (include/tee/app/), the controls (input/Keys,
 #                    Driver, Controls), the WAV and PNG writers, the recorder, the stand-in tone and the silent player
 #   tee_shell_settings  nlohmann/json: the settings file (settings/Settings)
-#   tee_shell_ref    tee_host: the reference engine as a Player (player/RefAdapter)
+#   tee_shell_ref    tee_host: the reference engine and the simulator as Players (player/RefAdapter, SimAdapter)
 #   tee_shell_sdl    SDL3: the audio device (audio/AudioDevice) and SDL's events into the controls (input/SdlInput)
 #
 # FunkGui is in none of them: FunkGui::core is an INTERFACE library whose sources compile into the target that links
@@ -30,7 +30,7 @@ add_library(Tee::shell_settings ALIAS tee_shell_settings)
 tee_target_defaults(tee_shell_settings)
 target_link_libraries(tee_shell_settings PUBLIC Tee::shell_core PRIVATE nlohmann_json::nlohmann_json)
 
-add_library(tee_shell_ref STATIC player/RefAdapter.cpp)
+add_library(tee_shell_ref STATIC player/RefAdapter.cpp player/SimAdapter.cpp)
 add_library(Tee::shell_ref ALIAS tee_shell_ref)
 tee_target_defaults(tee_shell_ref)
 target_link_libraries(tee_shell_ref PUBLIC Tee::shell_core PRIVATE Tee::host)

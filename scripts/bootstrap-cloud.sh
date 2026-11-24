@@ -6,9 +6,9 @@
 #   cmake --workflow --preset dev-verify        # configure, build, run every test
 #
 # What it does:
-#   1. apt packages: Ninja, clang and lld, Flex and Bison (FMinus's grammar), ccache, and what FunkGui's GPU path and
-#      SDL3 need to build and to run without a screen (X11 and Vulkan development packages, Xvfb, Mesa's software
-#      Vulkan, openbox: scripts/xvfb-run.sh).
+#   1. apt packages: Ninja, clang and lld, clang's sanitizer runtimes (the tsan preset), Flex and Bison (FMinus's
+#      grammar), ccache, and what FunkGui's GPU path and SDL3 need to build and to run without a screen (X11 and
+#      Vulkan development packages, Xvfb, Mesa's software Vulkan, openbox: scripts/xvfb-run.sh).
 #   2. CMake 3.30 or newer (Ubuntu 24.04 has 3.28): pip's, when the one on the PATH is older.
 #   3. FMinus's prebuilt LLVM, checked against its release's SHA-256, into $TEE_DEPS_DIR/install (scripts/fetch-llvm.sh).
 #   4. Every dependency's source, cloned by git at its pinned commit into $TEE_DEPS_DIR/src (cmake/TeeFetch.cmake):
@@ -27,7 +27,7 @@ say() { printf '\n== %s\n' "$*"; }
 # ---- 1. apt ----------------------------------------------------------------------------------------------------------
 packages=(
   git curl ca-certificates xz-utils pkg-config python3-pip
-  ninja-build clang lld flex bison ccache
+  ninja-build clang lld libclang-rt-18-dev flex bison ccache
   zlib1g-dev
   libx11-dev libxext-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxfixes-dev libxrender-dev
   libxss-dev libxtst-dev libxkbcommon-dev
@@ -43,9 +43,15 @@ if [ ${#missing[@]} -gt 0 ]; then
   say "apt: installing ${missing[*]}"
   as=()
   [ "$(id -u)" = 0 ] || as=(sudo)
-  # (another session may hold apt's lock: wait for it rather than fail)
+  # a hosted CI runner: the packages' triggers rebuild the boot image (15 s) and restart services, for a machine that
+  # is thrown away after the job; neither is wanted there (a cloud container has no boot image to rebuild)
+  if [ "${GITHUB_ACTIONS:-}" = true ] && [ -f /etc/initramfs-tools/update-initramfs.conf ]; then
+    echo 'update_initramfs=no' | "${as[@]}" tee /etc/initramfs-tools/update-initramfs.conf > /dev/null || true
+  fi
+  # (another session may hold apt's lock: wait for it rather than fail; the environment through env, as sudo drops it)
   "${as[@]}" apt-get -o DPkg::Lock::Timeout=600 update -qq || echo "apt-get update reported errors: going on with the lists there are"
-  DEBIAN_FRONTEND=noninteractive "${as[@]}" apt-get -o DPkg::Lock::Timeout=600 install -y -qq --no-install-recommends "${missing[@]}"
+  "${as[@]}" env DEBIAN_FRONTEND=noninteractive NEEDRESTART_SUSPEND=1 \
+    apt-get -o DPkg::Lock::Timeout=600 install -y -qq --no-install-recommends "${missing[@]}"
 else
   say "apt: every package is installed"
 fi

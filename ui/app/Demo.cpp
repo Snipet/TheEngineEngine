@@ -200,10 +200,17 @@ namespace tee::ui
         update();
     }
 
+    void DemoEngine::advance(double dt)
+    {
+        setTime(t_ + dt);
+        ++generation_;
+    }
+
     void DemoEngine::tick(float dt)
     {
-        setTime(t_ + static_cast<double>(dt));
-        ++generation_;
+        // A newer Scope copy each frame while the engine turns, as the host's (the script's time stays).
+        if (const int st = findValue("engine.state"); st < 0 || value(st) > 0.5)
+            ++generation_;
         // The dyno: an edit is noticed, a quiet of 0.3 s waited, then 0.4 s "running" before the new curve is in.
         if (doc_ != nullptr && doc_->revision() != seenRevision_)
         {
@@ -408,7 +415,7 @@ namespace tee::ui
         c.name = name;
         c.fields = { "boost.pressure" };
         c.values.resize(1);
-        const double gain = (1.0 + 0.035 * (compression - 10.0)) * (1.0 + boost / 101325.0 * 0.85);
+        const double gain = (1.0 + 0.035 * (compression - 10.0)) * (1.0 + boost / 101325.0 * 0.45);
         for (double rpm = 1500.0; rpm <= 7000.0 + 1e-9; rpm += 250.0)
         {
             const double x = (rpm - 1500.0) / 5500.0;

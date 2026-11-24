@@ -78,7 +78,13 @@ namespace tee::ui
             // Room kept around the interface for an owner's own things (the application's frame: its rail, top bar and
             // bottom strip): the interface is laid out inside it, and the natural size grows by it.
             int insetLeft = 0, insetTop = 0, insetRight = 0, insetBottom = 0;
+            // False: no shader's program is looked up or registered, and every shader element draws its placeholder
+            // with kShadersOff as the reason, whatever the build has. A test's golden takes the panel so, so that its
+            // picture is the same in a build with a GPU layer (the shaders built and registered: the software
+            // rasteriser then draws FunkGui's own placeholder) and in one without.
+            bool shaders = true;
         };
+        static constexpr const char* kShadersOff = "shaders are off for this panel: each draws as a placeholder";
 
         // `files`: the panel's .gui file (the first whose name ends in .gui) and the shaders and .sh files it names.
         GuiPanel(Sources files, ParamSource& params, TelemetrySource& telemetry, Options options);
@@ -95,6 +101,9 @@ namespace tee::ui
         int naturalHeight() const noexcept { return naturalH_; }
         // Where the file's keyboards would be (see above), in the panel's px; those on the pages shown.
         std::vector<funkgui::Rect> keyboardRects() const;
+        // U1: the room kept around the interface (Options::inset*) changed (the application's frame moved its inspector)
+        // and the interface laid out in what is left.
+        void setInsets(int left, int top, int right, int bottom);
         // J2: the widget elements' items (Options::widget), with their nodes, in the file's order.
         struct WidgetAt
         {

@@ -1,0 +1,202 @@
+// tests/ui/views/EngineTests.cpp: the ENGINE workspace (ui/views/engine/; docs/ui/engine.md). Its layouts against
+// sim/core/layouts.fm's comments, its derived numbers, presses that select, what it draws when a name is absent, the
+// SLOW switch's time, and its pictures (the software rasteriser's) at both densities, two sizes and both themes.
+#include "ViewKit.h"
+
+#include "views/engine/EngineModel.h"
+#include "views/engine/EngineWorkspace.h"
+
+#include <funkgui/core/Theme.h>
+
+namespace
+{
+    using namespace tee::test::views;
+    namespace en = tee::ui::engine;
+
+    // A press at the middle of the workspace's i-th widget (0 LIVE, 1 SLOW, 2 the pace, 3 LINEAR, 4 LOG-LOG).
+    void pressWidget(StageRig& rig, int i)
+    {
+        const funkgui::Point c = rig.ws->item(i).centre();
+        rig.host->click(c.x, c.y);
+    }
+
+    // The seventeen's firing orders and intervals are layouts.fm's; a crossplane V8's two cylinders a throw share it.
+    VIEW_TEST(testEngineLayouts, "engine.layouts")
+    {
+        struct Want
+        {
+            const char* name;
+            const char* order;
+            const char* intervals;
+        };
+        const Want want[] = {
+            { "Inline 4", "1-3-4-2", "even, 180" },
+            { "Crossplane I4", "1-3-2-4", "270-180-90-180" },
+            { "V-twin 45", "1-2", "315-405" },
+            { "Twin 270", "1-2", "270-450" },
+            { "Inline 5", "1-2-4-5-3", "even, 144" },
+            { "Inline 6", "1-5-3-6-2-4", "even, 120" },
+            { "V8 crossplane", "1-8-4-3-6-5-7-2", "even, 90" },
+            { "V8 flat-plane", "1-5-3-7-4-8-2-6", "even, 90" },
+            { "V10", "1-6-5-10-2-7-3-8-4-9", "even, 72" },
+            { "V12", "1-7-5-11-3-9-6-12-2-8-4-10", "even, 60" },
+            { "Rotary", "1-4-2-5-3-6", "even, 180" },
+        };
+        for (const Want& w : want)
+        {
+            const int k = en::presetByName(w.name);
+            CHECK_MSG(k >= 0, w.name);
+            const en::Layout l = en::presetLayout(k);
+            CHECK_MSG(l.orderText() == w.order, std::string(w.name) + ": " + l.orderText());
+            CHECK_MSG(l.intervalText() == w.intervals, std::string(w.name) + ": " + l.intervalText());
+            CHECK(l.ok);
+        }
+        CHECK(en::presetByName("V8") == en::presetByName("V8 crossplane"));
+        CHECK(en::presetByName("I4") == en::presetByName("Inline 4"));
+        CHECK(en::presetByName("Straight 9") == -1);
+        // each pair of a crossplane V8's cylinders on one throw has one pin; the four throws are 90 degrees apart
+        const en::Layout v8 = en::presetLayout(en::presetByName("V8 crossplane"));
+        CHECK(v8.banks == 2 && std::fabs(v8.bankAngle[0] - v8.bankAngle[1]) == 90.0);
+        for (int t = 0; t < 4; ++t)
+            CHECK_NEAR(v8.pin[static_cast<std::size_t>(2 * t)], v8.pin[static_cast<std::size_t>(2 * t + 1)], 1e-9);
+        // a firing angle is the bank's angle less the pin (layout.fm), plus 360 on the second revolution
+        for (int c = 0; c < v8.n; ++c)
+        {
+            const auto i = static_cast<std::size_t>(c);
+            const double tdc = en::wrap(v8.bankAngle[static_cast<std::size_t>(v8.bank[i])] - v8.pin[i], 360.0);
+            CHECK_NEAR(en::wrap(tdc - v8.bankAngle[static_cast<std::size_t>(v8.bank[0])] - v8.fire[i], 360.0), 0.0, 1e-9);
+        }
+        // a custom layout from geometry: a 90 degree V-twin on one pin fires 270-450; on one revolution, together
+        en::Layout vt;
+        vt.n = 2;
+        vt.banks = 2;
+        vt.bankAngle = { 0.0, 90.0, 0.0, 0.0 };
+        vt.bank[1] = 1;
+        std::array<int, en::kMaxCyl> rev{};
+        rev[1] = 1;
+        en::deriveFiring(vt, rev);
+        CHECK(vt.ok && vt.intervalText() == "450-270");
+        rev[1] = 0;
+        vt.pin[1] = 90.0;
+        en::deriveFiring(vt, rev);
+        CHECK(!vt.ok);
+        return 0;
+    }
+
+    // The slider-crank and the derived numbers, from the demo's V8 (bore 101.6 mm, stroke 88.4 mm, rod 155.4 mm).
+    VIEW_TEST(testEngineDerived, "engine.derived")
+    {
+        tee::ui::DemoRig rig;
+        const en::Layout l = en::layoutOf(rig.doc);
+        CHECK(l.n == 8 && l.name == "V8");
+        const en::Cylinder c = en::cylinderOf(rig.doc, l);
+        CHECK_NEAR(c.bore, 0.1016, 1e-9);
+        CHECK_NEAR(c.rod, 0.1554, 1e-9);
+        CHECK_NEAR(en::pistonDrop(0.0, c.radius(), c.rod), 0.0, 1e-12);
+        CHECK_NEAR(en::pistonDrop(180.0, c.radius(), c.rod), c.stroke, 1e-12);
+        // at 90 degrees the piston is past half its stroke (the rod's angle): r + L - sqrt(L^2 - r^2)
+        const double r = c.radius();
+        CHECK_NEAR(en::pistonDrop(90.0, r, c.rod), r + c.rod - std::sqrt(c.rod * c.rod - r * r), 1e-12);
+        const en::Derived d = en::derive(l, c, 6600.0 * en::kPi / 30.0);
+        CHECK_NEAR(d.displacement, 8.0 * en::kPi / 4.0 * 0.1016 * 0.1016 * 0.0884, 1e-9);
+        CHECK_NEAR(d.displacement * 1000.0, 5.733, 0.001);
+        CHECK_NEAR(d.boreStroke, 0.1016 / 0.0884, 1e-9);
+        CHECK_NEAR(d.rodRatio, 0.1554 / 0.0884, 1e-9);
+        CHECK_NEAR(d.pistonSpeed, 2.0 * 0.0884 * 6600.0 / 60.0, 1e-9);   // 19.4 m/s
+        // what is absent is NaN, never a number made up
+        const en::Derived none = en::derive(en::Layout{}, en::Cylinder{}, en::kNaN);
+        CHECK(std::isnan(none.displacement) && std::isnan(none.pistonSpeed) && std::isnan(none.compression));
+        return 0;
+    }
+
+    // Presses select: a cylinder, the block (the layout), the ring, the section (the cylinder's geometry); hovering a
+    // cylinder lights it without selecting.
+    VIEW_TEST(testEngineSelect, "engine.select")
+    {
+        StageRig rig(tee::ui::makeEngineWorkspace, 1100, 700, 1.0f);
+        const auto& sel = rig.demo.selection;
+        // find cylinder 3 by scanning the block for the press that selects it
+        bool found = false;
+        for (float y = 120.0f; y < 380.0f && !found; y += 4.0f)
+            for (float x = 80.0f; x < 440.0f && !found; x += 4.0f)
+            {
+                rig.host->click(x, y);
+                found = sel.path() == "engine.cylinder[2]";
+            }
+        CHECK(found);
+        CHECK(sel.is("engine"));
+        rig.settle();
+        golden("engine.selected", *rig.host);   // cylinder 3 ringed, the section titled CYLINDER 3
+        rig.host->click(30.0f, 70.0f);           // the block's corner, no cylinder there
+        CHECK(sel.path() == "engine.layout");
+        rig.host->click(1000.0f, 150.0f);        // the firing ring
+        CHECK(sel.path() == "engine.layout");
+        rig.host->click(590.0f, 400.0f);         // the section
+        CHECK(sel.path() == "engine.bore");
+        rig.host->move(5.0f, 5.0f);
+        CHECK(rig.demo.selection.hovered().empty());
+        return 0;
+    }
+
+    // A stage at rest asks for nothing; SLOW moves the angle by the stage's own time only, and LIVE follows the crank.
+    VIEW_TEST(testEngineSlow, "engine.slow")
+    {
+        StageRig rig(tee::ui::makeEngineWorkspace, 1100, 700, 1.0f);
+        tee::ui::Workspace& ws = *rig.ws;
+        CHECK(!ws.moving());
+        const std::uint64_t k0 = ws.drawKey();
+        rig.settle();
+        CHECK(ws.drawKey() == k0);                // nothing moved, nothing to draw
+        rig.demo.engine.set("engine.crank", 200.0);
+        CHECK(ws.drawKey() != k0);                // the crank moved
+        pressWidget(rig, 1);                      // SLOW
+        rig.host->tick(1);
+        CHECK(ws.moving());
+        const std::uint64_t k1 = ws.drawKey();
+        rig.host->tick(30);                       // half a second: an eighth of a cycle at 4 s a cycle
+        CHECK(ws.drawKey() != k1);
+        golden("engine.slow", *rig.host);
+        pressWidget(rig, 0);                      // LIVE
+        rig.settle();
+        CHECK(!ws.moving());
+        return 0;
+    }
+
+    // What is not there draws a dash or an empty plot with its label: no crank, no Scope, no layout.
+    VIEW_TEST(testEngineAbsent, "engine.absent")
+    {
+        StageRig rig(tee::ui::makeEngineWorkspace, 1100, 700, 1.0f);
+        rig.demo.engine.forget("engine.crank");
+        rig.demo.engine.forget("engine.redline");
+        rig.settle();
+        CHECK(!rig.ws->moving());
+        picture("engine.absent", *rig.host);
+        return 0;
+    }
+
+    // The pictures: 1100 x 700 and 1600 x 1000, density 1 and 2, graphite; paper at 1100 x 700.
+    VIEW_TEST(testEngineStage, "engine.stage")
+    {
+        {
+            StageRig rig(tee::ui::makeEngineWorkspace, 1100, 700, 2.0f);
+            golden("engine.stage", *rig.host);
+            funkgui::HeadlessHost paper(*rig.ws, 1, 2.0f);
+            paper.resize(1100, 700);
+            paper.tick(60);
+            golden("engine.stage.paper", paper);
+        }
+        {
+            StageRig rig(tee::ui::makeEngineWorkspace, 1100, 700, 1.0f);
+            golden("engine.stage.dpi1", *rig.host);
+        }
+        {
+            StageRig rig(tee::ui::makeEngineWorkspace, 1600, 1000, 1.0f, 2.3);
+            golden("engine.large.dpi1", *rig.host);
+        }
+        {
+            StageRig rig(tee::ui::makeEngineWorkspace, 1600, 1000, 2.0f, 2.3);
+            golden("engine.large", *rig.host);
+        }
+        return 0;
+    }
+}
