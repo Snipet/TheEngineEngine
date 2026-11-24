@@ -20,15 +20,34 @@ namespace tee::test::core
         static constexpr double kRate = 48000.0;
         static constexpr int kBlock = 512;
 
-        explicit Bench(const std::string& build)
+        // One compiled player for the whole process (some 6.6 CPU-s a compile), never destroyed (01-rules.md section 4:
+        // a static that owns a compiled program must not be destroyed at exit), reset for each Bench: every Spec and
+        // Controls field at its default and Engine::init run again, as a new player's (EngineTest's "a kept player
+        // reset" proves it to the bit against a fresh one). One Bench at a time.
+        static EnginePlayer* shared(bool fresh = false)
         {
+            static EnginePlayer* kept = nullptr;
+            if (kept != nullptr && !fresh)
+            {
+                kept->reset(kRate);
+                return kept;
+            }
             EnginePlayer::Options options;
             options.directory = std::filesystem::path(TEE_SOURCE_DIR) / "sim";
             options.sampleRate = kRate;
             std::string errors;
-            player_ = EnginePlayer::create(options, errors);
+            EnginePlayer* p = EnginePlayer::create(options, errors).release();
             INFO(errors);
-            REQUIRE(player_ != nullptr);
+            REQUIRE(p != nullptr);
+            if (!fresh)
+                kept = p;
+            return p;
+        }
+
+        explicit Bench(const std::string& build, bool fresh = false)
+        {
+            std::string errors;
+            player_ = shared(fresh);
             EngineBuild b;
             std::string warnings;
             const auto file = std::filesystem::path(TEE_SOURCE_DIR) / "content" / "builds" / (build + ".json");
@@ -107,7 +126,7 @@ namespace tee::test::core
         double load() const { return busy_ / played_; }
 
     private:
-        std::unique_ptr<EnginePlayer> player_;
+        EnginePlayer* player_;      // (the kept one; a fresh one is leaked on purpose, as the kept one is)
         std::vector<float> left_ = std::vector<float>(kBlock), right_ = std::vector<float>(kBlock);
         double busy_ = 0.0, played_ = 0.0;
     };

@@ -126,6 +126,9 @@ namespace tee::ui
             sweepBtn_->setLit([this] { return !stepped_; });
             stepsBtn_ = &make<Button>("Steps", [this] { stepped_ = true; });
             stepsBtn_->setLit([this] { return stepped_; });
+            // A stepped run: settle the exhaust's walls at each step (lit), or take cold-wall steps (card C's default: on).
+            settleBtn_ = &make<Button>("Settle", [this] { plan_.settleExhaust = !plan_.settleExhaust; });
+            settleBtn_->setLit([this] { return plan_.settleExhaust; });
             dwellPort_ = std::make_unique<PlanPort>("dyno.dwell", [this] { return plan_.dwell; }, [this](double v) { plan_.dwell = v; },
                                                     0.2, 3.0, 14, 0.6);
             dwell_ = &make<Stepper>(*dwellPort_, "Dwell", [this](float v) { return look::num(dwellPort_->at01(v), "%.1f") + " s"; });
@@ -201,7 +204,8 @@ namespace tee::ui
         {
             const Widget* w = which == "start" ? static_cast<const Widget*>(start_) : which == "stop" ? stop_
                             : which == "name" ? static_cast<const Widget*>(name_) : which == "copy" ? copy_
-                            : which == "engine" ? engineBtn_ : which == "chassis" ? chassisBtn_ : nullptr;
+                            : which == "engine" ? engineBtn_ : which == "chassis" ? chassisBtn_
+                            : which == "steps" ? stepsBtn_ : which == "sweep" ? sweepBtn_ : which == "settle" ? settleBtn_ : nullptr;
             const char* names[] = { "none", "boost", "lambda", "advance" };
             for (int i = 0; i <= kExtraCount && w == nullptr; ++i)
                 if (which == names[i])
@@ -232,6 +236,8 @@ namespace tee::ui
             }
             if (gearStep_->shown() != plan_.chassis)
                 gearStep_->setPlace(gearStep_->bounds(), plan_.chassis);
+            if (settleBtn_->shown() != stepped_)
+                settleBtn_->setPlace(settleBtn_->bounds(), stepped_);
             if (rate_->shown() == stepped_)
             {
                 rate_->setPlace(rate_->bounds(), !stepped_);
@@ -276,8 +282,9 @@ namespace tee::ui
             engineBtn_->setPlace({ ix, y, iw * 0.5f - 3.0f, 26.0f }, true);
             chassisBtn_->setPlace({ ix + iw * 0.5f + 3.0f, y, iw * 0.5f - 3.0f, 26.0f }, true);
             y += 30.0f;
-            sweepBtn_->setPlace({ ix, y, iw * 0.5f - 3.0f, 22.0f }, true);
-            stepsBtn_->setPlace({ ix + iw * 0.5f + 3.0f, y, iw * 0.5f - 3.0f, 22.0f }, true);
+            sweepBtn_->setPlace({ ix, y, iw / 3.0f - 4.0f, 22.0f }, true);
+            stepsBtn_->setPlace({ ix + iw / 3.0f + 2.0f, y, iw / 3.0f - 4.0f, 22.0f }, true);
+            settleBtn_->setPlace({ ix + iw * 2.0f / 3.0f + 4.0f, y, iw / 3.0f - 4.0f, 22.0f }, stepped_);
             y += 30.0f;
             for (Stepper* st : { from_, to_, rate_, pedal_, gearStep_ })
             {
@@ -293,8 +300,8 @@ namespace tee::ui
 
             // Under the runs' rows: the selected run's name, and its CSV.
             const float fy = runsBox_.bottom() - look::kPad - 28.0f;
-            name_->setPlace({ ix, fy, iw * 0.68f - 3.0f, 28.0f }, true);
-            copy_->setPlace({ ix + iw * 0.68f + 3.0f, fy, iw * 0.32f - 3.0f, 28.0f }, true);
+            name_->setPlace({ ix, fy, iw * 0.6f - 3.0f, 28.0f }, true);
+            copy_->setPlace({ ix + iw * 0.6f + 3.0f, fy, iw * 0.4f - 3.0f, 28.0f }, true);
             rowsArea_ = { ix, runsBox_.y + 30.0f, iw, fy - 8.0f - (runsBox_.y + 30.0f) };
         }
 
@@ -304,6 +311,7 @@ namespace tee::ui
             computeScales();
             drawHeader(c, p);
             drawPlot(c, p);
+            drawWalls(c, p);
             drawBand(c, p);
             drawRuns(c, p);
             drawPlan(c, p);
@@ -407,7 +415,9 @@ namespace tee::ui
         }
         std::string csvOf(const DynoTrace& t) const
         {
-            std::string out = "speed_rad_s,rpm,torque_N_m,power_kW";
+            // A run says whether its exhaust walls were settled (docs/formats.md): a line before the header when known.
+            std::string out = *t.wallsWord() != '\0' ? std::string("# exhaust ") + t.wallsWord() + "\n" : std::string();
+            out += "speed_rad_s,rpm,torque_N_m,power_kW";
             for (const std::string& f : t.fields)
                 out += "," + f;
             out += "\n";
@@ -540,6 +550,31 @@ namespace tee::ui
                                         : "The predicted curve follows every edit; the runs you make are kept here.";
             if (c.textWidth(sub.c_str(), look::kBody) <= room || ctx_.dyno.busy())
                 c.text(sub.c_str(), header_.x, header_.y + 24.0f, look::kBody, p.label);
+        }
+
+        // Runs of both kinds shown together: their difference is partly the walls', not the engine's. Said in words, over
+        // the plot (drawn after it).
+        void drawWalls(Canvas& c, const look::Palette& p) const
+        {
+            {
+                bool cold = false, settled = false;
+                for (int row : allRows())
+                    if (isShown(row) && !trace(row).empty())
+                    {
+                        cold = cold || trace(row).settled == 0;
+                        settled = settled || trace(row).settled > 0;
+                    }
+                if (cold && settled)
+                {
+                    // Inside the plot's top left (the curves start low), on a backing, as long as fits.
+                    const char* longer = "MIXED: COLD-WALL AND SETTLED RUNS - NOT ALL THE DIFFERENCE IS THE ENGINE'S";
+                    const char* w = c.textWidth(longer, look::kCaps) + 30.0f < plotArea_.w ? longer : "MIXED: COLD AND SETTLED WALLS";
+                    const float tw = c.textWidth(w, look::kCaps), x = plotArea_.x + 8.0f, y = plotArea_.y + 6.0f;
+                    c.rrect(x - 4.0f, y - 3.0f, tw + 24.0f, 16.0f, 3.0f, p.raised, 1.0f, p.warning);
+                    c.disc(x + 4.0f, y + 5.0f, 3.5f, p.warning);
+                    c.text(w, x + 14.0f, y, look::kCaps, p.warning);
+                }
+            }
         }
 
         void drawPlot(Canvas& c, const look::Palette& p) const
@@ -850,11 +885,15 @@ namespace tee::ui
         {
             std::vector<RowHit> out;
             const Rect& a = rowsArea_;
-            const float rowH = 36.0f;
+            const float rowH = 30.0f;
             const int fit = std::max(2, static_cast<int>(a.h / rowH));
-            std::vector<int> list{ -2, -1 };
+            // Predicted always; before the last edit when it has a curve or there is room; then the newest runs.
             const int runs = static_cast<int>(rows_.size());
-            for (int i = std::max(0, runs - (fit - 2)); i < runs; ++i)
+            const bool before = !ctx_.dyno.before().empty() || fit >= 2 + runs;
+            std::vector<int> list{ -2 };
+            if (before)
+                list.push_back(-1);
+            for (int i = std::max(0, runs - (fit - static_cast<int>(list.size()))); i < runs; ++i)
                 list.push_back(i);
             float y = a.y;
             for (int row : list)
@@ -882,7 +921,7 @@ namespace tee::ui
                 const DynoTrace& t = trace(row);
                 if (sel)
                     c.rrect(r.x, r.y, r.w, r.h, 5.0f, p.over(p.selected, 0.12f), 1.5f, p.selected);
-                const Rect box{ r.x + 8.0f, r.y + 9.0f, 14.0f, 14.0f };
+                const Rect box{ r.x + 8.0f, r.y + 6.0f, 14.0f, 14.0f };
                 c.rrect(box.x, box.y, box.w, box.h, 3.0f, shown ? p.raised : p.panel, 1.25f, shown ? p.text : p.dim);
                 if (shown)
                 {
@@ -890,9 +929,22 @@ namespace tee::ui
                     c.segment(box.x + 6.0f, box.y + 10.5f, box.x + 11.0f, box.y + 3.5f, 1.75f, p.value);
                 }
                 const Stroke s = strokeOf(p, row);
-                chart::sample(c, r.x + 30.0f, r.x + 58.0f, r.y + 10.0f, kTorqueW, shown ? s.ink : p.dim, s.dash);
-                chart::sample(c, r.x + 30.0f, r.x + 58.0f, r.y + 21.0f, kPowerW, shown ? s.ink : p.dim, s.dash);
-                c.text(rowName(row).c_str(), r.x + 66.0f, r.y + 3.0f, look::kBody, shown ? p.value : p.dim);
+                chart::sample(c, r.x + 30.0f, r.x + 58.0f, r.y + 8.0f, kTorqueW, shown ? s.ink : p.dim, s.dash);
+                chart::sample(c, r.x + 30.0f, r.x + 58.0f, r.y + 18.0f, kPowerW, shown ? s.ink : p.dim, s.dash);
+                // The run's exhaust walls, in words at the right of its name (cold in amber too); the name cut to what
+                // is left.
+                float nameRoom = r.right() - 6.0f - (r.x + 66.0f);
+                if (*t.wallsWord() != '\0')
+                {
+                    const float ww = c.textWidth(t.wallsWord(), look::kUnit);
+                    c.text(t.wallsWord(), r.right() - 6.0f, r.y + 3.0f, look::kUnit,
+                           !shown ? p.dim : t.settled == 0 ? p.warning : p.label, funkgui::Align::right);
+                    nameRoom -= ww + 8.0f;
+                }
+                {
+                    const Canvas::ClipScope clip(c, { r.x + 66.0f, r.y, std::max(0.0f, nameRoom), r.h });
+                    c.text(rowName(row).c_str(), r.x + 66.0f, r.y + 1.0f, look::kBody, shown ? p.value : p.dim);
+                }
                 std::string sub;
                 if (t.empty())
                     sub = row == -1 ? "none yet: edit the build" : row == -2 ? "being made" : "no points";
@@ -901,7 +953,7 @@ namespace tee::ui
                     const auto tq = t.peakTorque(), pw = t.peakPower();
                     sub = ctx_.units.format(Quantity::torque, tq.value) + "   " + ctx_.units.format(Quantity::power, pw.value);
                 }
-                c.text(sub.c_str(), r.x + 66.0f, r.y + 18.0f, look::kUnit, shown ? p.label : p.dim);
+                c.text(sub.c_str(), r.x + 66.0f, r.y + 14.0f, look::kUnit, shown ? p.label : p.dim);
             }
             const int older = static_cast<int>(rows_.size()) - listedRuns;
             if (older > 0)
@@ -927,7 +979,9 @@ namespace tee::ui
                 words = message_;
             else
                 words = std::string(plan_.chassis ? "A chassis run: the car's own speed on rollers, in gear " + std::to_string(gear_)
-                                                  : "An engine run: the crank held and swept") +
+                                    : stepped_ ? std::string(plan_.settleExhaust ? "An engine run in steps, walls settled at each"
+                                                                                 : "An engine run in steps, cold walls (reads low)")
+                                               : "An engine run: the crank held and swept") +
                         " at " + look::num(plan_.pedal * 100.0) + " % pedal.";
             // Two lines at most, cut at a space.
             std::string a = words, b;
@@ -958,7 +1012,7 @@ namespace tee::ui
         std::string runName_, message_;
 
         std::unique_ptr<PlanPort> fromPort_, toPort_, ratePort_, pedalPort_, gearPort_, dwellPort_;
-        Button *sweepBtn_ = nullptr, *stepsBtn_ = nullptr;
+        Button *sweepBtn_ = nullptr, *stepsBtn_ = nullptr, *settleBtn_ = nullptr;
         Stepper* dwell_ = nullptr;
         Button *engineBtn_ = nullptr, *chassisBtn_ = nullptr, *start_ = nullptr, *stop_ = nullptr, *copy_ = nullptr;
         Stepper *from_ = nullptr, *to_ = nullptr, *rate_ = nullptr, *pedal_ = nullptr, *gearStep_ = nullptr;

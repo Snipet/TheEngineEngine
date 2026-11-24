@@ -12,4 +12,11 @@ tee_target_defaults(tee-tests-core)
 target_include_directories(tee-tests-core PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}" "${PROJECT_SOURCE_DIR}/tests")
 target_link_libraries(tee-tests-core PRIVATE Tee::host Catch2::Catch2WithMain nlohmann_json::nlohmann_json)
 target_compile_definitions(tee-tests-core PRIVATE "TEE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\"")
-catch_discover_tests(tee-tests-core DISCOVERY_MODE PRE_TEST ADD_TAGS_AS_LABELS TEST_PREFIX "core: " PROPERTIES TIMEOUT 900 LABELS core)
+# The light cases one a process; the whole-engine cases ([engine]) together in one process, one compile, the kept player
+# reset between them (Engine.h; the lead's rule, 01-rules.md section 3): their names in the log as Catch prints them.
+catch_discover_tests(tee-tests-core DISCOVERY_MODE PRE_TEST ADD_TAGS_AS_LABELS TEST_SPEC "~[engine]" TEST_PREFIX "core: "
+                     PROPERTIES TIMEOUT 900 LABELS core)
+add_test(NAME "core: the engine's cases, one process" COMMAND tee-tests-core "[engine]~[nightly]" --durations yes)
+set_tests_properties("core: the engine's cases, one process" PROPERTIES TIMEOUT 900 LABELS "core;engine")
+add_test(NAME "core: the engine's cases' full forms, one process" COMMAND tee-tests-core "[engine][nightly]" --durations yes)
+set_tests_properties("core: the engine's cases' full forms, one process" PROPERTIES TIMEOUT 1800 LABELS "core;engine;nightly")
