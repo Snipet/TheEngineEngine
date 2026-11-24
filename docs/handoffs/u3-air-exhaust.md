@@ -29,7 +29,8 @@ Package U3, branch `claude/awesome-gates-ntdb58`. Pages: `docs/ui/air.md` and `d
 
 **Clashes to settle at integration**: XSpec's `crossover` and `muffler` collide with spec.exhaust's dials of those names. The model reads a 3-way choice, the demo's switch, or the old dial. The arrays are read as `exhaust.muffler[s]`.
 
-**Demo data**: in my directories (`ExhaustDemo.cpp`, `AirDemo.cpp`), one function each, for U1's hook.
+**Demo data**: through U1's hook (`TEE_UI_DEMO` in each register.h): fields and script-following telemetry.
+**AIR on card F's integration**: tel.boost.* bound; the Scope's map used when present (`ui.air.scopemap`).
 **Wanted**:
 - From U1:
   - `frame.ribbon` pictures the AIR stage, so its golden moves with my work. Please re-bless it, or picture a placeholder there.
