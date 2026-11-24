@@ -78,7 +78,11 @@ enum
 module XBuild
 {
     XNet net;
-    ExhaustSpec* sp;    // the description (spec.exhaust's builder fields), the owner's
+    ExhaustSpec* sp;    // the description as built and shaped: gs (follow() sets it)
+    ExhaustSpec* src;   // the owner's description (spec.exhaust's builder fields)
+    ExhaustSpec gs;     // the owner's, its lengths and bores (and the other sizes, glide()) glided toward the owner's
+    ExhaustSpec gv;     // the glided sizes alone (gs is copied from the owner's every control step, then these put in)
+    float kGlide;       // a control step's share of the glide (0.2 s)
     XEngine eng;
     XHeat heat;
     float rate;
@@ -160,6 +164,16 @@ module XBuild
     float pTurb;                // mean pressure at the collectors (before a turbine), Pa over the air outside
     float pConv[XS_SIDES];      // at each side's head (before the converter)
     float pMuf[XS_SIDES];       // before the muffler (back pressure)
+    // the exhaust flap (spec.exhaust.flapKind): a butterfly at the head of each main pipe, behind the turbine
+    float fCmd;                 // the brake's command (Exhaust::setFlap): 0 open, 1 shut
+    float fPos[XS_SIDES];       // its travel toward it (flapTime open to shut)
+    float fLift[XS_SIDES];      // how far its relief has blown the plate open (0 to 1)
+    float fEff[XS_SIDES];       // its closing as the gas sees it: smoothstep of the travel less the lift
+    float pFl[XS_SIDES];        // the pressure before it and after it, means over some 30 ms (Pa over the air)
+    float pFa[XS_SIDES];
+    float kFast;
+    float kLift;
+    Valve vLaw;                 // the valve's compressible flow law (duct.fm: psi's correction, tOf)
     float mach[XH_SECT];        // each section's mean Mach number (its pipes', smoothed as theirs are)
     // the Scope: the pressure (Pa over the air outside) at XB_SCOPE points along the gas's path from one port to its
     // tail, spaced by length, refreshed every 128 samples while scopeOn; scopeX the distance of each from the port (m)
@@ -219,6 +233,10 @@ module XBuild
         tick4 = 0;
         tickPass = 0;
         passFix = 1;
+        kGlide = 1.0f - expf(-16.0f / (0.2f * rate));
+        kFast = 1.0f - expf(-4.0f / (0.03f * rate));
+        kLift = 1.0f - expf(-16.0f / (0.02f * rate));
+        fCmd = 0.0f;
         for (int g = 0; g < XB_GRID; ++g)
         {
             const float f = 4.0f * expf(6.9077553f * (float)g / (float)(XB_GRID - 1));   // 4 Hz to 4 kHz
@@ -380,6 +398,7 @@ module XBuild
     // engine's own configure, so that model 1 at its defaults is the reference); 1 settles them (network.fm, settle)
     void build(int atRest, float warm, int settleIt)
     {
+        snap();
         resolve();
         net.begin();
         // the ports and the primaries
@@ -682,6 +701,11 @@ module XBuild
             pMuf[s] = 0.0f;
             vPos[s] = byp[s] == 2 ? 1.0f : 0.0f;
             vT[s] = vPos[s];
+            fPos[s] = 0.0f;
+            fLift[s] = 0.0f;
+            fEff[s] = 0.0f;
+            pFl[s] = 0.0f;
+            pFa[s] = 0.0f;
         }
         // (at rest, sized, then the steepening pipes' timing settled to their sizes: network.fm, settle)
         sections();
@@ -1145,6 +1169,33 @@ module XBuild
             {
                 const int kb = kMain[s];
                 net.bR[kb] = conv[s] == 1 ? rCat : (conv[s] == 2 ? 0.4f * rCat : 0.0f);
+                // the exhaust flap: an orifice of the open area f A and discharge cd (a pipe's 1 open, a sharp
+                // plate's 0.7 shut: judgement), its loss the jet's expansion, K = (1/cd - f)^2 on the orifice's speed
+                // (Borda-Carnot), with a thin plate's 0.2 wide open (judgement, Idelchik's range); the gas
+                // compressible as the valve's law has it (Valve::tOf: the drop for a flow grows as (sqrt 2 / t)^2 at
+                // the mean ratio across it, choking near 0.55), on the gas before it, at the mean pressure there.
+                // A node: the loss solved each sample (lossFlow). Behind a turbine (the pipe's head an EXTP whose
+                // pressure Boost gives): a resistance in series at the mean flow (the same mean drop).
+                float kap = 0.0f;
+                if (sp->flapKind != 0)
+                {
+                    const float sh = fEff[s];
+                    const float f = 1.0f - (1.0f - sp->flapOrifice) * sh;
+                    const float cd = 1.0f - 0.3f * sh;
+                    const float kO = (1.0f / cd - f) * (1.0f / cd - f) + 0.2f * (1.0f - sh);
+                    const float pB = 101325.0f + fmaxf(pFl[s], 0.0f);
+                    const float r = fminf(fmaxf((101325.0f + pFa[s]) / pB, 0.0f), 1.0f);
+                    const float t = vLaw.tOf(r, 1);
+                    kap = lossKap(kO, mp->rho * pB / 101325.0f, f * aPipe) * (2.0f / (t * t));
+                }
+                if (jDown[s] >= 0)
+                    net.bR[kb] += kap * fmaxf(mp->mach * mp->c * aPipe, 1.0e-4f);
+                else
+                {
+                    net.bKf[kb] = kap;
+                    net.bKr[kb] = kap;
+                    net.bA[kb] = sp->flapKind != 0 ? slot(s, XO_MAIN) : -1;     // (the drive's slow part: the main pipe's)
+                }
                 // the converter's cone's (and the merging's) flow noise: K 0.6 on the pipe's own speed
                 net.bNin[kb] = 0.6f;
                 net.bNout[kb] = 0.6f;
@@ -1607,6 +1658,110 @@ module XBuild
 
     // ---- every 16 samples ----
 
+    // The description to follow: the owner's (src), read through gs (sp) so the sizes a slider drags glide
+    void follow(ExhaustSpec* owner)
+    {
+        src = owner;
+        sp = &gs;
+        snap();
+    }
+
+    // At a build: the description as the owner has it, nothing gliding
+    void snap()
+    {
+        gs = *src;
+        gv = *src;
+    }
+
+    // One size's glide toward the owner's (at it once within a millionth of it, so a glide ends where it is going)
+    float glide1(float x, float y)
+    {
+        const float d = y - x;
+        if (fabsf(d) <= 1.0e-6f * (fabsf(y) + 1.0e-3f))
+            return y;
+        return x + d * kGlide;
+    }
+
+    // Every control step: the continuous sizes (every length and bore, the volumes, the resonator's note, the muffler's
+    // size, the primaries' spread and step) glide toward the owner's in some 0.2 s, the pipes' delays and areas
+    // following them in shape(), with no rebuild and no fade; every other field (the kinds, the tables, the valve's rule)
+    // is the owner's at once. A size moving between 0 (the layout's) and a value of its own changes the signature
+    // (Exhaust::sig) and rebuilds under the fade, as a kind does.
+    void glide()
+    {
+        for (int i = 0; i < MAX_PORTS; ++i)
+        {
+            gv.primLen[i] = glide1(gv.primLen[i], src->primLen[i]);
+            gv.primD[i] = glide1(gv.primD[i], src->primD[i]);
+        }
+        for (int c = 0; c < MAX_COLLECTORS; ++c)
+        {
+            gv.colLen[c] = glide1(gv.colLen[c], src->colLen[c]);
+            gv.colD[c] = glide1(gv.colD[c], src->colD[c]);
+            gv.colVol[c] = glide1(gv.colVol[c], src->colVol[c]);
+        }
+        for (int s = 0; s < MAX_SIDES; ++s)
+        {
+            gv.mainLen[s] = glide1(gv.mainLen[s], src->mainLen[s]);
+            gv.mainD[s] = glide1(gv.mainD[s], src->mainD[s]);
+            gv.resHz[s] = glide1(gv.resHz[s], src->resHz[s]);
+            gv.resD[s] = glide1(gv.resD[s], src->resD[s]);
+            gv.resVol[s] = glide1(gv.resVol[s], src->resVol[s]);
+            gv.resLen[s] = glide1(gv.resLen[s], src->resLen[s]);
+            gv.mufSize[s] = glide1(gv.mufSize[s], src->mufSize[s]);
+            gv.mufLen[s] = glide1(gv.mufLen[s], src->mufLen[s]);
+            gv.tailLen[s] = glide1(gv.tailLen[s], src->tailLen[s]);
+            gv.tailD[s] = glide1(gv.tailD[s], src->tailD[s]);
+        }
+        gv.primSpread = glide1(gv.primSpread, src->primSpread);
+        gv.primStepAt = glide1(gv.primStepAt, src->primStepAt);
+        gv.primStepD = glide1(gv.primStepD, src->primStepD);
+        gv.crossD = glide1(gv.crossD, src->crossD);
+        gv.crossLen = glide1(gv.crossLen, src->crossLen);
+        gv.postLen = glide1(gv.postLen, src->postLen);
+        gv.linkLen = glide1(gv.linkLen, src->linkLen);
+        gv.bypassD = glide1(gv.bypassD, src->bypassD);
+        gv.gateLen = glide1(gv.gateLen, src->gateLen);
+        gv.gateD = glide1(gv.gateD, src->gateD);
+        gv.flapOrifice = glide1(gv.flapOrifice, src->flapOrifice);
+        gs = *src;
+        for (int i = 0; i < MAX_PORTS; ++i)
+        {
+            gs.primLen[i] = gv.primLen[i];
+            gs.primD[i] = gv.primD[i];
+        }
+        for (int c = 0; c < MAX_COLLECTORS; ++c)
+        {
+            gs.colLen[c] = gv.colLen[c];
+            gs.colD[c] = gv.colD[c];
+            gs.colVol[c] = gv.colVol[c];
+        }
+        for (int s = 0; s < MAX_SIDES; ++s)
+        {
+            gs.mainLen[s] = gv.mainLen[s];
+            gs.mainD[s] = gv.mainD[s];
+            gs.resHz[s] = gv.resHz[s];
+            gs.resD[s] = gv.resD[s];
+            gs.resVol[s] = gv.resVol[s];
+            gs.resLen[s] = gv.resLen[s];
+            gs.mufSize[s] = gv.mufSize[s];
+            gs.mufLen[s] = gv.mufLen[s];
+            gs.tailLen[s] = gv.tailLen[s];
+            gs.tailD[s] = gv.tailD[s];
+        }
+        gs.primSpread = gv.primSpread;
+        gs.primStepAt = gv.primStepAt;
+        gs.primStepD = gv.primStepD;
+        gs.crossD = gv.crossD;
+        gs.crossLen = gv.crossLen;
+        gs.postLen = gv.postLen;
+        gs.linkLen = gv.linkLen;
+        gs.bypassD = gv.bypassD;
+        gs.gateLen = gv.gateLen;
+        gs.gateD = gv.gateD;
+        gs.flapOrifice = gv.flapOrifice;
+    }
+
     // Every 16 samples, all of it (control = heatStep, shape, flowStep, bandStep: the engine calls them apart, in its
     // order of work)
     void control(float d16)
@@ -1620,6 +1775,7 @@ module XBuild
     // the heat, and the valve's travel
     void heatStep(float d16)
     {
+        glide();
         heat.soak(eng.tPort, eng.mdotSlow, d16, eng.tAmb, eng.vAir);
         heat.follow(kUse);
         // the bypass valve: where its rule or the ECU wants it, travelling there in bypassTime (a butterfly's
@@ -1644,6 +1800,19 @@ module XBuild
             vPos[s] = want > vPos[s] ? fminf(vPos[s] + stp, want) : fmaxf(vPos[s] - stp, want);
             const float x = vPos[s];
             vT[s] = x * x * (3.0f - 2.0f * x);
+        }
+        // the exhaust flap: toward the brake's command in flapTime; its relief a spring under the plate that gives
+        // above flapRelief (wide open 30 % above it), the plate following in some 20 ms (judgement: a relief's is a
+        // stiff spring and a light plate)
+        for (int s = 0; s < nSides; ++s)
+        {
+            const float want = sp->flapKind != 0 ? fCmd : 0.0f;
+            const float stp = d16 / fmaxf(sp->flapTime, 0.01f);
+            fPos[s] = want > fPos[s] ? fminf(fPos[s] + stp, want) : fmaxf(fPos[s] - stp, want);
+            const float over = fminf(fmaxf((pFl[s] - sp->flapRelief) / (0.3f * sp->flapRelief), 0.0f), 1.0f);
+            fLift[s] += (over - fLift[s]) * kLift;
+            const float x = fPos[s] * (1.0f - fLift[s]);
+            fEff[s] = x * x * (3.0f - 2.0f * x);
         }
     }
 
@@ -1791,6 +1960,9 @@ module XBuild
             if (sideOn[s] == 0)
                 continue;
             pConv[s] += kMean * (net.jP[jHead[s]] - pConv[s]);
+            pFl[s] += kFast * (net.jP[jHead[s]] - pFl[s]);
+            const int m = slot(s, XO_MAIN);
+            pFa[s] += kFast * (net.d[m].near + net.nearIn[m] - pFa[s]);
             const int j0 = jMuf[s * 5];
             float pm = net.jP[j0];
             if (net.jKind[j0] == XJ_PAIR)

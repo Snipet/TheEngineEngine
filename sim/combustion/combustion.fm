@@ -266,7 +266,13 @@ module Combustion
         // the mixture's heat having already left out what goes unburned and the walls taking theirs through the cylinder;
         // with the reference's walls the reference's 0.60 + 0.20 x manifold, its walls' and its unburned share at once:
         // the energy counted once whichever way the two switches stand)
-        const float share = walls != 0 ? 0.97f : 0.60f + 0.20f * fminf(pPlenum / 101325.0f, 1.2f);
+        // (a rotary's burn is less complete: its long, cool trailing end and its apex seals' crevices quench the flame,
+        // and a Wankel's unburned hydrocarbons are some three times a piston engine's (Heywood, Internal Combustion
+        // Engine Fundamentals, ch. 11 on HC sources and the Wankel; Yamamoto, Rotary Engine, 1981, on the trailing
+        // side's quench). That ratio is published; 0.92 for the burn's efficiency at full load is card D's arithmetic
+        // from it against a piston engine's 0.97 (judgement). The unburned part leaves as it is: its burning in the
+        // port is the exhaust's to add)
+        const float share = walls != 0 ? (lay->rotary != 0 ? 0.92f : 0.97f) : 0.60f + 0.20f * fminf(pPlenum / 101325.0f, 1.2f);
         const float d50 = (lay->rotary != 0 ? 0.62f : 0.56f) * (1.0f + (0.015f + 0.03f * rough) * nz->gauss());
         const float cb = 1.0f / (1.0f + expf((dil - d50) / 0.035f));
         cy->cBurn = cb;
@@ -393,14 +399,28 @@ module Combustion
         const bool f1 = fuel->model == 1;
         if (!f1 && !ecu->model1())
             return;
+        // the hottest recent blowdown, each bank's: what the unburned fuel in that bank's pipe meets (the ECU's bangs).
+        // An exhaust valve's opening raises it to its gas when hotter; it falls over some 50 ms otherwise, so a full cut's
+        // cool air lets it go and a fired cylinder among cut ones holds it up
+        if (cy->evoNow)
+        {
+            const int b = lay->topo == 0 ? 0 : (lay->bank[c] == 1 ? 1 : 0);
+            ecu->blow[b] = fmaxf(ecu->blow[b], cy->t);
+            if (lay->topo == 0)
+                ecu->blow[1] = ecu->blow[0];
+        }
         if (c == 0)
         {
             ticks += 1;
+            ecu->blow[0] -= (ecu->blow[0] - 300.0f) * dt * 20.0f;
+            ecu->blow[1] -= (ecu->blow[1] - 300.0f) * dt * 20.0f;
             const float a = cy->ang > 0.5f * lay->cyc ? cy->ang - lay->cyc : cy->ang;
             ecu->watch.tick(cy->p, a, cy->burnAt >= 0.0f ? cy->xPrev : 0.0f);
             if (ecu->model1())
                 for (int b = 0; b < 2; ++b)
-                    if (ecu->one.account.pulse[b] > 0.0f)
+                    // (a bank's bangs never overlap: a Pop fired again inside its pulse would restart it from 0, a
+                    // one-sample step from near its peak; finding X-018)
+                    if (ecu->one.account.pulse[b] > 0.0f && pop[b].n >= pop[b].len)
                     {
                         pop[b].fire(ecu->one.account.pulse[b], rate, 99 + b);
                         ecu->one.account.pulse[b] = 0.0f;

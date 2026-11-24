@@ -117,6 +117,31 @@ How much the phaser is worth, measured:
 
 So the phaser is a shape fix worth a few percent, not pattern 1's cause.
 
+**Fixed (the lead's decision, 16:26).** `Phaser::schedule` (E's) now schedules the intake by a target intake-closing
+angle at the seat: 20 degrees after bottom at a quarter of the redline and below, rising to 67 at the redline. The
+advance is what brings each cam's parked closing there, capped by an overlap of 40 + 60 x (the speed's share of the
+redline) degrees.
+
+The lead suggested 30 to 40 degrees at low speed. The sweep's best closings for the short cams were 3 to 18 degrees
+(the economy four), so with 35 the 3.5 V6 lost 50 N m of its peak. 20 lets the overlap cap hold the long cams back
+instead.
+
+Before and after, mean torque over seven speeds, as built:
+
+| Engine | Before | After | Calibrated maps |
+|---|---|---|---|
+| Flat-plane V8 | 344 | 355 | 365 |
+| Four-cam V8 | 436 | 441 | 451 |
+| 3.2 six | 246 | 264 | 267 |
+| V10 | 409 | 419 | 424 |
+| V12 | 491 | 522 | 536 |
+| Economy four | 137 | 136 | 139 |
+| 3.5 V6 | 319 | 311 | 316 |
+
+The holes: the 3.2 six at 2700 rpm, 206 to 290 N m; the V12 at 5000 rpm, 495 to 582. Test: `calibration-na.the
+intake phaser's schedule cuts no hole in a long cam's full-load curve` (29 s). The valvetrain's and the intake's 21
+tests pass; the null test passes, 11 of 11.
+
 ## D. Mass created at the intake valve: pattern 4 (measured; D's file, routed to D)
 
 `sim/core/cylinder.fm:290` (the reference has the same line, `sim/ref/cylinder.fm:279`):
@@ -178,3 +203,67 @@ The experiment: the intake valve's gas taken 25 K warmer (`engine.fm`, `stepArea
 
 It is a level, like A: it would take back about a third of Woschni's gain, on every engine alike. It is physics left
 out (E's intake), worth adding with a source for the rise by speed and load. It does not separate the classes.
+
+**Added (on the lead's word, 16:46), waiting for one line of D's.** `Intake::control`, model 1, heats the charge:
+
+    rise = (T_coolant - T_air)(1 - exp(-NTU)),   NTU = 0.29 (m / m_ref)^-0.2
+
+That is a stream past water-jacketed walls; h goes as the flow's 0.8th power, hence the -0.2. The rise is some 19 K at
+full load, 35 K at idle, none cold. The 0.29 is judgement within Heywood's 10 to 40 K. It needs Engine to set
+`intk.tCoolant = heat.tCool` before `intk.control` (D's file). Until then it does nothing.
+
+In a scratch tree with that line, against the tree without it:
+
+| Engine | Torque at 1500 rpm | Torque from 4000 rpm to the top |
+|---|---|---|
+| Economy four | -9 % | -7 to -8 % |
+| 3.2 six | -11 % | -7 % |
+| Small-block | -9 % | -7 % |
+| V12 | -10 % | -6 to -7 % |
+
+## Since 16:46 (measured on the tip)
+
+**Pattern 4 is closed** by card D's conserving cylinder (the round trip's store, on the physical path). Warm idle on
+the bench (the probe's `[.probe-idle]`):
+
+| Engine | Idle before | Idle now (target) | Idle valve | Manifold |
+|---|---|---|---|---|
+| V12 | 1244 | 882 rpm (900) | 0.15 | 90 kPa |
+| V10 | 1166 | 952 rpm (950) | 0.11 | 80 kPa |
+| Flat-plane V8 | 1340 | 998 rpm (1000) | 0.12 | 89 kPa |
+
+Every idle valve is working now. The economy four's balance at idle is 1.048 (was 1.58), and the test is unskipped.
+Still unexplained: the big-overlap engines trap about twice the throttle's air at idle (V12 11.6 against 5.9 g/s).
+
+**B on the builder (in the engine since 16:17).** On the 3.2 six:
+
+- The archetypes' exhausts as built give results identical to the bit to exhaust.model 0: the reference's topology,
+  with its road converter and chambered muffler.
+- Open (no converter, straight-through): port mean 154 → 120 kPa at 7600 rpm, burned share 7.2 → 4.3 %, torque +6 to
+  +10 %.
+- Primary length from 0.4 to 1.4 m: ±2 %.
+- Runner length is the lever:
+
+| Runner | Best VE | Torque there | At |
+|---|---|---|---|
+| 0.25 m (as built) | 0.94 | 300 N m | 5000 rpm |
+| 0.35 m | 0.99 | 305 N m | 6000 to 7000 rpm |
+| 0.50 m | 1.05 | 335 N m | 5000 rpm |
+| 0.70 m | 1.04 | 330 N m | 4000 to 5000 rpm |
+
+So the tuned engines' shortfall is content: the runner, the exhaust and the port quality. Values went to P.
+
+**The half-burn readings of 29 to 39 degrees** do not reproduce: 0 of 98 cycles over 20 degrees. The late burns now
+are knock retard on regular fuel at 11:1 (economy four: 13.7 degrees at 1500 rpm, 0.2 at 6336).
+
+**Gas properties (the lead's hypothesis).** `gammaAt` falls from 1.39 to 1.24, near Heywood's values. Gross indicated
+efficiency is 0.34 to 0.36 at 1500 rpm and 0.38 to 0.42 from 4000 rpm up: 5 to 10 % over 0.8 of the fuel-air cycle at
+speed. Port gas runs 1100 to 1530 K. Suspected: too little heat leaves at speed (Woschni under-reads during SI
+combustion; no exhaust-port wall loss). Proposed to the lead and D, not changed.
+
+**Fixed by N1, acting for E and H**, measured before and after:
+
+- the phaser by target intake closing (C);
+- the ITB manifold reading floored at 8 kPa (it read -11.4 kPa on the lift);
+- a rotary's burn 0.92: -4 to -6 %, boosted 318 N m at 5000 rpm for 290 to 315;
+- the charge's heating (F): in, waiting for D's `intk.tCoolant` line.

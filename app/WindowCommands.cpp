@@ -36,6 +36,7 @@ namespace tee::app
             kRate = 600,            // + index of kRates
             kBuffer = 700,          // + index of kBuffers
             kRecord = 800,
+            kQuality = 900,         // + 0 full, 1 economy
         };
         constexpr int kRates[] = { 0, 44100, 48000, 88200, 96000 };
         constexpr int kBuffers[] = { 64, 128, 256, 512, 1024, 2048 };
@@ -401,6 +402,15 @@ namespace tee::app
             buf.submenu.push_back({ kBuffer + static_cast<int>(i), std::to_string(kBuffers[i]) + " frames (asked)", true,
                                     ctx_.request.bufferFrames == kBuffers[i], false, false, true });
         items.push_back(std::move(buf));
+        if (ctx_.quality && ctx_.setQuality)
+        {
+            funkgui::MenuItem q{ .label = "Quality" };
+            const int now = ctx_.quality();
+            q.submenu.push_back({ kQuality, "Full (the engine at 96 kHz inside)", true, now == 0, false, false, true });
+            q.submenu.push_back({ kQuality + 1, "Economy (48 kHz inside: about half the load, the top octave lost)", true,
+                                  now == 1, false, false, true });
+            items.push_back(std::move(q));
+        }
         if (ctx_.recorder != nullptr)
         {
             items.push_back({ .separator = true });
@@ -409,6 +419,13 @@ namespace tee::app
         }
         host_->showMenu(request(*host_, std::move(items)), [this, devices](int id) {
             audio::Request r = ctx_.request;
+            if (id == kQuality || id == kQuality + 1)
+            {
+                ctx_.setQuality(id - kQuality);
+                say(id == kQuality ? "quality: full (the engine is compiled again)" : "quality: economy (the engine is "
+                                                                                      "compiled again)");
+                return;
+            }
             if (id == kDevice)
                 r.deviceName.clear();
             else if (id > kDevice && id <= kDevice + static_cast<int>(devices.size()))

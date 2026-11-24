@@ -100,6 +100,10 @@ namespace
         {
             std::printf("%8.0f %10.1f %10.1f %7d %8s", rpm(p.speed), p.torque, p.power / 1000.0, p.cycles,
                         p.settled ? "yes" : "NO");
+            if (p.knockRetard > 0.0)
+                std::printf("  knock %.1f deg", p.knockRetard);
+            for (std::size_t k = 0; k < p.fields.size() && k < options.fields.size(); ++k)
+                std::printf("  %s %.5g", options.fields[k].c_str(), p.fields[k]);
             if (history)
                 for (const double t : p.history)
                     std::printf(" %.1f", t);
@@ -211,6 +215,7 @@ int main(int argc, char** argv)
         {
             ok = args.value(value);
             plan.fields = list(value);
+            predictOptions.fields = plan.fields;
         }
         else if (args.is("--torque"))
             ok = args.value(plan.torque);

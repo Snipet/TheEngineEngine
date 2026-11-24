@@ -24,9 +24,20 @@ Card N1 ([w2-n-calibration.md](../plan/w2-n-calibration.md)), branch `claude/awe
 - E. Pattern 3: the rotary is over-boosted (147 kPa for 70, gates wide open). For N2. NA it is within ~20 %.
 - F. The intake's charge heating, left out: 25 K costs 9 % on all alike.
 
+**Fixed since** (acting for E and H; each measured before and after; tests pass; the null test passed)
+- `Phaser::schedule` by target intake closing, capped by overlap (712b599). Test `calibration-na.the intake
+  phaser's schedule cuts no hole...` (29 s). The six at 2700 rpm: 206 → 290 N m. The V12 at 5000: 495 → 582.
+- Charge heating in `Intake::control`, model 1. It waits for D's `intk.tCoolant = heat.tCool;` and then costs 6 to
+  11 % on all engines alike.
+- The ITB manifold floored at 8 kPa. Test `calibration-na.individual throttles...`.
+- A rotary's burn efficiency of 0.92 (D's number): -4 to -6 %.
+- Pattern 4 is closed by D's conserving cylinder: V12 882, V10 952, flat-plane V8 998 rpm, on target. The balance test
+  is unskipped (1.048).
+- The ledger: boosted settle, boost over target, the commit in its header.
+
 **Not done**
-- Patterns 1 and 4 are not closed: no module changed. Each fix is in another owner's file and routed (D, G, P, E on
-  the lead's word).
+- Pattern 1 is not closed. The tuned engines need content (runner, exhaust, port quality: values given to P). The
+  mild ones need the charge heating (D's line) and less efficiency at speed (proposed to the lead and D).
 - The NA spread (tuned about 0.9 of target, mild about 1.25, with every lever measured) waits for G's builder in the
   engine. Without it, moving a constant would be fitting.
 - The class tests (BMEP, VE, friction) wait for the fixes they would hold.
@@ -39,5 +50,6 @@ Card N1 ([w2-n-calibration.md](../plan/w2-n-calibration.md)), branch `claude/awe
 
 **FMinus**: no issue. **Cost**: nothing in `sim/` changed (the null test was not needed).
 
-**To listen to** once D's fix lands: the V12, V10 and flat-plane V8 at a warm idle. They should lope at 850 to 950,
-not hold 1100 to 1300 rpm.
+**To listen to**: the V12, V10 and flat-plane V8 at a warm idle; they now lope at 880 to 1000 rpm, where they held
+1100 to 1300. The 3.2 six and the V12 on a full-throttle sweep through 2500 to 5500 rpm; the phaser's holes are gone,
+and the note should carry no dip there. The 3.2 six's lift after the limiter (the ITB reading floored).

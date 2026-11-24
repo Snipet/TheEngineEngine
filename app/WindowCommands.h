@@ -58,6 +58,8 @@ namespace tee::app
             std::string recordFolder;                 // where the recorder's files go (the user's folder)
             std::function<void(const std::string&)> say;        // a line for the status bar and the console
             std::function<void()> audioChanged;                 // the device was opened again (its line changed)
+            std::function<int()> quality;                       // the engine's quality, 0 full, 1 economy (none: no item)
+            std::function<void(int)> setQuality;
         };
 
         explicit WindowCommands(Context context) : ctx_(std::move(context)) {}

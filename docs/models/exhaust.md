@@ -134,6 +134,78 @@ reference's start; the reference-topology test settles its copy of the reference
 sample. (Without settling either, the two differ by -45 to -85 dB at full load for as long as the test ran: the
 steepening system at 34 kPa pulses forgets a small difference only slowly.)
 
+## Passivity of a packed pipe (card T's finding; model 1)
+
+A pipe's 12 Hz tracker takes its steady flow out before its filters, as the reference's does. With a shelf or a
+low-pass after it and little loss a pass, one pass exceeds unity near 25 Hz. The builder computes each used pipe's
+exact one-pass gain, |H| at 48 log-spaced frequencies from 4 Hz to 4 kHz (`XBuild::passGain`), at a build and every
+32 control steps. Where it exceeds 0.9999 the pipe puts its filters first and its tracker after (`Duct::filtFirst`),
+which is passive whatever the filter. Measured over a sweep of keep, gain, packing and a low-pass (180 pipes): the
+largest pass 0.99986, where the reference's order would reach 1.0718.
+
+The engine at its defaults is still identical to model 0 on all 17 layouts. In the harness (cold, other dials) a few
+of the reference's own pipes pass more than unity: 6 of the 26 reference-test runs. There model 1 leaves the
+reference's sound by -47 to -58 dB. The reference test therefore compares with the fix off (`XBuild::passFix = 0`, a
+test's switch) and prints the difference the fix makes.
+
+## External wastegates (card F's seam)
+
+With `boost.gate` external, each turbo's gate gets its own pipe (gateLen, gateD; XD_GATE). The pipe runs from an
+EXTP junction to an open end tagged front, a screamer pipe; F has no recirculated choice yet. The count comes from
+`Boost::externalGates()`, read at every configure (a change rebuilds under the fade). Each sample, `Boost::gatePipe(t,
+a, z)` solves turbo t's gate against the pipe's near end, as `downpipe()` does. Measured at 4500 rpm full throttle:
+- the 2 L four, gate external: 67.3 kPa of boost, 0.116 kg/s through its gate pipe;
+- the V8 with two: 42.1 kPa, 0.013 kg/s;
+- both finite and quiet after the key is off.
+
+## Exhaust flap (a diesel's exhaust brake; agreed with D2)
+
+`flapKind` "Butterfly" puts a flap on each side's main-pipe branch at its head: behind the turbine's outlet, or behind
+the collectors when there is no turbine.
+- **Driver:** card D2's brake calls `Exhaust::setFlap(0 open .. 1 shut)` every 16 samples. `flapFitted()` says
+  whether one acts (model 1 and a butterfly); otherwise D2 keeps its stand-in.
+- **Travel:** the flap moves over `flapTime` (0.15 s), and the gas sees smoothstep of that travel.
+- **Relief:** a spring under the plate gives above `flapRelief` (350 kPa over the air) and is wide open 30 % above
+  it; the plate follows in 20 ms (judgement).
+- **Model:**
+  - an orifice of open area f A, where f goes from 1 to `flapOrifice` (0.03) as it shuts;
+  - discharge cd goes from 1 to 0.7 (a sharp plate's, judgement);
+  - loss K = (1/cd - f)^2 on the orifice's speed (Borda-Carnot), plus a thin plate's 0.2 wide open (judgement,
+    within Idelchik's range);
+  - made compressible with the valve's law: the drop for a flow is scaled by (sqrt 2 / t)^2, where t is `Valve::tOf`
+    (psi / sqrt(1 - r)) at the mean ratio across the flap; on the gas before it, at its mean pressure.
+- **Solve:** at a node, solved every sample as the other junction losses are (lossFlow on the main pipe's slow
+  drive). Behind a turbine (an EXTP head), a resistance in series at the mean flow, giving the same mean drop.
+
+Telemetry: `tel.exhaust.flap` (its closing as the gas sees it) and `pFlap` (the pressure before it, over the air).
+
+Measured in the harness: the 2 L four's layout with a source of 0.12 m^3/s, gas at 500 K.
+- open: 11.6 kPa before it;
+- shut, with the relief at 600 kPa: 655 kPa;
+- shut, with the relief at 350 kPa: 382 kPa;
+- every sample finite.
+
+Not yet measured: a real diesel motoring in the engine, which waits for D2's hook.
+
+## Glide and rebuild (dragging a slider)
+
+These fields glide toward the Spec with a 0.2 s time constant (`XBuild::glide`). The pipes' delays, areas and
+losses follow them every control step in `shape()`, with no rebuild and no fade:
+- every length: primLen, colLen, mainLen, crossLen, postLen, resLen, linkLen, mufLen, tailLen, gateLen;
+- every bore: primD, colD, mainD, crossD, resD, bypassD, tailD, gateD;
+- colVol, resHz, resVol, mufSize, primSpread, primStepAt, primStepD, flapOrifice.
+
+These rebuild under the exhaust's fade (6 ms down, 12 ms up):
+- the kinds: converter, resonator, mufKind, bypass, tips, exitAt, crossKind, crossAt, sides;
+- the tables: primaryTo, collectorTo;
+- a size moving between 0 (the layout's) and a value of its own (for mufSize, -1);
+- a collector's volume appearing or going, and the primaries' step appearing or going.
+
+The bypass valve's position already travels by its own rule over bypassTime, and the valve's rule fields act at once. The flap (flapKind) is a loss only and needs no rebuild; its position travels over flapTime.
+Measured: the V8 at 3000 rpm, half throttle, its main pipes dragged from 1.5 to 3 m and 60 to 80 mm in 20 steps over
+a second. The fade never moved, and the largest step between samples was 0.3865 against 0.3901 in the second before.
+A second after the last step the pipes were within 0.06 % of the target. A muffler's kind changed took the fade down to 0.388.
+
 ## Seams
 
 In the engine the seams are `Exhaust`'s (sim/README.md). The builder's own, per sample: `read()`; the cylinders

@@ -123,7 +123,7 @@ torque: the gases' less friction and a supercharger's drag over some 0.1 s; on t
 `gasTorque` (the gases', its 20 ms mean), `firing` (Hz: firings a second, every cylinder's), `power`, `imep` (gross), `pmep`, `fmep`, `bmep` (4 pi torque / displacement), `veManifold`,
 `veAir` (the fresh charge at intake closing over the swept volume at those densities; each bounded to 0 to 4, and `veManifold` held at its last value while the manifold reads below 5 kPa, where its density is no reference), `peakPressure`, `pistonSpeed`,
 `ripple` (the crank's speed's spread over the last cycle), `dynoTorque`, `dynoSpeed`, `shake1`, `shake2` (N), `rock1`,
-`rock2` (N m: a reference layout's cylinders taken upright); a custom engine's only: `inertiaTorque`; `cylinders`; `layoutRefused` (1: a custom geometry was refused); `oilTemperature` (K); and the arrays (readable by path, not
+`rock2` (N m: a reference layout's cylinders taken upright); a custom engine's only: `inertiaTorque`; `cylinders`; `layoutRefused` (1: a custom geometry was refused); `oilTemperature` (K); `chargeTemperature` (K) and `trappedMass` (kg: unburned gas), each the mean over the cylinders at their intakes' closing (for N1's ledger); and the arrays (readable by path, not
 gauges) `firingAngle[c]` (degrees after cylinder 1's at which it fires), `cylPeak[c]`, `cylPeakAngle[c]`.
 
 Scope (`Engine::scopeTap`, each sample while `ctl.scopeOn`): cylinder 1's `pressure` (Pa), `volume` (m^3),
@@ -195,7 +195,7 @@ shaking, work integral and dyno for the engine as configured).
 **The physical cylinder**: friction by part (Chen and Flynn's, `core/friction.fm`, by mean piston speed) is used for a
 custom engine and whenever `fuel.model` is 1; Woschni's wall heat (`core/wallheat.fm`) whenever `fuel.model` is 1 or
 `engine.wallHeat` is 1 (a rotary's faces: the chamber's walls, `coefficientRotary`; with `fuel.model` 1 its seals'
-leakage, `Cylinder::leakA`; docs/models/mechanics.md). The new combustion implies the physical cylinder, its walls and its friction together; the
+leakage, `Cylinder::leakA`; docs/models/mechanics.md). The same decision, `Engine::woschniWalls()`, sets Combustion's share of the fuel's heat (`comb.walls`: 0.97, else the reference's 0.60 + 0.20 x manifold, so the walls' loss is counted once) and `Cylinder::conserve`: the gas a valve pushes back into its runner or header comes back first as itself (its mass at the temperature it left at, its burned share), where the reference brings the same volume back at the air's or the header's density and so makes mass. Running totals for the books: `Engine::airThrottle`, `airValves`, `gasExhaust`, `airTrapped` (kg). The new combustion implies the physical cylinder, its walls and its friction together; the
 reference's one friction curve (fitted to its V8, too high for small bores: 4.5 bar at 24.8 m/s on a 250 cc cylinder)
 and its one wall coefficient only under the reference's models. `engine.custom` means only that the geometry is the
 build's own. The engine runs at 96 kHz; compiled with `TEE_ENGINE_RATE_48000` defined (card C's prediction service

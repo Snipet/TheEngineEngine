@@ -19,6 +19,7 @@
 
 #include <cmath>
 #include <cstdio>
+#include <initializer_list>
 #include <string>
 
 using namespace tee::vehicle;
@@ -72,54 +73,82 @@ TEST_CASE("passive: a crank of varying inertia gains no energy from the vehicle,
     std::printf("passive: %d runs of 6 s, every one within its books\n", runs);
 }
 
-TEST_CASE("passive.engine: custom singles at their Spec's corners with each gearbox never run away", "[vehicle][property]")
+namespace
 {
-    int runs = 0;
-    for (const char* box : {"Manual", "Sequential", "Dual clutch", "Automatic", "CVT"})
-        for (int corner = 0; corner < 4; ++corner)
-            for (int geared = 0; geared < 2; ++geared)
-            {
-                // a heavy piston on a long stroke and a light flywheel (X-007's), a light one on a short stroke and a
-                // heavy flywheel, and the two between
-                const double bore[4] = {0.037, 0.12, 0.037, 0.12};
-                const double stroke[4] = {0.153, 0.05, 0.05, 0.153};
-                const double piston[4] = {18.4, 0.3, 20.0, 5.0};
-                const double flywheel[4] = {0.24, 1.0, 0.0, 0.5};
-                INFO(box << ", corner " << corner << ", in gear " << geared);
-                tee::test::Scenario s;
-                s.checks();
-                s.at(0.0).spec("engine.custom", 1.0).spec("engine.cylinders", 1.0).spec("engine.layout", "Single");
-                s.at(0.0).spec("engine.bore", bore[corner]).spec("engine.stroke", stroke[corner]);
-                s.at(0.0).spec("engine.pistonMass", piston[corner]).spec("engine.flywheel", flywheel[corner]);
-                s.at(0.0).spec("car.model", "Vehicle").spec("car.gearbox", std::string(box));
-                s.at(0.0).mode(1).lever(0).clutch(0.0).brake(0.0).throttle(0.0).ignition(tee::On);
-                s.at(0.25).ignition(tee::Start).until(1.5).ignition(tee::On);
-                if (geared != 0)
+    // custom singles at the given corners of their Spec's ranges, with the given gearboxes, in neutral and in gear:
+    // random pedals, the checks on; no check stops a call, no block is refused, the crank stays under 3000 rad/s
+    int passiveEngine(std::initializer_list<const char*> boxes, std::initializer_list<int> corners)
+    {
+        int runs = 0;
+        for (const char* box : boxes)
+            for (int corner : corners)
+                for (int geared = 0; geared < 2; ++geared)
                 {
-                    if (std::string(box) == "Automatic" || std::string(box) == "CVT")
-                        s.at(1.6).lever(1);
-                    else
-                        s.at(1.6).shiftUp();
+                    // a heavy piston on a long stroke and a light flywheel (X-007's), a light one on a short stroke and
+                    // a heavy flywheel, and the two between
+                    const double bore[4] = {0.037, 0.12, 0.037, 0.12};
+                    const double stroke[4] = {0.153, 0.05, 0.05, 0.153};
+                    const double piston[4] = {18.4, 0.3, 20.0, 5.0};
+                    const double flywheel[4] = {0.24, 1.0, 0.0, 0.5};
+                    INFO(box << ", corner " << corner << ", in gear " << geared);
+                    tee::test::Scenario s;
+                    s.checks();
+                    s.at(0.0).spec("engine.custom", 1.0).spec("engine.cylinders", 1.0).spec("engine.layout", "Single");
+                    s.at(0.0).spec("engine.bore", bore[corner]).spec("engine.stroke", stroke[corner]);
+                    s.at(0.0).spec("engine.pistonMass", piston[corner]).spec("engine.flywheel", flywheel[corner]);
+                    s.at(0.0).spec("car.model", "Vehicle").spec("car.gearbox", std::string(box));
+                    s.at(0.0).mode(1).lever(0).clutch(0.0).brake(0.0).throttle(0.0).ignition(tee::On);
+                    s.at(0.25).ignition(tee::Start).until(1.5).ignition(tee::On);
+                    if (geared != 0)
+                    {
+                        if (std::string(box) == "Automatic" || std::string(box) == "CVT")
+                            s.at(1.6).lever(1);
+                        else
+                            s.at(1.6).shiftUp();
+                    }
+                    unsigned seed = 12345u + static_cast<unsigned>(corner * 7 + geared);
+                    auto rnd = [&seed] {
+                        seed = seed * 1664525u + 1013904223u;
+                        return static_cast<double>(seed >> 8) / 16777216.0;
+                    };
+                    for (double t = 1.8; t < 5.0; t += 0.2)
+                        s.at(t).throttle(rnd() < 0.2 ? 0.0 : rnd()).brake(rnd() < 0.8 ? 0.0 : rnd());
+                    const tee::test::Run r = s.run(5.0);
+                    REQUIRE(r.ok());
+                    const double top = r.tel("engine.speed").max();
+                    if (r.host().stops != 0 || r.host().guardTrips != 0 || top > 3000.0)
+                        std::printf("passive.engine: %s, corner %d, in gear %d: stops %u, guard trips %u, crank up to "
+                                    "%.0f rad/s (%s)\n",
+                                    box, corner, geared, r.host().stops, r.host().guardTrips, top,
+                                    r.stopReason().c_str());
+                    CHECK(r.host().stops == 0);
+                    CHECK(r.host().guardTrips == 0);
+                    CHECK(top < 3000.0);
+                    CHECK(r.audio().finite());
+                    runs += 1;
                 }
-                unsigned seed = 12345u + static_cast<unsigned>(corner * 7 + geared);
-                auto rnd = [&seed] {
-                    seed = seed * 1664525u + 1013904223u;
-                    return static_cast<double>(seed >> 8) / 16777216.0;
-                };
-                for (double t = 1.8; t < 5.0; t += 0.2)
-                    s.at(t).throttle(rnd() < 0.2 ? 0.0 : rnd()).brake(rnd() < 0.8 ? 0.0 : rnd());
-                const tee::test::Run r = s.run(5.0);
-                REQUIRE(r.ok());
-                const double top = r.tel("engine.speed").max();
-                if (r.host().stops != 0 || r.host().guardTrips != 0 || top > 3000.0)
-                    std::printf("passive.engine: %s, corner %d, in gear %d: stops %u, guard trips %u, crank up to %.0f "
-                                "rad/s (%s)\n",
-                                box, corner, geared, r.host().stops, r.host().guardTrips, top, r.stopReason().c_str());
-                CHECK(r.host().stops == 0);
-                CHECK(r.host().guardTrips == 0);
-                CHECK(top < 3000.0);
-                CHECK(r.audio().finite());
-                runs += 1;
-            }
+        return runs;
+    }
+} // namespace
+
+// The quick form, in every run (01-rules.md §3: under 30 s): X-007's own corner (a heavy piston on a long stroke and a
+// light flywheel), which ran away through an automatic's converter, with the Automatic and a Manual, in neutral and in
+// gear. What it guards, measured 2026-11-24 at the build steward's split: with f9e26f1's sim/vehicle changes taken out
+// (the crank's inertia of the moment ignored, the converter's limit off, its gearbox and car changes reverted) this
+// form and the full one below both still pass on today's tree; the engine's own steps keep these singles in hand. The
+// test that bites is the standalone one above ("passive: a crank of varying inertia ..."), in every run (4 s): without
+// those changes it fails at once (energy above the engine's work by 1e32 J, the crank at 1e19 rad/s). This one stays
+// as the end-to-end guard: checks on, no stop, no guard trip, the crank under 3000 rad/s.
+TEST_CASE("passive.engine: X-007's single, automatic and manual, never runs away", "[vehicle][property]")
+{
+    const int runs = passiveEngine({"Automatic", "Manual"}, {0});
+    std::printf("passive.engine (quick): %d runs of 5 s with the checks on\n", runs);
+}
+
+// The full form, nightly (ctest --preset nightly; CI's soak tier): every gearbox at every corner.
+TEST_CASE("passive.engine: custom singles at their Spec's corners with each gearbox never run away",
+          "[vehicle][property][nightly]")
+{
+    const int runs = passiveEngine({"Manual", "Sequential", "Dual clutch", "Automatic", "CVT"}, {0, 1, 2, 3});
     std::printf("passive.engine: %d runs of 5 s with the checks on\n", runs);
 }

@@ -55,7 +55,7 @@ Taken before the keys above (so Ctrl+S saves and does not brake). On a Mac, Cmd 
 | Ctrl+S | Save the build to its file; an untitled one asks for a file. |
 | Ctrl+Shift+S | Save it as another file. |
 | F2 | The File menu: the above, the recent files, the builds of the library (shipped and your own), and a part (engine, car, tune) loaded from or saved to a file apart from the rest. |
-| F9 | The Audio menu: the device by name (or the system's default), the rate (or the device's own), the buffer asked for; and the recorder, which writes what is heard to a WAV file in the user's folder (`recordings/` beside `builds/`). |
+| F9 | The Audio menu: the device by name (or the system's default), the rate (or the device's own), the buffer asked for; the QUALITY (Full: the engine at 96 kHz inside, the default; Economy: 48 kHz inside, about half the load, the top octave lost; a change compiles the engine again and crossfades to it, the engine cranked back if the key was on; a build on the edge of lighting, such as a diesel whose charge only just lights, may come back on the other branch, lit or misfiring, as after any reload); and the recorder, which writes what is heard to a WAV file in the user's folder (`recordings/` beside `builds/`). |
 
 The top bar shows the build's name with a star while it has unsaved changes. A build still unsaved when the window
 closes is kept as the build "Unsaved changes" in your folder of builds, and opens at the next start; otherwise the
