@@ -20,6 +20,23 @@ BUILDS = os.path.join(ROOT, "content", "builds", "archetypes")
 RPM = math.pi / 30.0
 SC = "validation/scenarios/"
 
+# each target's kind of source (the invariants: cited, the contracts and the build's own figures)
+BASIS = {
+    "Starts cold": "judgement",
+    "Sound: a free rev is loud enough": "judgement", "Sound: the idle is audible": "judgement",
+    "Peak power": "recalled", "Speed at peak power": "recalled", "Peak torque": "recalled",
+    "Speed at peak torque": "recalled",
+    "Warm idle": "recalled", "Idle steadiness": "judgement", "Idle low point": "judgement",
+    "Boost at its target": "judgement", "Charge temperature under boost": "recalled",
+    "Lambda at full load under boost": "recalled",
+    "Volumetric efficiency at its torque peak": "recalled", "Volumetric efficiency low down": "judgement",
+    "Port gas at full load": "judgement", "Header gas at full load": "judgement",
+    "Port gas, mass mean (information)": "judgement",
+    "Quarter mile: time": "recalled", "Quarter mile: trap speed": "recalled", "Top speed": "judgement",
+}
+# archetypes whose power and torque rows were looked up (slug: the pages), turning recalled into cited
+CITED = {}
+
 # slug: published peak power (kW range, rpm range), torque (N m range, rpm range), warm idle (rpm range),
 # boost check speed (rpm of a p-full-load scenario), the source's firmness, and top speed if the kind's is published
 # unrestricted (km/h range; None: worked out from power and drag).
@@ -102,6 +119,16 @@ def targets(slug, b):
     out = []
 
     def add(**k):
+        # what the target is measured against (the lead, 20:23): cited (a page, a figure, a standard or a maker's datum
+        # looked up, named in the source), recalled (a maker's figure or a textbook range written from memory, believed
+        # right) or judgement (a band set because it seemed reasonable: it catches a wild value; nobody should move
+        # the model toward it)
+        name = k["name"]
+        if name in ("Peak power", "Peak torque", "Speed at peak power", "Speed at peak torque") and slug in CITED:
+            k["basis"] = "cited"
+            k["source"] = k["source"] + "; looked up: " + CITED[slug]
+        else:
+            k["basis"] = "cited" if name.startswith("Invariant") else BASIS[name]
         out.append(k)
 
     # ---- the invariants: hard --------------------------------------------------------------------------------
