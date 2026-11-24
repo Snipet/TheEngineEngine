@@ -33,6 +33,31 @@
       "bore": 0.102,
       "stroke": 0.114,
       "redlineSpeed": 575.959
+    },
+    "valve": {
+      "model": "Lab",
+      "valves": 4,
+      "dIn": 0.04,
+      "dEx": 0.033,
+      "inDur1mm": 220,
+      "inDurSeat": 260,
+      "inLift": 0.012,
+      "inCentre": 108,
+      "exDur1mm": 220,
+      "exDurSeat": 260,
+      "exLift": 0.011,
+      "exCentre": 110,
+      "train": "Pushrod"
+    },
+    "intake": {
+      "model": "Lab",
+      "throttleKind": "A body a runner",
+      "trumpets": "The air box",
+      "runnerLength": 0.42
+    },
+    "env": {
+      "temperature": 300.0,
+      "pressure": 101325
     }
   },
   "expect": {

@@ -147,5 +147,7 @@ module CarSpec
         [[ui::choices("Off", "By the throttle", "By the clutch")]] [[ui::group("Wheelie")]]
         [[ui::help("What holds the front up at the angle below: a rider or an anti-wheelie control easing the throttle, or a rider slipping the clutch")]];
     float wheelieAngle [[fminus::range(0, 40)]] [[fminus::default(4)]] [[ui::label("Wheelie held at")]] [[ui::unit("deg")]];
+    bool clutchDry [[fminus::default(0)]] [[ui::label("Dry clutch")]]
+        [[ui::help("Off: a wet multi-plate clutch in oil (it drags a little when open); on: a dry one (no drag; it rattles at idle)")]];
     // ---- end of card B2's block ----
 };

@@ -33,21 +33,38 @@
       "stroke": 0.0686,
       "redlineSpeed": 1047.198
     },
+    "valve": {
+      "model": "Lab",
+      "valves": 4,
+      "dIn": 0.0315,
+      "dEx": 0.0265,
+      "inDur1mm": 236,
+      "inDurSeat": 276,
+      "inLift": 0.009,
+      "inCentre": 106,
+      "exDur1mm": 232,
+      "exDurSeat": 272,
+      "exLift": 0.008,
+      "exCentre": 108,
+      "train": "Bucket"
+    },
     "intake": {
       "model": "Lab",
       "throttleKind": "A body a runner",
-      "trumpets": "The air box"
+      "trumpets": "The air box",
+      "runnerLength": 0.34
     },
     "exhaust": {
       "headers": 0.25,
       "pipe": 0.2,
       "muffler": 0.15
     },
-    "valve": {
-      "cam": 0.55
-    },
     "fuel": {
       "kind": "Gasoline"
+    },
+    "env": {
+      "temperature": 300.0,
+      "pressure": 101325
     },
     "car": {
       "kind": "Motorcycle",

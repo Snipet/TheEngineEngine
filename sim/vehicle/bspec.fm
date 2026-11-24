@@ -71,6 +71,8 @@ module BikeSpec
         [[ui::choices("Off", "By the throttle", "By the clutch")]] [[ui::group("Wheelie")]]
         [[ui::help("What holds the front up at the angle below: a rider or an anti-wheelie control easing the throttle, or a rider slipping the clutch")]];
     float wheelieAngle [[fminus::range(0, 40)]] [[fminus::default(4)]] [[ui::label("Wheelie held at")]] [[ui::unit("deg")]];
+    bool clutchDry [[fminus::default(0)]] [[ui::label("Dry clutch")]]
+        [[ui::help("Off: a wet multi-plate clutch in oil (it drags a little when open); on: a dry one (no drag; it rattles at idle)")]];
 };
 
 // What the motorcycle shows beyond VehTel (appended to tel.car). VehTel's wheel arrays hold the front in [0] and the
@@ -93,4 +95,6 @@ module BikeTel
     int blips [[ui::label("Auto-blips")]] [[ui::help("A counter")]];
     float wheelieLimit [[ui::label("Wheelie limit")]] [[ui::unit("m/s^2")]]
         [[ui::help("The acceleration at which the front leaves the road now")]];
+    float sprocketSpeed [[ui::label("Front sprocket")]] [[ui::quantity("rotation")]]
+        [[ui::help("The gearbox's output: the chain's teeth pass at this times the front sprocket's teeth over 2 pi")]];
 };
