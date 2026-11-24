@@ -2,7 +2,7 @@
   "format": "tee-validation",
   "version": 1,
   "build": "builds/archetypes/tractor-15-inline-six.json",
-  "description": "Card P's targets for \"Highway tractor 15 L\": the invariants are hard; the rest are reported, never failed: their misses are the simulator's to-do list. Predicted strongest lines (not measured: the validation format has no line measure yet): the firing frequency, rpm/60 x 6/2, 32.5 Hz at the 650 rpm idle and 100 Hz at the 2000 rpm limiter.",
+  "description": "Card P's targets for \"Highway tractor 15 L\": the invariants are hard; the rest are reported, never failed: their misses are the simulator's to-do list. Predicted strongest lines (not measured: the validation format has no line measure yet): the firing frequency, rpm/60 x 6/2, 35.0 Hz at the 700 rpm idle and 112 Hz at the 2249 rpm limiter.",
   "targets": [
     {
       "name": "Invariant: starts warm and runs",
@@ -92,7 +92,7 @@
       "name": "Peak power",
       "dyno": {
         "from": 62.8,
-        "to": 209.4
+        "to": 235.6
       },
       "measure": "maxPower",
       "range": [
@@ -106,7 +106,7 @@
       "name": "Speed at peak power",
       "dyno": {
         "from": 62.8,
-        "to": 209.4
+        "to": 235.6
       },
       "measure": "speedAtMaxPower",
       "range": [
@@ -120,7 +120,7 @@
       "name": "Peak torque",
       "dyno": {
         "from": 62.8,
-        "to": 209.4
+        "to": 235.6
       },
       "measure": "maxTorque",
       "range": [
@@ -134,7 +134,7 @@
       "name": "Speed at peak torque",
       "dyno": {
         "from": 62.8,
-        "to": 209.4
+        "to": 235.6
       },
       "measure": "speedAtMaxTorque",
       "range": [
@@ -158,7 +158,7 @@
         73.3
       ],
       "unit": "rad/s",
-      "source": "makers' service specifications of the kind: 600 to 700 rpm warm in neutral (a rule of thumb, firm to 100 rpm); the ECU is asked for 650"
+      "source": "makers' service specifications of the kind: 600 to 700 rpm warm in neutral (a rule of thumb, firm to 100 rpm); the ECU is asked for 700"
     },
     {
       "name": "Idle steadiness",
@@ -202,11 +202,27 @@
         10
       ],
       "range": [
-        700,
-        1000
+        850,
+        1100
       ],
       "unit": "K",
-      "source": "a diesel's exhaust at the port at full load is some 700 to 1000 K (Heywood, Internal Combustion Engine Fundamentals, ch. 14; makers' pre-turbine limits near 1020 K)"
+      "source": "the gas at a diesel's exhaust valve at full load, before the port and pipe cool it: some 850 to 1100 K (judgement: the header's 700 to 950 K, below, plus the port's cooling; Heywood, Internal Combustion Engine Fundamentals, ch. 14)"
+    },
+    {
+      "name": "Header gas at full load",
+      "scenario": "validation/scenarios/p-full-load-1200.json",
+      "tel": "exhaust.headerTemperature",
+      "measure": "mean",
+      "during": [
+        8,
+        10
+      ],
+      "range": [
+        700,
+        950
+      ],
+      "unit": "K",
+      "source": "a thermocouple a little way down a diesel's manifold reads some 700 to 950 K at full load (makers' pre-turbine limits near 1000 K; Heywood, Internal Combustion Engine Fundamentals, ch. 14)"
     },
     {
       "name": "Top speed",
