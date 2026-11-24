@@ -21,6 +21,12 @@
 - **Lamps**: limiter (with fuel cut or spark cut and its speed), launch, overrun cut, traction, knock: a filled lamp
   and words when active, a ring and "off" when not, "-" while the program gives no flags.
 
+- **The knock limit** (`ecu.maps.knockLimit`, card N2's): degrees off the best-torque spark, baked once for a build by
+  card C's dyno sweep, not by the ECU's formulas. Its switch (`knockLimitAuto`) reads "not baked (no table)"; there is no
+  BAKE for it. The host's state of that bake (`FrameServices::sparkMap`: "waiting to bake", "baking", "baked, to
+  apply", "baked", "bake failed") and whether the program runs the table (`tel ecu.knockTable`) are said at the top
+  right of the spark map and of the knock limit; the table changes by itself when a bake lands (one undo step).
+
 ## What is clickable
 
 A map's row (shows it, selects its field: the inspector shows its formula switch and the map); a cell (type, or drag
@@ -37,4 +43,4 @@ The live cell, trail and slices are the map read where the engine is: `engine.sp
 `ctl.bakeMaps`) and, when the Scope's `bakeCount` moves, copies `scope.baked*` into the table and turns the formula
 off, one step of undo; with no way to ask it copies the newest bake there is. Nothing else is computed here.
 
-Tests: `ui.tune.stage`, `ui.tune.large` (with `tune.paper`), `ui.tune.edit`, `ui.tune.inspector`, `ui.tune.absent`.
+Tests: `ui.tune.stage`, `ui.tune.large` (with `tune.paper`), `ui.tune.edit`, `ui.tune.inspector`, `ui.tune.absent`, `ui.tune.bake`, `ui.tune.knocklimit`.
