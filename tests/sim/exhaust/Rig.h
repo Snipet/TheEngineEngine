@@ -103,6 +103,7 @@ namespace tee::test::exhaust
             return v;
         }
 
+        void* instance() { return inst_->data(); }
         void noise(double k) { noise_(inst_->data(), static_cast<float>(k)); }
 
         void rebuild()
