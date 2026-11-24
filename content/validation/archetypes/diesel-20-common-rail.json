@@ -17,7 +17,8 @@
         2,
         2
       ],
-      "source": "a warm engine started on its key runs and keeps running (engine.state 2)"
+      "source": "a warm engine started on its key runs and keeps running (engine.state 2)",
+      "basis": "cited"
     },
     {
       "name": "Invariant: within full scale",
@@ -27,7 +28,8 @@
         0,
         1
       ],
-      "source": "02-contracts.md, section 1: what process writes is within +-1"
+      "source": "02-contracts.md, section 1: what process writes is within +-1",
+      "basis": "cited"
     },
     {
       "name": "Sound: a free rev is loud enough",
@@ -37,7 +39,8 @@
         0.2,
         1
       ],
-      "source": "the lead's ruling (20:11): at a build's defaults a free rev peaks at 0.3 to 0.6 of full scale; under 0.2 is too quiet to hear the work (L's listener at 23 to 30 dB under the reference mix: L's finding)"
+      "source": "the lead's ruling (20:11): at a build's defaults a free rev peaks at 0.3 to 0.6 of full scale; under 0.2 is too quiet to hear the work (L's listener at 23 to 30 dB under the reference mix: L's finding)",
+      "basis": "judgement"
     },
     {
       "name": "Sound: the idle is audible",
@@ -52,7 +55,8 @@
         0
       ],
       "unit": "dB",
-      "source": "the lead's ruling (20:11): the idle plainly audible: its level over 8 to 14 s at least -40 dB of full scale (judgement: a quiet room's background against a full-scale peak)"
+      "source": "the lead's ruling (20:11): the idle plainly audible: its level over 8 to 14 s at least -40 dB of full scale (judgement: a quiet room's background against a full-scale peak)",
+      "basis": "judgement"
     },
     {
       "name": "Invariant: holds its limiter",
@@ -68,7 +72,8 @@
         457.3
       ],
       "unit": "rad/s",
-      "source": "a diesel's governor holds its high idle, the rated speed plus its 6 % droop (4240 rpm), within a few percent"
+      "source": "a diesel's governor holds its high idle, the rated speed plus its 6 % droop (4240 rpm), within a few percent",
+      "basis": "cited"
     },
     {
       "name": "Invariant: pulls away",
@@ -84,7 +89,8 @@
         120
       ],
       "unit": "m/s",
-      "source": "started, in gear and on the pedal, the car moves (a 36 t tractor in third of eighteen at least 1.5 m/s)"
+      "source": "started, in gear and on the pedal, the car moves (a 36 t tractor in third of eighteen at least 1.5 m/s)",
+      "basis": "cited"
     },
     {
       "name": "Invariant: stops at the key",
@@ -95,7 +101,8 @@
         0,
         0
       ],
-      "source": "the key off stops the engine (engine.state 0 by the run's end)"
+      "source": "the key off stops the engine (engine.state 0 by the run's end)",
+      "basis": "cited"
     },
     {
       "name": "Starts cold",
@@ -110,7 +117,8 @@
         2,
         2
       ],
-      "source": "a sound engine starts from the air's temperature within some four seconds of cranking and keeps running (a rule of thumb; makers' cold-start specifications are 2 to 5 s)"
+      "source": "a sound engine starts from the air's temperature within some four seconds of cranking and keeps running (a rule of thumb; makers' cold-start specifications are 2 to 5 s)",
+      "basis": "judgement"
     },
     {
       "name": "Peak power",
@@ -135,7 +143,8 @@
         130000
       ],
       "unit": "W",
-      "source": "published figures of its kind (makers' figures, firm): 1968 cc; 51 to 66 kW a litre"
+      "source": "published figures of its kind (makers' figures, firm): 1968 cc; 51 to 66 kW a litre",
+      "basis": "recalled"
     },
     {
       "name": "Speed at peak power",
@@ -160,7 +169,8 @@
         439.8
       ],
       "unit": "rad/s",
-      "source": "published figures of its kind (makers' figures, firm): 1968 cc: 3500 to 4200 rpm"
+      "source": "published figures of its kind (makers' figures, firm): 1968 cc: 3500 to 4200 rpm",
+      "basis": "recalled"
     },
     {
       "name": "Peak torque",
@@ -185,7 +195,8 @@
         380
       ],
       "unit": "N m",
-      "source": "published figures of its kind (makers' figures, firm): 1968 cc; BMEP 20.4 to 24.3 bar (a naturally aspirated petrol engine 10 to 13 bar, turbocharged 18 to 25, a modern truck diesel 20 to 25: Heywood, Internal Combustion Engine Fundamentals, ch. 2)"
+      "source": "published figures of its kind (makers' figures, firm): 1968 cc; BMEP 20.4 to 24.3 bar (a naturally aspirated petrol engine 10 to 13 bar, turbocharged 18 to 25, a modern truck diesel 20 to 25: Heywood, Internal Combustion Engine Fundamentals, ch. 2)",
+      "basis": "recalled"
     },
     {
       "name": "Speed at peak torque",
@@ -210,7 +221,8 @@
         314.2
       ],
       "unit": "rad/s",
-      "source": "published figures of its kind (makers' figures, firm): 1968 cc: 1700 to 3000 rpm (a turbocharged engine's plateau: its whole span)"
+      "source": "published figures of its kind (makers' figures, firm): 1968 cc: 1700 to 3000 rpm (a turbocharged engine's plateau: its whole span)",
+      "basis": "recalled"
     },
     {
       "name": "Warm idle",
@@ -226,7 +238,8 @@
         94.2
       ],
       "unit": "rad/s",
-      "source": "makers' service specifications of the kind: 750 to 900 rpm warm in neutral (a rule of thumb, firm to 100 rpm); the ECU is asked for 800"
+      "source": "makers' service specifications of the kind: 750 to 900 rpm warm in neutral (a rule of thumb, firm to 100 rpm); the ECU is asked for 800",
+      "basis": "recalled"
     },
     {
       "name": "Idle steadiness",
@@ -242,7 +255,8 @@
         94.2
       ],
       "unit": "rad/s",
-      "source": "a warm idle's speed wanders some 20 to 50 rpm (a rule of thumb): its highest point from 6 to 14 s more than 100 rpm over the 800 rpm asked is a hunt"
+      "source": "a warm idle's speed wanders some 20 to 50 rpm (a rule of thumb): its highest point from 6 to 14 s more than 100 rpm over the 800 rpm asked is a hunt",
+      "basis": "judgement"
     },
     {
       "name": "Idle low point",
@@ -258,7 +272,8 @@
         83.8
       ],
       "unit": "rad/s",
-      "source": "a warm idle's speed wanders some 20 to 50 rpm (a rule of thumb): its lowest point from 6 to 14 s more than 100 rpm under the 800 rpm asked is a hunt (or a stall coming)"
+      "source": "a warm idle's speed wanders some 20 to 50 rpm (a rule of thumb): its lowest point from 6 to 14 s more than 100 rpm under the 800 rpm asked is a hunt (or a stall coming)",
+      "basis": "judgement"
     },
     {
       "name": "Boost at its target",
@@ -274,7 +289,8 @@
         155000.0
       ],
       "unit": "Pa over the air",
-      "source": "the build's own target (1.40 bar); a wastegate or vane loop holds a steady full load within some 0.1 bar of its target once spooled (makers' boost-control tolerances; judgement)"
+      "source": "the build's own target (1.40 bar); a wastegate or vane loop holds a steady full load within some 0.1 bar of its target once spooled (makers' boost-control tolerances; judgement)",
+      "basis": "judgement"
     },
     {
       "name": "Charge temperature under boost",
@@ -290,7 +306,8 @@
         340
       ],
       "unit": "K",
-      "source": "an air-to-air intercooler of 0.6 to 0.8 effectiveness leaves the charge some 10 to 50 K over the outside air at full boost (makers' and tuners' intake-air-temperature logs; judgement): reported so the over-delivery at a given boost can be judged (the lead's ask)"
+      "source": "an air-to-air intercooler of 0.6 to 0.8 effectiveness leaves the charge some 10 to 50 K over the outside air at full boost (makers' and tuners' intake-air-temperature logs; judgement): reported so the over-delivery at a given boost can be judged (the lead's ask)",
+      "basis": "recalled"
     },
     {
       "name": "Lambda at full load under boost",
@@ -306,7 +323,8 @@
         2.0
       ],
       "unit": "ratio",
-      "source": "a turbo diesel at full load runs lambda 1.2 to 2 (smoke-limited; Heywood, Internal Combustion Engine Fundamentals, ch. 10)"
+      "source": "a turbo diesel at full load runs lambda 1.2 to 2 (smoke-limited; Heywood, Internal Combustion Engine Fundamentals, ch. 10)",
+      "basis": "recalled"
     },
     {
       "name": "Port gas at full load",
@@ -322,7 +340,8 @@
         1100
       ],
       "unit": "K",
-      "source": "what a thermocouple at a diesel's exhaust port reads at full load (a time mean, below the gas's mass mean: the blowdown is most of the mass and little of the time): some 850 to 1100 K (judgement; Heywood, Internal Combustion Engine Fundamentals, ch. 14); tel.exhaust.portThermocouple, card G's mixing cup"
+      "source": "what a thermocouple at a diesel's exhaust port reads at full load (a time mean, below the gas's mass mean: the blowdown is most of the mass and little of the time): some 850 to 1100 K (judgement; Heywood, Internal Combustion Engine Fundamentals, ch. 14); tel.exhaust.portThermocouple, card G's mixing cup",
+      "basis": "judgement"
     },
     {
       "name": "Header gas at full load",
@@ -338,7 +357,8 @@
         950
       ],
       "unit": "K",
-      "source": "a thermocouple a little way down a diesel's manifold reads some 700 to 950 K at full load (makers' pre-turbine limits near 1000 K; Heywood, Internal Combustion Engine Fundamentals, ch. 14); tel.exhaust.headerThermocouple"
+      "source": "a thermocouple a little way down a diesel's manifold reads some 700 to 950 K at full load (makers' pre-turbine limits near 1000 K; Heywood, Internal Combustion Engine Fundamentals, ch. 14); tel.exhaust.headerThermocouple",
+      "basis": "judgement"
     },
     {
       "name": "Port gas, mass mean (information)",
@@ -354,7 +374,8 @@
         3000
       ],
       "unit": "K",
-      "source": "the gas's mass (enthalpy) mean at the port, kept for information: above a thermocouple's reading, not a target (card G, f703892)"
+      "source": "the gas's mass (enthalpy) mean at the port, kept for information: above a thermocouple's reading, not a target (card G, f703892)",
+      "basis": "judgement"
     },
     {
       "name": "Quarter mile: time",
@@ -366,7 +387,8 @@
         18.61
       ],
       "unit": "s",
-      "source": "Hale's rule, ET = 5.825 (lb/hp)^(1/3) s, with the kind's published power (115 kW) and the build's mass: 16.18 s; 5 % quicker to 15 % slower for the build's own tyres and launch (card I's test holds drag radials to 8 %)"
+      "source": "Hale's rule, ET = 5.825 (lb/hp)^(1/3) s, with the kind's published power (115 kW) and the build's mass: 16.18 s; 5 % quicker to 15 % slower for the build's own tyres and launch (card I's test holds drag radials to 8 %)",
+      "basis": "recalled"
     },
     {
       "name": "Quarter mile: trap speed",
@@ -378,7 +400,8 @@
         39.9
       ],
       "unit": "m/s",
-      "source": "Hale's rule, trap = 234 (hp/lb)^(1/3) mph: 37.7 m/s (136 km/h), within 8 % under to 6 % over"
+      "source": "Hale's rule, trap = 234 (hp/lb)^(1/3) mph: 37.7 m/s (136 km/h), within 8 % under to 6 % over",
+      "basis": "recalled"
     },
     {
       "name": "Top speed",
@@ -390,7 +413,8 @@
         64.2
       ],
       "unit": "m/s",
-      "source": "where 0.85 of the kind's published power (115 kW) meets the build's drag area and 1.2 % rolling resistance at 1.225 kg/m^3: 216 km/h, within 7 % (a power balance, not a test)"
+      "source": "where 0.85 of the kind's published power (115 kW) meets the build's drag area and 1.2 % rolling resistance at 1.225 kg/m^3: 216 km/h, within 7 % (a power balance, not a test)",
+      "basis": "judgement"
     }
   ]
 }
