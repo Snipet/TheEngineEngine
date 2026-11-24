@@ -47,16 +47,30 @@ namespace tee::ui
     using DemoHook = void (*)(DemoExtras&);
     // The hooks this build found (generated from ui/views/*/register.h, as registeredWorkspaces()).
     const std::vector<DemoHook>& registeredDemos();
+    const std::vector<const char*>& registeredDemoIds();   // each hook's workspace id, in the same order
 
-    // `hooks`: with every registered workspace's own fields (DemoHook).
-    std::vector<FieldInfo> demoFields(bool hooks = true);
+    // Which hooks a demo applies: none, all, or those of the named workspaces (a stage's test: its own, so another
+    // package's data never moves its goldens).
+    struct DemoHooks
+    {
+        bool all = true;
+        std::vector<std::string> only;   // when not all: these workspaces' hooks
+        static DemoHooks none() { return { false, {} }; }
+        static DemoHooks of(std::vector<std::string> ids) { return { false, std::move(ids) }; }
+        DemoHooks(bool every = true) : all(every) {}   // true: all; false: none (as before)
+        DemoHooks(bool every, std::vector<std::string> ids) : all(every), only(std::move(ids)) {}
+        bool wants(const char* id) const;
+    };
+
+    // `hooks`: the registered workspaces' own fields (DemoHook) to add.
+    std::vector<FieldInfo> demoFields(const DemoHooks& hooks = true);
 
     class DemoEngine final : public TelemetrySource, public ScopeSource, public DynoSource
     {
     public:
         // `doc`: the document the dyno watches (nullptr: a fixed curve). `hooks`: with the registered workspaces' own
         // telemetry and Scope arrays (DemoHook).
-        explicit DemoEngine(const FieldDoc* doc = nullptr, bool hooks = true);
+        explicit DemoEngine(const FieldDoc* doc = nullptr, const DemoHooks& hooks = true);
 
         // A package's own (DemoHook): a telemetry value that follows the script (read when asked), a Scope array (the
         // function writes up to max entries into out and answers how many).
@@ -152,7 +166,7 @@ namespace tee::ui
         // The script at `t` seconds, its dyno curve made, and the pedals as the application would send them.
         // `hooks`: with the registered workspaces' own demo data (off: the demo alone, for pictures that must not move
         // when another package adds to it).
-        explicit DemoRig(double t = 4.6, bool hooks = true);
+        explicit DemoRig(double t = 4.6, const DemoHooks& hooks = true);
         void at(double t);
     };
 }

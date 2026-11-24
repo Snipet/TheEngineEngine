@@ -411,3 +411,27 @@ namespace
         return 0;
     }
 }
+
+namespace
+{
+    // Where the runners are tuned: card E's measured bumps on a 2.0 L four (main 7640 rpm at 0.40 m, 5250 at 0.60;
+    // lower 3180 and 2300) from the loaded-pipe relation, within 10 %; longer runners tune lower.
+    VIEW_TEST(testAirRam, "air.ram")
+    {
+        tee::ui::MemoryDoc doc{ air::airDemoFields() };
+        CHECK(air::setAirDemoBuild(doc, "na4-itb"));
+        const int c = doc.find("engine.compression");
+        if (c >= 0)
+            doc.set(c, 10.5);   // the inline four's (sim/core/layouts.fm)
+        const air::AirBuild b = air::resolveAir(doc);
+        const air::RamTune a = air::ramTune(b, 0.40), z = air::ramTune(b, 0.60);
+        CHECK_MSG(std::fabs(a.mainRpm / 7640.0 - 1.0) < 0.10, std::to_string(a.mainRpm) + " rpm at 0.40 m");
+        CHECK_MSG(std::fabs(z.mainRpm / 5250.0 - 1.0) < 0.10, std::to_string(z.mainRpm) + " rpm at 0.60 m");
+        CHECK_MSG(std::fabs(a.lowerRpm / 3180.0 - 1.0) < 0.10, std::to_string(a.lowerRpm) + " rpm, lower, at 0.40 m");
+        CHECK(z.mainRpm < a.mainRpm && z.hz < a.hz && air::ramTune(b, 0.0).mainRpm == 0.0);
+        // a drag of the length moves the stage's number: the picture of a variable manifold
+        AirRig rig("var-v8", 696, 574, 1.0f);
+        golden("air.ram.var-v8.dpi1", *rig.host);
+        return 0;
+    }
+}
