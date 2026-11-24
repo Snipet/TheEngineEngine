@@ -73,7 +73,7 @@
       "inDurSeat": 252,
       "inDur1mm": 220,
       "inLift": 0.0105,
-      "inCentre": 108,
+      "inCentre": 128.0,
       "exDurSeat": 248,
       "exDur1mm": 216,
       "exLift": 0.01,

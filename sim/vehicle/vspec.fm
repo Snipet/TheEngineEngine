@@ -32,6 +32,7 @@ enum
     VEH_DUALCLUTCH = 2,
     VEH_AUTOMATIC = 3,
     VEH_CVT = 4,
+    VEH_EIGHTEEN = 5,   // card D2's Roadranger (roadranger.fm): range, splitter, unsynchronised main box
 };
 
 module VehSpec
@@ -67,8 +68,8 @@ module VehSpec
     float brakeBias [[fminus::range(0.3, 0.9)]] [[fminus::default(0.65)]] [[ui::label("Brake bias to the front")]]
         [[ui::quantity("fraction")]];
     bool abs [[fminus::default(1)]] [[ui::label("ABS")]];
-    int gearbox [[fminus::range(0, 4)]] [[fminus::default(0)]] [[ui::label("Gearbox")]] [[ui::group("Gearbox")]]
-        [[ui::choices("Manual", "Sequential", "Dual clutch", "Automatic", "CVT")]];
+    int gearbox [[fminus::range(0, 5)]] [[fminus::default(0)]] [[ui::label("Gearbox")]] [[ui::group("Gearbox")]]
+        [[ui::choices("Manual", "Sequential", "Dual clutch", "Automatic", "CVT", "Eighteen-speed")]];
     int gears [[fminus::range(1, 18)]] [[fminus::default(6)]] [[ui::label("Forward gears")]];
     bool autoGearing [[fminus::default(1)]] [[ui::label("Gear it for the engine")]]
         [[ui::help("The reference's rule: the ratios and final drive chosen for the engine's power and redline")]];

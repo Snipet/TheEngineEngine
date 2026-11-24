@@ -234,7 +234,11 @@ module Ecu
         if (state == 1)
         {
             starterOn = 1.0f;
-            if (rpm > 550.0f)
+            // (running above 550 rpm, the reference's figure for a petrol engine; under ecu.model 1, at 0.75 of the
+            // engine's own idle when that is lower: a heavy diesel fires while it cranks at 400 to 550 rpm and idles at
+            // some 600 to 700, so a fixed 550 left a 15 L tractor's start to chance (card N1: its crank reached 540 rpm
+            // in the starter's second, already firing, and went off with the key; any 1 % change decided it))
+            if (rpm > (model1() ? fminf(550.0f, 0.75f * idleRpm) : 550.0f))
             {
                 state = 2;
                 starterOn = 0.0f;

@@ -66,10 +66,10 @@ module CarSpec
         [[ui::quantity("fraction")]];
     bool abs [[fminus::default(1)]] [[ui::label("ABS")]]
         [[ui::help("On: the brakes are released before a wheel locks")]] ;
-    int gearbox [[fminus::range(0, 4)]] [[fminus::default(0)]] [[ui::label("Gearbox")]]
-        [[ui::help("Manual (H-pattern and clutch), sequential (a dog box), dual clutch, automatic (torque converter) or CVT")]]
+    int gearbox [[fminus::range(0, 5)]] [[fminus::default(0)]] [[ui::label("Gearbox")]]
+        [[ui::help("Manual (H-pattern and clutch), sequential (a dog box), dual clutch, automatic (torque converter), CVT, or a truck's eighteen-speed (range and splitter, no synchromesh)")]]
         [[ui::group("Gearbox")]]
-        [[ui::choices("Manual", "Sequential", "Dual clutch", "Automatic", "CVT")]];
+        [[ui::choices("Manual", "Sequential", "Dual clutch", "Automatic", "CVT", "Eighteen-speed")]];
     int gears [[fminus::range(1, 18)]] [[fminus::default(6)]] [[ui::label("Forward gears")]]
         [[ui::help("How many forward gears")]] [[ui::unit("gears")]];
     bool autoGearing [[fminus::default(1)]] [[ui::label("Gear it for the engine")]]
