@@ -37,6 +37,24 @@
 
 ## Landed
 
+- **21:10 the lead's check-in; `main` fast-forwarded** 35286df to f69bf016 (141 commits; the tip compiles, lint ok).
+  **CI, newest finished fast jobs**: Linux green (c51e77a) and macOS green (7ef0f53), both holding the first
+  build, the level fix, the gamma, the tyres and the one loader; Windows failed at BUILD from 127c350 (a friend
+  declaration in tee/test/Scenario.h that clang-cl refuses once LoaderTest includes both Scenario headers): the
+  lead's 006c1a6c and C's 6b54fe2a fix it, no Windows job has finished on them yet. Main's run on 35286df was red
+  on all three (the truck air case, fixed since; Windows the same build break). The soak tier has reported
+  nothing since 18:14 because its job's limit was 90 minutes (the steward: 240 now, d5ca2d50). **Builds for the
+  owner**: macOS run 45484220368 (7ef0f53). **Since 20:34**: the exhaust's mean flow closed and live (G 8bb2c80f,
+  D 7bd08444; given over let out 1.000; the turbine had 13 to 22 % phantom gas at load, 45 % on a compression
+  brake): the brake test's oversized turbo went back to the matched one (D2 efd737ed), the VGT's spool is slower
+  than the single's on real gas (marked; N2), the blow-off case restated; a diesel's gas air until it burns (D
+  b551cd05: the 233 K start 5.2 s); the 7.0's idle fixed (N1 ba2fee9b: 750 sd 5, the spark trim's look-ahead =
+  the manifold's filling time); P's generator no longer derives parts from an engine's own targets (runners,
+  headers by class; baked cam maps to come); targets carry their basis (187 cited, 167 recalled, 370
+  judgement); table H: power 22, torque 11 of 31; N3: no common level left; the tuned four-valves' gap is their
+  headers' primaries and runners (content), the exhaust scavenges as it should; table I running (dc24110).
+  The interface: 130 of 130 view tests in the lead's build; round 7 of pictures (the TRY FIRST strip, AIR's
+  mismatch warnings). Next check-in 21:50.
 - **20:34 `main` fast-forwarded** aaa10cc to 35286df (159 commits). What held it at 20:28 was one default-run case
   failing at the tip (diesel's VGT against the single: two loops on one target, 210.1 against 211.4 kPa); the
   lead restated it within the loops' 2 % in D2's file (35286df), D2 being deep in a re-run; every other failure
