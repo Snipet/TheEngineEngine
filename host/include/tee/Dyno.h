@@ -53,6 +53,10 @@ namespace tee
         // the program can settle: with the exhaust's, the intake's charge heating (spec.intake.heatSettle) and the
         // boost's intercooler (spec.boost.heatSettle) where it has them; the predictor's settleExhaust likewise.
         bool settleExhaust = true;
+        // Steps run from the lowest speed up, whatever order `steps` gives, as a sweep runs and as the predictor
+        // approaches its points: knock control's retard has memory (a step a knock, given back at some 2 degrees a
+        // second), so a knock-limited step depends a little on where it came from. Off: in the order given.
+        bool upward = true;
         std::string torque = "engine.torque";   // the tel field the absorbed torque is read from
         std::vector<std::string> fields;        // more tel fields at each point: "boost.pressure", "engine.manifold"
         double sampleRate = 48000.0;
@@ -70,6 +74,11 @@ namespace tee
         double torque = 0.0;           // N m
         double power = 0.0;            // W
         std::vector<double> fields;    // DynoPlan::fields', in order
+        // Knock control's retard (tel.ecu.knockRetard) reached 0.5 degrees in the point's span: a knock-limited point,
+        // its torque a mean over the retard's sawtooth (a step's measure of 2 s or more spans whole teeth of it); the
+        // least and most retard over the span
+        bool knockLimited = false;
+        double retardMin = 0.0, retardMax = 0.0;
     };
 
     struct DynoCurve

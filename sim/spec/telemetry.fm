@@ -164,6 +164,10 @@ module ExhaustTel
         [[ui::help("What a thermocouple at the port's exit reads: a time mean weighted as a bead's heat transfer (portTemperature is the mass mean of the gas, hotter)")]];
     float headerThermocouple [[ui::label("Header thermocouple")]] [[ui::quantity("temperature")]]
         [[ui::help("What a thermocouple a little way down the primary reads: the port's, less the gas's mean drop to there")]];
+    int pipes [[ui::label("Pipes")]] [[ui::help("The exhaust's pipes as built (each costs some 37 ns a 96 kHz sample: docs/models/exhaust.md)")]];
+    int nodes [[ui::label("Junctions")]] [[ui::help("Its junctions of three or more pipes (some 51 ns each)")]];
+    int pairs [[ui::label("Joints")]] [[ui::help("Its joints of two pipes in series (some 17 ns each)")]];
+    int openEnds [[ui::label("Open ends")]] [[ui::help("Its radiating ends (some 46 ns each); the fixed part some 330 ns")]];
 };
 
 module EcuTel
