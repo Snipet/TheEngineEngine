@@ -13,11 +13,68 @@
 
 namespace tee
 {
+    namespace
+    {
+        // The fields that move the intake cam's best advance (Bake.h, intakeCamKey): the valvetrain whole (lobes,
+        // centres, phaser ranges, the stages and their lobes), the intake, the exhaust, the boost, the engine's
+        // geometry, the fuel. Hidden fields never (the heat-settle counters the dynos bump, the keys); the ECU's maps
+        // never (the cam map is the result; the spark is carried by knockLimitBaseKey). Over-including costs a bake,
+        // never a wrong map
+        bool movesCam(const FieldInfo& f)
+        {
+            if (f.hidden || f.block != "spec")
+                return false;
+            for (const char* prefix : {"spec.valve.", "spec.intake.", "spec.exhaust.", "spec.boost.", "spec.engine."})
+                if (f.path.rfind(prefix, 0) == 0)
+                    return true;
+            return f.path == "spec.fuel.kind" || f.path == "spec.fuel.grade";
+        }
+    } // namespace
+
+    std::int64_t intakeCamKey(const Build& build, const Sim& sim)
+    {
+        std::uint64_t h = 1469598103934665603ull;
+        const auto mixIn = [&h](const void* data, std::size_t n) {
+            const unsigned char* b = static_cast<const unsigned char*>(data);
+            for (std::size_t i = 0; i < n; ++i)
+            {
+                h ^= b[i];
+                h *= 1099511628211ull;
+            }
+        };
+        const std::uint64_t program = sim.sourceHash();
+        mixIn(&program, sizeof program);
+        const auto& all = build.fields().all();
+        for (std::size_t i = 0; i < all.size(); ++i)
+        {
+            if (!movesCam(all[i]))
+                continue;
+            mixIn(all[i].path.data(), all[i].path.size());
+            for (const double v : build.values(static_cast<int>(i)))
+                mixIn(&v, sizeof v);
+        }
+        // the spark the cam was chosen on (C's: the knock key without the cam maps, so a re-spark after the cam leaves
+        // the cam current and the two bakes end)
+        const std::int64_t spark = knockLimitBaseKey(build, sim);
+        mixIn(&spark, sizeof spark);
+        return static_cast<std::int64_t>(h & 0x7fffffffull);
+    }
+
+    bool intakeCamCurrent(const Build& build, const Sim& sim)
+    {
+        if (build.fieldOf("ecu.maps.camIn") < 0 || build.fieldOf("ecu.maps.camInAuto") < 0
+            || build.fieldOf("ecu.maps.camInKey") < 0)
+            return false;
+        return build.get("ecu.maps.camInAuto") == 0.0
+               && static_cast<std::int64_t>(build.get("ecu.maps.camInKey")) == intakeCamKey(build, sim);
+    }
+
     bool bakeIntakeCam(const std::shared_ptr<Sim>& sim, const Build& build, const CamBakeOptions& options,
                        CamBakeResult& result, std::string& error, const std::atomic<bool>* cancel)
     {
         const auto t0 = std::chrono::steady_clock::now();
         result = CamBakeResult{};
+        result.key = intakeCamKey(build, *sim);
         if (build.fieldOf("valve.inCentre") < 0 || build.fieldOf("valve.inPhaseRange") < 0)
         {
             error = "the program has no intake phaser to hold (spec.valve.inCentre, inPhaseRange)";
@@ -429,7 +486,9 @@ namespace tee
         for (std::size_t i = 0; i < x.size(); ++i)
             z[i] = {0.0, 0.0, best[i], best[i]};
         build.beginGesture();
-        const bool ok = build.setMap("ecu.maps.camIn", x, y, z) && build.set("ecu.maps.camInAuto", 0.0);
+        const bool ok = build.setMap("ecu.maps.camIn", x, y, z) && build.set("ecu.maps.camInAuto", 0.0)
+                        && (build.fieldOf("ecu.maps.camInKey") < 0
+                            || build.set("ecu.maps.camInKey", static_cast<double>(result.key)));
         build.endGesture();
         if (!ok)
             error = "the baked cam does not fit ecu.maps.camIn";
