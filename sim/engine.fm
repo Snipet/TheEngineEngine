@@ -253,7 +253,7 @@ module Engine
         tel.engine.cycle = mono.showCycle;
         tel.engine.crank = mono.theta;
         tel.boost.pressure = mono.boost.boost * 100000.0f;
-        tel.exhaust.portTemperature = mono.tPort;
+        tel.exhaust.portTemperature = mono.exh.tPort;
         tel.ecu.knockRetard = mono.ecu.kRet;
         tel.car.speed = driven ? fabsf(mono.car.v) : 0.0f;
         tel.car.gear = driven ? mono.car.gear : 0;
