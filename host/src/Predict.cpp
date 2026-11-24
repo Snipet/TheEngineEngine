@@ -3,6 +3,7 @@
 
 #include "tee/Denormals.h"
 #include "tee/Instance.h"
+#include "tee/Timeline.h"
 #include "tee/Warm.h"
 
 #include <algorithm>
@@ -62,6 +63,14 @@ namespace tee
                 hasState_ = find("tel.engine.state", state_);
                 hasFlags_ = find("tel.engine.flags", flagsH_);
                 hasRetard_ = find("ecu.one.knock.retard", retardH_);
+                for (const std::string& name : options_.fields)
+                {
+                    const FieldInfo* f = nullptr;
+                    std::size_t at = 0;
+                    if (!telemetryElement(fields, name, f, at, error))
+                        return false;
+                    extra_.push_back({f, at});
+                }
                 const bool custom = build.fieldOf("engine.custom") >= 0 && build.get("engine.custom") != 0.0;
                 const bool hostCan = holdCrank_ && find("mech.jBase", jBase_) && find("set.inertia", dialJ_)
                                      && find("set.load", dialLoad_) && !custom;
@@ -92,12 +101,21 @@ namespace tee
                 if (options_.settleExhaust)
                 {
                     Schema::Handle h;
-                    if (find("exh.tPort", h))
+                    // the exhaust's own settle (G, 859bc7d): a counter whose increase puts its gas and walls where the
+                    // present flow holds them, both models; else the host's secant on the reference's exhaust state
+                    const int section = fields.sectionOf("exhaust");
+                    heatSettle_ = find("spec.exhaust.heatSettle", heatSettleH_) && section >= 0;
+                    if (heatSettle_)
+                        exhaustRev_ = fields.sections()[static_cast<std::size_t>(section)].revOffset;
+                    else if (find("exh.tPort", h))
                         slow_.push_back({h, 0, 0, 1.0, 250.0, 1500.0, 0.0, 0.0, 0.0});
-                    // the reference's turbo: its shaft's speed, 0 to 1 (boost/boost.fm), spooling over seconds
-                    if (build.fieldOf("boost.kind") >= 0 && build.get("boost.kind") != 0.0 && find("boost.spool", h))
+                    // the reference's turbo (boost.model 0): its shaft's speed, 0 to 1 (boost/boost.fm), spooling over
+                    // seconds; the boost machine (model 1) keeps its own state
+                    const bool machine = build.fieldOf("boost.model") >= 0 && build.get("boost.model") != 0.0;
+                    if (!machine && build.fieldOf("boost.kind") >= 0 && build.get("boost.kind") != 0.0
+                        && find("boost.spool", h))
                         slow_.push_back({h, 0, 0, 0.15 / 60.0, 0.0, 1.0, 0.0, 0.0, 0.0});
-                    if (find("exh.tWall", h))
+                    if (!heatSettle_ && find("exh.tWall", h))
                         for (std::size_t i = 0; i < h.count; ++i)
                             slow_.push_back({h, i, 1, 1.0, 250.0, 1500.0, 0.0, 0.0, 0.0});
                 }
@@ -265,7 +283,9 @@ namespace tee
                 const double perCycle = kFourPi / std::max(speed, 1.0) * options_.sampleRate;   // samples
                 double previous = 0.0, held = 0.0;
                 faulted_ = false;
-                const int settling = slow_.empty() ? 0 : fresh_ ? 8 : 6;
+                // the exhaust's settle (after the first cycle at this speed) wants some 0.1 s before a measure
+                const int afterSettle = heatSettle_ ? static_cast<int>(std::ceil(0.1 * speed / kFourPi)) : 0;
+                const int settling = std::max(slow_.empty() ? 0 : fresh_ ? 8 : 6, afterSettle);
                 // a build whose knock control acts gets as many cycles as its retard needs, to some two seconds
                 const int knockMost = hasRetard_ ? std::max(options_.maxCycles, static_cast<int>(2.0 * speed / kFourPi)) : 0;
                 const int most = options_.holdSeconds > 0.0 ? 1 << 30 : std::max(options_.maxCycles, knockMost) + settling;
@@ -299,13 +319,19 @@ namespace tee
                     // the settling cycles (above), after the first; their torque is not counted
                     if (c >= 1 && c <= settling)
                     {
-                        settleStep(c - 1, total / options_.sampleRate);
+                        if (!slow_.empty() && c - 1 < (fresh_ ? 8 : 6))
+                            settleStep(c - 1, total / options_.sampleRate);
                         p.cycles = c + 1;
                         p.history.push_back(t);
                         continue;
                     }
                     if (settling > 0 && c == 0)
-                        settleBegin();
+                    {
+                        if (!slow_.empty())
+                            settleBegin();
+                        if (heatSettle_)
+                            askHeatSettle();
+                    }
                     p.cycles = c + 1;
                     p.history.push_back(t);
                     // the cycles counted: the first after the speed (or the settling) moved is not
@@ -331,6 +357,10 @@ namespace tee
                 }
                 p.power = p.torque * speed;
                 p.knockRetard = knockRetard();
+                for (const auto& [f, at] : extra_)
+                    p.fields.push_back(readScalar(static_cast<const unsigned char*>(instance_->data()) + f->offset
+                                                      + at * scalarBytes(f->scalar),
+                                                  f->scalar));
                 fresh_ = false;
                 return p;
             }
@@ -395,6 +425,17 @@ namespace tee
             void set(const Schema::Handle& h, double v) noexcept { instance_->write(h, v); }
 
             // n samples held at `speed`; the mean torque the brake took over them (N m)
+            // spec.exhaust.heatSettle raised by one, and the exhaust section's rev, so the simulator takes it
+            void askHeatSettle()
+            {
+                unsigned char* data = static_cast<unsigned char*>(instance_->data());
+                instance_->write(heatSettleH_, instance_->read(heatSettleH_) + 1.0);
+                std::int32_t rev = 0;
+                std::memcpy(&rev, data + exhaustRev_, 4);
+                ++rev;
+                std::memcpy(data + exhaustRev_, &rev, 4);
+            }
+
             // The knock retard's mean over the retarded cylinders, degrees (0 without knock control's state)
             double knockRetard() const
             {
@@ -545,7 +586,10 @@ namespace tee
             bool begun_ = false;
             bool hasTorque_ = false, redline_ = false, idle_ = false, holdCrank_ = false, hasState_ = false,
                  absorber_ = false, hasFlags_ = false, faulted_ = false, hasRetard_ = false;
-            Schema::Handle flagsH_, retardH_;
+            Schema::Handle flagsH_, retardH_, heatSettleH_;
+            std::vector<std::pair<const FieldInfo*, std::size_t>> extra_;   // PredictOptions::fields
+            bool heatSettle_ = false;
+            std::size_t exhaustRev_ = 0;
             Schema::Handle state_, absorberH_;
             std::vector<Slow> slow_;
             std::vector<std::pair<Schema::Handle, double>> held_;   // Warm.h's warm engine
@@ -741,7 +785,7 @@ namespace tee
         std::uint64_t h = build.hash();
         for (const double v : {static_cast<double>(o.coarse), static_cast<double>(o.points), o.from, o.to, o.pedal,
                                o.tolerance, static_cast<double>(o.minCycles), static_cast<double>(o.maxCycles),
-                               o.sampleRate, static_cast<double>(o.block), o.startSeconds, o.warm ? 1.0 : 0.0, o.warmupSeconds, o.settleExhaust ? 1.0 : 0.0, o.holdSeconds, o.brake == "host" ? 1.0 : o.brake == "program" ? 2.0 : 0.0, o.innerRate})
+                               o.sampleRate, static_cast<double>(o.block), o.startSeconds, o.warm ? 1.0 : 0.0, o.warmupSeconds, o.settleExhaust ? 1.0 : 0.0, o.holdSeconds, o.brake == "host" ? 1.0 : o.brake == "program" ? 2.0 : 0.0, o.innerRate, static_cast<double>(o.fields.size())})
             h = mix(h, v);
         return h;
     }
