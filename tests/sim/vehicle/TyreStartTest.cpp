@@ -31,7 +31,7 @@ namespace
 } // namespace
 
 TEST_CASE("tyres.start: the tyres start at the air's temperature, again after a reset, in their window when warm",
-          "[vehicle][tyre]")
+          "[vehicle][tyre][sim]")
 {
     for (const char* build : {"combo/v8", "archetypes/v12-65", "archetypes/rotary-twin-na-side-port"})
     {
