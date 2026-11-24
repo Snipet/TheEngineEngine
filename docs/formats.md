@@ -206,9 +206,10 @@ What a build should measure as, each target with its source (card C, section 8).
   `speedAtMaxPower` or `torqueAt` (with `"at"`).
 - Every target says its `"source"` in words; a target the program cannot be measured for yet (a field it lacks) is
   `n/a`, no failure.
-- A dyno target on a program with no brake of its own (no `tel.engine.torque` yet) is measured on the predicted
-  curve's steady points (`tee/Predict.h`, the host braking the crank, every 15 rad/s over the plan's speeds), and the
-  table says so.
+- A dyno target is measured on the predicted curve's steady points (`tee/Predict.h`: the engine warm, the exhaust's
+  temperatures settled, every 15 rad/s over the plan's `from` to `to`), the curve the interface's ribbon shows; with
+  `"sweep": true` (or `steps`) on the dyno runner instead (`tee::runDyno`, the program's MODE_DYNO_ENGINE), whose
+  curve depends on how long the sweep took (the exhaust's walls warm over minutes).
 - `tee-validate` runs each file twice: the build with every model switch at the reference's setting (Spec switches
   named `model` or `custom`, and those whose help starts "Off: the reference": `tee::referenceSettings`) and the build
   as it is; it prints both columns and which targets each misses. A miss of the reference's is reported, not failed;

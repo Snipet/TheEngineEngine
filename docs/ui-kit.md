@@ -186,6 +186,18 @@ A generated page is `.gui` text (`pageGui`), so it lays out, draws and is tested
 with more than 60 controls is cut into pages (`splitPages`, a group kept whole where it fits), since one panel shows
 64 parameters at most (J1's `kMaxControls`).
 
+**Arrays.** An array of numbers in the Spec (`float pin[MAX_CYL]`) is a field an element: `cyl.pin[2]`, labelled from
+the array's label and its index counted from 1 ("Crank pin 3"), with the array's range, unit and choices
+(`FieldInfo::array`, `arrayLabel`, `element`, `extent`). A `.gui` page names an element as `knob engine.pin[2]`; an
+index past the array is a note that gives its extent ("engine.pin[20] is past the array: it has 16 elements,
+engine.pin[0] to engine.pin[15]"). A generated page shows an array of up to 8 elements a control each, in its group's
+row (`kArrayKnobs`); of 9 to 16 elements one row of cells, the `array PATH` element (a `MapEdit` of one row: a cell
+typed, a choice by its name or index, or dragged, one undo step each; the header of element numbers is not
+editable); of more than 16 a control each again (and `splitPages` counts them). An array of arrays is a field an
+element too, `engine.gain[1][2]`, labelled "Gain 2.3" (`FieldInfo::shape`), a control each on a generated page; an
+element outside it is a note that gives its shape ("cyl.gain[2][0] is not an element: cyl.gain has 2 x 3 elements"). The Spec's per-cylinder arrays are
+`MAX_CYL` (16) long, so they come as rows of cells.
+
 **Until and after card C.** `FieldDoc` is the small interface the binding needs (fields with their attributes,
 values in SI by index, whole tables, gestures, a revision). `MemoryDoc` implements it for `ui/` alone and its tests,
 with a made-up Spec of every field kind (`tests/ui/MockSpec.h`); `BuildDoc` implements it over the real `tee::Build`

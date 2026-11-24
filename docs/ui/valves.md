@@ -11,9 +11,15 @@ simulator's own generator (`sim/valvetrain/cam.fm`, ported in `ValvesModel.cpp`)
 fatness, its ends eased by a ramp solved so the 1 mm duration comes out as asked. So the curve under a handle is the
 curve the engine runs.
 
+**Two layouts.** On the frame's small stage the editor runs across the whole width, the timing ring under it at the
+left, and one panel whose tabs choose BENCH, PHASERS or SPRINGS at the right. On a large stage the editor has the left,
+the ring and the bench the right, and the phasers and the springs sit under the editor; each folds to a one-line title
+when the build has nothing for it, and the editor takes the height. `ui.valves.framestage` pictures both, with E's
+fields and with none, and checks the text as ENGINE's test does.
+
 | Region | What it is |
 |---|---|
-| CAM EDITOR | Intake (cool, left of the overlap) and exhaust (hot) lift against crank angle over the whole cycle, TDC and BDC marked and named (FIRING, OVERLAP). Overlap is the shaded area under both, and its angle at the seat is the first number over the plot; then the lobe separation, and the **room** between each valve and a flat-top piston near the overlap's top (amber under 1 mm). The piston's room above its crown is ghosted as a curve, so a valve coming near it shows. A phaser's range is a band along the top, the intake's advancing, the exhaust's retarding, with a disc where it is now; when it has moved, the parked lobe is ghosted behind the running one. A second stage is ghosted and named (STAGE A or B); the stage engaged is the solid one. A vertical line is the crank now. |
+| CAM EDITOR | Intake (cool, left of the overlap) and exhaust (hot) lift against crank angle over the whole cycle, TDC and BDC marked and named (FIRING, OVERLAP). Overlap is the shaded area under both, and its angle at the seat is the first number over the plot; then the lobe separation, and the **room** between each valve and a flat-top piston near the overlap's top (amber under 1 mm). The piston's crown is ghosted as a grey curve on the same length scale (its room above the crown), and a bar in each valve's ink marks where that valve comes nearest it. A key under the axis says what each faint line is. A phaser's range is a band along the top, the intake's advancing, the exhaust's retarding, with a disc where it is now; when it has moved, the parked lobe is ghosted behind the running one. A second stage is ghosted and named (STAGE A or B); the stage engaged is the solid one. A vertical line is the crank now. |
 | TIMING | The classic diagram: the exhaust's open period as the outer arc, the intake's as the inner, round TDC (up) and BDC (down); IVO, IVC, EVO, EVC in the four corners as a cam card quotes them (BTDC, ABDC, BBDC, ATDC); the overlap in the middle. |
 | FLOW BENCH | Flow (CFM at 28 in of water) against lift, 0.050 to 0.800 in, for each valve's head (`sim/valvetrain/bench.fm` through `area.fm`'s effective area), a mark at a quarter of each valve's diameter (where more lift buys little), and a disc where each valve's lift is now. |
 | PHASERS AND STAGES | Each phaser's place now out of its range, as a number and a bar; the stages ("B from 5500 rpm") and which is engaged, a lamp and words; the continuous lift's share now. |
