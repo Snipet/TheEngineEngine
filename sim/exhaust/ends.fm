@@ -1,0 +1,152 @@
+// ends.fm: where the exhaust meets the air, and the bangs in its pipes (card G, the exhaust builder).
+//
+// A radiating end (XEnd) is the reference's open tail end (sim/ref/engine.fm, the end of sampleTick), made one of a
+// list: a tailpipe's, a tip's, an open stack's (zoomies), a cutout's, an external wastegate's pipe. Each is:
+//   - the open end's reflection: Silva et al.'s fit to an unflanged pipe's (within 8 % to ka = 2) for the hot gas
+//     inside, as the reference's pipes() designs it: the lows come back inverted, the highs go out;
+//   - the jet leaving: it loses its momentum (K 1 out of the pipe, 0.5 drawn back in: pipes.fm, lossFlow), on the
+//     drive's slow part, as every junction here does;
+//   - what it radiates: the rate the flow out changes (a monopole's far field goes as dq/dt), plus the jet's own
+//     mixing noise in a band about a Strouhal number of 0.3, growing as the cube of its speed, puffing with each pulse
+//     (the reference's, unchanged);
+//   - a position tag (rear left, rear right, rear centre, side, front, up) that wave 2's listener will place; until
+//     then XNet sums the list into the reference's two channels as the tags suggest.
+// What it leaves out: the end's directivity (the reference's listener beams the highs along the axis: wave 2) and the
+// end's own temperature changing within a cycle (it follows the section's gas temperature every 16 samples).
+//
+// XPop is the reference's Pop (sim/ref/engine.fm), copied unchanged until the carved one lands in sim/exhaust/.
+#pragma once
+#include "../ref/pipes.fm"
+#include "../ref/biquad.fm"
+#include "../ref/onepole.fm"
+
+enum
+{
+    XTAG_REAR_C = 0,    // behind, in the middle: both channels (the reference's single tail)
+    XTAG_REAR_L = 1,
+    XTAG_REAR_R = 2,
+    XTAG_SIDE_L = 3,    // out of the side, before the rear wheel
+    XTAG_SIDE_R = 4,
+    XTAG_FRONT = 5,     // open stacks, a cutout under the engine, a wastegate's pipe
+    XTAG_UP = 6         // a truck's stack
+};
+
+module XEnd
+{
+    Biquad r;           // the reflection
+    float s;            // the exit loss's slow drive
+    float kOut;         // the exit's loss, out and back in (lossKap)
+    float kIn;
+    float radPrev;      // the last sample's flow out, m^3/s
+    float qJet;         // the flow out smoothed: the jet's speed
+    OnePole tnHp;       // the jet's noise band
+    OnePole tnLp;
+    float jetN;
+    int tag;            // XTAG_*
+    int duct;           // the duct it ends, at its far end (XNet's index)
+    float sig;          // this sample's radiation (m^3/s^2 and the jet's share)
+    float q;            // this sample's flow out, m^3/s
+    float qSum;         // the flow out summed since the host last read it (m^3/s samples): for the conservation test
+    float lev;          // the radiation's mean square, smoothed over some 50 ms
+    float tGas;         // the gas's temperature it was designed for, K
+
+    void clear()
+    {
+        r.clear();
+        s = 0.0f;
+        radPrev = 0.0f;
+        qJet = 0.0f;
+        tnHp.clear();
+        tnLp.clear();
+        sig = 0.0f;
+        q = 0.0f;
+        qSum = 0.0f;
+        lev = 0.0f;
+    }
+
+    // The end of a pipe of bore dEnd (m), its gas at tEnd (K) in air at tAmb, at the engine's rate: the reference's
+    // pipes(), for one end
+    void design(float dEnd, float rhoGas, float tEnd, float tAmb, float rate)
+    {
+        tGas = tEnd;
+        const float aEnd = 0.5f * dEnd;
+        const float tau = aEnd / 347.2f;
+        const float kEnd = 1.018f * sqrtf(tEnd / tAmb);
+        const float nb1 = (0.613f * kEnd - 0.78f) * tau;
+        const float nb2 = 0.2285f * (kEnd - 1.0f) * tau * tau;
+        const float da1 = (0.613f * kEnd + 0.78f) * tau;
+        const float da2 = 0.2285f * (kEnd + 1.0f) * tau * tau;
+        const float kb = 2.0f * rate;
+        const float kb2 = kb * kb;
+        r.design(-1.0f + nb1 * kb + nb2 * kb2, -2.0f - 2.0f * nb2 * kb2, -1.0f - nb1 * kb + nb2 * kb2,
+                 1.0f + da1 * kb + da2 * kb2, 2.0f - 2.0f * da2 * kb2, 1.0f - da1 * kb + da2 * kb2);
+        const float aPipe = 0.785398f * dEnd * dEnd;
+        kOut = lossKap(1.0f, rhoGas, aPipe);
+        kIn = lossKap(0.5f, rhoGas, aPipe);
+    }
+
+    // The jet's band about fPeak (the reference's jetBand)
+    void band(float fPeak, float rate)
+    {
+        const float f = fminf(fmaxf(fPeak, 60.0f), 2500.0f);
+        tnHp.set(0.5f * f, rate);
+        tnLp.set(3.0f * f, rate);
+        jetN = sqrtf(rate / (2.693f * f));
+    }
+};
+
+// A pop in the pipes: unburnt fuel lighting in the hot exhaust. A sharp pressure pulse and a crackle after it.
+// (The reference's Pop, copied.)
+module XPop
+{
+    float amp;
+    int n;
+    int len;
+    float crackle;
+    float decay;
+    float pClick;
+    float aClick;
+    int rs;
+
+    float rnd()
+    {
+        const int hi = rs / 127773;
+        const int lo = rs % 127773;
+        rs = 16807 * lo - 2836 * hi;
+        if (rs <= 0)
+            rs += 2147483647;
+        return 2.0f * ((float)rs / 2147483647.0f) - 1.0f;
+    }
+
+    void fire(float a, float rate, int seed)
+    {
+        amp = a;
+        n = 0;
+        len = (int)((0.00025f + 0.0006f * (0.5f + 0.5f * rnd())) * rate) + 2;
+        crackle = 0.55f * a;
+        decay = expf(-1.0f / ((0.004f + 0.012f * (0.5f + 0.5f * rnd())) * rate));
+        pClick = 1.0f - 0.07f * 48000.0f / rate;
+        aClick = rate / 48000.0f;
+        if (rs == 0)
+            rs = seed;
+    }
+
+    float tick()
+    {
+        float y = 0.0f;
+        if (n < len)
+        {
+            const float s = sinf(3.14159265f * (float)n / (float)len);
+            y = amp * s;
+            n += 1;
+        }
+        if (crackle > 1.0f)
+        {
+            const float r = rnd();
+            if (r > pClick)
+                y += aClick * crackle * rnd();
+            crackle *= decay;
+        }
+        return y;
+    }
+};

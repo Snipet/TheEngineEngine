@@ -21,6 +21,19 @@
 
 ## Landed
 
+- 12:39 two-strokes, standalone (wave 2's card T, started early by D's session while it waits for K3b): the cylinder,
+  the crankcase, the expansion chamber from the reference's ducts; 7 tests; four-stroking at a closed throttle
+  appears unscripted.
+- 12:38 E (valvetrain and induction) and 12:28 H (combustion and ECU): standalone halves done, 14 and 19 tests;
+  integration waits for K3b. 12:27 D (mechanics, layouts): standalone half done, 16 tests, 33 layout presets.
+- 12:36 B: the application runs on Linux's GPU path under Xvfb with the reference engine and J1's panel; the three
+  reference shaders were drawn for the first time. The speedometer's numerals look wrong from 100 up (being checked).
+- 12:30 K3a: the new contract (`Engine`, Spec, Controls, Telemetry) over the unchanged reference.
+- **12:25 to 12:45 checkpoint M1, step 1, Windows: passed in full.** The owner ran FunkGui's gallery artefacts on a
+  real Windows machine (3840 x 2160 at 150 %, Direct3D 11): the primitives drew correctly and sharp; near 0 % CPU
+  at rest; the services section's Canvas-drawn menu, the three file dialogs and the clipboard all work; `--resize`
+  (run 45394491459) resizes live by dragging and maximises ("works great"). A section's window is fixed-size by
+  design. macOS: the same run's artefact drew on Metal on the CI runner; no person has run it yet.
 - 11:19 stage 1: the abstract plan, reviewed; the answers recorded.
 - 11:45 stage 2: every file of this folder.
 - 11:52 the keel's first slice: the build, the bootstrap, `sim/ref/`, `tee_host`, `tee-render`, CI (first run green).

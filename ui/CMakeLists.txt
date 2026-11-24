@@ -76,7 +76,7 @@ function(tee_ui_warnings target)
   endif()
   target_compile_features(${target} PUBLIC cxx_std_20)
   if(CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
-    target_compile_options(${target} PRIVATE /W4 /WX)
+    target_compile_options(${target} PRIVATE /W4 /WX $<$<CXX_COMPILER_ID:Clang>:/clang:-ffp-contract=off>)
     target_compile_definitions(${target} PRIVATE _CRT_SECURE_NO_WARNINGS NOMINMAX)
   else()
     target_compile_options(${target} PRIVATE -Wall -Wextra -Wshadow -Wpedantic -Werror -ffp-contract=off)
@@ -104,7 +104,10 @@ if(TARGET FunkGui::desktop OR TARGET FunkGui::gpu)
 endif()
 
 file(GLOB _tee_ui_kit_sources CONFIGURE_DEPENDS "${TEE_UI_DIR}/kit/gui/*.cpp" "${TEE_UI_DIR}/kit/gui/*.h"
-                                                "${TEE_UI_DIR}/kit/shaders/*.h")
+                                                "${TEE_UI_DIR}/kit/shaders/*.h"
+                                                # J2: the widgets and the binding to a Spec's fields
+                                                "${TEE_UI_DIR}/kit/widgets/*.cpp" "${TEE_UI_DIR}/kit/widgets/*.h"
+                                                "${TEE_UI_DIR}/kit/bind/*.cpp" "${TEE_UI_DIR}/kit/bind/*.h")
 add_library(tee_ui_kit STATIC ${_tee_ui_kit_sources}
   "${TEE_UI_DIR}/kit/shaders/ShaderText.cpp" "${TEE_UI_DIR}/kit/shaders/ShaderLib.cpp"
   "${TEE_UI_DIR}/kit/shaders/ShaderFont.cpp" "${TEE_UI_DIR}/kit/shaders/Registry.cpp")
@@ -126,6 +129,19 @@ tee_ui_warnings(tee-shadergen)
 include("${TEE_UI_REPO}/cmake/TeeShaders.cmake")
 
 add_subdirectory(ref)
+
+# J2: the application's frame of screens (ui/app/), over a FieldDoc (ui/kit/bind/Fields.h).
+file(GLOB _tee_ui_app_sources CONFIGURE_DEPENDS "${TEE_UI_DIR}/app/*.cpp" "${TEE_UI_DIR}/app/*.h")
+add_library(tee_ui_app STATIC ${_tee_ui_app_sources})
+target_link_libraries(tee_ui_app PUBLIC tee_ui_kit)
+tee_ui_warnings(tee_ui_app)
+
+# J2: the binding to card C's tee::Build (ui/kit/bind/host/), where the host library is (the root's build).
+if(TARGET tee_host)
+  add_library(tee_ui_build STATIC "${TEE_UI_DIR}/kit/bind/host/BuildDoc.cpp" "${TEE_UI_DIR}/kit/bind/host/BuildDoc.h")
+  target_link_libraries(tee_ui_build PUBLIC tee_ui_app tee_host)
+  tee_ui_warnings(tee_ui_build)
+endif()
 
 # What the application links for its Panel (shell/include/tee/app/MainPanel.h: while no target tee_ui exists the shell
 # uses its placeholder).

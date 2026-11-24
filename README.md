@@ -83,6 +83,24 @@ build-dev/bin/tee-bench                                          # the table of 
 `tee-render --help` lists the rest; [docs/formats.md](docs/formats.md) describes presets and scenarios. Nothing a
 tool or a test writes is committed: it goes under `out/`.
 
+## Tests
+
+Catch2, run by `ctest` (`ctest --preset dev`; one test by name with `-R`). Adding a test edits no CMake:
+
+- **The host's, the tools' and the reference's**: every `.cpp` in `tests/` is a source of `tee-tests`. Drop a file
+  in, with `TEST_CASE`s in it; `tests/support/` has the reference's player, presets and scenarios (`Ref.h`) and the
+  measures a test claims (`Audio.h`: `tee::test::nullDepth`, levels, a spectrum's strongest line).
+- **A simulator package's** (`sim/<package>/`): its own directory, `tests/sim/<package>/`, with a `CMakeLists.txt`
+  of its own, which a glob in `tests/CMakeLists.txt` adds: nobody edits the root's or `tests/`'s CMake to add one.
+  That `CMakeLists.txt` begins with a guard, so that a second read does nothing
+  (`if(TARGET tee-tests-<package>) return() endif()`); makes one executable, `tee-tests-<package>`, from the
+  directory's sources (`tee_target_defaults`, `Tee::host`, `Catch2::Catch2WithMain`); and registers its tests with
+  `catch_discover_tests(tee-tests-<package> DISCOVERY_MODE PRE_TEST TEST_PREFIX "<package>." PROPERTIES TIMEOUT 900)`,
+  so that `ctest -R '^<package>\.'` runs the package's alone. `tests/CMakeLists.txt` has the rule in full.
+
+Nobody here can listen, and nobody has a screen: a test claims what it measured (samples equal, a difference in dB,
+a speed, a spectrum's line), never that something sounds or looks right.
+
 ## A window without a screen
 
 `scripts/xvfb-run.sh <command>` runs a command on a headless X display with a window manager and Mesa's software

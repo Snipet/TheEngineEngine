@@ -1,4 +1,4 @@
-// car.fm: the car the engine drives (DRIVE CAR), or the semi truck (DRIVE TRUCK): a friction clutch, a gearbox (the
+// vehicle/car.fm: the car the engine drives (DRIVE CAR), or the semi truck (DRIVE TRUCK): a friction clutch, a gearbox (the
 // car's six gears, the truck's eighteen, and reverse) with its final drive, the driveline's give, the wheels on their
 // tyres, and the vehicle on the road against its air, its rolling and its brakes.
 //
@@ -23,8 +23,8 @@
 //   y = car.road(kSq)               one sample of the tyres on the road (their squeal at its share kSq) and the
 //                                   driveline's clunk
 #pragma once
-#include "onepole.fm"
-#include "biquad.fm"
+#include "lib/onepole.fm"
+#include "lib/biquad.fm"
 
 module Car
 {
@@ -71,6 +71,16 @@ module Car
     Biquad ring;
     float clunk;        // its strike, for the next sample
     float kStrike;      // a strike's size for the same loudness at any sample rate
+    // the driver's side: the shifter and the paddles (DRIVE CAR, TRUCK)
+    int lastDrive;      // the DRIVE it was set up for (0: none yet)
+    int lastLever;      // the shifter where it was: it moving picks its gear
+    int lastPos;        // a truck's shifter's last forward position (coming down from it picks the highest of three)
+    int lastButtons;
+    float shiftT;       // seconds into a paddle shift (negative: none)
+    int shiftTo;
+    bool shiftUp;
+    bool shiftCut;      // the ignition cut through an upshift (the ECU reads it)
+    float kPedal;       // the pedals' smoothing, every 16 samples
 
     float rnd()
     {
@@ -99,6 +109,11 @@ module Car
         truck = 0;
         nGears = 6;
         reset();
+        lastDrive = 0;
+        lastLever = 0;
+        lastPos = 0;
+        shiftT = -1.0f;
+        kPedal = 1.0f - expf(-16.0f / (0.012f * rate));
     }
 
     void reset()
@@ -356,5 +371,109 @@ module Car
         y += 4.0f * thud.tick(clunk) + 1.0f * ring.tick(clunk);
         clunk = 0.0f;
         return y;
+    }
+
+    // The vehicle at rest when DRIVE first turns to CAR or TRUCK (or from one to the other); the shifter, when it moves,
+    // puts its gear in (whatever the paddles chose meanwhile; its seventh is the sixth). A truck's six positions hold
+    // three gears each (1 to 3, 4 to 6, ... 16 to 18): going up, or in from a standstill, puts in the position's lowest,
+    // coming down its highest; the paddles split between them.
+    void followLever(int drive, int lever)
+    {
+        if (lastDrive != drive)
+        {
+            lastDrive = drive;
+            reset();
+            lastLever = 0;
+            lastPos = 0;
+            shiftT = -1.0f;
+            shiftCut = false;
+        }
+        const int h = lever < -1 ? -1 : (lever > 6 ? 6 : lever);
+        if (h != lastLever)
+        {
+            lastLever = h;
+            shiftT = -1.0f;
+            shiftCut = false;
+            robot = 1.0f;
+            int g = h;
+            if (drive == 2 && h > 0)
+            {
+                g = lastPos > h && kmh() > 3.0f ? 3 * h : 3 * h - 2;
+                lastPos = h;
+            }
+            select(g);
+        }
+    }
+
+    // Every 16 samples, driven: the car for the engine (its inertia, its torque, the torque its gears are chosen for), the
+    // mass, the pedals, the shifter and the paddles (buttons: bit 16 the right, 32 the left). Returns the throttle the
+    // pedal asks (with a blip through a paddle's downshift).
+    float drive16(int drive, float d16, float jEngine, float peak, float gearTorque, float kg, float redRpm, float bike,
+                  float clutch, float brake, int lever, int buttons, float gas, float rpm, float idleRpm, float rpmAvg)
+    {
+        followLever(drive, lever);
+        configure(jEngine, peak, gearTorque, kg, redRpm, bike, drive == 2 ? 1 : 0);
+        pedals(clutch, brake, kPedal);
+        // the paddles shift in turn while the shifter stands in neutral: the right one up, the left one down, through
+        // R, N, 1 to 6, a truck's to 18 (into reverse only at a crawl, and never down into a gear the speed would take
+        // past the redline); with a truck's shifter in a gear they split between its three
+        const int down = buttons & ~lastButtons;
+        lastButtons = buttons;
+        const bool split = drive == 2 && lastLever > 0;
+        if ((lastLever == 0 || split) && shiftT < 0.0f)
+        {
+            const int lo = split ? 3 * lastLever - 2 : -1;
+            const int hi = split ? 3 * lastLever : nGears;
+            int to = gear;
+            if ((down & 16) != 0)
+                to = gear < hi ? gear + 1 : hi;
+            else if ((down & 32) != 0)
+                to = gear > lo ? gear - 1 : lo;
+            if (to == -1 && kmh() > 5.0f)
+                to = 0;
+            if (to > 0 && to < gear && fabsf(wW * ratioOf(to)) * 9.5492966f > 0.97f * redRpm)
+                to = gear;
+            if (to != gear)
+            {
+                shiftTo = to;
+                shiftUp = to > gear;
+                shiftT = 0.0f;
+            }
+        }
+        float ped = gas;
+        // the paddles' own clutch: it pulls away and stops as a paddle car's does, closing with the revs from just over
+        // the idle (so they never stall it); the shifter's clutch is the pedal alone
+        float rob = 1.0f;
+        if (lastLever == 0 && gear != 0)
+        {
+            // (a truck's diesel turns over a narrower range: its clutch closes over a third as many revs)
+            const float sp = drive == 2 ? fminf(fmaxf((redRpm - idleRpm) / 6000.0f, 0.2f), 1.0f) : 1.0f;
+            const float x = fminf(fmaxf((rpm - idleRpm - 150.0f * sp) / (900.0f * sp), 0.0f), 1.0f);
+            rob = x * x * (3.0f - 2.0f * x);
+        }
+        robot = rob;
+        if (shiftT >= 0.0f)
+        {
+            // a paddle's shift, as a robotised gearbox does it: its clutch opens (an upshift cuts the ignition), the gear
+            // goes in, the clutch closes again; a downshift blips the throttle to the new gear's speed meanwhile (a
+            // truck's automated gearbox takes two and a half times as long: half a second)
+            const float tk = drive == 2 ? 2.5f : 1.0f;
+            shiftT += d16;
+            if (shiftT >= 0.05f * tk && gear != shiftTo)
+                select(shiftTo);
+            robot = rob * (shiftT < 0.035f * tk ? 1.0f - shiftT / (0.035f * tk) : (shiftT < 0.06f * tk ? 0.0f : fminf((shiftT - 0.06f * tk) / (0.15f * tk), 1.0f)));
+            shiftCut = shiftUp && shiftTo > 1 && shiftT < 0.06f * tk;
+            if (!shiftUp && shiftTo != 0)
+            {
+                const float want = fabsf(wW * ratioOf(shiftTo)) * 9.5492966f;
+                ped = fmaxf(ped, fminf(fmaxf((want - rpmAvg) * 0.002f, 0.0f), 1.0f));
+            }
+            if (shiftT >= 0.21f * tk)
+            {
+                shiftT = -1.0f;
+                shiftCut = false;
+            }
+        }
+        return ped;
     }
 };

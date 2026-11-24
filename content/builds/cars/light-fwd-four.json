@@ -1,0 +1,29 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Light front-drive four",
+  "notes": "A light front-drive hatchback with a manual six: 1150 kg, 62 % on the front, street tyres, an open front differential. The numbers are a typical small hatchback's (published curb weights, wheelbases and drag areas of the class), not one model's. The car part of a build: pair it with an engine of some 1.6 L.",
+  "spec": {
+    "car": {
+      "model": "Vehicle",
+      "mass": 1150,
+      "drive": "Front",
+      "wheelbase": 2.6,
+      "cgHeight": 0.52,
+      "frontWeight": 0.62,
+      "track": 1.5,
+      "cdA": 0.63,
+      "clA": 0,
+      "aeroBalance": 0.45,
+      "tyre": "Street",
+      "tyreRadius": 0.31,
+      "wheelInertia": 0.9,
+      "brakeDecel": 1.1,
+      "brakeBias": 0.7,
+      "abs": true,
+      "gearbox": "Manual",
+      "gears": 6,
+      "autoGearing": true
+    }
+  }
+}

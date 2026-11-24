@@ -299,8 +299,22 @@ namespace tee::player
 
         ref_->process(l, r, n);
         if (ref_->stopped() && !stopped_.load(std::memory_order_relaxed))
+        {
+            // The program was stopped in this call (its loop budget, a bounds check: a build with checks): whatever
+            // the call left in the buffers is not sound. In its place the output runs down from where it was to
+            // nothing over this block, and it is silence from then on; the UI thread shows why (stopped(), why()).
+            for (int i = 0; i < n; ++i)
+            {
+                const float g = 1.0f - static_cast<float>(i + 1) / static_cast<float>(n);
+                l[i] = lastL_ * g;
+                r[i] = lastR_ * g;
+            }
             stopped_.store(true, std::memory_order_release);
+        }
+        lastL_ = l[n - 1];
+        lastR_ = r[n - 1];
         peak_.store(blockPeak(l, r, n), std::memory_order_relaxed);
+        tail_.write(l, r, n);
         publish();
     }
 

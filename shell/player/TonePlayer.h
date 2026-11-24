@@ -31,6 +31,7 @@ namespace tee::player
         int findValue(std::string_view name) const override;
         double value(int handle) const override;
         float outputPeak() const override { return peak_.load(std::memory_order_relaxed); }
+        int outputTail(float* mono, int max) const override { return tail_.read(mono, max); }
 
         // ControlSink
         void setControls(const ControlsFrame& f) override { controls_.set(f); }
@@ -55,6 +56,7 @@ namespace tee::player
         std::atomic<float> peak_{ 0.0f };
         std::atomic<long long> blocks_{ 0 };
         std::atomic<int> largest_{ 0 };
+        TailRing tail_;
         ControlsBox controls_;
 
         // the audio thread's own
