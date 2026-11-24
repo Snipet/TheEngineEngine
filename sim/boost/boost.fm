@@ -27,7 +27,7 @@
 //   control16(d16, target, antiLag, nitrous)      every 16 samples, with the ECU's
 //   oxygen(), oxygenShare()                       Combustion
 //   exhaustStandIn(m, mt, z)                      until card G's network calls housing() and downpipe()
-//   telemetry(&tel.boost), scope(&scope)          after a call
+//   telemetry(&tel.boost, tAir), scope(&scope)    after a call (tAir: the charge air the engine has, for no machine)
 #pragma once
 #include "lib/biquad.fm"
 #include "lib/noise.fm"
@@ -396,8 +396,10 @@ module Boost
         mach.airSpeed = v;
     }
 
-    // tel.boost's card F fields (model 0: zeros, the shafts none)
-    void telemetry(BoostTel* t)
+    // tel.boost's card F fields (model 0: zeros, the shafts none). tCharge: the charge air's temperature as the engine
+    // has it (Intake's tAir, K), which the two temperatures read when no machine is in the path: the air that reaches
+    // the throttle, with no intercooler before it
+    void telemetry(BoostTel* t, float tCharge)
     {
         const int on = model == 1 && mach.active != 0 ? 1 : 0;
         t->turbos = on != 0 ? mach.turbos : 0;
@@ -415,8 +417,8 @@ module Boost
             t->drive[i] = on != 0 ? mach.telDrive[i] : 0.0f;
         }
         t->chargePipe = on != 0 ? mach.v1.p - mach.pOut : 0.0f;
-        t->intercoolerOut = on != 0 ? mach.telIcOut : 0.0f;
-        t->throttleIn = on != 0 ? mach.v2.t : 0.0f;
+        t->intercoolerOut = on != 0 ? mach.telIcOut : tCharge;
+        t->throttleIn = on != 0 ? mach.v2.t : tCharge;
         t->blowOffValve = on != 0 ? mach.bovLift : 0.0f;
         t->superchargerPower = on != 0 ? mach.telScPower : 0.0f;
         t->oxygen = on != 0 ? mach.telO2 : 0.0f;
