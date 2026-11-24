@@ -704,3 +704,54 @@ by mechanism, not by level:
   1100 (260), the 2.0 158 at 3850 (140); their power rows read over (+5 to +16 %).
 - *the supercharged V8's torque* +8 % at a boost under its target (60 against 62): the machine's or the build's, to see.
 Most bands are recalled or judgement (P is citing them).
+
+## B-2. Four balances (21:54 by `date -u`; the probe's BAL_MEAN over the window, the boost machine's running sums as the
+window's increments)
+
+```
+turbo-four-20-gdi      3049.16: tq 357  boost 117/120 kPa  PR 2.21 eta_c 0.611 t2 453 K -> cooler out 312 K  turbine inlet 225 kPa abs / plenum 218  knock 11.4 deg  lambda 0.819  Tivc 394
+   air kg: compressor 0.1054, drawn 0.1062, throttle 0.1066, valves 0.1067, trapped 0.1090, metered 0.1090; into housings 0.1234, downpipes 0.1234
+   energy/fuel: released 0.791 walls 0.102 gross 0.304 pump +0.001 fric 0.019 brake 0.284 exhaust 0.385; turbine 0.036 compressor 0.036; first law +0.002
+turbo-four-20-gdi      5750.66: tq 290  boost 92/120 kPa  PR 2.00 eta_c 0.753 t2 372 K -> cooler out 309 K  turbine inlet 241 kPa abs / plenum 194  knock 0.0 deg  lambda 0.832  Tivc 426
+   air kg: compressor 0.1660, drawn 0.1666, throttle 0.1656, valves 0.1664, trapped 0.1661, metered 0.1661; into housings 0.1876, downpipes 0.1876
+   energy/fuel: released 0.840 walls 0.108 gross 0.340 pump +0.016 fric 0.034 brake 0.290 exhaust 0.406; turbine 0.023 compressor 0.023; first law +0.002
+flat-plane-v8-39-twin- 4373.6: tq 725  boost 126/130 kPa  PR 2.32 eta_c 0.691 t2 418 K -> cooler out 315 K  turbine inlet 226 kPa abs / plenum 228  knock 6.9 deg  lambda 0.816  Tivc 400
+   air kg: compressor 0.3126, drawn 0.3114, throttle 0.3089, valves 0.3099, trapped 0.3057, metered 0.3057; into housings 0.3090, downpipes 0.3091
+   energy/fuel: released 0.797 walls 0.091 gross 0.314 pump +0.001 fric 0.020 brake 0.294 exhaust 0.391; turbine 0.034 compressor 0.033; first law +0.001
+flat-plane-v8-39-twin- 7750.98: tq 660  boost 130/130 kPa  PR 2.47 eta_c 0.691 t2 411 K -> cooler out 319 K  turbine inlet 318 kPa abs / plenum 232  knock 0.0 deg  lambda 0.815  Tivc 440
+   air kg: compressor 0.5454, drawn 0.5460, throttle 0.5384, valves 0.5393, trapped 0.5395, metered 0.5395; into housings 0.5603, downpipes 0.5604
+   energy/fuel: released 0.796 walls 0.089 gross 0.320 pump +0.019 fric 0.033 brake 0.268 exhaust 0.404; turbine 0.034 compressor 0.034; first law +0.002
+pickup-diesel-67-inlin 1699.57: tq 1012  boost 196/200 kPa  PR 3.03 eta_c 0.696 t2 442 K -> cooler out 326 K  turbine inlet 413 kPa abs / plenum 298  knock 0.0 deg  lambda 0.000  Tivc 394
+   air kg: compressor 0.2949, drawn 0.2863, throttle 0.2642, valves 0.2624, trapped 0.2625, metered 0.0000; into housings 0.3251, downpipes 0.3254
+pickup-diesel-67-inlin 2886.97: tq 992  boost 153/200 kPa  PR 2.67 eta_c 0.612 t2 441 K -> cooler out 326 K  turbine inlet 352 kPa abs / plenum 255  knock 0.0 deg  lambda 0.000  Tivc 401
+   air kg: compressor 0.3818, drawn 0.3818, throttle 0.3799, valves 0.3798, trapped 0.3816, metered 0.0000; into housings 0.4247, downpipes 0.4248
+rotary-twin-13         4999.99: tq 260  boost 70/70 kPa  PR 1.81 eta_c 0.757 t2 358 K -> cooler out 307 K  turbine inlet 199 kPa abs / plenum 171  knock 14.8 deg  lambda 0.845  Tivc 468
+   air kg: compressor 0.1424, drawn 0.1424, throttle 0.1394, valves 0.1454, trapped 0.1446, metered 0.1446; into housings 0.1326, downpipes 0.1326
+   energy/fuel: released 0.808 walls 0.154 gross 0.288 pump +0.009 fric 0.015 brake 0.264 exhaust 0.360; turbine 0.020 compressor 0.020; first law +0.017
+rotary-twin-13         6649.92: tq 196  boost 27/70 kPa  PR 1.39 eta_c 0.732 t2 327 K -> cooler out 299 K  turbine inlet 167 kPa abs / plenum 128  knock 0.0 deg  lambda 0.872  Tivc 463
+   air kg: compressor 0.1519, drawn 0.1519, throttle 0.1465, valves 0.1482, trapped 0.1478, metered 0.1478; into housings 0.1266, downpipes 0.1266
+   energy/fuel: released 0.844 walls 0.176 gross 0.309 pump +0.018 fric 0.024 brake 0.267 exhaust 0.365; turbine 0.014 compressor 0.013; first law +0.016
+```
+
+(The diesel's fuel is not counted by the probe (its charge is chargeDiesel's), so its energy line is left out.)
+
+What is out, and whose:
+- *Boost at the top:* 92 of 120 kPa on the turbo four at 5750 rpm, 153 of 200 on the pickup at 2887, 27 of 70 on the
+  rotary at 6650; on target at the torque peaks. The turbines run out at speed: the matching (N2's design-point rework).
+- *Knock:* 11.4 degrees of retard on the turbo four at 3050 rpm, 6.9 on the twin-turbo V8 at 4375, 14.8 on the rotary at
+  5000; brake efficiency 0.26 to 0.29. Its cost is N2's (the knock-limit table) to weigh against the fuels' sources.
+- *The cooler:* its effectiveness (compressor out to cooler out against the air at 288 K) 0.85 on the turbo four, 0.79
+  on the V8, 0.75 on the pickup, 0.73 on the rotary; Bosch's air-to-air range 0.60 to 0.80: the turbo four's a little
+  above it (charge 312 K). The lead's "too cool for an installed engine" holds there, mildly.
+- *Back pressure over boost:* turbine inlet over plenum 1.0 to 1.39 (1.24 the turbo four at 5750, 1.37 the V8 at 7750,
+  1.39 the pickup at 1700): inside Watson and Janota's 1.0 to 1.5.
+- *Energy:* the turbine's work equals the compressor's within 0.001 of the fuel's heat (the shafts steady), 0.013 to
+  0.036 of it; released 0.79 to 0.84 at λ 0.82 to 0.87 (the rich mixture's chemistry, N3-2); walls 0.09 to 0.18 (the
+  rotary's the most, as its chamber's surface has it); first law within 0.2 % on the pistons, 1.6 to 1.7 % on the
+  rotary (its seals' leakage is not in the probe's books).
+- *The air's books:* the compressor, the machine's draw, the throttle, the valves and the trapped agree within 1 to 3 %
+  on the turbo four, the V8 and the rotary; **the pickup at 1700 rpm parts 8 %** (the compressor 0.2949 kg and the draw
+  0.2863 against the throttle 0.2642, the valves and the trapped with the throttle): air the machine draws that the
+  intake's throttle book does not see. The gas into the turbines' housings (sumMPipes) against what the cylinders let
+  out (trapped air and fuel): +4 % on the turbo four at 3050, -7 % on the V8 at 4375, -8 to -9 % on the rotary: the
+  exhaust's books into the housings (G's closing is on the pipes; the housings' side to check).

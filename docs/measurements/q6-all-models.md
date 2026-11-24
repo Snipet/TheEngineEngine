@@ -277,3 +277,7 @@ after a restart (load average under 1). The network is the same either way: 32 p
 The closing costs nothing measurable: +0.02 R to -0.01 R, inside the run-to-run spread (G's estimate: one one-pole and
 two sums a port a sample, some 5 ns on a V8). Against 20:37's row (2.04 / 1.93 typical, 1.14 / 1.07 first) nothing has
 moved beyond the spread either.
+
+**L's auto level** (c686d34, 3067234; `sound.model` 1 only): a compare, a glide and two multiplies a sample, an
+`expf` and a `logf` every 0.1 s. L's own figure (tee-render on first.json, unresolved against the spread): under
+0.005 R. Not measured by Q; it cannot move the typical build's 2.0 R beyond the spread.
