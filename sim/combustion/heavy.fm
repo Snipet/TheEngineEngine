@@ -1,0 +1,321 @@
+// heavy.fm: the heavy diesel's controls and brakes (card D2; docs/models/diesel.md): a governor that meters the fuel by
+// the rack, a compression-release engine brake, an exhaust brake, and the measures of a diesel's combustion noise.
+//
+// The governor (spec.ecu.governor 1 or 2). A diesel has no throttle: the rack sets the fuel a stroke and the governor
+// sets the rack. The reference fuels by the air (an equivalence ratio of 0.75 times the lever, whatever the boost), so
+// it can never smoke; a real pump meters fuel by the rack whatever air there is (fuelFull, the fuel a stroke at full
+// rack, sized for the boost the pump was set up for, `fuelBoost`), and a boost compensator (the aneroid, `afc`) caps it
+// at an equivalence ratio of the air actually there. Take the compensator off (afc 0) or over-fuel past it and the
+// fuel outruns the air while the turbo spools: black smoke, "rolling coal", as a consequence and not a switch.
+//   Mechanical (1): an all-speed governor (Bosch's RQV kind): the pedal sets a speed between idle and high idle; the
+//   flyweights feel the crank's speed (they lag it, some 40 ms) and pull the rack against the speeder spring, rack =
+//   (set speed - felt speed) / (droop x rated speed). The rack is a mass on the flyweights' spring (some 4 Hz, lightly
+//   damped, 0.25) with friction in its bushes (it sticks within 1.5 % of its travel): at idle, where a little rack is a
+//   lot of torque against a light flywheel, it overshoots, sticks and is pulled back: the idle hunts ("galloping"), a
+//   slow swing of some tens of rpm. Bosch's governors are specified with 5 to 10 % droop at rated speed.
+//   Electronic (2): the engine's controller: the pedal asks for fuel directly (a torque demand, min-max), an idle
+//   governor (PI on the speed, no lag past the 16-sample tick) holds the idle, and the droop line caps the fuel toward
+//   high idle; no friction, no flyweights: the idle is steady to a few rpm.
+// High idle is the rated speed (the layout's redline as the reference sets it) times 1 + droop: the droop line's foot.
+//
+// The compression-release brake (engineBrake 1, Jacobs' "Jake brake", 1961). With the fuel off, a slave piston opens
+// the exhaust valve near the top of the compression stroke, so the air the piston has just squeezed (some 40 bar and
+// 900 K) is thrown into the manifold instead of pushing the piston back down: the compression's work is not given
+// back. Its lobe is the valvetrain's second exhaust event (spec.valve.auxOpen, auxDur, auxLift; card E), opened here
+// per cylinder whatever valve.model is, only while the brake is engaged (spec.valve.auxOn stays off for a brake: that
+// one is a cam that is always on). The area: the curtain, pi d lift, of both exhaust valves of a four-valve head, each
+// 0.3 of the bore (or `brakeValve`), times a discharge coefficient of 0.65 (a low lift's). The dash switch has three
+// stages (a third, two thirds, all of the cylinders: one housing over each pair of a six's), it acts only with the
+// pedal up, the clutch in and the engine above `brakeMin`, and a cylinder joins or leaves only while its lobe is shut.
+// The bark: each release is a blowdown from 30 to 50 bar through a small opening, at the top, once a cycle a
+// cylinder: at the firing frequency, sharper than a firing's (which comes from a lower pressure through a big valve
+// at the bottom of the stroke). The pipes carry it as they carry a firing.
+//
+// The exhaust brake (exhaustBrake 1, a flap after the turbine; 2, the turbine's vanes shut). Closed, it leaves a leak
+// (exBrakeLeak of the pipe's area, some 0.85 m^2 a m^3 of displacement) and a spring that holds the back pressure to
+// exBrakeLimit (a regulated flap's 2.5 to 4 bar). The manifold's pressure follows the flow through the leak, dp =
+// (mdot / (0.8 A))^2 / (2 rho), at most the limit, filling in 0.12 s; the cylinders' ports see it (half of it added
+// to the header's arriving wave: the pipe's pressure is twice its arriving wave): the pistons push against it on
+// every exhaust stroke. It is a model of the mean back pressure, not a valve in the pipe network (card G's flap slot is
+// not in the engine yet); the waves still run in the pipes as before. The vanes' kind takes 1.2 times the limit.
+//
+// The measures, cylinder 1's: the most rate of pressure rise in a cycle (Pa a crank degree; a diesel's combustion noise
+// follows it: some 3 to 10 bar a degree, a pilot halves it) and the pressure's high-frequency level (the rms of its
+// second difference over a cycle, Pa: what rings the block).
+//
+// Off (every field of D2's at its default, or a gasoline engine) none of this is called (`on` 0): the reference.
+#pragma once
+#include "spec/ecu.fm"
+#include "spec/valve.fm"
+#include "spec/telemetry.fm"
+#include "diesel.fm"
+
+enum
+{
+    HD_MAXCYL = 16,
+    HD_LOBE = 64        // the brake's lobe: points over its event
+};
+
+module HeavyDiesel
+{
+    EcuSpec* spec;
+    ValveSpec* valve;
+    float rate;
+    int on;             // 1: something of D2's is in use on a diesel
+    // the governor
+    float felt;         // the flyweights' speed (rad/s)
+    float rack;         // 0 to 1
+    float rackV;        // its speed (1/s)
+    float idleI;        // the electronic idle governor's integral
+    float lever;        // what the charge is given (-1: the reference's)
+    float fuelFull;     // kg a stroke at full rack
+    float setSpeed;     // the speed the governor aims for (rad/s)
+    float highIdle;
+    // the compression brake
+    int braking;        // 1: engaged now
+    int stages;         // cylinders asked to brake
+    int want[HD_MAXCYL];
+    int engaged[HD_MAXCYL];
+    float lobe[HD_LOBE + 1];
+    float lobeOpen;
+    float lobeDur;
+    float cyc;
+    int nCyl;
+    float lastOpen;
+    float lastDur;
+    float lastLift;
+    float lastArea;
+    // the exhaust brake
+    float back;         // Pa added to the headers' arriving waves (half the back pressure)
+    float backP;        // the back pressure over the outside (Pa)
+    int exOn;
+    // the measures (cylinder 1)
+    float aPrev;
+    float pPrev;
+    float pPrev2;
+    float riseMax;
+    float riseNow;
+    float hfSum;
+    int hfN;
+    float hfNow;
+    float omega;
+
+    void setup(float rateIn, EcuSpec* s, ValveSpec* v)
+    {
+        rate = rateIn;
+        spec = s;
+        valve = v;
+        on = 0;
+        lever = -1.0f;
+        reset();
+        lastOpen = -1.0f;
+    }
+
+    void reset()
+    {
+        felt = 0.0f;
+        rack = 0.0f;
+        rackV = 0.0f;
+        idleI = 0.0f;
+        braking = 0;
+        stages = 0;
+        for (int c = 0; c < HD_MAXCYL; ++c)
+        {
+            want[c] = 0;
+            engaged[c] = 0;
+        }
+        back = 0.0f;
+        backP = 0.0f;
+        exOn = 0;
+        aPrev = 0.0f;
+        pPrev = 101325.0f;
+        pPrev2 = 101325.0f;
+        riseMax = 0.0f;
+        riseNow = 0.0f;
+        hfSum = 0.0f;
+        hfN = 0;
+        hfNow = 0.0f;
+    }
+
+    // The brake's lobe: a share of the curtain's area at each of HD_LOBE + 1 points of its event, made when its shape moves
+    void shape(float bore)
+    {
+        const float d = spec->brakeValve > 0.0f ? spec->brakeValve : 0.3f * bore;
+        const float area = 2.0f * 0.65f * 3.14159265f * d * valve->auxLift;
+        if (valve->auxOpen == lastOpen && valve->auxDur == lastDur && valve->auxLift == lastLift && area == lastArea)
+            return;
+        lastOpen = valve->auxOpen;
+        lastDur = valve->auxDur;
+        lastLift = valve->auxLift;
+        lastArea = area;
+        lobeOpen = valve->auxOpen;
+        lobeDur = valve->auxDur;
+        // (a hydraulic slave piston: it opens fast once the master's oil is trapped and closes on its reset: sin^2 over
+        // the event, its flanks steepened, a flat top)
+        for (int i = 0; i <= HD_LOBE; ++i)
+        {
+            const float x = sinf(3.14159265f * (float)i / (float)HD_LOBE);
+            lobe[i] = area * fminf(1.6f * x * x, 1.0f);
+        }
+    }
+
+    // Every 16 samples, after the ECU: the governor's rack and the brakes' state. pedal 0 to 1; omega, idle and red
+    // the crank's speed (rad/s) and the ECU's idle and redline (rpm); clutch 0 engaged to 1 open; mdot kg/s and tGas K
+    // the exhaust's; vTotal m^3; bore m
+    void control16(float d16, int fuelUse, int state, float pedal, float omegaIn, float idleRpm, float redRpm, float sinceStart,
+                   float clutch, float mdot, float tGas, float boostBar, float vTotal, int n, float bore, float tAmb)
+    {
+        on = fuelUse != 0 && (spec->governor != 0 || spec->engineBrake != 0 || spec->exhaustBrake != 0) ? 1 : 0;
+        if (on == 0)
+        {
+            lever = -1.0f;
+            back = 0.0f;
+            return;
+        }
+        omega = omegaIn;
+        nCyl = n > HD_MAXCYL ? HD_MAXCYL : n;
+        cyc = 720.0f;
+        shape(bore);
+        const float idleW = idleRpm * 0.10471976f;
+        const float rated = redRpm * 0.10471976f;
+        const float droop = fmaxf(spec->droop, 0.005f);
+        highIdle = spec->highIdle > 0.0f ? spec->highIdle : rated * (1.0f + droop);
+        // the pump: the fuel a stroke at full rack for the boost it was set up for (an equivalence ratio of 0.75 there)
+        fuelFull = 0.75f / 14.5f * (101325.0f + spec->fuelBoost) / (287.0f * 320.0f) * (vTotal / (float)nCyl) * 0.92f;
+        // the brakes engage with the pedal up, the clutch in, the engine running above the cut-out speed
+        const bool may = state == 2 && pedal < 0.02f && clutch < 0.5f && omega > spec->brakeMin;
+        braking = spec->engineBrake != 0 && spec->brakeSwitch > 0 && may ? 1 : 0;
+        stages = braking != 0 ? (nCyl * spec->brakeSwitch + 1) / 3 : 0;
+        for (int c = 0; c < HD_MAXCYL; ++c)
+            want[c] = c < stages ? 1 : 0;
+        // (the stages by pairs of cylinders in their order along the engine: one housing over each pair)
+        exOn = spec->exhaustBrake != 0 && spec->exBrakeSwitch != 0 && may ? 1 : 0;
+        // the exhaust brake's back pressure: the flow through the leak, at most the limit, the manifold filling
+        float target = 0.0f;
+        if (exOn != 0)
+        {
+            const float aLeak = fmaxf(spec->exBrakeLeak * 0.85f * vTotal, 1.0e-6f);
+            const float rho = (101325.0f + backP) / (287.0f * fmaxf(tGas, 300.0f));
+            const float g = mdot / (0.8f * aLeak);
+            const float limit = spec->exBrakeLimit * (spec->exhaustBrake == 2 ? 1.2f : 1.0f);
+            target = fminf(g * g / (2.0f * rho), limit);
+        }
+        backP += (target - backP) * fminf(d16 / 0.12f, 1.0f);
+        back = 0.5f * backP;
+        // the governor
+        float fuel = -1.0f;
+        if (spec->governor == 1)
+        {
+            // the flyweights lag the crank; the rack is a mass on their spring with friction in its bushes
+            felt += (omega - felt) * fminf(d16 / 0.04f, 1.0f);
+            setSpeed = idleW + fminf(fmaxf(pedal, 0.0f), 1.0f) * (highIdle - idleW);
+            const float aim = fminf(fmaxf((setSpeed - felt) / (droop * rated), 0.0f), 1.0f);
+            const float wn = 6.2831853f * 4.0f;
+            const float acc = wn * wn * (aim - rack) - 2.0f * 0.25f * wn * rackV;
+            const float stuck = fabsf(rackV) < 1.0e-3f && fabsf(aim - rack) < 0.015f;
+            if (stuck)
+                rackV = 0.0f;
+            else
+            {
+                rackV += acc * d16;
+                rack = fminf(fmaxf(rack + rackV * d16, 0.0f), 1.0f);
+                if (rack <= 0.0f || rack >= 1.0f)
+                    rackV = 0.0f;
+            }
+            fuel = rack;
+        }
+        else if (spec->governor == 2)
+        {
+            // the pedal asks for fuel; the idle governor holds the idle; the droop line caps it toward high idle
+            setSpeed = idleW;
+            const float e = (idleW - omega) / fmaxf(idleW, 1.0f);
+            idleI = fminf(fmaxf(idleI + 0.8f * e * d16, 0.0f), 0.3f);
+            const float idleFuel = fminf(fmaxf(1.5f * e + idleI, 0.0f), 0.4f);
+            const float cap = fminf(fmaxf((highIdle - omega) / (droop * rated), 0.0f), 1.0f);
+            rack = fminf(fmaxf(fmaxf(pedal, 0.0f), idleFuel), cap);
+            fuel = rack;
+        }
+        // a start: the reference's start fuel while it cranks and for a moment after
+        if (fuel >= 0.0f && state == 1)
+            fuel = 0.45f;
+        else if (fuel >= 0.0f)
+            fuel = fmaxf(fuel, 0.45f * expf(-sinceStart / 1.0f));
+        // braking: no fuel at all
+        if (braking != 0 || exOn != 0)
+            fuel = 0.0f;
+        lever = fuel;
+    }
+
+    // Into the diesel's charge (Combustion's DieselFields): the lever, and whether the fuel is metered by the rack
+    void feed(DieselFields* d)
+    {
+        d->lever = on != 0 ? lever : -1.0f;
+        d->metered = on != 0 && spec->governor != 0 ? 1 : 0;
+        d->fuelFull = fuelFull;
+        d->afcPhi = spec->afc;
+    }
+
+    // Each sample: the brake's opening for cylinder c at its angle a (m^2); a cylinder joins or leaves while its lobe is shut
+    float brakeArea(int c, float a)
+    {
+        float s = a - lobeOpen;
+        if (s < 0.0f)
+            s += cyc;
+        if (s >= lobeDur)
+        {
+            engaged[c] = want[c];
+            return 0.0f;
+        }
+        if (engaged[c] == 0)
+            return 0.0f;
+        const float x = s / lobeDur * (float)HD_LOBE;
+        int i = (int)x;
+        if (i > HD_LOBE - 1)
+            i = HD_LOBE - 1;
+        const float f = x - (float)i;
+        return lobe[i] + (lobe[i + 1] - lobe[i]) * f;
+    }
+
+    // Each sample after cylinder c's step: cylinder 1's measures
+    void sample(Cylinder* cy, int c, float a)
+    {
+        if (c != 0)
+            return;
+        float da = a - aPrev;
+        if (da < 0.0f)
+            da += cyc;
+        if (a < aPrev)
+        {
+            // its cycle came round (at the firing top: the burn is inside one cycle)
+            riseNow = riseMax;
+            riseMax = 0.0f;
+            hfNow = hfN > 0 ? sqrtf(hfSum / (float)hfN) : 0.0f;
+            hfSum = 0.0f;
+            hfN = 0;
+        }
+        if (da > 1.0e-4f)
+            riseMax = fmaxf(riseMax, (cy->p - pPrev) / da);
+        const float d2 = cy->p - 2.0f * pPrev + pPrev2;
+        hfSum += d2 * d2;
+        hfN += 1;
+        pPrev2 = pPrev;
+        pPrev = cy->p;
+        aPrev = a;
+    }
+
+    // After each call: the ECU's telemetry's diesel fields (fuel.model 1's smoke number, or the rack's)
+    void telemetry(EcuTel* t, DieselFields* d, int fuelUse, int fuelModel)
+    {
+        if (fuelUse != 0 && (fuelModel != 0 || on != 0))
+            t->smoke = d->smoke;
+        if (on == 0)
+            return;
+        t->riseRate = riseNow;
+        t->pressureHf = hfNow;
+        if (lever >= 0.0f)
+            t->rack = lever;
+        t->brakeCylinders = stages;
+        t->backPressure = backP;
+        t->governorSpeed = setSpeed;
+    }
+};

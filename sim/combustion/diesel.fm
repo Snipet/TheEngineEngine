@@ -29,6 +29,14 @@ module DieselFields
     // what it gave the last charge
     float phiMax;
     float smoke;
+    // card D2's (sim/combustion/heavy.fm): its governor's rack in place of the reference's lever (-1: the reference's),
+    // and the fuel metered by the rack (fuelFull kg a stroke at full rack) and capped by the boost compensator at an
+    // equivalence ratio afcPhi of the air there (0: no compensator), in place of the reference's fuel by the air
+    float lever;
+    int metered;
+    float fuelFull;
+    float afcPhi;
+    float phiAsked;     // what the rack asked, as an equivalence ratio of the air there
 
     void defaults()
     {
@@ -38,6 +46,29 @@ module DieselFields
         overFuel = 0.0f;
         phiMax = 0.75f;
         smoke = 0.0f;
+        lever = -1.0f;
+        metered = 0;
+        fuelFull = 0.0f;
+        afcPhi = 0.0f;
+        phiAsked = 0.0f;
+    }
+
+    // Card D2: the rack's fuel (over-fuelled by overFuel) against the air the cylinder holds (kg), as an equivalence
+    // ratio, the compensator's cap taken; past some 0.85 the fuel finds less and less oxygen: what burns levels off
+    // toward 1, the rest goes out as soot (the smoke number, as phiAt's, from what was injected)
+    float phiMetered(float air, float rack)
+    {
+        const float fuel = fmaxf(rack, 0.0f) * fuelFull * (1.0f + fminf(fmaxf(overFuel, 0.0f), 0.4f));
+        float phi = fuel * 14.5f / fmaxf(air, 1.0e-7f);
+        if (afcPhi > 0.0f)
+            phi = fminf(phi, afcPhi);
+        phiAsked = phi;
+        const float x = fmaxf(phi - 0.6f, 0.0f) / 0.3f;
+        smoke = fminf(4.0f * x * x, 10.0f);
+        if (phi <= 0.85f)
+            return phi;
+        const float e = expf(-(phi - 0.85f) / 0.15f);
+        return 0.85f + 0.15f * (1.0f - e);
     }
 
     // The equivalence ratio at the lever (0 to 1): the reference's 0.75 lever at no allowance
