@@ -63,7 +63,8 @@
       "exCentre": 112
     },
     "intake": {
-      "model": 1
+      "model": 1,
+      "runnerLength": 0.3
     },
     "boost": {
       "model": "Machine",

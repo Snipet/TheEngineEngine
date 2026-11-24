@@ -23,7 +23,7 @@ namespace tee::test::sound
     constexpr double kPi = 3.14159265358979323846;
     constexpr double kRate = 96000.0;
 
-    enum Channel { Gearbox = 0, Axle, Front, Head, Tank, Gate, Starter, Rattle, Fan, Timing, Belt, Blower, All };
+    enum Channel { Gearbox = 0, Axle, Front, Head, Tank, Gate, Starter, Rattle, Fan, Timing, Belt, Blower, Chain, Clutch, All = 99 };
 
     inline std::string readFile(const std::filesystem::path& path)
     {
@@ -83,6 +83,9 @@ namespace tee::test::sound
             set("engaged", 1);
             set("ignition", 1);
             set("state", 2);
+            set("primaryRatio", 1.7);
+            set("frontTeeth", 16);
+            set("lever", 1);
         }
 
         double get(const std::string& path) const
