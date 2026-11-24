@@ -655,3 +655,15 @@ burn has are missing or weaker:
 
 Proposed (not changed): (1) as above in charge1, model-on only; (2) once the overrun's burned share is read (N1 has the
 scenario) and a source for the dilution term's form is open. Both are mine to make (H's path) under card N's rule.
+
+**N3-14, with N1's overrun measured (21:47 by `date -u`).** H9's fuelled overrun (the V8 preset, overrun fuel 0.25, the
+spark 11.5 degrees after the top), every 0.1 s from the lift (N1, comb.dilution and intk.pPlenum): burned share 0.05 to
+0.19 (falling through the overrun), manifold 15 to 23 kPa, burns of 46 to 55 degrees; on the limiter before the lift
+0.23, 38.5 kPa, 66 degrees; the exhaust opens at 104. So the dilution term is not the missing piece: at 5 to 19 % the
+steeper published form and the model's differ by a few per cent (the cut firings leave air, not burned gas). The
+expansion's term (54 → about 70 degrees) leaves the burn done before the exhaust opens. Neither in-cylinder flame-speed
+term carries an overrun's fired charge to the pipe. What real engines show at heavy retard and low density is partial
+burns and flame quenching late in the expansion (Heywood ch. 9 on partial burning; not opened here): a share of charges
+that stop burning, not a slower whole. That needs its own source (the partial-burn frequency against retard and load)
+before anything is built; until then the pop store's spark-time estimate stands. The expansion's term stays proposed
+for late burns generally (knock retard, catalyst heating), not for the overrun.

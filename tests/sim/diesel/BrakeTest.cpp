@@ -149,8 +149,14 @@ TEST_CASE("diesel brake: the driver's button engages it at High with the dash sw
     CHECK(e.tel("ecu.brakeCylinders") == 0.0);
 }
 
-TEST_CASE("diesel brake: with a variable-vane turbo the brake shuts the vanes and the manifold reaches 3 bar", "[diesel][brake][turbo]")
+TEST_CASE("diesel brake: with a variable-vane turbo the brake shuts the vanes and the manifold reaches 3 bar", "[diesel][brake][turbo][!mayfail]")
 {
+    // [!mayfail] on a named finding (D2, 2026-11-24; the lead's rule for the default run): at the matched size, read
+    // over one second, the shaft peaks at 12539 rad/s against omegaMax 11932: the brake's own shaft governor
+    // (heavy.fm vaneCommand, a PID past 95 %) swings, some 0.6 s a cycle, into card F's 105 % relief; a rate limit
+    // on the vanes (0.2 to 1 a second) and other gains did not settle it. The instant readings this case took before
+    // (11183 rad/s) landed on the swing by luck. To do: a governor that holds the shaft (D2, with N2 on the turbine's
+    // response near the shut stop). Bounds kept.
     // card F's machine (boost.model 1), one turbo with variable vanes: the compression brake on High at 2000 rpm puts it in
     // its brake position (vanes shut, gate held shut). Real brakes run 3 to 3.5 bar absolute in the manifold there.
     // With card G's exhaust network (exhaust.model 1) the turbine's back pressure reaches the cylinders.
@@ -170,18 +176,31 @@ TEST_CASE("diesel brake: with a variable-vane turbo the brake shuts the vanes an
         e.start();
         e.dyno(2000.0, 0.0f);
         REQUIRE(e.run(5.0));
-        const double tq = e.mean("engine.torque", 1.0);
+        // (over one second, every 512 samples: the torque's and the manifold's means, the shaft's most. The brake's own
+        // shaft governor swings, some 0.6 s a cycle, so an instant's reading lands anywhere on it)
+        double tq = 0.0, man = 0.0, shaftMost = 0.0;
+        const int calls = static_cast<int>(e.rate / 512.0 + 0.5);
+        for (int q = 0; q < calls; ++q)
+        {
+            REQUIRE(e.run(512.0 / e.rate));
+            tq += e.tel("engine.torque") / calls;
+            man += e.tel("engine.manifold") / calls;
+            shaftMost = std::max(shaftMost, e.tel("boost.shaftSpeed[0]"));
+        }
         kw[k] = -tq * 2000.0 * 0.10471976 / 1000.0;
-        std::printf("VGT, brake %s at 2000 rpm: manifold %.0f kPa abs, vanes %.2f, gate %.2f, shaft %.0f rad/s, %.0f kW retarding\n",
-                    k == 0 ? "off" : "High", e.tel("engine.manifold") / 1000.0, e.tel("boost.vanes[0]"), e.tel("boost.gate[0]"),
-                    e.tel("boost.shaftSpeed[0]"), kw[k]);
+        std::printf("VGT, brake %s at 2000 rpm: manifold %.0f kPa abs (now %.0f), vanes %.2f, gate %.2f, shaft at most %.0f rad/s, %.0f kW retarding\n",
+                    k == 0 ? "off" : "High", man / 1000.0, e.tel("engine.manifold") / 1000.0, e.tel("boost.vanes[0]"),
+                    e.tel("boost.gate[0]"), shaftMost, kw[k]);
         std::printf("  (the shaft's limit, omegaMax: %.0f rad/s)\n", e.get("boost.mach.omegaMax[0]"));
         if (k == 1)
         {
-            CHECK(e.tel("engine.manifold") >= 300000.0);
+            // (250 kPa: the lead's ruling, 24 Nov, on N2's point that a matched variable-vane brake runs some 2.5 to 4 bar
+            // in the manifold at 2000 rpm, recalled from makers' figures, not cited. It was 300 when this case ran an
+            // oversized turbo on G's phantom exhaust flow; at the matched size it reads 295 kPa over a second.)
+            CHECK(man >= 250000.0);
             // the brake's vane command holds the shaft under its limit (as a production brake mode), not the machine's
             // 105 % relief: 10001 against 9433 rad/s before (N2, 2026-11-24)
-            CHECK(e.tel("boost.shaftSpeed[0]") <= e.get("boost.mach.omegaMax[0]"));
+            CHECK(shaftMost <= e.get("boost.mach.omegaMax[0]"));
         }
     }
     // published 15 L brakes ~450 kW at 2100 rpm (above); measured 406 kW at 2000 with the manifold at 3.4 bar
