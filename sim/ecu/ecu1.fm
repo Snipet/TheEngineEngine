@@ -41,7 +41,8 @@ enum
     FIRE_BURN,          // the cylinder burns
     FIRE_FUEL_CUT,      // no fuel: its air goes out
     FIRE_SPARK_CUT,     // no spark: its charge goes out unburned
-    FIRE_OVERRUN        // the overrun's fuel, burned late (ecu.overrun.fuel, .retard)
+    FIRE_OVERRUN        // an overrun firing fuelled (a share ecu.overrun.fuel of them, stoichiometric), burned
+                        // ecu.overrun.retard late
 };
 
 // What the ECU reads, every 16 samples
@@ -109,7 +110,7 @@ module Ecu1
     bool sparkCut;      // every firing's spark cut
     float fuelShare;    // firings cut by fuel, 0 to 1
     float sparkShare;   // firings cut by spark
-    float overrunFuel;  // the overrun's fuel, a share of a stoichiometric charge (while the overrun cut is in)
+    float overrunFuel;  // the share of the overrun's firings fuelled (while the overrun cut is in)
     float overrunRetard;
     int flags;          // ECU_FLAG_*
     float limitRpm;     // the limiter's speed in force
@@ -212,7 +213,7 @@ module Ecu1
         if (overrun.on)
         {
             sparkFor = spark - overrunRetard - knock.retard[k];
-            return overrunFuel > 0.0f ? FIRE_OVERRUN : FIRE_FUEL_CUT;
+            return pattern.next(overrunFuel) ? FIRE_OVERRUN : FIRE_FUEL_CUT;
         }
         sparkFor = spark - knock.retard[k];
         if (sparkCut)

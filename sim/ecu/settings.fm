@@ -31,7 +31,7 @@ module EcuLaunchSpec
 module EcuOverrunSpec
 {
     float fuel [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Overrun fuel")]] [[ui::quantity("fraction")]]
-        [[ui::help("Fuel injected on the overrun anyway, a share of a stoichiometric charge: pops and bangs")]];
+        [[ui::help("The share of the overrun's firings fuelled anyway, burned late: pops and bangs")]];
     float retard [[fminus::range(0, 40)]] [[fminus::default(0)]] [[ui::label("Overrun retard")]] [[ui::quantity("angle")]];
 };
 
