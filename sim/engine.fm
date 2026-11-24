@@ -1785,7 +1785,7 @@ module Engine
         e->tsTrapping = cycleUse != 0 ? two.trapping : 0.0f;
         e->tsPowerValve = cycleUse != 0 ? two.valve : 0.0f;
         e->tsPipeTemperature = cycleUse != 0 ? two.tPipe : heat.tAmb;      // (no two-stroke pipe: the air's)
-        e->tsCrankcase = cycleUse != 0 ? two.cy[0].pc : 0.0f;
+        e->tsCrankcase = cycleUse != 0 ? two.cy[0].pc : 101325.0f;          // (no two-stroke crankcase: the air's)
         e->tsReed = cycleUse != 0 ? two.cy[0].reed : 0.0f;
         if (cycleUse != 0)
             e->peakPressure = two.peak;

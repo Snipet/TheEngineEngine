@@ -75,7 +75,7 @@ module EngineTel
     float tsPowerValve [[ui::label("Power valve")]] [[ui::quantity("fraction")]] [[ui::help("Two-stroke: 0 shut, 1 fully open")]];
     float tsPipeTemperature [[ui::label("Pipe's gas")]] [[ui::quantity("temperature")]]
         [[ui::help("Two-stroke: the expansion chambers' gas; the speed the pipe is tuned for rises with it")]];
-    float tsCrankcase [[ui::label("Crankcase")]] [[ui::quantity("pressure")]] [[ui::help("Two-stroke: cylinder 1's, absolute")]];
+    float tsCrankcase [[ui::label("Crankcase")]] [[ui::quantity("pressure")]] [[ui::help("Two-stroke: cylinder 1's, absolute; the air's pressure (101325 Pa) on a four-stroke")]];
     float tsReed [[ui::label("Reed's opening")]] [[ui::quantity("fraction")]] [[ui::help("Two-stroke: cylinder 1's petal, 0 shut, 1 on its stop")]];
     // card D, for N1's loss ledger: means over the cylinders' last intake closings
     float chargeTemperature [[ui::label("Charge temperature")]] [[ui::quantity("temperature")]]
