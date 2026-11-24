@@ -130,6 +130,14 @@ namespace tee::app
                 ui::Units units;
             };
             const auto kept = std::make_shared<Kept>(engine.sim->build());
+            if (!o.unitChoices.empty())
+            {
+                std::string notes;
+                kept->units.load(o.unitChoices, notes);
+                if (!notes.empty())
+                    std::fprintf(stderr, "settings: units: %s\n", notes.c_str());
+            }
+            shown.unitChoices = [kept] { return kept->units.save(); };
             const std::filesystem::path content = findContent();
             std::unique_ptr<ui::AppFrame> frame =
                 ui::makeAppFrame(kept->doc, kept->units, player,

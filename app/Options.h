@@ -37,6 +37,8 @@ namespace tee::app
         std::string workspace;          // --workspace ID[:PAGE]: the frame opens on that workspace (its name on the rail)
         bool noAudio = false;           // --no-audio: the window with no device (nothing plays)
         bool keepGoing = false;         // --keep-going: a program that does not compile is no reason to stop a render
+        // not from the command line: the units the settings file remembers, for the frame ("quantity=unit" lines)
+        std::string unitChoices;
     };
 
     // Reads argv. False, and why, for an option it does not know or a value that is none.
