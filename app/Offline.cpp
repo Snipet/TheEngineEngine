@@ -165,15 +165,20 @@ namespace tee::app
             addFileServices(frameServices, kept->file, kept->library);
             if (window)
             {
-                shown.saveText = std::make_shared<std::function<bool(const std::string&, const std::string&, std::string&)>>();
-                frameServices.saveText = [saver = shown.saveText](const std::string& name, const std::string& text,
-                                                                  std::string& error) {
-                    if (!*saver)
+                const auto hooks = std::make_shared<Shown::WindowHooks>();
+                shown.window = hooks;
+                frameServices.saveText = [hooks](const std::string& name, const std::string& text, std::string& error) {
+                    if (!hooks->saveText)
                     {
                         error = "this window cannot save files yet";
                         return false;
                     }
-                    return (*saver)(name, text, error);
+                    return hooks->saveText(name, text, error);
+                };
+                frameServices.audioInfo = [hooks] { return hooks->audioInfo ? hooks->audioInfo() : std::string(); };
+                frameServices.audioMenu = [hooks] {
+                    if (hooks->audioMenu)
+                        hooks->audioMenu();
                 };
             }
             std::unique_ptr<ui::AppFrame> frame =

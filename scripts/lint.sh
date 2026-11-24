@@ -18,6 +18,9 @@
 #      after FMinus's and LLVM's own statics on macOS, and its destructor runs on a JIT that is gone (38 tests crashed
 #      so; docs/plan/01-rules.md §4). A raw pointer that is never deleted is the way (a `static Program*`), or the test
 #      library's never-destroyed cache. A struct that holds one by a name of its own is not seen: mind it.
+#   5. the Spec's lint (tee-schema --lint, host/src/Fields.cpp; 01-rules.md §4): every field of sim/engine.fm has its
+#      label, range, default and a ui::unit, ui::quantity or ui::choices; a map its value's. Run when a build tree has
+#      tee-schema (it compiles sim/ as it is now: 5 s); skipped, and said, when none has. TEE_LINT_SCHEMA=0 skips it.
 #
 # Our files are the ones git knows (the dependencies are not in the checkout).
 set -euo pipefail
@@ -62,6 +65,18 @@ for f in "${sources[@]}"; do
     say "$f:$line: a static that owns a compiled program (destroyed after the JIT at exit on macOS): a never-deleted pointer instead"
   done < <(code "$f" | grep -nE "$owner")
 done
+
+# ---- 5. the Spec's lint ---------------------------------------------------------------------------------------------
+if [ "${TEE_LINT_SCHEMA:-1}" != 0 ] && [ -f sim/engine.fm ]; then
+  schema=$(ls -t build-*/bin/tee-schema build-*/bin/tee-schema.exe 2>/dev/null | head -1 || true)
+  if [ -n "$schema" ]; then
+    if ! out=$("$schema" --sim sim --lint 2>&1); then
+      while IFS= read -r p; do [ -n "$p" ] && say "sim/engine.fm: $p"; done <<< "$out"
+    fi
+  else
+    echo "lint: no build tree with tee-schema: the Spec's lint skipped (cmake --build --preset dev --target tee-schema)"
+  fi
+fi
 
 if [ "$fail" -ne 0 ]; then
   echo "lint: the rules are at the top of scripts/lint.sh"
