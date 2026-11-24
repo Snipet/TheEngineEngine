@@ -30,9 +30,9 @@ namespace tee
     {
         double step = 10.0;           // degrees of advance between cells, from 0 to spec.valve.inPhaseRange
         double knockLimit = 2.0;      // degrees of knock retard over the parked cell's that set a cell aside
-        // Between each two speeds the map interpolates its advance; where that midpoint's interpolated advance makes
-        // more than midLoss less torque than the better of its two neighbours' advances there, the midpoint is swept
-        // and added as a row of its own (a V12's exhaust wave returning into a big low-speed overlap at 2049 rpm made
+        // Between each two speeds the map interpolates its advance; where at an interval's quarter points the
+        // interpolated advance makes more than midLoss less torque than the best cell there, that point is added as a
+        // row of its own (the worst first, to the map's 16) (a V12's exhaust wave returning into a big low-speed overlap at 2049 rpm made
         // a 30 % hole the grid's 1500 and 2500 rpm rows straddled: card N1, N3's finding). Off: the grid alone.
         bool refine = true;
         double midLoss = 0.03;
