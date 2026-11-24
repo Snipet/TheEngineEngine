@@ -209,6 +209,8 @@ namespace tee::ui
         // the settings page (unitsPage_): audio, theme, units, keys
         Label* audioLine_ = nullptr;
         Button *audioMenu_ = nullptr, *graphite_ = nullptr, *paper_ = nullptr, *full_ = nullptr, *economy_ = nullptr;
+        Button *warmStart_ = nullptr, *coldStart_ = nullptr;   // ENGINE START (FrameServices::coldStart)
+        float startNoteY_ = -1.0f;
         float qualityNoteY_ = 0.0f, settingsHeadX_ = 0.0f;
         std::vector<std::pair<std::string, float>> settingsHeads_;   // a heading and its y (arrange's)
         float keysY_ = 0.0f;
