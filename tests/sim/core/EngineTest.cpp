@@ -344,9 +344,12 @@ namespace
     void airBooks(Bench& b, double seconds, double& thr, double& fresh, double& valves, double& exhaust)
     {
         const double t0 = b.field("airThrottle"), v0 = b.field("airValves"), e0 = b.field("gasExhaust"), f0 = b.field("airTrapped");
+        const double p0 = b.field("intk.mPlenum");
         b.play(seconds);
         const double k = 1000.0 / seconds;
-        thr = (b.field("airThrottle") - t0) * k;
+        // (the throttle's air less what the plenum stored over the window: it is not quite steady on a boosted diesel;
+        // N1's point)
+        thr = (b.field("airThrottle") - t0 - (b.field("intk.mPlenum") - p0)) * k;
         fresh = (b.field("airTrapped") - f0) * k;
         valves = (b.field("airValves") - v0) * k;
         exhaust = -(b.field("gasExhaust") - e0) * k;
