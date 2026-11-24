@@ -9,4 +9,3 @@ sim/valvetrain/area.fm:175  E: s * k: the same
 sim/valvetrain/lab.fm:337  E: s * tb->k: the same
 sim/valvetrain/lab.fm:353  E: s * inLive.k: the same
 sim/valvetrain/lab.fm:414  E: liftCmd * (VT_LIFTS - 1): a NaN lift command reads at INT_MIN
-sim/core/twostroke/cylinder2.fm:225  T: safe in fact (h <= 0 returns; fminf turns a NaN to 64; d > 0): needs only its index-ok note
