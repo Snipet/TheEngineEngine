@@ -65,6 +65,7 @@ namespace tee::balance
         double veAirTel = 0.0, veManTel = 0.0, fmepTel = 0.0, imepTel = 0.0, pmepTel = 0.0, bmepTel = 0.0;
         double sparkTel = 0.0;
         std::map<std::string, double> reads;      // Options::read's paths at the window's end
+        std::vector<std::vector<double>> traces;  // Options::trace's paths, each sample of the window
 
         double walls() const { return wallCompression + wallBurn + wallExpansion + wallExchange; }
         double brakeWork() const { return torque * 2.0 * M_PI * rpm / 60.0 * seconds; }
@@ -81,6 +82,7 @@ namespace tee::balance
         std::vector<std::pair<std::string, double>> set;   // Spec writes after the build ("fuel.model", 1)
         std::vector<std::pair<std::string, double>> raw;   // any instance path written after the build ("spec.ecu.maps.lambda.nx")
         std::vector<std::string> read;                     // instance paths to read at the window's end
+        std::vector<std::string> trace;                    // instance paths recorded each sample of the window
         std::filesystem::path sim;                         // another tree's sim/ (empty: this one's)
     };
 

@@ -2,9 +2,9 @@
 
 Package U3, branch `claude/awesome-gates-ntdb58`. Pages: `docs/ui/air.md` and `docs/ui/exhaust.md`. Paths: `ui/views/{air,exhaust}/`, `tests/ui/views/{Air,Exhaust}Tests.cpp`.
 
-**Done** (`tee-view-tests`, 29 U3 tests, all pass on Linux):
+**Done** (`tee-view-tests`, 30 U3 tests, all pass on Linux):
 - `ui.exhaust.*`: model, stage, builds, select, absent, rest, slow, sizes, inspector, framestage, text, effects, twostroke, ductmid, cost; sheet.pictures (nightly).
-- `ui.air.*`: model, stage, builds, select, absent, rest, sizes, inspector, framestage, text, textcheck, scopemap, ram.
+- `ui.air.*`: model, stage, builds, select, absent, rest, sizes, inspector, framestage, text, textcheck, scopemap, ram, mismatch.
 - Text checks: no two texts meet on any build at both frame stages. On the two-stroke, no trace crosses a label either
   (the port plot's OPENS and CLOSES now sit above its frame).
 - Builds: EXHAUST four-stroke (card's four, V12 on logs, turbo boxer) and two-stroke (single, twin with silencers).
@@ -31,7 +31,7 @@ G's `ductMid` (dacb9f8) bound: each pipe's trace bends through its middle (`ui.e
 Card T's two-stroke (two-stroke-mx125.json's spec, custom engine): degrees 360, pipePoints 7, portExhaust 360
 entries (absolute), tsPipeTemperature 614 K at 12 500 rpm: each read as the stage expects.
 
-**Whole suite**: `tee-view-tests all` 126 of 126 pass.
+**Whole suite**: `tee-view-tests all` 129 of 129 pass.
 
 **Wanted from the lead**: a simulator "slow time" control would let SLOW show the waves truly slowed. Today SLOW replays
 the frame-rate copies at an eighth of their pace.
