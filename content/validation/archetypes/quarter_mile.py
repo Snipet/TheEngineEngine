@@ -4,7 +4,7 @@ sequential, dual clutch), and for each automatic: content/validation/scenarios/q
 validation's quarter-mile targets at it.
 
     python3 content/validation/archetypes/quarter_mile.py [--bin build-dev/bin] [--sim DIR] [--builds DIR]
-        [--shift power|redline] [--launch idle|prerev] [--tyres cold|burnout] [--out DIR] [slug ...]
+        [--shift power|redline] [--launch idle|prerev] [--tyres air|warm] [--out DIR] [slug ...]
 
 A timed run as it is made (the lead, 19:36), each part a switch so the table's notes can say what each one gives:
   --shift power    each upshift where the next gear's wheel torque at the same road speed is the greater, from the
@@ -15,9 +15,10 @@ A timed run as it is made (the lead, 19:36), each part a switch so the table's n
                    with the launch button held where the car has launch control (ecu.launch.on), so it holds its
                    launch speed; an automatic's is a brake-torque launch against its converter. (idle: the pedal floored
                    at the green from idle, as before.)
-  --tyres burnout  a burnout before staging, as a drag run makes it: the line lock holding the front brakes, the
-                   rear tyres spun on the limiter in first for 6 s, the traction control on after it (rear drive only:
-                   the line lock holds the front). (cold: the tyres as the run starts them.)
+  --tyres warm     the tyres in their compound's window, as a timed run makes them (the scenario's "warmTyres":
+                   true, card C's: the host holds car.m1.warmTyres, card I's a140c6f). (air: at the air's temperature,
+                   as every other run starts them; the default until card C's field lands: car.m1.warmTyres is state,
+                   which a scenario's spec event cannot set.)
 
 The run is the car's own: its gearbox, its clutch (the paddles' robotised one or a dual clutch) and card I's launch
 (ecu.traction.on: a standing start holds the driven tyres at the slip target until the clutch locks, c0f95c2). A
@@ -38,21 +39,19 @@ ROOT = os.path.normpath(os.path.join(HERE, "..", "..", ".."))
 BUILDS = os.path.join(ROOT, "content", "builds", "archetypes")
 OUT = os.path.join(ROOT, "content", "validation", "scenarios", "qm")
 RPM = 3.14159265358979 / 30.0
-BURN = 6.0
 
 
 class Run:
     """How the run is made: the switches above, and what the build has (its gearbox, drive, launch control)."""
 
-    def __init__(self, shift="power", launch="prerev", tyres="burnout"):
+    def __init__(self, shift="power", launch="prerev", tyres="air"):
         self.shift, self.launch, self.tyres = shift, launch, tyres
 
     def for_build(self, b):
         c, e = b["spec"]["car"], b["spec"].get("ecu", {})
         self.auto = c["gearbox"] in ("Automatic", "CVT")
-        self.burn = self.tyres == "burnout" and c.get("drive") == "Rear"
         self.button = bool(e.get("launch", {}).get("on")) if isinstance(e.get("launch"), dict) else bool(e.get("launch.on"))
-        self.stage = 8.0 + (BURN + 1.0 if self.burn else 0.0)
+        self.stage = 8.0
         self.green = self.stage + 2.5
         return self
 
@@ -64,14 +63,8 @@ def events(run, shifts):
           {"t": 5.0, "ctl": {"brake": 1}}]
     # first on the paddles; an automatic's lever in D (it keeps its own launch: no traction control)
     ev += [{"t": 5.5, "ctl": {"lever": 1}}] if run.auto else [{"t": 5.5, "press": ["shiftUp"]}]
-    tc = [] if run.auto else [{"spec": {"ecu.traction.on": True}}]
-    if run.burn:
-        # the burnout: the line lock on and the brake pedal up, the pedal floored in first; then the brake again
-        ev += [{"t": 6.0, "ctl": {"buttons": 1, "brake": 0}}, {"t": 6.2, "ctl": {"throttle": 1}, "ramp": 0.3},
-               {"t": 6.0 + BURN, "ctl": {"throttle": 0}}, {"t": 6.3 + BURN, "ctl": {"buttons": 0, "brake": 1}},
-               ] + [dict(e, t=6.5 + BURN) for e in tc]
-    else:
-        ev += [dict(e, t=0.0) for e in tc]
+    if not run.auto:
+        ev += [{"t": 0.0, "spec": {"ecu.traction.on": True}}]
     ev += [{"t": run.stage, "press": ["strip"]}]
     if run.launch == "prerev":
         ev += [{"t": g - 1.5, "ctl": {"throttle": 1}, "ramp": 0.3}, {"t": g, "ctl": {"brake": 0}}]
@@ -125,14 +118,16 @@ def scenario(run, slug, name, shifts):
            ("the revs held at the green (the brake held, the pedal floored 1.5 s before%s)" %
             (", the launch button held" if run.button else "")) if run.launch == "prerev" else
            "the pedal floored at the green from idle"]
-    if run.burn:
-        how.append("a %.0f s burnout on the line lock before staging" % BURN)
-    return {"format": "tee-scenario", "version": 1, "name": "qm-" + slug,
+    how.append("the tyres warm, in their window" if run.tyres == "warm" else "the tyres at the air's temperature")
+    doc = {"format": "tee-scenario", "version": 1, "name": "qm-" + slug,
             "description": "Card P's drag run for \"%s\": card I's launch (traction control on, the car's own clutch), "
                            "staged at %.1f s, the green at %.1f s; %s (placed by content/validation/archetypes/"
                            "quarter_mile.py). Read car.t1320 and car.v1320." % (name, run.stage, run.green, "; ".join(how)),
             "seconds": 50, "warm": True, "events": events(run, shifts),
             "assertions": [{"audio": "finite"}, {"audio": "peak", "<=": 1}]}
+    if run.tyres == "warm":
+        doc["warmTyres"] = True
+    return doc
 
 
 def render(bin_dir, sim, build, scen_path, out):
@@ -187,7 +182,7 @@ def main():
     ap.add_argument("--out", default=OUT)
     ap.add_argument("--shift", choices=("power", "redline"), default="power")
     ap.add_argument("--launch", choices=("prerev", "idle"), default="prerev")
-    ap.add_argument("--tyres", choices=("burnout", "cold"), default="burnout")
+    ap.add_argument("--tyres", choices=("air", "warm"), default="air")
     ap.add_argument("slugs", nargs="*")
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
