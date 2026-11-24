@@ -378,3 +378,79 @@ TEST_CASE("probe: an overrun's gas temperatures", "[.probe-overrun]")
     }
     SUCCEED();
 }
+
+// A start on the engine dyno as card N2's harness makes it (the key on, then start, held warm): speed, state, the
+// intake's air temperature and the charge heating's rise, every 0.2 s. PROBE_BUILD, PROBE_RPM (the dyno's), PROBE_SIM.
+TEST_CASE("probe: the first second of a crank", "[.probe-crank]")
+{
+    const char* buildEnv = std::getenv("PROBE_BUILD");
+    const std::string slug = buildEnv ? buildEnv : "tractor-15-inline-six";
+    Probe pr;
+    tee::EnginePlayer::Options options;
+    options.directory = std::getenv("PROBE_SIM") ? std::filesystem::path(std::getenv("PROBE_SIM"))
+                                                  : std::filesystem::path(TEE_SOURCE_DIR) / "sim";
+    options.sampleRate = 48000.0;
+    std::string errors, warnings;
+    pr.p = tee::EnginePlayer::create(options, errors);
+    REQUIRE(pr.p != nullptr);
+    tee::EngineBuild b;
+    REQUIRE(tee::loadBuild(*pr.p, std::filesystem::path(TEE_SOURCE_DIR) / "content" / "builds" / "archetypes" / (slug + ".json"), b, errors, warnings));
+    tee::applyBuild(*pr.p, b);
+    auto& c = pr.p->controls();
+    c.mode = 2;
+    c.dynoSpeed = float(1300.0 * M_PI / 30.0);
+    c.ignition = 1;
+    pr.play(0.1);
+    c.ignition = 2;
+    std::printf("%5s %6s %7s %8s %8s %8s %8s %7s\n", "t s", "rpm", "cyl1 t", "cyl1 p", "qTot J", "pPlen", "pBox", "tAir");
+    for (int i = 0; i < 24; ++i)
+    {
+        double qMax = 0, tMax = 0, pMax = 0;
+        pr.play(0.05, [&] {
+            qMax = std::max(qMax, pr.get("cyl[0].qTot"));
+            tMax = std::max(tMax, pr.get("cyl[0].t"));
+            pMax = std::max(pMax, pr.get("cyl[0].p"));
+        });
+        std::printf("%5.2f %6.0f %7.0f %8.0f %8.1f %8.0f %8.0f %7.1f\n", 0.1 + 0.05 * (i + 1), pr.tel("engine.speed") * 30.0 / M_PI, tMax, pMax / 1e3,
+                    qMax, pr.get("intk.pPlenum") / 1e3, pr.get("intk.pBox") / 1e3, pr.get("intk.tAir"));
+    }
+    SUCCEED();
+}
+
+TEST_CASE("probe: a start on the dyno", "[.probe-start]")
+{
+    const char* buildEnv = std::getenv("PROBE_BUILD");
+    const std::string slug = buildEnv ? buildEnv : "tractor-15-inline-six";
+    const char* rpmEnv = std::getenv("PROBE_RPM");
+    Probe pr;
+    tee::EnginePlayer::Options options;
+    options.directory = std::getenv("PROBE_SIM") ? std::filesystem::path(std::getenv("PROBE_SIM"))
+                                                  : std::filesystem::path(TEE_SOURCE_DIR) / "sim";
+    options.sampleRate = 48000.0;
+    std::string errors, warnings;
+    pr.p = tee::EnginePlayer::create(options, errors);
+    INFO(errors);
+    REQUIRE(pr.p != nullptr);
+    tee::EngineBuild b;
+    std::filesystem::path file = slug;
+    if (!std::filesystem::exists(file))
+        file = std::filesystem::path(TEE_SOURCE_DIR) / "content" / "builds" / "archetypes" / (slug + ".json");
+    REQUIRE(tee::loadBuild(*pr.p, file, b, errors, warnings));
+    tee::applyBuild(*pr.p, b);
+    auto& c = pr.p->controls();
+    c.mode = 2;
+    c.dynoSpeed = float((rpmEnv ? std::atof(rpmEnv) : 1300.0) * M_PI / 30.0);
+    c.ignition = 1;
+    std::printf("%5s %6s %5s %7s %7s %7s %7s %8s\n", "t s", "rpm", "state", "tAir", "rise", "tCool", "charge", "fuel g/s");
+    for (int i = 0; i < 30; ++i)
+    {
+        const double t = 0.2 * i;
+        c.ignition = t < 0.1 ? 1 : (t < 1.1 ? 2 : 1);
+        c.throttle = t > 4.0 ? 1.0f : 0.0f;
+        pr.play(0.2);
+        std::printf("%5.1f %6.0f %5.0f %7.1f %7.2f %7.1f %7.1f %8.3f\n", t + 0.2, pr.tel("engine.speed") * 30.0 / M_PI,
+                    pr.tel("engine.state"), pr.get("intk.tAir"), pr.get("intk.heatRise"), pr.get("intk.tCoolant"),
+                    pr.tel("engine.chargeTemperature"), pr.tel("ecu.fuelFlow") * 1e3);
+    }
+    SUCCEED();
+}
