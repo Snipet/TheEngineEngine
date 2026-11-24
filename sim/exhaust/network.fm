@@ -97,6 +97,8 @@ module XNet
 {
     Duct d[XN_DUCTS];
     int dUse[XN_DUCTS];     // 1: in this build (read and written each sample)
+    int used[XN_DUCTS];     // the pipes in use, in order, and how many (made by settle)
+    int nUsed;
     float nearIn[XN_DUCTS]; // this sample's waves into each pipe's ends
     float farIn[XN_DUCTS];
     // the junctions
@@ -356,6 +358,7 @@ module XNet
     // was never given. The builder clears, sizes, then settles.)
     void settle()
     {
+        list();
         for (int i = 0; i < XN_DUCTS; ++i)
         {
             if (dUse[i] == 0 || d[i].steep <= 0.0f)
@@ -368,6 +371,20 @@ module XNet
             p->rF = (p->w - i0 - 1 + 2 * p->cap) % p->cap;
             p->ageF = i0 + 1;
             p->dPrevF = d0;
+        }
+    }
+
+    // The pipes in use, as a list the sample's loops walk
+    void list()
+    {
+        nUsed = 0;
+        for (int i = 0; i < XN_DUCTS; ++i)
+        {
+            if (dUse[i] != 0)
+            {
+                used[nUsed] = i;
+                nUsed += 1;
+            }
         }
     }
 
@@ -409,11 +426,8 @@ module XNet
 
     void read()
     {
-        for (int i = 0; i < XN_DUCTS; ++i)
-        {
-            if (dUse[i] != 0)
-                d[i].read();
-        }
+        for (int u = 0; u < nUsed; ++u)
+            d[used[u]].read();
     }
 
     void solveNode(int j)
@@ -433,7 +447,9 @@ module XNet
         {
             const int k = k0 + b;
             const Duct* p = &d[bD[k]];
-            na[b] = arriving(k) - 0.5f * noiseOf(k, d[bNrho[k]].rho);
+            na[b] = bE[k] == 0 ? p->near : p->far;
+            if (bBand[k] >= 0)
+                na[b] -= 0.5f * noiseOf(k, d[bNrho[k]].rho);
             nz[b] = p->z + bR[k];
             nt[b] = bT[k];
             nkf[b] = bKf[k];
@@ -451,9 +467,13 @@ module XNet
         for (int b = 0; b < n; ++b)
         {
             const int k = k0 + b;
+            const Duct* p = &d[bD[k]];
             bS[k] = ns[b];
             bQ[k] = nq[b];
-            send(k, arriving(k) - d[bD[k]].z * nq[b]);
+            if (bE[k] == 0)
+                nearIn[bD[k]] = p->near - p->z * nq[b];
+            else
+                farIn[bD[k]] = p->far - p->z * nq[b];
         }
     }
 
@@ -557,10 +577,10 @@ module XNet
                 jP[j] = 2.0f * p->near + jet;
             }
         }
-        for (int i = 0; i < XN_DUCTS; ++i)
+        for (int u = 0; u < nUsed; ++u)
         {
-            if (dUse[i] != 0)
-                d[i].write(nearIn[i], farIn[i]);
+            const int i = used[u];
+            d[i].write(nearIn[i], farIn[i]);
         }
         float l = 0.0f;
         float r = 0.0f;

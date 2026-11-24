@@ -3,6 +3,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <chrono>
 #include <cstdio>
 
 using namespace tee::test::exhaust;
@@ -239,3 +240,51 @@ TEST_CASE("every element kind conserves the flow", "[exhaust][conservation]")
     std::printf("conservation: worst %.4f %%\n", 100.0 * worst);
 }
 
+
+// The cost: the builder's samples against the reference's exhaust code on the same flows (made-up flows; ns a 96 kHz
+// sample, this machine, the least of three), for the reference's topology and a typical dual system with an X,
+// resonators and valves; and per pipe in use. Not a pass or a fail: printed for the handoff.
+TEST_CASE("what a sample costs", "[exhaust][cost]")
+{
+    auto timeIt = [](Rig& rig, bool reference) {
+        std::vector<float> q = pulses(rig, 4000.0, 0.5, 0.15, 0.01);
+        std::vector<float> l, r;
+        double best = 1e30;
+        for (int k = 0; k < 3; ++k)
+        {
+            const auto t0 = std::chrono::steady_clock::now();
+            rig.run(q, l, r, reference);
+            const auto t1 = std::chrono::steady_clock::now();
+            best = std::min(best, std::chrono::duration<double, std::nano>(t1 - t0).count() / (q.size() / kPorts));
+        }
+        return best;
+    };
+    {
+        Rig rig(12);
+        rig.configure();
+        const double b = timeIt(rig, false);
+        const double r = timeIt(rig, true);
+        int n = 0;
+        for (int i = 0; i < 80; ++i)
+            n += rig.get("b.net.dUse[" + std::to_string(i) + "]") != 0 ? 1 : 0;
+        std::printf("cost, V8 reference topology: builder %.0f ns a sample (%d pipes: %.1f ns a pipe), the reference's "
+                    "exhaust %.0f ns\n", b, n, b / n, r);
+    }
+    {
+        Rig rig(12);
+        rig.set("b.sp.crossover", 2);
+        rig.set("b.sp.crossAt", 1);
+        for (int s = 0; s < 2; ++s)
+        {
+            rig.set("b.sp.resonator[" + std::to_string(s) + "]", 1);
+            rig.set("b.sp.bypass[" + std::to_string(s) + "]", 3);
+        }
+        rig.configure();
+        const double b = timeIt(rig, false);
+        int n = 0;
+        for (int i = 0; i < 80; ++i)
+            n += rig.get("b.net.dUse[" + std::to_string(i) + "]") != 0 ? 1 : 0;
+        std::printf("cost, V8 dual with an X, quarter-wave stubs and bypass valves: %.0f ns a sample (%d pipes: %.1f ns "
+                    "a pipe)\n", b, n, b / n);
+    }
+}
