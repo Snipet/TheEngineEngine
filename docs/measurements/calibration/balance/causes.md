@@ -755,3 +755,11 @@ What is out, and whose:
   intake's throttle book does not see. The gas into the turbines' housings (sumMPipes) against what the cylinders let
   out (trapped air and fuel): +4 % on the turbo four at 3050, -7 % on the V8 at 4375, -8 to -9 % on the rotary: the
   exhaust's books into the housings (G's closing is on the pipes; the housings' side to check).
+
+**B-2's two book gaps measured again** (21:56 by `date -u`; 2 s windows). (a) Withdrawn as first stated: the pickup at 1700
+rpm, compressor 0.5545 kg, the machine's draw 0.5466 (-1.4 %), the intake's throttle 0.5452 (the draw's), valves 0.5269
+and trapped 0.5278 (-3.4 % from the throttle: the intake's throttle book, N1's known term). The first 8 % was a short
+window's estimate. (b) Confirmed, and corrected (the cylinder's mass carries no fuel, so against the exhaust valves'
+gas alone): into the turbines' housings over out of the exhaust valves, the turbo four at 3050 rpm 1.14 (0.2433 / 0.2128
+kg; first 1.13), the twin-turbo V8 at 4375 1.03. G's given-over-let-out (closed for the pipes by flowClose) apparently
+still reaching the housings under boost.model 1; it would over-drive the turbines. Sent to G and N2.
