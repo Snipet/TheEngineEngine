@@ -133,8 +133,8 @@
         160000
       ],
       "unit": "W",
-      "source": "published figures of its kind (makers' figures of the 1990s, firm): 3791 cc; 37 to 42 kW a litre",
-      "basis": "recalled"
+      "source": "published figures of its kind (makers' figures of the 1990s, firm): 3791 cc; 37 to 42 kW a litre; looked up: 3800wiki.com/overview (153 kW at 5200, 312 N m at 4000); Wikipedia's GM 3800 (205 hp, 230 lb ft)",
+      "basis": "cited"
     },
     {
       "name": "Speed at peak power",
@@ -148,8 +148,8 @@
         565.5
       ],
       "unit": "rad/s",
-      "source": "published figures of its kind (makers' figures of the 1990s, firm): 3791 cc: 5000 to 5400 rpm",
-      "basis": "recalled"
+      "source": "published figures of its kind (makers' figures of the 1990s, firm): 3791 cc: 5000 to 5400 rpm; looked up: 3800wiki.com/overview (153 kW at 5200, 312 N m at 4000); Wikipedia's GM 3800 (205 hp, 230 lb ft)",
+      "basis": "cited"
     },
     {
       "name": "Peak torque",
@@ -163,8 +163,8 @@
         330
       ],
       "unit": "N m",
-      "source": "published figures of its kind (makers' figures of the 1990s, firm): 3791 cc; BMEP 9.9 to 10.9 bar (a naturally aspirated petrol engine 10 to 13 bar, turbocharged 18 to 25, a modern truck diesel 20 to 25: Heywood, Internal Combustion Engine Fundamentals, ch. 2)",
-      "basis": "recalled"
+      "source": "published figures of its kind (makers' figures of the 1990s, firm): 3791 cc; BMEP 9.9 to 10.9 bar (a naturally aspirated petrol engine 10 to 13 bar, turbocharged 18 to 25, a modern truck diesel 20 to 25: Heywood, Internal Combustion Engine Fundamentals, ch. 2); looked up: 3800wiki.com/overview (153 kW at 5200, 312 N m at 4000); Wikipedia's GM 3800 (205 hp, 230 lb ft)",
+      "basis": "cited"
     },
     {
       "name": "Speed at peak torque",
@@ -178,8 +178,8 @@
         439.8
       ],
       "unit": "rad/s",
-      "source": "published figures of its kind (makers' figures of the 1990s, firm): 3791 cc: 3800 to 4200 rpm (a turbocharged engine's plateau: its whole span)",
-      "basis": "recalled"
+      "source": "published figures of its kind (makers' figures of the 1990s, firm): 3791 cc: 3800 to 4200 rpm (a turbocharged engine's plateau: its whole span); looked up: 3800wiki.com/overview (153 kW at 5200, 312 N m at 4000); Wikipedia's GM 3800 (205 hp, 230 lb ft)",
+      "basis": "cited"
     },
     {
       "name": "Warm idle",

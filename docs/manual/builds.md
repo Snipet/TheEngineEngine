@@ -56,7 +56,7 @@ Thirty archetypes in `content/builds/archetypes/`, each a whole build (engine, c
 
 **Supercharged 6.2 L V8** (`supercharged-v8-62.json`). The 6.2 L pushrod V8 of 103.25 x 92 mm (6162 cc) at 9.1:1 under a 1.9 L positive-displacement blower at some 0.6 bar (the LSA kind: 415 kW at 6100 rpm, 746 N m at 3800; gmauthority.com, a community spec table for the compression). In a heavy six-speed coupe.
 
-**Small-block 5.7 L, carburettor-like** (`small-block-57-carb.json`). A 350 cubic inch small block (4.00 x 3.48 in: 101.6 x 88.4 mm, 5733 cc), 9:1, two valves on pushrods, a flat-tappet cam, one big throttle over an open plenum as a four-barrel carburettor's. Some 150 to 200 kW net and 400 to 450 N m (makers' net ratings of the 1970s and 80s). Four-speed manual, live axle.
+**Small-block 5.7 L, carburettor-like** (`small-block-57-carb.json`). A 350 cubic inch small block (4.00 x 3.48 in: 101.6 x 88.4 mm, 5733 cc), 9:1, two valves on pushrods, a flat-tappet cam (the L48's), one big throttle over an open plenum as a four-barrel carburettor's. The L48 of 1975 to 1980 is rated 123 to 145 kW net (165 to 195 hp) and 346 to 380 N m (255 to 280 lb ft), 1977's 180 hp at 4000 rpm and 270 lb ft at 2400; the L82 157 kW at 5200 and 346 N m at 3600 (SAE net, looked up: corvsport.com, corvetteactioncenter.com). Four-speed manual, live axle.
 
 **V10 5.2 L** (`v10-52.json`). A 90-degree V10 with split crankpins for even firing: 84.5 x 92.8 mm (5204 cc), 12.5:1, direct and port injection, 8700 rpm (the 5.2 L V10 of 2008 on: 386 to 470 kW at 8000 to 8700 rpm, 530 to 565 N m at 6500; makers' figures). In an all-wheel-drive mid-engined car.
 

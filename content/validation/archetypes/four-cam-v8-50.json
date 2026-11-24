@@ -133,8 +133,8 @@
         345000
       ],
       "unit": "W",
-      "source": "published figures of its kind (makers' figures, firm): 5038 cc; 60 to 68 kW a litre",
-      "basis": "recalled"
+      "source": "published figures of its kind (makers' figures, firm): 5038 cc; 60 to 68 kW a litre; looked up: en.wikipedia.org/wiki/Ford_Modular_engine (343 kW at 7000, 569 N m at 4600)",
+      "basis": "cited"
     },
     {
       "name": "Speed at peak power",
@@ -148,8 +148,8 @@
         754.0
       ],
       "unit": "rad/s",
-      "source": "published figures of its kind (makers' figures, firm): 5038 cc: 6500 to 7200 rpm",
-      "basis": "recalled"
+      "source": "published figures of its kind (makers' figures, firm): 5038 cc: 6500 to 7200 rpm; looked up: en.wikipedia.org/wiki/Ford_Modular_engine (343 kW at 7000, 569 N m at 4600)",
+      "basis": "cited"
     },
     {
       "name": "Peak torque",
@@ -163,8 +163,8 @@
         575
       ],
       "unit": "N m",
-      "source": "published figures of its kind (makers' figures, firm): 5038 cc; BMEP 13.0 to 14.3 bar (a naturally aspirated petrol engine 10 to 13 bar, turbocharged 18 to 25, a modern truck diesel 20 to 25: Heywood, Internal Combustion Engine Fundamentals, ch. 2)",
-      "basis": "recalled"
+      "source": "published figures of its kind (makers' figures, firm): 5038 cc; BMEP 13.0 to 14.3 bar (a naturally aspirated petrol engine 10 to 13 bar, turbocharged 18 to 25, a modern truck diesel 20 to 25: Heywood, Internal Combustion Engine Fundamentals, ch. 2); looked up: en.wikipedia.org/wiki/Ford_Modular_engine (343 kW at 7000, 569 N m at 4600)",
+      "basis": "cited"
     },
     {
       "name": "Speed at peak torque",
@@ -178,8 +178,8 @@
         502.7
       ],
       "unit": "rad/s",
-      "source": "published figures of its kind (makers' figures, firm): 5038 cc: 4200 to 4800 rpm (a turbocharged engine's plateau: its whole span)",
-      "basis": "recalled"
+      "source": "published figures of its kind (makers' figures, firm): 5038 cc: 4200 to 4800 rpm (a turbocharged engine's plateau: its whole span); looked up: en.wikipedia.org/wiki/Ford_Modular_engine (343 kW at 7000, 569 N m at 4600)",
+      "basis": "cited"
     },
     {
       "name": "Warm idle",
