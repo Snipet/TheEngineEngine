@@ -173,3 +173,23 @@ Before / after, today's tree (V8 in the coupe, 2 s; P's qm runs: 60 ft, 0-100 km
 - Governed diesel (combo/large-diesel, model 1, ecu.model 1, first, floored): the launch holds 1580 rpm (60 % of
   its 2530 rpm limiter), no stall; with traction control on 7.68 m/s at 4 s against 7.79 off (no wheelspin there: the
   launch's speed hold costs 1.4 %). Nothing wrong with D's limiter-as-redline for it.
+
+# I: the automatics' brake-torque launch (35ef028e)
+
+Reproduced with P's prerev scenarios (quarter_mile.py, no shifts pressed: the automatic shifts itself). What the first
+2 s showed: floored against the brakes, the converter at stall gives 2300 to 4300 N m a rear wheel (big block: 4100
+to 4350 total at the wheels, the engine 2000 to 4200 rpm) against rear brakes of 1170 to 1300 N m each (brakeDecel
+1.1 to 1.2 g, 35 % to the rear): the rear tyres spin before the green (turbine 2300 to 3300 rpm with the car at rest;
+nu 0.75 to 0.8, no torque multiplication left). Then the bog: the schedule shifted up on the ENGINE's speed, which the
+spinning tyres hold near the redline: the big block went to second at 2 m/s and third at 5 m/s, the pickup to second at
+1.7 and third at 3.6 m/s. Fixed: up on the speed the car's speed gives the input (as down already was), 85 % of the
+redline at most. Quarter / 60 ft, idle launch then brake-torque launch:
+- big block: before 16.85 / 2.915 and 17.18 / 2.981; after 15.54 / 2.946 and 15.89 / 3.015 (both now in its band).
+- pickup: before 22.80 / 3.277 and 23.53 / 3.457; after 19.53 / 3.208 and 19.59 / 3.245 (in its band).
+The brake-torque launch is still a little slower in P's scenario, and that part is the scenario's: it floors the pedal
+for 1.5 s on the brakes, a brake stand (no rear brake holds a converter at full stall on these cars), and keeps the pedal
+floored at the release on street or truck tyres with traction control off. A driver brake-torques to where the brakes
+hold (on the V8 coupe a fifth of the pedal: 2264 rpm), then rolls on. Test `launch.automatic`: so done, 60 ft in 3.104
+s against 3.136 from idle (traction off), 2.837 against 2.901 (on). `launch.automatic.spin`: floored on the brakes it
+stays in first under 8 m/s (third on the old schedule). Also: the V12 (v12-65) takes over 1.5 s to start in 318 K air
+(tyres.start now cranks until it runs): for D or H.
