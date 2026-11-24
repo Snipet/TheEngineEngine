@@ -47,7 +47,7 @@ out of silence); once running it reads 5 to 10, under `clickLimit` 12. Listen to
 
 # C: the host and the tools (wave 1, second slice)
 
-Same card and branch. `tee-host-tests`: 56 cases, all passing here. The full suite passed except ContractTest's
+Same card and branch. `tee-host-tests`: 51 cases, all passing here. The full suite passed except ContractTest's
 attribute check on G's new `spec.exhaust.*` fields (not mine).
 
 **Done, by test.**
