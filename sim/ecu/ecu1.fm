@@ -170,7 +170,8 @@ module Ecu1
         launch.control(set->launch.on, in->launchButton, pedal, in->clutch, in->carSpeed, rpm, speed.rate,
                        set->launch.speed * 9.5492966f, set->launch.retard, set->launch.flatShift, in->upshift, in->dogCut,
                        in->blip, d16);
-        traction.control(set->traction.on, in->slip, set->traction.slip, set->traction.pitSpeed, in->carSpeed, d16);
+        traction.control(set->traction.on, in->slip, set->traction.slip, set->traction.pitSpeed, in->carSpeed,
+                         fminf(fmaxf((rpm - idle.target - 300.0f) / 1200.0f, 0.0f), 1.0f), d16);
         antiLag.control(set->antiLag.on, running, rpm, set->antiLag.low * 9.5492966f, set->antiLag.high * 9.5492966f,
                         pedal, set->antiLag.retard, set->antiLag.lambda);
         nitrous.control(set->nitrous.on && in->nitrousButton, running, rpm, set->nitrous.low * 9.5492966f, pedal,

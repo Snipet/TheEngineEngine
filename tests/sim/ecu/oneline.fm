@@ -269,7 +269,7 @@ module OneLine
         const int steps = (int)(seconds / d16);
         for (int s = 0; s < steps; ++s)
         {
-            ecu.traction.control(set.traction.on, slip, set.traction.slip, 0.0f, 20.0f, d16);
+            ecu.traction.control(set.traction.on, slip, set.traction.slip, 0.0f, 20.0f, 1.0f, d16);
             const float ret = ecu.traction.retard / 45.0f;
             const float share = fmaxf(1.0f - ret * ret, 0.2f) * (1.0f - ecu.traction.share);
             const float want = fmaxf(0.4f * (drive * share - 1.0f), 0.0f);

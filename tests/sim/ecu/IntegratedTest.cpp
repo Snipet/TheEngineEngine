@@ -149,3 +149,65 @@ TEST_CASE("H: under ecu.model 0 and fuel.model 0 model 1's telemetry stays at 0"
     CHECK(s.tel("ecu.flags") == 0.0);
     CHECK(s.tel("engine.speed") > 100.0);
 }
+
+TEST_CASE("H10: traction control holds a spinning car's slip near its target", "[ecu][integrated][traction]")
+{
+    // The V8 in the rear-drive coupe (card I's vehicle, car.model 1) on street tyres, ecu.model 1: away gently in first,
+    // then the pedal floored while rolling. The slip is the driven wheels' (Car::drivenSlip, as the ECU is given it);
+    // measured over the second from 1.5 s after the pedal goes down (before that, under some 9 m/s, the slip ratio of
+    // wheels geared to an engine at 2000 rpm stays high whatever the ECU takes out; traction control brings it down meanwhile). (Dumping the clutch at a standstill is no test of
+    // it: the wheels are then geared to an engine that cannot turn slower than its idle while the car stands, so the
+    // slip ratio stays near 1 whatever the ECU does; a launch slips its clutch)
+    auto launch = [](bool tc, double& slipMean, double& slipMost, int& flags, double& state) {
+        Sim s("v8");
+        s.over("cars/rwd-v8-coupe");
+        s.set("car.tyre", 1);                            // street
+        s.set("ecu.model", 1);
+        s.set("fuel.model", 1);
+        s.set("env.temperature", 300.0);
+        s.set("ecu.traction.on", tc ? 1 : 0);
+        s.ctl().mode = tee::EnginePlayer::kModeDrive;
+        s.ctl().lever = 0;
+        s.ctl().clutch = 1.0f;
+        s.ctl().ignition = tee::EnginePlayer::kIgnitionStart;
+        s.run(1.5);
+        s.ctl().ignition = tee::EnginePlayer::kIgnitionOn;
+        s.run(1.0);
+        s.ctl().lever = 1;
+        s.run(0.5);
+        // away gently in first (the clutch in over a second at a fifth of the pedal), rolling at some 3 m/s; then floored
+        s.ctl().throttle = 0.2f;
+        for (int i = 0; i < 20; ++i)
+        {
+            s.ctl().clutch = 1.0f - 0.05f * static_cast<float>(i + 1);
+            s.run(0.05);
+        }
+        s.run(0.5);
+        s.ctl().throttle = 1.0f;
+        s.run(1.5);
+        slipMean = 0.0;
+        slipMost = 0.0;
+        flags = 0;
+        const int n = 90;
+        for (int i = 0; i < n; ++i)
+        {
+            s.run(512.0 / 48000.0);
+            const double slip = s.read("ecu.vSlip");
+            slipMean += slip / n;
+            slipMost = std::fmax(slipMost, slip);
+            flags |= static_cast<int>(s.tel("ecu.flags"));
+        }
+        state = s.tel("engine.state");
+        std::printf("H10 traction %s: slip mean %.3f, most %.3f, flags %d, state %g, %.1f m/s\n", tc ? "on" : "off",
+                    slipMean, slipMost, flags, state, s.tel("car.speed"));
+    };
+    double offMean = 0.0, offMost = 0.0, onMean = 0.0, onMost = 0.0, offState = 0.0, onState = 0.0;
+    int offFlags = 0, onFlags = 0;
+    launch(false, offMean, offMost, offFlags, offState);
+    launch(true, onMean, onMost, onFlags, onState);
+    CHECK(offMean > 0.2);                                // it spins without it
+    CHECK((onFlags & 256) != 0);
+    CHECK(onMean > 0.07);
+    CHECK(onMean < 0.13);                                // near the target, 0.10
+    CHECK(onState == 2.0);                               // and no stall
+}
