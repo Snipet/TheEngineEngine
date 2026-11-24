@@ -962,3 +962,63 @@ the exhaust's pressure back-fills (N1). With it parked, matching matters as expe
 matched turbine to the 0.30), and the rest of the gap at 1800 is the compressor's low-speed efficiency (model,
 judgement), then the turbine's, then the exhaust's heat. A smaller design point alone (P's cited hardware) does not
 reach the class's figure on this model while items 1 and 2 stand.
+
+**B-3, measured again on N2's field** (23:12 by `date -u`): `spec.boost.designShare` (N2's, pushed): it sizes the whole
+match at that share of the redline (the compressor, the turbine's nozzle and the gate), not the nozzle alone as the
+turbAR stand-in above did. Same probe and settle; as built, and the phaser parked (`valve.inPhaseRange=0`). The cited
+curve (P's rows, the EA888 gen 3 in the Mk7 GTI): 333 to 368 N m at 1500 / 1800 / 2500 / 4000, 237 to 262 at 6200.
+
+| share | cams | 1500 | 1800 | 2500 | 4000 | 6000 | 6200 (N m; boost kPa) |
+|---|---|---|---|---|---|---|---|
+| 0.30 | as built | 194; 83 | 215; 120 | 261; 120 | 211; 48 | 112; 11 | 105; 3 |
+| 0.30 | parked | 277; 115 | 292; 122 | 296; 118 | 212; 55 | 112; 12 | 105; 3 |
+| 0.40 | as built | 164; 33 | 181; 53 | 294; 120 | 289; 96 | 173; 42 | 164; 34 |
+| 0.40 | parked | 201; 40 | 293; 114 | 309; 119 | 286; 109 | 173; 44 | 164; 36 |
+| 0.50 | as built | 152; 17 | 165; 27 | 317; 120 | 328; 120 | 230; 72 | 220; 64 |
+| 0.50 | parked | 169; 19 | 198; 35 | 319; 120 | 316; 121 | 230; 74 | 220; 66 |
+| 0.85 | as built | 137; 5 | 142; 6 | 260; 53 | 366; 120 | 278; 85 | 276; 81 |
+| 0.85 | parked | 152; 6 | 162; 9 | 215; 36 | 341; 120 | 273; 85 | 271; 81 |
+
+Compressor efficiency (time mean) at 1800: 0.67 / 0.56 / 0.51 / 0.36 at 0.30 / 0.40 / 0.50 / 0.85 as built.
+Knock retard at 1800: 15.0 / 14.9 / 9.6 / 1.1 degrees as built, 13.5 / 12.5 / 0 / 0 parked. At the top (0.30, 0.40)
+the gate is 0.94 to 0.97 open, the shaft at its limit speed (omegaMax: 317 and 274 krpm) and the compressor's
+efficiency 0.07 to 0.40: choked. Turbine efficiency mass-weighted 0.64 to 0.72 throughout on the field's match.
+
+What this changes in B-3's ranking:
+1. *The phaser* stands first: on the field's 0.40 it is 181 against 293 N m at 1800 (+62 %); at 0.30, 215 against 292.
+2. *The compressor's low-speed efficiency* was mostly matching, not the island: a compressor sized at 0.85 of the
+   redline sits far left of its island at 1800 (0.36); sized at 0.30 to 0.40 it runs 0.56 to 0.67 there. The Mach
+   term still costs some (0.67 at the 0.30's 223 krpm against a 0.76 peak); a cited low-speed map would settle the rest.
+3. *Knock*, newly first-order once the boost arrives: parked, 0.40, 1800: plenum 215 kPa, charge at closing 416 K,
+   residual 0.052, lambda 0.82, knock retard 12.5 degrees, spark at about TDC; 293 N m against 333 to 368. C's table
+   (fuel "Premium (91)", 9.6:1), with the real engine's direct injection's charge cooling and its scavenged residual
+   as the questions. Not sized by me.
+4. *The two ends do not meet on one match*: 0.30 to 0.40 hold the low end and choke at the top (105 to 164 N m at
+   6200, against 237 to 262); 0.50 is 220 at 6200 but 165 to 198 at 1800; 0.85 is 276 at 6200 (over) and 142 at 1800.
+   The real IS20 does both from one wheel: a map wider than the model's family gives (a mixed-flow turbine; the
+   compressor's width only through its A/R term, judgement), or a smaller wheel than the 0.85 match with the boost
+   map's trim at the top. N2 and P.
+5. *The top's excess on the matched turbo* (0.85, 276 N m at 6200 against 237 to 262): the boost map (P's: 120 kPa to
+   4500, 85 at 6000, 75 at 6500) is held exactly (81 kPa at 6200, gate 0.61); the torque goes as the charge's density,
+   so the cited 250 asks about 60 to 65 kPa at 6200 on this model. No cited GTI boost exists (the S3's "up to 1.2 bar"
+   is the larger IS38): content, P's, with that figure as what the model would need, not a target to tune to.
+6. *The exhaust's heat before the turbine* (G's measurement, the lead's 23:09): at 1800 (147 N m, 9 kPa) the valves'
+   30.8 kW reach the housing as 22.0, 29 % lost (port 16 %, primaries 10 %, collector 4 %); at 4000 13 %. The port's
+   drop (104 to 138 K) sits inside the 1976 SAE bound of about 140 K; the softest number is the port wall's 345 K
+   (450 K would return about 3 % of the valves' enthalpy). The right order, not bounded closer: third or later.
+   *My 35 to 41 % against G's 29 %* is accounting: mine sets the probe's valve enthalpy (the cylinder's own cp(T),
+   above the intake's backflow) against the boost machine's housing inflow at its constant cp 1148 J/kg K above 298 K;
+   a constant cp below the gas's true one at 1000 to 1450 K understates the housing's side. G's sections are on one
+   basis; take G's.
+
+The real engine's features (the lead's list), and the model:
+- *Channels kept separate to the turbine* (twin channels, mono-scroll wheel): modelled (scrolls 2: two housings into
+  one wheel, each pulse's work taken sample by sample) and on in this build.
+- *The manifold integrated in the head* (short, small, water-cooled): in part. Short primaries (0.61 of the layout's
+  length) and the port's water-cooled walls (Caton and Heywood) are in; no water-cooled manifold beyond the port.
+- *Exhaust valve lift switching* (Audi's AVS, a short low-speed exhaust lobe that keeps the cylinders' pulses apart):
+  the model has two-stage cams (valve.stages, a second profile above a speed); this build does not use them.
+- *Both cams phased for scavenging*: the model has an exhaust phaser (valve.exPhaseRange); this build has it at 0. The
+  intake's rule reads no pressure across the engine (item 1), so nothing schedules scavenging.
+- *An electric gate held shut until the target*: equivalent. The model's gate is pneumatic with a duty, and it reads
+  0 below the target at every low-speed point measured.
