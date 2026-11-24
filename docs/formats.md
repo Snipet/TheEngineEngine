@@ -242,6 +242,15 @@ the economy four). An unsettled step with cold walls held a few seconds reads a 
 the path to it (the V12 at 6673 rpm: 769 N m after a short hold against 779 after a minute). A run on the DYNO
 workspace, or a table quoted from one, should say which it is ("walls settled" or not).
 
+Why the predicted points are held 1 s (`PredictOptions::minHoldSeconds`). The slow state is the charge's heating in
+the intake (`sim/intake/intake.fm`, `heatRise`). It is a lag of 0.5 s towards a rise that the flow sets. A fresh
+instance starts it at 0, so its first point reads a few percent high: the V12 at 6673 rpm reads 706 N m at 0.3 s and
+692 at 1 s, with the charge going from 443 to 451 K and the trapped mass falling 1.5 %. It is not knock control (the
+same with knock control off), the phaser (still at 15 degrees) or the ECU's trims (lambda still). Its end value is
+known, as the exhaust walls' is: with the lag made instant (a scratch copy of the program) the same point reads 691.6
+with no hold and 690.6 to 691.6 out to 2 s, against the settled step's 689. When the program can settle it, as
+`spec.exhaust.heatSettle` settles the exhaust, the hold goes back to 0 and the ribbon gets its time back.
+
 ## A session log: `tee-session`, version 1
 
 Every control change and every Spec write that reached the simulator, each at the sample it took effect (card C,

@@ -21,6 +21,7 @@ namespace tee::ui
         DynoTrace t;
         t.name = std::move(name);
         t.fields = c.fields;
+        t.walls = c.settled ? 1 : 0;
         t.values.assign(c.fields.size(), {});
         for (const tee::DynoPoint& p : c.points)
         {
