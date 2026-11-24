@@ -26,7 +26,8 @@ target_compile_definitions(tee-tests PRIVATE
   "TEE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
   "TEE_SOURCE_SIM_DIR=\"${PROJECT_SOURCE_DIR}/sim/ref\""
   "TEE_SOURCE_CONTENT_DIR=\"${PROJECT_SOURCE_DIR}/content/ref\"")
-catch_discover_tests(tee-tests DISCOVERY_MODE PRE_TEST ADD_TAGS_AS_LABELS PROPERTIES TIMEOUT 900)
+# its own prefix (ref.): the reference's and the host's top-level tests, a row of their own in the budget (01-rules.md 3)
+catch_discover_tests(tee-tests DISCOVERY_MODE PRE_TEST ADD_TAGS_AS_LABELS TEST_PREFIX "ref." PROPERTIES TIMEOUT 900)
 add_subdirectory(host)   # card C: the host's and the tools' tests (tests/host/CMakeLists.txt)
 
 # ---- the simulator packages' tests (the rule above) ------------------------------------------------------------------
