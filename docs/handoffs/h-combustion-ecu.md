@@ -77,3 +77,22 @@ already out of it), so it double-counts the walls as the reference does. The phy
 `hA` takes the walls' real share: `share` becomes the combustion efficiency alone (0.95 to 0.98) under fuel.model 1,
 a one-line change in `Combustion::charge1`, with `fuel.knockDelay` and the bangs' lighting threshold (650 to 900 K of
 `tPort`, set when I read 770 K on the limiter, cut cylinders' air in it) checked again after. To agree with D.
+
+## After integration (16:10)
+
+All pushed (tip 9a78692; b09a0a6, 8096b73, 3649de4, 3d00883, f8be3c8 on origin). Null test 59 of 59 identical;
+tee-tests-ecu 15/15; tee-tests-combustion 13 and 2 expected failures; lint ok.
+- **X-003**: a cold start's enrichment is fuel for the walls (`Ecu1::fuelFactor`), the burn sees the lambda asked;
+  both models start the V8 at 253 K (0.35 s) and 233 K (0.93 s). Test in tee-tests-ecu.
+- **Test 10**: traction on card I's coupe (street tyres): slip 0.116 against 0.10, flag 256, no stall; its authority
+  fades from 1500 to 300 rpm over the idle.
+- **Idle (model 1)**: the valve's proportional gain halved near the target (full far and after a start), a spark-trim
+  integral; a diesel's idle governor on its fuel (no 0.12 floor, 0.28 of the redline at most 750, no cam bump);
+  `ecu.limiter.speed` sets a diesel's governed speed. Default 700 (+-20), diesel 706 (validation's idle passes). Open:
+  with the full burn the default's idle manifold reads 21 to 22 kPa (25 to 50 wanted).
+- **X-006**: cuts take whole firings; the bang saturates at 30 kPa (the reference's largest pop). The roadster's tour
+  with every model: 7.0 at the onset, 9.9 at the blip (bound 23).
+- **The full burn and the spark** (with Woschni's walls): kept share 0.97 when `engine.wallHeat` is 1, else the
+  reference's; the spark formula puts the half-burn 8 after the top. V8 +16 to 26 % torque; superbike 81 to 111 kW at
+  13,500; best torque on the sweep at half-burn 3 to 5 (flat to 0.3 % from 0 to 8); port gas hotter (1433 K at 4000
+  rpm on the V8): the walls' share is the integrator's to check. knockDelay stays 3; the bangs light at 650 to 900 K.
