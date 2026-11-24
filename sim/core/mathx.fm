@@ -19,3 +19,13 @@ float wrapCycle(float a, float cyc)
     x = x - cyc * floorf(x / cyc);
     return x >= 0.0f && x < cyc ? x : 0.0f;
 }
+
+// tableIndex: a float's whole part as an index into a table of points 0 to last, whatever the float is. Exact, for
+// every finite x from 0 up, as `(int)x` followed by `if (i > last) i = last;`; below 0, or not finite, 0 (a NaN's
+// cast is INT_MIN on x86 and 0 on arm64: macOS hides a read off the table that Linux and Windows crash on; X-019).
+// fminf and fmaxf lower to LLVM's minnum and maxnum, which return the other operand for a NaN. (Added by the build
+// steward with D's word, 2026-11-24; scripts/lint.sh rule 8 points here.)
+int tableIndex(float x, int last)
+{
+    return (int)fminf(fmaxf(x, 0.0f), (float)last);
+}
