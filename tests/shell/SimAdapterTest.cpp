@@ -131,6 +131,7 @@ TEST_CASE("shell: a counter of the simulator's Controls pressed once, what the f
     const std::unique_ptr<player::SimAdapter> sim = player::SimAdapter::create(o, errors);
     REQUIRE(sim != nullptr);
     REQUIRE(sim->hasControl("strip"));
+    CHECK(sim->hasControl("bakeMaps"));          // TUNE's BAKE (card C's SimControls carries it since 2a63c2d)
     CHECK_FALSE(sim->hasControl("no such control"));
     CHECK_FALSE(sim->pressCounter("no such control"));
     REQUIRE(sim->pressCounter("strip"));

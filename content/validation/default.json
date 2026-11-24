@@ -19,6 +19,9 @@
       "source": "a warm spark-ignition engine's manifold at idle is 25 to 50 kPa absolute (a rule of thumb: 15 to 22 inches of mercury of vacuum)" },
     { "name": "Peak torque", "dyno": { "from": 150, "to": 680, "rate": 60 }, "measure": "maxTorque",
       "range": [458, 642], "unit": "N m",
-      "source": "a naturally aspirated spark-ignition engine's bmep at its torque peak is 1.0 to 1.4 MPa (Heywood, ch. 2): T = bmep Vd / 4 pi for 5.76 L" }
+      "source": "a naturally aspirated spark-ignition engine's bmep at its torque peak is 1.0 to 1.4 MPa (Heywood, ch. 2): T = bmep Vd / 4 pi for 5.76 L" },
+    { "name": "Port gas at full load", "scenario": "full-load", "tel": "exhaust.portTemperature", "measure": "mean",
+      "during": [6, 8], "range": [900, 1100], "unit": "K",
+      "source": "a spark-ignition engine's exhaust gas at the port at full load is some 900 to 1100 K (Heywood, ch. 14; makers' exhaust-gas-temperature data for petrol engines): the integrator measured 1100 to 1330 K, a miss on the hot side, reported" }
   ]
 }

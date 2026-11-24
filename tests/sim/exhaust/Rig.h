@@ -8,6 +8,7 @@
 #include "tee/Denormals.h"
 #include "tee/Instance.h"
 #include "tee/Program.h"
+#include "tee/test/Kept.h"
 #include "tee/Schema.h"
 
 #include <catch2/catch_test_macros.hpp>
@@ -25,7 +26,7 @@ namespace tee::test::exhaust
 
     inline tee::Program& program()
     {
-        static std::unique_ptr<tee::Program> p = [] {
+        tee::Program& p = tee::test::kept([] {   // never destroyed (tee/test/Kept.h)
             std::string errors;
             tee::Program::Options options;
             auto made = tee::Program::fromDirectory(TEE_SOURCE_DIR, "tests/sim/exhaust/harness.fm", options, errors);
@@ -33,8 +34,8 @@ namespace tee::test::exhaust
             REQUIRE(made != nullptr);
             REQUIRE(made->link(errors));
             return made;
-        }();
-        return *p;
+        });
+        return p;
     }
 
     class Rig
