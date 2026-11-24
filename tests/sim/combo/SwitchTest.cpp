@@ -181,9 +181,9 @@ STEP_CASE("car")
 STEP_CASE("env")
 STEP_CASE("sound")
 
-TEST_CASE("a build loaded over another while it runs: V8 then small four then large diesel then turbo six then V8", "[combo][load]")
+namespace
 {
-    for (bool all : {false, true})
+    void loadCase(bool all)
     {
         Times tm;
         tm.idleFrom = -1.0;
@@ -211,13 +211,24 @@ TEST_CASE("a build loaded over another while it runs: V8 then small four then la
         mustRun(r, 3.0, tm.end, v);
         report(v, all ? "load, all on" : "load", "v8", "load");
     }
+} // namespace
+
+TEST_CASE("a build loaded over another while it runs: V8 then small four then large diesel then turbo six then V8",
+          "[combo][load]")
+{
+    loadCase(false);
 }
 
-TEST_CASE("every switch flipped in the same block while the V8 and the turbo six pull in gear", "[combo][flip]")
+TEST_CASE("a build loaded over another while it runs with every switch on", "[combo][load]")
+{
+    loadCase(true);
+}
+
+namespace
 {
     // the integrator holds a changed model until the fade's quiet (Engine::holdModel, 02bf4db): all at once must be
     // one clean change, and the engine still running after each
-    for (const char* build : {"v8", "turbo-six"})
+    void flipAllCase(const char* build)
     {
         Times tm;
         tm.idleFrom = 2.5;
@@ -248,4 +259,14 @@ TEST_CASE("every switch flipped in the same block while the V8 and the turbo six
         mustRun(r, 3.0, 11.0, v);
         report(v, "flip all at once", build, "flip");
     }
+} // namespace
+
+TEST_CASE("every switch flipped in the same block while the V8 pulls in gear", "[combo][flip]")
+{
+    flipAllCase("v8");
+}
+
+TEST_CASE("every switch flipped in the same block while the turbo six pulls in gear", "[combo][flip]")
+{
+    flipAllCase("turbo-six");
 }

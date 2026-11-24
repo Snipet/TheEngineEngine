@@ -37,18 +37,29 @@ namespace
     }
 } // namespace
 
-TEST_CASE("diesel cold: the truck six starts at 253 K with every model, and says what it does at 233 K", "[diesel][cold]")
+namespace
+{
+    void coldCase(int g, int m)
+    {
+        const double at253 = startAt(253.15, g, m, m, 15.0);
+        const double at233 = startAt(233.15, g, m, m, 15.0);
+        std::printf("governor %d, fuel and ecu models %d: runs after %.1f s cranking at 253 K; at 233 K %s%.1f s\n", g, m, at253,
+                    at233 < 0.0 ? "no start in 15 s " : "", at233 < 0.0 ? 15.0 : at233);
+        CHECK(at253 > 0.0);
+        CHECK(at253 < 10.0);
+    }
+} // namespace
+
+TEST_CASE("diesel cold: the truck six starts at 253 K with the electronic governor and H's models, and at 233 K", "[diesel][cold]")
+{
+    coldCase(2, 1);
+}
+
+TEST_CASE("diesel cold, full: every governor and both of H's models at 253 K and 233 K", "[diesel][cold][nightly]")
 {
     for (int g : {0, 1, 2})
         for (int m : {0, 1})
-        {
-            const double at253 = startAt(253.15, g, m, m, 15.0);
-            const double at233 = startAt(233.15, g, m, m, 15.0);
-            std::printf("governor %d, fuel and ecu models %d: runs after %.1f s cranking at 253 K; at 233 K %s%.1f s\n", g, m, at253,
-                        at233 < 0.0 ? "no start in 15 s " : "", at233 < 0.0 ? 15.0 : at233);
-            CHECK(at253 > 0.0);
-            CHECK(at253 < 10.0);
-        }
+            coldCase(g, m);
 }
 
 TEST_CASE("diesel soak: random pedals, brakes and governors for a while stay finite and bounded", "[diesel][soak]")

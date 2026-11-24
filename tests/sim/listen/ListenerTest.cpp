@@ -437,3 +437,21 @@ TEST_CASE("the rider's seat: on a motorcycle the intake leads, the exhaust behin
     std::printf("wheelie 30 deg: the mouth at (%.2f, %.2f) m\n", rig.get("st.srcY[2]"), rig.get("ln.sc.sz[2]"));
     CHECK(rig.get("ln.sc.sz[2]") > 1.2);
 }
+
+TEST_CASE("another package's source heard from its place: Listen::extra", "[listen]")
+{
+    // a truck's air brakes at the rear axle are heard better behind the car than over the bay; dropped in model 0
+    Rig rig;
+    rig.set("ss.model", 1);
+    rig.set("ln.sc.windOff", 1);
+    rig.set("extraPlace", 2);
+    rig.set("ss.camera", 0);
+    const double behind = dB(heard(rig, 13));
+    rig.set("ss.camera", 3);
+    const double over = dB(heard(rig, 13));
+    rig.set("ss.model", 0);
+    const double off = dB(heard(rig, 13));
+    std::printf("Listen::extra at the rear axle: %.1f dB behind the car, %.1f over the bay, %.1f in model 0\n", behind, over, off);
+    CHECK(behind > over + 3.0);     // (2.6 m from it behind, 3.5 m and the floor pan above)
+    CHECK(off < -250.0);
+}

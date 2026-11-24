@@ -93,3 +93,30 @@ three-arm node solves (as the reference unrolls them) are the remaining exact id
 **X-016 (fuzz seeds at 3 to 5 R)**: seed 1 reduced (X's reducer, its bound lowered to 2 R locally) keeps its cost with
 no exhaust field set: a custom engine with four rotors, twelve faces on four shared ports, each face's valves solved
 twice a sample (the reference's method for a rotary's shared ports); `Valve::flow` 45 % of its time. Not the builder.
+
+## Rotaries: two, three and four rotors against a V12 (about 17:45 UTC)
+
+P's rotary twin (`archetypes/rotary-twin-13.json`: 654 cc a rotor, its turbos, every model on) scaled to three and
+four rotors (the same chamber, ports and exhaust a rotor; 1.96 and 2.62 L; rotors phased 120 degrees, and 0, 180,
+270, 90 as `engines/rotary-4.json`: without the phasing the custom engine refuses the layout and plays the twin's
+table, which first made every rotor count cost the same); without boost; and model 0 (only the custom engine on).
+The V12 archetype (`v12-65.json`, twelve working chambers like the four-rotor) as the control. drive-car, qbench, 5
+runs, R = 1936 ns (the reference V8, the same session). "After" is 4845579: a face's valve solve reused when its
+inputs repeat the shared-port pass's to the bit (every pair identical to the bit; swapped order 1.06 to 1.25).
+
+| Build | model 0, before -> after | every model on, no boost | every model on, turbos |
+|---|---:|---:|---:|
+| Twin rotor | 0.72 -> 0.60 R | 1.02 -> 0.88 R | 1.33 -> 1.22 R |
+| Three rotors | 0.94 -> 0.75 R | 1.36 -> 1.12 R | 1.69 -> 1.39 R |
+| Four rotors | 1.19 -> 0.92 R | 1.49 -> 1.24 R | 1.83 -> 1.58 R |
+| V12 (control) | 1.24 -> 1.24 R | 1.86 -> 1.84 R (its own boost off) | - |
+
+A sane four-rotor now costs less than the V12 with every model on (1.24 against 1.84 R) and its turbo build sits
+inside the 1.6 R budget. Why it was dear: a rotary's faces share a port, and `Engine::sampleTick` solves each face's
+valves twice a sample (for the port's share, then with the others' flows added), which is the reference's method;
+with one face open on a port, the most common case, the second solve repeated the first exactly. X-016's 3 to 5 R
+seed is a four-rotor with every other field random (its listener's camera, the vehicle's), not this.
+
+P's naturally aspirated rotary (`archetypes/rotary-twin-na-side-port.json`, every model on), scaled to three and four
+rotors the same way, after 4845579 (4 runs; R 1840 ns drive-car, 1913 free-revs): twin 0.72 / 0.70 R, three rotors
+0.93 / 0.89 R, four rotors 1.13 / 1.07 R (drive-car / free-revs): about 0.2 R a rotor.
