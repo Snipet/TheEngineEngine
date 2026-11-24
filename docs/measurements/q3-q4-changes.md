@@ -69,7 +69,11 @@ nothing**: a pass almost never returns its inputs to the bit (1.001 and 0.998 wi
 B swapped: the same 10 to 12 %); a wider first look over 8 pairs gave 0.81 to 0.95. Not exact, and outside the floor:
 the third-octave bands move 0.7 to 1.6 dB (the floor's 0.14 to 0.77) on nearly every pair, the quarter-second levels
 0.6 to 1.9 dB (floor 0.5 to 5), the speed within the floor. A systematic change in the spectrum, not chaos: the
-third pass does real work in the blowdown. Now behind the program's one fast switch (`TEE_FAST`, 42c3dd5), off by
+third pass does real work in the blowdown. Which bands (qbench `--bands 1`, both channels, 12 s, two passes over
+three): **free-revs** (V8, defaults): every band from 1 kHz to 20 kHz 0.3 to 0.7 dB up, a brighter top end; the floor
+(air +0.0001 K) moves those bands -0.2 to +0.25 dB, centred on 0. **drive-car**: the 250 Hz band +1.0 to +1.3 dB,
+400 Hz -0.35 to -0.65, 500 to 800 Hz up to +0.8; above 1 kHz within +-0.35 (the floor there: within +-0.25, one band
+of the lows +0.42). Now behind the program's one fast switch (`TEE_FAST`, 42c3dd5), off by
 default and in the null test. **Listen**: V8 and defaults, free-revs (the blips and the limiter) and drive-car, two
 passes against three, loudness-matched (the pairs go to X's listening pack).
 

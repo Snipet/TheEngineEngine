@@ -1,0 +1,68 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Marine 27 L V12",
+  "notes": "Card D2. A medium-speed marine V12 within the model's limits: 27 L (137 x 152 mm, 15:1, a turbo a bank), a mechanical governor with 5 % droop, rated 1800 rpm. The model holds at most 30 L and 16 cylinders, a diesel's redline some 13.5 m/s of piston speed, an idle no lower than 350 rpm: a 1000 rpm locomotive's or ship's medium-speed engine of 100 to 200 L is past it. On the bench. Air at 300 K, 101325 Pa.",
+  "spec": {
+    "engine": {
+      "layout": "V12",
+      "displacement": 0.0269,
+      "boreStroke": 0.9,
+      "compression": 15,
+      "flywheel": 1,
+      "idleTrim": -400,
+      "redlineTrim": -300,
+      "rough": 0,
+      "benchLoad": 0
+    },
+    "valve": {
+      "cam": 0.9999,
+      "auxOpen": 695,
+      "auxDur": 100,
+      "auxLift": 0.0025
+    },
+    "boost": {
+      "kind": "Twin turbos",
+      "level": 1,
+      "size": 1,
+      "blowOff": 1
+    },
+    "exhaust": {
+      "headers": 0.3247,
+      "pipe": 0.6325,
+      "crossover": 0,
+      "muffler": 0.6
+    },
+    "fuel": {
+      "kind": "Diesel"
+    },
+    "ecu": {
+      "timing": 0,
+      "pops": 0,
+      "starter": true,
+      "governor": "Mechanical",
+      "droop": 0.05,
+      "engineBrake": "None",
+      "brakeSwitch": "Off",
+      "exhaustBrake": "None",
+      "fuelBoost": 140000,
+      "ratedSpeed": 188.5
+    },
+    "car": {
+      "kind": "Truck",
+      "mass": 36000
+    },
+    "env": {
+      "temperature": 300,
+      "pressure": 101325
+    },
+    "sound": {
+      "view": "Exhaust",
+      "distance": 0.2994,
+      "room": 0.6176,
+      "level": 2.8467,
+      "intake": 0.5,
+      "mechanical": 0.6503
+    }
+  }
+}
