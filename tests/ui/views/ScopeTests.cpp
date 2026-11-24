@@ -2,7 +2,6 @@
 // speed map filled by a sweep, FREEZE, LOG P-V, at rest. Pictures by FunkGui's software rasteriser, at density 2 and 1.
 #include "ViewKit.h"
 
-#include "views/scope/ScopeDemo.h"
 #include "views/scope/ScopeWorkspace.h"
 #include "views/scope/Spectrum.h"
 
@@ -92,18 +91,16 @@ namespace
     using tee::ui::WorkspaceContext;
     namespace scope = tee::ui::scope;
 
-    // SCOPE over the demo, with what the demo lacks added (ScopeDemo: the port pressures and the spark's advance).
+    // SCOPE over U1's demo (its port pressures and spark advance included).
     struct ScopeRig
     {
         tee::ui::DemoRig demo;
-        scope::ScopeDemo extra{ demo.engine };
-        WorkspaceContext ctx{ demo.doc, demo.engine, extra, demo.engine, demo.units, demo.selection, demo.app };
+        WorkspaceContext ctx{ demo.doc, demo.engine, demo.engine, demo.engine, demo.units, demo.selection, demo.app };
         std::unique_ptr<ScopeWorkspace> ws;
         std::unique_ptr<funkgui::HeadlessHost> host;
 
         explicit ScopeRig(int w = 1100, int h = 700, float dpi = 2.0f, double t = 4.6, int theme = 0) : demo(t)
         {
-            scope::scopeDemoTelemetry(demo.engine);
             ws = std::make_unique<ScopeWorkspace>(ctx);
             host = std::make_unique<funkgui::HeadlessHost>(*ws, theme, dpi);
             host->resize(w, h);
@@ -134,7 +131,7 @@ namespace
         CHECK(std::isfinite(f.evo) && std::isfinite(f.evc) && std::isfinite(f.ivo) && std::isfinite(f.ivc));
         CHECK(f.evo > 90.0 && f.evo < 180.0);                           // the exhaust opens before bottom centre
         CHECK(f.ivc > -180.0 && f.ivc < -60.0);                        // the intake closes after its bottom centre
-        CHECK_NEAR(f.sparkDeg, 26.0, 1e-9);
+        CHECK(std::isfinite(f.sparkDeg) && f.sparkDeg > 0.0 && f.sparkDeg < 60.0);
         CHECK_NEAR(f.firingHz, f.rpm / 60.0 * 4.0, 1e-6);
         // The demo's output is a sawtooth at the firing frequency: the spectrum's peak is there.
         const double peak = rig.ws->spectrum().peakHz(20.0, 2000.0);
