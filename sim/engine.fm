@@ -502,13 +502,14 @@ module Engine
         }
         intk.mPlenum = intk.pPlenum * intk.vPlenum / (287.0f * intk.tAir);
         pipes();
+        cycleUse = spec.engine.cycle != 0 && customUse != 0 && lay.rotary == 0 ? 1 : 0;    // (card T's, set before the mechanics)
         mechanicsSetup();
         // (card F: boost.model 1's machine sized to this engine, at rest, on its four-stroke-equivalent displacement: a
         // rotary's faces fire once a shaft turn and a two-stroke's cylinders once a turn, twice vTotal; nothing in model 0)
         boost.applyMachine(&spec.boost, vTotal * (lay.rotary != 0 || (spec.engine.cycle != 0 && customUse != 0) ? 2.0f : 1.0f), ecu.redRpm, 101325.0f, heat.tAmb);
+        ecu.overBoostRef = boost.overBoostLevel();     // (N2: the machine's own over-boost level for ecu.model 1's cut)
         // (card T: a two-stroke, on a custom engine's geometry and mechanics: its cylinders and pipes at rest where the
         // crank stands; the four-stroke's cylinders, valves and pipes above stay configured, unused)
-        cycleUse = spec.engine.cycle != 0 && customUse != 0 && lay.rotary == 0 ? 1 : 0;
         for (int d = 0; d < SCOPE_DEGREES; ++d)
         {
             scIo[d] = 0.0f;
@@ -617,12 +618,14 @@ module Engine
         // (the shaking is every engine's: card L's cabin hears it. A reference layout's cylinders are taken upright, its
         // table giving no bank angles: an inline engine's shaking is right, a V's or a boxer's an approximation; a custom
         // engine's is its own geometry's. Its moving masses step the crank only when custom is on)
-        if (customUse == 0 || layoutRefused != 0)
+        // (a two-stroke: its own cylinders from its firing, unless the custom geometry has as many: then that one's banks
+        // and places stand)
+        if (customUse == 0 || layoutRefused != 0 || (cycleUse != 0 && geo.n != lay.n))
             geo.fromTable(lay.n, lay.cyc, lay.rotary, &lay.fire[0]);
         mm.setup(&spec.engine, &geo, bore, strokeUse, rodLen, smCR, jFly);
         shake.setup(&spec.engine, &geo, mm.mRec, mm.sc.r, mm.sc.lam);
-        fric.setup(&spec.engine, vTotal, strokeUse, lay.rotary);
-        work.setup(lay.n, cyl[0].vd, lay.cyc);
+        fric.setup(&spec.engine, cycleUse != 0 ? (float)lay.n * two.vd : vTotal, strokeUse, lay.rotary);
+        work.setup(lay.n, cycleUse != 0 ? two.vd : cyl[0].vd, lay.cyc);
         wall.setup(bore, cyl[0].vd);
         if (lay.rotary != 0)
             wall.setupRotary(cyl[0].vd);
@@ -1228,7 +1231,7 @@ module Engine
             }
             if (cy->ivcNow)
             {
-                work.trapped(c, fmaxf(cy->m - cy->mInert, 0.0f), intk.pPlenum, intk.tAir, 101325.0f, heat.tAmb);
+                work.trapped(c, fmaxf(cy->m - cy->mInert, 0.0f), cy->t, intk.pPlenum, intk.tAir, 101325.0f, heat.tAmb);
                 airTrapped += (double)fmaxf(cy->m - cy->mInert, 0.0f);
                 wall.ivc(c, cy->p, cy->v, cy->t);
                 if (vt.active(c))
@@ -1503,6 +1506,7 @@ module Engine
             s->tsize = spec.boost.size;
             s->bov = spec.boost.blowOff;
             boost.applyMachine(&spec.boost, vTotal * (lay.rotary != 0 || (spec.engine.cycle != 0 && customUse != 0) ? 2.0f : 1.0f), ecu.redRpm, 101325.0f, heat.tAmb);
+            ecu.overBoostRef = boost.overBoostLevel();     // (N2: the machine's own over-boost level for ecu.model 1's cut)
         }
         if (moved(4, spec.exhaust.rev))
         {
@@ -1762,6 +1766,8 @@ module Engine
         e->bmep = work.bmep(e->torque);
         e->veManifold = work.veManifold;
         e->veAir = work.veAir;
+        e->chargeTemperature = work.tTrapMean;
+        e->trappedMass = work.trappedMean;
         e->peakPressure = work.peakMax;
         e->pistonSpeed = strokeUse * crank.omega * 0.31830989f;     // 2 stroke rpm / 60
         e->ripple = ripple;
@@ -1781,7 +1787,7 @@ module Engine
         e->tsTrapping = cycleUse != 0 ? two.trapping : 0.0f;
         e->tsPowerValve = cycleUse != 0 ? two.valve : 0.0f;
         e->tsPipeTemperature = cycleUse != 0 ? two.tPipe : heat.tAmb;      // (no two-stroke pipe: the air's)
-        e->tsCrankcase = cycleUse != 0 ? two.cy[0].pc : 0.0f;
+        e->tsCrankcase = cycleUse != 0 ? two.cy[0].pc : 101325.0f;          // (no two-stroke crankcase: the air's)
         e->tsReed = cycleUse != 0 ? two.cy[0].reed : 0.0f;
         if (cycleUse != 0)
             e->peakPressure = two.peak;
