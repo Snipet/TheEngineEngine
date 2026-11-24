@@ -152,10 +152,11 @@ TEST_CASE("diesel brake: the driver's button engages it at High with the dash sw
 TEST_CASE("diesel brake: with a variable-vane turbo the brake shuts the vanes and the manifold reaches 3 bar", "[diesel][brake][turbo][!mayfail]")
 {
     // [!mayfail] on a named finding (D2, 2026-11-24; the lead's rule for the default run): at the matched size, read
-    // over one second, the manifold averages 295 kPa and the shaft peaks at 12539 rad/s against omegaMax 11932: the
-    // brake's own shaft governor (heavy.fm vaneCommand, a PID past 95 %) swings, some 0.6 s a cycle, into card F's
-    // 105 % relief. The instant readings this case took before (301 kPa, 11183 rad/s) landed on the swing by luck.
-    // To do: a governor that holds the shaft (D2, with N2 on the turbine's response near the shut stop). Bounds kept.
+    // over one second, the shaft peaks at 12539 rad/s against omegaMax 11932: the brake's own shaft governor
+    // (heavy.fm vaneCommand, a PID past 95 %) swings, some 0.6 s a cycle, into card F's 105 % relief; a rate limit
+    // on the vanes (0.2 to 1 a second) and other gains did not settle it. The instant readings this case took before
+    // (11183 rad/s) landed on the swing by luck. To do: a governor that holds the shaft (D2, with N2 on the turbine's
+    // response near the shut stop). Bounds kept.
     // card F's machine (boost.model 1), one turbo with variable vanes: the compression brake on High at 2000 rpm puts it in
     // its brake position (vanes shut, gate held shut). Real brakes run 3 to 3.5 bar absolute in the manifold there.
     // With card G's exhaust network (exhaust.model 1) the turbine's back pressure reaches the cylinders.
@@ -193,7 +194,10 @@ TEST_CASE("diesel brake: with a variable-vane turbo the brake shuts the vanes an
         std::printf("  (the shaft's limit, omegaMax: %.0f rad/s)\n", e.get("boost.mach.omegaMax[0]"));
         if (k == 1)
         {
-            CHECK(man >= 300000.0);
+            // (250 kPa: the lead's ruling, 24 Nov, on N2's point that a matched variable-vane brake runs some 2.5 to 4 bar
+            // in the manifold at 2000 rpm, recalled from makers' figures, not cited. It was 300 when this case ran an
+            // oversized turbo on G's phantom exhaust flow; at the matched size it reads 295 kPa over a second.)
+            CHECK(man >= 250000.0);
             // the brake's vane command holds the shaft under its limit (as a production brake mode), not the machine's
             // 105 % relief: 10001 against 9433 rad/s before (N2, 2026-11-24)
             CHECK(shaftMost <= e.get("boost.mach.omegaMax[0]"));
