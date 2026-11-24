@@ -32,7 +32,7 @@ module LRig
     float cyc;
     float shake;        // the free forces' amplitude (N), fed as a sine at freq into fy when src is 3
     // the test signal: src 0 the left tail, 1 the right, 2 the intake, 3 the torque (cabin), 4 mech, 5 block, 6 turbo,
-    // 7 starter, 8 comb, 9 the headers' walls (both), 10 the road; 11 both tails
+    // 7 starter, 8 comb, 9 the headers' walls (both), 10 the road; 11 both tails; 12 the driveline (package M's)
     int src;
     int sig;            // 0 noise in an engine's band (100 Hz to 1.5 kHz), 1 a sine at freq, 2 an impulse at the next
                         // sample, 4 white noise
@@ -125,17 +125,22 @@ module LRig
             for (int i = 0; i < 16; ++i)
             {
                 const float x = signal();
-                float s[12];
-                for (int k = 0; k < 12; ++k)
+                float s[13];
+                for (int k = 0; k < 13; ++k)
                     s[k] = 0.0f;
                 if (src == 11)
                 {
                     s[0] = x;
                     s[1] = x;
                 }
+                else if (src == 12)
+                {
+                    s[4] = x;   // the driveline comes in mech too, as Extras gives it
+                    s[11] = x;
+                }
                 else
                     s[src < 0 ? 0 : (src > 10 ? 10 : src)] = x;
-                ln.mix(i, s[0], s[1], s[2], s[3], s[4], s[5], s[6], s[7], s[8], s[9], s[9], driven, s[10], cutG);
+                ln.mix(i, s[0], s[1], s[2], s[3], s[4], s[5], s[6], s[7], s[8], s[9], s[9], driven, s[10], cutG, s[11]);
             }
             ln.finish(left, right, at, 16);
             at += 16;
