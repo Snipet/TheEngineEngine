@@ -59,6 +59,9 @@ module Exhaust
     Duct ch2[2];
     Duct tail[2];
     Duct cross;         // between the two pipes (an H-pipe), when dual
+    DuctLanes lanes;    // (lanes) the pipes' trackers and walls, across the pipes
+    int laneKind[32];   // (lanes) each lane's pipe: 0 prim, 1 sec, 2 pipe, 3 ch1, 4 mid, 5 ch2, 6 tail, 7 cross
+    int laneIdx[32];
     Pop pop[2];
     float smMuf;
     float smHdr;
@@ -290,6 +293,58 @@ module Exhaust
         }
         // each layout's loudness, measured: so they come out alike at speed
         cross.clear();
+        lanes.clear();
+    }
+
+    // (lanes) the pipes in read()'s order, each given its lane's coefficients (after every sizing)
+    Duct* laneDuct(int p)
+    {
+        const int k = laneKind[p];
+        const int i = laneIdx[p];
+        if (k == 0)
+            return &prim[i];
+        if (k == 1)
+            return &sec[i];
+        if (k == 2)
+            return &pipe[i];
+        if (k == 3)
+            return &ch1[i];
+        if (k == 4)
+            return &mid[i];
+        if (k == 5)
+            return &ch2[i];
+        if (k == 6)
+            return &tail[i];
+        return &cross;
+    }
+
+    void addLane(int k, int i)
+    {
+        laneKind[lanes.n] = k;
+        laneIdx[lanes.n] = i;
+        lanes.n += 1;
+    }
+
+    void syncLanes()
+    {
+        lanes.n = 0;
+        for (int i = 0; i < lay->ports; ++i)
+            addLane(0, i);
+        const int nb = lay->topo == 0 ? 1 : 2;
+        for (int k = 0; k < nb; ++k)
+            addLane(1, k);
+        for (int k = 0; k < nDuals; ++k)
+        {
+            addLane(2, k);
+            addLane(3, k);
+            addLane(4, k);
+            addLane(5, k);
+            addLane(6, k);
+        }
+        if (nDuals == 2)
+            addLane(7, 0);
+        for (int p = 0; p < lanes.n; ++p)
+            lanes.take(p, laneDuct(p));
     }
 
     // The exhaust's heat (dt seconds on): the gas leaves the ports at tIn and cools along the system toward each part's
@@ -518,6 +573,7 @@ module Exhaust
         for (int k = 0; k < 2; ++k)
             endR[k].design(-1.0f + nb1 * kb + nb2 * kb2, -2.0f - 2.0f * nb2 * kb2, -1.0f - nb1 * kb + nb2 * kb2,
                            1.0f + da1 * kb + da2 * kb2, 2.0f - 2.0f * da2 * kb2, 1.0f - da1 * kb + da2 * kb2);
+        syncLanes();
     }
 
     // The converter's cone's (and the merging's) flow noise for main pipe k: K 0.6 on the pipe's own speed
@@ -696,22 +752,69 @@ module Exhaust
         }
         const int np = lay->ports;
         const int nb = lay->topo == 0 ? 1 : 2;
+        int n = 0;
         for (int i = 0; i < np; ++i)
         {
-            prim[i].read();
+            prim[i].readRaw();
+            lanes.fr[n] = prim[i].rawF;
+            lanes.br[n] = prim[i].rawB;
+            n += 1;
         }
         for (int k = 0; k < nb; ++k)
-            sec[k].read();
+        {
+            sec[k].readRaw();
+            lanes.fr[n] = sec[k].rawF;
+            lanes.br[n] = sec[k].rawB;
+            n += 1;
+        }
         for (int k = 0; k < nDuals; ++k)
         {
-            pipe[k].read();
-            ch1[k].read();
-            mid[k].read();
-            ch2[k].read();
-            tail[k].read();
+            pipe[k].readRaw();
+            lanes.fr[n] = pipe[k].rawF;
+            lanes.br[n] = pipe[k].rawB;
+            ch1[k].readRaw();
+            lanes.fr[n + 1] = ch1[k].rawF;
+            lanes.br[n + 1] = ch1[k].rawB;
+            mid[k].readRaw();
+            lanes.fr[n + 2] = mid[k].rawF;
+            lanes.br[n + 2] = mid[k].rawB;
+            ch2[k].readRaw();
+            lanes.fr[n + 3] = ch2[k].rawF;
+            lanes.br[n + 3] = ch2[k].rawB;
+            tail[k].readRaw();
+            lanes.fr[n + 4] = tail[k].rawF;
+            lanes.br[n + 4] = tail[k].rawB;
+            n += 5;
         }
         if (nDuals == 2)
-            cross.read();
+        {
+            cross.readRaw();
+            lanes.fr[n] = cross.rawF;
+            lanes.br[n] = cross.rawB;
+        }
+        lanes.run();
+        n = 0;
+        for (int i = 0; i < np; ++i)
+        {
+            prim[i].finishRead(lanes.fo[n], lanes.bo[n], lanes.mF[n], lanes.mB[n]);
+            n += 1;
+        }
+        for (int k = 0; k < nb; ++k)
+        {
+            sec[k].finishRead(lanes.fo[n], lanes.bo[n], lanes.mF[n], lanes.mB[n]);
+            n += 1;
+        }
+        for (int k = 0; k < nDuals; ++k)
+        {
+            pipe[k].finishRead(lanes.fo[n], lanes.bo[n], lanes.mF[n], lanes.mB[n]);
+            ch1[k].finishRead(lanes.fo[n + 1], lanes.bo[n + 1], lanes.mF[n + 1], lanes.mB[n + 1]);
+            mid[k].finishRead(lanes.fo[n + 2], lanes.bo[n + 2], lanes.mF[n + 2], lanes.mB[n + 2]);
+            ch2[k].finishRead(lanes.fo[n + 3], lanes.bo[n + 3], lanes.mF[n + 3], lanes.mB[n + 3]);
+            tail[k].finishRead(lanes.fo[n + 4], lanes.bo[n + 4], lanes.mF[n + 4], lanes.mB[n + 4]);
+            n += 5;
+        }
+        if (nDuals == 2)
+            cross.finishRead(lanes.fo[n], lanes.bo[n], lanes.mF[n], lanes.mB[n]);
     }
 
     // Each sample, after the cylinders (qe: each port's volume flow into its header): the ports' waves in, the collectors,
