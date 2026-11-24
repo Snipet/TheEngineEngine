@@ -353,10 +353,11 @@ reference's code, untouched (the null test).
 **Extras** (`sound/extras.fm`): the engine bay's sources; its own `Noise noise` (Boost draws from it too). `setup(float
 rate, float boxHz, VoicesSpec* voices)`; `setClatter(int diesel, float swept)` and `pumpOn` in configure; the clicks at
 the cylinders' events (`valveClick(amp, intake)`: 1 at intake closing, 0 at exhaust closing); `void tick(float qThrottle,
-float dropRatio, float crankHz, float dpdt)` then `void tickStarter(float crankHz, float starterOn)` each sample;
+float dropRatio, float crankHz, float dpdt, int intakeModel, float intakeSound)` (with `spec.intake.model` 1, card E's
+`intk.sound` is the intake's voice in place of the box filter) then `void tickStarter(float crankHz, float starterOn)` each sample;
 `control16(...)` last in `Engine::control16`, only while `spec.voices.model` is 1 or the voices glide out (card M: the
 car's gearbox, the torque, the coolant, the key, the boost and gate, `vt.clatter`); `busy()` (the pump's prime, a fan,
-the starter running down); out: `intake`, `mech`, `block`, `comb`, `starter`, and with model 1 each voice's own:
+the starter running down); out: `intake`, `mech`, `block`, `comb`, `starter`, `mouth` (the intake's mouth alone, before the throttle's hiss), and with model 1 each voice's own:
 `vo.gearbox`, `vo.axle`, `vo.front`, `vo.head`, `vo.tank`, `vo.gateOut`, `vo.starter` (docs/models/voices.md).
 
 **Listen** (`listen/listen.fm`, package L; docs/models/listen.md): `setup(float rate, float hostRate)`, `release()`,

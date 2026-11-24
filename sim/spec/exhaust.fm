@@ -30,6 +30,8 @@ module ExhaustSpec
         [[ui::choices("Reference", "Builder")]];
     // ---- the headers ----
     int primaryTo [[fminus::range(-2, 7)]] [[fminus::default(-2)]] [[ui::label("Primary joins")]] [[ui::group("Headers")]]
+        [[ui::choices("Layout's", "Open stack", "Collector 1", "Collector 2", "Collector 3", "Collector 4", "Collector 5",
+                      "Collector 6", "Collector 7", "Collector 8")]]
         [[ui::help("Which collector each port's primary joins: -2 the layout's, -1 an open stack")]] [MAX_PORTS];
     float primLen [[fminus::range(0, 3)]] [[fminus::default(0)]] [[ui::label("Primary length")]] [[ui::quantity("length")]]
         [[ui::help("0: the layout's")]] [MAX_PORTS];
@@ -43,6 +45,8 @@ module ExhaustSpec
         [[ui::help("The bore after the step over the bore before it")]];
     // ---- the collectors ----
     int collectorTo [[fminus::range(-1, 9)]] [[fminus::default(-1)]] [[ui::label("Collector joins")]] [[ui::group("Collectors")]]
+        [[ui::choices("Layout's", "Side 1", "Side 2", "Collector 1", "Collector 2", "Collector 3", "Collector 4",
+                      "Collector 5", "Collector 6", "Collector 7", "Collector 8")]]
         [[ui::help("-1 the layout's; 0 or 1: that side; 2 to 9: the collector (2 less) its pipe merges into")]] [MAX_COLLECTORS];
     float colLen [[fminus::range(0, 1.5)]] [[fminus::default(0)]] [[ui::label("Collector pipe length")]]
         [[ui::quantity("length")]] [MAX_COLLECTORS];
@@ -51,7 +55,7 @@ module ExhaustSpec
     float colVol [[fminus::range(0, 0.004)]] [[fminus::default(0)]] [[ui::label("Collector volume")]]
         [[ui::quantity("volume")]] [[ui::help("Above 0: a log manifold's chamber at the collector")]] [MAX_COLLECTORS];
     // ---- each side's chain ----
-    int sides [[fminus::range(0, 2)]] [[fminus::default(0)]] [[ui::label("Sides")]] [[ui::group("Chain")]]
+    int sides [[fminus::range(0, 2)]] [[fminus::default(0)]] [[ui::label("Sides")]] [[ui::group("Chain")]] [[ui::choices("Layout's", "Single", "Dual")]]
         [[ui::help("0: the layout's; 1 single; 2 dual")]];
     float mainLen [[fminus::range(0, 5)]] [[fminus::default(0)]] [[ui::label("Main pipe length")]]
         [[ui::quantity("length")]] [MAX_SIDES];
@@ -101,7 +105,7 @@ module ExhaustSpec
         [[ui::quantity("length")]] [MAX_SIDES];
     float tailD [[fminus::range(0, 0.13)]] [[fminus::default(0)]] [[ui::label("Tailpipe bore")]]
         [[ui::quantity("length")]] [MAX_SIDES];
-    int tips [[fminus::range(1, 2)]] [[fminus::default(1)]] [[ui::label("Tips")]] [MAX_SIDES];
+    int tips [[fminus::range(1, 2)]] [[fminus::default(1)]] [[ui::label("Tips")]] [[ui::unit("tips")]] [MAX_SIDES];
     float gateLen [[fminus::range(0.05, 1)]] [[fminus::default(0.3)]] [[ui::label("Wastegate pipe length")]]
         [[ui::quantity("length")]] [[ui::help("An external wastegate's own pipe, to the air")]];
     float gateD [[fminus::range(0.015, 0.08)]] [[fminus::default(0.038)]] [[ui::label("Wastegate pipe bore")]]
