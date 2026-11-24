@@ -69,6 +69,8 @@ namespace tee::ui
 
         static funkgui::Col inkOf(const look::Palette& p, Ink ink) noexcept;
         bool cursorOn() const noexcept { return cursorShown(); }
+        // Where the title line's words end (an overlay keeps its legend right of it).
+        float titleRight(funkgui::Canvas& c) const;
         funkgui::Point pointer() const noexcept { return pointer_; }
 
         void draw(funkgui::Canvas& c, const funkgui::Theme& th, bool focusRing) const override;

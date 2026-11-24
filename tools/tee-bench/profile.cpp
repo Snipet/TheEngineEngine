@@ -149,7 +149,7 @@ int profileMain(int argc, char** argv)
         playerOptions.directory = simFlag.empty() ? refSim.parent_path() : std::filesystem::path(simFlag);
         playerOptions.sampleRate = rate;
         sim = EnginePlayer::create(playerOptions, errors);
-        Build build;
+        EngineBuild build;
         EngineScenario scenario;
         std::string warnings;
         if (!sim || !loadBuild(*sim, tools::namedFile(content / "builds", buildName), build, errors, warnings)

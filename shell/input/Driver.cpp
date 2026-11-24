@@ -132,6 +132,28 @@ namespace tee::input
         brakeStripHeld_ = isHeld;
     }
 
+    void Driver::setAnalogClutch(float clutch)
+    {
+        padClutch_ = clamp01(clutch);
+    }
+
+    void Driver::setClutchStrip(float value, bool isHeld)
+    {
+        clutchStrip_ = clamp01(value);
+        clutchStripHeld_ = isHeld;
+    }
+
+    void Driver::setHandbrakeStrip(float value, bool isHeld)
+    {
+        handbrakeStrip_ = clamp01(value);
+        handbrakeStripHeld_ = isHeld;
+    }
+
+    void Driver::setMode(int mode)
+    {
+        settings_.mode = mode;
+    }
+
     void Driver::release(Source source)
     {
         if (source >= Source::count)
@@ -139,9 +161,9 @@ namespace tee::input
         for (std::uint8_t& bits : held_)
             bits = static_cast<std::uint8_t>(bits & ~bitOf(source));
         if (source == Source::gamepad)
-            padThrottle_ = padBrake_ = padSteer_ = 0.0f;
+            padThrottle_ = padBrake_ = padSteer_ = padClutch_ = 0.0f;
         if (source == Source::panel)
-            stripHeld_ = brakeStripHeld_ = false;
+            stripHeld_ = brakeStripHeld_ = clutchStripHeld_ = handbrakeStripHeld_ = false;
     }
 
     float Driver::ease(float x, bool down, const Easing& e, float dt) noexcept
@@ -209,8 +231,8 @@ namespace tee::input
         frame_.ignition = ignition_;
         frame_.throttle = std::max({ throttle_, padThrottle_, stripHeld_ ? strip_ : 0.0f });
         frame_.brake = std::max({ brake_, padBrake_, brakeStripHeld_ ? brakeStrip_ : 0.0f });
-        frame_.clutch = clutch_;
-        frame_.handbrake = handbrake_;
+        frame_.clutch = std::max({ clutch_, padClutch_, clutchStripHeld_ ? clutchStrip_ : 0.0f });
+        frame_.handbrake = std::max(handbrake_, handbrakeStripHeld_ ? handbrakeStrip_ : 0.0f);
         frame_.steer = padSteer_;
         frame_.lever = settings_.autoClutch ? 0 : lever_;
         frame_.shiftUp = shiftUp_;

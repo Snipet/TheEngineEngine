@@ -228,3 +228,43 @@ namespace
         return 0;
     }
 }
+
+namespace
+{
+    // Each element's inspector page holds its own fields (the side's, the port's), and only those the build has.
+    VIEW_TEST(testExhaustInspector, "exhaust.inspector")
+    {
+        ExRig rig("tt-v8-x");
+        CHECK(rig.ws->inspectorPage().empty());          // nothing selected: the frame's section pages
+        const struct
+        {
+            const char* id;
+            const char* has;
+            const char* hasNot;
+        } cases[] = {
+            { "exhaust.muffler[1]", "exhaust.mufLen[1]", "exhaust.mufLen[0]" },
+            { "exhaust.primary[3]", "exhaust.primLen[3]", "exhaust.primLen[2]" },
+            { "exhaust.collector[1]", "exhaust.colVol[1]", "exhaust.tailLen[0]" },
+            { "exhaust.crossover", "exhaust.crossAt", "exhaust.muffler[0]" },
+            { "exhaust.bypass[0]", "exhaust.bypassRpm", "exhaust.bypass[1]" },
+            { "exhaust.tail[1]", "exhaust.exitAt[1]", "exhaust.exitAt[0]" },
+            { "boost", "boost.kind", "exhaust.sides" },
+        };
+        for (const auto& k : cases)
+        {
+            const tee::ui::exhaust::Hit* h = rig.hit(k.id);
+            CHECK_MSG(h != nullptr, k.id);
+            if (h == nullptr)
+                continue;
+            rig.host->click(h->r.centreX(), h->r.centreY());
+            const std::string page = rig.ws->inspectorPage();
+            CHECK_MSG(page.find(k.has) != std::string::npos, std::string(k.id) + " lacks " + k.has);
+            CHECK_MSG(page.find(k.hasNot) == std::string::npos, std::string(k.id) + " has " + k.hasNot);
+        }
+        // U1's demo Spec has none of the builder's fields: a muffler's page is the demo's own dial, or nothing
+        StageRig plain(tee::ui::makeExhaustWorkspace, 1100, 700, 1.0f);
+        plain.demo.selection.select("exhaust.tail[0]");
+        CHECK(plain.ws->inspectorPage().empty());
+        return 0;
+    }
+}

@@ -1,0 +1,11 @@
+geometry deab39ac30fd609e
+text 8866e4d97a5e0e61
+statics 1253
+live 0
+texts 433
+rrects 177
+segments 643
+areas 0
+shaders 0
+images 0
+size 1100 x 700

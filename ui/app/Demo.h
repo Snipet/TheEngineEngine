@@ -36,10 +36,13 @@ namespace tee::ui
         // `doc`: the document the dyno watches (nullptr: a fixed curve).
         explicit DemoEngine(const FieldDoc* doc = nullptr);
 
-        // Time: the script's position (seconds, wraps at 8) and a step along it (advance). tick() is the DynoSource's
-        // (the frame calls it each frame): it moves only the dyno, so a picture at setTime(t) stays at t.
+        // Time: the script's position (seconds, wraps at 8) and a step along it. tick(dt) (the DynoSource's, which the
+        // frame calls each frame) steps the script, the Scope's generation and the dyno; while engine.state is held at
+        // 0 the script stands still. advance(dt) steps the script alone.
         void advance(double dt);
         void tick(float dt) override;
+        // Held, tick() leaves the script where it is (a picture of one moment; the dyno still answers edits).
+        void hold(bool held) noexcept { frozen_ = held; }
         void setTime(double t);
         double time() const noexcept { return t_; }
         // A telemetry value added or held at `v` (SI), whatever the script says; forget() makes a name absent.
@@ -79,6 +82,7 @@ namespace tee::ui
 
         const FieldDoc* doc_;
         double t_ = 0.0, rpm_ = 850.0, throttle_ = 0.0, phase_ = 0.0;
+        bool frozen_ = false;
         std::vector<std::string> names_;
         std::vector<double> values_;
         std::map<std::string, double, std::less<>> held_;
