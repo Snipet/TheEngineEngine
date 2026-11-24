@@ -471,10 +471,28 @@ TEST_CASE("the knock limit's key moves with what moves the knock limit, and not 
         build.set("ecu.timing", build.get("ecu.timing") + 3.0);
         CHECK(knockLimitKey(build, *sim) == key);
     }
+    // the base key (the cam bake's): the cam maps move the key and not the base
+    const std::int64_t base = knockLimitBaseKey(build, *sim);
+    if (build.fieldOf("ecu.maps.camInAuto") >= 0)
+    {
+        const double was = build.get("ecu.maps.camInAuto");
+        build.set("ecu.maps.camInAuto", was == 0.0 ? 1.0 : 0.0);
+        CHECK(knockLimitKey(build, *sim) != key);
+        CHECK(knockLimitBaseKey(build, *sim) == base);
+        build.set("ecu.maps.camInAuto", was);
+    }
+    // the hidden counters (a dyno's heatSettle presses) move neither
+    if (build.fieldOf("boost.heatSettle") >= 0)
+    {
+        build.set("boost.heatSettle", build.get("boost.heatSettle") + 1.0);
+        CHECK(knockLimitKey(build, *sim) == key);
+        CHECK(knockLimitBaseKey(build, *sim) == base);
+    }
     // the compression, the fuel and the boost's section do
     const double compression = build.get("engine.compression");
     build.set("engine.compression", compression - 0.5);
     CHECK(knockLimitKey(build, *sim) != key);
+    CHECK(knockLimitBaseKey(build, *sim) != base);
     build.set("engine.compression", compression);
     CHECK(knockLimitKey(build, *sim) == key);
     for (const FieldInfo& f : build.fields().all())
