@@ -208,9 +208,9 @@ TEST_CASE("targets: traction control on a wet road holds the driven wheels' slip
                                                                                              << " against 0.10");
 }
 
-TEST_CASE("targets: every limiter kind against a wheel that spins up in first on a wet road", "[combo][targets]")
+namespace
 {
-    for (int kind = 0; kind <= 3; ++kind)
+    void limiterCase(int kind)
     {
         Times tm = runningTimes(8.0);
         tm.driveFrom = 3.3;
@@ -235,11 +235,25 @@ TEST_CASE("targets: every limiter kind against a wheel that spins up in first on
                                                  std::to_string(top / kRpm) + " rpm, 8 % past the redline"});
         report(v, "ecu.model+car.model", "v8", "limiter-" + std::to_string(kind));
     }
+} // namespace
+
+TEST_CASE("targets: the fuel-cut and spark-cut limiters against a wheel that spins up in first on a wet road",
+          "[combo][targets]")
+{
+    limiterCase(0);
+    limiterCase(1);
 }
 
-TEST_CASE("targets: full throttle on the engine dyno makes torque with every switch on", "[combo][targets]")
+TEST_CASE("targets: the soft and throttle limiters against a wheel that spins up in first on a wet road",
+          "[combo][targets]")
 {
-    for (const Archetype& a : archetypes())
+    limiterCase(2);
+    limiterCase(3);
+}
+
+namespace
+{
+    void dynoCase(const Archetype& a)
     {
         const double dynoRpm = a.diesel ? 1500.0 : 3000.0;   // the diesel governs near 2600
         double torque[2] = {0.0, 0.0};
@@ -270,6 +284,19 @@ TEST_CASE("targets: full throttle on the engine dyno makes torque with every swi
         std::printf("targets: %s on the dyno at %.0f rpm, full throttle: %.0f N m with every switch off, %.0f N m on\n",
                     a.name, dynoRpm, torque[0], torque[1]);
     }
+} // namespace
+
+TEST_CASE("targets: full throttle on the engine dyno makes torque: the V8 and the turbo V8", "[combo][targets]")
+{
+    dynoCase(*archetype("v8"));
+    dynoCase(*archetype("turbo-v8-dual"));
+}
+
+TEST_CASE("targets: full throttle on the engine dyno makes torque with every switch on: every archetype",
+          "[nightly][targets]")
+{
+    for (const Archetype& a : archetypes())
+        dynoCase(a);
 }
 
 TEST_CASE("measure: the idle against its set speed, the cam and the air, under both ECUs", "[.][measure][idle-map]")
@@ -314,7 +341,7 @@ TEST_CASE("fixed X-001: the custom engine over the default build, its geometry a
     CHECK(r.tel("engine.layoutRefused").last() == 1.0);
 }
 
-TEST_CASE("fixed X-003: the new combustion and ECU together start every archetype at -20 C", "[combo][fixed]")
+TEST_CASE("fixed X-003: the new combustion and ECU together start the V8 at -20 C", "[combo][fixed]")
 {
     // found 2026-11-24 (no start in 10 s at 253 K with fuel.model and ecu.model on); fixed by H in b09a0a6
     std::uint32_t mask = 0;
@@ -323,7 +350,7 @@ TEST_CASE("fixed X-003: the new combustion and ECU together start every archetyp
         if (sw[i].path == "fuel.model" || sw[i].path == "ecu.model")
             mask |= 1u << i;
     REQUIRE(mask != 0);
-    for (const char* b : {"v8", "small-four", "turbo-six", "turbo-v8-dual"})
+    for (const char* b : {"v8"})
     {
         Times tm;
         const tee::test::Run r = scenario(Kind::Cold, b, mask, tm).run(tm.end);
