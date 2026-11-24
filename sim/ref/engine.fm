@@ -1,0 +1,2621 @@
+// engine.fm: the engine, as one thing every key plays (module Shared).
+//
+// The crank turns at the speed its torque, friction, load and inertia give it. Each cylinder (cylinder.fm) breathes
+// through its intake runner from a plenum that the throttle fills from the air box, burns what it trapped, and blows
+// down through its exhaust valve into its header (pipes.fm). The headers meet in a collector (a bank's, or one for
+// all), the collector goes into the pipe, the pipe into the muffler's two chambers and out of the tailpipe into the air:
+// what comes out of the tail is the exhaust's sound (the rate the flow changes there). A driver works the throttle to
+// take the engine to the speed the key asks for; an idle valve holds it at idle; the ECU cuts the fuel at the redline and
+// when the throttle shuts at speed (where, with the pops dial, it lets some fuel through to bang in the hot pipes).
+// Driven as a car or a semi truck (DRIVE CAR, TRUCK), the pedals work the throttle and the clutch, and the crank turns
+// the vehicle (car.fm) through the clutch and the gearbox instead of against the load dial.
+#pragma once
+#include "pipes.fm"
+#include "cylinder.fm"
+#include "layouts.fm"
+#include "onepole.fm"
+#include "biquad.fm"
+#include "sounds.fm"
+#include "hall.fm"
+#include "car.fm"
+
+module Set
+{
+    int layout;
+    float size;
+    float idle;
+    float redline;
+    float cam;
+    float inertia;
+    float load;
+    float headers;
+    float muffler;
+    float pipe;
+    float xpipe;
+    float pops;
+    float rough;
+    float turbo;        // how much boost the forced induction makes, 0 to 1 (BOOST)
+    float tsize;        // the turbos' size over ones matched to the engine (TURBO SIZE: 0.5 to 2; 1)
+    int asp;            // the aspiration: 0 natural, 1 a turbo, 2 twin turbos, 3 quad turbos, 4 a supercharger
+    int fuel;           // 0 gasoline, 1 diesel
+    float comp;         // the compression ratio
+    float bs;           // the bore over the stroke (BORE/STROKE: 0.5 to 2; 1 square)
+    float ambF;         // the air outside, degrees F (AMBIENT: -40 to 120; 80.33 is 300 K)
+    float timing;       // the spark's (a diesel's injection's) advance over its map, degrees (TIMING: -20 to 20)
+    float bov;
+    float intake;
+    float mech;
+    int view;
+    float distance;
+    float room;
+    float level;
+    int keys;           // 1: the keys play the firing's pitch (DRIVE PITCH)
+    float bendRange;    // the pitch wheel's reach, semitones (12)
+    int starter;
+    float hold;
+    float bend;
+    float modwheel;
+    float pressure;
+    int drive;          // 0 the keys (DRIVE KEYS or PITCH: keys says which), 1 CAR, 2 TRUCK
+    float mass;
+    float gas;          // the wheel's pedals (0 up to 1 down), its shifter (-1 R, 0 N, 1 to 7) and its buttons
+    float brake;
+    float clutch;
+    int lever;
+    int buttons;
+};
+
+// A pop in the pipes: unburnt fuel lighting in the hot exhaust. A sharp pressure pulse and a crackle after it.
+module Pop
+{
+    float amp;
+    int n;
+    int len;
+    float crackle;
+    float decay;
+    float pClick;       // the chance a sample clicks, and how hard: the same crackle at any sample rate
+    float aClick;
+    int rs;
+
+    float rnd()
+    {
+        const int hi = rs / 127773;
+        const int lo = rs % 127773;
+        rs = 16807 * lo - 2836 * hi;
+        if (rs <= 0)
+            rs += 2147483647;
+        return 2.0f * ((float)rs / 2147483647.0f) - 1.0f;
+    }
+
+    void fire(float a, float rate, int seed)
+    {
+        amp = a;
+        n = 0;
+        len = (int)((0.00025f + 0.0006f * (0.5f + 0.5f * rnd())) * rate) + 2;
+        crackle = 0.55f * a;
+        decay = expf(-1.0f / ((0.004f + 0.012f * (0.5f + 0.5f * rnd())) * rate));
+        pClick = 1.0f - 0.07f * 48000.0f / rate;
+        aClick = rate / 48000.0f;
+        if (rs == 0)
+            rs = seed;
+    }
+
+    float tick()
+    {
+        float y = 0.0f;
+        if (n < len)
+        {
+            const float s = sinf(3.14159265f * (float)n / (float)len);
+            y = amp * s;
+            n += 1;
+        }
+        if (crackle > 1.0f)
+        {
+            // sparse, sharp clicks dying away
+            const float r = rnd();
+            if (r > pClick)
+                y += aClick * crackle * rnd();
+            crackle *= decay;
+        }
+        return y;
+    }
+};
+
+module Shared
+{
+    Set set;
+    Layout lay;
+    Cylinder cyl[12];
+    Duct prim[12];      // the headers (a rotary's: one a rotor)
+    Duct run[12];       // the intake runners
+    Duct sec[2];        // from each bank's collector
+    Duct pipe[2];       // the main pipe (two, when dual)
+    Duct ch1[2];        // the muffler: a chamber, a tube, a chamber
+    Duct mid[2];
+    Duct ch2[2];
+    Duct tail[2];
+    Duct cross;         // between the two pipes (an H-pipe), when dual
+    Pop pop[2];
+    float rate;         // the engine's own: 96 kHz whatever the host's (render resamples)
+    // the host's rate: the engine runs at 96 kHz whatever it is: the same sound at every rate, and no more work at
+    // 192 kHz. (At 48 kHz the top octave came out 7 to 18 dB under what the same engine makes at 192 kHz; at 96 kHz it
+    // is within 1.5 dB to 16 kHz and 3 dB to 20 kHz, all else alike.) Its output is resampled to the host's by a
+    // Kaiser-windowed sinc a millisecond long (96 taps, interpolated from a table of 128 phases; below 96 kHz cut at
+    // 92 % of the host's Nyquist), half a millisecond late
+    float hostRate;
+    int rsOn;
+    float* rsL;         // the engine's output, its last 256 samples (doubled, for the kernel's reads)
+    float* rsR;
+    float* rsTab;       // the kernel: 129 phases of rsN taps
+    int rsN;            // its taps (even)
+    float* rsBl;        // one block of the engine's
+    float* rsBr;
+    int rsW;            // where the next sample goes
+    int rsAhead;        // samples written past the one the next output sits after
+    float rsFrac;       // how far past it
+    float rsStep;       // the engine's samples a host's
+    float dt;
+    int ready;
+    int rs;
+    // what the layout and the dials made
+    int lastLayout;
+    float lastSize;
+    float lastCam;
+    // the dials that shape the pipes and the cams, smoothed (80 ms): a pipe's length or bore, the muffler's chambers or
+    // the cams' timing that jumped would jolt the flow the system holds, a loud click
+    float smMuf;
+    float smHdr;
+    float smPipe;
+    float smXp;
+    float smTb;
+    float smTs;         // TURBO SIZE, smoothed
+    float smCam;
+    float kDial;
+    float smCR;         // the compression ratio, smoothed, and as the cylinders were last set
+    float lastCR;
+    float smBs;         // the bore over the stroke, smoothed, and as the bore was last set
+    float lastBs;
+    float strokeK;      // the stroke over a square engine's of this size: the pistons' speed at the same revs
+    float burnK;        // the burn's degrees over a square engine's (the flame's path across the bore)
+    float crBs;         // the compression the end gas takes before it knocks, moved with the flame's path
+    int fuelUse;        // the fuel and the aspiration heard (a change waits for the fade, as a new layout's does)
+    int aspUse;
+    float droop;        // a diesel's governor near its redline: the share of the fuel it lets through
+    float sinceStart;   // seconds since it started (0 while it cranks): a diesel's start fuel tapers off
+    // what the sound cannot follow smoothly (another layout or size, another view) changes under a quick fade: 6 ms
+    // down, the change, 12 ms back up (80 for a new engine; the room rings on through it); the size waits for its
+    // dial to rest 0.15 s
+    float cutG;
+    float cutDn;
+    float cutUp;
+    int cutWant;        // 1: configure, 2: the view
+    float sizeSeen;
+    float sizeRest;
+    int vUse;           // the view heard
+    int nDuals;         // pipes after the collectors: 1 or 2
+    int portBank[12];   // each port's bank
+    float vTotal;       // displacement, m^3
+    float bore;
+    float boreSq;       // a square cylinder's bore for this size (bore: the BORE/STROKE dial's)
+    float aThrottle;    // the throttle's area wide open, m^2
+    float aBypass;      // the idle valve's
+    float vPlenum;
+    float jBase;
+    float idleRpm;      // the idle and the redline this engine has: the layout's, moved by the dials
+    float redRpm;
+    float idleBase;     // the idle and the redline before the dials: the layout's (a diesel's: by its pistons' speed)
+    float redBase;
+    float idleTq;
+    // the engine's state
+    int state;          // 0 stopped, 1 cranking, 2 running, 3 the key off: running down
+    float omega;        // rad/s
+    float theta;        // crank degrees, 0 to 2160 (a common cycle for four-strokes and the rotary)
+    float rpm;
+    float pPlenum;      // Pa absolute
+    float mPlenum;
+    float tAir;
+    float tPort;        // the exhaust gas's temperature at the ports (smoothed), K
+    float eSum;
+    float mSum;
+    float throttle;     // the throttle plate, 0 to 1
+    float pedal;
+    float bypass;       // the idle valve, 0 to 1
+    float idleInt;
+    float govInt;
+    float rpmRate;      // how fast the speed changes, rpm/s (smoothed)
+    float rpmLast;
+    float rpmAvg;       // the speed the ECU and the driver go by: the firing's ripple smoothed out
+    float trim;         // the ECU's quick hand on the spark: more or less torque this cycle
+    float trimInt;
+    float gK;           // the driver: how hard it chases the key's speed, how far ahead it looks, how it settles
+    float gTau;
+    float gTrim;
+    float gI;
+    bool fuelCut;
+    bool limiting;
+    bool dfco;
+    float sinceLift;    // seconds since the throttle shut
+    float holdLeft;     // seconds of idle left before the engine stops by itself
+    float starterOn;
+    int tick16;
+    // the keys
+    int keyCount;
+    float keyNote[16];
+    float keyVel[16];
+    int tokenCounter;
+    int rendering;
+    float target;
+    float pedalMax;
+    // what comes out
+    float radPrev[2];
+    Biquad endR[2];     // each tail's open end: the wave it sends back (Silva et al.'s reflection, for its hot gas)
+    Biquad endRun[12];  // each intake runner's end in the plenum: the same, in the air of the plenum
+    float outL;
+    float outR;
+    float gainNorm;
+    float exTrim;       // the exhaust's level for the layout, besides the whole's
+    float noiseTrim;    // the flow's and the jet's noise against it (see configure)
+    OnePole vnHp;       // the valves' jet noise: white noise, its lows taken out
+    OnePole tnHp[2];    // the tail's jet: noise in a band
+    OnePole tnLp[2];
+    Extras ex;
+    Hall hall;
+    float* sA;          // the room's input and output, 16 at a time
+    float* sB;
+    float* sC;
+    float* sD;
+    float pBox;         // the air box (with the turbo's boost), Pa
+    float qThr;         // the volume flow through the throttle, m^3/s
+    float mdot;         // the exhaust's mass flow, kg/s (smoothed)
+    float dilution[12]; // each cylinder's burned-gas share at its last intake closing
+    // flow noise made where the gas's jets break up inside the system: the headers' jets into each collector, the
+    // collectors' gas into the converter's cone, the muffler's inlet and its outlet into the tail. Each is a pressure
+    // across its junction (a dipole: the turbulence's force on the gas), flowK times the junction's loss coefficient
+    // times 1/2 rho u^2 (so its power grows as the speed's fourth power, as in-duct flow noise does below the pipe's
+    // cross modes), gated by each pulse's own speed, in a band about a Strouhal number of 0.4 on the jet's width. The
+    // pipes then shape it like everything else.
+    OnePole fnHp[8];
+    OnePole fnLp[8];
+    OnePole fnLp2[8];
+    float fnN[8];       // each band's unit strength
+    float fnG[8];       // this sample's noise in each band (0, 1: the collectors; 2, 3: the cones; 4, 5: the
+                        // mufflers' inlets; 6, 7: their outlets)
+    float flowK;
+    float qHd[12];      // the last sample's flows: each header into its collector, each main pipe away from its cone,
+    float qPp[2];       // each muffler's inlet and outlet
+    float qM1[2];
+    float qM4[2];
+    float kInM;         // the loss coefficients the noise goes by: the muffler's inlet, its outlet
+    float kOutM;
+    // the exhaust's heat: the gas's temperature (K) in each part of the system (the headers, the collectors' pipes, the
+    // main pipe, the muffler, the tail), each part's wall, and what the pipes are set to (the gas's, a third of a second
+    // behind)
+    float tGas[5];
+    float tWall[5];
+    float tUse[5];
+    float mdotSlow;     // the exhaust's mass flow over half a second
+    float kUse;
+    float kMdot;
+    float shell[2];     // the headers' walls ringing (the collectors' pressure), for the engine bay
+    OnePole shellHp[2];
+    float tqMean;
+    float tqNow;
+    OnePole cabLp;      // the cabin: the body's boom from the engine's torque, through the mounts, ringing its modes
+    Biquad cabMode[6];
+    Biquad cabEx[2];
+    Biquad cabIn;
+    OnePole airLp[2];   // the distance takes the highs
+    float rS;           // the distance (m), smoothed; the level it gives, the output's level and the room's share, each
+    float gdS;          // gliding a sample at a time
+    float outS;
+    float wetS;
+    float kDist16;
+    float kGlide;
+    float airFc;        // the air's low-pass as last set
+    // the listener: each tailpipe heard at two microphones (an ORTF pair outside, the driver's ears in the cabin), by
+    // its direct path (listenAt, listen)
+    float* lnBuf;       // each tailpipe's signal, low-passed for its directivity: a delay line each (doubled, lnCap long)
+    int lnCap;
+    int lnW;
+    float lnD[4];       // each path's delay (samples behind the earliest) and gain (tailpipe k, microphone m at k * 2 + m)
+    float lnG[4];
+    OnePole dirSh[2];   // each tailpipe's directivity: the highs beam along its axis, falling off it
+    int lnView;         // the view and the pipes the paths are for
+    int lnPipes;
+    float lnL;          // this sample's exhaust at each microphone
+    float lnR;
+    float lim;
+    float limRel;
+    float env;
+    float compA;
+    float compR;
+    float quiet;
+    float peakOut;
+    float kEx;          // each source's level, measured against the exhaust's
+    float kIn;
+    float kMc;
+    float kBk;
+    float kSh;
+    float kTb;
+    float kSt;
+    float kCb;
+    float jetK;
+    float jetA;
+    float qJet[2];      // the flow out of the tail, smoothed: the jet's speed
+    float valveK;
+    // the junctions' losses (pipes.fm, lossKap: K rho / 2A^2 for each direction) and the catalytic converter
+    float kHin;         // a header's flow into its collector, and back out of it
+    float kHout;
+    float kSin;         // a collector's pipe into the merge, and back
+    float kSout;
+    float kXp;          // the H-pipe's ends
+    float rCat;         // the converter at the main pipe's head: a resistance in series, Pa s / m^3
+    float rPerf;        // the muffler's perforated tube or baffles, where the gas passes from chamber to tube and on
+    float kMuf[8];      // the muffler's four changes of area (pipe to chamber, chamber to tube, tube to chamber, chamber
+                        // to tail), each for flow onward and back
+    float kExit[2];     // the tail's open end: the jet out (its momentum lost), the air drawn in
+    float sHd[12];      // each junction's drive, its slow part (the losses act on it: quasi-steady): the headers' ends,
+    float sMg[2];       // the collectors' pipes at the merge, the H-pipe's ends, the muffler's four changes of area each
+    float sXp[2];       // side, the tails' ends
+    float sMf[8];
+    float sEx[2];
+    float xiWall;       // the pipes' friction factor
+    float k16Flow;      // the flow's loss's smoothing, every 16 samples
+    // the car (DRIVE CAR)
+    Car car;
+    int lastDrive;
+    int lastLever;      // the shifter where it was: it moving picks its gear
+    int lastPos;        // a truck's shifter's last forward position (coming down from it picks the highest of three)
+    int lastButtons;
+    float shiftT;       // seconds into a paddle shift (negative: none)
+    int shiftTo;
+    bool shiftUp;
+    bool shiftCut;      // the ignition cut through an upshift
+    float stallT;       // seconds under the stall speed
+    float offHold;      // seconds the start key has been held while it ran (a second switches it off)
+    bool offArmed;      // that key went down while it ran
+    float kPedal;       // the pedals' smoothing, every 16 samples
+    float gRoad;        // the road's level, for the view
+    // what the panel shows (its displays read these whether a key sounds or not)
+    float showRpm;      // the crank's speed, rpm
+    float showRed;      // the redline, rpm
+    float showGear;     // driven: -1 R, 0 N, 1 to 6; -2 played from the keys
+    float showKmh;      // driven: the car's speed, km/h
+    float showThr;      // the throttle plate, 0 to 1
+    float showMap;      // the manifold against the air outside, bar: vacuum below 0, boost above
+    float showLamps;    // the state (0 off, 1 cranking, 2 running, 3 running down) + 4 limiter + 8 fuel cut + 16 driven,
+                        // + 32 times the coolant's temperature (F + 60) + 16384 times the oil's pressure (psi) + 2097152
+                        // driven as a truck: the dash's
+    float showPedals;   // driven: the brake (0 to 100) + 1000 times the clutch (0 to 100)
+    float showCycle;    // a slowed copy of the crank's cycle, 0 to 1: the layout's drawing fires in its order by it
+    float showBoost;    // the turbo's boost, bar
+    float showAir;      // the forced induction, for the panel: its kind (1 to 4) plus the boost it is set for (0 none),
+                        // and ten times BORE/STROKE's 1 to 100 (0.5 to 2; 0, before the sound starts: square)
+    float showPipes;    // the HEADERS, PIPE and X-PIPE dials as heard, for the panel: each 0 to 99, packed (headers *
+                        // 10000 + pipe * 100 + X-pipe)
+
+    float rnd()
+    {
+        const int hi = rs / 127773;
+        const int lo = rs % 127773;
+        rs = 16807 * lo - 2836 * hi;
+        if (rs <= 0)
+            rs += 2147483647;
+        return 2.0f * ((float)rs / 2147483647.0f) - 1.0f;
+    }
+
+    float gauss()
+    {
+        return 0.57735f * (rnd() + rnd() + rnd());
+    }
+
+    void init(float rateIn)
+    {
+        end();
+        hostRate = rateIn;
+        rate = 96000.0f;
+        rsOn = fabsf(rateIn - rate) > 1.0f ? 1 : 0;
+        rsStep = rate / fmaxf(rateIn, 1000.0f);
+        rsN = 2 * (int)(24.0f * rate / 48000.0f + 0.5f);
+        rsL = calloc(512, sizeof(float));
+        rsR = calloc(512, sizeof(float));
+        rsBl = calloc(16, sizeof(float));
+        rsBr = calloc(16, sizeof(float));
+        rsTab = calloc(129 * rsN, sizeof(float));
+        rsW = 0;
+        rsAhead = 0;
+        rsFrac = 0.0f;
+        {
+            // h(u) = fc sinc(fc u) w(u / (rsN / 2)), fc the cut over the engine's Nyquist, w Kaiser's (beta 7)
+            const float fc = 0.92f * fminf(rateIn / rate, 1.0f);
+            const int hn = rsN / 2;
+            float i0b = 0.0f;
+            float term = 1.0f;
+            for (int k = 1; k < 30; ++k)
+            {
+                i0b += term;
+                term *= 12.25f / (float)(k * k);
+            }
+            for (int ph = 0; ph < 129; ++ph)
+            {
+                for (int t = 0; t < rsN; ++t)
+                {
+                    const float u = (float)(t - (hn - 1)) - (float)ph / 128.0f;
+                    const float x = 3.14159265f * fc * u;
+                    const float sn = fabsf(x) < 1.0e-6f ? 1.0f : sinf(x) / x;
+                    const float q = u / (float)hn;
+                    const float arg = q * q < 1.0f ? 3.5f * sqrtf(1.0f - q * q) : 0.0f;
+                    float i0 = 0.0f;
+                    float tt = 1.0f;
+                    for (int k = 1; k < 30; ++k)
+                    {
+                        i0 += tt;
+                        tt *= arg * arg / (float)(k * k);
+                    }
+                    rsTab[ph * rsN + t] = q * q < 1.0f ? fc * sn * i0 / i0b : 0.0f;
+                }
+            }
+        }
+        dt = 1.0f / rate;
+        rs = 123456789;
+        // the longest each pipe could be, cold (330 m/s), at this rate
+        const float k = rate / 300.0f;
+        for (int i = 0; i < 12; ++i)
+        {
+            prim[i].configure((int)(3.0f * k) + 16);
+            run[i].configure((int)(0.8f * k) + 16);
+        }
+        for (int i = 0; i < 2; ++i)
+        {
+            sec[i].configure((int)(1.0f * k) + 16);
+            pipe[i].configure((int)(4.6f * k) + 16);
+            ch1[i].configure((int)(0.9f * k) + 16);
+            mid[i].configure((int)(0.5f * k) + 16);
+            ch2[i].configure((int)(0.7f * k) + 16);
+            tail[i].configure((int)(1.0f * k) + 16);
+            pop[i].rs = 1000 + 7777 * i;
+        }
+        cross.configure((int)(0.6f * k) + 16);
+        ex.setup(rate, 90.0f);
+        hall.setup(rate);
+        sA = calloc(16, sizeof(float));
+        sB = calloc(16, sizeof(float));
+        sC = calloc(16, sizeof(float));
+        sD = calloc(16, sizeof(float));
+        lnCap = 64;
+        while ((float)lnCap < 0.012f * rate)
+            lnCap *= 2;
+        lnBuf = calloc(4 * lnCap, sizeof(float));
+        lnView = -1;
+        lnPipes = 0;
+        for (int i = 0; i < 2; ++i)
+        {
+            shellHp[i].set(500.0f, rate);
+            airLp[i].set(18000.0f, rate);
+            cabEx[i].setLowpass(260.0f, 0.8f, rate);
+        }
+        cabLp.set(180.0f, rate);
+        // the cabin's modes the engine's shaking drives: the body's bending, the roof's and floor's panels, the air's
+        // first modes along and across it (heuristic values, 40 to 180 Hz)
+        const float cmF[6] = {42.0f, 58.0f, 77.0f, 104.0f, 138.0f, 182.0f};
+        const float cmQ[6] = {5.0f, 6.0f, 7.0f, 8.0f, 9.0f, 10.0f};
+        for (int i = 0; i < 6; ++i)
+            cabMode[i].setBandpass(cmF[i], cmQ[i], rate);
+        cabIn.setLowpass(800.0f, 0.7f, rate);
+        lim = 1.0f;
+        limRel = 1.0f - expf(-1.0f / (0.25f * rate));
+        compA = 1.0f - expf(-1.0f / (0.03f * rate));
+        compR = 1.0f - expf(-1.0f / (0.4f * rate));
+        env = 0.0f;
+        quiet = 1.0e9f;
+        kEx = 0.016f;
+        kIn = 0.8f;
+        kMc = 1.5f;
+        kBk = 1.1f;
+        kSh = 0.000008f;
+        kTb = 1.0f;
+        kSt = 0.056f;
+        kCb = 0.000016f;
+        gainNorm = 1.0f;
+        rS = -1.0f;
+        gdS = 0.0f;
+        outS = 0.0f;
+        wetS = 0.0f;
+        kDist16 = 1.0f - expf(-16.0f / (0.03f * rate));
+        kGlide = 1.0f - expf(-1.0f / (0.01f * rate));
+        airFc = -1.0f;
+        cutG = 1.0f;
+        cutDn = 1.0f / (0.006f * rate);
+        cutUp = 1.0f / (0.012f * rate);
+        cutWant = 0;
+        vUse = 0;
+        kDial = 1.0f - expf(-16.0f / (0.08f * rate));
+        pBox = 101325.0f;
+        vnHp.set(700.0f, rate);
+        vnLp.set(20000.0f, rate);
+        nScale = sqrtf(rate / 48000.0f);
+        jetA = 1.0f - expf(-1.0f / (0.06f * rate));
+        for (int i = 0; i < 2; ++i)
+            jetBand(i, 300.0f);
+        set.layout = 12;
+        set.size = 5.76f;
+        set.idle = 0.0f;
+        set.redline = 0.0f;
+        set.cam = 0.35f;
+        set.inertia = 0.5f;
+        set.load = 0.0f;
+        set.headers = 0.5f;
+        set.muffler = 0.5f;
+        set.pipe = 0.5f;
+        set.xpipe = 0.0f;
+        set.pops = 0.3f;
+        set.rough = 0.3f;
+        set.turbo = 0.5f;
+        set.tsize = 1.0f;
+        set.asp = 0;
+        set.fuel = 0;
+        set.comp = 10.0f;
+        set.bs = 1.0f;
+        set.ambF = 80.33f;
+        set.timing = 0.0f;
+        droop = 1.0f;
+        set.bov = 0.7f;
+        set.intake = 0.5f;
+        set.mech = 0.4f;
+        set.view = 0;
+        set.distance = 0.3f;
+        set.room = 0.15f;
+        set.level = 0.0f;
+        set.keys = 0;
+        set.bendRange = 12.0f;
+        set.starter = 1;
+        set.hold = 10.0f;
+        tAmb = 300.0f;
+        tCool = 300.0f;
+        tOil = 300.0f;
+        tSurf = 300.0f;
+        ambSeen = 80.33f;
+        ambSm = 80.33f;
+        warm = 0.0f;
+        viscK = 1.0f;
+        lastLayout = -1;
+        state = 0;
+        omega = 0.0f;
+        theta = 0.0f;
+        keyCount = 0;
+        tokenCounter = 0;
+        rendering = 0;
+        tick16 = 0;
+        // (the free jet's own mixing noise is weak at a tailpipe's speeds: most of the roar is made inside, at the
+        // junctions, and comes out shaped by the pipes; the two together as bright as the jet alone was)
+        jetK = 0.005f;
+        flowK = 0.017f;
+        valveK = 0.15f;
+        xiWall = 0.025f;
+        k16Flow = 1.0f - expf(-16.0f / (0.06f * rate));
+        kUse = 1.0f - expf(-16.0f / (0.3f * rate));
+        kMdot = 1.0f - expf(-16.0f / (0.5f * rate));
+        gK = 0.15f;
+        gTau = 0.15f;
+        gTrim = 2.5f;
+        gI = 0.8f;
+        car.setup(rate);
+        set.drive = 0;
+        set.mass = 1400.0f;
+        lastDrive = 0;
+        lastLever = 0;
+        lastPos = 0;
+        shiftT = -1.0f;
+        kPedal = 1.0f - expf(-16.0f / (0.012f * rate));
+        configure();
+        showGear = -2.0f;
+        ready = 1;
+    }
+
+    void end()
+    {
+        if (ready != 0)
+        {
+            for (int i = 0; i < 12; ++i)
+            {
+                prim[i].release();
+                run[i].release();
+            }
+            for (int i = 0; i < 2; ++i)
+            {
+                sec[i].release();
+                pipe[i].release();
+                ch1[i].release();
+                mid[i].release();
+                ch2[i].release();
+                tail[i].release();
+            }
+            cross.release();
+            hall.release();
+            free(sA);
+            free(sB);
+            free(sC);
+            free(sD);
+            free(lnBuf);
+            free(rsL);
+            free(rsR);
+            free(rsBl);
+            free(rsBr);
+            free(rsTab);
+        }
+        ready = 0;
+    }
+
+    // The engine for the layout and the size dial: its cylinders, valves and pipes. Everything starts at rest.
+    void configure()
+    {
+        lay.load(set.layout);
+        lastLayout = set.layout;
+        fuelUse = set.fuel;
+        aspUse = set.asp < 0 ? 0 : (set.asp > 4 ? 4 : set.asp);
+        // (stopped, with AMBIENT moved: it has stood in that air, as cold or as warm as it is)
+        if (state == 0 && fabsf(set.ambF - ambSeen) > 0.25f)
+        {
+            ambSm = set.ambF;
+            tCool = 300.0f + 0.5555556f * (set.ambF - 80.33f);
+            tOil = tCool;
+            tSurf = tCool;
+        }
+        ambSeen = set.ambF;
+        heat16(0.0f);
+        kRet = 0.0f;
+        lastSize = set.size;
+        lastCam = set.cam;
+        smMuf = set.muffler;
+        smHdr = set.headers;
+        smPipe = set.pipe;
+        smXp = set.xpipe;
+        smTb = set.turbo;
+        smTs = tsOf();
+        smCam = set.cam;
+        sizeSeen = set.size;
+        sizeRest = 0.0f;
+        // the size dial: the engine's displacement in litres (a rotary's: its two rotors' chambers), each cylinder kept
+        // between 30 cc and 5 litres
+        const float litres = fminf(fmaxf(set.size, 0.05f), 30.0f);
+        const float swept = fminf(fmaxf(litres * 0.001f / (lay.rotary != 0 ? 2.0f : (float)lay.n), 3.0e-5f), 5.0e-3f);
+        const float scale = swept / lay.swept;
+        vTotal = swept * (lay.rotary != 0 ? 2.0f : (float)lay.n);
+        // a bigger engine than the layout's own breathes out through bigger pipes: their diameters as the 0.45th power
+        // of its size over the layout's (its flow's area: a 6.7 L six's 86 mm, a 15 L truck's 124, as theirs are some
+        // 100 and 127; through the layout's 60 mm its gas ran at near half the speed of sound, a hiss)
+        const float kPipe = expf(0.45f * logf(fmaxf(scale, 1.0f)));
+        lay.pipeD *= kPipe;
+        lay.tailD *= kPipe;
+        smCR = fminf(fmaxf(set.comp, 6.0f), 25.0f);
+        lastCR = smCR;
+        // the torque the car's gears are chosen for: the full load's, for this engine (peakTorque's, at its new size; a
+        // diesel's about half a gasoline engine's of its size here, its full fuel lean)
+        {
+            const float bg = aspUse == 0 ? 0.0f : (aspUse == 4 ? 0.25f + 0.75f * set.turbo : 0.35f + 1.05f * set.turbo);
+            gearTq = (fuelUse != 0 ? 0.5f : 1.0f) * 1.6f * 0.6f * 1.0e6f * vTotal * 0.0795775f * (1.0f + 0.8f * bg);
+        }
+        // the bore and the stroke: a square cylinder's bore, moved by BORE/STROKE (the same swept volume: an
+        // oversquare engine's bore wider, its stroke shorter; a rotary has neither)
+        boreSq = lay.rotary != 0 ? 0.09f : expf(0.33333333f * logf(1.2732395f * swept));
+        smBs = bsOf();
+        boreStroke();
+        // (a big cam's overlap dilutes the idle more the slower it turns: its tune idles it higher, as real ones are)
+        idleRpm = fmaxf(idleBase + set.idle + 350.0f * fmaxf(set.cam - 0.35f, 0.0f) / 0.65f + coldIdle(), 350.0f);
+        redRpm = fmaxf(redBase + set.redline, idleRpm + 1500.0f);
+        nDuals = lay.topo == 2 ? 2 : 1;
+        // the throttle and the plenum go with the engine's size
+        aThrottle = 0.0028f * sqrtf(vTotal / 0.002f) * (lay.bike > 0.5f ? 1.25f : 1.0f);
+        aBypass = 0.045f * aThrottle;
+        vPlenum = fmaxf(0.8f * vTotal, 0.0004f);
+        // (a diesel's crank and flywheel are heavier, for its pressures: twice a gasoline engine's of the layout's size,
+        // and more the bigger it is: some 0.85 kg m^2 for a 6.7 L six, 2.2 for a 15 L truck's)
+        clatSize = expf(0.33333333f * logf(swept / 0.0005f));
+        jBase = fuelUse != 0 ? 2.0f * lay.inertia * expf(1.2f * logf(scale)) : lay.inertia * expf(0.6f * logf(scale));
+        for (int c = 0; c < lay.n; ++c)
+        {
+            Cylinder* cy = &cyl[c];
+            cy->setup(swept, smCR, 3.3f, lay.rotary, lay.cyc);
+            cy->tw = tSurf;
+            cy->diesel = fuelUse;
+            cy->bias = 0.025f * rnd();
+            float a0 = theta + lay.fire[c];
+            while (a0 >= lay.cyc)
+                a0 -= lay.cyc;
+            cy->reset(a0);
+            cy->t = tAmb + 30.0f * warm;
+            cy->m = cy->p * cy->v / (287.0f * cy->t);
+        }
+        for (int i = 0; i < 12; ++i)
+            portBank[i] = 0;
+        for (int c = 0; c < lay.n; ++c)
+            portBank[lay.port[c]] = lay.bank[c];
+        valves();
+        if (state != 0)
+        {
+            // running (a new layout or size under the fade): each cylinder's charge from where it stands (a fresh one at
+            // the air outside would bang): the air's with its exhaust open (the pipes start at rest), else the plenum's
+            for (int c = 0; c < lay.n; ++c)
+            {
+                Cylinder* cy = &cyl[c];
+                float e = cy->ang - cy->evo;
+                if (e < 0.0f)
+                    e += cy->cyc;
+                cy->p = e < cy->edur ? 101325.0f : pPlenum;
+                cy->m = cy->p * cy->v / (287.0f * cy->t);
+            }
+        }
+        for (int i = 0; i < 12; ++i)
+        {
+            prim[i].clear();
+            run[i].clear();
+        }
+        for (int i = 0; i < 2; ++i)
+        {
+            sec[i].clear();
+            pipe[i].clear();
+            ch1[i].clear();
+            mid[i].clear();
+            ch2[i].clear();
+            tail[i].clear();
+            radPrev[i] = 0.0f;
+            endR[i].clear();
+        }
+        for (int i = 0; i < 12; ++i)
+            endRun[i].clear();
+        cross.clear();
+        for (int i = 0; i < 4 * lnCap; ++i)
+            lnBuf[i] = 0.0f;
+        dirSh[0].clear();
+        dirSh[1].clear();
+        lnView = -1;
+        ex.pumpOn = fuelUse != 0 ? 0.6f : (lay.bike < 0.5f && lay.rotary == 0 ? 0.3f : 0.0f);
+        ex.setClatter(fuelUse, cyl[0].vd);
+        for (int i = 0; i < 12; ++i)
+        {
+            sHd[i] = 0.0f;
+            qHd[i] = 0.0f;
+        }
+        for (int i = 0; i < 2; ++i)
+        {
+            qPp[i] = 0.0f;
+            qM1[i] = 0.0f;
+            qM4[i] = 0.0f;
+        }
+        for (int g = 0; g < 8; ++g)
+        {
+            fnG[g] = 0.0f;
+            flowBand(g, 300.0f);
+        }
+        for (int i = 0; i < 8; ++i)
+            sMf[i] = 0.0f;
+        for (int i = 0; i < 2; ++i)
+        {
+            sMg[i] = 0.0f;
+            sXp[i] = 0.0f;
+            sEx[i] = 0.0f;
+        }
+        // each layout's loudness, measured: so they come out alike at speed
+        const float norm[17] = {1.087f, 1.643f, 1.694f, 1.577f, 4.627f, 1.644f, 1.154f, 1.292f, 1.466f, 2.569f, 2.069f, 1.412f, 2.658f, 1.738f, 2.634f, 3.367f, 0.608f};
+        // and the exhaust's own share, measured over full throttle from a third of the redline to near it, so the
+        // physical pipes come out as loud there as the earlier model's did, the engine bay's sounds unchanged
+        const float exT[17] = {0.923f, 1.249f, 1.388f, 1.815f, 3.380f, 3.990f, 4.603f, 1.741f, 5.346f, 5.230f, 5.831f, 3.722f, 8.169f, 3.613f, 4.332f, 5.947f, 1.226f};
+        gainNorm = 0.5f * norm[set.layout < 0 ? 0 : (set.layout > 16 ? 16 : set.layout)];
+        exTrim = exT[set.layout < 0 ? 0 : (set.layout > 16 ? 16 : set.layout)];
+        // (the flow's and the jet's noise were tuned to the trims before the per-pass loss raised them: made at the
+        // junctions and the tail, past most of that loss, they rise with them only a quarter as much in dB)
+        const float exT1[17] = {0.288f, 0.348f, 0.402f, 0.400f, 0.884f, 0.995f, 0.999f, 0.439f, 1.527f, 1.113f, 1.609f, 0.501f, 1.415f, 0.853f, 0.837f, 1.123f, 0.401f};
+        noiseTrim = sqrtf(sqrtf(exT1[set.layout < 0 ? 0 : (set.layout > 16 ? 16 : set.layout)] / exTrim));
+        showRed = redRpm;
+        // stopped, the walls as warm as the engine is (warm: where a long idle leaves them; cold: at the air outside);
+        // running (a new layout or size under the fade), the plenum, the throttle, the controllers and the heat go on as
+        // they were
+        if (state == 0)
+        {
+            pPlenum = 101325.0f;
+            tAir = tAmb + 5.0f * warm;
+            tPort = tAmb + 20.0f * warm;
+            throttle = 0.0f;
+            bypass = 0.3f;
+            idleInt = 0.15f;
+            trim = 1.0f;
+            govInt = 0.0f;
+            mdotSlow = 0.36f * vTotal * idleRpm / 120.0f;
+            for (int i = 0; i < 5; ++i)
+                tWall[i] = tAmb + 120.0f * warm;
+            for (int it = 0; it < 400; ++it)
+                soak(tAmb + 350.0f * warm, mdotSlow, 3.0f * warm);
+            for (int i = 0; i < 5; ++i)
+                tUse[i] = tGas[i];
+        }
+        mPlenum = pPlenum * vPlenum / (287.0f * tAir);
+        pipes();
+    }
+
+    // The exhaust's heat (dt seconds on): the gas leaves the ports at tIn and cools along the system toward each part's
+    // wall, keeping exp(-NTU) of its excess through a part (NTU from turbulent pipe flow's heat transfer, Dittus and
+    // Boelter's: 0.0135 L / (m^0.2 D^0.8) for exhaust gas a branch carrying m kg/s; more in the pulsing headers and
+    // the muffler's chambers). Each wall heats or cools toward where the gas inside and the air outside hold it
+    // (convection, more with the car's speed, and radiation), over tens of seconds to minutes: its steel's heat over
+    // what it exchanges. So the gas is hot near the engine and cooler down the system, much hotter at full throttle
+    // than at idle, and the downstream parts take their time to follow.
+    void soak(float tIn, float m, float dt)
+    {
+        const float hk = expf(0.9808293f * (smHdr - 0.5f));
+        const float pk = expf(1.3862944f * (smPipe - 0.5f));
+        const float dHead = 0.46f * bore;
+        const float dSec = lay.topo == 0 ? lay.pipeD : 0.922f * lay.pipeD;
+        const float vAir = set.drive != 0 ? fabsf(car.v) : 0.0f;
+        float len[5];
+        float dia[5];
+        float br[5];
+        len[0] = lay.hdr * hk;
+        len[1] = lay.bike > 0.5f ? 0.25f : 0.38f;
+        len[2] = lay.mainLen * pk;
+        len[3] = lay.muff * 1.6f + 0.12f + 0.08f * (1.0f - lay.bike);
+        len[4] = lay.bike > 0.5f ? 0.10f : 0.40f;
+        dia[0] = dHead;
+        dia[1] = dSec;
+        dia[2] = lay.pipeD;
+        dia[3] = lay.pipeD;
+        dia[4] = lay.tailD;
+        br[0] = (float)lay.ports;
+        br[1] = lay.topo == 0 ? 1.0f : 2.0f;
+        br[2] = (float)nDuals;
+        br[3] = (float)nDuals;
+        br[4] = (float)nDuals;
+        const float enh[5] = {1.5f, 1.2f, 1.0f, 2.0f, 1.0f};
+        const float shellK[5] = {1.0f, 1.0f, 1.0f, 4.0f, 1.0f};      // the outside's area over the inside's
+        const float heat[5] = {9000.0f, 6000.0f, 12000.0f, 10000.0f, 5000.0f};  // J / (m^2 K) of the outside
+        float t = tIn;
+        for (int i = 0; i < 5; ++i)
+        {
+            const float mb = fmaxf(m / br[i], 2.0e-5f);
+            const float ntu = 0.01352f * enh[i] * len[i] * expf(-0.2f * logf(mb) - 0.8f * logf(dia[i]));
+            const float e = expf(-ntu);
+            const float tw = tWall[i];
+            tGas[i] = tw + (t - tw) * (1.0f - e) / ntu;
+            t = tw + (t - tw) * e;
+            const float sOut = 3.14159265f * dia[i] * len[i] * shellK[i];
+            const float gIn = ntu * mb * 1150.0f;
+            const float gOut = (20.0f + 4.0f * vAir + 4.536e-8f * (tw * tw + tAmb * tAmb) * (tw + tAmb)) * sOut;
+            const float tEq = (gIn * tGas[i] + gOut * tAmb) / (gIn + gOut);
+            tWall[i] = tw + (tEq - tw) * fminf(dt * (gIn + gOut) / (heat[i] * sOut), 1.0f);
+        }
+    }
+
+    // A cold engine's fast idle: its ECU idles it up to 500 rpm higher (a diesel's 250) as the coolant is colder than
+    // 55 C (at 80 F some 190, at 0 F some 420; none once it is warm)
+    float coldIdle()
+    {
+        return (fuelUse != 0 ? 250.0f : 500.0f) * fminf(fmaxf((328.0f - tCool) / 75.0f, 0.0f), 1.0f);
+    }
+
+    // The TURBO SIZE dial as the engine takes it: 0.5 to 2 (unset: 1, matched)
+    float tsOf()
+    {
+        return set.tsize > 0.0f ? fminf(fmaxf(set.tsize, 0.5f), 2.0f) : 1.0f;
+    }
+
+    // Every 16 samples (d16 s; 0: only what follows from the temperatures): the engine's heat. The burns give the
+    // coolant some 40 % of their heat and the rubbing 60 % of its; the block and its coolant hold some 9 kJ/K a
+    // litre (as the 0.9th power of the size: a 2 L engine warms from 20 to 90 C in some 8 minutes at idle, in one or
+    // two driven hard), lose a little to the air, and the thermostat opens from 195 F, its radiator then holding it
+    // there. The oil follows some 4 minutes behind, 10 K over the coolant while it runs; the combustion chamber's walls
+    // some 25 s behind, 87 K over it while it runs (a cold start's thin flame-quenching walls warm long before the
+    // coolant does), sinking back to it over minutes once it stops. Its thickness (a 5W-30's:
+    // Vogel's fit through 10.5 cSt at 100 C, 62 at 40, 645 at 0) over a warm engine's makes its pressure: the pump's
+    // 10 psi plus 14 a 1000 rpm warm, as the thickness's 0.3th power, under the relief valve's 75.
+    void heat16(float d16)
+    {
+        ambSm += (set.ambF - ambSm) * (1.0f - expf(-fmaxf(d16, 0.0f) / 2.0f));
+        tAmb = 300.0f + 0.5555556f * (ambSm - 80.33f);
+        // (the slow temperatures step every 20 ms: a 16 samples' change in them is under what a float can add)
+        heatT += fmaxf(d16, 0.0f);
+        if (heatT >= 0.02f)
+        {
+            const float dh = heatT;
+            heatT = 0.0f;
+            const float litres = vTotal * 1000.0f;
+            const float cHeat = 9000.0f * expf(0.9f * logf(fmaxf(litres, 0.05f)));
+            const float open = fminf(fmaxf((tCool - 363.0f) / 12.0f, 0.0f), 1.0f);
+            const float ua = (10.0f + 600.0f * open) * expf(0.7f * logf(fmaxf(litres, 0.05f)));
+            const float qIn = (0.4f * heatJ + 0.6f * fricJ) / dh;
+            tCool = fminf(fmaxf(tCool + (qIn - ua * (tCool - tAmb)) * dh / cHeat, tAmb - 1.0f), 420.0f);
+            tOil += (tCool + (state == 2 ? 10.0f : 0.0f) - tOil) * (1.0f - expf(-dh / 240.0f));
+            tSurf += (tCool + (state == 2 ? 87.0f : 0.0f) - tSurf) * (1.0f - expf(-dh / (state == 2 ? 25.0f : 120.0f)));
+            heatJ = 0.0f;
+            fricJ = 0.0f;
+        }
+        if (d16 > 0.0f)
+            runT = state == 2 ? fminf(runT + d16, 600.0f) : 0.0f;
+        warm = fminf(fmaxf((tCool - tAmb) / (363.0f - tAmb), 0.0f), 1.0f);
+        warmS = fminf(fmaxf((tSurf - tAmb) / (450.0f - tAmb), 0.0f), 1.0f);
+        viscK = fminf(expf(861.0f * (1.0f / fmaxf(tOil - 170.0f, 40.0f) - 1.0f / 203.0f)), 2.0e4f);
+        for (int c = 0; c < lay.n; ++c)
+            cyl[c].tw = tSurf;
+        const float pHot = (10.0f + 14.0f * rpm * 0.001f) * 6894.76f;
+        const float pWant = state != 0 && omega > 1.0f
+                            ? fminf(pHot * expf(0.3f * logf(viscK)) * fminf(omega / 20.0f, 1.0f), 75.0f * 6894.76f) : 0.0f;
+        pOil += (pWant - pOil) * (1.0f - expf(-fmaxf(d16, 0.0f) / 0.25f));
+    }
+
+    // The BORE/STROKE dial as the engine takes it: 0.5 to 2 (a rotary, or the dial unset: 1, square)
+    float bsOf()
+    {
+        if (lay.rotary != 0 || set.bs <= 0.0f)
+            return 1.0f;
+        return fminf(fmaxf(set.bs, 0.5f), 2.0f);
+    }
+
+    // The bore and what goes with the bore over the stroke (smBs). At the same displacement the bore goes as its cube
+    // root, the stroke as its cube root's inverse square: the valves, the ports and the headers go with the bore
+    // (valves, pipes), the pistons' speed with the stroke (1.6 times a square engine's at the same revs at 0.5, 0.63
+    // times at 2: their rubbing with it), the burn's degrees with the flame's path across the bore over the gas's
+    // churn, which the pistons' speed makes (as its 0.35th power: 27 % longer at 2, 22 % shorter at 0.5; the spark
+    // leads it by half that), and the end gas, longer waiting for the flame, knocks at a lower compression (some 1
+    // less at 2, 1 more at 0.5)
+    void boreStroke()
+    {
+        const float lb = logf(smBs);
+        bore = boreSq * expf(0.33333333f * lb);
+        strokeK = expf(-0.66666667f * lb);
+        burnK = expf(0.35f * lb);
+        crBs = -1.5f * lb;
+        lastBs = smBs;
+        // a diesel turns at most what keeps its pistons under some 13.5 m/s (a 6.7 L six of 107 by 124 mm: 3270 rpm, a
+        // 15 L of 137 by 169: 2400), at most six tenths of the layout's redline, and idles at a quarter of that (a 15 L
+        // truck's 650); a gasoline engine keeps its layout's
+        const float stroke = lay.rotary != 0 ? 0.01f : bore / smBs;
+        redBase = fuelUse != 0 ? fminf(0.6f * lay.redRpm, 405.0f / fmaxf(stroke, 0.01f)) : lay.redRpm;
+        idleBase = fuelUse != 0 ? fminf(lay.idleRpm, 0.27f * redBase) : lay.idleRpm;
+    }
+
+    // The cams: how long the valves open and how much they overlap (the cam dial), and the valves' areas
+    void valves()
+    {
+        const float c = smCam;
+        lastCam = c;
+        const float ap = 0.785398f * bore * bore;
+        for (int k = 0; k < lay.n; ++k)
+        {
+            Cylinder* cy = &cyl[k];
+            if (lay.rotary != 0)
+            {
+                // peripheral exhaust port, side intake ports (degrees of the eccentric shaft; the face fires at 0)
+                cy->evo = 195.0f - 25.0f * c;
+                cy->edur = 395.0f + 35.0f * c;
+                cy->ivo = 572.0f - 40.0f * c;
+                cy->idur = 285.0f + 60.0f * c;
+                cy->aE = 0.0016f * (vTotal / 0.0013f);
+                cy->aI = 0.0020f * (vTotal / 0.0013f);
+            }
+            else
+            {
+                const float ed = 224.0f + 76.0f * c;           // exhaust duration
+                const float id = 224.0f + 76.0f * c;
+                const float lsa = 112.0f - 6.0f * c;           // lobe separation
+                cy->evo = 360.0f - lsa - 0.5f * ed;
+                cy->edur = ed;
+                cy->ivo = 360.0f + lsa - 0.5f * id;
+                cy->idur = id;
+                // two valves each: the curtain at full lift (a quarter of the diameter) with its discharge coefficient there
+                // (about 0.4): some 9 % of the piston's area for the exhaust, 12 % for the intake (cylinder.fm, flowArea,
+                // shapes the lift's way up)
+                cy->aE = 0.091f * ap;
+                cy->aI = 0.118f * ap;
+            }
+            cy->sparkAt = lay.cyc - 20.0f;
+            cy->burnDur = 50.0f;
+        }
+    }
+
+    // Where a muffler's scattering starts taking the highs (Hz): some 500 Hz, or in a short pipe half its own first
+    // resonance (c / 2L), so that the delay its shelves add at the lows fits in its line (c: m/s, len: m)
+    float backFc(float c, float len)
+    {
+        return fmaxf(500.0f, 0.25f * c / fmaxf(len, 0.01f));
+    }
+
+    // The pipes' sizes for the layout and the dials, and their lengths in samples at the gas's temperatures now
+    void pipes()
+    {
+        const float hk = expf(0.9808293f * (smHdr - 0.5f));     // headers: 0.61 to 1.63 times
+        const float pk = expf(1.3862944f * (smPipe - 0.5f));        // pipe: half to twice
+        const float dHead = 0.46f * bore;
+        const float aHead = 0.785398f * dHead * dHead;
+        const float aPipe = 0.785398f * lay.pipeD * lay.pipeD;
+        const float aTail = 0.785398f * lay.tailD * lay.tailD;
+        const float aSec = lay.topo == 0 ? aPipe : 0.85f * aPipe;
+        // the gas cools as it goes, and heats and cools with the load (soak): the pipes follow it slowly, so the
+        // system's resonances move with the heat over seconds, never with the pulses
+        const float tH = tUse[0];
+        const float tS = tUse[1];
+        const float tP = tUse[2];
+        const float tM = tUse[3];
+        const float tT = tUse[4];
+        const float cH = sqrtf(1.35f * 287.0f * tH);
+        const float cS = sqrtf(1.35f * 287.0f * tS);
+        const float cP = sqrtf(1.35f * 287.0f * tP);
+        const float cM = sqrtf(1.35f * 287.0f * tM);
+        const float cT = sqrtf(1.35f * 287.0f * tT);
+        // the muffler: from a straight-through tube (0) to big packed chambers (1)
+        const float mu = smMuf;
+        const float ratio1 = 1.0f + 15.0f * mu;
+        const float ratio2 = 1.0f + 9.0f * mu;
+        // below about a third it is a straight-through can (a perforated tube through a packed shell: the gas keeps to
+        // the tube, so it loses little to its flow), above it chambers the gas expands into and out of (the losses of
+        // those changes of area, and the back pressure they make); packed throughout, more with the dial. The packing
+        // takes the highs (porous fill), less as the flow past the perforations grows (they choke with grazing flow).
+        const float chamb = fminf(fmaxf((mu - 0.25f) / 0.35f, 0.0f), 1.0f);
+        const float chambs = chamb * chamb * (3.0f - 2.0f * chamb);
+        const float graze = 1.0f / (1.0f + 1.5f * ch1[0].mach);
+        const float lk1 = (lay.muff / 0.45f) * graze;
+        const float lk2 = 0.6f * lk1;
+        const float dPipe = lay.pipeD;
+        // what the model does not resolve takes a share of each pass, whatever the level: the converter's narrow
+        // channels (their broadband absorption: some 2.3 dB a pass), the packing's lows, the bends, welds and slip
+        // joints, the turbulent boundary layer's damping (some 1.1 dB through a header). Without it the system rings at
+        // low flow as no real one does, and the losses that grow with the flow leave the level rising too little with
+        // the revs.
+        const float keepH = 0.878f;
+        const float keepP = 0.769f;
+        const float aRun = 0.9f * 0.27f * 0.785398f * bore * bore / 0.62f;
+        for (int i = 0; i < lay.ports; ++i)
+        {
+            // each header a little different, as real ones are; the second bank of an unequal-length boxer much longer
+            const int b = portBank[i];
+            const float own = 1.0f + 0.06f * (float)((i * 7) % 5 - 2) / 2.0f;
+            const float len = lay.hdr * hk * own * (b == 1 ? lay.hdrBank1 : 1.0f);
+            prim[i].set(len, dHead, aHead, cH, rate);
+            prim[i].extra(0.0f, keepH, rate);
+            prim[i].steep = 0.87f / 101325.0f;
+            run[i].set(lay.bike > 0.5f ? 0.16f : 0.30f, sqrtf(aRun * 1.2732395f), aRun, 350.0f, rate);
+            run[i].extra(0.0f, 1.0f, rate);
+        }
+        // (a turbo's turbine sits at each collector: a restriction that smooths the pulses; one turbo for the engine is
+        // the most of both, twins less, four between; a supercharger leaves the exhaust free)
+        // (a smaller turbine than the match chokes more and smooths less: its housing's volume; as the root of its size)
+        const float tb = aspUse >= 1 && aspUse <= 3 ? smTb : 0.0f;
+        const float tsr = expf(-0.5f * logf(smTs));
+        const float aS = aSec * fmaxf(1.0f - (aspUse == 2 ? 0.45f : (aspUse == 3 ? 0.5f : 0.55f)) * tb * tsr, 0.15f);
+        const float tbHz = tb > 0.001f ? (1320.0f + 22680.0f * (1.0f - tb) * (1.0f - tb) * (1.0f - tb)) * (aspUse == 2 ? 1.25f : (aspUse == 3 ? 1.1f : 1.0f)) * tsr : 0.0f;
+        for (int k = 0; k < 2; ++k)
+        {
+            sec[k].set(lay.bike > 0.5f ? 0.25f : 0.38f, sqrtf(aS * 1.2732395f), aS, cS, rate);
+            sec[k].extra(tbHz, 1.0f, rate);
+            sec[k].steep = 0.87f / 101325.0f;
+            const float pl = lay.mainLen * pk;
+            pipe[k].set(pl, dPipe, aPipe, cP, rate);
+            pipe[k].extra(0.0f, keepP, rate);
+            // (the converter's monolith: its narrow channels' walls take the highs, about as the root of the frequency:
+            // some 2.5 dB at 1 kHz, 5 at 4 kHz, 7.5 at the top each way)
+            pipe[k].pack(700.0f, 2.5f, 4000.0f, 5.0f, rate);
+            pipe[k].steep = 0.87f / 101325.0f;
+            ch1[k].set(lay.muff, dPipe * sqrtf(ratio1), aPipe * ratio1, cM, rate);
+            ch1[k].extra(0.0f, expf(0.8f * logf(0.92f - 0.25f * mu)), rate);
+            ch1[k].pack(1100.0f, (1.5f + 5.0f * mu) * lk1, 5000.0f, (3.0f + 14.0f * mu) * lk1, rate);
+            mid[k].set(0.12f + 0.08f * (1.0f - lay.bike), dPipe, aPipe, cM, rate);
+            mid[k].extra(0.0f, 0.935f, rate);
+            ch2[k].set(0.6f * lay.muff, dPipe * sqrtf(ratio2), aPipe * ratio2, cM, rate);
+            ch2[k].extra(0.0f, expf(0.8f * logf(0.93f - 0.20f * mu)), rate);
+            ch2[k].pack(1100.0f, (1.5f + 5.0f * mu) * lk2, 5000.0f, (3.0f + 14.0f * mu) * lk2, rate);
+            tail[k].set(lay.bike > 0.5f ? 0.10f : 0.40f, lay.tailD, aTail, cT, rate);
+            tail[k].extra(0.0f, 0.960f, rate);
+            // what the muffler sends back loses its highs: above some 500 Hz its reflections scatter into its chambers'
+            // cross modes and the packing takes them (up to 40 dB a pass, as strongly as its changes of area reflect),
+            // so its chambers, its tube, the tail and the pipe before it no longer ring there as a comb. Their lows
+            // ring as they did. (A short pipe's from higher up, where its own first resonances are.)
+            const float sc1 = 40.0f * (1.0f - 1.0f / ratio1);
+            const float sc2 = 40.0f * (1.0f - 1.0f / ratio2);
+            pipe[k].back(backFc(pipe[k].c, pipe[k].len), sc1, rate);
+            ch1[k].back(backFc(ch1[k].c, ch1[k].len), sc1, rate);
+            mid[k].back(backFc(mid[k].c, mid[k].len), sc2, rate);
+            ch2[k].back(backFc(ch2[k].c, ch2[k].len), sc2, rate);
+            tail[k].back(backFc(tail[k].c, tail[k].len), sc2, rate);
+        }
+        const float xa = fmaxf(smXp, 0.001f);
+        cross.set(0.25f, dPipe * sqrtf(xa), xa * aPipe, cP, rate);
+        cross.extra(0.0f, 0.960f, rate);
+        // the junctions' losses: a header merging into its collector (and the flow pushed back into it), the collectors'
+        // pipes merging, the H-pipe's sharp-edged ends, the muffler's sudden expansions ((1 - a/A)^2 on the narrow side's
+        // speed) and contractions (about half of 1 - a/A), the tail's jet
+        const float rhoH = prim[0].rho;
+        const float rhoS = sec[0].rho;
+        const float rhoM = ch1[0].rho;
+        kHin = lossKap(0.25f, rhoH, aHead);
+        kHout = lossKap(0.45f, rhoH, aHead);
+        kSin = lossKap(0.15f, rhoS, aS);
+        kSout = lossKap(0.30f, rhoS, aS);
+        kXp = lossKap(0.5f, sec[0].rho, xa * aPipe);
+        const float e1 = 1.0f - 1.0f / ratio1;
+        const float e2 = 1.0f - 1.0f / ratio2;
+        const float aCh2 = aPipe * ratio2;
+        const float e3 = 1.0f - fminf(aTail / aCh2, 1.0f);
+        kMuf[0] = lossKap(chambs * e1 * e1, rhoM, aPipe);   // pipe into the first chamber: an expansion
+        kMuf[1] = lossKap(chambs * 0.5f * e1, rhoM, aPipe); // and back: a contraction
+        kMuf[2] = lossKap(chambs * 0.5f * e1, rhoM, aPipe); // the first chamber into the tube
+        kMuf[3] = lossKap(chambs * e1 * e1, rhoM, aPipe);
+        kMuf[4] = lossKap(chambs * e2 * e2, rhoM, aPipe);   // the tube into the second chamber
+        kMuf[5] = lossKap(chambs * 0.5f * e2, rhoM, aPipe);
+        kMuf[6] = lossKap(0.5f * e3, rhoM, aTail);          // the second chamber into the tail
+        kMuf[7] = lossKap(e3 * e3, rhoM, aTail);
+        kInM = fmaxf(chambs * e1 * e1, 0.1f);           // (a straight-through's perforates still hiss)
+        kOutM = fmaxf(0.5f * e3, 0.1f);
+        kExit[0] = lossKap(1.0f, tail[0].rho, aTail);
+        kExit[1] = lossKap(0.5f, tail[0].rho, aTail);
+        // the muffler's perforations: the gas passes through them between the chambers and the tube, a resistance of
+        // a twentieth to a fifth of the gas's rho c (more holes' worth of resistance in a more restrictive can)
+        rPerf = (0.05f + 0.15f * mu) * ch1[0].rho * cM / aPipe;
+        // the converter: a monolith's flow resistance (some 60 Pa s/m across it at 700 K with its cones, growing with
+        // the gas's viscosity: a few kPa at full power), over the pipe's area
+        rCat = 60.0f * expf(0.7f * logf(tP / 700.0f)) / aPipe;
+        // the open end's reflection: Silva et al.'s fit to an unflanged pipe's (within 8 % to ka = 2), R = -(1 + 0.167
+        // ts) / (1 + 1.393 ts + 0.457 t^2 s^2), t = a / c in the air outside, for the hot gas inside: the air's rho c
+        // over the gas's (kEnd, about 1.6 at 750 K) multiplies the radiation's impedance z, so the end holds more of the
+        // cold air's mass (a longer end correction) and lets more out: R = (kEnd z - 1) / (kEnd z + 1), z from the fit.
+        // By the bilinear transform.
+        const float aEnd = 0.5f * lay.tailD;
+        const float tau = aEnd / 347.2f;
+        const float kEnd = 1.018f * sqrtf(tT / tAmb);
+        const float nb1 = (0.613f * kEnd - 0.78f) * tau;
+        const float nb2 = 0.2285f * (kEnd - 1.0f) * tau * tau;
+        const float da1 = (0.613f * kEnd + 0.78f) * tau;
+        const float da2 = 0.2285f * (kEnd + 1.0f) * tau * tau;
+        const float kb = 2.0f * rate;
+        const float kb2 = kb * kb;
+        for (int k = 0; k < 2; ++k)
+            endR[k].design(-1.0f + nb1 * kb + nb2 * kb2, -2.0f - 2.0f * nb2 * kb2, -1.0f - nb1 * kb + nb2 * kb2,
+                           1.0f + da1 * kb + da2 * kb2, 2.0f - 2.0f * da2 * kb2, 1.0f - da1 * kb + da2 * kb2);
+        // each runner's end in the plenum radiates into it as an open pipe's end does (the same fit, the same air
+        // inside and out): the lows come back inverted, the highs go out. (A runner whose ends both reflected whole,
+        // its valve shut at one end, rang at its high modes with nothing to stop it: a squeal at idle, the reversion
+        // of a big cam's overlap striking them every cycle; a real one loses some 3 dB a round trip at 2.6 kHz there.)
+        const float tR = sqrtf(aRun * 0.31830989f) / 347.2f;
+        const float rn1 = -0.167f * tR * kb;
+        const float rd1 = 1.393f * tR * kb;
+        const float rd2 = 0.457f * tR * tR * kb2;
+        for (int i = 0; i < lay.ports; ++i)
+            endRun[i].design(-1.0f + rn1, -2.0f, -1.0f - rn1, 1.0f + rd1 + rd2, 2.0f - 2.0f * rd2, 1.0f - rd1 + rd2);
+    }
+
+    // The converter's cone's (and the merging's) flow noise for main pipe k: K 0.6 on the pipe's own speed
+    float coneNoise(int k)
+    {
+        const float u = qPp[k] / pipe[k].area;
+        return flowK * noiseTrim * 0.6f * 0.5f * pipe[k].rho * u * u * fnG[2 + k];
+    }
+
+    // A node where n pipe ends meet (a merge, a collector): a[i] the waves arriving there, z[i] each branch's impedance
+    // (with any resistance in series), kf[i] and kr[i] its loss for flow into the node and out of it (lossKap), sl[i]
+    // its drive's slow part and al[i] that part's smoothing, src a volume flow the node makes itself (a pop's gas).
+    // The losses act on the slow part (quasi-steady, as separated flow does below a Strouhal number of about 0.2), from
+    // the last sample's, so the node solves in one pass and stays passive. Leaves each branch's flow into the node in
+    // q[i] (and its slow part updated in sl[i]); returns the node's pressure.
+    float node(int n, float* a, float* z, float* kf, float* kr, float* sl, float* al, float* q, float src)
+    {
+        float sy = 0.0f;
+        float sa = src;
+        float h[14];
+        for (int i = 0; i < n; ++i)
+        {
+            const float x = sl[i];
+            h[i] = lossHold(x, z[i], x >= 0.0f ? kf[i] : kr[i]);
+            sy += 1.0f / z[i];
+            sa += 2.0f * a[i] / z[i] - h[i];
+        }
+        const float p = sa / sy;
+        for (int i = 0; i < n; ++i)
+        {
+            const float d = 2.0f * a[i] - p;
+            q[i] = d / z[i] - h[i];
+            sl[i] += al[i] * (d - sl[i]);
+        }
+        return p;
+    }
+
+    // ---- the keys ----
+
+    int keyDown(float note, float vel)
+    {
+        // (stopped, a new layout or size is taken at once; running, under the fade: control16)
+        if (state == 0 && (set.layout != lastLayout || set.fuel != fuelUse || set.asp != aspUse || fabsf(set.size - lastSize) > 0.001f
+                           || fabsf(set.ambF - ambSeen) > 0.25f))
+            configure();
+        if (keyCount >= 16)
+        {
+            // full: the oldest key gives way, so the newest always drives
+            for (int j = 0; j < 15; ++j)
+            {
+                keyNote[j] = keyNote[j + 1];
+                keyVel[j] = keyVel[j + 1];
+            }
+            keyCount = 15;
+        }
+        keyNote[keyCount] = note;
+        keyVel[keyCount] = vel;
+        keyCount += 1;
+        tokenCounter += 1;
+        rendering = tokenCounter;
+        // (driven, a key that goes down while it runs may switch it off: held a second)
+        if (state == 2)
+            offArmed = true;
+        if (set.drive != 0)
+            followLever();
+        // driven, in gear it cranks only with the clutch's pedal down (as a car's clutch switch has it)
+        const bool may = set.drive == 0 || car.gear == 0 || set.clutch > 0.75f;
+        if ((state == 0 || state == 3) && may)
+        {
+            if (set.starter != 0 && omega < 60.0f)
+                state = 1;
+            else
+            {
+                state = 2;
+                if (omega < 0.6f * idleRpm * 0.10471976f)
+                {
+                    omega = idleRpm * 0.10471976f;
+                    rpmAvg = idleRpm;
+                    rpm = idleRpm;
+                    fuelCut = false;
+                    // each cylinder between its intake closing and its spark fires on this pass
+                    for (int c = 0; c < lay.n; ++c)
+                    {
+                        Cylinder* cy = &cyl[c];
+                        const float ivc = cy->ivo + cy->idur >= lay.cyc ? cy->ivo + cy->idur - lay.cyc : cy->ivo + cy->idur;
+                        if (cy->ang > ivc && cy->ang < cy->sparkAt)
+                            charge(c);
+                    }
+                }
+            }
+        }
+        holdLeft = set.hold;
+        return tokenCounter;
+    }
+
+    void keyUp(float note)
+    {
+        for (int i = 0; i < keyCount; ++i)
+        {
+            if (keyNote[i] == note)
+            {
+                for (int j = i; j < keyCount - 1; ++j)
+                {
+                    keyNote[j] = keyNote[j + 1];
+                    keyVel[j] = keyVel[j + 1];
+                }
+                keyCount -= 1;
+                break;
+            }
+        }
+        if (keyCount == 0)
+            holdLeft = set.hold;
+    }
+
+    // The speed a key asks for: across the keyboard from idle (C2) to the redline (C6), or (DRIVE PITCH) the speed at
+    // which the engine's firing is the note's pitch
+    float targetOf(float note)
+    {
+        const float b = set.bend * set.bendRange;
+        if (set.keys == 1)
+        {
+            const float hz = 440.0f * expf(0.0577622650f * (note + b - 69.0f));
+            const float perRev = lay.rotary != 0 ? 2.0f : 0.5f * (float)lay.n;
+            return 60.0f * hz / perRev;
+        }
+        const float f = fminf(fmaxf((note - 36.0f) / 48.0f, 0.0f), 1.08f);
+        return (idleRpm + f * (redRpm - idleRpm)) * expf(0.0577622650f * b);
+    }
+
+    // ---- every 16 samples: the driver, the idle valve, the ECU, the pipes' temperatures ----
+
+    void control16()
+    {
+        const float d16 = 16.0f * dt;
+        rpm = omega * 9.5492966f;
+        heat16(d16);
+        kRet = fmaxf(kRet - 2.0f * d16, 0.0f);
+        // (a big cam's overlap dilutes the idle more the slower it turns: its tune idles it higher, as real ones are)
+        idleRpm = fmaxf(idleBase + set.idle + 350.0f * fmaxf(set.cam - 0.35f, 0.0f) / 0.65f + coldIdle(), 350.0f);
+        redRpm = fmaxf(redBase + set.redline, idleRpm + 1500.0f);
+        rpmAvg += (rpm - rpmAvg) * (1.0f - expf(-d16 / 0.035f));
+        rpmRate += ((rpmAvg - rpmLast) / d16 - rpmRate) * (1.0f - expf(-d16 / 0.05f));
+        rpmLast = rpmAvg;
+        // a new layout, or a new size once its dial rests, under the fade (renderAt makes it at the fade's quiet)
+        if (fabsf(set.size - sizeSeen) > 0.0005f)
+        {
+            sizeSeen = set.size;
+            sizeRest = 0.0f;
+        }
+        else
+            sizeRest += d16;
+        if (set.layout != lastLayout || set.fuel != fuelUse || set.asp != aspUse || (fabsf(set.size - lastSize) > 0.001f && sizeRest > 0.15f)
+            || (state == 0 && fabsf(set.ambF - ambSeen) > 0.25f))
+            cutWant |= 1;
+        // the dials that shape the pipes and the cams, smoothed
+        smMuf += (set.muffler - smMuf) * kDial;
+        smHdr += (set.headers - smHdr) * kDial;
+        smPipe += (set.pipe - smPipe) * kDial;
+        smXp += (set.xpipe - smXp) * kDial;
+        smTb += (set.turbo - smTb) * kDial;
+        smTs += (tsOf() - smTs) * kDial;
+        smCam += (set.cam - smCam) * kDial;
+        if (fabsf(smCam - lastCam) > 0.0005f)
+            valves();
+        // the compression: the cylinders' clearance follows it (the gas in them takes the change as the piston's)
+        smCR += (fminf(fmaxf(set.comp, 6.0f), 25.0f) - smCR) * kDial;
+        if (fabsf(smCR - lastCR) > 0.005f)
+        {
+            for (int c = 0; c < lay.n; ++c)
+                cyl[c].setup(cyl[c].vd, smCR, 3.3f, lay.rotary, lay.cyc);
+            lastCR = smCR;
+        }
+        // the bore over the stroke: the bore, the valves (the pipes follow it, pipes())
+        smBs += (bsOf() - smBs) * kDial;
+        if (fabsf(smBs - lastBs) > 0.0005f)
+        {
+            boreStroke();
+            valves();
+        }
+        // the driver: to the key's speed, as hard as the key was struck (driven, the pedal is the throttle)
+        float ped = 0.0f;
+        if (keyCount > 0 && state == 2 && set.drive == 0)
+            target = targetOf(keyNote[keyCount - 1]);
+        if (keyCount > 0 && state == 2 && set.drive == 0 && target > idleRpm + 120.0f)
+        {
+            pedalMax = 0.12f + 0.88f * keyVel[keyCount - 1];
+            // where the speed will be in a moment, at the rate it is going: the plenum and the cycle lag the pedal
+            const float e = (target - rpmAvg) * 0.001f;
+            const float ep = (target - rpmAvg - gTau * rpmRate) * 0.001f;
+            // gently near the speed (the integral finds the throttle that holds it), hard when far below it
+            const float pp = gK * ep + 1.5f * fmaxf(ep - 0.7f, 0.0f);
+            const float raw = pp + govInt;
+            if (fabsf(e) < 2.0f && !(raw > pedalMax && e > 0.0f) && !(raw < 0.0f && e < 0.0f))
+                govInt = fminf(fmaxf(govInt + gI * e * d16, 0.0f), pedalMax);
+            ped = fminf(fmaxf(pp + govInt, 0.0f), pedalMax);
+        }
+        else
+            govInt *= 0.98f;
+        if (set.drive != 0)
+            ped = drive16(d16);
+        else
+            lastDrive = 0;
+        ped = fmaxf(ped, fmaxf(set.modwheel, set.pressure));
+        if (state != 2)
+            ped = state == 1 ? 0.0f : ped;
+        pedal = ped;
+        throttle += (pedal - throttle) * (1.0f - expf(-d16 / 0.03f));
+        // the idle valve holds the idle speed
+        const float ie = (idleRpm - rpmAvg) * 0.001f;
+        const float iep = (idleRpm - rpmAvg - 0.2f * rpmRate) * 0.001f;
+        if (rpmAvg < idleRpm + 500.0f)
+            idleInt = fminf(fmaxf(idleInt + 0.5f * ie * d16, 0.0f), 1.0f);
+        bypass = fminf(fmaxf(idleInt + 0.5f * iep, 0.0f), 1.0f);
+        // and the spark, which acts at once: more torque when the speed sags, less when it runs up
+        trim = rpmAvg < idleRpm + 450.0f ? fminf(fmaxf(1.0f + 1.6f * (idleRpm - rpmAvg - 0.08f * rpmRate) * 0.001f, 0.55f), 1.35f) : 1.0f;
+        // driven, it is an ECU's idle spark: with the throttle shut it takes the torque down as far as idling needs, without
+        // the step back to full at idle + 450 (an engine whose cam and boost give more than its friction there, the
+        // throttle shut, would run up into the overrun cut and out again, over and over); with the throttle open it only
+        // helps below the idle, against a stall
+        if (set.drive != 0)
+        {
+            const float tr = 1.0f + 1.6f * (idleRpm - rpmAvg - 0.08f * rpmRate) * 0.001f;
+            trim = pedal < 0.02f ? fminf(fmaxf(tr, 0.3f), 1.35f) : fminf(fmaxf(tr, 1.0f), 1.35f);
+        }
+        // holding a key's speed, the ECU trims the same way (as a drive-by-wire car holds revs in neutral)
+        if (keyCount > 0 && state == 2 && set.drive == 0 && target > idleRpm + 120.0f && rpmAvg > target - 400.0f)
+        {
+            // (and its integral: no steady error, so a held key sits on its speed, in tune in PITCH mode)
+            trimInt = fminf(fmaxf(trimInt + 0.004f * (target - rpmAvg) * d16, -0.4f), 0.3f);
+            trim = fminf(fmaxf(1.0f - gTrim * (rpmAvg + 0.05f * rpmRate - target) * 0.001f + trimInt, 0.1f), 1.3f);
+        }
+        else
+            trimInt *= 0.95f;
+        // coasting down from speed the valve stays open a little (a dashpot), so the plenum is not pulled to nothing
+        if (fuelUse == 0)
+            bypass = fmaxf(bypass, 0.35f * fminf(fmaxf((rpm - idleRpm - 400.0f) * 0.001f, 0.0f), 1.0f) * expf(-sinceLift / 0.6f));
+        // the ECU: the rev limiter, and no fuel with the throttle shut at speed
+        // (a diesel's governor takes the fuel back near its redline instead: chargeDiesel)
+        if (fuelUse == 0 && rpm > redRpm)
+            limiting = true;
+        else if (fuelUse != 0 || rpm < redRpm - 140.0f)
+            limiting = false;
+        if (pedal < 0.02f)
+            sinceLift += d16;
+        else
+            sinceLift = 0.0f;
+        if (sinceLift > 0.12f && rpmAvg > idleRpm + 700.0f && state == 2)
+            dfco = true;
+        else if (rpmAvg < idleRpm + 320.0f || pedal >= 0.02f)
+            dfco = false;
+        const bool crankLow = warm >= 1.0f ? rpm < 120.0f : rpmAvg < 120.0f - 80.0f * (1.0f - warm);
+        fuelCut = limiting || dfco || shiftCut || state == 0 || state == 3 || (state == 1 && crankLow);
+        // the engine's state
+        if (state == 1)
+        {
+            starterOn = 1.0f;
+            if (rpm > 550.0f)
+            {
+                state = 2;
+                starterOn = 0.0f;
+            }
+        }
+        else
+            starterOn = 0.0f;
+        sinceStart = state == 1 ? 0.0f : fminf(sinceStart + d16, 10.0f);
+        if (state == 2 && keyCount == 0 && set.drive == 0)
+        {
+            holdLeft -= d16;
+            if (holdLeft <= 0.0f)
+                state = 3;
+        }
+        // driven: it stalls when the crank is dragged under its stall speed; the start key held a second switches it off;
+        // the clutch let up in gear stops the starter (its switch)
+        if (set.drive != 0)
+        {
+            if (state == 1 && car.gear != 0 && set.clutch <= 0.75f)
+                state = 0;
+            const float stallRpm = fminf(fmaxf(0.3f * idleRpm, 250.0f), 450.0f);
+            stallT = state == 2 && rpm < stallRpm ? stallT + d16 : 0.0f;
+            offHold = state == 2 && keyCount > 0 && offArmed ? offHold + d16 : 0.0f;
+            if (stallT > 0.08f || offHold >= 1.0f)
+            {
+                state = 3;
+                stallT = 0.0f;
+                offArmed = false;
+            }
+            if (keyCount == 0)
+                offArmed = false;
+        }
+        if (state == 3 && omega < 2.0f)
+        {
+            state = 0;
+            omega = 0.0f;
+        }
+        // the exhaust's mass flow and its power, for the turbo
+        mdot += (mSum / 16.0f - mdot) * 0.15f;         // (mSum: 16 samples of kg/s)
+        const float mRef = 1.2f * vTotal * redRpm / 120.0f * 0.9f;
+        ex.turbo16(aspUse, smTb, mdot * tPort / 1100.0f / fmaxf(mRef, 1.0e-6f), fuelUse != 0 ? 1.0f : throttle, throttle,
+                   set.bov, rpm / redRpm, rpm * 0.016666667f, smTs, d16);
+        pBox = 101325.0f + 100000.0f * ex.boost;
+        tAir = tAmb + 5.0f * warm + 25.0f * ex.boost;
+        // the exhaust's temperature: what the ports let out, slowly
+        if (mSum > 1.0e-9f)
+        {
+            const float tNew = eSum / mSum;
+            tPort += (tNew - tPort) * (1.0f - expf(-d16 / 0.8f));
+        }
+        else
+            tPort += (tAmb - tPort) * (1.0f - expf(-d16 / 4.0f));
+        eSum = 0.0f;
+        mSum = 0.0f;
+        const float surf = 0.022f * expf(0.6666667f * logf(cyl[0].vd / 0.0005f));
+        for (int c = 0; c < lay.n; ++c)
+            cyl[c].hA = 260.0f * surf * (0.6f + rpm / 2500.0f);
+        mdotSlow += (mdot - mdotSlow) * kMdot;
+        soak(tPort, mdotSlow, d16);
+        for (int i = 0; i < 5; ++i)
+            tUse[i] += (tGas[i] - tUse[i]) * kUse;
+        pipes();
+        // the pipes' flow losses, from the mean speed of the gas through each since the last time
+        for (int i = 0; i < lay.ports; ++i)
+        {
+            prim[i].flow16(xiWall, k16Flow);
+            run[i].flow16(xiWall, k16Flow);
+        }
+        for (int k = 0; k < 2; ++k)
+        {
+            sec[k].flow16(xiWall, k16Flow);
+            pipe[k].flow16(xiWall, k16Flow);
+            ch1[k].flow16(xiWall, k16Flow);
+            mid[k].flow16(xiWall, k16Flow);
+            ch2[k].flow16(xiWall, k16Flow);
+            tail[k].flow16(xiWall, k16Flow);
+        }
+        cross.flow16(xiWall, k16Flow);
+        // the jet's noise peaks where its Strouhal number is about 0.3 (0.3 times its speed over the pipe's width, as a
+        // jet's mixing noise does; no higher than 2.5 kHz)
+        for (int k = 0; k < nDuals; ++k)
+        {
+            const float u = fmaxf(qJet[k], 0.0f) / tail[k].area;
+            jetBand(k, 0.3f * u / sqrtf(tail[k].area * 1.2732395f));
+        }
+        // the flow noise's bands: a Strouhal number of 0.4 on each flow's mean speed over its width, no higher than
+        // 3 kHz (above it, the plane waves the pipes carry are no longer all the noise makes: it roars, it does not
+        // hiss)
+        const int nb = lay.topo == 0 ? 1 : 2;
+        for (int k = 0; k < nb; ++k)
+            flowBand(k, 0.4f * prim[0].mach * prim[0].c / prim[0].diam);
+        for (int k = 0; k < nDuals; ++k)
+        {
+            flowBand(2 + k, 0.4f * pipe[k].mach * pipe[k].c / pipe[k].diam);
+            flowBand(4 + k, 0.4f * pipe[k].mach * pipe[k].c / pipe[k].diam);
+            flowBand(6 + k, 0.4f * tail[k].mach * tail[k].c / tail[k].diam);
+        }
+    }
+
+    // A flow noise's band about fPeak (from half of it; falling 12 dB an octave above twice it, as turbulence's
+    // spectrum does), at unit strength (its equivalent bandwidth 1.005 fPeak)
+    void flowBand(int g, float fPeak)
+    {
+        const float f = fminf(fmaxf(fPeak, 80.0f), 3000.0f);
+        fnHp[g].set(0.5f * f, rate);
+        fnLp[g].set(2.0f * f, rate);
+        fnLp2[g].set(2.0f * f, rate);
+        fnN[g] = sqrtf(rate / (0.67f * f));
+    }
+
+    // ---- driven (DRIVE CAR) ----
+
+    // The vehicle at rest when DRIVE first turns to CAR or TRUCK (or from one to the other); the shifter, when it moves,
+    // puts its gear in (whatever the paddles chose meanwhile; its seventh is the sixth). A truck's six positions hold
+    // three gears each (1 to 3, 4 to 6, ... 16 to 18): going up, or in from a standstill, puts in the position's lowest,
+    // coming down its highest; the paddles split between them.
+    void followLever()
+    {
+        if (lastDrive != set.drive)
+        {
+            lastDrive = set.drive;
+            car.reset();
+            lastLever = 0;
+            lastPos = 0;
+            shiftT = -1.0f;
+            shiftCut = false;
+        }
+        const int h = set.lever < -1 ? -1 : (set.lever > 6 ? 6 : set.lever);
+        if (h != lastLever)
+        {
+            lastLever = h;
+            shiftT = -1.0f;
+            shiftCut = false;
+            car.robot = 1.0f;
+            int g = h;
+            if (set.drive == 2 && h > 0)
+            {
+                g = lastPos > h && car.kmh() > 3.0f ? 3 * h : 3 * h - 2;
+                lastPos = h;
+            }
+            car.select(g);
+        }
+    }
+
+    float gearTq;       // the full-load torque the car's gearing was chosen for (at the layout's or size's change)
+    // the heat: the air outside, the coolant and the oil (K); how warm the engine is (0 at the air outside, 1 at its
+    // thermostat); the oil's thickness over a warm engine's and its pressure (Pa over the air); the burns' and the
+    // rubbing's heat since the last time (J); seconds since it started (its glow plugs' after-glow)
+    float tAmb;
+    float tCool;
+    float tOil;
+    float tSurf;        // the combustion chamber's walls (K): warm within some 25 s of running, cooling when it stops
+    float warm;
+    float warmS;        // how warm the chamber's walls are, 0 at the air outside, 1 at a warm engine's 450 K
+    float viscK;
+    float pOil;
+    float heatJ;
+    float fricJ;
+    float heatT;        // seconds since the slow temperatures last stepped
+    float ambSeen;      // AMBIENT as the engine last took it
+    float ambSm;        // AMBIENT followed over some 2 s (the air's temperature does not jump: its pressure would)
+    float runT;
+    float kRet;         // the spark its ECU has taken back for knock, degrees
+    float clatSize;     // a diesel's clatter for its cylinders' size: their panels' area (a cube root of the volume)
+
+    // About the most torque this engine gives (the turbo's boost with it), for the clutch's capacity
+    float peakTorque()
+    {
+        const float b = aspUse == 0 ? 0.0f : (aspUse == 4 ? 0.25f + 0.75f * set.turbo : 0.35f + 1.05f * set.turbo);
+        return 1.6f * idleTq * (1.0f + 0.8f * b);
+    }
+
+    // Every 16 samples, driven: the car for the dials, the pedals, the shifter and the paddles. Returns the throttle the
+    // pedal asks (with a blip through a paddle's downshift).
+    float drive16(float d16)
+    {
+        followLever();
+        car.configure(jBase * expf(1.6094379f * (set.inertia - 0.5f)), peakTorque(), gearTq, set.mass, redRpm, lay.bike,
+                      set.drive == 2 ? 1 : 0);
+        car.pedals(set.clutch, set.brake, kPedal);
+        // the paddles shift in turn while the shifter stands in neutral: the right one up, the left one down, through
+        // R, N, 1 to 6, a truck's to 18 (into reverse only at a crawl, and never down into a gear the speed would take
+        // past the redline); with a truck's shifter in a gear they split between its three
+        const int down = set.buttons & ~lastButtons;
+        lastButtons = set.buttons;
+        const bool split = set.drive == 2 && lastLever > 0;
+        if ((lastLever == 0 || split) && shiftT < 0.0f)
+        {
+            const int lo = split ? 3 * lastLever - 2 : -1;
+            const int hi = split ? 3 * lastLever : car.nGears;
+            int to = car.gear;
+            if ((down & 16) != 0)
+                to = car.gear < hi ? car.gear + 1 : hi;
+            else if ((down & 32) != 0)
+                to = car.gear > lo ? car.gear - 1 : lo;
+            if (to == -1 && car.kmh() > 5.0f)
+                to = 0;
+            if (to > 0 && to < car.gear && fabsf(car.wW * car.ratioOf(to)) * 9.5492966f > 0.97f * redRpm)
+                to = car.gear;
+            if (to != car.gear)
+            {
+                shiftTo = to;
+                shiftUp = to > car.gear;
+                shiftT = 0.0f;
+            }
+        }
+        float ped = set.gas;
+        // the paddles' own clutch: it pulls away and stops as a paddle car's does, closing with the revs from just over
+        // the idle (so they never stall it); the shifter's clutch is the pedal alone
+        float rob = 1.0f;
+        if (lastLever == 0 && car.gear != 0)
+        {
+            // (a truck's diesel turns over a narrower range: its clutch closes over a third as many revs)
+            const float sp = set.drive == 2 ? fminf(fmaxf((redRpm - idleRpm) / 6000.0f, 0.2f), 1.0f) : 1.0f;
+            const float x = fminf(fmaxf((rpm - idleRpm - 150.0f * sp) / (900.0f * sp), 0.0f), 1.0f);
+            rob = x * x * (3.0f - 2.0f * x);
+        }
+        car.robot = rob;
+        if (shiftT >= 0.0f)
+        {
+            // a paddle's shift, as a robotised gearbox does it: its clutch opens (an upshift cuts the ignition), the gear
+            // goes in, the clutch closes again; a downshift blips the throttle to the new gear's speed meanwhile (a
+            // truck's automated gearbox takes two and a half times as long: half a second)
+            const float tk = set.drive == 2 ? 2.5f : 1.0f;
+            shiftT += d16;
+            if (shiftT >= 0.05f * tk && car.gear != shiftTo)
+                car.select(shiftTo);
+            car.robot = rob * (shiftT < 0.035f * tk ? 1.0f - shiftT / (0.035f * tk) : (shiftT < 0.06f * tk ? 0.0f : fminf((shiftT - 0.06f * tk) / (0.15f * tk), 1.0f)));
+            shiftCut = shiftUp && shiftTo > 1 && shiftT < 0.06f * tk;
+            if (!shiftUp && shiftTo != 0)
+            {
+                const float want = fabsf(car.wW * car.ratioOf(shiftTo)) * 9.5492966f;
+                ped = fmaxf(ped, fminf(fmaxf((want - rpmAvg) * 0.002f, 0.0f), 1.0f));
+            }
+            if (shiftT >= 0.21f * tk)
+            {
+                shiftT = -1.0f;
+                shiftCut = false;
+            }
+        }
+        return ped;
+    }
+
+    // The tail's jet noise in a band about fPeak: from half of it up to three times it (one-pole slopes beyond), at unit
+    // strength (the band's noise power: 2/3 / rate a Hz of white noise, over 4.04 fPeak of bandwidth)
+    OnePole vnLp;       // (the valves' jet noise past hearing taken out)
+    float jetN[2];      // what makes that band's noise of unit strength, whatever its width and the sample rate
+    float nScale;       // white noise's strength for the same loudness at any sample rate
+
+    void jetBand(int k, float fPeak)
+    {
+        const float f = fminf(fmaxf(fPeak, 60.0f), 2500.0f);
+        tnHp[k].set(0.5f * f, rate);
+        tnLp[k].set(3.0f * f, rate);
+        jetN[k] = sqrtf(rate / (2.693f * f));
+    }
+
+    // ---- one sample ----
+
+    void sampleTick()
+    {
+        const int np = lay.ports;
+        for (int i = 0; i < np; ++i)
+        {
+            prim[i].read();
+            run[i].read();
+        }
+        const int nb = lay.topo == 0 ? 1 : 2;
+        for (int k = 0; k < nb; ++k)
+            sec[k].read();
+        for (int k = 0; k < nDuals; ++k)
+        {
+            pipe[k].read();
+            ch1[k].read();
+            mid[k].read();
+            ch2[k].read();
+            tail[k].read();
+        }
+        if (nDuals == 2)
+            cross.read();
+        // the crank
+        const float dDeg = omega * dt * 57.2957795f;
+        theta += dDeg;
+        if (theta >= 2160.0f)
+            theta -= 2160.0f;
+        // the cylinders
+        float qe[12];
+        float qi[12];
+        for (int i = 0; i < np; ++i)
+        {
+            qe[i] = 0.0f;
+            qi[i] = 0.0f;
+        }
+        float torque = 0.0f;
+        float dps = 0.0f;
+        const float clickAmp = 0.15f + 0.5f * expf(0.8f * logf(fmaxf(fminf(rpm / 4000.0f, 1.6f), 0.01f)));
+        // (a piston's slap: its skirt hits the bore as the side thrust changes sides at the top, harder with the gas's
+        // pressure there and the piston's speed)
+        const float slapAmp = 0.4f + 0.6f * fminf(rpm / 3000.0f, 2.0f);
+        const float tH = tUse[0];
+        // faces that share a port (a rotary's) are solved together: each sees the pipe as the others' flows leave it
+        float eShare[12];
+        float iShare[12];
+        float qE0[12];
+        float qI0[12];
+        if (np < lay.n)
+        {
+            for (int i = 0; i < np; ++i)
+            {
+                eShare[i] = 0.0f;
+                iShare[i] = 0.0f;
+            }
+            for (int c = 0; c < lay.n; ++c)
+            {
+                float a = theta + lay.fire[c];
+                while (a >= lay.cyc)
+                    a -= lay.cyc;
+                const int pi = lay.port[c];
+                qE0[c] = cyl[c].exhaustFlowAt(a, prim[pi].near, prim[pi].z, tH);
+                qI0[c] = cyl[c].intakeFlowAt(a, run[pi].near, run[pi].z, tAir);
+                eShare[pi] += qE0[c];
+                iShare[pi] += qI0[c];
+            }
+        }
+        for (int c = 0; c < lay.n; ++c)
+        {
+            Cylinder* cy = &cyl[c];
+            float a = theta + lay.fire[c];
+            while (a >= lay.cyc)
+                a -= lay.cyc;
+            const int pi = lay.port[c];
+            float bE = prim[pi].near;
+            float bI = run[pi].near;
+            if (np < lay.n)
+            {
+                bE += 0.5f * prim[pi].z * (eShare[pi] - qE0[c]);
+                bI += 0.5f * run[pi].z * (iShare[pi] - qI0[c]);
+            }
+            cy->step(a, dDeg, dt, bE, prim[pi].z, tH, bI, run[pi].z, tAir);
+            qe[pi] += cy->qEa;
+            qi[pi] += cy->qIa;
+            torque += cy->tq;
+            if (cy->mE > 0.0f)
+            {
+                eSum += cy->mE * cy->t;
+                mSum += cy->mE;
+            }
+            if (cy->ivcNow)
+            {
+                charge(c);
+                ex.valveClick(clickAmp);
+            }
+            if (cy->evcNow)
+            {
+                ex.valveClick(clickAmp);
+                if (fuelUse == 0)
+                    ex.injectorClick(0.3f);
+            }
+            if (fuelUse != 0 && cy->sparkNow && cy->qTot > 0.0f)
+            {
+                ex.injectorClick(1.0f);
+                // (its premixed burn starts: how fast it raises the pressure, Pa/s, over an idling diesel's 5 bar a
+                // millisecond, as its 0.55th power: the combustion noise some 12 dB up at full load at 2500 rpm)
+                const float rise = 0.3f * cy->beta * cy->qTot / cy->vc * 6.0f * fmaxf(rpm, 100.0f) / cy->burnDur;
+                ex.clatterClick(expf(0.55f * logf(fmaxf(rise * 2.0e-9f, 1.0e-6f))) * clatSize);
+            }
+            if (cy->knockNow)
+                ex.knockClick(cy->knock);
+            if (cy->slapNow)
+                ex.slapClick(slapAmp * sqrtf(fmaxf(cy->p - 101325.0f, 0.0f) / 5.0e6f));
+            if (cy->burnAt >= 0.0f && cy->dpdt > 0.0f)
+                dps += cy->dpdt;
+        }
+        // the ports send their waves into the headers and runners
+        float hNear[12];
+        float rNear[12];
+        const float wn = nScale * vnLp.lowpass(vnHp.highpass(rnd()));
+        for (int i = 0; i < np; ++i)
+        {
+            // the gas through the valve is a jet: a hiss in proportion to the flow, the louder the faster
+            const float jet = prim[i].z * qe[i];
+            hNear[i] = prim[i].near + jet * (1.0f + valveK * wn * fminf(fabsf(jet) * 0.00004f, 1.0f));
+            rNear[i] = run[i].near + run[i].z * qi[i];
+        }
+        // the collectors: each bank's headers merge into its pipe, losing as they merge (pipes.fm, lossFlow); a pop is
+        // the node's own gas
+        float hFar[12];
+        float sNear[2];
+        float na[14];
+        float nz[14];
+        float nkf[14];
+        float nkr[14];
+        float nq[14];
+        float ns[14];
+        float nal[14];
+        int ni[14];
+        for (int k = 0; k < nb; ++k)
+            fnG[k] = fnN[k] * fnLp2[k].lowpass(fnLp[k].lowpass(fnHp[k].highpass(rnd())));
+        for (int k = 0; k < nDuals; ++k)
+        {
+            fnG[2 + k] = fnN[2 + k] * fnLp2[2 + k].lowpass(fnLp[2 + k].lowpass(fnHp[2 + k].highpass(rnd())));
+            fnG[4 + k] = fnN[4 + k] * fnLp2[4 + k].lowpass(fnLp[4 + k].lowpass(fnHp[4 + k].highpass(rnd())));
+            fnG[6 + k] = fnN[6 + k] * fnLp2[6 + k].lowpass(fnLp[6 + k].lowpass(fnHp[6 + k].highpass(rnd())));
+        }
+        for (int k = 0; k < nb; ++k)
+        {
+            int m = 0;
+            for (int i = 0; i < np; ++i)
+            {
+                if (portBank[i] == k || lay.topo == 0)
+                {
+                    // (the header's jet's noise: a pressure in series with it, half on each side of the drive)
+                    const float uh = qHd[i] / prim[i].area;
+                    const float eh = flowK * noiseTrim * (uh >= 0.0f ? 0.25f : 0.45f) * 0.5f * prim[i].rho * uh * uh * fnG[k];
+                    na[m] = prim[i].far - 0.5f * eh;
+                    nz[m] = prim[i].z;
+                    nkf[m] = kHin;
+                    nkr[m] = kHout;
+                    ns[m] = sHd[i];
+                    nal[m] = prim[i].qsA;
+                    ni[m] = i;
+                    m += 1;
+                }
+            }
+            na[m] = sec[k].near;
+            nz[m] = sec[k].z;
+            nkf[m] = 0.0f;
+            nkr[m] = 0.0f;
+            ns[m] = 0.0f;
+            nal[m] = 0.0f;
+            float sy = 0.0f;
+            for (int j = 0; j <= m; ++j)
+                sy += 1.0f / nz[j];
+            const float pj = node(m + 1, na, nz, nkf, nkr, ns, nal, nq, pop[k].tick() * sy);
+            shell[k] = shellHp[k].highpass(pj);
+            for (int j = 0; j < m; ++j)
+            {
+                hFar[ni[j]] = prim[ni[j]].far - prim[ni[j]].z * nq[j];
+                sHd[ni[j]] = ns[j];
+                qHd[ni[j]] = nq[j];
+            }
+            sNear[k] = sec[k].near - sec[k].z * nq[m];
+        }
+        // after the collectors: one pipe (topo 0, 1) or two with an H-pipe between them (topo 2); the catalytic converter
+        // at the head of each pipe (a resistance in series)
+        float sFar[2];
+        float pNear[2];
+        float xNear = 0.0f;
+        float xFar = 0.0f;
+        if (lay.topo == 0)
+        {
+            na[0] = sec[0].far;
+            nz[0] = sec[0].z;
+            nkf[0] = kSin;
+            nkr[0] = kSout;
+            ns[0] = sMg[0];
+            nal[0] = sec[0].qsA;
+            na[1] = pipe[0].near - 0.5f * coneNoise(0);
+            nz[1] = pipe[0].z + rCat;
+            nkf[1] = 0.0f;
+            nkr[1] = 0.0f;
+            ns[1] = 0.0f;
+            nal[1] = 0.0f;
+            node(2, na, nz, nkf, nkr, ns, nal, nq, 0.0f);
+            sMg[0] = ns[0];
+            sFar[0] = sec[0].far - sec[0].z * nq[0];
+            pNear[0] = pipe[0].near - pipe[0].z * nq[1];
+            qPp[0] = -nq[1];
+        }
+        else if (lay.topo == 1)
+        {
+            for (int k = 0; k < 2; ++k)
+            {
+                na[k] = sec[k].far;
+                nz[k] = sec[k].z;
+                nkf[k] = kSin;
+                nkr[k] = kSout;
+                ns[k] = sMg[k];
+                nal[k] = sec[k].qsA;
+            }
+            na[2] = pipe[0].near - 0.5f * coneNoise(0);
+            nz[2] = pipe[0].z + rCat;
+            nkf[2] = 0.0f;
+            nkr[2] = 0.0f;
+            ns[2] = 0.0f;
+            nal[2] = 0.0f;
+            node(3, na, nz, nkf, nkr, ns, nal, nq, 0.0f);
+            sMg[0] = ns[0];
+            sMg[1] = ns[1];
+            sFar[0] = sec[0].far - sec[0].z * nq[0];
+            sFar[1] = sec[1].far - sec[1].z * nq[1];
+            pNear[0] = pipe[0].near - pipe[0].z * nq[2];
+            qPp[0] = -nq[2];
+        }
+        else
+        {
+            for (int k = 0; k < 2; ++k)
+            {
+                na[0] = sec[k].far;
+                nz[0] = sec[k].z;
+                nkf[0] = kSin;
+                nkr[0] = kSout;
+                ns[0] = sMg[k];
+                nal[0] = sec[k].qsA;
+                na[1] = pipe[k].near - 0.5f * coneNoise(k);
+                nz[1] = pipe[k].z + rCat;
+                nkf[1] = 0.0f;
+                nkr[1] = 0.0f;
+                ns[1] = 0.0f;
+                nal[1] = 0.0f;
+                na[2] = k == 0 ? cross.near : cross.far;
+                nz[2] = cross.z;
+                nkf[2] = kXp;
+                nkr[2] = kXp;
+                ns[2] = sXp[k];
+                nal[2] = cross.qsA;
+                node(3, na, nz, nkf, nkr, ns, nal, nq, 0.0f);
+                sMg[k] = ns[0];
+                sXp[k] = ns[2];
+                sFar[k] = sec[k].far - sec[k].z * nq[0];
+                pNear[k] = pipe[k].near - pipe[k].z * nq[1];
+                qPp[k] = -nq[1];
+                if (k == 0)
+                    xNear = cross.near - cross.z * nq[2];
+                else
+                    xFar = cross.far - cross.z * nq[2];
+            }
+        }
+        // the pipes on to the muffler and out of the tail, each change of area losing what it does
+        for (int k = 0; k < nDuals; ++k)
+        {
+            // (each: the lossless flow less what the loss holds back, from the drive's slow part)
+            const int j = 4 * k;
+            const float z1 = pipe[k].z + ch1[k].z;
+            const float d1 = 2.0f * (pipe[k].far - ch1[k].near);
+            const float u1 = qM1[k] / pipe[k].area;
+            const float e1n = flowK * noiseTrim * kInM * 0.5f * ch1[k].rho * u1 * u1 * fnG[4 + k];
+            const float q1 = (d1 - e1n) / z1 - lossHold(sMf[j], z1, sMf[j] >= 0.0f ? kMuf[0] : kMuf[1]);
+            qM1[k] = q1;
+            sMf[j] += pipe[k].qsA * (d1 - sMf[j]);
+            const float z2 = ch1[k].z + mid[k].z + rPerf;
+            const float d2 = 2.0f * (ch1[k].far - mid[k].near);
+            const float q2 = d2 / z2 - lossHold(sMf[j + 1], z2, sMf[j + 1] >= 0.0f ? kMuf[2] : kMuf[3]);
+            sMf[j + 1] += mid[k].qsA * (d2 - sMf[j + 1]);
+            const float z3 = mid[k].z + ch2[k].z + rPerf;
+            const float d3 = 2.0f * (mid[k].far - ch2[k].near);
+            const float q3 = d3 / z3 - lossHold(sMf[j + 2], z3, sMf[j + 2] >= 0.0f ? kMuf[4] : kMuf[5]);
+            sMf[j + 2] += mid[k].qsA * (d3 - sMf[j + 2]);
+            const float z4 = ch2[k].z + tail[k].z;
+            const float d4 = 2.0f * (ch2[k].far - tail[k].near);
+            const float u4 = qM4[k] / tail[k].area;
+            const float e4n = flowK * noiseTrim * kOutM * 0.5f * tail[k].rho * u4 * u4 * fnG[6 + k];
+            const float q4 = (d4 - e4n) / z4 - lossHold(sMf[j + 3], z4, sMf[j + 3] >= 0.0f ? kMuf[6] : kMuf[7]);
+            qM4[k] = q4;
+            sMf[j + 3] += tail[k].qsA * (d4 - sMf[j + 3]);
+            // the open end: the lows come back inverted, the highs go out; the jet leaving loses its momentum
+            const float a = tail[k].far;
+            const float dq = a - endR[k].tick(a);
+            const float q = dq / tail[k].z - lossHold(sEx[k], tail[k].z, sEx[k] >= 0.0f ? kExit[0] : kExit[1]);
+            sEx[k] += tail[k].qsA * (dq - sEx[k]);
+            const float b = a - tail[k].z * q;
+            float rad = (q - radPrev[k]) * rate;
+            radPrev[k] = q;
+            // the jet out of the tail: its speed is the mean flow out (what the engine pushes through), puffing with
+            // each pulse; turbulence that grows steeply with that speed
+            qJet[k] += jetA * (q - qJet[k]);
+            const float qm = fmaxf(qJet[k], 1.0e-5f);
+            const float un = fminf(qm / tail[k].area * 0.025f, 4.0f);
+            const float puff = fminf(fmaxf(q / (2.0f * qm), 0.0f), 1.6f);
+            const float noise = jetN[k] * tnLp[k].lowpass(tnHp[k].highpass(rnd()));
+            rad += jetK * noiseTrim * un * un * un * puff * noise * 14400.0f * tail[k].area;
+            if (k == 0)
+                outL = rad;
+            else
+                outR = rad;
+            pipe[k].write(pNear[k], pipe[k].far - pipe[k].z * q1);
+            ch1[k].write(ch1[k].near + ch1[k].z * q1, ch1[k].far - ch1[k].z * q2);
+            mid[k].write(mid[k].near + mid[k].z * q2, mid[k].far - mid[k].z * q3);
+            ch2[k].write(ch2[k].near + ch2[k].z * q3, ch2[k].far - ch2[k].z * q4);
+            tail[k].write(tail[k].near + tail[k].z * q4, b);
+        }
+        if (nDuals == 1)
+            outR = outL;
+        else
+            cross.write(xNear, xFar);
+        for (int k = 0; k < nb; ++k)
+            sec[k].write(sNear[k], sFar[k]);
+        // the intake: the runners open into the plenum (its pressure is what they see there; the highs go on into it)
+        const float pg = pPlenum - 101325.0f;
+        float qIn = 0.0f;
+        for (int i = 0; i < np; ++i)
+        {
+            const float back = 0.5f * pg + endRun[i].tick(run[i].far - 0.5f * pg);
+            qIn += (run[i].far - back) / run[i].z;
+            prim[i].write(hNear[i], hFar[i]);
+            run[i].write(rNear[i], back);
+        }
+        // the throttle fills the plenum from the air box (a diesel has none: its plate stands open, and the throttle is
+        // its fuel)
+        const float plate = fuelUse != 0 ? 1.0f : throttle;
+        const float aT = aThrottle * (expf(1.8f * logf(fmaxf(plate, 1.0e-4f))) + 0.0006f) + (fuelUse != 0 ? 0.0f : aBypass * bypass);
+        float mT = 0.0f;
+        const float dp = pBox - pPlenum;
+        if (dp > 0.0f)
+        {
+            const float rho = pBox / (287.0f * tAir);
+            mT = aT * fminf(sqrtf(2.0f * rho * dp), 0.676f * pBox / sqrtf(287.0f * tAir));
+        }
+        else
+            mT = -aT * sqrtf(-2.0f * (pPlenum / (287.0f * tAir)) * dp);
+        mPlenum = fmaxf(mPlenum + (mT + qIn * pPlenum / (287.0f * tAir)) * dt, 1.0e-6f);
+        pPlenum = mPlenum * 287.0f * tAir / vPlenum;
+        qThr = mT * 287.0f * tAir / pBox;
+        // the crank: torque, friction, the load, the starter. The friction is the rubbing and the accessories only (the
+        // pumping is the gas exchange's, simulated): about 1.3 bar of mean pressure at 2000 rpm, 1.9 at 4800, 2.6 at
+        // 6800, below the older correlation's 1.5, 2.6 and 3.7, which counted the pumping as well (with it, and 70 % of
+        // the fuel's heat, a 1.5 L four made 95 N m where the real one makes 144; now some 120)
+        // (the rubbing goes with the pistons' speed: a longer stroke's, BORE/STROKE, faster at the same revs)
+        const float nk = rpm * 0.001f * strokeK;
+        // (cold, its thick oil rubs more: as the thickness's 0.15th power, 1.4 times at 80 F, twice at 20 F, at most 3)
+        const float fmep = (1.0f + 0.10f * nk + 0.02f * nk * nk) * 100000.0f * fminf(expf(0.15f * logf(viscK)), 3.0f)
+                           * (fuelUse != 0 ? 1.0f + 0.025f * fmaxf(smCR - 18.0f, 0.0f) : 1.0f);
+        const float tf = fmep * vTotal * 0.0795775f * fminf(omega / 5.0f, 1.0f);
+        fricJ += tf * omega * dt;
+        // (a supercharger takes what it pumps from the crank: its boost times the air it moves, at some 60 %)
+        const float tsc = aspUse == 4 ? ex.boost * 1.0e5f * vTotal * (1.0f + ex.boost) * 0.1326f * fminf(omega / 5.0f, 1.0f) : 0.0f;
+        const float tl = set.load * idleTq * (0.15f + 0.85f * (rpm / redRpm) * (rpm / redRpm));
+        // (a cold battery gives less: 65 % at -40 F, all of it from 80 F)
+        const float bat = 1.0f - 0.35f * (1.0f - fminf(fmaxf((tAmb - 233.15f) / 66.85f, 0.0f), 1.0f));
+        const float ts = starterOn * 4.5e5f * cyl[0].vd * expf(0.9f * logf(smCR / 10.0f)) * fmaxf(1.0f - omega / 30.0f, 0.0f) * bat;
+        if (set.drive == 0)
+        {
+            const float j = jBase * expf(1.6094379f * (set.inertia - 0.5f)) * (1.0f + 5.0f * set.load);
+            omega = fmaxf(omega + (torque - tf - tsc - tl + ts) / j * dt, 0.0f);
+        }
+        else
+            omega = car.step(omega, torque - tf - tsc + ts, dt);      // (the car is the load: the load dial rests)
+        tqMean += (torque - tqMean) * 0.0005f;
+        tqNow = torque - tqMean;
+        const float drop = fminf(fmaxf(1.0f - pPlenum / pBox, 0.0f), 1.0f);
+        ex.tick(qThr, drop, omega * 0.15915494f, dps, starterOn, set.bov, mdot);
+    }
+
+    // When the intake valve shuts: the fuel for this cycle (none when the ECU cuts it), from what of the charge can
+    // burn (all but the burned gas in it: the products the last cycle left and what the overlap drew back), and how
+    // much of that this cycle's flame takes. That falls steeply as the burned gas dilutes the charge past about 0.45
+    // (half at 0.56: the model's share counts all the burned gas it draws back, and runs above measured residual
+    // fractions). What fails to burn stays, so the next cycle has more to burn and less burned gas, burns well, and
+    // leaves the one after diluted again (Daw et al.'s recursion): near the limit a big cam's idle lopes in that
+    // pattern, and tiny differences between cycles swing it.
+    void charge(int ci)
+    {
+        Cylinder* cy = &cyl[ci];
+        if (fuelUse != 0)
+        {
+            chargeDiesel(ci);
+            return;
+        }
+        droop = 1.0f;
+        // (what the last burn left unburned has gone into the hot header: now and then it lights there)
+        const float lastC = cy->cBurn;
+        if (lastC < 0.75f && set.pops > 0.0f && !fuelCut && rnd() > 1.0f - 1.6f * set.pops * (0.75f - lastC))
+        {
+            const int b = lay.topo == 0 ? 0 : lay.bank[ci];
+            pop[b].fire(20000.0f * (0.75f - lastC) * (0.5f + 0.5f * fabsf(rnd())), rate, 99 + b);
+        }
+        const float dil = fminf(cy->mInert / fmaxf(cy->m, 1.0e-9f), 0.95f);
+        const float burnable = fmaxf(cy->m - cy->mInert, 0.0f);
+        // (of the fuel's heat the gas keeps some 80 % at full load: the rest goes to the walls or out unburned; a
+        // larger share at part load, where the charge is thinner and the walls take more)
+        float q = burnable / 14.0f * 44.0e6f * (0.60f + 0.20f * fminf(pPlenum / 101325.0f, 1.2f));
+        const float d50 = (lay.rotary != 0 ? 0.62f : 0.56f) * (1.0f + (0.015f + 0.03f * set.rough) * gauss());
+        const float cb = 1.0f / (1.0f + expf((dil - d50) / 0.035f));
+        cy->cBurn = cb;
+        dilution[ci] = dil;
+        const float sigma = 0.015f + 0.06f * set.rough;
+        q *= cb * fmaxf(1.0f + cy->bias + sigma * gauss(), 0.0f) * trim;
+        if (fuelCut)
+        {
+            q = 0.0f;
+            // pops: on the overrun some fuel gets through and lights in the pipe
+            if ((dfco || limiting) && set.pops > 0.0f)
+            {
+                const float chance = set.pops * (0.25f + 0.75f * rpm / redRpm) * expf(-sinceLift / 2.5f);
+                if (rnd() > 1.0f - 0.9f * chance)
+                {
+                    const int b = lay.topo == 0 ? 0 : lay.bank[ci];
+                    pop[b].fire(30000.0f * (0.35f + 0.65f * fabsf(rnd())), rate, 99 + b);
+                }
+            }
+        }
+        cy->qTot = q;
+        heatJ += q;
+        // knock: past the compression the fuel takes at this load (some 14 at full load, less with boost, far more at
+        // part load) the end gas lights on its own, more often and harder the further past: a ping. More spark advance
+        // (TIMING, less what the ECU has taken back: 0.12 a degree), hotter air under the bonnet (0.3 a 10 K) and a
+        // hotter engine take that compression lower
+        const float mapB = pPlenum / 101325.0f;
+        const float crLim = (mapB >= 1.0f ? 14.0f - 2.5f * (mapB - 1.0f) : 14.0f + 20.0f * (1.0f - mapB)) + crBs
+                            - 0.12f * (set.timing - kRet) - 0.03f * (tAmb + 5.0f * warm - 305.0f) - 0.02f * (tCool - 363.0f);
+        const float over = (smCR - crLim) / 3.0f;
+        cy->knock = 0.0f;
+        if (over > 0.0f && q > 0.0f && 0.5f + 0.5f * rnd() < fminf(4.0f * over, 1.0f))
+            cy->knock = fminf(1.5f * over, 1.5f) * (0.6f + 0.4f * fabsf(rnd()));
+        // its knock sensor hears it: the ECU takes the spark back 1.5 degrees a knock, up to 15 (and gives it back at 2
+        // a second), which buys it some 2 points of compression; a knocking cycle loses heat to the walls the knock
+        // scrubs (a tenth of it at a hard knock)
+        if (cy->knock > 0.0f)
+        {
+            kRet = fminf(kRet + 1.5f, 15.0f);
+            q *= 1.0f - 0.1f * cy->knock;
+            cy->qTot = q;
+        }
+        // the spark: earlier at speed, later under load; TIMING moves it, the ECU takes back what knocks
+        const float adv = 12.0f + 22.0f * sqrtf(fminf(rpm / redRpm, 1.2f)) - 8.0f * (pPlenum / 101325.0f - 0.4f)
+                          + 22.0f * (burnK - 1.0f) + set.timing - kRet;
+        // (a diluted charge lights later and burns slower: the flame's development and its speed)
+        const float dx = fmaxf(dil - 0.15f, 0.0f);
+        cy->sparkAt = lay.cyc - fminf(fmaxf(adv, 6.0f), 40.0f) + 1.5f * set.rough * gauss() + 25.0f * fminf(dx, 0.3f);
+        if (cy->sparkAt >= lay.cyc)
+            cy->sparkAt -= lay.cyc;                         // (after the top: a late spark)
+        // (a low compression's charge is cooler at the spark: its flame slower, as the ratio's -0.3th power)
+        cy->burnDur = (44.0f + 11.0f * fmaxf(0.8f - pPlenum / 101325.0f, 0.0f)) * (1.0f + 0.08f * set.rough * gauss())
+                      * (1.0f + 2.5f * dx) * burnK * expf(-0.3f * logf(smCR * 0.1f));
+        // far past the limit (some 2.5 points of compression past what the ECU's retard buys), the charge lights
+        // itself as it is squeezed, 30 to 45 degrees before the top: pre-ignition, a fast burn that fights the piston's
+        // rise (the torque falls away) and knocks its hardest; past some 8 points, most cycles do
+        if (over > 0.8f && q > 0.0f && 0.5f + 0.5f * rnd() < fminf(0.5f * (over - 0.8f), 0.9f))
+        {
+            cy->sparkAt = lay.cyc - 30.0f - 15.0f * fabsf(rnd());
+            cy->burnDur = 20.0f;
+            cy->knock = 1.5f;
+            kRet = 15.0f;
+        }
+    }
+
+    // A diesel's charge, as its intake valve shuts: all the air it breathed (no throttle) and the fuel the lever asks
+    // (the throttle, the idle governor's, or a start's while it cranks and for a moment after), lean: an equivalence
+    // ratio of 0.75 at full fuel, the smoke limit; near the redline the governor takes the fuel back instead of cutting
+    // it. It injects some degrees before the top (earlier at speed and with more fuel) and lights after its ignition
+    // delay: Wolfer's, 0.44 p^-1.19 exp(4650 / T) ms (p in atmospheres), from the air squeezed polytropically from now
+    // to the injection (and the glow plugs while it cranks), at most 30 degrees. What was injected during the delay
+    // burns at once (Watson's share, 1 - 0.926 phi^0.37 / tau^0.26): a spike of pressure that rings the block, the
+    // knock, louder at idle and the lower the compression; the rest burns as it mixes with the air.
+    void chargeDiesel(int ci)
+    {
+        Cylinder* cy = &cyl[ci];
+        const float air = fmaxf(cy->m - cy->mInert, 0.0f);
+        dilution[ci] = fminf(cy->mInert / fmaxf(cy->m, 1.0e-9f), 0.95f);
+        cy->cBurn = 1.0f;
+        droop = fminf(fmaxf((redRpm + 50.0f - rpm) / 250.0f, 0.0f), 1.0f);
+        const float lever = fminf(fmaxf(fmaxf(throttle, 0.12f + 0.5f * bypass), 0.45f * expf(-sinceStart / 1.0f)), 1.0f) * droop;
+        const float phi = 0.75f * lever;
+        const float sigma = 0.015f + 0.06f * set.rough;
+        float q = air * phi / 14.5f * 42.5e6f * 0.62f * fmaxf(1.0f + cy->bias + sigma * gauss(), 0.0f) * trim;
+        if (fuelCut)
+            q = 0.0f;
+        // (TIMING injects earlier; a cold chamber's walls take more of the squeeze's heat, its charge some 4 % cooler
+        // at the top, and cranking's slow squeeze loses more still (and blows by), some 20 %; its glow plugs heat it
+        // while it cranks, and for a minute and a half after a cold start)
+        const float soi = 4.0f + 14.0f * fminf(rpm / redRpm, 1.2f) + 3.0f * lever + set.timing;
+        const float lr = logf(fmaxf(cy->v / cy->volumeAt(lay.cyc - soi), 1.0f));
+        const float cold = 1.0f - warmS;
+        const float nSq = 0.35f - 0.015f * cold - (state == 1 ? 0.08f : 0.0f);
+        const float glow = state == 1 ? 200.0f : 100.0f * (1.0f - warm) * fmaxf(1.0f - runT / 90.0f, 0.0f);
+        const float tc = cy->t * expf(nSq * lr) + glow;
+        const float pc = cy->p * expf(1.35f * lr) / 101325.0f;
+        const float tau = 0.44f * expf(-1.19f * logf(fmaxf(pc, 1.0f))) * expf(4650.0f / fmaxf(tc, 400.0f));
+        const float delayRaw = tau * 0.006f * fmaxf(rpm, 100.0f);
+        const float delay = fminf(delayRaw, 30.0f);
+        // whether it lights at all: the charge's temperature squeezed to the top (with the same losses and glow) must
+        // reach some 740 K (none under 680), and it must light before the piston is well on its way down. Injected
+        // early, into cooler air, the delay mostly runs as the squeeze heats it: what is left of it at the top runs at
+        // the top's pace (Livengood and Wu's integral, in two steps), from 10 degrees after it on less and less, none
+        // past 20. What does not light goes out unburned (white smoke): a diesel of too little compression misses and
+        // stalls, and a cold one cranks and cranks (a 17:1 diesel some -20 F, 0 F hard), or will not start at all
+        const float lrT = logf(fmaxf(cy->v / cy->vc, 1.0f));
+        const float tTop = cy->t * expf(nSq * lrT) + glow;
+        const float pTop = cy->p * expf(1.35f * lrT) / 101325.0f;
+        const float dTop = 0.44f * expf(-1.19f * logf(fmaxf(pTop, 1.0f))) * expf(4650.0f / fmaxf(tTop, 400.0f)) * 0.006f * fmaxf(rpm, 100.0f);
+        const float late = delayRaw > soi ? (delayRaw - soi) * dTop / fmaxf(delayRaw, 0.001f) : 0.0f;
+        const float pIgn = fminf(fmaxf((tTop - 680.0f) / 60.0f, 0.0f), 1.0f) * fminf(fmaxf((20.0f - late) / 10.0f, 0.0f), 1.0f);
+        if (pIgn < 1.0f && 0.5f + 0.5f * rnd() >= pIgn)
+            q = 0.0f;
+        // (past some 18, a higher compression's tighter chamber gives its walls more of the burn: 1.5 % a point)
+        q *= 1.0f - 0.015f * fmaxf(smCR - 18.0f, 0.0f);
+        cy->qTot = q;
+        heatJ += q;
+        cy->sparkAt = lay.cyc - soi + delay + set.rough * gauss();
+        if (cy->sparkAt >= lay.cyc)
+            cy->sparkAt -= lay.cyc;
+        cy->beta = fminf(fmaxf(1.0f - 0.926f * expf(0.37f * logf(fmaxf(phi, 0.01f)) - 0.26f * logf(fmaxf(tau, 0.05f))), 0.05f), 0.9f);
+        cy->burnDur = 4.5f + 2.5f * fminf(rpm / redRpm, 1.0f);
+        cy->knock = 0.0f;
+        cy->dur2 = (35.0f + 30.0f * lever) * (1.0f + 0.08f * set.rough * gauss()) * burnK;
+    }
+
+    // How much of each source reaches where you listen: the exhaust, the intake, the valvetrain, the block, the
+    // headers' walls, the turbo, the starter, the cabin's boom; from behind the tailpipes (EXHAUST), a few metres behind
+    // (REAR), beside the car (SIDE), over the open bonnet (ENGINE), in the driver's seat (CABIN)
+    float viewGain(int v, int src)
+    {
+        const float g[40] = {
+            1.00f, 0.05f, 0.025f, 0.02f, 0.04f, 0.22f, 0.12f, 0.00f,
+            0.50f, 0.10f, 0.04f, 0.035f, 0.06f, 0.25f, 0.20f, 0.00f,
+            0.32f, 0.28f, 0.16f, 0.12f, 0.15f, 0.40f, 0.30f, 0.00f,
+            0.12f, 1.00f, 1.00f, 0.80f, 0.60f, 1.00f, 1.00f, 0.00f,
+            0.45f, 0.40f, 0.06f, 0.05f, 0.10f, 0.30f, 0.45f, 1.00f};
+        const int vv = v < 0 ? 0 : (v > 4 ? 4 : v);
+        return g[vv * 8 + src];
+    }
+
+    // Where the tailpipes are heard from in view v. The car's rear bumper is at y = 0 (x across to its right, y along
+    // it, forward, z up), the tailpipes at its corners (one, off to the right, when there is one: EXHAUST then stands
+    // behind it). Outside an ORTF pair faces the car (cardioids 17 cm apart, turned 55 degrees out) where the distance
+    // dial's nearest puts it: the dial takes the level, the highs and the room's share, as it always has, and the paths
+    // stay (moved with it, the sound's colour and its picture would move too); in the cabin, the driver's ears (16 cm
+    // apart). Each pipe reaches each microphone by its direct path, its delay and the microphone's pattern over
+    // its length; the gains are scaled so the pair hears the exhaust as loudly as one pipe at unit gain did. Each
+    // pipe's highs beam along its axis: off it they fall as a piston's pattern does, 2 J1(x) / x with x = ka sin of the
+    // angle, as a one-pole low-pass from x = 2.5 (gentler than the pattern's 3 dB at 1.6: an unflanged pipe's beam is
+    // broader); behind the pipe's mouth, lower still.
+    void listenAt(int v)
+    {
+        const int n = nDuals;
+        const float pz = lay.bike > 0.5f ? 0.45f : 0.35f;
+        const float r = 0.5f;
+        float cx = n == 2 ? 0.0f : 0.4f;
+        float cy = -r;
+        float cz = 0.7f;
+        float fx = 0.0f;
+        float fy = 1.0f;
+        if (v == 1)
+        {
+            cx = 0.0f;
+            cy = -2.0f - r;
+            cz = 1.2f;
+        }
+        else if (v == 2)
+        {
+            cx = 0.9f + r;
+            cy = 1.3f;
+            cz = 1.2f;
+            fx = -1.0f;
+            fy = 0.0f;
+        }
+        else if (v == 3)
+        {
+            cx = 0.0f;
+            cy = 3.4f + 0.5f * r;
+            cz = 1.4f;
+            fy = -1.0f;
+        }
+        else if (v == 4)
+        {
+            cx = -0.35f;
+            cy = 1.7f;
+            cz = 1.1f;
+        }
+        const int cab = v == 4 ? 1 : 0;
+        const float half = cab != 0 ? 0.08f : 0.085f;
+        float dd[4];
+        float gg[4];
+        float dmin = 1.0e9f;
+        float sum = 0.0f;
+        for (int k = 0; k < n; ++k)
+        {
+            const float px = n == 2 ? (k == 0 ? -0.55f : 0.55f) : 0.4f;
+            for (int m = 0; m < 2; ++m)
+            {
+                const float s = m == 0 ? -1.0f : 1.0f;
+                // the microphone (the pair's right is (fy, -fx)), its axis 55 degrees out from facing
+                const float mx = cx + s * half * fy;
+                const float my = cy - s * half * fx;
+                const float ax = 0.5735764f * fx + s * 0.8191520f * fy;
+                const float ay = 0.5735764f * fy - s * 0.8191520f * fx;
+                const float ux = px - mx;
+                const float uy = -my;
+                const float uz = pz - cz;
+                const float d = fmaxf(sqrtf(ux * ux + uy * uy + uz * uz), 0.05f);
+                const float pat = cab != 0 ? 1.0f : 0.5f + 0.5f * (ax * ux + ay * uy) / d;
+                dd[k * 2 + m] = d;
+                gg[k * 2 + m] = pat / d;
+                dmin = fminf(dmin, d);
+                sum += pat / d;
+            }
+            // the pipe's directivity toward the pair (its axis points back, along -y)
+            const float tx = cx - px;
+            const float tzz = cz - pz;
+            const float ct = -cy / fmaxf(sqrtf(tx * tx + cy * cy + tzz * tzz), 0.05f);
+            const float st = sqrtf(fmaxf(1.0f - ct * ct, 0.0f));
+            const float se = ct >= 0.0f ? fmaxf(st, 0.02f) : 2.0f - st;
+            dirSh[k].set(cab != 0 ? 0.45f * rate : 2.5f * 347.2f / (3.14159265f * lay.tailD * se), rate);
+        }
+        const float nrm = 2.0f / fmaxf(sum, 1.0e-6f);
+        for (int j = 0; j < 2 * n; ++j)
+        {
+            lnD[j] = fminf(1.0f + (dd[j] - dmin) * rate / 347.2f, (float)(lnCap - 3));
+            lnG[j] = gg[j] * nrm;
+        }
+        lnView = v;
+        lnPipes = n;
+    }
+
+    // One sample of the tailpipes at the microphones (into lnL and lnR): each pipe low-passed for its directivity into
+    // its delay line, read back at each path's delay (third-order Lagrange)
+    void listen(float x0, float x1)
+    {
+        const int cap = lnCap;
+        const float s0 = dirSh[0].lowpass(x0);
+        const float s1 = dirSh[1].lowpass(x1);
+        lnBuf[lnW] = s0;
+        lnBuf[lnW + cap] = s0;
+        lnBuf[2 * cap + lnW] = s1;
+        lnBuf[3 * cap + lnW] = s1;
+        float yl = 0.0f;
+        float yr = 0.0f;
+        for (int k = 0; k < lnPipes; ++k)
+        {
+            for (int m = 0; m < 2; ++m)
+            {
+                const int j = k * 2 + m;
+                const float d = lnD[j];
+                const int di = (int)d;
+                const float t = d - (float)di;
+                const int b = k * 2 * cap + lnW - di + cap;
+                const float tm1 = t - 1.0f;
+                const float tm2 = t - 2.0f;
+                const float tp1 = t + 1.0f;
+                const float y = -t * tm1 * tm2 * 0.16666667f * lnBuf[b + 1] + tp1 * tm1 * tm2 * 0.5f * lnBuf[b]
+                                - tp1 * t * tm2 * 0.5f * lnBuf[b - 1] + tp1 * t * tm1 * 0.16666667f * lnBuf[b - 2];
+                if (m == 0)
+                    yl += lnG[j] * y;
+                else
+                    yr += lnG[j] * y;
+            }
+        }
+        lnW += 1;
+        if (lnW >= cap)
+            lnW = 0;
+        lnL = yl;
+        lnR = yr;
+    }
+
+    // n of the host's samples, added into left and right: the engine's own when the host runs at its rate (96 kHz),
+    // else its output resampled
+    void render(float* left, float* right, int n)
+    {
+        if (ready == 0)
+            return;
+        if (rsOn == 0)
+        {
+            renderAt(left, right, n);
+            return;
+        }
+        const int hn = rsN / 2;
+        for (int i = 0; i < n; ++i)
+        {
+            while (rsAhead < hn + 1)
+            {
+                for (int j = 0; j < 16; ++j)
+                {
+                    rsBl[j] = 0.0f;
+                    rsBr[j] = 0.0f;
+                }
+                renderAt(rsBl, rsBr, 16);
+                for (int j = 0; j < 16; ++j)
+                {
+                    rsL[rsW] = rsBl[j];
+                    rsL[rsW + 256] = rsBl[j];
+                    rsR[rsW] = rsBr[j];
+                    rsR[rsW + 256] = rsBr[j];
+                    rsW = rsW == 255 ? 0 : rsW + 1;
+                }
+                rsAhead += 16;
+            }
+            const float x = rsFrac * 128.0f;
+            int ph = (int)x;
+            if (ph > 127)
+                ph = 127;
+            const float f = x - (float)ph;
+            const int i0 = (rsW - rsAhead - (hn - 1) + 512) % 256;
+            const int k0 = ph * rsN;
+            float yl = 0.0f;
+            float yr = 0.0f;
+            for (int t = 0; t < rsN; ++t)
+            {
+                const float h = rsTab[k0 + t] + f * (rsTab[k0 + rsN + t] - rsTab[k0 + t]);
+                yl += h * rsL[i0 + t];
+                yr += h * rsR[i0 + t];
+            }
+            left[i] += yl;
+            right[i] += yr;
+            rsFrac += rsStep;
+            while (rsFrac >= 1.0f)
+            {
+                rsFrac -= 1.0f;
+                rsAhead -= 1;
+            }
+        }
+    }
+
+    // n of the engine's own samples, added into left and right
+    void renderAt(float* left, float* right, int n)
+    {
+        idleTq = 0.6f * 1.0e6f * vTotal * 0.0795775f;     // about the torque at full load, for the load and the starter
+        int at = 0;
+        while (at < n)
+        {
+            const int m = n - at < 16 ? n - at : 16;
+            // every 16 samples, the view and the dials as heard: another view (or layout, or size: control16) is taken
+            // at the fade's quiet
+            const int vw = set.view < 0 ? 0 : (set.view > 4 ? 4 : set.view);
+            if (vw != vUse)
+                cutWant |= 2;
+            if (cutWant != 0 && cutG <= 0.0f)
+            {
+                // (a new engine fills its pipes over a few firings: it comes back slower, over 80 ms)
+                cutUp = 1.0f / (((cutWant & 1) != 0 ? 0.08f : 0.012f) * rate);
+                if ((cutWant & 1) != 0)
+                    configure();
+                vUse = vw;
+                cutWant = 0;
+            }
+            const int v = vUse;
+            const float gEx = viewGain(v, 0) * kEx * exTrim;
+            // (a turbo's compressor stands between the engine and the air box: the pulsing that comes out of it some 9 dB
+            // weaker, its whistle and rush in its place)
+            const float gIn = viewGain(v, 1) * kIn * (0.25f + 1.5f * set.intake) * (aspUse >= 1 && aspUse <= 3 ? 0.35f : 1.0f);
+            const float gMc = viewGain(v, 2) * kMc * 2.0f * set.mech;
+            const float gBk = viewGain(v, 3) * kBk * 2.0f * set.mech;
+            const float gSh = viewGain(v, 4) * kSh;
+            // (a supercharger sits on top of the engine, its whine out of the intake's mouth and its case: heard round
+            // the car, behind it and in it, far more than a turbo's whistle in its pipes)
+            const float scV[5] = {2.0f, 1.4f, 1.0f, 1.0f, 0.6f};
+            const float gTb = (aspUse == 4 ? scV[v] : viewGain(v, 5)) * kTb;
+            // (the combustion's noise, a diesel's clatter and a gasoline engine's knock, comes off the whole engine: heard
+            // round the car more than the block's own rattle; MECHANICAL takes it from half to 1.75 times)
+            const float coV[5] = {0.3f, 0.3f, 0.45f, 0.64f, 0.25f};
+            const float gCo = coV[v] * kBk * (0.5f + 1.25f * set.mech);
+            const float gSt = viewGain(v, 6) * kSt;
+            const float gCb = viewGain(v, 7) * kCb;
+            // (the tyres heard from here, measured: at 100 km/h some 28 dB under the exhaust behind it, 12 under it in
+            // the cabin; a burnout's squeal 26 dB under the engine at its limiter behind it, 10 in the cabin)
+            const float gRd[5] = {0.22f, 0.24f, 0.20f, 0.12f, 0.21f};
+            gRoad = gRd[v];
+            // the distance: 0.5 m to 30 m; the level falls with it, the highs with it, the room comes up (in the cabin
+            // the body and its insulation take the highs: it is the lows that come through)
+            const float rr = 0.5f * expf(4.0943446f * set.distance);
+            const bool first = rS < 0.0f;
+            rS = first ? rr : rS + (rr - rS) * kDist16;
+            const float r = rS;
+            const float gdT = 1.5f / (0.5f + r);
+            const float fc = v == 4 ? 1600.0f : 18000.0f / (1.0f + r / 5.0f);
+            if (fabsf(fc - airFc) > 0.002f * fc)
+            {
+                airFc = fc;
+                airLp[0].set(fc, rate);
+                airLp[1].set(fc, rate);
+            }
+            const float wetT = set.room * (0.5f + 0.5f * fminf(r / 12.0f, 1.0f)) * (v == 4 ? 0.3f : 1.0f);
+            const float rt = 0.4f + 2.2f * set.room;
+            const float outT = gainNorm * expf(0.115129255f * set.level);
+            if (first)
+            {
+                gdS = gdT;
+                outS = outT;
+                wetS = wetT;
+            }
+            // the tailpipes, heard where this view puts the microphones (listenAt); the engine's sources panned a
+            // little beside the car
+            if (v != lnView || nDuals != lnPipes)
+                listenAt(v);
+            const float eL = v == 2 ? 0.35f : 0.5f;
+            for (int i = 0; i < m; ++i)
+            {
+                if (tick16 == 0)
+                    control16();
+                tick16 += 1;
+                if (tick16 == 16)
+                    tick16 = 0;
+                sampleTick();
+                // the sources, as they are heard from here
+                float xL = outL;
+                float xR = outR;
+                float in = ex.intake;
+                float cb = 0.0f;
+                if (v == 4)
+                {
+                    xL = cabEx[0].tick(xL);
+                    xR = cabEx[1].tick(xR);
+                    in = cabIn.tick(in);
+                    const float tq = cabLp.lowpass(tqNow);
+                    cb = 0.45f * tq + 1.95f * cabMode[0].tick(tq) + 1.6f * cabMode[1].tick(tq) + 1.24f * cabMode[2].tick(tq)
+                         + 0.89f * cabMode[3].tick(tq) + 0.67f * cabMode[4].tick(tq) + 0.5f * cabMode[5].tick(tq);
+                }
+                listen(xL, xR);
+                const float eng = gMc * ex.mech + gBk * ex.block + gTb * ex.turbo + gSt * ex.starter + gCo * ex.comb;
+                const float shL = gSh * shell[0];
+                const float shR = gSh * (lay.topo == 0 ? shell[0] : shell[1]);
+                float L = gEx * lnL + gIn * in * 1.1f + eng * eL * 2.0f + shL + gCb * cb;
+                float R = gEx * lnR + gIn * in * 0.9f + eng * (1.0f - eL) * 2.0f + shR + gCb * cb;
+                if (set.drive != 0)
+                {
+                    // driven: the tyres on the road
+                    const float rd = gRoad * car.road(v == 4 ? 0.45f : 1.0f);
+                    L += rd;
+                    R += rd;
+                }
+                // (the fade's gain eased: a smooth step)
+                cutG = cutWant != 0 ? fmaxf(cutG - cutDn, 0.0f) : fminf(cutG + cutUp, 1.0f);
+                gdS += (gdT - gdS) * kGlide;
+                const float g = gdS * cutG * cutG * (3.0f - 2.0f * cutG);
+                sA[i] = airLp[0].lowpass(L * g);
+                sB[i] = airLp[1].lowpass(R * g);
+            }
+            hall.process(sA, sB, sC, sD, m, rt);
+            for (int i = 0; i < m; ++i)
+            {
+                outS += (outT - outS) * kGlide;
+                wetS += (wetT - wetS) * kGlide;
+                float L = (sA[i] + wetS * sC[i]) * outS;
+                float R = (sB[i] + wetS * sD[i]) * outS;
+                // a gentle compressor, as a recording of an engine has: the idle a little nearer the full-throttle roar
+                const float pw = 0.5f * (L * L + R * R);
+                env += (pw - env) * (pw > env ? compA : compR);
+                const float db = 4.3429448f * logf(fmaxf(env, 1.0e-12f));
+                const float over = fmaxf(db + 30.0f, 0.0f);
+                float gc = expf(-0.115129255f * (over * 0.4f - 5.0f));
+                L *= gc;
+                R *= gc;
+                // a limiter for the loudest moments, then a soft ceiling
+                const float pk = fmaxf(fabsf(L), fabsf(R)) * lim;
+                if (pk > 0.85f)
+                    lim *= 0.85f / pk;
+                else
+                    lim += (1.0f - lim) * limRel;
+                L *= lim;
+                R *= lim;
+                const float aL = fabsf(L);
+                const float aR = fabsf(R);
+                const float yL = aL < 0.7f ? aL : 0.7f + 0.3f * tanhf((aL - 0.7f) / 0.3f);
+                const float yR = aR < 0.7f ? aR : 0.7f + 0.3f * tanhf((aR - 0.7f) / 0.3f);
+                left[at + i] += L < 0.0f ? -yL : yL;
+                right[at + i] += R < 0.0f ? -yR : yR;
+                peakOut = fmaxf(peakOut, fmaxf(yL, yR));
+            }
+            at += m;
+        }
+        if (state != 0)
+            quiet = 0.0f;
+        else
+            quiet += (float)n;
+        // the panel's
+        showRpm = rpm;
+        showRed = redRpm;
+        showGear = set.drive != 0 ? (float)car.gear : -2.0f;
+        showKmh = set.drive != 0 ? car.kmh() : 0.0f;
+        showThr = throttle;
+        showMap = (pPlenum - 101325.0f) * 0.00001f;
+        showLamps = (float)state + (limiting || droop < 0.95f ? 4.0f : 0.0f) + (fuelCut && state == 2 ? 8.0f : 0.0f) + (set.drive != 0 ? 16.0f : 0.0f)
+                    + 32.0f * floorf(fminf(fmaxf((tCool - 273.15f) * 1.8f + 92.0f, 0.0f), 511.0f) + 0.5f)
+                    + 16384.0f * floorf(fminf(pOil / 6894.76f, 127.0f) + 0.5f) + (set.drive == 2 ? 2097152.0f : 0.0f);
+        showPedals = 0.0f;
+        if (set.drive != 0)
+            showPedals = floorf(100.0f * fminf(fmaxf(set.brake, 0.0f), 1.0f) + 0.5f) + 1000.0f * floorf(100.0f * fminf(fmaxf(set.clutch, 0.0f), 1.0f) + 0.5f);
+        // the cycle as it turns, eased toward a few a second at speed so the eye can follow the order
+        const float cycHz = rpm / 60.0f * 360.0f / lay.cyc;
+        const float visHz = cycHz < 2.4f ? cycHz : fminf(2.4f * expf(0.25f * logf(cycHz / 2.4f)), 4.0f);
+        showCycle += visHz * (float)n * dt;
+        showCycle -= floorf(showCycle);
+        showBoost = ex.boost;
+        showAir = (aspUse != 0 ? (float)aspUse + fminf(smTb, 0.99f) : 0.0f)
+                  + 10.0f * (floorf(66.0f * (smBs - 0.5f) + 0.5f) + 1.0f);
+        showPipes = floorf(99.0f * fminf(fmaxf(smHdr, 0.0f), 1.0f) + 0.5f) * 10000.0f
+                    + floorf(99.0f * fminf(fmaxf(smPipe, 0.0f), 1.0f) + 0.5f) * 100.0f
+                    + floorf(99.0f * fminf(fmaxf(smXp, 0.0f), 1.0f) + 0.5f);
+    }
+
+    // Still sounding: the engine runs, or the room still rings after it stopped (or, driven, the car still rolls)
+    bool audible()
+    {
+        return state != 0 || quiet < (0.4f + 2.2f * set.room + 0.3f) * rate || (set.drive != 0 && car.moving());
+    }
+};

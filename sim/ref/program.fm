@@ -1,0 +1,169 @@
+// Engine: a physical model of a running engine, played from the keys.
+//
+// Each cylinder is its gas (cylinder.fm): the crank squeezes and lets it expand, the fuel it trapped burns after the
+// spark, and when the exhaust valve cracks open the gas blows down into a header pipe. The pipes (pipes.fm: waveguides,
+// the length of each pipe at the speed of sound in its gas) carry those pulses to the collectors, the main pipe, the
+// muffler's chambers and out of the tailpipe; the waves that come back push on the next pulses, as in a real engine. The
+// intake draws through the runners from a plenum the throttle fills; the crank speeds up and slows down with the torque
+// the cylinders give against friction, load and its own inertia. Seventeen layouts (layouts.fm), each with its real
+// firing order and exhaust: the crossplane V8's two uneven banks, the boxer's unequal headers, the 45 degree V-twin.
+// SIZE is the engine's displacement in litres (to 30: a bigger engine than its layout's breathes through bigger pipes,
+// and a big diesel turns slower, its pistons kept under some 13.5 m/s: a 15 L six's 2400 rpm); BORE/STROKE its bore
+// over its stroke (1 square): an oversquare engine's wide bore takes big valves and breathes at high revs, its short
+// stroke rubs less; a long-stroke one's narrow bore chokes up there and its fast pistons rub more, but its flame has
+// less far to go (it burns sooner, knocks later). COMPRESSION is its compression ratio: more is more torque until it
+// knocks (a gasoline engine past some 14:1 at full load, less with boost), when its ECU takes the spark back and it
+// loses power, and some 2.5 points past what that buys pre-ignition takes most of it; a diesel wants some 15 to 20:1
+// (under some 12 it misses and stalls, colder it starts harder, and much over 20 it loses again). TIMING moves the
+// spark (a diesel's injection) from its map: advanced, more torque to a point and more knock (a diesel's clatter
+// louder); retarded, less. FUEL: gasoline (a spark, a throttle) or diesel (no throttle: the pedal is its fuel; it
+// lights by compression after its ignition delay, clatters at each premixed burn, and revs to six tenths of the
+// redline). ASPIRATION: natural, one turbo, twin turbos (smaller: sooner), four, or a supercharger (boost with the revs
+// at once, and its whine: its rotors' pockets, higher with more BOOST, as a smaller pulley spins it faster); BOOST how
+// much; TURBO SIZE the turbos' size over ones matched to the engine (smaller: boost sooner, a higher whistle, out of
+// breath near the redline; bigger: lag and a deeper whistle). AMBIENT is the air outside (F): the engine starts at its
+// temperature and warms over minutes (a fast idle, thick oil, a cold diesel's clatter and hard starts), the coolant's
+// temperature and the oil's pressure on the dash; moved while the engine is off, it has stood in that air. The model
+// runs at 96 kHz whatever the host's rate.
+//
+// Playing it (DRIVE KEYS): a key revs the engine to a speed (C2 is idle, C6 the redline; DRIVE PITCH: the firing at the
+// note's pitch) as hard as the key is struck; letting go lifts the throttle (the overrun, with pops), and after a while
+// of idling it switches off. The first key cranks it on the starter. The mod wheel and aftertouch are the throttle by
+// hand, the pitch wheel bends the speed (an octave each way).
+//
+// Driving it (DRIVE CAR, from a racing wheel's pedals and shifter: host.fm): the engine is in a car (car.fm), through a
+// clutch, a gearbox of six and reverse, and the driveline. The start key (the wheel's PS button, or any key) cranks it,
+// in neutral or with the clutch's pedal down; held a second while it runs, it switches it off, and so does a stall (the
+// clutch let out in gear at too few revs). The throttle pedal is the throttle (with the mod wheel and aftertouch by hand),
+// the brake the brakes; the clutch bites a third of the way up. The H-shifter puts its gear in when it moves; standing in
+// neutral, it leaves the gears to the paddles (right up, left down, through R, N, 1 to 6), which shift as a paddle car
+// does, working the clutch themselves (blipping the throttle down the gears). It runs while it is driven: no idling out.
+// The car weighs WEIGHT; the panel shows its speed and gear.
+//
+// Driving a semi truck (DRIVE TRUCK): the same, with eighteen gears (an Eaton Fuller 18-speed's ratios, two deep
+// reductions for a heavy start), truck tyres, a tractor and trailer's air, and WEIGHT to 50 t (a loaded US rig is some
+// 36 t, a tractor alone 8 to 9). The shifter's six positions hold three gears each (1 to 3, 4 to 6, ... 16 to 18):
+// moving up puts in the position's lowest, coming down its highest, and the paddles split between them; in neutral the
+// paddles step through all eighteen, its automated gearbox taking half a second a shift. Give it a big diesel: a 13 to
+// 16 L six with a turbo.
+#include "host.fm"
+#include "engine.fm"
+
+module Voice
+{
+    param int engine [[fminus::range(0, 16)]] [[fminus::default(12)]];
+    param float size [[fminus::range(0.05, 30)]] [[fminus::default(5.76)]];
+    param float idle [[fminus::range(-400, 800)]] [[fminus::default(0)]];
+    param float redline [[fminus::range(-3000, 3000)]] [[fminus::default(0)]];
+    param float cam [[fminus::range(0, 1)]] [[fminus::default(0.35)]];
+    param float inertia [[fminus::range(0, 1)]] [[fminus::default(0.5)]];
+    param float load [[fminus::range(0, 1)]] [[fminus::default(0)]];
+    param float turbo [[fminus::range(0, 1)]] [[fminus::default(0.5)]];
+    param float bov [[fminus::range(0, 1)]] [[fminus::default(0.7)]];
+    param float headers [[fminus::range(0, 1)]] [[fminus::default(0.5)]];
+    param float pipe [[fminus::range(0, 1)]] [[fminus::default(0.5)]];
+    param float xpipe [[fminus::range(0, 1)]] [[fminus::default(0)]];
+    param float muffler [[fminus::range(0, 1)]] [[fminus::default(0.5)]];
+    param float pops [[fminus::range(0, 1)]] [[fminus::default(0.3)]];
+    param float rough [[fminus::range(0, 1)]] [[fminus::default(0.3)]];
+    param int view [[fminus::range(0, 4)]] [[fminus::default(0)]];
+    param float distance [[fminus::range(0, 1)]] [[fminus::default(0.3)]];
+    param float intake [[fminus::range(0, 1)]] [[fminus::default(0.5)]];
+    param float mech [[fminus::range(0, 1)]] [[fminus::default(0.4)]];
+    param float room [[fminus::range(0, 1)]] [[fminus::default(0.15)]];
+    param float level [[fminus::range(-24, 12)]] [[fminus::default(0)]];
+    param float timing [[fminus::range(-20, 20)]] [[fminus::default(0)]];
+    param float turbosize [[fminus::range(0.5, 2)]] [[fminus::default(1)]];
+    param int starter [[fminus::range(0, 1)]] [[fminus::default(1)]];
+    param float hold [[fminus::range(1, 60)]] [[fminus::default(10)]];
+    param int drive [[fminus::range(0, 3)]] [[fminus::default(0)]];
+    param float mass [[fminus::range(100, 50000)]] [[fminus::default(1400)]];
+    param int aspiration [[fminus::range(0, 4)]] [[fminus::default(0)]];
+    param int fuel [[fminus::range(0, 1)]] [[fminus::default(0)]];
+    param float compression [[fminus::range(6, 25)]] [[fminus::default(10)]];
+    param float borestroke [[fminus::range(0.5, 2)]] [[fminus::default(1)]];
+    param float ambient [[fminus::range(-40, 120)]] [[fminus::default(80.33)]];
+
+    Shared* shared;
+    Host* host;
+    int token;
+    bool held;
+    float note;
+    // (what the panel shows is Shared's: shared->showRpm and the rest, engine.fm)
+
+    void readDials()
+    {
+        Set* s = &shared->set;
+        s->layout = engine[0];
+        s->size = size[0];
+        s->idle = idle[0];
+        s->redline = redline[0];
+        s->cam = cam[0];
+        s->inertia = inertia[0];
+        s->load = load[0];
+        s->turbo = turbo[0];
+        s->bov = bov[0];
+        s->headers = headers[0];
+        s->pipe = pipe[0];
+        s->xpipe = xpipe[0];
+        s->muffler = muffler[0];
+        s->pops = pops[0];
+        s->rough = rough[0];
+        s->view = view[0];
+        s->distance = distance[0];
+        s->intake = intake[0];
+        s->mech = mech[0];
+        s->room = room[0];
+        s->level = level[0];
+        s->timing = timing[0];
+        s->tsize = turbosize[0];
+        s->starter = starter[0];
+        s->hold = hold[0];
+        // (DRIVE: 0 the keys rev it, 1 the car, 2 the semi truck, 3 the keys play the firing's pitch; the pitch wheel's
+        // reach an octave)
+        s->keys = drive[0] == 3 ? 1 : 0;
+        s->bendRange = 12.0f;
+        s->drive = drive[0] == 1 || drive[0] == 2 ? drive[0] : 0;
+        s->mass = mass[0];
+        s->asp = aspiration[0];
+        s->fuel = fuel[0];
+        s->comp = compression[0];
+        s->bs = borestroke[0];
+        s->ambF = ambient[0];
+        s->bend = host->pitchbend;
+        s->modwheel = host->modwheel;
+        s->pressure = host->aftertouch;
+        s->gas = host->throttle;
+        s->brake = host->brake;
+        s->clutch = host->clutch;
+        s->lever = host->gear;
+        s->buttons = host->buttons;
+    }
+
+    void start(float n, float v)
+    {
+        // a voice taken for a new note while its key was still down (a seventeenth key) lets that key go first
+        if (held)
+            shared->keyUp(note);
+        note = n;
+        held = true;
+        readDials();
+        token = shared->keyDown(n, v);
+    }
+
+    void stop()
+    {
+        held = false;
+        shared->keyUp(note);
+    }
+
+    bool process(float* restrict left, float* restrict right, int n)
+    {
+        // the key that went down last plays the engine; the others only hold their keys
+        if (token != shared->rendering)
+            return held;
+        readDials();
+        shared->render(left, right, n);
+        return held || shared->audible();
+    }
+};

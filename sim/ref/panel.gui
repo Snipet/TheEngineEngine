@@ -1,0 +1,102 @@
+// panel.gui: ENGINE's front panel. A title bar (header.sc: the engine as it is set, its state and the output's level),
+// the instruments under it (cluster.sc: the dashboard; layout.sc: the engine from above, firing, and its exhaust), the
+// controls on three pages, and the keys.
+defaults knob look=soft arc=#ff8a1f track=#2a2d33 pointercolor=#ffe3c8 valuecolor=#f2f3f5 labelcolor=#9aa1ab thickness=3 value=always
+defaults section look=card radius=8 fill=#1a1c20 border=#2b2e35 titlecolor=#ff9a3d titlesize=small
+class "main" size=large arc=#ffa54a
+class "pct" scale=100 unit="%" decimals=0
+
+panel accent=#ff8a1f background=#17181b gradient=#0a0b0d {
+    column gap=8 pad=10 grow=1 {
+        shader "header.sc" inputs="engine fuel aspiration drive shared->showLamps out" height=46
+
+        // The instruments.
+        row gap=8 height=420 {
+            box look=inset radius=10 grow=1 {
+                shader "cluster.sc" inputs="shared->showRpm shared->showRed shared->showGear shared->showKmh shared->showThr shared->showMap shared->showLamps shared->showPedals" grow=1
+            }
+            column gap=8 width=272 {
+                box look=inset radius=10 grow=1 {
+                    shader "layout.sc" inputs="engine shared->showCycle shared->showLamps shared->showThr shared->showAir shared->showPipes shared->showBoost out" grow=1
+                }
+                box look=inset radius=10 {
+                    spectrum out height=62 color=#ff8a1f
+                }
+            }
+        }
+
+        // The controls.
+        tabs look=bar {
+            page "ENGINE" {
+                row gap=8 {
+                    section "BLOCK" grow=1 justify=center {
+                        column gap=12 justify=center {
+                            menu engine "SINGLE" "TWIN 360" "TWIN 270" "VTWIN 45" "INLINE 3" "INLINE 4" "FLAT 4" "XPLANE I4" "INLINE 5" "V6" "INLINE 6" "FLAT 6" "V8 CROSS" "V8 FLAT" "V10" "V12" "ROTARY" label="LAYOUT"
+                            menu fuel "GASOLINE" "DIESEL" label="FUEL"
+                        }
+                        knob size class="main" label="SIZE" unit="L" decimals=2 taper=log
+                        knob borestroke label="BORE/STROKE" decimals=2 taper=log
+                        knob compression label="COMPRESSION" unit=":1" decimals=1
+                    }
+                    section "TUNE" grow=1 justify=center {
+                        knob timing label="TIMING" unit="deg" decimals=1 bipolar
+                        knob cam label="CAM" class="pct"
+                        knob inertia label="FLYWHEEL" class="pct"
+                    }
+                    section "REVS" grow=1 justify=center {
+                        knob idle label="IDLE +" unit="rpm" decimals=0 bipolar
+                        knob redline label="REDLINE +" unit="rpm" decimals=0 bipolar
+                        knob load label="LOAD" class="pct"
+                    }
+                }
+            }
+            page "AIR & EXHAUST" {
+                row gap=8 {
+                    section "INDUCTION" grow=1 justify=center {
+                        column justify=center {
+                            menu aspiration "NA" "TURBO" "TWIN TURBO" "QUAD TURBO" "S/CHARGER" label="ASPIRATION"
+                        }
+                        knob turbo class="main pct" label="BOOST"
+                        knob turbosize label="TURBO SIZE" unit="x" decimals=2 taper=log
+                        knob bov label="BLOW-OFF" class="pct"
+                    }
+                    section "EXHAUST" grow=1 justify=center {
+                        knob headers label="HEADERS" class="pct"
+                        knob pipe label="PIPE" class="pct"
+                        knob xpipe label="X-PIPE" class="pct"
+                        knob muffler label="MUFFLER" class="pct"
+                    }
+                    section "CHARACTER" grow=1 justify=center {
+                        knob pops label="POPS" class="pct"
+                        knob rough label="ROUGH" class="pct"
+                    }
+                }
+            }
+            page "SOUND & DRIVE" {
+                row gap=8 {
+                    section "LISTEN" grow=1 justify=center {
+                        buttons view "EXHAUST" "REAR" "SIDE" "ENGINE" "CABIN"
+                        knob distance label="DISTANCE" class="pct"
+                        knob room label="ROOM" class="pct"
+                    }
+                    section "MIX" grow=1 justify=center {
+                        knob intake label="INTAKE" class="pct"
+                        knob mech label="MECHANICAL" class="pct"
+                        knob level label="LEVEL" unit="dB" decimals=1 arc=#ffa54a
+                    }
+                    section "START" grow=1 justify=center {
+                        switch starter "OFF" "ON" label="STARTER"
+                        knob hold label="IDLE FOR" unit="s" decimals=0 taper=log
+                        knob ambient label="AMBIENT" unit="F" decimals=0
+                    }
+                    section "DRIVE" grow=1 justify=center {
+                        buttons drive "KEYS" "CAR" "TRUCK" "PITCH"
+                        knob mass label="WEIGHT" unit="kg" decimals=0 taper=log
+                    }
+                }
+            }
+        }
+
+        keyboard from=24 octaves=6 height=56 wheels
+    }
+}
