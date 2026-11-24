@@ -66,7 +66,8 @@ namespace tee::ui
         std::uint64_t drawKey() const override
         {
             DrawKey k;
-            for (const char* n : { "boost.pressure", "engine.lambda", "engine.coolant", "engine.oilTemperature",
+            k.mix(static_cast<float>(ctx_.live.lambda()));
+            for (const char* n : { "boost.pressure", "engine.coolant", "engine.oilTemperature",
                                    "engine.oilPressure", "car.gear", "car.speed", "car.flags", "car.stripState", "car.pitch" })
                 k.mix(static_cast<float>(ctx_.live.get(n)));
             for (int i = 0; i < 4; ++i)
@@ -201,7 +202,7 @@ namespace tee::ui
             const double boost = ctx_.live.get(telemetry::kBoost);
             look::readout(c, p, in.x, in.y, std::isfinite(boost) && boost < 0.0 ? "VACUUM" : "BOOST",
                           std::isfinite(boost) ? u.number(Quantity::pressure, std::fabs(boost)) : "-", u.unit(Quantity::pressure).name);
-            const double lambda = ctx_.live.get("engine.lambda");
+            const double lambda = ctx_.live.lambda();
             const bool lean = std::isfinite(lambda) && lambda > 1.08;
             look::readout(c, p, in.x + colW, in.y, lean ? "LAMBDA  LEAN" : "LAMBDA", look::num(lambda, "%.2f"), {}, look::kNumberM,
                           lean ? p.warning : look::kClear);
