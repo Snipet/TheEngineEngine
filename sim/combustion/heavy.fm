@@ -249,6 +249,15 @@ module HeavyDiesel
         lever = fuel;
     }
 
+    // The turbine's vanes as the brakes want them (card F's Boost::vanesAndPurge, boost.model 1): -1 its own loop; 0 shut
+    // to their stop, the gate held closed (a VGT's brake position: the compression brake's or the vanes' exhaust brake)
+    float vaneCommand()
+    {
+        if (on == 0)
+            return -1.0f;
+        return braking != 0 || (exOn != 0 && spec->exhaustBrake == 2) ? 0.0f : -1.0f;
+    }
+
     // Into the diesel's charge (Combustion's DieselFields): the lever, and whether the fuel is metered by the rack
     void feed(DieselFields* d)
     {

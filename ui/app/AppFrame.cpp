@@ -352,6 +352,7 @@ namespace tee::ui
             controls_.startHeld = held;
             report();
         });
+        start_->setEnabled([this] { return !services_.engineReady || services_.engineReady(); });
         start_->setLit([this] {
             const double s = ctx_->live.get(telemetry::kState);
             return s >= 0.5 && s < 2.5;
