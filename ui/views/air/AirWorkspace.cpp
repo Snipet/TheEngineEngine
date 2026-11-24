@@ -256,7 +256,7 @@ namespace tee::ui
             const float h = std::clamp(s.h * 0.17f, 100.0f, 150.0f);
             yc_ = s.y + 62.0f + 22.0f + 10.0f + h * 0.5f;
             readY_ = yc_ + h * 0.5f + 12.0f;
-            row_ = { s.x + 20.0f, s.y + 62.0f, s.w - 40.0f, readY_ + 46.0f - (s.y + 62.0f) };
+            row_ = { s.x + 20.0f, s.y + 62.0f, s.w - 40.0f, readY_ + 64.0f - (s.y + 62.0f) };   // a third line: the ram
             const AirBuild& b = build_;
             // the parts and their widths
             struct W
@@ -569,6 +569,8 @@ namespace tee::ui
             const std::string pu = ctx_.units.unit(Quantity::pressure).name, tu = ctx_.units.unit(Quantity::temperature).name;
             c.text(pu.c_str(), row_.x, readY_ + 2.0f, look::kUnit, p.label);
             c.text(tu.c_str(), row_.x, readY_ + 20.0f, look::kUnit, p.label);
+            c.text("RAM", row_.x, readY_ + 38.0f, look::kUnit, p.label);
+            drawRam(c, p);
             float lastRight = -1e9f;
             bool lowered = false;
             for (const Part& part : parts_)
@@ -596,6 +598,38 @@ namespace tee::ui
                 }
             }
             c.hairlineH(row_.x, row_.bottom() - 2.0f, row_.w, p.grid);
+        }
+
+        // Where the runners are tuned, derived (ramTune): under the runners, the main bump's speed and the lower's,
+        // smaller; for a variable manifold each length's main bump, the switch between them.
+        void drawRam(Canvas& c, const Palette& p) const
+        {
+            const AirBuild& b = build_;
+            const Part* runners = nullptr;
+            for (const Part& part : parts_)
+                if (part.kind == Kind::runners)
+                    runners = &part;
+            if (runners == nullptr)
+                return;
+            const auto rpm = [](double v) { return v > 0.0 ? look::num(std::round(v / 10.0) * 10.0, "%.0f") : std::string("-"); };
+            const float y = readY_ + 36.0f, cx = runners->r.centreX();
+            std::string main, low;
+            if (b.runner2 > 0.0)
+            {
+                // the first length below the switch, the second above it
+                main = rpm(ramTune(b, b.runner).mainRpm) + " / " + rpm(ramTune(b, b.runner2).mainRpm);
+                low = "DERIVED, BOTH LENGTHS";
+            }
+            else
+            {
+                const RamTune t = ramTune(b, runnerInUse());
+                main = "NEAR " + rpm(t.mainRpm);
+                low = "AND " + rpm(t.lowerRpm) + ", DERIVED";
+            }
+            const float mw = c.textWidth(main.c_str(), look::kNumberS), lw = c.textWidth(low.c_str(), look::kUnit);
+            const float x0 = std::clamp(cx - (mw + 8.0f + lw) * 0.5f, row_.x + 34.0f, stage_.right() - 12.0f - mw - 8.0f - lw);
+            c.text(main.c_str(), x0, y, look::kNumberS, p.text);
+            c.text(low.c_str(), x0 + mw + 8.0f, y + 3.0f, look::kUnit, p.label);
         }
 
         // A part's name on the row (its full name is on its selection tag).
