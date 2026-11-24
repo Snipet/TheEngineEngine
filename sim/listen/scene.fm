@@ -50,10 +50,12 @@ enum
     LS_BAYOPEN = 4,     // the engine bay, carrying: turbo or supercharger, starter, combustion
     LS_TYRES = 5,       // the tyres on the road (and the driveline's clunk the reference puts with them)
     LS_WIND = 6,        // the wind on the body
-    LS_DRIVE = 7,       // the gearbox and differential (package M's voices; silent until they exist)
-    LS_N = 8,
-    LS_TAPS = 24,       // LS_N * 3: ear 0, ear 1, the ground's image
-    LS_CAP = 32768,     // each source's delay line (samples): 0.34 s at 96 kHz, 117 m of path
+    LS_DRIVE = 7,       // the gearbox (package M's voices, spec.voices.model 1)
+    LS_AXLE = 8,        // the final drive, at the driven axle
+    LS_TANK = 9,        // the fuel pump, in the tank
+    LS_N = 10,
+    LS_TAPS = 30,       // LS_N * 3: ear 0, ear 1, the ground's image
+    LS_CAP = 32768,     // each source's delay line (samples): 0.34 s at 96 kHz, 117 m of path (1.3 MB in all)
     LS_MASK = 32767
 };
 
@@ -235,6 +237,14 @@ module Scene
         sx[LS_DRIVE] = 0.0f;
         sy[LS_DRIVE] = p == 0 ? 2.4f : 0.9f;
         sz[LS_DRIVE] = 0.35f;
+        // (the axle at the rear: a front engine's driving the rear wheels, as the reference's cars do; a mid or rear
+        // engine's transaxle is the gearbox's place)
+        sx[LS_AXLE] = 0.0f;
+        sy[LS_AXLE] = p == 0 ? 0.9f : 0.6f;
+        sz[LS_AXLE] = 0.3f;
+        sx[LS_TANK] = 0.3f;
+        sy[LS_TANK] = p == 0 ? 0.8f : 3.6f;
+        sz[LS_TANK] = 0.35f;
         // (dB: exhaust +2.6, intake +4.3 (the air box against the firewall), the bay's shaded -6.5, its carrying -4.7,
         // tyres -0.7)
         tau[LS_TAIL0] = 1.357f;
@@ -245,6 +255,8 @@ module Scene
         tau[LS_TYRES] = 0.923f;
         tau[LS_WIND] = 1.0f;
         tau[LS_DRIVE] = 1.0f;
+        tau[LS_AXLE] = 1.0f;
+        tau[LS_TANK] = 1.0f;
         bus[LS_TAIL0] = 0;
         bus[LS_TAIL1] = 0;
         bus[LS_INTAKE] = 1;
@@ -253,6 +265,8 @@ module Scene
         bus[LS_TYRES] = 0;
         bus[LS_WIND] = 2;
         bus[LS_DRIVE] = 0;
+        bus[LS_AXLE] = 0;
+        bus[LS_TANK] = 0;
     }
 
     // The driver's head in the car's frame (y), by the engine's place
@@ -356,7 +370,7 @@ module Scene
             gain = open;
             fc = 2000.0f + 18000.0f * open * open;
         }
-        else if (s == LS_DRIVE)
+        else if (s == LS_DRIVE || s == LS_AXLE || s == LS_TANK)
         {
             // the gearbox and the axle under the floor: the floor pan shades them from above
             gain = uz > 0.0f ? 1.0f - 0.8f * uz : 1.0f;
@@ -502,7 +516,7 @@ module Scene
     // 2 none), the windows (0 to 1 open), which sources sound. A new camera, or the trackside one moving on, starts a
     // crossfade from the listener heard.
     void block(int c, float rTarget, float carSpeed, int ground, float win, float bore, int nPipes, float bike,
-               int where, int drivenOn, int driveOn)
+               int where, int drivenOn, int driveOn, int axleOn, int tankOn)
     {
         const float dt = 16.0f / rate;
         speed = carSpeed;
@@ -520,6 +534,8 @@ module Scene
         act[LS_TYRES] = drivenOn;
         act[LS_WIND] = drivenOn;
         act[LS_DRIVE] = driveOn;
+        act[LS_AXLE] = axleOn;
+        act[LS_TANK] = tankOn;
         // the camera's distance: a listener walks (at most 8 m/s: the pitch moves 2.3 % while the dial does)
         if (rS < 0.0f)
             rS = rTarget;

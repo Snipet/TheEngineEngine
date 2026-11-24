@@ -39,7 +39,7 @@ its place and its default that does nothing) has added the custom engine, the en
 | `vehicle/car.fm` | `Car` | I | clutch, gearbox, driveline, tyres, the road; the shifter and paddles; the road's sound |
 | `sound/extras.fm` | `Extras` | wave 2 | intake mouth, valvetrain, injectors, block, knock, clatter, pump, chain, starter |
 | `sound/voices.fm` and `sound/*.fm` | `Voices` (`GearVoice`, `DriveVoice`, `FanVoice`, `FuelVoice`, `ValveVoice`, `GateVoice`, `StarterVoice`) | M | spec.voices.model 1: gear whine and rattle, final drive, belts and cam drive, fan, fuel pump and direct injectors, lifters and float, wastegate, starter (docs/models/voices.md) |
-| `listen/listen.fm`, `listen/hall.fm` | `Listen`, `Hall` | wave 2 | views, distance, room, compressor, limiter, ceiling, resampler |
+| `listen/listen.fm`, `listen/hall.fm`, `listen/scene.fm`, `listen/cabin.fm`, `listen/places.fm` | `Listen`, `Hall`, `Scene`, `CabinBoom`, `Place` | L | views, distance, room, compressor, limiter, ceiling, resampler; model 1: sources in their places, cameras, the cabin, places, the computed level |
 | `lib/` | `OnePole`, `DcBlock`, `Biquad`, `Noise` | anyone (read) | filters; the reference's white noise |
 
 Other files in these directories are packages' standalone work, not included by `engine.fm` yet (`core/twostroke/`: card
@@ -350,6 +350,18 @@ move, reads ctl's counters, buttons, mode, strip and dyno itself, writes its fie
 pedal with a downshift's blip in it. `step`, `road` go to `m1`; `followLever` does nothing. Model 0, the default, is the
 reference's code, untouched (the null test).
 
+*The motorcycle (card B2).* With `spec.car.model` 1 and `spec.car.kind` Motorcycle (2), Car holds `bikeOn` 1 and its
+`Bike b1` (`vehicle/bike.fm`, docs/models/bike.md) takes `m1`'s place: `drive16` calls `bike16` every 16 (spec.car's
+fields the bike reads, card I's and card B2's block, copied into `b1.spec` and `b1.bs` with the env when their revs
+move; `b1.control`; tel.car's card I and card B2 fields filled; `gear`, `v`, `shiftCut` (the quickshifter's cut) kept;
+it returns the throttle the engine is given: the rider's, less the wheelie control's and a clutch upshift's roll-off,
+with an auto-blip's); `step` and `road` go to `b1`. A change of kind or model puts it at rest in neutral. For the ECU,
+`drivenSlip()`, `speedNow()`, `gearNow()`, `upshifts()`, `cutRequest()` (the quickshift cut's length) and
+`blipRequest()` give the bike's. For the mechanical voices: `float lashStrike()` each sample (rad/s at the rear wheel
+with which the driveline's play closed this sample, 0 otherwise; `tel.car.chainLashSide` says on or off the throttle)
+and `float sprocketSpeed()` (the front sprocket, rad/s; its teeth are `spec.car.frontSprocket`, the rear's
+`rearSprocket`; `spec.car.clutchDry` a dry clutch), both 0 without the motorcycle.
+
 **Extras** (`sound/extras.fm`): the engine bay's sources; its own `Noise noise` (Boost draws from it too). `setup(float
 rate, float boxHz, VoicesSpec* voices)`; `setClatter(int diesel, float swept)` and `pumpOn` in configure; the clicks at
 the cylinders' events (`valveClick(amp, intake)`: 1 at intake closing, 0 at exhaust closing); `void tick(float qThrottle,
@@ -360,12 +372,18 @@ car's gearbox, the torque, the coolant, the key, the boost and gate, `vt.clatter
 the starter running down); out: `intake`, `mech`, `block`, `comb`, `starter`, `mouth` (the intake's mouth alone, before the throttle's hiss), and with model 1 each voice's own:
 `vo.gearbox`, `vo.axle`, `vo.front`, `vo.head`, `vo.tank`, `vo.gateOut`, `vo.starter` (docs/models/voices.md).
 
-**Listen** (`listen/listen.fm`): `setup(float rate, float hostRate)`, `release()`, `resetPaths()`; per part `block(int
-v, float intakeK, float mechK, float distance, float room, float levelDb, int asp, float exTrim, float gainNorm, int
-nPipes, float bike, float tailD)`; each sample `mix(int i, float xL, float xR, float in, float tqNow, float mech, float
-block, float turbo, float starter, float comb, float sh0, float sh1, int driven, float road, float cutG)`; per part
-`finish(float* left, float* right, int at, int m)`; the resampler `needs()`, `pushPart()`, `resampled(float* left,
-float* right, int i)`.
+**Listen** (`listen/listen.fm`, package L; docs/models/listen.md): `setup(float rate, float hostRate)`, `release()`,
+`resetPaths()`; per part `block(int v, float intakeK, float mechK, float distance, float room, float levelDb, int asp,
+float exTrim, float gainNorm, int nPipes, float bike, float tailD, SoundSpec* ss, SoundTel* st, float carSpeed, int
+driven, float vTotal, int nCyl, float fx, float fy, float mx, float my, float* fire, float cyc, int rotary)` (Engine
+passes `&spec.sound`, `&tel.sound`, `car.speedNow()`, `set.drive != 0`, `vTotal`, `lay.n`, a custom engine's `shake.fx`,
+`fy`, `mx`, `my` (else 0), `lay.fire`, `lay.cyc`, `lay.rotary`); each sample `mix(int i, float xL, float xR, float in,
+float tqNow, float mech, float block, float turbo, float starter, float comb, float sh0, float sh1, int driven, float
+road, float cutG, float drive)` (`drive`: package M's `vo.gearbox + vo.axle` with spec.voices.model 1, else 0); per
+part `finish(float* left, float* right, int at, int m)`; the resampler `needs()`, `pushPart()`, `resampled(float* left,
+float* right, int i)`. With `spec.sound.model` 0 the new arguments are not read: the reference's path. With 1:
+`Scene` (`listen/scene.fm`), `CabinBoom` (`listen/cabin.fm`), `Place` (`listen/places.fm`); it writes `tel.sound`'s
+`camera`, `range`, `doppler`, `roadPosition`, `loudness`, `exhaustLevel`, `mixLevel`.
 
 **Noise** (`lib/noise.fm`): the reference's streams, as it has them: Engine's (`Engine::noise`: the cylinders' bias,
 Combustion's scatter and pops, the exhaust's valve, flow and jet noise, in the order of the work above), Extras' (and

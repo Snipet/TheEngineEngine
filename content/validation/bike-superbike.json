@@ -1,0 +1,79 @@
+{
+  "format": "tee-validation",
+  "version": 1,
+  "build": "bike-superbike",
+  "description": "Card B2's litre superbike: a 998 cc crossplane four with four valves a cylinder and individual throttle bodies, redline 14,000.",
+  "targets": [
+    {
+      "name": "Starts and runs",
+      "scenario": "idle",
+      "tel": "engine.state",
+      "measure": "last",
+      "range": [
+        2,
+        2
+      ],
+      "fast": true,
+      "source": "a warm engine started on its key runs (engine.state 2)"
+    },
+    {
+      "name": "Within full scale",
+      "scenario": "rev-limit",
+      "audio": "peak",
+      "range": [
+        0,
+        1
+      ],
+      "fast": true,
+      "source": "02-contracts.md, section 1: what process writes is within +-1"
+    },
+    {
+      "name": "Holds the limiter",
+      "scenario": "rev-limit",
+      "tel": "engine.speed",
+      "measure": "max",
+      "during": [
+        6,
+        10
+      ],
+      "relativeTo": "engine.redline",
+      "range": [
+        0.97,
+        1.03
+      ],
+      "unit": "of the redline",
+      "fast": true,
+      "source": "a fuel-cut or ignition-cut rev limiter holds the speed within a few percent of where it cuts"
+    },
+    {
+      "name": "Peak torque",
+      "dyno": {
+        "from": 150,
+        "to": 1466,
+        "rate": 60
+      },
+      "measure": "maxTorque",
+      "range": [
+        105,
+        122
+      ],
+      "unit": "N m",
+      "source": "a litre superbike four makes 110 to 120 N m at 10,000 to 11,500 rpm (makers' claims). Reported, not failed: a miss until the engine's breathing and friction at high piston speed are right (card B2's handoff)."
+    },
+    {
+      "name": "Peak power",
+      "dyno": {
+        "from": 150,
+        "to": 1466,
+        "rate": 60
+      },
+      "measure": "maxPower",
+      "range": [
+        125000,
+        155000
+      ],
+      "unit": "W",
+      "source": "a litre superbike four makes about 140 kW at 13,000 rpm at the crank (makers' claims for 2015-2020 models, 145 to 155 kW; Cycle World measured 159.8 hp, 119 kW, at the wheel of a 2012 GSX-R1000). Reported, not failed: as above."
+    }
+  ]
+}
