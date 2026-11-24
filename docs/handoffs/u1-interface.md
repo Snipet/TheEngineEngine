@@ -120,3 +120,6 @@ sheet will include every registered workspace.
   whose name ends `.pictures` is labelled `nightly`, so the default run leaves it out and the soak tier makes it
   at every push. Put pictures that check nothing there (the frame's: `ui.frame.pictures`, the contact sheets and
   `frame.real.*`); goldens stay in the default run.
+- **A run's walls** (card C's `DynoCurve::settled`, the lead's ruling 1220ca3): `DynoTrace::walls` (1 settled, 0 cold, -1 not
+  said: a prediction, the demo) and `wallsWord()` ("walls settled", "cold walls", ""); `ServiceDyno` fills it for runs.
+  Label a run with it; never mix the two unlabelled.

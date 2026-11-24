@@ -77,6 +77,7 @@ namespace
         CHECK(a.engine.find("nothing") == -1);
         const tee::ui::DynoTrace first = a.engine.predicted();
         CHECK(!first.empty() && a.engine.before().empty());
+        CHECK(first.walls == -1 && std::string(first.wallsWord()).empty());   // a prediction says nothing of the walls
         const int f = a.doc.find("boost.level");
         a.doc.beginGesture();
         a.doc.set(f, 150e3);

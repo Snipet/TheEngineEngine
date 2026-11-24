@@ -394,7 +394,7 @@ TEST_CASE("fixed X-003: the new combustion and ECU together start the V8 at -20 
     }
 }
 
-TEST_CASE("fixed X-007: the reduced Spec (an 18 kg piston on a single with the automatic) runs", "[combo][fixed]")
+TEST_CASE("fixed X-007: the reduced Spec (an 18 kg piston on a single with the automatic) runs", "[fast][combo][fixed]")
 {
     // found 2026-11-24 (the crank ran away; then Engine::process never returned, or SIGSEGV); D's ae5c99b made the
     // audio thread safe (no state-counted loop, a diverged engine put at rest with FLAG_FAULT), I's f9e26f1 removed the
@@ -435,7 +435,7 @@ namespace
     }
 } // namespace
 
-TEST_CASE("targets: a one-second key starts the V8 with nothing and everything on", "[combo][targets]")
+TEST_CASE("targets: a one-second key starts the V8 with nothing and everything on", "[fast][combo][targets]")
 {
     for (const char* b : {"v8"})
         for (bool all : {false, true})
