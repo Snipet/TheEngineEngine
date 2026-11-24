@@ -394,6 +394,8 @@ namespace tee::balance
             ++count;
         });
         b.uEnd = energy();
+        for (const std::string& path : o.read)
+            b.reads[path] = rdPath(path);
         b.airThrottle = rd(airThr) - thr0;
         b.airValves = rd(airVal) - val0;
         b.gasExhaust = rd(gasEx) - ex0;

@@ -44,6 +44,8 @@ TEST_CASE("probe: an engine's air and energy books", "[.balance]")
             const auto eq = kv.find('=');
             o.raw.emplace_back(kv.substr(0, eq), std::atof(kv.c_str() + eq + 1));
         }
+    if (const char* s = std::getenv("BAL_READ"))
+        o.read = split(s, ',');
     if (const char* s = std::getenv("BAL_SIM"))
         o.sim = s;
     if (const char* s = std::getenv("BAL_SETTLE"))
@@ -83,6 +85,10 @@ TEST_CASE("probe: an engine's air and energy books", "[.balance]")
             };
             for (const auto& [key, value] : lines)
                 std::printf("%s %.6g\n", key, value);
+            // BAL_READ="vt.lab.stageWant,heat.tOil": instance paths read at the window's end
+            if (const char* rdEnv = std::getenv("BAL_READ"))
+                for (const std::string& path : split(rdEnv, ','))
+                    std::printf("read %s %.6g\n", path.c_str(), k.reads.count(path) ? k.reads.at(path) : std::nan(""));
             std::printf("end\n");
             std::fflush(stdout);
         }
