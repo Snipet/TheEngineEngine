@@ -68,14 +68,19 @@ namespace tee::app
             {
                 if (!value(o.engine))
                     return false;
-                if (o.engine != "ref" && o.engine != "sim" && o.engine != "tone")
+                if (o.engine != "ref" && o.engine != "sim" && o.engine != "tone" && o.engine != "auto")
                 {
-                    why = "--engine is ref, sim or tone";
+                    why = "--engine is sim, ref or tone";
                     return false;
                 }
             }
             else if (arg == "--ref-panel")
                 o.refPanel = true;
+            else if (arg == "--workspace")
+            {
+                if (!value(o.workspace))
+                    return false;
+            }
             else if (arg == "--panel")
             {
                 if (!value(o.panel))
@@ -184,9 +189,10 @@ namespace tee::app
         u += program;
         u += " [options]\n"
              "  --info                 print the versions, the renderer and the audio device, and exit\n"
-             "  --engine ref|sim|tone  the reference (sim/ref: the default), the simulator (sim/engine.fm) in the\n"
-             "                         application's frame, or a plain tone that needs no compiler\n"
+             "  --engine sim|ref|tone  the simulator (sim/engine.fm: the default) in the application's frame, the\n"
+             "                         reference (sim/ref) in its own panel, or a plain tone that needs no compiler\n"
              "  --ref-panel            the reference engine in its own panel (as --engine ref)\n"
+             "  --workspace ID[:PAGE]  the frame opens on that workspace, by its name on the rail (and its page, from 1)\n"
              "  --sim DIR              the folder that holds engine.fm and ref/ (default: sim/ beside the executable)\n"
              "  --preset NAME|FILE     a preset of content/ref/presets (the simulator: a build of content/builds),\n"
              "                         by its file's name, or a file\n"

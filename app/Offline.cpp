@@ -28,8 +28,10 @@
 #include <funkgui/text/FontService.h>
 
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <cstdio>
+#include <cstdlib>
 #include <filesystem>
 #include <string>
 #include <vector>
@@ -95,6 +97,18 @@ namespace tee::app
         };
     }
 
+    namespace
+    {
+       #if defined(TEE_HAS_UI_FRAME)
+        std::string lower(std::string s)
+        {
+            for (char& c : s)
+                c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+            return s;
+        }
+       #endif
+    }
+
     Shown makePanel(const Options& o, Engine& engine, const AppServices& services)
     {
         Shown shown;
@@ -116,10 +130,40 @@ namespace tee::app
                 ui::Units units;
             };
             const auto kept = std::make_shared<Kept>(engine.sim->build());
+            if (!o.unitChoices.empty())
+            {
+                std::string notes;
+                kept->units.load(o.unitChoices, notes);
+                if (!notes.empty())
+                    std::fprintf(stderr, "settings: units: %s\n", notes.c_str());
+            }
+            shown.unitChoices = [kept] { return kept->units.save(); };
             const std::filesystem::path content = findContent();
-            shown.panel = ui::makeAppFrame(kept->doc, kept->units, player,
-                                           ui::buildServices(engine.sim->build(), content.empty() ? content : content / "builds",
-                                                             Presets::userDirectory(), services));
+            std::unique_ptr<ui::AppFrame> frame =
+                ui::makeAppFrame(kept->doc, kept->units, player,
+                                 ui::buildServices(engine.sim->build(), content.empty() ? content : content / "builds",
+                                                   Presets::userDirectory(), services));
+            // --workspace ID[:PAGE]: the frame opens there (a name that is none is said, and the first one shown)
+            if (!o.workspace.empty())
+            {
+                const std::size_t colon = o.workspace.find(':');
+                const std::string id = lower(o.workspace.substr(0, colon));
+                const int page = colon == std::string::npos ? 1 : std::atoi(o.workspace.c_str() + colon + 1);
+                int found = -1;
+                std::string names;
+                for (int s = 0; s < frame->screenCount(); ++s)
+                {
+                    const std::string name = lower(frame->screenDef(s).name);
+                    names += (s == 0 ? "" : ", ") + name;
+                    if (name == id)
+                        found = s;
+                }
+                if (found < 0)
+                    std::fprintf(stderr, "--workspace: no workspace '%s' (there are: %s)\n", o.workspace.c_str(), names.c_str());
+                else
+                    frame->show(found, std::clamp(page, 1, std::max(1, frame->pageCount(found))) - 1);
+            }
+            shown.panel = std::move(frame);
             shown.keep = kept;
             return shown;
         }

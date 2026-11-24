@@ -4,12 +4,12 @@
 // its fields; writes `ctl` (what the driver does) before each call; reads `tel` (what the machine does) after each call,
 // and `scope` (the taps) when someone looks. It calls init once off the audio thread, process on it, end off it.
 //
-// Phase 0, part K3a: inside is still the reference's engine, its module Shared copied unchanged into core/monolith.fm
-// (with the files it includes beside it), driven as the reference's Voice drove it (sim/ref/program.fm) through the
-// adapter below: the Spec's sections, when their rev moved, into Shared's Set (its dials, units converted back); ctl
-// into the pedals, the lever, the paddles and a key; Shared's state out into tel after each call. sim/README.md has
-// the mapping, and how each of the null test's scenarios is written both ways. K3b carves Shared into the modules of
-// 02-contracts.md, section 6, one at a time, and this adapter goes away piece by piece.
+// Inside, the reference's engine (sim/ref/engine.fm's Shared) carved into its parts (K3b): Engine keeps what Shared did
+// besides them: the rates, the order of the work each sample and every 16 samples, the fade under which a new engine or
+// view is taken, and configure, which makes the engine for its layout and size. The Spec reaches the parts through
+// `set` (Dials: the reference's dials as the engine has taken them, readSpec), the Controls through readControls and
+// ignition, which drive the reference's key and pedals as its Voice did. sim/README.md has every part, its functions and
+// when each is called, and how the null test plays the reference from the same inputs.
 #pragma once
 #include "spec/spec.fm"
 #include "spec/controls.fm"
@@ -98,11 +98,11 @@ module Engine
     // the adapter's own state
     int revSeen [[ui::hidden]] [SPEC_SECTIONS];   // each section's rev as last applied
     int fresh [[ui::hidden]];                     // 1 until the first call has applied every section
-    int held [[ui::hidden]];                      // the start key is down in Shared (ignition at start)
-    int sounding [[ui::hidden]];                  // Shared renders: from a start until it is silent with no key held
-    int ghost [[ui::hidden]];                     // holdSpeed's key is down in Shared (its driver aims at the speed)
+    int held [[ui::hidden]];                      // the start key is down (ignition at start)
+    int sounding [[ui::hidden]];                  // the engine renders: from a start until it is silent with no key held
+    int ghost [[ui::hidden]];                     // holdSpeed's key is down (its driver aims at the speed)
     int upSeen [[ui::hidden]];                    // the paddles' presses acted on, and each one's pulse on its button:
-    int downSeen [[ui::hidden]];                  // 0 none, 1 down (until Shared's shift logic has seen it), 2 up again
+    int downSeen [[ui::hidden]];                  // 0 none, 1 down (until Car's shift logic has seen it), 2 up again
     int upPulse [[ui::hidden]];                   // (until it has seen that)
     int downPulse [[ui::hidden]];
     // the Scope's cycle being written (scopeTap): cylinder 1's pressure, volume and lifts by degree, the last degree
@@ -921,7 +921,7 @@ module Engine
         return true;
     }
 
-    // The Spec into Shared's Set: each section whose rev moved, units converted back to the reference's dials'
+    // The Spec into the Dials: each section whose rev moved, units converted back to the reference's dials'
     void readSpec()
     {
         Dials* s = &set;
@@ -978,7 +978,7 @@ module Engine
         fresh = 0;
     }
 
-    // A paddle's press as the reference's wheel made it: its button down until Shared's shift logic (drive16) has seen
+    // A paddle's press as the reference's wheel made it: its button down until Car's shift logic (drive16) has seen
     // it, then up until it has seen that; a press counted meanwhile waits its turn
     int paddle(int pulse, int bit)
     {
@@ -989,7 +989,7 @@ module Engine
         return pulse;
     }
 
-    // ctl into Shared's Set, and the key the reference's player would hold
+    // ctl into the Dials, and the key the reference's player would hold
     void readControls()
     {
         Dials* s = &set;
@@ -1086,7 +1086,7 @@ module Engine
         }
     }
 
-    // What the machine did, from Shared's state (its show* fields unpacked, in SI)
+    // What the machine did, (the reference's show* fields, unpacked into SI)
     void writeTelemetry(float peak)
     {
         const bool driven = set.drive != 0;

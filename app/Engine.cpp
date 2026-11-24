@@ -182,8 +182,16 @@ namespace tee::app
         }
     }
 
-    Engine loadEngine(const Options& o, double rate)
+    Engine loadEngine(const Options& given, double rate)
     {
+        // auto: the simulator where its source is, else the reference
+        Options o = given;
+        if (o.engine == "auto")
+        {
+            o.engine = "sim";
+            if (findSim(o).empty())
+                o.engine = "ref";
+        }
         Engine e;
         if (o.engine == "tone")
         {
