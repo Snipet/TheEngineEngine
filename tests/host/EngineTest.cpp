@@ -378,6 +378,18 @@ TEST_CASE("the intake cam baked by a sweep of the fast dyno: the best advance by
     CHECK(map[16 + 16 + 0 * 16 + 2] == r.best[0]);   // the bake's advance from 0.95 up
     CHECK(map[16 + 16 + 0 * 16 + 3] == r.best[0]);
     CHECK(build.canUndo());
+    // its key: current as applied; stale after an edit that moves the cam; current again when undone; never moved by a
+    // dyno's heat-settle counter (hidden) nor by the cam map it wrote
+    CHECK(r.key == intakeCamKey(build, *sim));
+    CHECK(build.get("ecu.maps.camInKey") == static_cast<double>(r.key));
+    CHECK(intakeCamCurrent(build, *sim));
+    const double centre = build.get("valve.exCentre");
+    build.set("valve.exCentre", centre + 4.0);
+    CHECK_FALSE(intakeCamCurrent(build, *sim));
+    build.set("valve.exCentre", centre);
+    CHECK(intakeCamCurrent(build, *sim));
+    build.set("exhaust.heatSettle", build.get("exhaust.heatSettle") + 1.0);
+    CHECK(intakeCamCurrent(build, *sim));
     WARN("v12-65's intake cam baked in " << r.wallSeconds << " s: " << r.best[0] << ", " << r.best[1] << ", " << r.best[2]
                                          << " deg at 2000, 4000, 6000 rpm");
 }
