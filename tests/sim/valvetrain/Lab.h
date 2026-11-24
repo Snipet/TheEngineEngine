@@ -15,16 +15,18 @@
 
 namespace tee::test::lab
 {
-    // One program, compiled once a process for each entry file under sim/ ("valvetrain/lab.fm").
-    inline tee::Program& program(const std::string& entry)
+    // One program, compiled once a process for each entry file under sim/ ("valvetrain/lab.fm") and text appended
+    // after it (a test's own module).
+    inline tee::Program& program(const std::string& entry, const std::string& appended = {})
     {
         static std::map<std::string, std::unique_ptr<tee::Program>> programs;
-        auto& slot = programs[entry];
+        auto& slot = programs[entry + "\n" + appended];
         if (!slot)
         {
             std::string errors;
             tee::Program::Options options;
             options.optimisation = 2;
+            options.appended = appended;
             slot = tee::Program::fromDirectory(TEE_SOURCE_DIR "/sim", entry, options, errors);
             INFO(errors);
             REQUIRE(slot != nullptr);

@@ -6,6 +6,7 @@
 #include <catch2/catch_approx.hpp>
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <cstdio>
 #include <vector>
@@ -499,4 +500,120 @@ TEST_CASE("float: the speed rises with the spring, falls with the mass and with 
     const double end = v.lab.get("tab[0].openNow") + v.lab.get("tab[0].span");
     CHECK(at(v.lab.data(), 0, static_cast<float>(std::fmod(end + 5.0, 720.0))) > 0.0f);
     CHECK(at(v.lab.data(), 0, static_cast<float>(std::fmod(end + 45.0, 720.0))) == 0.0f);
+}
+
+namespace
+{
+    // The lab's per-sample work for a V8 (each cylinder's two areas, the control every 16 samples), in a loop of the
+    // program's own, beside the reference's (cylinder.fm, areaAt on its table): what the lab adds to a sample. Its
+    // run is [[clang::nonblocking]], so FMinus proves the lab's per-sample and control path allocate nothing.
+    const char* kBench = R"(
+#include "ref/cylinder.fm"
+module LabBench
+{
+    ValveLab lab;
+    Cylinder cy[8];
+    float ang[16];
+
+    float run(int n, float omega) [[clang::nonblocking]]
+    {
+        float theta = 0.0f;
+        float acc = 0.0f;
+        const float dDeg = omega / 96000.0f * 57.2957795f;
+        for (int i = 0; i < n; ++i)
+        {
+            theta += dDeg;
+            if (theta >= 720.0f)
+                theta -= 720.0f;
+            for (int c = 0; c < 8; ++c)
+            {
+                float a = theta + 90.0f * (float)c;
+                if (a >= 720.0f)
+                    a -= 720.0f;
+                ang[c] = a;
+                acc += lab.areaIn(c, a) + lab.areaEx(c, a);
+            }
+            if ((i & 15) == 0)
+                lab.control(16.0f / 96000.0f, omega, 680.0f, 0.5f, 300000.0f, 363.0f, ang, -1.0f, -1.0f, -1.0f);
+        }
+        return acc;
+    }
+
+    float runRef(int n, float omega) [[clang::nonblocking]]
+    {
+        float theta = 0.0f;
+        float acc = 0.0f;
+        const float dDeg = omega / 96000.0f * 57.2957795f;
+        for (int i = 0; i < n; ++i)
+        {
+            theta += dDeg;
+            if (theta >= 720.0f)
+                theta -= 720.0f;
+            for (int c = 0; c < 8; ++c)
+            {
+                float a = theta + 90.0f * (float)c;
+                if (a >= 720.0f)
+                    a -= 720.0f;
+                ang[c] = a;
+                acc += cy[c].aI * cy[c].areaAt(a, cy[c].ivo, cy[c].idur) + cy[c].aE * cy[c].areaAt(a, cy[c].evo, cy[c].edur);
+            }
+        }
+        return acc;
+    }
+};
+)";
+} // namespace
+
+TEST_CASE("cost: what the lab adds to a sample of a V8, against the reference's areas", "[valvetrain][cost]")
+{
+    tee::Program& prog = tee::test::lab::program("valvetrain/lab.fm", kBench);
+    Obj spec(prog, "ValveLabSpec");
+    spec.defaults();
+    spec.set("inPhaseRange", 40.0);
+    spec.set("exPhaseRange", 30.0);
+    spec.set("stages", 1);
+    Obj bench(prog, "LabBench");
+    for (int c = 0; c < 8; ++c)
+    {
+        const std::string cy = "cy[" + std::to_string(c) + "].";
+        bench.set(cy + "cyc", 720.0);
+        bench.set(cy + "ivo", 359.0);
+        bench.set(cy + "idur", 250.0);
+        bench.set(cy + "evo", 109.0);
+        bench.set(cy + "edur", 250.0);
+        bench.set(cy + "aI", 0.001);
+        bench.set(cy + "aE", 0.001);
+    }
+    std::string errors;
+    auto* labSetup = prog.function<void(void*, float, int, float)>("ValveLab::setup", errors);
+    auto* labReset = prog.function<void(void*)>("ValveLab::reset", errors);
+    auto* labApply = prog.function<void(void*, void*, int)>("ValveLab::apply", errors);
+    REQUIRE(labApply != nullptr);
+    tee::Schema::Handle h;
+    REQUIRE(bench.schema->find("lab", h, errors));
+    void* lab = static_cast<unsigned char*>(bench.data()) + h.offset;
+    labSetup(lab, 0.1016f, 8, 720.0f);
+    labReset(lab);
+    labApply(lab, spec.data(), 1);
+    auto* run = bench.fn<float(void*, int, float)>("run");
+    auto* runRef = bench.fn<float(void*, int, float)>("runRef");
+    const int n = 96000;
+    auto time = [&](auto* f) {
+        double best = 1e30;
+        for (int r = 0; r < 5; ++r)
+        {
+            const auto t0 = std::chrono::steady_clock::now();
+            volatile float sink = f(bench.data(), n, 600.0f);
+            (void)sink;
+            const auto t1 = std::chrono::steady_clock::now();
+            best = std::min(best, std::chrono::duration<double, std::nano>(t1 - t0).count() / n);
+        }
+        return best;
+    };
+    const double lab8 = time(run);
+    const double ref8 = time(runRef);
+    std::printf("[valvetrain] cost a 96 kHz sample, eight cylinders' areas: the lab %.1f ns, the reference's %.1f ns: "
+                "%.1f ns more\n", lab8, ref8, lab8 - ref8);
+    // card E's share is 0.05 R; R is some 3400 ns here (tee-bench, the V8): 170 ns. A loose bound, the machine shared
+    CHECK(lab8 - ref8 < 170.0);
 }
