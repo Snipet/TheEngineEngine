@@ -11,5 +11,9 @@ const Known kKnown[] = {
      "the ranges' corners seed 1: 2.1 to 4.9 R (Q measured 2.1 to 2.4 on a quieter host); reported as the heavy case"},
     {"X-017", "2026-11-24", "N1 and D (959454c)", "*", "*", "*", "tel-range:engine.chargeTemperature",
      "tel.engine.chargeTemperature reads 0 K until the first charge (about 0.5 s): it should read the air's"},
+    {"X-019", "2026-11-24", "M (sim/sound/; via the lead)", "corners 3", "fuzz", "corners", "guard",
+     "the ranges' corners seed 3: sound/osc.fm:34 indexes its table with a NaN (-2147483648); SIGSEGV without checks"},
+    {"X-019", "2026-11-24", "M (sim/sound/; via the lead)", "corners 3", "fuzz", "corners", "silent",
+     "the same run: after the stop the engine is restarted silent"},
     {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},   // the end (an array is never empty)
 };
