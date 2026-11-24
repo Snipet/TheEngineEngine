@@ -142,7 +142,16 @@ package's integration has landed.
 - **I, later**: an automatic whose tyres spin shifts up on the flaring output speed and can shift down again when
   they hook up.
 
-## The exhaust gas is too cool (found by F, 14:33): D and H, then G, C and U3
+## ~~The exhaust gas is too cool~~ (claimed by F at 14:33; **not reproduced, withdrawn 14:45**)
+
+**Withdrawn.** The integrator measured it (`tests/sim/core/EnergyExplore.cpp`): at full load on the dyno `exh.tPort`
+is 1100 to 1330 K (default V8 at 4000 rpm: 1214 K after 12 s; F's own turbo four: 1326 K), reached from near ambient
+with a 0.8 s time constant; one cylinder's balance: work 36 % of the fuel's energy, walls 11 % plus the reference's
+20 % cut at the burn, exhaust 38 %. F most likely read `tPort` in the first half second, or the gas after the
+pipes' cooling, or what its own stand-in hands the housings: F is checking and re-running the matched turbine. Kept
+from it: the balance becomes a test with bounds (D), the port temperature a validation target (C), and with the new
+models the 20 % cut moves into the wall heat (D with H, not urgent). What follows is the alarm as first written.
+
 
 At full throttle the reference's port gas (`exh.tPort`, from the cylinders' `eSum` / `mSum`) is 450 to 560 K; a
 real petrol engine's is 900 to 1100 K, a diesel's 700 to 1000 K. The work is right (BMEP 10.2 to 10.8 bar), so the

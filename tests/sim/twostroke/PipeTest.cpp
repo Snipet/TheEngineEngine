@@ -15,8 +15,9 @@ namespace
         std::vector<double> rpm, fresh, torque, gain;
         double tuned = 0.0, c = 0.0;
 
-        // The pipe's band: its gain (the trapped fresh charge over a straight pipe's at the same speed: the crankcase's
-        // own filling, best at low speed, divided out) in the top third between its least and its most; the centre
+        // The pipe's band: its gain (the trapped fresh charge over an endless pipe's at the same speed: the crankcase's
+        // own filling, best at low speed, divided out by a pipe that sends nothing back but holds no more back pressure
+        // than an open end; a straight pipe will not do, having a tuning of its own) in the top third between its least and its most; the centre
         // weighted by how far above that it is (steadier than the single highest point)
         double centre() const
         {
@@ -38,14 +39,17 @@ namespace
         }
     };
 
+    // chamber: 1 the expansion chamber, 0 a straight pipe, -1 an endless one (no reflection)
     Sweep run(double scale, int steps, int chamber, double from, double to, double by)
     {
         Rig rig;
         for (const char* f : {"spec.headerLen", "spec.diffuserLen", "spec.bellyLen", "spec.baffleLen", "spec.stingerLen"})
             rig.set(f, rig.get(f) * scale);
         rig.set("spec.coneSteps", steps);
-        rig.set("spec.chamber", chamber);
+        rig.set("spec.chamber", chamber < 0 ? 0 : chamber);
         rig.build();
+        if (chamber < 0)
+            rig.set("ch.anechoic", 1);
         Sweep s;
         s.tuned = rig.get("ch.tuned");
         s.c = rig.get("ch.c");
@@ -63,9 +67,9 @@ namespace
     Sweep sweep(double scale, int steps = 8, int chamber = 1, double from = 5000, double to = 17000, double by = 500)
     {
         Sweep s = run(scale, steps, chamber, from, to, by);
-        const Sweep straight = run(scale, steps, 0, from, to, by);
+        const Sweep endless = run(scale, steps, -1, from, to, by);
         for (std::size_t i = 0; i < s.rpm.size(); ++i)
-            s.gain.push_back(s.fresh[i] / straight.fresh[i]);
+            s.gain.push_back(s.fresh[i] / endless.fresh[i]);
         return s;
     }
 
@@ -90,29 +94,43 @@ TEST_CASE("the trapped charge peaks where the pipe's returning wave says, within
     }
 }
 
-TEST_CASE("on the pipe: a torque band the straight pipe does not have", "[twostroke][pipe]")
+TEST_CASE("on the pipe: a torque band with a step into it, which the straight pipe does not have", "[twostroke][pipe]")
 {
-    const Sweep chamber = sweep(1.0);
-    const Sweep straight = run(1.0, 8, 0, 5000, 17000, 500);
-    const double centre = chamber.centre();
-    double band = 0, below = 0, straightBand = 0;
+    // the band: the chamber's best torque and the 500 rpm either side of it; the step: the most the torque rises over
+    // 1000 rpm on the way up to it; compared with the chamber at 0.7 of the band's speed and a straight pipe of the same
+    // length at the band's speed
+    const Sweep chamber = run(1.0, 8, 1, 5000, 17000, 250);
+    const Sweep straight = run(1.0, 8, 0, 5000, 17000, 250);
+    std::size_t peak = 0;
+    for (std::size_t i = 0; i < chamber.rpm.size(); ++i)
+        if (chamber.torque[i] > chamber.torque[peak])
+            peak = i;
+    const double at = chamber.rpm[peak];
+    double band = 0, bandStraight = 0, below = 0, step = 0;
+    int nb = 0;
     for (std::size_t i = 0; i < chamber.rpm.size(); ++i)
     {
-        if (std::abs(chamber.rpm[i] - centre) <= 1000)
+        if (std::abs(chamber.rpm[i] - at) <= 500)
         {
-            band = std::max(band, chamber.torque[i]);
-            straightBand = std::max(straightBand, straight.torque[i]);
+            band += chamber.torque[i];
+            bandStraight += straight.torque[i];
+            nb += 1;
         }
-        if (std::abs(chamber.rpm[i] - 0.7 * centre) <= 500)
-            below = std::max(below, chamber.torque[i]);
+        if (std::abs(chamber.rpm[i] - 0.7 * at) <= 125)
+            below = chamber.torque[i];
+        if (i + 4 <= peak)
+            step = std::max(step, chamber.torque[i + 4] / chamber.torque[i]);
     }
-    std::printf("on the pipe (%.0f rpm +- 1000): %.2f N m; at 0.7 of it: %.2f N m; a straight pipe there: %.2f N m\n", centre,
-                band, below, straightBand);
-    for (std::size_t i = 0; i < chamber.rpm.size(); ++i)
+    band /= nb;
+    bandStraight /= nb;
+    for (std::size_t i = 0; i < chamber.rpm.size(); i += 2)
         std::printf("  %6.0f rpm: chamber %5.2f N m (%5.1f mg), straight %5.2f N m (%5.1f mg)\n", chamber.rpm[i],
                     chamber.torque[i], chamber.fresh[i] * 1e6, straight.torque[i], straight.fresh[i] * 1e6);
+    std::printf("on the pipe (%.0f rpm +- 500): %.2f N m; at 0.7 of it %.2f N m; a straight pipe there %.2f N m; the steepest "
+                "rise into the band %.0f %% in 1000 rpm\n", at, band, below, bandStraight, 100.0 * (step - 1.0));
     CHECK(band > 1.25 * below);
-    CHECK(band > 1.25 * straightBand);
+    CHECK(band > 1.25 * bandStraight);
+    CHECK(step > 1.25);
 }
 
 TEST_CASE("how many steps a cone needs before the tuned speed stops moving", "[twostroke][pipe]")

@@ -8,6 +8,21 @@ module FuelSpec
 {
     int rev [[ui::hidden]];
     int kind [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Fuel")]] [[ui::choices("Gasoline", "Diesel")]];
-    // the package's model (the integrator's switch, sim/README.md): 0 the reference's, bit for bit; 1 the package's own
-    int model [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Combustion model")]] [[ui::choices("Reference", "New")]];
+    // fuel.model 1 (card H): the fuels of sim/combustion/ (0: the reference's gasoline and diesel, bit for bit)
+    int model [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Combustion model")]]
+        [[ui::choices("Reference", "Fuels")]];
+    int grade [[fminus::range(0, 8)]] [[fminus::default(0)]] [[ui::label("Fuel")]]
+        [[ui::choices("Regular (87)", "Midgrade (89)", "Premium (91)", "Race", "E85", "Methanol", "Diesel", "Propane (untested)",
+                      "Hydrogen (untested)")]];
+    float direct [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Direct injection")]] [[ui::quantity("fraction")]]
+        [[ui::help("0: port injection; 1: direct; between, a share of each")]];
+    float knockDelay [[fminus::range(0.25, 8)]] [[fminus::default(3)]] [[ui::label("Knock delay")]] [[ui::quantity("ratio")]]
+        [[ui::taper("log")]] [[ui::help("Douaud and Eyzat's ignition delay times this (3: the reference's V8 on regular at its knock edge)")]];
+    float injector [[fminus::range(1e-4, 2e-2)]] [[fminus::default(3.7e-3)]] [[ui::label("Injector size")]] [[ui::unit("kg/s")]]
+        [[ui::help("Each injector's flow wide open (3.7e-3 kg/s: some 300 cc/min of gasoline)")]];
+    float soiAdd [[fminus::range(-20, 20)]] [[fminus::default(0)]] [[ui::label("Injection timing")]] [[ui::quantity("angle")]];
+    float pilot [[fminus::range(0, 0.1)]] [[fminus::default(0)]] [[ui::label("Pilot injection")]] [[ui::quantity("fraction")]];
+    float rail [[fminus::range(200, 3000)]] [[fminus::default(1000)]] [[ui::label("Rail pressure")]] [[ui::unit("bar")]];
+    float overFuel [[fminus::range(0, 0.4)]] [[fminus::default(0)]] [[ui::label("Over-fuel")]] [[ui::quantity("fraction")]]
+        [[ui::help("Fuel past the smoke limit: more torque, black smoke")]];
 };

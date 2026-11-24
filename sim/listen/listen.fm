@@ -17,6 +17,11 @@
 //
 // What it leaves out: the car's body shading the sources, the ground's reflection, the Doppler shift of a pass-by.
 //
+// Model 1 (spec.sound.model, package L: docs/models/listen.md): the sources in their places on the car and a listener
+// who hears each by its paths, with all three of those (listen/scene.fm); the cabin's boom through the mounts
+// (listen/cabin.fm); the places (listen/places.fm); the level computed for the build (loudness). Model 0 is the
+// reference's path above, untouched: the null test holds it to the bit.
+//
 // Seen from Engine (sim/README.md has the signatures):
 //   setup(rate, hostRate)  in init (allocates); release() in end
 //   resetPaths()           the tailpipes' delay lines emptied (a new engine)
@@ -28,6 +33,12 @@
 #include "lib/onepole.fm"
 #include "lib/biquad.fm"
 #include "hall.fm"
+#include "scene.fm"
+#include "cabin.fm"
+#include "places.fm"
+#include "../spec/limits.fm"
+#include "../spec/sound.fm"
+#include "../spec/telemetry.fm"
 
 module Listen
 {
@@ -106,6 +117,32 @@ module Listen
     float gdT;
     float eL;
     int ready;
+    // ---- model 1 (package L) ----
+    int model;          // spec.sound.model as this part has it
+    SoundSpec* ss;
+    SoundTel* st;
+    Scene sc;
+    CabinBoom boom;
+    Place plc;
+    float sEx;          // this part's strengths of the sources, as each leaves its place (at 1 m)
+    float sIn;
+    float sMc;
+    float sBk;
+    float sSh;
+    float sTb;
+    float sSt;
+    float sCo;
+    float sRd;
+    float boomG;        // the cabin's boom, gliding in and out with the DRIVER camera
+    float boomT;
+    float boomStep;
+    float shFx;         // the engine's free forces and moments (a custom engine's: else 0), this part
+    float shFy;
+    float shMx;
+    float shMy;
+    int placeUse;
+    float inside;       // the place's reflections' share: a third in the cabin with the windows shut
+    float loud;         // the computed level (loudness), as a gain
 
     void setup(float rateIn, float hostIn)
     {
@@ -197,6 +234,13 @@ module Listen
         kDist16 = 1.0f - expf(-16.0f / (0.03f * rate));
         kGlide = 1.0f - expf(-1.0f / (0.01f * rate));
         airFc = -1.0f;
+        sc.setup(rate);
+        boom.setup(rate);
+        plc.setup(rate);
+        model = 0;
+        boomG = 0.0f;
+        boomStep = 16.0f / (0.25f * rate);
+        loud = 1.0f;
         ready = 1;
     }
 
@@ -215,6 +259,8 @@ module Listen
             free(rsBl);
             free(rsBr);
             free(rsTab);
+            sc.release();
+            plc.release();
         }
         ready = 0;
     }
@@ -227,6 +273,12 @@ module Listen
         dirSh[0].clear();
         dirSh[1].clear();
         lnView = -1;
+        if (model != 0)
+        {
+            sc.reset();
+            boom.clear();
+            plc.clear();
+        }
     }
 
     // How much of each source reaches where you listen: the exhaust, the intake, the valvetrain, the block, the
@@ -379,8 +431,28 @@ module Listen
     // MECHANICAL; distance, room, levelDb), the induction (asp: 0 none, 1 to 3 turbos, 4 a supercharger), the layout's
     // trims (exTrim, gainNorm) and its tailpipes (nPipes, bike, tailD)
     void block(int v, float intakeK, float mechK, float distance, float room, float levelDb, int asp, float exTrim,
-               float gainNorm, int nPipes, float bike, float tailD)
+               float gainNorm, int nPipes, float bike, float tailD, SoundSpec* ssIn, SoundTel* stIn, float carSpeed,
+               int driven, float vTotal, int nCyl, float fx, float fy, float mx, float my)
     {
+        ss = ssIn;
+        st = stIn;
+        const int mWant = ss->model != 0 ? 1 : 0;
+        if (mWant != model)
+        {
+            // another listener: from rest (the engine's own fade is not asked for: the old path's tail is cut, and
+            // the new one starts from silence in its lines)
+            model = mWant;
+            sc.reset();
+            boom.clear();
+            plc.clear();
+            rS = -1.0f;
+        }
+        if (model != 0)
+        {
+            block1(intakeK, mechK, distance, room, levelDb, asp, exTrim, gainNorm, nPipes, bike, tailD, carSpeed, driven,
+                   vTotal, nCyl, fx, fy, mx, my);
+            return;
+        }
         vNow = v;
         gEx = viewGain(v, 0) * kEx * exTrim;
         // (a turbo's compressor stands between the engine and the air box: the pulsing that comes out of it some 9 dB
@@ -439,6 +511,11 @@ module Listen
     void mix(int i, float xLin, float xRin, float inIn, float tqNow, float mech, float blockN, float turbo,
              float starter, float comb, float sh0, float sh1, int driven, float road, float cutG)
     {
+        if (model != 0)
+        {
+            mix1(i, xLin, xRin, inIn, tqNow, mech, blockN, turbo, starter, comb, sh0, sh1, road, cutG);
+            return;
+        }
         const int v = vNow;
         float xL = xLin;
         float xR = xRin;
@@ -476,6 +553,11 @@ module Listen
     // and right from at
     void finish(float* left, float* right, int at, int m)
     {
+        if (model != 0)
+        {
+            finish1(left, right, at, m);
+            return;
+        }
         hall.process(sA, sB, sC, sD, m, rt);
         // (three passes over the part, each sample computed exactly as one pass would: the levels and the compressor's
         // envelope in order; then its gain, a log and an exp a sample, in a loop of its own that vectorises (FMinus's
@@ -505,6 +587,122 @@ module Listen
             float L = sA[i] * gc;
             float R = sB[i] * gc;
             // a limiter for the loudest moments, then a soft ceiling
+            const float pk = fmaxf(fabsf(L), fabsf(R)) * lim;
+            if (pk > 0.85f)
+                lim *= 0.85f / pk;
+            else
+                lim += (1.0f - lim) * limRel;
+            L *= lim;
+            R *= lim;
+            const float aL = fabsf(L);
+            const float aR = fabsf(R);
+            const float yL = aL < 0.7f ? aL : 0.7f + 0.3f * tanhf((aL - 0.7f) / 0.3f);
+            const float yR = aR < 0.7f ? aR : 0.7f + 0.3f * tanhf((aR - 0.7f) / 0.3f);
+            left[at + i] += L < 0.0f ? -yL : yL;
+            right[at + i] += R < 0.0f ? -yR : yR;
+            peakOut = fmaxf(peakOut, fmaxf(yL, yR));
+        }
+    }
+
+    // ---- model 1 (package L): the sources in their places, a listener, the cabin, the places, the level ----
+
+    // Every 16 samples: the camera and the sources' strengths. Each source leaves its place as loud as the reference
+    // makes it (its k and the dials, as block's), times a strength fitted once so that the five cameras that are the
+    // reference's views hear the sources in the reference's balance (docs/models/listen.md has the fit and what it
+    // left); the paths do the rest
+    void block1(float intakeK, float mechK, float distance, float room, float levelDb, int asp, float exTrim,
+                float gainNorm, int nPipes, float bike, float tailD, float carSpeed, int driven, float vTotal, int nCyl,
+                float fx, float fy, float mx, float my)
+    {
+        const int cam = ss->camera < 0 ? 0 : (ss->camera > 6 ? 6 : ss->camera);
+        const float rr = 0.5f * expf(4.0943446f * distance);
+        sc.block(cam, rr, driven != 0 ? carSpeed : 0.0f, ss->ground, fminf(fmaxf(ss->windows, 0.0f), 1.0f), tailD, nPipes,
+                 bike, ss->enginePlace, driven, 0);
+        // (the fitted strengths, dB: exhaust -4.85, intake +0.8, valvetrain +0.3, block -1.6, headers' walls +0.9,
+        // turbo +2, starter -0.4, combustion +2.4, tyres -8.2; tests/sim/listen/ExploreTest.cpp makes the table)
+        sEx = kEx * exTrim * 0.572f;
+        sIn = kIn * (0.25f + 1.5f * intakeK) * (asp >= 1 && asp <= 3 ? 0.35f : 1.0f) * 1.094f;
+        sMc = kMc * 2.0f * mechK * 1.039f;
+        sBk = kBk * 2.0f * mechK * 0.832f;
+        sSh = kSh * 1.109f;
+        sTb = kTb * 1.259f;
+        sSt = kSt * 0.958f;
+        sCo = kBk * (0.5f + 1.25f * mechK) * 1.318f;
+        sRd = 0.389f;
+        shFx = fx;
+        shFy = fy;
+        shMx = mx;
+        shMy = my;
+        boomT = sc.camUse == CAM_DRIVER ? 1.0f : 0.0f;
+        // the place: its reflections a third as loud in the cabin with the windows shut
+        placeUse = ss->place < 0 ? 0 : (ss->place > 4 ? 4 : ss->place);
+        const float win = fminf(fmaxf(ss->windows, 0.0f), 1.0f);
+        inside = sc.camUse == CAM_DRIVER ? 0.3f + 0.7f * win : 1.0f;
+        rt = plc.rt(placeUse, room);
+        wetT = plc.wet(placeUse, room) * (placeUse == PL_HALL ? 0.5f + 0.5f * fminf(sc.vw[sc.cur].range / 12.0f, 1.0f) : 1.0f)
+               * (sc.camUse == CAM_DRIVER ? 0.3f + 0.7f * win : 1.0f);
+        loud = gainNorm;
+        outT = loud * expf(0.115129255f * levelDb);
+        if (rS < 0.0f)
+        {
+            rS = rr;
+            outS = outT;
+            wetS = wetT;
+        }
+        rS = rr;
+        // the telemetry
+        st->camera = sc.camUse;
+        st->range = sc.vw[sc.cur].range;
+        st->doppler = 1.0f - sc.vw[sc.cur].slope;
+        st->roadPosition = sc.camUse == CAM_TRACKSIDE ? 2.2f - sc.rel : 0.0f;
+        st->loudness = 8.6858896f * logf(fmaxf(loud, 1.0e-9f));
+    }
+
+    // Sample i: each source's signal into its place, heard; the cabin's boom; the fade's gain
+    void mix1(int i, float xL, float xR, float in, float tqNow, float mech, float blockN, float turbo, float starter,
+              float comb, float sh0, float sh1, float road, float cutG)
+    {
+        sc.in[LS_TAIL0] = sEx * xL;
+        sc.in[LS_TAIL1] = sEx * xR;
+        sc.in[LS_INTAKE] = sIn * in;
+        sc.in[LS_BAY] = sMc * mech + sBk * blockN + sSh * 0.5f * (sh0 + sh1);
+        sc.in[LS_BAYOPEN] = sTb * turbo + sSt * starter + sCo * comb;
+        sc.in[LS_TYRES] = sRd * road;
+        sc.in[LS_DRIVE] = 0.0f;
+        sc.tick();
+        float L = sc.outL;
+        float R = sc.outR;
+        if (boomT > 0.0f || boomG > 0.0f)
+        {
+            const float cb = kCb * boom.tick(tqNow, shFx, shFy, shMx, shMy);
+            L += boomG * cb;
+            R += boomG * cb;
+            if ((i & 15) == 0)
+                boomG = boomT > boomG ? fminf(boomG + boomStep, boomT) : fmaxf(boomG - boomStep, boomT);
+        }
+        const float g = cutG * cutG * (3.0f - 2.0f * cutG);
+        sA[i] = L * g;
+        sB[i] = R * g;
+    }
+
+    // The part through the place, the level, the compressor, the limiter and the ceiling (as finish's)
+    void finish1(float* left, float* right, int at, int m)
+    {
+        hall.process(sA, sB, sC, sD, m, rt);
+        plc.process(sA, sB, sA, sB, m, placeUse, inside);
+        for (int i = 0; i < m; ++i)
+        {
+            outS += (outT - outS) * kGlide;
+            wetS += (wetT - wetS) * kGlide;
+            float L = (sA[i] + wetS * sC[i]) * outS;
+            float R = (sB[i] + wetS * sD[i]) * outS;
+            const float pw = 0.5f * (L * L + R * R);
+            env += (pw - env) * (pw > env ? compA : compR);
+            const float db = 4.3429448f * logf(fmaxf(env, 1.0e-12f));
+            const float over = fmaxf(db + 30.0f, 0.0f);
+            float gc = expf(-0.115129255f * (over * 0.4f - 5.0f));
+            L *= gc;
+            R *= gc;
             const float pk = fmaxf(fabsf(L), fabsf(R)) * lim;
             if (pk > 0.85f)
                 lim *= 0.85f / pk;

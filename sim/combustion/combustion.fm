@@ -12,9 +12,20 @@
 // It reads the ECU's cuts, trim, throttle, idle valve and speeds, the heat's temperatures; it writes the cylinder's
 // charge (qTot, sparkAt, burnDur, knock, cBurn, beta, dur2), the heat the burn gives (Heat's heatJ), the ECU's knock
 // retard (kRet: its knock sensor hears it) and fires a pop in the exhaust's collector (Pop).
+//
+// fuel.model 1 or ecu.model 1 (card H; docs/models/combustion.md): a gasoline charge by charge1() instead: the ECU's
+// decision for the firing (ecu.model 1: Ecu1.fire, its spark and lambda; else the reference's cut and spark), the
+// fuel's heat at that lambda (fuel.model 1: Charge1 and the fuel's row; else the reference's), knock from the end gas
+// (fuel.model 1: EndGas, ticked every 4 samples by sample(); else the reference's rule), the unburned fuel and air to
+// the ECU's account, whose bangs sample() fires in the Pops. A diesel takes fuel.model 1's fields (diesel.fm). Under
+// both models 0 none of it runs and sample() returns at once.
+//
+//   sample(cy, c, dt)   each sample, after cylinder c's step
 #pragma once
 #include "lib/noise.fm"
 #include "spec/limits.fm"
+#include "charge1.fm"
+#include "diesel.fm"
 
 module Combustion
 {
@@ -26,9 +37,17 @@ module Combustion
     Pop* pop;
     float droop;        // a diesel's governor near its redline: the share of the fuel it lets through
     float dilution[MAX_CYL]; // each cylinder's burned-gas share at its last intake closing
+    // fuel.model 1 and ecu.model 1 (card H)
+    FuelSpec* fuel;
+    Charge1 one;
+    EndGas gas[MAX_CYL];
+    DieselFields diesel;
+    int ticks;          // samples, for the end gas's tick every 4
 
-    void setup(float rateIn, Noise* noise, Ecu* ecuIn, Heat* heatIn, Layout* layIn, Pop* pops)
+    void setup(float rateIn, Noise* noise, Ecu* ecuIn, Heat* heatIn, Layout* layIn, Pop* pops, FuelSpec* fuelIn)
     {
+        fuel = fuelIn;
+        diesel.defaults();
         rate = rateIn;
         nz = noise;
         ecu = ecuIn;
@@ -51,6 +70,11 @@ module Combustion
         if (fuelUse != 0)
         {
             chargeDiesel(cy, ci, pPlenum, rpm, smCR, burnK, rough, timing);
+            return;
+        }
+        if (fuel->model == 1 || ecu->model1())
+        {
+            charge1(cy, ci, pPlenum, rpm, smCR, crBs, burnK, rough, timing);
             return;
         }
         droop = 1.0f;
@@ -146,7 +170,15 @@ module Combustion
         cy->cBurn = 1.0f;
         droop = fminf(fmaxf((ecu->redRpm + 50.0f - rpm) / 250.0f, 0.0f), 1.0f);
         const float lever = fminf(fmaxf(fmaxf(ecu->throttle, 0.12f + 0.5f * ecu->bypass), 0.45f * expf(-ecu->sinceStart / 1.0f)), 1.0f) * droop;
-        const float phi = 0.75f * lever;
+        const bool f1 = fuel->model == 1;
+        if (f1)
+        {
+            diesel.soiAdd = fuel->soiAdd;
+            diesel.pilot = fuel->pilot;
+            diesel.rail = fuel->rail;
+            diesel.overFuel = fuel->overFuel;
+        }
+        const float phi = f1 ? diesel.phiAt(lever) : 0.75f * lever;
         const float sigma = 0.015f + 0.06f * rough;
         float q = air * phi / 14.5f * 42.5e6f * 0.62f * fmaxf(1.0f + cy->bias + sigma * nz->gauss(), 0.0f) * ecu->trim;
         if (ecu->fuelCut)
@@ -154,7 +186,7 @@ module Combustion
         // (TIMING injects earlier; a cold chamber's walls take more of the squeeze's heat, its charge some 4 % cooler
         // at the top, and cranking's slow squeeze loses more still (and blows by), some 20 %; its glow plugs heat it
         // while it cranks, and for a minute and a half after a cold start)
-        const float soi = 4.0f + 14.0f * fminf(rpm / ecu->redRpm, 1.2f) + 3.0f * lever + timing;
+        const float soi = 4.0f + 14.0f * fminf(rpm / ecu->redRpm, 1.2f) + 3.0f * lever + timing + (f1 ? diesel.soiAdd : 0.0f);
         const float lr = logf(fmaxf(cy->v / cy->volumeAt(lay->cyc - soi), 1.0f));
         const float cold = 1.0f - heat->warmS;
         const float nSq = 0.35f - 0.015f * cold - (ecu->state == 1 ? 0.08f : 0.0f);
@@ -186,8 +218,172 @@ module Combustion
         if (cy->sparkAt >= lay->cyc)
             cy->sparkAt -= lay->cyc;
         cy->beta = fminf(fmaxf(1.0f - 0.926f * expf(0.37f * logf(fmaxf(phi, 0.01f)) - 0.26f * logf(fmaxf(tau, 0.05f))), 0.05f), 0.9f);
+        if (f1)
+            cy->beta = diesel.premixed(cy->beta);
         cy->burnDur = 4.5f + 2.5f * fminf(rpm / ecu->redRpm, 1.0f);
         cy->knock = 0.0f;
         cy->dur2 = (35.0f + 30.0f * lever) * (1.0f + 0.08f * rough * nz->gauss()) * burnK;
+        if (f1)
+            cy->dur2 = diesel.diffusion(cy->dur2);
+    }
+
+    // A gasoline charge under fuel.model 1 or ecu.model 1: the reference's dilution toll, scatter and burn's length,
+    // with the firing, the spark and lambda the ECU's (ecu.model 1), the heat the fuel's (fuel.model 1), and knock from
+    // the end gas (fuel.model 1) or the reference's rule
+    void charge1(Cylinder* cy, int ci, float pPlenum, float rpm, float smCR, float crBs, float burnK, float rough, float timing)
+    {
+        const bool f1 = fuel->model == 1;
+        const bool e1 = ecu->model1();
+        droop = 1.0f;
+        ecu->cylinders = lay->n;
+        if (ci == 0)
+            ecu->watch.cycle();
+        const float dil = fminf(cy->mInert / fmaxf(cy->m, 1.0e-9f), 0.95f);
+        const float burnable = fmaxf(cy->m - cy->mInert, 0.0f);
+        const float share = 0.60f + 0.20f * fminf(pPlenum / 101325.0f, 1.2f);
+        const float d50 = (lay->rotary != 0 ? 0.62f : 0.56f) * (1.0f + (0.015f + 0.03f * rough) * nz->gauss());
+        const float cb = 1.0f / (1.0f + expf((dil - d50) / 0.035f));
+        cy->cBurn = cb;
+        dilution[ci] = dil;
+        const float sigma = 0.015f + 0.06f * rough;
+        const float factor = cb * fmaxf(1.0f + cy->bias + sigma * nz->gauss(), 0.0f) * ecu->trim;
+        // the ECU's decision and spark (degrees before the top)
+        int firing = CHARGE_BURN;
+        float adv = 0.0f;
+        float lambda = 1.0f;
+        float kRetC = ecu->kRet;
+        if (e1)
+        {
+            ecu->one.maps.tune.burnK = burnK;
+            firing = ecu->one.fire(ci);
+            adv = ecu->one.sparkFor;
+            lambda = ecu->one.lambda;
+            kRetC = ecu->one.knock.retard[ci < 16 ? ci : 15];
+        }
+        else
+        {
+            firing = ecu->fuelCut ? CHARGE_FUEL_CUT : CHARGE_BURN;
+            adv = 12.0f + 22.0f * sqrtf(fminf(rpm / ecu->redRpm, 1.2f)) - 8.0f * (pPlenum / 101325.0f - 0.4f)
+                  + 22.0f * (burnK - 1.0f) + timing - ecu->kRet;
+        }
+        adv = fminf(fmaxf(adv, e1 ? -40.0f : 6.0f), 40.0f);
+        // the heat, and what leaves unburned
+        float q = 0.0f;
+        float outFuel = 0.0f;
+        float outAir = burnable;
+        float burnLen = 1.0f;
+        if (f1)
+        {
+            one.make(fuel->grade, firing, burnable, 1.0f, lambda, fuel->direct, cy->t, share, factor, -adv,
+                     0.5f + 0.5f * nz->rnd());
+            q = one.heat;
+            outFuel = one.outFuel;
+            outAir = one.outAir;
+            burnLen = one.burnK;
+            ecu->sensor.firing(one.lambdaOut);
+            ecu->lastFuel = one.fuel;
+            ecu->meter.firing(one.fuel);
+        }
+        else
+        {
+            const float f = firing == CHARGE_FUEL_CUT ? 0.0f : burnable / 14.0f;
+            const float inCyl = firing == CHARGE_BURN ? 1.0f : (firing == CHARGE_OVERRUN ? fminf(fmaxf(1.0f + adv / 60.0f, 0.0f), 1.0f) : 0.0f);
+            q = burnable / 14.0f * 44.0e6f * share * factor * inCyl;
+            outFuel = f * (1.0f - inCyl);
+            outAir = burnable * (1.0f - inCyl);
+            ecu->sensor.firing(f > 0.0f ? 1.0f : 10.0f);
+            ecu->lastFuel = f;
+            ecu->meter.firing(f);
+        }
+        if (e1)
+        {
+            const int b = lay->topo == 0 ? 0 : lay->bank[ci];
+            ecu->one.account.add(b, outFuel, outAir);
+        }
+        cy->qTot = q;
+        heat->heatJ += q;
+        cy->knock = 0.0f;
+        const float dx = fmaxf(dil - 0.15f, 0.0f);
+        cy->sparkAt = lay->cyc - adv + 1.5f * rough * nz->gauss() + 25.0f * fminf(dx, 0.3f);
+        if (cy->sparkAt >= lay->cyc)
+            cy->sparkAt -= lay->cyc;
+        cy->burnDur = (44.0f + 11.0f * fmaxf(0.8f - pPlenum / 101325.0f, 0.0f)) * (1.0f + 0.08f * rough * nz->gauss())
+                      * (1.0f + 2.5f * dx) * burnK * expf(-0.3f * logf(smCR * 0.1f)) * burnLen;
+        if (f1)
+        {
+            // the end gas from now (sample() ticks it)
+            // (running only: cranking's slow squeeze loses its heat to the walls, which the isentropic end gas does not
+            // know, and Douaud and Eyzat's fit is a running engine's)
+            if (q > 0.0f && ecu->state == 2)
+                gas[ci].start(cy->p, one.tEnd, fuelOctane(fuel->grade), fuel->knockDelay);
+            else
+                gas[ci].stop();
+            return;
+        }
+        // the reference's knock rule, with this cylinder's retard
+        const float mapB = pPlenum / 101325.0f;
+        const float crLim = (mapB >= 1.0f ? 14.0f - 2.5f * (mapB - 1.0f) : 14.0f + 20.0f * (1.0f - mapB)) + crBs
+                            - 0.12f * (timing - kRetC) - 0.03f * (heat->tAmb + 5.0f * heat->warm - 305.0f) - 0.02f * (heat->tCool - 363.0f);
+        const float over = (smCR - crLim) / 3.0f;
+        if (over > 0.0f && q > 0.0f && 0.5f + 0.5f * nz->rnd() < fminf(4.0f * over, 1.0f))
+            cy->knock = fminf(1.5f * over, 1.5f) * (0.6f + 0.4f * fabsf(nz->rnd()));
+        if (cy->knock > 0.0f)
+        {
+            heard(ci, cy->knock / 1.5f);
+            cy->qTot = q * (1.0f - 0.1f * cy->knock);
+        }
+    }
+
+    // The knock sensor hears cylinder c at an intensity (0 to 1): the ECU's retard
+    void heard(int c, float intensity)
+    {
+        if (ecu->model1())
+            ecu->one.knock.heard(ecu->spec->knock.on, c, intensity, ecu->spec->knock.step, ecu->spec->knock.most);
+        else
+            ecu->kRet = fminf(ecu->kRet + 1.5f, 15.0f);
+    }
+
+    // Each sample, after cylinder c's step: under fuel.model 1 its end gas every 4 samples (a knock lights the rest
+    // of the charge: its ping, the heat it scrubs, the ECU's retard; before the spark, pre-ignition), cylinder 1's burn
+    // for the telemetry, and the bangs the ECU's account fired. Nothing under both models 0
+    void sample(Cylinder* cy, int c, float dt)
+    {
+        const bool f1 = fuel->model == 1;
+        if (!f1 && !ecu->model1())
+            return;
+        if (c == 0)
+        {
+            ticks += 1;
+            const float a = cy->ang > 0.5f * lay->cyc ? cy->ang - lay->cyc : cy->ang;
+            ecu->watch.tick(cy->p, a, cy->burnAt >= 0.0f ? cy->xPrev : 0.0f);
+            if (ecu->model1())
+                for (int b = 0; b < 2; ++b)
+                    if (ecu->one.account.pulse[b] > 0.0f)
+                    {
+                        pop[b].fire(ecu->one.account.pulse[b], rate, 99 + b);
+                        ecu->one.account.pulse[b] = 0.0f;
+                    }
+        }
+        if (!f1 || gas[c].on == 0 || ((ticks + c) & 3) != 0)
+            return;
+        const int lit = cy->burnAt >= 0.0f ? 1 : 0;
+        const float k = gas[c].tick(4.0f * dt, cy->p, lit != 0 ? cy->xPrev : 0.0f, lit);
+        if (k <= 0.0f)
+            return;
+        if (gas[c].pre != 0)
+        {
+            // pre-ignition: it burns from now, fast, against the piston
+            cy->burnAt = 0.0f;
+            cy->xPrev = 0.0f;
+            cy->burnDur = 20.0f;
+            cy->sparkAt = cy->ang;
+            cy->knock = 1.5f;
+        }
+        else
+        {
+            cy->knock = 1.5f * k;
+            cy->qTot *= 1.0f - 0.1f * cy->knock;
+        }
+        heard(c, fminf(k, 1.0f));
     }
 };

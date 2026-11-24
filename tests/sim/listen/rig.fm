@@ -1,0 +1,139 @@
+// rig.fm: the listener alone (sim/listen/listen.fm), fed test signals (package L's tests).
+//
+// LRig holds a Listen at the engine's rate (96 kHz: no resampler), the Spec's and the Telemetry's sound sections, and
+// the arguments Engine passes its block, mix and finish. run() plays n samples (a multiple of 16) in parts of 16, as
+// Engine::renderAt does, with one source fed the test signal (white noise, a sine, an impulse) and the rest silent.
+#pragma once
+#include "listen/listen.fm"
+
+module LRig
+{
+    Listen ln;
+    SoundSpec ss;
+    SoundTel st;
+    float rate;
+    int view;
+    float intakeK;
+    float mechK;
+    float distance;
+    float room;
+    float levelDb;
+    int asp;
+    float exTrim;
+    float gainNorm;
+    int nPipes;
+    float bike;
+    float tailD;
+    float carSpeed;
+    int driven;
+    float vTotal;
+    int nCyl;
+    float shake;        // the free forces' amplitude (N), fed as a sine at freq into fy when src is 3
+    // the test signal: src 0 the left tail, 1 the right, 2 the intake, 3 the torque (cabin), 4 mech, 5 block, 6 turbo,
+    // 7 starter, 8 comb, 9 the headers' walls (both), 10 the road; 11 both tails
+    int src;
+    int sig;            // 0 noise in an engine's band (100 Hz to 1.5 kHz), 1 a sine at freq, 2 an impulse at the next
+                        // sample, 4 white noise
+    float freq;
+    float amp;
+    float ph;
+    Noise nz;
+    OnePole bHp;
+    OnePole bLp1;
+    OnePole bLp2;
+    float cutG;
+
+    void init(float rateIn)
+    {
+        rate = rateIn;
+        ln.setup(rate, rate);
+        nz.rs = 4711;
+        bHp.set(100.0f, rate);
+        bLp1.set(1500.0f, rate);
+        bLp2.set(1500.0f, rate);
+        cutG = 1.0f;
+        view = 0;
+        intakeK = 0.5f;
+        mechK = 0.4f;
+        distance = 0.3f;
+        room = 0.0f;
+        levelDb = 0.0f;
+        asp = 0;
+        exTrim = 1.0f;
+        gainNorm = 1.0f;
+        nPipes = 2;
+        bike = 0.0f;
+        tailD = 0.06f;
+        carSpeed = 0.0f;
+        driven = 0;
+        vTotal = 0.0057f;
+        nCyl = 8;
+        src = 0;
+        sig = 0;
+        freq = 1000.0f;
+        amp = 0.001f;
+        ph = 0.0f;
+        ln.resetPaths();
+    }
+
+    void end()
+    {
+        ln.release();
+    }
+
+    void reset()
+    {
+        ln.resetPaths();
+    }
+
+    float signal()
+    {
+        if (sig == 0)
+            return 4.0f * amp * bLp2.lowpass(bLp1.lowpass(bHp.highpass(nz.rnd())));
+        if (sig == 4)
+            return amp * nz.rnd();
+        if (sig == 1)
+        {
+            ph += freq / rate;
+            if (ph >= 1.0f)
+                ph -= 1.0f;
+            return amp * sinf(6.28318531f * ph);
+        }
+        const float x = sig == 2 ? amp : 0.0f;
+        sig = 3;
+        return x;
+    }
+
+    void run(float* left, float* right, int n)
+    {
+        for (int i = 0; i < n; ++i)
+        {
+            left[i] = 0.0f;
+            right[i] = 0.0f;
+        }
+        int at = 0;
+        while (at < n)
+        {
+            const float sh = src == 3 ? shake : 0.0f;
+            ln.block(view, intakeK, mechK, distance, room, levelDb, asp, exTrim, gainNorm, nPipes, bike, tailD, &ss, &st,
+                     carSpeed, driven, vTotal, nCyl, 0.0f, 0.0f, 0.0f, 0.0f);
+            for (int i = 0; i < 16; ++i)
+            {
+                const float x = signal();
+                float s[12];
+                for (int k = 0; k < 12; ++k)
+                    s[k] = 0.0f;
+                if (src == 11)
+                {
+                    s[0] = x;
+                    s[1] = x;
+                }
+                else
+                    s[src < 0 ? 0 : (src > 10 ? 10 : src)] = x;
+                ln.mix(i, s[0], s[1], s[2], s[3], s[4], s[5], s[6], s[7], s[8], s[9], s[9], driven, s[10], cutG);
+            }
+            ln.finish(left, right, at, 16);
+            at += 16;
+        }
+    }
+};
