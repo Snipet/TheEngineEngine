@@ -125,6 +125,9 @@ module BoostMachine
                         // one-sided exhaust empties into side 0's downpipe
     float omegaMax[BOOST_TURBOS];
     float mMatch;                   // the engine's flow at its redline, matched, kg/s
+    // (card N2: the charge system against the engine it is on, for the telemetry's warnings: has, wants; see apply)
+    float icFlowHas;
+    float chargeVolHas;
     // the inlet
     float kFilter;
     float mInlet;       // through the filter (negative: out of it), kg/s
@@ -488,6 +491,8 @@ module BoostMachine
         v2.resize(0.6f * s->chargeVolume);
         icEff = s->icEffect;
         icK = s->icDrop / (s->icFlow * s->icFlow);
+        icFlowHas = s->icFlow;
+        chargeVolHas = s->chargeVolume;
         icDuct = dt * 0.008f / 0.8f;
         cCore = s->icMass * 900.0f;
         bovKind = s->blowOffKind;
