@@ -233,3 +233,101 @@
         (void)rig;
         return 0;
     }
+
+    // ---- arrays: the Spec's `float pin[MAX_CYL]`, an element a field ("cyl.pin[2]", label "Crank pin 3") ----
+    // The made-up Spec with a section of arrays: two of knobs' size, one of a table's, one longer than a table.
+    std::vector<tee::ui::FieldInfo> mockArrayFields()
+    {
+        std::vector<tee::ui::FieldInfo> out = tee::test::mockFields();
+        const auto array = [&](const std::string& name, const std::string& label, int n, tee::ui::FieldKind kind, double lo,
+                               double hi, std::vector<std::string> choices = {}) {
+            for (int e = 0; e < n; ++e)
+            {
+                tee::ui::FieldInfo f;
+                f.path = "cyl." + name + "[" + std::to_string(e) + "]";
+                f.kind = kind;
+                f.min = lo;
+                f.max = hi;
+                f.def = lo;
+                f.label = label + " " + std::to_string(e + 1);
+                f.unit = kind == tee::ui::FieldKind::number ? "deg" : "";
+                f.choices = choices;
+                f.group = "Cylinders";
+                f.array = "cyl." + name;
+                f.arrayLabel = label;
+                f.element = e;
+                f.extent = n;
+                out.push_back(f);
+            }
+        };
+        array("bankAngle", "Bank angle", 2, tee::ui::FieldKind::number, -180, 180);
+        array("pin", "Crank pin", 8, tee::ui::FieldKind::number, 0, 360);
+        array("fireRev", "Fires on", 12, tee::ui::FieldKind::choice, 0, 1, { "First", "Second" });
+        array("trim", "Trim", 18, tee::ui::FieldKind::number, -1, 1);
+        return out;
+    }
+
+    // An element named on a .gui page is a control of its own; an index past the array is a note that gives the extent;
+    // an element's edit is one undo step.
+    TEST(testGuiElement, "gui.element")
+    {
+        PageRig rig("");
+        rig.doc = tee::ui::MemoryDoc(mockArrayFields());
+        rig.open("knob cyl.pin[2]\nknob cyl.bankAngle[1]\nknob cyl.pin[20]\n");
+        CHECK(rig.page->controlRect("cyl.pin[2]").w > 0.0f && rig.page->controlRect("cyl.bankAngle[1]").w > 0.0f);
+        CHECK_MSG(rig.page->notes().find("page.gui:3:6: note: cyl.pin[20] is past the array: it has 8 elements, cyl.pin[0] "
+                                         "to cyl.pin[7]") != std::string::npos, rig.page->notes());
+        const int k = rig.page->params().findParam("cyl.pin[2]");
+        CHECK(k >= 0 && rig.page->params().info(k).label == "Crank pin 3" && rig.page->params().info(k).unit == "deg");
+        const int steps = rig.doc.steps();
+        const funkgui::Rect r = rig.page->controlRect("cyl.pin[2]");
+        rig.host->drag(r.centreX(), r.centreY(), r.centreX(), r.centreY() - 40.0f, 10);
+        CHECK(rig.value("cyl.pin[2]") > 0.0 && rig.value("cyl.pin[1]") == 0.0);
+        CHECK(rig.doc.steps() == steps + 1);
+        rig.doc.undo();
+        CHECK(rig.value("cyl.pin[2]") == 0.0);
+        return 0;
+    }
+
+    // A generated page over arrays: up to 8 elements a knob each (kArrayKnobs), 9 to 16 one row of cells (`array`), more
+    // a knob each; every element reachable; a cell typed (a choice by its name) and dragged, each one undo step.
+    TEST(testPageArray, "page.array")
+    {
+        PageRig rig("");
+        rig.doc = tee::ui::MemoryDoc(mockArrayFields());
+        const std::vector<int> fields = tee::ui::sectionFields(rig.doc, "cyl");
+        CHECK(fields.size() == 2 + 8 + 12 + 18);
+        const std::string gui = tee::ui::pageGui(rig.doc, fields, "cyl");
+        CHECK(gui.find("array cyl.fireRev") != std::string::npos && gui.find("array cyl.pin") == std::string::npos
+              && gui.find("array cyl.trim") == std::string::npos);
+        CHECK(tee::ui::splitPages(rig.doc, fields, 60).size() == 1);   // 28 knobs and one table
+        rig.open(gui, 1400, 900);
+        CHECK_MSG(rig.page->notes().empty(), rig.page->notes());
+        for (const char* p : { "cyl.bankAngle[1]", "cyl.pin[7]", "cyl.trim[17]" })
+            CHECK_MSG(rig.page->controlRect(p).w > 0.0f, p);
+        CHECK(rig.page->controlRect("cyl.fireRev[3]").w == 0.0f);      // in the table, not a control
+        CHECK(rig.page->widgets().size() == 1);
+        auto& table = static_cast<tee::ui::MapEdit&>(*rig.page->items()[static_cast<std::size_t>(rig.page->widgets()[0].item)]);
+        CHECK(table.shown() && table.shownMap().nx == 12 && table.shownMap().ny == 1);
+        CHECK(tee::ui::fieldsOfWidget(rig.doc, rig.page->spec().gui.nodes[static_cast<std::size_t>(rig.page->widgets()[0].node)]).size() == 12);
+        // Type "Second" into element 3 (a choice by its name): one step.
+        int steps = rig.doc.steps();
+        const funkgui::Rect c3 = table.cellRect(3, 0);
+        rig.host->click(c3.centreX(), c3.centreY());
+        typeKeys(*rig.host, "1 return");                 // a number is the choice's index
+        CHECK(rig.value("cyl.fireRev[3]") == 1.0 && rig.value("cyl.fireRev[2]") == 0.0);
+        CHECK(rig.doc.steps() == steps + 1);
+        rig.doc.undo();
+        CHECK(rig.value("cyl.fireRev[3]") == 0.0);
+        // A drag up on element 5 raises it (200 px the range of 0..1), one step.
+        steps = rig.doc.steps();
+        const funkgui::Rect c5 = table.cellRect(5, 0);
+        rig.host->drag(c5.centreX(), c5.centreY(), c5.centreX(), c5.centreY() - 150.0f, 10);
+        CHECK(rig.value("cyl.fireRev[5]") == 1.0 && rig.doc.steps() == steps + 1);
+        // The header of numbers is not editable: an element's number stays.
+        const funkgui::Rect h = table.cellRect(4, -1);
+        rig.host->click(h.centreX(), h.centreY());
+        typeKeys(*rig.host, "9 return");
+        CHECK(table.shownMap().x[4] == 5.0);
+        return 0;
+    }

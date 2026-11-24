@@ -483,7 +483,7 @@ namespace tee::ui
         // J2's widgets (GuiKind::widget): their owner makes them (GuiPanel::Options::widget).
         bool isWidgetWord(const std::string& w)
         {
-            return w == "plot" || w == "gauge" || w == "map" || w == "curve" || w == "bar" || w == "lamp";
+            return w == "plot" || w == "gauge" || w == "map" || w == "curve" || w == "bar" || w == "lamp" || w == "array";
         }
 
         bool isElementWord(const std::string& w)

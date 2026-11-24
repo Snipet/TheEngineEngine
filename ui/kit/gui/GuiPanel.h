@@ -161,6 +161,10 @@ namespace tee::ui
         funkgui::HostServices* host() const noexcept { return host_; }
         const funkgui::Theme& lastTheme() const noexcept { return theme_; }
         void changed() noexcept { dirty_ = true; }       // something the subclass draws changed: a frame is wanted
+        // J2: a note of the subclass's own, after the reader's ("page.gui:3:5: note: ...\n"); the panel's files (its
+        // .gui file with `auto` lines expanded).
+        void addNote(const std::string& line) { notes_ += line; }
+        const Sources& files() const noexcept { return files_; }
 
     private:
         void layout();

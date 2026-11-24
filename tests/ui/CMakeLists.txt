@@ -49,7 +49,8 @@ set(TEE_UI_TESTS
   units button.click toggle.click stepper.click textfield.type list.select instruments plot.zoom curve.drag map.edit
   widgets.gallery
   fieldport fieldparams page.generated gui.auto gui.widgets page.split
-  display.tail)
+  display.tail
+  gui.element page.array)
 foreach(_t IN LISTS TEE_UI_TESTS)
   add_test(NAME ui.${_t} COMMAND tee-ui-tests ${_t})
 endforeach()
