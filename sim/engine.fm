@@ -858,7 +858,7 @@ module Engine
         // layout is)
         if (cycleUse != 0)
             two.control16(&spec.engine, crank.omega, d16, heat.tSurf, heat.tAmb);
-        if ((spec.engine.cycle != 0 && customUse != 0 ? 1 : 0) != cycleUse || (cycleUse != 0 && two.signature(&spec.engine) != tsSig))
+        if ((spec.engine.cycle != 0 && customUse != 0 && lay.rotary == 0 ? 1 : 0) != cycleUse || (cycleUse != 0 && two.signature(&spec.engine) != tsSig))
             cutWant |= 1;
         float ped = ecu.driver(d16, set.drive, set.bend, set.bendRange, set.keys, lay.rotary, lay.n);
         car.traction(spec.ecu.model != 0 && spec.ecu.traction.on, spec.ecu.traction.slip);     // (card I: a launch's slip)
@@ -1593,6 +1593,10 @@ module Engine
         holdModel(8, &spec.engine.wallHeat, &spec.engine.rev);
         holdModel(9, &spec.sound.model, &spec.sound.rev);
         holdModel(10, &spec.engine.cycle, &spec.engine.rev);
+        // (the decisions the switches make, taken again each call: a switch set while the engine is stopped is taken at
+        // once above, with no configure to follow it; while running a held switch leaves them as they were)
+        physicalCylinder();
+        exh.implied = builderImplied();
     }
 
     // Section k's model switch as the host wrote it: stopped, taken at once; running, a change held until the fade's

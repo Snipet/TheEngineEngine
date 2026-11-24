@@ -278,3 +278,20 @@ of the machinery above. Either makes per-model defines unnecessary.
   port gas is 1350 to 1520 K: is the burned gas's real heat capacity (gamma near 1.25 at 2500 K) in the cylinder's
   model, or was the reference's kept share standing in for it?
 
+
+## Open, waiting for a source: valve float speed (N1, 19:01)
+
+Measured on the big-block 7.4 (282 deg at the seat, 11.9 mm valve lift): with the archetype's spring (124 N/mm,
+774 N on the seat) the valves float at 6159 rpm; with a real road spring (60 N/mm, 580 N) at 4673; with 75 N/mm
+and 650 N at 5102. The original revs to 5500 to 6000 without float, so the model floats about 25 % low in speed
+and a build that must rev like its original carries about 1.8 times a real spring's force. From the float
+condition (`sim/valvetrain/float.fm`): effective mass 0.32 kg at the valve, the cam's nose deceleration 0.0169 m
+per crank rad^2.
+
+Two suspects, both **unsourced** (N1's memory), so nothing was changed (card N: a change needs a reason and a
+source): the generator's nose (`cam.fm`, the reference's lift shape) about 2.4 times sharper than a road
+flat-tappet cam's; a pushrod train's added mass 0.20 kg where typical parts sum to about 0.14. What would settle
+them: a cam card that prints acceleration, or Norton's *Cam Design and Manufacturing Handbook*, for the first;
+weighed parts (a maker's catalogue) for the second. A nose limit changes every lab cam's flow area, so it is a
+change for whoever has the page, with the table run before and after. Until then the archetypes' spring rates are
+the model's equivalents, not real ones (`docs/models/valvetrain.md` says so when N1 has written it).
