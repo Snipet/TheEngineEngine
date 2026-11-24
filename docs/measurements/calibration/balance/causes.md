@@ -211,3 +211,51 @@ and switch speed are the build's (P); the phaser's schedule is N1's rule (its ad
 - **The 7.0's ports at 1.6 / 1.8** (P, from discharge.md's LS7 row, which is one posting): 723 and 630 N m at 4800 and
   6300 rpm against 700 and 560 at 1.35 / 1.5 (target 630 to 645). Asked P to put the defaults back until a second
   figure agrees (the lead's rule).
+
+## N3-6. The runner's ram: its height measured, no missing loss found yet (20:31 by `date -u`; the lead's item 1)
+
+The flat six at full load, VE against the outside air, a 0.53 m runner (as built) against 0.30 m, every 250 rpm (tip,
+tee::Build path):
+
+| rpm | 0.30 m | 0.53 m | Ratio |
+|---|---|---|---|
+| 2500 | 0.829 | 0.824 | 0.994 |
+| 2750 | 0.837 | 0.839 | 1.003 |
+| 3000 | 0.833 | 0.824 | 0.988 |
+| 3250 | 0.835 | 0.817 | 0.979 |
+| 3500 | 0.849 | 0.854 | 1.006 |
+| 3750 | 0.856 | 0.893 | 1.043 |
+| 4000 | 0.864 | 0.882 | 1.022 |
+| 4250 | 0.853 | 0.888 | 1.041 |
+| 4500 | 0.876 | 0.979 | 1.117 |
+| 4750 | 0.857 | 1.009 | 1.177 |
+| 5000 | 0.849 | 0.953 | 1.123 |
+| 5250 | 0.846 | 0.944 | 1.115 |
+| 5500 | 0.846 | 0.957 | 1.132 |
+| 5750 | 0.846 | 0.978 | 1.156 |
+| 6000 | 0.851 | 0.976 | 1.148 |
+| 6250 | 0.852 | 0.897 | 1.053 |
+| 6500 | 0.854 | 0.836 | 0.978 |
+
+The 0.30 m runner is flat (0.83 to 0.88); the 0.53 m one rises from 4500 rpm to 1.009 at 4750 and holds 0.94 to 0.98 to
+6000: a gain of 12 to 18 % over a broad band.
+
+Its ringing, read sample by sample at the valve end of cylinder 1's runner with the valve shut (4750 rpm): about 161 Hz
+(a quarter wave of 0.53 m at 350 m/s with its end correction), swings of -24.2, +25.3, -16.3, +22.5, -16.2 kPa about a
+mean of -5.8 kPa: some 10 % lost in the first period, almost none in the second. Lightly damped, but of the size a
+smooth straight duct's own losses give (by hand: Kirchhoff's wall loss about 1.3 % a period at 161 Hz in a 63 mm bore;
+the turbulent friction on the oscillation's some 48 m/s about 3 %; the jet's head at the plenum end, K 1 out, some 7 %
+a period): the losses the lead listed (the walls' viscous and thermal layer, the flow's friction, the end's jet) are all
+in, and of their textbook size.
+
+Experiments at 3500 / 4750 / 6000 rpm (0.53 m; VE):
+- the plenum end's inward K 0.2 → 0.5 (a square edge, Idelchik): 0.858 / 0.995 / 0.953 against 0.854 / 1.009 / 0.976:
+  1.4 % off the peak;
+- the valve's wave stiffening off for the intake (g 1, a scratch Valve): 0.863 / 1.015 / 0.974: none;
+- the runner's bore 63 → 50 → 45 mm: VE at 4750 1.008 → 1.036 → 1.050: a narrower runner rams harder.
+
+Published gains found so far: a petrol engine's VE up to 8.7 % higher with a 528 mm runner, a turbocharged diesel's
+6 % (single studies on ResearchGate, geometry not compared); Ohata and Ishida (SAE 820407) and Heywood's figures not
+reachable here. Not enough to call 12 to 18 % wrong against a known geometry, and no sourced loss is missing from the
+duct: nothing changed. What would settle it: a measured intake-port pressure trace after closing (its decay a period)
+or a measured VE against runner length for a known runner, matched in a build.

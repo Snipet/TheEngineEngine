@@ -271,6 +271,19 @@ int main(int argc, char** argv)
         if (!ok)
             return usage();
     }
+    // the curve's file: named now, and last run's removed before anything can fail, so a failed run never leaves the
+    // last one's behind to be read as this one's
+    if (!predictMode && !bakeCam)
+    {
+        if (csv.empty())
+        {
+            const std::string stem = buildFile.empty() ? "defaults" : std::filesystem::path(buildFile).stem().generic_string();
+            std::filesystem::create_directories("out");
+            csv = "out/" + stem + "-dyno.csv";
+        }
+        std::error_code removed;
+        std::filesystem::remove(csv, removed);
+    }
     const std::filesystem::path sim =
         tee::tools::findDirectory(simFlag, "TEE_SIM_DIR", argv[0], "sim", TEE_SOURCE_SIM_DIR "/..");
     std::string errors;
@@ -333,12 +346,6 @@ int main(int argc, char** argv)
     {
         std::fprintf(stderr, "tee-dyno: %s\n", errors.c_str());
         return 1;
-    }
-    if (csv.empty())
-    {
-        const std::string stem = buildFile.empty() ? "defaults" : std::filesystem::path(buildFile).stem().generic_string();
-        std::filesystem::create_directories("out");
-        csv = "out/" + stem + "-dyno.csv";
     }
     std::ofstream out(csv, std::ios::binary);
     out << curve.csv();

@@ -173,6 +173,8 @@ module Exhaust
     int tcN;
     float tcPort;       // the bead's reading at the port's exit, K (over some 0.5 s)
     float tcPlain;      // the plain time mean of the port's local gas, K
+    float qSur[MAX_PORTS];  // stepLet: what each port's pipe has been given beyond what its valve let out (m^3/s),
+    float kSur;             // followed over 20 ms
     float tcU;          // the mean speed past the bead (|q| / the port's area), summed over a telemetry step, m/s
     float tcUMean;      // and its mean over some 0.5 s
     float kTc;
@@ -234,6 +236,9 @@ module Exhaust
         tcPlain = 0.0f;
         tcU = 0.0f;
         tcUMean = 0.0f;
+        for (int i = 0; i < MAX_PORTS; ++i)
+            qSur[i] = 0.0f;
+        kSur = 1.0f - expf(-1.0f / (0.02f * rateIn));
         kTc = 1.0f - expf(-16.0f / (0.5f * rateIn));
         kStag = 1.0f - expf(-1.0f / (0.036f * rateIn));
         rate = rateIn;
@@ -294,6 +299,8 @@ module Exhaust
     // A new engine: every pipe and junction at rest
     void clear()
     {
+        for (int i = 0; i < MAX_PORTS; ++i)
+            qSur[i] = 0.0f;
         // (a configure is under the engine's own fade: it takes the model the Spec asks for at once)
         model = wanted();
         seenRev = spec->rev;
@@ -1000,6 +1007,30 @@ module Exhaust
 
     // Each sample, after the cylinders (qe: each port's volume flow into its header): the ports' waves in, the collectors,
     // the merge, the converter, the muffler, the tails' radiation out (outL, outR), every pipe written
+    // Each sample, with what the valves let out beside what they give the pipes (the lead's ruling, 24 Nov): the valve
+    // gives its pipe g q, not q (duct.fm, Valve: the simple wave's stiffening, g = 1 + (gamma + 1)/4 u/c), and over a
+    // cycle g q is not q: the blowdown's fast gas carries its square term out, so the pipes were given 14 to 20 % more
+    // than the cylinders let out at full load (5 % at idle; measured: the big-block V8, the 2.0 turbo four), mass made in
+    // the exhaust, 3 to 5 kPa of back pressure on an NA V8 and 10 to 14 at a turbine's inlet. Model 1: each port's
+    // surplus (qe - qeLet) followed over 20 ms (as the intake's plenum does, intake.fm, mStiff) and taken off what its
+    // pipe is given: the pulse keeps its gain (its pressure is the stiffening's physics), its mean is what was let
+    // out. Model 0: qe as given (the reference, to the bit). qeLet: each port's sum of the cylinders' qE.
+    void stepLet(float* qe, float* qeLet, int np)
+    {
+        if (model == 0)
+        {
+            step(qe, np);
+            return;
+        }
+        float qc[MAX_PORTS];
+        for (int i = 0; i < np; ++i)
+        {
+            qSur[i] += (qe[i] - qeLet[i] - qSur[i]) * kSur;
+            qc[i] = qe[i] - qSur[i];
+        }
+        step(qc, np);
+    }
+
     void step(float* qe, int np)
     {
         // (the ports' pressure for the telemetry: the waves arriving there as read() left them, and the flows put in)
@@ -1510,6 +1541,8 @@ module Exhaust
     void apply()
     {
         model = wanted();
+        for (int i = 0; i < MAX_PORTS; ++i)
+            qSur[i] = 0.0f;
         if (model != 0)
         {
             fillEngine();

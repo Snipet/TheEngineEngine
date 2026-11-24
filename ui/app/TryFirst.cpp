@@ -37,7 +37,7 @@ namespace tee::ui
         std::string first = notes.substr(0, notes.find("\n\n"));
         std::replace(first.begin(), first.end(), '\n', ' ');
         opening_ = trim(first);
-        lines_ = wrap(opening_, bounds_.w - 2.0f * kPad);
+        lines_ = wrap(opening_, bounds_.w - 2.0f * kPad - kButtonRoom);
     }
 
     std::vector<std::string> TryFirstCard::wrap(const std::string& text, float width)
@@ -84,14 +84,14 @@ namespace tee::ui
 
     float TryFirstCard::heightFor(float width) const
     {
-        const auto n = static_cast<float>(wrap(opening_, width - 2.0f * kPad).size());
+        const auto n = static_cast<float>(wrap(opening_, width - 2.0f * kPad - kButtonRoom).size());
         return kPad + kHeadH + n * kLineH + kPad - 4.0f;
     }
 
     void TryFirstCard::setPlace(const funkgui::Rect& r, bool shown)
     {
         if (r.w != bounds_.w)
-            lines_ = wrap(opening_, r.w - 2.0f * kPad);
+            lines_ = wrap(opening_, r.w - 2.0f * kPad - kButtonRoom);
         Widget::setPlace(r, shown);
     }
 
@@ -104,8 +104,8 @@ namespace tee::ui
         c.rrect(b.x, b.y, b.w, b.h, look::kRadius, p.raised, 1.0f, p.edge);
         c.rrect(b.x, b.y + 8.0f, 3.0f, b.h - 16.0f, 1.5f, p.selected);   // its mark: a rule at the left
         const float x = b.x + kPad;
-        c.text("TRY FIRST", x, b.y + kPad, look::kCaps, p.selected);
-        c.text(name_.c_str(), x, b.y + kPad + 16.0f, look::kTitle, p.value);
+        c.text("TRY FIRST", x, b.y + kPad + 2.0f, look::kCaps, p.selected);
+        c.text(name_.c_str(), x + c.textWidth("TRY FIRST", look::kCaps) + 14.0f, b.y + kPad, look::kTitle, p.value);
         float y = b.y + kPad + kHeadH;
         for (const std::string& l : lines_)
         {
