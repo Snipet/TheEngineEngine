@@ -9,6 +9,7 @@
 #include "kit/widgets/Tables.h"
 
 #include <funkgui/text/FontService.h>
+#include <funkgui/text/TextFit.h>
 
 #include <algorithm>
 #include <cctype>
@@ -295,6 +296,15 @@ namespace
             small.frame->showSettings(true);
             small.host->tick(5);
             CHECK(small.frame->settingsShown() && small.frame->ribbonRect().isEmpty());
+            // Every unit's name whole at the smallest window: its label fits before its stepper's buttons.
+            for (const tee::ui::Stepper* st : small.frame->unitSteppers())
+            {
+                const float room = st->minusRect().x - st->bounds().x - 4.0f;
+                const float need = funkgui::text::width(funkgui::FontService::get().atlas(), tee::ui::upper(st->title()).c_str(),
+                                                        tee::ui::kWidgetLabel);
+                CHECK_MSG(st->shown() && need <= room && st->bounds().bottom() <= small.frame->inspectorRect().bottom(),
+                          st->title() + ": needs " + std::to_string(need) + " px, has " + std::to_string(room));
+            }
             golden("frame.settings.dpi1", *small.host);
         }
         const funkgui::Rect u = find("Settings");

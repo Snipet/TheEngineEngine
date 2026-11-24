@@ -1,0 +1,19 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Straight pipes",
+  "notes": "No converter, no muffler: the main pipes straight into the tails. A part build: only spec.exhaust; every other field keeps its default.",
+  "spec": {
+    "exhaust": {
+      "model": "Builder",
+      "converter": [
+        "None",
+        "None"
+      ],
+      "mufKind": [
+        "None",
+        "None"
+      ]
+    }
+  }
+}

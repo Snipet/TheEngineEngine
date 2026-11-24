@@ -1,0 +1,21 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Log manifolds",
+  "notes": "Each collector a small volume (1.2 L), as a cast log manifold: a short wide chamber at the collector's node. A part build: only spec.exhaust; every other field keeps its default.",
+  "spec": {
+    "exhaust": {
+      "model": "Builder",
+      "colVol": [
+        0.0012,
+        0.0012,
+        0.0012,
+        0.0012,
+        0.0012,
+        0.0012,
+        0.0012,
+        0.0012
+      ]
+    }
+  }
+}

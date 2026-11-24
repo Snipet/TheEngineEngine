@@ -1,0 +1,29 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Zoomies",
+  "notes": "Every primary an open stack: no collectors, no chain; one radiating end a cylinder, tagged side left or right by bank. A part build: only spec.exhaust; every other field keeps its default.",
+  "spec": {
+    "exhaust": {
+      "model": "Builder",
+      "primaryTo": [
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1
+      ]
+    }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "180-degree headers (crossplane V8)",
+  "notes": "For the crossplane V8 (engine.layout V8 crossplane): each collector takes four cylinders that fire 180 degrees apart, pairs across the banks (cylinders 1 4 6 7 and 2 3 5 8 by the layout's numbering from 1), so each side's pulses come evenly: the bank collector's burble gone. Measured on made-up pulses: the off-order lines 24 to 27 dB down at each tail. A part build: only spec.exhaust; every other field keeps its default.",
+  "spec": {
+    "exhaust": {
+      "model": "Builder",
+      "primaryTo": [
+        0,
+        1,
+        1,
+        0,
+        1,
+        0,
+        0,
+        1,
+        -2,
+        -2,
+        -2,
+        -2,
+        -2,
+        -2,
+        -2,
+        -2
+      ]
+    }
+  }
+}
