@@ -41,6 +41,7 @@ namespace tee::ui
         {
             int width = 0, height = 0;                       // 0: the panel's natural size
             std::function<void(float* out, int n)> scope;    // GuiPanel::Options::scope
+            bool shaders = true;                             // GuiPanel::Options::shaders
         };
 
         RefPanel(Sources files, Player& player, const AppServices& services, Options options);

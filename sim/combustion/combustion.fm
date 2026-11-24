@@ -14,6 +14,7 @@
 // retard (kRet: its knock sensor hears it) and fires a pop in the exhaust's collector (Pop).
 #pragma once
 #include "lib/noise.fm"
+#include "spec/limits.fm"
 
 module Combustion
 {
@@ -24,7 +25,7 @@ module Combustion
     Layout* lay;
     Pop* pop;
     float droop;        // a diesel's governor near its redline: the share of the fuel it lets through
-    float dilution[12]; // each cylinder's burned-gas share at its last intake closing
+    float dilution[MAX_CYL]; // each cylinder's burned-gas share at its last intake closing
 
     void setup(float rateIn, Noise* noise, Ecu* ecuIn, Heat* heatIn, Layout* layIn, Pop* pops)
     {

@@ -105,10 +105,18 @@ module Engine
     int downSeen [[ui::hidden]];                  // 0 none, 1 down (until Shared's shift logic has seen it), 2 up again
     int upPulse [[ui::hidden]];                   // (until it has seen that)
     int downPulse [[ui::hidden]];
+    // the Scope's cycle being written (scopeTap): cylinder 1's pressure, volume and lifts by degree, the last degree
+    // written and the angle it was at
+    float scP [[ui::hidden]] [SCOPE_DEGREES];
+    float scV [[ui::hidden]] [SCOPE_DEGREES];
+    float scE [[ui::hidden]] [SCOPE_DEGREES];
+    float scI [[ui::hidden]] [SCOPE_DEGREES];
+    int scDeg [[ui::hidden]];
+    float scAng [[ui::hidden]];
 
     Dials set;          // the reference's dials as the engine has taken them: readSpec and readControls fill it
     Layout lay;
-    Cylinder cyl[12];
+    Cylinder cyl[MAX_CYL];
     float rate;         // the engine's own: 96 kHz whatever the host's (render resamples)
     float dt;
     int ready;
@@ -357,7 +365,7 @@ module Engine
             cy->t = heat.tAmb + 30.0f * heat.warm;
             cy->m = cy->p * cy->v / (287.0f * cy->t);
         }
-        for (int i = 0; i < 12; ++i)
+        for (int i = 0; i < MAX_PORTS; ++i)
             exh.portBank[i] = 0;
         for (int c = 0; c < lay.n; ++c)
             exh.portBank[lay.port[c]] = lay.bank[c];
@@ -622,6 +630,48 @@ module Engine
         return 1.6f * mech.idleTq * (1.0f + 0.8f * b);
     }
 
+    // While ctl.scopeOn is set, each sample after the cylinders: cylinder 1's pressure, volume and its valves' lifts
+    // at each whole degree of its cycle as it passes, and, when its cycle comes round, that whole cycle into the Scope
+    // (with the pressures along the first bank's pipes as they stand). It reads and never writes the model's state:
+    // the sound is the same with it on or off (the null test runs with it on in "views")
+    void scopeTap()
+    {
+        Cylinder* c1 = &cyl[0];
+        const float a = c1->ang;
+        if (a < scAng)
+        {
+            const int n = (int)lay.cyc;
+            for (int d = 0; d < n; ++d)
+            {
+                scope.pressure[d] = scP[d];
+                scope.volume[d] = scV[d];
+                scope.liftExhaust[d] = scE[d];
+                scope.liftIntake[d] = scI[d];
+            }
+            scope.degrees = n;
+            scope.cycles += 1;
+            scope.pipePoints = 8;
+            scope.pipePressure[0] = 101325.0f + exh.prim[0].near + exh.prim[0].far;
+            scope.pipePressure[1] = 101325.0f + exh.sec[0].near + exh.sec[0].far;
+            scope.pipePressure[2] = 101325.0f + exh.pipe[0].near + exh.pipe[0].far;
+            scope.pipePressure[3] = 101325.0f + exh.ch1[0].near + exh.ch1[0].far;
+            scope.pipePressure[4] = 101325.0f + exh.mid[0].near + exh.mid[0].far;
+            scope.pipePressure[5] = 101325.0f + exh.ch2[0].near + exh.ch2[0].far;
+            scope.pipePressure[6] = 101325.0f + exh.tail[0].near + exh.tail[0].far;
+            scope.pipePressure[7] = intk.pPlenum;
+        }
+        scAng = a;
+        const int d = (int)a;
+        if (d != scDeg && d >= 0 && d < SCOPE_DEGREES)
+        {
+            scDeg = d;
+            scP[d] = c1->p;
+            scV[d] = c1->v;
+            scE[d] = c1->lift(a, c1->evo, c1->edur);
+            scI[d] = c1->lift(a, c1->ivo, c1->idur);
+        }
+    }
+
     // ---- one sample ----
 
     void sampleTick()
@@ -632,8 +682,8 @@ module Engine
         // the crank
         const float dDeg = crank.advance(dt);
         // the cylinders
-        float qe[12];
-        float qi[12];
+        float qe[MAX_PORTS];
+        float qi[MAX_PORTS];
         for (int i = 0; i < np; ++i)
         {
             qe[i] = 0.0f;
@@ -647,10 +697,10 @@ module Engine
         const float slapAmp = 0.4f + 0.6f * fminf(crank.rpm / 3000.0f, 2.0f);
         const float tH = exh.tUse[0];
         // faces that share a port (a rotary's) are solved together: each sees the pipe as the others' flows leave it
-        float eShare[12];
-        float iShare[12];
-        float qE0[12];
-        float qI0[12];
+        float eShare[MAX_PORTS];
+        float iShare[MAX_PORTS];
+        float qE0[MAX_CYL];
+        float qI0[MAX_CYL];
         if (np < lay.n)
         {
             for (int i = 0; i < np; ++i)
@@ -719,8 +769,10 @@ module Engine
             if (cy->burnAt >= 0.0f && cy->dpdt > 0.0f)
                 dps += cy->dpdt;
         }
+        if (ctl.scopeOn != 0)
+            scopeTap();
         exh.step(qe, np);
-        float rNear[12];
+        float rNear[MAX_PORTS];
         for (int i = 0; i < np; ++i)
             rNear[i] = intk.run[i].near + intk.run[i].z * qi[i];
         intk.plenum(np, rNear, fuelUse, ecu.throttle, ecu.bypass, dt);

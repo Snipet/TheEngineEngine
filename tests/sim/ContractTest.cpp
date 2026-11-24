@@ -254,3 +254,47 @@ TEST_CASE("sim: the tables read as their header says", "[sim][tables]")
     CHECK(map(m.data(), -1.0f, -1.0f) == Catch::Approx(0.0));    // outside: the edge
     CHECK(map(m.data(), 9.0f, 9.0f) == Catch::Approx(32.0));
 }
+
+TEST_CASE("sim: the Scope holds cylinder 1's last whole cycle while scopeOn is set", "[sim][contract][scope]")
+{
+    EnginePlayer& player = shared48();
+    applyBuild(player, test::engineBuild(player, "default"));
+    player.reset(0.0, true);
+    std::vector<float> l(512), r(512);
+    const auto run = [&](double seconds) {
+        for (int k = 0; k < static_cast<int>(seconds * 48000.0 / 512.0); ++k)
+            player.process(l.data(), r.data(), 512);
+    };
+    player.controls().ignition = EnginePlayer::kIgnitionStart;
+    run(1.5);
+    player.controls().ignition = EnginePlayer::kIgnitionOn;
+    run(1.0);
+    CHECK(test::field(player, "scope.cycles") == 0.0);   // off: nothing written
+    player.controls().scopeOn = 1;
+    run(1.0);
+    CHECK(test::field(player, "scope.cycles") >= 2.0);
+    CHECK(test::field(player, "scope.degrees") == 720.0);
+    double pMax = 0.0, atMax = 0.0, vMin = 1.0, vMax = 0.0, eMax = 0.0, iMax = 0.0;
+    for (int d = 0; d < 720; ++d)
+    {
+        const std::string i = "[" + std::to_string(d) + "]";
+        const double p = test::field(player, "scope.pressure" + i);
+        const double v = test::field(player, "scope.volume" + i);
+        if (p > pMax)
+        {
+            pMax = p;
+            atMax = d;
+        }
+        vMin = std::min(vMin, v);
+        vMax = std::max(vMax, v);
+        eMax = std::max(eMax, test::field(player, "scope.liftExhaust" + i));
+        iMax = std::max(iMax, test::field(player, "scope.liftIntake" + i));
+    }
+    INFO("peak " << pMax << " Pa at " << atMax << " degrees; volume " << vMin << " to " << vMax);
+    CHECK(pMax > 1.0e6);                                     // compression and the burn
+    CHECK((atMax < 60.0 || atMax > 690.0));                  // near the top of compression
+    CHECK(vMax / vMin > 8.0);                                // the compression ratio's 10, less the rod's geometry
+    CHECK(eMax > 0.9);
+    CHECK(iMax > 0.9);
+    CHECK(test::field(player, "scope.pipePoints") == 8.0);
+}

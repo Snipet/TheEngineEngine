@@ -1,11 +1,11 @@
 {
   "format": "tee-engine-scenario/1",
   "name": "views",
-  "description": "A car pulling away while the listener moves through the five views and the distance, the room and the level change.",
+  "description": "A car pulling away while the listener moves through the five views and the distance, the room and the level change; the Scope on throughout.",
   "seconds": 12,
   "events": [
     { "t": 0.0, "spec": { "env.temperature": 300, "sound.view": 0 },
-      "ctl": { "mode": 1, "lever": 0, "clutch": 0, "brake": 0, "throttle": 0, "ignition": 1 } },
+      "ctl": { "mode": 1, "lever": 0, "clutch": 0, "brake": 0, "throttle": 0, "ignition": 1, "scopeOn": 1 } },
     { "t": 0.25, "ctl": { "ignition": 2 } },
     { "t": 2.5, "ctl": { "ignition": 1 } },
     { "t": 3.0, "press": "shiftUp", "spec": { "sound.view": 1 } },
