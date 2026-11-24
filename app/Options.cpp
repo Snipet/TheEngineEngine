@@ -172,6 +172,18 @@ namespace tee::app
                 if (!real(o.dpi, 0.5, 4.0))
                     return false;
             }
+            else if (arg == "--quality")
+            {
+                if (!value(o.quality))
+                    return false;
+                if (o.quality != "full" && o.quality != "economy")
+                {
+                    why = "--quality is full or economy";
+                    return false;
+                }
+            }
+            else if (arg == "--expect-fault")
+                o.expectFault = true;
             else if (arg == "--size")
             {
                 std::string text;
@@ -235,6 +247,9 @@ namespace tee::app
              "  --dyno-wait S          tee-headless: wait up to S seconds for the dyno's first curve before the first\n"
              "                         frame, so a picture shows it\n"
              "  --keep-going           with --seconds or --frames: go on when the program does not compile\n"
+             "  --quality full|economy the simulator inside at 96 kHz (full, the default) or 48 kHz (economy: about half\n"
+             "                         the CPU, the top octave lost); the settings file's when not given\n"
+             "  --expect-fault         an offline run in which the engine diverges and is restarted still exits 0\n"
              "  --version, --help\n";
         return u;
     }

@@ -10,48 +10,40 @@ Measured on the predicted dyno curve (steady full-throttle points, warm) and on 
 
 | Archetype | Peak power (target) | Peak torque (target) | Warm idle (target) | Quarter mile | Top speed | Invariants |
 |---|---|---|---|---|---|---|
-| Air-cooled flat six | 206 kW (180 kW to 195 kW) **miss** | 344 N m (300 N m to 320 N m) **miss** | 847 rpm (800 rpm to 950 rpm) | 13.97 s at 168 km/h | 282 km/h (244 km/h to 281 km/h) **miss** | 5 of 5 |
-| Big-block 7.4 L pushrod V8 | 302 kW (240 kW to 310 kW) | 618 N m (600 N m to 690 N m) | 758 rpm (550 rpm to 750 rpm) **miss** | 16.83 s at 153 km/h **miss** | 192 km/h (181 km/h to 209 km/h) | 5 of 5 |
-| 7.0 L pushrod V8, dry sump | 383 kW (370 kW to 385 kW) | 634 N m (630 N m to 645 N m) | 843 rpm (650 rpm to 800 rpm) **miss** | 13.55 s at 200 km/h **miss** | 318 km/h (311 km/h to 358 km/h) | 5 of 5 |
-| Boxer four turbo with unequal headers | 303 kW (210 kW to 235 kW) **miss** | 523 N m (380 N m to 410 N m) **miss** | 850 rpm (700 rpm to 900 rpm) | 12.39 s at 187 km/h **miss** | 287 km/h (246 km/h to 283 km/h) **miss** | 5 of 5 |
-| Diesel 2.0 L common rail | 113 kW (100 kW to 130 kW) | 296 N m (320 N m to 380 N m) **miss** | 850 rpm (750 rpm to 900 rpm) | 16.99 s at 139 km/h | 223 km/h (201 km/h to 231 km/h) | 5 of 5 |
-| 1.5 L economy four | 101 kW (80 kW to 97 kW) **miss** | 160 N m (140 N m to 156 N m) **miss** | 750 rpm (650 rpm to 800 rpm) | 16.77 s at 137 km/h | 206 km/h (186 km/h to 214 km/h) | 5 of 5 |
-| Flat-plane 3.9 L V8, twin turbo | 615 kW (450 kW to 535 kW) **miss** | 955 N m (760 N m to 805 N m) **miss** | 901 rpm (800 rpm to 1000 rpm) | 13.79 s at 188 km/h **miss** | 333 km/h (316 km/h to 363 km/h) | 5 of 5 |
-| Flat-plane 4.5 L V8 | 299 kW (400 kW to 445 kW) **miss** | 432 N m (520 N m to 560 N m) **miss** | 1340 rpm (900 rpm to 1100 rpm) **miss** | 13.70 s at 186 km/h **miss** | 308 km/h (323 km/h to 372 km/h) **miss** | 5 of 5 |
-| Four-cam 5.0 L V8 | 353 kW (300 kW to 345 kW) **miss** | 511 N m (520 N m to 575 N m) **miss** | 827 rpm (600 rpm to 750 rpm) **miss** | 14.68 s at 181 km/h **miss** | 273 km/h (276 km/h to 318 km/h) **miss** | 5 of 5 |
-| 1.6 L 16-valve hot hatch | 103 kW (85 kW to 120 kW) | 152 N m (140 N m to 165 N m) | 929 rpm (800 rpm to 950 rpm) | 16.18 s at 140 km/h | 211 km/h (199 km/h to 229 km/h) | 5 of 5 |
-| Inline five turbo rally | 307 kW (200 kW to 265 kW) **miss** | 498 N m (380 N m to 520 N m) | 1001 rpm (900 rpm to 1150 rpm) | 11.91 s at 200 km/h **miss** | 211 km/h (199 km/h to 229 km/h) | 5 of 5 |
-| Kei 660 cc triple turbo | 103 kW (44 kW to 50 kW) **miss** | 135 N m (100 N m to 110 N m) **miss** | 850 rpm (750 rpm to 950 rpm) | 14.61 s at 157 km/h **miss** | 210 km/h (158 km/h to 182 km/h) **miss** | 5 of 5 |
-| 6.7 L straight-six turbo diesel pickup | 280 kW (255 kW to 315 kW) | 1269 N m (1000 N m to 1470 N m) | 700 rpm (650 rpm to 800 rpm) | 18.44 s at 140 km/h **miss** | 217 km/h (212 km/h to 243 km/h) | 5 of 5 |
-| 3.8 L pushrod V6 | 168 kW (140 kW to 160 kW) **miss** | 348 N m (300 N m to 330 N m) **miss** | 650 rpm (600 rpm to 750 rpm) | 16.12 s at 146 km/h | 233 km/h (214 km/h to 246 km/h) | 5 of 5 |
-| Rotary twin | 303 kW (190 kW to 210 kW) **miss** | 582 N m (290 N m to 315 N m) **miss** | 1068 rpm (750 rpm to 900 rpm) **miss** | 13.70 s at 194 km/h **miss** | 308 km/h (260 km/h to 299 km/h) **miss** | 5 of 5 |
-| Small-block 5.7 L, carburettor-like | 233 kW (140 kW to 210 kW) **miss** | 466 N m (380 N m to 470 N m) | 700 rpm (600 rpm to 800 rpm) | 15.63 s at 164 km/h **miss** | 195 km/h (185 km/h to 212 km/h) | 5 of 5 |
-| 3.2 L straight six, high-revving | 201 kW (245 kW to 260 kW) **miss** | 275 N m (355 N m to 375 N m) **miss** | 909 rpm (800 rpm to 950 rpm) | 15.20 s at 161 km/h **miss** | 261 km/h (269 km/h to 309 km/h) **miss** | 5 of 5 |
-| 3.0 L straight six, twin turbo | 387 kW (250 kW to 340 kW) **miss** | 649 N m (450 N m to 600 N m) **miss** | 823 rpm (600 rpm to 750 rpm) **miss** | 14.26 s at 190 km/h **miss** | 323 km/h (279 km/h to 321 km/h) **miss** | 5 of 5 |
-| Supercharged 6.2 L V8 | 512 kW (395 kW to 435 kW) **miss** | 867 N m (720 N m to 780 N m) **miss** | 700 rpm (650 rpm to 750 rpm) | 15.48 s at 166 km/h **miss** | 338 km/h (301 km/h to 346 km/h) | 4 of 5 |
-| 1.0 L three-cylinder turbo | 127 kW (74 kW to 105 kW) **miss** | 224 N m (170 N m to 210 N m) **miss** | 800 rpm (700 rpm to 900 rpm) | 15.62 s at 149 km/h **miss** | 230 km/h (189 km/h to 217 km/h) **miss** | 5 of 5 |
-| Highway tractor 15 L | 425 kW (300 kW to 450 kW) | 2872 N m (2000 N m to 2780 N m) **miss** | 646 rpm (600 rpm to 700 rpm) | - | 13 km/h (120 km/h to 138 km/h) **miss** | 5 of 5 |
-| 2.0 L turbo four, direct injection | 276 kW (155 kW to 230 kW) **miss** | 470 N m (350 N m to 400 N m) **miss** | 751 rpm (650 rpm to 850 rpm) | 14.64 s at 174 km/h **miss** | 286 km/h (239 km/h to 275 km/h) **miss** | 5 of 5 |
-| 1.8 L twin-cam roadster | 125 kW (95 kW to 112 kW) **miss** | 185 N m (155 N m to 172 N m) **miss** | 850 rpm (750 rpm to 900 rpm) | 15.74 s at 144 km/h | 223 km/h (199 km/h to 229 km/h) | 5 of 5 |
-| Twin-turbo 4.0 L hot-vee V8 | 545 kW (350 kW to 470 kW) **miss** | 922 N m (700 N m to 850 N m) **miss** | 650 rpm (550 rpm to 700 rpm) | 11.80 s at 206 km/h **miss** | 360 km/h (306 km/h to 352 km/h) **miss** | 5 of 5 |
-| Two-stage-cam 2.0 L | 138 kW (165 kW to 185 kW) **miss** | 199 N m (200 N m to 215 N m) **miss** | 900 rpm (850 rpm to 950 rpm) | 15.72 s at 146 km/h **miss** | 223 km/h (239 km/h to 275 km/h) **miss** | 5 of 5 |
-| V10 5.2 L | 381 kW (385 kW to 475 kW) **miss** | 495 N m (520 N m to 570 N m) **miss** | 1166 rpm (850 rpm to 1000 rpm) **miss** | 12.25 s at 194 km/h | 330 km/h (310 km/h to 356 km/h) | 5 of 5 |
-| V12 6.5 L | 512 kW (500 kW to 590 kW) | 574 N m (680 N m to 730 N m) **miss** | 1244 rpm (850 rpm to 1000 rpm) **miss** | 13.63 s at 201 km/h **miss** | 349 km/h (330 km/h to 379 km/h) | 5 of 5 |
-| 3.5 L V6 | 213 kW (195 kW to 225 kW) | 370 N m (335 N m to 365 N m) **miss** | 700 rpm (600 rpm to 750 rpm) | 15.34 s at 160 km/h | 248 km/h (246 km/h to 283 km/h) | 5 of 5 |
-| 3.5 L twin-turbo V6 pickup | 392 kW (275 kW to 305 kW) **miss** | 747 N m (630 N m to 700 N m) **miss** | 650 rpm (550 rpm to 700 rpm) | 13.36 s at 173 km/h **miss** | 265 km/h (223 km/h to 257 km/h) **miss** | 5 of 5 |
-| Narrow-angle VR6 2.8 L | 150 kW (125 kW to 132 kW) **miss** | 265 N m (230 N m to 240 N m) **miss** | 750 rpm (700 rpm to 800 rpm) | 15.41 s at 155 km/h | 247 km/h (210 km/h to 242 km/h) **miss** | 5 of 5 |
+| Air-cooled flat six | 208 kW (180 kW to 195 kW) **miss** | 333 N m (300 N m to 320 N m) **miss** | 875 rpm (800 rpm to 950 rpm) | 13.97 s at 167 km/h | 284 km/h (244 km/h to 281 km/h) **miss** | 5 of 5 |
+| Big-block 7.4 L pushrod V8 | 303 kW (240 kW to 310 kW) | 596 N m (600 N m to 690 N m) **miss** | 710 rpm (550 rpm to 750 rpm) | 16.81 s at 153 km/h **miss** | 192 km/h (181 km/h to 209 km/h) | 5 of 5 |
+| 7.0 L pushrod V8, dry sump | 373 kW (370 kW to 385 kW) | 618 N m (630 N m to 645 N m) **miss** | 840 rpm (650 rpm to 800 rpm) **miss** | 13.55 s at 200 km/h **miss** | 318 km/h (311 km/h to 358 km/h) | 5 of 5 |
+| Boxer four turbo with unequal headers | 288 kW (210 kW to 235 kW) **miss** | 498 N m (380 N m to 410 N m) **miss** | 853 rpm (700 rpm to 900 rpm) | 12.48 s at 184 km/h **miss** | 288 km/h (246 km/h to 283 km/h) **miss** | 5 of 5 |
+| Diesel 2.0 L common rail | 104 kW (100 kW to 130 kW) | 271 N m (320 N m to 380 N m) **miss** | 795 rpm (750 rpm to 900 rpm) | 17.54 s at 133 km/h | 216 km/h (201 km/h to 231 km/h) | 5 of 5 |
+| 1.5 L economy four | 101 kW (80 kW to 97 kW) **miss** | 153 N m (140 N m to 156 N m) | 750 rpm (650 rpm to 800 rpm) | 16.84 s at 137 km/h | 206 km/h (186 km/h to 214 km/h) | 5 of 5 |
+| Flat-plane 3.9 L V8, twin turbo | 585 kW (450 kW to 535 kW) **miss** | 865 N m (760 N m to 805 N m) **miss** | 921 rpm (800 rpm to 1000 rpm) | 13.77 s at 188 km/h **miss** | 333 km/h (316 km/h to 363 km/h) | 5 of 5 |
+| Flat-plane 4.5 L V8 | 305 kW (400 kW to 445 kW) **miss** | 411 N m (520 N m to 560 N m) **miss** | 1082 rpm (900 rpm to 1100 rpm) | 13.85 s at 186 km/h **miss** | 309 km/h (323 km/h to 372 km/h) **miss** | 5 of 5 |
+| Four-cam 5.0 L V8 | 357 kW (300 kW to 345 kW) **miss** | 502 N m (520 N m to 575 N m) **miss** | 819 rpm (600 rpm to 750 rpm) **miss** | 14.67 s at 181 km/h **miss** | 271 km/h (276 km/h to 318 km/h) **miss** | 5 of 5 |
+| 1.6 L 16-valve hot hatch | 102 kW (85 kW to 120 kW) | 151 N m (140 N m to 165 N m) | 908 rpm (800 rpm to 950 rpm) | 15.99 s at 140 km/h | 213 km/h (199 km/h to 229 km/h) | 5 of 5 |
+| Inline five turbo rally | 298 kW (200 kW to 265 kW) **miss** | 487 N m (380 N m to 520 N m) | 1007 rpm (900 rpm to 1150 rpm) | 12.04 s at 197 km/h **miss** | 211 km/h (199 km/h to 229 km/h) | 5 of 5 |
+| Kei 660 cc triple turbo | 97 kW (44 kW to 50 kW) **miss** | 136 N m (100 N m to 110 N m) **miss** | 850 rpm (750 rpm to 950 rpm) | 15.12 s at 152 km/h **miss** | 210 km/h (158 km/h to 182 km/h) **miss** | 5 of 5 |
+| 6.7 L straight-six turbo diesel pickup | 262 kW (255 kW to 315 kW) | 1131 N m (1000 N m to 1470 N m) | 744 rpm (650 rpm to 800 rpm) | 18.23 s at 138 km/h **miss** | 216 km/h (212 km/h to 243 km/h) | 5 of 5 |
+| 3.8 L pushrod V6 | 163 kW (140 kW to 160 kW) **miss** | 338 N m (300 N m to 330 N m) **miss** | 650 rpm (600 rpm to 750 rpm) | 16.19 s at 145 km/h | 230 km/h (214 km/h to 246 km/h) | 5 of 5 |
+| Rotary twin | 298 kW (190 kW to 210 kW) **miss** | 605 N m (290 N m to 315 N m) **miss** | 967 rpm (750 rpm to 900 rpm) **miss** | 13.72 s at 194 km/h **miss** | 308 km/h (260 km/h to 299 km/h) **miss** | 5 of 5 |
+| Small-block 5.7 L, carburettor-like | 232 kW (140 kW to 210 kW) **miss** | 454 N m (380 N m to 470 N m) | 708 rpm (600 rpm to 800 rpm) | 15.66 s at 164 km/h **miss** | 195 km/h (185 km/h to 212 km/h) | 5 of 5 |
+| 3.2 L straight six, high-revving | 205 kW (245 kW to 260 kW) **miss** | 275 N m (355 N m to 375 N m) **miss** | 895 rpm (800 rpm to 950 rpm) | 15.16 s at 161 km/h **miss** | 263 km/h (269 km/h to 309 km/h) **miss** | 5 of 5 |
+| 3.0 L straight six, twin turbo | 369 kW (250 kW to 340 kW) **miss** | 630 N m (450 N m to 600 N m) **miss** | 827 rpm (600 rpm to 750 rpm) **miss** | 14.20 s at 189 km/h **miss** | 317 km/h (279 km/h to 321 km/h) | 5 of 5 |
+| Supercharged 6.2 L V8 | 471 kW (395 kW to 435 kW) **miss** | 819 N m (720 N m to 780 N m) **miss** | 700 rpm (650 rpm to 750 rpm) | 15.44 s at 166 km/h **miss** | 330 km/h (301 km/h to 346 km/h) | 5 of 5 |
+| 1.0 L three-cylinder turbo | 116 kW (74 kW to 105 kW) **miss** | 214 N m (170 N m to 210 N m) **miss** | 800 rpm (700 rpm to 900 rpm) | 15.81 s at 146 km/h **miss** | 224 km/h (189 km/h to 217 km/h) **miss** | 5 of 5 |
+| Highway tractor 15 L | 391 kW (300 kW to 450 kW) | 2344 N m (2000 N m to 2780 N m) | 693 rpm (600 rpm to 700 rpm) | - | - | 5 of 5 |
+| 2.0 L turbo four, direct injection | 259 kW (155 kW to 230 kW) **miss** | 445 N m (350 N m to 400 N m) **miss** | 750 rpm (650 rpm to 850 rpm) | 14.61 s at 173 km/h **miss** | 282 km/h (239 km/h to 275 km/h) **miss** | 5 of 5 |
+| 1.8 L twin-cam roadster | 124 kW (95 kW to 112 kW) **miss** | 179 N m (155 N m to 172 N m) **miss** | 859 rpm (750 rpm to 900 rpm) | 15.78 s at 144 km/h | 224 km/h (199 km/h to 229 km/h) | 5 of 5 |
+| Twin-turbo 4.0 L hot-vee V8 | 515 kW (350 kW to 470 kW) **miss** | 896 N m (700 N m to 850 N m) **miss** | 651 rpm (550 rpm to 700 rpm) | 11.90 s at 203 km/h **miss** | 355 km/h (306 km/h to 352 km/h) **miss** | 5 of 5 |
+| Two-stage-cam 2.0 L | 139 kW (165 kW to 185 kW) **miss** | 190 N m (200 N m to 215 N m) **miss** | 900 rpm (850 rpm to 950 rpm) | 15.68 s at 146 km/h **miss** | 224 km/h (239 km/h to 275 km/h) **miss** | 5 of 5 |
+| V10 5.2 L | 396 kW (385 kW to 475 kW) | 476 N m (520 N m to 570 N m) **miss** | 1057 rpm (850 rpm to 1000 rpm) **miss** | 12.20 s at 195 km/h | 330 km/h (310 km/h to 356 km/h) | 5 of 5 |
+| V12 6.5 L | 526 kW (500 kW to 590 kW) | 586 N m (680 N m to 730 N m) **miss** | 1058 rpm (850 rpm to 1000 rpm) **miss** | 13.61 s at 202 km/h **miss** | 349 km/h (330 km/h to 379 km/h) | 5 of 5 |
+| 3.5 L V6 | 210 kW (195 kW to 225 kW) | 359 N m (335 N m to 365 N m) | 700 rpm (600 rpm to 750 rpm) | 15.27 s at 160 km/h | 247 km/h (246 km/h to 283 km/h) | 5 of 5 |
+| 3.5 L twin-turbo V6 pickup | 366 kW (275 kW to 305 kW) **miss** | 715 N m (630 N m to 700 N m) **miss** | 650 rpm (550 rpm to 700 rpm) | 13.49 s at 171 km/h **miss** | 265 km/h (223 km/h to 257 km/h) **miss** | 5 of 5 |
+| Narrow-angle VR6 2.8 L | 150 kW (125 kW to 132 kW) **miss** | 258 N m (230 N m to 240 N m) **miss** | 750 rpm (700 rpm to 800 rpm) | 15.44 s at 155 km/h | 247 km/h (210 km/h to 242 km/h) **miss** | 5 of 5 |
 
 ## The misses, target by target
 
-582 targets over 30 archetypes; 190 missed or not measurable. Each line: the archetype, what was measured, the range it should be in.
-
-### Invariant: holds its limiter (1)
-
-*Source: a rev limiter holds the speed within a few percent of where it cuts (some 100 to 200 rpm at 6500).*
-
-| Archetype | Measured | Should be |
-|---|---|---|
-| Supercharged 6.2 L V8 | 1.03 | 0.97 to 1.03 |
+581 targets over 30 archetypes; 174 missed or not measurable. Each line: the archetype, what was measured, the range it should be in.
 
 ### Header gas at full load (30)
 
@@ -90,64 +82,62 @@ Measured on the predicted dyno curve (steady full-throttle points, warm) and on 
 | 3.5 L twin-turbo V6 pickup | - (n/a) | 900 K to 1100 K |
 | Narrow-angle VR6 2.8 L | - (n/a) | 900 K to 1100 K |
 
-### Peak torque (24)
+### Peak torque (23)
 
 *Source: each kind's published figures, named in its build's notes and its validation file.*
 
 | Archetype | Measured | Should be |
 |---|---|---|
-| Air-cooled flat six | 344 N m | 300 N m to 320 N m |
-| Boxer four turbo with unequal headers | 523 N m | 380 N m to 410 N m |
-| Diesel 2.0 L common rail | 296 N m | 320 N m to 380 N m |
-| 1.5 L economy four | 160 N m | 140 N m to 156 N m |
-| Flat-plane 3.9 L V8, twin turbo | 955 N m | 760 N m to 805 N m |
-| Flat-plane 4.5 L V8 | 432 N m | 520 N m to 560 N m |
-| Four-cam 5.0 L V8 | 511 N m | 520 N m to 575 N m |
-| Kei 660 cc triple turbo | 135 N m | 100 N m to 110 N m |
-| 3.8 L pushrod V6 | 348 N m | 300 N m to 330 N m |
-| Rotary twin | 582 N m | 290 N m to 315 N m |
+| Air-cooled flat six | 333 N m | 300 N m to 320 N m |
+| Big-block 7.4 L pushrod V8 | 596 N m | 600 N m to 690 N m |
+| 7.0 L pushrod V8, dry sump | 618 N m | 630 N m to 645 N m |
+| Boxer four turbo with unequal headers | 498 N m | 380 N m to 410 N m |
+| Diesel 2.0 L common rail | 271 N m | 320 N m to 380 N m |
+| Flat-plane 3.9 L V8, twin turbo | 865 N m | 760 N m to 805 N m |
+| Flat-plane 4.5 L V8 | 411 N m | 520 N m to 560 N m |
+| Four-cam 5.0 L V8 | 502 N m | 520 N m to 575 N m |
+| Kei 660 cc triple turbo | 136 N m | 100 N m to 110 N m |
+| 3.8 L pushrod V6 | 338 N m | 300 N m to 330 N m |
+| Rotary twin | 605 N m | 290 N m to 315 N m |
 | 3.2 L straight six, high-revving | 275 N m | 355 N m to 375 N m |
-| 3.0 L straight six, twin turbo | 649 N m | 450 N m to 600 N m |
-| Supercharged 6.2 L V8 | 867 N m | 720 N m to 780 N m |
-| 1.0 L three-cylinder turbo | 224 N m | 170 N m to 210 N m |
-| Highway tractor 15 L | 2872 N m | 2000 N m to 2780 N m |
-| 2.0 L turbo four, direct injection | 470 N m | 350 N m to 400 N m |
-| 1.8 L twin-cam roadster | 185 N m | 155 N m to 172 N m |
-| Twin-turbo 4.0 L hot-vee V8 | 922 N m | 700 N m to 850 N m |
-| Two-stage-cam 2.0 L | 199 N m | 200 N m to 215 N m |
-| V10 5.2 L | 495 N m | 520 N m to 570 N m |
-| V12 6.5 L | 574 N m | 680 N m to 730 N m |
-| 3.5 L V6 | 370 N m | 335 N m to 365 N m |
-| 3.5 L twin-turbo V6 pickup | 747 N m | 630 N m to 700 N m |
-| Narrow-angle VR6 2.8 L | 265 N m | 230 N m to 240 N m |
+| 3.0 L straight six, twin turbo | 630 N m | 450 N m to 600 N m |
+| Supercharged 6.2 L V8 | 819 N m | 720 N m to 780 N m |
+| 1.0 L three-cylinder turbo | 214 N m | 170 N m to 210 N m |
+| 2.0 L turbo four, direct injection | 445 N m | 350 N m to 400 N m |
+| 1.8 L twin-cam roadster | 179 N m | 155 N m to 172 N m |
+| Twin-turbo 4.0 L hot-vee V8 | 896 N m | 700 N m to 850 N m |
+| Two-stage-cam 2.0 L | 190 N m | 200 N m to 215 N m |
+| V10 5.2 L | 476 N m | 520 N m to 570 N m |
+| V12 6.5 L | 586 N m | 680 N m to 730 N m |
+| 3.5 L twin-turbo V6 pickup | 715 N m | 630 N m to 700 N m |
+| Narrow-angle VR6 2.8 L | 258 N m | 230 N m to 240 N m |
 
-### Peak power (22)
+### Peak power (21)
 
 *Source: each kind's published figures, named in its build's notes and its validation file.*
 
 | Archetype | Measured | Should be |
 |---|---|---|
-| Air-cooled flat six | 206 kW | 180 kW to 195 kW |
-| Boxer four turbo with unequal headers | 303 kW | 210 kW to 235 kW |
+| Air-cooled flat six | 208 kW | 180 kW to 195 kW |
+| Boxer four turbo with unequal headers | 288 kW | 210 kW to 235 kW |
 | 1.5 L economy four | 101 kW | 80 kW to 97 kW |
-| Flat-plane 3.9 L V8, twin turbo | 615 kW | 450 kW to 535 kW |
-| Flat-plane 4.5 L V8 | 299 kW | 400 kW to 445 kW |
-| Four-cam 5.0 L V8 | 353 kW | 300 kW to 345 kW |
-| Inline five turbo rally | 307 kW | 200 kW to 265 kW |
-| Kei 660 cc triple turbo | 103 kW | 44 kW to 50 kW |
-| 3.8 L pushrod V6 | 168 kW | 140 kW to 160 kW |
-| Rotary twin | 303 kW | 190 kW to 210 kW |
-| Small-block 5.7 L, carburettor-like | 233 kW | 140 kW to 210 kW |
-| 3.2 L straight six, high-revving | 201 kW | 245 kW to 260 kW |
-| 3.0 L straight six, twin turbo | 387 kW | 250 kW to 340 kW |
-| Supercharged 6.2 L V8 | 512 kW | 395 kW to 435 kW |
-| 1.0 L three-cylinder turbo | 127 kW | 74 kW to 105 kW |
-| 2.0 L turbo four, direct injection | 276 kW | 155 kW to 230 kW |
-| 1.8 L twin-cam roadster | 125 kW | 95 kW to 112 kW |
-| Twin-turbo 4.0 L hot-vee V8 | 545 kW | 350 kW to 470 kW |
-| Two-stage-cam 2.0 L | 138 kW | 165 kW to 185 kW |
-| V10 5.2 L | 381 kW | 385 kW to 475 kW |
-| 3.5 L twin-turbo V6 pickup | 392 kW | 275 kW to 305 kW |
+| Flat-plane 3.9 L V8, twin turbo | 585 kW | 450 kW to 535 kW |
+| Flat-plane 4.5 L V8 | 305 kW | 400 kW to 445 kW |
+| Four-cam 5.0 L V8 | 357 kW | 300 kW to 345 kW |
+| Inline five turbo rally | 298 kW | 200 kW to 265 kW |
+| Kei 660 cc triple turbo | 97 kW | 44 kW to 50 kW |
+| 3.8 L pushrod V6 | 163 kW | 140 kW to 160 kW |
+| Rotary twin | 298 kW | 190 kW to 210 kW |
+| Small-block 5.7 L, carburettor-like | 232 kW | 140 kW to 210 kW |
+| 3.2 L straight six, high-revving | 205 kW | 245 kW to 260 kW |
+| 3.0 L straight six, twin turbo | 369 kW | 250 kW to 340 kW |
+| Supercharged 6.2 L V8 | 471 kW | 395 kW to 435 kW |
+| 1.0 L three-cylinder turbo | 116 kW | 74 kW to 105 kW |
+| 2.0 L turbo four, direct injection | 259 kW | 155 kW to 230 kW |
+| 1.8 L twin-cam roadster | 124 kW | 95 kW to 112 kW |
+| Twin-turbo 4.0 L hot-vee V8 | 515 kW | 350 kW to 470 kW |
+| Two-stage-cam 2.0 L | 139 kW | 165 kW to 185 kW |
+| 3.5 L twin-turbo V6 pickup | 366 kW | 275 kW to 305 kW |
 | Narrow-angle VR6 2.8 L | 150 kW | 125 kW to 132 kW |
 
 ### Speed at peak torque (16)
@@ -158,85 +148,61 @@ Measured on the predicted dyno curve (steady full-throttle points, warm) and on 
 |---|---|---|
 | Air-cooled flat six | 3390 rpm | 4500 rpm to 5000 rpm |
 | Boxer four turbo with unequal headers | 2458 rpm | 3600 rpm to 4400 rpm |
-| Flat-plane 4.5 L V8 | 3313 rpm | 5500 rpm to 6500 rpm |
+| Diesel 2.0 L common rail | 3210 rpm | 1700 rpm to 3000 rpm |
+| Flat-plane 4.5 L V8 | 3485 rpm | 5500 rpm to 6500 rpm |
 | Four-cam 5.0 L V8 | 5591 rpm | 4200 rpm to 4800 rpm |
-| 1.6 L 16-valve hot hatch | 3564 rpm | 4500 rpm to 6000 rpm |
 | Kei 660 cc triple turbo | 5069 rpm | 3000 rpm to 4000 rpm |
-| 3.8 L pushrod V6 | 2639 rpm | 3800 rpm to 4200 rpm |
+| 3.8 L pushrod V6 | 4389 rpm | 3800 rpm to 4200 rpm |
 | Rotary twin | 1521 rpm | 4500 rpm to 5500 rpm |
-| Small-block 5.7 L, carburettor-like | 3771 rpm | 2400 rpm to 3600 rpm |
 | 3.2 L straight six, high-revving | 5396 rpm | 4600 rpm to 5200 rpm |
-| 3.0 L straight six, twin turbo | 5690 rpm | 1500 rpm to 5200 rpm |
+| Supercharged 6.2 L V8 | 3425 rpm | 3500 rpm to 4200 rpm |
 | Two-stage-cam 2.0 L | 4144 rpm | 7000 rpm to 8000 rpm |
 | V10 5.2 L | 3523 rpm | 6000 rpm to 7000 rpm |
-| V12 6.5 L | 3591 rpm | 6000 rpm to 7000 rpm |
+| V12 6.5 L | 8557 rpm | 6000 rpm to 7000 rpm |
 | 3.5 L V6 | 3795 rpm | 4500 rpm to 5000 rpm |
+| 3.5 L twin-turbo V6 pickup | 2773 rpm | 3000 rpm to 4000 rpm |
 | Narrow-angle VR6 2.8 L | 4470 rpm | 4000 rpm to 4400 rpm |
 
-### Top speed (15)
-
-*Source: where 0.85 of the kind's published power (188 kW) meets the build's drag area and 1.2 % rolling resistance at 1.225 kg/m^3: 262 km/h, within 7 % (a power balance, not a test).*
-
-| Archetype | Measured | Should be |
-|---|---|---|
-| Air-cooled flat six | 282 km/h | 244 km/h to 281 km/h |
-| Boxer four turbo with unequal headers | 287 km/h | 246 km/h to 283 km/h |
-| Flat-plane 4.5 L V8 | 308 km/h | 323 km/h to 372 km/h |
-| Four-cam 5.0 L V8 | 273 km/h | 276 km/h to 318 km/h |
-| Kei 660 cc triple turbo | 210 km/h | 158 km/h to 182 km/h |
-| Rotary twin | 308 km/h | 260 km/h to 299 km/h |
-| 3.2 L straight six, high-revving | 261 km/h | 269 km/h to 309 km/h |
-| 3.0 L straight six, twin turbo | 323 km/h | 279 km/h to 321 km/h |
-| 1.0 L three-cylinder turbo | 230 km/h | 189 km/h to 217 km/h |
-| Highway tractor 15 L | 13 km/h | 120 km/h to 138 km/h |
-| 2.0 L turbo four, direct injection | 286 km/h | 239 km/h to 275 km/h |
-| Twin-turbo 4.0 L hot-vee V8 | 360 km/h | 306 km/h to 352 km/h |
-| Two-stage-cam 2.0 L | 223 km/h | 239 km/h to 275 km/h |
-| 3.5 L twin-turbo V6 pickup | 265 km/h | 223 km/h to 257 km/h |
-| Narrow-angle VR6 2.8 L | 247 km/h | 210 km/h to 242 km/h |
-
-### Quarter mile: trap speed (15)
+### Quarter mile: trap speed (14)
 
 *Source: Hale's rule, trap = 234 (hp/lb)^(1/3) mph: 47.4 m/s (171 km/h), within 8 % under to 6 % over.*
 
 | Archetype | Measured | Should be |
 |---|---|---|
 | Big-block 7.4 L pushrod V8 | 153 km/h | 157 km/h to 181 km/h |
-| Boxer four turbo with unequal headers | 187 km/h | 154 km/h to 177 km/h |
+| Boxer four turbo with unequal headers | 184 km/h | 154 km/h to 177 km/h |
 | Flat-plane 3.9 L V8, twin turbo | 188 km/h | 200 km/h to 231 km/h |
 | Flat-plane 4.5 L V8 | 186 km/h | 190 km/h to 219 km/h |
-| Inline five turbo rally | 200 km/h | 165 km/h to 190 km/h |
-| Kei 660 cc triple turbo | 157 km/h | 115 km/h to 132 km/h |
+| Inline five turbo rally | 197 km/h | 165 km/h to 190 km/h |
+| Kei 660 cc triple turbo | 152 km/h | 115 km/h to 132 km/h |
 | Rotary twin | 194 km/h | 156 km/h to 180 km/h |
 | Small-block 5.7 L, carburettor-like | 164 km/h | 140 km/h to 162 km/h |
-| 3.0 L straight six, twin turbo | 190 km/h | 164 km/h to 189 km/h |
 | Supercharged 6.2 L V8 | 166 km/h | 175 km/h to 202 km/h |
-| 1.0 L three-cylinder turbo | 149 km/h | 123 km/h to 142 km/h |
-| 2.0 L turbo four, direct injection | 174 km/h | 150 km/h to 172 km/h |
-| Twin-turbo 4.0 L hot-vee V8 | 206 km/h | 172 km/h to 198 km/h |
+| 1.0 L three-cylinder turbo | 146 km/h | 123 km/h to 142 km/h |
+| 2.0 L turbo four, direct injection | 173 km/h | 150 km/h to 172 km/h |
+| Twin-turbo 4.0 L hot-vee V8 | 203 km/h | 172 km/h to 198 km/h |
 | Two-stage-cam 2.0 L | 146 km/h | 152 km/h to 176 km/h |
-| 3.5 L twin-turbo V6 pickup | 173 km/h | 143 km/h to 165 km/h |
+| 3.5 L twin-turbo V6 pickup | 171 km/h | 143 km/h to 165 km/h |
 
-### Quarter mile: time (14)
+### Top speed (13)
 
-*Source: Hale's rule, ET = 5.825 (lb/hp)^(1/3) s, with the kind's published power (275 kW) and the build's mass: 12.86 s; 5 % quicker to 15 % slower for street tyres and an automatic's launch (card I's test holds drag radials to 8 %).*
+*Source: where 0.85 of the kind's published power (188 kW) meets the build's drag area and 1.2 % rolling resistance at 1.225 kg/m^3: 262 km/h, within 7 % (a power balance, not a test).*
 
 | Archetype | Measured | Should be |
 |---|---|---|
-| Big-block 7.4 L pushrod V8 | 16.83 s | 12.22 s to 14.79 s |
-| 7.0 L pushrod V8, dry sump | 13.55 s | 10.34 s to 12.52 s |
-| Boxer four turbo with unequal headers | 12.39 s | 12.47 s to 15.10 s |
-| Flat-plane 3.9 L V8, twin turbo | 13.79 s | 9.57 s to 11.59 s |
-| Flat-plane 4.5 L V8 | 13.70 s | 10.07 s to 12.19 s |
-| Four-cam 5.0 L V8 | 14.68 s | 11.48 s to 13.89 s |
-| Kei 660 cc triple turbo | 14.61 s | 16.66 s to 20.17 s |
-| 6.7 L straight-six turbo diesel pickup | 18.44 s | 14.92 s to 18.07 s |
-| 3.2 L straight six, high-revving | 15.20 s | 11.96 s to 14.48 s |
-| 3.0 L straight six, twin turbo | 14.26 s | 11.71 s to 14.17 s |
-| Supercharged 6.2 L V8 | 15.48 s | 10.94 s to 13.24 s |
-| Two-stage-cam 2.0 L | 15.72 s | 12.58 s to 15.23 s |
-| V12 6.5 L | 13.63 s | 9.64 s to 11.66 s |
-| 3.5 L twin-turbo V6 pickup | 13.36 s | 13.39 s to 16.21 s |
+| Air-cooled flat six | 284 km/h | 244 km/h to 281 km/h |
+| Boxer four turbo with unequal headers | 288 km/h | 246 km/h to 283 km/h |
+| Flat-plane 4.5 L V8 | 309 km/h | 323 km/h to 372 km/h |
+| Four-cam 5.0 L V8 | 271 km/h | 276 km/h to 318 km/h |
+| Kei 660 cc triple turbo | 210 km/h | 158 km/h to 182 km/h |
+| Rotary twin | 308 km/h | 260 km/h to 299 km/h |
+| 3.2 L straight six, high-revving | 263 km/h | 269 km/h to 309 km/h |
+| 1.0 L three-cylinder turbo | 224 km/h | 189 km/h to 217 km/h |
+| 2.0 L turbo four, direct injection | 282 km/h | 239 km/h to 275 km/h |
+| Twin-turbo 4.0 L hot-vee V8 | 355 km/h | 306 km/h to 352 km/h |
+| Two-stage-cam 2.0 L | 224 km/h | 239 km/h to 275 km/h |
+| 3.5 L twin-turbo V6 pickup | 265 km/h | 223 km/h to 257 km/h |
+| Narrow-angle VR6 2.8 L | 247 km/h | 210 km/h to 242 km/h |
 
 ### Speed at peak power (12)
 
@@ -246,49 +212,48 @@ Measured on the predicted dyno curve (steady full-throttle points, warm) and on 
 |---|---|---|
 | Air-cooled flat six | 6556 rpm | 5800 rpm to 6300 rpm |
 | 7.0 L pushrod V8, dry sump | 6134 rpm | 6200 rpm to 6400 rpm |
-| Boxer four turbo with unequal headers | 6854 rpm | 5800 rpm to 6400 rpm |
-| Diesel 2.0 L common rail | 4366 rpm | 3500 rpm to 4200 rpm |
+| Boxer four turbo with unequal headers | 6560 rpm | 5800 rpm to 6400 rpm |
+| Diesel 2.0 L common rail | 4511 rpm | 3500 rpm to 4200 rpm |
 | Kei 660 cc triple turbo | 7846 rpm | 6000 rpm to 7000 rpm |
 | 3.8 L pushrod V6 | 5409 rpm | 5000 rpm to 5400 rpm |
 | Rotary twin | 7846 rpm | 6300 rpm to 7000 rpm |
-| Small-block 5.7 L, carburettor-like | 5212 rpm | 4000 rpm to 5200 rpm |
+| Small-block 5.7 L, carburettor-like | 5356 rpm | 4000 rpm to 5200 rpm |
 | 1.0 L three-cylinder turbo | 6355 rpm | 5000 rpm to 6000 rpm |
 | 2.0 L turbo four, direct injection | 6507 rpm | 5000 rpm to 6500 rpm |
-| Two-stage-cam 2.0 L | 8826 rpm | 8000 rpm to 8600 rpm |
-| Narrow-angle VR6 2.8 L | 6210 rpm | 5600 rpm to 6000 rpm |
+| Two-stage-cam 2.0 L | 8654 rpm | 8000 rpm to 8600 rpm |
+| Narrow-angle VR6 2.8 L | 6355 rpm | 5600 rpm to 6000 rpm |
 
-### Port gas at full load (11)
+### Quarter mile: time (12)
 
-*Source: the gas at a diesel's exhaust valve at full load, before the port and pipe cool it: some 850 to 1100 K (judgement: the header's 700 to 950 K, below, plus the port's cooling; Heywood, Internal Combustion Engine Fundamentals, ch. 14).*
-
-| Archetype | Measured | Should be |
-|---|---|---|
-| Diesel 2.0 L common rail | 708 K | 850 K to 1100 K |
-| Flat-plane 3.9 L V8, twin turbo | 1351 K | 1100 K to 1300 K |
-| Inline five turbo rally | 1310 K | 1100 K to 1300 K |
-| 6.7 L straight-six turbo diesel pickup | 776 K | 850 K to 1100 K |
-| Rotary twin | 1064 K | 1100 K to 1300 K |
-| 3.0 L straight six, twin turbo | 1305 K | 1100 K to 1300 K |
-| Supercharged 6.2 L V8 | 1432 K | 1100 K to 1300 K |
-| 1.0 L three-cylinder turbo | 1020 K | 1100 K to 1300 K |
-| Highway tractor 15 L | 756 K | 850 K to 1100 K |
-| Twin-turbo 4.0 L hot-vee V8 | 1364 K | 1100 K to 1300 K |
-| 3.5 L twin-turbo V6 pickup | 1336 K | 1100 K to 1300 K |
-
-### Warm idle (8)
-
-*Source: makers' service specifications of the kind: 550 to 750 rpm warm in neutral (a rule of thumb, firm to 100 rpm); the ECU is asked for 650.*
+*Source: Hale's rule, ET = 5.825 (lb/hp)^(1/3) s, with the kind's published power (275 kW) and the build's mass: 12.86 s; 5 % quicker to 15 % slower for street tyres and an automatic's launch (card I's test holds drag radials to 8 %).*
 
 | Archetype | Measured | Should be |
 |---|---|---|
-| Big-block 7.4 L pushrod V8 | 758 rpm | 550 rpm to 750 rpm |
-| 7.0 L pushrod V8, dry sump | 843 rpm | 650 rpm to 800 rpm |
-| Flat-plane 4.5 L V8 | 1340 rpm | 900 rpm to 1100 rpm |
-| Four-cam 5.0 L V8 | 827 rpm | 600 rpm to 750 rpm |
-| Rotary twin | 1068 rpm | 750 rpm to 900 rpm |
-| 3.0 L straight six, twin turbo | 823 rpm | 600 rpm to 750 rpm |
-| V10 5.2 L | 1166 rpm | 850 rpm to 1000 rpm |
-| V12 6.5 L | 1244 rpm | 850 rpm to 1000 rpm |
+| Big-block 7.4 L pushrod V8 | 16.81 s | 12.22 s to 14.79 s |
+| 7.0 L pushrod V8, dry sump | 13.55 s | 10.34 s to 12.52 s |
+| Flat-plane 3.9 L V8, twin turbo | 13.77 s | 9.57 s to 11.59 s |
+| Flat-plane 4.5 L V8 | 13.85 s | 10.07 s to 12.19 s |
+| Four-cam 5.0 L V8 | 14.67 s | 11.48 s to 13.89 s |
+| Kei 660 cc triple turbo | 15.12 s | 16.66 s to 20.17 s |
+| 6.7 L straight-six turbo diesel pickup | 18.23 s | 14.92 s to 18.07 s |
+| 3.2 L straight six, high-revving | 15.16 s | 11.96 s to 14.48 s |
+| 3.0 L straight six, twin turbo | 14.20 s | 11.71 s to 14.17 s |
+| Supercharged 6.2 L V8 | 15.44 s | 10.94 s to 13.24 s |
+| Two-stage-cam 2.0 L | 15.68 s | 12.58 s to 15.23 s |
+| V12 6.5 L | 13.61 s | 9.64 s to 11.66 s |
+
+### Warm idle (6)
+
+*Source: makers' service specifications of the kind: 650 to 800 rpm warm in neutral (a rule of thumb, firm to 100 rpm); the ECU is asked for 750.*
+
+| Archetype | Measured | Should be |
+|---|---|---|
+| 7.0 L pushrod V8, dry sump | 840 rpm | 650 rpm to 800 rpm |
+| Four-cam 5.0 L V8 | 819 rpm | 600 rpm to 750 rpm |
+| Rotary twin | 967 rpm | 750 rpm to 900 rpm |
+| 3.0 L straight six, twin turbo | 827 rpm | 600 rpm to 750 rpm |
+| V10 5.2 L | 1057 rpm | 850 rpm to 1000 rpm |
+| V12 6.5 L | 1058 rpm | 850 rpm to 1000 rpm |
 
 ### Idle steadiness (6)
 
@@ -296,12 +261,25 @@ Measured on the predicted dyno curve (steady full-throttle points, warm) and on 
 
 | Archetype | Measured | Should be |
 |---|---|---|
-| Flat-plane 4.5 L V8 | 1403 rpm | 900 rpm to 1250 rpm |
-| Four-cam 5.0 L V8 | 934 rpm | 600 rpm to 900 rpm |
-| Rotary twin | 1169 rpm | 750 rpm to 1050 rpm |
-| 3.0 L straight six, twin turbo | 912 rpm | 600 rpm to 900 rpm |
-| V10 5.2 L | 1179 rpm | 850 rpm to 1150 rpm |
-| V12 6.5 L | 1299 rpm | 850 rpm to 1150 rpm |
+| 7.0 L pushrod V8, dry sump | 988 rpm | 650 rpm to 950 rpm |
+| Four-cam 5.0 L V8 | 985 rpm | 600 rpm to 900 rpm |
+| Rotary twin | 1138 rpm | 750 rpm to 1050 rpm |
+| 3.0 L straight six, twin turbo | 1044 rpm | 600 rpm to 900 rpm |
+| V10 5.2 L | 1248 rpm | 850 rpm to 1150 rpm |
+| V12 6.5 L | 1405 rpm | 850 rpm to 1150 rpm |
+
+### Port gas at full load (6)
+
+*Source: the gas at a diesel's exhaust valve at full load, before the port and pipe cool it: some 850 to 1100 K (judgement: the header's 700 to 950 K, below, plus the port's cooling; Heywood, Internal Combustion Engine Fundamentals, ch. 14).*
+
+| Archetype | Measured | Should be |
+|---|---|---|
+| Diesel 2.0 L common rail | 683 K | 850 K to 1100 K |
+| 6.7 L straight-six turbo diesel pickup | 723 K | 850 K to 1100 K |
+| Rotary twin | 1059 K | 1100 K to 1300 K |
+| Supercharged 6.2 L V8 | 1370 K | 1100 K to 1300 K |
+| 1.0 L three-cylinder turbo | 992 K | 1100 K to 1300 K |
+| Highway tractor 15 L | 689 K | 850 K to 1100 K |
 
 ### Charge temperature under boost (5)
 
@@ -310,21 +288,20 @@ Measured on the predicted dyno curve (steady full-throttle points, warm) and on 
 | Archetype | Measured | Should be |
 |---|---|---|
 | Flat-plane 3.9 L V8, twin turbo | 351 K | 293 K to 340 K |
-| 6.7 L straight-six turbo diesel pickup | 366 K | 293 K to 340 K |
+| 6.7 L straight-six turbo diesel pickup | 365 K | 293 K to 340 K |
 | Rotary twin | 361 K | 293 K to 340 K |
-| Highway tractor 15 L | 403 K | 293 K to 340 K |
-| Twin-turbo 4.0 L hot-vee V8 | 346 K | 293 K to 340 K |
+| Highway tractor 15 L | 400 K | 293 K to 340 K |
+| Twin-turbo 4.0 L hot-vee V8 | 345 K | 293 K to 340 K |
 
-### Volumetric efficiency low down (4)
+### Boost at its target (3)
 
-*Source: VE's shape: below the torque peak it falls away, the more so the hotter the cam (Heywood, Internal Combustion Engine Fundamentals, ch. 6); measured at 2000 rpm.*
+*Source: the build's own target (1.40 bar); a wastegate or vane loop holds a steady full load within some 0.1 bar of its target once spooled (makers' boost-control tolerances; judgement).*
 
 | Archetype | Measured | Should be |
 |---|---|---|
-| Flat-plane 4.5 L V8 | 0.69 | 0.70 to 0.95 |
-| 3.2 L straight six, high-revving | 0.66 | 0.70 to 0.95 |
-| V10 5.2 L | 0.69 | 0.70 to 0.95 |
-| 3.5 L V6 | 0.98 | 0.70 to 0.95 |
+| Diesel 2.0 L common rail | 1.03 bar | 1.25 bar to 1.55 bar |
+| Rotary twin | 1.30 bar | 0.55 bar to 0.85 bar |
+| Supercharged 6.2 L V8 | 0.83 bar | 0.47 bar to 0.77 bar |
 
 ### Lambda at full load under boost (3)
 
@@ -342,14 +319,14 @@ Measured on the predicted dyno curve (steady full-throttle points, warm) and on 
 
 | Archetype | Measured | Should be |
 |---|---|---|
-| Flat-plane 4.5 L V8 | 0.77 | 0.82 to 1.02 |
-| Two-stage-cam 2.0 L | 0.79 | 0.82 to 1.02 |
+| Flat-plane 4.5 L V8 | 0.79 | 0.82 to 1.02 |
+| Two-stage-cam 2.0 L | 0.81 | 0.82 to 1.02 |
 
-### Boost at its target (2)
+### Volumetric efficiency low down (2)
 
-*Source: the build's own target (0.70 bar); a wastegate or vane loop holds a steady full load within some 0.1 bar of its target once spooled (makers' boost-control tolerances; judgement).*
+*Source: VE's shape: below the torque peak it falls away, the more so the hotter the cam (Heywood, Internal Combustion Engine Fundamentals, ch. 6); measured at 2000 rpm.*
 
 | Archetype | Measured | Should be |
 |---|---|---|
-| Rotary twin | 1.32 bar | 0.55 bar to 0.85 bar |
-| Supercharged 6.2 L V8 | 0.82 bar | 0.47 bar to 0.77 bar |
+| 3.2 L straight six, high-revving | 0.69 | 0.70 to 0.95 |
+| 3.5 L V6 | 1.01 | 0.70 to 0.95 |

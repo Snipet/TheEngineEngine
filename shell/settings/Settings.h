@@ -34,6 +34,9 @@ namespace tee::settings
         std::string audioDevice;
         int audioRate = 0;
         int audioBuffer = 256;                  // frames asked of the device
+        // The simulator's quality: "full" (the engine at 96 kHz inside: the default) or "economy" (48 kHz inside: about
+        // half the CPU, the top octave lost). Never changed by itself.
+        std::string audioQuality = "full";
 
         std::vector<input::Binding> bindings = input::defaultBindings();
         input::DriverSettings driver;           // the easing times, the automatic clutch
