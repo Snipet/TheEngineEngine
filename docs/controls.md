@@ -23,7 +23,7 @@ expects them on any layout.
 | 1 to 6 | That gear. |
 
 **The start key.** Press it and the starter cranks the engine; it goes on cranking by itself until the engine
-runs. Hold it for a second while the engine runs and the engine is switched off. A tap is enough to start: a press
+runs (two seconds at the most: an engine that will not catch is left on, not cranking; press again). Hold it for a second while the engine runs and the engine is switched off. A tap is enough to start: a press
 shorter than a frame is still held for 0.15 s.
 
 **The gears.** The automatic clutch is on (there is no switch for it in the window yet). With it, E and Q are the

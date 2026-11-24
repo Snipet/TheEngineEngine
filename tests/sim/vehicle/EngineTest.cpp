@@ -64,6 +64,7 @@ TEST_CASE("engine.launch: a strong rear-drive car on street tyres spins them in 
     tee::test::Scenario s = started("v8");
     withCar(s, "rwd-v8-coupe");
     s.at(0.0).spec("car.tyre", "Street");
+    s.at(0.0).spec("env.temperature", 300.0);     // (the v8 build stands at -40 C: the launch is in 300 K air)
     s.at(2.5).shiftUp();
     s.at(2.8).throttle(1.0).ramp(0.1);
     s.at(5.5).shiftUp();
@@ -127,6 +128,7 @@ TEST_CASE("engine.coastdown: in neutral the car slows as its drag and rolling sa
     tee::test::Scenario s = started("v8");
     withCar(s, "light-fwd-four");
     s.at(0.0).spec("car.gearbox", "Automatic");
+    s.at(0.0).spec("env.temperature", 300.0);     // (the v8 build stands at -40 C: the coast-down is in 300 K air)
     s.at(2.5).lever(1);
     s.at(2.8).throttle(1.0).ramp(0.1);
     s.at(12.0).throttle(0.0).lever(0);
@@ -135,7 +137,9 @@ TEST_CASE("engine.coastdown: in neutral the car slows as its drag and rolling sa
     const auto v = r.tel("car.speed");
     const double v0 = v.at(13.0), v1 = v.at(21.0);
     // the hatch: 1150 kg, CdA 0.63, street tyres (0.010, rising with v^2 / 19600), wheels of 0.9 kg m^2 at 0.31 m
-    const double m = 1150.0, c = 0.010 * m * 9.81, k = 0.5 * 1.2 * 0.63 + c * 0.00005102;
+    // the air's density from spec.env (101325 Pa, 300 K): 1.177 kg/m^3
+    const double rho = 101325.0 / (287.05 * 300.0);
+    const double m = 1150.0, c = 0.010 * m * 9.81, k = 0.5 * rho * 0.63 + c * 0.00005102;
     const double mEff = m + 4.0 * 0.9 / (0.31 * 0.31);
     const double rr = std::sqrt(c / k);
     const double analytic = rr * std::tan(std::atan(v0 / rr) - std::sqrt(k * c) * 8.0 / mEff);

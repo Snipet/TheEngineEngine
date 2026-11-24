@@ -1,0 +1,11 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "X-001: the custom engine at its defaults",
+  "notes": "Package X's finding X-001 (2026-11-24, card D): every field at its default but engine.custom on. The defaults' geometry (8 cylinders, bank 0, every pin at 0, fireRev 0) is inside every range.",
+  "spec": {
+    "engine": {
+      "custom": true
+    }
+  }
+}

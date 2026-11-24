@@ -74,6 +74,7 @@ namespace tee::input
         if (action == Action::start)
         {
             startLatch_ = settings_.startLeast;
+            startLatchFresh_ = true;    // the next advance's dt is time before the press: it does not count
             return;
         }
         if (action == Action::shiftUp)
@@ -187,13 +188,23 @@ namespace tee::input
         handbrake_ = ease(handbrake_, held(Action::handbrake), settings_.handbrake, dt);
 
         // the start key (Driver.h)
-        const bool start = held(Action::start) || startLatch_ > 0.0f;
-        startLatch_ = std::max(0.0f, startLatch_ - dt);
+        // a press on a stopped engine cranks it until it runs (at most crankMax seconds), as docs/controls.md says:
+        // a tap is enough, and a key let go early (the window losing the keyboard as it opens) does not cut it short
+        if (seen.running)
+            crankLeft_ = 0.0f;
+        const bool start = held(Action::start) || startLatch_ > 0.0f || crankLeft_ > 0.0f;
+        if (startLatchFresh_)
+            startLatchFresh_ = false;
+        else
+            startLatch_ = std::max(0.0f, startLatch_ - dt);
         if (start && !startWas_)
         {
             startOnRunning_ = seen.running;
             startHeld_ = 0.0f;
+            if (!seen.running)
+                crankLeft_ = settings_.crankMax + dt;     // (this frame's dt is mostly before the press)
         }
+        crankLeft_ = std::max(0.0f, crankLeft_ - dt);
         if (start)
         {
             startHeld_ += dt;
