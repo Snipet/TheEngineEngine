@@ -11,7 +11,7 @@
     { "name": "Holds the limiter", "scenario": "rev-limit", "tel": "engine.speed", "measure": "max", "during": [6, 10],
       "relativeTo": "engine.redline", "range": [0.97, 1.03], "unit": "of the redline", "fast": true,
       "source": "a fuel-cut rev limiter holds the speed within a few percent of where it cuts (some 100 to 200 rpm at 6500)" },
-    { "name": "Warm idle", "scenario": "idle", "tel": "engine.speed", "measure": "mean", "during": [8, 12],
+    { "name": "Warm idle", "scenario": "idle-warm", "tel": "engine.speed", "measure": "mean", "during": [8, 12],
       "range": [62.8, 94.2], "unit": "rad/s",
       "source": "a warm passenger-car V8 idles at 600 to 900 rpm in neutral (a rule of thumb from makers' service specifications)" },
     { "name": "Peak torque", "dyno": { "from": 150, "to": 680, "rate": 60 }, "measure": "maxTorque",

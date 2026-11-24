@@ -16,9 +16,9 @@
 // Mechanics::inertia has it) times the speed the engine gained, over the time: exactly what the reference's bench step
 // would have done with that torque. The curve says which brake made it (PredictCurve::brake).
 //
-// The engine is made warm before it starts (the coolant at its thermostat, the oil and the chamber's walls as a warm
-// engine's: heat.*, when the program has them): a dyno's curve is a warm engine's, and the simulator would take
-// minutes of simulated running to warm.
+// The engine is warm and held so (the coolant at its thermostat, the oil and the chamber's walls as a warm engine's:
+// heat.*, when the program has them, put back each cycle as a dyno cell's conditioning holds them): a dyno's curve is
+// a warm engine's; the simulator would take minutes to warm, and at full load for minutes it overheats.
 //
 //   tee::PredictService predict(sim);                    // once; its threads wait
 //   predict.request(build);                              // a moment after each edit: the newest wins
