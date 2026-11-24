@@ -1,6 +1,12 @@
 // tests/sim/calibration/balance/Balance.cpp: the books of Balance.h, read from the simulator's own state each sample.
 #include "Balance.h"
 
+#include "tee/Build.h"
+#include "tee/Fields.h"
+
+#include <cstdint>
+#include <cstring>
+
 #include <algorithm>
 #include <cstdio>
 #include <functional>
@@ -54,6 +60,48 @@ namespace tee::balance
         };
     } // namespace
 
+    bool loadWhole(EnginePlayer& p, const std::filesystem::path& file, std::string& error)
+    {
+        std::unique_ptr<Fields> fields = Fields::of(p.schema(), error);
+        if (!fields)
+            return false;
+        Build build(*fields);
+        std::vector<std::string> warnings;
+        if (!build.loadFile(file, BuildPart::Whole, warnings, error))
+            return false;
+        unsigned char* base = static_cast<unsigned char*>(p.instance().data());
+        const std::vector<FieldInfo>& all = fields->all();
+        for (std::size_t i = 0; i < all.size(); ++i)
+        {
+            const FieldInfo& f = all[i];
+            if (f.block != "spec")
+                continue;
+            const std::vector<double>& v = build.values(int(i));
+            std::size_t at = 0;
+            for (const FieldInfo::Leaf& leaf : f.leaves)
+                for (std::size_t k = 0; k < leaf.count && at < v.size(); ++k, ++at)
+                {
+                    unsigned char* q = base + f.offset + leaf.offset + k * leaf.stride;
+                    switch (leaf.scalar)
+                    {
+                    case Scalar::Float: { const float x = float(v[at]); std::memcpy(q, &x, 4); break; }
+                    case Scalar::Double: { const double x = v[at]; std::memcpy(q, &x, 8); break; }
+                    case Scalar::Int: { const std::int32_t x = std::int32_t(std::lround(v[at])); std::memcpy(q, &x, 4); break; }
+                    case Scalar::Bool: { const bool x = v[at] != 0.0; std::memcpy(q, &x, 1); break; }
+                    default: break;
+                    }
+                }
+        }
+        for (const Section& sec : fields->sections())
+        {
+            std::int32_t rev = 0;
+            std::memcpy(&rev, base + sec.revOffset, 4);
+            ++rev;
+            std::memcpy(base + sec.revOffset, &rev, 4);
+        }
+        return true;
+    }
+
     void keepPlayer(bool keep)
     {
         keeping = keep;
@@ -81,17 +129,34 @@ namespace tee::balance
         else
             k.player->reset(o.sampleRate);
         EnginePlayer& p = *k.player;
-        EngineBuild build;
         std::filesystem::path file = slug;
         if (!std::filesystem::exists(file))
             file = std::filesystem::path(TEE_SOURCE_DIR) / "content" / "builds" / "archetypes" / (slug + ".json");
-        std::string warnings;
-        if (!loadBuild(p, file, build, error, warnings))
+        // The build through tee::Build, the loader tee-dyno and P's table use (it reads every nested section: the
+        // ECU's idle, limiter, knock and baked maps, which the older loadBuild drops: the lead's note, 24 Nov), its
+        // values written into the instance field by field and every section's rev moved
+        if (!loadWhole(p, file, error))
             return false;
-        applyBuild(p, build);
         for (const auto& [path, value] : o.set)
             if (!p.setSpec(path, value, error))
                 return false;
+        if (!o.raw.empty())
+        {
+            for (const auto& [path, value] : o.raw)
+                if (!p.instance().write(p.schema(), path, value, error))
+                    return false;
+            std::unique_ptr<Fields> fields = Fields::of(p.schema(), error);
+            if (!fields)
+                return false;
+            unsigned char* base = static_cast<unsigned char*>(p.instance().data());
+            for (const Section& sec : fields->sections())
+            {
+                std::int32_t rev = 0;
+                std::memcpy(&rev, base + sec.revOffset, 4);
+                ++rev;
+                std::memcpy(base + sec.revOffset, &rev, 4);
+            }
+        }
 
         const Schema& schema = p.schema();
         Instance& inst = p.instance();
