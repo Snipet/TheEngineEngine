@@ -44,12 +44,14 @@
       "name": "dev",
       "configurePreset": "dev",
       "output": { "outputOnFailure": true },
+      "filter": { "exclude": { "label": "^nightly$" } },
       "execution": { "jobs": 3, "timeout": 900 }
     },
     {
       "name": "release",
       "configurePreset": "release",
       "output": { "outputOnFailure": true },
+      "filter": { "exclude": { "label": "^nightly$" } },
       "execution": { "jobs": 3, "timeout": 900 }
     },
     {
@@ -59,6 +61,14 @@
       "filter": { "include": { "name": "made-up audio thread|simhost|commands" } },
       "environment": { "TSAN_OPTIONS": "halt_on_error=1 second_deadlock_stack=1" },
       "execution": { "jobs": 2, "timeout": 1800 }
+    },
+    {
+      "name": "nightly",
+      "displayName": "release: only the long soaks, labelled nightly (the dev and release runs leave them out)",
+      "configurePreset": "release",
+      "output": { "outputOnFailure": true },
+      "filter": { "include": { "label": "^nightly$" } },
+      "execution": { "jobs": 3, "timeout": 7200 }
     }
   ],
   "workflowPresets": [

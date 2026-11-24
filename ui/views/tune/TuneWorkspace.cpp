@@ -72,7 +72,7 @@ namespace tee::ui
             const char* lambdaMeasured = "exhaust.lambda";
             const char* knock = "ecu.knock";
             const char* retard = "ecu.knockRetard";
-            const char* advance = "ecu.spark";
+            const char* advance = "ecu.advance";
             const char* ecuFlags = "ecu.flags";     // sim/ecu/ecu1.fm's ECU_FLAG_*
             const char* engineFlags = "engine.flags";
         };
@@ -177,7 +177,8 @@ namespace tee::ui
                     return t;
                 };
                 const auto axisName = [&u](Quantity q, const char* none) {
-                    return q == Quantity::none ? std::string(none) : std::string(u.unit(q).name);
+                    const std::string n = q == Quantity::none ? std::string() : std::string(u.unit(q).name);
+                    return n.empty() ? std::string(none) : n;
                 };
                 const Quantity zq = zQuantity(info);
                 s.source = std::make_unique<DocMap>(doc, s.field);
@@ -695,7 +696,9 @@ namespace tee::ui
                 pl.resetView();
                 pl.touched();
             };
-            const std::string atY = live ? "AT " + u.format(info.axes[1], ly, -1) : "THROUGH THE MIDDLE";
+            const std::string atY = !live ? "THROUGH THE MIDDLE"
+                                  : info.axes[1] == Quantity::ratio || info.axes[1] == Quantity::none
+                                      ? "AT LOAD " + look::num(ly, "%.2f") : "AT " + u.format(info.axes[1], ly, -1);
             const std::string atX = live ? "AT " + u.format(info.axes[0], lx, 0) : "THROUGH THE MIDDLE";
             fill(*sliceX_, info.axes[0], m.x, m.nx, lx, true, "Along speed, " + atY);
             fill(*sliceY_, info.axes[1], m.y, m.ny, ly, false, "Along load, " + atX);
@@ -834,10 +837,12 @@ namespace tee::ui
             if (isAuto(shown_))
             {
                 const Rect b = s.edit->bounds();
-                const Rect note{ b.x + 54.0f, b.bottom() - 30.0f, b.w - 54.0f, 30.0f };
+                const std::string words = "FORMULA IN USE: the ECU makes this map itself; the table is kept, not read. "
+                                          "Bake copies the formula in.";
+                const float w = b.w - 54.0f, lines = c.textWidth(words.c_str(), look::kBody) > w - 20.0f ? 2.0f : 1.0f;
+                const Rect note{ b.x + 54.0f, b.bottom() - 12.0f - 15.0f * lines, w, 12.0f + 15.0f * lines };
                 c.rrect(note.x, note.y, note.w, note.h, 4.0f, p.raised, 1.5f, p.selected);
-                c.text("FORMULA IN USE: the ECU makes this map itself; the table is kept, not read. Bake copies the formula in.",
-                       note.x + 10.0f, note.y + 9.0f, look::kBody, p.value);
+                chart::wrap(c, words, note.x + 10.0f, note.y + 6.0f, w - 20.0f, look::kBody, p.value, 15.0f, 2);
             }
         }
         std::uint64_t overKey() const
