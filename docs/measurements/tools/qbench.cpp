@@ -13,7 +13,7 @@
 // the worst difference of a quarter second's level, and the engine's speed apart (rpm).
 //
 //   qbench [--a <dir>] [--b <dir>] [--aenv K=V,K=V] [--benv K=V,...] [--builds a,b] [--scenarios a,b]
-//          [--repeat n] [--rate hz] [--block n] [--seconds s]
+//          [--repeat n] [--rate hz] [--block n] [--seconds s] [--bands 1 (each band's difference, B over A)]
 //   TEE_Q_OPT=0..3, TEE_Q_MATH=vector|libm|fast, TEE_Q_DENORM=flush|preserve, TEE_Q_KNOBS=n, TEE_Q_IR=<file>, TEE_Q_DEFINES=NAME[=v];NAME (the program's macros: TEE_FAST)
 #include "tee/Clock.h"
 #include "tee/EnginePlayer.h"
@@ -252,6 +252,7 @@ int main(int argc, char** argv)
     std::string a = root + "/sim", b, aenv, benv, builds = "v8,large-diesel", scenarios = "free-revs,drive-car";
     int repeat = 3, block = 512;
     double rate = 48000.0, seconds = 0.0;
+    bool showBands = false;
     for (int i = 1; i + 1 < argc; i += 2)
     {
         const std::string k = argv[i], v = argv[i + 1];
@@ -265,6 +266,7 @@ int main(int argc, char** argv)
         else if (k == "--rate") rate = std::atof(v.c_str());
         else if (k == "--block") block = std::atoi(v.c_str());
         else if (k == "--seconds") seconds = std::atof(v.c_str());
+        else if (k == "--bands") showBands = v == "1";
         else { std::fprintf(stderr, "qbench: unknown %s\n", k.c_str()); return 2; }
     }
     if (b.empty())
@@ -329,6 +331,21 @@ int main(int argc, char** argv)
             const double tog = same ? (double)ra.audio.left.size() / rate : std::min(together(ra.audio.left, rb.audio.left, rate), together(ra.audio.right, rb.audio.right, rate));
             const double bd = same ? 0.0 : std::max(bandDifference(ra.audio.left, rb.audio.left, rate), bandDifference(ra.audio.right, rb.audio.right, rate));
             const double ld = same ? 0.0 : std::max(levelDifference(ra.audio.left, rb.audio.left, rate), levelDifference(ra.audio.right, rb.audio.right, rate));
+            if (showBands && !same)
+            {
+                // each third-octave band's level, B over A (dB), left and right averaged in power
+                std::vector<double> xl = bands(ra.audio.left, rate), xr = bands(ra.audio.right, rate);
+                std::vector<double> yl = bands(rb.audio.left, rate), yr = bands(rb.audio.right, rate);
+                std::printf("bands %s %s:", bn.c_str(), sn.c_str());
+                double fc = 25.0;
+                for (std::size_t i = 0; i < xl.size(); ++i, fc *= std::pow(2.0, 1.0 / 3.0))
+                {
+                    const double a = 10.0 * std::log10(std::pow(10.0, xl[i] / 10.0) + std::pow(10.0, xr[i] / 10.0));
+                    const double b2 = 10.0 * std::log10(std::pow(10.0, yl[i] / 10.0) + std::pow(10.0, yr[i] / 10.0));
+                    std::printf(" %.0f:%+.2f", fc, b2 - a);
+                }
+                std::printf("\n");
+            }
             double sw = 0.0, sm = 0.0;
             speedDifference(ra, rb, sw, sm);
             sumA += bestA;

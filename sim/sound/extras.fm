@@ -134,11 +134,14 @@ module Extras
     // the propshaft's speed (rad/s); torque, peak: the brake torque and the engine's most (N m); engaged: the clutch (0
     // out, 1 in); asp: the induction (0 natural, 1 to 3 turbos, 4 a supercharger); boostShare: its boost over its most;
     // gateOpen: the wastegate's opening (0 to 1); gateExternal; flowShare: the exhaust's mass flow over its most;
-    // cylinders, cycleDeg: the layout's; clatter: the valves' float (card E, 0 to 1); displacement (m^3); diesel
+    // cylinders, cycleDeg: the layout's; clatter: the valves' float (card E, 0 to 1); displacement (m^3); diesel; and a
+    // motorcycle's (card B2's): isBike, wSprocket (its front sprocket, rad/s), frontTeeth, dryClutch, primaryRatio,
+    // lever (the clutch lever out 1, pulled 0)
     void control16(float d16, int ignition, int state, float crankHz, float coolant, int driven, int boxKind, int truck,
                    int gearIn, float wIn, float ratioTotal, float fd, float wOut, float torque, float peak, float engaged,
                    int asp, float boostShare, float gateOpen, int gateExternal, float flowShare, int cylinders,
-                   float cycleDeg, float clatter, float displacement, int diesel)
+                   float cycleDeg, float clatter, float displacement, int diesel, int isBike, float wSprocket, int frontTeeth,
+                   int dryClutch, float primaryRatio, float lever)
     {
         if (vs->model == 0)
         {
@@ -163,7 +166,7 @@ module Extras
         }
         vo.control16(vs, voFade != 0 ? 0.0f : 1.0f, d16, ignition, state, crankHz, coolant, driven, boxKind, truck, gearIn, wIn,
                      ratioTotal, fd, wOut, torque, peak, engaged, asp, boostShare, gateOpen, gateExternal, flowShare, cylinders,
-                     cycleDeg, clatter, displacement, diesel);
+                     cycleDeg, clatter, displacement, diesel, isBike, wSprocket, frontTeeth, dryClutch, primaryRatio, lever);
     }
 
     // A valve came down on its seat (amp 0 to 1; intake: 1 an intake valve, 0 an exhaust valve), an injector opened
@@ -222,8 +225,9 @@ module Extras
     // pressure the throttle drops (0 wide open, near 1 shut at speed); crankHz: the crank's turns a second; dpdt: the
     // cylinders' pressure rise this sample (Pa); intakeModel, intakeSound: with intake.model 1 card E's intake radiates
     // its own sound (its air box's snorkel, or the trumpets: Intake::sound), heard in place of the box filter here.
-    // Boost's sound follows, then tickStarter.
-    void tick(float qThrottle, float dropRatio, float crankHz, float dpdt, int intakeModel, float intakeSound)
+    // lashStrike: a motorcycle's drive lash closing this sample (Car::lashStrike, rad/s; 0 otherwise). Boost's sound
+    // follows, then tickStarter.
+    void tick(float qThrottle, float dropRatio, float crankHz, float dpdt, int intakeModel, float intakeSound, float lashStrike)
     {
         // (the voices' valve taps and bounces due this sample join the head's ring)
         if (voOn != 0)
@@ -310,7 +314,7 @@ module Extras
         mech += 0.6f * pres.tick(pk);
         if (voOn != 0)
         {
-            vo.tick(crankHz);
+            vo.tick(crankHz, lashStrike);
             mech += vo.all;
         }
     }
