@@ -376,7 +376,9 @@ a shared stream draws where the reference did.
 
 Each package's model is switched by its Spec section's `model` (0: the reference's, bit for bit; 1: the package's):
 `valve.model` (E), `intake.model` (E), `boost.model` (F), `exhaust.model` (G), `fuel.model` (H: combustion),
-`ecu.model` (H), `car.model` (I), and `engine.custom` (D). A hook is called only when its model is 1, so at the
+`ecu.model` (H), `car.model` (I), and `engine.custom` (D). A switch changed while the engine runs is made under the fade, as a new layout is (`Engine::holdModel`: the Spec
+keeps the model in use until the fade's quiet, where `configure` makes the change and moves the section's rev; stopped,
+at once). A hook is called only when its model is 1, so at the
 defaults nothing below runs. Its body is a stub, in the owner's module, that the owner fills; the call's place is the
 integrator's.
 
