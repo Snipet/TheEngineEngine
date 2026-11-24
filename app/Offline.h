@@ -67,6 +67,7 @@ namespace tee::app
             std::function<bool(const std::string&, const std::string&, std::string&)> saveText;
             std::function<std::string()> audioInfo;
             std::function<void()> audioMenu;
+            std::function<void(int)> qualityChosen;     // the QUALITY row's choice, for the settings file
         };
         std::shared_ptr<WindowHooks> window;
         files::BuildFile* document = nullptr;

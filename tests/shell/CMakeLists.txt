@@ -47,6 +47,14 @@ add_test(NAME shell.headless.fault.expected
 set_tests_properties(shell.headless.fault PROPERTIES WILL_FAIL TRUE)
 set_tests_properties(shell.headless.fault.expected PROPERTIES PASS_REGULAR_EXPRESSION "tee-offline: ok .* faults=[1-9]")
 set_tests_properties(shell.headless.fault shell.headless.fault.expected PROPERTIES TIMEOUT 900 LABELS shell)
+# QUALITY economy (card C's SimHost::setQuality: the engine at 48 kHz inside): the same start, rev and stop pass, and
+# the summary says the inner rate it ran at
+add_test(NAME shell.headless.economy
+  COMMAND tee-headless --engine sim --sim "${PROJECT_SOURCE_DIR}/sim" --quality economy
+          --script "${_scripts}/sim-start-rev-stop.txt"
+  WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
+set_tests_properties(shell.headless.economy PROPERTIES PASS_REGULAR_EXPRESSION "tee-offline: ok .* inner=48000" TIMEOUT 900
+                     LABELS shell)
 add_test(NAME shell.headless.drive
   COMMAND tee-headless --engine ref --sim "${PROJECT_SOURCE_DIR}/sim" --script "${_scripts}/drive.txt"
           --wav "${_out}/ref-drive.wav"
