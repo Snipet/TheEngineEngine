@@ -32,10 +32,43 @@
 | P: content, validation, the manual | running; **table D: 186 of 617 missed; power and torque in range on 14 of 31 each** (A: 218 of 581; 5 and 7 of 30); peaks from a three-point mean; quarter miles in the cars' own gearboxes (15 of 23 in); targets re-pointed at the thermocouple readings next | cloud session `session_01LFAGgSHzU6yna9jNWSn93D` | 15:02 | about thirty archetype builds at a standard day with generic names; validation targets with sources, reported as the simulator's list of misses; the manual; help texts |
 | N1: the numbers, engines that breathe by themselves | running; causes A to I measured and fixed or routed: the phaser by intake closing, charge heating, the intake conserving (and its own plenum regression fixed), the burn with speed, the start rule, H9 on the blowdown and the flame, **the runner's plenum-end loss (the teeth were a real resonance)**; next: the port bend's loss, the rotary's ports, the pop's fuel at exhaust opening | cloud session `session_01LFAGgS18iAMhTAJ6tm4wT6` | 16:04 | card `w2-n-calibration.md`: the loss ledger (volumetric efficiency, IMEP, pumping, friction, BMEP by class) first; then why every NA archetype lands at 11 to 13.4 bar BMEP whatever its head (mild two-valves too strong, tuned four-valves 25 to 30 % short on power), the rotary doubled, big-cam idles high |
 | N2: the numbers, boosted engines | running; the back pressure (G), the gate, the click and thump causes, the sequential and one-bank housings, the VGT's back-pressure limit, the diesel's lambda; **next: gain-reversal protection in the VGT's vane loop** (two steady states on D2's truck) | cloud session `session_01LFAGgSxnqsW2XUcFC39ruQ` | 16:04 | every boosted archetype 20 to 100 % too strong (2.0 turbo 29.5 bar for 22 to 25; kei 103 kW for 44 to 50); first question: what back pressure the cylinder sees while the turbine is fed by a stand-in; then boost that should taper, charge temperature, knock-limited spark, a supercharger's drive; the tractor's broken top-speed run |
+| N3: the NA over-delivery (air and energy balance) | **started 19:31**: seven NA engines 20 to 27 % strong; balances per engine on the settled dyno, the share out of range, its fix; takes over discharge by class | cloud session `session_01LFAGgRNmSHhkHzLmwKRJp4` | first report about 45 min after its build |  |
 | Held: W the wheel's feedback, R release | not started | | | W cannot be proven without the owner's wheel and shares files with the shell; R needs the owner's signing identities |
 
 ## Landed
 
+- **19:43 the lead's check-in** (the tip: 1756 commits, compiles). **CI: the fast tier is green on all three
+  systems for the first time**: Linux and Windows run 45467052791 (46691a4), macOS run 45468737097 (48e9a17).
+  Those builds hold M's index guard, N1's runner damping, G's port law and D's f89d40c; not the warm-start fix
+  (02f2883), card I's launch (0078996) or U1's load meter (f53f564). **Card I's launch landed** (0078996): the
+  NA rotary no longer bogs (quarter 20.18 to 18.60 s), the 7.0 inside its quarter-mile target; what remains is
+  in how P's timed runs are made (shift points, pre-rev, warm tyres). **The 7.0's idle hunts** at the tip (742
+  sd 107; 750 sd 8 at c8f2d54): N1 confirmed the lead's render (its own steady figure was a stale csv); the
+  after-start air stays, the steadiness check goes in marked on the 7.0. **f89d40c, exactly** (D, 492e525: a test
+  that fails before it): a switch written while stopped with no configure after; the first launch was right, a
+  switch changed in the interface between runs was not. The interface at the tip: 124 of 124 view tests in the
+  lead's build; round 5 of pictures to the owner (the load meter's warning; DYNO's walls labels). Next check-in
+  20:25.
+- **19:35 the lead, between check-ins** (times from `date -u`). **Table E** (pin 8ff2bf3): 161 of 648 missed,
+  power 12 and torque 13 of 31; **table F** (pin 30d2dfc, walls settled): 157 of 648, 12 and 13 of 31. The count
+  falls, power and torque do not: the same seven NA engines 20 to 27 % strong each time, so **N3 was started**
+  (19:31: an air and an energy balance per engine; discharge by class). **A regression P found and the lead
+  reproduced**: the flat six and the 7.0 did not start warm; N1's two causes (the plenum's book correction as an
+  added flow, b6676a5; the idle valve shut on the flare, ca76cd6: after-start air) are on origin with a test, and
+  the flat six idles at 850 sd 12 in the lead's render; the 7.0 runs but hunts there (742 sd 107), against N1's
+  699 sd 4: being settled between a stale host and a later merge. **Closed**: X-022 (N1, 32cea26, its own
+  regression), X-025 (D, 081f84b: refused, reason 4), X-023 (G), X-024's listener half (L, 20334d0); the VGT's two
+  states (N2, cf888e2: a surge guard; "sooner than the single" still fails on D2's truck, marked). **The dynos
+  agree**: C's stepped dyno settles the exhaust's heat (1220ca3) and names the second slow state, the intake's
+  charge heating (8b23294; the settle field goes in with N1's next intake push, C's session may not edit `sim/`);
+  the third is the intercooler's core in dead air (N2: its rated air on a dyno, SAE J1349). **Cost** (Q, q6):
+  the typical build is about 2.0 R at Full against 1.6 (the builder now really running; G +0.31 and F +0.12 over
+  their cards); exact savings landed (G c4ce28f, L 5ce0d1b); Economy about 1.0 R. Nothing acted on load: U1's
+  top bar now shows the peak with a verdict and names Economy (f53f564), C adds `HostStats::fits`. D's f89d40c
+  (the switches' decisions taken again each call) is in; X could not reproduce the hole through the host, so
+  what the lead told the owner about the application's first engine is withdrawn until D gives the sequence.
+  **CI, fast tier**: Linux green (46691a4), macOS green (3afd438), Windows one failure (valvetrain.11 at b13c6ba,
+  before N1's later intake changes).
 - **19:01 the lead's check-in** (taken at 18:55; the tip: 1544 commits, compiles). **CI, newest finished fast jobs**:
   macOS 709 of 712 (803ece2), Windows 703 of 707 (c41755e), Linux 701 of 715 (50f68ac: 11 of the 14 were the
   bike's rig not compiling after the eighteen-speed's include, fixed by B2 at 18:36). Failing on more than one:

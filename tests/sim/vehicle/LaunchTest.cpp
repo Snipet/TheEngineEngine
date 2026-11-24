@@ -100,3 +100,42 @@ TEST_CASE("launch.pedal: with the driver's own clutch pedal the launch is the dr
     CHECK(a.state == 2.0);
     CHECK(b.slipMean > 0.5);
 }
+
+TEST_CASE("launch.weak: an engine weak low down launches at its launch speed, not bogged", "[vehicle][launch]")
+{
+    // Card P's naturally aspirated rotary (archetypes/rotary-twin-na-side-port: its torque up at 5500 rpm and beyond) in
+    // its own car and gearbox, traction control on, from a standstill and floored: the launch keeps the engine up while
+    // the clutch slips. Measured here before (the clutch held only to the tyres' share): the engine down to 1442 rpm after
+    // 0.8 s, 72 km/h in 5.95 s; after: 4510 rpm or more, 72 km/h in 5.35 s (it is a little slower at 2 s, 5.66 m/s
+    // against 6.18: it bites later, while the engine rises; it is clearly quicker after)
+    Sim s("archetypes/rotary-twin-na-side-port");
+    s.set("ecu.traction.on", 1);
+    s.ctl().mode = tee::EnginePlayer::kModeDrive;
+    s.ctl().ignition = tee::EnginePlayer::kIgnitionStart;
+    s.run(1.5);
+    s.ctl().ignition = tee::EnginePlayer::kIgnitionOn;
+    s.run(1.5);
+    s.ctl().shiftUp += 1;
+    s.run(0.3);
+    s.ctl().throttle = 1.0f;
+    double least = 1e9, at2 = 0.0;
+    double t72 = -1.0;
+    for (int i = 0; i < 160; ++i)
+    {
+        s.run(0.05);
+        if (i >= 16 && i < 50)
+            least = std::fmin(least, s.tel("engine.speed") * 9.5492966);
+        if (i == 39)
+            at2 = s.tel("car.speed");
+        if (t72 < 0.0 && s.tel("car.speed") >= 20.0)
+            t72 = 0.05 * (i + 1);
+    }
+    std::printf("weak launch: 0 to 72 km/h in %.2f s\n", t72);
+    (void)at2;
+    std::printf("weak launch: the engine at %.0f rpm or more from 0.8 s; %.2f m/s at 2 s; state %g\n", least, at2,
+                s.tel("engine.state"));
+    CHECK(least > 3000.0);
+    CHECK(s.tel("engine.state") == 2.0);
+    CHECK(t72 > 0.0);
+    CHECK(t72 < 5.6);
+}

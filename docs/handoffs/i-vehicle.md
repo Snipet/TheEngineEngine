@@ -129,3 +129,27 @@ normalised by its peak; mu = column 3 x `VEH_SURFACE[compound][surface]` x tempe
 - **51908c2** `gearbox` choice 5 "Eighteen-speed" (appended): `Vehicle::eighteen` drives D2's Roadranger; reverse 13.1
   at a crawl in Vehicle (not in rr); `Car::grindOut()` for L. Tests `vehicle.gearbox.eighteen`, `vehicle.passive` (48 runs
   with it). For D2: `ctl.lever` 5 is the L slot, buttons 16 splitter, 32 range; the crank seen is the last sample's.
+
+# I: a launch that does not bog (0078996)
+
+Under its launch speed (ecu.launch.speed with launch control on, else 60 % of the redline) and with the pedal floored, a
+launch's clutch passes at most what the engine makes beyond what takes it up to that speed in 0.1 s; the launch's
+clutch is sized on the most torque the engine has shown; the launch goes on through an upshift taken before the clutch
+locks. P's drag runs (its qm scenarios, its shift times as placed; first gear's numbers from the green):
+
+| Build | 60 ft before / after | 0-72 km/h | 0-100 km/h | 1/4 mile | launch slip 0-2 s (after) |
+|---|---|---|---|---|---|
+| rotary NA side port | 3.29 / 2.59 | 7.45 / 6.02 | 19.26 / 17.31 | 20.18 / 18.60 | 0.03 (engine-limited) |
+| v12-65 | 2.43 / 2.37 | 4.69 / 3.96 | 6.13 / 5.32 | 12.91 / 12.30 | 0.09 |
+| big-bore 7.0 pushrod | (P: 13.10) | | 5.50 | 12.47 | 0.085 |
+| flat-plane 3.9 TT | (P: 11.99) | | 5.07 | 11.61 | 0.067 |
+
+Why the strong cars were slow: a dual clutch's 1-2 handover taken by P's fixed shift time while the launch clutch still
+slipped closed at full capacity and spun the tyres for 0.8 s (now the launch continues through it); the launch holds
+the target slip on the more-slipping wheel of an open diff (V12: right 0.10, left 0.07); the V12's semi-slicks are cold
+(293 K against a window from 320: 12 % of their grip); every run starts from idle at the green (no pre-rev: launch
+control would). The rotary's quarter is now set by P's shift times (placed for the old launch: it sits 0.9 s on the
+limiter, then three shifts in 1.5 s) and by its clutch (1.35 x the engine's own estimate of its peak) slipping after the
+launch: P should re-place the shifts and set car.clutchTorque.
+
+**Note from card D (24 Nov, e0bcf8f, accepted by the lead for card I)**: `ecu.redRpm` under ecu.model 1 is a stated limiter's speed when the build gives one (the idle + 1500 floor only without); two readers here follow it: the launch's fallback, 60 % of the redline (vehicle.fm, `wLaunch`), and the automatic final drive, 0.6 x the redline (car.fm, `finalDrive`). Whoever touches the redline moves both.
