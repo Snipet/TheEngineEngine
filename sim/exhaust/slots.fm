@@ -78,7 +78,11 @@ enum
 module XBuild
 {
     XNet net;
-    ExhaustSpec* sp;    // the description (spec.exhaust's builder fields), the owner's
+    ExhaustSpec* sp;    // the description as built and shaped: gs (follow() sets it)
+    ExhaustSpec* src;   // the owner's description (spec.exhaust's builder fields)
+    ExhaustSpec gs;     // the owner's, its lengths and bores (and the other sizes, glide()) glided toward the owner's
+    ExhaustSpec gv;     // the glided sizes alone (gs is copied from the owner's every control step, then these put in)
+    float kGlide;       // a control step's share of the glide (0.2 s)
     XEngine eng;
     XHeat heat;
     float rate;
@@ -219,6 +223,7 @@ module XBuild
         tick4 = 0;
         tickPass = 0;
         passFix = 1;
+        kGlide = 1.0f - expf(-16.0f / (0.2f * rate));
         for (int g = 0; g < XB_GRID; ++g)
         {
             const float f = 4.0f * expf(6.9077553f * (float)g / (float)(XB_GRID - 1));   // 4 Hz to 4 kHz
@@ -380,6 +385,7 @@ module XBuild
     // engine's own configure, so that model 1 at its defaults is the reference); 1 settles them (network.fm, settle)
     void build(int atRest, float warm, int settleIt)
     {
+        snap();
         resolve();
         net.begin();
         // the ports and the primaries
@@ -1607,6 +1613,108 @@ module XBuild
 
     // ---- every 16 samples ----
 
+    // The description to follow: the owner's (src), read through gs (sp) so the sizes a slider drags glide
+    void follow(ExhaustSpec* owner)
+    {
+        src = owner;
+        sp = &gs;
+        snap();
+    }
+
+    // At a build: the description as the owner has it, nothing gliding
+    void snap()
+    {
+        gs = *src;
+        gv = *src;
+    }
+
+    // One size's glide toward the owner's (at it once within a millionth of it, so a glide ends where it is going)
+    float glide1(float x, float y)
+    {
+        const float d = y - x;
+        if (fabsf(d) <= 1.0e-6f * (fabsf(y) + 1.0e-3f))
+            return y;
+        return x + d * kGlide;
+    }
+
+    // Every control step: the continuous sizes (every length and bore, the volumes, the resonator's note, the muffler's
+    // size, the primaries' spread and step) glide toward the owner's in some 0.2 s, the pipes' delays and areas
+    // following them in shape(), with no rebuild and no fade; every other field (the kinds, the tables, the valve's rule)
+    // is the owner's at once. A size moving between 0 (the layout's) and a value of its own changes the signature
+    // (Exhaust::sig) and rebuilds under the fade, as a kind does.
+    void glide()
+    {
+        for (int i = 0; i < MAX_PORTS; ++i)
+        {
+            gv.primLen[i] = glide1(gv.primLen[i], src->primLen[i]);
+            gv.primD[i] = glide1(gv.primD[i], src->primD[i]);
+        }
+        for (int c = 0; c < MAX_COLLECTORS; ++c)
+        {
+            gv.colLen[c] = glide1(gv.colLen[c], src->colLen[c]);
+            gv.colD[c] = glide1(gv.colD[c], src->colD[c]);
+            gv.colVol[c] = glide1(gv.colVol[c], src->colVol[c]);
+        }
+        for (int s = 0; s < MAX_SIDES; ++s)
+        {
+            gv.mainLen[s] = glide1(gv.mainLen[s], src->mainLen[s]);
+            gv.mainD[s] = glide1(gv.mainD[s], src->mainD[s]);
+            gv.resHz[s] = glide1(gv.resHz[s], src->resHz[s]);
+            gv.resD[s] = glide1(gv.resD[s], src->resD[s]);
+            gv.resVol[s] = glide1(gv.resVol[s], src->resVol[s]);
+            gv.resLen[s] = glide1(gv.resLen[s], src->resLen[s]);
+            gv.mufSize[s] = glide1(gv.mufSize[s], src->mufSize[s]);
+            gv.mufLen[s] = glide1(gv.mufLen[s], src->mufLen[s]);
+            gv.tailLen[s] = glide1(gv.tailLen[s], src->tailLen[s]);
+            gv.tailD[s] = glide1(gv.tailD[s], src->tailD[s]);
+        }
+        gv.primSpread = glide1(gv.primSpread, src->primSpread);
+        gv.primStepAt = glide1(gv.primStepAt, src->primStepAt);
+        gv.primStepD = glide1(gv.primStepD, src->primStepD);
+        gv.crossD = glide1(gv.crossD, src->crossD);
+        gv.crossLen = glide1(gv.crossLen, src->crossLen);
+        gv.postLen = glide1(gv.postLen, src->postLen);
+        gv.linkLen = glide1(gv.linkLen, src->linkLen);
+        gv.bypassD = glide1(gv.bypassD, src->bypassD);
+        gv.gateLen = glide1(gv.gateLen, src->gateLen);
+        gv.gateD = glide1(gv.gateD, src->gateD);
+        gs = *src;
+        for (int i = 0; i < MAX_PORTS; ++i)
+        {
+            gs.primLen[i] = gv.primLen[i];
+            gs.primD[i] = gv.primD[i];
+        }
+        for (int c = 0; c < MAX_COLLECTORS; ++c)
+        {
+            gs.colLen[c] = gv.colLen[c];
+            gs.colD[c] = gv.colD[c];
+            gs.colVol[c] = gv.colVol[c];
+        }
+        for (int s = 0; s < MAX_SIDES; ++s)
+        {
+            gs.mainLen[s] = gv.mainLen[s];
+            gs.mainD[s] = gv.mainD[s];
+            gs.resHz[s] = gv.resHz[s];
+            gs.resD[s] = gv.resD[s];
+            gs.resVol[s] = gv.resVol[s];
+            gs.resLen[s] = gv.resLen[s];
+            gs.mufSize[s] = gv.mufSize[s];
+            gs.mufLen[s] = gv.mufLen[s];
+            gs.tailLen[s] = gv.tailLen[s];
+            gs.tailD[s] = gv.tailD[s];
+        }
+        gs.primSpread = gv.primSpread;
+        gs.primStepAt = gv.primStepAt;
+        gs.primStepD = gv.primStepD;
+        gs.crossD = gv.crossD;
+        gs.crossLen = gv.crossLen;
+        gs.postLen = gv.postLen;
+        gs.linkLen = gv.linkLen;
+        gs.bypassD = gv.bypassD;
+        gs.gateLen = gv.gateLen;
+        gs.gateD = gv.gateD;
+    }
+
     // Every 16 samples, all of it (control = heatStep, shape, flowStep, bandStep: the engine calls them apart, in its
     // order of work)
     void control(float d16)
@@ -1620,6 +1728,7 @@ module XBuild
     // the heat, and the valve's travel
     void heatStep(float d16)
     {
+        glide();
         heat.soak(eng.tPort, eng.mdotSlow, d16, eng.tAmb, eng.vAir);
         heat.follow(kUse);
         // the bypass valve: where its rule or the ECU wants it, travelling there in bypassTime (a butterfly's
