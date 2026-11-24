@@ -70,7 +70,10 @@ standalone's or the demo's). Absent reads as NaN and draws a dash.
 - Valve lifts for the section's scale: `valve.inLift`/`valve.exLift` (or the demo's `valve.intakeLift`/`exhaustLift`);
   with the lab and two stages, the taller of A's and B's (`valve.inLiftB`, `valve.exLiftB`), since the lab's Scope gives
   each lift as a share of that taller cam: stage A is drawn at A's lift, stage B at B's (`ui.build.stages.archetype`,
-  on content/builds/archetypes/two-stage-cam-20.json: 8.5 mm then 12.65 mm).
+  on content/builds/archetypes/two-stage-cam-20.json: 8.5 mm then 12.65 mm). With two stages on, the readouts name
+  the cam in use (CAM: STAGE A / STAGE B, from `valve.stage`), and while the speed is past `valve.stageSpeed` with A
+  still in, the reason in VALVES' own words, from one function (valves::stageWaitWords): "B WAITS: OIL 27 C, NEEDS
+  60 C".
 
 ## Geometry no engine has
 

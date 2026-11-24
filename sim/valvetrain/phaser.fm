@@ -9,9 +9,14 @@
 // (the events earlier), the exhaust's retards its own (later), as most engines' do: both park where the engine starts
 // and idles best (the least overlap). The target is the ECU's (card H's maps); an engine without one has the schedule
 // of schedule() below. The phase moves toward the target at rate (degrees a second, warm and at full pressure), less
-// with less oil pressure (none below 70 kPa, all of it from 200 kPa: some 10 and 29 psi) and slower cold (a quarter of
-// it at 40 C, all of it from 80 C); below 40 C, or with no pressure, it is parked: it goes back to 0 at half its rate,
-// whatever the target. Every number here but the stops is judgement: docs/models/valvetrain.md says which.
+// with less oil pressure (none below 70 kPa, all of it from 200 kPa: some 10 and 29 psi) and slower in cold, thick oil
+// (a quarter of it at 40 C and below, all of it from 80 C); with no pressure it is parked: the lock pin holds it, and it
+// goes back to 0 at half its rate, whatever the target. A phaser is commanded from a cold start, slower: its response
+// rises with the pump's pressure and falls with the oil's viscosity, its makers' rate limits a table of speed and oil
+// temperature (US patent 7,467,611; SAE 2007-01-1640: "cam phaser response is heavily dependent on engine oil
+// temperature and pressure"); no source parks it below a temperature, so it is not (card N1: parked under 40 C of oil,
+// the application's cold start left the phasers at rest for 90 s at 6700 rpm). Every number here but the stops is
+// judgement: docs/models/valvetrain.md says which.
 //
 // Only the events' angles move (AreaTable::place): no table is rebuilt.
 #pragma once
@@ -22,7 +27,8 @@ module Phaser
     float rate;         // degrees a second, warm, at full pressure
     float target;       // degrees from parked, asked
     float phase;        // and reached
-    int parked;         // 1: held at its parked end (cold, or no oil pressure)
+    int parked;         // 1: held at its parked end (no oil pressure: the lock pin)
+    int slowed;         // 1: moving slower than its warm rate in cold oil
 
     void setup(float rangeIn, float rateIn)
     {
@@ -37,6 +43,7 @@ module Phaser
         phase = 0.0f;
         target = 0.0f;
         parked = 1;
+        slowed = 0;
     }
 
     // Every 16 samples (d16 seconds): toward want (degrees from parked), with the oil's pressure (Pa above the air's)
@@ -44,7 +51,8 @@ module Phaser
     void control(float d16, float want, float pOil, float tOil)
     {
         target = fminf(fmaxf(want, 0.0f), range);
-        parked = tOil < 313.0f || pOil < 70000.0f ? 1 : 0;
+        parked = pOil < 70000.0f ? 1 : 0;
+        slowed = tOil < 353.0f ? 1 : 0;
         if (range <= 0.0f)
         {
             phase = 0.0f;

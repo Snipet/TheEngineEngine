@@ -66,6 +66,8 @@ module Intake
     // model 1: the charge's heating in the manifold and the ports (Engine sets tCoolant before control; 0: unknown,
     // none), and the rise it gives, K
     float tCoolant;
+    int fedByMachine;   // 1: a boost machine (boost.model 1) feeds pBox, its own filter before its compressor: the intake's air
+                        // box is not between the charge and the throttle (Engine sets it)
     // The net mass the intake valves passed back into the runners this sample (kg/s, out of the cylinders positive),
     // and whether Engine supplies it (1). A runner of linear waves keeps the VOLUME it is given, not the mass: the
     // cylinder counts what it draws at its port's pressure and temperature, the plenum at its own, and where the flow
@@ -339,7 +341,10 @@ module Intake
             }
             // the throttle, from the box: solved with the plenum (the step's end pressure in the flow), so it settles
             // without chattering at rest
-            const float up = pBox + box.p;
+            // (behind a boost machine the air box is before its compressor, inside the machine (its filter's loss): between
+            // the charge and the throttle its depression took 0.84 % off a supercharged V8's throttle book against the
+            // machine's draw (card N1, the boosted books))
+            const float up = pBox + (fedByMachine != 0 ? 0.0f : box.p);
             const float aT = aThrottle * law + idle;
             const float rt = 287.0f * tAir;
             // (with the valves' mass supplied: the runners' far ends give the plenum its flow from instant to instant, as
