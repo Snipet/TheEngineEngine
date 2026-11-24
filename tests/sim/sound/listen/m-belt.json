@@ -1,0 +1,55 @@
+{
+ "format": "tee-engine-scenario/1",
+ "name": "m-belt",
+ "description": "Bench at 2400 rpm: the accessory belt and alternator, off 5-9 s, on (+6 dB) after.",
+ "seconds": 13,
+ "events": [
+  {
+   "t": 0.0,
+   "spec": {
+    "sound.view": 3,
+    "voices.model": 1
+   },
+   "ctl": {
+    "mode": 0,
+    "lever": 0,
+    "clutch": 0,
+    "brake": 0,
+    "throttle": 0,
+    "ignition": 1
+   }
+  },
+  {
+   "t": 0.25,
+   "ctl": {
+    "ignition": 2
+   }
+  },
+  {
+   "t": 2.0,
+   "ctl": {
+    "ignition": 1
+   }
+  },
+  {
+   "t": 2.5,
+   "ctl": {
+    "holdSpeed": 250
+   }
+  },
+  {
+   "t": 5.0,
+   "spec": {
+    "voices.belt": -60
+   },
+   "note": "belt and alternator off"
+  },
+  {
+   "t": 9.0,
+   "spec": {
+    "voices.belt": 6
+   },
+   "note": "on, 6 dB up to hear it"
+  }
+ ]
+}

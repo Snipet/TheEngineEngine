@@ -338,7 +338,7 @@ namespace combo
     {
         const tee::Fields* f = programFields();
         const tee::RunResult& r = run.result();
-        std::string nonFinite, outOfRange;
+        std::string nonFinite;
         for (std::size_t c = 0; c < r.columns.size(); ++c)
         {
             const tee::FieldInfo* fi = f ? f->find("tel." + r.columns[c]) : nullptr;
@@ -360,8 +360,6 @@ namespace combo
                 const double x = r.at(row, c);
                 if (!std::isfinite(x))
                     bad = true;
-                else if (x == 0.0 && fi != nullptr && fi->quantity == "temperature")
-                    continue;   // 0 K: a gauge its model leaves unwritten when off (boost.fm writes 0 by design)
                 else if (x < lo || x > hi)
                 {
                     if (!out || std::fabs(x) > std::fabs(worst))
@@ -376,16 +374,15 @@ namespace combo
                 nonFinite += (nonFinite.empty() ? "" : ", ") + r.columns[c];
             if (out)
             {
-                char b[160];
-                std::snprintf(b, sizeof b, "%s%s=%g at %.2f s (bounds %g to %g)", outOfRange.empty() ? "" : ", ",
-                              r.columns[c].c_str(), worst, worstAt, lo, hi);
-                outOfRange += b;
+                // one failure a field, named "tel-range:<field>", so that a known finding names its fields alone
+                char b[200];
+                std::snprintf(b, sizeof b, "%s=%g at %.2f s (bounds %g to %g)", r.columns[c].c_str(), worst, worstAt,
+                              lo, hi);
+                v.failures.push_back({"tel-range:" + r.columns[c], b});
             }
         }
         if (!nonFinite.empty())
             v.failures.push_back({"tel-finite", nonFinite});
-        if (!outOfRange.empty())
-            v.failures.push_back({"tel-range", outOfRange});
     }
 
     double largestStepTime(std::span<const float> x, double rate)

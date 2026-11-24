@@ -1,0 +1,47 @@
+// par.fm: two halves of work run serially or in a parallel { } region a part at a time (q5-design-note.md)
+module Half
+{
+    float s[64];
+    float acc;
+    float pad[64];
+    // about `work` dependent multiply-adds over a small state: a stand-in for a bank's 16 samples
+    void run(int work)
+    {
+        float x = acc;
+        for (int i = 0; i < work; ++i)
+        {
+            x = x * 0.999f + s[i & 63] * 0.001f;
+            s[i & 63] = x;
+        }
+        acc = x;
+    }
+};
+
+module Two
+{
+    Half a;
+    Half b;
+
+    float serial(int parts, int work) [[clang::nonblocking]]
+    {
+        for (int p = 0; p < parts; ++p)
+        {
+            a.run(work);
+            b.run(work);
+        }
+        return a.acc + b.acc;
+    }
+
+    float split(int parts, int work) [[clang::nonblocking]]
+    {
+        for (int p = 0; p < parts; ++p)
+        {
+            parallel
+            {
+                a.run(work);
+                b.run(work);
+            }
+        }
+        return a.acc + b.acc;
+    }
+};

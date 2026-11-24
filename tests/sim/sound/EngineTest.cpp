@@ -113,3 +113,46 @@ TEST_CASE("engine: the starter is package M's while it cranks, and a reduction s
     CHECK(tee::test::sound::rms(diff(red, direct, 0.3, 0.6)) > 0.0);
     CHECK(red.audio().peak() <= 1.0f);
 }
+
+TEST_CASE("engine: the fuel pump's prime is heard at key-on, before the first crank", "[sound][engine]")
+{
+    auto run = [](double model, double pumpDb) {
+        tee::test::Scenario s("v8");
+        s.rate(96000.0);
+        s.at(0.0).mode(0).throttle(0.0).ignition(tee::On).spec("voices.model", model).spec("voices.pump", pumpDb);
+        s.at(1.0).ignition(tee::Start).until(2.5).ignition(tee::On);
+        return s.run(3.0);
+    };
+    const auto ref = run(0.0, 0.0), on = run(1.0, 0.0), off = run(1.0, -60.0);
+    CHECK(ref.audio().during(0.0, 0.95).rms() == 0.0);           // the reference renders nothing before the start
+    CHECK(on.tel("engine.state").during(0.0, 0.95).max() == 0.0);
+    const double prime = tee::test::sound::rms(diff(on, off, 0.1, 0.9));
+    INFO("prime " << prime);
+    CHECK(prime > 0.0);
+    CHECK(on.audio().during(0.1, 0.9).rms() > off.audio().during(0.1, 0.9).rms());
+}
+
+TEST_CASE("engine: card F's wastegate chatters at full load on the dyno; an external one vented to the air is louder", "[sound][engine]")
+{
+    auto run = [](double gateDb, double external, double toAir) {
+        tee::test::Scenario s("builds/boost/turbo-four.json");
+        s.rate(96000.0);
+        s.at(0.0).mode(0).throttle(0.0).ignition(tee::On).spec("voices.model", 1.0).spec("voices.gate", gateDb)
+            .spec("boost.gate", external).spec("voices.gateDump", toAir);
+        s.at(0.25).ignition(tee::Start).until(1.5).ignition(tee::On);
+        s.at(3.0).mode(2).dyno(5500.0 * 0.10471976).throttle(1.0);
+        return s.run(10.0);
+    };
+    const auto on = run(0.0, 0.0, 0.0), off = run(-60.0, 0.0, 0.0);
+    INFO(on.error());
+    REQUIRE(on.ok());
+    // idling before the pull the gate is shut: the gate's voice adds nothing
+    CHECK(tee::test::sound::rms(diff(on, off, 2.0, 2.9)) == 0.0);
+    const double chatter = tee::test::sound::rms(diff(on, off, 9.0, 10.0));
+    INFO("boost " << on.tel("boost.pressure").during(9.0, 10.0).mean() << " Pa, speed " << on.tel("engine.speed").last() << ", state " << on.tel("engine.state").last() << ", seconds " << on.audio().seconds() << "; chatter " << chatter);
+    CHECK(chatter > 0.0);
+    const auto ext = run(0.0, 1.0, 1.0), extOff = run(-60.0, 1.0, 1.0);
+    const double dump = tee::test::sound::rms(diff(ext, extOff, 9.0, 10.0));
+    INFO("dump " << dump);
+    CHECK(dump > 2.0 * chatter);
+}

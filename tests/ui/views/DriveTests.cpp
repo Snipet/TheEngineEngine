@@ -34,7 +34,7 @@ namespace
         rig.demo.engine.set("car.tReaction", 0.412);
         rig.demo.engine.set("car.t60", 1.874);
         rig.demo.engine.set("car.t330", 5.102);
-        rig.demo.engine.set("engine.lambda", 0.87);
+        rig.demo.engine.set("ecu.lambda", 0.87);
         rig.settle();
         golden("drive.strip", *rig.host);
         // Pressing the car selects the car's section.
