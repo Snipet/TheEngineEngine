@@ -106,6 +106,36 @@ namespace
         return 0;
     }
 
+    // A handle stays its name's: setting new names or forgetting others never shifts what a cached handle reads (a
+    // Live caches handles; U3 found shuffled values when held names were numbered by their place); a forgotten name
+    // reads NaN through a handle taken before, and a fresh lookup finds nothing.
+    VIEW_TEST(testDemoHandles, "demo.handles")
+    {
+        tee::ui::DemoRig a(3.2, tee::ui::DemoHooks::none());
+        a.engine.set("zeta.one", 1.0);
+        a.engine.set("mid.two", 2.0);
+        CHECK_NEAR(a.ctx.live.get("zeta.one"), 1.0, 0.0);
+        CHECK_NEAR(a.ctx.live.get("mid.two"), 2.0, 0.0);
+        const double speed = a.ctx.live.get("engine.speed");
+        a.engine.set("alpha.first", 3.0);   // sorts before both
+        a.engine.set("aa.another", 4.0);
+        CHECK_NEAR(a.ctx.live.get("zeta.one"), 1.0, 0.0);
+        CHECK_NEAR(a.ctx.live.get("mid.two"), 2.0, 0.0);
+        CHECK_NEAR(a.ctx.live.get("alpha.first"), 3.0, 0.0);
+        a.engine.forget("alpha.first");
+        CHECK(std::isnan(a.ctx.live.get("alpha.first")));
+        CHECK_NEAR(a.ctx.live.get("zeta.one"), 1.0, 0.0);
+        CHECK(a.engine.findValue("alpha.first") == -1);
+        a.engine.set("alpha.first", 5.0);
+        CHECK_NEAR(a.ctx.live.get("alpha.first"), 5.0, 0.0);
+        // A script name held, then forgotten: through its cached handle, the held value, then NaN.
+        a.engine.set("engine.speed", 100.0);
+        CHECK_NEAR(a.ctx.live.get("engine.speed"), 100.0, 0.0);
+        a.engine.forget("engine.speed");
+        CHECK(std::isnan(a.ctx.live.get("engine.speed")) && std::isfinite(speed));
+        return 0;
+    }
+
     // Every registered workspace's demo hook defines names of its own: none twice (the base demo's or another hook's),
     // the conflicts named with both definers.
     VIEW_TEST(testDemoHooks, "demo.hooks")
