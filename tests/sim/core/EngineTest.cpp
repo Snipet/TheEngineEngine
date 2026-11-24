@@ -712,3 +712,25 @@ TEST_CASE("an engine set warm stays warm when the air moves while it stands; a c
     }
 }
 
+
+TEST_CASE("the cylinders' books hold at idle under a big overlap, as a person can dial it", "[core][engine][backflow]")
+{
+    // (P's case: the flat-plane V8 at idle with its intake phased far ahead (its baked map at 50 degrees, aa190456),
+    // where the exhaust valves' air read 3.8 % off the intake valves' over 3 s. Not a hole: the cylinders' own mass
+    // moves over the window under such an overlap, and the books count it now. Here dialled as an intake centreline of
+    // 60 degrees: the exhaust valves' out plus the cylinders' gain is the intake valves' in, within 0.5 %)
+    Bench b("archetypes/flat-plane-v8-45");
+    std::string e;
+    REQUIRE(b.player().setSpec("car.model", 0, e));
+    REQUIRE(b.player().setSpec("valve.inCentre", 60.0, e));
+    b.start();
+    b.warm();
+    b.ctl().throttle = 0.0f;
+    b.play(6.0);
+    double thr = 0, fr = 0, v = 0, x = 0;
+    airBooks(b, 3.0, thr, fr, v, x);
+    std::printf("flat-plane at idle, intake centreline 60: %.0f rpm, throttle %.3f, intake valves %.3f, exhaust valves plus the cylinders' gain %.3f g/s\n",
+                b.tel("engine.speed") * kRpm, thr, v, x);
+    CHECK(std::fabs(x / v - 1.0) < 0.005);
+}
+

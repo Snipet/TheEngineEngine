@@ -232,3 +232,32 @@ TEST_CASE("first route diff", "[.firstdiff]")
         }
     });
 }
+
+// Card I's: the V12 took more than 1.5 s of cranking to start in 318 K air. The start's course by air temperature, held
+// warm (a hot restart) and cold-soaked
+TEST_CASE("v12 hot start", "[.v12start]")
+{
+    for (int warm = 0; warm < 2; ++warm)
+        for (double air : {288.0, 300.0, 318.0})
+        {
+            Bench b("archetypes/v12-65");
+            std::string e;
+            b.ctl().mode = 1;     // (driven: the car attached, in neutral)
+            REQUIRE(b.player().setSpec("env.temperature", air, e));
+            b.play(0.1);
+            auto hold = [&] { if (warm) { b.write("heat.tCool", 368.0); b.write("heat.tOil", 378.0); b.write("heat.tSurf", 455.0); b.write("heat.warm", 1.0); b.write("heat.warmS", 1.0); } };
+            hold();
+            b.ctl().ignition = 1;
+            b.play(0.1, hold);
+            b.ctl().ignition = 2;
+            double t = 0, caught = -1, firstFire = -1;
+            b.play(3.0, [&] {
+                hold();
+                t += 512.0 / 48000.0;
+                if (firstFire < 0 && b.field("crank.tqMean") > 0.0) firstFire = t;
+                if (caught < 0 && b.tel("engine.state") == 2.0) caught = t;
+            });
+            std::printf("V12, %s, air %.0f K: first positive gas torque at %.2f s, running at %.2f s; cranking speed then %.0f rpm, idle valve %.2f, lambda %.2f\n",
+                        warm ? "warm" : "soaked", air, firstFire, caught, b.tel("engine.speed") * 9.549, b.field("ecu.bypass"), b.tel("ecu.lambda"));
+        }
+}
