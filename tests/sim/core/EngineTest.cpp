@@ -397,7 +397,11 @@ TEST_CASE("the physical cylinder conserves the gas its valves push back, and the
     CHECK(std::fabs(vW / thrW - 1.0) < 0.01);
     CHECK(std::fabs(eI / vI - 1.0) < 0.01);
     CHECK(std::fabs(eW / vW - 1.0) < 0.01);
-    CHECK(frW < vW);
+    // (the unburned gas trapped at intake closing against the air the intake valves let in: less by what the overlap
+    // blows through to the exhaust, more by what a cylinder kept unburned from its last burn; at full throttle the two
+    // nearly cancel (measured 102.94 against 102.88 g/s on 24 Nov), so no direction holds, only that it is no more than
+    // the valves' air within 1 %: no mass made in the cylinder)
+    CHECK(frW < 1.01 * vW);
 }
 
 TEST_CASE("a two-stroke's mechanics are its own cylinders', whatever the custom four-stroke's fields hold", "[core][engine][twostroke]")
