@@ -356,3 +356,40 @@
         CHECK(table.shownMap().x[4] == 5.0);
         return 0;
     }
+
+    // The same page in the inspector's column (340 px): nothing is wider than the column (no sideways scroll), and the
+    // table's 12 cells wrap onto two lines inside it, each cell still reached and typed into.
+    TEST(testPageArrayNarrow, "page.array.narrow")
+    {
+        PageRig rig("");
+        rig.doc = tee::ui::MemoryDoc(mockArrayFields());
+        rig.open(tee::ui::pageGui(rig.doc, tee::ui::sectionFields(rig.doc, "cyl"), "cyl"), 340, 900);
+        CHECK_MSG(rig.page->notes().empty(), rig.page->notes());
+        const tee::ui::GuiLayout& places = rig.page->view().places();
+        CHECK_MSG(places.maxScrollX == 0.0f, std::to_string(places.maxScrollX) + " px to scroll sideways");
+        CHECK(rig.page->widgets().size() == 1);
+        auto& table = static_cast<tee::ui::MapEdit&>(*rig.page->items()[static_cast<std::size_t>(rig.page->widgets()[0].item)]);
+        CHECK(table.bounds().right() <= places.area.right() && table.lines() == 2);
+        for (int i = 0; i < 12; ++i)
+        {
+            const funkgui::Rect c = table.cellRect(i, 0);
+            CHECK_MSG(c.w >= tee::ui::kGuiTableCellW && table.bounds().contains({ c.centreX(), c.centreY() })
+                          && table.cellRect(i, -1).bottom() <= c.y,
+                      "element " + std::to_string(i));
+        }
+        CHECK(table.cellRect(6, 0).y > table.cellRect(5, 0).y);          // six a line: the seventh starts the second
+        const funkgui::Rect c10 = table.cellRect(10, 0);
+        rig.host->click(c10.centreX(), c10.centreY());
+        CHECK(table.selectedColumn() == 10 && table.selectedRow() == 0);
+        typeKeys(*rig.host, "1 return");
+        CHECK(rig.value("cyl.fireRev[10]") == 1.0 && rig.value("cyl.fireRev[9]") == 0.0);
+        // A click on a second line's number chooses the header, not a cell, and the left key stops at the first cell
+        // (a wrapped table has no header column).
+        const funkgui::Rect h9 = table.cellRect(9, -1);
+        rig.host->click(h9.centreX(), h9.centreY());
+        CHECK(table.selectedColumn() == 9 && table.selectedRow() == -1);
+        table.select(0, 0);
+        typeKeys(*rig.host, "left");
+        CHECK(table.selectedColumn() == 0);
+        return 0;
+    }
