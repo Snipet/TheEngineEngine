@@ -40,6 +40,7 @@ namespace tee
         double measure = 0.25;         // seconds a step is averaged over
         double pedal = 1.0;            // the throttle, 0 to 1
         double warmup = 2.0;           // seconds at `from`, started and running, before anything is measured
+        bool warm = true;              // the engine held at its working temperatures (Warm.h), as a dyno cell holds it
         std::string torque = "engine.torque";   // the tel field the absorbed torque is read from
         std::vector<std::string> fields;        // more tel fields at each point: "boost.pressure", "engine.manifold"
         double sampleRate = 48000.0;

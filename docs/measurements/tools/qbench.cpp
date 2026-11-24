@@ -5,7 +5,11 @@
 // A's signal (dB, as the null test's nullDepth) and the worst sample's difference; and each one's cost, ns a 96 kHz
 // sample: the wall time of the calls in which the engine sounded (as tee-bench --engine reads it: measure on a
 // quiet machine), the least of --repeat runs and the
-// spread (most over least), the runs alternated A, B, A, B so that a drift of the machine falls on both.
+// spread (most over least), the runs alternated A, B, A, B so that a drift of the machine falls on both. The engine is
+// a chaotic system: a change in the last bit of one number makes the two waveforms part company within a second or
+// two, though they sound alike, so beside the difference sample for sample (which then reads near 0 dB) it reports
+// how long the two stayed within -80 dB of each other, the long-term spectrum's third-octave bands' worst difference,
+// the worst difference of a quarter second's level, and the engine's speed apart (rpm).
 //
 //   qbench [--a <dir>] [--b <dir>] [--aenv K=V,K=V] [--benv K=V,...] [--builds a,b] [--scenarios a,b]
 //          [--repeat n] [--rate hz] [--block n] [--seconds s]
@@ -83,6 +87,147 @@ namespace
         return s;
     }
 
+    // An in-place radix-2 FFT (n a power of 2), for the band levels below
+    void fft(std::vector<double>& re, std::vector<double>& im)
+    {
+        const std::size_t n = re.size();
+        for (std::size_t i = 1, j = 0; i < n; ++i)
+        {
+            std::size_t bit = n >> 1;
+            for (; j & bit; bit >>= 1)
+                j ^= bit;
+            j ^= bit;
+            if (i < j)
+            {
+                std::swap(re[i], re[j]);
+                std::swap(im[i], im[j]);
+            }
+        }
+        for (std::size_t len = 2; len <= n; len <<= 1)
+        {
+            const double ang = -2.0 * M_PI / (double)len;
+            for (std::size_t i = 0; i < n; i += len)
+                for (std::size_t k = 0; k < len / 2; ++k)
+                {
+                    const double c = std::cos(ang * k), sn = std::sin(ang * k);
+                    const double xr = re[i + k + len / 2] * c - im[i + k + len / 2] * sn;
+                    const double xi = re[i + k + len / 2] * sn + im[i + k + len / 2] * c;
+                    re[i + k + len / 2] = re[i + k] - xr;
+                    im[i + k + len / 2] = im[i + k] - xi;
+                    re[i + k] += xr;
+                    im[i + k] += xi;
+                }
+        }
+    }
+
+    // The long-term spectrum (Welch: 8192-point Hann windows, half overlapped) in third-octave bands from 25 Hz to
+    // 20 kHz, dB
+    std::vector<double> bands(const std::vector<float>& x, double rate)
+    {
+        const std::size_t n = 8192;
+        std::vector<double> power(n / 2, 0.0);
+        for (std::size_t at = 0; at + n <= x.size(); at += n / 2)
+        {
+            std::vector<double> re(n), im(n, 0.0);
+            for (std::size_t i = 0; i < n; ++i)
+                re[i] = x[at + i] * (0.5 - 0.5 * std::cos(2.0 * M_PI * (double)i / (double)n));
+            fft(re, im);
+            for (std::size_t k = 0; k < n / 2; ++k)
+                power[k] += re[k] * re[k] + im[k] * im[k];
+        }
+        std::vector<double> out;
+        for (double fc = 25.0; fc < 20500.0; fc *= std::pow(2.0, 1.0 / 3.0))
+        {
+            const double lo = fc / std::pow(2.0, 1.0 / 6.0), hi = fc * std::pow(2.0, 1.0 / 6.0);
+            double sum = 1e-30;
+            for (std::size_t k = 1; k < n / 2; ++k)
+            {
+                const double f = (double)k * rate / (double)n;
+                if (f >= lo && f < hi)
+                    sum += power[k];
+            }
+            out.push_back(10.0 * std::log10(sum));
+        }
+        return out;
+    }
+
+    // The largest difference of a band's level, over the bands within 50 dB of the loudest
+    double bandDifference(const std::vector<float>& a, const std::vector<float>& b, double rate)
+    {
+        const std::vector<double> x = bands(a, rate), y = bands(b, rate);
+        const double top = *std::max_element(x.begin(), x.end());
+        double worst = 0.0;
+        for (std::size_t i = 0; i < x.size(); ++i)
+            if (x[i] > top - 50.0)
+                worst = std::max(worst, std::fabs(x[i] - y[i]));
+        return worst;
+    }
+
+    // The largest difference of a quarter second's level (dB), over the quarter seconds within 40 dB of the loudest
+    double levelDifference(const std::vector<float>& a, const std::vector<float>& b, double rate)
+    {
+        const std::size_t w = (std::size_t)(0.25 * rate);
+        std::vector<double> la, lb;
+        for (std::size_t at = 0; at + w <= std::min(a.size(), b.size()); at += w)
+        {
+            double sa = 1e-30, sb = 1e-30;
+            for (std::size_t i = at; i < at + w; ++i)
+            {
+                sa += (double)a[i] * a[i];
+                sb += (double)b[i] * b[i];
+            }
+            la.push_back(10.0 * std::log10(sa / (double)w));
+            lb.push_back(10.0 * std::log10(sb / (double)w));
+        }
+        if (la.empty())
+            return 0.0;
+        const double top = *std::max_element(la.begin(), la.end());
+        double worst = 0.0;
+        for (std::size_t i = 0; i < la.size(); ++i)
+            if (la[i] > top - 40.0)
+                worst = std::max(worst, std::fabs(la[i] - lb[i]));
+        return worst;
+    }
+
+    // How long the two stay together: the first 10 ms window (after the first sound) whose difference is within 80 dB
+    // of its signal no longer, in seconds from the start (the length if never)
+    double together(const std::vector<float>& a, const std::vector<float>& b, double rate)
+    {
+        const std::size_t w = (std::size_t)(0.01 * rate);
+        const std::size_t n = std::min(a.size(), b.size());
+        for (std::size_t at = 0; at + w <= n; at += w)
+        {
+            double sig = 0.0, dif = 0.0;
+            for (std::size_t i = at; i < at + w; ++i)
+            {
+                sig += (double)a[i] * a[i];
+                const double d = (double)a[i] - (double)b[i];
+                dif += d * d;
+            }
+            if (dif > 0.0 && (sig == 0.0 || 10.0 * std::log10(sig / dif) < 80.0))
+                return (double)at / rate;
+        }
+        return (double)n / rate;
+    }
+
+    // The engine's speed (telemetry engine.speed) apart: the largest difference of a call's row, rpm, and the mean
+    void speedDifference(const tee::RenderResult& a, const tee::RenderResult& b, double& worst, double& mean)
+    {
+        worst = mean = 0.0;
+        const int ca = a.column("engine.speed"), cb = b.column("engine.speed");
+        if (ca < 0 || cb < 0)
+            return;
+        const std::size_t n = std::min(a.rowCount(), b.rowCount());
+        for (std::size_t r = 0; r < n; ++r)
+        {
+            const double d = std::fabs((double)a.at(r, (std::size_t)ca) - (double)b.at(r, (std::size_t)cb)) * 9.5492966;
+            worst = std::max(worst, d);
+            mean += d;
+        }
+        if (n > 0)
+            mean /= (double)n;
+    }
+
     double depth(const std::vector<float>& a, const std::vector<float>& b, double& worst)
     {
         double sig = 0.0, dif = 0.0;
@@ -129,8 +274,8 @@ int main(int argc, char** argv)
                 aenv.c_str(), A.createSeconds, A.compileSeconds, A.linkSeconds, A.codeBytes);
     std::printf("B: %s [%s]: create %.2f s (compile %.2f, machine code %.2f), %zu bytes of code\n\n", b.c_str(),
                 benv.c_str(), B.createSeconds, B.compileSeconds, B.linkSeconds, B.codeBytes);
-    std::printf("| build | scenario | A ns | A spread | B ns | B spread | B / A | to the bit | difference under the signal, dB | worst sample |\n");
-    std::printf("|---|---|---:|---:|---:|---:|---:|---|---:|---:|\n");
+    std::printf("| build | scenario | A ns | A spread | B ns | B spread | B / A | to the bit | difference under the signal, dB | together for, s | bands, worst dB | quarter-second level, worst dB | speed apart, worst / mean rpm |\n");
+    std::printf("|---|---|---:|---:|---:|---:|---:|---|---:|---:|---:|---:|---:|\n");
     double sumA = 0.0, sumB = 0.0;
     for (const std::string& bn : split(builds))
     {
@@ -138,7 +283,7 @@ int main(int argc, char** argv)
         for (const std::string& sn : split(scenarios))
         {
             std::string err, warn;
-            tee::Build buildA, buildB;
+            tee::EngineBuild buildA, buildB;
             tee::EngineScenario sc;
             if (!tee::loadBuild(*A.player, bfile, buildA, err, warn) || !tee::loadBuild(*B.player, bfile, buildB, err, warn)
                 || !tee::loadEngineScenario(root + "/tests/sim/scenarios/" + sn + ".json", sc, err))
@@ -177,14 +322,22 @@ int main(int argc, char** argv)
             const bool same = ra.audio.left.size() == rb.audio.left.size()
                               && std::memcmp(ra.audio.left.data(), rb.audio.left.data(), ra.audio.left.size() * 4) == 0
                               && std::memcmp(ra.audio.right.data(), rb.audio.right.data(), ra.audio.right.size() * 4) == 0;
+            const double tog = same ? (double)ra.audio.left.size() / rate : std::min(together(ra.audio.left, rb.audio.left, rate), together(ra.audio.right, rb.audio.right, rate));
+            const double bd = same ? 0.0 : std::max(bandDifference(ra.audio.left, rb.audio.left, rate), bandDifference(ra.audio.right, rb.audio.right, rate));
+            const double ld = same ? 0.0 : std::max(levelDifference(ra.audio.left, rb.audio.left, rate), levelDifference(ra.audio.right, rb.audio.right, rate));
+            double sw = 0.0, sm = 0.0;
+            speedDifference(ra, rb, sw, sm);
             sumA += bestA;
             sumB += bestB;
-            std::printf("| %s | %s | %.0f | %.1f %% | %.0f | %.1f %% | %.3f | %s | %s | %.2g |\n", bn.c_str(), sn.c_str(), bestA,
+            char dtext[32];
+            std::snprintf(dtext, sizeof dtext, "%.1f", std::min(dl, dr));
+            std::printf("| %s | %s | %.0f | %.1f %% | %.0f | %.1f %% | %.3f | %s | %s | %.2f | %.2f | %.2f | %.0f / %.1f |\n", bn.c_str(), sn.c_str(), bestA,
                         100.0 * (worstA / bestA - 1.0), bestB, 100.0 * (worstB / bestB - 1.0), bestB / bestA,
-                        same ? "yes" : "no", same ? "-" : (std::to_string(std::min(dl, dr)).substr(0, 6)).c_str(), worst);
+                        same ? "yes" : "no", same ? "-" : dtext, tog, bd, ld, sw, sm);
+            (void)worst;
             std::fflush(stdout);
         }
     }
-    std::printf("| all | | %.0f | | %.0f | | %.3f | | | |\n", sumA, sumB, sumB / sumA);
+    std::printf("| all | | %.0f | | %.0f | | %.3f | | | | | | |\n", sumA, sumB, sumB / sumA);
     return 0;
 }

@@ -25,7 +25,7 @@
 // The angles are the cylinder's own (cylinder.fm). Free of the engine: everything here is a function of the angles,
 // the speed, the load and the oil, so it is tested alone (tests/sim/valvetrain/).
 #pragma once
-#include "lab-spec.fm"
+#include "spec/valve.fm"
 #include "phaser.fm"
 #include "float.fm"
 #include "bench.fm"
@@ -142,7 +142,7 @@ module ValveLab
     // The Spec's section: what it says becomes requests, and the profiles whose request changed are queued. now 1:
     // build every profile at once into its first copy, and every cylinder reads it (in init, off the audio thread);
     // 0: one table a tick, each cylinder moving to it with its valve shut
-    void apply(ValveLabSpec* s, int now)
+    void apply(ValveSpec* s, int now)
     {
         const int headMoved = valves != s->valves || dInAsk != s->dIn || dExAsk != s->dEx || qInAsk != s->portIn
                               || qExAsk != s->portEx ? 1 : 0;
@@ -321,6 +321,40 @@ module ValveLab
     int plateOpen()
     {
         return liftOn != 0 && liftThr != 0 ? 1 : 0;
+    }
+
+    // The lift (m) of table t's valve at angle a (its cam's curve, by the table's 129 points; the float's tail left out)
+    float liftAt(int t, float a)
+    {
+        AreaTable* tb = &tab[t];
+        float s = a - tb->openNow;
+        if (s < 0.0f)
+            s += cyc;
+        if (s >= tb->span)
+            return 0.0f;
+        CamShape* c = &cam[t % VT_PROFILES];
+        const float x = s * tb->k;
+        int i = (int)x;
+        if (i > VT_STEPS - 1)
+            i = VT_STEPS - 1;
+        return c->lift * (c->shape[i] + (c->shape[i + 1] - c->shape[i]) * (x - (float)i));
+    }
+
+    // The same under continuous lift: the intake's shape over the blended table's span, at the command's lift
+    float liftLive(float a)
+    {
+        float s = a - inLive.openNow;
+        if (s < 0.0f)
+            s += cyc;
+        if (s >= inLive.span)
+            return 0.0f;
+        CamShape* c = &cam[VT_IN_A];
+        const float x = s * inLive.k;
+        int i = (int)x;
+        if (i > VT_STEPS - 1)
+            i = VT_STEPS - 1;
+        const float sh = liftMin + (1.0f - liftMin) * liftCmd;
+        return c->lift * sh * (c->shape[i] + (c->shape[i + 1] - c->shape[i]) * (x - (float)i));
     }
 
     // Combustion asks as the intake closes: does cylinder c fire this cycle?

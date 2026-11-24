@@ -64,6 +64,29 @@ module EngineTel
 module BoostTel
 {
     float pressure [[ui::label("Boost")]] [[ui::quantity("pressure")]] [[ui::help("Over the air outside")]];
+    // card F's, boost.model 1 (model 0 leaves them at 0): each shaft [MAX_TURBOS], then the charge path
+    int turbos [[ui::label("Shafts")]] [[ui::help("How many of the arrays below are in use")]];
+    float shaftSpeed [[ui::label("Shaft speed")]] [[ui::quantity("rotation")]] [4];
+    float ratio [[ui::label("Compressor ratio")]] [[ui::quantity("ratio")]] [4];
+    float flow [[ui::label("Corrected flow")]] [[ui::quantity("flow")]]
+        [[ui::help("Through the compressor, at 101325 Pa and 293.15 K")]] [4];
+    float efficiency [[ui::label("Compressor efficiency")]] [[ui::quantity("fraction")]] [4];
+    float compressorOut [[ui::label("Compressor outlet")]] [[ui::quantity("temperature")]] [4];
+    float gate [[ui::label("Wastegate")]] [[ui::quantity("fraction")]] [[ui::help("Its opening")]] [4];
+    float vanes [[ui::label("Vanes")]] [[ui::quantity("fraction")]] [[ui::help("A variable nozzle's opening; 1 fixed")]] [4];
+    float turbineIn [[ui::label("Before the turbine")]] [[ui::quantity("pressure")]] [[ui::help("Absolute")]] [4];
+    float turbineInTemp [[ui::label("Turbine inlet")]] [[ui::quantity("temperature")]] [4];
+    float drive [[ui::label("Drive ratio")]] [[ui::quantity("ratio")]]
+        [[ui::help("The pressure before the turbine over the charge pipe's, both absolute")]] [4];
+    float chargePipe [[ui::label("Charge pipe")]] [[ui::quantity("pressure")]]
+        [[ui::help("After the compressor, before the intercooler: over the air outside")]];
+    float intercoolerOut [[ui::label("Intercooler outlet")]] [[ui::quantity("temperature")]];
+    float throttleIn [[ui::label("Before the throttle")]] [[ui::quantity("temperature")]];
+    float blowOffValve [[ui::label("Blow-off valve")]] [[ui::quantity("fraction")]] [[ui::help("Its opening")]];
+    float superchargerPower [[ui::label("Supercharger drive")]] [[ui::quantity("power")]];
+    float oxygen [[ui::label("Charge oxygen")]] [[ui::quantity("fraction")]] [[ui::help("By mass; 0.232 for air")]];
+    int flags [[ui::label("Boost flags")]]
+        [[ui::help("1 surge, 2 choke, 4 over-speed, 8 over-boost, 16 blow-off open, 32 nitrous flowing")]];
 };
 
 module ExhaustTel
@@ -118,6 +141,37 @@ module SoundTel
     float rate [[ui::label("Sample rate")]] [[ui::quantity("frequency")]] [[ui::help("The host's, the sound's")]];
 };
 
+// tel.valve: card E's valvetrain (model 1; at model 0 the events are the CAM dial's, the rest 0)
+module ValveTel
+{
+    float inPhaseTarget [[ui::label("Intake phase asked")]] [[ui::quantity("angle")]] [[ui::help("Crank degrees of advance from parked")]];
+    float inPhase [[ui::label("Intake phase")]] [[ui::quantity("angle")]];
+    float exPhaseTarget [[ui::label("Exhaust phase asked")]] [[ui::quantity("angle")]] [[ui::help("Crank degrees of retard from parked")]];
+    float exPhase [[ui::label("Exhaust phase")]] [[ui::quantity("angle")]];
+    int stage [[fminus::range(0, 1)]] [[ui::label("Cam stage")]] [[ui::choices("A", "B")]];
+    float lift [[ui::label("Lift command")]] [[ui::quantity("fraction")]];
+    int active [[ui::label("Active cylinders")]] [[ui::help("A bit a cylinder, in the layout's order")]];
+    int floating [[fminus::range(0, 1)]] [[ui::label("Valve float")]];
+    float floatSpeed [[ui::label("Float speed")]] [[ui::quantity("rotation")]] [[ui::help("Where the intake valves begin to float; 0: never")]];
+    float ivo [[ui::label("Intake opens")]] [[ui::quantity("angle")]] [[ui::help("Cylinder 1's, now: degrees of its cycle, 0 the firing top")]];
+    float ivc [[ui::label("Intake closes")]] [[ui::quantity("angle")]];
+    float evo [[ui::label("Exhaust opens")]] [[ui::quantity("angle")]];
+    float evc [[ui::label("Exhaust closes")]] [[ui::quantity("angle")]];
+    float overlap [[ui::label("Overlap at 1 mm")]] [[ui::quantity("angle")]];
+    float benchLift [[ui::label("Bench lift")]] [[ui::quantity("length")]] [16];
+    float benchIntake [[ui::label("Intake flow at 28 in")]] [[ui::quantity("flow")]] [16];
+    float benchExhaust [[ui::label("Exhaust flow at 28 in")]] [[ui::quantity("flow")]] [16];
+};
+
+// tel.intake: card E's induction
+module IntakeTel
+{
+    float manifold [[ui::label("Manifold")]] [[ui::quantity("pressure")]] [[ui::help("Absolute; with throttles a runner, the runners' mean")]];
+    float ripple [[ui::label("Manifold ripple")]] [[ui::quantity("pressure")]] [[ui::help("Peak to peak over the last cycle")]];
+    float runnerLength [[ui::label("Runner length")]] [[ui::quantity("length")]];
+    float box [[ui::label("Air box")]] [[ui::quantity("pressure")]] [[ui::help("Over the air outside (model 1)")]];
+};
+
 module Telemetry
 {
     EngineTel engine [[ui::label("Engine")]];
@@ -126,4 +180,6 @@ module Telemetry
     EcuTel ecu [[ui::label("ECU")]];
     CarTel car [[ui::label("Vehicle")]];
     SoundTel sound [[ui::label("Sound")]];
+    ValveTel valve [[ui::label("Valves")]];
+    IntakeTel intake [[ui::label("Intake")]];
 };

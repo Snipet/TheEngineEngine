@@ -1,10 +1,18 @@
 // sound/extras.fm: what an engine sounds like besides its exhaust (module Extras): the intake, the valvetrain and
 // injectors, the block, the starter (the turbos' and a supercharger's sounds are Boost's: boost/boost.fm). Each is driven by what the engine model does (flows,
 // pressures, events), not by a clock of its own, so it follows the engine wherever it goes.
+//
+// Package M (spec.voices, sound/voices.fm): with spec.voices.model 0 (the default) this is the reference's engine bay,
+// bit for bit: nothing below that names `vo` runs, and no draw of `noise` moves. With model 1 the mechanical voices
+// (`Voices vo`: the gearbox and the final drive, the belts and the cam drive, the fan, the fuel pump and direct
+// injectors, the lifters' tick and the valves' float, the wastegate, the starter) are added to `mech`, the starter's
+// replaces the reference's, each voice also kept as an output of its own (vo.gearbox, vo.axle, vo.front, vo.head,
+// vo.tank, vo.gateOut, vo.starter) for the listener. Their inputs come every 16 samples through control16.
 #pragma once
 #include "lib/biquad.fm"
 #include "lib/onepole.fm"
 #include "lib/noise.fm"
+#include "sound/voices.fm"
 
 module Extras
 {
@@ -53,10 +61,19 @@ module Extras
     float block;
     float comb;         // the combustion's own noise: the knock, a diesel's clatter
     float starter;
+    // package M's voices (spec.voices.model 1)
+    VoicesSpec* vs;
+    Voices vo;
+    int voOn;           // 1: the voices run (model 1, or gliding out)
+    int voFade;         // 1: model 0 asked, the voices gliding out this block
 
-    void setup(float rateIn, float boxHz)
+    void setup(float rateIn, float boxHz, VoicesSpec* voicesSpec)
     {
         rate = rateIn;
+        vs = voicesSpec;
+        vo.setup(rate);
+        voOn = 0;
+        voFade = 0;
         noise.rs = 424242;
         nScale = sqrtf(rate / 48000.0f);
         box.setLowpass(boxHz, 2.2f, rate);
@@ -98,16 +115,70 @@ module Extras
         cEnv = 0.0f;
         pres.clear();
         stres.clear();
+        vo.clear();
     }
 
-    // A valve came down on its seat (amp 0 to 1), an injector opened
-    void valveClick(float amp)
+    // The voices make a sound (the fuel pump's prime, a fan, the starter running down): Engine renders while so
+    bool busy()
+    {
+        return voOn != 0 && vo.busy();
+    }
+
+    // Every 16 samples (Engine::control16, last): the voices' inputs. Nothing happens with spec.voices.model 0 and the
+    // voices silent. d16: seconds; ignition: ctl.ignition; state: the engine's; crankHz; coolant (K); driven: a vehicle
+    // (0 on the bench); boxKind: BOX_* (the reference's car: a manual); truck; gear (-1 R, 0 N, 1 up); wIn: the
+    // gearbox's input (rad/s); ratioTotal: crank turns to the wheels' in this gear (0 in N); fd: the final drive; wOut:
+    // the propshaft's speed (rad/s); torque, peak: the brake torque and the engine's most (N m); engaged: the clutch (0
+    // out, 1 in); asp: the induction (0 natural, 1 to 3 turbos, 4 a supercharger); boostShare: its boost over its most;
+    // gateOpen: the wastegate's opening (0 to 1); gateExternal; flowShare: the exhaust's mass flow over its most;
+    // cylinders, cycleDeg: the layout's; clatter: the valves' float (card E, 0 to 1); displacement (m^3); diesel
+    void control16(float d16, int ignition, int state, float crankHz, float coolant, int driven, int boxKind, int truck,
+                   int gearIn, float wIn, float ratioTotal, float fd, float wOut, float torque, float peak, float engaged,
+                   int asp, float boostShare, float gateOpen, int gateExternal, float flowShare, int cylinders,
+                   float cycleDeg, float clatter, float displacement, int diesel)
+    {
+        if (vs->model == 0)
+        {
+            if (voOn == 0)
+                return;
+            if (voFade != 0)
+            {
+                // glided out over the last 16 samples: stop
+                voOn = 0;
+                voFade = 0;
+                vo.clear();
+                return;
+            }
+            voFade = 1;
+        }
+        else
+        {
+            if (voOn == 0)
+                vo.clear();
+            voOn = 1;
+            voFade = 0;
+        }
+        vo.control16(vs, voFade != 0 ? 0.0f : 1.0f, d16, ignition, state, crankHz, coolant, driven, boxKind, truck, gearIn, wIn,
+                     ratioTotal, fd, wOut, torque, peak, engaged, asp, boostShare, gateOpen, gateExternal, flowShare, cylinders,
+                     cycleDeg, clatter, displacement, diesel);
+    }
+
+    // A valve came down on its seat (amp 0 to 1; intake: 1 an intake valve, 0 an exhaust valve), an injector opened
+    void valveClick(float amp, int intake)
     {
         vKick += amp * (0.7f + 0.3f * noise.rnd());
+        if (voOn != 0)
+            vKick += vo.valve.landed(amp, intake);
     }
 
     void injectorClick(float amp)
     {
+        // (a gasoline engine's direct injector: package M's; a diesel's and a port injector's, the reference's)
+        if (voOn != 0 && vo.direct != 0 && cOn == 0)
+        {
+            vo.fuel.directClick(amp * 3.3333333f * vo.kInj);
+            return;
+        }
         iKick += amp;
     }
 
@@ -149,6 +220,12 @@ module Extras
     // cylinders' pressure rise this sample (Pa). Boost's sound follows, then tickStarter.
     void tick(float qThrottle, float dropRatio, float crankHz, float dpdt)
     {
+        // (the voices' valve taps and bounces due this sample join the head's ring)
+        if (voOn != 0)
+        {
+            vo.valve.tick(crankHz * 360.0f / rate);
+            vKick += vo.valve.bounce;
+        }
         // the intake: the air box rings between the throttle and the snorkel; what the snorkel lets out is its sound
         const float qb = box.tick(qThrottle);
         intake = (qb - qBoxPrev) * rate * 0.02f;
@@ -173,7 +250,9 @@ module Extras
         if (chainPh >= 1.0f)
             chainPh -= floorf(chainPh);
         const float cr = fminf(crankHz / 100.0f, 1.0f);
-        mech += 0.004f * cr * cr * sinf(6.28318531f * chainPh);
+        const float chain = 0.004f * cr * cr * sinf(6.28318531f * chainPh);
+        if (voOn == 0 || vo.timing == 0)
+            mech += chain;
         // the block: the burn's pressure rise knocks on its walls
         const float k = dpdt * 2.0e-6f;
         block = bres[0].tick(k) + 0.6f * bres[1].tick(k);
@@ -214,8 +293,15 @@ module Extras
         {
             pumpPh -= floorf(pumpPh);
             pk = pumpOn;
+            if (voOn != 0 && cOn == 0)
+                pk = vo.hpPump;
         }
         mech += 0.6f * pres.tick(pk);
+        if (voOn != 0)
+        {
+            vo.tick(crankHz);
+            mech += vo.all;
+        }
     }
 
     // Then, after Boost's sound (which draws from the same noise): the starter
@@ -231,6 +317,13 @@ module Extras
                 stPh -= floorf(stPh);
             const float saw = 2.0f * stPh - 1.0f;
             starter = 0.05f * (saw - saw * saw * saw) + 0.02f * stres.tick(nScale * noise.rnd()) + 0.03f * sinf(6.28318531f * 9.0f * stPh);
+        }
+        // (package M's starter in place of it; the reference's draw above kept, so the stream Boost shares is as it was)
+        if (voOn != 0)
+        {
+            vo.start.tick(crankHz, starterOn);
+            vo.starter = vo.start.out;
+            starter = vo.starter;
         }
     }
 };

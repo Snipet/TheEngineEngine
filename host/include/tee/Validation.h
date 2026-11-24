@@ -21,6 +21,7 @@
 #pragma once
 
 #include "tee/Dyno.h"
+#include "tee/Warm.h"
 #include "tee/Timeline.h"
 
 #include <filesystem>
@@ -37,6 +38,7 @@ namespace tee
         std::string scenario;          // a scenario's name or path (one of scenario and dyno)
         bool dyno = false;
         DynoPlan plan;                 // the dyno's
+        bool sweep = false;            // measured on a sweep (runDyno) rather than the steady points (Predict.h)
         std::string tel;               // a scenario's telemetry field, or empty for the audio
         std::string audio;             // peak, rms, step
         std::string measure;           // tel: max, min, mean, last; dyno: maxTorque, maxPower, speedAtMaxTorque, ...
@@ -71,8 +73,8 @@ namespace tee
     // Runs `validation` (only its fast targets when `fastOnly`) on `sim`, its build and scenarios found under
     // `content`. False, with `error`, when the build or a scenario cannot be read.
     // `adjust`, when given, changes the build before anything runs (referenceSettings, for the reference's column).
-    // A dyno target on a program that has no brake of its own (no tel.engine.torque) is measured on the predicted
-    // curve's steady points instead (Predict.h), the row's `how` saying so.
+    // A dyno target is measured on the predicted curve's steady points (Predict.h: warm, the exhaust settled, every 15
+    // rad/s over the plan's speeds), unless it asks for steps or a sweep ("sweep": true: runDyno, the program's dyno).
     bool runValidation(const std::shared_ptr<Sim>& sim, const Validation& validation, const std::filesystem::path& content,
                        bool fastOnly, std::vector<ValidationRow>& rows, std::string& error,
                        const std::function<void(Build&)>& adjust = {});

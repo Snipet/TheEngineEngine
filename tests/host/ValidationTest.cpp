@@ -59,6 +59,8 @@ TEST_CASE("the fast targets of content/validation pass on the simulator", "[vali
     REQUIRE(sim != nullptr);
     for (const auto& entry : std::filesystem::directory_iterator(kRoot / "content" / "validation"))
     {
+        if (!entry.is_regular_file() || entry.path().extension() != ".json")
+            continue;   // another package's subdirectory, a note: only the files here are this test's
         CAPTURE(entry.path().filename().string());
         Validation v;
         REQUIRE(Validation::loadFile(entry.path(), v, error));
@@ -79,6 +81,8 @@ TEST_CASE("content/scenarios' assertions hold on the default build", "[scenario]
     REQUIRE(sim != nullptr);
     for (const auto& entry : std::filesystem::directory_iterator(kRoot / "content" / "scenarios"))
     {
+        if (!entry.is_regular_file() || entry.path().extension() != ".json")
+            continue;   // another package's subdirectory, a note: only the files here are this test's
         CAPTURE(entry.path().filename().string());
         Timeline t;
         REQUIRE(loadTimeline(entry.path(), t, error));

@@ -301,6 +301,7 @@ namespace tee::ui
         int shownMap() const noexcept { return shown_; }
         void choose(int i) { showMap(i); }
         int samples() const noexcept { return static_cast<int>(history_.size()); }
+        funkgui::Rect bakeRect() const { return bake_->shown() ? bake_->bounds() : funkgui::Rect{}; }
 
     protected:
         void step(float dt) override
@@ -332,6 +333,15 @@ namespace tee::ui
                     trailPts_.push_back({ std::nan(""), std::nan("") });
                 while (trailPts_.size() > 40)
                     trailPts_.pop_front();
+            }
+            // A bake asked for: in when the Scope's count moves (the map it was asked for, even if another is shown).
+            if (const float n = bakeCount(); bakeWanted_ >= 0 && n >= 1.0f && n > bakeSeen_)
+            {
+                const int shown = shown_;
+                shown_ = bakeWanted_;
+                copyBake();
+                shown_ = shown;
+                bakeWanted_ = -1;
             }
             // The slices follow the map and the live point.
             double lx = 0.0, ly = 0.0;
@@ -575,7 +585,29 @@ namespace tee::ui
         }
         // Bake: the formula's values at the breakpoints, as the simulator baked them (scope.fm's baked arrays), into
         // the table, and the switch to the table. Without a bake in the Scope it says what is missing.
+        // BAKE: ask the simulator for a bake (FrameServices::bakeMaps, ctl.bakeMaps) and copy it in when its count
+        // moves; with no way to ask, copy the newest bake there is.
+        float bakeCount() const
+        {
+            const int h = ctx_.scope.find("bakeCount");
+            float n = -1.0f;
+            if (h < 0 || ctx_.scope.read(h, &n, 1) < 1)
+                return -1.0f;
+            return n;
+        }
         void bake()
+        {
+            if (ctx_.services != nullptr && ctx_.services->bakeMaps)
+            {
+                bakeSeen_ = bakeCount();
+                bakeWanted_ = shown_;
+                ctx_.services->bakeMaps();
+                message_ = "Baking: the formula's values come into the table in a moment.";
+                return;
+            }
+            copyBake();
+        }
+        void copyBake()
         {
             ScopeSource& sc = ctx_.scope;
             const int hCount = sc.find("bakeCount"), hNx = sc.find("bakedNx"), hNy = sc.find("bakedNy");
@@ -1018,6 +1050,8 @@ namespace tee::ui
         std::deque<Pt> trailPts_;
         std::uint64_t historyRevision_ = 0;
         double since_ = 0.0;
+        int bakeWanted_ = -1;
+        float bakeSeen_ = -1.0f;
         std::uint64_t slicesKey_ = 0;
         std::string message_;
         Rect list_{}, mapBox_{}, slices_{}, traces_{}, lanes_{}, lamps_{}, tableRect_{};
@@ -1037,5 +1071,10 @@ namespace tee::ui
     {
         if (auto* t = dynamic_cast<TuneWorkspace*>(&w))
             t->choose(map);
+    }
+    funkgui::Rect tuneBakeButton(Workspace& w)
+    {
+        auto* t = dynamic_cast<TuneWorkspace*>(&w);
+        return t != nullptr ? t->bakeRect() : funkgui::Rect{};
     }
 }

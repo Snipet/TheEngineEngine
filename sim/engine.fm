@@ -195,6 +195,8 @@ module Engine
     float geoSig;       // a custom engine's geometry as read (geometry()), and as configured: a change is made under the fade
     float geoUsed;
     float hostRateSeen; // the host's rate, as init was given it
+    float clickRpm;     // the speed the valves' click amplitude was last worked out at, and that amplitude
+    float clickAmpC;
     float oilK;         // the oil's thickness factor on the friction (the reference's: its 0.15th power, at most 3)
     Extras ex;
     Boost boost;        // turbos or a supercharger: their shafts, boost, valves and sounds (boost/boost.fm)
@@ -243,7 +245,7 @@ module Engine
         intk.setup(rate);
         // the longest each pipe could be, cold (330 m/s), at this rate
         exh.setup(rate, &noise, &lay, &heat);
-        ex.setup(rate, 90.0f);
+        ex.setup(rate, 90.0f, &spec.voices);
         boost.setup(rate, &ex.noise);
         quiet = 1.0e9f;
         gainNorm = 1.0f;
@@ -466,6 +468,8 @@ module Engine
         intk.mPlenum = intk.pPlenum * intk.vPlenum / (287.0f * intk.tAir);
         pipes();
         mechanicsSetup();
+        // (card F: boost.model 1's machine sized to this engine, at rest; nothing in model 0)
+        boost.applyMachine(&spec.boost, vTotal, ecu.redRpm, 101325.0f, heat.tAmb);
     }
 
     // ---- card D: the mechanics (docs/models/mechanics.md) ----
@@ -611,7 +615,7 @@ module Engine
     // The pipes' sizes for the layout and the dials, and their lengths at the gas's temperatures now
     void pipes()
     {
-        exh.pipes(bore, aspUse, boost.smTb, boost.smTs, rate);
+        exh.pipes(bore, spec.boost.model != 0 ? 0 : aspUse, boost.smTb, boost.smTs, rate);   // (model 1: the machine's turbine)
         intk.runners(lay.ports, lay.bike, bore, rate);
     }
 
@@ -754,6 +758,7 @@ module Engine
         if (spec.boost.model != 0)
         {
             // (card F: its machine's air at the throttle, toward the ECU's target; card H's)
+            boost.airSpeed(set.drive != 0 ? fabsf(car.v) : 0.0f);
             boost.control16(d16, ecu.boostTarget(), ecu.antiLag(), ecu.nitrous());
             intk.pBox = boost.pressure();
             intk.tAir = boost.temperature();
@@ -763,6 +768,7 @@ module Engine
             intk.pBox = 101325.0f + 100000.0f * boost.boost;
             intk.tAir = heat.tAmb + 5.0f * heat.warm + 25.0f * boost.boost;
         }
+        intk.control(d16, crank.omega, vTotal, 120.0f / fmaxf(crank.rpm, 60.0f));      // (card E; nothing at intake.model 0)
         exh.gas(d16);
         const float surf = 0.022f * expf(0.6666667f * logf(cyl[0].vd / 0.0005f));
         for (int c = 0; c < lay.n; ++c)
@@ -776,11 +782,28 @@ module Engine
         if (spec.valve.model != 0)
         {
             vt.oil(heat.oilPressure(), heat.oilTemperature());
-            vt.control16(d16, ecu.camTarget(0), ecu.liftCommand());
+            vt.control16(d16, crank.omega, ecu.redRpm * 0.10471976f, ecu.throttle, crank.theta, &lay.fire[0], ecu.camTarget(0),
+                         ecu.camTarget(1), ecu.liftCommand());
         }
         if (spec.ecu.model != 0 && set.drive != 0)
             ecu.vehicle(car.drivenSlip(), car.speedNow(), car.gearNow(), car.upshifts(), car.cutRequest(), car.blipRequest());
         mechanics16();
+        // package M's mechanical voices (spec.voices.model 1; with model 0 it returns at once): their inputs, the car's
+        // gearbox as either car model keeps it, the reference turbo's gate as open when its boost reaches its most
+        if (spec.voices.model != 0 || ex.voOn != 0)
+        {
+            const int m1 = spec.car.model != 0 ? 1 : 0;
+            const float bShare = boost.boost / fmaxf(boost.maxB, 0.01f);
+            ex.control16(d16, ctl.ignition, ecu.state, crank.omega * 0.15915494f, heat.tCool, set.drive != 0 ? 1 : 0,
+                         m1 != 0 ? spec.car.gearbox : 0, car.truck, car.gear,
+                         m1 != 0 ? crank.omega - car.m1.slipC : car.wG,
+                         m1 != 0 ? car.m1.box.ratioOf(car.gear) : car.ratioOf(car.gear),
+                         m1 != 0 ? car.m1.box.fd : car.finalDrive,
+                         m1 != 0 ? (float)car.m1.v / fmaxf(car.m1.radius, 0.05f) * car.m1.box.fd : car.wW * car.finalDrive,
+                         tqBrake, peakTorque(), m1 != 0 ? car.m1.engage * car.m1.box.robot : car.engage * car.robot,
+                         aspUse, bShare, fminf(fmaxf((bShare - 0.95f) * 20.0f, 0.0f), 1.0f), 0, exh.mdot / fmaxf(mRef, 1.0e-6f),
+                         lay.n, lay.cyc, vt.clatter, vTotal, fuelUse);
+        }
     }
 
     // Every 16 samples, last: the mechanics' slow part. The cycle's speed spread; a custom engine's inertia with the
@@ -859,8 +882,8 @@ module Engine
             scDeg = d;
             scP[d] = c1->p;
             scV[d] = c1->v;
-            scE[d] = c1->lift(a, c1->evo, c1->edur);
-            scI[d] = c1->lift(a, c1->ivo, c1->idur);
+            scE[d] = vt.liftEx(0, a);
+            scI[d] = vt.liftIn(0, a);
             // (the pressure at each port: the wave arriving and the one leaving, over the air's)
             const int pt = lay.port[0];
             scPi[d] = 101325.0f + 2.0f * intk.run[pt].near + intk.run[pt].z * c1->qIa;
@@ -887,7 +910,13 @@ module Engine
         }
         float torque = 0.0f;
         float dps = 0.0f;
-        const float clickAmp = 0.15f + 0.5f * expf(0.8f * logf(fmaxf(fminf(crank.rpm / 4000.0f, 1.6f), 0.01f)));
+        // (its expf and logf only when the speed they follow has moved: crank.rpm changes every 16 samples, and at a start)
+        if (crank.rpm != clickRpm)
+        {
+            clickRpm = crank.rpm;
+            clickAmpC = 0.15f + 0.5f * expf(0.8f * logf(fmaxf(fminf(crank.rpm / 4000.0f, 1.6f), 0.01f)));
+        }
+        const float clickAmp = clickAmpC;
         // (a piston's slap: its skirt hits the bore as the side thrust changes sides at the top, harder with the gas's
         // pressure there and the piston's speed)
         const float slapAmp = 0.4f + 0.6f * fminf(crank.rpm / 3000.0f, 2.0f);
@@ -924,6 +953,8 @@ module Engine
                 iShare[pi] += qI0[c];
             }
         }
+        const float exM0 = exh.mSum;      // (card F, model 1: this sample's exhaust gas, for the turbine's stand-in)
+        const float exE0 = exh.eSum;
         for (int c = 0; c < lay.n; ++c)
         {
             Cylinder* cy = &cyl[c];
@@ -955,12 +986,13 @@ module Engine
             if (cy->ivcNow)
             {
                 work.trapped(c, fmaxf(cy->m - cy->mInert, 0.0f), intk.pPlenum, intk.tAir, 101325.0f, heat.tAmb);
-                comb.charge(&cyl[c], c, fuelUse, intk.pPlenum, crank.rpm, smCR, crBs, burnK, set.pops, set.rough, set.timing);
-                ex.valveClick(clickAmp);
+                if (vt.active(c))
+                    comb.charge(&cyl[c], c, fuelUse, intk.pPlenum, crank.rpm, smCR, crBs, burnK, set.pops, set.rough, set.timing);
+                ex.valveClick(clickAmp * (1.0f + 2.0f * vt.clatter), 1);
             }
             if (cy->evcNow)
             {
-                ex.valveClick(clickAmp);
+                ex.valveClick(clickAmp * (1.0f + 2.0f * vt.clatter), 0);
                 if (fuelUse == 0)
                     ex.injectorClick(0.3f);
             }
@@ -982,10 +1014,14 @@ module Engine
         if (ctl.scopeOn != 0)
             scopeTap();
         exh.step(qe, np);
+        // (card F, model 1: until card G's network ends its collectors in the turbine's housings, the cylinders' gas
+        // this sample feeds them as a flow, and the downpipes are open ends of the collector pipe's impedance)
+        if (spec.boost.model != 0)
+            boost.exhaustStandIn(exh.mSum - exM0, exh.eSum - exE0, exh.sec[0].z);
         float rNear[MAX_PORTS];
         for (int i = 0; i < np; ++i)
             rNear[i] = intk.run[i].near + intk.run[i].z * qi[i];
-        intk.plenum(np, rNear, fuelUse, ecu.throttle, ecu.bypass, dt);
+        intk.plenum(np, rNear, fuelUse, vt.plateOpen() != 0 ? 1.0f : ecu.throttle, ecu.bypass, dt);
         mech.torques(crank.rpm, crank.omega, strokeK, heat.viscK, fuelUse, smCR, vTotal, set.load, ecu.redRpm, heat.tAmb, ecu.starterOn,
                      cyl[0].vd);
         // (a custom engine's friction by part: core/friction.fm, on the last cycle's peak pressure)
@@ -1130,6 +1166,7 @@ module Engine
 
     void init(float hostRate)
     {
+        clickRpm = -1.0f;
         hostRateSeen = hostRate;
         setupAll(hostRate);
         for (int k = 0; k < SPEC_SECTIONS; ++k)
@@ -1176,14 +1213,19 @@ module Engine
             s->load = spec.engine.benchLoad;
         }
         if (moved(1, spec.valve.rev))
+        {
             s->cam = spec.valve.cam;
-        moved(2, spec.intake.rev);
+            vt.apply(&spec.valve);
+        }
+        if (moved(2, spec.intake.rev))
+            intk.apply(&spec.intake);
         if (moved(3, spec.boost.rev))
         {
             s->asp = spec.boost.kind;
             s->turbo = spec.boost.level;
             s->tsize = spec.boost.size;
             s->bov = spec.boost.blowOff;
+            boost.applyMachine(&spec.boost, vTotal, ecu.redRpm, 101325.0f, heat.tAmb);
         }
         if (moved(4, spec.exhaust.rev))
         {
@@ -1231,7 +1273,8 @@ module Engine
     void readControls()
     {
         Dials* s = &set;
-        const bool driven = ctl.mode == MODE_DRIVE;
+        // (the chassis dyno is the vehicle's: driven, as on the road)
+        const bool driven = ctl.mode == MODE_DRIVE || ctl.mode == MODE_DYNO_CHASSIS;
         s->drive = driven ? (spec.car.kind == 1 ? 2 : 1) : 0;
         s->hold = 1.0e9f;            // it never switches itself off (the reference's HOLD idled it out)
         s->bendRange = 12.0f;
@@ -1344,6 +1387,9 @@ module Engine
         tel.engine.crank = crank.theta;
         mechanicsTelemetry();
         tel.boost.pressure = boost.boost * 100000.0f;
+        boost.telemetry(&tel.boost);
+        if (ctl.scopeOn != 0)
+            boost.scope(&scope);
         tel.exhaust.portTemperature = exh.tPort;
         tel.ecu.knockRetard = ecu.kRet;
         tel.ecu.advance = lay.cyc - cyl[0].sparkAt;
@@ -1353,6 +1399,8 @@ module Engine
         tel.car.brake = fminf(fmaxf(set.brake, 0.0f), 1.0f);
         tel.car.clutch = fminf(fmaxf(set.clutch, 0.0f), 1.0f);
         tel.sound.peak = peak;
+        vt.telemetry(&tel.valve);
+        intk.telemetry(&tel.intake);
     }
 
     // card D's part of tel.engine

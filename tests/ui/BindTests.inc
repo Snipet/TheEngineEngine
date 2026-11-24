@@ -264,6 +264,24 @@
         array("pin", "Crank pin", 8, tee::ui::FieldKind::number, 0, 360);
         array("fireRev", "Fires on", 12, tee::ui::FieldKind::choice, 0, 1, { "First", "Second" });
         array("trim", "Trim", 18, tee::ui::FieldKind::number, -1, 1);
+        // An array of arrays, 2 x 3: "cyl.gain[1][2]", "Gain 2.3".
+        for (int i = 0; i < 2; ++i)
+            for (int j = 0; j < 3; ++j)
+            {
+                tee::ui::FieldInfo f;
+                f.path = "cyl.gain[" + std::to_string(i) + "][" + std::to_string(j) + "]";
+                f.min = 0;
+                f.max = 2;
+                f.def = 1;
+                f.label = "Gain " + std::to_string(i + 1) + "." + std::to_string(j + 1);
+                f.group = "Cylinders";
+                f.array = "cyl.gain";
+                f.arrayLabel = "Gain";
+                f.element = i * 3 + j;
+                f.extent = 6;
+                f.shape = { 2, 3 };
+                out.push_back(f);
+            }
         return out;
     }
 
@@ -273,10 +291,17 @@
     {
         PageRig rig("");
         rig.doc = tee::ui::MemoryDoc(mockArrayFields());
-        rig.open("knob cyl.pin[2]\nknob cyl.bankAngle[1]\nknob cyl.pin[20]\n");
+        rig.open("knob cyl.pin[2]\nknob cyl.bankAngle[1]\nknob cyl.pin[20]\nknob cyl.gain[1][2]\nknob cyl.gain[2][0]\n");
         CHECK(rig.page->controlRect("cyl.pin[2]").w > 0.0f && rig.page->controlRect("cyl.bankAngle[1]").w > 0.0f);
         CHECK_MSG(rig.page->notes().find("page.gui:3:6: note: cyl.pin[20] is past the array: it has 8 elements, cyl.pin[0] "
                                          "to cyl.pin[7]") != std::string::npos, rig.page->notes());
+        // An array of arrays: an element by both indexes, and one outside it.
+        CHECK(rig.page->controlRect("cyl.gain[1][2]").w > 0.0f);
+        const int g = rig.page->params().findParam("cyl.gain[1][2]");
+        CHECK(g >= 0 && rig.page->params().info(g).label == "Gain 2.3");
+        CHECK_MSG(rig.page->notes().find("page.gui:5:6: note: cyl.gain[2][0] is not an element: cyl.gain has 2 x 3 elements, "
+                                         "cyl.gain[0][0] to cyl.gain[1][2]") != std::string::npos, rig.page->notes());
+        CHECK(rig.page->notes().find("page.gui:4:") == std::string::npos);
         const int k = rig.page->params().findParam("cyl.pin[2]");
         CHECK(k >= 0 && rig.page->params().info(k).label == "Crank pin 3" && rig.page->params().info(k).unit == "deg");
         const int steps = rig.doc.steps();
@@ -296,14 +321,14 @@
         PageRig rig("");
         rig.doc = tee::ui::MemoryDoc(mockArrayFields());
         const std::vector<int> fields = tee::ui::sectionFields(rig.doc, "cyl");
-        CHECK(fields.size() == 2 + 8 + 12 + 18);
+        CHECK(fields.size() == 2 + 8 + 12 + 18 + 6);
         const std::string gui = tee::ui::pageGui(rig.doc, fields, "cyl");
         CHECK(gui.find("array cyl.fireRev") != std::string::npos && gui.find("array cyl.pin") == std::string::npos
               && gui.find("array cyl.trim") == std::string::npos);
-        CHECK(tee::ui::splitPages(rig.doc, fields, 60).size() == 1);   // 28 knobs and one table
+        CHECK(tee::ui::splitPages(rig.doc, fields, 60).size() == 1);   // 34 knobs and one table
         rig.open(gui, 1400, 900);
         CHECK_MSG(rig.page->notes().empty(), rig.page->notes());
-        for (const char* p : { "cyl.bankAngle[1]", "cyl.pin[7]", "cyl.trim[17]" })
+        for (const char* p : { "cyl.bankAngle[1]", "cyl.pin[7]", "cyl.trim[17]", "cyl.gain[1][2]" })
             CHECK_MSG(rig.page->controlRect(p).w > 0.0f, p);
         CHECK(rig.page->controlRect("cyl.fireRev[3]").w == 0.0f);      // in the table, not a control
         CHECK(rig.page->widgets().size() == 1);
