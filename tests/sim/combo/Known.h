@@ -13,5 +13,7 @@ const Known kKnown[] = {
      "the ranges' corners seed 3: sound/osc.fm:34 indexes its table with a NaN (-2147483648); SIGSEGV without checks"},
     {"X-019", "2026-11-24", "M (sim/sound/; via the lead)", "corners 3", "fuzz", "corners", "silent",
      "the same run: after the stop the engine is restarted silent"},
+    {"X-020", "2026-11-24", "N2 (boost, for card F)", "load, all on", "v8", "load", "tel-finite",
+     "tel.boost.efficiency[1] goes non-finite from the moment the twin-turbo large diesel is loaded over a running build"},
     {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},   // the end (an array is never empty)
 };

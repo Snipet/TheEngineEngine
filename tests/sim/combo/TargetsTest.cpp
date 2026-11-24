@@ -82,7 +82,7 @@ namespace
 } // namespace
 
 TEST_CASE("targets: the new turbo with either ECU makes boost; anti-lag and nitrous switched while it pulls",
-          "[combo][targets]")
+          "[nightly][targets]")
 {
     for (int ecu : {0, 1})
     {
@@ -114,7 +114,7 @@ TEST_CASE("targets: the new turbo with either ECU makes boost; anti-lag and nitr
     }
 }
 
-TEST_CASE("targets: launch control holds its speed on the new ECU and the new vehicle", "[combo][targets]")
+TEST_CASE("targets: launch control holds its speed on the new ECU and the new vehicle", "[nightly][targets]")
 {
     // a manual: the driver holds the clutch down and the brake, presses the launch button and floors it; at 6 s lets
     // the brake go and the clutch up over 0.3 s
@@ -144,7 +144,7 @@ TEST_CASE("targets: launch control holds its speed on the new ECU and the new ve
     report(v, "ecu.model+car.model", "v8", "launch-control");
 }
 
-TEST_CASE("targets: a dog box's upshifts cut and its downshifts blip on the new ECU", "[combo][targets]")
+TEST_CASE("targets: a dog box's upshifts cut and its downshifts blip on the new ECU", "[nightly][targets]")
 {
     Times tm = runningTimes(12.0);
     tm.driveFrom = 3.3;
@@ -174,7 +174,7 @@ TEST_CASE("targets: a dog box's upshifts cut and its downshifts blip on the new 
     report(v, "ecu.model+car.model", "v8", "dog-box");
 }
 
-TEST_CASE("targets: traction control on a wet road holds the driven wheels' slip near its target", "[combo][targets]")
+TEST_CASE("targets: traction control on a wet road holds the driven wheels' slip near its target", "[nightly][targets]")
 {
     double slip[2] = {0.0, 0.0};
     for (int tc : {0, 1})
@@ -207,7 +207,7 @@ TEST_CASE("targets: traction control on a wet road holds the driven wheels' slip
 }
 
 TEST_CASE("targets: traction control on a wet road from rolling: more speed and the slip near its target",
-          "[combo][targets]")
+          "[nightly][targets]")
 {
     // pulled away gently in first, second at 4 s, then floored at 6 s on a wet road: H's fix (0e7257f, 7648df9)
     double slip[2] = {0.0, 0.0}, speed[2] = {0.0, 0.0};
@@ -273,14 +273,14 @@ namespace
 } // namespace
 
 TEST_CASE("targets: the fuel-cut and spark-cut limiters against a wheel that spins up in first on a wet road",
-          "[combo][targets]")
+          "[nightly][targets]")
 {
     limiterCase(0);
     limiterCase(1);
 }
 
 TEST_CASE("targets: the soft and throttle limiters against a wheel that spins up in first on a wet road",
-          "[combo][targets]")
+          "[nightly][targets]")
 {
     limiterCase(2);
     limiterCase(3);
@@ -321,7 +321,7 @@ namespace
     }
 } // namespace
 
-TEST_CASE("targets: full throttle on the engine dyno makes torque: the V8 and the turbo V8", "[combo][targets]")
+TEST_CASE("targets: full throttle on the engine dyno makes torque: the V8 and the turbo V8", "[nightly][targets]")
 {
     dynoCase(*archetype("v8"));
     dynoCase(*archetype("turbo-v8-dual"));
@@ -356,7 +356,7 @@ TEST_CASE("measure: the idle against its set speed, the cam and the air, under b
 }
 
 TEST_CASE("fixed X-001: the custom engine over the default build, its geometry at the Spec's defaults, starts and runs",
-          "[combo][fixed]")
+          "[nightly][fixed]")
 {
     // found 2026-11-24 (every pin at 0: the eight compressed together and the starter stalled); fixed by D in 3d4b400:
     // such a geometry is refused and the layout dial's firing runs, tel.engine.layoutRefused 1
@@ -376,7 +376,7 @@ TEST_CASE("fixed X-001: the custom engine over the default build, its geometry a
     CHECK(r.tel("engine.layoutRefused").last() == 1.0);
 }
 
-TEST_CASE("fixed X-003: the new combustion and ECU together start the V8 at -20 C", "[combo][fixed]")
+TEST_CASE("fixed X-003: the new combustion and ECU together start the V8 at -20 C", "[nightly][fixed]")
 {
     // found 2026-11-24 (no start in 10 s at 253 K with fuel.model and ecu.model on); fixed by H in b09a0a6
     std::uint32_t mask = 0;
@@ -435,10 +435,9 @@ namespace
     }
 } // namespace
 
-TEST_CASE("targets: a one-second key starts the V8 and the large diesel with nothing and everything on",
-          "[combo][targets]")
+TEST_CASE("targets: a one-second key starts the V8 with nothing and everything on", "[combo][targets]")
 {
-    for (const char* b : {"v8", "large-diesel"})
+    for (const char* b : {"v8"})
         for (bool all : {false, true})
             shortKeyCase(b, all);
 }

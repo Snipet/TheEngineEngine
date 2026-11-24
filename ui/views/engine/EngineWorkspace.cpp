@@ -102,6 +102,8 @@ namespace tee::ui
             return v;
         }
         bool compact() const noexcept { return compact_; }
+        // The layout the block shows (the dial's while a custom one is refused).
+        std::string runningLayout() const { return model().layout.name; }
 
         const char* id() const override { return "engine"; }
         const char* title() const override { return "ENGINE"; }
@@ -115,6 +117,7 @@ namespace tee::ui
             k.mix(ctx_.doc.revision()).mix(ctx_.selection.revision()).mix(ctx_.units.revision());
             k.mix(std::isfinite(a) ? static_cast<std::int64_t>(std::lround(a * 4.0)) : -1);
             k.mix(slow_).mix(log_).mix(paceIndex_).mix(scopeVersion_).mix(tab_).mix(compact_);
+            k.mix(ctx_.live.get(kTelLayoutRefused) >= 0.5);
             k.mix(static_cast<float>(ctx_.live.get(kTelSpeed)));
             k.mix(static_cast<float>(ctx_.live.get(kTelIvo))).mix(static_cast<float>(ctx_.live.get(kTelEvo)));
             for (const char* n : { kTelPowerValve, kTelCrankcase, kTelReed })
@@ -159,12 +162,16 @@ namespace tee::ui
             const Layout& l = model().layout;
             if (s == "engine.layout")
             {
+                pages::Section layoutSec{ "LAYOUT", cat({ both(EF::layout), both(EF::custom), both(EF::cycle) }) };
+                if (model().refused)
+                    layoutSec.warnings.push_back("THIS CUSTOM LAYOUT WAS REFUSED: THE ENGINE IS RUNNING THE LAYOUT DIAL'S INSTEAD"
+                                                 + (model().why.empty() ? std::string() : " (" + model().why + ")"));
                 std::vector<std::string> banks;
                 for (int b = 0; b < kMaxBanks; ++b)
                     for (const std::string& x : both(EF::bankAngle, b))
                         banks.push_back(x);
                 return pages::page(ctx_.doc,
-                                   { { "LAYOUT", cat({ both(EF::layout), both(EF::custom), both(EF::cycle) }) },
+                                   { layoutSec,
                                      { "TWO-STROKE", l.twoStroke ? std::vector<std::string>{ "engine.tsCylinders", "engine.tsFiring" }
                                                                  : std::vector<std::string>{} },
                                      { "CUSTOM LAYOUT", cat({ both(EF::cylinders), both(EF::rotors), banks }) },
@@ -308,15 +315,32 @@ namespace tee::ui
             Cylinder cyl;
             Derived derived;
             double liftIn = kNaN, liftEx = kNaN;   // m, the valves' full lifts when the build says
+            // A custom layout the simulator refused (D's tel.engine.layoutRefused): `layout` is then the dial's, which is
+            // what runs; `asked` what the build asked for, and why it makes no engine when that can be said
+            bool refused = false;
+            Layout asked;
+            std::string why;
         };
         // The build's engine, made again when the document moves.
         const Model& model() const
         {
-            if (modelRevision_ != ctx_.doc.revision() || !modelMade_)
+            const bool refused = ctx_.live.get(kTelLayoutRefused) >= 0.5;
+            if (modelRevision_ != ctx_.doc.revision() || !modelMade_ || refused != model_.refused)
             {
                 modelMade_ = true;
                 modelRevision_ = ctx_.doc.revision();
-                model_.layout = layoutOf(ctx_.doc);
+                model_.refused = refused;
+                model_.asked = layoutOf(ctx_.doc);
+                model_.layout = refused && model_.asked.custom ? dialLayoutOf(ctx_.doc) : model_.asked;
+                model_.why.clear();
+                if (refused && model_.asked.custom && !model_.asked.ok)
+                {
+                    bool together = false;
+                    for (int i = 0; i + 1 < model_.asked.n; ++i)
+                        together = together || model_.asked.interval[static_cast<std::size_t>(i)] < 0.5;
+                    model_.why = together ? (model_.asked.rotors > 0 ? "ITS ROTORS FIRE TOGETHER" : "TWO OF ITS CYLINDERS FIRE TOGETHER")
+                                          : "A CYLINDER STANDS IN A BANK WITH NO ANGLE";
+                }
                 model_.cyl = cylinderOf(ctx_.doc, model_.layout);
                 double lim = fieldValue(ctx_.doc, EF::limiter);
                 limiterFromTelemetry_ = false;
@@ -422,7 +446,7 @@ namespace tee::ui
             const Rect in = inner(block_);
             // the block takes the panel's width (or its height), the crank's pins right under it, the two together
             // in the middle of the room under the panel's header line
-            const float head = 22.0f, avail = in.h - head;
+            const float head = model().refused ? 46.0f : 22.0f, avail = in.h - head;
             const float pinsH = l.rotors > 0 ? 0.0f : std::min(84.0f, avail * 0.32f);
             g.area = { in.x, in.y + head, in.w, avail - pinsH };
             g.pins = { in.x, g.area.bottom(), in.w, pinsH };
@@ -561,7 +585,14 @@ namespace tee::ui
             const float fw = c.textWidth(fires.c_str(), lk::kNumberS);
             put(c, fires, in.right(), in.y - 2.0f, lk::kNumberS, now < 0 ? p.dim : p.hot, Align::right);
             put(c, "FIRING", in.right() - fw - 6.0f, in.y + 1.0f, lk::kCaps, p.label, Align::right);
-            if (!l.ok)
+            if (m.refused)
+            {
+                // the simulator refused the custom layout: the block shows the dial's, which is what runs
+                put(c, "CUSTOM LAYOUT REFUSED: THE DIAL'S RUNS", in.x, in.y + 14.0f, lk::kCaps, p.warning);
+                if (!m.why.empty())
+                    put(c, m.why, in.x, in.y + 27.0f, lk::kCaps, p.warning);
+            }
+            else if (!l.ok)
                 put(c, "TWO CYLINDERS FIRE TOGETHER", in.x, in.y + 14.0f, lk::kCaps, p.warning);
 
             const BlockGeo g = blockGeo(l);
@@ -1326,6 +1357,11 @@ namespace tee::ui
     {
         const auto* e = dynamic_cast<const EngineWorkspace*>(&w);
         return e != nullptr ? e->panels() : std::vector<funkgui::Rect>{};
+    }
+    std::string engineRunningLayout(const Workspace& w)
+    {
+        const auto* e = dynamic_cast<const EngineWorkspace*>(&w);
+        return e != nullptr ? e->runningLayout() : std::string();
     }
     bool engineCompact(const Workspace& w)
     {
