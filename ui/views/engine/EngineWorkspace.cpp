@@ -140,7 +140,7 @@ namespace tee::ui
                 return pages::page(ctx_.doc,
                                    { { "LAYOUT", cat({ both(EF::layout), both(EF::custom) }) },
                                      { "CUSTOM LAYOUT", cat({ both(EF::cylinders), both(EF::rotors), banks }) },
-                                     { "LIMITS", { "engine.idleTrim", "engine.redlineTrim", "engine.redline", "engine.rough" } } },
+                                     { "LIMITS", { "engine.idleTrim", "engine.redlineTrim", "engine.redlineSpeed", "engine.rough" } } },
                                    "THE PRESETS ARE THE LAYOUT MENU; CUSTOM PLACES EACH CYLINDER");
             }
             if (const int k = selectedCylinder(); k >= 0)
@@ -157,9 +157,9 @@ namespace tee::ui
                                    { { "CYLINDER", cat({ both(EF::displacement), both(EF::boreStroke), both(EF::bore), both(EF::stroke),
                                                          both(EF::rod), both(EF::compression) }) },
                                      { "MOVING MASSES", cat({ both(EF::pistonMass), both(EF::rodMass), both(EF::rodRecip), both(EF::flywheel),
-                                                              { "engine.balance1", "engine.balance2" } }) },
+                                                              { "engine.flywheel", "engine.balance1", "engine.balance2" } }) },
                                      { "FRICTION", { "engine.friction", "engine.fricConst", "engine.fricPeak", "engine.fricSpeed",
-                                                     "engine.fricSpeed2", "engine.fricBearing", "engine.valvetrain", "engine.alternator",
+                                                     "engine.fricSpeed2", "engine.fricBearing", "engine.frictionValvetrain", "engine.alternator",
                                                      "engine.airCon" } } });
             return {};
         }
