@@ -124,6 +124,13 @@ module EcuTel
     float smoke [[ui::label("Smoke")]] [[ui::help("A diesel's filter smoke number, 0 to 10")]];
     int limiter [[ui::label("Limiter")]] [[ui::help("1 while a limiter acts (rev, launch, flat-shift, pit)")]];
     float load [[ui::label("Load")]] [[ui::quantity("ratio")]] [[ui::help("The maps' y axis now: the manifold over the air outside")]];
+    // ---- card D2 (heavy diesels: sim/combustion/heavy.fm): filled while one of its spec.ecu fields is in use on a diesel
+    float riseRate [[ui::label("Pressure rise")]] [[ui::unit("Pa/deg")]] [[ui::help("Cylinder 1's most rate of pressure rise, its last cycle")]];
+    float pressureHf [[ui::label("Combustion noise")]] [[ui::quantity("pressure")]] [[ui::help("Cylinder 1's pressure, high-passed (its second difference), rms over its last cycle")]];
+    float rack [[ui::label("Rack")]] [[ui::quantity("fraction")]] [[ui::help("The governor's fuel lever (-1: the reference's)")]];
+    int brakeCylinders [[ui::label("Braking cylinders")]];
+    float backPressure [[ui::label("Exhaust brake pressure")]] [[ui::quantity("pressure")]] [[ui::help("Over the air")]];
+    float governorSpeed [[ui::label("Governed speed")]] [[ui::quantity("rotation")]];
 };
 
 module CarTel

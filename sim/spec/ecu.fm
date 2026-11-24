@@ -121,4 +121,32 @@ module EcuSpec
     EcuAntiLagSpec antiLag [[ui::label("Anti-lag")]];
     EcuNitrousSpec nitrous [[ui::label("Nitrous")]];
     EcuMapsSpec maps [[ui::label("Maps")]];
+    // ---- card D2 (heavy diesels; sim/combustion/heavy.fm, docs/models/diesel.md). A diesel's only; every default off:
+    // the reference. All act at the next 16 samples (the switches are the dash's: change them while it runs).
+    int governor [[fminus::range(0, 2)]] [[fminus::default(0)]] [[ui::label("Diesel governor")]]
+        [[ui::choices("Reference", "Mechanical", "Electronic")]] [[ui::group("Heavy diesel")]]
+        [[ui::help("Mechanical: flyweights and a rack (all-speed, it hunts at idle); Electronic: the pedal asks for fuel, a PI idle")]];
+    float droop [[fminus::range(0.01, 0.15)]] [[fminus::default(0.06)]] [[ui::label("Governor droop")]] [[ui::quantity("fraction")]]
+        [[ui::help("The speed the governor gives up from no load to full, over the rated speed")]];
+    float highIdle [[fminus::range(0, 2100)]] [[fminus::default(0)]] [[ui::label("High idle")]] [[ui::quantity("rotation")]]
+        [[ui::help("0: the rated speed (the redline) times 1 + droop")]];
+    float fuelBoost [[fminus::range(0, 400000)]] [[fminus::default(150000)]] [[ui::label("Pump set for boost")]]
+        [[ui::quantity("pressure")]] [[ui::help("Full rack is an equivalence ratio of 0.75 at this boost (over the air)")]];
+    float afc [[fminus::range(0, 1.2)]] [[fminus::default(0.8)]] [[ui::label("Smoke limiter")]] [[ui::quantity("ratio")]]
+        [[ui::help("The boost compensator: the most equivalence ratio of the air there; 0: removed (it smokes while the turbo spools)")]];
+    int engineBrake [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Engine brake")]]
+        [[ui::choices("None", "Compression release")]] [[ui::help("Opens the exhaust valve near the top of compression, fuel off: its lobe is the second exhaust event's")]];
+    int brakeSwitch [[fminus::range(0, 3)]] [[fminus::default(0)]] [[ui::label("Engine brake switch")]]
+        [[ui::choices("Off", "Low", "Medium", "High")]] [[ui::help("A third, two thirds or all of the cylinders; it acts with the pedal up and the clutch in")]];
+    float brakeValve [[fminus::range(0, 0.08)]] [[fminus::default(0)]] [[ui::label("Brake valve diameter")]] [[ui::quantity("length")]]
+        [[ui::help("Each of the two exhaust valves it opens; 0: 0.3 of the bore")]];
+    float brakeMin [[fminus::range(0, 300)]] [[fminus::default(94.24778)]] [[ui::label("Brakes cut out below")]]
+        [[ui::quantity("rotation")]];
+    int exhaustBrake [[fminus::range(0, 2)]] [[fminus::default(0)]] [[ui::label("Exhaust brake")]]
+        [[ui::choices("None", "Flap", "Turbine vanes")]];
+    int exBrakeSwitch [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Exhaust brake switch")]] [[ui::choices("Off", "On")]];
+    float exBrakeLimit [[fminus::range(50000, 500000)]] [[fminus::default(300000)]] [[ui::label("Exhaust brake pressure")]]
+        [[ui::quantity("pressure")]] [[ui::help("The most back pressure its spring lets the flap hold, over the air")]];
+    float exBrakeLeak [[fminus::range(0.005, 0.5)]] [[fminus::default(0.03)]] [[ui::label("Exhaust brake leak")]]
+        [[ui::quantity("fraction")]] [[ui::help("The closed flap's open area over the pipe's")]];
 };
