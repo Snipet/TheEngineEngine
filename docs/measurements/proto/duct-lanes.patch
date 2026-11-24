@@ -156,10 +156,10 @@ index 6e65176..d7fdd7c 100644
 +    }
 +};
 diff --git a/sim/exhaust/exhaust.fm b/sim/exhaust/exhaust.fm
-index 914924a..45a6933 100644
+index 76a5d24..818a33d 100644
 --- a/sim/exhaust/exhaust.fm
 +++ b/sim/exhaust/exhaust.fm
-@@ -46,6 +46,9 @@ module Exhaust
+@@ -59,6 +59,9 @@ module Exhaust
      Duct ch2[2];
      Duct tail[2];
      Duct cross;         // between the two pipes (an H-pipe), when dual
@@ -169,7 +169,7 @@ index 914924a..45a6933 100644
      Pop pop[2];
      float smMuf;
      float smHdr;
-@@ -209,6 +212,58 @@ module Exhaust
+@@ -286,6 +289,58 @@ module Exhaust
          }
          // each layout's loudness, measured: so they come out alike at speed
          cross.clear();
@@ -228,7 +228,7 @@ index 914924a..45a6933 100644
      }
  
      // The exhaust's heat (dt seconds on): the gas leaves the ports at tIn and cools along the system toward each part's
-@@ -416,6 +471,7 @@ module Exhaust
+@@ -514,6 +569,7 @@ module Exhaust
          for (int k = 0; k < 2; ++k)
              endR[k].design(-1.0f + nb1 * kb + nb2 * kb2, -2.0f - 2.0f * nb2 * kb2, -1.0f - nb1 * kb + nb2 * kb2,
                             1.0f + da1 * kb + da2 * kb2, 2.0f - 2.0f * da2 * kb2, 1.0f - da1 * kb + da2 * kb2);
@@ -236,8 +236,8 @@ index 914924a..45a6933 100644
      }
  
      // The converter's cone's (and the merging's) flow noise for main pipe k: K 0.6 on the pipe's own speed
-@@ -554,22 +610,69 @@ module Exhaust
-     {
+@@ -691,22 +747,69 @@ module Exhaust
+         }
          const int np = lay->ports;
          const int nb = lay->topo == 0 ? 1 : 2;
 +        int n = 0;

@@ -154,19 +154,20 @@ namespace
         std::unique_ptr<funkgui::HeadlessHost> host;
         int w, h;
 
-        ExRig(const char* build, int width = 1100, int height = 700, float dpi = 2.0f, double t = 4.6, int theme = 0)
+        ExRig(const char* build, int width = 1100, int height = 700, float dpi = 2.0f, double t = 4.6, int theme = 0,
+              bool mid = true)
             : demo(t, false), w(width), h(height)
         {
             if (build != nullptr)
                 ex::setExhaustDemoBuild(doc, build);
             ex::exhaustDemoLive(demo.engine);
             // every pipe's pressure at its ends, for this rig's own build (the hook's follow U1's demo document)
-            for (int which = 0; which < 3; ++which)
-                demo.engine.addScope(which == 0 ? "ductUsed" : which == 1 ? "ductNear" : "ductFar",
+            for (int which = 0; which < (mid ? 4 : 3); ++which)
+                demo.engine.addScope(which == 0 ? "ductUsed" : which == 1 ? "ductNear" : which == 2 ? "ductFar" : "ductMid",
                                      [this, which](const tee::ui::DemoEngine& e, float* out, int max) {
-                                         float u[84], n[84], f[84];
-                                         ex::exhaustDucts(ex::resolveExhaust(doc), e.phase(), e.rpm(), e.throttle(), u, n, f);
-                                         const float* src = which == 0 ? u : which == 1 ? n : f;
+                                         float u[84], n[84], f[84], md[84];
+                                         ex::exhaustDucts(ex::resolveExhaust(doc), e.phase(), e.rpm(), e.throttle(), u, n, f, md);
+                                         const float* src = which == 0 ? u : which == 1 ? n : which == 2 ? f : md;
                                          const int m = std::min(max, 84);
                                          for (int i = 0; i < m; ++i)
                                              out[i] = src[i];
@@ -343,6 +344,20 @@ namespace
         rig.demo.engine.tick(1.0f / 60.0f);
         rig.host->tick(1);
         CHECK(rig.ws->drawKey() != k);
+        return 0;
+    }
+
+    // card G's ductMid: each pipe's trace bends through its middle's pressure; without it the trace runs straight
+    // between the ends, and the stage draws either way.
+    VIEW_TEST(testExhaustDuctMid, "exhaust.ductmid")
+    {
+        ExRig with("tt-v8-x", 1100, 700, 1.0f);
+        ExRig without("tt-v8-x", 1100, 700, 1.0f, 4.6, 0, false);
+        CHECK(with.ws->drawKey() != without.ws->drawKey());
+        const funkgui::PrimList a = with.host->draw();
+        const funkgui::PrimList b = without.host->draw();
+        CHECK(!a.prims.empty() && !b.prims.empty());
+        CHECK(tee::test::u3::textCollisions(a).empty());
         return 0;
     }
 

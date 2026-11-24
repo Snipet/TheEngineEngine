@@ -23,9 +23,11 @@ namespace tee::ui::exhaust
 
     // The telemetry the stage reads that the simulator does not yet write, at a speed (rpm) and a load (0..1).
     std::vector<std::pair<const char*, double>> exhaustLiveValues(double rpm, double load);
-    // Every pipe slot's pressure at its two ends (card G's ductUsed, ductNear, ductFar; 84 each) for a build at a point
-    // of its cycle (0..1), a speed (rpm) and a load: each primary's blowdown in its firing order, travelling its length.
-    void exhaustDucts(const ExhaustBuild& b, double phase, double rpm, double load, float* used, float* nearP, float* farP);
+    // Every pipe slot's pressure at its two ends and its middle (card G's ductUsed, ductNear, ductFar, ductMid; 84 each)
+    // for a build at a point of its cycle (0..1), a speed (rpm) and a load: each primary's blowdown in its firing order,
+    // travelling its length. midP may be null.
+    void exhaustDucts(const ExhaustBuild& b, double phase, double rpm, double load, float* used, float* nearP, float* farP,
+                      float* midP = nullptr);
     // The telemetry from the demo engine's throttle and speed, held (DemoEngine::set).
     void exhaustDemoLive(DemoEngine& engine);
 }
