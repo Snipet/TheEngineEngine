@@ -405,24 +405,22 @@ module ValveLab
         // (the intake's parked closing after bottom dead centre, for the schedule: the cam's centre is in the cycle, the
         // overlap's top dead centre at 360)
         const float ivcPark = cam[VT_IN_A].centre + 0.5f * cam[VT_IN_A].durSeat - 540.0f;
-        float wantIn = inTarget;
-        if (inTarget < 0.0f)
+        // The intake's advance asked: the ECU's (a map), else the schedule's. The overlap's crank angles that advance
+        // opens (ovFrom to ovTo) are where the valvetrain reads the pressure across the cylinder (dpOverlap), a
+        // measurement only: the schedule does not read it (the lead's ruling, 23:21: a cap on its means lost the turbo
+        // four's mid range up to 13 % and the V12's 6200 rpm 19 %; the calibrated answer is the bake). N3's turbo four
+        // (causes.md B-3) at 1800.
+        const float wantIn = inTarget >= 0.0f ? inTarget : phIn.scheduleIntake(share, load, ivcPark);
         {
-            // The schedule's advance, and the overlap's crank angles it would open (ovFrom to ovTo), where the
-            // valvetrain reads the pressure across the cylinder (dpOverlap), a measurement only: the schedule does
-            // not read it (the lead's ruling, 23:21: a cap on its means lost the turbo four's mid range up to 13 % and
-            // the V12's 6200 rpm 19 %; the calibrated answer is the bake). N3's turbo four (causes.md B-3) at 1800.
-            const float rule = phIn.scheduleIntake(share, load, ivcPark);
             const float ivoPark = cam[VT_IN_A].centre - 0.5f * cam[VT_IN_A].durSeat;
             const float evc = cam[VT_EX_A].centre + 0.5f * cam[VT_EX_A].durSeat + phEx.phase;
-            ovFrom = ivoPark - rule;
+            ovFrom = ivoPark - wantIn;
             ovTo = evc;
             if (ovTo - ovFrom < 20.0f)
             {
                 ovFrom = 0.5f * (ovFrom + ovTo) - 10.0f;
                 ovTo = ovFrom + 20.0f;
             }
-            wantIn = rule;
         }
         const float wantEx = exTarget >= 0.0f ? exTarget : phEx.schedule(share, load, 0);
         phIn.control(d16, wantIn, pOil, tOil);

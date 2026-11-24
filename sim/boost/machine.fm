@@ -531,7 +531,11 @@ module BoostMachine
         bovArea = 0.785398f * s->blowOffDiameter * s->blowOffDiameter * 0.8f;
         bovSpring = s->blowOffSpring;
         gateSpring = s->gateSpring;
-        gateSpan = 10000.0f;
+        // (the actuator's stroke: cracks at its spring, wide open some 30 kPa above it, as a wastegate actuator's
+        // spring rate gives (makers' cracking and full-open pressures some 25 to 35 kPa apart, recalled). 10 kPa, the
+        // first judgement, made the gate, its 40 ms lag and the shaft's inertia ring on their own: the turbo four at
+        // 6700 rpm cycled every 0.34 s, the gate 0.04 to 0.99, boost 58 to 88 kPa, with no loop at all)
+        gateSpan = 30000.0f;
         kFace = 0.03f;
         target = s->target;
         overBoost = s->overBoost > 0.0f ? s->overBoost : 1.4f * fmaxf(target, gateSpring);
@@ -546,7 +550,14 @@ module BoostMachine
         antiLag = s->antiLag ? 1 : 0;
         nRated = nShot / 2.13e6f;
         nBottle = s->nitrousBottle;
-        if (st != structure)
+        // (at rest, every configure puts the machine's gas at the build's air at once: its volumes, ducts, housings
+        // and the intercooler's core; kept from the simulator's 300 K start, they settled to a 288 K build's air
+        // through the throttle's air temperature and sounded at key-on, D's finding: -54 dBFS with the engine standing)
+        int still = omegaCrank < 1.0f ? 1 : 0;
+        for (int t = 0; t < BOOST_TURBOS; ++t)
+            if (shaft[t].omega > 1.0f)
+                still = 0;
+        if (st != structure || still != 0)
         {
             structure = st;
             reset();
@@ -1147,8 +1158,11 @@ module BoostMachine
         if (tg > 0.0f)
         {
             const float e = (tg - boost) / tg;
-            integ = fminf(fmaxf(integ + 4.0f * e * d16, -0.5f), 1.0f);
-            u = fminf(fmaxf(2.5f * e + integ, 0.0f), 0.95f);
+            // (gains 0.5 and 1 a second: the duty bleeds the whole boost off the actuator's signal, so a unit of duty
+            // moves the gate signal / span, some 2.4 at 73 kPa: at 2.5 and 4 the loop cycled at the turbo four's top
+            // with the gate's span widened; judgement against that plant, as a calibrator sets a boost PID)
+            integ = fminf(fmaxf(integ + 1.0f * e * d16, -0.5f), 1.0f);
+            u = fminf(fmaxf(0.5f * e + integ, 0.0f), 0.95f);
         }
         else
             integ = 0.0f;

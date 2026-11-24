@@ -1253,3 +1253,68 @@ So with the ruled lobe and an exhaust cam that closes earlier, the trapped share
 gap is within the grid's noise of the cited curve's bottom; at 1500 the 0.40's boost (spool) and the knock-limited burn
 are what remain. Owners: the exhaust phaser's direction (advance: N1, the valvetrain's; today it only retards), the
 spool at 1500 (N2), the knock-limited efficiency at this charge (C's table, with the DI cooling note).
+
+**B-3, N1's overlap pressure on both lobes** (23:28 by `date -u`; tel.valve.dpOverlap, 6d531f72; 0.40 match). Under
+N1's rule (intake 38 to 49 degrees), 1500 / 1800 rpm: the build's long lobe -28.3 / -28.9 kPa (164 / 190 N m, residual
+0.131 / 0.160); the ruled short lobe -8.5 / -15.9 kPa (214 / 233 N m, 0.086 / 0.142). The short lobe cuts the push-back
+by a half to two thirds and does not turn it positive: the long lobe is a part of the fault, not all of it. With the
+intake fixed through camIn the reading is 0.0 exactly in every run (it is taken over the overlap the rule asks: not a
+reading at fixed phases). On this tree (merged at 23:27) the short lobe at intake 30 reads 309 N m at 1800 (332 in the
+grid above, run before the merge; with the exhaust +30, 326 against 331): the branch moved between, or the cells
+scatter by up to 7 %; read the grid's best to about 20 N m.
+
+**B-3, the top at the cited boost** (23:30 `date -u`). turbo-four-20-gdi as built (0.85 match), 6200 rpm, 81 kPa held (the
+real boost, P's VCDS log): 272 N m on this tree (276 earlier) against the cited 237 to 262 (250 for 162 kW). One change
+each: lambda 0.84 (the map's formula) to 1.00 (EcuTek: the EA888 gen 3 at lambda 1 everywhere; a tuner's guide) 263
+(-9 N m), to 0.90 278; the intercooler's effectiveness 0.75 to 0.60 266 (-6; no cited figure for the real one); the
+turbine's back pressure, a 0.40 turbine (p3 238 against 172 kPa) 233 (-15 %, measured above). Friction: FMEP 222 kPa
+(Chen-Flynn), pumping 130, gross IMEP 2081; no published FMEP at 6200 for this engine found, not a lever I can size
+against a figure. No knock at 6200 (spark 20 BTDC). So the top's 9 % over is the turbine's back pressure first (the real
+IS20 is a small turbine: P's wheel sizes, 41.8 / 54.0 mm, no map), then the enrichment if lambda 1 is confirmed (-3 %),
+the cooler's effectiveness unknown (-2 % per 0.15).
+
+### B-3 in one table (the turbo four against the EA888 gen 3: 333 to 368 N m at 1500 and 1800, 237 to 262 at 6200)
+
+| cause | at 1500 | at 1800 | at 6200 | owner | sourced? |
+|---|---|---|---|---|---|
+| The intake phase at boosted low speed: N1's rule against a baked map | rule 164 / 234 against bake 253 (long / short lobe) | rule 181 / 222 against bake 309 / 319: +44 to +71 % | none (the rule helps above 4000) | N1 (the bake; the rule the fallback) | the rule judgement; the bake measured |
+| The exhaust lobe and an exhaust that closes earlier (AVS small lobe; the phaser's parked end) | bake 253 to 303 with 20 of advance: +20 % | 309 to 325-332: +5 to +7 % (±20 N m) | none (the large lobe above 3100) | P (the lobe, SSP 922903, ruled at 1 mm; the parked end unknown) | lobe cited; the parked end not |
+| The turbo's spool and the compressor's map width | 0.40 match 112 kPa of 120 (about 3 %); the 0.50 57 kPa | at target on the 0.40 | the 0.40 / 0.50 matches choke (164 / 220); the 0.85 holds | N2 | no compressor map near the IS20 found |
+| The turbine's back pressure at the top | | | 0.85 turbine 272, 0.40 233 at 81 kPa: the cited 250 between | P with N2 | wheel sizes only |
+| The knock-limited burn (retard at its 15 degree cap at the best cells) | about 10 % of what is left | 0 to 6 % left; knock control off is no better | no knock | C (the table), the DI cooling (twice Kasseris and Heywood's measured 14 K) to its owner | the DI cooling cited; the rest the model's |
+| Lambda: the map's 0.82 to 0.84 against lambda 1 | | -11 N m at 1 | -9 N m at 1 | the ECU maps' owner | a tuner's guide only |
+| The exhaust's heat before the turbine | | 29 % of the valves' enthalpy at 1800 (G's): third order | 13 % at 4000 | G | within a 1976 SAE bound |
+| The intercooler | | | -2 % per 0.15 of effectiveness | N2 / P | no figure |
+| Friction | | | FMEP 222 kPa | (none named) | no figure found |
+
+Best the model reaches with cited or ruled hardware and a fixed-phase bake: about 303 at 1500 (-9 to -18 %), about
+310 to 330 at 1800 (0 to -7 %), and 233 to 272 at 6200 by the turbine's size (the cited 250 inside).
+
+**B-3 after the DI cooling's change** (the steward's 65d0fc35: 14 K at lambda 1; 23:32 by `date -u`). The table's best
+cells again, the 0.40 match on the ruled lobe: 1800 (intake 30, exhaust +30) 330 N m at 123 kPa, knock at its cap
+(331 before); 1500 (intake 15, exhaust +20) 300.5 at 113 kPa (303); 6200 as built 274 at 81.5 kPa (272). Within the
+grid's scatter: the table stands. The cooling now shows as retard where the controller has room (the steward's tee-dyno
+runs: 1800 as built 0 to 3.3 degrees), not as torque.
+
+**B-3 on the build as P made it** (95f3f3f: the EA888 gen 3, two-stage exhaust, phasers 60 and 30, N1's baked intake maps;
+N1's dpOverlap at fixed phases, 0ad99dde; 23:41 by `date -u`). The build as built (its 0.85 match), full load:
+
+| rpm | N m | boost kPa | residual | knock ret. | intake / exhaust phase | dpOverlap kPa | gate |
+|---|---|---|---|---|---|---|---|
+| 1500 | 189 | 7.5 | 0.044 | 1.5 | 60 / 0 | -3.2 | 0 |
+| 1800 | 218 | 17.4 | 0.027 | 0.8 | 60 / 0 | 0.1 | 0 |
+| 2500 | 300 | 68.1 | 0.035 | 8.9 | 41 / 0 | 0.6 | 0 |
+| 4000 | 351 | 120.9 | 0.065 | 10.0 | 13 / 0 | -72.8 | 0.28 |
+| 6200 | 283 | 82.0 | 0.060 | 0 | 10 / 0 | -84.0 | 0.56 |
+
+Against 333 to 368 / 237 to 262: the breathing at low speed is now clean (residual 3 to 4 %, the overlap's pressure about
+0 at the baked phases); what is short at 1500 to 2500 is the 0.85 match's spool (7.5 and 17 kPa: item 3 of the table,
+N2's). At 4000 the curve is met; 6200 is 283 (8 % over 262; the turbine's size, as before). The exhaust phaser sits at 0
+at full load (the automatic exhaust schedule asks nothing there).
+
+On the 0.40 match on this build (the short lobe is the build's now; intake through camIn):
+intake 30: 233 N m at 1500 (64 kPa), 336 at 1800 (122); with the exhaust lobe 30 degrees earlier (exCentre 118):
+327 at 1500 (128 kPa), 331 at 1800. dpOverlap at intake 30: -11.4 / -7.2 kPa; with the exhaust earlier -42.3 / -45.4,
+while the torque rises at 1500 by 40 %: the reading, taken around the overlap's top, does not rank the exhaust axis (the
+exhaust closing earlier shortens the overlap it reads over). A bake should rank by torque, not by it. (My "long lobe"
+rows at this merge were on the build's short lobe: the lobe P put in; withdrawn as long-lobe readings.)

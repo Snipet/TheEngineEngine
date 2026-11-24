@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "2.0 L turbo four",
-  "notes": "Try first: turn the key, then floor it on the dyno and watch the turbo spool and the wastegate open in AIR, and the four pulses run down the exhaust in EXHAUST.\nThen drive: in first, hold the brake, press the launch button, floor the pedal and let go for a launch-control start (traction control holds the wheelspin), and listen to the direct injection's tick and the turbo's whistle as the dual clutch shifts.\n\nA 2.0 L direct-injection turbo four: 82.5 x 92.8 mm (1984 cc), 9.6:1 (engines of the kind in hot hatches: 155 to 228 kW at 5000 to 6500 rpm, 350 to 400 N m from 1600 to 4500; makers' figures). Its boost is trimmed above 4500 rpm (1.2 bar falling to 0.7), as production two-litres do. Front drive, six-speed dual clutch. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT.",
+  "notes": "Try first: turn the key, then floor it on the dyno and watch the turbo spool and the wastegate open in AIR, and the four pulses run down the exhaust in EXHAUST.\nThen drive: in first, hold the brake, press the launch button, floor the pedal and let go for a launch-control start (traction control holds the wheelspin), and listen to the direct injection's tick and the turbo's whistle as the dual clutch shifts.\n\nThe 2.0 L EA888 generation 3 of the Mk7 Golf GTI: 82.5 x 92.8 mm (1984 cc), 9.6:1, direct and port injection, both cams phased, two-stage exhaust valve lift, one IHI IS20 turbo with an electric wastegate (Audi SSP 920243; the turbo's model: eqtuning.com, enthusiast); 162 kW at 4500 to 6200 rpm, 350 N m from 1500 to 4400 (VW's press presentation). What is known and what is guessed: the exhaust's two lobes are gen 2's (SSP 922903: the small 6.35 mm, 180 deg, used to about 3100 rpm and from just after a start above -10 C; the large 10 mm, 215 deg; durations read at 1 mm); the intake phaser's 60 deg is the earlier 2.0 TSI's; the exhaust phaser's 30 deg is judgement; the boost taper (1.2 bar to 4500 rpm, 0.7 by 7000) is judgement, its top end agreeing with an owner's stock log (81 kPa at 6048 rpm: carworklog.com); the turbine's size is the model's default until N2 reads published maps. Front drive, six-speed dual clutch. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py).",
   "spec": {
     "engine": {
       "layout": "Inline 4",
@@ -59,14 +59,24 @@
       "inDur1mm": 208,
       "inLift": 0.0107,
       "inCentre": 130.0,
-      "exDurSeat": 236,
-      "exDur1mm": 204,
-      "exLift": 0.009,
-      "exCentre": 112,
+      "exDurSeat": 212,
+      "exDur1mm": 180,
+      "exLift": 0.00635,
+      "exCentre": 88,
       "inPhaseRange": 60,
-      "exPhaseRange": 0,
-      "springRate": 25000.0,
-      "springPreload": 156.0
+      "exPhaseRange": 30,
+      "springRate": 37500.0,
+      "springPreload": 234.0,
+      "stages": "On",
+      "inDurSeatB": 240,
+      "inDur1mmB": 208,
+      "inLiftB": 0.0107,
+      "inCentreB": 110,
+      "exDurSeatB": 247,
+      "exDur1mmB": 215,
+      "exLiftB": 0.01,
+      "exCentreB": 115.5,
+      "stageSpeed": 324.6
     },
     "intake": {
       "model": 1,
@@ -124,6 +134,75 @@
         "on": true
       },
       "maps": {
+        "camInAuto": false,
+        "camIn": {
+          "x": [
+            104.71975511965977,
+            189.9915070495168,
+            275.26325897937386,
+            360.5350109092309,
+            445.8067628390879,
+            531.078514768945,
+            616.350266698802,
+            701.622018628659
+          ],
+          "y": [
+            0.0,
+            0.75,
+            0.95,
+            3.0
+          ],
+          "z": [
+            [
+              0.0,
+              0.0,
+              60.0,
+              60.0
+            ],
+            [
+              0.0,
+              0.0,
+              60.0,
+              60.0
+            ],
+            [
+              0.0,
+              0.0,
+              36.75582504272461,
+              36.75582504272461
+            ],
+            [
+              0.0,
+              0.0,
+              20.0,
+              20.0
+            ],
+            [
+              0.0,
+              0.0,
+              10.0,
+              10.0
+            ],
+            [
+              0.0,
+              0.0,
+              10.0,
+              10.0
+            ],
+            [
+              0.0,
+              0.0,
+              10.0,
+              10.0
+            ],
+            [
+              0.0,
+              0.0,
+              10.0,
+              10.0
+            ]
+          ]
+        },
         "boostAuto": false,
         "boost": {
           "x": [
@@ -234,7 +313,6 @@
     },
     "sound": {
       "model": "Places",
-      "camera": "Tailpipe",
       "place": "Field",
       "ground": "Asphalt",
       "enginePlace": "Front"

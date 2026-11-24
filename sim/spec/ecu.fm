@@ -158,6 +158,10 @@ module EcuMapsSpec
     int knockLimitKey [[fminus::range(-2147483647, 2147483647)]] [[fminus::default(0)]] [[ui::hidden]] [[ui::unit("hash")]]
         [[ui::label("Knock limit's bake key")]]
         [[ui::help("The hash of the fields the table was baked from (the host's: a changed one makes it stale)")]];
+    // (N1, the steward's approval: the background cam bake's key, host Bake.h intakeCamKey)
+    int camInKey [[fminus::range(-2147483647, 2147483647)]] [[fminus::default(0)]] [[ui::hidden]] [[ui::unit("hash")]]
+        [[ui::label("Intake cam's bake key")]]
+        [[ui::help("The hash of the fields the intake cam map was baked from (the host's: a changed one makes it stale)")]];
 };
 
 

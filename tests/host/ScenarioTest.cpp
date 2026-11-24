@@ -200,3 +200,21 @@ TEST_CASE("kept() makes an object once a call site and never destroys it", "[sce
     CHECK(*first == "program");
     CHECK(tee::test::keptPointer([] { return std::unique_ptr<int>(); }) == nullptr);
 }
+
+TEST_CASE("a temporary's values held by reference are the values (the test library gives a temporary's by value)",
+          "[scenario]")
+{
+    const Run r = Scenario().sim(standin()).at(0.0).ignition(tee::Start).until(0.5).ignition(tee::On).run(1.0);
+    REQUIRE(r.ok());
+    const Series named = r.tel("engine.speed");
+    // D's form: a reference to a temporary Series' values (once a reference into a Series gone: some 4.68e-310)
+    const auto& held = r.tel("engine.speed").values();
+    REQUIRE(held.size() == named.values().size());
+    CHECK(held == named.values());
+    const auto& times = r.tel("engine.speed").times();
+    CHECK(times == named.times());
+    // and a temporary Run's result, held by reference
+    const auto& result = Scenario().sim(standin()).at(0.0).ignition(tee::Start).run(0.2).result();
+    CHECK(result.rowCount() > 0);
+    CHECK(std::isfinite(result.at(0, 0)));
+}
