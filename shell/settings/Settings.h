@@ -39,6 +39,9 @@ namespace tee::settings
         input::DriverSettings driver;           // the easing times, the automatic clutch
 
         Units units = Units::metric;
+        // The interface's own choice of a unit a quantity, as it writes it: lines of "quantity=unit" (those not at
+        // their default). The shell keeps the text and hands it back; the interface package reads it.
+        std::string unitChoices;
         std::string lastBuild;                  // the file of the build last open; empty: none
         int windowWidth = 0, windowHeight = 0;  // logical px; 0: the Panel's own size
         // (the theme and the zoom are FunkGui's own preferences, in its file beside this one)

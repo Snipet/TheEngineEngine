@@ -68,11 +68,18 @@ namespace tee::app
             {
                 if (!value(o.engine))
                     return false;
-                if (o.engine != "ref" && o.engine != "tone")
+                if (o.engine != "ref" && o.engine != "sim" && o.engine != "tone" && o.engine != "auto")
                 {
-                    why = "--engine is ref or tone";
+                    why = "--engine is sim, ref or tone";
                     return false;
                 }
+            }
+            else if (arg == "--ref-panel")
+                o.refPanel = true;
+            else if (arg == "--workspace")
+            {
+                if (!value(o.workspace))
+                    return false;
             }
             else if (arg == "--panel")
             {
@@ -171,6 +178,8 @@ namespace tee::app
                 return false;
             }
         }
+        if (o.refPanel)
+            o.engine = "ref";       // the reference's panel shows the reference
         return true;
     }
 
@@ -180,9 +189,13 @@ namespace tee::app
         u += program;
         u += " [options]\n"
              "  --info                 print the versions, the renderer and the audio device, and exit\n"
-             "  --engine ref|tone      the reference simulator (default), or a plain tone that needs no compiler\n"
-             "  --sim DIR              the folder that holds ref/program.fm (default: sim/ beside the executable)\n"
-             "  --preset NAME|FILE     a preset of content/ref/presets, by its file's name, or a preset file\n"
+             "  --engine sim|ref|tone  the simulator (sim/engine.fm: the default) in the application's frame, the\n"
+             "                         reference (sim/ref) in its own panel, or a plain tone that needs no compiler\n"
+             "  --ref-panel            the reference engine in its own panel (as --engine ref)\n"
+             "  --workspace ID[:PAGE]  the frame opens on that workspace, by its name on the rail (and its page, from 1)\n"
+             "  --sim DIR              the folder that holds engine.fm and ref/ (default: sim/ beside the executable)\n"
+             "  --preset NAME|FILE     a preset of content/ref/presets (the simulator: a build of content/builds),\n"
+             "                         by its file's name, or a file\n"
              "  --set ID=VALUE         a parameter, after the preset; may be given many times\n"
              "  --checks               compile with the loop budget and the bounds checks\n"
              "  --frames N             run N frames, then exit\n"

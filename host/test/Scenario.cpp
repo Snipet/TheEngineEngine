@@ -11,28 +11,40 @@ namespace tee::test
 {
     namespace
     {
-        std::mutex gMutex;
-        std::filesystem::path gSim, gContent;
-        std::map<std::tuple<std::string, std::string, std::string, int>, std::shared_ptr<Sim>> gCache;
+        // The directories and the compiled programs, kept for the process and never destroyed: a Sim held by a
+        // static would be destroyed after FMinus's and LLVM's own statics at exit, and its Program's destructor then
+        // runs on a JIT already torn down (a crash at exit on macOS, where the order differs from Linux's).
+        struct Shared
+        {
+            std::mutex mutex;
+            std::filesystem::path sim, content;
+            std::map<std::tuple<std::string, std::string, std::string, int>, std::shared_ptr<Sim>> cache;
+        };
+
+        Shared& shared()
+        {
+            static Shared* const kept = new Shared();
+            return *kept;
+        }
     } // namespace
 
     void setSimDirectory(std::filesystem::path directory)
     {
-        const std::lock_guard<std::mutex> lock(gMutex);
-        gSim = std::move(directory);
+        const std::lock_guard<std::mutex> lock(shared().mutex);
+        shared().sim = std::move(directory);
     }
 
     void setContentDirectory(std::filesystem::path directory)
     {
-        const std::lock_guard<std::mutex> lock(gMutex);
-        gContent = std::move(directory);
+        const std::lock_guard<std::mutex> lock(shared().mutex);
+        shared().content = std::move(directory);
     }
 
     std::filesystem::path simDirectory()
     {
-        const std::lock_guard<std::mutex> lock(gMutex);
-        if (!gSim.empty())
-            return gSim;
+        const std::lock_guard<std::mutex> lock(shared().mutex);
+        if (!shared().sim.empty())
+            return shared().sim;
         if (const char* d = std::getenv("TEE_SIM_DIR"); d != nullptr && *d != '\0')
             return d;
         return std::filesystem::path(TEE_TEST_SOURCE_DIR) / "sim";
@@ -40,9 +52,9 @@ namespace tee::test
 
     std::filesystem::path contentDirectory()
     {
-        const std::lock_guard<std::mutex> lock(gMutex);
-        if (!gContent.empty())
-            return gContent;
+        const std::lock_guard<std::mutex> lock(shared().mutex);
+        if (!shared().content.empty())
+            return shared().content;
         if (const char* d = std::getenv("TEE_CONTENT_DIR"); d != nullptr && *d != '\0')
             return d;
         return std::filesystem::path(TEE_TEST_SOURCE_DIR) / "content";
@@ -58,15 +70,15 @@ namespace tee::test
         const auto key = std::make_tuple(std::filesystem::weakly_canonical(directory).generic_string(),
                                          options.entry + ":" + options.module, defines, options.optimisation);
         {
-            const std::lock_guard<std::mutex> lock(gMutex);
-            if (auto it = gCache.find(key); it != gCache.end())
+            const std::lock_guard<std::mutex> lock(shared().mutex);
+            if (auto it = shared().cache.find(key); it != shared().cache.end())
                 return it->second;
         }
         std::shared_ptr<Sim> sim = Sim::compile(directory, options, errors);
         if (sim)
         {
-            const std::lock_guard<std::mutex> lock(gMutex);
-            gCache[key] = sim;
+            const std::lock_guard<std::mutex> lock(shared().mutex);
+            shared().cache[key] = sim;
         }
         return sim;
     }
