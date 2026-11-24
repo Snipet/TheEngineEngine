@@ -114,6 +114,12 @@ namespace tee
         // an output not finite) and put it at rest afresh: tel.engine.flags' FLAG_FAULT (4), counted since load. The
         // host then cranks it back as after a restart. Never in normal running: a failure of the program's invariant.
         std::uint32_t engineFaults = 0;
+        // Callbacks whose work took longer than their buffer lasts (load at 1 or more), since load: the device's queue
+        // ran dry then, unless it held more than a buffer (SDL3 reports no underruns: this is the nearest the host knows)
+        std::uint32_t lateCallbacks = 0;
+        // Whether the simulator fits the machine (Fit.h): 1 fits, 0 tight, -1 over; worked out off the audio thread
+        // from loadPeak and lateCallbacks, with hysteresis. It changes nothing by itself.
+        std::int32_t fits = 1;
     };
 
     // The newest whole block's telemetry: the `tel` block's bytes and the host's numbers. Read field by field.
