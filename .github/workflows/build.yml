@@ -31,6 +31,11 @@
 # slow platform (macOS, which may wait for a runner) never holds back the others' results. A run whose job was
 # replaced shows "cancelled" for that platform alone; scripts/ci-status.sh reads each platform's newest finished job.
 #
+# main is moved forward by the lead alone, at each checkpoint, to a commit the integration branch already carries
+# (docs/plan/01-rules.md section 2): its run builds, tests and packs the fast tier on every platform, for the owner's
+# artefacts and main's own green mark, and skips the soak tier, which the integration branch's runs already give that
+# commit (and which would hold a Linux runner for the longest job twice).
+#
 # On Linux the preset's tree is built right after the configure, before the application: a compile error anywhere
 # fails the run in about three minutes instead of eight (every session's push lands here; docs/plan/01-rules.md §3).
 #
@@ -92,6 +97,7 @@ jobs:
           ONLY: ${{ inputs.platforms || 'all' }}
           # (the head commit's message, by the environment, never pasted into the script)
           MESSAGE: ${{ github.event.head_commit.message }}
+          REF: ${{ github.ref }}
           ALL: >-
             [
               {"platform": "macos-arm64", "os": "macos-latest", "jobs": 3, "tests": 3},
@@ -115,6 +121,9 @@ jobs:
           # says [soak] (their minutes are dear)
           soak='["linux-x64"]'
           case "$MESSAGE" in *"[soak]"*) soak='["linux-x64","macos-arm64","windows-x64"]' ;; esac
+          # main moves only forward to a commit the integration branch already carries, which its own soak covers: main
+          # builds, tests and packs the fast tier on every platform (the owner's artefacts), and soaks nothing
+          [ "$REF" = refs/heads/main ] && soak='[]'
           matrix=$(jq -c --argjson soak "$soak" \
             'map(. + {tier: "fast"}) + map(select(.platform as $p | $soak | index($p)) + {tier: "soak"})' <<< "$matrix")
           echo "building: $(jq -r 'map(.platform + " " + .tier) | join(", ")' <<< "$matrix")"

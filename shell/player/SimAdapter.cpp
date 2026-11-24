@@ -279,6 +279,7 @@ namespace tee::player
             host_->prepare(rate_, maxBlock_ > 0 ? maxBlock_ : host_->maxBlock());
         // the document: the compiled program's Fields from now on (the same layout), and everything sent to the host
         build_->rebind(host_->fields());
+        bound_ = sim;
         build_->attach(host_.get());
         build_->flush();
         compileSeconds_ = sim->program().compileSeconds() + sim->program().linkSeconds();
@@ -311,6 +312,15 @@ namespace tee::player
     {
         if (!ready())
             adopt();
+        // A quality change made: the host plays another program and refuses writes resolved against the one the
+        // document is bound to, so the document follows (its values and undo kept, everything sent again). Only
+        // between changes: the worker swaps the host's program (it starts on this thread, so none starts meanwhile).
+        if (ready() && !qualitySwitching())
+            if (std::shared_ptr<Sim> now = host_->sim(); now != nullptr && now != bound_)
+            {
+                build_->rebind(now->fields());
+                bound_ = std::move(now);
+            }
         if (ready())
             build_->flush();
         // a quality asked for while another was being made: its turn

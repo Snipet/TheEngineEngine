@@ -5,7 +5,8 @@
 //   - a build with every switch on, loaded while stopped over the same block with every switch off, reaches the
 //     engine that build reaches loaded fresh.
 // The engine reached: the idle (8 to 9 s) and brake torque on the engine dyno at 3000 rpm, full throttle, each within
-// 2 %. Fast tier: the default block (content/builds/default.json); nightly: the V8 and the turbo six.
+// 2 %. Fast tier: the default block (content/builds/default.json); nightly: the V8 and the turbo six. And the absolute
+// check at the end (smoothInSize), which does fail before f89d40c.
 // What it does not catch: the hole D closed in f89d40c. On the tree before it every route through the host gives the
 // same 444 N m with fuel.model on (the switch in the build file, written while stopped, or written with a size change
 // so a configure runs: measured with tee-render), so no two host routes differ there; D's Bench test reads the
@@ -67,9 +68,10 @@ namespace
 
     // D's sequence (content/scenarios/core/stopped-switch.json): the key on; `late` written at 0.1 s, the engine
     // stopped, with no layout or size change (so nothing configures again); the start at 0.2 s; idle; the engine dyno
-    // at 3000 rpm, full throttle. The idle is read from 8 s: an event of the key differs on the two paths (voices.model
-    // primes the fuel pump as the key turns on, so a switch turned on after the key misses it), and its idle meets the
-    // other path's by then (96.0 against 91.1 rad/s at 2.2 to 3 s, 90.8 both at 8 to 12 s, measured).
+    // at 3000 rpm, full throttle. The idle is read from 8 s, after the ECU's cold-idle glide: a stopped engine that
+    // renders (voices.model on at the key) glides it before the start, so an early idle depends on when the voices came
+    // on (96.0 against 91.1 rad/s at 2.2 to 3 s before D's c93c3391, 90.8 both from 8 s; whether a resting render
+    // should glide the idle at all is the lead's and H's).
     Reached reach(const std::string& build, const Values& late)
     {
         tee::test::Scenario s(build);
@@ -171,4 +173,50 @@ TEST_CASE("decisions: each switch turned on while stopped and every switch loade
         eachSwitch(b);
         loadedOver(b);
     }
+}
+
+namespace
+{
+    // The absolute check (the lead's, 20:02): the default block's size is the one the program inits with, so a decision
+    // the switch makes only when the size changes (a configure) is missed there and nowhere else. Torque is smooth in
+    // size: with a switch on, the default block's (5.76 L) lies on the line between the same block at 5.0 and 6.2 L
+    // (each a configure), within 3 %. On f89d40c~1, fuel.model on: 444.5 N m against the line's 533.8 (463.2 at 5.0 L,
+    // 574.6 at 6.2 L); on the tip 505.0 against 505.2. One cc larger does not configure: 444.5 both on the old tree.
+    void smoothInSize(const std::string& path, double on)
+    {
+        const double sizes[3] = {0.0050, 0.00576, 0.0062};
+        double torque[3] = {};
+        for (int i = 0; i < 3; ++i)
+        {
+            Values v = {{path, on}};
+            if (i != 1)
+                v.emplace_back("engine.displacement", sizes[i]);
+            std::string tag = path + "-size" + std::to_string(i);
+            std::replace(tag.begin(), tag.end(), '.', '-');
+            torque[i] = reach(buildWith("", v, tag), {}).torque;
+        }
+        const double line = torque[0] + (torque[2] - torque[0]) * (sizes[1] - sizes[0]) / (sizes[2] - sizes[0]);
+        std::printf("decisions | size line      | %-16s | 5.0 L %7.1f, 5.76 L %7.1f, 6.2 L %7.1f N m: the line at 5.76 L "
+                    "%7.1f (%+.1f %%)\n",
+                    path.c_str(), torque[0], torque[1], torque[2], line, 100.0 * (torque[1] / line - 1.0));
+        INFO(path << " on: the default block makes " << torque[1] << " N m; the line between 5.0 L (" << torque[0]
+                  << ") and 6.2 L (" << torque[2] << ") gives " << line);
+        CHECK(std::fabs(torque[1] - line) <= 0.03 * std::fabs(line));
+    }
+} // namespace
+
+// The fast form: the two switches whose decision f89d40c fixed on the default block (measured on f89d40c~1: fuel.model
+// -16.7 %, engine.wallHeat -17.0 %; boost.model -0.1 %, so it is the nightly's). The nightly: every switch (the tip:
+// within 1.1 %, voices.model's prime the largest).
+TEST_CASE("decisions: with fuel.model or engine.wallHeat on the default block's torque lies on its size line",
+          "[fast][combo][decisions]")
+{
+    for (const char* p : {"fuel.model", "engine.wallHeat"})
+        smoothInSize(p, 1.0);
+}
+
+TEST_CASE("decisions: with each switch on the default block's torque lies on its size line", "[nightly][decisions]")
+{
+    for (const Switch& w : switches())
+        smoothInSize(w.path, w.on);
 }

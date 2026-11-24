@@ -9,7 +9,7 @@ file(GLOB _tee_n1_sources CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
 add_executable(tee-tests-calibration-na ${_tee_n1_sources})
 tee_target_defaults(tee-tests-calibration-na)
 target_include_directories(tee-tests-calibration-na PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
-target_link_libraries(tee-tests-calibration-na PRIVATE Tee::host Catch2::Catch2WithMain)
+target_link_libraries(tee-tests-calibration-na PRIVATE Tee::host Catch2::Catch2WithMain nlohmann_json::nlohmann_json)
 target_compile_definitions(tee-tests-calibration-na PRIVATE "TEE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\"")
 catch_discover_tests(tee-tests-calibration-na DISCOVERY_MODE PRE_TEST ADD_TAGS_AS_LABELS TEST_PREFIX "calibration-na."
                      PROPERTIES TIMEOUT 900)

@@ -226,6 +226,7 @@ namespace
             showStatus();
         };
         app::WindowCommands commands(std::move(commandsContext));
+        std::filesystem::path tryFirstFile;     // the first build a launch opened (its card is wanted while it is open)
         if (shown.document != nullptr)
         {
             shown.document->recent().load(remembered.settings.recentBuilds);
@@ -239,7 +240,17 @@ namespace
                 std::vector<std::string> warnings;
                 std::string error;
                 if (shown.document->open(launch.file, BuildPart::Whole, warnings, error))
+                {
                     std::printf("file: %s, %s\n", launch.what, launch.file.string().c_str());
+                    // a first launch's hand-hold: the first build's notes on the frame's TRY FIRST card (U1's), until
+                    // it is closed once (the settings remember that); the console gets their first line
+                    if (launch.first)
+                    {
+                        const std::string& notes = shown.document->build().notes;
+                        std::printf("note: %s\n", notes.substr(0, notes.find('\n')).c_str());
+                        tryFirstFile = launch.file;
+                    }
+                }
                 else
                     std::fprintf(stderr, "file: %s (%s) did not open: %s\n", launch.what, launch.file.string().c_str(),
                                  error.c_str());
@@ -390,6 +401,13 @@ namespace
             shown.window->audioInfo = [&audioLine] { return audioLine; };
             shown.window->audioMenu = [&commands] { commands.audioMenu(); };
             shown.window->qualityChosen = [&now](int q) { now.audioQuality = q == 1 ? "economy" : "full"; };
+            shown.window->tryFirst = [&now, &tryFirstFile, &shown] {
+                if (now.tryFirstSeen || tryFirstFile.empty() || shown.document == nullptr
+                    || shown.document->file() != tryFirstFile)
+                    return std::string();
+                return shown.document->build().notes;
+            };
+            shown.window->tryFirstDone = [&now] { now.tryFirstSeen = true; };
         }
         std::string why;
         if (!host.open(why))
@@ -579,7 +597,11 @@ namespace
         // what the window ended with: the build's name (the top bar's), its file, and each model switch as the document
         // holds it and as the engine was sent it (a test's read-back: tests/shell/CMakeLists.txt, shell.window.first)
         if (machine && shown.document != nullptr)
+        {
             std::printf("%s\n", app::launchReadBack(*shown.document, engine.sim).c_str());
+            const bool card = !now.tryFirstSeen && !tryFirstFile.empty() && shown.document->file() == tryFirstFile;
+            std::printf("try-first: %s\n", card ? "the card is wanted" : "no card");
+        }
         std::printf("tee-app: %s renderer=%s frames=%u ticks=%u fps=%.1f audio-callbacks=%llu audio-frames=%llu "
                     "largest-request=%d engine-state=%.0f rpm=%.0f faults=%u\n",
                     code == 0 ? "ok" : "FAILED", d.renderer.c_str(), static_cast<unsigned>(d.frames),

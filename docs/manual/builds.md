@@ -56,7 +56,7 @@ Thirty archetypes in `content/builds/archetypes/`, each a whole build (engine, c
 
 **Supercharged 6.2 L V8** (`supercharged-v8-62.json`). The 6.2 L pushrod V8 of 103.25 x 92 mm (6162 cc) at 9.1:1 under a 1.9 L positive-displacement blower at some 0.6 bar (the LSA kind: 415 kW at 6100 rpm, 746 N m at 3800; gmauthority.com, a community spec table for the compression). In a heavy six-speed coupe.
 
-**Small-block 5.7 L, carburettor-like** (`small-block-57-carb.json`). A 350 cubic inch small block (4.00 x 3.48 in: 101.6 x 88.4 mm, 5733 cc), 9:1, two valves on pushrods, a flat-tappet cam, one big throttle over an open plenum as a four-barrel carburettor's. Some 150 to 200 kW net and 400 to 450 N m (makers' net ratings of the 1970s and 80s). Four-speed manual, live axle.
+**Small-block 5.7 L, carburettor-like** (`small-block-57-carb.json`). A 350 cubic inch small block (4.00 x 3.48 in: 101.6 x 88.4 mm, 5733 cc), 9:1, two valves on pushrods, a flat-tappet cam (the L48's), one big throttle over an open plenum as a four-barrel carburettor's. The L48 of 1975 to 1980 is rated 123 to 145 kW net (165 to 195 hp) and 346 to 380 N m (255 to 280 lb ft), 1977's 180 hp at 4000 rpm and 270 lb ft at 2400; the L82 157 kW at 5200 and 346 N m at 3600 (SAE net, looked up: corvsport.com, corvetteactioncenter.com). Four-speed manual, live axle.
 
 **V10 5.2 L** (`v10-52.json`). A 90-degree V10 with split crankpins for even firing: 84.5 x 92.8 mm (5204 cc), 12.5:1, direct and port injection, 8700 rpm (the 5.2 L V10 of 2008 on: 386 to 470 kW at 8000 to 8700 rpm, 530 to 565 N m at 6500; makers' figures). In an all-wheel-drive mid-engined car.
 
@@ -119,7 +119,7 @@ Made by the packages that built each part of the simulator, to show or test thei
 | `diesel-mechanical-classic.json` | Classic 14 L mechanical six | Card D2. A 1980s 14 L inline six (140 x 152 mm, 14.5:1, one turbo) on a mechanical in-line pump: an all-speed flyweight governor that hunts at idle, low ... |
 | `diesel-pickup-tuned.json` | Tuned 6.7 L pickup | Card D2. A pickup's 6.7 L inline six (107 x 124 mm, 17.3:1, one turbo) on a common rail (1800 bar, a 3 % pilot) tuned: 30 % over-fuel with the smoke limiter ... |
 | `diesel-v8-truck.json` | Truck 16 L V8 | Card D2. A 16.4 L V8 truck engine (130 x 154 mm, 17.3:1, a turbo a bank as the reference's twin), electronic governor, rated 1900 rpm, a compression brake ... |
-| `first.json` | 3.0 L twin-turbo six | Try first: turn the key, then floor it on the dyno and watch the two turbos spool in AIR (each fed by three cylinders) and the pulses split between the two ... |
+| `first.json` | 2.0 L turbo four | Try first: turn the key, then floor it on the dyno and watch the turbo spool and the wastegate open in AIR, and the four pulses run down the exhaust in ... |
 | `large-diesel.json` | Large Diesel | The reference's preset Large Diesel, converted (its DRIVE CAR as the vehicle Car; HOLD is no part of a build). |
 | `truck-15l-six-bobtail.json` | Truck 15 L six, bobtail | Card D2. A highway tractor alone (a bobtail, 9 t): a 15 L inline six (137 x 169 mm, 17:1, twin turbos as the reference has them), an electronic governor, a ... |
 | `truck-15l-six.json` | Truck 15 L six, 36 t | Card D2. A highway tractor and loaded trailer, 36 t: a 15 L inline six (137 x 169 mm, 17:1, twin turbos as the reference has them), an electronic governor, ... |

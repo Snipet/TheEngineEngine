@@ -283,10 +283,24 @@ namespace tee::ui
         ribbon_ = &make<DynoRibbon>(*dyno_, units_);
         fold_ = &make<Button>("Fold", [this] { foldRibbon(!folded_); });
         makeCockpit();
+        // The first launch's card, made last: over the stage, and the first to take a press there.
+        tryFirst_ = &make<TryFirstCard>();
+        tryFirstClose_ = &make<Button>("Close", [this] { closeTryFirst(); });
 
         unitsSeen_ = units_.revision();
         selectionSeen_ = selection_.revision();
         show(std::max(0, find("engine")));
+    }
+
+    void AppFrame::closeTryFirst()
+    {
+        if (tryFirstClosed_)
+            return;
+        tryFirstClosed_ = true;
+        tryFirstNotes_.clear();
+        if (services_.tryFirstDone)
+            services_.tryFirstDone();
+        arrange();
     }
 
     AppFrame::~AppFrame()
@@ -756,6 +770,20 @@ namespace tee::ui
         for (auto& ws : workspaces_)
             ws->resize(width(), height());
         current().place(stage);
+        // The first launch's card at the stage's top right (the top bar and the cockpit stay clear).
+        if (!tryFirstNotes_.empty())
+        {
+            const float cw = std::min(420.0f, stage.w - 32.0f);
+            const float ch = std::min(tryFirst_->heightFor(cw), stage.h - 24.0f);
+            const funkgui::Rect card{ stage.right() - 16.0f - cw, stage.y + 12.0f, cw, ch };
+            tryFirst_->setPlace(card, true);
+            tryFirstClose_->setPlace({ card.right() - 12.0f - 64.0f, card.y + 10.0f, 64.0f, 26.0f }, true);
+        }
+        else
+        {
+            tryFirst_->setPlace({}, false);
+            tryFirstClose_->setPlace({}, false);
+        }
         // The inspector: its header's ALL, the tabs, the page or the units, the ribbon.
         const funkgui::Rect insp{ stage.right(), stage.y, w - stage.right(), stage.h };
         clear_->setPlace({ insp.right() - 58.0f, insp.y + 6.0f, 48.0f, 22.0f }, !selection_.empty() && !unitsPage_);
@@ -1029,6 +1057,24 @@ namespace tee::ui
         start_->setTitle(!services_.engineReady || services_.engineReady() ? "Start" : "Compiling");
         if (const double db = ctx_->live.get("sound.limiter"); (std::isfinite(db) && std::fabs(db) > 0.05) != limiter_->shown())
             arrange();   // the limiter's bar comes or goes
+        // The first launch's card: its text while the shell has one; closed for good once the engine has been started
+        // and stopped (the owner has done what it says).
+        if (!tryFirstClosed_)
+        {
+            const std::string notes = services_.tryFirst ? services_.tryFirst() : std::string();
+            if (notes != tryFirstNotes_)
+            {
+                tryFirstNotes_ = notes;
+                tryFirst_->setText(services_.buildName ? services_.buildName() : std::string(), notes);
+                arrange();
+            }
+            const double st = ctx_->live.get(telemetry::kState);
+            const bool running = std::isfinite(st) && st >= 0.5 && st < 2.5;
+            if (running && !tryFirstNotes_.empty())
+                sawRunning_ = true;   // a start counts while the card is up
+            else if (sawRunning_ && std::isfinite(st) && !tryFirstNotes_.empty())
+                closeTryFirst();
+        }
         if ((load_->verdict() < 1) != advice_->shown())
             arrange();   // the build stopped fitting, or fits again: the sentence comes or goes by itself
         if (engineBrakeState(*ctx_).shown != brake_->shown())

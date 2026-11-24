@@ -11,7 +11,8 @@
 // 3. Gross indicated fuel-conversion efficiency at full load, three speeds of the small block, inside 0.33 to 0.38:
 //    Heywood, Internal Combustion Engine Fundamentals, §5.7 and §15 (a real engine near 0.8 of the fuel-air cycle;
 //    full-load brake efficiency 0.28 to 0.33, BSFC 260 to 300 g/kWh, plus friction 0.04 to 0.06 of the fuel).
-//    Out today (0.374 to 0.41 on all sixteen NA petrol archetypes): finding N3-1 (the cylinder's gamma(T), card D's).
+//    It was 0.374 to 0.433 on all sixteen NA petrol archetypes until card D took Gatowski's gamma for the physical
+//    cylinder (finding N3-1, 3990ee47 and a845b07f); 0.345 to 0.358 since.
 #include "Balance.h"
 
 #include <catch2/catch_test_macros.hpp>
@@ -67,17 +68,12 @@ TEST_CASE("N3 balance: the air's and the energy's books close at full load", "[n
 TEST_CASE("N3 balance: gross indicated efficiency at full load is a real engine's", "[n3][balance][sim]")
 {
     Keep keep;
-    int out = 0;
     for (const double rpm : {2000.0, 3000.0, 4600.0})
     {
         const Books b = run("small-block-57-carb", rpm);
         const double eta = b.workGross / b.fuelEnergy;
         std::printf("small block %.0f rpm: gross indicated efficiency %.3f (0.33 to 0.38)\n", b.rpm, eta);
         CHECK(eta > 0.33);
-        if (eta > 0.38)
-            ++out;
+        CHECK(eta < 0.38);
     }
-    if (out > 0)
-        SKIP("finding N3-1: the cylinder's gamma(T) runs some 0.03 over Gatowski's (card D's cylinder.fm): gross "
-             "indicated efficiency 0.37 to 0.41 at full load");
 }

@@ -220,12 +220,16 @@ arch(slug="supercharged-v8-62", runner=0.3, name="Supercharged 6.2 L V8", geo="r
            "table for the compression). In a heavy six-speed coupe.")
 arch(slug="small-block-57-carb", name="Small-block 5.7 L, carburettor-like", geo="ref-12-v8-cross",
      layout="V8 crossplane", bore=101.6, stroke=88.4, rod=144.8, cr=9.0, valves=2, dIn=49.3, dEx=38.1,
-     cam=(268, 214, 10.9, 110, 276, 224, 10.9, 114), train="Pushrod", redline=5500, idle=700,
+     # the L48's cam (N3, 20:06: toward the target's middle, not the hotter L82's): about 195/202 deg at 0.050 in and
+     # 0.390/0.410 in lift (from memory, firm to some 5 deg), the seat some 54 deg longer as this hydraulic flat tappet's
+     cam=(251, 197, 9.9, 110, 256, 204, 10.4, 114), train="Pushrod", redline=5500, idle=700,
      intake=dict(runnerLength=0.18, plenumVolume=0.0025), friction="Flat tappet", grade="Regular (87)",
      car="muscle-manual", timing="Chain", fan="Viscous clutch",
      notes="A 350 cubic inch small block (4.00 x 3.48 in: 101.6 x 88.4 mm, 5733 cc), 9:1, two valves on pushrods, a "
-           "flat-tappet cam, one big throttle over an open plenum as a four-barrel carburettor's. Some 150 to 200 kW "
-           "net and 400 to 450 N m (makers' net ratings of the 1970s and 80s). Four-speed manual, live axle.")
+           "flat-tappet cam (the L48's), one big throttle over an open plenum as a four-barrel carburettor's. The L48 "
+           "of 1975 to 1980 is rated 123 to 145 kW net (165 to 195 hp) and 346 to 380 N m (255 to 280 lb ft), 1977's "
+           "180 hp at 4000 rpm and 270 lb ft at 2400; the L82 157 kW at 5200 and 346 N m at 3600 (SAE net, looked up: "
+           "corvsport.com, corvetteactioncenter.com). Four-speed manual, live axle.")
 arch(slug="v10-52", runner=0.28, name="V10 5.2 L", geo="v10-90", layout="V10", bore=84.5, stroke=92.8, rod=154.0, cr=12.5,
      valves=4, dIn=33.8, dEx=28.0, cam=(268, 240, 11.8, 108, 260, 232, 10.8, 112), train="Finger", phase=(42, 42),
      redline=8700, idle=900, direct=True, grade="Premium (91)", car="awd-supercar", timing="Chain",
@@ -259,7 +263,10 @@ arch(slug="boxer-four-turbo-unequal", runner=0.3, name="Boxer four turbo with un
 arch(slug="two-stage-cam-20", runner=0.3, convK=16.0, name="Two-stage-cam 2.0 L", geo="ref-05-inline-4", layout="Inline 4",
      bore=87.0, stroke=84.0, rod=153.0, cr=11.7, valves=4, dIn=34.0, dEx=29.0,
      cam=(236, 204, 8.5, 110, 232, 200, 8.0, 112), train="Rocker", redline=9000, idle=900,
-     stages=dict(inDurSeatB=290, inDur1mmB=258, inLiftB=0.0118, exDurSeatB=284, exDur1mmB=252, exLiftB=0.0112,
+     # the high stage as the K20A Type R's (N3, 20:18): 280/278 deg, 12.65/12.14 mm lift (motorreviewer.com, an
+     # aggregator that does not say where duration is measured: read as the seat; 1 mm some 32 deg shorter, as the low
+     # stage's), switched at 6000 rpm (the DC5's: honda.co.jp factbook)
+     stages=dict(inDurSeatB=280, inDur1mmB=248, inLiftB=0.01265, exDurSeatB=278, exDur1mmB=246, exLiftB=0.01214,
                  stageSpeed=6000 * RPM),
      grade="Premium (91)", car="roadster", timing="Chain", lifters="Solid",
      notes="A 2.0 L four with two cam profiles a valve switched at 6000 rpm: 87 x 84 mm (1997 cc), 11.7:1, 9000 rpm "
@@ -329,8 +336,10 @@ arch(slug="v6-35-twin-turbo-pickup", runner=0.3, name="3.5 L twin-turbo V6 picku
            "a bank (engines of the kind: 280 to 300 kW at 5000 to 6000 rpm, 640 to 690 N m at 3500; makers' "
            "figures). Four-wheel drive, ten-speed automatic.")
 arch(slug="twin-cam-roadster-18", runner=0.4, convK=17.0, name="1.8 L twin-cam roadster", geo="ref-05-inline-4", layout="Inline 4",
-     bore=83.0, stroke=85.0, rod=133.0, cr=10.0, valves=4, dIn=33.0, dEx=28.0,
-     cam=(244, 212, 9.0, 110, 240, 208, 8.5, 112), train="Bucket", redline=7000, idle=850, car="roadster",
+     # the real head's valves and cams (N3, 20:06; the sheets): about 31/26 mm, some 230 to 240 deg at the seat and
+     # 8.5 mm lift (from memory, firm to 1 mm and 5 deg)
+     bore=83.0, stroke=85.0, rod=133.0, cr=10.0, valves=4, dIn=31.0, dEx=26.0,
+     cam=(236, 204, 8.6, 110, 232, 200, 8.3, 112), train="Bucket", redline=7000, idle=850, car="roadster",
      timing="Toothed belt",
      notes="A 1.8 L twin-cam 16-valve four: 83 x 85 mm (1839 cc), 10:1 (engines of the kind in light roadsters: 96 "
            "to 110 kW at 6500 to 7000 rpm, 160 to 170 N m at 5000; makers' figures). Rear drive, six-speed manual.")
@@ -435,7 +444,10 @@ SPRINGS = {
 }
 
 
-PORTS = {"wedge": (1.15, 1.3), "high": (1.65, 1.8), "race": (1.75, 1.9)}
+PORTS = {"wedge": (1.15, 1.3), "high": (1.65, 1.8), "race": (1.75, 1.9), "cnc": (1.6, 1.8)}
+# (cnc: the LS7's CNC-ported heads, about 1.6 on N3's bench-flow scale, q = Cd / 0.4 at lift d/4:
+# docs/measurements/calibration/balance/discharge.md; the small block's and the 3.8's 1.15 match its 1.15 to 1.2.
+# Held off the 7.0 for now (N3, 20:19: it is already some 10 % over; not before N1 settles the runner's ram))
 # N1's values with the charge heating and the conserving intake in (measured peak torque over target's middle:
 # flat six 1.35, VR6 1.30, 7.0 V8 1.26, pushrod V6 1.25, small block 1.14): stock two-valve wedge and pushrod
 # heads 1.15/1.3; a great two-valve (the 7.0, the air-cooled six) and production four-valves at the default
@@ -706,7 +718,7 @@ def write(path, doc):
         f.write("\n")
 
 
-FIRST = "straight-six-twin-turbo-30"
+FIRST = "turbo-four-20-gdi"
 ENGINE_SECTIONS = ("engine", "valve", "intake", "boost", "exhaust", "fuel")
 
 
@@ -731,12 +743,14 @@ def main():
     # there is no --preset and no remembered build): an archetype inside its power, torque, idle and warm-start rows,
     # steady at idle, cheap to run, and fun in the first minute
     first = build(next(a for a in A if a["slug"] == FIRST))
-    first["name"] = "3.0 L twin-turbo six"
-    first["notes"] = ("Try first: turn the key, then floor it on the dyno and watch the two turbos spool in AIR (each "
-                      "fed by three cylinders) and the pulses split between the two collectors in EXHAUST.\n"
-                      "Then drive: in first, hold the brake, bring the revs up and let go for a standing start (traction "
-                      "control holds the wheelspin), and listen to the straight six through its dual exhaust as the "
-                      "dual clutch shifts.\n\n" + first["notes"])
+    # (the 2.0 turbo four: Q measured the 3.0 six at 1.46 R at Full before the listener and the voices, over the 1.4
+    # the lead asked; the four 0.92 R)
+    first["name"] = "2.0 L turbo four"
+    first["notes"] = ("Try first: turn the key, then floor it on the dyno and watch the turbo spool and the wastegate "
+                      "open in AIR, and the four pulses run down the exhaust in EXHAUST.\n"
+                      "Then drive: in first, hold the brake, press the launch button, floor the pedal and let go for a "
+                      "launch-control start (traction control holds the wheelspin), and listen to the direct injection's "
+                      "tick and the turbo's whistle as the dual clutch shifts.\n\n" + first["notes"])
     write(os.path.join(ROOT, "content", "builds", "first.json"), first)
     loose_parts(A)
     manual(A)
