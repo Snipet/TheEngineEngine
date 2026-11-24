@@ -99,6 +99,32 @@ module ExhaustTel
 {
     float portTemperature [[ui::label("Exhaust gas")]] [[ui::quantity("temperature")]]
         [[ui::help("At the ports, smoothed")]];
+    // ---- card G: written every 16 samples by Exhaust (sim/exhaust/exhaust.fm). Sections, in the gas's order: 0
+    // primaries, 1 collectors' pipes, 2 second merges' pipes, 3 main pipes, 4 pipes after a crossover or a resonator,
+    // 5 mufflers, 6 tails (a section the build lacks reads 0; in model 0 sections 2 and 4 are always 0) ----
+    int model [[ui::label("Exhaust model")]] [[ui::help("The model running: 0 the reference's, 1 the builder")]];
+    float pTurbine [[ui::label("Collector pressure")]] [[ui::quantity("pressure")]]
+        [[ui::help("Mean, over the air outside, at the collectors: before a turbine (model 1)")]];
+    float pConverter [[ui::label("Pressure before the converter")]] [[ui::quantity("pressure")]]
+        [[ui::help("Mean, over the air outside, at each side's head (model 1)")]] [2];
+    float pMuffler [[ui::label("Back pressure")]] [[ui::quantity("pressure")]]
+        [[ui::help("Mean, over the air outside, before each side's muffler (model 1)")]] [2];
+    float gasTemperature [[ui::label("Gas temperature")]] [[ui::quantity("temperature")]]
+        [[ui::help("Each section's gas")]] [7];
+    float wallTemperature [[ui::label("Wall temperature")]] [[ui::quantity("temperature")]]
+        [[ui::help("Each section's wall (a view makes headers glow by it)")]] [7];
+    float mach [[ui::label("Mach number")]] [[ui::quantity("ratio")]]
+        [[ui::help("Each section's mean flow speed over its speed of sound")]] [7];
+    float valve [[ui::label("Bypass valve")]] [[ui::quantity("fraction")]]
+        [[ui::help("Each side's valve's travel, 0 shut to 1 open")]] [2];
+    int ends [[ui::label("Radiating ends")]] [[ui::help("How many of endLevel, endTag are in use")]];
+    float endLevel [[ui::label("End level")]] [[ui::unit("dB")]]
+        [[ui::help("Each radiating end's level: 10 log10 of its mean square (dq/dt, m^3/s^2), smoothed")]] [24];
+    int endTag [[ui::label("End position")]]
+        [[ui::choices("Rear centre", "Rear left", "Rear right", "Side left", "Side right", "Front", "Up")]] [24];
+    int endSlot [[ui::label("End's pipe")]] [[ui::help("The pipe each end ends: its slot (Scope's duct arrays)")]] [24];
+    int flame [[ui::label("Flame")]]
+        [[ui::help("1 while a bang burns near a tail in hot gas (a view draws flame)")]];
 };
 
 module EcuTel

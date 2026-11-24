@@ -52,14 +52,12 @@ module XEnd
     float lev;          // the radiation's mean square, smoothed over some 50 ms
     float tGas;         // the gas's temperature it was designed for, K
 
+    // At rest (the reference's clear: the jet's speed and its noise's filters go on as they were)
     void clear()
     {
         r.clear();
         s = 0.0f;
         radPrev = 0.0f;
-        qJet = 0.0f;
-        tnHp.clear();
-        tnLp.clear();
         sig = 0.0f;
         q = 0.0f;
         qSum = 0.0f;

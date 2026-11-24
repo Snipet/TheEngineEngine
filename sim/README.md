@@ -297,11 +297,39 @@ The machine's functions, all on `Boost`, all doing nothing in model 0:
 **Exhaust** (`exhaust/exhaust.fm`): every pipe (`prim`, `sec`, `pipe`, `ch1`, `mid`, `ch2`, `tail`, `cross`),
 `pop[2]`, its dials glided (`smMuf`, `smHdr`, `smPipe`, `smXp`), the junctions' losses and drives, the flow noise, the
 gas's and the walls' temperatures (`tGas`, `tWall`, `tUse`, `tPort`), `mdot`, `outL`, `outR`, `shell[]`. Pointers:
-`Noise*` (Engine's), `Layout*`, `Heat*`. `void setup(float rate, Noise* noise, Layout* lay, Heat* heat)`,
-`release()`, `clear()`; `void soak(float tIn, float m, float dt, float bore, float vAir)`; `void pipes(float bore, int
-aspUse, float smTb, float smTs, float rate)`; every 16: `flowRate()`, `gas(float d16)`, `heatUp(float d16, float bore,
-float vAir)`, `flow16()`, `bands()`; each sample: `read()` first, `step(float* qe, int np)` after the cylinders.
-Inside: `node`, `coneNoise`, `flowBand`, `jetBand`, `backFc`.
+`Noise*` (Engine's), `Layout*`, `Heat*`, `ExhaustSpec*`, `ExhaustTel*`, `Scope*`, `Boost*`. `void setup(float rate,
+Noise* noise, Layout* lay, Heat* heat, ExhaustSpec* spec, ExhaustTel* tel, Scope* scope, Boost* boost)`, `release()`,
+`clear()`; `void soak(float tIn, float m, float dt, float bore, float vAir)`; `void pipes(float bore, int aspUse, float
+smTb, float smTs, float rate)`; every 16: `flowRate()`, `gas(float d16)`, `heatUp(float d16, float bore, float vAir,
+float rpm, float load)` (rpm and the throttle 0 to 1: the bypass valve's rule), `flow16()`, `bands()`; each sample:
+`read()` first, `step(float* qe, int np)` after the cylinders. Inside: `node`, `coneNoise`, `flowBand`, `jetBand`,
+`backFc`. Hooks: `void popAt(int bank, float amplitude)` (Pa: fires the bank's Pop), `float gasTemperature(int bank)`
+(K, where the bank's bangs light: the collectors' gas), `int turbinesFed()` (1 while the builder feeds card F's
+housings), `void prepare()` (optional: step calls it if nobody has).
+
+*Exhaust with `spec.exhaust.model` 1 (card G's builder, `exhaust/slots.fm` and the files it includes;
+docs/models/exhaust.md).* The same entry points forward to `XBuild b`: `clear` marks a build (a configure takes the
+model the Spec asks for at once), `pipes` builds (as the reference starts its pipes, so model 1 at its defaults is the
+reference: identical to the bit in the engine, every layout) or sizes, `heatUp` the heat and the valve, `flow16` the
+flow's losses, `bands` the noise's bands, `read` the waves and, for the engine, `prim[i].near` and `.z` the builder's
+ports', `tUse[0]` its headers' gas, `step` every junction and `outL`, `outR`, `shell[]`, `nDuals` (the channels its
+ends make). Its noise is drawn from Engine's stream in the reference's order; its collectors' bangs are `pop[]`,
+ticked as the reference ticks them. With model 0 the builder is built at each configure too (no work a sample), so
+its pipes carry the reference's history into a later model 1. A change of model, or of the builder's fields while it
+runs (all but `bypassRpm`, `bypassLoad`, `bypassTime`), is made under Exhaust's own fade: 6 ms down, rebuilt at rest
+(the heat kept), 12 ms up. Every 16 samples it writes `tel.exhaust`'s card G fields and every 128 the Scope's exhaust
+arrays (spec/telemetry.fm, spec/scope.fm).
+
+*The turbines (with card F, boost.model 1).* In `fillEngine` (every 16 and at a build) the builder asks
+`Boost::housingOf(bank, group, banks)` for each bank and group (a bank's first and second collector to end at a side);
+those collectors end in a housing junction, and their side's main pipe begins at the turbine's outlet. Each sample,
+inside `step`, after `prepare()`: for each housing h fed, `p = Boost::housing(h, drive, admit, tGas)` with drive = sum
+of 2 a_i / z_i over its feeding ends less what each end's junction loss holds back (so the flows Boost sees are the
+pipes'), admit = sum of 1 / z_i, tGas the collectors' gas (K); each end takes p - a_i plus its loss's share. For each
+side with a downpipe, `Boost::downpipe(s, a, z)` with z the pipe's impedance plus the converter's resistance in series;
+the pressure returned is behind the converter. External gates' own pipes (`Boost::gatePipe`) are built but not yet
+fed (Boost lists no function giving how many there are). A change in the housings' map (Boost rebuilt) rebuilds the
+network under the fade. While the builder feeds housings, Engine gives Boost no stand-in gas (`exh.turbinesFed()`).
 
 **Combustion** (`combustion/combustion.fm`; card H): `droop`, `dilution[MAX_CYL]`; fuel.model 1's `one` (Charge1),
 `gas[MAX_CYL]` (EndGas), `diesel` (DieselFields). Pointers: `Noise*`, `Ecu*`, `Heat*`, `Layout*`, `Pop*`, `FuelSpec*`.
@@ -351,7 +379,7 @@ controls, CarTel* carTel)` (Engine passes `&spec.car`, `&spec.env`, `&ctl`, `&te
 `spec.car.model` 1); `void followLever(int drive, int lever)` at a key
 and in `drive16`; `float drive16(int drive, float d16, float jEngine, float peak, float gearTorque, float kg, float
 redRpm, float bike, float clutch, float brake, int lever, int buttons, float gas, float rpm, float idleRpm, float
-rpmAvg)` every 16 when driven; `float step(float w, float tq, float dt)` and `float road(float kSq)` each sample when
+rpmAvg)` every 16 when driven; `float step(float w, float tq, float dt, float jCrank)` (jCrank: the crank's inertia at this sample, `mm.jNow` for a custom engine, whose inertia torque is in `tq`; 0: the one `drive16` was given. Model 1 steps the crank with it; model 0 ignores it) and `float road(float kSq)` each sample when
 driven; `kmh()`, `moving()`. With `spec.car.model` 1 (card I) `drive16` hands everything to its `Vehicle m1`
 (`vehicle/vehicle.fm`, docs/models/vehicle.md): it copies spec.car and spec.env into `m1.spec`, `m1.env` when their revs
 move, reads ctl's counters, buttons, mode, strip and dyno itself, writes its fields of tel.car, and keeps `v`, `gear`,
@@ -438,9 +466,9 @@ integrator's.
 | F | `void Boost::control16(float d16, float target, float antiLag, float nitrous)` | the ECU's (named control16: `Boost::control` is the reference's) | every 16, boost.model 1 |
 | F | `float Boost::crankTorque` | N m the machinery takes from the crank | each sample in place of `drag`, boost.model 1 |
 | F | `float Boost::oxygenShare()` | the charge's oxygen over air's (1 without nitrous, and with boost.model 0). **Final name** (F wrote `oxygen()`, H asked `oxygenShare()`) | every 16 into `comb.oxygen`, which Combustion's charge (ecu/fuel model 1) uses |
+| F, G (done) | `int Boost::housingOf(int bank, int group, int banks)`, `float housing(int h, float drive, float admit, float tGas)`, `float downpipe(int side, float a, float z)`, `float gatePipe(int t, float a, float z)` | as above (the Exhaust entry, "The turbines") | by Exhaust itself, inside `exh.step` with exhaust.model 1 (Exhaust holds `Boost*` from setup); Engine skips `boost.exhaustStandIn` while `exh.turbinesFed()` |
+| G (done) | `void Exhaust::popAt(int bank, float amplitude)`, `float gasTemperature(int bank)` | Pa, as `Pop::fire`'s: the bank's Pop (both models); K, the collectors' gas where the bangs light | by Combustion (card H) |
 | F (done) | `void Boost::applyMachine(BoostSpec* s, float vd, float redRpm, float pAmb, float tAmb)`; `void airSpeed(float v)`; `void exhaustStandIn(float m, float mt, float z)`; `void telemetry(BoostTel*, float tCharge)`, `void scope(Scope*)` | the machine sized to the engine; the car's m/s through the intercooler; this sample's cylinder gas (kg/s, kg K/s) into the housings until G's network calls them; tel.boost's and the Scope's card F fields | in configure and when spec.boost's rev moves; every 16 before control16; each sample after `exh.step`; after each call (the Scope while scopeOn); all but the last two only with boost.model 1 |
-| F, G | `int Boost::housingOf(int bank, int group, int banks)`, `float housing(int h, float drive, float admit, float tGas)`, `float downpipe(int side, float a, float z)`, `float gatePipe(int t, float a, float z)` | as docs/plan/integration-queue.md has them (stubs: -1, 0) | not yet: with exhaust.model or boost.model 1, the sequence `exh.read()`; cylinders; `exh.prepare()`; the housings, downpipes and gates; `exh.step(q)` goes in `sampleTick` step 4, in place of `exh.step(qe, np)`: G and F add it there together and tell the integrator |
-| G | `void Exhaust::popAt(int bank, float amplitude)`, `float gasTemperature(int bank)` | Pa; K (stubs: nothing; `tPort`). Named popAt: `Exhaust::pop` is its Pops | by Combustion (card H) |
 | M | `void Extras::control16(float d16, int ignition, int state, float crankHz, float coolant, int driven, int boxKind, int truck, int gear, float wIn, float ratioTotal, float fd, float wOut, float torque, float peak, float engaged, int asp, float boostShare, float gateOpen, int gateExternal, float flowShare, int cylinders, float cycleDeg, float clatter, float displacement, int diesel, int isBike, float wSprocket, int frontTeeth, int dryClutch, float primaryRatio, float lever)` | s; ctl.ignition; ecu.state; Hz; K; 0 bench; `spec.car.gearbox` (model 0: 0); car.truck; -1 R, 0 N; rad/s at the gearbox's input; crank turns to the wheels' (0 in N); the final drive; rad/s of the propshaft; N m (tqBrake) and the engine's most (peakTorque()); the clutch 0 out to 1 in; aspUse; boost over its most; the gate's opening 0 to 1 (boost.model 1: card F's most open gate, else the reference turbo's at its most boost); `spec.boost.gate` with boost.model 1; exhaust mass flow over its most; lay.n, lay.cyc; vt.clatter; m^3; fuelUse; card B2's motorcycle (car.model 1 and car.bikeOn: then the gearbox's arguments are the bike's own, `Car::bikeGearboxInput()`, `bikeGearboxRatio()`, `gearNow()`, kind sequential, final drive 1 and no propshaft), `Car::sprocketSpeed()` rad/s, `spec.car.frontSprocket`, `.clutchDry`, `.primaryRatio`, the lever 1 - set.clutch | every 16, last, with spec.voices.model 1 (and 16 samples after it returns to 0, to glide out) |
 | M | `bool Extras::busy()` | the pump's prime, a fan or the starter running down | `audible()`, voices.model 1 (card D, with rendering from the ignition's rise) |
 | D2 | `void HeavyDiesel::control16(d16, fuelUse, state, pedal, omega, idleRpm, redRpm, sinceStart, clutch, mdot, tGas, boostBar, vTotal, n, bore, tAmb)`, `void feed(DieselFields* d)` | the governor's rack, the brakes' state; into Combustion's `diesel` (`lever` -1: the reference's) | every 16 after `ecu.control`; sets `hd.on` (1 only on a diesel with one of spec.ecu's D2 fields in use) |

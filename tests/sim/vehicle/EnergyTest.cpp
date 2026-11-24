@@ -32,7 +32,8 @@ TEST_CASE("coastdown: in neutral the car slows as drag and rolling resistance sa
     const double m = 1400.0, g = 9.81, crr = 0.010;
     const double c = crr * m * g;
     const double k = 0.5 * 1.2 * 0.7 + c * 0.00005102;
-    const double mEff = m + 4.0 * 1.1 / (0.33 * 0.33);
+    // (and the propeller shaft's, turning with them in neutral: 0.05 kg m^2 at the final drive's input)
+    const double mEff = m + (4.0 * 1.1 + 0.05 * rig.get("car.box.fd") * rig.get("car.box.fd")) / (0.33 * 0.33);
     const double v0 = 30.0;
     auto analytic = [&](double t) {
         const double r = std::sqrt(c / k);
