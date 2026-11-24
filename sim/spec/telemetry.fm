@@ -116,6 +116,12 @@ module SoundTel
 {
     float peak [[ui::label("Peak")]] [[ui::quantity("fraction")]] [[ui::help("The call's largest sample, either channel")]];
     float rate [[ui::label("Sample rate")]] [[ui::quantity("frequency")]] [[ui::help("The host's, the sound's")]];
+    // package L's (spec.sound.model 1; 0 otherwise)
+    int camera [[ui::label("Camera heard")]] [[ui::choices("Tailpipe", "Rear", "Side", "Engine bay", "Driver", "Trackside", "Chase")]];
+    float range [[ui::label("Listener range")]] [[ui::quantity("length")]] [[ui::help("From the listener to the car's middle")]];
+    float doppler [[ui::label("Doppler")]] [[ui::quantity("ratio")]] [[ui::help("The pitch the exhaust is heard at over the pitch it is made at")]];
+    float roadPosition [[ui::label("Car past the listener")]] [[ui::quantity("length")]] [[ui::help("Trackside: how far the car's middle is past the listener, along the road")]];
+    float loudness [[ui::label("Loudness trim")]] [[ui::unit("dB")]] [[ui::help("The level computed for this build, the reference's table replaced")]];
 };
 
 module Telemetry

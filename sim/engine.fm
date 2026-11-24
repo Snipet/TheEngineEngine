@@ -1073,7 +1073,9 @@ module Engine
             }
             const int v = vUse;
             listen.block(v, set.intake, set.mech, set.distance, set.room, set.level, aspUse, exTrim, gainNorm, exh.nDuals,
-                         lay.bike, lay.tailD);
+                         lay.bike, lay.tailD, &spec.sound, &tel.sound, car.speedNow(), set.drive != 0 ? 1 : 0, vTotal, lay.n,
+                         customUse != 0 ? shake.fx : 0.0f, customUse != 0 ? shake.fy : 0.0f,
+                         customUse != 0 ? shake.mx : 0.0f, customUse != 0 ? shake.my : 0.0f);
             for (int i = 0; i < m; ++i)
             {
                 if (tick16 == 0)
