@@ -130,11 +130,13 @@ Three changes under the engines: D's single-zone gamma with a lean term (8b20b17
 until it burns (b551cd0: the first alone made a diesel compress with products' gamma, some 50 K short at the top, and
 the slowest cold start went from 12.7 to 18.3 s); G's exhaust valves' mean flow closed (aaedbf4: the phantom gas
 above); N2's surge guard re-derived on real mass. The brake's VGT position now also governs the shaft
-(`vaneCommand(d16, shaft / omegaMax, vaneMin)`, a PID past 95 % of the limit, as a production brake mode does it in
-the vane command rather than leaving it to the machine's 105 % relief). It does not yet hold: on the matched turbo
-it swings, some 0.6 s a cycle, and the shaft peaks at 12539 rad/s against 11932. The turbine's torque flips as the
-vanes open past about 0.4, and commands below the shut stop are a dead zone; rate limits of 0.2 to 1 a second and
-other gains did not settle it. The test is `[!mayfail]` on it.
+(`vaneCommand(d16, shaft / omegaMax, vaneMin)`), as a production brake mode does it in the vane command rather than
+leaving it to the machine's 105 % relief. Its plant, measured with the vanes held at 2000 rpm on High: the brake
+bootstraps itself (more boost, more gas, more turbine), so at vanes 0.3 to 0.5 the shaft runs away to the relief and
+back every 3 s; at 0.6 it creeps to some 11,300 rad/s; at 0.8 it settles at 6000 (omegaMax 11,932). A PID past 95 %
+hunted into the relief (a lead term on the noisy rate and the integral both). A proportional band, opening from the
+stop at 78 % of the limit to wide at 109 %, slewed at 2 a second, settles at 0.93 of the limit with the vanes at 0.63:
+282 kPa in the manifold, 346 kW, the shaft at most 11,714 rad/s on the way up.
 
 ## Measured (tee-tests-diesel; the 15 L six, 300 K, 101325 Pa; 24 Nov evening)
 
@@ -144,7 +146,7 @@ other gains did not settle it. The test is `[!mayfail]` on it.
 | Other builds | V8 truck 3125 N m / 536 kW; mechanical classic 2170 / 436; tuned pickup 1214 / 228; marine V12 3423 / 593 | |
 | Compression brake, 2000 rpm, stages 0/1/2/3 (reference turbo) | 63 / 115 / 180 / 254 kW; with the flap 311 | 15 L Jakes rated ~450 kW at 2100 (Jacobs, makers' brochures) |
 | Same, High, 1200 / 1600 / 2000 rpm | 118 / 182 / 254 kW | rising with speed, as published curves |
-| VGT brake, matched turbo, G's network, High, 2000 rpm | 359 kW; manifold 295 kPa over a second; shaft to 12539 rad/s (`[!mayfail]`) | matched VGT brakes 2.5-4 bar (recalled, not cited) |
+| VGT brake, matched turbo, G's network, High, 2000 rpm | 346 kW; manifold 282 kPa over a second; shaft settled 11,090, at most 11,714 rad/s (omegaMax 11,932) | matched VGT brakes 2.5-4 bar (recalled, not cited) |
 | Bark against motoring | harmonics 2-10 of 100 Hz ~25 dB over the bins between | |
 | Exhaust flap, 2000 rpm | stand-in 3.0 bar, 131 kW; G's butterfly 358 kPa, 146 kW (open 63) | makers' 2.5-4 bar; 110-190 kW |
 | Droop line (both governors) | rack 1.00 / 0.50 / 0.00 at rated, half way, high idle | |

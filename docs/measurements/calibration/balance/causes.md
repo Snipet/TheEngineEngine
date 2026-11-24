@@ -763,3 +763,10 @@ window's estimate. (b) Confirmed, and corrected (the cylinder's mass carries no 
 gas alone): into the turbines' housings over out of the exhaust valves, the turbo four at 3050 rpm 1.14 (0.2433 / 0.2128
 kg; first 1.13), the twin-turbo V8 at 4375 1.03. G's given-over-let-out (closed for the pipes by flowClose) apparently
 still reaching the housings under boost.model 1; it would over-drive the turbines. Sent to G and N2.
+
+**B-2 attributed with N2 (22:06 by `date -u`).** Boost collapsing at the power peak (the four, the pickup, the rotary, the
+kei): N2's design-point matching, measured, not adopted; the rotary's sequential pair separately (its second compressor
+barely flows at 6000 to 7200 rpm). Knock retard: C's baked knock-limit table, now on the four; N2's proof runs next. The
+diesels over their boost targets low down: the VGT's spring-law vanes and N2's surge guard, after the proof. The cooler's
+0.85 on the four: the build's own icEffect (the test cell holds the core at the air), so P's field (sent to P). The
+housings' 1.14: with G, N2 to be copied before adopting the design point (it would over-drive every matching by that).

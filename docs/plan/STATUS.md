@@ -37,6 +37,29 @@
 
 ## Landed
 
+- **22:08 the owner's two reports, where they stand.** (2) **The two-stage cam and the VVT: explained, nothing
+  regressed.** B drove the window by script on first.json (a2605a16, the nightly `shell.window.edits`): every valve
+  edit is held and sent in all four cases (before the first start, running, after a restart, after a QUALITY change
+  and back). The simulator does not obey because the application's engine starts cold (oil 288 K) and the valvetrain
+  parks the phasers under 313 K of oil (phaser.fm:47) and keeps the second stage off under 333 K (lab.fm:424), both
+  there since 12:12: held at 6700 rpm from cold the phase first moves at 90 s and the stage at 180 s. tee-render's
+  scenarios hold the engine warm, which is why the lead's check saw the stage switch. The owner, told: "I didn't test
+  it for that long, so that might have been it". **Ruled:** the application's engine starts at working temperature
+  by default, set once and not held (C: `LoadOptions::initial`, a swap carries the live temperatures; B: the app's
+  side, `--cold` and a settings key); N1 sources the two gates (the lead's recollection, not a source: a car's ECU
+  gates the stage on the coolant it reads, and phasers are commanded from cold) and adds telemetry that says why;
+  U2's VALVES says it in words. (1) **The hum:** M's a00abbf6 measured by the lead at the tip on first.json's warm
+  idle through Places Side: the pump's 3895 Hz line from 17 dB under the 63 Hz octave to 38 dB under; the fan's
+  lines unmoved (280 Hz 14 dB under); the voices' broadband still 11 to 16 dB over a voices-off render from 250 Hz
+  to 4 kHz, where through the reference listener voices on and off differ by under 1 dB: L's path, asked at 22:01,
+  not answered yet. M gives the fan's switch hysteresis (it sits at the warm start's 368 K). P's new validation row
+  (the strongest line above 300 Hz at warm idle at least 10 dB under the exhaust's band) was red on 23 of 31 before
+  M's commit. **Also ruled:** D takes N1's per-sample read of the boost's pressure (landed, b7e64fa0: X-022's
+  blips no longer pull the charge volume to 0 kPa); N2's design-point rule for turbine matching adopted, its table
+  to be re-run after G closes the turbine housings' gas (1.14 times the valves' on the turbo four, N3) and the
+  flat-plane V8's -13 % to be explained; the boosted books' 8 % withdrawn by N3 (a 1 s window on filling stores);
+  C's KnockBakeService in (8572845f) and a bake's key survives a save (b8cdba82); X-026 closed, `Known.h` holds only
+  X-016; the fast tier is under its cap (2179 of 2400 test-seconds scaled, steward).
 - **21:53 the lead's check-in; `main` fast-forwarded** f69bf016 to 445453da (the one case red on all three systems,
   core's trapped-unburned check, restated by D in f2d8e19e; X-022's quick case green again). Windows builds and
   tests again (the friend declaration: 006c1a6c, 6b54fe2a); main's run on f69bf016 packed the application on all

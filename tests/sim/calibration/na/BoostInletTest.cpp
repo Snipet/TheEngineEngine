@@ -51,7 +51,7 @@ namespace
         CHECK(std::fabs(read("boost.mach.mIc")) < 1.0e-6);
         const int flags = p->telemetryIndex("engine.flags");
         int faults = 0, bad = 0;
-        double top = 0.0;
+        double top = 0.0, least = 1.0e9;
         for (int i = 0; i < int(seconds * options.sampleRate / block); ++i)
         {
             const double t = i * block / options.sampleRate;
@@ -64,23 +64,32 @@ namespace
                 if (!std::isfinite(l[k]) || !std::isfinite(r[k]))
                     ++bad;
             top = std::fmax(top, read("boost.mach.v1.p"));
+            if (t > 1.0)
+                least = std::fmin(least, read("boost.mach.v2.p"));
         }
-        std::printf("%s: faults %d, non-finite samples %d, the charge pipe's most %.0f kPa\n", finding, faults, bad, top * 1e-3);
+        std::printf("%s: faults %d, non-finite samples %d, the charge pipe's most %.0f kPa, before the throttle the least %.1f kPa\n",
+                    finding, faults, bad, top * 1e-3, least * 1e-3);
         CHECK(faults == 0);
         CHECK(bad == 0);
         CHECK(top < 1.0e6);
+        // (the volume before the throttle never drawn toward vacuum: with intk.pBox read every 16 samples, X-022's blips
+        // pulled it to 0 kPa (195 faults at f69bf016; at 92fe75ae none, by luck); read each sample (D's b7e64fa0) its
+        // least is some 48 kPa, the other builds' 98. 20 kPa: judgement, between)
+        CHECK(least > 20000.0);
     }
 } // namespace
 
-// (the fast tier: seed 298's build, the leak running back in (it went non-finite at 2.69 s); every finding, nightly)
-TEST_CASE("X-026: a 4 L blower's clearances leaking back into a 50 cc engine's charge pipe: no fault in 3 s", "[calibration][na]")
+// (the fast tier, the lead's 21:51: the three builds that have traded faults today in one case, so that a fix for one
+// cannot undo another: X-022's throttles a runner behind a tiny charge pipe, X-024's huge inducer, X-026's 50 cc blower)
+TEST_CASE("X-022, X-024 and X-026 together: tiny charge paths start, idle and blip without a fault or a vacuum", "[calibration][na]")
 {
-    machineHolds("x026-seed298-leak-back", 3.0);
+    for (const char* f : {"x022-supercharger-itb-small-charge", "x024-tiny-engine-huge-inducer", "x026-single-small-pipe"})
+        machineHolds(f, 3.0);
 }
 
 TEST_CASE("X-024 and X-026: every reduced build holds (the full form)", "[nightly][calibration][na]")
 {
     for (const char* f : {"x024-tiny-engine-huge-inducer", "x026-redline", "x026-single-big-blower", "x026-single-small-pipe",
-                          "x026-tiny-engine-supercharger", "x026-seed298-leak-back"})
+                          "x026-tiny-engine-supercharger", "x026-seed298-leak-back", "x022-supercharger-itb-small-charge"})
         machineHolds(f, 6.0);
 }
