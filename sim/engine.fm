@@ -890,6 +890,7 @@ module Engine
             intk.pBox = 101325.0f + 100000.0f * boost.boost;
             intk.tAir = heat.tAmb + 5.0f * heat.warm + 25.0f * boost.boost;
         }
+        intk.tCoolant = heat.tCool;                     // (N1, for card E's charge heating at intake.model 1)
         intk.control(d16, crank.omega, vTotal, 120.0f / fmaxf(crank.rpm, 60.0f));      // (card E; nothing at intake.model 0)
         exh.gas(d16);
         // the walls' heat: Woschni's with spec.engine.wallHeat 1 or fuel.model 1 (each cylinder from where it stands:
@@ -1250,6 +1251,7 @@ module Engine
             qe[pi] += cy->qEa;
             qi[pi] += cy->qIa;
             airValves -= (double)(cy->mI * dt);
+            intk.mValves += cy->mI;                     // (N1, for card E: the plenum gives up the valves' own mass)
             gasExhaust -= (double)(cy->mE * dt);
             torque += cy->tq;
             if (cy->mE > 0.0f)
@@ -1298,8 +1300,12 @@ module Engine
         float rNear[MAX_PORTS];
         for (int i = 0; i < np; ++i)
             rNear[i] = intk.run[i].near + intk.run[i].z * qi[i];
+        intk.haveValves = 1;
         intk.plenum(np, rNear, fuelUse, vt.plateOpen() != 0 ? 1.0f : ecu.throttle, ecu.bypass, dt);
-        airThrottle += (double)(intk.qThr * intk.pBox / (287.0f * intk.tAir) * dt);
+        intk.mValves = 0.0f;
+        // (the throttle's volume flow taken at the pressure the intake took it at: the box's, with its depression, behind
+        // intake.model 1's single throttle)
+        airThrottle += (double)(intk.qThr * (spec.intake.model != 0 && intk.itbs == 0 ? intk.pBox + intk.box.p : intk.pBox) / (287.0f * intk.tAir) * dt);
         mech.torques(crank.rpm, crank.omega, strokeK, heat.viscK, fuelUse, smCR, vTotal, set.load, ecu.redRpm, heat.tAmb, ecu.starterOn,
                      cyl[0].vd);
         // (a custom engine's friction by part: core/friction.fm, on the last cycle's peak pressure)
@@ -1786,7 +1792,7 @@ module Engine
         e->bmep = work.bmep(e->torque);
         e->veManifold = work.veManifold;
         e->veAir = work.veAir;
-        e->chargeTemperature = work.tTrapMean;
+        e->chargeTemperature = work.tTrapMean > 0.0f ? work.tTrapMean : intk.tAir;    // (the air's until a charge is trapped: X-017)
         e->trappedMass = work.trappedMean;
         e->peakPressure = work.peakMax;
         e->pistonSpeed = strokeUse * crank.omega * 0.31830989f;     // 2 stroke rpm / 60
