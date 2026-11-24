@@ -93,7 +93,7 @@ chambers a rotor). VE at the manifold's density and at the air's, from the mass 
 
 ## The dyno
 
-A PI loop on the crank's own dynamics (natural frequency 15 rad/s, critically damped, the set speed's acceleration fed
+A PI loop on the crank's own dynamics (natural frequency 40 rad/s, critically damped, the set speed's acceleration fed
 forward): it holds the cycle's mean speed and lets the firing ripple through, as a real dyno does. Against a made-up
 engine (330 to 520 N m, ±90 % ripple at eight pulses a cycle) on a V8's crank: holds 3000, 5500 and 1500 rpm to under
 0.01 rpm of the mean; the absorber's mean torque equals the engine's less friction to 0.1 %; a 300 rpm/s sweep reaches

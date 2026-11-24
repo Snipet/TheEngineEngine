@@ -3,12 +3,13 @@
 // The exhaust half of sim/ref/engine.fm (Shared): its pipes, pipes(), soak(), node(), the exhaust part of its
 // control16 and of its sampleTick, copied as they are, with the cylinders replaced by the flows a test gives each
 // port. The builder's reference-topology test runs this and the builder side by side on the same flows. What differs
-// from the reference: nothing in the arithmetic; the Pop is XPop (the same code); the intake's runners, the plenum and
-// the rest are left out (they do not touch the exhaust's state); and configure ends with settle(), the builder's
+// from the reference: nothing in the arithmetic; the Pop is the carved one; the intake's runners, the plenum and
+// the rest are left out (they do not touch the exhaust's state); its Duct is the carved one (sim/exhaust/duct.fm, the
+// reference's pipes.fm unchanged); and configure ends with settle(), the builder's
 // (sim/exhaust/network.fm): the reference clears its pipes before it sizes them, so its steepening pipes start timed for
 // their old delay and leak their first pulse as a ramp; settled, both start alike.
 #pragma once
-#include "../../../sim/ref/pipes.fm"
+#include "../../../sim/exhaust/duct.fm"
 #include "../../../sim/ref/layouts.fm"
 #include "../../../sim/exhaust/ends.fm"
 
@@ -23,7 +24,7 @@ module RefExh
     Duct ch2[2];
     Duct tail[2];
     Duct cross;
-    XPop pop[2];
+    Pop pop[2];
     Biquad endR[2];
     float rate;
     int nDuals;

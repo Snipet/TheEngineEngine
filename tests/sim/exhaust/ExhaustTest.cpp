@@ -77,27 +77,27 @@ namespace
     void randomTopology(Rig& rig, Lcg& g)
     {
         for (int i = 0; i < 16; ++i)
-            rig.set("b.sp.primaryTo[" + std::to_string(i) + "]", g.next(10) == 0 ? -1 : g.next(4));
+            rig.set("spec.primaryTo[" + std::to_string(i) + "]", g.next(10) == 0 ? -1 : g.next(4));
         for (int c = 0; c < 8; ++c)
         {
             const int k = g.next(10);
-            rig.set("b.sp.collectorTo[" + std::to_string(c) + "]", k < 2 ? 2 + 4 + g.next(4) : g.next(2));
-            rig.set("b.sp.colVol[" + std::to_string(c) + "]", g.next(4) == 0 ? 0.001 : 0.0);
+            rig.set("spec.collectorTo[" + std::to_string(c) + "]", k < 2 ? 2 + 4 + g.next(4) : g.next(2));
+            rig.set("spec.colVol[" + std::to_string(c) + "]", g.next(4) == 0 ? 0.001 : 0.0);
         }
-        rig.set("b.sp.sides", 1 + g.next(2));
-        rig.set("b.sp.crossover", g.next(3));
-        rig.set("b.sp.crossAt", g.next(2));
-        rig.set("b.sp.primStepAt", g.next(3) == 0 ? 0.4 : 0.0);
+        rig.set("spec.sides", 1 + g.next(2));
+        rig.set("spec.crossKind", g.next(3));
+        rig.set("spec.crossAt", g.next(2));
+        rig.set("spec.primStepAt", g.next(3) == 0 ? 0.4 : 0.0);
         for (int s = 0; s < 2; ++s)
         {
             const std::string i = "[" + std::to_string(s) + "]";
-            rig.set("b.sp.converter" + i, g.next(3));
-            rig.set("b.sp.resonator" + i, g.next(4));
-            rig.set("b.sp.resHz" + i, 80.0 + 500.0 * g.unit());
-            rig.set("b.sp.muffler" + i, g.next(4));
-            rig.set("b.sp.mufSize" + i, g.unit());
-            rig.set("b.sp.bypass" + i, g.next(3));
-            rig.set("b.sp.tips" + i, 1 + g.next(2));
+            rig.set("spec.converter" + i, g.next(3));
+            rig.set("spec.resonator" + i, g.next(4));
+            rig.set("spec.resHz" + i, 80.0 + 500.0 * g.unit());
+            rig.set("spec.mufKind" + i, g.next(4));
+            rig.set("spec.mufSize" + i, g.unit());
+            rig.set("spec.bypass" + i, g.next(3));
+            rig.set("spec.tips" + i, 1 + g.next(2));
         }
     }
 } // namespace
@@ -179,28 +179,28 @@ namespace
     {
         return {
             {"the reference's (chambered, H at the head)", 12, {}},
-            {"no muffler", 12, {{"b.sp.muffler[0]", 0}, {"b.sp.muffler[1]", 0}}},
-            {"straight-through", 12, {{"b.sp.muffler[0]", 1}, {"b.sp.muffler[1]", 1}}},
-            {"three-pass", 12, {{"b.sp.muffler[0]", 3}, {"b.sp.muffler[1]", 3}}},
-            {"no converter", 12, {{"b.sp.converter[0]", 0}, {"b.sp.converter[1]", 0}}},
-            {"high-flow converter", 12, {{"b.sp.converter[0]", 2}, {"b.sp.converter[1]", 2}}},
-            {"X at the head", 12, {{"b.sp.crossover", 2}}},
-            {"X after the main pipes", 12, {{"b.sp.crossover", 2}, {"b.sp.crossAt", 1}}},
-            {"H after the main pipes", 12, {{"b.sp.crossover", 1}, {"b.sp.crossAt", 1}, {"b.sp.crossD", 0.05}}},
-            {"quarter-wave", 12, {{"b.sp.resonator[0]", 1}, {"b.sp.resonator[1]", 1}}},
-            {"Helmholtz", 12, {{"b.sp.resonator[0]", 2}, {"b.sp.resonator[1]", 2}}},
-            {"packed bottle", 12, {{"b.sp.resonator[0]", 3}, {"b.sp.resonator[1]", 3}}},
-            {"bypass open", 12, {{"b.sp.bypass[0]", 2}, {"b.sp.bypass[1]", 2}}},
-            {"bypass shut", 12, {{"b.sp.bypass[0]", 1}, {"b.sp.bypass[1]", 1}}},
-            {"two tips", 12, {{"b.sp.tips[0]", 2}, {"b.sp.tips[1]", 2}}},
-            {"stepped primaries", 12, {{"b.sp.primStepAt", 0.4}}},
-            {"log manifolds", 12, {{"b.sp.colVol[0]", 0.0012}, {"b.sp.colVol[1]", 0.0012}}},
-            {"zoomies", 12, {{"b.sp.primaryTo[0]", -1}, {"b.sp.primaryTo[1]", -1}, {"b.sp.primaryTo[2]", -1},
-                             {"b.sp.primaryTo[3]", -1}, {"b.sp.primaryTo[4]", -1}, {"b.sp.primaryTo[5]", -1},
-                             {"b.sp.primaryTo[6]", -1}, {"b.sp.primaryTo[7]", -1}}},
-            {"4-2-1 on an inline four", 5, {{"b.sp.primaryTo[0]", 2}, {"b.sp.primaryTo[3]", 2}, {"b.sp.primaryTo[1]", 3},
-                                            {"b.sp.primaryTo[2]", 3}, {"b.sp.collectorTo[2]", 2}, {"b.sp.collectorTo[3]", 2}}},
-            {"single from a V8", 12, {{"b.sp.sides", 1}}},
+            {"no muffler", 12, {{"spec.mufKind[0]", 0}, {"spec.mufKind[1]", 0}}},
+            {"straight-through", 12, {{"spec.mufKind[0]", 1}, {"spec.mufKind[1]", 1}}},
+            {"three-pass", 12, {{"spec.mufKind[0]", 3}, {"spec.mufKind[1]", 3}}},
+            {"no converter", 12, {{"spec.converter[0]", 0}, {"spec.converter[1]", 0}}},
+            {"high-flow converter", 12, {{"spec.converter[0]", 2}, {"spec.converter[1]", 2}}},
+            {"X at the head", 12, {{"spec.crossKind", 2}}},
+            {"X after the main pipes", 12, {{"spec.crossKind", 2}, {"spec.crossAt", 1}}},
+            {"H after the main pipes", 12, {{"spec.crossKind", 1}, {"spec.crossAt", 1}, {"spec.crossD", 0.05}}},
+            {"quarter-wave", 12, {{"spec.resonator[0]", 1}, {"spec.resonator[1]", 1}}},
+            {"Helmholtz", 12, {{"spec.resonator[0]", 2}, {"spec.resonator[1]", 2}}},
+            {"packed bottle", 12, {{"spec.resonator[0]", 3}, {"spec.resonator[1]", 3}}},
+            {"bypass open", 12, {{"spec.bypass[0]", 2}, {"spec.bypass[1]", 2}}},
+            {"bypass shut", 12, {{"spec.bypass[0]", 1}, {"spec.bypass[1]", 1}}},
+            {"two tips", 12, {{"spec.tips[0]", 2}, {"spec.tips[1]", 2}}},
+            {"stepped primaries", 12, {{"spec.primStepAt", 0.4}}},
+            {"log manifolds", 12, {{"spec.colVol[0]", 0.0012}, {"spec.colVol[1]", 0.0012}}},
+            {"zoomies", 12, {{"spec.primaryTo[0]", -1}, {"spec.primaryTo[1]", -1}, {"spec.primaryTo[2]", -1},
+                             {"spec.primaryTo[3]", -1}, {"spec.primaryTo[4]", -1}, {"spec.primaryTo[5]", -1},
+                             {"spec.primaryTo[6]", -1}, {"spec.primaryTo[7]", -1}}},
+            {"4-2-1 on an inline four", 5, {{"spec.primaryTo[0]", 2}, {"spec.primaryTo[3]", 2}, {"spec.primaryTo[1]", 3},
+                                            {"spec.primaryTo[2]", 3}, {"spec.collectorTo[2]", 2}, {"spec.collectorTo[3]", 2}}},
+            {"single from a V8", 12, {{"spec.sides", 1}}},
         };
     }
 } // namespace
@@ -272,12 +272,12 @@ TEST_CASE("what a sample costs", "[exhaust][cost]")
     }
     {
         Rig rig(12);
-        rig.set("b.sp.crossover", 2);
-        rig.set("b.sp.crossAt", 1);
+        rig.set("spec.crossKind", 2);
+        rig.set("spec.crossAt", 1);
         for (int s = 0; s < 2; ++s)
         {
-            rig.set("b.sp.resonator[" + std::to_string(s) + "]", 1);
-            rig.set("b.sp.bypass[" + std::to_string(s) + "]", 3);
+            rig.set("spec.resonator[" + std::to_string(s) + "]", 1);
+            rig.set("spec.bypass[" + std::to_string(s) + "]", 3);
         }
         rig.configure();
         const double b = timeIt(rig, false);

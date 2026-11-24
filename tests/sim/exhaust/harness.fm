@@ -2,7 +2,7 @@
 //
 // XTest holds the builder (sim/exhaust/slots.fm) and the reference's own exhaust (refexhaust.fm), fitted to one of the
 // reference's layouts at its own size and the reference's default dials, stopped and warm. A test sets the builder's
-// description (b.sp) by path, builds, and runs blocks of samples with the flows it gives each port; both systems run
+// description (spec, the Spec's exhaust section) by path, builds, and runs blocks of samples with the flows it gives each port; both systems run
 // their 16-sample control as the reference does, with the gas's temperature and flow held where the test puts them.
 #pragma once
 #include "../../../sim/exhaust/slots.fm"
@@ -11,6 +11,7 @@
 module XTest
 {
     XBuild b;
+    ExhaustSpec spec;   // the Spec's exhaust section, as the engine holds it
     RefExh r;
     Layout lay;
     float rate;
@@ -38,6 +39,7 @@ module XTest
     void init(float rateIn)
     {
         rate = rateIn;
+        b.sp = &spec;
         b.setup(rate);
         r.setup(rate);
         tPort = 1000.0f;
@@ -58,54 +60,54 @@ module XTest
     // Every field of the builder's description at its default (the reference)
     void defaults()
     {
-        b.sp.model = 1;
+        spec.model = 1;
         for (int i = 0; i < XS_PORTS; ++i)
         {
-            b.sp.primaryTo[i] = -2;
-            b.sp.primLen[i] = 0.0f;
-            b.sp.primD[i] = 0.0f;
+            spec.primaryTo[i] = -2;
+            spec.primLen[i] = 0.0f;
+            spec.primD[i] = 0.0f;
         }
-        b.sp.primSpread = 0.06f;
-        b.sp.primStepAt = 0.0f;
-        b.sp.primStepD = 1.1f;
+        spec.primSpread = 0.06f;
+        spec.primStepAt = 0.0f;
+        spec.primStepD = 1.1f;
         for (int c = 0; c < XS_COLL; ++c)
         {
-            b.sp.collectorTo[c] = -1;
-            b.sp.colLen[c] = 0.0f;
-            b.sp.colD[c] = 0.0f;
-            b.sp.colVol[c] = 0.0f;
+            spec.collectorTo[c] = -1;
+            spec.colLen[c] = 0.0f;
+            spec.colD[c] = 0.0f;
+            spec.colVol[c] = 0.0f;
         }
-        b.sp.sides = 0;
-        b.sp.crossover = 1;
-        b.sp.crossAt = 0;
-        b.sp.crossD = 0.0f;
-        b.sp.crossLen = 0.25f;
-        b.sp.postLen = 0.4f;
-        b.sp.linkLen = 0.4f;
-        b.sp.bypassD = 0.0f;
-        b.sp.bypassRpm = 3500.0f;
-        b.sp.bypassLoad = 0.5f;
-        b.sp.bypassTime = 0.3f;
-        b.sp.gateLen = 0.3f;
-        b.sp.gateD = 0.038f;
+        spec.sides = 0;
+        spec.crossKind = 1;
+        spec.crossAt = 0;
+        spec.crossD = 0.0f;
+        spec.crossLen = 0.25f;
+        spec.postLen = 0.4f;
+        spec.linkLen = 0.4f;
+        spec.bypassD = 0.0f;
+        spec.bypassRpm = 3500.0f;
+        spec.bypassLoad = 0.5f;
+        spec.bypassTime = 0.3f;
+        spec.gateLen = 0.3f;
+        spec.gateD = 0.038f;
         for (int s = 0; s < XS_SIDES; ++s)
         {
-            b.sp.mainLen[s] = 0.0f;
-            b.sp.mainD[s] = 0.0f;
-            b.sp.converter[s] = 1;
-            b.sp.resonator[s] = 0;
-            b.sp.resHz[s] = 200.0f;
-            b.sp.resD[s] = 0.0f;
-            b.sp.resVol[s] = 0.003f;
-            b.sp.resLen[s] = 0.4f;
-            b.sp.muffler[s] = 2;
-            b.sp.mufSize[s] = -1.0f;
-            b.sp.mufLen[s] = 0.0f;
-            b.sp.bypass[s] = 0;
-            b.sp.tailLen[s] = 0.0f;
-            b.sp.tailD[s] = 0.0f;
-            b.sp.tips[s] = 1;
-            b.sp.exitAt[s] = -1;
+            spec.mainLen[s] = 0.0f;
+            spec.mainD[s] = 0.0f;
+            spec.converter[s] = 1;
+            spec.resonator[s] = 0;
+            spec.resHz[s] = 200.0f;
+            spec.resD[s] = 0.0f;
+            spec.resVol[s] = 0.003f;
+            spec.resLen[s] = 0.4f;
+            spec.mufKind[s] = 2;
+            spec.mufSize[s] = -1.0f;
+            spec.mufLen[s] = 0.0f;
+            spec.bypass[s] = 0;
+            spec.tailLen[s] = 0.0f;
+            spec.tailD[s] = 0.0f;
+            spec.tips[s] = 1;
+            spec.exitAt[s] = -1;
         }
     }
 

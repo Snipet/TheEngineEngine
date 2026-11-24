@@ -2,6 +2,8 @@
 // torque curve of 330 to 520 N m with a firing ripple of nine tenths of it, eight pulses a cycle) on a V8's crank.
 #include "Presets.h"
 
+static constexpr double kPi = 3.14159265358979323846;
+
 #include <catch2/catch_test_macros.hpp>
 
 #include <cmath>
@@ -11,7 +13,7 @@ using namespace tee::test::core;
 
 namespace
 {
-    constexpr double kRpm = 30.0 / M_PI;
+    constexpr double kRpm = 30.0 / kPi;
     constexpr double kDt = 1.0 / 96000.0;
 
     void v8(Rig& rig)
