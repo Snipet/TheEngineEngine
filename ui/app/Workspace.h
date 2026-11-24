@@ -115,6 +115,11 @@ namespace tee::ui
         std::vector<double> speed, torque, power;
         std::vector<std::string> fields;         // more telemetry at each point, by name
         std::vector<std::vector<double>> values; // values[f][point]
+        // A run's exhaust walls (card C's DynoCurve::settled, the lead's ruling 1220ca3): 1 settled at each step, 0 cold
+        // (a short step reads a few percent low), -1 not said (a prediction, the demo). Label a run by wallsWord(); never
+        // mix the two unlabelled.
+        int walls = -1;
+        const char* wallsWord() const noexcept { return walls > 0 ? "walls settled" : walls == 0 ? "cold walls" : ""; }
         bool empty() const noexcept { return speed.empty(); }
         // The peak of torque or power: its value and the speed at it (NaN, NaN when empty).
         struct Peak
