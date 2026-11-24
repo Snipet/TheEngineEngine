@@ -370,8 +370,8 @@ namespace tee::ui
             const Events ev = eventsOf(li, le);
             // the numbers that matter at a glance, over the plot
             float x = e.x;
-            x += lk::readout(c, p, x, e.y - 4.0f, "OVERLAP", deg(ev.overlap), "deg", lk::kNumberS) + 22.0f;
-            x += lk::readout(c, p, x, e.y - 4.0f, "LOBE SEPARATION", lk::num(ev.lsa, "%.1f"), "deg", lk::kNumberS) + 22.0f;
+            x += stage::readout(c, p, x, e.y - 4.0f, "OVERLAP", deg(ev.overlap), "deg", lk::kNumberS) + 22.0f;
+            x += stage::readout(c, p, x, e.y - 4.0f, "LOBE SEPARATION", lk::num(ev.lsa, "%.1f"), "deg", lk::kNumberS) + 22.0f;
             // the piston's room: the least between each valve and the crown, near the overlap's top
             const en::Layout lay = en::layoutOf(ctx_.doc);
             const en::Cylinder cyl = en::cylinderOf(ctx_.doc, lay);
@@ -390,9 +390,9 @@ namespace tee::ui
             }
             const auto len = [&](double m) { return std::isfinite(m) ? u.number(Quantity::length, m) : std::string("-"); };
             const std::string lu = u.unit(Quantity::length).name;
-            x += lk::readout(c, p, x, e.y - 4.0f, "ROOM, INTAKE", len(leastIn), lu, lk::kNumberS,
+            x += stage::readout(c, p, x, e.y - 4.0f, "ROOM, INTAKE", len(leastIn), lu, lk::kNumberS,
                              std::isfinite(leastIn) && leastIn < 0.001 ? p.warning : kClear) + 22.0f;
-            lk::readout(c, p, x, e.y - 4.0f, "ROOM, EXHAUST", len(leastEx), lu, lk::kNumberS,
+            stage::readout(c, p, x, e.y - 4.0f, "ROOM, EXHAUST", len(leastEx), lu, lk::kNumberS,
                         std::isfinite(leastEx) && leastEx < 0.001 ? p.warning : kClear);
             // what drives it, in words
             const char* note = t.reference ? "THE REFERENCE'S CAM DIAL: SET IN THE INSPECTOR"
@@ -700,9 +700,9 @@ namespace tee::ui
             const double fl = ctx_.live.get(kTelFloat), w = ctx_.live.get(en::kTelSpeed);
             const double margin = std::isfinite(fl) && std::isfinite(w) ? fl - w : en::kNaN;
             const bool near = std::isfinite(margin) && margin < 500.0 * stage::kPi / 30.0;
-            const float wa = lk::readout(c, p, in.x, in.y, "FLOATS AT", std::isfinite(fl) ? u.number(Quantity::rotation, fl) : "-",
+            const float wa = stage::readout(c, p, in.x, in.y, "FLOATS AT", std::isfinite(fl) ? u.number(Quantity::rotation, fl) : "-",
                                          u.unit(Quantity::rotation).name, lk::kNumberS);
-            lk::readout(c, p, in.x + std::max(110.0f, wa + 24.0f), in.y, near ? "MARGIN: NEAR FLOAT" : "MARGIN",
+            stage::readout(c, p, in.x + std::max(110.0f, wa + 24.0f), in.y, near ? "MARGIN: NEAR FLOAT" : "MARGIN",
                         std::isfinite(margin) ? u.number(Quantity::rotation, margin) : "-", u.unit(Quantity::rotation).name,
                         lk::kNumberS, near ? p.warning : kClear);
             const double rate = fieldValue(ctx_.doc, VF::springRate);
