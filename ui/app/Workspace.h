@@ -242,6 +242,13 @@ namespace tee::ui
         // U1
         std::function<bool()> unsaved;                            // the build differs from what was loaded or saved
         std::function<float()> simLoad;                           // the simulator's share of its time budget, 0..1+
+        // The top bar's load (LoadMeter.h; the lead's ask 19:20): the PEAK share of a core in the last second or so
+        // (HostStats::loadPeak; none: simLoad, the mean); the host's verdict on Full, 1 fits, 0 tight, -1 over (none:
+        // the frame works it out from the peak held over three seconds); blocks the audio device missed since load
+        // (none: not shown).
+        std::function<float()> simLoadPeak;
+        std::function<int()> loadFits;
+        std::function<long()> dropouts;
         std::function<int()> mode;                                // 0 bench, 1 dyno, 2 drive (ControlsFrame::mode)
         std::function<void(int)> setMode;
         // The clutch pedal from the mouse while it is held (0..1), or a negative number when let go. The frame now

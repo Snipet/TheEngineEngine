@@ -441,3 +441,53 @@ namespace
         return 0;
     }
 }
+
+namespace
+{
+    // Each run says its walls in words on its row and in its CSV; runs of both kinds shown together say so over the plot.
+    VIEW_TEST(testDynoWalls, "dyno.walls")
+    {
+        // Two stepped runs made on the stage itself over the demo: SETTLE on (card C's default), then off.
+        const int w0 = tee::test::u4::stageW(1100), h0 = tee::test::u4::stageH(1100);
+        StageRig rig(tee::ui::makeDynoWorkspace, w0, h0, 1.0f);
+        const auto press = [&](const char* which) {
+            const funkgui::Rect r = tee::ui::dynoControl(*rig.ws, which);
+            CHECK_MSG(!r.isEmpty(), which);
+            rig.host->click(r.centreX(), r.centreY());
+        };
+        const auto run = [&] {
+            press("start");
+            for (int i = 0; i < 200 && rig.demo.engine.running(); ++i)
+            {
+                rig.demo.engine.tick(1.0f / 60.0f);
+                rig.host->tick(1);
+            }
+            rig.settle();
+        };
+        press("steps");
+        rig.settle();
+        run();
+        press("settle");
+        rig.settle();
+        run();
+        CHECK(rig.demo.engine.runCount() == 2);
+        CHECK(rig.demo.engine.run(0).settled == 1 && rig.demo.engine.run(1).settled == 0);
+        // The newest run (cold walls) is chosen: its CSV says so on its first line.
+        press("copy");
+        const std::string csv = rig.host->clipboardText();
+        CHECK_MSG(csv.rfind("# exhaust cold walls\nspeed_rad_s,", 0) == 0, csv.substr(0, 60));
+        for (const int window : { 1100, 1600 })
+            for (float dpi : { 2.0f, 1.0f })
+            {
+                const int w = tee::test::u4::stageW(window), h = tee::test::u4::stageH(window);
+                rig.host = std::make_unique<funkgui::HeadlessHost>(*rig.ws, 0, dpi);
+                rig.host->resize(w, h);
+                rig.ws->place({ 0.0f, 0.0f, static_cast<float>(w), static_cast<float>(h) });
+                rig.settle();
+                for (const std::string& clash : textClashes(rig.host->draw(), static_cast<float>(w), static_cast<float>(h)))
+                    CHECK_MSG(false, std::to_string(w) + ": " + clash);
+                picture(std::string("dyno.walls") + (window == 1100 ? "" : ".large") + (dpi > 1.5f ? "" : ".dpi1"), *rig.host);
+            }
+        return 0;
+    }
+}

@@ -541,3 +541,27 @@ TEST_CASE("X-025: a two-stroke rotary is refused, says so, and runs as the rotar
     if (b.tel("engine.state") == 2.0)
         CHECK(peak > 1e-3);
 }
+
+TEST_CASE("a kept player reset is a fresh player, to the bit", "[core][engine][reset]")
+{
+    // (the cases share one compiled player, reset between them (Engine.h): the default V8's first second from a fresh
+    // player and from the kept one reset after another build has run on it are the same samples)
+    auto second = [](Bench& b) {
+        std::vector<float> out;
+        b.start(0.0);
+        b.ctl().throttle = 0.6f;
+        b.play(1.0, [&] { out.insert(out.end(), b.left().begin(), b.left().end()); });
+        return out;
+    };
+    {
+        Bench other("archetypes/turbo-four-20-gdi");
+        other.start();
+        other.play(1.0);
+    }
+    Bench kept("default");
+    const std::vector<float> a = second(kept);
+    Bench fresh("default", true);
+    const std::vector<float> b = second(fresh);
+    REQUIRE(a.size() == b.size());
+    CHECK(a == b);
+}

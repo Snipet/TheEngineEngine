@@ -27,6 +27,8 @@ namespace
         std::vector<std::string> saved = { "Hot cam", "Demo V8", "Twin turbo" };
         std::string loaded;
         float clutch = -1.0f;
+        float peak = 0.31f;     // the simulator's peak share of a core (FrameServices::simLoadPeak)
+        long dropouts = 0;
         int mode = 0;
         std::unique_ptr<AppFrame> frame;
         std::unique_ptr<funkgui::HeadlessHost> host;
@@ -57,6 +59,8 @@ namespace
             };
             s.unsaved = [this] { return demo.doc.canUndo(); };
             s.simLoad = [] { return 0.23f; };
+            s.simLoadPeak = [this] { return peak; };
+            s.dropouts = [this] { return dropouts; };
             s.mode = [this] { return mode; };
             s.setMode = [this](int m) { mode = m; };
             s.clutch = [this](float v) { clutch = v; };
@@ -325,6 +329,75 @@ namespace
         rig.demo.doc.set(rig.demo.doc.find("car.kind"), 0.0);
         rig.host->tick(4);
         CHECK(brakeItem() == nullptr);
+        return 0;
+    }
+
+    // The top bar's load: the peak share of a core with its word (ok, tight, over), the bar's ink by it; the sentence
+    // and QUALITY while the build does not fit, gone by itself three seconds after the load falls; never a switch of
+    // the quality. Goldens at 40, 75 and 95 % of a core, densities 2 and 1.
+    VIEW_TEST(testFrameLoad, "frame.load")
+    {
+        const auto textOf = [](FrameRig& rig, const std::string& title) -> std::string {
+            for (const funkgui::A11yItem& it : rig.host->accessibility())
+                if (it.title == title && it.visible)
+                    return it.value;
+            return "(none)";
+        };
+        for (const float dpi : { 2.0f, 1.0f })
+        {
+            const char* sfx = dpi < 1.5f ? ".dpi1" : "";
+            int qualitySet = -1;
+            FrameRig rig(1280, 800, dpi);
+            rig.showWorkspace("drive");
+            struct Case { float peak; const char* name; const char* value; bool advice; };
+            const Case cases[] = { { 0.40f, "40", "40 % of a core, ok", false },
+                                   { 0.75f, "75", "75 % of a core, tight", true },
+                                   { 0.95f, "95", "95 % of a core, over", true } };
+            for (const Case& k : cases)
+            {
+                rig.peak = k.peak;
+                rig.host->tick(30);
+                CHECK_MSG(textOf(rig, "Load") == k.value, textOf(rig, "Load"));
+                const std::string advice = textOf(rig, "Load warning");
+                CHECK_MSG(k.advice == (advice == "This build is heavy for this machine at Full: Economy halves it"), advice);
+                golden(std::string("frame.load.") + k.name + sfx, *rig.host);
+            }
+            // Dropouts, when the host counts any.
+            rig.dropouts = 3;
+            rig.host->tick(2);
+            CHECK_MSG(textOf(rig, "Load") == "95 % of a core, over, dropouts: 3", textOf(rig, "Load"));
+            if (dpi > 1.5f)
+                picture("frame.load.dropouts", *rig.host);
+            // QUALITY shows the settings; nothing switched the quality.
+            CHECK(!rig.frame->settingsShown());
+            for (const funkgui::A11yItem& it : rig.host->accessibility())
+                if (it.title == "Quality" && it.visible)
+                    rig.host->click(it.bounds.centreX(), it.bounds.centreY());
+            CHECK(rig.frame->settingsShown());
+            CHECK(qualitySet == -1);
+            // The load falls: the sentence stays while the peak is held (3 s), then goes by itself.
+            rig.peak = 0.30f;
+            rig.dropouts = 0;
+            rig.host->tick(60);
+            CHECK(textOf(rig, "Load warning") != "(none)");
+            rig.host->tick(150);
+            CHECK_MSG(textOf(rig, "Load warning") == "(none)", textOf(rig, "Load warning"));
+            CHECK(textOf(rig, "Load") == "30 % of a core, ok");
+        }
+        // The verdict from the peak held three seconds: 89 % is tight, 90 over; a spike holds it, then it lets go.
+        {
+            tee::ui::LoadWatch w;
+            w.step(0.1f, 0.89f);
+            CHECK(w.verdict() == 0);
+            w.step(0.1f, 0.90f);
+            CHECK(w.verdict() == -1);
+            for (int i = 0; i < 25; ++i)
+                w.step(0.1f, 0.2f);
+            CHECK(w.verdict() == -1);   // 2.5 s on: still held
+            for (int i = 0; i < 10; ++i)
+                w.step(0.1f, 0.2f);
+            CHECK(w.verdict() == 1 && std::fabs(w.held() - 0.2f) < 1e-6f);
+        }
         return 0;
     }
 

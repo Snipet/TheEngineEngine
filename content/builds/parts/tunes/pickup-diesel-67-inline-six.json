@@ -12,11 +12,14 @@
       "starter": true,
       "limiter": {
         "kind": "Fuel cut",
-        "speed": 335.103
+        "speed": 321.909
       },
       "idle": {
         "speed": 78.54
       },
+      "governor": "Electronic",
+      "ratedSpeed": 303.7,
+      "fuelBoost": 106000,
       "exhaustBrake": "Turbine vanes",
       "exBrakeSwitch": "On",
       "knock": {

@@ -100,7 +100,7 @@
         190000
       ],
       "unit": "W",
-      "source": "published figures of its kind (makers' figures by market and year, from memory, firm to 5 %): the RENESIS kind of 2003: 170 to 184 kW at 8200 to 8500 rpm, 211 to 216 N m at 5500; makers' figures by market and year, from memory, firm to 5 %; 126 to 145 kW a litre"
+      "source": "published figures of its kind (makers' figures by market and year, from memory, firm to 5 %): N1, from memory, to some 10 degrees; 126 to 145 kW a litre"
     },
     {
       "name": "Speed at peak power",
@@ -114,7 +114,7 @@
         921.5
       ],
       "unit": "rad/s",
-      "source": "published figures of its kind (makers' figures by market and year, from memory, firm to 5 %): the RENESIS kind of 2003: 170 to 184 kW at 8200 to 8500 rpm, 211 to 216 N m at 5500; makers' figures by market and year, from memory, firm to 5 %: 8000 to 8800 rpm"
+      "source": "published figures of its kind (makers' figures by market and year, from memory, firm to 5 %): N1, from memory, to some 10 degrees: 8000 to 8800 rpm"
     },
     {
       "name": "Peak torque",
@@ -128,7 +128,7 @@
         220
       ],
       "unit": "N m",
-      "source": "published figures of its kind (makers' figures by market and year, from memory, firm to 5 %): the RENESIS kind of 2003: 170 to 184 kW at 8200 to 8500 rpm, 211 to 216 N m at 5500; makers' figures by market and year, from memory, firm to 5 %; BMEP 19.7 to 21.1 bar (a naturally aspirated petrol engine 10 to 13 bar, turbocharged 18 to 25, a modern truck diesel 20 to 25: Heywood, Internal Combustion Engine Fundamentals, ch. 2)"
+      "source": "published figures of its kind (makers' figures by market and year, from memory, firm to 5 %): N1, from memory, to some 10 degrees; BMEP 19.7 to 21.1 bar (a naturally aspirated petrol engine 10 to 13 bar, turbocharged 18 to 25, a modern truck diesel 20 to 25: Heywood, Internal Combustion Engine Fundamentals, ch. 2)"
     },
     {
       "name": "Speed at peak torque",
@@ -142,7 +142,7 @@
         628.3
       ],
       "unit": "rad/s",
-      "source": "published figures of its kind (makers' figures by market and year, from memory, firm to 5 %): the RENESIS kind of 2003: 170 to 184 kW at 8200 to 8500 rpm, 211 to 216 N m at 5500; makers' figures by market and year, from memory, firm to 5 %: 5000 to 6000 rpm (a turbocharged engine's plateau: its whole span)"
+      "source": "published figures of its kind (makers' figures by market and year, from memory, firm to 5 %): N1, from memory, to some 10 degrees: 5000 to 6000 rpm (a turbocharged engine's plateau: its whole span)"
     },
     {
       "name": "Warm idle",
