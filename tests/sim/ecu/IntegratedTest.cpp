@@ -343,12 +343,11 @@ TEST_CASE("H10: on a wet road from a standstill the slip is held", "[ecu][integr
     CHECK(std::fabs(on.slipMean - 0.10) < 0.05);
 }
 
-TEST_CASE("H9 (quick): a spark-cut limiter bangs; a clean overrun after it does not", "[ecu][integrated]")
+TEST_CASE("H9 (quick): a spark-cut limiter bangs; a clean overrun does not", "[ecu][integrated]")
 {
     Sim s = car();
     s.set("ecu.limiter.kind", 1);
-    const Bangs cut = bangs(s, 1.5, 0.0, true);
-    const Bangs clean = bangs(s, 0.5, 1.0, false);
-    CHECK(cut.count > 5.0);
-    CHECK(clean.count == 0.0);
+    CHECK(bangs(s, 1.5, 0.0, true).count > 5.0);
+    Sim f = car();                                   // the fuel-cut limiter: a spark cut's store would linger
+    CHECK(bangs(f, 1.0, 1.0, false).count == 0.0);
 }

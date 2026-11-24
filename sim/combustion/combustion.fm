@@ -266,7 +266,13 @@ module Combustion
         // the mixture's heat having already left out what goes unburned and the walls taking theirs through the cylinder;
         // with the reference's walls the reference's 0.60 + 0.20 x manifold, its walls' and its unburned share at once:
         // the energy counted once whichever way the two switches stand)
-        const float share = walls != 0 ? 0.97f : 0.60f + 0.20f * fminf(pPlenum / 101325.0f, 1.2f);
+        // (a rotary's burn is less complete: its long, cool trailing end and its apex seals' crevices quench the flame,
+        // and a Wankel's unburned hydrocarbons are some three times a piston engine's (Heywood, Internal Combustion
+        // Engine Fundamentals, ch. 11 on HC sources and the Wankel; Yamamoto, Rotary Engine, 1981, on the trailing
+        // side's quench). That ratio is published; 0.92 for the burn's efficiency at full load is card D's arithmetic
+        // from it against a piston engine's 0.97 (judgement). The unburned part leaves as it is: its burning in the
+        // port is the exhaust's to add)
+        const float share = walls != 0 ? (lay->rotary != 0 ? 0.92f : 0.97f) : 0.60f + 0.20f * fminf(pPlenum / 101325.0f, 1.2f);
         const float d50 = (lay->rotary != 0 ? 0.62f : 0.56f) * (1.0f + (0.015f + 0.03f * rough) * nz->gauss());
         const float cb = 1.0f / (1.0f + expf((dil - d50) / 0.035f));
         cy->cBurn = cb;

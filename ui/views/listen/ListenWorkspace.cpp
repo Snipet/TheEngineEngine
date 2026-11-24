@@ -1,6 +1,7 @@
 // ui/views/listen/ListenWorkspace.cpp: see ListenWorkspace.h.
 #include "views/listen/ListenWorkspace.h"
 
+#include "views/engine/PageText.h"
 #include "views/scope/ScopePlot.h"
 
 #include <algorithm>
@@ -182,6 +183,28 @@ namespace tee::ui
         const double rg = live.get("sound.range");
         s.range = rg;   // the program's, or a dash: not worked out here
         return s;
+    }
+
+    std::string ListenWorkspace::inspectorPage() const
+    {
+        const bool reference = std::lround(field("sound.model", 0.0)) == 0;
+        std::vector<pages::Section> secs;
+        if (reference)
+            secs.push_back({ "HEARD FROM", { "sound.model", "sound.view", "sound.distance" }, { "MODE", "REFERENCE VIEW", "DISTANCE" } });
+        else
+        {
+            secs.push_back({ "HEARD FROM", { "sound.model", "sound.camera", "sound.distance" }, { "MODE", "CAMERA", "DISTANCE" } });
+            secs.push_back({ "PLACE", { "sound.place", "sound.ground", "sound.enginePlace" }, { "PLACE", "GROUND", "ENGINE AT" } });
+            secs.push_back({ "THE FREE LISTENER",
+                             { "sound.listenerX", "sound.listenerY", "sound.listenerZ", "sound.facing" },
+                             { "ACROSS", "ALONG", "HEIGHT", "FACING" } });
+        }
+        secs.push_back({ "ROOM", { "sound.room", "sound.windows" }, { "ROOM", "WINDOWS" } });
+        secs.push_back({ "LEVELS", { "sound.level", "sound.intake", "sound.mechanical" }, { "LEVEL", "INTAKE", "MECHANICAL" } });
+        // Every field is on a page (the frame holds it): the reference's view last, named for the mode that reads it.
+        if (!reference)
+            secs.push_back({ "REFERENCE MODE ONLY", { "sound.view" }, { "REFERENCE VIEW" } });
+        return pages::page(ctx_.doc, secs);
     }
 
     // ---- the plan's mapping -----------------------------------------------------------------------------------------
