@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "2.0 L turbo four, direct injection cams",
-  "notes": "The cams, springs and phasers of the archetype \"2.0 L turbo four, direct injection\" alone (intake 240/208 degrees at the seat/1 mm, 10.7 mm; exhaust 236/204, 9.0 mm): loaded as a part, they replace only the valvetrain's cam fields.",
+  "notes": "The cams, springs and phasers of the archetype \"2.0 L turbo four, direct injection\" alone (intake 240/208 degrees at the seat/1 mm, 10.7 mm; exhaust 212/180, 6.3 mm): loaded as a part, they replace only the valvetrain's cam fields.",
   "spec": {
     "valve": {
       "model": "Lab",
@@ -11,14 +11,24 @@
       "inDur1mm": 208,
       "inLift": 0.0107,
       "inCentre": 130.0,
-      "exDurSeat": 236,
-      "exDur1mm": 204,
-      "exLift": 0.009,
-      "exCentre": 112,
+      "exDurSeat": 212,
+      "exDur1mm": 180,
+      "exLift": 0.00635,
+      "exCentre": 88,
       "inPhaseRange": 60,
-      "exPhaseRange": 0,
-      "springRate": 25000.0,
-      "springPreload": 156.0
+      "exPhaseRange": 30,
+      "springRate": 37500.0,
+      "springPreload": 234.0,
+      "stages": "On",
+      "inDurSeatB": 240,
+      "inDur1mmB": 208,
+      "inLiftB": 0.0107,
+      "inCentreB": 110,
+      "exDurSeatB": 247,
+      "exDur1mmB": 215,
+      "exLiftB": 0.01,
+      "exCentreB": 115.5,
+      "stageSpeed": 324.6
     }
   }
 }
