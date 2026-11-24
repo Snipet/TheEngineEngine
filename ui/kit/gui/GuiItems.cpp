@@ -326,7 +326,7 @@ namespace tee::ui
             }
             case GuiKind::row: case GuiKind::column: case GuiKind::grid: case GuiKind::section: case GuiKind::box:
             case GuiKind::tabs: case GuiKind::page: case GuiKind::spacer: case GuiKind::divider: case GuiKind::label:
-            case GuiKind::xy: case GuiKind::envelope: case GuiKind::display: case GuiKind::keyboard: case GuiKind::shader: case GuiKind::area:
+            case GuiKind::xy: case GuiKind::envelope: case GuiKind::display: case GuiKind::keyboard: case GuiKind::shader: case GuiKind::area: case GuiKind::widget:
                 break;
         }
         if (focusRing)
@@ -648,7 +648,7 @@ namespace tee::ui
                 return;
             case GuiKind::row: case GuiKind::column: case GuiKind::grid: case GuiKind::section: case GuiKind::box:
             case GuiKind::tabs: case GuiKind::page: case GuiKind::spacer: case GuiKind::divider: case GuiKind::label:
-            case GuiKind::xy: case GuiKind::envelope: case GuiKind::display: case GuiKind::keyboard: case GuiKind::shader: case GuiKind::area:
+            case GuiKind::xy: case GuiKind::envelope: case GuiKind::display: case GuiKind::keyboard: case GuiKind::shader: case GuiKind::area: case GuiKind::widget:
                 return;
         }
     }
@@ -754,7 +754,7 @@ namespace tee::ui
                 break;
             case GuiKind::knob: case GuiKind::slider: case GuiKind::row: case GuiKind::column: case GuiKind::grid:
             case GuiKind::section: case GuiKind::box: case GuiKind::tabs: case GuiKind::page: case GuiKind::spacer:
-            case GuiKind::divider: case GuiKind::label: case GuiKind::xy: case GuiKind::envelope: case GuiKind::display: case GuiKind::keyboard: case GuiKind::shader: case GuiKind::area:
+            case GuiKind::divider: case GuiKind::label: case GuiKind::xy: case GuiKind::envelope: case GuiKind::display: case GuiKind::keyboard: case GuiKind::shader: case GuiKind::area: case GuiKind::widget:
                 item.role = funkgui::A11yRole::slider;
                 item.v = value_.value01();
                 item.lo = 0.0;
@@ -2297,7 +2297,7 @@ namespace tee::ui
                 }
                 case GuiKind::tabs: case GuiKind::spacer: case GuiKind::knob: case GuiKind::slider: case GuiKind::toggle:
                 case GuiKind::buttons: case GuiKind::menu: case GuiKind::xy: case GuiKind::envelope: case GuiKind::display:
-                case GuiKind::keyboard: case GuiKind::shader: case GuiKind::area:
+                case GuiKind::keyboard: case GuiKind::shader: case GuiKind::area: case GuiKind::widget:
                     break;
             }
         }

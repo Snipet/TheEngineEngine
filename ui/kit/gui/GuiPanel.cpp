@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <optional>
 #include <set>
 
 namespace tee::ui
@@ -41,6 +42,50 @@ namespace tee::ui
         }
     }
 
+    // J2: every line of the .gui file that is `auto "section"` (with nothing but a comment after it) replaced by the
+    // generated page's text, which is one line, so every other line keeps its number.
+    static void expandAuto(Sources& files, const std::function<std::string(std::string_view)>& page, std::string& notes)
+    {
+        for (SourceFile& f : files)
+        {
+            if (!isGuiFile(f.name))
+                continue;
+            std::string out;
+            std::size_t at = 0;
+            int line = 1;
+            while (at <= f.text.size())
+            {
+                const std::size_t nl = std::min(f.text.find('\n', at), f.text.size());
+                std::string_view l(f.text.data() + at, nl - at);
+                const std::size_t first = l.find_first_not_of(" \t");
+                std::string_view rest = first == std::string_view::npos ? std::string_view() : l.substr(first);
+                bool done = false;
+                if (rest.starts_with("auto") && rest.size() > 4 && (rest[4] == ' ' || rest[4] == '\t'))
+                {
+                    const std::size_t q0 = rest.find('"'), q1 = q0 == std::string_view::npos ? q0 : rest.find('"', q0 + 1);
+                    if (q1 != std::string_view::npos)
+                    {
+                        const std::string_view section = rest.substr(q0 + 1, q1 - q0 - 1);
+                        std::string text = page ? page(section) : std::string();
+                        std::replace(text.begin(), text.end(), '\n', ';');
+                        if (text.empty())
+                            notes += f.name + ":" + std::to_string(line) + ":1: note: auto \"" + std::string(section)
+                                   + "\": no generated page for that section here\n";
+                        out += std::string(l.substr(0, first)) + text;
+                        done = true;
+                    }
+                }
+                if (!done)
+                    out += l;
+                if (nl < f.text.size())
+                    out += '\n';
+                at = nl + 1;
+                ++line;
+            }
+            f.text = std::move(out);
+        }
+    }
+
     std::vector<PanelField> telemetryFields(const std::string& gui, const TelemetrySource& telemetry)
     {
         std::vector<PanelField> out;
@@ -61,8 +106,9 @@ namespace tee::ui
                 continue;
             }
             std::size_t k = i;
-            while (k < gui.size() && nameChar(gui[k]))
-                ++k;
+            while (k < gui.size()
+                   && (nameChar(gui[k]) || (gui[k] == '.' && k + 1 < gui.size() && nameStart(gui[k + 1]))))
+                ++k;                                     // J2: engine.speed, a dotted name, is one
             if (k + 2 < gui.size() && gui[k] == '-' && gui[k + 1] == '>' && nameStart(gui[k + 2]))
             {
                 std::size_t m = k + 2;
@@ -120,6 +166,7 @@ namespace tee::ui
           }())
     {
         firstOwn_ = items_.size();
+        expandAuto(files_, options_.autoPage, notes_);
         if (params_.count() > kMaxControls)
             notes_ += "panel: note: the source has " + std::to_string(params_.count()) + " parameters and a panel shows "
                     + std::to_string(kMaxControls) + ": the rest have no control\n";
@@ -167,6 +214,14 @@ namespace tee::ui
                 sh.id = shaderId(sh.binary);
             }
         view_.setControls(controls_, spec_);
+        // J2's widgets: an item each, made by the owner, after the interface's items and before a subclass's.
+        for (std::size_t i = 0; i < spec_.gui.nodes.size(); ++i)
+            if (spec_.gui.nodes[i].kind == GuiKind::widget && options_.widget)
+                if (std::unique_ptr<Item> w = options_.widget(spec_.gui.nodes[i], nextId()))
+                {
+                    items_.push_back(std::move(w));
+                    widgets_.push_back({ static_cast<int>(items_.size()) - 1, static_cast<int>(i) });
+                }
         std::string shaderNotes = notes_;
         for (const PanelShader& sh : spec_.shaders)
             if (sh.binary.empty())
@@ -174,8 +229,8 @@ namespace tee::ui
         view_.registerShaders(spec_, files_, shaderNotes);
         // Its natural size: the root's when it is given no room at all.
         view_.layout(spec_, controls_, funkgui::Rect{ 0.0f, 0.0f, 1.0f, 1.0f });
-        naturalW_ = std::max(1, static_cast<int>(std::ceil(view_.places().contentW)));
-        naturalH_ = std::max(1, static_cast<int>(std::ceil(view_.places().contentH)));
+        naturalW_ = std::max(1, static_cast<int>(std::ceil(view_.places().contentW))) + options_.insetLeft + options_.insetRight;
+        naturalH_ = std::max(1, static_cast<int>(std::ceil(view_.places().contentH))) + options_.insetTop + options_.insetBottom;
         width_ = options_.width > 0 ? options_.width : std::max(naturalW_, options_.minWidth);
         height_ = options_.height > 0 ? options_.height : std::max(naturalH_, options_.minHeight);
         view_.resetScroll();
@@ -218,8 +273,11 @@ namespace tee::ui
 
     void GuiPanel::layout()
     {
-        view_.layout(spec_, controls_, funkgui::Rect{ 0.0f, 0.0f, static_cast<float>(width_),
-                                                      static_cast<float>(std::max(1, height_ - reserve_)) });
+        const int l = options_.insetLeft, t = options_.insetTop;
+        view_.layout(spec_, controls_, funkgui::Rect{ static_cast<float>(l), static_cast<float>(t),
+                                                      static_cast<float>(std::max(1, width_ - l - options_.insetRight)),
+                                                      static_cast<float>(std::max(1, height_ - reserve_ - t - options_.insetBottom)) });
+        placeWidgets();
         placed();
         dirty_ = true;
     }
@@ -344,7 +402,29 @@ namespace tee::ui
         view_.drawScrollBars(c, th);
         for (std::size_t i = firstOwn_; i < items_.size(); ++i)
             if (items_[i]->shown())
+            {
+                std::optional<funkgui::Canvas::ClipScope> clip;
+                if (isWidget(i))                         // J2's widgets scroll with the interface
+                    clip.emplace(c, area);
                 items_[i]->draw(c, gth, ring_ && focus_ == static_cast<int>(i));
+            }
+    }
+
+    bool GuiPanel::isWidget(std::size_t item) const noexcept
+    {
+        return std::any_of(widgets_.begin(), widgets_.end(), [&](const WidgetAt& w) { return w.item == static_cast<int>(item); });
+    }
+
+    // J2: each widget in its element's cell as shown (moved by the scroll), hidden off the pages shown.
+    void GuiPanel::placeWidgets()
+    {
+        const GuiLayout& gl = view_.places();
+        for (const WidgetAt& w : widgets_)
+        {
+            const auto n = static_cast<std::size_t>(w.node);
+            const bool seen = n < gl.visible.size() && gl.visible[n] && n < gl.rects.size();
+            items_[static_cast<std::size_t>(w.item)]->setPlace(seen ? gl.rects[n] : funkgui::Rect{}, seen);
+        }
     }
 
     bool GuiPanel::wantsFullRate() const
@@ -459,6 +539,7 @@ namespace tee::ui
         {
             if (view_.dragBar(spec_, pointer_))
             {
+                placeWidgets();
                 placed();
                 ++revision_;
             }
@@ -496,6 +577,7 @@ namespace tee::ui
     {
         if (view_.scrollBy(spec_, dx, dy))
         {
+            placeWidgets();
             placed();
             ++revision_;
         }
