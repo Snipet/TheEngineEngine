@@ -3,6 +3,7 @@
 #include "Support.h"
 
 #include "EngineTwin.h"
+#include "tee/Bake.h"
 #include "tee/Dyno.h"
 
 #include <set>
@@ -305,4 +306,44 @@ TEST_CASE("the dyno runner starts a common-rail diesel and holds a twin turbo's 
         CHECK(p.fields[1] > 80000.0);    // near the build's 1.0 bar (P measured 2.99 bar at 4297 rpm before)
         CHECK(p.fields[1] < 120000.0);
     }
+}
+
+TEST_CASE("the intake cam baked by a sweep of the fast dyno: the best advance by speed, into ecu.maps.camIn",
+          "[engine][sim][predict]")
+{
+    if (!haveSim())
+        SKIP("sim/engine.fm is not there yet");
+    std::string error;
+    const auto sim = compiled(simDir(), {}, error);
+    REQUIRE(sim != nullptr);
+    Build build(sim->fields());
+    std::vector<std::string> warnings;
+    REQUIRE(build.loadFile(std::filesystem::path(TEE_SOURCE_DIR) / "content/builds/archetypes/v12-65.json",
+                           BuildPart::Whole, warnings, error));
+    CamBakeOptions options;
+    options.step = 25.0;   // three cells (0, 25, 50) and three speeds: the machine, not N1's whole table
+    options.predict.from = 209.44;
+    options.predict.to = 628.32;
+    options.predict.points = options.predict.coarse = 3;
+    CamBakeResult r;
+    REQUIRE(bakeIntakeCam(sim, build, options, r, error));
+    INFO(error);
+    REQUIRE(r.advances.size() == 3);
+    REQUIRE(r.speeds.size() == 3);
+    for (std::size_t s = 0; s < r.speeds.size(); ++s)
+    {
+        CHECK(std::find(r.advances.begin(), r.advances.end(), r.best[s]) != r.advances.end());
+        CHECK(r.bestTorque[s] >= r.torque.front()[s] - 1e-9);   // never worse than parked
+    }
+    REQUIRE(applyIntakeCam(build, r, error));
+    CHECK(build.get("ecu.maps.camInAuto") == 0.0);
+    // Map16's values in its fields' order: x[16], y[16], z[16][16], nx, ny
+    const std::vector<double>& map = build.values(build.fieldOf("ecu.maps.camIn"));
+    REQUIRE(map.size() == 16 + 16 + 256 + 2);
+    CHECK(std::fabs(map[0] - r.speeds[0]) < 1e-3 * r.speeds[0]);
+    CHECK(map[16 + 16 + 256] == 3.0);   // nx
+    CHECK(map[16 + 16 + 0 * 16 + 0] == r.best[0]);
+    CHECK(build.canUndo());
+    WARN("v12-65's intake cam baked in " << r.wallSeconds << " s: " << r.best[0] << ", " << r.best[1] << ", " << r.best[2]
+                                         << " deg at 2000, 4000, 6000 rpm");
 }

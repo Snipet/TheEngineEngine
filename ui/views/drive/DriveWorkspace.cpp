@@ -16,6 +16,7 @@
 // have yet reads NaN and draws a dash; the car then turns its wheels by the road speed. Clicking the car selects "car",
 // the road "env", the tree "car" (its strip settings live there). Canvas primitives only: the body is a polyline and
 // capsules (no rotation, no filled polygon), the wheels discs with spokes, the road a line with marks that pass.
+#include "app/Cockpit.h"
 #include "app/Look.h"
 #include "app/Workspace.h"
 #include "kit/widgets/Gauge.h"
@@ -78,6 +79,8 @@ namespace tee::ui
             const ControlsFrame cf = ctx_.app.controls ? ctx_.app.controls() : ControlsFrame{};
             k.mix(cf.throttle).mix(cf.brake).mix(cf.clutch);
             k.mix(qsFlash_ > 0.0f ? 1 : 0).mix(blipFlash_ > 0.0f ? 1 : 0).mix(static_cast<float>(ctx_.live.get("car.bikeFlags")));
+            const EngineBrakeState eb = engineBrakeState(ctx_);
+            k.mix(eb.shown ? 1 : 0).mix(eb.stage).mix(eb.armed).mix(eb.exhaustOn ? 1 : 0).mix(eb.exhaust ? 1 : 0);
             k.mix(roll_).mix(squat_).mix(ctx_.selection.revision()).mix(ctx_.units.revision());
             return k.h;
         }
@@ -323,6 +326,10 @@ namespace tee::ui
             drawWheel(c, p, rx, wy, r, slipR);
             drawWheel(c, p, fx, wy, r, slipF);
             drawSlips(c, p, s, { 0, 1, 2, 3 }, kWheels);
+            // A truck's engine brake (card D2), top left: its lamp, the stage as segments and in a word, the exhaust
+            // brake's lamp.
+            if (const EngineBrakeState eb = engineBrakeState(ctx_); eb.shown)
+                drawEngineBrake(c, p, s.x, s.y, eb, true);
         }
 
         void drawBike(funkgui::Canvas& c, const look::Palette& p, const funkgui::Rect& s, const Geometry& gm) const

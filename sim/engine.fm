@@ -890,6 +890,7 @@ module Engine
             intk.pBox = 101325.0f + 100000.0f * boost.boost;
             intk.tAir = heat.tAmb + 5.0f * heat.warm + 25.0f * boost.boost;
         }
+        intk.tCoolant = heat.tCool;                     // (N1, for card E's charge heating at intake.model 1)
         intk.control(d16, crank.omega, vTotal, 120.0f / fmaxf(crank.rpm, 60.0f));      // (card E; nothing at intake.model 0)
         exh.gas(d16);
         // the walls' heat: Woschni's with spec.engine.wallHeat 1 or fuel.model 1 (each cylinder from where it stands:
@@ -945,31 +946,36 @@ module Engine
         // the charge's oxygen (nitrous: Boost's, card F) for Combustion's charge (card H); exactly 1 with boost.model 0
         comb.oxygen = boost.oxygenShare();
         mechanics16();
-        // package M's mechanical voices (spec.voices.model 1; with model 0 it returns at once): their inputs, the car's
-        // gearbox as either car model keeps it, the reference turbo's gate as open when its boost reaches its most
+        // package M's mechanical voices (spec.voices.model 1; with model 0 it returns at once)
         if (spec.voices.model != 0 || ex.voOn != 0)
-        {
-            const int m1 = spec.car.model != 0 ? 1 : 0;
-            const float bShare = boost.boost / fmaxf(boost.maxB, 0.01f);
-            // (boost.model 1: card F's gates, the most open of them, and its kind; else the reference turbo's, open as its
-            // boost reaches its most)
-            const int bm1 = spec.boost.model != 0 && boost.mach.active != 0 ? 1 : 0;
-            const float gateNow = bm1 != 0 ? fmaxf(fmaxf(boost.mach.telGate[0], boost.mach.telGate[1]), fmaxf(boost.mach.telGate[2], boost.mach.telGate[3]))
-                                           : fminf(fmaxf((bShare - 0.95f) * 20.0f, 0.0f), 1.0f);
-            // (card B2's motorcycle: its own sequential box, its input and ratio from Car; the chain is its final drive, so
-            // the final drive's whine gets no speed)
-            const int bk = car.model == 1 && car.bikeOn != 0 ? 1 : 0;
-            ex.control16(d16, ctl.ignition, ecu.state, crank.omega * 0.15915494f, heat.tCool, set.drive != 0 ? 1 : 0,
-                         bk != 0 ? 1 : (m1 != 0 ? spec.car.gearbox : 0), car.truck, bk != 0 ? car.gearNow() : car.gear,
-                         bk != 0 ? car.bikeGearboxInput() : (m1 != 0 ? crank.omega - car.m1.slipC : car.wG),
-                         bk != 0 ? car.bikeGearboxRatio() : (m1 != 0 ? car.m1.box.ratioOf(car.gear) : car.ratioOf(car.gear)),
-                         bk != 0 ? 1.0f : (m1 != 0 ? car.m1.box.fd : car.finalDrive),
-                         bk != 0 ? 0.0f : (m1 != 0 ? (float)car.m1.v / fmaxf(car.m1.radius, 0.05f) * car.m1.box.fd : car.wW * car.finalDrive),
-                         tqBrake, peakTorque(), bk != 0 ? 1.0f - set.clutch : (m1 != 0 ? car.m1.engage * car.m1.box.robot : car.engage * car.robot),
-                         aspUse, bShare, gateNow, bm1 != 0 ? spec.boost.gate : 0, exh.mdot / fmaxf(mRef, 1.0e-6f),
-                         lay.n, lay.cyc, vt.clatter, vTotal, fuelUse, bk, car.sprocketSpeed(),
-                         spec.car.frontSprocket, spec.car.clutchDry ? 1 : 0, spec.car.primaryRatio, 1.0f - set.clutch);
-        }
+            voicesInputs(d16, mRef);
+    }
+
+    // Package M's mechanical voices' inputs every 16 samples: the car's gearbox as either car model keeps it (or card
+    // B2's motorcycle's), the turbo's gate (card F's at boost.model 1, else the reference turbo's as open when its boost
+    // reaches its most), the exhaust's flow over mRef
+    void voicesInputs(float d16, float mRef)
+    {
+        const int m1 = spec.car.model != 0 ? 1 : 0;
+        const float bShare = boost.boost / fmaxf(boost.maxB, 0.01f);
+        // (boost.model 1: card F's gates, the most open of them, and its kind; else the reference turbo's, open as its
+        // boost reaches its most)
+        const int bm1 = spec.boost.model != 0 && boost.mach.active != 0 ? 1 : 0;
+        const float gateNow = bm1 != 0 ? fmaxf(fmaxf(boost.mach.telGate[0], boost.mach.telGate[1]), fmaxf(boost.mach.telGate[2], boost.mach.telGate[3]))
+                                       : fminf(fmaxf((bShare - 0.95f) * 20.0f, 0.0f), 1.0f);
+        // (card B2's motorcycle: its own sequential box, its input and ratio from Car; the chain is its final drive, so
+        // the final drive's whine gets no speed)
+        const int bk = car.model == 1 && car.bikeOn != 0 ? 1 : 0;
+        ex.control16(d16, ctl.ignition, ecu.state, crank.omega * 0.15915494f, heat.tCool, set.drive != 0 ? 1 : 0,
+                     bk != 0 ? 1 : (m1 != 0 ? spec.car.gearbox : 0), car.truck, bk != 0 ? car.gearNow() : car.gear,
+                     bk != 0 ? car.bikeGearboxInput() : (m1 != 0 ? crank.omega - car.m1.slipC : car.wG),
+                     bk != 0 ? car.bikeGearboxRatio() : (m1 != 0 ? car.m1.box.ratioOf(car.gear) : car.ratioOf(car.gear)),
+                     bk != 0 ? 1.0f : (m1 != 0 ? car.m1.box.fd : car.finalDrive),
+                     bk != 0 ? 0.0f : (m1 != 0 ? (float)car.m1.v / fmaxf(car.m1.radius, 0.05f) * car.m1.box.fd : car.wW * car.finalDrive),
+                     tqBrake, peakTorque(), bk != 0 ? 1.0f - set.clutch : (m1 != 0 ? car.m1.engage * car.m1.box.robot : car.engage * car.robot),
+                     aspUse, bShare, gateNow, bm1 != 0 ? spec.boost.gate : 0, exh.mdot / fmaxf(mRef, 1.0e-6f),
+                     lay.n, lay.cyc, vt.clatter, vTotal, fuelUse, bk, car.sprocketSpeed(),
+                     spec.car.frontSprocket, spec.car.clutchDry ? 1 : 0, spec.car.primaryRatio, 1.0f - set.clutch);
     }
 
     // Every 16 samples, last: the mechanics' slow part. The cycle's speed spread; a custom engine's inertia with the
@@ -1079,14 +1085,7 @@ module Engine
         const float tf = fric.torque(&spec.engine, crank.omega, fmaxf(two.peak, 3.0e6f), oilK);
         heat.fricJ += tf * crank.omega * dt;
         tqAbs = dynoOn != 0 ? dyno.step(crank.omega, ctl.dynoSpeed, ctl.dynoRate, dt) : 0.0f;
-        const float th = (crank.theta + geo.tdc[0]) * 0.01745329252f;
-        const float sn = sinf(th);
-        const float cs = cosf(th);
-        if (set.drive == 0)
-            crank.omega = mm.advance(crank.omega, torque - tf - (dynoOn != 0 ? tqAbs : mech.tl) + mech.ts, dt, sn, cs);
-        else
-            crank.omega = car.step(crank.omega, torque + mm.torque(sn, cs, crank.omega) - tf + mech.ts, dt,
-                                   mm.jNow);         // (the crank's inertia at this angle, as the four-stroke's step below)
+        crankStep(torque, tf, 0.0f);
         crank.ripple(torque);
         tqBrake += (torque - tf - tqBrake) * 1.0e-4f;
         omMin = fminf(omMin, crank.omega);
@@ -1141,6 +1140,38 @@ module Engine
         }
     }
 
+    // The crank's step this sample, from the gases' torque, the friction's and a supercharger's drag (N m), whatever
+    // holds it: a custom engine's moving masses (their inertia torque and varying inertia, the energy stepped exactly)
+    // on the bench or the dyno, or into the car with the crank's inertia at this angle (jCrank, card I's); the
+    // reference's crank on the bench (the bench's load and inertia, or the dyno's absorber and the flywheel alone) or
+    // into the car (jCrank 0: the flywheel dial's). The dyno's absorber (tqAbs) is this sample's
+    void crankStep(float torque, float tf, float tsc)
+    {
+        if (customUse != 0)
+        {
+            const float th = (crank.theta + geo.tdc[0]) * 0.01745329252f;
+            const float sn = sinf(th);
+            const float cs = cosf(th);
+            if (set.drive == 0)
+                crank.omega = mm.advance(crank.omega, torque - tf - tsc - (dynoOn != 0 ? tqAbs : mech.tl) + mech.ts, dt, sn, cs);
+            else
+                crank.omega = car.step(crank.omega, torque + mm.torque(sn, cs, crank.omega) - tf - tsc + mech.ts, dt, mm.jNow);
+        }
+        else if (set.drive == 0)
+            crank.bench(torque, tf, tsc, dynoOn != 0 ? tqAbs : mech.tl, mech.ts, dynoOn != 0 ? jFly : mech.inertia(set.inertia, set.load), dt);
+        else
+            crank.omega = car.step(crank.omega, torque - tf - tsc + mech.ts, dt, 0.0f);   // (the car is the load: the load dial rests)
+    }
+
+    // Cylinder c's exhaust valve's open area at its angle a (m^2, its discharge coefficient in): the valvetrain's (the
+    // reference's cam table at valve.model 0, card E's lab at 1), with card D2's compression brake's lobe added while it
+    // is on. The intake's is the valvetrain's alone (vt.areaIn)
+    float areaExhaust(int c, float a)
+    {
+        const float ae = vt.areaEx(&cyl[c], c, a);
+        return hd.on != 0 ? ae + hd.brakeArea(c, a) : ae;
+    }
+
     void sampleTick()
     {
         const int np = lay.ports;
@@ -1190,16 +1221,8 @@ module Engine
             {
                 const float a = wrapCycle(crank.theta + lay.fire[c], lay.cyc);
                 const int pi = lay.port[c];
-                if (spec.valve.model != 0)
-                {
-                    qE0[c] = cyl[c].exhaustFlowArea(vt.areaEx(&cyl[c], c, a), exh.prim[pi].near, exh.prim[pi].z, tH);
-                    qI0[c] = cyl[c].intakeFlowArea(vt.areaIn(&cyl[c], c, a), intk.run[pi].near, intk.run[pi].z, intk.tAir);
-                }
-                else
-                {
-                    qE0[c] = cyl[c].exhaustFlowAt(a, exh.prim[pi].near, exh.prim[pi].z, tH);
-                    qI0[c] = cyl[c].intakeFlowAt(a, intk.run[pi].near, intk.run[pi].z, intk.tAir);
-                }
+                qE0[c] = cyl[c].exhaustFlowArea(areaExhaust(c, a), exh.prim[pi].near, exh.prim[pi].z, tH);
+                qI0[c] = cyl[c].intakeFlowArea(vt.areaIn(&cyl[c], c, a), intk.run[pi].near, intk.run[pi].z, intk.tAir);
                 eShare[pi] += qE0[c];
                 iShare[pi] += qI0[c];
             }
@@ -1218,23 +1241,17 @@ module Engine
                 bE += 0.5f * exh.prim[pi].z * (eShare[pi] - qE0[c]);
                 bI += 0.5f * intk.run[pi].z * (iShare[pi] - qI0[c]);
             }
-            // (valve.model 1: the valvetrain gives the valves' areas; card E)
+            // (the valves' areas: areaExhaust and the valvetrain's; card D2's exhaust brake's back pressure)
+            cy->stepAreas(a, dDeg, dt, areaExhaust(c, a), vt.areaIn(cy, c, a), hd.on != 0 ? bE + hd.back : bE, exh.prim[pi].z, tH,
+                          bI, intk.run[pi].z, intk.tAir);
             if (hd.on != 0)
-            {
-                // (card D2: the compression brake's lobe added to the exhaust valve's area; the exhaust brake's back pressure)
-                cy->stepAreas(a, dDeg, dt, vt.areaEx(cy, c, a) + hd.brakeArea(c, a), vt.areaIn(cy, c, a), bE + hd.back, exh.prim[pi].z, tH,
-                              bI, intk.run[pi].z, intk.tAir);
                 hd.sample(cy, c, a);
-            }
-            else if (spec.valve.model != 0)
-                cy->stepAreas(a, dDeg, dt, vt.areaEx(cy, c, a), vt.areaIn(cy, c, a), bE, exh.prim[pi].z, tH, bI, intk.run[pi].z, intk.tAir);
-            else
-                cy->step(a, dDeg, dt, bE, exh.prim[pi].z, tH, bI, intk.run[pi].z, intk.tAir);
             work.sample(c, a, cy->p, cy->v);
             comb.sample(cy, c, dt);                     // card H: nothing under fuel.model 0 and ecu.model 0
             qe[pi] += cy->qEa;
             qi[pi] += cy->qIa;
             airValves -= (double)(cy->mI * dt);
+            intk.mValves += cy->mI;                     // (N1, for card E: the plenum gives up the valves' own mass)
             gasExhaust -= (double)(cy->mE * dt);
             torque += cy->tq;
             if (cy->mE > 0.0f)
@@ -1283,8 +1300,12 @@ module Engine
         float rNear[MAX_PORTS];
         for (int i = 0; i < np; ++i)
             rNear[i] = intk.run[i].near + intk.run[i].z * qi[i];
+        intk.haveValves = 1;
         intk.plenum(np, rNear, fuelUse, vt.plateOpen() != 0 ? 1.0f : ecu.throttle, ecu.bypass, dt);
-        airThrottle += (double)(intk.qThr * intk.pBox / (287.0f * intk.tAir) * dt);
+        intk.mValves = 0.0f;
+        // (the throttle's volume flow taken at the pressure the intake took it at: the box's, with its depression, behind
+        // intake.model 1's single throttle)
+        airThrottle += (double)(intk.qThr * (spec.intake.model != 0 && intk.itbs == 0 ? intk.pBox + intk.box.p : intk.pBox) / (287.0f * intk.tAir) * dt);
         mech.torques(crank.rpm, crank.omega, strokeK, heat.viscK, fuelUse, smCR, vTotal, set.load, ecu.redRpm, heat.tAmb, ecu.starterOn,
                      cyl[0].vd);
         // (a custom engine's friction by part: core/friction.fm, on the last cycle's peak pressure)
@@ -1300,22 +1321,7 @@ module Engine
         // the engine dyno's absorber (MODE_DYNO_ENGINE): its torque taken from the crank, the load in place of the bench's
         // (whose load dial, and the inertia it adds, rest while the dyno holds the crank)
         tqAbs = dynoOn != 0 ? dyno.step(crank.omega, ctl.dynoSpeed, ctl.dynoRate, dt) : 0.0f;
-        if (customUse != 0)
-        {
-            // the moving masses: the inertia torque and the varying inertia, the crank's energy stepped exactly
-            const float th = (crank.theta + geo.tdc[0]) * 0.01745329252f;
-            const float sn = sinf(th);
-            const float cs = cosf(th);
-            if (set.drive == 0)
-                crank.omega = mm.advance(crank.omega, torque - tf - tsc - (dynoOn != 0 ? tqAbs : mech.tl) + mech.ts, dt, sn, cs);
-            else
-                crank.omega = car.step(crank.omega, torque + mm.torque(sn, cs, crank.omega) - tf - tsc + mech.ts, dt,
-                                       mm.jNow);     // (the crank's inertia at this angle, this sample's or the last's)
-        }
-        else if (set.drive == 0)
-            crank.bench(torque, tf, tsc, dynoOn != 0 ? tqAbs : mech.tl, mech.ts, dynoOn != 0 ? jFly : mech.inertia(set.inertia, set.load), dt);
-        else
-            crank.omega = car.step(crank.omega, torque - tf - tsc + mech.ts, dt, 0.0f);   // (the car is the load: the load dial rests)
+        crankStep(torque, tf, tsc);
         crank.ripple(torque);
         // what it reports (no effect on the sound): the brake torque's mean, the speed's spread over a cycle
         tqBrake += (torque - tf - tsc - tqBrake) * 1.0e-4f;
@@ -1786,7 +1792,7 @@ module Engine
         e->bmep = work.bmep(e->torque);
         e->veManifold = work.veManifold;
         e->veAir = work.veAir;
-        e->chargeTemperature = work.tTrapMean;
+        e->chargeTemperature = work.tTrapMean > 0.0f ? work.tTrapMean : intk.tAir;    // (the air's until a charge is trapped: X-017)
         e->trappedMass = work.trappedMean;
         e->peakPressure = work.peakMax;
         e->pistonSpeed = strokeUse * crank.omega * 0.31830989f;     // 2 stroke rpm / 60

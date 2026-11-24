@@ -333,48 +333,40 @@ namespace
     }
 } // namespace
 
-TEST_CASE("the physical cylinder conserves the gas its valves push back: the valves pass about the throttle's air, not twenty times it",
+TEST_CASE("the physical cylinder conserves the gas its valves push back, and the throttle's air is the valves'",
           "[core][engine][backflow]")
 {
     // N1's finding (24 Nov): the reference converts the gas its intake pushed back into the runner at the air's density
     // when it comes back, making mass each round trip (and the exhaust's at the header's). The physical cylinder
-    // (fuel.model 1) brings each back as itself first. A big-overlap build, idling on the bench and at full throttle on
-    // the dyno, over 3 s: the net mass in through the intake valves against the air through the throttle. The reference
-    // passes some 20 times the throttle's air at idle (measured: 10.95 against 0.54 g/s); the physical cylinder 1.32
-    // times, 1.11 at full throttle (against 1.39). What is left is upstream of the valves: the runners and the plenum
-    // carry volume, not mass (card E's; N1 acts for it), and it is printed, bounded loosely here. The unburned gas
-    // trapped is printed too (it counts what a cylinder kept unburned from its last cycle, not only new air).
-    double ratioI[2] = {0, 0}, ratioW[2] = {0, 0};
-    for (int model = 0; model < 2; ++model)
-    {
-        Bench b("archetypes/flat-plane-v8-45");
-        std::string e;
-        REQUIRE(b.player().setSpec("car.model", 0, e));
-        REQUIRE(b.player().setSpec("fuel.model", model, e));
-        REQUIRE(b.player().setSpec("engine.wallHeat", 0, e));
-        b.start();
-        b.warm();
-        b.ctl().throttle = 0.0f;
-        b.play(3.0);
-        double thrI = 0, frI = 0, vI = 0, eI = 0, thrW = 0, frW = 0, vW = 0, eW = 0;
-        airBooks(b, 3.0, thrI, frI, vI, eI);
-        const double idle = b.tel("engine.speed") * 9.5492966;
-        b.ctl().mode = 2;
-        b.ctl().throttle = 1.0f;
-        b.ctl().dynoSpeed = float(3000.0 / 9.5492966);
-        b.play(3.0);
-        airBooks(b, 3.0, thrW, frW, vW, eW);
-        std::printf("backflow, fuel.model %d: idle %.0f rpm: throttle %.2f, intake valves %.2f, exhaust valves %.2f, trapped unburned %.2f g/s; "
-                    "full throttle at 3000: %.1f, %.1f, %.1f, %.1f g/s\n", model, idle, thrI, vI, eI, frI, thrW, vW, eW, frW);
-        CHECK(std::fabs(eI / vI - 1.0) < 0.01);      // (the cylinders hold no mass over whole cycles)
-        CHECK(std::fabs(eW / vW - 1.0) < 0.01);
-        ratioI[model] = vI / thrI;
-        ratioW[model] = vW / thrW;
-    }
-    CHECK(ratioI[0] > 10.0);
-    CHECK(ratioI[1] < 1.5);
-    CHECK(ratioW[1] < 1.2);
-    CHECK(ratioW[1] < ratioW[0] - 0.15);
+    // (fuel.model 1) brings each back as itself first (e8c6575); card E's intake (N1 acting) takes from its plenum the
+    // valves' own mass. A big-overlap build, idling on the bench and at full throttle on the dyno, over 3 s: the air
+    // through the throttle, the net mass in through the intake valves and out through the exhaust valves agree within
+    // 1 %. (Before both: the valves passed 20 times the throttle's air at idle, 1.39 times at full throttle.) The
+    // unburned gas trapped is printed (it is less than the valves' by what the overlap blows through, and counts what a
+    // cylinder kept unburned from its last cycle).
+    Bench b("archetypes/flat-plane-v8-45");
+    std::string e;
+    REQUIRE(b.player().setSpec("car.model", 0, e));
+    REQUIRE(b.player().setSpec("fuel.model", 1, e));
+    b.start();
+    b.warm();
+    b.ctl().throttle = 0.0f;
+    b.play(3.0);
+    double thrI = 0, frI = 0, vI = 0, eI = 0, thrW = 0, frW = 0, vW = 0, eW = 0;
+    airBooks(b, 3.0, thrI, frI, vI, eI);
+    const double idle = b.tel("engine.speed") * 9.5492966;
+    b.ctl().mode = 2;
+    b.ctl().throttle = 1.0f;
+    b.ctl().dynoSpeed = float(3000.0 / 9.5492966);
+    b.play(3.0);
+    airBooks(b, 3.0, thrW, frW, vW, eW);
+    std::printf("backflow: idle %.0f rpm: throttle %.2f, intake valves %.2f, exhaust valves %.2f, trapped unburned %.2f g/s; "
+                "full throttle at 3000: %.1f, %.1f, %.1f, %.1f g/s\n", idle, thrI, vI, eI, frI, thrW, vW, eW, frW);
+    CHECK(std::fabs(vI / thrI - 1.0) < 0.01);
+    CHECK(std::fabs(vW / thrW - 1.0) < 0.01);
+    CHECK(std::fabs(eI / vI - 1.0) < 0.01);
+    CHECK(std::fabs(eW / vW - 1.0) < 0.01);
+    CHECK(frW < vW);
 }
 
 TEST_CASE("a two-stroke's mechanics are its own cylinders', whatever the custom four-stroke's fields hold", "[core][engine][twostroke]")
@@ -391,5 +383,5 @@ TEST_CASE("a two-stroke's mechanics are its own cylinders', whatever the custom 
     CHECK(b.field("geo.n") == 1.0);
     CHECK(b.field("mm.n") == 1.0);
     CHECK(b.field("work.n") == 1.0);
-    CHECK(std::fabs(b.field("work.vBmep") / (0.5 * b.field("two.vd")) - 1.0) < 1e-5);
+    CHECK(std::fabs(b.field("work.vBmep") / (2.0 * b.field("two.vd")) - 1.0) < 1e-5);     // (2 pi T / V: T's catch)
 }

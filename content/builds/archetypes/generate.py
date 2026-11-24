@@ -515,6 +515,10 @@ def build(a):
         # 3.2 six (best VE at 5000 rpm on 0.50 m, 6000-7000 on 0.35, 4000-4500 on 0.70), L = 0.50 (5000 / rpm)^1.3
         lo, hi = TORQUE_PEAK[a["slug"]]
         i["runnerLength"] = round(min(max(0.50 * (5000.0 / (0.5 * (lo + hi))) ** 1.3, 0.22), 0.9), 2)
+        if a["layout"].startswith("V8"):
+            # a V8 on runners over 0.5 m does not start warm today (the four-cam 5.0 at 0.50 and 0.57, the 7.0 at
+            # 0.53; both start at 0.45: the intake's backflow, N1's): held at 0.45 m until the intake conserves
+            i["runnerLength"] = min(i["runnerLength"], 0.45)
     i.update(a.get("intake", {}))
 
     bo = {"model": "Machine", "kind": "Natural", "level": 0.0, "blowOff": 0.7}
