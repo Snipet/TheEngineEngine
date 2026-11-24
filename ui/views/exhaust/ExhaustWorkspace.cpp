@@ -337,12 +337,26 @@ namespace tee::ui
 
         // ---- colours ------------------------------------------------------------------------------------------------
         double wall(int section) const { return ctx_.live.get(N::walls[section]); }
+        // With its wall's temperature a pipe is filled with its tint; without, it is drawn as an outline (the ground
+        // inside, a dim edge), so the absent state is plainly not a colour.
+        bool walls() const { return std::isfinite(wall(kPrim)) || std::isfinite(wall(kMain)) || std::isfinite(wall(kTail)); }
         Col pipeFill(const Palette& p, int section) const
         {
             const double t = wall(section);
-            return std::isfinite(t) ? p.heat(t) : Palette::mix(p.panel, p.text, 0.32f);
+            return std::isfinite(t) ? p.heat(t) : walls() ? Palette::mix(p.panel, p.text, 0.32f) : p.ground;
         }
-        Col pipeEdge(const Palette& p) const { return p.dark ? Palette::mix(p.ground, p.edge, 0.6f) : p.edge; }
+        // A part's own stroke (a can's outline, a scroll): its tint, or the dim ink.
+        Col partInk(const Palette& p, int section) const
+        {
+            const double t = wall(section);
+            return std::isfinite(t) ? p.heat(t) : p.dim;
+        }
+        Col pipeEdge(const Palette& p) const
+        {
+            if (!walls())
+                return p.dim;
+            return p.dark ? Palette::mix(p.ground, p.edge, 0.6f) : p.edge;
+        }
         std::string temp(double k) const
         {
             return std::isfinite(k) ? ctx_.units.format(Quantity::temperature, k, 0) : "-";
@@ -353,21 +367,27 @@ namespace tee::ui
         {
             const Rect& s = stage_;
             c.text("EXHAUST", s.x + 20.0f, s.y + 14.0f, look::kTitle, p.label);
-            c.text(build_.sentence().c_str(), s.x + 20.0f, s.y + 34.0f, look::kBody, p.text);
-            // the walls' scale: a strip of the tint with its ends in the user's unit (or a word while there is none)
-            const float x1 = slowButtonRect_.x - 24.0f, w = 168.0f, x0 = x1 - w, y = s.y + 30.0f;
-            c.text("WALL", x0 - c.textWidth("WALL", look::kCaps) - 8.0f, y - 3.0f, look::kCaps, p.label);
+            c.text(build_.sentence().c_str(), s.x + 20.0f, s.y + 42.0f, look::kBody, p.text);
+            // the walls' scale: a strip of the tint with its ends in the user's unit; without the walls' temperatures,
+            // the words instead (the pipes are outlines then)
+            const float x1 = slowButtonRect_.x - 20.0f, w = std::min(150.0f, std::max(80.0f, x1 - s.x - 140.0f)), x0 = x1 - w;
+            const float y = s.y + 14.0f;
+            if (!walls())
+            {
+                const char* t = "NO WALL TEMPERATURES YET";
+                c.text(t, x1 - c.textWidth(t, look::kCaps), y, look::kCaps, p.dim);
+                return;
+            }
+            c.text("WALL", x0 - c.textWidth("WALL", look::kCaps) - 8.0f, y - 2.0f, look::kCaps, p.label);
             const int n = 24;
             for (int i = 0; i < n; ++i)
             {
                 const double k = 350.0 + (1100.0 - 350.0) * (i + 0.5) / n;
                 c.rrect(x0 + w * static_cast<float>(i) / n, y, w / n + 0.5f, 6.0f, 0.0f, p.heat(k));
             }
-            c.text(temp(350.0).c_str(), x0, y + 10.0f, look::kUnit, p.label);
+            c.text(temp(350.0).c_str(), x0, y + 9.0f, look::kUnit, p.label);
             const std::string hot = temp(1100.0);
-            c.text(hot.c_str(), x1 - c.textWidth(hot.c_str(), look::kUnit), y + 10.0f, look::kUnit, p.label);
-            if (!std::isfinite(wall(kPrim)) && !std::isfinite(wall(kMain)))
-                c.text("NO WALL TEMPERATURES YET", x0, y - 16.0f, look::kCaps, p.dim);
+            c.text(hot.c_str(), x1 - c.textWidth(hot.c_str(), look::kUnit), y + 9.0f, look::kUnit, p.label);
         }
 
         // ---- the pipes ---------------------------------------------------------------------------------------------
@@ -573,7 +593,7 @@ namespace tee::ui
                 const auto k = static_cast<std::size_t>(i);
                 char n[8];
                 std::snprintf(n, sizeof n, "%d", i + 1);
-                c.rrect(g.headX - 4.0f, g.portY[k] - 5.0f, 6.0f, 10.0f, 2.0f, pipeFill(p, kPrim));
+                c.rrect(g.headX - 4.0f, g.portY[k] - 5.0f, 6.0f, 10.0f, 2.0f, partInk(p, kPrim));
                 c.text(n, g.headX - 10.0f - c.textWidth(n, look::kNumberS) , g.portY[k] - 7.0f, look::kNumberS, p.text);
             }
             if (g.nBanks == 2)
@@ -602,7 +622,7 @@ namespace tee::ui
             // the turbine housings: a scroll (a disc and an inner arc) with its outlet
             for (const Housing& h : g.housings)
             {
-                const Col fill = pipeFill(p, kColl);
+                const Col fill = partInk(p, kColl);
                 c.disc(h.x, h.y, h.r, Palette::mix(p.panel, fill, 0.5f), 2.0f, fill);
                 c.arc({ h.x, h.y }, h.r * 0.55f, 0.0f, 4.7f, 1.5f, fill);
                 c.disc(h.x, h.y, 2.5f, fill);
@@ -649,7 +669,7 @@ namespace tee::ui
             };
             if (b.conv[k] != 0)
             {
-                const Col fill = pipeFill(p, kMain);
+                const Col fill = partInk(p, kMain);
                 const float x0 = g.convX0, w = g.convX1 - g.convX0;
                 c.rrect(x0, y - 13.0f, w, 26.0f, 9.0f, Palette::mix(p.panel, fill, 0.35f), 1.5f, fill);
                 // the substrate's cells: close for a standard converter, open for a high-flow one
@@ -660,16 +680,16 @@ namespace tee::ui
             }
             if (b.res[k] != 0)
             {
-                const Col fill = pipeFill(p, kLink);
+                const Col fill = partInk(p, kLink), pfill = pipeFill(p, kLink);
                 const float xm = (g.resX0 + g.resX1) * 0.5f;
                 if (b.res[k] == 1)       // a quarter-wave stub: a dead-ended branch
                 {
-                    pipeLine(c, { { xm, y }, { xm, y + out * 34.0f } }, 7.0f, fill, edge);
+                    pipeLine(c, { { xm, y }, { xm, y + out * 34.0f } }, 7.0f, pfill, edge);
                     c.segment(xm - 6.0f, y + out * 38.0f, xm + 6.0f, y + out * 38.0f, 2.5f, edge);
                 }
                 else if (b.res[k] == 2)  // a Helmholtz: a neck into a chamber
                 {
-                    pipeLine(c, { { xm, y }, { xm, y + out * 20.0f } }, 5.0f, fill, edge);
+                    pipeLine(c, { { xm, y }, { xm, y + out * 20.0f } }, 5.0f, pfill, edge);
                     c.disc(xm, y + out * 31.0f, 12.0f, Palette::mix(p.panel, fill, 0.35f), 1.5f, fill);
                 }
                 else                     // a packed bottle in line: the packing as dots
@@ -685,7 +705,7 @@ namespace tee::ui
             }
             if (b.muf[k] != 0)
             {
-                const Col fill = pipeFill(p, kMuff);
+                const Col fill = partInk(p, kMuff);
                 const float x0 = g.mufX0, w = g.mufX1 - g.mufX0;
                 const Col body = Palette::mix(p.panel, fill, 0.3f), inner = Palette::mix(p.panel, fill, 0.85f);
                 if (b.muf[k] == 1)       // straight-through: a round can, a perforated core
@@ -833,39 +853,48 @@ namespace tee::ui
             const float y = s.bottom() - 62.0f;
             c.hairlineH(s.x + 20.0f, y - 8.0f, s.w - 40.0f, p.grid);
             float x = s.x + 20.0f;
-            const double tp = ctx_.live.get(N::port);
-            x += look::readout(c, p, x, y, "GAS AT THE PORTS", temp(tp), {}, look::kNumberM, std::isfinite(tp) ? p.heat(tp) : kClear) + 36.0f;
-            // a part the build lacks has no number (an open stack has no collector and no tail)
+            // the gas's temperatures, each with its label; a part the build lacks (an open stack has no collector and
+            // no tail) has none, and an absent value says so in its label's place
             const bool chain = b.sideOn[0] || b.sideOn[1];
+            const double tp = ctx_.live.get(N::port);
             const double tc = chain ? ctx_.live.get(N::collector) : std::nan(""), tt = chain ? ctx_.live.get(N::tail) : std::nan("");
-            x += look::readout(c, p, x, y, "AT THE COLLECTOR", temp(tc), {}, look::kNumberM, std::isfinite(tc) ? p.heat(tc) : kClear) + 36.0f;
-            x += look::readout(c, p, x, y, "AT THE TAIL", temp(tt), {}, look::kNumberM, std::isfinite(tt) ? p.heat(tt) : kClear) + 48.0f;
-            // the pulses' legend: what the trace is, its scale, and the slow switch's state
-            const float lx = std::max(x, s.right() - 330.0f);
+            c.text("GAS", x, y, look::kCaps, p.label);
+            x += 40.0f;
+            const auto gas = [&](const char* label, double k, bool has) {
+                if (!has)
+                    return;
+                x += look::readout(c, p, x, y, label, temp(k), {}, look::kNumberM, std::isfinite(k) ? p.heat(k) : kClear) + 28.0f;
+            };
+            gas("PORTS", tp, true);
+            gas("COLLECTOR", tc, chain);
+            gas("TAIL", tt, chain);
+            // the pulses' legend: what the trace is and its scale; the slow switch's state on its own line
+            const float lx = std::max(x + 12.0f, s.right() - 20.0f - 250.0f);
             c.text("PULSES", lx, y, look::kCaps, p.label);
             if (shown_.size() >= 2)
             {
-                c.segment(lx, y + 23.0f, lx + 22.0f, y + 23.0f, 1.75f, p.value);
-                char t[96];
-                std::snprintf(t, sizeof t, "cylinder 1 to the tail, +-%s full swing%s",
-                              ctx_.units.format(Quantity::pressure, kPulseScale, 0).c_str(), slow_ ? ", slowed 8x" : "");
-                c.text(t, lx + 30.0f, y + 17.0f, look::kBody, p.text);
+                c.segment(lx, y + 21.0f, lx + 18.0f, y + 21.0f, 1.75f, p.value);
+                const std::string t = "cylinder 1 to its tail, +-" + ctx_.units.format(Quantity::pressure, kPulseScale, 0);
+                c.text(t.c_str(), lx + 24.0f, y + 15.0f, look::kBody, p.text);
+                if (slow_)
+                    c.text("SLOWED 8 TIMES", lx + 24.0f, y + 32.0f, look::kCaps, p.selected);
             }
             else
-                c.text("no pipe pressure from the Scope yet", lx, y + 17.0f, look::kBody, p.dim);
-            // small numbers on the diagram: at cylinder 1's port, at its collector, at the first tail
+                c.text("no pipe pressure from the Scope yet", lx, y + 15.0f, look::kBody, p.dim);
+            // on the diagram: the numbers at cylinder 1's port and its collector, only where there are numbers
             if (b.ports > 0)
             {
-                const std::string t = temp(ctx_.live.get(N::port));
                 const float ty = g.banks[0].y - 16.0f;
-                c.text("PORT", g.headX + 6.0f, ty, look::kCaps, p.label);
-                c.text(t.c_str(), g.headX + 12.0f + c.textWidth("PORT", look::kCaps), ty, look::kUnit, p.text);
+                if (std::isfinite(tp))
+                {
+                    c.text("PORT", g.headX + 6.0f, ty, look::kCaps, p.label);
+                    c.text(temp(tp).c_str(), g.headX + 12.0f + c.textWidth("PORT", look::kCaps), ty, look::kUnit, p.text);
+                }
                 const int c0 = b.portTo[0];
-                if (c0 >= 0)
+                if (c0 >= 0 && std::isfinite(tc))
                 {
                     const auto ck = static_cast<std::size_t>(c0);
-                    const std::string tcol = temp(ctx_.live.get(N::collector));
-                    c.text(tcol.c_str(), g.colX[ck], g.colY[ck] - g.colH[ck] * 0.5f - 16.0f, look::kUnit, p.text);
+                    c.text(temp(tc).c_str(), g.colX[ck], g.colY[ck] - g.colH[ck] * 0.5f - 16.0f, look::kUnit, p.text);
                 }
             }
         }
