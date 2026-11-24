@@ -318,3 +318,25 @@ TEST_CASE("no click: changing the camera, the place and the distance while it so
     // little; a click would be many times it
     CHECK(moving < 1.5 * steady + 0.01);
 }
+
+TEST_CASE("package M's driveline is heard from under the car, not from the bay", "[listen]")
+{
+    Rig rig;
+    rig.set("ss.model", 1);
+    rig.set("ln.sc.windOff", 1);
+    double rel[2];
+    const int cams[2] = {0, 3};
+    for (int k = 0; k < 2; ++k)
+    {
+        rig.set("ss.camera", cams[k]);
+        const double drive = dB(heard(rig, 12));
+        const double valves = dB(heard(rig, kMech));
+        rel[k] = drive - valves;
+    }
+    std::printf("the driveline against the valvetrain (the same signal): %.1f dB behind the car, %.1f dB over the bay\n",
+                rel[0], rel[1]);
+    // behind the car the gearbox and axle are nearer than the bay and not shaded by the cabin; over the open bonnet the
+    // bay is right below
+    CHECK(rel[0] > 6.0);
+    CHECK(rel[1] < -4.0);
+}

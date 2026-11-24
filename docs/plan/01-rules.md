@@ -79,8 +79,20 @@ allocation or logging on the audio thread. No JUCE, anywhere. Third-party code o
   gone (38 tests crashed at exit on macOS; Linux's order hides it). Free it before `main` returns.
 - No transcendental function per sample where a table or a control-rate update will do. Your card gives a CPU
   budget; `tee-bench` measures it.
-- Every Spec field has `[[fminus::range]]`, `[[fminus::default]]`, `[[ui::label]]` and, for a quantity,
-  `[[ui::unit]]`. SI units inside; the interface converts.
+- Every Spec field has `[[fminus::range]]`, `[[fminus::default]]`, `[[ui::label]]` and says what its number is:
+  one of `[[ui::quantity]]`, `[[ui::unit]]` or `[[ui::choices]]` (a `bool` needs none). SI units inside; the
+  interface converts. By kind:
+  - a physical quantity: `[[ui::quantity("length")]]` (one of 02-contracts.md §3's list: the user picks its unit);
+  - a fraction or a ratio: `[[ui::quantity("fraction")]]`, `[[ui::quantity("ratio")]]`;
+  - a level or anything else with a fixed unit: `[[ui::unit("dB")]]`, `[[ui::unit("deg")]]`;
+  - a count: its unit, plural: `int gears [[fminus::range(1, 18)]] [[fminus::default(6)]] [[ui::label("Forward
+    gears")]] [[ui::unit("gears")]];` (as `engine.cylinders` has "cylinders");
+  - a kind, or a switch of more than two ways: `[[ui::choices("Layout's", "Single", "Dual")]]`, one name for each
+    value of the range from its minimum (a special value such as -1 "the layout's" is a choice too);
+  - a table: the table field carries `[[ui::label]]` and `[[ui::axes("rotation", "ratio")]]`; a `Map16` also its z's
+    `[[ui::unit]]` or `[[ui::quantity]]`; the table's own x, y, z, n need nothing.
+  `scripts/lint.sh` runs `tee-schema --lint` on `sim/engine.fm` when a build tree has it and names each field and
+  what it lacks; the contract test fails on the same.
 
 **Comments and docs**: say what and why in plain words, as the reference and FMinus's manual do. No decoration.
 
