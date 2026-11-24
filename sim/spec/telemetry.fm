@@ -146,6 +146,10 @@ module ExhaustTel
         [[ui::help("The gas in the primaries after the port's and the pipe's cooling: a header thermocouple's reading")]];
     float portPressure [[ui::label("Port pressure")]] [[ui::quantity("pressure")]]
         [[ui::help("The exhaust ports' mean pressure, absolute: the back pressure the cylinders blow down and pump against (over some 0.1 s)")]];
+    float flap [[ui::label("Exhaust flap")]] [[ui::quantity("fraction")]]
+        [[ui::help("The flap's closing, 0 open to 1 shut (less what its relief has blown open); 0 with none")]];
+    float pFlap [[ui::label("Before the flap")]] [[ui::quantity("pressure")]]
+        [[ui::help("The pressure before the flap, over the air: the brake's back pressure")]];
 };
 
 module EcuTel
