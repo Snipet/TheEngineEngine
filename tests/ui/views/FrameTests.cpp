@@ -32,6 +32,7 @@ namespace
 
         explicit FrameRig(int w = 1280, int h = 800, float dpi = 2.0f, double t = 4.6) : demo(t)
         {
+            demo.engine.hold(true);   // every picture at the same moment of the script
             tee::ui::FrameServices s;
             s.app = demo.app;
             s.buildName = [this] { return name; };
@@ -435,6 +436,14 @@ namespace
             for (const char* id : kIds)
             {
                 rig.showWorkspace(id);
+                // A workspace another package registered has its own goldens; the frame's are of the placeholders
+                // and of DRIVE (U1's).
+                const int i = rig.frame->find(id);
+                if (!rig.frame->placeholder(i) && std::string(id) != "drive")
+                {
+                    picture("frame." + lower(id) + (dpi < 1.5f ? ".dpi1" : ""), *rig.host);
+                    continue;
+                }
                 golden("frame." + lower(id) + (dpi < 1.5f ? ".dpi1" : ""), *rig.host);
             }
         }

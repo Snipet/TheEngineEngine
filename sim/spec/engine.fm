@@ -10,7 +10,28 @@
 // reference's short fade (6 ms down, the change, 80 ms back up), the displacement once its value has rested 0.15 s;
 // stopped, at once. The bore over the stroke and the compression glide over 80 ms; the trims, rough and the load act
 // at once.
+//
+// Card D's fields, appended (docs/models/mechanics.md). With `custom` off (the default) none of them is read and the
+// engine is the reference's. With it on:
+//   the layout is the cylinders below (each one's bank, crank pin, firing revolution and place along the crank, each
+//   bank's angle: core/layout.fm derives the firing angles), or, with `rotors` above 0, a rotary of that many rotors;
+//   the cylinder is `bore` and `stroke` (0: from the displacement and bore/stroke dials) and `rodLength` (0: 3.3 times
+//   the crank's radius, the reference's), at `compression` (the dial above: the same quantity);
+//   the moving masses (`pistonMass`, `rodMass`, `rodRecip`) give the inertia torque and the varying inertia, and
+//   `flywheelInertia` the crank's (0: the reference's, by layout and size and the flywheel dial);
+//   friction is by part (core/friction.fm, Chen and Flynn's form), each coefficient a field;
+//   `redlineSpeed` (0: by piston speed, 25 m/s);
+//   `balance1`, `balance2`: balance shafts (telemetry only until wave 2 hears the shake).
+// The layout, the cylinder's geometry and the masses are taken under the fade (as the layout dial); the friction's
+// coefficients, the accessories and the balance shafts act at once.
 #pragma once
+#include "limits.fm"
+
+enum
+{
+    ENGINE_MAX_BANKS = 4,      // a W engine's four
+    ENGINE_MAX_ROTORS = 4      // a rotary's rotors (three faces each: twelve, within MAX_CYL)
+};
 
 module EngineSpec
 {
@@ -37,4 +58,55 @@ module EngineSpec
         [[ui::help("How much one cycle differs from the next")]];
     float benchLoad [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Bench load")]]
         [[ui::quantity("fraction")]] [[ui::help("The load a bench puts on the crank, with no vehicle")]];
+    // ---- card D: a custom engine ----
+    bool custom [[fminus::default(0)]] [[ui::label("Custom engine")]] [[ui::group("Custom engine")]]
+        [[ui::help("Off: the reference's layouts and dials. On: the geometry, masses and friction below.")]];
+    int cylinders [[fminus::range(1, 16)]] [[fminus::default(8)]] [[ui::label("Cylinders")]] [[ui::unit("cylinders")]];
+    int rotors [[fminus::range(0, 4)]] [[fminus::default(0)]] [[ui::label("Rotors")]] [[ui::unit("rotors")]]
+        [[ui::help("Above 0: a rotary of this many rotors, three faces each; the cylinders' fields are its rotors'.")]];
+    float bankAngle [[fminus::range(-180, 180)]] [[fminus::default(0)]] [[ui::label("Bank angle")]] [[ui::unit("deg")]]
+        [[ui::help("Each bank's cylinder axis from vertical, crank degrees in the direction it turns.")]] [ENGINE_MAX_BANKS];
+    int bank [[fminus::range(0, 3)]] [[fminus::default(0)]] [[ui::label("Bank")]] [[ui::choices("A", "B", "C", "D")]] [MAX_CYL];
+    float pin [[fminus::range(0, 360)]] [[fminus::default(0)]] [[ui::label("Crank pin")]] [[ui::unit("deg")]]
+        [[ui::help("Where the cylinder's crank pin sits on the crank at crank angle 0.")]] [MAX_CYL];
+    int fireRev [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Fires on revolution")]] [[ui::choices("First", "Second")]] [MAX_CYL];
+    float place [[fminus::range(0, 2)]] [[fminus::default(0)]] [[ui::label("Place along the crank")]] [[ui::quantity("length")]] [MAX_CYL];
+    float bore [[fminus::range(0, 0.25)]] [[fminus::default(0)]] [[ui::label("Bore")]] [[ui::quantity("length")]]
+        [[ui::help("0: from the displacement and bore/stroke dials.")]];
+    float stroke [[fminus::range(0, 0.25)]] [[fminus::default(0)]] [[ui::label("Stroke")]] [[ui::quantity("length")]]
+        [[ui::help("0: from the displacement and bore/stroke dials.")]];
+    float rodLength [[fminus::range(0, 0.6)]] [[fminus::default(0)]] [[ui::label("Rod length")]] [[ui::quantity("length")]]
+        [[ui::help("Centre to centre. 0: 3.3 times the crank's radius, the reference's.")]];
+    float pistonMass [[fminus::range(0, 20)]] [[fminus::default(0)]] [[ui::label("Piston, pin and rings")]]
+        [[ui::quantity("mass")]] [[ui::help("0: by the bore (core/inertia.fm).")]];
+    float rodMass [[fminus::range(0, 20)]] [[fminus::default(0)]] [[ui::label("Rod")]] [[ui::quantity("mass")]]
+        [[ui::help("0: by the bore and the rod's length (core/inertia.fm).")]];
+    float rodRecip [[fminus::range(0, 1)]] [[fminus::default(0.333)]] [[ui::label("Rod's share moving with the piston")]]
+        [[ui::quantity("fraction")]];
+    float flywheelInertia [[fminus::range(0, 5)]] [[fminus::default(0)]] [[ui::label("Crank and flywheel")]]
+        [[ui::quantity("inertia")]] [[ui::help("0: the reference's, by layout and size and the flywheel dial.")]];
+    bool balance1 [[fminus::default(0)]] [[ui::label("First-order balance shafts")]];
+    bool balance2 [[fminus::default(0)]] [[ui::label("Second-order balance shafts")]];
+    float fricConst [[fminus::range(0, 200000)]] [[fminus::default(40000)]] [[ui::label("Friction: constant")]]
+        [[ui::quantity("pressure")]] [[ui::help("Seals, the oil pump's base load.")]];
+    float fricPeak [[fminus::range(0, 0.02)]] [[fminus::default(0.004)]] [[ui::label("Friction: rings by peak pressure")]] [[ui::quantity("ratio")]]
+        [[ui::decimals(4)]] [[ui::help("Mean friction pressure per unit of peak cylinder pressure.")]];
+    float fricSpeed [[fminus::range(0, 10000)]] [[fminus::default(2000)]] [[ui::label("Friction: rings and skirts by piston speed")]]
+        [[ui::unit("Pa s/m")]];
+    float fricSpeed2 [[fminus::range(0, 1000)]] [[fminus::default(190)]] [[ui::label("Friction: by piston speed squared")]]
+        [[ui::unit("Pa s2/m2")]];
+    float fricBearing [[fminus::range(0, 20000)]] [[fminus::default(3500)]] [[ui::label("Friction: bearings, per 1000 rpm")]]
+        [[ui::unit("Pa")]];
+    int frictionValvetrain [[fminus::range(0, 3)]] [[fminus::default(0)]] [[ui::label("Friction: valvetrain")]]
+        [[ui::choices("Flat tappet", "Roller", "Finger follower", "None")]] [[ui::help("Until card E's valvetrain kind.")]];
+    float alternator [[fminus::range(0, 5000)]] [[fminus::default(300)]] [[ui::label("Alternator load")]]
+        [[ui::quantity("power")]];
+    bool airCon [[fminus::default(0)]] [[ui::label("Air conditioner")]];
+    float redlineSpeed [[fminus::range(0, 2500)]] [[fminus::default(0)]] [[ui::label("Redline")]] [[ui::quantity("rotation")]]
+        [[ui::help("0: by piston speed (25 m/s; a diesel's 13.5).")]];
+    float portExOpen [[fminus::range(0, 1080)]] [[fminus::default(0)]] [[ui::label("Rotary: exhaust port opens")]]
+        [[ui::unit("deg")]] [[ui::help("Degrees of the eccentric shaft; 0: the reference's peripheral port, by the cam dial.")]];
+    float portExDur [[fminus::range(0, 720)]] [[fminus::default(0)]] [[ui::label("Rotary: exhaust port open for")]] [[ui::unit("deg")]];
+    float portInOpen [[fminus::range(0, 1080)]] [[fminus::default(0)]] [[ui::label("Rotary: intake port opens")]] [[ui::unit("deg")]];
+    float portInDur [[fminus::range(0, 720)]] [[fminus::default(0)]] [[ui::label("Rotary: intake port open for")]] [[ui::unit("deg")]];
 };

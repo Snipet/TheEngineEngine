@@ -1,0 +1,230 @@
+// tests/ui/views/ExhaustTests.cpp: the EXHAUST workspace (ui/views/exhaust/): the system as built over several builds,
+// what a press selects, what an absent value draws, the stage at rest, the slow switch; goldens and pictures at density
+// 1 and 2, at 1100x700 and 1600x1000, in both themes. Every picture is the software rasteriser's.
+#include "ViewKit.h"
+
+#include "app/Look.h"
+#include "views/exhaust/ExhaustDemo.h"
+#include "views/exhaust/ExhaustModel.h"
+#include "views/exhaust/ExhaustStage.h"
+#include "views/exhaust/ExhaustWorkspace.h"
+
+#include <funkgui/core/Theme.h>
+
+namespace
+{
+    using namespace tee::test::views;
+    namespace ex = tee::ui::exhaust;
+
+    // The demo with the exhaust builder's fields (ExhaustDemo.h) and one of its builds; the workspace alone in a
+    // headless host, its stage the whole window.
+    struct ExRig
+    {
+        tee::ui::DemoRig demo;
+        tee::ui::MemoryDoc doc{ ex::exhaustDemoFields() };
+        tee::ui::WorkspaceContext ctx{ doc, demo.engine, demo.engine, demo.engine, demo.units, demo.selection, demo.app };
+        std::unique_ptr<tee::ui::Workspace> ws;
+        std::unique_ptr<funkgui::HeadlessHost> host;
+        int w, h;
+
+        ExRig(const char* build, int width = 1100, int height = 700, float dpi = 2.0f, double t = 4.6, int theme = 0)
+            : demo(t), w(width), h(height)
+        {
+            if (build != nullptr)
+                ex::setExhaustDemoBuild(doc, build);
+            ex::exhaustDemoLive(demo.engine);
+            ws = tee::ui::makeExhaustWorkspace(ctx);
+            host = std::make_unique<funkgui::HeadlessHost>(*ws, theme, dpi);
+            host->resize(w, h);
+            ws->place({ 0.0f, 0.0f, static_cast<float>(w), static_cast<float>(h) });
+            host->tick(90);
+        }
+        // The geometry the workspace lays out (the same arithmetic, from the same build and stage).
+        ex::Geo geo() const
+        {
+            const float W = static_cast<float>(w), H = static_cast<float>(h);
+            return ex::layoutExhaust(ex::resolveExhaust(doc), { 20.0f, 84.0f, W - 40.0f, H - 84.0f - 74.0f });
+        }
+        const ex::Hit* hit(const std::string& id) const
+        {
+            static ex::Geo g;
+            g = geo();
+            for (const ex::Hit& x : g.hits)
+                if (x.id == id)
+                {
+                    static ex::Hit keep;
+                    keep = x;
+                    return &keep;
+                }
+            return nullptr;
+        }
+    };
+
+    // The model resolves each build as the simulator's builder would (sim/exhaust/slots.fm resolve()).
+    VIEW_TEST(testExhaustModel, "exhaust.model")
+    {
+        tee::ui::MemoryDoc doc{ ex::exhaustDemoFields() };
+        CHECK(ex::setExhaustDemoBuild(doc, "na4-421"));
+        ex::ExhaustBuild b = ex::resolveExhaust(doc);
+        CHECK(b.layout == 5 && b.ports == 4 && b.sides == 1 && b.anyMerge() && b.turbos == ex::Turbos::none);
+        CHECK(b.portTo[0] == 0 && b.portTo[1] == 1 && b.portTo[2] == 1 && b.portTo[3] == 0);
+        CHECK(b.colOn[2] && b.colFed[2] && b.colTo[0] == 4 && b.colTo[2] == 0 && b.res[0] == 1 && b.muf[0] == 2);
+
+        CHECK(ex::setExhaustDemoBuild(doc, "tt-v8-x"));
+        b = ex::resolveExhaust(doc);
+        CHECK(b.layout == 12 && b.ports == 8 && b.sides == 2 && b.cross == 2 && b.turbos == ex::Turbos::perBank);
+        CHECK(b.portTo[0] == 0 && b.portTo[1] == 1 && b.colTo[0] == 0 && b.colTo[1] == 1);   // a collector a bank
+        CHECK(b.tips[0] == 2 && b.byp[1] == 3 && b.conv[0] == 2 && b.tag[0] == ex::Tag::rearLeft);
+
+        CHECK(ex::setExhaustDemoBuild(doc, "sc-v8-180"));
+        b = ex::resolveExhaust(doc);
+        CHECK(b.supercharger && b.turbos == ex::Turbos::none && b.cross == 1 && b.crossAt == 1 && b.muf[1] == 3);
+        CHECK(b.portTo[1] == 1 && b.portTo[2] == 1 && b.bank[2] == 0);   // cylinder 3 (left bank) to the right collector
+        CHECK(b.primLen[2] > b.primLen[0]);                               // the crossing primaries are longer
+
+        CHECK(ex::setExhaustDemoBuild(doc, "single-stack"));
+        b = ex::resolveExhaust(doc);
+        CHECK(b.ports == 1 && b.openStacks() && !b.sideOn[0] && !b.sideOn[1]);
+
+        CHECK(ex::setExhaustDemoBuild(doc, "flat4"));
+        b = ex::resolveExhaust(doc);
+        CHECK(b.ports == 4 && b.bank[1] == 1 && b.primLen[1] > b.primLen[0] * 1.5f);   // the boxer's unequal lengths
+
+        // the demo's own Spec (no builder fields): the layout by its label, the crossover by its switch
+        tee::ui::MemoryDoc plain{ tee::ui::demoFields() };
+        b = ex::resolveExhaust(plain);
+        CHECK(b.layout == 12 && b.sides == 2 && b.cross == 2 && b.turbos == ex::Turbos::one);
+        CHECK(ex::layoutFromLabel("I4") == 5 && ex::layoutFromLabel("V8 flat-plane") == 13 && ex::layoutFromLabel("x") == -1);
+        return 0;
+    }
+
+    // The stage over U1's demo alone (its made-up Spec, no builder fields): the default system, density 2 and 1.
+    VIEW_TEST(testExhaustStage, "exhaust.stage")
+    {
+        StageRig rig(tee::ui::makeExhaustWorkspace, 1100, 700, 2.0f);
+        ex::exhaustDemoLive(rig.demo.engine);
+        rig.settle();
+        golden("exhaust.stage", *rig.host);
+        StageRig one(tee::ui::makeExhaustWorkspace, 1100, 700, 1.0f);
+        ex::exhaustDemoLive(one.demo.engine);
+        one.settle();
+        golden("exhaust.stage.dpi1", *one.host);
+        return 0;
+    }
+
+    // The four builds the card names, and two more, each its own picture and golden (density 2; the first also at 1).
+    VIEW_TEST(testExhaustBuilds, "exhaust.builds")
+    {
+        const char* const builds[] = { "na4-421", "tt-v8-x", "sc-v8-180", "single-stack", "v12-log", "flat4" };
+        for (const char* b : builds)
+        {
+            ExRig rig(b);
+            golden(std::string("exhaust.build.") + b, *rig.host);
+        }
+        ExRig one("na4-421", 1100, 700, 1.0f);
+        golden("exhaust.build.na4-421.dpi1", *one.host);
+        return 0;
+    }
+
+    // A press on each element selects its prefix; the selected one is ringed and named; a press on nothing keeps it.
+    VIEW_TEST(testExhaustSelect, "exhaust.select")
+    {
+        ExRig rig("tt-v8-x");
+        const char* const ids[] = { "exhaust.primary[0]", "exhaust.collector[1]", "boost", "exhaust.converter[0]",
+                                    "exhaust.main[1]",    "exhaust.crossover",    "exhaust.muffler[0]",
+                                    "exhaust.bypass[1]",  "exhaust.tail[0]",      "exhaust.primary[7]" };
+        for (const char* id : ids)
+        {
+            const ex::Hit* h = rig.hit(id);
+            CHECK_MSG(h != nullptr, id);
+            if (h == nullptr)
+                continue;
+            rig.host->click(h->r.centreX(), h->r.centreY());
+            CHECK_MSG(rig.demo.selection.path() == id, std::string(id) + " selected " + rig.demo.selection.path());
+        }
+        rig.host->click(rig.w * 0.5f, 60.0f);   // the header: nothing
+        CHECK(rig.demo.selection.path() == "exhaust.primary[7]");
+        const ex::Hit* m = rig.hit("exhaust.muffler[1]");
+        rig.host->click(m->r.centreX(), m->r.centreY());
+        CHECK(rig.demo.selection.is("exhaust.muffler") && rig.demo.selection.is("exhaust.muffler[1]"));
+        rig.host->move(rig.hit("exhaust.converter[1]")->r.centreX(), rig.hit("exhaust.converter[1]")->r.centreY());
+        CHECK(rig.demo.selection.hovered() == "exhaust.converter[1]");
+        rig.host->tick(20);
+        golden("exhaust.select", *rig.host);
+
+        // the 4-2-1's merge and the single's stack
+        ExRig four("na4-421");
+        const ex::Hit* merge = four.hit("exhaust.collector[2]");
+        CHECK(merge != nullptr && merge->name == "MERGE 3");
+        ExRig single("single-stack");
+        const ex::Hit* stack = single.hit("exhaust.primary[0]");
+        CHECK(stack != nullptr);
+        single.host->click(stack->r.right() - 4.0f, stack->r.centreY());
+        CHECK(single.demo.selection.path() == "exhaust.primary[0]");
+        CHECK(single.hit("exhaust.tail[0]") == nullptr);   // no chain on an open stack
+        return 0;
+    }
+
+    // Nothing live: the walls neutral, every number a dash, no trace; nothing crashes and nothing is invented.
+    VIEW_TEST(testExhaustAbsent, "exhaust.absent")
+    {
+        ExRig rig("tt-v8-x");
+        for (const char* n : { "exhaust.portTemperature", "exhaust.collectorTemperature", "exhaust.tailTemperature",
+                               "exhaust.wallPrimaries", "exhaust.wallCollectors", "exhaust.wallMerges", "exhaust.wallMain",
+                               "exhaust.wallLink", "exhaust.wallMufflers", "exhaust.wallTails", "exhaust.tailLevel[0]",
+                               "exhaust.tailLevel[1]", "exhaust.valve[0]", "exhaust.valve[1]" })
+            rig.demo.engine.forget(n);
+        rig.host->tick(5);
+        golden("exhaust.absent", *rig.host);
+        return 0;
+    }
+
+    // At rest the stage asks for nothing: not moving, its key the same frame after frame. A new Scope copy moves it.
+    VIEW_TEST(testExhaustRest, "exhaust.rest")
+    {
+        ExRig rig("sc-v8-180");
+        CHECK(!rig.ws->moving());
+        const std::uint64_t k = rig.ws->drawKey();
+        rig.host->tick(30);
+        CHECK(rig.ws->drawKey() == k && !rig.ws->moving());
+        rig.demo.engine.tick(1.0f / 60.0f);    // the demo's script on: a new Scope copy
+        rig.host->tick(1);
+        CHECK(rig.ws->drawKey() != k);
+        return 0;
+    }
+
+    // SLOW: the copies replayed at an eighth of their pace, so the stage keeps moving while it catches up.
+    VIEW_TEST(testExhaustSlow, "exhaust.slow")
+    {
+        ExRig rig("tt-v8-x");
+        rig.host->click(rig.w - 16.0f - 32.0f, 25.0f);   // the SLOW button
+        for (int i = 0; i < 12; ++i)
+        {
+            rig.demo.engine.tick(1.0f / 60.0f);
+            rig.host->tick(1);
+        }
+        CHECK(rig.ws->moving());
+        const std::uint64_t a = rig.ws->drawKey();
+        rig.host->tick(1);
+        CHECK(rig.ws->drawKey() != a);         // still replaying, with no new copy
+        picture("exhaust.slow", *rig.host);
+        rig.host->click(rig.w - 16.0f - 32.0f, 25.0f);   // off: the newest at once
+        rig.host->tick(30);
+        CHECK(!rig.ws->moving());
+        return 0;
+    }
+
+    // The large window and the paper theme, both densities.
+    VIEW_TEST(testExhaustSizes, "exhaust.sizes")
+    {
+        ExRig big("tt-v8-x", 1600, 1000, 2.0f);
+        golden("exhaust.large", *big.host);
+        ExRig big1("tt-v8-x", 1600, 1000, 1.0f);
+        golden("exhaust.large.dpi1", *big1.host);
+        ExRig paper("sc-v8-180", 1100, 700, 2.0f, 4.6, 1);
+        golden("exhaust.paper", *paper.host);
+        ExRig paper1("sc-v8-180", 1100, 700, 1.0f, 4.6, 1);
+        golden("exhaust.paper.dpi1", *paper1.host);
+        return 0;
+    }
+}
