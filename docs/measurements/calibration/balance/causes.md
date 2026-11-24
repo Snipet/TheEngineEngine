@@ -48,7 +48,7 @@ the big block (635 → 595, 600 to 690) just under, and the short tuned engines 
 465): their shortfall is breathing (N1's B). Sensitivities beside it (λ 1, not proposed): gamma 0.02 lower, -3.3 %;
 Woschni's combustion term doubled (walls 0.14 → 0.18 of the fuel), -3.3 %.
 
-**The mixture's dependence (the lead's condition, 20:15).** Gatowski's fit is for a charge near stoichiometric; a
+**The mixture's dependence (the lead's condition, 19:56).** Gatowski's fit is for a charge near stoichiometric; a
 diesel burns at φ 0.65 to 0.75. Ceviz and Kaymaz (Energy Conversion and Management 46, 2005) give the direction only
 (γ rises as the mixture leans); their coefficients were not reachable here. Sized from first principles instead:
 frozen products of CH1.8 with JANAF heat capacities (N2, O2, CO2, H2O; recalled, 1 to 2 %), γ at φ 0.7 against 1.0 is
@@ -85,7 +85,7 @@ stoichiometric charge's heat (φ 1.05: 0.984; 1.2: 0.938; about 1 - 0.32 (φ - 1
 is 0.92, where chemistry and the burn's 0.97 give 0.85. A scratch tree with 1 - 0.32 (φ - 1): released 0.924 → 0.845,
 torque -8.3 % (flat six), -8.8 % (small block).
 
-**Settled for now (20:30, after N3-1's sweep above):** with Gatowski's γ the rich side still puts best torque at λ 0.90,
+**Settled for now (20:04 by date -u, after N3-1's sweep above):** with Gatowski's γ the rich side still puts best torque at λ 0.90,
 5 to 7 % over stoichiometric; the parabola's gain is not visibly too generous against that shape, and without the
 fuel-air cycle's figure open there is no sourced curve to replace it with. It stays.
 
