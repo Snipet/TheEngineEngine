@@ -518,6 +518,7 @@ module Engine
         mechanicsSetup();
         // (card F: boost.model 1's machine sized to this engine, at rest, on its four-stroke-equivalent displacement: a
         // rotary's faces fire once a shaft turn and a two-stroke's cylinders once a turn, twice vTotal; nothing in model 0)
+        boost.designSpeed(fuelUse != 0 ? (spec.ecu.ratedSpeed > 0.0f ? spec.ecu.ratedSpeed * 9.5492966f : ecu.redRpm) : -1.0f);   // (N2: a governed diesel's rated speed; -1 spark ignition)
         boost.applyMachine(&spec.boost, vTotal * (lay.rotary != 0 || (spec.engine.cycle != 0 && customUse != 0) ? 2.0f : 1.0f), ecu.redRpm, 101325.0f, heat.tAmb);
         ecu.overBoostRef = boost.overBoostLevel();     // (N2: the machine's own over-boost level for ecu.model 1's cut)
         // (card T: a two-stroke, on a custom engine's geometry and mechanics: its cylinders and pipes at rest where the
@@ -913,10 +914,12 @@ module Engine
                                                boost.mach.turb[0].vaneMin), 0);   // (card D2: a VGT's brake position while a brake is on, held under the shaft's limit; -1 its own loop)
             boost.control16(d16, ecu.boostTarget(), ecu.antiLag(), ecu.nitrous());
             intk.pBox = boost.pressure();
+            intk.fedByMachine = boost.mach.active;      // (N1: a machine's own filter before it: no air box between)
             intk.tAir = boost.temperature();
         }
         else
         {
+            intk.fedByMachine = 0;
             intk.pBox = 101325.0f + 100000.0f * boost.boost;
             intk.tAir = heat.tAmb + 5.0f * heat.warm + 25.0f * boost.boost;
         }
@@ -1330,13 +1333,16 @@ module Engine
         // (boost.model 1: the boost's volume read each sample, as the intake draws from it each sample: with a small
         // volume behind runner throttles it moved far in the 16 samples between control ticks, X-022; N1's line)
         if (spec.boost.model != 0)
+        {
             intk.pBox = boost.pressure();
+            intk.fedByMachine = boost.mach.active;
+        }
         intk.haveValves = 1;
         intk.plenum(np, rNear, fuelUse, vt.plateOpen() != 0 ? 1.0f : ecu.throttle, ecu.bypass, dt);
         intk.mValves = 0.0f;
         // (the throttle's volume flow taken at the pressure the intake took it at: the box's, with its depression, behind
         // intake.model 1's single throttle)
-        airThrottle += (double)(intk.qThr * (spec.intake.model != 0 && intk.itbs == 0 ? intk.pBox + intk.box.p : intk.pBox) / (287.0f * intk.tAir) * dt);
+        airThrottle += (double)(intk.qThr * (spec.intake.model != 0 && intk.itbs == 0 && intk.fedByMachine == 0 ? intk.pBox + intk.box.p : intk.pBox) / (287.0f * intk.tAir) * dt);
         mech.torques(crank.rpm, crank.omega, strokeK, heat.viscK, fuelUse, smCR, vTotal, set.load, ecu.redRpm, heat.tAmb, ecu.starterOn,
                      cyl[0].vd);
         // (a custom engine's friction by part: core/friction.fm, on the last cycle's peak pressure)
@@ -1565,6 +1571,7 @@ module Engine
             s->turbo = spec.boost.level;
             s->tsize = spec.boost.size;
             s->bov = spec.boost.blowOff;
+            boost.designSpeed(fuelUse != 0 ? (spec.ecu.ratedSpeed > 0.0f ? spec.ecu.ratedSpeed * 9.5492966f : ecu.redRpm) : -1.0f);   // (N2: a governed diesel's rated speed; -1 spark ignition)
             boost.applyMachine(&spec.boost, vTotal * (lay.rotary != 0 || (spec.engine.cycle != 0 && customUse != 0) ? 2.0f : 1.0f), ecu.redRpm, 101325.0f, heat.tAmb);
             ecu.overBoostRef = boost.overBoostLevel();     // (N2: the machine's own over-boost level for ecu.model 1's cut)
         }
