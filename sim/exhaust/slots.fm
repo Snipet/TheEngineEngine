@@ -3,7 +3,7 @@
 // The reference (sim/ref/engine.fm) has three fixed topologies chosen by the layout: all the headers into one
 // collector, a collector a bank merging into one pipe, or a collector a bank each into its own pipe with an H between
 // them; each then the same chain: the main pipe with a converter at its head, the muffler's two chambers and tube, the
-// tail. Here the same physics is put together from a description (XSpec, buildspec.fm):
+// tail. Here the same physics is put together from a description (spec.exhaust's builder fields, sim/spec/exhaust.fm):
 //
 //   the headers    which collector each port's primary joins, or none (an open stack): 4-into-1, 4-2-1 and tri-Y, a
 //                  collector a bank, 180-degree headers (pairs across the banks), a boxer's unequal lengths, a log
@@ -77,7 +77,7 @@ enum
 module XBuild
 {
     XNet net;
-    XSpec sp;
+    ExhaustSpec* sp;    // the description (spec.exhaust's builder fields), the owner's
     XEngine eng;
     XHeat heat;
     float rate;
@@ -238,7 +238,7 @@ module XBuild
     void resolve()
     {
         nPorts = eng.ports < 0 ? 0 : (eng.ports > XS_PORTS ? XS_PORTS : eng.ports);
-        nSides = sp.sides > 0 ? (sp.sides > 2 ? 2 : sp.sides) : (eng.topo == 2 ? 2 : 1);
+        nSides = sp->sides > 0 ? (sp->sides > 2 ? 2 : sp->sides) : (eng.topo == 2 ? 2 : 1);
         for (int c = 0; c < XS_COLL; ++c)
         {
             colOn[c] = 0;
@@ -246,7 +246,7 @@ module XBuild
         }
         for (int i = 0; i < XS_PORTS; ++i)
         {
-            int to = sp.primaryTo[i];
+            int to = sp->primaryTo[i];
             if (to == -2 || to < -2 || to >= XS_COLL)
                 to = autoPort(i);
             portTo[i] = i < nPorts ? to : -1;
@@ -256,7 +256,7 @@ module XBuild
         // a collector's pipe goes to a side, or merges into a collector that goes to a side (two levels at most)
         for (int c = 0; c < XS_COLL; ++c)
         {
-            int to = sp.collectorTo[c];
+            int to = sp->collectorTo[c];
             if (to < 0 || to > XS_COLL + 1)
                 to = nSides == 2 ? (c & 1) : 0;
             if (to >= 2 && (to - 2 == c))
@@ -304,7 +304,7 @@ module XBuild
             if (colOn[c] != 0 && colTo[c] < 2)
                 sideOn[colTo[c]] = 1;
         }
-        crossK = nSides == 2 ? (sp.crossover < 0 ? 0 : (sp.crossover > 2 ? 2 : sp.crossover)) : 0;
+        crossK = nSides == 2 ? (sp->crossKind < 0 ? 0 : (sp->crossKind > 2 ? 2 : sp->crossKind)) : 0;
         // a crossover feeds the other side; with nothing on either side, there is no chain at all
         if (crossK != 0 && (sideOn[0] != 0 || sideOn[1] != 0))
         {
@@ -313,16 +313,16 @@ module XBuild
         }
         if (crossK != 0 && sideOn[0] == 0)
             crossK = 0;
-        crossPos = sp.crossAt != 0 ? 1 : 0;
-        hasStep = sp.primStepAt > 0.01f ? 1 : 0;
+        crossPos = sp->crossAt != 0 ? 1 : 0;
+        hasStep = sp->primStepAt > 0.01f ? 1 : 0;
         for (int s = 0; s < XS_SIDES; ++s)
         {
-            conv[s] = sp.converter[s] < 0 ? 0 : (sp.converter[s] > 2 ? 2 : sp.converter[s]);
-            res[s] = sp.resonator[s] < 0 ? 0 : (sp.resonator[s] > 3 ? 3 : sp.resonator[s]);
-            muf[s] = sp.muffler[s] < 0 ? 0 : (sp.muffler[s] > 3 ? 3 : sp.muffler[s]);
-            byp[s] = muf[s] != 0 ? (sp.bypass[s] < 0 ? 0 : (sp.bypass[s] > 4 ? 4 : sp.bypass[s])) : 0;
-            tips[s] = sp.tips[s] >= 2 ? 2 : 1;
-            const int ea = sp.exitAt[s];
+            conv[s] = sp->converter[s] < 0 ? 0 : (sp->converter[s] > 2 ? 2 : sp->converter[s]);
+            res[s] = sp->resonator[s] < 0 ? 0 : (sp->resonator[s] > 3 ? 3 : sp->resonator[s]);
+            muf[s] = sp->mufKind[s] < 0 ? 0 : (sp->mufKind[s] > 3 ? 3 : sp->mufKind[s]);
+            byp[s] = muf[s] != 0 ? (sp->bypass[s] < 0 ? 0 : (sp->bypass[s] > 4 ? 4 : sp->bypass[s])) : 0;
+            tips[s] = sp->tips[s] >= 2 ? 2 : 1;
+            const int ea = sp->exitAt[s];
             if (ea < 0 || ea > 6)
                 tag[s] = nSides == 2 ? (s == 0 ? XTAG_REAR_L : XTAG_REAR_R) : XTAG_REAR_C;
             else
@@ -399,7 +399,7 @@ module XBuild
                     kColUp[c2] = net.branch(j, XD_COLL + c2, 1);
             }
             net.branch(j, XD_COLL + c, 0);
-            if (sp.colVol[c] > 1.0e-6f)
+            if (sp->colVol[c] > 1.0e-6f)
             {
                 kVol[c] = net.branch(j, XD_VOL + c, 0);
                 net.closed(XD_VOL + c);
@@ -790,13 +790,13 @@ module XBuild
             int n = 0;
             for (int i = 0; i < nPorts; ++i)
             {
-                lSum += sp.primLen[i] > 0.0f ? sp.primLen[i] : eng.hdr * hk;
-                dSum += sp.primD[i] > 0.0f ? sp.primD[i] : dHead;
+                lSum += sp->primLen[i] > 0.0f ? sp->primLen[i] : eng.hdr * hk;
+                dSum += sp->primD[i] > 0.0f ? sp->primD[i] : dHead;
                 n += 1;
             }
             if (n > 0)
-                heat.kind(XH_PRIM, meanOf(lSum, n, sp.primLen[0] > 0.0f ? sp.primLen[0] : eng.hdr * hk),
-                          meanOf(dSum, n, sp.primD[0] > 0.0f ? sp.primD[0] : dHead), (float)nPorts);
+                heat.kind(XH_PRIM, meanOf(lSum, n, sp->primLen[0] > 0.0f ? sp->primLen[0] : eng.hdr * hk),
+                          meanOf(dSum, n, sp->primD[0] > 0.0f ? sp->primD[0] : dHead), (float)nPorts);
             int n1 = 0;
             int n2 = 0;
             float l1 = 0.0f;
@@ -811,8 +811,8 @@ module XBuild
             {
                 if (colOn[c] == 0)
                     continue;
-                const float l = sp.colLen[c] > 0.0f ? sp.colLen[c] : (eng.bike > 0.5f ? 0.25f : 0.38f);
-                const float dd = sp.colD[c] > 0.0f ? sp.colD[c] : (nColOn == 1 ? eng.pipeD : 0.922f * eng.pipeD);
+                const float l = sp->colLen[c] > 0.0f ? sp->colLen[c] : (eng.bike > 0.5f ? 0.25f : 0.38f);
+                const float dd = sp->colD[c] > 0.0f ? sp->colD[c] : (nColOn == 1 ? eng.pipeD : 0.922f * eng.pipeD);
                 if (colFed[c] != 0)
                 {
                     if (n2 == 0)
@@ -862,10 +862,10 @@ module XBuild
                 if (sideOn[s] == 0)
                     continue;
                 nOn += 1;
-                const float lms = sp.mainLen[s] > 0.0f ? sp.mainLen[s] : eng.mainLen * pk;
-                const float dms = sp.mainD[s] > 0.0f ? sp.mainD[s] : eng.pipeD;
-                const float lts = sp.tailLen[s] > 0.0f ? sp.tailLen[s] : (eng.bike > 0.5f ? 0.10f : 0.40f);
-                const float dts = sp.tailD[s] > 0.0f ? sp.tailD[s] : eng.tailD;
+                const float lms = sp->mainLen[s] > 0.0f ? sp->mainLen[s] : eng.mainLen * pk;
+                const float dms = sp->mainD[s] > 0.0f ? sp->mainD[s] : eng.pipeD;
+                const float lts = sp->tailLen[s] > 0.0f ? sp->tailLen[s] : (eng.bike > 0.5f ? 0.10f : 0.40f);
+                const float dts = sp->tailD[s] > 0.0f ? sp->tailD[s] : eng.tailD;
                 if (nOn == 1)
                 {
                     lm0 = lms;
@@ -877,11 +877,11 @@ module XBuild
                 dm += dms;
                 float lks = 0.0f;
                 if (crossK != 0 && crossPos == 1)
-                    lks += sp.postLen;
+                    lks += sp->postLen;
                 if (res[s] == 1 || res[s] == 2)
-                    lks += sp.linkLen;
+                    lks += sp->linkLen;
                 else if (res[s] == 3)
-                    lks += sp.resLen[s];
+                    lks += sp->resLen[s];
                 if (lks > 0.0f)
                 {
                     if (nk == 0)
@@ -891,7 +891,7 @@ module XBuild
                 }
                 if (muf[s] != 0)
                 {
-                    const float muff = sp.mufLen[s] > 0.0f ? sp.mufLen[s] : eng.muff;
+                    const float muff = sp->mufLen[s] > 0.0f ? sp->mufLen[s] : eng.muff;
                     const float lfs = muff * 1.6f + 0.12f + 0.08f * (1.0f - eng.bike);
                     if (nf == 0)
                         lf0 = lfs;
@@ -939,10 +939,10 @@ module XBuild
         for (int i = 0; i < nPorts; ++i)
         {
             const int b = eng.bank[i];
-            const float own = 1.0f + sp.primSpread * (float)((i * 7) % 5 - 2) / 2.0f;
+            const float own = 1.0f + sp->primSpread * (float)((i * 7) % 5 - 2) / 2.0f;
             // (a length given is the length built, with the differences; the layout's has its banks' factor)
-            const float len = sp.primLen[i] > 0.0f ? sp.primLen[i] * own : eng.hdr * hk * own * (b == 1 ? eng.hdrBank1 : 1.0f);
-            const float dH = sp.primD[i] > 0.0f ? sp.primD[i] : dHead;
+            const float len = sp->primLen[i] > 0.0f ? sp->primLen[i] * own : eng.hdr * hk * own * (b == 1 ? eng.hdrBank1 : 1.0f);
+            const float dH = sp->primD[i] > 0.0f ? sp->primD[i] : dHead;
             const float aH = 0.785398f * dH * dH;
             Duct* p = &net.d[XD_PRIM + i];
             int last = XD_PRIM + i;
@@ -950,8 +950,8 @@ module XBuild
             {
                 // a stepped primary: the step where the pulse has spread, the wider part after it, the header's
                 // per-pass loss shared between them by length
-                const float fa = fminf(fmaxf(sp.primStepAt, 0.05f), 0.95f);
-                const float d2 = dH * sp.primStepD;
+                const float fa = fminf(fmaxf(sp->primStepAt, 0.05f), 0.95f);
+                const float d2 = dH * sp->primStepD;
                 const float a2 = 0.785398f * d2 * d2;
                 p->set(len * fa, dH, aH, cH, rate);
                 p->extra(0.0f, expf(fa * logf(keepH)), rate);
@@ -1002,12 +1002,12 @@ module XBuild
             if (firstCol < 0)
                 firstCol = c;
             float aSec = nColOn == 1 ? aPipe0 : 0.85f * aPipe0;
-            if (sp.colD[c] > 0.0f)
-                aSec = 0.785398f * sp.colD[c] * sp.colD[c];
+            if (sp->colD[c] > 0.0f)
+                aSec = 0.785398f * sp->colD[c] * sp->colD[c];
             const int direct = colTo[c] < 2 && (eng.housing[c] < 0 || eng.housing[c] >= 8) ? 1 : 0;
             const float aS = direct != 0 ? aSec * turbK : aSec;
             Duct* p = &net.d[XD_COLL + c];
-            p->set(sp.colLen[c] > 0.0f ? sp.colLen[c] : (eng.bike > 0.5f ? 0.25f : 0.38f), sqrtf(aS * 1.2732395f), aS,
+            p->set(sp->colLen[c] > 0.0f ? sp->colLen[c] : (eng.bike > 0.5f ? 0.25f : 0.38f), sqrtf(aS * 1.2732395f), aS,
                    colFed[c] != 0 ? cS2 : cS, rate);
             // (a pipe of a merge, into a second collector or out of one, loses a share of each pass as the
             // reference's headers and main pipe do: its bends and slip joints, its boundary layer; judgement, 0.4 dB.
@@ -1026,7 +1026,7 @@ module XBuild
             {
                 // a log manifold's chamber: a short wide pipe shut at its far end, the collector's own volume; its
                 // rough cast walls and the ports' cross flow take a share of each pass (judgement: 0.4 dB)
-                const float av = sp.colVol[c] / 0.06f;
+                const float av = sp->colVol[c] / 0.06f;
                 Duct* v = &net.d[XD_VOL + c];
                 v->set(0.06f, sqrtf(av * 1.2732395f), av, colFed[c] != 0 ? cS2 : cS, rate);
                 v->extra(0.0f, 0.955f, rate);
@@ -1037,9 +1037,9 @@ module XBuild
         {
             if (sideOn[s] == 0)
                 continue;
-            const float dPipe = sp.mainD[s] > 0.0f ? sp.mainD[s] : eng.pipeD;
+            const float dPipe = sp->mainD[s] > 0.0f ? sp->mainD[s] : eng.pipeD;
             const float aPipe = 0.785398f * dPipe * dPipe;
-            const float dTail = sp.tailD[s] > 0.0f ? sp.tailD[s] : eng.tailD;
+            const float dTail = sp->tailD[s] > 0.0f ? sp->tailD[s] : eng.tailD;
             const float aTail = 0.785398f * dTail * dTail;
             // the main pipe and its converter: the monolith's narrow channels' walls take the highs, about as the root
             // of the frequency (some 2.5 dB at 1 kHz, 5 at 4 kHz, 7.5 at the top each way), and their broadband
@@ -1047,7 +1047,7 @@ module XBuild
             // 700 K with its cones, growing with the gas's viscosity, over the pipe's area. A high-flow converter
             // (fewer cells, a shorter brick): 0.4 of the resistance, half the absorption. None: neither.
             Duct* mp = &net.d[slot(s, XO_MAIN)];
-            const float pl = sp.mainLen[s] > 0.0f ? sp.mainLen[s] : eng.mainLen * pk;
+            const float pl = sp->mainLen[s] > 0.0f ? sp->mainLen[s] : eng.mainLen * pk;
             mp->set(pl, dPipe, aPipe, cP, rate);
             const float convKeep = conv[s] == 1 ? 1.0f : (conv[s] == 2 ? 1.122f : 1.259f);
             mp->extra(0.0f, keepP * convKeep, rate);
@@ -1073,7 +1073,7 @@ module XBuild
             if (jMid[s] >= 0)
             {
                 Duct* pp = &net.d[slot(s, XO_POST)];
-                pp->set(sp.postLen, dPipe, aPipe, cL, rate);
+                pp->set(sp->postLen, dPipe, aPipe, cL, rate);
                 pp->extra(0.0f, 0.96f, rate);
                 // an X's merging and parting: a merge's loss, K 0.3 each way on each branch's speed (judgement)
                 if (crossK == 2)
@@ -1092,10 +1092,10 @@ module XBuild
                 // a quarter-wave stub: a closed side branch a quarter of the note's wavelength long. (Its length in the
                 // model is the acoustic one: a plane-wave junction has no end correction, so the tee's, some 0.3 of the
                 // bore, is in it; a real stub for this note is that much shorter.)
-                const float dS = sp.resD[s] > 0.0f ? sp.resD[s] : dPipe;
+                const float dS = sp->resD[s] > 0.0f ? sp->resD[s] : dPipe;
                 const float aS = 0.785398f * dS * dS;
                 Duct* st = &net.d[slot(s, XO_STUB)];
-                const float ls = fmaxf(cP / (4.0f * sp.resHz[s]), 0.03f);
+                const float ls = fmaxf(cP / (4.0f * sp->resHz[s]), 0.03f);
                 st->set(ls, dS, aS, cP, rate);
                 st->extra(0.0f, 1.0f, rate);
             }
@@ -1105,10 +1105,10 @@ module XBuild
                 // at its end (0.12 m, well under a quarter wave at its note, so it is a volume). The neck in the model
                 // is Leff long: a plane-wave junction has no end correction, so the two ends' (0.85 r each) are in it,
                 // and a real neck for this note is that much shorter. (Built shorter by them, it rang 1.3 times high.)
-                const float dn = sp.resD[s] > 0.0f ? sp.resD[s] : 0.5f * dPipe;
+                const float dn = sp->resD[s] > 0.0f ? sp->resD[s] : 0.5f * dPipe;
                 const float an = 0.785398f * dn * dn;
-                const float v = sp.resVol[s];
-                const float w = 6.28318531f * sp.resHz[s];
+                const float v = sp->resVol[s];
+                const float w = 6.28318531f * sp->resHz[s];
                 const float lEff = an * cP * cP / (v * w * w);
                 const float ln = fminf(fmaxf(lEff, 0.02f), 2.0f);
                 Duct* nk = &net.d[slot(s, XO_STUB)];
@@ -1125,7 +1125,7 @@ module XBuild
             if (res[s] == 1 || res[s] == 2)
             {
                 Duct* lk = &net.d[slot(s, XO_LINK)];
-                lk->set(sp.linkLen, dPipe, aPipe, cL, rate);
+                lk->set(sp->linkLen, dPipe, aPipe, cL, rate);
                 lk->extra(0.0f, 0.96f, rate);
             }
             else if (res[s] == 3)
@@ -1133,17 +1133,17 @@ module XBuild
                 // a packed bottle (a glasspack): a perforated tube through a packed shell, the gas keeping to the
                 // tube; its packing takes the highs as a muffler's does
                 Duct* bt = &net.d[slot(s, XO_LINK)];
-                bt->set(sp.resLen[s], dPipe, aPipe, cL, rate);
+                bt->set(sp->resLen[s], dPipe, aPipe, cL, rate);
                 bt->extra(0.0f, 0.96f, rate);
-                bt->pack(800.0f, 3.0f * sp.resLen[s] / 0.4f, 3500.0f, 7.0f * sp.resLen[s] / 0.4f, rate);
+                bt->pack(800.0f, 3.0f * sp->resLen[s] / 0.4f, 3500.0f, 7.0f * sp->resLen[s] / 0.4f, rate);
             }
             // the muffler
-            const float mu = sp.mufSize[s] >= 0.0f ? sp.mufSize[s] : eng.smMuf;
-            const float muff = sp.mufLen[s] > 0.0f ? sp.mufLen[s] : eng.muff;
+            const float mu = sp->mufSize[s] >= 0.0f ? sp->mufSize[s] : eng.smMuf;
+            const float muff = sp->mufLen[s] > 0.0f ? sp->mufLen[s] : eng.muff;
             const int prev = prevMuf[s];
             Duct* pv = &net.d[prev];
             Duct* tl = &net.d[slot(s, XO_TAIL)];
-            tl->set(sp.tailLen[s] > 0.0f ? sp.tailLen[s] : (eng.bike > 0.5f ? 0.10f : 0.40f), dTail, aTail, cT, rate);
+            tl->set(sp->tailLen[s] > 0.0f ? sp->tailLen[s] : (eng.bike > 0.5f ? 0.10f : 0.40f), dTail, aTail, cT, rate);
             tl->extra(0.0f, 0.960f, rate);
             const int j0 = jMuf[s * 5];
             float scIn = 0.0f;
@@ -1351,7 +1351,7 @@ module XBuild
             // transmission glides with its travel; its edge's loss K 0.5 on the bypass's speed)
             if (byp[s] != 0)
             {
-                const float db = sp.bypassD > 0.0f ? sp.bypassD : dPipe;
+                const float db = sp->bypassD > 0.0f ? sp->bypassD : dPipe;
                 const float ab = 0.785398f * db * db;
                 Duct* bp = &net.d[slot(s, XO_BYP)];
                 float lb = 0.5f;
@@ -1391,21 +1391,21 @@ module XBuild
         for (int t = 0; t < nGates; ++t)
         {
             Duct* g = &net.d[XD_GATE + t];
-            const float ag = 0.785398f * sp.gateD * sp.gateD;
-            g->set(sp.gateLen, sp.gateD, ag, cS, rate);
+            const float ag = 0.785398f * sp->gateD * sp->gateD;
+            g->set(sp->gateLen, sp->gateD, ag, cS, rate);
             g->extra(0.0f, 0.96f, rate);
-            net.ends[eGate[t]].design(sp.gateD, g->rho, heat.tUse[XH_COLL], eng.tAmb, rate);
+            net.ends[eGate[t]].design(sp->gateD, g->rho, heat.tUse[XH_COLL], eng.tAmb, rate);
         }
         // the H: a pipe between the sides, sharp-edged at both ends
         if (crossK == 1)
         {
-            const float dP0 = sp.mainD[0] > 0.0f ? sp.mainD[0] : eng.pipeD;
+            const float dP0 = sp->mainD[0] > 0.0f ? sp->mainD[0] : eng.pipeD;
             const float aP0 = 0.785398f * dP0 * dP0;
             float xa = fmaxf(eng.smXp, 0.001f);
-            if (sp.crossD > 0.0f)
-                xa = sp.crossD * sp.crossD / (dP0 * dP0);
+            if (sp->crossD > 0.0f)
+                xa = sp->crossD * sp->crossD / (dP0 * dP0);
             Duct* x = &net.d[XD_CROSS];
-            x->set(sp.crossLen, dP0 * sqrtf(xa), xa * aP0, cP, rate);
+            x->set(sp->crossLen, dP0 * sqrtf(xa), xa * aP0, cP, rate);
             x->extra(0.0f, 0.960f, rate);
             const float rhoX = crossPos == 0 && firstCol >= 0 ? net.d[XD_COLL + firstCol].rho : net.d[slot(0, XO_MAIN)].rho;
             const float kXp = lossKap(0.5f, rhoX, xa * aP0);
@@ -1438,11 +1438,11 @@ module XBuild
                 // open above the speed and the load, shut 10 % below either (hysteresis)
                 const int was = vPos[s] > 0.5f ? 1 : 0;
                 const float h = was != 0 ? 0.9f : 1.0f;
-                want = eng.rpm > h * sp.bypassRpm && eng.load > h * sp.bypassLoad ? 1.0f : 0.0f;
+                want = eng.rpm > h * sp->bypassRpm && eng.load > h * sp->bypassLoad ? 1.0f : 0.0f;
             }
             else if (byp[s] == 4)
                 want = fminf(fmaxf(eng.ecuValve, 0.0f), 1.0f);
-            const float stp = d16 / fmaxf(sp.bypassTime, 0.01f);
+            const float stp = d16 / fmaxf(sp->bypassTime, 0.01f);
             vPos[s] = want > vPos[s] ? fminf(vPos[s] + stp, want) : fmaxf(vPos[s] - stp, want);
             const float x = vPos[s];
             vT[s] = x * x * (3.0f - 2.0f * x);

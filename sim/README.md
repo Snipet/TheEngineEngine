@@ -6,7 +6,9 @@ never edited: the null test (`tests/sim/NullTest.cpp`) holds the simulator to it
 
 Status: **K3b done** (`docs/handoffs/k3b.md`): the reference's `Shared` carved into the modules below, the null test
 identical to the bit on every pair it plays. The packages (cards D to I) own their modules from here and keep this
-file true for them.
+file true for them. Card D (the integrator from here: a package wanting a call in the order of work asks D for it, with
+its place and its default that does nothing) has added the custom engine, the engine dyno and the mechanics' telemetry
+(below, and docs/models/mechanics.md).
 
 ## Files
 
@@ -19,6 +21,13 @@ file true for them.
 | `core/heat.fm` | `Heat` | D | the air, the coolant, the oil, the chamber's walls |
 | `core/cylinder.fm` | `Cylinder` | D | one cylinder's gas (or a rotor's face): volume, valves' flows, burn, torque |
 | `core/layouts.fm` | `Layout` | D | the seventeen layouts: firing, banks, ports, sizes |
+| `core/layout.fm` | `LayoutGeom` | D | a custom layout as geometry (banks, pins, revolutions, places; rotors): firing angles, order, intervals |
+| `core/kinematics.fm` | `SliderCrank`, `Sizing` | D | the piston's x, x', x'' and volume; size and bore/stroke dials to bore and stroke; the redline by piston speed |
+| `core/inertia.fm` | `MovingMasses` | D | the reciprocating masses: inertia torque, J(theta), the crank's energy-exact step |
+| `core/shake.fm` | `ShakeByOrder` | D | shaking forces and rocking moments, first and second order; balance shafts |
+| `core/friction.fm` | `FrictionModel` | D | friction by part (Chen and Flynn's form) |
+| `core/work.fm` | `CycleWork`, `CylWork` | D | p dV per cylinder per cycle: IMEP, PMEP, BMEP, peak pressure, volumetric efficiency |
+| `core/dyno.fm` | `Dyno` | D | MODE_DYNO_ENGINE's absorber: holds or sweeps the crank |
 | `valvetrain/valvetrain.fm` | `Valvetrain` | E | each cylinder's valve events and areas: the CAM dial (model 0) or the lab (`valvetrain/lab.fm`, model 1) |
 | `intake/intake.fm` | `Intake` | E | runners, plenum, throttle, idle valve; model 1: the air box, throttles a runner, two-length runners |
 | `boost/boost.fm` | `Boost` | F | turbos or a supercharger: shaft, boost, valves, drag, sounds |
@@ -32,7 +41,8 @@ file true for them.
 | `listen/listen.fm`, `listen/hall.fm` | `Listen`, `Hall` | wave 2 | views, distance, room, compressor, limiter, ceiling, resampler |
 | `lib/` | `OnePole`, `DcBlock`, `Biquad`, `Noise` | anyone (read) | filters; the reference's white noise |
 
-Other files in these directories are packages' standalone work, not included by `engine.fm` yet. The carved files'
+Other files in these directories are packages' standalone work, not included by `engine.fm` yet (`core/twostroke/`: card
+T's two-stroke, standalone). The carved files'
 names were chosen not to collide with them; a package integrating its work replaces or extends the carved module named
 above.
 
@@ -90,7 +100,8 @@ What replaces the reference's keys (`Engine::readControls`, `Engine::ignition`, 
 | `ignition` leaves 2 | `keyUp(36)`; still cranking (state 1): state 0, the starter stops |
 | `ignition` 0, off | cranking or running: state 3, running down (`ecu.stallT` 0, `ecu.offArmed` false) |
 | `holdSpeed` > 0 (bench, running) | the key driver (`Ecu::driver`) aimed at that speed: a key of the pitch whose firing it is (`set.keys` 1), velocity 1 |
-| `handbrake`, `steer`, `buttons`, `dynoSpeed`, `dynoRate`, `strip`, `bakeMaps` | not read yet |
+| `mode` MODE_DYNO_ENGINE (running) | on the bench, the absorber (`Dyno`) holds `dynoSpeed`, or sweeps from where the crank is at `dynoRate` (rad/s^2); the bench's load dial and the inertia it adds rest meanwhile |
+| `handbrake`, `steer`, `buttons`, `strip`, `bakeMaps` | not read yet |
 
 `set.hold` is 1e9 s: the engine never switches itself off. `Engine` renders only while it sounds: from a start until
 `audible()` is false (stopped, the room rung out, the car at rest) with the key up; otherwise it writes silence and the
@@ -101,6 +112,14 @@ Telemetry (`Engine::writeTelemetry`, after each call): `engine.state` (0 off, 1 
 `.oilPressure` (Pa over the air), `.flags` (`FLAG_LIMITER` 1, `FLAG_FUEL_CUT` 2), `.cycle` (0 to 1), `.crank`
 (degrees, 0 to 2160); `boost.pressure` (Pa over the air); `exhaust.portTemperature` (K); `ecu.knockRetard` (degrees);
 `car.speed` (m/s), `.gear`, `.brake`, `.clutch`; `sound.peak` (the call's largest sample).
+
+Card D's, appended to `tel.engine` (`Engine::mechanicsTelemetry`, every engine unless said): `torque` (the brake
+torque: the gases' less friction and a supercharger's drag over some 0.1 s; on the dyno, the absorber's mean),
+`gasTorque` (the gases', its 20 ms mean), `firing` (Hz: firings a second, every cylinder's), `power`, `imep` (gross), `pmep`, `fmep`, `bmep` (4 pi torque / displacement), `veManifold`,
+`veAir` (the fresh charge at intake closing over the swept volume at those densities), `peakPressure`, `pistonSpeed`,
+`ripple` (the crank's speed's spread over the last cycle), `dynoTorque`, `dynoSpeed`; a custom engine's only:
+`inertiaTorque`, `shake1`, `shake2` (N), `rock1`, `rock2` (N m); `cylinders`; and the arrays (readable by path, not
+gauges) `firingAngle[c]` (degrees after cylinder 1's at which it fires), `cylPeak[c]`, `cylPeakAngle[c]`.
 
 Scope (`Engine::scopeTap`, each sample while `ctl.scopeOn`): cylinder 1's `pressure` (Pa), `volume` (m^3),
 `liftExhaust`, `liftIntake` (0 to 1) at each whole degree of its cycle, copied whole into the Scope as the cycle comes
@@ -123,14 +142,18 @@ engine's change at the fade's quiet, where `configure` runs; `Listen::block`; th
 3. Each cylinder: its angle; `cyl[c].step(a, dDeg, dt, vt.areaEx(c, a), vt.areaIn(c, a), bE, zE, tH, bI, zI, tAir)`
    with its valves' areas and its header's and runner's arriving waves and impedances (a rotary's faces sharing a
    port solved together first: `exhaustFlowAt`, `intakeFlowAt`, with the areas too); its flows summed per port into `qe`, `qi`; its torque into the total; its gas into `exh.eSum`,
-   `exh.mSum`; at intake closing `comb.charge(...)` if `vt.active(c)`; its events to `ex.*Click` (the valves' louder while they
-   float: `vt.clatter`); then `scopeTap()` while scopeOn.
+   `exh.mSum`; `work.sample(c, a, p, v)`; at intake closing `work.trapped(...)` and, if `vt.active(c)`, `comb.charge(...)`; its events to `ex.*Click` (the
+   valves' louder while they float: `vt.clatter`); then `scopeTap()` while scopeOn.
 4. `exh.step(qe, np)`: the ports' waves in, the collectors, the merge, the converter, the muffler, the tails out
    (`exh.outL`, `exh.outR`), every pipe written.
 5. The runners' near ends; `intk.plenum(np, rNear, fuel, plate, ecu.bypass, dt)`, the plate `ecu.throttle` (1 while
    `vt.plateOpen()`: the lift is the load control).
-6. `mech.torques(...)`, `heat.fricJ`, `boost.drag(...)`; `crank.bench(...)` or, driven, `crank.omega = car.step(...)`;
-   `crank.ripple(torque)`.
+6. `mech.torques(...)`; the friction `tf` (`mech.tf`, or a custom engine's `fric.torque(...)` on the last cycle's peak
+   pressure); `heat.fricJ`; `boost.drag(...)`; the dyno's `tqAbs = dyno.step(...)` while `dynoOn`; the crank: a custom
+   engine's `mm.advance(...)` (the energy-exact step with the inertia torque) on the bench, `car.step(...)` with
+   `mm.torque(...)` added when driven; else `crank.bench(...)` (the dyno's torque and inertia in place of the load
+   dial's while `dynoOn`) or `car.step(...)`; `crank.ripple(torque)`; the brake torque's mean and the cycle's speed
+   spread (reports only).
 7. `ex.tick(qThr, drop, crankHz, dps)`, `boost.sound(crankHz, mdot, bov)`, `ex.tickStarter(crankHz, starterOn)`.
 
 **Every 16 samples** (`Engine::control16`): `crank.sense()`; `heat.control(...)` and the walls into the cylinders;
@@ -138,7 +161,8 @@ engine's change at the fade's quiet, where `configure` runs; `Listen::block`; th
 `valves()`, the compression → `cyl[c].setup`, the bore/stroke → `boreStroke`, `valves`); `ecu.driver(...)`; driven,
 `car.drive16(...)`; `ecu.control(...)` (true: the engine has come to rest, `crank.omega` 0); `vt.control(...)`; `exh.flowRate()`;
 `boost.control(...)`, `intk.pBox`, `intk.tAir`, `intk.control(...)`; `exh.gas(d16)`; the cylinders' wall heat transfer (`hA`);
-`exh.heatUp(...)`; `pipes()` (`exh.pipes`, `intk.runners`); `exh.flow16()`, `intk.flow16(...)`; `exh.bands()`.
+`exh.heatUp(...)`; `pipes()` (`exh.pipes`, `intk.runners`); `exh.flow16()`, `intk.flow16(...)`; `exh.bands()`; `mechanics16()` (the cycle's speed spread; a custom engine's inertia with the
+bench's load, its oil factor and its shaking at this speed; the dyno stopped when its mode ends).
 
 **`configure`** (the engine for the layout and the size: at init, at a start while stopped, under the fade): the
 layout, the fuel and the induction taken; the heat stood (`heat.stood`); every size (each cylinder's displacement, the
@@ -146,7 +170,21 @@ pipes' bores, the bore and stroke, the throttle and plenum, the inertia `mech.jB
 cylinders set up at their angles (each with its small bias, a draw of the noise); the ports' banks; `valves()`; a
 running engine's cylinders given the gas where they stand; every pipe, the paths and the junctions at rest
 (`exh.clear`, `intk.clear`, `listen.resetPaths`); the clatter for the fuel; the layout's loudness trims; stopped, the
-exhaust's heat soaked to where a long idle leaves it; `pipes()`.
+exhaust's heat soaked to where a long idle leaves it; `pipes()`; `mechanicsSetup()` (the moving masses, friction,
+shaking, work integral and dyno for the engine as configured).
+
+**A custom engine** (`spec.engine.custom`, card D): `configure` takes the layout dial's table first (its pipes, idle and
+sizes) and then `customLayout()`: `geo.derive(&spec.engine)` and the Layout's `n`, `cyc`, `rotary`, `fire`, `bank` (the
+mechanical bank's parity: the exhaust's two sides), `port`, `ports`, `topo` from it. Engine places cylinder c at
+`crank.theta + fire[c]` in its cycle, so a larger `fire` fires sooner: a custom layout's `fire` is the cycle less its
+derived angle, and it fires in the order its geometry gives (the reference's tables run their orders the other way
+round: the same engines, mirrored; `tel.engine.firingAngle` reports each engine as it runs). `bore` and `stroke` (both
+above 0) set the swept volume and the bore/stroke ratio the dial glides to (`bsOf`); `rodLength` the rod ratio every
+`Cylinder::setup` gets (`rodRatio`, else 3.3); the redline is `redlineSpeed` or 25 m/s of piston speed (13.5 a diesel)
+in `boreStroke`; a rotary's port fields override the cam dial's in `valves()` (`customPorts`). A change to any of
+these fields is seen through `geometry()` (a weighted sum of them, 0 while custom is off) and made as a new layout is:
+at a start while stopped, under the fade while running. With custom off nothing of this is read:
+`tests/sim/core/EngineTest.cpp` plays a build with every custom field filled in and custom off, to the bit the same.
 
 ## The modules, their functions and what they read
 
@@ -233,11 +271,18 @@ pedIn, int drive, float modwheel, float pressure, float rpm, int fuelUse, float 
 clutch, float omega)`. Engine's `keyDown`, `keyUp`, `ignition` and `configure` write its state too.
 
 **Car** (`vehicle/car.fm`): the clutch, gearbox, driveline, tyres, the car's speed `v`, `gear`, the shifter and the
-paddles (`lastButtons`, `shiftCut`, ...). `void setup(float rate)`; `void followLever(int drive, int lever)` at a key
+paddles (`lastButtons`, `shiftCut`, ...). `void setup(float rate, CarSpec* carSpec, EnvSpec* envSpec, Controls*
+controls, CarTel* carTel)` (Engine passes `&spec.car`, `&spec.env`, `&ctl`, `&tel.car`; Car reads them only with
+`spec.car.model` 1); `void followLever(int drive, int lever)` at a key
 and in `drive16`; `float drive16(int drive, float d16, float jEngine, float peak, float gearTorque, float kg, float
 redRpm, float bike, float clutch, float brake, int lever, int buttons, float gas, float rpm, float idleRpm, float
 rpmAvg)` every 16 when driven; `float step(float w, float tq, float dt)` and `float road(float kSq)` each sample when
-driven; `kmh()`, `moving()`.
+driven; `kmh()`, `moving()`. With `spec.car.model` 1 (card I) `drive16` hands everything to its `Vehicle m1`
+(`vehicle/vehicle.fm`, docs/models/vehicle.md): it copies spec.car and spec.env into `m1.spec`, `m1.env` when their revs
+move, reads ctl's counters, buttons, mode, strip and dyno itself, writes its fields of tel.car, and keeps `v`, `gear`,
+`shiftCut` (a dog box's or a paddle's upshift cut) and `lastButtons` as Engine and the ECU read them; it returns the
+pedal with a downshift's blip in it. `step`, `road` go to `m1`; `followLever` does nothing. Model 0, the default, is the
+reference's code, untouched (the null test).
 
 **Extras** (`sound/extras.fm`): the engine bay's sources; its own `Noise noise` (Boost draws from it too). `setup(float
 rate, float boxHz)`; `setClatter(int diesel, float swept)` and `pumpOn` in configure; the clicks at the cylinders'
@@ -280,8 +325,9 @@ reference had no key) written into its Shared's state as `ignition` writes it. R
 
 Nothing in the model was changed. Noted on the way, for the packages to decide:
 
-- The crank's speed is an explicit `domega/dt` step with a constant inertia (card D: it loses energy once the inertia
-  varies round the turn; D switches to its own energy-exact step when its fields are on).
+- The crank's speed is an explicit `domega/dt` step with a constant inertia (it would lose energy once the inertia
+  varied round the turn: a free single, 15 % in 20 s): a custom engine steps its kinetic energy exactly instead
+  (`MovingMasses::advance`, 2e-5 in 20 s); the reference's step stays with custom off.
 - `Set` survives as `Dials set` (`engine.fm`): the reference's dials as the engine has taken them, in its units. The
   modules are handed their values as arguments; reading the Spec directly needs one decision first: the reference's
   `init` configures the Init V8 and only the first start configures the build (a second `configure`, a second set of
