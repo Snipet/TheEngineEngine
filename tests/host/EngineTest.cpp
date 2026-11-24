@@ -378,6 +378,18 @@ TEST_CASE("the intake cam baked by a sweep of the fast dyno: the best advance by
     CHECK(map[16 + 16 + 0 * 16 + 2] == r.best[0]);   // the bake's advance from 0.95 up
     CHECK(map[16 + 16 + 0 * 16 + 3] == r.best[0]);
     CHECK(build.canUndo());
+    // its key: current as applied; stale after an edit that moves the cam; current again when undone; never moved by a
+    // dyno's heat-settle counter (hidden) nor by the cam map it wrote
+    CHECK(r.key == intakeCamKey(build, *sim));
+    CHECK(build.get("ecu.maps.camInKey") == static_cast<double>(r.key));
+    CHECK(intakeCamCurrent(build, *sim));
+    const double centre = build.get("valve.exCentre");
+    build.set("valve.exCentre", centre + 4.0);
+    CHECK_FALSE(intakeCamCurrent(build, *sim));
+    build.set("valve.exCentre", centre);
+    CHECK(intakeCamCurrent(build, *sim));
+    build.set("exhaust.heatSettle", build.get("exhaust.heatSettle") + 1.0);
+    CHECK(intakeCamCurrent(build, *sim));
     WARN("v12-65's intake cam baked in " << r.wallSeconds << " s: " << r.best[0] << ", " << r.best[1] << ", " << r.best[2]
                                          << " deg at 2000, 4000, 6000 rpm");
 }
@@ -471,10 +483,28 @@ TEST_CASE("the knock limit's key moves with what moves the knock limit, and not 
         build.set("ecu.timing", build.get("ecu.timing") + 3.0);
         CHECK(knockLimitKey(build, *sim) == key);
     }
+    // the base key (the cam bake's): the cam maps move the key and not the base
+    const std::int64_t base = knockLimitBaseKey(build, *sim);
+    if (build.fieldOf("ecu.maps.camInAuto") >= 0)
+    {
+        const double was = build.get("ecu.maps.camInAuto");
+        build.set("ecu.maps.camInAuto", was == 0.0 ? 1.0 : 0.0);
+        CHECK(knockLimitKey(build, *sim) != key);
+        CHECK(knockLimitBaseKey(build, *sim) == base);
+        build.set("ecu.maps.camInAuto", was);
+    }
+    // the hidden counters (a dyno's heatSettle presses) move neither
+    if (build.fieldOf("boost.heatSettle") >= 0)
+    {
+        build.set("boost.heatSettle", build.get("boost.heatSettle") + 1.0);
+        CHECK(knockLimitKey(build, *sim) == key);
+        CHECK(knockLimitBaseKey(build, *sim) == base);
+    }
     // the compression, the fuel and the boost's section do
     const double compression = build.get("engine.compression");
     build.set("engine.compression", compression - 0.5);
     CHECK(knockLimitKey(build, *sim) != key);
+    CHECK(knockLimitBaseKey(build, *sim) != base);
     build.set("engine.compression", compression);
     CHECK(knockLimitKey(build, *sim) == key);
     for (const FieldInfo& f : build.fields().all())
