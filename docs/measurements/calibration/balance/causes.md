@@ -1289,3 +1289,9 @@ the cooler's effectiveness unknown (-2 % per 0.15).
 
 Best the model reaches with cited or ruled hardware and a fixed-phase bake: about 303 at 1500 (-9 to -18 %), about
 310 to 330 at 1800 (0 to -7 %), and 233 to 272 at 6200 by the turbine's size (the cited 250 inside).
+
+**B-3 after the DI cooling's change** (the steward's 65d0fc35: 14 K at lambda 1; 23:32 by `date -u`). The table's best
+cells again, the 0.40 match on the ruled lobe: 1800 (intake 30, exhaust +30) 330 N m at 123 kPa, knock at its cap
+(331 before); 1500 (intake 15, exhaust +20) 300.5 at 113 kPa (303); 6200 as built 274 at 81.5 kPa (272). Within the
+grid's scatter: the table stands. The cooling now shows as retard where the controller has room (the steward's tee-dyno
+runs: 1800 as built 0 to 3.3 degrees), not as torque.
