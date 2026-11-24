@@ -233,6 +233,28 @@ namespace tee::ui::valves
         return h;
     }
 
+    std::string phaserParkedWords(const Live& live, const Units& units)
+    {
+        const OilHold oil = oilHold(live, kPhaserOilTemp, kPhaserOilPressure);
+        if (!oil.held)
+            return {};
+        if (!oil.cold)
+            return "PARKED: OIL PRESSURE LOW";
+        return "PARKED: OIL " + units.format(Quantity::temperature, oil.temp, 0) + ", MOVES AT "
+               + units.format(Quantity::temperature, kPhaserOilTemp, 0);
+    }
+
+    std::string stageWaitWords(const Live& live, const Units& units)
+    {
+        const OilHold oil = oilHold(live, kStageOilTemp, kStageOilPressure);
+        if (!oil.held)
+            return {};
+        if (!oil.cold)
+            return "B WAITS: OIL PRESSURE LOW";
+        return "B WAITS: OIL " + units.format(Quantity::temperature, oil.temp, 0) + ", NEEDS "
+               + units.format(Quantity::temperature, kStageOilTemp, 0);
+    }
+
     Bench benchOf(const FieldDoc& doc, double bore, const Live& live)
     {
         Bench b = benchOf(doc, bore);

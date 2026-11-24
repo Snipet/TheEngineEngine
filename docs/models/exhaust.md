@@ -355,6 +355,45 @@ and a softer low-speed pull, as its boost at 2000 rpm halves.
 
 `flowClose` 0 gives the reference's g q, which is how test 2 compares with the reference.
 
+**Closed by mass at the turbines** (N3's books, 24 Nov). The pipes carry volume, linearly, and mass is volume times
+the local pressure over R T. The gas cools from the valve to the collectors, and the cylinders reckon their mass at
+the port's pressure in the blowdown while a housing books its own at its own. So the valves' volume, delivered,
+put the wrong mass into the turbines:
+- turbo four at 3050 rpm: 1.14 of what was let out (the cooling alone gives 1.148);
+- twin-turbo V8 at 4375 rpm: 1.03.
+
+With the turbines fed, `Exhaust::bookLet` closes the target by mass where it is booked. Every 50 ms it moves
+`tLet` by a fifth of Boost's mass from the pipes (`mach.sumMPipes`) over the valves' less one, with the backflow
+reckoned as the cylinder reckons it. The error itself is used, not its log: a window's ratio is noisy, and a log's
+zero mean leaves the ratio's mean 2 % high. Measured over 2 s (N3's probe):
+- turbo four: 0.9972 (tLet 0.887);
+- twin-turbo V8: 1.0071 (tLet 1.004).
+
+Without turbines the target is the valves' volume (tLet 1).
+
+**A known overstatement, left (the lead's ruling, 24 Nov: measure first, then correct only if the torque moves more
+than a few per cent).** Without turbines nothing books mass downstream, so the mean volume reaching the tail is
+the valves' volume. The real gas there is cooler and at less pressure; its volume is the valves' times
+(T_tail / T_valve) (p_port / p_tail). Measured as a local experiment, the tail's mean flow taken that way, at full
+throttle, warm, heat settled:
+
+| build | rpm | ratio | port abs | collectors | before the muffler | torque | residual | PMEP |
+|---|---|---|---|---|---|---|---|---|
+| small-block, two valves | 4000 | 0.917 | 141.0 -> 137.6 kPa | 39.4 -> 36.0 | 23.9 -> 21.5 | 402 -> 405 N m | 0.074 -> 0.075 | 0.88 -> 0.86 bar |
+| 3.2 six, four valves | 7000 | 0.776 | 116.2 -> 112.5 | 12.1 -> 8.4 | 4.5 -> 2.4 | 249 -> 250 | 0.063 -> 0.064 | 0.35 -> 0.35 |
+| four-cam V8, four valves | 6500 | 0.800 | 128.9 -> 122.7 | 26.3 -> 20.2 | 14.5 -> 10.4 | 432 -> 434 | 0.076 -> 0.076 | 0.59 -> 0.56 |
+
+Torque moves 0.4 to 0.7 % and the residual by at most 0.001, so the tuned engines' shortfall is not here. The back
+pressure at the collectors is overstated by 3 to 6 kPa: recorded, not corrected. The ratio came out 0.78 to 0.92,
+not the 1.3 to 1.4 first estimated, because the port's higher pressure offsets much of the cooling.
+
+Against a published figure: DieselNet's "Engine Exhaust Back Pressure" (Jääskeläinen; dieselnet.com/tech/
+diesel_exh_pres.php) measures at the manifold's outlet on an NA engine (the collectors here). It gives a muffler's
+own as some 6 kPa, and limits of 40 kPa under 50 kW to 10 kPa at 500 kW. Those are limits, mainly for diesel and
+generator engines, not a stock car system's measured value; I found no published stock figure for a petrol NA engine
+at rated power. The small-block's 36 to 39 kPa sits near such a limit's top for its size; the six's 8 to 12 kPa and
+the V8's 20 to 26 kPa sit within.
+
 ## Glide and rebuild (dragging a slider)
 
 These fields glide toward the Spec with a 0.2 s time constant (`XBuild::glide`). The pipes' delays, areas and

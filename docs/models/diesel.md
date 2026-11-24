@@ -136,7 +136,10 @@ bootstraps itself (more boost, more gas, more turbine), so at vanes 0.3 to 0.5 t
 back every 3 s; at 0.6 it creeps to some 11,300 rad/s; at 0.8 it settles at 6000 (omegaMax 11,932). A PID past 95 %
 hunted into the relief (a lead term on the noisy rate and the integral both). A proportional band, opening from the
 stop at 78 % of the limit to wide at 109 %, slewed at 2 a second, settles at 0.93 of the limit with the vanes at 0.63:
-282 kPa in the manifold, 346 kW, the shaft at most 11,714 rad/s on the way up.
+282 kPa in the manifold, 346 kW, the shaft at most 11,714 rad/s on the way up. Why the gain flips (N2): at a fixed inlet pressure the
+turbine's power rises with the nozzle area, some 3.5 times its power a unit of vane; but on a brake the release into
+the manifold is fixed, so the inlet pressure falls as the vanes open and past about 0.4 the power per step is flat to
+falling. The vanes' actuator in card F's machine is a 50 ms lag; real electric ones take 100-300 ms a stroke.
 
 ## Measured (tee-tests-diesel; the 15 L six, 300 K, 101325 Pa; 24 Nov evening)
 

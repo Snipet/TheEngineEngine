@@ -73,6 +73,11 @@ namespace tee
     struct KnockBakeOptions
     {
         std::vector<double> pedals = {1.0, 0.75, 0.5, 0.25};   // full first
+        // A turbo's loads above the air's (card N2's): full pedal, ecu.maps.boostAuto on, spec.boost.target stepped from
+        // the build's own level down to its gate's spring (below the spring the gate does not hold a target) in this
+        // many steps; then the pedals under full, at the spring's target (the loads below). 0: pedals alone. A supercharger (no loop: its boost is its pulley's)
+        // has pedals alone, said in the notes.
+        int boostSteps = 4;
         int speeds = 8;               // over PredictOptions' from and to (0: 1000 rpm, the redline less 100)
         int loads = 8;                // the table's loads: from 0.2 atm to the most a pedal gave, evenly
         double margin = 2.0;          // degrees over the mean retard
@@ -83,6 +88,7 @@ namespace tee
     struct KnockBakeCell
     {
         double pedal = 0.0;
+        double boostTarget = 0.0;     // Pa over the air: the step's spec.boost.target (0: a pedal step, as built)
         double load = 0.0;            // atm, the manifold's pressure the point gave
         double retardMean = 0.0;      // degrees
         double retardTooth = 0.0;     // the most less the mean: the sawtooth's size
@@ -99,6 +105,7 @@ namespace tee
         std::vector<std::vector<double>> limit;           // [speed][load]: degrees from best torque
         std::vector<std::vector<bool>> extrapolated;      // [speed][load]: flat past the measured loads
         std::int64_t key = 0;                             // knockLimitKey(build, sim) when it was baked
+        std::string notes;                                // how its loads were made
         int points = 0;                                   // fast-dyno points run
         double simulatedSeconds = 0.0;
         double wallSeconds = 0.0;
