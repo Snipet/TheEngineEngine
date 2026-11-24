@@ -999,7 +999,7 @@ module Engine
         tqBrake += (torque - tf - tqBrake) * 1.0e-4f;
         omMin = fminf(omMin, crank.omega);
         omMax = fmaxf(omMax, crank.omega);
-        ex.tick(intk.qThr, 0.0f, crank.omega * 0.15915494f, 0.0f, 0, 0.0f);
+        ex.tick(intk.qThr, 0.0f, crank.omega * 0.15915494f, 0.0f, 0, 0.0f, car.lashStrike());
         boost.sound(crank.omega * 0.15915494f, two.mdot, set.bov);
         ex.tickStarter(crank.omega * 0.15915494f, ecu.starterOn);
     }
