@@ -148,3 +148,49 @@ V8's block are the ones D's fix could touch; they moved +0.13 to +0.21 R, of whi
 
 **The typical build** (twin-turbo V8, every model on, the dual X): 1.82 R + (1.53 - 1.28) = **about 2.1 R** against
 the 1.6 R budget. Economy (0.49): **about 1.0 R**: 40 % of the owner's core on their slower figure, 30 % on the faster.
+
+## The overrun by owner (about 19:30 UTC; the host quiet: load average under 0.7)
+
+The typical build (`out/q/b/typical.json`: X's twin-turbo V8 combo with every switch on and the exhaust of
+`exhausts/dual-x-resonated-valved.json`), drive-car, `tee-bench --profile --engine` (the sampler's own cost included,
+about +10 %), against the simulator at model 0 (the reference, to the bit: 1.045 of the reference's own player by
+`tee-bench --engine` in the same session, 1986 against 1901 ns). R in the profile's units: 2050 / 1.045 = 1962 ns.
+Whole build: 4390 ns, **2.24 R** in these units (2.1 R by qbench without the sampler).
+
+| Owner (modules) | model 0, ns | typical, ns | over model 0 | in R | card's budget | over budget |
+|---|---:|---:|---:|---:|---:|---:|
+| G, the exhaust (Duct, XNet, XBuild, Exhaust, XHeat, xNode) | 765 | 1863 | +1098 | +0.56 | +0.25 | **+0.31** |
+| F, boost (BoostMachine 282, BoostEnd 127, compressor 43, the rest) | 1 | 463 | +462 | +0.24 | 0.12 | **+0.12** |
+| L, the listener (Scene 258, Listen, Hall, Place, CabinBoom) | 129 | 425 | +296 | +0.15 | none stated | (+0.15) |
+| M, the voices (GearVoice 56, DriveVoice 33, FuelVoice 28, ...) | 28 | 199 | +171 | +0.09 | none stated | (+0.09) |
+| D, engine and mechanics (Cylinder 365, MovingMasses 45, CycleWork 42, WallHeat 11, ...) | 472 | 596 | +124 | +0.06 | 0.06 | 0 |
+| E, valvetrain and intake (Intake 94, ValveLab 61, CamShape 7, AirBox) | 55 | 166 | +111 | +0.06 | 0.05 | +0.01 |
+| I, the vehicle (Vehicle 102, VehSound 18, ...) | 19 | 124 | +105 | +0.05 | 0.05 | 0 |
+| H, combustion and ECU (Combustion, Ecu1, EndGas, idle and launch control) | 10 | 33 | +23 | +0.01 | 0.06 | -0.05 |
+| The valves (`Valve::flow`, G's file, the cylinders' calls) | 565 | 524 | -41 | -0.02 | (the reference's) | |
+| **total** | 2044 | 4390 | +2346 | **+1.20** | **+0.59** | **+0.61** |
+
+**The three largest overruns, and what each could give:**
+
+1. **G, +0.31 R over its 0.25.** The builder's own path at the reference's topology is +0.13 to 0.14 R before any
+   extra pipe (q6 above); the dual X's eleven extra pipes are the rest. *Exact, reachable*: `XBuild::passGain`
+   (63 ns, the passivity gain check over 48 frequencies a pipe, every 32 control steps) only when `shape()` changed a
+   coefficient beyond a threshold the check itself can bound (0.03 R); the junctions' general solve (`xNode` 236,
+   `solveNode` 167, `solvePair` 98 ns) specialised for two and three arms, as the reference unrolls them (unproven;
+   grouping by kind gave nothing: perhaps 0.02 to 0.05 R). Together **about 0.05 to 0.08 R**. *For the owner's ears*:
+   the wall's shelves off on short pipes (stubs, links, the X: they shape only the highs) and `back`/`flow16` every
+   64 samples: some 0.1 R.
+2. **F, +0.12 R over its 0.12.** *Exact*: none found (the pipe-end solve's early exit fires too rarely, under 1 %).
+   *For the owner's ears*: F's own three (the pipe-end solve started from the last sample's ratio in one pass, about
+   0.05 R; the charge path's volumes in float with a double remainder; the sounds' noise at 48 kHz, 0.01 R).
+3. **L, +0.15 R, no stated share** (the reference's listener was 0.07 R). *Exact*: `Scene::hear` (195 ns) reads three
+   Lagrange taps a source a sample and steps each path's delay and gain by `dS`, `gS`; while a camera stands still
+   (`dS` and `gS` 0) the taps' weights are the same every sample and can be computed once a part (the same products in
+   the same order): **up to about 0.05 R** with a still camera, nothing with a moving one. *For the owner's ears*: two
+   taps (linear) for the far, quiet sources.
+
+**Within budget**: D (the physical cylinder, the moving masses and the walls: +0.06 R against 0.06), I, H; E 0.01 over.
+
+**After G's c4ce28f** (the passivity check skipped while its inputs stand within 1e-4 of the last; 19:21 UTC, quiet
+host): `XBuild::passGain` 63 -> 12 ns a sample on the typical build (one profile, drive-car), about 0.026 R saved; the
+whole build's profile read 4020 ns against 4390 (one run each: the rest is run-to-run spread, not claimed).
