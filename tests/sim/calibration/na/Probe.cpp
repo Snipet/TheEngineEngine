@@ -417,6 +417,7 @@ TEST_CASE("probe: an overrun's gas temperatures", "[.probe-overrun]")
                         fired += 1, burning += pr.get("cyl[" + std::to_string(k) + "].burnAt") >= 0.0 ? 1 : 0;
                 }
         });
+        std::printf("       dilution (burned share at intake closing) cyl 0 %.3f, cyl 1 %.3f; manifold %.1f kPa\n", pr.get("comb.dilution[0]"), pr.get("comb.dilution[1]"), pr.get("intk.pPlenum") * 1e-3);
         std::printf("       cyl 0: conserve %.0f, exUnburnedJ most %.2f J, its last most %.2f J, burnOut %.2f; burn %.0f deg, spark %.1f deg BTDC, EVO %.0f\n", pr.get("cyl[0].conserve"), exMax, lastMax, pr.get("cyl[0].bookOut"), pr.get("cyl[0].burnDur"), pr.tel("ecu.advance"), pr.get("cyl[0].evo"));
         std::printf("       exhaust openings of fired charges %.0f, still burning %.0f; to the store %.1f J (popJ), the store's fuel %.2f mg\n",
                     fired, burning, pr.get("comb.popJ") - pj0, (pr.get("ecu.one.account.fuel[0]") + pr.get("ecu.one.account.fuel[1]")) * 1e6);
