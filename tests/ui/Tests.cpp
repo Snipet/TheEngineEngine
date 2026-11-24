@@ -959,6 +959,7 @@ namespace
 
     // ---- J2 (card J, items 6 to 10) ----
 #include "WidgetTests.inc"
+#include "BindTests.inc"
 
     int run(const std::string& name)
     {
