@@ -77,6 +77,11 @@ module EngineTel
         [[ui::help("Two-stroke: the expansion chambers' gas; the speed the pipe is tuned for rises with it")]];
     float tsCrankcase [[ui::label("Crankcase")]] [[ui::quantity("pressure")]] [[ui::help("Two-stroke: cylinder 1's, absolute")]];
     float tsReed [[ui::label("Reed's opening")]] [[ui::quantity("fraction")]] [[ui::help("Two-stroke: cylinder 1's petal, 0 shut, 1 on its stop")]];
+    // card D, for N1's loss ledger: means over the cylinders' last intake closings
+    float chargeTemperature [[ui::label("Charge temperature")]] [[ui::quantity("temperature")]]
+        [[ui::help("The charge's temperature as the intake valve closes, the mean over the cylinders")]];
+    float trappedMass [[ui::label("Trapped charge")]] [[ui::quantity("mass")]]
+        [[ui::help("The unburned gas each cylinder holds as its intake valve closes, the mean over the cylinders")]];
 };
 
 module BoostTel
