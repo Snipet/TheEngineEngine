@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <cstdio>
 #include <functional>
+#include <map>
 
 namespace tee::balance
 {
@@ -19,26 +20,40 @@ namespace tee::balance
         constexpr double kAfr[] = {14.0, 14.0, 14.0, 14.6, 9.80, 6.47, 14.5, 15.6, 34.3};
         constexpr double kLhv[] = {42.2e6, 42.2e6, 42.2e6, 44.0e6, 29.3e6, 19.9e6, 42.5e6, 46.35e6, 120.0e6};
 
-        double gammaAt(double t)   // sim/core/cylinder.fm's
+        // sim/core/cylinder.fm's gammaAt: the physical cylinder (conserve 1) Gatowski's with the lean term on the
+        // cylinder's phi; the reference's otherwise
+        struct Gas
         {
-            return std::min(std::max(1.39 - 7.5e-5 * (t - 300.0), 1.24), 1.40);
-        }
-        // The sim's gas's sensible energy and enthalpy from 0 K (J/kg): u(T) = integral of cv = R / (gamma(T) - 1),
+            int conserve = 1;
+            double phi = 1.0;
+            double gamma(double t) const
+            {
+                if (conserve != 0)
+                    return std::min(std::max(1.392 - 8.13e-5 * t + 0.037 * (1.0 - std::min(phi, 1.0)), 1.15), 1.40);
+                return std::min(std::max(1.39 - 7.5e-5 * (t - 300.0), 1.24), 1.40);
+            }
+        };
+        // The gas's sensible energy and enthalpy from 0 K (J/kg): u(T) = integral of cv = R / (gamma(T) - 1),
         // h = u + R T. (The cylinder's step is m cv(T) dT = dQ - p dV + (h - u) dm, so these close its books; cp(T) T,
-        // which the step writes, is the same thing only where gamma is constant.)
-        double uAt(double t)
+        // which the step writes, is the same thing only where gamma is constant.) A table a gas, kept by its key.
+        double uAt(const Gas& g, double t)
         {
-            static const std::vector<double> table = [] {
+            static std::map<long, std::vector<double>> tables;
+            const long key = g.conserve != 0 ? std::lround(std::min(g.phi, 1.0) * 1000.0) : -1;
+            auto it = tables.find(key);
+            if (it == tables.end())
+            {
                 std::vector<double> u(3601, 0.0);
                 for (int i = 1; i <= 3600; ++i)
-                    u[std::size_t(i)] = u[std::size_t(i - 1)] + 287.0 / (gammaAt(i - 0.5) - 1.0);
-                return u;
-            }();
+                    u[std::size_t(i)] = u[std::size_t(i - 1)] + 287.0 / (g.gamma(i - 0.5) - 1.0);
+                it = tables.emplace(key, std::move(u)).first;
+            }
+            const std::vector<double>& table = it->second;
             const double x = std::clamp(t, 0.0, 3599.0);
             const auto i = std::size_t(x);
             return table[i] + (table[i + 1] - table[i]) * (x - double(i));
         }
-        double hAt(double t) { return uAt(t) + 287.0 * t; }
+        double hAt(const Gas& g, double t) { return uAt(g, t) + 287.0 * t; }
 
         struct Kept
         {
@@ -245,7 +260,7 @@ namespace tee::balance
         struct Cyl
         {
             H p, v, t, m, mInert, hA, tw, mE, mI, ang, sparkAt, evo, ivo, idur, burnAt, ivcNow, qTot, released, vd,
-                exStore, exStoreMT, rvMass, rvMT;
+                exStore, exStoreMT, rvMass, rvMT, phi, conserve;
             double pL, vL, tL, aL, relL, exStoreL, exStoreMTL, rvMassL, rvMTL;
         };
         std::vector<Cyl> cy(std::size_t(std::max(n, 0)));
@@ -276,16 +291,24 @@ namespace tee::balance
             x.exStoreMT = handle(q + "exStoreMT");
             x.rvMass = handle(q + "rvMass");
             x.rvMT = handle(q + "rvMT");
+            x.phi = handle(q + "phi");
+            x.conserve = handle(q + "conserve");
             b.vd += rd(x.vd);
         }
         const H airThr = handle("airThrottle"), airVal = handle("airValves"), gasEx = handle("gasExhaust");
         const H oneFuel = handle("comb.one.fuel"), oneLambda = handle("comb.one.lambdaOut"), mixHeat = handle("comb.one.mix.heat"),
                 oxygen = handle("comb.oxygen"), tAirH = handle("intk.tAir"), pPlenH = handle("intk.pPlenum"), tAmbH = handle("heat.tAmb");
         const double pumpFrom = rdPath("work.pumpFrom"), pumpTo = rdPath("work.pumpTo"), cycDeg = rdPath("cyl[0].cyc");
+        auto gasOf = [&](const Cyl& x) {
+            Gas g;
+            g.conserve = x.conserve.ok ? int(rd(x.conserve)) : 0;
+            g.phi = x.phi.ok ? rd(x.phi) : 1.0;
+            return g;
+        };
         auto energy = [&] {
             double u = 0.0;
             for (Cyl& x : cy)
-                u += rd(x.m) * uAt(rd(x.t));
+                u += rd(x.m) * uAt(gasOf(x), rd(x.t));
             return u;
         };
         for (Cyl& x : cy)
@@ -309,6 +332,7 @@ namespace tee::balance
             const double tA = rd(tAirH);
             for (Cyl& x : cy)
             {
+                const Gas g = gasOf(x);
                 const double pN = rd(x.p), vN = rd(x.v), tN = rd(x.t), aN = rd(x.ang), mE = rd(x.mE), mI = rd(x.mI);
                 // the walls, by phase (the step took hA (T - T_wall) at the start's temperature)
                 const double q = rd(x.hA) * (x.tL - rd(x.tw)) * dt;
@@ -337,22 +361,22 @@ namespace tee::balance
                 // the enthalpy through the valves (out positive)
                 if (mE >= 0.0)
                 {
-                    b.hOut += hAt(x.tL) * mE * dt;
+                    b.hOut += hAt(g, x.tL) * mE * dt;
                     b.mOutExhaust += mE * dt;
                 }
                 else
                 {
                     const double tb = x.exStoreL > 1e-12 ? x.exStoreMTL / x.exStoreL : x.tL;
-                    b.hOut += hAt(tb) * mE * dt;
+                    b.hOut += hAt(g, tb) * mE * dt;
                     b.mOutExhaust += mE * dt;
                 }
                 if (mI >= 0.0)
-                    b.hIn -= hAt(x.tL) * mI * dt;
+                    b.hIn -= hAt(g, x.tL) * mI * dt;
                 else
                 {
                     const double take = std::min(x.rvMassL, -mI * dt);
                     const double tr = x.rvMassL > 1e-12 ? x.rvMTL / x.rvMassL : tA;
-                    b.hIn += hAt(tr) * take + hAt(tA) * (-mI * dt - take);
+                    b.hIn += hAt(g, tr) * take + hAt(g, tA) * (-mI * dt - take);
                 }
                 // an intake closing: what is trapped, and what the charge was given
                 if (rd(x.ivcNow) != 0.0)
@@ -417,7 +441,7 @@ namespace tee::balance
         b.tIvc = b.closings > 0 ? sumTivc / b.closings : 0.0;
         b.lhv = kLhv[grade];
         b.fuelEnergy = b.fuel * b.lhv;
-        b.hOutAtInlet = b.mOutExhaust * hAt(b.tAirHeated);
+        b.hOutAtInlet = b.mOutExhaust * hAt(Gas{}, b.tAirHeated);
         b.cycles = b.closings / double(std::max(n, 1));
         if (!keeping)
             k.player.reset();
