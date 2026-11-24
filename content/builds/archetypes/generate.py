@@ -178,7 +178,7 @@ arch(slug="air-cooled-flat-six-36", runner=0.35, name="Air-cooled flat six", geo
      grade="Premium (91)", car="rear-engine-classic", timing="Chain", fan="Viscous clutch",
      notes="A 3.6 L air- and oil-cooled flat six, two valves a cylinder on rockers, dry sump: 100 x 76.4 mm "
            "(3600 cc), 11.3:1; 184 kW at 6100 rpm and 310 N m at 4800 (the 1989 M64-type engine; Wikipedia, "
-           "auto-data.net). Its intake here is one hand-set runner a cylinder: JUDGEMENT, not the real engine's. The real one is a two-stage resonance intake, a "
+           "auto-data.net). The real intake is a two-stage resonance intake, a "
            "flap between its two plenum halves (closed some 3000 to 5000-5500 rpm at large throttle: forums only, "
            "Rennlist, Pelican Parts), its runners' lengths not found in any source. The cooling fan's whir is the "
            "viscous fan. In a rear-engined coupe, five-speed manual.")
@@ -565,6 +565,17 @@ def build(a):
         i["runnerLength"] = 0.40
     i.update(a.get("intake", {}))
     rule_runner = "runnerLength" not in a.get("intake", {}) and a["layout"] != "Rotary"
+    # the naturally aspirated engines' runners by their manifold's class (the lead, 20:52), over any length set by
+    # hand above: written down before any table was run on them, and never from the engine's own rows
+    if a["slug"] in MANIFOLD:
+        cls = MANIFOLD[a["slug"]]
+        for k_ in ("runnerLength2", "runnerSwitch"):
+            i.pop(k_, None)
+        i["runnerLength"] = RUNNER[cls][0]
+        if a["slug"] in SWITCHED:
+            i["runnerLength2"] = round(0.65 * RUNNER[cls][0], 2)
+            i["runnerSwitch"] = round(0.65 * a["redline"] * RPM, 1)
+        rule_runner = False
 
     bo = {"model": "Machine", "kind": "Natural", "level": 0.0, "blowOff": 0.7}
     if "boost" in a:
@@ -683,7 +694,16 @@ def build(a):
             "car": car, "env": {"temperature": 288.15, "pressure": 101325.0}, "voices": vo, "sound": snd}
     switches_on(spec, a["slug"])
     notes = a["notes"]
-    if rule_runner and "runnerLength" in i and "JUDGEMENT" not in notes:
+    if a["slug"] in MANIFOLD:
+        cls = MANIFOLD[a["slug"]]
+        notes += (" Its intake: the %s class's runner, %.2f m from the valve to the plenum (%s)%s: JUDGEMENT, a class "
+                  "default, not the real engine's (no source found)." % (
+                      cls, RUNNER[cls][0], RUNNER[cls][1],
+                      "; a second, short runner of %.2f m above %.0f rpm, as the real engine switches (%s; its "
+                      "lengths and speed the class's judgement)" % (i["runnerLength2"], i["runnerSwitch"] / RPM,
+                                                                    SWITCHED[a["slug"]])
+                      if a["slug"] in SWITCHED else ""))
+    elif rule_runner and "runnerLength" in i and "JUDGEMENT" not in notes:
         notes += (" Its intake runner, %.2f m from the valve to the plenum, is %s: JUDGEMENT, not the real engine's (no "
                   "source found)." % (i["runnerLength"], "a hand-set length" if "runner" in a else "the class default"))
     return {"format": "tee-build", "version": 1, "name": a["name"], "notes": notes, "spec": spec}
@@ -698,6 +718,30 @@ def _levels():
 
 
 LEVELS = _levels()
+
+# The naturally aspirated engines' intake runners by the class of their manifold (the lead, 20:52), valve to plenum,
+# JUDGEMENT, written down before any table ran on them (24 Nov, 20:55 UTC) and never chosen from an engine's rows;
+# a second, switched runner only where the real engine switches (0.65 of the class's length above 0.65 of the limiter:
+# judgement). The class goes by the manifold the real engine has, not by its targets.
+RUNNER = {
+    "carburettor": (0.20, "a four-barrel over a dual-plane or open plenum, 1960s to 80s"),
+    "long-runner": (0.45, "a port-injected road engine's tuned long runners, 1985 to 2005"),
+    "modern": (0.38, "a road engine's composite plenum manifold, 2005 on"),
+    "sports": (0.30, "a high-revving engine's short runners or a throttle a cylinder"),
+}
+MANIFOLD = {
+    "big-block-74-pushrod-v8": "carburettor", "small-block-57-carb": "carburettor",
+    "air-cooled-flat-six-36": "long-runner", "vr6-28": "long-runner", "pushrod-v6-38": "long-runner",
+    "twin-cam-roadster-18": "long-runner", "hot-hatch-16-16v": "long-runner",
+    "big-bore-70-pushrod-v8": "modern", "four-cam-v8-50": "modern", "economy-four-15": "modern",
+    "v6-35-na": "modern",
+    "straight-six-32-high-rev": "sports", "two-stage-cam-20": "sports", "flat-plane-v8-45": "sports",
+    "v10-52": "sports", "v12-65": "sports",
+}
+SWITCHED = {
+    "v6-35-na": "the kind's two-stage intakes, Toyota's ACIS and Honda's (recalled)",
+    "flat-plane-v8-45": "the 458's variable-length intake (recalled)",
+}
 
 # where each class carries its engine (the listener's paths to each camera)
 ENGINE_PLACE = {"mid-engine": "Mid", "awd-supercar": "Mid", "rear-engine-classic": "Rear"}

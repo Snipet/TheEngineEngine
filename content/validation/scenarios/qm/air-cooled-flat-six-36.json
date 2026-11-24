@@ -2,7 +2,7 @@
   "format": "tee-scenario",
   "version": 1,
   "name": "qm-air-cooled-flat-six-36",
-  "description": "Card P's drag run for \"Air-cooled flat six\" in its own gearbox: card I's launch (traction control on, the car's own clutch), staged at 8 s, the green at 10.5 s, the upshifts where the engine first reaches 95 % of its redline (placed by content/validation/archetypes/quarter_mile.py). Read car.t1320 and car.v1320.",
+  "description": "Card P's drag run for \"Air-cooled flat six\" in its own gearbox: card I's launch (traction control on, the car's own clutch), staged at 8 s, the green at 10.5 s, the upshifts where the engine first reaches 95 % of its redline (placed by content/validation/archetypes/quarter_mile.py). Read car.t1320 and car.v1320. Warm tyres (card C's warmTyres: a timed run's).",
   "seconds": 40,
   "warm": true,
   "events": [
@@ -94,5 +94,6 @@
       "audio": "peak",
       "<=": 1
     }
-  ]
+  ],
+  "warmTyres": true
 }

@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "7.0 L pushrod V8, dry sump",
-  "notes": "A 7.0 L small-block-sized pushrod V8 with titanium intake valves and a dry sump: 104.8 x 101.6 mm (7011 cc), 11:1, 7000 rpm (the LS7 kind: 377 kW at 6300 rpm, 637 N m at 4800; gmauthority.com). In a light front-engined sports car, six-speed manual. Its intake runner, 0.40 m from the valve to the plenum, is a hand-set length: JUDGEMENT, not the real engine's (no source found).",
+  "notes": "A 7.0 L small-block-sized pushrod V8 with titanium intake valves and a dry sump: 104.8 x 101.6 mm (7011 cc), 11:1, 7000 rpm (the LS7 kind: 377 kW at 6300 rpm, 637 N m at 4800; gmauthority.com). In a light front-engined sports car, six-speed manual. Its intake: the modern class's runner, 0.38 m from the valve to the plenum (a road engine's composite plenum manifold, 2005 on): JUDGEMENT, a class default, not the real engine's (no source found).",
   "spec": {
     "engine": {
       "layout": "V8 crossplane",
@@ -84,7 +84,7 @@
     },
     "intake": {
       "model": 1,
-      "runnerLength": 0.4
+      "runnerLength": 0.38
     },
     "boost": {
       "model": "Machine",
