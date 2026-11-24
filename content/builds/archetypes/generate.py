@@ -226,8 +226,10 @@ arch(slug="small-block-57-carb", name="Small-block 5.7 L, carburettor-like", geo
      intake=dict(runnerLength=0.18, plenumVolume=0.0025), friction="Flat tappet", grade="Regular (87)",
      car="muscle-manual", timing="Chain", fan="Viscous clutch",
      notes="A 350 cubic inch small block (4.00 x 3.48 in: 101.6 x 88.4 mm, 5733 cc), 9:1, two valves on pushrods, a "
-           "flat-tappet cam, one big throttle over an open plenum as a four-barrel carburettor's. Some 150 to 200 kW "
-           "net and 400 to 450 N m (makers' net ratings of the 1970s and 80s). Four-speed manual, live axle.")
+           "flat-tappet cam (the L48's), one big throttle over an open plenum as a four-barrel carburettor's. The L48 "
+           "of 1975 to 1980 is rated 123 to 145 kW net (165 to 195 hp) and 346 to 380 N m (255 to 280 lb ft), 1977's "
+           "180 hp at 4000 rpm and 270 lb ft at 2400; the L82 157 kW at 5200 and 346 N m at 3600 (SAE net, looked up: "
+           "corvsport.com, corvetteactioncenter.com). Four-speed manual, live axle.")
 arch(slug="v10-52", runner=0.28, name="V10 5.2 L", geo="v10-90", layout="V10", bore=84.5, stroke=92.8, rod=154.0, cr=12.5,
      valves=4, dIn=33.8, dEx=28.0, cam=(268, 240, 11.8, 108, 260, 232, 10.8, 112), train="Finger", phase=(42, 42),
      redline=8700, idle=900, direct=True, grade="Premium (91)", car="awd-supercar", timing="Chain",
