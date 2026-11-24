@@ -4,6 +4,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <cmath>
+#include <cstdlib>
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
@@ -24,7 +25,9 @@ namespace combo
 
     int report(const Verdict& v, const std::string& c, const std::string& build, const std::string& scenario)
     {
-        const double r = costOfR();
+        // R costs three runs a process: measured only when a cost is judged (the fuzz, which asks for it) or asked
+        // for (TEE_COMBO_COST=1); the fast tier's budget (01-rules.md section 3) has no room for it in every case
+        const double r = std::getenv("TEE_COMBO_COST") != nullptr ? costOfR() : costOfRIfMeasured();
         // idle and revs read n/a for a scenario without that stretch (a soak, a fuzz, a swap): not a stall
         char idle[24], revs[24];
         if (v.idle > 0.0)
