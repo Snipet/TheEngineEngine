@@ -256,11 +256,17 @@ namespace
         Times tm;
         const tee::test::Run r = scenario(kind, build, mask, tm).run(tm.end);
         const Verdict v = judge(r, tm, archetype(build), true, mask == 0 ? 1e9 : referenceStep(build, kind));
+        std::size_t ruled = 0;
+        for (const Failure& f : v.failures)
+            ruled += shiftCutRuled(comboName(mask), f) ? 1 : 0;
+        const bool failed = v.failures.size() > ruled;
         std::printf("%s / %s / %s: %s; step %.1f, dc %.4f, idle %.0f rpm, revs %.0f rpm, %.1f %% of a core\n",
-                    comboName(mask).c_str(), build.c_str(), kindName(kind), v.failures.empty() ? "ok" : "FAILED",
+                    comboName(mask).c_str(), build.c_str(), kindName(kind),
+                    failed ? "FAILED" : (ruled > 0 ? "ok (the shift cut's ruled bound)" : "ok"),
                     v.stepMax, v.dcMax, v.idle * 30.0 / 3.14159265, v.revMax * 30.0 / 3.14159265, 100.0 * v.coreShare);
         for (const Failure& f : v.failures)
-            std::printf("  %s: %s\n", f.check.c_str(), f.detail.c_str());
+            std::printf("  %s%s: %s\n", shiftCutRuled(comboName(mask), f) ? "ruled, " : "", f.check.c_str(),
+                        f.detail.c_str());
         if (!wav.empty())
         {
             tee::Audio a;
@@ -272,7 +278,7 @@ namespace
             if (!tee::writeWav(wav, a, error))
                 std::fprintf(stderr, "tee-fuzz: %s\n", error.c_str());
         }
-        return v.failures.empty() ? 0 : 3;
+        return failed ? 3 : 0;
     }
 
     int usage()

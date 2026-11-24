@@ -281,3 +281,30 @@ TEST_CASE("the curve at 48 kHz inside is the 96 kHz curve within 3 % of the peak
 {
     ratesAgree({"default", "v8", "v10", "large-diesel"});
 }
+
+TEST_CASE("the curve is the same whatever the number of workers: the shares are fixed, not the machine's cores",
+          "[predict]")
+{
+    const auto sim = standinSim();
+    Build build(sim->fields());
+    PredictOptions options;
+    options.points = 7;
+    options.coarse = 3;
+    options.from = 150;
+    options.to = 650;
+    options.sampleRate = 24000.0;
+    std::vector<std::vector<double>> curves;
+    for (const int threads : {1, 2, 3})
+    {
+        options.threads = threads;
+        PredictCurve curve;
+        std::string error;
+        REQUIRE(predictCurve(sim, build, options, curve, error));
+        std::vector<double> torque;
+        for (const PredictPoint& p : curve.points)
+            torque.push_back(p.torque);
+        curves.push_back(torque);
+    }
+    CHECK(curves[0] == curves[1]);   // to the bit: a point's history does not depend on how many run at once
+    CHECK(curves[0] == curves[2]);
+}
