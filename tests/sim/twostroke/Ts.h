@@ -1,4 +1,4 @@
-// tests/sim/twostroke/Ts.h: the two-stroke's bench (rig2.fm with sim/core/twostroke/*.fm and the reference's pipes),
+// tests/sim/twostroke/Ts.h: the two-stroke's bench (rig2.fm with sim/core/twostroke/*.fm and sim/exhaust/duct.fm),
 // compiled once; an instance per test, its spec at its defaults, its pipes' memory taken and given back.
 #pragma once
 
@@ -35,7 +35,7 @@ namespace tee::test::twostroke
                 for (const auto& entry : std::filesystem::directory_iterator(root / "sim" / dir))
                     if (entry.path().extension() == ".fm")
                         files[std::string(dir) + "/" + entry.path().filename().string()] = readFile(entry.path());
-            files["ref/pipes.fm"] = readFile(root / "sim" / "ref" / "pipes.fm");
+            files["exhaust/duct.fm"] = readFile(root / "sim" / "exhaust" / "duct.fm");
             files["rig2.fm"] = readFile(root / "tests" / "sim" / "twostroke" / "rig2.fm");
             std::string errors;
             auto p = Program::fromFiles(files, "rig2.fm", {}, errors);

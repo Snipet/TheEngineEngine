@@ -6,7 +6,7 @@
 // and transfers for 130, a reed valve, a crankcase compression of 1.4, a pipe tuned near 11500 rpm. (Judgement from
 // published tuning practice, Jennings's and Blair's books: none of it a particular engine's drawing.)
 //
-// Made under the fade: the cylinder's geometry, the ports' timings and widths, the crankcase, the pipe's sections.
+// Made under the fade: the cylinder's count and firing, the ports' timings and widths, the crankcase, the pipe's sections.
 // Glided: the power valve's speeds, the spark, the throttle (a control), the pipe's gas temperature (the engine's own).
 #pragma once
 
@@ -17,23 +17,23 @@ enum
 
 module TwoStrokeSpec
 {
-    int rev [[ui::hidden]];
-    // ---- the cylinder ----
-    float bore [[fminus::range(0.03, 0.12)]] [[fminus::default(0.054)]] [[ui::label("Bore")]] [[ui::quantity("length")]]
-        [[ui::group("Two-stroke cylinder")]];
-    float stroke [[fminus::range(0.03, 0.12)]] [[fminus::default(0.0545)]] [[ui::label("Stroke")]] [[ui::quantity("length")]];
-    float rodLength [[fminus::range(0.06, 0.3)]] [[fminus::default(0.110)]] [[ui::label("Rod length")]] [[ui::quantity("length")]];
-    float compression [[fminus::range(5, 20)]] [[fminus::default(13.5)]] [[ui::label("Compression (geometric)")]]
-        [[ui::quantity("ratio")]];
+    // ---- the engine: how many cylinders and how they fire (bore, stroke, rod and compression are spec.engine's) ----
+    int cylinders [[fminus::range(1, 4)]] [[fminus::default(1)]] [[ui::label("Cylinders")]] [[ui::group("Two-stroke")]];
+    int firing [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Firing")]] [[ui::choices("Even", "Together")]]
+        [[ui::help("Even: one every 360 / cylinders degrees (a 180-degree twin, a 120-degree triple); together: all at once.")]];
     // ---- the ports: each opens when the piston uncovers its top edge, open for its duration about bottom dead centre;
     //      its width is the bore's share its windows span (the bridges between them left out) ----
     float exhaustDur [[fminus::range(140, 220)]] [[fminus::default(192)]] [[ui::label("Exhaust port open")]] [[ui::unit("deg")]]
         [[ui::group("Ports")]];
     float exhaustWidth [[fminus::range(0.3, 1.0)]] [[fminus::default(0.70)]] [[ui::label("Exhaust port width")]]
         [[ui::quantity("fraction")]] [[ui::help("Over the bore.")]];
+    float exhaustRadius [[fminus::range(0, 0.5)]] [[fminus::default(0.25)]] [[ui::label("Exhaust port's corner radius")]]
+        [[ui::quantity("fraction")]] [[ui::help("Its top corners' radius over its width: a rounder port opens more gently.")]];
     float transferDur [[fminus::range(100, 150)]] [[fminus::default(130)]] [[ui::label("Transfer ports open")]] [[ui::unit("deg")]];
     float transferWidth [[fminus::range(0.3, 1.6)]] [[fminus::default(1.10)]] [[ui::label("Transfer ports' width")]]
         [[ui::quantity("fraction")]] [[ui::help("All the transfers' windows together, over the bore.")]];
+    float transferRadius [[fminus::range(0, 0.5)]] [[fminus::default(0.15)]] [[ui::label("Transfer ports' corner radius")]]
+        [[ui::quantity("fraction")]];
     float portCd [[fminus::range(0.4, 0.9)]] [[fminus::default(0.70)]] [[ui::label("Ports' discharge coefficient")]];
     // ---- the power valve: the exhaust port's top edge lowered at low speed (a shorter duration), raised above ----
     float valveDur [[fminus::range(0, 220)]] [[fminus::default(0)]] [[ui::label("Power valve closed: exhaust open")]]
@@ -43,16 +43,21 @@ module TwoStrokeSpec
     // ---- the crankcase and its valve ----
     float crankcaseRatio [[fminus::range(1.1, 2.0)]] [[fminus::default(1.40)]] [[ui::label("Crankcase compression")]]
         [[ui::quantity("ratio")]] [[ui::group("Crankcase")]];
-    int inletKind [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Inlet")]] [[ui::choices("Reed valve", "Rotary disc")]];
+    int inletKind [[fminus::range(0, 2)]] [[fminus::default(0)]] [[ui::label("Inlet")]]
+        [[ui::choices("Reed valve", "Rotary disc", "Piston port")]];
     float inletArea [[fminus::range(0.0001, 0.003)]] [[fminus::default(0.0008)]] [[ui::label("Inlet's open area")]]
         [[ui::quantity("area")]];
     float reedFull [[fminus::range(1000, 50000)]] [[fminus::default(15000)]] [[ui::label("Reed fully open at")]]
         [[ui::quantity("pressure")]] [[ui::help("The drop across the reed that opens it fully.")]];
-    float reedTime [[fminus::range(0.0001, 0.002)]] [[fminus::default(0.0004)]] [[ui::label("Reed's response")]]
-        [[ui::quantity("time")]];
-    float discOpen [[fminus::range(0, 360)]] [[fminus::default(130)]] [[ui::label("Disc opens")]] [[ui::unit("deg")]]
-        [[ui::help("Crank degrees after top dead centre.")]];
+    float reedHz [[fminus::range(100, 2000)]] [[fminus::default(550)]] [[ui::label("Reed's natural frequency")]]
+        [[ui::quantity("frequency")]] [[ui::help("The petal's own ring: a stiff, light petal follows a fast engine.")]];
+    float reedDamping [[fminus::range(0.02, 1.0)]] [[fminus::default(0.15)]] [[ui::label("Reed's damping")]]
+        [[ui::quantity("ratio")]];
+    float discOpen [[fminus::range(0, 360)]] [[fminus::default(220)]] [[ui::label("Disc opens")]] [[ui::unit("deg")]]
+        [[ui::help("Crank degrees after top dead centre: 220 is 140 before the next, as the piston rises.")]];
     float discDur [[fminus::range(90, 250)]] [[fminus::default(200)]] [[ui::label("Disc open for")]] [[ui::unit("deg")]];
+    float pistonDur [[fminus::range(90, 200)]] [[fminus::default(140)]] [[ui::label("Piston port open for")]] [[ui::unit("deg")]]
+        [[ui::help("About top dead centre: the piston's skirt uncovers the inlet.")]];
     float carbArea [[fminus::range(0.0001, 0.003)]] [[fminus::default(0.00057)]] [[ui::label("Carburettor bore's area")]]
         [[ui::quantity("area")]];
     // ---- scavenging ----
@@ -80,4 +85,12 @@ module TwoStrokeSpec
         [[ui::help("Each cone as this many short ducts of stepped bore.")]];
     int chamber [[fminus::range(0, 1)]] [[fminus::default(1)]] [[ui::label("Pipe")]]
         [[ui::choices("Straight pipe", "Expansion chamber")]];
+    int silencer [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Silencer")]] [[ui::choices("None", "Packed")]]
+        [[ui::help("After the stinger: a perforated core wrapped in fibre (its bore near the stinger's: straight through) or a can (a wide bore), its outlet then a short tube of the stinger's bore.")]];
+    float silencerLen [[fminus::range(0.1, 0.6)]] [[fminus::default(0.40)]] [[ui::label("Silencer's length")]]
+        [[ui::quantity("length")]];
+    float silencerDiam [[fminus::range(0.012, 0.12)]] [[fminus::default(0.026)]] [[ui::label("Silencer's bore")]]
+        [[ui::quantity("length")]];
+    float silencerPack [[fminus::range(0, 30)]] [[fminus::default(6)]] [[ui::label("Silencer's packing")]] [[ui::unit("dB")]]
+        [[ui::help("What a pass through the silencer takes from the sound (the steady flow passes whole).")]];
 };
