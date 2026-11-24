@@ -1,0 +1,192 @@
+// combustion/combustion.fm: the charge and its burn (module Combustion). Owner: package H.
+//
+// When a cylinder's intake valve shuts: how much fuel it gets (none while the ECU cuts it), how much of it this
+// cycle's flame will burn (the burned gas it holds dilutes it: Daw et al.'s recursion near the limit, a big cam's lope),
+// where the spark falls and how long the burn takes, knock and pre-ignition (and the ECU's retard for them), the pops
+// of unburned fuel lighting in the hot header; a diesel's charge (its lever's fuel, its injection, its ignition delay
+// and whether it lights at all, its premixed share). The burn itself runs in the cylinder (core/cylinder.fm, a Wiebe
+// curve). The reference's own explanations stand with each part below.
+//
+//   setup(rate, noise, ecu, heat, layout, pops)   in init: the streams and the state it reads and writes
+//   charge(cy, ci, fuel, pPlenum, rpm, compression, crBs, burnK, pops, rough, timing)   at cylinder ci's intake closing
+// It reads the ECU's cuts, trim, throttle, idle valve and speeds, the heat's temperatures; it writes the cylinder's
+// charge (qTot, sparkAt, burnDur, knock, cBurn, beta, dur2), the heat the burn gives (Heat's heatJ), the ECU's knock
+// retard (kRet: its knock sensor hears it) and fires a pop in the exhaust's collector (Pop).
+#pragma once
+#include "lib/noise.fm"
+
+module Combustion
+{
+    float rate;
+    Noise* nz;
+    Ecu* ecu;
+    Heat* heat;
+    Layout* lay;
+    Pop* pop;
+    float droop;        // a diesel's governor near its redline: the share of the fuel it lets through
+    float dilution[12]; // each cylinder's burned-gas share at its last intake closing
+
+    void setup(float rateIn, Noise* noise, Ecu* ecuIn, Heat* heatIn, Layout* layIn, Pop* pops)
+    {
+        rate = rateIn;
+        nz = noise;
+        ecu = ecuIn;
+        heat = heatIn;
+        lay = layIn;
+        pop = pops;
+        droop = 1.0f;
+    }
+
+    // When the intake valve shuts: the fuel for this cycle (none when the ECU cuts it), from what of the charge can
+    // burn (all but the burned gas in it: the products the last cycle left and what the overlap drew back), and how
+    // much of that this cycle's flame takes. That falls steeply as the burned gas dilutes the charge past about 0.45
+    // (half at 0.56: the model's share counts all the burned gas it draws back, and runs above measured residual
+    // fractions). What fails to burn stays, so the next cycle has more to burn and less burned gas, burns well, and
+    // leaves the one after diluted again (Daw et al.'s recursion): near the limit a big cam's idle lopes in that
+    // pattern, and tiny differences between cycles swing it.
+    void charge(Cylinder* cy, int ci, int fuelUse, float pPlenum, float rpm, float smCR, float crBs, float burnK, float pops,
+                float rough, float timing)
+    {
+        if (fuelUse != 0)
+        {
+            chargeDiesel(cy, ci, pPlenum, rpm, smCR, burnK, rough, timing);
+            return;
+        }
+        droop = 1.0f;
+        // (what the last burn left unburned has gone into the hot header: now and then it lights there)
+        const float lastC = cy->cBurn;
+        if (lastC < 0.75f && pops > 0.0f && !ecu->fuelCut && nz->rnd() > 1.0f - 1.6f * pops * (0.75f - lastC))
+        {
+            const int b = lay->topo == 0 ? 0 : lay->bank[ci];
+            pop[b].fire(20000.0f * (0.75f - lastC) * (0.5f + 0.5f * fabsf(nz->rnd())), rate, 99 + b);
+        }
+        const float dil = fminf(cy->mInert / fmaxf(cy->m, 1.0e-9f), 0.95f);
+        const float burnable = fmaxf(cy->m - cy->mInert, 0.0f);
+        // (of the fuel's heat the gas keeps some 80 % at full load: the rest goes to the walls or out unburned; a
+        // larger share at part load, where the charge is thinner and the walls take more)
+        float q = burnable / 14.0f * 44.0e6f * (0.60f + 0.20f * fminf(pPlenum / 101325.0f, 1.2f));
+        const float d50 = (lay->rotary != 0 ? 0.62f : 0.56f) * (1.0f + (0.015f + 0.03f * rough) * nz->gauss());
+        const float cb = 1.0f / (1.0f + expf((dil - d50) / 0.035f));
+        cy->cBurn = cb;
+        dilution[ci] = dil;
+        const float sigma = 0.015f + 0.06f * rough;
+        q *= cb * fmaxf(1.0f + cy->bias + sigma * nz->gauss(), 0.0f) * ecu->trim;
+        if (ecu->fuelCut)
+        {
+            q = 0.0f;
+            // pops: on the overrun some fuel gets through and lights in the pipe
+            if ((ecu->dfco || ecu->limiting) && pops > 0.0f)
+            {
+                const float chance = pops * (0.25f + 0.75f * rpm / ecu->redRpm) * expf(-ecu->sinceLift / 2.5f);
+                if (nz->rnd() > 1.0f - 0.9f * chance)
+                {
+                    const int b = lay->topo == 0 ? 0 : lay->bank[ci];
+                    pop[b].fire(30000.0f * (0.35f + 0.65f * fabsf(nz->rnd())), rate, 99 + b);
+                }
+            }
+        }
+        cy->qTot = q;
+        heat->heatJ += q;
+        // knock: past the compression the fuel takes at this load (some 14 at full load, less with boost, far more at
+        // part load) the end gas lights on its own, more often and harder the further past: a ping. More spark advance
+        // (TIMING, less what the ECU has taken back: 0.12 a degree), hotter air under the bonnet (0.3 a 10 K) and a
+        // hotter engine take that compression lower
+        const float mapB = pPlenum / 101325.0f;
+        const float crLim = (mapB >= 1.0f ? 14.0f - 2.5f * (mapB - 1.0f) : 14.0f + 20.0f * (1.0f - mapB)) + crBs
+                            - 0.12f * (timing - ecu->kRet) - 0.03f * (heat->tAmb + 5.0f * heat->warm - 305.0f) - 0.02f * (heat->tCool - 363.0f);
+        const float over = (smCR - crLim) / 3.0f;
+        cy->knock = 0.0f;
+        if (over > 0.0f && q > 0.0f && 0.5f + 0.5f * nz->rnd() < fminf(4.0f * over, 1.0f))
+            cy->knock = fminf(1.5f * over, 1.5f) * (0.6f + 0.4f * fabsf(nz->rnd()));
+        // its knock sensor hears it: the ECU takes the spark back 1.5 degrees a knock, up to 15 (and gives it back at 2
+        // a second), which buys it some 2 points of compression; a knocking cycle loses heat to the walls the knock
+        // scrubs (a tenth of it at a hard knock)
+        if (cy->knock > 0.0f)
+        {
+            ecu->kRet = fminf(ecu->kRet + 1.5f, 15.0f);
+            q *= 1.0f - 0.1f * cy->knock;
+            cy->qTot = q;
+        }
+        // the spark: earlier at speed, later under load; TIMING moves it, the ECU takes back what knocks
+        const float adv = 12.0f + 22.0f * sqrtf(fminf(rpm / ecu->redRpm, 1.2f)) - 8.0f * (pPlenum / 101325.0f - 0.4f)
+                          + 22.0f * (burnK - 1.0f) + timing - ecu->kRet;
+        // (a diluted charge lights later and burns slower: the flame's development and its speed)
+        const float dx = fmaxf(dil - 0.15f, 0.0f);
+        cy->sparkAt = lay->cyc - fminf(fmaxf(adv, 6.0f), 40.0f) + 1.5f * rough * nz->gauss() + 25.0f * fminf(dx, 0.3f);
+        if (cy->sparkAt >= lay->cyc)
+            cy->sparkAt -= lay->cyc;                         // (after the top: a late spark)
+        // (a low compression's charge is cooler at the spark: its flame slower, as the ratio's -0.3th power)
+        cy->burnDur = (44.0f + 11.0f * fmaxf(0.8f - pPlenum / 101325.0f, 0.0f)) * (1.0f + 0.08f * rough * nz->gauss())
+                      * (1.0f + 2.5f * dx) * burnK * expf(-0.3f * logf(smCR * 0.1f));
+        // far past the limit (some 2.5 points of compression past what the ECU's retard buys), the charge lights
+        // itself as it is squeezed, 30 to 45 degrees before the top: pre-ignition, a fast burn that fights the piston's
+        // rise (the torque falls away) and knocks its hardest; past some 8 points, most cycles do
+        if (over > 0.8f && q > 0.0f && 0.5f + 0.5f * nz->rnd() < fminf(0.5f * (over - 0.8f), 0.9f))
+        {
+            cy->sparkAt = lay->cyc - 30.0f - 15.0f * fabsf(nz->rnd());
+            cy->burnDur = 20.0f;
+            cy->knock = 1.5f;
+            ecu->kRet = 15.0f;
+        }
+    }
+
+    // A diesel's charge, as its intake valve shuts: all the air it breathed (no ecu->throttle) and the fuel the lever asks
+    // (the ecu->throttle, the idle governor's, or a start's while it cranks and for a moment after), lean: an equivalence
+    // ratio of 0.75 at full fuel, the smoke limit; near the redline the governor takes the fuel back instead of cutting
+    // it. It injects some degrees before the top (earlier at speed and with more fuel) and lights after its ignition
+    // delay: Wolfer's, 0.44 p^-1.19 exp(4650 / T) ms (p in atmospheres), from the air squeezed polytropically from now
+    // to the injection (and the glow plugs while it cranks), at most 30 degrees. What was injected during the delay
+    // burns at once (Watson's share, 1 - 0.926 phi^0.37 / tau^0.26): a spike of pressure that rings the block, the
+    // knock, louder at idle and the lower the compression; the rest burns as it mixes with the air.
+    void chargeDiesel(Cylinder* cy, int ci, float pPlenum, float rpm, float smCR, float burnK, float rough, float timing)
+    {
+        const float air = fmaxf(cy->m - cy->mInert, 0.0f);
+        dilution[ci] = fminf(cy->mInert / fmaxf(cy->m, 1.0e-9f), 0.95f);
+        cy->cBurn = 1.0f;
+        droop = fminf(fmaxf((ecu->redRpm + 50.0f - rpm) / 250.0f, 0.0f), 1.0f);
+        const float lever = fminf(fmaxf(fmaxf(ecu->throttle, 0.12f + 0.5f * ecu->bypass), 0.45f * expf(-ecu->sinceStart / 1.0f)), 1.0f) * droop;
+        const float phi = 0.75f * lever;
+        const float sigma = 0.015f + 0.06f * rough;
+        float q = air * phi / 14.5f * 42.5e6f * 0.62f * fmaxf(1.0f + cy->bias + sigma * nz->gauss(), 0.0f) * ecu->trim;
+        if (ecu->fuelCut)
+            q = 0.0f;
+        // (TIMING injects earlier; a cold chamber's walls take more of the squeeze's heat, its charge some 4 % cooler
+        // at the top, and cranking's slow squeeze loses more still (and blows by), some 20 %; its glow plugs heat it
+        // while it cranks, and for a minute and a half after a cold start)
+        const float soi = 4.0f + 14.0f * fminf(rpm / ecu->redRpm, 1.2f) + 3.0f * lever + timing;
+        const float lr = logf(fmaxf(cy->v / cy->volumeAt(lay->cyc - soi), 1.0f));
+        const float cold = 1.0f - heat->warmS;
+        const float nSq = 0.35f - 0.015f * cold - (ecu->state == 1 ? 0.08f : 0.0f);
+        const float glow = ecu->state == 1 ? 200.0f : 100.0f * (1.0f - heat->warm) * fmaxf(1.0f - heat->runT / 90.0f, 0.0f);
+        const float tc = cy->t * expf(nSq * lr) + glow;
+        const float pc = cy->p * expf(1.35f * lr) / 101325.0f;
+        const float tau = 0.44f * expf(-1.19f * logf(fmaxf(pc, 1.0f))) * expf(4650.0f / fmaxf(tc, 400.0f));
+        const float delayRaw = tau * 0.006f * fmaxf(rpm, 100.0f);
+        const float delay = fminf(delayRaw, 30.0f);
+        // whether it lights at all: the charge's temperature squeezed to the top (with the same losses and glow) must
+        // reach some 740 K (none under 680), and it must light before the piston is well on its way down. Injected
+        // early, into cooler air, the delay mostly runs as the squeeze heats it: what is left of it at the top runs at
+        // the top's pace (Livengood and Wu's integral, in two steps), from 10 degrees after it on less and less, none
+        // past 20. What does not light goes out unburned (white smoke): a diesel of too little compression misses and
+        // stalls, and a cold one cranks and cranks (a 17:1 diesel some -20 F, 0 F hard), or will not start at all
+        const float lrT = logf(fmaxf(cy->v / cy->vc, 1.0f));
+        const float tTop = cy->t * expf(nSq * lrT) + glow;
+        const float pTop = cy->p * expf(1.35f * lrT) / 101325.0f;
+        const float dTop = 0.44f * expf(-1.19f * logf(fmaxf(pTop, 1.0f))) * expf(4650.0f / fmaxf(tTop, 400.0f)) * 0.006f * fmaxf(rpm, 100.0f);
+        const float late = delayRaw > soi ? (delayRaw - soi) * dTop / fmaxf(delayRaw, 0.001f) : 0.0f;
+        const float pIgn = fminf(fmaxf((tTop - 680.0f) / 60.0f, 0.0f), 1.0f) * fminf(fmaxf((20.0f - late) / 10.0f, 0.0f), 1.0f);
+        if (pIgn < 1.0f && 0.5f + 0.5f * nz->rnd() >= pIgn)
+            q = 0.0f;
+        // (past some 18, a higher compression's tighter chamber gives its walls more of the burn: 1.5 % a point)
+        q *= 1.0f - 0.015f * fmaxf(smCR - 18.0f, 0.0f);
+        cy->qTot = q;
+        heat->heatJ += q;
+        cy->sparkAt = lay->cyc - soi + delay + rough * nz->gauss();
+        if (cy->sparkAt >= lay->cyc)
+            cy->sparkAt -= lay->cyc;
+        cy->beta = fminf(fmaxf(1.0f - 0.926f * expf(0.37f * logf(fmaxf(phi, 0.01f)) - 0.26f * logf(fmaxf(tau, 0.05f))), 0.05f), 0.9f);
+        cy->burnDur = 4.5f + 2.5f * fminf(rpm / ecu->redRpm, 1.0f);
+        cy->knock = 0.0f;
+        cy->dur2 = (35.0f + 30.0f * lever) * (1.0f + 0.08f * rough * nz->gauss()) * burnK;
+    }
+};

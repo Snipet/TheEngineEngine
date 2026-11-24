@@ -14,7 +14,7 @@
 // Angles are degrees of the crank (the rotary's: of its eccentric shaft) in the cylinder's own cycle, 0 at the top of
 // the compression stroke where it fires; 720 a cycle (a rotary's face: 1080).
 #pragma once
-#include "pipes.fm"
+#include "exhaust/duct.fm"
 
 // A cam's valve's effective flow area over its event (0 to 1 of the event; 128 steps, as a share of the area at full
 // lift): flowArea(lift(...)) below, tabulated (they cost six transcendentals a valve a sample)

@@ -1,4 +1,4 @@
-> **K3b in progress**: modules carved so far: Listen (`listen/`), Extras (`sound/extras.fm`), Car (`vehicle/car.fm`), Heat (`core/heat.fm`), Boost (`boost/boost.fm`), Ecu (`ecu/ecu.fm`). Do not integrate
+> **K3b in progress**: modules carved so far: Listen (`listen/`), Extras (`sound/extras.fm`), Car (`vehicle/car.fm`), Heat (`core/heat.fm`), Boost (`boost/boost.fm`), Ecu (`ecu/ecu.fm`), Combustion (`combustion/combustion.fm`), Pop (`exhaust/pop.fm`), Valvetrain (`valvetrain/valvetrain.fm`), Intake (`intake/intake.fm`); Duct and Valve in `exhaust/duct.fm`. Do not integrate
 > against this file until `docs/handoffs/k3b.md` exists and `sim/core/monolith.fm` is gone.
 
 # sim/: the simulator

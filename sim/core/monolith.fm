@@ -10,12 +10,16 @@
 // Driven as a car or a semi truck (DRIVE CAR, TRUCK), the pedals work the throttle and the clutch, and the crank turns
 // the vehicle (car.fm) through the clutch and the gearbox instead of against the load dial.
 #pragma once
-#include "pipes.fm"
+#include "exhaust/duct.fm"
 #include "cylinder.fm"
 #include "layouts.fm"
 #include "lib/noise.fm"
 #include "heat.fm"
 #include "ecu/ecu.fm"
+#include "intake/intake.fm"
+#include "valvetrain/valvetrain.fm"
+#include "exhaust/pop.fm"
+#include "combustion/combustion.fm"
 #include "lib/onepole.fm"
 #include "lib/biquad.fm"
 #include "sound/extras.fm"
@@ -69,69 +73,12 @@ module Set
     int buttons;
 };
 
-// A pop in the pipes: unburnt fuel lighting in the hot exhaust. A sharp pressure pulse and a crackle after it.
-module Pop
-{
-    float amp;
-    int n;
-    int len;
-    float crackle;
-    float decay;
-    float pClick;       // the chance a sample clicks, and how hard: the same crackle at any sample rate
-    float aClick;
-    int rs;
-
-    float rnd()
-    {
-        const int hi = rs / 127773;
-        const int lo = rs % 127773;
-        rs = 16807 * lo - 2836 * hi;
-        if (rs <= 0)
-            rs += 2147483647;
-        return 2.0f * ((float)rs / 2147483647.0f) - 1.0f;
-    }
-
-    void fire(float a, float rate, int seed)
-    {
-        amp = a;
-        n = 0;
-        len = (int)((0.00025f + 0.0006f * (0.5f + 0.5f * rnd())) * rate) + 2;
-        crackle = 0.55f * a;
-        decay = expf(-1.0f / ((0.004f + 0.012f * (0.5f + 0.5f * rnd())) * rate));
-        pClick = 1.0f - 0.07f * 48000.0f / rate;
-        aClick = rate / 48000.0f;
-        if (rs == 0)
-            rs = seed;
-    }
-
-    float tick()
-    {
-        float y = 0.0f;
-        if (n < len)
-        {
-            const float s = sinf(3.14159265f * (float)n / (float)len);
-            y = amp * s;
-            n += 1;
-        }
-        if (crackle > 1.0f)
-        {
-            // sparse, sharp clicks dying away
-            const float r = rnd();
-            if (r > pClick)
-                y += aClick * crackle * rnd();
-            crackle *= decay;
-        }
-        return y;
-    }
-};
-
 module Shared
 {
     Set set;
     Layout lay;
     Cylinder cyl[12];
     Duct prim[12];      // the headers (a rotary's: one a rotor)
-    Duct run[12];       // the intake runners
     Duct sec[2];        // from each bank's collector
     Duct pipe[2];       // the main pipe (two, when dual)
     Duct ch1[2];        // the muffler: a chamber, a tube, a chamber
@@ -147,14 +94,12 @@ module Shared
     // what the layout and the dials made
     int lastLayout;
     float lastSize;
-    float lastCam;
     // the dials that shape the pipes and the cams, smoothed (80 ms): a pipe's length or bore, the muffler's chambers or
     // the cams' timing that jumped would jolt the flow the system holds, a loud click
     float smMuf;
     float smHdr;
     float smPipe;
     float smXp;
-    float smCam;
     float kDial;
     float smCR;         // the compression ratio, smoothed, and as the cylinders were last set
     float lastCR;
@@ -165,7 +110,6 @@ module Shared
     float crBs;         // the compression the end gas takes before it knocks, moved with the flame's path
     int fuelUse;        // the fuel and the aspiration heard (a change waits for the fade, as a new layout's does)
     int aspUse;
-    float droop;        // a diesel's governor near its redline: the share of the fuel it lets through
     // what the sound cannot follow smoothly (another layout or size, another view) changes under a quick fade: 6 ms
     // down, the change, 12 ms back up (80 for a new engine; the room rings on through it); the size waits for its
     // dial to rest 0.15 s
@@ -181,9 +125,6 @@ module Shared
     float vTotal;       // displacement, m^3
     float bore;
     float boreSq;       // a square cylinder's bore for this size (bore: the BORE/STROKE dial's)
-    float aThrottle;    // the ecu.throttle's area wide open, m^2
-    float aBypass;      // the idle valve's
-    float vPlenum;
     float jBase;
     float idleBase;     // the idle and the redline before the dials: the layout's (a diesel's: by its pistons' speed)
     float redBase;
@@ -192,9 +133,6 @@ module Shared
     float omega;        // rad/s
     float theta;        // crank degrees, 0 to 2160 (a common cycle for four-strokes and the rotary)
     float rpm;
-    float pPlenum;      // Pa absolute
-    float mPlenum;
-    float tAir;
     float tPort;        // the exhaust gas's temperature at the ports (smoothed), K
     float eSum;
     float mSum;
@@ -203,7 +141,6 @@ module Shared
     // what comes out
     float radPrev[2];
     Biquad endR[2];     // each tail's open end: the wave it sends back (Silva et al.'s reflection, for its hot gas)
-    Biquad endRun[12];  // each intake runner's end in the plenum: the same, in the air of the plenum
     float outL;
     float outR;
     float gainNorm;
@@ -213,14 +150,14 @@ module Shared
     OnePole tnHp[2];    // the tail's jet: noise in a band
     OnePole tnLp[2];
     Ecu ecu;            // the engine's state, the driver, the idle, the limiter, the cuts (ecu/ecu.fm)
+    Combustion comb;    // the charge at intake closing: fuel, spark, burn, knock (combustion/combustion.fm)
+    Valvetrain vt;      // each cylinder's valve events and areas (valvetrain/valvetrain.fm)
+    Intake intk;        // the runners, the plenum, the throttle (intake/intake.fm)
     Heat heat;          // the coolant, the oil, the chamber's walls (core/heat.fm)
     Extras ex;
     Boost boost;        // turbos or a supercharger: their shafts, boost, valves and sounds (boost/boost.fm)
     Listen listen;      // where it is heard from, the room, the level, the resampler (listen/listen.fm)
-    float pBox;         // the air box (with the turbo's boost), Pa
-    float qThr;         // the volume flow through the ecu.throttle, m^3/s
     float mdot;         // the exhaust's mass flow, kg/s (smoothed)
-    float dilution[12]; // each cylinder's burned-gas share at its last intake closing
     // flow noise made where the gas's jets break up inside the system: the headers' jets into each collector, the
     // collectors' gas into the converter's cone, the muffler's inlet and its outlet into the tail. Each is a pressure
     // across its junction (a dipole: the turbulence's force on the gas), flowK times the junction's loss coefficient
@@ -303,12 +240,12 @@ module Shared
         listen.setup(rate, rateIn);
         dt = 1.0f / rate;
         noise.rs = 123456789;
+        intk.setup(rate);
         // the longest each pipe could be, cold (330 m/s), at this rate
         const float k = rate / 300.0f;
         for (int i = 0; i < 12; ++i)
         {
             prim[i].configure((int)(3.0f * k) + 16);
-            run[i].configure((int)(0.8f * k) + 16);
         }
         for (int i = 0; i < 2; ++i)
         {
@@ -333,7 +270,7 @@ module Shared
         cutWant = 0;
         vUse = 0;
         kDial = 1.0f - expf(-16.0f / (0.08f * rate));
-        pBox = 101325.0f;
+        intk.pBox = 101325.0f;
         vnHp.set(700.0f, rate);
         vnLp.set(20000.0f, rate);
         nScale = sqrtf(rate / 48000.0f);
@@ -361,7 +298,7 @@ module Shared
         set.bs = 1.0f;
         set.ambF = 80.33f;
         set.timing = 0.0f;
-        droop = 1.0f;
+        comb.setup(rate, &noise, &ecu, &heat, &lay, &pop[0]);
         set.bov = 0.7f;
         set.intake = 0.5f;
         set.mech = 0.4f;
@@ -410,7 +347,6 @@ module Shared
             for (int i = 0; i < 12; ++i)
             {
                 prim[i].release();
-                run[i].release();
             }
             for (int i = 0; i < 2; ++i)
             {
@@ -422,6 +358,7 @@ module Shared
                 tail[i].release();
             }
             cross.release();
+            intk.release();
             listen.release();
         }
         ready = 0;
@@ -441,14 +378,14 @@ module Shared
             cyl[c].tw = heat.tSurf;
         ecu.kRet = 0.0f;
         lastSize = set.size;
-        lastCam = set.cam;
+        vt.lastCam = set.cam;
         smMuf = set.muffler;
         smHdr = set.headers;
         smPipe = set.pipe;
         smXp = set.xpipe;
         boost.smTb = set.turbo;
         boost.smTs = boost.tsOf(set.tsize);
-        smCam = set.cam;
+        vt.smCam = set.cam;
         sizeSeen = set.size;
         sizeRest = 0.0f;
         // the size dial: the engine's displacement in litres (a rotary's: its two rotors' chambers), each cylinder kept
@@ -481,9 +418,9 @@ module Shared
         ecu.redRpm = fmaxf(redBase + set.redline, ecu.idleRpm + 1500.0f);
         nDuals = lay.topo == 2 ? 2 : 1;
         // the ecu.throttle and the plenum go with the engine's size
-        aThrottle = 0.0028f * sqrtf(vTotal / 0.002f) * (lay.bike > 0.5f ? 1.25f : 1.0f);
-        aBypass = 0.045f * aThrottle;
-        vPlenum = fmaxf(0.8f * vTotal, 0.0004f);
+        intk.aThrottle = 0.0028f * sqrtf(vTotal / 0.002f) * (lay.bike > 0.5f ? 1.25f : 1.0f);
+        intk.aBypass = 0.045f * intk.aThrottle;
+        intk.vPlenum = fmaxf(0.8f * vTotal, 0.0004f);
         // (a diesel's crank and flywheel are heavier, for its pressures: twice a gasoline engine's of the layout's size,
         // and more the bigger it is: some 0.85 kg m^2 for a 6.7 L six, 2.2 for a 15 L truck's)
         clatSize = expf(0.33333333f * logf(swept / 0.0005f));
@@ -517,14 +454,13 @@ module Shared
                 float e = cy->ang - cy->evo;
                 if (e < 0.0f)
                     e += cy->cyc;
-                cy->p = e < cy->edur ? 101325.0f : pPlenum;
+                cy->p = e < cy->edur ? 101325.0f : intk.pPlenum;
                 cy->m = cy->p * cy->v / (287.0f * cy->t);
             }
         }
         for (int i = 0; i < 12; ++i)
         {
             prim[i].clear();
-            run[i].clear();
         }
         for (int i = 0; i < 2; ++i)
         {
@@ -537,8 +473,7 @@ module Shared
             radPrev[i] = 0.0f;
             endR[i].clear();
         }
-        for (int i = 0; i < 12; ++i)
-            endRun[i].clear();
+        intk.clear();
         cross.clear();
         listen.resetPaths();
         ex.pumpOn = fuelUse != 0 ? 0.6f : (lay.bike < 0.5f && lay.rotary == 0 ? 0.3f : 0.0f);
@@ -584,8 +519,8 @@ module Shared
         // they were
         if (ecu.state == 0)
         {
-            pPlenum = 101325.0f;
-            tAir = heat.tAmb + 5.0f * heat.warm;
+            intk.pPlenum = 101325.0f;
+            intk.tAir = heat.tAmb + 5.0f * heat.warm;
             tPort = heat.tAmb + 20.0f * heat.warm;
             ecu.throttle = 0.0f;
             ecu.bypass = 0.3f;
@@ -600,7 +535,7 @@ module Shared
             for (int i = 0; i < 5; ++i)
                 tUse[i] = tGas[i];
         }
-        mPlenum = pPlenum * vPlenum / (287.0f * tAir);
+        intk.mPlenum = intk.pPlenum * intk.vPlenum / (287.0f * intk.tAir);
         pipes();
     }
 
@@ -687,43 +622,10 @@ module Shared
         idleBase = fuelUse != 0 ? fminf(lay.idleRpm, 0.27f * redBase) : lay.idleRpm;
     }
 
-    // The cams: how long the valves open and how much they overlap (the cam dial), and the valves' areas
+    // The valves of every cylinder, for the cam as heard, the bore and the layout (valvetrain/valvetrain.fm)
     void valves()
     {
-        const float c = smCam;
-        lastCam = c;
-        const float ap = 0.785398f * bore * bore;
-        for (int k = 0; k < lay.n; ++k)
-        {
-            Cylinder* cy = &cyl[k];
-            if (lay.rotary != 0)
-            {
-                // peripheral exhaust port, side intake ports (degrees of the eccentric shaft; the face fires at 0)
-                cy->evo = 195.0f - 25.0f * c;
-                cy->edur = 395.0f + 35.0f * c;
-                cy->ivo = 572.0f - 40.0f * c;
-                cy->idur = 285.0f + 60.0f * c;
-                cy->aE = 0.0016f * (vTotal / 0.0013f);
-                cy->aI = 0.0020f * (vTotal / 0.0013f);
-            }
-            else
-            {
-                const float ed = 224.0f + 76.0f * c;           // exhaust duration
-                const float id = 224.0f + 76.0f * c;
-                const float lsa = 112.0f - 6.0f * c;           // lobe separation
-                cy->evo = 360.0f - lsa - 0.5f * ed;
-                cy->edur = ed;
-                cy->ivo = 360.0f + lsa - 0.5f * id;
-                cy->idur = id;
-                // two valves each: the curtain at full lift (a quarter of the diameter) with its discharge coefficient there
-                // (about 0.4): some 9 % of the piston's area for the exhaust, 12 % for the intake (cylinder.fm, flowArea,
-                // shapes the lift's way up)
-                cy->aE = 0.091f * ap;
-                cy->aI = 0.118f * ap;
-            }
-            cy->sparkAt = lay.cyc - 20.0f;
-            cy->burnDur = 50.0f;
-        }
+        vt.events(&cyl[0], lay.n, lay.rotary, lay.cyc, bore, vTotal);
     }
 
     // Where a muffler's scattering starts taking the highs (Hz): some 500 Hz, or in a short pipe half its own first
@@ -776,7 +678,6 @@ module Shared
         // the revs.
         const float keepH = 0.878f;
         const float keepP = 0.769f;
-        const float aRun = 0.9f * 0.27f * 0.785398f * bore * bore / 0.62f;
         for (int i = 0; i < lay.ports; ++i)
         {
             // each header a little different, as real ones are; the second bank of an unequal-length boxer much longer
@@ -786,8 +687,6 @@ module Shared
             prim[i].set(len, dHead, aHead, cH, rate);
             prim[i].extra(0.0f, keepH, rate);
             prim[i].steep = 0.87f / 101325.0f;
-            run[i].set(lay.bike > 0.5f ? 0.16f : 0.30f, sqrtf(aRun * 1.2732395f), aRun, 350.0f, rate);
-            run[i].extra(0.0f, 1.0f, rate);
         }
         // (a turbo's turbine sits at each collector: a restriction that smooths the pulses; one turbo for the engine is
         // the most of both, twins less, four between; a supercharger leaves the exhaust free)
@@ -883,16 +782,7 @@ module Shared
         for (int k = 0; k < 2; ++k)
             endR[k].design(-1.0f + nb1 * kb + nb2 * kb2, -2.0f - 2.0f * nb2 * kb2, -1.0f - nb1 * kb + nb2 * kb2,
                            1.0f + da1 * kb + da2 * kb2, 2.0f - 2.0f * da2 * kb2, 1.0f - da1 * kb + da2 * kb2);
-        // each runner's end in the plenum radiates into it as an open pipe's end does (the same fit, the same air
-        // inside and out): the lows come back inverted, the highs go out. (A runner whose ends both reflected whole,
-        // its valve shut at one end, rang at its high modes with nothing to stop it: a squeal at idle, the reversion
-        // of a big cam's overlap striking them every cycle; a real one loses some 3 dB a round trip at 2.6 kHz there.)
-        const float tR = sqrtf(aRun * 0.31830989f) / 347.2f;
-        const float rn1 = -0.167f * tR * kb;
-        const float rd1 = 1.393f * tR * kb;
-        const float rd2 = 0.457f * tR * tR * kb2;
-        for (int i = 0; i < lay.ports; ++i)
-            endRun[i].design(-1.0f + rn1, -2.0f, -1.0f - rn1, 1.0f + rd1 + rd2, 2.0f - 2.0f * rd2, 1.0f - rd1 + rd2);
+        intk.runners(lay.ports, lay.bike, bore, rate);
     }
 
     // The converter's cone's (and the merging's) flow noise for main pipe k: K 0.6 on the pipe's own speed
@@ -979,7 +869,7 @@ module Shared
                         Cylinder* cy = &cyl[c];
                         const float ivc = cy->ivo + cy->idur >= lay.cyc ? cy->ivo + cy->idur - lay.cyc : cy->ivo + cy->idur;
                         if (cy->ang > ivc && cy->ang < cy->sparkAt)
-                            charge(c);
+                            comb.charge(&cyl[c], c, fuelUse, intk.pPlenum, rpm, smCR, crBs, burnK, set.pops, set.rough, set.timing);
                     }
                 }
             }
@@ -1034,8 +924,8 @@ module Shared
         smPipe += (set.pipe - smPipe) * kDial;
         smXp += (set.xpipe - smXp) * kDial;
         boost.glide(set.turbo, set.tsize, kDial);
-        smCam += (set.cam - smCam) * kDial;
-        if (fabsf(smCam - lastCam) > 0.0005f)
+        vt.smCam += (set.cam - vt.smCam) * kDial;
+        if (fabsf(vt.smCam - vt.lastCam) > 0.0005f)
             valves();
         // the compression: the cylinders' clearance follows it (the gas in them takes the change as the piston's)
         smCR += (fminf(fmaxf(set.comp, 6.0f), 25.0f) - smCR) * kDial;
@@ -1066,8 +956,8 @@ module Shared
         const float mRef = 1.2f * vTotal * ecu.redRpm / 120.0f * 0.9f;
         boost.control(aspUse, boost.smTb, mdot * tPort / 1100.0f / fmaxf(mRef, 1.0e-6f), fuelUse != 0 ? 1.0f : ecu.throttle, ecu.throttle,
                    set.bov, rpm / ecu.redRpm, rpm * 0.016666667f, boost.smTs, d16);
-        pBox = 101325.0f + 100000.0f * boost.boost;
-        tAir = heat.tAmb + 5.0f * heat.warm + 25.0f * boost.boost;
+        intk.pBox = 101325.0f + 100000.0f * boost.boost;
+        intk.tAir = heat.tAmb + 5.0f * heat.warm + 25.0f * boost.boost;
         // the exhaust's temperature: what the ports let out, slowly
         if (mSum > 1.0e-9f)
         {
@@ -1090,8 +980,8 @@ module Shared
         for (int i = 0; i < lay.ports; ++i)
         {
             prim[i].flow16(xiWall, k16Flow);
-            run[i].flow16(xiWall, k16Flow);
         }
+        intk.flow16(lay.ports, xiWall, k16Flow);
         for (int k = 0; k < 2; ++k)
         {
             sec[k].flow16(xiWall, k16Flow);
@@ -1168,8 +1058,8 @@ module Shared
         for (int i = 0; i < np; ++i)
         {
             prim[i].read();
-            run[i].read();
         }
+        intk.read(np);
         const int nb = lay.topo == 0 ? 1 : 2;
         for (int k = 0; k < nb; ++k)
             sec[k].read();
@@ -1222,7 +1112,7 @@ module Shared
                     a -= lay.cyc;
                 const int pi = lay.port[c];
                 qE0[c] = cyl[c].exhaustFlowAt(a, prim[pi].near, prim[pi].z, tH);
-                qI0[c] = cyl[c].intakeFlowAt(a, run[pi].near, run[pi].z, tAir);
+                qI0[c] = cyl[c].intakeFlowAt(a, intk.run[pi].near, intk.run[pi].z, intk.tAir);
                 eShare[pi] += qE0[c];
                 iShare[pi] += qI0[c];
             }
@@ -1235,13 +1125,13 @@ module Shared
                 a -= lay.cyc;
             const int pi = lay.port[c];
             float bE = prim[pi].near;
-            float bI = run[pi].near;
+            float bI = intk.run[pi].near;
             if (np < lay.n)
             {
                 bE += 0.5f * prim[pi].z * (eShare[pi] - qE0[c]);
-                bI += 0.5f * run[pi].z * (iShare[pi] - qI0[c]);
+                bI += 0.5f * intk.run[pi].z * (iShare[pi] - qI0[c]);
             }
-            cy->step(a, dDeg, dt, bE, prim[pi].z, tH, bI, run[pi].z, tAir);
+            cy->step(a, dDeg, dt, bE, prim[pi].z, tH, bI, intk.run[pi].z, intk.tAir);
             qe[pi] += cy->qEa;
             qi[pi] += cy->qIa;
             torque += cy->tq;
@@ -1252,7 +1142,7 @@ module Shared
             }
             if (cy->ivcNow)
             {
-                charge(c);
+                comb.charge(&cyl[c], c, fuelUse, intk.pPlenum, rpm, smCR, crBs, burnK, set.pops, set.rough, set.timing);
                 ex.valveClick(clickAmp);
             }
             if (cy->evcNow)
@@ -1285,7 +1175,7 @@ module Shared
             // the gas through the valve is a jet: a hiss in proportion to the flow, the louder the faster
             const float jet = prim[i].z * qe[i];
             hNear[i] = prim[i].near + jet * (1.0f + valveK * wn * fminf(fabsf(jet) * 0.00004f, 1.0f));
-            rNear[i] = run[i].near + run[i].z * qi[i];
+            rNear[i] = intk.run[i].near + intk.run[i].z * qi[i];
         }
         // the collectors: each bank's headers merge into its pipe, losing as they merge (pipes.fm, lossFlow); a pop is
         // the node's own gas
@@ -1490,32 +1380,9 @@ module Shared
             cross.write(xNear, xFar);
         for (int k = 0; k < nb; ++k)
             sec[k].write(sNear[k], sFar[k]);
-        // the intake: the runners open into the plenum (its pressure is what they see there; the highs go on into it)
-        const float pg = pPlenum - 101325.0f;
-        float qIn = 0.0f;
         for (int i = 0; i < np; ++i)
-        {
-            const float back = 0.5f * pg + endRun[i].tick(run[i].far - 0.5f * pg);
-            qIn += (run[i].far - back) / run[i].z;
             prim[i].write(hNear[i], hFar[i]);
-            run[i].write(rNear[i], back);
-        }
-        // the ecu.throttle fills the plenum from the air box (a diesel has none: its plate stands open, and the ecu.throttle is
-        // its fuel)
-        const float plate = fuelUse != 0 ? 1.0f : ecu.throttle;
-        const float aT = aThrottle * (expf(1.8f * logf(fmaxf(plate, 1.0e-4f))) + 0.0006f) + (fuelUse != 0 ? 0.0f : aBypass * ecu.bypass);
-        float mT = 0.0f;
-        const float dp = pBox - pPlenum;
-        if (dp > 0.0f)
-        {
-            const float rho = pBox / (287.0f * tAir);
-            mT = aT * fminf(sqrtf(2.0f * rho * dp), 0.676f * pBox / sqrtf(287.0f * tAir));
-        }
-        else
-            mT = -aT * sqrtf(-2.0f * (pPlenum / (287.0f * tAir)) * dp);
-        mPlenum = fmaxf(mPlenum + (mT + qIn * pPlenum / (287.0f * tAir)) * dt, 1.0e-6f);
-        pPlenum = mPlenum * 287.0f * tAir / vPlenum;
-        qThr = mT * 287.0f * tAir / pBox;
+        intk.plenum(np, rNear, fuelUse, ecu.throttle, ecu.bypass, dt);
         // the crank: torque, friction, the load, the starter. The friction is the rubbing and the accessories only (the
         // pumping is the gas exchange's, simulated): about 1.3 bar of mean pressure at 2000 rpm, 1.9 at 4800, 2.6 at
         // 6800, below the older correlation's 1.5, 2.6 and 3.7, which counted the pumping as well (with it, and 70 % of
@@ -1542,164 +1409,10 @@ module Shared
             omega = car.step(omega, torque - tf - tsc + ts, dt);      // (the car is the load: the load dial rests)
         tqMean += (torque - tqMean) * 0.0005f;
         tqNow = torque - tqMean;
-        const float drop = fminf(fmaxf(1.0f - pPlenum / pBox, 0.0f), 1.0f);
-        ex.tick(qThr, drop, omega * 0.15915494f, dps);
+        const float drop = fminf(fmaxf(1.0f - intk.pPlenum / intk.pBox, 0.0f), 1.0f);
+        ex.tick(intk.qThr, drop, omega * 0.15915494f, dps);
         boost.sound(omega * 0.15915494f, mdot, set.bov);
         ex.tickStarter(omega * 0.15915494f, ecu.starterOn);
-    }
-
-    // When the intake valve shuts: the fuel for this cycle (none when the ECU cuts it), from what of the charge can
-    // burn (all but the burned gas in it: the products the last cycle left and what the overlap drew back), and how
-    // much of that this cycle's flame takes. That falls steeply as the burned gas dilutes the charge past about 0.45
-    // (half at 0.56: the model's share counts all the burned gas it draws back, and runs above measured residual
-    // fractions). What fails to burn stays, so the next cycle has more to burn and less burned gas, burns well, and
-    // leaves the one after diluted again (Daw et al.'s recursion): near the limit a big cam's idle lopes in that
-    // pattern, and tiny differences between cycles swing it.
-    void charge(int ci)
-    {
-        Cylinder* cy = &cyl[ci];
-        if (fuelUse != 0)
-        {
-            chargeDiesel(ci);
-            return;
-        }
-        droop = 1.0f;
-        // (what the last burn left unburned has gone into the hot header: now and then it lights there)
-        const float lastC = cy->cBurn;
-        if (lastC < 0.75f && set.pops > 0.0f && !ecu.fuelCut && noise.rnd() > 1.0f - 1.6f * set.pops * (0.75f - lastC))
-        {
-            const int b = lay.topo == 0 ? 0 : lay.bank[ci];
-            pop[b].fire(20000.0f * (0.75f - lastC) * (0.5f + 0.5f * fabsf(noise.rnd())), rate, 99 + b);
-        }
-        const float dil = fminf(cy->mInert / fmaxf(cy->m, 1.0e-9f), 0.95f);
-        const float burnable = fmaxf(cy->m - cy->mInert, 0.0f);
-        // (of the fuel's heat the gas keeps some 80 % at full load: the rest goes to the walls or out unburned; a
-        // larger share at part load, where the charge is thinner and the walls take more)
-        float q = burnable / 14.0f * 44.0e6f * (0.60f + 0.20f * fminf(pPlenum / 101325.0f, 1.2f));
-        const float d50 = (lay.rotary != 0 ? 0.62f : 0.56f) * (1.0f + (0.015f + 0.03f * set.rough) * noise.gauss());
-        const float cb = 1.0f / (1.0f + expf((dil - d50) / 0.035f));
-        cy->cBurn = cb;
-        dilution[ci] = dil;
-        const float sigma = 0.015f + 0.06f * set.rough;
-        q *= cb * fmaxf(1.0f + cy->bias + sigma * noise.gauss(), 0.0f) * ecu.trim;
-        if (ecu.fuelCut)
-        {
-            q = 0.0f;
-            // pops: on the overrun some fuel gets through and lights in the pipe
-            if ((ecu.dfco || ecu.limiting) && set.pops > 0.0f)
-            {
-                const float chance = set.pops * (0.25f + 0.75f * rpm / ecu.redRpm) * expf(-ecu.sinceLift / 2.5f);
-                if (noise.rnd() > 1.0f - 0.9f * chance)
-                {
-                    const int b = lay.topo == 0 ? 0 : lay.bank[ci];
-                    pop[b].fire(30000.0f * (0.35f + 0.65f * fabsf(noise.rnd())), rate, 99 + b);
-                }
-            }
-        }
-        cy->qTot = q;
-        heat.heatJ += q;
-        // knock: past the compression the fuel takes at this load (some 14 at full load, less with boost, far more at
-        // part load) the end gas lights on its own, more often and harder the further past: a ping. More spark advance
-        // (TIMING, less what the ECU has taken back: 0.12 a degree), hotter air under the bonnet (0.3 a 10 K) and a
-        // hotter engine take that compression lower
-        const float mapB = pPlenum / 101325.0f;
-        const float crLim = (mapB >= 1.0f ? 14.0f - 2.5f * (mapB - 1.0f) : 14.0f + 20.0f * (1.0f - mapB)) + crBs
-                            - 0.12f * (set.timing - ecu.kRet) - 0.03f * (heat.tAmb + 5.0f * heat.warm - 305.0f) - 0.02f * (heat.tCool - 363.0f);
-        const float over = (smCR - crLim) / 3.0f;
-        cy->knock = 0.0f;
-        if (over > 0.0f && q > 0.0f && 0.5f + 0.5f * noise.rnd() < fminf(4.0f * over, 1.0f))
-            cy->knock = fminf(1.5f * over, 1.5f) * (0.6f + 0.4f * fabsf(noise.rnd()));
-        // its knock sensor hears it: the ECU takes the spark back 1.5 degrees a knock, up to 15 (and gives it back at 2
-        // a second), which buys it some 2 points of compression; a knocking cycle loses heat to the walls the knock
-        // scrubs (a tenth of it at a hard knock)
-        if (cy->knock > 0.0f)
-        {
-            ecu.kRet = fminf(ecu.kRet + 1.5f, 15.0f);
-            q *= 1.0f - 0.1f * cy->knock;
-            cy->qTot = q;
-        }
-        // the spark: earlier at speed, later under load; TIMING moves it, the ECU takes back what knocks
-        const float adv = 12.0f + 22.0f * sqrtf(fminf(rpm / ecu.redRpm, 1.2f)) - 8.0f * (pPlenum / 101325.0f - 0.4f)
-                          + 22.0f * (burnK - 1.0f) + set.timing - ecu.kRet;
-        // (a diluted charge lights later and burns slower: the flame's development and its speed)
-        const float dx = fmaxf(dil - 0.15f, 0.0f);
-        cy->sparkAt = lay.cyc - fminf(fmaxf(adv, 6.0f), 40.0f) + 1.5f * set.rough * noise.gauss() + 25.0f * fminf(dx, 0.3f);
-        if (cy->sparkAt >= lay.cyc)
-            cy->sparkAt -= lay.cyc;                         // (after the top: a late spark)
-        // (a low compression's charge is cooler at the spark: its flame slower, as the ratio's -0.3th power)
-        cy->burnDur = (44.0f + 11.0f * fmaxf(0.8f - pPlenum / 101325.0f, 0.0f)) * (1.0f + 0.08f * set.rough * noise.gauss())
-                      * (1.0f + 2.5f * dx) * burnK * expf(-0.3f * logf(smCR * 0.1f));
-        // far past the limit (some 2.5 points of compression past what the ECU's retard buys), the charge lights
-        // itself as it is squeezed, 30 to 45 degrees before the top: pre-ignition, a fast burn that fights the piston's
-        // rise (the torque falls away) and knocks its hardest; past some 8 points, most cycles do
-        if (over > 0.8f && q > 0.0f && 0.5f + 0.5f * noise.rnd() < fminf(0.5f * (over - 0.8f), 0.9f))
-        {
-            cy->sparkAt = lay.cyc - 30.0f - 15.0f * fabsf(noise.rnd());
-            cy->burnDur = 20.0f;
-            cy->knock = 1.5f;
-            ecu.kRet = 15.0f;
-        }
-    }
-
-    // A diesel's charge, as its intake valve shuts: all the air it breathed (no ecu.throttle) and the fuel the lever asks
-    // (the ecu.throttle, the idle governor's, or a start's while it cranks and for a moment after), lean: an equivalence
-    // ratio of 0.75 at full fuel, the smoke limit; near the redline the governor takes the fuel back instead of cutting
-    // it. It injects some degrees before the top (earlier at speed and with more fuel) and lights after its ignition
-    // delay: Wolfer's, 0.44 p^-1.19 exp(4650 / T) ms (p in atmospheres), from the air squeezed polytropically from now
-    // to the injection (and the glow plugs while it cranks), at most 30 degrees. What was injected during the delay
-    // burns at once (Watson's share, 1 - 0.926 phi^0.37 / tau^0.26): a spike of pressure that rings the block, the
-    // knock, louder at idle and the lower the compression; the rest burns as it mixes with the air.
-    void chargeDiesel(int ci)
-    {
-        Cylinder* cy = &cyl[ci];
-        const float air = fmaxf(cy->m - cy->mInert, 0.0f);
-        dilution[ci] = fminf(cy->mInert / fmaxf(cy->m, 1.0e-9f), 0.95f);
-        cy->cBurn = 1.0f;
-        droop = fminf(fmaxf((ecu.redRpm + 50.0f - rpm) / 250.0f, 0.0f), 1.0f);
-        const float lever = fminf(fmaxf(fmaxf(ecu.throttle, 0.12f + 0.5f * ecu.bypass), 0.45f * expf(-ecu.sinceStart / 1.0f)), 1.0f) * droop;
-        const float phi = 0.75f * lever;
-        const float sigma = 0.015f + 0.06f * set.rough;
-        float q = air * phi / 14.5f * 42.5e6f * 0.62f * fmaxf(1.0f + cy->bias + sigma * noise.gauss(), 0.0f) * ecu.trim;
-        if (ecu.fuelCut)
-            q = 0.0f;
-        // (TIMING injects earlier; a cold chamber's walls take more of the squeeze's heat, its charge some 4 % cooler
-        // at the top, and cranking's slow squeeze loses more still (and blows by), some 20 %; its glow plugs heat it
-        // while it cranks, and for a minute and a half after a cold start)
-        const float soi = 4.0f + 14.0f * fminf(rpm / ecu.redRpm, 1.2f) + 3.0f * lever + set.timing;
-        const float lr = logf(fmaxf(cy->v / cy->volumeAt(lay.cyc - soi), 1.0f));
-        const float cold = 1.0f - heat.warmS;
-        const float nSq = 0.35f - 0.015f * cold - (ecu.state == 1 ? 0.08f : 0.0f);
-        const float glow = ecu.state == 1 ? 200.0f : 100.0f * (1.0f - heat.warm) * fmaxf(1.0f - heat.runT / 90.0f, 0.0f);
-        const float tc = cy->t * expf(nSq * lr) + glow;
-        const float pc = cy->p * expf(1.35f * lr) / 101325.0f;
-        const float tau = 0.44f * expf(-1.19f * logf(fmaxf(pc, 1.0f))) * expf(4650.0f / fmaxf(tc, 400.0f));
-        const float delayRaw = tau * 0.006f * fmaxf(rpm, 100.0f);
-        const float delay = fminf(delayRaw, 30.0f);
-        // whether it lights at all: the charge's temperature squeezed to the top (with the same losses and glow) must
-        // reach some 740 K (none under 680), and it must light before the piston is well on its way down. Injected
-        // early, into cooler air, the delay mostly runs as the squeeze heats it: what is left of it at the top runs at
-        // the top's pace (Livengood and Wu's integral, in two steps), from 10 degrees after it on less and less, none
-        // past 20. What does not light goes out unburned (white smoke): a diesel of too little compression misses and
-        // stalls, and a cold one cranks and cranks (a 17:1 diesel some -20 F, 0 F hard), or will not start at all
-        const float lrT = logf(fmaxf(cy->v / cy->vc, 1.0f));
-        const float tTop = cy->t * expf(nSq * lrT) + glow;
-        const float pTop = cy->p * expf(1.35f * lrT) / 101325.0f;
-        const float dTop = 0.44f * expf(-1.19f * logf(fmaxf(pTop, 1.0f))) * expf(4650.0f / fmaxf(tTop, 400.0f)) * 0.006f * fmaxf(rpm, 100.0f);
-        const float late = delayRaw > soi ? (delayRaw - soi) * dTop / fmaxf(delayRaw, 0.001f) : 0.0f;
-        const float pIgn = fminf(fmaxf((tTop - 680.0f) / 60.0f, 0.0f), 1.0f) * fminf(fmaxf((20.0f - late) / 10.0f, 0.0f), 1.0f);
-        if (pIgn < 1.0f && 0.5f + 0.5f * noise.rnd() >= pIgn)
-            q = 0.0f;
-        // (past some 18, a higher compression's tighter chamber gives its walls more of the burn: 1.5 % a point)
-        q *= 1.0f - 0.015f * fmaxf(smCR - 18.0f, 0.0f);
-        cy->qTot = q;
-        heat.heatJ += q;
-        cy->sparkAt = lay.cyc - soi + delay + set.rough * noise.gauss();
-        if (cy->sparkAt >= lay.cyc)
-            cy->sparkAt -= lay.cyc;
-        cy->beta = fminf(fmaxf(1.0f - 0.926f * expf(0.37f * logf(fmaxf(phi, 0.01f)) - 0.26f * logf(fmaxf(tau, 0.05f))), 0.05f), 0.9f);
-        cy->burnDur = 4.5f + 2.5f * fminf(rpm / ecu.redRpm, 1.0f);
-        cy->knock = 0.0f;
-        cy->dur2 = (35.0f + 30.0f * lever) * (1.0f + 0.08f * set.rough * noise.gauss()) * burnK;
     }
 
     // n of the host's samples, added into left and right: the engine's own when the host runs at its rate (96 kHz),
@@ -1777,8 +1490,8 @@ module Shared
         showGear = set.drive != 0 ? (float)car.gear : -2.0f;
         showKmh = set.drive != 0 ? car.kmh() : 0.0f;
         showThr = ecu.throttle;
-        showMap = (pPlenum - 101325.0f) * 0.00001f;
-        showLamps = (float)ecu.state + (ecu.limiting || droop < 0.95f ? 4.0f : 0.0f) + (ecu.fuelCut && ecu.state == 2 ? 8.0f : 0.0f) + (set.drive != 0 ? 16.0f : 0.0f)
+        showMap = (intk.pPlenum - 101325.0f) * 0.00001f;
+        showLamps = (float)ecu.state + (ecu.limiting || comb.droop < 0.95f ? 4.0f : 0.0f) + (ecu.fuelCut && ecu.state == 2 ? 8.0f : 0.0f) + (set.drive != 0 ? 16.0f : 0.0f)
                     + 32.0f * floorf(fminf(fmaxf((heat.tCool - 273.15f) * 1.8f + 92.0f, 0.0f), 511.0f) + 0.5f)
                     + 16384.0f * floorf(fminf(heat.pOil / 6894.76f, 127.0f) + 0.5f) + (set.drive == 2 ? 2097152.0f : 0.0f);
         showPedals = 0.0f;
