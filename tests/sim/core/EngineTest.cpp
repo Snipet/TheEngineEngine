@@ -385,3 +385,24 @@ TEST_CASE("a two-stroke's mechanics are its own cylinders', whatever the custom 
     CHECK(b.field("work.n") == 1.0);
     CHECK(std::fabs(b.field("work.vBmep") / (2.0 * b.field("two.vd")) - 1.0) < 1e-5);     // (2 pi T / V: T's catch)
 }
+
+TEST_CASE("boost.model 1 implies the builder's exhaust, at a build and when switched while running", "[core][engine][models]")
+{
+    // (the lead's ruling, 24 Nov: with boost.model 1 the cylinders exhaust into the builder's pipes, whose collectors end
+    // in the turbines' housings; exhaust.model 0 with boost.model 1 cannot be selected)
+    Bench b("archetypes/turbo-four-20-gdi");
+    std::string e;
+    REQUIRE(b.player().setSpec("exhaust.model", 0, e));
+    REQUIRE(b.player().setSpec("boost.model", 1, e));
+    b.start();
+    b.play(0.5);
+    CHECK(b.field("exh.model") == 1.0);
+    CHECK(b.field("exh.fed") == 1.0);
+    REQUIRE(b.player().setSpec("boost.model", 0, e));
+    b.play(1.0);
+    CHECK(b.field("exh.model") == 0.0);
+    REQUIRE(b.player().setSpec("boost.model", 1, e));
+    b.play(1.0);
+    CHECK(b.field("exh.model") == 1.0);
+    CHECK(std::isfinite(b.tel("engine.speed")));
+}
