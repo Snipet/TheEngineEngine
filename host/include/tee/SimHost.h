@@ -127,6 +127,13 @@ namespace tee
         // State written into the instance before each call of Engine::process (Warm.h: a warm engine, held): for
         // offline runs, tests and tools, never the application's engine. A path the program lacks is skipped.
         std::vector<HeldValue> hold;
+        // State written once into each new instance, after its init and before its first block: at load, at prepare,
+        // and when a diverged or stopped engine is made afresh. Not held: it then moves by itself (the application's
+        // engine starts at its working temperatures, Warm.h's warmEngine(), and cools or warms from there). A swap
+        // (a quality change, a structure change) does not reset it: the next instance takes the live one's heat
+        // (warmEngine()'s paths) instead, so an engine that has cooled or warmed does not jump. A path the program
+        // lacks is skipped.
+        std::vector<HeldValue> initial;
     };
 
     class SimHost
