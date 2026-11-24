@@ -7,7 +7,7 @@
 // and whether it lights at all, its premixed share). The burn itself runs in the cylinder (core/cylinder.fm, a Wiebe
 // curve). The reference's own explanations stand with each part below.
 //
-// The share of the fuel's heat the gas keeps (charge, charge1) follows `walls`, the engine's one decision on whose walls
+// The share of the fuel's heat the gas keeps (charge, charge1, chargeDiesel) follows `walls`, the engine's one decision on whose walls
 // take the burn's heat (Engine::woschniWalls): 0.97 with Woschni's, the reference's 0.60 + 0.20 x manifold with its own.
 // (Card D, as integrator, 24 Nov: before, the share read spec.engine.wallHeat alone and fuel.model 1 brought Woschni's
 // walls without it: the walls' loss was taken twice.)
@@ -213,7 +213,12 @@ module Combustion
         if (diesel.metered != 0)
             phi = diesel.phiMetered(air, lever);     // (card D2: the fuel by the rack, capped by the compensator)
         const float sigma = 0.015f + 0.06f * rough;
-        float q = air * phi / 14.5f * 42.5e6f * 0.62f * fmaxf(1.0f + cy->bias + sigma * nz->gauss(), 0.0f) * ecu->trim;
+        // (the share of the fuel's heat the gas keeps: with Woschni's walls (comb.walls, the engine's one decision) the
+        // burn's own completeness, 0.98: a diesel burns lean and all but completely short of its smoke limit (Heywood,
+        // ch. 4.9: a diesel's combustion inefficiency some 1 to 2 %); its soot's radiation, 20 to 35 % of a diesel's heat
+        // to its walls (Heywood, ch. 12.6), is inside Woschni's coefficient, fitted on diesels (SAE 670931). Without them,
+        // the reference's fixed 0.62, its walls' and its losses' share at once. Card D as integrator, 24 Nov)
+        float q = air * phi / 14.5f * 42.5e6f * (walls != 0 ? 0.98f : 0.62f) * fmaxf(1.0f + cy->bias + sigma * nz->gauss(), 0.0f) * ecu->trim;
         if (ecu->fuelCut)
             q = 0.0f;
         // (TIMING injects earlier; a cold chamber's walls take more of the squeeze's heat, its charge some 4 % cooler
