@@ -10,5 +10,6 @@ tee_target_defaults(tee-tests-calibration-balance)
 target_include_directories(tee-tests-calibration-balance PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(tee-tests-calibration-balance PRIVATE Tee::host Catch2::Catch2WithMain)
 target_compile_definitions(tee-tests-calibration-balance PRIVATE "TEE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\"")
-catch_discover_tests(tee-tests-calibration-balance DISCOVERY_MODE PRE_TEST ADD_TAGS_AS_LABELS
-                     TEST_PREFIX "calibration-balance." PROPERTIES TIMEOUT 900)
+# (one compile a process: the simulator's cases are one ctest entry, sharing a kept player)
+add_test(NAME calibration-balance.sim COMMAND tee-tests-calibration-balance "[sim]")
+set_tests_properties(calibration-balance.sim PROPERTIES TIMEOUT 300)

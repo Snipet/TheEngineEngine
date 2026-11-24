@@ -510,6 +510,28 @@ namespace
         CHECK(rig.demo.engine.requests() == asked + 1);   // one drag of many steps: one curve asked for, after its quiet
         CHECK(!rig.demo.engine.before().empty() && rig.demo.engine.predicted().peakTorque().value > before);
         golden("frame.ribbon", *rig.host);
+        const auto plotText = [&] {
+            for (const funkgui::A11yItem& it : rig.host->accessibility())
+                if (it.title == "Predicted torque and power")
+                    return it.value;
+            return std::string("(none)");
+        };
+        CHECK(plotText().find("KNOCK") == std::string::npos && rig.demo.engine.predicted().knockCount() == 0);
+        // Knock-limited points (card C's): the demo knocks past 160 kPa of boost from 4500 rpm; ringed on the plot, the
+        // span and retard in the title row's words and in the plot's accessible text.
+        {
+            const int bf = rig.demo.doc.find("boost.level");
+            rig.demo.doc.beginGesture();
+            rig.demo.doc.set(bf, 190e3);
+            rig.demo.doc.endGesture();
+            rig.host->tick(60);
+            const tee::ui::DynoTrace& d = rig.demo.engine.predicted();
+            CHECK(d.knockCount() > 0 && !d.knockLimited(0));
+            std::size_t last = d.speed.size() - 1;
+            CHECK_MSG(d.knockText(last) == "knock-limited, retard 6 to 10 deg", d.knockText(last));
+            CHECK_MSG(plotText().find("; KNOCK-LIMITED 4500-7000 RPM, RETARD 1 TO 10 DEG") != std::string::npos, plotText());
+            picture("frame.ribbon.knock", *rig.host);
+        }
         const float open = f.inspectorRect().h;
         f.foldRibbon(true);
         rig.host->tick(2);
