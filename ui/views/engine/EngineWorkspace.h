@@ -15,8 +15,13 @@
 #include "app/Workspace.h"
 
 #include <memory>
+#include <vector>
 
 namespace tee::ui
 {
     std::unique_ptr<Workspace> makeEngineWorkspace(WorkspaceContext& c);
+    // For tests: the panels drawn now (no text may cross one's edge), and whether the stage is the small one (the block
+    // over a panel of tabs: FIRING, P-V LOOP, DERIVED).
+    std::vector<funkgui::Rect> enginePanels(const Workspace& w);
+    bool engineCompact(const Workspace& w);
 }

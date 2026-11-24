@@ -15,7 +15,8 @@
 // Float (card E): past the speed where the spring can no longer hold the follower to the cam the valve lands late and
 // bounces on its seat. With `clatter` 0 to 1 from the valvetrain (how hard the floating valves land) each landing is
 // followed by two bounces, 0.6 and 1.3 ms later at 0.6 and 0.3 of it times the clatter, each a little different
-// (judgement: the bounce's size and time are card E's float.fm's), and the landing itself is harder by 1 + clatter.
+// (judgement: the bounce's size and time are card E's float.fm's); the landing itself is made harder by Engine (1 + 2
+// clatter, card E's).
 #pragma once
 #include "lib/biquad.fm"
 #include "lib/noise.fm"
@@ -102,8 +103,8 @@ module ValveVoice
         }
     }
 
-    // A valve landed (the reference's click, amp 0 to 1): intake (1) or exhaust (0) closing. Returns what the landing
-    // adds to the reference's click (the float's harder landing)
+    // A valve landed (the reference's click, amp 0 to 1): intake (1) or exhaust (0) closing. Returns what it adds to
+    // the reference's click now (nothing: the bounces come later)
     float landed(float amp, int intake)
     {
         if (solid != 0)
@@ -120,7 +121,6 @@ module ValveVoice
         {
             bounceAt(0.6f * clatter * amp * k * (0.8f + 0.2f * noise.rnd()), 0.6f + 0.1f * noise.rnd());
             bounceAt(0.3f * clatter * amp * k * (0.8f + 0.2f * noise.rnd()), 1.3f + 0.2f * noise.rnd());
-            return clatter * amp * k;
         }
         return 0.0f;
     }

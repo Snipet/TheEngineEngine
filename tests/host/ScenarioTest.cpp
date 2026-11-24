@@ -151,3 +151,21 @@ TEST_CASE("a scenario file: parsed, run and its assertions checked", "[scenario]
     CHECK_FALSE(parseTimeline(R"({"format": "tee-scenario", "events": [{"t": 1, "controls": {"warp": 1}}]})", "x", t, error));
     CHECK(error.find("warp") != std::string::npos);
 }
+
+#include "tee/test/Kept.h"
+
+TEST_CASE("kept() makes an object once a call site and never destroys it", "[scenario]")
+{
+    int made = 0;
+    const auto get = [&] {
+        return &tee::test::kept([&] {
+            ++made;
+            return std::make_unique<std::string>("program");
+        });
+    };
+    std::string* first = get();
+    CHECK(get() == first);
+    CHECK(made == 1);
+    CHECK(*first == "program");
+    CHECK(tee::test::keptPointer([] { return std::unique_ptr<int>(); }) == nullptr);
+}

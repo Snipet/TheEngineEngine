@@ -5,8 +5,11 @@
 #include "app/Workspace.h"
 
 #include <memory>
+#include <vector>
 
 namespace tee::ui
 {
     std::unique_ptr<Workspace> makeValvesWorkspace(WorkspaceContext& c);
+    // For tests: the panels drawn now (no text may cross one's edge).
+    std::vector<funkgui::Rect> valvesPanels(const Workspace& w);
 }

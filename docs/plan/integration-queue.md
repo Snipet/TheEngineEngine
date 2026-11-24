@@ -141,3 +141,20 @@ package's integration has landed.
 - **Card C**: array elements (`car.wheelSlip[2]`) as columns and assertions in a Scenario.
 - **I, later**: an automatic whose tyres spin shifts up on the flaring output speed and can shift down again when
   they hook up.
+
+## The exhaust gas is too cool (found by F, 14:33): D and H, then G, C and U3
+
+At full throttle the reference's port gas (`exh.tPort`, from the cylinders' `eSum` / `mSum`) is 450 to 560 K; a
+real petrol engine's is 900 to 1100 K, a diesel's 700 to 1000 K. The work is right (BMEP 10.2 to 10.8 bar), so the
+heat goes somewhere else or the sum is not the gas's temperature. **D**: one cylinder's energy balance over a cycle on
+the dyno. **H**: the charge's energy against the fuel's heating value, the wall's share. **The lead's decision in
+principle**: with the new models on, the gas temperature is physical and validated; model 0 stays the reference.
+Depends on it: F's turbine matching (its tests use a turbine at 0.55 of the matched size), G's wave speeds and wall
+temperatures, H's overrun and anti-lag, C's validation (a target to add), U3's heat tints.
+
+## From F's integration (14:33)
+
+- **G**: the housing seam's per-sample calls in `sampleTick` step 4; remove `Boost::exhaustStandIn` when they go in.
+- **Q**: the boost machine costs 0.24 R against 0.12 R (the pipe-end solve's three passes; double volumes; the
+  sounds' noise at 96 kHz); `sim/boost/**` is Q's to change for cost now.
+- **U3**: the Spec, telemetry and Scope names (sent 14:35); the compressor's map comes from the Scope's arrays.
