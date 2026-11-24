@@ -518,3 +518,26 @@ TEST_CASE("a burn still running at exhaust opening lets its unburned fuel out wi
     CHECK(worst < 0.01);
     CHECK(outShare / n > 0.001);
 }
+
+TEST_CASE("X-025: a two-stroke rotary is refused, says so, and runs as the rotary it is", "[core][engine][custom]")
+{
+    // (X's reduced build: a custom one-rotor rotary with engine.cycle 1, in the vehicle. No model defines a two-stroke
+    // rotary: refused, tel.engine.layoutReason 4, the rotary run as a four-stroke-equivalent, never a silent engine
+    // that reports itself running)
+    Bench b("combo/findings/x025-two-stroke-rotary-silent");
+    b.start();
+    b.ctl().throttle = 0.3f;
+    double peak = 0.0;
+    b.play(2.0, [&] {
+        for (float s : b.left())
+            peak = std::max(peak, double(std::fabs(s)));
+    });
+    std::printf("X-025: state %g, %.0f rpm, refused %g, reason %g, cycleUse %g, faces %g, peak %.4f\n", b.tel("engine.state"),
+                b.tel("engine.speed") * 9.549, b.tel("engine.layoutRefused"), b.tel("engine.layoutReason"), b.field("cycleUse"),
+                b.field("lay.n"), peak);
+    CHECK(b.tel("engine.layoutRefused") == 1.0);
+    CHECK(b.tel("engine.layoutReason") == 4.0);
+    CHECK(b.field("cycleUse") == 0.0);
+    if (b.tel("engine.state") == 2.0)
+        CHECK(peak > 1e-3);
+}
