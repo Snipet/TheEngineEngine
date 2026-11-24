@@ -65,6 +65,18 @@ module EngineTel
     int layoutRefused [[ui::label("Custom layout refused")]]
         [[ui::help("1: the custom geometry has cylinders firing together; the layout dial's runs instead")]];
     float oilTemperature [[ui::label("Oil temperature")]] [[ui::quantity("temperature")]];
+    // card T: a two-stroke's (spec.engine.cycle 1; 0 otherwise), cylinder 1's last cycle
+    float tsPurity [[ui::label("Charge's purity")]] [[ui::quantity("fraction")]]
+        [[ui::help("Two-stroke: the fresh share of the charge trapped as the exhaust port closed")]];
+    float tsDelivery [[ui::label("Delivery ratio")]] [[ui::quantity("fraction")]]
+        [[ui::help("Two-stroke: the fresh charge the transfers delivered a cycle over the swept volume's worth of air")]];
+    float tsTrapping [[ui::label("Trapping efficiency")]] [[ui::quantity("fraction")]]
+        [[ui::help("Two-stroke: of what was delivered, the share trapped")]];
+    float tsPowerValve [[ui::label("Power valve")]] [[ui::quantity("fraction")]] [[ui::help("Two-stroke: 0 shut, 1 fully open")]];
+    float tsPipeTemperature [[ui::label("Pipe's gas")]] [[ui::quantity("temperature")]]
+        [[ui::help("Two-stroke: the expansion chambers' gas; the speed the pipe is tuned for rises with it")]];
+    float tsCrankcase [[ui::label("Crankcase")]] [[ui::quantity("pressure")]] [[ui::help("Two-stroke: cylinder 1's, absolute")]];
+    float tsReed [[ui::label("Reed's opening")]] [[ui::quantity("fraction")]] [[ui::help("Two-stroke: cylinder 1's petal, 0 shut, 1 on its stop")]];
 };
 
 module BoostTel

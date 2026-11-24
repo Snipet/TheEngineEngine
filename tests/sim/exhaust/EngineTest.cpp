@@ -295,3 +295,71 @@ TEST_CASE("every exhaust build plays", "[exhaust][engine][builds]")
     }
     CHECK(n >= 8);
 }
+
+
+// Card C's settle (spec.exhaust.heatSettle): at full load, a settle puts the exhaust's walls where the load holds
+// them: over the next 20 s they move by under 3 %, where unsettled they move by much more. Both models.
+TEST_CASE("the exhaust's heat settles on request", "[exhaust][engine][settle]")
+{
+    for (int model : {0, 1})
+    {
+        double moved[2] = {0.0, 0.0};
+        for (int settle : {0, 1})
+        {
+            EnginePlayer& p = player();
+            p.reset();
+            applyBuild(p, test::engineBuild(p, "v8"));
+            std::string error;
+            REQUIRE(p.setSpec("exhaust.model", model, error));
+            EnginePlayer::Controls& c = p.controls();
+            c.mode = EnginePlayer::kModeBench;
+            c.ignition = EnginePlayer::kIgnitionStart;
+            std::vector<float> l(512), r(512);
+            auto run = [&](double s) {
+                for (int k = 0; k < static_cast<int>(s * 48000.0 / 512.0); ++k)
+                    p.process(l.data(), r.data(), 512);
+            };
+            run(1.5);
+            c.ignition = EnginePlayer::kIgnitionOn;
+            c.throttle = 1.0f;
+            c.holdSpeed = static_cast<float>(4000.0 * 0.10471976);
+            run(4.0);
+            if (settle != 0)
+            {
+                REQUIRE(p.setSpec("exhaust.heatSettle", 1, error));
+                run(0.1);
+            }
+            const double w0 = test::field(p, "tel.exhaust.wallTemperature[3]");
+            run(20.0);
+            const double w1 = test::field(p, "tel.exhaust.wallTemperature[3]");
+            moved[settle] = std::fabs(w1 - w0) / w0;
+            std::printf("settle, model %d, %s: main pipe's wall %.0f K, 20 s later %.0f K (%.1f %%)\n", model,
+                        settle != 0 ? "settled" : "not settled", w0, w1, 100.0 * moved[settle]);
+        }
+        INFO("model " << model);
+        CHECK(moved[1] < 0.03);
+        CHECK(moved[0] > 3.0 * moved[1]);
+    }
+}
+
+// Finding X-013: the exhaust's telemetry is physical from the first block (written at every configure, not only
+// every 16 samples)
+TEST_CASE("the exhaust's telemetry is physical from the first block", "[exhaust][engine][telemetry]")
+{
+    for (int model : {0, 1})
+    {
+        EnginePlayer& p = player();
+        p.reset();
+        applyBuild(p, test::engineBuild(p, "v8"));
+        std::string error;
+        REQUIRE(p.setSpec("exhaust.model", model, error));
+        std::vector<float> l(512), r(512);
+        p.process(l.data(), r.data(), 512);
+        const double th = test::field(p, "tel.exhaust.headerTemperature");
+        const double tw = test::field(p, "tel.exhaust.wallTemperature[0]");
+        INFO("model " << model << ": header gas " << th << " K, wall " << tw << " K");
+        CHECK(th > 200.0);
+        CHECK(th < 2000.0);
+        CHECK(tw > 200.0);
+    }
+}

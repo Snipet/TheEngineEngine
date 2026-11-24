@@ -87,6 +87,13 @@ module Duct
     float bc1;
     float bc2;
     float bc3;
+    // 1: the filters (the wall's, a packing's, the scattering, a low-pass) act on the whole wave and the steady flow
+    // is taken out after them. Each filter is unity at DC, so the steady flow still passes whole; and what a pass gives
+    // is the filters' response times one no larger than 1, so it never gives more than it took. The reference's order
+    // (0, the default) takes the steady flow out first: a filter whose phase moves near the tracker's 12 Hz corner then
+    // gives up to some 4 % more than it took there (card T's finding: pack(400, 16, 2000, 8) 1.044 at 24 Hz), passive
+    // only where the pass's gain is under about 0.96. The builder (exhaust.model 1) sets it on such pipes only.
+    int filtFirst;
     float lp;           // the extra low-pass (a turbine's wheel): its coefficient (0: none), its states
     float sF;
     float sB;
@@ -167,6 +174,7 @@ module Duct
             pwB[i] = 0.0f;
         }
         packOn = 0;
+        filtFirst = 0;
         for (int i = 0; i < 2; ++i)
         {
             rb0[i] = 1.0f;
@@ -435,11 +443,14 @@ module Duct
         }
         else
             f = c0 * fw[k + 1] + c1 * fw[k] + c2 * fw[k - 1] + c3 * fw[k - 2];
-        // the steady flow taken out first, to go round all that follows whole
-        mF += kDc * (f - mF);
-        mB += kDc * (b - mB);
-        f -= mF;
-        b -= mB;
+        // the steady flow taken out first, to go round all that follows whole (filtFirst: after the filters instead)
+        if (filtFirst == 0)
+        {
+            mF += kDc * (f - mF);
+            mB += kDc * (b - mB);
+            f -= mF;
+            b -= mB;
+        }
         // the wall
         for (int i = 0; i < 3 * wallOn; ++i)
         {
@@ -480,6 +491,13 @@ module Duct
             sB += (1.0f - lp) * (b - sB);
             f = sF;
             b = sB;
+        }
+        if (filtFirst != 0)
+        {
+            mF += kDc * (f - mF);
+            mB += kDc * (b - mB);
+            f -= mF;
+            b -= mB;
         }
         // the flow's loss (and an absorption) on what moves; the steady flow round it
         far = gain * f + mF;

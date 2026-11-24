@@ -70,7 +70,10 @@
       "exLift": 0.013,
       "exCentre": 112,
       "springRate": 25000.0,
-      "springPreload": 150.0
+      "springPreload": 150.0,
+      "auxOpen": 695,
+      "auxDur": 100,
+      "auxLift": 0.0025
     },
     "intake": {
       "model": 1,
