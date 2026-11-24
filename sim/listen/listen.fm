@@ -134,6 +134,8 @@ module Listen
     float sCo;
     float sRd;
     float boomG;        // the cabin's boom, gliding in and out with the DRIVER camera
+    float boomAcc;
+    float wheelbaseNow; // spec.car.wheelbase, for the telemetry's outline      // its power at the ears since the meters last took it
     float boomT;
     float boomStep;
     float shFx;         // the engine's free forces and moments (a custom engine's: else 0), this part
@@ -459,6 +461,7 @@ module Listen
                int rotary, int moto, float wheelbase, float tuck, float liftDeg)
     {
         sc.moto = moto;
+        wheelbaseNow = fmaxf(wheelbase, 0.5f);
         sc.motoK = fmaxf(wheelbase, 0.5f) / 1.41f;
         sc.motoTuck = fminf(fmaxf(tuck, 0.0f), 1.0f);
         sc.motoLift = 0.01745329f * fminf(fmaxf(liftDeg, 0.0f), 80.0f);
@@ -538,12 +541,12 @@ module Listen
     // sh1), the tyres (road; driven: 1, else 0) and the fade's gain (cutG), into the room's input
     void mix(int i, float xLin, float xRin, float inIn, float tqNow, float mech, float blockN, float turbo,
              float starter, float comb, float sh0, float sh1, int driven, float road, float cutG, float gearbox, float axle,
-             float front, float head, float tank, float gate, float voices, float mouth)
+             float front, float head, float tank, float gate, float voices, float mouth, float chain, float clutch)
     {
         if (model != 0)
         {
             mix1(i, xLin, xRin, inIn, tqNow, mech, blockN, turbo, starter, comb, sh0, sh1, road, cutG, gearbox, axle, front,
-                 head, tank, gate, voices, mouth);
+                 head, tank, gate, voices, mouth, chain, clutch);
             return;
         }
         const int v = vNow;
@@ -704,6 +707,9 @@ module Listen
         st->roadPosition = sc.camUse == CAM_TRACKSIDE ? 2.2f - sc.rel : 0.0f;
         st->loudness = 8.6858896f * logf(fmaxf(exLoud, 1.0e-9f));
         st->ceilingParts = ceilingParts;
+        st->srcCount = LS_N;
+        st->rearAxleY = sc.moto != 0 ? 0.3f : 0.85f;
+        st->frontAxleY = st->rearAxleY + wheelbaseNow;
         for (int s = 0; s < LS_N; ++s)
         {
             st->srcX[s] = sc.sx[s];
@@ -715,7 +721,12 @@ module Listen
         if ((float)mCount >= 0.4f * rate)
         {
             st->limiter = 8.6858896f * logf(fmaxf(limLeast, 1.0e-6f));
+            st->pathStructure = sc.camUse == CAM_DRIVER && sc.moto == 0 ? 4.3429448f * logf(fmaxf(boomAcc / (float)mCount, 1.0e-20f)) : -200.0f;
+            boomAcc = 0.0f;
             sc.meters(st->srcLevel, 10);
+            st->pathFloor = sc.pathDb[0];
+            st->pathFirewall = sc.pathDb[1];
+            st->pathGlass = sc.pathDb[2];
             limLeast = 1.0f;
             st->exhaustLevel = 4.3429448f * logf(fmaxf(mExAcc / (float)mCount, 1.0e-20f));
             st->mixLevel = 4.3429448f * logf(fmaxf(mMixAcc / (float)mCount, 1.0e-20f));
@@ -780,7 +791,7 @@ module Listen
     // Sample i: each source's signal into its place, heard; the cabin's boom; the fade's gain
     void mix1(int i, float xL, float xR, float in, float tqNow, float mech, float blockN, float turbo, float starter,
               float comb, float sh0, float sh1, float road, float cutG, float gearbox, float axle, float front, float head,
-              float tank, float gate, float voices, float mouth)
+              float tank, float gate, float voices, float mouth, float chain, float clutch)
     {
         sc.in[LS_TAIL0] = sEx * xL;
         sc.in[LS_TAIL1] = sEx * xR;
@@ -789,15 +800,16 @@ module Listen
         // package M's voices (spec.voices.model 1) come summed in mech (`voices`); each is heard from its place
         // instead: the front's belts and fan and the head's lifters in the bay, the gearbox, the axle, the tank's pump
         // under the car, the wastegate's pipe with the turbo
-        sc.in[LS_BAY] = sMc * (mech - voices + front + head) + sBk * blockN + sSh * 0.5f * (sh0 + sh1) + sIn * (in - mouth);
+        // (a motorcycle's: the drive chain at the rear sprocket with the axle, the dry clutch's rattle on the engine)
+        sc.in[LS_BAY] = sMc * (mech - voices + front + head + clutch) + sBk * blockN + sSh * 0.5f * (sh0 + sh1) + sIn * (in - mouth);
         sc.in[LS_BAYOPEN] = sTb * turbo + sSt * starter + sCo * comb + sMc * gate;
         sc.in[LS_TYRES] = sRd * road;
         sc.in[LS_DRIVE] = sMc * gearbox;
-        sc.in[LS_AXLE] = sMc * axle;
+        sc.in[LS_AXLE] = sMc * (axle + chain);
         sc.in[LS_TANK] = sMc * tank;
         if (gearbox != 0.0f)
             driveHeld = 0;
-        if (axle != 0.0f)
+        if (axle != 0.0f || chain != 0.0f)
             axleHeld = 0;
         if (tank != 0.0f)
             tankHeld = 0;
@@ -807,6 +819,7 @@ module Listen
         if (boomT > 0.0f || boomG > 0.0f)
         {
             const float cb = kCb * boom.tick(tqNow, shFx, shFy, shMx, shMy);
+            boomAcc += boomG * boomG * cb * cb;
             L += boomG * cb;
             R += boomG * cb;
             if ((i & 15) == 0)

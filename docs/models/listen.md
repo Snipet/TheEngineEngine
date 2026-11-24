@@ -79,7 +79,16 @@ The taps' filters are combined into one one-pole each (`1/fc^2` summed). Cost: a
 | Engine bay | (0, bay + r/2, 1.4), facing back, the bonnet open | ORTF |
 | Driver | (-0.35, 1.7 (2.1 mid, 2.0 rear), 1.1) | head, in the cabin |
 | Trackside | 0.9 + 2r out from the car's line, 1.5 m up, standing still; 40 m ahead of a moving car (beside a stopped one); when the car is 60 m past, it moves on 40 m ahead | ORTF |
-| Chase | (0, -3 - r, 1.3), moving with the car | ORTF |
+| Chase | (0, -3 - r - 0.25 v, 1.3), moving with the car, a quarter of a second back | ORTF |
+| Free | spec.sound.listenerX, Y, Z, facing (degrees from forward toward the right), walked to at 8 m/s | ORTF |
+
+**A motorcycle** (spec.car.kind Motorcycle, car.model 1; package B2's geometry, a superbike's scaled by the
+wheelbase over 1.41 m, B2's x from the rear contact = y - 0.3 here): the can at (0.2, 0.3 + 0.30 k, 0.45), the
+ram-air mouth at (0, 0.3 + 1.45 k, 0.75), the engine under the tank at (0, 0.3 + 0.75 k, 0.5) in the open (no
+shading), the rider's head at (0, 0.3 + (0.65 + 0.2 tuck) k, 1.40 - 0.25 tuck), the wind at the helmet; every point
+turned nose-up about the rear contact by `tel.car.liftAngle`. The Driver camera is the rider's head (two ears, no
+cabin). Measured on bike-superbike at full throttle: the intake 13 dB under the exhaust at the head (B2 expects the
+intake to lead: for the owner's ears before any retune).
 
 The first five are the reference's views as places. A change of camera, or trackside moving on, sets up a second
 listener at the new place and crossfades the two at equal power over 250 ms (the scene is crossfaded, not the

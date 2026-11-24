@@ -76,7 +76,9 @@
       "exDurSeat": 270,
       "exDur1mm": 220,
       "exLift": 0.0124,
-      "exCentre": 118
+      "exCentre": 118,
+      "springRate": 174500.0,
+      "springPreload": 1090.0
     },
     "intake": {
       "model": 1,
@@ -116,7 +118,7 @@
       "pops": 0.1,
       "starter": true,
       "limiter": {
-        "kind": "Fuel cut",
+        "kind": "Soft",
         "speed": 649.262
       },
       "idle": {

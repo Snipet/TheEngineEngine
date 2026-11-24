@@ -145,7 +145,7 @@ module LRig
                 else
                     s[src < 0 ? 0 : (src > 10 ? 10 : src)] = x;
                 ln.mix(i, s[0], s[1], s[2], s[3], s[4], s[5], s[6], s[7], s[8], s[9], s[9], driven, s[10], cutG, s[11], 0.0f, 0.0f,
-                       0.0f, 0.0f, 0.0f, s[11], s[2]);
+                       0.0f, 0.0f, 0.0f, s[11], s[2], 0.0f, 0.0f);
             }
             ln.finish(left, right, at, 16);
             at += 16;

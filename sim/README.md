@@ -121,8 +121,8 @@ Card D's, appended to `tel.engine` (`Engine::mechanicsTelemetry`, every engine u
 torque: the gases' less friction and a supercharger's drag over some 0.1 s; on the dyno, the absorber's mean),
 `gasTorque` (the gases', its 20 ms mean), `firing` (Hz: firings a second, every cylinder's), `power`, `imep` (gross), `pmep`, `fmep`, `bmep` (4 pi torque / displacement), `veManifold`,
 `veAir` (the fresh charge at intake closing over the swept volume at those densities), `peakPressure`, `pistonSpeed`,
-`ripple` (the crank's speed's spread over the last cycle), `dynoTorque`, `dynoSpeed`; a custom engine's only:
-`inertiaTorque`, `shake1`, `shake2` (N), `rock1`, `rock2` (N m); `cylinders`; `layoutRefused` (1: a custom geometry was refused); `oilTemperature` (K); and the arrays (readable by path, not
+`ripple` (the crank's speed's spread over the last cycle), `dynoTorque`, `dynoSpeed`, `shake1`, `shake2` (N), `rock1`,
+`rock2` (N m: a reference layout's cylinders taken upright); a custom engine's only: `inertiaTorque`; `cylinders`; `layoutRefused` (1: a custom geometry was refused); `oilTemperature` (K); and the arrays (readable by path, not
 gauges) `firingAngle[c]` (degrees after cylinder 1's at which it fires), `cylPeak[c]`, `cylPeakAngle[c]`.
 
 Scope (`Engine::scopeTap`, each sample while `ctl.scopeOn`): cylinder 1's `pressure` (Pa), `volume` (m^3),
@@ -178,6 +178,14 @@ running engine's cylinders given the gas where they stand; every pipe, the paths
 (`exh.clear`, `intk.clear`, `listen.resetPaths`); the clatter for the fuel; the layout's loudness trims; stopped, the
 exhaust's heat soaked to where a long idle leaves it; `pipes()`; `mechanicsSetup()` (the moving masses, friction,
 shaking, work integral and dyno for the engine as configured).
+
+**The physical cylinder**: friction by part (Chen and Flynn's, `core/friction.fm`, by mean piston speed) is used for a
+custom engine and whenever `fuel.model` is 1; Woschni's wall heat (`core/wallheat.fm`) whenever `fuel.model` is 1 or
+`engine.wallHeat` is 1. The new combustion implies the physical cylinder, its walls and its friction together; the
+reference's one friction curve (fitted to its V8, too high for small bores: 4.5 bar at 24.8 m/s on a 250 cc cylinder)
+and its one wall coefficient only under the reference's models. `engine.custom` means only that the geometry is the
+build's own. The engine runs at 96 kHz; compiled with `TEE_ENGINE_RATE_48000` defined (card C's prediction service
+only) at 48 kHz.
 
 **A custom engine** (`spec.engine.custom`, card D): `configure` takes the layout dial's table first (its pipes, idle and
 sizes) and then `customLayout()`: `geo.derive(&spec.engine)` and the Layout's `n`, `cyc`, `rotary`, `fire`, `bank` (the
@@ -393,6 +401,16 @@ float* right, int i)`. With `spec.sound.model` 0 the new arguments are not read:
 Combustion's scatter and pops, the exhaust's valve, flow and jet noise, in the order of the work above), Extras' (and
 Boost's sounds), and Car's and each Pop's own. The order of the draws is part of the sound: a module that draws from
 a shared stream draws where the reference did.
+
+## Safety on the audio thread (card D)
+
+Nothing in `process` loops a number of times set by a state's value: an angle is wrapped by `wrapCycle`
+(`core/mathx.fm`: the same subtraction as before at most eight times, the remainder in closed form past that, a
+non-finite angle 0), the valvetrain's included. A table read from a state clamps its index both ways. Once a call
+(`Engine::guard`), before and after the render: a crank whose speed is not finite, negative or past five times the
+redline (at least 3000 rad/s), or whose angle is not finite, is put at rest and the engine made afresh (`recover`:
+configure, the car reset); and a call whose output has a sample that is not finite is silenced and recovered the same
+way. Either sets `FLAG_FAULT` in `tel.engine.flags` for the host's guard. Never in normal running.
 
 ## The hooks (the integrator's, card D)
 

@@ -32,6 +32,7 @@
 //   cam.shape[i]           the lift over the span as a share of the lift, 129 points (VT_STEPS steps)
 //   cam.lift01(s)          the same at s degrees into the span (the analytic curve, for measuring and the float)
 #pragma once
+#include "core/mathx.fm"
 
 enum { VT_STEPS = 128, VT_POINTS = 129 };
 
@@ -42,12 +43,11 @@ const float kVtOneMm = 0.001f;
 // An angle in [0, cyc)
 float vtWrap(float a, float cyc)
 {
+    // (bounded: core/mathx.fm's wrapCycle for what is past a cycle; a negative angle, at most a few cycles back, as before)
     float x = a;
-    while (x >= cyc)
-        x -= cyc;
-    while (x < 0.0f)
+    for (int k = 0; k < 8 && x < 0.0f; ++k)
         x += cyc;
-    return x;
+    return wrapCycle(x, cyc);
 }
 
 module CamShape

@@ -16,7 +16,7 @@ in the program's Schema, so a package's switch is covered the moment it lands):
   stepped while the V8 revs`; `a build loaded over another while it runs` (each with every switch on too).
 - `fuzz: random Specs inside the ranges` and `the ranges' corners` (seeds 1 to 6, 6 s each); `nothing on the audio
   thread allocates with every switch on` (operator new counted around SimHost::process; not built on Windows).
-- Nightly (label `nightly`, skipped unless `TEE_NIGHTLY` is set): every triple x every archetype x tour and pull; fuzz
+- Nightly (Catch tag and ctest label `nightly`, left out by the dev and release presets; `ctest --preset nightly`): every triple x every archetype x tour and pull; fuzz
   seeds 100 to 299 random and corners; the ten-minute soak of everything on (an hour by hand: `TEE_SOAK_SECONDS=3600`;
   the run keeps its audio in memory, about 2 GB for an hour).
 - `tee-fuzz`: `--seeds A-B [--corners]`, `--seed N --reduce` (ddmin to the fewest fields), `--play <archetype>

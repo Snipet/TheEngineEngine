@@ -12,7 +12,6 @@ namespace tee::ui
 {
     namespace
     {
-        constexpr double kPi = 3.14159265358979323846;
         void addField(std::vector<FieldInfo>& out, FieldInfo f)
         {
             if (std::none_of(out.begin(), out.end(), [&](const FieldInfo& g) { return g.path == f.path; }))
@@ -55,10 +54,14 @@ namespace tee::ui
             addField(f, choiceField("sound.enginePlace", "Engine place", { "Front", "Mid", "Rear" }, 0));
             addField(f, numberField("sound.windows", "Windows", 0, 1, 0, Quantity::fraction));
             addField(f, choiceField("sound.ground", "Ground", { "Asphalt", "Grass", "None" }, 0));
-            addField(f, numberField("sound.listenerX", "Listener across", -40, 40, 0, Quantity::length));
-            addField(f, numberField("sound.listenerY", "Listener along", -40, 40, -3, Quantity::length));
-            addField(f, numberField("sound.listenerZ", "Listener height", 0, 5, 1.2, Quantity::length));
-            addField(f, numberField("sound.facing", "Facing", -kPi, kPi, 0, Quantity::angle));
+            addField(f, numberField("sound.listenerX", "Listener across", -60, 60, 3, Quantity::length));
+            addField(f, numberField("sound.listenerY", "Listener along", -60, 60, 2.2, Quantity::length));
+            addField(f, numberField("sound.listenerZ", "Listener height", 0.1, 10, 1.5, Quantity::length));
+            {
+                FieldInfo fc = numberField("sound.facing", "Listener facing", -180, 180, -90, Quantity::none);
+                fc.unit = "deg";
+                addField(f, fc);
+            }
             addField(f, numberField("car.track", "Track", 0.8, 2.6, 1.55, Quantity::length));
             return;
         }
@@ -68,7 +71,7 @@ namespace tee::ui
         // The sources at a front engine's places; their levels at a listener 2.9 m behind the tailpipes.
         static const double px[10] = { -0.55, 0.4, 0.35, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.3 };
         static const double py[10] = { 0.0, 0.0, 3.9, 3.4, 3.4, 2.2, 2.4, 2.4, 0.9, 0.8 };
-        static const double base[10] = { -8, -9, -26, -24, -32, -40, -48, -36, -38, -150 };   // the tank silent
+        static const double base[10] = { -8, -9, -26, -24, -32, -40, -48, -36, -38, -200 };   // the tank silent (L's -200)
         for (int i = 0; i < 10; ++i)
         {
             const std::string k = "[" + std::to_string(i) + "]";
@@ -84,9 +87,15 @@ namespace tee::ui
         e.addTelemetry("sound.ceilingParts", [](const DemoEngine& d) { return d.throttle() > 0.9 ? 12.0 : 0.0; });
         e.addTelemetry("sound.doppler", [](const DemoEngine&) { return 1.0; });
         e.addTelemetry("sound.range", [](const DemoEngine&) { return 5.1; });
-        e.addTelemetry("sound.pathFloor", [](const DemoEngine& d) { return -30.0 + 10.0 * d.throttle(); });
-        e.addTelemetry("sound.pathFirewall", [](const DemoEngine& d) { return -34.0 + 8.0 * d.throttle(); });
-        e.addTelemetry("sound.pathGlass", [](const DemoEngine&) { return -46.0; });
-        e.addTelemetry("sound.pathStructure", [](const DemoEngine& d) { return -38.0 + 6.0 * d.throttle(); });
+        // the cabin's ways in, at the ears: only in the driver's seat (camera 4), -200 otherwise (as L's)
+        const auto way = [](double shut, double load) {
+            return [shut, load](const DemoEngine& d) {
+                return std::lround(d.field("sound.camera", 0.0)) == 4 ? shut + load * d.throttle() : -200.0;
+            };
+        };
+        e.addTelemetry("sound.pathFloor", way(-30.0, 10.0));
+        e.addTelemetry("sound.pathFirewall", way(-34.0, 8.0));
+        e.addTelemetry("sound.pathGlass", way(-46.0, 0.0));
+        e.addTelemetry("sound.pathStructure", way(-38.0, 6.0));
     }
 }

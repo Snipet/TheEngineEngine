@@ -27,13 +27,15 @@ The inspector shows the `sound` section's generated pages (SCOPE no longer does)
 
 ## Names
 
-| Read | On the branch (14:50) | Without it |
+| Read | On the branch (L, e377835) | Without it |
 |---|---|---|
-| Spec `sound.model`, `camera`, `place`, `enginePlace`, `windows`, `distance`, `view`; `car.wheelbase`, `car.track`, `car.kind` | yes | the button does nothing; defaults for the drawing |
-| Spec `sound.listenerX`, `listenerY`, `facing` (the Free camera) | not yet (asked of L) | no drag |
-| tel `sound.range`, `doppler`, `roadPosition`, `loudness`, `mixLevel`, `limiter`, `ceilingParts` | yes | a dash |
-| tel `sound.srcX[i]`, `srcY[i]`, `srcLevel[i]` (i: L's LS_ order), `listenerX`, `listenerY`, `facing`, `rearAxleY` | not yet (asked of L) | the model's documented places, said in words; the camera's documented place for the listener |
-| tel `sound.pathFloor`, `pathFirewall`, `pathGlass`, `pathStructure` (dB) | not yet (asked of L) | a dash |
+| Spec `sound.model`, `camera` (8: the last Free), `place`, `enginePlace`, `windows`, `distance`, `view`, `listenerX`, `listenerY`, `facing` (degrees from forward toward the right); `car.wheelbase`, `car.track`, `car.kind` | yes | the button does nothing; no drag |
+| tel `sound.srcX[i]`, `srcY[i]`, `srcLevel[i]` (dB, -200 silent; tailpipe left, right, intake mouth, bay, bay carrying, tyres, wind, gearbox, axle, tank), `listenerX`, `listenerY`, `facing`, `range`, `doppler`, `roadPosition`, `loudness`, `mixLevel`, `limiter`, `ceilingParts`; `car.liftAngle` (a bike's pitch) | yes | the model's documented places, said in words; a dash |
+| tel `sound.pathFloor`, `pathFirewall`, `pathGlass`, `pathStructure` (dB at the ears, -200 when not the driver's camera), `rearAxleY`, `frontAxleY` | yes (L, d546766) | the four ways in words, no numbers; the axles at 0.85 m (a bike's 0.3) and the wheelbase |
+
+The sources' levels and the paths are before LEVEL and the last stage: they compare with each other, not with the
+output. A bike is drawn
+shortened by its lift about the rear tyre; the sources' places, from L, are already turned.
 
 The demo hook (`ListenDemo.cpp`, `TEE_UI_DEMO(listen, listenDemo)`) adds L's fields and makes the telemetry up.
 

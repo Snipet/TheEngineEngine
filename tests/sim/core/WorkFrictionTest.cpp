@@ -66,3 +66,32 @@ TEST_CASE("the friction model's parts sum to its total, within 0.8 to 2.5 bar fr
     fric(rig.data(), float(3000 * kPi / 30), 50e5f, 2.0f);
     CHECK(std::abs(rig.get("fr.fmep") - (2.0 * (warm - acc) + acc)) < 1e-3 * warm);
 }
+
+TEST_CASE("friction by piston speed: three bores at three piston speeds", "[core][friction]")
+{
+    // square cylinders of 60, 86 and 104 mm (a 170 cc, a 500 cc and an 880 cc cylinder), four of them, at 10, 17 and 24 m/s
+    std::printf("FMEP (bar) by bore and mean piston speed, 60 bar peak, warm oil:\n");
+    for (double bore : {0.060, 0.086, 0.104})
+    {
+        Rig rig;
+        applyLayout(rig, loadPreset("ref-05-inline-4"));
+        rig.build(bore, bore, 1.65 * bore, 11.0, 0.1);
+        auto fric = rig.method<float(void*, float, float, float)>("friction");
+        std::printf("  %3.0f mm:", bore * 1000);
+        double first = 0;
+        for (double sp : {10.0, 17.0, 24.0})
+        {
+            const double rpm = sp * 30.0 / bore;
+            fric(rig.data(), float(rpm * kPi / 30.0), 60e5f, 1.0f);
+            const double f = rig.get("fr.fmep") / 1e5;
+            std::printf("  %4.1f m/s (%5.0f rpm) %.2f", sp, rpm, f);
+            CHECK(f > 0.8);
+            CHECK(f < 3.2);
+            if (sp == 24.0)
+                CHECK(f < 3.0);       // a real superbike's 2.5 to 3 bar at 24 m/s
+            if (first == 0)
+                first = f;
+        }
+        std::printf("\n");
+    }
+}

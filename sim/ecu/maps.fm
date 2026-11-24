@@ -37,14 +37,19 @@ module EcuTune
     float redRpm;       // the redline, rpm
     float idleRpm;
     float burnK;        // the burn's degrees over a square engine's (the reference's, from the bore over the stroke)
+    float compression;  // the compression ratio (the burn's length goes as its -0.3th power)
     float boostLevel;   // the boost the build is set for, Pa over the air outside (card F's)
     float maxLoad;      // the highest load the maps span (1 naturally aspirated; 1 + the boost over 1 atm boosted)
     int gears;          // forward gears (the boost map's y axis)
 
-    // The reference's spark: earlier at speed, later under load (load: the manifold over 1 atm)
+    // The spark: the half of the burn 8 degrees after the top (Combustion's kHalfBurn): the Wiebe curve's first half,
+    // 0.517 of the burn's length, ahead of it; the burn's length the reference's (44 degrees, 11 more for each 1 of
+    // load under 0.8, the flame's path, the compression's -0.3th power). The charge itself refines it with its own
+    // dilution and flame (Combustion::charge1); the reference's own formula is ecu.model 0's
     float spark(float rpm, float load)
     {
-        return 12.0f + 22.0f * sqrtf(fminf(rpm / fmaxf(redRpm, 1.0f), 1.2f)) - 8.0f * (load - 0.4f) + 22.0f * (burnK - 1.0f);
+        const float burn = (44.0f + 11.0f * fmaxf(0.8f - load, 0.0f)) * burnK * expf(-0.3f * logf(fmaxf(compression, 4.0f) * 0.1f));
+        return 0.517f * burn - 8.0f;
     }
 
     // Lambda: stoichiometric up to 80 % load, then richer, 0.88 at full load unboosted (best power, a little rich of

@@ -113,7 +113,8 @@ Made by the packages that built each part of the simulator, to show or test thei
 | `bike-supersport-600.json` | Supersport 600 | A 600 cc supersport: 190 kg wet, 1.38 m, an 80 kg rider, sport tyres, a quickshifter, a slipper clutch. Its four screams to 16,000 rpm. |
 | `default.json` | Default | Every field at its default: the reference's Init V8 (5.76 L crossplane V8). |
 | `large-diesel.json` | Large Diesel | The reference's preset Large Diesel, converted (its DRIVE CAR as the vehicle Car; HOLD is no part of a build). |
-| `truck-15l-six.json` | Truck 15 L inline six | Card D2. A highway tractor's 15 L inline six (137 x 169 mm, 17:1, twin turbos as the reference has them), an electronic governor, a three-stage ... |
+| `truck-15l-six-bobtail.json` | Truck 15 L six, bobtail | Card D2. A highway tractor alone (a bobtail, 9 t): a 15 L inline six (137 x 169 mm, 17:1, twin turbos as the reference has them), an electronic governor, a ... |
+| `truck-15l-six.json` | Truck 15 L six, 36 t | Card D2. A highway tractor and loaded trailer, 36 t: a 15 L inline six (137 x 169 mm, 17:1, twin turbos as the reference has them), an electronic governor, ... |
 | `v10.json` | V10 | The reference's preset V10, converted: its DRIVE PITCH, HOLD and the key are no part of a build. |
 | `v8.json` | V8 | The reference's preset V8, converted: its DRIVE PITCH, HOLD and the key are no part of a build. |
 | `boost/roots-v8.json` | V8, Roots blower (the machine) | The default V8 with a Roots blower as card F's machine (boost.model 1), its displacement matched to the engine. |
