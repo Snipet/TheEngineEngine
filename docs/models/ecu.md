@@ -107,9 +107,11 @@ the pipe.
 
 The bangs by account (`FuelAccount`, per bank): fuel and air leaving a cylinder unburned are added to the bank's store;
 both flow out with a 0.25 s time constant (judgement); a hazard rises at `40 /s x hot x burnable / 2 mg`, hot = 0 under
-900 K to 1 at 1200 K of the hottest recent blowdown (each exhaust valve's opening raises it to the cylinder's gas,
+700 K to 1 at 1000 K of the hottest recent blowdown (each exhaust valve's opening raises it to the cylinder's gas,
 falling over 50 ms: the gas the unburned fuel meets, whatever the exhaust's and the walls' models; judgement, for the
-self-ignition of a rich exhaust's CO, H2 and fuel with air at some 950 to 1200 K), burnable = the
+self-ignition of a rich exhaust's CO, H2 and fuel with air at some 950 to 1200 K at the hot spot it meets; the
+blowdown's mean reads some 850 K at full load with the physical walls). A bank's bangs never overlap: one waits up
+to 2 ms for its pipe's last pulse to end, merging with any other that comes meanwhile (X-018), burnable = the
 fuel the store's air can burn; at 1 the burnable fuel burns and card G's pop gets an amplitude of 3e9 Pa a kg
 (now saturating: 30 kPa (1 - exp(-m / 7 mg)), the reference's largest pop; X-006). Standalone test (part of the card's 9): at 3000 rpm,
 1100 K, 2 mg a firing gives 133 bangs in 2 s, 1.9 mg burned a firing, the largest 23 kPa; 8 mg gives 199 bangs, 7.8 mg

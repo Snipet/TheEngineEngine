@@ -9,9 +9,11 @@
 //            [--threads N] [--points N] [--coarse N]        several threads, coarse first; the times to the first and
 //            [--tolerance X] [--min-cycles N] [--max-cycles N] [--cold] [--history] [--repeat N]
 //            [--brake auto|host|program] [--hold S] [--no-settle] [--warmup-seconds S] [--inner-rate HZ]
+//   tee-dyno --bake-cam --build B [--from W --to W --points N]   the intake cam swept, best advance by speed (Bake.h)
 //            [--ramp A]                                     and against a slow sweep at A rad/s^2 with the same brake
 #include "common/Paths.h"
 
+#include "tee/Bake.h"
 #include "tee/Dyno.h"
 #include "tee/Predict.h"
 
@@ -151,7 +153,7 @@ int main(int argc, char** argv)
     tee::Sim::Options options;
     tee::DynoPlan plan;
     tee::PredictOptions predictOptions;
-    bool quiet = false, predictMode = false, history = false;
+    bool quiet = false, predictMode = false, history = false, bakeCam = false;
     double rampRate = 0.0, repeat = 1.0;
     const auto number = [&](double& out) {
         if (!args.value(value))
@@ -225,6 +227,8 @@ int main(int argc, char** argv)
             quiet = true;
         else if (args.is("--predict"))
             predictMode = true;
+        else if (args.is("--bake-cam"))
+            bakeCam = true;
         else if (args.is("--history"))
             history = true;
         else if (args.is("--cold"))
@@ -280,6 +284,40 @@ int main(int argc, char** argv)
         }
         for (const std::string& w : warnings)
             std::fprintf(stderr, "tee-dyno: warning: %s\n", w.c_str());
+    }
+    if (bakeCam)
+    {
+        tee::CamBakeOptions bake;
+        bake.predict = predictOptions;
+        if (bake.predict.points == tee::PredictOptions{}.points)
+            bake.predict.points = bake.predict.coarse = 8;
+        tee::CamBakeResult r;
+        if (!tee::bakeIntakeCam(compiled, build, bake, r, errors))
+        {
+            std::fprintf(stderr, "tee-dyno: %s\n", errors.c_str());
+            return 1;
+        }
+        std::printf("intake cam baked by %zu curves in %.1f s (parked centreline %.1f deg); torque N m by advance:\n%8s",
+                    r.advances.size(), r.wallSeconds, r.parkedCentre, "rpm");
+        for (const double a : r.advances)
+            std::printf(" %7.0f", a);
+        std::printf("   best\n");
+        for (std::size_t s2 = 0; s2 < r.speeds.size(); ++s2)
+        {
+            std::printf("%8.0f", rpm(r.speeds[s2]));
+            for (std::size_t a = 0; a < r.advances.size(); ++a)
+                std::printf(" %7.1f", r.torque[a][s2]);
+            std::printf("   %.0f deg (%.1f N m)\n", r.best[s2], r.bestTorque[s2]);
+        }
+        std::printf("knock retard, degrees, by advance:\n");
+        for (std::size_t s2 = 0; s2 < r.speeds.size(); ++s2)
+        {
+            std::printf("%8.0f", rpm(r.speeds[s2]));
+            for (std::size_t a = 0; a < r.advances.size(); ++a)
+                std::printf(" %7.1f", r.knock[a][s2]);
+            std::printf("\n");
+        }
+        return 0;
     }
     if (predictMode)
         return predict(compiled, build, predictOptions, rampRate, history, static_cast<int>(repeat));

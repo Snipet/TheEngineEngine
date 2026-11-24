@@ -65,6 +65,15 @@ module Intake
     // model 1: the charge's heating in the manifold and the ports (Engine sets tCoolant before control; 0: unknown,
     // none), and the rise it gives, K
     float tCoolant;
+    // The net mass the intake valves passed back into the runners this sample (kg/s, out of the cylinders positive),
+    // and whether Engine supplies it (1). A runner of linear waves keeps the VOLUME it is given, not the mass: the
+    // cylinder counts what it draws at its port's pressure and temperature, the plenum at its own, and where the flow
+    // and the port's pressure rise together (the ram, the overlap's backflow) the two books differ: the plenum gave
+    // up 5 to 37 % less than the valves took (card N1: a flat-plane V8 1.37 at idle, 1.14 at full load). With the
+    // valves' mass supplied, the plenum gives up exactly that (the runners' own mass, which a linear wave keeps
+    // nowhere, left out): throttle and valves then agree over whole cycles. The waves are as before.
+    float mValves;
+    int haveValves;
     float heatRise;
 
     void setup(float rate)
@@ -272,7 +281,7 @@ module Intake
             // the trumpets draw from the box (q out of the runners: negative while they draw)
             box.tick(spec->trumpets == 0 ? -q : 0.0f);
             sound = spec->trumpets == 0 ? box.sound : snd;
-            qThr = -q;
+            qThr = haveValves != 0 ? -mValves * 287.0f * tAir / pBox : -q;
             pEnds += (101325.0f + pSum / (float)np - pEnds) * fminf(dt * 6.2831853f * 20.0f, 1.0f);
             // (the runners' far ends are sums of linear waves, whose rarefaction is not bounded by vacuum: on the lift
             // after the limiter, the closed plates and the cylinders still drawing, it read -11 kPa absolute, and the
@@ -296,7 +305,7 @@ module Intake
             const float up = pBox + box.p;
             const float aT = aThrottle * law + idle;
             const float rt = 287.0f * tAir;
-            const float mIn = qIn * pPlenum / rt;
+            const float mIn = haveValves != 0 ? mValves : qIn * pPlenum / rt;
             float mT = 0.0f;
             int choked = 0;
             const float dp = up - pPlenum;

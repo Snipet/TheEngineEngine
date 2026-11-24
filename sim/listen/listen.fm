@@ -143,6 +143,7 @@ module Listen
     float shMx;
     float shMy;
     int placeUse;
+    float extraIn[3];   // other packages' sources for this sample, by place (Listen::extra)
     int driveHeld;      // parts since the gearbox, the axle, the tank's pump last sounded
     int axleHeld;
     int tankHeld;
@@ -545,10 +546,17 @@ module Listen
     {
         if (model != 0)
         {
-            mix1(i, xLin, xRin, inIn, tqNow, mech, blockN, turbo, starter, comb, sh0, sh1, road, cutG, gearbox, axle, front,
-                 head, tank, gate, voices, mouth, chain, clutch);
+            mix1(i, xLin, xRin, inIn, tqNow, mech, blockN, turbo, starter, comb, sh0, sh1, road, cutG,
+                 gearbox + extraIn[LS_PLACE_GEARBOX], axle + extraIn[LS_PLACE_REAR_AXLE], front, head,
+                 tank + extraIn[LS_PLACE_RIGHT], gate, voices, mouth, chain, clutch);
+            extraIn[0] = 0.0f;
+            extraIn[1] = 0.0f;
+            extraIn[2] = 0.0f;
             return;
         }
+        extraIn[0] = 0.0f;
+        extraIn[1] = 0.0f;
+        extraIn[2] = 0.0f;
         const int v = vNow;
         float xL = xLin;
         float xR = xRin;
@@ -786,6 +794,15 @@ module Listen
         if (y < 0.0f)
             a = 3.14159265f - a;
         return x < 0.0f ? -a : a;
+    }
+
+    // Another package's source for this sample, heard (model 1) from one of the places LS_PLACE_*: call it each sample
+    // before mix. A heavy truck's eighteen-speed's grind at the gearbox, its air dryer's purge under the right side,
+    // its relay valve and spring brakes at the rear axle (package D2). Model 0 has no such sources: there it is dropped
+    void extra(int where, float x)
+    {
+        if (where >= 0 && where < LS_PLACES)
+            extraIn[where] += x;
     }
 
     // Sample i: each source's signal into its place, heard; the cabin's boom; the fade's gain

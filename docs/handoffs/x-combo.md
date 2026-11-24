@@ -1,33 +1,39 @@
-# X: the whole program under test (first handoff, 2026-11-24)
+# X: the whole program under test (handoff, 2026-11-24 17:40 UTC)
 
 Package X, branch `claude/awesome-gates-ntdb58`, cloud session. Owns `tests/sim/combo/**`, `content/builds/combo/**`,
-`tools/tee-fuzz*`, `scripts/listening-pack.*`, `docs/checkpoints/M2.md`, `docs/measurements/combo/**`.
+`content/scenarios/combo/**`, `tools/tee-fuzz*`, `scripts/listening-pack.*`, `docs/checkpoints/M2.md`, this file.
 
-**Done, by test** (`tee-tests-combo`, ctest `-L combo`; the harness `tests/sim/combo/Combo.h` finds the model switches
-in the program's Schema, so a package's switch is covered the moment it lands):
-- `archetype <a> with nothing switched on / with every switch on through every scenario`: five archetypes
-  (`content/builds/combo/`: small four, V8, turbo six, large diesel, turbo V8 with a dual exhaust) x four scenarios
-  (tour, pull, launch, cold; `content/scenarios/combo/`). Judged: finite, within full scale, no guard trip, DC under
-  0.005 FS, largest step within max(12, 2x the reference's own on the same build and scenario), starts, idles 450 to
-  1800 rpm (diesel 350 to 1500), reaches 85 % of its redline in neutral, the car moves, stops after the key; telemetry
-  finite and within its declared range (else bounds by quantity).
-- `switch <i> alone and with each switch after it`: every single and pair, V8 tour and turbo six pull.
-- `switch <i> flipped on and off while the V8 / turbo six pulls in gear`; `every choice and switch of spec.<section>
-  stepped while the V8 revs`; `a build loaded over another while it runs` (each with every switch on too).
-- `fuzz: random Specs inside the ranges` and `the ranges' corners` (seeds 1 to 6, 6 s each); `nothing on the audio
-  thread allocates with every switch on` (operator new counted around SimHost::process; not built on Windows).
-- Nightly (Catch tag and ctest label `nightly`, left out by the dev and release presets; `ctest --preset nightly`): every triple x every archetype x tour and pull; fuzz
-  seeds 100 to 299 random and corners; the ten-minute soak of everything on (an hour by hand: `TEE_SOAK_SECONDS=3600`;
-  the run keeps its audio in memory, about 2 GB for an hour).
-- `tee-fuzz`: `--seeds A-B [--corners]`, `--seed N --reduce` (ddmin to the fewest fields), `--play <archetype>
-  <scenario> <switches>` (one combination, one line), `--match` (the pack's loudness), `--write-scenarios`.
-- The listening pack: `scripts/listening-pack.sh` and `.ps1` over `scripts/listening-pack.tsv`; `docs/checkpoints/M2.md`.
+**Done, by test** (`tee-tests-combo`; ctest `-R '^combo\.'`; 84 default cases, each under 30 s; 32 `[nightly]`). The
+harness (`tests/sim/combo/Combo.h`) finds the switches in the Schema (every `spec.<section>.model`, `engine.custom`,
+`engine.wallHeat`: 11 now), so a package's switch is covered the day it lands. Judged in every run: finite, within
+full scale, no guard trip nor FLAG_FAULT, DC under 0.005 FS, largest step within twice the same build's own reference
+(a bang: within the largest of three reference copies with pops on), starts, idles 450 to 1800 rpm, nears its redline,
+moves, stops; every telemetry column finite, in its declared range, else physical by its quantity.
+- archetypes (`content/builds/combo/`: small four, V8, turbo six, large diesel, turbo V8 dual) through the tour with
+  nothing and everything on; nightly: through all four scenarios (tour, pull, launch, cold; `content/scenarios/combo/`)
+- every switch alone (V8 tour, six pull); nightly: every pair, every triple
+- every switch flipped under load, singly and all in one block; every choice of 10 Spec sections stepped while running;
+  builds loaded over each other, with nothing and everything on
+- targeted: turbo with both ECUs (anti-lag, nitrous switched), launch control, dog box, traction on wet (standstill,
+  rolling), the four limiter kinds, the engine dyno; the 30-build archetype corpus (6 by default, all nightly)
+- fuzz: random and corner Specs (2 seeds by default, 1-6 and 100-299 nightly, with bounds checks); nothing allocates
+  in process with every switch on (operator new; not on Windows); the 10-minute soak (nightly) and an hour by hand
+- fixed findings held as tests: X-001, X-003, X-007 (`[fixed]`)
+- `tee-fuzz`: `--seeds`, `--reduce` (ddmin), `--play <archetype> <scenario> <switches>`, `--checks`, `--match`
 
-**Findings** (`tests/sim/combo/Known.h` lists the open ones):
-- X-001 (D, open): `engine.custom` on with the Spec's default geometry (8 cylinders, every pin 0) never starts.
+**Findings**: 18 filed today. Closed: X-001 (D), X-002 (not a defect), X-003 (H), X-004 (L, C), X-005 (Q), X-006 (H),
+X-007 (D, I), X-008, X-009 (D), X-010 and X-014 and X-015 (N2, G), X-012 (T), X-013 (G), X-018 (H). Open (`Known.h`):
+X-011 standstill (I), X-016 (the four-rotor rotary, the contract's reported heavy case, Q), X-017 (N1, D: charge
+temperature 0 K before the first charge).
 
-**Asked outside my paths**: none open (card C made ValidationTest skip what is not a `.json` file in `content/scenarios/`,
-9ec5515, so my scenarios are in `content/scenarios/combo/`).
+**Measured** (this container, shared 4 cores; R from the same process; docs/measurements/combo/2026-11-24.md): tour,
+off / every switch on: small four 0.52 / 0.98 R; V8 1.00 / 1.57; turbo six 0.80 / 1.32; large diesel 0.77 / 1.19; the
+typical turbo V8 dual 1.04 / 1.81 R, 39 % of a core at 48 kHz/512 (under 60 %, over the contract's 1.6 R). Corpus as
+built 0.59 to 1.81 R. Soak: 600 s of everything on, 236 s wall, 0 failures, 1.71 R. Default tier: 510 s at -j3 here.
 
-**Not run**: the nightly tier and the soak (not yet in this session); Windows and macOS (CI only); the listening pack on
-a person's machine.
+**The listening pack** (M2): `scripts/listening-pack.sh [--quick]` and `.ps1` over `scripts/listening-pack.tsv` (41
+groups, an optional define column); `--quick` rendered 10 files in 90 s here. `docs/checkpoints/M2.md`: what to
+hear in each group and the yes-or-no lines.
+
+**Not run**: the .ps1 (no Windows here), the whole pack (only --quick), the hour soak, the nightly triples; nothing
+on macOS or Windows by me (CI only). Nobody has listened to anything. **Outside my paths**: none. **FMinus**: no issue.

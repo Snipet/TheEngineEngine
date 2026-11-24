@@ -46,13 +46,13 @@ module SoundSpec
     // rear bumper's middle, z up), and which way it faces (degrees from forward, toward the right). It walks there at
     // 8 m/s at most
     float listenerX [[fminus::range(-60, 60)]] [[fminus::default(3)]] [[ui::label("Listener across")]]
-        [[ui::quantity("length")]]
+        [[ui::quantity("length")]] [[ui::prefer("m")]]
         [[ui::help("Camera Free: how far right of the car's middle the listener stands (negative: left)")]];
     float listenerY [[fminus::range(-60, 60)]] [[fminus::default(2.2)]] [[ui::label("Listener along")]]
-        [[ui::quantity("length")]]
+        [[ui::quantity("length")]] [[ui::prefer("m")]]
         [[ui::help("Camera Free: how far forward of the rear bumper the listener stands (negative: behind the car)")]];
     float listenerZ [[fminus::range(0.1, 10)]] [[fminus::default(1.5)]] [[ui::label("Listener height")]]
-        [[ui::quantity("length")]]
+        [[ui::quantity("length")]] [[ui::prefer("m")]]
         [[ui::help("Camera Free: the listener's height above the road")]];
     float facing [[fminus::range(-180, 180)]] [[fminus::default(-90)]] [[ui::label("Listener facing")]]
         [[ui::unit("deg")]] [[ui::help("From the car's forward, toward its right: -90 faces the car from its right side")]];
