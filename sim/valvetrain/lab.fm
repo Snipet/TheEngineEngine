@@ -82,6 +82,7 @@ module ValveLab
     float liftCmd;      // 0 to 1 of the lift steps' range
     float liftMade;     // the command inLive was made for (-1: none)
     int floating;
+    float sevMade;      // the severity the tables' tails were made for
     float clatter;      // 0 to 1: how hard the floating valves land, for the sound
     // what it shows (telemetry)
     float showIvo;      // the four events (degrees of the cylinder's cycle) of cylinder 0 as they are now
@@ -116,6 +117,7 @@ module ValveLab
         liftCmd = 1.0f;
         liftMade = -1.0f;
         floating = 0;
+        sevMade = 0.0f;
         clatter = 0.0f;
         flt.sevIn = 0.0f;
         flt.sevEx = 0.0f;
@@ -156,6 +158,7 @@ module ValveLab
         valveMass = s->valveMass;
         dirty = (1 << VT_PROFILES) - 1;
         floatDirty = 1;
+        sevMade = -1.0f;
         liftMade = -1.0f;
         if (now != 0)
             while (dirty != 0)
@@ -188,6 +191,7 @@ module ValveLab
             c->span = base->span * sd;
             c->open = vtWrap(c->centre - 0.5f * c->span, 720.0f);
             c->reached = base->reached;
+            c->rise1 = c->riseDeg(kVtOneMm);
             for (int j = 0; j < VT_POINTS; ++j)
                 c->shape[j] = base->shape[j];
         }
@@ -195,6 +199,7 @@ module ValveLab
             cam[i].build();
         tab[i].build(&cam[i], &head, i >= VT_EX_A && i <= VT_AUX ? 1 : 0);
         tab[i].noTail();
+        sevMade = -1.0f;
         if (i == VT_IN_A && (dirty & (((1 << VT_LIFTS) - 1) << VT_LIFT0)) == 0)
             dirty = dirty | (((1 << VT_LIFTS) - 1) << VT_LIFT0);   // (the lift steps follow the cam)
         liftMade = -1.0f;
@@ -332,8 +337,10 @@ module ValveLab
         flt.sevEx = flt.severity(omega, flt.omegaEx);
         floating = flt.sevIn > 0.0f || flt.sevEx > 0.0f ? 1 : 0;
         clatter = fminf(fmaxf(flt.sevIn, flt.sevEx), 1.0f);
-        if (dirty == 0)
+        const float sevNow = flt.sevIn + flt.sevEx;
+        if (dirty == 0 && (fabsf(sevNow - sevMade) > 0.01f || (sevNow == 0.0f && sevMade != 0.0f)))
         {
+            sevMade = sevNow;
             flt.tailFor(&tab[VT_IN_A], flt.sevIn);
             flt.tailFor(&tab[VT_IN_B], flt.sevIn);
             flt.tailFor(&tab[VT_EX_A], flt.sevEx);
@@ -354,32 +361,13 @@ module ValveLab
         // 1 mm: from each cam's own curve, moved as its table is
         CamShape* ci = &cam[liftOn != 0 ? VT_IN_A : VT_IN_A + useIn[0]];
         CamShape* ce = &cam[VT_EX_A + useEx[0]];
-        const float in1 = vtWrap(ti->openNow + rise1mm(ci), cyc);
-        const float ex1 = vtWrap(te->openNow + ce->span - rise1mm(ce), cyc);
+        const float in1 = vtWrap(ti->openNow + ci->rise1 * ti->span / ci->span, cyc);
+        const float ex1 = vtWrap(te->openNow + ce->span - ce->rise1, cyc);
         float ov = ex1 - in1;
         if (ov > 360.0f)
             ov -= cyc;
         if (ov < -360.0f)
             ov += cyc;
         overlap1mm = fmaxf(ov, 0.0f);
-    }
-
-    // Degrees from the seat to 1 mm on a cam's rising side (its span's half when it never reaches 1 mm)
-    float rise1mm(CamShape* c)
-    {
-        const float h = kVtOneMm / fmaxf(c->lift, 1.0e-6f);
-        if (h >= 1.0f)
-            return 0.5f * c->span;
-        float lo = 0.0f;
-        float hi = 0.5f * c->span;
-        for (int it = 0; it < 24; ++it)
-        {
-            const float mid = 0.5f * (lo + hi);
-            if (c->lift01(mid) < h)
-                lo = mid;
-            else
-                hi = mid;
-        }
-        return 0.5f * (lo + hi);
     }
 };

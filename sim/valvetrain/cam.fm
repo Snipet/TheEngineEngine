@@ -67,6 +67,7 @@ module CamShape
     float span;         // the event: degrees from leaving the seat to landing on it
     float open;         // where it leaves the seat (the cycle's angle)
     int reached;        // 1: the 1 mm duration asked for is the one made
+    float rise1;        // degrees from the seat to 1 mm on the rising side (half the span when it never gets there)
     float shape[VT_POINTS];
 
     void request(float durSeatIn, float dur1mmIn, float liftIn, float centreIn, float fatIn)
@@ -175,5 +176,26 @@ module CamShape
         open = vtWrap(centre - 0.5f * span, 720.0f);
         for (int i = 0; i < VT_POINTS; ++i)
             shape[i] = lift01(span * (float)i / (float)VT_STEPS);
+        rise1 = riseDeg(kVtOneMm);
+    }
+
+    // Degrees from the seat to a lift of h (m) on the rising side, from the curve (half the span when it never
+    // reaches h)
+    float riseDeg(float h)
+    {
+        const float x = h / fmaxf(lift, 1.0e-6f);
+        if (x >= 1.0f)
+            return 0.5f * span;
+        float lo = 0.0f;
+        float hi = 0.5f * span;
+        for (int it = 0; it < 24; ++it)
+        {
+            const float mid = 0.5f * (lo + hi);
+            if (lift01(mid) < x)
+                lo = mid;
+            else
+                hi = mid;
+        }
+        return 0.5f * (lo + hi);
     }
 };
