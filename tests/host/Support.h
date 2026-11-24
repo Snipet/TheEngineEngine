@@ -16,11 +16,15 @@
 
 namespace tee::test
 {
-    // Allocations (operator new) made on a thread while it counts them (Alloc.cpp).
+    // Allocations (operator new) made on a thread while it counts them (Alloc.cpp). Not on Windows (the global
+    // operators replaced in an executable meet the C runtime's and LLVM's own there: a heap corruption at the first
+    // test) and not under ThreadSanitizer (which replaces them itself): available() says, and a test that counts says
+    // it was skipped.
     struct AllocationCounter
     {
         static void countThisThread(bool on) noexcept;
         static long count() noexcept;
+        static bool available() noexcept;
     };
 
     inline std::filesystem::path standin()
