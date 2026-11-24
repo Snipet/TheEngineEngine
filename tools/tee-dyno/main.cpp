@@ -9,7 +9,9 @@
 //            [--threads N] [--points N] [--coarse N]        several threads, coarse first; the times to the first and
 //            [--tolerance X] [--min-cycles N] [--max-cycles N] [--cold] [--history] [--repeat N]
 //            [--brake auto|host|program] [--hold S] [--no-settle] [--warmup-seconds S] [--inner-rate HZ]
-//   tee-dyno --bake-cam --build B [--from W --to W --points N] [--refine]   the intake cam swept, best advance by speed (Bake.h)
+//   tee-dyno --bake-cam --build B [--from W --to W --points N] [--refine] [--save FILE]   the intake cam swept, best
+//            advance by speed (Bake.h); --save writes the build with it applied (ecu.maps.camIn with its load axis,
+//            camInAuto off) only if it passes the idle gate (tee::checkIdle, P's: warm and cold), else exits 2
 //   tee-dyno --bake-spark --build B [--points N] [--inner-rate HZ] [--save FILE]   the knock limit baked (Bake.h);
 //            --save writes the build with it applied (ecu.maps.knockLimit, knockLimitAuto off, its key)
 //            [--ramp A]                                     and against a slow sweep at A rad/s^2 with the same brake
@@ -271,6 +273,8 @@ int main(int argc, char** argv)
             ok = number(predictOptions.tolerance);
         else if (args.is("--threads"))
             ok = whole(predictOptions.threads);
+        else if (args.is("--shares"))
+            ok = whole(predictOptions.shares);
         else if (args.is("--points"))
             ok = whole(predictOptions.points);
         else if (args.is("--coarse"))
@@ -408,6 +412,39 @@ int main(int argc, char** argv)
             for (std::size_t a = 0; a < r.advances.size(); ++a)
                 std::printf(" %7.1f", r.knock[a][s2]);
             std::printf("\n");
+        }
+        if (!saveFile.empty())
+        {
+            if (!tee::applyIntakeCam(build, r, errors))
+            {
+                std::fprintf(stderr, "tee-dyno: %s\n", errors.c_str());
+                return 1;
+            }
+            const std::filesystem::path scenarios =
+                tee::tools::findDirectory({}, "TEE_CONTENT_DIR", argv[0], "content/ref", TEE_SOURCE_CONTENT_DIR)
+                    .parent_path() / "validation" / "scenarios";
+            tee::IdleCheck idle;
+            if (!tee::checkIdle(compiled, build, scenarios, idle, errors))
+            {
+                std::fprintf(stderr, "tee-dyno: the idle check: %s\n", errors.c_str());
+                return 1;
+            }
+            std::printf("idle with the map: warm %.0f rpm (asked %.0f), sd %.1f; cold %.0f rpm, sd %.1f, %s\n",
+                        idle.warmMean, idle.asked, idle.warmSd, idle.coldMean, idle.coldSd,
+                        idle.coldRunning ? "running" : "NOT running");
+            if (!idle.pass)
+            {
+                for (const std::string& f : idle.failures)
+                    std::fprintf(stderr, "tee-dyno: idle gate: %s\n", f.c_str());
+                std::fprintf(stderr, "tee-dyno: not saved: the baked cam fails the idle gate\n");
+                return 2;
+            }
+            if (!build.saveFile(saveFile, tee::BuildPart::Whole, errors))
+            {
+                std::fprintf(stderr, "tee-dyno: %s\n", errors.c_str());
+                return 1;
+            }
+            std::printf("saved with the intake cam: %s\n", saveFile.c_str());
         }
         return 0;
     }

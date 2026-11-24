@@ -868,59 +868,88 @@ namespace tee
             // runs before a point is part of that point's history (a diesel's lighting, a turbo's spool carry from one
             // speed to the next), so a share by who comes first would make the same build's curve differ from run to
             // run (the large diesel's 1300 to 1650 rpm by up to 15 % of its peak).
-            const int threads = std::min(workersFor(options), n);
+            // The shares are fixed (PredictOptions::shares), not the workers: a share's points run in turn on an instance
+            // of its own, and a worker runs whole shares, so what came before a point (its history) is the same on a
+            // machine of two cores as of sixteen (with a share a worker, a 2-core runner and this one read one point of
+            // the economy four 126 and 131 N m)
+            const int shares = std::clamp(options.shares, 1, n);
+            const int threads = std::min(workersFor(options), shares);
             const auto work = [&](int worker) {
-                Rig rig(sim, options);
-                std::string e;
-                if (!rig.make(build, e))
+                // this worker's shares, each its own instance; their points taken in the order's sequence (the coarse
+                // speeds first, whatever the number of workers)
+                std::vector<int> mine;
+                for (int shareAt = worker; shareAt < shares; shareAt += threads)
+                    mine.push_back(shareAt);
+                std::vector<std::unique_ptr<Rig>> rigs;
+                std::vector<bool> started(mine.size(), false);
+                for (std::size_t r = 0; r < mine.size(); ++r)
                 {
-                    const std::lock_guard<std::mutex> lock(mutex);
-                    if (firstError.empty())
-                        firstError = e;
-                    return;
-                }
-                bool started = false;
-                for (int k = worker; k < n; k += threads)
-                {
-                    if (cancel != nullptr && cancel->load(std::memory_order_relaxed))
-                        break;
-                    const int i = order[static_cast<std::size_t>(k)];
-                    const double w = speeds[static_cast<std::size_t>(i)];
-                    if (!started)
-                    {
-                        rig.start(speeds.front());   // the lowest: where an engine lights best
-                        rig.warmup(speeds);
-                        started = true;
-                    }
-                    const PredictPoint p = rig.point(w, cancel);
-                    if (!p.valid)
-                        started = false;   // at rest after the fault: the next point starts it again
-                    if (cancel != nullptr && cancel->load(std::memory_order_relaxed))
-                        break;
-                    PredictCurve snapshot;
-                    double share = 0.0;
-                    bool tell = false;
+                    rigs.push_back(std::make_unique<Rig>(sim, options));
+                    std::string e;
+                    if (!rigs.back()->make(build, e))
                     {
                         const std::lock_guard<std::mutex> lock(mutex);
-                        program = rig.programBrake();
-                        rateInside = rig.innerRate();
-                        done[static_cast<std::size_t>(i)] = p;
-                        have[static_cast<std::size_t>(i)] = true;
-                        ++haveAll;
-                        if (isCoarse[static_cast<std::size_t>(i)])
-                            ++haveCoarse;
-                        if (haveCoarse == coarseCount && haveAll < n)
-                        {
-                            snapshot = publish(false);
-                            share = static_cast<double>(haveAll) / n;
-                            tell = true;
-                        }
+                        if (firstError.empty())
+                            firstError = e;
+                        return;
                     }
-                    if (tell && partial)
-                        partial(snapshot, share);
                 }
+                bool stop = false;
+                for (int k0 = 0; k0 < n && !stop; k0 += shares)
+                    for (std::size_t r = 0; r < mine.size() && !stop; ++r)
+                    {
+                        const int k = k0 + mine[r];
+                        if (k >= n)
+                            continue;
+                        if (cancel != nullptr && cancel->load(std::memory_order_relaxed))
+                        {
+                            stop = true;
+                            break;
+                        }
+                        Rig& rig = *rigs[r];
+                        const int i = order[static_cast<std::size_t>(k)];
+                        const double w = speeds[static_cast<std::size_t>(i)];
+                        if (!started[r])
+                        {
+                            rig.start(speeds.front());   // the lowest: where an engine lights best
+                            rig.warmup(speeds);
+                            started[r] = true;
+                        }
+                        const PredictPoint p = rig.point(w, cancel);
+                        if (!p.valid)
+                            started[r] = false;   // at rest after the fault: the next point starts it again
+                        if (cancel != nullptr && cancel->load(std::memory_order_relaxed))
+                        {
+                            stop = true;
+                            break;
+                        }
+                        PredictCurve snapshot;
+                        double share = 0.0;
+                        bool tell = false;
+                        {
+                            const std::lock_guard<std::mutex> lock(mutex);
+                            program = rig.programBrake();
+                            rateInside = rig.innerRate();
+                            done[static_cast<std::size_t>(i)] = p;
+                            have[static_cast<std::size_t>(i)] = true;
+                            ++haveAll;
+                            if (isCoarse[static_cast<std::size_t>(i)])
+                                ++haveCoarse;
+                            if (haveCoarse == coarseCount && haveAll < n)
+                            {
+                                snapshot = publish(false);
+                                share = static_cast<double>(haveAll) / n;
+                                tell = true;
+                            }
+                        }
+                        if (tell && partial)
+                            partial(snapshot, share);
+                    }
+                double total = 0.0;
+                for (const auto& rig : rigs)
+                    total += rig->simulated();
                 double s = simulated.load();
-                while (!simulated.compare_exchange_weak(s, s + rig.simulated()))
+                while (!simulated.compare_exchange_weak(s, s + total))
                 {
                 }
             };
@@ -947,7 +976,7 @@ namespace tee
         std::uint64_t h = build.hash();
         for (const double v : {static_cast<double>(o.coarse), static_cast<double>(o.points), o.from, o.to, o.pedal,
                                o.tolerance, static_cast<double>(o.minCycles), static_cast<double>(o.maxCycles),
-                               o.sampleRate, static_cast<double>(o.block), o.startSeconds, o.warm ? 1.0 : 0.0, o.warmupSeconds, o.settleExhaust ? 1.0 : 0.0, o.holdSeconds, o.brake == "host" ? 1.0 : o.brake == "program" ? 2.0 : 0.0, o.innerRate, static_cast<double>(o.fields.size()), o.minHoldSeconds, o.knockLimit, o.knockWindowSeconds, o.knockMostSeconds, o.boostHuntSeconds})
+                               o.sampleRate, static_cast<double>(o.block), o.startSeconds, o.warm ? 1.0 : 0.0, o.warmupSeconds, o.settleExhaust ? 1.0 : 0.0, o.holdSeconds, o.brake == "host" ? 1.0 : o.brake == "program" ? 2.0 : 0.0, o.innerRate, static_cast<double>(o.fields.size()), o.minHoldSeconds, o.knockLimit, o.knockWindowSeconds, o.knockMostSeconds, o.boostHuntSeconds, static_cast<double>(o.shares)})
             h = mix(h, v);
         for (const double v : o.speeds)
             h = mix(h, v);
