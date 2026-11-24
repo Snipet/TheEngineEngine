@@ -188,6 +188,13 @@ namespace tee::ui
             const Palette p = Palette::of(th);
             const Rect& s = stage_;
             c.rrect(s.x, s.y, s.w, s.h, 0.0f, p.ground);
+            if (build_.ts.on)
+            {
+                drawHeader(c, p);
+                drawTwoStroke(c, p);
+                drawMarks(c, p);
+                return;
+            }
             drawEffects(c, p);
             drawHeader(c, p);
             drawPipes(c, p);
@@ -266,6 +273,43 @@ namespace tee::ui
                 return { "boost.kind", "boost.layout", "boost.turbWheel", "boost.turbAR", "boost.turbEta", "boost.scrolls",
                          "boost.housingVolume", "boost.vanes", "boost.vaneMin", "boost.gate", "boost.gateDiameter",
                          "exhaust.gateLen", "exhaust.gateD" };
+            }
+            // a two-stroke's pipe (card T's fields)
+            if (sel == "engine.tsHeader")
+            {
+                title = "Header";
+                return { "engine.tsChamber", "engine.tsHeaderLen", "engine.tsHeaderDiam" };
+            }
+            if (sel == "engine.tsDiffuser")
+            {
+                title = "Diffuser cone";
+                return { "engine.tsDiffuserLen", "engine.tsHeaderDiam", "engine.tsBellyDiam", "engine.tsConeSteps" };
+            }
+            if (sel == "engine.tsBelly")
+            {
+                title = "Belly";
+                return { "engine.tsBellyLen", "engine.tsBellyDiam" };
+            }
+            if (sel == "engine.tsBaffle")
+            {
+                title = "Baffle cone";
+                return { "engine.tsBaffleLen", "engine.tsBellyDiam", "engine.tsStingerDiam", "engine.tsConeSteps" };
+            }
+            if (sel == "engine.tsStinger")
+            {
+                title = "Stinger";
+                return { "engine.tsStingerLen", "engine.tsStingerDiam" };
+            }
+            if (sel == "engine.tsSilencer")
+            {
+                title = "Silencer";
+                return { "engine.tsSilencer", "engine.tsSilencerLen", "engine.tsSilencerDiam", "engine.tsSilencerPack" };
+            }
+            if (sel == "engine.tsPort")
+            {
+                title = "Exhaust port";
+                return { "engine.tsExhaustDur", "engine.tsExhaustWidth", "engine.tsExhaustRadius", "engine.tsValveDur",
+                         "engine.tsValveFrom", "engine.tsValveTo" };
             }
             if (sel == "engine")
             {
@@ -347,7 +391,200 @@ namespace tee::ui
             build_ = resolveExhaust(ctx_.doc);
             const Rect& s = stage_;
             const Rect d{ s.x + 20.0f, s.y + 84.0f, std::max(200.0f, s.w - 40.0f), std::max(160.0f, s.h - 84.0f - 74.0f) };
-            geo_ = layoutExhaust(build_, d);
+            geo_ = build_.ts.on ? Geo{} : layoutExhaust(build_, d);
+            if (build_.ts.on)
+                layoutTwoStroke(d);
+        }
+
+        // ---- a two-stroke's pipes (engine.cycle 1) -------------------------------------------------------------------
+        // Each cylinder's pipe to scale, lengths and bores alike (one scale for both, so a cone looks as steep as it is),
+        // a lane each; under them, the exhaust port's pressure over a turn with the port's opening and closing marked.
+        void layoutTwoStroke(const Rect& d)
+        {
+            const TwoStrokePipe& t = build_.ts;
+            geo_.diagram = d;
+            const float plotH = std::clamp(d.h * 0.34f, 110.0f, 200.0f);
+            tsPlot_ = { d.x, d.bottom() - plotH, d.w, plotH };
+            const float top = d.y, h = d.h - plotH - 16.0f;
+            const int n = t.cylinders;
+            const float laneH = h / static_cast<float>(n);
+            const float total = t.length() + (t.silencer ? t.silLen : 0.0f);
+            const float x0 = d.x + 46.0f, room = d.right() - 120.0f - x0;
+            tsScale_ = std::min(room / std::max(0.2f, total), laneH * 0.78f / std::max(0.02f, t.chamber ? t.dBelly : t.dHeader));
+            tsX_[0] = x0;
+            const float lens[5] = { t.header, t.diffuser, t.belly, t.baffle, t.stinger };
+            for (int k = 0; k < 5; ++k)
+                tsX_[static_cast<std::size_t>(k + 1)] = tsX_[static_cast<std::size_t>(k)] + lens[k] * tsScale_;
+            tsEnd_ = tsX_[5] + (t.silencer ? t.silLen * tsScale_ : 0.0f);
+            tsLane_.clear();
+            for (int c = 0; c < n; ++c)
+                tsLane_.push_back(top + laneH * (static_cast<float>(c) + 0.5f));
+            static const char* const kIds[5] = { "engine.tsHeader", "engine.tsDiffuser", "engine.tsBelly", "engine.tsBaffle",
+                                                 "engine.tsStinger" };
+            static const char* const kNames[5] = { "HEADER", "DIFFUSER", "BELLY", "BAFFLE CONE", "STINGER" };
+            for (int c = 0; c < n; ++c)
+            {
+                const float y = tsLane_[static_cast<std::size_t>(c)], half = 0.5f * t.dBelly * tsScale_ + 6.0f;
+                for (int k = 0; k < 5; ++k)
+                    if (tsX_[static_cast<std::size_t>(k + 1)] - tsX_[static_cast<std::size_t>(k)] > 1.0f && (t.chamber || k == 0))
+                        geo_.hits.push_back({ { tsX_[static_cast<std::size_t>(k)], y - std::max(10.0f, half), t.chamber
+                                                  ? tsX_[static_cast<std::size_t>(k + 1)] - tsX_[static_cast<std::size_t>(k)]
+                                                  : tsX_[5] - tsX_[0], 2.0f * std::max(10.0f, half) },
+                                              kIds[k], t.chamber ? kNames[k] : "STRAIGHT PIPE" });
+                if (t.silencer)
+                    geo_.hits.push_back({ { tsX_[5], y - 12.0f, tsEnd_ - tsX_[5], 24.0f }, "engine.tsSilencer", "SILENCER" });
+            }
+            geo_.hits.push_back({ tsPlot_, "engine.tsPort", "EXHAUST PORT" });
+        }
+
+        void drawTwoStroke(Canvas& c, const Palette& p) const
+        {
+            const TwoStrokePipe& t = build_.ts;
+            const double gasK = ctx_.live.get(N::tsPipeTemp);
+            const Col ink = std::isfinite(gasK) ? heat(p, gasK) : p.text;
+            const Col fill = Palette::mix(p.ground, ink, 0.16f);
+            const float s = tsScale_;
+            for (std::size_t ci = 0; ci < tsLane_.size(); ++ci)
+            {
+                const float y = tsLane_[ci];
+                // the cylinder and its port
+                c.rrect(tsX_[0] - 40.0f, y - 22.0f, 34.0f, 44.0f, 5.0f, p.raised, 1.0f, p.edge);
+                c.text(std::to_string(ci + 1).c_str(), tsX_[0] - 28.0f, y - 7.0f, look::kNumberS, p.text);
+                c.segment(tsX_[0] - 6.0f, y, tsX_[0], y, 0.5f * t.dHeader * s * 2.0f, Palette::mix(p.ground, ink, 0.5f));
+                // the walls: the radius at each section's ends (a cone is two straight lines, diverging or converging)
+                float xs[6], rs[6];
+                for (int k = 0; k < 6; ++k)
+                    xs[k] = tsX_[static_cast<std::size_t>(k)];
+                if (t.chamber)
+                {
+                    const float rh = 0.5f * t.dHeader * s, rb = 0.5f * t.dBelly * s, rt = 0.5f * t.dStinger * s;
+                    const float r[6] = { rh, rh, rb, rb, rt, rt };
+                    for (int k = 0; k < 6; ++k)
+                        rs[k] = r[k];
+                }
+                else
+                    for (int k = 0; k < 6; ++k)
+                        rs[k] = 0.5f * t.dHeader * s;
+                float top[6], bot[6];
+                for (int k = 0; k < 6; ++k)
+                {
+                    top[k] = y - rs[k];
+                    bot[k] = y + rs[k];
+                }
+                c.areaStrip(xs, 6, top, bot, 0.0f, fill);
+                c.polyline(xs, top, 6, 1.75f, ink);
+                c.polyline(xs, bot, 6, 1.75f, ink);
+                for (int k = 1; k < 5; ++k)   // the joints, faint
+                    if (t.chamber)
+                        c.segment(xs[k], top[k], xs[k], bot[k], 1.0f, Palette::mix(p.ground, ink, 0.35f));
+                // the silencer: a packed can (its packing as dots)
+                float endX = tsX_[5];
+                if (t.silencer)
+                {
+                    const float rr = std::max(5.0f, 0.5f * t.silDiam * s * 2.2f);
+                    c.rrect(tsX_[5], y - rr, tsEnd_ - tsX_[5], 2.0f * rr, rr, Palette::mix(p.panel, ink, 0.25f), 1.5f, ink);
+                    c.dotted(tsX_[5] + 6.0f, y - rr * 0.5f, tsEnd_ - tsX_[5] - 12.0f, 4.0f, Palette::mix(p.panel, ink, 0.8f));
+                    endX = tsEnd_;
+                }
+                radiating(c, p, endX + 6.0f, y);
+                // the section's names, under the lane where there is room
+                if (ci + 1 == tsLane_.size() || tsLane_.size() == 1)
+                {
+                    static const char* const kNames[5] = { "HEADER", "DIFFUSER", "BELLY", "BAFFLE", "STINGER" };
+                    float lastRight = -1e9f;
+                    const float ly = y + 0.5f * (t.chamber ? t.dBelly : t.dHeader) * s + 8.0f;
+                    for (int k = 0; k < 5 && t.chamber; ++k)
+                    {
+                        const float w = c.textWidth(kNames[k], look::kCaps), cx = 0.5f * (xs[k] + xs[k + 1]);
+                        const float x = std::max(cx - 0.5f * w, lastRight + 6.0f);
+                        if (x + w <= xs[k + 1] + 30.0f)
+                        {
+                            c.text(kNames[k], x, ly, look::kCaps, p.label);
+                            lastRight = x + w;
+                        }
+                    }
+                }
+            }
+            drawTwoStrokePulse(c, p);
+            drawPortPlot(c, p);
+            // the derived speed the pipe is tuned for, at the pipe's gas temperature (or a warm pipe's 680 K)
+            const Rect& st = stage_;
+            const float y = st.bottom() - 62.0f;
+            c.hairlineH(st.x + 20.0f, y - 8.0f, st.w - 40.0f, p.grid);
+            const double k = std::isfinite(gasK) && gasK > 0.0 ? gasK : 680.0;
+            const double rpm = t.tunedRpm(k);
+            if (rpm > 0.0)
+            {
+                const std::string v = look::num(std::round(rpm / 50.0) * 50.0, "%.0f");
+                look::readout(c, p, st.x + 20.0f, y, "ON THE PIPE NEAR", v, "rpm, DERIVED", look::kNumberM);
+            }
+            else
+                look::readout(c, p, st.x + 20.0f, y, "A STRAIGHT PIPE", "-", "no tuned speed", look::kNumberM);
+            const std::string gas = std::isfinite(gasK) && gasK > 0.0
+                                        ? ctx_.units.format(Quantity::temperature, gasK, 0)
+                                        : "680 K assumed (a warm pipe)";
+            look::readout(c, p, st.x + 300.0f, y, "PIPE GAS", gas, {}, look::kNumberS);
+        }
+
+        // The pulse and its returning wave along cylinder 1's pipe: the Scope's pressure along the path, spread over
+        // the pipe's length (its points evenly spaced by length).
+        void drawTwoStrokePulse(Canvas& c, const Palette& p) const
+        {
+            if (shown_.size() < 2 || tsLane_.empty())
+                return;
+            const int n = static_cast<int>(shown_.size());
+            const float y = tsLane_[0], x0 = tsX_[0], x1 = build_.ts.silencer ? tsEnd_ : tsX_[5];
+            std::vector<float> xs, ys;
+            for (int i = 0; i < n; ++i)
+            {
+                const float f = (static_cast<float>(i) + 0.5f) / static_cast<float>(n);
+                xs.push_back(x0 + (x1 - x0) * f);
+                ys.push_back(y - std::clamp(shown_[static_cast<std::size_t>(i)] / kPulseScale, -1.0f, 1.0f) * kPulseSwing * 1.6f);
+            }
+            c.polyline(xs.data(), ys.data(), n, 1.75f, p.value);
+        }
+
+        // The exhaust port's pressure over a turn (the Scope's portExhaust, cylinder 1), with the port's opening and
+        // closing marked: the plugging pulse should arrive just before the closing.
+        void drawPortPlot(Canvas& c, const Palette& p) const
+        {
+            const Rect in = look::region(c, p, tsPlot_, "AT THE EXHAUST PORT, OVER A TURN");
+            const Rect pl{ in.x + 34.0f, in.y + 2.0f, in.w - 44.0f, in.h - 18.0f };
+            const float epo = 180.0f - 0.5f * build_.ts.exhaustDur, epc = 180.0f + 0.5f * build_.ts.exhaustDur;
+            const auto X = [&](float deg) { return pl.x + pl.w * deg / 360.0f; };
+            c.hairlineH(pl.x, pl.centreY(), pl.w, p.grid);
+            for (int dgr = 0; dgr <= 360; dgr += 90)
+            {
+                c.hairlineV(X(static_cast<float>(dgr)), pl.y, pl.h, p.grid);
+                c.text(std::to_string(dgr).c_str(), X(static_cast<float>(dgr)) - 6.0f, pl.bottom() + 3.0f, look::kUnit, p.label);
+            }
+            // the port's open span, and its two edges in words
+            c.rrect(X(epo), pl.y, X(epc) - X(epo), pl.h, 0.0f, Palette::mix(p.panel, p.hot, 0.10f));
+            c.segment(X(epo), pl.y, X(epo), pl.bottom(), 1.25f, p.hot);
+            c.segment(X(epc), pl.y, X(epc), pl.bottom(), 2.0f, p.selected);
+            c.text("OPENS", X(epo) + 4.0f, pl.y + 2.0f, look::kCaps, p.hot);
+            c.text("CLOSES", X(epc) - 4.0f - c.textWidth("CLOSES", look::kCaps), pl.y + 2.0f, look::kCaps, p.selected);
+            if (portTrace_.size() < 2)
+            {
+                c.text("no port pressure from the Scope yet", pl.x + 8.0f, pl.centreY() + 6.0f, look::kBody, p.dim);
+                return;
+            }
+            const int n = static_cast<int>(portTrace_.size());
+            float lo = 1e9f, hi = -1e9f;
+            for (float v : portTrace_)
+            {
+                lo = std::min(lo, v);
+                hi = std::max(hi, v);
+            }
+            const float mid = 0.5f * (lo + hi), span = std::max(1000.0f, hi - lo);
+            std::vector<float> xs, ys;
+            for (int i = 0; i < n; ++i)
+            {
+                xs.push_back(X(360.0f * static_cast<float>(i) / static_cast<float>(n)));
+                ys.push_back(pl.centreY() - (portTrace_[static_cast<std::size_t>(i)] - mid) / span * pl.h * 0.9f);
+            }
+            c.polyline(xs.data(), ys.data(), n, 1.5f, p.value);
+            c.text(ctx_.units.format(Quantity::pressure, hi - lo).c_str(), pl.x - 30.0f, pl.y, look::kUnit, p.label);
         }
 
         void readScope()
@@ -379,6 +616,20 @@ namespace tee::ui
             }
             else
                 n = 0;
+            // a two-stroke's port pressure over the turn (the Scope's cycle: `degrees` entries)
+            portTrace_.clear();
+            if (build_.ts.on)
+                if (const int hp = sc.find(N::tsPortScope) >= 0 ? sc.find(N::tsPortScope) : sc.find(N::portScope); hp >= 0)
+                {
+                    float deg[1] = { 0.0f };
+                    const int hd = sc.find(N::degrees);
+                    const int want = hd >= 0 && sc.read(hd, deg, 1) == 1 && deg[0] > 0.0f ? static_cast<int>(deg[0]) : 360;
+                    std::vector<float> v(1080);
+                    const int got = sc.read(hp, v.data(), 1080);
+                    // a two-stroke's turn is 360 degrees: a longer copy holds two turns; the last turn is the one shown
+                    if (got >= 2)
+                        portTrace_.assign(v.begin() + std::max(0, got - std::min(want, 360)), v.begin() + got);
+                }
             // every pipe slot's pressure at its two ends (card G's)
             ducts_ = false;
             {
@@ -1124,6 +1375,13 @@ namespace tee::ui
         bool slow_ = false;
         double clock_ = 0, play_ = 0;
         float phase_ = 0.0f;
+        // a two-stroke's: the sections' x (port, the four joints, the stinger's end), the silencer's end, the scale
+        // (px a metre), each cylinder's lane, the port plot, cylinder 1's port pressure over the last turn
+        std::array<float, 6> tsX_{};
+        float tsEnd_ = 0.0f, tsScale_ = 0.0f;
+        std::vector<float> tsLane_;
+        Rect tsPlot_{};
+        std::vector<float> portTrace_;
         static constexpr int kDucts = 84;
         bool ducts_ = false;
         std::array<float, kDucts> ductUsed_{}, ductNear_{}, ductFar_{};
