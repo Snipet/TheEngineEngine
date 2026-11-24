@@ -77,3 +77,5 @@ standing wave (not the cylinder; N1's end loss ab65e06 takes most of it); a firi
 **Listen to**, added: an overrun's pops on the model-on path once N1 lights exUnburnedJ in the pipe.
 
 **Listening note (19:30)**: builds and renders before f89d40c are not the ones to judge the default V8's model-on sound on, where a model switch was written while the engine stood (after the program's init, with no layout or size change to follow it): those ran without the physical cylinder and the implied exhaust.
+
+**Listening note (20:20)**: under the physical cylinder every petrol engine's blowdown is a little softer and cooler since 3990ee47 (Gatowski's gamma); the default V8 at full load is the one to hear.
