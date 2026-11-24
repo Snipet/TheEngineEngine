@@ -2,8 +2,8 @@
   "format": "tee-scenario",
   "version": 1,
   "name": "qm-vr6-28",
-  "description": "Card P's drag run for \"Narrow-angle VR6 2.8 L\" in its own gearbox: card I's launch (traction control on, the car's own clutch), staged at 8 s, the green at 10.5 s, the upshifts where the engine first reaches 95 % of its redline (placed by content/validation/archetypes/quarter_mile.py). Read car.t1320 and car.v1320. Warm tyres (card C's warmTyres: a timed run's).",
-  "seconds": 40,
+  "description": "Card P's drag run for \"Narrow-angle VR6 2.8 L\": card I's launch (traction control on, the car's own clutch), staged at 8.0 s, the green at 10.5 s; the upshifts where the next gear's wheel torque is the greater (from the predicted curve); the revs held at the green (the brake held, the pedal floored 1.5 s before); the tyres warm, in their window (placed by content/validation/archetypes/quarter_mile.py). Read car.t1320 and car.v1320.",
+  "seconds": 50,
   "warm": true,
   "events": [
     {
@@ -54,33 +54,32 @@
       ]
     },
     {
-      "t": 10.5,
-      "ctl": {
-        "brake": 0,
-        "throttle": 0.15
-      }
-    },
-    {
-      "t": 10.5,
+      "t": 9.0,
       "ctl": {
         "throttle": 1
       },
       "ramp": 0.3
     },
     {
-      "t": 13.211,
+      "t": 10.5,
+      "ctl": {
+        "brake": 0
+      }
+    },
+    {
+      "t": 12.143,
       "press": [
         "shiftUp"
       ]
     },
     {
-      "t": 17.126,
+      "t": 17.37,
       "press": [
         "shiftUp"
       ]
     },
     {
-      "t": 23.217,
+      "t": 23.919,
       "press": [
         "shiftUp"
       ]

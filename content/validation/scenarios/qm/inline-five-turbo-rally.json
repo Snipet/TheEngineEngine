@@ -2,8 +2,8 @@
   "format": "tee-scenario",
   "version": 1,
   "name": "qm-inline-five-turbo-rally",
-  "description": "Card P's drag run for \"Inline five turbo rally\" in its own gearbox: card I's launch (traction control on, the car's own clutch), staged at 8 s, the green at 10.5 s, the upshifts where the engine first reaches 95 % of its redline (placed by content/validation/archetypes/quarter_mile.py). Read car.t1320 and car.v1320. Warm tyres (card C's warmTyres: a timed run's).",
-  "seconds": 40,
+  "description": "Card P's drag run for \"Inline five turbo rally\": card I's launch (traction control on, the car's own clutch), staged at 8.0 s, the green at 10.5 s; the upshifts where the next gear's wheel torque is the greater (from the predicted curve); the revs held at the green (the brake held, the pedal floored 1.5 s before, the launch button held); the tyres warm, in their window (placed by content/validation/archetypes/quarter_mile.py). Read car.t1320 and car.v1320.",
+  "seconds": 50,
   "warm": true,
   "events": [
     {
@@ -54,45 +54,56 @@
       ]
     },
     {
-      "t": 10.5,
+      "t": 8.9,
       "ctl": {
-        "brake": 0,
-        "throttle": 0.15
+        "buttons": 2
       }
     },
     {
-      "t": 10.5,
+      "t": 9.0,
       "ctl": {
         "throttle": 1
       },
       "ramp": 0.3
     },
     {
-      "t": 14.075,
+      "t": 10.5,
+      "ctl": {
+        "brake": 0
+      }
+    },
+    {
+      "t": 11.5,
+      "ctl": {
+        "buttons": 0
+      }
+    },
+    {
+      "t": 14.145,
       "press": [
         "shiftUp"
       ]
     },
     {
-      "t": 15.291,
+      "t": 15.414,
       "press": [
         "shiftUp"
       ]
     },
     {
-      "t": 16.891,
+      "t": 16.993,
       "press": [
         "shiftUp"
       ]
     },
     {
-      "t": 18.843,
+      "t": 19.201,
       "press": [
         "shiftUp"
       ]
     },
     {
-      "t": 21.659,
+      "t": 22.102,
       "press": [
         "shiftUp"
       ]
