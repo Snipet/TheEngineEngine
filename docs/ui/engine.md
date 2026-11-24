@@ -80,7 +80,8 @@ layout dial's preset in its place), the block from above draws the dial's layout
 lines: "CUSTOM LAYOUT REFUSED: THE DIAL'S RUNS" and, when the build shows why, the reason ("TWO OF ITS CYLINDERS FIRE
 TOGETHER", or a cylinder in a bank with no angle). The layout's inspector page carries the whole sentence under its
 LAYOUT group: "THIS CUSTOM LAYOUT WAS REFUSED: THE ENGINE IS RUNNING THE LAYOUT DIAL'S INSTEAD". Both go when the flag
-does. The reason is derived from the build here; D exposes none by name. ENGINE's demo hook gives the flag as 0.
+does. The reason is D's `engine.layoutReason` when it is set (1 cylinders fire together, 2 rotors fire together, 3 a
+cylinder's bank outside the banks), else derived from the build. ENGINE's demo hook gives both as 0.
 `ui.engine.refused`.
 
 ## Derived, not set

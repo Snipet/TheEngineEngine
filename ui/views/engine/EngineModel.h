@@ -148,6 +148,9 @@ namespace tee::ui::engine
     Layout dialLayoutOf(const FieldDoc& doc);
     // D's flag (finding X-001): 1 while a custom layout is refused and the dial's runs in its place.
     inline constexpr const char* kTelLayoutRefused = "engine.layoutRefused";
+    // D's reason while refused: 1 cylinders fire together, 2 rotors fire together, 3 a cylinder's bank is outside the
+    // banks (0 or absent: none given; the stage then says why from the build when it can).
+    inline constexpr const char* kTelLayoutReason = "engine.layoutReason";
 
     // The firing angles, order and intervals from banks, pins and firing revolutions (sim/core/layout.fm's derive()).
     void deriveFiring(Layout& l, const std::array<int, kMaxCyl>& fireRev);
