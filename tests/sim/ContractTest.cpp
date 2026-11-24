@@ -140,7 +140,7 @@ TEST_CASE("sim: a build keeps what the Spec lacks, and names a choice", "[sim][c
                  "warp": {"drive": 9}}})";
     EngineBuild build;
     std::string error, warnings;
-    REQUIRE(parseBuild(player, json, "x.json", build, error, warnings));
+    REQUIRE(parseBuild(player, json, "x.json", build, error, warnings, false));   // not strict: kept
     CHECK(build.values.at("engine.layout") == std::vector<double>{5.0});
     CHECK(build.unknown.size() == 2);
     CHECK(warnings.find("engine.fromTheFuture") != std::string::npos);

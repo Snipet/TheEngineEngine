@@ -37,6 +37,26 @@
 
 ## Landed
 
+- **20:28 the lead's check-in** (the tip 04a4d11 and after: about 1970 commits; it compiles; lint ok). **CI**: the
+  newest finished fast jobs are red on all three, each on a commit from before fixes that are now in the tip:
+  core's books on the boosted petrol (N1's b6676a5; fixed by c40f041, checked green on Linux by the steward),
+  `calibration-balance.sim` and `diesel.brakes` (the gamma's first commit alone; the test and the lean term
+  followed: bae5ffd, a845b07f), `ui.dyno.run` on Windows (U4's slip, fixed two minutes later, 4eaa5d2). No job
+  has finished on a commit holding c40f041 yet. One default-run case fails at the tip itself: diesel's VGT
+  against the single (210.1 against 211.4 kPa: two loops on one target, a near-tie the gamma flipped): D2
+  restates it within the loops' 2 %. **main** stays at aaa10cc until that is in (its own run on aaa10cc is in
+  flight on all platforms; it will show the same books and brakes failures). **Since 20:10**: G measured the
+  exhaust pipes given 14 to 20 % more gas than the cylinders let out at load (the valve's simple-wave gain: 10 to
+  14 kPa at a turbine's inlet) and closes the mean, D adding two lines; the gamma's treatment of a diesel's
+  compression is wrong (its air compressed as products: D2's 233 K start lost; D makes the gas air until it
+  burns, N3 checked); N1 found the 7.0's lope in the spark trim's look-ahead (to be the manifold's filling
+  time); N3 owns full-load breathing (the runner's ram, the two-stage cam, the small block against its cited
+  band); P's targets carry their basis (cited, recalled, judgement) and misses are counted by kind; the first
+  build is the 2.0 L turbo four (about 1.1 R) with the listener and voices on, which play 23 to 30 dB under the
+  reference mix (L: a level scheme; P: two floor rows); U1's TRY FIRST card and low-redline dials, U3's cost
+  line, U4's knock-limited points: 127 view tests pass in the lead's build; round 6 of pictures to the owner.
+  N2: the intercooler held at the air on a test bed (10345ed), the charge system's has/wants telemetry
+  (00d6728), the VGT sooner than the single (e12b230). Next check-in 21:08.
 - **20:10 `main` fast-forwarded** to aaa10cc (80 commits; the owner's word at 20:09: "Fast-forward main at each
   checkpoint"). The rule is in 01-rules.md section 2: at each lead check-in, when the tip compiles, lint is clean
   and the newest finished fast-tier jobs are green, forward only, by the lead alone. At this one: the tip compiles
