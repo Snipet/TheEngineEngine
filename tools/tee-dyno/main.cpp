@@ -238,13 +238,18 @@ int main(int argc, char** argv)
         else if (args.is("--repeat"))
             ok = number(repeat);
         else if (args.is("--no-settle"))
+        {
             predictOptions.settleExhaust = false;
+            plan.settleExhaust = false;
+        }
         else if (args.is("--inner-rate"))
             ok = number(predictOptions.innerRate);
         else if (args.is("--brake"))
             ok = args.value(predictOptions.brake);
         else if (args.is("--hold"))
             ok = number(predictOptions.holdSeconds);
+        else if (args.is("--min-hold"))
+            ok = number(predictOptions.minHoldSeconds);
         else if (args.is("--warmup-seconds"))
             ok = number(predictOptions.warmupSeconds);
         else if (args.is("--tolerance"))
@@ -343,6 +348,8 @@ int main(int argc, char** argv)
     if (!quiet)
     {
         std::printf("%s", curve.chart().c_str());
+        std::printf("%s\n", curve.settled ? "the exhaust's heat settled at each step (steady state)"
+                                           : "the exhaust's heat not settled: a step's first seconds, its walls warming");
         std::printf("%zu points, %.1f s simulated in %.2f s: %.1f times real time; %s\n", curve.points.size(),
                     curve.simulatedSeconds, curve.wallSeconds, curve.realTime(), csv.c_str());
     }

@@ -234,6 +234,14 @@ What a build should measure as, each target with its source (card C, section 8).
 (`--fields`), a row a point, numbers with nine significant digits. A sweep's point is the mean over its span of speed
 (`spacing`, 10 rad/s); a step's the mean over its measuring window after it settled.
 
+Which kind of run it is matters, and a run says so (`DynoCurve::settled`; `tee-dyno` prints it). A settled run
+(`DynoPlan::settleExhaust`, on by default; `--no-settle` off) raises `spec.exhaust.heatSettle` at the sweep's start and
+twice in each step, so its exhaust walls are where they head: a step is then steady from 2 s on and the same from
+either side, and the predicted curve (`tee/Predict.h`, held 1 s at least a point) reads within 2 % of it (the V12,
+the economy four). An unsettled step with cold walls held a few seconds reads a few percent low, and how low depends on
+the path to it (the V12 at 6673 rpm: 769 N m after a short hold against 779 after a minute). A run on the DYNO
+workspace, or a table quoted from one, should say which it is ("walls settled" or not).
+
 ## A session log: `tee-session`, version 1
 
 Every control change and every Spec write that reached the simulator, each at the sample it took effect (card C,
