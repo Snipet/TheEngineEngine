@@ -2,6 +2,7 @@
 // single's lag counted, compound turbos, variable vanes; the pedal floored at 1300 rpm on the engine dyno (300 K).
 #include "Diesel.h"
 
+#include <cmath>
 #include <cstdio>
 #include <vector>
 
@@ -112,4 +113,32 @@ TEST_CASE("diesel turbo, full: a big single's lag you can count, compound and va
     // F's exhaust stand-in until card G's network feeds the housings)
     CHECK(vgt.boost >= 0.95 * single.boost);
     CHECK(compound.boost > 30000.0);
+}
+
+TEST_CASE("diesel turbo: variable vanes settle to one state at 1300 rpm, from below and from above", "[diesel][turbo]")
+{
+    // The property that was broken (two steady states of card F's vane loop, fixed by N2's surge guard, cf888e2): full
+    // load held at 1300 rpm after coming from 800 rpm and from 2000 rpm ends at the same boost and torque
+    double boost[2] = {0.0, 0.0}, torque[2] = {0.0, 0.0};
+    int k = 0;
+    for (double from : {800.0, 2000.0})
+    {
+        Engine e("truck-15l-six");
+        e.spec("boost.model", 1);
+        e.spec("boost.kind", 1);
+        e.spec("boost.layout", 1);
+        e.spec("boost.vanes", 1);
+        e.spec("boost.gateSpring", 220000.0);
+        e.start();
+        e.dyno(from, 1.0f);
+        REQUIRE(e.run(4.0));
+        e.dyno(1300.0, 1.0f);
+        REQUIRE(e.run(6.0));
+        boost[k] = e.tel("boost.pressure");
+        torque[k] = e.mean("engine.torque", 0.5);
+        std::printf("VGT at 1300 rpm from %.0f rpm: %.0f kPa, %.0f N m, vanes %.2f\n", from, boost[k] / 1000.0, torque[k], e.tel("boost.vanes[0]"));
+        ++k;
+    }
+    CHECK(std::fabs(boost[0] - boost[1]) < 0.05 * boost[1]);
+    CHECK(std::fabs(torque[0] - torque[1]) < 0.05 * torque[1]);
 }
