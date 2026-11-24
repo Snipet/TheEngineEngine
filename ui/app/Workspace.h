@@ -268,6 +268,11 @@ namespace tee::ui
         // the frame works it out from the peak held over three seconds); blocks the audio device missed since load
         // (none: not shown).
         std::function<float()> simLoadPeak;
+        // The first launch's TRY FIRST card (TryFirst.h; the lead's ask 20:19): the build's notes while the card should
+        // show (empty: not, as after it was closed), and the call that closes it for good (a per-viewer setting the
+        // shell keeps). The frame closes it at its Close button or once the engine has been started and stopped.
+        std::function<std::string()> tryFirst;
+        std::function<void()> tryFirstDone;
         std::function<int()> loadFits;
         std::function<long()> dropouts;
         std::function<int()> mode;                                // 0 bench, 1 dyno, 2 drive (ControlsFrame::mode)

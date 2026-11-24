@@ -608,3 +608,55 @@ TEST_CASE("the redline shown is a stated limiter's speed, not the idle's floor (
         CHECK(std::fabs(b.tel("engine.redline") * kRpm - 2000.0) < 5.0);
     }
 }
+
+TEST_CASE("the application's first build, written after a default init, runs as an init with it would (first.json)", "[core][engine][models]")
+{
+    // (the application's new first minute, B's: content/builds/first.json, every model on, written as Spec writes after
+    // the program's init with the defaults, then the key. The same build with the program initialised over it
+    // (EnginePlayer::reset keeping the Spec) is the reference: the decisions the switches make, and the torque on the
+    // engine dyno at 3000 rpm full load, the same)
+    double tq[3] = {0.0, 0.0, 0.0};
+    for (int route = 0; route < 3; ++route)
+    {
+        Bench b("first");
+        if (route == 1)
+            b.player().reset(Bench::kRate, true);
+        b.start();
+        INFO("route " << route);
+        CHECK(b.field("comb.walls") == 1.0);
+        CHECK(b.field("cyl[0].conserve") == 1.0);
+        CHECK(b.field("exh.implied") == 1.0);
+        CHECK(b.field("exh.model") == 1.0);
+        b.ctl().mode = 2;
+        b.ctl().throttle = 1.0f;
+        b.ctl().dynoSpeed = float(3000.0 / kRpm);
+        b.play(3.0);
+        double s = 0.0, n = 0.0;
+        b.play(1.0, [&] { s += b.tel("engine.torque"); n += 1.0; });
+        tq[route] = s / n;
+    }
+    std::printf("first.json at 3000 rpm full load: written after init %.1f N m, initialised over it %.1f N m, written after init again %.1f\n", tq[0], tq[1], tq[2]);
+    // (the decisions are held exactly above; the torque within 2 %: each cylinder's small lasting difference in what it
+    // burns (Cylinder::bias, some 1.5 %) is drawn from the noise stream at each configure, and the two routes configure
+    // a different number of times, so they draw different ones: measured 474.7 against 470.6 N m, the same route twice
+    // 474.7 to the bit; [.firstdiff] lists the fields that differ)
+    CHECK(std::fabs(tq[0] / tq[1] - 1.0) < 0.02);
+    CHECK(tq[0] == tq[2]);
+}
+
+TEST_CASE("a governed diesel's launch and its redline follow its limiter (ecu.model 1, card I's readers)", "[core][engine][redline]")
+{
+    // (e0bcf8f's two readers in the vehicle: the redline it is handed (Vehicle::redW) is the limiter's 2014 rpm, not the
+    // idle's 2200 floor, and the launch's fallback (no launch control) is 60 % of it)
+    Bench b("archetypes/tractor-15-inline-six");
+    std::string e;
+    REQUIRE(b.player().setSpec("ecu.limiter.speed", 210.906, e));      // (the build's own block does not load in this rig yet)
+    REQUIRE(b.player().setSpec("ecu.launch.on", 0, e));
+    b.start();
+    b.ctl().mode = 1;
+    b.play(1.0);
+    // (the launch's fallback, Vehicle::wLaunch = 0.6 redW, is worked out only while a launch runs: redW is what it reads)
+    const double red = b.field("car.m1.redW") * kRpm;
+    std::printf("tractor driving: the vehicle's redline %.0f rpm\n", red);
+    CHECK(std::fabs(red - 2014.0) < 5.0);
+}

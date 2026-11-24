@@ -226,8 +226,10 @@ arch(slug="small-block-57-carb", name="Small-block 5.7 L, carburettor-like", geo
      intake=dict(runnerLength=0.18, plenumVolume=0.0025), friction="Flat tappet", grade="Regular (87)",
      car="muscle-manual", timing="Chain", fan="Viscous clutch",
      notes="A 350 cubic inch small block (4.00 x 3.48 in: 101.6 x 88.4 mm, 5733 cc), 9:1, two valves on pushrods, a "
-           "flat-tappet cam, one big throttle over an open plenum as a four-barrel carburettor's. Some 150 to 200 kW "
-           "net and 400 to 450 N m (makers' net ratings of the 1970s and 80s). Four-speed manual, live axle.")
+           "flat-tappet cam (the L48's), one big throttle over an open plenum as a four-barrel carburettor's. The L48 "
+           "of 1975 to 1980 is rated 123 to 145 kW net (165 to 195 hp) and 346 to 380 N m (255 to 280 lb ft), 1977's "
+           "180 hp at 4000 rpm and 270 lb ft at 2400; the L82 157 kW at 5200 and 346 N m at 3600 (SAE net, looked up: "
+           "corvsport.com, corvetteactioncenter.com). Four-speed manual, live axle.")
 arch(slug="v10-52", runner=0.28, name="V10 5.2 L", geo="v10-90", layout="V10", bore=84.5, stroke=92.8, rod=154.0, cr=12.5,
      valves=4, dIn=33.8, dEx=28.0, cam=(268, 240, 11.8, 108, 260, 232, 10.8, 112), train="Finger", phase=(42, 42),
      redline=8700, idle=900, direct=True, grade="Premium (91)", car="awd-supercar", timing="Chain",
@@ -261,7 +263,10 @@ arch(slug="boxer-four-turbo-unequal", runner=0.3, name="Boxer four turbo with un
 arch(slug="two-stage-cam-20", runner=0.3, convK=16.0, name="Two-stage-cam 2.0 L", geo="ref-05-inline-4", layout="Inline 4",
      bore=87.0, stroke=84.0, rod=153.0, cr=11.7, valves=4, dIn=34.0, dEx=29.0,
      cam=(236, 204, 8.5, 110, 232, 200, 8.0, 112), train="Rocker", redline=9000, idle=900,
-     stages=dict(inDurSeatB=290, inDur1mmB=258, inLiftB=0.0118, exDurSeatB=284, exDur1mmB=252, exLiftB=0.0112,
+     # the high stage as the K20A Type R's (N3, 20:18): 280/278 deg, 12.65/12.14 mm lift (motorreviewer.com, an
+     # aggregator that does not say where duration is measured: read as the seat; 1 mm some 32 deg shorter, as the low
+     # stage's), switched at 6000 rpm (the DC5's: honda.co.jp factbook)
+     stages=dict(inDurSeatB=280, inDur1mmB=248, inLiftB=0.01265, exDurSeatB=278, exDur1mmB=246, exLiftB=0.01214,
                  stageSpeed=6000 * RPM),
      grade="Premium (91)", car="roadster", timing="Chain", lifters="Solid",
      notes="A 2.0 L four with two cam profiles a valve switched at 6000 rpm: 87 x 84 mm (1997 cc), 11.7:1, 9000 rpm "
@@ -439,7 +444,10 @@ SPRINGS = {
 }
 
 
-PORTS = {"wedge": (1.15, 1.3), "high": (1.65, 1.8), "race": (1.75, 1.9)}
+PORTS = {"wedge": (1.15, 1.3), "high": (1.65, 1.8), "race": (1.75, 1.9), "cnc": (1.6, 1.8)}
+# (cnc: the LS7's CNC-ported heads, about 1.6 on N3's bench-flow scale, q = Cd / 0.4 at lift d/4:
+# docs/measurements/calibration/balance/discharge.md; the small block's and the 3.8's 1.15 match its 1.15 to 1.2.
+# Held off the 7.0 for now (N3, 20:19: it is already some 10 % over; not before N1 settles the runner's ram))
 # N1's values with the charge heating and the conserving intake in (measured peak torque over target's middle:
 # flat six 1.35, VR6 1.30, 7.0 V8 1.26, pushrod V6 1.25, small block 1.14): stock two-valve wedge and pushrod
 # heads 1.15/1.3; a great two-valve (the 7.0, the air-cooled six) and production four-valves at the default
