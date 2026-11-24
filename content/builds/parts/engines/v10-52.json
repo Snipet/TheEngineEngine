@@ -107,12 +107,12 @@
       "model": "Builder",
       "sides": 2,
       "converter": [
-        2,
-        2
-      ],
-      "mufKind": [
         1,
         1
+      ],
+      "mufKind": [
+        2,
+        2
       ]
     },
     "fuel": {

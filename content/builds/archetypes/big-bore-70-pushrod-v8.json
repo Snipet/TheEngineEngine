@@ -77,8 +77,6 @@
       "exDur1mm": 234,
       "exLift": 0.014,
       "exCentre": 116,
-      "portIn": 1.65,
-      "portEx": 1.8,
       "springRate": 228000.0,
       "springPreload": 1425.0
     },
