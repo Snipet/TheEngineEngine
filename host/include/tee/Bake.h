@@ -170,6 +170,11 @@ namespace tee
     // program itself (Sim::sourceHash). Not the air's temperature (baked at the cell's 300 K) nor ecu.timing (the
     // person's offset, on top). A 31-bit number, as spec.ecu.maps.knockLimitKey holds it.
     std::int64_t knockLimitKey(const Build& build, const Sim& sim);
+    // The same without the cam maps (ecu.maps.camIn, camInAuto, camEx, camExAuto): what the intake cam's bake key
+    // carries of the spark (its intakeCamKey), so that the spark baked again after the cam (its key moved by the cam)
+    // does not make the cam stale in turn: spark, cam, spark, and it ends. Hidden fields (the heatSettle counters)
+    // are in neither.
+    std::int64_t knockLimitBaseKey(const Build& build, const Sim& sim);
     // Whether the build's bake is in use and current: knockLimitAuto off and its key this build's (false when the
     // program has no knock-limit table).
     bool knockLimitCurrent(const Build& build, const Sim& sim);

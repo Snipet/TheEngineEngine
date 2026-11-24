@@ -538,6 +538,13 @@ namespace tee
             "spec.ecu.maps.lambda",    "spec.ecu.maps.lambdaAuto", "spec.ecu.maps.camIn",   "spec.ecu.maps.camInAuto",
             "spec.ecu.maps.camEx",     "spec.ecu.maps.camExAuto",  "spec.ecu.maps.spark",   "spec.ecu.maps.sparkAuto"};
 
+        // The intake and exhaust cam maps: in the knock limit's key, not in its base key (Bake.h)
+        bool camMap(const std::string& path)
+        {
+            return path == "spec.ecu.maps.camIn" || path == "spec.ecu.maps.camInAuto" || path == "spec.ecu.maps.camEx"
+                   || path == "spec.ecu.maps.camExAuto";
+        }
+
         bool movesKnock(const FieldInfo& f)
         {
             if (f.hidden)
@@ -551,29 +558,42 @@ namespace tee
         }
     } // namespace
 
+    namespace
+    {
+        std::int64_t knockKeyOf(const Build& build, const Sim& sim, bool withCams)
+        {
+            std::uint64_t h = 1469598103934665603ull;
+            const auto mixIn = [&h](const void* data, std::size_t n) {
+                const unsigned char* b = static_cast<const unsigned char*>(data);
+                for (std::size_t i = 0; i < n; ++i)
+                {
+                    h ^= b[i];
+                    h *= 1099511628211ull;
+                }
+            };
+            const std::uint64_t program = sim.sourceHash();
+            mixIn(&program, sizeof program);
+            const auto& all = build.fields().all();
+            for (std::size_t i = 0; i < all.size(); ++i)
+            {
+                if (all[i].block != "spec" || !movesKnock(all[i]) || (!withCams && camMap(all[i].path)))
+                    continue;
+                mixIn(all[i].path.data(), all[i].path.size());
+                for (const double v : build.values(static_cast<int>(i)))
+                    mixIn(&v, sizeof v);
+            }
+            return static_cast<std::int64_t>(h & 0x7fffffffull);
+        }
+    } // namespace
+
     std::int64_t knockLimitKey(const Build& build, const Sim& sim)
     {
-        std::uint64_t h = 1469598103934665603ull;
-        const auto mixIn = [&h](const void* data, std::size_t n) {
-            const unsigned char* b = static_cast<const unsigned char*>(data);
-            for (std::size_t i = 0; i < n; ++i)
-            {
-                h ^= b[i];
-                h *= 1099511628211ull;
-            }
-        };
-        const std::uint64_t program = sim.sourceHash();
-        mixIn(&program, sizeof program);
-        const auto& all = build.fields().all();
-        for (std::size_t i = 0; i < all.size(); ++i)
-        {
-            if (all[i].block != "spec" || !movesKnock(all[i]))
-                continue;
-            mixIn(all[i].path.data(), all[i].path.size());
-            for (const double v : build.values(static_cast<int>(i)))
-                mixIn(&v, sizeof v);
-        }
-        return static_cast<std::int64_t>(h & 0x7fffffffull);
+        return knockKeyOf(build, sim, true);
+    }
+
+    std::int64_t knockLimitBaseKey(const Build& build, const Sim& sim)
+    {
+        return knockKeyOf(build, sim, false);
     }
 
     bool knockLimitCurrent(const Build& build, const Sim& sim)
