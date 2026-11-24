@@ -1,4 +1,4 @@
-> **K3b in progress**: modules carved so far: Listen (`listen/`), Extras moved to `sound/extras.fm`. Do not integrate
+> **K3b in progress**: modules carved so far: Listen (`listen/`), Extras (`sound/extras.fm`), Car (`vehicle/car.fm`), Heat (`core/heat.fm`). Do not integrate
 > against this file until `docs/handoffs/k3b.md` exists and `sim/core/monolith.fm` is gone.
 
 # sim/: the simulator

@@ -246,8 +246,8 @@ module Engine
         tel.engine.idle = mono.idleRpm * 0.10471976f;
         tel.engine.throttle = mono.throttle;
         tel.engine.manifold = mono.pPlenum;
-        tel.engine.coolant = mono.tCool;
-        tel.engine.oilPressure = mono.pOil;
+        tel.engine.coolant = mono.heat.tCool;
+        tel.engine.oilPressure = mono.heat.pOil;
         tel.engine.flags = (mono.limiting || mono.droop < 0.95f ? FLAG_LIMITER : 0)
                            + (mono.fuelCut && mono.state == 2 ? FLAG_FUEL_CUT : 0);
         tel.engine.cycle = mono.showCycle;
