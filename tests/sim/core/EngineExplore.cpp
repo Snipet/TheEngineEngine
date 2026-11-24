@@ -176,3 +176,33 @@ TEST_CASE("rotary BMEP unboosted and boosted", "[.rotarybmep]")
         }
     }
 }
+
+// P's teeth (24 Nov): the V12 held at full load at 6500, 6673 and 6850 rpm; torque, VE, and cylinder 1's intake port
+// pressure over its cycle from the Scope (every 30 degrees), and its trapped mass.
+TEST_CASE("v12 teeth", "[.teeth]")
+{
+    for (int phys = 1; phys >= 0; --phys)
+    for (double rpm : {6500.0, 6673.0, 6850.0})
+    {
+        Bench b("archetypes/v12-65");
+        std::string e;
+        REQUIRE(b.player().setSpec("car.model", 0, e));
+        if (phys == 0)
+            REQUIRE(b.player().setSpec("fuel.model", 0, e));
+        std::printf("fuel.model %d ", phys);
+        b.start();
+        b.warm();
+        b.ctl().mode = 2;
+        b.ctl().throttle = 1.0f;
+        b.ctl().scopeOn = 1;
+        b.ctl().dynoSpeed = float(rpm / 9.5492966);
+        b.play(4.0);
+        double tq = 0, ve = 0, n = 0, tqLo = 1e9, tqHi = -1e9;
+        b.play(1.0, [&] { const double t = b.tel("engine.torque"); tq += t; ve += b.tel("engine.veAir"); n += 1; tqLo = std::min(tqLo, t); tqHi = std::max(tqHi, t); });
+        std::printf("%5.0f rpm: %.0f N m (%.0f to %.0f over the second), VE %.3f, trapped %.3f g, IVC at %.0f; port kPa:", rpm, tq / n, tqLo, tqHi,
+                    ve / n, 1000.0 * b.field("work.w[0].trapped"), b.field("cyl[0].ivo") + b.field("cyl[0].idur"));
+        for (int d = 0; d < 720; d += 30)
+            std::printf(" %.0f", b.field("scope.portIntake[" + std::to_string(d) + "]") / 1000.0);
+        std::printf("\n");
+    }
+}
