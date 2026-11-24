@@ -7,7 +7,7 @@ Six plots, everything live, read only while the workspace is shown (its `step()`
 
 | Plot | What it shows | Reads |
 |---|---|---|
-| CYLINDER PRESSURE | Cylinder 1 over its cycle, in crank degrees after firing top centre (found as the higher-pressure of the two smallest volumes). The valves' open periods as bands (INTAKE, EXHAUST) with IVO/IVC/EVO/EVC in numbers, the spark (dashed), the peak marked; peak and angle as numbers in the bar | Scope `pressure`, `volume`, `liftIntake`, `liftExhaust`, `degrees`; telemetry `ecu.advance` |
+| CYLINDER PRESSURE | Cylinder 1 over its cycle (axis ticked at TDC and BDC), in crank degrees after firing top centre (found as the higher-pressure of the two smallest volumes). The valves' open periods as bands (INTAKE, EXHAUST) with IVO/IVC/EVO/EVC in numbers, the spark (dashed), half the charge burned (dotted), the peak marked; peak and angle as numbers in the bar; under it the knock retard by cylinder (amber with its degrees while it retards) and the knocks counted | Scope `pressure`, `volume`, `liftIntake`, `liftExhaust`, `degrees`; telemetry `ecu.advance`, `ecu.halfBurn`, `ecu.knockByCylinder[i]`, `ecu.knock` |
 | P-V LOOP | The same cycle against volume, linear or log-log (**LOG P-V**); EVO, IVC and the spark as points | Scope `pressure`, `volume` |
 | PORTS | Intake (solid, cold) and exhaust (dashed, hot) port pressures over the cycle, with the valves' bands and the air outside | Scope `portIntake`, `portExhaust` |
 | OUTPUT WAVE | The output's last whole cycles (about 50 ms), its end at cylinder 1's cycle start so it stands still at a steady speed; on its own rising edge when there is no crank angle | `outputTail`; telemetry `engine.speed`, `engine.crank`, `sound.rate` |

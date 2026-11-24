@@ -10,7 +10,7 @@
 // pulse. Below that speed it comes back too soon and above it too late: the engine is "on the pipe" over a band. The
 // stinger bleeds the pipe's mean flow and pressure to the air.
 //
-// Each section is a reference Duct (sim/ref/pipes.fm: waves each way, the wall's loss, the flow's loss); a cone is
+// Each section is a Duct (sim/exhaust/duct.fm, the reference's own: waves each way, the wall's loss, the flow's loss); a cone is
 // `coneSteps` short ducts whose bores step from one end's to the other's (each at its middle's diameter: a cone's bore
 // grows linearly along it), joined where they meet by the reference's junction: the waves' drive through the two
 // impedances in series, with the loss an area change makes (lossFlow / lossHold: Borda-Carnot's (1 - a/A)^2 for an
@@ -18,15 +18,20 @@
 // is passive. The stinger's end is open: what arrives goes back inverted, less the exit's loss. A straight pipe
 // (`chamber` 0) is one duct of the header's bore and the whole length, for comparison.
 //
+// After the stinger, a silencer (on by default): a perforated core wrapped in packing (a loss on its waves), its
+// own end the outlet, or a can (a bore over twice the stinger's) and a short outlet tube of the stinger's bore. The
+// outlet's open end is what radiates. Every two-stroke on a road or a track has one; without it the
+// chamber's own rings (the 6th to 8th multiples of the firing frequency at full load) are the loudest lines.
+//
 // What it leaves out: the gas's temperature along the pipe (one temperature for the whole chamber, the engine's to
-// set), the open end's radiation impedance (the reference's open-end filter is the exhaust package's), a silencer.
+// set), the open end's radiation impedance (the reference's open-end filter is the exhaust package's).
 #pragma once
-#include "../../ref/pipes.fm"
-#include "spec2.fm"
+#include "exhaust/duct.fm"
+#include "core/twostroke/spec2.fm"
 
 enum
 {
-    TS_MAX_SEG = 2 * TS_MAX_STEPS + 3
+    TS_MAX_SEG = 2 * TS_MAX_STEPS + 5
 };
 
 module ExpansionChamber
@@ -37,6 +42,8 @@ module ExpansionChamber
     float kr[TS_MAX_SEG];   // the engine and toward it (lossKap)
     float sl[TS_MAX_SEG];   // each junction's drive's slow part
     float q[TS_MAX_SEG];    // the flow through each junction this sample (m^3/s, away from the engine)
+    float out;          // what the stinger's end radiates: the rate its flow out changes (m^3/s^2), as Exhaust's tails
+    float qPrev;
     float tuned;        // the length to the baffle cone's middle (m): where the plugging pulse comes back from
     float c;            // the speed of sound in it (m/s)
     float rate;
@@ -70,6 +77,27 @@ module ExpansionChamber
     void section(int i, float len, float d, float cIn)
     {
         seg[i].set(fminf(len, 0.98f), d, 0.78539816f * d * d, cIn, rate);
+        seg[i].pack(0.0f, 0.0f, 0.0f, 0.0f, rate);
+        seg[i].extra(0.0f, 1.0f, rate);
+    }
+
+    // The silencer after section i - 1: its packed can and its outlet; returns the sections now in use
+    int silence(const TwoStrokeSpec* s, int i, float cIn)
+    {
+        if (s->silencer == 0)
+            return i;
+        section(i, s->silencerLen, s->silencerDiam, cIn);
+        // (the packing: silencerPack dB a pass from all that moves, the steady flow passing whole, as a gain on the
+        // core's waves. Not the Duct's packing shelves: around its steady-flow tracker they pass up to 4 % more than
+        // they take at some 25 Hz (16 dB of packing), and a pipe closed at the port and open at the outlet then rings
+        // for ever when stopped; the same for its turbine's low-pass. Reported to card G.)
+        seg[i].extra(0.0f, expf(-0.11512925f * s->silencerPack), rate);
+        // a can (twice the stinger's bore or more) ends in an outlet tube of the stinger's bore; a straight-through
+        // silencer's outlet is its own core
+        if (s->silencerDiam < 2.0f * s->stingerDiam)
+            return i + 1;
+        section(i + 1, 0.08f, s->stingerDiam, cIn);
+        return i + 2;
     }
 
     // The pipe for a spec, its gas's sound speed (m/s). Clears every wave.
@@ -81,9 +109,10 @@ module ExpansionChamber
         {
             // (in equal sections of at most 0.9 m: a duct holds at most a metre)
             const float total = s->headerLen + s->diffuserLen + s->bellyLen + s->baffleLen + s->stingerLen;
-            n = (int)(total / 0.9f) + 1;
-            for (int i = 0; i < n; ++i)
-                section(i, total / (float)n, s->headerDiam, c);
+            const int k0 = (int)(total / 0.9f) + 1;
+            for (int i = 0; i < k0; ++i)
+                section(i, total / (float)k0, s->headerDiam, c);
+            n = silence(s, k0, c);
             tuned = 0.0f;
         }
         else
@@ -110,15 +139,26 @@ module ExpansionChamber
             }
             section(i, s->stingerLen, s->stingerDiam, c);
             i += 1;
-            n = i;
+            n = silence(s, i, c);
             tuned = s->headerLen + s->diffuserLen + s->bellyLen + 0.5f * s->baffleLen;
         }
         aMean = 0.0f;
+        out = 0.0f;
+        qPrev = 0.0f;
         for (int i = 0; i < n; ++i)
         {
             seg[i].clear();
             sl[i] = 0.0f;
             q[i] = 0.0f;
+        }
+        losses();
+    }
+
+    // Each junction's loss for its areas and the gas's density
+    void losses()
+    {
+        for (int i = 0; i < n; ++i)
+        {
             const float a0 = seg[i].area;
             if (i + 1 < n)
             {
@@ -137,6 +177,16 @@ module ExpansionChamber
                 kr[i] = lossKap(0.5f, seg[i].rho, a0);
             }
         }
+    }
+
+    // The gas's sound speed changed (its temperature): every section's delay and losses for it, the waves kept. The
+    // delays glide with it (a Duct reads between samples).
+    void retune(float cIn)
+    {
+        c = cIn;
+        for (int i = 0; i < n; ++i)
+            seg[i].set(seg[i].len, seg[i].diam, seg[i].area, c, rate);
+        losses();
     }
 
     // First, each sample: the waves arriving at every end. The port sees seg[0].near and seg[0].z.
@@ -165,6 +215,8 @@ module ExpansionChamber
         aMean += 0.0003f * (a - aMean);
         q[e] = anechoic != 0 ? (a + aMean) / ze : d / ze - lossHold(sl[e], ze, sl[e] >= 0.0f ? kf[e] : kr[e]);
         sl[e] += (fullLoss != 0 ? 1.0f : seg[e].qsA) * (d - sl[e]);
+        out = (q[e] - qPrev) * rate;
+        qPrev = q[e];
         const float nearPort = seg[0].near + seg[0].z * qPort;
         for (int i = 0; i < n; ++i)
         {

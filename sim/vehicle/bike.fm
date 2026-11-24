@@ -1,0 +1,860 @@
+// bike.fm: the vehicle as a motorcycle (car.kind Motorcycle, car.model 1): everything from the crank to the road, in
+// a straight line, on two wheels.
+//
+// The bodies: the crank (the engine's; its speed comes in and goes out of step()); the gearbox's output, at the rear
+// wheel's side of the chain, with the clutch's basket, the gears and the sprockets' inertia on it; the rear wheel,
+// driven; the front wheel, free; the bike with its rider. Between them:
+//
+//   the clutch: a wet multi-plate clutch (a coupling, diff.fm's law) from the crank through the overall ratio (the
+//   primary drive, the gear, the sprockets) to the output, at the gears' and the chain's efficiency whichever way the
+//   power goes. Its capacity is `clutchTorque` (0: 1.35 times the engine's peak) times the rider's lever, times the
+//   launch helper (it closes with the revs from just over idle, as the vehicle model's robotised clutch: a rider who
+//   never stalls). Open, its oil still drags: 0.6 % of its capacity (judgement: a wet clutch creeps a little cold).
+//   A slipper clutch passes backwards (the wheel driving the engine) only `slipperTorque` of its capacity: its ramps
+//   lift the pressure plate when the back torque is more, so a downshift that would spin the engine up hard slips the
+//   clutch instead of the tyre. Without one the clutch passes its whole capacity both ways.
+//   the chain (chain.fm): a spring with play from the output to the rear wheel; the play closing is an event.
+//   the brakes: the lever (ctl.brake) on the front, `brakeDecel` at a full pull; the pedal (ctl.handbrake) on the rear,
+//   (1 - `brakeBias`) of that; ABS as the vehicle model's. The rolling resistance holds each wheel as a brake does.
+//   the tyres (tyre.fm): each pushes the bike by its tread's deflection. `bikeTyre` sets their grip (the peak
+//   longitudinal friction on dry asphalt, warm, at the compound's nominal load: touring 1.10, sport 1.25, hypersport
+//   1.40, race slick 1.55, dual sport 1.00, cruiser 1.05: judgement, in the range Cossalter's Motorcycle Dynamics, 2nd
+//   ed., ch. 2, gives for motorcycle tyres on dry asphalt, ordered by compound) and the curve's shape (the vehicle's motorcycle compound; a slick's for race slicks).
+//
+// The pitch. The bike and rider are one body; their centre of mass is `b` ahead of the rear tyre's contact and `h` up
+// (the bike's and the rider's, by their masses; a tuck lowers the rider and moves them forward). With both wheels down
+// the load moves rearward by m a h / L (lagged 30 ms: a sport bike's chain pull holds the rear up, so the load arrives nearly at once) and forward under braking; the front's load
+// cannot fall below zero, nor the rear's (a stoppie: flagged, not modelled further). When the rear tyre pushes the bike
+// harder than g b / h, the front lifts: the bike turns about the rear contact,
+//
+//     (I + m (x^2 + y^2)) theta'' = m a y - m g x,      x = b cos(theta) - h sin(theta),  y = b sin(theta) + h cos(theta)
+//
+// (theta nose up, a the bike's acceleration, I `pitchInertia` about the centre of mass) until it comes down (the landing
+// takes its rate) or passes the balance point (x = 0: it loops; held at 80 degrees and flagged). A lifted bike still
+// accelerates at what its rear tyre gives: the front's lift takes none of it. So the launch is the wheelie's: a rider or
+// an anti-wheelie control holds the front at `wheelieAngle` by easing the throttle (a lagged loop on the pitch and its
+// rate, through the pedal the engine is given; it eases it too when the rear spins, as a rider or a traction control
+// does) or by slipping the clutch (its capacity held to what keeps the pitch's acceleration at a damped return to the
+// angle, and to the rear tyre's grip: a launch that dumps the lever is then a good one). A slipping clutch passes its
+// capacity, not the engine's torque, so only the clutch's way holds a launch while the lever is still coming out.
+//
+// The gearbox: sequential, `gears` ratios (`ratio[]`, or with `autoGearing` a sport bike's six: 2.62, 2.00, 1.68,
+// 1.45, 1.30, 1.18), worked by the shift counters, a press at a time (one made during a shift waits for it): up
+// from neutral is first, down from first neutral. An upshift with
+// the throttle open and the quickshifter on is clutchless: the ignition is cut for `quickshiftCut` (through the ECU's
+// cut), the dogs come out as the load comes off, the next gear's go in at 40 % of the cut, the clutch stays in.
+// Without it (or with the throttle shut) the rider pulls the clutch (open by 35 ms), shuts the throttle for 60 ms, the
+// gear goes in at 50 ms and the clutch comes back by 160 ms. A downshift with the auto-blipper is clutchless too: the
+// throttle is blipped to the lower gear's speed (through the pedal the engine is given) for 100 ms, the dogs in at
+// 60 ms. Without it the rider pulls the clutch as above and lets it out over 100 ms with no blip: a clumsy downshift,
+// whose back torque spins the engine up through the clutch, and with no slipper can lock or hop the rear tyre (the
+// load has moved forward, off it). A downshift that would take the engine past 97 % of its redline is refused.
+//
+// Not modelled: steering, lean, the suspension's own travel (only its lag), the rear's squat from the chain's pull,
+// a wheelie's gyroscopic effects, the rider falling off.
+//
+//   b.setup(rate); b.apply(); b.configure(jE, peakTq, idleW, redW); b.control(...) every 16; w = b.step(w, tq, dt);
+//   y = b.road(); for the engine: b.pedalOut(gas, wCrankAvg), b.cutWanted(), b.blipSpeed(), b.lashStrike()
+#pragma once
+#include "vehicle.fm"
+#include "bspec.fm"
+#include "chain.fm"
+
+// a sport bike's six gearbox ratios (before the primary and the chain)
+const float BIKE_RATIOS[6] = {2.62f, 2.00f, 1.68f, 1.45f, 1.30f, 1.18f};
+// each tyre choice: its grip on dry asphalt, and the compound whose curve and heat it borrows
+const float BIKE_TYRE_MU[BIKE_TYRES] = {1.10f, 1.25f, 1.40f, 1.55f, 1.00f, 1.05f};
+const int BIKE_TYRE_COMPOUND[BIKE_TYRES] = {9, 9, 9, 4, 9, 9};
+
+// The gearbox's logic, every 16 samples
+module BikeBox
+{
+    int n;
+    float r[VEH_GEARS];
+    float primary;
+    float chain;        // rear teeth over front
+    int gear;           // 0 N, 1 to n
+    bool shifting;
+    int to;
+    bool up;
+    bool byClutch;      // this shift is the rider's, with the clutch
+    float t;
+    float tIn;          // when the dogs went in
+    float robot;        // the clutch as the shift and the launch helper leave it, 0 open to 1
+    float rollOff;      // the rider's throttle through a clutch upshift, 0 shut to 1
+    bool cut;
+    float cutTime;
+    float blip;         // the crank speed asked for, rad/s (0: none)
+    int lastUp;
+    int lastDown;
+    bool seen;
+    int upshifts;
+    int quickshifts;
+    int blips;
+
+    void reset()
+    {
+        gear = 0;
+        shifting = false;
+        to = 0;
+        t = 0.0f;
+        robot = 1.0f;
+        rollOff = 1.0f;
+        cut = false;
+        blip = 0.0f;
+        seen = false;
+    }
+
+    float ratioOf(int g)
+    {
+        if (g <= 0)
+            return 0.0f;
+        const int k = g > n ? n : g;
+        return primary * r[k - 1] * chain;
+    }
+
+    void control(float d16, int upCount, int downCount, float pedal, float w, float wOut, float idleW, float redW,
+                 bool quick, bool autoBlip)
+    {
+        if (!seen)
+        {
+            seen = true;
+            lastUp = upCount;
+            lastDown = downCount;
+        }
+        // the presses, one at a time: one made during a shift waits for it to end
+        int ups = 0;
+        int downs = 0;
+        if (upCount < lastUp)
+            lastUp = upCount;
+        if (downCount < lastDown)
+            lastDown = downCount;
+        if (!shifting)
+        {
+            if (upCount > lastUp)
+            {
+                ups = 1;
+                lastUp += 1;
+            }
+            else if (downCount > lastDown)
+            {
+                downs = 1;
+                lastDown += 1;
+            }
+        }
+        // the launch helper: closes with the revs from just over idle (the vehicle model's)
+        const float x = fminf(fmaxf((w - idleW - 15.7f) / 94.2f, 0.0f), 1.0f);
+        const float launch = x * x * (3.0f - 2.0f * x);
+        if (!shifting)
+        {
+            if (ups > 0)
+            {
+                if (gear == 0)
+                    gear = 1;
+                else if (gear < n)
+                {
+                    shifting = true;
+                    up = true;
+                    to = gear + 1;
+                    t = 0.0f;
+                    byClutch = !(quick && pedal > 0.1f);
+                    upshifts += 1;
+                    if (!byClutch)
+                        quickshifts += 1;
+                }
+            }
+            else if (downs > 0)
+            {
+                if (gear == 1)
+                    gear = 0;
+                else if (gear > 1 && fabsf(wOut * ratioOf(gear - 1)) < 0.97f * redW)
+                {
+                    shifting = true;
+                    up = false;
+                    to = gear - 1;
+                    t = 0.0f;
+                    byClutch = !autoBlip;
+                    if (!byClutch)
+                        blips += 1;
+                }
+            }
+        }
+        robot = gear != 0 ? launch : 1.0f;
+        rollOff = 1.0f;
+        cut = false;
+        blip = 0.0f;
+        if (!shifting)
+            return;
+        t += d16;
+        if (byClutch)
+        {
+            // the rider: the clutch open by 35 ms, the gear in at 50 ms, the clutch out from 60 ms (by 160 ms)
+            if (t >= 0.05f)
+                gear = to;
+            const float open = t < 0.035f ? 1.0f - t / 0.035f : (t < 0.06f ? 0.0f : fminf((t - 0.06f) / 0.1f, 1.0f));
+            robot = launch * open;
+            if (up && t < 0.06f)
+                rollOff = 0.0f;
+            if (t >= 0.16f)
+                shifting = false;
+            return;
+        }
+        robot = 1.0f;
+        if (up)
+        {
+            // the quickshifter: the cut, the dogs out at once and the next in at 40 % of it
+            gear = t >= 0.4f * cutTime ? to : 0;
+            cut = t < cutTime;
+            if (t >= cutTime)
+            {
+                shifting = false;
+                cut = false;
+            }
+        }
+        else
+        {
+            // the auto-blipper: the throttle to the lower gear's speed; the dogs in once the engine is there (15 ms at the
+            // soonest, 100 ms at the latest), and the blip ends
+            const float target = fabsf(wOut * ratioOf(to));
+            if (gear != to)
+            {
+                gear = 0;
+                if ((t >= 0.015f && w >= 0.98f * target) || t >= 0.1f)
+                {
+                    gear = to;
+                    tIn = t;
+                }
+            }
+            blip = gear == to ? 0.0f : target;
+            if (gear == to)
+                shifting = false;
+        }
+    }
+};
+
+module Bike
+{
+    VehSpec spec;
+    BikeSpec bs;
+    VehEnv env;
+    VehTel tel;
+    BikeTel btel;
+    BikeBox box;
+    BikeChain drive;
+    VehTyreCurve curve;
+    VehTyre front;
+    VehTyre rear;
+    VehStrip strip;
+    VehSound snd;
+
+    float rate;
+    // the engine
+    float jE;
+    float iE;
+    float peakTq;
+    float idleW;
+    float redW;
+    // what the Spec and the engine made
+    float mass;         // bike and rider
+    float hCg;          // their centre of mass: height, and ahead of the rear contact
+    float bCg;
+    float wb;
+    float radius;
+    float jw;
+    float iw;
+    float jO;
+    float iO;
+    float clutchCap;
+    float eff;
+    float sinG;
+    float cosG;
+    float dragK;
+    float mu;
+    float brakeMaxF;
+    float brakeMaxR;
+    float gearSeen;
+    bool dirty;
+    // the controls
+    float engage;
+    float brakeIn;
+    float pedalIn;      // the rear brake pedal
+    float pedal;
+    int mode;
+    int lastStrip;
+    bool stripSeen;
+    float kPedal;
+    // the couplings the step uses
+    float gA;
+    float capA;         // forward
+    float capBack;      // backward (the slipper's)
+    float capDrag;      // what the open clutch's oil passes
+    float holdF;
+    float holdR;
+    float absF;
+    float absR;
+    // the state
+    double wo;
+    double wf;          // the front wheel
+    double wr;          // the rear wheel
+    double v;
+    double x;
+    double vPrev;
+    float aNow;
+    float aLag;
+    float theta;        // the pitch, rad, nose up
+    float thetaRate;
+    bool looped;
+    bool stoppie;
+    float fzF;
+    float fzR;
+    float aWheelie;
+    float throttleK;    // the wheelie control's share of the throttle
+    float capWheelie;   // the clutch's capacity it allows (N m at the crank; large: none)
+    bool holding;
+    float tsh;          // the chain's torque, last sample
+    float tClutch;
+    float slipC;
+    float backMax;      // the most back torque since the telemetry was last written
+    float slipMax;
+    bool slipping;
+    float wLast;
+    float lashNow;      // the chain's strike this sample
+
+    void setup(float hostRate)
+    {
+        rate = hostRate;
+        snd.setup(rate);
+        jE = 0.05f;
+        iE = 1.0f / jE;
+        peakTq = 100.0f;
+        idleW = 120.0f;
+        redW = 1300.0f;
+        lastStrip = 0;
+        stripSeen = false;
+        apply();
+        reset();
+    }
+
+    void reset()
+    {
+        box.reset();
+        strip.reset();
+        drive.reset();
+        wo = 0.0;
+        wf = 0.0;
+        wr = 0.0;
+        v = 0.0;
+        x = 0.0;
+        vPrev = 0.0;
+        aNow = 0.0f;
+        aLag = 0.0f;
+        theta = 0.0f;
+        thetaRate = 0.0f;
+        looped = false;
+        stoppie = false;
+        throttleK = 1.0f;
+        capWheelie = 1.0e9f;
+        holding = false;
+        tsh = 0.0f;
+        tClutch = 0.0f;
+        slipC = 0.0f;
+        backMax = 0.0f;
+        slipMax = 0.0f;
+        slipping = false;
+        engage = 1.0f;
+        brakeIn = 0.0f;
+        pedalIn = 0.0f;
+        pedal = 0.0f;
+        gA = 0.0f;
+        capA = 0.0f;
+        capBack = 0.0f;
+        capDrag = 0.0f;
+        holdF = 0.0f;
+        holdR = 0.0f;
+        absF = 1.0f;
+        absR = 1.0f;
+        gearSeen = -1.0f;
+        lashNow = 0.0f;
+        front.reset(env.temperature);
+        rear.reset(env.temperature);
+        loads(0.0f);
+    }
+
+    void configure(float jEngine, float peak, float idle, float red)
+    {
+        jE = fmaxf(jEngine, 0.005f);
+        iE = 1.0f / jE;
+        peakTq = fmaxf(peak, 5.0f);
+        idleW = idle;
+        redW = fmaxf(red, idle + 50.0f);
+        clutchCap = spec.clutchTorque > 0.0f ? spec.clutchTorque : 1.35f * peakTq;
+    }
+
+    void apply()
+    {
+        const float mb = fmaxf(spec.mass, 50.0f);
+        const float mr = fmaxf(bs.riderMass, 0.0f);
+        mass = mb + mr;
+        wb = fmaxf(spec.wheelbase, 0.5f);
+        const float tk = fminf(fmaxf(bs.tuck, 0.0f), 1.0f);
+        const float hr = bs.riderHeight - 0.12f * tk;
+        const float br = (bs.riderForward + 0.06f * tk) * wb;
+        hCg = (mb * spec.cgHeight + mr * hr) / mass;
+        bCg = (mb * spec.frontWeight * wb + mr * br) / mass;
+        radius = fmaxf(spec.tyreRadius, 0.1f);
+        jw = fmaxf(spec.wheelInertia, 0.05f);
+        iw = 1.0f / jw;
+        const float g = env.grade;
+        cosG = 1.0f / sqrtf(1.0f + g * g);
+        sinG = g * cosG;
+        dragK = 0.5f * env.density * (spec.cdA + (bs.cdATuck - spec.cdA) * tk);
+        const int tyreKind = bs.bikeTyre < 0 ? 0 : (bs.bikeTyre >= BIKE_TYRES ? BIKE_TYRES - 1 : bs.bikeTyre);
+        const int compound = BIKE_TYRE_COMPOUND[tyreKind];
+        curve.make(compound);
+        mu = BIKE_TYRE_MU[tyreKind] * vehSurfaceGrip(compound, env.surface);
+        eff = spec.gearEfficiency * bs.chainEfficiency;
+        brakeMaxF = spec.brakeDecel * 9.81f * mass * radius;
+        brakeMaxR = (1.0f - spec.brakeBias) * spec.brakeDecel * 9.81f * mass * radius;
+        clutchCap = spec.clutchTorque > 0.0f ? spec.clutchTorque : 1.35f * peakTq;
+        // the chain's spring: the vehicle model's rule for a car's shafts, by the mass
+        drive.k = 9.0f * mass;
+        drive.lash = 0.5f * fmaxf(bs.chainLash, 0.0f);
+        // the gearbox
+        const int n = spec.gears < 1 ? 1 : (spec.gears > VEH_GEARS ? VEH_GEARS : spec.gears);
+        if (n != box.n)
+            box.reset();
+        box.n = n;
+        for (int i = 0; i < VEH_GEARS; ++i)
+        {
+            if (spec.autoGearing)
+            {
+                if (n == 6)
+                    box.r[i] = i < 6 ? BIKE_RATIOS[i] : 1.0f;
+                else
+                {
+                    const float f = n > 1 ? (float)(i < n ? i : n - 1) / (float)(n - 1) : 0.0f;
+                    box.r[i] = 2.62f * expf(f * logf(1.18f / 2.62f));
+                }
+            }
+            else
+                box.r[i] = spec.ratio[i] > 0.0f ? spec.ratio[i] : 1.0f;
+        }
+        box.primary = fmaxf(bs.primaryRatio, 0.5f);
+        box.chain = (float)(bs.rearSprocket > 1 ? bs.rearSprocket : 1) / (float)(bs.frontSprocket > 1 ? bs.frontSprocket : 1);
+        box.cutTime = bs.quickshiftCut;
+        dirty = true;
+    }
+
+    // The output's inertia and the chain's damping for the gear in
+    void driveline()
+    {
+        const float g = box.shifting ? box.ratioOf(box.to) : box.ratioOf(box.gear);
+        if (g == gearSeen && !dirty)
+            return;
+        dirty = false;
+        gearSeen = g;
+        // the rear sprocket, the chain and the cush drive's carrier at the wheel (judgement: 0.05 kg m^2); the clutch's
+        // basket and plates, the gearbox's shafts and the front sprocket at the crank's side (judgement: 0.004 kg m^2)
+        jO = 0.05f + 0.004f * g * g;
+        iO = 1.0f / jO;
+        const float j1 = jE * g * g + jO;
+        const float j2 = mass * radius * radius + 2.0f * jw;
+        drive.c = g != 0.0f ? 0.8f * sqrtf(drive.k * j1 * j2 / (j1 + j2)) : 0.0f;
+    }
+
+    // ---- every 16 samples ----
+
+    void loads(float d16)
+    {
+        const float w = mass * 9.81f * cosG;
+        // the centre of mass relative to the rear contact, at the pitch now
+        const float cs = cosf(theta);
+        const float sn = sinf(theta);
+        const float xr = bCg * cs - hCg * sn;
+        const float yr = bCg * sn + hCg * cs;
+        const float a = aNow + 9.81f * sinG;
+        // the moment that lifts the front about the rear contact (the weight's against the push's)
+        const float lift = mass * a * yr - w * xr;
+        aWheelie = hCg > 0.0f ? 9.81f * cosG * bCg / hCg - 9.81f * sinG : 1.0e9f;
+        if (theta > 0.0f || lift > 0.0f)
+        {
+            const float ip = bs.pitchInertia + mass * (xr * xr + yr * yr);
+            thetaRate += lift / ip * d16;
+            theta += thetaRate * d16;
+            if (theta <= 0.0f)
+            {
+                theta = 0.0f;
+                thetaRate = 0.0f;
+            }
+            const float top = 1.3962634f;   // 80 degrees: the tail on the road
+            if (theta > top)
+            {
+                theta = top;
+                thetaRate = 0.0f;
+            }
+            if (xr <= 0.0f)
+                looped = true;
+        }
+        if (theta > 0.0f)
+        {
+            fzF = 0.0f;
+            fzR = w;
+            stoppie = false;
+        }
+        else
+        {
+            // both wheels down: the load moves with the acceleration, lagged by the suspension
+            fzF = (w * bCg - mass * (aLag + 9.81f * sinG) * hCg) / wb;
+            fzF = fmaxf(fzF, 0.0f);
+            fzR = w - fzF;
+            stoppie = fzR < 0.0f;
+            if (stoppie)
+            {
+                fzR = 0.0f;
+                fzF = w;
+            }
+        }
+        front.control(fzF, mu, &curve, curve.compound, v, env.temperature, d16);
+        rear.control(fzR, mu, &curve, curve.compound, v, env.temperature, d16);
+    }
+
+    // The wheelie control: the throttle's share, or the clutch's capacity, that holds the front at its angle
+    void wheelieControl(float d16)
+    {
+        const float target = bs.wheelieAngle * 0.017453293f;
+        holding = false;
+        throttleK = fminf(throttleK + d16 / 0.4f, 1.0f);
+        capWheelie = 1.0e9f;
+        if (bs.wheelieControl == 1)
+        {
+            // easing the throttle: on the angle beyond the target and the rate it lifts at (a rider's or an
+            // anti-wheelie control's loop: judgement, holds a superbike in first within a few degrees)
+            const float u = theta - target + 0.25f * thetaRate;
+            if (theta > 0.0f && u > 0.0f)
+            {
+                throttleK = fminf(throttleK, fmaxf(1.0f - 6.0f * u, 0.0f));
+                holding = true;
+            }
+            // and the rear spinning past its peak (a rider rolls off; so does a traction control)
+            const float spin = rear.kappa - 1.3f * curve.kPeak;
+            if (spin > 0.0f)
+                throttleK = fminf(throttleK, fmaxf(1.0f - 4.0f * spin, 0.2f));
+        }
+        else if (bs.wheelieControl == 2 && gA > 0.0f)
+        {
+            // slipping the clutch: the push whose pitch acceleration returns the angle to the target, damped
+            const float cs = cosf(theta);
+            const float sn = sinf(theta);
+            const float xr = bCg * cs - hCg * sn;
+            const float yr = fmaxf(bCg * sn + hCg * cs, 0.05f);
+            const float ip = bs.pitchInertia + mass * (xr * xr + yr * yr);
+            const float want = -25.0f * (theta - target) - 10.0f * thetaRate;
+            const float aDes = (ip * want + mass * 9.81f * cosG * xr) / (mass * yr) - 9.81f * sinG;
+            const float fLim = fmaxf(mass * aDes + dragK * (float)(v * v), 0.0f);
+            // and no more than the rear tyre grips (a rider feathering the clutch keeps it hooked up)
+            const float fGrip = 0.97f * rear.d;
+            capWheelie = fminf(fLim, fGrip) * radius / (gA * eff);
+            holding = capWheelie < clutchCap * engage * box.robot && fLim < fGrip;
+        }
+    }
+
+    // Every 16 samples: the controls (02-contracts.md section 4; lever ignored)
+    void control(float d16, float throttle, float clutch, float brake, float handbrake, int up, int down, int ctlMode,
+                 int stripCount)
+    {
+        kPedal = 1.0f - expf(-d16 / 0.02f);
+        mode = ctlMode;
+        pedal = fminf(fmaxf(throttle, 0.0f), 1.0f);
+        // the lever: bites a third of the way out, in at three quarters (the vehicle model's)
+        const float upC = 1.0f - fminf(fmaxf(clutch, 0.0f), 1.0f);
+        const float xc = fminf(fmaxf((upC - 0.32f) / 0.43f, 0.0f), 1.0f);
+        engage += (xc * xc * (3.0f - 2.0f * xc) - engage) * kPedal;
+        const float b = fminf(fmaxf(brake, 0.0f), 1.0f);
+        brakeIn += (b * sqrtf(b) - brakeIn) * kPedal;
+        const float p = fminf(fmaxf(handbrake, 0.0f), 1.0f);
+        pedalIn += (p - pedalIn) * kPedal;
+        if (!stripSeen)
+        {
+            stripSeen = true;
+            lastStrip = stripCount;
+        }
+        if (stripCount != lastStrip)
+        {
+            lastStrip = stripCount;
+            if (stripCount > 0)
+                stage();
+        }
+        strip.control(d16, x, spec.proTree);
+        box.control(d16, up, down, pedal, wLast, (float)wo, idleW, redW, bs.quickshifter, bs.autoBlip);
+        driveline();
+        gA = box.ratioOf(box.gear);
+        wheelieControl(d16);
+        const float c = clutchCap * engage * box.robot;
+        capA = fminf(c, capWheelie);
+        capBack = bs.slipper ? fminf(capA, bs.slipperTorque * clutchCap) : capA;
+        capDrag = 0.006f * clutchCap;
+        // the brakes: the lever on the front, the pedal on the rear; ABS lets a wheel off past its tyre's peak
+        bool absOn = false;
+        const float wantF = brakeMaxF * brakeIn;
+        const float wantR = brakeMaxR * pedalIn;
+        if (spec.abs && fabsf((float)v) > 1.5f)
+        {
+            if (wantF > 0.0f && front.kappa < -1.2f * curve.kPeak)
+            {
+                absF *= 0.6f;
+                absOn = true;
+            }
+            else
+                absF = fminf(absF + 0.15f, 1.0f);
+            if (wantR > 0.0f && rear.kappa < -1.2f * curve.kPeak)
+            {
+                absR *= 0.6f;
+                absOn = true;
+            }
+            else
+                absR = fminf(absR + 0.15f, 1.0f);
+        }
+        else
+        {
+            absF = 1.0f;
+            absR = 1.0f;
+        }
+        holdF = wantF * absF + front.roll * radius;
+        holdR = wantR * absR + rear.roll * radius;
+        const bool locked = fabsf((float)v) > 1.0f
+                            && (fabsf((float)wf) * radius < 0.05f * fabsf((float)v) || fabsf((float)wr) * radius < 0.05f * fabsf((float)v));
+        aNow = (float)(v - vPrev) / d16;
+        vPrev = v;
+        aLag += (aNow - aLag) * (1.0f - expf(-d16 / 0.03f));
+        loads(d16);
+        telemetry(absOn, locked);
+    }
+
+    void stage()
+    {
+        v = 0.0;
+        vPrev = 0.0;
+        x = 0.0;
+        aLag = 0.0f;
+        wf = 0.0;
+        wr = 0.0;
+        wo = 0.0;
+        front.u = 0.0;
+        front.rate = 0.0f;
+        rear.u = 0.0;
+        rear.rate = 0.0f;
+        drive.reset();
+        theta = 0.0f;
+        thetaRate = 0.0f;
+        strip.stage(spec.proTree);
+    }
+
+    void telemetry(bool absOn, bool locked)
+    {
+        tel.speed = (float)v;
+        tel.accel = aNow;
+        tel.distance = (float)x;
+        tel.gear = box.gear;
+        tel.shift = box.shifting ? (box.up ? 1 : 2) : 0;
+        for (int i = 0; i < VEH_WHEELS; ++i)
+        {
+            tel.wheelSpeed[i] = 0.0f;
+            tel.wheelSlip[i] = 0.0f;
+            tel.wheelLoad[i] = 0.0f;
+            tel.wheelForce[i] = 0.0f;
+            tel.wheelTorque[i] = 0.0f;
+            tel.wheelTemp[i] = 0.0f;
+        }
+        tel.wheelSpeed[0] = (float)wf;
+        tel.wheelSlip[0] = front.kappa;
+        tel.wheelLoad[0] = front.fz;
+        tel.wheelForce[0] = front.force;
+        tel.wheelTemp[0] = front.temp;
+        tel.wheelSpeed[2] = (float)wr;
+        tel.wheelSlip[2] = rear.kappa;
+        tel.wheelLoad[2] = rear.fz;
+        tel.wheelForce[2] = rear.force;
+        tel.wheelTorque[2] = tsh;
+        tel.wheelTemp[2] = rear.temp;
+        int flags = 0;
+        if (rear.kappa > 1.5f * curve.kPeak)
+            flags |= VEH_FLAG_SPIN;
+        if (theta > 0.0f)
+            flags |= VEH_FLAG_WHEELIE;
+        if (absOn)
+            flags |= VEH_FLAG_ABS;
+        if (locked)
+            flags |= VEH_FLAG_LOCKED;
+        if (box.shifting)
+            flags |= VEH_FLAG_SHIFT;
+        if (box.cut)
+            flags |= VEH_FLAG_CUT;
+        if (box.blip > 0.0f)
+            flags |= VEH_FLAG_BLIP;
+        if (rear.d > 0.0f && fabsf(rear.force) >= 0.9f * rear.d)
+            flags |= VEH_FLAG_LIMIT;
+        tel.flags = flags;
+        tel.clutchSlip = slipC;
+        tel.shaftTorque = tsh;
+        tel.wheelPower = tsh * (float)wr;
+        tel.pitch = mass * aLag * hCg / wb;
+        tel.ratio = gA;
+        tel.stripState = strip.state;
+        tel.tReaction = strip.reaction;
+        tel.t60 = strip.et[0];
+        tel.t330 = strip.et[1];
+        tel.t660 = strip.et[3];
+        tel.v660 = strip.v660;
+        tel.t1000 = strip.et[4];
+        tel.t1320 = strip.et[6];
+        tel.v1320 = strip.v1320;
+        int bf = 0;
+        if (rear.kappa < -1.2f * curve.kPeak && v > 2.0)
+            bf |= BIKE_FLAG_HOP;
+        if (looped)
+            bf |= BIKE_FLAG_LOOPED;
+        if (holding)
+            bf |= BIKE_FLAG_HOLDING;
+        if (slipping)
+            bf |= BIKE_FLAG_SLIPPER;
+        if (box.cut)
+            bf |= BIKE_FLAG_QUICKSHIFT;
+        if (box.blip > 0.0f)
+            bf |= BIKE_FLAG_BLIP;
+        if (stoppie)
+            bf |= BIKE_FLAG_STOPPIE;
+        btel.bikeFlags = bf;
+        btel.liftAngle = theta * 57.29578f;
+        btel.liftRate = thetaRate * 57.29578f;
+        btel.chainLash = drive.events;
+        btel.chainLashSpeed = drive.speed;
+        btel.chainLashSide = drive.side;
+        btel.backTorque = backMax;
+        btel.slipperSlip = slipMax;
+        btel.quickshifts = box.quickshifts;
+        btel.blips = box.blips;
+        btel.wheelieLimit = aWheelie;
+        backMax = 0.0f;
+        slipMax = 0.0f;
+        slipping = false;
+    }
+
+    // ---- one sample ----
+
+    float step(float w, float tq, float dt)
+    {
+        const float idt = 1.0f / dt;
+        const float vf = (float)v;
+        // the tyres, from their deflections as they stand
+        const float ff = front.push(&curve, (float)wf * radius, vf);
+        const float fr = rear.push(&curve, (float)wr * radius, vf);
+        float tf = -ff * radius;
+        float tr = -fr * radius;
+        // the chain
+        const bool inGear = gA != 0.0f;
+        float ts = 0.0f;
+        if (inGear)
+            ts = drive.torque((float)(wo - wr));
+        else
+            drive.strike = 0.0f;
+        lashNow = drive.strike;
+        if (lashNow > 0.0f)
+            snd.strike(lashNow);
+        tsh = ts;
+        tr += ts;
+        // the clutch: the torque that holds the crank to the output through the ratio, within its capacity forward
+        // and the slipper's backward; open, its oil's drag
+        float te = tq;
+        float to = -ts;
+        float tc = 0.0f;
+        float fA = 0.0f;
+        if (inGear)
+        {
+            const float num = (float)(w - gA * wo) * idt + te * iE - gA * to * iO;
+            const float f = num * w >= 0.0f ? gA * eff : gA / eff;
+            const float t = num / (iE + gA * f * iO);
+            const float hi = fmaxf(capA, capDrag);
+            const float lo = fmaxf(capBack, capDrag);
+            tc = fminf(fmaxf(t, -lo), hi);
+            if (t < -lo && lo > 0.0f && bs.slipper && capBack < capA)
+                slipping = true;
+            fA = tc * w >= 0.0f ? gA * eff : gA / eff;
+            te -= tc;
+            to += fA * tc;
+            backMax = fmaxf(backMax, -tc);
+        }
+        tClutch = tc;
+        slipC = w - gA * (float)wo;
+        if (inGear)
+            slipMax = fmaxf(slipMax, slipping ? fabsf(slipC) : 0.0f);
+        // the brakes and the rolling hold each wheel
+        const float thF = fminf(fmaxf((float)wf * jw * idt + tf, -holdF), holdF);
+        const float thR = fminf(fmaxf((float)wr * jw * idt + tr, -holdR), holdR);
+        tf -= thF;
+        tr -= thR;
+        // every speed moves
+        float wn = w + te * iE * dt;
+        if (wn < 0.0f)
+            wn = 0.0f;
+        double won = wo + (double)(to * iO * dt);
+        wf += (double)(tf * iw * dt);
+        wr += (double)(tr * iw * dt);
+        const float fAir = dragK * vf * fabsf(vf);
+        const float fHill = mass * 9.81f * sinG;
+        v += (double)((ff + fr - fAir - fHill) / mass * dt);
+        if (!inGear)
+        {
+            won = wr;
+            drive.twist = 0.0f;
+        }
+        else
+            drive.advance((float)(won - wr), dt);
+        front.advance((float)wf * radius, (float)v, dt);
+        rear.advance((float)wr * radius, (float)v, dt);
+        x += v * (double)dt;
+        wo = won;
+        wLast = wn;
+        return wn;
+    }
+
+    float road()
+    {
+        const float uf = fabsf(front.slipV);
+        const float ur = fabsf(rear.slipV);
+        const float sq = fminf(fmaxf((uf - 1.2f) / 4.0f, 0.0f), 1.0f) * 0.3f + fminf(fmaxf((ur - 1.2f) / 4.0f, 0.0f), 1.0f) * 0.7f;
+        // (two tyres: half the rumble of a car's four)
+        return snd.tick((float)v, env.surface, sq);
+    }
+
+    // ---- for the engine ----
+
+    // The throttle the engine is given: the rider's, less what the wheelie control and a clutch upshift take, with an
+    // auto-blip's (wAvg: the crank's mean speed, rad/s)
+    float pedalOut(float gas, float wAvg)
+    {
+        float p = gas * throttleK * box.rollOff;
+        if (box.blip > 0.0f)
+            p = fmaxf(p, fminf(fmaxf((box.blip - wAvg) * 0.05f, 0.0f), 1.0f));
+        return p;
+    }
+
+    bool cutWanted()
+    {
+        return box.cut;
+    }
+
+    float blipSpeed()
+    {
+        return box.blip;
+    }
+
+    float slip()
+    {
+        return rear.kappa;
+    }
+
+    float lashStrike()
+    {
+        return lashNow;
+    }
+};

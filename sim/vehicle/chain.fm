@@ -1,0 +1,69 @@
+// chain.fm: a motorcycle's final drive between the gearbox's output and the rear wheel: the chain on its two
+// sprockets, the gearbox's dogs and the rear hub's cush drive, as one spring with play.
+//
+// The sprockets' ratio (rear teeth over front) is in the overall ratio the clutch couples through (bike.fm); what is
+// left here is what a rider feels on and off the throttle: the play. Between the drive side (the chain's top run
+// pulling) and the overrun side (the bottom run, or the dogs' backs) there is a gap, `lash` radians at the rear wheel
+// (the dogs' clearance seen through the sprockets, the chain's slack, the rubbers' first give): judgement, about
+// 2 degrees, where a car's shafts have half a degree. Across it the wheel and the output turn apart freely; at either
+// end the cush drive's rubbers are a spring (9 N m/rad a kg of bike and rider at the wheel, the vehicle model's rule
+// for a car's shafts, which puts a sport bike's shunt in first at 4 to 5 Hz) with damping at 0.4 of critical.
+//
+// Each time the play closes it is an event: the counter `events` goes up, `speed` is how fast the two sides met (rad/s
+// at the wheel) and `side` which end (0 the drive side: the throttle opened; 1 the overrun: it shut). `strike` is that
+// speed for one sample (0 otherwise): the clunk the mechanical voices strike, and the vehicle's own sound's.
+//
+// The spring only pushes (its damping never pulls the play shut): it is passive, as the vehicle's shafts are. Its
+// losses (the chain's friction) are in the coupling's efficiency in bike.fm, not here.
+#pragma once
+
+module BikeChain
+{
+    float k;            // N m / rad at the wheel
+    float c;            // N m s / rad
+    float lash;         // half the play: the spring starts at +lash and -lash
+    float twist;        // the output's angle less the wheel's, rad at the wheel
+    bool open;          // inside the play
+    bool primed;        // the play has been open since the last reset (a first contact at rest is no event)
+    int events;
+    float speed;
+    int side;
+    float strike;
+
+    void reset()
+    {
+        twist = 0.0f;
+        open = false;
+        primed = false;
+        strike = 0.0f;
+    }
+
+    // The torque on the wheel (and, negated, on the output) for the output's and the wheel's speeds now (wo - ww: how
+    // fast the play is closing). Notes an event when the play has just closed.
+    float torque(float dw)
+    {
+        strike = 0.0f;
+        const float x = twist > lash ? twist - lash : (twist < -lash ? twist + lash : 0.0f);
+        if (x == 0.0f)
+        {
+            open = true;
+            primed = true;
+            return 0.0f;
+        }
+        if (open && primed)
+        {
+            events += 1;
+            speed = fabsf(dw);
+            side = x > 0.0f ? 0 : 1;
+            strike = speed;
+        }
+        open = false;
+        float t = k * x + c * dw;
+        return x > 0.0f ? fmaxf(t, 0.0f) : fminf(t, 0.0f);
+    }
+
+    void advance(float dw, float dt)
+    {
+        twist += dw * dt;
+    }
+};

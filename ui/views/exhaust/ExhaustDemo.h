@@ -5,6 +5,8 @@
 // Fixed arithmetic, no clock and no randomness.
 #pragma once
 
+#include "ExhaustModel.h"
+
 #include "app/Demo.h"
 
 #include <string_view>
@@ -21,6 +23,9 @@ namespace tee::ui::exhaust
 
     // The telemetry the stage reads that the simulator does not yet write, at a speed (rpm) and a load (0..1).
     std::vector<std::pair<const char*, double>> exhaustLiveValues(double rpm, double load);
-    // The same from the demo engine's throttle and speed, held (DemoEngine::set).
+    // Every pipe slot's pressure at its two ends (card G's ductUsed, ductNear, ductFar; 84 each) for a build at a point
+    // of its cycle (0..1), a speed (rpm) and a load: each primary's blowdown in its firing order, travelling its length.
+    void exhaustDucts(const ExhaustBuild& b, double phase, double rpm, double load, float* used, float* nearP, float* farP);
+    // The telemetry from the demo engine's throttle and speed, held (DemoEngine::set).
     void exhaustDemoLive(DemoEngine& engine);
 }
