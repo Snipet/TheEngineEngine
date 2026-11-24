@@ -12,9 +12,14 @@
 // none) are written to `baked`, with the breakpoints, which the host copies into the build as an editable map whose
 // `auto` it turns off: the starting point a tuner edits, reading the formula back exactly at every breakpoint.
 //
+// The maps are spec/tables.fm's Map16 (z[i][j] at x[i], y[j]), read here as its at() reads them but blending as
+// a (1 - f) + b f, which gives b exactly at f = 1: at() blends as a + (b - a) f, a rounding off at a map's last
+// breakpoint, which would keep a baked map from reading its formula back exactly there (asked of the lead).
+//
 // What it leaves out: maps by gear or temperature beyond the boost target's, three-dimensional tables, and the
 // interpolation of other shapes (a map is linear between its breakpoints and flat beyond its ends).
 #pragma once
+#include "spec/tables.fm"
 
 enum
 {
@@ -26,54 +31,6 @@ enum
     MAP_PEDAL,          // the throttle plate (0 to 1); its y axis the pedal
     MAP_LIFT,           // the lift command (0 to 1: card E's stages or continuous lift)
     MAP_COUNT
-};
-
-// A table over two axes: the shape of sim/spec/tables.fm's Map16 (x[16], y[16], z[16][16], nx, ny), a stand-in until
-// that file lands. z[i][j] is the value at x[i] and y[j]; the axes rise.
-module EcuMap16
-{
-    float x[16];
-    float y[16];
-    float z[16][16];
-    int nx;
-    int ny;
-
-    // Where v sits along an axis of n breakpoints: the breakpoint at or below it (no further than n - 2) and the
-    // share of the way to the next, in `share` (0 at a breakpoint, 1 at the last)
-    int segment(float* a, int n, float v, float* share)
-    {
-        share[0] = 0.0f;
-        if (n < 2 || v <= a[0])
-            return 0;
-        if (v >= a[n - 1])
-        {
-            share[0] = 1.0f;
-            return n - 2;
-        }
-        int i = 0;
-        while (i < n - 2 && v >= a[i + 1])
-            i += 1;
-        const float w = a[i + 1] - a[i];
-        share[0] = w > 0.0f ? (v - a[i]) / w : 0.0f;
-        return i;
-    }
-
-    // The value at (u, v): exact at a breakpoint, linear between, flat outside
-    float at(float u, float v)
-    {
-        float fx = 0.0f;
-        float fy = 0.0f;
-        const int n = nx < 1 ? 1 : (nx > 16 ? 16 : nx);
-        const int m = ny < 1 ? 1 : (ny > 16 ? 16 : ny);
-        const int i = segment(x, n, u, &fx);
-        const int j = segment(y, m, v, &fy);
-        const int i1 = n > 1 ? i + 1 : i;
-        const int j1 = m > 1 ? j + 1 : j;
-        // (a (1 - f) + b f: a at f = 0 and b at f = 1, exactly)
-        const float lo = z[i][j] * (1.0f - fy) + z[i][j1] * fy;
-        const float hi = z[i1][j] * (1.0f - fy) + z[i1][j1] * fy;
-        return lo * (1.0f - fx) + hi * fx;
-    }
 };
 
 // What the formulas depend on besides the speed and the load: the engine's, set when it changes
@@ -165,16 +122,34 @@ module EcuMaps
     int bakedNx[MAP_COUNT];
     int bakedNy[MAP_COUNT];
 
+    // A map at (u, v): Map16's at(), exact at every breakpoint
+    float exactAt(Map16* map, float u, float v)
+    {
+        const int kx = map->nx < 16 ? map->nx : 16;
+        const int ky = map->ny < 16 ? map->ny : 16;
+        if (kx <= 0 || ky <= 0)
+            return 0.0f;
+        float fx[1];
+        float fy[1];
+        const int i = map->cell(map->x, kx, u, fx);
+        const int j = map->cell(map->y, ky, v, fy);
+        const int i1 = kx > 1 ? i + 1 : i;
+        const int j1 = ky > 1 ? j + 1 : j;
+        const float a = map->z[i][j] * (1.0f - fy[0]) + map->z[i][j1] * fy[0];
+        const float b = map->z[i1][j] * (1.0f - fy[0]) + map->z[i1][j1] * fy[0];
+        return a * (1.0f - fx[0]) + b * fx[0];
+    }
+
     // One map's output: the formula when `automatic`, else the map. Axis values: rpm, and the load, gear or pedal
-    float read(EcuMap16* map, bool automatic, int which, float rpm, float v)
+    float read(Map16* map, bool automatic, int which, float rpm, float v)
     {
         if (automatic || map->nx < 1 || map->ny < 1)
             return tune.formula(which, rpm, v);
-        return map->at(rpm, v);
+        return exactAt(map, rpm, v);
     }
 
     // Writes the formula of map `which` at its breakpoints (the map's own when it has them, else the default ones)
-    void bakeOne(EcuMap16* map, int which)
+    void bakeOne(Map16* map, int which)
     {
         const bool own = map->nx >= 2 && map->ny >= 1;
         const int n = own ? (map->nx > 16 ? 16 : map->nx) : 16;
