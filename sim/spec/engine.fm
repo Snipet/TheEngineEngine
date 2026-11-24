@@ -195,5 +195,5 @@ module EngineSpec
         [[ui::help("What a pass through the silencer takes from the sound (the steady flow passes whole).")]];
     // the walls' heat (core/wallheat.fm): the reference's one coefficient by speed, or Woschni's from each cylinder's
     // own pressure, temperature and gas speed; meant with fuel.model 1's whole burn (card H)
-    int wallHeat [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Wall heat")]] [[ui::choices("Reference", "Woschni")]];
+    int wallHeat [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Wall heat")]] [[ui::group("Cylinder heat")]] [[ui::choices("Reference", "Woschni")]];
 };
