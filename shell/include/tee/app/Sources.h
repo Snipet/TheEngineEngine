@@ -43,7 +43,8 @@ namespace tee
     {
         virtual ~TelemetrySource() = default;
         virtual int findValue(std::string_view name) const = 0;   // a handle for value(); -1: none (the names: below)
-        virtual double value(int handle) const = 0;               // 0 for a handle that is none
+        virtual double value(int handle) const = 0;               // 0 for a handle that is none; NaN while the engine
+                                                                  // is not playing yet (its compile)
         virtual float outputPeak() const = 0;                     // the output's level over the newest block, 0 to 1
         // The output's newest samples, mono (the two channels' mean), oldest first, into mono[0..max): returns how
         // many were written (0: none). A source keeps at least 4096; a spectrum or a scope reads them each frame.

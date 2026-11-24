@@ -26,6 +26,7 @@
 #include "files/BuildFiles.h"
 
 #include <filesystem>
+#include <functional>
 #include <map>
 #include <memory>
 #include <string>
@@ -42,8 +43,10 @@ namespace tee::app
     class GarageLibrary final : public ui::garage::Library
     {
     public:
-        // `sim` may be null (no curves).
+        // `sim` may be null (no curves), or say later what it is (a background compile): asked each tick until it has one.
         GarageLibrary(files::BuildFile& document, std::shared_ptr<Sim> sim, std::filesystem::path shipped,
+                      std::filesystem::path user);
+        GarageLibrary(files::BuildFile& document, std::function<std::shared_ptr<Sim>()> sim, std::filesystem::path shipped,
                       std::filesystem::path user);
         ~GarageLibrary() override;
 
@@ -82,6 +85,7 @@ namespace tee::app
 
         files::BuildFile& document_;
         std::shared_ptr<Sim> sim_;
+        std::function<std::shared_ptr<Sim>()> simLater_;
         std::filesystem::path shipped_, user_;
         std::vector<Entry> entries_;
         std::vector<ui::garage::BuildSummary> builds_;
