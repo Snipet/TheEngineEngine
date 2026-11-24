@@ -67,6 +67,16 @@ four 20.3 (reference 8.1: a one-sample step at the throttle's opening from idle,
 valve). Open: the tractor 53 (reference 25.8): an offset switched in after a lift with its vanes shut at idle (vanes no
 more shut than 0.8: 25.1; exhaust.model 0: 17.3); suspected, not proven, the housing solve's clamps.
 
+**The tractor's thump, and why F's map was not reshaped.** The tractor's remaining step (53 against 25.8) was the
+compressor inlet's sound: that sound is the inlet flow's rate of change, and at idle with the vanes shut the compressor
+surges and its duct's flow kinks (found by silencing one source at a time: the machine's sound off, 27.3; the
+exhaust's output off, still 54.7). The map is C1 at zero flow and at the knee (value and slope match); what kinks is
+dm/dt, at the duct's semi-implicit denominator clamped at 0.5 (it bites on the rising branch a surge runs through) and
+at choke, where the ellipse's slope clamp meets the past-choke line. The shaft and the plenum see m, which stays
+continuous: only a signal made of dm/dt stepped. The inlet's sound now passes its duct and filter box (two one-pole
+stages at 1 kHz, sim/boost/sound.fm): tractor 27.2, the 2.0 four 7.0 (its recirculating-valve "residual" was the same),
+the six 8.9. Noted option, not done: a smooth max for the denominator and a blended slope across choke.
+
 ## 3. A rotary's turbo matched to half its air (fixed by D, 2df7ea6)
 
 `machine.fm` matches every size to a four-stroke's air (vd x rpm / 120); Engine passes a rotary's vTotal, which it
