@@ -37,6 +37,8 @@ for _ in $(seq 100); do
 done
 [ -S "/tmp/.X11-unix/X$display" ] || { echo "xvfb-run: Xvfb did not open display :$display" >&2; exit 1; }
 export DISPLAY=":$display"
+# (a runtime directory of this run's own, where the session has none: Vulkan's loader and SDL ask for one)
+[ -n "${XDG_RUNTIME_DIR:-}" ] || export XDG_RUNTIME_DIR="$log"
 openbox > "$log/openbox.log" 2>&1 &
 wm=$!
 sleep 0.5
