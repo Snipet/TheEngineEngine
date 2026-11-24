@@ -2,8 +2,9 @@
 // that needs one costs a SimAdapter (a tenth of a second) and not a compile (seconds). Each case still gets an adapter,
 // a host and a document of its own: only the machine code is shared.
 //
-// It lives in a static, freed by a Catch listener when the run ends, before main returns: a tee::Program must never be
-// destroyed by a static's destructor, after FMinus's and LLVM's own statics (docs/plan/01-rules.md, "Found on macOS").
+// It is held through a never-deleted pointer and let go by a Catch listener when the run ends, before main returns: a
+// tee::Program must never be destroyed by a static's destructor, after FMinus's and LLVM's own statics
+// (docs/plan/01-rules.md, "Found on macOS").
 #pragma once
 
 #include "player/SimAdapter.h"
@@ -20,8 +21,10 @@ namespace tee::test
 {
     inline std::shared_ptr<Sim>& sharedSimSlot()
     {
-        static std::shared_ptr<Sim> sim;   // emptied by SharedSimListener before main returns
-        return sim;
+        // never deleted (no static destructor runs on it at exit); its program is let go by SharedSimListener, before
+        // main returns
+        static std::shared_ptr<Sim>* const sim = new std::shared_ptr<Sim>();
+        return *sim;
     }
 
     // The simulator of TEE_SOURCE_SIM_DIR compiled once (null, with `errors`, when it does not compile).
