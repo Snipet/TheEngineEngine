@@ -291,7 +291,7 @@ arch(slug="kei-660-triple-turbo", runner=0.28, convK=24.0, name="Kei 660 cc trip
      cam=(240, 208, 7.5, 110, 236, 204, 7.0, 112), train="Bucket", redline=8000, idle=850,
      boost=dict(kind="Turbo", target=0.65, spring=0.10), car="kei",
      boostTaper=[(1500, 65), (4000, 65), (5000, 45), (5250, 36), (6000, 22), (6500, 15), (7000, 12), (8000, 10), (8500, 10)],
-     gateDiameter=0.026, timing="Chain",
+     timing="Chain",
      notes="A Japanese kei-class three: 68 x 60.4 mm (658 cc), 8.6:1, four valves, a small turbo at a production 0.65 bar falling to 0.12 bar by 7000 rpm (the class's power cap is met by the ECU's boost taper; the K6A kind: "
            "47 kW (the class's 64 PS cap) at 6500 rpm, 103 to 108 N m at 3500; Wikipedia, goo-net-exchange). In a "
            "780 kg rear-drive sports kei.")

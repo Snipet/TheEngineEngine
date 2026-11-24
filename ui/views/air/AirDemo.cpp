@@ -237,7 +237,7 @@ namespace tee::ui::air
         put("boost.flags", forced ? flags : nan);
         // card N2's mismatch: none in the demo's builds (all 0, as the simulator writes for a matched system)
         for (const char* n : { "boost.mismatch", "boost.coolerHas", "boost.coolerWants", "boost.springHas", "boost.springWants",
-                               "boost.volumeHas", "boost.volumeWants" })
+                               "boost.volumeHas", "boost.volumeWants", "boost.compressorHas", "boost.compressorWants" })
             put(n, 0.0);
         return out;
     }

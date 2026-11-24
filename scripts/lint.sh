@@ -34,6 +34,9 @@
 #   8. no float becomes an array index without a clamp at both ends (scripts/lint-index.py: a NaN's cast is INT_MIN on
 #      x86, X-019's SIGSEGV): tableIndex(x, last) (sim/core/mathx.fm), fminf(fmaxf(...)), or a lower check, or the line
 #      says `// lint: index-ok: <why>`. The places known on 2026-11-24 are in scripts/lint-index.allow, reported.
+#  11. a friend class or struct is named with its namespace (`friend class ::tee::test::Scenario;`): inside a nested
+#      namespace (tee::test, tee::ui) clang-cl takes an unqualified one for another tee namespace's class of that name
+#      ("previously declared as a struct", -Werror) and the Windows build stops (127c350 until 6b54fe2a).
 #  10. a file under tests/ or tools/ that calls tee::loadBuild or parseBuild reads its `warnings` (beyond declaring
 #      it and passing it): the loader drops what it cannot take there (a nested ecu.limiter, ecu.idle, ecu.knock), and
 #      until 2026-11-24 the rigs ran 62 archetypes without their own idle and limiter so. Since C's one strict loader
@@ -158,6 +161,11 @@ while IFS= read -r cm; do
     say "$cm: its tests have [nightly] tags but catch_discover_tests has no ADD_TAGS_AS_LABELS: they run in the fast tier"
   fi
 done < <(git ls-files -- 'tests/*CMakeLists.txt')
+
+# ---- 11. a friend class named with its namespace ----------------------------------------------------------------------
+while IFS= read -r l; do
+  [ -n "$l" ] && say "${l%%:*}:$(cut -d: -f2 <<< "$l"): an unqualified friend class (clang-cl may take another tee namespace's): name it fully, friend class ::tee::...;"
+done < <(git grep -nE '^[^/]*\bfriend[[:space:]]+(class|struct)[[:space:]]+[A-Za-z_]' -- '*.h' '*.hpp' '*.cpp' ':!third_party' || true)
 
 # ---- 10. a rig that loads a build reads what the loader dropped ------------------------------------------------------
 # tee::loadBuild / parseBuild put in `warnings` what they kept without taking (strict = false) and values out of range;
