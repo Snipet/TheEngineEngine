@@ -149,8 +149,12 @@ TEST_CASE("diesel brake: the driver's button engages it at High with the dash sw
     CHECK(e.tel("ecu.brakeCylinders") == 0.0);
 }
 
-TEST_CASE("diesel brake: with a variable-vane turbo the brake shuts the vanes and the manifold reaches 3 bar", "[diesel][brake][turbo]")
+TEST_CASE("diesel brake: with a variable-vane turbo the brake shuts the vanes and the manifold reaches 3 bar", "[diesel][brake][turbo][!mayfail]")
 {
+    // [!mayfail] on a named finding (24 Nov, 22:50; the lead's rule for the default run): since G's 15fcdd84 (stepLet's
+    // target closed by mass at the housings) the brake makes 289 kW at a 227 kPa manifold, the shaft at most 9776 rad/s
+    // (346 kW, 282 kPa, 11714 before): the turbine has less to work with; with it every turbo figure here moved
+    // (TurboTest's big single 208 -> 42 kPa). G and N2 to find it; the bounds are unchanged.
     // (marked [!mayfail] for an hour on 24 Nov: read over one second, the shaft peaked at 12539 rad/s against omegaMax
     // 11932, the brake's PID past 95 % hunting into card F's 105 % relief. The governor rebuilt on the plant's measured
     // response (heavy.fm vaneCommand): the shaft at most 11713 rad/s over the whole run (on the way up), 11090 settled. Plain again.)

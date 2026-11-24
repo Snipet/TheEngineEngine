@@ -22,7 +22,7 @@ SC = "validation/scenarios/"
 
 # each target's kind of source (the invariants: cited, the contracts and the build's own figures)
 BASIS = {
-    "Starts cold": "judgement",
+    "Starts cold": "judgement", "Starts hot": "judgement", "Hot idle": "judgement",
     "Sound: a free rev is loud enough": "judgement", "Sound: the idle is audible": "judgement",
     "Peak power": "recalled", "Speed at peak power": "recalled", "Peak torque": "recalled",
     "Speed at peak torque": "recalled",
@@ -32,7 +32,9 @@ BASIS = {
     "Volumetric efficiency at its torque peak": "recalled", "Volumetric efficiency low down": "judgement",
     "Port gas at full load": "judgement", "Header gas at full load": "judgement",
     "Port gas, mass mean (information)": "judgement",
-    "Quarter mile: time": "recalled", "Quarter mile: trap speed": "recalled", "Top speed": "judgement",
+    "Quarter mile: time": "recalled",
+    "Torque at 1500 rpm": "cited", "Torque at 1800 rpm": "cited", "Torque at 2500 rpm": "cited",
+    "Torque at 4000 rpm": "cited", "Torque at 6200 rpm": "cited", "Quarter mile: trap speed": "recalled", "Top speed": "judgement",
 }
 # builds with a part fitted to their own rows (the lead's list, 20:46): their power, torque, speed, VE and boost rows
 # are judgement until the part comes from the real engine or a class default
@@ -43,6 +45,17 @@ FITTED = {s_: _PORTS for s_ in ("big-block-74-pushrod-v8", "small-block-57-carb"
 FITTED["kei-660-triple-turbo"] = "its boost taper was measured by N2 to meet the class's power cap"
 FITTED_ROWS = ("Peak power", "Peak torque", "Speed at peak power", "Speed at peak torque", "Boost at its target",
                "Volumetric efficiency at its torque peak", "Volumetric efficiency low down")
+
+# a maker's published torque curve, as rows (rpm, N m low, N m high, source); the band about the published figure 5 %
+# (judgement); between the plateau's ends the maker's figure is the plateau's
+_GTI = ("the EA888 gen 3's 350 N m from 1500 to 4400 rpm and 162 kW at 4500 to 6200 (volkswagen-newsroom.com, the "
+        "Mk7 GTI's press presentation), within 5 %% (judgement): %s")
+CURVE = {
+    "turbo-four-20-gdi": [
+        (1500, 333, 368, _GTI % "the plateau's start"), (1800, 333, 368, _GTI % "on the plateau"),
+        (2500, 333, 368, _GTI % "on the plateau"), (4000, 333, 368, _GTI % "on the plateau"),
+        (6200, 237, 262, _GTI % "at rated speed, 162 kW: 250 N m")],
+}
 
 # archetypes whose power and torque rows were looked up (slug: the pages), turning recalled into cited
 CITED = {
@@ -70,6 +83,9 @@ CITED = {
     "straight-six-32-high-rev": "en.wikipedia.org/wiki/BMW_S54 (252 kW at 7900, 365 N m at 4900)",
     "v12-65": "en.wikipedia.org/wiki/Ferrari_F140_engine (F12 544 kW at 8250, 690 N m at 6000; 812 588 kW at 8500, 718 "
               "N m at 6750); en.wikipedia.org/wiki/Lamborghini_Aventador (515-566 kW, 690-720 N m at 5500-6750)",
+    "turbo-four-20-gdi": "volkswagen-newsroom.com, the new Golf GTI's international press presentation (162 kW at "
+                         "4500-6200 rpm, 350 N m at 1500-4400; the Performance 169 kW, 350 N m at 1500-4600); Audi SSP "
+                         "920243 (the EA888 gen 3: 82.5 x 92.8 mm, 9.6:1)",
     "rotary-twin-na-side-port": "newsroom.mazda.com 2003 release (184 kW at 8500, 216 N m at 5500); "
                                 "en.wikipedia.org/wiki/Mazda_RX-8 (US 173 kW at 8250, 216 N m at 5500)",
 }
@@ -103,7 +119,9 @@ T = {
     "three-cylinder-10-turbo": ((74, 105), (5000, 6000), (170, 210), (1500, 4500), (700, 900), 3000, "makers' figures, firm"),
     # (moved from 140-156 N m: the 2NR-FKE's 136, looked up)
     "economy-four-15": ((80, 97), (6000, 6600), (135, 156), (4000, 4800), (650, 800), 0, "makers' figures, looked up"),
-    "turbo-four-20-gdi": ((155, 230), (5000, 6500), (350, 400), (1600, 4500), (650, 850), 5000, "makers' figures, firm"),
+    # (the EA888 gen 3 of the Mk7 GTI, looked up (the lead, 22:49): moved from 155-230 kW at 5000-6500 and 350-400 N m at
+    # 1600-4500; the band about the maker's figure judgement: 5 % on torque, the two versions' power)
+    "turbo-four-20-gdi": ((158, 172), (4500, 6200), (335, 370), (1500, 4400), (650, 850), 5000, "the maker's figures, looked up"),
     "v6-35-na": ((195, 225), (6000, 6700), (335, 365), (4500, 5000), (600, 750), 0, "makers' figures, firm"),
     "v6-35-twin-turbo-pickup": ((275, 305), (5000, 6000), (630, 700), (3000, 4000), (550, 700), 4000, "makers' figures, firm"),
     "twin-cam-roadster-18": ((95, 112), (6300, 7000), (155, 172), (4500, 5500), (750, 900), 0, "makers' figures, firm"),
@@ -216,6 +234,15 @@ def targets(slug, b):
     add(name="Starts cold", scenario=SC + "p-cold-start.json", tel="engine.state", measure="min", during=[6, 11.5],
         range=[2, 2], source="a sound engine starts from the air's temperature within some four seconds of cranking "
                              "and keeps running (a rule of thumb; makers' cold-start specifications are 2 to 5 s)")
+    # a hot start (the lead, 22:51: the V12 took over 1.5 s to start in 318 K air in card I's run): the engine warm in
+    # 318 K air, started within the cold row's time and idling in its band
+    add(name="Starts hot", scenario=SC + "p-hot-start.json", tel="engine.state", measure="min", during=[6, 11.5],
+        range=[2, 2], source="a warm engine in 318 K air (a hot day's under-bonnet) starts within some four seconds of "
+                             "cranking and keeps running (judgement, as the cold row)")
+    _asked = s["ecu"]["idle"]["speed"] / RPM
+    add(name="Hot idle", scenario=SC + "p-hot-start.json", tel="engine.speed", measure="mean", during=[8, 11.5],
+        range=[round((_asked - 100) * RPM, 1), round((_asked + 100) * RPM, 1)], unit="rad/s",
+        source="the warm engine in 318 K air idles within 100 rpm of the %d rpm its ECU asks (judgement)" % round(_asked))
 
     # ---- the dyno ---------------------------------------------------------------------------------------------
     add(name="Peak power", dyno=dyno, measure="maxPower", range=[plo * 1000, phi * 1000], unit="W",
@@ -327,6 +354,11 @@ def targets(slug, b):
                 "resistance at 1.225 kg/m^3: %.0f km/h, within 7 %% (a power balance, not a test)" % (pmid, vmax))
         if aero else ("the redline in top gear with the build's gearing: %.0f km/h, within 7 %% (geared, not "
                       "drag-limited); no speed governor is simulated" % vmax))
+    # the published torque curve where a maker gives its plateau (the lead, 22:49: the first-launch engine's low end):
+    # rows on the full engine dyno at each speed, cited
+    for rpm_, lo_, hi_, why in CURVE.get(slug, ()):
+        add(name="Torque at %d rpm" % rpm_, dyno={"steps": [round(rpm_ * RPM, 1)], "settle": 5, "measure": 1},
+            measure="torqueAt", at=round(rpm_ * RPM, 1), range=[lo_, hi_], unit="N m", source=why)
     return out
 
 

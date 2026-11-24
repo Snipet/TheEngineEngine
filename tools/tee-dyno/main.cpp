@@ -9,7 +9,9 @@
 //            [--threads N] [--points N] [--coarse N]        several threads, coarse first; the times to the first and
 //            [--tolerance X] [--min-cycles N] [--max-cycles N] [--cold] [--history] [--repeat N]
 //            [--brake auto|host|program] [--hold S] [--no-settle] [--warmup-seconds S] [--inner-rate HZ]
-//   tee-dyno --bake-cam --build B [--from W --to W --points N] [--refine]   the intake cam swept, best advance by speed (Bake.h)
+//   tee-dyno --bake-cam --build B [--from W --to W --points N] [--refine] [--save FILE]   the intake cam swept, best
+//            advance by speed (Bake.h); --save writes the build with it applied (ecu.maps.camIn with its load axis,
+//            camInAuto off) only if it passes the idle gate (tee::checkIdle, P's: warm and cold), else exits 2
 //   tee-dyno --bake-spark --build B [--points N] [--inner-rate HZ] [--save FILE]   the knock limit baked (Bake.h);
 //            --save writes the build with it applied (ecu.maps.knockLimit, knockLimitAuto off, its key)
 //            [--ramp A]                                     and against a slow sweep at A rad/s^2 with the same brake
@@ -108,6 +110,8 @@ namespace
                 std::printf("  knock-limited, retard %.1f to %.1f deg", p.retardMin, p.retardMax);
             else if (p.knockRetard > 0.0)
                 std::printf("  knock %.1f deg", p.knockRetard);
+            if (p.boostHunting)
+                std::printf("  boost hunting (a mean over windows)");
             for (std::size_t k = 0; k < p.fields.size() && k < options.fields.size(); ++k)
                 std::printf("  %s %.5g", options.fields[k].c_str(), p.fields[k]);
             if (history)
@@ -261,6 +265,8 @@ int main(int argc, char** argv)
             ok = number(predictOptions.holdSeconds);
         else if (args.is("--min-hold"))
             ok = number(predictOptions.minHoldSeconds);
+        else if (args.is("--boost-hunt"))
+            ok = number(predictOptions.boostHuntSeconds);
         else if (args.is("--warmup-seconds"))
             ok = number(predictOptions.warmupSeconds);
         else if (args.is("--tolerance"))
@@ -342,10 +348,13 @@ int main(int argc, char** argv)
                     std::printf("  %.2f", c.pedal);
                 std::printf(": %.2f %.1f %.1f %.0f%s", c.load, c.retardMean, c.retardTooth, c.torque,
                             c.valid ? "" : " (fault)");
+                if (c.corrections > 0)
+                    std::printf(" [x%d, residual %.1f, cell %.1f%s]", c.corrections, c.residual, c.limit,
+                                c.stillKnocking ? ", STILL KNOCKING" : "");
             }
             std::printf("\n");
         }
-        std::printf("degrees from best torque by load (atm; * extrapolated flat):\n%8s", "rpm");
+        std::printf("degrees from best torque by load (atm; * extrapolated flat, ! still knock-limited there):\n%8s", "rpm");
         for (const double y : r.loads)
             std::printf(" %6.2f", y);
         std::printf("\n");
@@ -353,7 +362,8 @@ int main(int argc, char** argv)
         {
             std::printf("%8.0f", rpm(r.speeds[s2]));
             for (std::size_t j = 0; j < r.loads.size(); ++j)
-                std::printf(" %5.1f%s", r.limit[s2][j], r.extrapolated[s2][j] ? "*" : " ");
+                std::printf(" %5.1f%s", r.limit[s2][j],
+                            r.stillKnocking[s2][j] ? "!" : r.extrapolated[s2][j] ? "*" : " ");
             std::printf("\n");
         }
         if (!saveFile.empty())
@@ -380,9 +390,9 @@ int main(int argc, char** argv)
             std::fprintf(stderr, "tee-dyno: %s\n", errors.c_str());
             return 1;
         }
-        std::printf("intake cam baked by %zu curves in %.1f s (parked centreline %.1f deg; %d midpoints added as rows); "
+        std::printf("intake cam baked by %zu curves in %.1f s (parked centreline %.1f deg; %d midpoints added as rows; %d speeds fell back to the auto phase); "
                     "torque N m by advance:\n%8s",
-                    r.advances.size(), r.wallSeconds, r.parkedCentre, r.added, "rpm");
+                    r.advances.size(), r.wallSeconds, r.parkedCentre, r.added, r.fellBack, "rpm");
         for (const double a : r.advances)
             std::printf(" %7.0f", a);
         std::printf("   best\n");
@@ -400,6 +410,39 @@ int main(int argc, char** argv)
             for (std::size_t a = 0; a < r.advances.size(); ++a)
                 std::printf(" %7.1f", r.knock[a][s2]);
             std::printf("\n");
+        }
+        if (!saveFile.empty())
+        {
+            if (!tee::applyIntakeCam(build, r, errors))
+            {
+                std::fprintf(stderr, "tee-dyno: %s\n", errors.c_str());
+                return 1;
+            }
+            const std::filesystem::path scenarios =
+                tee::tools::findDirectory({}, "TEE_CONTENT_DIR", argv[0], "content/ref", TEE_SOURCE_CONTENT_DIR)
+                    .parent_path() / "validation" / "scenarios";
+            tee::IdleCheck idle;
+            if (!tee::checkIdle(compiled, build, scenarios, idle, errors))
+            {
+                std::fprintf(stderr, "tee-dyno: the idle check: %s\n", errors.c_str());
+                return 1;
+            }
+            std::printf("idle with the map: warm %.0f rpm (asked %.0f), sd %.1f; cold %.0f rpm, sd %.1f, %s\n",
+                        idle.warmMean, idle.asked, idle.warmSd, idle.coldMean, idle.coldSd,
+                        idle.coldRunning ? "running" : "NOT running");
+            if (!idle.pass)
+            {
+                for (const std::string& f : idle.failures)
+                    std::fprintf(stderr, "tee-dyno: idle gate: %s\n", f.c_str());
+                std::fprintf(stderr, "tee-dyno: not saved: the baked cam fails the idle gate\n");
+                return 2;
+            }
+            if (!build.saveFile(saveFile, tee::BuildPart::Whole, errors))
+            {
+                std::fprintf(stderr, "tee-dyno: %s\n", errors.c_str());
+                return 1;
+            }
+            std::printf("saved with the intake cam: %s\n", saveFile.c_str());
         }
         return 0;
     }

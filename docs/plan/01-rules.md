@@ -81,8 +81,10 @@ and the lead (the session that wrote these files) settles what a card leaves ope
 - **A budget a package** (the rule's second half: tests under 30 s each do not by themselves bound the whole): the
   fast tier's CPU-seconds on CI's Linux runner, the sum of a package's test times. The whole fast tier is capped at
   2400 (ten minutes of wall on four cores), and that cap binds: it is shared out by the lead's weights scaled by
-  2400 / 4500: `null` 580 (the guardian, kept whole), `diesel`, `exhaust` and the host 135, `vehicle` 100, every
-  other package 80, and `combo` what is left, 120. (`vehicle` took 20 from `null`'s allowance, which used about 364 on
+  2400 / 4500: `null` 580 (the guardian, kept whole), `diesel` and `exhaust` 135, the host 70 and `ref`
+  (tee-tests: the reference's and the program's top-level tests, its own row since 2026-11-24 23:04) 100, `vehicle` 100, every
+  other package 80, and `combo` 165 (the lead's ruling, 2026-11-24 22:18: each switch's decisions back in the fast
+  tier; the whole tier has the room). (`vehicle` took 20 from `null`'s allowance, which used about 364 on
   the reference runner, on 2026-11-24: since card I's last two findings it carries the dry and wet launches, the tyres'
   start and six whole-engine cases.) What does not fit goes to the soak tier, by the owner's choice of what
   guards most per second. `scripts/test-budget.sh <ctest log>` prints the table (each fast CI job's summary has it);
@@ -130,7 +132,7 @@ allocation or logging on the audio thread. No JUCE, anywhere. Third-party code o
   last;` alone does not stop it (a NaN compares false with everything). Call `tableIndex(x, last)` or write
   `(int)fminf(fmaxf(x, 0.0f), (float)last)` (FMinus's fminf and fmaxf return the other operand for a NaN); wrap an
   angle with `wrapCycle` (sim/core/mathx.fm), never `while (a >= cyc) a -= cyc;`. `scripts/lint.sh` (rule 8)
-  fails on a new one. CI's soak tier will run the fuzz at the corners without bounds checks (X's next push), so a crash is a crash there.
+  fails on a new one. CI's soak tier runs the nightly fuzz (seeds 100 to 299, and the corners) without bounds checks (X, 718c6f73), so a crash is a crash there; the fast tier's two fuzz seeds run with them.
 - No transcendental function per sample where a table or a control-rate update will do. Your card gives a CPU
   budget; `tee-bench` measures it.
 - Every Spec field has `[[fminus::range]]`, `[[fminus::default]]`, `[[ui::label]]` and says what its number is:

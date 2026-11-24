@@ -99,6 +99,7 @@ module BoostMachine
     float tOut;
     float vd;           // the engine's displacement, m^3, and its redline, rpm (for matched sizes)
     float redRpm;
+    float designRpm;    // a governed diesel's rated speed, rpm (Engine's, Boost::designSpeed); below 0: spark ignition
     int active;         // the charge path runs: a turbo, a supercharger, or nitrous
     int kind;           // 0 natural, 1 to 3 turbos, 4 a supercharger
     int turbos;         // shafts in use (a centrifugal supercharger: comp[0], no turbine)
@@ -129,6 +130,8 @@ module BoostMachine
     float icFlowHas;
     float chargeVolHas;
     float compFlowHas;              // the compressors' choke flows in standard air, summed where they draw from the air
+    float turbNozHas;               // the turbines' nozzle areas (m^2, summed), and what the design point's match gives
+    float turbNozWants;
     // the inlet
     float kFilter;
     float mInlet;       // through the filter (negative: out of it), kg/s
@@ -279,6 +282,7 @@ module BoostMachine
         tOut = 293.15f;
         vd = vdIn;
         redRpm = redIn;
+        designRpm = -1.0f;
         structure = -1;
         kind = 0;
         active = 0;
@@ -434,8 +438,19 @@ module BoostMachine
             turbOut[0] = 2;      // turbo 1's (first) housing
         }
         // sizes: matched to the engine where left at 0
-        mMatch = fmaxf(vd * redRpm / 120.0f * 1.204f * 1.9f * 0.9f, 0.01f);
-        const float share = layout == BOOST_TWIN ? 0.5f : (layout == BOOST_QUAD ? 0.25f : (layout == BOOST_SEQUENTIAL ? 0.55f : 1.0f));
+        // (the design point, the lead's (a'): only what the build states (docs/measurements/calibration/boost/
+        // design-point.md, written before its table): the ratio its own boost asks (the target, else the spring; at
+        // least 1.3), at spec.boost.designShare of its redline (0.85 unstated) for spark ignition or a governed diesel's rated speed, its swept air at
+        // 0.9 against the charge's density at that ratio; the turbine's inlet then 1.247 times the boost's absolute
+        // (the old match's 2.4 bar at 1.9 atm), its gas 1150 K, a diesel's 900 K)
+        const int dsl = designRpm > 0.0f ? 1 : 0;
+        const float nDesign = dsl != 0 ? designRpm : s->designShare * redRpm;
+        const float asked = s->target > 0.0f ? s->target : s->gateSpring;
+        const float prDesign = fmaxf((pOut + asked) / pOut, 1.3f);
+        const float p3Design = 1.247f * prDesign * pOut;
+        const float tDesign = dsl != 0 ? 900.0f : 1150.0f;
+        mMatch = fmaxf(vd * nDesign / 120.0f * 1.204f * prDesign * 0.9f, 0.01f);
+        const float share = layout == BOOST_TWIN ? 0.5f : (layout == BOOST_QUAD ? 0.25f : (layout == BOOST_SEQUENTIAL ? 0.5f : 1.0f));
         for (int t = 0; t < BOOST_TURBOS; ++t)
         {
             // (a compound pair's high-pressure stage meets air already compressed some 1.6 times: a smaller wheel)
@@ -459,10 +474,21 @@ module BoostMachine
             const float dT = s->turbWheel > 0.0f ? s->turbWheel : 0.9f * dEx;
             const float rc = 0.6f * dT;
             float aNoz = 0.0f;
+            const float aNozMatched = 0.65f * mt * sqrtf(kBoostR * tDesign) / (p3Design * 0.667f);
             if (s->turbAR > 0.0f)
                 aNoz = s->turbAR * 0.0254f * rc;
             else
-                aNoz = 0.65f * mt * sqrtf(kBoostR * 1150.0f) / (2.4e5f * 0.667f);
+                aNoz = aNozMatched;
+            if (t == 0)
+            {
+                turbNozHas = 0.0f;
+                turbNozWants = 0.0f;
+            }
+            if (t < turbos && !(layout == BOOST_COMPOUND && t == 1))
+            {
+                turbNozHas += aNoz;
+                turbNozWants += aNozMatched;
+            }
             turb[t].rWheel = 0.5f * dT;
             turb[t].aNoz = aNoz;
             turb[t].etaMax = s->turbEta;
@@ -479,7 +505,7 @@ module BoostMachine
             // transfer valve: its gate bypasses the whole engine's flow)
             const float mGate = mMatch * (layout == BOOST_SEQUENTIAL && t == 0 ? 1.0f : share)
                                 * (layout == BOOST_COMPOUND && t == 0 ? 0.65f : 1.0f);
-            const float aGateMatched = mGate * sqrtf(kBoostR * 1150.0f) / (2.4e5f * 0.667f);
+            const float aGateMatched = mGate * sqrtf(kBoostR * tDesign) / (p3Design * 0.667f);
             const float dg = s->gateDiameter > 0.0f ? s->gateDiameter : sqrtf(aGateMatched / (0.785398f * 0.85f));
             turb[t].aGate = 0.785398f * dg * dg * 0.85f;
             const float vh = s->housingVolume > 0.0f ? s->housingVolume : 4.0f * 3.14159265f * rc * aNoz;

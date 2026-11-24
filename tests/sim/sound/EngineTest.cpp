@@ -315,8 +315,8 @@ TEST_CASE("engine: levels at idle, each voice alone against the exhaust, A-weigh
     // exhaust's above all. The fan switched at 300 K and the air at 301 K (the coolant starts at the air's) so it runs
     // from the start, as at a warm idle (its sound does not depend on the coolant; the air 13 K warmer than first.json's
     // moves the exhaust's level by its density, some 4 %). The bounds are judgement (docs/models/voices.md, "Levels at idle"):
-    //   pump        an in-tank pump under a running engine is at most barely heard outside the car (the lead's 22:19):
-    //               50 dB(A) and 35 dB in every octave under
+    //   pump        a record only (the lead's 22:46): its bound is through Places, where card L's tank wall is (the
+    //               test "the pump through Places" below)
     //   fan         an electric fan is heard in front of an idling car: 15 to 35 dB(A) under, its highs falling (12 dB
     //               under at 4 and 8 kHz)
     //   injectors   a direct injector's tick is the one heard beside the car: 25 to 45 dB(A) under, within 25 dB in
@@ -353,9 +353,6 @@ TEST_CASE("engine: levels at idle, each voice alone against the exhaust, A-weigh
     against("voices.fanLevel", fan);
     against("voices.injectors", inj);
     against("voices.belt", belt);
-    CHECK(pump[0] < -50.0);
-    for (int i = 1; i < 7; ++i)
-        CHECK(pump[i] < -35.0);
     CHECK(fan[0] < -15.0);
     CHECK(fan[0] > -35.0);
     CHECK(fan[5] < -12.0);
@@ -364,4 +361,47 @@ TEST_CASE("engine: levels at idle, each voice alone against the exhaust, A-weigh
     CHECK(inj[0] > -45.0);
     CHECK(inj[5] > -25.0);
     CHECK(belt[0] < -45.0);
+}
+
+TEST_CASE("engine: the pump through Places: every line of it masked, 10 dB under the engine's own third octave about it",
+          "[sound][engine][nightly]")
+{
+    // The lead's ruling of 22:46: a tone is heard or masked against the noise in its own critical band. first.json
+    // (direct injection, the pump at 95 turns a second under its rail's pressure: its lines at 95, 8 x 95 = 760 and
+    // 41 x 95 = 3895 Hz) at a cold idle, through card L's Places at the cameras Tailpipe, Rear, Side and Driver: the pump's
+    // energy (the run with it less the run without) in the third octave about each line at least 10 dB under the
+    // engine's (the run without) in the same third octave. A warm idle (the hosts' warm hold, which this Scenario has
+    // not) is measured with tee-render in docs/models/voices.md: the closest is there, Rear's 760 Hz at -11.2 dB.
+    auto run = [](const char* camera, double pumpDb) {
+        tee::test::Scenario s("first");
+        s.rate(48000.0);
+        s.at(0.0).mode(1).lever(0).clutch(0.0).brake(0.0).throttle(0.0).ignition(tee::On).spec("voices.model", 1.0)
+            .spec("sound.model", 1.0).spec("sound.camera", std::string(camera)).spec("voices.pump", pumpDb);
+        s.at(0.25).ignition(tee::Start).until(2.0).ignition(tee::On);
+        return s.run(10.0);
+    };
+    for (const char* camera : {"Tailpipe", "Rear", "Side", "Driver"})
+    {
+        const auto on = run(camera, 0.0), off = run(camera, -60.0);
+        INFO(camera << ": " << on.error());
+        REQUIRE(on.ok());
+        const auto pump = tee::measure::spectrum(diff(on, off, 6.0, 10.0), 48000.0);
+        const auto engine = off.audio().during(6.0, 10.0).spectrum();
+        for (const double hz : {95.0, 760.0, 3895.0})
+        {
+            auto third = [hz](const tee::measure::Spectrum& sp) {
+                double e = 0.0;
+                for (std::size_t k = 1; k < sp.db.size(); ++k)
+                {
+                    const double f = (double)k * sp.binHz;
+                    if (f >= hz * std::pow(2.0, -1.0 / 6.0) && f < hz * std::pow(2.0, 1.0 / 6.0))
+                        e += std::pow(10.0, sp.db[k] / 10.0);
+                }
+                return 10.0 * std::log10(e + 1.0e-30);
+            };
+            const double under = third(pump) - third(engine);
+            INFO(camera << ", the pump's " << hz << " Hz: " << under << " dB against the engine's third octave");
+            CHECK(under < -10.0);
+        }
+    }
 }
