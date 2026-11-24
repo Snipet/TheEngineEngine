@@ -60,6 +60,12 @@ allocation or logging on the audio thread. No JUCE, anywhere. Third-party code o
 - **Stability is a requirement, not a tuning matter.** A new element is passive at its junction (it never gives a
   wave more energy than it took), is solved in closed form or by a fixed number of passes, and has a soak test.
   Read the reference's comments where it explains why something was done the hard way before replacing it.
+- **Found the hard way, 2026-11-24** (add to this list when you find another): an explicit step of a
+  square-root-of-pressure-drop orifice between two volumes never settles: at rest it chatters about zero for ever
+  (the two-stroke's transfer ports sloshed 4.6 g/s with the engine stopped). Solve the flow together with the drop
+  it changes, in closed form, as the reference's `lossFlow` does; and test "at rest, nothing flows". With an
+  inertia that varies round the turn, an explicit `dw/dt` step of the crank loses energy (15 % in 20 s on a free
+  single): step the kinetic energy instead (`sim/core/inertia.fm`).
 - No transcendental function per sample where a table or a control-rate update will do. Your card gives a CPU
   budget; `tee-bench` measures it.
 - Every Spec field has `[[fminus::range]]`, `[[fminus::default]]`, `[[ui::label]]` and, for a quantity,

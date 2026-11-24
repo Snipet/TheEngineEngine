@@ -53,7 +53,7 @@ namespace
     }
 } // namespace
 
-TEST_CASE("vehicle.strip.timers: the timers of a car of constant acceleration are the textbook's", "[vehicle][strip]")
+TEST_CASE("strip.timers: the timers of a car of constant acceleration are the textbook's", "[vehicle][strip]")
 {
     constantAcceleration(false, 9.81, 2.75);
     constantAcceleration(true, 4.0, 1.6);
@@ -62,7 +62,7 @@ TEST_CASE("vehicle.strip.timers: the timers of a car of constant acceleration ar
     constantAcceleration(false, 9.81, 2.2);
 }
 
-TEST_CASE("vehicle.strip.tree: staged at rest, the ambers, the green, the run; a red light for leaving early",
+TEST_CASE("strip.tree: staged at rest, the ambers, the green, the run; a red light for leaving early",
           "[vehicle][strip]")
 {
     Rig rig;

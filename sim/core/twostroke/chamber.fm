@@ -1,0 +1,171 @@
+// chamber.fm: a two-stroke's expansion chamber, as a run of the reference's ducts.
+//
+// The pipe is what makes a two-stroke's power band. Its sections, from the port: a header (parallel or nearly), a
+// diffuser (a cone opening out to some three times the header's bore), a belly (the widest part, parallel), a baffle
+// cone (closing in again) and a stinger (a narrow tube to the silencer or the air). The exhaust's pulse runs down the
+// header; the diffuser sends back a rarefaction (a widening sends back a wave of the opposite sign), which arrives at
+// the port while the transfers are open and helps draw the fresh charge up through them; the baffle cone sends back a
+// compression (a narrowing: the same sign), which, at the speed the pipe is tuned for, arrives as the exhaust port is
+// about to close and pushes back into the cylinder the fresh charge that had run on into the header: the "plugging"
+// pulse. Below that speed it comes back too soon and above it too late: the engine is "on the pipe" over a band. The
+// stinger bleeds the pipe's mean flow and pressure to the air.
+//
+// Each section is a reference Duct (sim/ref/pipes.fm: waves each way, the wall's loss, the flow's loss); a cone is
+// `coneSteps` short ducts whose bores step from one end's to the other's (each at its middle's diameter: a cone's bore
+// grows linearly along it), joined where they meet by the reference's junction: the waves' drive through the two
+// impedances in series, with the loss an area change makes (lossFlow / lossHold: Borda-Carnot's (1 - a/A)^2 for an
+// expansion, half of (1 - a/A) for a contraction), on the flow's slow part, so each junction is solved in one pass and
+// is passive. The stinger's end is open: what arrives goes back inverted, less the exit's loss. A straight pipe
+// (`chamber` 0) is one duct of the header's bore and the whole length, for comparison.
+//
+// What it leaves out: the gas's temperature along the pipe (one temperature for the whole chamber, the engine's to
+// set), the open end's radiation impedance (the reference's open-end filter is the exhaust package's), a silencer.
+#pragma once
+#include "../../ref/pipes.fm"
+#include "spec2.fm"
+
+enum
+{
+    TS_MAX_SEG = 2 * TS_MAX_STEPS + 3
+};
+
+module ExpansionChamber
+{
+    Duct seg[TS_MAX_SEG];
+    int n;              // sections in use
+    float kf[TS_MAX_SEG];   // junction i (between seg i and i + 1; the last: the open end): loss for flow away from
+    float kr[TS_MAX_SEG];   // the engine and toward it (lossKap)
+    float sl[TS_MAX_SEG];   // each junction's drive's slow part
+    float q[TS_MAX_SEG];    // the flow through each junction this sample (m^3/s, away from the engine)
+    float tuned;        // the length to the baffle cone's middle (m): where the plugging pulse comes back from
+    float c;            // the speed of sound in it (m/s)
+    float rate;
+    int ready;
+
+    void configure(float rateIn)
+    {
+        rate = rateIn;
+        // (no section is longer than 1 m: a wave crosses it in at most 1 m / 300 m/s)
+        const int cap = (int)(1.0f * rate / 300.0f) + 16;
+        for (int i = 0; i < TS_MAX_SEG; ++i)
+            seg[i].configure(cap);
+        ready = 1;
+    }
+
+    void release()
+    {
+        if (ready != 0)
+            for (int i = 0; i < TS_MAX_SEG; ++i)
+                seg[i].release();
+        ready = 0;
+    }
+
+    void section(int i, float len, float d, float cIn)
+    {
+        seg[i].set(fminf(len, 0.98f), d, 0.78539816f * d * d, cIn, rate);
+    }
+
+    // The pipe for a spec, its gas's sound speed (m/s). Clears every wave.
+    void build(const TwoStrokeSpec* s, float cIn)
+    {
+        c = cIn;
+        const int k = s->coneSteps < 1 ? 1 : (s->coneSteps > TS_MAX_STEPS ? TS_MAX_STEPS : s->coneSteps);
+        if (s->chamber == 0)
+        {
+            n = 1;
+            section(0, s->headerLen + s->diffuserLen + s->bellyLen + s->baffleLen + s->stingerLen, s->headerDiam, c);
+            tuned = 0.0f;
+        }
+        else
+        {
+            int i = 0;
+            section(i, s->headerLen, s->headerDiam, c);
+            i += 1;
+            for (int j = 0; j < k; ++j)
+            {
+                const float f = ((float)j + 0.5f) / (float)k;
+                section(i, s->diffuserLen / (float)k, s->headerDiam + f * (s->bellyDiam - s->headerDiam), c);
+                i += 1;
+            }
+            if (s->bellyLen > 0.005f)
+            {
+                section(i, s->bellyLen, s->bellyDiam, c);
+                i += 1;
+            }
+            for (int j = 0; j < k; ++j)
+            {
+                const float f = ((float)j + 0.5f) / (float)k;
+                section(i, s->baffleLen / (float)k, s->bellyDiam + f * (s->stingerDiam - s->bellyDiam), c);
+                i += 1;
+            }
+            section(i, s->stingerLen, s->stingerDiam, c);
+            i += 1;
+            n = i;
+            tuned = s->headerLen + s->diffuserLen + s->bellyLen + 0.5f * s->baffleLen;
+        }
+        for (int i = 0; i < n; ++i)
+        {
+            seg[i].clear();
+            sl[i] = 0.0f;
+            q[i] = 0.0f;
+            const float a0 = seg[i].area;
+            if (i + 1 < n)
+            {
+                const float a1 = seg[i + 1].area;
+                const float narrow = fminf(a0, a1);
+                const float e = 1.0f - narrow / fmaxf(a0, a1);
+                const float rho = seg[i].rho;
+                // away from the engine: an expansion if it widens, a contraction if it narrows; toward it the other
+                kf[i] = lossKap(a1 > a0 ? e * e : 0.5f * e, rho, narrow);
+                kr[i] = lossKap(a1 > a0 ? 0.5f * e : e * e, rho, narrow);
+            }
+            else
+            {
+                // the open end: the jet's whole head lost going out, half coming in
+                kf[i] = lossKap(1.0f, seg[i].rho, a0);
+                kr[i] = lossKap(0.5f, seg[i].rho, a0);
+            }
+        }
+    }
+
+    // First, each sample: the waves arriving at every end. The port sees seg[0].near and seg[0].z.
+    void read()
+    {
+        for (int i = 0; i < n; ++i)
+            seg[i].read();
+    }
+
+    // Then: the port's volume flow into the header (m^3/s, as the pipe is given it: Valve's q g); every junction
+    // solved, every section written. Returns the pressure at the port (Pa over the air).
+    float write(float qPort)
+    {
+        for (int i = 0; i + 1 < n; ++i)
+        {
+            const float zs = seg[i].z + seg[i + 1].z;
+            const float d = 2.0f * (seg[i].far - seg[i + 1].near);
+            q[i] = d / zs - lossHold(sl[i], zs, sl[i] >= 0.0f ? kf[i] : kr[i]);
+            sl[i] += seg[i + 1].qsA * (d - sl[i]);
+        }
+        // the open end: inverted, less the exit's loss
+        const int e = n - 1;
+        const float a = seg[e].far;
+        const float ze = seg[e].z;
+        const float d = 2.0f * a;
+        q[e] = d / ze - lossHold(sl[e], ze, sl[e] >= 0.0f ? kf[e] : kr[e]);
+        sl[e] += seg[e].qsA * (d - sl[e]);
+        const float nearPort = seg[0].near + seg[0].z * qPort;
+        for (int i = 0; i < n; ++i)
+        {
+            const float nearIn = i == 0 ? nearPort : seg[i].near + seg[i].z * q[i - 1];
+            seg[i].write(nearIn, seg[i].far - seg[i].z * q[i]);
+        }
+        return seg[0].near + nearPort;
+    }
+
+    // Every 16 samples: the flow's loss in each section (k16: the smoothing of its mean speed)
+    void flow16(float k16)
+    {
+        for (int i = 0; i < n; ++i)
+            seg[i].flow16(0.025f, k16);
+    }
+};

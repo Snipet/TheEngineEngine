@@ -1,0 +1,17 @@
+{
+  "format": "tee-scenario",
+  "version": 1,
+  "name": "idle",
+  "description": "In the car, in neutral, on a warm day: the key to start, held until it runs, then ten seconds of idle.",
+  "seconds": 12,
+  "events": [
+    { "t": 0.0, "spec": { "env.temperature": 300 }, "ctl": { "mode": 1, "lever": 0, "clutch": 0, "ignition": 1 } },
+    { "t": 0.25, "ctl": { "ignition": 2 } },
+    { "t": 2.0, "ctl": { "ignition": 1 } }
+  ],
+  "assertions": [
+    { "tel": "engine.state", "measure": "last", ">=": 2, "source": "it started and runs" },
+    { "audio": "finite" },
+    { "audio": "peak", "<=": 1, "source": "02-contracts.md, section 1: within +-1" }
+  ]
+}

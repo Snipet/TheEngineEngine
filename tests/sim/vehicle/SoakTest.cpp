@@ -12,7 +12,7 @@
 
 using namespace tee::vehicle;
 
-TEST_CASE("vehicle.hill: on a 10 % grade on the brakes for a minute: no creep, no ringing", "[vehicle][soak]")
+TEST_CASE("hill: on a 10 % grade on the brakes for a minute: no creep, no ringing", "[vehicle][soak]")
 {
     for (int drive = 0; drive < 3; ++drive)
     {
@@ -42,7 +42,7 @@ TEST_CASE("vehicle.hill: on a 10 % grade on the brakes for a minute: no creep, n
     }
 }
 
-TEST_CASE("vehicle.soak: ten minutes of random pedals, shifts and settings: finite and bounded", "[vehicle][soak]")
+TEST_CASE("soak: ten minutes of random pedals, shifts and settings: finite and bounded", "[vehicle][soak]")
 {
     double samples = 0.0;
     double seconds = 0.0;
