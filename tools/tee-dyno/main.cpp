@@ -8,7 +8,7 @@
 //   tee-dyno --predict --build content/builds/v8.json       the ribbon's curve (tee::PredictService): steady points on
 //            [--threads N] [--points N] [--coarse N]        several threads, coarse first; the times to the first and
 //            [--tolerance X] [--min-cycles N] [--max-cycles N] [--cold] [--history] [--repeat N]
-//            [--brake auto|host|program] [--hold S] [--no-settle] [--warmup-seconds S]
+//            [--brake auto|host|program] [--hold S] [--no-settle] [--warmup-seconds S] [--inner-rate HZ]
 //            [--ramp A]                                     and against a slow sweep at A rad/s^2 with the same brake
 #include "common/Paths.h"
 
@@ -94,7 +94,7 @@ namespace
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
             }
         }
-        std::printf("brake: %s\n%8s %10s %10s %7s %8s\n", last.brake.c_str(), "rpm", "torque Nm", "power kW", "cycles",
+        std::printf("brake: %s, inside at %.0f Hz\n%8s %10s %10s %7s %8s\n", last.brake.c_str(), last.innerRate, "rpm", "torque Nm", "power kW", "cycles",
                     "settled");
         for (const tee::PredictPoint& p : last.points)
         {
@@ -224,6 +224,8 @@ int main(int argc, char** argv)
             ok = number(repeat);
         else if (args.is("--no-settle"))
             predictOptions.settleExhaust = false;
+        else if (args.is("--inner-rate"))
+            ok = number(predictOptions.innerRate);
         else if (args.is("--brake"))
             ok = args.value(predictOptions.brake);
         else if (args.is("--hold"))

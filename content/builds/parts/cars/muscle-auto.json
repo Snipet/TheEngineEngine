@@ -1,0 +1,35 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "part": "car",
+  "name": "Car: muscle auto",
+  "notes": "A car of its class alone (card P's archetypes' cars), to take any engine.",
+  "spec": {
+    "car": {
+      "model": "Vehicle",
+      "kind": "Car",
+      "mass": 1800,
+      "drive": "Rear",
+      "wheelbase": 2.84,
+      "cgHeight": 0.55,
+      "frontWeight": 0.57,
+      "track": 1.52,
+      "cdA": 0.88,
+      "tyre": "Street",
+      "tyreRadius": 0.345,
+      "gearbox": "Automatic",
+      "finalDrive": 3.73,
+      "liveAxle": true,
+      "wheelInertia": 1.6,
+      "gears": 3,
+      "autoGearing": false,
+      "ratio": [
+        2.48,
+        1.48,
+        1.0
+      ],
+      "brakeDecel": 1.1,
+      "abs": true
+    }
+  }
+}

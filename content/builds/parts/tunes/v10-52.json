@@ -1,0 +1,22 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "part": "tune",
+  "name": "V10 5.2 L (tune)",
+  "notes": "The tune of the archetype \"V10 5.2 L\" alone.",
+  "spec": {
+    "ecu": {
+      "model": "Maps",
+      "timing": 0,
+      "pops": 0.1,
+      "starter": true,
+      "limiter": {
+        "kind": "Fuel cut",
+        "speed": 911.062
+      },
+      "idle": {
+        "speed": 94.248
+      }
+    }
+  }
+}

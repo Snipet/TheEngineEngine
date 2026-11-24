@@ -1,0 +1,165 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Flat-plane 4.5 L V8",
+  "notes": "A high-revving flat-plane V8: 94 x 81 mm (4497 cc), 12.5:1, direct injection, four valves, 9000 rpm (the published figures of the 4.5 L 90-degree flat-plane V8 of 2009, F136-type: 419 kW at 9000 rpm, 540 N m at 6000; Wikipedia and the maker's site). Variable-length runners. In a mid-engined coupe.",
+  "spec": {
+    "engine": {
+      "layout": "V8 flat-plane",
+      "custom": true,
+      "compression": 12.5,
+      "cylinders": 8,
+      "bankAngle": [
+        -45,
+        45
+      ],
+      "bank": [
+        0,
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        1
+      ],
+      "pin": [
+        315,
+        135,
+        135,
+        315,
+        315,
+        135,
+        135,
+        315
+      ],
+      "fireRev": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1
+      ],
+      "place": [
+        0.0,
+        0.1,
+        0.2,
+        0.3,
+        0.033,
+        0.133,
+        0.233,
+        0.333
+      ],
+      "displacement": 0.004497,
+      "boreStroke": 1.1605,
+      "bore": 0.094,
+      "stroke": 0.081,
+      "rodLength": 0.15,
+      "redlineSpeed": 942.478,
+      "frictionValvetrain": "Finger follower",
+      "rough": 0.2,
+      "benchLoad": 0.3
+    },
+    "valve": {
+      "model": "Lab",
+      "valves": 4,
+      "dIn": 0.0365,
+      "dEx": 0.0305,
+      "train": "Finger",
+      "inDurSeat": 276,
+      "inDur1mm": 248,
+      "inLift": 0.012,
+      "inCentre": 106,
+      "exDurSeat": 268,
+      "exDur1mm": 240,
+      "exLift": 0.011,
+      "exCentre": 110,
+      "inPhaseRange": 50,
+      "exPhaseRange": 40
+    },
+    "intake": {
+      "model": 1,
+      "runnerLength": 0.26,
+      "runnerLength2": 0.18,
+      "runnerSwitch": 649.2624817418905
+    },
+    "boost": {
+      "model": "Machine",
+      "kind": "Natural",
+      "level": 0.0,
+      "blowOff": 0.7
+    },
+    "exhaust": {
+      "model": "Builder",
+      "sides": 2,
+      "converter": [
+        1,
+        1
+      ],
+      "mufKind": [
+        2,
+        2
+      ]
+    },
+    "fuel": {
+      "kind": "Gasoline",
+      "model": "Fuels",
+      "grade": "Premium (91)",
+      "direct": 1
+    },
+    "ecu": {
+      "model": "Maps",
+      "timing": 0,
+      "pops": 0.1,
+      "starter": true,
+      "limiter": {
+        "kind": "Fuel cut",
+        "speed": 942.478
+      },
+      "idle": {
+        "speed": 104.72
+      }
+    },
+    "car": {
+      "model": "Vehicle",
+      "kind": "Car",
+      "mass": 1550,
+      "drive": "Rear",
+      "wheelbase": 2.65,
+      "cgHeight": 0.45,
+      "frontWeight": 0.42,
+      "track": 1.65,
+      "cdA": 0.62,
+      "tyre": "Semi-slick",
+      "tyreRadius": 0.345,
+      "gearbox": "Dual clutch",
+      "finalDrive": 4.44,
+      "wheelInertia": 1.5,
+      "gears": 7,
+      "autoGearing": false,
+      "ratio": [
+        3.08,
+        2.19,
+        1.63,
+        1.29,
+        1.03,
+        0.84,
+        0.69
+      ],
+      "brakeDecel": 1.1,
+      "abs": true
+    },
+    "env": {
+      "temperature": 288.15,
+      "pressure": 101325.0
+    },
+    "voices": {
+      "timing": "Chain",
+      "lifters": "Solid",
+      "injection": "Direct"
+    }
+  }
+}

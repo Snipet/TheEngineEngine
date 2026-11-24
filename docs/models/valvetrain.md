@@ -134,10 +134,12 @@ opening, every change made with the valve shut, all eight back under load.
   the output's level steps 2.8 dB there against 9.8 dB at most between two firings elsewhere in the sweep.
 - Deactivation (test 10), the V8 at 2000 rpm and 90 N m: the manifold 45.9 kPa on eight, 69.7 on four; the
   half-firing line from -17.1 to +6.9 dB against the firing line.
-- Float (test 13): the bounce's size and length (judgement) were raised so the power falls past the float speed: on the
-  four, 0 % at 0.85 times it, -0.8 % at 1.1, -4.5 % at 1.25; finite at twice it. A real valvetrain falls harder.
-- Cost: `tee-bench --engine`, free-revs and drive-car: the simulator over the reference 1.04 at the defaults, 1.07 to
-  1.11 with the lab (phasers, two stages, springs, a two-length runner): some +0.03 to +0.07 R, on a shared machine.
+- Float (test 13): past the float speed a longer, larger bounce and a seat that no longer seals (judgement,
+  `float.fm`): on the four, 0 % at 0.85 times it, -21 % at 1.1, -64 % at 1.25; finite at twice it: the cliff a
+  pushrod engine shows a few hundred rpm past float.
+- Cost: `tee-bench --profile --engine` with the four-valve, two-phaser build: `ValveLab` 52 ns a 96 kHz sample and
+  `Valvetrain` 2 (some 0.02 R); `Intake` 83 against 76 at the defaults. The rest of the +0.03 to +0.07 R that
+  `tee-bench --engine` showed is the build's own engine (its cylinders' flows) and the machine's noise.
 - Breathing (`tests/sim/valvetrain/BreathingTest.cpp`, both models 1, 300 K, engine dyno, wide open; **measured**): the
   6.2 L V8 with a mild cam peaks at 257 kW near 5000 rpm (248 at 6000; the target is 300 to 330), its VE (`veAir`)
   0.86 to 0.92, 0.82 at 6000; the 998 cc superbike four (76 x 55, four valves, 9.5 mm, 270 at 1 mm, ITBs, 13:1) makes

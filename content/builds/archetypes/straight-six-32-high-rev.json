@@ -1,0 +1,153 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "3.2 L straight six, high-revving",
+  "notes": "A naturally aspirated 3.2 L straight six with a throttle body a cylinder: 87 x 91 mm (3246 cc), 11.5:1, 8000 rpm (the S54 kind: 252 kW at 7900 rpm, 365 N m at 4900; makers' figures, from memory, firm to 5 %). Rear drive, six-speed manual.",
+  "spec": {
+    "engine": {
+      "layout": "Inline 6",
+      "custom": true,
+      "compression": 11.5,
+      "cylinders": 6,
+      "bankAngle": [
+        0.0
+      ],
+      "bank": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "pin": [
+        0,
+        240,
+        120,
+        120,
+        240,
+        0
+      ],
+      "fireRev": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        1
+      ],
+      "place": [
+        0.0,
+        0.1,
+        0.2,
+        0.3,
+        0.4,
+        0.5
+      ],
+      "displacement": 0.0032458,
+      "boreStroke": 0.956,
+      "bore": 0.087,
+      "stroke": 0.091,
+      "rodLength": 0.139,
+      "redlineSpeed": 837.758,
+      "frictionValvetrain": "Finger follower",
+      "rough": 0.2,
+      "benchLoad": 0.3
+    },
+    "valve": {
+      "model": "Lab",
+      "valves": 4,
+      "dIn": 0.035,
+      "dEx": 0.0305,
+      "train": "Bucket",
+      "inDurSeat": 264,
+      "inDur1mm": 236,
+      "inLift": 0.011800000000000001,
+      "inCentre": 106,
+      "exDurSeat": 260,
+      "exDur1mm": 232,
+      "exLift": 0.011,
+      "exCentre": 110,
+      "inPhaseRange": 60,
+      "exPhaseRange": 45
+    },
+    "intake": {
+      "model": 1,
+      "throttleKind": "A body a runner",
+      "runnerLength": 0.25
+    },
+    "boost": {
+      "model": "Machine",
+      "kind": "Natural",
+      "level": 0.0,
+      "blowOff": 0.7
+    },
+    "exhaust": {
+      "model": "Builder",
+      "sides": 1,
+      "converter": [
+        1,
+        1
+      ],
+      "mufKind": [
+        2,
+        2
+      ]
+    },
+    "fuel": {
+      "kind": "Gasoline",
+      "model": "Fuels",
+      "grade": "Premium (91)"
+    },
+    "ecu": {
+      "model": "Maps",
+      "timing": 0,
+      "pops": 0.1,
+      "starter": true,
+      "limiter": {
+        "kind": "Fuel cut",
+        "speed": 837.758
+      },
+      "idle": {
+        "speed": 89.012
+      }
+    },
+    "car": {
+      "model": "Vehicle",
+      "kind": "Car",
+      "mass": 1550,
+      "drive": "Rear",
+      "wheelbase": 2.73,
+      "cgHeight": 0.5,
+      "frontWeight": 0.51,
+      "track": 1.52,
+      "cdA": 0.63,
+      "tyre": "Sport",
+      "tyreRadius": 0.335,
+      "gearbox": "Manual",
+      "finalDrive": 3.62,
+      "wheelInertia": 1.3,
+      "gears": 6,
+      "autoGearing": false,
+      "ratio": [
+        4.23,
+        2.53,
+        1.67,
+        1.23,
+        1.0,
+        0.83
+      ],
+      "brakeDecel": 1.1,
+      "abs": true
+    },
+    "env": {
+      "temperature": 288.15,
+      "pressure": 101325.0
+    },
+    "voices": {
+      "timing": "Chain",
+      "lifters": "Solid",
+      "injection": "Port"
+    }
+  }
+}

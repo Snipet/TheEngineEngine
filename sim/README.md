@@ -167,7 +167,7 @@ engine's change at the fade's quiet, where `configure` runs; `Listen::block`; th
 `valves()`, the compression → `cyl[c].setup`, the bore/stroke → `boreStroke`, `valves`); `ecu.driver(...)`; driven,
 `car.drive16(...)`; `ecu.control(...)` (true: the engine has come to rest, `crank.omega` 0); `exh.flowRate()`;
 `boost.control(...)`, `intk.pBox`, `intk.tAir`, `intk.control(...)`; `exh.gas(d16)`; the cylinders' wall heat transfer (`hA`);
-`exh.heatUp(...)`; `pipes()` (`exh.pipes`, `intk.runners`); `exh.flow16()`, `intk.flow16(...)`; `exh.bands()`; `mechanics16()` (the cycle's speed spread; a custom engine's inertia with the
+`exh.heatUp(...)`; `pipes()` (`exh.pipes`, `intk.runners`); `exh.flow16()`, `intk.flow16(...)`; `exh.bands()`; with spec.engine.wallHeat 1, each cylinder's `hA` from `wall.coefficient(...)` (Woschni: core/wallheat.fm) in place of the reference's; `mechanics16()` (the cycle's speed spread; a custom engine's inertia with the
 bench's load, its oil factor and its shaking at this speed; the dyno stopped when its mode ends); then, with `spec.voices.model` 1 or the voices gliding out, `ex.control16(...)` (card M's voices' inputs).
 
 **`configure`** (the engine for the layout and the size: at init, at a start while stopped, under the fade): the
@@ -365,10 +365,11 @@ and `float sprocketSpeed()` (the front sprocket, rad/s; its teeth are `spec.car.
 **Extras** (`sound/extras.fm`): the engine bay's sources; its own `Noise noise` (Boost draws from it too). `setup(float
 rate, float boxHz, VoicesSpec* voices)`; `setClatter(int diesel, float swept)` and `pumpOn` in configure; the clicks at
 the cylinders' events (`valveClick(amp, intake)`: 1 at intake closing, 0 at exhaust closing); `void tick(float qThrottle,
-float dropRatio, float crankHz, float dpdt)` then `void tickStarter(float crankHz, float starterOn)` each sample;
+float dropRatio, float crankHz, float dpdt, int intakeModel, float intakeSound)` (with `spec.intake.model` 1, card E's
+`intk.sound` is the intake's voice in place of the box filter) then `void tickStarter(float crankHz, float starterOn)` each sample;
 `control16(...)` last in `Engine::control16`, only while `spec.voices.model` is 1 or the voices glide out (card M: the
 car's gearbox, the torque, the coolant, the key, the boost and gate, `vt.clatter`); `busy()` (the pump's prime, a fan,
-the starter running down); out: `intake`, `mech`, `block`, `comb`, `starter`, and with model 1 each voice's own:
+the starter running down); out: `intake`, `mech`, `block`, `comb`, `starter`, `mouth` (the intake's mouth alone, before the throttle's hiss), and with model 1 each voice's own:
 `vo.gearbox`, `vo.axle`, `vo.front`, `vo.head`, `vo.tank`, `vo.gateOut`, `vo.starter` (docs/models/voices.md).
 
 **Listen** (`listen/listen.fm`): `setup(float rate, float hostRate)`, `release()`, `resetPaths()`; per part `block(int

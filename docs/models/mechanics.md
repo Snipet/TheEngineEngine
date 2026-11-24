@@ -103,3 +103,24 @@ its end within a rpm. Left out: the absorber's own inertia and limits.
 
 Eight cylinders' inertia torque, the crank's step and the work integral: 69 ns a 96 kHz sample (0.036 R, R = 1942 ns,
 the reference V8's on this machine); sixteen: 117 ns. Budget: 0.06 R.
+
+## Wall heat (spec.engine.wallHeat)
+
+0 is the reference's: one coefficient by speed for every cylinder, the same all cycle. 1 is Woschni's correlation
+(SAE 670931; constants as Heywood, 1988, section 12.4), worked out for each cylinder every 16 samples from its own
+pressure, temperature, volume and the mean piston speed, with the burn's term from the motored pressure since intake
+closing (`sim/core/wallheat.fm`). It is meant to go with card H's whole burn (fuel.model 1 without the reference's
+up-front 20 % cut); the two are switched on together once H's side lands.
+
+Measured (`EnergyTest`, "[.wallheat]": the default V8, 4000 rpm, full throttle, warm, shares of the burn's heat):
+
+| | work | walls | out | gas out | tPort |
+|---|---|---|---|---|---|
+| reference | 44.8 % | 13.3 % | 47.2 % | 1233 K | 1244 K |
+| Woschni | 42.3 % | 17.0 % | 45.4 % | 1205 K | 1218 K |
+| fuel.model 1 | 44.9 % | 13.2 % | 46.9 % | 1202 K | 1206 K |
+| fuel.model 1 and Woschni | 42.4 % | 16.7 % | 45.3 % | 1183 K | 1185 K |
+
+An engine's 25 to 30 % "to the coolant" includes the exhaust ports' walls and the friction's heat; here the ports'
+and the pipes' heat is taken downstream (the exhaust's soak), so some 17 % in the cylinder is in the published range
+for its own walls. A thermocouple's 900 to 1100 K reads after the port too.

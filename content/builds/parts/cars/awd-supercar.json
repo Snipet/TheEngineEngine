@@ -1,0 +1,39 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "part": "car",
+  "name": "Car: awd supercar",
+  "notes": "A car of its class alone (card P's archetypes' cars), to take any engine.",
+  "spec": {
+    "car": {
+      "model": "Vehicle",
+      "kind": "Car",
+      "mass": 1650,
+      "drive": "All",
+      "wheelbase": 2.65,
+      "cgHeight": 0.46,
+      "frontWeight": 0.42,
+      "track": 1.64,
+      "cdA": 0.65,
+      "tyre": "Semi-slick",
+      "tyreRadius": 0.345,
+      "gearbox": "Dual clutch",
+      "finalDrive": 4.0,
+      "centreSplit": 0.3,
+      "wheelInertia": 1.5,
+      "gears": 7,
+      "autoGearing": false,
+      "ratio": [
+        3.13,
+        2.59,
+        1.96,
+        1.55,
+        1.24,
+        1.0,
+        0.85
+      ],
+      "brakeDecel": 1.1,
+      "abs": true
+    }
+  }
+}
