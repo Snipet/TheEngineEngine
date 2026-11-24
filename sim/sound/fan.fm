@@ -1,0 +1,139 @@
+// sound/fan.fm: the radiator's cooling fan (module FanVoice): a viscous-clutch fan on the water pump's shaft, or an
+// electric one, its roar coming and going with the coolant's temperature.
+//
+// A viscous clutch couples the fan to the pump's pulley (1.1 times the crank here) through a silicone fluid let in by
+// a bimetal spring in the air leaving the radiator: cold it slips, the fan turning at some 25 % of its drive; hot (at
+// `fanOn` and above) it locks to some 90 %; between, in proportion over the 15 K below. The fluid takes some seconds
+// to fill and drain (a time constant of 4 s here). The famous roar is a locked clutch at high revs, and it fades as
+// the clutch lets go (Horton's and Behr's descriptions of the thermostatic clutch; the numbers are typical ones,
+// judgement). An electric fan switches on at `fanOn` and off 5 K lower, its motor taking it to 2400 rpm in about a
+// second (time constant 0.35 s) and letting it coast down in some three (1.2 s).
+//
+// What it sounds like (Neise, "Noise reduction in centrifugal fans", and the axial fan's literature): the blades'
+// passing, at the blades times the fan's turns, with its harmonic, and the broadband noise of the turbulence off the
+// blades, whose sound power rises as the tip speed's fifth to sixth power: amplitude here as (U / U0)^2.75, shaped
+// into a band an octave or so about the passing frequency's fourth harmonic. An electric fan's motor adds its
+// commutator's ripple (8 segments, faint). Tip speed at the fan's 0.4 m across.
+#pragma once
+#include "lib/biquad.fm"
+#include "lib/noise.fm"
+#include "osc.fm"
+
+enum
+{
+    FAN_NONE = 0,
+    FAN_VISCOUS = 1,
+    FAN_ELECTRIC = 2,
+};
+
+module FanVoice
+{
+    float rate;
+    float dt;
+    Noise noise;
+    SineTable* sn;
+    float nScale;
+    Shaft fan;
+    Biquad broad;
+    float hz;           // the fan's turns a second, every 16 samples
+    float hzStep;
+    float hzSet;        // its speed now (the clutch's, the motor's)
+    float lock;         // a viscous clutch's share, 0.25 to 0.9
+    int on;             // an electric fan's switch
+    float blades;
+    Glide aTone;
+    Glide aNoise;
+    float motor;        // an electric fan's motor ripple's share
+    // out
+    float out;
+
+    void setup(float rateIn, SineTable* table)
+    {
+        rate = rateIn;
+        dt = 1.0f / rate;
+        sn = table;
+        noise.rs = 161803;
+        nScale = sqrtf(rate / 48000.0f);
+        clear();
+    }
+
+    void clear()
+    {
+        broad.clear();
+        aTone.clear();
+        aNoise.clear();
+        hz = 0.0f;
+        hzStep = 0.0f;
+        hzSet = 0.0f;
+        lock = 0.25f;
+        on = 0;
+        blades = 7.0f;
+        motor = 0.0f;
+        out = 0.0f;
+    }
+
+    bool turning()
+    {
+        return hzSet > 0.5f;
+    }
+
+    // Every 16 samples. d16: seconds; kind: FAN_*; crankHz; coolant (K); onAt (K); nBlades; k: its gain; power: the
+    // car's electrics live (the key on), for an electric fan
+    void control(float d16, int kind, float crankHz, float coolant, float onAt, int nBlades, float k, int power)
+    {
+        blades = (float)nBlades;
+        float want = 0.0f;
+        if (kind == FAN_VISCOUS)
+        {
+            const float x = fminf(fmaxf((coolant - (onAt - 15.0f)) / 15.0f, 0.0f), 1.0f);
+            const float lockWant = 0.25f + 0.65f * x;
+            lock += (lockWant - lock) * (1.0f - expf(-d16 / 4.0f));
+            want = 1.1f * crankHz * lock;
+            hzSet = want;
+            motor = 0.0f;
+        }
+        else if (kind == FAN_ELECTRIC)
+        {
+            if (power == 0 || coolant < onAt - 5.0f)
+                on = 0;
+            else if (coolant >= onAt)
+                on = 1;
+            want = on != 0 ? 40.0f : 0.0f;
+            const float tau = on != 0 ? 0.35f : 1.2f;
+            hzSet += (want - hzSet) * (1.0f - expf(-d16 / tau));
+            if (hzSet < 0.05f && on == 0)
+                hzSet = 0.0f;
+            motor = on != 0 ? 1.0f : 0.0f;
+        }
+        else
+        {
+            hzSet = 0.0f;
+            motor = 0.0f;
+        }
+        hzStep = (hzSet - hz) * 0.0625f;
+        // the tip's speed over 40 m/s, (0.4 m across: pi 0.4 a turn)
+        const float u = hzSet * 1.2566371f / 40.0f;
+        const float lu = u > 1.0e-4f ? expf(2.75f * logf(u)) : 0.0f;
+        const float fb = fmaxf(blades * hzSet, 20.0f);
+        broad.setBandpass(fminf(4.0f * fb, 6000.0f), 0.6f, rate);
+        aTone.to(k * 0.004f * fminf(lu, 16.0f));
+        aNoise.to(k * 0.012f * fminf(lu, 16.0f));
+    }
+
+    void tick()
+    {
+        hz += hzStep;
+        fan.turn(hz, dt);
+        const float at = aTone.next();
+        const float an = aNoise.next();
+        out = 0.0f;
+        if (at != 0.0f || an != 0.0f)
+        {
+            const float m = fan.mesh(blades);
+            const float s = sn->at(m);
+            const float c = sn->cosAt(m);
+            out = at * (s + 0.4f * 2.0f * s * c + 0.05f * motor * sn->at(fan.mesh(8.0f)))
+                  + an * broad.tick(nScale * noise.rnd());
+        }
+    }
+};

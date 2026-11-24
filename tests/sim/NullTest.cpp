@@ -19,7 +19,8 @@ namespace
 
     Players& players(double rate)
     {
-        static std::map<double, Players> made;
+        // never destroyed: the players own compiled programs, which must outlive no JIT at exit (macOS)
+        static auto& made = *new std::map<double, Players>();
         Players& p = made[rate];
         if (!p.engine)
         {
