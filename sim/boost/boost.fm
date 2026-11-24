@@ -440,8 +440,9 @@ module Boost
         t->oxygen = on != 0 ? mach.telO2 : 0.0f;
         // (card N2: the charge system against the engine, the lead's X-021 ruling: the fields mean what they say, so
         // a 15 L engine with a 2 L engine's cooler makes little boost; these say so. Warnings, not physics, the
-        // thresholds judgement: an intercooler rated under half the engine's matched flow (the compressor's at its
-        // redline, mMatch); a wastegate spring under a tenth of the boost asked (the target, the ECU's or the spec's:
+        // thresholds judgement: an intercooler rated under 0.4 of the engine's matched flow (the compressor's at its
+        // redline at a ratio of 1.9, mMatch: above most engines' rated air, so P's rotary sized from its rated power
+        // reads 0.45 of it); a wastegate spring under a tenth of the boost asked (the target, the ECU's or the spec's:
         // a low spring under a duty is a real design, P's kei's 10 kPa under 65; a tenth is where the exhaust's push
         // alone opens it); charge pipes under 0.3 or over 4 times 2.5 displacements (F's defaults' ratio on a 2 L
         // engine: 5 L of pipes; the twin rotor's 2.6 L sit at 0.4). Turbos and superchargers alike; no target, no
@@ -454,12 +455,17 @@ module Boost
             const float asked = mach.cmdTarget > 0.0f ? mach.cmdTarget : mach.target;
             springWants = mach.sc == 0 ? fmaxf(asked, 0.0f) : 0.0f;
             volWants = 2.5f * mach.vd;
-            if (mach.icFlowHas < 0.5f * mach.mMatch)
+            if (mach.icFlowHas < 0.4f * mach.mMatch)
                 mm |= 1;
             if (springWants > 0.0f && mach.gateSpring < 0.1f * springWants)
                 mm |= 2;
             if (mach.chargeVolHas < 0.3f * volWants || mach.chargeVolHas > 4.0f * volWants)
                 mm |= 4;
+            // (the lead's X-024 ruling: a compressor far bigger than the engine can swallow makes no boost, and says
+            // so: its choke flow over four times a matched one's, 1.15 times the engine's matched flow: twice the
+            // inducer's diameter)
+            if (mach.sc == 0 && mach.compFlowHas > 4.0f * 1.15f * mach.mMatch)
+                mm |= 8;
         }
         t->mismatch = mm;
         t->coolerHas = on != 0 ? mach.icFlowHas : 0.0f;
@@ -468,6 +474,8 @@ module Boost
         t->springWants = springWants;
         t->volumeHas = on != 0 ? mach.chargeVolHas : 0.0f;
         t->volumeWants = volWants;
+        t->compressorHas = on != 0 && mach.sc == 0 ? mach.compFlowHas : 0.0f;
+        t->compressorWants = on != 0 && mach.sc == 0 ? 1.15f * mach.mMatch : 0.0f;
         t->flags = on != 0 ? mach.flags : 0;
     }
 
