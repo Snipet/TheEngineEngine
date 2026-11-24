@@ -250,7 +250,13 @@ module Engine
     void setupAll(float rateIn)
     {
         releaseAll();
+        // (the engine's own rate: 96 kHz; card C's prediction service compiles a copy at 48 kHz, half the cost, with
+        // TEE_ENGINE_RATE_48000 defined: never the application's engine nor the null test's)
+#ifdef TEE_ENGINE_RATE_48000
+        rate = 48000.0f;
+#else
         rate = 96000.0f;
+#endif
         listen.setup(rate, rateIn);
         dt = 1.0f / rate;
         noise.rs = 123456789;
@@ -489,6 +495,14 @@ module Engine
 
     // ---- card D: the mechanics (docs/models/mechanics.md) ----
 
+    // The friction by part (Chen and Flynn's, core/friction.fm) for a custom engine and whenever card H's combustion
+    // (fuel.model 1) is on: the new combustion implies the physical cylinder, its walls (Woschni) and its friction
+    // together; the reference's one curve, fitted to its V8, only under the reference's models
+    bool physicalFriction()
+    {
+        return customUse != 0 || spec.fuel.model != 0;
+    }
+
     // A sum of what makes a custom engine (spec.engine's custom fields, each with its own weight), to see it changed: 0
     // while custom is off, whatever the fields hold
     float geometry()
@@ -548,11 +562,13 @@ module Engine
         const float rodLen = rodRatio * 0.5f * strokeUse;
         jFly = customUse != 0 && spec.engine.flywheelInertia > 0.0f ? spec.engine.flywheelInertia
                                                                     : mech.jBase * expf(1.6094379f * (set.inertia - 0.5f));
-        if (customUse != 0)
-        {
-            mm.setup(&spec.engine, &geo, bore, strokeUse, rodLen, smCR, jFly);
-            shake.setup(&spec.engine, &geo, mm.mRec, mm.sc.r, mm.sc.lam);
-        }
+        // (the shaking is every engine's: card L's cabin hears it. A reference layout's cylinders are taken upright, its
+        // table giving no bank angles: an inline engine's shaking is right, a V's or a boxer's an approximation; a custom
+        // engine's is its own geometry's. Its moving masses step the crank only when custom is on)
+        if (customUse == 0 || layoutRefused != 0)
+            geo.fromTable(lay.n, lay.cyc, lay.rotary, &lay.fire[0]);
+        mm.setup(&spec.engine, &geo, bore, strokeUse, rodLen, smCR, jFly);
+        shake.setup(&spec.engine, &geo, mm.mRec, mm.sc.r, mm.sc.lam);
         fric.setup(&spec.engine, vTotal, strokeUse, lay.rotary);
         work.setup(lay.n, cyl[0].vd, lay.cyc);
         wall.setup(bore, cyl[0].vd);
@@ -802,7 +818,7 @@ module Engine
         for (int c = 0; c < lay.n; ++c)
             cyl[c].hA = 260.0f * surf * (0.6f + crank.rpm / 2500.0f);
         // (spec.engine.wallHeat 1: Woschni's, each cylinder from where it stands: core/wallheat.fm)
-        if (spec.engine.wallHeat == 1 && lay.rotary == 0)
+        if ((spec.engine.wallHeat == 1 || spec.fuel.model != 0) && lay.rotary == 0)
         {
             const float sp = strokeUse * crank.omega * 0.31830989f;
             for (int c = 0; c < lay.n; ++c)
@@ -873,12 +889,13 @@ module Engine
             omMax = crank.omega;
             ripTh = crank.theta;
         }
+        if (physicalFriction())
+            oilK = fminf(expf(0.15f * logf(heat.viscK)), 3.0f);
         if (customUse != 0)
         {
             mm.j0 = jFly * (dynoOn != 0 ? 1.0f : 1.0f + 5.0f * set.load) + (float)mm.n * mm.mRot * mm.sc.r * mm.sc.r;
-            oilK = fminf(expf(0.15f * logf(heat.viscK)), 3.0f);
-            shake.update((crank.theta + geo.tdc[0]) * 0.01745329252f, crank.omega);
         }
+        shake.update((crank.theta + geo.tdc[0]) * 0.01745329252f, crank.omega);
         if (dynoOn == 0 && dyno.on != 0)
             dyno.stop();
     }
@@ -1082,7 +1099,7 @@ module Engine
         mech.torques(crank.rpm, crank.omega, strokeK, heat.viscK, fuelUse, smCR, vTotal, set.load, ecu.redRpm, heat.tAmb, ecu.starterOn,
                      cyl[0].vd);
         // (a custom engine's friction by part: core/friction.fm, on the last cycle's peak pressure)
-        const float tf = customUse != 0 ? fric.torque(&spec.engine, crank.omega, fmaxf(work.peakMax, 3.0e6f), oilK) : mech.tf;
+        const float tf = physicalFriction() ? fric.torque(&spec.engine, crank.omega, fmaxf(work.peakMax, 3.0e6f), oilK) : mech.tf;
         heat.fricJ += tf * crank.omega * dt;
         // (boost.model 1: the boost machinery's own step, and the torque it takes from the crank; card F)
         if (spec.boost.model != 0)
@@ -1561,7 +1578,7 @@ module Engine
         e->power = e->torque * crank.omega;
         e->imep = work.imepGross;
         e->pmep = work.pmep;
-        e->fmep = customUse != 0 ? fric.fmep : mech.tf * 12.566371f / fmaxf(vTotal, 1.0e-6f) / fmaxf(fminf(crank.omega / 5.0f, 1.0f), 1.0e-3f);
+        e->fmep = physicalFriction() ? fric.fmep : mech.tf * 12.566371f / fmaxf(vTotal, 1.0e-6f) / fmaxf(fminf(crank.omega / 5.0f, 1.0f), 1.0e-3f);
         e->bmep = work.bmep(e->torque);
         e->veManifold = work.veManifold;
         e->veAir = work.veAir;
@@ -1571,10 +1588,10 @@ module Engine
         e->dynoTorque = dyno.tqMean;
         e->dynoSpeed = dynoOn != 0 ? (float)dyno.ref : 0.0f;
         e->inertiaTorque = customUse != 0 ? mm.tqNow : 0.0f;
-        e->shake1 = customUse != 0 ? shake.force1 : 0.0f;
-        e->shake2 = customUse != 0 ? shake.force2 : 0.0f;
-        e->rock1 = customUse != 0 ? shake.moment1 : 0.0f;
-        e->rock2 = customUse != 0 ? shake.moment2 : 0.0f;
+        e->shake1 = shake.force1;
+        e->shake2 = shake.force2;
+        e->rock1 = shake.moment1;
+        e->rock2 = shake.moment2;
         e->cylinders = lay.n;
         e->layoutRefused = layoutRefused;
         e->oilTemperature = heat.tOil;

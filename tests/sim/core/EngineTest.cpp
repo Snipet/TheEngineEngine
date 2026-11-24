@@ -2,6 +2,7 @@
 // off is the reference, besides tests/sim/NullTest.cpp), 6 (the engine dyno), 7 (the default V8's mean effective
 // pressures and volumetric efficiency), 8 (a sixteen-cylinder build starts, runs and stops; its cost).
 #include "Engine.h"
+#include "tee/Program.h"
 #include "Presets.h"
 
 #include <algorithm>
@@ -266,4 +267,16 @@ TEST_CASE("X-007: a diverging model never hangs the call or reads out of bounds;
     CHECK(finite);
     CHECK(top < 20000.0);
     CHECK(std::isfinite(b.tel("engine.speed")));
+}
+
+TEST_CASE("the engine compiles and links at 48 kHz inside (TEE_ENGINE_RATE_48000, card C's prediction)", "[core][engine][rate]")
+{
+    tee::Program::Options options;
+    options.defines["TEE_ENGINE_RATE_48000"] = "1";
+    std::string errors;
+    auto p = tee::Program::fromDirectory(std::filesystem::path(TEE_SOURCE_DIR) / "sim", "engine.fm", options, errors);
+    INFO(errors);
+    REQUIRE(p != nullptr);
+    REQUIRE(p->link(errors));
+    CHECK(p->function<void(void*, float*, float*, int)>("Engine::process", errors) != nullptr);
 }
