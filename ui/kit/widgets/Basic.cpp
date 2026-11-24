@@ -699,4 +699,40 @@ namespace tee::ui
     }
 
     uint64_t Lamp::drawKey() const { return DrawKey{}.mix(on_ && on_()).h; }
+
+    // ---- Label -------------------------------------------------------------------------------------------------------
+    Label::Label(uint32_t id, std::function<std::string()> text, funkgui::TextStyle style, Ink ink, Align align,
+                 std::string caption)
+        : Widget(id), source_(std::move(text)), style_(style), ink_(ink), align_(align), caption_(std::move(caption))
+    {
+        text_ = source_ ? source_() : std::string();
+        title_ = caption_;
+    }
+
+    void Label::step(float) { text_ = source_ ? source_() : std::string(); }
+
+    void Label::draw(Canvas& c, const funkgui::Theme& th, bool) const
+    {
+        const Look l = Look::of(th);
+        const Col ink = ink_ == Ink::value ? l.value : ink_ == Ink::text ? l.text : ink_ == Ink::label ? l.label : l.accent;
+        const float x = align_ == Align::left ? bounds_.x : align_ == Align::right ? bounds_.right() : bounds_.centreX();
+        float cy = bounds_.centreY();
+        if (!caption_.empty())
+        {
+            c.text(upper(caption_).c_str(), x, bounds_.y + 1.0f, kWidgetLabel, l.label, align_);
+            cy = bounds_.y + 14.0f + (bounds_.h - 14.0f) * 0.5f;
+        }
+        const std::string s = fitText(c, text_, style_, bounds_.w);
+        c.text(s.c_str(), x, c.capCentreTop(cy, style_), style_, ink, align_);
+    }
+
+    void Label::accessibility(std::vector<funkgui::A11yItem>& out) const
+    {
+        funkgui::A11yItem it = a11yBase(id_, funkgui::A11yRole::staticText, bounds_, caption_.empty() ? text_ : caption_);
+        it.value = text_;
+        it.readOnly = true;
+        out.push_back(std::move(it));
+    }
+
+    uint64_t Label::drawKey() const { return DrawKey{}.mix(source_ ? source_() : std::string()).h; }
 }

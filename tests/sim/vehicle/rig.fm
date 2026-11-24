@@ -27,6 +27,7 @@ module Rig
     float fric1;
     bool running;
     bool honour;        // obeys the gearbox's cut and blip
+    bool bare;          // runs the engine alone (the bench's baseline)
     float idleInt;
     float tqEngine;     // what it gave last sample (less friction)
     // the controls
@@ -149,6 +150,13 @@ module Rig
             phase = (phase + 1) & 15;
             const float tq = torque();
             tqEngine = tq;
+            if (bare)
+            {
+                // (the bench's baseline: the rig without the vehicle)
+                w = fmaxf(w + tq / jE * dt, 0.0f);
+                t += (double)dt;
+                continue;
+            }
             w = car.step(w, tq, dt);
             if (running && w < 0.33f * idleW)
                 running = false;

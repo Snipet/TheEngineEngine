@@ -152,16 +152,18 @@ module Vehicle
     float kPedal;
     // the state
     float wt;           // the turbine
-    float wo;           // the output (the wheels' side)
+    // (the speeds of the output, the wheels and the car, and the distance, are doubles: at 96 kHz a sample's change of
+    // speed under a rolling resistance is near a float's resolution at 20 m/s, and a coast-down in floats loses it)
+    double wo;          // the output (the wheels' side)
     float twist;        // the shafts' wind-up, rad at the wheels
     bool open;          // their play open
-    float ww[VEH_WHEELS];
-    float v;            // the car (on a chassis dyno, at rest)
-    float x;            // its distance since the last reset or staging, m
-    float vr;           // the dyno's roller, m/s
+    double ww[VEH_WHEELS];
+    double v;           // the car (on a chassis dyno, at rest)
+    double x;            // its distance since the last reset or staging, m
+    double vr;          // the dyno's roller, m/s
     float aNow;         // the acceleration over the last 16 samples
     float aLag;         // and lagged by the pitch
-    float vPrev;
+    double vPrev;
     float fz[VEH_WHEELS];
     float frontLoad0;   // the front axle's load before the transfer, N
     bool wheelie;
@@ -455,12 +457,8 @@ module Vehicle
         if (g == gearSeen && !dirty)
             return;
         dirty = false;
-        if (gearSeen != g && gearSeen != -1.0f && box.kind != VEH_CVT)
-        {
-            // a new ratio: the shafts unwound (as the reference's regear)
-            twist = 0.0f;
-            open = false;
-        }
+        // (the shafts keep their wind-up through a shift: a dual clutch's and an automatic's hand the torque over
+        // without unloading them; the reference unwound them at each new ratio)
         gearSeen = g;
         // the propeller shaft and the final drive's crown wheel, at the wheels (judgement: 0.05 kg m^2 at the input
         // of a final drive), the gearbox's gears (the reference's 0.015 kg m^2 at its input) through the ratio, and a
@@ -653,15 +651,23 @@ module Vehicle
 
     // A coupling from the crank (or the turbine) to the output through ratio g, at efficiency eff whichever way the
     // power goes. Returns the torque at the crank's side (the output gets the efficiency's share of g times it).
-    float gearTorque(float wa, float ta, float ia, float g, float cap, float to, float dt)
+    // (vehCouple's law, with the efficiency in what the output gets; idt is 1 / dt)
+    float gearTorque(float wa, float ta, float ia, float g, float cap, float to, float idt)
     {
         if (g == 0.0f || cap <= 0.0f)
             return 0.0f;
-        const float tc = vehCouple(wa, wo, ta, to, ia, iO, g, cap, dt);
+        const float num = (float)(wa - g * wo) * idt + ta * ia - g * to * iO;
         // the power's direction decides which side loses the efficiency's share
-        const float f = tc * wa >= 0.0f ? g * eff : g / eff;
-        const float den = ia + g * f * iO;
-        const float t = ((wa - g * wo) / dt + ta * ia - g * to * iO) / den;
+        const float f = num * wa >= 0.0f ? g * eff : g / eff;
+        const float t = num / (ia + g * f * iO);
+        return fminf(fmaxf(t, -cap), cap);
+    }
+
+    // vehCouple between two wheels (or two axles) of equal inertia: invDen is the inertia over 2 (an axle's half
+    // inertia: the wheel's)
+    float wheelCouple(double wa, double wb, float ta, float tb, float ia, float invDen, float cap, float idt)
+    {
+        const float t = ((float)(wa - wb) * idt + (ta - tb) * ia) * invDen;
         return fminf(fmaxf(t, -cap), cap);
     }
 
@@ -672,6 +678,7 @@ module Vehicle
 
     float step(float w, float tq, float dt)
     {
+        const float idt = 1.0f / dt;
         const float gf = groundFront();
         const float gr = groundRear();
         // the tyres' forces, from their deflections as they stand
@@ -727,7 +734,7 @@ module Vehicle
                 to += fA * conv.tTurb;
                 if (capLock > 0.0f)
                 {
-                    tcL = gearTorque(w, te, iE, gA, capLock, to, dt);
+                    tcL = gearTorque(w, te, iE, gA, capLock, to, idt);
                     fL = gearFactor(tcL, w, gA);
                     te -= tcL;
                     to += fL * tcL;
@@ -742,14 +749,14 @@ module Vehicle
                 tt = conv.tTurb;
                 if (gA != 0.0f && capA > 0.0f)
                 {
-                    tcA = gearTorque(wt, tt, iT, gA, capA, to, dt);
+                    tcA = gearTorque(wt, tt, iT, gA, capA, to, idt);
                     fA = gearFactor(tcA, wt, gA);
                     tt -= tcA;
                     to += fA * tcA;
                 }
                 if (gB != 0.0f && capB > 0.0f)
                 {
-                    tcB = gearTorque(wt, tt, iT, gB, capB, to, dt);
+                    tcB = gearTorque(wt, tt, iT, gB, capB, to, idt);
                     fB = gearFactor(tcB, wt, gB);
                     tt -= tcB;
                     to += fB * tcB;
@@ -762,14 +769,14 @@ module Vehicle
         {
             if (gA != 0.0f && capA > 0.0f)
             {
-                tcA = gearTorque(w, te, iE, gA, capA, to, dt);
+                tcA = gearTorque(w, te, iE, gA, capA, to, idt);
                 fA = gearFactor(tcA, w, gA);
                 te -= tcA;
                 to += fA * tcA;
             }
             if (gB != 0.0f && capB > 0.0f)
             {
-                tcB = gearTorque(w, te, iE, gB, capB, to, dt);
+                tcB = gearTorque(w, te, iE, gB, capB, to, idt);
                 fB = gearFactor(tcB, w, gB);
                 te -= tcB;
                 to += fB * tcB;
@@ -787,7 +794,7 @@ module Vehicle
             const float wF = 0.5f * (ww[0] + ww[1]);
             const float wR = 0.5f * (ww[2] + ww[3]);
             const float cap = 0.5f * centre.capacity(wF - wR, ts);
-            tdC = vehCouple(wF, wR, tw[0] + tw[1], tw[2] + tw[3], 0.5f * iw, 0.5f * iw, 1.0f, cap, dt);
+            tdC = wheelCouple(wF, wR, tw[0] + tw[1], tw[2] + tw[3], 0.5f * iw, jw, cap, idt);
             tw[0] -= 0.5f * tdC;
             tw[1] -= 0.5f * tdC;
             tw[2] += 0.5f * tdC;
@@ -800,7 +807,7 @@ module Vehicle
         if (share[0] > 0.0f)
         {
             const float cap = 0.5f * front.capacity(ww[0] - ww[1], (share[0] + share[1]) * ts);
-            tdF = vehCouple(ww[0], ww[1], tw[0], tw[1], iw, iw, 1.0f, cap, dt);
+            tdF = wheelCouple(ww[0], ww[1], tw[0], tw[1], iw, 0.5f * jw, cap, idt);
             tw[0] -= tdF;
             tw[1] += tdF;
             tDrive[0] -= tdF;
@@ -809,7 +816,7 @@ module Vehicle
         if (share[2] > 0.0f)
         {
             const float cap = 0.5f * rear.capacity(ww[2] - ww[3], (share[2] + share[3]) * ts);
-            tdR = vehCouple(ww[2], ww[3], tw[2], tw[3], iw, iw, 1.0f, cap, dt);
+            tdR = wheelCouple(ww[2], ww[3], tw[2], tw[3], iw, 0.5f * jw, cap, idt);
             tw[2] -= tdR;
             tw[3] += tdR;
             tDrive[2] -= tdR;
@@ -819,7 +826,8 @@ module Vehicle
         float th[VEH_WHEELS];
         for (int i = 0; i < VEH_WHEELS; ++i)
         {
-            th[i] = vehCouple(ww[i], 0.0f, tw[i], 0.0f, iw, 0.0f, 0.0f, hold[i], dt);
+            // (vehCouple to the ground: what stops the wheel within the sample, up to what holds it)
+            th[i] = fminf(fmaxf((float)ww[i] * jw * idt + tw[i], -hold[i]), hold[i]);
             tw[i] -= th[i];
         }
         // every speed moves

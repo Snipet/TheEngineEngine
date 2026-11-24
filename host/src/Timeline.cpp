@@ -42,7 +42,9 @@ namespace tee
             error = where + "not JSON, or not an object";
             return false;
         }
-        if (root.value("format", std::string()) != "tee-scenario")
+        // "tee-scenario" (version 1), and K3a's "tee-engine-scenario/1", which is the same with "ctl" for "controls"
+        const std::string format = root.value("format", std::string());
+        if (format != "tee-scenario" && format != "tee-engine-scenario/1")
         {
             error = where + "its \"format\" is not \"tee-scenario\"";
             return false;
@@ -78,14 +80,15 @@ namespace tee
                 }
                 const double time = e["t"].get<double>();
                 const double ramp = e.value("ramp", 0.0);
-                if (e.contains("controls"))
+                const char* controlsKey = e.contains("ctl") ? "ctl" : "controls";
+                if (e.contains(controlsKey))
                 {
-                    if (!e["controls"].is_object())
+                    if (!e[controlsKey].is_object())
                     {
-                        error = at + "\"controls\" is an object of numbers";
+                        error = at + "\"ctl\" is an object of numbers";
                         return false;
                     }
-                    for (auto it = e["controls"].begin(); it != e["controls"].end(); ++it)
+                    for (auto it = e[controlsKey].begin(); it != e[controlsKey].end(); ++it)
                     {
                         SimControls probe;
                         if (!it.value().is_number() || !setControl(probe, it.key(), 0.0))

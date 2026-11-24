@@ -151,3 +151,40 @@ not here.
 **Notes.** What the reader cannot use is a line in `GuiPanel::notes()`, `panel.gui:12:5: note: ...`, and the
 rest of the file stands. `#pragma panel` lines in a program (the plugin's older way to lay out dials) are not
 read at all.
+
+## What J2 added
+
+*Card J, slice J2: Spec paths, generated pages and widget elements. The reader is still `GuiSpec.cpp`; what the
+elements bind to is `ui/kit/bind/Binding.h`. `tests/ui/BindTests.inc` uses each.*
+
+**A Spec path is a name.** `knob boost.level`, `menu engine.layout`, `switch ecu.pops "OFF" "ON"`: a dotted name
+(letters, digits and `_` between the dots) is read as one, as `shared->x` and `bands[2]` were. On a `FieldPage`
+(a `GuiPanel` bound to a document of Spec fields) the control's parameter is that field, in the user's units; a
+display or a widget of a telemetry value names it the same way (`gauge engine.speed`). A path longer than 31
+characters is cut (J1's `Control::name`).
+
+**`auto "boost"`** on a line of its own stands for the generated page of the section `boost`: a `section` a
+`ui::group` (in the order the fields come; a field with no group under the section's name), a wrapping row of
+controls in each (a knob for a number or an integer, a menu for a choice, a switch for a bool), then each table of
+the group (`curve`, `map`). A field marked `ui::hidden` is left out. The page is one line of `.gui` text, so the
+file's other lines keep their numbers in notes. A section the document does not have is a note.
+
+**Widgets** (`GuiKind::widget`), each `element NAME label="..." width= height=` (and `grow=`, `margin=`, `self=`):
+
+| Element | Names | Is | Cell when unsized |
+|---|---|---|---|
+| `map PATH` | a `Map16` field | `MapEdit`: a table and a heat map, cells typed or dragged, axes typed, the live cell lit | 560 x 300 |
+| `curve PATH` | a `Curve16` field | `CurveEdit`: points dragged on a plot | 320 x 200 |
+| `gauge NAME` | a telemetry value | `Gauge`: arc, ticks, numerals, needle, red band (the engine's speed: rpm, its redline) | 170 x 170 |
+| `plot NAME` | a telemetry value | `Plot` of its last ten seconds | 320 x 180 |
+| `bar NAME` | a telemetry value | `Bar`, in the value's usual range | 150 x 44 |
+| `lamp NAME` | a telemetry value | `Lamp`, lit above 0.5 | 64 x 44 |
+
+The reader keeps the element and the name; the panel's owner makes the item (`GuiPanel::Options::widget`; a
+`FieldPage` does it with `fieldWidget`). A name nothing answers makes nothing, and the cell stays empty. Widgets
+scroll with the interface and are clipped to it; a widget on a page not shown is hidden. A map's live cell is the
+engine's operating point, read from the telemetry its axes' quantities suggest (rotation: `engine.speed`; pressure:
+`engine.manifold`; fraction: `engine.throttle`), and none while `engine.state` is 0.
+
+**Longer labels.** A control's label may be 18 characters (was 14) and a menu's choice 16 (was 10): a Spec's
+labels and choices are a person's words ("Air temperature", "Supercharger").

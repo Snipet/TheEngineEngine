@@ -21,6 +21,7 @@
 #include "kit/gui/GuiSpec.h"
 #include "kit/gui/Ports.h"
 #include "kit/shaders/ShaderText.h"
+#include "app/AppFrame.h"
 #include "kit/bind/Binding.h"
 #include "kit/bind/Fields.h"
 #include "kit/bind/Units.h"
@@ -959,6 +960,8 @@ namespace
 
     // ---- J2 (card J, items 6 to 10) ----
 #include "WidgetTests.inc"
+#include "BindTests.inc"
+#include "AppTests.inc"
 
     int run(const std::string& name)
     {

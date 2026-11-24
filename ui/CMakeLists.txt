@@ -130,6 +130,19 @@ include("${TEE_UI_REPO}/cmake/TeeShaders.cmake")
 
 add_subdirectory(ref)
 
+# J2: the application's frame of screens (ui/app/), over a FieldDoc (ui/kit/bind/Fields.h).
+file(GLOB _tee_ui_app_sources CONFIGURE_DEPENDS "${TEE_UI_DIR}/app/*.cpp" "${TEE_UI_DIR}/app/*.h")
+add_library(tee_ui_app STATIC ${_tee_ui_app_sources})
+target_link_libraries(tee_ui_app PUBLIC tee_ui_kit)
+tee_ui_warnings(tee_ui_app)
+
+# J2: the binding to card C's tee::Build (ui/kit/bind/host/), where the host library is (the root's build).
+if(TARGET tee_host)
+  add_library(tee_ui_build STATIC "${TEE_UI_DIR}/kit/bind/host/BuildDoc.cpp" "${TEE_UI_DIR}/kit/bind/host/BuildDoc.h")
+  target_link_libraries(tee_ui_build PUBLIC tee_ui_app tee_host)
+  tee_ui_warnings(tee_ui_build)
+endif()
+
 # What the application links for its Panel (shell/include/tee/app/MainPanel.h: while no target tee_ui exists the shell
 # uses its placeholder).
 add_library(tee_ui INTERFACE)

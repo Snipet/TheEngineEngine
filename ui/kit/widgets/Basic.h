@@ -215,6 +215,35 @@ namespace tee::ui
         float target_ = 0.0f, shown01_ = 0.0f;
     };
 
+    // Text that something else says (a build's name, a state, a readout): text() each tick, in a style and an ink,
+    // cut with an ellipsis to its width. A caption (optional) over it in the labels' style.
+    class Label final : public Widget
+    {
+    public:
+        enum class Ink : std::uint8_t { value, text, label, accent };
+        Label(uint32_t id, std::function<std::string()> text, funkgui::TextStyle style = kWidgetText, Ink ink = Ink::value,
+              funkgui::Align align = funkgui::Align::left, std::string caption = {});
+        const std::string& shownText() const noexcept { return text_; }
+
+        void draw(funkgui::Canvas& c, const funkgui::Theme& th, bool focusRing) const override;
+        bool focusable() const override { return false; }
+        bool contains(funkgui::Point) const override { return false; }   // presses go through it
+        void accessibility(std::vector<funkgui::A11yItem>& out) const override;
+        bool a11yAction(uint32_t, funkgui::A11yAction, double, funkgui::GestureController&) override { return false; }
+        uint64_t drawKey() const override;
+
+    protected:
+        void step(float dt) override;
+        const char* kind() const override { return "label"; }
+
+    private:
+        std::function<std::string()> source_;
+        funkgui::TextStyle style_;
+        Ink ink_;
+        funkgui::Align align_;
+        std::string caption_, text_;
+    };
+
     // A light: on() lights it (in its colour; the accent when none is given), eased; its label beside it.
     class Lamp final : public Widget
     {

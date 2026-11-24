@@ -295,6 +295,34 @@ module ValveLab
         return auxOn != 0 ? main + tab[newest(VT_AUX)].at(a, cyc) : main;
     }
 
+    // The events cylinder c detects, as they are now (its tables, phased): degrees of its cycle
+    float evo(int c)
+    {
+        return tab[useEx[c]].openNow;
+    }
+
+    float evc(int c)
+    {
+        return vtWrap(tab[useEx[c]].openNow + tab[useEx[c]].span, cyc);
+    }
+
+    float ivo(int c)
+    {
+        return inTable(c)->openNow;
+    }
+
+    float ivc(int c)
+    {
+        AreaTable* t = inTable(c);
+        return vtWrap(t->openNow + t->span, cyc);
+    }
+
+    // 1: the lift is the load control, and the plate is to be left open
+    int plateOpen()
+    {
+        return liftOn != 0 && liftThr != 0 ? 1 : 0;
+    }
+
     // Combustion asks as the intake closes: does cylinder c fire this cycle?
     bool active(int c)
     {

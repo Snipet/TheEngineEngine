@@ -42,13 +42,42 @@ tee_pin(fminus
   VERSION 0.1.0-5b665d7
   LICENSE GPL-3.0-only)
 
-# FunkGui: the interface library. v0.27.0 for now, its JUCE-free core only; the pin moves to the release that has the
-# desktop host (docs/plan/w1-a-funkgui-desktop.md), and TEE_BUILD_APP turns on with it.
+# FunkGui: the interface library, at the commit of its branch claude/awesome-gates-ntdb58 that has the desktop host's
+# first stage (FunkGui::desktop: a Panel in an SDL3 window on bgfx, with no JUCE; docs/plan/w1-a-funkgui-desktop.md).
+# The pin moves to the tag v0.28.0 when that release is made.
 tee_pin(funkgui
   REPOSITORY "https://github.com/Snipet/FunkGui.git"
-  COMMIT b7bc1cd30be28f09a97fe1bff9fd6b66b5709bad      # v0.27.0
-  VERSION 0.27.0
+  COMMIT 9ef9590cd4f97c23e3d84c3d623174b7338b968a      # claude/awesome-gates-ntdb58, 2026-11-24: desktop stage 1
+  VERSION 0.28.0-9ef9590
   LICENSE GPL-3.0-only)
+
+# bgfx, under FunkGui's GPU layer (TEE_BUILD_APP only): bgfx.cmake and the three repositories it holds as submodules,
+# each cloned at the commit FunkGui pins (its cmake/FunkGuiDeps.cmake: FUNKGUI_BGFX_SHA and FUNKGUI_BGFX_SUB_SHAS),
+# the three inside the first's directory, where bgfx.cmake looks for them (shell/cmake/TeeGpu.cmake). The version is
+# bgfx.cmake's tag, which also names the prebuilt shader compiler's folder: tools/shaderc-<version>.
+tee_pin(bgfx_cmake
+  REPOSITORY "https://github.com/bkaradzic/bgfx.cmake.git"
+  COMMIT 99752df38e40179cf998bb880fe4c16c0b3d60ca      # v1.153.9385-561
+  VERSION v1.153.9385-561
+  LICENSE CC0-1.0)
+tee_pin(bgfx
+  REPOSITORY "https://github.com/bkaradzic/bgfx.git"
+  COMMIT c7684e20da1e385edc439ef39cdb42b8c661016f
+  VERSION 1.153.9385
+  LICENSE BSD-2-Clause
+  SOURCE_NAME bgfx_cmake-v1.153.9385-561/bgfx)
+tee_pin(bx
+  REPOSITORY "https://github.com/bkaradzic/bx.git"
+  COMMIT 0b001f5f36579e8aea07efa5af139ca18dad9505
+  VERSION 1.153.9385
+  LICENSE BSD-2-Clause
+  SOURCE_NAME bgfx_cmake-v1.153.9385-561/bx)
+tee_pin(bimg
+  REPOSITORY "https://github.com/bkaradzic/bimg.git"
+  COMMIT 3b4baab0128ac499c5c3bc37202781bf54084049
+  VERSION 1.153.9385
+  LICENSE BSD-2-Clause
+  SOURCE_NAME bgfx_cmake-v1.153.9385-561/bimg)
 
 # Catch2 v3: the tests (tests/).
 tee_pin(catch2

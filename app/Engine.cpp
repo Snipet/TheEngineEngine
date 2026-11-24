@@ -7,8 +7,10 @@
 
 #include "tee/Scenario.h"
 
+#include <cstdint>
 #include <cstdlib>
 #include <system_error>
+#include <vector>
 
 #if defined(_WIN32)
  #ifndef WIN32_LEAN_AND_MEAN
@@ -70,8 +72,10 @@ namespace tee::app
         // Beside the executable, or in a macOS bundle's Resources.
         std::vector<fs::path> beside(const char* folder)
         {
+            // (the third: tee-headless beside the application's bundle, as the macOS artefact has it)
             const fs::path exe = executableDir();
-            return { exe / folder, exe.parent_path() / "Resources" / folder };
+            return { exe / folder, exe.parent_path() / "Resources" / folder,
+                     exe / "TheEngineEngine.app" / "Contents" / "Resources" / folder };
         }
     }
 

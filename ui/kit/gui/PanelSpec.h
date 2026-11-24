@@ -58,8 +58,8 @@
 namespace tee::ui
 {
     inline constexpr std::size_t kMaxSectionTitle = 24;   // characters; longer ones are cut
-    inline constexpr std::size_t kMaxDialLabel = 14;
-    inline constexpr std::size_t kMaxOptionLabel = 10;
+    inline constexpr std::size_t kMaxDialLabel = 18;          // J2: was 14 (a Spec field's label: "Air temperature")
+    inline constexpr std::size_t kMaxOptionLabel = 16;        // J2: was 10 (a Spec choice: "Supercharger")
     inline constexpr int kMaxDisplays = 32;               // displays (and so field taps) a program may have: the
                                                           // Panel's masks hold a bit each (32 at most)
     inline constexpr int kMaxShaderInputs = 16;           // a shader's inputs: FunkGui's u_params, 4 vec4s

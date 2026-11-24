@@ -26,6 +26,7 @@ namespace tee::app
         int block = 256;                // --block N: the block size of a render with no device
         int buffer = 256;               // --buffer N: the buffer asked of the audio device, in frames
         int theme = 0;                  // --theme 0|1
+        bool themeGiven = false;        // the window follows the saved preference without it
         double dpi = 1.0;               // --dpi X: a headless picture's pixels a logical px
         std::string panel;              // --panel plain: the shell's own plain Panel, not the interface package's
         bool noAudio = false;           // --no-audio: the window with no device (nothing plays)
