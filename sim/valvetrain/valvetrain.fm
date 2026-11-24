@@ -56,4 +56,29 @@ module Valvetrain
             cy->burnDur = 50.0f;
         }
     }
+
+    // ---- the integrator's hooks (sim/README.md): called only with valve.model 1; card E fills them. Until then they
+    // give the reference's own areas and do nothing ----
+    // cylinder c's exhaust and intake valves' effective areas (m^2) at its angle a
+    float areaEx(Cylinder* cy, int c, float a)
+    {
+        const float le = cy->areaAt(a, cy->evo, cy->edur);
+        return le > 0.0f ? cy->aE * le : 0.0f;
+    }
+
+    float areaIn(Cylinder* cy, int c, float a)
+    {
+        const float li = cy->areaAt(a, cy->ivo, cy->idur);
+        return li > 0.0f ? cy->aI * li : 0.0f;
+    }
+
+    // the oil's pressure (Pa over the air) and temperature (K), every 16 samples
+    void oil(float pressure, float temperature)
+    {
+    }
+
+    // every 16 samples: the ECU's cam target (crank degrees; -1 the valvetrain's own schedule) and lift command
+    void control16(float d16, float camTarget, float lift)
+    {
+    }
 };

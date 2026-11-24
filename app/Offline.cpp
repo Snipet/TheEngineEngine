@@ -17,6 +17,7 @@
 #include "files/BuildFiles.h"
 #if defined(TEE_HAS_UI_FRAME)
  #include "FrameSources.h"
+ #include "GarageLibrary.h"
  #include "app/AppFrame.h"
  #include "app/host/HostSources.h"     // U1's: the Scope and the dyno over card C's host
                   // the interface package's (ui/): the frame, its document over a tee::Build
@@ -134,7 +135,8 @@ namespace tee::app
             {
                 Kept(player::SimAdapter& sim, std::filesystem::path shipped)
                     : doc(sim.build()), scope(sim.host()), dyno(sim.host().sim(), sim.build()), file(sim.build()),
-                      library(std::move(shipped), Presets::userDirectory())
+                      library(shipped, Presets::userDirectory()),
+                      garage(file, sim.host().sim(), std::move(shipped), Presets::userDirectory())
                 {
                 }
                 ui::BuildDoc doc;
@@ -143,6 +145,7 @@ namespace tee::app
                 ui::ServiceDyno dyno;
                 files::BuildFile file;
                 files::BuildLibrary library;
+                GarageLibrary garage;             // GARAGE's (U5's Library), over `file`: after it, so destroyed first
             };
             const auto kept = std::make_shared<Kept>(*engine.sim, content.empty() ? content : content / "builds");
             // (the build as the engine was made, a --preset applied, is the clean one: untitled, so a save asks where)
@@ -162,6 +165,7 @@ namespace tee::app
             addFileServices(frameServices, kept->file, kept->library);
             std::unique_ptr<ui::AppFrame> frame =
                 ui::makeAppFrame(kept->doc, kept->units, player, std::move(frameServices), &kept->dyno, &kept->scope);
+            frame->setLibrary(&kept->garage);
             shown.waitForDyno = [kept](double seconds, std::string& error) {
                 const bool got = waitForCurve(kept->dyno, seconds);
                 error = kept->dyno.error();

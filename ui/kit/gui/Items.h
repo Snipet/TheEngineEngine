@@ -150,6 +150,15 @@ namespace tee::ui
 
     inline constexpr funkgui::TextStyle kStatusStyle{ 10.0f, 1.4f, 0.03f, false };
 
+    // U1: whether a dial's value at its default is drawn dim (the seed's look, FunkGui's Dial's) or in the value's ink
+    // like any other (the application's inspector: a value is what a person reads). A GuiPanel sets it for the length
+    // of its draw() from GuiPanel::Options::dimAtDefault; UI thread only.
+    inline bool& dimAtDefault() noexcept
+    {
+        static bool dim = true;
+        return dim;
+    }
+
     // `utf8` as the panel's font draws it: printable ASCII, the common typographic characters as ASCII ("--", "...",
     // "->"), the rest '?' (Items.cpp).
     std::string asciiText(std::string_view utf8);
