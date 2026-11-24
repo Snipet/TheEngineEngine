@@ -92,13 +92,13 @@ TEST_CASE("custom off: a build's custom fields filled in change nothing, to the 
     CHECK(differ == 0);
 }
 
-TEST_CASE("the engine dyno holds a set speed within 10 rpm at full throttle; its torque is the brake torque", "[core][engine][dyno]")
+static void dynoHolds(const std::vector<const char*>& builds, const std::vector<double>& rpms)
 {
-    for (const char* build : {"v8", "engines/ref-12-v8-cross", "engines/ref-10-inline-6"})
+    for (const char* build : builds)
     {
         Bench b(build);
         b.start();
-        for (double rpm : {2000.0, 4000.0, 5500.0})
+        for (double rpm : rpms)
         {
             const Point p = dynoAt(b, rpm);
             std::printf("%-24s dyno %4.0f rpm full throttle: held %.2f rpm, absorber %.1f N m, gas less friction %.1f N m\n", build, rpm,
@@ -108,6 +108,16 @@ TEST_CASE("the engine dyno holds a set speed within 10 rpm at full throttle; its
             CHECK(std::abs(b.tel("engine.torque") - b.tel("engine.dynoTorque")) < 1e-3);
         }
     }
+}
+
+TEST_CASE("the engine dyno holds a set speed within 10 rpm at full throttle; its torque is the brake torque", "[core][engine][dyno]")
+{
+    dynoHolds({"v8"}, {2000.0, 5500.0});
+}
+
+TEST_CASE("the engine dyno holds a set speed on three builds at three speeds (the full form)", "[core][engine][dyno][nightly]")
+{
+    dynoHolds({"v8", "engines/ref-12-v8-cross", "engines/ref-10-inline-6"}, {2000.0, 4000.0, 5500.0});
 }
 
 TEST_CASE("the engine dyno sweeps at its rate", "[core][engine][dyno]")
@@ -137,16 +147,16 @@ TEST_CASE("the engine dyno sweeps at its rate", "[core][engine][dyno]")
     CHECK(worst < 75.0);
 }
 
-TEST_CASE("the default V8 at full throttle: BMEP 10 to 13 bar in its mid-range, FMEP 0.8 to 2.5 bar, VE 0.75 to 1.05", "[core][engine][mep]")
+static void meps(const std::vector<const char*>& builds, const std::vector<double>& rpms)
 {
-    for (const char* build : {"default", "engines/ref-12-v8-cross"})
+    for (const char* build : builds)
     {
         Bench b(build);
         b.start();
         b.warm();
         const double red = b.tel("engine.redline") * kRpm;
         std::printf("%s (redline %.0f rpm), warm, full throttle on the dyno:\n", build, red);
-        for (double rpm : {800.0, 1500.0, 2500.0, 3500.0, 4500.0, 5500.0, 6400.0})
+        for (double rpm : rpms)
         {
             b.warm();
             const Point p = dynoAt(b, rpm);
@@ -163,6 +173,16 @@ TEST_CASE("the default V8 at full throttle: BMEP 10 to 13 bar in its mid-range, 
             }
         }
     }
+}
+
+TEST_CASE("the default V8 at full throttle: BMEP 10 to 13 bar in its mid-range, FMEP 0.8 to 2.5 bar, VE 0.75 to 1.05", "[core][engine][mep]")
+{
+    meps({"default"}, {1500.0, 3500.0, 6400.0});
+}
+
+TEST_CASE("the MEPs of two V8s across their range (the full form)", "[core][engine][mep][nightly]")
+{
+    meps({"default", "engines/ref-12-v8-cross"}, {800.0, 1500.0, 2500.0, 3500.0, 4500.0, 5500.0, 6400.0});
 }
 
 TEST_CASE("a sixteen-cylinder build starts, runs and stops; its cost", "[core][engine][v16]")
@@ -407,13 +427,12 @@ TEST_CASE("boost.model 1 implies the builder's exhaust, at a build and when swit
     CHECK(std::isfinite(b.tel("engine.speed")));
 }
 
-TEST_CASE("the books hold, and the engine makes torque, on diesels and a boosted petrol engine", "[core][engine][backflow]")
+static void booksOn(const std::vector<const char*>& builds)
 {
     // (the lead's ask, 24 Nov: the backflow test ran green while every diesel archetype was dead on the dyno; each of
     // these must make torque at full load, and its throttle's (or intake's) air, its intake valves' and its exhaust
     // valves' mass agree within 1 %)
-    for (const char* build : {"archetypes/tractor-15-inline-six", "archetypes/diesel-20-common-rail",
-                              "archetypes/pickup-diesel-67-inline-six", "archetypes/turbo-four-20-gdi"})
+    for (const char* build : builds)
     {
         Bench b(build);
         std::string e;
@@ -448,4 +467,15 @@ TEST_CASE("a refused custom layout says why (tel.engine.layoutReason)", "[core][
     b.start();
     CHECK(b.tel("engine.layoutRefused") == 1.0);
     CHECK(b.tel("engine.layoutReason") == 1.0);
+}
+
+TEST_CASE("the books hold, and the engine makes torque, on a diesel and a boosted petrol engine", "[core][engine][backflow]")
+{
+    booksOn({"archetypes/tractor-15-inline-six", "archetypes/turbo-four-20-gdi"});
+}
+
+TEST_CASE("the books hold, and the engine makes torque, on every diesel archetype (the full form)", "[core][engine][backflow][nightly]")
+{
+    booksOn({"archetypes/tractor-15-inline-six", "archetypes/diesel-20-common-rail", "archetypes/pickup-diesel-67-inline-six",
+             "archetypes/turbo-four-20-gdi"});
 }

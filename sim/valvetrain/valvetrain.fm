@@ -87,6 +87,28 @@ module Valvetrain
                 cy->idur = 285.0f + 60.0f * c;
                 cy->aE = 0.0016f * (vTotal / 0.0013f);
                 cy->aI = 0.0020f * (vTotal / 0.0013f);
+                // (card N1, acting for E: with the lab (valve.model 1), a rotary whose intake or exhaust is set to free
+                // actuation takes that port's opening and closing from the free valve's angles, read as four-stroke
+                // equivalents: each of a rotary face's strokes is 270 degrees of the eccentric shaft against a piston's
+                // 180, so the angle here is 1.5 times the field's (the face's intake top dead centre at 360 is 540 here,
+                // its bottom at 540 is 810). The reference's peripheral exhaust port closes some 50 degrees (eccentric)
+                // after the top and overlaps the intake; a side exhaust port, as Mazda's RENESIS has, closes near the top
+                // with almost no overlap: that is a port's geometry on the side plate, which the dial cannot express)
+                if (haveSpec != 0 && spec->model == 1)
+                {
+                    if (spec->inKind == 1)
+                    {
+                        cy->ivo = 1.5f * spec->freeInOpen;
+                        float d = 1.5f * (spec->freeInClose - spec->freeInOpen);
+                        cy->idur = d > 0.0f ? d : d + cyc;
+                    }
+                    if (spec->exKind == 1)
+                    {
+                        cy->evo = 1.5f * spec->freeExOpen;
+                        float d = 1.5f * (spec->freeExClose - spec->freeExOpen);
+                        cy->edur = d > 0.0f ? d : d + cyc;
+                    }
+                }
             }
             else
             {
