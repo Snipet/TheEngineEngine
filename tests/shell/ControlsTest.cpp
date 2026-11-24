@@ -377,3 +377,26 @@ TEST_CASE("shell: the start key does nothing while the engine is not ready (its 
     d.set(Source::keyboard, Action::start, false);
     CHECK(run(d, 0.1).ignition == 2);
 }
+
+TEST_CASE("shell: a truck's switches latch: Z the splitter, X the range, J the engine brake (ctl.buttons)", "[shell][input]")
+{
+    Driver d;
+    CHECK(run(d, 0.05).buttons == 0);
+    d.set(Source::keyboard, Action::splitter, true);
+    d.set(Source::keyboard, Action::splitter, false);
+    CHECK(run(d, 0.05).buttons == kButtonSplitter);
+    d.set(Source::keyboard, Action::engineBrake, true);
+    CHECK(run(d, 0.5).buttons == (kButtonSplitter | kButtonEngineBrake));   // held: still one press
+    d.set(Source::keyboard, Action::engineBrake, false);
+    d.set(Source::keyboard, Action::range, true);
+    d.set(Source::keyboard, Action::range, false);
+    CHECK(run(d, 0.05).buttons == (kButtonSplitter | kButtonEngineBrake | kButtonRange));
+    d.set(Source::keyboard, Action::splitter, true);                    // pressed again: off
+    d.set(Source::keyboard, Action::splitter, false);
+    CHECK(run(d, 0.05).buttons == (kButtonEngineBrake | kButtonRange));
+    // the default keys
+    CHECK(actionOf(defaultBindings(), key::kZ) == Action::splitter);
+    CHECK(actionOf(defaultBindings(), key::kX) == Action::range);
+    CHECK(actionOf(defaultBindings(), key::kJ) == Action::engineBrake);
+    CHECK(actionFromName("enginebrake") == Action::engineBrake);
+}
