@@ -34,7 +34,10 @@ behind its switch, model 0 staying the reference bit for bit; the lead settles a
 | H gives | F | `Ecu::boostTarget()` (Pa over ambient), `antiLag()`, `nitrous()` | the gate's or vanes' loop is F's, toward H's target |
 | H | Exhaust (G) | `pop(int bank, float amplitude)` (Pa), `gasTemperature(int bank)` (K) | bangs by account |
 | H | Car (I) | `drivenSlip()`, `speed()` (m/s), `gear()`, `upshifts()`, `cutRequest()` (s), `blipRequest()` (plate 0 to 1) | I named them `slip()`, `speedNow()`, `gearNow()`, `cutWanted()`, `blipSpeed()` (crank rad/s): **the integrator picks one set** |
-| F | Exhaust (G) | each feeding pipe end's arriving wave, impedance and gas temperature; G solves its ends against the housing's pressure F returns; F gives the downpipe's flow and temperature, and an external gate's flow | to be written by F and G into `sim/README.md` |
+| F gives | Exhaust (G) | `int Boost::housingOf(int bank, int group, int banks)` (which housing a collector ends in; -1 none); `float Boost::housing(int h, float drive, float admit, float tGas)` (drive = sum of 2a/z, admit = sum of 1/z over the feeding ends; returns the housing's pressure over outside; G writes b = p - a); `float Boost::downpipe(int side, float a, float z)` (the end's pressure; what went in is `dpMass[side]`, `dpTemp[side]`); `float Boost::gatePipe(int t, float a, float z)` (an external gate's own pipe; `gateMass[t]`, `gateTemp[t]`) | F's proposal (docs/handoffs/f-boost.md); G to accept or counter in `sim/README.md` |
+| F gives | Intake (E) | `Boost::pressure()`, `temperature()` in place of `pBox` and `tAir`; `draw(m)`, then `tick(omegaCrank, pPlenum)` each sample; `control(d16)` every 16 | |
+| F gives | Combustion (H), Mechanics (D) | `oxygen()` (H asked for `oxygenShare()`: one name, the integrator's choice); `crankTorque` | |
+| F | Ecu (H) | `cmdTarget`, `cmdVanes`, `cmdAntiLag`, `cmdNitrous`, `cmdPurge`; the gate's PI loop is F's | H gives `boostTarget()`, `antiLag()`, `nitrous()`: the integrator maps them |
 | D | Crank (K3's) | with `engine.custom` on, the crank is stepped by `MovingMasses::advance` (energy-exact with a varying inertia); off, the reference's step | |
 
 ## Tidying, at each package's integration
@@ -52,6 +55,8 @@ fixes its own when it next touches its tests, and deletes its hook.
 - The reference's `car.fm` keeps the car's speed in a `float`: at 96 kHz small forces (rolling resistance in a
   coast-down) fall below its resolution. The new vehicle model uses `double` for speeds, distance and tyre
   deflection. The reference stays as it is behind `car.model = 0`.
+- Every orifice between two volumes in `sim/boost/` is solved implicitly (`boostOrificeStep`) and volumes keep their
+  mass in `double`; F suggests the intake's throttle be solved the same way when E integrates.
 - FMinus has no `atanf` and a program may declare no external function: a package that needs one writes it
   (`sim/vehicle/` has `vehAtan`, a polynomial good to 2e-6 rad). Candidates for a shared `sim/core/mathx.fm` at
   integration, so there is one copy.
