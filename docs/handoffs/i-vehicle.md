@@ -151,3 +151,5 @@ the target slip on the more-slipping wheel of an open diff (V12: right 0.10, lef
 control would). The rotary's quarter is now set by P's shift times (placed for the old launch: it sits 0.9 s on the
 limiter, then three shifts in 1.5 s) and by its clutch (1.35 x the engine's own estimate of its peak) slipping after the
 launch: P should re-place the shifts and set car.clutchTorque.
+
+**Note from card D (24 Nov, e0bcf8f, accepted by the lead for card I)**: `ecu.redRpm` under ecu.model 1 is a stated limiter's speed when the build gives one (the idle + 1500 floor only without); two readers here follow it: the launch's fallback, 60 % of the redline (vehicle.fm, `wLaunch`), and the automatic final drive, 0.6 x the redline (car.fm, `finalDrive`). Whoever touches the redline moves both.

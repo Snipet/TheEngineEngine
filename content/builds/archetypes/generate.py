@@ -30,13 +30,16 @@ def geometry(preset):
 # ---- the cars, by class ----------------------------------------------------------------------------------------
 # mass kg (with a driver), drive, wheelbase m, cg height m, front weight share, track m, drag area m^2, tyre,
 # rolling radius m, gearbox, ratios, final drive. Classes' figures: typical published kerb weights, drag areas
-# (Cd x A) and gearing of production cars of each kind (from memory; firm to some 10 %).
+# (Cd x A) and gearing of production cars of each kind (from memory; firm to some 10 %). launch: the car has launch
+# control (every dual clutch and the rally car's sequential: their makers fit it), as ecu.launch.on at its default speed.
+# The front-mid GT's rear differential is limited-slip, as the class's cars have it (an electronic one; here a 100 N m
+# preload and a torque bias of 0.5: judgement, the lead's question of 19:36).
 CARS = {
     "sports-sedan": dict(mass=1700, drive="Rear", wheelbase=2.85, cgHeight=0.52, frontWeight=0.52, track=1.58, cdA=0.66,
-                         tyre="Sport", tyreRadius=0.335, gearbox="Dual clutch",
+                         tyre="Sport", tyreRadius=0.335, gearbox="Dual clutch", launch=True,
                          ratio=[4.81, 2.59, 1.70, 1.28, 1.00, 0.84, 0.67], finalDrive=3.15, wheelInertia=1.4),
     "mid-engine": dict(mass=1550, drive="Rear", wheelbase=2.65, cgHeight=0.45, frontWeight=0.42, track=1.65, cdA=0.62,
-                       tyre="Semi-slick", tyreRadius=0.345, gearbox="Dual clutch",
+                       tyre="Semi-slick", tyreRadius=0.345, gearbox="Dual clutch", launch=True,
                        ratio=[3.08, 2.19, 1.63, 1.29, 1.03, 0.84, 0.69], finalDrive=4.44, wheelInertia=1.5),
     "rear-engine-classic": dict(mass=1450, drive="Rear", wheelbase=2.27, cgHeight=0.48, frontWeight=0.40, track=1.40,
                                 cdA=0.62, tyre="Street", tyreRadius=0.31, gearbox="Manual",
@@ -57,14 +60,15 @@ CARS = {
                         tyre="Sport", tyreRadius=0.35, gearbox="Manual", ratio=[2.66, 1.78, 1.30, 1.00, 0.74, 0.50],
                         finalDrive=3.73, wheelInertia=1.6),
     "awd-supercar": dict(mass=1650, drive="All", wheelbase=2.65, cgHeight=0.46, frontWeight=0.42, track=1.64, cdA=0.65,
-                         tyre="Semi-slick", tyreRadius=0.345, gearbox="Dual clutch",
+                         tyre="Semi-slick", tyreRadius=0.345, gearbox="Dual clutch", launch=True,
                          ratio=[3.13, 2.59, 1.96, 1.55, 1.24, 1.00, 0.85], finalDrive=4.0, centreSplit=0.3,
                          wheelInertia=1.5),
     "front-mid-gt": dict(mass=1750, drive="Rear", wheelbase=2.72, cgHeight=0.47, frontWeight=0.47, track=1.66, cdA=0.68,
-                         tyre="Semi-slick", tyreRadius=0.35, gearbox="Dual clutch",
-                         ratio=[3.08, 2.19, 1.63, 1.29, 1.03, 0.84, 0.69], finalDrive=4.8, wheelInertia=1.6),
+                         tyre="Semi-slick", tyreRadius=0.35, gearbox="Dual clutch", launch=True,
+                         ratio=[3.08, 2.19, 1.63, 1.29, 1.03, 0.84, 0.69], finalDrive=4.8, wheelInertia=1.6,
+                         rearPreload=100.0, rearKTorque=0.5),
     "rally-awd": dict(mass=1300, drive="All", wheelbase=2.52, cgHeight=0.50, frontWeight=0.58, track=1.50, cdA=0.75,
-                      tyre="Semi-slick", tyreRadius=0.32, gearbox="Sequential",
+                      tyre="Semi-slick", tyreRadius=0.32, gearbox="Sequential", launch=True,
                       ratio=[2.92, 2.12, 1.67, 1.36, 1.13, 0.96], finalDrive=4.11, centreSplit=0.5, wheelInertia=1.2),
     "awd-sedan-turbo": dict(mass=1550, drive="All", wheelbase=2.63, cgHeight=0.52, frontWeight=0.58, track=1.53,
                             cdA=0.72, tyre="Sport", tyreRadius=0.325, gearbox="Manual",
@@ -89,7 +93,7 @@ CARS = {
     "compact-cvt": dict(mass=1250, drive="Front", wheelbase=2.60, cgHeight=0.54, frontWeight=0.62, track=1.52, cdA=0.64,
                         tyre="Economy", tyreRadius=0.31, gearbox="CVT", ratio=[2.5], finalDrive=4.4, wheelInertia=0.9),
     "hot-hatch-dct": dict(mass=1450, drive="Front", wheelbase=2.63, cgHeight=0.53, frontWeight=0.62, track=1.54,
-                          cdA=0.68, tyre="Sport", tyreRadius=0.32, gearbox="Dual clutch",
+                          cdA=0.68, tyre="Sport", tyreRadius=0.32, gearbox="Dual clutch", launch=True,
                           ratio=[3.56, 2.53, 1.68, 1.02, 0.79, 0.64], finalDrive=3.65, wheelInertia=1.1),
     "family-sedan-auto": dict(mass=1650, drive="Front", wheelbase=2.78, cgHeight=0.55, frontWeight=0.62, track=1.58,
                               cdA=0.68, tyre="Street", tyreRadius=0.33, gearbox="Automatic",
@@ -125,6 +129,7 @@ CARS = {
 
 def car_section(name):
     c = dict(CARS[name])
+    c.pop("launch", None)
     out = {"model": "Vehicle", "kind": c.pop("kind", "Car")}
     ratios = c.pop("ratio")
     out.update(c)
@@ -190,7 +195,7 @@ arch(slug="rotary-twin-13", name="Rotary twin", geo="ref-16-rotary-2", layout="R
      notes="A twin-rotor Wankel, 2 x 654 cc, 9.0:1, with two sequential turbos (the 13B-REW kind: 206 to 280 PS, "
            "the latter at 6500 rpm, some 294 N m at 5000; Wikipedia, makers' figures, firm to 10 %). In a light "
            "rear-drive coupe.")
-arch(slug="rotary-twin-na-side-port", rotaryCam=0.15, rotaryPorts=(146.7, 362.0, 362.0, 583.3), name="Rotary twin, side ports", geo="ref-16-rotary-2", layout="Rotary",
+arch(slug="rotary-twin-na-side-port", clutchTorque=350.0, rotaryCam=0.15, rotaryPorts=(146.7, 362.0, 362.0, 583.3), name="Rotary twin, side ports", geo="ref-16-rotary-2", layout="Rotary",
      displacement=0.001308, cr=10.0, redline=9000, idle=800,
      intake=dict(runnerLength=0.45, runnerLength2=0.30, runnerSwitch=5500 * RPM),
      exhaust={"converter": [2, 2], "mufKind": [1, 1]}, grade="Premium (91)", car="light-coupe-rotary", timing="Gears",
@@ -597,6 +602,8 @@ def build(a):
     if a.get("antiLag"):
         t["antiLag.on"] = True
         t["launch.on"] = True
+    if CARS[a["car"]].get("launch"):
+        t["launch.on"] = True
     if "boost" in a:
         t["knock.on"] = True
     if "boostTaper" in a:
@@ -623,6 +630,10 @@ def build(a):
     # converter's law T = (w / K)^2)
     if "convK" in a:
         car["converterK"] = a["convK"]
+    # a clutch sized on the engine's measured peak with a margin, where the car's own estimate (1.35 x the engine's
+    # estimated peak) slips under the real torque (the lead, 19:36: the NA rotary's after its launch)
+    if "clutchTorque" in a:
+        car["clutchTorque"] = a["clutchTorque"]
     spec = {"engine": e, "valve": v, "intake": i, "boost": bo, "exhaust": x, "fuel": f, "ecu": nest(t),
             "car": car, "env": {"temperature": 288.15, "pressure": 101325.0}, "voices": vo}
     return {"format": "tee-build", "version": 1, "name": a["name"], "notes": a["notes"], "spec": spec}

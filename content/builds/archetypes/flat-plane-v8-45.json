@@ -125,6 +125,9 @@
       },
       "idle": {
         "speed": 104.72
+      },
+      "launch": {
+        "on": true
       }
     },
     "car": {
