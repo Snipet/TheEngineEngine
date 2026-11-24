@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <cstring>
+#include <cmath>
 #include <fstream>
 
 namespace tee
@@ -84,6 +85,62 @@ namespace tee
         if (!out)
         {
             error = file.generic_string() + ": could not be written whole";
+            return false;
+        }
+        return true;
+    }
+
+    bool writeWav24(const std::filesystem::path& file, const Audio& audio, std::string& error)
+    {
+        if (audio.left.size() != audio.right.size())
+        {
+            error = file.generic_string() + ": the two channels differ in length";
+            return false;
+        }
+        const std::uint64_t dataBytes = static_cast<std::uint64_t>(audio.left.size()) * 6u;
+        if (dataBytes > 0xFFFFFF00u)
+        {
+            error = file.generic_string() + ": too long for a WAV file (4 GB)";
+            return false;
+        }
+        std::string head;
+        head += "RIFF";
+        put32(head, static_cast<std::uint32_t>(4 + 8 + 16 + 8 + dataBytes));
+        head += "WAVEfmt ";
+        put32(head, 16);
+        put16(head, 1);                                                   // integer PCM
+        put16(head, 2);
+        put32(head, static_cast<std::uint32_t>(audio.sampleRate + 0.5));
+        put32(head, static_cast<std::uint32_t>(audio.sampleRate + 0.5) * 6u);
+        put16(head, 6);
+        put16(head, 24);
+        head += "data";
+        put32(head, static_cast<std::uint32_t>(dataBytes));
+        std::string body;
+        body.reserve(static_cast<std::size_t>(dataBytes));
+        const auto put24 = [&](float v) {
+            const double c = std::isfinite(v) ? std::fmax(-1.0, std::fmin(1.0, static_cast<double>(v))) : 0.0;
+            const std::int32_t q = static_cast<std::int32_t>(std::lround(c * 8388607.0));
+            const std::uint32_t u = static_cast<std::uint32_t>(q);
+            body += static_cast<char>(u & 0xffu);
+            body += static_cast<char>((u >> 8) & 0xffu);
+            body += static_cast<char>((u >> 16) & 0xffu);
+        };
+        for (std::size_t i = 0; i < audio.left.size(); ++i)
+        {
+            put24(audio.left[i]);
+            put24(audio.right[i]);
+        }
+        std::error_code ec;
+        if (file.has_parent_path())
+            std::filesystem::create_directories(file.parent_path(), ec);
+        std::ofstream out(file, std::ios::binary | std::ios::trunc);
+        out.write(head.data(), static_cast<std::streamsize>(head.size()));
+        out.write(body.data(), static_cast<std::streamsize>(body.size()));
+        out.flush();
+        if (!out)
+        {
+            error = file.generic_string() + ": cannot be written";
             return false;
         }
         return true;

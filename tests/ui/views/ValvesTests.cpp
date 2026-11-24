@@ -256,3 +256,75 @@ namespace
         return 0;
     }
 }
+
+#include "views/engine/EngineWorkspace.h"
+
+#include <funkgui/text/FontService.h>
+
+namespace
+{
+    // The contact sheet of package U2 (out/ui/sheet.u2.png): ENGINE then VALVES a row each; across, each at 1100 x 700
+    // and 1600 x 1000, at density 1 then 2. Every tile is the software rasteriser's, shrunk to half its logical size.
+    VIEW_TEST(testU2Sheet, "u2.sheet")
+    {
+        struct Size
+        {
+            int w, h;
+            float dpi;
+        };
+        const Size cols[] = { { 1100, 700, 1.0f }, { 1600, 1000, 1.0f }, { 1100, 700, 2.0f }, { 1600, 1000, 2.0f } };
+        constexpr int kGap = 24;
+        int sheetW = kGap;
+        for (const Size& c : cols)
+            sheetW += c.w / 2 + kGap;
+        const int rowH = 1000 / 2 + kGap, sheetH = kGap + 2 * rowH;
+        funkgui::Image out;
+        out.w = sheetW;
+        out.h = sheetH;
+        out.rgba.assign(static_cast<std::size_t>(sheetW) * static_cast<std::size_t>(sheetH) * 4, 255);
+        for (std::size_t i = 0; i < out.rgba.size(); i += 4)
+            out.rgba[i] = out.rgba[i + 1] = out.rgba[i + 2] = 8;
+        const auto tile = [&](funkgui::HeadlessHost& host, const Size& col, int ox, int oy) {
+            const funkgui::Image img = funkgui::rasterise(host.draw(), funkgui::FontService::get().atlas(), 1);
+            const int tw = col.w / 2, th = col.h / 2;
+            const double sc = static_cast<double>(img.w) / tw;
+            for (int y = 0; y < th; ++y)
+                for (int x = 0; x < tw; ++x)
+                {
+                    const int x0 = static_cast<int>(x * sc), x1 = std::max(x0 + 1, static_cast<int>((x + 1) * sc));
+                    const int y0 = static_cast<int>(y * sc), y1 = std::max(y0 + 1, static_cast<int>((y + 1) * sc));
+                    unsigned sum[3] = { 0, 0, 0 }, n = 0;
+                    for (int yy = y0; yy < y1 && yy < img.h; ++yy)
+                        for (int xx = x0; xx < x1 && xx < img.w; ++xx)
+                        {
+                            const std::size_t k = (static_cast<std::size_t>(yy) * static_cast<std::size_t>(img.w) + static_cast<std::size_t>(xx)) * 4;
+                            for (int ch = 0; ch < 3; ++ch)
+                                sum[ch] += img.rgba[k + static_cast<std::size_t>(ch)];
+                            ++n;
+                        }
+                    const std::size_t d = (static_cast<std::size_t>(oy + y) * static_cast<std::size_t>(sheetW) + static_cast<std::size_t>(ox + x)) * 4;
+                    for (int ch = 0; ch < 3; ++ch)
+                        out.rgba[d + static_cast<std::size_t>(ch)] = static_cast<uint8_t>(n > 0 ? sum[ch] / n : 0);
+                }
+        };
+        int ox = kGap;
+        for (const Size& col : cols)
+        {
+            {
+                StageRig rig(tee::ui::makeEngineWorkspace, col.w, col.h, col.dpi, 4.6);
+                tile(*rig.host, col, ox, kGap);
+            }
+            {
+                LabRig rig(col.w, col.h, col.dpi, 4.6);
+                rig.live();
+                tile(*rig.host, col, ox, kGap + rowH);
+            }
+            ox += col.w / 2 + kGap;
+        }
+        const std::string path = (outDir() / "sheet.u2.png").string();
+        CHECK_MSG(tee::test::writePng(out, path), path);
+        std::printf("  contact sheet: %s (software rasteriser; rows ENGINE, VALVES; columns 1100 x 700 and 1600 x 1000 "
+                    "at density 1, then at 2)\n", path.c_str());
+        return 0;
+    }
+}

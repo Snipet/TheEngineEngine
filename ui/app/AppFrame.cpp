@@ -213,13 +213,16 @@ namespace tee::ui
                 ws = it->make(*ctx_);
             placeholders_.push_back(ws == nullptr);
             if (ws == nullptr)
-                ws = s.id == "garage" ? makePlaceholderGarage(*ctx_, s) : makePlaceholder(*ctx_, s);
+                ws = s.id.ends_with("garage") ? makePlaceholderGarage(*ctx_, s) : makePlaceholder(*ctx_, s);
             ws->resize(width(), height());
             workspaces_.push_back(std::move(ws));
         }
-        // A workspace registered with an id no slot has goes at the end of the rail.
+        // A workspace registered with an id that none of ui-design.md's ten has goes at the end of the rail (one of the
+        // ten left out of `slots` on purpose, as a test's frame does, stays out).
+        const std::vector<WorkspaceSlot> ten = defaultSlots();
         for (const WorkspaceEntry& e : registered)
-            if (std::none_of(slots_.begin(), slots_.end(), [&](const WorkspaceSlot& s) { return s.id == e.id; }))
+            if (std::none_of(slots_.begin(), slots_.end(), [&](const WorkspaceSlot& s) { return s.id == e.id; })
+                && std::none_of(ten.begin(), ten.end(), [&](const WorkspaceSlot& s) { return s.id == e.id; }))
             {
                 std::unique_ptr<Workspace> ws = e.make(*ctx_);
                 if (ws == nullptr)

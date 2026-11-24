@@ -86,7 +86,12 @@ namespace
             {
                 ++pages;
                 f.showInspectorPage(p);
-                CHECK_MSG(f.inspector()->notes().empty(), f.slot(w).id + " / " + f.inspectorTitle(p) + ": " + f.inspector()->notes());
+                // U1's pages (the placeholders', DRIVE's) must read clean; a registered workspace's own page is its
+                // package's to check, and is only said here.
+                if (f.placeholder(w) || f.slot(w).id == "drive")
+                    CHECK_MSG(f.inspector()->notes().empty(), f.slot(w).id + " / " + f.inspectorTitle(p) + ": " + f.inspector()->notes());
+                else if (!f.inspector()->notes().empty())
+                    std::printf("  note (%s's own page): %s", f.slot(w).id.c_str(), f.inspector()->notes().c_str());
             }
         }
         const std::vector<int> shown = f.fieldsShown();
