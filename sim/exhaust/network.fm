@@ -377,13 +377,9 @@ module XNet
         }
         for (int e = 0; e < ne; ++e)
             ends[e].clear();
+        // (the noise's filters go on as they were, as the reference's do)
         for (int g = 0; g < XN_BANDS; ++g)
-        {
-            fnHp[g].clear();
-            fnLp[g].clear();
-            fnLp2[g].clear();
             fnG[g] = 0.0f;
-        }
         portIn = 0.0f;
         outL = 0.0f;
         outR = 0.0f;

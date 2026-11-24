@@ -190,7 +190,7 @@ module XTest
     {
         b.eng.tPort = tPort;
         b.eng.mdotSlow = mdot;
-        b.build(1, warm);
+        b.build(1, warm, 1);
         r.configure(layoutIdx, warm, mdot);
         tick = 0;
         tickR = 0;
@@ -285,7 +285,7 @@ module XTest
     // A new topology while running (the engine's fade around it is the owner's): the pipes' heat kept
     void rebuild()
     {
-        b.build(0, warm);
+        b.build(0, warm, 1);
         tick = 0;
     }
 

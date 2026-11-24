@@ -274,6 +274,12 @@ namespace tee::ui
         paper_ = &make<Button>("Paper", [] { funkgui::UiPreferences::get().setTheme(1); });
         graphite_->setLit([this] { return host() != nullptr && host()->themeIndex() == 0; });
         paper_->setLit([this] { return host() != nullptr && host()->themeIndex() == 1; });
+        // The simulator's quality: FULL or ECONOMY, through the services (none: FULL, and the buttons do nothing).
+        const auto quality = [this] { return services_.quality ? services_.quality() : 0; };
+        full_ = &make<Button>("Full", [this] { if (services_.setQuality) services_.setQuality(0); });
+        economy_ = &make<Button>("Economy", [this] { if (services_.setQuality) services_.setQuality(1); });
+        full_->setLit([quality] { return quality() == 0; });
+        economy_->setLit([quality] { return quality() == 1; });
         ribbon_ = &make<DynoRibbon>(*dyno_, units_);
         fold_ = &make<Button>("Fold", [this] { foldRibbon(!folded_); });
         makeCockpit();
@@ -796,17 +802,25 @@ namespace tee::ui
         audioLine_->setPlace({ x, y + 16.0f, w, 18.0f }, on);
         audioMenu_->setPlace({ x, y + 38.0f, 150.0f, 26.0f }, on && static_cast<bool>(services_.audioMenu));
         y += services_.audioMenu ? 76.0f : 44.0f;
+        // THEME and QUALITY side by side, the quality's sentence under them.
+        const float half = (w - 12.0f) / 2.0f, bw = (half - 6.0f) / 2.0f;
         settingsHeads_.push_back({ "THEME", y });
-        graphite_->setPlace({ x, y + 16.0f, 110.0f, 26.0f }, on);
-        paper_->setPlace({ x + 118.0f, y + 16.0f, 110.0f, 26.0f }, on);
-        y += 54.0f;
+        graphite_->setPlace({ x, y + 16.0f, bw, 26.0f }, on);
+        paper_->setPlace({ x + bw + 6.0f, y + 16.0f, bw, 26.0f }, on);
+        settingsHeads_.push_back({ "QUALITY", y });
+        settingsHeadX_ = x + half + 12.0f;
+        full_->setPlace({ settingsHeadX_, y + 16.0f, bw, 26.0f }, on);
+        economy_->setPlace({ settingsHeadX_ + bw + 6.0f, y + 16.0f, bw, 26.0f }, on);
+        qualityNoteY_ = y + 48.0f;
+        y += 48.0f + 13.0f * (services_.setQuality ? 2.0f : 3.0f) + 8.0f;   // the sentence's lines
         settingsHeads_.push_back({ "UNITS", y });
         // One column: each quantity's name in full at the left, its stepper at the right.
         for (std::size_t i = 0; i < unitSteppers_.size(); ++i)
-            unitSteppers_[i]->setPlace({ x, y + 16.0f + static_cast<float>(i) * 27.0f, w, 25.0f }, on);
-        y += 16.0f + 27.0f * static_cast<float>(unitSteppers_.size()) + 8.0f;
-        settingsHeads_.push_back({ "KEYS", y });
+            unitSteppers_[i]->setPlace({ x, y + 16.0f + static_cast<float>(i) * 25.0f, w, 23.0f }, on);
+        y += 16.0f + 25.0f * static_cast<float>(unitSteppers_.size()) + 8.0f;
         keysY_ = y + 16.0f;
+        if (keysY_ + 14.0f <= room.bottom())   // a heading only with a key under it
+            settingsHeads_.push_back({ "KEYS", y });
     }
 
     // ---- drawing ----------------------------------------------------------------------------------------------------
@@ -848,7 +862,32 @@ namespace tee::ui
         {
             const funkgui::Rect room = inspectorRect();
             for (const auto& [heading, hy] : settingsHeads_)
-                c.text(heading.c_str(), room.x + 12.0f, hy, look::kCaps, p.label);
+                c.text(heading.c_str(), heading == "QUALITY" ? settingsHeadX_ : room.x + 12.0f, hy, look::kCaps, p.label);
+            const std::string note = std::string("Economy: the engine at half its inner rate: about half the load, the highest "
+                                                 "octave lost.") + (services_.setQuality ? "" : " Not in this build.");
+            // Wrapped at words onto at most three lines.
+            std::string line;
+            float ny = qualityNoteY_;
+            std::size_t at = 0;
+            int lines = 0;
+            while (at <= note.size() && lines < 3)
+            {
+                const std::size_t sp = std::min(note.find(' ', at), note.size());
+                const std::string word = note.substr(at, sp - at);
+                const std::string tried = line.empty() ? word : line + " " + word;
+                if (!line.empty() && c.textWidth(tried.c_str(), look::kUnit) > room.w - 24.0f)
+                {
+                    c.text(line.c_str(), room.x + 12.0f, ny, look::kUnit, p.label);
+                    ny += 13.0f;
+                    ++lines;
+                    line = word;
+                }
+                else
+                    line = tried;
+                at = sp + 1;
+            }
+            if (!line.empty() && lines < 3)
+                c.text(line.c_str(), room.x + 12.0f, ny, look::kUnit, p.label);
             // The keys of docs/controls.md (the shell reads them; they work in every workspace but a text field).
             static const char* const kKeys[][2] = {
                 { "Up / W", "throttle" }, { "Down / S", "brake" }, { "Left Shift", "clutch" }, { "Return", "start (hold: stop)" },

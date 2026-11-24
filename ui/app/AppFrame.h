@@ -206,7 +206,8 @@ namespace tee::ui
         Button *clear_ = nullptr, *fold_ = nullptr, *unitsButton_ = nullptr;
         // the settings page (unitsPage_): audio, theme, units, keys
         Label* audioLine_ = nullptr;
-        Button *audioMenu_ = nullptr, *graphite_ = nullptr, *paper_ = nullptr;
+        Button *audioMenu_ = nullptr, *graphite_ = nullptr, *paper_ = nullptr, *full_ = nullptr, *economy_ = nullptr;
+        float qualityNoteY_ = 0.0f, settingsHeadX_ = 0.0f;
         std::vector<std::pair<std::string, float>> settingsHeads_;   // a heading and its y (arrange's)
         float keysY_ = 0.0f;
         std::vector<Stepper*> unitSteppers_;

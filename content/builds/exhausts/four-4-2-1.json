@@ -1,0 +1,39 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "4-2-1 (inline four)",
+  "notes": "For the inline four: cylinders 1 and 4, 2 and 3 paired into two collectors (2 and 3), which merge into collector 0, then one pipe. A part build: only spec.exhaust; every other field keeps its default.",
+  "spec": {
+    "exhaust": {
+      "model": "Builder",
+      "primaryTo": [
+        2,
+        3,
+        3,
+        2,
+        -2,
+        -2,
+        -2,
+        -2,
+        -2,
+        -2,
+        -2,
+        -2,
+        -2,
+        -2,
+        -2,
+        -2
+      ],
+      "collectorTo": [
+        -1,
+        -1,
+        2,
+        2,
+        -1,
+        -1,
+        -1,
+        -1
+      ]
+    }
+  }
+}

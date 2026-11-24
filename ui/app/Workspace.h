@@ -245,6 +245,11 @@ namespace tee::ui
         // menu (the shell's F9); none: the status line, and no menu.
         std::function<std::string()> audioInfo;
         std::function<void()> audioMenu;
+        // The simulator's quality (the settings' QUALITY): 0 FULL, 1 ECONOMY (the engine at half its inner rate: about
+        // half the load, the highest octave lost). Cards B and C serve it (a reload, stored); while setQuality is
+        // empty the row shows FULL and does nothing. Nothing switches by itself.
+        std::function<int()> quality;
+        std::function<void(int)> setQuality;
         // The ECU's maps baked from its formulas now (ctl.bakeMaps pressed once; TUNE's BAKE). None: not here.
         std::function<void()> bakeMaps;
         // A text saved as a file the person chooses (a dyno run's CSV, an export): the host's save dialog, starting at

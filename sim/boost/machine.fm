@@ -44,8 +44,13 @@
 //
 // Sizes left at 0 are matched to the engine (match()): the flow the engine takes at its redline at a pressure ratio
 // of 1.9 and 90 % volumetric efficiency, shared among the turbos; the compressor chokes 15 % above it; the turbine's
-// nozzle passes 65 % of it at 2.4 bar and 1150 K, choked (the gate the rest); the times the spec's size. A 2 L four
-// at 7000 rpm gets a 45 mm inducer and a 61 mm exducer: a GT28's class.
+// nozzle passes 65 % of it at 2.4 bar and 1150 K, choked; the times the spec's size. The gate, whatever the size,
+// passes the whole of the turbo's share alone at that state (a gate sized at 0.85 of the nozzle could not hold its
+// spring at the redline: the 2 L four spooled at 5300 rpm ran away to 2.6 bar with it wide open; card N2's
+// docs/measurements/calibration/boost/gate.md). A 2 L four at 7000 rpm gets a 45 mm inducer, a 61 mm exducer (a
+// GT28's class) and a 35 mm gate. `vd` is meant as the four-stroke-equivalent displacement: the volume whose
+// four-stroke air at redRpm is the engine's (a rotary's and a two-stroke's twice their swept volume; asked of the
+// integrator: until then a rotary's turbo is matched to half its air).
 //
 // Left out: the turbine's housing walls' heat; heat between the turbine and the compressor; the compressor inlet's
 // swirl and recirculation; the gate's flutter; the intercooler's own volume's Helmholtz (folded into v2); a second
@@ -432,7 +437,13 @@ module BoostMachine
             turb[t].vaneMin = s->vaneMin;
             turb[t].gateExt = s->gate;
             turb[t].scrolls = scrolls;
-            const float dg = s->gateDiameter > 0.0f ? s->gateDiameter : sqrtf(4.0f * aNoz / 3.14159265f);
+            // the gate, matched: open, it alone passes this turbo's whole share of the engine's matched flow at the
+            // nozzle's design state (2.4 bar, 1150 K, choked), whatever the turbo's size: a wastegate must bypass
+            // nearly all the exhaust when the turbine at full flow could make several times the compressor's need
+            // (Bell, Maximum Boost, ch. 6; Watson and Janota, ch. 9). 0.85 is the poppet's discharge coefficient.
+            const float mGate = mMatch * share * (layout == BOOST_COMPOUND && t == 0 ? 0.65f : 1.0f);
+            const float aGateMatched = mGate * sqrtf(kBoostR * 1150.0f) / (2.4e5f * 0.667f);
+            const float dg = s->gateDiameter > 0.0f ? s->gateDiameter : sqrtf(aGateMatched / (0.785398f * 0.85f));
             turb[t].aGate = 0.785398f * dg * dg * 0.85f;
             const float vh = s->housingVolume > 0.0f ? s->housingVolume : 4.0f * 3.14159265f * rc * aNoz;
             for (int k = 0; k < 2; ++k)

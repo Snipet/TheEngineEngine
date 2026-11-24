@@ -400,8 +400,8 @@ namespace tee::test::u2
         explicit TwoStrokeScope(const tee::ui::FieldDoc& doc) : doc_(doc) {}
         int find(std::string_view name) const override
         {
-            const char* names[] = { "degrees", "pressure", "volume", "liftExhaust", "liftIntake", "portIntake" };
-            for (int i = 0; i < 6; ++i)
+            const char* names[] = { "degrees", "pressure", "volume", "liftExhaust", "liftIntake", "portIntake", "inletOpen" };
+            for (int i = 0; i < (inlet_ ? 7 : 6); ++i)
                 if (name == names[i])
                     return i;
             return -1;
@@ -452,6 +452,9 @@ namespace tee::test::u2
                             v = 101325.0 + (v - 101325.0) * 0.4;
                         break;
                     }
+                    case 6:   // a reed: open while the rising piston pulls the crankcase below the air outside
+                        v = std::clamp(std::sin((a - 200.0) / 160.0 * en::kPi), 0.0, 1.0) * 0.8;
+                        break;
                     default: return 0;
                 }
                 out[i] = static_cast<float>(v);
@@ -459,14 +462,17 @@ namespace tee::test::u2
             return n;
         }
         std::uint64_t generation() const override { return 1; }
+        bool inlet_ = false;   // with card T's inletOpen
 
     private:
         const tee::ui::FieldDoc& doc_;
     };
 
-    std::unique_ptr<tee::ui::ScopeSource> twoStrokeScope(const tee::ui::FieldDoc& doc)
+    std::unique_ptr<tee::ui::ScopeSource> twoStrokeScope(const tee::ui::FieldDoc& doc, bool inlet)
     {
-        return std::make_unique<TwoStrokeScope>(doc);
+        auto sc = std::make_unique<TwoStrokeScope>(doc);
+        sc->inlet_ = inlet;
+        return sc;
     }
 
     // The demo as a two-stroke: a 125 cc racing single's fields (two-stroke-mx125.json), or `cylinders` evenly.
