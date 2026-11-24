@@ -1,0 +1,34 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "part": "car",
+  "name": "Car: compact cvt",
+  "notes": "A car of its class alone (card P's archetypes' cars), to take any engine.",
+  "spec": {
+    "car": {
+      "model": "Vehicle",
+      "kind": "Car",
+      "mass": 1250,
+      "drive": "Front",
+      "wheelbase": 2.6,
+      "cgHeight": 0.54,
+      "frontWeight": 0.62,
+      "track": 1.52,
+      "cdA": 0.64,
+      "tyre": "Economy",
+      "tyreRadius": 0.31,
+      "gearbox": "CVT",
+      "finalDrive": 4.4,
+      "wheelInertia": 0.9,
+      "gears": 1,
+      "cvtLow": 2.6,
+      "cvtHigh": 0.42,
+      "autoGearing": false,
+      "ratio": [
+        2.5
+      ],
+      "brakeDecel": 1.1,
+      "abs": true
+    }
+  }
+}

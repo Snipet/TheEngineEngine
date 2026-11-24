@@ -1,0 +1,54 @@
+{
+  "format": "tee-scenario",
+  "version": 1,
+  "name": "x006-spark-cut-limiter",
+  "seconds": 8,
+  "events": [
+    {
+      "t": 0,
+      "spec": {
+        "env.temperature": 293.15,
+        "ecu.model": 1,
+        "ecu.limiter.kind": 1
+      },
+      "ctl": {
+        "mode": 1,
+        "lever": 0,
+        "clutch": 0,
+        "throttle": 0,
+        "ignition": 1
+      }
+    },
+    {
+      "t": 0.25,
+      "ctl": {
+        "ignition": 2
+      }
+    },
+    {
+      "t": 2.0,
+      "ctl": {
+        "ignition": 1
+      }
+    },
+    {
+      "t": 5.0,
+      "ctl": {
+        "throttle": 1
+      },
+      "ramp": 0.15
+    }
+  ],
+  "assertions": [
+    {
+      "audio": "step",
+      "during": [
+        6.0,
+        8.0
+      ],
+      "<": 12,
+      "source": "on the limiter"
+    }
+  ],
+  "description": "Package X's finding X-006 (2026-11-24, card H): ecu.model 1 with the spark-cut limiter, flat out in neutral against it from 5 s."
+}

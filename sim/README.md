@@ -167,7 +167,7 @@ engine's change at the fade's quiet, where `configure` runs; `Listen::block`; th
 `valves()`, the compression → `cyl[c].setup`, the bore/stroke → `boreStroke`, `valves`); `ecu.driver(...)`; driven,
 `car.drive16(...)`; `ecu.control(...)` (true: the engine has come to rest, `crank.omega` 0); `exh.flowRate()`;
 `boost.control(...)`, `intk.pBox`, `intk.tAir`, `intk.control(...)`; `exh.gas(d16)`; the cylinders' wall heat transfer (`hA`);
-`exh.heatUp(...)`; `pipes()` (`exh.pipes`, `intk.runners`); `exh.flow16()`, `intk.flow16(...)`; `exh.bands()`; `mechanics16()` (the cycle's speed spread; a custom engine's inertia with the
+`exh.heatUp(...)`; `pipes()` (`exh.pipes`, `intk.runners`); `exh.flow16()`, `intk.flow16(...)`; `exh.bands()`; with spec.engine.wallHeat 1, each cylinder's `hA` from `wall.coefficient(...)` (Woschni: core/wallheat.fm) in place of the reference's; `mechanics16()` (the cycle's speed spread; a custom engine's inertia with the
 bench's load, its oil factor and its shaking at this speed; the dyno stopped when its mode ends); then, with `spec.voices.model` 1 or the voices gliding out, `ex.control16(...)` (card M's voices' inputs).
 
 **`configure`** (the engine for the layout and the size: at init, at a start while stopped, under the fade): the
