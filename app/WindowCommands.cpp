@@ -37,6 +37,7 @@ namespace tee::app
             kBuffer = 700,          // + index of kBuffers
             kRecord = 800,
             kQuality = 900,         // + 0 full, 1 economy
+            kColdStart = 950,
         };
         constexpr int kRates[] = { 0, 44100, 48000, 88200, 96000 };
         constexpr int kBuffers[] = { 64, 128, 256, 512, 1024, 2048 };
@@ -424,6 +425,9 @@ namespace tee::app
                                   now == 1, false, false, true });
             items.push_back(std::move(q));
         }
+        if (ctx_.coldStart && ctx_.setColdStart)
+            items.push_back({ kColdStart, "Start the engine cold (from the next launch)", true, ctx_.coldStart(), false,
+                              false, true });
         if (ctx_.recorder != nullptr)
         {
             items.push_back({ .separator = true });
@@ -432,6 +436,14 @@ namespace tee::app
         }
         host_->showMenu(request(*host_, std::move(items)), [this, devices](int id) {
             audio::Request r = ctx_.request;
+            if (id == kColdStart)
+            {
+                const bool cold = !ctx_.coldStart();
+                ctx_.setColdStart(cold);
+                say(cold ? "start: cold from the next launch (the oil and water at the air's)"
+                         : "start: warm from the next launch (the engine at its working temperatures)");
+                return;
+            }
             if (id == kQuality || id == kQuality + 1)
             {
                 ctx_.setQuality(id - kQuality);

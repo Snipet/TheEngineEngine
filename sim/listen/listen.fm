@@ -88,6 +88,7 @@ module Listen
     float kSt;
     float kCb;
     OnePole cabLp;      // the cabin: the body's boom from the engine's torque, through the mounts, ringing its modes
+    OnePole tankWall;   // model 1: the fuel tank's wall between its pump and the air (the mass law, mix)
     Biquad cabMode[6];
     Biquad cabEx[2];
     Biquad cabIn;
@@ -237,6 +238,10 @@ module Listen
             cabEx[i].setLowpass(260.0f, 0.8f, rate);
         }
         cabLp.set(180.0f, rate);
+        // the mass law at field incidence, TL = 20 log10(m f) - 47 dB (Bies and Hansen, Engineering Noise Control):
+        // a moulded HDPE tank's 5 mm wall, m = 4.75 kg/m2, is a one-pole low-pass at 10^(47/20) / m = 47 Hz (its
+        // fall above, 6 dB an octave, is the law's); 38 dB at 3.9 kHz. The fuel, the floor and the leaks are left out
+        tankWall.set(47.0f, rate);
         // the cabin's modes the engine's shaking drives: the body's bending, the roof's and floor's panels, the air's
         // first modes along and across it (heuristic values, 40 to 180 Hz)
         const float cmF[6] = {42.0f, 58.0f, 77.0f, 104.0f, 138.0f, 182.0f};
@@ -334,6 +339,7 @@ module Listen
             sc.reset();
             boom.clear();
             plc.clear();
+            tankWall.clear();
         }
     }
 
@@ -507,6 +513,7 @@ module Listen
             sc.reset();
             boom.clear();
             plc.clear();
+            tankWall.clear();
             rS = -1.0f;
         }
         if (model != 0)
@@ -578,7 +585,7 @@ module Listen
         {
             mix1(i, xLin, xRin, inIn, tqNow, mech, blockN, turbo, starter, comb, sh0, sh1, road, cutG,
                  gearbox + extraIn[LS_PLACE_GEARBOX], axle + extraIn[LS_PLACE_REAR_AXLE], front, head,
-                 tank + extraIn[LS_PLACE_RIGHT], gate, voices, mouth, chain, clutch);
+                 tankWall.lowpass(finite(tank)) + extraIn[LS_PLACE_RIGHT], gate, voices, mouth, chain, clutch);
             extraIn[0] = 0.0f;
             extraIn[1] = 0.0f;
             extraIn[2] = 0.0f;

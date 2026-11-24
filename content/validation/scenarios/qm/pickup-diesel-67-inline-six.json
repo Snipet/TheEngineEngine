@@ -1,0 +1,74 @@
+{
+  "format": "tee-scenario",
+  "version": 1,
+  "name": "qm-pickup-diesel-67-inline-six",
+  "description": "Card P's drag run for \"6.7 L straight-six turbo diesel pickup\": card I's launch (traction control on, the car's own clutch), staged at 8.0 s, the green at 10.5 s; its own gearbox's shifts; the revs held at the green (the brake held, the pedal floored 1.5 s before); the tyres warm, in their window (placed by content/validation/archetypes/quarter_mile.py). Read car.t1320 and car.v1320.",
+  "seconds": 50,
+  "warm": true,
+  "events": [
+    {
+      "t": 0.0,
+      "ctl": {
+        "mode": 1,
+        "lever": 0,
+        "clutch": 0,
+        "throttle": 0,
+        "brake": 0,
+        "ignition": 1
+      }
+    },
+    {
+      "t": 0.25,
+      "ctl": {
+        "ignition": 2
+      }
+    },
+    {
+      "t": 2.0,
+      "ctl": {
+        "ignition": 1
+      }
+    },
+    {
+      "t": 5.0,
+      "ctl": {
+        "brake": 1
+      }
+    },
+    {
+      "t": 5.5,
+      "ctl": {
+        "lever": 1
+      }
+    },
+    {
+      "t": 8.0,
+      "press": [
+        "strip"
+      ]
+    },
+    {
+      "t": 9.0,
+      "ctl": {
+        "throttle": 1
+      },
+      "ramp": 0.3
+    },
+    {
+      "t": 10.5,
+      "ctl": {
+        "brake": 0
+      }
+    }
+  ],
+  "assertions": [
+    {
+      "audio": "finite"
+    },
+    {
+      "audio": "peak",
+      "<=": 1
+    }
+  ],
+  "warmTyres": true
+}
