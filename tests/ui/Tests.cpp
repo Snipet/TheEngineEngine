@@ -21,7 +21,6 @@
 #include "kit/gui/GuiSpec.h"
 #include "kit/gui/Ports.h"
 #include "kit/shaders/ShaderText.h"
-#include "app/AppFrame.h"
 #include <tee/app/MainPanel.h>
 #include "kit/bind/Binding.h"
 #include "kit/bind/Fields.h"

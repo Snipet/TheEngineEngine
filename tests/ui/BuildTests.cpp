@@ -75,12 +75,16 @@ namespace
     {
         tee::ui::AppFrame& f = *rig.frame;
         int pages = 0;
-        for (int s = 0; s < f.screenCount(); ++s)
-            for (int p = 0; p < f.pageCount(s); ++p)
+        for (int w = 0; w < f.workspaceCount(); ++w)
+        {
+            f.show(w);
+            for (int p = 0; p < f.inspectorPageCount(); ++p)
             {
                 ++pages;
-                CHECK_MSG(f.pageOf(s, p)->notes().empty(), f.screenDef(s).name + " / " + f.pageTitle(s, p) + ": " + f.pageOf(s, p)->notes());
+                f.showInspectorPage(p);
+                CHECK_MSG(f.inspector()->notes().empty(), f.slot(w).id + " / " + f.inspectorTitle(p) + ": " + f.inspector()->notes());
             }
+        }
         const std::vector<int> shown = f.fieldsShown();
         int fields = 0, hidden = 0;
         for (int i = 0; i < rig.doc->count(); ++i)
@@ -90,29 +94,32 @@ namespace
             (info.hidden ? hidden : fields) += 1;
             CHECK_MSG(there != info.hidden, info.path + (info.hidden ? " is hidden and shown" : " is on no page"));
         }
-        std::printf("  %d Spec fields a person sets (and %d hidden) in %zu sections, on %d pages of %d screens\n", fields,
-                    hidden, tee::ui::sectionsOf(*rig.doc).size(), pages, f.screenCount());
+        std::printf("  %d Spec fields a person sets (and %d hidden) in %zu sections, on %d inspector pages of %d workspaces\n",
+                    fields, hidden, tee::ui::sectionsOf(*rig.doc).size(), pages, f.workspaceCount());
         return 0;
     }
 
     int setTest(Rig& rig)
     {
         tee::ui::AppFrame& f = *rig.frame;
-        // The first knob of a number field on any page: dragged up, its field in the Build moves; undo puts it back.
+        // The first knob of a number field on any inspector page, in sight: dragged up, its field in the Build moves;
+        // undo puts it back.
         bool dragged = false;
-        for (int s = 0; s < f.screenCount() && !dragged; ++s)
-            for (int p = 0; p < f.pageCount(s) && !dragged; ++p)
+        for (int w = 0; w < f.workspaceCount() && !dragged; ++w)
+        {
+            f.show(w);
+            for (int p = 0; p < f.inspectorPageCount() && !dragged; ++p)
             {
-                tee::ui::FieldPage& page = *f.pageOf(s, p);
+                f.showInspectorPage(p);
+                rig.host->tick(5);
+                tee::ui::FieldPage& page = *f.inspector();
                 for (int k = 0; k < page.params().count() && !dragged; ++k)
                 {
                     const tee::ui::FieldInfo& info = rig.doc->info(page.params().field(k));
                     if (info.kind != tee::ui::FieldKind::number || info.def >= info.max)
                         continue;
-                    f.show(s, p);
-                    rig.host->tick(5);
                     const funkgui::Rect r = page.controlRect(info.path);
-                    if (r.w <= 0.0f || r.bottom() > static_cast<float>(f.height()) - tee::ui::AppFrame::kBottomH)
+                    if (r.w <= 0.0f || r.y < f.inspectorRect().y || r.bottom() > f.inspectorRect().bottom())
                         continue;
                     const double before = rig.doc->get(page.params().field(k));
                     rig.host->drag(r.centreX(), r.centreY(), r.centreX(), r.centreY() - 50.0f, 10);
@@ -124,6 +131,7 @@ namespace
                     dragged = true;
                 }
             }
+        }
         CHECK(dragged);
         // Tables through the binding, both ways.
         for (int i = 0; i < rig.doc->count(); ++i)

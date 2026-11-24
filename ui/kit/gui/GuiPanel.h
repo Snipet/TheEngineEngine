@@ -95,6 +95,9 @@ namespace tee::ui
         int naturalHeight() const noexcept { return naturalH_; }
         // Where the file's keyboards would be (see above), in the panel's px; those on the pages shown.
         std::vector<funkgui::Rect> keyboardRects() const;
+        // U1: the room kept around the interface (Options::inset*) changed (the application's frame moved its inspector)
+        // and the interface laid out in what is left.
+        void setInsets(int left, int top, int right, int bottom);
         // J2: the widget elements' items (Options::widget), with their nodes, in the file's order.
         struct WidgetAt
         {

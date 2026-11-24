@@ -294,6 +294,20 @@ namespace tee::ui
         ++revision_;
     }
 
+    void GuiPanel::setInsets(int left, int top, int right, int bottom)
+    {
+        if (left == options_.insetLeft && top == options_.insetTop && right == options_.insetRight && bottom == options_.insetBottom)
+            return;
+        naturalW_ += left + right - options_.insetLeft - options_.insetRight;
+        naturalH_ += top + bottom - options_.insetTop - options_.insetBottom;
+        options_.insetLeft = left;
+        options_.insetTop = top;
+        options_.insetRight = right;
+        options_.insetBottom = bottom;
+        layout();
+        ++revision_;
+    }
+
     std::vector<funkgui::Rect> GuiPanel::keyboardRects() const
     {
         std::vector<funkgui::Rect> out;

@@ -31,6 +31,7 @@
 
 #include <cmath>
 #include <cstdint>
+#include <functional>
 #include <limits>
 #include <map>
 #include <memory>
@@ -193,6 +194,29 @@ namespace tee::ui
         mutable std::map<std::string, int, std::less<>> handles_;
     };
 
+    // ---- what the application gives the frame ---------------------------------------------------------------------
+    // Besides the document, the units and the telemetry; any function may be empty. buildServices (kit/bind/host/
+    // BuildDoc.h) makes the build's over card C's tee::Build; the shell adds the rest.
+    struct FrameServices
+    {
+        AppServices app;                                          // the start button, the pedals, the status line
+        std::function<std::string()> buildName;
+        std::function<bool(const std::string&)> rename;
+        std::function<void()> undo, redo;
+        std::function<std::vector<std::string>()> builds;         // the garage's list
+        std::function<bool(const std::string& name, std::string& error)> load;
+        std::function<bool(const std::string& name, std::string& error)> save;   // as that name
+        std::function<float()> outputLevel;                       // 0..1; none: the telemetry's output peak
+        // U1
+        std::function<bool()> unsaved;                            // the build differs from what was loaded or saved
+        std::function<float()> simLoad;                           // the simulator's share of its time budget, 0..1+
+        std::function<int()> mode;                                // 0 bench, 1 dyno, 2 drive (ControlsFrame::mode)
+        std::function<void(int)> setMode;
+        // The clutch pedal from the mouse while it is held (0..1), or a negative number when let go. PanelControls
+        // has no clutch yet (a change for the lead: docs/handoffs/u1-frame.md).
+        std::function<void(float)> clutch;
+    };
+
     // ---- the context ------------------------------------------------------------------------------------------------
     // What every workspace is given; owned by the frame (or a test's rig), alive as long as the workspaces are.
     struct WorkspaceContext
@@ -205,6 +229,7 @@ namespace tee::ui
         Units& units;                  // the user's units: units.format(Quantity::pressure, pa)
         Selection& selection;
         const AppServices& app;        // the start button, the pedals as sent, the status line
+        const FrameServices* services = nullptr;   // the build's files and the rest (the frame's; none in a test's rig)
         Live live{ telemetry };
     };
 
@@ -230,6 +255,10 @@ namespace tee::ui
         // A mix of what drawStage() reads that can change with no input (a live value, a field): the frame draws again
         // when it moves (Panel::needsDraw). Items' own drawKey()s are mixed by the frame; this is for drawStage's.
         virtual std::uint64_t drawKey() const { return 0; }
+
+        // The frame shows it (true) or another (false): a workspace that reads the Scope or a list of files starts and
+        // stops here.
+        virtual void shownChanged(bool /*shown*/) {}
 
         // The frame gives the stage (window coordinates); the workspace lays out for it (layout()).
         void place(const funkgui::Rect& stage);

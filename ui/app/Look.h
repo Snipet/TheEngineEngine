@@ -32,6 +32,7 @@
 namespace tee::ui::look
 {
     using funkgui::Col;
+    using ::tee::ui::kClear;   // no fill: an outline's
 
     // ---- colours ----------------------------------------------------------------------------------------------------
     struct Palette
