@@ -16,6 +16,7 @@
 
 #include "app/Workspace.h"
 
+#include "tee/Bake.h"
 #include "tee/Build.h"
 #include "tee/Dyno.h"
 #include "tee/Predict.h"
@@ -86,5 +87,29 @@ namespace tee::ui
         mutable tee::ScopeFrame frame_;
         mutable bool have_ = false;
         mutable std::uint64_t lastBlock_ = 0, generation_ = 0;
+    };
+
+    // The knock limit baked in the background (card C's KnockBakeService, 8572845f; TUNE's "spark map" line): tick()
+    // on the UI thread once a frame. After each change of the build (its hash: an edit, an undo, a load) it considers
+    // the build: a stale table is set aside at once (ecu.maps.knockLimitAuto on, one Build write) and a bake asked,
+    // debounced; a finished bake still the build's is applied (one undo step). state(): "no table", "waiting to bake",
+    // "baking", "baked, to apply", "baked", "bake failed" (error() says why). The shell makes one beside ServiceDyno and
+    // fills FrameServices::sparkMap from it.
+    class ServiceBake
+    {
+    public:
+        ServiceBake(std::shared_ptr<tee::Sim> sim, tee::Build& build, tee::KnockBakeOptions options = {});
+        void tick();
+        std::string state() const;
+        std::string error() const;
+        std::uint64_t revision() const noexcept { return bakes_.revision() + applied_; }
+
+    private:
+        std::shared_ptr<tee::Sim> sim_;
+        tee::Build& build_;
+        tee::KnockBakeService bakes_;
+        std::uint64_t seen_ = 0, applied_ = 0;
+        bool first_ = true;
+        std::string applyError_;
     };
 }

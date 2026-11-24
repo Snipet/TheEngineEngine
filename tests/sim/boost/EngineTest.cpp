@@ -255,3 +255,67 @@ TEST_CASE("boost engine: the intercooler's core settles at a press, and a test c
     CHECK(settled > before + 8.0);
     CHECK(std::fabs(later - settled) < 1.5);
 }
+
+TEST_CASE("boost engine: the two corner builds that traded faults run, start and blip in one case", "[boost][engine]")
+{
+    // (card N2; card X's X-022 and X-024, the lead's ask: both in one case so a fix of one cannot break the other)
+    // X-022: a supercharger behind individual throttles, the least charge volume and cooler flow (a bypass feeding
+    // back into an inlet whose filter is sized for a larger engine). X-024: an 85 mm inducer on 0.23 L, a sequential
+    // pair. Started, idled, the throttle blipped twice: no fault (the engine's guard), every sample finite.
+    for (int which = 0; which < 2; ++which)
+    {
+        Engine e;
+        if (which == 0)
+        {
+            e.spec("intake.model", 1);
+            e.spec("intake.throttleKind", 1);
+            e.spec("boost.model", 1);
+            e.spec("boost.kind", 4);
+            e.spec("boost.chargeVolume", 0.0005);
+            e.spec("boost.icFlow", 0.05);
+        }
+        else
+        {
+            e.spec("engine.displacement", 2.336e-4);
+            e.spec("boost.model", 1);
+            e.spec("boost.kind", 1);
+            e.spec("boost.layout", 3);
+            e.spec("boost.compInducer", 0.0854);
+        }
+        auto& c = e.player->controls();
+        c.mode = EnginePlayer::kModeBench;
+        c.ignition = EnginePlayer::kIgnitionStart;
+        REQUIRE(e.run(1.5));
+        c.ignition = EnginePlayer::kIgnitionOn;
+        REQUIRE(e.run(1.5));
+        int faults = 0;
+        double most = 0.0;
+        for (int blip = 0; blip < 2; ++blip)
+        {
+            c.throttle = 1.0f;
+            for (int k = 0; k < 30; ++k)
+            {
+                REQUIRE(e.run(0.01));
+                faults += (static_cast<int>(e.tel("engine.flags")) & 4) != 0 ? 1 : 0;
+                most = std::fmax(most, std::fabs(e.tel("boost.pressure")));
+            }
+            c.throttle = 0.0f;
+            for (int k = 0; k < 70; ++k)
+            {
+                REQUIRE(e.run(0.01));
+                faults += (static_cast<int>(e.tel("engine.flags")) & 4) != 0 ? 1 : 0;
+                most = std::fmax(most, std::fabs(e.tel("boost.pressure")));
+            }
+        }
+        std::printf("%s: %d faulted blocks through two blips, |boost| at most %.1f kPa, %.0f rpm at the end\n",
+                    which == 0 ? "X-022 (blower behind ITBs, the least pipe)" : "X-024 (85 mm inducer on 0.23 L)", faults,
+                    most / 1000.0, e.tel("engine.speed") * 9.5492966);
+        CHECK(faults == 0);
+        CHECK(most < 400000.0);
+        // (still running; and a compressor three sizes too big makes next to nothing: measured 4.7 kPa, against
+        // 101 kPa and the engine stopped when the valve's flow into the inlet was taken a sample late)
+        CHECK(e.tel("engine.speed") * 9.5492966 > 500.0);
+        if (which == 1)
+            CHECK(most < 20000.0);
+    }
+}

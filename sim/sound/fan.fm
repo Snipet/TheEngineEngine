@@ -6,8 +6,11 @@
 // `fanOn` and above) it locks to some 90 %; between, in proportion over the 15 K below. The fluid takes some seconds
 // to fill and drain (a time constant of 4 s here). The famous roar is a locked clutch at high revs, and it fades as
 // the clutch lets go (Horton's and Behr's descriptions of the thermostatic clutch; the numbers are typical ones,
-// judgement). An electric fan switches on at `fanOn` and off 5 K lower, its motor taking it to 2400 rpm in about a
-// second (time constant 0.35 s) and letting it coast down in some three (1.2 s).
+// judgement). An electric fan switches on at `fanOn` (373 K, 100 C, by default) and off 5 K lower, as a thermo switch's
+// two contacts do: the hosts' warm hold (368 K, tee/Warm.h) sits at the off point, 5 K under the on, so a warm render
+// has the fan off unless the coolant climbs past 373 K by itself (with the on point at 368 the hold's few hundredths of
+// a kelvin either side decided whether a 280 Hz line was in the render: the lead's 21:47). Its motor takes it to
+// 2400 rpm in about a second (time constant 0.35 s) and lets it coast down in some three (1.2 s).
 //
 // What it sounds like (Neise, "Noise reduction in centrifugal fans", and the axial fan's literature): the blades'
 // passing, at the blades times the fan's turns, with its harmonic, and the broadband noise of the turbulence off the

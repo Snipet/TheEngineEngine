@@ -83,6 +83,10 @@ namespace tee::ui
                                    kTelActive, en::kTelSpeed, kTelEvents[0], kTelEvents[1], kTelEvents[2], kTelEvents[3], kTelEvents[4] })
                 k.mix(static_cast<float>(ctx_.live.get(n)));
             k.mix(drag_).mix(hot_).mix(static_cast<float>(yMax_)).mix(two_).mix(scopeVersion_).mix(tab_);
+            // the oil, as the words say it: whole degrees, and whether it holds the phasers or stage B
+            const double oilT = ctx_.live.get(kTelOilTemp);
+            k.mix(std::isfinite(oilT) ? static_cast<std::int64_t>(std::lround(oilT)) : -1);
+            k.mix(oilHold(ctx_.live, kPhaserOilTemp, kPhaserOilPressure).held).mix(oilHold(ctx_.live, kStageOilTemp, kStageOilPressure).held);
             return k.h;
         }
 
@@ -357,6 +361,39 @@ namespace tee::ui
         static double phaseShift(bool intake, double phase) { return std::isfinite(phase) ? (intake ? -phase : phase) : 0.0; }
 
         // Stage B is what runs (and what the handles edit) while telemetry says it is engaged.
+        // An oil temperature in the person's units, rounded: "15 C"
+        std::string oilText(double kelvin) const
+        {
+            return ctx_.units.format(Quantity::temperature, kelvin, 0);
+        }
+        // What the oil holds back, in the words the PHASERS AND STAGES panel shows ("" : nothing)
+        std::string phaserHeldText() const
+        {
+            const OilHold oil = oilHold(ctx_.live, kPhaserOilTemp, kPhaserOilPressure);
+            if (!oil.held)
+                return {};
+            return oil.cold ? "PARKED: OIL " + oilText(oil.temp) + ", MOVES AT " + oilText(kPhaserOilTemp) : "PARKED: OIL PRESSURE LOW";
+        }
+        std::string stageHeldText() const
+        {
+            const OilHold oil = oilHold(ctx_.live, kStageOilTemp, kStageOilPressure);
+            if (!oil.held)
+                return {};
+            return oil.cold ? "B WAITS: OIL " + oilText(oil.temp) + ", NEEDS " + oilText(kStageOilTemp) : "B WAITS: OIL PRESSURE LOW";
+        }
+    public:
+        // For tests: the oil's words as drawn now (the phasers' and stage B's, where the build has them)
+        std::string oilWords() const
+        {
+            const Train t = trainOf(ctx_.doc);
+            std::string w;
+            if (t.inPhaseRange > 0.0 || t.exPhaseRange > 0.0)
+                w += phaserHeldText();
+            if (t.stages)
+                w += (w.empty() ? "" : " | ") + stageHeldText();
+            return w;
+        }
+    private:
         bool stageB(const Train& t) const { return t.stages && t.inB.known() && t.exB.known() && ctx_.live.get(kTelStage) >= 0.5; }
         const Lobe& lobe(const Train& t, bool intake) const
         {
@@ -705,8 +742,13 @@ namespace tee::ui
                     const float nx = X(l.centre + phaseShift(intake, now));
                     c.disc(nx, y + 4.0f, 5.0f, ink, 1.5f, p.ground);
                 }
-                const std::string w = std::string(intake ? "INTAKE PHASER " : "EXHAUST PHASER ") + deg(range) + " DEG";
-                put(c, w, intake ? X(a0) - 8.0f : X(a1) + 8.0f, y - 1.0f, lk::kCaps, ink, intake ? Align::right : Align::left);
+                // held parked by cold or thin oil (the lab's rule): said, so a parked phaser does not look dead
+                const OilHold oil = oilHold(ctx_.live, kPhaserOilTemp, kPhaserOilPressure);
+                const std::string w = std::string(intake ? "INTAKE PHASER " : "EXHAUST PHASER ")
+                                      + (oil.held ? std::string(oil.cold ? "PARKED: OIL COLD" : "PARKED: OIL PRESSURE LOW")
+                                                  : deg(range) + " DEG");
+                // (clear of the target's ring, which stands at the band's end when it asks the whole range)
+                put(c, w, intake ? X(a0) - 12.0f : X(a1) + 12.0f, y - 1.0f, lk::kCaps, ink, intake ? Align::right : Align::left);
             };
             band(li, t.inPhaseRange, inPh, true, plot_.y + 8.0f);
             band(le, t.exPhaseRange, exPh, false, plot_.y + 8.0f);
@@ -946,6 +988,9 @@ namespace tee::ui
                     txt += ", to " + deg(target);
                 put(c, txt, at.x, at.y + 14.0f, lk::kBody, p.value);
                 lk::level(c, p, { at.x, at.y + 31.0f, cw - 14.0f, 4.0f }, std::isfinite(now) ? now / range : en::kNaN, ink);
+                // parked by the oil (the lab's rule: 313 K and 70 kPa), in words, with what it waits for
+                if (const std::string held = phaserHeldText(); !held.empty())
+                    put(c, held, at.x, at.y + 40.0f, lk::kCaps, p.warning);
             };
             phaser(0, "INTAKE PHASER", t.inPhaseRange, ctx_.live.get(kTelInPhase), ctx_.live.get(kTelInTarget), p.cold);
             phaser(1, "EXHAUST PHASER", t.exPhaseRange, ctx_.live.get(kTelExPhase), ctx_.live.get(kTelExTarget), p.hot);
@@ -962,6 +1007,9 @@ namespace tee::ui
                     put(c, "B from " + sp, at.x, at.y + 14.0f, lk::kBody, p.value);
                     const std::string now = !std::isfinite(st) ? "ENGAGED -" : st >= 0.5 ? "B ENGAGED" : "A ENGAGED";
                     lk::lamp(c, p, at.x, at.y + 36.0f, now, std::isfinite(st) && st >= 0.5, p.selected);
+                    // B waits for warm oil with pressure (the lab's rule: 333 K and 100 kPa), in words
+                    if (const std::string held = stageHeldText(); !held.empty())
+                        put(c, held, at.x, at.y + 52.0f, lk::kCaps, p.warning);
                 }
             }
             // continuous lift
@@ -1430,6 +1478,12 @@ namespace tee::ui
     };
 
     std::unique_ptr<Workspace> makeValvesWorkspace(WorkspaceContext& c) { return std::make_unique<ValvesWorkspace>(c); }
+
+    std::string valvesOilWords(const Workspace& w)
+    {
+        const auto* v = dynamic_cast<const ValvesWorkspace*>(&w);
+        return v != nullptr ? v->oilWords() : std::string();
+    }
 
     funkgui::Point valvesHandle(const Workspace& w, int h)
     {
