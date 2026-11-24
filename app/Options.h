@@ -38,7 +38,9 @@ namespace tee::app
         bool refPanel = false;          // --ref-panel: the reference engine in its own panel (as --engine ref)
         std::string workspace;          // --workspace ID[:PAGE]: the frame opens on that workspace (its name on the rail)
         bool noAudio = false;           // --no-audio: the window with no device (nothing plays)
-        bool keepGoing = false;         // --keep-going: a program that does not compile is no reason to stop a render
+        bool keepGoing = false;
+        std::string quality;            // --quality full|economy: the simulator's inner rate (empty: the settings')
+        bool expectFault = false;       // --expect-fault: a run where the engine diverges and is restarted is not a failure         // --keep-going: a program that does not compile is no reason to stop a render
         // not from the command line: the units the settings file remembers, for the frame ("quantity=unit" lines)
         std::string unitChoices;
     };
