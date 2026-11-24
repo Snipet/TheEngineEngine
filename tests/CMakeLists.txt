@@ -13,3 +13,4 @@ target_compile_definitions(tee-tests PRIVATE
   "TEE_SOURCE_SIM_DIR=\"${PROJECT_SOURCE_DIR}/sim/ref\""
   "TEE_SOURCE_CONTENT_DIR=\"${PROJECT_SOURCE_DIR}/content/ref\"")
 catch_discover_tests(tee-tests DISCOVERY_MODE PRE_TEST PROPERTIES TIMEOUT 900)
+add_subdirectory(host)   # card C: the host's and the tools' tests (tests/host/CMakeLists.txt)
