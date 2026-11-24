@@ -176,6 +176,16 @@ ${_tee_ui_view_includes}#undef TEE_UI_WORKSPACE
         };
         return all;
     }
+    const std::vector<const char*>& registeredDemoIds()
+    {
+        static const std::vector<const char*> all = {
+#define TEE_UI_WORKSPACE(id, factory)
+#define TEE_UI_DEMO(id, fn) #id,
+${_tee_ui_view_includes}#undef TEE_UI_WORKSPACE
+#undef TEE_UI_DEMO
+        };
+        return all;
+    }
 }
 ")
 add_library(tee_ui_app STATIC ${_tee_ui_app_sources} ${_tee_ui_view_sources} "${_tee_ui_registry}")
