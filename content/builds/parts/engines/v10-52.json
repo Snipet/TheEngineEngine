@@ -1,0 +1,120 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "part": "engine",
+  "name": "V10 5.2 L (engine)",
+  "notes": "The engine of the archetype \"V10 5.2 L\" alone, to put in another car.",
+  "spec": {
+    "engine": {
+      "layout": "V10",
+      "custom": true,
+      "compression": 12.5,
+      "cylinders": 10,
+      "bankAngle": [
+        -45,
+        45
+      ],
+      "bank": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "pin": [
+        315,
+        27,
+        243,
+        99,
+        171,
+        333,
+        45,
+        261,
+        117,
+        189
+      ],
+      "fireRev": [
+        0,
+        0,
+        1,
+        1,
+        0,
+        0,
+        1,
+        1,
+        1,
+        0
+      ],
+      "place": [
+        0.0,
+        0.1,
+        0.2,
+        0.3,
+        0.4,
+        0.033,
+        0.133,
+        0.233,
+        0.333,
+        0.433
+      ],
+      "displacement": 0.0052042,
+      "boreStroke": 0.9106,
+      "bore": 0.0845,
+      "stroke": 0.0928,
+      "rodLength": 0.154,
+      "redlineSpeed": 911.062,
+      "frictionValvetrain": "Finger follower",
+      "rough": 0.2,
+      "benchLoad": 0.3
+    },
+    "valve": {
+      "model": "Lab",
+      "valves": 4,
+      "dIn": 0.0338,
+      "dEx": 0.028,
+      "train": "Finger",
+      "inDurSeat": 268,
+      "inDur1mm": 240,
+      "inLift": 0.011800000000000001,
+      "inCentre": 108,
+      "exDurSeat": 260,
+      "exDur1mm": 232,
+      "exLift": 0.0108,
+      "exCentre": 112,
+      "inPhaseRange": 42,
+      "exPhaseRange": 42
+    },
+    "intake": {
+      "model": 1
+    },
+    "boost": {
+      "model": "Machine",
+      "kind": "Natural",
+      "level": 0.0,
+      "blowOff": 0.7
+    },
+    "exhaust": {
+      "model": "Builder",
+      "sides": 2,
+      "converter": [
+        1,
+        1
+      ],
+      "mufKind": [
+        2,
+        2
+      ]
+    },
+    "fuel": {
+      "kind": "Gasoline",
+      "model": "Fuels",
+      "grade": "Premium (91)",
+      "direct": 1
+    }
+  }
+}

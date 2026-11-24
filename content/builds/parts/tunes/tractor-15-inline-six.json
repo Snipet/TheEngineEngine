@@ -1,0 +1,25 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "part": "tune",
+  "name": "Highway tractor 15 L (tune)",
+  "notes": "The tune of the archetype \"Highway tractor 15 L\" alone.",
+  "spec": {
+    "ecu": {
+      "model": "Maps",
+      "timing": 0,
+      "pops": 0.1,
+      "starter": true,
+      "limiter": {
+        "kind": "Fuel cut",
+        "speed": 209.44
+      },
+      "idle": {
+        "speed": 68.068
+      },
+      "knock": {
+        "on": true
+      }
+    }
+  }
+}

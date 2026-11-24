@@ -9,9 +9,9 @@
 // another's waves through a shared one.
 //
 // The pipes' gas: its temperature (and so the speed of sound, and so the speed the pipe is tuned for) follows the gas
-// leaving the ports, mass-weighted, less what the pipe's walls take (the pipe's gas settles at the air's temperature
-// plus 0.8 of the ports' excess over it, judgement: a racing chamber's gas runs some 500 to 650 C at full load, Blair
-// ch. 5), with a time constant of 1.5 s (the walls' warming, judgement). The tuned speed rises as the pipe heats: an
+// leaving the ports, mass-weighted over some 0.2 s (the walls, as hot, taking little: judgement; it comes to some
+// 750 K at full load, where a racing chamber's gas is quoted at 500 to 650 C, Blair ch. 5), with a time constant of
+// 1.5 s (the walls' warming, judgement). The tuned speed rises as the pipe heats: an
 // engine "comes on the pipe" sooner once warm, as riders know. A test can hold the pipe's temperature (`tFixed`).
 //
 // The power valve: its blade lowers the exhaust's top edge below `valveFrom` and raises it fully by `valveTo`; the
@@ -30,6 +30,10 @@ enum
     TS_MAX_CYL = 4
 };
 
+// The stingers' sound against the four-stroke's tails, for the engine's mix (judgement: set by ear-free measurement,
+// docs/models/twostroke.md)
+const float TS_LEVEL = 1.0f;
+
 module TwoStroke
 {
     TwoStrokeCylinder cy[TS_MAX_CYL];
@@ -44,6 +48,8 @@ module TwoStroke
     float cSet;         // the sound speed the pipes were last tuned for
     double hEx;         // the gas out of the ports since the last control: its mass and its mass times temperature
     double mEx;
+    double hSm;         // and both, decaying over some 0.2 s (the port is shut half of every turn: a 16-sample window may
+    double mSm;         // have none)
     // the power valve
     float exDur;        // the exhaust's duration now (degrees)
     float valve;        // the blade's position, 0 down (shortest duration) to 1 up
@@ -123,6 +129,8 @@ module TwoStroke
         }
         hEx = 0.0;
         mEx = 0.0;
+        hSm = 0.0;
+        mSm = 0.0;
         torque = 0.0f;
         outL = 0.0f;
         outR = 0.0f;
@@ -162,8 +170,11 @@ module TwoStroke
             tPipe = tFixed;
         else
         {
-            const float tPorts = mEx > 1.0e-9 ? (float)(hEx / mEx) : tAir;
-            const float want = tAir + 0.8f * (tPorts - tAir);
+            const double k = (double)expf(-d16 / 0.2f);
+            hSm = hSm * k + hEx;
+            mSm = mSm * k + mEx;
+            const float tPorts = mSm > 1.0e-9 ? (float)(hSm / mSm) : tAir;
+            const float want = tPorts;
             tPipe += (fminf(fmaxf(want, tAir), 1300.0f) - tPipe) * fminf(d16 / 1.5f, 1.0f);
         }
         hEx = 0.0;
@@ -230,6 +241,21 @@ module TwoStroke
         intakeOut = (mi - mIPrev) * rate;
         mIPrev = mi;
         return tq;
+    }
+
+    // What is made under the fade, as one number (each field with its own weight): the engine compares it every 16
+    // samples with the one it configured and fades to the new engine when it moves
+    float signature(const EngineSpec* s)
+    {
+        float k = (float)s->tsCylinders * 1.1f + (float)s->tsFiring * 2.3f + s->tsExhaustDur * 0.013f + s->tsExhaustWidth * 3.1f
+                  + s->tsExhaustRadius * 4.7f + s->tsTransferDur * 0.017f + s->tsTransferWidth * 2.9f + s->tsTransferRadius * 5.3f
+                  + s->tsPortCd * 6.1f + s->tsCrankcaseRatio * 7.3f + (float)s->tsInletKind * 8.9f + s->tsInletArea * 977.0f
+                  + s->tsDiscOpen * 0.019f + s->tsDiscDur * 0.023f + s->tsPistonDur * 0.029f;
+        k += s->tsHeaderLen * 11.3f + s->tsDiffuserLen * 12.7f + s->tsBellyLen * 13.1f + s->tsBaffleLen * 14.9f + s->tsStingerLen * 15.7f
+             + s->tsHeaderDiam * 101.0f + s->tsBellyDiam * 103.0f + s->tsStingerDiam * 107.0f + (float)s->tsConeSteps * 0.31f
+             + (float)s->tsChamber * 17.9f + (float)s->tsSilencer * 19.1f + s->tsSilencerLen * 21.7f + s->tsSilencerDiam * 109.0f
+             + s->tsSilencerPack * 0.037f;
+        return k;
     }
 
     // For the Scope: cylinder c's exhaust and transfer ports' open shares now (0 to 1)

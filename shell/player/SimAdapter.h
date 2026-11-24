@@ -27,6 +27,7 @@ namespace tee
     class SimHost;
     struct FieldInfo;
     struct TelemetryFrame;
+    struct HostStats;
     class Build;
 }
 
@@ -76,6 +77,9 @@ namespace tee::player
         // The simulator's share of its time: the audio callback's time over its buffer's, averaged over about a
         // second (HostStats::loadMean); 0 before the first block.
         double load() const;
+        // The host's numbers about the newest block (restarting, clippedBlocks, largestSample, the load); zero before the
+        // first block.
+        HostStats hostStats() const;
         int outputTail(float* mono, int max) const override { return tail_.read(mono, max); }
 
         // ControlSink
@@ -97,8 +101,11 @@ namespace tee::player
         std::unique_ptr<tee::Build> build_;
         std::vector<ParamInfo> infos_;
         std::vector<std::string> paths_;                    // each parameter's path in the Build ("spec....")
-        std::vector<const FieldInfo*> tel_;                 // the tel block's scalar fields, by handle
-        std::vector<std::string> telNames_;                 // their names ("engine.speed")
+        // the tel block's numbers by handle: its scalar fields, then each array element asked for by name ("car.wheelSlip[2]")
+        // (findValue adds those, on the UI thread)
+        mutable std::vector<const FieldInfo*> tel_;
+        mutable std::vector<std::size_t> telIndex_;         // the element's flat index (0 for a scalar)
+        mutable std::vector<std::string> telNames_;         // their names ("engine.speed", "car.wheelSlip[2]")
         double compileSeconds_ = 0.0;
         std::string warnings_;
         TailRing tail_;

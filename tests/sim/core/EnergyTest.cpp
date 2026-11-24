@@ -9,6 +9,7 @@
 #include <cstdio>
 #include <filesystem>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace
@@ -23,7 +24,8 @@ namespace
     };
 
     // The build at 4000 rpm on the dyno, full throttle, warm; cylinder 1 over 8 cycles (per cycle, J)
-    Balance balance(const std::string& build, double displacement = 0.0, int layout = -1)
+    Balance balance(const std::string& build, double displacement = 0.0, int layout = -1,
+                    const std::vector<std::pair<std::string, double>>& over = {})
     {
         tee::EnginePlayer::Options options;
         options.directory = std::filesystem::path(TEE_SOURCE_DIR) / "sim";
@@ -40,6 +42,8 @@ namespace
             REQUIRE(p->setSpec("engine.layout", layout, errors));
         if (displacement > 0.0)
             REQUIRE(p->setSpec("engine.displacement", displacement, errors));
+        for (const auto& [path, value] : over)
+            REQUIRE(p->setSpec(path, value, errors));
         std::vector<float> l(1024), r(1024);
         auto play = [&](double s) { const int n = int(s * 96000 / 1024); for (int i = 0; i < n; ++i) p->process(l.data(), r.data(), 1024); };
         auto rd = [&](const char* path) { double v = 0; std::string e; REQUIRE(p->read(path, v, e)); return v; };
@@ -158,4 +162,17 @@ TEST_CASE("energy: the default V8's cylinder balances, and its port gas is hot a
 TEST_CASE("energy: a 2 L inline four's cylinder balances, and its port gas is hot at full load", "[core][engine][energy]")
 {
     check("2 L inline four", balance("default", 0.002, 5));
+}
+
+TEST_CASE("energy: the wall heat's models, printed", "[.wallheat]")
+{
+    auto show = [](const char* name, const Balance& b) {
+        std::printf("%-34s burn %5.0f J: work %4.1f %%, walls %4.1f %%, out %4.1f %%, sum %.3f; gas out %4.0f K, tPort %4.0f K\n", name,
+                    b.heat, 100 * b.work / b.heat, 100 * b.wall / b.heat, 100 * b.netOut / b.heat, (b.work + b.wall + b.netOut + b.du) / b.heat,
+                    b.tOut, b.tPort);
+    };
+    show("V8, reference", balance("default"));
+    show("V8, Woschni", balance("default", 0, -1, {{"engine.wallHeat", 1}}));
+    show("V8, fuel.model 1", balance("default", 0, -1, {{"fuel.model", 1}}));
+    show("V8, fuel.model 1 + Woschni", balance("default", 0, -1, {{"fuel.model", 1}, {"engine.wallHeat", 1}}));
 }

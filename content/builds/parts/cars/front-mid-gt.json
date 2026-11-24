@@ -1,0 +1,38 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "part": "car",
+  "name": "Car: front mid gt",
+  "notes": "A car of its class alone (card P's archetypes' cars), to take any engine.",
+  "spec": {
+    "car": {
+      "model": "Vehicle",
+      "kind": "Car",
+      "mass": 1750,
+      "drive": "Rear",
+      "wheelbase": 2.72,
+      "cgHeight": 0.47,
+      "frontWeight": 0.47,
+      "track": 1.66,
+      "cdA": 0.68,
+      "tyre": "Semi-slick",
+      "tyreRadius": 0.35,
+      "gearbox": "Dual clutch",
+      "finalDrive": 4.8,
+      "wheelInertia": 1.6,
+      "gears": 7,
+      "autoGearing": false,
+      "ratio": [
+        3.08,
+        2.19,
+        1.63,
+        1.29,
+        1.03,
+        0.84,
+        0.69
+      ],
+      "brakeDecel": 1.1,
+      "abs": true
+    }
+  }
+}

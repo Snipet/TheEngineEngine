@@ -77,6 +77,8 @@ namespace tee::ui::engine
     inline constexpr const char* kTelSpeed = "engine.speed";       // rad/s
     inline constexpr const char* kTelRedline = "engine.redline";   // rad/s
     inline constexpr const char* kTelState = "engine.state";
+    inline constexpr const char* kTelIvo = "valve.ivo";           // cylinder 1's valve events now (the cycle's degrees)
+    inline constexpr const char* kTelEvo = "valve.evo";
     inline constexpr const char* kTelAdvance = "ecu.advance";     // degrees before top dead centre (the spark's)
     inline constexpr const char* kScopePressure = "pressure";
     inline constexpr const char* kScopeVolume = "volume";
