@@ -161,6 +161,8 @@ module Scene
     float freeFx;
     float freeFy;
     int freeInit;
+    float pathAcc[3];
+    float pathDb[3];    // their levels (dB) as the meters last took them; -200 outside the cabin   // in the cabin, the floor's, the firewall's and the glass's power at the ears, summed
     float levAcc[LS_N]; // each source's power at the listener, summed, and the samples summed
     int levN;
     int ready;
@@ -320,7 +322,7 @@ module Scene
         px[LS_DRIVE] = 0.0f;
         py[LS_DRIVE] = 0.3f + 0.55f * k;
         pz[LS_DRIVE] = 0.4f;
-        px[LS_AXLE] = 0.15f;
+        px[LS_AXLE] = -0.15f;   // the rear sprocket and the chain, on the left
         py[LS_AXLE] = 0.3f;
         pz[LS_AXLE] = 0.3f;
         px[LS_TANK] = 0.0f;
@@ -460,6 +462,11 @@ module Scene
         {
             lev[s] = act[s] != 0 && levN > 0 ? 4.3429448f * logf(fmaxf(levAcc[s] / (float)levN, 1.0e-20f)) : -200.0f;
             levAcc[s] = 0.0f;
+        }
+        for (int j = 0; j < 3; ++j)
+        {
+            pathDb[j] = vw[cur].cabin != 0 && levN > 0 ? 4.3429448f * logf(fmaxf(pathAcc[j] / (float)levN, 1.0e-20f)) : -200.0f;
+            pathAcc[j] = 0.0f;
         }
         levN = 0;
     }
@@ -810,6 +817,15 @@ module Scene
                 const float fw = wallF[m].tick(bus2[m]);
                 const float fg = glassF[m].lowpass(bus3[m]);
                 bus0[m] = sh * (fl + fw + fg) + o * (bus1[m] + bus2[m] + bus3[m]);
+                if (k == cur)
+                {
+                    const float pf = sh * fl + o * bus1[m];
+                    const float pw = sh * fw + o * bus2[m];
+                    const float pg = sh * fg + o * bus3[m];
+                    pathAcc[0] += 0.5f * pf * pf;
+                    pathAcc[1] += 0.5f * pw * pw;
+                    pathAcc[2] += 0.5f * pg * pg;
+                }
             }
         }
     }

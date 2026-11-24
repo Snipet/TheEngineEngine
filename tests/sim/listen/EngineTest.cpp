@@ -142,6 +142,11 @@ TEST_CASE("the cabin: shut windows take the highs, open ones let them in", "[lis
     const double open = highs(1.0);
     std::printf("cabin at 2860 rpm: the highs' share %.1f dB with the windows shut, %.1f dB open\n", shut, open);
     CHECK(open > shut + 3.0);
+    std::printf("cabin's ways in: floor %.1f, firewall %.1f, glass %.1f, mounts %.1f dB\n", b.tel("sound.pathFloor"),
+                b.tel("sound.pathFirewall"), b.tel("sound.pathGlass"), b.tel("sound.pathStructure"));
+    CHECK(b.tel("sound.pathFloor") > -150.0);
+    CHECK(b.tel("sound.pathFirewall") > -150.0);
+    CHECK(b.tel("sound.pathStructure") > -150.0);
 }
 
 TEST_CASE("the ceiling: every source at its loudest and the camera at its closest stays inside full scale", "[listen][engine]")
