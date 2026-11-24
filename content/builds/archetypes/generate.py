@@ -485,6 +485,10 @@ def build(a):
                  exDurSeat=de, exDur1mm=d1e, exLift=le / 1000.0, exCentre=ce)
         if "phase" in a:
             v["inPhaseRange"], v["exPhaseRange"] = a["phase"]
+            # a phased intake parks late, as real phasers lock at their retarded end, and advances under load:
+            # the fixed-cam centre plus 20 degrees, at most half its range (N1: the four-cam 5.0 parked at its fixed
+            # centre had 38 degrees of overlap at idle and hunted 455 to 515 rpm; 20 later it idles 700, sd 6)
+            v["inCentre"] = ci + min(20.0, a["phase"][0] / 2.0)
         # port quality by head (N1, from card E's calibration: q 1.35 is a stock 232 CFM small-block head; racing
         # ports flow 20 to 30 % more, Heywood fig. 6-18): two-valve wedge and pushrod heads 1.2/1.35, production
         # four-valve 1.35/1.5 (the default), high-output four-valve 1.65/1.8, race 1.75/1.9
@@ -515,10 +519,6 @@ def build(a):
         # 3.2 six (best VE at 5000 rpm on 0.50 m, 6000-7000 on 0.35, 4000-4500 on 0.70), L = 0.50 (5000 / rpm)^1.3
         lo, hi = TORQUE_PEAK[a["slug"]]
         i["runnerLength"] = round(min(max(0.50 * (5000.0 / (0.5 * (lo + hi))) ** 1.3, 0.22), 0.9), 2)
-        if a["layout"].startswith("V8"):
-            # a V8 on runners over 0.5 m does not start warm today (the four-cam 5.0 at 0.50 and 0.57, the 7.0 at
-            # 0.53; both start at 0.45: the intake's backflow, N1's): held at 0.45 m until the intake conserves
-            i["runnerLength"] = min(i["runnerLength"], 0.45)
     i.update(a.get("intake", {}))
 
     bo = {"model": "Machine", "kind": "Natural", "level": 0.0, "blowOff": 0.7}
