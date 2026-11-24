@@ -38,6 +38,7 @@ its place and its default that does nothing) has added the custom engine, the en
 | `ecu/ecu.fm` | `Ecu` | H | the state, the speed it goes by, idle and redline, the driver, idle valve, trim, limiter, cuts, stall |
 | `vehicle/car.fm` | `Car` | I | clutch, gearbox, driveline, tyres, the road; the shifter and paddles; the road's sound |
 | `sound/extras.fm` | `Extras` | wave 2 | intake mouth, valvetrain, injectors, block, knock, clatter, pump, chain, starter |
+| `sound/voices.fm` and `sound/*.fm` | `Voices` (`GearVoice`, `DriveVoice`, `FanVoice`, `FuelVoice`, `ValveVoice`, `GateVoice`, `StarterVoice`) | M | spec.voices.model 1: gear whine and rattle, final drive, belts and cam drive, fan, fuel pump and direct injectors, lifters and float, wastegate, starter (docs/models/voices.md) |
 | `listen/listen.fm`, `listen/hall.fm` | `Listen`, `Hall` | wave 2 | views, distance, room, compressor, limiter, ceiling, resampler |
 | `lib/` | `OnePole`, `DcBlock`, `Biquad`, `Noise` | anyone (read) | filters; the reference's white noise |
 
@@ -317,9 +318,13 @@ pedal with a downshift's blip in it. `step`, `road` go to `m1`; `followLever` do
 reference's code, untouched (the null test).
 
 **Extras** (`sound/extras.fm`): the engine bay's sources; its own `Noise noise` (Boost draws from it too). `setup(float
-rate, float boxHz)`; `setClatter(int diesel, float swept)` and `pumpOn` in configure; the clicks at the cylinders'
-events; `void tick(float qThrottle, float dropRatio, float crankHz, float dpdt)` then `void tickStarter(float crankHz,
-float starterOn)` each sample; out: `intake`, `mech`, `block`, `comb`, `starter`.
+rate, float boxHz, VoicesSpec* voices)`; `setClatter(int diesel, float swept)` and `pumpOn` in configure; the clicks at
+the cylinders' events (`valveClick(amp, intake)`: 1 at intake closing, 0 at exhaust closing); `void tick(float qThrottle,
+float dropRatio, float crankHz, float dpdt)` then `void tickStarter(float crankHz, float starterOn)` each sample;
+`control16(...)` last in `Engine::control16`, only while `spec.voices.model` is 1 or the voices glide out (card M: the
+car's gearbox, the torque, the coolant, the key, the boost and gate, `vt.clatter`); `busy()` (the pump's prime, a fan,
+the starter running down); out: `intake`, `mech`, `block`, `comb`, `starter`, and with model 1 each voice's own:
+`vo.gearbox`, `vo.axle`, `vo.front`, `vo.head`, `vo.tank`, `vo.gateOut`, `vo.starter` (docs/models/voices.md).
 
 **Listen** (`listen/listen.fm`): `setup(float rate, float hostRate)`, `release()`, `resetPaths()`; per part `block(int
 v, float intakeK, float mechK, float distance, float room, float levelDb, int asp, float exTrim, float gainNorm, int
