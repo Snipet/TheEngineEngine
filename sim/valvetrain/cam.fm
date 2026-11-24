@@ -68,10 +68,13 @@ module CamShape
     float open;         // where it leaves the seat (the cycle's angle)
     int reached;        // 1: the 1 mm duration asked for is the one made
     float rise1;        // degrees from the seat to 1 mm on the rising side (half the span when it never gets there)
+    int changed;        // 1: asked for something else since the last build
     float shape[VT_POINTS];
 
     void request(float durSeatIn, float dur1mmIn, float liftIn, float centreIn, float fatIn)
     {
+        if (kind != 0 || durSeat != durSeatIn || dur1mm != dur1mmIn || lift != liftIn || centre != centreIn || fat != fatIn)
+            changed = 1;
         kind = 0;
         durSeat = durSeatIn;
         dur1mm = dur1mmIn;
@@ -87,6 +90,8 @@ module CamShape
         float d = closeAt - openAt;
         if (d <= 0.0f)
             d += 720.0f;
+        if (kind != 1 || durSeat != d || lift != liftIn || centre != openAt + 0.5f * d || flank != flankIn)
+            changed = 1;
         durSeat = d;
         dur1mm = d;
         lift = liftIn;
@@ -139,6 +144,7 @@ module CamShape
     // The solve, and the 129-point table
     void build()
     {
+        changed = 0;
         const float liftUse = fmaxf(lift, 0.0012f);
         if (kind == 1)
         {

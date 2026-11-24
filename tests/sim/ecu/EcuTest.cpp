@@ -237,3 +237,42 @@ TEST_CASE("H4: the key cranks, runs, stalls and runs down", "[h][ecu][state]")
     CHECK(fm.get("ecu.key.state") == 0.0);
     CHECK(fm.get("omega") < 2.0);
 }
+
+TEST_CASE("H9 (standalone part): the bangs follow the fuel sent, and no fuel makes none", "[h][ecu][overrun]")
+{
+    Fm fm = engine();
+    // 3000 rpm, a hot pipe (1100 K), each firing letting 2 mg of fuel and plenty of air (a spark cut's whole charge
+    // would be some 40 mg: this is an overrun's few percent)
+    const double little = fm.call<float>("OneLine::bangs", 2.0e-6f, 0.5e-3f, 1100.0f, 3000.0f, 2.0f);
+    const double littleBig = fm.get("biggest");
+    const int littleBangs = static_cast<int>(fm.get("ecu.account.bangs"));
+    const double much = fm.call<float>("OneLine::bangs", 8.0e-6f, 0.5e-3f, 1100.0f, 3000.0f, 2.0f);
+    const double muchBig = fm.get("biggest");
+    const int muchBangs = static_cast<int>(fm.get("ecu.account.bangs"));
+    const double sent = 2.0 * 3000.0 / 60.0 * 4.0;                      // firings in 2 s
+    WARN("2 mg a firing: " << littleBangs << " bangs, " << little * 1e6 / sent << " mg burned a firing, the largest "
+                           << littleBig << " Pa; 8 mg: " << muchBangs << " bangs, " << much * 1e6 / sent
+                           << " mg a firing, the largest " << muchBig << " Pa");
+    CHECK(littleBangs > 0);
+    CHECK(much > 3.0 * little);                  // four times the fuel: about four times what burns
+    CHECK(much < 5.0 * little);
+    CHECK(muchBig > littleBig);                  // and larger pulses
+    CHECK(little <= 2.0e-6 * sent);              // never more than was sent
+    // no fuel (a full fuel cut): none; no air (a rich spark cut into a pipe with no oxygen): none; a cold pipe: none
+    CHECK(fm.call<float>("OneLine::bangs", 0.0f, 0.5e-3f, 1100.0f, 3000.0f, 2.0f) == 0.0f);
+    CHECK(fm.call<float>("OneLine::bangs", 8.0e-6f, 0.0f, 1100.0f, 3000.0f, 2.0f) == 0.0f);
+    CHECK(fm.call<float>("OneLine::bangs", 8.0e-6f, 0.5e-3f, 800.0f, 3000.0f, 2.0f) == 0.0f);
+}
+
+TEST_CASE("H10 (standalone part): traction control holds a toy wheel's slip near its target", "[h][ecu][traction]")
+{
+    Fm fm = engine();
+    fm.set("set.traction.on", 1);
+    // twice the torque the grip takes: unchecked, the slip would settle at 0.4
+    const double held = fm.call<float>("OneLine::traction", 2.0f, 4.0f);
+    WARN("slip held at " << held << " against a target of 0.1");
+    CHECK(held > 0.07);
+    CHECK(held < 0.13);
+    fm.set("set.traction.on", 0);
+    CHECK(fm.call<float>("OneLine::traction", 2.0f, 4.0f) == Catch::Approx(0.4).epsilon(0.01));
+}

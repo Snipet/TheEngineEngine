@@ -1,0 +1,58 @@
+// telemetry.fm: the stand-in's Telemetry and Scope, nested as 02-contracts.md, section 5, has them.
+module EngineTel
+{
+    int state [[ui::label("State")]] [[ui::choices("Off", "Cranking", "Running", "Running down")]];
+    float speed [[ui::label("Engine speed")]] [[ui::quantity("rotation")]];
+    float redline [[ui::label("Redline")]] [[ui::quantity("rotation")]];
+    float idle [[ui::label("Idle")]] [[ui::quantity("rotation")]];
+    float throttle [[ui::label("Throttle")]] [[ui::quantity("fraction")]];
+    float manifold [[ui::label("Manifold")]] [[ui::quantity("pressure")]];
+    float coolant [[ui::label("Coolant")]] [[ui::quantity("temperature")]];
+    float oilPressure [[ui::label("Oil pressure")]] [[ui::quantity("pressure")]];
+    int flags [[ui::label("Flags")]];
+    float cycle [[ui::label("Cycle")]] [[ui::quantity("fraction")]];
+    float crank [[ui::label("Crank")]] [[ui::quantity("angle")]];
+    float torque [[ui::label("Torque")]] [[ui::quantity("torque")]];
+    float power [[ui::label("Power")]] [[ui::quantity("power")]];
+    float firing [[ui::label("Firing frequency")]] [[ui::quantity("frequency")]];
+};
+
+module CarTel
+{
+    float speed [[ui::label("Road speed")]] [[ui::quantity("speed")]];
+    int gear [[ui::label("Gear")]];
+    float brake [[ui::label("Brake")]] [[ui::quantity("fraction")]];
+    float clutch [[ui::label("Clutch")]] [[ui::quantity("fraction")]];
+};
+
+module BoostTel
+{
+    float pressure [[ui::label("Boost")]] [[ui::quantity("pressure")]];
+};
+
+// What the host's tests read of what the simulator saw: a table is whole when its spread is 0.
+module ProbeTel
+{
+    float curveFirst [[ui::label("Curve's first y")]];
+    float curveSpread [[ui::label("Curve's spread")]];
+    int curveN [[ui::label("Curve's points")]];
+    float level [[ui::label("Level")]];
+    int engineRev [[ui::label("spec.engine.rev")]];
+    int soundRev [[ui::label("spec.sound.rev")]];
+    int calls [[ui::label("Calls")]];
+};
+
+module Telemetry
+{
+    EngineTel engine;
+    CarTel car;
+    BoostTel boost;
+    ProbeTel probe;
+};
+
+module Scope
+{
+    int filled;                         // how many points of the cycle below are this cycle's
+    float pressure[SCOPE_POINTS];       // cylinder 1's pressure each crank degree, Pa
+    float volume[SCOPE_POINTS];         // its volume, m^3
+};
