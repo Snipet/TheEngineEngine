@@ -263,8 +263,8 @@ namespace tee::ui
                                      + (n.wheels ? kGuiWheelsW : 0.0f), 72.0f };
                     case GuiKind::shader:                // width= and height= its size (a 72 px dial), else 200 x 120
                         return { n.width > 0.0f ? n.width : 200.0f, n.height > 0.0f ? n.height : 120.0f };
-                    case GuiKind::widget:                // J2: width= and height= its size, else its kind's
-                        return guiWidgetSize(n);
+                    case GuiKind::widget:                // J2: width= and height= its size, else its kind's, in maxW
+                        return guiWidgetSize(n, maxW);
                     case GuiKind::area:                  // width= and height= its size, else 120 x 80
                         return { n.width > 0.0f ? n.width : 120.0f, n.height > 0.0f ? n.height : 80.0f };
                     case GuiKind::display:
@@ -614,7 +614,15 @@ namespace tee::ui
         return guiTextStyle(n.textSize);
     }
 
-    GuiExtent guiWidgetSize(const GuiNode& n)
+    int guiTableLines(int cells, float width) noexcept
+    {
+        if (cells <= 0 || width <= 0.0f || (width - kGuiTableHeaderW) / static_cast<float>(cells) >= kGuiTableCellW)
+            return 1;
+        const int perLine = std::max(1, static_cast<int>(width / kGuiTableCellW));
+        return (cells + perLine - 1) / perLine;
+    }
+
+    GuiExtent guiWidgetSize(const GuiNode& n, float maxW)
     {
         GuiExtent e{ 120.0f, 80.0f };
         if (n.widget == "plot")
@@ -631,7 +639,16 @@ namespace tee::ui
             e = { 64.0f, 44.0f };
         else if (n.widget == "array")
             e = { 640.0f, 76.0f };
-        return { n.width > 0.0f ? n.width : e.w, n.height > 0.0f ? n.height : e.h };
+        if (n.width > 0.0f)
+            e.w = n.width;
+        else if (maxW < e.w)
+        {
+            e.w = std::max(0.0f, maxW);
+            if (n.widget == "array" && n.height <= 0.0f)
+                if (const int lines = guiTableLines(kGuiArrayCells, e.w); lines > 1)
+                    e.h = kGuiTableTitleH + kGuiTableLineH * static_cast<float>(lines);
+        }
+        return { e.w, n.height > 0.0f ? n.height : e.h };
     }
 
     GuiKnobGeom guiKnobGeom(const GuiNode& n, float labelWidth)
