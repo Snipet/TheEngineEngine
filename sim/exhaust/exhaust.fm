@@ -163,7 +163,7 @@ module Exhaust
         spec = specIn;
         telOut = telIn;
         scopeOut = scopeIn;
-        b.sp = specIn;
+        b.follow(specIn);
         b.setup(rateIn);
         b.net.noiseSrc = noise;
         b.net.shared = 1;
@@ -1219,8 +1219,15 @@ module Exhaust
         }
     }
 
-    // A signature of the builder's description (all but the valve's rule, which it follows as it goes): a change
-    // rebuilds under the fade
+    // A signature of the builder's description: what rebuilds under the fade. The kinds and the tables, and of each
+    // size only whether it is its own or the layout's (0; for the muffler's size, -1; a collector's volume and the
+    // primaries' step: whether there is one): the sizes themselves glide (XBuild::glide). Not the valve's rule, which
+    // it follows as it goes.
+    float on(float v)
+    {
+        return v > 0.0f ? 1.0f : 0.0f;
+    }
+
     float sig()
     {
         const ExhaustSpec* p = spec;
@@ -1228,26 +1235,26 @@ module Exhaust
         float w = 1.0f;
         for (int i = 0; i < MAX_PORTS; ++i)
         {
-            h += w * ((float)p->primaryTo[i] + 3.1f * p->primLen[i] + 7.3f * p->primD[i]);
+            h += w * ((float)p->primaryTo[i] + 3.1f * on(p->primLen[i]) + 7.3f * on(p->primD[i]));
             w *= 1.0173f;
         }
         for (int c = 0; c < MAX_COLLECTORS; ++c)
         {
-            h += w * ((float)p->collectorTo[c] + 3.1f * p->colLen[c] + 7.3f * p->colD[c] + 1000.0f * p->colVol[c]);
+            h += w * ((float)p->collectorTo[c] + 3.1f * on(p->colLen[c]) + 7.3f * on(p->colD[c])
+                      + 1000.0f * (p->colVol[c] > 1.0e-6f ? 1.0f : 0.0f));
             w *= 1.0173f;
         }
         for (int s = 0; s < MAX_SIDES; ++s)
         {
-            h += w * (p->mainLen[s] + 3.7f * p->mainD[s] + 5.1f * (float)p->converter[s] + 7.9f * (float)p->resonator[s]
-                      + 0.011f * p->resHz[s] + 2.3f * p->resD[s] + 300.0f * p->resVol[s] + 1.9f * p->resLen[s]
-                      + 11.3f * (float)p->mufKind[s] + 0.7f * p->mufSize[s] + 2.9f * p->mufLen[s]
-                      + 13.7f * (float)p->bypass[s] + 1.3f * p->tailLen[s] + 4.1f * p->tailD[s] + 17.1f * (float)p->tips[s]
-                      + 19.3f * (float)p->exitAt[s]);
+            h += w * (on(p->mainLen[s]) + 3.7f * on(p->mainD[s]) + 5.1f * (float)p->converter[s]
+                      + 7.9f * (float)p->resonator[s] + 2.3f * on(p->resD[s]) + 11.3f * (float)p->mufKind[s]
+                      + 0.7f * (p->mufSize[s] >= 0.0f ? 1.0f : 0.0f) + 2.9f * on(p->mufLen[s])
+                      + 13.7f * (float)p->bypass[s] + 1.3f * on(p->tailLen[s]) + 4.1f * on(p->tailD[s])
+                      + 17.1f * (float)p->tips[s] + 19.3f * (float)p->exitAt[s]);
             w *= 1.0173f;
         }
-        h += w * (p->primSpread + 2.0f * p->primStepAt + 3.0f * p->primStepD + 5.0f * (float)p->sides
-                  + 7.0f * (float)p->crossKind + 11.0f * (float)p->crossAt + 13.0f * p->crossD + 17.0f * p->crossLen
-                  + 19.0f * p->postLen + 23.0f * p->linkLen + 29.0f * p->bypassD + 31.0f * p->gateLen + 37.0f * p->gateD);
+        h += w * (2.0f * (p->primStepAt > 0.01f ? 1.0f : 0.0f) + 5.0f * (float)p->sides + 7.0f * (float)p->crossKind
+                  + 11.0f * (float)p->crossAt + 13.0f * on(p->crossD) + 29.0f * on(p->bypassD));
         return h;
     }
 
