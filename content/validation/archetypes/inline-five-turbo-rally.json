@@ -60,7 +60,7 @@
         120
       ],
       "unit": "m/s",
-      "source": "started, in gear and on the pedal, the car moves (a 36 t tractor at least 3 m/s in ten seconds)"
+      "source": "started, in gear and on the pedal, the car moves (a 36 t tractor in third of eighteen at least 1.5 m/s)"
     },
     {
       "name": "Invariant: stops at the key",
@@ -271,7 +271,7 @@
     {
       "name": "Port gas at full load",
       "scenario": "validation/scenarios/p-full-load-5000.json",
-      "tel": "exhaust.portTemperature",
+      "tel": "exhaust.portThermocouple",
       "measure": "mean",
       "during": [
         8,
@@ -282,12 +282,12 @@
         1300
       ],
       "unit": "K",
-      "source": "the gas at the exhaust valve at full load, before the port and pipe cool it: some 1100 to 1300 K for a spark-ignition engine (Heywood, Internal Combustion Engine Fundamentals, ch. 14; card C's target on default.json, which this follows)"
+      "source": "what a thermocouple at the exhaust port reads at full load (a time mean, below the gas's mass mean): some 1100 to 1300 K for a spark-ignition engine (Heywood, Internal Combustion Engine Fundamentals, ch. 14; card C's target on default.json); tel.exhaust.portThermocouple, card G's mixing cup"
     },
     {
       "name": "Header gas at full load",
       "scenario": "validation/scenarios/p-full-load-5000.json",
-      "tel": "exhaust.headerTemperature",
+      "tel": "exhaust.headerThermocouple",
       "measure": "mean",
       "during": [
         8,
@@ -298,11 +298,27 @@
         1100
       ],
       "unit": "K",
-      "source": "a thermocouple a little way down a primary reads 900 to 1100 K at full load on a petrol engine (makers' exhaust-gas-temperature data; Heywood, Internal Combustion Engine Fundamentals, ch. 14); n/a until the exhaust reports it"
+      "source": "a thermocouple a little way down a primary reads 900 to 1100 K at full load on a petrol engine (makers' exhaust-gas-temperature data; Heywood, Internal Combustion Engine Fundamentals, ch. 14); tel.exhaust.headerThermocouple"
+    },
+    {
+      "name": "Port gas, mass mean (information)",
+      "scenario": "validation/scenarios/p-full-load-5000.json",
+      "tel": "exhaust.portTemperature",
+      "measure": "mean",
+      "during": [
+        8,
+        10
+      ],
+      "range": [
+        0,
+        3000
+      ],
+      "unit": "K",
+      "source": "the gas's mass (enthalpy) mean at the port, kept for information: above a thermocouple's reading, not a target (card G, f703892)"
     },
     {
       "name": "Quarter mile: time",
-      "scenario": "validation/scenarios/p-quarter-mile.json",
+      "scenario": "validation/scenarios/qm/inline-five-turbo-rally.json",
       "tel": "car.t1320",
       "measure": "last",
       "range": [
@@ -310,11 +326,11 @@
         14.03
       ],
       "unit": "s",
-      "source": "Hale's rule, ET = 5.825 (lb/hp)^(1/3) s, with the kind's published power (232 kW) and the build's mass: 12.20 s; 5 % quicker to 15 % slower for street tyres and an automatic's launch (card I's test holds drag radials to 8 %)"
+      "source": "Hale's rule, ET = 5.825 (lb/hp)^(1/3) s, with the kind's published power (232 kW) and the build's mass: 12.20 s; 5 % quicker to 15 % slower for the build's own tyres and launch (card I's test holds drag radials to 8 %)"
     },
     {
       "name": "Quarter mile: trap speed",
-      "scenario": "validation/scenarios/p-quarter-mile.json",
+      "scenario": "validation/scenarios/qm/inline-five-turbo-rally.json",
       "tel": "car.v1320",
       "measure": "last",
       "range": [

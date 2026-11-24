@@ -3,6 +3,7 @@
 // summary, load, save, duplicate, delete). On the simulator's own document (sim/engine.fm), in a folder of the test's.
 #include "files/BuildFiles.h"
 #include "player/SimAdapter.h"
+#include "support/SharedSim.h"
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -31,14 +32,15 @@ namespace
         player::SimAdapter::Options o;
         o.directory = fs::path(TEE_SOURCE_SIM_DIR);
         std::string errors;
-        std::unique_ptr<player::SimAdapter> sim = player::SimAdapter::create(o, errors);
+        std::unique_ptr<player::SimAdapter> sim = test::sharedAdapter(errors, o);
         INFO(errors);
         REQUIRE(sim != nullptr);
         return sim;
     }
 }
 
-TEST_CASE("shell: a build saved, changed and opened again; the dirty flag; a part apart", "[shell][files]")
+TEST_CASE("shell: a build saved, changed and opened again; the dirty flag; a part apart",
+          "[shell][files][sharedsim]")
 {
     const fs::path dir = freshFolder("document");
     const auto sim = simulator();
@@ -142,7 +144,7 @@ TEST_CASE("shell: the recent files: newest first, once each, at most ten, kept a
 }
 
 TEST_CASE("shell: the library: shipped and the user's builds, listed, summed up, loaded, saved, duplicated, deleted",
-          "[shell][files][library]")
+          "[shell][files][library][sharedsim]")
 {
     const fs::path user = freshFolder("library-user");
     const fs::path shipped = fs::path(TEE_SOURCE_DIR) / "content" / "builds";

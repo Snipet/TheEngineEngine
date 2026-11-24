@@ -1,0 +1,104 @@
+{
+  "format": "tee-scenario",
+  "version": 1,
+  "name": "qm-rotary-twin-na-side-port",
+  "description": "Card P's drag run for \"Rotary twin, side ports\" in its own gearbox: card I's launch (traction control on, the car's own clutch), staged at 8 s, the green at 10.5 s, the upshifts where the engine first reaches 95 % of its redline (placed by content/validation/archetypes/quarter_mile.py). Read car.t1320 and car.v1320.",
+  "seconds": 40,
+  "warm": true,
+  "events": [
+    {
+      "t": 0.0,
+      "ctl": {
+        "mode": 1,
+        "lever": 0,
+        "clutch": 0,
+        "throttle": 0,
+        "brake": 0,
+        "ignition": 1
+      }
+    },
+    {
+      "t": 0.0,
+      "spec": {
+        "ecu.traction.on": true
+      }
+    },
+    {
+      "t": 0.25,
+      "ctl": {
+        "ignition": 2
+      }
+    },
+    {
+      "t": 2.0,
+      "ctl": {
+        "ignition": 1
+      }
+    },
+    {
+      "t": 5.0,
+      "ctl": {
+        "brake": 1
+      }
+    },
+    {
+      "t": 5.5,
+      "press": [
+        "shiftUp"
+      ]
+    },
+    {
+      "t": 8.0,
+      "press": [
+        "strip"
+      ]
+    },
+    {
+      "t": 10.5,
+      "ctl": {
+        "brake": 0,
+        "throttle": 0.15
+      }
+    },
+    {
+      "t": 10.5,
+      "ctl": {
+        "throttle": 1
+      },
+      "ramp": 0.3
+    },
+    {
+      "t": 13.989,
+      "press": [
+        "shiftUp"
+      ]
+    },
+    {
+      "t": 14.394,
+      "press": [
+        "shiftUp"
+      ]
+    },
+    {
+      "t": 14.799,
+      "press": [
+        "shiftUp"
+      ]
+    },
+    {
+      "t": 15.204,
+      "press": [
+        "shiftUp"
+      ]
+    }
+  ],
+  "assertions": [
+    {
+      "audio": "finite"
+    },
+    {
+      "audio": "peak",
+      "<=": 1
+    }
+  ]
+}

@@ -455,3 +455,40 @@ TEST_CASE("another package's source heard from its place: Listen::extra", "[list
     CHECK(behind > over + 3.0);     // (2.6 m from it behind, 3.5 m and the floor pan above)
     CHECK(off < -250.0);
 }
+
+TEST_CASE("a source that is not finite is dropped: no NaN, no offset, the rest as it was", "[listen]")
+{
+    // X-024: a NaN in one subsystem's signal (here the turbo's, then the road's, the mouth's, the gearbox's) must leave
+    // the others heard exactly as without it
+    for (int bad : {int(kTurbo), int(kRoad), int(kIntake), 11})
+    {
+        Rig clean;
+        Rig dirty;
+        for (Rig* r : {&clean, &dirty})
+        {
+            r->set("ss.model", 1);
+            r->set("ln.sc.windOff", 1);
+            r->set("driven", 1);
+            r->set("carSpeed", 20.0);
+            r->set("src", kTailL);
+            r->set("sig", 1);
+            r->set("freq", 150.0);
+            r->set("amp", 0.002);
+            r->reset();
+        }
+        dirty.set("nanSrc", bad);
+        clean.play(1.0);
+        dirty.play(1.0);
+        double worst = 0.0;
+        double mean = 0.0;
+        for (std::size_t i = 0; i < clean.left().size(); ++i)
+        {
+            REQUIRE(std::isfinite(dirty.left()[i]));
+            worst = std::max(worst, double(std::fabs(dirty.left()[i] - clean.left()[i])));
+            mean += dirty.left()[i];
+        }
+        mean /= double(clean.left().size());
+        INFO("NaN in slot " << bad << ": largest difference " << worst << ", mean " << mean);
+        CHECK(worst == 0.0);
+    }
+}

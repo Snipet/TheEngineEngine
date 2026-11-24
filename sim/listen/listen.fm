@@ -663,7 +663,7 @@ module Listen
         axleHeld = axleHeld < 100000 ? axleHeld + 1 : axleHeld;
         tankHeld = tankHeld < 100000 ? tankHeld + 1 : tankHeld;
         const int sec = (int)(rate / 16.0f);
-        sc.block(cam, rr, driven != 0 ? carSpeed : 0.0f, ss->ground, fminf(fmaxf(ss->windows, 0.0f), 1.0f), tailD, nPipes,
+        sc.block(cam, rr, driven != 0 ? finite(carSpeed) : 0.0f, ss->ground, fminf(fmaxf(ss->windows, 0.0f), 1.0f), tailD, nPipes,
                  bike, ss->enginePlace, driven, driveHeld < sec ? 1 : 0, axleHeld < sec ? 1 : 0, tankHeld < sec ? 1 : 0);
         // (the fitted strengths, dB: exhaust -4.85, intake +0.8, valvetrain +0.3, block -1.6, headers' walls +0.9,
         // turbo +2, starter -0.4, combustion +2.4, tyres -8.2; tests/sim/listen/ExploreTest.cpp makes the table)
@@ -687,10 +687,10 @@ module Listen
         // (the wind, which the reference has not: at 100 km/h in the cabin some 6 dB under the tyres, rising as the
         // cube of the speed)
         sc.windStrength = 0.5f;
-        shFx = fx;
-        shFy = fy;
-        shMx = mx;
-        shMy = my;
+        shFx = finite(fx);
+        shFy = finite(fy);
+        shMx = finite(mx);
+        shMy = finite(my);
         boomT = sc.camUse == CAM_DRIVER ? 1.0f : 0.0f;
         // the place: its reflections a third as loud in the cabin with the windows shut
         placeUse = ss->place < 0 ? 0 : (ss->place > 4 ? 4 : ss->place);
@@ -805,11 +805,41 @@ module Listen
             extraIn[where] += x;
     }
 
-    // Sample i: each source's signal into its place, heard; the cabin's boom; the fade's gain
-    void mix1(int i, float xL, float xR, float in, float tqNow, float mech, float blockN, float turbo, float starter,
-              float comb, float sh0, float sh1, float road, float cutG, float gearbox, float axle, float front, float head,
-              float tank, float gate, float voices, float mouth, float chain, float clutch)
+    // x if it is finite (and not absurd), else 0
+    float finite(float x)
     {
+        return fabsf(x) < 1.0e30f ? x : 0.0f;
+    }
+
+    // Sample i: each source's signal into its place, heard; the cabin's boom; the fade's gain
+    void mix1(int i, float xL0, float xR0, float in0, float tqNow0, float mech0, float blockN0, float turbo0, float starter0,
+              float comb0, float sh00, float sh10, float road0, float cutG, float gearbox0, float axle0, float front0,
+              float head0, float tank0, float gate0, float voices0, float mouth0, float chain0, float clutch0)
+    {
+        // (a source that is not finite is dropped, this sample, alone: a NaN or an infinity from one subsystem would
+        // otherwise fill its delay line and its filters and leave the mix with an offset; X-024)
+        const float xL = finite(xL0);
+        const float xR = finite(xR0);
+        const float in = finite(in0);
+        const float tqNow = finite(tqNow0);
+        const float mech = finite(mech0);
+        const float blockN = finite(blockN0);
+        const float turbo = finite(turbo0);
+        const float starter = finite(starter0);
+        const float comb = finite(comb0);
+        const float sh0 = finite(sh00);
+        const float sh1 = finite(sh10);
+        const float road = finite(road0);
+        const float gearbox = finite(gearbox0);
+        const float axle = finite(axle0);
+        const float front = finite(front0);
+        const float head = finite(head0);
+        const float tank = finite(tank0);
+        const float gate = finite(gate0);
+        const float voices = finite(voices0);
+        const float mouth = finite(mouth0);
+        const float chain = finite(chain0);
+        const float clutch = finite(clutch0);
         sc.in[LS_TAIL0] = sEx * xL;
         sc.in[LS_TAIL1] = sEx * xR;
         // the intake's mouth alone at the mouth; the throttle's hiss (the rest of `in`) in the bay

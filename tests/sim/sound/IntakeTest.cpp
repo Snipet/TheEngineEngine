@@ -101,7 +101,7 @@ namespace
 }
 
 TEST_CASE("intake: with intake.model 1 the trumpets of individual throttle bodies are heard over a plenum's snorkel",
-          "[sound][intake]")
+          "[sound][intake][nightly]")
 {
     const double rpm = 4000.0;
     const double fire = rpm / 60.0 * 2.0;       // the default build's four: two firings a turn

@@ -314,6 +314,7 @@ namespace tee::ui
             runLeft_ = 0.0;
             DynoTrace r = curveFor(fieldOr("engine.compression", 10.0), fieldOr("boost.level", 80e3) * runPlan_.pedal,
                                    runPlan_.name.empty() ? "Run " + std::to_string(runs_.size() + 1) : runPlan_.name);
+            r.settled = runPlan_.steps.empty() ? -1 : runPlan_.settleExhaust ? 1 : 0;   // as card C's runner says it
             runs_.push_back(std::move(r));
             ++dynoRevision_;
         }

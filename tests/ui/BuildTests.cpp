@@ -8,6 +8,8 @@
 //   ui.build.files     a build saved by the garage and loaded back is the same build (Build::diff is empty)
 #include "build/BuildKit.h"
 
+#include <algorithm>
+
 #include "app/AppFrame.h"
 #include "app/host/HostSources.h"
 
@@ -357,11 +359,19 @@ int main(int argc, char** argv)
     Rig rig;
     if (!rig.open())
         return 1;
-    bool found = false;
-    for (const auto& t : tests())
-        if (name == "all" || name == t.first)
+    // "all" (ui.build): every case; "--reverse" (ui.build.reverse, nightly): every case, last first; else one by name.
+    const bool reverse = name == "--reverse";
+    std::vector<std::pair<std::string, Test>> order = tests();
+    if (reverse)
+        std::reverse(order.begin(), order.end());
+    bool found = false, first = true;
+    for (const auto& t : order)
+        if (name == "all" || reverse || name == t.first)
         {
             found = true;
+            if (!first)
+                rig.reset();
+            first = false;
             const int before = fails();
             std::printf("ui.%s\n", t.first.c_str());
             t.second(rig);

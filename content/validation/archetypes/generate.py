@@ -112,10 +112,11 @@ def targets(slug, b):
     add(name="Invariant: holds its limiter", scenario=SC + "p-free-rev.json", tel="engine.speed", measure="max",
         during=[6, 9], relativeTo="engine.redline", range=[0.97, 1.03], unit="of the redline",
         source="a rev limiter holds the speed within a few percent of where it cuts (some 100 to 200 rpm at 6500)")
-    pull = SC + ("p-pull-auto.json" if auto else "p-pull-paddles.json")
+    pull = SC + ("p-pull-auto.json" if auto else "p-pull-eighteen.json" if car["gearbox"] == "Eighteen-speed"
+                 else "p-pull-paddles.json")
     add(name="Invariant: pulls away", scenario=pull, tel="car.speed", measure="max", during=[3, 13],
-        range=[3 if slug.startswith("tractor") else 8, 120], unit="m/s",
-        source="started, in gear and on the pedal, the car moves (a 36 t tractor at least 3 m/s in ten seconds)")
+        range=[1.5 if slug.startswith("tractor") else 8, 120], unit="m/s",
+        source="started, in gear and on the pedal, the car moves (a 36 t tractor in third of eighteen at least 1.5 m/s)")
     add(name="Invariant: stops at the key", scenario=pull, tel="engine.state", measure="last", range=[0, 0],
         source="the key off stops the engine (engine.state 0 by the run's end)")
     add(name="Starts cold", scenario=SC + "p-cold-start.json", tel="engine.state", measure="min", during=[6, 11.5],
@@ -176,30 +177,39 @@ def targets(slug, b):
             source="VE's shape: below the torque peak it falls away, the more so the hotter the cam (%s, ch. 6); "
                    "measured at %d rpm" % (HEYWOOD, lo_rpm))
     tport = [850, 1100] if diesel else [1100, 1300]
-    add(name="Port gas at full load", scenario=SC + "p-full-load-%d.json" % fl, tel="exhaust.portTemperature",
+    add(name="Port gas at full load", scenario=SC + "p-full-load-%d.json" % fl, tel="exhaust.portThermocouple",
         measure="mean", during=[8, 10], range=tport, unit="K",
-        source=("the gas at a diesel's exhaust valve at full load, before the port and pipe cool it: some 850 to 1100 K "
-                "(judgement: the header's 700 to 950 K, below, plus the port's cooling; %s, ch. 14)" if diesel else
-                "the gas at the exhaust valve at full load, before the port and pipe cool it: some 1100 to 1300 K for a "
-                "spark-ignition engine (%s, ch. 14; card C's target on default.json, which this follows)") % HEYWOOD)
+        source=("what a thermocouple at a diesel's exhaust port reads at full load (a time mean, below the gas's mass "
+                "mean: the blowdown is most of the mass and little of the time): some 850 to 1100 K (judgement; %s, ch. "
+                "14); tel.exhaust.portThermocouple, card G's mixing cup" if diesel else
+                "what a thermocouple at the exhaust port reads at full load (a time mean, below the gas's mass mean): "
+                "some 1100 to 1300 K for a spark-ignition engine (%s, ch. 14; card C's target on default.json); "
+                "tel.exhaust.portThermocouple, card G's mixing cup") % HEYWOOD)
     thead = [700, 950] if diesel else [900, 1100]
-    add(name="Header gas at full load", scenario=SC + "p-full-load-%d.json" % fl, tel="exhaust.headerTemperature",
+    add(name="Header gas at full load", scenario=SC + "p-full-load-%d.json" % fl, tel="exhaust.headerThermocouple",
         measure="mean", during=[8, 10], range=thead, unit="K",
         source=("a thermocouple a little way down a diesel's manifold reads some 700 to 950 K at full load (makers' "
-                "pre-turbine limits near 1000 K; %s, ch. 14)" if diesel else
+                "pre-turbine limits near 1000 K; %s, ch. 14); tel.exhaust.headerThermocouple" if diesel else
                 "a thermocouple a little way down a primary reads 900 to 1100 K at full load on a petrol engine (makers' "
-                "exhaust-gas-temperature data; %s, ch. 14); n/a until the exhaust reports it") % HEYWOOD)
+                "exhaust-gas-temperature data; %s, ch. 14); tel.exhaust.headerThermocouple") % HEYWOOD)
+    add(name="Port gas, mass mean (information)", scenario=SC + "p-full-load-%d.json" % fl,
+        tel="exhaust.portTemperature", measure="mean", during=[8, 10], range=[0, 3000], unit="K",
+        source="the gas's mass (enthalpy) mean at the port, kept for information: above a thermocouple's reading, not "
+               "a target (card G, f703892)")
 
     # ---- the car ----------------------------------------------------------------------------------------------
     pmid = 0.5 * (plo + phi)
     qm = "p-quarter-mile-own.json" if auto else "p-quarter-mile.json"
+    if os.path.exists(os.path.join(ROOT, "content", "validation", "scenarios", "qm", slug + ".json")):
+        # the car's own gearbox and card I's launch, its upshifts placed by quarter_mile.py
+        qm = "qm/" + slug + ".json"
     if not slug.startswith("tractor"):
         lb, hp = car["mass"] * 2.20462, pmid * 1.341
         et, trap = 5.825 * (lb / hp) ** (1 / 3), 234 * (hp / lb) ** (1 / 3) * 1.609344 / 3.6
         add(name="Quarter mile: time", scenario=SC + qm, tel="car.t1320", measure="last",
             range=[round(et * 0.95, 2), round(et * 1.15, 2)], unit="s",
             source="Hale's rule, ET = 5.825 (lb/hp)^(1/3) s, with the kind's published power (%.0f kW) and the build's "
-                   "mass: %.2f s; 5 %% quicker to 15 %% slower for street tyres and an automatic's launch (card I's "
+                   "mass: %.2f s; 5 %% quicker to 15 %% slower for the build's own tyres and launch (card I's "
                    "test holds drag radials to 8 %%)" % (pmid, et))
         add(name="Quarter mile: trap speed", scenario=SC + qm, tel="car.v1320", measure="last",
             range=[round(trap * 0.92, 1), round(trap * 1.06, 1)], unit="m/s",

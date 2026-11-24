@@ -48,7 +48,7 @@
     },
     {
       "name": "Invariant: pulls away",
-      "scenario": "validation/scenarios/p-pull-paddles.json",
+      "scenario": "validation/scenarios/p-pull-eighteen.json",
       "tel": "car.speed",
       "measure": "max",
       "during": [
@@ -56,15 +56,15 @@
         13
       ],
       "range": [
-        3,
+        1.5,
         120
       ],
       "unit": "m/s",
-      "source": "started, in gear and on the pedal, the car moves (a 36 t tractor at least 3 m/s in ten seconds)"
+      "source": "started, in gear and on the pedal, the car moves (a 36 t tractor in third of eighteen at least 1.5 m/s)"
     },
     {
       "name": "Invariant: stops at the key",
-      "scenario": "validation/scenarios/p-pull-paddles.json",
+      "scenario": "validation/scenarios/p-pull-eighteen.json",
       "tel": "engine.state",
       "measure": "last",
       "range": [
@@ -271,7 +271,7 @@
     {
       "name": "Port gas at full load",
       "scenario": "validation/scenarios/p-full-load-1200.json",
-      "tel": "exhaust.portTemperature",
+      "tel": "exhaust.portThermocouple",
       "measure": "mean",
       "during": [
         8,
@@ -282,12 +282,12 @@
         1100
       ],
       "unit": "K",
-      "source": "the gas at a diesel's exhaust valve at full load, before the port and pipe cool it: some 850 to 1100 K (judgement: the header's 700 to 950 K, below, plus the port's cooling; Heywood, Internal Combustion Engine Fundamentals, ch. 14)"
+      "source": "what a thermocouple at a diesel's exhaust port reads at full load (a time mean, below the gas's mass mean: the blowdown is most of the mass and little of the time): some 850 to 1100 K (judgement; Heywood, Internal Combustion Engine Fundamentals, ch. 14); tel.exhaust.portThermocouple, card G's mixing cup"
     },
     {
       "name": "Header gas at full load",
       "scenario": "validation/scenarios/p-full-load-1200.json",
-      "tel": "exhaust.headerTemperature",
+      "tel": "exhaust.headerThermocouple",
       "measure": "mean",
       "during": [
         8,
@@ -298,7 +298,23 @@
         950
       ],
       "unit": "K",
-      "source": "a thermocouple a little way down a diesel's manifold reads some 700 to 950 K at full load (makers' pre-turbine limits near 1000 K; Heywood, Internal Combustion Engine Fundamentals, ch. 14)"
+      "source": "a thermocouple a little way down a diesel's manifold reads some 700 to 950 K at full load (makers' pre-turbine limits near 1000 K; Heywood, Internal Combustion Engine Fundamentals, ch. 14); tel.exhaust.headerThermocouple"
+    },
+    {
+      "name": "Port gas, mass mean (information)",
+      "scenario": "validation/scenarios/p-full-load-1200.json",
+      "tel": "exhaust.portTemperature",
+      "measure": "mean",
+      "during": [
+        8,
+        10
+      ],
+      "range": [
+        0,
+        3000
+      ],
+      "unit": "K",
+      "source": "the gas's mass (enthalpy) mean at the port, kept for information: above a thermocouple's reading, not a target (card G, f703892)"
     }
   ]
 }

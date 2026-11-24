@@ -394,7 +394,7 @@ TEST_CASE("fixed X-003: the new combustion and ECU together start the V8 at -20 
     }
 }
 
-TEST_CASE("fixed X-007: the reduced Spec (an 18 kg piston on a single with the automatic) runs", "[combo][fixed]")
+TEST_CASE("fixed X-007: the reduced Spec (an 18 kg piston on a single with the automatic) runs", "[fast][combo][fixed]")
 {
     // found 2026-11-24 (the crank ran away; then Engine::process never returned, or SIGSEGV); D's ae5c99b made the
     // audio thread safe (no state-counted loop, a diverged engine put at rest with FLAG_FAULT), I's f9e26f1 removed the
@@ -435,7 +435,7 @@ namespace
     }
 } // namespace
 
-TEST_CASE("targets: a one-second key starts the V8 with nothing and everything on", "[combo][targets]")
+TEST_CASE("targets: a one-second key starts the V8 with nothing and everything on", "[fast][combo][targets]")
 {
     for (const char* b : {"v8"})
         for (bool all : {false, true})
@@ -447,4 +447,37 @@ TEST_CASE("targets: a one-second key starts every archetype with nothing and eve
     for (const Archetype& a : archetypes())
         for (bool all : {false, true})
             shortKeyCase(a.name, all);
+}
+
+TEST_CASE("the switches reach the same decisions on the default block as on a block one cc larger",
+          "[fast][combo][decisions]")
+{
+    // D's f89d40c: a switch written while stopped on the default V8's own layout and size (no configure follows) left
+    // the physical cylinder and the builder's exhaust as the defaults made them. The same switches, written as events
+    // before the start, on the default block and on one 1 cc larger (which configures), must give the same engine:
+    // brake torque on the engine dyno at full throttle within 1 %, and the same idle within 1 %. (Measured 19:30: 766.3
+    // against 767.4 N m. Run against the tree before f89d40c this X reproduction did not tell the two apart either:
+    // the condition that shows the old hole is asked of D.)
+    double torque[2] = {0.0, 0.0}, idle[2] = {0.0, 0.0};
+    for (int k = 0; k < 2; ++k)
+    {
+        tee::test::Scenario s;
+        s.at(0.0).spec("boost.kind", "Turbo").spec("boost.level", 0.6);
+        if (k == 1)
+            s.spec("engine.displacement", 0.00576 + 1e-6);
+        s.at(0.0).spec("env.temperature", 293.15).spec("fuel.model", 1).spec("boost.model", 1).spec("ecu.model", 1);
+        s.at(0.0).control("mode", 1).lever(0).clutch(0).throttle(0).ignition(tee::On);
+        s.at(0.25).ignition(tee::Start);
+        s.at(2.0).ignition(tee::On);
+        s.at(4.0).mode(2).dyno(314.16);
+        s.at(4.5).throttle(1.0).ramp(0.3);
+        const tee::test::Run r = s.run(8.0);
+        REQUIRE(r.ok());
+        idle[k] = r.tel("engine.speed").during(2.5, 4.0).mean();
+        torque[k] = r.tel("engine.torque").during(6.0, 8.0).mean();
+    }
+    std::printf("decisions: idle %.1f / %.1f rad/s, dyno torque %.1f / %.1f N m (default block / 1 cc larger)\n", idle[0],
+                idle[1], torque[0], torque[1]);
+    CHECK(std::fabs(torque[0] - torque[1]) < 0.01 * std::fabs(torque[1]));
+    CHECK(std::fabs(idle[0] - idle[1]) < 0.01 * idle[1]);
 }

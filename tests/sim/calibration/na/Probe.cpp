@@ -182,11 +182,14 @@ TEST_CASE("probe: a cylinder's gas exchange at intake closing", "[.probe]")
         }
         const double pI = sp / n, tI = st / n, vI = sv / n, xb = sx / n;
         const double f1 = pI / pAir, f2 = tAir / tI, f3 = vI / vd, f4 = 1.0 - xb;
-        double portI = 0, portE = 0;
+        double portI = 0, portE = 0, piLo = 1e9, piHi = 0;
         const int deg = int(pr.get("scope.degrees"));
         for (int d = 0; d < deg; ++d)
         {
-            portI += pr.get("scope.portIntake[" + std::to_string(d) + "]");
+            const double pi = pr.get("scope.portIntake[" + std::to_string(d) + "]");
+            piLo = std::min(piLo, pi);
+            piHi = std::max(piHi, pi);
+            portI += pi;
             portE += pr.get("scope.portExhaust[" + std::to_string(d) + "]");
         }
         portI /= std::max(deg, 1);
@@ -210,6 +213,7 @@ TEST_CASE("probe: a cylinder's gas exchange at intake closing", "[.probe]")
                 std::printf("        half-burn (tel, at each exhaust opening): min %.1f median %.1f max %.1f; %d of %zu over 20 deg; "
                             "%d burns under half the mean heat\n", h.front(), h[h.size() / 2], h.back(), over20, h.size(), weak);
         }
+        std::printf("        intake port over the cycle: %.0f to %.0f kPa (swing +-%.0f)\n", piLo / 1e3, piHi / 1e3, (piHi - piLo) / 2e3);
         std::printf("        at exhaust opening: gas %.0f K, %.0f kPa (cylinder 1's mean over %d openings)\n", tEvo / std::max(nEvo, 1.0),
                     pEvo / std::max(nEvo, 1.0) / 1e3, int(nEvo));
         std::printf("        walls %.3f of the burns' heat (%.0f J of %.0f J), port gas %.0f K\n", wall / std::max(heat, 1e-9), wall, heat,
@@ -463,6 +467,53 @@ TEST_CASE("probe: a start on the dyno", "[.probe-start]")
         std::printf("%5.1f %6.0f %5.0f %7.1f %7.2f %7.1f %7.1f %8.3f\n", t + 0.2, pr.tel("engine.speed") * 30.0 / M_PI,
                     pr.tel("engine.state"), pr.get("intk.tAir"), pr.get("intk.heatRise"), pr.get("intk.tCoolant"),
                     pr.tel("engine.chargeTemperature"), pr.tel("ecu.fuelFlow") * 1e3);
+    }
+    SUCCEED();
+}
+
+// A build's idle on the bench for PROBE_SECONDS (10), printing every 0.25 s what an intake with throttles a runner and a
+// boost machine hold (X-022). PROBE_BUILD (a file), PROBE_SIM.
+TEST_CASE("probe: an idle's intake and boost, every quarter second", "[.probe-x022]")
+{
+    const char* buildEnv = std::getenv("PROBE_BUILD");
+    const std::string file = buildEnv ? buildEnv : std::string(TEE_SOURCE_DIR) + "/content/builds/combo/findings/x022-supercharger-itb-small-charge.json";
+    const char* secEnv = std::getenv("PROBE_SECONDS");
+    Probe pr;
+    tee::EnginePlayer::Options options;
+    options.directory = std::getenv("PROBE_SIM") ? std::filesystem::path(std::getenv("PROBE_SIM"))
+                                                  : std::filesystem::path(TEE_SOURCE_DIR) / "sim";
+    options.sampleRate = 48000.0;
+    std::string errors, warnings;
+    pr.p = tee::EnginePlayer::create(options, errors);
+    REQUIRE(pr.p != nullptr);
+    tee::EngineBuild b;
+    REQUIRE(tee::loadBuild(*pr.p, file, b, errors, warnings));
+    tee::applyBuild(*pr.p, b);
+    auto& c = pr.p->controls();
+    c.ignition = 2;
+    std::printf("%5s %6s %5s %8s %8s %8s %8s %7s %7s\n", "t s", "rpm", "flags", "pEnds", "pPlen", "pBox", "boostP", "valve", "qThr");
+    const int n = int((secEnv ? std::atof(secEnv) : 10.0) / 0.25);
+    for (int i = 0; i < n; ++i)
+    {
+        if (i == 4)
+            c.ignition = 1;
+        if (std::getenv("PROBE_BLIP"))
+            c.throttle = i >= 8 && (i % 4) < 2 ? 1.0f : 0.0f;
+        if (std::getenv("PROBE_FINE") && i == 8)
+        {
+            for (int k = 0; k < 50; ++k)
+            {
+                pr.play(0.005);
+                std::printf("  %6.3f %6.0f %5.0f pEnds %7.0f pBox %8.0f boost %8.0f qThr %8.4f mValves %8.5f\n", 2.0 + 0.005 * (k + 1),
+                            pr.tel("engine.speed") * 30.0 / M_PI, pr.tel("engine.flags"), pr.get("intk.pEnds"), pr.get("intk.pBox"),
+                            pr.tel("boost.pressure"), pr.get("intk.qThr"), pr.get("intk.mValves"));
+            }
+            continue;
+        }
+        pr.play(0.25);
+        std::printf("%5.2f %6.0f %5.0f %8.0f %8.0f %8.0f %8.0f %7.3f %7.4f\n", 0.25 * (i + 1), pr.tel("engine.speed") * 30.0 / M_PI,
+                    pr.tel("engine.flags"), pr.get("intk.pEnds"), pr.get("intk.pPlenum"), pr.get("intk.pBox"),
+                    pr.tel("boost.pressure"), pr.tel("ecu.idleValve"), pr.get("intk.qThr"));
     }
     SUCCEED();
 }

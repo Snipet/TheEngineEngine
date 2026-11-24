@@ -292,9 +292,14 @@ namespace tee
                 // boost need, to some three seconds
                 const int knockMost = hasRetard_ || hasBoost_
                                           ? std::max(options_.maxCycles, static_cast<int>(3.0 * speed / kFourPi)) : 0;
-                const int most = options_.holdSeconds > 0.0 ? 1 << 30 : std::max(options_.maxCycles, knockMost) + settling;
+                const int holdMost = static_cast<int>((options_.minHoldSeconds + 1.0) * speed / kFourPi);
+                const int most = options_.holdSeconds > 0.0
+                                     ? 1 << 30
+                                     : std::max({options_.maxCycles, knockMost, holdMost}) + settling;
                 double lastRetard = knockRetard();
                 double lastBoost = boostNow();
+                std::vector<double> counted;   // the counted cycles' torques
+                bool resettled = false;
                 for (int c = 0; c < most; ++c)
                 {
                     if (cancel != nullptr && cancel->load(std::memory_order_relaxed))
@@ -355,15 +360,41 @@ namespace tee
                         const bool boostSteady =
                             !hasBoost_ || std::fabs(boost - lastBoost) <= 0.01 * std::max(std::fabs(boost), 20000.0);
                         lastBoost = boost;
-                        if (k + 1 >= options_.minCycles && held >= options_.holdSeconds && retardSteady && boostSteady
-                            && std::fabs(t - previous) <= options_.tolerance * std::max(std::fabs(p.torque), 1.0))
+                        // the torque itself has stopped moving: the last two cycles agree, and the mean of the last three
+                        // agrees with the three before (no trend: near a runner's resonance the intake's standing wave builds or
+                        // decays over many cycles, and two cycles of a slow slide can agree by chance)
+                        counted.push_back(t);
+                        const double scale = options_.tolerance * std::max(std::fabs(p.torque), 1.0);
+                        const std::size_t m = counted.size();
+                        const bool noTrend =
+                            m >= 6
+                            && std::fabs((counted[m - 1] + counted[m - 2] + counted[m - 3])
+                                         - (counted[m - 4] + counted[m - 5] + counted[m - 6]))
+                                       / 3.0
+                                   <= scale;
+                        const bool steady = k + 1 >= options_.minCycles && held >= options_.holdSeconds
+                                            && held >= options_.minHoldSeconds && retardSteady
+                                            && boostSteady && noTrend && std::fabs(t - previous) <= scale;
+                        if (steady && heatSettle_ && !resettled)
+                        {
+                            // the exhaust settled again, now that the flow is this speed's (the first settle, a cycle
+                            // after the change of speed, saw the gas still moving), and the torque watched again
+                            askHeatSettle();
+                            resettled = true;
+                            counted.clear();
+                            continue;
+                        }
+                        if (steady)
                         {
                             p.settled = true;
                             break;
                         }
                     }
                     else
+                    {
                         p.torque = t;
+                        counted.push_back(t);
+                    }
                     previous = t;
                 }
                 p.power = p.torque * speed;
@@ -799,7 +830,7 @@ namespace tee
         std::uint64_t h = build.hash();
         for (const double v : {static_cast<double>(o.coarse), static_cast<double>(o.points), o.from, o.to, o.pedal,
                                o.tolerance, static_cast<double>(o.minCycles), static_cast<double>(o.maxCycles),
-                               o.sampleRate, static_cast<double>(o.block), o.startSeconds, o.warm ? 1.0 : 0.0, o.warmupSeconds, o.settleExhaust ? 1.0 : 0.0, o.holdSeconds, o.brake == "host" ? 1.0 : o.brake == "program" ? 2.0 : 0.0, o.innerRate, static_cast<double>(o.fields.size())})
+                               o.sampleRate, static_cast<double>(o.block), o.startSeconds, o.warm ? 1.0 : 0.0, o.warmupSeconds, o.settleExhaust ? 1.0 : 0.0, o.holdSeconds, o.brake == "host" ? 1.0 : o.brake == "program" ? 2.0 : 0.0, o.innerRate, static_cast<double>(o.fields.size()), o.minHoldSeconds})
             h = mix(h, v);
         return h;
     }

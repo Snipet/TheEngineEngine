@@ -92,13 +92,13 @@ TEST_CASE("custom off: a build's custom fields filled in change nothing, to the 
     CHECK(differ == 0);
 }
 
-TEST_CASE("the engine dyno holds a set speed within 10 rpm at full throttle; its torque is the brake torque", "[core][engine][dyno]")
+static void dynoHolds(const std::vector<const char*>& builds, const std::vector<double>& rpms)
 {
-    for (const char* build : {"v8", "engines/ref-12-v8-cross", "engines/ref-10-inline-6"})
+    for (const char* build : builds)
     {
         Bench b(build);
         b.start();
-        for (double rpm : {2000.0, 4000.0, 5500.0})
+        for (double rpm : rpms)
         {
             const Point p = dynoAt(b, rpm);
             std::printf("%-24s dyno %4.0f rpm full throttle: held %.2f rpm, absorber %.1f N m, gas less friction %.1f N m\n", build, rpm,
@@ -108,6 +108,16 @@ TEST_CASE("the engine dyno holds a set speed within 10 rpm at full throttle; its
             CHECK(std::abs(b.tel("engine.torque") - b.tel("engine.dynoTorque")) < 1e-3);
         }
     }
+}
+
+TEST_CASE("the engine dyno holds a set speed within 10 rpm at full throttle; its torque is the brake torque", "[core][engine][dyno]")
+{
+    dynoHolds({"v8"}, {2000.0, 5500.0});
+}
+
+TEST_CASE("the engine dyno holds a set speed on three builds at three speeds (the full form)", "[core][engine][dyno][nightly]")
+{
+    dynoHolds({"v8", "engines/ref-12-v8-cross", "engines/ref-10-inline-6"}, {2000.0, 4000.0, 5500.0});
 }
 
 TEST_CASE("the engine dyno sweeps at its rate", "[core][engine][dyno]")
@@ -137,16 +147,16 @@ TEST_CASE("the engine dyno sweeps at its rate", "[core][engine][dyno]")
     CHECK(worst < 75.0);
 }
 
-TEST_CASE("the default V8 at full throttle: BMEP 10 to 13 bar in its mid-range, FMEP 0.8 to 2.5 bar, VE 0.75 to 1.05", "[core][engine][mep]")
+static void meps(const std::vector<const char*>& builds, const std::vector<double>& rpms)
 {
-    for (const char* build : {"default", "engines/ref-12-v8-cross"})
+    for (const char* build : builds)
     {
         Bench b(build);
         b.start();
         b.warm();
         const double red = b.tel("engine.redline") * kRpm;
         std::printf("%s (redline %.0f rpm), warm, full throttle on the dyno:\n", build, red);
-        for (double rpm : {800.0, 1500.0, 2500.0, 3500.0, 4500.0, 5500.0, 6400.0})
+        for (double rpm : rpms)
         {
             b.warm();
             const Point p = dynoAt(b, rpm);
@@ -163,6 +173,16 @@ TEST_CASE("the default V8 at full throttle: BMEP 10 to 13 bar in its mid-range, 
             }
         }
     }
+}
+
+TEST_CASE("the default V8 at full throttle: BMEP 10 to 13 bar in its mid-range, FMEP 0.8 to 2.5 bar, VE 0.75 to 1.05", "[core][engine][mep]")
+{
+    meps({"default"}, {1500.0, 3500.0, 6400.0});
+}
+
+TEST_CASE("the MEPs of two V8s across their range (the full form)", "[core][engine][mep][nightly]")
+{
+    meps({"default", "engines/ref-12-v8-cross"}, {800.0, 1500.0, 2500.0, 3500.0, 4500.0, 5500.0, 6400.0});
 }
 
 TEST_CASE("a sixteen-cylinder build starts, runs and stops; its cost", "[core][engine][v16]")
@@ -407,13 +427,12 @@ TEST_CASE("boost.model 1 implies the builder's exhaust, at a build and when swit
     CHECK(std::isfinite(b.tel("engine.speed")));
 }
 
-TEST_CASE("the books hold, and the engine makes torque, on diesels and a boosted petrol engine", "[core][engine][backflow]")
+static void booksOn(const std::vector<const char*>& builds)
 {
     // (the lead's ask, 24 Nov: the backflow test ran green while every diesel archetype was dead on the dyno; each of
     // these must make torque at full load, and its throttle's (or intake's) air, its intake valves' and its exhaust
     // valves' mass agree within 1 %)
-    for (const char* build : {"archetypes/tractor-15-inline-six", "archetypes/diesel-20-common-rail",
-                              "archetypes/pickup-diesel-67-inline-six", "archetypes/turbo-four-20-gdi"})
+    for (const char* build : builds)
     {
         Bench b(build);
         std::string e;
@@ -448,4 +467,77 @@ TEST_CASE("a refused custom layout says why (tel.engine.layoutReason)", "[core][
     b.start();
     CHECK(b.tel("engine.layoutRefused") == 1.0);
     CHECK(b.tel("engine.layoutReason") == 1.0);
+}
+
+TEST_CASE("the books hold, and the engine makes torque, on a diesel and a boosted petrol engine", "[core][engine][backflow]")
+{
+    booksOn({"archetypes/tractor-15-inline-six", "archetypes/turbo-four-20-gdi"});
+}
+
+TEST_CASE("the books hold, and the engine makes torque, on every diesel archetype (the full form)", "[core][engine][backflow][nightly]")
+{
+    booksOn({"archetypes/tractor-15-inline-six", "archetypes/diesel-20-common-rail", "archetypes/pickup-diesel-67-inline-six",
+             "archetypes/turbo-four-20-gdi"});
+}
+
+TEST_CASE("a burn still running at exhaust opening lets its unburned fuel out with the gas: its heat released once", "[core][engine][pop]")
+{
+    // (the lead's ruling, 24 Nov, with N1: the cylinder's side of an overrun's pop. The default V8 under the physical
+    // cylinder at full load with its burns made six times as long, so that each runs past the exhaust's opening: per
+    // burn, the heat released in the cylinder and the heat let out unburned sum to the charge's within 1 %)
+    Bench b("default");
+    std::string e;
+    REQUIRE(b.player().setSpec("fuel.model", 1, e));
+    b.start();
+    b.warm();
+    b.ctl().mode = 2;
+    b.ctl().throttle = 1.0f;
+    b.ctl().dynoSpeed = float(3000.0 / 9.5492966);
+    b.write("burnK", 6.0);          // (every burn six times as long: it runs well past the exhaust's opening)
+    b.play(2.0);
+    // (fuel.model 1 set before the start, on a build whose layout makes no configure: the decisions must still reach
+    // Combustion and the cylinders)
+    CHECK(b.field("comb.walls") == 1.0);
+    CHECK(b.field("cyl[0].conserve") == 1.0);
+    std::printf("spark %.1f degrees before the top, burn %.0f degrees, exhaust opens %.0f\n", b.tel("ecu.advance"), b.field("cyl[0].burnDur"),
+                b.field("cyl[0].evo"));
+    double worst = 0.0, outShare = 0.0;
+    int n = 0;
+    b.play(1.0, [&] {
+        const double q = b.field("cyl[0].bookCharged");
+        if (q <= 0.0)
+            return;
+        const double sum = b.field("cyl[0].bookReleased") + b.field("cyl[0].bookOut");
+        worst = std::max(worst, std::fabs(sum / q - 1.0));
+        outShare += b.field("cyl[0].bookOut") / q;
+        n += 1;
+    });
+    std::printf("late burns: %d blocks read, released + let out over charged: worst %.4f off; let out unburned %.1f %% of the charge\n", n,
+                worst, n > 0 ? 100.0 * outShare / n : 0.0);
+    REQUIRE(n > 0);
+    CHECK(worst < 0.01);
+    CHECK(outShare / n > 0.001);
+}
+
+TEST_CASE("X-025: a two-stroke rotary is refused, says so, and runs as the rotary it is", "[core][engine][custom]")
+{
+    // (X's reduced build: a custom one-rotor rotary with engine.cycle 1, in the vehicle. No model defines a two-stroke
+    // rotary: refused, tel.engine.layoutReason 4, the rotary run as a four-stroke-equivalent, never a silent engine
+    // that reports itself running)
+    Bench b("combo/findings/x025-two-stroke-rotary-silent");
+    b.start();
+    b.ctl().throttle = 0.3f;
+    double peak = 0.0;
+    b.play(2.0, [&] {
+        for (float s : b.left())
+            peak = std::max(peak, double(std::fabs(s)));
+    });
+    std::printf("X-025: state %g, %.0f rpm, refused %g, reason %g, cycleUse %g, faces %g, peak %.4f\n", b.tel("engine.state"),
+                b.tel("engine.speed") * 9.549, b.tel("engine.layoutRefused"), b.tel("engine.layoutReason"), b.field("cycleUse"),
+                b.field("lay.n"), peak);
+    CHECK(b.tel("engine.layoutRefused") == 1.0);
+    CHECK(b.tel("engine.layoutReason") == 4.0);
+    CHECK(b.field("cycleUse") == 0.0);
+    if (b.tel("engine.state") == 2.0)
+        CHECK(peak > 1e-3);
 }

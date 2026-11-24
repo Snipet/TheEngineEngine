@@ -74,6 +74,12 @@ module Intake
     // nowhere, left out): throttle and valves then agree over whole cycles. The waves are as before.
     float mValves;
     int haveValves;
+    float mCorr;        // the plenum's correction toward the valves' mass, from the last whole cycle (kg/s)
+    float corrWant;     // the last whole cycle's, which mCorr follows over some 0.5 s
+    float sumValves;    // this cycle's so far: the valves' mass, the waves' mass (kg), its seconds
+    float sumWave;
+    float sumT;
+    float cycleNow;     // a cycle's seconds (control's)
     float heatRise;
 
     void setup(float rate)
@@ -123,6 +129,7 @@ module Intake
     // that override them, the runner's length, the box; the manifold's ripple over each cycle (cycle: its seconds)
     void control(float d16, float omega, float vTotal, float cycle)
     {
+        cycleNow = fminf(fmaxf(cycle, 0.01f), 2.0f);
         vTotalNow = vTotal;
         // (a model asked between configures, as a build that keeps the layout and the size does: taken here)
         if (model == 0 && haveSpec != 0 && spec->model == 1)
@@ -265,7 +272,11 @@ module Intake
         if (itbs == 1)
         {
             // each trumpet's outside: the box's pressure (over the air; with the boost) or the air's
-            const float pOut = pBox - 101325.0f + (spec->trumpets == 0 ? box.p : 0.0f);
+            // (held at 8 kPa absolute at the least, the floor the cylinder's valve and the reading take: a boost machine's
+            // charge pipe drawn near empty by open throttles (X-022: a half-litre charge pipe behind an intercooler at its
+            // least flow fell to 14 Pa) would otherwise drive the linear runners a whole atmosphere below vacuum, and the
+            // engine diverged; the supply's own collapse is the boost's)
+            const float pOut = fmaxf(pBox + (spec->trumpets == 0 ? box.p : 0.0f), 8000.0f) - 101325.0f;
             float q = 0.0f;
             float snd = 0.0f;
             float pSum = 0.0f;
@@ -281,7 +292,12 @@ module Intake
             // the trumpets draw from the box (q out of the runners: negative while they draw)
             box.tick(spec->trumpets == 0 ? -q : 0.0f);
             sound = spec->trumpets == 0 ? box.sound : snd;
-            qThr = haveValves != 0 ? -mValves * 287.0f * tAir / pBox : -q;
+            // (the box, or a boost machine's charge pipe, is drawn by the trumpets' own flow, which answers its pressure.
+            // Drawn by the valves' mass (5fdc5ad), which does not, a half-litre pipe behind a boost machine rang up and
+            // diverged in 60 ms (X-022); a slow correction toward the valves' mass, even bounded and faded as the pipe
+            // empties, still faulted it under throttle blips. So the throttles' books here are the trumpets' flow: with
+            // throttles a runner the air the valves take can differ from it by what the runners' linear waves carry)
+            qThr = -q;
             pEnds += (101325.0f + pSum / (float)np - pEnds) * fminf(dt * 6.2831853f * 20.0f, 1.0f);
             // (the runners' far ends are sums of linear waves, whose rarefaction is not bounded by vacuum: on the lift
             // after the limiter, the closed plates and the cylinders still drawing, it read -11 kPa absolute, and the
@@ -294,10 +310,21 @@ module Intake
         {
             const float pg = pPlenum - 101325.0f;
             float qIn = 0.0f;
+            const float rho = pPlenum / (287.0f * fmaxf(tAir, 200.0f));
             for (int i = 0; i < np; ++i)
             {
-                const float back = 0.5f * pg + endRun[i].tick(run[i].far - 0.5f * pg);
-                qIn += (run[i].far - back) / run[i].z;
+                // the runner's end in the plenum loses K 1/2 rho u|u| (as the exhaust's ends do: ends.fm, lossFlow):
+                // K 1 for what leaves the runner into the plenum (a jet loses its whole head), 0.2 for what is drawn
+                // in (a production runner's entry, between a bellmouth's 0.05 and a square edge's 0.5: Idelchik;
+                // judgement). Quasi-steady, on the lossless flow the end's reflection gives (its end correction kept)
+                const float back0 = 0.5f * pg + endRun[i].tick(run[i].far - 0.5f * pg);
+                const float z = run[i].z;
+                const float q0 = (run[i].far - back0) / z;
+                const float a = fmaxf(run[i].area, 1.0e-5f);
+                const float kap = (q0 >= 0.0f ? 1.0f : 0.2f) * rho / (2.0f * a * a);
+                const float q = lossFlow(z * q0, z, kap);
+                const float back = run[i].far - z * q;
+                qIn += q;
                 run[i].write(rNear[i], back);
             }
             // the throttle, from the box: solved with the plenum (the step's end pressure in the flow), so it settles
@@ -305,7 +332,29 @@ module Intake
             const float up = pBox + box.p;
             const float aT = aThrottle * law + idle;
             const float rt = 287.0f * tAir;
-            const float mIn = haveValves != 0 ? mValves : qIn * pPlenum / rt;
+            // (with the valves' mass supplied: the runners' far ends give the plenum its flow from instant to instant, as
+            // their waves deliver it (fed anything else, the plenum and throttle lose the runners' coupling and swing on
+            // their own: a V8's idle plenum rippled 24 to 28 kPa against the runners' 2, valvetrain test 11), and what the
+            // valves took beyond that over the last whole cycle is made up after it, followed over some 0.5 s as a steady flow: the books
+            // close over whole cycles. The correction is held within half the valves' own mean flow, so a start's first
+            // cycles, whose waves and valves differ most, cannot run away with the plenum)
+            const float mWave = qIn * pPlenum / rt;
+            const float mIn = haveValves != 0 ? mWave + mCorr : mWave;
+            if (haveValves != 0)
+            {
+                mCorr += (corrWant - mCorr) * fminf(dt * 2.0f, 1.0f);
+                sumValves += mValves * dt;
+                sumWave += mWave * dt;
+                sumT += dt;
+                if (sumT >= cycleNow)
+                {
+                    const float lim = 0.5f * fabsf(sumValves) / sumT;
+                    corrWant = fminf(fmaxf((sumValves - sumWave) / sumT, -lim), lim);
+                    sumValves = 0.0f;
+                    sumWave = 0.0f;
+                    sumT = 0.0f;
+                }
+            }
             float mT = 0.0f;
             int choked = 0;
             const float dp = up - pPlenum;

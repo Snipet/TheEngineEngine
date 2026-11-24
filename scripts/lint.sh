@@ -29,6 +29,8 @@
 #      V8 for half a second, every switch off and every switch on, judged as the combos judge: 8 s). A new field with
 #      no sane first value turned 65 combo cases red on every platform twice on 2026-11-24. Skipped, and said, when no
 #      build tree has a tee-tests-combo that holds the case. TEE_LINT_TELEMETRY=0 skips it.
+#   9. a test tagged [nightly] is in a package whose catch_discover_tests has ADD_TAGS_AS_LABELS (else ctest sees no
+#      label and the full form runs in the fast tier).
 #   8. no float becomes an array index without a clamp at both ends (scripts/lint-index.py: a NaN's cast is INT_MIN on
 #      x86, X-019's SIGSEGV): tableIndex(x, last) (sim/core/mathx.fm), fminf(fmaxf(...)), or a lower check, or the line
 #      says `// lint: index-ok: <why>`. The places known on 2026-11-24 are in scripts/lint-index.allow, reported.
@@ -141,6 +143,16 @@ if [ "${TEE_LINT_SYNTAX:-1}" != 0 ] && command -v python3 > /dev/null; then
     echo "lint: no build tree with compile_commands.json: the C++ syntax check skipped"
   fi
 fi
+
+# ---- 9. a [nightly] tag is a ctest label: its package registers with ADD_TAGS_AS_LABELS ----------------------------
+# (without it the tag is a Catch tag only, ctest sees no label, and the full form runs in the fast tier: ecu and
+# combustion did so on 2026-11-24, 300 CPU-s between them)
+while IFS= read -r cm; do
+  d=$(dirname "$cm")
+  if grep -lq '\[nightly\]' "$d"/*.cpp 2>/dev/null && ! grep -q ADD_TAGS_AS_LABELS "$cm"; then
+    say "$cm: its tests have [nightly] tags but catch_discover_tests has no ADD_TAGS_AS_LABELS: they run in the fast tier"
+  fi
+done < <(git ls-files -- 'tests/*CMakeLists.txt')
 
 # ---- 8. a float as an index, clamped at both ends --------------------------------------------------------------------
 if command -v python3 > /dev/null; then
