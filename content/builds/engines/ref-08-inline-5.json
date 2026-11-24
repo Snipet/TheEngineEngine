@@ -1,0 +1,67 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Inline five",
+  "notes": "1-2-4-5-3, even 144.",
+  "spec": {
+    "engine": {
+      "custom": true,
+      "layout": 8,
+      "cylinders": 5,
+      "bankAngle": [
+        0.0
+      ],
+      "bank": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "pin": [
+        0,
+        216,
+        144,
+        72,
+        288
+      ],
+      "fireRev": [
+        0,
+        0,
+        1,
+        0,
+        1
+      ],
+      "place": [
+        0.0,
+        0.1,
+        0.2,
+        0.3,
+        0.4
+      ]
+    }
+  },
+  "expect": {
+    "firingOrder": [
+      1,
+      2,
+      4,
+      5,
+      3
+    ],
+    "firingIntervals": [
+      144,
+      144,
+      144,
+      144,
+      144
+    ],
+    "firingAngles": [
+      0.0,
+      144.0,
+      576.0,
+      288.0,
+      432.0
+    ]
+  }
+}

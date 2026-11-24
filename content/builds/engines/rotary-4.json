@@ -1,0 +1,84 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Rotary, four rotors",
+  "notes": "Rotors 90 degrees apart (a racing four-rotor's): a face fires each 90.",
+  "spec": {
+    "engine": {
+      "custom": true,
+      "rotors": 4,
+      "cylinders": 4,
+      "bankAngle": [
+        0
+      ],
+      "bank": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "pin": [
+        0,
+        180,
+        270,
+        90
+      ],
+      "fireRev": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "place": [
+        0.0,
+        0.1,
+        0.2,
+        0.3
+      ]
+    }
+  },
+  "expect": {
+    "firingOrder": [
+      1,
+      7,
+      4,
+      10,
+      2,
+      8,
+      5,
+      11,
+      3,
+      9,
+      6,
+      12
+    ],
+    "firingIntervals": [
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90
+    ],
+    "firingAngles": [
+      0.0,
+      360.0,
+      720.0,
+      180.0,
+      540.0,
+      900.0,
+      90.0,
+      450.0,
+      810.0,
+      270.0,
+      630.0,
+      990.0
+    ]
+  }
+}

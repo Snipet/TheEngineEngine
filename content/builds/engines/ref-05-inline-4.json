@@ -1,0 +1,60 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Inline four, flat-plane crank",
+  "notes": "1-3-4-2, even.",
+  "spec": {
+    "engine": {
+      "custom": true,
+      "layout": 5,
+      "cylinders": 4,
+      "bankAngle": [
+        0.0
+      ],
+      "bank": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "pin": [
+        0,
+        180,
+        180,
+        0
+      ],
+      "fireRev": [
+        0,
+        1,
+        0,
+        1
+      ],
+      "place": [
+        0.0,
+        0.1,
+        0.2,
+        0.3
+      ]
+    }
+  },
+  "expect": {
+    "firingOrder": [
+      1,
+      3,
+      4,
+      2
+    ],
+    "firingIntervals": [
+      180,
+      180,
+      180,
+      180
+    ],
+    "firingAngles": [
+      0.0,
+      540.0,
+      180.0,
+      360.0
+    ]
+  }
+}

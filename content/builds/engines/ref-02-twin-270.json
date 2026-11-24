@@ -1,0 +1,46 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Parallel twin, 270-degree crank",
+  "notes": "Pins 90 degrees apart: a 90-degree V-twin's firing.",
+  "spec": {
+    "engine": {
+      "custom": true,
+      "layout": 2,
+      "cylinders": 2,
+      "bankAngle": [
+        0.0
+      ],
+      "bank": [
+        0,
+        0
+      ],
+      "pin": [
+        0,
+        90
+      ],
+      "fireRev": [
+        0,
+        0
+      ],
+      "place": [
+        0.0,
+        0.1
+      ]
+    }
+  },
+  "expect": {
+    "firingOrder": [
+      1,
+      2
+    ],
+    "firingIntervals": [
+      270,
+      450
+    ],
+    "firingAngles": [
+      0.0,
+      270.0
+    ]
+  }
+}
