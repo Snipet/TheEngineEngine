@@ -96,6 +96,10 @@ TEST_CASE("H9: a spark-cut limiter and a fuelled overrun bang as the fuel sent; 
         WARN("overrun fuel " << share << ": " << b.count << " bangs, " << b.burned * 1e6 << " mg burned in the pipe");
         (share < 0.2 ? little : much) = b.burned;
     }
+    // (this pass rests on the store being fed each overrun charge's unburned share as estimated at its spark: judgement.
+    // Fed instead from what the physical cylinder lets out unburned (exUnburnedJ), the overrun's burns are done before
+    // the exhaust opens and nothing reaches the store: card N1, causes.md G and pop-store-exUnburned.diff. Until the burn's
+    // duration on an overrun charge is sourced (N3), the estimate stays)
     // a fuelled overrun bangs; how much with how much fuel is the standalone account's test (H9 standalone part: four
     // times the fuel, four times burned): here a fraction of a second of overrun cut makes a handful of bangs, whose
     // count turns on where each firing falls, and a larger share leaves less of the cut firings' air to burn it
