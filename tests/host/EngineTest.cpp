@@ -365,7 +365,11 @@ TEST_CASE("the intake cam baked by a sweep of the fast dyno: the best advance by
     REQUIRE(map.size() == 16 + 16 + 256 + 2);
     CHECK(std::fabs(map[0] - r.speeds[0]) < 1e-3 * r.speeds[0]);
     CHECK(map[16 + 16 + 256] == 3.0);   // nx
-    CHECK(map[16 + 16 + 0 * 16 + 0] == r.best[0]);
+    CHECK(map[16 + 16 + 256 + 1] == 4.0);   // ny: the load axis 0, 0.75, 0.95, 3
+    CHECK(map[16 + 16 + 0 * 16 + 0] == 0.0);   // parked at light load (idle)
+    CHECK(map[16 + 16 + 0 * 16 + 1] == 0.0);
+    CHECK(map[16 + 16 + 0 * 16 + 2] == r.best[0]);   // the bake's advance from 0.95 up
+    CHECK(map[16 + 16 + 0 * 16 + 3] == r.best[0]);
     CHECK(build.canUndo());
     WARN("v12-65's intake cam baked in " << r.wallSeconds << " s: " << r.best[0] << ", " << r.best[1] << ", " << r.best[2]
                                          << " deg at 2000, 4000, 6000 rpm");

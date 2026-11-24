@@ -21,6 +21,11 @@ Branch `claude/awesome-gates-ntdb58`, 19:30 to 21:15 UTC 2026-11-24 (`date -u`).
 7. *The small block* (N3-7, open): VE right, efficiency high; P's L48 parts took 5 %; ~14 % unexplained (sized: burn 1 %,
    fan 1 to 3 % on forum figures only, spark 1.5 % without a source).
 
+8. *The turbo four's low end* (B-3, 23:00): N1's intake phaser rule advances 48 degrees at boosted low speed, and the
+   overlap back-fills at p3 = p2 (residual 0.22, knock 14 degrees): first order, N1's. Then the compressor's efficiency at
+   low tip speed (0.36 to 0.48, the island's Mach term, judgement: N2), the turbine's, the exhaust's heat (G). Matching
+   helps once the phaser is parked (5 to 58 kPa at 1800 from the matched turbine to a 0.30 design share).
+
 **Tests**: `calibration-balance.sim` (one entry, 18 s): air and first law within 1 % on three engines; gross indicated
 efficiency 0.33 to 0.38 on the small block at three speeds. Passes. The probe (`[.balance]`, BAL_SET / RAW / READ /
 TRACE) and `scripts/balance.py` (balance.md, generated).

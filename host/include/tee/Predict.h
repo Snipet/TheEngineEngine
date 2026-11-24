@@ -71,11 +71,10 @@ namespace tee
         bool warm = true;             // start warm (above)
         bool settleExhaust = true;    // bring the exhaust's slow temperatures to where they head (below)
         double holdSeconds = 0.0;     // engine time each point is held at least (a reference's: a minute)
-        // Engine time each point runs at least, whatever its torque says. 0: none is needed now that the intake's
-        // charge heating (spec.intake.heatSettle) and the intercooler (spec.boost.heatSettle) are settled with the
-        // exhaust (settleExhaust): before them a point taken within a second of a change of speed read some 3 % high
-        // near a runner's resonance (the V12 at 6500 to 6850 rpm), and this was 1 s. The V8's curve with 0: first
-        // 0.65 s, refined 1.24 s on 3 workers (0.75 and 1.88 with 1 s).
+        // Engine time each point runs at least, whatever its torque says. 0: with the intake's and the intercooler's
+        // settles none is needed (before them the V12 read some 3 % high near its runners' resonance within a second of
+        // a change of speed, and this was 1 s). (b225dea9 put 1 s back for a program between two pushes on which the
+        // economy four read 126 against 131 N m; on the next it read 131.2 against 130.9 with none.)
         double minHoldSeconds = 0.0;
         double warmupSeconds = 0.0;   // engine time a fresh instance runs at full throttle mid-range before its first point
         // A knock-limited point (knock control's retard at knockLimit degrees or more in it): the retard is a sawtooth

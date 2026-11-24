@@ -34,7 +34,11 @@ namespace tee
         // interpolated advance makes more than midLoss less torque than the best cell there, that point is added as a
         // row of its own (the worst first, to the map's 16). Off: the grid alone (a V12's exhaust wave returning into a big low-speed overlap at 2049 rpm made
         // a 30 % hole the grid's 1500 and 2500 rpm rows straddled: card N1, N3's finding). Off: the grid alone.
-        bool refine = false;          // (off until the held cells' sweep and the map's own curve agree near a tooth:
+        double stepCost = 0.01;       // smoothing: the share of the best torque given up for each 10 degrees between
+                                      // neighbouring rows (0: each row its own best)
+        bool refine = false;
+        bool accept = true;           // the map against the auto schedule at full load, a row falling back to the auto's
+        double acceptLoss = 0.02;     // phase where it makes more than this share less          // (off until the held cells' sweep and the map's own curve agree near a tooth:
                                       // refined, a V12's hole at 2000 rpm filled +16 % but 1500-1750 fell 4 %; card N1)
         double midLoss = 0.03;
         PredictOptions predict;       // the curves' (their range, speeds: 8 by default here)
@@ -53,6 +57,7 @@ namespace tee
         double parkedCentre = 0.0;                   // the build's intake centreline (degrees after top), parked
         double wallSeconds = 0.0;
         int added = 0;                               // midpoints added as rows of their own (refine)
+        int fellBack = 0;                            // rows given the auto schedule's phase by the acceptance
     };
 
     // Sweeps `build`'s intake cam (above). False, with `error`, when the program or the build has no intake phaser to
