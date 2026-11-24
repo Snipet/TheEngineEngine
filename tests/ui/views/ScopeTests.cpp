@@ -226,6 +226,7 @@ namespace
         golden("scope.absent", host);
         // The demo without the ports: that plot alone says so.
         tee::ui::DemoRig plain;
+        plain.engine.forget("ecu.advance");   // U1's demo has it now (the lead's ask); this case wants it absent
         WorkspaceContext pctx{ plain.doc, plain.engine, plain.engine, plain.engine, plain.units, plain.selection, plain.app };
         ScopeWorkspace pws(pctx);
         funkgui::HeadlessHost phost(pws, 0, 1.0f);
