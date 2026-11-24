@@ -4,7 +4,7 @@
 // Five kinds (spec.car.gearbox):
 //
 //   Manual. An H-pattern lever (ctl.lever) and a clutch pedal, as the reference's: moving the lever takes the gear
-//     out; the new one goes in when the clutch is down (the pedal past 85 % of its travel) or the input's speed is
+//     out; the new one goes in when the clutch is down (it passes under 5 % of its torque) or the input's speed is
 //     within 30 rad/s of what the gear wants (a synchromesh matches the rest), otherwise it is refused and stays
 //     pending until one of the two is true. With the lever in neutral the shift counters work it as the reference's
 //     paddles do: a robotised clutch that closes with the revs from just over idle, opens for a shift, the new gear
@@ -171,7 +171,7 @@ module VehGearbox
                 const float want = ratioOf(pend) * wOut;
                 if (pend == -1 && kmh > 5.0f)
                     refused = true;
-                else if (engage < 0.15f || fabsf(w - want) < 30.0f)
+                else if (engage < 0.05f || fabsf(w - want) < 30.0f)
                     gear = pend;
                 else
                     refused = true;
