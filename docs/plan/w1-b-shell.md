@@ -37,11 +37,11 @@ namespace tee
         virtual const ParamInfo& info(int i) const = 0;
         virtual double get(int i) const = 0;
         virtual void set(int i, double value) = 0;       // reaches the audio thread safely; never blocks
-        virtual int find(std::string_view id) const = 0; // -1: none
+        virtual int findParam(std::string_view id) const = 0; // -1: none
     };
     struct TelemetrySource      // UI thread: the newest whole block's values
     {
-        virtual int find(std::string_view name) const = 0;
+        virtual int findValue(std::string_view name) const = 0;   // -1: none (its own name: Player has both)
         virtual double value(int handle) const = 0;
         virtual float outputPeak() const = 0;            // the output's level, 0 to 1
     };
@@ -51,8 +51,28 @@ namespace tee
     struct AudioSource { virtual void prepare(double rate, int maxBlock) = 0;         // audio stopped
                          virtual void process(float* l, float* r, int n) noexcept = 0; }; // the audio thread
     struct Player : ParamSource, TelemetrySource, ControlSink, AudioSource {};        // one engine, all four faces
+
+    // What a Panel's own controls ask for this frame. The shell merges it with the keyboard's and the devices'
+    // into the one ControlsFrame it sends: a Panel never calls Player::setControls itself.
+    struct PanelControls
+    {
+        bool  startHeld = false;      // its start button is down
+        float throttle = -1;          // 0 to 1 while its throttle strip is held; negative: not held
+        float brake = -1;
+        int   shiftUp = 0, shiftDown = 0;   // counts of presses, as ControlsFrame's
+        bool  leverSet = false; int lever = 0;
+    };
+    struct AppServices                // UI thread; any function may be empty
+    {
+        std::function<void(const PanelControls&)> panelControls;   // the Panel's controls, each frame they change
+        std::function<ControlsFrame()> controls;                   // the merged frame as last sent (to draw pedals)
+        std::function<std::string()> status;                       // a line for the top bar: a compile error, the device
+    };
 }
 ```
+
+(Settled by the lead, 11:45 UTC, after card J's agent pointed out that two `find`s in `Player`'s bases would be
+one function: the two lookups have their own names, and `AppServices` is defined here.)
 
 `shell/` adapts K2's `tee::RefPlayer` to `Player` now (the 32 dials as `ParamInfo`s from the program's `param`
 declarations and their attributes; `Shared`'s `show*` fields as telemetry; the `ControlsFrame` mapped onto the
