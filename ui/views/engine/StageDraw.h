@@ -6,6 +6,7 @@
 
 #include <cmath>
 #include <string>
+#include <string_view>
 
 namespace tee::ui::stage
 {
@@ -37,6 +38,15 @@ namespace tee::ui::stage
         }
         c.text(s.c_str(), x0, y, st, ink);
     }
+    // A readout (look::readout) whose unit is left off when the number is the dash: "-" stands alone.
+    inline float readout(Canvas& c, const look::Palette& p, float x, float y, std::string_view label, const std::string& number,
+                         std::string_view unit = {}, const funkgui::TextStyle& style = look::kNumberM, Col ink = look::kClear,
+                         Align align = Align::left)
+    {
+        return look::readout(c, p, x, y, label, number, number == "-" ? std::string_view() : unit, style,
+                             number == "-" ? look::kClear : ink, align);
+    }
+
     // Text centred on a point (its capitals' middle at cy).
     inline void putCentred(Canvas& c, const std::string& s, float x, float cy, const funkgui::TextStyle& st, Col ink)
     {

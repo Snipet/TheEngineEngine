@@ -168,7 +168,9 @@ namespace
         StageRig rig(tee::ui::makeEngineWorkspace, 1100, 700, 1.0f);
         rig.demo.engine.forget("engine.crank");
         rig.demo.engine.forget("engine.redline");
+        rig.demo.ctx.live.reset();   // Live keeps a handle once found: ask again
         rig.settle();
+        CHECK(std::isnan(rig.demo.ctx.live.get("engine.crank")));
         CHECK(!rig.ws->moving());
         picture("engine.absent", *rig.host);
         return 0;
