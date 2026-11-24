@@ -303,6 +303,7 @@ The machine's functions, all on `Boost`, all doing nothing in model 0:
   airSpeed(float v)` the car's speed through the intercooler (m/s); `void vanesAndPurge(float vanes, int purges)` the
   ECU's vane position (below 0: Boost's loop) and purges counted, not called yet.
 - **Combustion (H)**: `float oxygen()` (by mass, 0.232 air) or `float oxygenShare()` (over air's, 1 without nitrous).
+- **The ECU's over-boost cut** (card N2): `float overBoostLevel()` (Pa over the air: the machine's over-boost flag's level for turbos; 0 for a supercharger and under model 0), which Engine hands to `Ecu::overBoostRef` after each `applyMachine` (asked of D).
 - **After a call**: `void telemetry(BoostTel* t, float tCharge)` (tel.boost's card F fields; with no machine in the path the two charge temperatures read `tCharge`, Intake's `tAir`), `void scope(Scope* sc)` while
   `ctl.scopeOn` (the compressor map's lines and the trail).
 
