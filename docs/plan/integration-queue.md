@@ -158,3 +158,15 @@ temperatures, H's overrun and anti-lag, C's validation (a target to add), U3's h
 - **Q**: the boost machine costs 0.24 R against 0.12 R (the pipe-end solve's three passes; double volumes; the
   sounds' noise at 96 kHz); `sim/boost/**` is Q's to change for cost now.
 - **U3**: the Spec, telemetry and Scope names (sent 14:35); the compressor's map comes from the Scope's arrays.
+
+## The lead's decision on non-exact optimisations (14:40, from Q's `docs/measurements/q2-levers.md`)
+
+The engine is chaotic: any change that is not exact to the bit decorrelates the waveform at the first sound (even
+the air nudged by 1e-4 K), so no sample-level tolerance can judge one. Rule: (1) a non-exact change is judged against
+the engine's own sensitivity, an ensemble of at least 8 harmlessly perturbed runs a null-test pair, measure by
+measure (band levels, speed trace, idle, steady dyno torque, clicks), and its long-term spectra and steady torque
+must agree far more tightly than the fast measures' floor; (2) it lives beside the exact code behind one switch for
+the whole program, off in the null test, on in the application only after it passed (1) and the owner has listened
+to named before-and-after pairs (in X's listening pack); (3) exact changes come first and need neither.
+FMinus's own levers give nothing: -O2 with denormals flushed stays; no `param` on the fuel and cycle switches.
+Later, for the shell: compile at -O0 (0.13 s) for a first sound and swap to -O2 at a part boundary.
