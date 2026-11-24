@@ -1,0 +1,26 @@
+{
+  "format": "tee-ref-scenario/1",
+  "name": "truck-pull-away",
+  "description": "A loaded semi truck pulling away: the eighteen-speed stepped up from its lowest gear on the paddles, the diesel pulling 30 t.",
+  "seconds": 45,
+  "events": [
+    { "t": 0.0, "note": "DRIVE TRUCK, 30 t, a mild day; the lever in neutral leaves all eighteen gears to the paddles. Made for a big diesel (the Large Diesel preset); any engine will try",
+      "dials": { "drive": 2, "starter": 1, "ambient": 60, "mass": 30000, "load": 0 },
+      "input": { "gear": 0, "clutch": 0, "brake": 0, "throttle": 0 } },
+    { "t": 0.25, "note": "the start key", "key": 36, "velocity": 1.0 },
+    { "t": 1.0, "keyUp": true },
+    { "t": 5.0, "note": "first: its automated gearbox takes half a second a shift", "tap": "paddleUp" },
+    { "t": 6.0, "input": { "throttle": 0.9 }, "ramp": 1.0 },
+    { "t": 10.0, "tap": "paddleUp" },
+    { "t": 13.0, "tap": "paddleUp" },
+    { "t": 16.0, "tap": "paddleUp" },
+    { "t": 19.0, "tap": "paddleUp" },
+    { "t": 22.0, "tap": "paddleUp" },
+    { "t": 25.0, "tap": "paddleUp" },
+    { "t": 28.0, "tap": "paddleUp" },
+    { "t": 31.0, "tap": "paddleUp" },
+    { "t": 34.0, "tap": "paddleUp" },
+    { "t": 37.0, "note": "lifted, rolling in gear", "input": { "throttle": 0 }, "ramp": 0.5 },
+    { "t": 40.0, "input": { "brake": 0.4 }, "ramp": 0.5 }
+  ]
+}
