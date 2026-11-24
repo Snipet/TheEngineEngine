@@ -11,6 +11,7 @@
 #include "app/Workspace.h"
 #include "kit/widgets/Basic.h"
 #include "views/dyno/Chart.h"
+#include "views/dyno/Dyno.h"
 
 #include <funkgui/params/ParamPort.h>
 
@@ -187,6 +188,18 @@ namespace tee::ui
             Board::pointerDown(e);
         }
 
+        funkgui::Rect control(std::string_view which) const
+        {
+            const Widget* w = which == "start" ? static_cast<const Widget*>(start_) : which == "stop" ? stop_
+                            : which == "name" ? static_cast<const Widget*>(name_) : which == "copy" ? copy_
+                            : which == "engine" ? engineBtn_ : which == "chassis" ? chassisBtn_ : nullptr;
+            const char* names[] = { "none", "boost", "lambda", "advance" };
+            for (int i = 0; i <= kExtraCount && w == nullptr; ++i)
+                if (which == names[i])
+                    w = extraBtn_[static_cast<std::size_t>(i)];
+            return w != nullptr ? w->bounds() : funkgui::Rect{};
+        }
+
         // For tests: the rows (-2 predicted, -1 before, 0.. runs), and the cursor's speed (rad/s; NaN: none).
         int selectedRow() const noexcept { return selected_; }
         double cursorSpeed() const noexcept
@@ -219,7 +232,7 @@ namespace tee::ui
         void layout(const Rect& s) override
         {
             const float pad = 16.0f, header = 58.0f;
-            const float sideW = std::clamp(s.w * 0.28f, 250.0f, 330.0f);
+            const float sideW = std::clamp(s.w * 0.3f, 220.0f, 330.0f);
             const Rect plotBox{ s.x + pad, s.y + pad + header, s.w - 3.0f * pad - sideW, s.h - 2.0f * pad - header };
             const float bandH = std::clamp(plotBox.h * 0.26f, 96.0f, 170.0f);
             plotBox_ = { plotBox.x, plotBox.y, plotBox.w, plotBox.h - bandH - 10.0f };
@@ -231,29 +244,30 @@ namespace tee::ui
 
             // The band's choice of quantity: small buttons in its title row, at the right.
             float bx = bandBox_.right() - look::kPad;
+            const float bw = std::clamp((bandBox_.w - 2.0f * look::kPad - 120.0f) / static_cast<float>(kExtraCount + 1), 60.0f, 68.0f);
             for (int i = kExtraCount; i >= 0; --i)
             {
-                const float w = 68.0f;
+                const float w = bw;
                 bx -= w;
                 extraBtn_[static_cast<std::size_t>(i)]->setPlace({ bx, bandBox_.y + 6.0f, w - 4.0f, 20.0f }, true);
             }
 
             // The side: the plan at the bottom, the runs above it.
             const float sx = plotBox.right() + pad;
-            const float planH = 290.0f;
+            const float planH = 272.0f;
             planBox_ = { sx, s.bottom() - pad - planH, sideW, planH };
             runsBox_ = { sx, plotBox.y, sideW, planBox_.y - 10.0f - plotBox.y };
             const float ix = sx + look::kPad, iw = sideW - 2.0f * look::kPad;
             float y = planBox_.y + 30.0f;
             engineBtn_->setPlace({ ix, y, iw * 0.5f - 3.0f, 26.0f }, true);
             chassisBtn_->setPlace({ ix + iw * 0.5f + 3.0f, y, iw * 0.5f - 3.0f, 26.0f }, true);
-            y += 36.0f;
+            y += 34.0f;
             for (Stepper* st : { from_, to_, rate_, pedal_, gearStep_ })
             {
-                st->setPlace({ ix, y, iw, 26.0f }, true);
-                y += 30.0f;
+                st->setPlace({ ix, y, iw, 24.0f }, true);
+                y += 27.0f;
             }
-            y += 6.0f;
+            y += 4.0f;
             start_->setPlace({ ix, y, iw * 0.62f - 3.0f, 28.0f }, true);
             stop_->setPlace({ ix + iw * 0.62f + 3.0f, y, iw * 0.38f - 3.0f, 28.0f }, true);
             wordsY_ = y + 36.0f;
@@ -456,12 +470,6 @@ namespace tee::ui
         // ---- drawing -----------------------------------------------------------------------------------------------
         void drawHeader(Canvas& c, const look::Palette& p) const
         {
-            c.text("TORQUE AND POWER AT THE CRANK", header_.x, header_.y + 2.0f, look::kTitle, p.text);
-            const std::string sub = ctx_.dyno.busy()
-                                        ? "Predicting the build as it stands: " + look::num(ctx_.dyno.progress() * 100.0) + " %"
-                                        : !ctx_.dyno.error().empty() ? "No prediction: " + ctx_.dyno.error()
-                                        : "The predicted curve follows every edit; the runs you make are kept here.";
-            c.text(sub.c_str(), header_.x, header_.y + 24.0f, look::kBody, p.label);
             const int lead = leadRow();
             const DynoTrace& t = trace(lead);
             const auto tq = t.peakTorque(), pw = t.peakPower();
@@ -482,6 +490,16 @@ namespace tee::ui
             const float ww = c.textWidth(whose.c_str(), look::kCaps);
             c.text(whose.c_str(), x - ww, header_.y + 2.0f, look::kCaps, p.label);
             chart::sample(c, x - ww, x, header_.y + 22.0f, kTorqueW, s.ink, s.dash);
+            // The title and a sentence in what is left at the left (the sentence only where it fits whole).
+            const float room = x - ww - 20.0f - header_.x;
+            const Canvas::ClipScope clip(c, { header_.x, header_.y - 4.0f, std::max(0.0f, room), header_.h + 8.0f });
+            c.text("TORQUE AND POWER AT THE CRANK", header_.x, header_.y + 2.0f, look::kTitle, p.text);
+            const std::string sub = ctx_.dyno.busy()
+                                        ? "Predicting the build as it stands: " + look::num(ctx_.dyno.progress() * 100.0) + " %"
+                                        : !ctx_.dyno.error().empty() ? "No prediction: " + ctx_.dyno.error()
+                                        : "The predicted curve follows every edit; the runs you make are kept here.";
+            if (c.textWidth(sub.c_str(), look::kBody) <= room || ctx_.dyno.busy())
+                c.text(sub.c_str(), header_.x, header_.y + 24.0f, look::kBody, p.label);
         }
 
         void drawPlot(Canvas& c, const look::Palette& p) const
@@ -722,11 +740,17 @@ namespace tee::ui
                 lines.push_back(l);
             }
             // The card: at the right of the cursor, or at its left near the right edge.
-            const float w = ex != nullptr ? 340.0f : 276.0f, rowH = 18.0f, nameW = 110.0f;
+            // Its columns: the name, torque, power and the third quantity; on a narrow plot the third goes, then the
+            // name narrows.
+            if (ex != nullptr && plotArea_.w < 360.0f)
+                ex = nullptr;
+            const float nameW = std::clamp(plotArea_.w - 176.0f - (ex != nullptr ? 64.0f : 0.0f), 64.0f, 110.0f);
+            const float w = nameW + 166.0f + (ex != nullptr ? 64.0f : 0.0f), rowH = 18.0f;
             const float h = 30.0f + rowH * static_cast<float>(lines.size());
             float cx = x + 14.0f;
             if (cx + w > plotArea_.right())
                 cx = x - 14.0f - w;
+            cx = std::clamp(cx, plotArea_.x + 2.0f, std::max(plotArea_.x + 2.0f, plotArea_.right() - w - 2.0f));
             const float cy = plotArea_.bottom() - 8.0f - h;   // low, where the curves leave room
             c.rrect(cx, cy, w, h, 5.0f, p.raised, 1.0f, p.edge);
             const std::string head = u.format(Quantity::rotation, si, 0);
@@ -765,7 +789,7 @@ namespace tee::ui
         {
             std::vector<RowHit> out;
             const Rect& a = rowsArea_;
-            const float rowH = 40.0f;
+            const float rowH = 36.0f;
             const int fit = std::max(2, static_cast<int>(a.h / rowH));
             std::vector<int> list{ -2, -1 };
             const int runs = static_cast<int>(rows_.size());
@@ -797,7 +821,7 @@ namespace tee::ui
                 const DynoTrace& t = trace(row);
                 if (sel)
                     c.rrect(r.x, r.y, r.w, r.h, 5.0f, p.over(p.selected, 0.12f), 1.5f, p.selected);
-                const Rect box{ r.x + 8.0f, r.y + 11.0f, 14.0f, 14.0f };
+                const Rect box{ r.x + 8.0f, r.y + 9.0f, 14.0f, 14.0f };
                 c.rrect(box.x, box.y, box.w, box.h, 3.0f, shown ? p.raised : p.panel, 1.25f, shown ? p.text : p.dim);
                 if (shown)
                 {
@@ -805,9 +829,9 @@ namespace tee::ui
                     c.segment(box.x + 6.0f, box.y + 10.5f, box.x + 11.0f, box.y + 3.5f, 1.75f, p.value);
                 }
                 const Stroke s = strokeOf(p, row);
-                chart::sample(c, r.x + 30.0f, r.x + 58.0f, r.y + 12.0f, kTorqueW, shown ? s.ink : p.dim, s.dash);
-                chart::sample(c, r.x + 30.0f, r.x + 58.0f, r.y + 24.0f, kPowerW, shown ? s.ink : p.dim, s.dash);
-                c.text(rowName(row).c_str(), r.x + 66.0f, r.y + 5.0f, look::kBody, shown ? p.value : p.dim);
+                chart::sample(c, r.x + 30.0f, r.x + 58.0f, r.y + 10.0f, kTorqueW, shown ? s.ink : p.dim, s.dash);
+                chart::sample(c, r.x + 30.0f, r.x + 58.0f, r.y + 21.0f, kPowerW, shown ? s.ink : p.dim, s.dash);
+                c.text(rowName(row).c_str(), r.x + 66.0f, r.y + 3.0f, look::kBody, shown ? p.value : p.dim);
                 std::string sub;
                 if (t.empty())
                     sub = row == -1 ? "none yet: edit the build" : row == -2 ? "being made" : "no points";
@@ -816,7 +840,7 @@ namespace tee::ui
                     const auto tq = t.peakTorque(), pw = t.peakPower();
                     sub = ctx_.units.format(Quantity::torque, tq.value) + "   " + ctx_.units.format(Quantity::power, pw.value);
                 }
-                c.text(sub.c_str(), r.x + 66.0f, r.y + 21.0f, look::kUnit, shown ? p.label : p.dim);
+                c.text(sub.c_str(), r.x + 66.0f, r.y + 18.0f, look::kUnit, shown ? p.label : p.dim);
             }
             const int older = static_cast<int>(rows_.size()) - listedRuns;
             if (older > 0)
@@ -886,4 +910,13 @@ namespace tee::ui
     };
 
     std::unique_ptr<Workspace> makeDynoWorkspace(WorkspaceContext& c) { return std::make_unique<DynoWorkspace>(c); }
+}
+
+namespace tee::ui
+{
+    funkgui::Rect dynoControl(Workspace& w, const char* which)
+    {
+        auto* d = dynamic_cast<DynoWorkspace*>(&w);
+        return d != nullptr ? d->control(which) : funkgui::Rect{};
+    }
 }

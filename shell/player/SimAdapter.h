@@ -73,6 +73,9 @@ namespace tee::player
         int findValue(std::string_view name) const override;
         double value(int handle) const override;
         float outputPeak() const override;
+        // The simulator's share of its time: the audio callback's time over its buffer's, averaged over about a
+        // second (HostStats::loadMean); 0 before the first block.
+        double load() const;
         int outputTail(float* mono, int max) const override { return tail_.read(mono, max); }
 
         // ControlSink

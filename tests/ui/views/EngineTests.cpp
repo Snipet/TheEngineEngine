@@ -200,3 +200,42 @@ namespace
         return 0;
     }
 }
+
+#include "kit/bind/Binding.h"
+
+namespace
+{
+    // Each selection's inspector page opens as a page of fields with nothing the reader could not use, names only
+    // fields the build has, and keeps its order; nothing selected leaves the frame's generated pages.
+    VIEW_TEST(testEngineInspector, "engine.inspector")
+    {
+        StageRig rig(tee::ui::makeEngineWorkspace, 1100, 700, 1.0f);
+        auto& sel = rig.demo.selection;
+        CHECK(rig.ws->inspectorPage().empty());
+        const auto open = [&](const char* path, const char* picture) {
+            sel.select(path);
+            const std::string gui = rig.ws->inspectorPage();
+            CHECK_MSG(!gui.empty(), path);
+            tee::ui::GuiPanel::Options o;
+            o.width = 320;
+            tee::ui::FieldPage page(rig.demo.doc, rig.demo.units, rig.demo.engine, { { "page.gui", gui } }, o);
+            CHECK_MSG(page.notes().empty(), page.notes());
+            funkgui::HeadlessHost host(page, 0, 1.0f);
+            host.tick(2);
+            tee::test::views::picture(picture, host);
+            return tee::ui::fieldsOfGui(rig.demo.doc, gui);
+        };
+        const std::vector<int> geo = open("engine.bore", "engine.inspector.cylinder");
+        // the demo's: bore, stroke, rod, compression, flywheel, friction, in that order
+        std::vector<std::string> names;
+        for (int f : geo)
+            names.push_back(rig.demo.doc.info(f).path);
+        CHECK(names.size() == 6 && names[0] == "engine.bore" && names[1] == "engine.stroke" && names[2] == "engine.rod"
+              && names[3] == "engine.compression" && names[4] == "engine.flywheel" && names[5] == "engine.friction");
+        const std::vector<int> lay = open("engine.layout", "engine.inspector.layout");
+        CHECK(lay.size() == 2);   // the layout menu and the demo's cylinders
+        const std::vector<int> cyl = open("engine.cylinder[2]", "engine.inspector.cylinder3");
+        CHECK(cyl.size() == 1 && rig.demo.doc.info(cyl[0]).path == "engine.layout");
+        return 0;
+    }
+}

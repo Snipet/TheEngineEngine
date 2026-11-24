@@ -9,7 +9,7 @@ include(Catch)
 file(GLOB _tee_shell_tests CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
 add_executable(tee-shell-tests ${_tee_shell_tests})
 tee_target_defaults(tee-shell-tests)
-target_link_libraries(tee-shell-tests PRIVATE tee_app Tee::shell_core Tee::shell_settings Tee::shell_ref Tee::shell_sdl
+target_link_libraries(tee-shell-tests PRIVATE tee_app Tee::shell_core Tee::shell_settings Tee::shell_files Tee::shell_ref Tee::shell_sdl
                                               Catch2::Catch2WithMain)
 target_compile_definitions(tee-shell-tests PRIVATE
   "TEE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
@@ -49,6 +49,27 @@ set_tests_properties(shell.headless.refuses PROPERTIES WILL_FAIL TRUE)
 set_tests_properties(shell.headless.ref shell.headless.sim shell.headless.drive shell.headless.tone shell.headless.error
                      shell.headless.refuses
   PROPERTIES TIMEOUT 900 LABELS shell)
+
+# Each workspace of the frame, opened by the application over the simulator (tee-headless --workspace): it opens,
+# runs 120 frames (2 s) with the engine started, draws, writes its picture (out/shell/workspace-<id>.png) and exits 0. A
+# workspace the frame does not have is an error (exit 2), so a renamed one fails here. shell.workspace.none: that.
+if(TARGET tee_ui_build AND NOT TEE_PLACEHOLDER_PANEL)
+  set(_tee_workspaces garage engine valves air exhaust tune car dyno drive scope)
+  set(_tee_workspace_tests "")
+  foreach(_ws IN LISTS _tee_workspaces)
+    add_test(NAME shell.workspace.${_ws}
+      COMMAND tee-headless --engine sim --sim "${PROJECT_SOURCE_DIR}/sim" --workspace ${_ws} --frames 120
+              --script "${_scripts}/workspace.txt" --shot "${_out}/workspace-${_ws}.png"
+      WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
+    list(APPEND _tee_workspace_tests shell.workspace.${_ws})
+  endforeach()
+  add_test(NAME shell.workspace.none
+    COMMAND tee-headless --engine sim --sim "${PROJECT_SOURCE_DIR}/sim" --workspace nowhere --frames 2
+    WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
+  set_tests_properties(shell.workspace.none PROPERTIES WILL_FAIL TRUE)
+  list(APPEND _tee_workspace_tests shell.workspace.none)
+  set_tests_properties(${_tee_workspace_tests} PROPERTIES TIMEOUT 600 LABELS "shell;workspace")
+endif()
 
 # The window itself, where there is one to test and a headless desktop to open it on (Linux, scripts/xvfb-run.sh: Xvfb,
 # openbox and Mesa's software Vulkan): five seconds and at least 60 frames of the application with the engine started

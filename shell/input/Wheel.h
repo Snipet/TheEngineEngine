@@ -1,5 +1,6 @@
-// shell/input/Wheel.h: the seam for a steering wheel and pedals. Nothing is behind it yet (docs/plan/w1-b-shell.md,
-// slice 2, item 10: SDL's joystick and haptic interfaces, a table a device in settings, a learn mode).
+// shell/input/Wheel.h: the seam for a steering wheel and pedals (docs/plan/w1-b-shell.md, slice 2, item 10). The
+// mapping is here (input/WheelMap.h: a table a device, a learn mode; tested with a made-up device); no real device is
+// opened yet (SDL's joystick and haptic interfaces, the settings' tables, a window to learn in are still to do).
 //
 // A wheel is an analogue device like a gamepad, with more of everything: a steering axis with a range the device can
 // be told, three pedals that may be combined or inverted, an H-pattern shifter that reports a position, paddles, and

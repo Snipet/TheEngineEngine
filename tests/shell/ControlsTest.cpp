@@ -302,3 +302,34 @@ TEST_CASE("shell: the Controls drive a stand-in engine from keys and from a Pane
     controls.setStatus("a line");
     CHECK(services.status() == "a line");
 }
+
+TEST_CASE("shell: a Panel's clutch and handbrake bars, the frame's mode, the mouse's clutch", "[shell][input]")
+{
+    player::TonePlayer tone;
+    tone.prepare(48000.0, 256);
+    Controls controls(tone, tone);
+    const AppServices services = controls.services();
+    PanelControls p;
+    p.clutch = 0.6f;
+    p.handbrake = 1.0f;
+    services.panelControls(p);
+    controls.tick(1.0f / 60.0f);
+    CHECK(controls.frame().clutch == Approx(0.6f));
+    CHECK(controls.frame().handbrake == 1.0f);
+    p.clutch = -1.0f;                   // let go: the pedals are the keys' again (nothing)
+    p.handbrake = -1.0f;
+    services.panelControls(p);
+    controls.tick(1.0f / 60.0f);
+    CHECK(controls.frame().clutch == 0.0f);
+    CHECK(controls.frame().handbrake == 0.0f);
+
+    // the frame's own clutch bar (FrameServices::clutch) and the mode
+    controls.driver().setClutchStrip(0.3f, true);
+    controls.driver().setMode(2);
+    controls.tick(1.0f / 60.0f);
+    CHECK(controls.frame().clutch == Approx(0.3f));
+    CHECK(controls.frame().mode == 2);
+    controls.driver().setClutchStrip(0.0f, false);
+    controls.tick(1.0f / 60.0f);
+    CHECK(controls.frame().clutch == 0.0f);
+}
