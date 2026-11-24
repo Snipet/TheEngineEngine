@@ -1,6 +1,6 @@
 // shell/include/tee/app/MainPanel.h: the one function through which the application gets its Panel. The shell
-// declares it; the interface package (card J) defines it. Until J's lands, shell/panel/PlaceholderPanel.cpp defines a
-// plain one (TEE_PLACEHOLDER_PANEL, on by default while no target tee_ui exists).
+// declares it; the interface package (card J) defines it, in its target tee_ui. A build with no such target gets the
+// shell's own plain Panel under this name (shell/panel/PlaceholderMain.cpp).
 //
 // The Panel keeps the Player's reference and a copy of the AppServices' functions: the Player and whatever those
 // functions reach outlive it.

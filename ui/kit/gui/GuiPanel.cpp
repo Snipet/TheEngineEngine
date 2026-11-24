@@ -185,7 +185,17 @@ namespace tee::ui
 
     GuiPanel::~GuiPanel() = default;
 
-    uint32_t GuiPanel::nextId() const noexcept { return kA11yStride * static_cast<uint32_t>(items_.size() + 1); }
+    // Item i's ids are kA11yStride * (i + 1) + 0..63: the first asked for while i items exist is the item's own, the
+    // next ones (a shader's and a pointer item's x, y and down) follow it.
+    uint32_t GuiPanel::nextId() const noexcept
+    {
+        if (idItems_ != items_.size())
+        {
+            idItems_ = items_.size();
+            idNext_ = 0;
+        }
+        return kA11yStride * static_cast<uint32_t>(items_.size() + 1) + std::min<uint32_t>(idNext_++, kA11yStride - 1);
+    }
 
     int GuiPanel::addItem(std::unique_ptr<Item> item)
     {

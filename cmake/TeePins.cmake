@@ -64,6 +64,14 @@ tee_pin(nlohmann_json
   VERSION 3.12.0
   LICENSE MIT)
 
+# SDL3: the audio device, gamepads and wheels (shell/), and the window under FunkGui's desktop host, which uses this
+# one (shell/cmake/TeeSdl.cmake defines SDL3::SDL3 before FunkGui is added). The release FunkGui itself pins.
+tee_pin(sdl3
+  REPOSITORY "https://github.com/libsdl-org/SDL.git"
+  COMMIT f00dc919ca35b9756316e86c4777392de442f9b2      # release-3.4.20
+  VERSION 3.4.20
+  LICENSE Zlib)
+
 # ---- FMinus's own, which it pins by archive (its cmake/FMinusPins.cmake) ---------------------------------------------
 # FMinus fetches these four as release archives by URL, checked by SHA-256. Where archives by URL are refused (the cloud
 # containers), scripts/bootstrap-cloud.sh clones each here at the commit the archive was made from, into the directory

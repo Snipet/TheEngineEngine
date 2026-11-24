@@ -1,0 +1,24 @@
+# The keys alone drive it: a start, first gear by the shift-up key (the gearbox works its own clutch), the throttle,
+# second gear, a gear key (the shifts press themselves until the gearbox is there), the brake, neutral.
+0.20  tap return 0.3
+3.00  expect engine.state == 2
+3.00  expect car.gear == 0
+3.20  tap e
+4.00  expect car.gear == 1
+4.00  key up down
+8.00  expect car.speed > 2                # m/s: it pulled away
+8.00  tap e
+9.00  expect car.gear == 2
+10.00 key 4 down                          # fourth, from second, under power
+10.10 key 4 up
+12.00 expect car.gear == 4
+12.00 expect car.speed > 8
+12.00 key up up
+12.20 key down down                       # the brake
+14.00 key down up
+13.90 expect car.brake > 0.9
+14.10 tap n                               # neutral: three shifts down, pressed for us
+16.50 expect car.gear == 0
+16.50 expect engine.state == 2            # it did not stall
+16.50 print
+17.00 end
