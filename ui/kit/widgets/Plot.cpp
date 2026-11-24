@@ -194,8 +194,8 @@ namespace tee::ui
 
     Col Plot::colorOf(const Look& l, std::size_t i) const noexcept
     {
-        if (i < series_.size() && series_[i].color.a != 0)
-            return series_[i].color;
+        if (i < series_.size() && series_[i].color)
+            return *series_[i].color;
         const Col inks[] = { l.accent, l.value, l.signal, l.label };
         return inks[i % 4];
     }

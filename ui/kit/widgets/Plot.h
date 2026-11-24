@@ -11,6 +11,7 @@
 #include "kit/widgets/Widget.h"
 
 #include <functional>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -29,7 +30,7 @@ namespace tee::ui
         std::string name;
         std::vector<double> x, y;            // as many of each; a point that is not finite (or not > 0 on a log axis)
                                              // breaks the line
-        funkgui::Col color{ 0, 0, 0, 0 };    // none (alpha 0): the n-th of the look's (the accent first)
+        std::optional<funkgui::Col> color;   // none: the n-th of the look's (the accent first)
         bool area = false;                   // the area under it, filled
         float width = 1.5f;
         bool points = false;                 // a disc at each point

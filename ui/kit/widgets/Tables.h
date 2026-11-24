@@ -65,7 +65,7 @@ namespace tee::ui
         std::function<bool(std::string_view, double&)> parse;
     };
 
-    class CurveEdit final : public Plot
+    class CurveEdit : public Plot
     {
     public:
         // `xAxis`, `yAxis`: the ranges a point may take and the plot's (their labels name the units).
@@ -101,7 +101,7 @@ namespace tee::ui
         int selected_ = -1, dragging_ = -1;
     };
 
-    class MapEdit final : public Widget
+    class MapEdit : public Widget
     {
     public:
         // x, y: the axes' text and ranges (lo, hi); z: the cells'. `labels`: the axes' names with their units.

@@ -102,12 +102,15 @@ namespace tee::ui
     bool Board::moveFocus(int step)
     {
         const int n = static_cast<int>(items_.size());
+        const bool wrap = inner() == nullptr;           // with an inner Panel, past the last is its turn
         int at = focus_;
         for (int k = 0; k < n; ++k)
         {
             at = at < 0 ? (step > 0 ? 0 : n - 1) : at + step;
-            if (at < 0 || at >= n)
-                break;                                   // past the last: the inner Panel's turn, or none
+            if (wrap)
+                at = (at + n) % n;
+            else if (at < 0 || at >= n)
+                break;
             const Item& it = *items_[static_cast<std::size_t>(at)];
             if (it.shown() && it.focusable())
             {
