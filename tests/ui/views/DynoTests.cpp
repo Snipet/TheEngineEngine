@@ -491,3 +491,40 @@ namespace
         return 0;
     }
 }
+
+namespace
+{
+    // Knock-limited points (card C's, through DynoTrace::knock): rings on the torque curve, ticks under the plot, the
+    // legend's word, the cursor's words, and three more CSV columns. The demo knocks past 160 kPa of boost from 4500 rpm.
+    VIEW_TEST(testDynoKnock, "dyno.knock")
+    {
+        const int w = tee::test::u4::stageW(1100), h = tee::test::u4::stageH(1100);
+        for (float dpi : { 2.0f, 1.0f })
+        {
+            StageRig rig(tee::ui::makeDynoWorkspace, w, h, dpi);
+            editBoost(rig, 190e3);
+            const tee::ui::DynoTrace& t = rig.demo.engine.predicted();
+            CHECK_MSG(t.knockCount() > 0, std::to_string(t.knockCount()));
+            int first = -1;
+            for (std::size_t i = 0; i < t.speed.size() && first < 0; ++i)
+                if (t.knockLimited(i))
+                    first = static_cast<int>(i);
+            CHECK(first >= 0 && t.speed[static_cast<std::size_t>(first)] >= 4400.0 * 3.14159265358979 / 30.0);
+            CHECK(t.knockText(static_cast<std::size_t>(first)).rfind("knock-limited, retard ", 0) == 0);
+            // The cursor among the knock-limited points, high in the speed range.
+            rig.host->move(static_cast<float>(w) * 0.52f, static_cast<float>(h) * 0.3f);
+            rig.settle();
+            for (const std::string& clash : textClashes(rig.host->draw(), static_cast<float>(w), static_cast<float>(h)))
+                CHECK_MSG(false, clash);
+            picture(dpi > 1.5f ? "dyno.knock" : "dyno.knock.dpi1", *rig.host);
+            if (dpi < 1.5f)
+            {
+                const funkgui::Rect copy = tee::ui::dynoControl(*rig.ws, "copy");
+                rig.host->click(copy.centreX(), copy.centreY());
+                const std::string csv = rig.host->clipboardText();
+                CHECK_MSG(csv.find(",knock_limited,retard_min_deg,retard_max_deg\n") != std::string::npos, csv.substr(0, 120));
+            }
+        }
+        return 0;
+    }
+}
