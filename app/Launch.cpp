@@ -43,6 +43,7 @@ namespace tee::app
         {
             l.file = first;
             l.what = "the first build";
+            l.first = true;
             return l;
         }
         if (!o.firstBuild.empty())
