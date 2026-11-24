@@ -435,6 +435,14 @@ namespace
             for (const char* id : kIds)
             {
                 rig.showWorkspace(id);
+                // A workspace another package registered has its own goldens; the frame's are of the placeholders
+                // and of DRIVE (U1's).
+                const int i = rig.frame->find(id);
+                if (!rig.frame->placeholder(i) && std::string(id) != "drive")
+                {
+                    picture("frame." + lower(id) + (dpi < 1.5f ? ".dpi1" : ""), *rig.host);
+                    continue;
+                }
                 golden("frame." + lower(id) + (dpi < 1.5f ? ".dpi1" : ""), *rig.host);
             }
         }

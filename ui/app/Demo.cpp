@@ -208,6 +208,9 @@ namespace tee::ui
 
     void DemoEngine::tick(float dt)
     {
+        // A newer Scope copy each frame while the engine turns, as the host's (the script's time stays).
+        if (const int st = findValue("engine.state"); st < 0 || value(st) > 0.5)
+            ++generation_;
         // The dyno: an edit is noticed, a quiet of 0.3 s waited, then 0.4 s "running" before the new curve is in.
         if (doc_ != nullptr && doc_->revision() != seenRevision_)
         {
