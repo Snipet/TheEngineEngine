@@ -152,6 +152,8 @@ module BoostMachine
     float bovArea;
     float bovSpring;
     float bovLift;
+    float bpLimit;      // a variable nozzle's limit on the pressure before the turbine over the boost (absolute)
+    float bpOpen[BOOST_TURBOS];  // the limit's opening of the vanes, each turbo
     float bovAt;        // the blow-off valve's opening the air sees: bovLift followed every sample by two 1 ms stages
     float bovMid;
     float kAt;          // that following's step a sample
@@ -312,6 +314,7 @@ module BoostMachine
             turb[t].vanes = 1.0f;
             turb[t].vanesAt = 1.0f;
             turb[t].vanesMid = 1.0f;
+            bpOpen[t] = 0.0f;
             gateMass[t] = 0.0f;
             gateTemp[t] = tOut;
         }
@@ -445,6 +448,7 @@ module BoostMachine
             turb[t].etaMax = s->turbEta;
             turb[t].vgt = s->vanes;
             turb[t].vaneMin = s->vaneMin;
+            bpLimit = s->backPressure;
             turb[t].gateExt = s->gate;
             turb[t].scrolls = scrolls;
             // the gate, matched: open, it alone passes this turbo's whole share of the engine's matched flow at the
@@ -1101,6 +1105,19 @@ module BoostMachine
                     v = 1.0f - u;
                 else
                     v = turb[t].vaneMin + (1.0f - turb[t].vaneMin) * fminf(fmaxf((signal - 0.8f * gateSpring) / (0.2f * gateSpring + gateSpan), 0.0f), 1.0f);
+                // (the exhaust's back-pressure limit, as a production VGT controller's: past bpLimit times the boost,
+                // absolute, the vanes are opened by an integral of the excess whatever the boost loop asks, for shut
+                // vanes against a compressor that cannot deliver only pump the engine (the 15 L tractor lost a third of
+                // its torque so, PMEP 2.5 to 5 bar). The 1.4 default is judgement: makers hold some 1.2 to 1.5 at rated
+                // power; a maker's calibration would replace it. Not while the ECU commands the vanes (an engine brake))
+                if (cmdVanes < 0.0f)
+                {
+                    const float r3 = house[hh].p / fmaxf(v2.p, 1000.0f);
+                    bpOpen[t] = fminf(fmaxf(bpOpen[t] + d16 * 3.0f * (r3 - bpLimit), 0.0f), 1.0f);
+                    v = fmaxf(v, turb[t].vaneMin + bpOpen[t]);
+                }
+                else
+                    bpOpen[t] = 0.0f;
                 v = fminf(fmaxf(v, turb[t].vaneMin), 1.0f);
                 turb[t].vanes += (v - turb[t].vanes) * (1.0f - expf(-d16 / 0.05f));
                 // (with vanes the gate is a relief only: well above the target)

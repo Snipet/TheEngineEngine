@@ -153,11 +153,10 @@ TEST_CASE("rotary BMEP unboosted and boosted", "[.rotarybmep]")
 {
     for (int boosted = 0; boosted < 2; ++boosted)
     {
-        Bench b("archetypes/rotary-twin-13");
+        // (unboosted: card P's naturally aspirated side-port twin; boosted: the turbo archetype at its own boost)
+        Bench b(boosted != 0 ? "archetypes/rotary-twin-13" : "archetypes/rotary-twin-na-side-port");
         std::string e;
         REQUIRE(b.player().setSpec("car.model", 0, e));
-        if (boosted == 0)
-            REQUIRE(b.player().setSpec("boost.kind", 0, e));
         b.start();
         b.warm();
         std::printf("%s:\n", boosted != 0 ? "boosted" : "unboosted");

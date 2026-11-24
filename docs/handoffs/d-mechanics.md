@@ -47,3 +47,17 @@ the lift). The rotary twin's torque: 320/380 N m at 4000/6500 rpm with every mod
 a real 13B's BMEP); boost.model 1 doubles its boost at 4000 rpm (F's). Hidden `[.rotary]` in EngineExplore prints it.
 Open: a rotary wall heat under fuel.model 1 and the engine.fm tidies (areasFor, walls if/else, voicesInputs,
 crankStep), both awaiting the lead.
+
+**Since (to 24 Nov 18:00)**: the walls' loss counted once (e81f79f: `Engine::woschniWalls()` into `comb.walls`); the
+backflow conserved on the physical cylinder (e8c6575: port-side stores at intake and exhaust; with N1's plenum lines,
+5fdc5ad, throttle, intake valves and exhaust valves agree within 1 % on the flat-plane V8); `tel.engine.chargeTemperature`,
+`trappedMass` (959454c, the air's temperature until a charge: X-017); `ecu.overBoostRef`; a two-stroke's mechanics
+from its own cylinders and its BMEP 2 pi T / V (fc8a3ba, 5fdc5ad); the tidies `areaExhaust`, `crankStep`,
+`voicesInputs` (85ef0a6, c138d0f); boost.model 1 implies the builder's exhaust (6b7e4b7, `Exhaust::wanted`). The
+rotary's chamber walls and seals (2df7ea6): both rotary points now short by their breathing (docs/models/mechanics.md).
+Open: Boost::exhaustStandIn's removal (N2, then engine.fm's call); D2's flap and vanes released on hd.on's fall (D2).
+
+**Listen to (the owner's ears)**: big-cam engines on the model-on path (fuel.model 1): idle and lope, now from real
+residuals (flat-plane V8 45, V12 65, V10: idles 998, 882, 952 rpm); every archetype's low-speed torque and idle after
+the backflow and the walls' single count; a boost.model 1 build's exhaust (the builder's now, coupled to its housings);
+the rotary twins at full load (port gas 1100 to 1400 K).

@@ -84,7 +84,7 @@
     },
     "intake": {
       "model": 1,
-      "runnerLength": 0.45
+      "runnerLength": 0.53
     },
     "boost": {
       "model": "Machine",
