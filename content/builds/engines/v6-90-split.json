@@ -1,0 +1,74 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "V6, 90 degrees, 30-degree split pins",
+  "notes": "Each shared pin split by 30 degrees: even 120, 1-6-5-4-3-2.",
+  "spec": {
+    "engine": {
+      "custom": true,
+      "cylinders": 6,
+      "bankAngle": [
+        45,
+        -45
+      ],
+      "bank": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        1
+      ],
+      "pin": [
+        45,
+        75,
+        285,
+        315,
+        165,
+        195
+      ],
+      "fireRev": [
+        0,
+        1,
+        1,
+        1,
+        0,
+        0
+      ],
+      "place": [
+        0.0,
+        0.033,
+        0.1,
+        0.133,
+        0.2,
+        0.233
+      ]
+    }
+  },
+  "expect": {
+    "firingOrder": [
+      1,
+      6,
+      5,
+      4,
+      3,
+      2
+    ],
+    "firingIntervals": [
+      120,
+      120,
+      120,
+      120,
+      120,
+      120
+    ],
+    "firingAngles": [
+      0.0,
+      600.0,
+      480.0,
+      360.0,
+      240.0,
+      120.0
+    ]
+  }
+}

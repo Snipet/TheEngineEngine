@@ -1,0 +1,15 @@
+// limits.fm: the stand-in's fixed maxima, as sim/spec/limits.fm will have them (02-contracts.md, section 2, rule 7).
+enum
+{
+    MAX_CYL = 16,
+    MAX_GEARS = 18,
+    SCOPE_POINTS = 720,
+};
+
+enum
+{
+    MODE_BENCH = 0,
+    MODE_DRIVE = 1,
+    MODE_DYNO_ENGINE = 2,
+    MODE_DYNO_CHASSIS = 3,
+};

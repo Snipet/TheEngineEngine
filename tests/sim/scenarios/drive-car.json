@@ -1,0 +1,20 @@
+{
+  "format": "tee-engine-scenario/1",
+  "name": "drive-car",
+  "description": "A car pulled away and taken up the gears on the paddles at full throttle.",
+  "seconds": 13,
+  "events": [
+    { "t": 0.0, "spec": { "env.temperature": 300, "car.kind": 0 },
+      "ctl": { "mode": 1, "lever": 0, "clutch": 0, "brake": 0, "throttle": 0, "ignition": 1 } },
+    { "t": 0.25, "ctl": { "ignition": 2 } },
+    { "t": 2.5, "ctl": { "ignition": 1 } },
+    { "t": 3.0, "note": "first, on the paddle (its own clutch pulls away)", "press": "shiftUp" },
+    { "t": 3.3, "ctl": { "throttle": 0.5 }, "ramp": 0.2 },
+    { "t": 5.0, "ctl": { "throttle": 1 }, "ramp": 0.1 },
+    { "t": 6.5, "press": "shiftUp" },
+    { "t": 8.5, "press": "shiftUp" },
+    { "t": 10.5, "note": "lift, and down a gear (a blip)", "ctl": { "throttle": 0 }, "ramp": 0.05 },
+    { "t": 11.0, "press": "shiftDown" },
+    { "t": 12.0, "ctl": { "brake": 0.6 }, "ramp": 0.2 }
+  ]
+}

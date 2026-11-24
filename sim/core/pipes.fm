@@ -1,0 +1,630 @@
+// pipes.fm: the pipes of an engine as waveguides.
+//
+// A Duct is one pipe: a delay line each way, the length of the pipe at the speed of sound in the gas it holds (hot near
+// the engine, cooler toward the tail, warming and cooling with the load), read between samples (four-point Lagrange) so
+// the length can change smoothly as the gas does. The waves are pressures (Pa above the air outside). What a pass loses
+// is physics, not a fixed gain:
+//   - the wall's loss (viscosity and heat at the wall, Kirchhoff's): it grows as the square root of the frequency, with
+//     the gas's temperature and as the pipe narrows; three first-order shelves each way follow that curve within a
+//     tenth of a dB (fitted offline), unity at DC (none where a pipe would lose under half a dB at 10 kHz);
+//   - the flow's loss (turbulent friction): a gain on all that moves, from the mean speed of the gas through the pipe
+//     (Mach number M: about exp(-xi M L / 2D) a pass), so a pipe rings at idle and is damped at full throttle;
+//   - optionally a packing's absorption (two shelves on the highs), a turbine's low-pass and a gain;
+//   - optionally a muffler's scattering: what it sends back (the returning waves only) loses its highs, two shelves, and
+//     the delay they add at the lows is taken off the returning waves' line, so the lows ring where they did.
+// The steady flow passes whole (a one-pole tracker at 12 Hz carries it round the losses and their filters), so mass is
+// kept, and what the filters' coefficients do as they follow the gas and the dials stays small: on the steady flow's
+// tens of kPa each change of a coefficient would step the wave, a click.
+// A pipe given a steepening (the headers, the collectors' pipes, the main pipes) carries its outgoing waves as their
+// characteristics go: each sample at its own speed, c + u for its pressure, piling into a shock front where a later one
+// would overtake. Where pipes meet, the caller solves the junction from the pipes' impedances, with the loss an area
+// change makes there (K 1/2 rho u|u|: lossFlow below), which grows with the amplitude: the brake real exhausts have on
+// their own pulses. A Valve solves a valve's compressible flow with its pipe.
+//
+//   d.configure(cap)       in init (the longest delay it will hold, in samples); d.release() in end
+//   d.set(len, diam, area, c, rate)       the pipe: length m, its bore m (for the losses), area m^2, speed of sound m/s
+//   d.extra(lossHz, keep, rate)           a turbine's low-pass (0: none) and a gain (1: none)
+//   d.pack(fLow, dLow, fHigh, dHigh, rate)   a packing's (or a monolith's) absorption of the highs, dB a pass
+//   d.back(fc, depth, rate)               the returning waves lose depth dB above fc (after set)
+//   d.steep = 0.87 / 101325               (once) the pipe steepens its outgoing waves
+//   d.flow16(xi, k16)      every 16 samples: the flow's loss from the mean speed through it since the last call
+//   d.read()               first, each sample: d.far (the wave arriving at the far end) and d.near (at the near end)
+//   d.write(nearIn, farIn) then: the waves the two ends send in
+#pragma once
+
+// the wall loss's shelves, fitted to the square root of the frequency: their centres (Hz) and their depths per unit
+// of the loss's coefficient (dB at 1 Hz^0.5)
+const float kWallFc[3] = {70.0f, 1250.0f, 8700.0f};
+const float kWallW[3] = {16.0f, 37.3f, 82.4f};
+
+module Duct
+{
+    float* fw;          // waves going away from the engine, written at the near end (doubled: no wrap when read)
+    float* bw;          // waves coming back, written at the far end
+    int cap;
+    int w;
+    int di;             // the delay: whole samples, and the Lagrange weights of the fraction
+    float c0;
+    float c1;
+    float c2;
+    float c3;
+    // the wall's loss: three first-order shelves, the same each way (transposed direct form II: one state each)
+    float sb0[3];
+    float sb1[3];
+    float sa1[3];
+    float wsF[3];
+    float wsB[3];
+    int wallOn;         // 0: a pipe short and cool enough to lose under half a dB at 10 kHz (a runner): no shelves
+    // a muffler's packing: two shelves that take the highs (porous fill absorbs more the higher the sound, from some
+    // hundreds of Hz to a plateau some kHz up), 0 dB below their corners
+    float pb0[2];
+    float pb1[2];
+    float pa1[2];
+    float pwF[2];
+    float pwB[2];
+    int packOn;
+    // a muffler's scattering: two shelves on the returning waves only (from fc and from 2 fc, each from its corner to
+    // where it has taken half the depth, a decade or so up), and the line they come back on shortened by the delay the
+    // shelves add at the lows (bComp samples, read at bdi with its own weights)
+    float rb0[2];
+    float rb1[2];
+    float ra1[2];
+    float rwB[2];
+    int backOn;
+    float bComp;
+    int bdi;
+    float bc0;
+    float bc1;
+    float bc2;
+    float bc3;
+    float lp;           // the extra low-pass (a turbine's wheel): its coefficient (0: none), its states
+    float sF;
+    float sB;
+    float keep;         // the extra gain (a packing's absorption)
+    float gain;         // what a pass keeps of what moves: the flow's loss times the extra gain
+    float kDc;          // the steady flow's tracking (a one-pole at 12 Hz): it passes whole, so mass is kept
+    float mF;
+    float mB;
+    float dNom;         // the delay, samples
+    float steep;        // how much faster a wave of high pressure runs (per Pa): the steepening of a strong pulse
+                        // (0: a linear pipe, read between samples)
+    // a steepening pipe's outgoing waves go as their characteristics do: each sample written is given the delay its
+    // own pressure (over the wave's mean) gives it, D0 / (1 + steep p), and arrives that much later; none may arrive
+    // before the one written before it (they pile up into a shock front instead), and what is read is what has
+    // arrived, between the last two arrivals. (The waves coming back steepen too, in a real pipe; here they do not:
+    // a header's echoes steepening as well locked it into chaos at full load.)
+    float* fd;          // each sample's delay
+    int rF;             // the last arrival, and how long ago (samples) it was written
+    int ageF;
+    float dPrevF;
+    float mInF;         // the wave's mean as written (what it steepens over)
+    float kMin;
+    float far;          // the wave arriving at the far end, this sample
+    float near;         // the wave arriving at the near end
+    float area;         // m^2
+    float diam;         // m
+    float len;          // m
+    float c;            // the speed of sound in it, m/s
+    float y;            // the admittance, up to a constant: area times the speed of sound
+    float z;            // the impedance, Pa s / m^3: rho c / area
+    float rho;          // the gas's density, kg/m^3 (at the outside pressure)
+    float cWall;        // the wall's design: the sound speed and length it was made for
+    float lWall;
+    float qAbs;         // the flow through it, summed (|m^3/s|), and how many samples
+    int qN;
+    float mach;         // its mean Mach number, smoothed
+    float qsA;          // the junctions at its ends lose quasi-steadily below a Strouhal number of about 0.2 (0.2 u / d):
+                        // a one-pole's coefficient for that, from its mean flow
+    float rateD;
+    int ready;
+
+    void configure(int capacity)
+    {
+        release();
+        cap = capacity < 16 ? 16 : capacity;
+        fw = calloc(2 * cap, sizeof(float));
+        bw = calloc(2 * cap, sizeof(float));
+        fd = calloc(cap, sizeof(float));
+        for (int j = 0; j < cap; ++j)
+            fd[j] = 4.0f;
+        rF = cap - 4;
+        ageF = 4;
+        dPrevF = 4.0f;
+        mInF = 0.0f;
+        kMin = 0.0007f;
+        w = 0;
+        di = 4;
+        c0 = 0.0f;
+        c1 = 1.0f;
+        c2 = 0.0f;
+        c3 = 0.0f;
+        for (int i = 0; i < 3; ++i)
+        {
+            sb0[i] = 1.0f;
+            sb1[i] = 0.0f;
+            sa1[i] = 0.0f;
+            wsF[i] = 0.0f;
+            wsB[i] = 0.0f;
+        }
+        for (int i = 0; i < 2; ++i)
+        {
+            pb0[i] = 1.0f;
+            pb1[i] = 0.0f;
+            pa1[i] = 0.0f;
+            pwF[i] = 0.0f;
+            pwB[i] = 0.0f;
+        }
+        packOn = 0;
+        for (int i = 0; i < 2; ++i)
+        {
+            rb0[i] = 1.0f;
+            rb1[i] = 0.0f;
+            ra1[i] = 0.0f;
+            rwB[i] = 0.0f;
+        }
+        backOn = 0;
+        bComp = 0.0f;
+        bdi = 4;
+        bc0 = 0.0f;
+        bc1 = 1.0f;
+        bc2 = 0.0f;
+        bc3 = 0.0f;
+        wallOn = 1;
+        lp = 0.0f;
+        keep = 1.0f;
+        gain = 1.0f;
+        steep = 0.0f;
+        dNom = 4.0f;
+        sF = 0.0f;
+        sB = 0.0f;
+        mF = 0.0f;
+        mB = 0.0f;
+        kDc = 0.0015f;
+        far = 0.0f;
+        near = 0.0f;
+        area = 0.001f;
+        diam = 0.035f;
+        len = 1.0f;
+        c = 500.0f;
+        y = 1.0f;
+        z = 1.0f;
+        rho = 0.6f;
+        cWall = -1.0f;
+        lWall = -1.0f;
+        qAbs = 0.0f;
+        qN = 0;
+        mach = 0.0f;
+        qsA = 0.01f;
+        rateD = 48000.0f;
+        ready = 1;
+    }
+
+    void release()
+    {
+        if (ready != 0)
+        {
+            free(fw);
+            free(bw);
+            free(fd);
+        }
+        ready = 0;
+    }
+
+    void clear()
+    {
+        for (int j = 0; j < 2 * cap; ++j)
+        {
+            fw[j] = 0.0f;
+            bw[j] = 0.0f;
+        }
+        const float d0 = fminf(fmaxf(dNom, 4.0f), (float)(cap - 4));
+        for (int j = 0; j < cap; ++j)
+            fd[j] = d0;
+        const int i0 = (int)d0;
+        rF = (w - i0 - 1 + 2 * cap) % cap;
+        ageF = i0 + 1;
+        dPrevF = d0;
+        mInF = 0.0f;
+        for (int i = 0; i < 3; ++i)
+        {
+            wsF[i] = 0.0f;
+            wsB[i] = 0.0f;
+        }
+        for (int i = 0; i < 2; ++i)
+        {
+            pwF[i] = 0.0f;
+            pwB[i] = 0.0f;
+        }
+        sF = 0.0f;
+        sB = 0.0f;
+        rwB[0] = 0.0f;
+        rwB[1] = 0.0f;
+        mF = 0.0f;
+        mB = 0.0f;
+        far = 0.0f;
+        near = 0.0f;
+        qAbs = 0.0f;
+        qN = 0;
+        mach = 0.0f;
+    }
+
+    // The delay in samples (at least 2, at most the capacity less 4); the returning waves', less bComp
+    void setDelay(float d)
+    {
+        const float dd = fminf(fmaxf(d, 2.0f), (float)(cap - 4));
+        dNom = dd;
+        const float fl = floorf(dd);
+        const float t = dd - fl;
+        di = (int)fl;
+        c0 = -t * (t - 1.0f) * (t - 2.0f) * 0.16666667f;
+        c1 = (t + 1.0f) * (t - 1.0f) * (t - 2.0f) * 0.5f;
+        c2 = -(t + 1.0f) * t * (t - 2.0f) * 0.5f;
+        c3 = (t + 1.0f) * t * (t - 1.0f) * 0.16666667f;
+        const float db = fminf(fmaxf(dd - bComp, 2.0f), (float)(cap - 4));
+        const float fb = floorf(db);
+        const float tb = db - fb;
+        bdi = (int)fb;
+        bc0 = -tb * (tb - 1.0f) * (tb - 2.0f) * 0.16666667f;
+        bc1 = (tb + 1.0f) * (tb - 1.0f) * (tb - 2.0f) * 0.5f;
+        bc2 = -(tb + 1.0f) * tb * (tb - 2.0f) * 0.5f;
+        bc3 = (tb + 1.0f) * tb * (tb - 1.0f) * 0.16666667f;
+    }
+
+    // The wall's loss for this length, bore and gas (its temperature from the sound speed): Kirchhoff's
+    // alpha = sqrt(pi nu f) (1 + (gamma - 1) / sqrt(Pr)) / (a c) nepers a metre, as shelves
+    void wall(float rate)
+    {
+        cWall = c;
+        lWall = len;
+        const float t = c * c / (1.35f * 287.0f);
+        // the gas's viscosity (Sutherland's law) over its density at the outside pressure
+        const float mu = 1.716e-5f * expf(1.5f * logf(t / 273.0f)) * (384.0f / (t + 111.0f));
+        const float nu = mu / (101325.0f / (287.0f * t));
+        const float kap = 8.6858896f * len * sqrtf(3.14159265f * nu) * 1.394f / (0.5f * diam * c);
+        wallOn = kap * 100.0f > 0.5f ? 1 : 0;
+        for (int i = 0; i < 3; ++i)
+        {
+            const float g = expf(-0.11512925f * kap * kWallW[i]);     // 10^(-depth / 20)
+            const float wk = 3.14159265f * fminf(kWallFc[i], 0.45f * rate) / rate;
+            const float k = sinf(wk) / cosf(wk);
+            const float sg = sqrtf(g);
+            const float iz = sg / k;        // 1 / (k / sqrt(g)): the zero
+            const float ip = 1.0f / (k * sg);   // the pole
+            const float nrm = 1.0f / (1.0f + ip);
+            sb0[i] = (1.0f + iz) * nrm;
+            sb1[i] = (1.0f - iz) * nrm;
+            sa1[i] = (1.0f - ip) * nrm;
+        }
+    }
+
+    // The pipe: its length (m), its bore (m), its area (m^2) and the speed of sound in it (m/s)
+    void set(float lenIn, float diamIn, float a, float cIn, float rate)
+    {
+        area = a;
+        diam = diamIn;
+        len = lenIn;
+        c = cIn;
+        y = a * c;
+        z = 1.4f * 101325.0f / (c * a);            // rho c = gamma p / c
+        rho = 1.35f * 101325.0f / (c * c);
+        rateD = rate;
+        setDelay(len * rate / c);
+        if (fabsf(c - cWall) > 1.5f || fabsf(len - lWall) > 0.001f)
+            wall(rate);
+        kDc = 1.0f - expf(-6.28318531f * 12.0f / rate);
+        kMin = 1.0f - expf(-6.28318531f * 5.0f / rate);
+    }
+
+    // One of a muffler's packing's shelves: depthDb taken from the highs about fc (half of it from fc / 2 to 2 fc)
+    void packShelf(int i, float fc, float depthDb, float rate)
+    {
+        const float g = expf(-0.11512925f * fmaxf(depthDb, 0.0f));
+        const float wk = 3.14159265f * fminf(fc, 0.45f * rate) / rate;
+        const float k = sinf(wk) / cosf(wk);
+        const float sg = sqrtf(g);
+        const float iz = sg / k;
+        const float ip = 1.0f / (k * sg);
+        const float nrm = 1.0f / (1.0f + ip);
+        pb0[i] = (1.0f + iz) * nrm;
+        pb1[i] = (1.0f - iz) * nrm;
+        pa1[i] = (1.0f - ip) * nrm;
+    }
+
+    // A muffler's packing: dLow taken above about fLow, dHigh more above fHigh (dB a pass); 0, 0: none
+    void pack(float fLow, float dLow, float fHigh, float dHigh, float rate)
+    {
+        packOn = dLow + dHigh > 0.05f ? 1 : 0;
+        packShelf(0, fLow, dLow, rate);
+        packShelf(1, fHigh, dHigh, rate);
+    }
+
+    // A muffler's scattering: what comes back loses depthDb of its highs, half above fc and half above 2 fc (each a
+    // first-order shelf with its pole at its corner and its zero where it has taken its half); 0: none. Its delay at the
+    // lows (the shelves' group delay at DC) comes off the returning waves' line, at most all but two samples of it.
+    void back(float fc, float depthDb, float rate)
+    {
+        backOn = depthDb > 0.05f ? 1 : 0;
+        const float g = expf(-0.057564627f * fmaxf(depthDb, 0.0f));
+        float tg = 0.0f;
+        for (int i = 0; i < 2; ++i)
+        {
+            const float fp = fminf(fc * (float)(i + 1), 0.45f * rate);
+            const float fz = fminf(fp / g, 0.45f * rate);
+            const float wz = 3.14159265f * fz / rate;
+            const float wp = 3.14159265f * fp / rate;
+            const float iz = cosf(wz) / sinf(wz);
+            const float ip = cosf(wp) / sinf(wp);
+            const float nrm = 1.0f / (1.0f + ip);
+            rb0[i] = (1.0f + iz) * nrm;
+            rb1[i] = (1.0f - iz) * nrm;
+            ra1[i] = (1.0f - ip) * nrm;
+            tg += rb1[i] / (rb0[i] + rb1[i]) - ra1[i] / (1.0f + ra1[i]);
+        }
+        bComp = backOn != 0 ? fminf(tg, fmaxf(dNom - 2.0f, 0.0f)) : 0.0f;
+        setDelay(dNom);
+    }
+
+    // A turbine's low-pass (Hz; 0: none) and an absorption's gain (1: none)
+    void extra(float lossHz, float keepIn, float rate)
+    {
+        lp = lossHz > 0.0f ? expf(-6.28318531f * fminf(lossHz, 0.45f * rate) / rate) : 0.0f;
+        keep = keepIn;
+    }
+
+    // Every 16 samples: the flow's loss from the mean speed through the pipe (smoothed over some 60 ms), with the
+    // extra gain. xi: the friction factor.
+    void flow16(float xi, float k16)
+    {
+        if (qN > 0)
+        {
+            const float u = qAbs / ((float)qN * z * area);
+            mach += (fminf(u / c, 0.6f) - mach) * k16;
+        }
+        qAbs = 0.0f;
+        qN = 0;
+        gain = keep * expf(-xi * mach * len / (2.0f * diam));
+        const float fqs = fminf(fmaxf(0.2f * fmaxf(mach * c, 4.0f) / diam, 60.0f), 2000.0f);
+        qsA = 1.0f - expf(-6.28318531f * fqs / rateD);
+    }
+
+    void read()
+    {
+        const int k = w - di + cap;
+        float f = 0.0f;
+        const int kb = w - bdi + cap;
+        float b = bc0 * bw[kb + 1] + bc1 * bw[kb] + bc2 * bw[kb - 1] + bc3 * bw[kb - 2];
+        if (steep > 0.0f)
+        {
+            // a strong pulse outruns its own front (c + u): what has arrived (fd above), so the front steepens as it
+            // goes down a long pipe, as a real exhaust pulse does, into a shock at full load
+            ageF += 1;
+            int nx = rF + 1 >= cap ? 0 : rF + 1;
+            while ((float)(ageF - 1) >= fd[nx])
+            {
+                rF = nx;
+                ageF -= 1;
+                nx = rF + 1 >= cap ? 0 : rF + 1;
+            }
+            f = fw[rF] + (fw[nx] - fw[rF]) * (((float)ageF - fd[rF]) / (1.0f + fd[nx] - fd[rF]));
+        }
+        else
+            f = c0 * fw[k + 1] + c1 * fw[k] + c2 * fw[k - 1] + c3 * fw[k - 2];
+        // the steady flow taken out first, to go round all that follows whole
+        mF += kDc * (f - mF);
+        mB += kDc * (b - mB);
+        f -= mF;
+        b -= mB;
+        // the wall
+        for (int i = 0; i < 3 * wallOn; ++i)
+        {
+            const float yf = sb0[i] * f + wsF[i];
+            wsF[i] = sb1[i] * f - sa1[i] * yf;
+            f = yf;
+            const float yb = sb0[i] * b + wsB[i];
+            wsB[i] = sb1[i] * b - sa1[i] * yb;
+            b = yb;
+        }
+        // a muffler's packing
+        if (packOn != 0)
+        {
+            for (int i = 0; i < 2; ++i)
+            {
+                const float yf = pb0[i] * f + pwF[i];
+                pwF[i] = pb1[i] * f - pa1[i] * yf;
+                f = yf;
+                const float yb = pb0[i] * b + pwB[i];
+                pwB[i] = pb1[i] * b - pa1[i] * yb;
+                b = yb;
+            }
+        }
+        // a muffler's scattering, on what comes back
+        if (backOn != 0)
+        {
+            for (int i = 0; i < 2; ++i)
+            {
+                const float yb = rb0[i] * b + rwB[i];
+                rwB[i] = rb1[i] * b - ra1[i] * yb;
+                b = yb;
+            }
+        }
+        // a turbine's low-pass
+        if (lp > 0.0f)
+        {
+            sF += (1.0f - lp) * (f - sF);
+            sB += (1.0f - lp) * (b - sB);
+            f = sF;
+            b = sB;
+        }
+        // the flow's loss (and an absorption) on what moves; the steady flow round it
+        far = gain * f + mF;
+        near = gain * b + mB;
+    }
+
+    void write(float nearIn, float farIn)
+    {
+        qAbs += fabsf(nearIn - near) + fabsf(far - farIn);
+        qN += 2;
+        if (steep > 0.0f)
+        {
+            // each sample's own delay, over the wave's mean: D0 / (1 + x - 0.38 x^2 / 0.87), x = steep p p0 / P (the
+            // simple wave's c + u to second order, within 4 % of exact to 0.7 bar; P the gas's own pressure there,
+            // about twice the wave's mean above the air's), arriving no sooner than half a sample after the one before
+            // (a shock's front, as steep as the sampling allows without folding)
+            mInF += kMin * (nearIn - mInF);
+            const float xf = fminf(fmaxf(steep * (nearIn - mInF) * 101325.0f / fmaxf(101325.0f + 2.0f * mInF, 50000.0f), -0.6f), 1.0f);
+            float df = dNom / (1.0f + xf - 0.437f * xf * xf);
+            df = fminf(fmaxf(df, fmaxf(dPrevF - 0.5f, 2.0f)), (float)(cap - 4));
+            fd[w] = df;
+            dPrevF = df;
+        }
+        fw[w] = nearIn;
+        fw[w + cap] = nearIn;
+        bw[w] = farIn;
+        bw[w + cap] = farIn;
+        w += 1;
+        if (w >= cap)
+            w = 0;
+    }
+};
+
+// The flow through a junction that loses K 1/2 rho u|u| (an area change, a merge, an open end): solves
+// zs q + kap q |q| = d for q, where d is the drive (twice the waves' difference), zs the impedances in series and
+// kap = K rho / (2 A^2) for the flow's direction
+float lossFlow(float d, float zs, float kap)
+{
+    const float ad = fabsf(d);
+    const float q = 2.0f * ad / (zs + sqrtf(zs * zs + 4.0f * kap * ad));
+    return d >= 0.0f ? q : -q;
+}
+
+// A junction's loss coefficient for one direction: K rho / (2 A^2), A the narrower area there
+float lossKap(float k, float rho, float aNarrow)
+{
+    return k * rho / (2.0f * aNarrow * aNarrow);
+}
+
+// How much a junction's loss holds back the flow its drive x would push through zs alone (the drive's slow part:
+// quasi-steady): x / zs less what passes with the loss
+float lossHold(float x, float zs, float kap)
+{
+    return x / zs - lossFlow(x, zs, kap);
+}
+
+// The flow through an orifice (a valve, a port), compressible: mass flow = Cd A p0 / sqrt(R T0) psi(r), r the pressure
+// ratio across it, psi = sqrt(2 g / (g - 1) (r^(2/g) - r^((g+1)/g))) down to the critical ratio and flat (choked)
+// below it. Tabulated as psi / sqrt(1 - r) (smooth to r = 1, where it is sqrt 2), 64 steps of r: for burned gas
+// (g 1.30: the exhaust) and air (g 1.39: the intake).
+const float kPsiE[65] = {0.66726f, 0.67254f, 0.67794f, 0.68347f, 0.68915f, 0.69496f, 0.70093f, 0.70705f, 0.71333f, 0.71979f, 0.72642f, 0.73324f, 0.74026f, 0.74748f, 0.75492f, 0.76259f, 0.77049f, 0.77864f, 0.78706f, 0.79576f, 0.80475f, 0.81405f, 0.82369f, 0.83367f, 0.84403f, 0.85478f, 0.86595f, 0.87758f, 0.88968f, 0.90230f, 0.91548f, 0.92924f, 0.94365f, 0.95875f, 0.97460f, 0.99126f, 1.00816f, 1.02484f, 1.04131f, 1.05758f, 1.07366f, 1.08954f, 1.10525f, 1.12078f, 1.13614f, 1.15134f, 1.16637f, 1.18126f, 1.19599f, 1.21057f, 1.22501f, 1.23932f, 1.25349f, 1.26753f, 1.28144f, 1.29523f, 1.30890f, 1.32245f, 1.33588f, 1.34920f, 1.36241f, 1.37552f, 1.38852f, 1.40142f, 1.41421f};
+const float kPsiI[65] = {0.68304f, 0.68844f, 0.69397f, 0.69963f, 0.70544f, 0.71139f, 0.71750f, 0.72376f, 0.73020f, 0.73681f, 0.74360f, 0.75058f, 0.75776f, 0.76515f, 0.77277f, 0.78061f, 0.78870f, 0.79705f, 0.80567f, 0.81457f, 0.82377f, 0.83330f, 0.84316f, 0.85338f, 0.86398f, 0.87499f, 0.88643f, 0.89832f, 0.91072f, 0.92363f, 0.93712f, 0.95121f, 0.96596f, 0.98142f, 0.99764f, 1.01405f, 1.03024f, 1.04620f, 1.06194f, 1.07747f, 1.09280f, 1.10794f, 1.12288f, 1.13765f, 1.15224f, 1.16666f, 1.18092f, 1.19502f, 1.20896f, 1.22276f, 1.23640f, 1.24991f, 1.26328f, 1.27651f, 1.28962f, 1.30260f, 1.31545f, 1.32819f, 1.34081f, 1.35331f, 1.36570f, 1.37799f, 1.39017f, 1.40224f, 1.41421f};
+
+// A valve (or a port) solved with its pipe at once: the gas through it compressible (psi above), the pipe's end a wave
+// arriving and an impedance. Above the critical ratio it is an orifice whose flow goes as the square root of the
+// pressure across it times psi's correction (psi / sqrt(2 (1 - r)): 1 for a small drop, about 0.47 near choking),
+// solved in closed form with the pipe, the correction and the pipe's stiffening taken from the pass before: three
+// passes from the pipe at rest. Below it, choked: the flow set by the upstream state alone, also in closed form, and
+// the two meet at the critical ratio. (A Newton iteration on the compressible law chattered where the drop is tiny;
+// this does not.)
+module Valve
+{
+    float r;            // the ratio across it (downstream over upstream) at the last solve
+    float g;            // how much harder the pipe's gas pushes back than its linear model for this flow's speed: a
+                        // finite wave's pressure over the linear one for the same piston (the gas the valve lets in
+                        // pushes the pipe's like a piston; the simple wave's p = p0 (1 + (g-1)/2 u/c)^(2g/(g-1)),
+                        // 1 + (gamma + 1)/4 u/c to first order): the pipe is given g times the flow
+
+    // psi / sqrt(1 - r) for the exhaust's gas (ex 1) or air
+    float tOf(float rr, int ex)
+    {
+        const float x = fminf(fmaxf(rr, 0.0f), 1.0f) * 64.0f;
+        int i = (int)x;
+        if (i > 63)
+            i = 63;
+        const float f = x - (float)i;
+        const float t0 = ex != 0 ? kPsiE[i] : kPsiI[i];
+        const float t1 = ex != 0 ? kPsiE[i + 1] : kPsiI[i + 1];
+        return t0 + (t1 - t0) * f;
+    }
+
+    // The volume flow of the gas let through (m^3/s at the pipe's pressure, the piston's: what the mass flow fills
+    // there; negative: from the pipe into the volume) between a volume of gas (pc Pa absolute, tc K) and the end of a
+    // pipe whose arriving wave is b (Pa above the air outside) and impedance z (its gas at tp), through an effective
+    // area (m^2, the discharge coefficient in it); ex: the exhaust's gas (1) or air (0). Leaves in g the factor the
+    // pipe is to be given it by (the waves it makes are z g q). Each solve starts from the pipe with nothing flowing
+    // (no memory of the last one), so it is the same function of where things stand whoever asks and how often.
+    float flow(float pc, float tc, float b, float z, float area, float tp, int ex)
+    {
+        const float pq = fmaxf(101325.0f + 2.0f * b, 8000.0f);       // the pipe's pressure with nothing flowing
+        if (area <= 1.0e-9f)
+        {
+            r = 1.0f;
+            g = 1.0f;
+            return 0.0f;
+        }
+        const float rc = ex != 0 ? 0.5457f : 0.5300f;
+        const float psiS = ex != 0 ? 0.66726f : 0.68304f;
+        const float gk = 0.59f * z / (1.4f * 101325.0f);             // (gamma + 1)/4 over rho c^2, times z: per m^3/s
+        if (pc >= pq)
+        {
+            // out of the volume: q pp = kd area pc sqrt(R tc) psi(pp / pc), pp = pq + z g q. With psi = t(r) sqrt(1 - r)
+            // and the last pass's t, g and pp, a quadratic in q (exact once it settles, and meeting the choked flow at
+            // the critical ratio). A blowdown's choked start passes a tenth less than a steady flow would (its jet is
+            // still forming).
+            const float r0 = pq / pc;
+            const float kd = r0 < rc ? 0.9f : (r0 < rc + 0.15f ? 0.9f + 0.6666667f * (r0 - rc) : 1.0f);
+            const float cq = kd * area * sqrtf(pc * 287.0f * tc);
+            const float d = pc - pq;
+            float q = 0.0f;
+            float pp = pq;
+            float rr = r0;
+            float gg = 1.0f;
+            for (int it = 0; it < 3; ++it)
+            {
+                const float k = cq * tOf(rr, ex) / pp;
+                const float zk = z * gg * k;
+                q = k * 0.5f * (sqrtf(zk * zk + 4.0f * d) - zk);
+                gg = fminf(1.0f + gk * q, 1.6f);
+                pp = pq + z * gg * q;
+                rr = pp / pc;
+            }
+            if (rr < rc)
+            {
+                // choked: q pp = kd area pc sqrt(R tc) psi*
+                const float c = kd * area * pc * sqrtf(287.0f * tc) * psiS;
+                const float zg = z * gg;
+                q = (sqrtf(pq * pq + 4.0f * zg * c) - pq) / (2.0f * zg);
+                gg = fminf(1.0f + gk * q, 1.6f);
+                rr = (pq + z * gg * q) / pc;
+            }
+            r = rr;
+            g = gg;
+            return q;
+        }
+        // into the volume from the pipe, its gas: qi = area sqrt(R tp) psi(pc / pp) at the pipe's own pressure,
+        // pp = pq - z g qi (the wave it draws is a rarefaction, softer than linear: g below 1; the same way: the last
+        // pass's t, g and pp, a quadratic)
+        const float ci = area * sqrtf(287.0f * tp);
+        const float d = pq - pc;
+        float qi = 0.0f;
+        float pp = pq;
+        float rr = pc / pq;
+        float gg = 1.0f;
+        for (int it = 0; it < 3; ++it)
+        {
+            const float k = ci * tOf(rr, ex) / sqrtf(pp);
+            const float zk = z * gg * k;
+            qi = k * 0.5f * (sqrtf(zk * zk + 4.0f * d) - zk);
+            gg = fmaxf(1.0f - gk * qi, 0.5f);
+            pp = fmaxf(pq - z * gg * qi, 1000.0f);
+            rr = pc / pp;
+        }
+        if (rr < rc)
+        {
+            qi = ci * psiS;
+            gg = fmaxf(1.0f - gk * qi, 0.5f);
+            rr = pc / fmaxf(pq - z * gg * qi, 1000.0f);
+        }
+        r = rr;
+        g = gg;
+        return -qi;
+    }
+};

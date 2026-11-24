@@ -1,0 +1,87 @@
+// parts.fm: the diesel's fields and the tuner's readings, held for the tests.
+#include "combustion/diesel.fm"
+#include "combustion/watch.fm"
+#include "combustion/settings.fm"
+
+module Parts
+{
+    DieselFields diesel;
+    BurnWatch watch;
+    LambdaSensor sensor;
+    InjectorMeter meter;
+    FuelSettings settings;
+
+    void setup()
+    {
+        diesel.defaults();
+        sensor.setup(16.0f / 96000.0f);
+        meter.setup(16.0f / 96000.0f);
+    }
+
+    float phi(float lever)
+    {
+        return diesel.phiAt(lever);
+    }
+
+    float premixed(float beta)
+    {
+        return diesel.premixed(beta);
+    }
+
+    float diffusion(float dur2)
+    {
+        return diesel.diffusion(dur2);
+    }
+
+    // A made-up cycle: the pressure a bell about `at` degrees after the top, the burn's share a ramp from the top to
+    // `burn` degrees after it; returns the peak's angle
+    float cycle(float at, float burn)
+    {
+        for (int i = 0; i < 720; ++i)
+        {
+            const float a = (float)i - 360.0f;
+            const float d = (a - at) / 30.0f;
+            watch.tick(101325.0f * (1.0f + 60.0f * expf(-d * d)), a, fminf(fmaxf(a / burn, 0.0f), 1.0f));
+        }
+        watch.cycle();
+        return watch.lastPeakAt;
+    }
+
+    // Firings of `lambda` every 90 degrees at `rpm` for `seconds`, the sensor `behind` firings late; returns what it reads
+    float sense(float lambda, float rpm, float seconds, int behind)
+    {
+        const float d16 = 16.0f / 96000.0f;
+        float angle = 0.0f;
+        const int steps = (int)(seconds / d16);
+        for (int s = 0; s < steps; ++s)
+        {
+            angle += rpm * 6.0f * d16;
+            while (angle >= 90.0f)
+            {
+                angle -= 90.0f;
+                sensor.firing(lambda);
+            }
+            sensor.control(behind);
+        }
+        return sensor.seen;
+    }
+
+    // Firings of `fuel` kg every 90 degrees at `rpm` for `seconds`; returns the duty
+    float inject(float fuel, float injector, float rpm, float seconds)
+    {
+        const float d16 = 16.0f / 96000.0f;
+        float angle = 0.0f;
+        const int steps = (int)(seconds / d16);
+        for (int s = 0; s < steps; ++s)
+        {
+            angle += rpm * 6.0f * d16;
+            while (angle >= 90.0f)
+            {
+                angle -= 90.0f;
+                meter.firing(fuel);
+            }
+            meter.control(fuel, injector, rpm * 0.10471976f, 720.0f, d16);
+        }
+        return meter.duty;
+    }
+};

@@ -1,0 +1,20 @@
+// controls.fm: Controls, exactly as 02-contracts.md, section 4, has them.
+module Controls
+{
+    int ignition;
+    float throttle;
+    float brake;
+    float clutch;
+    float handbrake;
+    float steer;
+    int lever;
+    int shiftUp;
+    int shiftDown;
+    int buttons;
+    int mode;
+    float dynoSpeed;
+    float dynoRate;
+    float holdSpeed;
+    int strip;
+    int scopeOn;
+};

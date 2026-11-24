@@ -1,0 +1,39 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Single",
+  "notes": "A thumper.",
+  "spec": {
+    "engine": {
+      "custom": true,
+      "layout": 0,
+      "cylinders": 1,
+      "bankAngle": [
+        0.0
+      ],
+      "bank": [
+        0
+      ],
+      "pin": [
+        0
+      ],
+      "fireRev": [
+        0
+      ],
+      "place": [
+        0.0
+      ]
+    }
+  },
+  "expect": {
+    "firingOrder": [
+      1
+    ],
+    "firingIntervals": [
+      720
+    ],
+    "firingAngles": [
+      0.0
+    ]
+  }
+}

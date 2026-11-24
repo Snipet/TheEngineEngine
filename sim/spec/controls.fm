@@ -1,0 +1,57 @@
+// spec/controls.fm: what the driver does (ctl). The host writes it before each call of Engine::process; the
+// simulator reads it at the call's start. The lead owns this file; packages ask for additions.
+//
+// A press that must not be lost between two calls is a counter (shiftUp, shiftDown, strip): the simulator acts on each
+// increase it sees. A state that is held is a level (ignition, the pedals, the lever, buttons).
+#pragma once
+
+enum
+{
+    IGN_OFF = 0,           // ctl.ignition: off: a running engine runs down and stops
+    IGN_ON = 1,            // on: it runs (it never switches itself off; it can stall)
+    IGN_START = 2,         // start, held: it cranks while held and it is not running
+};
+
+enum
+{
+    MODE_BENCH = 0,        // ctl.mode: no vehicle; the throttle by hand, holdSpeed a driver holding a speed
+    MODE_DRIVE = 1,        // in the vehicle spec.car.kind says: the pedals, the lever, the paddles
+    MODE_DYNO_ENGINE = 2,  // (the dynos do nothing yet: as MODE_BENCH)
+    MODE_DYNO_CHASSIS = 3,
+};
+
+enum
+{
+    BTN_LINE_LOCK = 1,     // ctl.buttons, a bit each, held
+    BTN_LAUNCH = 2,
+    BTN_NITROUS = 4,
+    BTN_HORN = 8,
+};
+
+module Controls
+{
+    int ignition [[fminus::range(0, 2)]] [[fminus::default(1)]] [[ui::label("Ignition")]]
+        [[ui::choices("Off", "On", "Start")]];
+    float throttle [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Throttle")]] [[ui::quantity("fraction")]];
+    float brake [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Brake")]] [[ui::quantity("fraction")]];
+    float clutch [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Clutch")]] [[ui::quantity("fraction")]]
+        [[ui::help("1 is the pedal on the floor: the clutch open")]];
+    float handbrake [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Handbrake")]]
+        [[ui::quantity("fraction")]];
+    float steer [[fminus::range(-1, 1)]] [[fminus::default(0)]] [[ui::label("Steering")]] [[ui::quantity("fraction")]];
+    int lever [[fminus::range(-1, 7)]] [[fminus::default(0)]] [[ui::label("Lever")]]
+        [[ui::help("An H-pattern's position: -1 R, 0 N, 1 up")]];
+    int shiftUp [[fminus::default(0)]] [[ui::label("Shift up")]] [[ui::help("Counts presses of the up paddle")]];
+    int shiftDown [[fminus::default(0)]] [[ui::label("Shift down")]] [[ui::help("Counts presses of the down paddle")]];
+    int buttons [[fminus::default(0)]] [[ui::label("Buttons")]] [[ui::help("Held switches, a bit each: BTN_*")]];
+    int mode [[fminus::range(0, 3)]] [[fminus::default(0)]] [[ui::label("Mode")]]
+        [[ui::choices("Bench", "Drive", "Engine dyno", "Chassis dyno")]];
+    float dynoSpeed [[fminus::range(0, 1500)]] [[fminus::default(0)]] [[ui::label("Dyno speed")]]
+        [[ui::quantity("rotation")]];
+    float dynoRate [[fminus::range(0, 1000)]] [[fminus::default(0)]] [[ui::label("Dyno sweep")]] [[ui::unit("rad/s^2")]];
+    float holdSpeed [[fminus::range(0, 2000)]] [[fminus::default(0)]] [[ui::label("Hold speed")]]
+        [[ui::quantity("rotation")]] [[ui::help("MODE_BENCH: above 0, a driver holds the crank at this speed")]];
+    int strip [[fminus::default(0)]] [[ui::label("Drag strip")]] [[ui::help("Counts requests to stage a drag run")]];
+    int scopeOn [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Scope")]]
+        [[ui::help("0: the Scope block need not be filled")]];
+};
