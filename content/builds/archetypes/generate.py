@@ -779,7 +779,11 @@ EXHAUST_CLASS = {
 
 
 def _cams():
-    """Each phased archetype's baked intake cam map (cams.py: tee-dyno --bake-cam), {slug: [(rad/s, advance)]}."""
+    """Each phased archetype's baked intake cam map (cams.py: tee-dyno --bake-cam), {slug: [(rad/s, advance)]}.
+    NOT USED (the lead, 22:35): a baked map without a load axis asked the full-load phase at idle (the 4.5 idled at
+    50 deg and hunted; first.json at 20); the maps go back to N1 until one has a load axis, is smooth across speed and
+    passes the idle check. Every phased archetype keeps camInAuto (N1's rule)."""
+    return {}
     path = os.path.join(HERE, "cam-maps.tsv")
     out = {}
     if os.path.exists(path):
@@ -847,9 +851,67 @@ FIRST = "turbo-four-20-gdi"
 ENGINE_SECTIONS = ("engine", "valve", "intake", "boost", "exhaust", "fuel")
 
 
+def idle_check(docs):
+    """Every archetype idles within its band and steadily, warm and cold, before any file is written (the lead, 22:35:
+    a baked cam map asked the full-load phase at idle and the 4.5 hunted). On a tee-render of p-idle-warm, 8 to 14 s:
+    the mean within 100 rpm of the speed its ECU asks and the standard deviation under 25 rpm; of p-cold-start, 8 to
+    11.5 s: running (engine.state 2) and the deviation under 60 rpm (judgement: a cold fast idle falls as it warms).
+    Uses $TEE_BIN (default build-dev/bin) and $TEE_SIM (default the repository's sim/); --no-check skips it, loudly.
+    Returns the failures as lines."""
+    import csv
+    import statistics
+    import subprocess
+    import tempfile
+    from concurrent.futures import ThreadPoolExecutor
+    tool = os.path.join(os.environ.get("TEE_BIN", os.path.join(ROOT, "build-dev", "bin")), "tee-render")
+    if not os.path.exists(tool):
+        return ["tee-render not built (%s): the idle check cannot run; build it, or pass --no-check" % tool]
+    sim = os.environ.get("TEE_SIM", os.path.join(ROOT, "sim"))
+    tmp = tempfile.mkdtemp(prefix="idle-check-")
+    scen = os.path.join(ROOT, "content", "validation", "scenarios")
+
+    def one(item):
+        slug, doc = item
+        path = os.path.join(tmp, slug + ".json")
+        with open(path, "w") as f:
+            json.dump(doc, f)
+        asked = doc["spec"]["ecu"]["idle"]["speed"] / RPM
+        bad = []
+        for name, t0, t1 in (("p-idle-warm", 8.0, 14.0), ("p-cold-start", 8.0, 11.5)):
+            out = os.path.join(tmp, slug + "-" + name)
+            subprocess.run([tool, "--build", path, "--scenario", os.path.join(scen, name + ".json"), "--out",
+                            out + ".wav", "--tel", "engine.speed,engine.state", "--sim", sim], capture_output=True)
+            try:
+                rows = [r for r in csv.DictReader(open(out + ".csv")) if t0 <= float(r["time"]) <= t1]
+            except OSError:
+                bad.append("%s: %s did not render" % (slug, name))
+                continue
+            rpm = [float(r["engine.speed"]) / RPM for r in rows]
+            sd = statistics.pstdev(rpm) if rpm else 0.0
+            mean = statistics.mean(rpm) if rpm else 0.0
+            if name == "p-idle-warm" and (abs(mean - asked) > 100 or sd > 25):
+                bad.append("%s: warm idle %.0f rpm (asked %.0f), sd %.0f" % (slug, mean, asked, sd))
+            if name == "p-cold-start" and (min(float(r["engine.state"]) for r in rows) < 2 or sd > 60):
+                bad.append("%s: cold idle %.0f rpm, sd %.0f, %s" % (
+                    slug, mean, sd, "running" if min(float(r["engine.state"]) for r in rows) >= 2 else "NOT running"))
+        return bad
+    with ThreadPoolExecutor(int(os.environ.get("TEE_JOBS", "4"))) as ex:
+        return [line for lines in ex.map(one, docs) for line in lines]
+
+
 def main():
+    import sys
+    docs = [(a["slug"], build(a)) for a in A]
+    if "--no-check" in sys.argv:
+        print("WARNING: the idle check skipped (--no-check): these files are not known to idle")
+    else:
+        failures = idle_check(docs)
+        if failures:
+            raise SystemExit("the idle check failed; nothing written:\n  " + "\n  ".join(failures))
+        print("idle check: %d archetypes idle within their bands, warm and cold" % len(docs))
+    built = dict(docs)
     for a in A:
-        doc = build(a)
+        doc = built[a["slug"]]
         write(os.path.join(HERE, a["slug"] + ".json"), doc)
         eng = {k: doc["spec"][k] for k in ENGINE_SECTIONS}
         write(os.path.join(PARTS, "engines", a["slug"] + ".json"),
