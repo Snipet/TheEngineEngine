@@ -330,7 +330,12 @@ module Combustion
                 const float flame = f1 ? 1.0f / sqrtf(one.mix.flameShare(fuel->grade, 1.0f / fmaxf(lambda, 0.3f))
                                                       * kFuelFlame[fuelRow(fuel->grade)]) : 1.0f;
                 adv += 0.517f * burnBase * flame + 25.0f * fminf(dx, 0.3f) - kHalfBurn - ecu->one.sparkBase;
+                // (card N2: the baked knock limit, when there is one: best torque less the table at this speed and
+                // load, the manifold over 1 atm as the formula's own axis)
+                if (!ecu->spec->maps.knockLimitAuto)
+                    adv -= fmaxf(ecu->spec->maps.knockLimit.at(rpm * 0.10471976f, pPlenum / 101325.0f), 0.0f);
             }
+            ecu->askedNow = adv + ecu->one.knock.retard[ci < 16 ? ci : 15];
             extra = ecu->one.fuelFactor;
             kRetC = ecu->one.knock.retard[ci < 16 ? ci : 15];
         }

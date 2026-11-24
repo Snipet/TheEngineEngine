@@ -338,9 +338,15 @@ namespace tee::balance
         for (const std::string& path : o.trace)
             traceH.push_back(handle(path));
         b.traces.assign(traceH.size(), {});
+        std::vector<H> meanH;
+        for (const std::string& path : o.mean)
+            meanH.push_back(handle(path));
+        std::vector<double> meanSum(meanH.size(), 0.0);
         play(o.measure, [&] {
             for (std::size_t i = 0; i < traceH.size(); ++i)
                 b.traces[i].push_back(rd(traceH[i]));
+            for (std::size_t i = 0; i < meanH.size(); ++i)
+                meanSum[i] += rd(meanH[i]);
             const double tA = rd(tAirH);
             for (Cyl& x : cy)
             {
@@ -432,6 +438,8 @@ namespace tee::balance
         b.uEnd = energy();
         for (const std::string& path : o.read)
             b.reads[path] = rdPath(path);
+        for (std::size_t i = 0; i < meanH.size(); ++i)
+            b.means[o.mean[i]] = meanSum[i] / double(std::max(count, 1L));
         b.airThrottle = rd(airThr) - thr0;
         b.airValves = rd(airVal) - val0;
         b.gasExhaust = rd(gasEx) - ex0;

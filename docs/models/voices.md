@@ -76,9 +76,40 @@ bike's own gearbox (card B2's `Car::bikeGearboxInput()`, `bikeGearboxRatio()`, `
 sequential (straight-cut) box; its chain is its final drive, so the final drive's whine gets no speed: the constant
 mesh at 19 x crank / primary found at 792.0 Hz against 796.8.
 
+## Levels at idle
+
+The owner's 21:32 report: first.json (a 2.0 litre turbo four, direct injection, an electric fan) through card L's
+Places listener (camera Side) carried a high hum. Measured (p-idle-warm, 8 to 14 s, each voice set to -60 dB in
+turn): the 3895 Hz line was the fuel pump's impeller (41 vanes x 95 turns/s), 760 Hz its commutator (8 x 95), 280 and
+560 Hz the electric fan's blade passing (7 x 40) and its harmonic. The fan runs because a warm idle holds the coolant
+at 368 K, `fanOn`'s default.
+
+Who carries what (proposed to the lead and card L): package M sets each voice's level at its source,
+stated against the exhaust's through the reference's listener (`spec.sound.model` 0, which has no places and no
+distance); card L carries everything from the scene's inputs to the ear. Neither trims one voice to make up for the
+other's path.
+
+Each voice alone, less the same run with every voice silent (an exact cancellation), in dB against that silent run's
+mix (the exhaust's above all). first.json, cold idle 3.5 to 5.5 s, the fan switched at 300 K with the air at 301 K so it
+runs; test `engine: levels at idle`:
+
+| Voice | dB(A) | 250 Hz | 500 | 1 k | 2 k | 4 k | 8 k | Bound (judgement) |
+|---|---|---|---|---|---|---|---|---|
+| Fuel pump | -49.2 | -111 | -102 | -39.9 | -101 | -29.7 | -81 | 40 dB(A) and 25 dB in every octave under: an in-tank pump is made to go unheard in a quiet cabin |
+| Electric fan | -23.3 | -21.8 | -12.9 | -15.6 | -14.9 | -17.4 | -25.4 | 15 to 35 dB(A) under, 12 under at 4 and 8 kHz: a fan is heard in front of an idling car, its broadband falling above its peak |
+| Direct injectors | -34.3 | -90 | -61 | -53 | -40.1 | -14.2 | -11.0 | 25 to 45 dB(A) under, within 25 dB at 4 kHz: the tick heard beside a DI engine |
+| Accessory belt | -60.3 | -101 | -78 | -70 | -46.4 | -50.7 | -46.9 | 45 dB(A) under |
+
+What changed for it: the pump 20 dB down (before: -30 dB(A), -8.2 in the 4 kHz octave); the fan's broadband now falls
+18 dB an octave above twice its band (before: -3.4 in the 8 kHz octave). The fan's 280 Hz line is as it was.
+
+The same voices through Places, camera Side (first.json's own listener), measured the same way: the pump -11.7 dB(A)
+before the 20 dB, the fan +3.9, the belt -40.4, that is 23 to 35 dB higher against the exhaust than at the source,
+with the silent mix itself 15 dB(A) lower than through the reference's. That part is the path's (card L's).
+
 ## Judgement
 
-Every level; the constant ratio 1.55 and the 48-tooth sum; the 12 % eccentricity; the rattle's backlash, drag and
+Every level (the idle bounds above included); the constant ratio 1.55 and the 48-tooth sum; the 12 % eccentricity; the rattle's backlash, drag and
 case modes; the resonances of injectors, lifters, gate housing, starter; the 240-degree tap timing; the fan's
 clutch curve and band; the pump's speeds and vane count; the gate's chatter law.
 
