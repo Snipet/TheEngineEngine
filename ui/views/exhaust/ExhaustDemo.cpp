@@ -268,6 +268,8 @@ namespace tee::ui::exhaust
             // six ends: each side's tail and its two tips (slots.fm: 48 + side * 15 + 11, 12, 13); a reader takes those
             // the build has
             { "exhaust.ends", 6.0 },
+            // the network as built: G's typical build (docs/models/exhaust.md, "What the network costs")
+            { "exhaust.pipes", 32.0 }, { "exhaust.nodes", 9.0 }, { "exhaust.pairs", 8.0 }, { "exhaust.openEnds", 2.0 },
             { "exhaust.endSlot[0]", 59.0 }, { "exhaust.endSlot[1]", 60.0 }, { "exhaust.endSlot[2]", 61.0 },
             { "exhaust.endSlot[3]", 74.0 }, { "exhaust.endSlot[4]", 75.0 }, { "exhaust.endSlot[5]", 76.0 },
             { "exhaust.endLevel[0]", db }, { "exhaust.endLevel[1]", db - 3.0 }, { "exhaust.endLevel[2]", db - 3.2 },
