@@ -20,6 +20,33 @@ BUILDS = os.path.join(ROOT, "content", "builds", "archetypes")
 RPM = math.pi / 30.0
 SC = "validation/scenarios/"
 
+# each target's kind of source (the invariants: cited, the contracts and the build's own figures)
+BASIS = {
+    "Starts cold": "judgement",
+    "Sound: a free rev is loud enough": "judgement", "Sound: the idle is audible": "judgement",
+    "Peak power": "recalled", "Speed at peak power": "recalled", "Peak torque": "recalled",
+    "Speed at peak torque": "recalled",
+    "Warm idle": "recalled", "Idle steadiness": "judgement", "Idle low point": "judgement",
+    "Boost at its target": "judgement", "Charge temperature under boost": "recalled",
+    "Lambda at full load under boost": "recalled",
+    "Volumetric efficiency at its torque peak": "recalled", "Volumetric efficiency low down": "judgement",
+    "Port gas at full load": "judgement", "Header gas at full load": "judgement",
+    "Port gas, mass mean (information)": "judgement",
+    "Quarter mile: time": "recalled", "Quarter mile: trap speed": "recalled", "Top speed": "judgement",
+}
+# archetypes whose power and torque rows were looked up (slug: the pages), turning recalled into cited
+CITED = {
+    "air-cooled-flat-six-36": "en.wikipedia.org/wiki/Porsche_964 (184 kW at 6100, 310 N m at 4800)",
+    "vr6-28": "adac.de autokatalog, VW Vento VR6 (128 kW at 5800, 235 N m at 4200)",
+    "twin-cam-roadster-18": "auto-data.net, MX-5 NB 1.8 (103 kW at 6500, 162 N m at 4500; 107 kW at 7000, 168 N m at 5000)",
+    "small-block-57-carb": "corvsport.com/1977-corvette-specifications (L48 134 kW at 4000, 366 N m at 2400; L82 157 kW "
+                           "at 5200, 346 N m at 3600); corvetteactioncenter.com/specs/c3/c3power.html (1975 to 1980)",
+    "pushrod-v6-38": "3800wiki.com/overview (153 kW at 5200, 312 N m at 4000); Wikipedia's GM 3800 (205 hp, 230 lb ft)",
+    "big-bore-70-pushrod-v8": "corvetteactioncenter.com/specs/c6/2006/2006ls7.html (377 kW at 6300, 637 N m at 4800, "
+                              "SAE J2723)",
+    "four-cam-v8-50": "en.wikipedia.org/wiki/Ford_Modular_engine (343 kW at 7000, 569 N m at 4600)",
+}
+
 # slug: published peak power (kW range, rpm range), torque (N m range, rpm range), warm idle (rpm range),
 # boost check speed (rpm of a p-full-load scenario), the source's firmness, and top speed if the kind's is published
 # unrestricted (km/h range; None: worked out from power and drag).
@@ -32,7 +59,8 @@ T = {
     "rotary-twin-na-side-port": ((165, 190), (8000, 8800), (205, 220), (5000, 6000), (750, 900), 0, "makers' figures by market and year, from memory, firm to 5 %"),
     "hot-hatch-16-16v": ((85, 120), (6500, 7600), (140, 165), (4500, 6000), (800, 950), 0, "makers' figures of the kind, loose (the kind's spread)"),
     "supercharged-v8-62": ((395, 435), (5800, 6300), (720, 780), (3500, 4200), (650, 750), 5000, "makers' figures, firm"),
-    "small-block-57-carb": ((140, 210), (4000, 5200), (380, 470), (2400, 3600), (600, 800), 0, "net ratings of the era, loose"),
+    # (the L48 and L82's SAE net ratings, looked up 24 Nov: the old 140-210 kW and 380-470 N m were above both)
+    "small-block-57-carb": ((120, 160), (4000, 5200), (340, 385), (2400, 3600), (600, 800), 0, "SAE net ratings, looked up"),
     "v10-52": ((385, 475), (8000, 8700), (520, 570), (6000, 7000), (850, 1000), 0, "makers' figures, firm"),
     "v12-65": ((500, 590), (8250, 9000), (680, 730), (6000, 7000), (850, 1000), 0, "makers' figures, firm"),
     "inline-five-turbo-rally": ((200, 265), (5500, 7000), (380, 520), (3500, 5500), (900, 1150), 5000, "rally engines of the kind, loose (homologation rules and restrictors vary)"),
@@ -102,6 +130,16 @@ def targets(slug, b):
     out = []
 
     def add(**k):
+        # what the target is measured against (the lead, 20:23): cited (a page, a figure, a standard or a maker's datum
+        # looked up, named in the source), recalled (a maker's figure or a textbook range written from memory, believed
+        # right) or judgement (a band set because it seemed reasonable: it catches a wild value; nobody should move
+        # the model toward it)
+        name = k["name"]
+        if name in ("Peak power", "Peak torque", "Speed at peak power", "Speed at peak torque") and slug in CITED:
+            k["basis"] = "cited"
+            k["source"] = k["source"] + "; looked up: " + CITED[slug]
+        else:
+            k["basis"] = "cited" if name.startswith("Invariant") else BASIS[name]
         out.append(k)
 
     # ---- the invariants: hard --------------------------------------------------------------------------------
