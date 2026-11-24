@@ -120,6 +120,8 @@ namespace tee::ui
         s.place = s.model == 0 ? 0 : static_cast<int>(std::lround(field("sound.place", 0.0)));
         s.enginePlace = static_cast<int>(std::lround(field("sound.enginePlace", 0.0)));
         s.bike = choice("car.kind") == "Motorcycle";
+        const double lift = live.get("car.liftAngle");   // a bike's pitch about its rear tyre, degrees
+        s.lift = s.bike && std::isfinite(lift) ? lift * kPi / 180.0 : 0.0;
         s.wheelbase = field("car.wheelbase", 2.6);
         s.track = field("car.track", 1.55);
         const double ra = live.get("sound.rearAxleY");
@@ -149,14 +151,14 @@ namespace tee::ui
         {
             s.lx = field("sound.listenerX", 0.0);
             s.ly = field("sound.listenerY", -3.0);
-            s.facing = field("sound.facing", 0.0);
+            s.facing = field("sound.facing", 0.0) * kPi / 180.0;   // degrees from forward toward the right
             s.listenerPublished = has("sound.listenerX");
         }
         else if (std::isfinite(lx) && std::isfinite(ly))
         {
             s.lx = lx;
             s.ly = ly;
-            s.facing = std::isfinite(lf) ? lf : 0.0;
+            s.facing = std::isfinite(lf) ? lf * kPi / 180.0 : 0.0;
             s.listenerPublished = true;
         }
         else
@@ -308,7 +310,7 @@ namespace tee::ui
             ctx_.doc.set(ctx_.doc.find("sound.listenerX"), s.lx);
             ctx_.doc.set(ctx_.doc.find("sound.listenerY"), s.ly);
             if (has("sound.facing"))
-                ctx_.doc.set(ctx_.doc.find("sound.facing"), s.facing);
+                ctx_.doc.set(ctx_.doc.find("sound.facing"), s.facing * 180.0 / kPi);
             ctx_.doc.set(ctx_.doc.find("sound.camera"), 7.0);
         }
         pointerDrag(e);
@@ -332,7 +334,7 @@ namespace tee::ui
         {
             const Point l = listenerPx();
             const double a = std::atan2(static_cast<double>(e.x - l.x), static_cast<double>(l.y - e.y));
-            ctx_.doc.set(ctx_.doc.find("sound.facing"), std::round(a / (kPi / 36.0)) * (kPi / 36.0));   // 5 degree steps
+            ctx_.doc.set(ctx_.doc.find("sound.facing"), std::round(a * 180.0 / kPi / 5.0) * 5.0);   // degrees, 5 at a time
         }
         else if (drag_ == Drag::windows)
         {
@@ -492,8 +494,8 @@ namespace tee::ui
         const Col body = p.raised;
         if (s.bike)
         {
-            // A bike: its frame a capsule, its two wheels in line, the rider's place.
-            const Point f = toPx(0.0, s.rearAxle + s.wheelbase), r = toPx(0.0, s.rearAxle);
+            // A bike: its frame a capsule, its two wheels in line; lifted about its rear tyre, it is shorter from above.
+            const Point f = toPx(0.0, s.rearAxle + s.wheelbase * std::cos(s.lift)), r = toPx(0.0, s.rearAxle);
             c.segment(f.x, f.y, r.x, r.y, 0.45f * m, body);
             c.rrect(f.x - 0.06f * m, f.y - 0.33f * m, 0.12f * m, 0.66f * m, 0.06f * m, p.dim);
             c.rrect(r.x - 0.08f * m, r.y - 0.33f * m, 0.16f * m, 0.66f * m, 0.08f * m, p.dim);
@@ -697,7 +699,9 @@ namespace tee::ui
                 if (y + 14.0f > in.bottom())
                     break;
                 c.text(w[0], in.x, y, look::kBody, p.text);
-                c.text(fmt("%.0f dB", live.get(w[1])).c_str(), in.right(), y, look::kBody, p.value, funkgui::Align::right);
+                const double lv = live.get(w[1]);   // not published yet: the way in words alone
+                if (std::isfinite(lv))
+                    c.text(fmt("%.0f dB", lv).c_str(), in.right(), y, look::kBody, p.value, funkgui::Align::right);
                 y += 16.0f;
             }
         }
