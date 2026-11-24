@@ -75,16 +75,12 @@ namespace
     }
 } // namespace
 
-// Each build: it starts and idles; it four-strokes at idle (misfire after misfire, unscripted: the poorly scavenged
-// charge at the reference's limit of dilution) and not on the pipe; on the dyno at full throttle its best power comes
-// where its class's does (published, within 10 %), and its power is printed against the published figure (the model's
-// crankcase pump delivers less than a real one's: no inertia in the inlet tract or the transfers; docs/models/twostroke.md)
-TEST_CASE("engine: the builds: start, idle four-stroking, the band where the class has it", "[twostroke][engine][builds]")
+namespace
 {
-    struct B { const char* name; double from, to, by, peakRpm, publishedKw; };
-    for (B k : {B{"two-stroke-mx125", 7000, 13000, 500, 11500, 28.0}, B{"two-stroke-road-twin", 5000, 10000, 500, 8500, 26.0},
-                B{"two-stroke-triple", 4500, 8000, 500, 7500, 44.0}, B{"two-stroke-kart", 10000, 17500, 500, 14500, 20.0},
-                B{"two-stroke-utility", 5000, 10000, 500, 9250, 2.4}})
+    struct BuildCase { const char* name; double from, to, by, peakRpm, publishedKw; };
+
+    // One build: it starts and idles; it four-strokes at idle and not on the pipe; its best power where its class's is
+    void checkBuild(const BuildCase& k)
     {
         Bench b(k.name);
         if (!b.hooked())
@@ -119,7 +115,24 @@ TEST_CASE("engine: the builds: start, idle four-stroking, the band where the cla
         CHECK(idleMisfire > 0.2);
         CHECK(bandMisfire == 0.0);
         CHECK(std::abs(bestAt - k.peakRpm) < 0.1 * k.peakRpm);
-    }
+    }} // namespace
+
+// Each build: it starts and idles; it four-strokes at idle (misfire after misfire, unscripted: the poorly scavenged
+// charge at the reference's limit of dilution) and not on the pipe; on the dyno at full throttle its best power comes
+// where its class's does (published, within 10 %), and its power is printed against the published figure (the model's
+// crankcase pump delivers less than a real one's: no inertia in the inlet tract or the transfers; docs/models/twostroke.md).
+// The quick form (the default run, under 30 s): the 125 alone, on a coarser sweep; the five builds nightly.
+TEST_CASE("engine: a build: the 125 starts, idles four-stroking, its band where the class has it", "[twostroke][engine][builds]")
+{
+    checkBuild(BuildCase{"two-stroke-mx125", 9000, 13000, 1000, 11500, 28.0});
+}
+
+TEST_CASE("engine: the builds: start, idle four-stroking, the band where the class has it", "[twostroke][engine][builds][nightly]")
+{
+    for (BuildCase k : {BuildCase{"two-stroke-mx125", 7000, 13000, 500, 11500, 28.0}, BuildCase{"two-stroke-road-twin", 5000, 10000, 500, 8500, 26.0},
+                        BuildCase{"two-stroke-triple", 4500, 8000, 500, 7500, 44.0}, BuildCase{"two-stroke-kart", 10000, 17500, 500, 14500, 20.0},
+                        BuildCase{"two-stroke-utility", 5000, 10000, 500, 9250, 2.4}})
+        checkBuild(k);
 }
 
 TEST_CASE("debug start", "[.dbgstart]")
