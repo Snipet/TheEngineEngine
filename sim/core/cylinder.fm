@@ -240,6 +240,14 @@ module Cylinder
     // leaves the flows, the torque and the events in its fields.
     void step(float a, float dDeg, float dt, float bE, float zE, float tPipe, float bI, float zI, float tAir)
     {
+        stepAreas(a, dDeg, dt, -1.0f, -1.0f, bE, zE, tPipe, bI, zI, tAir);
+    }
+
+    // The same with its valves' effective areas (m^2) given (the valvetrain's: card E, valve.model 1); an area below 0
+    // is its own table's, as step has it
+    void stepAreas(float a, float dDeg, float dt, float areaE, float areaI, float bE, float zE, float tPipe, float bI, float zI,
+                   float tAir)
+    {
         const float before = ang;
         ang = a;
         evoNow = passed(before, a, evo);
@@ -266,10 +274,10 @@ module Cylinder
         const float vNew = volumeSlope(a);
         const float dv = vNew - v;
         // the valves, each solved with its pipe
-        const float le = areaAt(a, evo, edur);
-        const float li = areaAt(a, ivo, idur);
-        qE = le > 0.0f ? vE.flow(p, t, bE, zE, aE * le, tPipe, 1) : 0.0f;
-        qI = li > 0.0f ? vI.flow(p, t, bI, zI, aI * li, tAir, 0) : 0.0f;
+        const float le = areaE < 0.0f ? areaAt(a, evo, edur) : areaE;
+        const float li = areaI < 0.0f ? areaAt(a, ivo, idur) : areaI;
+        qE = le > 0.0f ? vE.flow(p, t, bE, zE, areaE < 0.0f ? aE * le : areaE, tPipe, 1) : 0.0f;
+        qI = li > 0.0f ? vI.flow(p, t, bI, zI, areaI < 0.0f ? aI * li : areaI, tAir, 0) : 0.0f;
         qEa = le > 0.0f ? qE * vE.g : 0.0f;
         qIa = li > 0.0f ? qI * vI.g : 0.0f;
         // their mass flows (out of the cylinder positive) at the pipes' pressures, and the heat they carry
@@ -354,5 +362,22 @@ module Cylinder
         p = m * 287.0f * t / v;
         dpdt = p - pOld;
         tq = (p - 101325.0f) * slopeNow;
+    }
+
+    // The flows a shared port's faces would pass with their areas given (m^2): exhaustFlowAt's and intakeFlowAt's
+    float exhaustFlowArea(float area, float bE, float zE, float tPipe)
+    {
+        return area > 0.0f ? vE.flow(p, t, bE, zE, area, tPipe, 1) * vE.g : 0.0f;
+    }
+
+    float intakeFlowArea(float area, float bI, float zI, float tAir)
+    {
+        return area > 0.0f ? vI.flow(p, t, bI, zI, area, tAir, 0) * vI.g : 0.0f;
+    }
+
+    // The burned gas in it now (kg): what Combustion's charge reads (card H)
+    float burned()
+    {
+        return mInert;
     }
 };

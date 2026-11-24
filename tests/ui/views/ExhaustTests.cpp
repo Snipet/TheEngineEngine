@@ -9,6 +9,7 @@
 #include "views/exhaust/ExhaustModel.h"
 #include "views/exhaust/ExhaustStage.h"
 #include "views/exhaust/ExhaustWorkspace.h"
+#include "views/fx/Fx.h"
 
 #include <funkgui/core/Theme.h>
 #include <funkgui/text/FontService.h>
@@ -18,6 +19,7 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <cstring>
 
 
 namespace tee::test::u3
@@ -478,6 +480,30 @@ namespace
                 CHECK_MSG(hits.empty(), std::string(b) + " at " + std::to_string(win.first) + ":\n" + hits);
             }
         }
+        return 0;
+    }
+}
+
+namespace
+{
+    // The atmosphere carries no fact: with the effects on or off the software rasteriser's frame is the same, and a
+    // stage at rest is still at rest (the effects draw nothing here, so nothing flickers).
+    VIEW_TEST(testExhaustEffects, "exhaust.effects")
+    {
+        ExRig rig("tt-v8-x", 1100, 700, 1.0f);
+        rig.demo.engine.set("engine.flags", 2);      // the overrun's fuel cut
+        rig.demo.engine.set("engine.throttle", 0.0);
+        rig.host->tick(2);
+        tee::ui::fx::setEnabled(true);
+        const funkgui::PrimList& a = rig.host->draw();
+        const std::vector<funkgui::Prim> on = a.prims;
+        const std::size_t onShaders = a.shaders.size();
+        tee::ui::fx::setEnabled(false);
+        const funkgui::PrimList& b = rig.host->draw();
+        tee::ui::fx::setEnabled(true);
+        CHECK(on.size() == b.prims.size() && onShaders == b.shaders.size() && b.shaders.empty());
+        CHECK(on.size() == b.prims.size() && std::memcmp(on.data(), b.prims.data(), on.size() * sizeof(funkgui::Prim)) == 0);
+        CHECK(!rig.ws->moving());
         return 0;
     }
 }
