@@ -440,7 +440,7 @@ namespace tee::test::u2
 {
     class TwoStrokeScope;
     void makeTwoStroke(tee::ui::MemoryDoc& doc, int cylinders);
-    std::unique_ptr<tee::ui::ScopeSource> twoStrokeScope(const tee::ui::FieldDoc& doc);
+    std::unique_ptr<tee::ui::ScopeSource> twoStrokeScope(const tee::ui::FieldDoc& doc, bool inlet = false);
 }
 
 namespace
@@ -510,6 +510,42 @@ namespace
                 }
             }
         }
+        return 0;
+    }
+}
+
+namespace
+{
+    // Card T's measured inlet (scope.inletOpen): drawn in place of the window and the reed's words, its span on the
+    // ring; without it the stage is as before. No text out of place either way.
+    VIEW_TEST(testValvesInletOpen, "valves.inlet")
+    {
+        const auto frame = [](bool inlet, std::string* why, const char* pictureName) {
+            tee::ui::DemoRig demo;
+            tee::test::u2::makeTwoStroke(demo.doc, 1);
+            demo.engine.set("engine.crank", 300.0);
+            const auto scope = tee::test::u2::twoStrokeScope(demo.doc, inlet);
+            tee::ui::WorkspaceContext ctx{ demo.doc, demo.engine, *scope, demo.engine, demo.units, demo.selection, demo.app };
+            auto ws = tee::ui::makeValvesWorkspace(ctx);
+            funkgui::HeadlessHost host(*ws, 0, 1.0f);
+            host.resize(1128, 874);
+            ws->place({ 0, 0, 1128, 874 });
+            host.tick(30);
+            const funkgui::PrimList& prims = host.draw();
+            *why = tee::test::u2::textFaults(prims, { 0, 0, 1128, 874 }, tee::ui::valvesPanels(*ws));
+            std::uint64_t h = 1469598103934665603ull;
+            for (const funkgui::Prim& p : prims.prims)
+                h = (h ^ static_cast<std::uint64_t>(std::lround(p.y0 * 4.0f) + 7919 * std::lround(p.x0 * 4.0f))) * 1099511628211ull;
+            if (pictureName != nullptr)
+                picture(pictureName, host);
+            return h;
+        };
+        std::string why;
+        const std::uint64_t without = frame(false, &why, nullptr);
+        CHECK_MSG(why.empty(), why);
+        const std::uint64_t with = frame(true, &why, "valves.twostroke.inlet");
+        CHECK_MSG(why.empty(), why);
+        CHECK(with != without);
         return 0;
     }
 }

@@ -1482,6 +1482,20 @@ module XBuild
                 net.bA[kCrossH[s]] = XD_CROSS;
             }
         }
+        // a pipe that would pass a filter with little loss takes its steady flow out after its filters (duct.fm,
+        // filtFirst): passive whatever the filter; the reference's pipes (more loss a pass) keep the reference's order
+        for (int i = 0; i < XN_DUCTS; ++i)
+        {
+            Duct* p = &net.d[i];
+            // (the worst gain a pass can have in the reference's order: card T's measures, a packing's shelves some
+            // 0.19 % over unity a dB of their depth, a one-pole low-pass at f some 9 / f; with 1 % to spare)
+            float over = 1.0f;
+            if (p->packOn != 0)
+                over += 0.0019f * (p->pkKey[1] + p->pkKey[3]);
+            if (p->lp > 0.0f)
+                over += 9.0f / fmaxf(-logf(p->lp) * rate / 6.28318531f, 1.0f);
+            p->filtFirst = net.dUse[i] != 0 && (p->packOn != 0 || p->lp > 0.0f) && p->keep * over >= 0.99f ? 1 : 0;
+        }
     }
 
     // ---- every 16 samples ----
