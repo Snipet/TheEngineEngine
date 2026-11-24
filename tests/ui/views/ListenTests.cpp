@@ -130,10 +130,7 @@ namespace
         CHECK(rig.field("sound.place") == 3.0);
         CHECK(rig.press("DRIVER"));
         CHECK(rig.ws->scene().camera == 4);
-        picture("listen.driver", *rig.host);
         // The window: dragged down its handle, it opens.
-        for (const funkgui::A11yItem& it : rig.host->accessibility())
-            (void) it;
         const ListenWorkspace::Scene s = rig.ws->scene();
         const funkgui::Point top = rig.ws->toPx(-s.width / 2, s.ly + 0.65), bottom = rig.ws->toPx(-s.width / 2, s.ly - 0.2);
         rig.host->drag(top.x, top.y, bottom.x, bottom.y);
@@ -250,6 +247,18 @@ namespace
         for (const auto& e : tee::ui::registeredWorkspaces())
             found = found || std::string(e.id) == "listen";
         CHECK(found);
+        return 0;
+    }
+
+    // Pictures, no checks (labelled nightly by its name's ".pictures": the soak tier makes them at every push, the
+    // default run leaves them out, 01-rules.md section 3).
+    VIEW_TEST(testListenPictures, "listen.pictures")
+    {
+        ListenRig rig;
+        rig.press("SIDE");
+        rig.press("TUNNEL");
+        rig.press("DRIVER");
+        picture("listen.driver", *rig.host);
         return 0;
     }
 }
