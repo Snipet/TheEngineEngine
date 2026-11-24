@@ -83,6 +83,8 @@ namespace tee::app
                           const std::function<float()>& level)
     {
         s.simLoad = [&player] { return static_cast<float>(player.load()); };
+        // START is disabled while the engine's machine code is being made (SimAdapter::ready)
+        s.engineReady = [&player] { return player.ready(); };
         // TUNE's BAKE: ctl.bakeMaps pressed once, where the host's Controls carry it (card C's SimControls does not
         // yet: then none, and TUNE says so)
         if (player.hasControl("bakeMaps"))

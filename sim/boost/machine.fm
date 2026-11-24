@@ -1082,6 +1082,11 @@ module BoostMachine
                 if (tg > 0.0f && boost < 1.2f * tg)
                     turb[t].lift = 0.0f;
             }
+            // the ECU's vanes (an exhaust brake on the turbine, card D2's): it owns the turbine, so a variable nozzle's
+            // gate is held shut, and the vanes stand where it puts them (0: their shut stop, vaneMin), the shaft's
+            // over-speed relief below still acting
+            if (turb[t].vgt != 0 && cmdVanes >= 0.0f)
+                turb[t].lift = 0.0f;
             // over-speed relief, as an ECU's: past 105 % of the shaft's limit the gate and the vanes open wide
             if (shaft[t].omega > 1.05f * omegaMax[t])
             {

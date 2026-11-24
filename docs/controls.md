@@ -21,6 +21,14 @@ expects them on any layout.
 | Q, or Page Down | A shift down. |
 | N | Neutral. |
 | 1 to 6 | That gear. |
+| Z | A truck's splitter: a press turns it on (the high half of each gear) or off. |
+| X | A truck's range: a press turns the high range on or off. |
+| J | The engine brake (a compression brake): a press turns it on or off. Its stage (Off, Low, Medium, High) is a setting, the ECU's brake switch; with that Off the button gives High. |
+
+**The truck's switches** (Z, X, J) latch like the switches they stand for (a splitter's thumb switch, a range's
+flip lever, a dash switch): they reach the simulator as the held bits of its `ctl.buttons` (BTN_SPLITTER,
+BTN_RANGE, BTN_ENGINE_BRAKE) until pressed again. The eighteen-speed's own lever does not drive the vehicle's
+gearbox yet.
 
 **The start key.** Press it and the starter cranks the engine; it goes on cranking by itself until the engine
 runs (two seconds at the most: an engine that will not catch is left on, not cranking; press again). Hold it for a second while the engine runs and the engine is switched off. A tap is enough to start: a press

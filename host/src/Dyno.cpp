@@ -178,9 +178,13 @@ namespace tee
         at(0.0, "mode", mode);
         at(0.0, "dynoSpeed", plan.from);
         at(0.0, "dynoRate", 0.0);
-        at(0.0, "ignition", 2);
+        // the key as a person turns it: on, then start a moment later (an ECU with a key's state machine, a diesel
+        // with glow plugs, wants on before start: from off straight to start it never cranked), released once it
+        // has had time to run
         const double warmup = plan.warmupFor(build);
-        at(std::min(1.0, 0.5 * warmup), "ignition", 1);
+        at(0.0, "ignition", 1);
+        at(0.25, "ignition", 2);
+        at(std::max(1.0, std::min(2.0, 0.5 * warmup)), "ignition", 1);
         at(0.5 * warmup, "throttle", plan.pedal);
         const double start = warmup + plan.settle;
         struct Window
@@ -221,7 +225,11 @@ namespace tee
         RunOptions options;
         options.keepAudio = false;
         options.telemetry = {"engine.speed"};
-        options.cancelled = [cancel] { return cancel != nullptr && cancel->load(std::memory_order_relaxed); };
+        const FieldInfo* flags = fields.find("tel.engine.flags");
+        bool faulted = false;
+        options.cancelled = [cancel, &faulted] {
+            return faulted || (cancel != nullptr && cancel->load(std::memory_order_relaxed));
+        };
         double lastProgress = -1.0;
         options.afterBlock = [&](double time, const TelemetryFrame& frame) {
             const double w = frame.get(*speed);
@@ -235,6 +243,15 @@ namespace tee
                 for (std::size_t k = 0; k < windows.size(); ++k)
                     if (time > windows[k].from && time <= windows[k].to)
                         sum = &stepSums[k];
+            if (flags != nullptr && (static_cast<long>(frame.get(*flags)) & 4) != 0)
+            {
+                // FLAG_FAULT: the engine was put at rest; the point being measured is no measure, and the run stops
+                faulted = true;
+                ++curve.faults;
+                if (sum != nullptr)
+                    sum->n = 0;
+                return;
+            }
             if (sum != nullptr)
             {
                 sum->speed += w;
@@ -279,7 +296,7 @@ namespace tee
                     point(s);
         curve.simulatedSeconds = result.simulatedSeconds;
         curve.wallSeconds = result.wallSeconds;
-        curve.cancelled = result.cancelled;
+        curve.cancelled = result.cancelled && !faulted;
         if (progress)
             progress(1.0);
         return true;

@@ -29,24 +29,33 @@ TEST_CASE("model 1 at its defaults is the reference's exhaust", "[exhaust][refer
     {
         const int layout = run < 17 ? run : (run - 17) % 3 == 0 ? 5 : ((run - 17) % 3 == 1 ? 10 : 12);
         const int ds = run < 17 ? 0 : 1 + (run - 17) / 3;
-        Rig rig(layout);
-        rig.noise(0.0);
-        rig.dials(dialSets[ds][0], dialSets[ds][1], dialSets[ds][2], dialSets[ds][3]);
-        rig.configure();
-        std::vector<float> q = pulses(rig, 3000.0, 1.0, 0.15, 0.01);
-        std::vector<float> bl, br, rl, rr;
-        rig.run(q, bl, br, false);
-        rig.run(q, rl, rr, true);
-        double es = 0.0;
-        double ss = 0.0;
-        for (std::size_t i = 0; i < bl.size(); ++i)
+        // the passivity fix off for the comparison (passFix 0: the reference's order in every pipe); with it on, how
+        // far model 1 leaves the reference where a reference pipe passes more than unity (printed, not checked)
+        double err = 0.0, errFix = 0.0, ss = 0.0;
+        std::size_t samples = 0;
+        for (int fix : {0, 1})
         {
-            es += (bl[i] - rl[i]) * (bl[i] - rl[i]) + (br[i] - rr[i]) * (br[i] - rr[i]);
-            ss += rl[i] * rl[i] + rr[i] * rr[i];
+            Rig rig(layout);
+            rig.noise(0.0);
+            rig.set("b.passFix", fix);
+            rig.dials(dialSets[ds][0], dialSets[ds][1], dialSets[ds][2], dialSets[ds][3]);
+            rig.configure();
+            std::vector<float> q = pulses(rig, 3000.0, 1.0, 0.15, 0.01);
+            std::vector<float> bl, br, rl, rr;
+            rig.run(q, bl, br, false);
+            rig.run(q, rl, rr, true);
+            double es = 0.0;
+            ss = 0.0;
+            for (std::size_t i = 0; i < bl.size(); ++i)
+            {
+                es += (bl[i] - rl[i]) * (bl[i] - rl[i]) + (br[i] - rr[i]) * (br[i] - rr[i]);
+                ss += rl[i] * rl[i] + rr[i] * rr[i];
+            }
+            (fix == 0 ? err : errFix) = db(es / ss);
+            samples = bl.size();
         }
-        const double err = db(es / ss);
-        std::printf("layout %2d, dials %d: builder - reference %.1f dB (reference rms %.3g)\n", layout, ds, err,
-                    std::sqrt(ss / (2.0 * bl.size())));
+        std::printf("layout %2d, dials %d: builder - reference %.1f dB, with the passivity fix %.1f dB (reference rms "
+                    "%.3g)\n", layout, ds, err, errFix, std::sqrt(ss / (2.0 * samples)));
         INFO("layout " << layout);
         CHECK(ss > 0.0);
         CHECK(err < -60.0);
@@ -458,7 +467,8 @@ TEST_CASE("at rest, nothing flows", "[exhaust][rest]")
 // Card T's finding (duct.fm, filtFirst): a pipe with deep packing and little loss a pass, taking its steady flow out
 // before its filters, gives back a few % more than it took near 25 Hz. The builder puts such pipes' filters first.
 // Here: straight-through mufflers at their largest (keep 0.95, 26 dB of packing), the engine stopped, a pulse in: the
-// cans are flagged, and the energy is gone (under 1e-6) within 2 s.
+// energy is gone (under 1e-6) within 2 s. (Which pipes take their filters first is the exact pass of passGain, the
+// sweep below; how many here is printed.)
 TEST_CASE("a deeply packed pipe at rest is passive", "[exhaust][passive]")
 {
     Rig rig(5);
@@ -469,8 +479,9 @@ TEST_CASE("a deeply packed pipe at rest is passive", "[exhaust][passive]")
     rig.set("spec.mufKind[0]", 1);
     rig.set("spec.mufSize[0]", 1.0);
     rig.configure();
-    CHECK(rig.get("b.net.d[53].filtFirst") == 1.0);
-    CHECK(rig.get("b.net.d[48].filtFirst") == 0.0);
+    int flagged = 0;
+    for (int i = 0; i < 84; ++i)
+        flagged += rig.get("b.net.d[" + std::to_string(i) + "].filtFirst") != 0.0 ? 1 : 0;
     const int n = static_cast<int>(3.0 * kRate);
     std::vector<float> q(static_cast<std::size_t>(n) * kPorts, 0.0f);
     const int np = static_cast<int>(0.001 * kRate);
@@ -482,6 +493,84 @@ TEST_CASE("a deeply packed pipe at rest is passive", "[exhaust][passive]")
     for (int k = 0; k < n; ++k)
         if (e[static_cast<std::size_t>(k)] > 1.0e-6 * peak)
             last = k;
-    std::printf("packed straight-through at rest: gone after %.2f s\n", last / kRate);
+    std::printf("packed straight-through at rest: %d pipes with their filters first, gone after %.2f s\n", flagged,
+                last / kRate);
     CHECK(last < static_cast<int>(2.0 * kRate));
+}
+
+// The lead's ruling on card T's finding: every packed pipe's one pass at or under unity at every frequency. A pipe
+// alone (harness.fm's probe), its impulse response from near end to far, |H(f)| from 5 Hz to 20 kHz (60 points a
+// decade), over a sweep of a pass's gain (0.9 to 1), a packing's depths and a low-pass, with the wall's shelves of a
+// 1 m pipe; its order chosen by the builder's rule (XBuild::filterFirst: the pass's own worst gain, from its
+// coefficients). And the reference's order where the rule changes it, to show the overshoot the rule removes.
+TEST_CASE("every packed pipe's pass is at or under unity, the sweep", "[exhaust][passive][sweep]")
+{
+    Rig rig(12);
+    std::string error;
+    auto* set = program().function<void(void*, float, float, float, float, int)>("XTest::probeSet", error);
+    auto* run = program().function<void(void*, float*, int)>("XTest::probeRun", error);
+    INFO(error);
+    REQUIRE(set != nullptr);
+    REQUIRE(run != nullptr);
+    void* inst = rig.instance();
+    const int n = 1 << 15;
+    std::vector<float> h(static_cast<std::size_t>(n));
+    std::vector<double> freqs;
+    for (double f = 5.0; f < 20000.0; f *= std::pow(10.0, 1.0 / 60.0))
+        freqs.push_back(f);
+    auto peakGain = [&](double& at) {
+        double best = 0.0;
+        for (double f : freqs)
+        {
+            const double w = 2.0 * 3.14159265358979 * f / kRate;
+            double re = 0.0, im = 0.0;
+            for (int t = 0; t < n; ++t)
+            {
+                re += h[static_cast<std::size_t>(t)] * std::cos(w * t);
+                im -= h[static_cast<std::size_t>(t)] * std::sin(w * t);
+            }
+            const double m = std::sqrt(re * re + im * im);
+            if (m > best)
+            {
+                best = m;
+                at = f;
+            }
+        }
+        return best;
+    };
+    double worst = 0.0, worstAt = 0.0;
+    double worstRef = 0.0;
+    int flagged = 0, cases = 0;
+    tee::ScopedFlushDenormals flush;
+    for (float keep : {0.9f, 0.94f, 0.96f, 0.98f, 1.0f})
+        for (float dLow : {0.0f, 2.0f, 8.0f, 16.0f})
+            for (float dHigh : {0.0f, 2.0f, 8.0f})
+                for (float lpHz : {0.0f, 300.0f, 2000.0f})
+                {
+                    set(inst, dLow, dHigh, lpHz, keep, -1);
+                    const int ff = static_cast<int>(rig.get("probe.filtFirst"));
+                    run(inst, h.data(), n);
+                    double at = 0.0;
+                    const double g = peakGain(at);
+                    ++cases;
+                    flagged += ff;
+                    if (g > worst)
+                    {
+                        worst = g;
+                        worstAt = at;
+                    }
+                    INFO("keep " << keep << ", packing " << dLow << " + " << dHigh << " dB, low-pass " << lpHz
+                                 << " Hz, filters first " << ff << ": |H| " << g << " at " << at << " Hz");
+                    CHECK(g <= 1.0005);
+                    if (ff != 0)
+                    {
+                        set(inst, dLow, dHigh, lpHz, keep, 0);
+                        run(inst, h.data(), n);
+                        double at0 = 0.0;
+                        worstRef = std::max(worstRef, peakGain(at0));
+                    }
+                }
+    std::printf("sweep: %d pipes, %d with their filters first; the largest |H| of a pass %.5f (at %.0f Hz); in the "
+                "reference's order those would reach %.4f\n", cases, flagged, worst, worstAt, worstRef);
+    CHECK(worstRef > 1.01);
 }

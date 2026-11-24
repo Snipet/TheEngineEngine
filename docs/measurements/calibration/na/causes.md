@@ -64,6 +64,17 @@ the overlap, with no tuned exhaust to scavenge it.
 The reference sizes its pipes by displacement per cylinder alone (`engine.fm`, `kPipe`, the 0.45th power), not by the
 flow a high-revving engine pushes.
 
+The reference's pipes' diameters x1.3 (a scratch tree), at 3000, 5500 and 7500 rpm:
+
+| Engine | Torque | PMEP at the top, bar |
+|---|---|---|
+| 3.2 six | 226 → 253, 267 → 282, 249 → 263 N m | 0.93 → 0.65 |
+| Flat-plane V8 | +5 to +10 % | |
+| V12 | +4 to +11 % | |
+| Economy four | 0 to +4 % | |
+
+Sizing the pipes by flow separates the classes the right way, but not by enough alone.
+
 Suspected and not yet isolated, since G's network is not in the engine: with tuned primaries and flow-sized pipes, the
 overlap's residual falls and the tuned engines' VE rises toward 1.0 to 1.1.
 
@@ -93,8 +104,43 @@ The best advance by speed, from a fixed-centreline sweep:
 
 The best intake closing rises with speed on both, as Heywood §6.3 has it, but no rule in shares of the range fits both.
 
-Makers calibrate the map on a dyno. **Route: P's generator writes `ecu.maps.camIn` from a sweep** (the ledger's
-`--set valve.inCentre=` runs give the table). Meanwhile the placeholder could be made conservative.
+Makers calibrate the map on a dyno. **Route: P's generator writes `ecu.maps.camIn` from a sweep.** The full-load row
+for the seven phased NA archetypes is in [cam-maps.md](cam-maps.md): fixed centrelines in 10-degree steps, seven
+speeds.
+
+How much the phaser is worth, measured:
+
+| Schedule | Mean torque over seven speeds | Peak torque |
+|---|---|---|
+| The calibrated maps, against parked | +2.5 to +5.2 % | +2 to +8 % |
+| Half the range (a constant, not proposed: it would be tuning to fit), against the schedule as it is | flat-plane V8 +5 %, 3.2 six +7 %, V12 +6 %, V10 +3 %; the mild ones -0.3 to -1 % | |
+
+So the phaser is a shape fix worth a few percent, not pattern 1's cause.
+
+**Fixed (the lead's decision, 16:26).** `Phaser::schedule` (E's) now schedules the intake by a target intake-closing
+angle at the seat: 20 degrees after bottom at a quarter of the redline and below, rising to 67 at the redline. The
+advance is what brings each cam's parked closing there, capped by an overlap of 40 + 60 x (the speed's share of the
+redline) degrees.
+
+The lead suggested 30 to 40 degrees at low speed. The sweep's best closings for the short cams were 3 to 18 degrees
+(the economy four), so with 35 the 3.5 V6 lost 50 N m of its peak. 20 lets the overlap cap hold the long cams back
+instead.
+
+Before and after, mean torque over seven speeds, as built:
+
+| Engine | Before | After | Calibrated maps |
+|---|---|---|---|
+| Flat-plane V8 | 344 | 355 | 365 |
+| Four-cam V8 | 436 | 441 | 451 |
+| 3.2 six | 246 | 264 | 267 |
+| V10 | 409 | 419 | 424 |
+| V12 | 491 | 522 | 536 |
+| Economy four | 137 | 136 | 139 |
+| 3.5 V6 | 319 | 311 | 316 |
+
+The holes: the 3.2 six at 2700 rpm, 206 to 290 N m; the V12 at 5000 rpm, 495 to 582. Test: `calibration-na.the
+intake phaser's schedule cuts no hole in a long cam's full-load curve` (29 s). The valvetrain's and the intake's 21
+tests pass; the null test passes, 11 of 11.
 
 ## D. Mass created at the intake valve: pattern 4 (measured; D's file, routed to D)
 
@@ -140,3 +186,37 @@ The remaining 2x on the V12 at idle is not explained.
 - With `boost.kind` Natural it peaks at 257 N m (VE 1.01 at 4590 rpm, 0.62 to 0.82 elsewhere), brake efficiency
   0.28 to 0.31: within about 20 % of an NA 13B Renesis (211 N m, the maker's figure).
 - The doubling is pattern 2's: the gates cannot bypass the rotary's exhaust flow.
+
+## F. The intake's charge heating: a level, not a spread (measured; a scratch tree)
+
+The intake's model leaves out the heat the manifold's and the ports' walls give the charge. The gas reaches the valve
+at the outside air's temperature. Heywood §6.2.1 has a rise of some 10 to 40 K at full load, more at low speed.
+
+The experiment: the intake valve's gas taken 25 K warmer (`engine.fm`, `stepAreas(..., intk.tAir + 25)`), at 2500,
+4500 and 6000 rpm:
+
+| Engine | VE | Torque |
+|---|---|---|
+| Economy four | 0.950, 1.043, 1.032 → 0.881, 0.971, 0.961 | -9 % |
+| 3.2 six | | -9 % |
+| Small-block | | -9 % |
+
+It is a level, like A: it would take back about a third of Woschni's gain, on every engine alike. It is physics left
+out (E's intake), worth adding with a source for the rise by speed and load. It does not separate the classes.
+
+**Added (on the lead's word, 16:46), waiting for one line of D's.** `Intake::control`, model 1, heats the charge:
+
+    rise = (T_coolant - T_air)(1 - exp(-NTU)),   NTU = 0.29 (m / m_ref)^-0.2
+
+That is a stream past water-jacketed walls; h goes as the flow's 0.8th power, hence the -0.2. The rise is some 19 K at
+full load, 35 K at idle, none cold. The 0.29 is judgement within Heywood's 10 to 40 K. It needs Engine to set
+`intk.tCoolant = heat.tCool` before `intk.control` (D's file). Until then it does nothing.
+
+In a scratch tree with that line, against the tree without it:
+
+| Engine | Torque at 1500 rpm | Torque from 4000 rpm to the top |
+|---|---|---|
+| Economy four | -9 % | -7 to -8 % |
+| 3.2 six | -11 % | -7 % |
+| Small-block | -9 % | -7 % |
+| V12 | -10 % | -6 to -7 % |

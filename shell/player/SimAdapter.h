@@ -23,6 +23,7 @@
 #include <filesystem>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace tee
@@ -54,6 +55,9 @@ namespace tee::player
             // (a tenth of a second), with the document and the parameters ready to read and edit, and the adapter
             // plays silence until ready(). False: create() returns ready, as it always did.
             bool background = false;
+            // Values held before every call (LoadOptions::hold: "crank.omega" = 1e7 makes the engine diverge, for a test
+            // of what the application does then). Never the application's own engine.
+            std::vector<std::pair<std::string, double>> hold;
         };
 
         // Reads the simulator's program and makes it ready to play (Options::background: ready later). nullptr, and the
