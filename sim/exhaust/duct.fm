@@ -1,4 +1,4 @@
-// pipes.fm: the pipes of an engine as waveguides.
+// exhaust/duct.fm: the pipes of an engine as waveguides.
 //
 // A Duct is one pipe: a delay line each way, the length of the pipe at the speed of sound in the gas it holds (hot near
 // the engine, cooler toward the tail, warming and cooling with the load), read between samples (four-point Lagrange) so

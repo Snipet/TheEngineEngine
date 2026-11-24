@@ -245,7 +245,7 @@ module Engine
         tel.engine.redline = mono.ecu.redRpm * 0.10471976f;
         tel.engine.idle = mono.ecu.idleRpm * 0.10471976f;
         tel.engine.throttle = mono.ecu.throttle;
-        tel.engine.manifold = mono.pPlenum;
+        tel.engine.manifold = mono.intk.pPlenum;
         tel.engine.coolant = mono.heat.tCool;
         tel.engine.oilPressure = mono.heat.pOil;
         tel.engine.flags = (mono.ecu.limiting || mono.comb.droop < 0.95f ? FLAG_LIMITER : 0)
