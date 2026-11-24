@@ -14,8 +14,12 @@
 #include "panel/PlaceholderPanel.h"
 #include "tee/app/MainPanel.h"
 
+#include "files/BuildFiles.h"
 #if defined(TEE_HAS_UI_FRAME)
- #include "app/AppFrame.h"                  // the interface package's (ui/): the frame, its document over a tee::Build
+ #include "FrameSources.h"
+ #include "app/AppFrame.h"
+ #include "app/host/HostSources.h"     // U1's: the Scope and the dyno over card C's host
+                  // the interface package's (ui/): the frame, its document over a tee::Build
  #include "kit/bind/Units.h"
  #include "kit/bind/host/BuildDoc.h"
  #include "tee/Build.h"
@@ -28,6 +32,7 @@
 #include <funkgui/text/FontService.h>
 
 #include <algorithm>
+#include <chrono>
 #include <cctype>
 #include <cmath>
 #include <cstdio>
@@ -109,8 +114,9 @@ namespace tee::app
        #endif
     }
 
-    Shown makePanel(const Options& o, Engine& engine, const AppServices& services)
+    Shown makePanel(const Options& o, Engine& engine, input::Controls& controls)
     {
+        const AppServices services = controls.services();
         Shown shown;
         Player& player = *engine.player;
         // a program that did not start has nothing an interface could bind to: the plain Panel says why
@@ -123,13 +129,25 @@ namespace tee::app
         if (engine.sim != nullptr)
         {
             // the application's frame over the simulator's document (docs/handoffs/j2-ui-kit.md)
+            const std::filesystem::path content = findContent();
             struct Kept
             {
-                explicit Kept(tee::Build& build) : doc(build) {}
+                Kept(player::SimAdapter& sim, std::filesystem::path shipped)
+                    : doc(sim.build()), scope(sim.host()), dyno(sim.host().sim(), sim.build()), file(sim.build()),
+                      library(std::move(shipped), Presets::userDirectory())
+                {
+                }
                 ui::BuildDoc doc;
                 ui::Units units;
+                ui::SimScope scope;
+                ui::ServiceDyno dyno;
+                files::BuildFile file;
+                files::BuildLibrary library;
             };
-            const auto kept = std::make_shared<Kept>(engine.sim->build());
+            const auto kept = std::make_shared<Kept>(*engine.sim, content.empty() ? content : content / "builds");
+            // (the build as the engine was made, a --preset applied, is the clean one: untitled, so a save asks where)
+            shown.document = &kept->file;
+            shown.library = &kept->library;
             if (!o.unitChoices.empty())
             {
                 std::string notes;
@@ -138,11 +156,20 @@ namespace tee::app
                     std::fprintf(stderr, "settings: units: %s\n", notes.c_str());
             }
             shown.unitChoices = [kept] { return kept->units.save(); };
-            const std::filesystem::path content = findContent();
+            ui::FrameServices frameServices = ui::buildServices(
+                engine.sim->build(), content.empty() ? content : content / "builds", Presets::userDirectory(), services);
+            addShellServices(frameServices, *engine.sim, controls);
+            addFileServices(frameServices, kept->file, kept->library);
             std::unique_ptr<ui::AppFrame> frame =
-                ui::makeAppFrame(kept->doc, kept->units, player,
-                                 ui::buildServices(engine.sim->build(), content.empty() ? content : content / "builds",
-                                                   Presets::userDirectory(), services));
+                ui::makeAppFrame(kept->doc, kept->units, player, std::move(frameServices), &kept->dyno, &kept->scope);
+            shown.waitForDyno = [kept](double seconds, std::string& error) {
+                const bool got = waitForCurve(kept->dyno, seconds);
+                error = kept->dyno.error();
+                return got;
+            };
+            // --size WxH: the frame's logical size (raised to its smallest, 1100 x 700)
+            if (o.width > 0 && o.height > 0)
+                frame->resize(std::max(o.width, frame->minWidth()), std::max(o.height, frame->minHeight()));
             // --workspace ID[:PAGE]: the frame opens there (a name that is none is said, and the first one shown)
             if (!o.workspace.empty())
             {
@@ -155,7 +182,7 @@ namespace tee::app
                     std::string names;
                     for (int s = 0; s < frame->workspaceCount(); ++s)
                         names += (s == 0 ? "" : ", ") + std::string(frame->workspace(s).id());
-                    std::fprintf(stderr, "--workspace: no workspace '%s' (there are: %s)\n", o.workspace.c_str(), names.c_str());
+                    shown.problem = "--workspace: no workspace '" + o.workspace + "' (there are: " + names + ")";
                 }
                 else
                 {
@@ -170,6 +197,9 @@ namespace tee::app
             return shown;
         }
        #endif
+        if (!o.workspace.empty())
+            shown.problem = "--workspace: the workspaces are the frame's, which shows the simulator (--engine sim) in a "
+                            "build with the interface package";
         // the reference's own panel reads the reference's dials and its raw fields: for the reference alone
         if (engine.ref != nullptr)
             shown.panel = ui::makeMainPanel(player, services);
@@ -224,8 +254,28 @@ namespace tee::app
         input::Controls controls(player, player);
         controls.setStatus(engine.error.empty() ? engine.name + "   no audio device (rendering offline)"
                                                 : "error: the program did not start\n" + engine.error);
-        const Shown shown = makePanel(o, engine, controls.services());
+        const Shown shown = makePanel(o, engine, controls);
+        if (!shown.problem.empty())
+        {
+            std::fprintf(stderr, "error: %s\n", shown.problem.c_str());
+            return 2;
+        }
         funkgui::HeadlessHost host(*shown.panel, o.theme, static_cast<float>(o.dpi));
+        // --size for a Panel that is not the frame: the host resizes it as a window would (a fixed Panel keeps its own)
+        if (o.width > 0 && o.height > 0)
+            host.resize(o.width, o.height);
+        // --dyno-wait S: the first predicted curve is waited for (up to S seconds of this machine's time) before the
+        // first frame, so a picture of a workspace with the ribbon shows it
+        if (o.dynoWait > 0.0 && shown.waitForDyno)
+        {
+            // (its error, if it has one, is in the picture: the ribbon says it)
+            const auto t0 = std::chrono::steady_clock::now();
+            std::string dynoError;
+            const bool got = shown.waitForDyno(o.dynoWait, dynoError);
+            std::fprintf(stderr, "dyno: %s after %.1f s%s%s\n", got ? "the predicted curve is in" : "no curve",
+                         std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count(),
+                         dynoError.empty() ? "" : ": ", dynoError.c_str());
+        }
 
         audio::WavWriter wav;
         if (!o.wav.empty())
@@ -330,6 +380,8 @@ namespace tee::app
                 break;
 
             engine.frame();
+            if (shown.frame)
+                shown.frame();
             controls.tick(dt);
 
             // this frame's share of the audio, in blocks

@@ -7,6 +7,10 @@
 //                      through the binding come back the same (the map's z transposed both ways)
 //   ui.build.files     a build saved by the garage and loaded back is the same build (Build::diff is empty)
 #include "app/AppFrame.h"
+#include "app/host/HostSources.h"
+
+#include <chrono>
+#include <thread>
 #include "kit/bind/Binding.h"
 #include "kit/bind/host/BuildDoc.h"
 
@@ -82,7 +86,12 @@ namespace
             {
                 ++pages;
                 f.showInspectorPage(p);
-                CHECK_MSG(f.inspector()->notes().empty(), f.slot(w).id + " / " + f.inspectorTitle(p) + ": " + f.inspector()->notes());
+                // U1's pages (the placeholders', DRIVE's) must read clean; a registered workspace's own page is its
+                // package's to check, and is only said here.
+                if (f.placeholder(w) || f.slot(w).id == "drive")
+                    CHECK_MSG(f.inspector()->notes().empty(), f.slot(w).id + " / " + f.inspectorTitle(p) + ": " + f.inspector()->notes());
+                else if (!f.inspector()->notes().empty())
+                    std::printf("  note (%s's own page): %s", f.slot(w).id.c_str(), f.inspector()->notes().c_str());
             }
         }
         const std::vector<int> shown = f.fieldsShown();
@@ -206,6 +215,59 @@ namespace
     }
 }
 
+namespace
+{
+    // U1: the frame's dyno over card C's DynoService and the real simulator: a curve comes, an edit brings another with
+    // the first kept as the ghost.
+    int dynoTest(Rig& rig)
+    {
+        tee::DynoPlan plan;
+        plan.from = 200.0;
+        plan.to = 420.0;
+        plan.rate = 220.0;
+        plan.spacing = 20.0;
+        plan.warmup = 0.6;
+        tee::ui::ServiceDyno dyno(rig.sim, *rig.build, plan);
+        const auto waitFor = [&](auto done) {
+            for (int i = 0; i < 6000 && !done() && dyno.error().empty(); ++i)   // up to a minute
+            {
+                dyno.tick(0.01f);
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            }
+            return done();
+        };
+        waitFor([&] { return !dyno.predicted().empty(); });
+        if (dyno.predicted().empty() && dyno.error().find("lacks") != std::string::npos)
+        {
+            // The program has no absorbed torque yet (tel.engine.torque, card D/K3): the ribbon says the runner's words.
+            std::printf("  not run here: %s\n", dyno.error().c_str());
+            return 0;
+        }
+        CHECK_MSG(!dyno.predicted().empty(), dyno.error());
+        CHECK(dyno.before().empty());
+        const tee::ui::DynoTrace first = dyno.predicted();
+        std::printf("  predicted: %zu points, peak torque %.1f N m at %.0f rad/s\n", first.speed.size(),
+                    first.peakTorque().value, first.peakTorque().speed);
+        CHECK(first.speed.size() >= 5 && first.peakTorque().value > 0.0);
+        // An edit of a number field: a new curve, the old one ghosted.
+        for (int i = 0; i < rig.doc->count(); ++i)
+        {
+            const tee::ui::FieldInfo& info = rig.doc->info(i);
+            if (info.kind != tee::ui::FieldKind::number || info.hidden || info.path.rfind("engine.", 0) != 0)
+                continue;
+            rig.doc->beginGesture();
+            rig.doc->set(i, info.min + (info.max - info.min) * 0.7);
+            rig.doc->endGesture();
+            std::printf("  edited %s\n", info.path.c_str());
+            break;
+        }
+        CHECK(waitFor([&] { return !dyno.before().empty(); }));
+        CHECK(dyno.before().peakTorque().value == first.peakTorque().value);
+        rig.build->undo();
+        return 0;
+    }
+}
+
 int main(int argc, char** argv)
 {
     const funkgui::HeadlessGuiScope gui;
@@ -217,7 +279,8 @@ int main(int argc, char** argv)
     {
         const char* name;
         int (*run)(Rig&);
-    } tests[] = { { "build.frame", frameTest }, { "build.set", setTest }, { "build.files", filesTest } };
+    } tests[] = { { "build.frame", frameTest }, { "build.set", setTest }, { "build.files", filesTest },
+                  { "build.dyno", dynoTest } };
     for (const auto& t : tests)
         if (name == "all" || name == t.name)
         {

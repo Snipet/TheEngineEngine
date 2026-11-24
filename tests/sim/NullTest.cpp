@@ -34,7 +34,7 @@ namespace
                 const std::map<std::string, double>& over = {})
     {
         Players& p = players(rate);
-        Build b = test::engineBuild(*p.engine, build);
+        EngineBuild b = test::engineBuild(*p.engine, build);
         for (const auto& [path, value] : over)
             b.values[path] = {value};
         const test::Null r = test::twin(*p.engine, *p.ref, b, test::engineScenario(scenario), block, seconds);

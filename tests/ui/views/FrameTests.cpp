@@ -30,8 +30,15 @@ namespace
         std::unique_ptr<AppFrame> frame;
         std::unique_ptr<funkgui::HeadlessHost> host;
 
-        explicit FrameRig(int w = 1280, int h = 800, float dpi = 2.0f, double t = 4.6) : demo(t)
+        // `own`: the frame over U1's own slots: every workspace but DRIVE a placeholder under an id no package registers
+        // ("own-air"), so these tests and goldens do not move when another package's stage lands or changes. Not own:
+        // the real rail, whatever is registered (the contact sheet's pictures).
+        bool own;
+        std::string idOf(const std::string& id) const { return own && id != "drive" ? "own-" + id : id; }
+
+        explicit FrameRig(int w = 1280, int h = 800, float dpi = 2.0f, double t = 4.6, bool ownSlots = true) : demo(t), own(ownSlots)
         {
+            demo.engine.hold(true);   // every picture at the same moment of the script
             tee::ui::FrameServices s;
             s.app = demo.app;
             s.buildName = [this] { return name; };
@@ -52,14 +59,17 @@ namespace
             s.mode = [this] { return mode; };
             s.setMode = [this](int m) { mode = m; };
             s.clutch = [this](float v) { clutch = v; };
+            std::vector<tee::ui::WorkspaceSlot> slots = tee::ui::defaultSlots();
+            for (tee::ui::WorkspaceSlot& sl : slots)
+                sl.id = idOf(sl.id);
             frame = std::make_unique<AppFrame>(demo.doc, demo.units, demo.engine, std::move(s), &demo.engine, &demo.engine,
-                                               tee::ui::defaultSlots(), w, h);
+                                               std::move(slots), w, h);
             host = std::make_unique<funkgui::HeadlessHost>(*frame, 0, dpi);
             host->tick(60);
         }
         void showWorkspace(const std::string& id)
         {
-            const int i = frame->find(id);
+            const int i = frame->find(idOf(id));
             if (i < 0)
                 return failAt(__FILE__, __LINE__, "no workspace " + id);
             const funkgui::Rect r = frame->railRect(i);
@@ -82,29 +92,38 @@ namespace
     // field that is not hidden is on some page.
     VIEW_TEST(testFrameWorkspaces, "frame.workspaces")
     {
+        // The real rail: the ten in order, whatever is registered; the pages of U1's (the placeholders', DRIVE's) read
+        // without a note. A registered workspace's own page is its package's to check (ViewKit's inspectorNotes).
+        {
+            FrameRig real(1280, 800, 2.0f, 4.6, false);
+            AppFrame& f = *real.frame;
+            CHECK(f.workspaceCount() >= 10);
+            for (int i = 0; i < 10 && i < f.workspaceCount(); ++i)
+            {
+                CHECK(f.slot(i).id == kIds[i] && std::string(f.workspace(i).id()) == kIds[i]);
+                real.showWorkspace(kIds[i]);
+                CHECK(f.shown() == i);
+                CHECK_MSG(f.inspectorPageCount() > 0 || f.unitsShown(), kIds[i]);
+                if (!f.placeholder(i) && std::string(kIds[i]) != "drive")
+                    continue;
+                for (int p = 0; p < f.inspectorPageCount(); ++p)
+                {
+                    f.showInspectorPage(p);
+                    CHECK_MSG(f.inspector() != nullptr && f.inspector()->notes().empty(),
+                              std::string(kIds[i]) + ": " + (f.inspector() != nullptr ? f.inspector()->notes() : "no page"));
+                }
+            }
+            // Every field a person sets is on some page, over the real rail too.
+            const std::vector<int> shown = f.fieldsShown();
+            for (int i = 0; i < real.demo.doc.count(); ++i)
+            {
+                const bool there = std::find(shown.begin(), shown.end(), i) != shown.end();
+                const tee::ui::FieldInfo& info = real.demo.doc.info(i);
+                CHECK_MSG(there != info.hidden, info.path + (info.hidden ? " is hidden and shown" : " is on no page"));
+            }
+        }
         FrameRig rig;
         AppFrame& f = *rig.frame;
-        CHECK(f.workspaceCount() == 10);
-        for (int i = 0; i < 10 && i < f.workspaceCount(); ++i)
-        {
-            CHECK(f.slot(i).id == kIds[i] && std::string(f.workspace(i).id()) == kIds[i]);
-            rig.showWorkspace(kIds[i]);
-            CHECK(f.shown() == i);
-            for (int p = 0; p < f.inspectorPageCount(); ++p)
-            {
-                f.showInspectorPage(p);
-                CHECK_MSG(f.inspector() != nullptr && f.inspector()->notes().empty(),
-                          std::string(kIds[i]) + ": " + (f.inspector() != nullptr ? f.inspector()->notes() : "no page"));
-            }
-            CHECK_MSG(f.inspectorPageCount() > 0 || f.unitsShown(), kIds[i]);
-        }
-        const std::vector<int> shown = f.fieldsShown();
-        for (int i = 0; i < rig.demo.doc.count(); ++i)
-        {
-            const bool there = std::find(shown.begin(), shown.end(), i) != shown.end();
-            const tee::ui::FieldInfo& info = rig.demo.doc.info(i);
-            CHECK_MSG(there != info.hidden, info.path + (info.hidden ? " is hidden and shown" : " is on no page"));
-        }
         // AIR's inspector: its two sections as tabs.
         rig.showWorkspace("air");
         CHECK(f.inspectorPageCount() == 3 && f.inspectorTitle(0) == "INTAKE" && f.inspectorTitle(1) == "BOOST" && f.inspectorTitle(2) == "DUTY");
@@ -388,7 +407,7 @@ namespace
             out.rgba[i] = out.rgba[i + 1] = out.rgba[i + 2] = 8, out.rgba[i + 3] = 255;
         for (std::size_t z = 0; z < sizes.size(); ++z)
         {
-            FrameRig rig(sizes[z].first, sizes[z].second, dpi);
+            FrameRig rig(sizes[z].first, sizes[z].second, dpi, 4.6, false);   // the real rail
             for (int s = 0; s < kCount; ++s)
             {
                 rig.showWorkspace(kIds[s]);
@@ -431,11 +450,19 @@ namespace
     {
         for (const float dpi : { 2.0f, 1.0f })
         {
+            // Goldens over U1's own slots (placeholders and DRIVE): they move only with U1's work.
             FrameRig rig(1280, 800, dpi);
             for (const char* id : kIds)
             {
                 rig.showWorkspace(id);
                 golden("frame." + lower(id) + (dpi < 1.5f ? ".dpi1" : ""), *rig.host);
+            }
+            // Pictures of the real rail, whatever is registered (no golden: other packages' stages move).
+            FrameRig real(1280, 800, dpi, 4.6, false);
+            for (const char* id : kIds)
+            {
+                real.showWorkspace(id);
+                picture("frame.real." + lower(id) + (dpi < 1.5f ? ".dpi1" : ""), *real.host);
             }
         }
         // The paper theme, once: the same frame reads on a light ground.

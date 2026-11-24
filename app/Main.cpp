@@ -16,15 +16,18 @@
 #include "Offline.h"
 #include "Options.h"
 #include "Script.h"
+#include "WindowCommands.h"
 
 #include "audio/AudioDevice.h"
 #include "audio/Recorder.h"
+#include "files/BuildFiles.h"
 #include "files/Png.h"
 #include "input/Controls.h"
 #include "input/Keys.h"
 #include "input/SdlInput.h"
 #include "player/RefAdapter.h"
 #include "settings/Settings.h"
+#include "tee/Build.h"
 
 #include <funkgui/core/Version.h>
 #include <funkgui/desktop/DesktopHost.h>
@@ -94,11 +97,12 @@ namespace
         audio::RecordingSource heard(player, recorder);
         audio::Device device(heard);
         std::string audioLine = "no audio device (--no-audio)";
+        audio::Request request;
         if (!o.noAudio)
         {
-            audio::Request request;
             request.bufferFrames = o.bufferGiven ? o.buffer : remembered.settings.audioBuffer;
             request.rate = remembered.settings.audioRate;
+            request.deviceName = remembered.settings.audioDevice;
             std::string why;
             if (device.open(request, why))
             {
@@ -147,9 +151,57 @@ namespace
         std::size_t nextEvent = 0;
 
         // ---- the window ---------------------------------------------------------------------------------------------
-        const app::Shown shown = app::makePanel(o, engine, controls.services());
-        funkgui::Panel* const panel = shown.panel.get();
+        const app::Shown shown = app::makePanel(o, engine, controls);
+        if (!shown.problem.empty())
+        {
+            std::fprintf(stderr, "tee-app: %s\n", shown.problem.c_str());
+            return 2;
+        }
+
         const bool machine = o.frames >= 0 || !o.shot.empty();
+
+        // ---- the File and Audio menus and their keys (app/WindowCommands.h) ---------------------------------------
+        settings::Settings now = remembered.settings;
+        std::string note;               // the newest thing a command said, after the status line
+        const auto showStatus = [&] {
+            controls.setStatus(statusOf(engine, audioLine, stopped) + (note.empty() || !stopped.empty() ? "" : "   " + note));
+        };
+        app::WindowCommands::Context commandsContext;
+        commandsContext.document = shown.document;
+        commandsContext.library = shown.library;
+        commandsContext.device = o.noAudio ? nullptr : &device;
+        commandsContext.request = request;
+        commandsContext.recorder = &recorder;
+        commandsContext.settings = &now;
+        commandsContext.recordFolder = (Presets::userDirectory().parent_path() / "recordings").string();
+        commandsContext.say = [&](const std::string& line) {
+            note = line;
+            showStatus();
+        };
+        commandsContext.audioChanged = [&] {
+            audioLine = device.isOpen() ? device.info().line() : "no audio device";
+            showStatus();
+        };
+        app::WindowCommands commands(std::move(commandsContext));
+        if (shown.document != nullptr)
+        {
+            shown.document->recent().load(remembered.settings.recentBuilds);
+            shown.document->recent().prune();
+            // the build last open, in a window a person uses (not a machine's run, and not over a --preset)
+            std::error_code ec;
+            if (!machine && o.preset.empty() && !remembered.settings.lastBuild.empty()
+                && std::filesystem::is_regular_file(remembered.settings.lastBuild, ec))
+            {
+                std::vector<std::string> warnings;
+                std::string error;
+                if (shown.document->open(remembered.settings.lastBuild, BuildPart::Whole, warnings, error))
+                    std::printf("file: the last build, %s\n", remembered.settings.lastBuild.c_str());
+                else
+                    std::fprintf(stderr, "file: the last build (%s) did not open: %s\n",
+                                 remembered.settings.lastBuild.c_str(), error.c_str());
+            }
+        }
+        funkgui::Panel* const panel = shown.panel.get();
         const std::uint32_t frames = static_cast<std::uint32_t>(o.frames >= 0 ? o.frames : 120);
 
         funkgui::desktop::Options options;
@@ -157,6 +209,8 @@ namespace
         options.themeIndex = o.themeGiven ? o.theme : -1;
         options.hidden = o.info;
         options.rawEvent = [&](const SDL_Event& e) {
+            if (commands.event(e))
+                return true;
             if (device.handleEvent(e))
                 return true;
             return sdlInput.handle(e);
@@ -184,6 +238,8 @@ namespace
                 }
             }
             engine.frame();
+            if (shown.frame)
+                shown.frame();
             controls.tick(dt);
             bool changed = device.pump();
             if (changed)
@@ -194,10 +250,11 @@ namespace
                 changed = changed || !stopped.empty();
             }
             if (changed)
-                controls.setStatus(statusOf(engine, audioLine, stopped));
+                showStatus();
         };
 
         funkgui::desktop::DesktopHost host(*panel, std::move(options));
+        commands.attach(&host);
         std::string why;
         if (!host.open(why))
         {
@@ -290,12 +347,32 @@ namespace
                         recorder.dropped() != 0 ? " (some frames were dropped: the disk kept the writer waiting)" : "",
                         whole ? "" : " (the file is not whole: a write failed)");
         }
+        // A build with unsaved changes when the window closed is kept: written to the user's folder as "Unsaved
+        // changes", which opens at the next start (and is listed with the builds). Nothing is asked: the window is gone.
+        if (!machine && shown.document != nullptr && shown.document->dirty() && shown.library != nullptr)
+        {
+            std::string notKept;
+            const std::string name = shown.document->build().name;
+            if (shown.library->save(*shown.document, "Unsaved changes", notKept))
+            {
+                std::printf("file: the build's unsaved changes are kept in %s\n", shown.document->file().string().c_str());
+                now.lastBuild = shown.document->file().string();
+            }
+            else
+                std::fprintf(stderr, "file: the build's unsaved changes were lost: %s\n", notKept.c_str());
+            shown.document->build().name = name;
+        }
+        else if (shown.document != nullptr && !shown.document->file().empty())
+            now.lastBuild = shown.document->file().string();
+        if (shown.document != nullptr)
+            now.recentBuilds = shown.document->recent().save();
+
         // A first run leaves the settings file behind, with the defaults, for a person to find and edit. After that
-        // the file is written only when something the window can change did: the units chosen in the frame.
-        settings::Settings now = remembered.settings;
+        // the file is written only when something the window can change did: the units chosen in the frame, the audio
+        // device, the build open and the recent files.
         if (shown.unitChoices)
             now.unitChoices = shown.unitChoices();
-        if (!machine && (!remembered.found || now.unitChoices != remembered.settings.unitChoices))
+        if (!machine && (!remembered.found || settings::toJson(now) != settings::toJson(remembered.settings)))
         {
             std::string notSaved;
             if (!settings::save(now, notSaved))

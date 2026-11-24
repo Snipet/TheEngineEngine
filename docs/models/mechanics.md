@@ -10,7 +10,7 @@ With `engine.custom` off (the default) none of this is used and the engine is th
 
 | File | Module | What it is |
 |---|---|---|
-| `sim/core/mechspec.fm` | `MechSpec` | the fields card D appends to `spec.engine` (a stand-in until K3b) |
+| `sim/spec/engine.fm` | `EngineSpec` | card D's fields, appended to `spec.engine` after the reference's dials |
 | `sim/core/layout.fm` | `LayoutGeom` | banks, pins, firing revolutions, places → firing angles, order, intervals, a sanity flag |
 | `sim/core/kinematics.fm` | `SliderCrank`, `Sizing` | the piston's x, x', x'' and the volume; size and bore/stroke dials ↔ bore and stroke; the redline by piston speed |
 | `sim/core/inertia.fm` | `MovingMasses` | the reciprocating masses' inertia torque, the varying inertia J(θ), the crank's energy-exact step |
@@ -93,7 +93,7 @@ chambers a rotor). VE at the manifold's density and at the air's, from the mass 
 
 ## The dyno
 
-A PI loop on the crank's own dynamics (natural frequency 15 rad/s, critically damped, the set speed's acceleration fed
+A PI loop on the crank's own dynamics (natural frequency 40 rad/s, critically damped, the set speed's acceleration fed
 forward): it holds the cycle's mean speed and lets the firing ripple through, as a real dyno does. Against a made-up
 engine (330 to 520 N m, ±90 % ripple at eight pulses a cycle) on a V8's crank: holds 3000, 5500 and 1500 rpm to under
 0.01 rpm of the mean; the absorber's mean torque equals the engine's less friction to 0.1 %; a 300 rpm/s sweep reaches

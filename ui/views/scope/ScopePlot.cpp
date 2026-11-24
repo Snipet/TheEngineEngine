@@ -172,6 +172,14 @@ namespace tee::ui
         }
     }
 
+    float ScopePlot::titleRight(Canvas& c) const
+    {
+        std::string head = upper(title_);
+        if (!y_.label.empty())
+            head += "  (" + upper(y_.label) + ")";
+        return bounds_.x + c.textWidth(head.c_str(), kWidgetLabel);
+    }
+
     void ScopePlot::drawReadout(Canvas& c, const look::Palette& p) const
     {
         if (!cursorShown())
@@ -219,8 +227,36 @@ namespace tee::ui
         if (outside_)
             outside_(c, p, *this);
         if (!hasData() && !note_.empty())
-            c.text(note_.c_str(), a.centreX(), c.capCentreTop(a.centreY(), look::kBody), look::kBody, p.label,
-                   funkgui::Align::centre);
+        {
+            // Wrapped to the area at spaces, centred.
+            std::vector<std::string> lines;
+            std::string line;
+            std::size_t at = 0;
+            while (at < note_.size())
+            {
+                std::size_t sp = note_.find(' ', at);
+                if (sp == std::string::npos)
+                    sp = note_.size();
+                const std::string word = note_.substr(at, sp - at);
+                const std::string tried = line.empty() ? word : line + " " + word;
+                if (!line.empty() && c.textWidth(tried.c_str(), look::kBody) > a.w - 16.0f)
+                {
+                    lines.push_back(line);
+                    line = word;
+                }
+                else
+                    line = tried;
+                at = sp + 1;
+            }
+            if (!line.empty())
+                lines.push_back(line);
+            float y = a.centreY() - 8.0f * static_cast<float>(lines.size());
+            for (const std::string& ln : lines)
+            {
+                c.text(ln.c_str(), a.centreX(), y, look::kBody, p.label, funkgui::Align::centre);
+                y += 16.0f;
+            }
+        }
         drawReadout(c, p);
         if (focusRing)
             ring(c, l, a, 0.0f);

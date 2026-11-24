@@ -486,6 +486,16 @@ namespace tee::ui
             std::size_t k = i;
             while (k < gui.size() && (nameChar(gui[k]) || (gui[k] == '.' && k + 1 < gui.size() && nameStart(gui[k + 1]))))
                 ++k;
+            // U1: an array's element ("engine.bankAngle[2]"), as the lexer reads it: digits in brackets.
+            while (k + 2 < gui.size() && gui[k] == '[' && std::isdigit(static_cast<unsigned char>(gui[k + 1])))
+            {
+                std::size_t e = k + 1;
+                while (e < gui.size() && std::isdigit(static_cast<unsigned char>(gui[e])))
+                    ++e;
+                if (e >= gui.size() || gui[e] != ']')
+                    break;
+                k = e + 1;
+            }
             if (const int f = doc.find(gui.substr(i, k - i)); f >= 0)
                 want[static_cast<std::size_t>(f)] = true;
             i = k;

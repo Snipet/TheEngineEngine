@@ -281,7 +281,8 @@ namespace tee::ui
         const funkgui::Rect a{ b.x + 30.0f, b.y + 56.0f, std::max(20.0f, b.w - 60.0f), std::max(20.0f, b.h - 74.0f) };
         if (now.empty() && was.empty())
         {
-            c.text(peaksText().c_str(), a.centreX(), a.centreY() - 6.0f, look::kBody, p.dim, funkgui::Align::centre);
+            c.text(fitText(c, peaksText(), look::kBody, a.w + 40.0f).c_str(), a.centreX(), a.centreY() - 6.0f, look::kBody, p.dim,
+                   funkgui::Align::centre);
             return;
         }
         double x0 = 1e9, x1 = -1e9, t1 = 1.0, w1 = 1.0;

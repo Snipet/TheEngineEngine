@@ -13,7 +13,7 @@ namespace tee::test
         auto player = EnginePlayer::create(po, error);
         if (!player)
             return false;
-        tee::Build build;
+        tee::EngineBuild build;
         std::string warnings;
         if (!loadBuild(*player, buildFile, build, error, warnings))
             return false;
