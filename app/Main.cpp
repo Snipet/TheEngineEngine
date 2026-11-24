@@ -26,8 +26,10 @@
 #include "input/Keys.h"
 #include "input/SdlInput.h"
 #include "player/RefAdapter.h"
+#include "player/SimAdapter.h"
 #include "settings/Settings.h"
 #include "tee/Build.h"
+#include "tee/Telemetry.h"
 
 #include <funkgui/core/Version.h>
 #include <funkgui/desktop/DesktopHost.h>
@@ -169,8 +171,18 @@ namespace
         // ---- the File and Audio menus and their keys (app/WindowCommands.h) ---------------------------------------
         settings::Settings now = remembered.settings;
         std::string note;               // the newest thing a command said, after the status line
+        // the simulator's health as the host reports it (card C's HostStats): restarting after a fault; clamped (a block
+        // with a sample past full scale, held to it) for a moment after it happens
+        std::string health;
+        std::uint32_t clippedSeen = 0;
+        double clampedLeft = 0.0;
         const auto showStatus = [&] {
-            controls.setStatus(statusOf(engine, audioLine, stopped) + (note.empty() || !stopped.empty() ? "" : "   " + note));
+            std::string line = statusOf(engine, audioLine, stopped);
+            if (stopped.empty() && !health.empty())
+                line += "   " + health;
+            if (stopped.empty() && !note.empty())
+                line += "   " + note;
+            controls.setStatus(line);
         };
         app::WindowCommands::Context commandsContext;
         commandsContext.document = shown.document;
@@ -254,6 +266,24 @@ namespace
             {
                 stopped = engine.stopped();
                 changed = changed || !stopped.empty();
+            }
+            if (engine.sim != nullptr)
+            {
+                const HostStats stats = engine.sim->hostStats();
+                if (stats.clippedBlocks != clippedSeen)
+                {
+                    clippedSeen = stats.clippedBlocks;
+                    clampedLeft = 2.0;
+                }
+                clampedLeft = std::max(0.0, clampedLeft - static_cast<double>(dt));
+                const std::string said = stats.restarting != 0 ? std::string("restarting (after a fault)")
+                                        : clampedLeft > 0.0  ? std::string("clamped (the output went past full scale)")
+                                                             : std::string();
+                if (said != health)
+                {
+                    health = said;
+                    changed = true;
+                }
             }
             if (changed)
                 showStatus();
