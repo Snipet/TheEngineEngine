@@ -386,3 +386,36 @@ about 20 degrees past the fixed-cam centre.
 
 The 7.0 pushrod V8 (no phaser, 57 degrees of overlap) does not stall on the tip at 0.45 or 0.57 m: 748 rpm, sd 43 to
 49, a big cam's lope.
+
+**H9, settled (the lead's ruling, 17:57).** I was wrong above in one respect. The bangs' store reads card H's blowdown
+hold (`ecu.blow`: each bank's hottest recent gas at an exhaust opening, falling over some 50 ms), not the collector's
+mean.
+
+Measured on the V8 preset, both models on:
+
+| Condition | Blowdown hold | Header wall |
+|---|---|---|
+| On the limiter at full throttle | 1636 K (H's note had 850) | |
+| H9's fuelled overrun, the counted window | 530 to 690 K | 418 K (3.5 s from a cold exhaust) |
+
+On that overrun every fired charge is still burning as its exhaust valve opens (7 or 8 a tenth of a second, every
+one). Its flame goes into the pipe, which a gas-temperature hold never saw.
+
+The rule now has two sources:
+
+- a charge still burning at its opening lights the store outright, held as 2000 K: a burning mixture's flame, judgement
+  under a stoichiometric flame's 2200 to 2400 K (`combustion.fm`);
+- hot gas lights it by self-ignition from 900 K, readily from 1200 K: H's original band, restored (`overrun.fm`).
+
+H9 is unskipped and passes:
+
+| Case | Bangs |
+|---|---|
+| A clean overrun | 0 |
+| A spark-cut limiter, 3 s | 770 |
+| A fuelled overrun, 0.1 | 1 (1.3 mg) |
+| A fuelled overrun, 0.25 | 0 |
+
+The fuelled overrun has little margin. The limit is now the store's fuel, not the lighting: the store receives each
+overrun charge's unburned share as estimated at its spark, not the share still unburned when its valve opens. That
+would take the cylinder handing its remainder over at the opening (D's cylinder, H's account). Proposed, not done.
