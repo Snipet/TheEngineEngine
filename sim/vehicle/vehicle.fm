@@ -51,6 +51,7 @@
 #include "gearbox.fm"
 #include "strip.fm"
 #include "sound.fm"
+#include "roadranger.fm"
 
 enum
 {
@@ -97,6 +98,8 @@ module Vehicle
     VehTyre tyre[VEH_WHEELS];
     VehStrip strip;
     VehSound snd;
+    Roadranger rr;      // a truck's eighteen-speed (gearbox VEH_EIGHTEEN)
+    float grindNow;     // its grind this sample (road()), for the mix
 
     float rate;
     // the engine
@@ -201,6 +204,7 @@ module Vehicle
     {
         rate = hostRate;
         snd.setup(rate);
+        rr.setup(rate);
         jE = 0.15f;
         iEcfg = 1.0f / jE;
         peakTq = 300.0f;
@@ -216,6 +220,8 @@ module Vehicle
     void reset()
     {
         box.reset();
+        rr.reset();
+        grindNow = 0.0f;
         strip.reset();
         wt = 0.0f;
         wo = 0.0f;
@@ -334,7 +340,7 @@ module Vehicle
             const float bias = i < 2 ? spec.brakeBias : 1.0f - spec.brakeBias;
             brakeMax[i] = 0.5f * bias * spec.brakeDecel * 9.81f * mass * radius;
         }
-        const int kind = spec.gearbox < 0 ? 0 : (spec.gearbox > 4 ? 4 : spec.gearbox);
+        const int kind = spec.gearbox < 0 ? 0 : (spec.gearbox > 5 ? 5 : spec.gearbox);
         if (kind != box.kind)
         {
             box.kind = kind;
@@ -358,12 +364,22 @@ module Vehicle
     // the top 0.86 times the square root of 6 / n for six or more, 1.0 for four or fewer).
     void gearing()
     {
-        const int n = spec.gears < 1 ? 1 : (spec.gears > VEH_GEARS ? VEH_GEARS : spec.gears);
+        const int n = spec.gearbox == VEH_EIGHTEEN ? 18 : (spec.gears < 1 ? 1 : (spec.gears > VEH_GEARS ? VEH_GEARS : spec.gears));
         box.n = n;
         box.cvtLo = spec.cvtLow;
         box.cvtHi = spec.cvtHigh;
         if (box.cvt <= 0.0f)
             box.cvt = spec.cvtLow;
+        if (spec.gearbox == VEH_EIGHTEEN)
+        {
+            // (its own ratios; the final drive by the reference truck's rule with autoGearing, else the Spec's)
+            for (int i = 0; i < 18; ++i)
+                box.r[i] = rr.ratioOf(i + 1);
+            box.rRev = 13.1f;
+            box.fd = spec.autoGearing ? 0.6f * redW * radius / (29.2f * box.r[17]) : spec.finalDrive;
+            dirty = true;
+            return;
+        }
         if (!spec.autoGearing)
         {
             for (int i = 0; i < VEH_GEARS; ++i)
@@ -544,7 +560,10 @@ module Vehicle
             if (share[i] > 0.0f && fabsf(tyre[i].kappa) > 1.5f * curve.kPeak)
                 spinning = true;
         const float wRoad = (float)((mode == VEH_MODE_DYNO_CHASSIS ? vr : v) / (double)radius);
-        box.control(d16, lever, up, down, engage, pedal, wLast, wo, idleW, redW, fabsf(v) * 3.6f, wRoad, spinning);
+        if (box.kind == VEH_EIGHTEEN)
+            eighteen(d16, lever, clutch, pedal);
+        else
+            box.control(d16, lever, up, down, engage, pedal, wLast, wo, idleW, redW, fabsf(v) * 3.6f, wRoad, spinning);
         driveline();
         // the couplings the step will use
         const float gIn = box.shifting ? box.ratioOf(box.from) : box.ratioOf(box.gear);
@@ -1070,8 +1089,31 @@ module Vehicle
 
     // ---- the road's sound ----
 
+    // A truck's eighteen-speed (card D2's Roadranger, roadranger.fm), every 16 samples in place of the gearbox's logic:
+    // the lever (1 to 4, 5 the L slot, -1 reverse at a crawl), the range and splitter on ctl.buttons, the clutch pedal;
+    // it says which gear is in (0 while the dogs will not go in: refused, grinding) and the driveline couples it as a
+    // manual's, through its ratios and the final drive. A gear going in joins the output with its momentum taken from the
+    // wheels and the car (driveline()), as any other.
+    void eighteen(float d16, int lever, float clutchPedal, float pedal)
+    {
+        const float wBox = (float)(wo * (double)box.fd);
+        rr.control(d16, lever, buttons, clutchPedal, pedal, wLast, wBox);
+        if (lever == -1)
+            box.gear = fabsf(v) * 3.6f < 5.0f && (clutchPedal > 0.5f || fabsf(wLast) < 1.0f) ? -1 : 0;
+        else
+            box.gear = rr.gear;
+        box.refused = rr.grinding > 0.0f;
+        box.shifting = false;
+        box.robot = 1.0f;
+        box.aFrom = 1.0f;
+        box.aTo = 0.0f;
+        box.cut = false;
+        box.blip = 0.0f;
+    }
+
     float road()
     {
+        grindNow = box.kind == VEH_EIGHTEEN ? rr.grind() : 0.0f;
         float sq = 0.0f;
         for (int i = 0; i < VEH_WHEELS; ++i)
         {
