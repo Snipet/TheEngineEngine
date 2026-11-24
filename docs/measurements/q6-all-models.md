@@ -198,3 +198,8 @@ whole build's profile read 4020 ns against 4390 (one run each: the rest is run-t
 **After L's change** (a still tap's delay and Lagrange weights computed once a part; L's measurement, byte-identical
 WAVs on three listening scenarios): `Scene::hear` 167 -> 96 ns on the V8 free-revs at the tailpipe camera, 128 on
 drive-car (the retarded time moves the taps while the car accelerates): about 0.02 to 0.04 R. Not re-measured by Q.
+
+**The listener's row re-measured by Q after 5ce0d1b** (19:26 UTC, quiet host, two profiles of the typical build,
+drive-car): listener 334 and 369 ns (Scene 212 / 228, of which `Scene::hear` 152 / 156; Listen 79 / 84; Hall 37 / 53),
+against 425 (hear 195) at 19:30's table: **+0.10 to +0.12 R over model 0, from +0.15**. The whole build 4021 and 4042
+ns in the profile's units (2.05 to 2.06 R).
