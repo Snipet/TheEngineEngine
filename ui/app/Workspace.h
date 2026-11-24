@@ -115,6 +115,11 @@ namespace tee::ui
         std::vector<double> speed, torque, power;
         std::vector<std::string> fields;         // more telemetry at each point, by name
         std::vector<std::vector<double>> values; // values[f][point]
+        // Whether a run's exhaust walls were settled at each step (card C's DynoCurve::settled, the lead's ruling
+        // 1220ca3): 1 settled, 0 cold walls (a short step reads a few percent low), -1 not said (a sweep, a prediction,
+        // an old source). Label a run by wallsWord(); never mix the two unlabelled.
+        int settled = -1;
+        const char* wallsWord() const noexcept { return settled > 0 ? "walls settled" : settled == 0 ? "cold walls" : ""; }
         bool empty() const noexcept { return speed.empty(); }
         // The peak of torque or power: its value and the speed at it (NaN, NaN when empty).
         struct Peak
@@ -148,6 +153,7 @@ namespace tee::ui
         std::vector<double> steps;   // speeds held in turn, rad/s (empty: the sweep above)
         double dwell = 0.6;          // seconds each step is held before it is measured
         int gear = 0;                // a chassis run's gear (0: the one the car is in)
+        bool settleExhaust = true;   // a stepped run: settle the exhaust's walls at each step (DynoPlan::settleExhaust)
     };
 
     // The predicted curve of the build as it stands (card C's dyno runner, in the background, a moment after each

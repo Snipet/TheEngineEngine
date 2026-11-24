@@ -62,6 +62,7 @@ namespace tee::ui
         DynoTrace predicted_, before_, lastRefined_;
         std::vector<DynoTrace> runs_;
         std::string runName_;
+        bool runStepped_ = false;   // the run under way is stepped (its walls said), else a sweep (-1)
         std::uint64_t seen_ = 0, revision_ = 1, request_ = 0, predictRevision_ = 0, refinedFor_ = 0;
         double quiet_ = 0.0;
         std::uint64_t requests_ = 0;

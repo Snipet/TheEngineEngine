@@ -87,7 +87,9 @@ and the lead (the session that wrote these files) settles what a card leaves ope
   shell and the host do (D2's "one kept player a process, reset per test" took diesel from 321 to 202 CPU-s). The
   caution: a kept player is **reset** between cases to the state a fresh one has, so that no case passes because of
   what the one before it left behind; prove it once by running the cases in reverse order (`--order rand` or the
-  list reversed) and say so in the commit.
+  list reversed) and say so in the commit. The 30 s limit is then each case's; a grouped entry may take up to 90 s
+  (longer, and it is split into two entries, so that ctest's four jobs still pack the tier); the summary's list of
+  default-run tests over 30 s names grouped entries too: read them against 90.
 
 ## 4. Code
 
