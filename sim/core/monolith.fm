@@ -15,6 +15,8 @@
 #include "layouts.fm"
 #include "lib/noise.fm"
 #include "heat.fm"
+#include "crank.fm"
+#include "mechanics.fm"
 #include "ecu/ecu.fm"
 #include "exhaust/exhaust.fm"
 #include "intake/intake.fm"
@@ -111,14 +113,9 @@ module Shared
     float vTotal;       // displacement, m^3
     float bore;
     float boreSq;       // a square cylinder's bore for this size (bore: the BORE/STROKE dial's)
-    float jBase;
     float idleBase;     // the idle and the redline before the dials: the layout's (a diesel's: by its pistons' speed)
     float redBase;
-    float idleTq;
     // the engine's state
-    float omega;        // rad/s
-    float theta;        // crank degrees, 0 to 2160 (a common cycle for four-strokes and the rotary)
-    float rpm;
     int tick16;
     // the keys
     // what comes out
@@ -129,6 +126,8 @@ module Shared
     Valvetrain vt;      // each cylinder's valve events and areas (valvetrain/valvetrain.fm)
     Intake intk;        // the runners, the plenum, the throttle (intake/intake.fm)
     Exhaust exh;        // every pipe after a port, the junctions, the pops, the tails (exhaust/exhaust.fm)
+    Crank crank;        // the crank's angle and speed (core/fm)
+    Mechanics mech;     // friction, the bench's load, the starter, the inertia (core/mechanics.fm)
     Heat heat;          // the coolant, the oil, the chamber's walls (core/fm)
     Extras ex;
     Boost boost;        // turbos or a supercharger: their shafts, boost, valves and sounds (boost/boost.fm)
@@ -143,8 +142,6 @@ module Shared
     // the exhaust's heat: the gas's temperature (K) in each part of the system (the headers, the collectors' pipes, the
     // main pipe, the muffler, the tail), each part's wall, and what the pipes are set to (the gas's, a third of a second
     // behind)
-    float tqMean;
-    float tqNow;
     float quiet;
     // the junctions' losses (pipes.fm, lossKap: K rho / 2A^2 for each direction) and the catalytic converter
                         // to tail), each for flow onward and back
@@ -225,8 +222,8 @@ module Shared
         heat.setup();
         lastLayout = -1;
         ecu.state = 0;
-        omega = 0.0f;
-        theta = 0.0f;
+        crank.omega = 0.0f;
+        crank.theta = 0.0f;
         ecu.keyCount = 0;
         ecu.tokenCounter = 0;
         ecu.rendering = 0;
@@ -265,7 +262,7 @@ module Shared
         aspUse = set.asp < 0 ? 0 : (set.asp > 4 ? 4 : set.asp);
         // (stopped, with AMBIENT moved: it has stood in that air, as cold or as warm as it is)
         heat.stood(ecu.state, set.ambF);
-        heat.control(0.0f, set.ambF, vTotal, ecu.state, rpm, omega);
+        heat.control(0.0f, set.ambF, vTotal, ecu.state, crank.rpm, crank.omega);
         for (int c = 0; c < lay.n; ++c)
             cyl[c].tw = heat.tSurf;
         ecu.kRet = 0.0f;
@@ -316,7 +313,7 @@ module Shared
         // (a diesel's crank and flywheel are heavier, for its pressures: twice a gasoline engine's of the layout's size,
         // and more the bigger it is: some 0.85 kg m^2 for a 6.7 L six, 2.2 for a 15 L truck's)
         clatSize = expf(0.33333333f * logf(swept / 0.0005f));
-        jBase = fuelUse != 0 ? 2.0f * lay.inertia * expf(1.2f * logf(scale)) : lay.inertia * expf(0.6f * logf(scale));
+        mech.jBase = fuelUse != 0 ? 2.0f * lay.inertia * expf(1.2f * logf(scale)) : lay.inertia * expf(0.6f * logf(scale));
         for (int c = 0; c < lay.n; ++c)
         {
             Cylinder* cy = &cyl[c];
@@ -324,7 +321,7 @@ module Shared
             cy->tw = heat.tSurf;
             cy->diesel = fuelUse;
             cy->bias = 0.025f * noise.rnd();
-            float a0 = theta + lay.fire[c];
+            float a0 = crank.theta + lay.fire[c];
             while (a0 >= lay.cyc)
                 a0 -= lay.cyc;
             cy->reset(a0);
@@ -467,16 +464,16 @@ module Shared
         const bool may = set.drive == 0 || car.gear == 0 || set.clutch > 0.75f;
         if ((ecu.state == 0 || ecu.state == 3) && may)
         {
-            if (set.starter != 0 && omega < 60.0f)
+            if (set.starter != 0 && crank.omega < 60.0f)
                 ecu.state = 1;
             else
             {
                 ecu.state = 2;
-                if (omega < 0.6f * ecu.idleRpm * 0.10471976f)
+                if (crank.omega < 0.6f * ecu.idleRpm * 0.10471976f)
                 {
-                    omega = ecu.idleRpm * 0.10471976f;
+                    crank.omega = ecu.idleRpm * 0.10471976f;
                     ecu.rpmAvg = ecu.idleRpm;
-                    rpm = ecu.idleRpm;
+                    crank.rpm = ecu.idleRpm;
                     ecu.fuelCut = false;
                     // each cylinder between its intake closing and its spark fires on this pass
                     for (int c = 0; c < lay.n; ++c)
@@ -484,7 +481,7 @@ module Shared
                         Cylinder* cy = &cyl[c];
                         const float ivc = cy->ivo + cy->idur >= lay.cyc ? cy->ivo + cy->idur - lay.cyc : cy->ivo + cy->idur;
                         if (cy->ang > ivc && cy->ang < cy->sparkAt)
-                            comb.charge(&cyl[c], c, fuelUse, intk.pPlenum, rpm, smCR, crBs, burnK, set.pops, set.rough, set.timing);
+                            comb.charge(&cyl[c], c, fuelUse, intk.pPlenum, crank.rpm, smCR, crBs, burnK, set.pops, set.rough, set.timing);
                     }
                 }
             }
@@ -517,11 +514,11 @@ module Shared
     void control16()
     {
         const float d16 = 16.0f * dt;
-        rpm = omega * 9.5492966f;
-        heat.control(d16, set.ambF, vTotal, ecu.state, rpm, omega);
+        crank.sense();
+        heat.control(d16, set.ambF, vTotal, ecu.state, crank.rpm, crank.omega);
         for (int c = 0; c < lay.n; ++c)
             cyl[c].tw = heat.tSurf;
-        ecu.sense(d16, rpm, idleBase, set.idle, set.cam, heat.coldIdle(fuelUse), redBase, set.redline);
+        ecu.sense(d16, crank.rpm, idleBase, set.idle, set.cam, heat.coldIdle(fuelUse), redBase, set.redline);
         // a new layout, or a new size once its dial rests, under the fade (renderAt makes it at the fade's quiet)
         if (fabsf(set.size - sizeSeen) > 0.0005f)
         {
@@ -559,24 +556,24 @@ module Shared
         }
         float ped = ecu.driver(d16, set.drive, set.bend, set.bendRange, set.keys, lay.rotary, lay.n);
         if (set.drive != 0)
-            ped = car.drive16(set.drive, d16, jBase * expf(1.6094379f * (set.inertia - 0.5f)), peakTorque(), gearTq, set.mass,
-                              ecu.redRpm, lay.bike, set.clutch, set.brake, set.lever, set.buttons, set.gas, rpm, ecu.idleRpm, ecu.rpmAvg);
+            ped = car.drive16(set.drive, d16, mech.jBase * expf(1.6094379f * (set.inertia - 0.5f)), peakTorque(), gearTq, set.mass,
+                              ecu.redRpm, lay.bike, set.clutch, set.brake, set.lever, set.buttons, set.gas, crank.rpm, ecu.idleRpm, ecu.rpmAvg);
         else
             car.lastDrive = 0;
-        if (ecu.control(d16, ped, set.drive, set.modwheel, set.pressure, rpm, fuelUse, heat.warm, car.shiftCut, car.gear,
-                        set.clutch, omega))
-            omega = 0.0f;
+        if (ecu.control(d16, ped, set.drive, set.modwheel, set.pressure, crank.rpm, fuelUse, heat.warm, car.shiftCut, car.gear,
+                        set.clutch, crank.omega))
+            crank.omega = 0.0f;
         // the exhaust's mass flow and its power, for the turbo
         exh.flowRate();
         const float mRef = 1.2f * vTotal * ecu.redRpm / 120.0f * 0.9f;
         boost.control(aspUse, boost.smTb, exh.mdot * exh.tPort / 1100.0f / fmaxf(mRef, 1.0e-6f), fuelUse != 0 ? 1.0f : ecu.throttle, ecu.throttle,
-                   set.bov, rpm / ecu.redRpm, rpm * 0.016666667f, boost.smTs, d16);
+                   set.bov, crank.rpm / ecu.redRpm, crank.rpm * 0.016666667f, boost.smTs, d16);
         intk.pBox = 101325.0f + 100000.0f * boost.boost;
         intk.tAir = heat.tAmb + 5.0f * heat.warm + 25.0f * boost.boost;
         exh.gas(d16);
         const float surf = 0.022f * expf(0.6666667f * logf(cyl[0].vd / 0.0005f));
         for (int c = 0; c < lay.n; ++c)
-            cyl[c].hA = 260.0f * surf * (0.6f + rpm / 2500.0f);
+            cyl[c].hA = 260.0f * surf * (0.6f + crank.rpm / 2500.0f);
         exh.heatUp(d16, bore, set.drive != 0 ? fabsf(car.v) : 0.0f);
         pipes();
         exh.flow16();
@@ -593,7 +590,7 @@ module Shared
     float peakTorque()
     {
         const float b = aspUse == 0 ? 0.0f : (aspUse == 4 ? 0.25f + 0.75f * set.turbo : 0.35f + 1.05f * set.turbo);
-        return 1.6f * idleTq * (1.0f + 0.8f * b);
+        return 1.6f * mech.idleTq * (1.0f + 0.8f * b);
     }
 
     // ---- one sample ----
@@ -604,10 +601,7 @@ module Shared
         exh.read();
         intk.read(np);
         // the crank
-        const float dDeg = omega * dt * 57.2957795f;
-        theta += dDeg;
-        if (theta >= 2160.0f)
-            theta -= 2160.0f;
+        const float dDeg = crank.advance(dt);
         // the cylinders
         float qe[12];
         float qi[12];
@@ -618,10 +612,10 @@ module Shared
         }
         float torque = 0.0f;
         float dps = 0.0f;
-        const float clickAmp = 0.15f + 0.5f * expf(0.8f * logf(fmaxf(fminf(rpm / 4000.0f, 1.6f), 0.01f)));
+        const float clickAmp = 0.15f + 0.5f * expf(0.8f * logf(fmaxf(fminf(crank.rpm / 4000.0f, 1.6f), 0.01f)));
         // (a piston's slap: its skirt hits the bore as the side thrust changes sides at the top, harder with the gas's
         // pressure there and the piston's speed)
-        const float slapAmp = 0.4f + 0.6f * fminf(rpm / 3000.0f, 2.0f);
+        const float slapAmp = 0.4f + 0.6f * fminf(crank.rpm / 3000.0f, 2.0f);
         const float tH = exh.tUse[0];
         // faces that share a port (a rotary's) are solved together: each sees the pipe as the others' flows leave it
         float eShare[12];
@@ -637,7 +631,7 @@ module Shared
             }
             for (int c = 0; c < lay.n; ++c)
             {
-                float a = theta + lay.fire[c];
+                float a = crank.theta + lay.fire[c];
                 while (a >= lay.cyc)
                     a -= lay.cyc;
                 const int pi = lay.port[c];
@@ -650,7 +644,7 @@ module Shared
         for (int c = 0; c < lay.n; ++c)
         {
             Cylinder* cy = &cyl[c];
-            float a = theta + lay.fire[c];
+            float a = crank.theta + lay.fire[c];
             while (a >= lay.cyc)
                 a -= lay.cyc;
             const int pi = lay.port[c];
@@ -672,7 +666,7 @@ module Shared
             }
             if (cy->ivcNow)
             {
-                comb.charge(&cyl[c], c, fuelUse, intk.pPlenum, rpm, smCR, crBs, burnK, set.pops, set.rough, set.timing);
+                comb.charge(&cyl[c], c, fuelUse, intk.pPlenum, crank.rpm, smCR, crBs, burnK, set.pops, set.rough, set.timing);
                 ex.valveClick(clickAmp);
             }
             if (cy->evcNow)
@@ -686,7 +680,7 @@ module Shared
                 ex.injectorClick(1.0f);
                 // (its premixed burn starts: how fast it raises the pressure, Pa/s, over an idling diesel's 5 bar a
                 // millisecond, as its 0.55th power: the combustion noise some 12 dB up at full load at 2500 rpm)
-                const float rise = 0.3f * cy->beta * cy->qTot / cy->vc * 6.0f * fmaxf(rpm, 100.0f) / cy->burnDur;
+                const float rise = 0.3f * cy->beta * cy->qTot / cy->vc * 6.0f * fmaxf(crank.rpm, 100.0f) / cy->burnDur;
                 ex.clatterClick(expf(0.55f * logf(fmaxf(rise * 2.0e-9f, 1.0e-6f))) * clatSize);
             }
             if (cy->knockNow)
@@ -701,36 +695,19 @@ module Shared
         for (int i = 0; i < np; ++i)
             rNear[i] = intk.run[i].near + intk.run[i].z * qi[i];
         intk.plenum(np, rNear, fuelUse, ecu.throttle, ecu.bypass, dt);
-        // the crank: torque, friction, the load, the starter. The friction is the rubbing and the accessories only (the
-        // pumping is the gas exchange's, simulated): about 1.3 bar of mean pressure at 2000 rpm, 1.9 at 4800, 2.6 at
-        // 6800, below the older correlation's 1.5, 2.6 and 3.7, which counted the pumping as well (with it, and 70 % of
-        // the fuel's heat, a 1.5 L four made 95 N m where the real one makes 144; now some 120)
-        // (the rubbing goes with the pistons' speed: a longer stroke's, BORE/STROKE, faster at the same revs)
-        const float nk = rpm * 0.001f * strokeK;
-        // (cold, its thick oil rubs more: as the thickness's 0.15th power, 1.4 times at 80 F, twice at 20 F, at most 3)
-        const float fmep = (1.0f + 0.10f * nk + 0.02f * nk * nk) * 100000.0f * fminf(expf(0.15f * logf(heat.viscK)), 3.0f)
-                           * (fuelUse != 0 ? 1.0f + 0.025f * fmaxf(smCR - 18.0f, 0.0f) : 1.0f);
-        const float tf = fmep * vTotal * 0.0795775f * fminf(omega / 5.0f, 1.0f);
-        heat.fricJ += tf * omega * dt;
-        // (a supercharger takes what it pumps from the crank: its boost times the air it moves, at some 60 %)
-        const float tsc = aspUse == 4 ? boost.boost * 1.0e5f * vTotal * (1.0f + boost.boost) * 0.1326f * fminf(omega / 5.0f, 1.0f) : 0.0f;
-        const float tl = set.load * idleTq * (0.15f + 0.85f * (rpm / ecu.redRpm) * (rpm / ecu.redRpm));
-        // (a cold battery gives less: 65 % at -40 F, all of it from 80 F)
-        const float bat = 1.0f - 0.35f * (1.0f - fminf(fmaxf((heat.tAmb - 233.15f) / 66.85f, 0.0f), 1.0f));
-        const float ts = ecu.starterOn * 4.5e5f * cyl[0].vd * expf(0.9f * logf(smCR / 10.0f)) * fmaxf(1.0f - omega / 30.0f, 0.0f) * bat;
+        mech.torques(crank.rpm, crank.omega, strokeK, heat.viscK, fuelUse, smCR, vTotal, set.load, ecu.redRpm, heat.tAmb, ecu.starterOn,
+                     cyl[0].vd);
+        heat.fricJ += mech.tf * crank.omega * dt;
+        const float tsc = boost.drag(aspUse, vTotal, crank.omega);
         if (set.drive == 0)
-        {
-            const float j = jBase * expf(1.6094379f * (set.inertia - 0.5f)) * (1.0f + 5.0f * set.load);
-            omega = fmaxf(omega + (torque - tf - tsc - tl + ts) / j * dt, 0.0f);
-        }
+            crank.bench(torque, mech.tf, tsc, mech.tl, mech.ts, mech.inertia(set.inertia, set.load), dt);
         else
-            omega = car.step(omega, torque - tf - tsc + ts, dt);      // (the car is the load: the load dial rests)
-        tqMean += (torque - tqMean) * 0.0005f;
-        tqNow = torque - tqMean;
+            crank.omega = car.step(crank.omega, torque - mech.tf - tsc + mech.ts, dt);      // (the car is the load: the load dial rests)
+        crank.ripple(torque);
         const float drop = fminf(fmaxf(1.0f - intk.pPlenum / intk.pBox, 0.0f), 1.0f);
-        ex.tick(intk.qThr, drop, omega * 0.15915494f, dps);
-        boost.sound(omega * 0.15915494f, exh.mdot, set.bov);
-        ex.tickStarter(omega * 0.15915494f, ecu.starterOn);
+        ex.tick(intk.qThr, drop, crank.omega * 0.15915494f, dps);
+        boost.sound(crank.omega * 0.15915494f, exh.mdot, set.bov);
+        ex.tickStarter(crank.omega * 0.15915494f, ecu.starterOn);
     }
 
     // n of the host's samples, added into left and right: the engine's own when the host runs at its rate (96 kHz),
@@ -758,7 +735,7 @@ module Shared
     // n of the engine's own samples, added into left and right
     void renderAt(float* left, float* right, int n)
     {
-        idleTq = 0.6f * 1.0e6f * vTotal * 0.0795775f;     // about the torque at full load, for the load and the starter
+        mech.idleTq = 0.6f * 1.0e6f * vTotal * 0.0795775f;     // about the torque at full load, for the load and the starter
         int at = 0;
         while (at < n)
         {
@@ -792,7 +769,7 @@ module Shared
                 const float rd = set.drive != 0 ? car.road(v == 4 ? 0.45f : 1.0f) : 0.0f;
                 // (the fade's gain eased: a smooth step)
                 cutG = cutWant != 0 ? fmaxf(cutG - cutDn, 0.0f) : fminf(cutG + cutUp, 1.0f);
-                listen.mix(i, exh.outL, exh.outR, ex.intake, tqNow, ex.mech, ex.block, boost.turbo, ex.starter, ex.comb, exh.shell[0],
+                listen.mix(i, exh.outL, exh.outR, ex.intake, crank.tqNow, ex.mech, ex.block, boost.turbo, ex.starter, ex.comb, exh.shell[0],
                            lay.topo == 0 ? exh.shell[0] : exh.shell[1], set.drive, rd, cutG);
             }
             listen.finish(left, right, at, m);
@@ -803,7 +780,7 @@ module Shared
         else
             quiet += (float)n;
         // the panel's
-        showRpm = rpm;
+        showRpm = crank.rpm;
         showRed = ecu.redRpm;
         showGear = set.drive != 0 ? (float)car.gear : -2.0f;
         showKmh = set.drive != 0 ? car.kmh() : 0.0f;
@@ -816,7 +793,7 @@ module Shared
         if (set.drive != 0)
             showPedals = floorf(100.0f * fminf(fmaxf(set.brake, 0.0f), 1.0f) + 0.5f) + 1000.0f * floorf(100.0f * fminf(fmaxf(set.clutch, 0.0f), 1.0f) + 0.5f);
         // the cycle as it turns, eased toward a few a second at speed so the eye can follow the order
-        const float cycHz = rpm / 60.0f * 360.0f / lay.cyc;
+        const float cycHz = crank.rpm / 60.0f * 360.0f / lay.cyc;
         const float visHz = cycHz < 2.4f ? cycHz : fminf(2.4f * expf(0.25f * logf(cycHz / 2.4f)), 4.0f);
         showCycle += visHz * (float)n * dt;
         showCycle -= floorf(showCycle);
