@@ -120,3 +120,8 @@ seed is a four-rotor with every other field random (its listener's camera, the v
 P's naturally aspirated rotary (`archetypes/rotary-twin-na-side-port.json`, every model on), scaled to three and four
 rotors the same way, after 4845579 (4 runs; R 1840 ns drive-car, 1913 free-revs): twin 0.72 / 0.70 R, three rotors
 0.93 / 0.89 R, four rotors 1.13 / 1.07 R (drive-car / free-revs): about 0.2 R a rotor.
+
+**Note (about 18:00 UTC)**: since 6b7e4b7 `boost.model` 1 implies the builder's exhaust (`exhaust.model` 1). The
+"one switch at a time" row for `boost.model` above was measured before it (+0.14 R); with it, a boost.model 1 build
+also pays the builder's +0.13 to 0.14 R at the reference's topology. The "every switch on" rows are unchanged (they
+had the builder on already, though it was not wired then: re-measure when the dual X is the typical build's).

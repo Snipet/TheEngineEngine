@@ -273,6 +273,7 @@ module Engine
         noise.rs = 123456789;
         intk.setup(rate);
         // the longest each pipe could be, cold (330 m/s), at this rate
+        exh.implied = builderImplied();
         exh.setup(rate, &noise, &lay, &heat, &spec.exhaust, &tel.exhaust, &scope, &boost);
         ex.setup(rate, 90.0f, &spec.voices);
         boost.setup(rate, &ex.noise);
@@ -547,6 +548,14 @@ module Engine
     bool woschniWalls()
     {
         return spec.engine.wallHeat == 1 || spec.fuel.model != 0;
+    }
+
+    // The builder's exhaust runs with exhaust.model 1 or boost.model 1 (the lead's ruling, 24 Nov: a turbo whose
+    // cylinders exhaust into pipes that never feel its housing is known-wrong physics): boost.model's part of that
+    // decision, as the fade makes it, handed to Exhaust (exh.implied; Exhaust::wanted)
+    int builderImplied()
+    {
+        return spec.boost.model != 0 ? 1 : 0;
     }
 
     // The one decision handed on: Combustion's share of the fuel's heat (comb.walls) and the cylinders' intake backflow
@@ -1626,6 +1635,7 @@ module Engine
         modelUse[9] = applyModel(9, &spec.sound.model, &spec.sound.rev);
         modelUse[10] = applyModel(10, &spec.engine.cycle, &spec.engine.rev);
         physicalCylinder();
+        exh.implied = builderImplied();
     }
 
     // A paddle's press as the reference's wheel made it: its button down until Car's shift logic (drive16) has seen
