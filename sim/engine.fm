@@ -1593,6 +1593,10 @@ module Engine
         holdModel(8, &spec.engine.wallHeat, &spec.engine.rev);
         holdModel(9, &spec.sound.model, &spec.sound.rev);
         holdModel(10, &spec.engine.cycle, &spec.engine.rev);
+        // (the decisions the switches make, taken again each call: a switch set while the engine is stopped is taken at
+        // once above, with no configure to follow it; while running a held switch leaves them as they were)
+        physicalCylinder();
+        exh.implied = builderImplied();
     }
 
     // Section k's model switch as the host wrote it: stopped, taken at once; running, a change held until the fade's
