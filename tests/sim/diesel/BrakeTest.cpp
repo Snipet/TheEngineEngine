@@ -207,6 +207,13 @@ TEST_CASE("diesel brake: card G's butterfly as the exhaust brake holds its back 
             CHECK(e.tel("exhaust.pFlap") > 150000.0);
             CHECK(e.tel("exhaust.pFlap") < 450000.0);
             CHECK(e.tel("ecu.backPressure") < 1.0);
+            // every D2 field switched off while it is shut: the flap is released, not left stuck
+            e.spec("ecu.exhaustBrake", 0);
+            e.spec("ecu.engineBrake", 0);
+            e.spec("ecu.governor", 0);
+            REQUIRE(e.run(1.0));
+            CHECK(e.get("hd.on") == 0.0);
+            CHECK(e.tel("exhaust.flap") < 0.05);
         }
     }
     CHECK(kw[1] > kw[0] + 40.0);

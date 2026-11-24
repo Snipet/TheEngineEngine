@@ -429,9 +429,13 @@ SPRINGS = {
 }
 
 
-PORTS = {"wedge": (1.2, 1.35), "high": (1.65, 1.8), "race": (1.75, 1.9)}
+PORTS = {"wedge": (1.15, 1.3), "high": (1.65, 1.8), "race": (1.75, 1.9)}
+# N1's values with the charge heating and the conserving intake in (measured peak torque over target's middle:
+# flat six 1.35, VR6 1.30, 7.0 V8 1.26, pushrod V6 1.25, small block 1.14): stock two-valve wedge and pushrod
+# heads 1.15/1.3; a great two-valve (the 7.0, the air-cooled six) and production four-valves at the default
+# 1.35/1.5; high-output four-valves 1.65/1.8; the rally five 1.75/1.9
 HEADS = {"big-block-74-pushrod-v8": "wedge", "small-block-57-carb": "wedge", "supercharged-v8-62": "wedge",
-         "pushrod-v6-38": "wedge", "vr6-28": "wedge", "big-bore-70-pushrod-v8": "high", "flat-plane-v8-45": "high",
+         "pushrod-v6-38": "wedge", "vr6-28": "wedge", "flat-plane-v8-45": "high",
          "v10-52": "high", "v12-65": "high", "straight-six-32-high-rev": "high", "two-stage-cam-20": "high",
          "flat-plane-v8-39-twin-turbo": "high", "inline-five-turbo-rally": "race"}
 for _a in A:
@@ -439,7 +443,7 @@ for _a in A:
         _a["ports"] = HEADS[_a["slug"]]
 # sports exhausts on the tuned engines (N1: as built every archetype breathes through a road converter and a
 # chambered muffler, 154 kPa at the six's port at 7600 rpm against 10 to 30 kPa over the air at rated power)
-SPORTS = ("straight-six-32-high-rev", "flat-plane-v8-45", "v10-52", "v12-65", "two-stage-cam-20",
+SPORTS = ("straight-six-32-high-rev", "flat-plane-v8-45", "v12-65", "two-stage-cam-20",
           "flat-plane-v8-39-twin-turbo", "big-bore-70-pushrod-v8", "inline-five-turbo-rally")
 for _a in A:
     if _a["slug"] in SPORTS:
@@ -485,6 +489,10 @@ def build(a):
                  exDurSeat=de, exDur1mm=d1e, exLift=le / 1000.0, exCentre=ce)
         if "phase" in a:
             v["inPhaseRange"], v["exPhaseRange"] = a["phase"]
+            # a phased intake parks late, as real phasers lock at their retarded end, and advances under load:
+            # the fixed-cam centre plus 20 degrees, at most half its range (N1: the four-cam 5.0 parked at its fixed
+            # centre had 38 degrees of overlap at idle and hunted 455 to 515 rpm; 20 later it idles 700, sd 6)
+            v["inCentre"] = ci + min(20.0, a["phase"][0] / 2.0)
         # port quality by head (N1, from card E's calibration: q 1.35 is a stock 232 CFM small-block head; racing
         # ports flow 20 to 30 % more, Heywood fig. 6-18): two-valve wedge and pushrod heads 1.2/1.35, production
         # four-valve 1.35/1.5 (the default), high-output four-valve 1.65/1.8, race 1.75/1.9
@@ -515,10 +523,6 @@ def build(a):
         # 3.2 six (best VE at 5000 rpm on 0.50 m, 6000-7000 on 0.35, 4000-4500 on 0.70), L = 0.50 (5000 / rpm)^1.3
         lo, hi = TORQUE_PEAK[a["slug"]]
         i["runnerLength"] = round(min(max(0.50 * (5000.0 / (0.5 * (lo + hi))) ** 1.3, 0.22), 0.9), 2)
-        if a["layout"].startswith("V8"):
-            # a V8 on runners over 0.5 m does not start warm today (the four-cam 5.0 at 0.50 and 0.57, the 7.0 at
-            # 0.53; both start at 0.45: the intake's backflow, N1's): held at 0.45 m until the intake conserves
-            i["runnerLength"] = min(i["runnerLength"], 0.45)
     i.update(a.get("intake", {}))
 
     bo = {"model": "Machine", "kind": "Natural", "level": 0.0, "blowOff": 0.7}
