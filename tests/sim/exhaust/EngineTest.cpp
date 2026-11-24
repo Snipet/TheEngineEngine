@@ -295,3 +295,4 @@ TEST_CASE("every exhaust build plays", "[exhaust][engine][builds]")
     }
     CHECK(n >= 8);
 }
+

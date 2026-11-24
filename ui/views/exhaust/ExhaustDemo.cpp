@@ -323,10 +323,13 @@ namespace tee::ui::exhaust
         }
     }
 
-    void exhaustDucts(const ExhaustBuild& b, double phase, double rpm, double load, float* used, float* nearP, float* farP)
+    void exhaustDucts(const ExhaustBuild& b, double phase, double rpm, double load, float* used, float* nearP, float* farP,
+                      float* midP)
     {
+        float midOwn[84];
+        float* mid = midP != nullptr ? midP : midOwn;
         for (int i = 0; i < 84; ++i)
-            used[i] = nearP[i] = farP[i] = 0.0f;
+            used[i] = nearP[i] = farP[i] = mid[i] = 0.0f;
         const double deg = phase * b.cycle;
         const double degPerMetre = rpm * 6.0 / 520.0;   // a pulse's travel at some 520 m/s, in crank degrees a metre
         double side[2] = { 0.0, 0.0 };
@@ -337,6 +340,7 @@ namespace tee::ui::exhaust
             used[i] = 1.0f;
             nearP[i] = static_cast<float>(blowdown(a, load));
             farP[i] = static_cast<float>(0.75 * blowdown(a - b.primLen[k] * degPerMetre, load));
+            mid[i] = static_cast<float>(0.87 * blowdown(a - 0.5 * b.primLen[k] * degPerMetre, load));
             const int c = b.portTo[k];
             if (c >= 0)
             {
@@ -352,7 +356,9 @@ namespace tee::ui::exhaust
             used[base] = used[base + 11] = 1.0f;
             nearP[base] = static_cast<float>(0.6 * side[s]);
             farP[base] = static_cast<float>(0.35 * side[s] * std::cos(deg * 0.05));
+            mid[base] = static_cast<float>(0.45 * side[s] * std::cos(deg * 0.025));
             nearP[base + 11] = static_cast<float>(0.2 * side[s] * std::sin(deg * 0.04));
+            mid[base + 11] = static_cast<float>(0.1 * side[s] * std::sin(deg * 0.04 - 0.6));
             farP[base + 11] = 0.0f;   // an open end
         }
     }
@@ -386,9 +392,9 @@ namespace tee::ui
             const auto ducts = [](int which) {
                 return [which](const DemoEngine& e, float* out, int max) {
                     const exhaust::EngineFields doc(e, exhaust::hookInfos());
-                    float u[84], n[84], f[84];
-                    exhaust::exhaustDucts(exhaust::resolveExhaust(doc), e.phase(), e.rpm(), e.throttle(), u, n, f);
-                    const float* src = which == 0 ? u : which == 1 ? n : f;
+                    float u[84], n[84], f[84], md[84];
+                    exhaust::exhaustDucts(exhaust::resolveExhaust(doc), e.phase(), e.rpm(), e.throttle(), u, n, f, md);
+                    const float* src = which == 0 ? u : which == 1 ? n : which == 2 ? f : md;
                     const int m = std::min(max, 84);
                     for (int i = 0; i < m; ++i)
                         out[i] = src[i];
@@ -398,6 +404,7 @@ namespace tee::ui
             x.engine->addScope("ductUsed", ducts(0));
             x.engine->addScope("ductNear", ducts(1));
             x.engine->addScope("ductFar", ducts(2));
+            x.engine->addScope("ductMid", ducts(3));
         }
         if (x.engine != nullptr)
             for (const auto& [name, v0] : exhaust::exhaustLiveValues(3000.0, 0.5))
