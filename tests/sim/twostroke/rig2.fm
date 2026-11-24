@@ -18,6 +18,7 @@ module TsRig
     double tqSum;
     double trappedSum;
     double freshSum;
+    double freshSq;     // (and its square's: how much one cycle's differs from the next)
     double deliveredSum;
     double puritySum;
     double burnSum;     // each cycle's burned share (cBurn), its sum and its square's, and how many cycles alternated
@@ -26,6 +27,7 @@ module TsRig
     float burnLast;
     int cyc;
     int samples;
+    double pEpcSum;     // the port's pressure as the exhaust port closes, summed over the measured cycles
     float pPortMax;
     float pPortMin;
     float pCylMax;
@@ -68,11 +70,13 @@ module TsRig
         tqSum = 0.0;
         trappedSum = 0.0;
         freshSum = 0.0;
+        freshSq = 0.0;
         deliveredSum = 0.0;
         puritySum = 0.0;
         burnSum = 0.0;
         burnSq = 0.0;
         flips = 0;
+        pEpcSum = 0.0;
         burnLast = 1.0f;
         cyc = 0;
         samples = 0;
@@ -102,6 +106,9 @@ module TsRig
                 pPortMax = fmaxf(pPortMax, pp);
                 pPortMin = fminf(pPortMin, pp);
                 pCylMax = fmaxf(pCylMax, cy.p);
+                const float epc = 180.0f + 0.5f * exDur;
+                if (before < epc && theta >= epc)
+                    pEpcSum += (double)pp;
                 const int d = (int)theta;
                 trace[d] = pp;
                 traceCyl[d] = cy.p;
@@ -112,6 +119,7 @@ module TsRig
                 {
                     trappedSum += (double)cy.trapped;
                     freshSum += (double)cy.trappedFresh;
+                    freshSq += (double)cy.trappedFresh * (double)cy.trappedFresh;
                     deliveredSum += (double)cy.delivered;
                     puritySum += (double)cy.purity;
                     burnSum += (double)cy.cBurn;

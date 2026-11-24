@@ -80,6 +80,10 @@ namespace tee::player
 
         // ControlSink
         void setControls(const ControlsFrame&) override;
+        // A counter of the simulator's Controls the frame does not carry ("bakeMaps", "strip") pressed once: one more.
+        // False when the host's Controls have no such counter.
+        bool pressCounter(std::string_view name);
+        bool hasControl(std::string_view name) const;
 
         // AudioSource
         void prepare(double rate, int maxBlock) override;

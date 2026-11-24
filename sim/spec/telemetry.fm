@@ -2,6 +2,7 @@
 // after each call. Values are as they stand at the call's end, unless a label says mean or peak. Nested as the Spec is,
 // each section appended to by its Spec section's owner; a label and a quantity make a gauge.
 #pragma once
+#include "limits.fm"
 
 enum
 {
@@ -99,7 +100,27 @@ module EcuTel
 {
     float knockRetard [[ui::label("Knock retard")]] [[ui::quantity("angle")]]
         [[ui::help("The spark taken back for knock")]];
-    float advance [[ui::label("Spark advance")]] [[ui::quantity("angle")]] [[ui::help("Cylinder 1's, degrees before top dead centre")]];
+    // ecu.model 1 and fuel.model 1 (card H): 0 under the reference's models where they do not apply
+    float advanceAsked [[ui::label("Spark asked")]] [[ui::quantity("angle")]] [[ui::help("Before the top: the map's, with the timing and every retard but knock's")]];
+    float advance [[ui::label("Spark")]] [[ui::quantity("angle")]] [[ui::help("Before the top: the last firing's, knock's retard taken")]];
+    float knockByCylinder [[ui::label("Knock retard by cylinder")]] [[ui::quantity("angle")]] [MAX_CYL];
+    int knock [[ui::label("Knocks")]] [[ui::help("A count: knocks heard since the start")]];
+    float lambdaTarget [[ui::label("Lambda asked")]] [[ui::quantity("ratio")]];
+    float lambda [[ui::label("Lambda")]] [[ui::quantity("ratio")]] [[ui::help("As a wide-band sensor in the collector reads it")]];
+    float injectorDuty [[ui::label("Injector duty")]] [[ui::quantity("fraction")]];
+    float fuelFlow [[ui::label("Fuel flow")]] [[ui::unit("kg/s")]];
+    float halfBurn [[ui::label("Half burned")]] [[ui::quantity("angle")]] [[ui::help("Degrees after the top, cylinder 1's last cycle")]];
+    float peakPressure [[ui::label("Peak pressure")]] [[ui::quantity("pressure")]] [[ui::help("Cylinder 1's last cycle")]];
+    float peakAngle [[ui::label("Peak at")]] [[ui::quantity("angle")]] [[ui::help("Degrees after the top")]];
+    int flags [[ui::label("ECU flags")]]
+        [[ui::help("1 limiter, 2 fuel cut, 4 spark cut, 8 overrun, 16 launch, 32 flat-shift, 64 anti-lag, 128 nitrous, 256 traction, 512 pit, 1024 knock retard")]];
+    float idleValve [[ui::label("Idle valve")]] [[ui::quantity("fraction")]];
+    float idleTarget [[ui::label("Idle speed")]] [[ui::quantity("rotation")]];
+    float boostTarget [[ui::label("Boost target")]] [[ui::quantity("pressure")]] [[ui::help("Over the air outside")]];
+    int state [[ui::label("ECU state")]] [[ui::choices("Stopped", "Cranking", "Running", "Running down")]];
+    float smoke [[ui::label("Smoke")]] [[ui::help("A diesel's filter smoke number, 0 to 10")]];
+    int limiter [[ui::label("Limiter")]] [[ui::help("1 while a limiter acts (rev, launch, flat-shift, pit)")]];
+    float load [[ui::label("Load")]] [[ui::quantity("ratio")]] [[ui::help("The maps' y axis now: the manifold over the air outside")]];
 };
 
 module CarTel

@@ -1,0 +1,144 @@
+// sound/voices.fm: the mechanical voices together (module Voices), as Extras runs them with spec.voices.model 1.
+//
+// Each voice is its own module in this directory, with its own noise stream (sim/README.md, "Noise": a voice added
+// never moves another's draws), its own state and its own output; this module only hands each its inputs every 16
+// samples and runs them each sample. What comes out, each a signal of its own with a place on the car for the
+// listener (card L):
+//   gearbox   the whine of the gearbox's meshes and its rattle in neutral          (the gearbox)
+//   axle      the final drive's whine                                              (the differential)
+//   front     the accessory belt, the cam drive, a supercharger's drive, the fan   (the front of the engine)
+//   head      the lifters' tick, the direct injectors                              (the head)
+//   tank      the fuel pump                                                        (the fuel tank, at the back)
+//   gate      the wastegate's chatter and an external gate's dump                  (the turbo)
+//   starter   the starter and its solenoid                                         (the flywheel's end of the block)
+// and `all`, their sum but the starter's, which Extras adds to the reference's mechanical sum (its starter replaces
+// the reference's). The levels are judgement, each beside the reference's own engine bay (docs/models/voices.md).
+#pragma once
+#include "osc.fm"
+#include "gears.fm"
+#include "drives.fm"
+#include "fan.fm"
+#include "fuel.fm"
+#include "valvegear.fm"
+#include "gate.fm"
+#include "starter.fm"
+#include "spec/voices.fm"
+
+module Voices
+{
+    float rate;
+    SineTable sn;
+    GearVoice gear;
+    DriveVoice drive;
+    FanVoice fan;
+    FuelVoice fuel;
+    ValveVoice valve;
+    GateVoice gate;
+    StarterVoice start;
+    int timing;         // the cam drive's kind (0 chain: the reference's)
+    int direct;         // direct injection (a gasoline engine's)
+    float hpPump;       // the high-pressure pump's tick, with direct injection
+    float kInj;
+    // out
+    float gearbox;
+    float axle;
+    float front;
+    float head;
+    float tank;
+    float gateOut;
+    float starter;
+    float all;
+
+    void setup(float rateIn)
+    {
+        rate = rateIn;
+        sn.setup();
+        gear.setup(rate, &sn);
+        drive.setup(rate, &sn);
+        fan.setup(rate, &sn);
+        fuel.setup(rate, &sn);
+        valve.setup(rate);
+        gate.setup(rate, &sn);
+        start.setup(rate, &sn);
+        clear();
+    }
+
+    void clear()
+    {
+        gear.clear();
+        drive.clear();
+        fan.clear();
+        fuel.clear();
+        valve.clear();
+        gate.clear();
+        start.clear();
+        timing = 0;
+        direct = 0;
+        hpPump = 0.0f;
+        kInj = 0.0f;
+        gearbox = 0.0f;
+        axle = 0.0f;
+        front = 0.0f;
+        head = 0.0f;
+        tank = 0.0f;
+        gateOut = 0.0f;
+        starter = 0.0f;
+        all = 0.0f;
+    }
+
+    bool busy()
+    {
+        return fuel.busy() || fan.turning() || start.busy();
+    }
+
+    // Every 16 samples, with spec.voices.model 1 (fade: every gain 0, to glide out before Extras stops calling).
+    // The arguments are Extras::control16's (sim/README.md)
+    void control16(VoicesSpec* s, float fade, float d16, int ignition, int state, float crankHz, float coolant, int driven,
+                   int boxKind, int truck, int gearIn, float wIn, float ratioTotal, float fd, float wOut, float torque,
+                   float peak, float engaged, int asp, float boostShare, float gateOpen, int gateExternal, float flowShare,
+                   int cylinders, float cycleDeg, float clatter, float displacement, int diesel)
+    {
+        const float all0 = fade * voiceGain(s->level);
+        // the gearbox
+        const int straight = s->gearCut == 2 ? 1 : (s->gearCut == 1 ? 0 : (boxKind == BOX_SEQUENTIAL || truck != 0 ? 1 : 0));
+        const float rb = fd > 0.0f ? ratioTotal / fd : 0.0f;
+        const float load = torque / fmaxf(peak, 1.0f);
+        gear.control(driven, boxKind, straight, gearIn, wIn, rb, fd, wOut, load, engaged, all0 * voiceGain(s->whine),
+                     all0 * voiceGain(s->axle), all0 * voiceGain(s->rattle), s->pinion);
+        // the front of the engine
+        timing = s->timing;
+        drive.control(crankHz, all0 * voiceGain(s->belt), all0 * voiceGain(s->timingLevel), timing, asp == 4 ? 1 : 0,
+                      s->blowerDrive, boostShare);
+        fan.control(d16, s->fan, crankHz, coolant, s->fanOn, s->fanBlades, all0 * voiceGain(s->fanLevel), ignition != 0 ? 1 : 0);
+        // fuel
+        direct = s->injection != 0 && diesel == 0 ? 1 : 0;
+        kInj = all0 * voiceGain(s->injectors);
+        hpPump = direct != 0 ? 0.5f * kInj : 0.0f;
+        fuel.control(d16, ignition, state, crankHz, s->prime, all0 * voiceGain(s->pump));
+        // the valvetrain
+        valve.control(s->lifters, s->lash, clatter, all0 * voiceGain(s->valveLevel));
+        // the wastegate
+        const int turbo = asp >= 1 && asp <= 3 ? 1 : 0;
+        const float firingHz = crankHz * (float)cylinders * 360.0f / fmaxf(cycleDeg, 1.0f);
+        gate.control(turbo, gateExternal, s->gateDump, gateOpen, flowShare, firingHz, all0 * voiceGain(s->gate));
+        // the starter
+        start.control(s->starter, s->starterPower, displacement, diesel, all0 * voiceGain(s->starterLevel));
+    }
+
+    // One sample, after the reference's engine bay. crankHz; dDeg: the crank's degrees this sample
+    void tick(float crankHz)
+    {
+        gear.tick(crankHz);
+        drive.tick(crankHz);
+        fan.tick();
+        fuel.tick();
+        gate.tick();
+        gearbox = gear.whine + gear.rattle;
+        axle = gear.axle;
+        front = drive.belt + drive.timingOut + drive.blower + fan.out;
+        head = valve.out + 0.6f * fuel.inject;
+        tank = fuel.pump;
+        gateOut = gate.out;
+        all = gearbox + axle + front + head + tank + gateOut;
+    }
+};

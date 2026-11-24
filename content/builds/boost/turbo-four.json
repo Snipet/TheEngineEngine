@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "2.0 inline four, turbo (the machine)",
-  "notes": "A 2 L four with one turbo as card F's machine (boost.model 1), sized at 0.55 of the match: the engine's port gas runs some 500 K, half a real one's, so the matched turbo makes little.",
+  "notes": "A 2 L four with one turbo as card F's machine (boost.model 1), its sizes matched to the engine.",
   "spec": {
     "engine": {
       "layout": "Inline 4",
@@ -10,8 +10,7 @@
     },
     "boost": {
       "kind": "Turbo",
-      "model": "Machine",
-      "size": 0.55
+      "model": "Machine"
     }
   }
 }
