@@ -74,9 +74,10 @@ and the lead (the session that wrote these files) settles what a card leaves ope
   on Linux at every push, and on macOS and Windows when the head commit's message contains `[soak]`. Each CI job's
   summary lists the default-run tests over 30 s with their package; the build steward tells their owners.
 - **A budget a package** (the rule's second half: tests under 30 s each do not by themselves bound the whole): the
-  fast tier's CPU-seconds on CI's Linux runner, the sum of a package's test times: `combo` 600; `null` 600 (the
-  guardian: left whole); `diesel`, `exhaust` and the host 250; every other package 150; the whole fast tier under
-  2400 (ten minutes of wall on four cores). What does not fit goes to the soak tier, by the owner's choice of what
+  fast tier's CPU-seconds on CI's Linux runner, the sum of a package's test times. The whole fast tier is capped at
+  2400 (ten minutes of wall on four cores), and that cap binds: it is shared out by the lead's weights scaled by
+  2400 / 4500: `null` 600 (the guardian, kept whole), `diesel`, `exhaust` and the host 135, every other package 80,
+  and `combo` what is left, 120. What does not fit goes to the soak tier, by the owner's choice of what
   guards most per second. `scripts/test-budget.sh <ctest log>` prints the table (each fast CI job's summary has it);
   run it on your own `ctest --preset dev | tee ctest.log` before a push that adds tests.
 
