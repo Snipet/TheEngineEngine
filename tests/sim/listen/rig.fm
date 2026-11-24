@@ -33,7 +33,7 @@ module LRig
     int moto;           // a motorcycle (package B2's), its tuck and its wheelie (degrees)
     float tuck;
     float lift;
-    int nanSrc;         // a slot (as src) also fed a NaN every sample, -1 none
+    int nanSrc;         // a slot (as src) also fed a NaN and an infinity on alternate samples, -1 none
     int extraPlace;     // src 13: the signal through Listen::extra at this place
     float shake;        // the free forces' amplitude (N), fed as a sine at freq into fy when src is 3
     // the test signal: src 0 the left tail, 1 the right, 2 the intake, 3 the torque (cabin), 4 mech, 5 block, 6 turbo,
@@ -150,7 +150,7 @@ module LRig
                 else
                     s[src < 0 ? 0 : (src > 10 ? 10 : src)] = x;
                 if (nanSrc >= 0 && nanSrc < 13)
-                    s[nanSrc] = sqrtf(-1.0f - x * x);
+                    s[nanSrc] = (i & 1) == 0 ? sqrtf(-1.0f - x * x) : 1.0f / (x * 0.0f);
                 ln.mix(i, s[0], s[1], s[2], s[3], s[4], s[5], s[6], s[7], s[8], s[9], s[9], driven, s[10], cutG, s[11], 0.0f, 0.0f,
                        0.0f, 0.0f, 0.0f, s[11], s[2], 0.0f, 0.0f);
             }

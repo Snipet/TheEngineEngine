@@ -29,6 +29,7 @@
 #pragma once
 
 #include "app/Cockpit.h"
+#include "app/LoadMeter.h"
 #include "app/Panes.h"
 #include "app/Workspace.h"
 #include "kit/bind/Binding.h"
@@ -217,7 +218,10 @@ namespace tee::ui
         std::vector<Button*> rail_;
         Widget* railMarks_ = nullptr;
         Label *name_ = nullptr, *sentence_ = nullptr, *status_ = nullptr;
-        Bar *level_ = nullptr, *load_ = nullptr, *limiter_ = nullptr;
+        Bar *level_ = nullptr, *limiter_ = nullptr;
+        LoadMeter* load_ = nullptr;       // the simulator's peak share of a core, its verdict, the dropouts
+        LoadAdvice* advice_ = nullptr;    // the sentence while the build does not fit at this quality
+        Button* adviceButton_ = nullptr;  // QUALITY: the settings page
         Button *undo_ = nullptr, *redo_ = nullptr;
         // the cockpit
         Button* start_ = nullptr;

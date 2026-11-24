@@ -1,0 +1,14 @@
+{
+  "format": "tee-scenario",
+  "version": 1,
+  "name": "stopped-switch",
+  "description": "card D (f89d40c): the key on, fuel.model 1 written while stopped at 0.1 s, the start at 0.2 s, the engine dyno at 3000 rpm full load from 2 s. On the default build: 533 N m at the tip, 443 before f89d40c (the walls counted twice, the backflow not conserved)",
+  "seconds": 6,
+  "events": [
+    {"t": 0, "ctl": {"mode": 0, "throttle": 0, "ignition": 1}},
+    {"t": 0.1, "spec": {"fuel.model": 1}},
+    {"t": 0.2, "ctl": {"ignition": 2}},
+    {"t": 1.2, "ctl": {"ignition": 1}},
+    {"t": 2.0, "ctl": {"mode": 2, "dynoSpeed": 314.16, "throttle": 1}}
+  ]
+}

@@ -131,6 +131,9 @@ namespace tee::ui
         // Where things are: a cell (column -1: the y header; row -1: the x header), the live cell (-1, -1: none).
         funkgui::Rect cellRect(int column, int row) const noexcept;
         bool liveCell(int& column, int& row) const noexcept;
+        // The lines the cells are on: 1, or for a table of one row (an array) too narrow for them, as many as keep a
+        // cell kGuiTableCellW wide and fit its height (GuiLayout.h's guiTableLines), with no y header column then.
+        int lines() const noexcept;
 
         void draw(funkgui::Canvas& c, const funkgui::Theme& th, bool focusRing) const override;
         funkgui::Cursor cursorAt(funkgui::Point p) const override;
