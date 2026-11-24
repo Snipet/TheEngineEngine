@@ -126,6 +126,30 @@ opening, every change made with the valve shut, all eight back under load.
   most 0.3) over 10 + 30 s degrees (at most 40), and `clatter` for the sound (**judgement**, all three). No damage.
   The power falling over must come out of the gas model (test 13, integrated).
 
+### Known offset: float speed
+
+The model floats some 25 % low in speed, so builds that must not float carry some 1.8 times a real engine's spring
+force (the speed goes as the force's square root: 1/0.75² ≈ 1.8). The cam generator is left as it is (the lead's
+ruling): its springs are the model's equivalent, not a catalogue's. Measured (card N1, `float.fm` on the generator's
+cams):
+
+| Spring rate N/mm | Load N | Float speed rpm |
+|---|---|---|
+| 124 | 774 | 6159 |
+| 60 | 580 | 4673 |
+| 75 | 650 | 5102 |
+
+At m_eff 0.32 kg, with a nose deceleration of 0.0169 m per crank rad² at the valve.
+
+Suspected causes, neither sourced:
+
+- The nose is some 2.4 times too sharp: the generator's lift curve decelerates harder over the nose than a real
+  cam's. A cam card with the acceleration curve, or Norton's *Cam Design and Manufacturing Handbook*, would settle it.
+- The pushrod train is too heavy: 0.20 kg here against some 0.14. Weighed parts (lifter, pushrod, rocker's share,
+  retainer, locks, a third of the spring) would settle it.
+
+The train mass changes only with a cited parts list.
+
 ## The flow bench (`bench.fm`)
 
 `Q = A(L) sqrt(2 dp / rho)`, dp 28 in of water (6.97 kPa), rho 1.204 kg/m^3; lifts 0.050 to 0.800 in, in m^3/s
