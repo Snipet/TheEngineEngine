@@ -8,6 +8,8 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <cmath>
+#include <cstdlib>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -16,10 +18,46 @@ namespace tee::test::h
     class Sim
     {
     public:
+        // One compile a process (docs/plan/01-rules.md section 3): the first Sim compiles sim/ and keeps that player for
+        // good (never deleted: a static owning a compiled program is destroyed after the JIT at exit on macOS); each
+        // later Sim resets it (every Spec and Controls field at its default, Engine::init again: core's "a kept player
+        // reset is a fresh player, to the bit" proves it). A Sim made while another is alive gets a fresh player of its
+        // own. TEE_SIM_FRESH=1 gives every Sim a fresh one (to tell a reset's fault from the model's).
         explicit Sim(const std::string& build = "v8")
         {
-            player = enginePlayer(48000.0);
+            static EnginePlayer* kept = nullptr;
+            static bool fresh = std::getenv("TEE_SIM_FRESH") != nullptr;
+            if (!fresh && !keptInUse())
+            {
+                if (kept == nullptr)
+                    kept = enginePlayer(48000.0).release();
+                else
+                    kept->reset(48000.0);
+                player = kept;
+                keptInUse() = true;
+                usesKept_ = true;
+            }
+            else
+            {
+                owned_ = enginePlayer(48000.0);
+                player = owned_.get();
+            }
             applyBuild(*player, engineBuild(*player, build));
+        }
+        Sim(Sim&& other) noexcept
+            : player(other.player), left(std::move(other.left)), right(std::move(other.right)), peak(other.peak),
+              finite(other.finite), owned_(std::move(other.owned_)), usesKept_(other.usesKept_)
+        {
+            other.player = nullptr;
+            other.usesKept_ = false;
+        }
+        Sim(const Sim&) = delete;
+        Sim& operator=(const Sim&) = delete;
+        Sim& operator=(Sim&&) = delete;
+        ~Sim()
+        {
+            if (usesKept_)
+                keptInUse() = false;
         }
 
         // Another build's fields over these (a car's part over an engine's: "cars/rwd-v8-coupe")
@@ -99,9 +137,18 @@ namespace tee::test::h
             set("ecu.maps." + map + "Auto", 0);
         }
 
-        std::unique_ptr<EnginePlayer> player;
+        EnginePlayer* player = nullptr;   // the kept player or owned_
         std::vector<float> left = std::vector<float>(512), right = std::vector<float>(512);
         double peak = 0.0;
         bool finite = true;
+
+    private:
+        static bool& keptInUse()
+        {
+            static bool inUse = false;
+            return inUse;
+        }
+        std::unique_ptr<EnginePlayer> owned_;
+        bool usesKept_ = false;
     };
 } // namespace tee::test::h
