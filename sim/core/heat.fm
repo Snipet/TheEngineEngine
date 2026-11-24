@@ -33,11 +33,25 @@ module Heat
     float ambSeen;      // AMBIENT as the engine last took it
     float ambSm;        // AMBIENT followed over some 2 s (the air's temperature does not jump: its pressure would)
     float runT;
+    // ---- the radiator's fan (the lead's ruling, 24 Nov: its thermoswitch a physical state here, package M's FanVoice
+    // reads it; it cools the radiator only under the physical switches, fanGate, so the reference stays to the bit) ----
+    int fanGate;        // 1: the fan's and the road's air set the radiator's (Engine sets it: engine.wallHeat 1 or fuel.model 1)
+    int fanSwitch;      // an electric fan's thermoswitch: on at its point, off 5 K below, and only with the key on
+    float fanLock;      // a viscous clutch's share, 0.25 cold to 0.9 at its point (its fluid's lag some 4 s)
+    float fanHz;        // the fan's turns a second
+    float roadSpeed;    // m/s through the grille (Engine sets it, driven under car.model 1)
+    float still;        // the radiator's air in still air with no fan, a share of a full electric fan's
 
     void setup()
     {
         tAmb = 300.0f;
         tCool = 300.0f;
+        fanGate = 0;
+        fanSwitch = 0;
+        fanLock = 0.25f;
+        fanHz = 0.0f;
+        roadSpeed = 0.0f;
+        still = 0.05f;
         tOil = 300.0f;
         tSurf = 300.0f;
         ambSeen = 80.33f;
@@ -65,6 +79,43 @@ module Heat
             }
         }
         ambSeen = ambF;
+    }
+
+    // Every 16 samples, before control: the fan as the coolant switches it. kind: 0 none, 1 viscous, 2 electric (FAN_*:
+    // spec.voices.fan); onAt: its point (K); crankHz; power: the key on. The thermoswitch and the clutch as FanVoice
+    // had them (sim/sound/fan.fm: an electric fan at 40 turns a second, up over 0.35 s, down over 1.2; a viscous
+    // fan at 1.1 the crank's speed times its lock), here so that the fan cools what switched it on
+    void fan16(float d16, int kind, float onAt, float crankHz, int power)
+    {
+        if (kind == 1)
+        {
+            const float x = fminf(fmaxf((tCool - (onAt - 15.0f)) / 15.0f, 0.0f), 1.0f);
+            fanLock += (0.25f + 0.65f * x - fanLock) * (1.0f - expf(-d16 / 4.0f));
+            fanSwitch = 0;
+            fanHz = 1.1f * crankHz * fanLock;
+        }
+        else if (kind == 2)
+        {
+            if (power == 0 || tCool < onAt - 5.0f)
+                fanSwitch = 0;
+            else if (tCool >= onAt)
+                fanSwitch = 1;
+            fanHz += ((fanSwitch != 0 ? 40.0f : 0.0f) - fanHz) * (1.0f - expf(-d16 / (fanSwitch != 0 ? 0.35f : 1.2f)));
+            if (fanHz < 0.5f && fanSwitch == 0)
+                fanHz = 0.0f;
+        }
+        else
+        {
+            fanSwitch = 0;
+            fanHz = 0.0f;
+        }
+    }
+
+    // The radiator's air, a share of a full electric fan's: still air's `still`, the fan or the road (15 m/s full) the
+    // rest; without the gate the literal 1, the reference's radiator (to the bit)
+    float radiatorAir()
+    {
+        return fanGate != 0 ? still + (1.0f - still) * fminf(fmaxf(fanHz / 40.0f, roadSpeed / 15.0f), 1.0f) : 1.0f;
     }
 
     // A cold engine's fast idle: its ECU idles it up to 500 rpm higher (a diesel's 250) as the coolant is colder than
@@ -96,7 +147,7 @@ module Heat
             const float litres = vTotal * 1000.0f;
             const float cHeat = 9000.0f * expf(0.9f * logf(fmaxf(litres, 0.05f)));
             const float open = fminf(fmaxf((tCool - 363.0f) / 12.0f, 0.0f), 1.0f);
-            const float ua = (10.0f + 600.0f * open) * expf(0.7f * logf(fmaxf(litres, 0.05f)));
+            const float ua = (10.0f + 600.0f * open * radiatorAir()) * expf(0.7f * logf(fmaxf(litres, 0.05f)));
             const float qIn = (0.4f * heatJ + 0.6f * fricJ) / dh;
             tCool = fminf(fmaxf(tCool + (qIn - ua * (tCool - tAmb)) * dh / cHeat, tAmb - 1.0f), 420.0f);
             tOil += (tCool + (state == 2 ? 10.0f : 0.0f) - tOil) * (1.0f - expf(-dh / 240.0f));

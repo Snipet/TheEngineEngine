@@ -822,3 +822,70 @@ TEST_CASE("a key on with the engine standing is silent with every voice silenced
             CHECK(worst < floorDb);
         }
 }
+
+TEST_CASE("a warm idle in still air cycles the radiator's fan, and the voices leave it as it was", "[core][engine][heat]")
+{
+    // (the lead's ruling, 24 Nov: the electric fan's thermoswitch is Heat's, on at 373 K and off 5 K lower with the key
+    // on; under the physical switches (engine.wallHeat 1) the radiator has `still` 0.05 of a full fan's air with its
+    // fan off. Measured over 600 s from 368 K ([.fan]): the default idling in still air cycles 367 to 373 K, 8
+    // switchings. Here from just over the switch: the fan comes on, cools the coolant 5 K, goes off and the coolant
+    // warms again; the same to the bit with voices on and off)
+    double onAt[2] = {-1, -1}, offAt[2] = {-1, -1}, end[2] = {0, 0}, low[2] = {1e9, 1e9};
+    for (int vo = 0; vo < 2; ++vo)
+    {
+        Bench b("default");
+        std::string e;
+        REQUIRE(b.player().setSpec("engine.wallHeat", 1, e));
+        REQUIRE(b.player().setSpec("voices.model", vo, e));
+        b.start();
+        b.write("heat.tCool", 373.5); b.write("heat.tOil", 378.0); b.write("heat.tSurf", 455.0); b.write("heat.warm", 1.0); b.write("heat.warmS", 1.0);
+        double t = 0.0;
+        int last = 0;
+        b.play(30.0, [&] {
+            t += 512.0 / 48000.0;
+            const int on = int(b.field("heat.fanSwitch"));
+            if (on != 0 && last == 0 && onAt[vo] < 0)
+                onAt[vo] = t;
+            if (on == 0 && last != 0 && offAt[vo] < 0)
+                offAt[vo] = t;
+            last = on;
+            low[vo] = std::min(low[vo], b.field("heat.tCool"));
+        });
+        end[vo] = b.field("heat.tCool");
+        std::printf("fan, voices %d: on at %.1f s, off at %.1f s, the coolant down to %.3f K, %.3f K at 30 s\n", vo, onAt[vo],
+                    offAt[vo], low[vo], end[vo]);
+    }
+    CHECK(onAt[0] > 0.0);
+    CHECK(offAt[0] > onAt[0]);
+    // (off under 368 K, then warming again in still air toward its switch: the next cycle begun)
+    CHECK(low[0] < 368.0);
+    CHECK(end[0] > low[0] + 0.5);
+    CHECK(onAt[1] == onAt[0]);
+    CHECK(offAt[1] == offAt[0]);
+    CHECK(end[1] == end[0]);
+    CHECK(low[1] == low[0]);
+}
+
+TEST_CASE("a 2 L engine warms from 20 to 90 C in some 8 minutes at idle, the fan's switch not reached", "[core][engine][heat][nightly]")
+{
+    // (sim/core/heat.fm's documented warm-up, under the physical switches (engine.wallHeat 1), the radiator's air the
+    // fan's: the thermostat opens from 363 K, so the fan, at 373, never comes in on the way)
+    Bench b("archetypes/turbo-four-20-gdi");
+    std::string e;
+    REQUIRE(b.player().setSpec("engine.wallHeat", 1, e));
+    REQUIRE(b.player().setSpec("env.temperature", 293.15, e));
+    REQUIRE(b.player().setSpec("car.model", 0, e));
+    b.start();
+    double t = 0.0, at90 = -1.0;
+    int fan = 0;
+    b.play(900.0, [&] {
+        t += 512.0 / 48000.0;
+        if (at90 < 0.0 && b.field("heat.tCool") >= 363.15)
+            at90 = t;
+        fan |= int(b.field("heat.fanSwitch"));
+    });
+    std::printf("2 L at idle from 20 C: 90 C at %.0f s (%.1f min), the fan %s\n", at90, at90 / 60.0, fan ? "came on" : "stayed off");
+    CHECK(at90 > 5.0 * 60.0);
+    CHECK(at90 < 12.0 * 60.0);
+    CHECK(fan == 0);
+}
