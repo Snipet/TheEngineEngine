@@ -177,19 +177,25 @@ def targets(slug, b):
             source="VE's shape: below the torque peak it falls away, the more so the hotter the cam (%s, ch. 6); "
                    "measured at %d rpm" % (HEYWOOD, lo_rpm))
     tport = [850, 1100] if diesel else [1100, 1300]
-    add(name="Port gas at full load", scenario=SC + "p-full-load-%d.json" % fl, tel="exhaust.portTemperature",
+    add(name="Port gas at full load", scenario=SC + "p-full-load-%d.json" % fl, tel="exhaust.portThermocouple",
         measure="mean", during=[8, 10], range=tport, unit="K",
-        source=("the gas at a diesel's exhaust valve at full load, before the port and pipe cool it: some 850 to 1100 K "
-                "(judgement: the header's 700 to 950 K, below, plus the port's cooling; %s, ch. 14)" if diesel else
-                "the gas at the exhaust valve at full load, before the port and pipe cool it: some 1100 to 1300 K for a "
-                "spark-ignition engine (%s, ch. 14; card C's target on default.json, which this follows)") % HEYWOOD)
+        source=("what a thermocouple at a diesel's exhaust port reads at full load (a time mean, below the gas's mass "
+                "mean: the blowdown is most of the mass and little of the time): some 850 to 1100 K (judgement; %s, ch. "
+                "14); tel.exhaust.portThermocouple, card G's mixing cup" if diesel else
+                "what a thermocouple at the exhaust port reads at full load (a time mean, below the gas's mass mean): "
+                "some 1100 to 1300 K for a spark-ignition engine (%s, ch. 14; card C's target on default.json); "
+                "tel.exhaust.portThermocouple, card G's mixing cup") % HEYWOOD)
     thead = [700, 950] if diesel else [900, 1100]
-    add(name="Header gas at full load", scenario=SC + "p-full-load-%d.json" % fl, tel="exhaust.headerTemperature",
+    add(name="Header gas at full load", scenario=SC + "p-full-load-%d.json" % fl, tel="exhaust.headerThermocouple",
         measure="mean", during=[8, 10], range=thead, unit="K",
         source=("a thermocouple a little way down a diesel's manifold reads some 700 to 950 K at full load (makers' "
-                "pre-turbine limits near 1000 K; %s, ch. 14)" if diesel else
+                "pre-turbine limits near 1000 K; %s, ch. 14); tel.exhaust.headerThermocouple" if diesel else
                 "a thermocouple a little way down a primary reads 900 to 1100 K at full load on a petrol engine (makers' "
-                "exhaust-gas-temperature data; %s, ch. 14); n/a until the exhaust reports it") % HEYWOOD)
+                "exhaust-gas-temperature data; %s, ch. 14); tel.exhaust.headerThermocouple") % HEYWOOD)
+    add(name="Port gas, mass mean (information)", scenario=SC + "p-full-load-%d.json" % fl,
+        tel="exhaust.portTemperature", measure="mean", during=[8, 10], range=[0, 3000], unit="K",
+        source="the gas's mass (enthalpy) mean at the port, kept for information: above a thermocouple's reading, not "
+               "a target (card G, f703892)")
 
     # ---- the car ----------------------------------------------------------------------------------------------
     pmid = 0.5 * (plo + phi)
