@@ -84,7 +84,7 @@ clutch curve and band; the pump's speeds and vane count; the gate's chatter law.
 
 ## Not done
 
-- The key-on prime is heard only once Engine renders before a start (asked of card D: `sounding = 1` on the
-  ignition's rise with model 1, `audible() || ex.busy()`); until then it plays from the start key.
-- Card F's `boost.model` 1 gate (`telGate`, external gate kind) is not wired: `gateExternal` is passed 0 and the
-  opening is the reference turbo's estimate. A spider-gear voice (cornering) waits for steering.
+- A spider-gear voice (the differential's own gears, cornering) waits for steering.
+- Done since the first handoff: the key-on prime (card D renders from the ignition's rise; test `engine: the fuel
+  pump's prime`), card F's gate (`telGate`, `spec.boost.gate`; test `engine: card F's wastegate`), the intake's own
+  sound (`intake:`), the motorcycle's voices and gearbox (`bike:`, `engine: a naked twin's`, `engine: a bike's`).
