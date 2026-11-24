@@ -1,0 +1,422 @@
+// cylinder2.fm: one cylinder of a crankcase-scavenged two-stroke engine, as its gas and its crankcase's.
+//
+// The cycle is one turn of the crank (360 degrees, 0 at top dead centre). The piston itself is the valve: on its way
+// down it uncovers the exhaust port (its top edge highest: it opens first, `exhaustDur` degrees about bottom dead
+// centre) and then the transfer ports (`transferDur`), whose windows' areas are their widths times how far below their
+// top edges the piston's crown has gone. Under the piston the crankcase is a second volume, pumped by the piston's
+// underside: as the piston rises it draws the fresh mixture (air with its fuel and oil, from the carburettor) in through
+// a reed valve (petals a pressure drop opens, with a little lag) or a rotary disc (open over a window of crank angle);
+// as it falls it compresses it (the crankcase's compression ratio, `crankcaseRatio`, its largest volume over its
+// smallest), and once the transfers open the mixture flows up through them into the cylinder and pushes the burned
+// gas out of the exhaust: the scavenging.
+//
+// Scavenging is a blend of its two limits: perfect displacement (the fresh charge pushes the burned gas out ahead of it
+// and none of it leaves until the burned gas has) and perfect mixing (it mixes at once, and what leaves is the mixture),
+// in proportion `mixing`; and a share of what the transfers deliver, `shortCircuit`, goes straight across to the exhaust
+// port and out, first. What leaves through the exhaust is remembered with its fresh share (as the reference's cylinder
+// remembers its burned share), so what a returning wave from the pipe pushes back in before the port closes is that
+// mixture: the expansion chamber's "plugging" pulse recovering the charge that had run into the header. The charge
+// trapped when the exhaust port closes, and its purity (the fresh share of it), set the burn: the reference's Wiebe
+// curve after the spark, of the fuel in the trapped fresh charge, all of it if the purity is good and less and less as
+// the burned share passes the reference's limit of dilution: an engine at light load, poorly scavenged, misfires, keeps its unburned charge,
+// fires the next turn: four-stroking, from the model, not scripted.
+//
+// The gas's energy is the reference's filling-and-emptying bookkeeping (sim/ref/cylinder.fm): each flow carries its
+// own gas's enthalpy at its own ratio of specific heats, the walls take heat (the reference's coefficient), and the
+// pressure follows from the energy and the volume. The exhaust port's flow is solved with its pipe at once (the
+// reference's Valve, sim/ref/pipes.fm); the transfers and the inlet are compressible orifices between volumes, choked
+// below the critical ratio. The torque on the crank is the cylinder's pressure less the crankcase's, on the piston.
+//
+// What it leaves out: the transfers' own duct (their gas's inertia), the scavenging's dependence on the ports' angles
+// (it is the two fields), the fuel's evaporation and the oil, the crankcase's heat, the piston's rings' leakage.
+#pragma once
+#include "../../ref/pipes.fm"
+#include "../kinematics.fm"
+#include "spec2.fm"
+
+module TwoStrokeCylinder
+{
+    SliderCrank sc;
+    Valve vE;
+    // geometry
+    float xE;           // the piston's travel from top dead centre at which each port's top edge is uncovered (m)
+    float xT;
+    float wE;           // each port's width (m)
+    float wT;
+    float cd;
+    float vccMax;       // the crankcase's largest volume (piston at the top) and its smallest
+    float vccMin;
+    float hA0;          // the walls' heat coefficient's area part (W/K before the speed's factor)
+    float lhv;          // J/kg of the fuel
+    float tWall;        // the walls' temperature (K): a warm engine's 450 (the reference's)
+    // state: the cylinder
+    float p;
+    float t;
+    float m;
+    float v;
+    float fresh;        // the fresh charge in it (kg): air with its fuel
+    float scRes;        // the short-circuited part of it, on its way across to the exhaust port
+    float exOut;        // this exhaust event's gas out, and its fresh part
+    float exFresh;
+    float lastMass;     // the gas that left last, by the port (kg, at most `lastCap`), and its fresh share: what the
+    float lastFresh;    // pipe pushes back first (the last out is the first back, as a column of gas in the header is)
+    float lastCap;
+    float freshSpark;   // the fresh charge when the spark lit it
+    // state: the crankcase
+    float pc;
+    float tc;
+    float mc;
+    float vc;
+    float mcBurned;     // the burned gas in it (what came back down the transfers)
+    float reed;         // the reed's opening, 0 to 1
+    // the burn
+    float burnAt;       // degrees since the spark (negative: not burning)
+    float xPrev;
+    float qTot;
+    float cBurn;
+    float ang;
+    // the last exhaust port's closing: what it trapped
+    float trapped;      // kg
+    float trappedFresh;
+    float purity;
+    float delivered;    // the fresh charge the transfers delivered over the last cycle (kg), and so far this one
+    float deliveredNow;
+    int misfires;       // cycles whose charge mostly did not burn (counted)
+    int cycles;
+    // this sample
+    float qE;           // the exhaust's volume flow into the header (m^3/s), and what the header is given for it
+    float qEa;
+    float mE;           // mass flows (kg/s): out of the exhaust, through the transfers (up), through the inlet (in)
+    float mT;
+    float mI;
+    float tq;           // torque on the crank (N m)
+    // what crossed the system's boundary since reset (kg): in through the inlet, out through the exhaust
+    double massIn;
+    double massOut;
+
+    // psi(r) of a compressible orifice: the table's psi / sqrt(1 - r) times sqrt(1 - r), flat below the critical ratio
+    float psi(float r, int ex)
+    {
+        const float rc = ex != 0 ? 0.5457f : 0.5300f;
+        if (r <= rc)
+            return ex != 0 ? 0.66726f * sqrtf(1.0f - rc) : 0.68304f * sqrtf(1.0f - rc);
+        return vE.tOf(r, ex) * sqrtf(fmaxf(1.0f - r, 0.0f));
+    }
+
+    // Mass flow (kg/s) through an effective area from a volume at (pa, ta) to one at (pb, tb); negative: from b to a
+    float orifice(float pa, float ta, float pb, float tb, float area, int ex)
+    {
+        if (area <= 1.0e-10f)
+            return 0.0f;
+        if (pa >= pb)
+            return area * pa / sqrtf(287.0f * ta) * psi(pb / pa, ex);
+        return -area * pb / sqrtf(287.0f * tb) * psi(pa / pb, ex);
+    }
+
+    // An orifice's mass flow between two volumes, stepped implicitly. The flow goes as the square root of the drop dp
+    // (qExp: what the drop now drives through it), whose slope is unbounded at 0: stepped explicitly, two volumes on an
+    // orifice overshoot each other by a step and chatter for ever (some grams a second through the transfers of an
+    // engine at rest). So the flow is the one that leaves the drop after the step driving it: q^2 = C^2 (dp - K q dt),
+    // C^2 = qExp^2 / dp, K the drop's fall per kilogram moved (the two volumes' gamma p / m, adiabatic): the whole
+    // orifice flow for a large drop, and no more than evens the volumes for a small one.
+    float implicitFlow(float qExp, float dp, float kDrop, float dt)
+    {
+        const float ad = fabsf(dp);
+        if (ad < 1.0e-6f || fabsf(qExp) < 1.0e-12f)
+            return 0.0f;
+        const float c2 = qExp * qExp / ad;
+        const float a = c2 * kDrop * dt;
+        const float q = 0.5f * (sqrtf(a * a + 4.0f * c2 * ad) - a);
+        return qExp >= 0.0f ? q : -q;
+    }
+
+    float gammaAt(float tk)
+    {
+        return fminf(fmaxf(1.39f - 7.5e-5f * (tk - 300.0f), 1.24f), 1.40f);
+    }
+
+    float cpAt(float tk)
+    {
+        const float g = gammaAt(tk);
+        return 287.0f * g / (g - 1.0f);
+    }
+
+    // The exhaust port's duration at a speed (rad/s): its own, or, with a power valve, the valve's shorter one below
+    // `valveFrom`, rising smoothly to the port's own at `valveTo`
+    float exhaustDurAt(const TwoStrokeSpec* s, float omega)
+    {
+        if (s->valveDur <= 0.0f)
+            return s->exhaustDur;
+        const float k = fminf(fmaxf((omega - s->valveFrom) / fmaxf(s->valveTo - s->valveFrom, 1.0f), 0.0f), 1.0f);
+        return s->valveDur + (s->exhaustDur - s->valveDur) * k * k * (3.0f - 2.0f * k);
+    }
+
+    // The ports' edges for an exhaust duration (a power valve moves it)
+    void exhaustEdge(float dur)
+    {
+        sc.atDeg(180.0f - 0.5f * dur);
+        xE = sc.x;
+    }
+
+    void setup(const TwoStrokeSpec* s)
+    {
+        sc.setup(s->bore, s->stroke, s->rodLength, s->compression);
+        exhaustEdge(s->exhaustDur);
+        sc.atDeg(180.0f - 0.5f * s->transferDur);
+        xT = sc.x;
+        wE = s->exhaustWidth * s->bore;
+        wT = s->transferWidth * s->bore;
+        cd = s->portCd;
+        vccMin = sc.vd / (s->crankcaseRatio - 1.0f);
+        vccMax = vccMin + sc.vd;
+        hA0 = 260.0f * (2.0f * sc.area + 3.14159265f * s->bore * 0.5f * s->stroke);
+        lhv = 43.0e6f;
+        tWall = 450.0f;
+        // (the column by the port that goes back first: the gas of a tenth of the swept volume at the air's density)
+        lastCap = 0.1f * sc.vd * 1.18f;
+    }
+
+    // At rest, everything at the air outside, the cylinder full of fresh air
+    void reset(float a, float pAir, float tAir)
+    {
+        ang = a;
+        sc.atDeg(a);
+        v = sc.vol;
+        p = pAir;
+        t = tAir;
+        m = p * v / (287.0f * t);
+        fresh = m;
+        scRes = 0.0f;
+        exOut = 0.0f;
+        exFresh = 0.0f;
+        lastMass = 0.0f;
+        lastFresh = 0.0f;
+        freshSpark = 0.0f;
+        vc = vccMax - sc.area * sc.x;
+        pc = pAir;
+        tc = tAir;
+        mc = pc * vc / (287.0f * tc);
+        mcBurned = 0.0f;
+        reed = 0.0f;
+        burnAt = -1.0f;
+        xPrev = 0.0f;
+        qTot = 0.0f;
+        cBurn = 1.0f;
+        trapped = m;
+        trappedFresh = m;
+        purity = 1.0f;
+        delivered = 0.0f;
+        deliveredNow = 0.0f;
+        misfires = 0;
+        cycles = 0;
+        qE = 0.0f;
+        qEa = 0.0f;
+        mE = 0.0f;
+        mT = 0.0f;
+        mI = 0.0f;
+        tq = 0.0f;
+        massIn = 0.0;
+        massOut = 0.0;
+    }
+
+    bool passed(float before, float now, float ev)
+    {
+        if (now >= before)
+            return before < ev && ev <= now;
+        return before < ev || ev <= now;
+    }
+
+    // One sample. a: the crank's angle now (degrees from top dead centre, 0 to 360); dDeg: what it turned; dt: s; rpm;
+    // the header's arriving wave (Pa over the air), impedance and gas temperature; the air's pressure and temperature
+    // at the carburettor; the throttle (0 to 1); the exhaust's duration now (the power valve's)
+    void step(const TwoStrokeSpec* s, float a, float dDeg, float dt, float rpm, float bE, float zE, float tPipe,
+              float pAir, float tAir, float throttle, float exDur)
+    {
+        const float before = ang;
+        ang = a;
+        // the events: the exhaust port's closing traps the charge; the spark lights it
+        const float epc = 180.0f + 0.5f * exDur;
+        const float sparkAt = 360.0f - s->spark;
+        if (passed(before, a, epc))
+        {
+            trapped = m;
+            trappedFresh = fresh;
+            purity = fresh / fmaxf(m, 1.0e-9f);
+            scRes = 0.0f;
+        }
+        if (passed(before, a, 180.0f - 0.5f * exDur))
+        {
+            exOut = 0.0f;
+            exFresh = 0.0f;
+            lastMass = 0.0f;
+            lastFresh = 0.0f;
+        }
+        if (passed(before, a, 180.0f - 0.5f * s->transferDur))
+        {
+            delivered = deliveredNow;
+            deliveredNow = 0.0f;
+            cycles += 1;
+        }
+        if (passed(before, a, sparkAt))
+        {
+            // the burn's share: the reference's law of dilution (sim/ref/engine.fm, charge): the flame takes all of a
+            // charge whose burned share is under some 0.45, half of one at 0.56, little past 0.65 (without the
+            // reference's scatter from cycle to cycle: here the irregularity comes from the recursion alone)
+            const float dil = 1.0f - fresh / fmaxf(m, 1.0e-9f);
+            cBurn = 1.0f / (1.0f + expf((dil - 0.56f) / 0.035f));
+            qTot = cBurn * fresh / (1.0f + s->afr) * lhv * 0.9f;
+            freshSpark = fresh;
+            if (cBurn < 0.5f)
+                misfires += 1;
+            burnAt = qTot > 0.0f ? 0.0f : -1.0f;
+            xPrev = 0.0f;
+        }
+        // the volumes
+        sc.atDeg(a);
+        const float vNew = sc.vol;
+        const float dv = vNew - v;
+        const float vcNew = vccMax - sc.area * sc.x;
+        const float dvc = vcNew - vc;
+        const float x = sc.x;
+        // the ports' open areas
+        const float aE = cd * wE * fminf(fmaxf(x - xE, 0.0f), sc.r * 2.0f - xE);
+        const float aT = cd * wT * fminf(fmaxf(x - xT, 0.0f), sc.r * 2.0f - xT);
+        // the inlet: the carburettor's throttle and the reed (or disc) in series
+        const float aCarb = s->carbArea * (0.03f + 0.97f * fminf(fmaxf(throttle, 0.0f), 1.0f));
+        float aValve = 0.0f;
+        if (s->inletKind == 0)
+        {
+            const float want = fminf(fmaxf((pAir - pc) / s->reedFull, 0.0f), 1.0f);
+            reed += (want - reed) * fminf(dt / s->reedTime, 1.0f);
+            aValve = s->inletArea * reed;
+        }
+        else
+        {
+            float u = a - s->discOpen;
+            if (u < 0.0f)
+                u += 360.0f;
+            if (u < s->discDur)
+            {
+                const float f = u / s->discDur;
+                aValve = s->inletArea * fminf(fminf(f, 1.0f - f) * 6.0f, 1.0f);
+            }
+        }
+        const float aIn = aValve > 1.0e-10f ? 0.85f / sqrtf(1.0f / (aCarb * aCarb) + 1.0f / (aValve * aValve)) : 0.0f;
+        // the flows
+        qE = aE > 0.0f ? vE.flow(p, t, bE, zE, aE, tPipe, 1) : 0.0f;
+        qEa = aE > 0.0f ? qE * vE.g : 0.0f;
+        const float ppE = fmaxf(101325.0f + 2.0f * bE + zE * qEa, 8000.0f);
+        mE = qE >= 0.0f ? qE * ppE / (287.0f * t) : qE * ppE / (287.0f * tPipe);
+        const float kCyl = gammaAt(t) * p / m;
+        const float kCc = gammaAt(tc) * pc / mc;
+        mT = implicitFlow(orifice(pc, tc, p, t, aT, 0), pc - p, kCc + kCyl, dt);
+        mI = implicitFlow(orifice(pAir, tAir, pc, tc, aIn, 0), pAir - pc, kCc, dt);
+        if (s->inletKind == 0)
+            mI = fmaxf(mI, 0.0f);          // (a reed shuts against a flow back)
+        // the mixture's composition
+        const float fcc = 1.0f - fminf(mcBurned / fmaxf(mc, 1.0e-9f), 1.0f);     // the crankcase's fresh share
+        const float dmT = mT * dt;
+        const float dmE = mE * dt;
+        float dFresh = 0.0f;
+        float dBurnedCc = 0.0f;
+        if (dmT >= 0.0f)
+        {
+            const float fin = dmT * fcc;
+            dFresh += fin;
+            scRes += s->shortCircuit * fin;
+            deliveredNow += fin;
+            dBurnedCc -= dmT * (1.0f - fcc);
+        }
+        else
+        {
+            // back down the transfers: the cylinder's gas, its own fresh share
+            const float fcy = fresh / fmaxf(m, 1.0e-9f);
+            dFresh += dmT * fcy;
+            dBurnedCc -= dmT * (1.0f - fcy);
+        }
+        if (dmE >= 0.0f)
+        {
+            // out of the exhaust: the short-circuited charge first, then the blend of displacement and mixing
+            float rest = dmE;
+            const float sOut = fminf(scRes, rest);
+            scRes -= sOut;
+            rest -= sOut;
+            const float bulk = fmaxf(m - scRes, 1.0e-9f);
+            const float burned = fmaxf(m - fresh, 0.0f);
+            const float fMix = (fresh - scRes) / bulk;
+            float fOut = s->mixing * fMix;
+            // (displacement sends the burned gas first; once there is none, what leaves is fresh)
+            if (rest * (1.0f - fOut) > burned)
+                fOut = 1.0f - burned / fmaxf(rest, 1.0e-12f);
+            const float outFresh = sOut + rest * fminf(fmaxf(fOut, 0.0f), 1.0f);
+            dFresh -= outFresh;
+            exOut += dmE;
+            exFresh += outFresh;
+            // the column by the port: this sample's gas on top
+            const float f = dmE > 1.0e-15f ? outFresh / dmE : 0.0f;
+            const float mNew = lastMass + dmE;
+            lastFresh = (lastFresh * lastMass + f * dmE) / fmaxf(mNew, 1.0e-15f);
+            lastMass = fminf(mNew, lastCap);
+        }
+        else
+        {
+            // back in from the header: the column by the port first, then what went out this event on average
+            const float back = -dmE;
+            const float fromLast = fminf(back, lastMass);
+            const float ff = exOut > 1.0e-12f ? fminf(exFresh / exOut, 1.0f) : 0.0f;
+            dFresh += fromLast * lastFresh + (back - fromLast) * ff;
+            lastMass -= fromLast;
+        }
+        // the inlet brings fresh mixture into the crankcase (or, a disc's, takes the crankcase's out)
+        if (mI < 0.0f)
+            dBurnedCc += mI * dt * (1.0f - fcc);
+        // the burn
+        float dq = 0.0f;
+        if (burnAt >= 0.0f)
+        {
+            burnAt += dDeg;
+            const float f = burnAt / s->burnDur;
+            const float xb = 1.0f - expf(-5.0f * f * f * f);
+            dq = qTot * (xb - xPrev);
+            // what burns is no longer fresh
+            dFresh -= (xb - xPrev) * cBurn * freshSpark;
+            xPrev = xb;
+            if (f > 1.6f)
+            {
+                burnAt = -1.0f;
+                qTot = 0.0f;
+            }
+        }
+        // the energy: the cylinder
+        const float hA = hA0 * (0.6f + rpm / 2500.0f);
+        dq -= hA * (t - tWall) * dt;
+        float hNet = 0.0f;                       // enthalpy into the cylinder this sample (J)
+        hNet += dmT >= 0.0f ? cpAt(tc) * tc * dmT : cpAt(t) * t * dmT;
+        hNet -= dmE >= 0.0f ? cpAt(t) * t * dmE : cpAt(tPipe) * tPipe * dmE;
+        const float g1 = gammaAt(t) - 1.0f;
+        const float u = p * v / g1 + dq - p * dv + hNet;
+        m = fmaxf(m + dmT - dmE, 1.0e-8f);
+        fresh = fminf(fmaxf(fresh + dFresh, 0.0f), m);
+        scRes = fminf(fmaxf(scRes, 0.0f), fresh);
+        v = vNew;
+        p = fmaxf(g1 * u / v, 2000.0f);
+        t = fminf(fmaxf(p * v / (m * 287.0f), 250.0f), 3200.0f);
+        p = m * 287.0f * t / v;
+        // the energy: the crankcase (adiabatic)
+        const float dmI = mI * dt;
+        float hc = 0.0f;
+        hc += dmI >= 0.0f ? cpAt(tAir) * tAir * dmI : cpAt(tc) * tc * dmI;
+        hc -= dmT >= 0.0f ? cpAt(tc) * tc * dmT : cpAt(t) * t * dmT;
+        const float gc1 = gammaAt(tc) - 1.0f;
+        const float uc = pc * vc / gc1 - pc * dvc + hc;
+        mc = fmaxf(mc + dmI - dmT, 1.0e-8f);
+        mcBurned = fminf(fmaxf(mcBurned + dBurnedCc, 0.0f), mc);
+        vc = vcNew;
+        pc = fmaxf(gc1 * uc / vc, 2000.0f);
+        tc = fminf(fmaxf(pc * vc / (mc * 287.0f), 220.0f), 1500.0f);
+        pc = mc * 287.0f * tc / vc;
+        massIn += (double)dmI;
+        massOut += (double)dmE;
+        tq = (p - pc) * sc.dvol;
+    }
+};
