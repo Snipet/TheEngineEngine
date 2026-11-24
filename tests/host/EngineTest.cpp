@@ -211,3 +211,60 @@ TEST_CASE("an engine the simulator found diverged (FLAG_FAULT) is counted, said 
     for (const float v : l)
         CHECK(std::isfinite(v));
 }
+
+TEST_CASE("a quality change swaps the engine at 48 kHz inside under a crossfade, and the key left on runs it again",
+          "[engine][sim][simhost]")
+{
+    if (!haveSim())
+        SKIP("sim/engine.fm is not there yet");
+    std::string error;
+    const auto sim = compiled(simDir(), {}, error);
+    REQUIRE(sim != nullptr);
+    SimHost host;
+    REQUIRE(host.attach(sim, offline(48000.0, 512), error));
+    SimControls c;
+    c.mode = 1;
+    c.ignition = 2;
+    host.setControls(c);
+    std::vector<float> l(512), r(512);
+    double peak = 0.0;
+    bool finite = true;
+    const auto play = [&](int blocks) {
+        peak = 0.0;
+        for (int i = 0; i < blocks; ++i)
+        {
+            host.process(l.data(), r.data(), 512);
+            host.service();
+            for (int k = 0; k < 512; ++k)
+            {
+                finite = finite && std::isfinite(l[k]) && std::isfinite(r[k]);
+                peak = std::max(peak, static_cast<double>(std::fabs(l[k])));
+            }
+        }
+    };
+    play(200);
+    c.ignition = 1;
+    host.setControls(c);
+    play(50);
+    CHECK(host.quality() == SimHost::Quality::Full);
+
+    if (!host.setQuality(SimHost::Quality::Economy, error))
+        SKIP("the program does not take TEE_ENGINE_RATE_48000: " << error);
+    CHECK(host.quality() == SimHost::Quality::Economy);
+    CHECK(host.innerRate() == 48000.0);
+    play(250);   // the crossfade, the crank (some 0.3 s), then running
+    TelemetryFrame t;
+    REQUIRE(host.telemetry(t));
+    CHECK(tel(host, t, "tel.engine.state") == 2);
+    CHECK(t.host.reloads >= 1);
+    CHECK(finite);
+    CHECK(peak > 0.01);
+    CHECK(host.controls().ignition == 1);   // the person's key untouched
+
+    REQUIRE(host.setQuality(SimHost::Quality::Full, error));
+    CHECK(host.innerRate() == 96000.0);
+    play(250);
+    REQUIRE(host.telemetry(t));
+    CHECK(tel(host, t, "tel.engine.state") == 2);
+    CHECK(finite);
+}
