@@ -5,6 +5,8 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <string>
+#include <vector>
 
 using tee::test::core::Bench;
 
@@ -23,45 +25,67 @@ namespace
     }
 }
 
-TEST_CASE("loudness: the exhaust at full load is one level across the reference's layouts, computed", "[listen][engine]")
+namespace
 {
-    // each piston layout of the reference at its own default size, held at 0.75 of its redline at full throttle on the
-    // dyno: the exhaust's radiation through model 1's computed level (tel.sound.exhaustLevel + loudness), against the
-    // same through the reference's tables (exTrim x gainNorm)
-    const char* builds[] = {"engines/ref-00-single", "engines/ref-01-twin-360", "engines/ref-02-twin-270",
-                            "engines/ref-03-vtwin-45", "engines/ref-04-inline-3", "engines/ref-05-inline-4",
-                            "engines/ref-06-flat-4", "engines/ref-07-xplane-i4", "engines/ref-08-inline-5",
-                            "engines/ref-09-v6-60", "engines/ref-10-inline-6", "engines/ref-11-flat-6",
-                            "engines/ref-12-v8-cross", "engines/ref-13-v8-flat", "engines/ref-14-v10-72",
-                            "engines/ref-15-v12-60"};
-    double lo[2] = {1e9, 1e9};
-    double hi[2] = {-1e9, -1e9};
-    for (const char* name : builds)
+    // Each build held at 0.75 of its redline at full throttle on the dyno: the exhaust's radiation through model 1's
+    // computed level (tel.sound.exhaustLevel + loudness) and through the reference's tables (exTrim x gainNorm); the
+    // spread of each across the builds
+    void loudnessSpread(const std::vector<std::string>& builds, double spread[2])
     {
-        Bench b(name);
-        model1(b);
-        b.start(1.0);
-        b.ctl().mode = 2;
-        b.ctl().dynoSpeed = float(0.75 * b.tel("engine.redline"));
-        b.ctl().throttle = 1.0f;
-        b.play(1.5);
-        const double raw = b.tel("sound.exhaustLevel");
-        const double computed = raw + b.tel("sound.loudness");
-        const double table = raw + 20.0 * std::log10(b.field("exTrim") * b.field("gainNorm") / (8.169 * 0.6645));
-        std::printf("%-24s exhaust at full load: %5.1f dB computed, %5.1f dB by the reference's tables\n", name, computed,
-                    table);
-        lo[0] = std::min(lo[0], computed);
-        hi[0] = std::max(hi[0], computed);
-        lo[1] = std::min(lo[1], table);
-        hi[1] = std::max(hi[1], table);
+        double lo[2] = {1e9, 1e9};
+        double hi[2] = {-1e9, -1e9};
+        for (const auto& name : builds)
+        {
+            Bench b(name);
+            model1(b);
+            b.start(1.0);
+            b.ctl().mode = 2;
+            b.ctl().dynoSpeed = float(0.75 * b.tel("engine.redline"));
+            b.ctl().throttle = 1.0f;
+            b.play(1.5);
+            const double raw = b.tel("sound.exhaustLevel");
+            const double computed = raw + b.tel("sound.loudness");
+            const double table = raw + 20.0 * std::log10(b.field("exTrim") * b.field("gainNorm") / (8.169 * 0.6645));
+            std::printf("%-24s exhaust at full load: %5.1f dB computed, %5.1f dB by the reference's tables\n", name.c_str(),
+                        computed, table);
+            lo[0] = std::min(lo[0], computed);
+            hi[0] = std::max(hi[0], computed);
+            lo[1] = std::min(lo[1], table);
+            hi[1] = std::max(hi[1], table);
+        }
+        spread[0] = hi[0] - lo[0];
+        spread[1] = hi[1] - lo[1];
+        std::printf("spread: computed %.1f dB, the reference's tables %.1f dB\n", spread[0], spread[1]);
     }
-    std::printf("spread: computed %.1f dB, the reference's tables %.1f dB\n", hi[0] - lo[0], hi[1] - lo[1]);
-    CHECK(hi[0] - lo[0] < 12.5);
-    CHECK(hi[0] - lo[0] < hi[1] - lo[1]);
 }
 
-TEST_CASE("soak: a drive through the gears with the listener moving round the car", "[listen][engine]")
+TEST_CASE("loudness: the exhaust at full load is one level across the reference's layouts, computed", "[listen][engine][nightly]")
 {
+    // the sixteen piston layouts of the reference at their own default sizes
+    double spread[2];
+    loudnessSpread({"engines/ref-00-single", "engines/ref-01-twin-360", "engines/ref-02-twin-270", "engines/ref-03-vtwin-45",
+                    "engines/ref-04-inline-3", "engines/ref-05-inline-4", "engines/ref-06-flat-4", "engines/ref-07-xplane-i4",
+                    "engines/ref-08-inline-5", "engines/ref-09-v6-60", "engines/ref-10-inline-6", "engines/ref-11-flat-6",
+                    "engines/ref-12-v8-cross", "engines/ref-13-v8-flat", "engines/ref-14-v10-72", "engines/ref-15-v12-60"},
+                   spread);
+    CHECK(spread[0] < 12.5);
+    CHECK(spread[0] < spread[1]);
+}
+
+TEST_CASE("loudness, quick: the inline three and the flat-plane V8, which the tables leave farthest apart", "[listen][engine]")
+{
+    // the nightly test's corner: through the reference's tables these two are the extremes of the sixteen (17 dB)
+    double spread[2];
+    loudnessSpread({"engines/ref-04-inline-3", "engines/ref-13-v8-flat"}, spread);
+    CHECK(spread[0] < 6.0);
+    CHECK(spread[0] < spread[1]);
+}
+
+namespace
+{
+    // `seconds` of a drive through the gears, something of the listener moved every second; the car must pass vWant
+    void soak(int seconds, double vWant)
+    {
     Bench b("v8");
     model1(b);
     b.start(1.0);
@@ -75,7 +99,7 @@ TEST_CASE("soak: a drive through the gears with the listener moving round the ca
     double far = 0.0;
     double vMax = 0.0;
     int changes = 0;
-    for (int s = 0; s < 40; ++s)
+    for (int s = 0; s < seconds; ++s)
     {
         // every second something moves: the camera, the place, the distance, the windows, the ground
         sound(b, "camera", (s * 3) % 7);
@@ -103,14 +127,25 @@ TEST_CASE("soak: a drive through the gears with the listener moving round the ca
             vMax = std::max(vMax, b.tel("car.speed"));
         });
     }
-    std::printf("soak: 40 s, %d changes, the car up to %.1f m/s, peak %.3f, Doppler %.3f to %.3f, trackside up to %.0f m\n",
-                changes, vMax, peak, dMin, dMax, far);
+    std::printf("soak: %d s, %d changes, the car up to %.1f m/s, peak %.3f, Doppler %.3f to %.3f, trackside up to %.0f m\n",
+                seconds, changes, vMax, peak, dMin, dMax, far);
     CHECK(finite);
     CHECK(peak <= 1.0);
     CHECK(peak > 0.05);
     CHECK(dMin > 0.7);
     CHECK(dMax < 1.4);
-    CHECK(vMax > 20.0);
+    CHECK(vMax > vWant);
+    }
+}
+
+TEST_CASE("soak: a drive through the gears with the listener moving round the car", "[listen][engine][nightly]")
+{
+    soak(40, 20.0);
+}
+
+TEST_CASE("soak, quick: ten seconds of the drive, every camera and place visited", "[listen][engine]")
+{
+    soak(10, 8.0);
 }
 
 TEST_CASE("the cabin: shut windows take the highs, open ones let them in", "[listen][engine]")
@@ -149,14 +184,16 @@ TEST_CASE("the cabin: shut windows take the highs, open ones let them in", "[lis
     CHECK(b.tel("sound.pathStructure") > -150.0);
 }
 
-TEST_CASE("the ceiling: every source at its loudest and the camera at its closest stays inside full scale", "[listen][engine]")
+namespace
 {
+    void ceiling(int cases)
+    {
     // the reference's V8 (its loudest build) and the twin-turbo V8, LEVEL at its most (+12 dB), INTAKE and MECHANICAL
     // at theirs, DISTANCE at its least (0.5 m), at the tailpipes and in the engine bay: free revs against the limiter
     // and lifts (the turbo's blow-off valves), through the resampler (48 kHz)
     const char* builds[] = {"v8", "v8", "boost/twin-turbo-v8"};
     const int cams[] = {0, 3, 0};
-    for (int k0 = 0; k0 < 3; ++k0)
+    for (int k0 = 0; k0 < cases; ++k0)
     {
         const int cam = cams[k0];
         Bench b(builds[k0]);
@@ -188,6 +225,17 @@ TEST_CASE("the ceiling: every source at its loudest and the camera at its closes
         if (k0 == 0)
             CHECK(worstLim < -3.0);     // it was asked to work
     }
+    }
+}
+
+TEST_CASE("the ceiling: every source at its loudest and the camera at its closest stays inside full scale", "[listen][engine][nightly]")
+{
+    ceiling(3);
+}
+
+TEST_CASE("the ceiling, quick: the V8 at the tailpipes at 0.5 m, LEVEL +12 dB, on the limiter", "[listen][engine]")
+{
+    ceiling(1);
 }
 
 TEST_CASE("a motorcycle heard from the rider's seat, revved and launched", "[listen][engine]")
