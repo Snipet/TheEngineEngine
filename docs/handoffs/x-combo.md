@@ -22,9 +22,9 @@ moves, stops; every telemetry column finite, in its declared range, else physica
 - `tee-fuzz`: `--seeds`, `--reduce` (ddmin), `--play <archetype> <scenario> <switches>`, `--checks`, `--match`
 
 **Findings**: 18 filed today. Closed: X-001 (D), X-002 (not a defect), X-003 (H), X-004 (L, C), X-005 (Q), X-006 (H),
-X-007 (D, I), X-008, X-009 (D), X-010 and X-014 and X-015 (N2, G), X-012 (T), X-013 (G). Open (`Known.h`): X-011
-standstill (I), X-016 (the four-rotor rotary, the contract's reported heavy case, Q), X-017 (N1, D: charge
-temperature 0 K before the first charge), X-018 (H: a manual's shift cut louder than the reference's pops).
+X-007 (D, I), X-008, X-009 (D), X-010 and X-014 and X-015 (N2, G), X-012 (T), X-013 (G), X-018 (H). Open (`Known.h`):
+X-011 standstill (I), X-016 (the four-rotor rotary, the contract's reported heavy case, Q), X-017 (N1, D: charge
+temperature 0 K before the first charge).
 
 **Measured** (this container, shared 4 cores; R from the same process; docs/measurements/combo/2026-11-24.md): tour,
 off / every switch on: small four 0.52 / 0.98 R; V8 1.00 / 1.57; turbo six 0.80 / 1.32; large diesel 0.77 / 1.19; the
