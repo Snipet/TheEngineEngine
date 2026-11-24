@@ -5,6 +5,9 @@
 built or run for this note; §14 says what was read, by whom, and what is an estimate. Stage 2 turns this into
 detailed work-package files for parallel agents; stage 3 is the implementation.*
 
+*Reviewed the same day: your answers to §13 are recorded there, and stage 2 is the rest of this folder
+([README](README.md)). Where a later file and this one differ, the later file is right.*
+
 ## 0. Summary
 
 **What is being built.** A standalone desktop application in which a car engine is simulated as physics and heard
@@ -453,10 +456,12 @@ a pedal, eased), the mouse, a gamepad's analogue triggers, a wheel with pedals a
 
 ## 7. Performance
 
-**Not measured.** By counting operations in the reference's inner loop, a V8 is on the order of ten thousand
-floating-point operations a sample at 96 kHz, which would be a fraction of one modern core; that is an estimate
-with a wide margin, and your plugin's load meter knows better (§13, question 2). Phase 0 measures the port on this
-container and gives each package a budget in nanoseconds a sample for a reference build.
+**Measured by you, not by me:** TestingPlayground's load meter reads 30 to 40 % for the reference at 512 samples
+on your Mac. So the reference alone takes a third of one core, and the headroom on that core is about two and a
+half times. Wave 1 adds a turbo solved every sample, more pipes and more cylinders: **the budget is tight from the
+start**, and performance is a package of wave 1, not a late polish. Phase 0 measures the port on this container
+(release options: no bounds checks, no loop budget, which the plugin's playing copy has while a dial moves) and
+gives each package a budget in nanoseconds a sample for a reference build.
 
 The levers, in the order I would pull them: work that can run every 16 samples does; tables for anything
 transcendental (the reference does this for cam areas and orifice flow); `param` switches so the compiler
@@ -485,9 +490,9 @@ any two parts joined only by a pipe longer than 16 samples of delay can be advan
 
 Each screen runs in FunkGui's `HeadlessHost` with scripted input; frames are fingerprinted and written as PNGs
 from the software rasteriser (with a small encoder of our own, since FunkGui's needs JUCE). An agent looks at its
-own pictures; you look at a contact sheet for each wave. Shader panels show as placeholders there; whether Xvfb
-with Mesa's software Vulkan can run the real GPU path in the cloud is a Phase 0 experiment (it would let agents
-see shaders and the window's whole frame; if it fails, shaders are reviewed on your Mac).
+own pictures; you look at a contact sheet for each wave. Shader panels show as placeholders there. The real GPU
+path can run in the cloud on Xvfb with Mesa's software Vulkan: TestingPlayground's CI already runs its GUI probes
+that way (its `build.yml`), so agents can see shaders and a window's whole frame; Phase 0 sets it up here.
 
 ### 8.3 Builds on the systems agents cannot touch
 
@@ -498,7 +503,7 @@ least compiles (§13, question 3).
 
 | Checkpoint | When | What you run on your Mac |
 |---|---|---|
-| M1 | Early in wave 1 | FunkGui's gallery in the SDL3 window: it opens, resizes, runs at the display's rate, takes input. Then our shell: the ported engine heard through the device, a key as the throttle |
+| M1 | Today: Windows about 11:00 your time, macOS in the afternoon | FunkGui's gallery in the SDL3 window: it opens, resizes, runs at the display's rate, takes input. Then our shell: the ported engine heard through the device, a key as the throttle |
 | M2 | End of wave 1 | The app with its control pages and wave 1's physics. A listening pack: rendered files of each archetype, each feature on and off. Your wheel |
 | M3 | End of wave 2 | Every screen, the shaders, the cameras and places; a signed build |
 
@@ -552,8 +557,10 @@ seams it implements with their signatures, the tests that define done, its budge
 
 ## 11. What changes in the other repositories
 
-**FunkGui**: §3.6's six items, proposed as one release. Its public headers gain a `desktop/` family and nothing
-existing changes. Its goldens are not ours to bless: new tests arrive with candidates for you to adopt.
+**FunkGui**: §3.6's six items, as one release. Its public headers gain a `desktop/` family and nothing existing
+changes. By your word at the review, FunkGui's rules for FCompressor's agents do not bind this work: pull requests
+in FunkGui and FMinus are ours to open, merge and tag unless you say otherwise. Existing goldens are still never
+re-blessed to make a test pass; a new test's goldens are adopted with the release that adds it.
 
 **FMinus**: nothing is required. What would help, for you to take or leave as the compiler's author: an object
 cache so a second launch skips the compile; a note in the docs on the prebuilt LLVM archives (they exist and the
@@ -579,6 +586,13 @@ hash, as FunkGui's `SEED.tsv` does.
 ## 13. Questions for the review
 
 Each with what I will assume otherwise.
+
+**Answered at the review (2026-11-24):** (2) the load meter reads 30 to 40 % at 512 samples (§7). (3) GitHub
+Actions: yes, with caching so runs stay short. (4) FunkGui's FCompressor-era rules are set aside; full permission
+to open and merge pull requests and to tag in FunkGui and FMinus. (6) No opinion: SDL3's driver, TestingPlayground's
+logic for the G29's lights and range where SDL lacks them. (7) No MIDI; keyboard and mouse controls are required,
+for players with no wheel. (13) Checkpoints start today: Windows about 11:00, macOS in the afternoon, with as much
+done before them as can be. The other questions stand at their assumptions.
 
 1. **Platforms.** macOS on Apple silicon is the product; Linux x86-64 is kept working because agents live there;
    Windows is kept compiling in CI and otherwise untested. *Assumed: yes.*
