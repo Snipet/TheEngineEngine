@@ -24,6 +24,7 @@
 #include "tee/Timeline.h"
 
 #include <filesystem>
+#include <functional>
 #include <optional>
 #include <string>
 #include <vector>
@@ -64,12 +65,27 @@ namespace tee
         std::optional<double> measured;   // empty: not measurable (why says why)
         bool pass = false;
         std::string why;
+        std::string how;                  // how it was measured, when that is worth saying
     };
 
     // Runs `validation` (only its fast targets when `fastOnly`) on `sim`, its build and scenarios found under
     // `content`. False, with `error`, when the build or a scenario cannot be read.
+    // `adjust`, when given, changes the build before anything runs (referenceSettings, for the reference's column).
+    // A dyno target on a program that has no brake of its own (no tel.engine.torque) is measured on the predicted
+    // curve's steady points instead (Predict.h), the row's `how` saying so.
     bool runValidation(const std::shared_ptr<Sim>& sim, const Validation& validation, const std::filesystem::path& content,
-                       bool fastOnly, std::vector<ValidationRow>& rows, std::string& error);
+                       bool fastOnly, std::vector<ValidationRow>& rows, std::string& error,
+                       const std::function<void(Build&)>& adjust = {});
+
+    // Every model switch of the build put at the reference's setting (0): Spec switches named "model" or "custom", and
+    // those whose help starts "Off: the reference". How many it changed (0: the build is the reference's already; at
+    // that setting the simulator is the reference sample for sample: tests/sim/NullTest.cpp).
+    int referenceSettings(Build& build);
+
+    // The reference's rows and the simulator's side by side: target, range, reference, simulator, source; then which
+    // targets each misses.
+    std::string validationComparison(const std::vector<ValidationRow>& reference, const std::vector<ValidationRow>& simulator,
+                                     bool same);
 
     // The rows as a table: target, range, measured, pass, source.
     std::string validationTable(const std::vector<ValidationRow>& rows);

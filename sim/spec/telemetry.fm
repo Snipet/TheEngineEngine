@@ -31,6 +31,34 @@ module EngineTel
     float cycle [[ui::label("Cycle")]] [[ui::quantity("fraction")]]
         [[ui::help("A slowed copy of the crank's cycle, 0 to 1, for pictures that turn with it")]];
     float crank [[ui::label("Crank")]] [[ui::quantity("angle")]] [[ui::help("0 to 2160: a common cycle of every layout")]];
+    // card D (core/*.fm, docs/models/mechanics.md): every engine's, the reference's included, unless said
+    float torque [[ui::label("Torque")]] [[ui::quantity("torque")]]
+        [[ui::help("Brake torque, its mean over some 0.1 s: the gases' less friction and a supercharger's drag; on the dyno, the absorber's")]];
+    float gasTorque [[ui::label("Gas torque")]] [[ui::quantity("torque")]] [[ui::help("The gases' on the crank, its mean over some 20 ms")]];
+    float firing [[ui::label("Firing rate")]] [[ui::quantity("frequency")]] [[ui::help("Firings a second, every cylinder's")]];
+    float power [[ui::label("Power")]] [[ui::quantity("power")]] [[ui::help("The torque (brake) times the speed")]];
+    float imep [[ui::label("IMEP")]] [[ui::quantity("pressure")]] [[ui::help("Indicated mean effective pressure, gross: the power loop's, the last cycle's mean over the cylinders")]];
+    float pmep [[ui::label("PMEP")]] [[ui::quantity("pressure")]] [[ui::help("Pumping: the gas exchange's loop, its work taken")]];
+    float fmep [[ui::label("FMEP")]] [[ui::quantity("pressure")]] [[ui::help("Friction, now")]];
+    float bmep [[ui::label("BMEP")]] [[ui::quantity("pressure")]] [[ui::help("Brake: 4 pi times the torque over the displacement")]];
+    float veManifold [[ui::label("Volumetric efficiency (manifold)")]] [[ui::quantity("fraction")]]
+        [[ui::help("The air trapped at intake closing over what the displacement holds at the manifold's density")]];
+    float veAir [[ui::label("Volumetric efficiency (air)")]] [[ui::quantity("fraction")]]
+        [[ui::help("The same at the outside air's density")]];
+    float peakPressure [[ui::label("Peak pressure")]] [[ui::quantity("pressure")]] [[ui::help("The last cycle's highest, any cylinder")]];
+    float pistonSpeed [[ui::label("Mean piston speed")]] [[ui::quantity("speed")]];
+    float ripple [[ui::label("Speed ripple")]] [[ui::quantity("rotation")]] [[ui::help("The crank's speed's spread over the last whole cycle")]];
+    float dynoTorque [[ui::label("Dyno torque")]] [[ui::quantity("torque")]] [[ui::help("The absorber's, its mean over 0.1 s (MODE_DYNO_ENGINE)")]];
+    float dynoSpeed [[ui::label("Dyno set speed")]] [[ui::quantity("rotation")]];
+    float inertiaTorque [[ui::label("Inertia torque")]] [[ui::quantity("torque")]] [[ui::help("The reciprocating masses' (a custom engine's)")]];
+    float shake1 [[ui::label("Shaking force, 1st order")]] [[ui::unit("N")]] [[ui::help("Amplitude at this speed (a custom engine's), after balance shafts")]];
+    float shake2 [[ui::label("Shaking force, 2nd order")]] [[ui::unit("N")]];
+    float rock1 [[ui::label("Rocking moment, 1st order")]] [[ui::quantity("torque")]];
+    float rock2 [[ui::label("Rocking moment, 2nd order")]] [[ui::quantity("torque")]];
+    int cylinders [[ui::label("Cylinders")]] [[ui::help("A rotary's faces")]];
+    float firingAngle [[ui::label("Firing angle")]] [[ui::quantity("angle")]] [[ui::help("Each cylinder's, after cylinder 1's, in the order it fires")]] [MAX_CYL];
+    float cylPeak [[ui::label("Cylinder's peak pressure")]] [[ui::quantity("pressure")]] [MAX_CYL];
+    float cylPeakAngle [[ui::label("Its angle")]] [[ui::quantity("angle")]] [[ui::help("After the firing top dead centre")]] [MAX_CYL];
 };
 
 module BoostTel

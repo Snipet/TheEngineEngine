@@ -34,6 +34,12 @@
 #include "boost/boost.fm"
 #include "listen/listen.fm"
 #include "vehicle/car.fm"
+#include "core/layout.fm"
+#include "core/inertia.fm"
+#include "core/shake.fm"
+#include "core/friction.fm"
+#include "core/work.fm"
+#include "core/dyno.fm"
 
 // The reference's dials, in its units, as Engine has taken them from the Spec and the Controls (readSpec,
 // readControls): what the carved modules are handed
@@ -165,6 +171,28 @@ module Engine
     Crank crank;        // the crank's angle and speed (core/fm)
     Mechanics mech;     // friction, the bench's load, the starter, the inertia (core/mechanics.fm)
     Heat heat;          // the coolant, the oil, the chamber's walls (core/fm)
+    // card D: a custom engine (spec.engine.custom) and what every engine reports of its mechanics
+    LayoutGeom geo;     // the layout as geometry: firing angles derived (core/layout.fm)
+    MovingMasses mm;    // the reciprocating masses: inertia torque, J(theta), the crank's energy-exact step (core/inertia.fm)
+    ShakeByOrder shake; // shaking forces and moments by order (core/shake.fm)
+    FrictionModel fric; // friction by part (core/friction.fm)
+    CycleWork work;     // p dV per cylinder per cycle: IMEP, PMEP, peak pressure, VE (core/work.fm); every engine
+    Dyno dyno;          // MODE_DYNO_ENGINE's absorber (core/dyno.fm); every engine
+    int customUse;      // 1: the engine configured from spec.engine's custom fields
+    float rodRatio;     // the rod over the crank's radius the cylinders are set up with (the reference's 3.3)
+    float strokeUse;    // m: the stroke (piston speed, the inertia)
+    float jFly;         // a custom engine's crank and flywheel (kg m^2), before the bench's load
+    int dynoOn;         // the absorber holds the crank (MODE_DYNO_ENGINE, on the bench)
+    float tqAbs;        // its torque this sample (N m)
+    float tqFric;       // this sample's friction and a supercharger's drag (N m), for the brake torque
+    float tqBrake;      // the gas's torque less friction and drag, its mean over some 0.1 s (N m)
+    float omMin;        // the crank's speed's least and most over the current cycle, and the last cycle's spread
+    float omMax;
+    float ripple;
+    float ripTh;        // the crank angle the cycle's spread was started at
+    float geoSig;       // a custom engine's geometry as read (geometry()), and as configured: a change is made under the fade
+    float geoUsed;
+    float oilK;         // the oil's thickness factor on the friction (the reference's: its 0.15th power, at most 3)
     Extras ex;
     Boost boost;        // turbos or a supercharger: their shafts, boost, valves and sounds (boost/boost.fm)
     Listen listen;      // where it is heard from, the room, the level, the resampler (listen/listen.fm)
@@ -294,6 +322,11 @@ module Engine
     void configure()
     {
         lay.load(set.layout);
+        customUse = spec.engine.custom ? 1 : 0;
+        geoUsed = geometry();
+        geoSig = geoUsed;
+        if (customUse != 0)
+            customLayout();
         lastLayout = set.layout;
         fuelUse = set.fuel;
         aspUse = set.asp < 0 ? 0 : (set.asp > 4 ? 4 : set.asp);
@@ -317,7 +350,9 @@ module Engine
         // the size dial: the engine's displacement in litres (a rotary's: its two rotors' chambers), each cylinder kept
         // between 30 cc and 5 litres
         const float litres = fminf(fmaxf(set.size, 0.05f), 30.0f);
-        const float swept = fminf(fmaxf(litres * 0.001f / (lay.rotary != 0 ? 2.0f : (float)lay.n), 3.0e-5f), 5.0e-3f);
+        float swept = fminf(fmaxf(litres * 0.001f / (lay.rotary != 0 ? 2.0f : (float)lay.n), 3.0e-5f), 5.0e-3f);
+        if (customUse != 0 && lay.rotary == 0 && spec.engine.bore > 0.0f && spec.engine.stroke > 0.0f)
+            swept = fminf(fmaxf(0.78539816f * spec.engine.bore * spec.engine.bore * spec.engine.stroke, 3.0e-5f), 5.0e-3f);
         const float scale = swept / lay.swept;
         vTotal = swept * (lay.rotary != 0 ? 2.0f : (float)lay.n);
         // a bigger engine than the layout's own breathes out through bigger pipes: their diameters as the 0.45th power
@@ -339,6 +374,10 @@ module Engine
         boreSq = lay.rotary != 0 ? 0.09f : expf(0.33333333f * logf(1.2732395f * swept));
         smBs = bsOf();
         boreStroke();
+        // the rod: the reference's 3.3 crank radii, or a custom engine's own
+        rodRatio = 3.3f;
+        if (customUse != 0 && lay.rotary == 0 && spec.engine.rodLength > 0.0f)
+            rodRatio = fminf(fmaxf(spec.engine.rodLength / (0.5f * strokeUse), 2.2f), 6.0f);
         // (a big cam's overlap dilutes the idle more the slower it turns: its tune idles it higher, as real ones are)
         ecu.idleRpm = fmaxf(idleBase + set.idle + 350.0f * fmaxf(set.cam - 0.35f, 0.0f) / 0.65f + heat.coldIdle(fuelUse), 350.0f);
         ecu.redRpm = fmaxf(redBase + set.redline, ecu.idleRpm + 1500.0f);
@@ -354,7 +393,7 @@ module Engine
         for (int c = 0; c < lay.n; ++c)
         {
             Cylinder* cy = &cyl[c];
-            cy->setup(swept, smCR, 3.3f, lay.rotary, lay.cyc);
+            cy->setup(swept, smCR, rodRatio, lay.rotary, lay.cyc);
             cy->tw = heat.tSurf;
             cy->diesel = fuelUse;
             cy->bias = 0.025f * noise.rnd();
@@ -423,11 +462,103 @@ module Engine
         }
         intk.mPlenum = intk.pPlenum * intk.vPlenum / (287.0f * intk.tAir);
         pipes();
+        mechanicsSetup();
+    }
+
+    // ---- card D: the mechanics (docs/models/mechanics.md) ----
+
+    // A sum of what makes a custom engine (spec.engine's custom fields, each with its own weight), to see it changed: 0
+    // while custom is off, whatever the fields hold
+    float geometry()
+    {
+        const EngineSpec* s = &spec.engine;
+        if (!s->custom)
+            return 0.0f;
+        float g = 1.0f + 3.0f * (float)s->cylinders + 5.0f * (float)s->rotors + 7.0f * s->bore + 11.0f * s->stroke
+                  + 13.0f * s->rodLength + 17.0f * s->pistonMass + 19.0f * s->rodMass + 23.0f * s->rodRecip
+                  + 29.0f * s->flywheelInertia + 31.0f * s->portExOpen + 37.0f * s->portExDur + 41.0f * s->portInOpen
+                  + 43.0f * s->portInDur;
+        for (int b = 0; b < ENGINE_MAX_BANKS; ++b)
+            g += (0.37f + 0.11f * (float)b) * s->bankAngle[b];
+        for (int c = 0; c < MAX_CYL; ++c)
+        {
+            const float k = 1.0f + 0.173f * (float)c;
+            g += k * (0.31f * (float)s->bank[c] + 0.0137f * s->pin[c] + 0.59f * (float)s->fireRev[c] + 0.83f * s->place[c]);
+        }
+        return g;
+    }
+
+    // A custom engine's layout from its geometry (spec.engine's banks, pins, revolutions, places; or its rotors), over
+    // the layout dial's (whose pipes, idle and sizes it keeps). Engine's cylinders sit at crank.theta + fire[c] in their
+    // cycles, so a larger fire fires sooner: fire is the cycle less the derived angle, and the cylinders fire in the
+    // order the geometry gives (the reference's tables run their orders the other way round: the same engine, mirrored).
+    void customLayout()
+    {
+        geo.derive(&spec.engine);
+        lay.n = geo.n;
+        lay.cyc = geo.cyc;
+        lay.rotary = geo.rotary > 0 ? 1 : 0;
+        int twoBanks = 0;
+        for (int c = 0; c < geo.n; ++c)
+        {
+            lay.fire[c] = geo.fire[c] > 0.0f ? geo.cyc - geo.fire[c] : 0.0f;
+            lay.bank[c] = geo.rotary > 0 ? 0 : spec.engine.bank[c] % 2;
+            lay.port[c] = geo.rotary > 0 ? c / 3 : c;
+            twoBanks |= lay.bank[c];
+        }
+        lay.ports = geo.rotary > 0 ? geo.rotary : geo.n;
+        // the exhaust: one bank's cylinders into one pipe; two banks, each its own (dual)
+        lay.topo = twoBanks != 0 ? (lay.topo == 0 ? 2 : lay.topo) : 0;
+    }
+
+    // What the mechanics need once the engine is configured: the moving masses (a custom engine's own, or the
+    // reference's sizes for the reports), the friction, the shaking, the work integral, the dyno's inertia
+    void mechanicsSetup()
+    {
+        const float rodLen = rodRatio * 0.5f * strokeUse;
+        jFly = customUse != 0 && spec.engine.flywheelInertia > 0.0f ? spec.engine.flywheelInertia
+                                                                    : mech.jBase * expf(1.6094379f * (set.inertia - 0.5f));
+        if (customUse != 0)
+        {
+            mm.setup(&spec.engine, &geo, bore, strokeUse, rodLen, smCR, jFly);
+            shake.setup(&spec.engine, &geo, mm.mRec, mm.sc.r, mm.sc.lam);
+        }
+        fric.setup(&spec.engine, vTotal, strokeUse, lay.rotary);
+        work.setup(lay.n, cyl[0].vd, lay.cyc);
+        dyno.setup(customUse != 0 ? mm.jMean : jFly);
+        dynoOn = 0;
+        tqAbs = 0.0f;
+        tqFric = 0.0f;
+        oilK = fminf(expf(0.15f * logf(heat.viscK)), 3.0f);
+        omMin = crank.omega;
+        omMax = crank.omega;
+        ripTh = crank.theta;
+    }
+
+    // A custom rotary's ports, where its fields give them (degrees of the eccentric shaft), over the cam dial's
+    void customPorts()
+    {
+        for (int k = 0; k < lay.n; ++k)
+        {
+            Cylinder* cy = &cyl[k];
+            if (spec.engine.portExDur > 0.0f)
+            {
+                cy->evo = spec.engine.portExOpen;
+                cy->edur = spec.engine.portExDur;
+            }
+            if (spec.engine.portInDur > 0.0f)
+            {
+                cy->ivo = spec.engine.portInOpen;
+                cy->idur = spec.engine.portInDur;
+            }
+        }
     }
 
     // The BORE/STROKE dial as the engine takes it: 0.5 to 2 (a rotary, or the dial unset: 1, square)
     float bsOf()
     {
+        if (customUse != 0 && lay.rotary == 0 && spec.engine.bore > 0.0f && spec.engine.stroke > 0.0f)
+            return fminf(fmaxf(spec.engine.bore / spec.engine.stroke, 0.3f), 3.0f);
         if (lay.rotary != 0 || set.bs <= 0.0f)
             return 1.0f;
         return fminf(fmaxf(set.bs, 0.5f), 2.0f);
@@ -452,14 +583,26 @@ module Engine
         // 15 L of 137 by 169: 2400), at most six tenths of the layout's redline, and idles at a quarter of that (a 15 L
         // truck's 650); a gasoline engine keeps its layout's
         const float stroke = lay.rotary != 0 ? 0.01f : bore / smBs;
+        strokeUse = lay.rotary != 0 ? 0.07f : stroke;
         redBase = fuelUse != 0 ? fminf(0.6f * lay.redRpm, 405.0f / fmaxf(stroke, 0.01f)) : lay.redRpm;
         idleBase = fuelUse != 0 ? fminf(lay.idleRpm, 0.27f * redBase) : lay.idleRpm;
+        // a custom engine's: its field, or what keeps its pistons under 25 m/s (a diesel's 13.5): core/kinematics.fm
+        if (customUse != 0)
+        {
+            if (spec.engine.redlineSpeed > 0.0f)
+                redBase = spec.engine.redlineSpeed * 9.5492966f;
+            else if (lay.rotary == 0)
+                redBase = fminf((fuelUse != 0 ? 13.5f : 25.0f) * 30.0f / fmaxf(stroke, 0.01f), 20000.0f);
+            idleBase = fminf(idleBase, 0.3f * redBase);
+        }
     }
 
     // The valves of every cylinder, for the cam as heard, the bore and the layout (valvetrain/valvetrain.fm)
     void valves()
     {
         vt.events(&cyl[0], lay.n, lay.rotary, lay.cyc, bore, vTotal);
+        if (customUse != 0 && lay.rotary != 0)
+            customPorts();
     }
 
     // The pipes' sizes for the layout and the dials, and their lengths at the gas's temperatures now
@@ -474,7 +617,7 @@ module Engine
     int keyDown(float note, float vel)
     {
         // (stopped, a new layout or size is taken at once; running, under the fade: control16)
-        if (ecu.state == 0 && (set.layout != lastLayout || set.fuel != fuelUse || set.asp != aspUse || fabsf(set.size - lastSize) > 0.001f
+        if (ecu.state == 0 && (set.layout != lastLayout || set.fuel != fuelUse || set.asp != aspUse || geoSig != geoUsed || fabsf(set.size - lastSize) > 0.001f
                            || fabsf(set.ambF - heat.ambSeen) > 0.25f))
             configure();
         if (ecu.keyCount >= 16)
@@ -564,7 +707,7 @@ module Engine
         }
         else
             sizeRest += d16;
-        if (set.layout != lastLayout || set.fuel != fuelUse || set.asp != aspUse || (fabsf(set.size - lastSize) > 0.001f && sizeRest > 0.15f)
+        if (set.layout != lastLayout || set.fuel != fuelUse || set.asp != aspUse || geoSig != geoUsed || (fabsf(set.size - lastSize) > 0.001f && sizeRest > 0.15f)
             || (ecu.state == 0 && fabsf(set.ambF - heat.ambSeen) > 0.25f))
             cutWant |= 1;
         // the dials that shape the pipes and the cams, smoothed
@@ -581,7 +724,7 @@ module Engine
         if (fabsf(smCR - lastCR) > 0.005f)
         {
             for (int c = 0; c < lay.n; ++c)
-                cyl[c].setup(cyl[c].vd, smCR, 3.3f, lay.rotary, lay.cyc);
+                cyl[c].setup(cyl[c].vd, smCR, rodRatio, lay.rotary, lay.cyc);
             lastCR = smCR;
         }
         // the bore over the stroke: the bore, the valves (the pipes follow it, pipes())
@@ -616,6 +759,32 @@ module Engine
         exh.flow16();
         intk.flow16(lay.ports, exh.xiWall, exh.k16Flow);
         exh.bands();
+        mechanics16();
+    }
+
+    // Every 16 samples, last: the mechanics' slow part. The cycle's speed spread; a custom engine's inertia with the
+    // bench's load (the reference's 1 + 5 load) and its oil factor; the shaking at this speed. Nothing here touches the
+    // reference's engine.
+    void mechanics16()
+    {
+        float sinceRip = crank.theta - ripTh;
+        if (sinceRip < 0.0f)
+            sinceRip += 2160.0f;
+        if (sinceRip >= lay.cyc)
+        {
+            ripple = omMax - omMin;
+            omMin = crank.omega;
+            omMax = crank.omega;
+            ripTh = crank.theta;
+        }
+        if (customUse != 0)
+        {
+            mm.j0 = jFly * (dynoOn != 0 ? 1.0f : 1.0f + 5.0f * set.load) + (float)mm.n * mm.mRot * mm.sc.r * mm.sc.r;
+            oilK = fminf(expf(0.15f * logf(heat.viscK)), 3.0f);
+            shake.update((crank.theta + geo.tdc[0]) * 0.01745329252f, crank.omega);
+        }
+        if (dynoOn == 0 && dyno.on != 0)
+            dyno.stop();
     }
 
     // ---- driven (DRIVE CAR) ----
@@ -735,6 +904,7 @@ module Engine
                 bI += 0.5f * intk.run[pi].z * (iShare[pi] - qI0[c]);
             }
             cy->step(a, dDeg, dt, bE, exh.prim[pi].z, tH, bI, intk.run[pi].z, intk.tAir);
+            work.sample(c, a, cy->p, cy->v);
             qe[pi] += cy->qEa;
             qi[pi] += cy->qIa;
             torque += cy->tq;
@@ -745,6 +915,7 @@ module Engine
             }
             if (cy->ivcNow)
             {
+                work.trapped(c, fmaxf(cy->m - cy->mInert, 0.0f), intk.pPlenum, intk.tAir, 101325.0f, heat.tAmb);
                 comb.charge(&cyl[c], c, fuelUse, intk.pPlenum, crank.rpm, smCR, crBs, burnK, set.pops, set.rough, set.timing);
                 ex.valveClick(clickAmp);
             }
@@ -778,13 +949,33 @@ module Engine
         intk.plenum(np, rNear, fuelUse, ecu.throttle, ecu.bypass, dt);
         mech.torques(crank.rpm, crank.omega, strokeK, heat.viscK, fuelUse, smCR, vTotal, set.load, ecu.redRpm, heat.tAmb, ecu.starterOn,
                      cyl[0].vd);
-        heat.fricJ += mech.tf * crank.omega * dt;
+        // (a custom engine's friction by part: core/friction.fm, on the last cycle's peak pressure)
+        const float tf = customUse != 0 ? fric.torque(&spec.engine, crank.omega, fmaxf(work.peakMax, 3.0e6f), oilK) : mech.tf;
+        heat.fricJ += tf * crank.omega * dt;
         const float tsc = boost.drag(aspUse, vTotal, crank.omega);
-        if (set.drive == 0)
-            crank.bench(torque, mech.tf, tsc, mech.tl, mech.ts, mech.inertia(set.inertia, set.load), dt);
+        // the engine dyno's absorber (MODE_DYNO_ENGINE): its torque taken from the crank, the load in place of the bench's
+        // (whose load dial, and the inertia it adds, rest while the dyno holds the crank)
+        tqAbs = dynoOn != 0 ? dyno.step(crank.omega, ctl.dynoSpeed, ctl.dynoRate, dt) : 0.0f;
+        if (customUse != 0)
+        {
+            // the moving masses: the inertia torque and the varying inertia, the crank's energy stepped exactly
+            const float th = (crank.theta + geo.tdc[0]) * 0.01745329252f;
+            const float sn = sinf(th);
+            const float cs = cosf(th);
+            if (set.drive == 0)
+                crank.omega = mm.advance(crank.omega, torque - tf - tsc - (dynoOn != 0 ? tqAbs : mech.tl) + mech.ts, dt, sn, cs);
+            else
+                crank.omega = car.step(crank.omega, torque + mm.torque(sn, cs, crank.omega) - tf - tsc + mech.ts, dt);
+        }
+        else if (set.drive == 0)
+            crank.bench(torque, tf, tsc, dynoOn != 0 ? tqAbs : mech.tl, mech.ts, dynoOn != 0 ? jFly : mech.inertia(set.inertia, set.load), dt);
         else
-            crank.omega = car.step(crank.omega, torque - mech.tf - tsc + mech.ts, dt);      // (the car is the load: the load dial rests)
+            crank.omega = car.step(crank.omega, torque - tf - tsc + mech.ts, dt);      // (the car is the load: the load dial rests)
         crank.ripple(torque);
+        // what it reports (no effect on the sound): the brake torque's mean, the speed's spread over a cycle
+        tqBrake += (torque - tf - tsc - tqBrake) * 1.0e-4f;
+        omMin = fminf(omMin, crank.omega);
+        omMax = fmaxf(omMax, crank.omega);
         const float drop = fminf(fmaxf(1.0f - intk.pPlenum / intk.pBox, 0.0f), 1.0f);
         ex.tick(intk.qThr, drop, crank.omega * 0.15915494f, dps);
         boost.sound(crank.omega * 0.15915494f, exh.mdot, set.bov);
@@ -927,6 +1118,7 @@ module Engine
         Dials* s = &set;
         if (moved(0, spec.engine.rev))
         {
+            geoSig = geometry();
             s->layout = spec.engine.layout;
             s->size = spec.engine.displacement * 1000.0f;                  // m^3 to litres
             s->bs = spec.engine.boreStroke;
@@ -1052,6 +1244,8 @@ module Engine
             ghost = 0;
         }
         s->keys = ghost;
+        // the engine dyno: on the bench (a mode of its own), its absorber holds or sweeps the crank
+        dynoOn = ctl.mode == MODE_DYNO_ENGINE && ecu.state == 2 ? 1 : 0;
     }
 
     // The ignition as the reference's start key: start, held while the engine is not running, is the key down (it
@@ -1102,6 +1296,7 @@ module Engine
                            + (ecu.fuelCut && ecu.state == 2 ? FLAG_FUEL_CUT : 0);
         tel.engine.cycle = showCycle;
         tel.engine.crank = crank.theta;
+        mechanicsTelemetry();
         tel.boost.pressure = boost.boost * 100000.0f;
         tel.exhaust.portTemperature = exh.tPort;
         tel.ecu.knockRetard = ecu.kRet;
@@ -1110,6 +1305,40 @@ module Engine
         tel.car.brake = fminf(fmaxf(set.brake, 0.0f), 1.0f);
         tel.car.clutch = fminf(fmaxf(set.clutch, 0.0f), 1.0f);
         tel.sound.peak = peak;
+    }
+
+    // card D's part of tel.engine
+    void mechanicsTelemetry()
+    {
+        EngineTel* e = &tel.engine;
+        e->torque = dynoOn != 0 ? dyno.tqMean : tqBrake;
+        e->gasTorque = crank.tqMean;
+        e->firing = crank.omega * 0.15915494f * (float)lay.n * 360.0f / lay.cyc;
+        e->power = e->torque * crank.omega;
+        e->imep = work.imepGross;
+        e->pmep = work.pmep;
+        e->fmep = customUse != 0 ? fric.fmep : mech.tf * 12.566371f / fmaxf(vTotal, 1.0e-6f) / fmaxf(fminf(crank.omega / 5.0f, 1.0f), 1.0e-3f);
+        e->bmep = work.bmep(e->torque);
+        e->veManifold = work.veManifold;
+        e->veAir = work.veAir;
+        e->peakPressure = work.peakMax;
+        e->pistonSpeed = strokeUse * crank.omega * 0.31830989f;     // 2 stroke rpm / 60
+        e->ripple = ripple;
+        e->dynoTorque = dyno.tqMean;
+        e->dynoSpeed = dynoOn != 0 ? (float)dyno.ref : 0.0f;
+        e->inertiaTorque = customUse != 0 ? mm.tqNow : 0.0f;
+        e->shake1 = customUse != 0 ? shake.force1 : 0.0f;
+        e->shake2 = customUse != 0 ? shake.force2 : 0.0f;
+        e->rock1 = customUse != 0 ? shake.moment1 : 0.0f;
+        e->rock2 = customUse != 0 ? shake.moment2 : 0.0f;
+        e->cylinders = lay.n;
+        for (int c = 0; c < MAX_CYL; ++c)
+        {
+            // (the angle after cylinder 1's at which each fires: the cycle less where it stands at cylinder 1's firing)
+            e->firingAngle[c] = c < lay.n ? (lay.fire[c] > 0.0f ? lay.cyc - lay.fire[c] : 0.0f) : 0.0f;
+            e->cylPeak[c] = c < lay.n ? work.w[c].peak : 0.0f;
+            e->cylPeakAngle[c] = c < lay.n ? work.w[c].peakAt : 0.0f;
+        }
     }
 
     // n samples at the host's rate into left and right (whatever they held): the engine's sound, within +-1

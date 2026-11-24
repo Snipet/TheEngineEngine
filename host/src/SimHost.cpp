@@ -90,6 +90,12 @@ namespace tee
             bool isFloat;
         };
         std::vector<Slot> controls;
+        struct Held
+        {
+            Schema::Handle handle;
+            double value;
+        };
+        std::vector<Held> held;        // LoadOptions::hold, resolved
         std::size_t telOffset = 0, telSize = 0, scopeOffset = 0, scopeSize = 0;
         std::size_t moduleSize = 0;
         std::int64_t budgetPerSample = 0;
@@ -97,6 +103,23 @@ namespace tee
         bool dead = false;             // tripped or stopped: never called again
         bool stoppedByCheck = false;   // its state may be anything: not even its end is called
     };
+
+    namespace
+    {
+        // LoadOptions::hold's paths, found in the program (a path it lacks is skipped)
+        template <typename LiveT>
+        void resolveHeld(LiveT& live, const Sim& sim, const std::vector<HeldValue>& hold)
+        {
+            for (const HeldValue& h : hold)
+            {
+                Schema::Handle handle;
+                std::string unused;
+                if (sim.schema().find(h.path, handle, unused) && handle.scalar() != Scalar::None
+                    && handle.scalar() != Scalar::Pointer)
+                    live.held.push_back({handle, h.value});
+            }
+        }
+    } // namespace
 
     // The session log's ring: records written by the audio thread, read by service().
     struct SimHost::LogRing
@@ -260,6 +283,7 @@ namespace tee
                                                   || f->scalar == Scalar::Double || f->scalar == Scalar::Bool))
                 live->controls.push_back({f->offset, f->scalar, c.offset, c.isFloat});
         }
+        resolveHeld(*live, *sim, options_.hold);
 
         // the Spec: what the host has sent (its defaults and every write since), when it is of this program
         unsigned char* data = static_cast<unsigned char*>(live->instance->data());
@@ -607,6 +631,7 @@ namespace tee
             if (f != nullptr && f->count == 1 && f->scalar != Scalar::None && f->scalar != Scalar::Pointer)
                 live->controls.push_back({f->offset, f->scalar, c.offset, c.isFloat});
         }
+        resolveHeld(*live, *next, options_.hold);
         unsigned char* data = static_cast<unsigned char*>(live->instance->data());
         std::memcpy(data + nf.spec().offset, shadow.data() + nf.spec().offset, nf.spec().size);
         {
@@ -751,6 +776,8 @@ namespace tee
         fminus::Program& fm = sim.program().fminus();
         if (checks)
             fm.setLoopBudget(live.budgetPerSample * std::max(n, 16));
+        for (const Live::Held& h : live.held)
+            live.instance->write(h.handle, h.value);
         sim.process()(live.instance->data(), left, right, n);
         if (checks)
         {

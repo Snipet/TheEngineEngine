@@ -26,7 +26,9 @@ namespace tee::test::twostroke
 
     inline Program& program()
     {
-        static std::unique_ptr<Program> compiled = [] {
+        // (never destroyed: a static that owns a compiled program must not run its destructor after FMinus's and LLVM's own
+        // statics are gone, as happens on macOS)
+        static Program* compiled = [] {
             const std::filesystem::path root(TEE_SOURCE_DIR);
             Program::Files files;
             for (const char* dir : {"core", "core/twostroke"})
@@ -40,7 +42,7 @@ namespace tee::test::twostroke
             INFO(errors);
             REQUIRE(p != nullptr);
             REQUIRE(p->link(errors));
-            return p;
+            return p.release();
         }();
         return *compiled;
     }

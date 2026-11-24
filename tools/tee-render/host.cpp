@@ -158,6 +158,8 @@ int hostMain(int argc, char** argv)
     load.sampleRate = timeline.rate;
     load.maxBlock = std::max(16, timeline.block);
     load.worker = false;
+    if (timeline.warm)
+        load.hold = warmEngine();
     if (!host.attach(compiled, load, error))
         return failHost(error);
     build.attach(&host);
