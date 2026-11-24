@@ -1,0 +1,59 @@
+// valvetrain/valvetrain.fm: the valves (module Valvetrain). Owner: package E.
+//
+// Each cylinder's valve events and how much each valve lets through: the reference's one CAM dial (smoothed over
+// 80 ms), from a mild cam (224 degrees each, 112 apart) to a wild one (300, 106: a long overlap), two valves each whose
+// curtain at full lift with its discharge coefficient is some 9 % of the piston's area for the exhaust, 12 % for the
+// intake; a rotary's peripheral exhaust port and side intake ports. The lift's shape over an event is one table for
+// all (kCamArea, core/cylinder.fm: flowArea(lift) tabulated), which the cylinder reads by its events.
+// What it leaves out: phasers, variable lift, stages, valve float (package E's).
+//
+//   smCam, lastCam          the dial as heard, and as the events were last made (Engine glides smCam every 16 samples
+//                           and calls events when it moved by 0.0005)
+//   events(cyl, n, rotary, cyc, bore, vTotal)   the events and areas of the n cylinders at cyl
+#pragma once
+#include "core/cylinder.fm"
+
+module Valvetrain
+{
+    float smCam;
+    float lastCam;
+
+    // The cams: how long the valves open and how much they overlap (the cam dial), and the valves' areas
+    void events(Cylinder* cyl, int n, int rotary, float cyc, float bore, float vTotal)
+    {
+        const float c = smCam;
+        lastCam = c;
+        const float ap = 0.785398f * bore * bore;
+        for (int k = 0; k < n; ++k)
+        {
+            Cylinder* cy = &cyl[k];
+            if (rotary != 0)
+            {
+                // peripheral exhaust port, side intake ports (degrees of the eccentric shaft; the face fires at 0)
+                cy->evo = 195.0f - 25.0f * c;
+                cy->edur = 395.0f + 35.0f * c;
+                cy->ivo = 572.0f - 40.0f * c;
+                cy->idur = 285.0f + 60.0f * c;
+                cy->aE = 0.0016f * (vTotal / 0.0013f);
+                cy->aI = 0.0020f * (vTotal / 0.0013f);
+            }
+            else
+            {
+                const float ed = 224.0f + 76.0f * c;           // exhaust duration
+                const float id = 224.0f + 76.0f * c;
+                const float lsa = 112.0f - 6.0f * c;           // lobe separation
+                cy->evo = 360.0f - lsa - 0.5f * ed;
+                cy->edur = ed;
+                cy->ivo = 360.0f + lsa - 0.5f * id;
+                cy->idur = id;
+                // two valves each: the curtain at full lift (a quarter of the diameter) with its discharge coefficient there
+                // (about 0.4): some 9 % of the piston's area for the exhaust, 12 % for the intake (cylinder.fm, flowArea,
+                // shapes the lift's way up)
+                cy->aE = 0.091f * ap;
+                cy->aI = 0.118f * ap;
+            }
+            cy->sparkAt = cyc - 20.0f;
+            cy->burnDur = 50.0f;
+        }
+    }
+};

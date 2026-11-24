@@ -43,7 +43,7 @@ module BoostMachineSpec
     float overBoost [[fminus::range(0, 400000)]] [[fminus::default(0)]] [[ui::label("Over-boost flag at")]] [[ui::quantity("pressure")]] [[ui::help("0: 1.4 times the spring or the target.")]];
 
     int blowOffKind [[fminus::range(0, 2)]] [[fminus::default(1)]] [[ui::label("Blow-off valve")]] [[ui::choices("None", "To the air", "Recirculating")]] [[ui::group("Charge")]];
-    float blowOffSpring [[fminus::range(5000, 100000)]] [[fminus::default(35000)]] [[ui::label("Blow-off opens at")]] [[ui::quantity("pressure")]] [[ui::help("The pressure across the throttle.")]];
+    float blowOffSpring [[fminus::range(5000, 100000)]] [[fminus::default(15000)]] [[ui::label("Blow-off opens at")]] [[ui::quantity("pressure")]] [[ui::help("The pressure across the throttle.")]];
     float blowOffDiameter [[fminus::range(0.01, 0.05)]] [[fminus::default(0.025)]] [[ui::label("Blow-off diameter")]] [[ui::quantity("length")]];
     float icEffect [[fminus::range(0, 0.95)]] [[fminus::default(0.7)]] [[ui::label("Intercooler effectiveness")]] [[ui::quantity("fraction")]];
     float icDrop [[fminus::range(0, 50000)]] [[fminus::default(12000)]] [[ui::label("Intercooler drop")]] [[ui::quantity("pressure")]] [[ui::help("At its rated flow.")]];
@@ -54,7 +54,7 @@ module BoostMachineSpec
     int charger [[fminus::range(0, 2)]] [[fminus::default(0)]] [[ui::label("Supercharger")]] [[ui::choices("Roots", "Twin-screw", "Centrifugal")]] [[ui::group("Supercharger")]];
     float scDisplacement [[fminus::range(0, 0.004)]] [[fminus::default(0)]] [[ui::label("Displacement a turn")]] [[ui::quantity("volume")]] [[ui::help("0: matched to the engine.")]];
     float scRatio [[fminus::range(1, 4)]] [[fminus::default(2.4)]] [[ui::label("Pulley ratio")]] [[ui::quantity("ratio")]];
-    float scVolumeRatio [[fminus::range(1, 3)]] [[fminus::default(1.8)]] [[ui::label("Built-in volume ratio")]] [[ui::quantity("ratio")]] [[ui::help("A twin-screw's.")]];
+    float scVolumeRatio [[fminus::range(1, 3)]] [[fminus::default(1.5)]] [[ui::label("Built-in volume ratio")]] [[ui::quantity("ratio")]] [[ui::help("A twin-screw's.")]];
     float scStepUp [[fminus::range(2, 6)]] [[fminus::default(3.6)]] [[ui::label("Step-up gear")]] [[ui::quantity("ratio")]] [[ui::help("A centrifugal's, inside its case.")]];
     bool scBypass [[fminus::default(1)]] [[ui::label("Bypass at part throttle")]];
 

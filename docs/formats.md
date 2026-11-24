@@ -110,3 +110,111 @@ waveforms within seconds. The tests state how alike the renders stay.
   with the fuel cut, plus 16 when driven, plus the dash's temperature and oil pressure in its higher bits).
 
 Nothing either tool writes is committed: both go under `out/`, which git ignores.
+
+# Files for the simulator (card C)
+
+The reference's files above are K2's and stay as they are. What follows is the simulator's (`sim/engine.fm`), read
+and written by `tee_host` (`tee::Build`, `tee::Timeline`, `tee::Validation`, `tee::SessionLog`) and by the tools on
+it. Every one is JSON with a `"format"` and a `"version"`; a reader refuses another format and reads a newer version
+as far as it goes.
+
+## A build: `tee-build`, version 1
+
+What the machine is: the Spec's values (02-contracts.md, section 8). `content/builds/` holds the shipped ones; the
+user's are in their own folder (`tee::Presets::userDirectory()`). `tee::Build` reads and writes them.
+
+```json
+{"format": "tee-build", "version": 1, "name": "V8", "notes": "...",
+ "spec": {"engine": {"layout": "V8 crossplane", "displacement": 0.0062099, "torqueShape": {"x": [0, 400], "y": [0.8, 1]}},
+          "ecu": {"starter": true, "spark": {"x": [100, 400], "y": [0, 1], "z": [[0, 0.01], [0.02, 0.03]]}},
+          "boost": {"turbo": [{"size": 0.5}, {"size": 0.6}]}}}
+```
+
+- Values by field name under their section, in SI; a choice by its name (a number is read too), a switch as `true` or
+  `false`, an array of numbers as an array, an array of modules as an array of objects.
+- A table: a `Curve16` as `{"x": [...], "y": [...]}`, its points in use only (`n` is their count); a `Map16` as
+  `{"x": [...], "y": [...], "z": [[...], ...]}`, `z[i]` the row at `x[i]`, one value for each `y`.
+- A field the file lacks takes its default; a value outside its range is clamped, with one warning naming them all. A
+  field the program lacks is kept and written back where it was (a newer build opened by an older application loses
+  nothing), with one warning. A field marked `ui::hidden` is neither read nor written.
+- **A part** saved alone carries `"part"`: `"engine"` (the sections engine, valve, intake, boost, exhaust, fuel), `"car"`
+  or `"tune"` (the ecu section). Loading a part touches only its sections; a part's file is refused as another part.
+- The build's hash (`Build::hash`, the dyno's cache key) is of the Spec's values alone, not the name or the notes.
+
+## A scenario: `tee-scenario`, version 1
+
+A build, a rate and a block size, a timeline of the driver's controls and Spec changes, and assertions. `content/
+scenarios/` holds the shipped ones. `tee::parseTimeline` also reads K3a's `tee-engine-scenario/1`
+(`tests/sim/scenarios/`), which is the same with `"ctl"`.
+
+```json
+{"format": "tee-scenario", "version": 1, "name": "rev-limit", "description": "...",
+ "build": "v8", "rate": 48000, "block": 512, "seconds": 14,
+ "events": [
+   {"t": 0.0, "spec": {"env.temperature": 300}, "ctl": {"mode": 1, "ignition": 1}},
+   {"t": 0.25, "ctl": {"ignition": 2}},
+   {"t": 4.0, "ctl": {"throttle": 1}, "ramp": 0.15},
+   {"t": 6.0, "press": ["shiftUp"]},
+   {"t": 8.0, "spec": {"engine.layout": "V12", "sound.harmonics[2]": 0.4}}],
+ "assertions": [
+   {"tel": "engine.speed", "measure": "max", "during": [6, 10], ">": 600, "source": "..."},
+   {"audio": "finite"},
+   {"audio": "peak", "<=": 1},
+   {"audio": "step", "during": [1, 14], "<": 12}]}
+```
+
+- `build`: a name under `content/builds/`, or a path; none: every field at its default. `rate` (48000), `block` (512,
+  the longest call: a block is cut where the next event falls, so the result does not depend on it).
+- An event at `t` seconds: `"ctl"` (or `"controls"`) sets controls by their names in 02-contracts.md, section 4;
+  `"press"` raises a counter (`shiftUp`, `shiftDown`, `strip`) by one; `"spec"` sets Spec fields by path (under spec;
+  an element as `name[i]`), a number, a switch or a choice's name. `"ramp"`: the event's numbers move there in a
+  straight line over that many seconds from the value before, a step every 5 ms. Events of one time apply in the
+  file's order.
+- An assertion: `"tel"` a telemetry field with a `"measure"` (`max`, `min`, `mean`, `last`), or `"audio"` (`finite`;
+  `peak`; `rms` in dB; `step`, the largest step between samples over the local level, `tee::measure::largestStep`),
+  over `"during"` (seconds; the whole run by default), compared by `"<"`, `"<="`, `">"`, `">="` or `"within": [a, b]`;
+  `"source"` says why. `tee::checkAssertions` gives a line each.
+
+## A validation: `tee-validation`, version 1
+
+What a build should measure as, each target with its source (card C, section 8). `content/validation/<build>.json`;
+`tee-validate` runs them and prints the table (target, range, measured, pass, source); ctest runs the `"fast"` ones.
+
+```json
+{"format": "tee-validation", "version": 1, "build": "v8", "description": "...",
+ "targets": [
+   {"name": "Warm idle", "scenario": "idle", "tel": "engine.speed", "measure": "mean", "during": [8, 12],
+    "range": [62.8, 94.2], "unit": "rad/s", "source": "a warm passenger-car V8 idles at 600 to 900 rpm"},
+   {"name": "Holds the limiter", "scenario": "rev-limit", "tel": "engine.speed", "measure": "max", "during": [6, 10],
+    "relativeTo": "engine.redline", "range": [0.97, 1.03], "fast": true, "source": "..."},
+   {"name": "Peak torque", "dyno": {"from": 150, "to": 680, "rate": 60}, "measure": "maxTorque",
+    "range": [490, 690], "unit": "N m", "source": "bmep 1.0 to 1.4 MPa (Heywood, ch. 2)"}]}
+```
+
+- A scenario's target: a telemetry field (`max`, `min`, `mean`, `last`) or the audio (`"audio"`: `peak`, `rms`,
+  `step`) over `"during"`; `"relativeTo"` a telemetry field divides the measure by that field's last value in the run.
+- A dyno's target: `"dyno"` a plan (`from`, `to`, `rate` in rad/s and rad/s^2, or `steps` with `settle` and `measure`;
+  `pedal`, `warmup`, `torque`, `chassis`), measured by `maxTorque`, `maxPower`, `speedAtMaxTorque`,
+  `speedAtMaxPower` or `torqueAt` (with `"at"`).
+- Every target says its `"source"` in words; a target the program cannot be measured for yet (a field it lacks) is
+  `n/a`, no failure.
+
+## A dyno curve: CSV
+
+`tee-dyno` (and `DynoCurve::csv`): `speed_rad_s,rpm,torque_N_m,power_kW`, then each telemetry field asked for
+(`--fields`), a row a point, numbers with nine significant digits. A sweep's point is the mean over its span of speed
+(`spacing`, 10 rad/s); a step's the mean over its measuring window after it settled.
+
+## A session log: `tee-session`, version 1
+
+Every control change and every Spec write that reached the simulator, each at the sample it took effect (card C,
+section 9): what `SimHost` keeps when `LoadOptions::log` is on, and what `tee::replay` plays again to the same samples.
+
+```json
+{"format": "tee-session", "version": 1, "rate": 48000, "samples": 144000, "start": "<the module's bytes, hex>",
+ "events": [{"sample": 0, "controls": {"ignition": 2, "throttle": 0, ...}},
+            {"sample": 12288, "offset": 40, "section": 0, "bytes": "0000a042"}]}
+```
+
+A Spec write is the bytes at an offset of the main module, so a log belongs to the program it was made with (a log of
+another layout is refused when an offset fits no field).

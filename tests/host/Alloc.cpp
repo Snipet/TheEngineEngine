@@ -4,11 +4,23 @@
 
 #include <cstdlib>
 #include <new>
+#if defined(_WIN32)
+#include <malloc.h>
+#endif
 
 namespace
 {
     thread_local bool tCounting = false;
     std::atomic<long> gCount{0};
+
+    void freeAligned(void* p) noexcept
+    {
+#if defined(_WIN32)
+        _aligned_free(p);
+#else
+        std::free(p);
+#endif
+    }
 
     void* allocate(std::size_t n, std::size_t alignment)
     {
@@ -20,7 +32,11 @@ namespace
         if (alignment > alignof(std::max_align_t))
         {
             n = (n + alignment - 1) / alignment * alignment;
+#if defined(_WIN32)
+            p = _aligned_malloc(n, alignment);   // the Windows C runtime has no aligned_alloc
+#else
             p = std::aligned_alloc(alignment, n);
+#endif
         }
         else
             p = std::malloc(n);
@@ -99,17 +115,17 @@ void operator delete[](void* p, std::size_t) noexcept
 }
 void operator delete(void* p, std::align_val_t) noexcept
 {
-    std::free(p);
+    freeAligned(p);
 }
 void operator delete[](void* p, std::align_val_t) noexcept
 {
-    std::free(p);
+    freeAligned(p);
 }
 void operator delete(void* p, std::size_t, std::align_val_t) noexcept
 {
-    std::free(p);
+    freeAligned(p);
 }
 void operator delete[](void* p, std::size_t, std::align_val_t) noexcept
 {
-    std::free(p);
+    freeAligned(p);
 }
