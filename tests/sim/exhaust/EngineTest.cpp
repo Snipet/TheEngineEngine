@@ -66,6 +66,7 @@ static void engineIdentity(bool full)
         const Audio a = render(b, scenario, 8.0);
         b.values["exhaust.model"] = {1.0};
         b.values["exhaust.portHeat"] = {0.0};   // (the port's cooling off: the reference has none)
+        b.values["exhaust.flowClose"] = {0.0};  // (the valves' mean flow not closed: the reference's g q)
         const Audio m = render(b, scenario, 8.0);
         const double dl = test::nullDepth(a.left, m.left);
         const double dr = test::nullDepth(a.right, m.right);
