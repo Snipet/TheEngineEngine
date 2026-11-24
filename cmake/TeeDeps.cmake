@@ -203,8 +203,30 @@ endforeach()
 set(FMINUS_LLVM_MODE system)
 set(LLVM_DIR "${_tee_llvm}/lib/cmake/llvm")
 set(FMINUS_DEPS_DIR "${TEE_DEPS_DIR}")
-if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux" AND NOT DEFINED FMINUS_PARSER_TOOLS_MODE)
-  set(FMINUS_PARSER_TOOLS_MODE system)       # Ubuntu's Bison 3.8.2 and Flex 2.6.4 are the versions FMinus pins
+# Bison and Flex. On Linux the system's (Ubuntu's Bison 3.8.2 and Flex 2.6.4 are the versions FMinus pins; the ones in
+# FMinus's LLVM archive want a library an Ubuntu container lacks). Elsewhere FMinus's own way: the installs the
+# archive brought into the cache (WinFlexBison on Windows), which it finds by their stamps and builds nothing.
+# A cache variable of ours, set into FMinus's on every configure: FMinus's own cache entry, which its first configure
+# creates as "fetch", must not be what a second configure reads.
+if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
+  set(_tee_parser_tools_default system)
+else()
+  set(_tee_parser_tools_default fetch)
+endif()
+set(TEE_PARSER_TOOLS_MODE "${_tee_parser_tools_default}" CACHE STRING
+    "Where FMinus's Bison and Flex come from: system (the PATH's) or fetch (FMinus's installs in the dependency cache)")
+set_property(CACHE TEE_PARSER_TOOLS_MODE PROPERTY STRINGS system fetch)
+set(FMINUS_PARSER_TOOLS_MODE "${TEE_PARSER_TOOLS_MODE}")
+if(TEE_PARSER_TOOLS_MODE STREQUAL "system")
+  # A tree whose earlier configure ran in fetch mode cached the cache's own tools: forget them, so the PATH's are found.
+  foreach(_tool BISON_EXECUTABLE FLEX_EXECUTABLE FLEX_INCLUDE_DIR)
+    if(DEFINED CACHE{${_tool}})
+      cmake_path(IS_PREFIX TEE_DEPS_DIR "$CACHE{${_tool}}" NORMALIZE _tee_in_cache)
+      if(_tee_in_cache)
+        unset(${_tool} CACHE)
+      endif()
+    endif()
+  endforeach()
 endif()
 set(FMINUS_BUILD_TESTS OFF)
 set(FMINUS_BUILD_TOOLS OFF)

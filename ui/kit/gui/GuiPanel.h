@@ -8,7 +8,7 @@
 //   parameters   the source's parameter i is slot i (kMaxControls at most; a source with more shows its first 64 and
 //                says so in notes()). The .gui file names a parameter by its ParamInfo::id.
 //   fields       a display (or live=, or a shader's input) names a telemetry value: `rpm`, or `shared->rpm` as the
-//                reference's panel writes it (the part after -> is the name asked of TelemetrySource::find). A name
+//                reference's panel writes it (the part after -> is the name asked of TelemetrySource::findValue). A name
 //                the source does not have is a note, as an unknown field was in the plugin.
 //   out          the output's peak (TelemetrySource::outputPeak). There is no input (`in` is left out) and, until the
 //                shell gives one, no access to the output's samples: a scope or a spectrum of `out` reads what
@@ -119,7 +119,8 @@ namespace tee::ui
     protected:
         // An item of the subclass's own (above); its index in items().
         int addItem(std::unique_ptr<Item> item);
-        uint32_t nextId() const noexcept;                // an accessibility id for the item about to be added
+        uint32_t nextId() const noexcept;                // an accessibility id for the item about to be added (its
+                                                         // own first, then its parts)
         // After every layout (a resize, a tab chosen): the subclass places its own items.
         virtual void placed() {}
         // Room kept under the interface for the subclass's own items (px; the natural height grows by it), and the
@@ -140,6 +141,8 @@ namespace tee::ui
         void scrollBy(float dx, float dy);
 
         static constexpr uint32_t kA11yStride = 64;      // item i's ids are kA11yStride * (i + 1) + 0..63
+        mutable std::size_t idItems_ = static_cast<std::size_t>(-1);
+        mutable uint32_t idNext_ = 0;
 
         Options options_;
         Sources files_;

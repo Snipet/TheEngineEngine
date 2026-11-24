@@ -1,0 +1,27 @@
+{
+  "format": "tee-ref-scenario/1",
+  "name": "drive-gears",
+  "description": "A drive in CAR mode: pulls away on the paddles, flat out up through the gears, lifts, brakes and comes down through them to a stop.",
+  "seconds": 40,
+  "events": [
+    { "t": 0.0, "note": "a 1500 kg car; the lever stands in neutral, which leaves the gears to the paddles",
+      "dials": { "drive": 1, "starter": 1, "ambient": 80, "mass": 1500, "load": 0 },
+      "input": { "gear": 0, "clutch": 0, "brake": 0, "throttle": 0 } },
+    { "t": 0.25, "note": "the start key", "key": 36, "velocity": 1.0 },
+    { "t": 0.75, "keyUp": true },
+    { "t": 3.0, "note": "first gear: the paddles' own clutch pulls it away as the revs come up", "tap": "paddleUp" },
+    { "t": 3.5, "input": { "throttle": 0.35 }, "ramp": 0.5 },
+    { "t": 5.0, "input": { "throttle": 1.0 }, "ramp": 0.4 },
+    { "t": 7.5, "note": "second", "tap": "paddleUp" },
+    { "t": 10.5, "note": "third", "tap": "paddleUp" },
+    { "t": 15.0, "note": "fourth", "tap": "paddleUp" },
+    { "t": 20.0, "note": "lifted, then the brake", "input": { "throttle": 0 }, "ramp": 0.1 },
+    { "t": 21.0, "input": { "brake": 0.5 }, "ramp": 0.3 },
+    { "t": 23.0, "note": "down the gears, each with its blip", "tap": "paddleDown" },
+    { "t": 25.5, "tap": "paddleDown" },
+    { "t": 28.0, "tap": "paddleDown" },
+    { "t": 31.0, "note": "neutral, and the brake brings it to rest", "tap": "paddleDown" },
+    { "t": 31.5, "input": { "brake": 0.8 }, "ramp": 0.3 },
+    { "t": 36.0, "input": { "brake": 0 }, "ramp": 0.3 }
+  ]
+}

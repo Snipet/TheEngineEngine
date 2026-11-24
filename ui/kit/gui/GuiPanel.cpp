@@ -48,7 +48,7 @@ namespace tee::ui
         const auto offer = [&](const std::string& word) {
             if (word == "in" || word == "out" || !seen.insert(word).second)
                 return;
-            if (telemetry.find(telemetryName(word)) >= 0)
+            if (telemetry.findValue(telemetryName(word)) >= 0)
                 out.push_back({ word, "float", {} });
         };
         // Every name in the file, in and outside "texts" (a shader's inputs="rpm shared->throttle" is a text):
@@ -138,13 +138,10 @@ namespace tee::ui
             for (const SourceFile& f : files_)
                 names.push_back(f.name);
             // We have no input, as an instrument has none: `in` is left out with the reader's own note.
-            // A Player's parameters and telemetry may answer one find() (both interfaces declare it): a name that is a
-            // parameter's id is the parameter, never a field.
+            // A name that is both a parameter's id and a telemetry value's is the parameter (a control's, a shader's
+            // input by its turn), as a program's dial came before its field.
             std::vector<PanelField> fields = telemetryFields(gui->text, telemetry_);
-            std::erase_if(fields, [this](const PanelField& f) {
-                const int i = params_.find(f.name);
-                return i >= 0 && i < params_.count() && params_.info(i).id == f.name;
-            });
+            std::erase_if(fields, [this](const PanelField& f) { return params_.findParam(f.name) >= 0; });
             spec_ = readGuiSpec(*gui, controls_, fields, true, names, notes_);
         }
         // What the file did not say comes from the parameter: its label, and a choice's names.
@@ -161,7 +158,7 @@ namespace tee::ui
         tapHandle_.assign(static_cast<std::size_t>(kMaxDisplays), -1);
         for (const PanelDisplay& d : spec_.displays)
             if (d.tap >= 0 && d.tap < kMaxDisplays && !d.audio())
-                tapHandle_[static_cast<std::size_t>(d.tap)] = telemetry_.find(telemetryName(d.source));
+                tapHandle_[static_cast<std::size_t>(d.tap)] = telemetry_.findValue(telemetryName(d.source));
         // The shaders the build made for this panel (kit/shaders/Registry.h; none in a build without a GPU layer).
         for (PanelShader& sh : spec_.shaders)
             if (const shaders::Built* built = shaders::find(options_.name, sh.file))
@@ -188,7 +185,17 @@ namespace tee::ui
 
     GuiPanel::~GuiPanel() = default;
 
-    uint32_t GuiPanel::nextId() const noexcept { return kA11yStride * static_cast<uint32_t>(items_.size() + 1); }
+    // Item i's ids are kA11yStride * (i + 1) + 0..63: the first asked for while i items exist is the item's own, the
+    // next ones (a shader's and a pointer item's x, y and down) follow it.
+    uint32_t GuiPanel::nextId() const noexcept
+    {
+        if (idItems_ != items_.size())
+        {
+            idItems_ = items_.size();
+            idNext_ = 0;
+        }
+        return kA11yStride * static_cast<uint32_t>(items_.size() + 1) + std::min<uint32_t>(idNext_++, kA11yStride - 1);
+    }
 
     int GuiPanel::addItem(std::unique_ptr<Item> item)
     {
@@ -241,7 +248,7 @@ namespace tee::ui
 
     int GuiPanel::slotOf(std::string_view paramId) const
     {
-        const int i = params_.find(paramId);
+        const int i = params_.findParam(paramId);
         return i >= 0 && i < static_cast<int>(ports_.size()) ? i : -1;
     }
 

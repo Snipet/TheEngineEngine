@@ -78,6 +78,11 @@ endif()
 if(TEE_BUILD_TESTS)
   add_subdirectory(tests)
 endif()
+# The interface kit (card J): its libraries (tee_ui) and, with TEE_BUILD_TESTS, its headless tests (ui.*). It needs
+# FunkGui's core alone, so it is built whether or not the application is.
+if(NOT TARGET tee_ui)
+  add_subdirectory(ui)
+endif()
 # shell/ and app/ (docs/plan/w1-b-shell.md): the shell's libraries, tee-headless and their tests in every build; the
 # window, TheEngineEngine, with TEE_BUILD_APP.
 add_subdirectory(shell)
