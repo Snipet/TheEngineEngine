@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "Flat-plane 4.5 L V8",
-  "notes": "A high-revving flat-plane V8: 94 x 81 mm (4497 cc), 12.5:1, direct injection, four valves, 9000 rpm (the published figures of the 4.5 L 90-degree flat-plane V8 of 2009, F136-type: 419 kW at 9000 rpm, 540 N m at 6000; Wikipedia and the maker's site). Variable-length runners. In a mid-engined coupe. Its exhaust: tuned long-primary headers, the primaries 1.63 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its intake: the sports class's runner, 0.30 m from the valve to the plenum (a high-revving engine's short runners or a throttle a cylinder); a second, short runner of 0.20 m above 5850 rpm, as the real engine switches (the 458's three throttle valves between its two plenums giving four configurations, with short, almost straight tracts (Ferrari's launch text, pistonheads.com): a plenum's geometry switched, here as a second runner; its lengths and speed the class's judgement): JUDGEMENT, a class default, not the real engine's (no source found).",
+  "notes": "A high-revving flat-plane V8: 94 x 81 mm (4497 cc), 12.5:1, direct injection, four valves, 9000 rpm (the published figures of the 4.5 L 90-degree flat-plane V8 of 2009, F136-type: 419 kW at 9000 rpm, 540 N m at 6000; Wikipedia and the maker's site). Variable-length runners. In a mid-engined coupe. Its exhaust: tuned long-primary headers, the primaries 1.63 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py). Its intake: the sports class's runner, 0.30 m from the valve to the plenum (a high-revving engine's short runners or a throttle a cylinder); a second, short runner of 0.20 m above 5850 rpm, as the real engine switches (the 458's three throttle valves between its two plenums giving four configurations, with short, almost straight tracts (Ferrari's launch text, pistonheads.com): a plenum's geometry switched, here as a second runner; its lengths and speed the class's judgement): JUDGEMENT, a class default, not the real engine's (no source found).",
   "spec": {
     "engine": {
       "layout": "V8 flat-plane",
@@ -131,6 +131,77 @@
       },
       "launch": {
         "on": true
+      },
+      "maps": {
+        "camInAuto": false,
+        "camIn": {
+          "x": [
+            104.72000122070312,
+            222.9037227365718,
+            341.0874442524405,
+            459.27116576830923,
+            577.4548872841779,
+            695.6386088000465,
+            813.8223303159153,
+            932.006051831784
+          ],
+          "y": [
+            0.0,
+            0.75,
+            0.95,
+            3.0
+          ],
+          "z": [
+            [
+              0.0,
+              0.0,
+              10.0,
+              10.0
+            ],
+            [
+              0.0,
+              0.0,
+              46.251461029052734,
+              46.251461029052734
+            ],
+            [
+              0.0,
+              0.0,
+              30.0,
+              30.0
+            ],
+            [
+              0.0,
+              0.0,
+              20.0,
+              20.0
+            ],
+            [
+              0.0,
+              0.0,
+              50.0,
+              50.0
+            ],
+            [
+              0.0,
+              0.0,
+              50.0,
+              50.0
+            ],
+            [
+              0.0,
+              0.0,
+              50.0,
+              50.0
+            ],
+            [
+              0.0,
+              0.0,
+              50.0,
+              50.0
+            ]
+          ]
+        }
       }
     },
     "car": {

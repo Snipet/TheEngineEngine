@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "V10 5.2 L",
-  "notes": "A 90-degree V10 with split crankpins for even firing: 84.5 x 92.8 mm (5204 cc), 12.5:1, direct and port injection, 8700 rpm (the 5.2 L V10 of 2008 on: 386 to 470 kW at 8000 to 8700 rpm, 530 to 565 N m at 6500; makers' figures). In an all-wheel-drive mid-engined car. Its exhaust: tuned long-primary headers, the primaries 1.63 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its intake: the sports class's runner, 0.30 m from the valve to the plenum (a high-revving engine's short runners or a throttle a cylinder): JUDGEMENT, a class default, not the real engine's (no source found).",
+  "notes": "A 90-degree V10 with split crankpins for even firing: 84.5 x 92.8 mm (5204 cc), 12.5:1, direct and port injection, 8700 rpm (the 5.2 L V10 of 2008 on: 386 to 470 kW at 8000 to 8700 rpm, 530 to 565 N m at 6500; makers' figures). In an all-wheel-drive mid-engined car. Its exhaust: tuned long-primary headers, the primaries 1.63 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py). Its intake: the sports class's runner, 0.30 m from the valve to the plenum (a high-revving engine's short runners or a throttle a cylinder): JUDGEMENT, a class default, not the real engine's (no source found).",
   "spec": {
     "engine": {
       "layout": "V10",
@@ -137,6 +137,77 @@
       },
       "launch": {
         "on": true
+      },
+      "maps": {
+        "camInAuto": false,
+        "camIn": {
+          "x": [
+            104.71975511965977,
+            218.4155095606775,
+            332.11126400169525,
+            445.807018442713,
+            559.5027728837307,
+            673.1985273247485,
+            786.8942817657663,
+            900.590036206784
+          ],
+          "y": [
+            0.0,
+            0.75,
+            0.95,
+            3.0
+          ],
+          "z": [
+            [
+              0.0,
+              0.0,
+              30.0,
+              30.0
+            ],
+            [
+              0.0,
+              0.0,
+              10.0,
+              10.0
+            ],
+            [
+              0.0,
+              0.0,
+              10.0,
+              10.0
+            ],
+            [
+              0.0,
+              0.0,
+              10.0,
+              10.0
+            ],
+            [
+              0.0,
+              0.0,
+              40.0,
+              40.0
+            ],
+            [
+              0.0,
+              0.0,
+              40.0,
+              40.0
+            ],
+            [
+              0.0,
+              0.0,
+              40.0,
+              40.0
+            ],
+            [
+              0.0,
+              0.0,
+              40.0,
+              40.0
+            ]
+          ]
+        }
       }
     },
     "car": {
