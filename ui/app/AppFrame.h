@@ -132,6 +132,7 @@ namespace tee::ui
         funkgui::Rect pedalRect(int pedal) const;            // 0 throttle, 1 brake, 2 clutch
         funkgui::Rect inspectorTabRect(int p) const;
         RpmBar& rpmBar() const { return *rpm_; }
+        const std::vector<Stepper*>& unitSteppers() const noexcept { return unitSteppers_; }
         int railFocus() const;                               // the rail button with the keyboard's focus; -1: none
         PedalBar& pedal(int i) const { return *pedals_[static_cast<std::size_t>(i)]; }
         const PanelControls& panelControls() const noexcept { return controls_; }
@@ -205,7 +206,8 @@ namespace tee::ui
         Button *clear_ = nullptr, *fold_ = nullptr, *unitsButton_ = nullptr;
         // the settings page (unitsPage_): audio, theme, units, keys
         Label* audioLine_ = nullptr;
-        Button *audioMenu_ = nullptr, *graphite_ = nullptr, *paper_ = nullptr;
+        Button *audioMenu_ = nullptr, *graphite_ = nullptr, *paper_ = nullptr, *full_ = nullptr, *economy_ = nullptr;
+        float qualityNoteY_ = 0.0f, settingsHeadX_ = 0.0f;
         std::vector<std::pair<std::string, float>> settingsHeads_;   // a heading and its y (arrange's)
         float keysY_ = 0.0f;
         std::vector<Stepper*> unitSteppers_;
@@ -215,7 +217,7 @@ namespace tee::ui
         std::vector<Button*> rail_;
         Widget* railMarks_ = nullptr;
         Label *name_ = nullptr, *sentence_ = nullptr, *status_ = nullptr;
-        Bar *level_ = nullptr, *load_ = nullptr;
+        Bar *level_ = nullptr, *load_ = nullptr, *limiter_ = nullptr;
         Button *undo_ = nullptr, *redo_ = nullptr;
         // the cockpit
         Button* start_ = nullptr;

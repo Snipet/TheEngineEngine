@@ -165,6 +165,8 @@ namespace tee::ui
         virtual double progress() const = 0;              // 0..1 of the one being made
         virtual std::string error() const { return {}; }  // why there is no curve ("" : no error)
         virtual std::uint64_t revision() const = 0;       // moves when any curve or the state above changes
+        // How many predicted curves were asked for so far (one drag: one request, after its quiet); 0: not counted.
+        virtual std::uint64_t requests() const { return 0; }
         // Runs (the DYNO workspace's): listed, started, stopped. A source with no runner has none and starts none.
         virtual int runCount() const { return 0; }
         virtual const DynoTrace& run(int i) const;
@@ -243,6 +245,11 @@ namespace tee::ui
         // menu (the shell's F9); none: the status line, and no menu.
         std::function<std::string()> audioInfo;
         std::function<void()> audioMenu;
+        // The simulator's quality (the settings' QUALITY): 0 FULL, 1 ECONOMY (the engine at half its inner rate: about
+        // half the load, the highest octave lost). Cards B and C serve it (a reload, stored); while setQuality is
+        // empty the row shows FULL and does nothing. Nothing switches by itself.
+        std::function<int()> quality;
+        std::function<void(int)> setQuality;
         // The ECU's maps baked from its formulas now (ctl.bakeMaps pressed once; TUNE's BAKE). None: not here.
         std::function<void()> bakeMaps;
         // A text saved as a file the person chooses (a dyno run's CSV, an export): the host's save dialog, starting at

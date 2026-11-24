@@ -13,7 +13,7 @@
 // the worst difference of a quarter second's level, and the engine's speed apart (rpm).
 //
 //   qbench [--a <dir>] [--b <dir>] [--aenv K=V,K=V] [--benv K=V,...] [--builds a,b] [--scenarios a,b]
-//          [--repeat n] [--rate hz] [--block n] [--seconds s] [--bands 1 (each band's difference, B over A)]
+//          [--repeat n] [--rate hz] [--block n] [--seconds s] [--bands 1 (each band's difference, B over A)] [--sizes 1 (A's code by module)]
 //   TEE_Q_OPT=0..3, TEE_Q_MATH=vector|libm|fast, TEE_Q_DENORM=flush|preserve, TEE_Q_KNOBS=n, TEE_Q_IR=<file>, TEE_Q_DEFINES=NAME[=v];NAME (the program's macros: TEE_FAST)
 #include "tee/Clock.h"
 #include "tee/EnginePlayer.h"
@@ -26,6 +26,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <limits>
+#include <map>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -252,7 +253,7 @@ int main(int argc, char** argv)
     std::string a = root + "/sim", b, aenv, benv, builds = "v8,large-diesel", scenarios = "free-revs,drive-car";
     int repeat = 3, block = 512;
     double rate = 48000.0, seconds = 0.0;
-    bool showBands = false;
+    bool showBands = false, showSizes = false;
     for (int i = 1; i + 1 < argc; i += 2)
     {
         const std::string k = argv[i], v = argv[i + 1];
@@ -267,6 +268,7 @@ int main(int argc, char** argv)
         else if (k == "--block") block = std::atoi(v.c_str());
         else if (k == "--seconds") seconds = std::atof(v.c_str());
         else if (k == "--bands") showBands = v == "1";
+        else if (k == "--sizes") showSizes = v == "1";
         else { std::fprintf(stderr, "qbench: unknown %s\n", k.c_str()); return 2; }
     }
     if (b.empty())
@@ -277,6 +279,26 @@ int main(int argc, char** argv)
                 aenv.c_str(), A.createSeconds, A.compileSeconds, A.linkSeconds, A.codeBytes);
     std::printf("B: %s [%s]: create %.2f s (compile %.2f, machine code %.2f), %zu bytes of code\n\n", b.c_str(),
                 benv.c_str(), B.createSeconds, B.compileSeconds, B.linkSeconds, B.codeBytes);
+    if (showSizes)
+    {
+        // A's machine code by module (FMinus's code ranges), largest first
+        std::string err;
+        std::map<std::string, std::size_t> bytes;
+        std::map<std::string, int> count;
+        for (const auto& r : A.player->program().fminus().codeRanges(err))
+        {
+            bytes[r.module.empty() ? "(functions)" : r.module] += r.size;
+            count[r.module.empty() ? "(functions)" : r.module] += 1;
+        }
+        std::vector<std::pair<std::size_t, std::string>> v;
+        for (const auto& [m, b] : bytes)
+            v.push_back({b, m});
+        std::sort(v.rbegin(), v.rend());
+        std::printf("| module | bytes of code | functions |\n|---|---:|---:|\n");
+        for (const auto& [b, m] : v)
+            std::printf("| %s | %zu | %d |\n", m.c_str(), b, count[m]);
+        std::printf("\n");
+    }
     std::printf("| build | scenario | A ns | A spread | B ns | B spread | B / A | to the bit | difference under the signal, dB | together for, s | bands, worst dB | quarter-second level, worst dB | speed apart, worst / mean rpm | B / A, processor time |\n");
     std::printf("|---|---|---:|---:|---:|---:|---:|---|---:|---:|---:|---:|---:|---:|\n");
     double sumA = 0.0, sumB = 0.0, sumCa = 0.0, sumCb = 0.0;

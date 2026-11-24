@@ -1,0 +1,73 @@
+{
+ "format": "tee-engine-scenario/1",
+ "name": "d2-turbo-whistle",
+ "build": "truck-15l-six",
+ "description": "Card F's machine as a big single turbo: at 1300 rpm on the dyno the pedal floored at 5 s: the slow spool and its whistle under load; the vanes made variable at 13 s and floored again at 15 s (the quick spool).",
+ "seconds": 22,
+ "events": [
+  {
+   "t": 0.0,
+   "spec": {
+    "env.temperature": 300,
+    "env.pressure": 101325,
+    "boost.model": 1,
+    "boost.kind": 1,
+    "boost.layout": 1,
+    "boost.gateSpring": 220000
+   },
+   "ctl": {
+    "mode": 0,
+    "lever": 0,
+    "clutch": 0,
+    "brake": 0,
+    "throttle": 0,
+    "ignition": 1
+   }
+  },
+  {
+   "t": 0.2,
+   "ctl": {
+    "ignition": 2
+   }
+  },
+  {
+   "t": 2.2,
+   "ctl": {
+    "ignition": 1
+   }
+  },
+  {
+   "t": 3.0,
+   "ctl": {
+    "mode": 2,
+    "dynoSpeed": 136.136,
+    "dynoRate": 0,
+    "throttle": 0
+   }
+  },
+  {
+   "t": 5.0,
+   "ctl": {
+    "throttle": 1
+   }
+  },
+  {
+   "t": 11.0,
+   "ctl": {
+    "throttle": 0
+   }
+  },
+  {
+   "t": 13.0,
+   "spec": {
+    "boost.vanes": 1
+   }
+  },
+  {
+   "t": 15.0,
+   "ctl": {
+    "throttle": 1
+   }
+  }
+ ]
+}

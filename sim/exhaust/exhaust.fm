@@ -22,6 +22,14 @@
 //   step(qe, np)                       each sample, after the cylinders: everything from the ports to the tails
 // Its state read by others: prim[] (the cylinders' exhaust ends), tUse[0] (the headers' gas), outL, outR, shell[]
 // (the headers' walls, for the engine bay), mdot, tPort; the cylinders add to eSum and mSum.
+//
+// spec.exhaust.model 1 (card G, docs/models/exhaust.md): the system is built from the Spec's description by the
+// builder (slots.fm, XBuild b) out of the same parts. Every function above stays the entry point: with model 1 it
+// forwards to the builder, and keeps what others read here true for it (prim[i].near and .z are the builder's ports'
+// arriving waves and impedances after read(); tUse[0] its headers' gas; outL, outR, shell[] its outputs; nDuals the
+// channels its ends make). The reference's code is untouched and runs alone with model 0 (the null test). A change of
+// model, or of the builder's description while it runs, is made under this module's own fade (6 ms down, rebuilt, 12 ms
+// up). Telemetry (tel.exhaust) and the Scope's exhaust arrays are written here.
 #pragma once
 #include "exhaust/duct.fm"
 #include "exhaust/pop.fm"
@@ -31,6 +39,11 @@
 #include "spec/limits.fm"
 #include "core/layouts.fm"
 #include "core/heat.fm"
+#include "spec/exhaust.fm"
+#include "spec/telemetry.fm"
+#include "spec/scope.fm"
+#include "exhaust/slots.fm"
+#include "boost/boost.fm"
 
 module Exhaust
 {
@@ -108,9 +121,66 @@ module Exhaust
     OnePole vnLp;       // (the valves' jet noise past hearing taken out)
     float jetN[2];      // what makes that band's noise of unit strength, whatever its width and the sample rate
     float nScale;       // white noise's strength for the same loudness at any sample rate
+    // ---- card G: the builder (model 1) ----
+    XBuild b;
+    ExhaustSpec* spec;  // the Spec's exhaust section (Engine's)
+    ExhaustTel* telOut; // the Telemetry's and the Scope's (Engine's)
+    Scope* scopeOut;
+    Boost* bo;          // card F's machine: the turbines' housings, downpipes and gates (sim/README.md)
+    int hmapBuilt[4];   // the housings as last built
+    int fed;            // 1: the builder's collectors end in housings this build (Boost's stand-in is then not fed)
+    int model;          // in use: 0 the reference's code, 1 the builder
+    int seenRev;        // the section's rev as last looked at, and the builder's description built
+    float seenSig;
+    int want;           // 1: a change waits for the fade
+    float fadeG;        // the fade's gain on what leaves (1: none)
+    float fadeDn;
+    float fadeUp;
+    int needBuild;      // 1: configure cleared the pipes: the builder builds at the next pipes()
+    int atRestBuild;    // 1: and the engine was stopped (soaked at rest)
+    float boreNow;      // the last pipes()'s and heatUp()'s arguments
+    int aspNow;
+    float smTbNow;
+    float smTsNow;
+    float vAirNow;
+    float rpmNow;
+    float loadNow;
+    int tick128;
+    int prepared;       // 1: prepare() was called this sample (the turbines' seam), before step()
 
-    void setup(float rateIn, Noise* noise, Layout* layIn, Heat* heatIn)
+    void setup(float rateIn, Noise* noise, Layout* layIn, Heat* heatIn, ExhaustSpec* specIn, ExhaustTel* telIn,
+               Scope* scopeIn, Boost* boostIn)
     {
+        bo = boostIn;
+        fed = 0;
+        for (int i = 0; i < 4; ++i)
+            hmapBuilt[i] = -1;
+        spec = specIn;
+        telOut = telIn;
+        scopeOut = scopeIn;
+        b.sp = specIn;
+        b.setup(rateIn);
+        b.net.noiseSrc = noise;
+        b.net.shared = 1;
+        b.net.popExt = 1;
+        model = spec->model != 0 ? 1 : 0;
+        seenRev = spec->rev;
+        seenSig = sig();
+        want = 0;
+        fadeG = 1.0f;
+        fadeDn = 1.0f / (0.006f * rateIn);
+        fadeUp = 1.0f / (0.012f * rateIn);
+        needBuild = 1;
+        atRestBuild = 0;
+        boreNow = 0.08f;
+        aspNow = 0;
+        smTbNow = 0.5f;
+        smTsNow = 1.0f;
+        vAirNow = 0.0f;
+        rpmNow = 0.0f;
+        loadNow = 0.0f;
+        tick128 = 0;
+        prepared = 0;
         rate = rateIn;
         noiseSrc = noise;
         lay = layIn;
@@ -151,6 +221,7 @@ module Exhaust
 
     void release()
     {
+        b.release();
         for (int i = 0; i < MAX_PORTS; ++i)
             prim[i].release();
         for (int i = 0; i < 2; ++i)
@@ -168,6 +239,12 @@ module Exhaust
     // A new engine: every pipe and junction at rest
     void clear()
     {
+        // (a configure is under the engine's own fade: it takes the model the Spec asks for at once)
+        model = spec->model != 0 ? 1 : 0;
+        seenRev = spec->rev;
+        want = 0;
+        needBuild = 1;
+        atRestBuild = 0;
         for (int i = 0; i < MAX_PORTS; ++i)
         {
             prim[i].clear();
@@ -220,6 +297,7 @@ module Exhaust
     // than at idle, and the downstream parts take their time to follow.
     void soak(float tIn, float m, float dt, float bore, float vAir)
     {
+        atRestBuild = 1;
         const float hk = expf(0.9808293f * (smHdr - 0.5f));
         const float pk = expf(1.3862944f * (smPipe - 0.5f));
         const float dHead = 0.46f * bore;
@@ -271,6 +349,26 @@ module Exhaust
 
     // The pipes' sizes for the layout and the dials, and their lengths in samples at the gas's temperatures now
     void pipes(float bore, int aspUse, float smTb, float smTs, float rate)
+    {
+        boreNow = bore;
+        aspNow = aspUse;
+        smTbNow = smTb;
+        smTsNow = smTs;
+        if (model != 0)
+        {
+            builderPipes();
+            return;
+        }
+        refPipes(bore, aspUse, smTb, smTs, rate);
+        // (at a configure the builder is built too, though it does no work a sample: its pipes then carry the history
+        // the reference's carry, whose old timings a configure's clear keeps, so a later configure into model 1 starts
+        // as the reference would)
+        if (needBuild != 0)
+            builderPipes();
+    }
+
+    // The reference's pipes() (model 0)
+    void refPipes(float bore, int aspUse, float smTb, float smTs, float rate)
     {
         const float hk = expf(0.9808293f * (smHdr - 0.5f));     // headers: 0.61 to 1.63 times
         const float pk = expf(1.3862944f * (smPipe - 0.5f));        // pipe: half to twice
@@ -497,10 +595,22 @@ module Exhaust
     }
 
     // Every 16 samples: the system's heat (soak) and what the pipes are set to (vAir: the car's speed past them)
-    void heatUp(float d16, float bore, float vAir)
+    // (rpm and load: the engine's speed, rpm, and the throttle, 0 to 1: the bypass valve's rule goes by them)
+    void heatUp(float d16, float bore, float vAir, float rpm, float load)
     {
+        vAirNow = vAir;
+        rpmNow = rpm;
+        loadNow = load;
         mdotSlow += (mdot - mdotSlow) * kMdot;
+        if (model != 0)
+        {
+            fillEngine();
+            b.heatStep(d16);
+            tUse[0] = b.heat.tUse[XH_PRIM];
+            return;
+        }
         soak(tPort, mdotSlow, d16, bore, vAir);
+        atRestBuild = 0;
         for (int i = 0; i < 5; ++i)
             tUse[i] += (tGas[i] - tUse[i]) * kUse;
     }
@@ -508,6 +618,12 @@ module Exhaust
     // Every 16 samples, after pipes: the flow losses
     void flow16()
     {
+        checkSpec();
+        if (model != 0)
+        {
+            b.flowStep();
+            return;
+        }
         // the pipes' flow losses, from the mean speed of the gas through each since the last time
         for (int i = 0; i < lay->ports; ++i)
         {
@@ -527,6 +643,16 @@ module Exhaust
 
     // Every 16 samples: the jet's and the flow noise's bands
     void bands()
+    {
+        if (model == 0)
+            refBands();
+        else
+            b.bandStep();
+        writeTelemetry();
+    }
+
+    // The reference's bands() (model 0)
+    void refBands()
     {
         // the jet's noise peaks where its Strouhal number is about 0.3 (0.3 times its speed over the pipe's width, as a
         // jet's mixing noise does; no higher than 2.5 kHz)
@@ -552,6 +678,17 @@ module Exhaust
     // Each sample, first: the waves arriving at every end
     void read()
     {
+        if (model != 0)
+        {
+            b.read();
+            prepared = 0;
+            for (int i = 0; i < lay->ports; ++i)
+            {
+                prim[i].near = b.net.portWave(i);
+                prim[i].z = b.net.portZ(i);
+            }
+            return;
+        }
         const int np = lay->ports;
         const int nb = lay->topo == 0 ? 1 : 2;
         for (int i = 0; i < np; ++i)
@@ -575,6 +712,17 @@ module Exhaust
     // Each sample, after the cylinders (qe: each port's volume flow into its header): the ports' waves in, the collectors,
     // the merge, the converter, the muffler, the tails' radiation out (outL, outR), every pipe written
     void step(float* qe, int np)
+    {
+        if (model != 0)
+            builderStep(qe);
+        else
+            refStep(qe, np);
+        if (want != 0 || fadeG < 1.0f)
+            fade();
+    }
+
+    // The reference's step() (model 0)
+    void refStep(float* qe, int np)
     {
         const int nb = lay->topo == 0 ? 1 : 2;
         // the ports send their waves into the headers
@@ -793,15 +941,389 @@ module Exhaust
             prim[i].write(hNear[i], hFar[i]);
     }
 
-    // ---- the integrator's hooks (sim/README.md): card G fills them ----
-    // a bang of unburned fuel in bank's collector, its amplitude (Pa) (named popAt: Exhaust's pop is its Pops)
-    void popAt(int bank, float amplitude)
+    // ---- card G: the builder's side (model 1) ----
+
+    // What the builder knows of the engine: the layout's sizes (as configure scaled them), the dials as glided, the
+    // turbo, the air, the gas at the ports
+    void fillEngine()
     {
+        XEngine* e = &b.eng;
+        e->ports = lay->ports;
+        for (int i = 0; i < XS_PORTS; ++i)
+            e->bank[i] = portBank[i];
+        e->topo = lay->topo;
+        e->bore = boreNow;
+        e->hdr = lay->hdr;
+        e->hdrBank1 = lay->hdrBank1;
+        e->mainLen = lay->mainLen;
+        e->pipeD = lay->pipeD;
+        e->tailD = lay->tailD;
+        e->muff = lay->muff;
+        e->bike = lay->bike;
+        e->smHdr = smHdr;
+        e->smPipe = smPipe;
+        e->smXp = smXp;
+        e->smMuf = smMuf;
+        e->aspUse = aspNow;
+        e->smTb = smTbNow;
+        e->smTs = smTsNow;
+        e->tAmb = heat->tAmb;
+        e->vAir = vAirNow;
+        e->tPort = tPort;
+        e->mdotSlow = mdotSlow;
+        e->rpm = rpmNow;
+        e->load = loadNow;
+        // card F's turbines (boost.model 1): the housing each bank's collectors end in; none: -1, and the reference's
+        // restriction stands for a turbo (aspUse, which the engine gives 0 with boost.model 1). External gates' pipes:
+        // not yet (Boost lists no function that says how many there are)
+        int banks = 1;
+        for (int i = 0; i < lay->ports; ++i)
+        {
+            if (portBank[i] == 1)
+                banks = 2;
+        }
+        for (int bk = 0; bk < 2; ++bk)
+        {
+            for (int g = 0; g < 2; ++g)
+                e->hmap[bk * 2 + g] = bo->housingOf(bk, g, banks);
+        }
+        e->useHousings = 1;
+        e->gates = 0;
     }
 
-    // the gas's temperature leaving bank's ports (K)
+    // Has the housings' map moved since the last build (card F's machine rebuilt)?
+    int housingsMoved()
+    {
+        for (int i = 0; i < 4; ++i)
+        {
+            if (b.eng.hmap[i] != hmapBuilt[i])
+                return 1;
+        }
+        return 0;
+    }
+
+    void builtWith()
+    {
+        for (int i = 0; i < 4; ++i)
+            hmapBuilt[i] = b.eng.hmap[i];
+        fed = 0;
+        for (int h = 0; h < 8; ++h)
+        {
+            if (b.jHouse[h] >= 0)
+                fed = 1;
+        }
+    }
+
+    // Each sample, model 1, after prepare(): each housing's pressure, each downpipe's and gate's, from card F
+    void turbines()
+    {
+        if (fed == 0)
+            return;
+        for (int h = 0; h < 8; ++h)
+        {
+            if (b.jHouse[h] >= 0)
+                b.setHouse(h, bo->housing(h, b.houseDrive(h), b.houseAdmit(h), b.houseT(h)));
+        }
+        for (int s = 0; s < 2; ++s)
+        {
+            if (b.jDown[s] >= 0)
+                b.setDown(s, bo->downpipe(s, b.downWave(s), b.downZ(s)));
+        }
+        for (int t = 0; t < b.nGates; ++t)
+            b.setGate(t, bo->gatePipe(t, b.gateWave(t), b.gateZ(t)));
+    }
+
+    // 1 while the builder's network feeds card F's housings (the engine then gives Boost no stand-in gas)
+    int turbinesFed()
+    {
+        return model != 0 && fed != 0 ? 1 : 0;
+    }
+
+    // The builder's noise as the reference's, from Engine's stream
+    void noiseLike()
+    {
+        b.net.flowK = flowK;
+        b.net.valveK = valveK;
+        b.net.jetK = jetK;
+        b.net.noiseTrim = noiseTrim;
+    }
+
+    // model 1's pipes(): the engine's configure built nothing yet: build it (as the reference starts its pipes: not
+    // settled, so that model 1 at its defaults is the reference); else the sizes follow in heatUp's control
+    void builderPipes()
+    {
+        fillEngine();
+        noiseLike();
+        if (needBuild != 0)
+        {
+            b.build(atRestBuild, heat->warm, 0);
+            builtWith();
+            needBuild = 0;
+            seenSig = sig();
+            nDuals = b.channels();
+            tUse[0] = b.heat.tUse[XH_PRIM];
+        }
+        else
+        {
+            if (model != 0 && housingsMoved() != 0)
+                want = 1;
+            b.shape();
+        }
+    }
+
+    // Each sample, model 1: the bangs (the pops Combustion fires, ticked as the reference ticks them), the turbines'
+    // seam if nobody has prepared it, every junction, what leaves
+    void builderStep(float* qe)
+    {
+        for (int c = 0; c < XN_POPS; ++c)
+            b.net.popIn[c] = 0.0f;
+        const int nb = lay->topo == 0 ? 1 : 2;
+        for (int k = 0; k < nb; ++k)
+        {
+            const float pv = pop[k].tick();
+            if (b.bankCol[k] >= 0)
+                b.net.popIn[b.bankCol[k]] += pv;
+        }
+        if (prepared == 0)
+            b.prepare();
+        turbines();
+        b.step(qe);
+        outL = b.net.outL;
+        outR = b.net.outR;
+        for (int k = 0; k < 2; ++k)
+        {
+            const int c = b.bankCol[k] >= 0 ? b.bankCol[k] : 0;
+            shell[k] = b.jCol[c] >= 0 ? shellHp[k].highpass(b.net.jP[b.jCol[c]]) : 0.0f;
+        }
+    }
+
+    // The turbines' seam (sim/README.md): after read() and the cylinders, before step()
+    void prepare()
+    {
+        if (model != 0)
+        {
+            b.prepare();
+            prepared = 1;
+        }
+    }
+
+    // A signature of the builder's description (all but the valve's rule, which it follows as it goes): a change
+    // rebuilds under the fade
+    float sig()
+    {
+        const ExhaustSpec* p = spec;
+        float h = 0.0f;
+        float w = 1.0f;
+        for (int i = 0; i < MAX_PORTS; ++i)
+        {
+            h += w * ((float)p->primaryTo[i] + 3.1f * p->primLen[i] + 7.3f * p->primD[i]);
+            w *= 1.0173f;
+        }
+        for (int c = 0; c < MAX_COLLECTORS; ++c)
+        {
+            h += w * ((float)p->collectorTo[c] + 3.1f * p->colLen[c] + 7.3f * p->colD[c] + 1000.0f * p->colVol[c]);
+            w *= 1.0173f;
+        }
+        for (int s = 0; s < MAX_SIDES; ++s)
+        {
+            h += w * (p->mainLen[s] + 3.7f * p->mainD[s] + 5.1f * (float)p->converter[s] + 7.9f * (float)p->resonator[s]
+                      + 0.011f * p->resHz[s] + 2.3f * p->resD[s] + 300.0f * p->resVol[s] + 1.9f * p->resLen[s]
+                      + 11.3f * (float)p->mufKind[s] + 0.7f * p->mufSize[s] + 2.9f * p->mufLen[s]
+                      + 13.7f * (float)p->bypass[s] + 1.3f * p->tailLen[s] + 4.1f * p->tailD[s] + 17.1f * (float)p->tips[s]
+                      + 19.3f * (float)p->exitAt[s]);
+            w *= 1.0173f;
+        }
+        h += w * (p->primSpread + 2.0f * p->primStepAt + 3.0f * p->primStepD + 5.0f * (float)p->sides
+                  + 7.0f * (float)p->crossKind + 11.0f * (float)p->crossAt + 13.0f * p->crossD + 17.0f * p->crossLen
+                  + 19.0f * p->postLen + 23.0f * p->linkLen + 29.0f * p->bypassD + 31.0f * p->gateLen + 37.0f * p->gateD);
+        return h;
+    }
+
+    // Every 16 samples: has the description moved? A change of model, or of the builder's description while it runs,
+    // waits for the fade
+    void checkSpec()
+    {
+        if (spec->rev == seenRev)
+            return;
+        seenRev = spec->rev;
+        const int m = spec->model != 0 ? 1 : 0;
+        if (m != model)
+            want = 1;
+        else if (m != 0 && sig() != seenSig)
+            want = 1;
+    }
+
+    // The fade around a change: down, the change at its quiet, up
+    void fade()
+    {
+        if (want != 0)
+        {
+            fadeG -= fadeDn;
+            if (fadeG <= 0.0f)
+            {
+                fadeG = 0.0f;
+                apply();
+                want = 0;
+            }
+        }
+        else
+            fadeG = fminf(fadeG + fadeUp, 1.0f);
+        outL *= fadeG;
+        outR *= fadeG;
+        shell[0] *= fadeG;
+        shell[1] *= fadeG;
+    }
+
+    // The change, at the fade's quiet: the model the Spec asks for, its system built from rest (the heat kept)
+    void apply()
+    {
+        model = spec->model != 0 ? 1 : 0;
+        if (model != 0)
+        {
+            fillEngine();
+            noiseLike();
+            b.build(0, heat->warm, 1);
+            builtWith();
+            seenSig = sig();
+            nDuals = b.channels();
+            tUse[0] = b.heat.tUse[XH_PRIM];
+        }
+        else
+        {
+            clear();
+            needBuild = 1;
+            nDuals = lay->topo == 2 ? 2 : 1;
+            refPipes(boreNow, aspNow, smTbNow, smTsNow, rate);
+        }
+    }
+
+    // Card H: the gas's temperature where a bank's bangs light (K)
     float gasTemperature(int bank)
     {
-        return tPort;
+        return model != 0 ? b.gasTemperature(bank) : tGas[1];
+    }
+
+    // Every 16 samples: tel.exhaust's fields, and every 128 samples the Scope's exhaust arrays
+    void writeTelemetry()
+    {
+        ExhaustTel* t = telOut;
+        t->model = model;
+        t->headerTemperature = model != 0 ? b.heat.tGas[XH_PRIM] : tGas[0];
+        const int secOfRef[7] = {0, 1, -1, 2, -1, 3, 4};
+        for (int i = 0; i < 7; ++i)
+        {
+            if (model != 0)
+            {
+                t->gasTemperature[i] = b.heat.on[i] != 0 ? b.heat.tGas[i] : 0.0f;
+                t->wallTemperature[i] = b.heat.on[i] != 0 ? b.heat.tWall[i] : 0.0f;
+                t->mach[i] = b.mach[i];
+            }
+            else
+            {
+                const int r = secOfRef[i];
+                t->gasTemperature[i] = r >= 0 ? tGas[r] : 0.0f;
+                t->wallTemperature[i] = r >= 0 ? tWall[r] : 0.0f;
+                t->mach[i] = 0.0f;
+            }
+        }
+        if (model == 0)
+        {
+            t->mach[0] = prim[0].mach;
+            t->mach[1] = sec[0].mach;
+            t->mach[3] = pipe[0].mach;
+            t->mach[5] = ch1[0].mach;
+            t->mach[6] = tail[0].mach;
+            t->pTurbine = 0.0f;
+            t->ends = nDuals;
+            for (int s = 0; s < 2; ++s)
+            {
+                t->pConverter[s] = 0.0f;
+                t->pMuffler[s] = 0.0f;
+                t->valve[s] = 0.0f;
+            }
+            for (int e = 0; e < 24; ++e)
+            {
+                t->endLevel[e] = 0.0f;
+                t->endTag[e] = nDuals == 2 ? (e == 0 ? XTAG_REAR_L : XTAG_REAR_R) : XTAG_REAR_C;
+                t->endSlot[e] = -1;
+            }
+            t->flame = 0;
+            return;
+        }
+        t->pTurbine = b.pTurb;
+        for (int s = 0; s < 2; ++s)
+        {
+            t->pConverter[s] = b.pConv[s];
+            t->pMuffler[s] = b.pMuf[s];
+            t->valve[s] = b.vPos[s];
+        }
+        t->ends = b.net.ne;
+        for (int e = 0; e < 24; ++e)
+        {
+            if (e < b.net.ne)
+            {
+                t->endLevel[e] = 4.3429448f * logf(fmaxf(b.net.ends[e].lev, 1.0e-12f));
+                t->endTag[e] = b.net.ends[e].tag;
+                t->endSlot[e] = b.net.ends[e].duct;
+            }
+            else
+            {
+                t->endLevel[e] = -120.0f;
+                t->endTag[e] = 0;
+                t->endSlot[e] = -1;
+            }
+        }
+        // a bang burns near a tail when a pop is crackling and the tail's gas is hot
+        const int burning = (pop[0].crackle > 1.0f || pop[1].crackle > 1.0f) ? 1 : 0;
+        t->flame = burning != 0 && b.heat.tGas[XH_TAIL] > 700.0f ? 1 : 0;
+        tick128 += 1;
+        if (tick128 >= 8)
+        {
+            tick128 = 0;
+            writeScope();
+        }
+    }
+
+    void writeScope()
+    {
+        Scope* o = scopeOut;
+        b.scope();
+        o->exhaustPoints = XB_SCOPE;
+        for (int n = 0; n < XB_SCOPE; ++n)
+        {
+            o->exhaustX[n] = b.scopeX[n];
+            o->exhaustPressure[n] = b.scopeP[n];
+        }
+        for (int i = 0; i < XN_DUCTS; ++i)
+        {
+            const Duct* d = &b.net.d[i];
+            o->ductUsed[i] = b.net.dUse[i];
+            o->ductLength[i] = b.net.dUse[i] != 0 ? d->len : 0.0f;
+            o->ductNear[i] = b.net.dUse[i] != 0 ? d->near + b.net.nearIn[i] : 0.0f;
+            o->ductFar[i] = b.net.dUse[i] != 0 ? d->far + b.net.farIn[i] : 0.0f;
+            // the middle: the outgoing wave written half the delay ago plus the returning one written half its delay ago
+            float pm = 0.0f;
+            if (b.net.dUse[i] != 0)
+            {
+                int jf = d->w - 1 - d->di / 2;
+                int jb = d->w - 1 - d->bdi / 2;
+                if (jf < 0)
+                    jf += d->cap;
+                if (jb < 0)
+                    jb += d->cap;
+                pm = d->fw[jf] + d->bw[jb];
+            }
+            o->ductMid[i] = pm;
+        }
+        o->exhaustRefreshes += 1;
+    }
+
+    // ---- the integrator's hooks (sim/README.md) ----
+    // A bang of unburned fuel in a bank's collector, its amplitude (Pa, as Pop::fire's): the bank's Pop, which both
+    // models tick at that bank's collector
+    void popAt(int bank, float amplitude)
+    {
+        const int k = bank <= 0 ? 0 : 1;
+        pop[k].fire(amplitude, rate, 99 + k);
     }
 };

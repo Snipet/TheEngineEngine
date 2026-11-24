@@ -6,6 +6,8 @@
 //   ui.build.set       a knob dragged on a page sets its field in the Build (one undo step); a curve and a map written
 //                      through the binding come back the same (the map's z transposed both ways)
 //   ui.build.files     a build saved by the garage and loaded back is the same build (Build::diff is empty)
+#include "build/BuildKit.h"
+
 #include "app/AppFrame.h"
 #include "app/host/HostSources.h"
 
@@ -29,54 +31,9 @@
 
 namespace
 {
-    int g_fails = 0;
-    void failAt(int line, const std::string& what)
-    {
-        ++g_fails;
-        std::printf("  FAIL BuildTests.cpp:%d: %s\n", line, what.c_str());
-    }
-#define CHECK(cond) do { if (!(cond)) failAt(__LINE__, #cond); } while (false)
-#define CHECK_MSG(cond, msg) do { if (!(cond)) failAt(__LINE__, std::string(#cond) + ": " + (msg)); } while (false)
+    using tee::test::build::Rig;
 
-    struct NoTelemetry final : tee::TelemetrySource
-    {
-        int findValue(std::string_view) const override { return -1; }
-        double value(int) const override { return 0.0; }
-        float outputPeak() const override { return 0.0f; }
-    };
-
-    struct Rig
-    {
-        std::shared_ptr<tee::Sim> sim;
-        std::unique_ptr<tee::Build> build;
-        std::unique_ptr<tee::ui::BuildDoc> doc;
-        tee::ui::Units units;
-        NoTelemetry telemetry;
-        std::filesystem::path user = std::filesystem::path(TEE_UI_OUT_DIR) / "builds";
-        std::unique_ptr<tee::ui::AppFrame> frame;
-        std::unique_ptr<funkgui::HeadlessHost> host;
-
-        bool open()
-        {
-            std::string errors;
-            sim = tee::Sim::compile(TEE_UI_SIM_DIR, tee::Sim::Options{}, errors);
-            if (sim == nullptr)
-            {
-                std::printf("  sim/ did not compile:\n%s\n", errors.c_str());
-                return false;
-            }
-            build = std::make_unique<tee::Build>(sim->fields());
-            build->name = "Test build";
-            doc = std::make_unique<tee::ui::BuildDoc>(*build);
-            frame = std::make_unique<tee::ui::AppFrame>(*doc, units, telemetry,
-                                                        tee::ui::buildServices(*build, TEE_UI_BUILDS_DIR, user, {}));
-            host = std::make_unique<funkgui::HeadlessHost>(*frame, 0, 2.0f);
-            host->tick(10);
-            return true;
-        }
-    };
-
-    int frameTest(Rig& rig)
+    BUILD_TEST(frameTest, "build.frame")
     {
         tee::ui::AppFrame& f = *rig.frame;
         int pages = 0;
@@ -156,7 +113,7 @@ namespace
         }
     }
 
-    int setTest(Rig& rig)
+    BUILD_TEST(setTest, "build.set")
     {
         tee::ui::AppFrame& f = *rig.frame;
         // The first knob of a number field on any inspector page, in sight: dragged up, its field in the Build moves;
@@ -238,7 +195,7 @@ namespace
         return 0;
     }
 
-    int filesTest(Rig& rig)
+    BUILD_TEST(filesTest, "build.files")
     {
         // Change a few values, save as a name, change them again, load it back: the same build.
         for (int i = 0; i < rig.doc->count() && i < 40; ++i)
@@ -268,7 +225,7 @@ namespace
 {
     // U1: the frame's dyno over card C's DynoService and the real simulator: a curve comes, an edit brings another with
     // the first kept as the ghost.
-    int dynoTest(Rig& rig)
+    BUILD_TEST(dynoTest, "build.dyno")
     {
         tee::DynoPlan plan;
         plan.from = 200.0;
@@ -326,7 +283,7 @@ namespace
 namespace
 {
     // U1: the Scope over a real SimHost: a reader that reads only when generation() moves (as ENGINE does) gets data.
-    int scopeTest(Rig& rig)
+    BUILD_TEST(scopeTest, "build.scope")
     {
         tee::SimHost host;
         tee::LoadOptions lo;
@@ -367,26 +324,50 @@ namespace
     }
 }
 
+namespace tee::test::build
+{
+    int& fails()
+    {
+        static int n = 0;
+        return n;
+    }
+    void failAt(const char* file, int line, const std::string& what)
+    {
+        ++fails();
+        std::printf("  FAIL %s:%d: %s\n", std::filesystem::path(file).filename().string().c_str(), line, what.c_str());
+    }
+    std::vector<std::pair<std::string, Test>>& tests()
+    {
+        static std::vector<std::pair<std::string, Test>> all;
+        return all;
+    }
+}
+
 int main(int argc, char** argv)
 {
+    using namespace tee::test::build;
     const funkgui::HeadlessGuiScope gui;
     const std::string name = argc > 1 ? argv[1] : "all";
+    if (name == "--list")
+    {
+        for (const auto& t : tests())
+            std::printf("%s\n", t.first.c_str());
+        return 0;
+    }
     Rig rig;
     if (!rig.open())
         return 1;
-    const struct
-    {
-        const char* name;
-        int (*run)(Rig&);
-    } tests[] = { { "build.frame", frameTest }, { "build.set", setTest }, { "build.files", filesTest },
-                  { "build.dyno", dynoTest }, { "build.scope", scopeTest } };
-    for (const auto& t : tests)
-        if (name == "all" || name == t.name)
+    bool found = false;
+    for (const auto& t : tests())
+        if (name == "all" || name == t.first)
         {
-            const int before = g_fails;
-            std::printf("ui.%s\n", t.name);
-            t.run(rig);
-            std::printf("  %s\n", g_fails == before ? "ok" : "FAILED");
+            found = true;
+            const int before = fails();
+            std::printf("ui.%s\n", t.first.c_str());
+            t.second(rig);
+            std::printf("  %s\n", fails() == before ? "ok" : "FAILED");
         }
-    return g_fails == 0 ? 0 : 1;
+    if (!found)
+        std::printf("no test named %s (--list)\n", name.c_str());
+    return fails() == 0 && found ? 0 : 1;
 }

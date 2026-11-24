@@ -107,8 +107,18 @@ def main():
            "textbook ranges and rules of thumb, each target with its source in its file. Only the invariants (it "
            "starts, stays within full scale, holds its limiter, pulls away, stops at the key) must pass; every other "
            "miss is reported, not failed. **The misses are the simulator's to-do list.**", "",
-           "Measured on the predicted dyno curve (steady full-throttle points, warm) and on the scenarios of "
+           "Peak power and torque: naturally aspirated archetypes on the predicted dyno curve (steady full-throttle points, "
+           "warm, `tee-dyno --predict`); boosted ones on the full engine dyno, nine steps held 5 s and measured 1 s "
+           "(the predicted curve reads a boosted engine some 10 % high: its slow states do not settle). The rest "
+           "on the scenarios of "
            "`content/validation/scenarios/` (`p-*`), in the build's own air (15 C, 101.3 kPa).", ""]
+
+    out += ["**Read the boosted rows with care (16:30 UTC).** Their power and torque come from the stepped full dyno, "
+            "where a boosted engine stepped up from low speed can run away today: the matched wastegate is too small "
+            "(N2 is resizing it), so the boost overshoots its target (the 3.0 L six twin-turbo: 3.0 bar against 1.0 at "
+            "4300 rpm, knock retard pinned) and the figures are the runaway's, not the engine's. The 2.0 L diesel does "
+            "not start on the stepped dyno at all (reported to card C). The run that counts for the boosted archetypes "
+            "is the one after the gate's resizing and the wall-heat double count's fix.", ""]
 
     # the summary
     out += ["## The archetypes at a glance", "",

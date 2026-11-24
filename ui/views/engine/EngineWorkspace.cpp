@@ -179,18 +179,25 @@ namespace tee::ui
                                    note);
             }
             if (s == "engine.bore")
+            {
+                pages::Section cylinder{ "CYLINDER", cat({ both(EF::displacement), both(EF::boreStroke), both(EF::bore), both(EF::stroke),
+                                                           both(EF::rod), both(EF::compression) }) };
+                pages::Section masses{ "MOVING MASSES", cat({ both(EF::pistonMass), both(EF::rodMass), both(EF::rodRecip), both(EF::flywheel),
+                                                              { "engine.flywheel", "engine.balance1", "engine.balance2" } }) };
+                // the build's oddities, in amber words under the fields they concern
+                const Model& md = model();
+                for (const Warning& w : geometryWarnings(ctx_.doc, md.layout, md.cyl, md.derived))
+                    (w.fields.front() == EF::pistonMass ? masses : cylinder).warnings.push_back(w.text);
                 return pages::page(ctx_.doc,
-                                   { { "CYLINDER", cat({ both(EF::displacement), both(EF::boreStroke), both(EF::bore), both(EF::stroke),
-                                                         both(EF::rod), both(EF::compression) }) },
-                                     { "MOVING MASSES", cat({ both(EF::pistonMass), both(EF::rodMass), both(EF::rodRecip), both(EF::flywheel),
-                                                              { "engine.flywheel", "engine.balance1", "engine.balance2" } }) },
-                                     { "BURN AND SCAVENGING", model().layout.twoStroke
+                                   { cylinder, masses,
+                                     { "BURN AND SCAVENGING", md.layout.twoStroke
                                                                   ? std::vector<std::string>{ "engine.tsSpark", "engine.tsBurnDur", "engine.tsAfr",
                                                                                               "engine.tsMixing", "engine.tsShortCircuit" }
                                                                   : std::vector<std::string>{} },
                                      { "FRICTION", { "engine.friction", "engine.fricConst", "engine.fricPeak", "engine.fricSpeed",
                                                      "engine.fricSpeed2", "engine.fricBearing", "engine.frictionValvetrain", "engine.alternator",
                                                      "engine.airCon" } } });
+            }
             return {};
         }
 

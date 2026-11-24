@@ -209,6 +209,29 @@ namespace tee::ui
         return { l.x + 30.0f * static_cast<float>(std::sin(s.facing)), l.y - 30.0f * static_cast<float>(std::cos(s.facing)) };
     }
 
+    std::vector<Rect> ListenWorkspace::wheelRects() const
+    {
+        const Scene s = scene();
+        const float m = static_cast<float>(scale_);
+        std::vector<Rect> out;
+        if (s.bike)
+        {
+            for (const double y : { s.rearAxle, s.rearAxle + s.wheelbase * std::cos(s.lift) })
+            {
+                const Point w = toPx(0.0, y);
+                out.push_back({ w.x - 0.08f * m, w.y - 0.33f * m, 0.16f * m, 0.66f * m });
+            }
+            return out;
+        }
+        for (const double y : { s.rearAxle, s.rearAxle + s.wheelbase })
+            for (const double x : { -s.track / 2, s.track / 2 })
+            {
+                const Point w = toPx(x, y);
+                out.push_back({ w.x - 0.12f * m, w.y - 0.32f * m, 0.24f * m, 0.64f * m });
+            }
+        return out;
+    }
+
     void ListenWorkspace::fit()
     {
         if (plan_.isEmpty())
@@ -549,6 +572,8 @@ namespace tee::ui
             taken.push_back({ q.x - 6.0f, q.y - 6.0f, 12.0f, 12.0f });
         }
         taken.push_back({ l.x - 10.0f, l.y - 10.0f, 20.0f, 20.0f });
+        for (const Rect& w : wheelRects())   // no label on a wheel
+            taken.push_back(w);
         if (!windows_.isEmpty())
             taken.push_back({ windows_.x - 130.0f, windows_.bottom() + 2.0f, 136.0f, 16.0f });   // the window's words
         {
@@ -599,7 +624,10 @@ namespace tee::ui
                 c.disc(q.x, q.y, r, ink, 1.25f, p.ground);
             else
                 c.disc(q.x, q.y, r, kClear, 1.25f, p.dim);
-            const std::string lv = known ? fmt("%.0f dB", loudest) : std::string(std::isfinite(loudest) ? "silent" : "-");
+            // A silent source keeps its hollow dot and no label until it sounds (its place is the model's, said once).
+            if (std::isfinite(loudest) && !known)
+                continue;
+            const std::string lv = known ? fmt("%.0f dB", loudest) : std::string("-");
             const float w = std::max(c.textWidth(name.c_str(), look::kCaps), c.textWidth(lv.c_str(), look::kUnit)) + 4.0f;
             const float h = 26.0f;
             const Rect tries[] = { { q.x + r + 4.0f, q.y - 12.0f, w, h }, { q.x - r - 4.0f - w, q.y - 12.0f, w, h },
