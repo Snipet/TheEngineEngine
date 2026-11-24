@@ -1,0 +1,114 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Classic 14 L mechanical six",
+  "notes": "Card D2. A 1980s 14 L inline six (140 x 152 mm, 14.5:1, one turbo) on a mechanical in-line pump: an all-speed flyweight governor that hunts at idle, low injection pressure (600 bar), injection advanced 4 degrees, no pilot: the hard clatter; a boost compensator (aneroid) at 0.8; an early compression brake; a straight stack (muffler 0). The 36 t rig. Air at 300 K, 101325 Pa.",
+  "spec": {
+    "engine": {
+      "layout": "Inline 6",
+      "displacement": 0.014,
+      "boreStroke": 0.92,
+      "compression": 14.5,
+      "flywheel": 1,
+      "idleTrim": -350,
+      "redlineTrim": -300,
+      "rough": 0,
+      "benchLoad": 0
+    },
+    "valve": {
+      "cam": 0.9999,
+      "auxOpen": 695,
+      "auxDur": 100,
+      "auxLift": 0.0025
+    },
+    "boost": {
+      "kind": "Turbo",
+      "level": 1,
+      "size": 1,
+      "blowOff": 1
+    },
+    "exhaust": {
+      "headers": 0.3247,
+      "pipe": 0.6325,
+      "crossover": 0,
+      "muffler": 0.0
+    },
+    "fuel": {
+      "kind": "Diesel",
+      "model": "Fuels",
+      "grade": "Diesel",
+      "rail": 600,
+      "soiAdd": 4,
+      "pilot": 0
+    },
+    "ecu": {
+      "timing": 0,
+      "pops": 0,
+      "starter": true,
+      "governor": "Mechanical",
+      "droop": 0.08,
+      "engineBrake": "Compression release",
+      "brakeSwitch": "Off",
+      "exhaustBrake": "Flap",
+      "fuelBoost": 110000,
+      "ratedSpeed": 219.9,
+      "afc": 0.8
+    },
+    "car": {
+      "kind": "Truck",
+      "model": "Vehicle",
+      "mass": 36000,
+      "drive": "Rear",
+      "wheelbase": 3.9,
+      "cgHeight": 1.4,
+      "frontWeight": 0.3,
+      "track": 1.9,
+      "cdA": 6.0,
+      "clA": 0,
+      "tyre": "Truck",
+      "tyreRadius": 0.5,
+      "wheelInertia": 40,
+      "brakeDecel": 0.6,
+      "brakeBias": 0.4,
+      "abs": true,
+      "gearbox": "Manual",
+      "gears": 18,
+      "autoGearing": false,
+      "ratio": [
+        14.4,
+        12.29,
+        8.56,
+        7.3,
+        6.05,
+        5.16,
+        4.38,
+        3.74,
+        3.2,
+        2.73,
+        2.29,
+        1.95,
+        1.62,
+        1.38,
+        1.17,
+        1.0,
+        0.86,
+        0.73
+      ],
+      "reverseRatio": 13.1,
+      "finalDrive": 3.55,
+      "clutchTorque": 3500
+    },
+    "env": {
+      "temperature": 300,
+      "pressure": 101325
+    },
+    "sound": {
+      "view": "Exhaust",
+      "distance": 0.2994,
+      "room": 0.6176,
+      "level": 2.8467,
+      "intake": 0.5,
+      "mechanical": 0.6503
+    }
+  }
+}

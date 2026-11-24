@@ -155,11 +155,11 @@ namespace
         const funkgui::Point h = rig.ws->facingHandlePx(), m = rig.ws->listenerPx();
         rig.host->drag(h.x, h.y, m.x + 40.0f, m.y);
         rig.host->tick(10);
-        CHECK_NEAR(rig.field("sound.facing"), 3.14159265358979 / 2, 0.09);
+        CHECK_NEAR(rig.field("sound.facing"), 90.0, 5.0);   // degrees, toward the right
         golden("listen.free", *rig.host);
         // Undo takes the turn back, and then the drag, a step each.
         rig.demo.doc.undo();
-        CHECK(std::fabs(rig.field("sound.facing") - 3.14159265358979 / 2) > 0.1);
+        CHECK(std::fabs(rig.field("sound.facing") - 90.0) > 5.0);
         rig.demo.doc.undo();
         CHECK(rig.field("sound.camera") == 0.0);
         return 0;

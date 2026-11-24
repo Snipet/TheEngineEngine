@@ -41,6 +41,7 @@
 #include "core/work.fm"
 #include "core/dyno.fm"
 #include "core/wallheat.fm"
+#include "core/mathx.fm"
 #include "combustion/heavy.fm"
 
 // The reference's dials, in its units, as Engine has taken them from the Spec and the Controls (readSpec,
@@ -188,6 +189,8 @@ module Engine
     int modelUse[10];    // each package's model switch in use (valve, intake, boost, exhaust, fuel, ecu, car, voices; the wall
     int modelWant[10];  // heat; the listener), and the one the host asked for: a change waits for the fade (holdModel)
     int modelRev[10];    // each one's section's rev as holdModel last saw it
+    int faults;         // the crank's state found absurd and the engine put at rest afresh (guard), since init
+    int faultNow;       // in this call
     int lastIgn;        // ctl.ignition at the last call (voices.model 1: its rise from off renders the key's sounds)
     int layoutRefused;  // 1: its geometry was refused (cylinders firing together), the layout dial's table runs
     float rodRatio;     // the rod over the crank's radius the cylinders are set up with (the reference's 3.3)
@@ -416,9 +419,7 @@ module Engine
             cy->tw = heat.tSurf;
             cy->diesel = fuelUse;
             cy->bias = 0.025f * noise.rnd();
-            float a0 = crank.theta + lay.fire[c];
-            while (a0 >= lay.cyc)
-                a0 -= lay.cyc;
+            const float a0 = wrapCycle(crank.theta + lay.fire[c], lay.cyc);
             cy->reset(a0);
             cy->t = heat.tAmb + 30.0f * heat.warm;
             cy->m = cy->p * cy->v / (287.0f * cy->t);
@@ -986,9 +987,7 @@ module Engine
             }
             for (int c = 0; c < lay.n; ++c)
             {
-                float a = crank.theta + lay.fire[c];
-                while (a >= lay.cyc)
-                    a -= lay.cyc;
+                const float a = wrapCycle(crank.theta + lay.fire[c], lay.cyc);
                 const int pi = lay.port[c];
                 if (spec.valve.model != 0)
                 {
@@ -1009,9 +1008,7 @@ module Engine
         for (int c = 0; c < lay.n; ++c)
         {
             Cylinder* cy = &cyl[c];
-            float a = crank.theta + lay.fire[c];
-            while (a >= lay.cyc)
-                a -= lay.cyc;
+            const float a = wrapCycle(crank.theta + lay.fire[c], lay.cyc);
             const int pi = lay.port[c];
             float bE = exh.prim[pi].near;
             float bI = intk.run[pi].near;
@@ -1171,7 +1168,9 @@ module Engine
             listen.block(v, set.intake, set.mech, set.distance, set.room, set.level, aspUse, exTrim, gainNorm, exh.nDuals,
                          lay.bike, lay.tailD, &spec.sound, &tel.sound, car.speedNow(), set.drive != 0 ? 1 : 0, vTotal, lay.n,
                          customUse != 0 ? shake.fx : 0.0f, customUse != 0 ? shake.fy : 0.0f,
-                         customUse != 0 ? shake.mx : 0.0f, customUse != 0 ? shake.my : 0.0f, lay.fire, lay.cyc, lay.rotary);
+                         customUse != 0 ? shake.mx : 0.0f, customUse != 0 ? shake.my : 0.0f, lay.fire, lay.cyc, lay.rotary,
+                         spec.car.kind == 2 && spec.car.model == 1 ? 1 : 0, spec.car.wheelbase, spec.car.tuck,
+                         tel.car.liftAngle);
             for (int i = 0; i < m; ++i)
             {
                 if (tick16 == 0)
@@ -1189,7 +1188,8 @@ module Engine
                            spec.voices.model != 0 ? ex.vo.gearbox : 0.0f, spec.voices.model != 0 ? ex.vo.axle : 0.0f,
                            spec.voices.model != 0 ? ex.vo.front : 0.0f, spec.voices.model != 0 ? ex.vo.head : 0.0f,
                            spec.voices.model != 0 ? ex.vo.tank : 0.0f, spec.voices.model != 0 ? ex.vo.gateOut : 0.0f,
-                           spec.voices.model != 0 ? ex.vo.all : 0.0f, ex.mouth);
+                           spec.voices.model != 0 ? ex.vo.all : 0.0f, ex.mouth, spec.voices.model != 0 ? ex.vo.chain : 0.0f,
+                           spec.voices.model != 0 ? ex.vo.clutch : 0.0f);
             }
             listen.finish(left, right, at, m);
             at += m;
@@ -1234,6 +1234,8 @@ module Engine
     void init(float hostRate)
     {
         clickRpm = -1.0f;
+        faults = 0;
+        faultNow = 0;
         modelUse[0] = spec.valve.model;
         modelUse[1] = spec.intake.model;
         modelUse[2] = spec.boost.model;
@@ -1528,7 +1530,7 @@ module Engine
         tel.engine.coolant = heat.tCool;
         tel.engine.oilPressure = heat.pOil;
         tel.engine.flags = (ecu.limiting || comb.droop < 0.95f ? FLAG_LIMITER : 0)
-                           + (ecu.fuelCut && ecu.state == 2 ? FLAG_FUEL_CUT : 0);
+                           + (ecu.fuelCut && ecu.state == 2 ? FLAG_FUEL_CUT : 0) + (faultNow != 0 ? FLAG_FAULT : 0);
         tel.engine.cycle = showCycle;
         tel.engine.crank = crank.theta;
         mechanicsTelemetry();
@@ -1586,6 +1588,34 @@ module Engine
         }
     }
 
+    // Once a call: a crank whose speed or angle is not finite, or is absurd (past five times the redline, and at least
+    // 3000 rad/s: some model upstream has diverged, X-007), is put at rest and the engine made afresh, at rest, its
+    // pipes and paths cleared, so nothing downstream runs on a non-finite state; FLAG_FAULT tells the host. Never in
+    // normal running (the null test unchanged).
+    void guard()
+    {
+        const float bound = fmaxf(5.0f * ecu.redRpm * 0.10471976f, 3000.0f);
+        if (crank.omega >= 0.0f && crank.omega < bound && crank.theta >= 0.0f && crank.theta < 1.0e6f)
+            return;
+        recover();
+    }
+
+    // The engine put at rest and made afresh, its pipes and paths cleared; the call flagged
+    void recover()
+    {
+        faults += 1;
+        faultNow = 1;
+        crank.omega = 0.0f;
+        crank.theta = 0.0f;
+        crank.rpm = 0.0f;
+        crank.tqMean = 0.0f;
+        crank.tqNow = 0.0f;
+        ecu.state = 0;
+        ecu.starterOn = 0.0f;
+        car.reset();
+        configure();
+    }
+
     // n samples at the host's rate into left and right (whatever they held): the engine's sound, within +-1
     void process(float* restrict left, float* restrict right, int n) [[clang::nonblocking]]
     {
@@ -1598,9 +1628,25 @@ module Engine
         readControls();
         ignition();
         float peak = 0.0f;
+        faultNow = 0;
+        guard();
         if (sounding != 0 && n > 0)
         {
             render(left, right, n);
+            guard();
+            // (a sample not finite, from wherever it was born: the call silenced, the engine made afresh, the fault told)
+            bool finite = true;
+            for (int i = 0; i < n; ++i)
+                finite = finite && left[i] - left[i] == 0.0f && right[i] - right[i] == 0.0f;
+            if (!finite)
+            {
+                for (int i = 0; i < n; ++i)
+                {
+                    left[i] = 0.0f;
+                    right[i] = 0.0f;
+                }
+                recover();
+            }
             sounding = held != 0 || audible() ? 1 : 0;
             for (int i = 0; i < n; ++i)
                 peak = fmaxf(peak, fmaxf(fabsf(left[i]), fabsf(right[i])));
