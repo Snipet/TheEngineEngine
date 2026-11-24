@@ -271,6 +271,9 @@ namespace tee::ui
         // The first launch's TRY FIRST card (TryFirst.h; the lead's ask 20:19): the build's notes while the card should
         // show (empty: not, as after it was closed), and the call that closes it for good (a per-viewer setting the
         // shell keeps). The frame closes it at its Close button or once the engine has been started and stopped.
+        // The spark map's knock limit (card C's bake, ServiceBake in app/host/HostSources.h): "no table", "waiting to
+        // bake", "baking", "baked, to apply", "baked", "bake failed"; empty function: not served. TUNE shows it.
+        std::function<std::string()> sparkMap;
         std::function<std::string()> tryFirst;
         std::function<void()> tryFirstDone;
         std::function<int()> loadFits;
