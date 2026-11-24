@@ -837,6 +837,8 @@ module Engine
         {
             // (card F: its machine's air at the throttle, toward the ECU's target; card H's)
             boost.airSpeed(set.drive != 0 ? fabsf(car.v) : 0.0f);
+            if (hd.on != 0)
+                boost.vanesAndPurge(hd.vaneCommand(), 0);   // (card D2: a VGT's brake position while a brake is on; -1 its own loop)
             boost.control16(d16, ecu.boostTarget(), ecu.antiLag(), ecu.nitrous());
             intk.pBox = boost.pressure();
             intk.tAir = boost.temperature();
