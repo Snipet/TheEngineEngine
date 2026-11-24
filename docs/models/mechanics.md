@@ -154,6 +154,13 @@ on; BMEP in bar):
 | unboosted, and the walls counted once (e81f79f) and the backflow conserved (e8c6575) | 5.53 | 6.10 | 8.50 | 7.85 | 7.47 | 4.3 to 1.8 % | 1076 to 1238 K |
 | its turbos at 70 kPa, the same | 11.58 | 10.99 | 15.14 | 13.07 | 13.48 | 4.3 to 2.0 % | 1208 to 1345 K |
 
+| card P's side-port twin (unboosted), at the tip of 24 Nov 18:00 (N1's 0.92 burn completeness, the intake's charge heating and valve mass, the builder's exhaust with boost.model 1) | 7.69 | 7.01 | 7.60 | 7.32 | 7.86 | 4.2 to 2.0 % | 1059 to 1197 K |
+| the turbo twin, the same (its boost 47 to 70 kPa) | 8.47 | 10.06 | 11.35 | 10.78 | 11.17 | 5.0 to 2.0 % | 1196 to 1398 K |
+
+At 18:00 both points are short: the side-port twin by some 25 % (VE 0.60 to 0.68), the turbo twin by some 20 to 28 % at
+its boost. The walls and the seals take some 8 to 10 % together; what is short is the breathing (the ports' flow, the
+intake), not these terms, so nothing is added here. Before 18:00:
+
 The targets: about 14 bar at 0.7 to 0.8 bar of boost (the 13B-REW's 294 N m): met within 10 % at 5000 to 7000 rpm
 (13.1 to 15.1). About 10 to 10.5 bar unboosted (a 1.3 L twin-rotor road engine's 210 to 216 N m): 8.5, some 17 % short.
 That case is the archetype with its turbos taken off, not a naturally aspirated rotary's ports and intake, so part of the
