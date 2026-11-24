@@ -474,7 +474,26 @@ TEST_CASE("the knock limit's key moves with what moves the knock limit, and not 
         }
     // a program without the table is never current
     if (build.fieldOf("ecu.maps.knockLimitAuto") < 0)
+    {
         CHECK_FALSE(knockLimitCurrent(build, *sim));
+        return;
+    }
+    // a bake applied is current; saved and loaded it still is (its key, a hidden fingerprint, is in the file); a
+    // change to what moves the knock limit makes it stale
+    CHECK_FALSE(knockLimitCurrent(build, *sim));
+    KnockBakeResult r;
+    r.speeds = {200.0, 400.0, 600.0};
+    r.loads = {0.5, 1.0, 2.0};
+    r.limit = {{0.0, 0.0, 3.0}, {0.0, 1.0, 6.0}, {0.0, 0.0, 2.5}};
+    r.key = knockLimitKey(build, *sim);
+    REQUIRE(applyKnockLimit(build, r, error));
+    CHECK(knockLimitCurrent(build, *sim));
+    Build again(sim->fields());
+    REQUIRE(again.load(build.save(), BuildPart::Whole, warnings, error));
+    CHECK(static_cast<std::int64_t>(again.get("ecu.maps.knockLimitKey")) == r.key);
+    CHECK(knockLimitCurrent(again, *sim));
+    again.set("engine.compression", again.get("engine.compression") - 0.5);
+    CHECK_FALSE(knockLimitCurrent(again, *sim));
 }
 
 TEST_CASE("the knock limit baked on the turbo four: a knocking point's cell its mean retard and 2, none 0, lower "
