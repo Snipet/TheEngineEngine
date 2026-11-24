@@ -115,7 +115,7 @@ namespace tee::app
        #endif
     }
 
-    Shown makePanel(const Options& o, Engine& engine, input::Controls& controls)
+    Shown makePanel(const Options& o, Engine& engine, input::Controls& controls, bool window)
     {
         const AppServices services = controls.services();
         Shown shown;
@@ -163,6 +163,19 @@ namespace tee::app
                 engine.sim->build(), content.empty() ? content : content / "builds", Presets::userDirectory(), services);
             addShellServices(frameServices, *engine.sim, controls);
             addFileServices(frameServices, kept->file, kept->library);
+            if (window)
+            {
+                shown.saveText = std::make_shared<std::function<bool(const std::string&, const std::string&, std::string&)>>();
+                frameServices.saveText = [saver = shown.saveText](const std::string& name, const std::string& text,
+                                                                  std::string& error) {
+                    if (!*saver)
+                    {
+                        error = "this window cannot save files yet";
+                        return false;
+                    }
+                    return (*saver)(name, text, error);
+                };
+            }
             std::unique_ptr<ui::AppFrame> frame =
                 ui::makeAppFrame(kept->doc, kept->units, player, std::move(frameServices), &kept->dyno, &kept->scope);
             frame->setLibrary(&kept->garage);

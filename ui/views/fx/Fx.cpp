@@ -17,7 +17,7 @@ namespace tee::ui::fx
 
         // The id FunkGui holds a shader's program under: its bytes' FNV-1a (kit/shaders/ShaderText.h shaderId), 0 when
         // this build has no binary for it.
-        uint32_t idOf(Effect e)
+        uint32_t hashOf(Effect e)
         {
             const shaders::Built* b = shaders::find("fx", fileOf(e));
             if (b == nullptr || b->size == 0)
@@ -26,6 +26,20 @@ namespace tee::ui::fx
             for (uint32_t i = 0; i < b->size; ++i)
                 h = (h ^ b->data[i]) * 16777619u;
             return h == 0 ? 1u : h;
+        }
+
+        // The id, worked out once its table is in (the tables are static data, added once, before the first frame).
+        std::atomic<uint32_t> g_ids[4] = {};
+        uint32_t idOf(Effect e)
+        {
+            std::atomic<uint32_t>& slot = g_ids[static_cast<int>(e)];
+            uint32_t id = slot.load(std::memory_order_relaxed);
+            if (id == 0)
+            {
+                id = hashOf(e);
+                slot.store(id, std::memory_order_relaxed);
+            }
+            return id;
         }
 
         // The shader over r with its params, when it is there to draw (Fx.h's list); false and nothing recorded else.
@@ -89,5 +103,38 @@ namespace tee::ui::fx
     {
         const float p[5] = { clamp01(heat), wrap(phase), unit(color.r), unit(color.g), unit(color.b) };
         return draw(c, Effect::shimmer, r, p, 5, p[0]);
+    }
+
+    namespace
+    {
+        float ramp(double v, double lo, double hi) noexcept
+        {
+            return std::isfinite(v) ? static_cast<float>(std::clamp((v - lo) / (hi - lo), 0.0, 1.0)) : 0.0f;
+        }
+    }
+
+    float hotWallAmount(double kelvin) noexcept { return ramp(kelvin, 700.0, 1100.0); }
+    float tyreSmokeAmount(double slip) noexcept { return ramp(std::fabs(slip), 0.12, 0.45); }
+    float heatHazeAmount(double kelvin) noexcept { return ramp(kelvin, 450.0, 900.0); }
+
+    bool hotWall(funkgui::Canvas& c, const funkgui::Rect& r, double kelvin, const look::Palette& p, float phase, float inner)
+    {
+        const funkgui::Col col = look::Palette::mix(p.hot, p.hotter, ramp(kelvin, 1000.0, 1200.0));
+        return glow(c, r, hotWallAmount(kelvin), col, phase, inner);
+    }
+
+    bool overrunPop(funkgui::Canvas& c, const funkgui::Rect& r, double size01, float phase, bool fromRight)
+    {
+        return flame(c, r, std::isfinite(size01) ? static_cast<float>(size01) : 0.0f, phase, fromRight);
+    }
+
+    bool tyreSmoke(funkgui::Canvas& c, const funkgui::Rect& r, double slip, const look::Palette& p, float phase)
+    {
+        return smoke(c, r, tyreSmokeAmount(slip), p.label, phase);
+    }
+
+    bool heatHaze(funkgui::Canvas& c, const funkgui::Rect& r, double kelvin, const look::Palette& p, float phase)
+    {
+        return shimmer(c, r, heatHazeAmount(kelvin), p.text, phase);
     }
 }
