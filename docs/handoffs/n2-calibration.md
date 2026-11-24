@@ -23,7 +23,8 @@ source to change it); ~7 % of it is pattern 1.
 floors the boost at 20 kPa: P asked for gateSpring 5 kPa); 3.0
 twin six 404 N m, 217 kW (UNDER: breathes 0.51-0.65 on the manifold: N1); SC V8 835-936 N m (over).
 
-**Not done**: the table re-run on the gate (P's); the tractor's click (X-010, open); the rotary's torque (not boost); the SC's leak model
+**Closed with others**: X-010/014/015 (X, c1e1b36); C's predictor waits for boost to settle; D's 959454c: cut on.
+**Not done**: the table re-run on the gate (P's); the rotary's torque (not boost); the SC's leak model
 (needs a published twin-screw VE map); X-010 (diesel steps, coming from X); N1's ledger runs boosted builds at 1.2 s
 settle (asked 4-5 s and a boost-over-target line).
 

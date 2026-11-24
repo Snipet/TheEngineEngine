@@ -93,6 +93,10 @@ module XTest
         spec.bypassTime = 0.3f;
         spec.gateLen = 0.3f;
         spec.gateD = 0.038f;
+        spec.flapKind = 0;
+        spec.flapOrifice = 0.03f;
+        spec.flapRelief = 350000.0f;
+        spec.flapTime = 0.15f;
         for (int s = 0; s < XS_SIDES; ++s)
         {
             spec.mainLen[s] = 0.0f;
