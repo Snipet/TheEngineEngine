@@ -1,7 +1,6 @@
 # U4: the TUNE, CAR and DYNO workspaces
 
 Branch `claude/awesome-gates-ntdb58`. Pages: `docs/ui/tune.md`, `car.md`, `dyno.md`. Pictures: software rasteriser only.
-
 **Done** (`ctest -R '^ui\.(tune|car|dyno)\.'`, 17 tests, all pass on Linux; `tee-view-tests all` on the merged tree:
 1 of 80 fails, `frame.ribbon`, which pictures AIR):
 - The frame's stage: every stage lays out for the rect it is given and folds on a small one (~660x570: DYNO narrows
@@ -22,7 +21,6 @@ Branch `claude/awesome-gates-ntdb58`. Pages: `docs/ui/tune.md`, `car.md`, `dyno.
   `select()`), `block(c0, r0, c1, r1)`, `selectBlock(...)`; Shift+click and Shift+arrows move the selected cell keeping
   the anchor; a 2 px accent outline round a block of more than one cell; `drawKey` mixes the anchor. Nothing else
   changed: `tee-ui-tests all` 47 of 47 pass, its goldens untouched.
-
 **Read, and on the branch today?** Fields: `ecu.spark` (demo; yes), `ecu.maps.{spark,lambda,boost,camIn,camEx,pedal,lift}`
 and `...Auto` (no: `sim/ecu/settings.fm`, awaiting K3b), `boost.duty` (demo), `ecu.limiter.speed` / `ecu.limiter` (demo).
 `car.mass`, `car.wheelbase`, `car.finalDrive`, `car.drive`, `car.tyre` (demo: radius) yes in the demo; `car.cgHeight`,
@@ -32,13 +30,11 @@ Telemetry: `engine.speed/state/manifold/throttle/redline/flags`, `car.speed/gear
 `ecu.lambda`, `exhaust.lambda`, `ecu.knock`, `ecu.spark`, `ecu.flags` (ECU_FLAG_*), `car.accel`, `car.flags`,
 `car.wheelLoad[i]`, `wheelSlip[i]`, `wheelTorque[i]` do not (names I chose: one line each in the tables). Scope:
 `bakeCount`, `bakedNx/Ny/X/Y`, `baked` (in scope.fm; not in the demo: BAKE says so).
-
 **Wanted**:
 - U1: `DynoSource` a partial trace of the run in progress (I shade the swept span from the plan's rate); `DynoRequest`
   `steps` and `gear` (chassis); a save-file service for CSV (now the clipboard, `HostServices::copyText`); a way to
   press `ctl.bakeMaps` (BAKE only reads a bake already made); the demo hook, to move TuneDemo/CarDemo into.
 - H/I at integration: the telemetry names above (or tell me theirs: a line each).
 - The plan of a run is not a Spec field, so DYNO's inspector is empty and its plan is on the stage.
-
 **Not done**: the auto switch was not exercised (the demo has no `...Auto` field); GPU path under Xvfb not run;
 macOS/Windows only by CI. Others' failures seen: `ui.frame.workspaces`, `ui.build.frame` (scope.gui notes), `ui.exhaust.*` once.
