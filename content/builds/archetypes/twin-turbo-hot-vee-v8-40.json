@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "Twin-turbo 4.0 L hot-vee V8",
-  "notes": "A 4.0 L crossplane V8 with both turbos in the vee (hot-vee): 86 x 86 mm (3996 cc), 10.5:1, direct injection (engines of the kind: 350 to 470 kW at 5500 to 6500 rpm, 700 to 850 N m from 2000 to 4500; makers' figures). All-wheel drive, eight-speed automatic. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT.",
+  "notes": "A 4.0 L crossplane V8 with both turbos in the vee (hot-vee): 86 x 86 mm (3996 cc), 10.5:1, direct injection (engines of the kind: 350 to 470 kW at 5500 to 6500 rpm, 700 to 850 N m from 2000 to 4500; makers' figures). All-wheel drive, eight-speed automatic. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py).",
   "spec": {
     "engine": {
       "layout": "V8 crossplane",
@@ -136,6 +136,77 @@
       },
       "knock": {
         "on": true
+      },
+      "maps": {
+        "camInAuto": false,
+        "camIn": {
+          "x": [
+            104.71975511965977,
+            189.9915070495168,
+            275.26325897937386,
+            360.5350109092309,
+            445.8067628390879,
+            531.078514768945,
+            616.350266698802,
+            701.622018628659
+          ],
+          "y": [
+            0.0,
+            0.75,
+            0.95,
+            3.0
+          ],
+          "z": [
+            [
+              0.0,
+              0.0,
+              20.0,
+              20.0
+            ],
+            [
+              0.0,
+              0.0,
+              20.0,
+              20.0
+            ],
+            [
+              0.0,
+              0.0,
+              39.450401306152344,
+              39.450401306152344
+            ],
+            [
+              0.0,
+              0.0,
+              28.39586639404297,
+              28.39586639404297
+            ],
+            [
+              0.0,
+              0.0,
+              20.0,
+              20.0
+            ],
+            [
+              0.0,
+              0.0,
+              10.0,
+              10.0
+            ],
+            [
+              0.0,
+              0.0,
+              20.0,
+              20.0
+            ],
+            [
+              0.0,
+              0.0,
+              20.0,
+              20.0
+            ]
+          ]
+        }
       }
     },
     "car": {

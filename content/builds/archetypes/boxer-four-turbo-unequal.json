@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "Boxer four turbo with unequal headers",
-  "notes": "A 2.5 L boxer four with one turbo, 99.5 x 79 mm (2457 cc), 8.2:1 (the EJ257 kind: 221 kW at 6000 rpm, 393 N m at 4000; Wikipedia and enthusiasts' tables). Its headers' primaries of unequal length are the burble: written in the exhaust builder (primSpread), which the program does not yet run. All-wheel drive, six-speed manual. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT.",
+  "notes": "A 2.5 L boxer four with one turbo, 99.5 x 79 mm (2457 cc), 8.2:1 (the EJ257 kind: 221 kW at 6000 rpm, 393 N m at 4000; Wikipedia and enthusiasts' tables). Its headers' primaries of unequal length are the burble: written in the exhaust builder (primSpread), which the program does not yet run. All-wheel drive, six-speed manual. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py).",
   "spec": {
     "engine": {
       "layout": "Flat 4",
@@ -118,6 +118,77 @@
       },
       "knock": {
         "on": true
+      },
+      "maps": {
+        "camInAuto": false,
+        "camIn": {
+          "x": [
+            104.71975511965977,
+            192.98351144404805,
+            281.24726776843636,
+            369.51102409282464,
+            457.7747804172129,
+            546.0385367416012,
+            634.3022930659895,
+            722.5660493903778
+          ],
+          "y": [
+            0.0,
+            0.75,
+            0.95,
+            3.0
+          ],
+          "z": [
+            [
+              0.0,
+              0.0,
+              10.0,
+              10.0
+            ],
+            [
+              0.0,
+              0.0,
+              10.0,
+              10.0
+            ],
+            [
+              0.0,
+              0.0,
+              20.0,
+              20.0
+            ],
+            [
+              0.0,
+              0.0,
+              20.0,
+              20.0
+            ],
+            [
+              0.0,
+              0.0,
+              10.0,
+              10.0
+            ],
+            [
+              0.0,
+              0.0,
+              10.0,
+              10.0
+            ],
+            [
+              0.0,
+              0.0,
+              10.0,
+              10.0
+            ],
+            [
+              0.0,
+              0.0,
+              20.0,
+              20.0
+            ]
+          ]
+        }
       }
     },
     "car": {
