@@ -125,3 +125,26 @@ rotors the same way, after 4845579 (4 runs; R 1840 ns drive-car, 1913 free-revs)
 "one switch at a time" row for `boost.model` above was measured before it (+0.14 R); with it, a boost.model 1 build
 also pays the builder's +0.13 to 0.14 R at the reference's topology. The "every switch on" rows are unchanged (they
 had the builder on already, though it was not wired then: re-measure when the dual X is the typical build's).
+
+## Re-measured at 19:15 UTC, after D's f89d40c (model switches' decisions taken each call)
+
+At the tip with f89d40c. The host was busy (the reference V8 read 2092 ns, against 1840 to 1955 earlier), so each
+figure here is against the simulator's own V8 in the same qbench run, which `tee-bench --engine` read at 1.045 of the
+reference in the same session: R = 1801 ns drive-car, 1856 free-revs. 4 runs a side (8 renders), least kept.
+
+| Build | before (16:20 / 16:55) | now, drive-car | now, free-revs |
+|---|---:|---:|---:|
+| Builder at the reference's topology (default V8's block) | 1.09 / 1.13 R | **1.28 R** | **1.26 R** |
+| Builder, dual X, stubs, valved mufflers (default V8's block) | 1.32 / 1.43 R | **1.53 R** | **1.54 R** |
+| Twin-turbo V8, every switch on (X's combo, 6.2 L: configured right before too) | 1.44 / 1.47 R | **1.82 R** | **1.84 R** |
+| Turbo six, every switch on (its own layout: configured right before too) | 1.10 / 1.10 R | **1.33 R** | **1.37 R** |
+
+The rise is mostly not D's fix: the two combo builds had their own sizes and were configured right before. At 16:20
+`exhaust.model` 1 was not yet wired (it did nothing); now the builder runs in every one of these (profile of the
+twin-turbo V8, every switch on: `XNet` 322, `XBuild` 115, `Duct` 649 ns, together some 0.3 R over the reference's
+exhaust), and the listener's model 1 has grown (`Scene` 239 ns, from about 164). The two exhaust rows on the default
+V8's block are the ones D's fix could touch; they moved +0.13 to +0.21 R, of which the builder's own changes since
+(passivity gain check, glides) are part: not separable without a second run on the commit before f89d40c.
+
+**The typical build** (twin-turbo V8, every model on, the dual X): 1.82 R + (1.53 - 1.28) = **about 2.1 R** against
+the 1.6 R budget. Economy (0.49): **about 1.0 R**: 40 % of the owner's core on their slower figure, 30 % on the faster.
