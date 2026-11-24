@@ -428,3 +428,42 @@ torque N m):
 The long cam lives on the ram at its closing, the short one hardly cares: a real high-lift stage is matched to its
 runner. So N3-4 is not the model's: it is the build's runner (P's rule, not the K20A's intake). Routed to P for the
 K20A's runner, cited; my note to N1 that it was the model's is withdrawn.
+
+## N3-9. Where the tuned four-valves lose at speed: their runners again (20:50 by `date -u`)
+
+The balance at speed (tip, tee::Build path; before G's flowClose is live):
+
+| Engine, rpm | Torque, N m | kW | VE | Released | Walls | Gross | Pumping | Friction | Brake |
+|---|---|---|---|---|---|---|---|---|---|
+| Flat-plane 4.5, 7000 | 389.6 | 286 | 0.809 | 0.924 | 0.113 | 0.396 | 0.004 | 0.063 | 0.329 |
+| Flat-plane 4.5, 8500 | 376.2 | 335 | 0.825 | 0.937 | 0.110 | 0.403 | 0.009 | 0.077 | 0.316 |
+| Two-stage 2.0, 7500 | 148.8 | 117 | 0.759 | 0.913 | 0.120 | 0.380 | 0.011 | 0.073 | 0.296 |
+| Two-stage 2.0, 8800 | 177.9 | 164 | 0.916 | 0.925 | 0.113 | 0.386 | 0.015 | 0.074 | 0.297 |
+
+Every share but the air is a real engine's; the VE is the short one (95 to 100 kW a litre wants VE above 1.0 at the
+power peak). Not the valves: the flat-plane's Mach index (Heywood §7.3) is 0.23, 0.31, 0.35 at 6000, 8000, 9000 rpm,
+far under the 0.6 where VE falls away, and its ports at 2.0 (from 1.65) do not help (VE 0.785 / 0.813 at 7000 / 8500).
+Its runner does: the build switches to a second length of 0.18 m above 6200 rpm (P's rule):
+
+| Second runner | 7000 rpm | 8000 rpm | 8500 rpm |
+|---|---|---|---|
+| 0.18 m (as built) | 390 N m, VE 0.809 | 378, 0.812 | 376, 0.825 |
+| 0.25 m | 399, 0.831 | 383, 0.827 | 394, 0.867 |
+| 0.30 m | 383, 0.807 | **469, 0.985** (392 kW) | 433, 0.933 |
+| 0.35 m | **480, 0.979** | 441, 0.943 | **460, 1.003** (410 kW) |
+
+The target is 400 to 445 kW at 8000 to 9000 rpm. The two-stage's stage B is the same (N3-4: 211 N m and VE 1.03 at 8000
+on a 0.40 m runner). So the tuned engines' shortfall at speed is their runners too, not a missing flow or an exhaust's
+scavenging (G's closing moves NA engines under 1 %).
+
+## Open: the runner's ram, its height (the lead's frame, both sides)
+
+- *The studies:* published runner-length gains of 6 % (a turbocharged diesel), 8.7 % (a petrol engine, a 528 mm runner)
+  and a 5.4 % average over a speed range from two lengths (single studies, geometry not matched to ours); Ohata and
+  Ishida (SAE 820407) and Heywood §7.6's figures were not opened.
+- *The model:* 12 to 18 % at the tune on the flat six; VE 1.03 on the two-stage's stage B and 1.00 on the flat-plane on
+  matched runners. The losses in it are of textbook size (N3-6).
+- *What the short engines need:* VE 1.0 and over at their power peaks, which the model reaches only with its ram as
+  strong as it is (on matched runners). Halving it would trade the seven for the nine.
+- *To decide:* re-measure the seven on the real engines' runners (P); if a tooth of this height at the right speed still
+  leaves them over, and the tuned ones are met with real runners, a sourced damping has its case. Neither yet.
