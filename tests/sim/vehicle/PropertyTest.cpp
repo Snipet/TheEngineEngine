@@ -133,7 +133,12 @@ namespace
 
 // The quick form, in every run (01-rules.md §3: under 30 s): X-007's own corner (a heavy piston on a long stroke and a
 // light flywheel), which ran away through an automatic's converter, with the Automatic and a Manual, in neutral and in
-// gear. It is the corner the fixes of f9e26f1 were proven on: without them it runs away.
+// gear. What it guards, measured 2026-11-24 at the build steward's split: with f9e26f1's sim/vehicle changes taken out
+// (the crank's inertia of the moment ignored, the converter's limit off, its gearbox and car changes reverted) this
+// form and the full one below both still pass on today's tree; the engine's own steps keep these singles in hand. The
+// test that bites is the standalone one above ("passive: a crank of varying inertia ..."), in every run (4 s): without
+// those changes it fails at once (energy above the engine's work by 1e32 J, the crank at 1e19 rad/s). This one stays
+// as the end-to-end guard: checks on, no stop, no guard trip, the crank under 3000 rad/s.
 TEST_CASE("passive.engine: X-007's single, automatic and manual, never runs away", "[vehicle][property]")
 {
     const int runs = passiveEngine({"Automatic", "Manual"}, {0});
