@@ -128,3 +128,34 @@ TEST_CASE("diesel brake: the driver's button engages it at High with the dash sw
     REQUIRE(e.run(1.0));
     CHECK(e.tel("ecu.brakeCylinders") == 0.0);
 }
+
+TEST_CASE("diesel brake: with a variable-vane turbo the brake shuts the vanes and the manifold reaches 3 bar", "[diesel][brake][turbo]")
+{
+    // card F's machine (boost.model 1), one turbo with variable vanes: the compression brake on High at 2000 rpm puts it in
+    // its brake position (vanes shut, gate held shut). Real brakes run 3 to 3.5 bar absolute in the manifold there.
+    double kw[2] = {0.0, 0.0};
+    const double sizeK = 1.6;    // (the matched size, 1, over-speeds its shaft on the brake: its relief opens the vanes at 2.5 bar)
+    for (int k = 0; k < 2; ++k)
+    {
+        Engine e("truck-15l-six");
+        e.spec("boost.model", 1);
+        e.spec("boost.kind", 1);
+        e.spec("boost.layout", 1);
+        e.spec("boost.vanes", 1);
+        e.spec("boost.gateSpring", 220000.0);
+        e.spec("boost.size", sizeK);
+        e.spec("ecu.brakeSwitch", k == 0 ? 0 : 3);
+        e.start();
+        e.dyno(2000.0, 0.0f);
+        REQUIRE(e.run(5.0));
+        const double tq = e.mean("engine.torque", 1.0);
+        kw[k] = -tq * 2000.0 * 0.10471976 / 1000.0;
+        std::printf("VGT, brake %s at 2000 rpm: manifold %.0f kPa abs, vanes %.2f, gate %.2f, shaft %.0f rad/s, %.0f kW retarding\n",
+                    k == 0 ? "off" : "High", e.tel("engine.manifold") / 1000.0, e.tel("boost.vanes[0]"), e.tel("boost.gate[0]"),
+                    e.tel("boost.shaftSpeed[0]"), kw[k]);
+        std::printf("  (the shaft's limit, omegaMax: %.0f rad/s)\n", e.get("boost.mach.omegaMax[0]"));
+        if (k == 1)
+            CHECK(e.tel("engine.manifold") >= 300000.0);
+    }
+    CHECK(kw[1] > kw[0] + 150.0);
+}
