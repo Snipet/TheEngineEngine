@@ -73,6 +73,10 @@ namespace tee::app
         void save();
         void saveAs();
         void fileMenu();
+        // A text to a file the person chooses (FrameServices::saveText: a dyno run's CSV). The system's dialog answers
+        // later, so this returns true once the dialog is open (false, with `error`, when it cannot open), and the file's
+        // fate is said on the status line when the person has chosen.
+        bool saveText(const std::string& suggestedName, const std::string& text, std::string& error);
         void audioMenu();
 
         // What the menus changed (the request the device is open with now).

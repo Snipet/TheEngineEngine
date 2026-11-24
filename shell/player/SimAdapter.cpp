@@ -206,6 +206,22 @@ namespace tee::player
         return have_ ? std::min(frame_->host.outputPeak, 1.0f) : 0.0f;
     }
 
+    bool SimAdapter::hasControl(std::string_view name) const
+    {
+        double v = 0.0;
+        return getControl(host_->controls(), name, v);
+    }
+
+    bool SimAdapter::pressCounter(std::string_view name)
+    {
+        SimControls c = host_->controls();
+        double v = 0.0;
+        if (!getControl(c, name, v) || !setControl(c, name, v + 1.0))
+            return false;
+        host_->setControls(c);
+        return true;
+    }
+
     void SimAdapter::setControls(const ControlsFrame& f)
     {
         SimControls c = host_->controls();      // what the frame does not carry (the dyno's, the scope) stays
