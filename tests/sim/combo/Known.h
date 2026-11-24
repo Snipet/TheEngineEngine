@@ -4,27 +4,15 @@
 
 const Known kKnown[] = {
     // id, date, owner, combo, build, scenario, check, what
-    {"X-010", "2026-11-24", "N2 (boost, for card F)", "as built", "tractor-15-inline-six", "tour", "click",
-     "boost.model 1 on the tractor diesel: steps of 52 to 57 after the blip (9.3 without boost; 32 before 2db13dd)"},
-    {"X-010", "2026-11-24", "N2 (boost, for card F)", "as built", "pickup-diesel-67-inline-six", "tour", "click",
-     "the same on the pickup diesel: 26.7 with boost, 19.8 without"},
-    {"X-011", "2026-11-24", "H (via the lead)", "ecu.model+car.model", "v8", "wet-traction-on", "click",
-     "traction control on a wet road holds the revs, not the slip (it stays at 1); its spark cut bangs at the shift"},
-    {"X-012", "2026-11-24", "T (two-strokes)", "*", "*", "*", "tel-range:engine.tsPipeTemperature",
-     "tel.engine.tsPipeTemperature reads 0 K on every four-stroke (no pipe): it should read a physical temperature"},
-    {"X-010", "2026-11-24", "N2 (boost, for card F)", "as built", "tractor-15-inline-six", "tour", "dc",
-     "the tractor's running mean at 0.0050 of full scale with boost on"},
-    {"X-014", "2026-11-24", "N2 and G (boost into the exhaust builder)", "as built", "straight-six-twin-turbo-30", "tour",
-     "click", "boost.model 1 with exhaust.model 1: steps of 38 to 39 at the throttle's onset and the blip (8 without either)"},
-    {"X-015", "2026-11-24", "N2 and G (boost into the exhaust builder)", "+engine.custom+valve.model+boost.model+exhaust.model",
-     "large-diesel", "*", "click",
-     "the large diesel with the custom engine, the valvetrain, boost and the exhaust builder: clicks of 42 to 66 every "
-     "0.4 s at full load"},
-    {"X-015", "2026-11-24", "N2 and G (boost into the exhaust builder)", "+engine.custom+valve.model+boost.model+exhaust.model",
-     "v8", "load", "click", "the same while the large diesel is loaded over the V8 with every switch on"},
-    {"X-016", "2026-11-24", "Q (cost)", "random 1", "fuzz", "random", "cost",
-     "random Spec seed 1 costs 4.6 R since the exhaust builder runs (1.29 R before)"},
+    {"X-011", "2026-11-24", "I (via the lead): standstill", "ecu.model+car.model", "v8", "wet-traction-on", "click",
+     "traction control from a standstill on a wet road: the slip not held (only a slipping clutch can at walking pace); "
+     "its cuts bang at the shift"},
+    {"X-016", "2026-11-24", "Q (cost; the heavy case of 02-contracts section 9)", "random 1", "fuzz", "random", "cost",
+     "random Spec seed 1 is a four-rotor rotary (engine.custom, rotors 4: 12 faces on 4 shared ports, each solved twice "
+     "a sample): 3.2 to 4.6 R; reported, not required in real time (Q: Economy or TEE_FAST)"},
     {"X-016", "2026-11-24", "Q (cost)", "corners 1", "fuzz", "corners", "cost",
-     "the ranges' corners seed 1 costs 4.9 R since the exhaust builder runs (0.76 R before)"},
+     "the ranges' corners seed 1: 2.1 to 4.9 R (Q measured 2.1 to 2.4 on a quieter host); reported as the heavy case"},
+    {"X-017", "2026-11-24", "N1 and D (959454c)", "*", "*", "*", "tel-range:engine.chargeTemperature",
+     "tel.engine.chargeTemperature reads 0 K until the first charge (about 0.5 s): it should read the air's"},
     {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},   // the end (an array is never empty)
 };

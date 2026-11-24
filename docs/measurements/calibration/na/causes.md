@@ -220,3 +220,94 @@ In a scratch tree with that line, against the tree without it:
 | 3.2 six | -11 % | -7 % |
 | Small-block | -9 % | -7 % |
 | V12 | -10 % | -6 to -7 % |
+
+## Since 16:46 (measured on the tip)
+
+**Pattern 4 is closed** by card D's conserving cylinder (the round trip's store, on the physical path). Warm idle on
+the bench (the probe's `[.probe-idle]`):
+
+| Engine | Idle before | Idle now (target) | Idle valve | Manifold |
+|---|---|---|---|---|
+| V12 | 1244 | 882 rpm (900) | 0.15 | 90 kPa |
+| V10 | 1166 | 952 rpm (950) | 0.11 | 80 kPa |
+| Flat-plane V8 | 1340 | 998 rpm (1000) | 0.12 | 89 kPa |
+
+Every idle valve is working now. The economy four's balance at idle is 1.048 (was 1.58), and the test is unskipped.
+Still unexplained: the big-overlap engines trap about twice the throttle's air at idle (V12 11.6 against 5.9 g/s).
+
+**B on the builder (in the engine since 16:17).** On the 3.2 six:
+
+- The archetypes' exhausts as built give results identical to the bit to exhaust.model 0: the reference's topology,
+  with its road converter and chambered muffler.
+- Open (no converter, straight-through): port mean 154 → 120 kPa at 7600 rpm, burned share 7.2 → 4.3 %, torque +6 to
+  +10 %.
+- Primary length from 0.4 to 1.4 m: ±2 %.
+- Runner length is the lever:
+
+| Runner | Best VE | Torque there | At |
+|---|---|---|---|
+| 0.25 m (as built) | 0.94 | 300 N m | 5000 rpm |
+| 0.35 m | 0.99 | 305 N m | 6000 to 7000 rpm |
+| 0.50 m | 1.05 | 335 N m | 5000 rpm |
+| 0.70 m | 1.04 | 330 N m | 4000 to 5000 rpm |
+
+So the tuned engines' shortfall is content: the runner, the exhaust and the port quality. Values went to P.
+
+**The half-burn readings of 29 to 39 degrees** do not reproduce: 0 of 98 cycles over 20 degrees. The late burns now
+are knock retard on regular fuel at 11:1 (economy four: 13.7 degrees at 1500 rpm, 0.2 at 6336).
+
+**Gas properties (the lead's hypothesis).** `gammaAt` falls from 1.39 to 1.24, near Heywood's values. Gross indicated
+efficiency is 0.34 to 0.36 at 1500 rpm and 0.38 to 0.42 from 4000 rpm up: 5 to 10 % over 0.8 of the fuel-air cycle at
+speed. Port gas runs 1100 to 1530 K. Suspected: too little heat leaves at speed (Woschni under-reads during SI
+combustion; no exhaust-port wall loss). Proposed to the lead and D, not changed.
+
+**Fixed by N1, acting for E and H**, measured before and after:
+
+- the phaser by target intake closing (C);
+- the ITB manifold reading floored at 8 kPa (it read -11.4 kPa on the lift);
+- a rotary's burn 0.92: -4 to -6 %, boosted 318 N m at 5000 rpm for 290 to 315;
+- the charge's heating (F): in, waiting for D's `intk.tCoolant` line.
+
+## 17:20 to 17:50
+
+**The lead's gas hypothesis is refuted** (struck by the lead). The cylinder's gas is not constant-gamma air:
+`gammaAt` falls from 1.39 to 1.24, and the energy is pV/(gamma - 1). Gross indicated efficiency is right at low speed
+and 5 to 10 % over at mid and high speed: an open observation, not a miss to fit.
+
+**The phaser rule revised.** P's new runners changed where each engine wants its closing. On the V12 (0.36 m), the
+best fixed advance by speed:
+
+| rpm | 2000 | 3500 | 5000 | 6500 | 8000 |
+|---|---|---|---|---|---|
+| Best advance, deg | 30 | 30 | 10 | 0 | 0 |
+
+The 3.2 six (0.51 m) and the economy four (0.59 m) differ again. The economy four wants its earliest closing in mid
+range.
+
+- The overlap cap is removed. It was set while the cylinder made mass on its backflow; with the cylinder conserving,
+  it cost the long cams 15 % at 2000 rpm.
+- The target closing now reaches 67 degrees at three quarters of the redline.
+- Scheduled against each engine's best fixed advance: V12 0 to -2 %; 3.2 six 0 to -6 %; economy four 0 to -8 %
+  (1500 and 4500 rpm worst).
+- No single rule does better, since the best closing also follows the runner's tune. Card C's baked map is the exact
+  answer.
+
+**The intake's books** (the probe's `[.probe-books]`, from card D's running totals, g/s over 2 s). The cylinders now
+conserve: in through the valves equals out through the exhaust and the trapped air. The runners did not: a linear
+runner keeps volume, and the plenum gave up less than the valves took.
+
+| Engine | Valves ÷ throttle, idle | 3000 rpm | 6000 to 7000 rpm |
+|---|---|---|---|
+| Flat-plane V8, before | 1.37 | 1.14 | 1.15 |
+| Economy four, before | 1.06 | 1.05 | 1.01 |
+| Flat-plane V8, after | 1.006 | 0.99 | 0.97 |
+| Economy four, after | 1.009 | 0.98 | 0.97 |
+| 3.2 six (ITBs), after | 1.000 | 1.000 | 1.000 |
+
+The fix: `Intake` takes the valves' net mass from Engine (`mValves`, `haveValves`) and the plenum gives up exactly
+that. The ITBs' throttle air is the valves' too. The waves are unchanged, and full-load torque moves -3 to +4 %.
+
+The remaining 2 to 3 % at full load is the books' throttle term, not the engine. `airThrottle` converts `qThr` at
+`pBox`, where `qThr` was converted at the box's pressure `pBox + box.p`: an over-read by the box's depression.
+
+It waits for D's two lines in `engine.fm`; until then the intake keeps its old path.

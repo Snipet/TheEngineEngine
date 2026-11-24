@@ -52,7 +52,16 @@ namespace
     }
 } // namespace
 
-TEST_CASE("diesel turbo: a big single's lag you can count, compound and variable vanes", "[diesel][turbo]")
+TEST_CASE("diesel turbo: a big single's lag you can count, variable vanes quicker", "[diesel][turbo]")
+{
+    const Spool single = spool(1, 0);
+    const Spool vgt = spool(1, 1);
+    CHECK(single.t90 > 0.3);
+    CHECK(vgt.t90 < single.t90);
+    CHECK(vgt.boost > 2.0 * single.boost);
+}
+
+TEST_CASE("diesel turbo, full: a big single's lag you can count, compound and variable vanes", "[diesel][turbo][nightly]")
 {
     const Spool single = spool(1, 0);
     const Spool vgt = spool(1, 1);

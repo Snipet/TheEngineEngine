@@ -13,9 +13,8 @@
 
 TEST_CASE("the fresh air trapped at a warm idle is the air through the throttle", "[calibration][na]")
 {
-    // finding D of causes.md: sim/core/cylinder.fm converts gas pushed back into the runner at the cylinder's
-    // temperature and draws it back at the air's (1.58x on this build, 14 to 32x on the V12); D's to fix
-    SKIP("causes.md D: the intake valve's round trip creates mass (routed to card D)");
+    // (finding D of causes.md: gas pushed back into the runner left at the cylinder's temperature and came back at the
+    // air's: 1.58x on this build before card D's conserving cylinder, 1.05 after)
     tee::EnginePlayer::Options options;
     options.directory = std::filesystem::path(TEE_SOURCE_DIR) / "sim";
     options.sampleRate = 96000.0;

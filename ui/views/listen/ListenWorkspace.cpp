@@ -1,6 +1,7 @@
 // ui/views/listen/ListenWorkspace.cpp: see ListenWorkspace.h.
 #include "views/listen/ListenWorkspace.h"
 
+#include "views/engine/PageText.h"
 #include "views/scope/ScopePlot.h"
 
 #include <algorithm>
@@ -182,6 +183,48 @@ namespace tee::ui
         const double rg = live.get("sound.range");
         s.range = rg;   // the program's, or a dash: not worked out here
         return s;
+    }
+
+    std::string ListenWorkspace::inspectorPage() const
+    {
+        const bool reference = std::lround(field("sound.model", 0.0)) == 0;
+        std::vector<pages::Section> secs;
+        if (reference)
+            secs.push_back({ "HEARD FROM", { "sound.model", "sound.view", "sound.distance" }, { "MODE", "REFERENCE VIEW", "DISTANCE" } });
+        else
+        {
+            secs.push_back({ "HEARD FROM", { "sound.model", "sound.camera", "sound.distance" }, { "MODE", "CAMERA", "DISTANCE" } });
+            secs.push_back({ "PLACE", { "sound.place", "sound.ground", "sound.enginePlace" }, { "PLACE", "GROUND", "ENGINE AT" } });
+            secs.push_back({ "THE FREE LISTENER",
+                             { "sound.listenerX", "sound.listenerY", "sound.listenerZ", "sound.facing" },
+                             { "ACROSS", "ALONG", "HEIGHT", "FACING" } });
+        }
+        secs.push_back({ "ROOM", { "sound.room", "sound.windows" }, { "ROOM", "WINDOWS" } });
+        secs.push_back({ "LEVELS", { "sound.level", "sound.intake", "sound.mechanical" }, { "LEVEL", "INTAKE", "MECHANICAL" } });
+        // Every field is on a page (the frame holds it): what the mode now does not read goes last, named so.
+        if (!reference)
+            secs.push_back({ "REFERENCE MODE ONLY", { "sound.view" }, { "REFERENCE VIEW" } });
+        else
+            secs.push_back({ "PLACES MODE ONLY",
+                             { "sound.camera", "sound.place", "sound.ground", "sound.enginePlace", "sound.windows",
+                               "sound.listenerX", "sound.listenerY", "sound.listenerZ", "sound.facing" },
+                             { "CAMERA", "PLACE", "GROUND", "ENGINE AT", "WINDOWS", "ACROSS", "ALONG", "HEIGHT", "FACING" } });
+        // And any field of the section this page does not name (one added since), under its own label.
+        pages::Section rest{ "MORE", {}, {} };
+        for (int f = 0; f < ctx_.doc.count(); ++f)
+        {
+            const FieldInfo& fi = ctx_.doc.info(f);
+            if (fi.hidden || fi.section() != "sound")
+                continue;
+            bool named = false;
+            for (const pages::Section& sc : secs)
+                named = named || std::find(sc.paths.begin(), sc.paths.end(), fi.path) != sc.paths.end();
+            if (!named)
+                rest.paths.push_back(fi.path);
+        }
+        if (!rest.paths.empty())
+            secs.push_back(rest);
+        return pages::page(ctx_.doc, secs);
     }
 
     // ---- the plan's mapping -----------------------------------------------------------------------------------------

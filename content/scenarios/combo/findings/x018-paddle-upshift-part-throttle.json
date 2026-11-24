@@ -1,0 +1,91 @@
+{
+  "format": "tee-scenario",
+  "version": 1,
+  "name": "x018-paddle-upshift-part-throttle",
+  "description": "Package X's finding X-018 (2026-11-24, card H): build content/builds/combo/v8.json (the reference V8 in the rear-drive coupe, a manual on the paddles), ecu.model 1, car.model 1, a wet road, traction control off: first on the paddle at 3 s, 25 % pedal, second at 4.5 s, 20 % at 5 s, floored at 6 s. The step measured from 2.5 s to the end; X saw 31.2 at 4.75 s (the bang rule's bound there 24.2).",
+  "seconds": 10,
+  "events": [
+    {
+      "t": 0,
+      "spec": {
+        "env.temperature": 293.15,
+        "ecu.model": 1,
+        "car.model": 1,
+        "env.surface": 2,
+        "ecu.traction.on": 0
+      },
+      "ctl": {
+        "mode": 1,
+        "lever": 0,
+        "clutch": 0,
+        "throttle": 0,
+        "brake": 0,
+        "ignition": 1
+      }
+    },
+    {
+      "t": 0.25,
+      "ctl": {
+        "ignition": 2
+      }
+    },
+    {
+      "t": 2.0,
+      "ctl": {
+        "ignition": 1
+      }
+    },
+    {
+      "t": 3.0,
+      "press": [
+        "shiftUp"
+      ]
+    },
+    {
+      "t": 3.2,
+      "ctl": {
+        "throttle": 0.25
+      },
+      "ramp": 0.3
+    },
+    {
+      "t": 4.5,
+      "press": [
+        "shiftUp"
+      ]
+    },
+    {
+      "t": 5.0,
+      "ctl": {
+        "throttle": 0.2
+      }
+    },
+    {
+      "t": 6.0,
+      "ctl": {
+        "throttle": 1.0
+      },
+      "ramp": 0.1
+    }
+  ],
+  "assertions": [
+    {
+      "audio": "step",
+      "during": [
+        2.5,
+        10
+      ],
+      "<": 24.2,
+      "source": "the bang rule: the largest of three reference copies with pops 0.3"
+    },
+    {
+      "audio": "step",
+      "during": [
+        4.4,
+        5.2
+      ],
+      "<": 24.2,
+      "source": "the upshift at 4.5 s"
+    }
+  ]
+}

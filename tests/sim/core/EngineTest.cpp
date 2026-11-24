@@ -376,3 +376,20 @@ TEST_CASE("the physical cylinder conserves the gas its valves push back: the val
     CHECK(ratioW[1] < 1.2);
     CHECK(ratioW[1] < ratioW[0] - 0.15);
 }
+
+TEST_CASE("a two-stroke's mechanics are its own cylinders', whatever the custom four-stroke's fields hold", "[core][engine][twostroke]")
+{
+    // (card T's hook, reviewed: with cycle 1 the moving masses, the shaking and the work integral took the custom
+    // geometry's cylinders; a single with the custom fields of a twin had two pistons' inertia)
+    Bench b("engines/two-stroke-kart");
+    std::string e;
+    REQUIRE(b.player().setSpec("engine.cylinders", 2, e));
+    b.player().setSpec(std::size_t(b.player().specIndex("engine.pin")), 180.0, 1);
+    b.start();
+    b.play(0.5);
+    CHECK(b.field("lay.n") == 1.0);
+    CHECK(b.field("geo.n") == 1.0);
+    CHECK(b.field("mm.n") == 1.0);
+    CHECK(b.field("work.n") == 1.0);
+    CHECK(std::fabs(b.field("work.vBmep") / (0.5 * b.field("two.vd")) - 1.0) < 1e-5);
+}

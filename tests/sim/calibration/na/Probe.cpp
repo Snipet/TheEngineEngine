@@ -15,6 +15,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -137,6 +138,7 @@ TEST_CASE("probe: a cylinder's gas exchange at intake closing", "[.probe]")
         double exSum = 0, exN = 0, inSum = 0, inN = 0, torque = 0, tN = 0, man = 0, wall = 0, heat = 0, thr = 0, trap = 0;
         const int cyls = int(pr.tel("engine.cylinders"));
         const double dt = 1.0 / pr.p->sampleRate();
+        std::vector<double> halves, burns;
         pr.play(measure, [&] {
             const double ang = pr.get("cyl[0].ang");
             const double pc = pr.get("cyl[0].p");
@@ -148,6 +150,11 @@ TEST_CASE("probe: a cylinder's gas exchange at intake closing", "[.probe]")
             wall += pr.get("cyl[0].hA") * (tg - pr.get("cyl[0].tw")) * dt;
             if (pr.get("cyl[0].sparkNow") != 0.0)
                 heat += pr.get("cyl[0].qTot");
+            if (pr.get("cyl[0].evoNow") != 0.0)
+            {
+                halves.push_back(pr.tel("ecu.halfBurn"));
+                burns.push_back(pr.get("cyl[0].qTot"));
+            }
             if (pr.get("cyl[0].ivcNow") != 0.0)
             {
                 const double m = pr.get("cyl[0].m");
@@ -188,6 +195,19 @@ TEST_CASE("probe: a cylinder's gas exchange at intake closing", "[.probe]")
                     inSum / std::max(inN, 1.0), man / tN / 1e3, portI / 1e3, portE / 1e3);
         std::printf("        air: through the throttle %.2f g/s, trapped fresh %.2f g/s (%.3f of it)\n", 1e3 * thr / measure,
                     1e3 * trap / measure, trap / std::max(thr, 1e-12));
+        {
+            std::vector<double> h = halves;
+            std::sort(h.begin(), h.end());
+            int over20 = 0, weak = 0;
+            double qMean = 0;
+            for (double q : burns)
+                qMean += q / std::max<std::size_t>(burns.size(), 1);
+            for (std::size_t k = 0; k < halves.size(); ++k)
+                over20 += halves[k] > 20.0, weak += burns[k] < 0.5 * qMean;
+            if (!h.empty())
+                std::printf("        half-burn (tel, at each exhaust opening): min %.1f median %.1f max %.1f; %d of %zu over 20 deg; "
+                            "%d burns under half the mean heat\n", h.front(), h[h.size() / 2], h.back(), over20, h.size(), weak);
+        }
         std::printf("        walls %.3f of the burns' heat (%.0f J of %.0f J), port gas %.0f K\n", wall / std::max(heat, 1e-9), wall, heat,
                     pr.tel("exhaust.portTemperature"));
     }
@@ -244,6 +264,63 @@ TEST_CASE("probe: a warm idle", "[.probe-idle]")
         std::printf("%5d %6.0f %6.0f %6.3f %6.3f %6.1f %6.1f %6.3f %6.2f %6.2f %6.3f %7.2f %7.2f\n", i + 2, rpm / n, pr.tel("ecu.idleTarget") * 30.0 / M_PI,
                     pr.tel("ecu.idleValve"), pr.tel("engine.throttle"), pr.tel("engine.manifold") / 1e3, pr.tel("ecu.advance"),
                     pr.tel("ecu.lambda"), pr.tel("engine.imep") / 1e5, pr.tel("engine.pmep") / 1e5, 1.0 - xb / nx, 1e3 * thr / n, 1e3 * trap);
+    }
+    SUCCEED();
+}
+
+// The air's books over a window (Engine's running totals, card D): the throttle's air, the net mass in through the
+// intake valves and the exhaust valves, the unburned gas trapped; at a warm idle on the bench and on the dyno at full
+// load. PROBE_BUILD, PROBE_RPM (the dyno's speeds), PROBE_SET, PROBE_SIM as above.
+TEST_CASE("probe: the air's books", "[.probe-books]")
+{
+    const char* buildEnv = std::getenv("PROBE_BUILD");
+    const std::string slug = buildEnv ? buildEnv : "flat-plane-v8-45";
+    const char* rpmEnv = std::getenv("PROBE_RPM");
+    const char* setEnv = std::getenv("PROBE_SET");
+    std::vector<double> rpms{0.0};
+    for (const std::string& s : split(rpmEnv ? rpmEnv : "3000,6000", ','))
+        rpms.push_back(std::atof(s.c_str()));
+    std::printf("%s%s%s: the air's books over 2 s (g/s); rpm 0 is a warm idle on the bench\n%7s %9s %9s %9s %9s %8s %8s\n", slug.c_str(),
+                setEnv ? " with " : "", setEnv ? setEnv : "", "rpm", "throttle", "valves", "exhaust", "trapped", "val/thr", "plenum");
+    for (const double rpm : rpms)
+    {
+        Probe pr;
+        tee::EnginePlayer::Options options;
+        options.directory = std::getenv("PROBE_SIM") ? std::filesystem::path(std::getenv("PROBE_SIM"))
+                                                      : std::filesystem::path(TEE_SOURCE_DIR) / "sim";
+        options.sampleRate = 48000.0;
+        std::string errors, warnings;
+        pr.p = tee::EnginePlayer::create(options, errors);
+        INFO(errors);
+        REQUIRE(pr.p != nullptr);
+        tee::EngineBuild b;
+        std::filesystem::path file = slug;
+        if (!std::filesystem::exists(file))
+            file = std::filesystem::path(TEE_SOURCE_DIR) / "content" / "builds" / "archetypes" / (slug + ".json");
+        REQUIRE(tee::loadBuild(*pr.p, file, b, errors, warnings));
+        tee::applyBuild(*pr.p, b);
+        if (setEnv)
+            for (const std::string& kv : split(setEnv, ';'))
+            {
+                const auto eq = kv.find('=');
+                std::string e;
+                REQUIRE(pr.p->setSpec(kv.substr(0, eq), std::atof(kv.c_str() + eq + 1), e));
+            }
+        auto& c = pr.p->controls();
+        c.mode = rpm > 0.0 ? 2 : 0;
+        c.dynoSpeed = float(rpm * M_PI / 30.0);
+        c.ignition = 2;
+        pr.play(1.0);
+        c.ignition = 1;
+        c.throttle = rpm > 0.0 ? 1.0f : 0.0f;
+        pr.play(3.0);
+        const double t0 = pr.get("airThrottle"), v0 = pr.get("airValves"), e0 = pr.get("gasExhaust"), a0 = pr.get("airTrapped"),
+                     m0 = pr.get("intk.mPlenum");
+        pr.play(2.0);
+        const double k = 1e3 / 2.0;
+        const double thr = (pr.get("airThrottle") - t0) * k, val = (pr.get("airValves") - v0) * k;
+        std::printf("%7.0f %9.2f %9.2f %9.2f %9.2f %8.3f %8.3f\n", rpm, thr, val, (pr.get("gasExhaust") - e0) * k,
+                    (pr.get("airTrapped") - a0) * k, val / thr, (pr.get("intk.mPlenum") - m0) * k);
     }
     SUCCEED();
 }

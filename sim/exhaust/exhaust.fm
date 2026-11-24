@@ -156,6 +156,8 @@ module Exhaust
     int tick128;
     int seenSettle;     // spec.exhaust.heatSettle as last acted on
     float tPortNow;     // the ports' gas as the cylinders give it now (gas(), before its 0.8 s smoothing)
+    float tExit;        // the gas leaving the ports into the headers, after the port walls' cooling (portLoss()), K
+    float qPort;        // the heat the port walls take from it, W (for the coolant's owner; telemetry)
     int prepared;       // 1: prepare() was called this sample (the turbines' seam), before step()
 
     void setup(float rateIn, Noise* noise, Layout* layIn, Heat* heatIn, ExhaustSpec* specIn, ExhaustTel* telIn,
@@ -198,6 +200,8 @@ module Exhaust
         prepared = 0;
         seenSettle = spec->heatSettle;
         tPortNow = 0.0f;
+        tExit = 0.0f;
+        qPort = 0.0f;
         rate = rateIn;
         noiseSrc = noise;
         lay = layIn;
@@ -667,6 +671,40 @@ module Exhaust
             tPort += (heat->tAmb - tPort) * (1.0f - expf(-d16 / 4.0f));
         eSum = 0.0f;
         mSum = 0.0f;
+        portLoss();
+    }
+
+    // The exhaust port's walls (model 1, spec.exhaust.portHeat 1): the gas from the valve to the header's flange gives
+    // heat to the water-cooled head. Caton and Heywood's exhaust-port correlation (Heywood, ICE Fundamentals, ch. 12):
+    // Nu = 0.0483 Re^0.783 on the port's diameter, Re from each port's mean mass flow; the burned gas's viscosity
+    // 3.3e-7 T^0.7 Pa s, cp 1150 J/kg K, Pr 0.7; the port's diameter the primary's (0.46 of the bore), its length 1.6
+    // diameters (judgement: some 75 mm on a 100 mm bore); its wall the coolant's temperature plus 60 K (judgement).
+    // The gas leaves at tW + (tPort - tW) exp(-NTU). tPort stays the gas at the valve (tel.exhaust.portTemperature);
+    // tExit feeds the headers (and so tel.exhaust.headerTemperature). Model 0 and portHeat 0: none (the reference's).
+    void portLoss()
+    {
+        tExit = tPort;
+        qPort = 0.0f;
+        if (model == 0 || spec->portHeat == 0 || mdotSlow < 1.0e-5f || lay->ports < 1)
+            return;
+        const float m1 = mdotSlow / (float)lay->ports;
+        const float dP = 0.46f * boreNow;
+        const float mu = 3.3e-7f * expf(0.7f * logf(fmaxf(tPort, 300.0f)));
+        const float re = 4.0f * m1 / (3.14159265f * dP * mu);
+        const float nu = 0.0483f * expf(0.783f * logf(fmaxf(re, 1.0f)));
+        const float h = nu * (mu * 1150.0f / 0.7f) / dP;
+        const float ntu = h * 3.14159265f * dP * 1.6f * dP / (m1 * 1150.0f);
+        const float tW = heat->tCool + 60.0f;
+        if (tPort > tW)
+            tExit = tW + (tPort - tW) * expf(-ntu);
+        qPort = mdotSlow * 1150.0f * (tPort - tExit);
+    }
+
+    // The gas as it leaves the ports for the headers and the turbine (after the port's walls): card F's turbine's
+    // energy goes by it
+    float exitTemperature()
+    {
+        return model != 0 && spec->portHeat != 0 ? tExit : tPort;
     }
 
     // Every 16 samples: the system's heat (soak) and what the pipes are set to (vAir: the car's speed past them)
@@ -1095,7 +1133,7 @@ module Exhaust
         e->smTs = smTsNow;
         e->tAmb = heat->tAmb;
         e->vAir = vAirNow;
-        e->tPort = tPort;
+        e->tPort = exitTemperature();
         e->mdotSlow = mdotSlow;
         e->rpm = rpmNow;
         e->load = loadNow;
@@ -1165,6 +1203,18 @@ module Exhaust
     int turbinesFed()
     {
         return model != 0 && fed != 0 ? 1 : 0;
+    }
+
+    // The exhaust flap (card D2's brake drives it, every 16 samples): 0 open, 1 shut. It acts only where one is fitted:
+    // flapFitted() 1 (the builder running, spec.exhaust.flapKind a butterfly); else the brake keeps its own stand-in.
+    void setFlap(float want)
+    {
+        b.fCmd = fminf(fmaxf(want, 0.0f), 1.0f);
+    }
+
+    int flapFitted()
+    {
+        return model != 0 && spec->flapKind != 0 ? 1 : 0;
     }
 
     // The builder's noise as the reference's, from Engine's stream
@@ -1345,11 +1395,12 @@ module Exhaust
         if (tPortNow > 0.0f)
             tPort = tPortNow;
         mdotSlow = mdot;
+        portLoss();
         if (model != 0)
         {
             fillEngine();
             for (int it = 0; it < 400; ++it)
-                b.heat.soak(tPort, mdotSlow, 3.0f, heat->tAmb, vAirNow);
+                b.heat.soak(exitTemperature(), mdotSlow, 3.0f, heat->tAmb, vAirNow);
             for (int i = 0; i < XH_SECT; ++i)
                 b.heat.tUse[i] = b.heat.tGas[i];
             tUse[0] = b.heat.tUse[XH_PRIM];
@@ -1383,6 +1434,10 @@ module Exhaust
             pPortN = 0;
         }
         t->portPressure = 101325.0f + pPortMean;
+        t->portHeat = qPort;
+        t->portExitTemperature = exitTemperature();
+        t->flap = flapFitted() != 0 ? b.fEff[0] : 0.0f;
+        t->pFlap = flapFitted() != 0 ? b.pFl[0] : 0.0f;
         const int secOfRef[7] = {0, 1, -1, 2, -1, 3, 4};
         for (int i = 0; i < 7; ++i)
         {

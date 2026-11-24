@@ -54,7 +54,8 @@ FIELDS = [
     "boost.intercoolerOut", "boost.throttleIn", "boost.turbineIn", "boost.turbineInTemp", "boost.gate",
     "boost.superchargerPower",
     # wanted, not yet in the telemetry (asked of their owners): read when they appear
-    "engine.chargeTemperature", "engine.trappedMass", "exhaust.portPressure",
+    "engine.chargeTemperature", "engine.trappedMass", "exhaust.portPressure", "exhaust.portExitTemperature",
+    "exhaust.headerTemperature",
 ]
 
 
@@ -205,7 +206,16 @@ LINES = [
     Line("tPort", "Port gas", "K", 0, {"na": (1000.0, 1300.0), "boost": (1000.0, 1350.0), "diesel": (750.0, 1050.0)},
          f"{HEYWOOD}, §14.? and fig. 6-?: a petrol engine's gas leaving the port at full load 1100 to 1300 K "
          "(the header thermocouple's 900 to 1100 K is further down); diesel 750 to 1000 K"),
+    Line("tPortExit", "Port exit gas", "K", 0, {"na": (900.0, 1250.0), "boost": (900.0, 1300.0), "diesel": (650.0, 1000.0)},
+         "the gas leaving the port after its walls (card G's Caton and Heywood port loss): between the valve's and the "
+         "header's"),
+    Line("tHeader", "Header gas", "K", 0, {"na": (900.0, 1100.0), "boost": (900.0, 1150.0), "diesel": (700.0, 950.0)},
+         f"P's target table: a thermocouple a little way down a primary reads 900 to 1100 K at full load on a petrol engine "
+         f"(makers' exhaust-gas-temperature data; {HEYWOOD}, ch. 14)"),
     # boosted (card N2 adds and tunes these)
+    Line("boostOver", "Boost over target", "", 2, {"boost": (0.9, 1.1)},
+         "the boost (tel.boost.pressure, over the air) over the build's spec.boost.target: a runaway, or a turbo out of "
+         "flow, shows as this line out of range (card N2)"),
     Line("pr", "Pressure ratio", "", 2, {"boost": (1.3, 2.8)}, f"{HEYWOOD}, §6.8; {BOSCH}"),
     Line("flow", "Compressor flow", "kg/s", 3, {"boost": (0.0, 2.0)}, "the engine's air, for the map"),
     Line("compEff", "Compressor efficiency", "", 3, {"boost": (0.60, 0.80)},
@@ -262,11 +272,15 @@ def ledger_points(rows, spec, kind):
             "manifold": man / 1e3 if man else None,
             "portP": g("exhaust.portPressure") / 1e3 if g("exhaust.portPressure") else None,
             "tPort": g("exhaust.portTemperature"),
+            "tPortExit": g("exhaust.portExitTemperature"),
+            "tHeader": g("exhaust.headerTemperature"),
         }
         if kind != "na":
             b = g("boost.pressure")
             p3 = g("boost.turbineIn")
+            tgt = float(spec.get("boost", {}).get("target", 0) or 0)
             p.update({
+                "boostOver": b / tgt if b is not None and tgt > 0 else None,
                 "pr": g("boost.ratio"), "flow": g("boost.flow"), "compEff": g("boost.efficiency"),
                 "shaft": g("boost.shaftSpeed") * 60 / (2 * math.pi) / 1e3 if g("boost.shaftSpeed") else None,
                 "tIc": g("boost.intercoolerOut"),
@@ -324,6 +338,13 @@ def sources():
     return "\n".join(out) + "\n"
 
 
+def commit():
+    try:
+        return subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True, cwd=ROOT).stdout.strip()
+    except OSError:
+        return "?"
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("builds", nargs="*", help="archetype slugs (content/builds/archetypes/<slug>.json) or build files")
@@ -335,7 +356,9 @@ def main():
                     help="change a build's field for the experiment (engine.wallHeat=1, valve.model=0, ...)")
     ap.add_argument("--points", type=int, default=5)
     ap.add_argument("--rpm", default="", help="the speeds, rpm, comma-separated (else --points from 1500 to the limiter)")
-    ap.add_argument("--settle", type=float, default=1.2, help="seconds each step is held before it is measured")
+    ap.add_argument("--settle", type=float, default=-1.0,
+                    help="seconds each step is held before it is measured (default 1.2; a boosted build 4.5: its knock "
+                         "retard and its intercooler take seconds, card N2)")
     ap.add_argument("--measure", type=float, default=1.0, help="seconds averaged (the engine is chaotic: means over cycles)")
     ap.add_argument("--bin", default="", help="the directory of tee-dyno and tee-schema (else build-*/bin)")
     ap.add_argument("--sim", default="", help="the simulator's directory (else this checkout's sim/)")
@@ -371,8 +394,9 @@ def main():
         spec = doc["spec"]
         kind = kind_of(spec)
         speeds = [float(x) * RPM for x in a.rpm.split(",")] if a.rpm else speeds_of(spec, a.points)
+        settle = a.settle if a.settle >= 0 else (1.2 if kind == "na" else 4.5)
         try:
-            rows = run_dyno(dyno, doc, speeds, fields, a.settle, a.measure, a.sim)
+            rows = run_dyno(dyno, doc, speeds, fields, settle, a.measure, a.sim)
         except RuntimeError as e:
             return slug, doc.get("name", slug), kind, None, str(e)
         return slug, doc.get("name", slug), kind, ledger_points(rows, spec, kind), ""
@@ -384,8 +408,10 @@ def main():
     md = ["# The loss ledger", "",
           "*Generated by `scripts/ledger.py`" + (f" with `{' '.join('--set ' + s for s in a.set)}`" if a.set else "") +
           ": do not edit by hand. The engine dyno (MODE_DYNO_ENGINE, full throttle, warm), each speed held "
-          f"{a.settle} s and averaged over {a.measure} s. **Bold**: outside the class's range. Each range's source "
-          "is at the end.*", ""]
+          f"{a.settle if a.settle >= 0 else '1.2 (boosted 4.5)'} s and averaged over {a.measure} s, on commit "
+          f"{commit()}{' with the simulator of ' + a.sim if a.sim else ''}. **Bold**: outside the class's range. "
+          "Each range's source is at the end. Under fuel.model 1 the engine's one decision (comb.walls, D) runs "
+          "Woschni's walls with the burn's 0.97 share and Chen-Flynn friction, whatever engine.wallHeat says.*", ""]
     if missing:
         md += ["Telemetry wanted and not yet there (its line reads n/a): " + ", ".join(f"`tel.{m}`" for m in missing) + ".", ""]
     data = {}

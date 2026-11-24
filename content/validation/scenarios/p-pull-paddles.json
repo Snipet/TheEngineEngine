@@ -2,8 +2,8 @@
   "format": "tee-scenario",
   "version": 1,
   "name": "p-pull-paddles",
-  "description": "Card P's, for a gearbox worked by the shift counters (manual with the lever in neutral, sequential, dual clutch): start, first at 3 s, half pedal then full, an upshift every 2.5 s to fourth, lift at 13 s, brake, off at 18 s. Starts, idles, pulls through the gears, stops.",
-  "seconds": 20,
+  "description": "Card P's, for a gearbox worked by the shift counters (manual with the lever in neutral, sequential, dual clutch): start, first at 3 s, half pedal then full, an upshift every 2.5 s to fourth, lift at 13 s, brake, off at 18 s; six seconds to run down (a fast car's engine spins down from some 3500 rpm with the clutch out). Starts, idles, pulls through the gears, stops.",
+  "seconds": 24,
   "warm": true,
   "events": [
     {

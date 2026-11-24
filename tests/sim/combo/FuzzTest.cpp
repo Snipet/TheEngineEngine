@@ -29,15 +29,25 @@ namespace
     }
 } // namespace
 
-TEST_CASE("fuzz: random Specs inside the ranges with seeds 1 to 6 and six seconds of random driving each",
+TEST_CASE("fuzz: random Spec seed 2 (the one that once crashed) with six seconds of random driving", "[combo][fuzz]")
+{
+    fuzz(2, 1, 6.0, false);
+}
+
+TEST_CASE("fuzz: the ranges' corners seed 3 (the one that once overshot) with six seconds of random driving",
           "[combo][fuzz]")
 {
-    // back in the default run since D's ae5c99b (X-007: no state-counted loop, a diverged engine put at rest)
+    fuzz(3, 1, 6.0, true);
+}
+
+TEST_CASE("fuzz: random Specs inside the ranges with seeds 1 to 6 and six seconds of random driving each",
+          "[nightly][fuzz]")
+{
     fuzz(1, 6, 6.0, false);
 }
 
 TEST_CASE("fuzz: the ranges' corners with seeds 1 to 6 and six seconds of random driving each",
-          "[combo][fuzz]")
+          "[nightly][fuzz]")
 {
     fuzz(1, 6, 6.0, true);
 }

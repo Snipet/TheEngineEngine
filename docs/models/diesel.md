@@ -96,8 +96,12 @@ the input shaft is the crank's with the clutch in, coasts down at 30 rad/s^2 wit
 pushed there. The range shifts as the lever passes neutral (synchronised); the splitter, preselected, when the torque
 breaks. `sim/vehicle/truckair.fm`: 120 L of tanks charged by 0.5 L of free air a crank turn; the governor cuts out at
 8.3 bar (the dryer's purge, a 0.6 s hiss) and in at 6.9; a brake's release hisses at the relay valve; the spring
-brakes' release blasts, their setting exhausts. Levels are judgement. Neither is mixed into the engine's sound yet,
-and the vehicle's gearbox (card I's) does not yet take the eighteen-speed's gear: both are asked (the handoff).
+brakes' release blasts, their setting exhausts. Levels are judgement. In the engine with `spec.car.truckAir` and card
+L's listener (sound.model 1): the purge at `LS_PLACE_RIGHT` x 10, the brakes at `LS_PLACE_REAR_AXLE` x 6 (my gains:
+at L's valvetrain scale alone a purge was lost under an idling 15 L six). Measured: a spring-brake release lifts the
+mix ~1 dB over 0.5 s (exhaust camera, idling); a purge (36.7 s after a start motoring at 2000 rpm) leaves L's
+limiter at 0 dB (it has 18.7 dB of headroom; lower the purge, not the brakes, if it ever drives it below -3 dB).
+The grind waits on card I taking the eighteen-speed's gear into its gearbox (the hook is asked through the lead).
 
 ## Measured (tee-tests-diesel; the 15 L six, 300 K, 101325 Pa)
 
