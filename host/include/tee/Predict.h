@@ -46,6 +46,12 @@ namespace tee
     struct PredictOptions
     {
         int threads = 0;              // workers; 0: the machine's cores less one (for the audio and the UI), 1 to 6
+        // The speeds' shares, each run in turn on an instance of its own (the k-th, (k + shares)-th, ... of the order),
+        // a worker running whole shares: fixed, so a point's history and so the curve are the same whatever the
+        // machine's cores (the workers only decide how many shares run at once). 3: a share's instance starts and warms
+        // (some 0.2 s), so more shares cost more on fewer cores (the V8's refined curve on 3 workers: 1.29 s with 3,
+        // 1.81 with 4, 1.45 with 6), and a machine with more cores runs no more than 3 at once
+        int shares = 3;
         int coarse = 6;               // speeds in the first curve
         int points = 16;              // speeds in the refined curve (the coarse ones among them)
         double from = 0.0;            // rad/s; 0: 1000 rpm, or the idle's speed when that is higher
@@ -71,11 +77,11 @@ namespace tee
         bool warm = true;             // start warm (above)
         bool settleExhaust = true;    // bring the exhaust's slow temperatures to where they head (below)
         double holdSeconds = 0.0;     // engine time each point is held at least (a reference's: a minute)
-        // Engine time each point runs at least, whatever its torque says. With the intake's and the intercooler's
-        // settles in, 0 held the 3 % tests (69abeead); the program has moved since and something settles over seconds
-        // again: the economy four at 5439 rpm reads 126.4 N m at 20 cycles, 129.1 at 1 s, 130.8 at 3 s, against the
-        // stepped dyno's 130.9 (4 s). 1 s until that state is named and settled.
-        double minHoldSeconds = 1.0;
+        // Engine time each point runs at least, whatever its torque says. 0: with the intake's and the intercooler's
+        // settles none is needed (before them the V12 read some 3 % high near its runners' resonance within a second of
+        // a change of speed, and this was 1 s). (b225dea9 put 1 s back for a program between two pushes on which the
+        // economy four read 126 against 131 N m; on the next it read 131.2 against 130.9 with none.)
+        double minHoldSeconds = 0.0;
         double warmupSeconds = 0.0;   // engine time a fresh instance runs at full throttle mid-range before its first point
         // A knock-limited point (knock control's retard at knockLimit degrees or more in it): the retard is a sawtooth
         // (a step a knock, given back at some 2 degrees a second, ecu/knockctl.fm), and so is the torque, so no two

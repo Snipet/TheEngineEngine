@@ -244,7 +244,7 @@ namespace tee::balance
         c.ignition = 2;
         play(0.75, {});
         c.ignition = 1;
-        c.throttle = 1.0f;
+        c.throttle = float(o.hold);
         play(1.0, {});
         // the hold at the speed: settled at 0.3 s and at 0.6 of it
         const double s1 = std::min(0.3, 0.3 * o.settle);
@@ -253,6 +253,7 @@ namespace tee::balance
         play(0.6 * o.settle - s1, {});
         settle();
         play(0.4 * o.settle, {});
+        c.throttle = 1.0f;   // a step from the hold's throttle (Options::hold) at the window's start
 
         // the window
         const int n = int(rdPath("lay.n"));

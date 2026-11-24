@@ -118,7 +118,7 @@ at idle:
 | -30 dB (1a3812e6), before the wall | 0.00011 | -59.9 | -37.4 | The lead's ruling (22:19): the owner's "far too loud"; an in-tank pump under a running engine is at most barely heard outside the car; 1.6 to 3.4 dB of margin on the small engines' hum row was one camera from red. Not scaled by the engine's size |
 
 | The tank's wall (L's f6bf38ec) | - | - | - | Places radiated the in-tank pump as in open air under the car: 5 mm of HDPE by the mass law (Bies and Hansen) takes 27 dB at 760 Hz, 38 at 3.9 kHz, in the path |
-| -20 dB (the lead's 23:01) | 0.00035 | -49.5 (a record only) | -28.2 | 20 of the 30 given back for the wall, on the masking criterion: through Places every line at least 10 dB under the engine's third octave about it (judgement: a tone is masked by the noise in its own critical band), cold and warm, at Tailpipe, Rear, Side and Driver |
+| -20 dB (the lead's 22:46) | 0.00035 | -49.5 (a record only) | -28.2 | 20 of the 30 given back for the wall, on the masking criterion: through Places every line at least 10 dB under the engine's third octave about it (judgement: a tone is masked by the noise in its own critical band), cold and warm, at Tailpipe, Rear, Side and Driver |
 
 Measured at -20 dB, first.json, the pump's energy against the engine's in the third octave about each line (dB;
 warm through tee-render's warm hold, cold through the same scenario without it, 8 to 14 s); and the prime (key on,
@@ -133,7 +133,18 @@ no start, 0.3 to 1.9 s, rms) over the same key-on with the pump silent:
 
 The cold key-on's "silence" is not silent: with the engine standing, the pipes' gas settles from the simulator's 300 K
 start to the build's air (first.json's 288 K), some 21 dB over a warm key-on's floor; heard only because voices.model 1
-renders from the key. Reported to the lead and card D (23:05); it buries a cold prime until that is cured.
+renders from the key. Reported to the lead and card D (22:50); card D's f6a8b88d makes a standing engine take the
+build's air at once (the pipes' port at 288.15 K from the first block), but most of it is left (22:59, first.json at
+288 K through Side: a transient from the reset peaking at -49 dBFS near 0.1 s, then a steady -83; neither at 300 K).
+Card D traced the rest (23:03): the boost machine's volumes and intercooler core (card N2's) start at 300 K and feed
+the intake each sample; with `boost.model` 0 nothing is left above -121 dBFS. The cure, its stores starting at the
+build's air at a configure at rest, is N2's. It buries a cold prime until it is cured. (Times here are this session's clock at receipt; the lead's
+messages of 22:41 and 22:46 carried estimates up to 24 minutes fast.)
+
+The diesel clatter (the reference's, `extras.fm`'s setClatter / clatterClick, kicked at each burn's start) is untouched
+here. Under `fuel.model` 1 when the burn starts moves from cycle to cycle (card D2's 4c253094, in card H's
+`combustion.fm`: sigma = 0.172 x the ignition delay, 0.64 degrees at a warm idle; recalled, not cited), and the kick
+with it, so its panel modes no longer ring as sharp firing harmonics. Owner of that spread: card D2.
 
 The prime keeps the same level as the pump's hum (the lead, 22:27: a louder prime would be a judgement on a judgement;
 it is heard at key-on because nothing else sounds, and from the cabin, which is the listener's business).

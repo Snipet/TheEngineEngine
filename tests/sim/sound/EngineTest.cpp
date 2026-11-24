@@ -315,7 +315,7 @@ TEST_CASE("engine: levels at idle, each voice alone against the exhaust, A-weigh
     // exhaust's above all. The fan switched at 300 K and the air at 301 K (the coolant starts at the air's) so it runs
     // from the start, as at a warm idle (its sound does not depend on the coolant; the air 13 K warmer than first.json's
     // moves the exhaust's level by its density, some 4 %). The bounds are judgement (docs/models/voices.md, "Levels at idle"):
-    //   pump        a record only (the lead's 23:01): its bound is through Places, where card L's tank wall is (the
+    //   pump        a record only (the lead's 22:46): its bound is through Places, where card L's tank wall is (the
     //               test "the pump through Places" below)
     //   fan         an electric fan is heard in front of an idling car: 15 to 35 dB(A) under, its highs falling (12 dB
     //               under at 4 and 8 kHz)
@@ -366,7 +366,7 @@ TEST_CASE("engine: levels at idle, each voice alone against the exhaust, A-weigh
 TEST_CASE("engine: the pump through Places: every line of it masked, 10 dB under the engine's own third octave about it",
           "[sound][engine][nightly]")
 {
-    // The lead's ruling of 23:01: a tone is heard or masked against the noise in its own critical band. first.json
+    // The lead's ruling of 22:46: a tone is heard or masked against the noise in its own critical band. first.json
     // (direct injection, the pump at 95 turns a second under its rail's pressure: its lines at 95, 8 x 95 = 760 and
     // 41 x 95 = 3895 Hz) at a cold idle, through card L's Places at the cameras Tailpipe, Rear, Side and Driver: the pump's
     // energy (the run with it less the run without) in the third octave about each line at least 10 dB under the

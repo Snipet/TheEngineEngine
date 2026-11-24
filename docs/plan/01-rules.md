@@ -132,7 +132,7 @@ allocation or logging on the audio thread. No JUCE, anywhere. Third-party code o
   last;` alone does not stop it (a NaN compares false with everything). Call `tableIndex(x, last)` or write
   `(int)fminf(fmaxf(x, 0.0f), (float)last)` (FMinus's fminf and fmaxf return the other operand for a NaN); wrap an
   angle with `wrapCycle` (sim/core/mathx.fm), never `while (a >= cyc) a -= cyc;`. `scripts/lint.sh` (rule 8)
-  fails on a new one. CI's soak tier will run the fuzz at the corners without bounds checks (X's next push), so a crash is a crash there.
+  fails on a new one. CI's soak tier runs the nightly fuzz (seeds 100 to 299, and the corners) without bounds checks (X, 718c6f73), so a crash is a crash there; the fast tier's two fuzz seeds run with them.
 - No transcendental function per sample where a table or a control-rate update will do. Your card gives a CPU
   budget; `tee-bench` measures it.
 - Every Spec field has `[[fminus::range]]`, `[[fminus::default]]`, `[[ui::label]]` and says what its number is:

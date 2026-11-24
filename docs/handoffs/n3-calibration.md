@@ -21,6 +21,13 @@ Branch `claude/awesome-gates-ntdb58`, 19:30 to 21:15 UTC 2026-11-24 (`date -u`).
 7. *The small block* (N3-7, open): VE right, efficiency high; P's L48 parts took 5 %; ~14 % unexplained (sized: burn 1 %,
    fan 1 to 3 % on forum figures only, spark 1.5 % without a source).
 
+8. *The turbo four's low end* (B-3, 23:00 to 23:22): N1's phaser rule asks an intake advance whose overlap back-fills at
+   boosted low speed; a fixed-phase bake (camIn, camEx) gives 309 to 319 N m at 1800 on a 0.40 match against the
+   rule's 181 to 222 (cited 333 to 368): N1's bake is the answer. The AVS figures are at 1 mm (the page's events, Audi's
+   practice): the short lobe adds about 3 %. Left: spool at 1500 (N2: 85 kPa on the 0.40, 253 N m), the compressor's map
+   width (N2), the turbine's size by the cited top (81 kPa real: 0.85 turbine 276, 0.40 233, cited 250). Knock costs
+   nothing at the best cells; DI cooling twice the measured (owner to be named); G's heat loss third.
+
 **Tests**: `calibration-balance.sim` (one entry, 18 s): air and first law within 1 % on three engines; gross indicated
 efficiency 0.33 to 0.38 on the small block at three speeds. Passes. The probe (`[.balance]`, BAL_SET / RAW / READ /
 TRACE) and `scripts/balance.py` (balance.md, generated).

@@ -289,7 +289,7 @@ module Listen
         autoHold = 0.0f;
         autoQ = 0.0f;
         autoRise = 0.115129255f * 0.3f / rate;
-        autoKd = 1.0f - expf(-1.0f / (0.005f * rate));
+        autoKd = 1.0f - expf(-1.0f / (0.001f * rate));
         autoKey = -1.0f;
         autoWin = 0.0f;
         autoN = 0;
@@ -846,7 +846,7 @@ module Listen
     // The auto level (spec.sound.autoLevel, on by default): like a camera's exposure, it brings whatever is heard to
     // one loudness, over seconds, so a far camera, the cabin or a quiet build are not 20 or 30 dB down for good, while
     // the balance within a setting stays true. P is the loudness exposed for, from the peaks before the auto level:
-    // it rises to a peak at once (the gain follows over 5 ms), holds 1.5 s, then falls at 4 dB a second (in a start,
+    // it rises to a peak at once (the gain follows over 1 ms, the part that raised it already under it), holds 1.5 s, then falls at 4 dB a second (in a start,
     // the starter turning and 1.5 s after, 12 dB a second without the hold), but never below 4 times Q, the
     // level of what is heard lately (Q follows 0.1 s windows' peaks, down over 1 s, up 0.3 dB a
     // second; in a start, as they come).
@@ -1019,14 +1019,17 @@ module Listen
             sD[i] = kHead * expf(-0.115129255f * (over * 0.4f - 5.0f));
         }
         int bent = 0;
-        // the auto level (an exposure, autoLevel below): its gain glides toward 0.45 / P, down over 20 ms, up 0.5 s
-        float partPk = 0.0f;    // this call's peak, before the auto level
+        // the auto level (an exposure, autoLevel below): this part's peak before it is taken first, so its gain is
+        // already falling toward 0.4 / P (over 1 ms; up over 0.5 s) when the part that raised P is heard
+        float partPk = 0.0f;
+        for (int i = 0; i < m; ++i)
+            partPk = fmaxf(partPk, fmaxf(fabsf(sA[i]), fabsf(sB[i])) * sD[i]);
+        autoLevel(partPk, m);
         for (int i = 0; i < m; ++i)
         {
             const float gc = sD[i];
             float L = sA[i] * gc;
             float R = sB[i] * gc;
-            partPk = fmaxf(partPk, fmaxf(fabsf(L), fabsf(R)));
             autoS += (autoT - autoS) * (autoT < autoS ? autoKd : autoK);
             L *= autoS;
             R *= autoS;
@@ -1049,7 +1052,6 @@ module Listen
             peakOut = fmaxf(peakOut, fmaxf(yL, yR));
         }
         ceilingParts += bent;
-        autoLevel(partPk, m);
     }
 
     // ---- the resampler, round Engine's render of 16-sample parts ----
