@@ -1,0 +1,135 @@
+// sound/fuel.fm: the fuel system's voices (module FuelVoice): the tank's electric pump, its prime at key-on and its
+// hum while the engine turns; a direct-injection engine's injectors.
+//
+// The pump. A regenerative (turbine) pump in the tank, driven by a small DC motor at some 6000 rpm (100 turns a
+// second) on 12 V (Bosch, "Gasoline-engine management": the EKP's turbine pumps, 3 to 5 bar): its commutator's ripple
+// at 8 segments a turn (800 Hz), its impeller's 41 vanes (4.1 kHz, the whine one hears), and the motor's own once a
+// turn, faint. At key-on the ECU runs it for `prime` seconds (2 s is usual) to fill the rail; it spins up in some
+// 40 ms, then slows by a tenth as the pressure it pumps against rises over a quarter of a second, and stops when the
+// prime ends (spinning down in some 80 ms) unless the engine turns: it then runs as long as the crank does. Its
+// level is judgement: heard through the floor at the back of the car, about the chain's at idle.
+//
+// The injectors. A port injector's solenoid opens a pintle against 3 bar: a soft click (the reference's, extras.fm).
+// A gasoline direct injector's opens against 100 to 200 bar and its needle strikes its stop, then its seat: a sharp,
+// bright tick twice an injection (opening, and 1.5 ms later closing), the ticking of a direct-injection engine at idle
+// (here its bodies' ring at 4.5 and 8.2 kHz, judgement), and the high-pressure pump on the cam (the reference's
+// `pres`, three strokes a cam turn) is heard with it. A diesel keeps the reference's (package D2's, later).
+#pragma once
+#include "lib/biquad.fm"
+#include "lib/noise.fm"
+#include "osc.fm"
+
+module FuelVoice
+{
+    float rate;
+    float dt;
+    Noise noise;
+    SineTable* sn;
+    Shaft motor;
+    float hz;           // the pump's turns a second
+    float load;         // the rail's pressure against it, 0 to 1
+    float primeLeft;    // seconds of prime left
+    int lastIgn;
+    int running;        // the pump on
+    Glide aPump;
+    // the direct injectors
+    Biquad dres[2];
+    float diKick;
+    float closeKick[4]; // closings to come: the kick, and samples left
+    float closeLeft[4];
+    // out
+    float pump;
+    float inject;
+
+    void setup(float rateIn, SineTable* table)
+    {
+        rate = rateIn;
+        dt = 1.0f / rate;
+        sn = table;
+        noise.rs = 141421;
+        dres[0].setBandpass(4500.0f, 20.0f, rate);
+        dres[1].setBandpass(8200.0f, 25.0f, rate);
+        clear();
+    }
+
+    void clear()
+    {
+        hz = 0.0f;
+        load = 0.0f;
+        primeLeft = 0.0f;
+        lastIgn = 0;
+        running = 0;
+        aPump.clear();
+        dres[0].clear();
+        dres[1].clear();
+        diKick = 0.0f;
+        for (int i = 0; i < 4; ++i)
+        {
+            closeKick[i] = 0.0f;
+            closeLeft[i] = 0.0f;
+        }
+        pump = 0.0f;
+        inject = 0.0f;
+    }
+
+    bool busy()
+    {
+        return running != 0 || hz > 0.5f;
+    }
+
+    // Every 16 samples. ignition: the key (0 off, 1 on, 2 start); state: the engine's (0 off, 1 cranking, 2 running, 3
+    // running down); crankHz; primeS: the prime's length; k: its gain
+    void control(float d16, int ignition, int state, float crankHz, float primeS, float k)
+    {
+        if (ignition != 0 && lastIgn == 0)
+            primeLeft = primeS;
+        lastIgn = ignition;
+        primeLeft = fmaxf(primeLeft - d16, 0.0f);
+        const int turning = (state == 1 || state == 2 || state == 3) && crankHz > 1.0f ? 1 : 0;
+        running = ignition != 0 && (primeLeft > 0.0f || turning != 0) ? 1 : 0;
+        // the motor: up in 40 ms toward its free speed less what the pressure takes; down in 80 ms
+        load += ((running != 0 ? 1.0f : 0.0f) - load) * (1.0f - expf(-d16 / 0.25f));
+        const float want = running != 0 ? 110.0f - 15.0f * load : 0.0f;
+        hz += (want - hz) * (1.0f - expf(-d16 / (running != 0 ? 0.04f : 0.08f)));
+        if (running == 0 && hz < 0.5f)
+            hz = 0.0f;
+        const float s = fminf(hz / 100.0f, 1.2f);
+        aPump.to(k * 0.0035f * s * s);
+    }
+
+    // A direct injector opened (amp: as the reference's 1 a click)
+    void directClick(float amp)
+    {
+        diKick += amp;
+        for (int i = 0; i < 4; ++i)
+        {
+            if (closeLeft[i] <= 0.0f)
+            {
+                closeKick[i] = 0.6f * amp * (0.85f + 0.15f * noise.rnd());
+                closeLeft[i] = 0.0015f * rate;
+                return;
+            }
+        }
+    }
+
+    void tick()
+    {
+        motor.turn(hz, dt);
+        const float ap = aPump.next();
+        pump = 0.0f;
+        if (ap != 0.0f)
+            pump = ap * (0.8f * sn->at(motor.mesh(41.0f)) + 0.6f * sn->at(motor.mesh(8.0f)) + 0.2f * sn->at(motor.ph));
+        float k = diKick;
+        diKick = 0.0f;
+        for (int i = 0; i < 4; ++i)
+        {
+            if (closeLeft[i] > 0.0f)
+            {
+                closeLeft[i] -= 1.0f;
+                if (closeLeft[i] <= 0.0f)
+                    k += closeKick[i];
+            }
+        }
+        inject = dres[0].tick(k) + 0.6f * dres[1].tick(k);
+    }
+};

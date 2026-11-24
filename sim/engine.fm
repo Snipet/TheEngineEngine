@@ -245,7 +245,7 @@ module Engine
         intk.setup(rate);
         // the longest each pipe could be, cold (330 m/s), at this rate
         exh.setup(rate, &noise, &lay, &heat);
-        ex.setup(rate, 90.0f);
+        ex.setup(rate, 90.0f, &spec.voices);
         boost.setup(rate, &ex.noise);
         quiet = 1.0e9f;
         gainNorm = 1.0f;
@@ -788,6 +788,22 @@ module Engine
         if (spec.ecu.model != 0 && set.drive != 0)
             ecu.vehicle(car.drivenSlip(), car.speedNow(), car.gearNow(), car.upshifts(), car.cutRequest(), car.blipRequest());
         mechanics16();
+        // package M's mechanical voices (spec.voices.model 1; with model 0 it returns at once): their inputs, the car's
+        // gearbox as either car model keeps it, the reference turbo's gate as open when its boost reaches its most
+        if (spec.voices.model != 0 || ex.voOn != 0)
+        {
+            const int m1 = spec.car.model != 0 ? 1 : 0;
+            const float bShare = boost.boost / fmaxf(boost.maxB, 0.01f);
+            ex.control16(d16, ctl.ignition, ecu.state, crank.omega * 0.15915494f, heat.tCool, set.drive != 0 ? 1 : 0,
+                         m1 != 0 ? spec.car.gearbox : 0, car.truck, car.gear,
+                         m1 != 0 ? crank.omega - car.m1.slipC : car.wG,
+                         m1 != 0 ? car.m1.box.ratioOf(car.gear) : car.ratioOf(car.gear),
+                         m1 != 0 ? car.m1.box.fd : car.finalDrive,
+                         m1 != 0 ? (float)car.m1.v / fmaxf(car.m1.radius, 0.05f) * car.m1.box.fd : car.wW * car.finalDrive,
+                         tqBrake, peakTorque(), m1 != 0 ? car.m1.engage * car.m1.box.robot : car.engage * car.robot,
+                         aspUse, bShare, fminf(fmaxf((bShare - 0.95f) * 20.0f, 0.0f), 1.0f), 0, exh.mdot / fmaxf(mRef, 1.0e-6f),
+                         lay.n, lay.cyc, vt.clatter, vTotal, fuelUse);
+        }
     }
 
     // Every 16 samples, last: the mechanics' slow part. The cycle's speed spread; a custom engine's inertia with the
@@ -972,11 +988,11 @@ module Engine
                 work.trapped(c, fmaxf(cy->m - cy->mInert, 0.0f), intk.pPlenum, intk.tAir, 101325.0f, heat.tAmb);
                 if (vt.active(c))
                     comb.charge(&cyl[c], c, fuelUse, intk.pPlenum, crank.rpm, smCR, crBs, burnK, set.pops, set.rough, set.timing);
-                ex.valveClick(clickAmp * (1.0f + 2.0f * vt.clatter));
+                ex.valveClick(clickAmp * (1.0f + 2.0f * vt.clatter), 1);
             }
             if (cy->evcNow)
             {
-                ex.valveClick(clickAmp * (1.0f + 2.0f * vt.clatter));
+                ex.valveClick(clickAmp * (1.0f + 2.0f * vt.clatter), 0);
                 if (fuelUse == 0)
                     ex.injectorClick(0.3f);
             }

@@ -67,6 +67,7 @@ namespace tee
         float holdSpeed = 0.0f;        // rad/s
         std::int32_t strip = 0;
         std::int32_t scopeOn = 0;      // the host sets it too while someone asks for the scope
+        std::int32_t bakeMaps = 0;     // a counter: the ECU bakes its maps at each increase (the TUNE workspace's BAKE)
 
         bool operator==(const SimControls&) const = default;
     };

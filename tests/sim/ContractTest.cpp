@@ -2,6 +2,7 @@
 // Engine::process is nonblocking, every Spec field describes itself, the defaults are the reference's, a build
 // round-trips, the tables read as they should, and the Telemetry says what the engine does.
 #include "Twin.h"
+#include "tee/test/Kept.h"
 
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
@@ -12,8 +13,7 @@ namespace
 {
     EnginePlayer& shared48()
     {
-        static std::unique_ptr<EnginePlayer> player = test::enginePlayer(48000.0);
-        return *player;
+        return test::kept([] { return test::enginePlayer(48000.0); });   // never destroyed (tee/test/Kept.h)
     }
 } // namespace
 

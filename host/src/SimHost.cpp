@@ -43,7 +43,7 @@ namespace tee
             TEE_CONTROL(lever, false),     TEE_CONTROL(shiftUp, false),  TEE_CONTROL(shiftDown, false),
             TEE_CONTROL(buttons, false),   TEE_CONTROL(mode, false),     TEE_CONTROL(dynoSpeed, true),
             TEE_CONTROL(dynoRate, true),   TEE_CONTROL(holdSpeed, true), TEE_CONTROL(strip, false),
-            TEE_CONTROL(scopeOn, false),
+            TEE_CONTROL(scopeOn, false),   TEE_CONTROL(bakeMaps, false),
         };
 #undef TEE_CONTROL
         return list;
