@@ -159,6 +159,8 @@ int profileMain(int argc, char** argv)
             std::fprintf(stderr, "tee-bench: %s\n", errors.c_str());
             return 1;
         }
+        if (!warnings.empty())
+            std::fprintf(stderr, "tee-bench: %s", warnings.c_str());
         ranges = sim->program().fminus().codeRanges(errors);
         sampler.start();
         const double began = threadCpuSeconds();

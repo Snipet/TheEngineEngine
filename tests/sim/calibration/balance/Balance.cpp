@@ -21,7 +21,8 @@ namespace tee::balance
         constexpr double kLhv[] = {42.2e6, 42.2e6, 42.2e6, 44.0e6, 29.3e6, 19.9e6, 42.5e6, 46.35e6, 120.0e6};
 
         // sim/core/cylinder.fm's gammaAt: the physical cylinder (conserve 1) Gatowski's with the lean term on the
-        // cylinder's phi; the reference's otherwise
+        // cylinder's phi (a diesel's: phi x its burned share); the reference's otherwise. (u(T) is tabulated by phi to
+        // 0.001; a diesel's phi moving through its burn makes the closure approximate there)
         struct Gas
         {
             int conserve = 1;
@@ -260,7 +261,7 @@ namespace tee::balance
         struct Cyl
         {
             H p, v, t, m, mInert, hA, tw, mE, mI, ang, sparkAt, evo, ivo, idur, burnAt, ivcNow, qTot, released, vd,
-                exStore, exStoreMT, rvMass, rvMT, phi, conserve;
+                exStore, exStoreMT, rvMass, rvMT, phi, conserve, lateFuel, xBurn;
             double pL, vL, tL, aL, relL, exStoreL, exStoreMTL, rvMassL, rvMTL;
         };
         std::vector<Cyl> cy(std::size_t(std::max(n, 0)));
@@ -293,6 +294,8 @@ namespace tee::balance
             x.rvMT = handle(q + "rvMT");
             x.phi = handle(q + "phi");
             x.conserve = handle(q + "conserve");
+            x.lateFuel = handle(q + "lateFuel");
+            x.xBurn = handle(q + "xBurn");
             b.vd += rd(x.vd);
         }
         const H airThr = handle("airThrottle"), airVal = handle("airValves"), gasEx = handle("gasExhaust");
@@ -303,6 +306,9 @@ namespace tee::balance
             Gas g;
             g.conserve = x.conserve.ok ? int(rd(x.conserve)) : 0;
             g.phi = x.phi.ok ? rd(x.phi) : 1.0;
+            // (a late-injected charge's gas: the fuel burned so far over its air, as cylinder.fm's gammaAt)
+            if (x.lateFuel.ok && rd(x.lateFuel) != 0.0 && x.xBurn.ok)
+                g.phi *= rd(x.xBurn);
             return g;
         };
         auto energy = [&] {

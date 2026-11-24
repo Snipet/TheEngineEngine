@@ -166,6 +166,10 @@ scenarios/` holds the shipped ones. `tee::parseTimeline` also reads K3a's `tee-e
 - `"warm": true`: the engine at its working temperatures from the start and held there (`tee/Warm.h`: the coolant
   at its thermostat, the oil and the chamber's walls as a running engine's, written before every block, as a dyno
   cell's conditioning holds an engine): a warm idle without minutes of warming. `content/scenarios/idle-warm.json`.
+- `"warmTyres": true`: the tyres warm, apart from the engine (`tee/Warm.h`'s `warmTyres()`: the vehicle model's
+  `car.m1.warmTyres` held at 1 puts each tyre in the middle of its compound's working window once after every reset of
+  the car, then lets it warm and cool by itself): a timed run after its burnout. Default false: a warm engine on cold
+  tyres is every drive's first mile. State, not Spec: a scenario's spec event cannot set it. Inert under `car.model` 0.
 - `build`: a name under `content/builds/`, or a path; none: every field at its default. `rate` (48000), `block` (512,
   the longest call: a block is cut where the next event falls, so the result does not depend on it).
 - An event at `t` seconds: `"ctl"` (or `"controls"`) sets controls by their names in 02-contracts.md, section 4;

@@ -624,7 +624,7 @@ namespace tee::ui
 
     void AppFrame::setPanes()
     {
-        std::vector<Panes::Pane> panes{ { &current(), stageRect() } };
+        std::vector<Panes::Pane> panes{ { &current(), current().stage().isEmpty() ? stageRect() : current().stage() } };
         if (FieldPage* page = inspector())
             panes.push_back({ page, inspectorRect() });
         panes_->set(std::move(panes));
@@ -769,21 +769,25 @@ namespace tee::ui
         const funkgui::Rect stage = stageRect();
         for (auto& ws : workspaces_)
             ws->resize(width(), height());
-        current().place(stage);
-        // The first launch's card at the stage's top right (the top bar and the cockpit stay clear).
+        // The first launch's card: a strip across the stage's top, the workspace laid out in the rest, so it covers
+        // nothing live (the top bar, the cockpit and the inspector are untouched).
+        funkgui::Rect wsStage = stage;
         if (!tryFirstNotes_.empty())
         {
-            const float cw = std::min(420.0f, stage.w - 32.0f);
-            const float ch = std::min(tryFirst_->heightFor(cw), stage.h - 24.0f);
-            const funkgui::Rect card{ stage.right() - 16.0f - cw, stage.y + 12.0f, cw, ch };
+            const float cw = stage.w - 24.0f;
+            const float ch = std::min(tryFirst_->heightFor(cw), stage.h * 0.3f);
+            const funkgui::Rect card{ stage.x + 12.0f, stage.y + 10.0f, cw, ch };
             tryFirst_->setPlace(card, true);
-            tryFirstClose_->setPlace({ card.right() - 12.0f - 64.0f, card.y + 10.0f, 64.0f, 26.0f }, true);
+            tryFirstClose_->setPlace({ card.right() - 12.0f - 64.0f, card.y + 8.0f, 64.0f, 26.0f }, true);
+            const float taken = card.bottom() - stage.y + 2.0f;
+            wsStage = { stage.x, stage.y + taken, stage.w, stage.h - taken };
         }
         else
         {
             tryFirst_->setPlace({}, false);
             tryFirstClose_->setPlace({}, false);
         }
+        current().place(wsStage);
         // The inspector: its header's ALL, the tabs, the page or the units, the ribbon.
         const funkgui::Rect insp{ stage.right(), stage.y, w - stage.right(), stage.h };
         clear_->setPlace({ insp.right() - 58.0f, insp.y + 6.0f, 48.0f, 22.0f }, !selection_.empty() && !unitsPage_);

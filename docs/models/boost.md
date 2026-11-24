@@ -128,6 +128,38 @@ twelve a turn below 18 kHz, as phasors turned every 16 samples), vent (blow-off 
 whine from pockets: 6 a Roots rotor turn, 4 a twin-screw male turn, 31 a centrifugal's gear; harmonics as the
 reference's, their fall-off from the pocket's pressure step), bang (anti-lag). Levels set beside the reference's.
 
+Card N2's additions: a variable nozzle's back-pressure limit (`backPressure`, p3 over p2 absolute, 1.4: the vanes
+opened by an integral past it) and its surge guard (the vanes opened at 1/s while the compressor surges with the pedal
+down and the boost short, 0.3/s given back: gain-reversal protection, `docs/measurements/calibration/boost/causes.md`
+5). The core in an engine test cell (MODE_DYNO_ENGINE, the absorber on, `Boost::testCell`) is held at the air's
+temperature: SAE J1349's laboratory charge-air cooling, so the cooler gives its stated effectiveness; chassis dyno and
+road: the car's air speed; standing: still air. `spec.boost.heatSettle` (a press counter) puts the core where the
+present flow holds it.
+
+### The reference's dials, and matching the charge system
+
+Model 1 does **not** read the reference's `level` dial: the boost is the spring's, or the target's (the spec's or the
+ECU's). `size` scales the matched machine. Every other field means what it says, in absolute units: a 15 L engine left
+with F's defaults (a 70 kPa spring, a cooler rated 0.25 kg/s, 5 L of pipes: a 2 to 3 L engine's) makes little boost,
+as such an engine would. `tel.boost.mismatch` says so, with each pair (`coolerHas`/`Wants`, `springHas`/`Wants`,
+`volumeHas`/`Wants`); its thresholds are warnings, not physics (`sim/boost/boost.fm`, telemetry).
+
+The rule for matching them, for the host to apply when the person asks (an action beside the warning, never a silent
+default in apply):
+
+- **Cooler rated flow** (`icFlow`): the engine's air at rated power. That is the brake power times the specific air
+  consumption, the specific fuel consumption times the air-fuel ratio: a petrol engine at full load near 0.30 kg/kWh
+  at lambda 0.85 (14.7 x 0.85 = 12.5) takes some 3.7 kg/kWh, 1.0 to 1.1 g/s a kW; a diesel at 0.21 kg/kWh and lambda
+  1.6 (14.5 x 1.6 = 23.2) some 4.9 kg/kWh, 1.35 g/s a kW, to 1.7 with the leaner calibrations (fuel consumptions:
+  Heywood, Internal Combustion Engine Fundamentals, ch. 2 and 15). Without a rated power: the machine's matched flow,
+  `mMatch`, the four-stroke-equivalent displacement times the redline over 120 times 1.204 kg/m^3 times 1.9 times 0.9.
+- **Charge pipes' volume** (`chargeVolume`): 2.5 displacements (F's defaults' ratio on 2 L), within 1 to 20 L.
+  Judgement: no published rule; the volume sets the lag before the throttle and the surge's frequency, not the boost.
+- **Gate spring** (`gateSpring`): the target with no electronic control; half the target under a duty (the ECU's
+  solenoid bleeds the signal to hold up to twice the spring, the common "base boost" practice). Judgement.
+
+P's archetypes are sized so by hand (10e71bd: 1.1 g/s a kW petrol, 1.7 diesel; pipes twice the swept volume).
+
 ## In the engine
 
 `Boost` (`sim/boost/boost.fm`) holds the machine; `spec.boost.model` 1 switches to it (README, Boost), and card G's
