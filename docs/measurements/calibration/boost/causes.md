@@ -134,8 +134,16 @@ two thirds of the time (flow 0.09 kg/s, efficiency 0.47), against 209 kPa and 19
 nozzle: 206). Shutting further lowers the boost: the engine's air, the smoke-limited fuel and the turbine's energy fall
 together. Neither p3/p2 (1.4 in both the trap and the tractor's legitimate 1000 rpm point), a speed feed-forward, nor
 perturb-and-observe (opening first lowers the boost for a second) told them apart; the compressor's surge did (truck
-66 %, tractor at 1000 32 %). Fix (cf888e2): while the compressor surges an integral opens the vanes 0.5/s, giving back
+66 %, tractor at 1000 32 %). Tried and dropped first, each on a number: (a) a tight back-pressure limit while the boost stood short: the truck right,
+the tractor at 1000 rpm 1193 -> 757 N m; (b) perturb and observe on a floor under the vanes: opening first lowers the
+boost for a second, so it read the gain wrongly and stayed at 0.47; (c) a feed-forward from the speed (the opening that
+passes the engine's flow at p3 = k p2): the same split as (a), the tractor at 1000 rpm 774 N m at k = 1, 1071 at 1.3
+with the truck back in its trap. Fix (cf888e2): while the compressor surges an integral opens the vanes 0.5/s, giving back
 0.125/s while not. After: the truck 209.7/1937 from 800 rpm, 210.0/1930 from 2000; D2's spool 90 % in 4.10 s against the
 single's 4.40 (57 against 41 kPa at 1 s); tractor 1000/1300/1800 1222/2655/2327 N m (limit alone 1193/2682/2332);
 pickup within 0.3 %; brake 406 kW unchanged. Test: GateTest.cpp, "variable vanes past the surge line open".
+Retuned (e12b230) to D2's measure (the same absolute boost: the single's 90 %): at 0.5/s the VGT spooled a second
+behind the fixed nozzle; now 1/s, 0.3 of it given back, and only the loop's own surge counts (pedal down, boost short;
+commanded vanes hold it at 0; a lift's surge does not wind it: LayoutTest). D2's spool: the single's 90 % in 1.75 s
+against 1.95. 2/s put the tractor at 1000 rpm off its boost (9.5 kPa).
 Listen: the truck's VGT tip-in at 1300 rpm, no surge chuff once spooled.
