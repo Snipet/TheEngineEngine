@@ -768,3 +768,45 @@ TEST_CASE("probe: the idle's torque against speed, valve and spark held", "[.pro
     }
     SUCCEED();
 }
+
+// The boost machine's charge path from the key, every PROBE_STEP (0.001) s for PROBE_SECONDS (0.5), until anything is
+// non-finite (X-024, X-026: an explicit step around a small volume). PROBE_BUILD (a file), PROBE_SIM, PROBE_THROTTLE (0).
+TEST_CASE("probe: the boost charge path from the key", "[.probe-boost]")
+{
+    const std::string file = std::getenv("PROBE_BUILD") ? std::getenv("PROBE_BUILD")
+                                                        : std::string(TEE_SOURCE_DIR) + "/content/builds/combo/findings/x026-single-big-blower.json";
+    const double step = std::getenv("PROBE_STEP") ? std::atof(std::getenv("PROBE_STEP")) : 0.001;
+    const double secs = std::getenv("PROBE_SECONDS") ? std::atof(std::getenv("PROBE_SECONDS")) : 0.5;
+    Probe pr;
+    tee::EnginePlayer::Options options;
+    options.directory = std::getenv("PROBE_SIM") ? std::filesystem::path(std::getenv("PROBE_SIM"))
+                                                  : std::filesystem::path(TEE_SOURCE_DIR) / "sim";
+    options.sampleRate = 48000.0;
+    std::string errors, warnings;
+    pr.p = tee::EnginePlayer::create(options, errors);
+    REQUIRE(pr.p != nullptr);
+    tee::EngineBuild b;
+    REQUIRE(tee::loadBuild(*pr.p, file, b, errors, warnings));
+    tee::applyBuild(*pr.p, b);
+    auto& c = pr.p->controls();
+    c.ignition = 2;
+    c.throttle = std::getenv("PROBE_THROTTLE") ? float(std::atof(std::getenv("PROBE_THROTTLE"))) : 0.0f;
+    std::printf("%6s %6s %9s %9s %9s %9s %9s %9s %9s\n", "t s", "rpm", "v1 kPa", "v2 kPa", "mIc g/s", "pdDel", "mDraw", "v1 K",
+                "vol1 L");
+    const int n = int(secs / step + 0.5);
+    for (int i = 0; i < n; ++i)
+    {
+        pr.play(step);
+        const double v1 = pr.get("boost.mach.v1.p"), v2 = pr.get("boost.mach.v2.p");
+        std::printf("%6.3f %6.0f %9.2f %9.2f %9.3f %9.3f %9.3f %9.1f %9.4f\n", step * (i + 1), pr.tel("engine.speed") * 30.0 / M_PI,
+                    v1 * 1e-3, v2 * 1e-3, pr.get("boost.mach.mIc") * 1e3, pr.get("boost.mach.pd.mDel") * 1e3,
+                    pr.get("boost.mach.mDraw") * 1e3, pr.get("boost.mach.v1.t"), pr.get("boost.mach.v1.vol") * 1e3);
+        std::printf("       p1 %.2f kPa, leak %.3f g/s, inlet net %.3f g/s, bypass open %.3f, scBypass %.0f, v1 mass %.4f g\n",
+                    pr.get("boost.mach.p1") * 1e-3, pr.get("boost.mach.pd.mLeak") * 1e3, pr.get("boost.mach.mInlet") * 1e3,
+                    pr.get("boost.mach.bypassOpen"), pr.get("boost.mach.scBypass"), pr.get("boost.mach.v1.m") * 1e3);
+        std::printf("       c %.4g m %.4g a %.4g b %.4g kF %.4g sc %.0f turbos %.0f\n", pr.get("boost.mach.dbgC"), pr.get("boost.mach.dbgM"), pr.get("boost.mach.dbgA"), pr.get("boost.mach.dbgB"), pr.get("boost.mach.kFilter"), pr.get("boost.mach.sc"), pr.get("boost.mach.turbos"));
+        if (!std::isfinite(v1) || !std::isfinite(v2) || std::fabs(v1) > 1e8)
+            break;
+    }
+    SUCCEED();
+}

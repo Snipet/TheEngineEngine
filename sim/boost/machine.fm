@@ -935,7 +935,11 @@ module BoostMachine
             const float n = omegaCrank * 0.15915494f * scRatio;
             pd.step(n, p1, t1, v1.p, v1.t, boostStiff(v1.vol, v1.t, 1.4f, dt));
             v1.flow(pd.mDel, pd.t2, 0.232f);
-            v1.flow(-pd.mLeak, 0.0f, 0.0f);
+            // (the clearances' leak runs back to the inlet; when the inlet stands above the charge pipe (cranking, a blower
+            // far larger than its engine) it runs the other way, and what comes in is the inlet's air: entered at 0 K and
+            // no oxygen, it cooled the charge pipe to its floor and its mass grew without its pressure answering, to
+            // megapascals and non-finite while running (card X's corner seed 298, card N1))
+            v1.flow(-pd.mLeak, t1, 0.232f);
             mIn += pd.mDel - pd.mLeak;
             mOutBack += pd.mLeak;
             hOutBack += pd.mLeak * v1.t;
