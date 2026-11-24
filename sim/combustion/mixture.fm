@@ -24,6 +24,8 @@
 #pragma once
 #include "fuels.fm"
 
+const float kDiCooling = 0.576f;   // a direct injector's in-cylinder cooling over its full share's (Kasseris and Heywood)
+
 module Mixture
 {
     // what set() made
@@ -82,7 +84,13 @@ module Mixture
         // evaporation: the fuel's latent heat over the air's (cp 1005 J/kg K)
         const float full = kFuelLatent[f] * fuel / fmaxf(air * 1005.0f, 1.0e-12f);
         const float inCyl = 0.3f + 0.55f * fminf(fmaxf(direct, 0.0f), 1.0f);
-        coolCyl = fminf(full * inCyl, 80.0f);
+        // (a direct injector's evaporation in the cylinder cools the charge less than its latent heat says: Kasseris and
+        // Heywood, SAE 2012-01-1275, measured 14 K for gasoline in a turbocharged direct-injected engine, 49 K for E85;
+        // read from the abstract, not the paper, which states no lambda there: taken at 1.0, where the full share here
+        // gives 24.3 K. So a direct injector's in-cylinder cooling is kDiCooling of the full share's (14 / 24.3); a port
+        // injector's is as before. Card N3's B-3: the model had twice the measured)
+        const float dc = fminf(fmaxf(direct, 0.0f), 1.0f);
+        coolCyl = fminf(full * inCyl * (1.0f - (1.0f - kDiCooling) * dc), 80.0f);
         coolPort = fminf(0.5f * full * (1.0f - inCyl), 40.0f);
     }
 };

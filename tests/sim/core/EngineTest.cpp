@@ -704,7 +704,10 @@ TEST_CASE("an engine set warm stays warm when the air moves while it stands; a c
         std::string e;
         REQUIRE(b.player().setSpec("env.temperature", 253.15, e));
         b.play(0.5);
-        std::printf("%s, the air set to -20 C while it stands: oil %.1f K\n", warm != 0 ? "set warm" : "cold", b.field("heat.tOil"));
+        // (a standing engine advances nothing, rendered or not (X-028): the air it stood in is taken at the start)
+        b.ctl().ignition = tee::EnginePlayer::kIgnitionStart;
+        b.play(0.02);
+        std::printf("%s, the air set to -20 C while it stands: oil %.1f K at the start\n", warm != 0 ? "set warm" : "cold", b.field("heat.tOil"));
         if (warm != 0)
             CHECK(b.field("heat.tOil") > 370.0);
         else
@@ -738,38 +741,51 @@ TEST_CASE("the cylinders' books hold at idle under a big overlap, as a person ca
 TEST_CASE("an engine standing takes the build's air at once: nothing in its pipes glides to it", "[core][engine][heat]")
 {
     // (M's finding: first.json's 288.15 K air was glided to from 300 K over 2 s while the engine stood, moving the
-    // pipes' gas, heard from the key with the voices on. Warm or cold, the air is the build's from the configure)
+    // pipes' gas, heard from the key with the voices on. Since X-028 a standing engine advances nothing, its voices
+    // rendered or not: with the key on it stands as it was, the same with voices on or off, and the start takes the
+    // build's air at once)
     for (int warm = 0; warm < 2; ++warm)
     {
-        Bench b("first");
-        if (warm != 0)
+        double air[2] = {0.0, 0.0}, port[2] = {0.0, 0.0}, idle[2] = {0.0, 0.0};
+        for (int vo = 0; vo < 2; ++vo)
         {
-            b.write("heat.tCool", 368.0); b.write("heat.tOil", 378.0); b.write("heat.tSurf", 455.0);
-            b.write("heat.warm", 1.0); b.write("heat.warmS", 1.0);
+            Bench b("first");
+            std::string e;
+            REQUIRE(b.player().setSpec("voices.model", vo, e));
+            if (warm != 0)
+            {
+                b.write("heat.tCool", 368.0); b.write("heat.tOil", 378.0); b.write("heat.tSurf", 455.0);
+                b.write("heat.warm", 1.0); b.write("heat.warmS", 1.0);
+            }
+            b.ctl().ignition = 1;
+            b.play(0.2);
+            const double a0 = b.field("heat.tAmb"), p0 = b.field("exh.tPort"), i0 = b.field("ecu.idleRpm");
+            b.play(2.0);
+            CHECK(b.field("heat.tAmb") == a0);
+            CHECK(b.field("exh.tPort") == p0);
+            CHECK(b.field("ecu.idleRpm") == i0);
+            air[vo] = a0;
+            port[vo] = p0;
+            idle[vo] = i0;
+            b.ctl().ignition = tee::EnginePlayer::kIgnitionStart;
+            b.play(0.02);
+            std::printf("%s, voices %d, key on, standing: air %.2f, port gas %.2f K, idle target %.0f rpm, unchanged over 2 s; "
+                        "the air %.2f K at the start\n", warm ? "warm" : "cold", vo, a0, p0, i0, b.field("heat.tAmb"));
+            CHECK(std::fabs(b.field("heat.tAmb") - 288.15) < 0.05);
         }
-        b.ctl().ignition = 1;
-        b.play(0.2);
-        const double a0 = b.field("heat.tAmb"), p0 = b.field("exh.tPort");
-        b.play(2.0);
-        std::printf("%s, key on, standing: air %.2f then %.2f K, port gas %.2f then %.2f K\n", warm ? "warm" : "cold", a0,
-                    b.field("heat.tAmb"), p0, b.field("exh.tPort"));
-        CHECK(std::fabs(a0 - 288.15) < 0.05);
-        CHECK(std::fabs(b.field("heat.tAmb") - a0) < 0.05);
-        // (the port's gas checked cold only: here the warm state is written after the build's configure, so the pipes
-        // were set up cold and warm up to it; the application writes it before the build's air arrives)
-        if (warm == 0)
-            CHECK(std::fabs(b.field("exh.tPort") - p0) < 0.5);
+        CHECK(air[0] == air[1]);
+        CHECK(port[0] == port[1]);
+        CHECK(idle[0] == idle[1]);
     }
 }
 
-TEST_CASE("a key on with the engine standing is silent with every voice silenced, in any air, cold or set warm", "[core][engine][heat][!mayfail]")
+TEST_CASE("a key on with the engine standing is silent with every voice silenced, in any air, cold or set warm", "[core][engine][heat]")
 {
-    // ([!mayfail] until the boost machine's volumes and intercooler core start at the build's air at a configure at rest
-    // (N2's; measured 24 Nov: first.json at 288 K rings -54 dBFS in its first half second, -123 with boost.model 0: the
-    // machine's 300 K start reaching the intake's air through boost.temperature(). Heat's own air is fixed, f6a8b88d)
     // (the lead's ruling after M's measure: a resting engine takes the build's air at once in every store that holds a
     // temperature or a pressure, and nothing rings at load. first.json, voices.model 1 with every voice at -60 dB, the
-    // key on and no start, the first three seconds: each half second's rms under the floor)
+    // key on and no start, the first three seconds: each half second's rms under the floor. Since X-028 a standing
+    // engine rendered for its voices advances nothing, so the boost machine's 300 K stores (N2's) no longer ring here:
+    // measured 24 Nov, exact silence in every air, where it rang -54 dBFS at 288 K)
     const double floorDb = -90.0;
     for (int warm = 0; warm < 2; ++warm)
         for (double air : {253.15, 288.15, 300.0, 318.0})

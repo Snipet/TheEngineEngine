@@ -225,9 +225,9 @@ TEST_CASE("decisions: with each switch on the default block's torque lies on its
 
 namespace
 {
-    // The idle's 1 s means from 6 to 14 s (rad/s), on a build file with `values` written in, the key on at 0 and the
-    // start at 0.2 s.
-    std::vector<double> idleSeconds(const std::string& block, const Values& values, const std::string& tag)
+    // engine.speed through 14 s (time, value), on a build file with `values` written in, the key on at 0 and the
+    // start at 0.2 s
+    std::vector<std::pair<double, double>> idleTrace(const std::string& block, const Values& values, const std::string& tag)
     {
         tee::test::Scenario s(buildWith(block, values, tag));
         s.at(0.0).control("mode", 0).lever(0).clutch(0).throttle(0).ignition(tee::On);
@@ -235,41 +235,61 @@ namespace
         s.at(1.8).ignition(tee::On);
         const tee::test::Run r = s.run(14.0);
         REQUIRE(r.ok());
-        std::vector<double> out;
-        for (int a = 6; a < 14; ++a)
-            out.push_back(r.tel("engine.speed").during(a, a + 1).mean());
+        const auto sig = r.tel("engine.speed").during(0.0, 14.0);
+        std::vector<std::pair<double, double>> out;
+        for (std::size_t i = 0; i < sig.size(); ++i)
+            out.emplace_back(sig.times()[i], sig.values()[i]);
         return out;
     }
 
-    double largestApart(const std::vector<double>& a, const std::vector<double>& b)
+    // At the frames both traces share by time (frame 0 skipped: the host may leave it unwritten, D): how many differ
+    // at all, and the largest difference
+    std::pair<int, double> apart(const std::vector<std::pair<double, double>>& a,
+                                 const std::vector<std::pair<double, double>>& b, int& shared)
     {
-        double d = 0.0;
-        for (std::size_t i = 0; i < a.size() && i < b.size(); ++i)
-            d = std::max(d, std::fabs(a[i] - b[i]));
-        return d;
+        int differ = 0;
+        double largest = 0.0;
+        shared = 0;
+        std::size_t j = 0;
+        for (std::size_t i = 1; i < a.size(); ++i)
+        {
+            while (j < b.size() && b[j].first < a[i].first)
+                ++j;
+            if (j == 0 || j >= b.size() || b[j].first != a[i].first)
+                continue;
+            ++shared;
+            if (a[i].second != b[j].second)
+            {
+                ++differ;
+                largest = std::max(largest, std::fabs(a[i].second - b[j].second));
+            }
+        }
+        return {differ, largest};
     }
 } // namespace
 
-// A sound switch leaves the engine as it was (the lead, 22:57). The bound comes from the engine's own sensitivity: the
-// same build with the air 0.02 K warmer (measured 0.4 rad/s, 4 rpm, at most); the switch may move the idle's 1 s means
-// by three times that, or 1 rad/s. X-028: with voices.model on at the key, the stopped engine renders and the ECU's idle
-// target glides before the crank (887 rpm with voices off, 1282 with them on, at 0.19 s), and the idle's hunt (about
-// 2 s, +-20 rpm) runs shifted after: 1 s means apart by up to 33 rpm.
+// A sound switch leaves the engine as it was (the lead, 22:57), to the bit: X-028 (with voices.model on at the key the
+// stopped engine rendered, the ECU's idle target glided before the crank, 887 against 1282 rpm, and the idle's hunt ran
+// 33 rpm apart) is fixed by D's 1842d7cd (a standing engine rendered for its voices alone leaves the engine at rest).
+// engine.speed with the voices on at the key equals it with them off at every frame the two share; the air 0.02 K
+// warmer is printed beside it as the engine's own sensitivity (so a near miss is told from a real move).
 TEST_CASE("decisions: voices.model leaves the engine as it was: the turbo six's idle with the voices on at the key",
           "[fast][fast-1][combo][decisions]")
 {
-    const std::vector<double> off = idleSeconds("turbo-six", {{"voices.model", 0.0}}, "voices-off");
-    const std::vector<double> warm =
-        idleSeconds("turbo-six", {{"voices.model", 0.0}, {"env.temperature", 293.17}}, "voices-off-warm");
-    const std::vector<double> on = idleSeconds("turbo-six", {{"voices.model", 1.0}}, "voices-on");
-    const double own = largestApart(off, warm), apart = largestApart(off, on);
-    const double bound = std::max(1.0, 3.0 * own);
-    std::printf("decisions | turbo-six      | voices.model     | the idle's 1 s means from 6 to 14 s: the air 0.02 K warmer "
-                "moves them %.2f rad/s (%.0f rpm), the voices %.2f rad/s (%.0f rpm); bound %.2f\n",
-                own, own * 9.5493, apart, apart * 9.5493, bound);
+    const auto off = idleTrace("turbo-six", {{"voices.model", 0.0}}, "voices-off");
+    const auto warm = idleTrace("turbo-six", {{"voices.model", 0.0}, {"env.temperature", 293.17}}, "voices-off-warm");
+    const auto on = idleTrace("turbo-six", {{"voices.model", 1.0}}, "voices-on");
+    int sharedWarm = 0, sharedOn = 0;
+    const auto [warmDiffer, warmLargest] = apart(off, warm, sharedWarm);
+    const auto [onDiffer, onLargest] = apart(off, on, sharedOn);
+    std::printf("decisions | turbo-six      | voices.model     | engine.speed against the voices off: the voices on at the "
+                "key differ at %d of %d frames (largest %.3g rad/s); the air 0.02 K warmer at %d of %d (%.3g)\n",
+                onDiffer, sharedOn, onLargest, warmDiffer, sharedWarm, warmLargest);
+    CHECK(sharedOn > 1000);
     Verdict v;
-    if (!(apart <= bound))
-        v.failures.push_back({"sound-engine", "voices.model on moves the idle's 1 s means by " + std::to_string(apart) +
-                                                  " rad/s (bound " + std::to_string(bound) + ")"});
+    if (onDiffer != 0)
+        v.failures.push_back({"sound-engine", "voices.model on moves engine.speed at " + std::to_string(onDiffer) +
+                                                  " of " + std::to_string(sharedOn) + " frames, by up to " +
+                                                  std::to_string(onLargest) + " rad/s"});
     report(v, "voices.model", "turbo-six", "idle");
 }
