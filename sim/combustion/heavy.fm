@@ -16,7 +16,8 @@
 //   Electronic (2): the engine's controller: the pedal asks for fuel directly (a torque demand, min-max), an idle
 //   governor (PI on the speed, no lag past the 16-sample tick) holds the idle, and the droop line caps the fuel toward
 //   high idle; no friction, no flyweights: the idle is steady to a few rpm.
-// High idle is the rated speed (the layout's redline as the reference sets it) times 1 + droop: the droop line's foot.
+// High idle is the rated speed (`ratedSpeed`, or the redline as the reference sets it, which moves with the cold idle)
+// times 1 + droop: the droop line's foot.
 //
 // The compression-release brake (engineBrake 1, Jacobs' "Jake brake", 1961). With the fuel off, a slave piston opens
 // the exhaust valve near the top of the compression stroke, so the air the piston has just squeezed (some 40 bar and
@@ -177,7 +178,7 @@ module HeavyDiesel
         cyc = 720.0f;
         shape(bore);
         const float idleW = idleRpm * 0.10471976f;
-        const float rated = redRpm * 0.10471976f;
+        const float rated = spec->ratedSpeed > 0.0f ? spec->ratedSpeed : redRpm * 0.10471976f;
         const float droop = fmaxf(spec->droop, 0.005f);
         highIdle = spec->highIdle > 0.0f ? spec->highIdle : rated * (1.0f + droop);
         // the pump: the fuel a stroke at full rack for the boost it was set up for (an equivalence ratio of 0.75 there)

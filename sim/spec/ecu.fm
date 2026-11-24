@@ -130,6 +130,8 @@ module EcuSpec
         [[ui::help("The speed the governor gives up from no load to full, over the rated speed")]];
     float highIdle [[fminus::range(0, 2100)]] [[fminus::default(0)]] [[ui::label("High idle")]] [[ui::quantity("rotation")]]
         [[ui::help("0: the rated speed (the redline) times 1 + droop")]];
+    float ratedSpeed [[fminus::range(0, 2100)]] [[fminus::default(0)]] [[ui::label("Rated speed")]] [[ui::quantity("rotation")]]
+        [[ui::help("Full rack up to here, then the droop line; 0: the redline")]];
     float fuelBoost [[fminus::range(0, 400000)]] [[fminus::default(150000)]] [[ui::label("Pump set for boost")]]
         [[ui::quantity("pressure")]] [[ui::help("Full rack is an equivalence ratio of 0.75 at this boost (over the air)")]];
     float afc [[fminus::range(0, 1.2)]] [[fminus::default(0.8)]] [[ui::label("Smoke limiter")]] [[ui::quantity("ratio")]]
