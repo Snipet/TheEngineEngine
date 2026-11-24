@@ -171,7 +171,7 @@ namespace
         // Copy CSV.
         rig.host->click(copyR.centreX(), copyR.centreY());
         const std::string csv = rig.host->clipboardText();
-        CHECK_MSG(csv.rfind("speed_rad_s,rpm,torque_N_m,power_kW,boost.pressure\n", 0) == 0, csv.substr(0, 80));
+        CHECK_MSG(csv.rfind("speed_rad_s,rpm,torque_N_m,power_kW,boost.pressure", 0) == 0, csv.substr(0, 80));   // then knock's columns, when said
         CHECK(std::count(csv.begin(), csv.end(), '\n') == 1 + static_cast<long>(rig.demo.engine.run(0).speed.size()));
         // Stop: a second run ended early lands nothing in the demo.
         rig.host->click(sx, sy);
