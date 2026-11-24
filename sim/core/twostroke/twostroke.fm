@@ -21,7 +21,7 @@
 // geometry, the ports, the inlets, the pipes' sections.
 #pragma once
 #include "exhaust/duct.fm"
-#include "core/twostroke/spec2.fm"
+#include "spec/engine.fm"
 #include "core/twostroke/cylinder2.fm"
 #include "core/twostroke/chamber.fm"
 
@@ -86,15 +86,15 @@ module TwoStroke
 
     // The engine for the spec and its geometry (m; the geometric compression ratio), at rest at crank angle theta
     // (degrees), the air's pressure and temperature; every pipe cleared
-    void configure(const TwoStrokeSpec* s, float bore, float stroke, float rod, float compression, float theta,
+    void configure(const EngineSpec* s, float bore, float stroke, float rod, float compression, float theta,
                    float pAir, float tAir)
     {
-        n = s->cylinders < 1 ? 1 : (s->cylinders > TS_MAX_CYL ? TS_MAX_CYL : s->cylinders);
+        n = s->tsCylinders < 1 ? 1 : (s->tsCylinders > TS_MAX_CYL ? TS_MAX_CYL : s->tsCylinders);
         tPipe = tFixed > 0.0f ? tFixed : tAir + 100.0f;
         cSet = soundSpeed(tPipe);
         for (int c = 0; c < n; ++c)
         {
-            offset[c] = s->firing == 1 ? 0.0f : 360.0f * (float)c / (float)n;
+            offset[c] = s->tsFiring == 1 ? 0.0f : 360.0f * (float)c / (float)n;
             cy[c].setup(s, bore, stroke, rod, compression);
             ch[c].build(s, cSet);
         }
@@ -112,7 +112,7 @@ module TwoStroke
         return a;
     }
 
-    void reset(const TwoStrokeSpec* s, float theta, float pAir, float tAir)
+    void reset(const EngineSpec* s, float theta, float pAir, float tAir)
     {
         for (int c = 0; c < n; ++c)
         {
@@ -136,21 +136,21 @@ module TwoStroke
     }
 
     // Every 16 samples: d16 seconds since the last; omega the crank's speed (rad/s); the walls' temperature (K)
-    void control16(const TwoStrokeSpec* s, float omega, float d16, float tWall, float tAir)
+    void control16(const EngineSpec* s, float omega, float d16, float tWall, float tAir)
     {
         // the power valve, at its actuator's pace
-        if (s->valveDur > 0.0f)
+        if (s->tsValveDur > 0.0f)
         {
-            const float k = fminf(fmaxf((omega - s->valveFrom) / fmaxf(s->valveTo - s->valveFrom, 1.0f), 0.0f), 1.0f);
+            const float k = fminf(fmaxf((omega - s->tsValveFrom) / fmaxf(s->tsValveTo - s->tsValveFrom, 1.0f), 0.0f), 1.0f);
             const float want = k * k * (3.0f - 2.0f * k);
             const float step = d16 / 0.1f;
             valve += fminf(fmaxf(want - valve, -step), step);
-            exDur = s->valveDur + (s->exhaustDur - s->valveDur) * valve;
+            exDur = s->tsValveDur + (s->tsExhaustDur - s->tsValveDur) * valve;
         }
         else
         {
             valve = 1.0f;
-            exDur = s->exhaustDur;
+            exDur = s->tsExhaustDur;
         }
         for (int c = 0; c < n; ++c)
         {
@@ -192,7 +192,7 @@ module TwoStroke
     // One sample: the crank's angle (degrees, any range: taken modulo 360), what it turned (degrees), dt (s), its speed
     // (rad/s); the throttle (0 to 1); fire 0 when the ignition is cut; the air at the carburettors. Returns the gases'
     // torque on the crank (N m).
-    float step(const TwoStrokeSpec* s, float theta, float dDeg, float dt, float omega, float throttle, int fire,
+    float step(const EngineSpec* s, float theta, float dDeg, float dt, float omega, float throttle, int fire,
                float pAir, float tAir)
     {
         const float rpm = omega * 9.5492966f;

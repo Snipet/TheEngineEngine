@@ -144,7 +144,7 @@ namespace tee::ui
             for (const char* n : { N::boost, N::manifold, N::throttle, N::turbos, N::speed[0], N::speed[1], N::ratio[0],
                                    N::ratio[1], N::flow[0], N::flow[1], N::eta, N::outT[0], N::outT[1], N::gate, N::vanes,
                                    N::drive, N::chargePipe, N::icOut, N::throttleIn, N::scPower, N::blowOff, N::flags,
-                                   N::box, N::plenumT })
+                                   N::box, N::engineManifold, N::ripple, N::runner })
                 k.mix(static_cast<float>(ctx_.live.get(n)));
             k.mix(static_cast<int>(trail_.size())).mix(static_cast<int>(history_.size())).mix(mapRev_).mix(mapFromScope_ ? 1 : 0);
             k.mix(static_cast<int>(scopeTrail_.size()));
@@ -472,6 +472,24 @@ namespace tee::ui
         // ---- the values at each part ---------------------------------------------------------------------------------
         double live(const char* n) const { return ctx_.live.get(n); }
         double ambientP() const { return build_.ambientP; }
+        // A temperature, absent when not finite or exactly 0 K (the boost telemetry's 0 with no machine in the path).
+        double liveK(const char* n) const
+        {
+            const double k = live(n);
+            return std::isfinite(k) && k > 0.0 ? k : std::nan("");
+        }
+        // The manifold's pressure, absolute: card E's, else the engine's.
+        double manifold() const
+        {
+            const double m = live(N::manifold);
+            return std::isfinite(m) ? m : live(N::engineManifold);
+        }
+        // The runner length in use (m): card E's telemetry, else the build's (the first length).
+        double runnerInUse() const
+        {
+            const double r = live(N::runner);
+            return std::isfinite(r) && r > 0.0 ? r : build_.runner;
+        }
         // Pressure (absolute) and temperature after a part
         void after(const Part& part, double& pa, double& k) const
         {
@@ -481,7 +499,13 @@ namespace tee::ui
             const double boost = live(N::boost);
             switch (part.kind)
             {
-                case Kind::box: pa = live(N::box); k = build_.ambientT; break;
+                case Kind::box:
+                {
+                    const double over = live(N::box);   // over the air outside
+                    pa = std::isfinite(over) ? over + ambientP() : nan;
+                    k = build_.ambientT;
+                    break;
+                }
                 case Kind::turbo:
                 {
                     const int i = std::min(part.index, 1);
@@ -489,7 +513,7 @@ namespace tee::ui
                     const double r = live(N::ratio[i]), cp = live(N::chargePipe);
                     const bool lowStage = build_.arrangement == Arrangement::compound && part.index == 0;
                     pa = !lowStage && std::isfinite(cp) ? cp + ambientP() : std::isfinite(r) ? r * ambientP() : nan;
-                    k = live(N::outT[i]);
+                    k = liveK(N::outT[i]);
                     break;
                 }
                 case Kind::blower:
@@ -497,21 +521,19 @@ namespace tee::ui
                     const double cp = live(N::chargePipe);
                     pa = std::isfinite(cp) ? cp + ambientP() : std::isfinite(boost) ? boost + ambientP() : nan;
                 }
-                    k = live(N::outT[0]);
+                    k = liveK(N::outT[0]);
                     break;
                 case Kind::cooler:
                     pa = std::isfinite(boost) ? boost + ambientP() : nan;
-                    k = live(N::icOut);
+                    k = liveK(N::icOut);
                     break;
                 case Kind::throttle:
                 case Kind::plenum:
                 case Kind::runners:
-                    // after the throttle: the manifold's pressure; its temperature the plenum's (card E's, to come), else
-                    // the air's before the throttle (a throttle hardly changes it)
-                    pa = live(N::manifold);
-                    k = live(N::plenumT);
-                    if (!std::isfinite(k))
-                        k = live(N::throttleIn);
+                    // after the throttle: the manifold's pressure; its temperature the air's before the throttle when a
+                    // machine is in the path (a throttle hardly changes it), else the air outside
+                    pa = manifold();
+                    k = build_.charger != Charger::none ? liveK(N::throttleIn) : build_.ambientT;
                     break;
             }
         }
@@ -591,7 +613,21 @@ namespace tee::ui
                 case Kind::cooler: return "COOLER";
                 case Kind::throttle: return "THROTTLE";
                 case Kind::plenum: return "PLENUM";
-                case Kind::runners: return b.itb ? "RUNNERS, A THROTTLE EACH" : "RUNNERS";
+                case Kind::runners:
+                {
+                    char t[96];
+                    std::snprintf(t, sizeof t, "%s %s", b.itb ? "RUNNERS, A THROTTLE EACH," : "RUNNERS",
+                                  ctx_.units.format(Quantity::length, runnerInUse()).c_str());
+                    std::string out = t;
+                    for (char& ch : out)
+                        ch = static_cast<char>(ch >= 'a' && ch <= 'z' ? ch - 32 : ch);
+                    if (b.runner2 > 0.0 && b.runnerSwitch > 0.0)
+                    {
+                        std::snprintf(t, sizeof t, ", SWITCH %.0f RPM", b.runnerSwitch * 60.0 / kTwoPi);
+                        out += t;
+                    }
+                    return out;
+                }
             }
             return {};
         }
@@ -707,6 +743,7 @@ namespace tee::ui
                 {
                     const float h = std::min(r.h, 104.0f);
                     c.rrect(r.x, yc_ - h * 0.5f, r.w, h, 16.0f, body, 1.5f, tint);
+                    drawRipple(c, p, { r.x + 8.0f, yc_ - 16.0f, r.w - 16.0f, 32.0f });
                     break;
                 }
                 case Kind::runners:
@@ -714,12 +751,15 @@ namespace tee::ui
                     // the runners fan from the plenum (or each from its own trumpet) to the head, numbered
                     const int n = std::max(1, b.cylinders);
                     const float head = r.right() - 18.0f;
-                    const float span = std::min(r.h + 20.0f, static_cast<float>(n) * 20.0f);
-                    c.rrect(head, yc_ - span * 0.5f - 8.0f, 18.0f, span + 16.0f, 4.0f, p.raised, 1.0f, p.edge);
+                    // (with a throttle a runner, the part's top holds the ripple: the runners sit lower)
+                    const float span = b.itb ? std::min(r.h - 44.0f, static_cast<float>(n) * 20.0f)
+                                             : std::min(r.h + 20.0f, static_cast<float>(n) * 20.0f);
+                    const float mid = b.itb ? yc_ + 18.0f : yc_;
+                    c.rrect(head, mid - span * 0.5f - 8.0f, 18.0f, span + 16.0f, 4.0f, p.raised, 1.0f, p.edge);
                     const double open = live(N::throttle);
                     for (int i = 0; i < n; ++i)
                     {
-                        const float y = yc_ + (n == 1 ? 0.0f : (static_cast<float>(i) / static_cast<float>(n - 1) - 0.5f) * span);
+                        const float y = mid + (n == 1 ? 0.0f : (static_cast<float>(i) / static_cast<float>(n - 1) - 0.5f) * span);
                         if (b.itb)
                         {
                             const float x0 = r.x + 10.0f;
@@ -732,15 +772,42 @@ namespace tee::ui
                                 c.segment(x0 + 40.0f, y - 3.0f, x0 + 40.0f, y + 3.0f, 2.0f, ink);
                         }
                         else
-                            line(c, sBend({ r.x - 6.0f, yc_ + (static_cast<float>(i) / static_cast<float>(std::max(1, n - 1)) - 0.5f) * 30.0f },
-                                          { head, y }, 10), 5.0f, tint);
+                        {
+                            // at the length in use, against the longer of a variable manifold's two (drawn dim)
+                            const double longest = std::max(b.runner, b.runner2);
+                            const float full = head - (r.x - 6.0f);
+                            const float f = static_cast<float>(std::clamp(runnerInUse() / longest, 0.3, 1.0));
+                            const float y0 = yc_ + (static_cast<float>(i) / static_cast<float>(std::max(1, n - 1)) - 0.5f) * 30.0f;
+                            if (b.runner2 > 0.0 && f < 0.99f)
+                                line(c, sBend({ r.x - 6.0f, y0 }, { head, y }, 10), 2.0f, p.dim);
+                            line(c, sBend({ head - full * f, b.runner2 > 0.0 ? y0 + (y - y0) * (1.0f - f) : y0 }, { head, y }, 10), 5.0f, tint);
+                        }
                     }
                     if (b.itb)
-                        c.text(b.trumpetsToAir ? "TO THE AIR" : "IN THE BOX", r.x, yc_ + span * 0.5f + 12.0f, look::kCaps, p.label);
+                    {
+                        const float ty = mid + span * 0.5f + 10.0f;
+                        if (ty + 12.0f < readY_)
+                            c.text(b.trumpetsToAir ? "TO THE AIR" : "IN THE BOX", r.x, ty, look::kCaps, p.label);
+                        // the pulsing the runners feel without a plenum to calm it
+                        drawRipple(c, p, { r.x + 10.0f, r.y, std::min(120.0f, r.w - 40.0f), 32.0f });
+                    }
                     break;
                 }
             }
             (void)edge;
+        }
+
+        // The manifold's pulsing (card E's ripple, peak to peak) as a word, a number and a bar on 25 kPa.
+        void drawRipple(Canvas& c, const Palette& p, const Rect& r) const
+        {
+            const double rp = live(N::ripple);
+            if (!std::isfinite(rp))
+                return;
+            // the word, the number under it, a bar under that
+            c.text("RIPPLE", r.x, r.y, look::kCaps, p.label);
+            const std::string v = ctx_.units.format(Quantity::pressure, rp);
+            c.text(v.c_str(), r.x, r.y + 13.0f, look::kUnit, p.text);
+            look::level(c, p, { r.x, r.y + 27.0f, r.w, 3.0f }, rp / 25e3, p.text);
         }
 
         // A butterfly in its bore: the plate across (shut) to along (open), and the opening in words beside it.
@@ -930,7 +997,7 @@ namespace tee::ui
             if (b.charger == Charger::none)
             {
                 const Rect in = look::region(c, p, R, "MANIFOLD");
-                const double m = live(N::manifold);
+                const double m = manifold();
                 look::readout(c, p, in.x, in.y, "PRESSURE", pres(m));
                 const double vac = std::isfinite(m) ? b.ambientP - m : std::nan("");
                 look::readout(c, p, in.x, in.y + 52.0f, "VACUUM", pres(vac));

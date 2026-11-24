@@ -31,7 +31,7 @@ namespace tee::test::twostroke
         static Program* compiled = [] {
             const std::filesystem::path root(TEE_SOURCE_DIR);
             Program::Files files;
-            for (const char* dir : {"core", "core/twostroke"})
+            for (const char* dir : {"core", "core/twostroke", "spec"})
                 for (const auto& entry : std::filesystem::directory_iterator(root / "sim" / dir))
                     if (entry.path().extension() == ".fm")
                         files[std::string(dir) + "/" + entry.path().filename().string()] = readFile(entry.path());

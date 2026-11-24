@@ -117,6 +117,27 @@ namespace tee::test::views
         return page.notes();
     }
 
+    std::string unnamedControls(funkgui::HeadlessHost& host)
+    {
+        using R = funkgui::A11yRole;
+        std::string out;
+        for (const funkgui::A11yItem& it : host.accessibility())
+        {
+            const bool control = it.role == R::slider || it.role == R::toggleButton || it.role == R::button
+                              || it.role == R::comboBox || it.role == R::radioButton || it.role == R::listItem
+                              || it.role == funkgui::a11yrole::editableText;
+            if (control && it.visible && it.title.empty())
+            {
+                char b[160];
+                std::snprintf(b, sizeof b, "an unnamed control (role %d) at %.0f,%.0f %.0fx%.0f, value '%s'\n",
+                              static_cast<int>(it.role), static_cast<double>(it.bounds.x), static_cast<double>(it.bounds.y),
+                              static_cast<double>(it.bounds.w), static_cast<double>(it.bounds.h), it.value.c_str());
+                out += b;
+            }
+        }
+        return out;
+    }
+
     void typeKeys(funkgui::HeadlessHost& host, std::string_view spec)
     {
         std::string out;
