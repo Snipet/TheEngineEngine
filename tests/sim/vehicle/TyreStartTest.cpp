@@ -48,8 +48,11 @@ TEST_CASE("tyres.start: the tyres start at the air's temperature, again after a 
             for (int i = 0; i < 4; ++i)
                 CHECK(temp(s, i) == Catch::Approx(air).margin(1.0));
             // heated by a burnout on the line lock, then the car put at rest (out of drive and back)
-            s.run(1.5);
+            // (cranked until it runs, up to 6 s: the V12 takes over 1.5 s in hot air, 318 K; not the tyres' business)
+            for (int k = 0; k < 60 && s.tel("engine.state") != 2.0; ++k)
+                s.run(0.1);
             s.ctl().ignition = tee::EnginePlayer::kIgnitionOn;
+            REQUIRE(s.tel("engine.state") == 2.0);
             s.ctl().buttons = 1;
             s.ctl().shiftUp += 1;
             s.run(0.3);

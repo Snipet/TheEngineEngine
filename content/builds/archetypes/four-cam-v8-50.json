@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "Four-cam 5.0 L V8",
-  "notes": "A 5.0 L four-cam crossplane V8: 93 x 92.7 mm (5038 cc), 12:1, all four cams phased (engines of the kind: 300 to 343 kW at 6500 to 7000 rpm, 530 to 570 N m at 4250 to 4600; makers' figures). Rear drive, six-speed manual. Its exhaust: short tubular headers, the primaries 1.00 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py). Its intake: the modern class's runner, 0.38 m from the valve to the plenum (a road engine's composite plenum manifold, 2005 on): JUDGEMENT, a class default, not the real engine's (no source found).",
+  "notes": "A 5.0 L four-cam crossplane V8: 93 x 92.7 mm (5038 cc), 12:1, all four cams phased (engines of the kind: 300 to 343 kW at 6500 to 7000 rpm, 530 to 570 N m at 4250 to 4600; makers' figures). Rear drive, six-speed manual. Its exhaust: short tubular headers, the primaries 1.00 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its intake: the modern class's runner, 0.38 m from the valve to the plenum (a road engine's composite plenum manifold, 2005 on): JUDGEMENT, a class default, not the real engine's (no source found).",
   "spec": {
     "engine": {
       "layout": "V8 crossplane",
@@ -124,59 +124,6 @@
       },
       "idle": {
         "speed": 73.304
-      },
-      "maps": {
-        "camInAuto": false,
-        "camIn": {
-          "x": [
-            104.7,
-            200.4,
-            296.3,
-            392.0,
-            487.7,
-            583.4,
-            679.2,
-            774.9
-          ],
-          "y": [
-            0.0,
-            3.0
-          ],
-          "z": [
-            [
-              20.0,
-              20.0
-            ],
-            [
-              20.0,
-              20.0
-            ],
-            [
-              50.0,
-              50.0
-            ],
-            [
-              50.0,
-              50.0
-            ],
-            [
-              30.0,
-              30.0
-            ],
-            [
-              30.0,
-              30.0
-            ],
-            [
-              20.0,
-              20.0
-            ],
-            [
-              20.0,
-              20.0
-            ]
-          ]
-        }
       }
     },
     "car": {

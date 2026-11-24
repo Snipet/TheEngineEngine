@@ -293,7 +293,8 @@ namespace
                 std::string error;
                 if (shown.document->open(launch.file, BuildPart::Whole, warnings, error))
                 {
-                    std::printf("file: %s, %s\n", launch.what, launch.file.string().c_str());
+                    std::printf("file: %s, %s (%s)\n", launch.what, launch.file.string().c_str(),
+                                shown.document->dirty() ? "with unsaved changes" : "clean");
                     // a first launch's hand-hold: the first build's notes on the frame's TRY FIRST card (U1's), until
                     // it is closed once (the settings remember that); the console gets their first line
                     if (launch.first)
@@ -475,6 +476,8 @@ namespace
                 return shown.document->build().notes;
             };
             shown.window->tryFirstDone = [&now] { now.tryFirstSeen = true; };
+            shown.window->coldStart = [&now] { return now.coldStart; };
+            shown.window->setColdStart = [&now](bool cold) { now.coldStart = cold; };
         }
         std::string why;
         if (!host.open(why))

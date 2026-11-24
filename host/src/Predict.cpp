@@ -311,6 +311,7 @@ namespace tee
                 int most = options_.holdSeconds > 0.0 ? 1 << 30
                                                       : std::max({options_.maxCycles, knockMost, holdMost}) + settling;
                 std::vector<double> retards;   // the counted cycles' retards
+                std::vector<double> boosts;    // and boosts
                 double lastRetard = knockRetard();
                 double lastBoost = boostNow();
                 std::vector<double> counted;   // the counted cycles' torques
@@ -380,13 +381,22 @@ namespace tee
                         // decays over many cycles, and two cycles of a slow slide can agree by chance)
                         counted.push_back(t);
                         retards.push_back(retard);
+                        boosts.push_back(boost);
                         if (hasRetard_ && retard >= options_.knockLimit && !p.knockLimited)
                         {
                             p.knockLimited = true;   // from now on the mean over whole windows (Predict.h)
                             if (options_.holdSeconds <= 0.0)
                                 most = std::max(most, knockLimitedMost);
                         }
-                        if (p.knockLimited)
+                        // a boost still moving after a second and a half here hunts (its gate's loop a limit cycle, as
+                        // knock control's retard is): the mean over whole windows too
+                        if (hasBoost_ && !boostSteady && held >= options_.boostHuntSeconds && !p.boostHunting)
+                        {
+                            p.boostHunting = true;
+                            if (options_.holdSeconds <= 0.0)
+                                most = std::max(most, knockLimitedMost);
+                        }
+                        if (p.knockLimited || p.boostHunting)
                         {
                             const std::size_t m = counted.size(), w = static_cast<std::size_t>(window);
                             if (m >= 2 * w)
@@ -406,9 +416,22 @@ namespace tee
                                 for (std::size_t i = m - 2 * w; i < m; ++i)
                                     r += retards[i];
                                 p.retardMean = r / static_cast<double>(2 * w);
-                                const bool agree = std::fabs(last - before)
-                                                   <= options_.tolerance * std::max(std::fabs(p.torque), 1.0);
-                                if (agree && boostSteady && held >= options_.holdSeconds && held >= options_.minHoldSeconds)
+                                bool agree = std::fabs(last - before)
+                                             <= options_.tolerance * std::max(std::fabs(p.torque), 1.0);
+                                if (hasBoost_)
+                                {
+                                    // the boost's windows agree too (a hunting boost's mean, not each cycle's)
+                                    double bl = 0.0, bb = 0.0;
+                                    for (std::size_t i = 0; i < w; ++i)
+                                    {
+                                        bl += boosts[m - 1 - i];
+                                        bb += boosts[m - 1 - w - i];
+                                    }
+                                    agree = agree && std::fabs(bl - bb) / static_cast<double>(w)
+                                                         <= 0.01 * std::max(std::fabs(bl / static_cast<double>(w)), 20000.0);
+                                }
+                                if (agree && (boostSteady || p.boostHunting) && held >= options_.holdSeconds
+                                    && held >= options_.minHoldSeconds)
                                 {
                                     if (heatSettle_ && !resettled)
                                     {
@@ -416,6 +439,7 @@ namespace tee
                                         resettled = true;
                                         counted.clear();
                                         retards.clear();
+                                        boosts.clear();
                                         continue;
                                     }
                                     p.settled = true;
@@ -451,6 +475,7 @@ namespace tee
                             resettled = true;
                             counted.clear();
                             retards.clear();
+                            boosts.clear();
                             continue;
                         }
                         if (steady)
@@ -464,8 +489,19 @@ namespace tee
                         p.torque = t;
                         counted.push_back(t);
                         retards.push_back(knockRetard());
+                        boosts.push_back(boostNow());
                     }
                     previous = t;
+                }
+                // a point that did not settle in its time: the mean over its last windows' worth of cycles (two cycles
+                // of a limit cycle are no measure of it), said by settled false
+                if (!p.settled && p.valid && counted.size() >= 4)
+                {
+                    const std::size_t n = std::min(counted.size(), static_cast<std::size_t>(2 * window));
+                    double all = 0.0;
+                    for (std::size_t i = counted.size() - n; i < counted.size(); ++i)
+                        all += counted[i];
+                    p.torque = all / static_cast<double>(n);
                 }
                 p.power = p.torque * speed;
                 p.knockRetard = knockRetard();
@@ -911,7 +947,7 @@ namespace tee
         std::uint64_t h = build.hash();
         for (const double v : {static_cast<double>(o.coarse), static_cast<double>(o.points), o.from, o.to, o.pedal,
                                o.tolerance, static_cast<double>(o.minCycles), static_cast<double>(o.maxCycles),
-                               o.sampleRate, static_cast<double>(o.block), o.startSeconds, o.warm ? 1.0 : 0.0, o.warmupSeconds, o.settleExhaust ? 1.0 : 0.0, o.holdSeconds, o.brake == "host" ? 1.0 : o.brake == "program" ? 2.0 : 0.0, o.innerRate, static_cast<double>(o.fields.size()), o.minHoldSeconds, o.knockLimit, o.knockWindowSeconds, o.knockMostSeconds})
+                               o.sampleRate, static_cast<double>(o.block), o.startSeconds, o.warm ? 1.0 : 0.0, o.warmupSeconds, o.settleExhaust ? 1.0 : 0.0, o.holdSeconds, o.brake == "host" ? 1.0 : o.brake == "program" ? 2.0 : 0.0, o.innerRate, static_cast<double>(o.fields.size()), o.minHoldSeconds, o.knockLimit, o.knockWindowSeconds, o.knockMostSeconds, o.boostHuntSeconds})
             h = mix(h, v);
         for (const double v : o.speeds)
             h = mix(h, v);

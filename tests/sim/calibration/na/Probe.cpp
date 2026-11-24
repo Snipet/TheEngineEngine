@@ -10,7 +10,11 @@
 //
 //   PROBE_BUILD=straight-six-32-high-rev PROBE_RPM=3000,7600 PROBE_SET="valve.inPhaseRange=0" \
 //     build-dev/bin/tee-tests-calibration-na "[.probe]"     (PROBE_SIM=DIR: another tree's sim/)
+#include "tee/Bake.h"
+#include "tee/Build.h"
 #include "tee/EnginePlayer.h"
+#include "tee/Predict.h"
+#include "tee/Sim.h"
 #include "tee/Warm.h"
 
 #include <catch2/catch_test_macros.hpp>
@@ -907,5 +911,74 @@ TEST_CASE("probe: the boosted books", "[.probe-boostbooks]")
     std::printf("  means: intk.pBox %.2f kPa, box.p %.2f kPa, machine's v2.p %.2f kPa; intk.tAir %.1f K (heatRise %.1f), v2.t %.1f K; "
                 "intake.model %.0f, itbs %.0f\n", pBox / n * 1e-3, boxP / n * 1e-3, v2p / n * 1e-3, tAir / n, rise / n, v2t / n,
                 pr.get("intk.model"), pr.get("intk.itbs"));
+    SUCCEED();
+}
+
+// The cam bake with and without its midpoint refinement (the lead's 22:23, N3's V12 tooth): PROBE_BUILD (v12-65), each
+// baked and applied, its settled curve at 1500 to 3000 rpm by 250 (predictCurve, the bake's own options)
+TEST_CASE("probe: the cam bake's midpoints", "[.probe-bakemid]")
+{
+    const std::string slug = std::getenv("PROBE_BUILD") ? std::getenv("PROBE_BUILD") : "v12-65";
+    std::string errors;
+    const auto sim = tee::Sim::compile(std::filesystem::path(TEE_SOURCE_DIR) / "sim", {}, errors);
+    INFO(errors);
+    REQUIRE(sim != nullptr);
+    tee::Build build(sim->fields());
+    std::vector<std::string> warnings;
+    REQUIRE(build.loadFile(std::filesystem::path(TEE_SOURCE_DIR) / "content" / "builds" / "archetypes" / (slug + ".json"),
+                           tee::BuildPart::Whole, warnings, errors));
+    std::vector<double> speeds;
+    for (double r = 1500.0; r <= 3000.0 + 1e-6; r += 250.0)
+        speeds.push_back(r * M_PI / 30.0);
+    for (const bool refine : {false, true})
+    {
+        tee::CamBakeOptions o;
+        o.refine = refine;
+        tee::CamBakeResult r;
+        REQUIRE(tee::bakeIntakeCam(sim, build, o, r, errors));
+        tee::Build baked(build.fields());
+        REQUIRE(baked.load(build.save(), tee::BuildPart::Whole, warnings, errors));
+        REQUIRE(tee::applyIntakeCam(baked, r, errors));
+        std::printf("%s, %s: %zu rows (%d added) in %.0f s; rows rpm/deg:", slug.c_str(), refine ? "refined" : "the grid alone",
+                    r.speeds.size(), r.added, r.wallSeconds);
+        for (std::size_t i = 0; i < r.speeds.size(); ++i)
+            std::printf(" %.0f/%.0f", r.speeds[i] * 30.0 / M_PI, r.best[i]);
+        std::printf("\n");
+        tee::PredictOptions po = o.predict;
+        po.speeds = speeds;
+        if (std::getenv("PROBE_AT"))
+            po.speeds = {std::atof(std::getenv("PROBE_AT")) * M_PI / 30.0};
+        po.fields = {"valve.inPhase", "valve.inPhaseTarget", "intake.manifold", "valve.ivo", "valve.ivc", "valve.evo", "valve.evc", "valve.overlap", "ecu.advance", "valve.exPhase", "ecu.advanceAsked", "ecu.knockRetard"};
+        tee::PredictCurve curve;
+        REQUIRE(tee::predictCurve(sim, baked, po, curve, errors));
+        std::printf("  settled torque, N m (phase held / asked, manifold kPa):");
+        for (const tee::PredictPoint& p : curve.points)
+        {
+            std::printf(" %.0f:%.0f", p.speed * 30.0 / M_PI, p.torque);
+            if (p.fields.size() >= 3)
+                std::printf(" (%.1f/%.1f, %.1f)", p.fields[0], p.fields[1], p.fields[2] * 1e-3);
+        }
+        std::printf("\n");
+        // the held cell at the same speed, for the gap: the map's own value there held as a fixed advance
+        if (std::getenv("PROBE_AT") && refine)
+        {
+            const double want = curve.points.empty() || curve.points.front().fields.size() < 2 ? 0.0 : curve.points.front().fields[1];
+            tee::Build held(build.fields());
+            REQUIRE(held.load(build.save(), tee::BuildPart::Whole, warnings, errors));
+            held.set("valve.inPhaseRange", 0.0);
+            held.set("valve.inCentre", r.parkedCentre - want);
+            tee::PredictCurve hc;
+            REQUIRE(tee::predictCurve(sim, held, po, hc, errors));
+            std::printf("  held at the asked %.1f deg: %.0f N m (manifold %.1f kPa)\n", want, hc.points.front().torque,
+                        hc.points.front().fields.size() >= 3 ? hc.points.front().fields[2] * 1e-3 : 0.0);
+            auto ev = [](const char* what, const tee::PredictPoint& p) {
+                if (p.fields.size() >= 10)
+                    std::printf("  %s: ivo %.1f ivc %.1f evo %.1f evc %.1f overlap %.1f spark %.1f exPhase %.1f asked %.1f knock %.1f\n", what, p.fields[3],
+                                p.fields[4], p.fields[5], p.fields[6], p.fields[7], p.fields[8], p.fields[9], p.fields.size() > 11 ? p.fields[10] : 0.0, p.fields.size() > 11 ? p.fields[11] : 0.0);
+            };
+            ev("map", curve.points.front());
+            ev("held", hc.points.front());
+        }
+    }
     SUCCEED();
 }

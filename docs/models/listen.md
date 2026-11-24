@@ -226,6 +226,29 @@ exhaust -4.85, intake +0.8, valvetrain +0.3, block -1.6, headers' walls +0.9, tu
 6.6 dB (the headers' walls in REAR the worst: the reference's REAR hears the bay better than its EXHAUST, 2 m nearer,
 which no geometry gives); 2.86 dB rms over the 45 source-view pairs.
 
+## Package M's voices through Places, and the fuel tank's wall
+
+The voices come apart into their places (`mix1`): the front's belts and fan, the head's lifters and the clutch in
+the bay; the gearbox; the axle and the chain; the tank's pump. Each is heard at the reference's mechanical strength
+(`sMc`), so M's levels, staged in the reference's mix, keep their meaning. The pump is the one source inside a box:
+a moulded HDPE tank, 5 mm, m = 4.75 kg/m2, whose wall by the mass law at field incidence (TL = 20 log10(m f) - 47 dB,
+Bies and Hansen, Engineering Noise Control) is a one-pole low-pass at 47 Hz: 27 dB at 760 Hz, 38 dB at 3.9 kHz (the
+fuel, the floor and the leaks left out). Without it the pump was heard as if in the open under the car, and on
+first.json at Side its 3.9 kHz and 760 Hz tones stood 46 and 38 dB over their neighbours: the owner's "high pitched
+hum" (lead, 21:32). D2's extras at that place (a truck's air dryer) are not behind it.
+
+Held by `the voices through Places` (EngineTest; quick at Side, nightly at Side, Rear, Driver): first.json held warm
+as p-idle-warm holds it (the fan runs), voices on against off, through Places and through the reference's matching
+view (Side, Rear, Cabin). Places / the reference, the voices' share above 250 Hz: Side +18.6 / +17.7 dB, Rear
++8.6 / +4.4, Driver +19.6 / +11.8; the fan's 560 Hz against the engine's own highs: 8.3 / 7.0 dB over, 5.6 / 8.1
+under, 9.4 / 1.4 over; on a free rev no voice's tone stands out. Tolerances 3, 6 (the fit's worst residual), 9 dB.
+Open: the cabin's firewall (800 Hz, second order) passes the fan's 560 Hz some 8 dB more than the reference's cabin.
+The voices' own levels are M's (the fan's 560 Hz stands 7 dB over the engine's highs even in the reference's Side).
+
+The camera matters more than any of this: the reference's Side view hears the bay 26 dB louder against the exhaust
+than its default view (Exhaust) does, and model 1 is fitted to the reference's views. A build meant to be heard
+first sits at Rear (the default), where Places matches the reference's mix within 4 dB in every band from 250 Hz.
+
 ## What it leaves out
 
 Diffraction round the body (the shading is a pattern); the ground's impedance by angle (a constant reflection);

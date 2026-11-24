@@ -9,7 +9,7 @@
 //            [--threads N] [--points N] [--coarse N]        several threads, coarse first; the times to the first and
 //            [--tolerance X] [--min-cycles N] [--max-cycles N] [--cold] [--history] [--repeat N]
 //            [--brake auto|host|program] [--hold S] [--no-settle] [--warmup-seconds S] [--inner-rate HZ]
-//   tee-dyno --bake-cam --build B [--from W --to W --points N]   the intake cam swept, best advance by speed (Bake.h)
+//   tee-dyno --bake-cam --build B [--from W --to W --points N] [--refine]   the intake cam swept, best advance by speed (Bake.h)
 //   tee-dyno --bake-spark --build B [--points N] [--inner-rate HZ] [--save FILE]   the knock limit baked (Bake.h);
 //            --save writes the build with it applied (ecu.maps.knockLimit, knockLimitAuto off, its key)
 //            [--ramp A]                                     and against a slow sweep at A rad/s^2 with the same brake
@@ -108,6 +108,8 @@ namespace
                 std::printf("  knock-limited, retard %.1f to %.1f deg", p.retardMin, p.retardMax);
             else if (p.knockRetard > 0.0)
                 std::printf("  knock %.1f deg", p.knockRetard);
+            if (p.boostHunting)
+                std::printf("  boost hunting (a mean over windows)");
             for (std::size_t k = 0; k < p.fields.size() && k < options.fields.size(); ++k)
                 std::printf("  %s %.5g", options.fields[k].c_str(), p.fields[k]);
             if (history)
@@ -157,7 +159,7 @@ int main(int argc, char** argv)
     tee::Sim::Options options;
     tee::DynoPlan plan;
     tee::PredictOptions predictOptions;
-    bool quiet = false, predictMode = false, history = false, bakeCam = false, bakeSpark = false;
+    bool quiet = false, predictMode = false, history = false, bakeCam = false, bakeSpark = false, refine = false;
     std::string saveFile;
     double rampRate = 0.0, repeat = 1.0;
     const auto number = [&](double& out) {
@@ -234,6 +236,8 @@ int main(int argc, char** argv)
             predictMode = true;
         else if (args.is("--bake-cam"))
             bakeCam = true;
+        else if (args.is("--refine"))
+            refine = true;
         else if (args.is("--bake-spark"))
             bakeSpark = true;
         else if (args.is("--save"))
@@ -259,6 +263,8 @@ int main(int argc, char** argv)
             ok = number(predictOptions.holdSeconds);
         else if (args.is("--min-hold"))
             ok = number(predictOptions.minHoldSeconds);
+        else if (args.is("--boost-hunt"))
+            ok = number(predictOptions.boostHuntSeconds);
         else if (args.is("--warmup-seconds"))
             ok = number(predictOptions.warmupSeconds);
         else if (args.is("--tolerance"))
@@ -371,14 +377,16 @@ int main(int argc, char** argv)
         bake.predict = predictOptions;
         if (bake.predict.points == tee::PredictOptions{}.points)
             bake.predict.points = bake.predict.coarse = 8;
+        bake.refine = refine;
         tee::CamBakeResult r;
         if (!tee::bakeIntakeCam(compiled, build, bake, r, errors))
         {
             std::fprintf(stderr, "tee-dyno: %s\n", errors.c_str());
             return 1;
         }
-        std::printf("intake cam baked by %zu curves in %.1f s (parked centreline %.1f deg); torque N m by advance:\n%8s",
-                    r.advances.size(), r.wallSeconds, r.parkedCentre, "rpm");
+        std::printf("intake cam baked by %zu curves in %.1f s (parked centreline %.1f deg; %d midpoints added as rows); "
+                    "torque N m by advance:\n%8s",
+                    r.advances.size(), r.wallSeconds, r.parkedCentre, r.added, "rpm");
         for (const double a : r.advances)
             std::printf(" %7.0f", a);
         std::printf("   best\n");
