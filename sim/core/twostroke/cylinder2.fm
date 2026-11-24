@@ -34,7 +34,7 @@
 #pragma once
 #include "exhaust/duct.fm"
 #include "core/kinematics.fm"
-#include "core/twostroke/spec2.fm"
+#include "spec/engine.fm"
 
 module TwoStrokeCylinder
 {
@@ -180,12 +180,12 @@ module TwoStrokeCylinder
 
     // The exhaust port's duration at a speed (rad/s): its own, or, with a power valve, the valve's shorter one below
     // `valveFrom`, rising smoothly to the port's own at `valveTo`
-    float exhaustDurAt(const TwoStrokeSpec* s, float omega)
+    float exhaustDurAt(const EngineSpec* s, float omega)
     {
-        if (s->valveDur <= 0.0f)
-            return s->exhaustDur;
-        const float k = fminf(fmaxf((omega - s->valveFrom) / fmaxf(s->valveTo - s->valveFrom, 1.0f), 0.0f), 1.0f);
-        return s->valveDur + (s->exhaustDur - s->valveDur) * k * k * (3.0f - 2.0f * k);
+        if (s->tsValveDur <= 0.0f)
+            return s->tsExhaustDur;
+        const float k = fminf(fmaxf((omega - s->tsValveFrom) / fmaxf(s->tsValveTo - s->tsValveFrom, 1.0f), 0.0f), 1.0f);
+        return s->tsValveDur + (s->tsExhaustDur - s->tsValveDur) * k * k * (3.0f - 2.0f * k);
     }
 
     // A window's area uncovered to a depth h (m) below its top edge: width w, its two top corners rounded to radius r
@@ -236,24 +236,24 @@ module TwoStrokeCylinder
     }
 
     // The cylinder for the spec and its geometry (m; the geometric compression ratio)
-    void setup(const TwoStrokeSpec* s, float boreIn, float strokeIn, float rodIn, float compressionIn)
+    void setup(const EngineSpec* s, float boreIn, float strokeIn, float rodIn, float compressionIn)
     {
         sc.setup(boreIn, strokeIn, rodIn, compressionIn);
-        sc.atDeg(180.0f - 0.5f * s->exhaustDur);
+        sc.atDeg(180.0f - 0.5f * s->tsExhaustDur);
         xE0 = sc.x;
-        sc.atDeg(180.0f - 0.5f * s->transferDur);
+        sc.atDeg(180.0f - 0.5f * s->tsTransferDur);
         xT = sc.x;
-        sc.atDeg(360.0f - 0.5f * s->pistonDur);
+        sc.atDeg(360.0f - 0.5f * s->tsPistonDur);
         xI = sc.x;
-        wE = s->exhaustWidth * boreIn;
-        wT = s->transferWidth * boreIn;
-        cd = s->portCd;
+        wE = s->tsExhaustWidth * boreIn;
+        wT = s->tsTransferWidth * boreIn;
+        cd = s->tsPortCd;
         dE = fmaxf(2.0f * sc.r - xE0, 1.0e-4f) / 64.0f;
         dT = fmaxf(2.0f * sc.r - xT, 1.0e-4f) / 64.0f;
-        windowTable(aTabE, 64.0f * dE, wE, s->exhaustRadius * wE);
-        windowTable(aTabT, 64.0f * dT, wT, s->transferRadius * wT);
-        exhaustEdge(s->exhaustDur);
-        vccMin = sc.vd / (s->crankcaseRatio - 1.0f);
+        windowTable(aTabE, 64.0f * dE, wE, s->tsExhaustRadius * wE);
+        windowTable(aTabT, 64.0f * dT, wT, s->tsTransferRadius * wT);
+        exhaustEdge(s->tsExhaustDur);
+        vccMin = sc.vd / (s->tsCrankcaseRatio - 1.0f);
         vccMax = vccMin + sc.vd;
         hA0 = 260.0f * (2.0f * sc.area + 3.14159265f * boreIn * 0.5f * strokeIn);
         lhv = 43.0e6f;
@@ -322,14 +322,14 @@ module TwoStrokeCylinder
     // the header's arriving wave (Pa over the air), impedance and gas temperature; the air's pressure and temperature
     // at the carburettor; the throttle (0 to 1); the exhaust's duration now (the power valve's); fire: 0 when the
     // ignition is cut (the spark does not come: the charge stays, unburned)
-    void step(const TwoStrokeSpec* s, float a, float dDeg, float dt, float rpm, float bE, float zE, float tPipe,
+    void step(const EngineSpec* s, float a, float dDeg, float dt, float rpm, float bE, float zE, float tPipe,
               float pAir, float tAir, float throttle, float exDur, int fire)
     {
         const float before = ang;
         ang = a;
         // the events: the exhaust port's closing traps the charge; the spark lights it
         const float epc = 180.0f + 0.5f * exDur;
-        const float sparkAt = 360.0f - s->spark;
+        const float sparkAt = 360.0f - s->tsSpark;
         if (passed(before, a, epc))
         {
             trapped = m;
@@ -344,7 +344,7 @@ module TwoStrokeCylinder
             lastMass = 0.0f;
             lastFresh = 0.0f;
         }
-        if (passed(before, a, 180.0f - 0.5f * s->transferDur))
+        if (passed(before, a, 180.0f - 0.5f * s->tsTransferDur))
         {
             delivered = deliveredNow;
             deliveredNow = 0.0f;
@@ -357,7 +357,7 @@ module TwoStrokeCylinder
             // reference's scatter from cycle to cycle: here the irregularity comes from the recursion alone)
             const float dil = 1.0f - fresh / fmaxf(m, 1.0e-9f);
             cBurn = fire != 0 ? 1.0f / (1.0f + expf((dil - 0.56f) / 0.035f)) : 0.0f;
-            qTot = cBurn * fresh / (1.0f + s->afr) * lhv * 0.9f;
+            qTot = cBurn * fresh / (1.0f + s->tsAfr) * lhv * 0.9f;
             freshSpark = fresh;
             if (cBurn < 0.5f)
                 misfires += 1;
@@ -375,15 +375,15 @@ module TwoStrokeCylinder
         const float aE = x > xE ? tableAt(aTabE, x - xE0, dE) - aCutE : 0.0f;
         const float aT = tableAt(aTabT, x - xT, dT);
         // the inlet: the carburettor's throttle and the reed (or disc) in series
-        const float aCarb = s->carbArea * (0.03f + 0.97f * fminf(fmaxf(throttle, 0.0f), 1.0f));
+        const float aCarb = s->tsCarbArea * (0.03f + 0.97f * fminf(fmaxf(throttle, 0.0f), 1.0f));
         float aValve = 0.0f;
-        if (s->inletKind == 0)
+        if (s->tsInletKind == 0)
         {
             // the reed: a sprung petal the drop across it pushes off its seat (fully open at reedFull, held there by
             // its stop), with its own ring and damping; it lands on its seat and its stop without bouncing
-            const float w0 = 6.2831853f * s->reedHz;
-            const float drive = (pAir - pc) / s->reedFull;
-            reedV += dt * (w0 * w0 * (drive - reed) - 2.0f * s->reedDamping * w0 * reedV);
+            const float w0 = 6.2831853f * s->tsReedHz;
+            const float drive = (pAir - pc) / s->tsReedFull;
+            reedV += dt * (w0 * w0 * (drive - reed) - 2.0f * s->tsReedDamping * w0 * reedV);
             reed += dt * reedV;
             if (reed < 0.0f)
             {
@@ -395,23 +395,23 @@ module TwoStrokeCylinder
                 reed = 1.0f;
                 reedV = fminf(reedV, 0.0f);
             }
-            aValve = s->inletArea * reed;
+            aValve = s->tsInletArea * reed;
         }
-        else if (s->inletKind == 2)
+        else if (s->tsInletKind == 2)
         {
             // a piston port: the skirt uncovers the inlet as the piston rises past xI (a window a quarter of the
             // stroke tall, judgement)
-            aValve = s->inletArea * fminf(fmaxf((xI - x) / (0.25f * 2.0f * sc.r), 0.0f), 1.0f);
+            aValve = s->tsInletArea * fminf(fmaxf((xI - x) / (0.25f * 2.0f * sc.r), 0.0f), 1.0f);
         }
         else
         {
-            float u = a - s->discOpen;
+            float u = a - s->tsDiscOpen;
             if (u < 0.0f)
                 u += 360.0f;
-            if (u < s->discDur)
+            if (u < s->tsDiscDur)
             {
-                const float f = u / s->discDur;
-                aValve = s->inletArea * fminf(fminf(f, 1.0f - f) * 6.0f, 1.0f);
+                const float f = u / s->tsDiscDur;
+                aValve = s->tsInletArea * fminf(fminf(f, 1.0f - f) * 6.0f, 1.0f);
             }
         }
         const float aIn = aValve > 1.0e-10f ? 0.85f / sqrtf(1.0f / (aCarb * aCarb) + 1.0f / (aValve * aValve)) : 0.0f;
@@ -424,7 +424,7 @@ module TwoStrokeCylinder
         const float kCc = gammaAt(tc) * pc / mc;
         mT = implicitFlow(orifice(pc, tc, p, t, aT, 0), pc - p, kCc + kCyl, dt);
         mI = implicitFlow(orifice(pAir, tAir, pc, tc, aIn, 0), pAir - pc, kCc, dt);
-        if (s->inletKind == 0)
+        if (s->tsInletKind == 0)
             mI = fmaxf(mI, 0.0f);          // (a reed shuts against a flow back)
         // the mixture's composition
         const float fcc = 1.0f - fminf(mcBurned / fmaxf(mc, 1.0e-9f), 1.0f);     // the crankcase's fresh share
@@ -436,7 +436,7 @@ module TwoStrokeCylinder
         {
             const float fin = dmT * fcc;
             dFresh += fin;
-            scRes += s->shortCircuit * fin;
+            scRes += s->tsShortCircuit * fin;
             deliveredNow += fin;
             dBurnedCc -= dmT * (1.0f - fcc);
         }
@@ -457,7 +457,7 @@ module TwoStrokeCylinder
             const float bulk = fmaxf(m - scRes, 1.0e-9f);
             const float burned = fmaxf(m - fresh, 0.0f);
             const float fMix = (fresh - scRes) / bulk;
-            float fOut = s->mixing * fMix;
+            float fOut = s->tsMixing * fMix;
             // (displacement sends the burned gas first; once there is none, what leaves is fresh)
             if (rest * (1.0f - fOut) > burned)
                 fOut = 1.0f - burned / fmaxf(rest, 1.0e-12f);
@@ -488,7 +488,7 @@ module TwoStrokeCylinder
         if (burnAt >= 0.0f)
         {
             burnAt += dDeg;
-            const float f = burnAt / s->burnDur;
+            const float f = burnAt / s->tsBurnDur;
             const float xb = 1.0f - expf(-5.0f * f * f * f);
             dq = qTot * (xb - xPrev);
             // what burns is no longer fresh

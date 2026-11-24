@@ -4,7 +4,7 @@
 
 const Known kKnown[] = {
     // id, date, owner, combo, build, scenario, check, what
-    {"X-002", "2026-11-24", "X (reducing)", "load, all on", "v8", "load", "tel-range",
+    {"X-002", "2026-11-24", "X (reducing)", "load, all on", "v8", "load", "tel-range:engine.bmep",
      "a build loaded over another with every switch on: tel.engine.bmep reaches -2.08 MPa (-20.8 bar), past the "
      "-20 bar bound for a pressure; being reduced to its package before it is reported"},
     {"X-003", "2026-11-24", "H (combustion and ECU)", "+fuel.model+ecu.model", "*", "cold", "*",
@@ -17,5 +17,10 @@ const Known kKnown[] = {
      "the same run: after the guard's restart the engine is off, so the car does not move"},
     {"X-004", "2026-11-24", "L / the final mix (via the lead)", "*", "turbo-six", "launch", "stall",
      "the same run: after the guard's restart the engine is off"},
+    {"X-005", "2026-11-24", "Q (sim/boost/)", "*", "*", "*", "tel-range:boost.intercoolerOut",
+     "tel.boost.intercoolerOut reads 0 K when no machine is in the path (boost.model 0, or no boost): it should read "
+     "the charge air's temperature"},
+    {"X-005", "2026-11-24", "Q (sim/boost/)", "*", "*", "*", "tel-range:boost.throttleIn",
+     "tel.boost.throttleIn reads 0 K when no machine is in the path, as intercoolerOut"},
     {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},   // the end (an array is never empty)
 };

@@ -13,7 +13,7 @@ TEST_CASE("sweep", "[.explore]")
     for (int chamber : {1, 0})
     {
         Rig rig;
-        rig.set("spec.chamber", chamber);
+        rig.set("spec.tsChamber", chamber);
         rig.build();
         std::printf("chamber %d, tuned length %.3f m\n", chamber, rig.get("eng.ch[0].tuned"));
         for (double rpm = 5000; rpm <= 16000; rpm += 1000)
@@ -52,7 +52,7 @@ TEST_CASE("scaled", "[.scaled]")
     for (double k : {0.8, 1.0, 1.25})
     {
         Rig rig;
-        for (const char* f : {"spec.headerLen", "spec.diffuserLen", "spec.bellyLen", "spec.baffleLen", "spec.stingerLen"})
+        for (const char* f : {"spec.tsHeaderLen", "spec.tsDiffuserLen", "spec.tsBellyLen", "spec.tsBaffleLen", "spec.tsStingerLen"})
             rig.set(f, rig.get(f) * k);
         rig.build();
         const double L = rig.get("eng.ch[0].tuned");
@@ -123,10 +123,10 @@ TEST_CASE("tuning", "[.tuning]")
     {
         Rig ch, an, st;
         for (Rig* r : {&ch, &an, &st})
-            for (const char* f : {"spec.headerLen", "spec.diffuserLen", "spec.bellyLen", "spec.baffleLen", "spec.stingerLen"})
+            for (const char* f : {"spec.tsHeaderLen", "spec.tsDiffuserLen", "spec.tsBellyLen", "spec.tsBaffleLen", "spec.tsStingerLen"})
                 r->set(f, r->get(f) * k);
-        st.set("spec.chamber", 0);
-        an.set("spec.chamber", 0);
+        st.set("spec.tsChamber", 0);
+        an.set("spec.tsChamber", 0);
         for (Rig* r : {&ch, &an, &st})
             r->build();
         an.set("eng.ch[0].anechoic", 1);
@@ -181,7 +181,7 @@ TEST_CASE("features", "[.features]")
         for (double hz : {550.0})
         {
             Rig r;
-            r.set("spec.reedHz", hz);
+            r.set("spec.tsReedHz", hz);
             r.build(800);
             char name[64];
             std::snprintf(name, sizeof name, "reed %.0f Hz", hz);
@@ -190,14 +190,14 @@ TEST_CASE("features", "[.features]")
         for (int kind : {1, 2})
         {
             Rig r;
-            r.set("spec.inletKind", kind);
+            r.set("spec.tsInletKind", kind);
             r.build(800);
             line(kind == 1 ? "disc" : "piston port", r, rpm);
         }
         for (double pv : {0.0, 170.0})
         {
             Rig r;
-            r.set("spec.valveDur", pv);
+            r.set("spec.tsValveDur", pv);
             r.build(800);
             line(pv > 0 ? "power valve 170" : "no power valve", r, rpm);
         }
@@ -210,9 +210,9 @@ TEST_CASE("stillsil", "[.stillsil]")
     for (C k : {C{0.026, 16, 1}, C{0.026, 0, 1}, C{0.026, 4, 1}, C{0.065, 10, 1}, C{0.065, 16, 1}, C{0.026, 16, 0}})
     {
         Rig rig;
-        rig.set("spec.silencerDiam", k.d);
-        rig.set("spec.silencerPack", k.pack);
-        rig.set("spec.silencer", k.sil);
+        rig.set("spec.tsSilencerDiam", k.d);
+        rig.set("spec.tsSilencerPack", k.pack);
+        rig.set("spec.tsSilencer", k.sil);
         rig.build();
         rig.method<void(void*, int, float, float, float, int)>("still")(rig.data(), int(Rig::kRate * 3.0), 180.0f, 4.0e5f, 1500.0f,
                                                                        int(Rig::kRate * 0.5));

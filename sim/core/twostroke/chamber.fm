@@ -27,10 +27,11 @@
 // set), the open end's radiation impedance (the reference's open-end filter is the exhaust package's).
 #pragma once
 #include "exhaust/duct.fm"
-#include "core/twostroke/spec2.fm"
+#include "spec/engine.fm"
 
 enum
 {
+    TS_MAX_STEPS = 16,      // stepped ducts a cone may be cut into
     TS_MAX_SEG = 2 * TS_MAX_STEPS + 5
 };
 
@@ -82,65 +83,65 @@ module ExpansionChamber
     }
 
     // The silencer after section i - 1: its packed can and its outlet; returns the sections now in use
-    int silence(const TwoStrokeSpec* s, int i, float cIn)
+    int silence(const EngineSpec* s, int i, float cIn)
     {
-        if (s->silencer == 0)
+        if (s->tsSilencer == 0)
             return i;
-        section(i, s->silencerLen, s->silencerDiam, cIn);
+        section(i, s->tsSilencerLen, s->tsSilencerDiam, cIn);
         // (the packing: silencerPack dB a pass from all that moves, the steady flow passing whole, as a gain on the
         // core's waves. Not the Duct's packing shelves: around its steady-flow tracker they pass up to 4 % more than
         // they take at some 25 Hz (16 dB of packing), and a pipe closed at the port and open at the outlet then rings
         // for ever when stopped; the same for its turbine's low-pass. Reported to card G.)
-        seg[i].extra(0.0f, expf(-0.11512925f * s->silencerPack), rate);
+        seg[i].extra(0.0f, expf(-0.11512925f * s->tsSilencerPack), rate);
         // a can (twice the stinger's bore or more) ends in an outlet tube of the stinger's bore; a straight-through
         // silencer's outlet is its own core
-        if (s->silencerDiam < 2.0f * s->stingerDiam)
+        if (s->tsSilencerDiam < 2.0f * s->tsStingerDiam)
             return i + 1;
-        section(i + 1, 0.08f, s->stingerDiam, cIn);
+        section(i + 1, 0.08f, s->tsStingerDiam, cIn);
         return i + 2;
     }
 
     // The pipe for a spec, its gas's sound speed (m/s). Clears every wave.
-    void build(const TwoStrokeSpec* s, float cIn)
+    void build(const EngineSpec* s, float cIn)
     {
         c = cIn;
-        const int k = s->coneSteps < 1 ? 1 : (s->coneSteps > TS_MAX_STEPS ? TS_MAX_STEPS : s->coneSteps);
-        if (s->chamber == 0)
+        const int k = s->tsConeSteps < 1 ? 1 : (s->tsConeSteps > TS_MAX_STEPS ? TS_MAX_STEPS : s->tsConeSteps);
+        if (s->tsChamber == 0)
         {
             // (in equal sections of at most 0.9 m: a duct holds at most a metre)
-            const float total = s->headerLen + s->diffuserLen + s->bellyLen + s->baffleLen + s->stingerLen;
+            const float total = s->tsHeaderLen + s->tsDiffuserLen + s->tsBellyLen + s->tsBaffleLen + s->tsStingerLen;
             const int k0 = (int)(total / 0.9f) + 1;
             for (int i = 0; i < k0; ++i)
-                section(i, total / (float)k0, s->headerDiam, c);
+                section(i, total / (float)k0, s->tsHeaderDiam, c);
             n = silence(s, k0, c);
             tuned = 0.0f;
         }
         else
         {
             int i = 0;
-            section(i, s->headerLen, s->headerDiam, c);
+            section(i, s->tsHeaderLen, s->tsHeaderDiam, c);
             i += 1;
             for (int j = 0; j < k; ++j)
             {
                 const float f = ((float)j + 0.5f) / (float)k;
-                section(i, s->diffuserLen / (float)k, s->headerDiam + f * (s->bellyDiam - s->headerDiam), c);
+                section(i, s->tsDiffuserLen / (float)k, s->tsHeaderDiam + f * (s->tsBellyDiam - s->tsHeaderDiam), c);
                 i += 1;
             }
-            if (s->bellyLen > 0.005f)
+            if (s->tsBellyLen > 0.005f)
             {
-                section(i, s->bellyLen, s->bellyDiam, c);
+                section(i, s->tsBellyLen, s->tsBellyDiam, c);
                 i += 1;
             }
             for (int j = 0; j < k; ++j)
             {
                 const float f = ((float)j + 0.5f) / (float)k;
-                section(i, s->baffleLen / (float)k, s->bellyDiam + f * (s->stingerDiam - s->bellyDiam), c);
+                section(i, s->tsBaffleLen / (float)k, s->tsBellyDiam + f * (s->tsStingerDiam - s->tsBellyDiam), c);
                 i += 1;
             }
-            section(i, s->stingerLen, s->stingerDiam, c);
+            section(i, s->tsStingerLen, s->tsStingerDiam, c);
             i += 1;
             n = silence(s, i, c);
-            tuned = s->headerLen + s->diffuserLen + s->bellyLen + 0.5f * s->baffleLen;
+            tuned = s->tsHeaderLen + s->tsDiffuserLen + s->tsBellyLen + 0.5f * s->tsBaffleLen;
         }
         aMean = 0.0f;
         out = 0.0f;
