@@ -230,7 +230,8 @@ TEST_CASE("targets: traction control on a wet road from rolling: more speed and 
             return s;
         };
         const tee::test::Run r = make(true).run(tm.end);
-        Verdict v = judge(r, tm, archetype("v8"), true, tc ? bangBaseline(make, tm) : baseline(make, tm));
+        // the new ECU cuts on a shift and traction control cuts the spark: both bang (the bang's bound)
+        Verdict v = judge(r, tm, archetype("v8"), true, bangBaseline(make, tm));
         const auto l = r.tel("car.wheelSlip[2]").during(6.5, 9.5), rr = r.tel("car.wheelSlip[3]").during(6.5, 9.5);
         slip[tc] = 0.5 * (l.mean() + rr.mean());
         speed[tc] = r.tel("car.speed").at(9.5);
