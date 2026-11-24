@@ -346,10 +346,13 @@ int main(int argc, char** argv)
                     std::printf("  %.2f", c.pedal);
                 std::printf(": %.2f %.1f %.1f %.0f%s", c.load, c.retardMean, c.retardTooth, c.torque,
                             c.valid ? "" : " (fault)");
+                if (c.corrections > 0)
+                    std::printf(" [x%d, residual %.1f, cell %.1f%s]", c.corrections, c.residual, c.limit,
+                                c.stillKnocking ? ", STILL KNOCKING" : "");
             }
             std::printf("\n");
         }
-        std::printf("degrees from best torque by load (atm; * extrapolated flat):\n%8s", "rpm");
+        std::printf("degrees from best torque by load (atm; * extrapolated flat, ! still knock-limited there):\n%8s", "rpm");
         for (const double y : r.loads)
             std::printf(" %6.2f", y);
         std::printf("\n");
@@ -357,7 +360,8 @@ int main(int argc, char** argv)
         {
             std::printf("%8.0f", rpm(r.speeds[s2]));
             for (std::size_t j = 0; j < r.loads.size(); ++j)
-                std::printf(" %5.1f%s", r.limit[s2][j], r.extrapolated[s2][j] ? "*" : " ");
+                std::printf(" %5.1f%s", r.limit[s2][j],
+                            r.stillKnocking[s2][j] ? "!" : r.extrapolated[s2][j] ? "*" : " ");
             std::printf("\n");
         }
         if (!saveFile.empty())
