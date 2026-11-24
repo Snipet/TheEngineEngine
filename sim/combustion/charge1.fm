@@ -1,0 +1,79 @@
+// charge1.fm: a gasoline charge as fuel.model 1 makes it, at a cylinder's intake valve closing, from explicit numbers:
+// what the carved Combustion module hands it (the cylinder's trapped mass and burned gas, its pressure and
+// temperature) and what the ECU decided for this firing (ecu1.fm's FIRE_*, the spark, lambda). It touches no other
+// module's state: the caller copies its outputs where they go (the cylinder's heat and burn length, the end gas, the
+// bangs' account, the lambda sensor, the injectors' meter).
+//
+// The heat: Mixture's (mixture.fm) at the lambda asked and the charge's oxygen, times the reference's share the gas
+// keeps (the walls and the unburned take the rest: 0.6 + 0.2 times the manifold over 1 atm, to 1.2) and the caller's
+// factor (the reference's dilution toll, its cycle-to-cycle spread and the ECU's trim, as charge() multiplies them).
+// What leaves unburned: a cut spark's whole charge (fuel and air); a cut fuel's air; a misfire's charge; a rich charge's
+// excess fuel and a lean one's excess air; and an overrun firing's charge (a stoichiometric one: the ECU fuels a share
+// of the overrun's firings, ecu1.fm) burned late: a spark after the top burns less of it in the cylinder, none of it 60
+// degrees after (judgement: the burn of some 50 degrees still running as the exhaust valve opens), the rest leaving to
+// burn, or not, in the pipe.
+#pragma once
+#include "mixture.fm"
+#include "knock.fm"
+
+enum
+{
+    CHARGE_BURN,        // as ecu1.fm's FIRE_* (the same numbers)
+    CHARGE_FUEL_CUT,
+    CHARGE_SPARK_CUT,
+    CHARGE_OVERRUN
+};
+
+module Charge1
+{
+    Mixture mix;
+    // what the last charge made
+    float heat;         // J the burn will release into the gas (the cylinder's qTot)
+    float burnK;        // the burn's length over the reference's
+    float fuel;         // kg injected (the injectors' meter)
+    float outFuel;      // kg of fuel and of air that leave unburned (the bangs' account)
+    float outAir;
+    float lambdaOut;    // the exhaust's lambda (the sensor's: a cut fuel's air reads 10)
+    float tEnd;         // the end gas's starting temperature (K: the charge's less the evaporation's cooling)
+    bool lit;           // it burns in the cylinder
+
+    // kind: the fuel's row; firing: CHARGE_*; air: the charge's burnable mass (kg: its mass less its burned gas);
+    // oxy: its oxygen over air's; lambda: asked; direct: the injection's share in the cylinder; t: the charge's
+    // temperature (K); share: the walls' share kept; factor: dilution, spread and trim; sparkAfter: degrees after the
+    // top the spark comes (negative before it); u: a uniform number in [0, 1) for the misfire's chance
+    void make(int kind, int firing, float air, float oxy, float lambda, float direct, float t, float share, float factor,
+              float sparkAfter, float u)
+    {
+        const int f = fuelRow(kind);
+        heat = 0.0f;
+        burnK = 1.0f;
+        fuel = 0.0f;
+        outFuel = 0.0f;
+        outAir = fmaxf(air, 0.0f);
+        lambdaOut = 10.0f;
+        tEnd = t;
+        lit = false;
+        if (firing == CHARGE_FUEL_CUT)
+            return;
+        const float lam = firing == CHARGE_OVERRUN ? 1.0f : lambda;
+        mix.set(kind, lam, air, oxy, direct);
+        fuel = mix.fuel;
+        lambdaOut = lam;
+        tEnd = t - mix.coolCyl;
+        burnK = mix.burnK;
+        if (firing == CHARGE_SPARK_CUT || u < mix.misfire)
+        {
+            outFuel = fuel;
+            return;
+        }
+        lit = true;
+        float inCyl = 1.0f;
+        if (firing == CHARGE_OVERRUN)
+            inCyl = fminf(fmaxf(1.0f - sparkAfter / 60.0f, 0.0f), 1.0f);
+        heat = mix.heat * share * factor * inCyl;
+        // what is not burned: the mixture's own leftover, the late burn's, and the air its fuel did not need
+        const float burned = (fuel - mix.unburned) * inCyl;
+        outFuel = fuel - burned;
+        outAir = fmaxf(air * oxy - burned * kFuelAfr[f], 0.0f);
+    }
+};
