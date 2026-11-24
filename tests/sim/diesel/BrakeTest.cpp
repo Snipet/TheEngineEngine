@@ -133,11 +133,13 @@ TEST_CASE("diesel brake: with a variable-vane turbo the brake shuts the vanes an
 {
     // card F's machine (boost.model 1), one turbo with variable vanes: the compression brake on High at 2000 rpm puts it in
     // its brake position (vanes shut, gate held shut). Real brakes run 3 to 3.5 bar absolute in the manifold there.
+    // With card G's exhaust network (exhaust.model 1) the turbine's back pressure reaches the cylinders.
     double kw[2] = {0.0, 0.0};
     const double sizeK = 1.6;    // (the matched size, 1, over-speeds its shaft on the brake: its relief opens the vanes at 2.5 bar)
     for (int k = 0; k < 2; ++k)
     {
         Engine e("truck-15l-six");
+        e.spec("exhaust.model", 1);     // (card G's network: the turbine's back pressure reaches the cylinders)
         e.spec("boost.model", 1);
         e.spec("boost.kind", 1);
         e.spec("boost.layout", 1);
@@ -157,5 +159,8 @@ TEST_CASE("diesel brake: with a variable-vane turbo the brake shuts the vanes an
         if (k == 1)
             CHECK(e.tel("engine.manifold") >= 300000.0);
     }
+    // published 15 L brakes ~450 kW at 2100 rpm (above); measured 406 kW at 2000 with the manifold at 3.4 bar
     CHECK(kw[1] > kw[0] + 150.0);
+    CHECK(kw[1] > 330.0);
+    CHECK(kw[1] < 550.0);
 }
