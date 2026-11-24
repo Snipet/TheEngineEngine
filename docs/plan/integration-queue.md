@@ -141,3 +141,53 @@ package's integration has landed.
 - **Card C**: array elements (`car.wheelSlip[2]`) as columns and assertions in a Scenario.
 - **I, later**: an automatic whose tyres spin shifts up on the flaring output speed and can shift down again when
   they hook up.
+
+## ~~The exhaust gas is too cool~~ (claimed by F at 14:33; **not reproduced, withdrawn 14:45**)
+
+**Withdrawn.** The integrator measured it (`tests/sim/core/EnergyExplore.cpp`): at full load on the dyno `exh.tPort`
+is 1100 to 1330 K (default V8 at 4000 rpm: 1214 K after 12 s; F's own turbo four: 1326 K), reached from near ambient
+with a 0.8 s time constant; one cylinder's balance: work 36 % of the fuel's energy, walls 11 % plus the reference's
+20 % cut at the burn, exhaust 38 %. F most likely read `tPort` in the first half second, or the gas after the
+pipes' cooling, or what its own stand-in hands the housings: F is checking and re-running the matched turbine. Kept
+from it: the balance becomes a test with bounds (D), the port temperature a validation target (C), and with the new
+models the 20 % cut moves into the wall heat (D with H, not urgent). What follows is the alarm as first written.
+
+
+At full throttle the reference's port gas (`exh.tPort`, from the cylinders' `eSum` / `mSum`) is 450 to 560 K; a
+real petrol engine's is 900 to 1100 K, a diesel's 700 to 1000 K. The work is right (BMEP 10.2 to 10.8 bar), so the
+heat goes somewhere else or the sum is not the gas's temperature. **D**: one cylinder's energy balance over a cycle on
+the dyno. **H**: the charge's energy against the fuel's heating value, the wall's share. **The lead's decision in
+principle**: with the new models on, the gas temperature is physical and validated; model 0 stays the reference.
+Depends on it: F's turbine matching (its tests use a turbine at 0.55 of the matched size), G's wave speeds and wall
+temperatures, H's overrun and anti-lag, C's validation (a target to add), U3's heat tints.
+
+## From F's integration (14:33)
+
+- **G**: the housing seam's per-sample calls in `sampleTick` step 4; remove `Boost::exhaustStandIn` when they go in.
+- **Q**: the boost machine costs 0.24 R against 0.12 R (the pipe-end solve's three passes; double volumes; the
+  sounds' noise at 96 kHz); `sim/boost/**` is Q's to change for cost now.
+- **U3**: the Spec, telemetry and Scope names (sent 14:35); the compressor's map comes from the Scope's arrays.
+
+## The lead's decision on non-exact optimisations (14:40, from Q's `docs/measurements/q2-levers.md`)
+
+The engine is chaotic: any change that is not exact to the bit decorrelates the waveform at the first sound (even
+the air nudged by 1e-4 K), so no sample-level tolerance can judge one. Rule: (1) a non-exact change is judged against
+the engine's own sensitivity, an ensemble of at least 8 harmlessly perturbed runs a null-test pair, measure by
+measure (band levels, speed trace, idle, steady dyno torque, clicks), and its long-term spectra and steady torque
+must agree far more tightly than the fast measures' floor; (2) it lives beside the exact code behind one switch for
+the whole program, off in the null test, on in the application only after it passed (1) and the owner has listened
+to named before-and-after pairs (in X's listening pack); (3) exact changes come first and need neither.
+FMinus's own levers give nothing: -O2 with denormals flushed stays; no `param` on the fuel and cycle switches.
+Later, for the shell: compile at -O0 (0.13 s) for a first sound and swap to -O2 at a part boundary.
+
+## Found 14:55: three of the four shipped builds stand in air at -40 degrees
+
+`content/builds/v8.json`, `v10.json` and `large-diesel.json` (the reference's presets, converted) carry
+`env.temperature` 233.15 K, the dial's lowest value; `default.json` carries 300 K. Air at 233 K is 28 % denser than
+at 300 K, so every figure measured on those three is a cold-day figure: the V8's 696 to 700 N m and 346 to 347 kW
+(card C's validation), the vehicle tests' drag (two had to state their air), the null test's pairs (which must keep
+the presets as they are). For content (package P) and the owner: is -40 meant, or was the dial left at its stop?
+Shipped builds should stand at 288 or 300 K; the reference's presets stay as they are under `content/ref/` and for
+the null test. Until settled, quote dyno figures with the build's air.
+- **E**: the contract test is red only on `spec.valve.valves`, `auxOn`, `stages`, `liftControl`, `liftThrottle`.
+- **D, done 14:42**: the car reads `spec.env`; the six values for the ECU forward from the vehicle model.

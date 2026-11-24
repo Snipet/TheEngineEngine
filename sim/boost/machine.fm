@@ -65,7 +65,7 @@
 #include "shaft.fm"
 #include "supercharger.fm"
 #include "sound.fm"
-#include "machinespec.fm"
+#include "spec/boost.fm"
 
 enum
 {
@@ -228,6 +228,7 @@ module BoostMachine
     float trailPr[BOOST_TRAIL];
     int trailAt;
     int trailTick;
+    int mapRev;         // counts rebuilds of the map's lines
     // sums for tests and means (seconds of energy and mass)
     double sumPt[BOOST_TURBOS];     // J the turbine gave
     double sumPc[BOOST_TURBOS];     // J the compressor took
@@ -356,7 +357,7 @@ module BoostMachine
 
     // The spec's section, read when its rev moves. A change of what the machine is (the kind, the arrangement, the
     // scrolls, the supercharger) rebuilds it at rest; the rest is taken as it comes.
-    void apply(BoostMachineSpec* s)
+    void apply(BoostSpec* s)
     {
         kind = s->kind;
         int lay = s->layout;
@@ -473,8 +474,8 @@ module BoostMachine
         {
             structure = st;
             reset();
-            mapLines();
         }
+        mapLines();
     }
 
     // ---- the exhaust's side ---------------------------------------------------------------------------------------
@@ -1189,6 +1190,7 @@ module BoostMachine
     // audio thread (in apply).
     void mapLines()
     {
+        mapRev += 1;
         BoostCompressor c = comp[0];
         const float a0 = sqrtf(1.4f * kBoostR * 293.15f);
         for (int l = 0; l < BOOST_LINES; ++l)

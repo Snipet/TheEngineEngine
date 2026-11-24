@@ -26,7 +26,13 @@
 #             whatever happens to the rest of the run.
 #
 # A push or a pull request that changes only files under docs/, or only *.md files, starts nothing (paths-ignore): no
-# build or test reads them. A push while a run is in flight waits for it, and replaces any push already waiting.
+# build or test reads them. Each platform queues on its own (the build job's concurrency group names the platform):
+# a platform's job in flight always finishes, and a newer push replaces only that platform's job still waiting, so a
+# slow platform (macOS, which may wait for a runner) never holds back the others' results. A run whose job was
+# replaced shows "cancelled" for that platform alone; scripts/ci-status.sh reads each platform's newest finished job.
+#
+# On Linux the preset's tree is built right after the configure, before the application: a compile error anywhere
+# fails the run in about three minutes instead of eight (every session's push lands here; docs/plan/01-rules.md §3).
 #
 # Each platform's run uploads what it built as an artefact, kept 14 days (tee-<platform>: the build's bin/ folder
 # without the test executables: tee-render, tee-bench, tee-headless and, when TEE_BUILD_APP is on, the application,
@@ -69,10 +75,7 @@ on:
 # nothing by default; each job asks for what it needs
 permissions: {}
 
-# a pull request's newer push replaces its run in flight; a branch's runs each finish (the newest waiting one is kept)
-concurrency:
-  group: build-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+# (the queue is the build job's, a platform at a time: see the comment at the top)
 
 jobs:
   # the platforms to build: every one, but by hand with `platforms`
@@ -115,6 +118,11 @@ jobs:
     timeout-minutes: 90
     permissions:
       contents: read
+    # a platform's job in flight finishes; only its newest waiting one is kept (a pull request's newer push replaces
+    # even the one in flight)
+    concurrency:
+      group: build-${{ github.ref }}-${{ matrix.platform }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
     strategy:
       fail-fast: false
       matrix:
@@ -256,6 +264,14 @@ jobs:
             cmd+=(-DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache)
           fi
           "${cmd[@]}"
+
+      # Linux: the preset's tree at once, so that a compile error anywhere (a header many include) fails the run here,
+      # in minutes; the Build step below then has nothing left to do there. The compiler cache's statistics start here.
+      - name: Build first (Linux), to fail fast on a compile error
+        if: runner.os == 'Linux'
+        run: |
+          ccache -z
+          cmake --build --preset "$PRESET" --parallel ${{ matrix.jobs }}
 
       # The application's own tree: the preset's settings with the window on, and neither the tools nor the tests
       # (the preset's tree builds and runs those). Before the sources are saved, so that bgfx's are among them.
@@ -501,7 +517,7 @@ jobs:
             du -sh "$SCCACHE_DIR" || true
             exit $rc
           fi
-          ccache -z
+          [ "$RUNNER_OS" = Linux ] || ccache -z   # Linux zeroed them before its first build
           rc=0; "${cmd[@]}" || rc=$?
           ccache -s
           exit $rc

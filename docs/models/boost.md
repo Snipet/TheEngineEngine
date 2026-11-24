@@ -6,7 +6,7 @@ Nobody here has heard any of it.*
 
 `boost.model = 0` is the reference's behavioural turbo (`Extras::turbo16` and its sounds), unchanged. `model = 1`
 replaces it with the model below. Until K3b lands, the model runs standalone on a made-up engine
-(`tests/sim/boost/rig.fm`); its Spec fields are in `sim/boost/machinespec.fm`, to be appended to `sim/spec/boost.fm`.
+(`tests/sim/boost/rig.fm`) and in the engine; its Spec fields are `spec.boost`'s from `model` on (`sim/spec/boost.fm`).
 
 ## Files
 
@@ -19,7 +19,6 @@ replaces it with the model below. Until K3b lands, the model runs standalone on 
 | `supercharger.fm` | `BoostSupercharger` | Roots and twin-screw |
 | `sound.fm` | `BoostSound` | the sources |
 | `machine.fm` | `BoostMachine` | the arrangement, the charge path, control, the seams |
-| `machinespec.fm` | `BoostMachineSpec` | the Spec fields (standalone stand-in for `spec.boost`) |
 
 ## Gases
 
@@ -128,6 +127,24 @@ Inlet (volume flow's rate of change x 0.02, as the reference's air box; rush; wh
 twelve a turn below 18 kHz, as phasors turned every 16 samples), vent (blow-off to air, purge), case (supercharger
 whine from pockets: 6 a Roots rotor turn, 4 a twin-screw male turn, 31 a centrifugal's gear; harmonics as the
 reference's, their fall-off from the pocket's pressure step), bang (anti-lag). Levels set beside the reference's.
+
+## In the engine
+
+`Boost` (`sim/boost/boost.fm`) holds the machine; `spec.boost.model` 1 switches to it (README, Boost). The exhaust side
+is a stand-in until card G's network ends its collectors in the housings: each sample's cylinder gas (mass and its
+temperature) is fed into the housings as a flow, the downpipes open ends. On the engine dyno at full load the 2 L
+four's port gas reaches 1190 to 1330 K (`exh.tPort`, settled after some 4 s), and the matched turbo holds its 70 kPa
+spring from 3500 rpm (EngineTest.cpp). Test at full load: the bench's `holdSpeed` driver holds a speed with almost no
+brake torque, and its gas stays near 560 K (an earlier reading of this file's author, now corrected).
+
+## Drawing the map elsewhere (the interface)
+
+The map is a function of the compressor's sizes alone; the Scope carries it as the simulator computes it
+(`scope.boostLine*`, `boostSurge*`, `boostContour*`, rebuilt when `boostMapRev` moves). To draw it without the Scope,
+mirror `BoostCompressor` (`sim/boost/compressor.fm`): `size(dInd, dEx, ar, etaPeak)` (matched sizes as `BoostMachine::apply`
+makes them when a size is 0), `speed(omega, 101325, 293.15)`, then `rise(phi)` (PR = (1 + tau)^3.5, flow = phi x mc)
+and `efficiency(phi)` for phi from `phiK` to 1 on each line; `BoostMachine::mapLines` is the loop, with the lines' tip
+Mach numbers 0.4 + 0.15 l and the contours' levels etaMax less 0.02, 0.05, 0.08, 0.12, 0.18.
 
 ## What the tests measured (standalone, `tee-tests-boost`)
 

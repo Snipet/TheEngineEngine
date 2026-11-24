@@ -49,7 +49,8 @@ set(TEE_UI_TESTS
   units button.click toggle.click stepper.click textfield.type list.select instruments plot.zoom curve.drag map.edit
   widgets.gallery
   fieldport fieldparams page.generated gui.auto gui.widgets page.split
-  display.tail)
+  display.tail
+  gui.element page.array)
 foreach(_t IN LISTS TEE_UI_TESTS)
   add_test(NAME ui.${_t} COMMAND tee-ui-tests ${_t})
 endforeach()
@@ -92,7 +93,7 @@ if(TARGET tee_ui_build)
     "TEE_UI_SIM_DIR=\"${TEE_UI_REPO}/sim\""
     "TEE_UI_BUILDS_DIR=\"${TEE_UI_REPO}/content/builds\""
     "TEE_UI_OUT_DIR=\"${TEE_UI_REPO}/out/ui\"")
-  foreach(_t build.frame build.set build.files build.dyno)
+  foreach(_t build.frame build.set build.files build.dyno build.scope)
     add_test(NAME ui.${_t} COMMAND tee-ui-build-tests ${_t})
   endforeach()
 endif()

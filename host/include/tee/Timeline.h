@@ -73,12 +73,22 @@ namespace tee
     bool parseTimeline(std::string_view json, std::string_view fileName, Timeline& timeline, std::string& error);
     bool loadTimeline(const std::filesystem::path& file, Timeline& timeline, std::string& error);
 
+    // A telemetry name: a field's path under tel ("engine.speed", "tel." optional), and for an array an element of it
+    // ("car.wheelSlip[2]", "engine.cylinderPeak[3]", "a.b[1][2]" for two dimensions). The field and the element's flat
+    // index. False, with `error`, for no such field, an array named without its element, an index outside the extent
+    // ("car.wheelSlip[7]: car.wheelSlip has 4 elements, 0 to 3"), or an index on a field that is no array.
+    bool telemetryElement(const Fields& fields, std::string_view name, const FieldInfo*& field, std::size_t& index,
+                          std::string& error);
+    // The name as a run's column is called: without "tel.", the indexes as written ("car.wheelSlip[2]").
+    std::string telemetryColumn(std::string_view name);
+
     struct RunOptions
     {
         double seconds = 0.0;      // 0: the timeline's
         bool keepAudio = true;
-        // Telemetry kept after every block: these tel paths ("engine.speed" or "tel.engine.speed"); empty: every
-        // number of the tel block (an array's elements are not kept).
+        // Telemetry kept after every block: these names ("engine.speed", "tel.engine.speed", an element
+        // "car.wheelSlip[2]": telemetryElement); empty: every number of the tel block, and each element of every array
+        // of at most 64 (a column "car.wheelSlip[2]" each).
         std::vector<std::string> telemetry;
         // Called after every block with the newest frame (the dyno reads its points through it). May be empty.
         std::function<void(double time, const TelemetryFrame&)> afterBlock;

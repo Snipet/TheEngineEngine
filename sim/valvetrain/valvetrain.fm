@@ -1,33 +1,81 @@
 // valvetrain/valvetrain.fm: the valves (module Valvetrain). Owner: package E.
 //
-// Each cylinder's valve events and how much each valve lets through: the reference's one CAM dial (smoothed over
-// 80 ms), from a mild cam (224 degrees each, 112 apart) to a wild one (300, 106: a long overlap), two valves each whose
-// curtain at full lift with its discharge coefficient is some 9 % of the piston's area for the exhaust, 12 % for the
-// intake; a rotary's peripheral exhaust port and side intake ports. The lift's shape over an event is one table for
-// all (kCamArea, core/cylinder.fm: flowArea(lift) tabulated), which the cylinder reads by its events.
-// What it leaves out: phasers, variable lift, stages, valve float (package E's).
+// Each cylinder's valve events and how much each valve lets through, by one of two models (spec.valve.model):
+//
+// 0, the reference's (the default, the null test's): the one CAM dial (smoothed over 80 ms), from a mild cam (224
+// degrees each, 112 apart) to a wild one (300, 106: a long overlap), two valves each whose curtain at full lift with its
+// discharge coefficient is some 9 % of the piston's area for the exhaust, 12 % for the intake; a rotary's peripheral
+// exhaust port and side intake ports. The lift's shape over an event is one table for all (kCamArea,
+// core/cylinder.fm: flowArea(lift) tabulated), which the cylinder reads by its events.
+//
+// 1, card E's lab (lab.fm; docs/models/valvetrain.md): cams from what a person specifies, areas from the head's
+// valves, phasers, two stages, continuous lift, deactivation, free valves, a second exhaust event, float, the flow
+// bench. Its tables are per cylinder's choice of profile; it writes each cylinder's event angles every 16 samples
+// (the main events, phased, of the tables it reads), so the cylinder's own events (evoNow, ivcNow) follow them. A
+// rotary keeps the reference's ports whatever the model.
+//
+// The model is taken where the events are made (events: at configure, under the fade, and when the CAM dial or the
+// bore moves); the lab's other fields are taken on the tick after their section's rev moves (apply).
 //
 //   smCam, lastCam          the dial as heard, and as the events were last made (Engine glides smCam every 16 samples
 //                           and calls events when it moved by 0.0005)
-//   events(cyl, n, rotary, cyc, bore, vTotal)   the events and areas of the n cylinders at cyl
+//   apply(spec)             the section, when its rev moved (Engine::readSpec)
+//   events(cyl, n, rotary, cyc, bore, vTotal)   the events and areas of the n cylinders at cyl (configure, the dial)
+//   oil(pressure, temperature), then control16(d16, omega, redline, load, theta, fire, inTarget, exTarget, lift)
+//                           every 16 samples, with valve.model 1 (the integrator's hooks)
+//   areaEx(cy, c, a), areaIn(cy, c, a)   each sample, with valve.model 1: the area (m^2) cylinder c's valves open at
+//                           its angle a
+//   active(c)               does cylinder c fire this cycle (no: deactivated)
+//   plateOpen()             1: the lift is the load control, the throttle's plate is to stand open
+//   liftEx(c, a), liftIn(c, a)   the lift at an angle, 0 to 1 of the valve's largest (the Scope)
+//   telemetry(t)            tel.valve
 #pragma once
 #include "core/cylinder.fm"
+#include "spec/valve.fm"
+#include "spec/telemetry.fm"
+#include "valvetrain/lab.fm"
 
 module Valvetrain
 {
     float smCam;
     float lastCam;
+    int model;          // in use: 0 the reference's, 1 the lab
+    int nCyl;
+    int rotary;
+    float cycNow;
+    float boreNow;
+    Cylinder* cyl;      // the engine's cylinders (events sets it)
+    ValveSpec* spec;    // the section (apply sets it)
+    int haveSpec;
+    ValveLab lab;
+    float ang[MAX_CYL];
+    float clatter;      // 0 to 1: how hard the valves land while they float, for the sound
+    float inTarget;     // the phasers' targets as last asked (-1: the lab's schedule)
+    float exTarget;
 
-    // The cams: how long the valves open and how much they overlap (the cam dial), and the valves' areas
-    void events(Cylinder* cyl, int n, int rotary, float cyc, float bore, float vTotal)
+    // spec.valve, when its rev moved: the lab takes what changed (one table a tick), if it is the model in use
+    void apply(ValveSpec* s)
     {
+        spec = s;
+        haveSpec = 1;
+        if (model == 1 && s->model == 1)
+            lab.apply(s, 0);
+    }
+
+    // The cams: how long the valves open and how much they overlap, and the valves' areas
+    void events(Cylinder* cylIn, int n, int rotaryIn, float cyc, float bore, float vTotal)
+    {
+        cyl = cylIn;
+        nCyl = n;
+        rotary = rotaryIn;
+        cycNow = cyc;
         const float c = smCam;
         lastCam = c;
         const float ap = 0.785398f * bore * bore;
         for (int k = 0; k < n; ++k)
         {
-            Cylinder* cy = &cyl[k];
-            if (rotary != 0)
+            Cylinder* cy = &cylIn[k];
+            if (rotaryIn != 0)
             {
                 // peripheral exhaust port, side intake ports (degrees of the eccentric shaft; the face fires at 0)
                 cy->evo = 195.0f - 25.0f * c;
@@ -55,30 +103,158 @@ module Valvetrain
             cy->sparkAt = cyc - 20.0f;
             cy->burnDur = 50.0f;
         }
+        // the lab: taken here, where the engine makes its events (configure, under the fade)
+        const int want = haveSpec != 0 && rotaryIn == 0 && spec->model == 1 ? 1 : 0;
+        if (want == 1 && (model == 0 || bore != boreNow || n != lab.nCyl))
+        {
+            lab.setup(bore, n, cyc);
+            if (model == 0)
+                lab.reset();
+            lab.apply(spec, 1);
+        }
+        model = want;
+        boreNow = bore;
+        if (model == 1)
+            place();
     }
 
-    // ---- the integrator's hooks (sim/README.md): called only with valve.model 1; card E fills them. Until then they
-    // give the reference's own areas and do nothing ----
-    // cylinder c's exhaust and intake valves' effective areas (m^2) at its angle a
+    // The lab's events into the cylinders: the main events of the tables each reads (they detect their events by
+    // them), and their areas at full lift
+    void place()
+    {
+        for (int k = 0; k < nCyl; ++k)
+        {
+            Cylinder* cy = &cyl[k];
+            AreaTable* ti = lab.inTable(k);
+            AreaTable* te = &lab.tab[lab.useEx[k]];
+            cy->evo = te->openNow;
+            cy->edur = te->span;
+            cy->ivo = ti->openNow;
+            cy->idur = ti->span;
+            cy->aE = te->peak;
+            cy->aI = ti->peak;
+        }
+    }
+
+    // Every 16 samples: the lab's phasers, stages, lift, deactivation and float. theta: the crank's angle (degrees),
+    // fire: each cylinder's offset; load 0 to 1; the oil's pressure (Pa over the air) and temperature (K); the ECU's
+    // targets (-1: none)
+    // (the ECU's lift command: one of 0 or less is none until card H's Ecu gives one: its stub's 0)
+    void control16(float d16, float omega, float redline, float load, float theta, float* fire, float inT, float exT,
+                   float liftCmd)
+    {
+        const float liftT = liftCmd > 0.0f ? liftCmd : -1.0f;
+        inTarget = inT;
+        exTarget = exT;
+        if (model == 0)
+            return;
+        for (int k = 0; k < nCyl; ++k)
+        {
+            float a = theta + fire[k];
+            while (a >= cycNow)
+                a -= cycNow;
+            ang[k] = a;
+        }
+        lab.control(d16, omega, redline, load, pOil, tOil, &ang[0], inT, exT, liftT);
+        clatter = lab.clatter;
+        place();
+    }
+
+    // ---- each sample (the integrator's hook, called with valve.model 1): cylinder c's valves' areas (m^2) at its angle
+    // a; the reference's until the lab is taken (events) ----
     float areaEx(Cylinder* cy, int c, float a)
     {
-        const float le = cy->areaAt(a, cy->evo, cy->edur);
-        return le > 0.0f ? cy->aE * le : 0.0f;
+        if (model == 0)
+        {
+            const float le = cy->areaAt(a, cy->evo, cy->edur);
+            return le > 0.0f ? cy->aE * le : 0.0f;
+        }
+        return lab.areaEx(c, a);
     }
 
     float areaIn(Cylinder* cy, int c, float a)
     {
-        const float li = cy->areaAt(a, cy->ivo, cy->idur);
-        return li > 0.0f ? cy->aI * li : 0.0f;
+        if (model == 0)
+        {
+            const float li = cy->areaAt(a, cy->ivo, cy->idur);
+            return li > 0.0f ? cy->aI * li : 0.0f;
+        }
+        return lab.areaIn(c, a);
     }
 
-    // the oil's pressure (Pa over the air) and temperature (K), every 16 samples
+    // The oil's pressure (Pa over the air) and temperature (K), every 16 samples before control16 (the hook)
+    float pOil;
+    float tOil;
+
     void oil(float pressure, float temperature)
     {
+        pOil = pressure;
+        tOil = temperature;
     }
 
-    // every 16 samples: the ECU's cam target (crank degrees; -1 the valvetrain's own schedule) and lift command
-    void control16(float d16, float camTarget, float lift)
+    bool active(int c)
     {
+        return model == 0 || lab.active(c);
+    }
+
+    int plateOpen()
+    {
+        return model == 1 ? lab.plateOpen() : 0;
+    }
+
+    // The lift (0 to 1 of the valve's largest) at angle a: the Scope's
+    float liftEx(int c, float a)
+    {
+        if (model == 0)
+            return cyl[c].lift(a, cyl[c].evo, cyl[c].edur);
+        return lab.liftAt(lab.useEx[c], a) / fmaxf(fmaxf(lab.cam[VT_EX_A].lift, lab.cam[VT_EX_B].lift), 1.0e-6f);
+    }
+
+    float liftIn(int c, float a)
+    {
+        if (model == 0)
+            return cyl[c].lift(a, cyl[c].ivo, cyl[c].idur);
+        if (lab.offIn[c] != 0)
+            return 0.0f;
+        const float top = fmaxf(fmaxf(lab.cam[VT_IN_A].lift, lab.cam[VT_IN_B].lift), 1.0e-6f);
+        if (lab.liftOn != 0)
+            return lab.liftLive(a) / top;
+        return lab.liftAt(lab.useIn[c], a) / top;
+    }
+
+    void telemetry(ValveTel* t)
+    {
+        if (model == 0)
+        {
+            if (nCyl > 0)
+            {
+                t->ivo = cyl[0].ivo;
+                t->ivc = vtWrap(cyl[0].ivo + cyl[0].idur, cycNow);
+                t->evo = cyl[0].evo;
+                t->evc = vtWrap(cyl[0].evo + cyl[0].edur, cycNow);
+            }
+            t->active = (1 << nCyl) - 1;
+            return;
+        }
+        t->inPhaseTarget = lab.phIn.target;
+        t->inPhase = lab.phIn.phase;
+        t->exPhaseTarget = lab.phEx.target;
+        t->exPhase = lab.phEx.phase;
+        t->stage = lab.stageWant;
+        t->lift = lab.liftOn != 0 ? lab.liftCmd : 1.0f;
+        t->active = lab.activeMask;
+        t->floating = lab.floating;
+        t->floatSpeed = lab.flt.omegaIn;
+        t->ivo = lab.showIvo;
+        t->ivc = lab.showIvc;
+        t->evo = lab.showEvo;
+        t->evc = lab.showEvc;
+        t->overlap = lab.overlap1mm;
+        for (int i = 0; i < VT_BENCH; ++i)
+        {
+            t->benchLift[i] = lab.bench.lift[i];
+            t->benchIntake[i] = lab.bench.flowIn[i];
+            t->benchExhaust[i] = lab.bench.flowEx[i];
+        }
     }
 };

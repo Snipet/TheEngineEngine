@@ -1,7 +1,12 @@
-// spec/sound.fm: where the engine is heard from, and how (spec.sound). Owner: wave 2 (the lead until then).
+// spec/sound.fm: where the engine is heard from, and how (spec.sound). Owner: package L (the listener).
 //
 // The reference's VIEW, DISTANCE, ROOM, LEVEL, INTAKE and MECHANICAL dials. A new view is taken under the fade (12 ms
 // back up); the distance, the room and the level glide; intake and mechanical act at once.
+//
+// Package L's fields (after `mechanical`), read only with `model` 1 (docs/models/listen.md): the camera (a new one is
+// crossfaded in over 250 ms, the engine's fade untouched), the place (its reflections faded over some 20 ms), the
+// engine's place on the car, the windows and the ground glide or act at once; DISTANCE moves the camera (at a walking
+// speed: the pitch bends at most 2.3 % while the dial moves); VIEW is not read (CAMERA's first five are its views).
 #pragma once
 
 module SoundSpec
@@ -18,4 +23,18 @@ module SoundSpec
         [[ui::help("The intake's level against the exhaust")]];
     float mechanical [[fminus::range(0, 1)]] [[fminus::default(0.4)]] [[ui::label("Mechanical")]]
         [[ui::quantity("fraction")]] [[ui::help("The valvetrain's, the block's and the combustion's level")]];
+    int model [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Listener")]]
+        [[ui::choices("Reference", "Places")]]
+        [[ui::help("Reference: the five views as they were. Places: every source where it is on the car, heard by its paths")]];
+    int camera [[fminus::range(0, 6)]] [[fminus::default(0)]] [[ui::label("Camera")]]
+        [[ui::choices("Tailpipe", "Rear", "Side", "Engine bay", "Driver", "Trackside", "Chase")]];
+    int place [[fminus::range(0, 4)]] [[fminus::default(0)]] [[ui::label("Place")]]
+        [[ui::choices("Hall", "Field", "Street", "Tunnel", "Garage")]]
+        [[ui::help("Hall: the reference's room; the others their own reflections and reverberation")]];
+    int enginePlace [[fminus::range(0, 2)]] [[fminus::default(0)]] [[ui::label("Engine place")]]
+        [[ui::choices("Front", "Mid", "Rear")]];
+    float windows [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Windows")]] [[ui::quantity("fraction")]]
+        [[ui::help("How far open: shut, the cabin hears the outside through its floor, firewall and glass")]];
+    int ground [[fminus::range(0, 2)]] [[fminus::default(0)]] [[ui::label("Ground")]]
+        [[ui::choices("Asphalt", "Grass", "None")]] [[ui::help("What the ground reflects: the comb outdoor sound has")]];
 };

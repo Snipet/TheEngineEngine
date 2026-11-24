@@ -347,7 +347,10 @@ TEST_CASE("nothing on the audio thread allocates, and the host's own work in a b
         AllocationCounter::countThisThread(false);
         host.service();
     }
-    CHECK(AllocationCounter::count() - before == 0);
+    if (AllocationCounter::available())
+        CHECK(AllocationCounter::count() - before == 0);
+    else
+        WARN("allocations on the audio thread not counted here (Windows or ThreadSanitizer): that part is skipped");
     TelemetryFrame t;
     REQUIRE(host.telemetry(t));
     UNSCOPED_INFO("host's own work a block of 512: mean " << t.host.hostMicrosMean << " us, peak " << t.host.hostMicrosPeak
@@ -429,7 +432,10 @@ TEST_CASE("a made-up audio thread in a tight loop while another thread sets ten 
     done = true;
     audio.join();
     reader.join();
-    CHECK(audioAllocations.load() == 0);
+    if (AllocationCounter::available())
+        CHECK(audioAllocations.load() == 0);
+    else
+        WARN("allocations on the audio thread not counted here (Windows or ThreadSanitizer): that part is skipped");
     CHECK(spreads.load() == 0);
     TelemetryFrame t;
     REQUIRE(host.telemetry(t));

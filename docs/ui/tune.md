@@ -29,7 +29,8 @@ selects its part of the ECU (`ecu.limiter`, `ecu.launch`, ...); a lane its secti
 
 ## What is derived
 
-The trail and slices are the map read where the telemetry puts the engine. Bake copies `scope.baked*` into the table
-and turns the formula off: nothing else is computed here.
+The trail and slices are the map read where the telemetry puts the engine. BAKE asks the simulator for a bake (`FrameServices::bakeMaps`,
+`ctl.bakeMaps`) and, when the Scope's `bakeCount` moves, copies `scope.baked*` into the table and turns the formula
+off, one step of undo; with no way to ask it copies the newest bake there is. Nothing else is computed here.
 
 Tests: `ui.tune.stage`, `ui.tune.large` (with `tune.paper`), `ui.tune.edit`, `ui.tune.inspector`, `ui.tune.absent`.

@@ -5,14 +5,23 @@
 // redline it has (the layout's, moved by the dials, a cold engine's fast idle), the driver that holds a speed (the
 // reference's key driver; holdSpeed), the throttle plate following the pedal, the idle valve holding the idle, the
 // spark's quick trim against a sagging or a running-up speed, the dashpot, the rev limiter, the fuel cut on the
-// overrun, the knock retard, a stall. What it leaves out: maps (package H adds them), closed-loop fuel, a diesel's own
-// governor curve (its droop is the burn's: combustion/combustion.fm).
+// overrun, the knock retard, a stall. What it leaves out: closed-loop fuel, a diesel's own governor curve (its droop is
+// the burn's: combustion/combustion.fm).
+//
+// ecu.model 1 (card H, docs/models/ecu.md): the same state, key and speed, the same driver for a held speed, and then
+// Ecu1 (ecu1.fm) in place of the rest: the maps, the idle, the limiter's kinds, launch and flat-shift, the overrun's
+// fuelling, knock control by cylinder, traction, anti-lag and nitrous, the bangs' fuel account; it writes the same
+// outputs the engine reads (the plate, the idle valve, the trim, the idle and the redline, the cuts' flags), its
+// telemetry (tel.ecu) and its baked maps (the Scope, on ctl.bakeMaps). Under ecu.model 0 none of it runs.
 //
 //   targetOf(note, ...)     the speed a key asks for
 //   sense(...)              every 16 samples, first
 //   driver(...)             every 16 samples: the key driver's pedal
 //   control(...)            every 16 samples, after the vehicle: the rest; true when the engine has come to rest
 #pragma once
+#include "ecu1.fm"
+#include "combustion/fuels.fm"
+#include "combustion/watch.fm"
 
 module Ecu
 {
@@ -51,6 +60,57 @@ module Ecu
     float offHold;      // seconds the start key has been held while it ran (a second switches it off)
     bool offArmed;      // that key went down while it ran
     float kRet;         // the spark its ECU has taken back for knock, degrees
+    // ecu.model 1 (card H)
+    Ecu1 one;
+    EcuIn in1;
+    LambdaSensor sensor;    // the collector's lambda sensor and the injectors' meter (Combustion tells them each firing)
+    InjectorMeter meter;
+    BurnWatch watch;        // cylinder 1's burn (Combustion feeds it each sample)
+    int wired;              // setup() ran: the pointers below are set
+    EcuSpec* spec;
+    FuelSpec* fuelSpec;
+    Controls* ctl;
+    EcuTel* tel;
+    Scope* scope;
+    Heat* heatP;
+    float idleBaseIn;   // what sense() was given: the layout's idle and redline with their dials
+    float redBaseIn;
+    float camIn;
+    int lastGear;
+    int bakeSeen;
+    float lastFuel;     // the fuel of the last firing, kg (the injectors' duty)
+    int cylinders;
+    float vSlip;        // the vehicle's values (vehicle()), and whether it has given them
+    float vSpeed;
+    int vGear;
+    int vUp;
+    int vUpSeen;
+    float vCut;
+    float vBlip;
+    int vSeen;
+
+    // In init: the Spec's sections and blocks ecu.model 1 reads and writes
+    void setup(float d16, EcuSpec* specIn, FuelSpec* fuelIn, Controls* ctlIn, EcuTel* telIn, Scope* scopeIn, Heat* heatIn)
+    {
+        spec = specIn;
+        fuelSpec = fuelIn;
+        ctl = ctlIn;
+        tel = telIn;
+        scope = scopeIn;
+        heatP = heatIn;
+        wired = 1;
+        one.setup(d16);
+        one.reset();
+        sensor.setup(d16);
+        meter.setup(d16);
+        bakeSeen = ctlIn->bakeMaps;
+    }
+
+    // ecu.model 1 is in force
+    bool model1()
+    {
+        return wired != 0 && spec->model == 1;
+    }
 
     // The speed a key asks for: across the keyboard from idle (C2) to the redline (C6), or (DRIVE PITCH) the speed at
     // which the engine's firing is the note's pitch
@@ -79,6 +139,9 @@ module Ecu
         rpmAvg += (rpm - rpmAvg) * (1.0f - expf(-d16 / 0.035f));
         rpmRate += ((rpmAvg - rpmLast) / d16 - rpmRate) * (1.0f - expf(-d16 / 0.05f));
         rpmLast = rpmAvg;
+        idleBaseIn = idleBase + idleDial;
+        redBaseIn = redBase + redlineDial;
+        camIn = cam;
     }
 
     // Every 16 samples: the driver, aiming at the newest key's speed as hard as the key was struck (MODE_BENCH: the
@@ -111,8 +174,8 @@ module Ecu
     // (modwheel, pressure: MODE_BENCH's), the plate, the idle valve, the spark's trim, the dashpot, the limiter, the cuts
     // (shiftCut: the vehicle's upshift), the state (gear, clutch: driven, the starter's clutch switch). True when the
     // engine has just come to rest (the crank's speed is then 0)
-    bool control(float d16, float pedIn, int drive, float modwheel, float pressure, float rpm, int fuelUse, float warm,
-                 bool shiftCut, int gear, float clutch, float omega)
+    bool control0(float d16, float pedIn, int drive, float modwheel, float pressure, float rpm, int fuelUse, float warm,
+                  bool shiftCut, int gear, float clutch, float omega)
     {
         float ped = fmaxf(pedIn, fmaxf(modwheel, pressure));
         if (state != 2)
@@ -209,36 +272,182 @@ module Ecu
         return false;
     }
 
-    // ---- the integrator's hooks (sim/README.md): called only with the asking package's model 1; card H fills them ----
-    // the cam's target (crank degrees; -1: the valvetrain's own schedule) and the lift command (0 to 1), for card E
+    // Every 16 samples, after the vehicle: the reference's control (control0) and, under ecu.model 1, Ecu1 over it.
+    // manifold: the plenum (Pa); carSpeed: the car's (m/s; 0 on the bench); gasT: the exhaust's gas where its bangs
+    // light (K). True when the engine has just come to rest
+    bool control(float d16, float pedIn, int drive, float modwheel, float pressure, float rpm, int fuelUse, float warm,
+                 bool shiftCut, int gear, float clutch, float omega, float manifold, float carSpeed, float gasT)
+    {
+        const float plateWas = throttle;
+        const bool rest = control0(d16, pedIn, drive, modwheel, pressure, rpm, fuelUse, warm, shiftCut, gear, clutch, omega);
+        if (model1())
+            control1(d16, drive, fuelUse, warm, gear, clutch, omega, manifold, carSpeed, gasT, plateWas);
+        return rest;
+    }
+
+    // ecu.model 1: Ecu1 from what the reference's control left (the state, the pedal, the speed), its outputs over the
+    // reference's
+    void control1(float d16, int drive, int fuelUse, float warm, int gear, float clutch, float omega, float manifold,
+                  float carSpeed, float gasT, float plateWas)
+    {
+        EcuIn* in = &in1;
+        in->omega = omega;
+        in->manifold = manifold;
+        in->ambient = 101325.0f;
+        in->loadByPedal = false;
+        in->pedal = pedal;
+        in->clutch = drive != 0 ? clutch : 0.0f;
+        in->launchButton = (ctl->buttons & BTN_LAUNCH) != 0;
+        in->nitrousButton = (ctl->buttons & BTN_NITROUS) != 0;
+        in->gear = drive != 0 ? gear : 0;
+        in->upshift = drive != 0 && (vSeen != 0 ? vUp != vUpSeen : gear > lastGear && lastGear > 0);
+        vUpSeen = vUp;
+        lastGear = in->gear;
+        in->carSpeed = vSeen != 0 && drive != 0 ? fabsf(vSpeed) : carSpeed;
+        in->slip = vSeen != 0 && drive != 0 ? vSlip : 0.0f;
+        in->dogCut = vSeen != 0 && drive != 0 ? vCut : 0.0f;
+        // (a downshift's blip: the crank speed card I asks; the plate the reference's paddle blip gives toward it)
+        in->blip = vSeen != 0 && drive != 0 && vBlip > 0.0f ? fminf(fmaxf((vBlip * 9.5492966f - rpmAvg) * 0.002f, 0.0f), 1.0f) : 0.0f;
+        in->coolant = heatP->tCool;
+        in->warm = warm;
+        in->key = 1;
+        in->external = true;
+        in->stateIn = state;
+        in->mayStart = true;
+        in->holdSpeed = 0.0f;                              // the reference's driver (driver()) holds it: in pedal
+        in->driven = drive != 0;
+        in->gasoline = fuelUse == 0;
+        in->idleBase = idleBaseIn;
+        in->redBase = redBaseIn;
+        in->cam = camIn;
+        in->timing = spec->timing;
+        in->gasT0 = gasT;
+        in->gasT1 = gasT;
+        in->afr = kFuelAfr[fuelRow(fuelSpec->model == 1 ? fuelSpec->grade : (fuelUse != 0 ? FUEL_DIESEL : FUEL_REGULAR))];
+        in->cylinders = cylinders;
+        one.maps.tune.maxLoad = 1.0f;
+        one.maps.tune.gears = 6;
+        one.control(in, spec, d16);
+        // its outputs over the reference's
+        throttle = plateWas + (one.plate - plateWas) * (1.0f - expf(-d16 / 0.03f));
+        idleRpm = one.idle.target;
+        redRpm = fmaxf(redBaseIn, idleRpm + 1500.0f);
+        if (fuelUse == 0)
+        {
+            bypass = one.bypass;
+            trim = one.trim;
+            limiting = one.limiter.active;
+            dfco = one.overrun.on;
+            fuelCut = one.fuelCut || dfco;
+        }
+        kRet = one.knock.most;
+        // the sensors
+        sensor.control(2 * cylinders);
+        meter.control(lastFuel, fuelSpec->injector, omega, 720.0f, d16);
+        // the bake
+        if (ctl->bakeMaps != bakeSeen)
+        {
+            bakeSeen = ctl->bakeMaps;
+            bake();
+        }
+        // the telemetry
+        tel->advanceAsked = one.spark;
+        tel->advance = one.sparkFor;
+        for (int c = 0; c < MAX_CYL; ++c)
+            tel->knockByCylinder[c] = one.knock.retard[c];
+        tel->knock = one.knock.count;
+        tel->lambdaTarget = one.lambda;
+        tel->lambda = sensor.seen;
+        tel->injectorDuty = meter.duty;
+        tel->fuelFlow = meter.flow;
+        tel->halfBurn = watch.lastHalf;
+        tel->peakPressure = watch.lastPeak;
+        tel->peakAngle = watch.lastPeakAt;
+        tel->flags = one.flags;
+        tel->idleValve = bypass;
+        tel->idleTarget = idleRpm * 0.10471976f;
+        tel->boostTarget = one.boost;
+        tel->state = state;
+        tel->smoke = 0.0f;
+        tel->limiter = (one.flags & (ECU_FLAG_LIMITER | ECU_FLAG_LAUNCH | ECU_FLAG_FLAT_SHIFT | ECU_FLAG_PIT)) != 0 ? 1 : 0;
+        tel->load = in->manifold / in->ambient;
+    }
+
+    // Every map's formula at its breakpoints into the Scope (the host copies them into the build)
+    void bake()
+    {
+        EcuMapsSpec* m = &spec->maps;
+        one.maps.bakeOne(&m->spark, MAP_SPARK);
+        one.maps.bakeOne(&m->lambda, MAP_LAMBDA);
+        one.maps.bakeOne(&m->boost, MAP_BOOST);
+        one.maps.bakeOne(&m->camIn, MAP_CAM_IN);
+        one.maps.bakeOne(&m->camEx, MAP_CAM_EX);
+        one.maps.bakeOne(&m->pedal, MAP_PEDAL);
+        one.maps.bakeOne(&m->lift, MAP_LIFT);
+        one.maps.bakeCount += 1;
+        scope->bakeCount = one.maps.bakeCount;
+        for (int k = 0; k < MAP_COUNT; ++k)
+        {
+            scope->bakedNx[k] = one.maps.bakedNx[k];
+            scope->bakedNy[k] = one.maps.bakedNy[k];
+            for (int i = 0; i < 16; ++i)
+            {
+                scope->bakedX[k][i] = one.maps.bakedX[k][i];
+                scope->bakedY[k][i] = one.maps.bakedY[k][i];
+            }
+            for (int j = 0; j < 256; ++j)
+                scope->baked[k][j] = one.maps.baked[k][j];
+        }
+    }
+
+    // ---- the integrator's hooks (sim/README.md): what other packages read of ecu.model 1 ----
+    // For card E: the cam's target (crank degrees: 0 the intake's advance, 1 the exhaust's retard; -1: the
+    // valvetrain's own schedule, as under ecu.model 0 and with the cam's map on its formula) and the lift command (0
+    // to 1: the lift map's; its formula 1)
     float camTarget(int cam)
     {
-        return -1.0f;
+        if (!model1())
+            return -1.0f;
+        if (cam == 0)
+            return spec->maps.camInAuto ? -1.0f : one.camIn;
+        return spec->maps.camExAuto ? -1.0f : one.camEx;
     }
 
     float liftCommand()
     {
-        return 0.0f;
+        return model1() ? one.lift : 0.0f;
     }
 
-    // for card F: the boost wanted (Pa over the air), anti-lag (0 off, 1 on), nitrous (0 to 1)
+    // For card F: the boost wanted (Pa over the air; -1: the boost section's own level, as under ecu.model 0 and with
+    // the boost map on its formula), anti-lag (0 off, 1 on), nitrous (0 to 1)
     float boostTarget()
     {
-        return 0.0f;
+        if (!model1() || spec->maps.boostAuto)
+            return -1.0f;
+        return one.boost;
     }
 
     float antiLag()
     {
-        return 0.0f;
+        return model1() && one.antiLag.active ? 1.0f : 0.0f;
     }
 
     float nitrous()
     {
-        return 0.0f;
+        return model1() && one.nitrous.active ? 1.0f : 0.0f;
     }
 
-    // every 16 samples, driven, with ecu.model 1: the vehicle's values (Car's, sim/README.md has their units)
+    // Every 16 samples, driven, with ecu.model 1: the vehicle's values (Car's: the driven wheels' slip, the speed m/s,
+    // the gear, upshifts counted, seconds of cut a dog box asks, the crank speed a downshift's blip asks, rad/s);
+    // control1 reads them
     void vehicle(float drivenSlip, float speed, int gear, int upshifts, float cutRequest, float blipRequest)
     {
+        vSlip = drivenSlip;
+        vSpeed = speed;
+        vGear = gear;
+        vUp = upshifts;
+        vCut = cutRequest;
+        vBlip = blipRequest;
+        vSeen = 1;
     }
 };

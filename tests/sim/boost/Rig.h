@@ -29,19 +29,22 @@ namespace tee::test::boost
     // The forced induction's files and the rig's, compiled once for the whole test run
     inline tee::Program& program()
     {
-        static std::unique_ptr<tee::Program> compiled = [] {
+        // (never destroyed: a static that owns a compiled program would be destroyed after the JIT's own statics on
+        // macOS, and crash at exit)
+        static tee::Program* compiled = [] {
             tee::Program::Files files;
             const std::filesystem::path root = TEE_SOURCE_DIR;
             for (const auto& entry : std::filesystem::directory_iterator(root / "sim" / "boost"))
                 if (entry.path().extension() == ".fm")
                     files["boost/" + entry.path().filename().string()] = readFile(entry.path());
+            files["spec/boost.fm"] = readFile(root / "sim" / "spec" / "boost.fm");
             files["rig.fm"] = readFile(root / "tests" / "sim" / "boost" / "rig.fm");
             std::string errors;
             auto p = tee::Program::fromFiles(files, "rig.fm", {}, errors);
             INFO(errors);
             REQUIRE(p != nullptr);
             REQUIRE(p->link(errors));
-            return p;
+            return p.release();
         }();
         return *compiled;
     }
