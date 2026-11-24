@@ -10,10 +10,23 @@
 #include "app/Workspace.h"
 
 #include <memory>
+#include <string>
+#include <vector>
 
 namespace tee::ui
 {
     std::unique_ptr<Workspace> makeAirWorkspace(WorkspaceContext& context);
+
+    namespace air
+    {
+        // What a press selects on an AIR stage, and where (for tests: everything inside the stage, nothing overlapping).
+        struct AirHit
+        {
+            funkgui::Rect r;
+            std::string id;
+        };
+        std::vector<AirHit> airHits(const Workspace& w);   // empty for a workspace that is not AIR's
+    }
 
     namespace air
     {
@@ -27,6 +40,7 @@ namespace tee::ui
             static constexpr const char* speed[2] = { "boost.shaftSpeed[0]", "boost.shaftSpeed[1]" };   // rad/s
             static constexpr const char* ratio[2] = { "boost.ratio[0]", "boost.ratio[1]" };
             static constexpr const char* flow[2] = { "boost.flow[0]", "boost.flow[1]" };   // corrected, kg/s
+            static constexpr const char* eta = "boost.efficiency[0]";
             static constexpr const char* outT[2] = { "boost.compressorTemperature[0]", "boost.compressorTemperature[1]" };
             static constexpr const char* gate = "boost.gate[0]";         // 0..1 open
             static constexpr const char* vanes = "boost.vanes[0]";       // 0..1 open

@@ -187,6 +187,20 @@ namespace tee::ui
                         history_.erase(history_.begin());
                 }
             }
+            {
+                int ns = 0, nb = 0;
+                for (const Point& h : history_)
+                {
+                    ns += std::isfinite(h.y) ? 1 : 0;
+                    nb += std::isfinite(h.x) ? 1 : 0;
+                }
+                if ((ns >= 2) != speedTrace_ || (nb >= 2) != boostTrace_)
+                {
+                    speedTrace_ = ns >= 2;
+                    boostTrace_ = nb >= 2;
+                    lowerLayout();
+                }
+            }
             // the operating point's trail: a point each time it moves (a spool, a shift, a surge's flutter)
             const double f = ctx_.live.get(N::flow[0]), r = ctx_.live.get(N::ratio[0]);
             if (std::isfinite(f) && std::isfinite(r))
@@ -210,9 +224,17 @@ namespace tee::ui
             c.text(build_.sentence().c_str(), s.x + 20.0f, s.y + 34.0f, look::kBody, p.text);
             drawPath(c, p);
             drawMap(c, p);
-            drawShaft(c, p);
             drawValves(c, p);
             drawMarks(c, p);
+        }
+
+    public:
+        std::vector<AirHit> hitList() const
+        {
+            std::vector<AirHit> out;
+            for (const Hit& h : hits_)
+                out.push_back({ h.r, h.id });
+            return out;
         }
 
     private:
@@ -261,11 +283,14 @@ namespace tee::ui
                 ws.push_back({ Kind::plenum, 104.0f, 0 });
             }
             ws.push_back({ Kind::runners, b.itb ? 210.0f : 150.0f, 0 });
+            // the parts' widths in a unit that shrinks on a narrow stage, so the row always fits; the left 34 px hold
+            // the units of the numbers under the parts
+            const float u = std::clamp((row_.w - 34.0f) / 1000.0f, 0.58f, 1.0f);
             float sum = 0;
-            for (const W& w : ws)
-                sum += w.w;
-            const float gap = std::max(24.0f, (row_.w - sum - 70.0f) / static_cast<float>(std::max<std::size_t>(1, ws.size() - 1)));
-            float x = row_.x + 14.0f;
+            for (W& w : ws)
+                sum += (w.w *= u);
+            const float gap = std::max(22.0f * u, (row_.w - 34.0f - sum - 40.0f) / static_cast<float>(std::max<std::size_t>(1, ws.size() - 1)));
+            float x = row_.x + 34.0f + 14.0f * u;
             for (const W& w : ws)
             {
                 Part part{ w.k, { x, yc_ - h * 0.5f, w.w, h }, w.index };
@@ -281,6 +306,7 @@ namespace tee::ui
                     case Kind::turbo:
                         id = "boost.turbo[" + std::to_string(part.index) + "]";
                         name = b.arrangement == Arrangement::compound ? (part.index == 0 ? "LOW-PRESSURE TURBO" : "HIGH-PRESSURE TURBO")
+                             : b.arrangement == Arrangement::sequential ? "SEQUENTIAL TURBOS, 1 THEN 2"
                              : b.turbos > 1 ? "TURBOS" : "TURBO";
                         break;
                     case Kind::blower: id = "boost.supercharger"; name = "SUPERCHARGER"; break;
@@ -291,28 +317,61 @@ namespace tee::ui
                 }
                 hits_.push_back({ part.r, id, name });
             }
-            // the lower row: the map, the shaft, the valves
-            const float top = row_.bottom() + 12.0f, bottom = s.bottom() - 16.0f;
-            const float w = s.w - 40.0f, g = 14.0f;
-            mapR_ = { s.x + 20.0f, top, w * 0.46f, bottom - top };
-            shaftR_ = { mapR_.right() + g, top, w * 0.25f - g, bottom - top };
-            valveR_ = { shaftR_.right() + g, top, s.right() - 20.0f - shaftR_.right() - g, bottom - top };
+            rowHits_ = hits_.size();
+            lowerLayout();
+        }
+
+        // The lower row: the map (or, without one, the manifold or the blower's drive) at the left, taking the room;
+        // the shaft and the valves stacked at the right, each as tall as what it has to show (a trace only once there is
+        // one), so an absent trace leaves no empty panel.
+        void lowerLayout()
+        {
+            const AirBuild& b = build_;
+            const Rect& s = stage_;
+            hits_.resize(rowHits_);
+            const float top = row_.bottom() + 12.0f, bottom = s.bottom() - 16.0f, g = 14.0f;
+            const float w = s.w - 40.0f, colW = std::clamp(w * 0.36f, 230.0f, 340.0f);
+            mapR_ = { s.x + 20.0f, top, w - colW - g, bottom - top };
+            const float cx = mapR_.right() + g;
+            // the right column is the valves' panel: what it must show, then the boost's trace where there is one and room
+            const float traceH = 92.0f, avail = bottom - top;
+            const bool extras = b.antiLag || b.nitrous;
+            boostBelow_ = colW - 12.0f - 190.0f - 18.0f < 90.0f;   // the boost's bars beside the valves, or under them
+            float vh = 34.0f + (b.charger == Charger::none ? 20.0f : 96.0f + (boostBelow_ ? 52.0f : 0.0f)) + (extras ? 44.0f : 0.0f) + 12.0f
+                     + (b.antiLag && b.nitrous && colW < 330.0f ? 34.0f : 0.0f);
+            if (boostTrace_ && b.charger != Charger::none && avail - vh >= traceH)
+                vh += traceH;
+            valveR_ = { cx, top, colW, std::min(vh, avail) };
+            // the shaft's numbers are the map's right-hand column (MapColumn): a press there selects the shaft
+            shaftR_ = b.hasMap() ? Rect{ mapR_.right() - 12.0f - kMapCol, mapR_.y + 26.0f, kMapCol, mapR_.h - 38.0f } : Rect{};
             if (b.hasMap())
                 hits_.push_back({ mapR_, "boost.compressor", "COMPRESSOR MAP" });
-            if (b.charger != Charger::none)
+            else if (b.charger == Charger::supercharger)
+                hits_.push_back({ mapR_, "boost.supercharger", "SUPERCHARGER" });
+            if (b.hasMap())
                 hits_.push_back({ shaftR_, b.charger == Charger::turbo ? "boost.shaft" : "boost.supercharger",
-                                  b.charger == Charger::turbo ? "SHAFT" : "SUPERCHARGER" });
+                                  b.charger == Charger::turbo ? "SHAFT" : "IMPELLER" });
             gateR_ = { valveR_.x + 12.0f, valveR_.y + 30.0f, 84.0f, 82.0f };
             bovR_ = { gateR_.right() + 10.0f, gateR_.y, 84.0f, 82.0f };
             if (b.charger == Charger::turbo)
                 hits_.push_back({ gateR_, "boost.gate", b.externalGate ? "EXTERNAL WASTEGATE" : "WASTEGATE" });
             if (b.blowOff != 0)
                 hits_.push_back({ bovR_, "boost.blowOff", "BLOW-OFF VALVE" });
-            const float ly = valveR_.bottom() - 34.0f;
+            const float ly = lampY();
             if (b.antiLag)
                 hits_.push_back({ { valveR_.x + 10.0f, ly - 8.0f, 120.0f, 18.0f }, "boost.antiLag", "ANTI-LAG" });
             if (b.nitrous)
-                hits_.push_back({ { valveR_.x + 140.0f, ly - 8.0f, 150.0f, 18.0f }, "boost.nitrous", "NITROUS" });
+            {
+                const bool own = !b.antiLag || valveR_.w >= 330.0f;
+                const float nx = own && b.antiLag ? valveR_.x + 140.0f : valveR_.x + 10.0f, ny = own ? ly : ly + 34.0f;
+                hits_.push_back({ { nx, ny - 8.0f, std::min(150.0f, valveR_.right() - nx - 4.0f), 18.0f }, "boost.nitrous", "NITROUS" });
+            }
+        }
+
+        // The lamps' line in the valves' panel: under the valves and the boost (or at the top, with no boost).
+        float lampY() const
+        {
+            return valveR_.y + 34.0f + (build_.charger == Charger::none ? 10.0f : 96.0f + (boostBelow_ ? 52.0f : 0.0f)) + 12.0f;
         }
 
         const Hit* hitAt(Point pt) const
@@ -383,33 +442,62 @@ namespace tee::ui
                 const float x0 = a.r.right(), x1 = b.r.x;
                 c.segment(x0 - 4.0f, yc_, x1 + 4.0f, yc_, 12.0f, edge);
                 c.segment(x0 - 4.0f, yc_, x1 + 4.0f, yc_, 10.0f, tint);
-                const std::string t = temp(k);
-                centred(c, t, (x0 + x1) * 0.5f, yc_ - 24.0f, look::kUnit, std::isfinite(k) ? p.text : p.dim);
+                if (std::isfinite(k))   // the air's temperature on its pipe, where there is one
+                    centred(c, temp(k), (x0 + x1) * 0.5f, yc_ - 24.0f, look::kUnit, p.text);
                 if (b.kind == Kind::throttle && build_.blowOff != 0)
                     drawBlowOffStub(c, p, x0 + (x1 - x0) * 0.22f, edge, tint);
             }
+            // the numbers' units once, at the left of their rows: pressure (absolute) over temperature
+            const std::string pu = ctx_.units.unit(Quantity::pressure).name, tu = ctx_.units.unit(Quantity::temperature).name;
+            c.text(pu.c_str(), row_.x, readY_ + 2.0f, look::kUnit, p.label);
+            c.text(tu.c_str(), row_.x, readY_ + 20.0f, look::kUnit, p.label);
+            float lastRight = -1e9f;
+            bool lowered = false;
             for (const Part& part : parts_)
             {
                 double pa = 0, k = 0;
                 after(part, pa, k);
                 const Col tint = airTint(p, k);
                 drawPart(c, p, part, tint, edge);
-                // its name above, its pressure and temperature beneath
-                std::string name;
-                for (const Hit& h : hits_)
-                    if (h.r.x == part.r.x && h.r.y == part.r.y)
-                        name = h.name;
-                {
-                    const float nw = c.textWidth(name.c_str(), look::kCaps);
-                    const float nx = std::clamp(part.r.centreX() - nw * 0.5f, stage_.x + 8.0f, stage_.right() - 8.0f - nw);
-                    c.text(name.c_str(), nx, row_.y, look::kCaps, p.label);
-                }
+                // its name above (a second line when it would touch its neighbour's), its numbers beneath
+                const std::string name = shortName(part);
+                const float nw = c.textWidth(name.c_str(), look::kCaps);
+                const float nx = std::clamp(part.r.centreX() - nw * 0.5f, stage_.x + 8.0f, stage_.right() - 8.0f - nw);
+                lowered = nx < lastRight + 10.0f && !lowered;
+                c.text(name.c_str(), nx, row_.y + (lowered ? 14.0f : 0.0f), look::kCaps, p.label);
+                lastRight = lowered ? lastRight : nx + nw;
                 const float ry = readY_;
-                const std::string ps = pres(pa), ts = temp(k);
-                centred(c, ps, part.r.centreX(), ry, look::kNumberS, std::isfinite(pa) ? p.value : p.dim);
-                centred(c, ts, part.r.centreX(), ry + 18.0f, look::kNumberS, std::isfinite(k) ? tint : p.dim);
+                if (!std::isfinite(pa) && !std::isfinite(k))
+                    centred(c, "-", part.r.centreX(), ry + 9.0f, look::kNumberS, p.dim);   // neither: one dash
+                else
+                {
+                    centred(c, std::isfinite(pa) ? ctx_.units.number(Quantity::pressure, pa) : "-", part.r.centreX(), ry,
+                            look::kNumberS, std::isfinite(pa) ? p.value : p.dim);
+                    centred(c, std::isfinite(k) ? ctx_.units.number(Quantity::temperature, k, 0) : "-", part.r.centreX(),
+                            ry + 18.0f, look::kNumberS, std::isfinite(k) ? tint : p.dim);
+                }
             }
             c.hairlineH(row_.x, row_.bottom() - 2.0f, row_.w, p.grid);
+        }
+
+        // A part's name on the row (its full name is on its selection tag).
+        std::string shortName(const Part& part) const
+        {
+            const AirBuild& b = build_;
+            switch (part.kind)
+            {
+                case Kind::box: return "AIR BOX";
+                case Kind::turbo:
+                    return b.arrangement == Arrangement::compound ? (part.index == 0 ? "LOW STAGE" : "HIGH STAGE")
+                         : b.arrangement == Arrangement::sequential ? "SEQUENTIAL"
+                         : b.turbos > 1 ? "TURBOS" : "TURBO";
+                case Kind::blower: return "BLOWER";
+                case Kind::cooler: return "COOLER";
+                case Kind::throttle: return "THROTTLE";
+                case Kind::plenum: return "PLENUM";
+                case Kind::runners: return b.itb ? "RUNNERS, A THROTTLE EACH" : "RUNNERS";
+            }
+            return {};
         }
 
         void drawBlowOffStub(Canvas& c, const Palette& p, float x, Col edge, Col tint) const
@@ -448,7 +536,7 @@ namespace tee::ui
                 {
                     const bool compound = b.arrangement == Arrangement::compound;
                     const int n = compound ? 1 : b.turbos;
-                    const float rr = compound ? (part.index == 0 ? 27.0f : 21.0f) : n == 1 ? 27.0f : n == 2 ? 21.0f : 14.0f;
+                    const float rr = std::min(r.w * 0.44f, compound ? (part.index == 0 ? 27.0f : 21.0f) : n == 1 ? 27.0f : n == 2 ? 21.0f : 14.0f);
                     const float pitch = n == 1 ? 0.0f : std::min(r.h / static_cast<float>(n), 2.0f * rr + 10.0f);
                     for (int i = 0; i < n; ++i)
                     {
@@ -464,8 +552,7 @@ namespace tee::ui
                         c.disc(cx, cy, 3.0f, ink);
                         if (n > 1 && n <= 2)
                         {
-                            const char* tag = b.arrangement == Arrangement::sequential ? (i == 0 ? "PRIMARY" : "SECONDARY")
-                                                                                        : (i == 0 ? "1" : "2");
+                            const char* tag = i == 0 ? "1" : "2";
                             c.text(tag, cx + rr + 6.0f, cy - 6.0f, look::kCaps, p.label);
                         }
                     }
@@ -484,9 +571,10 @@ namespace tee::ui
                     c.rrect(r.x, y, r.w, h, 12.0f, body, 1.5f, tint);
                     if (b.blower == Blower::roots)   // two lobed rotors
                     {
-                        for (const float dx : { -16.0f, 16.0f })
+                        const float lobe = std::min(15.0f, r.w * 0.16f);
+                        for (const float dx : { -lobe - 1.0f, lobe + 1.0f })
                         {
-                            c.disc(r.centreX() + dx, yc_, 15.0f, kClear, 1.5f, ink);
+                            c.disc(r.centreX() + dx, yc_, lobe, kClear, 1.5f, ink);
                             c.disc(r.centreX() + dx, yc_ - 7.0f, 4.0f, ink);
                             c.disc(r.centreX() + dx, yc_ + 7.0f, 4.0f, ink);
                         }
@@ -514,7 +602,7 @@ namespace tee::ui
                 case Kind::throttle:
                 {
                     const double open = live(N::throttle);
-                    drawThrottle(c, p, r.centreX(), yc_, 20.0f, open, body, tint);
+                    drawThrottle(c, p, r.centreX(), yc_, std::min(20.0f, r.w * 0.42f), open, body, tint);
                     const std::string t = std::isfinite(open) ? look::num(open * 100.0, "%.0f %%") : "-";
                     centred(c, t, r.centreX(), yc_ + 26.0f, look::kUnit, std::isfinite(open) ? p.text : p.dim);
                     break;
@@ -574,14 +662,39 @@ namespace tee::ui
             const AirBuild& b = build_;
             if (!b.hasMap())
             {
-                look::region(c, p, mapR_, "COMPRESSOR MAP");
-                look::placeholder(c, p, mapR_, b.charger == Charger::none ? "NO COMPRESSOR" : "A DISPLACEMENT BLOWER",
-                                  b.charger == Charger::none ? "This engine breathes the air outside: no map to work on."
-                                                             : "A Roots or twin-screw blower moves a volume a turn: its boost follows the engine's speed, not a map.");
+                // no compressor map: the manifold (a natural engine) or the blower's drive takes the room
+                drawShaft(c, p, mapR_);
                 return;
             }
             const Rect in = look::region(c, p, mapR_, b.turbos > 1 ? "COMPRESSOR MAP, TURBO 1'S" : "COMPRESSOR MAP");
-            const Rect plot{ in.x + 34.0f, in.y + 4.0f, in.w - 70.0f, in.h - 30.0f };
+            // the operating point's numbers in a column at the right; the plot takes the rest
+            const float colW = kMapCol;
+            const Rect plot{ in.x + 34.0f, in.y + 4.0f, in.w - 34.0f - colW - 30.0f, in.h - 30.0f };
+            {
+                const float x = in.right() - colW;
+                const double r = live(N::ratio[0]), f = live(N::flow[0]), e = live(N::eta), w = live(N::speed[0]);
+                float y = in.y + 4.0f;
+                const auto row = [&](const char* label, const std::string& v, const char* unit) {
+                    look::readout(c, p, x, y, label, v, unit, look::kNumberS, std::isfinite(r) || v != "-" ? kClear : p.dim);
+                    y += 35.0f;
+                };
+                row("PRESSURE RATIO", look::num(r, "%.2f"), "");
+                row("FLOW", look::num(f, "%.3f"), "kg/s");
+                row("EFFICIENCY", look::num(e * 100.0, "%.0f"), "%");
+                row(b.charger == Charger::turbo ? "SHAFT" : "IMPELLER", look::num(w * 60.0 / kTwoPi / 1000.0, "%.0f"), "krpm");
+                // the shaft against its limit
+                const double frac = std::isfinite(w) && b.omegaMax > 0 ? w / b.omegaMax : std::nan("");
+                look::level(c, p, { x, y - 6.0f, colW - 6.0f, 4.0f }, frac, frac > 0.95 ? p.warning : p.text, 1.0);
+                c.text(look::num(b.omegaMax * 60.0 / kTwoPi / 1000.0, "LIMIT %.0f").c_str(), x, y + 2.0f, look::kCaps, p.label);
+                y += 24.0f;
+                if (b.turbos > 1)
+                {
+                    const double w2 = live(N::speed[1]);
+                    row("TURBO 2", look::num(w2 * 60.0 / kTwoPi / 1000.0, "%.0f"), "krpm");
+                }
+                if (b.vanes && y + 56.0f < in.bottom())
+                    drawVanes(c, p, { x, y, colW, 56.0f }, y);
+            }
             const double fMax = lines_.maxFlow * 1.08, prMax = std::max(1.5, lines_.maxPr * 1.06);
             const auto X = [&](double f) { return plot.x + static_cast<float>(f / fMax) * plot.w; };
             const auto Y = [&](double pr) { return plot.bottom() - static_cast<float>((pr - 1.0) / (prMax - 1.0)) * plot.h; };
@@ -601,7 +714,6 @@ namespace tee::ui
                 c.text(t.c_str(), plot.x - 6.0f - c.textWidth(t.c_str(), look::kUnit), Y(r) - 6.0f, look::kUnit, p.label);
             }
             c.text("kg/s", plot.right() - c.textWidth("kg/s", look::kUnit), plot.bottom() + 16.0f, look::kUnit, p.label);
-            c.text("RATIO", mapR_.right() - 12.0f - c.textWidth("RATIO", look::kCaps), mapR_.y + 9.0f, look::kCaps, p.dim);
             // efficiency islands, innermost last
             for (int v = MapLines::kLevels - 1; v >= 0; --v)
             {
@@ -698,12 +810,12 @@ namespace tee::ui
         }
 
         // ---- the shaft (a turbo), the drive (a supercharger), the manifold (a natural engine) -----------------------
-        void drawShaft(Canvas& c, const Palette& p) const
+        void drawShaft(Canvas& c, const Palette& p, const Rect& R) const
         {
             const AirBuild& b = build_;
             if (b.charger == Charger::none)
             {
-                const Rect in = look::region(c, p, shaftR_, "MANIFOLD");
+                const Rect in = look::region(c, p, R, "MANIFOLD");
                 const double m = live(N::manifold);
                 look::readout(c, p, in.x, in.y, "PRESSURE", pres(m));
                 const double vac = std::isfinite(m) ? b.ambientP - m : std::nan("");
@@ -715,7 +827,7 @@ namespace tee::ui
             }
             if (b.charger == Charger::supercharger && b.blower != Blower::centrifugal)
             {
-                const Rect in = look::region(c, p, shaftR_, "DRIVE", ctx_.selection.is("boost.supercharger"));
+                const Rect in = look::region(c, p, R, "DRIVE", ctx_.selection.is("boost.supercharger"));
                 look::readout(c, p, in.x, in.y, "PULLEY RATIO", look::num(b.scRatio, "%.2f"), ": 1");
                 const double bp = live(N::scBypass);
                 const bool known = std::isfinite(bp) || !b.scBypass;
@@ -725,7 +837,7 @@ namespace tee::ui
                 look::readout(c, p, in.x, in.y + 84.0f, "POWER IT TAKES", std::isfinite(pw) ? ctx_.units.format(Quantity::power, pw) : "-");
                 return;
             }
-            const Rect in = look::region(c, p, shaftR_, b.charger == Charger::turbo ? "SHAFT" : "IMPELLER");
+            const Rect in = look::region(c, p, R, b.charger == Charger::turbo ? "SHAFT" : "IMPELLER");
             const double w = live(N::speed[0]);
             const auto krpm = [](double rad) { return look::num(rad * 60.0 / kTwoPi / 1000.0, "%.0f"); };
             look::readout(c, p, in.x, in.y, b.turbos > 1 ? "SPEED, TURBO 1" : "SPEED", std::isfinite(w) ? krpm(w) : "-", "krpm", look::kNumberL);
@@ -737,20 +849,22 @@ namespace tee::ui
                 const double w2 = live(N::speed[1]);
                 look::readout(c, p, in.x, in.y + 84.0f, "TURBO 2", std::isfinite(w2) ? krpm(w2) : "-", "krpm", look::kNumberS);
             }
-            const float ty = in.y + (b.turbos > 1 ? 128.0f : 88.0f);
-            const float tw = b.vanes ? in.w - 2.0f * std::clamp(in.h * 0.2f, 22.0f, 36.0f) - 64.0f : in.w;
-            trace(c, p, { in.x, b.vanes ? ty + 28.0f : ty, tw, in.bottom() - (b.vanes ? ty + 28.0f : ty) }, true, b.omegaMax, b.omegaMax,
-                  p.text, "SPEED, THE LIMIT DOTTED");
+            float ty = in.y + (b.turbos > 1 ? 120.0f : 84.0f);
             if (b.vanes)
-                drawVanes(c, p, in);
+            {
+                drawVanes(c, p, in, ty);
+                ty += 84.0f;
+            }
+            if (speedTrace_)
+                trace(c, p, { in.x, ty, in.w, std::min(80.0f, in.bottom() - ty) }, true, b.omegaMax, b.omegaMax, p.text,
+                      "SPEED, THE LIMIT DOTTED");
         }
 
         // A variable nozzle: the ring of vanes, more nearly radial (open) or tangential (shut), with the opening in words.
-        void drawVanes(Canvas& c, const Palette& p, const Rect& in) const
+        void drawVanes(Canvas& c, const Palette& p, const Rect& in, float top) const
         {
             const double open = live(N::vanes);
-            const float r = std::clamp(in.h * 0.2f, 22.0f, 36.0f), cx = in.right() - r - 6.0f;
-            const float cy = std::min(in.y + (build_.turbos > 1 ? 156.0f : 116.0f) + r, in.bottom() - r - 26.0f);
+            const float r = std::min(24.0f, in.w * 0.25f), cx = in.x + r + 4.0f, cy = top + r + 4.0f;
             c.disc(cx, cy, r + 4.0f, kClear, 1.0f, p.edge);
             c.disc(cx, cy, r * 0.42f, p.raised, 1.0f, p.edge);
             const double tilt = std::isfinite(open) ? 1.25 - 0.95 * std::clamp(open, 0.0, 1.0) : 0.8;
@@ -763,8 +877,10 @@ namespace tee::ui
                 c.segment(px - dx, py - dy, px + dx, py + dy, 2.0f, std::isfinite(open) ? p.value : p.dim);
             }
             const std::string t = std::isfinite(open) ? look::num(open * 100.0, "VANES %.0f %% OPEN") : "VANES -";
-            const float tw = c.textWidth(t.c_str(), look::kCaps);
-            c.text(t.c_str(), std::min(cx - tw * 0.5f, in.right() - tw), cy + r + 10.0f, look::kCaps, std::isfinite(open) ? p.text : p.dim);
+            const std::string pct = std::isfinite(open) ? look::num(open * 100.0, "%.0f %%") : "-";
+            c.text("VANES", cx + r + 12.0f, cy - 14.0f, look::kCaps, p.label);
+            c.text(pct.c_str(), cx + r + 12.0f, cy + 2.0f, look::kNumberS, std::isfinite(open) ? p.value : p.dim);
+            (void)t;
         }
 
         // ---- the gate, the blow-off valve, boost against target, anti-lag and nitrous -------------------------------
@@ -786,7 +902,7 @@ namespace tee::ui
                 const double scale = std::max({ 100e3, target * 1.4, std::isfinite(boost) ? boost * 1.1 : 0.0 });
                 // beside the valves where there is room, else under them
                 float x = bovR_.right() + 18.0f, w = valveR_.right() - 12.0f - x, y = gateR_.y + 4.0f, below = gateR_.bottom();
-                const bool narrow = w < 90.0f;
+                const bool narrow = boostBelow_;
                 if (narrow)
                 {
                     x = in.x;
@@ -802,12 +918,14 @@ namespace tee::ui
                 }
                 else
                     look::readout(c, p, x, y + 48.0f, "TARGET", pres(target), {}, look::kNumberS);
-                const float ty = below + 24.0f;
-                trace(c, p, { in.x, ty, in.w, valveR_.bottom() - 52.0f - ty }, false, scale, target, p.hot,
+                const float ty = std::max(below + 24.0f, (b.antiLag || b.nitrous)
+                                                             ? lampY() + (b.antiLag && b.nitrous && valveR_.w < 330.0f ? 68.0f : 34.0f) : 0.0f);
+                if (boostTrace_)
+                    trace(c, p, { in.x, ty, in.w, valveR_.bottom() - 12.0f - ty }, false, scale, target, p.hot,
                       "BOOST, THE TARGET DOTTED");
             }
             // the extras, in words with a lamp
-            const float ly = valveR_.bottom() - 34.0f;
+            const float ly = lampY();
             if (b.antiLag)
             {
                 const double on = live(N::antiLag);
@@ -817,13 +935,15 @@ namespace tee::ui
             if (b.nitrous)
             {
                 const double on = live(N::nitrous), left = live(N::bottle);
-                const float x = valveR_.x + 142.0f;
-                const float w = look::lamp(c, p, x, ly, std::isfinite(on) && on > 0.5 ? "NITROUS ON" : "NITROUS ARMED",
+                const bool own = !b.antiLag || valveR_.w >= 330.0f;
+                const float x = own && b.antiLag ? valveR_.x + 142.0f : valveR_.x + 12.0f;
+                const float nly = own ? ly : ly + 34.0f;
+                const float w = look::lamp(c, p, x, nly, std::isfinite(on) && on > 0.5 ? "NITROUS ON" : "NITROUS ARMED",
                                            std::isfinite(on) && on > 0.5, p.cold);
                 char t[48];
                 std::snprintf(t, sizeof t, "%s OF %s", std::isfinite(left) ? ctx_.units.format(Quantity::mass, left).c_str() : "-",
                               ctx_.units.format(Quantity::mass, b.nitrousBottle).c_str());
-                c.text(t, x + 15.0f, ly + 9.0f, look::kUnit, p.label);
+                c.text(t, x + 15.0f, nly + 9.0f, look::kUnit, p.label);
                 (void)w;
             }
             if (!b.antiLag && !b.nitrous && b.charger == Charger::none)
@@ -901,10 +1021,19 @@ namespace tee::ui
         std::vector<Hit> hits_;
         Rect row_{}, mapR_{}, shaftR_{}, valveR_{}, gateR_{}, bovR_{};
         float yc_ = 0, readY_ = 0;
+        static constexpr float kMapCol = 108.0f;   // the map's column of numbers (the operating point, the shaft)
+        std::size_t rowHits_ = 0;
+        bool speedTrace_ = false, boostTrace_ = false, boostBelow_ = false;   // whether there is a trace to show (lowerLayout)
         std::uint64_t seenDoc_ = 0;
         std::vector<Point> trail_;
         std::vector<Point> history_;   // x: boost (Pa over the air outside), y: shaft speed (rad/s)
     };
 
     std::unique_ptr<Workspace> makeAirWorkspace(WorkspaceContext& c) { return std::make_unique<AirWorkspace>(c); }
+
+    std::vector<air::AirHit> air::airHits(const Workspace& w)
+    {
+        const auto* a = dynamic_cast<const AirWorkspace*>(&w);
+        return a != nullptr ? a->hitList() : std::vector<AirHit>{};
+    }
 }

@@ -14,7 +14,7 @@ namespace
 
     VIEW_TEST(testDriveInstruments, "drive.instruments")
     {
-        StageRig rig(tee::ui::makeDriveWorkspace, 900, 640);
+        StageRig rig(tee::ui::makeDriveWorkspace, 900, 640, 2.0f, 4.6, false);
         CHECK(std::string(rig.ws->id()) == "drive" && !rig.ws->ribbon());
         // The tachometer reads the engine's speed in rpm, its span follows the redline (6800: to 8000).
         bool tach = false, speedo = false;
@@ -46,9 +46,9 @@ namespace
     // Density 1 and a small stage: nothing under 10 px, everything still placed.
     VIEW_TEST(testDriveSmall, "drive.small")
     {
-        StageRig rig(tee::ui::makeDriveWorkspace, 696, 574, 1.0f);
+        StageRig rig(tee::ui::makeDriveWorkspace, 696, 574, 1.0f, 4.6, false);
         golden("drive.small.dpi1", *rig.host);
-        StageRig big(tee::ui::makeDriveWorkspace, 1240, 870, 2.0f, 6.3);   // on the limiter
+        StageRig big(tee::ui::makeDriveWorkspace, 1240, 870, 2.0f, 6.3, false);   // on the limiter
         golden("drive.large", *big.host);
         return 0;
     }
