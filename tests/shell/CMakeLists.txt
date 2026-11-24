@@ -170,7 +170,7 @@ if(TARGET TheEngineEngine AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
       TIMEOUT 600 LABELS "shell;window" RUN_SERIAL TRUE)
     set_tests_properties(shell.window.first PROPERTIES
       ENVIRONMENT "SDL_AUDIODRIVER=dummy;TEE_SETTINGS_DIR=${_out}/launch-no-settings"
-      PASS_REGULAR_EXPRESSION "note: Try first.*build: \"[^\"]+\" file=[^ ]*first\\.json unsaved=no models: [a-z]+=[1-9].*\ntee-app: ok"
+      PASS_REGULAR_EXPRESSION "note: Try first.*build: \"[^\"]+\" file=[^ ]*first\\.json unsaved=no models: [a-z]+=[1-9].*\ntry-first: the card is wanted\ntee-app: ok"
       FAIL_REGULAR_EXPRESSION "models:[^\n]* [a-z]+=0/|models:[^\n]* [a-z]+=[0-9]+/0[ \n]|models:[^\n]* [a-z]+=[0-9]+[ \n]")
     # (the remembered build over the first: the soak tier's; the choice itself is LaunchTest.cpp's)
     set_tests_properties(shell.window.last PROPERTIES LABELS "shell;window;nightly"
