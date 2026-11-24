@@ -742,8 +742,11 @@ MANIFOLD = {
     "v10-52": "sports", "v12-65": "sports",
 }
 SWITCHED = {
-    "v6-35-na": "the kind's two-stage intakes, Toyota's ACIS and Honda's (recalled)",
-    "flat-plane-v8-45": "the 458's variable-length intake (recalled)",
+    "v6-35-na": "the 2GR-FE's ACIS, a valve in the upper manifold closed at low and middle speeds (toyota-club.net; "
+                "service-manual mirrors give some 3600 to 4450 rpm, unverified)",
+    "flat-plane-v8-45": "the 458's three throttle valves between its two plenums giving four configurations, with "
+                        "short, almost straight tracts (Ferrari's launch text, pistonheads.com): a plenum's geometry "
+                        "switched, here as a second runner",
 }
 
 # where each class carries its engine (the listener's paths to each camera)
