@@ -19,6 +19,7 @@
 #include "views/valves/ValvesModel.h"
 
 #include "app/Look.h"
+#include "kit/widgets/Basic.h"
 
 #include <algorithm>
 #include <cmath>
@@ -53,7 +54,16 @@ namespace tee::ui
     class ValvesWorkspace final : public Workspace
     {
     public:
-        explicit ValvesWorkspace(WorkspaceContext& c) : Workspace(c) {}
+        explicit ValvesWorkspace(WorkspaceContext& c) : Workspace(c)
+        {
+            // on a small stage the bench, the phasers and the springs share one panel, chosen by these
+            const char* names[3] = { "Bench", "Phasers", "Springs" };
+            for (int i = 0; i < 3; ++i)
+            {
+                tabs_[i] = &make<Button>(names[i], [this, i] { tab_ = i; });
+                tabs_[i]->setLit([this, i] { return tab_ == i; });
+            }
+        }
 
         const char* id() const override { return "valves"; }
         const char* title() const override { return "VALVES"; }
@@ -185,22 +195,58 @@ namespace tee::ui
         {
             const float pad = 16.0f;
             const Rect in{ s.x + pad, s.y + pad, s.w - 2 * pad, s.h - 2 * pad };
-            const float wR = std::clamp(std::floor(in.w * 0.3f), 280.0f, 460.0f);
+            compact_ = in.w < 980.0f;
+            hasPhasers_ = hasPhasers();
+            hasLive_ = hasLive();
+            if (compact_)
+            {
+                // the editor across the stage; under it the timing ring, and a panel of tabs for the rest
+                const float hE = std::floor(in.h * 0.56f), wRing = std::floor(std::min(in.w * 0.4f, 300.0f));
+                editor_ = { in.x, in.y, in.w, hE };
+                ring_ = { in.x, in.y + hE + kGap, wRing, in.h - hE - kGap };
+                bench_ = phasers_ = live_ = { ring_.right() + kGap, ring_.y, in.w - wRing - kGap, ring_.h };
+                for (int i = 0; i < 3; ++i)
+                    tabs_[i]->setPlace({ bench_.x + lk::kPad + 84.0f * static_cast<float>(i), bench_.y + 6.0f, 80.0f, 20.0f }, true);
+                const Rect e = content(editor_);
+                plot_ = { e.x + 44.0f, e.y + 46.0f, e.w - 52.0f, e.h - 46.0f - 62.0f };
+                return;
+            }
+            for (Button* b : tabs_)
+                b->setPlace({}, false);
+            // the editor takes what the lower panels leave: they fold to a line each when the build has nothing for them
+            const float wR = compact_ ? std::floor(in.w * 0.38f) : std::clamp(std::floor(in.w * 0.3f), 280.0f, 460.0f);
             const float wL = in.w - wR - kGap;
-            const float hE = std::floor(in.h - std::clamp(in.h * 0.3f, 190.0f, 260.0f) - kGap);
-            editor_ = { in.x, in.y, wL, hE };
+            const float hP = hasPhasers_ ? 132.0f : 34.0f, hL = hasLive_ ? 150.0f : 34.0f;
+            const float hB = std::max(hP, hL);
+            editor_ = { in.x, in.y, wL, in.h - hB - kGap };
             const float wP = std::floor((wL - kGap) * 0.5f);
-            phasers_ = { in.x, in.y + hE + kGap, wP, in.h - hE - kGap };
-            live_ = { phasers_.right() + kGap, phasers_.y, wL - wP - kGap, phasers_.h };
+            phasers_ = { in.x, editor_.bottom() + kGap, wP, hB };
+            live_ = { phasers_.right() + kGap, phasers_.y, wL - wP - kGap, hB };
             const float hR = std::floor(in.h * 0.5f);
             ring_ = { editor_.right() + kGap, in.y, wR, hR };
             bench_ = { ring_.x, in.y + hR + kGap, wR, in.h - hR - kGap };
             const Rect e = content(editor_);
-            plot_ = { e.x + 44.0f, e.y + 46.0f, e.w - 52.0f, e.h - 46.0f - 34.0f };
+            plot_ = { e.x + 44.0f, e.y + 46.0f, e.w - 52.0f, e.h - 46.0f - 62.0f };
+        }
+
+        bool hasPhasers() const
+        {
+            for (VF f : { VF::inPhaseRange, VF::exPhaseRange, VF::stages, VF::liftControl })
+                if (en::findField(ctx_.doc, path(f)) >= 0)
+                    return true;
+            return false;
+        }
+        bool hasLive() const
+        {
+            return en::findField(ctx_.doc, path(VF::springRate)) >= 0 || en::findField(ctx_.doc, path(VF::deacMask)) >= 0
+                || ctx_.live.has(kTelFloat) || ctx_.live.has(kTelActive);
         }
 
         void step(float) override
         {
+            // a build that gains or loses the lower panels' fields lays out again
+            if (hasPhasers() != hasPhasers_ || hasLive() != hasLive_)
+                arrange();
             // the lift axis: the larger lobe and a quarter, held still while a handle is dragged
             if (drag_ < 0)
             {
@@ -219,9 +265,12 @@ namespace tee::ui
             const Train t = trainOf(ctx_.doc);
             drawEditor(c, p, t);
             drawRing(c, p, t);
-            drawBench(c, p, t);
-            drawPhasers(c, p, t);
-            drawLive(c, p, t);
+            if (!compact_ || tab_ == 0)
+                drawBench(c, p, t);
+            if (!compact_ || tab_ == 1)
+                drawPhasers(c, p, t);
+            if (!compact_ || tab_ == 2)
+                drawLive(c, p, t);
         }
 
     private:
@@ -322,6 +371,8 @@ namespace tee::ui
             }
             if (ring_.contains(pt))
                 return "valve.timing";
+            if (compact_ && bench_.contains(pt))
+                return pt.y < bench_.y + 30.0f ? "" : tab_ == 0 ? "valve.head" : tab_ == 1 ? "valve.phasers" : "valve.springs";
             if (bench_.contains(pt))
                 return "valve.head";
             if (phasers_.contains(pt))
@@ -362,44 +413,67 @@ namespace tee::ui
         void drawEditor(Canvas& c, const lk::Palette& p, const Train& t) const
         {
             const bool sel = ctx_.selection.is("valve.intake") || ctx_.selection.is("valve.exhaust");
-            lk::region(c, p, editor_, "CAM EDITOR: LIFT AGAINST CRANK ANGLE", sel);
+            lk::region(c, p, editor_, "CAM EDITOR", sel);
             const Rect e = content(editor_);
             const Units& u = ctx_.units;
             const Lobe& li = lobe(t, true);
             const Lobe& le = lobe(t, false);
             const Events ev = eventsOf(li, le);
-            // the numbers that matter at a glance, over the plot
-            float x = e.x;
-            x += stage::readout(c, p, x, e.y - 4.0f, "OVERLAP", deg(ev.overlap), "deg", lk::kNumberS) + 22.0f;
-            x += stage::readout(c, p, x, e.y - 4.0f, "LOBE SEPARATION", lk::num(ev.lsa, "%.1f"), "deg", lk::kNumberS) + 22.0f;
-            // the piston's room: the least between each valve and the crown, near the overlap's top
+            // the piston's room: the least between each valve and the crown near the overlap's top, and where
             const en::Layout lay = en::layoutOf(ctx_.doc);
             const en::Cylinder cyl = en::cylinderOf(ctx_.doc, lay);
             const bool piston = cyl.known() && std::isfinite(cyl.compression) && cyl.compression > 1.05 && metres(t.in);
             const double clear = piston ? cyl.stroke / (cyl.compression - 1.0) : en::kNaN;
             const auto room = [&](double a) { return clear + en::pistonDrop(a - 360.0, cyl.radius(), cyl.rod); };
-            double leastIn = en::kNaN, leastEx = en::kNaN;
+            double leastIn = en::kNaN, leastEx = en::kNaN, atIn = en::kNaN, atEx = en::kNaN;
             if (piston)
             {
                 leastIn = leastEx = 1e9;
                 for (double a = 300.0; a <= 420.0; a += 0.5)
                 {
-                    leastIn = std::min(leastIn, room(a) - li.liftAt(a));
-                    leastEx = std::min(leastEx, room(a) - le.liftAt(a));
+                    if (const double r = room(a) - li.liftAt(a); r < leastIn)
+                    {
+                        leastIn = r;
+                        atIn = a;
+                    }
+                    if (const double r = room(a) - le.liftAt(a); r < leastEx)
+                    {
+                        leastEx = r;
+                        atEx = a;
+                    }
                 }
             }
             const auto len = [&](double m) { return std::isfinite(m) ? u.number(Quantity::length, m) : std::string("-"); };
             const std::string lu = u.unit(Quantity::length).name;
-            x += stage::readout(c, p, x, e.y - 4.0f, "ROOM, INTAKE", len(leastIn), lu, lk::kNumberS,
-                             std::isfinite(leastIn) && leastIn < 0.001 ? p.warning : kClear) + 22.0f;
-            stage::readout(c, p, x, e.y - 4.0f, "ROOM, EXHAUST", len(leastEx), lu, lk::kNumberS,
-                        std::isfinite(leastEx) && leastEx < 0.001 ? p.warning : kClear);
-            // what drives it, in words
-            const char* note = t.reference ? "THE REFERENCE'S CAM DIAL: SET IN THE INSPECTOR"
-                             : t.labOff    ? "THE LAB IS OFF: THE ENGINE RUNS THE CAM DIAL"
+            // the numbers that matter at a glance, over the plot, as many as fit
+            struct Stat
+            {
+                const char* label;
+                std::string value;
+                std::string unit;
+                Col ink;
+            };
+            const Stat stats[] = {
+                { "OVERLAP", deg(ev.overlap), "deg", kClear },
+                { "ROOM, INTAKE", len(leastIn), lu, std::isfinite(leastIn) && leastIn < 0.001 ? p.warning : kClear },
+                { "ROOM, EXHAUST", len(leastEx), lu, std::isfinite(leastEx) && leastEx < 0.001 ? p.warning : kClear },
+                { "LOBE SEPARATION", lk::num(ev.lsa, "%.1f"), "deg", kClear },
+            };
+            float x = e.x;
+            for (const Stat& st : stats)
+            {
+                const float w = std::max(c.textWidth(st.label, lk::kCaps), c.textWidth(st.value.c_str(), lk::kNumberS) + 30.0f);
+                if (x + w > e.right())
+                    break;
+                stage::readout(c, p, x, e.y - 4.0f, st.label, st.value, st.unit, lk::kNumberS, st.ink);
+                x += w + 20.0f;
+            }
+            // what drives it, in words, on the title's line at the right
+            const char* note = t.reference ? "THE REFERENCE'S CAM DIAL"
+                             : t.labOff    ? "LAB OFF: THE ENGINE RUNS THE DIAL"
                              : t.editable  ? "DRAG A PEAK OR A SEAT MARK"
                                            : "";
-            put(c, note, e.right(), e.y - 4.0f, lk::kCaps, t.labOff ? p.warning : p.label, Align::right);
+            put(c, note, editor_.right() - lk::kPad, editor_.y + 9.0f, lk::kCaps, t.labOff ? p.warning : p.label, Align::right);
 
             // the axes: TDC and BDC through the cycle, lift up the side
             c.rrect(plot_.x, plot_.y, plot_.w, plot_.h, 0.0f, kClear, 1.0f, p.grid);
@@ -435,7 +509,7 @@ namespace tee::ui
                 putCentred(c, "NO CAMS IN THIS BUILD YET", plot_.centreX(), plot_.centreY(), lk::kCaps, p.dim);
                 return;
             }
-            const funkgui::Canvas::ClipScope clip(c, plot_);
+            const funkgui::Canvas::ClipScope clip(c, { plot_.x, plot_.y, plot_.w, plot_.h + 62.0f });   // the plot and its key
             const double inPh = ctx_.live.get(kTelInPhase), exPh = ctx_.live.get(kTelExPhase);
             const double inShift = phaseShift(true, inPh), exShift = phaseShift(false, exPh);
             // under everything: each lobe's area as it runs now, and the overlap (the area under both)
@@ -465,7 +539,6 @@ namespace tee::ui
                 if (xs.size() > 1)
                 {
                     c.polyline(xs.data(), ys.data(), static_cast<int>(xs.size()), 1.25f, p.label);
-                    put(c, "PISTON", X(360.0) + 8.0f, Y(room(360.0)) - 4.0f, lk::kCaps, p.label);
                 }
             }
             // the other stage behind, ghosted and named
@@ -475,11 +548,7 @@ namespace tee::ui
                 const Lobe& ge = ghost(t, false);
                 curve(c, gi, 0.0, p.over(p.cold, 0.5f), kClear, 1.25f);
                 curve(c, ge, 0.0, p.over(p.hot, 0.5f), kClear, 1.25f);
-                const char* w = stageB(t) ? "STAGE A" : "STAGE B";
-                if (gi.known())
-                    put(c, w, X(gi.centre) + 14.0f, Y(gi.liftAt(gi.centre)) - 4.0f, lk::kCaps, p.over(p.cold, 0.75f));
-                if (ge.known())
-                    put(c, w, X(ge.centre) - 14.0f, Y(ge.liftAt(ge.centre)) - 4.0f, lk::kCaps, p.over(p.hot, 0.75f), Align::right);
+
             }
             // the lobes parked, ghosted when a phaser has moved them; then as they run now
             if (inShift != 0.0)
@@ -511,6 +580,45 @@ namespace tee::ui
             put(c, std::string("INTAKE") + st, X(li.centre + inShift), Y(li.liftAt(li.centre)) - 24.0f, lk::kCaps, p.cold, Align::centre);
             if (std::isfinite(ev.overlap) && ev.overlap > 0.0)
                 put(c, "OVERLAP", X(360.0), plot_.bottom() - 30.0f, lk::kCaps, p.value, Align::centre);
+            // the key to what is faint, under the axis: as many to a line as fit
+            {
+                std::vector<std::string> keys;
+                if (t.stages && ghost(t, true).known())
+                    keys.push_back(stageB(t) ? "FAINT: STAGE A" : "FAINT: STAGE B");
+                if (inShift != 0.0 || exShift != 0.0)
+                    keys.push_back("FAINTER: PARKED");
+                if (piston)
+                {
+                    keys.push_back("GREY: THE PISTON'S CROWN, IN " + lu);
+                    keys.push_back("BARS: WHERE A VALVE IS NEAREST IT");
+                }
+                float kx = plot_.x, ky = plot_.bottom() + 34.0f;
+                for (const std::string& k : keys)
+                {
+                    const float w = c.textWidth(k.c_str(), lk::kCaps);
+                    if (kx > plot_.x && kx + w > plot_.right())
+                    {
+                        kx = plot_.x;
+                        ky += 14.0f;
+                    }
+                    put(c, k, kx, ky, lk::kCaps, p.label);
+                    kx += w + 18.0f;
+                }
+            }
+            // where each valve comes nearest the crown: a bar from the valve to the crown (the stats row has the numbers)
+            const auto mark = [&](double a, const Lobe& l, double shift, Col ink) {
+                if (!std::isfinite(a))
+                    return;
+                const float mx = X(a), y0 = Y(l.liftAt(a - shift)), y1 = Y(room(a));
+                c.segment(mx, y0, mx, y1, 1.5f, ink);
+                c.disc(mx, y0, 2.5f, ink);
+                c.disc(mx, y1, 2.5f, ink);
+            };
+            if (piston)
+            {
+                mark(atEx, le, exShift, p.hot);
+                mark(atIn, li, inShift, p.cold);
+            }
             // the crank now
             const double a = crankAngle();
             if (std::isfinite(a))
@@ -575,15 +683,16 @@ namespace tee::ui
         // ---- the flow bench ------------------------------------------------------------------------------------------
         void drawBench(Canvas& c, const lk::Palette& p, const Train& t) const
         {
-            lk::region(c, p, bench_, "FLOW BENCH, 28 IN OF WATER", ctx_.selection.is("valve.head"));
+            lk::region(c, p, bench_, compact_ ? "" : "FLOW BENCH, 28 IN OF WATER", ctx_.selection.is("valve.head"));
             const Rect in = content(bench_);
-            const Rect plot{ in.x + 40.0f, in.y + 14.0f, in.w - 44.0f, in.h - 14.0f - 30.0f };
+            const float down = compact_ ? 10.0f : 0.0f;   // under the tabs
+            const Rect plot{ in.x + 40.0f, in.y + 14.0f + down, in.w - 44.0f, in.h - 14.0f - down - 30.0f };
             const Units& u = ctx_.units;
             const en::Layout lay = en::layoutOf(ctx_.doc);
             const en::Cylinder cyl = en::cylinderOf(ctx_.doc, lay);
             const Bench b = benchOf(ctx_.doc, cyl.bore);
             c.rrect(plot.x, plot.y, plot.w, plot.h, 0.0f, kClear, 1.0f, p.grid);
-            put(c, "CFM", plot.x - 40.0f, in.y - 2.0f, lk::kCaps, p.label);
+            put(c, "CFM", plot.x - 40.0f, in.y - 2.0f + down, lk::kCaps, p.label);
             put(c, std::string("LIFT, ") + u.unit(Quantity::length).name, plot.right(), plot.bottom() + 16.0f, lk::kCaps,
                 p.label, Align::right);
             if (!b.known)
@@ -646,54 +755,71 @@ namespace tee::ui
         // ---- phasers and stages ----------------------------------------------------------------------------------------
         void drawPhasers(Canvas& c, const lk::Palette& p, const Train& t) const
         {
-            lk::region(c, p, phasers_, "PHASERS AND STAGES", ctx_.selection.is("valve.phasers"));
+            if (!hasPhasers_)
+            {
+                lk::region(c, p, phasers_, compact_ ? "" : "PHASERS AND STAGES: NONE HERE YET", ctx_.selection.is("valve.phasers"));
+                if (compact_)
+                    putCentred(c, "NO PHASERS OR STAGES IN THIS BUILD YET", phasers_.centreX(), phasers_.centreY(), lk::kCaps, p.dim);
+                return;
+            }
+            lk::region(c, p, phasers_, compact_ ? "" : "PHASERS AND STAGES", ctx_.selection.is("valve.phasers"));
             const Rect in = content(phasers_);
-            const float rowH = std::min(34.0f, in.h / 4.0f);
-            float y = in.y;
-            const auto phaser = [&](const char* name, double range, double now, Col ink) {
-                put(c, name, in.x, y, lk::kCaps, p.label);
+            // four cells, two by two: each a label, its value, and a bar or a lamp under it
+            const float cw = std::floor(in.w * 0.5f), ch = std::floor(in.h * 0.5f);
+            const auto cell = [&](int i) { return Point{ in.x + cw * static_cast<float>(i % 2), in.y + ch * static_cast<float>(i / 2) }; };
+            const auto phaser = [&](int i, const char* name, double range, double now, Col ink) {
+                const Point at = cell(i);
+                put(c, name, at.x, at.y, lk::kCaps, p.label);
                 if (!(range > 0.0))
                 {
-                    put(c, std::isfinite(range) ? "NONE" : "-", in.x + 130.0f, y - 1.0f, lk::kBody, p.dim);
+                    put(c, std::isfinite(range) ? "none" : "-", at.x, at.y + 14.0f, lk::kBody, p.dim);
+                    return;
                 }
+                put(c, (std::isfinite(now) ? deg(now) : std::string("-")) + " of " + deg(range) + " deg", at.x, at.y + 14.0f,
+                    lk::kBody, p.value);
+                lk::level(c, p, { at.x, at.y + 31.0f, cw - 14.0f, 4.0f }, std::isfinite(now) ? now / range : en::kNaN, ink);
+            };
+            phaser(0, "INTAKE PHASER", t.inPhaseRange, ctx_.live.get(kTelInPhase), p.cold);
+            phaser(1, "EXHAUST PHASER", t.exPhaseRange, ctx_.live.get(kTelExPhase), p.hot);
+            // the stages: which is engaged now, in words
+            {
+                const Point at = cell(2);
+                put(c, "STAGES", at.x, at.y, lk::kCaps, p.label);
+                if (!t.stages)
+                    put(c, std::isfinite(fieldValue(ctx_.doc, VF::stages)) ? "one" : "-", at.x, at.y + 14.0f, lk::kBody, p.dim);
                 else
                 {
-                    const std::string s = (std::isfinite(now) ? deg(now) : std::string("-")) + " of " + deg(range) + " deg";
-                    put(c, s, in.x + 130.0f, y - 1.0f, lk::kBody, p.value);
-                    lk::level(c, p, { in.x + 130.0f, y + 15.0f, std::max(20.0f, in.w - 130.0f), 4.0f },
-                              std::isfinite(now) ? now / range : en::kNaN, ink);
+                    const double st = ctx_.live.get(kTelStage);
+                    const std::string sp = std::isfinite(t.stageSpeed) ? ctx_.units.format(Quantity::rotation, t.stageSpeed, 0) : "-";
+                    put(c, "B from " + sp, at.x, at.y + 14.0f, lk::kBody, p.value);
+                    const std::string now = !std::isfinite(st) ? "ENGAGED -" : st >= 0.5 ? "B ENGAGED" : "A ENGAGED";
+                    lk::lamp(c, p, at.x, at.y + 36.0f, now, std::isfinite(st) && st >= 0.5, p.selected);
                 }
-                y += rowH;
-            };
-            phaser("INTAKE PHASER", t.inPhaseRange, ctx_.live.get(kTelInPhase), p.cold);
-            phaser("EXHAUST PHASER", t.exPhaseRange, ctx_.live.get(kTelExPhase), p.hot);
-            // the stages: which is engaged now, in words
-            put(c, "STAGES", in.x, y, lk::kCaps, p.label);
-            if (!t.stages)
-                put(c, std::isfinite(fieldValue(ctx_.doc, VF::stages)) ? "ONE" : "-", in.x + 130.0f, y - 1.0f, lk::kBody, p.dim);
-            else
-            {
-                const double st = ctx_.live.get(kTelStage);
-                const std::string at = std::isfinite(t.stageSpeed) ? ctx_.units.format(Quantity::rotation, t.stageSpeed, 0) : "-";
-                put(c, "B from " + at, in.x + 130.0f, y - 1.0f, lk::kBody, p.value);
-                const std::string now = !std::isfinite(st) ? "ENGAGED -" : st >= 0.5 ? "B ENGAGED" : "A ENGAGED";
-                lk::lamp(c, p, in.x + 130.0f, y + 22.0f, now, std::isfinite(st) && st >= 0.5, p.selected);
             }
-            y += rowH + 8.0f;
             // continuous lift
-            put(c, "CONTINUOUS LIFT", in.x, y, lk::kCaps, p.label);
-            const double lc = fieldValue(ctx_.doc, VF::liftControl), lnow = ctx_.live.get(kTelLift);
-            if (!(lc >= 0.5))
-                put(c, std::isfinite(lc) ? "OFF" : "-", in.x + 130.0f, y - 1.0f, lk::kBody, p.dim);
-            else
-                put(c, (std::isfinite(lnow) ? lk::num(lnow * 100.0) + " %" : std::string("-")) + " of the lift", in.x + 130.0f,
-                    y - 1.0f, lk::kBody, p.value);
+            {
+                const Point at = cell(3);
+                put(c, "CONTINUOUS LIFT", at.x, at.y, lk::kCaps, p.label);
+                const double lc = fieldValue(ctx_.doc, VF::liftControl), lnow = ctx_.live.get(kTelLift);
+                if (!(lc >= 0.5))
+                    put(c, std::isfinite(lc) ? "off" : "-", at.x, at.y + 14.0f, lk::kBody, p.dim);
+                else
+                    put(c, (std::isfinite(lnow) ? lk::num(lnow * 100.0) + " %" : std::string("-")) + " of the lift", at.x,
+                        at.y + 14.0f, lk::kBody, p.value);
+            }
         }
 
         // ---- live: float and deactivation --------------------------------------------------------------------------------
         void drawLive(Canvas& c, const lk::Palette& p, const Train&) const
         {
-            lk::region(c, p, live_, "SPRINGS AND CYLINDERS, LIVE", ctx_.selection.is("valve.springs"));
+            if (!hasLive_)
+            {
+                lk::region(c, p, live_, compact_ ? "" : "SPRINGS AND CYLINDERS: NONE HERE YET", ctx_.selection.is("valve.springs"));
+                if (compact_)
+                    putCentred(c, "NO SPRINGS OR CYLINDERS TO SHOW YET", live_.centreX(), live_.centreY(), lk::kCaps, p.dim);
+                return;
+            }
+            lk::region(c, p, live_, compact_ ? "" : "SPRINGS AND CYLINDERS, LIVE", ctx_.selection.is("valve.springs"));
             const Rect in = content(live_);
             const Units& u = ctx_.units;
             // valve float: the speed it would float at, and how far below it the engine is
@@ -702,16 +828,16 @@ namespace tee::ui
             const bool near = std::isfinite(margin) && margin < 500.0 * stage::kPi / 30.0;
             const float wa = stage::readout(c, p, in.x, in.y, "FLOATS AT", std::isfinite(fl) ? u.number(Quantity::rotation, fl) : "-",
                                          u.unit(Quantity::rotation).name, lk::kNumberS);
-            stage::readout(c, p, in.x + std::max(110.0f, wa + 24.0f), in.y, near ? "MARGIN: NEAR FLOAT" : "MARGIN",
+            stage::readout(c, p, in.x + std::max(96.0f, wa + 24.0f), in.y, near ? "NEAR FLOAT" : "MARGIN",
                         std::isfinite(margin) ? u.number(Quantity::rotation, margin) : "-", u.unit(Quantity::rotation).name,
                         lk::kNumberS, near ? p.warning : kClear);
             const double rate = fieldValue(ctx_.doc, VF::springRate);
             if (std::isfinite(rate) && rate <= 0.0)
-                put(c, "SPRING RATE 0: THE VALVES NEVER FLOAT", in.x, in.y + 36.0f, lk::kCaps, p.dim);
+                put(c, "SPRING RATE 0: NO FLOAT", in.x, in.y + 36.0f, lk::kCaps, p.dim);
             // deactivation: each cylinder, those that can rest outlined, those resting now hatched and named
             const en::Layout lay = en::layoutOf(ctx_.doc);
             const double mask = fieldValue(ctx_.doc, VF::deacMask), act = ctx_.live.get(kTelActive);
-            const float y = in.y + 58.0f;
+            const float y = in.y + 44.0f;
             put(c, "CYLINDERS", in.x, y, lk::kCaps, p.label);
             if (lay.empty() || !std::isfinite(mask))
             {
@@ -733,15 +859,28 @@ namespace tee::ui
                         c.segment(hx, by + 22.0f, std::min(hx + 5.0f, bx + bw - 2.0f), by + 4.0f, 1.0f, p.dim);
                 putCentred(c, std::to_string(i + 1), bx + bw * 0.5f, by + 13.0f, lk::kCaps, rest ? p.dim : p.value);
             }
-            std::string s = std::isfinite(act) ? std::to_string(resting) + " RESTING NOW" : "RESTING NOW: -";
-            put(c, s, in.x, y + 50.0f, lk::kCaps, resting > 0 ? p.warning : p.label);
-            put(c, "OUTLINED: MAY REST", in.right(), y + 50.0f, lk::kCaps, p.dim, Align::right);
+            std::string s = std::isfinite(act) ? std::to_string(resting) + " RESTING" : "RESTING: -";
+            put(c, s, in.x, y + 48.0f, lk::kCaps, resting > 0 ? p.warning : p.label);
+            put(c, "OUTLINED: MAY REST", in.right(), y + 48.0f, lk::kCaps, p.dim, Align::right);
         }
 
         int drag_ = -1, hot_ = -1;
         double yMax_ = 0.015;
         Rect editor_{}, plot_{}, ring_{}, bench_{}, phasers_{}, live_{};
+        bool compact_ = false, hasPhasers_ = false, hasLive_ = false;
+        int tab_ = 0;
+        Button* tabs_[3] = {};
+
+    public:
+        std::vector<Rect> panels() const { return { editor_, ring_, bench_, phasers_, live_ }; }
+        bool compact() const noexcept { return compact_; }
     };
 
     std::unique_ptr<Workspace> makeValvesWorkspace(WorkspaceContext& c) { return std::make_unique<ValvesWorkspace>(c); }
+
+    std::vector<funkgui::Rect> valvesPanels(const Workspace& w)
+    {
+        const auto* v = dynamic_cast<const ValvesWorkspace*>(&w);
+        return v != nullptr ? v->panels() : std::vector<funkgui::Rect>{};
+    }
 }

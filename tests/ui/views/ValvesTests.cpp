@@ -35,7 +35,7 @@ namespace
     {
         tee::ui::MemoryDoc doc;
         tee::ui::Units units;
-        tee::ui::DemoEngine engine{ &doc };
+        tee::ui::DemoEngine engine;
         tee::ui::Selection selection;
         tee::AppServices app{ [](const tee::PanelControls&) {}, [] { return tee::ControlsFrame{}; },
                                   [] { return std::string("valves lab"); } };
@@ -44,8 +44,8 @@ namespace
         std::unique_ptr<funkgui::HeadlessHost> host;
 
         explicit LabRig(int w = 1100, int h = 700, float dpi = 2.0f, double t = 4.6,
-                        std::vector<tee::ui::FieldInfo> fields = labFields())
-            : doc(std::move(fields))
+                        std::vector<tee::ui::FieldInfo> fields = labFields(), bool hooks = true)
+            : doc(std::move(fields)), engine(&doc, hooks)
         {
             engine.setTime(t);
             ws = tee::ui::makeValvesWorkspace(ctx);
@@ -61,6 +61,7 @@ namespace
             engine.set("valve.stage", 1.0);
             engine.set("valve.floatSpeed", 7200.0 * vv::kPi / 30.0);
             engine.set("valve.active", static_cast<double>(0xFF & ~0x06));
+            ctx.live.reset();   // Live keeps a handle once found (the hook's): ask again
             host->tick(30);
         }
     };
@@ -166,7 +167,7 @@ namespace
     {
         {
             StageRig rig(tee::ui::makeValvesWorkspace, 1100, 700, 1.0f);
-            golden("valves.demo", *rig.host);   // the demo's cams, no head on the bench, dashes for phasers and float
+            golden("valves.demo", *rig.host);   // the demo with every hook (E's fields from ValvesDemo.cpp), at stage A
         }
         LabRig rig(1100, 700, 1.0f, 4.6, labFields(false, false));
         CHECK(!vv::trainOf(rig.doc).editable);
@@ -184,6 +185,7 @@ namespace
         rig.host->tick(10);
         CHECK(rig.ws->drawKey() == k);
         rig.engine.set("valve.stage", 1.0);
+        rig.ctx.live.reset();
         CHECK(rig.ws->drawKey() != k);
         return 0;
     }
@@ -248,6 +250,7 @@ namespace
         CHECK(rig.ws->inspectorPage().find("valve.inDurSeat ") < rig.ws->inspectorPage().find("valve.inDurSeatB"));
         CHECK(rig.ws->inspectorPage().find("valve.intakeDuration") == std::string::npos);   // E's path, not the demo's too
         rig.engine.set("valve.stage", 1.0);
+        rig.ctx.live.reset();
         in = open("valve.intake", nullptr);
         CHECK(rig.ws->inspectorPage().find("valve.inDurSeatB") < rig.ws->inspectorPage().find("valve.inDurSeat "));
         for (const char* p : { "valve.exhaust", "valve.timing", "valve.head", "valve.phasers", "valve.springs" })
@@ -325,6 +328,44 @@ namespace
         CHECK_MSG(tee::test::writePng(out, path), path);
         std::printf("  contact sheet: %s (software rasteriser; rows ENGINE, VALVES; columns 1100 x 700 and 1600 x 1000 "
                     "at density 1, then at 2)\n", path.c_str());
+        return 0;
+    }
+}
+
+namespace tee::test::u2
+{
+    std::string textFaults(const funkgui::PrimList& prims, const funkgui::Rect& stage, const std::vector<funkgui::Rect>& panels);
+}
+
+namespace
+{
+    // At the frame's own stages (its smallest window's and a 1600 x 1000 window's), with E's fields and telemetry, and
+    // with none of them (the lower panels folded to a line each, the editor taller): no text leaves the stage, crosses
+    // a panel's edge or overlaps other text. Goldens at both densities.
+    VIEW_TEST(testValvesFrameStage, "valves.framestage")
+    {
+        for (const FrameSize size : { FrameSize::smallest, FrameSize::large })
+        {
+            const std::string tag = size == FrameSize::smallest ? "small" : "large";
+            for (const float dpi : { 2.0f, 1.0f })
+            {
+                StageRig rig(tee::ui::makeValvesWorkspace, size, dpi);
+                const funkgui::Rect st = rig.ws->stage();
+                const std::string why = tee::test::u2::textFaults(rig.host->draw(), st, tee::ui::valvesPanels(*rig.ws));
+                CHECK_MSG(why.empty(), tag + ": " + why);
+                golden("valves.frame." + tag + (dpi == 1.0f ? ".dpi1" : ""), *rig.host);
+            }
+            // a build with no lab and no valve telemetry: the panels fold, the editor grows
+            const funkgui::Rect st = size == FrameSize::smallest ? funkgui::Rect{ 64, 48, 696, 574 } : funkgui::Rect{ 112, 48, 1128, 874 };
+            LabRig bare(static_cast<int>(st.w), static_cast<int>(st.h), 1.0f, 4.6, labFields(false, true), false);
+            const std::vector<funkgui::Rect> panels = tee::ui::valvesPanels(*bare.ws);
+            CHECK(panels.size() == 5);
+            if (size == FrameSize::large)
+                CHECK(panels[3].h < 40.0f && panels[4].h < 40.0f);
+            const std::string why = tee::test::u2::textFaults(bare.host->draw(), { 0, 0, st.w, st.h }, panels);
+            CHECK_MSG(why.empty(), tag + ", bare: " + why);
+            picture("valves.frame." + tag + ".bare", *bare.host);
+        }
         return 0;
     }
 }
