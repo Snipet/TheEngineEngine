@@ -1,0 +1,264 @@
+{
+  "format": "tee-validation",
+  "version": 1,
+  "build": "builds/archetypes/pushrod-v6-38.json",
+  "description": "Card P's targets for \"3.8 L pushrod V6\": the invariants are hard; the rest are reported, never failed: their misses are the simulator's to-do list. Predicted strongest lines (not measured: the validation format has no line measure yet): the firing frequency, rpm/60 x 6/2, 32.5 Hz at the 650 rpm idle and 285 Hz at the 5700 rpm limiter.",
+  "targets": [
+    {
+      "name": "Invariant: starts warm and runs",
+      "scenario": "validation/scenarios/p-idle-warm.json",
+      "tel": "engine.state",
+      "measure": "min",
+      "during": [
+        6,
+        14
+      ],
+      "range": [
+        2,
+        2
+      ],
+      "source": "a warm engine started on its key runs and keeps running (engine.state 2)"
+    },
+    {
+      "name": "Invariant: within full scale",
+      "scenario": "validation/scenarios/p-free-rev.json",
+      "audio": "peak",
+      "range": [
+        0,
+        1
+      ],
+      "source": "02-contracts.md, section 1: what process writes is within +-1"
+    },
+    {
+      "name": "Invariant: holds its limiter",
+      "scenario": "validation/scenarios/p-free-rev.json",
+      "tel": "engine.speed",
+      "measure": "max",
+      "during": [
+        6,
+        9
+      ],
+      "relativeTo": "engine.redline",
+      "range": [
+        0.97,
+        1.03
+      ],
+      "unit": "of the redline",
+      "source": "a rev limiter holds the speed within a few percent of where it cuts (some 100 to 200 rpm at 6500)"
+    },
+    {
+      "name": "Invariant: pulls away",
+      "scenario": "validation/scenarios/p-pull-auto.json",
+      "tel": "car.speed",
+      "measure": "max",
+      "during": [
+        3,
+        13
+      ],
+      "range": [
+        8,
+        120
+      ],
+      "unit": "m/s",
+      "source": "started, in gear and on the pedal, the car moves (a 36 t tractor at least 3 m/s in ten seconds)"
+    },
+    {
+      "name": "Invariant: stops at the key",
+      "scenario": "validation/scenarios/p-pull-auto.json",
+      "tel": "engine.state",
+      "measure": "last",
+      "range": [
+        0,
+        0
+      ],
+      "source": "the key off stops the engine (engine.state 0 by the run's end)"
+    },
+    {
+      "name": "Starts cold",
+      "scenario": "validation/scenarios/p-cold-start.json",
+      "tel": "engine.state",
+      "measure": "min",
+      "during": [
+        6,
+        11.5
+      ],
+      "range": [
+        2,
+        2
+      ],
+      "source": "a sound engine starts from the air's temperature within some four seconds of cranking and keeps running (a rule of thumb; makers' cold-start specifications are 2 to 5 s)"
+    },
+    {
+      "name": "Peak power",
+      "dyno": {
+        "from": 62.8,
+        "to": 596.9
+      },
+      "measure": "maxPower",
+      "range": [
+        140000,
+        160000
+      ],
+      "unit": "W",
+      "source": "published figures of its kind (makers' figures of the 1990s, firm): 3791 cc; 37 to 42 kW a litre"
+    },
+    {
+      "name": "Speed at peak power",
+      "dyno": {
+        "from": 62.8,
+        "to": 596.9
+      },
+      "measure": "speedAtMaxPower",
+      "range": [
+        523.6,
+        565.5
+      ],
+      "unit": "rad/s",
+      "source": "published figures of its kind (makers' figures of the 1990s, firm): 3791 cc: 5000 to 5400 rpm"
+    },
+    {
+      "name": "Peak torque",
+      "dyno": {
+        "from": 62.8,
+        "to": 596.9
+      },
+      "measure": "maxTorque",
+      "range": [
+        300,
+        330
+      ],
+      "unit": "N m",
+      "source": "published figures of its kind (makers' figures of the 1990s, firm): 3791 cc; BMEP 9.9 to 10.9 bar (a naturally aspirated petrol engine 10 to 13 bar, turbocharged 18 to 25, a modern truck diesel 20 to 25: Heywood, Internal Combustion Engine Fundamentals, ch. 2)"
+    },
+    {
+      "name": "Speed at peak torque",
+      "dyno": {
+        "from": 62.8,
+        "to": 596.9
+      },
+      "measure": "speedAtMaxTorque",
+      "range": [
+        397.9,
+        439.8
+      ],
+      "unit": "rad/s",
+      "source": "published figures of its kind (makers' figures of the 1990s, firm): 3791 cc: 3800 to 4200 rpm (a turbocharged engine's plateau: its whole span)"
+    },
+    {
+      "name": "Warm idle",
+      "scenario": "validation/scenarios/p-idle-warm.json",
+      "tel": "engine.speed",
+      "measure": "mean",
+      "during": [
+        8,
+        14
+      ],
+      "range": [
+        62.8,
+        78.5
+      ],
+      "unit": "rad/s",
+      "source": "makers' service specifications of the kind: 600 to 750 rpm warm in neutral (a rule of thumb, firm to 100 rpm); the ECU is asked for 650"
+    },
+    {
+      "name": "Idle steadiness",
+      "scenario": "validation/scenarios/p-idle-warm.json",
+      "tel": "engine.speed",
+      "measure": "max",
+      "during": [
+        8,
+        14
+      ],
+      "range": [
+        62.8,
+        94.2
+      ],
+      "unit": "rad/s",
+      "source": "a warm idle's speed wanders some 20 to 50 rpm (a rule of thumb); a lope of more than 150 rpm over the range's top is a fault"
+    },
+    {
+      "name": "Volumetric efficiency at its torque peak",
+      "scenario": "validation/scenarios/p-full-load-4000.json",
+      "tel": "engine.veAir",
+      "measure": "mean",
+      "during": [
+        8,
+        10
+      ],
+      "range": [
+        0.82,
+        1.02
+      ],
+      "unit": "fraction",
+      "source": "a naturally aspirated four-stroke's VE at full load near its torque peak is 0.85 to 1.0 (Heywood, Internal Combustion Engine Fundamentals, ch. 6, fig. 6-9 and the text); measured at 4000 rpm"
+    },
+    {
+      "name": "Volumetric efficiency low down",
+      "scenario": "validation/scenarios/p-full-load-2000.json",
+      "tel": "engine.veAir",
+      "measure": "mean",
+      "during": [
+        8,
+        10
+      ],
+      "range": [
+        0.7,
+        0.95
+      ],
+      "unit": "fraction",
+      "source": "VE's shape: below the torque peak it falls away, the more so the hotter the cam (Heywood, Internal Combustion Engine Fundamentals, ch. 6); measured at 2000 rpm"
+    },
+    {
+      "name": "Port gas at full load",
+      "scenario": "validation/scenarios/p-full-load-4000.json",
+      "tel": "exhaust.portTemperature",
+      "measure": "mean",
+      "during": [
+        8,
+        10
+      ],
+      "range": [
+        900,
+        1100
+      ],
+      "unit": "K",
+      "source": "a spark-ignition engine's exhaust at the port at full load is some 900 to 1100 K (Heywood, Internal Combustion Engine Fundamentals, ch. 14; makers' EGT data for petrol engines)"
+    },
+    {
+      "name": "Quarter mile: time",
+      "scenario": "validation/scenarios/p-quarter-mile.json",
+      "tel": "car.t1320",
+      "measure": "last",
+      "range": [
+        14.53,
+        17.58
+      ],
+      "unit": "s",
+      "source": "Hale's rule, ET = 5.825 (lb/hp)^(1/3) s, with the kind's published power (150 kW) and the build's mass: 15.29 s; 5 % quicker to 15 % slower for street tyres and an automatic's launch (card I's test holds drag radials to 8 %)"
+    },
+    {
+      "name": "Quarter mile: trap speed",
+      "scenario": "validation/scenarios/p-quarter-mile.json",
+      "tel": "car.v1320",
+      "measure": "last",
+      "range": [
+        36.7,
+        42.2
+      ],
+      "unit": "m/s",
+      "source": "Hale's rule, trap = 234 (hp/lb)^(1/3) mph: 39.9 m/s (143 km/h), within 8 % under to 6 % over"
+    },
+    {
+      "name": "Top speed",
+      "scenario": "validation/scenarios/p-top-speed.json",
+      "tel": "car.speed",
+      "measure": "max",
+      "range": [
+        59.4,
+        68.4
+      ],
+      "unit": "m/s",
+      "source": "where 0.85 of the kind's published power (150 kW) meets the build's drag area and 1.2 % rolling resistance at 1.225 kg/m^3: 230 km/h, within 7 % (a power balance, not a test)"
+    }
+  ]
+}
