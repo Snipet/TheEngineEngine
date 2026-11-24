@@ -173,8 +173,8 @@ namespace tee
     //
     // Values by field name under their section, in SI, numbers as numbers, choices by their names (or numbers), bools
     // as true or false, arrays as arrays. A field the file lacks takes its default; a field the Schema lacks is kept
-    // (Build::unknown) and written back, with a warning.
-    struct Build
+    // (EngineBuild::unknown) and written back, with a warning.
+    struct EngineBuild
     {
         std::string name;
         std::string notes;
@@ -184,16 +184,16 @@ namespace tee
 
     // Reads a build against the player's Spec. False, with `error` set, when it is no build or a value is no value of
     // its field; `warnings` gets a line for each field the Spec lacks.
-    bool parseBuild(const EnginePlayer& player, std::string_view json, std::string_view fileName, Build& build,
+    bool parseBuild(const EnginePlayer& player, std::string_view json, std::string_view fileName, EngineBuild& build,
                     std::string& error, std::string& warnings);
-    bool loadBuild(const EnginePlayer& player, const std::filesystem::path& file, Build& build, std::string& error,
+    bool loadBuild(const EnginePlayer& player, const std::filesystem::path& file, EngineBuild& build, std::string& error,
                    std::string& warnings);
     // The build as JSON: every Spec field (its value, or its default), choices by name; what was unknown written back.
-    std::string buildJson(const EnginePlayer& player, const Build& build);
+    std::string buildJson(const EnginePlayer& player, const EngineBuild& build);
     // Every Spec field at its default, then the build's values.
-    void applyBuild(EnginePlayer& player, const Build& build);
+    void applyBuild(EnginePlayer& player, const EngineBuild& build);
     // The player's Spec as a build: every field.
-    Build currentBuild(const EnginePlayer& player, std::string name = {}, std::string notes = {});
+    EngineBuild currentBuild(const EnginePlayer& player, std::string name = {}, std::string notes = {});
 
     // ---- engine scenarios ----------------------------------------------------------------------------------------------
     //
@@ -235,7 +235,7 @@ namespace tee
 
     // Renders `scenario` from `build` through `player` (reset first, then the build applied): a row of the Telemetry
     // after every call. False, with `error` set, when an event names no field of the program's.
-    bool renderEngine(EnginePlayer& player, const Build& build, const EngineScenario& scenario,
+    bool renderEngine(EnginePlayer& player, const EngineBuild& build, const EngineScenario& scenario,
                       const RenderOptions& options, RenderResult& result, std::string& error);
 
     // ---- the twin: the simulator and the reference from the same inputs (the null test, tee-bench --engine) -----------
@@ -266,6 +266,6 @@ namespace tee
         int keyDowns = 0;                    // the reference's start key went down this often
     };
 
-    bool playTwin(EnginePlayer& engine, RefPlayer& ref, const Build& build, const EngineScenario& scenario,
+    bool playTwin(EnginePlayer& engine, RefPlayer& ref, const EngineBuild& build, const EngineScenario& scenario,
                   const TwinOptions& options, TwinResult& result, std::string& error);
 } // namespace tee
