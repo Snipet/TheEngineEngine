@@ -75,3 +75,5 @@ a switch set while stopped on a build with the default layout and size never rea
 `exh.implied`); core under the test budget, its long forms [nightly]; the V12's teeth traced to the intake runner's
 standing wave (not the cylinder; N1's end loss ab65e06 takes most of it); a firing engine let go from its start runs.
 **Listen to**, added: an overrun's pops on the model-on path once N1 lights exUnburnedJ in the pipe.
+
+**Listening note (19:30)**: builds and renders before f89d40c are not the ones to judge the default V8's model-on sound on, where a model switch was written while the engine stood (after the program's init, with no layout or size change to follow it): those ran without the physical cylinder and the implied exhaust.
