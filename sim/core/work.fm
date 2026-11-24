@@ -22,7 +22,7 @@
 //
 // What it leaves out: the blowby's mass, the work a cylinder's ring pack takes from its gas.
 #pragma once
-#include "mechspec.fm"
+#include "../spec/engine.fm"
 
 module CylWork
 {
@@ -47,7 +47,7 @@ module CylWork
 
 module CycleWork
 {
-    CylWork w[MECH_MAX_CYL];
+    CylWork w[MAX_CYL];
     int n;
     float vd;           // a cylinder's swept volume, m^3
     float cyc;          // 720 or 1080
@@ -72,7 +72,7 @@ module CycleWork
         pumpFrom = cyc > 900.0f ? 270.0f : 180.0f;
         pumpTo = cyc > 900.0f ? 810.0f : 540.0f;
         vBmep = cyc > 900.0f ? 0.66666667f * (float)n * vd : (float)n * vd;
-        for (int c = 0; c < MECH_MAX_CYL; ++c)
+        for (int c = 0; c < MAX_CYL; ++c)
         {
             CylWork* k = &w[c];
             k->wGross = 0.0;
