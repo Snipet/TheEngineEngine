@@ -66,7 +66,7 @@ namespace
 } // namespace
 
 TEST_CASE("bike.engine.launch: through the engine, the superbike's dumped clutch all but lifts its front; the cruiser's "
-          "spins its rear with the front down", "[bike][engine]")
+          "spins its rear with the front down", "[bike][engine][sim]")
 {
     const tee::test::Run sb = launch("bike-superbike", 0.15, 6.0);
     REQUIRE(sb.ok());
@@ -102,7 +102,7 @@ TEST_CASE("bike.engine.launch: through the engine, the superbike's dumped clutch
 }
 
 TEST_CASE("bike.engine.shift: through the engine, a quickshift cuts the ECU's fuel for its 50 ms and the engine drops "
-          "to the next gear's speed; an auto-blipped downshift raises it; no stall, no over-rev", "[bike][engine]")
+          "to the next gear's speed; an auto-blipped downshift raises it; no stall, no over-rev", "[bike][engine][sim]")
 {
     tee::test::Scenario s = started("bike-superbike");
     s.at(0.0).spec("car.wheelieControl", "By the clutch");
@@ -149,7 +149,7 @@ TEST_CASE("bike.engine.shift: through the engine, a quickshift cuts the ECU's fu
 }
 
 TEST_CASE("bike.engine.redline: the 600 revs to its 16,000 rpm limiter at 96 kHz, its sound finite and within range",
-          "[bike][engine]")
+          "[bike][engine][sim]")
 {
     tee::test::Scenario s = started("bike-supersport-600");
     s.at(2.5).throttle(1.0).ramp(0.1);
@@ -166,7 +166,7 @@ TEST_CASE("bike.engine.redline: the 600 revs to its 16,000 rpm limiter at 96 kHz
 }
 
 TEST_CASE("bike.engine.firing: each bike engine, running, fires at the angles its geometry's arithmetic gives",
-          "[bike][engine]")
+          "[bike][engine][sim]")
 {
     const std::filesystem::path dir = std::filesystem::path(TEE_SOURCE_DIR) / "content" / "builds" / "engines";
     int seen = 0;
@@ -201,7 +201,7 @@ TEST_CASE("bike.engine.firing: each bike engine, running, fires at the angles it
 }
 
 TEST_CASE("bike.engine.lash: through the engine, the driveline's play closes as an event on and off the throttle",
-          "[bike][engine]")
+          "[bike][engine][sim]")
 {
     tee::test::Scenario s = started("bike-naked-twin");
     s.at(2.3).clutch(1.0);
