@@ -1530,7 +1530,7 @@ module Engine
         tel.engine.crank = crank.theta;
         mechanicsTelemetry();
         tel.boost.pressure = boost.boost * 100000.0f;
-        boost.telemetry(&tel.boost);
+        boost.telemetry(&tel.boost, intk.tAir);
         if (ctl.scopeOn != 0)
             boost.scope(&scope);
         tel.exhaust.portTemperature = exh.tPort;
