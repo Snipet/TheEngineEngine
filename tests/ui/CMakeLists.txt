@@ -92,7 +92,7 @@ if(TARGET tee_ui_build)
     "TEE_UI_SIM_DIR=\"${TEE_UI_REPO}/sim\""
     "TEE_UI_BUILDS_DIR=\"${TEE_UI_REPO}/content/builds\""
     "TEE_UI_OUT_DIR=\"${TEE_UI_REPO}/out/ui\"")
-  foreach(_t build.frame build.set build.files)
+  foreach(_t build.frame build.set build.files build.dyno)
     add_test(NAME ui.${_t} COMMAND tee-ui-build-tests ${_t})
   endforeach()
 endif()
