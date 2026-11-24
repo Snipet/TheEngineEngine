@@ -151,6 +151,26 @@ namespace tee::ui::air
         return out;
     }
 
+    RamTune ramTune(const AirBuild& b, double length)
+    {
+        RamTune t;
+        if (!(length > 0.0) || !(b.runnerArea > 0.0) || !(b.cylinderMean > 0.0))
+            return t;
+        const double r = std::sqrt(b.runnerArea / 3.14159265358979);
+        const double le = length + 0.6 * r;
+        const double k = b.runnerArea * le / b.cylinderMean;
+        double lo = 0.0, hi = 1.5707;
+        for (int it = 0; it < 60; ++it)
+        {
+            const double mid = 0.5 * (lo + hi);
+            (mid * std::tan(mid) < k ? lo : hi) = mid;
+        }
+        t.hz = 0.5 * (lo + hi) * 350.0 / (2.0 * 3.14159265358979 * le);
+        t.mainRpm = 46.2 * t.hz;
+        t.lowerRpm = 19.7 * t.hz;
+        return t;
+    }
+
     // ---- the build --------------------------------------------------------------------------------------------------
     std::string AirBuild::sentence() const
     {
@@ -247,6 +267,15 @@ namespace tee::ui::air
             b.runner = r1 > 0.0 ? r1 : (bike ? 0.16 : 0.30);
             b.runner2 = std::max(0.0, fieldOr(doc, P::runnerLength2, -1, 0.0));
             b.runnerSwitch = fieldOr(doc, P::runnerSwitch, -1, 0.0);
+            // a cylinder's bore from its share of the displacement and the bore over the stroke; the runner's area as
+            // sim/intake/intake.fm runners() sizes it (0.27 of the bore's area, over its 0.62 discharge, 0.9 of it)
+            const double vd = b.displacement / std::max(1, layout == 16 ? 6 : kCyl[layout]);
+            const double bs = std::clamp(fieldOr(doc, P::boreStroke, -1, 1.0), 0.5, 2.0);
+            const double bore = std::cbrt(4.0 * vd * bs / 3.14159265358979);
+            const double rb = fieldOr(doc, P::runnerBore, -1, 0.0);
+            b.runnerArea = rb > 0.0 ? 0.785398 * rb * rb : 0.9 * 0.27 * 0.785398 * bore * bore / 0.62;
+            const double cr = std::max(1.5, fieldOr(doc, P::compression, -1, 10.0));
+            b.cylinderMean = vd / (cr - 1.0) + 0.5 * vd;
         }
 
         // machine.fm match(): turbo 1's compressor, sized for its share of the engine's flow at the redline
