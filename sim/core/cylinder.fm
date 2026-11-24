@@ -67,6 +67,15 @@ module Cylinder
     float exStore;      // conserve 1: this exhaust event's gas out by the port not yet drawn back (kg), its mass times
     float exStoreMT;    // temperature (kg K) and its burned part (kg); emptied when the exhaust valve shuts
     float exStoreIn;
+    float exUnburnedJ;  // conserve 1: the fuel's heat (J) still unburned in the gas this exhaust event has let out while its
+                        // burn ran (a late burn, an overrun's fired charge): the pipe's to light (card H's store, N1)
+    float exUnburnedLast;   // the last event's, kept at its exhaust's closing
+    float burnCharged;  // a burn's books (J): its heat at the spark, released in the cylinder, and let out unburned
+    float burnReleased;
+    float burnOut;
+    float bookCharged;  // the last finished burn's three, for the energy account
+    float bookReleased;
+    float bookOut;
     int conserve;       // 1 (the physical cylinder: Engine::woschniWalls): what the intake pushed back comes back as itself,
                         // its mass at the temperature it left at; 0: the reference's, as the same volume of the air
     float cBurn;        // how much of what could burn this cycle's burn will burn (the dilution's toll)
@@ -348,15 +357,21 @@ module Cylinder
             exStore = 0.0f;
             exStoreMT = 0.0f;
             exStoreIn = 0.0f;
+            exUnburnedLast = exUnburnedJ;
             if (exOut > 1.0e-12f)
                 exFrac = fminf(exInert / exOut, 1.0f);
             exOut = 0.0f;
             exInert = 0.0f;
         }
+        if (evoNow)
+            exUnburnedJ = 0.0f;
         if (sparkNow && qTot > 0.0f)
         {
             burnAt = 0.0f;
             xPrev = 0.0f;
+            burnCharged = qTot;
+            burnReleased = 0.0f;
+            burnOut = 0.0f;
         }
         // the volume
         const float vNew = volumeSlope(a);
@@ -438,6 +453,17 @@ module Cylinder
             qTot *= 1.0f - share;      // (the fuel is mixed through its unburned gas: the same share of it leaves)
             mInert = fmaxf(mInert - mLk * dt * fminf(mInert / fmaxf(m, 1.0e-9f), 1.0f), 0.0f);
         }
+        // (conserve 1: a burn still running as the exhaust valve lets gas out: the fuel in what leaves goes with it, so the
+        // heat still to come shrinks by the share of the mass that left, and the part of it not yet burned (1 - x) is the
+        // pipe's to light or to carry out unburned: the fuel's heat released once. The lead's ruling, 24 Nov, with N1)
+        if (conserve != 0 && burnAt >= 0.0f && mOutE > 0.0f && qTot > 0.0f)
+        {
+            const float lost = qTot * fminf(mOutE * dt / fmaxf(m, 1.0e-9f), 1.0f);
+            const float out = lost * (1.0f - xPrev);
+            exUnburnedJ += out;
+            burnOut += out;
+            qTot -= lost;
+        }
         // the burned gas: what leaves takes its share (the gas well mixed); what comes back from the header is
         // burned; what the intake pushes back into its runner waits there, and is the first drawn in again
         {
@@ -500,11 +526,15 @@ module Cylinder
                 fe = f2;
             }
             dq = qTot * (x - xPrev);
+            burnReleased += dq;
             knockNow = knock > 0.0f && xPrev < 0.6f && x >= 0.6f;
             xPrev = x;
             if (fe > 1.6f)
             {
                 burnAt = -1.0f;
+                bookCharged = burnCharged;
+                bookReleased = burnReleased;
+                bookOut = burnOut + qTot * (1.0f - x);     // (what a burn cut off short of all of it leaves unburned)
                 qTot = 0.0f;
                 // what burned is products now; what did not stays to burn next time
                 mInert += cBurn * fmaxf(m - mInert, 0.0f);
