@@ -643,3 +643,20 @@ TEST_CASE("the application's first build, written after a default init, runs as 
     CHECK(std::fabs(tq[0] / tq[1] - 1.0) < 0.02);
     CHECK(tq[0] == tq[2]);
 }
+
+TEST_CASE("a governed diesel's launch and its redline follow its limiter (ecu.model 1, card I's readers)", "[core][engine][redline]")
+{
+    // (e0bcf8f's two readers in the vehicle: the redline it is handed (Vehicle::redW) is the limiter's 2014 rpm, not the
+    // idle's 2200 floor, and the launch's fallback (no launch control) is 60 % of it)
+    Bench b("archetypes/tractor-15-inline-six");
+    std::string e;
+    REQUIRE(b.player().setSpec("ecu.limiter.speed", 210.906, e));      // (the build's own block does not load in this rig yet)
+    REQUIRE(b.player().setSpec("ecu.launch.on", 0, e));
+    b.start();
+    b.ctl().mode = 1;
+    b.play(1.0);
+    // (the launch's fallback, Vehicle::wLaunch = 0.6 redW, is worked out only while a launch runs: redW is what it reads)
+    const double red = b.field("car.m1.redW") * kRpm;
+    std::printf("tractor driving: the vehicle's redline %.0f rpm\n", red);
+    CHECK(std::fabs(red - 2014.0) < 5.0);
+}

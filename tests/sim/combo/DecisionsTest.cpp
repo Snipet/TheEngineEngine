@@ -68,9 +68,10 @@ namespace
 
     // D's sequence (content/scenarios/core/stopped-switch.json): the key on; `late` written at 0.1 s, the engine
     // stopped, with no layout or size change (so nothing configures again); the start at 0.2 s; idle; the engine dyno
-    // at 3000 rpm, full throttle. The idle is read from 8 s: an event of the key differs on the two paths (voices.model
-    // primes the fuel pump as the key turns on, so a switch turned on after the key misses it), and its idle meets the
-    // other path's by then (96.0 against 91.1 rad/s at 2.2 to 3 s, 90.8 both at 8 to 12 s, measured).
+    // at 3000 rpm, full throttle. The idle is read from 8 s, after the ECU's cold-idle glide: a stopped engine that
+    // renders (voices.model on at the key) glides it before the start, so an early idle depends on when the voices came
+    // on (96.0 against 91.1 rad/s at 2.2 to 3 s before D's c93c3391, 90.8 both from 8 s; whether a resting render
+    // should glide the idle at all is the lead's and H's).
     Reached reach(const std::string& build, const Values& late)
     {
         tee::test::Scenario s(build);

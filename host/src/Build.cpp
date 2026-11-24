@@ -677,7 +677,7 @@ namespace tee
                         out = j.get<double>();
                     else if (j.is_boolean())
                         out = j.get<bool>() ? 1.0 : 0.0;
-                    else if (j.is_string() && f.kind == FieldKind::Choice && f.choiceIndex(j.get<std::string>()) >= 0)
+                    else if (j.is_string() && !f.choices.empty() && f.choiceIndex(j.get<std::string>()) >= 0)
                         out = f.minimum.value_or(0.0) + f.choiceIndex(j.get<std::string>());
                     else
                         return false;

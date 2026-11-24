@@ -205,3 +205,36 @@ TEST_CASE("boost engine: on the dyno, a turbo four's brake mean effective pressu
     CHECK(bmep[1] < 25.0e5);
 }
 
+
+TEST_CASE("boost engine: the intercooler's core settles at a press, and a test cell holds it at the air",
+          "[boost][engine]")
+{
+    // (card N2) spec.boost.heatSettle (card C's dynos): at each press the core is put where the present flow and the
+    // air through it hold it. Standing (no absorber, no road: still air) at full throttle the core warms over some
+    // 15 to 25 s; a press puts it at that end at once. On the engine dyno (Boost::testCell, Engine's) the core is held
+    // at the air's temperature: SAE J1349's laboratory charge-air cooling.
+    Engine e;
+    e.turboFour(1);
+    e.dyno(4000.0);
+    REQUIRE(e.run(3.0));
+    const double air = e.get("boost.mach.tOut");
+    const double held = e.get("boost.mach.tCore");
+    // the bench: a dead-air core, the throttle open at the limiter
+    auto& c = e.player->controls();
+    c.mode = EnginePlayer::kModeBench;
+    c.throttle = 1.0f;
+    REQUIRE(e.run(2.0));
+    const double before = e.get("boost.mach.tCore");
+    e.spec("boost.heatSettle", 1);
+    REQUIRE(e.run(0.1));
+    const double settled = e.get("boost.mach.tCore");
+    REQUIRE(e.run(15.0));
+    const double later = e.get("boost.mach.tCore");
+    std::printf("intercooler core: air %.1f K; held on the dyno %.1f K; on the bench %.1f K after 2 s, %.1f K at the "
+                "press, %.1f K 15 s on\n",
+                air, held, before, settled, later);
+    CHECK(held == Catch::Approx(air).margin(0.5));
+    // (measured: 305.5 K after 2 s, 321.6 at the press, 321.8 after 40 s more: the core's own end; 15 s here)
+    CHECK(settled > before + 8.0);
+    CHECK(std::fabs(later - settled) < 1.5);
+}

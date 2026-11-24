@@ -130,13 +130,17 @@ windows shut. A new place fades its reflections out and in again over 40 ms time
 ## The last stage: headroom, limiter, ceiling
 
 The reference lives on its limiter: the V8 build peaks at 7.3 before it at full load and takes 24 dB of reduction on
-a free rev. Model 1 is staged so that a build's loudest ordinary moment (the V8 build at full load, 0.75 of its
-redline, the default camera and distance) peaks at 0.5, 6 dB under full scale: a gain of 0.116 (-18.7 dB) after the
-compressor. Then a limiter at 0.7 whose attack is the sample (no sample leaves it above 0.7) and whose release is
-250 ms; a soft ceiling past 0.75 toward 0.95 (`0.75 + 0.2 tanh((|x| - 0.75) / 0.2)`), a guard; and a clamp at 0.99
-after the resampler, whose ripple on a limited peak was measured at 0.733 (48 kHz). `tel.sound.limiter` is the
-deepest reduction over the last 0.4 s; `tel.sound.ceilingParts` counts the parts the ceiling bent. X-004 (a turbo six's
-launch with eight switches on, past 1.0 before): largest sample 0.795, no guard trip.
+a free rev. Model 1 is staged on the archetypes (content/builds/archetypes, Rear camera on the field, the validation
+free rev p-free-rev): a gain of 0.58 (-4.7 dB) after the compressor puts the middle of them near 0.3 (0.08 for the
+quietest, a kei triple turbo; 0.25 to 0.35 for the turbo sixes, the V6s, the fours; the dozen loudest, the big V8s,
+the V12, the high-revving six, reach the limiter on their peaks). It was first staged on the reference's wild-cam V8
+build alone (0.116, -18.7 dB): that build is some 20 dB louder than a typical one, which left the archetypes 23 to 30
+dB under the reference's mix (P's measure, 20:10). Then a limiter at 0.7 whose attack is the sample (no sample leaves
+it above 0.7) and whose release is 250 ms; a soft ceiling past 0.75 toward 0.95, a guard; and a clamp at 0.99 after
+the resampler, whose ripple on a limited peak measures 0.73 to 0.75 (48 kHz). `tel.sound.limiter` is the deepest
+reduction over the last 0.4 s; `tel.sound.ceilingParts` counts the parts the ceiling bent. A build's own level
+(spec.sound.level, -24 to +12 dB) is where an archetype is brought to the others: 20 log10(0.3 / its free
+rev's peak) for one under the limiter. X-004 (a turbo six's launch with eight switches on): no guard trip.
 
 ## Level
 
