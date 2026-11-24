@@ -1,9 +1,9 @@
 # U5: GARAGE, SCOPE, LISTEN and the atmosphere shaders (branch `claude/awesome-gates-ntdb58`)
 
-**Done, by test** (`tee-view-tests`; pictures: FunkGui's software rasteriser, `out/ui/`, looked at before blessing):
+**Done, by test** (`tee-view-tests`; pictures: FunkGui's software rasteriser, `out/ui/`, looked at; unchecked ones in `*.pictures`, nightly):
 - SCOPE (`ui/views/scope/`, registered): `scope.stage`(+`.dpi1`), `scope.large`(+`.dpi1`), `scope.paper`, `scope.campbell`,
   `scope.logpv`, `scope.absent` (goldens); `scope.fft`, `scope.freeze`, `scope.rest`. Own 4096-point Hann FFT, Campbell
-  cells, triggered wave, P-theta with valve events/spark/peak, P-V lin and log-log, ports. Inspector: `sound` page.
+  cells, triggered wave, P-theta with valve events/spark/peak, P-V lin and log-log, ports. Inspector: the frame's.
 - GARAGE (`ui/views/garage/`, NOT registered, see below): `garage.stage`(+`.dpi1`), `garage.large`(+`.dpi1`), `garage.paper`,
   `garage.compare`(+`.dpi1`) (goldens); `garage.search`, `garage.parts`, `garage.files`, `garage.rest`. Library seam
   `Library.h`; `DemoLibrary` (labelled DEMO LIBRARY); `ServicesLibrary` over today's `FrameServices`.

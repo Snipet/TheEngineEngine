@@ -130,9 +130,9 @@ reference's, their fall-off from the pocket's pressure step), bang (anti-lag). L
 
 ## In the engine
 
-`Boost` (`sim/boost/boost.fm`) holds the machine; `spec.boost.model` 1 switches to it (README, Boost). The exhaust side
-is a stand-in until card G's network ends its collectors in the housings: each sample's cylinder gas (mass and its
-temperature) is fed into the housings as a flow, the downpipes open ends. On the engine dyno at full load the 2 L
+`Boost` (`sim/boost/boost.fm`) holds the machine; `spec.boost.model` 1 switches to it (README, Boost), and card G's
+exhaust network (implied by boost.model 1) ends its collectors in the housings (`housingOf`, `housing`, `downpipe`,
+`gatePipe`). On the engine dyno at full load the 2 L
 four's port gas reaches 1190 to 1330 K (`exh.tPort`, settled after some 4 s), and the matched turbo holds its 70 kPa
 spring from 3500 rpm (EngineTest.cpp). Test at full load: the bench's `holdSpeed` driver holds a speed with almost no
 brake torque, and its gas stays near 560 K (an earlier reading of this file's author, now corrected).

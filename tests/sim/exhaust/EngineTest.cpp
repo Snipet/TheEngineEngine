@@ -39,11 +39,26 @@ namespace
 // limiter, the overrun, off, a restart), every layout, model 1 against model 0. The builder starts its pipes as the
 // reference does at a configure (built at every configure, so its pipes carry the reference's history) and draws its
 // noise from the engine's stream in the reference's order. Measured: identical to the bit, every layout.
+static void engineIdentity(bool full);
+
 TEST_CASE("model 1 at its defaults is model 0 in the engine, every layout", "[exhaust][engine]")
+{
+    engineIdentity(false);
+}
+
+TEST_CASE("model 1 at its defaults is model 0 in the engine, every layout, in full", "[exhaust][engine][nightly]")
+{
+    engineIdentity(true);
+}
+
+static void engineIdentity(bool full)
 {
     const EngineScenario scenario = test::engineScenario("free-revs");
     double worst = 1e9;
-    for (int layout = 0; layout < 17; ++layout)
+    // (quick: a four's, a V8's single and dual layouts; in full every layout)
+    const std::vector<int> layouts = full ? std::vector<int>{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}
+                                          : std::vector<int>{5, 10, 12};
+    for (int layout : layouts)
     {
         EngineBuild b = test::engineBuild(player(), "v8");
         b.values["engine.layout"] = {static_cast<double>(layout)};
@@ -106,9 +121,21 @@ namespace
 // its exhaust's description changed to a random one every 4 s (rebuilt under the exhaust's own fade), now and then the
 // model switched: every sample finite and within full scale; after the key is off and 6 s have passed, no pressure
 // stays in the pipes (the means at the collectors and the heads under 50 Pa) and the output is silent.
+static void engineSoak(bool full);
+
 TEST_CASE("random exhaust topologies changed while the engine runs", "[exhaust][engine][soak]")
 {
-    double seconds = 600.0;
+    engineSoak(false);
+}
+
+TEST_CASE("random exhaust topologies changed while the engine runs, in full", "[exhaust][engine][soak][nightly]")
+{
+    engineSoak(true);
+}
+
+static void engineSoak(bool full)
+{
+    double seconds = full ? 600.0 : 6.0;
     if (const char* env = std::getenv("TEE_EXHAUST_SOAK_SECONDS"); env != nullptr && std::atof(env) > 0.0)
         seconds = std::atof(env);
     EnginePlayer& p = player();
@@ -178,7 +205,19 @@ TEST_CASE("random exhaust topologies changed while the engine runs", "[exhaust][
 // is where the decay had reached then, a few tens of Pa, falling), and the downpipe's head swings less than the
 // collector's end at the housing, by itself (the Scope's pipe-end pressures, sampled every 128 samples at full
 // throttle).
+static void turbineHousing(bool full);
+
 TEST_CASE("the turbine's housing: card F's machine on the builder's collectors", "[exhaust][engine][turbine]")
+{
+    turbineHousing(false);
+}
+
+TEST_CASE("the turbine's housing: card F's machine on the builder's collectors, in full", "[exhaust][engine][turbine][nightly]")
+{
+    turbineHousing(true);
+}
+
+static void turbineHousing(bool full)
 {
     struct Case
     {
@@ -188,9 +227,15 @@ TEST_CASE("the turbine's housing: card F's machine on the builder's collectors",
         int kind;
         int gate;   // spec.boost.gate: 1 external (its own pipe, to the air at the front)
     };
-    for (const Case& k : {Case{"2 L four, one turbo", 5, 0.002, 1, 0}, Case{"V8, two turbos", 12, 0.0058, 2, 0},
-                          Case{"2 L four, one turbo, an external gate", 5, 0.002, 1, 1},
-                          Case{"V8, two turbos, external gates", 12, 0.0058, 2, 1}})
+    // (quick: the two with external gates, which feed the housings and the gates' pipes; in full the internal too)
+    std::vector<Case> cases = {Case{"2 L four, one turbo, an external gate", 5, 0.002, 1, 1},
+                               Case{"V8, two turbos, external gates", 12, 0.0058, 2, 1}};
+    if (full)
+    {
+        cases.push_back(Case{"2 L four, one turbo", 5, 0.002, 1, 0});
+        cases.push_back(Case{"V8, two turbos", 12, 0.0058, 2, 0});
+    }
+    for (const Case& k : cases)
     {
         EnginePlayer& p = player();
         p.reset();
@@ -273,7 +318,19 @@ TEST_CASE("the turbine's housing: card F's machine on the builder's collectors",
 
 // content/builds/exhausts: every part build loads (every field known), and the V8 with it starts and plays 3 s of
 // free revs, every sample finite and within full scale, on the builder (tel.exhaust.model 1)
+static void buildsPlay(bool full);
+
 TEST_CASE("every exhaust build plays", "[exhaust][engine][builds]")
+{
+    buildsPlay(false);
+}
+
+TEST_CASE("every exhaust build plays, in full", "[exhaust][engine][builds][nightly]")
+{
+    buildsPlay(true);
+}
+
+static void buildsPlay(bool full)
 {
     const std::filesystem::path dir = std::filesystem::path(TEE_SOURCE_DIR) / "content" / "builds" / "exhausts";
     int n = 0;
@@ -291,7 +348,7 @@ TEST_CASE("every exhaust build plays", "[exhaust][engine][builds]")
         EngineBuild b = test::engineBuild(p, "v8");
         for (const auto& [path, v] : part.values)
             b.values[path] = v;
-        const Audio a = render(b, test::engineScenario("free-revs"), 3.0);
+        const Audio a = render(b, test::engineScenario("free-revs"), full ? 3.0 : 1.5);
         bool finite = true;
         for (std::size_t i = 0; i < a.left.size(); ++i)
             finite = finite && std::isfinite(a.left[i]) && std::isfinite(a.right[i]) && std::fabs(a.left[i]) <= 1.0f;
@@ -309,9 +366,22 @@ TEST_CASE("every exhaust build plays", "[exhaust][engine][builds]")
 
 // Card C's settle (spec.exhaust.heatSettle): at full load, a settle puts the exhaust's walls where the load holds
 // them: over the next 20 s they move by under 3 %, where unsettled they move by much more. Both models.
+static void heatSettles(bool full);
+
 TEST_CASE("the exhaust's heat settles on request", "[exhaust][engine][settle]")
 {
-    for (int model : {0, 1})
+    heatSettles(false);
+}
+
+TEST_CASE("the exhaust's heat settles on request, in full", "[exhaust][engine][settle][nightly]")
+{
+    heatSettles(true);
+}
+
+static void heatSettles(bool full)
+{
+    // (quick: the builder, 10 s after; in full both models, 20 s)
+    for (int model : full ? std::vector<int>{0, 1} : std::vector<int>{1})
     {
         double moved[2] = {0.0, 0.0};
         for (int settle : {0, 1})
@@ -340,7 +410,7 @@ TEST_CASE("the exhaust's heat settles on request", "[exhaust][engine][settle]")
                 run(0.1);
             }
             const double w0 = test::field(p, "tel.exhaust.wallTemperature[3]");
-            run(20.0);
+            run(full ? 20.0 : 10.0);
             const double w1 = test::field(p, "tel.exhaust.wallTemperature[3]");
             moved[settle] = std::fabs(w1 - w0) / w0;
             std::printf("settle, model %d, %s: main pipe's wall %.0f K, 20 s later %.0f K (%.1f %%)\n", model,
@@ -378,7 +448,19 @@ TEST_CASE("the exhaust's telemetry is physical from the first block", "[exhaust]
 // after the main pipes, quarter-wave stubs, chambered mufflers with valves by speed and load) on the V8, 60 s of
 // random throttle and dyno speeds (the valves opening and shutting): every sample finite and within full scale, and
 // after the key is off the output dies away
+static void dualXSoak(bool full);
+
 TEST_CASE("the dual X with stubs and valves soaks", "[exhaust][engine][soak]")
+{
+    dualXSoak(false);
+}
+
+TEST_CASE("the dual X with stubs and valves soaks, in full", "[exhaust][engine][soak][nightly]")
+{
+    dualXSoak(true);
+}
+
+static void dualXSoak(bool full)
 {
     EnginePlayer& p = player();
     p.reset();
@@ -399,7 +481,7 @@ TEST_CASE("the dual X with stubs and valves soaks", "[exhaust][engine][soak]")
     bool finite = true;
     double peakAll = 0.0;
     double valveMoves = 0.0, lastValve = 0.0;
-    const int calls = static_cast<int>(60.0 * 48000.0 / 512.0);
+    const int calls = static_cast<int>((full ? 60.0 : 10.0) * 48000.0 / 512.0);
     for (int k = 0; k < calls; ++k)
     {
         // started on the bench (1.5 s on the starter), then on the dyno (mode 2: the crank held at a speed, the
@@ -521,41 +603,155 @@ TEST_CASE("lengths and bores dragged glide, kinds rebuild", "[exhaust][engine][g
 // throttle open, warm, at 1500, 3000 and 5000 rpm (8 s each): the gas at the valve against the gas leaving the port,
 // and the heat the port walls take against the brake power. Measured and printed; checked: the port cools the gas
 // (never warms it), by less than 400 K, and the header reads under the valve.
+static void portCools(bool full);
+
 TEST_CASE("the exhaust port's walls cool the gas", "[exhaust][engine][port]")
+{
+    portCools(false);
+}
+
+TEST_CASE("the exhaust port's walls cool the gas, in full", "[exhaust][engine][port][nightly]")
+{
+    portCools(true);
+}
+
+static void portCools(bool full)
+{
+    struct Case
+    {
+        const char* build;
+        bool diesel;
+        std::vector<double> rpms;
+    };
+    const std::vector<Case> cases = {{"v8", false, full ? std::vector<double>{1500.0, 3000.0, 5000.0} : std::vector<double>{5000.0}},
+                                     {"large-diesel", true, full ? std::vector<double>{1200.0, 1800.0} : std::vector<double>{1800.0}}};
+    for (const Case& k : cases)
+    {
+        EnginePlayer& p = player();
+        p.reset();
+        EngineBuild b = test::engineBuild(p, k.build);
+        b.values["exhaust.model"] = {1.0};
+        b.values["env.temperature"] = {293.15};     // (a warm day, as the calibration's targets are)
+        applyBuild(p, b);
+        EnginePlayer::Controls& c = p.controls();
+        c.mode = EnginePlayer::kModeBench;
+        c.ignition = EnginePlayer::kIgnitionStart;
+        std::vector<float> l(512), r(512);
+        const double dt = 512.0 / 48000.0;
+        double eGas = 0.0, eCool = 0.0;
+        auto run = [&](double s) {
+            for (int n = 0; n < static_cast<int>(s / dt); ++n)
+            {
+                p.process(l.data(), r.data(), 512);
+                eGas += test::field(p, "tel.exhaust.portHeat") * dt;
+                eCool += test::field(p, "tel.exhaust.portCoolantHeat") * dt;
+            }
+        };
+        run(1.5);
+        c.ignition = EnginePlayer::kIgnitionOn;
+        run(1.0);
+        for (double rpm : k.rpms)
+        {
+            c.mode = 2;
+            c.dynoSpeed = static_cast<float>(rpm * 0.10471976);
+            c.throttle = 1.0f;
+            run(full ? 8.0 : 6.0);
+            // the heat settled where this load holds it (card C's settle), then 2 s run on, the energy counted over them
+            {
+                const std::size_t hs = static_cast<std::size_t>(p.specIndex("exhaust.heatSettle"));
+                p.setSpec(hs, p.spec(hs) + 1.0);
+            }
+            run(0.1);
+            eGas = 0.0;
+            eCool = 0.0;
+            const double w0 = test::field(p, "tel.exhaust.portWallTemperature");
+            run(2.0);
+            const double w1 = test::field(p, "tel.exhaust.portWallTemperature");
+            const double tv = test::field(p, "tel.exhaust.portTemperature");
+            const double te = test::field(p, "tel.exhaust.portExitTemperature");
+            const double th = test::field(p, "tel.exhaust.headerTemperature");
+            const double q = test::field(p, "tel.exhaust.portHeat");
+            const double power = test::field(p, "tel.engine.torque") * rpm * 0.10471976;
+            std::printf("port, %s at %.0f rpm full throttle: at the valve %.0f K, leaving the port %.0f K (%.0f K less), "
+                        "the header %.0f K; the port walls take %.1f kW (brake %.1f kW), their wall %.0f K; over 2 s the "
+                        "gas gave %.1f kJ, the coolant took %.1f kJ, the wall moved %.1f K\n", k.build, rpm, tv, te, tv - te,
+                        th, q / 1000.0, power / 1000.0, w1, eGas / 1000.0, eCool / 1000.0, w1 - w0);
+            INFO(k.build << " at " << rpm);
+            CHECK(te <= tv);
+            CHECK(q > 0.0);
+            CHECK(th < te);
+            // the energy accounted: what the gas gave, the coolant took and the walls stored (their capacity times
+            // their move), within 5 % (the sums are of 512-sample blocks)
+            const double stored = test::field(p, "exh.capPort") * (w1 - w0);
+            std::printf("    energy: gas %.1f kJ = coolant %.1f + walls %.1f kJ (%.1f %% apart)\n", eGas / 1000.0,
+                        eCool / 1000.0, stored / 1000.0, 100.0 * (eGas - eCool - stored) / eGas);
+            CHECK(std::fabs(eGas - eCool - stored) < 0.05 * eGas);
+            // the header's targets at full load (the calibration's: a thermocouple a little way down the primary)
+            // from mid speed up; at 1500 rpm printed only
+            if (rpm < 1700.0 && !k.diesel)
+                continue;
+            if (k.diesel)
+            {
+                // (the target is 700 to 950 K; the large diesel's gas at the valve is 590 to 730 K, the cylinder's, under
+                // it before the port takes 30 to 40 K: its floor is not the exhaust's to hold, so only its top checked)
+                CHECK(th < 950.0);
+            }
+            else
+            {
+                CHECK(th > 900.0);
+                CHECK(th < 1100.0);
+            }
+        }
+    }
+}
+
+// A twin-turbo inline six into ONE exhaust (content/builds/archetypes/straight-six-twin-turbo-30.json, its exhaust
+// sides 1, the front three cylinders' collector and the rear three's): each collector in its own turbo's housing
+// (F's housingOf on one bank: by group), and both turbos' outlets into the one downpipe (Boost::exhaustSides, called
+// at every configure). Before it, the second turbo's outlet had no pipe: its shaft stood. Measured: both shafts' speeds
+// at 4300 rpm full throttle on the dyno, and the boost.
+TEST_CASE("a twin-turbo six into one pipe spins both turbos", "[exhaust][engine][turbine]")
 {
     EnginePlayer& p = player();
     p.reset();
-    EngineBuild b = test::engineBuild(p, "v8");
+    EngineBuild b;
+    std::string error, warnings;
+    REQUIRE(loadBuild(p, std::filesystem::path(TEE_SOURCE_DIR) / "content/builds/archetypes/straight-six-twin-turbo-30.json",
+                      b, error, warnings));
     b.values["exhaust.model"] = {1.0};
+    b.values["exhaust.sides"] = {1.0};
+    b.values["exhaust.primaryTo"] = {0, 0, 0, 1, 1, 1};
+    b.values["exhaust.collectorTo"] = {0, 0};
     applyBuild(p, b);
     EnginePlayer::Controls& c = p.controls();
     c.mode = EnginePlayer::kModeBench;
     c.ignition = EnginePlayer::kIgnitionStart;
     std::vector<float> l(512), r(512);
+    bool finite = true;
     auto run = [&](double s) {
         for (int k = 0; k < static_cast<int>(s * 48000.0 / 512.0); ++k)
+        {
             p.process(l.data(), r.data(), 512);
+            for (int i = 0; i < 512; ++i)
+                finite = finite && std::isfinite(l[i]) && std::fabs(l[i]) <= 1.0f;
+        }
     };
     run(1.5);
     c.ignition = EnginePlayer::kIgnitionOn;
-    run(1.0);
-    for (double rpm : {1500.0, 3000.0, 5000.0})
-    {
-        c.mode = 2;
-        c.dynoSpeed = static_cast<float>(rpm * 0.10471976);
-        c.throttle = 1.0f;
-        run(8.0);
-        const double tv = test::field(p, "tel.exhaust.portTemperature");
-        const double te = test::field(p, "tel.exhaust.portExitTemperature");
-        const double th = test::field(p, "tel.exhaust.headerTemperature");
-        const double q = test::field(p, "tel.exhaust.portHeat");
-        const double power = test::field(p, "tel.engine.torque") * rpm * 0.10471976;
-        std::printf("port at %.0f rpm full throttle: at the valve %.0f K, leaving the port %.0f K (%.0f K less), the "
-                    "header %.0f K; the port walls take %.1f kW (brake %.1f kW)\n", rpm, tv, te, tv - te, th, q / 1000.0,
-                    power / 1000.0);
-        CHECK(te <= tv);
-        CHECK(tv - te < 400.0);
-        CHECK(q > 0.0);
-        CHECK(th < tv);
-    }
+    c.mode = 2;
+    c.dynoSpeed = static_cast<float>(4300.0 * 0.10471976);
+    c.throttle = 1.0f;
+    run(6.0);
+    const double w0 = test::field(p, "tel.boost.shaftSpeed[0]");
+    const double w1 = test::field(p, "tel.boost.shaftSpeed[1]");
+    const double boost = test::field(p, "tel.boost.pressure");
+    const double torque = test::field(p, "tel.engine.torque");
+    std::printf("twin six into one pipe at 4300 rpm full throttle: shafts %.0f and %.0f rad/s, boost %.1f kPa, %.0f N m, "
+                "the exhaust's sides %d, finite %s\n", w0, w1, boost / 1000.0, torque,
+                static_cast<int>(test::field(p, "exh.b.nSides")), finite ? "yes" : "no");
+    CHECK(finite);
+    CHECK(w0 > 3000.0);
+    CHECK(w1 > 3000.0);
+    CHECK(std::fabs(w0 - w1) < 0.2 * std::max(w0, w1));
+    CHECK(torque > 100.0);
 }

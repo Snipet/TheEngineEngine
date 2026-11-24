@@ -79,7 +79,7 @@ CARS = {
     "family-diesel": dict(mass=1500, drive="Front", wheelbase=2.64, cgHeight=0.55, frontWeight=0.62, track=1.55,
                           cdA=0.66, tyre="Economy", tyreRadius=0.315, gearbox="Manual",
                           ratio=[3.77, 2.09, 1.32, 0.98, 0.76, 0.64], finalDrive=3.39, wheelInertia=1.1),
-    "tractor": dict(kind="Truck", mass=36000, drive="Rear", wheelbase=5.8, cgHeight=1.5, frontWeight=0.25, track=2.0,
+    "tractor": dict(kind="Truck", truckAir=True, mass=36000, drive="Rear", wheelbase=5.8, cgHeight=1.5, frontWeight=0.25, track=2.0,
                     cdA=6.0, tyre="Truck", tyreRadius=0.51, gearbox="Manual",
                     ratio=[14.4, 12.29, 8.51, 7.26, 6.05, 5.16, 4.38, 3.74, 3.20, 2.73, 2.29, 1.95, 1.62, 1.38, 1.17,
                            1.00, 0.86, 0.73], finalDrive=3.55, wheelInertia=40.0),
