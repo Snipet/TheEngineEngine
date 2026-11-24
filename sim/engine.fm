@@ -43,6 +43,7 @@
 #include "core/wallheat.fm"
 #include "core/mathx.fm"
 #include "combustion/heavy.fm"
+#include "vehicle/truckair.fm"
 #include "core/twostroke/twostroke.fm"
 
 // The reference's dials, in its units, as Engine has taken them from the Spec and the Controls (readSpec,
@@ -190,6 +191,7 @@ module Engine
     double gasExhaust;
     double airTrapped;  // and the unburned gas the cylinders hold at their intakes' closing
     WallHeat wall;      // Woschni's wall heat, with spec.engine.wallHeat 1 (core/wallheat.fm)
+    TruckAir air;       // card D2: a truck's air system's sounds, with spec.car.truckAir (vehicle/truckair.fm)
     HeavyDiesel hd;     // card D2: a diesel's governor, compression and exhaust brakes (combustion/heavy.fm); hd.on 0 at the defaults
     TwoStroke two;      // card T: a two-stroke's cylinders, crankcases and pipes (core/twostroke/), with spec.engine.cycle 1
     int cycleUse;       // 1: the engine configured as a two-stroke (spec.engine.cycle 1 on a custom engine)
@@ -310,7 +312,8 @@ module Engine
         comb.setup(rate, &noise, &ecu, &heat, &lay, &exh.pop[0], &spec.fuel, &spec.engine);
         comb.oxygen = 1.0f;
         physicalCylinder();
-        hd.setup(rate, &spec.ecu, &spec.valve);                                             // card D2
+        hd.setup(rate, &spec.ecu, &spec.valve);
+        air.setup(rate);                                                                    // card D2
         ecu.setup(16.0f / rate, &spec.ecu, &spec.fuel, &ctl, &tel.ecu, &scope, &heat);     // card H's model 1
         set.bov = 0.7f;
         set.intake = 0.5f;
@@ -857,6 +860,8 @@ module Engine
         hd.control16(d16, fuelUse, ecu.state, ecu.throttle, crank.omega, ecu.idleRpm, ecu.redRpm, ecu.sinceStart,
                      set.drive != 0 ? set.clutch : 0.0f, exh.mdot, exh.tPort, boost.boost, vTotal, lay.n, bore, heat.tAmb, ctl.buttons);
         hd.feed(&comb.diesel);
+        if (spec.car.truckAir)
+            air.control(d16, ecu.state == 2 ? crank.omega : 0.0f, set.brake, ctl.handbrake);   // (card D2: the air system)
         if (hd.on != 0)
         {
             hd.flapReal = exh.flapFitted();          // (card G's butterfly, where fitted, makes the exhaust brake's back pressure)
@@ -1382,6 +1387,13 @@ module Engine
                 const float rd = set.drive != 0 ? car.road(v == 4 ? 0.45f : 1.0f) : 0.0f;
                 // (the fade's gain eased: a smooth step)
                 cutG = cutWant != 0 ? fmaxf(cutG - cutDn, 0.0f) : fminf(cutG + cutUp, 1.0f);
+                if (spec.car.truckAir)
+                {
+                    // (card D2: the air system's purge and brakes, at card L's places; heard with sound.model 1)
+                    air.out();
+                    listen.extra(LS_PLACE_RIGHT, 10.0f * air.lastPurge);      // (judgement: a purge is as loud as an idling truck nearby)
+                    listen.extra(LS_PLACE_REAR_AXLE, 6.0f * air.lastBrakes);
+                }
                 listen.mix(i, cycleUse != 0 ? two.outL * TS_LEVEL : exh.outL, cycleUse != 0 ? two.outR * TS_LEVEL : exh.outR, ex.intake, crank.tqNow, ex.mech, ex.block, boost.turbo, ex.starter, ex.comb, exh.shell[0],
                            lay.topo == 0 ? exh.shell[0] : exh.shell[1], set.drive, rd, cutG,
                            spec.voices.model != 0 ? ex.vo.gearbox : 0.0f, spec.voices.model != 0 ? ex.vo.axle : 0.0f,
