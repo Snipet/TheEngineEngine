@@ -78,9 +78,17 @@ namespace tee::input
         // A gamepad's triggers and stick: the pedals are at least these.
         void setAnalog(float throttle, float brake, float steer);
 
+        // A wheel's clutch pedal (0 up, 1 on the floor): the pedal is at least this. Let go with release(gamepad).
+        void setAnalogClutch(float clutch);
+
         // The Panel's throttle and brake strips: while held, the pedal is at least value.
         void setStrip(float value, bool held);
         void setBrakeStrip(float value, bool held);
+        // The clutch pedal from the mouse (the frame's pedal bar): while held, the pedal is at least value.
+        void setClutchStrip(float value, bool held);
+
+        // The frame's mode from now on (ControlsFrame::mode: MODE_BENCH 0, MODE_DRIVE 1, MODE_DYNO_ENGINE 2).
+        void setMode(int mode);
 
         // Everything a source holds is let go (the window lost the keyboard; a gamepad was unplugged).
         void release(Source);
@@ -102,9 +110,10 @@ namespace tee::input
         std::array<std::uint8_t, static_cast<std::size_t>(Action::count)> held_{};   // a bit a Source
         ControlsFrame frame_{};
         float throttle_ = 0, brake_ = 0, clutch_ = 0, handbrake_ = 0;                // the keys' eased pedals
-        float padThrottle_ = 0, padBrake_ = 0, padSteer_ = 0;
+        float padThrottle_ = 0, padBrake_ = 0, padSteer_ = 0, padClutch_ = 0;
         float strip_ = 0, brakeStrip_ = 0;
-        bool stripHeld_ = false, brakeStripHeld_ = false;
+        float clutchStrip_ = 0;
+        bool stripHeld_ = false, brakeStripHeld_ = false, clutchStripHeld_ = false;
         // the start key
         bool startWas_ = false;
         bool startOnRunning_ = false;
