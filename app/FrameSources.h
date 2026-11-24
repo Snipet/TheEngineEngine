@@ -35,6 +35,16 @@ namespace tee::files
     class BuildLibrary;
 }
 
+namespace tee
+{
+    class Sim;
+}
+
+namespace tee::ui
+{
+    class ServiceBake;
+}
+
 namespace tee::app
 {
     // `level` is the output's level (0..1) for the top bar; empty: the telemetry's peak.
@@ -71,6 +81,23 @@ namespace tee::app
         std::unique_ptr<ui::DynoSource> inner_;
         ui::DynoTrace none_;
         std::uint64_t made_ = 0;
+    };
+
+    // TUNE's spark map (card C's knock-limit bake through U1's ServiceBake): made once there is a program (the engine's
+    // compile in), made again when the host plays another (a QUALITY change); ticked once a frame on the UI thread.
+    // Until then its state is "waiting to bake". The document (SimAdapter::build) is one object for the whole run.
+    class LateBake
+    {
+    public:
+        explicit LateBake(player::SimAdapter& player);
+        ~LateBake();
+        void tick();
+        std::string state() const;
+
+    private:
+        player::SimAdapter& player_;
+        std::shared_ptr<Sim> made_;
+        std::unique_ptr<ui::ServiceBake> inner_;
     };
 
     // Ticks `dyno` (this machine's time) until a predicted curve is in, it reports an error, or `seconds` pass. True:
