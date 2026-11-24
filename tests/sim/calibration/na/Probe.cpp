@@ -517,3 +517,49 @@ TEST_CASE("probe: an idle's intake and boost, every quarter second", "[.probe-x0
     }
     SUCCEED();
 }
+
+// p-idle-warm on the probe: in the car in neutral, held warm, the key at 0.25 s until 2 s, printing every PROBE_STEP
+// (0.05) s through PROBE_SECONDS (3) the flare: the plenum, the knock retard held and the knocks heard, the spark's
+// trim, the charge, the idle valve. PROBE_BUILD (slug), PROBE_SIM. (Not tee-render's run to the sample: the hold is
+// written every 64 samples here, and a marginal start can go either way; WarmStartTest.cpp plays it as tee-render does)
+TEST_CASE("probe: a warm start's flare", "[.probe-warm]")
+{
+    const char* buildEnv = std::getenv("PROBE_BUILD");
+    const std::string slug = buildEnv ? buildEnv : "big-bore-70-pushrod-v8";
+    const double step = std::getenv("PROBE_STEP") ? std::atof(std::getenv("PROBE_STEP")) : 0.05;
+    const double secs = std::getenv("PROBE_SECONDS") ? std::atof(std::getenv("PROBE_SECONDS")) : 3.0;
+    Probe pr;
+    tee::EnginePlayer::Options options;
+    options.directory = std::getenv("PROBE_SIM") ? std::filesystem::path(std::getenv("PROBE_SIM"))
+                                                  : std::filesystem::path(TEE_SOURCE_DIR) / "sim";
+    options.sampleRate = 48000.0;
+    std::string errors, warnings;
+    pr.p = tee::EnginePlayer::create(options, errors);
+    INFO(errors);
+    REQUIRE(pr.p != nullptr);
+    tee::EngineBuild b;
+    std::filesystem::path file = slug;
+    if (!std::filesystem::exists(file))
+        file = std::filesystem::path(TEE_SOURCE_DIR) / "content" / "builds" / "archetypes" / (slug + ".json");
+    REQUIRE(tee::loadBuild(*pr.p, file, b, errors, warnings));
+    tee::applyBuild(*pr.p, b);
+    auto& c = pr.p->controls();
+    c.mode = 1;
+    c.lever = 0;
+    c.clutch = 0;
+    c.throttle = 0;
+    std::printf("%5s %6s %3s %7s %7s %7s %8s %8s %6s %6s\n", "t s", "rpm", "st", "pPlen", "knock", "knocks", "trim",
+                "veAir", "valve", "flags");
+    const int n = int(secs / step + 0.5);
+    for (int i = 0; i < n; ++i)
+    {
+        const double t = step * i;
+        c.ignition = t < 0.25 ? 1 : (t < 2.0 ? 2 : 1);
+        pr.play(step, [&] { pr.warm(); });
+        std::printf("%5.2f %6.0f %3.0f %7.1f %7.3f %7.3f %8.4f %8.3f %6.3f %6.0f\n", t + step,
+                    pr.tel("engine.speed") * 30.0 / M_PI, pr.tel("engine.state"), pr.get("intk.pPlenum") * 1e-3,
+                    pr.get("ecu.one.knock.most"), double(pr.get("ecu.one.knock.count")), pr.get("ecu.trim"), pr.tel("engine.veAir"),
+                    pr.tel("ecu.idleValve"), pr.tel("engine.flags"));
+    }
+    SUCCEED();
+}
