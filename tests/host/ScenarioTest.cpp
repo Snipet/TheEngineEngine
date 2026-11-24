@@ -5,6 +5,9 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <cmath>
+#include <filesystem>
+#include <fstream>
+#include <sstream>
 
 using namespace tee;
 using namespace tee::test;
@@ -76,6 +79,34 @@ TEST_CASE("an error is said, not thrown: a build that is not there, a field that
     const Run r = Scenario().sim(standin()).spec("engine.nothing", 1).run(0.1);
     CHECK_FALSE(r.ok());
     CHECK(r.error().find("engine.nothing") != std::string::npos);
+}
+
+TEST_CASE("a scenario's warm engine and warm tyres are two statements, each held as Warm.h says", "[scenario][warm]")
+{
+    Timeline t;
+    std::string error;
+    REQUIRE(parseTimeline(R"({"format": "tee-scenario", "version": 1, "seconds": 1, "warmTyres": true})", "w.json", t,
+                          error));
+    CHECK(t.warmTyres);
+    CHECK_FALSE(t.warm);
+    REQUIRE(parseTimeline(R"({"format": "tee-scenario", "version": 1, "seconds": 1, "warm": true})", "w.json", t, error));
+    CHECK(t.warm);
+    CHECK_FALSE(t.warmTyres);
+    // what is held: the vehicle model's own state, nothing of the engine's
+    const std::vector<HeldValue> tyres = warmTyres();
+    REQUIRE(tyres.size() == 1);
+    CHECK(tyres[0].path == "car.m1.warmTyres");
+    CHECK(tyres[0].value == 1.0);
+    for (const HeldValue& h : warmEngine())
+        CHECK(h.path != "car.m1.warmTyres");
+    // the program has it where the vehicle model keeps it
+    if (std::filesystem::exists(std::filesystem::path(TEE_SOURCE_DIR) / "sim" / "vehicle" / "vehicle.fm"))
+    {
+        std::ifstream in(std::filesystem::path(TEE_SOURCE_DIR) / "sim" / "vehicle" / "vehicle.fm");
+        std::ostringstream text;
+        text << in.rdbuf();
+        CHECK(text.str().find("bool warmTyres;") != std::string::npos);
+    }
 }
 
 TEST_CASE("the measures: a line above the floor, a click, a level, a null", "[scenario][measures]")
