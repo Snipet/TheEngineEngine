@@ -45,6 +45,7 @@ namespace tee::input
         bool autoClutch = true;
         float offHold = 1.0f;       // seconds the start key is held on a running engine to switch it off
         float startLeast = 0.15f;   // seconds the frame says start after a press of the start key, at the least
+        float crankMax = 2.0f;      // seconds a press on a stopped engine cranks it, at the most, until it runs
         float seekInterval = 0.3f;  // seconds between a gear key's presses of the shift, while the gear is not there
         int seekTries = 12;         // presses a gear key makes before it gives up (a refused downshift)
         int mode = 1;               // the frame's mode: 1 is MODE_DRIVE (docs/plan/02-contracts.md section 4)
@@ -119,7 +120,9 @@ namespace tee::input
         bool startWas_ = false;
         bool startOnRunning_ = false;
         float startHeld_ = 0;
-        float startLatch_ = 0;      // seconds the start is still said after a press, whatever the key does
+        float startLatch_ = 0;
+        bool startLatchFresh_ = false;
+        float crankLeft_ = 0;           // seconds the starter still cranks a stopped engine after a press  // set by a press: the frame that sees it first does not count down      // seconds the start is still said after a press, whatever the key does
         int ignition_ = 0;
         // the gears
         int shiftUp_ = 0, shiftDown_ = 0;

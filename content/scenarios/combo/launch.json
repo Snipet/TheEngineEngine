@@ -1,0 +1,32 @@
+{
+  "format": "tee-scenario",
+  "version": 1,
+  "name": "launch",
+  "description": "Package X's launch (tests/sim/combo/Combo.cpp writes it: edit there, not here).",
+  "seconds": 14.5,
+  "events": [
+    { "t": 0, "spec": { "env.temperature": 293.15 } },
+    { "t": 0, "ctl": { "mode": 1 } },
+    { "t": 0, "ctl": { "lever": 0 } },
+    { "t": 0, "ctl": { "clutch": 0 } },
+    { "t": 0, "ctl": { "throttle": 0 } },
+    { "t": 0, "ctl": { "brake": 0 } },
+    { "t": 0, "ctl": { "ignition": 1 } },
+    { "t": 0.25, "ctl": { "ignition": 2 } },
+    { "t": 2, "ctl": { "ignition": 1 } },
+    { "t": 3, "ctl": { "brake": 1 } },
+    { "t": 3, "press": ["shiftUp"] },
+    { "t": 3.5, "ctl": { "throttle": 0.6 }, "ramp": 0.3 },
+    { "t": 5, "ctl": { "brake": 0 }, "ramp": 0.05 },
+    { "t": 5, "ctl": { "throttle": 1 }, "ramp": 0.1 },
+    { "t": 7.5, "press": ["shiftUp"] },
+    { "t": 9, "ctl": { "throttle": 0 }, "ramp": 0.05 },
+    { "t": 9.2, "ctl": { "brake": 0.8 }, "ramp": 0.2 },
+    { "t": 11, "ctl": { "clutch": 1 }, "ramp": 0.2 },
+    { "t": 11.5, "ctl": { "ignition": 0 } }
+  ],
+  "assertions": [
+    { "audio": "finite" },
+    { "audio": "peak", "<=": 1 }
+  ]
+}

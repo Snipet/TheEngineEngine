@@ -1,0 +1,67 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Inline four, 180-degree crank (a screamer)",
+  "notes": "A superbike's litre four, flat-plane: 1-2-4-3, a firing every 180 degrees. 76 x 55 mm (998 cc), 13.0:1, redline 14,500 rpm: a 2010s litre superbike's numbers in round figures, not one model's.",
+  "spec": {
+    "engine": {
+      "layout": "Crossplane I4",
+      "displacement": 0.000998,
+      "compression": 13.0,
+      "custom": true,
+      "cylinders": 4,
+      "bankAngle": [
+        0.0
+      ],
+      "bank": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "pin": [
+        0.0,
+        180.0,
+        180.0,
+        0.0
+      ],
+      "fireRev": [
+        0,
+        0,
+        1,
+        1
+      ],
+      "place": [
+        0.0,
+        0.085,
+        0.17,
+        0.255
+      ],
+      "bore": 0.076,
+      "stroke": 0.055,
+      "redlineSpeed": 1518.436
+    }
+  },
+  "expect": {
+    "firingOrder": [
+      1,
+      2,
+      4,
+      3
+    ],
+    "firingIntervals": [
+      180.0,
+      180.0,
+      180.0,
+      180.0
+    ],
+    "firingAngles": [
+      0.0,
+      180.0,
+      360.0,
+      540.0
+    ],
+    "redlineRpm": 14500,
+    "displacementCc": 998.0
+  }
+}

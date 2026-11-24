@@ -131,7 +131,7 @@ module StarterVoice
             if (strikeLeft <= 0.0f)
                 st = strikeAmp;
         }
-        out = 0.06f * knock.tick(kick) + 0.03f * clack.tick(clackKick) + 0.05f * strike.tick(st);
+        out = 0.15f * knock.tick(kick) + 0.08f * clack.tick(clackKick) + 0.3f * strike.tick(st);
         kick = 0.0f;
         clackKick = 0.0f;
         // the motor: its current eased in and out over some 3 ms (no click), the armature running down on its own
