@@ -175,6 +175,11 @@ scenarios/` holds the shipped ones. `tee::parseTimeline` also reads K3a's `tee-e
   over `"during"` (seconds; the whole run by default), compared by `"<"`, `"<="`, `">"`, `">="` or `"within": [a, b]`;
   `"source"` says why. `tee::checkAssertions` gives a line each.
 
+`tee-render --build <b> --scenario <s>` plays one through `SimHost` (the host the application uses): a WAV of 32-bit
+floats (`--pcm24`: 24-bit integers), a CSV of the telemetry (`--tel a,b`: those fields and what the assertions read;
+none: every number), a row a block; it prints each assertion's line and exits 3 when one fails. `--build defaults`
+takes every field's default whatever the scenario names; `--rate`, `--block` and `--seconds` override the file's.
+
 ## A validation: `tee-validation`, version 1
 
 What a build should measure as, each target with its source (card C, section 8). `content/validation/<build>.json`;

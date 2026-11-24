@@ -123,10 +123,20 @@ namespace
                                                 "intake.plenum", "intake.runners" };
         CHECK_MSG(got == want, [&] { std::string s; for (auto& g : got) s += g + " "; return s; }());
         // the lower row: the map, the shaft, the gate, the blow-off valve
+        for (const char* id : { "boost.compressor", "boost.shaft", "boost.gate", "boost.blowOff", "boost.antiLag", "boost.nitrous" })
+        {
+            bool found = false;
+            for (const air::AirHit& h : air::airHits(*rig.ws))
+                if (h.id == id)
+                {
+                    found = true;
+                    rig.host->click(h.r.x + 6.0f, h.r.y + 6.0f);
+                    CHECK_MSG(rig.demo.selection.path() == id, std::string(id) + " selected " + rig.demo.selection.path());
+                }
+            CHECK_MSG(found, id);
+        }
         rig.host->click(rig.w * 0.2f, rig.h * 0.75f);
         CHECK(rig.demo.selection.path() == "boost.compressor");
-        rig.host->click(rig.w * 0.6f, rig.h * 0.62f);
-        CHECK(rig.demo.selection.path() == "boost.shaft");
         golden("air.select", *rig.host);
         AirRig na("na4-itb");
         na.host->click(na.w * 0.2f, na.h * 0.75f);   // no map on a natural engine: nothing there to select
@@ -180,6 +190,82 @@ namespace
         golden("air.paper", *paper.host);
         AirRig paper1("tt-v8", 1100, 700, 1.0f, 1);
         golden("air.paper.dpi1", *paper1.host);
+        return 0;
+    }
+}
+
+namespace
+{
+    // Each part's inspector page holds its fields; a part's page has none of another's.
+    VIEW_TEST(testAirInspector, "air.inspector")
+    {
+        AirRig rig("turbo4");
+        CHECK(rig.ws->inspectorPage().empty());
+        const struct
+        {
+            const char* id;
+            const char* has;
+            const char* hasNot;
+        } cases[] = {
+            { "boost.turbo[0]", "boost.compInducer", "boost.icEffect" },
+            { "boost.intercooler", "boost.icEffect", "boost.compAR" },
+            { "intake.runners", "intake.runnerLength", "boost.kind" },
+            { "boost.gate", "boost.gateSpring", "boost.blowOffKind" },
+            { "boost.nitrous", "boost.nitrousShot", "boost.antiLag" },
+            { "boost.shaft", "boost.maxSpeed", "boost.compAR" },
+        };
+        for (const auto& k : cases)
+        {
+            rig.demo.selection.select(k.id);
+            const std::string page = rig.ws->inspectorPage();
+            CHECK_MSG(page.find(k.has) != std::string::npos, std::string(k.id) + " lacks " + k.has);
+            CHECK_MSG(page.find(k.hasNot) == std::string::npos, std::string(k.id) + " has " + k.hasNot);
+        }
+        return 0;
+    }
+}
+
+namespace tee::test::u3
+{
+    funkgui::Rect frameStage(int w, int h);   // ExhaustTests.cpp
+}
+
+namespace
+{
+    // At the frame's own stage sizes: every part inside the stage, no two parts or panels overlapping.
+    VIEW_TEST(testAirFrameStage, "air.framestage")
+    {
+        for (const auto& win : { std::pair<int, int>{ 1100, 700 }, std::pair<int, int>{ 1600, 1000 } })
+        {
+            const funkgui::Rect st = tee::test::u3::frameStage(win.first, win.second);
+            const int w = static_cast<int>(st.w), h = static_cast<int>(st.h);
+            for (const char* b : { "na4-itb", "turbo4", "tt-v8", "sc-v8", "seq6", "cmp6", "cf-v8" })
+            {
+                AirRig rig(b, w, h, 1.0f);
+                const std::vector<air::AirHit> hits = air::airHits(*rig.ws);
+                CHECK(!hits.empty());
+                for (std::size_t i = 0; i < hits.size(); ++i)
+                {
+                    const funkgui::Rect& r = hits[i].r;
+                    CHECK_MSG(r.x >= 0.0f && r.right() <= static_cast<float>(w) && r.y >= 0.0f && r.bottom() <= static_cast<float>(h),
+                              std::string(b) + " " + hits[i].id + " outside at " + std::to_string(win.first));
+                    for (std::size_t j = i + 1; j < hits.size(); ++j)
+                    {
+                        const funkgui::Rect& q = hits[j].r;
+                        // a panel holds its valves; the parts of the row and the panels must not meet
+                        const bool inside = (q.x >= r.x && q.right() <= r.right() && q.y >= r.y && q.bottom() <= r.bottom())
+                                         || (r.x >= q.x && r.right() <= q.right() && r.y >= q.y && r.bottom() <= q.bottom());
+                        const bool meet = r.x < q.right() && q.x < r.right() && r.y < q.bottom() && q.y < r.bottom();
+                        CHECK_MSG(inside || !meet, std::string(b) + " " + hits[i].id + " meets " + hits[j].id);
+                    }
+                }
+            }
+            const std::string tag = win.first == 1100 ? "small" : "large";
+            AirRig two("tt-v8", w, h, 2.0f);
+            golden("air.frame." + tag, *two.host);
+            AirRig one("turbo4", w, h, 1.0f);
+            golden("air.frame." + tag + ".dpi1", *one.host);
+        }
         return 0;
     }
 }

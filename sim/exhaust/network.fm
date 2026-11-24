@@ -1,6 +1,6 @@
 // network.fm: an exhaust system as a graph of pipes and the places they meet (card G, the exhaust builder).
 //
-// Every pipe is a Duct (sim/ref/pipes.fm: two delay lines with the wall's, the flow's and a packing's losses). Every
+// Every pipe is a Duct (duct.fm, the reference's pipes.fm carved: two delay lines with the wall's, the flow's and a packing's losses). Every
 // place pipe ends meet is a junction, solved each sample from the waves arriving there and the pipes' impedances, as
 // the reference solves its own (sim/ref/engine.fm, sampleTick): all the waves a sample's junctions use were read
 // before any is solved, so the junctions are independent of each other within a sample and their order does not
@@ -38,7 +38,7 @@
 //   net.prepare()                   after read(): the housings' drives and admittances, the outside pressures' ends
 //   net.step(q)                     q[i]: port i's volume flow into the pipe (m^3/s), this sample; leaves outL, outR
 #pragma once
-#include "../ref/pipes.fm"
+#include "duct.fm"
 #include "ends.fm"
 
 enum
@@ -146,7 +146,7 @@ module XNet
     float portQ[XN_PORTS];          // this sample's flow in
     float portIn;                   // the flow in summed since the host last read it (m^3/s samples)
     // the pops (at the collectors)
-    XPop pop[XN_POPS];
+    Pop pop[XN_POPS];
     // noise
     OnePole fnHp[XN_BANDS];
     OnePole fnLp[XN_BANDS];
@@ -163,6 +163,11 @@ module XNet
     float jetA;
     float noiseTrim;
     int rs;
+    Noise* noiseSrc;        // a shared stream to draw from (the engine's, as the reference's exhaust does), when shared
+    int shared;             // is 1; else its own (rs)
+    int drawOrder[XN_BANDS];    // the bands in the order their noise is drawn (the reference's, for its topology)
+    int popExt;             // 1: the pops' gas comes from popIn (the owner's Pops, which others fire), not from pop[]
+    float popIn[XN_POPS];
     float rate;
     float outL;
     float outR;
@@ -171,6 +176,8 @@ module XNet
 
     float rnd()
     {
+        if (shared != 0)
+            return noiseSrc->rnd();
         const int hi = rs / 127773;
         const int lo = rs % 127773;
         rs = 16807 * lo - 2836 * hi;
@@ -200,6 +207,10 @@ module XNet
         jetK = 0.005f;
         noiseTrim = 1.0f;
         rs = 123456789;
+        shared = 0;
+        popExt = 0;
+        for (int i = 0; i < XN_POPS; ++i)
+            popIn[i] = 0.0f;
         nj = 0;
         ne = 0;
         np = 0;
@@ -329,6 +340,7 @@ module XNet
     {
         const int g = nBands;
         nBands += 1;
+        drawOrder[g] = g;
         fnG[g] = 0.0f;
         flowBand(g, 300.0f);
         return g;
@@ -487,7 +499,7 @@ module XNet
         }
         float src = 0.0f;
         if (jPop[j] >= 0)
-            src = pop[jPop[j]].tick() * sy;
+            src = (popExt != 0 ? popIn[jPop[j]] : pop[jPop[j]].tick()) * sy;
         const float pj = xNode(n, na, nz, nt, nkf, nkr, ns, nal, nq, src);
         jP[j] = pj;
         for (int b = 0; b < n; ++b)
@@ -629,8 +641,11 @@ module XNet
             wn = nScale * vnLp.lowpass(vnHp.highpass(rnd()));
         if (flowK > 0.0f)
         {
-            for (int g = 0; g < nBands; ++g)
+            for (int o = 0; o < nBands; ++o)
+            {
+                const int g = drawOrder[o];
                 fnG[g] = fnN[g] * fnLp2[g].lowpass(fnLp[g].lowpass(fnHp[g].highpass(rnd())));
+            }
         }
         for (int j = 0; j < nj; ++j)
         {

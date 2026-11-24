@@ -43,7 +43,7 @@ namespace
             demo.at(t);
             for (int i = 0; i < frames; ++i)
             {
-                demo.engine.tick(0.0f);
+                demo.engine.advance(0.0);
                 host->tick(1);
             }
         }
@@ -187,7 +187,7 @@ namespace
         CHECK(rig.ws->drawKey() == key);
         // Reading the Scope only while shown: a hidden workspace is not ticked, so a newer copy is not read.
         const int reads = rig.ws->scopeReads();
-        rig.demo.engine.tick(0.0f);
+        rig.demo.engine.advance(0.0);
         CHECK(rig.ws->scopeReads() == reads);
         rig.host->tick(1);
         CHECK(rig.ws->scopeReads() == reads + 1);
