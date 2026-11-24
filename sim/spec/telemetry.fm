@@ -156,6 +156,10 @@ module ExhaustTel
         [[ui::help("The heat the exhaust ports' walls take from the gas (into the coolant)")]];
     float portExitTemperature [[ui::label("Port exit gas")]] [[ui::quantity("temperature")]]
         [[ui::help("The gas leaving the ports for the headers, after the port's walls")]];
+    float portWallTemperature [[ui::label("Port wall")]] [[ui::quantity("temperature")]]
+        [[ui::help("The exhaust port's wall, between the gas and the water jacket")]];
+    float portCoolantHeat [[ui::label("Port to coolant")]] [[ui::quantity("power")]]
+        [[ui::help("The heat the exhaust ports' walls give the coolant")]];
 };
 
 module EcuTel

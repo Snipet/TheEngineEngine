@@ -190,29 +190,41 @@ rpm, pedal up. Open: pFlap 4 kPa, 54 kW retarding. Shut: flap 0.96, pFlap 362 kP
 
 ## The exhaust port's cooling (`portHeat`, model 1)
 
-The gas loses heat to the water-cooled port between the valve and the header's flange. This uses Caton and Heywood's
-exhaust-port correlation as cited in Heywood ch. 12: Nu = 0.0483 Re^0.783 on the port's diameter, with Re from each
-port's mean mass flow.
-- Gas properties: viscosity 3.3e-7 T^0.7 Pa s, cp 1150 J/kg K, Pr 0.7.
-- Port: diameter 0.46 of the bore, length 1.6 diameters (judgement).
-- Wall: the coolant's temperature plus 60 K (judgement).
-- The gas leaves at tW + (tPort - tW) exp(-NTU).
+Between the valve and the header's flange the gas gives heat to the head's port wall, and the wall gives it to the
+coolant.
+- **Gas side:** Caton and Heywood's exhaust-port correlation as cited in Heywood ch. 12, Nu = 0.0483 Re^0.783 on the
+  port's diameter, with Re from each port's mean mass flow. That correlation is a fit of time-averaged heat transfer
+  against time-averaged Re, so the blowdown's spurt is already inside it. Applied per sample, the same law would give
+  less, because Re^0.783 is concave.
+- **Entrance region:** times Mills' abrupt-entrance factor, 1 + 2.4254 (L/D)^-0.676 = 2.77 at L = 1.6 D. A port is a
+  short duct entered through the valve's jet.
+- **Gas properties:** viscosity 3.3e-7 T^0.7 Pa s, cp 1150 J/kg K, Pr 0.7.
+- **Port:** diameter 0.46 of the bore, length 1.6 diameters (judgement).
+- **Wall:** cast iron 6 mm thick (k 50 W/m K) to a water jacket at 10 kW/m^2 K (local boiling; judgement), with heat
+  capacity 7200 x 460 J/m^3 K. It warms by what the gas gives less what the coolant takes.
 
-`tel.exhaust.portTemperature` stays the gas at the valve. `portExitTemperature` is what feeds the headers,
-`portHeat` is the heat taken (W), and `Exhaust::exitTemperature()` is offered to card F's turbine. `portHeat` 0 and
-model 0 have none, which is how test 2 compares model 1 with the reference.
+Telemetry: `portTemperature` stays the gas at the valve (the cylinder's). Also `portExitTemperature`, the gas into
+the headers, which feeds `headerTemperature`; `portHeat` (W from the gas); `portCoolantHeat` (W to the coolant);
+`portWallTemperature`. `portHeat` 0 and model 0 have none, which is how test 2 compares with the reference.
 
-Measured on the V8 on the dyno at full throttle:
+How sure:
+- The correlation's form and exponent: as published, to my knowledge. Its coefficient is unverified here.
+- Mills' factor: a textbook form for short ducts.
+- The wall's numbers: judgement.
+- Nothing is tuned to a target.
 
-| rpm | at the valve | leaving the port | header | port walls take | brake |
-|---|---|---|---|---|---|
-| 1500 | 964 K | 925 K | 816 K | 4.5 kW | 95.4 kW |
-| 3000 | 1057 K | 1020 K | 918 K | 8.6 kW | 181.9 kW |
-| 5000 | 1152 K | 1118 K | 1024 K | 13.5 kW | 242.8 kW |
+Measured (`the exhaust port's walls cool the gas, in full`; warm day, full throttle, the heat settled):
 
-That is a drop of 34 to 38 K, about 1.5 to 2 % of the fuel's energy at an assumed 30 % efficiency. N1's figures
-(100 to 200 K, 5 to 10 %) are larger. The coefficient is as I know it from the literature, unverified here, and
-uncalibrated: not tuned to either.
+| build | rpm | valve | port exit | header | port takes | brake |
+|---|---|---|---|---|---|---|
+| V8 | 3000 | 1081 K | 983 K | 950 K | 18.5 kW | 161 kW |
+| V8 | 5000 | 1175 K | 1084 K | 1050 K | 29.8 kW | 249 kW |
+| large diesel | 1800 | 733 K | 695 K | 691 K | 26.3 kW | 362 kW |
+
+- The V8's header is inside 900 to 1100 K.
+- The diesel's header is under 700 to 950 K because its gas at the valve is already under it: the cylinder's, not
+  the port's.
+- Energy: what the gas gave equals what the coolant took plus what the walls stored, to within 0.7 %.
 
 ## Glide and rebuild (dragging a slider)
 
