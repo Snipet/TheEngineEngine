@@ -974,13 +974,37 @@ namespace tee
         return "no table";
     }
 
-    KnockBakeService::KnockBakeService(std::shared_ptr<Sim> sim, KnockBakeOptions options, double debounceSeconds)
-        : sim_(std::move(sim)), options_(std::move(options)), debounce_(std::max(debounceSeconds, 0.0))
+    namespace
     {
+        bool hasTable(const Build& build)
+        {
+            return build.fieldOf("ecu.maps.knockLimit") >= 0 && build.fieldOf("ecu.maps.knockLimitAuto") >= 0
+                   && build.fieldOf("ecu.maps.knockLimitKey") >= 0;
+        }
+
+        CalibrationBakeOptions sparkOnly(KnockBakeOptions spark, double debounce)
+        {
+            CalibrationBakeOptions o;
+            o.spark = std::move(spark);
+            o.bakeCam = false;
+            o.debounceSeconds = debounce;
+            return o;
+        }
+    } // namespace
+
+    CalibrationBakeService::CalibrationBakeService(std::shared_ptr<Sim> sim, CalibrationBakeOptions options)
+        : sim_(std::move(sim)), options_(std::move(options))
+    {
+        options_.debounceSeconds = std::max(options_.debounceSeconds, 0.0);
         thread_ = std::thread([this] { coordinator(); });
     }
 
-    KnockBakeService::~KnockBakeService()
+    KnockBakeService::KnockBakeService(std::shared_ptr<Sim> sim, KnockBakeOptions options, double debounceSeconds)
+        : CalibrationBakeService(std::move(sim), sparkOnly(std::move(options), debounceSeconds))
+    {
+    }
+
+    CalibrationBakeService::~CalibrationBakeService()
     {
         {
             const std::lock_guard<std::mutex> lock(mutex_);
@@ -992,7 +1016,7 @@ namespace tee
             thread_.join();
     }
 
-    void KnockBakeService::setState(KnockBakeState s)
+    void CalibrationBakeService::setState(KnockBakeState s)
     {
         if (state_ != s)
         {
@@ -1001,46 +1025,57 @@ namespace tee
         }
     }
 
-    KnockBakeState KnockBakeService::consider(Build& build)
+    bool CalibrationBakeService::camWanted(const Build& build) const
     {
-        if (build.fieldOf("ecu.maps.knockLimit") < 0 || build.fieldOf("ecu.maps.knockLimitAuto") < 0
-            || build.fieldOf("ecu.maps.knockLimitKey") < 0)
+        return options_.bakeCam && build.fieldOf("ecu.maps.camInKey") >= 0 && build.fieldOf("ecu.maps.camIn") >= 0
+               && build.fieldOf("valve.inPhaseRange") >= 0 && build.get("valve.inPhaseRange") > 0.0;
+    }
+
+    KnockBakeState CalibrationBakeService::consider(Build& build)
+    {
+        if (!hasTable(build))
         {
             const std::lock_guard<std::mutex> lock(mutex_);
             setState(KnockBakeState::NoTable);
             return state_;
         }
-        const std::int64_t key = knockLimitKey(build, *sim_);
-        if (knockLimitCurrent(build, *sim_))
+        const bool wantCam = camWanted(build);
+        const bool camCurrent = !wantCam || intakeCamCurrent(build, *sim_);
+        if (knockLimitCurrent(build, *sim_) && camCurrent)
         {
             const std::lock_guard<std::mutex> lock(mutex_);
-            if (key_ != key)
+            if (asked_ || state_ == KnockBakeState::Waiting || state_ == KnockBakeState::Baking)
                 cancel_ = true;   // what runs is for another build: not wanted
             asked_ = false;
             ready_ = false;
-            key_ = key;
             setState(KnockBakeState::Current);
             return state_;
         }
-        // stale: the table set aside now (the engine on its knock control alone), a bake asked
-        if (build.get("ecu.maps.knockLimitAuto") == 0.0)
+        // stale: the stale tables set aside now (the engine on its knock control and its auto cam), a bake asked
+        if (wantCam && !camCurrent && build.get("ecu.maps.camInAuto") == 0.0)
+            build.set("ecu.maps.camInAuto", 1.0);
+        if (!knockLimitCurrent(build, *sim_) && build.get("ecu.maps.knockLimitAuto") == 0.0)
             build.set("ecu.maps.knockLimitAuto", 1.0);
+        const std::int64_t sparkKey = knockLimitKey(build, *sim_);
+        const std::int64_t camKey = wantCam ? intakeCamKey(build, *sim_) : 0;
         const std::lock_guard<std::mutex> lock(mutex_);
-        if (key == key_ && state_ != KnockBakeState::Failed && state_ != KnockBakeState::Current)
+        if (sparkKey == sparkKey_ && camKey == camKey_ && state_ != KnockBakeState::Failed
+            && state_ != KnockBakeState::Current)
             return state_;   // asked already (waiting, baking, or ready to take)
-        key_ = key;
+        sparkKey_ = sparkKey;
+        camKey_ = camKey;
         json_ = build.save();
         asked_ = true;
         ready_ = false;
         due_ = std::chrono::steady_clock::now() + std::chrono::duration_cast<std::chrono::steady_clock::duration>(
-                                                     std::chrono::duration<double>(debounce_));
+                                                     std::chrono::duration<double>(options_.debounceSeconds));
         cancel_ = true;   // a bake running is of an older build
         setState(KnockBakeState::Waiting);
         wake_.notify_all();
         return state_;
     }
 
-    bool KnockBakeService::take(KnockBakeResult& out)
+    bool CalibrationBakeService::take(CalibrationBakeResult& out)
     {
         const std::lock_guard<std::mutex> lock(mutex_);
         if (!ready_)
@@ -1050,19 +1085,56 @@ namespace tee
         return true;
     }
 
-    KnockBakeState KnockBakeService::state() const
+    bool CalibrationBakeService::take(KnockBakeResult& out)
+    {
+        const std::lock_guard<std::mutex> lock(mutex_);
+        if (!ready_ || done_.hasCam || !done_.hasSpark)
+            return false;
+        out = done_.spark;
+        ready_ = false;
+        return true;
+    }
+
+    bool CalibrationBakeService::takeAndApply(Build& build, std::string& error)
+    {
+        CalibrationBakeResult r;
+        if (!take(r))
+            return false;
+        bool applied = false;
+        if (r.hasCam && intakeCamKey(build, *sim_) == r.cam.key)
+        {
+            if (!applyIntakeCam(build, r.cam, error))
+                return false;
+            applied = true;
+        }
+        if (r.hasSpark && knockLimitKey(build, *sim_) == r.spark.key)
+        {
+            if (!applyKnockLimit(build, r.spark, error))
+                return false;
+            applied = true;
+        }
+        return applied;
+    }
+
+    KnockBakeState CalibrationBakeService::state() const
     {
         const std::lock_guard<std::mutex> lock(mutex_);
         return state_;
     }
 
-    std::string KnockBakeService::error() const
+    std::string CalibrationBakeService::stage() const
+    {
+        const std::lock_guard<std::mutex> lock(mutex_);
+        return state_ == KnockBakeState::Baking ? stage_ : std::string();
+    }
+
+    std::string CalibrationBakeService::error() const
     {
         const std::lock_guard<std::mutex> lock(mutex_);
         return error_;
     }
 
-    void KnockBakeService::coordinator()
+    void CalibrationBakeService::coordinator()
     {
         std::unique_lock<std::mutex> lock(mutex_);
         while (!stop_)
@@ -1079,22 +1151,50 @@ namespace tee
             }
             asked_ = false;
             const std::string json = json_;
-            const std::int64_t key = key_;
+            const std::int64_t sparkKey = sparkKey_, camKey = camKey_;
             cancel_ = false;
+            stage_.clear();
             setState(KnockBakeState::Baking);
             lock.unlock();
 
-            KnockBakeResult result;
+            const auto at = [&](const char* stage) {
+                const std::lock_guard<std::mutex> guard(mutex_);
+                stage_ = stage;
+                ++revision_;
+            };
+            CalibrationBakeResult result;
             std::string error;
             Build build(sim_->fields());
             std::vector<std::string> warnings;
             bool ok = build.load(json, BuildPart::Whole, warnings, error);
-            if (ok)
-                ok = bakeKnockLimit(sim_, build, options_, result, error, &cancel_);
+            // the spark, if stale, applied to the copy
+            if (ok && !knockLimitCurrent(build, *sim_))
+            {
+                at("spark map");
+                ok = bakeKnockLimit(sim_, build, options_.spark, result.spark, error, &cancel_)
+                     && applyKnockLimit(build, result.spark, error);
+                result.hasSpark = ok;
+            }
+            // the cam on that spark, if wanted and stale, applied to the copy; the spark again if that made it stale
+            if (ok && camWanted(build) && !intakeCamCurrent(build, *sim_))
+            {
+                at("cam");
+                ok = bakeIntakeCam(sim_, build, options_.cam, result.cam, error, &cancel_)
+                     && applyIntakeCam(build, result.cam, error);
+                result.hasCam = ok;
+                if (ok && !knockLimitCurrent(build, *sim_))
+                {
+                    at("spark map again");
+                    ok = bakeKnockLimit(sim_, build, options_.spark, result.spark, error, &cancel_)
+                         && applyKnockLimit(build, result.spark, error);
+                    result.hasSpark = ok;
+                }
+            }
 
             lock.lock();
-            if (stop_ || asked_ || key != key_ || cancel_)
+            if (stop_ || asked_ || sparkKey != sparkKey_ || camKey != camKey_ || cancel_)
                 continue;   // a newer build was asked meanwhile, or this one was set aside: dropped
+            stage_.clear();
             if (ok)
             {
                 done_ = std::move(result);
@@ -1107,6 +1207,7 @@ namespace tee
                 error_ = error;
                 setState(KnockBakeState::Failed);
             }
+            ++revision_;
         }
     }
 } // namespace tee
