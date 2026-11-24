@@ -1,0 +1,17 @@
+# The stand-in tone: the start key, the throttle strip by the pointer, a dial by the pointer, the start key held.
+0.10  tap return 0.2
+1.00  expect engine.state == 2
+1.00  pointer down 38 240                 # near the top of the throttle strip
+2.50  expect rpm > 4000
+2.50  expect peak > 0.01
+2.50  shot out/shell/tone-rev.png
+2.60  pointer up 38 240
+3.00  pointer click 44 190                # the start button, a click: it stays running
+3.50  expect engine.state == 2
+3.60  set level -30
+3.70  expect param level == -30
+4.00  key return down
+5.30  key return up
+6.50  expect engine.state == 0
+7.00  expect peak < 0.5
+7.00  end
