@@ -41,6 +41,9 @@ namespace tee::ui::air
         static constexpr const char* nitrousShot = "boost.nitrousShot";
         static constexpr const char* nitrousBottle = "boost.nitrousBottle";
         static constexpr const char* throttleKind = "intake.throttleKind";    // a plenum, a body a runner
+        static constexpr const char* runnerLength = "intake.runnerLength";    // m, 0: the reference's 0.30 (a bike's 0.16)
+        static constexpr const char* runnerLength2 = "intake.runnerLength2";  // m, 0: one length
+        static constexpr const char* runnerSwitch = "intake.runnerSwitch";    // rad/s: the second length from
         static constexpr const char* trumpets = "intake.trumpets";          // to the air box, to the air
         static constexpr const char* ambientP = "env.pressure";
         static constexpr const char* ambientT = "env.temperature";
@@ -97,6 +100,7 @@ namespace tee::ui::air
         int blowOff = 1;                // none, to the air, recirculating
         double scRatio = 2.4, gateSpring = 70e3, target = 0, nitrousBottle = 4.5;
         bool itb = false, trumpetsToAir = false;
+        double runner = 0.30, runner2 = 0.0, runnerSwitch = 0.0;   // m, m (0: one length), rad/s
         double ambientP = 101325, ambientT = 293.15;
         CompressorMap map;              // turbo 1's (or a centrifugal blower's)
         double omegaMax = 0;            // the shaft's limit, rad/s
