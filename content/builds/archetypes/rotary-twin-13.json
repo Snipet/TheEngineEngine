@@ -56,7 +56,7 @@
       "gateSpring": 50000.0,
       "blowOffKind": "Recirculating",
       "icEffect": 0.75,
-      "icFlow": 0.231,
+      "icFlow": 0.16,
       "chargeVolume": 0.0026
     },
     "exhaust": {
@@ -133,7 +133,8 @@
       "camera": "Rear",
       "place": "Field",
       "ground": "Asphalt",
-      "enginePlace": "Front"
+      "enginePlace": "Front",
+      "level": 12.0
     }
   }
 }

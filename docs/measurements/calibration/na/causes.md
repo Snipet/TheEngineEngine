@@ -420,6 +420,18 @@ The fuelled overrun has little margin. The limit is now the store's fuel, not th
 overrun charge's unburned share as estimated at its spark, not the share still unburned when its valve opens. That
 would take the cylinder handing its remainder over at the opening (D's cylinder, H's account). Proposed, not done.
 
+**Correction (20:55, measured).** "Still burning as its exhaust valve opens" above read the cylinder's burnAt >= 0.
+burnAt stays non-negative until 1.6 burn durations, while the burn is 0.993 done at one. On H9's overrun (spark 11.5
+degrees after the top, burn 53-55 degrees, exhaust opening at 104) the burns are some 99 % done well before the opening.
+So the 2000 K rule lights the store from charges that have, in the model, already burned. The rule still lights a store
+that holds fuel, but its stated reason (a flame carried into the pipe) does not hold for these charges.
+
+D's cylinder now hands the remainder over (exUnburnedJ, 76690a7). With the store fed from it, and the spark-time cut
+off under the physical cylinder (docs/measurements/calibration/na/pop-store-exUnburned.diff, not applied), the
+remainder reads 0.00 J on every event. H9's fuelled overrun then makes no bangs (0.1 and 0.25: 0). Suspected, not
+measured: the burn on an overrun charge (thin, highly diluted, low pressure) is too short at 55 degrees; that is the
+burn model's (N3's). Until it is settled the store keeps the spark-time estimate (judgement).
+
 ## I. The V12's torque spike: the runner's resonance, too lightly damped (the lead's 18:13; measured)
 
 **What it is.** Held steps (2 s each, so not the predictor's nine cycles), on the V12 with its 0.36 m runner:
@@ -595,6 +607,19 @@ so on a big cam at idle its plenum is given less than its cylinders take. Its th
 valves, and its idle valve holds the speed on less air than the cylinders burn. Nothing changes there: the reference
 is the null test's.
 
-**Still open: the 7.0's idle lopes** (8-14 s: sd 45, max less min 205 rpm, decaying). With the correction off at
-c8f2d54 it hunts at sd 43, so the idle loop itself is lightly damped on this engine. c8f2d54's per-cycle correction
-damped it, as a lag, by accident. The next step is to find what the loop's gains are scheduled on.
+**The 7.0's lope: the spark trim's look-ahead (fixed, 14890c0 and D's 3930eadb).** Measured in a scratch tree with a
+hold on the ECU's outputs: with the idle valve held at its idle mean the 7.0 still swung 699-897 rpm (the 5.7 and the
+flat six sat within 5 rpm; a +0.02 valve step gave them +65 and +85 rpm); with the spark's trim also held at 1 it ran
+away and stalled; on the dyno, valve and spark held, its torque falls with speed (39 to -20 N m over 500-1000 rpm) as
+the 5.7's does, so the engine is statically stable. Halving the trim's gain: 333-963; doubling its look-ahead (the
+reference's 0.08 s on the speed's rate): 732-762. The look-ahead is now the manifold's filling time at the idle,
+(Vp/Vd) 120/N (eta 1: judgement), within 0.05-0.25 s; Engine hands the ECU Vp/Vd (ecu.fillShare); no plenum (throttles
+a runner) keeps 0.08. The reference's 0.08 is the 5.7's own (0.075 on its 2.5 L plenum); the 7.0's 5.6 L gives 0.128.
+
+| p-idle-warm, a 0.3 bench-load step at 9 s | Idle 6-9 s, before | After | Step, before | After |
+|---|---|---|---|---|
+| 7.0 L V8 | 742, sd 84 (577-870) | 750, sd 5 (734-760) | out of 50 rpm 1.9 s | never out |
+| Flat six | sd 9 | sd 6 | | |
+| Kei triple, 2.0 turbo four, 5.7, V12, rotary, economy four, superbike, 3.2 six (ITB) | | within 2 rpm | | unchanged |
+
+Every archetype runs at 14 s (WarmStartTest, nightly); the 7.0's steadiness case is no longer marked.

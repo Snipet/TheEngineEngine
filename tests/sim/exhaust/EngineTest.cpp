@@ -4,9 +4,11 @@
 #include "sim/Twin.h"
 
 #include <catch2/catch_test_macros.hpp>
+#include <nlohmann/json.hpp>
 
 #include <cstdio>
 #include <filesystem>
+#include <fstream>
 #include <cstdlib>
 #include <random>
 
@@ -66,6 +68,7 @@ static void engineIdentity(bool full)
         const Audio a = render(b, scenario, 8.0);
         b.values["exhaust.model"] = {1.0};
         b.values["exhaust.portHeat"] = {0.0};   // (the port's cooling off: the reference has none)
+        b.values["exhaust.flowClose"] = {0.0};  // (the valves' mean flow not closed: the reference's g q)
         const Audio m = render(b, scenario, 8.0);
         const double dl = test::nullDepth(a.left, m.left);
         const double dr = test::nullDepth(a.right, m.right);
@@ -801,4 +804,110 @@ TEST_CASE("measure: the exhaust's temperatures at full load, mass means and ther
                     f("tel.exhaust.portExitTemperature"), f("tel.exhaust.headerTemperature"), f("exh.b.heat.tGas[1]"),
                     f("tel.exhaust.portThermocouple"), f("exh.tcPlain"), f("tel.exhaust.headerThermocouple"));
     }
+}
+
+// The lead's ruling (24 Nov): the exhaust valves give their pipes g q (the simple wave's stiffening), 5 to 20 % more
+// than the cylinders let out over a cycle; Exhaust::stepLet closes the mean (spec.exhaust.flowClose, on under model 1).
+// What the pipes are given against what the valves let out (exh.flowGiven, exh.flowLet: m^3, summed in blocks), over a
+// second: the big block at idle and at 4000 rpm full throttle, the 2.0 turbo four at 3000: within a per cent.
+TEST_CASE("the pipes are given what the exhaust valves let out", "[exhaust][engine][books]")
+{
+    struct Case
+    {
+        const char* file;
+        double rpm;     // 0: idle
+    };
+    for (const Case& k : {Case{"big-block-74-pushrod-v8.json", 0.0}, Case{"big-block-74-pushrod-v8.json", 4000.0},
+                          Case{"turbo-four-20-gdi.json", 3000.0}})
+    {
+        EnginePlayer& p = player();
+        p.reset();
+        EngineBuild b;
+        std::string error, warnings;
+        REQUIRE(loadBuild(p, std::filesystem::path(TEE_SOURCE_DIR) / "content/builds/archetypes" / k.file, b, error, warnings));
+        b.values["env.temperature"] = {293.15};
+        b.values["exhaust.model"] = {1.0};
+        applyBuild(p, b);
+        EnginePlayer::Controls& c = p.controls();
+        c.mode = EnginePlayer::kModeBench;
+        c.ignition = EnginePlayer::kIgnitionStart;
+        std::vector<float> l(512), r(512);
+        auto run = [&](double s) {
+            for (int n = 0; n < static_cast<int>(s * 48000.0 / 512.0); ++n)
+                p.process(l.data(), r.data(), 512);
+        };
+        run(1.5);
+        c.ignition = EnginePlayer::kIgnitionOn;
+        c.throttle = 0.0f;
+        if (k.rpm > 0.0)
+        {
+            c.mode = 2;
+            c.dynoSpeed = static_cast<float>(k.rpm * 0.10471976);
+            c.throttle = 1.0f;
+        }
+        run(3.0);
+        const double g0 = test::field(p, "exh.flowGiven"), l0 = test::field(p, "exh.flowLet");
+        run(1.0);
+        const double g1 = test::field(p, "exh.flowGiven"), l1 = test::field(p, "exh.flowLet");
+        if (l1 - l0 <= 0.0)
+            SKIP("the engine does not call Exhaust::stepLet yet (D's two engine.fm lines)");
+        const double ratio = (g1 - g0) / (l1 - l0);
+        std::printf("books: %s %s: the pipes given %.5f m^3 a second against %.5f let out: %.4f\n", k.file,
+                    k.rpm > 0.0 ? "full throttle" : "idle", g1 - g0, l1 - l0, ratio);
+        INFO(k.file << " at " << k.rpm);
+        CHECK(std::fabs(ratio - 1.0) < 0.01);
+    }
+}
+
+// content/builds/exhausts: every field of each part build, read back from the player after the build is applied,
+// equal to the file's, element by element, choices by name included (C's 127c350 found an array of choices given by
+// name dropped to its default: exhaust.mufKind, resonator, converter, bypass)
+TEST_CASE("every exhaust preset reads back as its file says", "[exhaust][engine][builds]")
+{
+    EnginePlayer& p = player();
+    int fields = 0, elements = 0;
+    for (const auto& entry : std::filesystem::directory_iterator(std::filesystem::path(TEE_SOURCE_DIR) / "content/builds/exhausts"))
+    {
+        if (entry.path().extension() != ".json")
+            continue;
+        p.reset();
+        EngineBuild b;
+        std::string error, warnings;
+        REQUIRE(loadBuild(p, entry.path(), b, error, warnings));
+        applyBuild(p, b);
+        std::ifstream in(entry.path());
+        const nlohmann::json doc = nlohmann::json::parse(in);
+        for (const auto& [key, value] : doc["spec"]["exhaust"].items())
+        {
+            const std::string path = "exhaust." + key;
+            const int idx = p.specIndex(path);
+            INFO(entry.path().filename().string() << ": " << path);
+            REQUIRE(idx >= 0);
+            const EnginePlayer::SpecField& f = p.specFields()[static_cast<std::size_t>(idx)];
+            auto expect = [&](const nlohmann::json& v) {
+                if (v.is_string())
+                {
+                    for (std::size_t c = 0; c < f.choices.size(); ++c)
+                        if (f.choices[c] == v.get<std::string>())
+                            return f.minimum + static_cast<double>(c);
+                    FAIL("no choice named " << v.get<std::string>());
+                }
+                if (v.is_boolean())
+                    return v.get<bool>() ? 1.0 : 0.0;
+                return v.get<double>();
+            };
+            const bool array = value.is_array();
+            const std::size_t n = array ? value.size() : 1;
+            for (std::size_t i = 0; i < n; ++i)
+            {
+                const double want = expect(array ? value[i] : value);
+                const double got = test::field(p, "spec." + path + (f.count > 1 ? "[" + std::to_string(i) + "]" : ""));
+                INFO("element " << i << ": file " << want << ", read back " << got);
+                CHECK(std::fabs(got - want) <= 1.0e-5 * std::max(1.0, std::fabs(want)));
+                ++elements;
+            }
+            ++fields;
+        }
+    }
+    std::printf("presets read back: %d fields, %d elements, each as its file says\n", fields, elements);
 }

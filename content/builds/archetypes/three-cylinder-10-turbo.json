@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "1.0 L three-cylinder turbo",
-  "notes": "A downsized 1.0 L three with a small turbo and direct injection: 71.9 x 82 mm (999 cc), 10:1 (engines of the kind: 74 to 103 kW at 5500 to 6000 rpm, 170 to 205 N m from 1500; makers' figures). In a small hatch, six-speed manual.",
+  "notes": "A downsized 1.0 L three with a small turbo and direct injection: 71.9 x 82 mm (999 cc), 10:1 (engines of the kind: 74 to 103 kW at 5500 to 6000 rpm, 170 to 205 N m from 1500; makers' figures). In a small hatch, six-speed manual. Its intake runner, 0.30 m from the valve to the plenum, is a hand-set length: JUDGEMENT, not the real engine's (no source found).",
   "spec": {
     "engine": {
       "layout": "Inline 3",
@@ -77,7 +77,7 @@
       "gateSpring": 60000.0,
       "blowOffKind": "Recirculating",
       "icEffect": 0.75,
-      "icFlow": 0.116,
+      "icFlow": 0.117,
       "chargeVolume": 0.002
     },
     "exhaust": {
@@ -157,7 +157,8 @@
       "camera": "Rear",
       "place": "Field",
       "ground": "Asphalt",
-      "enginePlace": "Front"
+      "enginePlace": "Front",
+      "level": 10.1
     }
   }
 }

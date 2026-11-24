@@ -3,6 +3,7 @@
 #include "app/Demo.h"
 
 #include <algorithm>
+#include <limits>
 #include <cmath>
 
 namespace tee::ui
@@ -397,22 +398,38 @@ namespace tee::ui
 
     void DemoEngine::set(std::string_view name, double v)
     {
-        held_[std::string(name)] = v;
+        if (auto it = heldIndex_.find(name); it != heldIndex_.end())
+            heldValues_[it->second] = v;
+        else
+        {
+            heldIndex_.emplace(std::string(name), heldNames_.size());
+            heldNames_.emplace_back(name);
+            heldValues_.push_back(v);
+        }
         forgotten_.erase(std::string(name));
     }
 
     void DemoEngine::forget(std::string_view name)
     {
-        held_.erase(std::string(name));
+        // Its held value goes (its handle stays its own and reads NaN); a new reader finds no such name.
+        if (auto it = heldIndex_.find(name); it != heldIndex_.end())
+            heldValues_[it->second] = std::numeric_limits<double>::quiet_NaN();
         forgotten_.insert(std::string(name));
+    }
+
+    const double* DemoEngine::held(std::string_view name) const
+    {
+        if (auto it = heldIndex_.find(name); it != heldIndex_.end() && forgotten_.count(name) == 0)
+            return &heldValues_[it->second];
+        return nullptr;
     }
 
     int DemoEngine::findValue(std::string_view name) const
     {
         if (forgotten_.count(name) != 0)
             return -1;
-        if (auto it = held_.find(name); it != held_.end())
-            return 1000 + static_cast<int>(std::distance(held_.begin(), it));
+        if (auto it = heldIndex_.find(name); it != heldIndex_.end())
+            return 1000 + static_cast<int>(it->second);
         for (std::size_t i = 0; i < names_.size(); ++i)
             if (names_[i] == name)
                 return static_cast<int>(i);
@@ -424,25 +441,33 @@ namespace tee::ui
 
     double DemoEngine::value(int handle) const
     {
+        // A handle read after its name was forgotten reads NaN; a held value overrides the script's of the same name.
+        constexpr double kNaN = std::numeric_limits<double>::quiet_NaN();
         if (handle >= 2000)
         {
             const auto k = static_cast<std::size_t>(handle - 2000);
-            return k < extraTel_.size() ? extraTel_[k].second(*this) : 0.0;
+            if (k >= extraTel_.size())
+                return 0.0;
+            if (forgotten_.count(extraTel_[k].first) != 0)
+                return kNaN;
+            if (const double* h = held(extraTel_[k].first))
+                return *h;
+            return extraTel_[k].second(*this);
         }
         if (handle >= 1000)
         {
-            auto it = held_.begin();
-            const int k = handle - 1000;
-            if (k >= static_cast<int>(held_.size()))
+            const auto k = static_cast<std::size_t>(handle - 1000);
+            if (k >= heldNames_.size())
                 return 0.0;
-            std::advance(it, k);
-            return it->second;
+            return forgotten_.count(heldNames_[k]) != 0 ? kNaN : heldValues_[k];
         }
         if (handle < 0 || handle >= static_cast<int>(values_.size()))
             return 0.0;
-        // A held value overrides the script's of the same name.
-        if (auto it = held_.find(names_[static_cast<std::size_t>(handle)]); it != held_.end())
-            return it->second;
+        const std::string& name = names_[static_cast<std::size_t>(handle)];
+        if (forgotten_.count(name) != 0)
+            return kNaN;
+        if (const double* h = held(name))
+            return *h;
         return values_[static_cast<std::size_t>(handle)];
     }
 
