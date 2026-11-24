@@ -87,12 +87,14 @@
       "exCentre": 112,
       "inPhaseRange": 42,
       "exPhaseRange": 42,
+      "portIn": 1.65,
+      "portEx": 1.8,
       "springRate": 34000.0,
       "springPreload": 213.0
     },
     "intake": {
       "model": 1,
-      "runnerLength": 0.28
+      "runnerLength": 0.36
     },
     "boost": {
       "model": "Machine",
@@ -104,12 +106,12 @@
       "model": "Builder",
       "sides": 2,
       "converter": [
-        1,
-        1
-      ],
-      "mufKind": [
         2,
         2
+      ],
+      "mufKind": [
+        1,
+        1
       ]
     },
     "fuel": {
