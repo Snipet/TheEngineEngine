@@ -22,8 +22,7 @@ Branch `claude/awesome-gates-ntdb58`, integrated. `spec.sound.model` 0 (default)
 
 **Cost** (`tee-bench --engine`, V8, 3 runs, busy machine): model 0 1.045 R, model 1 1.112-1.131 R by camera: +0.07 to
 0.09 R over the reference's listening path (budget 0.15). Profile: about 7 ns a tap, 25 ns a source (3 taps), `Scene`
-150-200 ns, `CabinBoom` 14, `Place` 25.
-**Spec** (`spec.sound`, after `mechanical`): `model` (Reference, Places), `camera` (Tailpipe, Rear, Side, Engine bay,
+150-200 ns, `CabinBoom` 14, `Place` 25. **Spec** (`spec.sound`, after `mechanical`): `model` (Reference, Places), `camera` (Tailpipe, Rear, Side, Engine bay,
 Driver, Trackside, Chase), `place` (Hall, Field, Street, Tunnel, Garage), `enginePlace` (Front, Mid, Rear), `windows`
 (fraction), `ground` (Asphalt, Grass, None). DISTANCE moves the camera; VIEW is not read in model 1.
 **tel.sound** (after `rate`): `camera`, `range` (m), `doppler` (ratio), `roadPosition` (m, trackside), `loudness` (dB),
