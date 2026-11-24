@@ -763,3 +763,23 @@ window's estimate. (b) Confirmed, and corrected (the cylinder's mass carries no 
 gas alone): into the turbines' housings over out of the exhaust valves, the turbo four at 3050 rpm 1.14 (0.2433 / 0.2128
 kg; first 1.13), the twin-turbo V8 at 4375 1.03. G's given-over-let-out (closed for the pipes by flowClose) apparently
 still reaching the housings under boost.model 1; it would over-drive the turbines. Sent to G and N2.
+
+**B-2 attributed with N2 (22:06 by `date -u`).** Boost collapsing at the power peak (the four, the pickup, the rotary, the
+kei): N2's design-point matching, measured, not adopted; the rotary's sequential pair separately (its second compressor
+barely flows at 6000 to 7200 rpm). Knock retard: C's baked knock-limit table, now on the four; N2's proof runs next. The
+diesels over their boost targets low down: the VGT's spring-law vanes and N2's surge guard, after the proof. The cooler's
+0.85 on the four: the build's own icEffect (the test cell holds the core at the air), so P's field (sent to P). The
+housings' 1.14: with G, N2 to be copied before adopting the design point (it would over-drive every matching by that).
+
+**The cooler, corrected (22:11 by `date -u`).** Withdrawn: "0.85 on the turbo four". The cooler does its stated icEffect
+0.75 (every boosted build carries 0.75, P): at 3050 rpm it takes the charge pipe (v1) from 386.8 K to 309.5 K against a
+core held at the air's 288.15 K, 0.78 on time means. B-2's "effectiveness" used the compressor outlet's time-mean
+temperature (459 K), which is not what the cooler sees. Noted for N2, not a finding: that 459 K is above what PR 2.21
+at eta 0.61 gives (about 404 K) and above the charge pipe's 387 K; a time mean weighted by low-flow instants, likely.
+
+**The housings' gap, closed by G (22:13 by `date -u`).** G's flowClose matched the valves' volume; the gas cools from the
+valve to the collectors (1396 → 1216 K on the four), so the turbines' housings were given 1.14 of the valves' mass
+(the V8 1.03). G's fix ("exhaust: with the turbines fed, stepLet's target closed by mass at the housings"): a slow loop
+holds Boost's mass from the pipes equal to the valves' let-out. Checked on the tip, the turbo four at 3050 rpm (2 s):
+0.1991 kg into the housings against 0.1995 out of the valves, 0.998; boost 107 kPa (was 117), torque 335 N m (was 357).
+N2's matching to be re-taken on it (told).

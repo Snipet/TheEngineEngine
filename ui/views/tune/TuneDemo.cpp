@@ -36,6 +36,20 @@ namespace tee::ui
             a.label = "Lambda: formula";
             a.group = "Maps";
             x.fields->push_back(a);
+            // Card N2's knock-limit table (degrees off the best-torque spark), not baked yet.
+            FieldInfo k = m;
+            k.path = "ecu.maps.knockLimit";
+            k.min = 0.0;
+            k.max = 20.0;
+            k.def = 0.0;
+            k.label = "Knock limit";
+            k.unit = "deg";
+            k.decimals = 1;
+            x.fields->push_back(k);
+            FieldInfo ka = a;
+            ka.path = "ecu.maps.knockLimitAuto";
+            ka.label = "Knock limit: not baked";
+            x.fields->push_back(ka);
         }
         if (x.engine == nullptr)
             return;

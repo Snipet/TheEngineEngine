@@ -181,9 +181,9 @@ namespace
             };
             if (e.kind == app::ScriptEvent::Kind::print)
             {
-                std::printf("t=%.2f state=%.0f rpm=%.0f stage=%.0f inPhase=%.2f\n", at, telemetry("engine.state"),
+                std::printf("t=%.2f state=%.0f rpm=%.0f stage=%.0f inPhase=%.2f oil=%.1fK\n", at, telemetry("engine.state"),
                             telemetry("engine.speed") * 60.0 / (2.0 * 3.14159265358979), telemetry("valve.stage"),
-                            telemetry("valve.inPhase"));
+                            telemetry("valve.inPhase"), telemetry("engine.oilTemperature"));
                 return;
             }
             double x = 0.0;
@@ -355,6 +355,8 @@ namespace
                     else
                         std::fprintf(stderr, "note: script line %d: no parameter '%s'\n", e.line, e.name.c_str());
                 }
+                else if (e.kind == app::ScriptEvent::Kind::open)
+                    app::openInScript(shown.document, e);
                 else if (e.kind == app::ScriptEvent::Kind::quality)
                 {
                     if (engine.sim != nullptr)

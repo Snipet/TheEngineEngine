@@ -104,6 +104,8 @@ namespace tee::ui
         bool compact() const noexcept { return compact_; }
         // The layout the block shows (the dial's while a custom one is refused).
         std::string runningLayout() const { return model().layout.name; }
+        // The lifts the Scope's shares are scaled to (m): the intake's, the exhaust's.
+        std::pair<double, double> fullLifts() const { return { model().liftIn, model().liftEx }; }
 
         const char* id() const override { return "engine"; }
         const char* title() const override { return "ENGINE"; }
@@ -375,6 +377,19 @@ namespace tee::ui
                 model_.derived = derive(model_.layout, model_.cyl, lim);
                 model_.liftIn = fieldValue(ctx_.doc, FieldPath{ "valve.inLift", "valve.intakeLift" });
                 model_.liftEx = fieldValue(ctx_.doc, FieldPath{ "valve.exLift", "valve.exhaustLift" });
+                // The lab's Scope gives a lift as a share of the taller of the two stages' cams (valvetrain.fm
+                // liftIn: over max(A, B)), whichever stage is in: so the full lift it scales to is that taller one,
+                // and stage B's taller lift is drawn taller (A's alone drew A short and B as A).
+                const double labModel = fieldValue(ctx_.doc, FieldPath{ "valve.model", "" });
+                if (!(std::isfinite(labModel) && labModel < 0.5))
+                {
+                    const double inB = fieldValue(ctx_.doc, FieldPath{ "valve.inLiftB", "" });
+                    const double exB = fieldValue(ctx_.doc, FieldPath{ "valve.exLiftB", "" });
+                    if (std::isfinite(inB) && (!std::isfinite(model_.liftIn) || inB > model_.liftIn))
+                        model_.liftIn = inB;
+                    if (std::isfinite(exB) && (!std::isfinite(model_.liftEx) || exB > model_.liftEx))
+                        model_.liftEx = exB;
+                }
             }
             return model_;
         }
@@ -1400,6 +1415,11 @@ namespace tee::ui
     {
         const auto* e = dynamic_cast<const EngineWorkspace*>(&w);
         return e != nullptr ? e->panels() : std::vector<funkgui::Rect>{};
+    }
+    std::pair<double, double> engineFullLifts(const Workspace& w)
+    {
+        const auto* e = dynamic_cast<const EngineWorkspace*>(&w);
+        return e != nullptr ? e->fullLifts() : std::pair<double, double>{ kNaN, kNaN };
     }
     std::string engineRunningLayout(const Workspace& w)
     {

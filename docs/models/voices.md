@@ -81,10 +81,13 @@ mesh at 19 x crank / primary found at 792.0 Hz against 796.8.
 The owner's 21:32 report: first.json (a 2.0 litre turbo four, direct injection, an electric fan) through card L's
 Places listener (camera Side) carried a high hum. Measured (p-idle-warm, 8 to 14 s, each voice set to -60 dB in
 turn): the 3895 Hz line was the fuel pump's impeller (41 vanes x 95 turns/s), 760 Hz its commutator (8 x 95), 280 and
-560 Hz the electric fan's blade passing (7 x 40) and its harmonic. The fan runs because a warm idle holds the coolant
-at 368 K, `fanOn`'s default.
+560 Hz the electric fan's blade passing (7 x 40) and its harmonic. The fan ran because a warm idle holds the coolant
+at 368 K, which was `fanOn`'s default: a few hundredths of a kelvin either side of the hold decided whether the fan
+came in. `fanOn` is now 373 K (100 C) by default, off 5 K below (a thermo switch's two contacts): the warm hold sits
+at the off point, 5 K under the on, so every warm render has the fan off unless its coolant climbs past 373 K by
+itself (a long pull) or the build sets `fanOn` lower.
 
-Who carries what (proposed to the lead and card L): package M sets each voice's level at its source,
+Who carries what (the lead's ruling, 21:47): package M sets each voice's level at its source,
 stated against the exhaust's through the reference's listener (`spec.sound.model` 0, which has no places and no
 distance); card L carries everything from the scene's inputs to the ear. Neither trims one voice to make up for the
 other's path.
@@ -106,6 +109,18 @@ What changed for it: the pump 20 dB down (before: -30 dB(A), -8.2 in the 4 kHz o
 The same voices through Places, camera Side (first.json's own listener), measured the same way: the pump -11.7 dB(A)
 before the 20 dB, the fan +3.9, the belt -40.4, that is 23 to 35 dB higher against the exhaust than at the source,
 with the silent mix itself 15 dB(A) lower than through the reference's. That part is the path's (card L's).
+
+What a person should compare by ear (the owner's ears are the only measurement these levels will have), each through
+the reference's listener (`sound.model` Reference), at a warm idle, with `voices.level` 0, one voice's slider moved:
+1. The pump: key on without starting (its 2 s prime, alone), then idling. Beside a real car at idle, is an in-tank
+   pump heard at all? If the prime is heard but the idle's whine is not, the level is about right.
+2. The fan (`fanOn` 300 to force it on): does it sound like an electric radiator fan in front of an idling car,
+   plainly heard but under the exhaust, a hum at 280 Hz with a soft rush, no hiss above it?
+3. The direct injectors' tick against `injection` Port: beside a direct-injection engine at idle, is the ticking as
+   clear as this, clearer, or less?
+4. The belt (`belt` +12 against 0): is the alternator's whine at idle heard at all on a real car?
+Each answer moves one number in the table above, at the source; whether the same holds at camera Side is a question for
+card L's path.
 
 ## Judgement
 

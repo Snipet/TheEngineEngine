@@ -9,6 +9,7 @@
 #include <chrono>
 #include <set>
 #include <thread>
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 #include <cstring>
@@ -514,6 +515,7 @@ TEST_CASE("the knock limit baked on the turbo four: a knocking point's cell its 
     KnockBakeOptions options;
     options.speeds = 5;
     options.pedals = {1.0, 0.5};
+    options.boostSteps = 0;   // the pedals' rules here; the boost targets' below
     KnockBakeResult r;
     REQUIRE(bakeKnockLimit(sim, build, options, r, error));
     REQUIRE(r.speeds.size() == 5);
@@ -539,6 +541,42 @@ TEST_CASE("the knock limit baked on the turbo four: a knocking point's cell its 
         }
     }
     CHECK(someKnock);   // a turbo four on its archetype's boost knocks somewhere at full throttle
+}
+
+TEST_CASE("the knock limit's loads on a turbo: boost targets from its level down to its spring, spreading the loads",
+          "[engine][sim][bake][nightly]")
+{
+    if (!haveSim())
+        SKIP("sim/engine.fm is not there yet");
+    std::string error;
+    const auto sim = compiled(simDir(), {}, error);
+    REQUIRE(sim != nullptr);
+    Build build(sim->fields());
+    std::vector<std::string> warnings;
+    REQUIRE(build.loadFile(std::filesystem::path(TEE_SOURCE_DIR) / "content/builds/archetypes/turbo-four-20-gdi.json",
+                           BuildPart::Whole, warnings, error));
+    KnockBakeOptions options;
+    options.speeds = 3;
+    options.pedals = {1.0};
+    options.boostSteps = 3;
+    KnockBakeResult r;
+    REQUIRE(bakeKnockLimit(sim, build, options, r, error));
+    CHECK(r.notes.find("boost targets") != std::string::npos);
+    const double spring = build.get("boost.gateSpring");
+    bool spread = false;
+    for (const auto& column : r.measured)
+    {
+        REQUIRE_FALSE(column.empty());
+        CHECK(column.front().boostTarget >= spring);   // the build's level first
+        for (std::size_t i = 1; i < column.size(); ++i)
+        {
+            CHECK(column[i].boostTarget < column[i - 1].boostTarget);   // down to the spring
+            CHECK(column[i].boostTarget >= spring - 1.0);
+            if (column[i].valid && column[i - 1].valid && column[i - 1].load - column[i].load > 0.1)
+                spread = true;   // a lower target, a lower load
+        }
+    }
+    CHECK(spread);
 }
 
 TEST_CASE("the background bake: a stale table set aside at once, baked when the edits rest, taken, current; an edit "
@@ -587,4 +625,74 @@ TEST_CASE("the background bake: a stale table set aside at once, baked when the 
     build.set("engine.compression", build.get("engine.compression") - 0.5);
     CHECK(bakes.consider(build) != KnockBakeState::Current);
     CHECK(build.get("ecu.maps.knockLimitAuto") == 1.0);
+}
+
+namespace
+{
+    // A host of the real program started warm, not held (LoadOptions::initial), running at idle; `blocks` of 512
+    double oilAfter(SimHost& host, int blocks)
+    {
+        std::vector<float> l(512), r(512);
+        for (int i = 0; i < blocks; ++i)
+        {
+            host.process(l.data(), r.data(), 512);
+            host.service();
+        }
+        TelemetryFrame t;
+        REQUIRE(host.telemetry(t));
+        return tel(host, t, "tel.engine.oilTemperature");
+    }
+} // namespace
+
+TEST_CASE("an engine started warm (LoadOptions::initial): its working temperatures at the first block, then its own",
+          "[engine][sim][simhost]")
+{
+    if (!haveSim())
+        SKIP("sim/engine.fm is not there yet");
+    std::string error;
+    const auto sim = compiled(simDir(), {}, error);
+    REQUIRE(sim != nullptr);
+    SimHost host;
+    LoadOptions load = offline(48000.0, 512);
+    load.initial = warmEngine();
+    REQUIRE(host.attach(sim, load, error));
+    SimControls c;
+    c.mode = 1;
+    c.ignition = 2;
+    host.setControls(c);
+    const double first = oilAfter(host, 1);
+    CHECK(first == Catch::Approx(378.0).margin(0.5));   // the thermostat's 368 and 10
+    c.ignition = 1;
+    host.setControls(c);
+    const double later = oilAfter(host, static_cast<int>(30.0 * 48000.0 / 512));
+    INFO("oil " << first << " K at the first block, " << later << " K after 30 s at idle");
+    CHECK(std::fabs(later - first) > 0.01);   // not held (a held value stays 378 exactly): it moved by itself
+    CHECK(later > 340.0);                     // and from warm, not from cold
+}
+
+TEST_CASE("a quality change keeps the engine's heat as it was, not its initial temperatures", "[engine][sim][simhost][nightly]")
+{
+    if (!haveSim())
+        SKIP("sim/engine.fm is not there yet");
+    std::string error;
+    const auto sim = compiled(simDir(), {}, error);
+    REQUIRE(sim != nullptr);
+    SimHost host;
+    LoadOptions load = offline(48000.0, 512);
+    load.initial = warmEngine();
+    REQUIRE(host.attach(sim, load, error));
+    SimControls c;
+    c.mode = 1;
+    c.ignition = 2;
+    host.setControls(c);
+    oilAfter(host, 100);
+    c.ignition = 1;
+    host.setControls(c);
+    const double before = oilAfter(host, static_cast<int>(30.0 * 48000.0 / 512));
+    if (!host.setQuality(SimHost::Quality::Economy, error))
+        SKIP("the program does not take TEE_ENGINE_RATE_48000: " << error);
+    const double after = oilAfter(host, 20);
+    INFO("oil " << before << " K before the swap, " << after << " K after it");
+    CHECK(after == Catch::Approx(before).margin(0.2));
+    CHECK(std::fabs(after - 378.0) > 0.05);   // not its initial value again
 }
