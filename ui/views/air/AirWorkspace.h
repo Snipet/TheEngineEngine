@@ -69,8 +69,9 @@ namespace tee::ui
             static constexpr const char* trailFlow = "boostTrailFlow";        // [256], a ring, newest at trailAt - 1
             static constexpr const char* trailRatio = "boostTrailRatio";      // [256]
             // card N2's: a charge system far from the engine it is on (sim/boost/boost.fm's judgement, not physics).
-            // mismatch's bits: 1 the cooler's rated flow, 2 the gate's spring, 4 the charge pipes' volume; each as
-            // has and wants (kg/s, Pa, m^3), changing only at configure (the spring's wants follows the ECU's target)
+            // mismatch's bits: 1 the cooler's rated flow, 2 the gate's spring, 4 the charge pipes' volume, 8 the
+            // compressors' choke flow (standard air) against a matched one's; each as has and wants (kg/s, Pa, m^3,
+            // kg/s), changing only at configure (the spring's wants follows the ECU's target)
             static constexpr const char* mismatch = "boost.mismatch";
             static constexpr const char* coolerHas = "boost.coolerHas";
             static constexpr const char* coolerWants = "boost.coolerWants";
@@ -78,6 +79,8 @@ namespace tee::ui
             static constexpr const char* springWants = "boost.springWants";
             static constexpr const char* volumeHas = "boost.volumeHas";
             static constexpr const char* volumeWants = "boost.volumeWants";
+            static constexpr const char* compressorHas = "boost.compressorHas";
+            static constexpr const char* compressorWants = "boost.compressorWants";
         };
     }
 }
