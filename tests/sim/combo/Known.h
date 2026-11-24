@@ -56,5 +56,7 @@ const Known kKnown[] = {
      "onset and the blip (8 without either)"},
     {"X-009", "2026-11-24", "D (via the lead)", "as built", "*", "tour", "tel-range:engine.veManifold",
      "tel.engine.veManifold reads -5.8 on the lift after the limiter (straight-six-32-high-rev)"},
+    {"X-006", "2026-11-24", "H (via the lead)", "+fuel.model+ecu.model", "v8", "load", "click",
+     "the same with every switch on while builds are loaded over each other: 24.2 against a bound of 23.8"},
     {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},   // the end (an array is never empty)
 };
