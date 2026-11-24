@@ -409,3 +409,22 @@ measured at:
 So each cited engine is measured on the top of its own ram (N3-6: 12 to 18 % on the flat six). Whether the ram's height
 or the runner is wrong, the fix is a cited runner: each real engine's port-plus-runner length (the LS7's, the VR6's, the
 3800's, the Coyote's, the MX-5's are documented engines), so the model's tooth falls where the real one does. Asked of P.
+
+## N3-4, settled: stage B needs its runner's ram (20:47 by `date -u`; before G's flowClose is live in the engine)
+
+Cylinder 1's intake valve over a cycle at 6500 rpm (g a cycle): the low cam held draws in 0.583 and pushes back 0.024
+(0.021 of it after the bottom); stage B draws in 0.535 and pushes back 0.081 (0.070 after the bottom). The long cam's
+late closing loses the charge back up a runner that does nothing to hold it. Stage B against the runner's length (VE,
+torque N m):
+
+| Runner | 6500 rpm | 8000 rpm |
+|---|---|---|
+| 0.20 m | 0.769, 160 | 0.780, 154 |
+| 0.30 m (the build: P's rule for a 7500 rpm torque peak) | 0.773, 160 | 0.816, 160 |
+| 0.40 m | 0.826, 169 | **1.031, 211** |
+| 0.50 m | **1.034, 219** | 0.883, 178 |
+| Stage A held, 0.20 m | 0.873, 187 | 0.873, 177 |
+
+The long cam lives on the ram at its closing, the short one hardly cares: a real high-lift stage is matched to its
+runner. So N3-4 is not the model's: it is the build's runner (P's rule, not the K20A's intake). Routed to P for the
+K20A's runner, cited; my note to N1 that it was the model's is withdrawn.
