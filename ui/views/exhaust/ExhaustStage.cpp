@@ -256,7 +256,7 @@ namespace tee::ui::exhaust
             anyMuf = anyMuf || b.muf[k] != 0;
         }
         const bool chain = b.sideOn[0] || b.sideOn[1];
-        const float endW = 92.0f, gap = 16.0f;
+        const float endW = 118.0f, gap = 16.0f;
         float fixed = endW;
         if (b.cross != 0)
             fixed += 54.0f + gap;
