@@ -261,3 +261,58 @@ TEST_CASE("v12 hot start", "[.v12start]")
                         warm ? "warm" : "soaked", air, firstFire, caught, b.tel("engine.speed") * 9.549, b.field("ecu.bypass"), b.tel("ecu.lambda"));
         }
 }
+
+// Which temperature-like fields move while an engine stands with the key on (first.json at 288.15 K, cold): a snapshot
+// at 0.05 s against 1.0 s
+TEST_CASE("standing drift", "[.standdrift]")
+{
+    Bench b("first");
+    std::string e;
+    REQUIRE(b.player().setSpec("env.temperature", 288.15, e));
+    REQUIRE(b.player().setSpec("voices.level", -60.0, e));
+    b.ctl().ignition = 1;
+    b.play(0.05);
+    std::vector<std::pair<std::string, double>> before;
+    b.player().schema().forEach([&](const std::string& path, const tee::Schema::Node& node, std::size_t) {
+        if (node.extents.empty() && path.rfind("spec.", 0) != 0 && path.rfind("tel.", 0) != 0)
+        {
+            double v = 0;
+            std::string err;
+            if (b.player().read(path, v, err))
+                before.push_back({path, v});
+        }
+    });
+    b.play(0.95);
+    int shown = 0;
+    for (const auto& [path, v0] : before)
+    {
+        double v1 = 0;
+        std::string err;
+        b.player().read(path, v1, err);
+        const bool tempLike = (v0 > 200.0 && v0 < 2000.0) || (v1 > 200.0 && v1 < 2000.0);
+        if (tempLike && std::fabs(v1 - v0) > 0.5 && shown < 60)
+        {
+            std::printf("  %s: %.2f -> %.2f\n", path.c_str(), v0, v1);
+            shown += 1;
+        }
+    }
+}
+
+TEST_CASE("standing by model", "[.standmodel]")
+{
+    struct C { const char* name; std::vector<std::pair<const char*, double>> over; };
+    for (const C& c : {C{"every model on", {}}, C{"boost.model 0", {{"boost.model", 0}}}, C{"exhaust.model 0 (and boost 0)", {{"exhaust.model", 0}, {"boost.model", 0}}},
+                       C{"intake.model 0", {{"intake.model", 0}}}, C{"ecu.model 0", {{"ecu.model", 0}}}})
+    {
+        Bench b("first");
+        std::string e;
+        REQUIRE(b.player().setSpec("env.temperature", 288.15, e));
+        REQUIRE(b.player().setSpec("voices.level", -60.0, e));
+        for (const auto& [f, v] : c.over)
+            REQUIRE(b.player().setSpec(f, v, e));
+        b.ctl().ignition = 1;
+        double sum = 0, n = 0;
+        b.play(0.5, [&] { for (float s : b.left()) { sum += double(s) * s; n += 1; } });
+        std::printf("%-32s first half second %.0f dBFS\n", c.name, 10 * std::log10(std::max(sum / n, 1e-40)));
+    }
+}
