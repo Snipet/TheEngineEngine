@@ -10,7 +10,7 @@ With `engine.custom` off (the default) none of this is used and the engine is th
 
 | File | Module | What it is |
 |---|---|---|
-| `sim/core/mechspec.fm` | `MechSpec` | the fields card D appends to `spec.engine` (a stand-in until K3b) |
+| `sim/spec/engine.fm` | `EngineSpec` | card D's fields, appended to `spec.engine` after the reference's dials |
 | `sim/core/layout.fm` | `LayoutGeom` | banks, pins, firing revolutions, places → firing angles, order, intervals, a sanity flag |
 | `sim/core/kinematics.fm` | `SliderCrank`, `Sizing` | the piston's x, x', x'' and the volume; size and bore/stroke dials ↔ bore and stroke; the redline by piston speed |
 | `sim/core/inertia.fm` | `MovingMasses` | the reciprocating masses' inertia torque, the varying inertia J(θ), the crank's energy-exact step |

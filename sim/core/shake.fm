@@ -23,7 +23,7 @@
 // turning parts), the higher orders, the gas's torque reaction (the block's roll, which the crank's ripple already
 // shows), offset cylinders.
 #pragma once
-#include "mechspec.fm"
+#include "../spec/engine.fm"
 #include "layout.fm"
 
 module ShakeByOrder
@@ -61,7 +61,7 @@ module ShakeByOrder
         return sqrtf(fmaxf(0.5f * (aa + bb) + sqrtf(h * h + ab * ab), 0.0f));
     }
 
-    void setup(const MechSpec* s, const LayoutGeom* g, float mass, float crankRadius, float rodRatio)
+    void setup(const EngineSpec* s, const LayoutGeom* g, float mass, float crankRadius, float rodRatio)
     {
         m = mass;
         r = crankRadius;
