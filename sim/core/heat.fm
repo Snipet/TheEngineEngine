@@ -51,12 +51,18 @@ module Heat
     // Nov, the lead's ruling)
     void stood(int state, float ambF)
     {
-        if (state == 0 && fabsf(ambF - ambSeen) > 0.25f && warm < 0.5f)
+        if (state == 0 && fabsf(ambF - ambSeen) > 0.25f)
         {
+            // (the air it stands in is the build's at once, warm or cold: gliding to it over seconds moved the pipes'
+            // gas while the engine stood, heard from the key with the voices on: M's finding, 24 Nov)
             ambSm = ambF;
-            tCool = 300.0f + 0.5555556f * (ambF - 80.33f);
-            tOil = tCool;
-            tSurf = tCool;
+            tAmb = 300.0f + 0.5555556f * (ambF - 80.33f);
+            if (warm < 0.5f)
+            {
+                tCool = tAmb;
+                tOil = tCool;
+                tSurf = tCool;
+            }
         }
         ambSeen = ambF;
     }

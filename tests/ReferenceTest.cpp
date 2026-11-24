@@ -202,7 +202,22 @@ TEST_CASE("truck-pull-away renders finite and within full scale, and the truck p
     CHECK(topSpeed < 90.0f);
 }
 
-TEST_CASE("the same samples whatever the block size", "[ref][blocks]")
+// The quick form in every run (the lead's ruling, 2026-11-24: an odd callback is what a Mac or Windows host hands the
+// program, and must fail on the push that breaks it): 3 s at 48 kHz, a call of 333 against 512. The full form nightly.
+TEST_CASE("the same samples whatever the block size (quick: 3 s at 48 kHz, a call of 333)", "[ref][blocks]")
+{
+    const Preset p = preset("v8");
+    const Scenario s = scenario("free-revs");
+    const auto player = refPlayer(48000.0);
+    const RenderResult reference = rendered(*player, p, s, 512, 3.0);
+    const RenderResult other = rendered(*player, p, s, 333, 3.0);
+    CHECK(reference.peak > 0.1);
+    REQUIRE(other.audio.left.size() == reference.audio.left.size());
+    CHECK(maxDifference(reference.audio.left, other.audio.left) == 0.0);
+    CHECK(maxDifference(reference.audio.right, other.audio.right) == 0.0);
+}
+
+TEST_CASE("the same samples whatever the block size", "[ref][blocks][nightly]")
 {
     // 12 s of the V8's free revs (the start, idle, two blips, onto the limiter) at 48 kHz, where the engine's 96 kHz
     // goes through its resampler, and 6 s at 96 kHz, where it does not: calls of 64, 333 and 512 samples give the
@@ -258,7 +273,28 @@ TEST_CASE("with the checks the reference plays the same samples, and a budget to
     CHECK_FALSE(fm.boundsViolation().has_value());
 }
 
-TEST_CASE("the same sound at 44.1, 48 and 96 kHz, resampled, to a stated tolerance", "[ref][rates]")
+// The quick form in every run (the lead's ruling, 2026-11-24: a 48 kHz device and a 44.1 kHz one are what the owner's
+// machines hand the program): 4 s, the start and the idle at 44.1 against 48 kHz, sample for sample resampled, the
+// difference at least 30 dB under the signal. The full form, all three rates over the whole scenario, nightly.
+TEST_CASE("the same sound at 44.1 and 48 kHz (quick: the start and the idle)", "[ref][rates]")
+{
+    const Preset p = preset("v8");
+    const Scenario s = scenario("free-revs");
+    const auto at48 = refPlayer(48000.0);
+    const auto at44 = refPlayer(44100.0);
+    const RenderResult base = rendered(*at48, p, s, 512, 4.0);
+    const RenderResult other = rendered(*at44, p, s, 512, 4.0);
+    const std::vector<float> left = resample(other.audio.left, 44100.0, 48000.0);
+    REQUIRE(left.size() >= static_cast<std::size_t>(3.9 * 48000.0));
+    const auto slice = [](const std::vector<float>& x) {
+        return std::vector<float>(x.begin() + static_cast<long>(0.3 * 48000.0), x.begin() + static_cast<long>(3.9 * 48000.0));
+    };
+    const double depth = nullDepth(slice(base.audio.left), slice(left));
+    WARN("at 44.1 kHz, 0.3 to 3.9 s: the difference is " << depth << " dB under the signal");
+    CHECK(depth > 30.0);
+}
+
+TEST_CASE("the same sound at 44.1, 48 and 96 kHz, resampled, to a stated tolerance", "[ref][rates][nightly]")
 {
     // The engine runs at 96 kHz whatever the host's rate, so the three renders are one simulation heard through
     // three converters, as long as the player's inputs reach it at the same moments. They do not quite: at 48 and
