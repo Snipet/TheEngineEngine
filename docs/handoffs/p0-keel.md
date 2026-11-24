@@ -13,25 +13,23 @@ and `release` with `*-verify`): FMinus, FunkGui's core, Catch2 and nlohmann/json
 `TEE_DEPS_DIR`, LLVM found and never built; `bootstrap-cloud.sh`, `fetch-llvm.sh`, `xvfb-run.sh`, `ci-status.sh`; CI on
 three platforms, sources and compiler cached. K2: `sim/ref/` with `SEED.tsv`; `tee_host` (`Program`, `Schema`,
 `Instance`, `RefPlayer`, `Scenario`, `Render`, `Wav`, `Clock`); `tee-render`, `tee-bench`; five presets, four
-scenarios; `docs/formats.md`. Tests (`tee-tests`: 20 of mine pass here, 19 on CI's three systems so far):
-`the reference compiles with no error and no warning`; `start, process and stop are proven nonblocking; init and end
-are not, and need not be`; `with the checks the reference plays the same samples, and a budget too small stops it`;
-each scenario `renders finite and within full scale`; `the same samples whatever the block size` (bit for bit);
-`the same sound at 44.1, 48 and 96 kHz, resampled, to a stated tolerance` (start and idle 30 dB under: measured 41
-and 55; a second's level 1.5 dB: 0.3); `the engine starts, idles near its idle speed, reaches its limiter flat out in
-neutral, and stops` (880 of 880 rpm; 6557 against 6500); `the strongest low line at a held speed sits where the
-layout's firing predicts` (nine layouts within 0.01 %; the crossplane V8 on its cycle's third harmonic); the host's
-own (Program, Schema, Instance, the checks, the formats) and `tee::test::nullDepth` for K3.
+scenarios; `docs/formats.md`. Tests (`tee-tests`: 20 of mine pass here, 19 on CI's three systems so far): `the
+reference compiles with no error and no warning`; `start, process and stop are proven nonblocking; init and end are
+not, and need not be`; `with the checks the reference plays the same samples ...`; each scenario `renders finite and
+within full scale`; `the same samples whatever the block size` (bit for bit); `the same sound at 44.1, 48 and 96 kHz,
+resampled, to a stated tolerance` (start and idle 30 dB under: measured 41 and 55); `the engine starts, idles near its
+idle speed, reaches its limiter flat out in neutral, and stops` (880 of 880 rpm; 6557 against 6500); `the strongest
+low line at a held speed sits where the layout's firing predicts` (nine layouts within 0.01 %); the host's own, and
+`tee::test::nullDepth` for K3.
 
 **Measured** (a Xeon at 2.1 GHz, shared with other sessions' builds: processor time, the least of three): R, the V8,
 2.3 us a 96 kHz sample: 22 to 23 % of a core at 48 kHz in blocks of 512. The V12 (ours: the V10's dials, twelve
 cylinders) 3.1 to 3.2 us, 30 to 31 %; the V10 27 %, the Large Diesel 16 to 17 %. The checks cost nothing measurable.
 CI's virtual M1: V8 24.7 %, V12 28.6 %. Compile 0.10, 1.24, 1.38 s at -O0, -O1, -O2. Cold build of the keel 2 min
 42 s; a fresh checkout with the cache warm 54 s to configure, 30 s to build. `tee-render` is 61 MB stripped.
-
-**CI**: github.com/Snipet/TheEngineEngine/actions/runs/45387990976 was green on all three (the keel alone, no caches:
-3 min 17 s Linux, 2 min 4 s macOS, 4 min 8 s Windows; 3 to 4.5 min with caches an hour later). Since then Linux stays
-green; macOS and Windows have failed on other packages' code. `scripts/ci-status.sh` says how it stands.
+**CI**: github.com/Snipet/TheEngineEngine/actions/runs/45387990976 was green on all three (the keel alone: 3 min 17 s
+Linux, 2 min 4 s macOS, 4 min 8 s Windows, no caches). Since then Linux stays green; macOS and Windows have failed on
+other packages' code. `scripts/ci-status.sh` says how it stands now.
 
 **Not done.** macOS and Windows have only CI behind them. No test holds the single's, the inline five's, the
 flat-plane V8's or the rotary's strongest line (seen once: 2, 3 and 1.5 times the firing frequency; the rotary's 0.93
