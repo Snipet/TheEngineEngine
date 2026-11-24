@@ -1759,8 +1759,9 @@ module Engine
             held = 0;
             // (a firing engine let go from its start runs: one already past half its idle speed (a big diesel cranks
             // slowly and catches below the ECU's 550 rpm; N1's finding, 24 Nov), else the key's release stops it)
+            // (and firing: its gases' mean torque over the last 20 ms above nil; one dying through that speed is let go)
             if (ecu.state == 1)
-                ecu.state = crank.rpm > 0.5f * ecu.idleRpm ? 2 : 0;
+                ecu.state = crank.rpm > 0.5f * ecu.idleRpm && crank.tqMean > 0.0f ? 2 : 0;
         }
         if (ign == IGN_OFF && (ecu.state == 1 || ecu.state == 2))
         {
