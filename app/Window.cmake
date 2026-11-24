@@ -7,7 +7,8 @@
 # .github/workflows/build.yml). On macOS it is an application bundle, signed ad hoc at the end of its build with the
 # entitlement FMinus's JIT needs under the hardened runtime (macos/TheEngineEngine.entitlements).
 add_executable(TheEngineEngine MACOSX_BUNDLE "${CMAKE_CURRENT_LIST_DIR}/Main.cpp")
-target_link_libraries(TheEngineEngine PRIVATE FunkGui::core FunkGui::gpu FunkGui::desktop Tee::shell_sdl)
+target_link_libraries(TheEngineEngine PRIVATE FunkGui::core FunkGui::gpu FunkGui::desktop Tee::shell_sdl
+                                              Tee::shell_settings)
 tee_app_gui(TheEngineEngine)
 funkgui_compile_shaders(TheEngineEngine)
 funkgui_add_font(TheEngineEngine)

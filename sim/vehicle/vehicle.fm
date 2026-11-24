@@ -860,9 +860,11 @@ module Vehicle
         float fLift = 0.0f;
         if (mode == VEH_MODE_DYNO_CHASSIS)
         {
-            // the roller: the driven tyres push it; the absorber holds it to its set speed (a first-order hold of 0.1 s)
+            // the roller: the driven tyres push it; the absorber brings the driven wheels to the set speed (a first-order
+            // hold of 0.1 s on their rims' speed, so the engine sits at the speed asked for whatever the tyres slip)
             const float mRoll = 1500.0f;
-            fAbsorb = vSet >= 0.0f ? fDriven + mRoll * (vr - vSet) / 0.1f : 0.0f;
+            const float rim = (float)(wc * radius);
+            fAbsorb = vSet >= 0.0f ? fDriven + mRoll * (rim - vSet) / 0.1f : 0.0f;
             vr += (fDriven - fAbsorb) / mRoll * dt;
         }
         else
