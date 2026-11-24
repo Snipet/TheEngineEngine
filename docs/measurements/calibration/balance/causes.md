@@ -259,3 +259,39 @@ Published gains found so far: a petrol engine's VE up to 8.7 % higher with a 528
 reachable here. Not enough to call 12 to 18 % wrong against a known geometry, and no sourced loss is missing from the
 duct: nothing changed. What would settle it: a measured intake-port pressure trace after closing (its decay a period)
 or a measured VE against runner length for a known runner, matched in a build.
+
+## N3-7. The small block against its SAE-net band (20:33 by `date -u`; the lead's item 3)
+
+Target 340 to 385 N m (the L48 and L82's SAE net ratings, P). On the tip, full load, tee::Build path:
+
+| | 2000 rpm | 3600 rpm |
+|---|---|---|
+| Torque, N m | 481.8 | 466.9 |
+| VE (outside air) | 0.821 | 0.827 |
+| Lambda | 0.887 | 0.894 |
+| Spark, deg before top | 13.5 | 18.2 |
+| Released, of the fuel's heat | 0.909 | 0.918 |
+| Walls | 0.167 | 0.140 |
+| Gross indicated | 0.348 | 0.359 |
+| Pumping | 0.006 | 0.019 |
+| Friction (FMEP 1.11 and 1.38 bar) | 0.033 | 0.041 |
+| Brake | 0.310 | 0.300 |
+| Exhaust, sensible | 0.399 | 0.437 |
+
+The air is about right: at brake efficiency 0.26 and this lambda, 385 N m wants VE 0.78. The excess is the efficiency
+(0.31 against some 0.25 to 0.28: a carburetted engine of the 1970s at full load, BSFC 300 to 335 g/kWh).
+
+What the build is not (measured one at a time, 2000 / 3600 rpm, torque):
+- compression 9.0 → 8.5 (the L48's, as recalled: P to source): -1.2 / -2.1 %;
+- dual exhaust → single (`exhaust.sides` 1): -3.0 / -4.3 %;
+- the ECU's best-torque spark 6 degrees later (`ecu.timing` -6, a distributor's curve held back for emissions: P to
+  source): -1.3 / -1.8 %.
+Together some -6 to -8 %: to P as parts, each with its source to find.
+
+What may be the model's (not measured, each to isolate before changing):
+- the accessories: friction.fm counts the alternator (and an air conditioner) only; an SAE-net rating of the 1970s took
+  the water pump, the fan and the air pump off the crank too (a few kW at speed; the rating's own rules to be read);
+- the burn: one base angle (44 degrees at 3000 rpm, combustion.fm) for every head; an open-chamber two-valve wedge
+  burns slower than a modern four-valve pent roof (Heywood ch. 9), which costs a few per cent at the best spark;
+- friction's level: 1.11 bar at 2000 rpm is at the low end of Heywood's eq. 13.15 band (friction with pumping 1.17
+  against 1.47 ± 25 %).
