@@ -185,8 +185,11 @@ TEST_CASE("the turbine's housing: card F's machine on the builder's collectors",
         int layout;
         double displacement;
         int kind;
+        int gate;   // spec.boost.gate: 1 external (its own pipe, to the air at the front)
     };
-    for (const Case& k : {Case{"2 L four, one turbo", 5, 0.002, 1}, Case{"V8, two turbos", 12, 0.0058, 2}})
+    for (const Case& k : {Case{"2 L four, one turbo", 5, 0.002, 1, 0}, Case{"V8, two turbos", 12, 0.0058, 2, 0},
+                          Case{"2 L four, one turbo, an external gate", 5, 0.002, 1, 1},
+                          Case{"V8, two turbos, external gates", 12, 0.0058, 2, 1}})
     {
         EnginePlayer& p = player();
         p.reset();
@@ -196,6 +199,7 @@ TEST_CASE("the turbine's housing: card F's machine on the builder's collectors",
         REQUIRE(p.setSpec("engine.displacement", k.displacement, error));
         REQUIRE(p.setSpec("boost.kind", k.kind, error));
         REQUIRE(p.setSpec("boost.model", 1, error));
+        REQUIRE(p.setSpec("boost.gate", k.gate, error));
         REQUIRE(p.setSpec("exhaust.model", 1, error));
         EnginePlayer::Controls& c = p.controls();
         c.mode = EnginePlayer::kModeBench;
@@ -229,6 +233,10 @@ TEST_CASE("the turbine's housing: card F's machine on the builder's collectors",
         run(2.0, &coll, &down);
         const double fedNow = test::field(p, "exh.fed");
         const double boost = test::field(p, "tel.boost.pressure");
+        const int gates = static_cast<int>(test::field(p, "exh.b.nGates"));
+        double gateMass = 0.0;
+        for (int t = 0; t < gates; ++t)
+            gateMass += test::field(p, "boost.mach.gateMass[" + std::to_string(t) + "]");
         auto swing = [](const std::vector<double>& x) {
             double m = 0.0, s = 0.0;
             for (double v : x)
@@ -248,9 +256,9 @@ TEST_CASE("the turbine's housing: card F's machine on the builder's collectors",
         const double pt = std::fabs(test::field(p, "exh.b.pTurb"));
         std::printf("turbine, %s at 4500 rpm full throttle: the housings fed %s, boost %.1f kPa; pressure swing at the "
                     "collector's end %.0f Pa, at the downpipe's head %.0f Pa (%.1f dB); 6 s after the key is off the "
-                    "collectors' mean %.2f Pa; finite %s\n",
+                    "collectors' mean %.2f Pa; external gates' pipes %d, through them %.4f kg/s; finite %s\n",
                     k.name, fedNow != 0.0 ? "yes" : "no", boost / 1000.0, sc, sd, 20.0 * std::log10(sd / sc), pt,
-                    finite ? "yes" : "no");
+                    gates, gateMass, finite ? "yes" : "no");
         INFO(k.name);
         CHECK(fedNow != 0.0);
         CHECK(finite);
@@ -258,6 +266,7 @@ TEST_CASE("the turbine's housing: card F's machine on the builder's collectors",
         CHECK(coll.size() > 100);
         CHECK(sd < sc);
         CHECK(pt < 100.0);
+        CHECK(gates == (k.gate != 0 ? k.kind : 0));
     }
 }
 
