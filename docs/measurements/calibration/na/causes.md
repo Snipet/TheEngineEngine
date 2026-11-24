@@ -64,6 +64,17 @@ the overlap, with no tuned exhaust to scavenge it.
 The reference sizes its pipes by displacement per cylinder alone (`engine.fm`, `kPipe`, the 0.45th power), not by the
 flow a high-revving engine pushes.
 
+The reference's pipes' diameters x1.3 (a scratch tree), at 3000, 5500 and 7500 rpm:
+
+| Engine | Torque | PMEP at the top, bar |
+|---|---|---|
+| 3.2 six | 226 → 253, 267 → 282, 249 → 263 N m | 0.93 → 0.65 |
+| Flat-plane V8 | +5 to +10 % | |
+| V12 | +4 to +11 % | |
+| Economy four | 0 to +4 % | |
+
+Sizing the pipes by flow separates the classes the right way, but not by enough alone.
+
 Suspected and not yet isolated, since G's network is not in the engine: with tuned primaries and flow-sized pipes, the
 overlap's residual falls and the tuned engines' VE rises toward 1.0 to 1.1.
 
@@ -93,8 +104,18 @@ The best advance by speed, from a fixed-centreline sweep:
 
 The best intake closing rises with speed on both, as Heywood §6.3 has it, but no rule in shares of the range fits both.
 
-Makers calibrate the map on a dyno. **Route: P's generator writes `ecu.maps.camIn` from a sweep** (the ledger's
-`--set valve.inCentre=` runs give the table). Meanwhile the placeholder could be made conservative.
+Makers calibrate the map on a dyno. **Route: P's generator writes `ecu.maps.camIn` from a sweep.** The full-load row
+for the seven phased NA archetypes is in [cam-maps.md](cam-maps.md): fixed centrelines in 10-degree steps, seven
+speeds.
+
+How much the phaser is worth, measured:
+
+| Schedule | Mean torque over seven speeds | Peak torque |
+|---|---|---|
+| The calibrated maps, against parked | +2.5 to +5.2 % | +2 to +8 % |
+| Half the range (a constant, not proposed: it would be tuning to fit), against the schedule as it is | flat-plane V8 +5 %, 3.2 six +7 %, V12 +6 %, V10 +3 %; the mild ones -0.3 to -1 % | |
+
+So the phaser is a shape fix worth a few percent, not pattern 1's cause.
 
 ## D. Mass created at the intake valve: pattern 4 (measured; D's file, routed to D)
 
