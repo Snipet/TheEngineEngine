@@ -42,14 +42,14 @@ it is read.*
 - **The chamber.** Each cone is `tsConeSteps` ducts stepped in bore, joined by the reference's junction (drive through
   the impedances in series; Borda-Carnot loss for an expansion, half of (1 - a/A) for a contraction, on the slow part).
   The open end inverts what arrives, less the exit's loss. A **silencer** (off by default; on in the builds): a core
-  wrapped in packing, or a can (a bore over twice the stinger's) with an outlet tube; the packing a gain on its waves.
+  wrapped in packing, or a can (a bore over twice the stinger's) with an outlet tube; the packing `Duct::pack`'s shelves with card G's `filtFirst` (the shelves before the steady-flow tracker: passive).
 - **The pipes' gas** follows the gas leaving the ports, mass-weighted over 0.2 s, with a 1.5 s time constant (the
   walls' warming): some 680 K at full load on the 125 after 3 s. The tuned speed rises as the pipe heats.
 - **In the engine** (sim/engine.fm's `twoStrokeTick`, `scopeTwo`; tel.engine.ts*): the ECU's throttle plus its idle valve as a slide's idle stop (12 % of the
   bore at most, judgement), the ECU's cut as the spark's; the crank, friction, inertia and starter are the custom
   engine's. The stingers' radiation (the rate their flow out changes) goes to the mix in place of the tails'; the
   carburettors' draw to the intake's voice. The Scope's cycle is 360 degrees; its valve lifts carry the exhaust and
-  transfer ports' open shares; `portIntake` carries the crankcase's pressure.
+  transfer ports' open shares; `portIntake` carries the crankcase's pressure; `inletOpen` the inlet's open share. The cycle switch is held to the fade's quiet as the model switches are.
 
 ## Measured
 
@@ -122,8 +122,5 @@ monopole and the reason racing two-strokes "ring".
 
 - The inlet tract and transfers' inertia (the main cause of the low output, above).
 - IMEP and the work loops for a two-stroke (core/work.fm is fed only by the four-stroke's loop).
-- The packing as frequency-dependent absorption: card G's `Duct::pack` (and its turbine low-pass) passes up to 4 % more
-  than it takes at some 25 Hz around its steady-flow tracker, so a stopped pipe closed at the port rings for ever; reported
-  to card G, worked around with a broadband gain.
 - Nobody has listened. A shared chamber for several cylinders, a boost port, auxiliary exhaust ports as their own
   windows, and the oil's smoke are left out.

@@ -81,6 +81,7 @@ module Ecu
     int bakeSeen;
     float lastFuel;     // the fuel of the last firing, kg (the injectors' duty)
     int cylinders;
+    float blow[2];      // each bank's blowdown gas, K (Combustion writes it at each exhaust valve's opening)
     float vSlip;        // the vehicle's values (vehicle()), and whether it has given them
     float vSpeed;
     int vGear;
@@ -323,8 +324,10 @@ module Ecu
         in->redBase = redBaseIn;
         in->cam = camIn;
         in->timing = spec->timing;
-        in->gasT0 = gasT;
-        in->gasT1 = gasT;
+        // (the bangs light from the blowdown's gas, which meets the unburned fuel, not from a pipe's mean: robust to the
+        // exhaust's and the walls' models; gasT, the exhaust's own, is kept for a model that wants it)
+        in->gasT0 = blow[0] > 0.0f ? blow[0] : gasT;
+        in->gasT1 = blow[1] > 0.0f ? blow[1] : gasT;
         in->afr = kFuelAfr[fuelRow(fuelSpec->model == 1 ? fuelSpec->grade : (fuelUse != 0 ? FUEL_DIESEL : FUEL_REGULAR))];
         in->cylinders = cylinders;
         in->boostLimit = spec->overBoost > 0.0f ? spec->overBoost : (spec->overBoost == 0.0f ? overBoostRef : 0.0f);
