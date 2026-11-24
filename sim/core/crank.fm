@@ -1,0 +1,48 @@
+// core/crank.fm: the crank (module Crank). Owner: package D.
+//
+// Where the crank is (degrees of a 2160-degree cycle, common to every four-stroke layout and the rotary's 1080) and how
+// fast it turns. Its speed is stepped explicitly each sample from the sum of the torques on it over its inertia (the
+// cylinders' gas, the friction, the bench's load, the starter, a supercharger's drag), or, driven, by the vehicle
+// (vehicle/car.fm: the clutch and the driveline are the load); it never turns backwards. The torque's ripple about its
+// slow mean is what shakes the body (the cabin's boom). What it leaves out: the inertia varying round the turn (the
+// reciprocating masses), the crank's torsion: package D's.
+//
+//   advance(dt)       each sample, first: the angle moved on; returns the degrees it turned
+//   bench(torque, tf, tsc, tl, ts, j, dt)   each sample, with no vehicle: the speed from the torques over inertia j
+//   ripple(torque)    each sample, after the speed: the torque's slow mean and the ripple about it (tqNow)
+//   sense()           every 16 samples, first: rpm from omega
+#pragma once
+
+module Crank
+{
+    float omega;        // rad/s
+    float theta;        // crank degrees, 0 to 2160 (a common cycle for four-strokes and the rotary)
+    float rpm;          // the speed as the control sees it: omega at the last 16-sample step, rpm
+    float tqMean;       // the cylinders' torque, its mean over some 20 ms
+    float tqNow;        // and the ripple about it
+
+    float advance(float dt)
+    {
+        const float dDeg = omega * dt * 57.2957795f;
+        theta += dDeg;
+        if (theta >= 2160.0f)
+            theta -= 2160.0f;
+        return dDeg;
+    }
+
+    void bench(float torque, float tf, float tsc, float tl, float ts, float j, float dt)
+    {
+        omega = fmaxf(omega + (torque - tf - tsc - tl + ts) / j * dt, 0.0f);
+    }
+
+    void ripple(float torque)
+    {
+        tqMean += (torque - tqMean) * 0.0005f;
+        tqNow = torque - tqMean;
+    }
+
+    void sense()
+    {
+        rpm = omega * 9.5492966f;
+    }
+};

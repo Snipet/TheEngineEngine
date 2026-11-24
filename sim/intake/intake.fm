@@ -23,14 +23,14 @@ module Intake
 {
     Duct run[12];       // the intake runners
     Biquad endRun[12];  // each intake runner's end in the plenum: the same, in the air of the plenum
-    float aThrottle;    // the ecu.throttle's area wide open, m^2
+    float aThrottle;    // the throttle's area wide open, m^2
     float aBypass;      // the idle valve's
     float vPlenum;
     float pPlenum;      // Pa absolute
     float mPlenum;
     float tAir;
     float pBox;         // the air box (with the turbo's boost), Pa
-    float qThr;         // the volume flow through the ecu.throttle, m^3/s
+    float qThr;         // the volume flow through the throttle, m^3/s
 
     void setup(float rate)
     {

@@ -1,4 +1,4 @@
-// ecu/ecu.fm: the engine's control (module Ecu). Owner: package H.
+// ecu/fm: the engine's control (module Ecu). Owner: package H.
 //
 // What the engine's computer and its driver decide, every 16 samples: the engine's state (stopped, cranking, running,
 // running down), the speed it goes by (the firing's ripple smoothed out, and how fast it changes), the idle and the

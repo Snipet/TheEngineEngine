@@ -68,11 +68,11 @@ TEST_CASE("sim: the defaults are the reference's defaults", "[sim][contract]")
         const int k = ref->dialIndex(d.dial);
         REQUIRE(k >= 0);
         INFO("dial " << d.dial << ", Set's " << d.set);
-        const double mine = test::field(player, std::string("mono.set.") + d.set);
+        const double mine = test::field(player, std::string("set.") + d.set);
         CHECK(static_cast<float>(mine) == static_cast<float>(ref->dials()[static_cast<std::size_t>(k)].defaultValue));
     }
-    CHECK(test::field(player, "mono.set.drive") == 0.0);   // MODE_BENCH: the reference's DRIVE KEYS, keys off
-    CHECK(test::field(player, "mono.set.keys") == 0.0);
+    CHECK(test::field(player, "set.drive") == 0.0);   // MODE_BENCH: the reference's DRIVE KEYS, keys off
+    CHECK(test::field(player, "set.keys") == 0.0);
 }
 
 TEST_CASE("sim: a build round-trips", "[sim][contract][build]")
@@ -150,13 +150,13 @@ TEST_CASE("sim: a section's rev moves when one of its fields is written", "[sim]
     // and the simulator takes it only then
     float none[1] = {0.0f};
     player.process(none, none, 0);
-    CHECK(static_cast<float>(test::field(player, "mono.set.muffler")) == 0.8f);
+    CHECK(static_cast<float>(test::field(player, "set.muffler")) == 0.8f);
     std::string e;
     double revs = 0.0;
     REQUIRE(player.read("spec.exhaust.rev", revs, e));
     player.instance().write(player.schema(), "spec.exhaust.muffler", 0.1, e);   // written without its rev moving
     player.process(none, none, 0);
-    CHECK(static_cast<float>(test::field(player, "mono.set.muffler")) == 0.8f);
+    CHECK(static_cast<float>(test::field(player, "set.muffler")) == 0.8f);
 }
 
 TEST_CASE("sim: the Telemetry follows a start, a run and off", "[sim][contract]")

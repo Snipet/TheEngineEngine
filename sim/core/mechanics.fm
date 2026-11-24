@@ -1,0 +1,45 @@
+// core/mechanics.fm: the engine's mechanical losses and helpers (module Mechanics). Owner: package D.
+//
+// The friction (the rubbing and the accessories: the pumping is the gas exchange's, simulated), the load a bench puts
+// on the crank, the starter, and the crank and flywheel's inertia for this engine (jBase: the layout's, scaled with the
+// size; a diesel's heavier). What it leaves out: the friction's parts (rings, bearings, valvetrain, pumps) and their
+// own dependences; the starter's motor curve: package D's.
+//
+//   torques(rpm, omega, strokeK, viscK, fuel, compression, vTotal, load, redRpm, tAmb, starterOn, vd)   each sample:
+//                     the friction tf, the bench load tl, the starter ts (N m)
+//   inertia(flywheel, load)   the crank's inertia with the FLYWHEEL dial and the bench's load, kg m^2
+// idleTq (about the torque at full load, Engine sets it each call) and jBase (set at configure) are its inputs.
+#pragma once
+
+module Mechanics
+{
+    float jBase;        // the crank, flywheel and all, before the dial, kg m^2
+    float idleTq;       // about the torque at full load, for the load and the starter, N m
+    float tf;           // this sample's friction torque
+    float tl;           // the bench's load
+    float ts;           // the starter's
+
+    void torques(float rpm, float omega, float strokeK, float viscK, int fuelUse, float smCR, float vTotal, float load,
+                 float redRpm, float tAmb, float starterOn, float vd)
+    {
+        // The friction is the rubbing and the accessories only (the pumping is the gas exchange's, simulated): about
+        // 1.3 bar of mean pressure at 2000 rpm, 1.9 at 4800, 2.6 at 6800, below the older correlation's 1.5, 2.6 and
+        // 3.7, which counted the pumping as well (with it, and 70 % of the fuel's heat, a 1.5 L four made 95 N m where
+        // the real one makes 144; now some 120)
+        // (the rubbing goes with the pistons' speed: a longer stroke's, BORE/STROKE, faster at the same revs)
+        const float nk = rpm * 0.001f * strokeK;
+        // (cold, its thick oil rubs more: as the thickness's 0.15th power, 1.4 times at 80 F, twice at 20 F, at most 3)
+        const float fmep = (1.0f + 0.10f * nk + 0.02f * nk * nk) * 100000.0f * fminf(expf(0.15f * logf(viscK)), 3.0f)
+                           * (fuelUse != 0 ? 1.0f + 0.025f * fmaxf(smCR - 18.0f, 0.0f) : 1.0f);
+        tf = fmep * vTotal * 0.0795775f * fminf(omega / 5.0f, 1.0f);
+        tl = load * idleTq * (0.15f + 0.85f * (rpm / redRpm) * (rpm / redRpm));
+        // (a cold battery gives less: 65 % at -40 F, all of it from 80 F)
+        const float bat = 1.0f - 0.35f * (1.0f - fminf(fmaxf((tAmb - 233.15f) / 66.85f, 0.0f), 1.0f));
+        ts = starterOn * 4.5e5f * vd * expf(0.9f * logf(smCR / 10.0f)) * fmaxf(1.0f - omega / 30.0f, 0.0f) * bat;
+    }
+
+    float inertia(float flywheel, float load)
+    {
+        return jBase * expf(1.6094379f * (flywheel - 0.5f)) * (1.0f + 5.0f * load);
+    }
+};
