@@ -211,7 +211,7 @@ int engineMain(int argc, char** argv)
         return failEngine(errors);
     if (buildName.empty())
         buildName = scenario.build;
-    Build build;
+    EngineBuild build;
     if (!buildName.empty() && !loadBuild(*player, tools::namedFile(builds, buildName), build, errors, warnings))
         return failEngine(errors);
     if (!warnings.empty())
