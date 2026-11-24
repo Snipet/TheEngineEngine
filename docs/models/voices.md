@@ -107,6 +107,19 @@ What changed for it: the pump 30 dB down (before: -30 dB(A), -8.2 in the 4 kHz o
 the lead's ruling of 22:19, not scaled by the engine's size); the fan's broadband now falls
 18 dB an octave above twice its band (before: -3.4 in the 8 kHz octave). The fan's 280 Hz line is as it was.
 
+The pump's level, 24 November (the owner's words are why it is where it is: do not raise it again from a spectrum
+alone; a change goes through the owner's ears). Against the voices-off mix through the reference's listener, first.json
+at idle:
+
+| | Gain in `fuel.fm` | dB(A) | 4 kHz octave | Why |
+|---|---|---|---|---|
+| As shipped to the owner | 0.0035 | -30 | -8.2 | Judgement: "heard through the floor, about the chain's at idle" |
+| -20 dB (f074ab47's parent) | 0.00035 | -49.2 | -29.7 | The owner (21:32): "a high pitched hum that almost sounds like the turbo at idle, but far too loud" |
+| -30 dB (1a3812e6) | 0.00011 | -59.9 | -37.4 | The lead's ruling (22:19): the owner's "far too loud"; an in-tank pump under a running engine is at most barely heard outside the car; 1.6 to 3.4 dB of margin on the small engines' hum row was one camera from red. Not scaled by the engine's size |
+
+The prime keeps the same level as the pump's hum (the lead, 22:27: a louder prime would be a judgement on a judgement;
+it is heard at key-on because nothing else sounds, and from the cabin, which is the listener's business).
+
 The same voices through Places, camera Side (first.json's own listener), measured the same way: the pump -11.7 dB(A)
 before the 20 dB, the fan +3.9, the belt -40.4, that is 23 to 35 dB higher against the exhaust than at the source,
 with the silent mix itself 15 dB(A) lower than through the reference's. That part is the path's (card L's).
