@@ -776,3 +776,10 @@ housings' 1.14: with G, N2 to be copied before adopting the design point (it wou
 core held at the air's 288.15 K, 0.78 on time means. B-2's "effectiveness" used the compressor outlet's time-mean
 temperature (459 K), which is not what the cooler sees. Noted for N2, not a finding: that 459 K is above what PR 2.21
 at eta 0.61 gives (about 404 K) and above the charge pipe's 387 K; a time mean weighted by low-flow instants, likely.
+
+**The housings' gap, closed by G (22:13 by `date -u`).** G's flowClose matched the valves' volume; the gas cools from the
+valve to the collectors (1396 → 1216 K on the four), so the turbines' housings were given 1.14 of the valves' mass
+(the V8 1.03). G's fix ("exhaust: with the turbines fed, stepLet's target closed by mass at the housings"): a slow loop
+holds Boost's mass from the pipes equal to the valves' let-out. Checked on the tip, the turbo four at 3050 rpm (2 s):
+0.1991 kg into the housings against 0.1995 out of the valves, 0.998; boost 107 kPa (was 117), torque 335 N m (was 357).
+N2's matching to be re-taken on it (told).
