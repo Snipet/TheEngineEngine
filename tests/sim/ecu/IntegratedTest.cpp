@@ -22,6 +22,7 @@ namespace
         Sim s("v8");
         s.set("ecu.model", 1);
         s.set("fuel.model", 1);
+        s.set("engine.wallHeat", 1);                     // (fuel.model 1 implies Woschni's walls)
         s.set("env.temperature", 300.0);
         s.ctl().mode = tee::EnginePlayer::kModeDrive;
         s.ctl().ignition = tee::EnginePlayer::kIgnitionStart;
@@ -37,8 +38,9 @@ namespace
     };
 
     // Flat out on the limiter for `limit` s (counted when `onLimiter`), then lifted: the bangs and the fuel they burned
-    // over the lift's `lift` s from half a second in (the pipe's store of the rich full-load running gone by then)
-    Bangs bangs(Sim& s, double limit, double lift, bool onLimiter)
+    // over the lift's `lift` s from `from` s in (from a second the pipe's store of the rich full-load running, which
+    // lights as it would after a real lift, is gone: it empties over 0.25 s)
+    Bangs bangs(Sim& s, double limit, double lift, bool onLimiter, double from = 1.0)
     {
         s.ctl().throttle = 1.0f;
         s.run(0.5);
@@ -47,7 +49,7 @@ namespace
         if (onLimiter)
             return {s.read("ecu.one.account.bangs") - n0, s.read("ecu.one.account.total") - f0};
         s.ctl().throttle = 0.0f;
-        s.run(0.5);
+        s.run(from);
         n0 = s.read("ecu.one.account.bangs");
         f0 = s.read("ecu.one.account.total");
         s.run(lift);
@@ -76,7 +78,7 @@ TEST_CASE("H9: a spark-cut limiter and a fuelled overrun bang as the fuel sent; 
         Sim s = car();
         s.set("ecu.overrun.fuel", share);
         s.set("ecu.overrun.retard", 30.0);
-        const Bangs b = bangs(s, 1.5, 2.5, false);
+        const Bangs b = bangs(s, 1.5, 2.5, false, 0.3);          // (from 0.3 s: the overrun's fuelling is over by 1 s)
         WARN("overrun fuel " << share << ": " << b.count << " bangs, " << b.burned * 1e6 << " mg burned in the pipe");
         (share < 0.2 ? little : much) = b.burned;
     }
@@ -126,11 +128,12 @@ TEST_CASE("H: a bake writes every map's formula at its breakpoints into the Scop
     CHECK(s.read("scope.bakedNx[0]") == 16.0);
     CHECK(s.read("scope.bakedNy[0]") == 16.0);
     CHECK(s.read("scope.bakedNy[2]") == 6.0);                    // the boost target's gears
-    // the spark at 500 rpm (52.4 rad/s) and 0.1 load: the reference's 12 + 22 sqrt(500 / red) - 8 (0.1 - 0.4) + 22 (burnK - 1)
-    const double red = s.tel("engine.redline") * 9.5492966;
+    // the spark at 500 rpm (52.4 rad/s) and 0.1 load: the half of the burn 8 after the top, 0.517 (44 + 11 x 0.7)
+    // burnK (cr / 10)^-0.3 - 8
     const double burnK = s.read("burnK");
+    const double cr = s.read("smCR");
     CHECK(s.read("scope.bakedX[0][0]") == Catch::Approx(500.0 * 0.10471976).epsilon(1e-5));
-    CHECK(s.read("scope.baked[0][0]") == Catch::Approx(12.0 + 22.0 * std::sqrt(500.0 / red) + 2.4 + 22.0 * (burnK - 1.0)).epsilon(1e-4));
+    CHECK(s.read("scope.baked[0][0]") == Catch::Approx(0.517 * (44.0 + 11.0 * 0.7) * burnK * std::pow(cr * 0.1, -0.3) - 8.0).epsilon(1e-3));
     // a second press, a second bake
     s.ctl().bakeMaps += 1;
     s.run(0.1);
@@ -164,6 +167,7 @@ TEST_CASE("H10: traction control holds a spinning car's slip near its target", "
         s.set("car.tyre", 1);                            // street
         s.set("ecu.model", 1);
         s.set("fuel.model", 1);
+        s.set("engine.wallHeat", 1);                     // (fuel.model 1 implies Woschni's walls)
         s.set("env.temperature", 300.0);
         s.set("ecu.traction.on", tc ? 1 : 0);
         s.ctl().mode = tee::EnginePlayer::kModeDrive;
@@ -222,6 +226,7 @@ TEST_CASE("H: both models on, the V8 starts at -20 C and at the coldest air", "[
         Sim s("v8");
         s.set("ecu.model", 1);
         s.set("fuel.model", 1);
+        s.set("engine.wallHeat", 1);                     // (fuel.model 1 implies Woschni's walls)
         s.set("env.temperature", air);
         s.ctl().mode = tee::EnginePlayer::kModeDrive;
         s.ctl().ignition = tee::EnginePlayer::kIgnitionStart;

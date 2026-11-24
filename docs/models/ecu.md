@@ -29,8 +29,10 @@ advance, lambda, boost target (speed by gear), intake and exhaust cam phase (car
 the plate, the lift command. Axes: speed (rpm inside, rad/s in the Spec) and load (the manifold over the air
 outside; for a throttle with no plenum, the pedal). Each has `auto`, on by default: the output is then the formula:
 
-- spark (the reference's): `12 + 22 sqrt(min(rpm / red, 1.2)) - 8 (p_manifold / 1 atm - 0.4) + 22 (burnK - 1)`, then
-  `spec.ecu.timing` added and each cylinder's knock retard taken off, as the reference's `charge()` does.
+- spark: the half of the burn 8 degrees after the top (docs/models/combustion.md, "The spark"); the charge refines it
+  with its own dilution and flame; `spec.ecu.timing` is an offset over it, and each cylinder's knock retard comes off
+  it. (Before integration it was the reference's `12 + 22 sqrt(rpm / red) - 8 (load - 0.4) + 22 (burnK - 1)`, which
+  put the half-burn 0 to 9 degrees before the top at speed.)
 - lambda: 1 to 80 % load, then `1 - 0.12 w - 0.08 b` (w: 0 to 1 over 80 to 100 % load; b: 0 to 1 over 1 to 2.5 load):
   0.88 at full load unboosted, 0.80 at 1.5 bar of boost (judgement: factory tunes' power enrichment).
 - boost: the build's boost level in every gear (card F's number); phasers 0; plate = pedal; lift 1.
@@ -102,7 +104,7 @@ both flow out with a 0.25 s time constant (judgement); a hazard rises at `40 /s 
 limiter, some 300 K under measured exhaust temperatures: judgement, for the self-ignition of a rich exhaust's CO, H2
 and fuel with air at some 950 to 1200 K), burnable = the
 fuel the store's air can burn; at 1 the burnable fuel burns and card G's pop gets an amplitude of 3e9 Pa a kg
-(judgement: a few milligrams give the reference's 20 to 30 kPa). Standalone test (part of the card's 9): at 3000 rpm,
+(now saturating: 30 kPa (1 - exp(-m / 7 mg)), the reference's largest pop; X-006). Standalone test (part of the card's 9): at 3000 rpm,
 1100 K, 2 mg a firing gives 133 bangs in 2 s, 1.9 mg burned a firing, the largest 23 kPa; 8 mg gives 199 bangs, 7.8 mg
 a firing, the largest 47 kPa (four times the fuel: four times what burns, larger pulses); no fuel, no air, or a pipe at
 800 K: none.

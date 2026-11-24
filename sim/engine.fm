@@ -281,7 +281,7 @@ module Engine
         set.bs = 1.0f;
         set.ambF = 80.33f;
         set.timing = 0.0f;
-        comb.setup(rate, &noise, &ecu, &heat, &lay, &exh.pop[0], &spec.fuel);
+        comb.setup(rate, &noise, &ecu, &heat, &lay, &exh.pop[0], &spec.fuel, &spec.engine);
         comb.oxygen = 1.0f;
         ecu.setup(16.0f / rate, &spec.ecu, &spec.fuel, &ctl, &tel.ecu, &scope, &heat);     // card H's model 1
         set.bov = 0.7f;

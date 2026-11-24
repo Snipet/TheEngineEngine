@@ -41,8 +41,8 @@ module Charge1
     // oxy: its oxygen over air's; lambda: asked; direct: the injection's share in the cylinder; t: the charge's
     // temperature (K); share: the walls' share kept; factor: dilution, spread and trim; sparkAfter: degrees after the
     // top the spark comes (negative before it); u: a uniform number in [0, 1) for the misfire's chance; extra: the fuel
-    // injected over what the mixture holds (a cold start's enrichment: the extra wets the walls, a third of it leaving
-    // unburned with the exhaust, judgement; 1 warm)
+    // injected over what the mixture holds (a cold start's enrichment: the extra wets the walls and the oil and does not
+    // reach the pipe as fuel that could light there; 1 warm)
     void make(int kind, int firing, float air, float oxy, float lambda, float direct, float t, float share, float factor,
               float sparkAfter, float u, float extra)
     {
@@ -66,7 +66,7 @@ module Charge1
         burnK = mix.burnK;
         if (firing == CHARGE_SPARK_CUT || u < mix.misfire)
         {
-            outFuel = mix.fuel + 0.33f * wet;
+            outFuel = mix.fuel;
             return;
         }
         lit = true;
@@ -76,7 +76,7 @@ module Charge1
         heat = mix.heat * share * factor * inCyl;
         // what is not burned: the mixture's own leftover, the late burn's, and the air its fuel did not need
         const float burned = (mix.fuel - mix.unburned) * inCyl;
-        outFuel = mix.fuel - burned + 0.33f * wet;
+        outFuel = mix.fuel - burned;
         outAir = fmaxf(air * oxy - burned * kFuelAfr[f], 0.0f);
     }
 };
