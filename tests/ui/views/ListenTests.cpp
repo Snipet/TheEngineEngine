@@ -228,7 +228,10 @@ namespace
         rig.demo.doc.endGesture();
         page = rig.ws->inspectorPage();
         CHECK_MSG(inspectorNotes(*rig.ws, rig.demo).empty(), inspectorNotes(*rig.ws, rig.demo));
-        CHECK(page.find("REFERENCE VIEW") != std::string::npos && page.find("label=\"CAMERA\"") == std::string::npos);
+        // the reference's view first; the new model's fields still reachable, last, under the mode that reads them
+        CHECK(page.find("REFERENCE VIEW") != std::string::npos && page.find("PLACES MODE ONLY") != std::string::npos
+              && page.find("REFERENCE VIEW") < page.find("PLACES MODE ONLY")
+              && page.find("label=\"CAMERA\"") > page.find("PLACES MODE ONLY"));
         return 0;
     }
 
