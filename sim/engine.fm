@@ -1280,6 +1280,9 @@ module Engine
                           bI, intk.run[pi].z, intk.tAir);
             if (hd.on != 0)
                 hd.sample(cy, c, a);
+            if (spec.valve.model != 0)   // (N1: the pressure across the cylinder at its overlap, for the intake's schedule)
+                vt.overlapSample(a, 2.0f * (bI - (hd.on != 0 ? bE + hd.back : bE)) + intk.run[pi].z * cy->qIa
+                                        - exh.prim[pi].z * cy->qEa);
             work.sample(c, a, cy->p, cy->v);
             comb.sample(cy, c, dt);                     // card H: nothing under fuel.model 0 and ecu.model 0
             qe[pi] += cy->qEa;
