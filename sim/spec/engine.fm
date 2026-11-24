@@ -109,4 +109,7 @@ module EngineSpec
     float portExDur [[fminus::range(0, 720)]] [[fminus::default(0)]] [[ui::label("Rotary: exhaust port open for")]] [[ui::unit("deg")]];
     float portInOpen [[fminus::range(0, 1080)]] [[fminus::default(0)]] [[ui::label("Rotary: intake port opens")]] [[ui::unit("deg")]];
     float portInDur [[fminus::range(0, 720)]] [[fminus::default(0)]] [[ui::label("Rotary: intake port open for")]] [[ui::unit("deg")]];
+    // the walls' heat (core/wallheat.fm): the reference's one coefficient by speed, or Woschni's from each cylinder's
+    // own pressure, temperature and gas speed; meant with fuel.model 1's whole burn (card H)
+    int wallHeat [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Wall heat")]] [[ui::choices("Reference", "Woschni")]];
 };

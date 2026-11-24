@@ -1,0 +1,78 @@
+// wallheat.fm: the heat a cylinder's gas loses to its walls, by Woschni's correlation (spec.engine.wallHeat 1).
+//
+// The reference sets every cylinder's heat-transfer coefficient times area (hA, W/K) once every 16 samples from the
+// engine's speed alone (260 W/m^2K over a surface by its size, times 0.6 + rpm / 2500): the same through the whole
+// cycle. Its walls take some 11 % of the fuel's energy at full load, where engines lose 20 to 30 %; the reference
+// makes up for it by burning only 60 to 80 % of the fuel's heat (sim/ref/engine.fm, charge), which leaves the burn too
+// fast for its spark (best torque with half of it burned at 0.3 degrees after top dead centre, where engines show 6 to
+// 12) and the port gas too hot (1150 to 1330 K at full load, against 900 to 1100). With card H's fuel.model 1 burning
+// the fuel's whole heat (times a combustion efficiency), this is the walls' side: Woschni (SAE 670931, 1967),
+//
+//     h = 3.26 B^-0.2 p^0.8 T^-0.55 w^0.8          W/(m^2 K); B m, p kPa, T K, w m/s
+//     w = C1 Sp + C2 (Vd T_r / (p_r V_r)) (p - p_m)
+//
+// with C1 6.18 while the valves exchange the gas, 2.28 through compression and expansion; C2 3.24e-3 m/(s K) from the
+// spark to the exhaust's opening (the burn's own turbulence), 0 otherwise; p_m the pressure the cylinder would have
+// motored (its state at intake closing, p_r V_r T_r, compressed and expanded with an exponent of 1.32); Sp the mean
+// piston speed. The area is the head and the piston's crown (each the bore's, the head's a tenth more for its shape)
+// and the liner the piston has uncovered (4 V / B). Each cylinder's hA is worked out every 16 samples from where it
+// stands (at 6000 rpm, 6 crank degrees apart: the heat's rise and fall over the burn is followed); the cylinder's own
+// step then takes hA (T - Twall) each sample, as it does with the reference's.
+//
+// Constants: Woschni's, as Heywood (Internal Combustion Engine Fundamentals, 1988, section 12.4) gives them. A rotary
+// keeps the reference's coefficient (Woschni's is for pistons).
+#pragma once
+#include "../spec/limits.fm"
+
+module WallHeat
+{
+    float bore;         // m
+    float aCrown;       // the piston's crown and the head, m^2
+    float vd;           // swept volume, m^3
+    float pr[MAX_CYL];  // each cylinder's state at its intake's closing: pressure (Pa), volume (m^3), temperature (K)
+    float vr[MAX_CYL];
+    float tr[MAX_CYL];
+    float hNow[MAX_CYL];    // the last coefficient worked out (W/(m^2 K)), for reports
+
+    void setup(float boreIn, float swept)
+    {
+        bore = fmaxf(boreIn, 0.02f);
+        aCrown = 2.1f * 0.78539816f * bore * bore;
+        vd = swept;
+        for (int c = 0; c < MAX_CYL; ++c)
+        {
+            pr[c] = 101325.0f;
+            vr[c] = swept;
+            tr[c] = 330.0f;
+            hNow[c] = 0.0f;
+        }
+    }
+
+    // Cylinder c's intake has closed: the state the motored pressure is reckoned from
+    void ivc(int c, float p, float v, float t)
+    {
+        pr[c] = p;
+        vr[c] = v;
+        tr[c] = t;
+    }
+
+    // Cylinder c's hA (W/K) at its angle a (degrees from its firing top dead centre, 0 to 720), its gas's pressure
+    // (Pa), temperature (K) and volume (m^3), the mean piston speed (m/s), and whether it is between its spark and its
+    // exhaust's opening, or exchanging its gas (a valve open)
+    float coefficient(int c, float a, float p, float t, float v, float sp, int burning, int exchanging)
+    {
+        float w = (exchanging != 0 ? 6.18f : 2.28f) * sp;
+        if (burning != 0)
+        {
+            // the motored pressure at this volume: the intake's closing state, polytropic (n 1.32)
+            const float pm = pr[c] * expf(1.32f * logf(vr[c] / v));
+            w += 3.24e-3f * vd * tr[c] / (pr[c] * vr[c]) * fmaxf(p - pm, 0.0f);
+        }
+        w = fmaxf(w, 0.1f);
+        // h = 3.26 B^-0.2 (p / 1000)^0.8 T^-0.55 w^0.8, as one exponential
+        const float h = 3.26f * expf(-0.2f * logf(bore) + 0.8f * logf(fmaxf(p, 1000.0f) * 0.001f) - 0.55f * logf(fmaxf(t, 200.0f))
+                                     + 0.8f * logf(w));
+        hNow[c] = h;
+        return h * (aCrown + 4.0f * v / bore);
+    }
+};
