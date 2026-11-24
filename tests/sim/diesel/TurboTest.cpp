@@ -88,7 +88,7 @@ TEST_CASE("diesel turbo: a big single's lag you can count; variable vanes reach 
     CHECK(vgt.boost >= 0.95 * single.boost);
 }
 
-TEST_CASE("diesel turbo: at 1300 rpm variable vanes make at least a fixed big single's boost, and sooner", "[diesel][turbo]")
+TEST_CASE("diesel turbo: at 1300 rpm variable vanes hold a fixed big single's boost, and get there sooner", "[diesel][turbo]")
 {
     // (marked [!mayfail] while the vanes lagged the single on H's fuel model: 3.1 against 2.1 s to 187 kPa; N2's
     // e12b230, the surge guard retuned, gives 1.75 against 1.95 s, 211 against 208 kPa. The measure, agreed with N2:
@@ -98,10 +98,10 @@ TEST_CASE("diesel turbo: at 1300 rpm variable vanes make at least a fixed big si
     // guard (cf888e2) fixed the loop: VGT 209 kPa, 90 % in 4.1 s; the single 184 kPa in 4.4 s. Now plain.
     const Spool single = spoolOnce(0);
     const Spool vgt = spoolOnce(1);
-    // (both machines are closed-loop on one boost target, so they end within the loops' tolerance of each other: 2 %,
-    // a stated judgement. A near-tie between two regulated loops is not a fault of either: 210.1 against 211.4 kPa
-    // after the gas's gamma changed, 211 against 208 before. The variable vanes' advantage is the time, held below.
-    // The lead's restatement, 24 Nov, agreed with N2; D2 owns this file.)
+    // Both machines are closed-loop on one boost target, so two controllers holding it agree to the loop's tolerance:
+    // 2 % here, a stated judgement (lead, 2026-11-24; N2: the VGT's surge guard holds the vanes near 0.8, 0.25-0.5 %
+    // under fully open at 1300 rpm). It was ">= single" until D's gamma (8b20b176) made it a 0.6 % near-tie, 210.1
+    // against 211.4 kPa. The VGT's advantage is the time, which the next line holds.
     CHECK(vgt.boost >= 0.98 * single.boost);
     CHECK(vgt.reach(0.9 * single.boost) < single.reach(0.9 * single.boost));
 }

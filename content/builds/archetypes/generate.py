@@ -559,6 +559,10 @@ def build(a):
         lo, hi = TORQUE_PEAK[a["slug"]]
         i["runnerLength"] = round(min(max(0.50 * (5000.0 / (0.5 * (lo + hi))) ** 1.3, 0.22), 0.9), 2)
     i.update(a.get("intake", {}))
+    # (where the rule set it, the notes say so: it tunes each runner to the very speed its torque row is read at, N3's
+    # finding N3-8, and is no engine's)
+    rule_runner = ("boost" not in a and a["layout"] != "Rotary" and a["slug"] in TORQUE_PEAK
+                   and "runnerLength2" not in a.get("intake", {}) and "runnerLength" not in a.get("intake", {}))
 
     bo = {"model": "Machine", "kind": "Natural", "level": 0.0, "blowOff": 0.7}
     if "boost" in a:
@@ -674,7 +678,12 @@ def build(a):
     spec = {"engine": e, "valve": v, "intake": i, "boost": bo, "exhaust": x, "fuel": f, "ecu": nest(t),
             "car": car, "env": {"temperature": 288.15, "pressure": 101325.0}, "voices": vo, "sound": snd}
     switches_on(spec, a["slug"])
-    return {"format": "tee-build", "version": 1, "name": a["name"], "notes": a["notes"], "spec": spec}
+    notes = a["notes"]
+    if rule_runner and "JUDGEMENT" not in notes:
+        notes += (" Its intake runner, %.2f m from the valve to the plenum, is the generator's rule 0.5 x (5000 / "
+                  "torque-peak rpm)^1.3, tuned to its own torque peak: JUDGEMENT, not the real engine's (no source "
+                  "found yet)." % i["runnerLength"])
+    return {"format": "tee-build", "version": 1, "name": a["name"], "notes": notes, "spec": spec}
 
 
 # each build's sound.level trim (dB), measured by levels.py (L's scheme: a free rev to a 0.3 peak)
