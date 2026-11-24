@@ -698,3 +698,49 @@ TEST_CASE("a quality change keeps the engine's heat as it was, not its initial t
     CHECK(after == Catch::Approx(before).margin(0.2));
     CHECK(std::fabs(after - 378.0) > 0.05);   // not its initial value again
 }
+
+TEST_CASE("the knock limit's corrections: a cell whose mean retard was over 12 degrees measured again with the table "
+          "applied, its residual added, said when it still knocks",
+          "[engine][sim][bake][nightly]")
+{
+    if (!haveSim())
+        SKIP("sim/engine.fm is not there yet");
+    std::string error;
+    const auto sim = compiled(simDir(), {}, error);
+    REQUIRE(sim != nullptr);
+    Build build(sim->fields());
+    std::vector<std::string> warnings;
+    REQUIRE(build.loadFile(std::filesystem::path(TEE_SOURCE_DIR)
+                               / "content/builds/archetypes/straight-six-twin-turbo-30.json",
+                           BuildPart::Whole, warnings, error));
+    if (build.fieldOf("ecu.maps.knockLimitAuto") < 0)
+        SKIP("the program has no knock-limit table yet");
+    KnockBakeOptions options;
+    options.speeds = 8;       // (2686 rpm among them: N2's 2450)
+    options.pedals = {1.0};
+    options.boostSteps = 1;   // the build's own level: where the retard sits at its ceiling
+    KnockBakeResult r;
+    REQUIRE(bakeKnockLimit(sim, build, options, r, error));
+    int corrected = 0;
+    for (std::size_t s = 0; s < r.measured.size(); ++s)
+        for (const KnockBakeCell& c : r.measured[s])
+        {
+            INFO("speed " << r.speeds[s] << ": mean " << c.retardMean << ", corrections " << c.corrections
+                          << ", residual " << c.residual << ", cell " << c.limit);
+            if (c.valid && c.retardMean > options.correctAbove)
+            {
+                CHECK(c.corrections >= 1);
+                CHECK(c.corrections <= options.corrections);
+                CHECK(c.limit >= c.retardMean + options.margin);
+                CHECK(c.stillKnocking == (c.residual >= options.knockLimit));
+                ++corrected;
+            }
+            else
+            {
+                CHECK(c.corrections == 0);
+                CHECK_FALSE(c.stillKnocking);
+            }
+        }
+    CHECK(corrected >= 1);   // the six at its full boost has a cell at the ceiling (N2's proof: 2450 rpm)
+    REQUIRE(r.stillKnocking.size() == r.speeds.size());
+}

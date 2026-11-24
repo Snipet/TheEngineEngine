@@ -734,3 +734,30 @@ TEST_CASE("the cylinders' books hold at idle under a big overlap, as a person ca
     CHECK(std::fabs(x / v - 1.0) < 0.005);
 }
 
+
+TEST_CASE("an engine standing takes the build's air at once: nothing in its pipes glides to it", "[core][engine][heat]")
+{
+    // (M's finding: first.json's 288.15 K air was glided to from 300 K over 2 s while the engine stood, moving the
+    // pipes' gas, heard from the key with the voices on. Warm or cold, the air is the build's from the configure)
+    for (int warm = 0; warm < 2; ++warm)
+    {
+        Bench b("first");
+        if (warm != 0)
+        {
+            b.write("heat.tCool", 368.0); b.write("heat.tOil", 378.0); b.write("heat.tSurf", 455.0);
+            b.write("heat.warm", 1.0); b.write("heat.warmS", 1.0);
+        }
+        b.ctl().ignition = 1;
+        b.play(0.2);
+        const double a0 = b.field("heat.tAmb"), p0 = b.field("exh.tPort");
+        b.play(2.0);
+        std::printf("%s, key on, standing: air %.2f then %.2f K, port gas %.2f then %.2f K\n", warm ? "warm" : "cold", a0,
+                    b.field("heat.tAmb"), p0, b.field("exh.tPort"));
+        CHECK(std::fabs(a0 - 288.15) < 0.05);
+        CHECK(std::fabs(b.field("heat.tAmb") - a0) < 0.05);
+        // (the port's gas checked cold only: here the warm state is written after the build's configure, so the pipes
+        // were set up cold and warm up to it; the application writes it before the build's air arrives)
+        if (warm == 0)
+            CHECK(std::fabs(b.field("exh.tPort") - p0) < 0.5);
+    }
+}
