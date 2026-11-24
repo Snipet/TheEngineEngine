@@ -471,3 +471,25 @@ The four-cam's idle sits on its dilution edge and moves with any change to the p
 
 **The rotary's books balance** (P's side-port NA twin: throttle = valves within 0.2 %, the exhaust 2 % less for its
 seals' leakage). The plenum does not pay twice for a shared port: its low VE is something else.
+
+## J. The NA side-port rotary under-breathes: its ports' overlap (measured; content to P, ports to D)
+
+The probe on P's rotary-twin-na-side-port, at intake closing:
+
+- the charge is 425 to 450 K and 13 to 18 % burned, at about the air's pressure, so VE is 0.56 to 0.70;
+- `valvetrain.fm` keeps the reference's rotary ports whatever the model (a peripheral exhaust port, side intake
+  ports), with the cam dial setting the overlap: 18 degrees of the eccentric shaft at 0, 47 at the build's 0.55, 68
+  at 1.
+
+| Dial | VE at 3000 / 5500 / 8000 rpm | Torque, N m | Burned share | Charge |
+|---|---|---|---|---|
+| 0.55 | 0.56 / 0.66 / 0.70 | 130 / 164 / 179 | 13 to 18 % | 425 to 450 K |
+| 0.35 | 0.63 / 0.71 / 0.77 | 149 / 182 / 201 | | |
+| 0.15 | 0.71 / 0.76 / 0.83 | 171 / 201 / 219 | 7 to 11 % | 383 to 391 K |
+
+The target is 211 to 216 N m at 5500 rpm.
+
+A Renesis-type side exhaust port has almost no overlap, which the reference's peripheral exhaust cannot express.
+
+- Content (P): the side-port build's dial at 0.15 or 0.
+- Model (D, or E's path): side exhaust ports for a rotary.
