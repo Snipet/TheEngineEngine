@@ -103,7 +103,7 @@ namespace tee::ui
     bool Board::moveFocus(int step)
     {
         const int n = static_cast<int>(items_.size());
-        const bool wrap = inner() == nullptr;           // with an inner Panel, past the last is its turn
+        const bool wrap = inner() == nullptr && tabWraps_;   // with an inner Panel, past the last is its turn
         int at = focus_;
         for (int k = 0; k < n; ++k)
         {

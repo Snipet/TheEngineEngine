@@ -54,6 +54,10 @@ namespace tee::test::views
     // clean; a workspace whose page is the frame's generated one has none). Each package checks its own page with it:
     //     CHECK_MSG(inspectorNotes(*rig.ws, rig.demo).empty(), inspectorNotes(*rig.ws, rig.demo));
     std::string inspectorNotes(const tee::ui::Workspace& ws, tee::ui::DemoRig& demo);
+    // The host's accessibility items a person acts on (a button, a slider, a switch, a menu, a list's row, a text
+    // field) that have no title: "" when every one is named, else a line each (its role and bounds). A package checks
+    // its stage: CHECK_MSG(unnamedControls(*rig.host).empty(), unnamedControls(*rig.host));
+    std::string unnamedControls(funkgui::HeadlessHost& host);
 
     // A workspace alone in a headless host over the demo (ui/app/Demo.h). `t` is the demo script's time; at(t) moves
     // it and ticks the host so the eases land. `hooks`: with every registered workspace's own demo data (DemoHook).

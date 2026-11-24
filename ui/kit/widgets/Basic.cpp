@@ -72,7 +72,8 @@ namespace tee::ui
         const Col edge = funkgui::mix(l.edge, l.accent, std::max(down_ * 0.6f, litShown_));
         c.rrect(r.x, r.y, r.w, r.h, rad, face, 1.0f, edge);
         // U1: a title wider than the button is cut with an ellipsis (a tab's), never drawn over its neighbours.
-        textAt(c, fitText(c, upper(title_), kWidgetLabel, std::max(10.0f, r.w - 10.0f)), r.centreX(), r.centreY(), kWidgetLabel,
+        textAt(c, fitText(c, upper(title_), kWidgetLabel, std::max(10.0f, r.w - leftRoom_ - 10.0f)), r.centreX() + leftRoom_ * 0.5f,
+               r.centreY(), kWidgetLabel,
                funkgui::mix(l.text, l.value, std::max(hover_, litShown_)), Align::centre);
         if (focusRing)
             ring(c, l, r, rad);
