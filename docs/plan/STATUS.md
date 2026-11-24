@@ -36,6 +36,15 @@
 
 ## Landed
 
+- **16:06 the first finished CI job on every platform**: Linux 593 of 596 and Windows 593 of 596 (both at 08ae4f8),
+  macOS 594 of 598 (6bbc346). The same three whole-program tests fail on all three, with the same numbers to the
+  digit on Linux and Windows (small-four and turbo-six with every switch on: no cold start, X-003, and steps of 18
+  to 23, X-006; `sound.model` flipped under load: a step of 23.2): all three predate H's fixes reaching the branch
+  at 15:55, and X is re-running them. macOS alone fails the fast dyno's 48 kHz comparison (C's). With every switch
+  on the turbo six costs 1.04 R there: 25 % of the Linux runner's core, 38 % of the Windows runner's.
+- 15:58 D: `fuel.model` 1 implies the physical cylinder (Chen-Flynn friction and Woschni walls), and the 48 kHz
+  define the fast dyno waited for (e9a9748). 16:02 U1's frame goldens green again with LISTEN's slot (67aadbb);
+  16:04 LISTEN's label off the wheel (0edf438).
 - **16:04 calibration started** (card N, two sessions): P's first full validation table (`docs/manual/validation.md`:
   582 targets on 30 archetypes, 190 missed) misses in patterns, not scatter: every engine that breathes by itself
   near the same BMEP whatever its head, every boosted engine 20 to 100 % too strong, the rotary doubled.
