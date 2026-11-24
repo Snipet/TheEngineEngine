@@ -2,6 +2,7 @@
 // Engine::process is nonblocking, every Spec field describes itself, the defaults are the reference's, a build
 // round-trips, the tables read as they should, and the Telemetry says what the engine does.
 #include "Twin.h"
+#include "tee/Fields.h"
 #include "tee/test/Kept.h"
 
 #include <catch2/catch_approx.hpp>
@@ -35,9 +36,28 @@ TEST_CASE("sim: Engine compiles, and its process is nonblocking", "[sim][contrac
 TEST_CASE("sim: every Spec field has its range, default and label", "[sim][contract]")
 {
     EnginePlayer& player = shared48();
+    // A table's own fields (a Curve16's x, y, n; a Map16's x, y, z, nx, ny) carry nothing for the display: the table
+    // field does (its label, ui::axes and its value's unit), and the lint holds it to that.
+    std::string error;
+    const std::unique_ptr<Fields> fields = Fields::of(player.schema(), error);
+    REQUIRE(fields != nullptr);
+    std::vector<std::string> tables;
+    for (const FieldInfo& f : fields->all())
+        if (f.block == "spec" && f.table())
+            tables.push_back(f.path + ".");
+    const std::vector<std::string> problems = lint(*fields);
+    for (const std::string& p : problems)
+        UNSCOPED_INFO(p);
+    CHECK(problems.empty());   // the same rules as `tee-schema --lint` and scripts/lint.sh
     for (const EnginePlayer::SpecField& field : player.specFields())
     {
-        INFO("spec." << field.path);
+        const std::string path = "spec." + field.path;
+        bool inTable = false;
+        for (const std::string& t : tables)
+            inTable = inTable || path.rfind(t, 0) == 0;
+        if (inTable)
+            continue;
+        INFO(path);
         CHECK(field.node->attribute("ui::label") != nullptr);
         CHECK(field.node->attribute("fminus::default") != nullptr);
         if (!field.isBool())
