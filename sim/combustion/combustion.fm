@@ -258,7 +258,11 @@ module Combustion
         cy->lateFuel = 1;
         cy->phi = q > 0.0f ? phi : 0.0f;   // (the physical cylinder's gamma reads it, a cut or unlit charge plain air's: card D)
         heat->heatJ += q;
-        cy->sparkAt = lay->cyc - soi + delay + rough * nz->gauss();
+        diesel.delayDeg = delay;
+        float soc = rough * nz->gauss();
+        if (f1)
+            soc += diesel.socSpread * delay * nz->gauss();   // (card D2: the delay's own cycle-to-cycle spread; diesel.fm)
+        cy->sparkAt = lay->cyc - soi + delay + soc;
         if (cy->sparkAt >= lay->cyc)
             cy->sparkAt -= lay->cyc;
         cy->beta = fminf(fmaxf(1.0f - 0.926f * expf(0.37f * logf(fmaxf(phi, 0.01f)) - 0.26f * logf(fmaxf(tau, 0.05f))), 0.05f), 0.9f);

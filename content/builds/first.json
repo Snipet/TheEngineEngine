@@ -234,7 +234,7 @@
     },
     "sound": {
       "model": "Places",
-      "camera": "Rear",
+      "camera": "Tailpipe",
       "place": "Field",
       "ground": "Asphalt",
       "enginePlace": "Front"
