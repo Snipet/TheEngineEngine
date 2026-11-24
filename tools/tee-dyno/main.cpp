@@ -9,7 +9,7 @@
 //            [--threads N] [--points N] [--coarse N]        several threads, coarse first; the times to the first and
 //            [--tolerance X] [--min-cycles N] [--max-cycles N] [--cold] [--history] [--repeat N]
 //            [--brake auto|host|program] [--hold S] [--no-settle] [--warmup-seconds S] [--inner-rate HZ]
-//   tee-dyno --bake-cam --build B [--from W --to W --points N] [--no-refine]   the intake cam swept, best advance by speed (Bake.h)
+//   tee-dyno --bake-cam --build B [--from W --to W --points N] [--refine]   the intake cam swept, best advance by speed (Bake.h)
 //   tee-dyno --bake-spark --build B [--points N] [--inner-rate HZ] [--save FILE]   the knock limit baked (Bake.h);
 //            --save writes the build with it applied (ecu.maps.knockLimit, knockLimitAuto off, its key)
 //            [--ramp A]                                     and against a slow sweep at A rad/s^2 with the same brake
@@ -157,7 +157,7 @@ int main(int argc, char** argv)
     tee::Sim::Options options;
     tee::DynoPlan plan;
     tee::PredictOptions predictOptions;
-    bool quiet = false, predictMode = false, history = false, bakeCam = false, bakeSpark = false, noRefine = false;
+    bool quiet = false, predictMode = false, history = false, bakeCam = false, bakeSpark = false, refine = false;
     std::string saveFile;
     double rampRate = 0.0, repeat = 1.0;
     const auto number = [&](double& out) {
@@ -234,8 +234,8 @@ int main(int argc, char** argv)
             predictMode = true;
         else if (args.is("--bake-cam"))
             bakeCam = true;
-        else if (args.is("--no-refine"))
-            noRefine = true;
+        else if (args.is("--refine"))
+            refine = true;
         else if (args.is("--bake-spark"))
             bakeSpark = true;
         else if (args.is("--save"))
@@ -373,7 +373,7 @@ int main(int argc, char** argv)
         bake.predict = predictOptions;
         if (bake.predict.points == tee::PredictOptions{}.points)
             bake.predict.points = bake.predict.coarse = 8;
-        bake.refine = !noRefine;
+        bake.refine = refine;
         tee::CamBakeResult r;
         if (!tee::bakeIntakeCam(compiled, build, bake, r, errors))
         {
