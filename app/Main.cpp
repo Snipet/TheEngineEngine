@@ -239,7 +239,21 @@ namespace
                 std::vector<std::string> warnings;
                 std::string error;
                 if (shown.document->open(launch.file, BuildPart::Whole, warnings, error))
+                {
                     std::printf("file: %s, %s\n", launch.what, launch.file.string().c_str());
+                    // a first launch's hand-hold: the first line of the first build's notes ("Try first: ...") on the
+                    // status line, until a command says something else
+                    if (launch.first)
+                    {
+                        const std::string& notes = shown.document->build().notes;
+                        note = notes.substr(0, notes.find('\n'));
+                        if (!note.empty())
+                        {
+                            std::printf("note: %s\n", note.c_str());
+                            showStatus();
+                        }
+                    }
+                }
                 else
                     std::fprintf(stderr, "file: %s (%s) did not open: %s\n", launch.what, launch.file.string().c_str(),
                                  error.c_str());

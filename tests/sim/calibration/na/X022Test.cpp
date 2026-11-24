@@ -2,8 +2,9 @@
 // behind a boost machine whose charge pipe is at its smallest (0.0005 m^3) and its intercooler at its least flow: since
 // 5fdc5ad the charge pipe was drawn by the valves' mass, which does not answer its pressure, and on the first throttle
 // opening the pipe's pressure rang up (99 kPa, 156, 0, 973, 1738 ... 30 MPa in 60 ms) and the engine diverged (FLAG_FAULT).
-// Now the trumpets' own flow draws it and only the valves' excess over a cycle is made up, slowly. Held: ten seconds
-// of idle and of throttle blips without the guard's fault, everything finite.
+// Now the trumpets' own flow draws it (32cea26). Held: ten seconds of idle and of throttle blips without the guard's
+// fault, everything finite (nightly); in the fast tier the blips' first two openings, where it diverged (X closed it
+// on this build; nothing else in the default run holds it: the lead, 20:14).
 #include "tee/EnginePlayer.h"
 
 #include <catch2/catch_test_macros.hpp>
@@ -14,9 +15,9 @@
 #include <filesystem>
 #include <string>
 
-TEST_CASE("X-022: throttles a runner behind a tiny charge pipe idle and blip ten seconds without a fault", "[nightly][calibration][na]")
+namespace
 {
-    for (const bool blips : {false, true})
+    void x022(bool blips, double seconds)
     {
         tee::EnginePlayer::Options options;
         options.directory = std::filesystem::path(TEE_SOURCE_DIR) / "sim";
@@ -38,7 +39,7 @@ TEST_CASE("X-022: throttles a runner behind a tiny charge pipe idle and blip ten
         const int speed = p->telemetryIndex("engine.speed");
         int faults = 0, bad = 0;
         double top = 0.0;
-        for (int i = 0; i < int(11.0 * options.sampleRate / block); ++i)
+        for (int i = 0; i < int(seconds * options.sampleRate / block); ++i)
         {
             const double t = i * block / options.sampleRate;
             c.ignition = t < 1.0 ? 2 : 1;
@@ -59,4 +60,15 @@ TEST_CASE("X-022: throttles a runner behind a tiny charge pipe idle and blip ten
         CHECK(faults == 0);
         CHECK(bad == 0);
     }
+} // namespace
+
+TEST_CASE("X-022: throttles a runner behind a tiny charge pipe blip twice without a fault", "[calibration][na]")
+{
+    x022(true, 4.0);
+}
+
+TEST_CASE("X-022: throttles a runner behind a tiny charge pipe idle and blip ten seconds without a fault", "[nightly][calibration][na]")
+{
+    x022(false, 11.0);
+    x022(true, 11.0);
 }

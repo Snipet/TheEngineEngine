@@ -36,6 +36,14 @@ namespace tee::app
             l.what = "the last build";
             return l;
         }
+        // a machine's run opens the first build only by name (--first-build): what CI's window runs draw and time does
+        // not change with a content file, nor carry every model on
+        if (machine && o.firstBuild.empty())
+        {
+            l.what = "none (a scripted run: --first-build FILE or --preset NAME opens one): the simulator's defaults, "
+                     "every model at Reference";
+            return l;
+        }
         const fs::path first = !o.firstBuild.empty() ? fs::path(o.firstBuild)
                                : content.empty()     ? fs::path()
                                                      : content / "builds" / "first.json";
@@ -43,6 +51,7 @@ namespace tee::app
         {
             l.file = first;
             l.what = "the first build";
+            l.first = true;
             return l;
         }
         if (!o.firstBuild.empty())
