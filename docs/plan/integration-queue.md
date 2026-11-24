@@ -37,6 +37,14 @@ behind its switch, model 0 staying the reference bit for bit; the lead settles a
 | F | Exhaust (G) | each feeding pipe end's arriving wave, impedance and gas temperature; G solves its ends against the housing's pressure F returns; F gives the downpipe's flow and temperature, and an external gate's flow | to be written by F and G into `sim/README.md` |
 | D | Crank (K3's) | with `engine.custom` on, the crank is stepped by `MovingMasses::advance` (energy-exact with a varying inertia); off, the reference's step | |
 
+## Tidying, at each package's integration
+
+The glob is in (`tests/CMakeLists.txt`, 423f385; 212 of 212 tests pass in a clean tree at cce8618). Not yet to its
+rule: boost, vehicle and exhaust name their test targets `tee-<package>-tests` through a `targets.cmake` (the rule:
+`tee-tests-<package>`, made in the package's `CMakeLists.txt`); core prefixes its tests "core: " (the rule:
+"core."); valvetrain and ecu still build through a `standalone.cmake` and need a `CMakeLists.txt`. Each package
+fixes its own when it next touches its tests, and deletes its hook.
+
 ## Findings that bind everyone (also in 01-rules.md §4)
 
 - An explicit step of a square-root orifice between two volumes chatters at rest: solve it in closed form.

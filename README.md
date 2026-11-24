@@ -101,6 +101,40 @@ Catch2, run by `ctest` (`ctest --preset dev`; one test by name with `-R`). Addin
 Nobody here can listen, and nobody has a screen: a test claims what it measured (samples equal, a difference in dB,
 a speed, a spectrum's line), never that something sounds or looks right.
 
+## CI status
+
+Every push to the integration branch builds and tests on Linux, macOS (Apple's clang, arm64) and Windows (clang-cl):
+[.github/workflows/build.yml](.github/workflows/build.yml). An agent in a cloud container can build Linux only, so
+**after you push, look at macOS and Windows yourself**: a warning that Linux's clang 18 does not give, or a C++
+library function Apple's deployment target does not have, shows nowhere else.
+
+```bash
+scripts/ci-status.sh            # each platform: the newest run in which its job finished, and its first errors
+```
+
+It prints, for each platform, whether the newest finished job passed, the commit it built, its link, and for a
+failure the step it failed in and the first error lines of its log. Reading it:
+
+- Pushes to one branch queue behind the run in flight, and **a run that is still waiting is replaced by a newer
+  push**: most runs therefore show as "cancelled" without having built anything, and the script skips them. A run
+  **in flight is never cancelled** by a push, and its three platforms do not cancel one another. So a commit of
+  yours may never be built by itself: it is built with whatever was newest when a run next started. Find your commit
+  at or before the commit a result names (`git merge-base --is-ancestor <yours> <theirs> && echo included`).
+- A run takes some ten minutes with warm caches. The script lists the run in flight and the one waiting.
+- The same by hand, with nothing but `gh`:
+
+  ```bash
+  repo=Snipet/TheEngineEngine
+  gh api "repos/$repo/actions/runs?branch=claude/awesome-gates-ntdb58&per_page=60" --jq \
+    '.workflow_runs[] | select(.conclusion != "cancelled") | "\(.id) \(.status) \(.conclusion // "-") \(.head_sha[0:7])"' | head -5
+  gh api "repos/$repo/actions/runs/<run>/jobs" --jq \
+    '.jobs[] | "\(.id) \(.name) \(.conclusion // .status) " + ([.steps[]? | select(.conclusion == "failure") | .name] | join("; "))'
+  gh api "repos/$repo/actions/jobs/<job>/logs" | grep -nE "error:|FAILED:|\*\*\*Failed|undefined symbol|Undefined symbols" | head -20
+  ```
+
+Each run uploads what it built for each platform (the tools, and the application where it builds), also when a test
+failed afterwards.
+
 ## A window without a screen
 
 `scripts/xvfb-run.sh <command>` runs a command on a headless X display with a window manager and Mesa's software

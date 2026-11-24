@@ -223,7 +223,7 @@ namespace tee
         HostStats stats_;
         double peakWindow_ = 0.0;             // seconds into the load peak's window
         double windowPeak_ = 0.0;
-        std::uint64_t lastScopeBlock_ = 0;
+        [[maybe_unused]] std::uint64_t lastScopeBlock_ = 0;   // (not read yet: clang-cl's -Wunused-private-field is an error)
         std::int64_t lastScopeSample_ = -1000000;
         std::uint32_t sectionsTouched_ = 0;   // bits, during a drain
 
