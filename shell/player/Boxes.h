@@ -6,9 +6,12 @@
 
 #include "tee/app/Sources.h"
 
+#include <algorithm>
+#include <array>
 #include <atomic>
 #include <cmath>
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 
 namespace tee::player
@@ -103,6 +106,51 @@ namespace tee::player
         std::size_t n_ = 0;
         std::unique_ptr<std::atomic<double>[]> values_;
         std::unique_ptr<std::atomic<bool>[]> changed_;
+    };
+
+    // The output's newest samples, mono, for whoever draws them (TelemetrySource::outputTail): the audio thread
+    // writes each block's, the UI thread copies the newest out. No lock: the reader copies, then looks whether the
+    // writer came round to what it copied meanwhile, and copies again if so (a few times at most; a picture of the
+    // sound survives a stale sample).
+    class TailRing
+    {
+    public:
+        static constexpr std::size_t kSize = 8192;      // a power of two; outputTail gives up to all of it
+
+        // The audio thread: n samples of both channels.
+        void write(const float* l, const float* r, int n) noexcept
+        {
+            std::uint64_t w = written_.load(std::memory_order_relaxed);
+            for (int i = 0; i < n; ++i)
+                ring_[static_cast<std::size_t>((w + static_cast<std::uint64_t>(i)) & (kSize - 1))].store(
+                    0.5f * (l[i] + r[i]), std::memory_order_relaxed);
+            written_.store(w + static_cast<std::uint64_t>(n), std::memory_order_release);
+        }
+
+        // The UI thread: the newest min(max, kSize, written) samples, oldest first. Returns how many.
+        int read(float* mono, int max) const noexcept
+        {
+            if (mono == nullptr || max <= 0)
+                return 0;
+            int n = 0;
+            for (int attempt = 0; attempt < 4; ++attempt)
+            {
+                const std::uint64_t w = written_.load(std::memory_order_acquire);
+                const std::uint64_t want = std::min<std::uint64_t>({ static_cast<std::uint64_t>(max), kSize, w });
+                n = static_cast<int>(want);
+                const std::uint64_t first = w - want;
+                for (std::uint64_t i = 0; i < want; ++i)
+                    mono[i] = ring_[static_cast<std::size_t>((first + i) & (kSize - 1))].load(std::memory_order_relaxed);
+                // whole, unless the writer has since written over the oldest of them
+                if (written_.load(std::memory_order_acquire) - first <= kSize)
+                    break;
+            }
+            return n;
+        }
+
+    private:
+        std::array<std::atomic<float>, kSize> ring_{};
+        std::atomic<std::uint64_t> written_{ 0 };
     };
 
     // The largest magnitude in a block of both channels, 0 to 1; a sample that is not finite counts as full scale.

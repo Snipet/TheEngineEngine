@@ -135,6 +135,22 @@ TEST_CASE("shell: the start key says start while held, on when let go, and off a
     CHECK(run(d, 0.1, running).ignition == 1);
 }
 
+TEST_CASE("shell: a tap of the start key shorter than a frame still says start for a moment", "[shell][input]")
+{
+    Driver d;
+    d.set(Source::keyboard, Action::start, true);
+    d.set(Source::keyboard, Action::start, false);          // down and up between two frames
+    CHECK(d.advance(1.0f / 60.0f, {}).ignition == 2);
+    CHECK(run(d, 0.1).ignition == 2);                       // for startLeast seconds
+    CHECK(run(d, 0.1).ignition == 1);
+    // and a slow frame (the window drawing at ten a second) sees it too
+    d.set(Source::keyboard, Action::start, true);
+    d.set(Source::keyboard, Action::start, false);
+    CHECK(d.advance(0.1f, {}).ignition == 2);
+    CHECK(d.advance(0.1f, {}).ignition == 2);
+    CHECK(d.advance(0.1f, {}).ignition == 1);
+}
+
 TEST_CASE("shell: the shift keys count presses, once a press", "[shell][input]")
 {
     Driver d;

@@ -1,0 +1,59 @@
+// shaft.fm: a turbocharger's rotor: the turbine's wheel and the compressor's on one shaft in its bearings.
+//
+//     J d omega / dt = T_turbine - P_compressor / omega - T_friction + T_motor
+//
+// (the turbine gives its torque, finite at rest; the compressor's power over the speed, which goes to nothing with it)
+//
+// J is given, or made from the wheels' sizes: J = 0.0043 (rho_t d_t^5 + rho_c d_c^5), an Inconel turbine (8200 kg/m^3)
+// and an aluminium compressor (2700), the constant set so that a 54 mm turbine and a 60 mm compressor have 2.5e-5
+// kg m^2, as rotors of that class do (judgement: published rotor inertias for those sizes span some 1.5 to 4e-5).
+// The bearings rub as c omega (their oil's shear) plus a little that does not depend on speed: a journal bearing some
+// 400 W at 150,000 rpm for a rotor of that class, a ball bearing some 40 % of it (Garrett's and BorgWarner's own
+// comparisons put the ball bearing's loss at a third to a half), both as the exducer's radius squared. An electric
+// motor on the shaft (assist) gives torque to a limit, power above a base speed. omega never goes below 0 (the
+// wheel does not turn backward on a reversed flow here: it brakes to rest).
+#pragma once
+#include "gas.fm"
+
+module BoostShaft
+{
+    float j;            // kg m^2
+    float cVisc;        // N m s
+    float tStatic;      // N m
+    float motorMax;     // the motor's power, W (0: none)
+    float omega;        // rad/s
+    float friction;     // W, this sample
+    float motor;        // W the motor gave this sample
+    int locked;         // held at rest (a test's)
+
+    void size(float jGiven, float dTurb, float dComp, int ball, float assistW)
+    {
+        const float dt5 = dTurb * dTurb * dTurb * dTurb * dTurb;
+        const float dc5 = dComp * dComp * dComp * dComp * dComp;
+        j = jGiven > 0.0f ? jGiven : 0.0043f * (8200.0f * dt5 + 2700.0f * dc5);
+        const float rr = dComp / 0.06f;
+        cVisc = (ball != 0 ? 0.65e-6f : 1.6e-6f) * rr * rr;
+        tStatic = (ball != 0 ? 0.5e-4f : 2.0e-4f) * rr * rr;
+        motorMax = assistW;
+    }
+
+    // One sample: the turbine's torque (N m), the compressor's power (W), the motor's command (0 to 1)
+    void step(float tTurb, float pComp, float assist, float dt)
+    {
+        if (locked != 0)
+        {
+            omega = 0.0f;
+            friction = 0.0f;
+            motor = 0.0f;
+            return;
+        }
+        const float w = fmaxf(omega, 50.0f);
+        float tm = 0.0f;
+        if (motorMax > 0.0f && assist > 0.0f)
+            tm = fminf(motorMax / 3000.0f, motorMax / w) * fminf(assist, 1.0f);   // (full torque to 3000 rad/s)
+        motor = tm * omega;
+        const float tf = cVisc * omega + (omega > 1.0f ? tStatic : tStatic * omega);
+        friction = tf * omega;
+        omega = fmaxf(omega + dt * (tTurb - pComp / w - tf + tm) / j, 0.0f);
+    }
+};

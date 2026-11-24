@@ -165,6 +165,7 @@ namespace tee::player
         tel_[tThrottle].store(throttle_, std::memory_order_relaxed);
         tel_[tGear].store(static_cast<double>(gear_), std::memory_order_relaxed);
         peak_.store(blockPeak(l, r, n), std::memory_order_relaxed);
+        tail_.write(l, r, n);
         blocks_.fetch_add(1, std::memory_order_relaxed);
         if (n > largest_.load(std::memory_order_relaxed))
             largest_.store(n, std::memory_order_relaxed);

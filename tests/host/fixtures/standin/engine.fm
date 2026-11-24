@@ -35,6 +35,7 @@ module Engine
     int dynoOn;
     float fuel;           // the throttle the combustion sees, 0 to 1
     float brakeTorque;
+    float heard;          // the load the sound follows: the fuel glided, so that a cut is no click
 
     void init(float hostRate)
     {
@@ -57,6 +58,7 @@ module Engine
         dynoOn = 0;
         fuel = 0;
         brakeTorque = 0;
+        heard = 0;
     }
 
     void end()
@@ -152,7 +154,8 @@ module Engine
 
             level += (spec.sound.level - level) * 0.0003f;
             const float alive = fminf(speed / fmaxf(spec.engine.idle, 1), 1);
-            const float loud = level * alive * (0.3f + 0.7f * fuel) / 2.1f;
+            heard += (fuel - heard) * 0.002f;
+            const float loud = level * alive * (0.3f + 0.7f * heard) / 2.1f;
             float s = 0;
             for (int k = 0; k < 4; ++k)
                 s += spec.sound.harmonics[k] * sinf((float)(k + 1) * phase) / (float)(k + 1);

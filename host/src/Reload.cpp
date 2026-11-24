@@ -71,10 +71,10 @@ namespace tee
     namespace
     {
         // The directory's .fm files with their times and sizes: what a change is.
-        std::map<std::string, std::pair<std::filesystem::file_time_type, std::uintmax_t>> look(
+        Reloader::Listing look(
             const std::filesystem::path& directory)
         {
-            std::map<std::string, std::pair<std::filesystem::file_time_type, std::uintmax_t>> out;
+            Reloader::Listing out;
             std::error_code ec;
             for (auto it = std::filesystem::recursive_directory_iterator(directory, ec);
                  !ec && it != std::filesystem::recursive_directory_iterator(); it.increment(ec))
@@ -90,7 +90,8 @@ namespace tee
     Reloader::Reloader(std::filesystem::path directory, Sim::Options options)
         : directory_(std::move(directory)), options_(std::move(options))
     {
-        thread_ = std::thread([this] { loop(); });
+        // the first look is taken here, so that an edit made as soon as this returns is a change
+        thread_ = std::thread([this, seen = look(directory_)]() mutable { loop(std::move(seen)); });
     }
 
     Reloader::~Reloader()
@@ -100,9 +101,8 @@ namespace tee
             thread_.join();
     }
 
-    void Reloader::loop()
+    void Reloader::loop(Listing seen)
     {
-        auto seen = look(directory_);
         while (!stop_.load())
         {
             std::this_thread::sleep_for(std::chrono::milliseconds(250));

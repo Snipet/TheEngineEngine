@@ -152,6 +152,7 @@ namespace tee::app
             {
                 if (!whole(o.theme, 0, 1))
                     return false;
+                o.themeGiven = true;
             }
             else if (arg == "--dpi")
             {

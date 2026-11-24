@@ -348,8 +348,8 @@ TEST_CASE("two stages: every cylinder changes with its valve shut, no lift jumps
             {
                 bool all = true;
                 for (int c = 0; c < 8; ++c)
-                    all = all && v.lab.get("useIn[" + std::to_string(c) + "]") == 1.0 &&
-                          v.lab.get("useEx[" + std::to_string(c) + "]") == 1.0;
+                    all = all && static_cast<int>(v.lab.get("useIn[" + std::to_string(c) + "]")) % 10 == 1 &&
+                          static_cast<int>(v.lab.get("useEx[" + std::to_string(c) + "]")) % 10 == 3;
                 if (all)
                     allBAt = n;
             }
@@ -395,7 +395,66 @@ TEST_CASE("two stages: every cylinder changes with its valve shut, no lift jumps
     // and back down: stage A again everywhere
     CHECK(v.lab.get("stageWant") == 0.0);
     for (int c = 0; c < 8; ++c)
-        CHECK(v.lab.get("useIn[" + std::to_string(c) + "]") == 0.0);
+        CHECK(static_cast<int>(v.lab.get("useIn[" + std::to_string(c) + "]")) % 10 == 0);
+}
+
+TEST_CASE("a cam edited while the engine runs: each cylinder takes the new one with its valve shut", "[valvetrain][stages]")
+{
+    V8Lab v;
+    v.start();
+    auto* areaIn = v.lab.fn<float(void*, int, float)>("areaIn");
+    auto* apply = v.lab.fn<void(void*, void*, int)>("apply");
+    auto* control = v.lab.fn<void(void*, float, float, float, float, float, float, float*, float, float, float)>("control");
+    auto slope = [&](const std::string& t) {
+        double s = 0.0;
+        const double k = v.lab.get(t + ".k");
+        for (int i = 0; i < 128; ++i)
+            s = std::max(s, std::fabs(v.lab.get(t + ".a[" + std::to_string(i + 1) + "]") -
+                                      v.lab.get(t + ".a[" + std::to_string(i) + "]")) * k);
+        return s;
+    };
+    const float dt = 1.0f / 96000.0f;
+    const float omega = 500.0f;
+    std::vector<float> last(8, -1.0f);
+    double worst = 0.0;
+    double slopeMost = slope("tab[0]");
+    for (int n = 0; n < 48000; ++n)
+    {
+        if (n == 4000)
+        {
+            v.spec.set("inLift", 0.013);        // a bigger cam, asked mid-run
+            v.spec.set("inDurSeat", 262.0);
+            v.spec.set("inDur1mm", 235.0);
+            apply(v.lab.data(), v.spec.data(), 0);
+        }
+        const float dDeg = omega * dt * 57.2957795f;
+        v.theta = std::fmod(v.theta + dDeg, 720.0f);
+        v.angles();
+        if (n % 16 == 0)
+        {
+            control(v.lab.data(), 16.0f * dt, omega, 680.0f, 0.9f, 300000.0f, 363.0f, v.ang.data(), -1.0f, -1.0f, -1.0f);
+            if (n == 4016)
+                slopeMost = std::max(slopeMost, slope("tab[10]"));
+        }
+        for (int c = 0; c < 8; ++c)
+        {
+            const float a = areaIn(v.lab.data(), c, v.ang[static_cast<std::size_t>(c)]);
+            if (last[static_cast<std::size_t>(c)] >= 0.0f)
+                worst = std::max(worst, std::fabs(a - last[static_cast<std::size_t>(c)]) / (slopeMost * dDeg));
+            last[static_cast<std::size_t>(c)] = a;
+        }
+    }
+    INFO("worst step over the most a table moves: " << worst);
+    CHECK(worst <= 1.01);
+    for (int c = 0; c < 8; ++c)
+        CHECK(v.lab.get("useIn[" + std::to_string(c) + "]") == 10.0);     // the new copy
+    CHECK(v.lab.get("tab[10].peak") > v.lab.get("tab[0].peak"));
+    // the events the cylinder detects are the new cam's: 262 at the seat about the same centreline
+    auto* ivo = v.lab.fn<float(void*, int)>("ivo");
+    auto* ivc = v.lab.fn<float(void*, int)>("ivc");
+    const double span = v.lab.get("tab[10].span");
+    CHECK(std::fmod(ivc(v.lab.data(), 3) - ivo(v.lab.data(), 3) + 720.0, 720.0) == Catch::Approx(span).margin(1e-3));
+    CHECK(span > 262.0);
 }
 
 TEST_CASE("deactivation: chosen cylinders rest in their power stroke, exhaust shut, and come back", "[valvetrain][deac]")

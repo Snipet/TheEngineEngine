@@ -61,3 +61,46 @@ module SliderCrank
         at(sinf(t), cosf(t));
     }
 };
+
+// The cylinder's size two ways. The reference's dials are the engine's size (litres) and its bore over its stroke;
+// a custom engine's fields are the bore and the stroke. One is the other: at a swept volume vd and a ratio k, the bore
+// is the cube root of 4 vd k / pi (the reference's boreStroke: a square cylinder's bore times k's cube root) and the
+// stroke the bore over k. The redline when none is given: what keeps the mean piston speed (2 stroke rpm / 60) under
+// 25 m/s for a gasoline engine (the most production engines run to: some 21 to 26 m/s at their redlines, a racing
+// engine's 25 to 26) or 13.5 m/s for a diesel (the reference's), and never past 20000 rpm.
+module Sizing
+{
+    float bore;         // m
+    float stroke;       // m
+    float swept;        // m^3 a cylinder
+    float ratio;        // bore over stroke
+
+    void fromDials(float litres, float boreStroke, int cylinders)
+    {
+        swept = litres * 0.001f / (float)cylinders;
+        ratio = boreStroke;
+        bore = expf(0.33333333f * logf(1.2732395f * swept * boreStroke));
+        stroke = bore / boreStroke;
+    }
+
+    void fromBoreStroke(float b, float s)
+    {
+        bore = b;
+        stroke = s;
+        swept = 0.78539816f * b * b * s;
+        ratio = b / s;
+    }
+
+    float litres(int cylinders)
+    {
+        return swept * (float)cylinders * 1000.0f;
+    }
+
+    // rad/s
+    float redlineBySpeed(int diesel)
+    {
+        const float sp = diesel != 0 ? 13.5f : 25.0f;
+        const float rpm = fminf(sp * 60.0f / (2.0f * stroke), 20000.0f);
+        return rpm * 0.10471976f;
+    }
+};

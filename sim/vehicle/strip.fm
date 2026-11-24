@@ -32,13 +32,13 @@ module VehStrip
 {
     int state;
     bool red;
-    float t;            // seconds since staging
-    float tGreen;
-    float tStart;       // when the car left the starting beam (since staging)
+    double t;           // seconds since staging (doubles: a sum of ten thousand control steps)
+    double tGreen;
+    double tStart;      // when the car left the starting beam (since staging)
     float rollout;
-    float xLast;        // the distance at the last step
-    float tLast;
-    float cross[VEH_MARKS];     // each mark's crossing, seconds since staging
+    double xLast;       // the distance at the last step
+    double tLast;
+    double cross[VEH_MARKS];    // each mark's crossing, seconds since staging
     int next;           // the next mark
     float reaction;
     float et[VEH_MARKS];        // each mark's elapsed time from leaving the beam
@@ -52,7 +52,7 @@ module VehStrip
         rollout = 0.3f;
         for (int i = 0; i < VEH_MARKS; ++i)
         {
-            cross[i] = 0.0f;
+            cross[i] = 0.0;
             et[i] = 0.0f;
         }
         reaction = 0.0f;
@@ -65,45 +65,45 @@ module VehStrip
     {
         reset();
         state = VEH_STRIP_STAGED;
-        t = 0.0f;
-        tGreen = pro ? 1.4f : 2.5f;
-        tStart = -1.0f;
-        xLast = 0.0f;
-        tLast = 0.0f;
+        t = 0.0;
+        tGreen = pro ? 1.4 : 2.5;
+        tStart = -1.0;
+        xLast = 0.0;
+        tLast = 0.0;
         next = 0;
     }
 
     // Every 16 samples: d16 seconds on; x, the distance from where it staged
-    void control(float d16, float x, bool pro)
+    void control(float d16, double x, bool pro)
     {
         if (state == VEH_STRIP_OFF || state == VEH_STRIP_DONE || state == VEH_STRIP_RED)
             return;
-        const float t0 = t;
-        t += d16;
-        if (state == VEH_STRIP_STAGED && t >= 1.0f)
+        const double t0 = t;
+        t += (double)d16;
+        if (state == VEH_STRIP_STAGED && t >= 1.0)
             state = VEH_STRIP_AMBERS;
         if (state == VEH_STRIP_AMBERS && t >= tGreen)
             state = VEH_STRIP_GREEN;
         // leaving the starting beam
-        if (tStart < 0.0f && x >= rollout)
+        if (tStart < 0.0 && x >= rollout)
         {
-            const float f = (rollout - xLast) / fmaxf(x - xLast, 1.0e-9f);
+            const double f = (rollout - xLast) / fmax(x - xLast, 1.0e-12);
             tStart = t0 + f * d16;
-            reaction = tStart - tGreen;
-            red = reaction < 0.0f;
+            reaction = (float)(tStart - tGreen);
+            red = tStart < tGreen;
             state = VEH_STRIP_RUNNING;
         }
         // the marks
-        while (tStart >= 0.0f && next < 7 && x >= rollout + VEH_MARK[next])
+        while (tStart >= 0.0 && next < 7 && x >= rollout + VEH_MARK[next])
         {
-            const float f = (rollout + VEH_MARK[next] - xLast) / fmaxf(x - xLast, 1.0e-9f);
+            const double f = (rollout + VEH_MARK[next] - xLast) / fmax(x - xLast, 1.0e-12);
             cross[next] = t0 + f * d16;
-            et[next] = cross[next] - tStart;
+            et[next] = (float)(cross[next] - tStart);
             if (next == 3)
-                v660 = (VEH_MARK[3] - VEH_MARK[2]) / fmaxf(cross[3] - cross[2], 1.0e-6f);
+                v660 = (float)((VEH_MARK[3] - VEH_MARK[2]) / fmax(cross[3] - cross[2], 1.0e-6));
             if (next == 6)
             {
-                v1320 = (VEH_MARK[6] - VEH_MARK[5]) / fmaxf(cross[6] - cross[5], 1.0e-6f);
+                v1320 = (float)((VEH_MARK[6] - VEH_MARK[5]) / fmax(cross[6] - cross[5], 1.0e-6));
                 state = red ? VEH_STRIP_RED : VEH_STRIP_DONE;
             }
             next += 1;

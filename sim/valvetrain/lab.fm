@@ -6,18 +6,21 @@
 // is one area for its intake and one for its exhaust (the main event and the auxiliary one summed), each a table
 // lookup, as the reference's (cylinder.fm, areaAt).
 //
-// Every 16 samples (control): the Spec's changes become tables, one table a tick at most (a queue); the phasers move
-// toward their targets; the stage, the lift command and the deactivation are decided; each cylinder takes a new
-// profile only while the valve it changes is shut, so no lift jumps and no crossfade is needed, and the change goes
-// round the engine in a cycle, as a real one's does. A cylinder is deactivated in its power stroke (both valves shut,
-// its exhaust next): its exhaust then stays shut, keeping the burned gas as a spring, and its intake with it; it comes
-// back in the same place, the exhaust first. Combustion asks active(c) as the intake closes: a resting cylinder gets
-// no fuel.
+// Every profile's table has two copies: the one the cylinders read, and one a change is built into. Every 16 samples
+// (control): a Spec change becomes a new copy, one table a tick at most (a queue, and only the profiles whose request
+// changed); the phasers move toward their targets; the stage, the lift command and the deactivation are decided; and
+// each cylinder moves to the table it should read (the stage's, its newest copy) only while the valve it changes is
+// shut in both. So no lift jumps and nothing needs a crossfade, whether a stage changes or a cam is edited while the
+// engine runs, and a change goes round the engine in a cycle, as a real cam change does. A cylinder is deactivated in
+// its power stroke (both valves shut, its exhaust next): its exhaust then stays shut, keeping the burned gas as a
+// spring, and its intake with it; it comes back in the same place, the exhaust first. Combustion asks active(c) as
+// the intake closes: a resting cylinder gets no fuel.
 //
 // Continuous lift (BMW's Valvetronic, Toyota's Valvematic, Nissan's VVEL: an intake's): lift and duration scale
 // together with the command, the centreline kept (the phaser moves it); five tables prebuilt from the least lift to
 // the most, each the cam's own shape over a shorter span (duration 0.4 + 0.6 of the lift's share: judgement), and the
-// table in use a blend of the two either side, made every tick the command moves.
+// table in use a blend of the two either side, made every tick the command moves (a small step each tick, as a
+// phaser's).
 //
 // The angles are the cylinder's own (cylinder.fm). Free of the engine: everything here is a function of the angles,
 // the speed, the load and the oil, so it is tested alone (tests/sim/valvetrain/).
@@ -37,6 +40,7 @@ enum
     VT_LIFT0 = 5,       // the intake's lift steps, VT_LIFTS of them
     VT_LIFTS = 5,
     VT_PROFILES = 10,
+    VT_TABLES = 20,     // two copies of each: profile i's are tab[i] and tab[i + VT_PROFILES]
     VT_MAXCYL = 16
 };
 
@@ -44,7 +48,8 @@ module ValveLab
 {
     Head head;
     CamShape cam[VT_PROFILES];
-    AreaTable tab[VT_PROFILES];
+    AreaTable tab[VT_TABLES];
+    int front[VT_PROFILES];     // which copy of each profile is the newest (0 or 1)
     AreaTable inLive;   // the intake's table under continuous lift: a blend of two lift steps
     Phaser phIn;
     Phaser phEx;
@@ -54,6 +59,11 @@ module ValveLab
     float cyc;
     int nCyl;
     // what the Spec asked, kept between ticks
+    int valves;
+    float dInAsk;
+    float dExAsk;
+    float qInAsk;
+    float qExAsk;
     int stagesOn;
     float stageUp;
     float stageHyst;
@@ -74,7 +84,7 @@ module ValveLab
     int floatDirty;
     // the state
     int stageWant;      // 0 A, 1 B
-    int useIn[VT_MAXCYL];   // each cylinder's profile in use (0 A, 1 B)
+    int useIn[VT_MAXCYL];   // the table each cylinder's intake reads (an index into tab)
     int useEx[VT_MAXCYL];
     int deacWant;
     int offIn[VT_MAXCYL];   // 1: this valve rests
@@ -107,8 +117,8 @@ module ValveLab
         deacWant = 0;
         for (int c = 0; c < VT_MAXCYL; ++c)
         {
-            useIn[c] = 0;
-            useEx[c] = 0;
+            useIn[c] = VT_IN_A + VT_PROFILES * front[VT_IN_A];
+            useEx[c] = VT_EX_A + VT_PROFILES * front[VT_EX_A];
             offIn[c] = 0;
             offEx[c] = 0;
         }
@@ -117,16 +127,30 @@ module ValveLab
         liftCmd = 1.0f;
         liftMade = -1.0f;
         floating = 0;
-        sevMade = 0.0f;
+        sevMade = -1.0f;
         clatter = 0.0f;
         flt.sevIn = 0.0f;
         flt.sevEx = 0.0f;
     }
 
-    // The Spec's section: what it says becomes requests, and every table is queued. now 1: build them all at once (in
-    // init, off the audio thread); 0: one a tick
+    // The newest copy of profile i
+    int newest(int i)
+    {
+        return i + VT_PROFILES * front[i];
+    }
+
+    // The Spec's section: what it says becomes requests, and the profiles whose request changed are queued. now 1:
+    // build every profile at once into its first copy, and every cylinder reads it (in init, off the audio thread);
+    // 0: one table a tick, each cylinder moving to it with its valve shut
     void apply(ValveLabSpec* s, int now)
     {
+        const int headMoved = valves != s->valves || dInAsk != s->dIn || dExAsk != s->dEx || qInAsk != s->portIn
+                              || qExAsk != s->portEx ? 1 : 0;
+        valves = s->valves;
+        dInAsk = s->dIn;
+        dExAsk = s->dEx;
+        qInAsk = s->portIn;
+        qExAsk = s->portEx;
         head.setup(s->valves, bore, s->dIn, s->dEx, s->portIn, s->portEx);
         if (s->inKind == 1)
             cam[VT_IN_A].requestFree(s->freeInOpen, s->freeInClose, s->inLift, s->freeFlank);
@@ -145,6 +169,7 @@ module ValveLab
         stageUp = s->stageSpeed;
         stageHyst = s->stageHyst;
         liftOn = s->liftControl;
+        const int stepsMoved = liftMin != s->liftMin ? 1 : 0;
         liftMin = s->liftMin;
         liftThr = s->liftThrottle;
         auxOn = s->auxOn;
@@ -156,21 +181,49 @@ module ValveLab
         springRate = s->springRate;
         springPre = s->springPreload;
         valveMass = s->valveMass;
-        dirty = (1 << VT_PROFILES) - 1;
+        const int steps = ((1 << VT_LIFTS) - 1) << VT_LIFT0;
+        for (int i = 0; i < VT_LIFT0; ++i)
+            if (cam[i].changed != 0 || headMoved != 0)
+                dirty = dirty | (1 << i);
+        if ((dirty & 1) != 0 || stepsMoved != 0)
+            dirty = dirty | steps;
         floatDirty = 1;
-        sevMade = -1.0f;
-        liftMade = -1.0f;
         if (now != 0)
-            while (dirty != 0)
+        {
+            dirty = (1 << VT_PROFILES) - 1;
+            for (int c = 0; c < VT_MAXCYL; ++c)
+            {
+                useIn[c] = -1;
+                useEx[c] = -1;
+            }
+            for (int i = 0; i < VT_PROFILES; ++i)
+                front[i] = 1;   // (so each is built into copy 0)
+            for (int i = 0; i < VT_PROFILES; ++i)
                 buildNext();
+            for (int c = 0; c < VT_MAXCYL; ++c)
+            {
+                useIn[c] = newest(VT_IN_A);
+                useEx[c] = newest(VT_EX_A);
+            }
+        }
         bench.measure(&head);
     }
 
-    // The lowest profile still queued: its cam solved, its table made (the lift steps from the intake's own cam)
+    // Is copy t of a profile read by a cylinder now?
+    int inUse(int t)
+    {
+        for (int c = 0; c < nCyl; ++c)
+            if (useIn[c] == t || useEx[c] == t)
+                return 1;
+        return 0;
+    }
+
+    // The lowest profile still queued whose spare copy no cylinder reads: its cam solved, its table made into that
+    // copy, which becomes the newest (the lift steps from the intake's own cam)
     void buildNext()
     {
         int i = 0;
-        while (i < VT_PROFILES && (dirty & (1 << i)) == 0)
+        while (i < VT_PROFILES && ((dirty & (1 << i)) == 0 || inUse(i + VT_PROFILES * (1 - front[i])) != 0))
             i += 1;
         if (i >= VT_PROFILES)
             return;
@@ -191,18 +244,29 @@ module ValveLab
             c->span = base->span * sd;
             c->open = vtWrap(c->centre - 0.5f * c->span, 720.0f);
             c->reached = base->reached;
-            c->rise1 = c->riseDeg(kVtOneMm);
             for (int j = 0; j < VT_POINTS; ++j)
                 c->shape[j] = base->shape[j];
+            c->rise1 = c->riseDeg(kVtOneMm);
         }
         else
             cam[i].build();
-        tab[i].build(&cam[i], &head, i >= VT_EX_A && i <= VT_AUX ? 1 : 0);
-        tab[i].noTail();
+        const int t = i + VT_PROFILES * (1 - front[i]);
+        tab[t].build(&cam[i], &head, i >= VT_EX_A && i <= VT_AUX ? 1 : 0);
+        tab[t].noTail();
+        tab[t].place(shiftOf(i), cyc);
+        front[i] = 1 - front[i];
         sevMade = -1.0f;
-        if (i == VT_IN_A && (dirty & (((1 << VT_LIFTS) - 1) << VT_LIFT0)) == 0)
-            dirty = dirty | (((1 << VT_LIFTS) - 1) << VT_LIFT0);   // (the lift steps follow the cam)
         liftMade = -1.0f;
+    }
+
+    // Where profile i's events are moved now: the intake's earlier by its phaser, the exhaust's later by its own
+    float shiftOf(int i)
+    {
+        if (i <= VT_IN_B || i >= VT_LIFT0)
+            return -phIn.phase;
+        if (i == VT_AUX)
+            return 0.0f;
+        return phEx.phase;
     }
 
     // The intake's table cylinder c reads now
@@ -210,7 +274,7 @@ module ValveLab
     {
         if (liftOn != 0)
             return &inLive;
-        return &tab[VT_IN_A + useIn[c]];
+        return &tab[useIn[c]];
     }
 
     // ---- per sample: the areas (m^2) cylinder c's valves open at its angle a ----
@@ -220,15 +284,43 @@ module ValveLab
             return 0.0f;
         if (liftOn != 0)
             return inLive.at(a, cyc);
-        return tab[VT_IN_A + useIn[c]].at(a, cyc);
+        return tab[useIn[c]].at(a, cyc);
     }
 
     float areaEx(int c, float a)
     {
         if (offEx[c] != 0)
             return 0.0f;
-        const float main = tab[VT_EX_A + useEx[c]].at(a, cyc);
-        return auxOn != 0 ? main + tab[VT_AUX].at(a, cyc) : main;
+        const float main = tab[useEx[c]].at(a, cyc);
+        return auxOn != 0 ? main + tab[newest(VT_AUX)].at(a, cyc) : main;
+    }
+
+    // The events cylinder c detects, as they are now (its tables, phased): degrees of its cycle
+    float evo(int c)
+    {
+        return tab[useEx[c]].openNow;
+    }
+
+    float evc(int c)
+    {
+        return vtWrap(tab[useEx[c]].openNow + tab[useEx[c]].span, cyc);
+    }
+
+    float ivo(int c)
+    {
+        return inTable(c)->openNow;
+    }
+
+    float ivc(int c)
+    {
+        AreaTable* t = inTable(c);
+        return vtWrap(t->openNow + t->span, cyc);
+    }
+
+    // 1: the lift is the load control, and the plate is to be left open
+    int plateOpen()
+    {
+        return liftOn != 0 && liftThr != 0 ? 1 : 0;
     }
 
     // Combustion asks as the intake closes: does cylinder c fire this cycle?
@@ -241,7 +333,7 @@ module ValveLab
     int powerStroke(int c, float a)
     {
         AreaTable* ti = inTable(c);
-        AreaTable* te = &tab[VT_EX_A + useEx[c]];
+        AreaTable* te = &tab[useEx[c]];
         if (ti->at(a, cyc) > 0.0f || te->at(a, cyc) > 0.0f)
             return 0;
         const float dE = vtWrap(te->openNow - a, cyc);
@@ -273,19 +365,19 @@ module ValveLab
         const float wantEx = exTarget >= 0.0f ? exTarget : phEx.schedule(share, load, 0);
         phIn.control(d16, wantIn, pOil, tOil);
         phEx.control(d16, wantEx, pOil, tOil);
-        for (int i = 0; i < VT_PROFILES; ++i)
-            tab[i].place(i <= VT_IN_B || i >= VT_LIFT0 ? -phIn.phase : (i == VT_AUX ? 0.0f : phEx.phase), cyc);
+        for (int t = 0; t < VT_TABLES; ++t)
+            tab[t].place(shiftOf(t % VT_PROFILES), cyc);
         // the lift command, and the table it reads
         if (liftOn != 0)
         {
             liftCmd = fminf(fmaxf(liftTarget >= 0.0f ? liftTarget : (liftThr != 0 ? load : 1.0f), 0.0f), 1.0f);
-            if (dirty == 0 && fabsf(liftCmd - liftMade) > 0.002f)
+            if ((dirty & (((1 << VT_LIFTS) - 1) << VT_LIFT0)) == 0 && fabsf(liftCmd - liftMade) > 0.002f)
             {
                 const float x = liftCmd * (float)(VT_LIFTS - 1);
                 int j = (int)x;
                 if (j > VT_LIFTS - 2)
                     j = VT_LIFTS - 2;
-                inLive.blend(&tab[VT_LIFT0 + j], &tab[VT_LIFT0 + j + 1], x - (float)j);
+                inLive.blend(&tab[newest(VT_LIFT0 + j)], &tab[newest(VT_LIFT0 + j + 1)], x - (float)j);
                 inLive.noTail();
                 liftMade = liftCmd;
             }
@@ -307,21 +399,17 @@ module ValveLab
         else if (deacWant == 1 && (deacMask == 0 || omega < deacLo * 0.95f || omega > deacHi * 1.05f
                                    || load > deacLoad + 0.05f || tOil < 333.0f))
             deacWant = 0;
-        // each cylinder takes what is asked while the valve it changes is shut
+        // each cylinder moves to what it should read while the valve it changes is shut in both tables
+        const int tIn = newest(VT_IN_A + stageWant);
+        const int tEx = newest(VT_EX_A + stageWant);
         int mask = 0;
         for (int c = 0; c < nCyl; ++c)
         {
             const float a = ang[c];
-            if (useIn[c] != stageWant && liftOn == 0)
-            {
-                if (tab[VT_IN_A + useIn[c]].at(a, cyc) <= 0.0f && tab[VT_IN_A + stageWant].at(a, cyc) <= 0.0f)
-                    useIn[c] = stageWant;
-            }
-            if (useEx[c] != stageWant)
-            {
-                if (tab[VT_EX_A + useEx[c]].at(a, cyc) <= 0.0f && tab[VT_EX_A + stageWant].at(a, cyc) <= 0.0f)
-                    useEx[c] = stageWant;
-            }
+            if (useIn[c] != tIn && tab[useIn[c]].at(a, cyc) <= 0.0f && tab[tIn].at(a, cyc) <= 0.0f)
+                useIn[c] = tIn;
+            if (useEx[c] != tEx && tab[useEx[c]].at(a, cyc) <= 0.0f && tab[tEx].at(a, cyc) <= 0.0f)
+                useEx[c] = tEx;
             const int rest = deacWant != 0 && (deacMask & (1 << c)) != 0 ? 1 : 0;
             if (rest != offEx[c] && powerStroke(c, a) != 0)
             {
@@ -338,29 +426,32 @@ module ValveLab
         floating = flt.sevIn > 0.0f || flt.sevEx > 0.0f ? 1 : 0;
         clatter = fminf(fmaxf(flt.sevIn, flt.sevEx), 1.0f);
         const float sevNow = flt.sevIn + flt.sevEx;
-        if (dirty == 0 && (fabsf(sevNow - sevMade) > 0.01f || (sevNow == 0.0f && sevMade != 0.0f)))
+        if (fabsf(sevNow - sevMade) > 0.01f || (sevNow == 0.0f && sevMade != 0.0f))
         {
             sevMade = sevNow;
-            flt.tailFor(&tab[VT_IN_A], flt.sevIn);
-            flt.tailFor(&tab[VT_IN_B], flt.sevIn);
-            flt.tailFor(&tab[VT_EX_A], flt.sevEx);
-            flt.tailFor(&tab[VT_EX_B], flt.sevEx);
+            for (int g = 0; g < 2; ++g)
+            {
+                flt.tailFor(&tab[VT_IN_A + VT_PROFILES * g], flt.sevIn);
+                flt.tailFor(&tab[VT_IN_B + VT_PROFILES * g], flt.sevIn);
+                flt.tailFor(&tab[VT_EX_A + VT_PROFILES * g], flt.sevEx);
+                flt.tailFor(&tab[VT_EX_B + VT_PROFILES * g], flt.sevEx);
+            }
         }
         show();
     }
 
-    // The events as they are now (cylinder 0's profiles), and the overlap at 1 mm
+    // The events as they are now (cylinder 0's tables), and the overlap at 1 mm
     void show()
     {
         AreaTable* ti = inTable(0);
-        AreaTable* te = &tab[VT_EX_A + useEx[0]];
+        AreaTable* te = &tab[useEx[0]];
         showIvo = ti->openNow;
         showIvc = vtWrap(ti->openNow + ti->span, cyc);
         showEvo = te->openNow;
         showEvc = vtWrap(te->openNow + te->span, cyc);
         // 1 mm: from each cam's own curve, moved as its table is
-        CamShape* ci = &cam[liftOn != 0 ? VT_IN_A : VT_IN_A + useIn[0]];
-        CamShape* ce = &cam[VT_EX_A + useEx[0]];
+        CamShape* ci = &cam[liftOn != 0 ? VT_IN_A : useIn[0] % VT_PROFILES];
+        CamShape* ce = &cam[useEx[0] % VT_PROFILES];
         const float in1 = vtWrap(ti->openNow + ci->rise1 * ti->span / ci->span, cyc);
         const float ex1 = vtWrap(te->openNow + ce->span - ce->rise1, cyc);
         float ov = ex1 - in1;
