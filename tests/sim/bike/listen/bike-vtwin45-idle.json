@@ -1,0 +1,74 @@
+{
+ "format": "tee-scenario",
+ "version": 1,
+ "name": "bike-vtwin45-idle",
+ "description": "The cruiser's 45-degree twin idling, warm, in neutral, with two gentle blips. Listen for: the 315-405 lope at idle, two beats close then a long gap, the heavy flywheel smoothing the blips.",
+ "build": "bike-cruiser",
+ "seconds": 12,
+ "events": [
+  {
+   "t": 0.0,
+   "spec": {
+    "env.temperature": 300,
+    "env.pressure": 101325
+   },
+   "ctl": {
+    "mode": 1,
+    "lever": 0,
+    "clutch": 0,
+    "brake": 0,
+    "throttle": 0,
+    "ignition": 1
+   }
+  },
+  {
+   "t": 0.25,
+   "ctl": {
+    "ignition": 2
+   }
+  },
+  {
+   "t": 2.0,
+   "ctl": {
+    "ignition": 1
+   }
+  },
+  {
+   "t": 7.0,
+   "ctl": {
+    "throttle": 0.3
+   },
+   "ramp": 0.1
+  },
+  {
+   "t": 7.4,
+   "ctl": {
+    "throttle": 0
+   },
+   "ramp": 0.1
+  },
+  {
+   "t": 9.0,
+   "ctl": {
+    "throttle": 0.3
+   },
+   "ramp": 0.1
+  },
+  {
+   "t": 9.4,
+   "ctl": {
+    "throttle": 0
+   },
+   "ramp": 0.1
+  }
+ ],
+ "assertions": [
+  {
+   "audio": "finite"
+  },
+  {
+   "audio": "peak",
+   "<=": 1
+  }
+ ]
+}

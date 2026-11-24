@@ -350,6 +350,18 @@ move, reads ctl's counters, buttons, mode, strip and dyno itself, writes its fie
 pedal with a downshift's blip in it. `step`, `road` go to `m1`; `followLever` does nothing. Model 0, the default, is the
 reference's code, untouched (the null test).
 
+*The motorcycle (card B2).* With `spec.car.model` 1 and `spec.car.kind` Motorcycle (2), Car holds `bikeOn` 1 and its
+`Bike b1` (`vehicle/bike.fm`, docs/models/bike.md) takes `m1`'s place: `drive16` calls `bike16` every 16 (spec.car's
+fields the bike reads, card I's and card B2's block, copied into `b1.spec` and `b1.bs` with the env when their revs
+move; `b1.control`; tel.car's card I and card B2 fields filled; `gear`, `v`, `shiftCut` (the quickshifter's cut) kept;
+it returns the throttle the engine is given: the rider's, less the wheelie control's and a clutch upshift's roll-off,
+with an auto-blip's); `step` and `road` go to `b1`. A change of kind or model puts it at rest in neutral. For the ECU,
+`drivenSlip()`, `speedNow()`, `gearNow()`, `upshifts()`, `cutRequest()` (the quickshift cut's length) and
+`blipRequest()` give the bike's. For the mechanical voices: `float lashStrike()` each sample (rad/s at the rear wheel
+with which the driveline's play closed this sample, 0 otherwise; `tel.car.chainLashSide` says on or off the throttle)
+and `float sprocketSpeed()` (the front sprocket, rad/s; its teeth are `spec.car.frontSprocket`, the rear's
+`rearSprocket`; `spec.car.clutchDry` a dry clutch), both 0 without the motorcycle.
+
 **Extras** (`sound/extras.fm`): the engine bay's sources; its own `Noise noise` (Boost draws from it too). `setup(float
 rate, float boxHz, VoicesSpec* voices)`; `setClatter(int diesel, float swept)` and `pumpOn` in configure; the clicks at
 the cylinders' events (`valveClick(amp, intake)`: 1 at intake closing, 0 at exhaust closing); `void tick(float qThrottle,
@@ -367,11 +379,13 @@ driven, float vTotal, int nCyl, float fx, float fy, float mx, float my, float* f
 passes `&spec.sound`, `&tel.sound`, `car.speedNow()`, `set.drive != 0`, `vTotal`, `lay.n`, a custom engine's `shake.fx`,
 `fy`, `mx`, `my` (else 0), `lay.fire`, `lay.cyc`, `lay.rotary`); each sample `mix(int i, float xL, float xR, float in,
 float tqNow, float mech, float block, float turbo, float starter, float comb, float sh0, float sh1, int driven, float
-road, float cutG, float drive)` (`drive`: package M's `vo.gearbox + vo.axle` with spec.voices.model 1, else 0); per
+road, float cutG, float gearbox, float axle, float front, float head, float tank, float gate, float voices, float
+mouth)` (package M's `ex.vo.gearbox`, `axle`, `front`, `head`, `tank`, `gateOut` and their sum `all` with
+spec.voices.model 1, else 0; `ex.mouth`); per
 part `finish(float* left, float* right, int at, int m)`; the resampler `needs()`, `pushPart()`, `resampled(float* left,
 float* right, int i)`. With `spec.sound.model` 0 the new arguments are not read: the reference's path. With 1:
 `Scene` (`listen/scene.fm`), `CabinBoom` (`listen/cabin.fm`), `Place` (`listen/places.fm`); it writes `tel.sound`'s
-`camera`, `range`, `doppler`, `roadPosition`, `loudness`, `exhaustLevel`, `mixLevel`.
+`camera`, `range`, `doppler`, `roadPosition`, `loudness`, `exhaustLevel`, `mixLevel`, `limiter`, `ceilingParts`.
 
 **Noise** (`lib/noise.fm`): the reference's streams, as it has them: Engine's (`Engine::noise`: the cylinders' bias,
 Combustion's scatter and pops, the exhaust's valve, flow and jet noise, in the order of the work above), Extras' (and
@@ -382,7 +396,9 @@ a shared stream draws where the reference did.
 
 Each package's model is switched by its Spec section's `model` (0: the reference's, bit for bit; 1: the package's):
 `valve.model` (E), `intake.model` (E), `boost.model` (F), `exhaust.model` (G), `fuel.model` (H: combustion),
-`ecu.model` (H), `car.model` (I), and `engine.custom` (D). A hook is called only when its model is 1, so at the
+`ecu.model` (H), `car.model` (I), and `engine.custom` (D). A switch changed while the engine runs is made under the fade, as a new layout is (`Engine::holdModel`: the Spec
+keeps the model in use until the fade's quiet, where `configure` makes the change and moves the section's rev; stopped,
+at once). A hook is called only when its model is 1, so at the
 defaults nothing below runs. Its body is a stub, in the owner's module, that the owner fills; the call's place is the
 integrator's.
 

@@ -1,0 +1,25 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Long-tube headers and an X-pipe",
+  "notes": "Long primaries for mid-range torque, both sides crossed in an X near the collectors, chambered mufflers. Loaded as a part, it replaces only the exhaust fields it sets. Today the engine hears the four dials (headers, pipe, crossover, muffler); the builder's pipes are kept for when it runs them.",
+  "spec": {
+    "exhaust": {
+      "headers": 0.85,
+      "pipe": 0.5,
+      "crossover": 0.6,
+      "muffler": 0.45,
+      "model": "Builder",
+      "converter": [
+        2,
+        2
+      ],
+      "crossKind": 2,
+      "crossAt": 0,
+      "mufKind": [
+        2,
+        2
+      ]
+    }
+  }
+}

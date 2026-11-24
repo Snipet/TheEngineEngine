@@ -1,0 +1,106 @@
+{
+ "format": "tee-scenario",
+ "version": 1,
+ "name": "bike-chain-clunk",
+ "description": "The naked twin in first at walking pace, the throttle opened and shut four times. Listen for: a clunk each time the throttle opens or shuts as the chain's slack and the dogs take up, then the bike's shunt on the cush drive.",
+ "build": "bike-naked-twin",
+ "seconds": 11,
+ "events": [
+  {
+   "t": 0.0,
+   "spec": {
+    "env.temperature": 300,
+    "env.pressure": 101325
+   },
+   "ctl": {
+    "mode": 1,
+    "lever": 0,
+    "clutch": 0,
+    "brake": 0,
+    "throttle": 0,
+    "ignition": 1
+   }
+  },
+  {
+   "t": 0.25,
+   "ctl": {
+    "ignition": 2
+   }
+  },
+  {
+   "t": 2.0,
+   "ctl": {
+    "ignition": 1
+   }
+  },
+  {
+   "t": 2.5,
+   "ctl": {
+    "clutch": 1
+   }
+  },
+  {
+   "t": 2.7,
+   "press": "shiftUp"
+  },
+  {
+   "t": 2.9,
+   "ctl": {
+    "throttle": 0.5
+   },
+   "ramp": 0.2
+  },
+  {
+   "t": 3.1,
+   "ctl": {
+    "clutch": 0
+   },
+   "ramp": 0.8
+  },
+  {
+   "t": 4.5,
+   "ctl": {
+    "throttle": 0
+   }
+  },
+  {
+   "t": 5.5,
+   "ctl": {
+    "throttle": 0.4
+   }
+  },
+  {
+   "t": 6.5,
+   "ctl": {
+    "throttle": 0
+   }
+  },
+  {
+   "t": 7.5,
+   "ctl": {
+    "throttle": 0.4
+   }
+  },
+  {
+   "t": 8.5,
+   "ctl": {
+    "throttle": 0
+   }
+  },
+  {
+   "t": 9.5,
+   "ctl": {
+    "throttle": 0.4
+   }
+  }
+ ],
+ "assertions": [
+  {
+   "audio": "finite"
+  },
+  {
+   "audio": "peak",
+   "<=": 1
+  }
+ ]
+}

@@ -1,0 +1,27 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Open race pipes",
+  "notes": "No converters and no mufflers: short headers into open pipes. Loud. Loaded as a part, it replaces only the exhaust fields it sets. Today the engine hears the four dials (headers, pipe, crossover, muffler); the builder's pipes are kept for when it runs them.",
+  "spec": {
+    "exhaust": {
+      "headers": 0.35,
+      "pipe": 0.25,
+      "crossover": 0.0,
+      "muffler": 0.0,
+      "model": "Builder",
+      "converter": [
+        0,
+        0
+      ],
+      "resonator": [
+        0,
+        0
+      ],
+      "mufKind": [
+        0,
+        0
+      ]
+    }
+  }
+}

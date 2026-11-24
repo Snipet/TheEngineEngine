@@ -189,7 +189,7 @@ arch(slug="rotary-twin-13", name="Rotary twin", geo="ref-16-rotary-2", layout="R
      notes="A twin-rotor Wankel, 2 x 654 cc, 9.0:1, with two sequential turbos (the 13B-REW kind: 206 to 280 PS, "
            "the latter at 6500 rpm, some 294 N m at 5000; Wikipedia, makers' figures, firm to 10 %). In a light "
            "rear-drive coupe.")
-arch(slug="hot-hatch-16-16v", name="1.6 L 16-valve hot hatch", geo="ref-05-inline-4", layout="Inline 4",
+arch(slug="hot-hatch-16-16v", convK=18.0, name="1.6 L 16-valve hot hatch", geo="ref-05-inline-4", layout="Inline 4",
      bore=81.0, stroke=77.4, rod=134.0, cr=10.4, valves=4, dIn=31.0, dEx=27.0,
      cam=(256, 224, 9.6, 108, 248, 216, 8.8, 110), train="Bucket", redline=7200, idle=850,
      car="hot-hatch-light", timing="Toothed belt",
@@ -241,7 +241,7 @@ arch(slug="boxer-four-turbo-unequal", name="Boxer four turbo with unequal header
            "393 N m at 4000; Wikipedia and enthusiasts' tables). Its headers' primaries of unequal length are the "
            "burble: written in the exhaust builder (primSpread), which the program does not yet run. All-wheel "
            "drive, six-speed manual.")
-arch(slug="two-stage-cam-20", name="Two-stage-cam 2.0 L", geo="ref-05-inline-4", layout="Inline 4",
+arch(slug="two-stage-cam-20", convK=16.0, name="Two-stage-cam 2.0 L", geo="ref-05-inline-4", layout="Inline 4",
      bore=87.0, stroke=84.0, rod=153.0, cr=11.7, valves=4, dIn=34.0, dEx=29.0,
      cam=(236, 204, 8.5, 110, 232, 200, 8.0, 112), train="Rocker", redline=9000, idle=900,
      stages=dict(inDurSeatB=290, inDur1mmB=258, inLiftB=0.0118, exDurSeatB=284, exDur1mmB=252, exLiftB=0.0112,
@@ -250,7 +250,7 @@ arch(slug="two-stage-cam-20", name="Two-stage-cam 2.0 L", geo="ref-05-inline-4",
      notes="A 2.0 L four with two cam profiles a valve switched at 6000 rpm: 87 x 84 mm (1997 cc), 11.7:1, 9000 rpm "
            "(the F20C kind: 176 kW at 8300 rpm, 208 N m at 7500; makers' figures, from memory, firm to 5 %; the "
            "B16A's switch point of 5500 rpm: global.honda). In a light rear-drive roadster.")
-arch(slug="kei-660-triple-turbo", name="Kei 660 cc triple turbo", geo="ref-04-inline-3", layout="Inline 3",
+arch(slug="kei-660-triple-turbo", convK=24.0, name="Kei 660 cc triple turbo", geo="ref-04-inline-3", layout="Inline 3",
      bore=68.0, stroke=60.4, rod=110.0, cr=8.6, valves=4, dIn=24.5, dEx=21.0,
      cam=(240, 208, 7.5, 110, 236, 204, 7.0, 112), train="Bucket", redline=8000, idle=850,
      boost=dict(kind="Turbo", target=0.9, spring=0.6), car="kei", timing="Chain",
@@ -273,14 +273,14 @@ arch(slug="tractor-15-inline-six", name="Highway tractor 15 L", geo="ref-10-inli
            "brake is left off until the ECU can switch it (the X15 kind: 298 to 451 kW, 1966 to 2779 N m at 900 to 1000 rpm, governed at 1900 to 2100, "
            "idle 600 to 700; cummins.com, international.com). In a 36 t tractor-trailer, eighteen speeds.")
 # ---- the second batch ----
-arch(slug="three-cylinder-10-turbo", name="1.0 L three-cylinder turbo", geo="ref-04-inline-3", layout="Inline 3",
+arch(slug="three-cylinder-10-turbo", convK=17.0, name="1.0 L three-cylinder turbo", geo="ref-04-inline-3", layout="Inline 3",
      bore=71.9, stroke=82.0, rod=137.0, cr=10.0, valves=4, dIn=27.0, dEx=23.0,
      cam=(232, 200, 8.0, 112, 228, 196, 7.5, 112), train="Finger", phase=(50, 50), redline=6500, idle=800,
      boost=dict(kind="Turbo", target=1.0, spring=0.6), direct=True, car="small-hatch", timing="Toothed belt",
      notes="A downsized 1.0 L three with a small turbo and direct injection: 71.9 x 82 mm (999 cc), 10:1 (engines of "
            "the kind: 74 to 103 kW at 5500 to 6000 rpm, 170 to 205 N m from 1500; makers' figures). In a small "
            "hatch, six-speed manual.")
-arch(slug="economy-four-15", name="1.5 L economy four", geo="ref-05-inline-4", layout="Inline 4",
+arch(slug="economy-four-15", convK=18.0, name="1.5 L economy four", geo="ref-05-inline-4", layout="Inline 4",
      bore=75.0, stroke=84.7, rod=137.0, cr=11.0, valves=4, dIn=28.0, dEx=23.5,
      cam=(232, 200, 8.3, 112, 228, 196, 7.8, 112), train="Finger", phase=(40, 0), redline=6600, idle=750,
      car="compact-cvt", timing="Chain",
@@ -309,7 +309,7 @@ arch(slug="v6-35-twin-turbo-pickup", name="3.5 L twin-turbo V6 pickup", geo="ref
      notes="A 3.5 L twin-turbo V6 of a full-size pickup: 92.5 x 86.6 mm (3497 cc), 10.5:1, direct injection, a turbo "
            "a bank (engines of the kind: 280 to 300 kW at 5000 to 6000 rpm, 640 to 690 N m at 3500; makers' "
            "figures). Four-wheel drive, ten-speed automatic.")
-arch(slug="twin-cam-roadster-18", name="1.8 L twin-cam roadster", geo="ref-05-inline-4", layout="Inline 4",
+arch(slug="twin-cam-roadster-18", convK=17.0, name="1.8 L twin-cam roadster", geo="ref-05-inline-4", layout="Inline 4",
      bore=83.0, stroke=85.0, rod=133.0, cr=10.0, valves=4, dIn=33.0, dEx=28.0,
      cam=(244, 212, 9.0, 110, 240, 208, 8.5, 112), train="Bucket", redline=7000, idle=850, car="roadster",
      timing="Toothed belt",
@@ -474,8 +474,15 @@ def build(a):
         vo["blowerDrive"] = a["blowerDrive"]
     vo["injection"] = "Direct" if a.get("direct") and not diesel else "Port"
 
+    car = car_section(a["car"])
+    # a torque converter matched to the engine (used by an automatic, and by the drag and top-speed runs that make
+    # the gearbox one): the default's capacity (13.5) suits a big engine and loads a small one's idle with some 40 N m;
+    # small engines' converters are looser: K grows as the square root of the torque falls (judgement, from the
+    # converter's law T = (w / K)^2)
+    if "convK" in a:
+        car["converterK"] = a["convK"]
     spec = {"engine": e, "valve": v, "intake": i, "boost": bo, "exhaust": x, "fuel": f, "ecu": nest(t),
-            "car": car_section(a["car"]), "env": {"temperature": 288.15, "pressure": 101325.0}, "voices": vo}
+            "car": car, "env": {"temperature": 288.15, "pressure": 101325.0}, "voices": vo}
     return {"format": "tee-build", "version": 1, "name": a["name"], "notes": a["notes"], "spec": spec}
 
 
@@ -517,7 +524,115 @@ def main():
               {"format": "tee-build", "version": 1, "part": "car", "name": "Car: " + name.replace("-", " "),
                "notes": "A car of its class alone (card P's archetypes' cars), to take any engine.",
                "spec": {"car": car_section(name)}})
+    loose_parts(A)
+    manual(A)
     print("%d archetypes, %d cars" % (len(A), len(CARS)))
+
+
+EXHAUSTS = [
+    ("stock-quiet", "Stock exhaust, quiet", "A road car's system: medium headers, a resonator and a three-pass muffler on each side.",
+     {"headers": 0.5, "pipe": 0.5, "crossover": 0.0, "muffler": 0.85},
+     {"converter": [1, 1], "resonator": [2, 2], "mufKind": [3, 3]}),
+    ("sport-cat-back", "Sport cat-back", "Straight-through mufflers behind the standard converters: louder, a harder edge.",
+     {"headers": 0.5, "pipe": 0.5, "crossover": 0.0, "muffler": 0.35},
+     {"converter": [1, 1], "resonator": [0, 0], "mufKind": [1, 1]}),
+    ("long-tube-x-pipe", "Long-tube headers and an X-pipe", "Long primaries for mid-range torque, both sides crossed in an X "
+     "near the collectors, chambered mufflers.", {"headers": 0.85, "pipe": 0.5, "crossover": 0.6, "muffler": 0.45},
+     {"converter": [2, 2], "crossKind": 2, "crossAt": 0, "mufKind": [2, 2]}),
+    ("h-pipe-dual", "Dual exhaust with an H-pipe", "Two sides joined by an H-pipe: the deeper, classic V8 note.",
+     {"headers": 0.6, "pipe": 0.55, "crossover": 0.5, "muffler": 0.5},
+     {"converter": [1, 1], "crossKind": 1, "crossAt": 1, "mufKind": [2, 2]}),
+    ("open-race", "Open race pipes", "No converters and no mufflers: short headers into open pipes. Loud.",
+     {"headers": 0.35, "pipe": 0.25, "crossover": 0.0, "muffler": 0.0},
+     {"converter": [0, 0], "resonator": [0, 0], "mufKind": [0, 0]}),
+    ("truck-stack", "Truck stack", "A long single pipe to a vertical stack behind the cab, one big muffler.",
+     {"headers": 0.5, "pipe": 0.95, "crossover": 0.0, "muffler": 0.6},
+     {"sides": 1, "converter": [1, 1], "mufKind": [2, 2], "exitAt": [6, 6]}),
+]
+
+
+def loose_parts(archs):
+    """Cams, turbos and exhausts alone: files without a "part", which GARAGE applies field by field (only what they
+    set), so a cam goes into an engine without resetting the rest of it."""
+    for a in archs:
+        b = build(a)
+        v = b["spec"]["valve"]
+        if "inDurSeat" in v:
+            cam = {k: v[k] for k in v if k not in ("valves", "dIn", "dEx")}
+            write(os.path.join(PARTS, "cams", a["slug"] + ".json"),
+                  {"format": "tee-build", "version": 1, "name": a["name"] + " cams",
+                   "notes": "The cams, springs and phasers of the archetype \"%s\" alone (intake %d/%d degrees at the "
+                            "seat/1 mm, %.1f mm; exhaust %d/%d, %.1f mm): loaded as a part, they replace only the "
+                            "valvetrain's cam fields." % (a["name"], v["inDurSeat"], v["inDur1mm"], v["inLift"] * 1000,
+                                                          v["exDurSeat"], v["exDur1mm"], v["exLift"] * 1000),
+                   "spec": {"valve": cam}})
+        bo = b["spec"]["boost"]
+        if bo["kind"] != "Natural":
+            write(os.path.join(PARTS, "turbos" if bo["kind"] != "Supercharger" else "superchargers",
+                               a["slug"] + ".json"),
+                  {"format": "tee-build", "version": 1, "name": a["name"] + ": " + bo["kind"].lower(),
+                   "notes": "The forced induction of the archetype \"%s\" alone (%s, %.2f bar); loaded as a part it "
+                            "replaces only the boost fields it sets. Its sizes are matched to whatever engine it goes "
+                            "on." % (a["name"], bo["kind"].lower(), bo["target"] / BAR),
+                   "spec": {"boost": bo}})
+    for slug, name, notes, dials, builder in EXHAUSTS:
+        x = dict(dials)
+        x["model"] = "Builder"
+        x.update(builder)
+        write(os.path.join(PARTS, "exhausts", slug + ".json"),
+              {"format": "tee-build", "version": 1, "name": name,
+               "notes": notes + " Loaded as a part, it replaces only the exhaust fields it sets. Today the engine "
+                                "hears the four dials (headers, pipe, crossover, muffler); the builder's pipes are "
+                                "kept for when it runs them.",
+               "spec": {"exhaust": x}})
+
+
+def manual(archs):
+    """docs/manual/builds.md: the archetypes in a table, then each one's notes."""
+    out = ["# The shipped builds", "",
+           "*Generated by `content/builds/archetypes/generate.py`: do not edit by hand.*", "",
+           "Thirty archetypes in `content/builds/archetypes/`, each a whole build (engine, car, tune) that starts, idles, "
+           "pulls through the gears and stops, with every part of the model switched on and standard-day air (15 C, "
+           "101.3 kPa). Their names say what they are, not whose they are; the dimensions are published figures of "
+           "engines of each kind, named in each build's notes. The engines, cars and tunes are also in "
+           "`content/builds/parts/` to mix: an engine in another car, a tune on another engine.", "",
+           "| Build | Engine | Bore x stroke | Compression | Aspiration | Redline | Car | Gearbox |",
+           "|---|---|---|---|---|---|---|---|"]
+    for a in archs:
+        b = build(a)
+        e, c, bo = b["spec"]["engine"], b["spec"]["car"], b["spec"]["boost"]
+        bs = "%.1f x %.1f mm" % (a["bore"], a["stroke"]) if "bore" in a else "two rotors"
+        asp = bo["kind"] if bo["kind"] == "Natural" else "%s, %.1f bar" % (bo["kind"], bo["target"] / BAR)
+        out.append("| %s | %.2f L %s | %s | %.1f:1 | %s | %d rpm | %s, %.0f kg | %s, %d gears |" % (
+            a["name"], e["displacement"] * 1000, a["layout"], bs, a["cr"], asp, a["redline"],
+            c["drive"] + "-drive", c["mass"], c["gearbox"], c["gears"]))
+    out += ["", "## Each build", ""]
+    for a in archs:
+        out += ["**%s** (`%s.json`). %s" % (a["name"], a["slug"], a["notes"]), ""]
+    out += ["## The other packages' builds", "",
+            "Made by the packages that built each part of the simulator, to show or test their part (motorcycles, "
+            "two-strokes, layouts, cams, turbos, the reference's converted presets). Not all of them are whole "
+            "machines: some set one section and leave the rest at its defaults.", "",
+            "| File | Name | Notes |", "|---|---|---|"]
+    base = os.path.join(ROOT, "content", "builds")
+    for dirpath, dirs, files in sorted(os.walk(base)):
+        dirs.sort()
+        rel = os.path.relpath(dirpath, base)
+        if rel.split(os.sep)[0] in ("archetypes", "parts"):
+            continue
+        for fn in sorted(files):
+            if not fn.endswith(".json"):
+                continue
+            try:
+                with open(os.path.join(dirpath, fn)) as f:
+                    d = json.load(f)
+            except ValueError:
+                continue
+            note = d.get("notes", "").replace("|", "/").replace("\n", " ")
+            note = note if len(note) < 160 else note[:157].rsplit(" ", 1)[0] + " ..."
+            out.append("| `%s` | %s | %s |" % (os.path.normpath(os.path.join(rel, fn)), d.get("name", fn[:-5]), note))
+    with open(os.path.join(ROOT, "docs", "manual", "builds.md"), "w") as f:
+        f.write("\n".join(out))
 
 
 if __name__ == "__main__":

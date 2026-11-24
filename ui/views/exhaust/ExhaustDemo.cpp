@@ -112,6 +112,27 @@ namespace tee::ui::exhaust
         array(out, field("exhaust.tailLen", FieldKind::number, 0, 2, 0, "Tailpipe length", Q::length, ch), kSides);
         array(out, field("exhaust.tailD", FieldKind::number, 0, 0.13, 0, "Tailpipe bore", Q::length, ch), kSides);
         array(out, field("exhaust.tips", FieldKind::integer, 1, 2, 1, "Tips", Q::none, ch), kSides);
+        // card T's two-stroke: the cycle and the pipe (sim/spec/engine.fm), for the two-stroke builds
+        if (std::none_of(out.begin(), out.end(), [](const FieldInfo& f) { return f.path == "engine.cycle"; }))
+        {
+            const std::string ts = "Two-stroke";
+            out.push_back(choice("engine.cycle", "Cycle", { "Four-stroke", "Two-stroke" }, 0, 0, ts));
+            out.push_back(field("engine.tsCylinders", FieldKind::integer, 1, 4, 1, "Cylinders", Q::none, ts));
+            out.push_back(field("engine.tsExhaustDur", FieldKind::number, 140, 220, 192, "Exhaust port open", Q::none, ts));
+            out.push_back(choice("engine.tsChamber", "Pipe", { "Straight pipe", "Expansion chamber" }, 1, 0, ts));
+            out.push_back(field("engine.tsHeaderLen", FieldKind::number, 0.02, 0.6, 0.16, "Header", Q::length, ts));
+            out.push_back(field("engine.tsDiffuserLen", FieldKind::number, 0.05, 0.8, 0.33, "Diffuser", Q::length, ts));
+            out.push_back(field("engine.tsBellyLen", FieldKind::number, 0.0, 0.5, 0.12, "Belly", Q::length, ts));
+            out.push_back(field("engine.tsBaffleLen", FieldKind::number, 0.05, 0.5, 0.24, "Baffle cone", Q::length, ts));
+            out.push_back(field("engine.tsStingerLen", FieldKind::number, 0.05, 0.5, 0.22, "Stinger", Q::length, ts));
+            out.push_back(field("engine.tsHeaderDiam", FieldKind::number, 0.015, 0.08, 0.038, "Header's bore", Q::length, ts));
+            out.push_back(field("engine.tsBellyDiam", FieldKind::number, 0.03, 0.2, 0.115, "Belly's bore", Q::length, ts));
+            out.push_back(field("engine.tsStingerDiam", FieldKind::number, 0.01, 0.05, 0.022, "Stinger's bore", Q::length, ts));
+            out.push_back(field("engine.tsConeSteps", FieldKind::integer, 1, 16, 8, "Steps a cone", Q::none, ts));
+            out.push_back(choice("engine.tsSilencer", "Silencer", { "None", "Packed" }, 0, 0, ts));
+            out.push_back(field("engine.tsSilencerLen", FieldKind::number, 0.1, 0.6, 0.4, "Silencer's length", Q::length, ts));
+            out.push_back(field("engine.tsSilencerDiam", FieldKind::number, 0.012, 0.12, 0.026, "Silencer's bore", Q::length, ts));
+        }
         array(out, choice("exhaust.exitAt", "Exits",
                           { "The layout's", "Rear centre", "Rear left", "Rear right", "Side left", "Side right", "Front", "Up" },
                           -1, -1, ch), kSides);
@@ -125,7 +146,7 @@ namespace tee::ui::exhaust
         for (int i = 0; i < doc.count(); ++i)
         {
             const FieldInfo& f = doc.info(i);
-            if (f.section() == "exhaust" || f.path == "boost.layout")
+            if (f.section() == "exhaust" || f.path == "boost.layout" || f.path.rfind("engine.ts", 0) == 0 || f.path == "engine.cycle")
                 doc.set(i, f.def);
         }
         bool known = true;
@@ -204,6 +225,19 @@ namespace tee::ui::exhaust
                 setAt(doc, "exhaust.exitAt", s, 4 + s);
                 setAt(doc, "exhaust.bypass", s, 1 + s);
             }
+        }
+        else if (name == "ts-125")         // a 125 single on its expansion chamber, open
+        {
+            set(doc, "engine.cycle", 1);
+            set(doc, "engine.tsCylinders", 1);
+        }
+        else if (name == "ts-twin")        // a twin on two chambers, silenced, a longer pipe (tuned lower)
+        {
+            set(doc, "engine.cycle", 1);
+            set(doc, "engine.tsCylinders", 2);
+            set(doc, "engine.tsSilencer", 1);
+            set(doc, "engine.tsDiffuserLen", 0.40);
+            set(doc, "engine.tsBellyLen", 0.16);
         }
         else if (name == "flat4")          // a boxer four's unequal-length headers into one pipe, a turbo
         {

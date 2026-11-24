@@ -1,0 +1,21 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Flat-plane 3.9 L V8, twin turbo: twin turbos",
+  "notes": "The forced induction of the archetype \"Flat-plane 3.9 L V8, twin turbo\" alone (twin turbos, 1.30 bar); loaded as a part it replaces only the boost fields it sets. Its sizes are matched to whatever engine it goes on.",
+  "spec": {
+    "boost": {
+      "model": "Machine",
+      "kind": "Twin turbos",
+      "level": 0.905,
+      "blowOff": 0.7,
+      "size": 1.0,
+      "layout": "Two, a bank each",
+      "target": 130000.0,
+      "gateSpring": 70000.0,
+      "blowOffKind": "Recirculating",
+      "scrolls": "Twin scroll",
+      "icEffect": 0.75
+    }
+  }
+}
