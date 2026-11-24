@@ -388,11 +388,11 @@ module Car
             esRev = es->rev;
             VehEnv* e = &m1.env;
             e->temperature = es->temperature;
-            // (spec.env's density, surface and grade are the lead's to add: until then the defaults)
-            e->density = 1.2f;
-            e->surface = 0;
-            e->surfaceLeft = -1;
-            e->grade = 0.0f;
+            // the air's density from its pressure and temperature; the road's surface each side and its grade
+            e->density = es->pressure / (287.05f * fmaxf(es->temperature, 150.0f));
+            e->surface = es->surface;
+            e->surfaceLeft = es->surfaceLeft;
+            e->grade = es->grade;
             m1.apply();
             // card B2: the motorcycle's environment is the same
             VehEnv* eb = &b1.env;
@@ -786,21 +786,27 @@ module Car
     {
         if (model == 1 && bikeOn != 0)
             return b1.slip();                                   // (card B2: the rear tyre's)
-        return 0.0f;
+        return cs->model == 1 ? m1.slip() : 0.0f;
     }
 
     float speedNow()        // m/s
     {
-        return v;
+        if (model == 1 && bikeOn != 0)
+            return (float)b1.v;                                 // (card B2)
+        return cs->model == 1 ? m1.speedNow() : v;
     }
 
     int gearNow()           // -1 R, 0 N, 1 up
     {
-        return gear;
+        if (model == 1 && bikeOn != 0)
+            return b1.box.gear;                                 // (card B2)
+        return cs->model == 1 ? m1.gearNow() : gear;
     }
 
     int upshifts()          // a counter: one more at each upshift begun
     {
+        if (model == 1 && bikeOn != 0)
+            return b1.box.upshifts;                             // (card B2)
         return 0;
     }
 
@@ -808,6 +814,8 @@ module Car
     {
         if (model == 1 && bikeOn != 0)
             return shiftCut ? b1.bs.quickshiftCut : 0.0f;     // (card B2: the quickshifter's)
+        if (cs->model == 1)
+            return m1.cutWanted() ? m1.spec.shiftTime : 0.0f;
         return shiftCut ? 0.05f : 0.0f;
     }
 
@@ -815,6 +823,6 @@ module Car
     {
         if (model == 1 && bikeOn != 0)
             return b1.blipSpeed();                              // (card B2: the auto-blipper's)
-        return 0.0f;
+        return cs->model == 1 ? m1.blipSpeed() : 0.0f;
     }
 };

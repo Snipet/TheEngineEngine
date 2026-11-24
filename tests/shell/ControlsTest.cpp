@@ -110,14 +110,22 @@ TEST_CASE("shell: the start key says start while held, on when let go, and off a
           "[shell][input]")
 {
     Driver d;
+    EngineSeen running;
+    running.running = true;
     CHECK(run(d, 0.1).ignition == 0);
     d.set(Source::keyboard, Action::start, true);
     CHECK(run(d, 0.3).ignition == 2);
     d.set(Source::keyboard, Action::start, false);
-    CHECK(run(d, 0.1).ignition == 1);
+    // let go before the engine runs: the starter goes on cranking by itself until it does
+    CHECK(run(d, 0.5).ignition == 2);
+    CHECK(run(d, 0.1, running).ignition == 1);
+    // and gives up after crankMax (2 s) on an engine that never catches: on, not cranking
+    Driver dead;
+    dead.set(Source::keyboard, Action::start, true);
+    dead.set(Source::keyboard, Action::start, false);
+    CHECK(run(dead, 1.5).ignition == 2);
+    CHECK(run(dead, 0.6).ignition == 1);
 
-    EngineSeen running;
-    running.running = true;
     // a short press on a running engine changes nothing
     d.set(Source::keyboard, Action::start, true);
     CHECK(run(d, 0.3, running).ignition == 2);
@@ -137,18 +145,38 @@ TEST_CASE("shell: the start key says start while held, on when let go, and off a
 
 TEST_CASE("shell: a tap of the start key shorter than a frame still says start for a moment", "[shell][input]")
 {
+    // (on a running engine, where the starter does not crank on by itself: only startLeast)
+    EngineSeen running;
+    running.running = true;
     Driver d;
     d.set(Source::keyboard, Action::start, true);
     d.set(Source::keyboard, Action::start, false);          // down and up between two frames
-    CHECK(d.advance(1.0f / 60.0f, {}).ignition == 2);
-    CHECK(run(d, 0.1).ignition == 2);                       // for startLeast seconds
-    CHECK(run(d, 0.1).ignition == 1);
+    CHECK(d.advance(1.0f / 60.0f, running).ignition == 2);
+    CHECK(run(d, 0.1, running).ignition == 2);              // for startLeast seconds
+    CHECK(run(d, 0.1, running).ignition == 1);
     // and a slow frame (the window drawing at ten a second) sees it too
     d.set(Source::keyboard, Action::start, true);
     d.set(Source::keyboard, Action::start, false);
-    CHECK(d.advance(0.1f, {}).ignition == 2);
-    CHECK(d.advance(0.1f, {}).ignition == 2);
-    CHECK(d.advance(0.1f, {}).ignition == 1);
+    CHECK(d.advance(0.1f, running).ignition == 2);
+    CHECK(d.advance(0.1f, running).ignition == 2);
+    CHECK(d.advance(0.1f, running).ignition == 2);
+    CHECK(d.advance(0.1f, running).ignition == 1);
+    // a late first frame (the window opening: a long dt, all of it before the press) does not use the tap up
+    Driver late;
+    late.set(Source::keyboard, Action::start, true);
+    late.set(Source::keyboard, Action::start, false);
+    CHECK(late.advance(1.2f, running).ignition == 2);
+    CHECK(late.advance(1.0f / 60.0f, running).ignition == 2);
+    CHECK(run(late, 0.1, running).ignition == 2);
+    CHECK(run(late, 0.1, running).ignition == 1);
+    // on a stopped engine a tap cranks it until it runs (found on DRIVE: the window's first focus event let the key
+    // go a moment after it went down, and 0.15 s of starter did not start the simulator)
+    Driver tap;
+    tap.set(Source::keyboard, Action::start, true);
+    tap.set(Source::keyboard, Action::start, false);
+    CHECK(tap.advance(0.25f, {}).ignition == 2);
+    CHECK(run(tap, 1.0).ignition == 2);
+    CHECK(run(tap, 0.1, running).ignition == 1);
 }
 
 TEST_CASE("shell: the shift keys count presses, once a press", "[shell][input]")
