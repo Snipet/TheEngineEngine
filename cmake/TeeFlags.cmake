@@ -28,8 +28,9 @@ function(tee_target_defaults target)
     # clang-cl reads -Wall as cl's /Wall, which is clang's -Weverything; its /W4 is clang's -Wall -Wextra.
     target_compile_options(${target} PRIVATE /W4 -Wshadow -Wpedantic /clang:-ffp-contract=off
                                              $<$<BOOL:${TEE_WERROR}>:/WX>)
-    # The Windows C runtime's deprecations of standard C (fopen, getenv): warnings, then errors.
-    target_compile_definitions(${target} PRIVATE _CRT_SECURE_NO_WARNINGS NOMINMAX)
+    # The Windows C runtime's deprecations of standard C (fopen, getenv): warnings, then errors. And its <cmath>
+    # has M_PI and the other POSIX constants only when asked, where every other system's has them unasked.
+    target_compile_definitions(${target} PRIVATE _CRT_SECURE_NO_WARNINGS NOMINMAX _USE_MATH_DEFINES)
   else()
     target_compile_options(${target} PRIVATE -Wall -Wextra -Wshadow -Wpedantic -ffp-contract=off
                                              $<$<BOOL:${TEE_WERROR}>:-Werror>)
