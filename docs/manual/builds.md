@@ -21,7 +21,7 @@ Thirty archetypes in `content/builds/archetypes/`, each a whole build (engine, c
 | Two-stage-cam 2.0 L | 2.00 L Inline 4 | 87.0 x 84.0 mm | 11.7:1 | Natural | 9000 rpm | Rear-drive, 1250 kg | Manual, 6 gears |
 | Kei 660 cc triple turbo | 0.66 L Inline 3 | 68.0 x 60.4 mm | 8.6:1 | Turbo, 0.9 bar | 8000 rpm | Rear-drive, 780 kg | Manual, 5 gears |
 | Diesel 2.0 L common rail | 1.97 L Inline 4 | 81.0 x 95.5 mm | 16.5:1 | Turbo, 1.4 bar | 4800 rpm | Front-drive, 1500 kg | Manual, 6 gears |
-| Highway tractor 15 L | 14.95 L Inline 6 | 137.0 x 169.0 mm | 17.0:1 | Turbo, 2.6 bar | 2000 rpm | Rear-drive, 36000 kg | Manual, 18 gears |
+| Highway tractor 15 L | 14.95 L Inline 6 | 137.0 x 169.0 mm | 17.0:1 | Turbo, 2.6 bar | 2250 rpm | Rear-drive, 36000 kg | Manual, 18 gears |
 | 1.0 L three-cylinder turbo | 1.00 L Inline 3 | 71.9 x 82.0 mm | 10.0:1 | Turbo, 1.0 bar | 6500 rpm | Front-drive, 1200 kg | Manual, 6 gears |
 | 1.5 L economy four | 1.50 L Inline 4 | 75.0 x 84.7 mm | 11.0:1 | Natural | 6600 rpm | Front-drive, 1250 kg | CVT, 1 gears |
 | 2.0 L turbo four, direct injection | 1.98 L Inline 4 | 82.5 x 92.8 mm | 9.6:1 | Turbo, 1.2 bar | 6800 rpm | Front-drive, 1450 kg | Dual clutch, 6 gears |
@@ -69,7 +69,7 @@ Thirty archetypes in `content/builds/archetypes/`, each a whole build (engine, c
 
 **Diesel 2.0 L common rail** (`diesel-20-common-rail.json`). A 2.0 L four-valve common-rail diesel with a variable-vane turbo: 81 x 95.5 mm (1968 cc), 16.5:1 (engines of the kind: 103 to 125 kW at 3500 to 4000 rpm, 320 to 380 N m from 1750; makers' figures). Balance shafts. In a front-drive family car, six-speed manual.
 
-**Highway tractor 15 L** (`tractor-15-inline-six.json`). A 15 L straight-six truck diesel: 137 x 169 mm (14.9 L), 17:1, one variable-vane turbo; its compression brake is left off until the ECU can switch it (the X15 kind: 298 to 451 kW, 1966 to 2779 N m at 900 to 1000 rpm, governed at 1900 to 2100, idle 600 to 700; cummins.com, international.com). In a 36 t tractor-trailer, eighteen speeds.
+**Highway tractor 15 L** (`tractor-15-inline-six.json`). A 15 L straight-six truck diesel: 137 x 169 mm (14.9 L), 17:1, one variable-vane turbo; its compression brake is left off until the ECU can switch it (the X15 kind: 298 to 451 kW, 1966 to 2779 N m at 900 to 1000 rpm, governed at 1900 to 2100, idle 600 to 700; cummins.com, international.com); its limiter is the governed no-load speed, 2250 rpm, some 12 % over the rated 2000. In a 36 t tractor-trailer, eighteen speeds.
 
 **1.0 L three-cylinder turbo** (`three-cylinder-10-turbo.json`). A downsized 1.0 L three with a small turbo and direct injection: 71.9 x 82 mm (999 cc), 10:1 (engines of the kind: 74 to 103 kW at 5500 to 6000 rpm, 170 to 205 N m from 1500; makers' figures). In a small hatch, six-speed manual.
 
