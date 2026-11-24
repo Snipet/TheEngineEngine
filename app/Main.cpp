@@ -153,7 +153,6 @@ namespace
         options.title = "TheEngineEngine";
         options.themeIndex = o.themeGiven ? o.theme : -1;
         options.hidden = o.info;
-        options.prefsOrganisation = "TheEngineEngine";
         options.rawEvent = [&](const SDL_Event& e) {
             if (device.handleEvent(e))
                 return true;
