@@ -42,7 +42,8 @@ TEST_CASE("hill: on a 10 % grade on the brakes for a minute: no creep, no ringin
     }
 }
 
-TEST_CASE("soak: ten minutes of random pedals, shifts and settings: finite and bounded", "[vehicle][soak]")
+// (nightly, the lead's call 2026-11-24)
+TEST_CASE("soak: ten minutes of random pedals, shifts and settings: finite and bounded", "[vehicle][soak][nightly]")
 {
     double samples = 0.0;
     double seconds = 0.0;

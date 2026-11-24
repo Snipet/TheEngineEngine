@@ -15,7 +15,11 @@ catch_discover_tests(tee-tests-vehicle DISCOVERY_MODE PRE_TEST ADD_TAGS_AS_LABEL
                      PROPERTIES TIMEOUT 900)
 add_test(NAME "vehicle.launch" COMMAND tee-tests-vehicle "[launch]~[nightly],[sim]~[nightly]" --durations yes)
 set_tests_properties("vehicle.launch" PROPERTIES TIMEOUT 900 LABELS "vehicle;launch")
+add_test(NAME "vehicle.launch.nightly" COMMAND tee-tests-vehicle "[launch][nightly],[sim][nightly]" --durations yes)
+set_tests_properties("vehicle.launch.nightly" PROPERTIES TIMEOUT 1800 LABELS "vehicle;launch;nightly")
 # the cases through the host's tee::test::Scenario ([engine]): one process, so tee::test::compiled's kept programs (one
 # unchecked, one with the checks) serve them all: two compiles in all
 add_test(NAME "vehicle.engine" COMMAND tee-tests-vehicle "[engine]~[nightly]" --durations yes)
 set_tests_properties("vehicle.engine" PROPERTIES TIMEOUT 900 LABELS "vehicle;engine")
+add_test(NAME "vehicle.engine.nightly" COMMAND tee-tests-vehicle "[engine][nightly]" --durations yes)
+set_tests_properties("vehicle.engine.nightly" PROPERTIES TIMEOUT 3600 LABELS "vehicle;engine;nightly")
