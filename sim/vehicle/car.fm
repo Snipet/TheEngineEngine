@@ -22,9 +22,16 @@
 //                                   cylinders' less friction, with the starter's)
 //   y = car.road(kSq)               one sample of the tyres on the road (their squeal at its share kSq) and the
 //                                   driveline's clunk
+//
+// spec.car.model 1 (card I): the vehicle model (vehicle.fm, docs/models/vehicle.md) in place of all of the above. Car
+// then hands drive16, step and road to its `Vehicle m1`, which reads spec.car and spec.env (copied into its own VehSpec
+// and VehEnv when their revs move) and ctl (the counters, the buttons, the mode, the strip, the dyno) through the
+// pointers setup was given, and writes its fields of tel.car. `v`, `gear`, `shiftCut` and `lastButtons` are kept as the
+// model has them, for Engine and the ECU. Model 0, the default, runs the reference's code above, untouched.
 #pragma once
 #include "lib/onepole.fm"
 #include "lib/biquad.fm"
+#include "vehicle.fm"
 
 module Car
 {
@@ -81,6 +88,15 @@ module Car
     bool shiftUp;
     bool shiftCut;      // the ignition cut through an upshift (the ECU reads it)
     float kPedal;       // the pedals' smoothing, every 16 samples
+    // card I: the vehicle model (spec.car.model 1)
+    Vehicle m1;
+    int model;          // the model driving now: 0 the reference, 1 m1
+    CarSpec* cs;        // spec.car, spec.env, ctl and tel.car, given at setup
+    EnvSpec* es;
+    Controls* cc;
+    CarTel* ct;
+    int csRev;          // their revs as m1 last took them (-1: never)
+    int esRev;
 
     float rnd()
     {
@@ -92,8 +108,16 @@ module Car
         return 2.0f * ((float)rs / 2147483647.0f) - 1.0f;
     }
 
-    void setup(float rate)
+    void setup(float rate, CarSpec* carSpec, EnvSpec* envSpec, Controls* controls, CarTel* carTel)
     {
+        cs = carSpec;
+        es = envSpec;
+        cc = controls;
+        ct = carTel;
+        csRev = -1;
+        esRev = -1;
+        model = 0;
+        m1.setup(rate);
         rs = 31337;
         rdHp.set(110.0f, rate);
         rdLp.set(700.0f, rate);
@@ -252,6 +276,125 @@ module Car
     }
 
     // Still moving (the voice plays on while it does)
+    // spec.car's model fields into m1's VehSpec, spec.env into its VehEnv, when their revs move
+    void takeSpec()
+    {
+        if (cs->rev != csRev)
+        {
+            csRev = cs->rev;
+            VehSpec* p = &m1.spec;
+            p->model = cs->model;
+            p->mass = cs->mass;
+            p->drive = cs->drive;
+            p->wheelbase = cs->wheelbase;
+            p->cgHeight = cs->cgHeight;
+            p->frontWeight = cs->frontWeight;
+            p->track = cs->track;
+            p->cdA = cs->cdA;
+            p->clA = cs->clA;
+            p->aeroBalance = cs->aeroBalance;
+            p->tyre = cs->tyre;
+            p->tyreRadius = cs->tyreRadius;
+            p->wheelInertia = cs->wheelInertia;
+            p->brakeDecel = cs->brakeDecel;
+            p->brakeBias = cs->brakeBias;
+            p->abs = cs->abs;
+            p->gearbox = cs->gearbox;
+            p->gears = cs->gears;
+            p->autoGearing = cs->autoGearing;
+            for (int i = 0; i < MAX_GEARS; ++i)
+                p->ratio[i] = cs->ratio[i];
+            p->reverseRatio = cs->reverseRatio;
+            p->finalDrive = cs->finalDrive;
+            p->clutchTorque = cs->clutchTorque;
+            p->gearEfficiency = cs->gearEfficiency;
+            p->shiftTime = cs->shiftTime;
+            p->converterK = cs->converterK;
+            p->converterRatio = cs->converterRatio;
+            p->couplingPoint = cs->couplingPoint;
+            p->lockUp = cs->lockUp;
+            p->cvtLow = cs->cvtLow;
+            p->cvtHigh = cs->cvtHigh;
+            p->cvtEfficiency = cs->cvtEfficiency;
+            p->centreSplit = cs->centreSplit;
+            p->centrePreload = cs->centrePreload;
+            p->centreKSpeed = cs->centreKSpeed;
+            p->centreKTorque = cs->centreKTorque;
+            p->centreLocked = cs->centreLocked;
+            p->frontPreload = cs->frontPreload;
+            p->frontKSpeed = cs->frontKSpeed;
+            p->frontKTorque = cs->frontKTorque;
+            p->frontLocked = cs->frontLocked;
+            p->rearPreload = cs->rearPreload;
+            p->rearKSpeed = cs->rearKSpeed;
+            p->rearKTorque = cs->rearKTorque;
+            p->rearLocked = cs->rearLocked;
+            p->liveAxle = cs->liveAxle;
+            p->proTree = cs->proTree;
+            esRev = -1;     // (apply below, once)
+        }
+        if (es->rev != esRev)
+        {
+            esRev = es->rev;
+            VehEnv* e = &m1.env;
+            e->temperature = es->temperature;
+            // (spec.env's density, surface and grade are the lead's to add: until then the defaults)
+            e->density = 1.2f;
+            e->surface = 0;
+            e->surfaceLeft = -1;
+            e->grade = 0.0f;
+            m1.apply();
+        }
+    }
+
+    // Every 16 samples with model 1: the Spec, the engine, the controls into m1; m1's state out to what Engine and the ECU
+    // read; its telemetry into tel.car. Returns the throttle the pedal asks, with a downshift's blip.
+    float vehicle16(float d16, float jEngine, float peak, float redRpm, float clutch, float brake, int lever, int buttons,
+                    float gas, float idleRpm, float rpmAvg)
+    {
+        takeSpec();
+        m1.configure(jEngine, peak, idleRpm * 0.10471976f, redRpm * 0.10471976f);
+        m1.control(d16, gas, clutch, brake, cc->handbrake, lever, cc->shiftUp, cc->shiftDown, cc->buttons, cc->mode,
+                   cc->dynoSpeed, cc->dynoRate, cc->strip);
+        lastButtons = buttons;      // (Engine's paddle pulses wait to be seen; m1 counts ctl's counters itself)
+        gear = m1.box.gear;
+        v = (float)m1.v;
+        shiftCut = m1.cutWanted();
+        float ped = gas;
+        if (m1.blipSpeed() > 0.0f)
+            ped = fmaxf(ped, fminf(fmaxf((m1.blipSpeed() * 9.5492966f - rpmAvg) * 0.002f, 0.0f), 1.0f));
+        // tel.car: card I's fields
+        VehTel* s = &m1.tel;
+        ct->accel = s->accel;
+        ct->distance = s->distance;
+        ct->shift = s->shift;
+        for (int i = 0; i < MAX_WHEELS; ++i)
+        {
+            ct->wheelSpeed[i] = s->wheelSpeed[i];
+            ct->wheelSlip[i] = s->wheelSlip[i];
+            ct->wheelLoad[i] = s->wheelLoad[i];
+            ct->wheelForce[i] = s->wheelForce[i];
+            ct->wheelTorque[i] = s->wheelTorque[i];
+            ct->wheelTemp[i] = s->wheelTemp[i];
+        }
+        ct->clutchSlip = s->clutchSlip;
+        ct->shaftTorque = s->shaftTorque;
+        ct->wheelPower = s->wheelPower;
+        ct->pitch = s->pitch;
+        ct->flags = s->flags;
+        ct->ratio = s->ratio;
+        ct->stripState = s->stripState;
+        ct->tReaction = s->tReaction;
+        ct->t60 = s->t60;
+        ct->t330 = s->t330;
+        ct->t660 = s->t660;
+        ct->v660 = s->v660;
+        ct->t1000 = s->t1000;
+        ct->t1320 = s->t1320;
+        ct->v1320 = s->v1320;
+        return ped;
+    }
+
     bool moving()
     {
         return fabsf(v) > 0.05f;
@@ -266,6 +409,12 @@ module Car
     // crank's speed after it.
     float step(float w, float tq, float dt)
     {
+        if (model == 1)
+        {
+            const float wn = m1.step(w, tq, dt);
+            v = (float)m1.v;
+            return wn;
+        }
         // a crank its start or a stall moved is not held to the gearbox
         if (locked && fabsf(w - wG) > 1.0f)
             locked = false;
@@ -359,6 +508,8 @@ module Car
     // spin or slide
     float road(float kSq)
     {
+        if (model == 1)
+            return m1.road();
         const float s = fminf(fabsf(v) / 30.0f, 1.6f);
         const float n = rnd();
         // (a truck's eighteen big tyres: twice the rumble)
@@ -379,6 +530,8 @@ module Car
     // coming down its highest; the paddles split between them.
     void followLever(int drive, int lever)
     {
+        if (model == 1)
+            return;     // (m1 reads the lever itself, every 16 samples)
         if (lastDrive != drive)
         {
             lastDrive = drive;
@@ -411,6 +564,24 @@ module Car
     float drive16(int drive, float d16, float jEngine, float peak, float gearTorque, float kg, float redRpm, float bike,
                   float clutch, float brake, int lever, int buttons, float gas, float rpm, float idleRpm, float rpmAvg)
     {
+        const int want = cs->model == 1 ? 1 : 0;
+        if (want != model || (model == 1 && lastDrive != drive))
+        {
+            // a change of model (or, in model 1, of DRIVE): at rest, in neutral. (Model 0's own change of DRIVE is the
+            // reference's, in followLever.)
+            model = want;
+            reset();
+            m1.reset();
+            lastDrive = want == 1 ? drive : 0;
+            lastLever = 0;
+            lastPos = 0;
+            shiftT = -1.0f;
+            shiftCut = false;
+            csRev = -1;
+            esRev = -1;
+        }
+        if (model == 1)
+            return vehicle16(d16, jEngine, peak, redRpm, clutch, brake, lever, buttons, gas, idleRpm, rpmAvg);
         followLever(drive, lever);
         configure(jEngine, peak, gearTorque, kg, redRpm, bike, drive == 2 ? 1 : 0);
         pedals(clutch, brake, kPedal);
