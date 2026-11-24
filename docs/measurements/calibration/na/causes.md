@@ -161,3 +161,20 @@ The remaining 2x on the V12 at idle is not explained.
 - With `boost.kind` Natural it peaks at 257 N m (VE 1.01 at 4590 rpm, 0.62 to 0.82 elsewhere), brake efficiency
   0.28 to 0.31: within about 20 % of an NA 13B Renesis (211 N m, the maker's figure).
 - The doubling is pattern 2's: the gates cannot bypass the rotary's exhaust flow.
+
+## F. The intake's charge heating: a level, not a spread (measured; a scratch tree)
+
+The intake's model leaves out the heat the manifold's and the ports' walls give the charge. The gas reaches the valve
+at the outside air's temperature. Heywood §6.2.1 has a rise of some 10 to 40 K at full load, more at low speed.
+
+The experiment: the intake valve's gas taken 25 K warmer (`engine.fm`, `stepAreas(..., intk.tAir + 25)`), at 2500,
+4500 and 6000 rpm:
+
+| Engine | VE | Torque |
+|---|---|---|
+| Economy four | 0.950, 1.043, 1.032 → 0.881, 0.971, 0.961 | -9 % |
+| 3.2 six | | -9 % |
+| Small-block | | -9 % |
+
+It is a level, like A: it would take back about a third of Woschni's gain, on every engine alike. It is physics left
+out (E's intake), worth adding with a source for the rise by speed and load. It does not separate the classes.
