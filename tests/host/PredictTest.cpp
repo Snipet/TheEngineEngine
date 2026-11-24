@@ -73,14 +73,12 @@ TEST_CASE("the service gives the coarse curve first, then the refined one, and a
 {
     const auto sim = standinSim();
     PredictOptions options;
-    options.threads = 2;
+    options.threads = 1;      // one worker takes the coarse speeds first, in order: a coarse curve is always made
     options.points = 16;
     options.coarse = 6;
     options.from = 150;
     options.to = 650;
     options.sampleRate = 24000.0;
-    options.minCycles = 40;   // slow enough that the coarse curve is seen before the rest
-    options.maxCycles = 40;
     PredictService service(sim, options);
     Build build(sim->fields());
     const std::uint64_t number = service.request(build);
@@ -90,11 +88,18 @@ TEST_CASE("the service gives the coarse curve first, then the refined one, and a
     CHECK(taken.back().points.size() == 16);
     CHECK(taken.back().request == number);
     CHECK_FALSE(taken.back().cached);
-    // the first one taken is the coarse curve (or more of it): every coarse speed is in it
-    CHECK_FALSE(taken.front().refined);
-    REQUIRE(taken.front().points.size() >= 6);
-    CHECK(taken.front().points.front().speed == 150.0);
-    CHECK(taken.front().points.back().speed == 650.0);
+    // whatever take() saw (a fast machine may be done before the first take): the coarse curve, then one curve more
+    // for each speed past it, the refined one last, were made; and every curve taken before it was a partial one with
+    // every coarse speed in it, each with more points than the one before
+    CHECK(service.curvesMade() == 1 + (16 - 6));
+    for (std::size_t i = 0; i + 1 < taken.size(); ++i)
+    {
+        CHECK_FALSE(taken[i].refined);
+        REQUIRE(taken[i].points.size() >= 6);
+        CHECK(taken[i].points.front().speed == 150.0);
+        CHECK(taken[i].points.back().speed == 650.0);
+        CHECK(taken[i + 1].points.size() > taken[i].points.size());
+    }
     CHECK(service.error().empty());
 
     // the same build again: from the cache, at once
