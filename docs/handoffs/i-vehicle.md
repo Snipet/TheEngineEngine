@@ -115,3 +115,17 @@ normalised by its peak; mu = column 3 x `VEH_SURFACE[compound][surface]` x tempe
 - Full null test green before the commit, quick null after each merge; `ctest -R '^vehicle\.'` 40 of 40.
 - For the owner of `sim/vehicle/bike.fm` (wave 2's motorcycle, in `Car::b1`): `b1.step(w, tq, dt)` has the same
   inertia question with a custom engine; it should take `jCrank` as `m1` does.
+
+# I: a launch under traction control (X-011), FLAG_FAULT in passive.engine, D2's eighteen-speed
+
+- **c0f95c2** `Vehicle::launch`: traction control on + the car's own clutch (paddles' robotised, dual clutch; not the
+  dog box, the automatic or the driver's pedal): from a standstill until the clutch has locked 0.1 s, the clutch passes
+  at most what the driven tyres carry at the ECU's slip target, PI-trimmed on the slip; the stall guard narrows to 50 to
+  250 rpm over idle. `Car::traction(on, slip)`: one line in `Engine::control16` (README's Car entry). Reference V8 in the
+  coupe, first, floored, 2 s: wet 5.51 m/s, mean slip 0.081 (off: 4.31, 1.00); dry 9.33, 0.086 (off: 6.99, 1.00); from
+  rolling (H's) 11.58, 0.100 (off: 8.48). H10's standstill test passes without [!mayfail] (its comment, H's, still says
+  "Expected to fail"). `vehicle.passive.engine` also requires no FLAG_FAULT and HostStats::engineFaults 0; re-proven in a
+  scratch copy: fixes out, the automatic's runs fail (392 restarts in 5 s); in, all pass.
+- **51908c2** `gearbox` choice 5 "Eighteen-speed" (appended): `Vehicle::eighteen` drives D2's Roadranger; reverse 13.1
+  at a crawl in Vehicle (not in rr); `Car::grindOut()` for L. Tests `vehicle.gearbox.eighteen`, `vehicle.passive` (48 runs
+  with it). For D2: `ctl.lever` 5 is the L slot, buttons 16 splitter, 32 range; the crank seen is the last sample's.
