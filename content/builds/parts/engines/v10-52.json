@@ -115,7 +115,8 @@
       "mufKind": [
         2,
         2
-      ]
+      ],
+      "headers": 1.0
     },
     "fuel": {
       "kind": "Gasoline",
