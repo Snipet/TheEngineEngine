@@ -9,7 +9,7 @@ Thirty archetypes in `content/builds/archetypes/`, each a whole build (engine, c
 | 3.0 L straight six, twin turbo | 2.98 L Inline 6 | 84.0 x 89.6 mm | 10.2:1 | Twin turbos, 1.0 bar | 7000 rpm | Rear-drive, 1700 kg | Dual clutch, 7 gears |
 | Flat-plane 4.5 L V8 | 4.50 L V8 flat-plane | 94.0 x 81.0 mm | 12.5:1 | Natural | 9000 rpm | Rear-drive, 1550 kg | Dual clutch, 7 gears |
 | Air-cooled flat six | 3.60 L Flat 6 | 100.0 x 76.4 mm | 11.3:1 | Natural | 6700 rpm | Rear-drive, 1450 kg | Manual, 5 gears |
-| Big-block 7.4 L pushrod V8 | 7.44 L V8 crossplane | 108.0 x 101.6 mm | 10.2:1 | Natural | 5600 rpm | Rear-drive, 1800 kg | Automatic, 3 gears |
+| Big-block 7.4 L pushrod V8 | 7.44 L V8 crossplane | 108.0 x 101.6 mm | 8.5:1 | Natural | 5600 rpm | Rear-drive, 1800 kg | Automatic, 3 gears |
 | Rotary twin | 1.31 L Rotary | two rotors | 9.0:1 | Twin turbos, 0.7 bar | 8000 rpm | Rear-drive, 1330 kg | Manual, 5 gears |
 | Rotary twin, side ports | 1.31 L Rotary | two rotors | 10.0:1 | Natural | 9000 rpm | Rear-drive, 1330 kg | Manual, 5 gears |
 | 1.6 L 16-valve hot hatch | 1.60 L Inline 4 | 81.0 x 77.4 mm | 10.4:1 | Natural | 7200 rpm | Front-drive, 1100 kg | Manual, 5 gears |
@@ -44,9 +44,9 @@ Thirty archetypes in `content/builds/archetypes/`, each a whole build (engine, c
 
 **Flat-plane 4.5 L V8** (`flat-plane-v8-45.json`). A high-revving flat-plane V8: 94 x 81 mm (4497 cc), 12.5:1, direct injection, four valves, 9000 rpm (the published figures of the 4.5 L 90-degree flat-plane V8 of 2009, F136-type: 419 kW at 9000 rpm, 540 N m at 6000; Wikipedia and the maker's site). Variable-length runners. In a mid-engined coupe.
 
-**Air-cooled flat six** (`air-cooled-flat-six-36.json`). A 3.6 L air- and oil-cooled flat six, two valves a cylinder on rockers, dry sump: 100 x 76.4 mm (3600 cc), 11.3:1; 184 kW at 6100 rpm and 310 N m at 4800 (the 1989 M64-type engine; Wikipedia, auto-data.net). Its intake here is one hand-set runner a cylinder: JUDGEMENT, not the real engine's. The real one is a two-stage resonance intake, a flap between its two plenum halves (closed some 3000 to 5000-5500 rpm at large throttle: forums only, Rennlist, Pelican Parts), its runners' lengths not found in any source. The cooling fan's whir is the viscous fan. In a rear-engined coupe, five-speed manual.
+**Air-cooled flat six** (`air-cooled-flat-six-36.json`). A 3.6 L air- and oil-cooled flat six, two valves a cylinder on rockers, dry sump: 100 x 76.4 mm (3600 cc), 11.3:1; 184 kW at 6100 rpm and 310 N m at 4800 (the 1989 M64-type engine; Wikipedia, auto-data.net). The real intake is a two-stage resonance intake, a flap between its two plenum halves (closed some 3000 to 5000-5500 rpm at large throttle: forums only, Rennlist, Pelican Parts), its runners' lengths not found in any source. The cooling fan's whir is the viscous fan. In a rear-engined coupe, five-speed manual.
 
-**Big-block 7.4 L pushrod V8** (`big-block-74-pushrod-v8.json`). A 1970-era 454 cubic inch big block: 4.25 x 4.00 in (107.95 x 101.6 mm, 7440 cc), 10.25:1, two valves on pushrods and a flat-tappet hydraulic cam, one four-barrel-sized throttle over a single plenum. Rated some 250 to 300 kW net and 650 N m (makers' net figures of the era; gross ratings were 20 % higher). In a heavy muscle car with a three-speed automatic.
+**Big-block 7.4 L pushrod V8** (`big-block-74-pushrod-v8.json`). A 1972 454 cubic inch big block (the LS5): 4.25 x 4.00 in (107.95 x 101.6 mm, 7440 cc), 8.5:1, two valves on pushrods and a flat-tappet hydraulic cam (its cam figures from memory), one four-barrel-sized throttle over a single plenum. Rated 270 hp SAE net at 4000 rpm and 390 lb ft at 3200 (201 kW, 529 N m: carnut.com, over-drive-magazine.com); 1973-74's LS4 270-275 hp. In a heavy muscle car with a three-speed automatic.
 
 **Rotary twin** (`rotary-twin-13.json`). A twin-rotor Wankel, 2 x 654 cc, 9.0:1, with two sequential turbos (the 13B-REW kind: 206 to 280 PS, the latter at 6500 rpm, some 294 N m at 5000; Wikipedia, makers' figures, firm to 10 %). In a light rear-drive coupe.
 

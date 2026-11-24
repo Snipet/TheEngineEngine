@@ -133,8 +133,8 @@
         210000
       ],
       "unit": "W",
-      "source": "published figures of its kind (SAE net ratings, looked up): 107.95 x 101.6 mm, 7440 cc; 26 to 28 kW a litre; looked up: carnut.com/specs/gen/vette70.html (LS5 1972 201 kW at 4000, 529 N m at 3200; LS4 1973-74 201-205 kW at 4000-4400, 515-536 N m at 2800)",
-      "basis": "cited"
+      "source": "published figures of its kind (SAE net ratings, looked up): the LS5; 26 to 28 kW a litre; looked up: carnut.com/specs/gen/vette70.html (LS5 1972 201 kW at 4000, 529 N m at 3200; LS4 1973-74 201-205 kW at 4000-4400, 515-536 N m at 2800); JUDGEMENT here: its head's port quality is a class fitted by N1 to measured torque over the target (content/builds/archetypes/generate.py PORTS)",
+      "basis": "judgement"
     },
     {
       "name": "Speed at peak power",
@@ -148,8 +148,8 @@
         460.8
       ],
       "unit": "rad/s",
-      "source": "published figures of its kind (SAE net ratings, looked up): 107.95 x 101.6 mm, 7440 cc: 4000 to 4400 rpm; looked up: carnut.com/specs/gen/vette70.html (LS5 1972 201 kW at 4000, 529 N m at 3200; LS4 1973-74 201-205 kW at 4000-4400, 515-536 N m at 2800)",
-      "basis": "cited"
+      "source": "published figures of its kind (SAE net ratings, looked up): the LS5: 4000 to 4400 rpm; looked up: carnut.com/specs/gen/vette70.html (LS5 1972 201 kW at 4000, 529 N m at 3200; LS4 1973-74 201-205 kW at 4000-4400, 515-536 N m at 2800); JUDGEMENT here: its head's port quality is a class fitted by N1 to measured torque over the target (content/builds/archetypes/generate.py PORTS)",
+      "basis": "judgement"
     },
     {
       "name": "Peak torque",
@@ -163,8 +163,8 @@
         540
       ],
       "unit": "N m",
-      "source": "published figures of its kind (SAE net ratings, looked up): 107.95 x 101.6 mm, 7440 cc; BMEP 8.6 to 9.1 bar (a naturally aspirated petrol engine 10 to 13 bar, turbocharged 18 to 25, a modern truck diesel 20 to 25: Heywood, Internal Combustion Engine Fundamentals, ch. 2); looked up: carnut.com/specs/gen/vette70.html (LS5 1972 201 kW at 4000, 529 N m at 3200; LS4 1973-74 201-205 kW at 4000-4400, 515-536 N m at 2800)",
-      "basis": "cited"
+      "source": "published figures of its kind (SAE net ratings, looked up): the LS5; BMEP 8.6 to 9.1 bar (a naturally aspirated petrol engine 10 to 13 bar, turbocharged 18 to 25, a modern truck diesel 20 to 25: Heywood, Internal Combustion Engine Fundamentals, ch. 2); looked up: carnut.com/specs/gen/vette70.html (LS5 1972 201 kW at 4000, 529 N m at 3200; LS4 1973-74 201-205 kW at 4000-4400, 515-536 N m at 2800); JUDGEMENT here: its head's port quality is a class fitted by N1 to measured torque over the target (content/builds/archetypes/generate.py PORTS)",
+      "basis": "judgement"
     },
     {
       "name": "Speed at peak torque",
@@ -178,8 +178,8 @@
         335.1
       ],
       "unit": "rad/s",
-      "source": "published figures of its kind (SAE net ratings, looked up): 107.95 x 101.6 mm, 7440 cc: 2800 to 3200 rpm (a turbocharged engine's plateau: its whole span); looked up: carnut.com/specs/gen/vette70.html (LS5 1972 201 kW at 4000, 529 N m at 3200; LS4 1973-74 201-205 kW at 4000-4400, 515-536 N m at 2800)",
-      "basis": "cited"
+      "source": "published figures of its kind (SAE net ratings, looked up): the LS5: 2800 to 3200 rpm (a turbocharged engine's plateau: its whole span); looked up: carnut.com/specs/gen/vette70.html (LS5 1972 201 kW at 4000, 529 N m at 3200; LS4 1973-74 201-205 kW at 4000-4400, 515-536 N m at 2800); JUDGEMENT here: its head's port quality is a class fitted by N1 to measured torque over the target (content/builds/archetypes/generate.py PORTS)",
+      "basis": "judgement"
     },
     {
       "name": "Warm idle",
@@ -246,8 +246,8 @@
         1.02
       ],
       "unit": "fraction",
-      "source": "a naturally aspirated four-stroke's VE at full load near its torque peak is 0.85 to 1.0 (Heywood, Internal Combustion Engine Fundamentals, ch. 6, fig. 6-9 and the text); measured at 3000 rpm",
-      "basis": "recalled"
+      "source": "a naturally aspirated four-stroke's VE at full load near its torque peak is 0.85 to 1.0 (Heywood, Internal Combustion Engine Fundamentals, ch. 6, fig. 6-9 and the text); measured at 3000 rpm; JUDGEMENT here: its head's port quality is a class fitted by N1 to measured torque over the target (content/builds/archetypes/generate.py PORTS)",
+      "basis": "judgement"
     },
     {
       "name": "Volumetric efficiency low down",
@@ -263,7 +263,7 @@
         0.95
       ],
       "unit": "fraction",
-      "source": "VE's shape: below the torque peak it falls away, the more so the hotter the cam (Heywood, Internal Combustion Engine Fundamentals, ch. 6); measured at 2000 rpm",
+      "source": "VE's shape: below the torque peak it falls away, the more so the hotter the cam (Heywood, Internal Combustion Engine Fundamentals, ch. 6); measured at 2000 rpm; JUDGEMENT here: its head's port quality is a class fitted by N1 to measured torque over the target (content/builds/archetypes/generate.py PORTS)",
       "basis": "judgement"
     },
     {

@@ -144,8 +144,8 @@
         535000
       ],
       "unit": "W",
-      "source": "published figures of its kind (makers' figures, firm): 3902 cc; 115 to 137 kW a litre",
-      "basis": "recalled"
+      "source": "published figures of its kind (makers' figures, firm): 3902 cc; 115 to 137 kW a litre; JUDGEMENT here: its head's port quality is a class fitted by N1 to measured torque over the target (content/builds/archetypes/generate.py PORTS)",
+      "basis": "judgement"
     },
     {
       "name": "Speed at peak power",
@@ -170,8 +170,8 @@
         837.8
       ],
       "unit": "rad/s",
-      "source": "published figures of its kind (makers' figures, firm): 3902 cc: 7500 to 8000 rpm",
-      "basis": "recalled"
+      "source": "published figures of its kind (makers' figures, firm): 3902 cc: 7500 to 8000 rpm; JUDGEMENT here: its head's port quality is a class fitted by N1 to measured torque over the target (content/builds/archetypes/generate.py PORTS)",
+      "basis": "judgement"
     },
     {
       "name": "Peak torque",
@@ -196,8 +196,8 @@
         805
       ],
       "unit": "N m",
-      "source": "published figures of its kind (makers' figures, firm): 3902 cc; BMEP 24.5 to 25.9 bar (a naturally aspirated petrol engine 10 to 13 bar, turbocharged 18 to 25, a modern truck diesel 20 to 25: Heywood, Internal Combustion Engine Fundamentals, ch. 2)",
-      "basis": "recalled"
+      "source": "published figures of its kind (makers' figures, firm): 3902 cc; BMEP 24.5 to 25.9 bar (a naturally aspirated petrol engine 10 to 13 bar, turbocharged 18 to 25, a modern truck diesel 20 to 25: Heywood, Internal Combustion Engine Fundamentals, ch. 2); JUDGEMENT here: its head's port quality is a class fitted by N1 to measured torque over the target (content/builds/archetypes/generate.py PORTS)",
+      "basis": "judgement"
     },
     {
       "name": "Speed at peak torque",
@@ -222,8 +222,8 @@
         602.1
       ],
       "unit": "rad/s",
-      "source": "published figures of its kind (makers' figures, firm): 3902 cc: 3000 to 5750 rpm (a turbocharged engine's plateau: its whole span)",
-      "basis": "recalled"
+      "source": "published figures of its kind (makers' figures, firm): 3902 cc: 3000 to 5750 rpm (a turbocharged engine's plateau: its whole span); JUDGEMENT here: its head's port quality is a class fitted by N1 to measured torque over the target (content/builds/archetypes/generate.py PORTS)",
+      "basis": "judgement"
     },
     {
       "name": "Warm idle",
@@ -290,7 +290,7 @@
         145000.0
       ],
       "unit": "Pa over the air",
-      "source": "the build's own target (1.30 bar); a wastegate or vane loop holds a steady full load within some 0.1 bar of its target once spooled (makers' boost-control tolerances; judgement)",
+      "source": "the build's own target (1.30 bar); a wastegate or vane loop holds a steady full load within some 0.1 bar of its target once spooled (makers' boost-control tolerances; judgement); JUDGEMENT here: its head's port quality is a class fitted by N1 to measured torque over the target (content/builds/archetypes/generate.py PORTS)",
       "basis": "judgement"
     },
     {
