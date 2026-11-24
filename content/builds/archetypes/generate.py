@@ -178,7 +178,11 @@ arch(slug="air-cooled-flat-six-36", runner=0.35, name="Air-cooled flat six", geo
      grade="Premium (91)", car="rear-engine-classic", timing="Chain", fan="Viscous clutch",
      notes="A 3.6 L air- and oil-cooled flat six, two valves a cylinder on rockers, dry sump: 100 x 76.4 mm "
            "(3600 cc), 11.3:1; 184 kW at 6100 rpm and 310 N m at 4800 (the 1989 M64-type engine; Wikipedia, "
-           "auto-data.net). The cooling fan's whir is the viscous fan. In a rear-engined coupe, five-speed manual.")
+           "auto-data.net). Its intake here is one 0.53 m runner a cylinder from the generator's rule, 0.5 x (5000 / "
+           "torque-peak rpm)^1.3: JUDGEMENT, not the real engine's. The real one is a two-stage resonance intake, a "
+           "flap between its two plenum halves (closed some 3000 to 5000-5500 rpm at large throttle: forums only, "
+           "Rennlist, Pelican Parts), its runners' lengths not found in any source. The cooling fan's whir is the "
+           "viscous fan. In a rear-engined coupe, five-speed manual.")
 arch(slug="big-block-74-pushrod-v8", name="Big-block 7.4 L pushrod V8", geo="ref-12-v8-cross",
      layout="V8 crossplane", bore=107.95, stroke=101.6, rod=155.8, cr=10.25, valves=2, dIn=52.6, dEx=44.5,
      cam=(282, 224, 11.9, 110, 290, 234, 11.9, 114), train="Pushrod", redline=5600, idle=650,
@@ -219,17 +223,22 @@ arch(slug="supercharged-v8-62", runner=0.3, name="Supercharged 6.2 L V8", geo="r
            "some 0.6 bar (the LSA kind: 415 kW at 6100 rpm, 746 N m at 3800; gmauthority.com, a community spec "
            "table for the compression). In a heavy six-speed coupe.")
 arch(slug="small-block-57-carb", name="Small-block 5.7 L, carburettor-like", geo="ref-12-v8-cross",
-     layout="V8 crossplane", bore=101.6, stroke=88.4, rod=144.8, cr=9.0, valves=2, dIn=49.3, dEx=38.1,
+     # the L48's 8.5:1 (corvsport.com's 1977 table; the L82 9.0) and its "2 into 1 into 2" exhaust: both banks into
+     # one converter, split again behind it to two mufflers (restore-an-old-car.com's C3 exhaust; NCRS forum: the last
+     # true duals 1974): here one side through one converter and muffler (N3, 20:34)
+     layout="V8 crossplane", bore=101.6, stroke=88.4, rod=144.8, cr=8.5, valves=2, dIn=49.3, dEx=38.1,
+     exhaust={"sides": 1, "converter": [1, 1], "mufKind": [2, 2]},
      # the L48's cam (N3, 20:06: toward the target's middle, not the hotter L82's): about 195/202 deg at 0.050 in and
      # 0.390/0.410 in lift (from memory, firm to some 5 deg), the seat some 54 deg longer as this hydraulic flat tappet's
      cam=(251, 197, 9.9, 110, 256, 204, 10.4, 114), train="Pushrod", redline=5500, idle=700,
      intake=dict(runnerLength=0.18, plenumVolume=0.0025), friction="Flat tappet", grade="Regular (87)",
      car="muscle-manual", timing="Chain", fan="Viscous clutch",
-     notes="A 350 cubic inch small block (4.00 x 3.48 in: 101.6 x 88.4 mm, 5733 cc), 9:1, two valves on pushrods, a "
+     notes="A 350 cubic inch small block (4.00 x 3.48 in: 101.6 x 88.4 mm, 5733 cc), 8.5:1, two valves on pushrods, a "
            "flat-tappet cam (the L48's), one big throttle over an open plenum as a four-barrel carburettor's. The L48 "
            "of 1975 to 1980 is rated 123 to 145 kW net (165 to 195 hp) and 346 to 380 N m (255 to 280 lb ft), 1977's "
            "180 hp at 4000 rpm and 270 lb ft at 2400; the L82 157 kW at 5200 and 346 N m at 3600 (SAE net, looked up: "
-           "corvsport.com, corvetteactioncenter.com). Four-speed manual, live axle.")
+           "corvsport.com, corvetteactioncenter.com). One converter for both banks (2 into 1 into 2). Four-speed manual, "
+           "live axle.")
 arch(slug="v10-52", runner=0.28, name="V10 5.2 L", geo="v10-90", layout="V10", bore=84.5, stroke=92.8, rod=154.0, cr=12.5,
      valves=4, dIn=33.8, dEx=28.0, cam=(268, 240, 11.8, 108, 260, 232, 10.8, 112), train="Finger", phase=(42, 42),
      redline=8700, idle=900, direct=True, grade="Premium (91)", car="awd-supercar", timing="Chain",
@@ -661,12 +670,22 @@ def build(a):
     # package L's listener on: every source where it is on the car; the first camera behind the car in the open,
     # the engine where the class carries it
     snd = {"model": "Places", "camera": "Rear", "place": "Field", "ground": "Asphalt",
-           "enginePlace": ENGINE_PLACE.get(a["car"], "Front")}
+           "enginePlace": ENGINE_PLACE.get(a["car"], "Front"), "level": LEVELS.get(a["slug"], 0.0)}
     spec = {"engine": e, "valve": v, "intake": i, "boost": bo, "exhaust": x, "fuel": f, "ecu": nest(t),
             "car": car, "env": {"temperature": 288.15, "pressure": 101325.0}, "voices": vo, "sound": snd}
     switches_on(spec, a["slug"])
     return {"format": "tee-build", "version": 1, "name": a["name"], "notes": a["notes"], "spec": spec}
 
+
+# each build's sound.level trim (dB), measured by levels.py (L's scheme: a free rev to a 0.3 peak)
+def _levels():
+    path = os.path.join(HERE, "sound-levels.tsv")
+    if not os.path.exists(path):
+        return {}
+    return {r[0]: float(r[2]) for r in (l.rstrip("\n").split("\t") for l in open(path)) if r[0][:1] != "#"}
+
+
+LEVELS = _levels()
 
 # where each class carries its engine (the listener's paths to each camera)
 ENGINE_PLACE = {"mid-engine": "Mid", "awd-supercar": "Mid", "rear-engine-classic": "Rear"}
@@ -751,6 +770,9 @@ def main():
                       "Then drive: in first, hold the brake, press the launch button, floor the pedal and let go for a "
                       "launch-control start (traction control holds the wheelspin), and listen to the direct injection's "
                       "tick and the turbo's whistle as the dual clutch shifts.\n\n" + first["notes"])
+    # L (20:27): for the first minute standing, the Side camera hears the exhaust and the bay together
+    first["spec"]["sound"]["camera"] = "Side"
+    first["spec"]["sound"]["level"] = LEVELS.get("first", 0.0)
     write(os.path.join(ROOT, "content", "builds", "first.json"), first)
     loose_parts(A)
     manual(A)

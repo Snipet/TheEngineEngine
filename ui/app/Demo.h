@@ -147,7 +147,12 @@ namespace tee::ui
         bool frozen_ = false;
         std::vector<std::string> names_;
         std::vector<double> values_;
-        std::map<std::string, double, std::less<>> held_;
+        // Names held by set(): each keeps its handle (1000 + its index) for good, whatever is set or forgotten later
+        // (a Live caches handles; U3 found shuffled values when they were places in a map).
+        std::vector<std::string> heldNames_;
+        std::vector<double> heldValues_;
+        std::map<std::string, std::size_t, std::less<>> heldIndex_;
+        const double* held(std::string_view name) const;
         std::set<std::string, std::less<>> forgotten_;
         std::uint64_t generation_ = 0;
         int reads_ = 0;

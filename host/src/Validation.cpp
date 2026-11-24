@@ -341,6 +341,9 @@ namespace tee
                     load.worker = false;
                     if (timeline.warm)
                         load.hold = warmEngine();
+                    if (timeline.warmTyres)
+                        for (const HeldValue& h : warmTyres())
+                            load.hold.push_back(h);
                     if (!host.attach(sim, load, error))
                         return false;
                     copy.attach(&host);

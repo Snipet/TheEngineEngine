@@ -51,6 +51,14 @@ int hostMain(int argc, char** argv);
 
 int main(int argc, char** argv)
 {
+    // the files named by --out and --csv, whichever path renders: removed before anything can fail, so a failed run
+    // never leaves the last one's behind to be read as its own (the default names: --build's path removes them too)
+    for (int i = 1; i + 1 < argc; ++i)
+        if (const std::string a = argv[i]; (a == "--out" || a == "--csv") && std::string(argv[i + 1]) != "-")
+        {
+            std::error_code removed;
+            std::filesystem::remove(argv[i + 1], removed);
+        }
     for (int i = 1; i < argc; ++i)
         if (std::string(argv[i]) == "--engine")
             return engineMain(argc, argv);
