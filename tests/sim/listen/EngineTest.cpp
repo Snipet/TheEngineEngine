@@ -184,3 +184,31 @@ TEST_CASE("the ceiling: every source at its loudest and the camera at its closes
             CHECK(worstLim < -3.0);     // it was asked to work
     }
 }
+
+TEST_CASE("a motorcycle heard from the rider's seat, revved and launched", "[listen][engine]")
+{
+    Bench b("bike-superbike");
+    model1(b);
+    sound(b, "camera", 4);
+    b.start(1.0);
+    double peak = 0.0;
+    bool finite = true;
+    auto watch = [&] {
+        for (std::size_t i = 0; i < b.left().size(); ++i)
+        {
+            finite = finite && std::isfinite(b.left()[i]) && std::isfinite(b.right()[i]);
+            peak = std::max({peak, double(std::fabs(b.left()[i])), double(std::fabs(b.right()[i]))});
+        }
+    };
+    b.ctl().throttle = 1.0f;
+    b.play(2.0, watch);
+    const double in = b.field("tel.sound.srcLevel[2]");
+    const double ex = b.field("tel.sound.srcLevel[0]");
+    b.ctl().throttle = 0.0f;
+    b.play(1.0, watch);
+    std::printf("superbike, rider's seat: peak %.3f; at full throttle the intake %.1f dB, the exhaust %.1f dB at the head\n",
+                peak, in, ex);
+    CHECK(finite);
+    CHECK(peak < 0.99);
+    CHECK(peak > 0.01);
+}

@@ -1,0 +1,89 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Tuned 6.7 L pickup",
+  "notes": "Card D2. A pickup's 6.7 L inline six (107 x 124 mm, 17.3:1, one turbo) on a common rail (1800 bar, a 3 % pilot) tuned: 30 % over-fuel with the smoke limiter removed, so it smokes while the turbo spools ('rolling coal' as a consequence), injection 3 degrees early, a straight pipe; an exhaust brake by the turbine's vanes (off at its switch). A 3.6 t pickup, automatic. Air at 300 K, 101325 Pa.",
+  "spec": {
+    "engine": {
+      "layout": "Inline 6",
+      "displacement": 0.0067,
+      "boreStroke": 0.863,
+      "compression": 17.3,
+      "flywheel": 1,
+      "idleTrim": -350,
+      "redlineTrim": 0,
+      "rough": 0,
+      "benchLoad": 0
+    },
+    "valve": {
+      "cam": 0.9999,
+      "auxOpen": 695,
+      "auxDur": 100,
+      "auxLift": 0.0025
+    },
+    "boost": {
+      "kind": "Turbo",
+      "level": 1,
+      "size": 1,
+      "blowOff": 1
+    },
+    "exhaust": {
+      "headers": 0.3247,
+      "pipe": 0.6325,
+      "crossover": 0,
+      "muffler": 0.0
+    },
+    "fuel": {
+      "kind": "Diesel",
+      "model": "Fuels",
+      "grade": "Diesel",
+      "rail": 1800,
+      "soiAdd": 3,
+      "pilot": 0.03,
+      "overFuel": 0.3
+    },
+    "ecu": {
+      "timing": 0,
+      "pops": 0,
+      "starter": true,
+      "governor": "Electronic",
+      "droop": 0.06,
+      "engineBrake": "None",
+      "brakeSwitch": "Off",
+      "exhaustBrake": "Turbine vanes",
+      "fuelBoost": 75000,
+      "ratedSpeed": 219.9,
+      "afc": 0
+    },
+    "car": {
+      "kind": "Car",
+      "model": "Vehicle",
+      "mass": 3600,
+      "drive": "Rear",
+      "wheelbase": 3.8,
+      "cgHeight": 0.8,
+      "frontWeight": 0.6,
+      "track": 1.75,
+      "cdA": 1.6,
+      "tyre": "Street",
+      "tyreRadius": 0.4,
+      "wheelInertia": 3.0,
+      "brakeDecel": 0.9,
+      "gearbox": "Automatic",
+      "gears": 6,
+      "autoGearing": true
+    },
+    "env": {
+      "temperature": 300,
+      "pressure": 101325
+    },
+    "sound": {
+      "view": "Exhaust",
+      "distance": 0.2994,
+      "room": 0.6176,
+      "level": 2.8467,
+      "intake": 0.5,
+      "mechanical": 0.6503
+    }
+  }
+}

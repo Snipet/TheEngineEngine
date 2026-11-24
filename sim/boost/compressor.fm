@@ -65,7 +65,7 @@ module BoostCompressor
     float t2;           // its outlet's temperature, K
     float power;        // W it takes from its shaft
 
-    void size(float dInd, float dEx, float ar, float etaPeak)
+    void size(float dInd, float dEx, float ar, float etaPeak, float dt)
     {
         const float ri = 0.5f * fmaxf(dInd, 0.005f);
         rTip = 0.5f * fmaxf(dEx, dInd * 1.05f);
@@ -75,7 +75,7 @@ module BoostCompressor
         phiB = phiK + 0.45f * (1.0f - phiK);
         etaMax = etaPeak;
         const float len = 10.0f * 2.0f * ri + 0.2f;
-        kDuct = kBoostDt * aInd / len;
+        kDuct = dt * aInd / len;
     }
 
     // The choke flow (kg/s) at a tip Mach number and an inlet's state

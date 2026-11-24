@@ -7,6 +7,9 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <cmath>
+#include <fstream>
+#include <iterator>
+#include <string>
 #include <vector>
 
 namespace
@@ -191,4 +194,55 @@ TEST_CASE("engine: a naked twin's chain whines at its sprocket's teeth and its l
     INFO("sprocket " << w << " rad/s: expected " << f << ", found " << best);
     CHECK(std::fabs(best - f) < 0.02 * f);
     CHECK(tee::test::sound::rms(diff(on, off, 5.9, 7.9)) > 0.0);
+}
+
+TEST_CASE("engine: a bike's own sequential box whines at its constant mesh's teeth on its input shaft; no final drive's", "[sound][engine][bike]")
+{
+    auto run = [](double db) {
+        tee::test::Scenario s("bike-naked-twin");
+        s.rate(96000.0);
+        s.at(0.0).mode(1).lever(0).clutch(0.0).brake(0.0).throttle(0.0).ignition(tee::On).spec("voices.model", 1.0)
+            .spec("voices.whine", db).spec("voices.axle", 0.0).spec("voices.chain", -60.0).spec("voices.lashLevel", -60.0)
+            .spec("voices.dryClutch", -60.0).spec("voices.rattle", -60.0);
+        s.at(0.25).ignition(tee::Start).until(2.0).ignition(tee::On);
+        s.at(2.5).shiftUp();
+        s.at(2.8).throttle(0.3).ramp(0.2);
+        return s.run(5.0);
+    };
+    const auto on = run(6.0), off = run(-60.0);
+    REQUIRE(on.ok());
+    // the input shaft with the clutch in: the crank over the primary ratio (bike-naked-twin's)
+    const double crankHz = on.tel("engine.speed").during(4.5, 4.75).mean() / kTwoPi;
+    double primary = 1.7;
+    {
+        std::ifstream in(std::string(TEE_SOURCE_DIR) + "/content/builds/bike-naked-twin.json");
+        const std::string text((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+        const auto at = text.find("\"primaryRatio\"");
+        if (at != std::string::npos)
+            primary = std::stod(text.substr(text.find(':', at) + 1));
+    }
+    const double f = 19.0 * crankHz / primary;
+    const auto d = diff(on, off, 4.5, 4.75);
+    double best = 0.0, bestA = -1.0;
+    for (double g = f * 0.97; g <= f * 1.03; g += f * 0.001)
+        if (const double a = tee::test::sound::line(d, g); a > bestA)
+        {
+            bestA = a;
+            best = g;
+        }
+    INFO("crank " << crankHz << " Hz, primary " << primary << ": expected " << f << ", found " << best);
+    CHECK(std::fabs(best - f) < 0.02 * f);
+    // the final drive is the chain: switching the axle's whine changes nothing
+    const auto axleOff = [] {
+        tee::test::Scenario s("bike-naked-twin");
+        s.rate(96000.0);
+        s.at(0.0).mode(1).lever(0).clutch(0.0).brake(0.0).throttle(0.0).ignition(tee::On).spec("voices.model", 1.0)
+            .spec("voices.whine", 6.0).spec("voices.axle", -60.0).spec("voices.chain", -60.0).spec("voices.lashLevel", -60.0)
+            .spec("voices.dryClutch", -60.0).spec("voices.rattle", -60.0);
+        s.at(0.25).ignition(tee::Start).until(2.0).ignition(tee::On);
+        s.at(2.5).shiftUp();
+        s.at(2.8).throttle(0.3).ramp(0.2);
+        return s.run(5.0);
+    }();
+    CHECK(tee::test::sound::rms(diff(on, axleOff, 0.0, 5.0)) == 0.0);
 }
