@@ -1,0 +1,211 @@
+// ecu/ecu.fm: the engine's control (module Ecu). Owner: package H.
+//
+// What the engine's computer and its driver decide, every 16 samples: the engine's state (stopped, cranking, running,
+// running down), the speed it goes by (the firing's ripple smoothed out, and how fast it changes), the idle and the
+// redline it has (the layout's, moved by the dials, a cold engine's fast idle), the driver that holds a speed (the
+// reference's key driver; holdSpeed), the throttle plate following the pedal, the idle valve holding the idle, the
+// spark's quick trim against a sagging or a running-up speed, the dashpot, the rev limiter, the fuel cut on the
+// overrun, the knock retard, a stall. What it leaves out: maps (package H adds them), closed-loop fuel, a diesel's own
+// governor curve (its droop is the burn's: combustion/combustion.fm).
+//
+//   targetOf(note, ...)     the speed a key asks for
+//   sense(...)              every 16 samples, first
+//   driver(...)             every 16 samples: the key driver's pedal
+//   control(...)            every 16 samples, after the vehicle: the rest; true when the engine has come to rest
+#pragma once
+
+module Ecu
+{
+    float sinceStart;   // seconds since it started (0 while it cranks): a diesel's start fuel tapers off
+    float idleRpm;      // the idle and the redline this engine has: the layout's, moved by the dials
+    float redRpm;
+    int state;          // 0 stopped, 1 cranking, 2 running, 3 the key off: running down
+    float throttle;     // the throttle plate, 0 to 1
+    float pedal;
+    float bypass;       // the idle valve, 0 to 1
+    float idleInt;
+    float govInt;
+    float rpmRate;      // how fast the speed changes, rpm/s (smoothed)
+    float rpmLast;
+    float rpmAvg;       // the speed the ECU and the driver go by: the firing's ripple smoothed out
+    float trim;         // the ECU's quick hand on the spark: more or less torque this cycle
+    float trimInt;
+    float gK;           // the driver: how hard it chases the key's speed, how far ahead it looks, how it settles
+    float gTau;
+    float gTrim;
+    float gI;
+    bool fuelCut;
+    bool limiting;
+    bool dfco;
+    float sinceLift;    // seconds since the throttle shut
+    float holdLeft;     // seconds of idle left before the engine stops by itself
+    float starterOn;
+    int keyCount;
+    float keyNote[16];
+    float keyVel[16];
+    int tokenCounter;
+    int rendering;
+    float target;
+    float pedalMax;
+    float stallT;       // seconds under the stall speed
+    float offHold;      // seconds the start key has been held while it ran (a second switches it off)
+    bool offArmed;      // that key went down while it ran
+    float kRet;         // the spark its ECU has taken back for knock, degrees
+
+    // The speed a key asks for: across the keyboard from idle (C2) to the redline (C6), or (DRIVE PITCH) the speed at
+    // which the engine's firing is the note's pitch
+    float targetOf(float note, float bend, float bendRange, int keys, int rotary, int n)
+    {
+        const float b = bend * bendRange;
+        if (keys == 1)
+        {
+            const float hz = 440.0f * expf(0.0577622650f * (note + b - 69.0f));
+            const float perRev = rotary != 0 ? 2.0f : 0.5f * (float)n;
+            return 60.0f * hz / perRev;
+        }
+        const float f = fminf(fmaxf((note - 36.0f) / 48.0f, 0.0f), 1.08f);
+        return (idleRpm + f * (redRpm - idleRpm)) * expf(0.0577622650f * b);
+    }
+
+    // Every 16 samples, first: the knock retard given back, the idle and the redline this engine has (the layout's,
+    // idleBase and redBase, moved by the dials, and coldIdle: Heat's fast idle), the speed it goes by
+    void sense(float d16, float rpm, float idleBase, float idleDial, float cam, float coldIdle, float redBase,
+               float redlineDial)
+    {
+        kRet = fmaxf(kRet - 2.0f * d16, 0.0f);
+        // (a big cam's overlap dilutes the idle more the slower it turns: its tune idles it higher, as real ones are)
+        idleRpm = fmaxf(idleBase + idleDial + 350.0f * fmaxf(cam - 0.35f, 0.0f) / 0.65f + coldIdle, 350.0f);
+        redRpm = fmaxf(redBase + redlineDial, idleRpm + 1500.0f);
+        rpmAvg += (rpm - rpmAvg) * (1.0f - expf(-d16 / 0.035f));
+        rpmRate += ((rpmAvg - rpmLast) / d16 - rpmRate) * (1.0f - expf(-d16 / 0.05f));
+        rpmLast = rpmAvg;
+    }
+
+    // Every 16 samples: the driver, aiming at the newest key's speed as hard as the key was struck (MODE_BENCH: the
+    // reference's keys; holdSpeed's key): the pedal it asks for (0 when it drives nothing)
+    float driver(float d16, int drive, float bend, float bendRange, int keys, int rotary, int n)
+    {
+        // the driver: to the key's speed, as hard as the key was struck (driven, the pedal is the throttle)
+        float ped = 0.0f;
+        if (keyCount > 0 && state == 2 && drive == 0)
+            target = targetOf(keyNote[keyCount - 1], bend, bendRange, keys, rotary, n);
+        if (keyCount > 0 && state == 2 && drive == 0 && target > idleRpm + 120.0f)
+        {
+            pedalMax = 0.12f + 0.88f * keyVel[keyCount - 1];
+            // where the speed will be in a moment, at the rate it is going: the plenum and the cycle lag the pedal
+            const float e = (target - rpmAvg) * 0.001f;
+            const float ep = (target - rpmAvg - gTau * rpmRate) * 0.001f;
+            // gently near the speed (the integral finds the throttle that holds it), hard when far below it
+            const float pp = gK * ep + 1.5f * fmaxf(ep - 0.7f, 0.0f);
+            const float raw = pp + govInt;
+            if (fabsf(e) < 2.0f && !(raw > pedalMax && e > 0.0f) && !(raw < 0.0f && e < 0.0f))
+                govInt = fminf(fmaxf(govInt + gI * e * d16, 0.0f), pedalMax);
+            ped = fminf(fmaxf(pp + govInt, 0.0f), pedalMax);
+        }
+        else
+            govInt *= 0.98f;
+        return ped;
+    }
+
+    // Every 16 samples, after the vehicle (pedIn: the driver's pedal, or driven the vehicle's): the throttle by hand
+    // (modwheel, pressure: MODE_BENCH's), the plate, the idle valve, the spark's trim, the dashpot, the limiter, the cuts
+    // (shiftCut: the vehicle's upshift), the state (gear, clutch: driven, the starter's clutch switch). True when the
+    // engine has just come to rest (the crank's speed is then 0)
+    bool control(float d16, float pedIn, int drive, float modwheel, float pressure, float rpm, int fuelUse, float warm,
+                 bool shiftCut, int gear, float clutch, float omega)
+    {
+        float ped = fmaxf(pedIn, fmaxf(modwheel, pressure));
+        if (state != 2)
+            ped = state == 1 ? 0.0f : ped;
+        pedal = ped;
+        throttle += (pedal - throttle) * (1.0f - expf(-d16 / 0.03f));
+        // the idle valve holds the idle speed
+        const float ie = (idleRpm - rpmAvg) * 0.001f;
+        const float iep = (idleRpm - rpmAvg - 0.2f * rpmRate) * 0.001f;
+        if (rpmAvg < idleRpm + 500.0f)
+            idleInt = fminf(fmaxf(idleInt + 0.5f * ie * d16, 0.0f), 1.0f);
+        bypass = fminf(fmaxf(idleInt + 0.5f * iep, 0.0f), 1.0f);
+        // and the spark, which acts at once: more torque when the speed sags, less when it runs up
+        trim = rpmAvg < idleRpm + 450.0f ? fminf(fmaxf(1.0f + 1.6f * (idleRpm - rpmAvg - 0.08f * rpmRate) * 0.001f, 0.55f), 1.35f) : 1.0f;
+        // driven, it is an ECU's idle spark: with the throttle shut it takes the torque down as far as idling needs, without
+        // the step back to full at idle + 450 (an engine whose cam and boost give more than its friction there, the
+        // throttle shut, would run up into the overrun cut and out again, over and over); with the throttle open it only
+        // helps below the idle, against a stall
+        if (drive != 0)
+        {
+            const float tr = 1.0f + 1.6f * (idleRpm - rpmAvg - 0.08f * rpmRate) * 0.001f;
+            trim = pedal < 0.02f ? fminf(fmaxf(tr, 0.3f), 1.35f) : fminf(fmaxf(tr, 1.0f), 1.35f);
+        }
+        // holding a key's speed, the ECU trims the same way (as a drive-by-wire car holds revs in neutral)
+        if (keyCount > 0 && state == 2 && drive == 0 && target > idleRpm + 120.0f && rpmAvg > target - 400.0f)
+        {
+            // (and its integral: no steady error, so a held key sits on its speed, in tune in PITCH mode)
+            trimInt = fminf(fmaxf(trimInt + 0.004f * (target - rpmAvg) * d16, -0.4f), 0.3f);
+            trim = fminf(fmaxf(1.0f - gTrim * (rpmAvg + 0.05f * rpmRate - target) * 0.001f + trimInt, 0.1f), 1.3f);
+        }
+        else
+            trimInt *= 0.95f;
+        // coasting down from speed the valve stays open a little (a dashpot), so the plenum is not pulled to nothing
+        if (fuelUse == 0)
+            bypass = fmaxf(bypass, 0.35f * fminf(fmaxf((rpm - idleRpm - 400.0f) * 0.001f, 0.0f), 1.0f) * expf(-sinceLift / 0.6f));
+        // the ECU: the rev limiter, and no fuel with the throttle shut at speed
+        // (a diesel's governor takes the fuel back near its redline instead: chargeDiesel)
+        if (fuelUse == 0 && rpm > redRpm)
+            limiting = true;
+        else if (fuelUse != 0 || rpm < redRpm - 140.0f)
+            limiting = false;
+        if (pedal < 0.02f)
+            sinceLift += d16;
+        else
+            sinceLift = 0.0f;
+        if (sinceLift > 0.12f && rpmAvg > idleRpm + 700.0f && state == 2)
+            dfco = true;
+        else if (rpmAvg < idleRpm + 320.0f || pedal >= 0.02f)
+            dfco = false;
+        const bool crankLow = warm >= 1.0f ? rpm < 120.0f : rpmAvg < 120.0f - 80.0f * (1.0f - warm);
+        fuelCut = limiting || dfco || shiftCut || state == 0 || state == 3 || (state == 1 && crankLow);
+        // the engine's state
+        if (state == 1)
+        {
+            starterOn = 1.0f;
+            if (rpm > 550.0f)
+            {
+                state = 2;
+                starterOn = 0.0f;
+            }
+        }
+        else
+            starterOn = 0.0f;
+        sinceStart = state == 1 ? 0.0f : fminf(sinceStart + d16, 10.0f);
+        if (state == 2 && keyCount == 0 && drive == 0)
+        {
+            holdLeft -= d16;
+            if (holdLeft <= 0.0f)
+                state = 3;
+        }
+        // driven: it stalls when the crank is dragged under its stall speed; the start key held a second switches it off;
+        // the clutch let up in gear stops the starter (its switch)
+        if (drive != 0)
+        {
+            if (state == 1 && gear != 0 && clutch <= 0.75f)
+                state = 0;
+            const float stallRpm = fminf(fmaxf(0.3f * idleRpm, 250.0f), 450.0f);
+            stallT = state == 2 && rpm < stallRpm ? stallT + d16 : 0.0f;
+            offHold = state == 2 && keyCount > 0 && offArmed ? offHold + d16 : 0.0f;
+            if (stallT > 0.08f || offHold >= 1.0f)
+            {
+                state = 3;
+                stallT = 0.0f;
+                offArmed = false;
+            }
+            if (keyCount == 0)
+                offArmed = false;
+        }
+        if (state == 3 && omega < 2.0f)
+        {
+            state = 0;
+            return true;
+        }
+        return false;
+    }
+};
