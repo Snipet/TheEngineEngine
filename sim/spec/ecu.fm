@@ -147,6 +147,17 @@ module EcuMapsSpec
         [[ui::axes("rotation", "ratio")]] [[ui::quantity("fraction")]];
     bool liftAuto [[fminus::default(1)]] [[ui::label("Lift: formula")]]
         [[ui::help("On: full lift always; off: the map as drawn")]] ;
+    // (card N2, the lead's ruling: a knock-limit table is a calibration, baked once for a build by a dyno sweep (card
+    // C's tee-dyno --bake-spark), as a maker makes it; with the spark's formula on, each charge's best-torque spark
+    // less this table; the knock control trims what its 2 degree margin does not cover)
+    Map16 knockLimit [[ui::label("Knock limit")]]
+        [[ui::help("Degrees taken from the best-torque spark by speed and load: the knock control's settled retard there plus a 2 degree margin, baked by a dyno sweep")]]
+        [[ui::axes("rotation", "ratio")]] [[ui::unit("deg")]];
+    bool knockLimitAuto [[fminus::default(1)]] [[ui::label("Knock limit: not baked")]]
+        [[ui::help("On: no table (best-torque spark; the knock control does the work); off: the baked table")]] ;
+    int knockLimitKey [[fminus::range(-2147483647, 2147483647)]] [[fminus::default(0)]] [[ui::hidden]] [[ui::unit("hash")]]
+        [[ui::label("Knock limit's bake key")]]
+        [[ui::help("The hash of the fields the table was baked from (the host's: a changed one makes it stale)")]];
 };
 
 
