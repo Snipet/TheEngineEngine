@@ -2,8 +2,8 @@
 # tee_host. tools/common/ holds what they share, headers only.
 #
 # A tool finds the simulator's files and the content by itself: --sim and --content, else TEE_SIM_DIR and
-# TEE_CONTENT_DIR, else sim/ref and content/ref beside its bin/ directory (an unpacked CI artefact), else this
-# checkout's (compiled in below).
+# TEE_CONTENT_DIR, else this checkout's (compiled in below) while it is there, else sim/ref and content/ref beside the
+# executable (an unpacked CI artefact).
 file(GLOB _tee_tool_dirs LIST_DIRECTORIES true CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*")
 foreach(_dir IN LISTS _tee_tool_dirs)
   cmake_path(GET _dir FILENAME _name)

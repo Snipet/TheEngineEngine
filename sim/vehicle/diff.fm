@@ -1,0 +1,64 @@
+// diff.fm: what joins two turning bodies in the driveline: a friction coupling, and the differential built on it.
+//
+// A coupling (a clutch, a lock-up clutch, a dog, a brake on its disc, a differential's clutch pack) passes whatever
+// torque holds its two sides at one speed, up to its capacity; beyond that it slips and passes its capacity, from the
+// faster side to the slower. vehCouple() computes that torque for one sample in closed form: the torque that would
+// leave the two sides at the same speed after the sample, given every other torque on them, clamped to the capacity.
+// So a coupling locks without a state of its own, never overshoots (it at most brings the speeds together, so it
+// only ever takes energy out: it is passive), holds a load at rest exactly (a car on its brakes on a hill), and
+// needs no stiff spring. The reference's clutch reaches the same by keeping a "locked" state; this is the same law
+// with the state worked out each sample.
+//
+// A differential splits its input torque between its two outputs (equally across an axle; by its split at the centre
+// of an all-wheel drive) and lets their speeds differ. Its locking torque, a coupling between the two outputs, is
+//
+//     preload + kSpeed |dw| + kTorque |T|
+//
+// all zero an open differential (one tyre on ice spins and the other gets as little as it does), a preload and a
+// torque term a clutch pack (it biases torque to the slower side by up to that much), a speed term a viscous unit
+// (the torque grows with the speeds' difference), and locked a spool. dw is the outputs' speeds' difference and T
+// the torque coming in.
+//
+// Not modelled: the differential's own inertia and friction, a Torsen's ratio-dependent behaviour beyond what the
+// torque term gives, an active (electronically controlled) differential.
+#pragma once
+
+// The torque a coupling passes in one sample. Side a (speed wa, every other torque on it ta, inverse inertia ia) and
+// side b (wb, tb, ib) are joined through a ratio g (side a turns g times as fast as side b when locked). Returns the
+// torque on side a's axis, taken from a (and g times it given to b); positive when a is the faster. ib = 0 joins a
+// to the ground (b is held still). cap: the capacity, at a's axis.
+float vehCouple(float wa, float wb, float ta, float tb, float ia, float ib, float g, float cap, float dt)
+{
+    const float den = ia + g * g * ib;
+    if (cap <= 0.0f || den <= 0.0f)
+        return 0.0f;
+    const float t = ((wa - g * wb) / dt + ta * ia - g * tb * ib) / den;
+    return fminf(fmaxf(t, -cap), cap);
+}
+
+// A differential's settings (one of the centre, the front, the rear)
+module VehDiff
+{
+    float split;        // the share of the input torque to the first output (an axle's: 0.5)
+    float preload;      // N m
+    float kSpeed;       // N m per rad/s of the outputs' difference
+    float kTorque;      // N m per N m of input
+    bool locked;
+
+    void set(float s, float p, float ks, float kt, bool lock)
+    {
+        split = fminf(fmaxf(s, 0.0f), 1.0f);
+        preload = fmaxf(p, 0.0f);
+        kSpeed = fmaxf(ks, 0.0f);
+        kTorque = fmaxf(kt, 0.0f);
+        locked = lock;
+    }
+
+    // Its locking torque now, for the outputs' speeds' difference and the torque coming in
+    float capacity(float dw, float tIn)
+    {
+        if (locked)
+            return 1.0e9f;
+        return preload + kSpeed * fabsf(dw) + kTorque * fabsf(tIn);
+    }
+};

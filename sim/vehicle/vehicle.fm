@@ -1,0 +1,990 @@
+// vehicle.fm: the vehicle in a straight line (car.model = 1): everything from the flywheel to the road.
+//
+// The bodies that turn or move, each with its speed: the crank (the engine's: its speed comes in and goes out of
+// step()); a torque converter's turbine (an automatic's or a CVT's, while it is not joined to the gearbox's output);
+// the gearbox's output, at the wheels' side of the final drive, with the gears' and the propeller shaft's inertia on
+// it; four wheels (front left, front right, rear left, rear right), each with its own speed; the car itself (or, on a
+// chassis dyno, the roller under the driven wheels). Between them:
+//
+//   the clutch or the converter, and the gears: couplings (diff.fm) from the crank to the output through the gear's
+//   ratio, closed as the gearbox's logic says (gearbox.fm); a gear's efficiency takes its share of the power whichever
+//   way it flows;
+//   the propeller and half shafts: a spring with a little play between the output and the differentials, wound up by
+//   their speeds' difference (the reference's: 9 N m/rad a kg of car at the wheels, 0.009 rad of play, damped to 0.4
+//   of critical for the gear in); it is what the car bucks on, and what clunks when the play closes;
+//   the differentials: each splits the torque coming in (a centre's by its split, an axle's equally) and its locking
+//   torque (diff.fm) holds its two sides together as far as it can;
+//   the brakes and the rolling resistance: couplings from each wheel to the ground;
+//   the tyres (tyre.fm): each pushes the car and holds its wheel back by the force its tread's deflection gives.
+//
+// Each sample the forces of the springs (the shafts, the tyres) are taken as they stand, every coupling then passes
+// what it can, and every speed moves; then the springs are moved by the new speeds (semi-implicit Euler: a spring
+// alone keeps its energy, every coupling takes energy out, so the whole cannot gain any). At 96 kHz every time
+// constant of this system is hundreds of samples long.
+//
+// Every 16 samples: the loads on the tyres (static by the mass, the wheelbase and the centre of mass; the load moved
+// rearward by acceleration, m a h / L, through a lag of 0.2 s that stands for the body's pitch; the downforce at each
+// axle; a live axle's torque reaction; the grade), each tyre's peak, temperature and rolling resistance, the brakes
+// (with ABS: a wheel that slips past its tyre's peak has its brake let off and reapplied, some ten times a second),
+// the gearbox's logic, the strip, the dyno, and the telemetry.
+//
+// The front's load cannot fall below zero: when the transfer would take it there the car is on its rear wheels (a
+// flag says so), and the rear tyres can push no harder than what keeps the front just off the road, so the
+// acceleration is what the wheelie allows (a motorcycle's launch limit is the same code).
+//
+//   v.setup(rate)                       in init: the filters, the state at rest
+//   v.apply()                           when v.spec or v.env changed: the derived numbers, the gearing
+//   v.configure(jE, peakTq, idleW, redW) the engine's inertia, about its peak torque, its idle and redline (rad/s):
+//                                       when they change (the gearing follows them while autoGearing is on)
+//   v.control(d16, throttle, clutch, brake, handbrake, lever, up, down, buttons, mode, dynoSpeed, dynoRate, strip)
+//                                       every 16 samples: the controls, as 02-contracts.md §4 has them
+//   w = v.step(w, tq, dt)               one sample: the crank's speed after it, from its speed and torque
+//   y = v.road()                        one sample of the road, the tyres and the driveline
+//   For the ECU: v.slip() (the driven tyres' largest slip ratio), v.gearNow(), v.cutWanted(), v.blipSpeed() (rad/s at
+//   the crank, 0 for none), v.speedNow() (m/s).
+#pragma once
+#include "vspec.fm"
+#include "tyre.fm"
+#include "diff.fm"
+#include "converter.fm"
+#include "gearbox.fm"
+#include "strip.fm"
+#include "sound.fm"
+
+enum
+{
+    VEH_MODE_BENCH = 0,
+    VEH_MODE_DRIVE = 1,
+    VEH_MODE_DYNO_ENGINE = 2,
+    VEH_MODE_DYNO_CHASSIS = 3,
+};
+
+enum
+{
+    VEH_BTN_LINE_LOCK = 1,
+};
+
+enum
+{
+    VEH_FLAG_SPIN = 1,
+    VEH_FLAG_WHEELIE = 2,
+    VEH_FLAG_ABS = 4,
+    VEH_FLAG_LOCKED = 8,
+    VEH_FLAG_SHIFT = 16,
+    VEH_FLAG_CUT = 32,
+    VEH_FLAG_BLIP = 64,
+};
+
+// The reference's six forward ratios (car.fm)
+const float VEH_REF_RATIOS[6] = {3.15f, 2.18f, 1.62f, 1.28f, 1.05f, 0.86f};
+// The reference's truck: an Eaton Fuller 18-speed's eighteen
+const float VEH_TRUCK_RATIOS[18] = {14.40f, 12.29f, 8.56f, 7.30f, 6.05f, 5.16f, 4.38f, 3.74f, 3.20f, 2.73f, 2.29f,
+                                    1.95f, 1.62f, 1.38f, 1.17f, 1.00f, 0.86f, 0.73f};
+
+module Vehicle
+{
+    VehSpec spec;
+    VehEnv env;
+    VehTel tel;
+    VehGearbox box;
+    VehConverter conv;
+    VehDiff centre;
+    VehDiff front;
+    VehDiff rear;
+    VehTyreCurve curve;
+    VehTyre tyre[VEH_WHEELS];
+    VehStrip strip;
+    VehSound snd;
+
+    float rate;
+    // the engine
+    float jE;
+    float iE;
+    float peakTq;
+    float idleW;
+    float redW;
+    // what the Spec and the engine made
+    float mass;
+    float radius;
+    float jw;           // a wheel's inertia
+    float iw;
+    float jO;           // the output's inertia now
+    float iO;
+    float jT;           // the turbine's
+    float iT;
+    float kW;           // the shafts' stiffness at the wheels
+    float cW;
+    float lash;
+    float clutchCap;
+    float bandCap;
+    float lockCap;
+    float eff;          // the gears' efficiency (the belt's in a CVT)
+    float sinG;         // the grade's sine and cosine
+    float cosG;
+    float dragK;        // half the air's density times CdA
+    float share[VEH_WHEELS];    // each wheel's share of the shaft's torque (0 for a wheel not driven)
+    float brakeMax[VEH_WHEELS]; // each wheel's brake at a full pedal, N m
+    float brakeT[VEH_WHEELS];   // and now (ABS's let-off included), N m
+    float hold[VEH_WHEELS];     // what holds each wheel: its brake and its rolling resistance, N m
+    float absGain[VEH_WHEELS];
+    float mu[VEH_WHEELS];       // each tyre's grip on its surface, before load and temperature
+    int surf[VEH_WHEELS];
+    bool fluid;         // a converter
+    bool merged;        // the turbine joined to the output (in gear, not shifting)
+    float gA;           // the couplings' overall ratios now (0: none)
+    float gB;
+    float capA;         // and their capacities, N m
+    float capB;
+    float capLock;
+    float gearSeen;     // the ratio the output's inertia and the shafts' damping were made for
+    bool dirty;         // the gearing wants making again
+    // the controls
+    float engage;       // the clutch pedal's engagement, 0 down to 1 up
+    float brakeIn;
+    float handIn;
+    float pedal;
+    int buttons;
+    int mode;
+    int lastStrip;
+    bool stripSeen;
+    float vSet;         // a chassis dyno's roller speed it holds, m/s
+    float kPedal;
+    // the state
+    float wt;           // the turbine
+    float wo;           // the output (the wheels' side)
+    float twist;        // the shafts' wind-up, rad at the wheels
+    bool open;          // their play open
+    float ww[VEH_WHEELS];
+    float v;            // the car (on a chassis dyno, at rest)
+    float x;            // its distance since the last reset or staging, m
+    float vr;           // the dyno's roller, m/s
+    float aNow;         // the acceleration over the last 16 samples
+    float aLag;         // and lagged by the pitch
+    float vPrev;
+    float fz[VEH_WHEELS];
+    float frontLoad0;   // the front axle's load before the transfer, N
+    bool wheelie;
+    float tsh;          // the shafts' torque, last sample
+    float tDrive[VEH_WHEELS];   // the torque the driveline gave each wheel, last sample
+    float tClutch;      // what the clutch or converter passed, at the crank
+    float slipC;        // the crank's speed less the gearbox's input's
+    float fAbsorb;      // the dyno's absorber, N
+    float wLast;        // the crank's speed after the last step
+    // the energy audit (tests): work in, and where it went
+    bool audit;
+    double eIn;
+    double eClutch;
+    double eGear;
+    double eDiff;
+    double eTyre;
+    double eHold;
+    double eAero;
+    double eGrade;
+    double eAbsorb;
+    double eShaft;
+
+    void setup(float hostRate)
+    {
+        rate = hostRate;
+        snd.setup(rate);
+        jE = 0.15f;
+        iE = 1.0f / jE;
+        peakTq = 300.0f;
+        idleW = 80.0f;
+        redW = 680.0f;
+        lastStrip = 0;
+        stripSeen = false;
+        apply();
+        reset();
+    }
+
+    // At rest, in neutral
+    void reset()
+    {
+        box.reset();
+        strip.reset();
+        wt = 0.0f;
+        wo = 0.0f;
+        twist = 0.0f;
+        open = false;
+        v = 0.0f;
+        x = 0.0f;
+        vr = 0.0f;
+        aNow = 0.0f;
+        aLag = 0.0f;
+        vPrev = 0.0f;
+        tsh = 0.0f;
+        tClutch = 0.0f;
+        slipC = 0.0f;
+        fAbsorb = 0.0f;
+        engage = 1.0f;
+        brakeIn = 0.0f;
+        handIn = 0.0f;
+        pedal = 0.0f;
+        vSet = 0.0f;
+        wheelie = false;
+        merged = false;
+        gA = 0.0f;
+        gB = 0.0f;
+        capA = 0.0f;
+        capB = 0.0f;
+        capLock = 0.0f;
+        gearSeen = -1.0f;
+        for (int i = 0; i < VEH_WHEELS; ++i)
+        {
+            ww[i] = 0.0f;
+            tyre[i].reset(env.temperature);
+            brakeT[i] = 0.0f;
+            hold[i] = 0.0f;
+            absGain[i] = 1.0f;
+            tDrive[i] = 0.0f;
+        }
+        loads(0.0f);
+        auditReset();
+    }
+
+    void auditReset()
+    {
+        eIn = 0.0;
+        eClutch = 0.0;
+        eGear = 0.0;
+        eDiff = 0.0;
+        eTyre = 0.0;
+        eHold = 0.0;
+        eAero = 0.0;
+        eGrade = 0.0;
+        eAbsorb = 0.0;
+        eShaft = 0.0;
+    }
+
+    void configure(float jEngine, float peak, float idle, float red)
+    {
+        const bool regear = fabsf(peak - peakTq) > 0.01f * peakTq || fabsf(red - redW) > 1.0f;
+        jE = fmaxf(jEngine, 0.01f);
+        iE = 1.0f / jE;
+        peakTq = fmaxf(peak, 10.0f);
+        idleW = idle;
+        redW = fmaxf(red, idle + 50.0f);
+        clutchCap = spec.clutchTorque > 0.0f ? spec.clutchTorque : 1.35f * peakTq;
+        bandCap = 1.5f * fmaxf(spec.converterRatio, 1.0f) * peakTq;
+        lockCap = clutchCap;
+        if (regear)
+            gearing();
+    }
+
+    // The derived numbers, from spec and env
+    void apply()
+    {
+        mass = fmaxf(spec.mass, 50.0f);
+        radius = fmaxf(spec.tyreRadius, 0.1f);
+        jw = fmaxf(spec.wheelInertia, 0.05f);
+        iw = 1.0f / jw;
+        jT = 0.05f;
+        iT = 1.0f / jT;
+        const bool truck = spec.tyre == 8;
+        kW = (truck ? 20.0f : 9.0f) * mass;
+        lash = truck ? 0.015f : 0.009f;
+        eff = spec.gearbox == VEH_CVT ? spec.cvtEfficiency : spec.gearEfficiency;
+        const float g = env.grade;
+        cosG = 1.0f / sqrtf(1.0f + g * g);
+        sinG = g * cosG;
+        dragK = 0.5f * env.density * spec.cdA;
+        curve.make(spec.tyre);
+        const int d = spec.drive;
+        const float a = d == VEH_AWD ? spec.centreSplit : (d == VEH_FWD ? 1.0f : 0.0f);
+        share[0] = 0.5f * a;
+        share[1] = 0.5f * a;
+        share[2] = 0.5f * (1.0f - a);
+        share[3] = 0.5f * (1.0f - a);
+        centre.set(spec.centreSplit, spec.centrePreload, spec.centreKSpeed, spec.centreKTorque, spec.centreLocked);
+        front.set(0.5f, spec.frontPreload, spec.frontKSpeed, spec.frontKTorque, spec.frontLocked);
+        rear.set(0.5f, spec.rearPreload, spec.rearKSpeed, spec.rearKTorque, spec.rearLocked);
+        conv.set(spec.converterK, spec.converterRatio, spec.couplingPoint);
+        fluid = spec.gearbox == VEH_AUTOMATIC || spec.gearbox == VEH_CVT;
+        clutchCap = spec.clutchTorque > 0.0f ? spec.clutchTorque : 1.35f * peakTq;
+        bandCap = 1.5f * fmaxf(spec.converterRatio, 1.0f) * peakTq;
+        lockCap = clutchCap;
+        for (int i = 0; i < VEH_WHEELS; ++i)
+        {
+            const int left = i == 0 || i == 2 ? 1 : 0;
+            surf[i] = left != 0 && env.surfaceLeft >= 0 ? env.surfaceLeft : env.surface;
+            // (a fixed asymmetry of 1 % between left and right: what lets an open differential choose a wheel to spin)
+            mu[i] = vehCompoundValue(spec.tyre, 3) * vehSurfaceGrip(spec.tyre, surf[i]) * (left != 0 ? 1.0f : 0.99f);
+            const float bias = i < 2 ? spec.brakeBias : 1.0f - spec.brakeBias;
+            brakeMax[i] = 0.5f * bias * spec.brakeDecel * 9.81f * mass * radius;
+        }
+        const int kind = spec.gearbox < 0 ? 0 : (spec.gearbox > 4 ? 4 : spec.gearbox);
+        if (kind != box.kind)
+        {
+            box.kind = kind;
+            box.reset();
+        }
+        box.shiftTime = spec.shiftTime;
+        box.lockAllowed = spec.lockUp;
+        gearing();
+    }
+
+    // a cube root (x > 0)
+    float cbrt3(float a)
+    {
+        return expf(logf(fmaxf(a, 1.0e-6f)) * 0.33333333f);
+    }
+
+    // The ratios and the final drive. With autoGearing, the reference's rule: the second-highest gear reaches the
+    // redline at the speed the engine's power holds against the air and the rolling (90 % of it at the wheels; its
+    // power at the redline some 0.88 of the peak torque there); the reference's six ratios for six gears, its truck's
+    // eighteen for sixteen or more, and a geometric progression otherwise (first 3.15 times the square root of n / 6,
+    // the top 0.86 times the square root of 6 / n for six or more, 1.0 for four or fewer).
+    void gearing()
+    {
+        const int n = spec.gears < 1 ? 1 : (spec.gears > VEH_GEARS ? VEH_GEARS : spec.gears);
+        box.n = n;
+        box.cvtLo = spec.cvtLow;
+        box.cvtHi = spec.cvtHigh;
+        if (box.cvt <= 0.0f)
+            box.cvt = spec.cvtLow;
+        if (!spec.autoGearing)
+        {
+            for (int i = 0; i < VEH_GEARS; ++i)
+                box.r[i] = spec.ratio[i] > 0.0f ? spec.ratio[i] : 1.0f;
+            box.rRev = spec.reverseRatio;
+            box.fd = spec.finalDrive;
+            dirty = true;
+            return;
+        }
+        box.rRev = n >= 16 ? 12.85f : 3.30f;
+        if (n >= 16)
+        {
+            for (int i = 0; i < n; ++i)
+                box.r[i] = VEH_TRUCK_RATIOS[i + 18 - n];
+        }
+        else if (n == 6)
+        {
+            for (int i = 0; i < 6; ++i)
+                box.r[i] = VEH_REF_RATIOS[i];
+        }
+        else
+        {
+            const float r1 = 3.15f * sqrtf((float)n / 6.0f);
+            const float rTop = n >= 6 ? 0.86f * sqrtf(6.0f / (float)n) : (n == 5 ? 0.86f : 1.0f);
+            for (int i = 0; i < n; ++i)
+            {
+                const float f = n > 1 ? (float)i / (float)(n - 1) : 0.0f;
+                box.r[i] = r1 * expf(f * logf(rTop / r1));
+            }
+        }
+        // the speed the power holds
+        const float roll = vehCompoundValue(spec.tyre, 6) * 9.81f * mass;
+        const float pw = 0.9f * 0.88f * peakTq * redW;
+        const float ka = fmaxf(0.5f * env.density * spec.cdA, 0.01f);
+        float vm = cbrt3(pw / ka);
+        for (int it = 0; it < 4; ++it)
+            vm -= (ka * vm * vm * vm + roll * vm - pw) / (3.0f * ka * vm * vm + roll);
+        vm = fmaxf(vm, 10.0f);
+        if (n >= 16)
+            box.fd = 0.6f * redW * radius / (29.2f * box.r[n - 1]);
+        else if (spec.gearbox == VEH_CVT)
+            box.fd = 0.9f * redW * radius / (vm * spec.cvtHigh);
+        else
+            box.fd = redW * radius / (vm * box.r[n >= 2 ? n - 2 : 0]);
+        dirty = true;
+    }
+
+    // ---- every 16 samples ----
+
+    // The loads on the four tyres, for the acceleration lagged by the pitch, the speed (the downforce) and the shafts'
+    // torque (a live axle's reaction)
+    void loads(float d16)
+    {
+        const float l = fmaxf(spec.wheelbase, 0.5f);
+        const float h = spec.cgHeight;
+        const float w = mass * 9.81f;
+        const float down = 0.5f * env.density * spec.clA * v * v;
+        // the grade's share of the weight moves rearward on a climb, as an acceleration does
+        const float shift = mass * (aLag + 9.81f * sinG) * h / l;
+        const float f0 = w * cosG * spec.frontWeight + down * spec.aeroBalance - mass * 9.81f * sinG * h / l;
+        float fFront = f0 - mass * aLag * h / l;
+        float fRear = w * cosG * (1.0f - spec.frontWeight) + down * (1.0f - spec.aeroBalance) + shift;
+        frontLoad0 = f0;
+        wheelie = fFront < 0.0f;
+        if (wheelie)
+        {
+            fRear += fFront;
+            fFront = 0.0f;
+        }
+        // a live axle: the propeller shaft's torque (the shafts' at the wheels over the final drive) pushes one rear
+        // wheel down and lifts the other, over the track
+        float live = 0.0f;
+        if (spec.liveAxle && box.fd > 0.0f)
+            live = (share[2] + share[3]) * tsh / box.fd / fmaxf(spec.track, 0.5f);
+        fz[0] = 0.5f * fFront;
+        fz[1] = 0.5f * fFront;
+        fz[2] = fmaxf(0.5f * fRear + live, 0.0f);
+        fz[3] = fmaxf(0.5f * fRear - live, 0.0f);
+        for (int i = 0; i < VEH_WHEELS; ++i)
+            tyre[i].control(fz[i], mu[i], &curve, spec.tyre, i < 2 ? groundFront() : groundRear(), env.temperature, d16);
+        // the rear tyres push no harder than keeps the front on the road (the wheelie's limit)
+        if (h > 0.0f)
+        {
+            const float most = fmaxf(f0, 0.0f) * l / h;
+            const float sum = tyre[2].d + tyre[3].d;
+            if (share[2] > 0.0f && sum > most)
+            {
+                tyre[2].d *= most / sum;
+                tyre[3].d *= most / sum;
+            }
+        }
+    }
+
+    // The road's speed under the rear wheels (a chassis dyno's roller), and under the front
+    float groundRear()
+    {
+        if (mode == VEH_MODE_DYNO_CHASSIS && share[2] > 0.0f)
+            return vr;
+        return v;
+    }
+
+    float groundFront()
+    {
+        if (mode == VEH_MODE_DYNO_CHASSIS)
+            return share[0] > 0.0f ? vr : 0.0f;
+        return v;
+    }
+
+    // The output's inertia and the shafts' damping for the gear in (only when the gear changed)
+    void driveline()
+    {
+        const float g = box.kind == VEH_CVT ? box.ratioOf(box.gear) : (box.shifting ? box.ratioOf(box.to) : box.ratioOf(box.gear));
+        if (g == gearSeen && !dirty)
+            return;
+        dirty = false;
+        if (gearSeen != g && gearSeen != -1.0f && box.kind != VEH_CVT)
+        {
+            // a new ratio: the shafts unwound (as the reference's regear)
+            twist = 0.0f;
+            open = false;
+        }
+        gearSeen = g;
+        // the propeller shaft and the final drive's crown wheel, at the wheels (judgement: 0.05 kg m^2 at the input
+        // of a final drive), the gearbox's gears (the reference's 0.015 kg m^2 at its input) through the ratio, and a
+        // joined turbine
+        jO = 0.05f * box.fd * box.fd + 0.015f * g * g + (fluid ? jT * g * g : 0.0f);
+        iO = 1.0f / jO;
+        // damped to about 0.4 of critical: the engine (through the gear) and the car swing on the shafts
+        const float j1 = jE * g * g + jO;
+        const float j2 = mass * radius * radius + 4.0f * jw;
+        cW = g != 0.0f ? 0.8f * sqrtf(kW * j1 * j2 / (j1 + j2)) : 0.0f;
+    }
+
+    // Every 16 samples: the controls (02-contracts.md §4)
+    void control(float d16, float throttle, float clutch, float brake, float handbrake, int lever, int up, int down,
+                 int btn, int ctlMode, float dynoSpeed, float dynoRate, int stripCount)
+    {
+        kPedal = 1.0f - expf(-d16 / 0.02f);
+        mode = ctlMode;
+        buttons = btn;
+        pedal = fminf(fmaxf(throttle, 0.0f), 1.0f);
+        // the clutch bites a third of the way up and is in at three quarters (the reference's)
+        const float upC = 1.0f - fminf(fmaxf(clutch, 0.0f), 1.0f);
+        const float xc = fminf(fmaxf((upC - 0.32f) / 0.43f, 0.0f), 1.0f);
+        engage += (xc * xc * (3.0f - 2.0f * xc) - engage) * kPedal;
+        const float b = fminf(fmaxf(brake, 0.0f), 1.0f);
+        brakeIn += (b * sqrtf(b) - brakeIn) * kPedal;
+        handIn += (fminf(fmaxf(handbrake, 0.0f), 1.0f) - handIn) * kPedal;
+        // the strip: each increase stages the car at the line, at rest
+        if (!stripSeen)
+        {
+            stripSeen = true;
+            lastStrip = stripCount;
+        }
+        if (stripCount != lastStrip)
+        {
+            lastStrip = stripCount;
+            if (stripCount > 0)
+                stage();
+        }
+        strip.control(d16, x, spec.proTree);
+        // the gearbox
+        box.control(d16, lever, up, down, engage, pedal, wLast, wo, idleW, redW, fabsf(v) * 3.6f);
+        driveline();
+        // the couplings the step will use
+        const float gIn = box.shifting ? box.ratioOf(box.from) : box.ratioOf(box.gear);
+        const float gNew = box.shifting ? box.ratioOf(box.to) : 0.0f;
+        if (fluid)
+        {
+            merged = !box.shifting && box.gear != 0;
+            gA = merged ? box.ratioOf(box.gear) : gIn;
+            gB = gNew;
+            capA = merged ? 1.0e9f : bandCap * box.aFrom;
+            capB = bandCap * box.aTo;
+            capLock = merged ? lockCap * box.lock : 0.0f;
+            if (merged)
+                wt = gA * wo;
+        }
+        else
+        {
+            merged = false;
+            const float c = clutchCap * engage * box.robot;
+            gA = gIn;
+            gB = gNew;
+            capA = c * box.aFrom;
+            capB = c * box.aTo;
+            capLock = 0.0f;
+        }
+        // the brakes, with the line lock (the front held) and the handbrake (the rear); ABS lets a wheel off that slips
+        // past its tyre's peak, and on again
+        const bool lineLock = (buttons & VEH_BTN_LINE_LOCK) != 0;
+        bool absOn = false;
+        bool locked = false;
+        for (int i = 0; i < VEH_WHEELS; ++i)
+        {
+            float want = brakeMax[i] * brakeIn;
+            if (i < 2 && lineLock)
+                want = brakeMax[i];
+            if (i >= 2)
+                want += handIn * 0.3f * 9.81f * mass * radius;
+            if (spec.abs && want > 0.0f && fabsf(v) > 1.5f && !(i < 2 && lineLock))
+            {
+                if (tyre[i].kappa < -1.2f * curve.kPeak)
+                {
+                    absGain[i] *= 0.6f;
+                    absOn = true;
+                }
+                else
+                    absGain[i] = fminf(absGain[i] + 0.15f, 1.0f);
+            }
+            else
+                absGain[i] = 1.0f;
+            brakeT[i] = want * absGain[i];
+            hold[i] = brakeT[i] + tyre[i].roll * radius;
+            if (fabsf(v) > 1.0f && fabsf(ww[i]) * radius < 0.05f * fabsf(v))
+                locked = true;
+        }
+        // the dyno's roller: it holds the speed asked for (the crank's, through the gear), or sweeps from where it is,
+        // or, with neither, is a plain inertia
+        if (mode == VEH_MODE_DYNO_CHASSIS)
+        {
+            const float g = fabsf(box.ratioOf(box.gear));
+            if (dynoRate != 0.0f && g > 0.0f)
+                vSet += dynoRate / g * radius * d16;
+            else if (dynoSpeed > 0.0f && g > 0.0f)
+                vSet = dynoSpeed / g * radius;
+            else
+                vSet = -1.0f;
+        }
+        else
+            vSet = vr;
+        // the loads and the tyres
+        aNow = mode == VEH_MODE_DYNO_CHASSIS ? 0.0f : (v - vPrev) / d16;
+        vPrev = v;
+        aLag += (aNow - aLag) * (1.0f - expf(-d16 / 0.2f));
+        loads(d16);
+        telemetry(absOn, locked);
+    }
+
+    void stage()
+    {
+        v = 0.0f;
+        vPrev = 0.0f;
+        x = 0.0f;
+        aLag = 0.0f;
+        for (int i = 0; i < VEH_WHEELS; ++i)
+        {
+            ww[i] = 0.0f;
+            tyre[i].u = 0.0f;
+            tyre[i].rate = 0.0f;
+        }
+        wo = 0.0f;
+        twist = 0.0f;
+        open = false;
+        if (merged)
+            wt = 0.0f;
+        strip.stage(spec.proTree);
+    }
+
+    void telemetry(bool absOn, bool locked)
+    {
+        tel.speed = mode == VEH_MODE_DYNO_CHASSIS ? vr : v;
+        tel.accel = aNow;
+        tel.distance = x;
+        tel.gear = box.gear;
+        tel.shift = box.refused ? 3 : (box.shifting ? (box.up ? 1 : 2) : 0);
+        float power = 0.0f;
+        int flags = 0;
+        for (int i = 0; i < VEH_WHEELS; ++i)
+        {
+            tel.wheelSpeed[i] = ww[i];
+            tel.wheelSlip[i] = tyre[i].kappa;
+            tel.wheelLoad[i] = tyre[i].fz;
+            tel.wheelForce[i] = tyre[i].force;
+            tel.wheelTorque[i] = tDrive[i];
+            tel.wheelTemp[i] = tyre[i].temp;
+            power += tDrive[i] * ww[i];
+            if (share[i] > 0.0f && tyre[i].kappa > 1.5f * curve.kPeak)
+                flags |= VEH_FLAG_SPIN;
+        }
+        if (wheelie)
+            flags |= VEH_FLAG_WHEELIE;
+        if (absOn)
+            flags |= VEH_FLAG_ABS;
+        if (locked)
+            flags |= VEH_FLAG_LOCKED;
+        if (box.shifting)
+            flags |= VEH_FLAG_SHIFT;
+        if (box.cut)
+            flags |= VEH_FLAG_CUT;
+        if (box.blip > 0.0f)
+            flags |= VEH_FLAG_BLIP;
+        tel.flags = flags;
+        tel.clutchSlip = slipC;
+        tel.shaftTorque = tsh;
+        tel.wheelPower = power;
+        tel.pitch = mass * aLag * spec.cgHeight / fmaxf(spec.wheelbase, 0.5f);
+        tel.ratio = box.ratioOf(box.gear);
+        tel.stripState = strip.state;
+        tel.tReaction = strip.reaction;
+        tel.t60 = strip.et[0];
+        tel.t330 = strip.et[1];
+        tel.t660 = strip.et[3];
+        tel.v660 = strip.v660;
+        tel.t1000 = strip.et[4];
+        tel.t1320 = strip.et[6];
+        tel.v1320 = strip.v1320;
+    }
+
+    // ---- one sample ----
+
+    // A coupling from the crank (or the turbine) to the output through ratio g, at efficiency eff whichever way the
+    // power goes. Returns the torque at the crank's side (the output gets the efficiency's share of g times it).
+    float gearTorque(float wa, float ta, float ia, float g, float cap, float to, float dt)
+    {
+        if (g == 0.0f || cap <= 0.0f)
+            return 0.0f;
+        const float tc = vehCouple(wa, wo, ta, to, ia, iO, g, cap, dt);
+        // the power's direction decides which side loses the efficiency's share
+        const float f = tc * wa >= 0.0f ? g * eff : g / eff;
+        const float den = ia + g * f * iO;
+        const float t = ((wa - g * wo) / dt + ta * ia - g * to * iO) / den;
+        return fminf(fmaxf(t, -cap), cap);
+    }
+
+    float gearFactor(float tc, float wa, float g)
+    {
+        return tc * wa >= 0.0f ? g * eff : g / eff;
+    }
+
+    float step(float w, float tq, float dt)
+    {
+        const float gf = groundFront();
+        const float gr = groundRear();
+        // the tyres' forces, from their deflections as they stand
+        float f[VEH_WHEELS];
+        float tw[VEH_WHEELS];
+        for (int i = 0; i < VEH_WHEELS; ++i)
+        {
+            f[i] = tyre[i].push(&curve, ww[i] * radius, i < 2 ? gf : gr);
+            tw[i] = -f[i] * radius;
+        }
+        // the shafts: their torque at the wheels from their wind-up beyond the play (none in neutral)
+        const float wc = share[0] * ww[0] + share[1] * ww[1] + share[2] * ww[2] + share[3] * ww[3];
+        const bool inGear = gA != 0.0f || gB != 0.0f || (fluid && box.shifting);
+        float ts = 0.0f;
+        if (inGear)
+        {
+            const float xs = twist > lash ? twist - lash : (twist < -lash ? twist + lash : 0.0f);
+            if (xs != 0.0f)
+            {
+                if (open)
+                    snd.strike(wo - wc);
+                open = false;
+                ts = kW * xs + cW * (wo - wc);
+                // (the shafts only push: their damping never pulls the play shut)
+                ts = xs > 0.0f ? fmaxf(ts, 0.0f) : fminf(ts, 0.0f);
+            }
+            else
+                open = true;
+        }
+        tsh = ts;
+        for (int i = 0; i < VEH_WHEELS; ++i)
+        {
+            tw[i] += share[i] * ts;
+            tDrive[i] = share[i] * ts;
+        }
+        float te = tq;
+        float to = -ts;
+        float tt = 0.0f;
+        float tcA = 0.0f;
+        float tcB = 0.0f;
+        float tcL = 0.0f;
+        float fA = 0.0f;
+        float fB = 0.0f;
+        float fL = 0.0f;
+        // the clutch, the converter, the gears
+        if (fluid)
+        {
+            if (merged)
+            {
+                conv.torques(w, gA * wo);
+                te -= conv.tPump;
+                fA = gearFactor(conv.tTurb, gA * wo, gA);
+                to += fA * conv.tTurb;
+                if (capLock > 0.0f)
+                {
+                    tcL = gearTorque(w, te, iE, gA, capLock, to, dt);
+                    fL = gearFactor(tcL, w, gA);
+                    te -= tcL;
+                    to += fL * tcL;
+                }
+                tClutch = conv.tPump + tcL;
+                slipC = w - gA * wo;
+            }
+            else
+            {
+                conv.torques(w, wt);
+                te -= conv.tPump;
+                tt = conv.tTurb;
+                if (gA != 0.0f && capA > 0.0f)
+                {
+                    tcA = gearTorque(wt, tt, iT, gA, capA, to, dt);
+                    fA = gearFactor(tcA, wt, gA);
+                    tt -= tcA;
+                    to += fA * tcA;
+                }
+                if (gB != 0.0f && capB > 0.0f)
+                {
+                    tcB = gearTorque(wt, tt, iT, gB, capB, to, dt);
+                    fB = gearFactor(tcB, wt, gB);
+                    tt -= tcB;
+                    to += fB * tcB;
+                }
+                tClutch = conv.tPump;
+                slipC = w - wt;
+            }
+        }
+        else
+        {
+            if (gA != 0.0f && capA > 0.0f)
+            {
+                tcA = gearTorque(w, te, iE, gA, capA, to, dt);
+                fA = gearFactor(tcA, w, gA);
+                te -= tcA;
+                to += fA * tcA;
+            }
+            if (gB != 0.0f && capB > 0.0f)
+            {
+                tcB = gearTorque(w, te, iE, gB, capB, to, dt);
+                fB = gearFactor(tcB, w, gB);
+                te -= tcB;
+                to += fB * tcB;
+            }
+            tClutch = tcA + tcB;
+            slipC = w - (box.shifting ? gB : gA) * wo;
+        }
+        // the differentials: the centre's between the axles, then each axle's between its wheels
+        float tdC = 0.0f;
+        float tdF = 0.0f;
+        float tdR = 0.0f;
+        if (share[0] > 0.0f && share[2] > 0.0f)
+        {
+            const float wF = 0.5f * (ww[0] + ww[1]);
+            const float wR = 0.5f * (ww[2] + ww[3]);
+            const float cap = centre.capacity(wF - wR, ts);
+            tdC = vehCouple(wF, wR, tw[0] + tw[1], tw[2] + tw[3], 0.5f * iw, 0.5f * iw, 1.0f, cap, dt);
+            tw[0] -= 0.5f * tdC;
+            tw[1] -= 0.5f * tdC;
+            tw[2] += 0.5f * tdC;
+            tw[3] += 0.5f * tdC;
+            tDrive[0] -= 0.5f * tdC;
+            tDrive[1] -= 0.5f * tdC;
+            tDrive[2] += 0.5f * tdC;
+            tDrive[3] += 0.5f * tdC;
+        }
+        if (share[0] > 0.0f)
+        {
+            const float cap = front.capacity(ww[0] - ww[1], (share[0] + share[1]) * ts);
+            tdF = vehCouple(ww[0], ww[1], tw[0], tw[1], iw, iw, 1.0f, cap, dt);
+            tw[0] -= tdF;
+            tw[1] += tdF;
+            tDrive[0] -= tdF;
+            tDrive[1] += tdF;
+        }
+        if (share[2] > 0.0f)
+        {
+            const float cap = rear.capacity(ww[2] - ww[3], (share[2] + share[3]) * ts);
+            tdR = vehCouple(ww[2], ww[3], tw[2], tw[3], iw, iw, 1.0f, cap, dt);
+            tw[2] -= tdR;
+            tw[3] += tdR;
+            tDrive[2] -= tdR;
+            tDrive[3] += tdR;
+        }
+        // the brakes and the rolling: each wheel held to the ground up to what they give
+        float th[VEH_WHEELS];
+        for (int i = 0; i < VEH_WHEELS; ++i)
+        {
+            th[i] = vehCouple(ww[i], 0.0f, tw[i], 0.0f, iw, 0.0f, 0.0f, hold[i], dt);
+            tw[i] -= th[i];
+        }
+        // every speed moves
+        const float w0 = w;
+        const float wo0 = wo;
+        const float wt0 = wt;
+        float wn = w + te * iE * dt;
+        // (the engine does not turn backwards: its compression holds it)
+        if (wn < 0.0f)
+            wn = 0.0f;
+        float won = wo + to * iO * dt;
+        float wtn = wt;
+        if (fluid && !merged)
+            wtn = wt + tt * iT * dt;
+        float wwOld[VEH_WHEELS];
+        float fsum = 0.0f;
+        float fDriven = 0.0f;
+        for (int i = 0; i < VEH_WHEELS; ++i)
+        {
+            wwOld[i] = ww[i];
+            ww[i] += tw[i] * iw * dt;
+            fsum += f[i];
+            if (share[i] > 0.0f)
+                fDriven += f[i];
+        }
+        const float v0 = v;
+        const float vr0 = vr;
+        float fAir = 0.0f;
+        float fHill = 0.0f;
+        if (mode == VEH_MODE_DYNO_CHASSIS)
+        {
+            // the roller: the driven tyres push it; the absorber holds it to its set speed (a first-order hold of 0.1 s)
+            const float mRoll = 1500.0f;
+            fAbsorb = vSet >= 0.0f ? fDriven + mRoll * (vr - vSet) / 0.1f : 0.0f;
+            vr += (fDriven - fAbsorb) / mRoll * dt;
+        }
+        else
+        {
+            fAir = dragK * v * fabsf(v);
+            fHill = mass * 9.81f * sinG;
+            v += (fsum - fAir - fHill) / mass * dt;
+            vr = 0.0f;
+        }
+        // neutral: the output follows the wheels, its shafts unloaded
+        if (!inGear)
+        {
+            won = share[0] * ww[0] + share[1] * ww[1] + share[2] * ww[2] + share[3] * ww[3];
+            twist = 0.0f;
+        }
+        // the springs move with the new speeds
+        if (fluid && merged)
+            wtn = gA * won;
+        const float wcn = share[0] * ww[0] + share[1] * ww[1] + share[2] * ww[2] + share[3] * ww[3];
+        if (inGear)
+            twist += (won - wcn) * dt;
+        const float gfn = groundFront();
+        const float grn = groundRear();
+        for (int i = 0; i < VEH_WHEELS; ++i)
+            tyre[i].advance(ww[i] * radius, i < 2 ? gfn : grn, dt);
+        x += v * dt;
+        // the audit: each torque's work at its bodies' mean speeds over the sample
+        if (audit)
+        {
+            const float wm = 0.5f * (w0 + wn);
+            const float wom = 0.5f * (wo0 + won);
+            const float wtm = 0.5f * (wt0 + wtn);
+            eIn += (double)(tq * wm * dt);
+            if (fluid)
+            {
+                if (merged)
+                {
+                    eClutch += (double)((conv.tPump * wm - fA * conv.tTurb * wom) * dt);
+                    eClutch += (double)((tcL * wm - fL * tcL * wom) * dt);
+                }
+                else
+                {
+                    eClutch += (double)((conv.tPump * wm - conv.tTurb * wtm) * dt);
+                    eGear += (double)((tcA * wtm - fA * tcA * wom + tcB * wtm - fB * tcB * wom) * dt);
+                }
+            }
+            else
+                eClutch += (double)((tcA * wm - fA * tcA * wom + tcB * wm - fB * tcB * wom) * dt);
+            const float m0 = 0.5f * (wwOld[0] + ww[0]);
+            const float m1 = 0.5f * (wwOld[1] + ww[1]);
+            const float m2 = 0.5f * (wwOld[2] + ww[2]);
+            const float m3 = 0.5f * (wwOld[3] + ww[3]);
+            eDiff += (double)((tdF * (m0 - m1) + tdR * (m2 - m3) + tdC * (0.5f * (m0 + m1) - 0.5f * (m2 + m3))) * dt);
+            eHold += (double)((th[0] * m0 + th[1] * m1 + th[2] * m2 + th[3] * m3) * dt);
+            const float vm = 0.5f * (v0 + v);
+            const float vrm = 0.5f * (vr0 + vr);
+            const float vfm = mode == VEH_MODE_DYNO_CHASSIS ? (share[0] > 0.0f ? vrm : 0.0f) : vm;
+            const float vbm = mode == VEH_MODE_DYNO_CHASSIS ? (share[2] > 0.0f ? vrm : 0.0f) : vm;
+            eTyre += (double)((f[0] * (m0 * radius - vfm) + f[1] * (m1 * radius - vfm) + f[2] * (m2 * radius - vbm)
+                               + f[3] * (m3 * radius - vbm)) * dt);
+            eAero += (double)(fAir * vm * dt);
+            eGrade += (double)(fHill * vm * dt);
+            eAbsorb += (double)(fAbsorb * vrm * dt);
+            // the shafts: what went into their spring and their damping
+            const float wcm = 0.5f * (wc + share[0] * ww[0] + share[1] * ww[1] + share[2] * ww[2] + share[3] * ww[3]);
+            eShaft += (double)(ts * (wom - wcm) * dt);
+        }
+        wo = won;
+        wt = wtn;
+        wLast = wn;
+        return wn;
+    }
+
+    // The moving bodies' kinetic energy, J (for the audit; the shafts' and the tyres' springs are in eShaft and eTyre)
+    double kinetic(float w)
+    {
+        double e = 0.5 * (double)jE * (double)w * (double)w;
+        if (gA != 0.0f || gB != 0.0f || (fluid && box.shifting))
+            e += 0.5 * (double)jO * (double)wo * (double)wo;
+        if (fluid && !merged)
+            e += 0.5 * (double)jT * (double)wt * (double)wt;
+        for (int i = 0; i < VEH_WHEELS; ++i)
+            e += 0.5 * (double)jw * (double)ww[i] * (double)ww[i];
+        e += 0.5 * (double)mass * (double)v * (double)v;
+        e += 0.5 * 1500.0 * (double)vr * (double)vr;
+        return e;
+    }
+
+    // ---- the road's sound ----
+
+    float road()
+    {
+        float sq = 0.0f;
+        for (int i = 0; i < VEH_WHEELS; ++i)
+        {
+            const float u = fabsf(tyre[i].slipV);
+            sq += fminf(fmaxf((u - 1.2f) / 4.0f, 0.0f), 1.0f) * 0.25f;
+        }
+        return snd.tick(mode == VEH_MODE_DYNO_CHASSIS ? vr : v, env.surface, 4.0f * sq * 0.5f);
+    }
+
+    // ---- what the ECU reads ----
+
+    float slip()
+    {
+        float s = 0.0f;
+        for (int i = 0; i < VEH_WHEELS; ++i)
+            if (share[i] > 0.0f)
+                s = fmaxf(s, tyre[i].kappa);
+        return s;
+    }
+
+    int gearNow()
+    {
+        return box.gear;
+    }
+
+    bool cutWanted()
+    {
+        return box.cut;
+    }
+
+    float blipSpeed()
+    {
+        return box.blip;
+    }
+
+    float speedNow()
+    {
+        return v;
+    }
+};

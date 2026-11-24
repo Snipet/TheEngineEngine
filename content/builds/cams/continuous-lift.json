@@ -1,0 +1,11 @@
+{
+  "format": "tee-build", "version": 1,
+  "name": "Continuous lift as the load control",
+  "notes": "The intake's lift and duration follow the pedal from 15 % of full lift up, the throttle plate left open, as BMW's Valvetronic: less pumping at part load.",
+  "spec": { "valve": {
+    "model": "Lab", "valves": 4, "train": "Finger",
+    "inDurSeat": 255, "inDur1mm": 226, "inLift": 0.0097, "inCentre": 115,
+    "liftControl": 1, "liftMin": 0.15, "liftThrottle": 1,
+    "inPhaseRange": 60
+  } }
+}

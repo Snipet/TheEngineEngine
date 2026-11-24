@@ -1,0 +1,221 @@
+// trace.fm: a made-up cylinder for the knock integral's tests. One cylinder's compression and burn as a single zone:
+// the volume of a slider crank (rod over crank radius 3.3, as the reference's), the charge at the intake valve's
+// closing (130 degrees before the top), squeezed with gamma 1.32, and the burn's heat (a Wiebe curve, the reference's
+// 1 - exp(-5 f^3)) from the spark; the walls take heat as the reference's cylinder loses it (hA (T - 450 K), hA as
+// the reference's control16 sets it for the size and speed); no gas is exchanged. The end gas (knock.fm) ticks every
+// `stride` samples of 96 kHz. It is a trace to drive the integral with, not the simulator's cylinder.
+#include "combustion/knock.fm"
+#include "combustion/mixture.fm"
+
+module Trace
+{
+    EndGas gas;
+    Mixture mix;
+    // the case
+    float cr;           // compression ratio
+    float vd;           // swept volume, m^3
+    float rpm;
+    float pIvc;         // the charge at the intake valve's closing: Pa, K
+    float tIvc;
+    float advance;      // the spark, degrees before the top
+    float burnDeg;      // the burn's length, degrees
+    float octane;       // the fuel's octane index
+    float delayK;       // the delay's calibration (EndGas.start)
+    float heatK;        // the heat released over the charge's air at stoichiometric, J/kg (the walls' share taken)
+    int stride;         // samples a tick
+    // what a run gives
+    float knockAt;      // degrees after the top where the integral reached 1 (999: it did not)
+    float sumEnd;       // the integral where it stopped (the burn's end, or the knock)
+    float pMax;         // Pa
+    float aMax;         // where, degrees after the top
+    float intensity;
+    int pre;
+    float tuEnd;        // the end gas's temperature where it stopped
+    float a50;          // the half-burn angle, degrees after the top
+    float work;         // the gas's work on the piston from the valve's closing to 90 after the top, J
+
+    float volume(float a)
+    {
+        const float r = a * 0.01745329f;
+        const float s = sinf(r);
+        const float vc = vd / (cr - 1.0f);
+        return vc + 0.5f * vd * (1.0f + 3.3f - cosf(r) - sqrtf(3.3f * 3.3f - s * s));
+    }
+
+    void defaults()
+    {
+        cr = 10.0f;
+        vd = 0.0005f;
+        rpm = 2000.0f;
+        pIvc = 101325.0f;
+        tIvc = 330.0f;
+        advance = 20.0f;
+        burnDeg = 50.0f;
+        octane = 91.0f;
+        delayK = 1.0f;
+        heatK = 2.4e6f;
+        stride = 4;
+    }
+
+    void run()
+    {
+        const float dt = 1.0f / 96000.0f;
+        const float dDeg = rpm * 6.0f * dt;
+        float a = -130.0f;
+        float v = volume(a);
+        float p = pIvc;
+        const float air = pIvc * v / (287.0f * tIvc);
+        const float q = air * heatK;
+        const float g = 1.32f;
+        const float surf = 0.022f * expf(0.6666667f * logf(vd / 0.0005f));
+        const float hA = 260.0f * surf * (0.6f + rpm / 2500.0f);
+        gas.start(pIvc, tIvc, octane, delayK);
+        knockAt = 999.0f;
+        pMax = p;
+        aMax = a;
+        intensity = 0.0f;
+        pre = 0;
+        a50 = 999.0f;
+        work = 0.0f;
+        float xPrev = 0.0f;
+        int n = 0;
+        bool done = false;
+        while (a < 90.0f)
+        {
+            const float aNew = a + dDeg;
+            const float vNew = volume(aNew);
+            const float f = (aNew + advance) / burnDeg;
+            const float x = f > 0.0f ? 1.0f - expf(-5.0f * f * f * f) : 0.0f;
+            const float tGas = p * v / (air * 287.0f);
+            const float dq = q * (x - xPrev) - hA * (tGas - 450.0f) * dt;
+            if (xPrev < 0.5f && x >= 0.5f)
+                a50 = aNew;
+            xPrev = x;
+            const float pNew = (p * (v / (g - 1.0f)) + dq - 0.5f * p * (vNew - v)) / (vNew / (g - 1.0f) + 0.5f * (vNew - v));
+            work += 0.5f * (p + pNew) * (vNew - v);
+            p = pNew;
+            v = vNew;
+            a = aNew;
+            if (p > pMax)
+            {
+                pMax = p;
+                aMax = a;
+            }
+            n += 1;
+            if (!done && n % stride == 0)
+            {
+                const float k = gas.tick((float)stride * dt, p, x, f > 0.0f ? 1 : 0);
+                if (gas.on == 0)
+                {
+                    done = true;
+                    sumEnd = gas.sum;
+                    tuEnd = gas.tu;
+                    if (k > 0.0f)
+                    {
+                        knockAt = a;
+                        intensity = k;
+                        pre = gas.pre;
+                    }
+                }
+            }
+        }
+        if (!done)
+        {
+            sumEnd = gas.sum;
+            tuEnd = gas.tu;
+        }
+    }
+
+    // The knock spark advance: the most advance (to 0.1 degree) whose end gas does not reach 1 before the burn's end
+    float limitAdvance()
+    {
+        float lo = -10.0f;
+        float hi = 50.0f;
+        for (int i = 0; i < 20; ++i)
+        {
+            advance = 0.5f * (lo + hi);
+            run();
+            if (knockAt < 999.0f)
+                hi = advance;
+            else
+                lo = advance;
+        }
+        advance = lo;
+        return lo;
+    }
+
+    // The spark advance of the most work (to 0.1 degree), by golden-section search over 0 to 50
+    float bestAdvance()
+    {
+        float lo = 0.0f;
+        float hi = 50.0f;
+        for (int i = 0; i < 40; ++i)
+        {
+            const float m1 = lo + 0.381966f * (hi - lo);
+            const float m2 = hi - 0.381966f * (hi - lo);
+            advance = m1;
+            run();
+            const float w1 = work;
+            advance = m2;
+            run();
+            if (w1 > work)
+                hi = m2;
+            else
+                lo = m1;
+        }
+        advance = 0.5f * (lo + hi);
+        run();
+        return advance;
+    }
+
+    // 1 / tau by the tables, for comparing with the closed form
+    float rate(float p, float t)
+    {
+        return knockRate(knockOctane(octane), p, t);
+    }
+
+    // Ticks `n` times at a pressure and a temperature held still (the end gas's temperature is the start's: p0 = p)
+    float hold(float p, float t, float seconds, int n)
+    {
+        gas.start(p, t, octane, 1.0f);
+        for (int i = 0; i < n; ++i)
+            gas.tick(seconds / (float)n, p, 0.0f, 1);
+        return gas.sum;
+    }
+
+    // A row of the fuel table: 0 the ratio, 1 the heating value, 2 the latent heat, 3 the octane index
+    float row(int kind, int what)
+    {
+        const int f = fuelRow(kind);
+        if (what == 0)
+            return kFuelAfr[f];
+        if (what == 1)
+            return kFuelLhv[f];
+        if (what == 2)
+            return kFuelLatent[f];
+        return fuelOctane(kind);
+    }
+
+    // Mixture.set for the tests: returns its heat
+    float mixture(int kind, float lambda, float air, float oxy, float direct)
+    {
+        mix.set(kind, lambda, air, oxy, direct);
+        return mix.heat;
+    }
+
+    // `n` ticks of an end gas on a pressure that rises and falls, for the cost of a tick
+    float cost(int n)
+    {
+        gas.start(101325.0f, 330.0f, 91.0f, 1.0f);
+        float s = 0.0f;
+        for (int i = 0; i < n; ++i)
+        {
+            const float p = 101325.0f * (1.0f + 20.0f * (float)(i & 1023) / 1024.0f);
+            gas.on = 1;
+            gas.sum = 0.0f;
+            s += gas.tick(4.0f / 96000.0f, p, 0.5f, 1);
+            s += gas.tu;
+        }
+        return s;
+    }
+};
