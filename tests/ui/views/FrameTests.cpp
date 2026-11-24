@@ -229,6 +229,28 @@ namespace
         CHECK_NEAR(rig.clutch, 0.5, 0.03);
         rig.host->release();
         CHECK(rig.clutch < 0.0f);
+        // START disabled while the engine is not ready (its program compiling): no press reaches the shell.
+        {
+            bool ready = false;
+            FrameRig late;
+            // A fresh rig with engineReady false: its START takes no press.
+            tee::ui::FrameServices sv;
+            sv.app = late.demo.app;
+            sv.engineReady = [&ready] { return ready; };
+            AppFrame gated(late.demo.doc, late.demo.units, late.demo.engine, sv, &late.demo.engine, &late.demo.engine);
+            funkgui::HeadlessHost h(gated, 0, 2.0f);
+            h.tick(5);
+            const int before = late.demo.askedCount;
+            const funkgui::Rect st = gated.startRect();
+            h.press(st.centreX(), st.centreY());
+            h.release();
+            CHECK(late.demo.askedCount == before);
+            ready = true;
+            h.tick(2);
+            h.press(st.centreX(), st.centreY());
+            CHECK(late.demo.asked.startHeld);
+            h.release();
+        }
         // The mode.
         bool cycled = false;
         for (const funkgui::A11yItem& it : rig.host->accessibility())
