@@ -133,8 +133,8 @@
         385000
       ],
       "unit": "W",
-      "source": "published figures of its kind (the maker's figures, firm): 7011 cc; 53 to 55 kW a litre",
-      "basis": "recalled"
+      "source": "published figures of its kind (the maker's figures, firm): 7011 cc; 53 to 55 kW a litre; looked up: corvetteactioncenter.com/specs/c6/2006/2006ls7.html (377 kW at 6300, 637 N m at 4800, SAE J2723)",
+      "basis": "cited"
     },
     {
       "name": "Speed at peak power",
@@ -148,8 +148,8 @@
         670.2
       ],
       "unit": "rad/s",
-      "source": "published figures of its kind (the maker's figures, firm): 7011 cc: 6200 to 6400 rpm",
-      "basis": "recalled"
+      "source": "published figures of its kind (the maker's figures, firm): 7011 cc: 6200 to 6400 rpm; looked up: corvetteactioncenter.com/specs/c6/2006/2006ls7.html (377 kW at 6300, 637 N m at 4800, SAE J2723)",
+      "basis": "cited"
     },
     {
       "name": "Peak torque",
@@ -163,8 +163,8 @@
         645
       ],
       "unit": "N m",
-      "source": "published figures of its kind (the maker's figures, firm): 7011 cc; BMEP 11.3 to 11.6 bar (a naturally aspirated petrol engine 10 to 13 bar, turbocharged 18 to 25, a modern truck diesel 20 to 25: Heywood, Internal Combustion Engine Fundamentals, ch. 2)",
-      "basis": "recalled"
+      "source": "published figures of its kind (the maker's figures, firm): 7011 cc; BMEP 11.3 to 11.6 bar (a naturally aspirated petrol engine 10 to 13 bar, turbocharged 18 to 25, a modern truck diesel 20 to 25: Heywood, Internal Combustion Engine Fundamentals, ch. 2); looked up: corvetteactioncenter.com/specs/c6/2006/2006ls7.html (377 kW at 6300, 637 N m at 4800, SAE J2723)",
+      "basis": "cited"
     },
     {
       "name": "Speed at peak torque",
@@ -178,8 +178,8 @@
         523.6
       ],
       "unit": "rad/s",
-      "source": "published figures of its kind (the maker's figures, firm): 7011 cc: 4600 to 5000 rpm (a turbocharged engine's plateau: its whole span)",
-      "basis": "recalled"
+      "source": "published figures of its kind (the maker's figures, firm): 7011 cc: 4600 to 5000 rpm (a turbocharged engine's plateau: its whole span); looked up: corvetteactioncenter.com/specs/c6/2006/2006ls7.html (377 kW at 6300, 637 N m at 4800, SAE J2723)",
+      "basis": "cited"
     },
     {
       "name": "Warm idle",
