@@ -1,42 +1,41 @@
-# D: mechanics, layouts (standalone part done; integration waits for K3b)
+# D: mechanics, layouts, the integrator (integration done)
 
-Package D, branch `claude/awesome-gates-ntdb58`, commits 20e0785, 72d2d53, 8f228c4, 0362088, ac89906. Cloud session.
-Model, sources, judgement: [docs/models/mechanics.md](../models/mechanics.md).
+Package D, branch `claude/awesome-gates-ntdb58`, cloud session. Model, sources, judgement:
+[docs/models/mechanics.md](../models/mechanics.md); the seams: [sim/README.md](../../sim/README.md) ("A custom
+engine", "The hooks"). Pushed through bf0ec81; this file and the test fix after it.
 
-**Done** (new files only; nothing K3 creates was touched): `sim/core/{mechspec,layout,kinematics,inertia,shake,
-friction,work,dyno}.fm`, 33 presets in `content/builds/engines/` (the reference's 17 plus the card's 16), and
-`tee-tests-core` (`tests/sim/core/`, 16 tests, all pass):
-- test 2: `the slider-crank's volume, slope and acceleration match the closed form...` (lambda 2.8 to 4.5, < 1e-6 r);
-  `the size and bore/stroke dials and the bore and stroke are one setting` (+ redline by piston speed)
-- test 3: `firing intervals from geometry: the card's table`, `every layout preset fires as its file says`,
-  `the reference's seventeen layouts' firing angles, exactly`, `a layout whose cylinders fire together is flagged`
-- test 4: `the inertia torque does no work over a cycle...`, `one cylinder's inertia torque is the closed form's, and
-  goes as the speed squared`, soak `a crank with its moving masses turning freely keeps its energy (20 s)`
-- test 5: `shaking by order: the known engines`, `balance shafts cancel the order they claim, and only that`
-- test 6 (standalone half): `the dyno holds a set speed within 10 rpm...` (mean within 0.01 rpm; absorber = brake
-  torque to 0.1 %), `the dyno sweeps at its rate`
-- also: Otto-cycle work integral vs closed form (0.2 %), friction by part (0.95 to 2.35 bar, 700 to 6500 rpm)
+**Done, by test** (`tee-tests-core`, 21 tests, all pass; `tee-tests "[sim]"` null test bit-identical on every pair):
+- 1: `NullTest` unchanged; `custom off: a build's custom fields filled in change nothing, to the bit` (0 of 96 256 differ)
+- 2 to 5 (standalone, as before): slider-crank, firing intervals (33 presets, the reference's 17 exact), inertia torque
+  with a 20 s soak, shaking and balance shafts
+- 6: `the engine dyno holds a set speed within 10 rpm at full throttle...` (V8 build with the biggest cam, the custom
+  V8, the custom six: 1991.7 to 2000.7 rpm at 2000, absorber = gas less friction to 0.1 %); `...sweeps at its rate`
+  (300 rpm/s: +0.2 rpm mean error, 49 rpm worst, the cam's surges)
+- 7: `the default V8 at full throttle: BMEP...` warm (oil at 100 C): BMEP 10.2 to 10.8 bar 1500 to 4500 rpm (8.5 at
+  5500, 7.5 at 6400); FMEP 1.03 to 2.46 bar 800 to 6400; VE 0.86 to 0.94 (air). Cold (just started) the reference's
+  oil factor puts FMEP at 3.3 bar near the redline. Sources: docs/models/mechanics.md
+- 8: `a sixteen-cylinder build starts, runs and stops`: 9756 rpm within 2 s, idles 764, stops
+- 9: the whole suite after each push to `engine.fm`: 306 tests, all mine pass; failing, not mine: ContractTest on
+  `spec.exhaust.primaryTo/collectorTo/sides/tips` (G) and `spec.car.gears` (I) (no unit, quantity or choices), and six
+  `ui.*` golden frames (the tests do not load the simulator)
 
-**Not done**: tests 1, 6 (in the engine), 7, 8, 9, the integrator's job, Spec fields into `sim/spec/engine.fm`,
-`tel.engine` fields, `sim/README.md`: all wait for K3b, as the card says.
+**Integrated**: `engine.custom` (layout from geometry, bore/stroke/rod, redline by piston speed, a rotary's ports,
+energy-exact crank with the inertia torque, friction by part; a geometry change under the fade); MODE_DYNO_ENGINE on
+every engine (40 rad/s loop; the bench's load dial rests); `tel.engine`: torque (brake), gasTorque, firing, power,
+IMEP, PMEP, FMEP, BMEP, VE x2, peak pressure, piston speed, ripple, dyno torque and speed, inertia torque, shake x4,
+firingAngle[], cylPeak[], cylPeakAngle[]. As integrator: every hook of the integration queue as a stub in its owner's
+module, called only with its package's `model` 1; the model switches; env, Scope and telemetry fields the lead listed;
+names settled (README "The hooks").
 
-**Measurements**: R = 1942 ns (tee-bench --quick, reference V8, this container). Inertia torque + crank step + work
-integral: 69 ns a sample for 8 cylinders (0.036 R; budget 0.06 R), 117 ns for 16. `tee-tests-core` runs in 0.6 s.
-Whole suite (115 tests, mine included) passes at merge 67b5877.
+**Measurements**: R = 1942 ns (this container). Default engines with all hooks and reports on: 1.050 R against the
+reference (K3a: 1.011): +0.04 R. Custom V8 as the default (18.9 % vs 18.8 % of a core at 48 kHz); the V16 1.63 times
+that, about 1.7 R. Inertia, crank step and work integral standalone: 69 ns (8 cyl), 117 ns (16).
 
-**Finding for K3/the Crank**: with a varying inertia J(theta), an explicit step of dw/dt loses energy (a free single
--15 % in 20 s). `MovingMasses::advance` steps the kinetic energy exactly instead (2e-5 in 20 s). With `custom` on the
-crank must use it; with it off the reference's step stays.
+**Not done**: the housing seam's per-sample sequence (F and G add it at step 4; README says where); shaking as a sound
+(wave 2); the two-stroke (card T) stands where 5caecb4 left it (docs/models/twostroke.md).
 
-**Change wanted outside my paths**: `tests/CMakeLists.txt` needs `add_subdirectory(sim/core)` (or a loop over
-`tests/sim/*/CMakeLists.txt`); until then `tee-tests-core` is not built by the presets (I add the line locally,
-uncommitted). Cards E, H, I each improvised their own hook (`standalone.cmake`, `hook.cmake`): one rule for all would
-help.
+**Conventions to know**: the reference's tables fire their orders mirrored (Engine places a cylinder at theta +
+fire); a custom layout fires in its geometry's order. `tel.engine.firingAngle` reports what runs.
 
-**FMinus issues**: none met.
-
-**Judgement, not measurement**: friction coefficients (fitted to the reference's curve), default piston/rod masses,
-the V4/W pin phasing, places along the crank, 25 m/s piston-speed redline, dyno loop 15 rad/s. Presets' `"expect"`
-key is outside the spec (02-contracts §8 keeps unknown keys).
-
-**To look at**: nothing audible yet (standalone). `python3 tests/sim/core/make_presets.py` prints every preset's order.
+**FMinus issues**: none. **To listen to**: the V16 and the custom V8 on free-revs (out/ via tee-render --engine
+--build content/builds/engines/v16-45.json); the dyno sweep of the V8 build (its cam's surges at low speed).

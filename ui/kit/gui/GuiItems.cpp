@@ -75,7 +75,7 @@ namespace tee::ui
 
         Col valueInk(const funkgui::Theme& th, bool hover, bool atDefault)
         {
-            return hover ? th.accent : (atDefault ? th.ink32 : th.ink100);
+            return hover ? th.accent : (atDefault && dimAtDefault() ? th.ink32 : th.ink100);
         }
 
         void radial(funkgui::Canvas& c, funkgui::Point centre, float r0, float r1, float a, float width, Col col)

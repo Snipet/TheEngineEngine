@@ -1,6 +1,7 @@
 // tests/sim/core/EngineExplore.cpp: the engine on the dyno, printed (hidden: "[.dynosweep]").
 #include "Engine.h"
 
+#include <algorithm>
 #include <cstdio>
 
 using tee::test::core::Bench;
@@ -46,4 +47,21 @@ TEST_CASE("dyno trace", "[.dynotrace]")
                         b.tel("engine.speed") * 9.5492966, b.field("tqAbs"), b.field("dynoOn"), b.tel("engine.state"), b.field("dyno.integ"),
                         b.tel("ecu.knockRetard"), b.tel("engine.flags"), b.tel("engine.throttle"));
     });
+}
+
+TEST_CASE("cost of builds", "[.cost]")
+{
+    for (const char* build : {"default", "engines/ref-12-v8-cross", "engines/v16-45"})
+    {
+        double best = 1e9;
+        for (int r = 0; r < 3; ++r)
+        {
+            Bench b(build);
+            b.start();
+            b.ctl().throttle = 0.6f;
+            b.play(6.0);
+            best = std::min(best, b.load());
+        }
+        std::printf("%-24s %.1f %% of a core (48 kHz, 512 blocks; start, then 6 s at 60 %% throttle)\n", build, 100.0 * best);
+    }
 }

@@ -157,8 +157,16 @@ namespace tee::ui
                                return services_.simLoad ? std::to_string(static_cast<int>(std::lround(services_.simLoad() * 100.0f))) + " %"
                                                         : std::string("-");
                            });
-        level_ = &make<Bar>("Output", [this] {
+        // The output's peak: the bar on a scale of decibels (-60 to 0 dBFS), its number in dB.
+        const auto peak = [this] {
             return std::clamp(services_.outputLevel ? services_.outputLevel() : telemetry_.outputPeak(), 0.0f, 1.0f);
+        };
+        level_ = &make<Bar>("Output", [peak] {
+            const float p = peak();
+            return p <= 0.001f ? 0.0f : std::clamp(1.0f + 20.0f * std::log10(p) / 60.0f, 0.0f, 1.0f);
+        }, [peak] {
+            const float p = peak();
+            return p <= 0.001f ? std::string("-60 dB") : look::num(20.0 * std::log10(static_cast<double>(p)), "%.0f") + " dB";
         });
         unitsButton_ = &make<Button>("Units", [this] { showUnits(!unitsPage_); });
         unitsButton_->setLit([this] { return unitsPage_; });
@@ -458,6 +466,7 @@ namespace tee::ui
             o.minWidth = kMinW;
             o.minHeight = kMinH;
             o.name = "app";
+            o.dimAtDefault = false;   // a value is what a person reads, at its default or not
             o.insetLeft = static_cast<int>(room.x) + 4;
             o.insetTop = static_cast<int>(room.y) + 2;
             o.insetRight = std::max(0, width() - static_cast<int>(room.right()) + 4);
@@ -607,7 +616,8 @@ namespace tee::ui
         right(undo_, 62.0f, 9.0f, 30.0f);
         right(unitsButton_, 68.0f, 9.0f, 30.0f);
         x -= 8.0f;
-        right(level_, 110.0f, 6.0f, 36.0f);
+        right(level_, 120.0f, 6.0f, 36.0f);
+        x -= 18.0f;                                       // a clear gap: each label with its own number and bar
         right(load_, 100.0f, 6.0f, 36.0f);
         const float left = railWidth() + 16.0f;
         const float statusW = std::clamp(x - left - 420.0f, 0.0f, 300.0f);
@@ -924,11 +934,9 @@ namespace tee::ui
                 for (int i = 0; i < page.params().count(); ++i)   // a page scrolls: each of its controls is reachable
                     out.insert(page.params().field(i));
                 for (const GuiPanel::WidgetAt& wa : page.widgets())
-                {
-                    const int f = doc_.find(page.spec().gui.nodes[static_cast<std::size_t>(wa.node)].file);
-                    if (f >= 0 && page.items()[static_cast<std::size_t>(wa.item)]->shown())
-                        out.insert(f);
-                }
+                    if (page.items()[static_cast<std::size_t>(wa.item)]->shown())   // a table, or an array's elements
+                        for (const int f : fieldsOfWidget(doc_, page.spec().gui.nodes[static_cast<std::size_t>(wa.node)]))
+                            out.insert(f);
             }
         }
         show(wasShown);

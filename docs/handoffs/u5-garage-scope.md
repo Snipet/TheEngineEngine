@@ -17,25 +17,23 @@
 - Pictures: `out/ui/scope.*.png`, `garage.*.png`, `fx.software.png`, contact sheet `out/ui/sheet.u5.png`. Docs: `docs/ui/scope.md`,
   `garage.md`, `fx.md`.
 
-**Read, and whether on the branch**: telemetry `engine.speed`, `engine.redline`, `engine.crank` (yes); `ecu.advance`,
-`sound.rate` (no: spark unmarked, 48 kHz assumed). Scope `degrees`, `pressure`, `volume`, `liftIntake`, `liftExhaust` (yes);
-`portIntake`, `portExhaust` (no: PORTS says so; `ScopeDemo.h` makes them up for tests). `outputTail` (yes). Fields:
+**Read, all on the branch now** (14:10): telemetry `engine.speed`, `engine.redline`, `engine.crank`, `ecu.advance`,
+`sound.rate`; Scope `degrees`, `pressure`, `volume`, `liftIntake`, `liftExhaust`, `portIntake`, `portExhaust`;
+`outputTail`. Absent at run time they draw empty plots with words and dashes (`scope.absent`). Fields:
 `engine.layout`, `engine.cylinders`, `engine.displacement`/`bore`/`stroke`, `boost.kind`, `fuel.kind`, any field by FieldInfo.
 
 **Wanted**
-1. U1: `WorkspaceContext` gains `garage::Library* library = nullptr;` (forward declaration in Workspace.h), the frame
-   ticks it. Then register GARAGE: `ui/views/garage/register.h` = `TEE_UI_WORKSPACE(garage, makeGarageWorkspace)`; it
+1. U1: register GARAGE: `ui/views/garage/register.h` = `TEE_UI_WORKSPACE(garage, makeGarageWorkspace)`; it
    replaces the placeholder that `ui.frame.garage` drives (that test must change). `frame.scope` in `ui.frame.sheet`
    needs U1's re-bless (it now shows the real SCOPE).
 2. Shell (card B): a `garage::Library` over `tee::files::BuildLibrary` + `BuildFile` (they map one to one; add the
    part, the values by path, the dyno runner's curve cached by `Build::hash()`).
-3. Sim/packages: Scope `portIntake`, `portExhaust` (cylinder 1's port pressures per degree, Pa abs); telemetry
-   `ecu.advance` (deg BTDC), `sound.rate` (Hz).
+3. Done by others since: the four names above; `WorkspaceContext::library` (GARAGE uses it); the shell's
+   `app/GarageLibrary.h`.
 4. CMake, `ui/CMakeLists.txt`: the `tee_add_panel_shaders(tee_ui_app NAME fx ...)` line in `docs/ui/fx.md`, and
    `shaders::add(fxShaders())` where the app adds its tables. It must be in `ui/` (the target's directory): from
    another directory the shaderc commands are not attached (found here).
 
 **Not done / not run**: no workspace calls the fx helpers yet (U3's EXHAUST, U1's DRIVE may). Nobody has seen these
 stages on a real display or GPU; macOS and Windows only by CI, which had not reached these commits when this was written.
-Baseline before my work: `ui.app.sheet` failed. **Measured**: FFT 4096 points at most 30 times a second; 39 view tests
-of mine run in about 40 s here.
+Baseline: `ui.app.sheet` failed before my work. **Measured**: my 19 view tests pass, 14 s here.

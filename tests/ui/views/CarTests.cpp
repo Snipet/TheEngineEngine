@@ -4,7 +4,6 @@
 #include "ViewKit.h"
 
 #include "views/car/Car.h"
-#include "views/car/CarDemo.h"
 
 #include <funkgui/core/Theme.h>
 
@@ -14,7 +13,6 @@ namespace
 
     void live(StageRig& rig)
     {
-        tee::ui::cardemo::setLive(rig.demo.engine);
         rig.settle();
     }
 

@@ -53,7 +53,7 @@ module RigPipe
 
 module BoostRig
 {
-    BoostMachineSpec spec;
+    BoostSpec spec;
     int applied;
     BoostMachine boost;
     // the engine
@@ -284,7 +284,7 @@ module BoostRig
 // fuel; the downpipe anechoic. What comes back is summed against what went in.
 module PassRig
 {
-    BoostMachineSpec spec;
+    BoostSpec spec;
     BoostMachine boost;
     float z;
     float zd;
