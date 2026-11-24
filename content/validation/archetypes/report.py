@@ -113,11 +113,12 @@ def main():
            "on the scenarios of "
            "`content/validation/scenarios/` (`p-*`), in the build's own air (15 C, 101.3 kPa).", ""]
 
-    out += ["**Known measurement faults (not the builds'), 16:30 UTC:** on the full engine dyno (`tee-dyno --steps`) the "
-            "2.0 L diesel never starts (engine.state 0, the torque the starter's drag), and the 3.0 L six twin-turbo "
-            "overboosts to 3.0 bar at 4300 rpm against its 1.0 bar target (knock retard 15 degrees) where the "
-            "full-load scenario holds 1.0 bar at 5000 rpm: their boosted rows' power and torque are the runner's, "
-            "not the engine's. Reported to the host and tools card (C) and to N2.", ""]
+    out += ["**Read the boosted rows with care (16:30 UTC).** Their power and torque come from the stepped full dyno, "
+            "where a boosted engine stepped up from low speed can run away today: the matched wastegate is too small "
+            "(N2 is resizing it), so the boost overshoots its target (the 3.0 L six twin-turbo: 3.0 bar against 1.0 at "
+            "4300 rpm, knock retard pinned) and the figures are the runaway's, not the engine's. The 2.0 L diesel does "
+            "not start on the stepped dyno at all (reported to card C). The run that counts for the boosted archetypes "
+            "is the one after the gate's resizing and the wall-heat double count's fix.", ""]
 
     # the summary
     out += ["## The archetypes at a glance", "",
