@@ -280,6 +280,13 @@ module XTest
         }
     }
 
+    // A new topology while running (the engine's fade around it is the owner's): the pipes' heat kept
+    void rebuild()
+    {
+        b.build(0, warm);
+        tick = 0;
+    }
+
     // The stand-in turbines on (one a bank's collector, each side its own), before configure()
     void standIn(float vol, float r)
     {

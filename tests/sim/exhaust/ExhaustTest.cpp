@@ -376,3 +376,51 @@ TEST_CASE("the scope shows the path's pressures", "[exhaust][scope]")
     CHECK(n == 7);
     CHECK(hi - lo > 100.0);
 }
+
+// Card G, test 11 (standalone form): three minutes of running flows (blowdown pulses, the speed wandering 1000 to
+// 7000 rpm, the gas warming and cooling) while the topology changes to a random one every 4 s (rebuilt as the engine
+// rebuilds under its fade). Every output finite and bounded; after the flows stop, no pressure stays in the pipes.
+TEST_CASE("random topologies changed while running stay finite and bounded", "[exhaust][soak]")
+{
+    Lcg g{777u};
+    Rig rig(12);
+    rig.noise(1.0);
+    rig.configure();
+    double peak = 0.0;
+    double peakLater = 0.0;
+    bool finite = true;
+    for (int k = 0; k < 45; ++k)
+    {
+        randomTopology(rig, g);
+        rig.set("tPort", 600.0 + 600.0 * g.unit());
+        rig.set("mdot", 0.005 + 0.05 * g.unit());
+        rig.rebuild();
+        const double rpm = 1000.0 + 6000.0 * g.unit();
+        std::vector<float> q = pulses(rig, rpm, 4.0, 0.05 + 0.25 * g.unit(), 0.02 * g.unit());
+        std::vector<float> l, r;
+        rig.run(q, l, r);
+        for (std::size_t i = 0; i < l.size(); ++i)
+        {
+            finite = finite && std::isfinite(l[i]) && std::isfinite(r[i]);
+            const double a = std::max(std::fabs(l[i]), std::fabs(r[i]));
+            peak = std::max(peak, a);
+            if (i > static_cast<std::size_t>(0.1 * kRate))
+                peakLater = std::max(peakLater, a);
+        }
+    }
+    // then nothing flows in for 3 s
+    std::vector<float> q(static_cast<std::size_t>(3.0 * kRate) * kPorts, 0.0f);
+    std::vector<float> l, r;
+    rig.run(q, l, r);
+    double tail = 0.0;
+    for (std::size_t i = l.size() - static_cast<std::size_t>(0.1 * kRate); i < l.size(); ++i)
+        tail = std::max(tail, static_cast<double>(std::max(std::fabs(l[i]), std::fabs(r[i]))));
+    const double head = std::max(std::fabs(rig.pConv(0)), std::fabs(rig.pConv(1)));
+    std::printf("soak: 45 topologies over 3 minutes: outputs finite %s, largest %.1f (%.1f past each rebuild's first "
+                "0.1 s); 3 s after the flows stop: output %.3g, mean pressure at the heads %.3g Pa\n",
+                finite ? "yes" : "no", peak, peakLater, tail, head);
+    CHECK(finite);
+    CHECK(peak < 1.0e4);
+    CHECK(tail < 1.0e-3 * peak);
+    CHECK(head < 1.0);
+}

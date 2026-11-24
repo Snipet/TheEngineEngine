@@ -13,10 +13,10 @@ exhaust copied alone in `refexhaust.fm`). Files: `sim/exhaust/{network,slots,end
   X 1.8-2.5 dB over H above 250 Hz, both shrink the tails' difference; quarter-wave notch -38.5 dB, Helmholtz -21.2;
   mufflers IL 22.2 / 15.9 / 1.8 dB and back pressure in the card's order; bypass open +16.7 dB; no converter 3.2 vs
   4.6 kPa and +3.8 dB above 2 kHz; zoomies: one end a cylinder.
-- Test 10, standalone (stand-in housing): passive; downpipe swings 3 dB less. Also the Scope (64 points), meters.
+- Test 10, standalone (stand-in housing): passive; downpipe swings 3 dB less. Test 11 standalone (45 random
+  topologies rebuilt while running, 3 min): finite, bounded, nothing left 3 s after. Also the Scope, meters.
 
-**Not done**: tests 1, 2-in-the-engine, 10 with F's turbine, 11 (all need K3b); `content/builds/exhausts/` (needs the
-Spec fields in `sim/spec/exhaust.fm`).
+**Not done**: tests 1, 2 and 11 in the engine, 10 with F's turbine (need K3b); `content/builds/exhausts/` (Spec).
 
 **Cost** (dev build, R = 2549 ns by `tee-bench --quick`): 54-62 ns a pipe a sample with its junctions; V8 reference
 topology +0.09-0.12 R over the reference's own exhaust (21 pipes); dual with X, stubs and valves +0.31 R (32 pipes):

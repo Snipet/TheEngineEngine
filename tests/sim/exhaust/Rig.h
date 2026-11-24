@@ -104,6 +104,16 @@ namespace tee::test::exhaust
 
         void noise(double k) { noise_(inst_->data(), static_cast<float>(k)); }
 
+        void rebuild()
+        {
+            std::string error;
+            auto* fn = program().function<void(void*)>("XTest::rebuild", error);
+            INFO(error);
+            REQUIRE(fn != nullptr);
+            tee::ScopedFlushDenormals flush;
+            fn(inst_->data());
+        }
+
         // Any method of XTest's taking two floats, or none and giving one
         void call(const std::string& name, float a, float b)
         {

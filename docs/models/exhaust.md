@@ -163,6 +163,7 @@ path from `scopePort`'s primary to its tail, spaced by length, every 128 samples
 | 7: resonators | quarter-wave at 200 Hz: the 200 Hz line -38.5 dB (100 and 400 Hz within 0.6 dB); Helmholtz at 150 Hz: -21.2 dB |
 | 8: mufflers | insertion loss chambered 22.2, three-pass 15.9, straight-through 1.8 dB; back pressure 3154, 1327, 311, none 272 Pa; bypass open +16.7 dB, its share above 1 kHz +0.1 dB; opening in 0.3 s: no burst above 10 kHz (+0.1 dB against open; snapped open in 10 ms: +4.7 dB); the largest step between samples no more than running open at 1 s of travel (8.40 / 8.38), 1.8 times it at 0.3 s (the level overshoots as the steady flow moves into the bypass) |
 | 9: no converter; zoomies | back pressure at the head 3.2 against 4.6 kPa, +3.8 dB above 2 kHz; zoomies on 4, 8 and 12 cylinders: that many radiating ends |
+| 11 (standalone): 45 random topologies rebuilt while running, 3 minutes | every output finite; the largest 5636 (dq/dt, m^3/s^2: an open or unmuffled build at speed; the reference's V8 runs some 2 to 40 rms on the same source), 3 s after the flows stop the output 7.5e-22 and the heads' mean pressure 0.0007 Pa |
 | 10 (stand-in turbine) | the housing's junction passive (no rise, gone in 1.71 s); the downpipe's head swings 3.0 dB less than the housing |
 
 **Cost** (dev build, this container, R = 2549 ns a 96 kHz sample by `tee-bench --quick`): the reference's own exhaust
