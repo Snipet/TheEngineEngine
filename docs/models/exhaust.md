@@ -271,6 +271,11 @@ these units:
 
 The reference's own exhaust is 765 ns at model 0. The rest is the extra pipes and the general junction solve.
 
+Telemetry gives the counts as built, for a readout of the cost: `tel.exhaust.pipes`, `nodes`, `pairs` and
+`openEnds`. The other junctions (ports, closed ends, housings, EXTP heads) sit in the fixed part. They are counted
+from the builder's network, which is built at every configure, in model 0 too as the reference's topology. This table
+is the source of the per-element costs; the R figures are this machine's, and the host's measured R scales them.
+
 Exact savings taken, each proven by comparing the rendered WAV byte for byte before and after (identical), together
 1.749 to 1.708 of the reference (about 120 ns):
 - the passivity check skipped while its inputs stand (c4ce28f): passGain 68 to 26 ns;
