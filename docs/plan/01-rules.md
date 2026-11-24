@@ -34,6 +34,14 @@ and the lead (the session that wrote these files) settles what a card leaves ope
   and `scripts/lint.sh` is clean. A test that fails for a filed finding is skipped with the finding's number in its
   reason (`SKIP("finding F-12: ...")`), never left red. A soak or a fuzz is tagged `[nightly]` (§3). The steward
   messages each owner its own failing tests after every full run and every finished CI job.
+- **A long test never holds a push back twice** (the lead's rule, 2026-11-24 15:55 UTC: the null test takes eight
+  minutes and the branch moves forty commits in that time, so "green on a freshly merged tree" never came true for
+  the packages that edit `sim/engine.fm`, and finished work sat unpushed for an hour). Run your tests once on a tree
+  merged at that moment. When they pass, fetch and merge again and push at once, in one command, whatever the branch
+  did meanwhile: `git fetch origin <branch> && git merge --no-edit FETCH_HEAD && git push -u origin <branch>`. Only a
+  merge that conflicts in a file your change touches earns a second look: resolve it, build (the program must
+  compile), run the one test nearest the conflict, push. The sum is the steward's to check (its full runs and CI),
+  and it tells the owner whose change broke it.
 - Never commit build trees, dependency caches, rendered audio or pictures. `.gitignore` covers `build-*/`, `out/`
   and `.tee-deps/`; test artefacts go under `out/`.
 

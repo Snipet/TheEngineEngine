@@ -109,3 +109,40 @@ TEST_CASE("superbike split", "[.superbike]")
         }
     }
 }
+
+TEST_CASE("rotary torque by model", "[.rotary]")
+{
+    struct Case { const char* name; std::vector<std::pair<const char*, double>> over; };
+    const std::vector<Case> cases = {
+        {"archetype, every model", {}},
+        {"custom off", {{"engine.custom", 0}}},
+        {"boost.model 0", {{"boost.model", 0}}},
+        {"fuel.model 0", {{"fuel.model", 0}}},
+        {"ecu.model 0", {{"ecu.model", 0}}},
+        {"valve.model 0, intake.model 0", {{"valve.model", 0}, {"intake.model", 0}}},
+        {"exhaust.model 0", {{"exhaust.model", 0}}},
+        {"every model 0", {{"boost.model", 0}, {"fuel.model", 0}, {"ecu.model", 0}, {"valve.model", 0}, {"intake.model", 0}, {"exhaust.model", 0}}},
+        {"every model 0, custom off", {{"engine.custom", 0}, {"boost.model", 0}, {"fuel.model", 0}, {"ecu.model", 0}, {"valve.model", 0}, {"intake.model", 0}, {"exhaust.model", 0}}},
+    };
+    for (const auto& c : cases)
+    {
+        Bench b("archetypes/rotary-twin-13");
+        std::string e;
+        REQUIRE(b.player().setSpec("car.model", 0, e));
+        for (const auto& [p, v] : c.over)
+            REQUIRE(b.player().setSpec(p, v, e));
+        b.start();
+        b.warm();
+        std::printf("%-34s", c.name);
+        for (double rpm : {4000.0, 6500.0})
+        {
+            b.warm();
+            b.ctl().mode = 2; b.ctl().throttle = 1.0f; b.ctl().dynoSpeed = float(rpm / 9.5492966);
+            b.play(4.0);
+            double tq = 0, n = 0, bst = 0, imep = 0;
+            b.play(1.0, [&] { tq += b.tel("engine.torque"); bst += b.tel("boost.pressure"); imep += b.tel("engine.imep"); n += 1; });
+            std::printf("  %4.0f rpm: %5.0f N m %4.0f kW, boost %3.0f kPa, IMEP %4.1f bar;", rpm, tq / n, tq / n * rpm / 9549.3, bst / n / 1000, imep / n / 1e5);
+        }
+        std::printf("  faces %g, cycle %g\n", b.field("lay.n"), b.field("lay.cyc"));
+    }
+}

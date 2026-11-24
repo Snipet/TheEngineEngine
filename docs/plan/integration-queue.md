@@ -202,3 +202,15 @@ the null test. Until settled, quote dyno figures with the build's air.
 - **E, F**: treat -1 from `camTarget` / `boostTarget` as "use your own schedule". **G**: `popAt` is still a stub.
 - **C**: `PredictTest.cpp:94` assumes the first take is coarse: fails on a fast Windows runner.
 - **U4, U5**: the ECU's final telemetry, flags, maps and baked arrays (sent 14:57).
+
+## FunkGui's 40 candidate rows (`fg.desktop.menu`): looked at, not adopted here (16:07)
+
+The lead looked at the menu overlay's pictures in `/home/user/FunkGui/build-desktop/sandbox/fg.desktop.menu/`
+(both themes: the header, the tick, the bullet, the disabled rows, the open submenu with its hover) and they are
+right. `tools/golden.py report build-desktop` says: 68 tests, 67 pass, 1 MISSING (these 40 rows), nothing drifted.
+They are **not adopted from this machine**: FunkGui's goldens have a base written from the owner's arm64 Mac and
+overlays by architecture; this container is x86_64 Linux, and adopting needs the bless variable that FunkGui's own
+rules keep for its lead. For the owner, on the Mac, in FunkGui at v0.28.0 or later, after a `desktop` build and a
+look at the two pictures:
+`FUNKGUI_ALLOW_BLESS=1 python3 tools/golden.py adopt build-desktop --only fg.desktop.menu --reason "the menu overlay, new in 0.28.0"`.
+Until then the test reports MISSING and fails nothing.

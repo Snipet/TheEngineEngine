@@ -21,9 +21,11 @@ module VoicesSpec
     int gearCut [[fminus::range(0, 2)]] [[fminus::default(0)]] [[ui::label("Gear teeth")]] [[ui::group("Gearbox")]]
         [[ui::choices("By gearbox", "Helical", "Straight cut")]]
         [[ui::help("By gearbox: a sequential (dog) box and a truck's straight cut, the rest helical; reverse is always straight")]];
-    float whine [[fminus::range(-60, 12)]] [[fminus::default(0)]] [[ui::label("Gear whine")]] [[ui::unit("dB")]]
+    float whine [[fminus::range(-60, 12)]] [[fminus::default(0)]] [[ui::label("Gear whine")]]
+        [[ui::help("The gearbox's gear whine")]] [[ui::unit("dB")]]
         [[ui::decimals(1)]];
-    float axle [[fminus::range(-60, 12)]] [[fminus::default(0)]] [[ui::label("Final drive whine")]] [[ui::unit("dB")]]
+    float axle [[fminus::range(-60, 12)]] [[fminus::default(0)]] [[ui::label("Final drive whine")]]
+        [[ui::help("The final drive's whine")]] [[ui::unit("dB")]]
         [[ui::decimals(1)]];
     float rattle [[fminus::range(-60, 12)]] [[fminus::default(0)]] [[ui::label("Neutral rattle")]] [[ui::unit("dB")]]
         [[ui::decimals(1)]] [[ui::help("The idle gears' rattle in neutral with the clutch up: a dog box's loudest")]];
@@ -33,28 +35,35 @@ module VoicesSpec
     int timing [[fminus::range(0, 2)]] [[fminus::default(0)]] [[ui::label("Cam drive")]] [[ui::group("Drives")]]
         [[ui::choices("Chain", "Toothed belt", "Gears")]] [[ui::help("Chain: the reference's own whine")]];
     float timingLevel [[fminus::range(-60, 12)]] [[fminus::default(0)]] [[ui::label("Cam drive level")]]
+        [[ui::help("The cam drive's sound: a chain's, a belt's or gears'")]]
         [[ui::unit("dB")]] [[ui::decimals(1)]];
     float belt [[fminus::range(-60, 12)]] [[fminus::default(0)]] [[ui::label("Accessory belt")]] [[ui::unit("dB")]]
         [[ui::decimals(1)]] [[ui::help("The alternator's whine, the water and steering pumps, the belt")]];
     int blowerDrive [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Supercharger drive")]]
         [[ui::choices("Belt", "Gears")]] [[ui::help("Heard only with a supercharger; its own whine is the boost's")]];
     // the cooling fan
-    int fan [[fminus::range(0, 2)]] [[fminus::default(2)]] [[ui::label("Cooling fan")]] [[ui::group("Cooling fan")]]
+    int fan [[fminus::range(0, 2)]] [[fminus::default(2)]] [[ui::label("Cooling fan")]]
+        [[ui::help("The engine's cooling fan: none, viscous (turning with the engine) or electric")]]
+        [[ui::group("Cooling fan")]]
         [[ui::choices("None", "Viscous clutch", "Electric")]];
     float fanOn [[fminus::range(300, 400)]] [[fminus::default(368)]] [[ui::label("Fan comes in at")]]
         [[ui::quantity("temperature")]] [[ui::help("The coolant's temperature: an electric fan's switch, a viscous clutch's full lock")]];
-    int fanBlades [[fminus::range(2, 12)]] [[fminus::default(7)]] [[ui::label("Fan blades")]] [[ui::unit("blades")]];
-    float fanLevel [[fminus::range(-60, 12)]] [[fminus::default(0)]] [[ui::label("Fan level")]] [[ui::unit("dB")]]
+    int fanBlades [[fminus::range(2, 12)]] [[fminus::default(7)]] [[ui::label("Fan blades")]]
+        [[ui::help("The fan's blades; their count sets its tone")]] [[ui::unit("blades")]];
+    float fanLevel [[fminus::range(-60, 12)]] [[fminus::default(0)]] [[ui::label("Fan level")]]
+        [[ui::help("The fan's level")]] [[ui::unit("dB")]]
         [[ui::decimals(1)]];
     // fuel
     int injection [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Injection")]] [[ui::group("Fuel")]]
         [[ui::choices("Port", "Direct")]]
         [[ui::help("Direct: the injectors' sharp tick and the high-pressure pump on the cam (a gasoline engine's; a diesel keeps the reference's)")]];
-    float injectors [[fminus::range(-60, 12)]] [[fminus::default(0)]] [[ui::label("Injector tick")]] [[ui::unit("dB")]]
+    float injectors [[fminus::range(-60, 12)]] [[fminus::default(0)]] [[ui::label("Injector tick")]]
+        [[ui::help("The injectors' tick")]] [[ui::unit("dB")]]
         [[ui::decimals(1)]];
     float pump [[fminus::range(-60, 12)]] [[fminus::default(0)]] [[ui::label("Fuel pump")]] [[ui::unit("dB")]]
         [[ui::decimals(1)]] [[ui::help("The tank's pump: its prime at key-on, its hum while the engine turns")]];
-    float prime [[fminus::range(0, 10)]] [[fminus::default(2)]] [[ui::label("Prime")]] [[ui::quantity("time")]]
+    float prime [[fminus::range(0, 10)]] [[fminus::default(2)]] [[ui::label("Prime")]]
+        [[ui::help("How long the fuel pump primes when the key is turned on")]] [[ui::quantity("time")]]
         [[ui::decimals(1)]];
     // the valvetrain
     int lifters [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Lifters")]] [[ui::group("Valvetrain")]]
@@ -62,6 +71,7 @@ module VoicesSpec
     float lash [[fminus::range(0, 0.0008)]] [[fminus::default(0.00025)]] [[ui::label("Lash")]]
         [[ui::quantity("length")]] [[ui::help("A solid lifter's clearance, cold")]];
     float valveLevel [[fminus::range(-60, 12)]] [[fminus::default(0)]] [[ui::label("Valvetrain tick and float")]]
+        [[ui::help("The valvetrain's tick and, when the valves float, their clatter")]]
         [[ui::unit("dB")]] [[ui::decimals(1)]];
     // the wastegate
     float gate [[fminus::range(-60, 12)]] [[fminus::default(0)]] [[ui::label("Wastegate")]] [[ui::group("Wastegate")]]
@@ -70,14 +80,17 @@ module VoicesSpec
         [[ui::choices("Into the exhaust", "To the air")]]
         [[ui::help("To the air: a screamer pipe, heard only with an external gate")]];
     // the starter
-    int starter [[fminus::range(0, 1)]] [[fminus::default(1)]] [[ui::label("Starter")]] [[ui::group("Starter")]]
+    int starter [[fminus::range(0, 1)]] [[fminus::default(1)]] [[ui::label("Starter")]]
+        [[ui::help("A direct-drive starter or a gear-reduction one (higher, whinier)")]] [[ui::group("Starter")]]
         [[ui::choices("Direct drive", "Gear reduction")]];
     float starterPower [[fminus::range(0, 10000)]] [[fminus::default(0)]] [[ui::label("Starter power")]]
         [[ui::quantity("power")]] [[ui::help("0: by the engine's size")]];
     float starterLevel [[fminus::range(-60, 12)]] [[fminus::default(0)]] [[ui::label("Starter level")]]
+        [[ui::help("The starter's level")]]
         [[ui::unit("dB")]] [[ui::decimals(1)]];
     // a motorcycle's (card B2's, spec.car.kind Motorcycle with car.model 1)
-    float chain [[fminus::range(-60, 12)]] [[fminus::default(0)]] [[ui::label("Chain whine")]] [[ui::group("Motorcycle")]]
+    float chain [[fminus::range(-60, 12)]] [[fminus::default(0)]] [[ui::label("Chain whine")]]
+        [[ui::help("A motorcycle's drive chain's whine")]] [[ui::group("Motorcycle")]]
         [[ui::unit("dB")]] [[ui::decimals(1)]];
     float lashLevel [[fminus::range(-60, 12)]] [[fminus::default(0)]] [[ui::label("Chain lash clunk")]] [[ui::unit("dB")]]
         [[ui::decimals(1)]] [[ui::help("The drive's play closing as the throttle opens or shuts")]];

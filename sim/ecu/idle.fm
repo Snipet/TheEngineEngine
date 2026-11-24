@@ -56,12 +56,15 @@ module IdleControl
     float integral;     // the idle valve's integral
     float bypass;       // the idle valve, 0 to 1
     float trim;         // the spark's quick hand: the torque over the map's, 0.3 to 1.35
+    float trimInt;      // its integral (model 1's own): what the spark must take out to hold the idle once the valve is
+                        // shut, the torque in reserve a real idle's retarded spark keeps
 
     void reset()
     {
         integral = 0.0f;
         bypass = 0.0f;
         trim = 1.0f;
+        trimInt = 0.0f;
     }
 
     // A cold engine's fast idle, rpm over the warm idle: up to `rise` (500; a diesel's 250) as the coolant (K) is
@@ -79,19 +82,34 @@ module IdleControl
     }
 
     // Every 16 samples: the speed, the pedal, whether driven (a car's idle spark), seconds since the pedal lifted, the
-    // actual speed (for the dashpot) and whether a gasoline engine (a diesel has no dashpot)
-    void control(EcuSpeed* s, float pedal, bool driven, float sinceLift, bool gasoline, float d16)
+    // actual speed (for the dashpot), whether a gasoline engine (a diesel has no dashpot), seconds since it started
+    void control(EcuSpeed* s, float pedal, bool driven, float sinceLift, bool gasoline, float sinceStart, float d16)
     {
         const float ie = (target - s->avg) * 0.001f;
         const float iep = (target - s->avg - 0.2f * s->rate) * 0.001f;
         if (s->avg < target + 500.0f)
             integral = fminf(fmaxf(integral + 0.5f * ie * d16, 0.0f), 1.0f);
-        bypass = fminf(fmaxf(integral + 0.5f * iep, 0.0f), 1.0f);
-        const float tr = 1.0f + 1.6f * (target - s->avg - 0.08f * s->rate) * 0.001f;
+        // (the valve's proportional part half the reference's near the target: the plenum's filling lags the valve by
+        // some 0.1 s, and at
+        // the reference's gain the loop is marginal: it hunts plus or minus 100 rpm from some starts. The spark, which
+        // acts within a cycle, is the fast hand). A diesel's "valve" is its idle fuel (no plenum between): four times it
+        // Far from the target (a start's flare and fall, a stall coming) the reference's full gain, to catch it
+        // and for 3 s after a start, whose flare falls fast toward a stall
+        const float near = !gasoline ? 1.0f : (sinceStart < 3.0f ? 0.5f : 0.25f + 0.25f * fminf(fmaxf((fabsf(iep) - 0.15f) / 0.15f, 0.0f), 1.0f));
+        bypass = fminf(fmaxf(integral + near * iep, 0.0f), 1.0f);
+        // the spark's integral: with the pedal up near the idle and the valve shut (it can take no more air away), the
+        // spark takes the excess torque out over a second or two; it gives it back as the valve opens again
+        // (and gives it back at once under the target: after a start's flare the integral must not hold the torque down
+        // as the speed falls, or it stalls)
+        if (pedal < 0.02f && s->avg < target + 450.0f && integral <= 0.0f && ie < 0.0f)
+            trimInt = fmaxf(trimInt + 1.0f * ie * d16, -0.6f);
+        else
+            trimInt = fminf(trimInt + (ie > 0.0f ? 4.0f : 0.5f) * d16, 0.0f);
+        const float tr = 1.0f + 1.6f * (target - s->avg - 0.08f * s->rate) * 0.001f + trimInt;
         if (driven)
             trim = pedal < 0.02f ? fminf(fmaxf(tr, 0.3f), 1.35f) : fminf(fmaxf(tr, 1.0f), 1.35f);
         else
-            trim = s->avg < target + 450.0f ? fminf(fmaxf(tr, 0.55f), 1.35f) : 1.0f;
+            trim = s->avg < target + 450.0f ? fminf(fmaxf(tr, 0.3f), 1.35f) : 1.0f;
         if (gasoline)
             bypass = fmaxf(bypass, 0.35f * fminf(fmaxf((s->rpm - target - 400.0f) * 0.001f, 0.0f), 1.0f) * expf(-sinceLift / 0.6f));
     }

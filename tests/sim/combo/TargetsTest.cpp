@@ -45,6 +45,19 @@ namespace
         return std::max(r.left().during(from, to).largestStep(), r.right().during(from, to).largestStep());
     }
 
+    // For a cut that sends fuel to the pipe (a spark cut, a dog box's shift cut on the new ECU): the bang's bound is
+    // the reference's own limiter with its pops at their default (0.3) through the same scenario, not more (the lead's
+    // ruling with card H, 15:26). judge() bounds at twice its refStep, so this gives half of that step.
+    template <class Make>
+    double bangBaseline(Make make, const Times& tm)
+    {
+        tee::test::Scenario s = make(false);
+        s.at(0.0).spec("ecu.pops", 0.3);
+        const tee::test::Run r = s.run(tm.end);
+        const double from = tm.started + 0.5, to = tm.off > 0.0 ? tm.off : tm.end;
+        return 0.5 * std::max(r.left().during(from, to).largestStep(), r.right().during(from, to).largestStep());
+    }
+
     // the share of [from, to] for which a telemetry bit is set
     double bitShare(const tee::test::Run& r, const char* field, int bit, double from, double to)
     {
@@ -142,7 +155,7 @@ TEST_CASE("targets: a dog box's upshifts cut and its downshifts blip on the new 
         return s;
     };
     const tee::test::Run r = make(true).run(tm.end);
-    Verdict v = judge(r, tm, archetype("v8"), true, baseline(make, tm));
+    Verdict v = judge(r, tm, archetype("v8"), true, bangBaseline(make, tm));
     const double cut = bitShare(r, "car.flags", 32, 4.9, 5.3) + bitShare(r, "car.flags", 32, 6.4, 6.8);
     const double blip = r.tel("engine.speed").during(9.0, 9.4).max() - r.tel("engine.speed").during(8.8, 9.0).min();
     std::printf("targets: dog box: the cut asked %.0f %% of the upshifts' windows; the downshift blipped %.0f rpm\n",
@@ -197,7 +210,8 @@ TEST_CASE("targets: every limiter kind against a wheel that spins up in first on
             return s;
         };
         const tee::test::Run r = make(true).run(tm.end);
-        Verdict v = judge(r, tm, archetype("v8"), true, baseline(make, tm));
+        // a spark cut (kind 1) bangs: the bang's bound; the others cut fuel: twice the reference without pops
+        Verdict v = judge(r, tm, archetype("v8"), true, kind == 1 ? bangBaseline(make, tm) : baseline(make, tm));
         const double top = r.tel("engine.speed").during(3.3, 7.5).max();
         const double red = r.tel("engine.redline").last();
         std::printf("targets: limiter kind %d: the wheel spun the engine up to %.0f rpm (redline %.0f)\n", kind,

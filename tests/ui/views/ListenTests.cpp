@@ -7,6 +7,7 @@
 #include "app/Look.h"
 #include "views/listen/ListenWorkspace.h"
 
+#include <funkgui/canvas/Prim.h>
 #include <funkgui/core/Theme.h>
 
 #include <cmath>
@@ -57,8 +58,19 @@ namespace
         }
         std::string faults()
         {
-            return tee::test::u5::textFaults(host->draw(), { 0.0f, 0.0f, static_cast<float>(w), static_cast<float>(h) },
-                                             { ws->plan(), ws->column(), ws->bar() });
+            const funkgui::PrimList& prims = host->draw();
+            std::string why = tee::test::u5::textFaults(prims, { 0.0f, 0.0f, static_cast<float>(w), static_cast<float>(h) },
+                                                        { ws->plan(), ws->column(), ws->bar() });
+            if (!why.empty())
+                return why;
+            // No glyph on a wheel (the lead found "TANK / silent" over the right rear one).
+            for (const funkgui::Prim& p : prims.prims)
+                if (static_cast<int>(p.d2[2] + 0.5f) == static_cast<int>(funkgui::PrimKind::text))
+                    for (const funkgui::Rect& r : ws->wheelRects())
+                        if (p.x1 - 1.5f > r.x && p.x0 + 1.5f < r.right() && p.y1 - 1.5f > r.y && p.y0 + 1.5f < r.bottom())
+                            return "a glyph at " + std::to_string(static_cast<int>(p.x0)) + "," + std::to_string(static_cast<int>(p.y0))
+                                 + " lies on a wheel";
+            return {};
         }
     };
 
@@ -155,11 +167,11 @@ namespace
         const funkgui::Point h = rig.ws->facingHandlePx(), m = rig.ws->listenerPx();
         rig.host->drag(h.x, h.y, m.x + 40.0f, m.y);
         rig.host->tick(10);
-        CHECK_NEAR(rig.field("sound.facing"), 3.14159265358979 / 2, 0.09);
+        CHECK_NEAR(rig.field("sound.facing"), 90.0, 5.0);   // degrees, toward the right
         golden("listen.free", *rig.host);
         // Undo takes the turn back, and then the drag, a step each.
         rig.demo.doc.undo();
-        CHECK(std::fabs(rig.field("sound.facing") - 3.14159265358979 / 2) > 0.1);
+        CHECK(std::fabs(rig.field("sound.facing") - 90.0) > 5.0);
         rig.demo.doc.undo();
         CHECK(rig.field("sound.camera") == 0.0);
         return 0;
