@@ -57,6 +57,9 @@ namespace tee
         double rate = 48000.0;
         int block = 512;
         double seconds = 0.0;
+        // The engine held warm (Warm.h) from the start: whoever attaches the host for it sets LoadOptions::hold to
+        // warmEngine() (tee-render, tee-validate do).
+        bool warm = false;
         std::vector<TimelineEvent> events;   // by time; of one time in the order written
         std::vector<Assertion> assertions;
 

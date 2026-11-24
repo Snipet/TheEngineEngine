@@ -30,6 +30,7 @@ namespace tee::ui::pages
     {
         std::string out = "column gap=12 pad=4 {";
         bool any = false;
+        std::vector<int> seen;   // a field named twice (a fallback that is also listed) is shown once
         // the note in lines of at most 46 characters (a label's most is 48), broken at spaces
         for (std::size_t at = 0; at < note.size();)
         {
@@ -46,8 +47,9 @@ namespace tee::ui::pages
             for (std::size_t k = 0; k < s.paths.size(); ++k)
             {
                 const int f = doc.find(s.paths[k]);
-                if (f < 0 || doc.info(f).hidden)
+                if (f < 0 || doc.info(f).hidden || std::find(seen.begin(), seen.end(), f) != seen.end())
                     continue;
+                seen.push_back(f);
                 const FieldInfo& i = doc.info(f);
                 const std::string lab = k < s.labels.size() && !s.labels[k].empty() ? " label=" + quoted(s.labels[k]) : "";
                 switch (i.kind)
