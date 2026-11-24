@@ -48,6 +48,31 @@ the big block (635 → 595, 600 to 690) just under, and the short tuned engines 
 465): their shortfall is breathing (N1's B). Sensitivities beside it (λ 1, not proposed): gamma 0.02 lower, -3.3 %;
 Woschni's combustion term doubled (walls 0.14 → 0.18 of the fuel), -3.3 %.
 
+**The mixture's dependence (the lead's condition, 20:15).** Gatowski's fit is for a charge near stoichiometric; a
+diesel burns at φ 0.65 to 0.75. Ceviz and Kaymaz (Energy Conversion and Management 46, 2005) give the direction only
+(γ rises as the mixture leans); their coefficients were not reachable here. Sized from first principles instead:
+frozen products of CH1.8 with JANAF heat capacities (N2, O2, CO2, H2O; recalled, 1 to 2 %), γ at φ 0.7 against 1.0 is
+1.304 / 1.293 at 1000 K, 1.277 / 1.266 at 1500, 1.264 / 1.253 at 2000, 1.257 / 1.246 at 2500: lean 0.011 higher at
+every temperature. Gatowski's matches the stoichiometric products at 1500 K (1.270) and falls below them hotter, for
+the dissociation. The present fit (1.300 at 1500 K) is above even φ 0.7's products below 2000 K, so it is not "the lean
+gas's". Proposed to D: γ = 1.392 - 8.13e-5 T + 0.037 (1 - min(φ, 1)). The three diesels' gross IMEP, bar, at their
+target peak-torque and peak-power speeds (4.5 s settle), present → Gatowski → with the lean term: diesel 2.0 22.22 →
+21.45 → 21.94 and 23.75 → 22.43 → 22.91; pickup 6.7 21.23 → 20.88 → 20.99 and 21.46 → 20.79 → 21.19; tractor 21.58 →
+20.91 → 21.29 and 21.83 → 21.10 → 21.36: -1.1 to -3.5 %, mean -2 %.
+
+**Best torque against lambda, with it (the lead's check).** A flat lambda map (`ecu.maps.lambdaAuto` 0, one point),
+full load, torque N m:
+
+| λ | 0.78 | 0.82 | 0.86 | 0.90 | 0.94 | 0.98 | 1.02 | 1.10 |
+|---|---|---|---|---|---|---|---|---|
+| Flat six 4750 rpm, present γ | 374.6 | 401.6 | 415.1 | **417.6** | 413.1 | 401.4 | 387.6 | 358.8 |
+| Flat six, Gatowski | 354.0 | 378.8 | 390.9 | **392.5** | 388.3 | 378.6 | 365.2 | 340.0 |
+| Turbo four 2.0, 3050 rpm, present | 341.4 | 366.0 | 380.7 | **380.8** | 378.8 | 362.8 | 352.6 | 323.7 |
+| Turbo four, Gatowski | 331.4 | 356.6 | 362.2 | **366.3** | 359.3 | 353.5 | 341.7 | 311.6 |
+
+Best torque stays at λ 0.90, some 5 to 7 % over λ 1.0, as engines show (best power a little rich). Gross indicated
+efficiency on the flat six with Gatowski: 0.383 at λ 0.90, 0.407 at 1.02.
+
 Test: `calibration-balance.sim` holds gross efficiency 0.33 to 0.38 on the small block at 2000, 3000 and 4600 rpm,
 skipped on this finding until D's change lands.
 
@@ -60,7 +85,11 @@ stoichiometric charge's heat (φ 1.05: 0.984; 1.2: 0.938; about 1 - 0.32 (φ - 1
 is 0.92, where chemistry and the burn's 0.97 give 0.85. A scratch tree with 1 - 0.32 (φ - 1): released 0.924 → 0.845,
 torque -8.3 % (flat six), -8.8 % (small block).
 
-Why it is held: real engines do make their best torque a little rich (H's integrated test 7, λ 0.85 to 0.92), because
+**Settled for now (20:30, after N3-1's sweep above):** with Gatowski's γ the rich side still puts best torque at λ 0.90,
+5 to 7 % over stoichiometric; the parabola's gain is not visibly too generous against that shape, and without the
+fuel-air cycle's figure open there is no sourced curve to replace it with. It stays.
+
+Why it was held: real engines do make their best torque a little rich (H's integrated test 7, λ 0.85 to 0.92), because
 of what the cylinder's gas lacks: more product molecules and less dissociation (Heywood §5.5, the fuel-air cycle). The
 parabola stands in for those. Gatowski's gamma (N3-1) carries the dissociation's average, so after N3-1 the parabola
 over-credits by perhaps the difference between its 1.06 and the fuel-air cycle's rich gain; I have not had that figure
