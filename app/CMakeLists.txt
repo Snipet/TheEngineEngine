@@ -10,13 +10,14 @@
 add_library(tee_app STATIC Options.cpp Script.cpp Engine.cpp)
 tee_target_defaults(tee_app)
 target_include_directories(tee_app PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
-target_link_libraries(tee_app PUBLIC Tee::shell_core Tee::shell_ref PRIVATE Tee::host)
+target_link_libraries(tee_app PUBLIC Tee::shell_core Tee::shell_ref Tee::shell_files PRIVATE Tee::host)
 
 option(TEE_PLACEHOLDER_PANEL "The shell's own plain Panel as the application's, even with the interface package built" OFF)
 
 # tee_app_gui(<target>): the sources and settings of an executable that runs the Panel.
 function(tee_app_gui target)
-  target_sources(${target} PRIVATE "${PROJECT_SOURCE_DIR}/app/Offline.cpp" "${TEE_SHELL_PANEL_SOURCE}")
+  target_sources(${target} PRIVATE "${PROJECT_SOURCE_DIR}/app/Offline.cpp" "${PROJECT_SOURCE_DIR}/app/FrameSources.cpp"
+                                   "${TEE_SHELL_PANEL_SOURCE}")
   target_link_libraries(${target} PRIVATE tee_app FMinus::FMinus)
   target_compile_definitions(${target} PRIVATE "TEE_VERSION=\"${PROJECT_VERSION}\"")
   funkgui_configure_product(${target} PRODUCT TheEngineEngine OBJC_PREFIX Tee ENV_PREFIX TEE_
