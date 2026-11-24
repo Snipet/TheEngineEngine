@@ -115,7 +115,7 @@ namespace combo
         const char* id;        // "X-001"
         const char* date;      // found
         const char* owner;     // the package
-        const char* combo;     // a comboName, or "*"
+        const char* combo;     // a comboName, "*", or "+a+b": every combination with a and b on
         const char* build;     // an archetype, or "*"
         const char* scenario;  // a kindName or a test's name, or "*"
         const char* check;     // a Failure's check, or "*"

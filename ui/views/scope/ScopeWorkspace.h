@@ -69,6 +69,9 @@ namespace tee::ui
             double ivo = 0, ivc = 0, evo = 0, evc = 0;                             // degrees after firing top centre
             int degrees = 0, cylinders = 0;
             double firingOrder = 0;     // firing events per crank revolution
+            double halfBurn = 0;        // degrees after firing top centre where half the charge has burned
+            double knocks = 0;          // ecu.knock: knocks heard since the start
+            std::vector<double> knockRetard;   // ecu.knockByCylinder[i], degrees (NaN: absent), one a cylinder
         };
         const Facts& facts() const noexcept { return f_; }
         const scope::Spectrum& spectrum() const noexcept { return spectrum_; }
@@ -85,6 +88,8 @@ namespace tee::ui
         void readOutput(float dt);
         void refreshPlots();
         void cylinderFacts();
+        void readCombustion();
+        void drawKnock(funkgui::Canvas& c, const look::Palette& p) const;
         double toAtdc(int index) const noexcept;
         double rpmNow() const;
         void drawCampbell(funkgui::Canvas& c, const look::Palette& p, const ScopePlot& pl) const;
@@ -102,7 +107,7 @@ namespace tee::ui
         Button* log_ = nullptr;
         Button* clear_ = nullptr;
         std::array<funkgui::Rect, 6> cells_{};
-        funkgui::Rect bar_{}, tools_{};
+        funkgui::Rect bar_{}, tools_{}, knock_{};
         std::array<Button*, 6> selectors_{};
         std::vector<int> chosen_{ 0, 4, 5 };   // a small stage's: pressure, spectrum, speed map
         bool compact_ = false;
