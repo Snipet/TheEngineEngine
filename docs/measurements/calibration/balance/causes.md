@@ -1253,3 +1253,12 @@ So with the ruled lobe and an exhaust cam that closes earlier, the trapped share
 gap is within the grid's noise of the cited curve's bottom; at 1500 the 0.40's boost (spool) and the knock-limited burn
 are what remain. Owners: the exhaust phaser's direction (advance: N1, the valvetrain's; today it only retards), the
 spool at 1500 (N2), the knock-limited efficiency at this charge (C's table, with the DI cooling note).
+
+**B-3, N1's overlap pressure on both lobes** (23:28 by `date -u`; tel.valve.dpOverlap, 6d531f72; 0.40 match). Under
+N1's rule (intake 38 to 49 degrees), 1500 / 1800 rpm: the build's long lobe -28.3 / -28.9 kPa (164 / 190 N m, residual
+0.131 / 0.160); the ruled short lobe -8.5 / -15.9 kPa (214 / 233 N m, 0.086 / 0.142). The short lobe cuts the push-back
+by a half to two thirds and does not turn it positive: the long lobe is a part of the fault, not all of it. With the
+intake fixed through camIn the reading is 0.0 exactly in every run (it is taken over the overlap the rule asks: not a
+reading at fixed phases). On this tree (merged at 23:27) the short lobe at intake 30 reads 309 N m at 1800 (332 in the
+grid above, run before the merge; with the exhaust +30, 326 against 331): the branch moved between, or the cells
+scatter by up to 7 %; read the grid's best to about 20 N m.
