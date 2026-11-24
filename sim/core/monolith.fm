@@ -16,6 +16,7 @@
 #include "lib/noise.fm"
 #include "heat.fm"
 #include "ecu/ecu.fm"
+#include "valvetrain/valvetrain.fm"
 #include "exhaust/pop.fm"
 #include "combustion/combustion.fm"
 #include "lib/onepole.fm"
@@ -93,14 +94,12 @@ module Shared
     // what the layout and the dials made
     int lastLayout;
     float lastSize;
-    float lastCam;
     // the dials that shape the pipes and the cams, smoothed (80 ms): a pipe's length or bore, the muffler's chambers or
     // the cams' timing that jumped would jolt the flow the system holds, a loud click
     float smMuf;
     float smHdr;
     float smPipe;
     float smXp;
-    float smCam;
     float kDial;
     float smCR;         // the compression ratio, smoothed, and as the cylinders were last set
     float lastCR;
@@ -159,6 +158,7 @@ module Shared
     OnePole tnLp[2];
     Ecu ecu;            // the engine's state, the driver, the idle, the limiter, the cuts (ecu/ecu.fm)
     Combustion comb;    // the charge at intake closing: fuel, spark, burn, knock (combustion/combustion.fm)
+    Valvetrain vt;      // each cylinder's valve events and areas (valvetrain/valvetrain.fm)
     Heat heat;          // the coolant, the oil, the chamber's walls (core/heat.fm)
     Extras ex;
     Boost boost;        // turbos or a supercharger: their shafts, boost, valves and sounds (boost/boost.fm)
@@ -386,14 +386,14 @@ module Shared
             cyl[c].tw = heat.tSurf;
         ecu.kRet = 0.0f;
         lastSize = set.size;
-        lastCam = set.cam;
+        vt.lastCam = set.cam;
         smMuf = set.muffler;
         smHdr = set.headers;
         smPipe = set.pipe;
         smXp = set.xpipe;
         boost.smTb = set.turbo;
         boost.smTs = boost.tsOf(set.tsize);
-        smCam = set.cam;
+        vt.smCam = set.cam;
         sizeSeen = set.size;
         sizeRest = 0.0f;
         // the size dial: the engine's displacement in litres (a rotary's: its two rotors' chambers), each cylinder kept
@@ -632,43 +632,10 @@ module Shared
         idleBase = fuelUse != 0 ? fminf(lay.idleRpm, 0.27f * redBase) : lay.idleRpm;
     }
 
-    // The cams: how long the valves open and how much they overlap (the cam dial), and the valves' areas
+    // The valves of every cylinder, for the cam as heard, the bore and the layout (valvetrain/valvetrain.fm)
     void valves()
     {
-        const float c = smCam;
-        lastCam = c;
-        const float ap = 0.785398f * bore * bore;
-        for (int k = 0; k < lay.n; ++k)
-        {
-            Cylinder* cy = &cyl[k];
-            if (lay.rotary != 0)
-            {
-                // peripheral exhaust port, side intake ports (degrees of the eccentric shaft; the face fires at 0)
-                cy->evo = 195.0f - 25.0f * c;
-                cy->edur = 395.0f + 35.0f * c;
-                cy->ivo = 572.0f - 40.0f * c;
-                cy->idur = 285.0f + 60.0f * c;
-                cy->aE = 0.0016f * (vTotal / 0.0013f);
-                cy->aI = 0.0020f * (vTotal / 0.0013f);
-            }
-            else
-            {
-                const float ed = 224.0f + 76.0f * c;           // exhaust duration
-                const float id = 224.0f + 76.0f * c;
-                const float lsa = 112.0f - 6.0f * c;           // lobe separation
-                cy->evo = 360.0f - lsa - 0.5f * ed;
-                cy->edur = ed;
-                cy->ivo = 360.0f + lsa - 0.5f * id;
-                cy->idur = id;
-                // two valves each: the curtain at full lift (a quarter of the diameter) with its discharge coefficient there
-                // (about 0.4): some 9 % of the piston's area for the exhaust, 12 % for the intake (cylinder.fm, flowArea,
-                // shapes the lift's way up)
-                cy->aE = 0.091f * ap;
-                cy->aI = 0.118f * ap;
-            }
-            cy->sparkAt = lay.cyc - 20.0f;
-            cy->burnDur = 50.0f;
-        }
+        vt.events(&cyl[0], lay.n, lay.rotary, lay.cyc, bore, vTotal);
     }
 
     // Where a muffler's scattering starts taking the highs (Hz): some 500 Hz, or in a short pipe half its own first
@@ -979,8 +946,8 @@ module Shared
         smPipe += (set.pipe - smPipe) * kDial;
         smXp += (set.xpipe - smXp) * kDial;
         boost.glide(set.turbo, set.tsize, kDial);
-        smCam += (set.cam - smCam) * kDial;
-        if (fabsf(smCam - lastCam) > 0.0005f)
+        vt.smCam += (set.cam - vt.smCam) * kDial;
+        if (fabsf(vt.smCam - vt.lastCam) > 0.0005f)
             valves();
         // the compression: the cylinders' clearance follows it (the gas in them takes the change as the piston's)
         smCR += (fminf(fmaxf(set.comp, 6.0f), 25.0f) - smCR) * kDial;
