@@ -10,8 +10,9 @@
 // unburned (a cut spark's whole charge, a rich mixture's excess, a late burn's remainder: combustion's numbers) is
 // added to a store for its bank, with the air that leaves unburned beside it (a cut fuel's air, a lean mixture's
 // excess). The store lights when the gas it meets is hot enough: the blowdown's, the cylinders' gas as their exhaust
-// valves open (none under 900 K, readily from 1200 K: judgement, for the self-ignition of a rich exhaust's CO, H2 and
-// fuel with air at some 950 to 1200 K) and there is oxygen to burn it, more readily
+// valves open (none under 700 K, readily from 1000 K: judgement, for the self-ignition of a rich exhaust's CO, H2 and
+// fuel with air at some 950 to 1200 K at the hot spot it meets, the blowdown's mean being cooler; with the physical
+// walls the V8's blowdown reads some 850 K at full load, its late overrun burns 750 to 830) and there is oxygen to burn it, more readily
 // the more there is: a hazard accumulates at a rate proportional to the burnable mass (over 2 mg) and the heat, and the
 // store lights when it reaches 1. What burns is what the oxygen allows of it, and the pulse card G's node receives
 // (the reference's Pop: a half-sine of 0.25 to 0.85 ms, its rise physical) grows with the fuel that burned and
@@ -52,6 +53,7 @@ module FuelAccount
     float hazard[2];
     float pulse[2];     // a bang waiting to fire (Pa: the Pop's amplitude), 0 none; Combustion fires it when its bank's
                         // last pulse has ended and clears it
+    float waited[2];    // seconds a bang has waited to fire
     float burned[2];    // the fuel it burned, kg
     float total;        // fuel burned in the pipe since the reset, kg
     int bangs;
@@ -90,8 +92,12 @@ module FuelAccount
         for (int b = 0; b < 2; ++b)
         {
             burned[b] = 0.0f;
+            // (a bang waits for its pipe's last pulse to end, at most 2 ms; one older has rung out unheard)
+            waited[b] = pulse[b] > 0.0f ? waited[b] + d16 : 0.0f;
+            if (waited[b] > 0.002f)
+                pulse[b] = 0.0f;
             const float t = b == 0 ? t0 : t1;
-            const float hot = fminf(fmaxf((t - 900.0f) / 300.0f, 0.0f), 1.0f);
+            const float hot = fminf(fmaxf((t - 700.0f) / 300.0f, 0.0f), 1.0f);
             const float can = fminf(fuel[b], air[b] / afr);
             if (hot > 0.0f && can > 0.0f)
             {
