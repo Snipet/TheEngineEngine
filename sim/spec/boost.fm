@@ -15,4 +15,6 @@ module BoostSpec
         [[ui::decimals(2)]] [[ui::help("The turbos' size over ones matched to the engine: smaller spools sooner")]];
     float blowOff [[fminus::range(0, 1)]] [[fminus::default(0.7)]] [[ui::label("Blow-off valve")]]
         [[ui::quantity("fraction")]] [[ui::help("Its level; under 0.15, none: the compressor surges")]];
+    // the package's model (the integrator's switch, sim/README.md): 0 the reference's, bit for bit; 1 the package's own
+    int model [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Forced induction model")]] [[ui::choices("Reference", "New")]];
 };
