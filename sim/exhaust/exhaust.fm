@@ -165,6 +165,16 @@ module Exhaust
     float qCool;        // the heat the port walls give the coolant, W
     float tWallPort;    // the port's wall (every port alike), K
     float capPort;      // the port walls' heat capacity, all ports, J/K
+    // a thermocouple's reading (telemetry only): each port's local gas, and a bead's mean of it (thermocouple())
+    float tLoc[MAX_PORTS];
+    float tcW;
+    float tcWT;
+    float tcT;
+    int tcN;
+    float tcPort;       // the bead's reading at the port's exit, K (over some 0.5 s)
+    float tcPlain;      // the plain time mean of the port's local gas, K
+    float kTc;
+    float kStag;
     int prepared;       // 1: prepare() was called this sample (the turbines' seam), before step()
 
     void setup(float rateIn, Noise* noise, Layout* layIn, Heat* heatIn, ExhaustSpec* specIn, ExhaustTel* telIn,
@@ -212,6 +222,16 @@ module Exhaust
         qCool = 0.0f;
         tWallPort = 300.0f;
         capPort = 0.0f;
+        for (int i = 0; i < MAX_PORTS; ++i)
+            tLoc[i] = 300.0f;
+        tcW = 0.0f;
+        tcWT = 0.0f;
+        tcT = 0.0f;
+        tcN = 0;
+        tcPort = 0.0f;
+        tcPlain = 0.0f;
+        kTc = 1.0f - expf(-16.0f / (0.5f * rateIn));
+        kStag = 1.0f - expf(-1.0f / (0.036f * rateIn));
         rate = rateIn;
         noiseSrc = noise;
         lay = layIn;
@@ -745,6 +765,41 @@ module Exhaust
             tWallPort += (qPort / np - g * (tWallPort - tC)) * d16 / cap;
     }
 
+    // What a thermocouple at the port's exit reads, against the enthalpy means above (portTemperature: the mass mean of
+    // the gas the valves pass; portExitTemperature and headerTemperature follow it). The blowdown is most of the mass in
+    // little of the time, so a bead, which sits in the port all the time, reads less. A first form (judgement throughout):
+    // each port's gas a mixing cup of the port's volume (0.46 bore across, 1.6 of that long); what the valve passes
+    // replaces it at the gas's temperature now less the port's mean drop, a backflow at the port's exit gas; between
+    // the pulses it cools toward the port's wall (some 36 ms: hot gas still in a 47 mm duct). The bead's mean weights
+    // that local temperature by its heat transfer, sqrt(u + 2 m/s) (a sphere's h as Re^0.5; 2 m/s for the stirring
+    // left between pulses), no radiation, no lag beyond the mean (some 0.5 s); tcPlain the plain time mean.
+    void thermocouple(float* qe, int np) [[clang::nonblocking]]
+    {
+        const float tF = mSum > 1.0e-9f ? eSum / mSum : tPort;
+        const float tX = exitTemperature();
+        const float drop = tPort - tX;
+        const float dP = 0.46f * boreNow;
+        const float aP = 0.785398f * dP * dP;
+        const float vP = aP * 1.6f * dP;
+        const float dts = 1.0f / rate;
+        for (int i = 0; i < np; ++i)
+        {
+            const float q = qe[i];
+            float tl = tLoc[i];
+            if (q > 0.0f)
+                tl += (tF - drop - tl) * fminf(q * dts / vP, 1.0f);
+            else if (q < 0.0f)
+                tl += (tX - tl) * fminf(-q * dts / vP, 1.0f);
+            tl += (tWallPort - tl) * kStag;
+            tLoc[i] = tl;
+            const float w = sqrtf(fabsf(q) / aP + 2.0f);
+            tcW += w;
+            tcWT += w * tl;
+            tcT += tl;
+            tcN += 1;
+        }
+    }
+
     // The gas as it leaves the ports for the headers and the turbine (after the port's walls): card F's turbine's
     // energy goes by it
     float exitTemperature()
@@ -922,6 +977,7 @@ module Exhaust
         for (int i = 0; i < np; ++i)
             pPortSum += 2.0f * prim[i].near + prim[i].z * qe[i];
         pPortN += np;
+        thermocouple(qe, np);
         if (model != 0)
             builderStep(qe);
         else
@@ -1492,6 +1548,19 @@ module Exhaust
         }
         t->portPressure = 101325.0f + pPortMean;
         t->portHeat = qPort;
+        if (tcN > 0)
+        {
+            const float tb = tcWT / fmaxf(tcW, 1.0e-9f);
+            const float tp = tcT / (float)tcN;
+            tcPort = tcPort > 0.0f ? tcPort + (tb - tcPort) * kTc : tb;
+            tcPlain = tcPlain > 0.0f ? tcPlain + (tp - tcPlain) * kTc : tp;
+            tcW = 0.0f;
+            tcWT = 0.0f;
+            tcT = 0.0f;
+            tcN = 0;
+        }
+        t->portThermocouple = tcPort;
+        t->headerThermocouple = tcPort + (t->headerTemperature - exitTemperature());
         t->portCoolantHeat = qCool;
         t->portWallTemperature = tWallPort;
         t->portExitTemperature = exitTemperature();
