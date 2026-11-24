@@ -438,3 +438,14 @@ TEST_CASE("the books hold, and the engine makes torque, on diesels and a boosted
         CHECK(std::fabs(x / v - 1.0) < 0.01);
     }
 }
+
+TEST_CASE("a refused custom layout says why (tel.engine.layoutReason)", "[core][engine][custom]")
+{
+    Bench b("default");
+    std::string e;
+    REQUIRE(b.player().setSpec("engine.custom", 1, e));
+    REQUIRE(b.player().setSpec("engine.cylinders", 4, e));      // (every pin 0: all four fire together)
+    b.start();
+    CHECK(b.tel("engine.layoutRefused") == 1.0);
+    CHECK(b.tel("engine.layoutReason") == 1.0);
+}
