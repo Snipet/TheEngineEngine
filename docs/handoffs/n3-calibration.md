@@ -21,10 +21,11 @@ Branch `claude/awesome-gates-ntdb58`, 19:30 to 21:15 UTC 2026-11-24 (`date -u`).
 7. *The small block* (N3-7, open): VE right, efficiency high; P's L48 parts took 5 %; ~14 % unexplained (sized: burn 1 %,
    fan 1 to 3 % on forum figures only, spark 1.5 % without a source).
 
-8. *The turbo four's low end* (B-3, 23:00): N1's intake phaser rule advances 48 degrees at boosted low speed, and the
-   overlap back-fills at p3 = p2 (residual 0.22, knock 14 degrees): first order, N1's. Then the compressor's efficiency at
-   low tip speed (0.36 to 0.48, the island's Mach term, judgement: N2), the turbine's, the exhaust's heat (G). Matching
-   helps once the phaser is parked (5 to 58 kPa at 1800 from the matched turbine to a 0.30 design share).
+8. *The turbo four's low end* (B-3, 23:00 to 23:16): the build's long exhaust lobe back-fills the overlap N1's phaser
+   asks at boosted low speed (residual 0.16 to 0.22); P's cited AVS short lobe (180 degrees at the seat) scavenges in
+   the model: 316 N m at 1800 on a 0.40 match (from 181). Left: the compressor's map width (N2: the low end wants a
+   small wheel, the top a large one), the turbine's size by the cited top (81 kPa real boost: 0.85 turbine 276 N m,
+   0.40 233, cited 250), knock (C; about 0 N m once the lobe is in). Knock and DI cooling sized; G's heat loss third.
 
 **Tests**: `calibration-balance.sim` (one entry, 18 s): air and first law within 1 % on three engines; gross indicated
 efficiency 0.33 to 0.38 on the small block at three speeds. Passes. The probe (`[.balance]`, BAL_SET / RAW / READ /
