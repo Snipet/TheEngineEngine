@@ -142,6 +142,11 @@ TEST_CASE("the cabin: shut windows take the highs, open ones let them in", "[lis
     const double open = highs(1.0);
     std::printf("cabin at 2860 rpm: the highs' share %.1f dB with the windows shut, %.1f dB open\n", shut, open);
     CHECK(open > shut + 3.0);
+    std::printf("cabin's ways in: floor %.1f, firewall %.1f, glass %.1f, mounts %.1f dB\n", b.tel("sound.pathFloor"),
+                b.tel("sound.pathFirewall"), b.tel("sound.pathGlass"), b.tel("sound.pathStructure"));
+    CHECK(b.tel("sound.pathFloor") > -150.0);
+    CHECK(b.tel("sound.pathFirewall") > -150.0);
+    CHECK(b.tel("sound.pathStructure") > -150.0);
 }
 
 TEST_CASE("the ceiling: every source at its loudest and the camera at its closest stays inside full scale", "[listen][engine]")
@@ -183,4 +188,32 @@ TEST_CASE("the ceiling: every source at its loudest and the camera at its closes
         if (k0 == 0)
             CHECK(worstLim < -3.0);     // it was asked to work
     }
+}
+
+TEST_CASE("a motorcycle heard from the rider's seat, revved and launched", "[listen][engine]")
+{
+    Bench b("bike-superbike");
+    model1(b);
+    sound(b, "camera", 4);
+    b.start(1.0);
+    double peak = 0.0;
+    bool finite = true;
+    auto watch = [&] {
+        for (std::size_t i = 0; i < b.left().size(); ++i)
+        {
+            finite = finite && std::isfinite(b.left()[i]) && std::isfinite(b.right()[i]);
+            peak = std::max({peak, double(std::fabs(b.left()[i])), double(std::fabs(b.right()[i]))});
+        }
+    };
+    b.ctl().throttle = 1.0f;
+    b.play(2.0, watch);
+    const double in = b.field("tel.sound.srcLevel[2]");
+    const double ex = b.field("tel.sound.srcLevel[0]");
+    b.ctl().throttle = 0.0f;
+    b.play(1.0, watch);
+    std::printf("superbike, rider's seat: peak %.3f; at full throttle the intake %.1f dB, the exhaust %.1f dB at the head\n",
+                peak, in, ex);
+    CHECK(finite);
+    CHECK(peak < 0.99);
+    CHECK(peak > 0.01);
 }

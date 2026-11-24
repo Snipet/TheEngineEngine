@@ -15,6 +15,7 @@ module BoostSpec
 {
     int rev [[ui::hidden]];
     int kind [[fminus::range(0, 4)]] [[fminus::default(0)]] [[ui::label("Aspiration")]]
+        [[ui::help("Natural, a turbo, two, four, or a supercharger driven by the crank")]]
         [[ui::choices("Natural", "Turbo", "Twin turbos", "Quad turbos", "Supercharger")]];
     float level [[fminus::range(0, 1)]] [[fminus::default(0.5)]] [[ui::label("Boost")]] [[ui::quantity("fraction")]]
         [[ui::help("How much boost it is set for: 0.35 to 1.4 bar a turbo, 0.25 to 1 a supercharger")]];
@@ -24,50 +25,82 @@ module BoostSpec
         [[ui::quantity("fraction")]] [[ui::help("Its level; under 0.15, none: the compressor surges")]];
 
     int model [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Model")]] [[ui::choices("Reference", "Machine")]] [[ui::group("Model")]] [[ui::help("Reference: the original behavioural turbo. Machine: compressor, turbine and shaft in the gas path.")]];
-    int layout [[fminus::range(0, 5)]] [[fminus::default(0)]] [[ui::label("Arrangement")]] [[ui::choices("As the aspiration says", "One", "Two, a bank each", "Sequential", "Compound", "Four, two a bank")]];
+    int layout [[fminus::range(0, 5)]] [[fminus::default(0)]] [[ui::label("Arrangement")]]
+        [[ui::help("How the turbos are arranged: one, one a bank, sequential (a small one first), compound (one feeding the other) or four")]]
+        [[ui::choices("As the aspiration says", "One", "Two, a bank each", "Sequential", "Compound", "Four, two a bank")]];
 
     float compInducer [[fminus::range(0, 0.12)]] [[fminus::default(0)]] [[ui::label("Inducer diameter")]] [[ui::quantity("length")]] [[ui::group("Compressor")]] [[ui::help("0: matched to the engine.")]];
     float compExducer [[fminus::range(0, 0.16)]] [[fminus::default(0)]] [[ui::label("Exducer diameter")]] [[ui::quantity("length")]] [[ui::help("0: the inducer over a trim of 0.55.")]];
-    float compAR [[fminus::range(0.3, 1.2)]] [[fminus::default(0.6)]] [[ui::label("Compressor A/R")]] [[ui::quantity("ratio")]] [[ui::decimals(2)]];
-    float compEta [[fminus::range(0.55, 0.85)]] [[fminus::default(0.76)]] [[ui::label("Peak efficiency")]] [[ui::quantity("fraction")]];
+    float compAR [[fminus::range(0.3, 1.2)]] [[fminus::default(0.6)]] [[ui::label("Compressor A/R")]]
+        [[ui::help("The compressor housing's area over radius")]] [[ui::quantity("ratio")]] [[ui::decimals(2)]];
+    float compEta [[fminus::range(0.55, 0.85)]] [[fminus::default(0.76)]] [[ui::label("Peak efficiency")]]
+        [[ui::help("The compressor's best efficiency, at the middle of its map")]] [[ui::quantity("fraction")]];
 
     float turbWheel [[fminus::range(0, 0.14)]] [[fminus::default(0)]] [[ui::label("Turbine wheel")]] [[ui::quantity("length")]] [[ui::group("Turbine")]] [[ui::help("0: 0.9 of the compressor's exducer.")]];
     float turbAR [[fminus::range(0, 2)]] [[fminus::default(0)]] [[ui::label("Turbine A/R")]] [[ui::unit("in")]] [[ui::decimals(2)]] [[ui::help("0: matched to the engine.")]];
-    float turbEta [[fminus::range(0.5, 0.85)]] [[fminus::default(0.72)]] [[ui::label("Turbine peak efficiency")]] [[ui::quantity("fraction")]];
-    int scrolls [[fminus::range(1, 2)]] [[fminus::default(1)]] [[ui::label("Housing")]] [[ui::choices("Single scroll", "Twin scroll")]];
+    float turbEta [[fminus::range(0.5, 0.85)]] [[fminus::default(0.72)]] [[ui::label("Turbine peak efficiency")]]
+        [[ui::help("The turbine's best efficiency")]] [[ui::quantity("fraction")]];
+    int scrolls [[fminus::range(1, 2)]] [[fminus::default(1)]] [[ui::label("Housing")]]
+        [[ui::help("A twin-scroll housing keeps the firing pulses of two groups of cylinders apart, so the turbo spools sooner")]]
+        [[ui::choices("Single scroll", "Twin scroll")]];
     float housingVolume [[fminus::range(0, 0.003)]] [[fminus::default(0)]] [[ui::label("Housing volume")]] [[ui::quantity("volume")]] [[ui::help("0: from the wheel and the A/R.")]];
-    int vanes [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Nozzle")]] [[ui::choices("Fixed", "Variable vanes")]];
-    float vaneMin [[fminus::range(0.15, 0.8)]] [[fminus::default(0.3)]] [[ui::label("Vanes shut to")]] [[ui::quantity("fraction")]];
+    int vanes [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Nozzle")]]
+        [[ui::help("Variable vanes narrow the turbine's nozzle at low speed for early boost and open it at the top")]]
+        [[ui::choices("Fixed", "Variable vanes")]];
+    float vaneMin [[fminus::range(0.15, 0.8)]] [[fminus::default(0.3)]] [[ui::label("Vanes shut to")]]
+        [[ui::help("How far the variable vanes can close, as a share of fully open")]] [[ui::quantity("fraction")]];
 
     float inertia [[fminus::range(0, 0.0005)]] [[fminus::default(0)]] [[ui::label("Rotor inertia")]] [[ui::quantity("inertia")]] [[ui::group("Shaft")]] [[ui::help("0: from the wheels' sizes.")]];
-    int bearing [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Bearings")]] [[ui::choices("Journal", "Ball")]];
-    float assist [[fminus::range(0, 20000)]] [[fminus::default(0)]] [[ui::label("Electric assist")]] [[ui::quantity("power")]];
+    int bearing [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Bearings")]]
+        [[ui::help("Ball bearings spin the shaft up with less friction than journal bearings")]]
+        [[ui::choices("Journal", "Ball")]];
+    float assist [[fminus::range(0, 20000)]] [[fminus::default(0)]] [[ui::label("Electric assist")]]
+        [[ui::help("An electric motor on the turbo's shaft that helps it spool")]] [[ui::quantity("power")]];
     float maxSpeed [[fminus::range(0, 40000)]] [[fminus::default(0)]] [[ui::label("Shaft speed limit")]] [[ui::quantity("rotation")]] [[ui::help("0: a tip speed of 560 m/s.")]];
 
-    int gate [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Wastegate")]] [[ui::choices("Internal", "External")]] [[ui::group("Control")]];
+    int gate [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Wastegate")]]
+        [[ui::help("An internal wastegate in the turbine housing, or an external one with its own pipe")]]
+        [[ui::choices("Internal", "External")]] [[ui::group("Control")]];
     float gateDiameter [[fminus::range(0, 0.06)]] [[fminus::default(0)]] [[ui::label("Gate diameter")]] [[ui::quantity("length")]] [[ui::help("0: matched to the turbine.")]];
     float gateSpring [[fminus::range(10000, 300000)]] [[fminus::default(70000)]] [[ui::label("Gate spring")]] [[ui::quantity("pressure")]] [[ui::help("The boost at which the gate opens by itself.")]];
     float target [[fminus::range(0, 300000)]] [[fminus::default(0)]] [[ui::label("Boost target")]] [[ui::quantity("pressure")]] [[ui::help("0: the spring alone. The ECU's target replaces it when it gives one.")]];
     float overBoost [[fminus::range(0, 400000)]] [[fminus::default(0)]] [[ui::label("Over-boost flag at")]] [[ui::quantity("pressure")]] [[ui::help("0: 1.4 times the spring or the target.")]];
 
-    int blowOffKind [[fminus::range(0, 2)]] [[fminus::default(1)]] [[ui::label("Blow-off valve")]] [[ui::choices("None", "To the air", "Recirculating")]] [[ui::group("Charge")]];
+    int blowOffKind [[fminus::range(0, 2)]] [[fminus::default(1)]] [[ui::label("Blow-off valve")]]
+        [[ui::help("What the blow-off valve does with the trapped charge when the throttle shuts: none (it surges), vents it to the air, or returns it to the intake")]]
+        [[ui::choices("None", "To the air", "Recirculating")]] [[ui::group("Charge")]];
     float blowOffSpring [[fminus::range(5000, 100000)]] [[fminus::default(15000)]] [[ui::label("Blow-off opens at")]] [[ui::quantity("pressure")]] [[ui::help("The pressure across the throttle.")]];
-    float blowOffDiameter [[fminus::range(0.01, 0.05)]] [[fminus::default(0.025)]] [[ui::label("Blow-off diameter")]] [[ui::quantity("length")]];
-    float icEffect [[fminus::range(0, 0.95)]] [[fminus::default(0.7)]] [[ui::label("Intercooler effectiveness")]] [[ui::quantity("fraction")]];
+    float blowOffDiameter [[fminus::range(0.01, 0.05)]] [[fminus::default(0.025)]] [[ui::label("Blow-off diameter")]]
+        [[ui::help("The blow-off valve's bore")]] [[ui::quantity("length")]];
+    float icEffect [[fminus::range(0, 0.95)]] [[fminus::default(0.7)]] [[ui::label("Intercooler effectiveness")]]
+        [[ui::help("How much of the compressor's heat the intercooler takes out at its rated flow")]]
+        [[ui::quantity("fraction")]];
     float icDrop [[fminus::range(0, 50000)]] [[fminus::default(12000)]] [[ui::label("Intercooler drop")]] [[ui::quantity("pressure")]] [[ui::help("At its rated flow.")]];
-    float icFlow [[fminus::range(0.05, 2)]] [[fminus::default(0.25)]] [[ui::label("Intercooler rated flow")]] [[ui::quantity("flow")]];
-    float icMass [[fminus::range(0.5, 30)]] [[fminus::default(5)]] [[ui::label("Intercooler core mass")]] [[ui::quantity("mass")]];
-    float chargeVolume [[fminus::range(0.0005, 0.03)]] [[fminus::default(0.005)]] [[ui::label("Charge pipes' volume")]] [[ui::quantity("volume")]];
+    float icFlow [[fminus::range(0.05, 2)]] [[fminus::default(0.25)]] [[ui::label("Intercooler rated flow")]]
+        [[ui::help("The air flow the intercooler is sized for")]] [[ui::quantity("flow")]];
+    float icMass [[fminus::range(0.5, 30)]] [[fminus::default(5)]] [[ui::label("Intercooler core mass")]]
+        [[ui::help("The intercooler core's mass: a heavier core heat-soaks more slowly")]] [[ui::quantity("mass")]];
+    float chargeVolume [[fminus::range(0.0005, 0.03)]] [[fminus::default(0.005)]] [[ui::label("Charge pipes' volume")]]
+        [[ui::help("The volume of the pipes between the compressor and the throttle: more takes longer to fill")]]
+        [[ui::quantity("volume")]];
 
-    int charger [[fminus::range(0, 2)]] [[fminus::default(0)]] [[ui::label("Supercharger")]] [[ui::choices("Roots", "Twin-screw", "Centrifugal")]] [[ui::group("Supercharger")]];
+    int charger [[fminus::range(0, 2)]] [[fminus::default(0)]] [[ui::label("Supercharger")]]
+        [[ui::help("A Roots or twin-screw blower pumps a fixed volume each turn (boost from idle); a centrifugal one builds boost with speed")]]
+        [[ui::choices("Roots", "Twin-screw", "Centrifugal")]] [[ui::group("Supercharger")]];
     float scDisplacement [[fminus::range(0, 0.004)]] [[fminus::default(0)]] [[ui::label("Displacement a turn")]] [[ui::quantity("volume")]] [[ui::help("0: matched to the engine.")]];
-    float scRatio [[fminus::range(1, 4)]] [[fminus::default(2.4)]] [[ui::label("Pulley ratio")]] [[ui::quantity("ratio")]];
+    float scRatio [[fminus::range(1, 4)]] [[fminus::default(2.4)]] [[ui::label("Pulley ratio")]]
+        [[ui::help("The blower's speed over the crank's")]] [[ui::quantity("ratio")]];
     float scVolumeRatio [[fminus::range(1, 3)]] [[fminus::default(1.5)]] [[ui::label("Built-in volume ratio")]] [[ui::quantity("ratio")]] [[ui::help("A twin-screw's.")]];
     float scStepUp [[fminus::range(2, 6)]] [[fminus::default(3.6)]] [[ui::label("Step-up gear")]] [[ui::quantity("ratio")]] [[ui::help("A centrifugal's, inside its case.")]];
-    bool scBypass [[fminus::default(1)]] [[ui::label("Bypass at part throttle")]];
+    bool scBypass [[fminus::default(1)]] [[ui::label("Bypass at part throttle")]]
+        [[ui::help("On: a valve lets the blower idle at part throttle, as road superchargers do")]] ;
 
-    bool antiLag [[fminus::default(0)]] [[ui::label("Anti-lag")]] [[ui::group("Extras")]];
-    float nitrousShot [[fminus::range(0, 300000)]] [[fminus::default(0)]] [[ui::label("Nitrous shot")]] [[ui::quantity("power")]];
-    float nitrousBottle [[fminus::range(0.5, 10)]] [[fminus::default(4.5)]] [[ui::label("Nitrous bottle")]] [[ui::quantity("mass")]];
+    bool antiLag [[fminus::default(0)]] [[ui::label("Anti-lag")]]
+        [[ui::help("On: fuel burned in the exhaust manifold with the throttle shut keeps the turbo spinning")]]
+        [[ui::group("Extras")]];
+    float nitrousShot [[fminus::range(0, 300000)]] [[fminus::default(0)]] [[ui::label("Nitrous shot")]]
+        [[ui::help("The extra power the nitrous oxide is jetted for")]] [[ui::quantity("power")]];
+    float nitrousBottle [[fminus::range(0.5, 10)]] [[fminus::default(4.5)]] [[ui::label("Nitrous bottle")]]
+        [[ui::help("How much nitrous oxide the bottle holds")]] [[ui::quantity("mass")]];
     float seqFlow [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Second turbo joins at")]] [[ui::quantity("flow")]] [[ui::help("0: 40 % of the engine's flow at the redline.")]];
 };

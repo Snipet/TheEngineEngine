@@ -54,6 +54,38 @@ the rms of its pressure's second difference a sample over that cycle (Pa: the hi
 block). `tel.ecu.smoke`: the filter smoke number (with the governor, or with fuel.model 1). `tel.ecu.rack`,
 `brakeCylinders`, `backPressure`, `governorSpeed`.
 
-## Measured
+## The truck's parts (standalone, not yet in the engine)
 
-(filled as the tests land: see the handoff, docs/handoffs/d2-diesels.md)
+`sim/vehicle/roadranger.fm`: the eighteen-speed (Eaton RTLO-18918B's ratios): lever positions L (5) and 1 to 4, the range
+(`ctl.buttons` bit 32, held: high) and the splitter (bit 16): low L -> 1 + split, low k -> 1 + 2k + split, high k -> 9 + 2k +
+split. The main box has no synchromesh: its dogs go in within 8 rad/s (some 80 rpm: judgement, drivers' 50 to 100);
+the input shaft is the crank's with the clutch in, coasts down at 30 rad/s^2 with it down, the clutch brake stops it at
+300 rad/s^2 at rest. Out of the window it grinds: clashes at 12 dogs x the slip (judgement), as long as the lever is
+pushed there. The range shifts as the lever passes neutral (synchronised); the splitter, preselected, when the torque
+breaks. `sim/vehicle/truckair.fm`: 120 L of tanks charged by 0.5 L of free air a crank turn; the governor cuts out at
+8.3 bar (the dryer's purge, a 0.6 s hiss) and in at 6.9; a brake's release hisses at the relay valve; the spring
+brakes' release blasts, their setting exhausts. Levels are judgement. Neither is mixed into the engine's sound yet,
+and the vehicle's gearbox (card I's) does not yet take the eighteen-speed's gear: both are asked (the handoff).
+
+## Measured (tee-tests-diesel; the 15 L six, 300 K, 101325 Pa)
+
+| What | Measured | Compared with |
+|---|---|---|
+| Compression brake, 2000 rpm, stages 0/1/2/3 | 56 / 104 / 164 / 239-247 kW | 15 L Jakes rated ~450 kW at 2100 (Jacobs, makers' brochures): at the low edge; the asserted 200-550 kW is judgement |
+| Same, High, 1200 / 1600 / 2000 rpm | 114 / 173 / 239 kW | rising with speed, as published curves |
+| Bark against motoring (exhaust only, below the compressor) | +8.4 dB rms; harmonics 2-10 of 100 Hz ~25 dB up, 20+ dB over the bins between | |
+| Exhaust flap, 2000 rpm | 3.0 bar held, 117 kW (+61); with the Jake 318 kW | makers' 2.5-4 bar; 110-190 kW |
+| Droop line (both governors) | rack 1.00 / 0.49 / 0.00 at rated, half way, high idle | |
+| Idle | mechanical 637-781 rpm (145 swing); electronic 681-685 | |
+| Pilot 4 %, 1200 rpm full load | rise 11.2 -> 5.4 bar/deg; noise 160 -> 61 Pa | DI diesels 3-10 bar/deg; a pilot ~halves it (Heywood ch. 10) |
+| Injection 6 degrees later | rise 4.7 bar/deg | |
+| Over-fuel 30 %, no limiter, 1400 rpm | 2019 -> 2446 N m; 1.3 -> 7.3 FSN | |
+| Tuned pickup floored at 1600 rpm | 10 FSN while spooling (25 kPa), 4.4 spooled; stock 1.8 | |
+| Cold start (all governors, H's models 0 and 1) | 253 K: runs after 1.0-1.9 s cranking; 233 K: 2.9-4.5 s | |
+| 36 t rig | 0-50 km/h 19.3 s; 6 %: 42 km/h at 278 kW (power and weight: 39); down 6 % from 45 km/h: free to 63 (the redline), braked to 39 | 36-40 t, 400-450 kW: 45-60 km/h on 6 % (judgement) |
+| Card F's turbos at 1300 rpm | big single 59 kPa, 90 % in 2.05 s; vanes 192 kPa in 0.65 s; compound 202 kPa in 1.9 s | |
+
+**Limits**: the reference turbo limits low-speed torque (peak 2000 N m at 1400-1600 rpm, not 1000-1200); a 15 L's
+brake sits at the low edge of published figures. The model takes at most 30 L and 16 cylinders, a diesel's redline
+at about 13.5 m/s of piston speed, an idle of at least 350 rpm: a 27 L marine V12 at 1800 rpm is the largest
+(`diesel-marine-v12`); a medium-speed locomotive or ship's engine (100-200 L, 1000 rpm) is past it.

@@ -125,6 +125,15 @@ namespace tee::ui
                 c.arc({ cx, cy + h * 0.2f }, h * 0.9f, 2.6f, 6.8f, w, ink);
                 c.segment(cx, cy + h * 0.2f, cx + h * 0.55f, cy - h * 0.35f, w, ink);
             }
+            else if (id == "listen")   // a loudspeaker and its arcs
+            {
+                c.rrect(x0, cy - h * 0.3f, h * 0.45f, h * 0.6f, 0.0f, kClear, w, ink);
+                const float bx[] = { x0 + h * 0.45f, cx - h * 0.05f, cx - h * 0.05f, x0 + h * 0.45f };
+                const float by[] = { cy - h * 0.3f, y0 + h * 0.1f, y1 - h * 0.1f, cy + h * 0.3f };
+                c.polyline(bx, by, 4, w, ink);
+                c.arc({ cx - h * 0.05f, cy }, h * 0.5f, -0.8f, 0.8f, w, ink);
+                c.arc({ cx - h * 0.05f, cy }, h * 0.95f, -0.8f, 0.8f, w, ink);
+            }
             else if (id == "scope")   // a trace on a screen
             {
                 c.rrect(x0, y0, size, size, 2.0f, kClear, 1.0f, ink);

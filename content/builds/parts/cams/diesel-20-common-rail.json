@@ -14,7 +14,9 @@
       "exDurSeat": 228,
       "exDur1mm": 196,
       "exLift": 0.008,
-      "exCentre": 112
+      "exCentre": 112,
+      "springRate": 25000.0,
+      "springPreload": 150.0
     }
   }
 }

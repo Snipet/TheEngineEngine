@@ -62,8 +62,10 @@ namespace combo
                 const std::string name = p.substr(dot + 1);
                 if (name == "model" && fi.maximum.value_or(0.0) >= 1.0)
                     out.push_back({p, 1});
-                else if (p == "engine.custom")
-                    out.push_back({p, 1});
+                else if (p == "engine.custom" || p == "engine.wallHeat")
+                    out.push_back({p, 1});   // the engine's own switches: D's custom engine, the walls' heat
+                // engine.cycle (card T's two-stroke) is no switch over these builds: a two-stroke wants its own
+                // (content/builds/ two-stroke builds, played by the corpus and T's tests)
             }
             return out;
         }();
@@ -246,7 +248,7 @@ namespace combo
     tee::test::Scenario scenario(Kind kind, const std::string& build, std::uint32_t mask, Times& times)
     {
         times = Times{};
-        tee::test::Scenario sc(buildPath(build));
+        tee::test::Scenario sc(build.find('/') != std::string::npos ? build : buildPath(build));
         for (const Step& st : steps(kind, mask, times))
         {
             sc.at(st.t);

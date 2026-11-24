@@ -74,6 +74,13 @@ with the textbook balance of each layout.
 
 ## Friction
 
+Used for a custom engine and whenever card H's combustion is on (`fuel.model` 1: the new combustion implies the
+physical cylinder, its walls and its friction together); the reference's curve only under the reference's models. The
+reference's curve goes as the piston speed over a square cylinder's of the same size, so its coefficient grows as
+1 / (square stroke)^2: right for the V8 it was fitted on, 4.5 bar at 24.8 m/s on a 250 cc cylinder (this law: 3.1).
+By bore at three piston speeds (`WorkFrictionTest`, 60 bar peak, warm): 60 mm 1.58 / 2.13 / 2.91 bar at 10 / 17 / 24
+m/s, 86 mm 1.44 / 1.99 / 2.74, 104 mm 1.39 / 1.94 / 2.68.
+
 Chen and Flynn (SAE 650733, 1965): FMEP = A + B p_max + C S_p + D S_p², split by part: rings and skirts (the p_max,
 S_p and S_p² terms), bearings (by speed), valvetrain (by kind), a constant, and the accessories (alternator and air
 conditioner, as power). The oil-thickness factor multiplies all but the accessories, as the reference's one curve.

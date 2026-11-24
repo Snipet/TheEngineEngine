@@ -7,6 +7,7 @@
 #include "tee/Wav.h"
 
 #include <algorithm>
+#include <map>
 #include <cstdio>
 #include <cstdlib>
 #include <sstream>
@@ -28,6 +29,8 @@ namespace
         "  --csv <file>        the telemetry, a row a block (the WAV's name with .csv); '-' writes none\n"
         "  --tel <a,b,...>     the telemetry fields in the CSV (engine.speed,engine.manifold); all numbers if none\n"
         "  --checks            compile with the loop budget and the bounds checks\n"
+        "  --define N[=V]      a define the program is compiled with (may be given again): a compile-time switch\n"
+        "                      such as TEE_FAST (FMinus reads it in #if and #ifdef; V defaults to 1)\n"
         "  --sim <dir>         the simulator's directory (sim)\n"
         "  --content <dir>     where builds/ and scenarios/ are (content)\n"
         "\n"
@@ -68,6 +71,7 @@ int hostMain(int argc, char** argv)
     std::string buildName, scenarioName, outName, csvName, simFlag, contentFlag, telList, value;
     double rate = 0.0, seconds = 0.0, blockValue = 0.0;
     bool checks = false, pcm24 = false;
+    std::map<std::string, std::string> defines;
     while (!args.done())
     {
         bool ok = true;
@@ -101,6 +105,16 @@ int hostMain(int argc, char** argv)
             ok = args.value(telList);
         else if (args.is("--pcm24"))
             pcm24 = true;
+        else if (args.is("--define"))
+        {
+            ok = args.value(value);
+            if (ok)
+            {
+                const std::size_t eq = value.find('=');
+                defines[value.substr(0, eq)] = eq == std::string::npos ? std::string("1") : value.substr(eq + 1);
+                ok = !value.empty() && eq != 0;
+            }
+        }
         else if (args.is("--checks"))
             checks = true;
         else if (args.is("--sim"))
@@ -136,6 +150,7 @@ int hostMain(int argc, char** argv)
 
     Sim::Options simOptions;
     simOptions.checks = checks;
+    simOptions.defines = defines;
     const std::shared_ptr<Sim> compiled = Sim::compile(sim, simOptions, error);
     if (!compiled)
     {

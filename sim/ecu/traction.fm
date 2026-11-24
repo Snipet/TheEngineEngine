@@ -1,9 +1,11 @@
 // traction.fm: traction control and the pit limiter (ecu.model 1), anti-lag's and nitrous's switching.
 //
-// Traction control: while the driven wheels slip more than the target (card I gives their slip: the wheels' speed
-// over the road's, less 1), torque comes out: a proportional and integral reduction, 0 to 1, made of retard over its
-// first half (up to 20 degrees) and cut firings (by fuel) over its second (up to three in four), as factory systems
-// take it out by the spark first and then by cylinders; it gives the torque back as the slip falls. The pit limiter
+// Traction control: while the driven wheels slip more than the target (card I gives their slip ratio), torque comes
+// out: a proportional and integral reduction, 0 to 1, made of retard over its first half (up to 20 degrees) and cut
+// firings (by fuel) over its second (up to three in four), as factory systems take it out by the spark first and
+// then by cylinders; it gives the torque back as the slip falls. Its authority fades from 1500 rpm over the idle to
+// none 300 over it, and its integral holds meanwhile: a slip ratio stays near 1 while the wheels outrun a car that
+// is barely moving, and a reduction that waited for it to fall would drag the engine down and stall it. The pit limiter
 // holds the car's speed under a set one by the same soft hold the rev limiter has (limiter.fm), over the last 2 m/s.
 //
 // Anti-lag: inside its window (speed, the pedal lifted under 20 %, running) the spark is taken back hard and the
@@ -33,12 +35,15 @@ module TractionControl
         pitActive = false;
     }
 
-    // Every 16 samples: on, the driven wheels' slip and its target; the pit limiter's speed (m/s; 0 off) and the car's
-    void control(bool on, float slip, float target, float pitSpeed, float carSpeed, float d16)
+    // Every 16 samples: on, the driven wheels' slip and its target; the pit limiter's speed (m/s; 0 off) and the car's;
+    // authority: how much torque it may take, 1 well above the idle, falling to 0 near it (it never stalls the engine:
+    // the integral does not wind while it is held back)
+    void control(bool on, float slip, float target, float pitSpeed, float carSpeed, float authority, float d16)
     {
         const float e = on ? slip - target : -1.0f;
-        integral = fminf(fmaxf(integral + 6.0f * e * d16, 0.0f), 1.0f);
-        reduce = fminf(fmaxf(3.0f * e + integral, 0.0f), 1.0f);
+        if (authority >= 1.0f || e < 0.0f)
+            integral = fminf(fmaxf(integral + 2.0f * e * d16, 0.0f), 1.0f);
+        reduce = fminf(fmaxf(1.0f * e + integral, 0.0f), 1.0f) * fminf(fmaxf(authority, 0.0f), 1.0f);
         if (!on)
         {
             integral = 0.0f;

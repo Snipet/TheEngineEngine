@@ -29,8 +29,10 @@ advance, lambda, boost target (speed by gear), intake and exhaust cam phase (car
 the plate, the lift command. Axes: speed (rpm inside, rad/s in the Spec) and load (the manifold over the air
 outside; for a throttle with no plenum, the pedal). Each has `auto`, on by default: the output is then the formula:
 
-- spark (the reference's): `12 + 22 sqrt(min(rpm / red, 1.2)) - 8 (p_manifold / 1 atm - 0.4) + 22 (burnK - 1)`, then
-  `spec.ecu.timing` added and each cylinder's knock retard taken off, as the reference's `charge()` does.
+- spark: the half of the burn 8 degrees after the top (docs/models/combustion.md, "The spark"); the charge refines it
+  with its own dilution and flame; `spec.ecu.timing` is an offset over it, and each cylinder's knock retard comes off
+  it. (Before integration it was the reference's `12 + 22 sqrt(rpm / red) - 8 (load - 0.4) + 22 (burnK - 1)`, which
+  put the half-burn 0 to 9 degrees before the top at speed.)
 - lambda: 1 to 80 % load, then `1 - 0.12 w - 0.08 b` (w: 0 to 1 over 80 to 100 % load; b: 0 to 1 over 1 to 2.5 load):
   0.88 at full load unboosted, 0.80 at 1.5 bar of boost (judgement: factory tunes' power enrichment).
 - boost: the build's boost level in every gear (card F's number); phasers 0; plate = pedal; lift 1.
@@ -102,7 +104,7 @@ both flow out with a 0.25 s time constant (judgement); a hazard rises at `40 /s 
 limiter, some 300 K under measured exhaust temperatures: judgement, for the self-ignition of a rich exhaust's CO, H2
 and fuel with air at some 950 to 1200 K), burnable = the
 fuel the store's air can burn; at 1 the burnable fuel burns and card G's pop gets an amplitude of 3e9 Pa a kg
-(judgement: a few milligrams give the reference's 20 to 30 kPa). Standalone test (part of the card's 9): at 3000 rpm,
+(now saturating: 30 kPa (1 - exp(-m / 7 mg)), the reference's largest pop; X-006). Standalone test (part of the card's 9): at 3000 rpm,
 1100 K, 2 mg a firing gives 133 bangs in 2 s, 1.9 mg burned a firing, the largest 23 kPa; 8 mg gives 199 bangs, 7.8 mg
 a firing, the largest 47 kPa (four times the fuel: four times what burns, larger pulses); no fuel, no air, or a pipe at
 800 K: none.
@@ -155,9 +157,31 @@ Integrated tests (`tests/sim/ecu/IntegratedTest.cpp`, the V8 in neutral in the c
   running.
 - The bake: each `ctl.bakeMaps` press writes all seven maps into the Scope; the spark's first point is the reference's
   formula.
-- **10** (traction on card I's car) waits for card I's slip.
+- **10**: the V8 in the rear-drive coupe (card I's vehicle, street tyres): from rolling in first, floored: the slip held
+  at 0.116 (most 0.139) against 0.10, flag 256, no stall, 14.9 m/s against 12.5 without (slip 1.0). Traction control's
+  authority fades from 1500 to 300 rpm over the idle (its integral holds meanwhile), or it would drag the engine into a
+  stall while a barely moving car's slip ratio stays near 1.
 
-**The idle and card C's validation**: the reference's V8 idles at some 1200 rpm (900 to 1500, loping) on a cold
-target of some 1200 after a start in 300 K air: the cam's dilution (the reference's recursion in the charge) holds it
-up and makes it lope. `ecu.idle.speed` (model 1's warm idle; 0 the layout's) set to 800 rpm stalls it within seconds.
-Model 1 does not bring the V8 into 600 to 900; that needs the charge's dilution toll at a slow idle looked at again.
+**The idle under model 1** (`content/validation/` through `tee-validate`, the builds with both models 1):
+
+- The reference's idle loop is marginal: at its idle valve's proportional gain the plenum's 0.1 s lag lets it settle
+  into a limit cycle from some starts (a mild-cam V8 under model 1: 605 to 798 rpm round 700, the same equations as
+  model 0's, which happened to start calm). Model 1 halves the valve's proportional gain within some 150 rpm of the
+  target (full beyond 300, and for 3 s after a start, whose flare falls fast toward a stall), and its spark trim has
+  an integral that takes the excess torque out once the valve is shut (the torque reserve a real idle's retarded
+  spark keeps), giving it back at once under the target.
+- A diesel's idle under model 1 is a governor of its idle fuel, with no floor under it (the reference's lever never
+  went under 0.12 of full fuel plus the valve's share, which held a heavy diesel at 1121 rpm), a proportional gain four
+  times the spark engine's (no plenum between), a warm target of 0.28 of its redline at most 750 rpm (heavy diesels
+  idle at some 25 to 30 % of rated speed, 600 to 800 rpm: judgement), and no big cam's bump.
+- Measured (8 to 12 s of `idle-warm`, held warm): the default build 700 rpm (680 to 719; manifold 39 kPa); the V8 with
+  a cam of 0.35 700 (679 to 718), of 0.6 835 (819 to 851); the large diesel 706 (657 to 727, the governor's approach).
+  `tee-validate`: the default build passes every target but the port gas (all builds, task of the energy share); the
+  large diesel passes its warm idle (73.97 rad/s), misses its governed speed (2534 rpm against 1800 to 2400: its
+  layout's redline; `ecu.limiter.speed` now sets where a diesel's governor cuts under model 1); the V8 build misses its
+  warm idle (1159 rpm): it carries `valve.cam` 0.9999, a race cam, so the reference's rule raises its target to 1050
+  and its overlap makes it lope (993 to 1316), as race-cammed V8s do. The V8 and large-diesel builds' cams are the
+  content's to choose.
+- Cold starts with both models (X-003): the enrichment of a start is fuel for the cold walls (`Ecu1::fuelFactor`); the
+  burn sees the lambda asked. Both start the V8 at 253 K (0.32 s, 1515 rpm) and 233 K (0.64 s, 1639 rpm).
+

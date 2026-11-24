@@ -25,6 +25,7 @@ namespace
         Sim s("v8");
         s.set("ecu.model", 1);
         s.set("fuel.model", 1);
+        s.set("engine.wallHeat", 1);                     // (fuel.model 1 implies Woschni's walls)
         s.set("fuel.grade", grade);
         s.set("ecu.knock.on", knockControl ? 1 : 0);
         s.set("engine.benchLoad", 1.0);
@@ -168,6 +169,7 @@ TEST_CASE("H8: E85 takes more advance than regular before it knocks; methanol mo
         Sim s("v8");
         s.set("ecu.model", 1);
         s.set("fuel.model", 1);
+        s.set("engine.wallHeat", 1);                     // (fuel.model 1 implies Woschni's walls)
         s.set("fuel.grade", grade);
         s.set("ecu.knock.on", 0);
         s.set("env.temperature", 300.0);
