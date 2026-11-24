@@ -109,4 +109,88 @@ module EngineSpec
     float portExDur [[fminus::range(0, 720)]] [[fminus::default(0)]] [[ui::label("Rotary: exhaust port open for")]] [[ui::unit("deg")]];
     float portInOpen [[fminus::range(0, 1080)]] [[fminus::default(0)]] [[ui::label("Rotary: intake port opens")]] [[ui::unit("deg")]];
     float portInDur [[fminus::range(0, 720)]] [[fminus::default(0)]] [[ui::label("Rotary: intake port open for")]] [[ui::unit("deg")]];
+    // ---- card T: the two-stroke (sim/core/twostroke/, docs/models/twostroke.md). `cycle` 0 (the default): none of the
+    // fields below is read and the engine is as before. 1: the engine is a crankcase-scavenged two-stroke of `tsCylinders`
+    // cylinders (bore, stroke, rod and compression as above: `bore` and `stroke` must be set), each with its own
+    // expansion chamber; the layout, the valvetrain, the intake and the exhaust above and in their sections are not
+    // used. Made under the fade: cycle, the cylinders, firing, ports, inlet, pipe's sections. Glided: the power valve, the
+    // pipe's gas. Defaults: a 125 cc racing single's ports and pipe (judgement from Jennings's and Blair's books). ----
+    int cycle [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Cycle")]] [[ui::choices("Four-stroke", "Two-stroke")]]
+        [[ui::group("Two-stroke")]];
+    // ---- the engine: how many cylinders and how they fire (bore, stroke, rod and compression are the fields above) ----
+    int tsCylinders [[fminus::range(1, 4)]] [[fminus::default(1)]] [[ui::label("Cylinders")]] [[ui::unit("cyl")]];
+    int tsFiring [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Firing")]] [[ui::choices("Even", "Together")]]
+        [[ui::help("Even: one every 360 / cylinders degrees (a 180-degree twin, a 120-degree triple); together: all at once.")]];
+    // ---- the ports: each opens when the piston uncovers its top edge, open for its duration about bottom dead centre;
+    //      its width is the bore's share its windows span (the bridges between them left out) ----
+    float tsExhaustDur [[fminus::range(140, 220)]] [[fminus::default(192)]] [[ui::label("Exhaust port open")]] [[ui::unit("deg")]]
+        [[ui::group("Ports")]];
+    float tsExhaustWidth [[fminus::range(0.3, 1.0)]] [[fminus::default(0.70)]] [[ui::label("Exhaust port width")]]
+        [[ui::quantity("fraction")]] [[ui::help("Over the bore.")]];
+    float tsExhaustRadius [[fminus::range(0, 0.5)]] [[fminus::default(0.25)]] [[ui::label("Exhaust port's corner radius")]]
+        [[ui::quantity("fraction")]] [[ui::help("Its top corners' radius over its width: a rounder port opens more gently.")]];
+    float tsTransferDur [[fminus::range(100, 150)]] [[fminus::default(130)]] [[ui::label("Transfer ports open")]] [[ui::unit("deg")]];
+    float tsTransferWidth [[fminus::range(0.3, 1.6)]] [[fminus::default(1.10)]] [[ui::label("Transfer ports' width")]]
+        [[ui::quantity("fraction")]] [[ui::help("All the transfers' windows together, over the bore.")]];
+    float tsTransferRadius [[fminus::range(0, 0.5)]] [[fminus::default(0.15)]] [[ui::label("Transfer ports' corner radius")]]
+        [[ui::quantity("fraction")]];
+    float tsPortCd [[fminus::range(0.4, 0.9)]] [[fminus::default(0.70)]] [[ui::label("Ports' discharge coefficient")]] [[ui::quantity("ratio")]];
+    // ---- the power valve: the exhaust port's top edge lowered at low speed (a shorter duration), raised above ----
+    float tsValveDur [[fminus::range(0, 220)]] [[fminus::default(0)]] [[ui::label("Power valve closed: exhaust open")]]
+        [[ui::unit("deg")]] [[ui::group("Power valve")]] [[ui::help("0: no power valve.")]];
+    float tsValveFrom [[fminus::range(0, 2000)]] [[fminus::default(900)]] [[ui::label("Opens from")]] [[ui::quantity("rotation")]];
+    float tsValveTo [[fminus::range(0, 2000)]] [[fminus::default(1150)]] [[ui::label("Fully open at")]] [[ui::quantity("rotation")]];
+    // ---- the crankcase and its valve ----
+    float tsCrankcaseRatio [[fminus::range(1.1, 2.0)]] [[fminus::default(1.40)]] [[ui::label("Crankcase compression")]]
+        [[ui::quantity("ratio")]] [[ui::group("Crankcase")]];
+    int tsInletKind [[fminus::range(0, 2)]] [[fminus::default(0)]] [[ui::label("Inlet")]]
+        [[ui::choices("Reed valve", "Rotary disc", "Piston port")]];
+    float tsInletArea [[fminus::range(0.0001, 0.003)]] [[fminus::default(0.0008)]] [[ui::label("Inlet's open area")]]
+        [[ui::quantity("area")]];
+    float tsReedFull [[fminus::range(1000, 50000)]] [[fminus::default(15000)]] [[ui::label("Reed fully open at")]]
+        [[ui::quantity("pressure")]] [[ui::help("The drop across the reed that opens it fully.")]];
+    float tsReedHz [[fminus::range(100, 2000)]] [[fminus::default(550)]] [[ui::label("Reed's natural frequency")]]
+        [[ui::quantity("frequency")]] [[ui::help("The petal's own ring: a stiff, light petal follows a fast engine.")]];
+    float tsReedDamping [[fminus::range(0.02, 1.0)]] [[fminus::default(0.15)]] [[ui::label("Reed's damping")]]
+        [[ui::quantity("ratio")]];
+    float tsDiscOpen [[fminus::range(0, 360)]] [[fminus::default(220)]] [[ui::label("Disc opens")]] [[ui::unit("deg")]]
+        [[ui::help("Crank degrees after top dead centre: 220 is 140 before the next, as the piston rises.")]];
+    float tsDiscDur [[fminus::range(90, 250)]] [[fminus::default(200)]] [[ui::label("Disc open for")]] [[ui::unit("deg")]];
+    float tsPistonDur [[fminus::range(90, 200)]] [[fminus::default(140)]] [[ui::label("Piston port open for")]] [[ui::unit("deg")]]
+        [[ui::help("About top dead centre: the piston's skirt uncovers the inlet.")]];
+    float tsCarbArea [[fminus::range(0.0001, 0.003)]] [[fminus::default(0.00057)]] [[ui::label("Carburettor bore's area")]]
+        [[ui::quantity("area")]];
+    // ---- scavenging ----
+    float tsMixing [[fminus::range(0, 1)]] [[fminus::default(0.55)]] [[ui::label("Scavenging: mixing")]]
+        [[ui::quantity("fraction")]] [[ui::group("Scavenging")]]
+        [[ui::help("0: the fresh charge displaces the burned gas; 1: it mixes with it at once.")]];
+    float tsShortCircuit [[fminus::range(0, 0.5)]] [[fminus::default(0.10)]] [[ui::label("Short-circuited share")]]
+        [[ui::quantity("fraction")]] [[ui::help("Of what the transfers deliver, what goes straight out of the exhaust.")]];
+    // ---- the burn ----
+    float tsSpark [[fminus::range(0, 40)]] [[fminus::default(18)]] [[ui::label("Spark")]] [[ui::unit("deg")]]
+        [[ui::group("Burn")]] [[ui::help("Crank degrees before top dead centre.")]];
+    float tsBurnDur [[fminus::range(20, 90)]] [[fminus::default(45)]] [[ui::label("Burn's duration")]] [[ui::unit("deg")]];
+    float tsAfr [[fminus::range(10, 16)]] [[fminus::default(12.8)]] [[ui::label("Air-fuel ratio")]] [[ui::quantity("ratio")]];
+    // ---- the expansion chamber: header, diffuser, belly, baffle cone, stinger ----
+    float tsHeaderLen [[fminus::range(0.02, 0.6)]] [[fminus::default(0.16)]] [[ui::label("Header")]] [[ui::quantity("length")]]
+        [[ui::group("Expansion chamber")]];
+    float tsDiffuserLen [[fminus::range(0.05, 0.8)]] [[fminus::default(0.33)]] [[ui::label("Diffuser")]] [[ui::quantity("length")]];
+    float tsBellyLen [[fminus::range(0.0, 0.5)]] [[fminus::default(0.12)]] [[ui::label("Belly")]] [[ui::quantity("length")]];
+    float tsBaffleLen [[fminus::range(0.05, 0.5)]] [[fminus::default(0.24)]] [[ui::label("Baffle cone")]] [[ui::quantity("length")]];
+    float tsStingerLen [[fminus::range(0.05, 0.5)]] [[fminus::default(0.22)]] [[ui::label("Stinger")]] [[ui::quantity("length")]];
+    float tsHeaderDiam [[fminus::range(0.015, 0.08)]] [[fminus::default(0.038)]] [[ui::label("Header's bore")]] [[ui::quantity("length")]];
+    float tsBellyDiam [[fminus::range(0.03, 0.2)]] [[fminus::default(0.115)]] [[ui::label("Belly's bore")]] [[ui::quantity("length")]];
+    float tsStingerDiam [[fminus::range(0.01, 0.05)]] [[fminus::default(0.022)]] [[ui::label("Stinger's bore")]] [[ui::quantity("length")]];
+    int tsConeSteps [[fminus::range(1, 16)]] [[fminus::default(8)]] [[ui::label("Steps a cone")]] [[ui::unit("steps")]]
+        [[ui::help("Each cone as this many short ducts of stepped bore.")]];
+    int tsChamber [[fminus::range(0, 1)]] [[fminus::default(1)]] [[ui::label("Pipe")]]
+        [[ui::choices("Straight pipe", "Expansion chamber")]];
+    int tsSilencer [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Silencer")]] [[ui::choices("None", "Packed")]]
+        [[ui::help("After the stinger: a perforated core wrapped in fibre (its bore near the stinger's: straight through) or a can (a wide bore), its outlet then a short tube of the stinger's bore.")]];
+    float tsSilencerLen [[fminus::range(0.1, 0.6)]] [[fminus::default(0.40)]] [[ui::label("Silencer's length")]]
+        [[ui::quantity("length")]];
+    float tsSilencerDiam [[fminus::range(0.012, 0.12)]] [[fminus::default(0.026)]] [[ui::label("Silencer's bore")]]
+        [[ui::quantity("length")]];
+    float tsSilencerPack [[fminus::range(0, 30)]] [[fminus::default(6)]] [[ui::label("Silencer's packing")]] [[ui::unit("dB")]]
+        [[ui::help("What a pass through the silencer takes from the sound (the steady flow passes whole).")]];
 };

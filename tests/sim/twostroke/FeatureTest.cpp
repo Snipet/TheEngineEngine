@@ -52,7 +52,7 @@ TEST_CASE("at rest nothing flows: stopped, every port and inlet still", "[twostr
         for (double angle : {0.0, 90.0, 180.0, 300.0})
         {
             Rig rig;
-            rig.set("spec.inletKind", kind);
+            rig.set("spec.tsInletKind", kind);
             rig.build();
             // the cylinder at the air's pressure and temperature: nothing should move at all
             rig.method<void(void*, int, float, float, float, int)>("still")(rig.data(), int(Rig::kRate * 1.0), float(angle), 101325.0f,
@@ -105,9 +105,9 @@ TEST_CASE("the inlets: a disc spits back at low speed and matches the reed high 
         rig.run(rpm, 1.0, 1.0, 40);
         return rig.meanDelivered();
     };
-    const double reedLow = delivered(nullptr, 0, 4000), discLow = delivered("spec.inletKind", 1, 4000);
-    const double reedHigh = delivered(nullptr, 0, 13000), discHigh = delivered("spec.inletKind", 1, 13000);
-    const double soft = delivered("spec.reedHz", 200, 13000);
+    const double reedLow = delivered(nullptr, 0, 4000), discLow = delivered("spec.tsInletKind", 1, 4000);
+    const double reedHigh = delivered(nullptr, 0, 13000), discHigh = delivered("spec.tsInletKind", 1, 13000);
+    const double soft = delivered("spec.tsReedHz", 200, 13000);
     std::printf("delivered at 4000 rpm: reed %.1f mg, disc %.1f mg; at 13 000: reed %.1f, disc %.1f, a 200 Hz reed %.1f mg\n",
                 reedLow * 1e6, discLow * 1e6, reedHigh * 1e6, discHigh * 1e6, soft * 1e6);
     CHECK(discLow < 0.9 * reedLow);
@@ -120,7 +120,7 @@ TEST_CASE("the power valve fills in below the band and leaves the band alone", "
     for (double rpm : {4000.0, 6000.0, 10000.0, 12000.0})
     {
         Rig plain, valved;
-        valved.set("spec.valveDur", 170.0);
+        valved.set("spec.tsValveDur", 170.0);
         plain.build();
         valved.build();
         plain.run(rpm, 1.0, 1.0, 40);
@@ -145,18 +145,18 @@ TEST_CASE("the spectrum's lines: the firing frequency, once a turn a cylinder", 
     // from the 5th to the 8th multiple of the turn; the firing frequency's own line is printed.)
     {
         Rig rig;
-        rig.set("spec.chamber", 0);
-        rig.set("spec.headerLen", 0.08);
-        rig.set("spec.diffuserLen", 0.05);
-        rig.set("spec.bellyLen", 0.0);
-        rig.set("spec.baffleLen", 0.05);
-        rig.set("spec.stingerLen", 0.05);
-        rig.set("spec.headerDiam", 0.022);
-        rig.set("spec.stingerDiam", 0.016);
-        rig.set("spec.silencerDiam", 0.07);     // (a can)
-        rig.set("spec.silencerLen", 0.12);
-        rig.set("spec.silencer", 1);
-        rig.set("spec.silencerPack", 0.0);       // (a reactive can, unpacked, as a mower's)
+        rig.set("spec.tsChamber", 0);
+        rig.set("spec.tsHeaderLen", 0.08);
+        rig.set("spec.tsDiffuserLen", 0.05);
+        rig.set("spec.tsBellyLen", 0.0);
+        rig.set("spec.tsBaffleLen", 0.05);
+        rig.set("spec.tsStingerLen", 0.05);
+        rig.set("spec.tsHeaderDiam", 0.022);
+        rig.set("spec.tsStingerDiam", 0.016);
+        rig.set("spec.tsSilencerDiam", 0.07);     // (a can)
+        rig.set("spec.tsSilencerLen", 0.12);
+        rig.set("spec.tsSilencer", 1);
+        rig.set("spec.tsSilencerPack", 0.0);       // (a reactive can, unpacked, as a mower's)
         rig.build();
         if (std::getenv("TS_LIN") != nullptr)
             for (int j = 0; j < int(rig.get("eng.ch[0].n")); ++j)
@@ -180,7 +180,7 @@ TEST_CASE("the spectrum's lines: the firing frequency, once a turn a cylinder", 
     for (Case k : {Case{1, 6000}, Case{1, 10000}, Case{2, 8000}, Case{3, 8000}})
     {
         Rig rig;
-        rig.set("spec.cylinders", k.cylinders);
+        rig.set("spec.tsCylinders", k.cylinders);
         rig.build();
         rig.run(k.rpm, 1.0, 1.0, 20);
         std::vector<double> mags;
@@ -206,7 +206,7 @@ TEST_CASE("twins and triples: each cylinder as the single, the torque shared out
     for (int n : {2, 3})
     {
         Rig rig;
-        rig.set("spec.cylinders", n);
+        rig.set("spec.tsCylinders", n);
         rig.build();
         rig.run(9500, 1.0, 1.0, 40);
         std::printf("%d cylinders at 9500 rpm: %.2f N m (the single's x %d: %.2f)\n", n, rig.meanTorque(), n, n * single.meanTorque());
