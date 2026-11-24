@@ -29,13 +29,17 @@ namespace tee::input
         gear5,
         gear6,
         reverse,
+        splitter,     // a press toggles: a truck's splitter (ctl.buttons BTN_SPLITTER), its high half while on
+        range,        // a press toggles: the high range (BTN_RANGE)
+        engineBrake,  // a press toggles: the compression brake (BTN_ENGINE_BRAKE), at spec.ecu.brakeSwitch's stage
         count
     };
 
     // A key by its place: the USB HID keyboard usage (SDL_Scancode has the same numbers).
     namespace key
     {
-        inline constexpr int kA = 4, kD = 7, kE = 8, kN = 17, kQ = 20, kR = 21, kS = 22, kW = 26;
+        inline constexpr int kA = 4, kD = 7, kE = 8, kJ = 13, kN = 17, kQ = 20, kR = 21, kS = 22, kW = 26;
+        inline constexpr int kX = 27, kZ = 29;
         inline constexpr int k1 = 30, k2 = 31, k3 = 32, k4 = 33, k5 = 34, k6 = 35;
         inline constexpr int kReturn = 40, kEscape = 41, kBackspace = 42, kTab = 43, kSpace = 44;
         inline constexpr int kPageUp = 75, kPageDown = 78;
