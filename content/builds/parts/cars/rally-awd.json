@@ -1,0 +1,38 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "part": "car",
+  "name": "Car: rally awd",
+  "notes": "A car of its class alone (card P's archetypes' cars), to take any engine.",
+  "spec": {
+    "car": {
+      "model": "Vehicle",
+      "kind": "Car",
+      "mass": 1300,
+      "drive": "All",
+      "wheelbase": 2.52,
+      "cgHeight": 0.5,
+      "frontWeight": 0.58,
+      "track": 1.5,
+      "cdA": 0.75,
+      "tyre": "Semi-slick",
+      "tyreRadius": 0.32,
+      "gearbox": "Sequential",
+      "finalDrive": 4.11,
+      "centreSplit": 0.5,
+      "wheelInertia": 1.2,
+      "gears": 6,
+      "autoGearing": false,
+      "ratio": [
+        2.92,
+        2.12,
+        1.67,
+        1.36,
+        1.13,
+        0.96
+      ],
+      "brakeDecel": 1.1,
+      "abs": true
+    }
+  }
+}

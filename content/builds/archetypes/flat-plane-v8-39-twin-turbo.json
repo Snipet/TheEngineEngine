@@ -1,0 +1,171 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Flat-plane 3.9 L V8, twin turbo",
+  "notes": "A 3.9 L flat-plane V8 with a turbo a bank: 86.5 x 83 mm (3902 cc), 9.4:1, direct injection (engines of the kind: 450 to 530 kW at 7500 to 8000 rpm, 760 to 800 N m at 3000 to 5750; makers' figures). In a mid-engined coupe, seven-speed dual clutch.",
+  "spec": {
+    "engine": {
+      "layout": "V8 flat-plane",
+      "custom": true,
+      "compression": 9.4,
+      "cylinders": 8,
+      "bankAngle": [
+        -45,
+        45
+      ],
+      "bank": [
+        0,
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        1
+      ],
+      "pin": [
+        315,
+        135,
+        135,
+        315,
+        315,
+        135,
+        135,
+        315
+      ],
+      "fireRev": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1
+      ],
+      "place": [
+        0.0,
+        0.1,
+        0.2,
+        0.3,
+        0.033,
+        0.133,
+        0.233,
+        0.333
+      ],
+      "displacement": 0.003902,
+      "boreStroke": 1.0422,
+      "bore": 0.0865,
+      "stroke": 0.083,
+      "rodLength": 0.148,
+      "redlineSpeed": 837.758,
+      "frictionValvetrain": "Finger follower",
+      "rough": 0.2,
+      "benchLoad": 0.3
+    },
+    "valve": {
+      "model": "Lab",
+      "valves": 4,
+      "dIn": 0.033,
+      "dEx": 0.028,
+      "train": "Finger",
+      "inDurSeat": 252,
+      "inDur1mm": 220,
+      "inLift": 0.0105,
+      "inCentre": 108,
+      "exDurSeat": 248,
+      "exDur1mm": 216,
+      "exLift": 0.01,
+      "exCentre": 112,
+      "inPhaseRange": 40,
+      "exPhaseRange": 40
+    },
+    "intake": {
+      "model": 1
+    },
+    "boost": {
+      "model": "Machine",
+      "kind": "Twin turbos",
+      "level": 0.905,
+      "blowOff": 0.7,
+      "size": 1.0,
+      "layout": "Two, a bank each",
+      "target": 130000.0,
+      "gateSpring": 70000.0,
+      "blowOffKind": "Recirculating",
+      "scrolls": "Twin scroll",
+      "icEffect": 0.75
+    },
+    "exhaust": {
+      "model": "Builder",
+      "sides": 2,
+      "converter": [
+        1,
+        1
+      ],
+      "mufKind": [
+        2,
+        2
+      ]
+    },
+    "fuel": {
+      "kind": "Gasoline",
+      "model": "Fuels",
+      "grade": "Premium (91)",
+      "direct": 1
+    },
+    "ecu": {
+      "model": "Maps",
+      "timing": 0,
+      "pops": 0.1,
+      "starter": true,
+      "limiter": {
+        "kind": "Fuel cut",
+        "speed": 837.758
+      },
+      "idle": {
+        "speed": 94.248
+      },
+      "knock": {
+        "on": true
+      }
+    },
+    "car": {
+      "model": "Vehicle",
+      "kind": "Car",
+      "mass": 1550,
+      "drive": "Rear",
+      "wheelbase": 2.65,
+      "cgHeight": 0.45,
+      "frontWeight": 0.42,
+      "track": 1.65,
+      "cdA": 0.62,
+      "tyre": "Semi-slick",
+      "tyreRadius": 0.345,
+      "gearbox": "Dual clutch",
+      "finalDrive": 4.44,
+      "wheelInertia": 1.5,
+      "gears": 7,
+      "autoGearing": false,
+      "ratio": [
+        3.08,
+        2.19,
+        1.63,
+        1.29,
+        1.03,
+        0.84,
+        0.69
+      ],
+      "brakeDecel": 1.1,
+      "abs": true
+    },
+    "env": {
+      "temperature": 288.15,
+      "pressure": 101325.0
+    },
+    "voices": {
+      "timing": "Chain",
+      "injection": "Direct"
+    }
+  }
+}

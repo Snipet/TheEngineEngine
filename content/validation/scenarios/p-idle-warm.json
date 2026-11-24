@@ -1,0 +1,43 @@
+{
+  "format": "tee-scenario",
+  "version": 1,
+  "name": "p-idle-warm",
+  "description": "Card P's: in the car, in neutral, warm (held at working temperatures), in the build's own air: the key, held until it runs, then twelve seconds of idle.",
+  "seconds": 14,
+  "warm": true,
+  "events": [
+    {
+      "t": 0.0,
+      "ctl": {
+        "mode": 1,
+        "lever": 0,
+        "clutch": 0,
+        "throttle": 0,
+        "brake": 0,
+        "ignition": 1
+      }
+    },
+    {
+      "t": 0.25,
+      "ctl": {
+        "ignition": 2
+      }
+    },
+    {
+      "t": 2.0,
+      "ctl": {
+        "ignition": 1
+      }
+    }
+  ],
+  "assertions": [
+    {
+      "audio": "finite"
+    },
+    {
+      "audio": "peak",
+      "<=": 1,
+      "source": "02-contracts.md, section 1: within +-1"
+    }
+  ]
+}

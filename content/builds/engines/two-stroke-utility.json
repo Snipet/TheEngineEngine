@@ -1,0 +1,73 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Two-stroke utility engine, 50 cc",
+  "notes": "A small utility engine (a chainsaw's or a brush cutter's kind): 44 x 33 mm (50.2 cc), piston-port inlet (130 degrees), exhaust 150, transfers 118, a short straight pipe into a can, 8:1 geometric. Governed near 10,000 rpm, idling near 2,800. Published figures for the class: some 2.2 to 2.6 kW at 9,000 to 9,500 rpm. Ports are judgement for the class. No electric starter (a pull start): it starts at once.",
+  "spec": {
+    "engine": {
+      "layout": "Single",
+      "displacement": 5.02e-05,
+      "compression": 8.0,
+      "custom": true,
+      "cylinders": 1,
+      "bankAngle": [
+        0.0
+      ],
+      "bank": [
+        0
+      ],
+      "pin": [
+        0.0
+      ],
+      "fireRev": [
+        0
+      ],
+      "place": [
+        0.0
+      ],
+      "bore": 0.044,
+      "stroke": 0.033,
+      "rodLength": 0.065,
+      "redlineSpeed": 1047.198,
+      "cycle": "Two-stroke",
+      "tsCylinders": 1,
+      "flywheelInertia": 0.003,
+      "idleTrim": 1500,
+      "tsExhaustDur": 150,
+      "tsTransferDur": 118,
+      "tsInletKind": "Piston port",
+      "tsPistonDur": 140,
+      "tsInletArea": 0.0005,
+      "tsCarbArea": 0.0002,
+      "tsExhaustWidth": 0.6,
+      "tsTransferWidth": 0.9,
+      "tsChamber": "Straight pipe",
+      "tsHeaderLen": 0.05,
+      "tsDiffuserLen": 0.05,
+      "tsBellyLen": 0.0,
+      "tsBaffleLen": 0.05,
+      "tsStingerLen": 0.05,
+      "tsHeaderDiam": 0.02,
+      "tsStingerDiam": 0.016,
+      "tsSilencer": "Packed",
+      "tsSilencerDiam": 0.06,
+      "tsSilencerLen": 0.1,
+      "tsSilencerPack": 0.0,
+      "tsPortCd": 0.65,
+      "frictionValvetrain": "None",
+      "alternator": 0
+    },
+    "ecu": {
+      "starter": false
+    }
+  },
+  "expect": {
+    "firingOrder": [
+      1
+    ],
+    "firingIntervals": [
+      720
+    ],
+    "note": "the custom geometry's four-stroke derivation (core/layout.fm), which the two-stroke does not use: it fires once a turn a cylinder, evenly"
+  }
+}

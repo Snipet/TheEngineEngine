@@ -19,7 +19,9 @@ namespace
         {
             Times tm;
             const auto spec = randomSpec(seed, corners);
-            const tee::test::Run r = fuzzScenario(spec, seed, seconds, tm).run(tm.end);
+            // with FMinus's bounds checks and loop budget: an access out of bounds stops the call with its words
+            // (and is reported) instead of taking the test process down
+            const tee::test::Run r = fuzzScenario(spec, seed, seconds, tm).checks().run(tm.end);
             const Verdict v = judgeFuzz(r, tm);
             const std::string name = std::string(corners ? "corners " : "random ") + std::to_string(seed);
             report(v, name, "fuzz", corners ? "corners" : "random");
@@ -27,13 +29,20 @@ namespace
     }
 } // namespace
 
-TEST_CASE("fuzz: random Specs inside the ranges with seeds 1 to 6 and six seconds of random driving each", "[combo][fuzz]")
+TEST_CASE("fuzz: random Specs inside the ranges with seeds 1 to 6 and six seconds of random driving each",
+          "[.][nightly][fuzz-long]")
 {
+    // out of the default run while X-007 (a crash of the JIT's code without the checks) is open: the lead's ruling
+    if (std::getenv("TEE_NIGHTLY") == nullptr)
+        SKIP("set TEE_NIGHTLY to run");
     fuzz(1, 6, 6.0, false);
 }
 
-TEST_CASE("fuzz: the ranges' corners with seeds 1 to 6 and six seconds of random driving each", "[combo][fuzz]")
+TEST_CASE("fuzz: the ranges' corners with seeds 1 to 6 and six seconds of random driving each",
+          "[.][nightly][fuzz-long]")
 {
+    if (std::getenv("TEE_NIGHTLY") == nullptr)
+        SKIP("set TEE_NIGHTLY to run");
     fuzz(1, 6, 6.0, true);
 }
 

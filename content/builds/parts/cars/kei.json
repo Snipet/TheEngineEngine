@@ -1,0 +1,36 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "part": "car",
+  "name": "Car: kei",
+  "notes": "A car of its class alone (card P's archetypes' cars), to take any engine.",
+  "spec": {
+    "car": {
+      "model": "Vehicle",
+      "kind": "Car",
+      "mass": 780,
+      "drive": "Rear",
+      "wheelbase": 2.23,
+      "cgHeight": 0.45,
+      "frontWeight": 0.45,
+      "track": 1.3,
+      "cdA": 0.55,
+      "tyre": "Sport",
+      "tyreRadius": 0.275,
+      "gearbox": "Manual",
+      "finalDrive": 4.55,
+      "wheelInertia": 0.7,
+      "gears": 5,
+      "autoGearing": false,
+      "ratio": [
+        3.31,
+        2.06,
+        1.46,
+        1.09,
+        0.85
+      ],
+      "brakeDecel": 1.1,
+      "abs": true
+    }
+  }
+}

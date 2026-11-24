@@ -1,0 +1,167 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "3.5 L twin-turbo V6 pickup",
+  "notes": "A 3.5 L twin-turbo V6 of a full-size pickup: 92.5 x 86.6 mm (3497 cc), 10.5:1, direct injection, a turbo a bank (engines of the kind: 280 to 300 kW at 5000 to 6000 rpm, 640 to 690 N m at 3500; makers' figures). Four-wheel drive, ten-speed automatic.",
+  "spec": {
+    "engine": {
+      "layout": "V6",
+      "custom": true,
+      "compression": 10.5,
+      "cylinders": 6,
+      "bankAngle": [
+        -30,
+        30
+      ],
+      "bank": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        1
+      ],
+      "pin": [
+        330,
+        270,
+        90,
+        30,
+        210,
+        150
+      ],
+      "fireRev": [
+        0,
+        0,
+        0,
+        1,
+        1,
+        1
+      ],
+      "place": [
+        0.0,
+        0.033,
+        0.1,
+        0.133,
+        0.2,
+        0.233
+      ],
+      "displacement": 0.0034917,
+      "boreStroke": 1.0681,
+      "bore": 0.0925,
+      "stroke": 0.0866,
+      "rodLength": 0.152,
+      "redlineSpeed": 628.319,
+      "frictionValvetrain": "Finger follower",
+      "rough": 0.2,
+      "benchLoad": 0.3
+    },
+    "valve": {
+      "model": "Lab",
+      "valves": 4,
+      "dIn": 0.034,
+      "dEx": 0.028,
+      "train": "Finger",
+      "inDurSeat": 236,
+      "inDur1mm": 204,
+      "inLift": 0.0095,
+      "inCentre": 112,
+      "exDurSeat": 232,
+      "exDur1mm": 200,
+      "exLift": 0.009,
+      "exCentre": 112,
+      "inPhaseRange": 50,
+      "exPhaseRange": 40
+    },
+    "intake": {
+      "model": 1
+    },
+    "boost": {
+      "model": "Machine",
+      "kind": "Twin turbos",
+      "level": 0.619,
+      "blowOff": 0.7,
+      "size": 1.0,
+      "layout": "Two, a bank each",
+      "target": 100000.0,
+      "gateSpring": 60000.0,
+      "blowOffKind": "Recirculating",
+      "icEffect": 0.75
+    },
+    "exhaust": {
+      "model": "Builder",
+      "sides": 2,
+      "converter": [
+        1,
+        1
+      ],
+      "mufKind": [
+        2,
+        2
+      ]
+    },
+    "fuel": {
+      "kind": "Gasoline",
+      "model": "Fuels",
+      "grade": "Regular (87)",
+      "direct": 1
+    },
+    "ecu": {
+      "model": "Maps",
+      "timing": 0,
+      "pops": 0.1,
+      "starter": true,
+      "limiter": {
+        "kind": "Fuel cut",
+        "speed": 628.319
+      },
+      "idle": {
+        "speed": 68.068
+      },
+      "knock": {
+        "on": true
+      }
+    },
+    "car": {
+      "model": "Vehicle",
+      "kind": "Car",
+      "mass": 2500,
+      "drive": "All",
+      "wheelbase": 3.68,
+      "cgHeight": 0.75,
+      "frontWeight": 0.57,
+      "track": 1.71,
+      "cdA": 1.25,
+      "tyre": "Street",
+      "tyreRadius": 0.39,
+      "gearbox": "Automatic",
+      "finalDrive": 3.55,
+      "centreSplit": 0.4,
+      "liveAxle": true,
+      "wheelInertia": 2.2,
+      "gears": 10,
+      "autoGearing": false,
+      "ratio": [
+        4.7,
+        2.99,
+        2.15,
+        1.8,
+        1.52,
+        1.28,
+        1.0,
+        0.85,
+        0.69,
+        0.64
+      ],
+      "brakeDecel": 1.1,
+      "abs": true
+    },
+    "env": {
+      "temperature": 288.15,
+      "pressure": 101325.0
+    },
+    "voices": {
+      "timing": "Chain",
+      "injection": "Direct"
+    }
+  }
+}
