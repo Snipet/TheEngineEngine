@@ -222,7 +222,7 @@ module TwoStrokeCylinder
         if (h <= 0.0f)
             return 0.0f;
         const float x = fminf(h / d, 64.0f);
-        int i = (int)x;
+        int i = (int)x;     // lint: index-ok: h > 0 returned above; fminf caps a NaN at 64
         if (i > 63)
             i = 63;
         return tab[i] + (tab[i + 1] - tab[i]) * (x - (float)i);
