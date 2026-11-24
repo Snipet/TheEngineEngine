@@ -122,6 +122,9 @@ a logical px, and `--dyno-wait S` has tee-headless wait for the dyno ribbon's fi
 
     tee-headless --workspace exhaust --size 1280x800 --scale 2 --frames 120 --script tests/shell/scripts/workspace.txt --shot out/exhaust.png
 
+A scripted window (`--frames`, `--shot`) opens no build unless one is named (`--first-build FILE`, `--preset NAME`):
+the simulator's defaults, as `--reference`, so its pictures and timings do not change with a content file.
+
 `tee-headless` (and the window with `--script`) reads the same keys from a script, by name: `w`, `s`, `up`, `down`,
 `e`, `q`, `n`, `space`, `return`, `enter`, `lshift`, `pageup`, `pagedown`, `1` to `6`. `app/Script.h` has the
 format; `tests/shell/scripts/` has scripts that start, rev, drive and stop the engine.
