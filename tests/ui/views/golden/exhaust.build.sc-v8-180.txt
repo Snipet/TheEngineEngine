@@ -1,4 +1,4 @@
-geometry abf24cc152097269
+geometry 82870163ed50734c
 text e22763a68d4f86e6
 statics 1058
 live 0

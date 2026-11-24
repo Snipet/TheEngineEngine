@@ -28,6 +28,17 @@ never smoke, and its lever has an idle floor of 0.12. A real pump meters fuel by
   are specified with 5 to 10 % droop; 6 % is the default (judgement).
 - Starting: the reference's start fuel (0.45 of the rack while cranking, tapering over a second).
 
+### With card H's fuel model: the four combinations
+
+| `ecu.governor` | `fuel.model` | Fuelling |
+|---|---|---|
+| 0 | 0 | the reference's: 0.75 x lever of the air, its timing and burn |
+| 0 | 1 | H's: the reference's law with H's `phiAt` (its `overFuel` raising the smoke limit), `soiAdd`, `pilot`, `rail` shaping when and how it burns; the smoke number from `phiAt` |
+| 1 or 2 | 0 | D2's: the governor's rack, the fuel metered by it (`phiMetered`), the reference's timing and burn |
+| 1 or 2 | 1 | one law: D2's `phiMetered` decides how much fuel (H's `overFuel` scales the rack's full fuel, past the compensator only when `afc` is 0 or above it); H's `soiAdd`, `pilot`, `rail` decide when and how it burns |
+
+`tel.ecu.smoke` is D2's (card H stopped writing it): written on a diesel under either D2's governor or H's fuel model.
+
 ## The compression-release brake (`ecu.engineBrake`, `ecu.brakeSwitch`)
 
 Fuel off; a slave piston opens the exhaust valve near the top of compression: the work of compression is thrown
@@ -37,6 +48,20 @@ is a cam always on). Area: two exhaust valves of 0.3 bore (or `ecu.brakeValve`),
 (judgement: a low lift's), sin^2 over the event with its flanks steepened (a hydraulic slave). Stages: a third, two
 thirds, all of the cylinders (2, 4, 6 of a six), each joining or leaving only while its lobe is shut. It acts with the
 pedal up, the clutch in, the engine running above `ecu.brakeMin` (900 rpm by default).
+
+**Where the published half is.** At 2100 rpm, High, a lobe opening 30 degrees before the top, 3.5 mm:
+268 kW with the manifold at 2.2 to 2.4 bar absolute (the reference turbo's gate holds 140 kPa at most, and card F's
+machine without its vanes commanded shut held the same); 56 bar at the release. The ideal of throwing away the
+compression's work, p1 V1 / (n - 1) (CR^(n-1) - 1) a cylinder a cycle at 2.4 bar and 2.48 L, 1.35, 17:1, is some 300 kW
+for the six at 2100 rpm, and the motoring losses add 60: the model is within 25 % of its own ideal (the walls take
+some of the squeeze's heat; the release is not instant, the first degrees after the top give a little back). The rest
+is boost: a real brake shuts its turbine's vanes and runs 3 to 3.5 bar absolute in the manifold; scaled by that the
+same engine gives some 400 kW, the published figure's range. Sweeping the opening: 660, 675, 690, 700 (3.5 mm) gave
+234, 257, 267-272, 252-276 kW. The builds keep 25 degrees and 2.5 mm (some 10 % less): with 30 degrees and 3.5 mm
+the bark loses its lines (at 2000 rpm the bins between the firing harmonics come up to them: the releases scatter
+from cycle to cycle; not yet understood). Not yet done: the pressure-volume loop of one braking cylinder against one motoring
+from the Scope (the picture asked for), and the vanes shut by the brake under boost.model 1 (`Boost::vanesAndPurge`
+is not called yet).
 
 ## The exhaust brake (`ecu.exhaustBrake`, `ecu.exBrakeSwitch`)
 

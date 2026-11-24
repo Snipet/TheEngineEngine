@@ -1,0 +1,30 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Dual, X, resonators, valved mufflers",
+  "notes": "Two sides, an X after the main pipes, a quarter-wave stub at 200 Hz on each side (a crossplane V8's firing order at 3000 rpm), chambered mufflers with a bypass valve each that opens above 3500 rpm and half load. The card's typical dual system (its cost: docs/models/exhaust.md). A part build: only spec.exhaust; every other field keeps its default.",
+  "spec": {
+    "exhaust": {
+      "model": "Builder",
+      "sides": 2,
+      "crossKind": "X",
+      "crossAt": "After main pipe",
+      "resonator": [
+        "Quarter-wave",
+        "Quarter-wave"
+      ],
+      "resHz": [
+        200,
+        200
+      ],
+      "mufKind": [
+        "Chambered",
+        "Chambered"
+      ],
+      "bypass": [
+        "By speed and load",
+        "By speed and load"
+      ]
+    }
+  }
+}

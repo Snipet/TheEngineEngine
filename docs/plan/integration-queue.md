@@ -214,3 +214,47 @@ rules keep for its lead. For the owner, on the Mac, in FunkGui at v0.28.0 or lat
 look at the two pictures:
 `FUNKGUI_ALLOW_BLESS=1 python3 tools/golden.py adopt build-desktop --only fg.desktop.menu --reason "the menu overlay, new in 0.28.0"`.
 Until then the test reports MISSING and fails nothing.
+
+## For FMinus's owner: the launch wait, and three wishes (16:24, from Q's `docs/measurements/q7-compile.md`)
+
+With every package in, the program is 466 kB of machine code and takes 3.4 to 4.2 s to compile on the cloud
+machine (the reference: 158 kB, 1.4 s; the owner's Windows machine compiled the reference in 2.11 s, so expect
+about 5 to 6 s there). The front end is 0.12 s of it; the rest is LLVM at -O2, in proportion to the code. Measured
+and struck: -O0 compiles in 0.30 s and runs at 2.6 to 2.8 times the cost (a twin-turbo V8 at about 160 % of a slow
+core): no "first sound unoptimised, then swap"; -O1 saves 8 %; there is no `param` in the program.
+
+What we can do ourselves: define a switched-off model out of the program (`Program::Options::defines` per model):
+measured on boost, the listener's model 1 and the voices together: 23 % less code, 0.72 s less, the running cost
+unchanged; about 2.1 s for a build that uses none of the new models. The price is a recompile with a crossfade
+when a switch flips, and a test matrix per set of defines. **Held** (the lead): not until the launch wait is
+judged on the owner's machines.
+
+What only FMinus can do (wishes, not bugs; the user writes the compiler, and nobody here edits it):
+1. **An object cache keyed by the source and the options**: an unchanged program loads in milliseconds, which is
+   every launch but the first after an update. The largest gain for a person using the application.
+2. **Compiling in parallel** (modules split, ORC's concurrent compile): about 1 to 1.3 s on four cores, nothing
+   for any package to change.
+3. **Compiling a function on its first call**: a model that is switched off is never compiled; it needs care with
+   `[[clang::nonblocking]]` (nothing may compile on the audio thread: the host would have to warm the paths a
+   switch can reach before it is flipped).
+
+Meanwhile the application opens its window first and says that it is compiling (card B).
+
+## From calibration (N1, N2; 16:10 to 16:26)
+
+- **For C, later**: the host bakes an `auto` cam map (`ecu.maps.camIn`, `camEx`) by a sweep with the fast dyno
+  (for each speed the advance that makes the most torque at full load, capped by the overlap the idle can
+  stand), as makers calibrate, so a build a person makes gets what the archetypes get from N1's swept tables.
+  Until then `Phaser::schedule` is a rule by target intake-valve-closing angle (N1).
+- **For C, now**: the fast dyno reads 9 to 10 % over the stepped dyno on a boosted engine (slow states not
+  settled); P's table reads boosted archetypes from the stepped dyno meanwhile.
+- **For H's path (N2), after the gate**: over-boost protection in the ECU (a fuel cut above a threshold over the
+  target; a Spec field; a telemetry flag). Nothing acts on the over-boost flag today.
+- **A boosted engine has two states** until N2's gate lands: stepped up from low speed it runs away (the gate
+  wide open, knock retard pinned); every figure taken that way is the runaway's.
+- **For D**: one decision for "this engine's walls are Woschni's", read by both `engine.fm:821` and
+  `combustion.fm:261` (today the wall loss is taken twice under `fuel.model` 1 with `wallHeat` 0).
+- **Open question (N1)**: with the walls counted once the mild engines are 1.19 to 1.30 of their targets and the
+  port gas is 1350 to 1520 K: is the burned gas's real heat capacity (gamma near 1.25 at 2500 K) in the cylinder's
+  model, or was the reference's kept share standing in for it?
+
