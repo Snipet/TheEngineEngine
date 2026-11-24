@@ -84,6 +84,10 @@ module ValveLab
     int floatDirty;
     // the state
     int stageWant;      // 0 A, 1 B
+    float tCool;        // the coolant's temperature (K) the ECU reads, set by the valvetrain (0: unknown: the oil's is used)
+    int waiting;        // why: 1 the intake phaser parked (no oil pressure), 2 the exhaust's, 4 the phasers slowed (cold oil),
+                        // 8 the stage waits for the coolant, 16 for the oil pressure
+    float waitTemp;     // the coolant temperature the stage waits for (K; 0: none)
     int useIn[VT_MAXCYL];   // the table each cylinder's intake reads (an index into tab)
     int useEx[VT_MAXCYL];
     int deacWant;
@@ -420,8 +424,17 @@ module ValveLab
             }
             inLive.place(-phIn.phase, cyc);
         }
-        // the stage: up above the speed, down below it less the hysteresis, only with oil pressure and warm
-        if (stagesOn != 0 && pOil > 100000.0f && tOil > 333.0f)
+        // the stage: up above the speed, down below it less the hysteresis, with the oil's pressure (the spool's switch) and
+        // the coolant the ECU reads at 10 C or above (Honda's VTEC conditions: the engine's speed, the car's speed, the
+        // load from the manifold's pressure, the coolant at 10 C or higher, the oil pressure switch: the Accord's service
+        // text). Gated on the oil's temperature at 60 C instead, a cold start kept the stage off for 180 s at 6700 rpm
+        // (card N1, the owner's report). The car's speed is the ECU's to add (H's maps); left out here
+        const float tGate = tCool > 0.0f ? tCool : tOil;
+        waitTemp = stagesOn != 0 && tGate <= 283.0f ? 283.0f : 0.0f;
+        waiting = (phIn.parked != 0 && phIn.range > 0.0f ? 1 : 0) | (phEx.parked != 0 && phEx.range > 0.0f ? 2 : 0)
+                  | ((phIn.slowed != 0 && phIn.range > 0.0f) || (phEx.slowed != 0 && phEx.range > 0.0f) ? 4 : 0)
+                  | (stagesOn != 0 && tGate <= 283.0f ? 8 : 0) | (stagesOn != 0 && pOil <= 100000.0f ? 16 : 0);
+        if (stagesOn != 0 && pOil > 100000.0f && tGate > 283.0f)
         {
             if (stageWant == 0 && omega > stageUp)
                 stageWant = 1;
