@@ -37,6 +37,55 @@
 
 ## Landed
 
+- **21:10 the lead's check-in; `main` fast-forwarded** 35286df to f69bf016 (141 commits; the tip compiles, lint ok).
+  **CI, newest finished fast jobs**: Linux green (c51e77a) and macOS green (7ef0f53), both holding the first
+  build, the level fix, the gamma, the tyres and the one loader; Windows failed at BUILD from 127c350 (a friend
+  declaration in tee/test/Scenario.h that clang-cl refuses once LoaderTest includes both Scenario headers): the
+  lead's 006c1a6c and C's 6b54fe2a fix it, no Windows job has finished on them yet. Main's run on 35286df was red
+  on all three (the truck air case, fixed since; Windows the same build break). The soak tier has reported
+  nothing since 18:14 because its job's limit was 90 minutes (the steward: 240 now, d5ca2d50). **Builds for the
+  owner**: macOS run 45484220368 (7ef0f53). **Since 20:34**: the exhaust's mean flow closed and live (G 8bb2c80f,
+  D 7bd08444; given over let out 1.000; the turbine had 13 to 22 % phantom gas at load, 45 % on a compression
+  brake): the brake test's oversized turbo went back to the matched one (D2 efd737ed), the VGT's spool is slower
+  than the single's on real gas (marked; N2), the blow-off case restated; a diesel's gas air until it burns (D
+  b551cd05: the 233 K start 5.2 s); the 7.0's idle fixed (N1 ba2fee9b: 750 sd 5, the spark trim's look-ahead =
+  the manifold's filling time); P's generator no longer derives parts from an engine's own targets (runners,
+  headers by class; baked cam maps to come); targets carry their basis (187 cited, 167 recalled, 370
+  judgement); table H: power 22, torque 11 of 31; N3: no common level left; the tuned four-valves' gap is their
+  headers' primaries and runners (content), the exhaust scavenges as it should; table I running (dc24110).
+  The interface: 130 of 130 view tests in the lead's build; round 7 of pictures (the TRY FIRST strip, AIR's
+  mismatch warnings). Next check-in 21:50.
+- **20:34 `main` fast-forwarded** aaa10cc to 35286df (159 commits). What held it at 20:28 was one default-run case
+  failing at the tip (diesel's VGT against the single: two loops on one target, 210.1 against 211.4 kPa); the
+  lead restated it within the loops' 2 % in D2's file (35286df), D2 being deep in a re-run; every other failure
+  in the newest finished fast jobs has its fix in this tip. Main's own run on 35286df is the first same-commit
+  run on all three systems that should be green. Since 20:28: C's one strict build loader (127c350), which also
+  fixed tee::Build dropping arrays of choices by name (the exhaust presets' resonators, muffler kinds,
+  converters, bypass were at their defaults in the application: Q re-measures the typical build); the tools'
+  unknown-field error and stale outputs (93187bd); a diesel's gas air until it burns (D b551cd05); the listener
+  +14 dB and a measured level a build (L 35e355d, P 76e1b29: first.json's free rev peaks 0.29); N2's boosted
+  ledger on the new gamma and its ruling to give the auto spark map the knock limit less 2 degrees; U3's AIR
+  mismatch warnings (82a98f3); U1's TRY FIRST as a strip that covers nothing (4bc084b).
+- **20:28 the lead's check-in** (the tip 04a4d11 and after: about 1970 commits; it compiles; lint ok). **CI**: the
+  newest finished fast jobs are red on all three, each on a commit from before fixes that are now in the tip:
+  core's books on the boosted petrol (N1's b6676a5; fixed by c40f041, checked green on Linux by the steward),
+  `calibration-balance.sim` and `diesel.brakes` (the gamma's first commit alone; the test and the lean term
+  followed: bae5ffd, a845b07f), `ui.dyno.run` on Windows (U4's slip, fixed two minutes later, 4eaa5d2). No job
+  has finished on a commit holding c40f041 yet. One default-run case fails at the tip itself: diesel's VGT
+  against the single (210.1 against 211.4 kPa: two loops on one target, a near-tie the gamma flipped): D2
+  restates it within the loops' 2 %. **main** stays at aaa10cc until that is in (its own run on aaa10cc is in
+  flight on all platforms; it will show the same books and brakes failures). **Since 20:10**: G measured the
+  exhaust pipes given 14 to 20 % more gas than the cylinders let out at load (the valve's simple-wave gain: 10 to
+  14 kPa at a turbine's inlet) and closes the mean, D adding two lines; the gamma's treatment of a diesel's
+  compression is wrong (its air compressed as products: D2's 233 K start lost; D makes the gas air until it
+  burns, N3 checked); N1 found the 7.0's lope in the spark trim's look-ahead (to be the manifold's filling
+  time); N3 owns full-load breathing (the runner's ram, the two-stage cam, the small block against its cited
+  band); P's targets carry their basis (cited, recalled, judgement) and misses are counted by kind; the first
+  build is the 2.0 L turbo four (about 1.1 R) with the listener and voices on, which play 23 to 30 dB under the
+  reference mix (L: a level scheme; P: two floor rows); U1's TRY FIRST card and low-redline dials, U3's cost
+  line, U4's knock-limited points: 127 view tests pass in the lead's build; round 6 of pictures to the owner.
+  N2: the intercooler held at the air on a test bed (10345ed), the charge system's has/wants telemetry
+  (00d6728), the VGT sooner than the single (e12b230). Next check-in 21:08.
 - **20:10 `main` fast-forwarded** to aaa10cc (80 commits; the owner's word at 20:09: "Fast-forward main at each
   checkpoint"). The rule is in 01-rules.md section 2: at each lead check-in, when the tip compiles, lint is clean
   and the newest finished fast-tier jobs are green, forward only, by the lead alone. At this one: the tip compiles

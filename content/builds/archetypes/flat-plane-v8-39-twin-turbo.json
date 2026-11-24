@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "Flat-plane 3.9 L V8, twin turbo",
-  "notes": "A 3.9 L flat-plane V8 with a turbo a bank: 86.5 x 83 mm (3902 cc), 9.4:1, direct injection (engines of the kind: 450 to 530 kW at 7500 to 8000 rpm, 760 to 800 N m at 3000 to 5750; makers' figures). In a mid-engined coupe, seven-speed dual clutch.",
+  "notes": "A 3.9 L flat-plane V8 with a turbo a bank: 86.5 x 83 mm (3902 cc), 9.4:1, direct injection (engines of the kind: 450 to 530 kW at 7500 to 8000 rpm, 760 to 800 N m at 3000 to 5750; makers' figures). In a mid-engined coupe, seven-speed dual clutch. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT.",
   "spec": {
     "engine": {
       "layout": "V8 flat-plane",
@@ -102,7 +102,7 @@
       "blowOffKind": "Recirculating",
       "scrolls": "Twin scroll",
       "icEffect": 0.75,
-      "icFlow": 0.589,
+      "icFlow": 0.646,
       "chargeVolume": 0.0078
     },
     "exhaust": {
@@ -115,7 +115,8 @@
       "mufKind": [
         1,
         1
-      ]
+      ],
+      "headers": 0.0
     },
     "fuel": {
       "kind": "Gasoline",
@@ -185,7 +186,8 @@
       "camera": "Rear",
       "place": "Field",
       "ground": "Asphalt",
-      "enginePlace": "Mid"
+      "enginePlace": "Mid",
+      "level": 0.0
     }
   }
 }

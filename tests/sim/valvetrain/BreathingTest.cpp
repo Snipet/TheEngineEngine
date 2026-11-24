@@ -36,7 +36,7 @@ namespace
 } // namespace
 
 TEST_CASE("breathing: a 6.2 L V8 and a superbike four, volumetric efficiency and power against speed",
-          "[valvetrain][integrated][breathing]")
+          "[valvetrain][integrated][breathing][part-2]")
 {
     double kw = 0.0, ve = 0.0;
     sweep("6.2 L V8, mild cam", "v8",

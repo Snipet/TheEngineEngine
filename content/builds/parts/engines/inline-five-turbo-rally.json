@@ -87,7 +87,7 @@
       "blowOffKind": "Recirculating",
       "antiLag": true,
       "icEffect": 0.75,
-      "icFlow": 0.292,
+      "icFlow": 0.323,
       "chargeVolume": 0.0045
     },
     "exhaust": {
@@ -100,7 +100,8 @@
       "mufKind": [
         1,
         1
-      ]
+      ],
+      "headers": 0.0
     },
     "fuel": {
       "kind": "Gasoline",

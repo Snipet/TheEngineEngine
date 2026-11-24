@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "Kei 660 cc triple turbo",
-  "notes": "A Japanese kei-class three: 68 x 60.4 mm (658 cc), 8.6:1, four valves, a small turbo at a production 0.65 bar falling to 0.12 bar by 7000 rpm (the class's power cap is met by the ECU's boost taper; the K6A kind: 47 kW (the class's 64 PS cap) at 6500 rpm, 103 to 108 N m at 3500; Wikipedia, goo-net-exchange). In a 780 kg rear-drive sports kei.",
+  "notes": "A Japanese kei-class three: 68 x 60.4 mm (658 cc), 8.6:1, four valves, a small turbo at a production 0.65 bar falling to 0.12 bar by 7000 rpm (the class's power cap is met by the ECU's boost taper; the K6A kind: 47 kW (the class's 64 PS cap) at 6500 rpm, 103 to 108 N m at 3500; Wikipedia, goo-net-exchange). In a 780 kg rear-drive sports kei. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT.",
   "spec": {
     "engine": {
       "layout": "Inline 3",
@@ -76,7 +76,7 @@
       "blowOffKind": "Recirculating",
       "gateDiameter": 0.026,
       "icEffect": 0.75,
-      "icFlow": 0.055,
+      "icFlow": 0.078,
       "chargeVolume": 0.0013
     },
     "exhaust": {
@@ -89,7 +89,8 @@
       "mufKind": [
         2,
         2
-      ]
+      ],
+      "headers": 0.0
     },
     "fuel": {
       "kind": "Gasoline",
@@ -242,7 +243,8 @@
       "camera": "Rear",
       "place": "Field",
       "ground": "Asphalt",
-      "enginePlace": "Front"
+      "enginePlace": "Front",
+      "level": 12.0
     }
   }
 }

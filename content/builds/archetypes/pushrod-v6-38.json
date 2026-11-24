@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "3.8 L pushrod V6",
-  "notes": "A 90-degree pushrod V6 with split pins for even firing: 96.5 x 86.4 mm (3791 cc), 9.4:1 (engines of the kind: 140 to 155 kW at 5200 rpm, 305 to 325 N m at 4000; makers' figures of the 1990s). A big front-drive sedan, four-speed automatic.",
+  "notes": "A 90-degree pushrod V6 with split pins for even firing: 96.5 x 86.4 mm (3791 cc), 9.4:1 (engines of the kind: 140 to 155 kW at 5200 rpm, 305 to 325 N m at 4000; makers' figures of the 1990s). A big front-drive sedan, four-speed automatic. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its intake: the long-runner class's runner, 0.45 m from the valve to the plenum (a port-injected road engine's tuned long runners, 1985 to 2005): JUDGEMENT, a class default, not the real engine's (no source found).",
   "spec": {
     "engine": {
       "layout": "V6",
@@ -79,7 +79,7 @@
     },
     "intake": {
       "model": 1,
-      "runnerLength": 0.67
+      "runnerLength": 0.45
     },
     "boost": {
       "model": "Machine",
@@ -97,7 +97,8 @@
       "mufKind": [
         2,
         2
-      ]
+      ],
+      "headers": 0.0
     },
     "fuel": {
       "kind": "Gasoline",
@@ -157,7 +158,8 @@
       "camera": "Rear",
       "place": "Field",
       "ground": "Asphalt",
-      "enginePlace": "Front"
+      "enginePlace": "Front",
+      "level": 2.9
     }
   }
 }

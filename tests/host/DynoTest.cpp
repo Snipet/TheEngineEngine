@@ -9,7 +9,12 @@
 #include <chrono>
 #include <cmath>
 #include <cstdlib>
+#include <fstream>
+#include <sstream>
 #include <thread>
+#if !defined(_WIN32)
+#include <sys/wait.h>
+#endif
 
 using namespace tee;
 using namespace tee::test;
@@ -145,4 +150,29 @@ TEST_CASE("tee-dyno's curve equals the runner's", "[dyno][tools]")
     std::ostringstream text;
     text << in.rdbuf();
     CHECK(text.str() == curve.csv());
+}
+
+TEST_CASE("tee-dyno: an unknown --fields field is an error naming the nearest, and the last run's csv is gone",
+          "[dyno][tools]")
+{
+    const std::filesystem::path out = std::filesystem::path(TEE_SOURCE_DIR) / "out" / "tests" / "dyno-unknown";
+    std::filesystem::create_directories(out);
+    std::ofstream(out / "tool.csv") << "last run's";
+    const std::string command = std::string("\"") + TEE_BIN_DIR + "/tee-dyno\" --quiet --sim \"" + standin().string()
+                                + "\" --from 200 --to 300 --rate 80 --fields engine.manifld --csv \""
+                                + (out / "tool.csv").string() + "\" 2> \"" + (out / "stderr.txt").string() + "\"";
+#if defined(_WIN32)
+    const std::string line = "\"" + command + "\"";   // cmd /c strips the outer pair of quotes
+    CHECK(std::system(line.c_str()) == 1);
+#else
+    const int status = std::system(command.c_str());
+    CHECK((WIFEXITED(status) ? WEXITSTATUS(status) : -1) == 1);
+#endif
+    std::ifstream in(out / "stderr.txt");
+    std::ostringstream said;
+    said << in.rdbuf();
+    INFO(said.str());
+    CHECK(said.str().find("engine.manifld") != std::string::npos);
+    CHECK(said.str().find("nearest: engine.manifold") != std::string::npos);
+    CHECK_FALSE(std::filesystem::exists(out / "tool.csv"));
 }

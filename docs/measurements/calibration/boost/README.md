@@ -8,3 +8,4 @@ window, then over the cycles (means over cycles, never a waveform). Each file na
 Runs are deterministic: the same build and commit give the same numbers.
 
 Files: `backpressure.md` (the first question: what the cylinder sees at its exhaust port under boost).
+- `gamma.md`: the boosted ledger across D's gamma change (3990ee47, a845b07f), what moved more than 3 %.

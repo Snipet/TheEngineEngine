@@ -3,7 +3,7 @@
 Package X, branch `claude/awesome-gates-ntdb58`, cloud session. Owns `tests/sim/combo/**`, `content/builds/combo/**`,
 `content/scenarios/combo/**`, `tools/tee-fuzz*`, `scripts/listening-pack.*`, `docs/checkpoints/M2.md`, this file.
 
-**Done, by test** (`tee-tests-combo`; ctest `-R '^combo\.'`; 84 default cases, each under 30 s; 32 `[nightly]`). The
+**Done, by test** (`tee-tests-combo`; ctest `-R '^combo\.'`; the fast tier is combo.fast-1 to fast-4, each under 60 s here, and combo.fast-tags; 84 default cases, each under 30 s; 32 `[nightly]`). The
 harness (`tests/sim/combo/Combo.h`) finds the switches in the Schema (every `spec.<section>.model`, `engine.custom`,
 `engine.wallHeat`: 11 now), so a package's switch is covered the day it lands. Judged in every run: finite, within
 full scale, no guard trip nor FLAG_FAULT, DC under 0.005 FS, largest step within twice the same build's own reference

@@ -211,3 +211,447 @@ and switch speed are the build's (P); the phaser's schedule is N1's rule (its ad
 - **The 7.0's ports at 1.6 / 1.8** (P, from discharge.md's LS7 row, which is one posting): 723 and 630 N m at 4800 and
   6300 rpm against 700 and 560 at 1.35 / 1.5 (target 630 to 645). Asked P to put the defaults back until a second
   figure agrees (the lead's rule).
+
+## N3-6. The runner's ram: its height measured, no missing loss found yet (20:31 by `date -u`; the lead's item 1)
+
+The flat six at full load, VE against the outside air, a 0.53 m runner (as built) against 0.30 m, every 250 rpm (tip,
+tee::Build path):
+
+| rpm | 0.30 m | 0.53 m | Ratio |
+|---|---|---|---|
+| 2500 | 0.829 | 0.824 | 0.994 |
+| 2750 | 0.837 | 0.839 | 1.003 |
+| 3000 | 0.833 | 0.824 | 0.988 |
+| 3250 | 0.835 | 0.817 | 0.979 |
+| 3500 | 0.849 | 0.854 | 1.006 |
+| 3750 | 0.856 | 0.893 | 1.043 |
+| 4000 | 0.864 | 0.882 | 1.022 |
+| 4250 | 0.853 | 0.888 | 1.041 |
+| 4500 | 0.876 | 0.979 | 1.117 |
+| 4750 | 0.857 | 1.009 | 1.177 |
+| 5000 | 0.849 | 0.953 | 1.123 |
+| 5250 | 0.846 | 0.944 | 1.115 |
+| 5500 | 0.846 | 0.957 | 1.132 |
+| 5750 | 0.846 | 0.978 | 1.156 |
+| 6000 | 0.851 | 0.976 | 1.148 |
+| 6250 | 0.852 | 0.897 | 1.053 |
+| 6500 | 0.854 | 0.836 | 0.978 |
+
+The 0.30 m runner is flat (0.83 to 0.88); the 0.53 m one rises from 4500 rpm to 1.009 at 4750 and holds 0.94 to 0.98 to
+6000: a gain of 12 to 18 % over a broad band.
+
+Its ringing, read sample by sample at the valve end of cylinder 1's runner with the valve shut (4750 rpm): about 161 Hz
+(a quarter wave of 0.53 m at 350 m/s with its end correction), swings of -24.2, +25.3, -16.3, +22.5, -16.2 kPa about a
+mean of -5.8 kPa: some 10 % lost in the first period, almost none in the second. Lightly damped, but of the size a
+smooth straight duct's own losses give (by hand: Kirchhoff's wall loss about 1.3 % a period at 161 Hz in a 63 mm bore;
+the turbulent friction on the oscillation's some 48 m/s about 3 %; the jet's head at the plenum end, K 1 out, some 7 %
+a period): the losses the lead listed (the walls' viscous and thermal layer, the flow's friction, the end's jet) are all
+in, and of their textbook size.
+
+Experiments at 3500 / 4750 / 6000 rpm (0.53 m; VE):
+- the plenum end's inward K 0.2 → 0.5 (a square edge, Idelchik): 0.858 / 0.995 / 0.953 against 0.854 / 1.009 / 0.976:
+  1.4 % off the peak;
+- the valve's wave stiffening off for the intake (g 1, a scratch Valve): 0.863 / 1.015 / 0.974: none;
+- the runner's bore 63 → 50 → 45 mm: VE at 4750 1.008 → 1.036 → 1.050: a narrower runner rams harder.
+
+Published gains found so far: a petrol engine's VE up to 8.7 % higher with a 528 mm runner, a turbocharged diesel's
+6 % (single studies on ResearchGate, geometry not compared); Ohata and Ishida (SAE 820407) and Heywood's figures not
+reachable here. Not enough to call 12 to 18 % wrong against a known geometry, and no sourced loss is missing from the
+duct: nothing changed. What would settle it: a measured intake-port pressure trace after closing (its decay a period)
+or a measured VE against runner length for a known runner, matched in a build.
+
+## N3-7. The small block against its SAE-net band (20:33 by `date -u`; the lead's item 3)
+
+Target 340 to 385 N m (the L48 and L82's SAE net ratings, P). On the tip, full load, tee::Build path:
+
+| | 2000 rpm | 3600 rpm |
+|---|---|---|
+| Torque, N m | 481.8 | 466.9 |
+| VE (outside air) | 0.821 | 0.827 |
+| Lambda | 0.887 | 0.894 |
+| Spark, deg before top | 13.5 | 18.2 |
+| Released, of the fuel's heat | 0.909 | 0.918 |
+| Walls | 0.167 | 0.140 |
+| Gross indicated | 0.348 | 0.359 |
+| Pumping | 0.006 | 0.019 |
+| Friction (FMEP 1.11 and 1.38 bar) | 0.033 | 0.041 |
+| Brake | 0.310 | 0.300 |
+| Exhaust, sensible | 0.399 | 0.437 |
+
+The air is about right: at brake efficiency 0.26 and this lambda, 385 N m wants VE 0.78. The excess is the efficiency
+(0.31 against some 0.25 to 0.28: a carburetted engine of the 1970s at full load, BSFC 300 to 335 g/kWh).
+
+What the build is not (measured one at a time, 2000 / 3600 rpm, torque):
+- compression 9.0 → 8.5 (the L48's, as recalled: P to source): -1.2 / -2.1 %;
+- dual exhaust → single (`exhaust.sides` 1): -3.0 / -4.3 %;
+- the ECU's best-torque spark 6 degrees later (`ecu.timing` -6, a distributor's curve held back for emissions: P to
+  source): -1.3 / -1.8 %.
+Together some -6 to -8 %: to P as parts, each with its source to find.
+
+What may be the model's (not measured, each to isolate before changing):
+- the accessories: friction.fm counts the alternator (and an air conditioner) only; an SAE-net rating of the 1970s took
+  the water pump, the fan and the air pump off the crank too (a few kW at speed; the rating's own rules to be read);
+- the burn: one base angle (44 degrees at 3000 rpm, combustion.fm) for every head; an open-chamber two-valve wedge
+  burns slower than a modern four-valve pent roof (Heywood ch. 9), which costs a few per cent at the best spark;
+- friction's level: 1.11 bar at 2000 rpm is at the low end of Heywood's eq. 13.15 band (friction with pumping 1.17
+  against 1.47 ± 25 %).
+
+**What an SAE net rating carries** (enthusiast write-ups of J1349; the standard itself not opened): the engine as
+installed, with its alternator and water pump, the factory's ignition timing and carburettor (and air cleaner), and the
+whole exhaust with its manifolds and mufflers (a converter from 1975). The fan is not confirmed either way. So the
+build-side list above is the larger share: the exhaust as fitted, the factory's timing, the air cleaner's and the
+carburettor's restriction (not yet measured: the build has a single throttle and an air box). The model's accessories
+(the water pump is in friction.fm's constant) are a smaller question than first thought.
+
+N1's suggestion (the ram adding to the exhaust's tuning), tested: with `exhaust.model` 0 the flat six reads the same to
+the bit at both runner lengths (4750 and 5500 rpm), and the burned share trapped is the same at 0.30 and 0.53 m (0.030
+and 0.030 at 4750). The 0.53 m runner's gain is the intake's own ram, not better scavenging.
+
+**On P's 9c71eb1** (the L48's 8.5:1, one source; its installed exhaust, both banks into one converter, two sources; 20:40 by
+`date -u`): 460 / 457 / 446 / 436 / 410 N m at 2000 / 2400 / 3000 / 3600 / 4400 rpm, VE 0.80, gross 0.342 to 0.353,
+brake 0.301 to 0.274: still some 20 % over 340 to 385. Candidates sized since (scratch trees; none isolated as the
+cause):
+- the chamber's burn 30 % longer at the best spark (`combustion.fm` burnBase x 1.3): 455 and 432 N m at 2000 and 3600
+  rpm (-1.1 %);
+- an engine-driven fan: the figures found are forum postings (a clutched V8 fan about 10 hp at speed; big fans 10 to
+  15 hp on a stationary dyno) and a patent for the cube law in the fan's speed; 10 hp at 4000 rpm would be about 1 % at
+  2000 rpm and 3 % at 3600. A build property worth adding (the lead's design: era defaults by P, model-on), not the 20 %;
+- the factory spark: no source (P).
+Unmeasured: a carburettor's wet manifold's spread of mixture between cylinders, and an older engine's higher friction.
+
+**Open, the integration queue's way:**
+- *N3-6, the runner's ram (open).* What would settle it: a measured intake-port pressure trace after closing, or a
+  measured VE against runner length for a known runner, built and compared. Until then the model's 12 to 18 % stands.
+- *The flat six's intake (content, P).* The 964's induction is a resonance system with a flap between two plenum
+  halves; the build's single 0.53 m runner is P's rule, not the engine's. Asked P to mark it as judgement and to build
+  the real geometry if a source turns up.
+
+## The sixteen on the tip's gas (20:43 by `date -u`; the lead's table)
+
+Each NA petrol archetype's torque at its target's peak-torque speed over the torque band's middle, and its power at the
+target's peak-power speed over the power band's middle (settled dyno, tee::Build path), with P's basis for the rows:
+
+```
+torque: mean -1.7 %, sd 16.2 %, median -3.2 %
+power: mean -0.2 %, sd 14.1 %, median -1.0 %
+
+sorted by torque over the band's middle:
+  air-cooled-flat-six-36     cited      +27.7 %   (torque 396 for [300, 320], power 226 kW for [180, 195])
+  small-block-57-carb        cited      +23.1 %   (torque 446 for [340, 385], power 192 kW for [120, 160])
+  vr6-28                     cited      +14.3 %   (torque 269 for [230, 240], power 124 kW for [125, 132])
+  big-bore-70-pushrod-v8     cited       +9.9 %   (torque 700 for [630, 645], power 369 kW for [370, 385])
+  pushrod-v6-38              cited       +8.8 %   (torque 343 for [300, 330], power 127 kW for [140, 160])
+  twin-cam-roadster-18       cited       +7.3 %   (torque 176 for [155, 172], power 108 kW for [95, 112])
+  four-cam-v8-50             cited       +2.4 %   (torque 560 for [520, 575], power 325 kW for [300, 345])
+  straight-six-32-high-rev   recalled    -2.5 %   (torque 356 for [355, 375], power 223 kW for [245, 260])
+  hot-hatch-16-16v           recalled    -3.8 %   (torque 147 for [140, 165], power 114 kW for [85, 120])
+  economy-four-15            recalled    -7.2 %   (torque 137 for [140, 156], power 89 kW for [80, 97])
+  big-block-74-pushrod-v8    recalled    -7.6 %   (torque 596 for [600, 690], power 277 kW for [240, 310])
+  v12-65                     recalled    -9.4 %   (torque 639 for [680, 730], power 567 kW for [500, 590])
+  v10-52                     recalled   -14.6 %   (torque 466 for [520, 570], power 408 kW for [385, 475])
+  v6-35-na                   recalled   -16.1 %   (torque 294 for [335, 365], power 200 kW for [195, 225])
+  two-stage-cam-20           recalled   -28.3 %   (torque 149 for [200, 215], power 143 kW for [165, 185])
+  flat-plane-v8-45           recalled   -31.9 %   (torque 368 for [520, 560], power 335 kW for [400, 445])
+
+sorted by power over the band's middle:
+  small-block-57-carb        cited      +36.9 %   (torque 446 for [340, 385], power 192 kW for [120, 160])
+  air-cooled-flat-six-36     cited      +20.7 %   (torque 396 for [300, 320], power 226 kW for [180, 195])
+  hot-hatch-16-16v           recalled   +11.5 %   (torque 147 for [140, 165], power 114 kW for [85, 120])
+  twin-cam-roadster-18       cited       +4.2 %   (torque 176 for [155, 172], power 108 kW for [95, 112])
+  v12-65                     recalled    +4.0 %   (torque 639 for [680, 730], power 567 kW for [500, 590])
+  big-block-74-pushrod-v8    recalled    +0.8 %   (torque 596 for [600, 690], power 277 kW for [240, 310])
+  four-cam-v8-50             cited       +0.8 %   (torque 560 for [520, 575], power 325 kW for [300, 345])
+  economy-four-15            recalled    +0.2 %   (torque 137 for [140, 156], power 89 kW for [80, 97])
+  big-bore-70-pushrod-v8     cited       -2.2 %   (torque 700 for [630, 645], power 369 kW for [370, 385])
+  vr6-28                     cited       -3.6 %   (torque 269 for [230, 240], power 124 kW for [125, 132])
+  v6-35-na                   recalled    -4.9 %   (torque 294 for [335, 365], power 200 kW for [195, 225])
+  v10-52                     recalled    -5.1 %   (torque 466 for [520, 570], power 408 kW for [385, 475])
+  straight-six-32-high-rev   recalled   -11.9 %   (torque 356 for [355, 375], power 223 kW for [245, 260])
+  pushrod-v6-38              cited      -15.6 %   (torque 343 for [300, 330], power 127 kW for [140, 160])
+  two-stage-cam-20           recalled   -18.1 %   (torque 149 for [200, 215], power 143 kW for [165, 185])
+  flat-plane-v8-45           recalled   -20.7 %   (torque 368 for [520, 560], power 335 kW for [400, 445])
+```
+
+The mean is near nothing and the spread wide: no common level is left in the model. What remains is each build's
+content and the breathing, and the class pattern still shows (the cited mild two-valve engines over, the recalled tuned
+four-valve ones under).
+
+**The small block, stopped (the lead's call).** Open: some 14 % unexplained after P's L48 parts. Sized: accessories 1 to
+3 % (forum figures only: no change to friction.fm until a better source), the chamber's burn about 1 %, the spark about
+1.5 % (no source); unmeasured: the carburettor's spread of mixture between cylinders, an older engine's friction.
+
+## N3-8. The runners are tuned to the targets' own peak speeds (20:45 by `date -u`)
+
+The 7.0 (cited +9.9 %) across its range, full load (tip, tee::Build path):
+
+| rpm | 2000 | 3000 | 3600 | 4200 | 4800 | 5400 | 6000 | 6300 | 6800 |
+|---|---|---|---|---|---|---|---|---|---|
+| Torque, N m | 564 | 573 | 659 | 642 | 701 | 656 | 628 | 560 | 510 |
+| Power, kW | 118 | 180 | 249 | 282 | 352 | 371 | 395 | 369 | 363 |
+| VE | 0.748 | 0.758 | 0.871 | 0.869 | 0.955 | 0.933 | 0.940 | 0.855 | 0.808 |
+| Brake efficiency | 0.325 | 0.328 | 0.329 | 0.322 | 0.322 | 0.310 | 0.297 | 0.289 | 0.279 |
+
+The torque comes in teeth (VE 0.76 → 0.87 → 0.955 → 0.85), its top at 4800 rpm: the target's peak-torque speed. Its
+power peaks at 395 kW at 6000 rpm (377 cited, at 6300). Every cited engine's runner but the small block's is P's rule,
+0.5 (5000 / the target's peak-torque rpm)^1.3 m, which puts the runner's tune exactly at the speed the torque is
+measured at:
+
+| Archetype | Runner | Target's torque peak | The rule's length |
+|---|---|---|---|
+| Flat six | 0.53 m | 4750 rpm | 0.53 |
+| VR6 | 0.63 | 4200 | 0.63 |
+| 7.0 V8 | 0.53 | 4800 | 0.53 |
+| 3.8 V6 | 0.67 | 4000 | 0.67 |
+| Four-cam V8 | 0.57 | 4500 | 0.57 |
+| Roadster | 0.50 | 5000 | 0.50 |
+| Small block | 0.18 | 3000 | (0.97: not the rule) |
+
+So each cited engine is measured on the top of its own ram (N3-6: 12 to 18 % on the flat six). Whether the ram's height
+or the runner is wrong, the fix is a cited runner: each real engine's port-plus-runner length (the LS7's, the VR6's, the
+3800's, the Coyote's, the MX-5's are documented engines), so the model's tooth falls where the real one does. Asked of P.
+
+## N3-4, settled: stage B needs its runner's ram (20:47 by `date -u`; before G's flowClose is live in the engine)
+
+Cylinder 1's intake valve over a cycle at 6500 rpm (g a cycle): the low cam held draws in 0.583 and pushes back 0.024
+(0.021 of it after the bottom); stage B draws in 0.535 and pushes back 0.081 (0.070 after the bottom). The long cam's
+late closing loses the charge back up a runner that does nothing to hold it. Stage B against the runner's length (VE,
+torque N m):
+
+| Runner | 6500 rpm | 8000 rpm |
+|---|---|---|
+| 0.20 m | 0.769, 160 | 0.780, 154 |
+| 0.30 m (the build: P's rule for a 7500 rpm torque peak) | 0.773, 160 | 0.816, 160 |
+| 0.40 m | 0.826, 169 | **1.031, 211** |
+| 0.50 m | **1.034, 219** | 0.883, 178 |
+| Stage A held, 0.20 m | 0.873, 187 | 0.873, 177 |
+
+The long cam lives on the ram at its closing, the short one hardly cares: a real high-lift stage is matched to its
+runner. So N3-4 is not the model's: it is the build's runner (P's rule, not the K20A's intake). Routed to P for the
+K20A's runner, cited; my note to N1 that it was the model's is withdrawn.
+
+## N3-9. Where the tuned four-valves lose at speed: their runners again (20:50 by `date -u`)
+
+The balance at speed (tip, tee::Build path; before G's flowClose is live):
+
+| Engine, rpm | Torque, N m | kW | VE | Released | Walls | Gross | Pumping | Friction | Brake |
+|---|---|---|---|---|---|---|---|---|---|
+| Flat-plane 4.5, 7000 | 389.6 | 286 | 0.809 | 0.924 | 0.113 | 0.396 | 0.004 | 0.063 | 0.329 |
+| Flat-plane 4.5, 8500 | 376.2 | 335 | 0.825 | 0.937 | 0.110 | 0.403 | 0.009 | 0.077 | 0.316 |
+| Two-stage 2.0, 7500 | 148.8 | 117 | 0.759 | 0.913 | 0.120 | 0.380 | 0.011 | 0.073 | 0.296 |
+| Two-stage 2.0, 8800 | 177.9 | 164 | 0.916 | 0.925 | 0.113 | 0.386 | 0.015 | 0.074 | 0.297 |
+
+Every share but the air is a real engine's; the VE is the short one (95 to 100 kW a litre wants VE above 1.0 at the
+power peak). Not the valves: the flat-plane's Mach index (Heywood §7.3) is 0.23, 0.31, 0.35 at 6000, 8000, 9000 rpm,
+far under the 0.6 where VE falls away, and its ports at 2.0 (from 1.65) do not help (VE 0.785 / 0.813 at 7000 / 8500).
+Its runner does: the build switches to a second length of 0.18 m above 6200 rpm (P's rule):
+
+| Second runner | 7000 rpm | 8000 rpm | 8500 rpm |
+|---|---|---|---|
+| 0.18 m (as built) | 390 N m, VE 0.809 | 378, 0.812 | 376, 0.825 |
+| 0.25 m | 399, 0.831 | 383, 0.827 | 394, 0.867 |
+| 0.30 m | 383, 0.807 | **469, 0.985** (392 kW) | 433, 0.933 |
+| 0.35 m | **480, 0.979** | 441, 0.943 | **460, 1.003** (410 kW) |
+
+The target is 400 to 445 kW at 8000 to 9000 rpm. The two-stage's stage B is the same (N3-4: 211 N m and VE 1.03 at 8000
+on a 0.40 m runner). So the tuned engines' shortfall at speed is their runners too, not a missing flow or an exhaust's
+scavenging (G's closing moves NA engines under 1 %).
+
+## Open: the runner's ram, its height (the lead's frame, both sides)
+
+- *The studies:* published runner-length gains of 6 % (a turbocharged diesel), 8.7 % (a petrol engine, a 528 mm runner)
+  and a 5.4 % average over a speed range from two lengths (single studies, geometry not matched to ours); Ohata and
+  Ishida (SAE 820407) and Heywood §7.6's figures were not opened.
+- *The model:* 12 to 18 % at the tune on the flat six; VE 1.03 on the two-stage's stage B and 1.00 on the flat-plane on
+  matched runners. The losses in it are of textbook size (N3-6).
+- *What the short engines need:* VE 1.0 and over at their power peaks, which the model reaches only with its ram as
+  strong as it is (on matched runners). Halving it would trade the seven for the nine.
+- *To decide:* re-measure the seven on the real engines' runners (P); if a tooth of this height at the right speed still
+  leaves them over, and the tuned ones are met with real runners, a sourced damping has its case. Neither yet.
+
+## The sixteen on P's class runners and cited bands (20:56 by `date -u`; P's b24fbca and after, G's flowClose live)
+
+Every NA petrol runner now P's class default of 0.40 m (judgement) or a hand-set length (judgement); every band cited.
+Torque at the target's peak-torque speed, power at its peak-power speed, against the band's middle:
+
+```
+torque: mean -7.2 %, sd 16.3 %, in band 4 of 16
+power: mean +2.4 %, sd 14.0 %, in band 6 of 16
+
+  small-block-57-carb        cited    torque  +23.7 % (448 at 3000 for [340, 385], VE 0.80)  power  +38.4 % (194 kW at 4600 for [120, 160], VE 0.79)
+  twin-cam-roadster-18       cited    torque  +10.3 % (180 at 5000 for [155, 172], VE 0.94)  power  +15.2 % (119 kW at 6650 for [95, 112], VE 0.95)
+  air-cooled-flat-six-36     cited    torque   +7.4 % (333 at 4750 for [300, 320], VE 0.86)  power   +9.4 % (205 kW at 6050 for [180, 195], VE 0.87)
+  big-block-74-pushrod-v8    cited    torque   +6.8 % (561 at 3000 for [510, 540], VE 0.78)  power  +17.9 % (239 kW at 4200 for [195, 210], VE 0.79)
+  vr6-28                     cited    torque   +5.8 % (249 at 4200 for [230, 240], VE 0.87)  power   +6.4 % (137 kW at 5800 for [125, 132], VE 0.85)
+  pushrod-v6-38              cited    torque   +1.8 % (321 at 4000 for [300, 330], VE 0.85)  power   -1.8 % (147 kW at 5200 for [140, 160], VE 0.79)
+  big-bore-70-pushrod-v8     cited    torque   -0.9 % (632 at 4800 for [630, 645], VE 0.87)  power   +4.9 % (396 kW at 6300 for [370, 385], VE 0.90)
+  economy-four-15            cited    torque   -1.9 % (143 at 4400 for [135, 156], VE 0.88)  power   +4.8 % (93 kW at 6300 for [80, 97], VE 0.93)
+  hot-hatch-16-16v           cited    torque   -2.6 % (144 at 6050 for [140, 155], VE 0.87)  power   -6.1 % (96 kW at 6850 for [85, 120], VE 0.84)
+  straight-six-32-high-rev   cited    torque  -14.5 % (312 at 4900 for [355, 375], VE 0.89)  power   -6.6 % (236 kW at 7800 for [245, 260], VE 0.90)
+  v6-35-na                   cited    torque  -15.9 % (294 at 4750 for [335, 365], VE 0.81)  power   -4.4 % (201 kW at 6350 for [195, 225], VE 0.87)
+  four-cam-v8-50             cited    torque  -16.4 % (458 at 4500 for [520, 575], VE 0.84)  power   +8.1 % (349 kW at 6850 for [300, 345], VE 0.94)
+  v10-52                     cited    torque  -27.1 % (397 at 6500 for [520, 570], VE 0.76)  power   -7.8 % (397 kW at 8350 for [385, 475], VE 0.90)
+  v12-65                     cited    torque  -28.1 % (507 at 6250 for [680, 730], VE 0.72)  power   +0.4 % (547 kW at 8575 for [500, 590], VE 0.90)
+  two-stage-cam-20           cited    torque  -30.0 % (149 at 7500 for [205, 220], VE 0.76)  power  -18.5 % (145 kW at 8300 for [170, 185], VE 0.85)
+  flat-plane-v8-45           cited    torque  -33.4 % (360 at 6000 for [520, 560], VE 0.74)  power  -21.1 % (333 kW at 8500 for [400, 445], VE 0.82)
+```
+
+**The lead's question answered:** with the runners no longer tuned to the measured speed, the ram's tooth at the wrong
+speed leaves the cited seven at -1 to +10 % in torque (7.0 -0.9, 3.8 V6 +1.8, VR6 +5.8, flat six +7.4, roadster +10.3)
+but for the small block (+23.7, N3-7, open) and the four-cam, now short (-16.4). The tooth no longer inflates them: no
+case for a damping from the seven's side.
+
+**The tuned four-valves are the miss now:** torque 27 to 33 % short (V10, V12, two-stage, flat-plane) with VE 0.72 to
+0.76 at their torque peaks; power closer (-21 to +0.4 %). N3-9 showed the flat-plane reaching VE 1.0 and 410 kW on a
+0.35 m second runner and the two-stage's stage B VE 1.03 on 0.40 m: their runners remain judgement, and no real engine's
+runner was found. Stage B re-measured on G's closing (live in the engine): 159 / 149 / 173 N m at 6500 / 7500 / 8500 rpm,
+VE 0.769 / 0.758 / 0.887 (stage A held: 206 / 194 / 196, VE 0.946 / 0.927 / 0.974): unchanged by it.
+
+## N3-10. A long-cam engine fills only on its runner's tooth (20:57 by `date -u`)
+
+The V12 (cited 680 to 730 N m; its runner 0.30 m, judgement; cams 272 / 264 degrees at the seat, the intake parked at
+126), full load:
+
+| rpm | 3000 | 4500 | 5500 | 6250 | 7000 | 8000 | 8575 |
+|---|---|---|---|---|---|---|---|
+| Torque, phaser scheduled (N1's rule), N m | 504 | 645 | 548 | 548 | 490 | 626 | 579 |
+| VE | 0.696 | 0.866 | 0.755 | 0.771 | 0.719 | 0.905 | 0.861 |
+| Intake advance, deg | 50 | 38 | 27 | 20 | 15 | 15 | 15 |
+| Torque, both phasers parked | 527 | 523 | 512 | 531 | 467 | 595 | 554 |
+| VE | 0.721 | 0.718 | 0.712 | 0.746 | 0.688 | 0.861 | 0.824 |
+
+Between its runner's teeth the long-cam engine fills only 0.70 to 0.75; the phaser lifts the 4500 tooth and a little
+elsewhere, and is not what holds the middle down. A long cam's late closing lives on a ram at its closing (N3-4), so
+where such an engine makes its torque is where its runner is tuned: real ones are tuned at their torque peak by design.
+With P's rule gone (no part from the engine's own targets) and no real runner found, a class default that does not look
+at the targets would have to come from something else the build holds: for example a runner tuned at a fixed share of
+the engine's own redline. That is P's and the lead's decision; proposed, not done.
+
+## N3-11. The tuned four-valves: three sensitivities side by side (21:04 by `date -u`; the lead's three)
+
+Torque, N m (VE) at each engine's target peak-torque and peak-power speeds; one change at a time from the build as it
+stands on the tip (tee::Build path, G's closing live). Fixed advance: the phaser's range 0 and the intake's centreline
+moved earlier by that many degrees (what a baked map holds at that speed).
+
+| Change | Flat-plane 4.5, 6000 / 8500 | V10, 6500 / 8350 | Two-stage 2.0, 7500 / 8300 |
+|---|---|---|---|
+| As built (phaser by N1's rule) | 403 (0.814) / 395 (0.862) | 410 (0.776) / 453 (0.895) | 149 (0.758) / 166 (0.855) |
+| The rule's advance, deg | 25 / 17 | 15 / 15 | (no phaser) |
+| Best fixed advance | 400 at 30 / 436 at 50 | 411 at 10 / 453 at 20 | 153 at 40 / 168 at 30 |
+| Runner switch: never | 406 / 433 | | |
+| Runner switch at 7000 rpm (from 5850) | 406 / 396 | | |
+| Headers' length dial 0 (0.61 x the layout's) | 366 / 383 | 428 / 456 | 150 / 167 |
+| Headers' length dial 1 (1.63 x the layout's) | **452 (0.897)** / 401 | **478 (0.867)** / **487 (0.957)** | **179 (0.866)** / **186 (0.925)** |
+| A log manifold (every primary 0.05 m) | 291 (0.637) / 279 (0.675) | 423 / 432 | 127 (0.689) / 135 (0.747) |
+| Target band | 520 to 560 / 400 to 445 kW | 520 to 570 / 385 to 475 kW | 205 to 220 / 170 to 185 kW |
+
+(C's `tee-dyno --bake-cam` on the flat-plane, predicted points, agrees: best 404 N m at 20 degrees near 5950 rpm, and
+the most advance there is (50) wanted from 7400 rpm up.)
+
+What each says:
+1. *The phaser.* At the torque peaks the rule is at or near the best fixed advance (flat-plane +0, V10 +0, two-stage has
+   none). At the flat-plane's power peak it is 33 degrees short of best (+10 %). A baked map is worth a few per cent at
+   the top, not the torque rows.
+2. *The runner's switch.* The flat-plane's switch to its short runner (at 5850 rpm) costs 10 % at 8500 rpm (433 never
+   switched against 395) and nothing at 6000: the second length (P's judgement) is too short for its top end.
+3. *The exhaust.* The wave arrives: a log manifold costs the flat-plane 28 %, the two-stage 14 to 19 %, and longer
+   primaries (the dial's top, 1.63 x the layout's) lift every one, +7 to +20 %, the residual falling from 4 to 8 % to 1
+   to 3 %. G's model scavenges as a tuned header should; the primaries' lengths are the builds' (the layout's default
+   scaled by the dial: P's content). The V10 is the odd one: a log is 3 % better than its headers at 6500, so its
+   primaries as laid out arrive out of phase there.
+
+Whose it is: mostly content (the primaries' lengths, the second runner), some the phaser's top end (a baked map). Even
+the best of each alone leaves the flat-plane's torque 13 % and the V10's 8 % under their bands; together not measured.
+
+## N3-12. The exhaust's help at overlap: present, and as large as the intake's ram (21:07 by `date -u`; the lead's item 3)
+
+The V12 and the flat-plane 4.5 at 5500, 6250 and 7000 rpm, every primary at 0.5, 0.705 (as built: the layout's
+default) and 0.9 m, the collector as built; per cycle, cylinder 1 through its overlap (both valves passing gas): the
+exhaust valve's flow out and back, the intake's in and back (g), and the mean gauge pressures at the exhaust port,
+in the cylinder and at the intake port (the port's pressure read as twice its arriving wave):
+
+```
+v12-65 prim 0.5 5500: tq 603.1 ve 0.825 resid 0.026
+  prim 0.5   5500: overlap 2.91 ms/cyc; exh valve out 0.0657 back 0.0057 g; intake in 0.0472 back 0.0050 g; mean gauge kPa: exh port -6.7 (min -33.9), cyl -3.4, intake port -4.3
+v12-65 prim 0.5 6250: tq 622.4 ve 0.861 resid 0.024
+  prim 0.5   6250: overlap 2.05 ms/cyc; exh valve out 0.0518 back 0.0001 g; intake in 0.0718 back 0.0054 g; mean gauge kPa: exh port -7.8 (min -32.7), cyl +2.8, intake port -5.6
+v12-65 prim 0.5 7000: tq 549.5 ve 0.791 resid 0.042
+  prim 0.5   7000: overlap 1.86 ms/cyc; exh valve out 0.0371 back 0.0016 g; intake in 0.0294 back 0.0068 g; mean gauge kPa: exh port -7.2 (min -32.3), cyl -5.0, intake port -12.8
+v12-65 prim 0.705 5500: tq 480.9 ve 0.674 resid 0.080
+  prim 0.705 5500: overlap 2.92 ms/cyc; exh valve out 0.0466 back 0.0002 g; intake in 0.0409 back 0.0222 g; mean gauge kPa: exh port +1.7 (min -33.4), cyl +7.2, intake port -6.5
+v12-65 prim 0.705 6250: tq 520.6 ve 0.738 resid 0.075
+  prim 0.705 6250: overlap 2.05 ms/cyc; exh valve out 0.0254 back 0.0059 g; intake in 0.0445 back 0.0216 g; mean gauge kPa: exh port +10.0 (min -28.6), cyl +17.4, intake port -3.0
+v12-65 prim 0.705 7000: tq 487.2 ve 0.715 resid 0.083
+  prim 0.705 7000: overlap 1.86 ms/cyc; exh valve out 0.0168 back 0.0139 g; intake in 0.0142 back 0.0265 g; mean gauge kPa: exh port +14.8 (min -15.6), cyl +4.3, intake port -12.5
+v12-65 prim 0.9 5500: tq 388.3 ve 0.562 resid 0.144
+  prim 0.9   5500: overlap 2.92 ms/cyc; exh valve out 0.0242 back 0.0238 g; intake in 0.0164 back 0.0444 g; mean gauge kPa: exh port +8.8 (min -15.3), cyl +4.1, intake port -6.7
+v12-65 prim 0.9 6250: tq 528.2 ve 0.743 resid 0.079
+  prim 0.9   6250: overlap 2.05 ms/cyc; exh valve out 0.0153 back 0.0153 g; intake in 0.0252 back 0.0241 g; mean gauge kPa: exh port +14.6 (min -27.6), cyl +9.5, intake port -2.9
+v12-65 prim 0.9 7000: tq 541.8 ve 0.776 resid 0.053
+  prim 0.9   7000: overlap 1.85 ms/cyc; exh valve out 0.0167 back 0.0176 g; intake in 0.0149 back 0.0218 g; mean gauge kPa: exh port +7.3 (min -51.3), cyl -11.7, intake port -12.1
+flat-plane-v8-45 prim 0.5 5500: tq 413.0 ve 0.832 resid 0.035
+  prim 0.5   5500: overlap 2.56 ms/cyc; exh valve out 0.0696 back 0.0129 g; intake in 0.0582 back 0.0173 g; mean gauge kPa: exh port -5.3 (min -54.8), cyl -6.8, intake port -2.2
+flat-plane-v8-45 prim 0.5 6250: tq 407.4 ve 0.834 resid 0.019
+  prim 0.5   6250: overlap 2.38 ms/cyc; exh valve out 0.0699 back 0.0044 g; intake in 0.0944 back 0.0017 g; mean gauge kPa: exh port -9.4 (min -51.0), cyl -5.3, intake port -1.0
+flat-plane-v8-45 prim 0.5 7000: tq 391.2 ve 0.819 resid 0.027
+  prim 0.5   7000: overlap 2.06 ms/cyc; exh valve out 0.0524 back 0.0019 g; intake in 0.0747 back 0.0021 g; mean gauge kPa: exh port -9.7 (min -37.9), cyl -4.0, intake port -4.6
+flat-plane-v8-45 prim 0.705 5500: tq 380.4 ve 0.776 resid 0.048
+  prim 0.705 5500: overlap 2.57 ms/cyc; exh valve out 0.0536 back 0.0024 g; intake in 0.0365 back 0.0101 g; mean gauge kPa: exh port -3.2 (min -35.9), cyl -2.5, intake port -6.1
+flat-plane-v8-45 prim 0.705 6250: tq 385.7 ve 0.788 resid 0.048
+  prim 0.705 6250: overlap 2.44 ms/cyc; exh valve out 0.0387 back 0.0022 g; intake in 0.0359 back 0.0095 g; mean gauge kPa: exh port -1.2 (min -23.6), cyl -3.3, intake port -7.0
+flat-plane-v8-45 prim 0.705 7000: tq 372.8 ve 0.780 resid 0.039
+  prim 0.705 7000: overlap 2.06 ms/cyc; exh valve out 0.0332 back 0.0009 g; intake in 0.0448 back 0.0064 g; mean gauge kPa: exh port -2.1 (min -14.6), cyl -1.9, intake port -6.1
+flat-plane-v8-45 prim 0.9 5500: tq 342.0 ve 0.700 resid 0.079
+  prim 0.9   5500: overlap 2.57 ms/cyc; exh valve out 0.0243 back 0.0042 g; intake in 0.0210 back 0.0177 g; mean gauge kPa: exh port +0.5 (min -17.2), cyl -3.2, intake port -6.1
+flat-plane-v8-45 prim 0.9 6250: tq 386.6 ve 0.796 resid 0.043
+  prim 0.9   6250: overlap 2.44 ms/cyc; exh valve out 0.0230 back 0.0027 g; intake in 0.0286 back 0.0075 g; mean gauge kPa: exh port -3.4 (min -35.8), cyl -6.8, intake port -6.6
+flat-plane-v8-45 prim 0.9 7000: tq 396.0 ve 0.820 resid 0.025
+  prim 0.9   7000: overlap 2.06 ms/cyc; exh valve out 0.0246 back 0.0014 g; intake in 0.0497 back 0.0032 g; mean gauge kPa: exh port -14.5 (min -53.8), cyl -9.3, intake port -5.0
+```
+
+Read across: with primaries that return their suction wave in the overlap (0.5 m on the V12 at 5500 to 6250, on the
+flat-plane at 6250 to 7000), the exhaust port sits 5 to 10 kPa below the air through it (troughs to -33 to -55 kPa),
+gas leaves by the exhaust valve with little back, the intake draws through, the residual falls to 2 to 3 %, and VE
+between the intake's teeth is 0.82 to 0.86. Out of phase (the V12's 0.705 m at 6250 to 7000, its 0.9 m at 5500), the
+port is 9 to 15 kPa over the air, gas comes back from the header and pushes up the intake (0.02 to 0.04 g a cycle),
+the residual is 8 to 14 %, VE 0.56 to 0.74. The swing is some 20 to 30 % of VE: as large as the intake's tooth.
+
+So the model scavenges at overlap as a tuned header should (G's wave reaches the valve), and the intake's ram is not
+asked to do both jobs. The tuned engines' middle is held down by where their primaries are tuned: the layout's default
+length (0.705 m on both, not from the targets) puts the V12's suction outside its overlap from 6250 rpm. The lever is the
+builds' primaries (content, P), as it is the runners'. The runner-at-a-share-of-redline proposal stays held.
+
+## N3-13. The four-cam V8 and the 3.5 V6: their runners again (21:11 by `date -u`; the lead's item 2)
+
+Both burn and lose as real engines do (brake 0.30 to 0.33, walls 0.12 to 0.13, residual 3 to 4 %); both are short of
+air at their torque peaks (VE 0.82 to 0.83). Four-cam (runner 0.38 m, P's modern-composite class; primaries 0.705) at
+4500 rpm, N m (VE): as built 458 (0.832); primaries 0.5 m 436 (0.801), 0.9 m 412 (0.757); runner 0.50 m 491 (0.895),
+0.60 m **541 (0.969)** (band 520 to 575). The 3.5 V6 (0.38 m, switching to 0.25 m above 4350 rpm): at 4750 / 6350 rpm
+as built 302 / 279; second runner 0.38 (or never switching) 311 / 337 (0.848 / 0.965); 0.50 m and never switching **348
+/ 358** (0.945 / 1.027) (band 335 to 365 at 4750). Not the model's: the runner class and its switch (P's judgement).
+
+## N3-14. The overrun charge's burn (the lead's item 1; worked, not yet measured: 21:12 by `date -u`)
+
+N1 found H9's fuelled overrun (the V8 preset, overrun fuel 0.25, the spark 11.5 degrees after the top) burning in 53 to
+55 degrees, 99 % done by 66 after the top, the exhaust opening at 104: nothing left to light in the pipe.
+
+What the model's burn length holds (`combustion.fm`, charge1): (44 + 11 (0.8 - p_manifold / 1 atm)) x (1 + 2.5 (dilution
+- 0.15)) x the mixture's flame (S_L ratio^-0.5) x bore-stroke x CR^-0.3 x (rpm / 3000)^(1/3). Two dependences a real
+burn has are missing or weaker:
+
+1. *Where the burn sits.* A charge lit after the top burns in gas that the expansion cools and thins. With the laminar
+   flame speed as Metghalchi and Keck have it, S_L ∝ T_u^α p^β (α 2.18, β -0.16 near stoichiometric), the unburned gas
+   expanded isentropically (γ 1.35), and the model's own convention (the burn's length as S_L^-0.5), the length goes as
+   (V_mid / V_ref)^0.27, V_mid the volume at the burn's middle and V_ref at a best-torque burn's (8 degrees after the
+   top). Worked for H9's charge (CR 10, rod ratio 3.5): 54 → about 70 degrees (iterated). A Wiebe burn of 70 degrees lit
+   at 11.5 after the top is still more than 99 % done by the exhaust's opening at 104: this alone does not make the
+   overrun's crackle. (It does lengthen every late-spark burn by up to a third, the knock retard's and the catalyst-
+   heating cases' included, and is worth adding for that.)
+2. *The burned gas's dilution.* The model's (1 + 2.5 dx) is linear. Metghalchi and Keck's flame speed falls as (1 -
+   2.1 x_b) (linear); Rhodes and Keck's (SAE 850047) as (1 - 2.06 x_b^0.77), much steeper at high dilution. At x_b 0.35
+   against 0.15 the burn's length (S_L^-0.5) grows 1.61 times by the first, 2.54 by the second; the model gives 1.50.
+   An overrun charge behind a shut throttle carries some 30 to 40 % burned gas; by the steeper form its burn would run
+   past the exhaust's opening. Which form, and the overrun charge's own burned share, decide it: the first not
+   reachable here (Heywood §9.3 quotes the flame-speed correlations), the second to be read off the overrun.
+
+Proposed (not changed): (1) as above in charge1, model-on only; (2) once the overrun's burned share is read (N1 has the
+scenario) and a source for the dilution term's form is open. Both are mine to make (H's path) under card N's rule.

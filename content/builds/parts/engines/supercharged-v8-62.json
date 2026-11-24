@@ -99,7 +99,7 @@
       "charger": "Twin-screw",
       "scDisplacement": 0.0019,
       "scBypass": true,
-      "icFlow": 0.479,
+      "icFlow": 0.557,
       "chargeVolume": 0.0123
     },
     "exhaust": {
@@ -112,7 +112,8 @@
       "mufKind": [
         2,
         2
-      ]
+      ],
+      "headers": 0.5
     },
     "fuel": {
       "kind": "Gasoline",

@@ -26,4 +26,13 @@ namespace tee
         return {{"heat.tCool", coolant}, {"heat.tOil", coolant + 10.0}, {"heat.tSurf", coolant + 87.0},
                 {"heat.warm", 1.0},      {"heat.warmS", 1.0}};
     }
+
+    // Warm tyres: the vehicle model's car.m1.warmTyres held at 1 puts each tyre in the middle of its compound's working
+    // window once after every reset of the car (as a car timed after its burnout or out-lap), then lets it warm and cool
+    // by itself (card I, sim/vehicle/vehicle.fm). A statement apart from a warm engine: a warm engine on cold tyres is
+    // every drive's first mile. Inert under car.model 0.
+    inline std::vector<HeldValue> warmTyres()
+    {
+        return {{"car.m1.warmTyres", 1.0}};
+    }
 } // namespace tee

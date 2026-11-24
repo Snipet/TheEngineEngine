@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "Supercharged 6.2 L V8",
-  "notes": "The 6.2 L pushrod V8 of 103.25 x 92 mm (6162 cc) at 9.1:1 under a 1.9 L positive-displacement blower at some 0.6 bar (the LSA kind: 415 kW at 6100 rpm, 746 N m at 3800; gmauthority.com, a community spec table for the compression). In a heavy six-speed coupe.",
+  "notes": "The 6.2 L pushrod V8 of 103.25 x 92 mm (6162 cc) at 9.1:1 under a 1.9 L positive-displacement blower at some 0.6 bar (the LSA kind: 415 kW at 6100 rpm, 746 N m at 3800; gmauthority.com, a community spec table for the compression). In a heavy six-speed coupe. Its exhaust: short tubular headers, the primaries 1.00 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT.",
   "spec": {
     "engine": {
       "layout": "V8 crossplane",
@@ -98,7 +98,7 @@
       "charger": "Twin-screw",
       "scDisplacement": 0.0019,
       "scBypass": true,
-      "icFlow": 0.479,
+      "icFlow": 0.557,
       "chargeVolume": 0.0123
     },
     "exhaust": {
@@ -111,7 +111,8 @@
       "mufKind": [
         2,
         2
-      ]
+      ],
+      "headers": 0.5
     },
     "fuel": {
       "kind": "Gasoline",
@@ -177,7 +178,8 @@
       "camera": "Rear",
       "place": "Field",
       "ground": "Asphalt",
-      "enginePlace": "Front"
+      "enginePlace": "Front",
+      "level": 0.0
     }
   }
 }

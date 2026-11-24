@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "Boxer four turbo with unequal headers",
-  "notes": "A 2.5 L boxer four with one turbo, 99.5 x 79 mm (2457 cc), 8.2:1 (the EJ257 kind: 221 kW at 6000 rpm, 393 N m at 4000; Wikipedia and enthusiasts' tables). Its headers' primaries of unequal length are the burble: written in the exhaust builder (primSpread), which the program does not yet run. All-wheel drive, six-speed manual.",
+  "notes": "A 2.5 L boxer four with one turbo, 99.5 x 79 mm (2457 cc), 8.2:1 (the EJ257 kind: 221 kW at 6000 rpm, 393 N m at 4000; Wikipedia and enthusiasts' tables). Its headers' primaries of unequal length are the burble: written in the exhaust builder (primSpread), which the program does not yet run. All-wheel drive, six-speed manual. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT.",
   "spec": {
     "engine": {
       "layout": "Flat 4",
@@ -82,7 +82,7 @@
       "gateSpring": 70000.0,
       "blowOffKind": "Recirculating",
       "icEffect": 0.75,
-      "icFlow": 0.259,
+      "icFlow": 0.31,
       "chargeVolume": 0.0049
     },
     "exhaust": {
@@ -96,6 +96,7 @@
         2,
         2
       ],
+      "headers": 0.0,
       "primSpread": 0.25
     },
     "fuel": {
@@ -162,7 +163,8 @@
       "camera": "Rear",
       "place": "Field",
       "ground": "Asphalt",
-      "enginePlace": "Front"
+      "enginePlace": "Front",
+      "level": 7.2
     }
   }
 }

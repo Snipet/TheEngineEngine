@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "V10 5.2 L",
-  "notes": "A 90-degree V10 with split crankpins for even firing: 84.5 x 92.8 mm (5204 cc), 12.5:1, direct and port injection, 8700 rpm (the 5.2 L V10 of 2008 on: 386 to 470 kW at 8000 to 8700 rpm, 530 to 565 N m at 6500; makers' figures). In an all-wheel-drive mid-engined car.",
+  "notes": "A 90-degree V10 with split crankpins for even firing: 84.5 x 92.8 mm (5204 cc), 12.5:1, direct and port injection, 8700 rpm (the 5.2 L V10 of 2008 on: 386 to 470 kW at 8000 to 8700 rpm, 530 to 565 N m at 6500; makers' figures). In an all-wheel-drive mid-engined car. Its exhaust: tuned long-primary headers, the primaries 1.63 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its intake: the sports class's runner, 0.30 m from the valve to the plenum (a high-revving engine's short runners or a throttle a cylinder): JUDGEMENT, a class default, not the real engine's (no source found).",
   "spec": {
     "engine": {
       "layout": "V10",
@@ -96,7 +96,7 @@
     },
     "intake": {
       "model": 1,
-      "runnerLength": 0.36
+      "runnerLength": 0.3
     },
     "boost": {
       "model": "Machine",
@@ -114,7 +114,8 @@
       "mufKind": [
         2,
         2
-      ]
+      ],
+      "headers": 1.0
     },
     "fuel": {
       "kind": "Gasoline",
@@ -182,7 +183,8 @@
       "camera": "Rear",
       "place": "Field",
       "ground": "Asphalt",
-      "enginePlace": "Mid"
+      "enginePlace": "Mid",
+      "level": 0.0
     }
   }
 }

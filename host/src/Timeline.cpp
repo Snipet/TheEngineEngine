@@ -34,6 +34,45 @@ namespace tee
         return out;
     }
 
+    namespace
+    {
+        std::size_t editDistance(const std::string& a, const std::string& b)
+        {
+            std::vector<std::size_t> row(b.size() + 1);
+            for (std::size_t j = 0; j <= b.size(); ++j)
+                row[j] = j;
+            for (std::size_t i = 1; i <= a.size(); ++i)
+            {
+                std::size_t diagonal = row[0];
+                row[0] = i;
+                for (std::size_t j = 1; j <= b.size(); ++j)
+                {
+                    const std::size_t up = row[j];
+                    row[j] = std::min({row[j] + 1, row[j - 1] + 1, diagonal + (a[i - 1] == b[j - 1] ? 0 : 1)});
+                    diagonal = up;
+                }
+            }
+            return row[b.size()];
+        }
+
+        // The three telemetry fields nearest a name by edit distance, said: "nearest: engine.speed, ..."
+        std::string nearestTelemetry(const Fields& fields, const std::string& name)
+        {
+            std::vector<std::pair<std::size_t, std::string>> all;
+            for (const FieldInfo& f : fields.all())
+                if (f.block == "tel" && !f.table() && f.scalar != Scalar::None)
+                {
+                    const std::string column = f.path.substr(4);
+                    all.emplace_back(editDistance(name, column), column);
+                }
+            std::sort(all.begin(), all.end());
+            std::string out;
+            for (std::size_t k = 0; k < all.size() && k < 3; ++k)
+                out += (k == 0 ? "nearest: " : ", ") + all[k].second;
+            return out;
+        }
+    } // namespace
+
     bool telemetryElement(const Fields& fields, std::string_view name, const FieldInfo*& field, std::size_t& index,
                           std::string& error)
     {
@@ -44,7 +83,8 @@ namespace tee
         index = 0;
         if (field == nullptr || field->block != "tel" || field->table() || field->scalar == Scalar::None)
         {
-            error = "no telemetry field '" + column.substr(0, bracket) + "'";
+            error = "no telemetry field '" + column.substr(0, bracket) + "' ("
+                    + nearestTelemetry(fields, column.substr(0, bracket)) + ")";
             field = nullptr;
             return false;
         }
@@ -131,6 +171,7 @@ namespace tee
         t.block = root.value("block", 512);
         t.seconds = root.value("seconds", 0.0);
         t.warm = root.value("warm", false);
+        t.warmTyres = root.value("warmTyres", false);
         if (!(t.rate > 0.0) || t.block < 1 || !(t.seconds >= 0.0))
         {
             error = where + "\"rate\", \"block\" and \"seconds\" are numbers above 0";

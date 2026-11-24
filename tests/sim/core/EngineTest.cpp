@@ -341,12 +341,21 @@ namespace
 {
     // The books over `seconds` (g/s, from the engine's running totals): the air through the throttle, the net mass in
     // through the intake valves and through the exhaust valves, the unburned gas trapped at the intakes' closing
+    // (and, card G's: what the exhaust's pipes were given over what its valves let out, a volume ratio: 1 when the pipes
+    // are given the valves' mean flow)
+    double pipesGiven = 0.0;
+
     void airBooks(Bench& b, double seconds, double& thr, double& fresh, double& valves, double& exhaust)
     {
         const double t0 = b.field("airThrottle"), v0 = b.field("airValves"), e0 = b.field("gasExhaust"), f0 = b.field("airTrapped");
+        const double p0 = b.field("intk.mPlenum");
+        const double g0 = b.field("exh.flowGiven"), l0 = b.field("exh.flowLet");
         b.play(seconds);
+        pipesGiven = (b.field("exh.flowGiven") - g0) / std::max(b.field("exh.flowLet") - l0, 1e-12);
         const double k = 1000.0 / seconds;
-        thr = (b.field("airThrottle") - t0) * k;
+        // (the throttle's air less what the plenum stored over the window: it is not quite steady on a boosted diesel;
+        // N1's point)
+        thr = (b.field("airThrottle") - t0 - (b.field("intk.mPlenum") - p0)) * k;
         fresh = (b.field("airTrapped") - f0) * k;
         valves = (b.field("airValves") - v0) * k;
         exhaust = -(b.field("gasExhaust") - e0) * k;
@@ -382,6 +391,8 @@ TEST_CASE("the physical cylinder conserves the gas its valves push back, and the
     airBooks(b, 3.0, thrW, frW, vW, eW);
     std::printf("backflow: idle %.0f rpm: throttle %.2f, intake valves %.2f, exhaust valves %.2f, trapped unburned %.2f g/s; "
                 "full throttle at 3000: %.1f, %.1f, %.1f, %.1f g/s\n", idle, thrI, vI, eI, frI, thrW, vW, eW, frW);
+    std::printf("  the exhaust's pipes given over the valves' let out at full throttle: %.4f\n", pipesGiven);
+    CHECK(std::fabs(pipesGiven - 1.0) < 0.01);
     CHECK(std::fabs(vI / thrI - 1.0) < 0.01);
     CHECK(std::fabs(vW / thrW - 1.0) < 0.01);
     CHECK(std::fabs(eI / vI - 1.0) < 0.01);
@@ -427,7 +438,7 @@ TEST_CASE("boost.model 1 implies the builder's exhaust, at a build and when swit
     CHECK(std::isfinite(b.tel("engine.speed")));
 }
 
-static void booksOn(const std::vector<const char*>& builds)
+static void booksOn(const std::vector<const char*>& builds, double settle = 4.0)
 {
     // (the lead's ask, 24 Nov: the backflow test ran green while every diesel archetype was dead on the dyno; each of
     // these must make torque at full load, and its throttle's (or intake's) air, its intake valves' and its exhaust
@@ -446,12 +457,14 @@ static void booksOn(const std::vector<const char*>& builds)
         b.ctl().mode = 2;
         b.ctl().throttle = 1.0f;
         b.ctl().dynoSpeed = float(1800.0 / 9.5492966);
-        b.play(4.0);
+        b.play(settle);         // (a boosted diesel's plenum settles slowly: the full form gives it 10 s)
         double thr = 0, fr = 0, v = 0, x = 0;
         airBooks(b, 2.0, thr, fr, v, x);
         const double tq = b.tel("engine.torque");
         std::printf("%s at 1800 rpm, full load: %.0f N m; throttle %.2f, intake valves %.2f, exhaust valves %.2f g/s\n", build, tq,
                     thr, v, x);
+        std::printf("  the exhaust's pipes given over the valves' let out: %.4f\n", pipesGiven);
+        CHECK(std::fabs(pipesGiven - 1.0) < 0.01);
         CHECK(tq > 50.0);
         CHECK(std::fabs(v / thr - 1.0) < 0.01);
         CHECK(std::fabs(x / v - 1.0) < 0.01);
@@ -477,7 +490,7 @@ TEST_CASE("the books hold, and the engine makes torque, on a diesel and a booste
 TEST_CASE("the books hold, and the engine makes torque, on every diesel archetype (the full form)", "[core][engine][backflow][nightly]")
 {
     booksOn({"archetypes/tractor-15-inline-six", "archetypes/diesel-20-common-rail", "archetypes/pickup-diesel-67-inline-six",
-             "archetypes/turbo-four-20-gdi"});
+             "archetypes/turbo-four-20-gdi"}, 10.0);
 }
 
 TEST_CASE("a burn still running at exhaust opening lets its unburned fuel out with the gas: its heat released once", "[core][engine][pop]")
@@ -591,9 +604,7 @@ TEST_CASE("the redline shown is a stated limiter's speed, not the idle's floor (
     // likewise)
     {
         Bench b("archetypes/tractor-15-inline-six");
-        // (written here: the build's own ecu.limiter block does not load today, a nested section: reported to the lead)
-        std::string e;
-        REQUIRE(b.player().setSpec("ecu.limiter.speed", 210.906, e));
+        // (the build's own ecu.limiter block: 210.906 rad/s, 2014 rpm)
         b.start();
         std::printf("tractor: redline %.0f rpm (limiter 2014)\n", b.tel("engine.redline") * kRpm);
         CHECK(std::fabs(b.tel("engine.redline") * kRpm - 2014.0) < 5.0);
@@ -650,7 +661,6 @@ TEST_CASE("a governed diesel's launch and its redline follow its limiter (ecu.mo
     // idle's 2200 floor, and the launch's fallback (no launch control) is 60 % of it)
     Bench b("archetypes/tractor-15-inline-six");
     std::string e;
-    REQUIRE(b.player().setSpec("ecu.limiter.speed", 210.906, e));      // (the build's own block does not load in this rig yet)
     REQUIRE(b.player().setSpec("ecu.launch.on", 0, e));
     b.start();
     b.ctl().mode = 1;

@@ -92,7 +92,7 @@
       "blowOffKind": "None",
       "vanes": "Variable vanes",
       "icEffect": 0.75,
-      "icFlow": 0.765,
+      "icFlow": 1.09,
       "chargeVolume": 0.02
     },
     "exhaust": {
@@ -105,7 +105,8 @@
       "mufKind": [
         2,
         2
-      ]
+      ],
+      "headers": 0.0
     },
     "fuel": {
       "kind": "Diesel",

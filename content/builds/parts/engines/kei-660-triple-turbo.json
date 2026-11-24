@@ -77,7 +77,7 @@
       "blowOffKind": "Recirculating",
       "gateDiameter": 0.026,
       "icEffect": 0.75,
-      "icFlow": 0.055,
+      "icFlow": 0.078,
       "chargeVolume": 0.0013
     },
     "exhaust": {
@@ -90,7 +90,8 @@
       "mufKind": [
         2,
         2
-      ]
+      ],
+      "headers": 0.0
     },
     "fuel": {
       "kind": "Gasoline",

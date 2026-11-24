@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "Twin-turbo 4.0 L hot-vee V8",
-  "notes": "A 4.0 L crossplane V8 with both turbos in the vee (hot-vee): 86 x 86 mm (3996 cc), 10.5:1, direct injection (engines of the kind: 350 to 470 kW at 5500 to 6500 rpm, 700 to 850 N m from 2000 to 4500; makers' figures). All-wheel drive, eight-speed automatic.",
+  "notes": "A 4.0 L crossplane V8 with both turbos in the vee (hot-vee): 86 x 86 mm (3996 cc), 10.5:1, direct injection (engines of the kind: 350 to 470 kW at 5500 to 6500 rpm, 700 to 850 N m from 2000 to 4500; makers' figures). All-wheel drive, eight-speed automatic. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT.",
   "spec": {
     "engine": {
       "layout": "V8 crossplane",
@@ -100,7 +100,7 @@
       "blowOffKind": "Recirculating",
       "scrolls": "Twin scroll",
       "icEffect": 0.75,
-      "icFlow": 0.517,
+      "icFlow": 0.538,
       "chargeVolume": 0.008
     },
     "exhaust": {
@@ -113,7 +113,8 @@
       "mufKind": [
         2,
         2
-      ]
+      ],
+      "headers": 0.0
     },
     "fuel": {
       "kind": "Gasoline",
@@ -182,7 +183,8 @@
       "camera": "Rear",
       "place": "Field",
       "ground": "Asphalt",
-      "enginePlace": "Front"
+      "enginePlace": "Front",
+      "level": 3.6
     }
   }
 }

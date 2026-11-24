@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "3.5 L twin-turbo V6 pickup",
-  "notes": "A 3.5 L twin-turbo V6 of a full-size pickup: 92.5 x 86.6 mm (3497 cc), 10.5:1, direct injection, a turbo a bank (engines of the kind: 280 to 300 kW at 5000 to 6000 rpm, 640 to 690 N m at 3500; makers' figures). Four-wheel drive, ten-speed automatic.",
+  "notes": "A 3.5 L twin-turbo V6 of a full-size pickup: 92.5 x 86.6 mm (3497 cc), 10.5:1, direct injection, a turbo a bank (engines of the kind: 280 to 300 kW at 5000 to 6000 rpm, 640 to 690 N m at 3500; makers' figures). Four-wheel drive, ten-speed automatic. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT.",
   "spec": {
     "engine": {
       "layout": "V6",
@@ -91,7 +91,7 @@
       "gateSpring": 60000.0,
       "blowOffKind": "Recirculating",
       "icEffect": 0.75,
-      "icFlow": 0.336,
+      "icFlow": 0.377,
       "chargeVolume": 0.007
     },
     "exhaust": {
@@ -104,7 +104,8 @@
       "mufKind": [
         2,
         2
-      ]
+      ],
+      "headers": 0.0
     },
     "fuel": {
       "kind": "Gasoline",
@@ -176,7 +177,8 @@
       "camera": "Rear",
       "place": "Field",
       "ground": "Asphalt",
-      "enginePlace": "Front"
+      "enginePlace": "Front",
+      "level": 2.8
     }
   }
 }

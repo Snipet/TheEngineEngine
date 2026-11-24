@@ -103,3 +103,35 @@ TEST_CASE("boost: at rest, with the volumes a little apart, the flows die away a
         CHECK((worst[1] < 1.0e-6 || worst[1] < 0.3 * worst[0]));
     }
 }
+
+TEST_CASE("boost: a compressor far too big for its engine stands still and moves nothing", "[boost][rest]")
+{
+    // (card N2, card X's X-024) An 85 mm inducer on a 0.23 L engine, a sequential pair, a recirculating blow-off
+    // valve: the inlet has no volume (its pressure is the filter's loss, sized for the engine), and the valve's and
+    // the bleed's flows back into it, taken a sample late, ran the charge pipe to megapascals with the shafts
+    // standing. Solved with the inlet's slope, at rest and cranking the boost stays near nothing and so do the flows.
+    for (double rpm : {0.0, 300.0})
+    {
+        Rig rig(2.336e-4, 1, 7000.0);
+        rig.set("spec.kind", 1);
+        rig.set("spec.layout", 3);
+        rig.set("spec.compInducer", 0.0854);
+        rig.set("spec.blowOffKind", 2);
+        rig.set("spec.model", 1);
+        rig.spec("rev", 0);
+        rig.set("rpm", rpm);
+        rig.set("throttle", rpm > 0.0 ? 0.3 : 0.0);
+        double most = 0.0, flow = 0.0;
+        for (int k = 0; k < 200; ++k)
+        {
+            rig.run(0.005);
+            REQUIRE(rig.get("bad") == 0.0);
+            most = std::fmax(most, std::fabs(rig.boost()));
+            flow = std::fmax(flow, std::fabs(rig.get("boost.comp[0].mdot")) + std::fabs(rig.get("boost.comp[1].mdot")));
+        }
+        std::printf("85 mm on 0.23 L at %.0f rpm: |boost| at most %.0f Pa, the compressors' flows at most %.4f kg/s\n",
+                    rpm, most, flow);
+        CHECK(most < 2000.0);
+        CHECK(flow < 0.01);
+    }
+}

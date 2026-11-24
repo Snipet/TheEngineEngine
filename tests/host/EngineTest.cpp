@@ -288,7 +288,8 @@ TEST_CASE("a quality change swaps the engine at 48 kHz inside under a crossfade,
     CHECK(finite);
 }
 
-TEST_CASE("the dyno runner starts a common-rail diesel and holds a twin turbo's boost on steps", "[engine][sim][dyno]")
+TEST_CASE("the dyno runner starts a common-rail diesel and holds a twin turbo's boost on steps",
+          "[engine][sim][dyno][nightly]")
 {
     if (!haveSim())
         SKIP("sim/engine.fm is not there yet");

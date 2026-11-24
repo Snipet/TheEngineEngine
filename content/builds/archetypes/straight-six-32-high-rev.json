@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "3.2 L straight six, high-revving",
-  "notes": "A naturally aspirated 3.2 L straight six with a throttle body a cylinder: 87 x 91 mm (3246 cc), 11.5:1, 8000 rpm (the S54 kind: 252 kW at 7900 rpm, 365 N m at 4900; makers' figures, from memory, firm to 5 %). Rear drive, six-speed manual.",
+  "notes": "A naturally aspirated 3.2 L straight six with a throttle body a cylinder: 87 x 91 mm (3246 cc), 11.5:1, 8000 rpm (the S54 kind: 252 kW at 7900 rpm, 365 N m at 4900; makers' figures, from memory, firm to 5 %). Rear drive, six-speed manual. Its exhaust: tuned long-primary headers, the primaries 1.63 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its intake: the sports class's runner, 0.30 m from the valve to the plenum (a high-revving engine's short runners or a throttle a cylinder): JUDGEMENT, a class default, not the real engine's (no source found).",
   "spec": {
     "engine": {
       "layout": "Inline 6",
@@ -79,7 +79,7 @@
     },
     "intake": {
       "model": 1,
-      "runnerLength": 0.51,
+      "runnerLength": 0.3,
       "throttleKind": "A body a runner"
     },
     "boost": {
@@ -98,7 +98,8 @@
       "mufKind": [
         1,
         1
-      ]
+      ],
+      "headers": 1.0
     },
     "fuel": {
       "kind": "Gasoline",
@@ -161,7 +162,8 @@
       "camera": "Rear",
       "place": "Field",
       "ground": "Asphalt",
-      "enginePlace": "Front"
+      "enginePlace": "Front",
+      "level": 0.0
     }
   }
 }

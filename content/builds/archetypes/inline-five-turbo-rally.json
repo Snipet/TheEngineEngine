@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "Inline five turbo rally",
-  "notes": "A 2.2 L 20-valve straight five, 81 x 86.4 mm (2226 cc), 9.3:1 (the 3B kind: 162 kW at 5700 rpm, 309 N m road trim; audiworld.com), here in rally trim: 1.3 bar, anti-lag, a spark-cut limiter, race fuel; rally engines of the kind made some 220 to 260 kW. Sequential gearbox, all-wheel drive.",
+  "notes": "A 2.2 L 20-valve straight five, 81 x 86.4 mm (2226 cc), 9.3:1 (the 3B kind: 162 kW at 5700 rpm, 309 N m road trim; audiworld.com), here in rally trim: 1.3 bar, anti-lag, a spark-cut limiter, race fuel; rally engines of the kind made some 220 to 260 kW. Sequential gearbox, all-wheel drive. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT.",
   "spec": {
     "engine": {
       "layout": "Inline 5",
@@ -86,7 +86,7 @@
       "blowOffKind": "Recirculating",
       "antiLag": true,
       "icEffect": 0.75,
-      "icFlow": 0.292,
+      "icFlow": 0.323,
       "chargeVolume": 0.0045
     },
     "exhaust": {
@@ -99,7 +99,8 @@
       "mufKind": [
         1,
         1
-      ]
+      ],
+      "headers": 0.0
     },
     "fuel": {
       "kind": "Gasoline",
@@ -172,7 +173,8 @@
       "camera": "Rear",
       "place": "Field",
       "ground": "Asphalt",
-      "enginePlace": "Front"
+      "enginePlace": "Front",
+      "level": 0.0
     }
   }
 }

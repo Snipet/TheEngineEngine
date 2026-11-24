@@ -872,6 +872,7 @@ module Engine
                               ecu.redRpm, lay.bike, set.clutch, set.brake, set.lever, set.buttons, set.gas, crank.rpm, ecu.idleRpm, ecu.rpmAvg);
         else
             car.lastDrive = 0;
+        ecu.fillShare = intk.itbs != 0 ? 0.0f : intk.vPlenum / fmaxf(vTotal, 1.0e-5f);   // (N1, for card H: the idle spark's look-ahead)
         if (ecu.control(d16, ped, set.drive, set.modwheel, set.pressure, crank.rpm, fuelUse, heat.warm, car.shiftCut, car.gear,
                         set.clutch, crank.omega, intk.pPlenum, set.drive != 0 ? fabsf(car.v) : 0.0f, exh.gasTemperature(0)))
             crank.omega = 0.0f;
@@ -908,7 +909,8 @@ module Engine
             boost.airSpeed(set.drive != 0 ? fabsf(car.v) : 0.0f);
             boost.testCell(dynoOn);   // (N2: an engine test cell's rated cooling, SAE J1349)
             if (hd.on != 0)
-                boost.vanesAndPurge(hd.vaneCommand(), 0);   // (card D2: a VGT's brake position while a brake is on; -1 its own loop)
+                boost.vanesAndPurge(hd.vaneCommand(d16, boost.mach.turbos > 0 ? boost.mach.shaft[0].omega / fmaxf(boost.mach.omegaMax[0], 1.0f) : 0.0f,
+                                               boost.mach.turb[0].vaneMin), 0);   // (card D2: a VGT's brake position while a brake is on, held under the shaft's limit; -1 its own loop)
             boost.control16(d16, ecu.boostTarget(), ecu.antiLag(), ecu.nitrous());
             intk.pBox = boost.pressure();
             intk.tAir = boost.temperature();
@@ -1214,10 +1216,12 @@ module Engine
         }
         // the cylinders
         float qe[MAX_PORTS];
+        float qeLet[MAX_PORTS];     // (card G: the volume each port's valves let out, without the simple wave's gain)
         float qi[MAX_PORTS];
         for (int i = 0; i < np; ++i)
         {
             qe[i] = 0.0f;
+            qeLet[i] = 0.0f;
             qi[i] = 0.0f;
         }
         float torque = 0.0f;
@@ -1275,6 +1279,7 @@ module Engine
             work.sample(c, a, cy->p, cy->v);
             comb.sample(cy, c, dt);                     // card H: nothing under fuel.model 0 and ecu.model 0
             qe[pi] += cy->qEa;
+            qeLet[pi] += cy->qE;
             qi[pi] += cy->qIa;
             airValves -= (double)(cy->mI * dt);
             intk.mValves += cy->mI;                     // (N1, for card E: the plenum gives up the valves' own mass)
@@ -1317,7 +1322,7 @@ module Engine
         }
         if (ctl.scopeOn != 0)
             scopeTap();
-        exh.step(qe, np);       // (with boost.model 1 the builder runs, its collectors ending in the turbines' housings)
+        exh.stepLet(qe, qeLet, np);       // (exhaust.model 1: the pipes given the valves' mean flow, card G's; with boost.model 1 the builder runs, its collectors ending in the turbines' housings)
         float rNear[MAX_PORTS];
         for (int i = 0; i < np; ++i)
             rNear[i] = intk.run[i].near + intk.run[i].z * qi[i];

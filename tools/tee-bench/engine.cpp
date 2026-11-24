@@ -125,6 +125,8 @@ int engineBenchMain(int argc, char** argv)
             std::fprintf(stderr, "tee-bench: %s\n", errors.c_str());
             return 1;
         }
+        if (!warnings.empty())
+            std::fprintf(stderr, "tee-bench: %s", warnings.c_str());
         for (const std::string& s : scenarioNames)
         {
             EngineScenario scenario;

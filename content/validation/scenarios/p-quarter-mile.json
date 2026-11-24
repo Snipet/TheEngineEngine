@@ -2,7 +2,7 @@
   "format": "tee-scenario",
   "version": 1,
   "name": "p-quarter-mile",
-  "description": "Card P's drag run, as card I's test runs one: warm, the gearbox made an automatic for the run (an open-loop timeline cannot shift a manual at the right speeds; the ratios are the build's), the brake on at 5 s and D at 5.5 s (after the idle has settled), staged at 8 s, the green at 10.5 s, the brakes off and the pedal brought down over 0.6 s. Read car.t1320 and car.v1320.",
+  "description": "Card P's drag run, as card I's test runs one: warm, the gearbox made an automatic for the run (an open-loop timeline cannot shift a manual at the right speeds; the ratios are the build's), the brake on at 5 s and D at 5.5 s (after the idle has settled), staged at 8 s, the green at 10.5 s, the brakes off and the pedal brought down over 0.6 s. Read car.t1320 and car.v1320. Warm tyres (card C's warmTyres: a timed run's).",
   "seconds": 42,
   "warm": true,
   "events": [
@@ -77,5 +77,6 @@
       "<=": 1,
       "source": "02-contracts.md, section 1: within +-1"
     }
-  ]
+  ],
+  "warmTyres": true
 }

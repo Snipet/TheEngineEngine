@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "Diesel 2.0 L common rail",
-  "notes": "A 2.0 L four-valve common-rail diesel with a variable-vane turbo: 81 x 95.5 mm (1968 cc), 16.5:1 (engines of the kind: 103 to 125 kW at 3500 to 4000 rpm, 320 to 380 N m from 1750; makers' figures). Balance shafts. In a front-drive family car, six-speed manual.",
+  "notes": "A 2.0 L four-valve common-rail diesel with a variable-vane turbo: 81 x 95.5 mm (1968 cc), 16.5:1 (engines of the kind: 103 to 125 kW at 3500 to 4000 rpm, 320 to 380 N m from 1750; makers' figures). Balance shafts. In a front-drive family car, six-speed manual. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT.",
   "spec": {
     "engine": {
       "layout": "Inline 4",
@@ -81,7 +81,7 @@
       "blowOffKind": "None",
       "vanes": "Variable vanes",
       "icEffect": 0.75,
-      "icFlow": 0.221,
+      "icFlow": 0.204,
       "chargeVolume": 0.0039
     },
     "exhaust": {
@@ -94,7 +94,8 @@
       "mufKind": [
         2,
         2
-      ]
+      ],
+      "headers": 0.0
     },
     "fuel": {
       "kind": "Diesel",
@@ -163,7 +164,8 @@
       "camera": "Rear",
       "place": "Field",
       "ground": "Asphalt",
-      "enginePlace": "Front"
+      "enginePlace": "Front",
+      "level": 8.6
     }
   }
 }

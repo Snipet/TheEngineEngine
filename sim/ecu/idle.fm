@@ -56,6 +56,8 @@ module IdleControl
     float integral;     // the idle valve's integral
     float bypass;       // the idle valve, 0 to 1
     float trim;         // the spark's quick hand: the torque over the map's, 0.3 to 1.35
+    float look;         // the spark trim's look-ahead on the speed's rate, s: the manifold's filling time (Ecu sets it; the
+                        // reference's 0.08 when the plenum is unknown)
     float startAir;     // the valve's integral as the engine caught (its start position): the after-start air
     float trimInt;      // its integral (model 1's own): what the spark must take out to hold the idle once the valve is
                         // shut, the torque in reserve a real idle's retarded spark keeps
@@ -63,6 +65,7 @@ module IdleControl
     void reset()
     {
         integral = 0.0f;
+        look = 0.08f;
         startAir = 0.0f;
         bypass = 0.0f;
         trim = 1.0f;
@@ -107,7 +110,10 @@ module IdleControl
             trimInt = fmaxf(trimInt + 1.0f * ie * d16, -0.6f);
         else
             trimInt = fminf(trimInt + (ie > 0.0f ? 4.0f : 0.5f) * d16, 0.0f);
-        const float tr = 1.0f + 1.6f * (target - s->avg - 0.08f * s->rate) * 0.001f + trimInt;
+        // (the spark's hand looks ahead at the speed's rate by the manifold's filling time: the torque answers the plenum,
+        // which lags the speed by that much. The reference's 0.08 s is the filling time of a 5.7 V8 on a 2.5 L plenum
+        // (0.075); on a 7.0 L V8's 5.6 L plenum (0.128) it was too short and the idle loped 640 to 860 rpm (card N1))
+        const float tr = 1.0f + 1.6f * (target - s->avg - look * s->rate) * 0.001f + trimInt;
         if (driven)
             trim = pedal < 0.02f ? fminf(fmaxf(tr, 0.3f), 1.35f) : fminf(fmaxf(tr, 1.0f), 1.35f);
         else

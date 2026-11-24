@@ -19,6 +19,9 @@ namespace tee::test
             std::mutex mutex;
             std::filesystem::path sim, content;
             std::map<std::tuple<std::string, std::string, std::string, int>, std::shared_ptr<Sim>> cache;
+            // programs with the checks, by the same key: each plays for one host at a time (Sim::claim), so a free one
+            // is lent again and another is compiled only while every one kept is held
+            std::map<std::tuple<std::string, std::string, std::string, int>, std::vector<std::shared_ptr<Sim>>> checked;
         };
 
         Shared& shared()
@@ -62,13 +65,30 @@ namespace tee::test
 
     std::shared_ptr<Sim> compiled(const std::filesystem::path& directory, const Sim::Options& options, std::string& errors)
     {
-        if (options.checks)
-            return Sim::compile(directory, options, errors);
         std::string defines;
         for (const auto& [k, v] : options.defines)
             defines += k + "=" + v + ";";
         const auto key = std::make_tuple(std::filesystem::weakly_canonical(directory).generic_string(),
                                          options.entry + ":" + options.module, defines, options.optimisation);
+        if (options.checks)
+        {
+            {
+                const std::lock_guard<std::mutex> lock(shared().mutex);
+                for (const std::shared_ptr<Sim>& kept : shared().checked[key])
+                    if (kept->claim())   // free: no host plays it (a host claims it again when it attaches)
+                    {
+                        kept->release();
+                        return kept;
+                    }
+            }
+            std::shared_ptr<Sim> sim = Sim::compile(directory, options, errors);
+            if (sim)
+            {
+                const std::lock_guard<std::mutex> lock(shared().mutex);
+                shared().checked[key].push_back(sim);
+            }
+            return sim;
+        }
         {
             const std::lock_guard<std::mutex> lock(shared().mutex);
             if (auto it = shared().cache.find(key); it != shared().cache.end())

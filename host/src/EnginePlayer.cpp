@@ -1,6 +1,10 @@
 // host/src/EnginePlayer.cpp: tee::EnginePlayer, builds, engine scenarios and their render (EnginePlayer.h).
 #include "tee/EnginePlayer.h"
 
+#include "tee/Build.h"
+#include "tee/Fields.h"
+#include "tee/Telemetry.h"
+
 #include "tee/Denormals.h"
 
 #include <cstdlib>
@@ -419,8 +423,13 @@ namespace tee
 
     // ---- builds ----------------------------------------------------------------------------------------------------
 
+    // One reading of a build file: tee::Build's (Build.cpp), which walks nested objects (spec.ecu.knock.on,
+    // spec.ecu.maps.camIn) and arrays, takes choices by name and keeps what the program lacks. This only lays its
+    // values out as the simulator does and reads each Spec field's elements back for the player. (It read
+    // spec.<section>.<field> alone once: every nested object went to `unknown` with a warning no rig read, and the
+    // field stayed at its default: idle, limiter and knock blocks in some sixty builds, ignored by every test rig.)
     bool parseBuild(const EnginePlayer& player, std::string_view json, std::string_view fileName, EngineBuild& build,
-                    std::string& error, std::string& warnings)
+                    std::string& error, std::string& warnings, bool strict)
     {
         const std::string file(fileName);
         build = EngineBuild{};
@@ -446,87 +455,81 @@ namespace tee
             build.name = name->get<std::string>();
         if (const auto notes = document.find("notes"); notes != document.end() && notes->is_string())
             build.notes = notes->get<std::string>();
-        const auto spec = document.find("spec");
-        if (spec == document.end())
-            return true;
-        if (!spec->is_object())
+
+        std::string e;
+        const std::unique_ptr<Fields> fields = Fields::of(player.schema(), e);
+        if (!fields)
         {
-            error = file + ": \"spec\" is an object of sections";
+            error = file + ": the program's fields: " + e;
             return false;
         }
-        for (const auto& [section, fields] : spec->items())
+        Build reader(*fields);
+        std::vector<std::string> said;
+        if (!reader.load(json, BuildPart::Whole, said, e))
         {
-            if (!fields.is_object())
+            error = file + ": " + e;
+            return false;
+        }
+        for (const std::string& w : said)
+        {
+            // a value that is no value of its field (a choice by a name it lacks: "W16") is no build, as it always was
+            // here (tee::Build takes the default with a warning, the application's way)
+            if (w.find(": not a value of its kind") != std::string::npos)
             {
-                error = file + ": spec." + section + " is an object of fields";
+                error = file + ": spec." + w.substr(5);
                 return false;
             }
-            for (const auto& [name, value] : fields.items())
+            warnings += file + ": " + w + "\n";
+        }
+        for (const auto& [path, text] : reader.unknown())
+            build.unknown[path] = text;
+        if (strict && !build.unknown.empty())
+        {
+            error = file + ": ";
+            bool first = true;
+            for (const auto& [path, text] : build.unknown)
             {
-                const std::string path = section + "." + name;
-                const int index = player.specIndex(path);
-                if (index < 0)
-                {
-                    build.unknown[path] = value.dump();
-                    warnings += file + ": spec." + path + " is no field of this simulator's: kept, and written back\n";
-                    continue;
-                }
-                const EnginePlayer::SpecField& field = player.specFields()[static_cast<std::size_t>(index)];
-                std::vector<double> values;
-                const auto one = [&](const Json& v, double& out) {
-                    if (v.is_number())
-                        out = v.get<double>();
-                    else if (v.is_boolean())
-                        out = v.get<bool>() ? 1.0 : 0.0;
-                    else if (v.is_string() && !field.choices.empty())
-                    {
-                        const auto found = std::find(field.choices.begin(), field.choices.end(), v.get<std::string>());
-                        if (found == field.choices.end())
-                            return false;
-                        out = field.minimum + static_cast<double>(found - field.choices.begin());
-                    }
-                    else
-                        return false;
-                    return true;
-                };
-                if (value.is_array())
-                {
-                    for (const Json& element : value)
-                    {
-                        double v = 0.0;
-                        if (!one(element, v))
-                        {
-                            error = file + ": spec." + path + " holds something that is no value of it";
-                            return false;
-                        }
-                        values.push_back(v);
-                    }
-                }
-                else
-                {
-                    double v = 0.0;
-                    if (!one(value, v))
-                    {
-                        error = file + ": spec." + path + " is no value of it ("
-                                + (field.choices.empty() ? std::string("a number") : "a number, or one of its choices")
-                                + ")";
-                        return false;
-                    }
-                    values.push_back(v);
-                }
-                if (values.size() > field.count)
-                {
-                    error = file + ": spec." + path + " holds more than its " + std::to_string(field.count) + " elements";
-                    return false;
-                }
-                build.values[path] = std::move(values);
+                error += (first ? "spec." : ", spec.") + path;
+                first = false;
             }
+            error += build.unknown.size() == 1 ? " is no field of this simulator's" : " are no fields of this simulator's";
+            error += " (a test rig's build must be read whole: parseBuild's strict)";
+            return false;
+        }
+
+        // the values as the simulator lays them out, then each of the player's Spec fields read from there
+        std::size_t extent = 0;
+        for (const FieldInfo& f : fields->all())
+            extent = std::max(extent, f.offset + f.size);
+        std::vector<unsigned char> image(extent, 0);
+        for (std::size_t i = 0; i < fields->all().size(); ++i)
+        {
+            const FieldInfo& f = fields->all()[i];
+            if (f.block != "spec" || f.section < 0)
+                continue;
+            const std::vector<unsigned char> bytes = reader.bytes(static_cast<int>(i));
+            if (!bytes.empty() && f.offset + bytes.size() <= image.size())
+                std::memcpy(image.data() + f.offset, bytes.data(), bytes.size());
+        }
+        for (const EnginePlayer::SpecField& field : player.specFields())
+        {
+            const Scalar scalar = field.node->scalar;
+            const std::size_t stride = scalarBytes(scalar);
+            if (stride == 0 || field.offset + stride * field.count > image.size())
+                continue;
+            std::vector<double> values;
+            for (std::size_t k = 0; k < field.count; ++k)
+            {
+                const double v = readScalar(image.data() + field.offset + k * stride, scalar);
+                values.push_back(scalar == Scalar::Float ? shortest(static_cast<float>(v)) : v);
+            }
+            build.values[field.path] = std::move(values);
         }
         return true;
     }
 
     bool loadBuild(const EnginePlayer& player, const std::filesystem::path& file, EngineBuild& build, std::string& error,
-                   std::string& warnings)
+                   std::string& warnings, bool strict)
     {
         const std::optional<std::string> text = readWhole(file);
         if (!text)
@@ -534,53 +537,70 @@ namespace tee
             error = file.generic_string() + ": cannot be read";
             return false;
         }
-        return parseBuild(player, *text, file.filename().generic_string(), build, error, warnings);
+        return parseBuild(player, *text, file.filename().generic_string(), build, error, warnings, strict);
     }
 
-    std::string buildJson(const EnginePlayer& player, const EngineBuild& build)
+    namespace
     {
-        Json document = Json::object();
-        document["format"] = "tee-build";
-        document["version"] = 1;
-        document["name"] = build.name;
-        document["notes"] = build.notes;
-        Json spec = Json::object();
-        for (const EnginePlayer::SpecField& field : player.specFields())
+        // The node at a dotted path ("ecu.knock.on"), made as objects on the way: a nested Spec field as tee::Build
+        // writes it
+        Json& nested(Json& root, const std::string& path)
         {
-            const auto found = build.values.find(field.path);
-            std::vector<double> values(field.count, field.defaultValue);
-            if (found != build.values.end())
-                std::copy(found->second.begin(), found->second.end(), values.begin());
-            const auto valueJson = [&](double v) -> Json {
-                if (!field.choices.empty() && field.isInt())
-                {
-                    const long k = std::lround(v - field.minimum);
-                    if (k >= 0 && k < static_cast<long>(field.choices.size()))
-                        return field.choices[static_cast<std::size_t>(k)];
-                }
-                if (field.isBool())
-                    return v != 0.0;
-                if (field.isInt())
-                    return std::lround(v);
-                return v;
-            };
-            const std::string name = field.path.substr(field.section.size() + 1);
-            if (field.count == 1)
-                spec[field.section][name] = valueJson(values[0]);
-            else
+            Json* at = &root;
+            std::size_t from = 0;
+            while (true)
             {
-                Json array = Json::array();
-                for (double v : values)
-                    array.push_back(valueJson(v));
-                spec[field.section][name] = array;
+                const std::size_t dot = path.find('.', from);
+                Json& next = (*at)[path.substr(from, dot == std::string::npos ? std::string::npos : dot - from)];
+                if (dot == std::string::npos)
+                    return next;
+                if (!next.is_object())
+                    next = Json::object();
+                at = &next;
+                from = dot + 1;
             }
         }
-        for (const auto& [path, text] : build.unknown)
+    } // namespace
+
+    // Written as tee::Build writes a build (one writing too: nested sections nested, a curve and a map by the points in
+    // use), from the EngineBuild's values; what was unknown written back where it was.
+    std::string buildJson(const EnginePlayer& player, const EngineBuild& build)
+    {
+        std::string e;
+        const std::unique_ptr<Fields> fields = Fields::of(player.schema(), e);
+        if (!fields)
+            return {};
+        Build writer(*fields);
+        writer.name = build.name;
+        writer.notes = build.notes;
+        for (std::size_t i = 0; i < fields->all().size(); ++i)
         {
-            const std::size_t dot = path.find('.');
-            spec[path.substr(0, dot)][path.substr(dot + 1)] = Json::parse(text, nullptr, false);
+            const FieldInfo& f = fields->all()[i];
+            if (f.block != "spec" || f.section < 0)
+                continue;
+            // the field's values, its leaves one after the other ("ecu.maps.boost" from ".x", ".y", ".z", ".nx", ".ny")
+            std::vector<double> values = writer.values(static_cast<int>(i));
+            std::size_t at = 0;
+            bool any = false;
+            for (const FieldInfo::Leaf& leaf : f.leaves)
+            {
+                const std::string path = f.path.substr(5) + (leaf.name.empty() ? "" : "." + leaf.name);
+                if (const auto found = build.values.find(path); found != build.values.end())
+                {
+                    for (std::size_t k = 0; k < leaf.count && k < found->second.size() && at + k < values.size(); ++k)
+                        values[at + k] = found->second[k];
+                    any = true;
+                }
+                at += leaf.count;
+            }
+            if (any)
+                writer.setValues(static_cast<int>(i), std::move(values));
         }
-        document["spec"] = spec;
+        Json document = Json::parse(writer.save(), nullptr, false);
+        if (!document.is_object())
+            return {};
+        for (const auto& [path, text] : build.unknown)
+            nested(document["spec"], path) = Json::parse(text, nullptr, false);
         return document.dump(2) + "\n";
     }
 

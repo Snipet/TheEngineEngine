@@ -1,0 +1,82 @@
+diff --git a/sim/combustion/charge1.fm b/sim/combustion/charge1.fm
+index b5976986..708dd024 100644
+--- a/sim/combustion/charge1.fm
++++ b/sim/combustion/charge1.fm
+@@ -43,8 +43,11 @@ module Charge1
+     // top the spark comes (negative before it); u: a uniform number in [0, 1) for the misfire's chance; extra: the fuel
+     // injected over what the mixture holds (a cold start's enrichment: the extra wets the walls and the oil and does not
+     // reach the pipe as fuel that could light there; 1 warm)
++    // carried: the physical cylinder (conserve 1) carries a late burn's remainder out itself (Cylinder::exUnburnedJ): the
++    // overrun's late spark then burns its whole charge in the cylinder as its timing allows, and only the mixture's own
++    // leftover goes to the store here; Combustion adds what the cylinder let out at its exhaust's closing (card N1, D's 76690a7)
+     void make(int kind, int firing, float air, float oxy, float lambda, float direct, float t, float share, float factor,
+-              float sparkAfter, float u, float extra)
++              float sparkAfter, float u, float extra, bool carried)
+     {
+         const int f = fuelRow(kind);
+         heat = 0.0f;
+@@ -71,7 +74,7 @@ module Charge1
+         }
+         lit = true;
+         float inCyl = 1.0f;
+-        if (firing == CHARGE_OVERRUN)
++        if (firing == CHARGE_OVERRUN && !carried)
+             inCyl = fminf(fmaxf(1.0f - sparkAfter / 60.0f, 0.0f), 1.0f);
+         heat = mix.heat * share * factor * inCyl;
+         // what is not burned: the mixture's own leftover, the late burn's, and the air its fuel did not need
+diff --git a/sim/combustion/combustion.fm b/sim/combustion/combustion.fm
+index b595a33b..e3a7406a 100644
+--- a/sim/combustion/combustion.fm
++++ b/sim/combustion/combustion.fm
+@@ -68,6 +68,9 @@ module Combustion
+     EndGas gas[MAX_CYL];
+     DieselFields diesel;
+     int ticks;          // samples, for the end gas's tick every 4
++    float jPerKg[MAX_CYL];  // each cylinder's last charge: the heat its burned fuel gives (J/kg, the walls' share in it)
++    double popJ;        // running total (J): the heat let out unburned by burns still running at exhaust opening, handed to
++                        // the ECU's store (the energy account's other side, card N1)
+ 
+     void setup(float rateIn, Noise* noise, Ecu* ecuIn, Heat* heatIn, Layout* layIn, Pop* pops, FuelSpec* fuelIn, EngineSpec* engIn)
+     {
+@@ -349,7 +352,7 @@ module Combustion
+         if (f1)
+         {
+             one.make(fuel->grade, firing, burnable, oxygen, lambda, fuel->direct, cy->t, share, factor, -adv,
+-                     0.5f + 0.5f * nz->rnd(), extra);
++                     0.5f + 0.5f * nz->rnd(), extra, cy->conserve != 0);
+             q = one.heat;
+             outFuel = one.outFuel;
+             outAir = one.outAir;
+@@ -374,6 +377,10 @@ module Combustion
+             const int b = lay->topo == 0 ? 0 : lay->bank[ci];
+             ecu->one.account.add(b, outFuel, outAir);
+         }
++        {
++            const float burnedFuel = q > 0.0f && f1 ? one.mix.fuel - one.outFuel : 0.0f;
++            jPerKg[ci < MAX_CYL ? ci : MAX_CYL - 1] = burnedFuel > 1.0e-12f ? q / burnedFuel : 0.0f;
++        }
+         cy->qTot = q;
+         cy->lateFuel = 0;
+         cy->phi = q > 0.0f ? 1.0f / fmaxf(lambda, 0.3f) : 0.0f;   // (the physical cylinder's gamma reads it, a cut charge plain air's: card D)
+@@ -434,6 +441,21 @@ module Combustion
+         // stoichiometric petrol flame reaches; a late spark's pops are this, the flame burning on in the header). Card
+         // N1 measured H9's fuelled overrun (30 degrees retarded): every fired charge still burning at its opening, while
+         // its gas then read 650 to 1050 K and the hold fell to 530 to 690 K between them
++        // (the physical cylinder: what a burn still running at the exhaust's opening let out unburned goes to its bank's
++        // store at the exhaust's closing, as the fuel it is (its heat over the heat a kilogram of it gave in this charge)
++        // and that fuel's own air: the store's books and the cylinder's agree (the energy account: popJ against the
++        // cylinders' bookOut))
++        if (cy->conserve != 0 && cy->evcNow && cy->exUnburnedLast > 0.0f && ecu->model1())
++        {
++            const float jk = jPerKg[c < MAX_CYL ? c : MAX_CYL - 1];
++            if (jk > 0.0f)
++            {
++                const int b = lay->topo == 0 ? 0 : (lay->bank[c] == 1 ? 1 : 0);
++                const float f = cy->exUnburnedLast / jk;
++                ecu->one.account.add(b, f, f * kFuelAfr[fuelRow(fuel->grade)]);
++            }
++            popJ += (double)cy->exUnburnedLast;
++        }
+         if (cy->evoNow)
+         {
+             const int b = lay->topo == 0 ? 0 : (lay->bank[c] == 1 ? 1 : 0);

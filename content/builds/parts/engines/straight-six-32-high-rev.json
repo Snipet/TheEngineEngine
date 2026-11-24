@@ -80,7 +80,7 @@
     },
     "intake": {
       "model": 1,
-      "runnerLength": 0.51,
+      "runnerLength": 0.3,
       "throttleKind": "A body a runner"
     },
     "boost": {
@@ -99,7 +99,8 @@
       "mufKind": [
         1,
         1
-      ]
+      ],
+      "headers": 1.0
     },
     "fuel": {
       "kind": "Gasoline",

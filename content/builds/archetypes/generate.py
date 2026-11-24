@@ -178,16 +178,25 @@ arch(slug="air-cooled-flat-six-36", runner=0.35, name="Air-cooled flat six", geo
      grade="Premium (91)", car="rear-engine-classic", timing="Chain", fan="Viscous clutch",
      notes="A 3.6 L air- and oil-cooled flat six, two valves a cylinder on rockers, dry sump: 100 x 76.4 mm "
            "(3600 cc), 11.3:1; 184 kW at 6100 rpm and 310 N m at 4800 (the 1989 M64-type engine; Wikipedia, "
-           "auto-data.net). The cooling fan's whir is the viscous fan. In a rear-engined coupe, five-speed manual.")
+           "auto-data.net). The real intake is a two-stage resonance intake, a "
+           "flap between its two plenum halves (closed some 3000 to 5000-5500 rpm at large throttle: forums only, "
+           "Rennlist, Pelican Parts), its runners' lengths not found in any source. The cooling fan's whir is the "
+           "viscous fan. In a rear-engined coupe, five-speed manual.")
 arch(slug="big-block-74-pushrod-v8", name="Big-block 7.4 L pushrod V8", geo="ref-12-v8-cross",
-     layout="V8 crossplane", bore=107.95, stroke=101.6, rod=155.8, cr=10.25, valves=2, dIn=52.6, dEx=44.5,
-     cam=(282, 224, 11.9, 110, 290, 234, 11.9, 114), train="Pushrod", redline=5600, idle=650,
-     intake=dict(runnerLength=0.20, plenumVolume=0.003), friction="Flat tappet", grade="Premium (91)",
+     # the 1972 LS5's 8.5:1 (over-drive-magazine.com's 1972 Chevelle fact sheet; a corvetteforum post agrees; one
+     # other says 8.25), the net-rated engine its band is (the lead, 20:46: hardware and target the same engine)
+     # its cam and valves: the LS5's cam 3883986, 213/217 deg (at 0.050 in, as quoted elsewhere) and .460/.488 in
+     # lift, the oval-port heads' 2.06/1.72 in valves (clacoa.com's big-block ID table, an enthusiast reference); the
+     # seat 268/274 deg (a corvetteforum post, unverified)
+     layout="V8 crossplane", bore=107.95, stroke=101.6, rod=155.8, cr=8.5, valves=2, dIn=52.3, dEx=43.7,
+     cam=(268, 213, 11.7, 110, 274, 217, 12.4, 114), train="Pushrod", redline=5600, idle=650,
+     intake=dict(runnerLength=0.20, plenumVolume=0.003), friction="Flat tappet", grade="Regular (87)",
      car="muscle-auto", timing="Chain", fan="Viscous clutch",
-     notes="A 1970-era 454 cubic inch big block: 4.25 x 4.00 in (107.95 x 101.6 mm, 7440 cc), 10.25:1, two valves "
-           "on pushrods and a flat-tappet hydraulic cam, one four-barrel-sized throttle over a single plenum. Rated "
-           "some 250 to 300 kW net and 650 N m (makers' net figures of the era; gross ratings were 20 % higher). "
-           "In a heavy muscle car with a three-speed automatic.")
+     notes="A 1972 454 cubic inch big block (the LS5): 4.25 x 4.00 in (107.95 x 101.6 mm, 7440 cc), 8.5:1, two "
+           "valves on pushrods and the LS5's flat-tappet hydraulic cam (3883986: clacoa.com), one four-barrel-sized "
+           "throttle over a single plenum. Rated 270 hp SAE net at 4000 rpm and 390 lb ft at 3200 (201 kW, 529 N m: "
+           "carnut.com, over-drive-magazine.com); 1973-74's LS4 270-275 hp. In a heavy muscle car with a three-speed "
+           "automatic.")
 arch(slug="rotary-twin-13", name="Rotary twin", geo="ref-16-rotary-2", layout="Rotary", displacement=0.001308,
      cr=9.0, redline=8000, idle=800,
      boost=dict(kind="Twin turbos", layout="Sequential", target=0.7, spring=0.5),
@@ -219,17 +228,22 @@ arch(slug="supercharged-v8-62", runner=0.3, name="Supercharged 6.2 L V8", geo="r
            "some 0.6 bar (the LSA kind: 415 kW at 6100 rpm, 746 N m at 3800; gmauthority.com, a community spec "
            "table for the compression). In a heavy six-speed coupe.")
 arch(slug="small-block-57-carb", name="Small-block 5.7 L, carburettor-like", geo="ref-12-v8-cross",
-     layout="V8 crossplane", bore=101.6, stroke=88.4, rod=144.8, cr=9.0, valves=2, dIn=49.3, dEx=38.1,
+     # the L48's 8.5:1 (corvsport.com's 1977 table; the L82 9.0) and its "2 into 1 into 2" exhaust: both banks into
+     # one converter, split again behind it to two mufflers (restore-an-old-car.com's C3 exhaust; NCRS forum: the last
+     # true duals 1974): here one side through one converter and muffler (N3, 20:34)
+     layout="V8 crossplane", bore=101.6, stroke=88.4, rod=144.8, cr=8.5, valves=2, dIn=49.3, dEx=38.1,
+     exhaust={"sides": 1, "converter": [1, 1], "mufKind": [2, 2]},
      # the L48's cam (N3, 20:06: toward the target's middle, not the hotter L82's): about 195/202 deg at 0.050 in and
      # 0.390/0.410 in lift (from memory, firm to some 5 deg), the seat some 54 deg longer as this hydraulic flat tappet's
      cam=(251, 197, 9.9, 110, 256, 204, 10.4, 114), train="Pushrod", redline=5500, idle=700,
      intake=dict(runnerLength=0.18, plenumVolume=0.0025), friction="Flat tappet", grade="Regular (87)",
      car="muscle-manual", timing="Chain", fan="Viscous clutch",
-     notes="A 350 cubic inch small block (4.00 x 3.48 in: 101.6 x 88.4 mm, 5733 cc), 9:1, two valves on pushrods, a "
+     notes="A 350 cubic inch small block (4.00 x 3.48 in: 101.6 x 88.4 mm, 5733 cc), 8.5:1, two valves on pushrods, a "
            "flat-tappet cam (the L48's), one big throttle over an open plenum as a four-barrel carburettor's. The L48 "
            "of 1975 to 1980 is rated 123 to 145 kW net (165 to 195 hp) and 346 to 380 N m (255 to 280 lb ft), 1977's "
            "180 hp at 4000 rpm and 270 lb ft at 2400; the L82 157 kW at 5200 and 346 N m at 3600 (SAE net, looked up: "
-           "corvsport.com, corvetteactioncenter.com). Four-speed manual, live axle.")
+           "corvsport.com, corvetteactioncenter.com). One converter for both banks (2 into 1 into 2). Four-speed manual, "
+           "live axle.")
 arch(slug="v10-52", runner=0.28, name="V10 5.2 L", geo="v10-90", layout="V10", bore=84.5, stroke=92.8, rod=154.0, cr=12.5,
      valves=4, dIn=33.8, dEx=28.0, cam=(268, 240, 11.8, 108, 260, 232, 10.8, 112), train="Finger", phase=(42, 42),
      redline=8700, idle=900, direct=True, grade="Premium (91)", car="awd-supercar", timing="Chain",
@@ -544,12 +558,27 @@ def build(a):
     i = {"model": 1}
     if "runner" in a:
         i["runnerLength"] = a["runner"]
-    if "boost" not in a and a["layout"] != "Rotary" and a["slug"] in TORQUE_PEAK and "runnerLength2" not in a.get("intake", {}):
-        # a naturally aspirated engine's runner tuned to its kind's torque-peak speed: from N1's measurements on the
-        # 3.2 six (best VE at 5000 rpm on 0.50 m, 6000-7000 on 0.35, 4000-4500 on 0.70), L = 0.50 (5000 / rpm)^1.3
-        lo, hi = TORQUE_PEAK[a["slug"]]
-        i["runnerLength"] = round(min(max(0.50 * (5000.0 / (0.5 * (lo + hi))) ** 1.3, 0.22), 0.9), 2)
+    # A part never comes from the same engine's target rows (the lead, 20:46: the old rule here, 0.5 x (5000 / the
+    # target's torque-peak rpm)^1.3, tuned each runner to the very speed its torque row is read at). A naturally
+    # aspirated road engine without a runner of its own takes the class default: 0.40 m from the valve to the plenum
+    # (judgement; the one figure found, the LS7's manifold runner some 280 mm on its centreline plus its port, a forum's
+    # measurement, agrees). No source gave the seven cited engines' own (searched 24 Nov: LS7, VR6 AAA, 3800 L36,
+    # Coyote 3, MX-5 BP, the 964's two-plenum system).
+    if "boost" not in a and a["layout"] != "Rotary" and "runner" not in a and "runnerLength2" not in a.get("intake", {}):
+        i["runnerLength"] = 0.40
     i.update(a.get("intake", {}))
+    rule_runner = "runnerLength" not in a.get("intake", {}) and a["layout"] != "Rotary"
+    # the naturally aspirated engines' runners by their manifold's class (the lead, 20:52), over any length set by
+    # hand above: written down before any table was run on them, and never from the engine's own rows
+    if a["slug"] in MANIFOLD:
+        cls = MANIFOLD[a["slug"]]
+        for k_ in ("runnerLength2", "runnerSwitch"):
+            i.pop(k_, None)
+        i["runnerLength"] = RUNNER[cls][0]
+        if a["slug"] in SWITCHED:
+            i["runnerLength2"] = round(0.65 * RUNNER[cls][0], 2)
+            i["runnerSwitch"] = round(0.65 * a["redline"] * RPM, 1)
+        rule_runner = False
 
     bo = {"model": "Machine", "kind": "Natural", "level": 0.0, "blowOff": 0.7}
     if "boost" in a:
@@ -577,11 +606,13 @@ def build(a):
             if a.get("gateDiameter"):
                 bo["gateDiameter"] = a["gateDiameter"]
             bo["icEffect"] = 0.75
-        # the intercooler sized for the engine's air at its rated power and the charge pipes for its size (N2, 19:55:
-        # the defaults, 0.25 kg/s and 5 L, suit 2 to 3 L): air some 1.1 g/s a kW for petrol near lambda 0.85, 1.7 for a
-        # diesel's lean full load (D2's 15 L truck: 0.8 kg/s); the pipes twice the swept volume, 1 to 20 L
-        kw = _val.T[a["slug"]][0][1] if a["slug"] in _val.T else 200
-        bo["icFlow"] = round(min(max(kw * (0.0017 if a.get("diesel") else 0.0011), 0.05), 2.0), 3)
+        # the intercooler sized for the engine's air and the charge pipes for its size (N2, 19:55: the defaults, 0.25
+        # kg/s and 5 L, suit 2 to 3 L); the pipes twice the swept volume, 1 to 20 L
+        # (from the engine's own hardware, never its power row: the air it swallows at its limiter, VE 0.9, at its
+        # boost target over the air)
+        swept = a["displacement"] if "displacement" in a else n * math.pi / 4 * (a["bore"] / 1000) ** 2 * a["stroke"] / 1000
+        air = 1.2 * swept * a["redline"] / 120.0 * 0.9 * (1.0 + k["target"])
+        bo["icFlow"] = round(min(max(air, 0.05), 2.0), 3)
         bo["chargeVolume"] = round(min(max(2.0 * a["displacement"] if "displacement" in a else
                                            2.0 * n * math.pi / 4 * (a["bore"] / 1000) ** 2 * a["stroke"] / 1000,
                                            0.001), 0.02), 4)
@@ -589,6 +620,8 @@ def build(a):
         bo["model"] = "Machine"
 
     x = {"model": "Builder", "sides": 2 if n >= 6 and a["layout"] not in ("Inline 6",) else 1, "converter": [1, 1], "mufKind": [2, 2]}
+    if a["slug"] in EXHAUST_CLASS:
+        x["headers"] = HEADER[EXHAUST_CLASS[a["slug"]]][0]
     x.update(a.get("exhaust", {}))
 
     diesel = a.get("diesel", False)
@@ -626,6 +659,12 @@ def build(a):
         t["launch.on"] = True
     if "boost" in a:
         t["knock.on"] = True
+    if a["slug"] in CAMS:
+        # the maker's calibrated intake cam map, baked by cams.py (C's tee-dyno --bake-cam: the cam swept at full load,
+        # the best advance by speed), the same full-load row at no load and at three times the air (Bake.cpp's form)
+        pts = CAMS[a["slug"]][:16]
+        t["maps.camInAuto"] = False
+        t["maps.camIn"] = {"x": [w for w, _ in pts], "y": [0.0, 3.0], "z": [[adv, adv] for _, adv in pts]}
     if "boostTaper" in a:
         # the class's power cap met as its makers meet it: the boost target falls with speed (a baked boost map,
         # every gear alike; rpm and kPa over the air from N2's measurements on the kei with the resized gate)
@@ -661,12 +700,105 @@ def build(a):
     # package L's listener on: every source where it is on the car; the first camera behind the car in the open,
     # the engine where the class carries it
     snd = {"model": "Places", "camera": "Rear", "place": "Field", "ground": "Asphalt",
-           "enginePlace": ENGINE_PLACE.get(a["car"], "Front")}
+           "enginePlace": ENGINE_PLACE.get(a["car"], "Front"), "level": LEVELS.get(a["slug"], 0.0)}
     spec = {"engine": e, "valve": v, "intake": i, "boost": bo, "exhaust": x, "fuel": f, "ecu": nest(t),
             "car": car, "env": {"temperature": 288.15, "pressure": 101325.0}, "voices": vo, "sound": snd}
     switches_on(spec, a["slug"])
-    return {"format": "tee-build", "version": 1, "name": a["name"], "notes": a["notes"], "spec": spec}
+    notes = a["notes"]
+    if a["slug"] in EXHAUST_CLASS:
+        hc = EXHAUST_CLASS[a["slug"]]
+        notes += (" Its exhaust: %s, the primaries %.2f times the layout's length: the class the real engine carries "
+                  "(recalled), its length JUDGEMENT." % (HEADER[hc][1], math.exp(0.9808293 * (HEADER[hc][0] - 0.5))))
+    if a["slug"] in CAMS:
+        notes += " Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py)."
+    if a["slug"] in MANIFOLD:
+        cls = MANIFOLD[a["slug"]]
+        notes += (" Its intake: the %s class's runner, %.2f m from the valve to the plenum (%s)%s: JUDGEMENT, a class "
+                  "default, not the real engine's (no source found)." % (
+                      cls, RUNNER[cls][0], RUNNER[cls][1],
+                      "; a second, short runner of %.2f m above %.0f rpm, as the real engine switches (%s; its "
+                      "lengths and speed the class's judgement)" % (i["runnerLength2"], i["runnerSwitch"] / RPM,
+                                                                    SWITCHED[a["slug"]])
+                      if a["slug"] in SWITCHED else ""))
+    elif rule_runner and "runnerLength" in i and "JUDGEMENT" not in notes:
+        notes += (" Its intake runner, %.2f m from the valve to the plenum, is %s: JUDGEMENT, not the real engine's (no "
+                  "source found)." % (i["runnerLength"], "a hand-set length" if "runner" in a else "the class default"))
+    return {"format": "tee-build", "version": 1, "name": a["name"], "notes": notes, "spec": spec}
 
+
+# each build's sound.level trim (dB), measured by levels.py (L's scheme: a free rev to a 0.3 peak)
+def _levels():
+    path = os.path.join(HERE, "sound-levels.tsv")
+    if not os.path.exists(path):
+        return {}
+    return {r[0]: float(r[2]) for r in (l.rstrip("\n").split("\t") for l in open(path)) if r[0][:1] != "#"}
+
+
+LEVELS = _levels()
+
+# The naturally aspirated engines' intake runners by the class of their manifold (the lead, 20:52), valve to plenum,
+# JUDGEMENT, written down before any table ran on them (24 Nov, 20:55 UTC) and never chosen from an engine's rows;
+# a second, switched runner only where the real engine switches (0.65 of the class's length above 0.65 of the limiter:
+# judgement). The class goes by the manifold the real engine has, not by its targets.
+RUNNER = {
+    "carburettor": (0.20, "a four-barrel over a dual-plane or open plenum, 1960s to 80s"),
+    "long-runner": (0.45, "a port-injected road engine's tuned long runners, 1985 to 2005"),
+    "modern": (0.38, "a road engine's composite plenum manifold, 2005 on"),
+    "sports": (0.30, "a high-revving engine's short runners or a throttle a cylinder"),
+}
+MANIFOLD = {
+    "big-block-74-pushrod-v8": "carburettor", "small-block-57-carb": "carburettor",
+    "air-cooled-flat-six-36": "long-runner", "vr6-28": "long-runner", "pushrod-v6-38": "long-runner",
+    "twin-cam-roadster-18": "long-runner", "hot-hatch-16-16v": "long-runner",
+    "big-bore-70-pushrod-v8": "modern", "four-cam-v8-50": "modern", "economy-four-15": "modern",
+    "v6-35-na": "modern",
+    "straight-six-32-high-rev": "sports", "two-stage-cam-20": "sports", "flat-plane-v8-45": "sports",
+    "v10-52": "sports", "v12-65": "sports",
+}
+SWITCHED = {
+    "v6-35-na": "the 2GR-FE's ACIS, a valve in the upper manifold closed at low and middle speeds (toyota-club.net; "
+                "service-manual mirrors give some 3600 to 4450 rpm, unverified)",
+    "flat-plane-v8-45": "the 458's three throttle valves between its two plenums giving four configurations, with "
+                        "short, almost straight tracts (Ferrari's launch text, pistonheads.com): a plenum's geometry "
+                        "switched, here as a second runner",
+}
+
+# The exhaust headers by the class the real engine carries (the lead, 21:05), JUDGEMENT, written down before any table
+# ran on them (24 Nov, 21:15 UTC) and never chosen from an engine's rows: exhaust.headers, the primaries 0.61 (0), 1.0
+# (0.5) or 1.63 (1) times the layout's length. The class goes by the real engine's manifold (recalled), not by targets.
+HEADER = {
+    "log": (0.0, "a cast or short log manifold"),
+    "tubular": (0.5, "short tubular headers"),
+    "tuned": (1.0, "tuned long-primary headers"),
+}
+EXHAUST_CLASS = {
+    "big-block-74-pushrod-v8": "log", "small-block-57-carb": "log", "pushrod-v6-38": "log", "vr6-28": "log",
+    "economy-four-15": "log", "v6-35-na": "log",
+    "boxer-four-turbo-unequal": "log", "inline-five-turbo-rally": "log", "kei-660-triple-turbo": "log",
+    "three-cylinder-10-turbo": "log", "turbo-four-20-gdi": "log", "straight-six-twin-turbo-30": "log",
+    "flat-plane-v8-39-twin-turbo": "log", "twin-turbo-hot-vee-v8-40": "log", "v6-35-twin-turbo-pickup": "log",
+    "diesel-20-common-rail": "log", "pickup-diesel-67-inline-six": "log", "tractor-15-inline-six": "log",
+    "air-cooled-flat-six-36": "tubular", "big-bore-70-pushrod-v8": "tubular", "four-cam-v8-50": "tubular",
+    "twin-cam-roadster-18": "tubular", "hot-hatch-16-16v": "tubular", "supercharged-v8-62": "tubular",
+    "flat-plane-v8-45": "tuned", "v10-52": "tuned", "v12-65": "tuned", "two-stage-cam-20": "tuned",
+    "straight-six-32-high-rev": "tuned",
+}
+
+
+def _cams():
+    """Each phased archetype's baked intake cam map (cams.py: tee-dyno --bake-cam), {slug: [(rad/s, advance)]}."""
+    path = os.path.join(HERE, "cam-maps.tsv")
+    out = {}
+    if os.path.exists(path):
+        for line in open(path):
+            if line[:1] == "#":
+                continue
+            slug, w, adv = line.rstrip("\n").split("\t")
+            out.setdefault(slug, []).append((float(w), float(adv)))
+    return out
+
+
+CAMS = _cams()
 
 # where each class carries its engine (the listener's paths to each camera)
 ENGINE_PLACE = {"mid-engine": "Mid", "awd-supercar": "Mid", "rear-engine-classic": "Rear"}
@@ -751,6 +883,9 @@ def main():
                       "Then drive: in first, hold the brake, press the launch button, floor the pedal and let go for a "
                       "launch-control start (traction control holds the wheelspin), and listen to the direct injection's "
                       "tick and the turbo's whistle as the dual clutch shifts.\n\n" + first["notes"])
+    # L (20:27): for the first minute standing, the Side camera hears the exhaust and the bay together
+    first["spec"]["sound"]["camera"] = "Side"
+    first["spec"]["sound"]["level"] = LEVELS.get("first", 0.0)
     write(os.path.join(ROOT, "content", "builds", "first.json"), first)
     loose_parts(A)
     manual(A)
