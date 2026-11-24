@@ -5,6 +5,7 @@
 #include "tee/Reload.h"
 #include "tee/Replay.h"
 
+#include <functional>
 #include <catch2/catch_test_macros.hpp>
 
 #include <chrono>
@@ -146,17 +147,29 @@ TEST_CASE("a reload while a made-up audio thread plays: the audio thread takes t
             std::this_thread::sleep_for(std::chrono::microseconds(200));
         }
     });
-    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+    // waits on the audio thread's progress, not on time (a loaded runner's sleeps last milliseconds, Windows' some 15)
     TelemetryFrame t;
-    REQUIRE(host.telemetry(t));
+    const auto until = [&](const std::function<bool()>& ready) {
+        const auto end = std::chrono::steady_clock::now() + std::chrono::seconds(60);
+        while (std::chrono::steady_clock::now() < end)
+        {
+            if (host.telemetry(t) && ready())
+                return true;
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        }
+        return false;
+    };
+    REQUIRE(until([&] { return tel(host, t, "tel.engine.speed") > 100.0; }));   // started and running
     const double calls = tel(host, t, "tel.probe.calls");
     auto second = edited(standinFiles(), error);
     REQUIRE(second != nullptr);
     REQUIRE(host.reload(second, error));
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    REQUIRE(host.telemetry(t));
+    const bool swapped = until([&] {
+        return t.generation == second->fields().generation() && tel(host, t, "tel.probe.calls") > calls + 10;
+    });
     done = true;
     audio.join();
+    REQUIRE(swapped);
     CHECK(t.generation == second->fields().generation());
     CHECK(tel(host, t, "tel.probe.calls") > calls);
     CHECK(tel(host, t, "tel.engine.speed") > 50.0);
