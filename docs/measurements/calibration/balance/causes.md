@@ -1295,3 +1295,26 @@ cells again, the 0.40 match on the ruled lobe: 1800 (intake 30, exhaust +30) 330
 (331 before); 1500 (intake 15, exhaust +20) 300.5 at 113 kPa (303); 6200 as built 274 at 81.5 kPa (272). Within the
 grid's scatter: the table stands. The cooling now shows as retard where the controller has room (the steward's tee-dyno
 runs: 1800 as built 0 to 3.3 degrees), not as torque.
+
+**B-3 on the build as P made it** (95f3f3f: the EA888 gen 3, two-stage exhaust, phasers 60 and 30, N1's baked intake maps;
+N1's dpOverlap at fixed phases, 0ad99dde; 23:41 by `date -u`). The build as built (its 0.85 match), full load:
+
+| rpm | N m | boost kPa | residual | knock ret. | intake / exhaust phase | dpOverlap kPa | gate |
+|---|---|---|---|---|---|---|---|
+| 1500 | 189 | 7.5 | 0.044 | 1.5 | 60 / 0 | -3.2 | 0 |
+| 1800 | 218 | 17.4 | 0.027 | 0.8 | 60 / 0 | 0.1 | 0 |
+| 2500 | 300 | 68.1 | 0.035 | 8.9 | 41 / 0 | 0.6 | 0 |
+| 4000 | 351 | 120.9 | 0.065 | 10.0 | 13 / 0 | -72.8 | 0.28 |
+| 6200 | 283 | 82.0 | 0.060 | 0 | 10 / 0 | -84.0 | 0.56 |
+
+Against 333 to 368 / 237 to 262: the breathing at low speed is now clean (residual 3 to 4 %, the overlap's pressure about
+0 at the baked phases); what is short at 1500 to 2500 is the 0.85 match's spool (7.5 and 17 kPa: item 3 of the table,
+N2's). At 4000 the curve is met; 6200 is 283 (8 % over 262; the turbine's size, as before). The exhaust phaser sits at 0
+at full load (the automatic exhaust schedule asks nothing there).
+
+On the 0.40 match on this build (the short lobe is the build's now; intake through camIn):
+intake 30: 233 N m at 1500 (64 kPa), 336 at 1800 (122); with the exhaust lobe 30 degrees earlier (exCentre 118):
+327 at 1500 (128 kPa), 331 at 1800. dpOverlap at intake 30: -11.4 / -7.2 kPa; with the exhaust earlier -42.3 / -45.4,
+while the torque rises at 1500 by 40 %: the reading, taken around the overlap's top, does not rank the exhaust axis (the
+exhaust closing earlier shortens the overlap it reads over). A bake should rank by torque, not by it. (My "long lobe"
+rows at this merge were on the build's short lobe: the lobe P put in; withdrawn as long-lobe readings.)
