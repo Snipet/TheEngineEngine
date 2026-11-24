@@ -129,6 +129,11 @@ namespace combo
     const Known* known(const std::string& comboName, const std::string& build, const std::string& scenario,
                        const std::string& check);
 
+    // The lead's ruling (23:15): judge's "click-shift-cut" (a step within 42 at an upshift's cut) is the engine's own
+    // event for a combination with ecu.model on and fuel.model off; report() accepts it there and nowhere else.
+    bool holds(const std::string& comboName, const std::string& sw);   // "all", or one of its '+'-joined names
+    bool shiftCutRuled(const std::string& comboName, const Failure& f);
+
     // Reports a verdict through Catch: each failure that is not known fails the test (FAIL_CHECK), a known one is a
     // WARN naming its finding. Returns how many failures were known.
     int report(const Verdict& v, const std::string& comboName, const std::string& build, const std::string& scenario);
