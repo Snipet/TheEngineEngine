@@ -47,8 +47,8 @@ tee_pin(fminus
 # The pin moves to the tag v0.28.0 when that release is made.
 tee_pin(funkgui
   REPOSITORY "https://github.com/Snipet/FunkGui.git"
-  COMMIT 9ef9590cd4f97c23e3d84c3d623174b7338b968a      # claude/awesome-gates-ntdb58, 2026-11-24: desktop stage 1
-  VERSION 0.28.0-9ef9590
+  COMMIT 15e3775088203e2893b471f80f77b8d57c50fc4b      # claude/awesome-gates-ntdb58, 2026-11-24: desktop stage 1 and
+  VERSION 0.28.0-15e3775                               # menus, file choosers, preferences; run by a person on Windows
   LICENSE GPL-3.0-only)
 
 # bgfx, under FunkGui's GPU layer (TEE_BUILD_APP only): bgfx.cmake and the three repositories it holds as submodules,
