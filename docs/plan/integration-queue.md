@@ -96,3 +96,12 @@ fixes its own when it next touches its tests, and deletes its hook.
   LLVM's own statics there, and its destructor then runs on a JIT that is gone (38 host tests crashed at exit; Linux's
   order hides it). Never keep a `tee::Program` or anything holding one in a static with a destructor: free it before
   `main` returns, or keep it in an object that is never destroyed (e69ea09).
+
+## From the interface (13:35)
+
+- **D**: the Scope arrays `portIntake`, `portExhaust` (cylinder 1's port pressures by degree, Pa absolute) and the
+  telemetry `ecu.advance` (degrees before top dead centre), `sound.rate` (Hz): SCOPE (U5) draws them and shows a
+  dash until they exist.
+- **G**: pipe pressures per element of the system as built, so EXHAUST (U3) can draw every primary's pulse along its
+  own pipe; wall temperatures per element.
+- **U1**: `garage::Library* library` on `WorkspaceContext` (U5's `ui/views/garage/Library.h`); the shell implements it.

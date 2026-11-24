@@ -15,6 +15,17 @@
 #include <memory>
 #include <string>
 
+namespace tee::input
+{
+    class Controls;
+}
+
+namespace tee::files
+{
+    class BuildFile;
+    class BuildLibrary;
+}
+
 namespace tee::app
 {
     // Runs it. 0: done, and every check of the script held. 1: a check failed, or a file could not be written. 2: the
@@ -26,7 +37,8 @@ namespace tee::app
 
     // The Panel for this run, and what it needs kept alive beside it.
     //   the simulator (--engine sim), in a build with the interface's frame: tee::ui::AppFrame over the engine's
-    //     tee::Build (a BuildDoc, the user's Units, the garage's builds);
+    //     tee::Build (a BuildDoc, the user's Units, the garage's builds), its Scope (SimScope) and its dyno
+    //     (SimDyno, app/FrameSources.h), opened on --workspace and at --size;
     //   the reference: the interface's tee::ui::makeMainPanel (the reference's own panel);
     //   --panel plain, a program that did not start, or a build with no interface package: the shell's plain Panel.
     struct Shown
@@ -35,6 +47,17 @@ namespace tee::app
         std::unique_ptr<funkgui::Panel> panel;
         // The units as the frame has them now, as the settings file keeps them; empty function: no frame.
         std::function<std::string()> unitChoices;
+        // Once a frame, before the Panel ticks (the Scope's copy made stale); empty: nothing to do.
+        std::function<void()> frame;
+        // Waits up to `seconds` for the dyno's first predicted curve (a picture that should show it); false: none
+        // came, or there is no dyno. Empty function: no frame.
+        std::function<bool(double)> waitForDyno;
+        // Not empty: what the options asked for could not be shown (a --workspace that is none, or with no frame);
+        // the run stops with it.
+        std::string problem;
+        // The simulator's document on disk and the library of builds (null: not the simulator's frame). Owned by keep.
+        files::BuildFile* document = nullptr;
+        files::BuildLibrary* library = nullptr;
 
         Shown() = default;
         Shown(Shown&&) = default;
@@ -42,5 +65,6 @@ namespace tee::app
         ~Shown() { panel.reset(); }                 // the Panel first: it holds references into `keep`
     };
     struct Engine;
-    Shown makePanel(const Options&, Engine&, const AppServices&);
+    // `controls` gives the Panel's services and takes the frame's mode and clutch; it outlives the Panel.
+    Shown makePanel(const Options&, Engine&, input::Controls& controls);
 }
