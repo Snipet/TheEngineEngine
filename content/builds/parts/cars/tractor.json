@@ -18,7 +18,7 @@
       "cdA": 6.0,
       "tyre": "Truck",
       "tyreRadius": 0.51,
-      "gearbox": "Manual",
+      "gearbox": "Eighteen-speed",
       "finalDrive": 3.55,
       "wheelInertia": 40.0,
       "gears": 18,
