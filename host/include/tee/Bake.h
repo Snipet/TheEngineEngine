@@ -30,6 +30,13 @@ namespace tee
     {
         double step = 10.0;           // degrees of advance between cells, from 0 to spec.valve.inPhaseRange
         double knockLimit = 2.0;      // degrees of knock retard over the parked cell's that set a cell aside
+        // Between each two speeds the map interpolates its advance; where at an interval's quarter points the
+        // interpolated advance makes more than midLoss less torque than the best cell there, that point is added as a
+        // row of its own (the worst first, to the map's 16). Off: the grid alone (a V12's exhaust wave returning into a big low-speed overlap at 2049 rpm made
+        // a 30 % hole the grid's 1500 and 2500 rpm rows straddled: card N1, N3's finding). Off: the grid alone.
+        bool refine = false;          // (off until the held cells' sweep and the map's own curve agree near a tooth:
+                                      // refined, a V12's hole at 2000 rpm filled +16 % but 1500-1750 fell 4 %; card N1)
+        double midLoss = 0.03;
         PredictOptions predict;       // the curves' (their range, speeds: 8 by default here)
 
         CamBakeOptions() { predict.points = 8; predict.coarse = 8; }
@@ -45,6 +52,7 @@ namespace tee
         std::vector<double> bestTorque;              // N m there
         double parkedCentre = 0.0;                   // the build's intake centreline (degrees after top), parked
         double wallSeconds = 0.0;
+        int added = 0;                               // midpoints added as rows of their own (refine)
     };
 
     // Sweeps `build`'s intake cam (above). False, with `error`, when the program or the build has no intake phaser to

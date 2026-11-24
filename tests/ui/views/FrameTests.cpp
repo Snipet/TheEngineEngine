@@ -31,6 +31,7 @@ namespace
         long dropouts = 0;
         std::string notes;      // the first launch's TRY FIRST card's text (FrameServices::tryFirst; empty: none)
         int tryFirstDone = 0;
+        bool cold = false;      // FrameServices::coldStart (the settings' ENGINE START)
         int mode = 0;
         std::unique_ptr<AppFrame> frame;
         std::unique_ptr<funkgui::HeadlessHost> host;
@@ -64,6 +65,8 @@ namespace
             s.simLoadPeak = [this] { return peak; };
             s.dropouts = [this] { return dropouts; };
             s.tryFirst = [this] { return notes; };
+            s.coldStart = [this] { return cold; };
+            s.setColdStart = [this](bool c) { cold = c; };
             s.tryFirstDone = [this] { ++tryFirstDone; notes.clear(); };
             s.mode = [this] { return mode; };
             s.setMode = [this](int m) { mode = m; };
@@ -553,6 +556,25 @@ namespace
                                                         tee::ui::kWidgetLabel);
                 CHECK_MSG(st->shown() && need <= room && st->bounds().bottom() <= small.frame->inspectorRect().bottom(),
                           st->title() + ": needs " + std::to_string(need) + " px, has " + std::to_string(room));
+            }
+            // ENGINE START: warm lit; Cold chosen, lit, and told to the shell (taken from the next launch).
+            {
+                const auto itemOf = [&](const std::string& title) {
+                    for (const funkgui::A11yItem& it : small.host->accessibility())
+                        if (it.title == title && it.visible)
+                            return it;
+                    return funkgui::A11yItem{};
+                };
+                const funkgui::A11yItem warm = itemOf("Warm"), cold = itemOf("Cold");
+                CHECK(!warm.title.empty() && !cold.title.empty() && !small.cold);
+                small.host->click(cold.bounds.centreX(), cold.bounds.centreY());
+                small.host->tick(2);
+                CHECK(small.cold);
+                small.host->click(warm.bounds.centreX(), warm.bounds.centreY());
+                small.host->tick(2);
+                CHECK(!small.cold);
+                small.host->moveTo(5.0f, 5.0f, 1);
+                small.host->tick(40);   // the hovers' eases land
             }
             golden("frame.settings.dpi1", *small.host);
         }
