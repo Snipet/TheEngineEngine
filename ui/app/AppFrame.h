@@ -39,6 +39,7 @@
 
 #include <tee/app/Sources.h>
 
+#include <algorithm>
 #include <functional>
 #include <memory>
 #include <string>
@@ -81,6 +82,21 @@ namespace tee::ui
         Workspace& current() const { return workspace(shown_); }
         void show(int i);
         bool placeholder(int i) const;                       // the stand-in of a package not here yet
+
+        // J2's names, kept for the shell's --workspace (app/Offline.cpp): a "screen" is a workspace, named by its id;
+        // its "page" an inspector page. show(s, page) shows the workspace, then the page (kept in range).
+        struct Screen
+        {
+            std::string name;
+        };
+        int screenCount() const noexcept { return workspaceCount(); }
+        Screen screenDef(int s) const { return { slot(s).id }; }
+        int pageCount(int s) const { return s == shown_ ? inspectorPageCount() : 64; }
+        void show(int s, int page)
+        {
+            show(s);
+            showInspectorPage(std::clamp(page, 0, std::max(0, inspectorPageCount() - 1)));
+        }
 
         // The selection and the inspector.
         Selection& selection() noexcept { return selection_; }
