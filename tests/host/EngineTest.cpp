@@ -5,8 +5,11 @@
 #include "EngineTwin.h"
 #include "tee/Bake.h"
 #include "tee/Dyno.h"
+#include "tee/Timeline.h"
+#include "tee/EnginePlayer.h"
 
 #include <chrono>
+#include <limits>
 #include <set>
 #include <thread>
 #include <catch2/catch_approx.hpp>
@@ -747,4 +750,45 @@ TEST_CASE("the knock limit's corrections: a cell whose mean retard was over 12 d
         }
     CHECK(corrected >= 1);   // the six at its full boost has a cell at the ceiling (N2's proof: 2450 rpm)
     REQUIRE(r.stillKnocking.size() == r.speeds.size());
+}
+
+TEST_CASE("the first frame of every telemetry field is a value the program wrote: finite, and no denormal garbage",
+          "[engine][sim][simhost]")
+{
+    if (!haveSim())
+        SKIP("sim/engine.fm is not there yet");
+    std::string error;
+    const auto sim = compiled(simDir(), {}, error);
+    REQUIRE(sim != nullptr);
+    const auto written = [](double v) {
+        return std::isfinite(v) && (v == 0.0 || std::fabs(v) >= static_cast<double>(std::numeric_limits<float>::min()));
+    };
+    // the host's: a timeline's rows, every number of the tel block (no columns asked), its first block a short one
+    SimHost host;
+    REQUIRE(host.attach(sim, offline(48000.0, 512), error));
+    Build build(sim->fields());
+    build.attach(&host);
+    Timeline timeline;
+    timeline.seconds = 0.05;
+    timeline.block = 512;
+    timeline.events.push_back({0.0, TimelineEvent::Kind::Control, "ignition", 2.0, {}, 0.0});
+    timeline.events.push_back({0.001, TimelineEvent::Kind::Control, "mode", 1.0, {}, 0.0});
+    RunResult run;
+    REQUIRE(runTimeline(host, build, timeline, {}, run, error));
+    REQUIRE(run.rowTime.size() >= 2);
+    for (std::size_t c = 0; c < run.columns.size(); ++c)
+    {
+        INFO(run.columns[c] << " at the first frame: " << run.at(0, c));
+        CHECK(written(run.at(0, c)));
+    }
+    // K3's EnginePlayer's: each telemetry field before and after its first call
+    EnginePlayer::Options po;
+    po.directory = simDir();
+    auto player = EnginePlayer::create(po, error);
+    REQUIRE(player != nullptr);
+    for (std::size_t k = 0; k < player->telemetryNames().size(); ++k)
+    {
+        INFO(player->telemetryNames()[k] << " before the first call: " << player->telemetry(k));
+        CHECK(written(player->telemetry(k)));
+    }
 }
