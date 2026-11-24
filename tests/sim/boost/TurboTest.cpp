@@ -169,9 +169,7 @@ TEST_CASE("boost: in steady state the turbine's power is the compressor's and th
     }
 }
 
-// (marked [!mayfail] by N2: moved by the design-point matching (the lead's (a'), 24 Nov): the 50 kPa spring at 7000 rpm sits 6 % off
-// the spring less the poppet's push with the smaller matched turbine; N2 re-derives)
-TEST_CASE("boost: the wastegate holds a target across speeds, and its spring holds its own pressure", "[boost][turbo][!mayfail]")
+TEST_CASE("boost: the wastegate holds a target across speeds, and its spring holds its own pressure", "[boost][turbo]")
 {
     const double target = 100000.0;
     int held = 0;
@@ -225,7 +223,10 @@ TEST_CASE("boost: the wastegate holds a target across speeds, and its spring hol
             // open sits that far under its spring, as an internal gate's boost falls off at speed)
             const double boost = rig.mean("sSignal");
             const double gate = rig.get("boost.telGate[0]");
-            const double hold = spring - rig.get("boost.kFace") * (rig.mean("sPTurb") - rig.get("boost.pOut"));
+            // (the actuator's law: open over gateSpan above its spring, so a gate open by lift holds spring + lift x
+            // span; N2 restated it when the span went from 10 to 30 kPa)
+            const double hold = spring + gate * rig.get("boost.gateSpan")
+                                - rig.get("boost.kFace") * (rig.mean("sPTurb") - rig.get("boost.pOut"));
             std::printf("spring %.0f kPa at %.0f rpm: %.1f kPa at the actuator (%.1f before the throttle; the spring less "
                         "the poppet's push %.1f), gate %.2f\n",
                         spring / 1000.0, rpm, boost / 1000.0, rig.mean("sBoost") / 1000.0, hold / 1000.0, gate);
