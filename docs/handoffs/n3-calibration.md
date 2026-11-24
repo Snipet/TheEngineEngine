@@ -15,7 +15,7 @@ Branch `claude/awesome-gates-ntdb58`. Started 19:30 UTC, 2026-11-24; this note 2
   two-stage cam's stage B loses; N3-5 the 3.5 V6 peaks at 2778; class ranges for the ledger.
 
 **Not done**
-- N3-1 is D's to commit (ruled in by the lead under the physical cylinder): γ = 1.392 - 8.13e-5 T + 0.037 (1 -
+- N3-1 landed (D: 3990ee47, a845b07f); measured before and after in causes.md. Was: γ = 1.392 - 8.13e-5 T + 0.037 (1 -
   min(φ, 1)). When it lands: re-run `scripts/balance.py` and the 16-engine sweep, record before and after in causes,
   tell P and N1, unskip the efficiency case if it passes.
 - Breathing (N3-3, N3-4, N3-5) is routed to N1 (runner damping, exhaust back pressure, phaser) and P (runner, cams).
