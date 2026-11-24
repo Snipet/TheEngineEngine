@@ -1,10 +1,11 @@
 # scripts/listening-pack.tsv: the listening pack's renders (checkpoint M2, docs/checkpoints/M2.md says what to listen
 # for in each group). One render a line, tab-separated:
-#   group  label  quick  build  scenario
+#   group  label  quick  build  scenario  [define]
 # group: the files of one group are loudness-matched together (not a group whose name ends in -raw: its question is
 # the loudness) and named <group>-<label>.wav, so they sort side by side.
 # quick: 1 for the ten most telling files (--quick). build: under content/builds/. scenario: a path from the checkout's
-# root. A line whose build is missing (a package not landed yet) is skipped and listed in the pack's README.txt.
+# root. define (optional): a compile-time define for the simulator (tee-render --define), as Q's TEE_FAST.
+# A line whose build is missing (a package not landed yet) is skipped and listed in the pack's README.txt.
 01-vehicle-launch	a-reference-car	1	combo/v8.json	content/scenarios/combo/launch.json
 01-vehicle-launch	b-new-vehicle	1	combo/pack/v8-vehicle.json	content/scenarios/combo/launch.json
 02-vehicle-pull	a-reference-car	0	combo/v8.json	content/scenarios/combo/pull.json
@@ -79,3 +80,11 @@
 30-bike-600	a-limiter-16000	0	bike-supersport-600.json	tests/sim/bike/listen/bike-600-16000.json
 31-bike-chain	a-clunk	0	bike-naked-twin.json	tests/sim/bike/listen/bike-chain-clunk.json
 32-bike-downshift	a-no-slipper	0	bike-superbike.json	tests/sim/bike/listen/bike-downshift-no-slipper.json
+33-fast-v8-free-revs	a-three-passes	0	v8.json	tests/sim/scenarios/free-revs.json
+33-fast-v8-free-revs	b-tee-fast	0	v8.json	tests/sim/scenarios/free-revs.json	TEE_FAST
+34-fast-v8-drive	a-three-passes	0	v8.json	tests/sim/scenarios/drive-car.json
+34-fast-v8-drive	b-tee-fast	0	v8.json	tests/sim/scenarios/drive-car.json	TEE_FAST
+35-fast-default-free-revs	a-three-passes	0	default.json	tests/sim/scenarios/free-revs.json
+35-fast-default-free-revs	b-tee-fast	0	default.json	tests/sim/scenarios/free-revs.json	TEE_FAST
+36-fast-default-drive	a-three-passes	0	default.json	tests/sim/scenarios/drive-car.json
+36-fast-default-drive	b-tee-fast	0	default.json	tests/sim/scenarios/drive-car.json	TEE_FAST

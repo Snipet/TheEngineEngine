@@ -77,7 +77,7 @@ flush() {
   files=()
 }
 
-while IFS=$'\t' read -r g label q build scenario; do
+while IFS=$'\t' read -r g label q build scenario define; do
   case "$g" in ''|'#'*) continue ;; esac
   [ "$quick" = 1 ] && [ "$q" != 1 ] && continue
   if [ "$g" != "$group" ]; then flush; group="$g"; fi
@@ -89,8 +89,10 @@ while IFS=$'\t' read -r g label q build scenario; do
   fi
   echo "rendering $g-$label ($build, $(basename "$scenario"))"
   log="$out/.$g-$label.log"
+  defines=()
+  [ -n "${define:-}" ] && defines=(--define "$define")
   if "$render" --build "content/builds/$build" --scenario "$scenario" --out "$wav" --csv - \
-      --sim "$root/sim" --content "$root/content" > "$log" 2>&1; then
+      --sim "$root/sim" --content "$root/content" ${defines[@]+"${defines[@]}"} > "$log" 2>&1; then
     files+=("$wav")
     rendered=$((rendered + 1))
     # a build field this program does not have yet: the pair may sound the same

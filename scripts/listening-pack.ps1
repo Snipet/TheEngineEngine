@@ -64,6 +64,8 @@ foreach ($line in Get-Content "scripts\listening-pack.tsv") {
     if ($line -eq "" -or $line.StartsWith("#")) { continue }
     $f = $line.Split("`t")
     $g, $label, $q, $build, $scenario = $f[0], $f[1], $f[2], $f[3], $f[4]
+    $defines = @()
+    if ($f.Count -gt 5 -and $f[5] -ne "") { $defines = @("--define", $f[5]) }
     if ($Quick -and $q -ne "1") { continue }
     if ($g -ne $script:group) { Flush-Group; $script:group = $g }
     $wav = Join-Path $Out "$g-$label.wav"
@@ -77,7 +79,7 @@ foreach ($line in Get-Content "scripts\listening-pack.tsv") {
     Write-Host "rendering $g-$label ($build, $(Split-Path -Leaf $scenario))"
     $log = Join-Path $Out ".$g-$label.log"
     & $render --build $buildPath --scenario $scenario --out $wav --csv - --sim (Join-Path $root "sim") `
-        --content (Join-Path $root "content") *> $log
+        --content (Join-Path $root "content") @defines *> $log
     if ($LASTEXITCODE -eq 0) {
         $script:files += $wav
         $rendered++
