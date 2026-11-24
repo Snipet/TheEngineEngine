@@ -1,9 +1,9 @@
-geometry 888e36f0da47934d
-text 911fc66b7a0820fa
-statics 827
+geometry 8276d303d1f2cb34
+text 1062436184f8feb4
+statics 920
 live 0
-texts 672
-rrects 89
+texts 763
+rrects 91
 segments 66
 areas 0
 shaders 0
