@@ -422,6 +422,8 @@ module Engine
                 exh.tUse[i] = exh.tGas[i];
         }
         intk.mPlenum = intk.pPlenum * intk.vPlenum / (287.0f * intk.tAir);
+        // (card F: boost.model 1's machine sized to this engine, at rest; nothing in model 0)
+        boost.applyMachine(&spec.boost, vTotal, ecu.redRpm, 101325.0f, heat.tAmb);
         pipes();
     }
 
@@ -465,7 +467,7 @@ module Engine
     // The pipes' sizes for the layout and the dials, and their lengths at the gas's temperatures now
     void pipes()
     {
-        exh.pipes(bore, aspUse, boost.smTb, boost.smTs, rate);
+        exh.pipes(bore, boost.model == 1 ? 0 : aspUse, boost.smTb, boost.smTs, rate);   // (model 1: the machine's turbine)
         intk.runners(lay.ports, lay.bike, bore, rate);
     }
 
@@ -607,6 +609,10 @@ module Engine
                    set.bov, crank.rpm / ecu.redRpm, crank.rpm * 0.016666667f, boost.smTs, d16);
         intk.pBox = 101325.0f + 100000.0f * boost.boost;
         intk.tAir = heat.tAmb + 5.0f * heat.warm + 25.0f * boost.boost;
+        // (card F: model 1's machine every 16 samples; the ECU's target and anti-lag wait for card H: none yet)
+        boost.ecu(-1.0f, -1.0f, 0.0f, 0, 0);
+        boost.airSpeed(set.drive != 0 ? fabsf(car.v) : 0.0f);
+        boost.machineControl(d16);
         exh.gas(d16);
         const float surf = 0.022f * expf(0.6666667f * logf(cyl[0].vd / 0.0005f));
         for (int c = 0; c < lay.n; ++c)
@@ -720,6 +726,8 @@ module Engine
                 iShare[pi] += qI0[c];
             }
         }
+        const float exM0 = exh.mSum;      // (card F, model 1: this sample's exhaust gas, for the turbine's stand-in)
+        const float exE0 = exh.eSum;
         for (int c = 0; c < lay.n; ++c)
         {
             Cylinder* cy = &cyl[c];
@@ -772,10 +780,23 @@ module Engine
         if (ctl.scopeOn != 0)
             scopeTap();
         exh.step(qe, np);
+        // (card F, model 1: until card G's network ends its collectors in the turbine's housings, the cylinders' gas
+        // this sample feeds them as a flow, and the downpipes are open ends of the collector pipe's impedance)
+        if (boost.model == 1)
+            boost.exhaustStandIn(exh.mSum - exM0, exh.eSum - exE0, exh.sec[0].z);
         float rNear[MAX_PORTS];
         for (int i = 0; i < np; ++i)
             rNear[i] = intk.run[i].near + intk.run[i].z * qi[i];
+        // (card F: model 1's machine stands before the throttle: its pressure and temperature in, the throttle's draw
+        // out, then its sample; model 0 gives the reference's own values back, unchanged)
+        intk.pBox = boost.pressure(intk.pBox);
+        intk.tAir = boost.temperature(intk.tAir);
         intk.plenum(np, rNear, fuelUse, ecu.throttle, ecu.bypass, dt);
+        if (boost.model == 1)
+        {
+            boost.draw(intk.qThr * intk.pBox / (287.0f * intk.tAir));
+            boost.tick(crank.omega, intk.pPlenum);
+        }
         mech.torques(crank.rpm, crank.omega, strokeK, heat.viscK, fuelUse, smCR, vTotal, set.load, ecu.redRpm, heat.tAmb, ecu.starterOn,
                      cyl[0].vd);
         heat.fricJ += mech.tf * crank.omega * dt;
@@ -946,6 +967,7 @@ module Engine
             s->turbo = spec.boost.level;
             s->tsize = spec.boost.size;
             s->bov = spec.boost.blowOff;
+            boost.applyMachine(&spec.boost, vTotal, ecu.redRpm, 101325.0f, heat.tAmb);
         }
         if (moved(4, spec.exhaust.rev))
         {
@@ -1103,6 +1125,9 @@ module Engine
         tel.engine.cycle = showCycle;
         tel.engine.crank = crank.theta;
         tel.boost.pressure = boost.boost * 100000.0f;
+        boost.telemetry(&tel.boost);
+        if (ctl.scopeOn != 0)
+            boost.scope(&scope);
         tel.exhaust.portTemperature = exh.tPort;
         tel.ecu.knockRetard = ecu.kRet;
         tel.car.speed = driven ? fabsf(car.v) : 0.0f;

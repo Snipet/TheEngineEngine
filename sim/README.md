@@ -191,6 +191,36 @@ massFlow, float bovLevel)` each sample between Extras' `tick` and `tickStarter` 
 drag(int asp, float vTotal, float omega)` each sample. Its turbine's restriction on the exhaust is in
 `Exhaust::pipes` (from `smTb`, `smTs`).
 
+*Boost with `spec.boost.model` 1 (card F's machine, `boost/machine.fm`; docs/models/boost.md).* Model 0 runs the
+above unchanged; model 1 makes `control` keep `boost` (bar) from the machine, `sound` the machine's sound, `drag` its
+torque on the crank, and leaves the reference's turbine restriction out (`Exhaust::pipes` should get `aspUse` 0 then).
+The machine's functions, all on `Boost`, all doing nothing in model 0:
+- `void applyMachine(BoostSpec* s, float vd, float redRpm, float pAmb, float tAmb)`: when `spec.boost.rev` moves and in
+  `configure` (vd the displacement m^3, the redline rpm, the air outside Pa and K). A change of the model, kind,
+  layout, scrolls or supercharger rebuilds the machine at rest: make it under the fade.
+- **The exhaust (card G's network)**, each sample after `prepare()` and before `step()`:
+  `int housingOf(int bank, int group, int banks)` (the housing a collector ends in, -1 none: its pipe goes on as
+  without a turbo); for each housing h fed, `float housing(int h, float drive, float admit, float tGas)` with drive =
+  sum over its feeding ends of 2 a / z (with each end's junction-loss hold), admit = sum of 1 / z, tGas their gas
+  (K): returns the housing's pressure over the outside, and each end writes b = p - a; for each downpipe side,
+  `float downpipe(int side, float a, float z)` (z with the converter in series): the end's pressure over the outside
+  (the pipe writes p - a; `mach.dpMass[side]` kg/s, `mach.dpTemp[side]` K went in); for each turbo t with an
+  external gate, `float gatePipe(int t, float a, float z)` likewise (`mach.gateMass[t]`, `mach.gateTemp[t]`). A
+  housing no pipe feeds is stepped by `tick`.
+- **The intake (card E's)**, each sample: `float pressure(float pBoxRef)` and `float temperature(float tAirRef)` before
+  the throttle (Pa absolute, K; model 0 returns the reference's values given), the state at the sample's start; then
+  `void draw(float m)` with the throttle's mass flow out of that volume this sample (kg/s; negative pushed back); then
+  `void tick(float omegaCrank, float pPlenum)` (rad/s; the plenum's Pa absolute): the charge path, the shafts, the
+  sounds. `void machineControl(float d16)` every 16 samples, after `ecu(...)`.
+- **Combustion (H)**: `float oxygen()` (by mass, 0.232 air) or `float oxygenShare()` (over air's, 1 without nitrous).
+  **Mechanics (D)**: `float torque()` (N m taken from the crank; `drag` returns it too in model 1).
+- **The ECU (H)**: `void ecu(float target, float vanes, float antiLagFuel, int nitrous, int purges)` every 16
+  samples: a boost target over the air (Pa; below 0 none, the spec's), the vanes (below 0, the machine's loop), the
+  anti-lag fuel burning in the housing (kg/s), the nitrous window (1 open), purges counted. The gate's and vanes'
+  loop toward the target is Boost's. `void airSpeed(float v)` the car's speed through the intercooler (m/s).
+- **After a call**: `void telemetry(BoostTel* t)` (tel.boost's card F fields), `void scope(Scope* sc)` while
+  `ctl.scopeOn` (the compressor map's lines and the trail).
+
 **Exhaust** (`exhaust/exhaust.fm`): every pipe (`prim`, `sec`, `pipe`, `ch1`, `mid`, `ch2`, `tail`, `cross`),
 `pop[2]`, its dials glided (`smMuf`, `smHdr`, `smPipe`, `smXp`), the junctions' losses and drives, the flow noise, the
 gas's and the walls' temperatures (`tGas`, `tWall`, `tUse`, `tPort`), `mdot`, `outL`, `outR`, `shell[]`. Pointers:
