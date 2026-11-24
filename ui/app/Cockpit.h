@@ -108,6 +108,47 @@ namespace tee::ui
         float hold_ = 0.0f, target_ = 0.0f, shown_ = 0.0f;
     };
 
+    // A heavy diesel's brakes (card D2, sim/combustion/heavy.fm), as the dash of a truck shows them. shown: a truck is
+    // loaded (spec.car.kind "Truck") or a brake is fitted (spec.ecu.engineBrake, spec.ecu.exhaustBrake not 0).
+    // stage: the compression brake acting now, 0 to 3 (a third, two thirds, all of the cylinders: tel.ecu.brakeCylinders
+    // over spec.engine.cylinders); armed: spec.ecu.brakeSwitch (0 Off .. 3 High). exhaustOn: the exhaust brake holding
+    // (the flap's tel.exhaust.flap past 5 % where one is fitted, else tel.ecu.backPressure over 1 kPa). A name absent
+    // reads as off. Lit only while the brake acts (pedal up, clutch in, over its cut-out speed), as a real one's light.
+    struct EngineBrakeState
+    {
+        bool shown = false, compression = false, exhaust = false, exhaustOn = false;
+        int stage = 0, armed = 0;
+    };
+    EngineBrakeState engineBrakeState(const WorkspaceContext& ctx);
+    // Two rows from (x, y): the lamp "ENGINE BRAKE" with three segments, one lit a stage (and the stage's word when
+    // `words`), and the lamp "EXHAUST BRAKE" when one is fitted. Returns the width used.
+    float drawEngineBrake(funkgui::Canvas& c, const look::Palette& p, float x, float y, const EngineBrakeState& s, bool words);
+    const char* engineBrakeStageWord(int stage);
+
+    // The cockpit's engine-brake lamps (drawEngineBrake, without the stage's word); the frame shows it while
+    // engineBrakeState(ctx).shown.
+    class BrakeLamp final : public Widget
+    {
+    public:
+        BrakeLamp(uint32_t id, const WorkspaceContext& ctx);
+        const EngineBrakeState& state() const noexcept { return state_; }
+
+        void draw(funkgui::Canvas& c, const funkgui::Theme& th, bool focusRing) const override;
+        bool focusable() const override { return false; }
+        bool contains(funkgui::Point) const override { return false; }
+        void accessibility(std::vector<funkgui::A11yItem>& out) const override;
+        bool a11yAction(uint32_t, funkgui::A11yAction, double, funkgui::GestureController&) override { return false; }
+        uint64_t drawKey() const override;
+
+    protected:
+        void step(float dt) override;
+        const char* kind() const override { return "lamp"; }
+
+    private:
+        const WorkspaceContext& ctx_;
+        EngineBrakeState state_;
+    };
+
     // The dyno ribbon: the predicted torque and power of the build as it stands, the curve before the last edit ghosted
     // behind it, the peaks in numbers; torque against the left scale, power against the right. Folded, only its title
     // row. Speeds in rpm, torque and power in the user's units.

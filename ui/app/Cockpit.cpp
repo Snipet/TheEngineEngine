@@ -159,6 +159,95 @@ namespace tee::ui
         out.push_back(a11yOf(id_, funkgui::A11yRole::staticText, bounds_, title_, number_ + (unit_.empty() ? "" : " " + unit_)));
     }
 
+    // ---- The engine brake ---------------------------------------------------------------------------------------------
+    EngineBrakeState engineBrakeState(const WorkspaceContext& ctx)
+    {
+        EngineBrakeState s;
+        const auto field = [&](const char* path, double fallback) {
+            const int f = ctx.doc.find(path);
+            return f >= 0 ? ctx.doc.get(f) : fallback;
+        };
+        bool truck = false;
+        if (const int f = ctx.doc.find("car.kind"); f >= 0 && ctx.doc.info(f).kind == FieldKind::choice)
+        {
+            const auto k = static_cast<std::size_t>(std::lround(ctx.doc.get(f)));
+            truck = k < ctx.doc.info(f).choices.size() && ctx.doc.info(f).choices[k] == "Truck";
+        }
+        s.compression = field("ecu.engineBrake", 0.0) > 0.5;
+        s.exhaust = field("ecu.exhaustBrake", 0.0) > 0.5;
+        s.shown = truck || s.compression || s.exhaust;
+        if (!s.shown)
+            return s;
+        s.armed = std::clamp(static_cast<int>(std::lround(field("ecu.brakeSwitch", 0.0))), 0, 3);
+        const double braking = ctx.live.get("ecu.brakeCylinders");
+        const double cylinders = std::max(1.0, field("engine.cylinders", 6.0));
+        if (std::isfinite(braking) && braking > 0.5)
+            s.stage = std::clamp(static_cast<int>(std::lround(3.0 * braking / cylinders)), 1, 3);
+        const double flap = ctx.live.get("exhaust.flap"), back = ctx.live.get("ecu.backPressure");
+        s.exhaustOn = std::isfinite(flap) ? flap > 0.05 || (std::isfinite(back) && back > 1000.0) : std::isfinite(back) && back > 1000.0;
+        return s;
+    }
+
+    const char* engineBrakeStageWord(int stage)
+    {
+        static const char* const kWords[4] = { "OFF", "LOW", "MEDIUM", "HIGH" };
+        return kWords[std::clamp(stage, 0, 3)];
+    }
+
+    float drawEngineBrake(funkgui::Canvas& c, const Palette& p, float x, float y, const EngineBrakeState& s, bool words)
+    {
+        const bool on = s.stage > 0;
+        float w = look::lamp(c, p, x, y + 7.0f, "ENGINE BRAKE", on, p.ok) + 8.0f;
+        for (int k = 0; k < 3; ++k)   // the stage as segments: one, two, three lit
+        {
+            const float sx = x + w + static_cast<float>(k) * 12.0f;
+            if (k < s.stage)
+                c.rrect(sx, y + 3.0f, 9.0f, 8.0f, 1.5f, p.ok);
+            else
+                c.rrect(sx, y + 3.0f, 9.0f, 8.0f, 1.5f, look::kClear, 1.0f, p.dim);
+        }
+        w += 36.0f;
+        if (words)
+        {
+            // Acting: its stage; else the switch's setting, dim ("SET LOW"), so an armed brake that waits says so.
+            const std::string word = on ? engineBrakeStageWord(s.stage) : s.armed > 0 ? std::string("SET ") + engineBrakeStageWord(s.armed) : "OFF";
+            c.text(word.c_str(), x + w + 6.0f, y + 2.0f, look::kCaps, on ? p.value : p.dim);
+            w += 6.0f + c.textWidth(word.c_str(), look::kCaps);
+        }
+        if (s.exhaust || !s.compression)
+            w = std::max(w, look::lamp(c, p, x, y + 27.0f, "EXHAUST BRAKE", s.exhaustOn, p.ok));
+        return w;
+    }
+
+    BrakeLamp::BrakeLamp(uint32_t id, const WorkspaceContext& ctx) : Widget(id), ctx_(ctx)
+    {
+        title_ = "Engine brake";
+    }
+
+    void BrakeLamp::step(float)
+    {
+        state_ = engineBrakeState(ctx_);
+    }
+
+    uint64_t BrakeLamp::drawKey() const
+    {
+        const EngineBrakeState s = engineBrakeState(ctx_);
+        return DrawKey{}.mix(s.stage).mix(s.exhaustOn ? 1 : 0).mix(s.exhaust ? 1 : 0).mix(s.compression ? 1 : 0).h;
+    }
+
+    void BrakeLamp::draw(funkgui::Canvas& c, const funkgui::Theme& th, bool) const
+    {
+        drawEngineBrake(c, Palette::of(th), bounds_.x, bounds_.y + 2.0f, state_, false);
+    }
+
+    void BrakeLamp::accessibility(std::vector<funkgui::A11yItem>& out) const
+    {
+        std::string v = state_.stage > 0 ? std::string("on, ") + engineBrakeStageWord(state_.stage) : std::string("off");
+        if (state_.exhaust || !state_.compression)
+            v += state_.exhaustOn ? "; exhaust brake on" : "; exhaust brake off";
+        out.push_back(a11yOf(id_, funkgui::A11yRole::staticText, bounds_, title_, v));
+    }
+
     // ---- PedalBar ---------------------------------------------------------------------------------------------------
     PedalBar::PedalBar(uint32_t id, std::string name, std::function<float()> sent, std::function<void(bool, float)> onHold,
                        funkgui::Col (*ink)(const look::Palette&))
