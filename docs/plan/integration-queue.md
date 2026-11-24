@@ -68,7 +68,7 @@ fixes its own when it next touches its tests, and deletes its hook.
   (`sim/vehicle/` has `vehAtan`, a polynomial good to 2e-6 rad). Candidates for a shared `sim/core/mathx.fm` at
   integration, so there is one copy.
 
-## FunkGui, after card A (13:26)
+## FunkGui, after card A (13:19)
 
 - The owner pushes the tag `v0.28.0` on FunkGui's main (19d06ab); then card B names the tag beside its pinned commit.
 - The lead looks at `fg.desktop.menu`'s 40 candidate golden rows and adopts them or says why not.
