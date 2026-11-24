@@ -117,7 +117,7 @@ int engineBenchMain(int argc, char** argv)
     double sumEngine = 0.0, sumRef = 0.0;
     for (const std::string& b : buildNames)
     {
-        Build build;
+        EngineBuild build;
         std::string warnings;
         if (!loadBuild(*engine, tools::namedFile(builds, b), build, errors, warnings))
         {

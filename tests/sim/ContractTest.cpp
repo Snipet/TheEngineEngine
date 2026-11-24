@@ -81,10 +81,10 @@ TEST_CASE("sim: a build round-trips", "[sim][contract][build]")
     for (const char* name : {"default", "v8", "v10", "large-diesel"})
     {
         INFO(name);
-        const Build loaded = test::engineBuild(player, name);
+        const EngineBuild loaded = test::engineBuild(player, name);
         CHECK_FALSE(loaded.values.empty());
         // as text and back
-        Build again;
+        EngineBuild again;
         std::string error, warnings;
         REQUIRE(parseBuild(player, buildJson(player, loaded), "again", again, error, warnings));
         CHECK(warnings.empty());
@@ -97,7 +97,7 @@ TEST_CASE("sim: a build round-trips", "[sim][contract][build]")
         }
         // into the simulator and out again: what it holds is what the file says (as floats)
         applyBuild(player, loaded);
-        const Build held = currentBuild(player, loaded.name, loaded.notes);
+        const EngineBuild held = currentBuild(player, loaded.name, loaded.notes);
         for (const auto& [path, values] : loaded.values)
         {
             INFO(path);
@@ -118,7 +118,7 @@ TEST_CASE("sim: a build keeps what the Spec lacks, and names a choice", "[sim][c
     const char* const json = R"({"format": "tee-build", "version": 1, "name": "x", "notes": "",
         "spec": {"engine": {"layout": "Inline 4", "displacement": 0.0016, "fromTheFuture": [1, 2]},
                  "warp": {"drive": 9}}})";
-    Build build;
+    EngineBuild build;
     std::string error, warnings;
     REQUIRE(parseBuild(player, json, "x.json", build, error, warnings));
     CHECK(build.values.at("engine.layout") == std::vector<double>{5.0});
@@ -128,7 +128,7 @@ TEST_CASE("sim: a build keeps what the Spec lacks, and names a choice", "[sim][c
     CHECK(out.find("\"Inline 4\"") != std::string::npos);
     CHECK(out.find("fromTheFuture") != std::string::npos);
     CHECK(out.find("\"warp\"") != std::string::npos);
-    Build bad;
+    EngineBuild bad;
     CHECK_FALSE(parseBuild(player, R"({"format": "tee-build", "version": 1, "spec": {"engine": {"layout": "W16"}}})",
                            "bad.json", bad, error, warnings));
     // a value outside its range is clamped where it is written
