@@ -2,7 +2,7 @@
   "format": "tee-validation",
   "version": 1,
   "build": "builds/archetypes/pickup-diesel-67-inline-six.json",
-  "description": "Card P's targets for \"6.7 L straight-six turbo diesel pickup\": the invariants are hard; the rest are reported, never failed: their misses are the simulator's to-do list. Predicted strongest lines (not measured: the validation format has no line measure yet): the firing frequency, rpm/60 x 6/2, 37.5 Hz at the 750 rpm idle and 160 Hz at the 3199 rpm limiter.",
+  "description": "Card P's targets for \"6.7 L straight-six turbo diesel pickup\": the invariants are hard; the rest are reported, never failed: their misses are the simulator's to-do list. Predicted strongest lines (not measured: the validation format has no line measure yet): the firing frequency, rpm/60 x 6/2, 37.5 Hz at the 750 rpm idle and 154 Hz at the 3074 rpm limiter.",
   "targets": [
     {
       "name": "Invariant: starts warm and runs",
@@ -38,13 +38,12 @@
         6,
         9
       ],
-      "relativeTo": "engine.redline",
       "range": [
-        0.97,
-        1.03
+        312.3,
+        331.6
       ],
-      "unit": "of the redline",
-      "source": "a rev limiter holds the speed within a few percent of where it cuts (some 100 to 200 rpm at 6500)"
+      "unit": "rad/s",
+      "source": "a diesel's governor holds its high idle, the rated speed plus its 6 % droop (3074 rpm), within a few percent"
     },
     {
       "name": "Invariant: pulls away",
@@ -93,14 +92,14 @@
       "dyno": {
         "steps": [
           157.1,
-          178.5,
-          199.9,
-          221.3,
-          242.7,
-          264.2,
-          285.6,
-          307.0,
-          328.4
+          176.9,
+          196.7,
+          216.5,
+          236.3,
+          256.1,
+          275.9,
+          295.7,
+          315.5
         ],
         "settle": 5,
         "measure": 1
@@ -118,14 +117,14 @@
       "dyno": {
         "steps": [
           157.1,
-          178.5,
-          199.9,
-          221.3,
-          242.7,
-          264.2,
-          285.6,
-          307.0,
-          328.4
+          176.9,
+          196.7,
+          216.5,
+          236.3,
+          256.1,
+          275.9,
+          295.7,
+          315.5
         ],
         "settle": 5,
         "measure": 1
@@ -133,7 +132,7 @@
       "measure": "speedAtMaxPower",
       "range": [
         282.7,
-        324.6
+        321.9
       ],
       "unit": "rad/s",
       "source": "published figures of its kind (makers' figures, firm (the range covers its ratings)): 6690 cc: 2700 to 3100 rpm"
@@ -143,14 +142,14 @@
       "dyno": {
         "steps": [
           157.1,
-          178.5,
-          199.9,
-          221.3,
-          242.7,
-          264.2,
-          285.6,
-          307.0,
-          328.4
+          176.9,
+          196.7,
+          216.5,
+          236.3,
+          256.1,
+          275.9,
+          295.7,
+          315.5
         ],
         "settle": 5,
         "measure": 1
@@ -168,14 +167,14 @@
       "dyno": {
         "steps": [
           157.1,
-          178.5,
-          199.9,
-          221.3,
-          242.7,
-          264.2,
-          285.6,
-          307.0,
-          328.4
+          176.9,
+          196.7,
+          216.5,
+          236.3,
+          256.1,
+          275.9,
+          295.7,
+          315.5
         ],
         "settle": 5,
         "measure": 1
@@ -346,11 +345,11 @@
       "tel": "car.speed",
       "measure": "max",
       "range": [
-        58.8,
-        67.6
+        56.5,
+        65.0
       ],
       "unit": "m/s",
-      "source": "the redline in top gear with the build's gearing: 228 km/h, within 7 % (geared, not drag-limited); no speed governor is simulated"
+      "source": "the redline in top gear with the build's gearing: 219 km/h, within 7 % (geared, not drag-limited); no speed governor is simulated"
     }
   ]
 }

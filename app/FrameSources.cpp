@@ -10,6 +10,7 @@
 #include "app/host/HostSources.h"
 #include "kit/bind/host/BuildDoc.h"
 #include "tee/SimHost.h"
+#include "tee/Telemetry.h"
 
 #include <algorithm>
 #include <chrono>
@@ -83,6 +84,7 @@ namespace tee::app
                           const std::function<float()>& level)
     {
         s.simLoad = [&player] { return static_cast<float>(player.load()); };
+        s.simLoadPeak = [&player] { return static_cast<float>(player.hostStats().loadPeak); };   // (0 until ready)
         // START is disabled while the engine's machine code is being made (SimAdapter::ready)
         s.engineReady = [&player] { return player.ready(); };
         s.quality = [&player] { return player.quality(); };

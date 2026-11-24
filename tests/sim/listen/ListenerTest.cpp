@@ -460,7 +460,9 @@ TEST_CASE("a source that is not finite is dropped: no NaN, no offset, the rest a
 {
     // X-024: a NaN in one subsystem's signal (here the turbo's, then the road's, the mouth's, the gearbox's) must leave
     // the others heard exactly as without it
-    for (int bad : {int(kTurbo), int(kRoad), int(kIntake), 11})
+    // (NaN and infinity on alternate samples, into each input the mix takes: the right tail (the left carries the sine), intake, torque, valvetrain, block,
+    // turbo, starter, combustion, headers' walls, road, gearbox)
+    for (int bad : {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11})
     {
         Rig clean;
         Rig dirty;

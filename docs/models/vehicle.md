@@ -72,8 +72,13 @@ driver's pedal), from a standstill and until the clutch has locked for 0.1 s, th
 tyres push at the target slip (each one's peak force now times S(target); an open axle twice its weaker wheel's),
 through the gear, trimmed by the slip's error (proportional 3, integral 12 up and 20 down: past the peak the force
 falls, so it comes down faster); the automatic clutch's closing with the revs narrows to a stall guard 50 to 250 rpm
-over the idle. Measured (`vehicle.launch.*`, reference V8 in the coupe, first, floored, 2 s): wet, 5.51 m/s and mean slip
-0.081 against 4.31 and 1.0 without traction control; dry, 9.33 and 0.086 against 6.99 and 1.0.
+over the idle. With the pedal floored and the engine under a launch speed (launch control's, `spec.ecu.launch.speed`,
+when it is on; else 60 % of the redline) the clutch passes at most what the engine makes beyond what takes it up to
+that speed within a tenth of a second (`launchCap`): an engine weak low down is not bogged (P's NA rotary). The launch's
+clutch is sized on the most torque the engine has shown (1.35 times it), and the launch goes on through an upshift taken
+before the clutch locked. Measured (`vehicle.launch.*`, reference V8 in the coupe, first, floored, 2 s): wet, 5.64 m/s
+and mean slip 0.085 against 4.31 and 1.0 without traction control; dry, 9.46 and 0.090 against 6.99 and 1.0; P's NA
+rotary, the engine at 4510 rpm or more after 0.8 s, 72 km/h in 5.35 s (5.95 bogged).
 
 ## Tyres
 
