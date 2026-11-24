@@ -66,8 +66,13 @@ and the lead (the session that wrote these files) settles what a card leaves ope
   `cmake --build --preset dev -j3 && scripts/lint.sh`. A rename that breaks another package's build breaks every
   session's next run (the build of 6651274). CI's Linux job builds everything first and fails within about three
   minutes; look with `scripts/ci-status.sh` after you push.
-- Long soak tests (minutes) carry the Catch tag `[nightly]` and are left out of the default runs and CI; `ctest
-  --preset nightly` runs them (the rule in `tests/CMakeLists.txt`).
+- **Test time** (the lead's rule): a test in the default run takes under 30 s on a CI runner, and CI's whole Test
+  step under 10 minutes on Linux. A longer property test or soak is **split**: a quick form stays in the default
+  run (the same property on a small fixed sample, the corners that have failed before first), and the full form
+  carries the Catch tag `[nightly]` (registered with `ADD_TAGS_AS_LABELS`, the rule in `tests/CMakeLists.txt`), which
+  the dev and release presets leave out and `ctest --preset nightly` runs. CI's soak tier runs the `[nightly]` tests
+  on Linux at every push, and on macOS and Windows when the head commit's message contains `[soak]`. Each CI job's
+  summary lists the default-run tests over 30 s with their package; the build steward tells their owners.
 
 ## 4. Code
 
