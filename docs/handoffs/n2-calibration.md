@@ -1,40 +1,38 @@
 # N2: the boosted engines (card N, pattern 2) — handoff
 
 Branch `claude/awesome-gates-ntdb58`. Measurements in `docs/measurements/calibration/boost/` (README, backpressure,
-by-hand, gate, causes); tool `tee-calib-boost`, tests `tee-tests-calib-boost` (ctest `calibration.boost.*`).
+by-hand, gate, causes, gamma, design-point); tool `tee-calib-boost`; tests `tee-tests-calib-boost` (9 cases) and
+F's `tee-tests-boost` (34; the 10-minute chop soak `[nightly]`, a one-minute form in the default run).
 
-**Done, by test** (GateTest.cpp, 7 cases): a matched wastegate holds its target spooled at the top speed (2 L
-four 120.1/120.0 kPa at 5271/6528 rpm, kei 59.8/60.3 at 6500/7800, gate not saturated); back pressure against boost
-(four's exhaust port over intake 1.14/1.29/1.49 at 3500/5000/6500); one state (stepped from 1500: 120.1 kPa, spooled:
-120.4); the over-boost cut (old 26.3 mm gate: 249 kPa/434 N m off, 151/250 cut at 150 kPa). F's TurboTest now expects the
-spring less the poppet's push (85.4 measured, 84.7 expected). Null test 59/59; tee-tests-boost 30/30; contract passes.
+**Causes found and fixed** (causes.md): no back pressure at the ports (G's housings); the gate's runaway (aGate =
+aNoz/0.65); a rotary matched to half its air (D); clicks (X-010/014/015); a one-bank twin's second turbo stood
+(Boost::exhaustSides); the VGT's two states (surge guard: vanes open at 1/s while the loop's own compressor surges,
+give back 0.1 of it; on the closed exhaust D2's truck spools to the single's 90 % in 2.60 s against 2.80); the
+back-pressure limit 1.4 (re-measured on real exhaust mass: tractor 1000 rpm 1159 against 790 N m without it).
 
-**Causes** (causes.md): 0, the predictor read a boosted engine 9-10 % over the full dyno (P moved to the stepped dyno;
-C told through the lead). 1, no back pressure: the ports saw 0.61-0.87 of the intake (G's housings fixed it: 1.06-1.48).
-2, the runaway: F's matched gate (0.85 nozzle area) could not hold its spring; spooled at the top the four ran to 255
-kPa, gate open, knock retard pinned, 27 bar; fixed (aGate = aNoz/0.65, Bell; Watson and Janota). 3, a rotary's turbo
-matched to half its air (D's 2df7ea6; with the sequential gate sized for the whole flow it holds 72-75 kPa against
-70). 2b, clicks (X-010/X-014): valves moved in 16-sample stairs and the nozzle's choked branch jumped: both fixed (the
-six 39 -> 8, the pickup at its reference; the four 20 against 8 with a recirculating valve; the tractor still 53). SC V8: engine VE flat, the blower's leak model makes the rise (no
-source to change it); ~7 % of it is pattern 1.
+**Since the exhaust's mean flow closed** (G 8bb2c80f): the over-boost test's small gate is 18 mm (26.3 held 105 kPa);
+the blow-off chop's check is "no surge cycle" (no reverse flow, no run over 2 blocks; the lead's ruling); the kei's
+26 mm gate was dropped (P: the matched one holds its taper); the rotary's 5200 rpm hysteresis is gone.
 
-**Numbers now** (engine.wallHeat 1, as after D's double-count fix): 2.0 four with P's boost taper 401 N m, 222.6 kW
-(both in); kei with P's taper 100 N m (in), 47-48 kW at 5250-6000 (in), 52-59 kW above 6490 (the actuator's spring
-floors the boost at 20 kPa: P asked for gateSpring 5 kPa); 3.0 twin six 507/475/442 N m at 2866/4297/5729 (in; turbo 1 had stood: one-bank twins now split by collector group, Boost::exhaustSides); SC V8 835-936 N m (over).
+**Built for others**: the over-boost cut (ecu.overBoost); Boost::testCell (the engine dyno's cooler held at the air,
+SAE J1349: the four +4 to +5 %, up against down within 0.6 %); spec.boost.heatSettle; tel.boost.mismatch with has/
+wants pairs (cooler, spring, pipes, compressor; U3 draws them); the inlet's stiffness in the orifices that end in it
+(X-024) and the filter's loss bounded (X-026); the knock-limit table's ECU side (ecu.maps.knockLimit, knockLimitAuto,
+knockLimitKey; tel.ecu.knockTable; advanceAsked per charge). C bakes the table (tee-dyno --bake-spark).
 
-**VGT** (causes.md 5): back-pressure limit 1.4 (spec boost.backPressure) and a surge guard (vanes open while the compressor
-surges: D2's truck at 1300 stood at 98 kPa/882 N m, now 210/1930 from either side; tractor no worse; brake 406 kW).
-**Closed with others**: X-010/014/015, X-020 (a 0/0 at a standing shaft); C's predictor; D's 959454c: cut on.
-**Open, the lead's call**: X-021, F's absolute defaults (gate spring, intercooler, pipes) under reference dials on 15 L.
-**Not done**: the table re-run on the gate (P's); the rotary's torque (not boost); the SC's leak model
-(needs a published twin-screw VE map); X-010 (diesel steps, coming from X); N1's ledger runs boosted builds at 1.2 s
-settle (asked 4-5 s and a boost-over-target line).
+**Open**: (1) the design-point matching rule (the lead's (a')): written and measured (design-point.md), NOT adopted;
+its code is a patch (Boost::designSpeed needs D's one line in engine.fm); spool gains on oversized petrols (+13 to
++43 % at 0.4 of the redline), 2 to 4 % lost at the top, diesels both ways. (2) The rotary's sequential pair at 6000
+to 7200 rpm: 26 to 39 kPa against 70 either rule; the second compressor barely flows (0.027 against 0.146 kg/s, both
+on the knee). (3) The knock-limit table's proof runs (retard under 3 degrees, torque within 2 %) when C's boost-sweep
+bake exists. (4) The pickup's top end (vanes fully open at p3/p2 1.41). (5) The boost package's CPU budget (80 s).
 
-**Outside my paths, done by owners**: D (overBoostRef, rotary x2 vd, stand-in call dropped), T (two-stroke x2), D2
-(vanesAndPurge), G (externalGates, exhaustSides).
+**Outside my paths, done by owners**: D (overBoostRef, rotary x2 vd, stand-in dropped, testCell's line), T, D2
+(vanesAndPurge, its brake governor), G (externalGates, exhaustSides), N1 (the blower's leak inflow, X-026's seeds).
 
-**Cost**: sizing at apply time; cut, limit, guard: a few compares every 16 samples (tee-bench not run).
+**Cost**: sizing at apply time; cut, limit, guard, warnings: compares every 16 samples (tee-bench not run).
 
-**Listen** (nobody here can hear): the 2 L four at full load 5000-6500 rpm (gate open 0.6-0.9 now, not pinned); a
-tip-in at 5000 rpm (no overshoot, no knock run); the over-boost cut (boost.gateDiameter 0.0263, ecu.overBoost 150000,
-full load 5300 rpm): a rhythmic fuel cut; the kei's taper and its gate's hiss at 6000-7600; the twin six: two turbo whines at one pitch, no backflow chuff; the truck's VGT tip-in at 1300 rpm: no surge chuff once spooled.
+**Listen** (nobody here can hear): the 2 L four at full load 5000-6500 rpm; a tip-in at 5000 rpm; the over-boost cut
+(gateDiameter 0.018, ecu.overBoost 150000, full load 5300 rpm): a rhythmic fuel cut; the kei's taper at 6000-7600;
+the twin six: two whines at one pitch; the truck's VGT tip-in at 1300 rpm: no surge chuff once spooled; a throttle
+chop with the blow-off valve: one soft puff, no flutter.
