@@ -21,6 +21,7 @@ module XTest
     float mdot;
     float warm;
     float qs[XS_PORTS];
+    int measure;        // 0: runB leaves energy as it was
     float energy;       // the waves in flight in the builder's pipes, after the last sample (J, up to a constant)
 
     void init(float rateIn)
@@ -30,6 +31,7 @@ module XTest
         r.setup(rate);
         tPort = 1000.0f;
         mdot = 0.02f;
+        measure = 1;
         warm = 1.0f;
     }
 
@@ -192,24 +194,51 @@ module XTest
             outL[t] = b.net.outL;
             outR[t] = b.net.outR;
         }
+        if (measure == 0)
+            return;
         energy = 0.0f;
         for (int i = 0; i < XN_DUCTS; ++i)
         {
             if (b.net.dUse[i] != 0)
             {
+                // what is written and not yet read: the outgoing line back to what has arrived (a steepening pipe's
+                // read point), the returning line back to its delay
                 const Duct* p = &b.net.d[i];
                 float s = 0.0f;
-                const int dl = p->di + 2;
-                for (int k = 1; k <= dl; ++k)
+                const int nf = p->steep > 0.0f ? (p->w - p->rF + p->cap) % p->cap : p->di;
+                const int nb = p->bdi;
+                for (int k = 1; k <= nf; ++k)
                 {
                     int j = p->w - k;
                     if (j < 0)
                         j += p->cap;
-                    s += p->fw[j] * p->fw[j] + p->bw[j] * p->bw[j];
+                    s += p->fw[j] * p->fw[j];
+                }
+                for (int k = 1; k <= nb; ++k)
+                {
+                    int j = p->w - k;
+                    if (j < 0)
+                        j += p->cap;
+                    s += p->bw[j] * p->bw[j];
                 }
                 energy += s / p->z;
             }
         }
+    }
+
+    // n samples of the builder with the waves' energy in flight after each, into e
+    void runE(float* q, float* e, int n)
+    {
+        // (measured every 16th sample, held between)
+        float l = 0.0f;
+        float r = 0.0f;
+        for (int t = 0; t < n; ++t)
+        {
+            measure = (t & 15) == 0 ? 1 : 0;
+            runB(q + t * XS_PORTS, &l, &r, 1);
+            e[t] = energy;
+        }
+        measure = 1;
     }
 
     // n samples of the reference's exhaust on the same flows
