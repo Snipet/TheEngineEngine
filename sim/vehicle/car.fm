@@ -381,6 +381,7 @@ module Car
             k->autoBlip = cs->autoBlip;
             k->wheelieControl = cs->wheelieControl;
             k->wheelieAngle = cs->wheelieAngle;
+            k->clutchDry = cs->clutchDry;
             esRev = -1;     // (apply below, once)
         }
         if (es->rev != esRev)
@@ -505,6 +506,7 @@ module Car
         ct->quickshifts = b->quickshifts;
         ct->blips = b->blips;
         ct->wheelieLimit = b->wheelieLimit;
+        ct->sprocketSpeed = b->sprocketSpeed;
         return ped;
     }
 
@@ -512,6 +514,12 @@ module Car
     float lashStrike()
     {
         return model == 1 && bikeOn != 0 ? b1.lashStrike() : 0.0f;
+    }
+
+    // card B2: the front sprocket's speed, rad/s (0 without the motorcycle)
+    float sprocketSpeed()
+    {
+        return model == 1 && bikeOn != 0 ? b1.sprocketSpeed() : 0.0f;
     }
 
     bool moving()

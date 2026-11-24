@@ -15,6 +15,7 @@
 #include "tee/Validation.h"
 
 #include <cstdio>
+#include <functional>
 
 int main(int argc, char** argv)
 {
@@ -64,40 +65,80 @@ int main(int argc, char** argv)
     {
         const std::filesystem::path file = tee::tools::namedFile(content / "validation", name);
         tee::Validation validation;
-        std::vector<tee::ValidationRow> rows, reference;
         if (!tee::Validation::loadFile(file, validation, errors))
         {
             std::fprintf(stderr, "tee-validate: %s\n", errors.c_str());
             return 1;
         }
-        // the reference's column (unless --simulator): the build with every model switch at the reference's setting;
-        // when that changes nothing, the simulator's column is the same run
-        bool differs = simulatorOnly;
-        if (!simulatorOnly
-            && !tee::runValidation(compiled, validation, content, fast, reference, errors,
-                                   [&](tee::Build& b) { differs = tee::referenceSettings(b) > 0; }))
+        // Three columns: every model off (the reference: tee::referenceSettings), the build as it is, every new model
+        // on (tee::modelsOnSettings); a column whose build is one already run is not run again (its title says so).
+        // --simulator: the build as it is only.
+        struct Column
         {
-            std::fprintf(stderr, "tee-validate: %s\n", errors.c_str());
-            return 1;
-        }
-        if (differs && !tee::runValidation(compiled, validation, content, fast, rows, errors))
-        {
-            std::fprintf(stderr, "tee-validate: %s\n", errors.c_str());
-            return 1;
-        }
-        if (!differs)
-            rows = reference;
-        const std::string title = file.stem().generic_string() + " (" + validation.build + ")";
+            std::string title;
+            std::function<int(tee::Build&)> adjust;
+        };
+        std::vector<Column> wanted;
         if (simulatorOnly)
-            std::printf("%s\n%s\n", title.c_str(), tee::validationTable(rows).c_str());
+            wanted.push_back({"as built", {}});
         else
-            std::printf("%s\n%s\n", title.c_str(), tee::validationComparison(reference, rows, !differs).c_str());
-        for (std::size_t i = 0; i < rows.size(); ++i)
+            wanted = {{"models off", [](tee::Build& b) { return tee::referenceSettings(b); }},
+                      {"as built", {}},
+                      {"models on", [](tee::Build& b) { return tee::modelsOnSettings(b); }}};
+        // the build each column runs: loaded here as runValidation loads it, to tell which are the same
+        std::vector<std::uint64_t> hashes;
+        std::vector<std::string> titles;
+        std::vector<std::vector<tee::ValidationRow>> columns;
+        for (const Column& c : wanted)
         {
-            const tee::ValidationRow& r = rows[i];
-            const bool referenceMeets = !simulatorOnly && i < reference.size() && reference[i].measured && reference[i].pass;
-            failed = failed || (r.measured && !r.pass && (r.target->fast || referenceMeets));
+            tee::Build probe(compiled->fields());
+            std::vector<std::string> warnings;
+            const std::filesystem::path buildFile =
+                validation.build.find('/') != std::string::npos || validation.build.find(".json") != std::string::npos
+                    ? (std::filesystem::exists(validation.build) ? std::filesystem::path(validation.build)
+                                                                 : content / validation.build)
+                    : content / "builds" / (validation.build + ".json");
+            if (!validation.build.empty() && !probe.loadFile(buildFile, tee::BuildPart::Whole, warnings, errors))
+            {
+                std::fprintf(stderr, "tee-validate: %s\n", errors.c_str());
+                return 1;
+            }
+            if (c.adjust)
+                c.adjust(probe);
+            const std::uint64_t h = probe.hash();
+            bool seen = false;
+            for (std::size_t k = 0; k < hashes.size(); ++k)
+                if (hashes[k] == h)
+                {
+                    titles[k] += " = " + c.title;
+                    seen = true;
+                }
+            if (seen)
+                continue;
+            std::vector<tee::ValidationRow> columnRows;
+            if (!tee::runValidation(compiled, validation, content, fast, columnRows, errors,
+                                    c.adjust ? std::function<void(tee::Build&)>([&](tee::Build& b) { c.adjust(b); })
+                                             : std::function<void(tee::Build&)>()))
+            {
+                std::fprintf(stderr, "tee-validate: %s\n", errors.c_str());
+                return 1;
+            }
+            hashes.push_back(h);
+            titles.push_back(c.title);
+            columns.push_back(std::move(columnRows));
         }
+        const std::string title = file.stem().generic_string() + " (" + validation.build + ")";
+        std::printf("%s\n%s\n", title.c_str(), tee::validationColumns(titles, columns).c_str());
+        // a fast target that fails in any column fails the run; a column's miss of a target the reference (the first
+        // column) meets is a regression and fails it too; the rest is reported
+        for (std::size_t c = 0; c < columns.size(); ++c)
+            for (std::size_t i = 0; i < columns[c].size(); ++i)
+            {
+                const tee::ValidationRow& r = columns[c][i];
+                const bool referenceMeets =
+                    c > 0 && i < columns[0].size() && columns[0][i].measured && columns[0][i].pass && !simulatorOnly;
+                failed = failed || (r.measured && !r.pass && (r.target->fast || referenceMeets));
+            }
     }
     return failed ? 1 : 0;
 }

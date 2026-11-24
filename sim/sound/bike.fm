@@ -1,0 +1,164 @@
+// sound/bike.fm: a motorcycle's own mechanical voices (module BikeVoice): its drive chain's whine and the clunk of
+// its lash, and a dry clutch's rattle (card B2's motorcycle: spec.car.kind Motorcycle with car.model 1).
+//
+// The chain. A roller chain meets its sprockets one roller at a time: each roller strikes the sprocket's tooth as it
+// seats, and the chain rises and falls as it wraps the sprocket's polygon (the chordal action), so it sings at the
+// front sprocket's teeth times its turns (the same rate at the rear: the chain carries it), with strong harmonics
+// (Binder, "Roller chain drives"; ANSI B29.1's noise notes; the chordal action is greatest on a small sprocket). Its
+// level as a gear mesh's here: k min(f / 1 kHz, 4) (0.15 + |load|), straight-cut harmonics (0.6, 0.35), and a
+// sideband once a turn of the front sprocket.
+// The lash. Between the throttle's opening and closing the drive's play (the chain's slack, the cush drive's rubber,
+// the gearbox's backlash) is taken up from the other side: when it closes it clunks, as hard as it closed (card B2's
+// Car::lashStrike: the closing speed at the rear wheel, rad/s, on the one sample it closes). It rings the swingarm and
+// frame (140 Hz), the sprocket (650 Hz) and the chain's links (2.1 kHz) (judgement), its strike as the closing speed
+// over 3 rad/s (a typical one in second gear).
+// The dry clutch. A dry clutch's plates sit in its basket's slots with play; at idle the primary drive's speed rises
+// and falls at each firing and the plates' tangs rattle in the slots (the rattle of a dry-clutch Ducati at idle, quiet
+// with the lever pulled: the plates then float free of the pressure and of the basket's push). Modelled as the
+// gearbox's rattle is (gears.fm): two loose plates with 6 and 9 mrad of play, pulled to the basket's speed (the
+// crank's over the primary ratio) by their drag (15 and 25 /s), striking at the play's ends, ringing the clutch's
+// cover (1.4, 2.8 and 4.5 kHz). Under load the plates are pushed to one side of their slots: quieter, gone by a third
+// of the engine's most. A wet clutch's oil damps it: none.
+#pragma once
+#include "lib/biquad.fm"
+#include "lib/noise.fm"
+#include "osc.fm"
+
+module BikeVoice
+{
+    float rate;
+    float dt;
+    Noise noise;
+    SineTable* sn;
+    Shaft spr;          // the front sprocket
+    float hz;
+    float hzStep;
+    float teeth;
+    Glide aChain;
+    // the lash
+    Biquad lres[3];
+    float kLash;
+    // the dry clutch
+    float pu[2];
+    float px[2];
+    float pb[2];
+    float pk[2];
+    float primary;
+    Biquad cres[3];
+    Glide aClutch;
+    float clutchOn;
+    // out
+    float chain;        // the chain and its lash: at the rear sprocket, the swingarm
+    float clutch;       // the dry clutch: its cover, on the engine's side
+
+    void setup(float rateIn, SineTable* table)
+    {
+        rate = rateIn;
+        dt = 1.0f / rate;
+        sn = table;
+        noise.rs = 264575;
+        lres[0].setBandpass(140.0f, 3.0f, rate);
+        lres[1].setBandpass(650.0f, 6.0f, rate);
+        lres[2].setBandpass(2100.0f, 12.0f, rate);
+        cres[0].setBandpass(1400.0f, 7.0f, rate);
+        cres[1].setBandpass(2800.0f, 10.0f, rate);
+        cres[2].setBandpass(4500.0f, 14.0f, rate);
+        pb[0] = 0.006f;
+        pb[1] = 0.009f;
+        pk[0] = 15.0f;
+        pk[1] = 25.0f;
+        clear();
+    }
+
+    void clear()
+    {
+        hz = 0.0f;
+        hzStep = 0.0f;
+        teeth = 16.0f;
+        aChain.clear();
+        aClutch.clear();
+        kLash = 0.0f;
+        primary = 1.7f;
+        clutchOn = 0.0f;
+        for (int i = 0; i < 3; ++i)
+        {
+            lres[i].clear();
+            cres[i].clear();
+        }
+        for (int i = 0; i < 2; ++i)
+        {
+            pu[i] = 0.0f;
+            px[i] = 0.0f;
+        }
+        chain = 0.0f;
+        clutch = 0.0f;
+    }
+
+    // Every 16 samples. bike: a motorcycle (1); wSprocket: the front sprocket's speed (rad/s); front: its teeth; dry: a
+    // dry clutch; primaryRatio: crank turns to the basket's; load: the torque over the engine's most; engaged: the
+    // clutch lever out (1) to pulled (0); kC, kL, kD: the chain's, the lash's and the dry clutch's gains
+    void control(int bike, float wSprocket, int front, int dry, float primaryRatio, float load, float engaged, float kC,
+                 float kL, float kD)
+    {
+        const float h = bike != 0 ? fabsf(wSprocket) * 0.15915494f : 0.0f;
+        hzStep = (h - hz) * 0.0625f;
+        teeth = (float)(front > 0 ? front : 16);
+        const float f = h * teeth;
+        aChain.to(bike != 0 ? kC * 0.003f * fminf(f * 0.001f, 4.0f) * (0.15f + fminf(fabsf(load), 1.5f)) : 0.0f);
+        kLash = bike != 0 ? kL : 0.0f;
+        primary = fmaxf(primaryRatio, 1.0f);
+        const float e = fminf(fmaxf(engaged, 0.0f), 1.0f);
+        clutchOn = bike != 0 && dry != 0 ? e * (1.0f - fminf(fabsf(load) * 3.0f, 1.0f)) : 0.0f;
+        aClutch.to(kD * clutchOn);
+    }
+
+    // One sample. crankHz; strike: Car::lashStrike() (rad/s, this sample's closing; 0 otherwise)
+    void tick(float crankHz, float strike)
+    {
+        hz += hzStep;
+        spr.turn(hz, dt);
+        chain = 0.0f;
+        const float ac = aChain.next();
+        if (ac != 0.0f)
+        {
+            const float m = spr.mesh(teeth);
+            const float s = sn->at(m);
+            const float c = sn->cosAt(m);
+            chain = ac * (1.0f + 0.12f * sn->at(spr.ph)) * (s + 0.6f * (2.0f * s * c) + 0.35f * s * (3.0f - 4.0f * s * s));
+        }
+        const float k = strike > 0.0f ? kLash * strike / 3.0f * (0.85f + 0.15f * noise.rnd()) : 0.0f;
+        chain += 0.25f * lres[0].tick(k) + 0.12f * lres[1].tick(k) + 0.05f * lres[2].tick(k);
+        // the dry clutch's plates
+        clutch = 0.0f;
+        const float ad = aClutch.next();
+        const float w = crankHz * 6.28318531f / primary;
+        if (ad != 0.0f || clutchOn != 0.0f)
+        {
+            float kk = 0.0f;
+            for (int i = 0; i < 2; ++i)
+            {
+                pu[i] += (w - pu[i]) * pk[i] * dt;
+                px[i] += (pu[i] - w) * dt;
+                if (px[i] > pb[i] || px[i] < -pb[i])
+                {
+                    const float vr = pu[i] - w;
+                    px[i] = px[i] > 0.0f ? pb[i] : -pb[i];
+                    if (vr * px[i] > 0.0f)
+                    {
+                        kk += fabsf(vr) * (0.8f + 0.2f * noise.rnd());
+                        pu[i] = w - 0.3f * vr;
+                    }
+                }
+            }
+            const float x = kk * ad;
+            clutch = 0.05f * (cres[0].tick(x) + 0.7f * cres[1].tick(x) + 0.5f * cres[2].tick(x));
+        }
+        else
+        {
+            pu[0] = w;
+            pu[1] = w;
+            px[0] = 0.0f;
+            px[1] = 0.0f;
+        }
+    }
+};

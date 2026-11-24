@@ -49,6 +49,11 @@ namespace tee::ui
             static constexpr const char* ductNear = "ductNear";              // [84], gauge Pa at the upstream end
             static constexpr const char* ductFar = "ductFar";                // [84]
             static constexpr const char* ambient = "env.pressure";     // a field: the air outside
+            // card T's two-stroke (engine.cycle 1)
+            static constexpr const char* tsPipeTemp = "engine.tsPipeTemperature";   // K, the pipes' gas
+            static constexpr const char* tsPortScope = "tsPortPressure"; // card T's port pressure each degree (asked)
+            static constexpr const char* portScope = "portExhaust";     // else U1's: cylinder 1's exhaust port, each degree
+            static constexpr const char* degrees = "degrees";           // the Scope's cycle: 360 for a two-stroke
         };
     }
 }

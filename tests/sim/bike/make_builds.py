@@ -66,6 +66,38 @@ ENGINES = [
      "Single", [0.0], [0], [0], 89.0, 60.0, 12.6, 10500, 0.0, 0.0, 0.0),
 ]
 
+# Each engine's head and cams for card E's valvetrain lab (valve.model Lab) and its runner (intake.model Lab, a body a
+# runner): valves a cylinder, valve diameters (mm), duration at 1 mm (deg), lift (mm) and centreline (deg) for the
+# intake and the exhaust, the train, the runner's length (m) for its tuned speed. Judgement in the class's ranges: a
+# sport four's intake valves are some 0.38 to 0.40 of its bore (two a cylinder: 0.30 of the bore's area), 250 to 270
+# degrees at 1 mm, 9 to 11 mm of lift on finger followers; a cruiser's pushrod twin 220 degrees and 12 mm.
+HEADS = {
+    "bike-i4-screamer":   (4, 31.0, 25.0, 262, 10.5, 104, 252, 9.0, 106, "Finger", 0.26),
+    "bike-i4-crossplane": (4, 31.0, 25.0, 262, 10.5, 104, 252, 9.0, 106, "Finger", 0.26),
+    "bike-i4-600":        (4, 27.0, 22.0, 266, 9.3, 104, 256, 8.0, 106, "Finger", 0.23),
+    "bike-vtwin-90":      (4, 42.0, 34.0, 250, 11.5, 106, 244, 10.5, 108, "Rocker", 0.32),
+    "bike-vtwin-45":      (4, 40.0, 33.0, 220, 12.0, 108, 220, 11.0, 110, "Pushrod", 0.42),
+    "bike-twin-180":      (4, 32.0, 27.0, 240, 9.5, 106, 236, 8.5, 108, "Bucket", 0.32),
+    "bike-twin-270":      (4, 31.5, 26.5, 236, 9.0, 106, 232, 8.0, 108, "Bucket", 0.34),
+    "bike-twin-360":      (2, 38.0, 32.0, 228, 9.0, 108, 228, 8.5, 108, "Rocker", 0.36),
+    "bike-triple":        (4, 31.0, 25.5, 256, 10.0, 104, 248, 9.0, 106, "Finger", 0.27),
+    "bike-v4-screamer":   (4, 34.0, 27.5, 264, 11.0, 104, 254, 9.5, 106, "Finger", 0.25),
+    "bike-v4-bigbang":    (4, 34.0, 27.5, 262, 11.0, 104, 252, 9.5, 106, "Finger", 0.26),
+    "bike-boxer-twin":    (4, 40.0, 34.0, 244, 10.5, 106, 240, 9.5, 108, "Finger", 0.34),
+    "bike-single":        (4, 34.0, 28.0, 244, 9.5, 106, 238, 8.5, 108, "Bucket", 0.32),
+}
+
+AIR = {"temperature": 300.0, "pressure": 101325}
+
+
+def hardware(name):
+    v, di, de, idur, il, ic, edur, el, ec, train, runner = HEADS[name]
+    valve = {"model": "Lab", "valves": v, "dIn": di / 1000, "dEx": de / 1000,
+             "inDur1mm": idur, "inDurSeat": idur + 40, "inLift": il / 1000, "inCentre": ic,
+             "exDur1mm": edur, "exDurSeat": edur + 40, "exLift": el / 1000, "exCentre": ec, "train": train}
+    intake = {"model": "Lab", "throttleKind": "A body a runner", "trumpets": "The air box", "runnerLength": runner}
+    return valve, intake
+
 
 def geometry(banks, bank_of, fire):
     """The pins and firing revolutions that put each cylinder's firing where `fire` says (cylinder 1 at its bank's
@@ -211,24 +243,23 @@ def main():
     for e in ENGINES:
         spec, expect = engine_spec(e)
         engines[e[0]] = (spec, expect)
-        doc = {"format": "tee-build", "version": 1, "name": e[1], "notes": e[2], "spec": {"engine": spec},
-               "expect": expect}
+        valve, intake = hardware(e[0])
+        doc = {"format": "tee-build", "version": 1, "name": e[1], "notes": e[2],
+               "spec": {"engine": spec, "valve": valve, "intake": intake, "env": AIR}, "expect": expect}
         write(os.path.join(ROOT, "content", "builds", "engines", e[0] + ".json"), doc)
         print(f"{e[0]:22s} order {expect['firingOrder']} intervals {expect['firingIntervals']} "
               f"{expect['displacementCc']:.0f} cc, {expect['redlineRpm']} rpm")
     for name, title, notes, eng, car in BIKES:
         spec, expect = engines[eng]
+        valve, intake = hardware(eng)
         c = {"kind": "Motorcycle", "model": "Vehicle"}
         c.update(car)
         doc = {"format": "tee-build", "version": 1, "name": title, "notes": notes,
-               "spec": {"engine": spec,
-                        # card E's individual throttle bodies, a runner each, trumpets in the air box
-                        "intake": {"model": "Lab", "throttleKind": "A body a runner", "trumpets": "The air box"},
+               "spec": {"engine": spec, "valve": valve, "intake": intake,
                         # a short system: short headers, a short pipe, a small can (card G's builder's 4-2-1 when it
-                        # reaches the engine: its fields are not read yet)
+                        # reaches the engine)
                         "exhaust": {"headers": 0.25, "pipe": 0.2, "muffler": 0.15},
-                        "valve": {"cam": 0.55},
-                        "fuel": {"kind": "Gasoline"}, "car": c, "sound": {"view": "Exhaust"}},
+                        "fuel": {"kind": "Gasoline"}, "env": AIR, "car": c, "sound": {"view": "Exhaust"}},
                "expect": {"engine": eng}}
         write(os.path.join(ROOT, "content", "builds", name + ".json"), doc)
         print(f"{name:22s} with {eng}")

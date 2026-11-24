@@ -1,0 +1,28 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Truck stack",
+  "notes": "A long single pipe to a vertical stack behind the cab, one big muffler. Loaded as a part, it replaces only the exhaust fields it sets. Today the engine hears the four dials (headers, pipe, crossover, muffler); the builder's pipes are kept for when it runs them.",
+  "spec": {
+    "exhaust": {
+      "headers": 0.5,
+      "pipe": 0.95,
+      "crossover": 0.0,
+      "muffler": 0.6,
+      "model": "Builder",
+      "sides": 1,
+      "converter": [
+        1,
+        1
+      ],
+      "mufKind": [
+        2,
+        2
+      ],
+      "exitAt": [
+        6,
+        6
+      ]
+    }
+  }
+}
