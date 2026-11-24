@@ -44,7 +44,9 @@
       "redlineSpeed": 733.038,
       "frictionValvetrain": "Finger follower",
       "rough": 0.2,
-      "benchLoad": 0.3
+      "benchLoad": 0.3,
+      "wallHeat": "Woschni",
+      "cycle": "Four-stroke"
     },
     "valve": {
       "model": "Lab",
@@ -137,8 +139,16 @@
       "pressure": 101325.0
     },
     "voices": {
+      "model": "Voices",
       "timing": "Toothed belt",
       "injection": "Port"
+    },
+    "sound": {
+      "model": "Places",
+      "camera": "Rear",
+      "place": "Field",
+      "ground": "Asphalt",
+      "enginePlace": "Front"
     }
   }
 }

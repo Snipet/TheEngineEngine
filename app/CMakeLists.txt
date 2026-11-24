@@ -7,7 +7,7 @@
 # tee_app is what the two share and that needs no FunkGui: the command line, the script, the engine's loader. What
 # needs FunkGui (Offline.cpp, the Panel) is compiled by each executable, with FunkGui's own sources: FunkGui's
 # targets are INTERFACE libraries whose sources compile into the target that links them.
-add_library(tee_app STATIC Options.cpp Script.cpp Engine.cpp)
+add_library(tee_app STATIC Options.cpp Script.cpp Engine.cpp Launch.cpp)
 tee_target_defaults(tee_app)
 target_include_directories(tee_app PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(tee_app PUBLIC Tee::shell_core Tee::shell_ref Tee::shell_files PRIVATE Tee::host)

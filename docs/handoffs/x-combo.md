@@ -21,6 +21,8 @@ moves, stops; every telemetry column finite, in its declared range, else physica
 - decisions (`DecisionsTest.cpp`, fast): each switch written while stopped (D's stopped-switch sequence) reaches the
   engine the build with it on reaches; every switch loaded over every switch off reaches the fresh build; on the
   default block (nightly: V8, turbo six). It does not fail before f89d40c: there every host route gives 444 N m
+- X-020 closed (N2 896c4b3) and out of Known.h; X-021 closed by the build: large-diesel.json carries D2's truck boost
+  (gateSpring 220000, icFlow 0.8, chargeVolume 0.02): boost.model on, 2000 rpm, 1865 N m against the reference's 1933
 - fixed findings held as tests: X-001, X-003, X-007 (`[fixed]`)
 - `tee-fuzz`: `--seeds`, `--reduce` (ddmin), `--play <archetype> <scenario> <switches>`, `--checks`, `--match`
 

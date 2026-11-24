@@ -622,7 +622,8 @@ def build(a):
         t["maps.boostAuto"] = False
         t["maps.boost"] = {"x": xs, "y": gears, "z": [[k * 1000.0] * len(gears) for _, k in a["boostTaper"]]}
 
-    vo = {"timing": a.get("timing", "Chain")}
+    # the mechanical voices (package M) on, with what belongs to this engine (the lead, 20:09: every model switch on)
+    vo = {"model": "Voices", "timing": a.get("timing", "Chain")}
     if a.get("lifters"):
         vo["lifters"] = a["lifters"]
     if a.get("fan"):
@@ -642,9 +643,49 @@ def build(a):
     # estimated peak) slips under the real torque (the lead, 19:36: the NA rotary's after its launch)
     if "clutchTorque" in a:
         car["clutchTorque"] = a["clutchTorque"]
+    # Woschni's walls, said outright (fuel.model 1 brings them anyway: engine.fm's walls()); four strokes
+    e["wallHeat"] = "Woschni"
+    e["cycle"] = "Four-stroke"
+    # package L's listener on: every source where it is on the car; the first camera behind the car in the open,
+    # the engine where the class carries it
+    snd = {"model": "Places", "camera": "Rear", "place": "Field", "ground": "Asphalt",
+           "enginePlace": ENGINE_PLACE.get(a["car"], "Front")}
     spec = {"engine": e, "valve": v, "intake": i, "boost": bo, "exhaust": x, "fuel": f, "ecu": nest(t),
-            "car": car, "env": {"temperature": 288.15, "pressure": 101325.0}, "voices": vo}
+            "car": car, "env": {"temperature": 288.15, "pressure": 101325.0}, "voices": vo, "sound": snd}
+    switches_on(spec, a["slug"])
     return {"format": "tee-build", "version": 1, "name": a["name"], "notes": a["notes"], "spec": spec}
+
+
+# where each class carries its engine (the listener's paths to each camera)
+ENGINE_PLACE = {"mid-engine": "Mid", "awd-supercar": "Mid", "rear-engine-classic": "Rear"}
+
+
+def _switches():
+    """Every model switch the Schema has (each spec field named `model`, and engine.wallHeat), from tee-schema --json;
+    None where the tool is not built."""
+    tool = os.environ.get("TEE_SCHEMA", os.path.join(ROOT, "build-dev", "bin", "tee-schema"))
+    if not os.path.exists(tool):
+        return None
+    import subprocess
+    d = json.loads(subprocess.run([tool, "--json"], capture_output=True, text=True).stdout)
+    return {f["path"][len("spec."):]: f.get("choices") for f in d["fields"]
+            if f["path"].startswith("spec.") and f["path"].split(".")[-1] in ("model", "wallHeat")}
+
+
+SWITCHES = _switches()
+
+
+def switches_on(spec, slug):
+    """Fails unless every model switch the Schema has is set on (not its first choice, the reference) in `spec`: so
+    "every switch on" is true by construction (the lead, 20:09). Warns and passes where tee-schema is not built."""
+    if SWITCHES is None:
+        print("warning: tee-schema not built: the model switches are not checked")
+        return
+    for path, choices in SWITCHES.items():
+        sec, field = path.split(".", 1)
+        val = spec.get(sec, {}).get(field)
+        if val is None or val == 0 or (choices and val == choices[0]):
+            raise SystemExit("%s: spec.%s is not on (%r): every archetype sets every model switch" % (slug, path, val))
 
 
 def nest(flat):
@@ -665,6 +706,7 @@ def write(path, doc):
         f.write("\n")
 
 
+FIRST = "straight-six-twin-turbo-30"
 ENGINE_SECTIONS = ("engine", "valve", "intake", "boost", "exhaust", "fuel")
 
 
@@ -685,6 +727,17 @@ def main():
               {"format": "tee-build", "version": 1, "part": "car", "name": "Car: " + name.replace("-", " "),
                "notes": "A car of its class alone (card P's archetypes' cars), to take any engine.",
                "spec": {"car": car_section(name)}})
+    # the build the application opens on a first launch (the lead, 20:06; B opens content/builds/first.json when
+    # there is no --preset and no remembered build): an archetype inside its power, torque, idle and warm-start rows,
+    # steady at idle, cheap to run, and fun in the first minute
+    first = build(next(a for a in A if a["slug"] == FIRST))
+    first["name"] = "3.0 L twin-turbo six"
+    first["notes"] = ("Try first: turn the key, then floor it on the dyno and watch the two turbos spool in AIR (each "
+                      "fed by three cylinders) and the pulses split between the two collectors in EXHAUST.\n"
+                      "Then drive: in first, hold the brake, bring the revs up and let go for a standing start (traction "
+                      "control holds the wheelspin), and listen to the straight six through its dual exhaust as the "
+                      "dual clutch shifts.\n\n" + first["notes"])
+    write(os.path.join(ROOT, "content", "builds", "first.json"), first)
     loose_parts(A)
     manual(A)
     print("%d archetypes, %d cars" % (len(A), len(CARS)))
