@@ -48,7 +48,7 @@ namespace
     }
 } // namespace
 
-TEST_CASE("vehicle.diff.open: on a split surface an open differential spins the tyre on snow, the torques equal",
+TEST_CASE("diff.open: on a split surface an open differential spins the tyre on snow, the torques equal",
           "[vehicle][diff]")
 {
     const Axle a = launch(0.0, 0.0, 0.0, false);
@@ -58,7 +58,7 @@ TEST_CASE("vehicle.diff.open: on a split surface an open differential spins the 
     CHECK(a.tL + a.tR == Catch::Approx(a.tIn).epsilon(1e-4));
 }
 
-TEST_CASE("vehicle.diff.clutchpack: a clutch pack biases torque to the dry side by its preload and torque term",
+TEST_CASE("diff.clutchpack: a clutch pack biases torque to the dry side by its preload and torque term",
           "[vehicle][diff]")
 {
     const Axle open = launch(0.0, 0.0, 0.0, false);
@@ -70,7 +70,7 @@ TEST_CASE("vehicle.diff.clutchpack: a clutch pack biases torque to the dry side 
     CHECK(a.tL + a.tR > 1.3 * (open.tL + open.tR));   // (the dry side pushes harder: more of the engine reaches the road)
 }
 
-TEST_CASE("vehicle.diff.viscous: a viscous unit's torque grows with the speeds' difference", "[vehicle][diff]")
+TEST_CASE("diff.viscous: a viscous unit's torque grows with the speeds' difference", "[vehicle][diff]")
 {
     const Axle a = launch(0.0, 15.0, 0.0, false);
     REQUIRE(a.wL > a.wR + 1.0);
@@ -78,7 +78,7 @@ TEST_CASE("vehicle.diff.viscous: a viscous unit's torque grows with the speeds' 
     CHECK(a.tL + a.tR == Catch::Approx(a.tIn).epsilon(1e-4));
 }
 
-TEST_CASE("vehicle.diff.locked: a locked axle turns both wheels as one, the dry one taking what the snow cannot",
+TEST_CASE("diff.locked: a locked axle turns both wheels as one, the dry one taking what the snow cannot",
           "[vehicle][diff]")
 {
     const Axle a = launch(0.0, 0.0, 0.0, true);
@@ -87,7 +87,7 @@ TEST_CASE("vehicle.diff.locked: a locked axle turns both wheels as one, the dry 
     CHECK(a.tL + a.tR == Catch::Approx(a.tIn).epsilon(1e-4));
 }
 
-TEST_CASE("vehicle.diff.centre: an all-wheel drive's open centre splits by its ratio; the four torques add up",
+TEST_CASE("diff.centre: an all-wheel drive's open centre splits by its ratio; the four torques add up",
           "[vehicle][diff]")
 {
     Rig rig;

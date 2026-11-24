@@ -1,0 +1,571 @@
+// listen/listen.fm: where the engine is heard from, and how it reaches the host (module Listen). Owner: wave 2.
+//
+// The sources (each tailpipe's radiation, the intake's mouth, the engine bay's sounds, the headers' walls, the cabin's
+// boom, the tyres) mixed into two channels as a listener hears them from one of five views: behind the tailpipes
+// (EXHAUST), a few metres behind (REAR), beside the car (SIDE), over the open bonnet (ENGINE), in the driver's seat
+// (CABIN). Then the distance (0.5 m to 30 m: the level falls with it, the air takes the highs, the room comes up), the
+// room (a hall: listen/hall.fm), the level, a gentle compressor as a recording of an engine has, a limiter for the
+// loudest moments and a soft ceiling, so that what leaves is within +-1. Last, the resampler: the engine runs at 96 kHz
+// whatever the host's rate: the same sound at every rate, and no more work at 192 kHz. (At 48 kHz the top octave came
+// out 7 to 18 dB under what the same engine makes at 192 kHz; at 96 kHz it is within 1.5 dB to 16 kHz and 3 dB to 20 kHz,
+// all else alike.) Its output is resampled to the host's by a Kaiser-windowed sinc a millisecond long (96 taps,
+// interpolated from a table of 128 phases; below 96 kHz cut at 92 % of the host's Nyquist), half a millisecond late.
+//
+// The tailpipes are heard by their direct paths (listenAt): each pipe reaches each of two microphones (an ORTF pair
+// outside, the driver's ears in the cabin) after its delay, through the microphone's pattern, its highs beaming along
+// the pipe's axis. The levels of the sources against each other (kEx ... kCb, viewGain) are the reference's, measured.
+//
+// What it leaves out: the car's body shading the sources, the ground's reflection, the Doppler shift of a pass-by.
+//
+// Seen from Engine (sim/README.md has the signatures):
+//   setup(rate, hostRate)  in init (allocates); release() in end
+//   resetPaths()           the tailpipes' delay lines emptied (a new engine)
+//   block(...)             every 16 samples: the view's and the dials' gains
+//   mix(i, ...)            each sample: the sources into the part's buffers
+//   finish(left, right, at, m)   the part through the room, the compressor, the limiter and the ceiling, added out
+//   needs(), pushPart(), resampled(left, right, i): the resampler round Engine's render of 16-sample parts
+#pragma once
+#include "lib/onepole.fm"
+#include "lib/biquad.fm"
+#include "hall.fm"
+
+module Listen
+{
+    float rate;         // the engine's: 96 kHz
+    // the resampler: the engine's output, its last 256 samples (doubled, for the kernel's reads), the kernel (129 phases
+    // of rsN taps), one part of the engine's, where the next sample goes, how far ahead it is, and the step
+    float hostRate;
+    int rsOn;
+    float* rsL;
+    float* rsR;
+    float* rsTab;
+    int rsN;            // its taps (even)
+    float* rsBl;
+    float* rsBr;
+    int rsW;            // where the next sample goes
+    int rsAhead;        // samples written past the one the next output sits after
+    float rsFrac;       // how far past it
+    float rsStep;       // the engine's samples a host's
+    Hall hall;
+    float* sA;          // the room's input and output, 16 at a time
+    float* sB;
+    float* sC;
+    float* sD;
+    // the listener: each tailpipe heard at two microphones by its direct path (listenAt, listen)
+    float* lnBuf;       // each tailpipe's signal, low-passed for its directivity: a delay line each (doubled, lnCap long)
+    int lnCap;
+    int lnW;
+    float lnD[4];       // each path's delay (samples behind the earliest) and gain (tailpipe k, microphone m at k * 2 + m)
+    float lnG[4];
+    OnePole dirSh[2];   // each tailpipe's directivity: the highs beam along its axis, falling off it
+    int lnView;         // the view and the pipes the paths are for
+    int lnPipes;
+    float lnL;          // this sample's exhaust at each microphone
+    float lnR;
+    float lim;
+    float limRel;
+    float env;
+    float compA;
+    float compR;
+    float peakOut;
+    float kEx;          // each source's level, measured against the exhaust's
+    float kIn;
+    float kMc;
+    float kBk;
+    float kSh;
+    float kTb;
+    float kSt;
+    float kCb;
+    OnePole cabLp;      // the cabin: the body's boom from the engine's torque, through the mounts, ringing its modes
+    Biquad cabMode[6];
+    Biquad cabEx[2];
+    Biquad cabIn;
+    OnePole airLp[2];   // the distance takes the highs
+    float rS;           // the distance (m), smoothed; the level it gives, the output's level and the room's share, each
+    float gdS;          // gliding a sample at a time
+    float outS;
+    float wetS;
+    float kDist16;
+    float kGlide;
+    float airFc;        // the air's low-pass as last set
+    float gRoad;        // the road's level, for the view
+    // this part's gains (block)
+    int vNow;
+    float gEx;
+    float gIn;
+    float gMc;
+    float gBk;
+    float gSh;
+    float gTb;
+    float gCo;
+    float gSt;
+    float gCb;
+    float rt;
+    float outT;
+    float wetT;
+    float gdT;
+    float eL;
+    int ready;
+
+    void setup(float rateIn, float hostIn)
+    {
+        rate = rateIn;
+        hostRate = hostIn;
+        rsOn = fabsf(hostIn - rate) > 1.0f ? 1 : 0;
+        rsStep = rate / fmaxf(hostIn, 1000.0f);
+        rsN = 2 * (int)(24.0f * rate / 48000.0f + 0.5f);
+        rsL = calloc(512, sizeof(float));
+        rsR = calloc(512, sizeof(float));
+        rsBl = calloc(16, sizeof(float));
+        rsBr = calloc(16, sizeof(float));
+        rsTab = calloc(129 * rsN, sizeof(float));
+        rsW = 0;
+        rsAhead = 0;
+        rsFrac = 0.0f;
+        {
+            // h(u) = fc sinc(fc u) w(u / (rsN / 2)), fc the cut over the engine's Nyquist, w Kaiser's (beta 7)
+            const float fc = 0.92f * fminf(hostIn / rate, 1.0f);
+            const int hn = rsN / 2;
+            float i0b = 0.0f;
+            float term = 1.0f;
+            for (int k = 1; k < 30; ++k)
+            {
+                i0b += term;
+                term *= 12.25f / (float)(k * k);
+            }
+            for (int ph = 0; ph < 129; ++ph)
+            {
+                for (int t = 0; t < rsN; ++t)
+                {
+                    const float u = (float)(t - (hn - 1)) - (float)ph / 128.0f;
+                    const float x = 3.14159265f * fc * u;
+                    const float sn = fabsf(x) < 1.0e-6f ? 1.0f : sinf(x) / x;
+                    const float q = u / (float)hn;
+                    const float arg = q * q < 1.0f ? 3.5f * sqrtf(1.0f - q * q) : 0.0f;
+                    float i0 = 0.0f;
+                    float tt = 1.0f;
+                    for (int k = 1; k < 30; ++k)
+                    {
+                        i0 += tt;
+                        tt *= arg * arg / (float)(k * k);
+                    }
+                    rsTab[ph * rsN + t] = q * q < 1.0f ? fc * sn * i0 / i0b : 0.0f;
+                }
+            }
+        }
+        hall.setup(rate);
+        sA = calloc(16, sizeof(float));
+        sB = calloc(16, sizeof(float));
+        sC = calloc(16, sizeof(float));
+        sD = calloc(16, sizeof(float));
+        lnCap = 64;
+        while ((float)lnCap < 0.012f * rate)
+            lnCap *= 2;
+        lnBuf = calloc(4 * lnCap, sizeof(float));
+        lnView = -1;
+        lnPipes = 0;
+        for (int i = 0; i < 2; ++i)
+        {
+            airLp[i].set(18000.0f, rate);
+            cabEx[i].setLowpass(260.0f, 0.8f, rate);
+        }
+        cabLp.set(180.0f, rate);
+        // the cabin's modes the engine's shaking drives: the body's bending, the roof's and floor's panels, the air's
+        // first modes along and across it (heuristic values, 40 to 180 Hz)
+        const float cmF[6] = {42.0f, 58.0f, 77.0f, 104.0f, 138.0f, 182.0f};
+        const float cmQ[6] = {5.0f, 6.0f, 7.0f, 8.0f, 9.0f, 10.0f};
+        for (int i = 0; i < 6; ++i)
+            cabMode[i].setBandpass(cmF[i], cmQ[i], rate);
+        cabIn.setLowpass(800.0f, 0.7f, rate);
+        lim = 1.0f;
+        limRel = 1.0f - expf(-1.0f / (0.25f * rate));
+        compA = 1.0f - expf(-1.0f / (0.03f * rate));
+        compR = 1.0f - expf(-1.0f / (0.4f * rate));
+        env = 0.0f;
+        kEx = 0.016f;
+        kIn = 0.8f;
+        kMc = 1.5f;
+        kBk = 1.1f;
+        kSh = 0.000008f;
+        kTb = 1.0f;
+        kSt = 0.056f;
+        kCb = 0.000016f;
+        rS = -1.0f;
+        gdS = 0.0f;
+        outS = 0.0f;
+        wetS = 0.0f;
+        kDist16 = 1.0f - expf(-16.0f / (0.03f * rate));
+        kGlide = 1.0f - expf(-1.0f / (0.01f * rate));
+        airFc = -1.0f;
+        ready = 1;
+    }
+
+    void release()
+    {
+        if (ready != 0)
+        {
+            hall.release();
+            free(sA);
+            free(sB);
+            free(sC);
+            free(sD);
+            free(lnBuf);
+            free(rsL);
+            free(rsR);
+            free(rsBl);
+            free(rsBr);
+            free(rsTab);
+        }
+        ready = 0;
+    }
+
+    // A new engine: the tailpipes' delay lines empty, the paths made again at the next part
+    void resetPaths()
+    {
+        for (int i = 0; i < 4 * lnCap; ++i)
+            lnBuf[i] = 0.0f;
+        dirSh[0].clear();
+        dirSh[1].clear();
+        lnView = -1;
+    }
+
+    // How much of each source reaches where you listen: the exhaust, the intake, the valvetrain, the block, the
+    // headers' walls, the turbo, the starter, the cabin's boom; from behind the tailpipes (EXHAUST), a few metres behind
+    // (REAR), beside the car (SIDE), over the open bonnet (ENGINE), in the driver's seat (CABIN)
+    float viewGain(int v, int src)
+    {
+        const float g[40] = {
+            1.00f, 0.05f, 0.025f, 0.02f, 0.04f, 0.22f, 0.12f, 0.00f,
+            0.50f, 0.10f, 0.04f, 0.035f, 0.06f, 0.25f, 0.20f, 0.00f,
+            0.32f, 0.28f, 0.16f, 0.12f, 0.15f, 0.40f, 0.30f, 0.00f,
+            0.12f, 1.00f, 1.00f, 0.80f, 0.60f, 1.00f, 1.00f, 0.00f,
+            0.45f, 0.40f, 0.06f, 0.05f, 0.10f, 0.30f, 0.45f, 1.00f};
+        const int vv = v < 0 ? 0 : (v > 4 ? 4 : v);
+        return g[vv * 8 + src];
+    }
+
+    // Where the tailpipes are heard from in view v (n pipes; bike: a motorcycle's; tailD: their bore, m). The car's rear
+    // bumper is at y = 0 (x across to its right, y along it, forward, z up), the tailpipes at its corners (one, off to
+    // the right, when there is one: EXHAUST then stands behind it). Outside an ORTF pair faces the car (cardioids 17 cm
+    // apart, turned 55 degrees out) where the distance dial's nearest puts it: the dial takes the level, the highs and
+    // the room's share, as it always has, and the paths stay (moved with it, the sound's colour and its picture would
+    // move too); in the cabin, the driver's ears (16 cm apart). Each pipe reaches each microphone by its direct path,
+    // its delay and the microphone's pattern over its length; the gains are scaled so the pair hears the exhaust as
+    // loudly as one pipe at unit gain did. Each pipe's highs beam along its axis: off it they fall as a piston's pattern
+    // does, 2 J1(x) / x with x = ka sin of the angle, as a one-pole low-pass from x = 2.5 (gentler than the pattern's
+    // 3 dB at 1.6: an unflanged pipe's beam is broader); behind the pipe's mouth, lower still.
+    void listenAt(int v, int n, float bike, float tailD)
+    {
+        const float pz = bike > 0.5f ? 0.45f : 0.35f;
+        const float r = 0.5f;
+        float cx = n == 2 ? 0.0f : 0.4f;
+        float cy = -r;
+        float cz = 0.7f;
+        float fx = 0.0f;
+        float fy = 1.0f;
+        if (v == 1)
+        {
+            cx = 0.0f;
+            cy = -2.0f - r;
+            cz = 1.2f;
+        }
+        else if (v == 2)
+        {
+            cx = 0.9f + r;
+            cy = 1.3f;
+            cz = 1.2f;
+            fx = -1.0f;
+            fy = 0.0f;
+        }
+        else if (v == 3)
+        {
+            cx = 0.0f;
+            cy = 3.4f + 0.5f * r;
+            cz = 1.4f;
+            fy = -1.0f;
+        }
+        else if (v == 4)
+        {
+            cx = -0.35f;
+            cy = 1.7f;
+            cz = 1.1f;
+        }
+        const int cab = v == 4 ? 1 : 0;
+        const float half = cab != 0 ? 0.08f : 0.085f;
+        float dd[4];
+        float gg[4];
+        float dmin = 1.0e9f;
+        float sum = 0.0f;
+        for (int k = 0; k < n; ++k)
+        {
+            const float px = n == 2 ? (k == 0 ? -0.55f : 0.55f) : 0.4f;
+            for (int m = 0; m < 2; ++m)
+            {
+                const float s = m == 0 ? -1.0f : 1.0f;
+                // the microphone (the pair's right is (fy, -fx)), its axis 55 degrees out from facing
+                const float mx = cx + s * half * fy;
+                const float my = cy - s * half * fx;
+                const float ax = 0.5735764f * fx + s * 0.8191520f * fy;
+                const float ay = 0.5735764f * fy - s * 0.8191520f * fx;
+                const float ux = px - mx;
+                const float uy = -my;
+                const float uz = pz - cz;
+                const float d = fmaxf(sqrtf(ux * ux + uy * uy + uz * uz), 0.05f);
+                const float pat = cab != 0 ? 1.0f : 0.5f + 0.5f * (ax * ux + ay * uy) / d;
+                dd[k * 2 + m] = d;
+                gg[k * 2 + m] = pat / d;
+                dmin = fminf(dmin, d);
+                sum += pat / d;
+            }
+            // the pipe's directivity toward the pair (its axis points back, along -y)
+            const float tx = cx - px;
+            const float tzz = cz - pz;
+            const float ct = -cy / fmaxf(sqrtf(tx * tx + cy * cy + tzz * tzz), 0.05f);
+            const float st = sqrtf(fmaxf(1.0f - ct * ct, 0.0f));
+            const float se = ct >= 0.0f ? fmaxf(st, 0.02f) : 2.0f - st;
+            dirSh[k].set(cab != 0 ? 0.45f * rate : 2.5f * 347.2f / (3.14159265f * tailD * se), rate);
+        }
+        const float nrm = 2.0f / fmaxf(sum, 1.0e-6f);
+        for (int j = 0; j < 2 * n; ++j)
+        {
+            lnD[j] = fminf(1.0f + (dd[j] - dmin) * rate / 347.2f, (float)(lnCap - 3));
+            lnG[j] = gg[j] * nrm;
+        }
+        lnView = v;
+        lnPipes = n;
+    }
+
+    // One sample of the tailpipes at the microphones (into lnL and lnR): each pipe low-passed for its directivity into
+    // its delay line, read back at each path's delay (third-order Lagrange)
+    void listen(float x0, float x1)
+    {
+        const int cap = lnCap;
+        const float s0 = dirSh[0].lowpass(x0);
+        const float s1 = dirSh[1].lowpass(x1);
+        lnBuf[lnW] = s0;
+        lnBuf[lnW + cap] = s0;
+        lnBuf[2 * cap + lnW] = s1;
+        lnBuf[3 * cap + lnW] = s1;
+        float yl = 0.0f;
+        float yr = 0.0f;
+        for (int k = 0; k < lnPipes; ++k)
+        {
+            for (int m = 0; m < 2; ++m)
+            {
+                const int j = k * 2 + m;
+                const float d = lnD[j];
+                const int di = (int)d;
+                const float t = d - (float)di;
+                const int b = k * 2 * cap + lnW - di + cap;
+                const float tm1 = t - 1.0f;
+                const float tm2 = t - 2.0f;
+                const float tp1 = t + 1.0f;
+                const float y = -t * tm1 * tm2 * 0.16666667f * lnBuf[b + 1] + tp1 * tm1 * tm2 * 0.5f * lnBuf[b]
+                                - tp1 * t * tm2 * 0.5f * lnBuf[b - 1] + tp1 * t * tm1 * 0.16666667f * lnBuf[b - 2];
+                if (m == 0)
+                    yl += lnG[j] * y;
+                else
+                    yr += lnG[j] * y;
+            }
+        }
+        lnW += 1;
+        if (lnW >= cap)
+            lnW = 0;
+        lnL = yl;
+        lnR = yr;
+    }
+
+    // Every 16 samples: the gains of view v for this part, from the sound's dials (intakeK, mechK: INTAKE and
+    // MECHANICAL; distance, room, levelDb), the induction (asp: 0 none, 1 to 3 turbos, 4 a supercharger), the layout's
+    // trims (exTrim, gainNorm) and its tailpipes (nPipes, bike, tailD)
+    void block(int v, float intakeK, float mechK, float distance, float room, float levelDb, int asp, float exTrim,
+               float gainNorm, int nPipes, float bike, float tailD)
+    {
+        vNow = v;
+        gEx = viewGain(v, 0) * kEx * exTrim;
+        // (a turbo's compressor stands between the engine and the air box: the pulsing that comes out of it some 9 dB
+        // weaker, its whistle and rush in its place)
+        gIn = viewGain(v, 1) * kIn * (0.25f + 1.5f * intakeK) * (asp >= 1 && asp <= 3 ? 0.35f : 1.0f);
+        gMc = viewGain(v, 2) * kMc * 2.0f * mechK;
+        gBk = viewGain(v, 3) * kBk * 2.0f * mechK;
+        gSh = viewGain(v, 4) * kSh;
+        // (a supercharger sits on top of the engine, its whine out of the intake's mouth and its case: heard round
+        // the car, behind it and in it, far more than a turbo's whistle in its pipes)
+        const float scV[5] = {2.0f, 1.4f, 1.0f, 1.0f, 0.6f};
+        gTb = (asp == 4 ? scV[v] : viewGain(v, 5)) * kTb;
+        // (the combustion's noise, a diesel's clatter and a gasoline engine's knock, comes off the whole engine: heard
+        // round the car more than the block's own rattle; MECHANICAL takes it from half to 1.75 times)
+        const float coV[5] = {0.3f, 0.3f, 0.45f, 0.64f, 0.25f};
+        gCo = coV[v] * kBk * (0.5f + 1.25f * mechK);
+        gSt = viewGain(v, 6) * kSt;
+        gCb = viewGain(v, 7) * kCb;
+        // (the tyres heard from here, measured: at 100 km/h some 28 dB under the exhaust behind it, 12 under it in
+        // the cabin; a burnout's squeal 26 dB under the engine at its limiter behind it, 10 in the cabin)
+        const float gRd[5] = {0.22f, 0.24f, 0.20f, 0.12f, 0.21f};
+        gRoad = gRd[v];
+        // the distance: 0.5 m to 30 m; the level falls with it, the highs with it, the room comes up (in the cabin
+        // the body and its insulation take the highs: it is the lows that come through)
+        const float rr = 0.5f * expf(4.0943446f * distance);
+        const bool first = rS < 0.0f;
+        rS = first ? rr : rS + (rr - rS) * kDist16;
+        const float r = rS;
+        gdT = 1.5f / (0.5f + r);
+        const float fc = v == 4 ? 1600.0f : 18000.0f / (1.0f + r / 5.0f);
+        if (fabsf(fc - airFc) > 0.002f * fc)
+        {
+            airFc = fc;
+            airLp[0].set(fc, rate);
+            airLp[1].set(fc, rate);
+        }
+        wetT = room * (0.5f + 0.5f * fminf(r / 12.0f, 1.0f)) * (v == 4 ? 0.3f : 1.0f);
+        rt = 0.4f + 2.2f * room;
+        outT = gainNorm * expf(0.115129255f * levelDb);
+        if (first)
+        {
+            gdS = gdT;
+            outS = outT;
+            wetS = wetT;
+        }
+        // the tailpipes, heard where this view puts the microphones (listenAt); the engine's sources panned a
+        // little beside the car
+        if (v != lnView || nPipes != lnPipes)
+            listenAt(v, nPipes, bike, tailD);
+        eL = v == 2 ? 0.35f : 0.5f;
+    }
+
+    // Sample i of the part: the tailpipes' radiation (xL, xR), the intake's (inIn), the torque's ripple (tqNow: the
+    // cabin's boom), the engine bay's sources (mech, block, turbo, starter, comb: Extras'), the headers' walls (sh0,
+    // sh1), the tyres (road; driven: 1, else 0) and the fade's gain (cutG), into the room's input
+    void mix(int i, float xLin, float xRin, float inIn, float tqNow, float mech, float blockN, float turbo,
+             float starter, float comb, float sh0, float sh1, int driven, float road, float cutG)
+    {
+        const int v = vNow;
+        float xL = xLin;
+        float xR = xRin;
+        float in = inIn;
+        float cb = 0.0f;
+        if (v == 4)
+        {
+            xL = cabEx[0].tick(xL);
+            xR = cabEx[1].tick(xR);
+            in = cabIn.tick(in);
+            const float tq = cabLp.lowpass(tqNow);
+            cb = 0.45f * tq + 1.95f * cabMode[0].tick(tq) + 1.6f * cabMode[1].tick(tq) + 1.24f * cabMode[2].tick(tq)
+                 + 0.89f * cabMode[3].tick(tq) + 0.67f * cabMode[4].tick(tq) + 0.5f * cabMode[5].tick(tq);
+        }
+        listen(xL, xR);
+        const float eng = gMc * mech + gBk * blockN + gTb * turbo + gSt * starter + gCo * comb;
+        const float shL = gSh * sh0;
+        const float shR = gSh * sh1;
+        float L = gEx * lnL + gIn * in * 1.1f + eng * eL * 2.0f + shL + gCb * cb;
+        float R = gEx * lnR + gIn * in * 0.9f + eng * (1.0f - eL) * 2.0f + shR + gCb * cb;
+        if (driven != 0)
+        {
+            // driven: the tyres on the road
+            const float rd = gRoad * road;
+            L += rd;
+            R += rd;
+        }
+        gdS += (gdT - gdS) * kGlide;
+        const float g = gdS * cutG * cutG * (3.0f - 2.0f * cutG);
+        sA[i] = airLp[0].lowpass(L * g);
+        sB[i] = airLp[1].lowpass(R * g);
+    }
+
+    // The part's m samples through the room, the level, the compressor, the limiter and the ceiling, added into left
+    // and right from at
+    void finish(float* left, float* right, int at, int m)
+    {
+        hall.process(sA, sB, sC, sD, m, rt);
+        for (int i = 0; i < m; ++i)
+        {
+            outS += (outT - outS) * kGlide;
+            wetS += (wetT - wetS) * kGlide;
+            float L = (sA[i] + wetS * sC[i]) * outS;
+            float R = (sB[i] + wetS * sD[i]) * outS;
+            // a gentle compressor, as a recording of an engine has: the idle a little nearer the full-throttle roar
+            const float pw = 0.5f * (L * L + R * R);
+            env += (pw - env) * (pw > env ? compA : compR);
+            const float db = 4.3429448f * logf(fmaxf(env, 1.0e-12f));
+            const float over = fmaxf(db + 30.0f, 0.0f);
+            float gc = expf(-0.115129255f * (over * 0.4f - 5.0f));
+            L *= gc;
+            R *= gc;
+            // a limiter for the loudest moments, then a soft ceiling
+            const float pk = fmaxf(fabsf(L), fabsf(R)) * lim;
+            if (pk > 0.85f)
+                lim *= 0.85f / pk;
+            else
+                lim += (1.0f - lim) * limRel;
+            L *= lim;
+            R *= lim;
+            const float aL = fabsf(L);
+            const float aR = fabsf(R);
+            const float yL = aL < 0.7f ? aL : 0.7f + 0.3f * tanhf((aL - 0.7f) / 0.3f);
+            const float yR = aR < 0.7f ? aR : 0.7f + 0.3f * tanhf((aR - 0.7f) / 0.3f);
+            left[at + i] += L < 0.0f ? -yL : yL;
+            right[at + i] += R < 0.0f ? -yR : yR;
+            peakOut = fmaxf(peakOut, fmaxf(yL, yR));
+        }
+    }
+
+    // ---- the resampler, round Engine's render of 16-sample parts ----
+
+    // Whether the next host sample wants another part of the engine's first (then: render one into rsBl and rsBr,
+    // zeroed here, and pushPart)
+    bool needs()
+    {
+        if (rsAhead < rsN / 2 + 1)
+        {
+            for (int j = 0; j < 16; ++j)
+            {
+                rsBl[j] = 0.0f;
+                rsBr[j] = 0.0f;
+            }
+            return true;
+        }
+        return false;
+    }
+
+    void pushPart()
+    {
+        for (int j = 0; j < 16; ++j)
+        {
+            rsL[rsW] = rsBl[j];
+            rsL[rsW + 256] = rsBl[j];
+            rsR[rsW] = rsBr[j];
+            rsR[rsW + 256] = rsBr[j];
+            rsW = rsW == 255 ? 0 : rsW + 1;
+        }
+        rsAhead += 16;
+    }
+
+    // Host sample i, added into left and right
+    void resampled(float* left, float* right, int i)
+    {
+        const int hn = rsN / 2;
+        const float x = rsFrac * 128.0f;
+        int ph = (int)x;
+        if (ph > 127)
+            ph = 127;
+        const float f = x - (float)ph;
+        const int i0 = (rsW - rsAhead - (hn - 1) + 512) % 256;
+        const int k0 = ph * rsN;
+        float yl = 0.0f;
+        float yr = 0.0f;
+        for (int t = 0; t < rsN; ++t)
+        {
+            const float h = rsTab[k0 + t] + f * (rsTab[k0 + rsN + t] - rsTab[k0 + t]);
+            yl += h * rsL[i0 + t];
+            yr += h * rsR[i0 + t];
+        }
+        left[i] += yl;
+        right[i] += yr;
+        rsFrac += rsStep;
+        while (rsFrac >= 1.0f)
+        {
+            rsFrac -= 1.0f;
+            rsAhead -= 1;
+        }
+    }
+};

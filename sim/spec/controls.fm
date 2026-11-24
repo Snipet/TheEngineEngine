@@ -54,4 +54,6 @@ module Controls
     int strip [[fminus::default(0)]] [[ui::label("Drag strip")]] [[ui::help("Counts requests to stage a drag run")]];
     int scopeOn [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Scope")]]
         [[ui::help("0: the Scope block need not be filled")]];
+    int bakeMaps [[fminus::default(0)]] [[ui::label("Bake maps")]]
+        [[ui::help("Counts requests: the ECU writes its formulas' values at its maps' breakpoints into the Scope")]];
 };

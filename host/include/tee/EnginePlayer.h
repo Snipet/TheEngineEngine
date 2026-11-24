@@ -65,6 +65,7 @@ namespace tee
             float holdSpeed = 0.0f;    // rad/s; MODE_BENCH: above 0, a driver holds this speed
             int strip = 0;
             int scopeOn = 0;
+            int bakeMaps = 0;          // a counter: the ECU bakes its maps into the Scope on each increase
         };
         static constexpr int kIgnitionOff = 0, kIgnitionOn = 1, kIgnitionStart = 2;
         static constexpr int kModeBench = 0, kModeDrive = 1;

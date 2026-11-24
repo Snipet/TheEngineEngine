@@ -12,7 +12,7 @@
 
 using namespace tee::vehicle;
 
-TEST_CASE("vehicle.gearbox.stall: an automatic held on its brakes stalls the converter where (w / K)^2 meets the engine",
+TEST_CASE("gearbox.stall: an automatic held on its brakes stalls the converter where (w / K)^2 meets the engine",
           "[vehicle][gearbox]")
 {
     for (double k : {11.0, 13.5, 17.0})
@@ -86,7 +86,7 @@ namespace
     }
 } // namespace
 
-TEST_CASE("vehicle.gearbox.dualclutch: a dual clutch's upshift hands the torque over with no hole", "[vehicle][gearbox]")
+TEST_CASE("gearbox.dualclutch: a dual clutch's upshift hands the torque over with no hole", "[vehicle][gearbox]")
 {
     const Shift dct = upshift(DualClutch);
     // the torque at the wheels falls from second's to third's by their ratio, never below that
@@ -97,7 +97,7 @@ TEST_CASE("vehicle.gearbox.dualclutch: a dual clutch's upshift hands the torque 
     CHECK(paddles.least < 0.1 * paddles.before);
 }
 
-TEST_CASE("vehicle.gearbox.sequential: a dog box's upshift asks for a 60 ms cut and lets it go; a downshift a blip",
+TEST_CASE("gearbox.sequential: a dog box's upshift asks for a 60 ms cut and lets it go; a downshift a blip",
           "[vehicle][gearbox]")
 {
     Rig rig;
@@ -135,7 +135,7 @@ TEST_CASE("vehicle.gearbox.sequential: a dog box's upshift asks for a 60 ms cut 
     CHECK(rig.get("car.box.blip") == 0.0);
 }
 
-TEST_CASE("vehicle.gearbox.cvt: a CVT holds the engine at the speed the pedal sets while its ratio moves",
+TEST_CASE("gearbox.cvt: a CVT holds the engine at the speed the pedal sets while its ratio moves",
           "[vehicle][gearbox]")
 {
     for (double pedal : {1.0, 0.5})
@@ -169,7 +169,7 @@ TEST_CASE("vehicle.gearbox.cvt: a CVT holds the engine at the speed the pedal se
     }
 }
 
-TEST_CASE("vehicle.gearbox.manual: a gear will not go in with the clutch up and the speeds apart", "[vehicle][gearbox]")
+TEST_CASE("gearbox.manual: a gear will not go in with the clutch up and the speeds apart", "[vehicle][gearbox]")
 {
     Rig rig;
     rig.pullAway(1, 0.5, 200.0);
