@@ -47,6 +47,7 @@ namespace tee::ui
         bool running() const override { return running_; }
         void stopRun() override;
         bool refined() const noexcept { return refined_; }   // predicted() is the refined curve
+        std::uint64_t requests() const override { return requests_; }
 
         static DynoTrace traceOf(const tee::DynoCurve& c, std::string name);
         static DynoTrace traceOf(const tee::PredictCurve& c, std::string name);
@@ -63,6 +64,7 @@ namespace tee::ui
         std::string runName_;
         std::uint64_t seen_ = 0, revision_ = 1, request_ = 0, predictRevision_ = 0, refinedFor_ = 0;
         double quiet_ = 0.0;
+        std::uint64_t requests_ = 0;
         bool running_ = false, first_ = true, refined_ = false;
     };
 

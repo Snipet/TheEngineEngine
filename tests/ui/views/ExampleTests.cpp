@@ -90,4 +90,37 @@ namespace
         CHECK(a.engine.before().peakTorque().value == first.peakTorque().value);
         return 0;
     }
+
+    // Every registered workspace's demo hook defines names of its own: none twice (the base demo's or another hook's),
+    // the conflicts named with both definers.
+    VIEW_TEST(testDemoHooks, "demo.hooks")
+    {
+        tee::ui::DemoRig all;   // every hook
+        CHECK_MSG(all.engine.conflicts().empty(), "\n" + all.engine.conflicts());
+        const std::string fields = tee::ui::demoFieldConflicts();
+        CHECK_MSG(fields.empty(), "\n" + fields);
+        std::printf("  %zu hooks: %s\n", tee::ui::registeredDemos().size(), all.engine.conflicts().empty() && fields.empty() ? "no name twice" : "conflicts above");
+        return 0;
+    }
+
+    // The base demo's names are a contract (frozen 2026-11-24): every package's goldens see them, so a new name comes
+    // through its workspace's hook, never here. Changing this list is a change for every package to re-bless.
+    VIEW_TEST(testDemoBase, "demo.base")
+    {
+        const std::vector<std::string> tel = {
+            "engine.state", "engine.speed", "engine.redline", "engine.idle", "engine.throttle", "engine.manifold",
+            "engine.coolant", "engine.oilPressure", "engine.flags", "engine.cycle", "engine.crank",
+            "boost.pressure", "exhaust.portTemperature", "ecu.knockRetard",
+            "car.speed", "car.gear", "car.brake", "car.clutch", "sound.peak",
+            "ecu.advance", "sound.rate",
+            "engine.torque", "engine.power", "engine.firing", "engine.imep", "engine.bmep", "engine.veAir",
+        };
+        const std::vector<std::string> scope = { "degrees", "cycles", "pressure", "volume", "liftExhaust", "liftIntake",
+                                                 "pipePoints", "pipePressure", "portIntake", "portExhaust" };
+        CHECK(tee::ui::DemoEngine::baseTelemetry() == tel);
+        CHECK(tee::ui::DemoEngine::baseScope() == scope);
+        CHECK_MSG(tee::ui::demoFields(tee::ui::DemoHooks::none()).size() == 57,
+                  std::to_string(tee::ui::demoFields(tee::ui::DemoHooks::none()).size()));
+        return 0;
+    }
 }

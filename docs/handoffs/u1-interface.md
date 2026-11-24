@@ -92,8 +92,14 @@ sheet will include every registered workspace.
   goes round the whole window (the frame's items, the stage's, the inspector's): a workspace's Board does not wrap
   (`Board::setTabWraps(false)`, set by `Workspace`). Check your stage names every control:
   `CHECK_MSG(unnamedControls(*rig.host).empty(), unnamedControls(*rig.host));` (ViewKit).
-- **Demo hooks by package (important)**: `StageRig` now applies only the demo hooks of the workspace's own package
-  (U2 engine+valves, U3 air+exhaust, U4 tune+car+dyno, U5 garage+scope), so another package's data never moves your
-  goldens. A test that needs another package's names passes them: `StageRig(make, w, h, dpi, t,
-  tee::ui::DemoHooks::of({ "scope", "tune" }))`; `DemoRig(t, DemoHooks)` the same. The frame's contact sheet still
-  applies every hook. Better still: put the names your stage reads in your own hook.
+- **Demo hooks: your own only (important; replaces "by package")**: `StageRig` applies the base demo and the
+  workspace's own `TEE_UI_DEMO` hook, no other, so another workspace's data never moves your goldens. A test that
+  wants another's names passes them: `StageRig(make, w, h, dpi, t, tee::ui::DemoHooks::of({ "engine", "valves" }))`
+  (`DemoRig(t, DemoHooks)` the same). The frame's contact sheet and `frame.real.*` pictures apply every hook (pictures,
+  not goldens). **The base demo is frozen** (`ui.demo.base` lists its telemetry, Scope and field count): a new name goes
+  in the owning workspace's hook. **No name twice**: `ui.demo.hooks` fails when two hooks, or a hook and the base,
+  define one name, naming both (a hook may skip a field the base already has, as AIR's does).
+- **The dyno's requests**: `DynoSource::requests()` counts the predicted curves asked for (`ui.frame.ribbon`: one drag,
+  one request).
+- **`ui.build.*` tests**: `BUILD_TEST(ident, "build.name") { ... return 0; }` with `rig` (the real simulator under the
+  frame: `tests/ui/build/BuildKit.h`), in `tests/ui/build/<Name>Tests.cpp`; CMake finds the names.
