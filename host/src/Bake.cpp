@@ -4,7 +4,9 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <cstring>
 #include <limits>
+#include <set>
 
 namespace tee
 {
@@ -110,6 +112,210 @@ namespace tee
         build.endGesture();
         if (!ok)
             error = "the baked cam does not fit ecu.maps.camIn";
+        return ok;
+    }
+
+    // ---- the knock limit ----------------------------------------------------------------------------------------------
+
+    namespace
+    {
+        // The fields that move the knock limit (Bake.h): whole paths, and the boost's section whole
+        const char* const kKnockFields[] = {
+            "spec.engine.compression", "spec.engine.displacement", "spec.engine.boreStroke", "spec.engine.cylinders",
+            "spec.engine.layout",      "spec.fuel.kind",           "spec.fuel.grade",       "spec.fuel.model",
+            "spec.exhaust.model",      "spec.intake.model",        "spec.valve.inCentre",   "spec.valve.exCentre",
+            "spec.valve.inPhaseRange", "spec.valve.exPhaseRange",  "spec.ecu.maps.boost",   "spec.ecu.maps.boostAuto",
+            "spec.ecu.maps.lambda",    "spec.ecu.maps.lambdaAuto", "spec.ecu.maps.camIn",   "spec.ecu.maps.camInAuto",
+            "spec.ecu.maps.camEx",     "spec.ecu.maps.camExAuto",  "spec.ecu.maps.spark",   "spec.ecu.maps.sparkAuto"};
+
+        bool movesKnock(const FieldInfo& f)
+        {
+            if (f.hidden)
+                return false;
+            if (f.path.rfind("spec.boost.", 0) == 0)
+                return true;
+            for (const char* k : kKnockFields)
+                if (f.path == k)
+                    return true;
+            return false;
+        }
+    } // namespace
+
+    std::int64_t knockLimitKey(const Build& build, const Sim& sim)
+    {
+        std::uint64_t h = 1469598103934665603ull;
+        const auto mixIn = [&h](const void* data, std::size_t n) {
+            const unsigned char* b = static_cast<const unsigned char*>(data);
+            for (std::size_t i = 0; i < n; ++i)
+            {
+                h ^= b[i];
+                h *= 1099511628211ull;
+            }
+        };
+        const std::uint64_t program = sim.sourceHash();
+        mixIn(&program, sizeof program);
+        const auto& all = build.fields().all();
+        for (std::size_t i = 0; i < all.size(); ++i)
+        {
+            if (all[i].block != "spec" || !movesKnock(all[i]))
+                continue;
+            mixIn(all[i].path.data(), all[i].path.size());
+            for (const double v : build.values(static_cast<int>(i)))
+                mixIn(&v, sizeof v);
+        }
+        return static_cast<std::int64_t>(h & 0x7fffffffull);
+    }
+
+    bool knockLimitCurrent(const Build& build, const Sim& sim)
+    {
+        if (build.fieldOf("ecu.maps.knockLimit") < 0 || build.fieldOf("ecu.maps.knockLimitAuto") < 0
+            || build.fieldOf("ecu.maps.knockLimitKey") < 0)
+            return false;
+        return build.get("ecu.maps.knockLimitAuto") == 0.0
+               && static_cast<std::int64_t>(build.get("ecu.maps.knockLimitKey")) == knockLimitKey(build, sim);
+    }
+
+    bool bakeKnockLimit(const std::shared_ptr<Sim>& sim, const Build& build, const KnockBakeOptions& options,
+                        KnockBakeResult& result, std::string& error, const std::atomic<bool>* cancel)
+    {
+        const auto t0 = std::chrono::steady_clock::now();
+        result = KnockBakeResult{};
+        if (options.pedals.empty() || options.speeds < 2)
+        {
+            error = "a knock-limit bake wants a pedal and two speeds at least";
+            return false;
+        }
+        PredictOptions predict = options.predict;
+        predict.fields.insert(predict.fields.begin(), "engine.manifold");   // the load
+        predict.points = predict.coarse = std::min(options.speeds, 16);
+        std::vector<double> active;   // the speeds still knocking at the pedal above
+        std::set<double> knocking;
+        for (std::size_t k = 0; k < options.pedals.size(); ++k)
+        {
+            if (cancel != nullptr && cancel->load())
+            {
+                error = "cancelled";
+                return false;
+            }
+            predict.pedal = options.pedals[k];
+            if (k > 0)
+            {
+                if (active.empty())
+                    break;
+                predict.speeds = active;
+                predict.points = predict.coarse = static_cast<int>(active.size());
+            }
+            PredictCurve curve;
+            if (!predictCurve(sim, build, predict, curve, error, cancel))
+                return false;
+            result.points += static_cast<int>(curve.points.size());
+            result.simulatedSeconds += curve.simulatedSeconds;
+            if (k == 0)
+            {
+                for (const PredictPoint& p : curve.points)
+                    result.speeds.push_back(p.speed);
+                result.measured.assign(result.speeds.size(), {});
+            }
+            std::vector<double> next;
+            for (const PredictPoint& p : curve.points)
+            {
+                std::size_t at = 0;
+                while (at + 1 < result.speeds.size() && std::fabs(result.speeds[at] - p.speed) > 1e-6)
+                    ++at;
+                KnockBakeCell cell;
+                cell.pedal = predict.pedal;
+                cell.load = p.fields.empty() ? 0.0 : p.fields[0] / 101325.0;
+                cell.retardMean = p.retardMean;
+                cell.retardTooth = std::max(p.retardMax - p.retardMean, 0.0);
+                cell.torque = p.torque;
+                cell.knockLimited = p.knockLimited;
+                cell.valid = p.valid;
+                result.measured[at].push_back(cell);
+                if (p.valid && p.retardMean >= options.knockLimit)
+                    next.push_back(p.speed);   // still knocking: the next pedal down is run here
+            }
+            active = next;
+        }
+
+        // the table's loads, and each speed's cells put on them
+        double most = 0.3;
+        for (const auto& column : result.measured)
+            for (const KnockBakeCell& c : column)
+                if (c.valid)
+                    most = std::max(most, c.load);
+        const int ny = std::clamp(options.loads, 2, 16);
+        for (int j = 0; j < ny; ++j)
+            result.loads.push_back(0.2 + (most - 0.2) * j / (ny - 1));
+        for (const auto& column : result.measured)
+        {
+            std::vector<std::pair<double, double>> at;   // (load, cell)
+            for (const KnockBakeCell& c : column)
+                if (c.valid)
+                    at.emplace_back(c.load, c.retardMean >= options.knockLimit ? c.retardMean + options.margin : 0.0);
+            std::sort(at.begin(), at.end());
+            std::vector<double> row;
+            std::vector<bool> flat;
+            for (const double y : result.loads)
+            {
+                if (at.empty())
+                {
+                    row.push_back(0.0);
+                    flat.push_back(true);
+                }
+                else if (y <= at.front().first)
+                {
+                    row.push_back(at.front().second);
+                    flat.push_back(at.front().second != 0.0 && y < at.front().first);   // under a 0: 0 by the rule
+                }
+                else if (y >= at.back().first)
+                {
+                    row.push_back(at.back().second);
+                    flat.push_back(y > at.back().first);
+                }
+                else
+                {
+                    std::size_t i = 1;
+                    while (at[i].first < y)
+                        ++i;
+                    const double u = (y - at[i - 1].first) / std::max(at[i].first - at[i - 1].first, 1e-9);
+                    row.push_back(at[i - 1].second + u * (at[i].second - at[i - 1].second));
+                    flat.push_back(false);
+                }
+            }
+            result.limit.push_back(std::move(row));
+            result.extrapolated.push_back(std::move(flat));
+        }
+        result.key = knockLimitKey(build, *sim);
+        result.wallSeconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+        return true;
+    }
+
+    bool applyKnockLimit(Build& build, const KnockBakeResult& result, std::string& error)
+    {
+        if (build.fieldOf("ecu.maps.knockLimit") < 0 || build.fieldOf("ecu.maps.knockLimitAuto") < 0
+            || build.fieldOf("ecu.maps.knockLimitKey") < 0)
+        {
+            error = "the program has no knock-limit table (spec.ecu.maps.knockLimit, knockLimitAuto, knockLimitKey)";
+            return false;
+        }
+        if (result.speeds.empty() || result.limit.size() != result.speeds.size())
+        {
+            error = "no baked knock limit to apply";
+            return false;
+        }
+        std::vector<double> x = result.speeds, y = result.loads;
+        std::vector<std::vector<double>> z = result.limit;
+        if (x.size() > 16)
+        {
+            x.resize(16);
+            z.resize(16);
+        }
+        build.beginGesture();
+        const bool ok = build.setMap("ecu.maps.knockLimit", x, y, z) && build.set("ecu.maps.knockLimitAuto", 0.0)
+                        && build.set("ecu.maps.knockLimitKey", static_cast<double>(result.key));
+        build.endGesture();
+        if (!ok)
+            error = "the baked knock limit does not fit ecu.maps.knockLimit";
         return ok;
     }
 } // namespace tee

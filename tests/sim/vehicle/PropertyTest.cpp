@@ -155,7 +155,7 @@ namespace
 // gear. Re-proven after the engine's guard landed (ae5c99b), in a scratch copy of today's tree: with f9e26f1's two
 // fixes taken out (the crank stepped with configure's inertia, the converter's torque unlimited) the automatic's runs
 // fail, the guard restarting the engine 392 times in 5 s (FLAG_FAULT); with them in, all four pass.
-TEST_CASE("passive.engine: X-007's single, automatic and manual, never runs away", "[vehicle][property]")
+TEST_CASE("passive.engine: X-007's single, automatic and manual, never runs away", "[vehicle][property][engine]")
 {
     const int runs = passiveEngine({"Automatic", "Manual"}, {0});
     std::printf("passive.engine (quick): %d runs of 5 s with the checks on\n", runs);

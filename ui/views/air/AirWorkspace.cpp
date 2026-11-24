@@ -635,6 +635,11 @@ namespace tee::ui
             if ((m & 2) != 0)
                 out.push_back({ Kind::turbo, "GATE SPRING " + val(N::springHas, Quantity::pressure) + ", the boost asked "
                                                  + val(N::springWants, Quantity::pressure) });
+            if ((m & 8) != 0)
+                out.push_back({ build_.charger == Charger::supercharger ? Kind::blower : Kind::turbo,
+                                std::string(build_.charger == Charger::supercharger ? "SUPERCHARGER" : "TURBO")
+                                    + " far too big for this engine: chokes at " + val(N::compressorHas, Quantity::flow)
+                                    + ", a matched one at " + val(N::compressorWants, Quantity::flow) });
             if ((m & 4) != 0)
                 out.push_back({ build_.itb ? Kind::runners : Kind::plenum, "CHARGE PIPES " + val(N::volumeHas, Quantity::volume)
                                                                                + ", this engine's " + val(N::volumeWants, Quantity::volume) });

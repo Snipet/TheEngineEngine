@@ -88,12 +88,11 @@ TEST_CASE("diesel turbo: a big single's lag you can count; variable vanes reach 
     CHECK(vgt.boost >= 0.95 * single.boost);
 }
 
-TEST_CASE("diesel turbo: at 1300 rpm variable vanes hold a fixed big single's boost, and get there sooner", "[diesel][turbo][!mayfail]")
+TEST_CASE("diesel turbo: at 1300 rpm variable vanes hold a fixed big single's boost, and get there sooner", "[diesel][turbo]")
 {
-    // [!mayfail] on a named finding (lead's rule, 2026-11-24): with the exhaust's mean flow closed (G aaedbf4) the
-    // VGT reaches 90 % of the single's boost in 4.35 s against the single's 2.80 s (1.75 against 1.95 s before); both
-    // spool slower without the phantom flow, the VGT parked by the surge guard at 0.80 more. G and N2 find what the
-    // turbine lacks; the bounds are unchanged.
+    // (marked [!mayfail] for an hour on 24 Nov: with the exhaust's mean flow closed (G aaedbf4) the VGT took 4.35 s to
+    // the single's 90 % against 2.80 s, N2's surge guard parking it on the surge line; N2's guard giving back 0.1 of
+    // its rate in place of 0.3: 2.60 against 2.80 s. Plain again.)
     // (marked [!mayfail] while the vanes lagged the single on H's fuel model: 3.1 against 2.1 s to 187 kPa; N2's
     // e12b230, the surge guard retuned, gives 1.75 against 1.95 s, 211 against 208 kPa. The measure, agreed with N2:
     // the same absolute boost for both, 90 % of the single's final)
