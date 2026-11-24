@@ -95,8 +95,14 @@ Each part's inspector page lists its fields (those the build has):
   The names are one table, `AirNames` in `AirWorkspace.h`.
   - Card F's `tel.boost.*` is integrated: shaft speed, ratio, flow, efficiency, compressor outlet, gate, vanes,
     drive, charge pipe, intercooler outlet, throttle inlet, blow-off valve, supercharger power and flags.
-  - Card E's `intake.boxPressure` and `intake.plenumTemperature` are not integrated yet. Until they are, the air after
-    the throttle takes the temperature before it.
+  - Card E's `tel.intake.*` is integrated: `manifold` (absolute), `box` (over the air outside), `ripple` and
+    `runnerLength`.
+    - The ripple (the plenum's pulsing, peak to peak) is a number and a bar inside the plenum, or above an ITB's
+      trumpets.
+    - The runners are drawn at the length in use, against the longer of a variable manifold's two (dim). Their name
+      says the length and the switch-over speed.
+  - The air after the throttle takes `boost.throttleIn`'s temperature when a machine is in the path, else the air
+    outside. An exact 0 K from the boost telemetry (no machine) counts as absent.
   - The bypass's position, anti-lag being active and the bottle's contents are not in the telemetry. The stage says
     what the build has (BYPASS AT PART THROTTLE, ANTI-LAG ARMED, A 4.50 kg BOTTLE), and the nitrous lamp lights from
     flag 32.
