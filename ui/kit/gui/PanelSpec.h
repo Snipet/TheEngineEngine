@@ -1,0 +1,332 @@
+// ui/kit/gui/PanelSpec.h: from TestingPlayground, Source/fminus/PanelSpec.h at 47bac40327ed9e8e59928500de9f3beb63fe8636 (ui/kit/SEED.tsv); what was changed: docs/ui-kit.md.
+// Source/fminus/PanelSpec.h: how a program asks for its dials to be laid out and what else its panel shows
+// (JUCE-free), in #pragma panel lines. FMinus ignores every #pragma (as C ignores the pragmas it does not know); the
+// plugin reads these from the files it compiled (the program and what it includes), in that order, and the editor
+// draws them as an analog synth's panel is printed: titled sections, framed, in rows.
+//
+//   #pragma panel section "FILTER" cutoff resonance gr     a section: its title (may be ""), then its items in order:
+//                                                          dials, and displays by their source's name
+//   #pragma panel row                                      the sections after it start a new row
+//   #pragma panel label envamount "AMOUNT"                 a dial's label (else its parameter's name)
+//   #pragma panel small detune lforate                     small knobs: no value line under them
+//   #pragma panel style attack decay fader                 how dials are drawn (the style last): knob (the default),
+//                                                          vintage, fader, switch (a bool, or an int of two values),
+//                                                          buttons (an int or a bool, a lit button a value)
+//   #pragma panel options wave "SAW" "SQUARE" "TRI"        the names of an int's values from its range's low end (a
+//                                                          bool's: off, on), on its buttons, its dial and to the host
+//   #pragma panel color "FILTER" orange                    a section's colour (by its title) or an item's (by name)
+//
+// Displays show what the program does, read on the audio thread each block (Engine.h):
+//   #pragma panel meter out "OUTPUT"                       LED bars
+//   #pragma panel vu out                                   an analog VU meter, a needle
+//   #pragma panel led gate "GATE"                          a light
+//   #pragma panel number cutoffHz "HZ"                     a readout; a field's unit=, decimals= (0 to 4) and scale= as
+//                                                          a knob's value reads (number speed unit=rpm decimals=0)
+//   #pragma panel scope out                                an oscilloscope
+// Their source: `in` or `out`, the plugin's audio (an effect's input, the output; left and right, in dBFS), or a
+// float, double, int or bool field that the program writes, shown between a range given after it (default 0 1, or the
+// field's fminus::range: #pragma panel meter gr 0 24 "GR"): the main module's (`gr`, `env`; an instrument's from its
+// newest sounding voice, 0 while none sounds), or the module Shared's through the main module's Shared* field
+// (`shared->level`: its one Shared, whether a voice sounds or not), or one element of an array field of either, an
+// index a dimension (`bands[2]`, `grid[1][3]`: displaySource below). A field's scope is its trace over the last
+// seconds; an int's or a bool's readout a whole number. A field's attributes give its displays what the panel line
+// leaves out (FieldLook below: a label, a range; a number's unit and places). A section names a display by its name,
+// the source's unless `as` gives another, which a second display of one source needs: #pragma panel scope out as wave
+// "SCOPE". Without a "label", the line's or its field's ui::label, it shows that name (a display of Shared's without
+// `as`: its field's own, LEVEL).
+//
+// A key=value is written with no space around its = (unit="rpm", unit=Hz, decimals=1).
+//
+// The sections go left to right in the order of their lines, and to another row when one is full. Dials and
+// displays no section names come last, in a section of their own without a title. A line, or a part of one, the
+// plugin cannot use is a note (its file and line); the rest stands.
+//
+// A program with a .gui file (GuiSpec.h) has its interface from that file instead: PanelSpec::gui holds its tree,
+// and the labels, options, styles, colours and displays below are what the tree's controls and displays ask for.
+#pragma once
+
+#include "kit/gui/Controls.h"
+#include "kit/gui/Sources.h"
+
+#include <array>
+#include <cstddef>
+#include <cstdint>
+#include <string>
+#include <string_view>
+#include <vector>
+
+namespace tee::ui
+{
+    inline constexpr std::size_t kMaxSectionTitle = 24;   // characters; longer ones are cut
+    inline constexpr std::size_t kMaxDialLabel = 14;
+    inline constexpr std::size_t kMaxOptionLabel = 10;
+    inline constexpr int kMaxDisplays = 32;               // displays (and so field taps) a program may have: the
+                                                          // Panel's masks hold a bit each (32 at most)
+    inline constexpr int kMaxShaderInputs = 16;           // a shader's inputs: FunkGui's u_params, 4 vec4s
+    inline constexpr int kMaxOptions = 8;                 // values a switch or buttons may name
+    inline constexpr int kMaxPointers = 16;               // a .gui file's elements with pointer properties
+
+    enum class DisplayKind : uint8_t { meter, vu, led, number, scope, spectrum };   // spectrum: a .gui file's
+    enum class DialStyle : uint8_t { knob, vintage, fader, toggle, buttons };   // toggle: #pragma panel style x switch
+
+    struct PanelDisplay
+    {
+        DisplayKind kind = DisplayKind::meter;
+        std::string name;                                   // what a section line calls it: the source's, or `as`'s
+        std::string source;                                 // "in", "out", a field of the main module, or Shared's
+                                                            // through the main module's Shared* field ("shared->x")
+        std::string label;                                  // "": its name (a .gui file's, and a #pragma panel
+                                                            // display of Shared's without `as`: sourceLabel's)
+        float lo = 0.0f, hi = 1.0f;                         // a field's range
+        int tap = -1;                                       // a field's tap (Patch::taps), in display order; -1: audio
+        std::string color;                                  // a colour's name (kPanelColors), "" for the default
+        bool hidden = false;                                // a tap only, for a control's live= (never drawn)
+        bool integer = false;                               // its field is an int or a bool: a whole number shown
+        // How a number display (a .gui file's) shows its field, as a knob shows its value (Controls.h's formatValue):
+        std::string unit;                                   // after the value ("rpm"), "" for none
+        int8_t decimals = -1;                               // -1: an int's 0, a float's by its size
+        float scale = 1.0f;                                 // the value shown is the field's times it
+        bool formatted() const noexcept { return !unit.empty() || decimals >= 0 || scale != 1.0f; }
+        bool audio() const noexcept { return source == "in" || source == "out"; }
+        bool operator==(const PanelDisplay&) const = default;
+    };
+
+    struct PanelItem
+    {
+        bool display = false;                               // a display (PanelSpec::displays), else a dial
+        int index = 0;                                      // the dial's slot, or the display's index
+        bool operator==(const PanelItem&) const = default;
+    };
+
+    struct PanelSection
+    {
+        std::string title;                                  // as written; "" for none
+        std::vector<PanelItem> items;                       // its dials and displays, in order
+        bool newRow = false;                                // a row starts with it
+        std::string color;
+        bool operator==(const PanelSection&) const = default;
+    };
+
+    // ---- a .gui file's interface (GuiSpec.h) ----------------------------------------------------------------------
+    enum class GuiKind : uint8_t
+    {
+        row, column, grid, section, box, tabs, page, spacer, divider, label,     // layout and decoration
+        knob, slider, toggle, buttons, menu, xy, envelope,                       // controls (a parameter's or more)
+        display,                                                                 // a display (PanelSpec::displays)
+        keyboard,                                                                // an instrument's keys, played
+        shader,                                                                  // a program's own fragment shader
+        area                                                                     // draws nothing: the pointer's alone
+    };
+    enum class GuiAlign : uint8_t { stretch, start, center, end };              // across a container's direction
+    enum class GuiJustify : uint8_t { start, center, end, between, around };    // along it, when there is room
+    enum class GuiSize : uint8_t { small, medium, large };
+    enum class GuiText : uint8_t { small, normal, large, title };               // a label's size
+
+    // How an element is drawn, past its kind's defaults: what a knob, a slider, a container or tabs may say (GuiSpec.h
+    // lists which takes what). "" and -1 (or 0 for a length) leave the kind's own.
+    struct GuiStyle
+    {
+        std::string look;               // a knob: modern, vintage, flat, minimal, ring, led, chicken, soft, dot; a
+                                        // section or box: frame, card, inset, plate; tabs: tabs, bar, pills, side
+        std::string arc, track, cap, pointerColor, ticks, label, value;   // a knob's or a slider's colours ("none")
+        std::string fill, border, title;                                  // a container's colours ("none" for none)
+        int pointer = -1;               // 0 line, 1 dot, 2 triangle, 3 none
+        float px = 0.0f;                // a knob's face, its diameter in px (else its size=)
+        float thickness = 0.0f;         // a knob's arc, px
+        float sweep = 0.0f;             // a knob's travel, degrees (270)
+        int tickCount = -1;             // a knob's scale, its ticks (0 none)
+        bool bipolar = false;           // a knob's or a slider's arc from its middle
+        int labelPos = -1;              // 0 top, 1 bottom, 2 none
+        int valueShow = -1;             // 0 always, 1 while hovered or dragged, 2 never
+        int shadow = -1;                // 0 none, 1 a soft shadow under it
+        float radius = -1.0f;           // a container's corners, px
+        float borderWidth = -1.0f;      // px
+        int titleAlign = -1;            // 0 left, 1 centre, 2 right
+        int titleSize = -1;             // a GuiText
+        bool operator==(const GuiStyle&) const = default;
+    };
+
+    // What the pointer writes over an element (a .gui file's x=, y=, down=, wheel=, hover=; GuiSpec.h): each a
+    // parameter's slot, -1 for none; and how: drag= (absolute: x and y jump to the press; relative: they move by the
+    // pointer's travel, 200 px the range), release= (spring: x and y back to their defaults when let go), cursor=.
+    struct PanelPointer
+    {
+        enum class Drag : uint8_t { absolute, relative };
+        enum class Release : uint8_t { keep, spring };
+        enum class Cursor : uint8_t { normal, hand, cross, grab, leftright, updown };
+        int x = -1, y = -1, down = -1, wheel = -1, hover = -1;
+        Drag drag = Drag::absolute;
+        Release release = Release::keep;
+        Cursor cursor = Cursor::normal;
+        bool any() const noexcept { return x >= 0 || y >= 0 || down >= 0 || wheel >= 0 || hover >= 0; }
+        bool presses() const noexcept { return x >= 0 || y >= 0 || down >= 0; }   // a press is a gesture
+        bool operator==(const PanelPointer&) const = default;
+    };
+
+    // A shader's input that is the pointer over it (inputs="pointer.x pointer.hover"; GuiNode::inputs holds the word):
+    // 0 to 1 across and up its rect, 1 while it is pressed, 1 while the pointer is over it. -1: none of them.
+    inline constexpr const char* kPointerInputs[] = { "pointer.x", "pointer.y", "pointer.down", "pointer.hover" };
+    inline int pointerInput(std::string_view word) noexcept
+    {
+        for (int k = 0; k < 4; ++k)
+            if (word == kPointerInputs[k])
+                return k;
+        return -1;
+    }
+
+    struct GuiNode
+    {
+        GuiKind kind = GuiKind::column;
+        int parent = -1;
+        std::vector<int> children;                          // in order
+        int line = 0;                                       // its line in the .gui file
+        std::string text;                                   // a section's or a page's title, a label's text
+        int slot = -1, slot2 = -1;                          // a control's parameter (an xy pad's x, then y)
+        std::array<int, 4> env{ -1, -1, -1, -1 };           // an envelope's attack, decay, sustain, release
+        int display = -1;                                   // a display's index in PanelSpec::displays
+        bool vertical = true;                               // a container's direction: column (and a page, a box or a
+                                                            // section that says layout=column), a slider's, buttons'
+        float gap = 8.0f, pad = 0.0f, width = 0.0f, height = 0.0f, grow = 0.0f;   // px; 0 width/height: its own
+                                                            // (an xy pad's size= sets both)
+        int cols = 0;                                       // a grid's
+        GuiAlign align = GuiAlign::stretch;
+        GuiJustify justify = GuiJustify::start;
+        GuiSize size = GuiSize::medium;                     // a knob's
+        bool vintage = false;                               // a knob's style
+        GuiText textSize = GuiText::normal;
+        float textPx = 0.0f;                                // a label's size in px, when it gives a number
+        int textAlign = -1;                                 // a label's: 0 left, 1 centre, 2 right
+        std::string color;                                  // a name (kPanelColors) or #rrggbb, "" for the default
+        GuiStyle style;
+        // Flex, past gap, pad, align, justify, grow: wrap a row's or a column's children onto more lines; the
+        // element's own alignment across its container (-1: the container's align=); room around it; its bounds.
+        bool wrap = false;
+        int self = -1;                                      // a GuiAlign
+        float margin = 0.0f;
+        float minW = 0.0f, maxW = 0.0f, minH = 0.0f, maxH = 0.0f;   // px; 0: none
+        int live = -1;                                      // a control's live= field: its tap's display (hidden)
+        int from = 48, keys = 25;                           // a keyboard's lowest note and its keys
+        bool wheels = false;                                // and its pitch and mod wheels, at its left
+        std::string file;                                   // a shader's source file
+        std::array<std::string, kMaxShaderInputs> inputs{}; // a shader's inputs: parameters ("param:N"), fields
+                                                            // ("field:D"), in, out and the pointer (pointer.x ...)
+        PanelPointer pointer;                               // what the pointer writes over it (area, shader, a
+                                                            // container, a label, a display)
+        int shader = -1;                                    // a shader's program (PanelSpec::shaders)
+        bool operator==(const GuiNode&) const = default;
+    };
+
+    struct GuiTree
+    {
+        std::vector<GuiNode> nodes;                         // nodes[0] the root, a column; empty without a .gui file
+        std::string file;                                   // the .gui file's name
+        std::string background, accent;                     // the panel's own colours ("" for the theme's)
+        std::string gradient;                               // the background's colour at its bottom (a vertical blend)
+        bool empty() const noexcept { return nodes.empty(); }
+        bool operator==(const GuiTree&) const = default;
+    };
+
+    // A .gui file's shader element's program (Shaders.h): its file, its inputs' names, and what the compiler built.
+    struct PanelShader
+    {
+        std::string file;
+        std::vector<std::string> inputs;                    // as inputs= names them (the shader's in_<name>)
+        std::vector<uint8_t> binary;                        // shaderc's output; empty: not built (a note says why)
+        uint32_t id = 0;                                    // shaderId(binary), FunkGui's ShaderLibrary's
+        bool operator==(const PanelShader&) const = default;
+    };
+
+    struct PanelSpec
+    {
+        GuiTree gui;                                        // a .gui file's interface; empty: the #pragma panel lines'
+        std::vector<PanelShader> shaders;                   // its shaders' programs, by GuiNode::shader
+        std::vector<PanelSection> sections;                 // empty: the dials in plain rows (no section, no display)
+        std::vector<PanelDisplay> displays;
+        std::array<std::string, kMaxControls> labels{};     // "": the parameter's name
+        std::array<bool, kMaxControls> small{};
+        std::array<DialStyle, kMaxControls> styles{};
+        std::array<std::vector<std::string>, kMaxControls> options{};   // an int's or a bool's values' names
+        std::array<std::string, kMaxControls> colors{};
+        // The tap table its displays' `tap` indices are of: 0 the program's own (Patch::taps), else a panel's edit's
+        // (the count dsp/Engine.h's setTaps gave it; dsp/Compiler.h, "A panel's edit"). A frame read by another table
+        // (Meters::tapTable) holds other fields at those indices.
+        uint64_t tapTable = 0;
+        bool operator==(const PanelSpec&) const = default;
+    };
+
+    // What a field's attributes say about showing it. FMinus passes a field's attributes on to the plugin (written after
+    // its name, C23's way: `float level [[ui::unit("dB")]] [[ui::label("LEVEL")]] [[fminus::range(-60, 0)]];`), and
+    // the plugin reads four, the last of a name counting; the others are the program's own, and left alone:
+    //   ui::unit("dB")          its unit: a number display's readout ("-12.0 dB") when the panel gives none, and
+    //                           trace's lines
+    //   ui::label("LEVEL")      a display's label when the panel gives none (a #pragma panel line's "label", a .gui
+    //                           file's label=), and trace's lines
+    //   ui::decimals(1)         a number display's places, 0 to 4, when its decimals= gives none
+    //   fminus::range(lo, hi)   what a display spans when the panel gives no range (else 0 to 1), and trace's lines
+    // The text is kept whole (trace shows it so); a display that takes a label or a unit cuts it as it cuts its own
+    // (kMaxDialLabel, and a unit's 7 bytes: cutText), with a note on the display's line.
+    // Patch reads them from FMinus's Program::Module::Field::attributes, the GUI sandbox from Lang's (Symbol::attributes).
+    struct FieldLook
+    {
+        std::string unit, label;
+        int8_t decimals = -1;
+        bool ranged = false;
+        float lo = 0.0f, hi = 1.0f;
+        bool any() const noexcept { return !unit.empty() || !label.empty() || decimals >= 0 || ranged; }
+        bool operator==(const FieldLook&) const = default;
+    };
+    // One attribute (its name with its namespace, its arguments as text: a string's characters, a number's spelling)
+    // into `look`, when it is one of the four above; anything else, or an argument that does not fit, leaves it as it was.
+    void readFieldAttribute(FieldLook& look, std::string_view name, const std::vector<std::string>& args);
+
+    // A field of the main module, as FMinus describes it ("float", "double", "int", "bool", "float[16]",
+    // "float[4][16]", "param float", ...), and what its attributes say about showing it.
+    struct PanelField
+    {
+        std::string name, type;
+        FieldLook look = {};
+    };
+
+    // The types a display reads: float, double, int and bool.
+    bool displayable(std::string_view type) noexcept;
+
+    // The fields a display may name: the main module's `fields`, then the module Shared's `shared` (not its params)
+    // through the main module's first Shared* field, each as "<that field>-><its name>" ("shared->level"), as the
+    // field map names them (Patch.h); no Shared* field, none of them. A display takes a float, double, int or bool of
+    // these, or an element of an array of them (displaySource).
+    std::vector<PanelField> displayFields(const std::vector<PanelField>& fields, const std::vector<PanelField>& shared);
+
+    // What a display (a live= mark, a shader's input) of `source` reads among `fields` (displayFields'): a field of a
+    // type it reads by its name ("gr", "shared->level"), or one element of an array of them by a constant index a
+    // dimension ("bands[2]", "grid[1][3]", each inside its extent: C's row-major order, as FMinus lays it out). An
+    // extent that is no number (Lang's `float x[N]`, the sandbox's) takes any index.
+    struct DisplaySource
+    {
+        enum class Problem : uint8_t
+        {
+            none,                                           // it reads `field`'s element `element`, of `type`
+            noField,                                        // no field has its name (`why`: the name)
+            dial,                                           // the field is a parameter
+            type,                                           // a type no display reads, or an array named without its
+                                                            // indexes (or a scalar with some): `why` says which
+            index,                                          // an index that is no number, or outside its extent: `why`
+        };
+        Problem problem = Problem::noField;
+        const PanelField* field = nullptr;                  // the field of its name (null: none)
+        std::string type;                                   // the value's: "float", "double", "int" or "bool"
+        std::size_t element = 0;                            // its index among the array's elements (0: no array)
+        std::string why;
+    };
+    DisplaySource displaySource(const std::vector<PanelField>& fields, const std::string& source);
+
+    // The label a display of `source` takes when it is given none: the source ("out", "env"), or Shared's field's own
+    // name ("shared->level": "level"), kMaxDialLabel characters at most.
+    std::string sourceLabel(const std::string& source);
+
+    // `text` cut to at most `max` bytes, never inside a UTF-8 sequence (a character that does not fit is left out whole).
+    std::string cutText(const std::string& text, std::size_t max);
+
+    // The colours a panel line may name.
+    inline constexpr const char* kPanelColors[] = { "red",  "orange", "yellow", "green", "teal",
+                                                    "blue", "violet", "pink",   "cream", "grey" };
+}

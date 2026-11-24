@@ -1,0 +1,100 @@
+// tests/ui/panels/kinds.gui: every kind of element the .gui language has, in every look, for the kit's tests
+// (tests/ui/Tests.cpp). Its parameters and fields are MockPlayer's (tests/ui/MockPlayer.h).
+panel background=#1d1b19 accent=orange
+
+class "big" size=72 arc=yellow
+defaults slider thickness=4
+
+tabs look=bar {
+    page "KNOBS" {
+        column gap=10 pad=8 {
+            section "LOOKS" {
+                knob cutoff look=modern unit="Hz" decimals=0 taper=log
+                knob resonance look=vintage
+                knob level look=flat scale=100 unit="%" decimals=0
+                knob attack look=minimal
+                knob decay look=ring
+                knob sustain look=led
+                knob release look=chicken
+                knob drive look=soft
+                knob pan look=dot bipolar
+            }
+            row gap=12 align=center {
+                section "SIZES" {
+                    knob glow size=small
+                    knob tone size=medium label="TONE"
+                    knob width size=large
+                    knob depth class="big" pointer=triangle ticks=11 labelpos=bottom value=always
+                }
+                box look=card pad=8 {
+                    label "A BOX" size=small
+                    knob rate pointer=dot thickness=3 sweep=300 arc=teal track=grey value=hover
+                    knob feedback pointer=none labelpos=none shadow=1
+                }
+            }
+        }
+    }
+    page "SWITCHES" {
+        row gap=12 pad=8 align=start {
+            section "SLIDERS" {
+                slider mix
+                slider tilt bipolar
+                slider spread horizontal length=160
+            }
+            section "CHOICES" layout=column {
+                switch sync "OFF" "ON"
+                buttons wave "SAW" "SQUARE" "TRI" "SINE"
+                buttons steps horizontal
+                menu mode "ALPHA" "BETA" "GAMMA"
+            }
+            section "PADS" {
+                xy padx pady size=120
+                envelope attack decay sustain release width=160 height=80
+            }
+        }
+    }
+    page "DISPLAYS" {
+        column gap=10 pad=8 {
+            section "READOUTS" {
+                meter out label="OUT"
+                vu out
+                led gate label="GATE"
+                number shared->showRpm label="RPM" unit="rpm" decimals=0 min=0 max=8000
+                meter boost min=0 max=2 label="BOOST"
+                scope out width=150 height=80
+                scope shared->showRpm min=0 max=8000 label="TRACE"
+                spectrum out width=220 height=80
+            }
+            row gap=12 {
+                shader "glow.sc" inputs="glow shared->showRpm out pointer.x pointer.hover" width=200 height=120
+                area x=padx y=pady width=120 height=80 cursor=cross
+                box look=inset x=tone down=hold cursor=hand pad=8 { label "PRESS AND DRAG" }
+            }
+        }
+    }
+    page "FRAMES" {
+        column gap=10 pad=8 {
+            row gap=10 {
+                section "FRAME" look=frame { label "frame" }
+                section "CARD" look=card { label "card" }
+                section "INSET" look=inset { label "inset" }
+                section "PLATE" look=plate color=blue titlealign=center { label "plate" }
+            }
+            grid cols=3 gap=6 {
+                label "small" size=small
+                label "normal" size=normal
+                label "large" size=large
+                label "TITLE" size=title color=#e07b39
+                label "24 PX" size=24 align=center
+                divider
+            }
+            row gap=10 {
+                tabs look=tabs { page "ONE" { label "one" } page "TWO" { label "two" } }
+                tabs look=pills { page "P1" { label "pill one" } page "P2" { label "pill two" } }
+                tabs look=side { page "S1" { label "side one" } page "S2" { label "side two" } }
+            }
+            spacer height=8
+            keyboard from=48 keys=25
+        }
+    }
+}

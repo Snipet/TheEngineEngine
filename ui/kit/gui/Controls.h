@@ -1,0 +1,133 @@
+// ui/kit/gui/Controls.h: from TestingPlayground, Source/dsp/Controls.h at 47bac40327ed9e8e59928500de9f3beb63fe8636 (ui/kit/SEED.tsv); what was changed: docs/ui-kit.md.
+// Controls.h: a parameter as a panel's control shows it. A panel has up to kMaxControls of them, a slot each, each
+// normalised 0..1 on its port (FunkGui's ParamPort); a Control says how slot i's normalised value maps onto the
+// parameter's own (its "plain" value):
+//
+//   real     a number: min + v (max - min); with a log taper (a .gui file's taper=log, or the parameter's own, for a
+//            frequency or a time) min (max / min)^v instead, so each octave takes the same turn of the knob
+//   integer  the same, rounded to the nearest integer (a choice among names is one of these)
+//   toggle   1 from v = 0.5 up, else 0
+//
+// How a real value reads: times `scale`, with `decimals` (by its size when -1) and `unit` after it, a frequency in Hz
+// from 1000 up in kHz (formatValue). Here a Control is made from a tee::ParamInfo (kit/gui/Ports.h); in the plugin
+// this file came from it was the program's dial, with the host's parameters and a carry of values between programs,
+// which are cut.
+#pragma once
+
+#include <algorithm>
+#include <array>
+#include <cmath>
+#include <cstdint>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <string>
+#include <vector>
+
+namespace tee::ui
+{
+    inline constexpr int kMaxControls = 64;            // the parameters one panel may show, a slot each
+
+    enum class ControlType : uint8_t { real, integer, toggle };
+    enum class ControlTaper : uint8_t { linear, log };   // log: a real one whose min is above 0
+
+    struct Control
+    {
+        char         name[32] = {};          // the parameter's name, as the program spells it; "" for an unused slot
+        ControlType  type = ControlType::real;
+        float        min = 0.0f, max = 1.0f, def = 0.0f;
+        bool         used = false;
+        ControlTaper taper = ControlTaper::linear;
+        char         unit[8] = {};           // after the value ("Hz", "dB", "ms", "%"), "" for none
+        int8_t       decimals = -1;          // a real value's, -1: by its size (2 under 10, 1 under 100, then 0)
+        float        scale = 1.0f;           // the value shown is the plain one times it (0..1 as 0..100 %)
+    };
+
+    // Whether a log taper fits c: a real control whose range is above 0.
+    inline bool logTaperFits(const Control& c) noexcept
+    {
+        return c.type == ControlType::real && c.min > 0.0f && c.max > c.min;
+    }
+
+    using Controls = std::array<Control, kMaxControls>;
+
+    // The plain value of a normalised one (v outside 0..1 is clamped first).
+    inline float plainOf(const Control& c, float v) noexcept
+    {
+        const float t = std::clamp(v, 0.0f, 1.0f);
+        switch (c.type)
+        {
+            case ControlType::toggle:  return t >= 0.5f ? 1.0f : 0.0f;
+            case ControlType::integer: return std::round(c.min + t * (c.max - c.min));
+            case ControlType::real:    break;
+        }
+        if (c.taper == ControlTaper::log && logTaperFits(c))
+            return std::clamp(c.min * std::exp(t * std::log(c.max / c.min)), c.min, c.max);
+        return c.min + t * (c.max - c.min);
+    }
+
+    // The normalised value of a plain one, clamped to the range.
+    inline float normOf(const Control& c, float plain) noexcept
+    {
+        if (c.type == ControlType::toggle)
+            return plain >= 0.5f ? 1.0f : 0.0f;
+        const float span = c.max - c.min;
+        if (!(span > 0.0f))
+            return 0.0f;
+        if (c.type == ControlType::real && c.taper == ControlTaper::log && logTaperFits(c))
+            return plain > c.min ? std::clamp(std::log(plain / c.min) / std::log(c.max / c.min), 0.0f, 1.0f) : 0.0f;
+        return std::clamp((plain - c.min) / span, 0.0f, 1.0f);
+    }
+
+    // A real control's plain value as the panel and the host show it (formatValue's rules, above).
+    inline void formatValue(const Control& c, float plain, char* out, std::size_t n) noexcept
+    {
+        double v = static_cast<double>(plain) * static_cast<double>(c.scale);
+        const char* unit = c.unit;
+        if (std::strcmp(unit, "Hz") == 0 && std::fabs(v) >= 1000.0)
+        {
+            v /= 1000.0;
+            unit = "kHz";
+        }
+        const double a = std::fabs(v);
+        const int d = c.decimals >= 0 ? std::min<int>(c.decimals, 4) : (a >= 100.0 ? 0 : (a >= 10.0 ? 1 : 2));
+        std::snprintf(out, n, "%.*f%s%s", d, v, unit[0] != '\0' ? " " : "", unit);
+    }
+
+    // The plain value of a text a host or a user typed for a real control: its number, divided by the scale, in Hz
+    // times 1000 when it says k ("1.2k", "1.2 kHz"). NaN when there is no number.
+    inline float parseValue(const Control& c, const char* text) noexcept
+    {
+        char* end = nullptr;
+        double v = std::strtod(text, &end);
+        if (end == text || !std::isfinite(v))
+            return std::nanf("");
+        while (*end == ' ')
+            ++end;
+        if (*end == 'k' || *end == 'K')
+            v *= 1000.0;
+        if (c.scale != 0.0f)
+            v /= static_cast<double>(c.scale);
+        return static_cast<float>(v);
+    }
+
+    // A dial's plain value as a person reads it: a real one as formatValue writes it; an int or a bool by the name its
+    // options give that value (the panel's options, from the range's low end), else as a number, or off and on.
+    inline std::string dialText(const Control& c, float plain, const std::vector<std::string>& options = {})
+    {
+        if (!std::isfinite(plain))
+            return "-";
+        if (c.type != ControlType::real)
+        {
+            const long k = std::lround(plain) - std::lround(c.min);
+            if (k >= 0 && static_cast<std::size_t>(k) < options.size() && !options[static_cast<std::size_t>(k)].empty())
+                return options[static_cast<std::size_t>(k)];
+            if (c.type == ControlType::toggle)
+                return plain >= 0.5f ? "on" : "off";
+            return std::to_string(std::lround(plain));
+        }
+        char buf[48];
+        formatValue(c, plain, buf, sizeof buf);
+        return buf;
+    }
+}
