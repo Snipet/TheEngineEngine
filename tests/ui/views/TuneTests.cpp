@@ -21,7 +21,6 @@ namespace
         {
             const double t = t0 + i / 60.0;
             rig.demo.at(t);
-            tee::ui::tunedemo::setLive(rig.demo.engine, t);
             rig.host->tick(1);
         }
     }
@@ -98,12 +97,12 @@ namespace
         return 0;
     }
 
-    // A map the build lacks (lambda, in the demo) says so; ECU values the program lacks draw a dash, not a number.
+    // A map the build lacks (the boost target, in the demo) says so; ECU values the program lacks draw a dash, not a number.
     VIEW_TEST(testTuneAbsent, "tune.absent")
     {
         StageRig rig(tee::ui::makeTuneWorkspace, 1100, 700, 1.0f, 4.6);
         rig.settle();
-        tee::ui::tuneChoose(*rig.ws, 1);
+        tee::ui::tuneChoose(*rig.ws, 2);
         CHECK(tee::ui::tuneMapEdit(*rig.ws) == nullptr);
         rig.settle();
         picture("tune.absent", *rig.host);
@@ -135,7 +134,24 @@ namespace
         const std::string page = rig.ws->inspectorPage();
         const std::vector<int> fields = tee::ui::fieldsOfGui(rig.demo.doc, page);
         CHECK_MSG(fields.size() == 1 && fields[0] == rig.demo.doc.find("ecu.spark"), page);
-        rig.host->click(100.0f, 104.0f);                 // wastegate duty: the second map the demo has
+        rig.host->click(100.0f, 104.0f);                 // lambda: the second map the demo has, with its formula switch
+        CHECK_MSG(sel.path() == "ecu.maps.lambda", sel.path());
+        {
+            const std::string lp = rig.ws->inspectorPage();
+            CHECK_MSG(lp.find("switch ecu.maps.lambdaAuto") != std::string::npos, lp);
+            CHECK_MSG(inspectorNotes(*rig.ws, rig.demo).empty(), inspectorNotes(*rig.ws, rig.demo));
+        }
+        // The formula in use: the map's row says so; turned off (as the switch does), the table is in use.
+        auto& doc = rig.demo.doc;
+        const int autoF = doc.find("ecu.maps.lambdaAuto");
+        CHECK(autoF >= 0 && doc.get(autoF) > 0.5);
+        rig.settle();
+        picture("tune.auto", *rig.host);
+        doc.beginGesture();
+        doc.set(autoF, 0.0);
+        doc.endGesture();
+        rig.settle();
+        rig.host->click(100.0f, 144.0f);                 // wastegate duty, the third
         CHECK_MSG(sel.path() == "boost.duty", sel.path());
         // The lamps, at the traces' right: the limiter first.
         rig.host->click(1100.0f - 16.0f - 12.0f - 150.0f, 700.0f - 16.0f - 210.0f + 30.0f + 15.0f);
