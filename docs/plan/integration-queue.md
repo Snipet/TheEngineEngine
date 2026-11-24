@@ -132,3 +132,12 @@ samples 5 to 6 % (recomputed whether moved or not: G). Smaller: `Listen::resampl
 `Boost::sound` 7 % of the twin-turbo diesel (F); `clickAmp`'s `expf`/`logf` a sample in `Engine::sampleTick`, which
 moves to `control16` to the bit (D). Q proposes patches for G's, D's and F's modules through the lead once each
 package's integration has landed.
+
+## From the vehicle's integration (14:06)
+
+- **D**: `spec/env.fm`'s `pressure`, `surface`, `surfaceLeft`, `grade` (the vehicle runs on dry asphalt at
+  1.2 kg/m^3 on level ground until then); `MODE_DYNO_CHASSIS` as a driven mode in `Engine::readControls`; the names
+  the ECU reads from the car.
+- **Card C**: array elements (`car.wheelSlip[2]`) as columns and assertions in a Scenario.
+- **I, later**: an automatic whose tyres spin shifts up on the flaring output speed and can shift down again when
+  they hook up.

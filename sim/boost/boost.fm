@@ -23,10 +23,10 @@
 //   applyMachine(spec, vd, redRpm, pAmb, tAmb)    when spec.boost's rev moves, and in configure
 //   housingOf(bank, group, banks), housing(h, drive, admit, tGas), downpipe(side, a, z), gatePipe(t, a, z)   the exhaust
 //   pressure(), temperature()                     the intake, before its throttle (pBox, tAir)
-//   draw(m), tick(omegaCrank, pPlenum)            each sample, after the throttle
-//   machineControl(d16)                           every 16 samples
-//   oxygen(), oxygenShare(), torque()             Combustion, Mechanics
-//   ecu(target, vanes, antiLagFuel, nitrous, purges)   every 16 samples, from the ECU
+//   draw(m), tick(omegaCrank, pPlenum)            each sample, after the throttle; crankTorque (N m) then
+//   control16(d16, target, antiLag, nitrous)      every 16 samples, with the ECU's
+//   oxygen(), oxygenShare()                       Combustion
+//   exhaustStandIn(m, mt, z)                      until card G's network calls housing() and downpipe()
 //   telemetry(&tel.boost), scope(&scope)          after a call
 #pragma once
 #include "lib/biquad.fm"
@@ -63,6 +63,7 @@ module Boost
     int model;          // spec.boost.model: 0 the reference above, 1 the machine
     BoostMachine mach;
     int mapRev;         // the map's lines last copied to the Scope
+    float crankTorque;  // N m the machine takes from the crank (model 1), as of the last sample
 
     void setup(float rateIn, Noise* noise)
     {
@@ -331,15 +332,15 @@ module Boost
             mach.gatePipe(i, 0.0f, z);
     }
 
-    // Before the throttle: Pa absolute and K (the reference's pBox and tAir in model 0)
-    float pressure(float pBoxRef)
+    // Before the throttle: Pa absolute and K (model 1; called by Engine only then)
+    float pressure()
     {
-        return model == 1 ? mach.pressure() : pBoxRef;
+        return model == 1 ? mach.pressure() : 101325.0f + 100000.0f * boost;
     }
 
-    float temperature(float tAirRef)
+    float temperature()
     {
-        return model == 1 ? mach.temperature() : tAirRef;
+        return model == 1 ? mach.temperature() : 300.0f;
     }
 
     // The charge's oxygen by mass (0.232 air), and over air's (1 without nitrous)
@@ -353,12 +354,6 @@ module Boost
         return model == 1 ? mach.oxygen() * 4.3103448f : 1.0f;
     }
 
-    // N m the forced induction takes from the crank (model 1; model 0's is drag())
-    float torque()
-    {
-        return model == 1 ? mach.crankTorque : 0.0f;
-    }
-
     void draw(float m)
     {
         if (model == 1)
@@ -368,23 +363,30 @@ module Boost
     void tick(float omegaCrank, float pPlenum)
     {
         if (model == 1)
+        {
             mach.tick(omegaCrank, pPlenum);
+            crankTorque = mach.crankTorque;
+        }
     }
 
-    void machineControl(float d16)
+    // Every 16 samples (model 1), with the ECU's (card H's): its boost target over the air (Pa; 0 none: the spec's
+    // target or the gate's spring), anti-lag (0 off, 1 on: fuel past the engine, a tenth of the matched full-load
+    // fuel, burns in the housing; judgement), nitrous (above a half: the window open)
+    void control16(float d16, float target, float antiLagOn, float nitrousOn)
     {
-        if (model == 1)
-            mach.control(d16);
+        if (model != 1)
+            return;
+        mach.cmdTarget = target > 0.0f ? target : -1.0f;
+        mach.cmdAntiLag = antiLagOn * 0.1f * mach.mMatch / 14.7f;
+        mach.cmdNitrous = nitrousOn > 0.5f ? 1 : 0;
+        mach.control(d16);
+        crankTorque = mach.crankTorque;
     }
 
-    // The ECU's (card H's): a boost target over the air (Pa; below 0 none: the spec's), the vanes (below 0: the loop's),
-    // anti-lag's fuel (kg/s), nitrous's window (1 open), purges counted
-    void ecu(float target, float vanes, float antiLagFuel, int nitrous, int purges)
+    // The vanes' position from the ECU's map (below 0: the machine's own loop), and purges counted (a press counter)
+    void vanesAndPurge(float vanes, int purges)
     {
-        mach.cmdTarget = target;
         mach.cmdVanes = vanes;
-        mach.cmdAntiLag = antiLagFuel;
-        mach.cmdNitrous = nitrous;
         mach.cmdPurge = purges;
     }
 

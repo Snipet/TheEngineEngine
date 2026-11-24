@@ -208,4 +208,37 @@ module Ecu
         }
         return false;
     }
+
+    // ---- the integrator's hooks (sim/README.md): called only with the asking package's model 1; card H fills them ----
+    // the cam's target (crank degrees; -1: the valvetrain's own schedule) and the lift command (0 to 1), for card E
+    float camTarget(int cam)
+    {
+        return -1.0f;
+    }
+
+    float liftCommand()
+    {
+        return 0.0f;
+    }
+
+    // for card F: the boost wanted (Pa over the air), anti-lag (0 off, 1 on), nitrous (0 to 1)
+    float boostTarget()
+    {
+        return 0.0f;
+    }
+
+    float antiLag()
+    {
+        return 0.0f;
+    }
+
+    float nitrous()
+    {
+        return 0.0f;
+    }
+
+    // every 16 samples, driven, with ecu.model 1: the vehicle's values (Car's, sim/README.md has their units)
+    void vehicle(float drivenSlip, float speed, int gear, int upshifts, float cutRequest, float blipRequest)
+    {
+    }
 };

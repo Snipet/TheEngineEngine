@@ -137,4 +137,25 @@ namespace tee::files
 
     // The summary of the build in `file` (false: not a build this can read).
     bool readSummary(const fs::path& file, BuildSummary& out);
+
+    // What a build's file sets: the indexes (in fields.all()) of the Spec fields it gives a value for, in the Spec's
+    // order, and the part it holds: its "part" when it says one (`declared` true), else the smallest part whose
+    // sections hold every field it sets (a file of the valve section alone is the engine's), else the whole.
+    struct FileContents
+    {
+        std::vector<int> fields;
+        BuildPart part = BuildPart::Whole;
+        bool declared = false;
+        std::string name, notes;
+    };
+    bool readContents(const fs::path& file, const Fields& fields, FileContents& out, std::string& error);
+
+    // The fields `contents` names, from `file` into `build` (one undo step), and no other: a part that names a few
+    // fields of its sections (a camshaft) changes those, where Build::loadFile with the part would put the rest of
+    // the part's sections back to their defaults. Only the fields in `part`'s sections.
+    bool applyFields(tee::Build& build, const fs::path& file, const FileContents& contents, BuildPart part,
+                     std::vector<std::string>& warnings, std::string& error);
+
+    // A copy of a build's file at `to`, its "name" `newName`. False when `to` exists or cannot be written.
+    bool copyBuild(const fs::path& from, const fs::path& to, const std::string& newName, std::string& error);
 }

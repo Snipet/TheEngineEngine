@@ -1,6 +1,8 @@
 // shell/files/BuildFiles.cpp: BuildFiles.h.
 #include "files/BuildFiles.h"
 
+#include "tee/Fields.h"
+
 #include <nlohmann/json.hpp>
 
 #include <algorithm>
@@ -345,6 +347,143 @@ namespace tee::files
         if (!fs::remove(f, ec))
         {
             error = "cannot delete " + f.string() + (ec ? ": " + ec.message() : std::string());
+            return false;
+        }
+        return true;
+    }
+
+    namespace
+    {
+        bool readJson(const fs::path& file, nlohmann::json& j, std::string& error)
+        {
+            std::ifstream in(file, std::ios::binary);
+            if (!in)
+            {
+                error = "cannot read " + file.string();
+                return false;
+            }
+            std::stringstream text;
+            text << in.rdbuf();
+            j = nlohmann::json::parse(text.str(), nullptr, false);
+            if (!j.is_object() || j.value("format", std::string()) != "tee-build")
+            {
+                error = file.string() + " is not a build";
+                return false;
+            }
+            return true;
+        }
+
+        std::string sectionOf(const Fields& fields, const FieldInfo& f)
+        {
+            return f.section >= 0 ? fields.sections()[static_cast<std::size_t>(f.section)].name : std::string();
+        }
+    }
+
+    bool readContents(const fs::path& file, const Fields& fields, FileContents& out, std::string& error)
+    {
+        nlohmann::json j;
+        if (!readJson(file, j, error))
+            return false;
+        out = {};
+        out.name = j.value("name", std::string());
+        out.notes = j.value("notes", std::string());
+        if (j.contains("part"))
+        {
+            if (!partFromName(j.value("part", std::string()), out.part))
+            {
+                error = file.string() + ": its \"part\" is none of whole, engine, car, tune";
+                return false;
+            }
+            out.declared = true;
+        }
+        const auto specIt = j.find("spec");
+        if (specIt == j.end() || !specIt->is_object())
+            return true;
+        const nlohmann::json& spec = *specIt;
+        std::vector<std::string> sections;
+        for (std::size_t i = 0; i < fields.all().size(); ++i)
+        {
+            const FieldInfo& f = fields.all()[i];
+            if (f.block != "spec" || f.section < 0 || f.hidden || f.kind == FieldKind::Rev)
+                continue;
+            // "spec.a.b" walked through the file's objects
+            const nlohmann::json* at = &spec;
+            std::size_t from = 5;
+            bool found = true;
+            while (found && from <= f.path.size())
+            {
+                std::size_t dot = f.path.find('.', from);
+                if (dot == std::string::npos)
+                    dot = f.path.size();
+                const std::string key = f.path.substr(from, dot - from);
+                const auto it = at->is_object() ? at->find(key) : at->end();
+                found = at->is_object() && it != at->end();
+                if (found)
+                    at = &*it;
+                from = dot + 1;
+            }
+            if (!found)
+                continue;
+            out.fields.push_back(static_cast<int>(i));
+            const std::string section = sectionOf(fields, f);
+            if (std::find(sections.begin(), sections.end(), section) == sections.end())
+                sections.push_back(section);
+        }
+        // the part: from the sections the file names (whether this program knows their fields or not)
+        sections.clear();
+        for (auto it = spec.begin(); it != spec.end(); ++it)
+            sections.push_back(it.key());
+        if (!out.declared && !sections.empty())
+        {
+            for (const BuildPart p : { BuildPart::Engine, BuildPart::Car, BuildPart::Tune })
+                if (std::all_of(sections.begin(), sections.end(), [p](const std::string& sec) { return inPart(sec, p); }))
+                {
+                    out.part = p;
+                    break;
+                }
+        }
+        return true;
+    }
+
+    bool applyFields(tee::Build& build, const fs::path& file, const FileContents& contents, BuildPart part,
+                     std::vector<std::string>& warnings, std::string& error)
+    {
+        // the file read whole into a scratch build of the same program, then the fields it names copied over
+        tee::Build scratch(build.fields());
+        if (!scratch.loadFile(file, BuildPart::Whole, warnings, error))
+            return false;
+        const Fields& fields = build.fields();
+        build.beginGesture();
+        for (const int i : contents.fields)
+        {
+            const FieldInfo& f = fields.all()[static_cast<std::size_t>(i)];
+            if (part != BuildPart::Whole && !inPart(sectionOf(fields, f), part))
+                continue;
+            build.setValues(i, scratch.values(i));
+        }
+        build.endGesture();
+        return true;
+    }
+
+    bool copyBuild(const fs::path& from, const fs::path& to, const std::string& newName, std::string& error)
+    {
+        nlohmann::json j;
+        if (!readJson(from, j, error))
+            return false;
+        std::error_code ec;
+        if (fs::exists(to, ec))
+        {
+            error = to.string() + " is there already";
+            return false;
+        }
+        j["name"] = newName;
+        if (to.has_parent_path())
+            fs::create_directories(to.parent_path(), ec);
+        std::ofstream out(to, std::ios::binary);
+        out << j.dump(2) << "\n";
+        if (!out)
+        {
+            error = "cannot write " + to.string();
             return false;
         }
         return true;

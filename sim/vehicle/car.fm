@@ -647,4 +647,36 @@ module Car
         }
         return ped;
     }
+
+    // ---- the integrator's names for the vehicle's values (sim/README.md), for the ECU (card H); card I fills them from
+    // its model where it has them ----
+    float drivenSlip()      // the driven wheels' slip ratio (0: rolling)
+    {
+        return 0.0f;
+    }
+
+    float speedNow()        // m/s
+    {
+        return v;
+    }
+
+    int gearNow()           // -1 R, 0 N, 1 up
+    {
+        return gear;
+    }
+
+    int upshifts()          // a counter: one more at each upshift begun
+    {
+        return 0;
+    }
+
+    float cutRequest()      // s: how long the ECU is asked to cut the spark or fuel (0: none)
+    {
+        return shiftCut ? 0.05f : 0.0f;
+    }
+
+    float blipRequest()     // rad/s: the crank speed a downshift's blip asks for (0: none)
+    {
+        return 0.0f;
+    }
 };
