@@ -36,3 +36,55 @@ steps on or off (test `clicks`). A level of -60 dB is off and costs nothing.
 | Chain (motorcycle) | `bike.fm` | Roller chain's chordal action and roller impacts at front sprocket teeth x its turns, gear-mesh level law k min(f/1 kHz, 4)(0.15 + load), straight-cut harmonics, 12 % once a sprocket turn (Binder, *Roller chain drives*) | card B2's `Car::sprocketSpeed()`, `spec.car.frontSprocket`, torque | `vo.chain` (rear sprocket, swingarm) |
 | Lash clunk (motorcycle) | `bike.fm` | The drive's play closing on and off the throttle: its closing speed / 3 rad/s rings 140 Hz (swingarm, frame), 650 Hz (sprocket), 2.1 kHz (links) | card B2's `Car::lashStrike()` each sample | `vo.chain` |
 | Dry clutch rattle (motorcycle) | `bike.fm` | Two plates in the basket's slots (6, 9 mrad of play, drag 15, 25 /s) driven by the basket (crank / primary ratio), as the gearbox's rattle; quiet under load (gone by a third of the most), with the lever pulled, or wet | crank each sample, `spec.car.clutchDry`, `primaryRatio`, lever (1 - clutch) | `vo.clutch` (clutch cover) |
+
+`vo.all` (every voice but the starter: gearbox, axle, front, head, tank, gateOut, chain, clutch) is added to `Extras::mech`, so today's mix hears them until card L places
+each output.
+
+## The intake's voice with card E's induction
+
+With `spec.intake.model` 1 (whatever `spec.voices.model`), `Extras::tick` takes card E's own radiated sound
+(`intk.sound`: its air box's snorkel, or individual throttle bodies' trumpets) in place of the reference's box
+filter; the throttle's hiss is added as before. `ex.mouth` is the intake's mouth alone, for the listener to place.
+Test `intake:` (the default four at 4000 rpm wide open on the dyno): ITBs over a plenum's snorkel +31.7 dB in
+`ex.mouth`, as card E's own measure; in the mix, through the listener's compressor and soft ceiling at -24 dB,
++18.2 dB at the firing's first six harmonics.
+
+## Measured
+
+- Lines: every voice's line within 0.5 % of its computed frequency (standalone, all six gears at 150/300/520 rad/s;
+  in the engine: the alternator at 100.8 x crank on the bench, the constant mesh at 19 x crank in third, both found
+  at the computed frequency). Straight cut over helical 12.0 dB.
+- Monotonic: whine with load and speed; fan with coolant and revs; cam gears with revs; supercharger drive and gate
+  dump with boost and flow; lash tick with lash; starter with power.
+- Silence when the cause is absent: no gearbox on the bench (the whole program's output identical to the bit with
+  the whine on or off); final drive at rest; rattle with the clutch out, in gear, a smooth crank, an automatic; no
+  turbo, no gate; fan below its temperature or with the key off; pump with the key off after its prime.
+- Clicks: each voice's largest step while coming in and going out at most its steady one (x1.05).
+- Soak: ten minutes of random inputs, every voice on: finite, peak < 1.
+- Level in the mix (V8, drive-car, view Engine, 1 s windows): the reference engine bay 0.0016-0.0028 rms of a mix
+  of 0.08-0.23; the voices (all but pump and starter) 0.0002-0.0015, 6 to 18 dB under the reference's bay. In the
+  exhaust view both are some 80 dB under the mix: where they are heard from is card L's.
+- Cost (`tee-bench --engine`, 5 runs, everything on: gear cam drive, solid lifters, direct injection, fan running):
+  V8 drive-car 1.092 against 1.021 off, free-revs 1.087 against 1.027: about 0.06-0.07 R (budget 0.08). Profile:
+  GearVoice 46 ns, DriveVoice 38, FanVoice 28, StarterVoice 16, FuelVoice 14, the rest under 5 a sample.
+
+Bike (`bike:`): chain line at the computed frequency for 14/16/18 teeth at 60/150 rad/s; louder with load; none
+without a bike; the clunk grows with the closing's speed (4.5 rad/s over twice 1.9's peak); the dry clutch rattles at
+idle with the lever out and is silent pulled, under half load, or wet. In the engine (bike-naked-twin): the chain's line
+found at 257.2 Hz against 257.5 from `tel.car.sprocketSpeed`; four lash closings heard on and off the throttle. A
+bike's own gearbox (card B2's `Car::bikeGearboxInput()`, `bikeGearboxRatio()`, `gearNow()`) feeds the gear whine as a
+sequential (straight-cut) box; its chain is its final drive, so the final drive's whine gets no speed: the constant
+mesh at 19 x crank / primary found at 792.0 Hz against 796.8.
+
+## Judgement
+
+Every level; the constant ratio 1.55 and the 48-tooth sum; the 12 % eccentricity; the rattle's backlash, drag and
+case modes; the resonances of injectors, lifters, gate housing, starter; the 240-degree tap timing; the fan's
+clutch curve and band; the pump's speeds and vane count; the gate's chatter law.
+
+## Not done
+
+- A spider-gear voice (the differential's own gears, cornering) waits for steering.
+- Done since the first handoff: the key-on prime (card D renders from the ignition's rise; test `engine: the fuel
+  pump's prime`), card F's gate (`telGate`, `spec.boost.gate`; test `engine: card F's wastegate`), the intake's own
+  sound (`intake:`), the motorcycle's voices and gearbox (`bike:`, `engine: a naked twin's`, `engine: a bike's`).

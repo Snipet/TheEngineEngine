@@ -62,7 +62,9 @@
       "exLift": 0.009,
       "exCentre": 112,
       "inPhaseRange": 60,
-      "exPhaseRange": 0
+      "exPhaseRange": 0,
+      "springRate": 25000.0,
+      "springPreload": 156.0
     },
     "intake": {
       "model": 1,

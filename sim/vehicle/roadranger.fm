@@ -1,0 +1,162 @@
+// roadranger.fm: a truck's eighteen-speed as real controls (card D2): the lever's five positions, the range and the
+// splitter on its knob, an unsynchronised main box that wants its revs matched; and the grind when they are not.
+//
+// The box (Eaton's RTLO-18918B, the shape most American highway tractors have had): a main box of five forward
+// positions with no synchromesh, a two-speed range behind it (synchronised, air-shifted: it changes as the lever passes
+// through neutral) and a two-speed splitter in front (air-shifted, preselected with the button: it changes when the
+// torque through it breaks, the pedal lifted or the clutch down). Low range: the lever's L position (gears 1 and 2,
+// split) and positions 1 to 4 (gears 3 to 10); high range: positions 1 to 4 again (gears 11 to 18). So gear =
+// low: L -> 1 + split, k -> 1 + 2k + split; high: k -> 9 + 2k + split.
+//
+// The main box's dog clutches go in only when the gear's speed (the output's times its ratio) and the input shaft's
+// are within some 80 rpm (8 rad/s: judgement; drivers speak of a "window" of 50 to 100 rpm). The input shaft is the
+// crank's while the clutch is in; with the pedal down it coasts down (its drag: 30 rad/s a second) and, floored, the
+// clutch brake stops it (300 rad/s a second) for a gear from rest. So a driver floats a gear (no clutch: off the
+// pedal into neutral, the revs matched by the throttle, the lever in) or double-clutches; one who does neither grinds:
+// the dogs' faces strike at the difference in speed, a clash at the dogs' passing frequency (12 dogs: judgement), as
+// long as the lever is pushed there and the speeds differ. The splitter wants 15 rad/s (it is synchronised, roughly).
+//
+// It is a module with no engine in it: every 16 samples it is given the controls and the two speeds and says which gear
+// is in (0: neutral), whether it grinds and how hard; each sample grind() is its sound (a clash, unfiltered). Tested
+// alone (tests/sim/diesel/rig.fm). Not yet driving card I's gearbox: the gear it gives is for Vehicle to take (a
+// hook asked of card I: see docs/handoffs/d2-diesels.md).
+#pragma once
+#include "lib/noise.fm"
+
+enum
+{
+    RR_LEVER_L = 5,     // ctl.lever's position for the L (low-low) slot
+    RR_BTN_SPLIT = 16,  // ctl.buttons: the splitter's button (held: high split); asked of the lead for controls.fm
+    RR_BTN_RANGE = 32,  // the range's (held: high range)
+    RR_GEARS = 18
+};
+
+const float kRoadrangerRatio[18] = {14.40f, 12.29f, 8.56f, 7.30f, 6.05f, 5.16f, 4.38f, 3.74f, 3.20f, 2.73f, 2.29f, 1.95f,
+                                    1.62f, 1.38f, 1.17f, 1.00f, 0.86f, 0.73f};
+
+module Roadranger
+{
+    float rate;
+    Noise nz;
+    int gear;           // the gear in: 0 neutral, 1 to 18
+    int lastLever;
+    int mainIn;         // 1: the main box's dogs are in at the lever's position
+    int split;          // the splitter as it is (0 low, 1 high)
+    int range;          // the range as it is
+    float wShaft;       // the input shaft (rad/s)
+    float grinding;     // 0 to 1: how hard the dogs clash now
+    float clashHz;      // their passing frequency
+    float phase;
+    float env;
+    int grinds;         // a count: grinds begun
+    float slip;         // the speed difference at the dogs (rad/s)
+
+    void setup(float rateIn)
+    {
+        rate = rateIn;
+        nz.rs = 4711;
+        reset();
+    }
+
+    void reset()
+    {
+        gear = 0;
+        lastLever = 0;
+        mainIn = 0;
+        split = 0;
+        range = 0;
+        wShaft = 0.0f;
+        grinding = 0.0f;
+        clashHz = 0.0f;
+        phase = 0.0f;
+        env = 0.0f;
+        grinds = 0;
+        slip = 0.0f;
+    }
+
+    // The gear a lever position, range and split make (0: neutral, the lever in neutral or reverse)
+    int gearOf(int lever, int rng, int spl)
+    {
+        if (lever == RR_LEVER_L)
+            return rng == 0 ? 1 + spl : 0;
+        if (lever < 1 || lever > 4)
+            return 0;
+        return rng == 0 ? 1 + 2 * lever + spl : 9 + 2 * lever + spl;
+    }
+
+    float ratioOf(int g)
+    {
+        if (g < 1)
+            return 0.0f;
+        return kRoadrangerRatio[g > RR_GEARS ? RR_GEARS - 1 : g - 1];
+    }
+
+    // Every 16 samples. lever: ctl.lever; buttons: ctl.buttons; clutch: the pedal (1 on the floor); pedal: the throttle;
+    // wCrank: the crank (rad/s); wOut: the gearbox's output shaft (rad/s, before the axle)
+    void control(float d16, int lever, int buttons, float clutch, float pedal, float wCrank, float wOut)
+    {
+        const int wantSplit = (buttons & RR_BTN_SPLIT) != 0 ? 1 : 0;
+        const int wantRange = (buttons & RR_BTN_RANGE) != 0 ? 1 : 0;
+        // the input shaft: the crank's with the clutch in; coasting, or braked, with it down
+        if (clutch < 0.5f)
+            wShaft = wCrank;
+        else
+            wShaft = fmaxf(wShaft - (clutch > 0.95f && fabsf(wOut) < 1.0f ? 300.0f : 30.0f) * d16, 0.0f);
+        if (lever != lastLever)
+        {
+            lastLever = lever;
+            mainIn = 0;
+            // (the range shifts as the lever passes through neutral)
+            range = wantRange;
+        }
+        // the splitter: preselected, it changes when the torque through it breaks
+        if (wantSplit != split && (pedal < 0.1f || clutch > 0.5f) && mainIn != 0)
+        {
+            const float wNew = wOut * ratioOf(gearOf(lever, range, wantSplit));
+            if (fabsf(wShaft - wNew) < 15.0f || clutch > 0.5f)
+                split = wantSplit;
+        }
+        else if (mainIn == 0)
+            split = wantSplit;
+        const int g = gearOf(lever, range, split);
+        grinding = 0.0f;
+        if (g == 0)
+        {
+            gear = 0;
+            mainIn = 0;
+            slip = 0.0f;
+            return;
+        }
+        if (mainIn == 0)
+        {
+            slip = wShaft - wOut * ratioOf(g);
+            if (fabsf(slip) < 8.0f)
+            {
+                mainIn = 1;
+                wShaft = wOut * ratioOf(g);
+            }
+            else
+            {
+                // the dogs clash: harder the larger the difference, while the lever is pushed there
+                if (env < 0.05f)
+                    grinds += 1;
+                grinding = fminf(fabsf(slip) / 60.0f, 1.0f);
+                clashHz = 12.0f * fabsf(slip) * 0.15915494f;
+            }
+        }
+        gear = mainIn != 0 ? g : 0;
+    }
+
+    // Each sample: the grind's sound (a train of clashes at the dogs' passing frequency, each a burst of noise)
+    float grind()
+    {
+        env += (grinding - env) * 0.002f;
+        if (env < 1.0e-4f)
+            return 0.0f;
+        phase += clashHz / rate;
+        if (phase >= 1.0f)
+            phase -= 1.0f;
+        const float hit = phase < 0.15f ? 1.0f - phase / 0.15f : 0.0f;
+        return env * hit * hit * nz.rnd();
+    }
+};

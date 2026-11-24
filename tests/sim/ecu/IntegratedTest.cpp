@@ -22,6 +22,7 @@ namespace
         Sim s("v8");
         s.set("ecu.model", 1);
         s.set("fuel.model", 1);
+        s.set("engine.wallHeat", 1);                     // (fuel.model 1 implies Woschni's walls)
         s.set("env.temperature", 300.0);
         s.ctl().mode = tee::EnginePlayer::kModeDrive;
         s.ctl().ignition = tee::EnginePlayer::kIgnitionStart;
@@ -37,8 +38,9 @@ namespace
     };
 
     // Flat out on the limiter for `limit` s (counted when `onLimiter`), then lifted: the bangs and the fuel they burned
-    // over the lift's `lift` s from half a second in (the pipe's store of the rich full-load running gone by then)
-    Bangs bangs(Sim& s, double limit, double lift, bool onLimiter)
+    // over the lift's `lift` s from `from` s in (from a second the pipe's store of the rich full-load running, which
+    // lights as it would after a real lift, is gone: it empties over 0.25 s)
+    Bangs bangs(Sim& s, double limit, double lift, bool onLimiter, double from = 1.0)
     {
         s.ctl().throttle = 1.0f;
         s.run(0.5);
@@ -47,7 +49,7 @@ namespace
         if (onLimiter)
             return {s.read("ecu.one.account.bangs") - n0, s.read("ecu.one.account.total") - f0};
         s.ctl().throttle = 0.0f;
-        s.run(0.5);
+        s.run(from);
         n0 = s.read("ecu.one.account.bangs");
         f0 = s.read("ecu.one.account.total");
         s.run(lift);
@@ -76,7 +78,7 @@ TEST_CASE("H9: a spark-cut limiter and a fuelled overrun bang as the fuel sent; 
         Sim s = car();
         s.set("ecu.overrun.fuel", share);
         s.set("ecu.overrun.retard", 30.0);
-        const Bangs b = bangs(s, 1.5, 2.5, false);
+        const Bangs b = bangs(s, 1.5, 2.5, false, 0.3);          // (from 0.3 s: the overrun's fuelling is over by 1 s)
         WARN("overrun fuel " << share << ": " << b.count << " bangs, " << b.burned * 1e6 << " mg burned in the pipe");
         (share < 0.2 ? little : much) = b.burned;
     }
@@ -126,11 +128,12 @@ TEST_CASE("H: a bake writes every map's formula at its breakpoints into the Scop
     CHECK(s.read("scope.bakedNx[0]") == 16.0);
     CHECK(s.read("scope.bakedNy[0]") == 16.0);
     CHECK(s.read("scope.bakedNy[2]") == 6.0);                    // the boost target's gears
-    // the spark at 500 rpm (52.4 rad/s) and 0.1 load: the reference's 12 + 22 sqrt(500 / red) - 8 (0.1 - 0.4) + 22 (burnK - 1)
-    const double red = s.tel("engine.redline") * 9.5492966;
+    // the spark at 500 rpm (52.4 rad/s) and 0.1 load: the half of the burn 8 after the top, 0.517 (44 + 11 x 0.7)
+    // burnK (cr / 10)^-0.3 - 8
     const double burnK = s.read("burnK");
+    const double cr = s.read("smCR");
     CHECK(s.read("scope.bakedX[0][0]") == Catch::Approx(500.0 * 0.10471976).epsilon(1e-5));
-    CHECK(s.read("scope.baked[0][0]") == Catch::Approx(12.0 + 22.0 * std::sqrt(500.0 / red) + 2.4 + 22.0 * (burnK - 1.0)).epsilon(1e-4));
+    CHECK(s.read("scope.baked[0][0]") == Catch::Approx(0.517 * (44.0 + 11.0 * 0.7) * burnK * std::pow(cr * 0.1, -0.3) - 8.0).epsilon(1e-3));
     // a second press, a second bake
     s.ctl().bakeMaps += 1;
     s.run(0.1);
@@ -148,4 +151,98 @@ TEST_CASE("H: under ecu.model 0 and fuel.model 0 model 1's telemetry stays at 0"
     CHECK(s.tel("ecu.lambda") == 0.0);
     CHECK(s.tel("ecu.flags") == 0.0);
     CHECK(s.tel("engine.speed") > 100.0);
+}
+
+TEST_CASE("H10: traction control holds a spinning car's slip near its target", "[ecu][integrated][traction]")
+{
+    // The V8 in the rear-drive coupe (card I's vehicle, car.model 1) on street tyres, ecu.model 1: away gently in first,
+    // then the pedal floored while rolling. The slip is the driven wheels' (Car::drivenSlip, as the ECU is given it);
+    // measured over the second from 1.5 s after the pedal goes down (before that, under some 9 m/s, the slip ratio of
+    // wheels geared to an engine at 2000 rpm stays high whatever the ECU takes out; traction control brings it down meanwhile). (Dumping the clutch at a standstill is no test of
+    // it: the wheels are then geared to an engine that cannot turn slower than its idle while the car stands, so the
+    // slip ratio stays near 1 whatever the ECU does; a launch slips its clutch)
+    auto launch = [](bool tc, double& slipMean, double& slipMost, int& flags, double& state) {
+        Sim s("v8");
+        s.over("cars/rwd-v8-coupe");
+        s.set("car.tyre", 1);                            // street
+        s.set("ecu.model", 1);
+        s.set("fuel.model", 1);
+        s.set("engine.wallHeat", 1);                     // (fuel.model 1 implies Woschni's walls)
+        s.set("env.temperature", 300.0);
+        s.set("ecu.traction.on", tc ? 1 : 0);
+        s.ctl().mode = tee::EnginePlayer::kModeDrive;
+        s.ctl().lever = 0;
+        s.ctl().clutch = 1.0f;
+        s.ctl().ignition = tee::EnginePlayer::kIgnitionStart;
+        s.run(1.5);
+        s.ctl().ignition = tee::EnginePlayer::kIgnitionOn;
+        s.run(1.0);
+        s.ctl().lever = 1;
+        s.run(0.5);
+        // away gently in first (the clutch in over a second at a fifth of the pedal), rolling at some 3 m/s; then floored
+        s.ctl().throttle = 0.2f;
+        for (int i = 0; i < 20; ++i)
+        {
+            s.ctl().clutch = 1.0f - 0.05f * static_cast<float>(i + 1);
+            s.run(0.05);
+        }
+        s.run(0.5);
+        s.ctl().throttle = 1.0f;
+        s.run(1.5);
+        slipMean = 0.0;
+        slipMost = 0.0;
+        flags = 0;
+        const int n = 90;
+        for (int i = 0; i < n; ++i)
+        {
+            s.run(512.0 / 48000.0);
+            const double slip = s.read("ecu.vSlip");
+            slipMean += slip / n;
+            slipMost = std::fmax(slipMost, slip);
+            flags |= static_cast<int>(s.tel("ecu.flags"));
+        }
+        state = s.tel("engine.state");
+        std::printf("H10 traction %s: slip mean %.3f, most %.3f, flags %d, state %g, %.1f m/s\n", tc ? "on" : "off",
+                    slipMean, slipMost, flags, state, s.tel("car.speed"));
+    };
+    double offMean = 0.0, offMost = 0.0, onMean = 0.0, onMost = 0.0, offState = 0.0, onState = 0.0;
+    int offFlags = 0, onFlags = 0;
+    launch(false, offMean, offMost, offFlags, offState);
+    launch(true, onMean, onMost, onFlags, onState);
+    CHECK(offMean > 0.2);                                // it spins without it
+    CHECK((onFlags & 256) != 0);
+    CHECK(onMean > 0.07);
+    CHECK(onMean < 0.13);                                // near the target, 0.10
+    CHECK(onState == 2.0);                               // and no stall
+}
+
+TEST_CASE("H: both models on, the V8 starts at -20 C and at the coldest air", "[ecu][integrated][cold]")
+{
+    // X-003: with fuel.model 1 and ecu.model 1 the cold start's enrichment made the burn's own mixture lambda 0.62
+    // (0.88 at the cranking's full manifold times 0.7), at gasoline's rich limit, where no heat comes: it cranked for
+    // ever. The enrichment is now fuel for the cold walls (Ecu1::fuelFactor), the burn seeing the lambda asked
+    for (double air : {253.15, 233.15})
+    {
+        Sim s("v8");
+        s.set("ecu.model", 1);
+        s.set("fuel.model", 1);
+        s.set("engine.wallHeat", 1);                     // (fuel.model 1 implies Woschni's walls)
+        s.set("env.temperature", air);
+        s.ctl().mode = tee::EnginePlayer::kModeDrive;
+        s.ctl().ignition = tee::EnginePlayer::kIgnitionStart;
+        double ranAt = -1.0;
+        for (int i = 0; i < 400 && ranAt < 0.0; ++i)
+        {
+            s.run(0.01);
+            if (s.tel("engine.state") == 2.0)
+                ranAt = 0.01 * (i + 1);
+        }
+        s.ctl().ignition = tee::EnginePlayer::kIgnitionOn;
+        const double rpm = s.mean("engine.speed", 3.0) * 9.5492966;
+        std::printf("cold start at %.2f K: running at %.2f s, fast idle %.0f rpm\n", air, ranAt, rpm);
+        CHECK(ranAt > 0.0);
+        CHECK(ranAt < 2.0);
+        CHECK(s.tel("engine.state") == 2.0);
+        CHECK(rpm > 1000.0);
+    }
 }

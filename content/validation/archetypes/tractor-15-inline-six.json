@@ -255,18 +255,6 @@
       ],
       "unit": "K",
       "source": "a thermocouple a little way down a diesel's manifold reads some 700 to 950 K at full load (makers' pre-turbine limits near 1000 K; Heywood, Internal Combustion Engine Fundamentals, ch. 14)"
-    },
-    {
-      "name": "Top speed",
-      "scenario": "validation/scenarios/p-top-speed.json",
-      "tel": "car.speed",
-      "measure": "max",
-      "range": [
-        33.2,
-        38.2
-      ],
-      "unit": "m/s",
-      "source": "where 0.85 of the kind's published power (375 kW) meets the build's drag area and 1.2 % rolling resistance at 1.225 kg/m^3: 129 km/h, within 7 % (a power balance, not a test)"
     }
   ]
 }

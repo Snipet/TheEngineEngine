@@ -14,7 +14,7 @@ Six plots, everything live, read only while the workspace is shown (its `step()`
 | SPECTRUM | A 4096-point FFT (Hann, power smoothed over 0.12 s, analysed at most 30 times a second) in dB against log frequency; the firing frequency (the order of cylinders per revolution) and its multiples marked and numbered | `outputTail`; `engine.speed`; the layout's cylinders |
 | SPEED MAP | The spectrum against engine speed (a Campbell diagram), 72 x 56 cells filled as the engine sweeps (brighter is louder, a scale beside the title); the firing orders as slanted dashed lines; the speed now in the accent. **CLEAR MAP** empties it | as SPECTRUM; `engine.redline` sets its range |
 
-The inspector is the listener (`sound` section's generated page) until it has a workspace of its own.
+The inspector has no Spec page of its own: the listener (`sound`) is LISTEN's (docs/ui/listen.md).
 
 **Absent data** draws an empty plot with words saying what is missing, and a dash for a number; nothing is made up
 (`scope.absent`). Names read that the simulator does not write yet: Scope `portIntake`, `portExhaust`; telemetry

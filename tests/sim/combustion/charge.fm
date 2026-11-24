@@ -7,7 +7,7 @@ module ChargeRig
 
     float make(int kind, int firing, float air, float lambda, float sparkAfter, float u)
     {
-        c.make(kind, firing, air, 1.0f, lambda, 0.0f, 350.0f, 0.8f, 1.0f, sparkAfter, u);
+        c.make(kind, firing, air, 1.0f, lambda, 0.0f, 350.0f, 0.8f, 1.0f, sparkAfter, u, 1.0f);
         return c.heat;
     }
 };

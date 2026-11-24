@@ -89,6 +89,13 @@ TEST_CASE("tee-render --build --scenario writes the host's run, and says whether
         CHECK(header == "time,engine.speed,engine.state");   // asked for, then what the assertions read
     }
 
+    // a define the program does not read changes nothing; a malformed one is refused
+    REQUIRE(runTool(common + " --define TEE_UNREAD --define B=2 --out " + quoted(out / "d.wav") + " --csv -") == 0);
+    Audio defined;
+    REQUIRE(readWav(out / "d.wav", defined, error));
+    CHECK(defined.left == run.left);
+    CHECK(runTool(common + " --define =3 --out - --csv -") == 1);
+
     // 24-bit: the same samples, rounded to 2^-23
     REQUIRE(runTool(common + " --pcm24 --out " + quoted(out / "i.wav") + " --csv -") == 0);
     std::ifstream in(out / "i.wav", std::ios::binary);

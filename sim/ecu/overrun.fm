@@ -14,8 +14,10 @@
 // self-ignition of a rich exhaust's CO, H2 and fuel with air at some 950 to 1200 K) and there is oxygen to burn it, more readily
 // the more there is: a hazard accumulates at a rate proportional to the burnable mass (over 2 mg) and the heat, and the
 // store lights when it reaches 1. What burns is what the oxygen allows of it, and the pulse card G's node receives
-// (the reference's Pop) is as large as the fuel that burned: 3e9 Pa a kg (judgement: a few milligrams make the
-// reference's 20 to 30 kPa pops). Whatever does not burn flows on out of the pipe (both stores empty over 0.25 s,
+// (the reference's Pop: a half-sine of 0.25 to 0.85 ms, its rise physical) grows with the fuel that burned and
+// saturates: 30 kPa (1 - exp(-m / 7 mg)), 4.3 kPa a milligram for a little, never past 30 kPa, the reference's
+// largest pop (its pops are 10 to 30 kPa; a spark cut's whole charge, some 40 mg, would otherwise make 150 kPa, a step five
+// times the reference's, finding X-006). Whatever does not burn flows on out of the pipe (both stores empty over 0.25 s,
 // judgement for the gas's stay in the system at an overrun's flow).
 #pragma once
 
@@ -97,7 +99,7 @@ module FuelAccount
                 if (hazard[b] >= 1.0f)
                 {
                     burned[b] = can;
-                    pulse[b] = 3.0e9f * can;
+                    pulse[b] = 30000.0f * (1.0f - expf(-can / 7.0e-6f));
                     fuel[b] -= can;
                     air[b] = fmaxf(air[b] - can * afr, 0.0f);
                     hazard[b] = 0.0f;
