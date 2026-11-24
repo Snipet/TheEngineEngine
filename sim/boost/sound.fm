@@ -22,8 +22,15 @@ module BoostSound
     float rate;
     int seed;
     float nScale;
-    float whPh[BOOST_TURBOS];
-    float bpPh[BOOST_TURBOS];
+    float whC[BOOST_TURBOS];    // the whistle's phasor, and its rotation a sample
+    float whS[BOOST_TURBOS];
+    float wrC[BOOST_TURBOS];
+    float wrS[BOOST_TURBOS];
+    float bpC[BOOST_TURBOS];    // the blades' passing's, likewise
+    float bpS[BOOST_TURBOS];
+    float brC[BOOST_TURBOS];
+    float brS[BOOST_TURBOS];
+    float bpLevel[BOOST_TURBOS];
     float scPh;
     float scPh1;
     float scW[6];
@@ -53,8 +60,15 @@ module BoostSound
     {
         for (int i = 0; i < BOOST_TURBOS; ++i)
         {
-            whPh[i] = 0.0f;
-            bpPh[i] = 0.0f;
+            whC[i] = 1.0f;
+            whS[i] = 0.0f;
+            wrC[i] = 1.0f;
+            wrS[i] = 0.0f;
+            bpC[i] = 1.0f;
+            bpS[i] = 0.0f;
+            brC[i] = 1.0f;
+            brS[i] = 0.0f;
+            bpLevel[i] = 0.0f;
         }
         scPh = 0.0f;
         scPh1 = 0.0f;
@@ -92,22 +106,36 @@ module BoostSound
         }
     }
 
-    // A turbo's whistle and blade passing: its shaft's turns a second, how loud (0 to 1)
-    float whistle(int t, float hz, float level)
+    // A turbo's whistle and blade passing: its shaft's turns a second, how loud (0 to 1). Two phasors turned a sample
+    // by a rotation set every 16 samples (whRot()), renormalised there: no sine a sample.
+    float whistle(int t, float level)
     {
-        whPh[t] += hz / rate;
-        if (whPh[t] >= 1.0f)
-            whPh[t] -= floorf(whPh[t]);
-        float s = sinf(6.28318531f * whPh[t]);
+        const float c = whC[t] * wrC[t] - whS[t] * wrS[t];
+        whS[t] = whS[t] * wrC[t] + whC[t] * wrS[t];
+        whC[t] = c;
+        const float c2 = bpC[t] * brC[t] - bpS[t] * brS[t];
+        bpS[t] = bpS[t] * brC[t] + bpC[t] * brS[t];
+        bpC[t] = c2;
+        return 0.09f * level * (whS[t] + bpLevel[t] * bpS[t]);
+    }
+
+    // Every 16 samples, for turbo t: its whistle's rotation from the shaft's turns a second
+    void whRot(int t, float hz)
+    {
+        const float w = 6.28318531f * fminf(hz, 0.45f * rate) / rate;
+        wrC[t] = cosf(w);
+        wrS[t] = sinf(w);
         const float bp = 12.0f * hz;
-        if (bp < 18000.0f)
-        {
-            bpPh[t] += bp / rate;
-            if (bpPh[t] >= 1.0f)
-                bpPh[t] -= floorf(bpPh[t]);
-            s += 0.5f * fminf((18000.0f - bp) / 3000.0f, 1.0f) * sinf(6.28318531f * bpPh[t]);
-        }
-        return 0.09f * level * s;
+        bpLevel[t] = bp < 18000.0f ? 0.5f * fminf((18000.0f - bp) / 3000.0f, 1.0f) : 0.0f;
+        const float wb = 6.28318531f * fminf(bp, 0.45f * rate) / rate;
+        brC[t] = cosf(wb);
+        brS[t] = sinf(wb);
+        const float n1 = 1.0f / sqrtf(fmaxf(whC[t] * whC[t] + whS[t] * whS[t], 1.0e-12f));
+        whC[t] *= n1;
+        whS[t] *= n1;
+        const float n2 = 1.0f / sqrtf(fmaxf(bpC[t] * bpC[t] + bpS[t] * bpS[t], 1.0e-12f));
+        bpC[t] *= n2;
+        bpS[t] *= n2;
     }
 
     // A supercharger's whine: its pockets a second, its rotors' turns a second, how loud

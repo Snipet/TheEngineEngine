@@ -135,7 +135,12 @@ TEST_CASE("tee-dyno's curve equals the runner's", "[dyno][tools]")
     const std::string command = std::string("\"") + TEE_BIN_DIR + "/tee-dyno\" --quiet --sim \"" + standin().string()
                                 + "\" --build \"" + (out / "build.json").string() + "\" --from 200 --to 500 --rate 80"
                                 + " --fields engine.manifold,engine.firing --csv \"" + (out / "tool.csv").string() + "\"";
-    REQUIRE(std::system(command.c_str()) == 0);
+#if defined(_WIN32)
+    const std::string line = "\"" + command + "\"";   // cmd /c strips the outer pair of quotes
+#else
+    const std::string& line = command;
+#endif
+    REQUIRE(std::system(line.c_str()) == 0);
     std::ifstream in(out / "tool.csv");
     std::ostringstream text;
     text << in.rdbuf();
