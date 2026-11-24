@@ -245,6 +245,9 @@ namespace tee::ui
         // menu (the shell's F9); none: the status line, and no menu.
         std::function<std::string()> audioInfo;
         std::function<void()> audioMenu;
+        // Whether the engine can be played now (false while its program compiles: START looks disabled and takes no
+        // press). None: always ready.
+        std::function<bool()> engineReady;
         // The simulator's quality (the settings' QUALITY): 0 FULL, 1 ECONOMY (the engine at half its inner rate: about
         // half the load, the highest octave lost). Cards B and C serve it (a reload, stored); while setQuality is
         // empty the row shows FULL and does nothing. Nothing switches by itself.
