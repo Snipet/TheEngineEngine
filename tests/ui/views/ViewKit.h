@@ -19,6 +19,7 @@
 #include <funkgui/canvas/SoftRaster.h>
 #include <funkgui/panel/HeadlessHost.h>
 
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <filesystem>
@@ -60,7 +61,10 @@ namespace tee::test::views
     std::string unnamedControls(funkgui::HeadlessHost& host);
 
     // A workspace alone in a headless host over the demo (ui/app/Demo.h). `t` is the demo script's time; at(t) moves
-    // it and ticks the host so the eases land. `hooks`: with every registered workspace's own demo data (DemoHook).
+    // it and ticks the host so the eases land. `hooks`: with the demo data of the workspace's package (the TEE_UI_DEMO
+    // hooks of its package's workspaces, no other package's, so another package's data never moves this test's
+    // goldens); false: none. A test that wants
+    // other hooks too passes them by id: StageRig(make, ..., tee::ui::DemoHooks::of({ "tune", "car" })).
     //
     // The stage the frame gives (AppFrame::stageFor) is much smaller than the window. Lay out for the smallest and
     // look generous at the large:
@@ -76,13 +80,15 @@ namespace tee::test::views
         std::unique_ptr<tee::ui::Workspace> ws;
         std::unique_ptr<funkgui::HeadlessHost> host;
 
-        StageRig(tee::ui::WorkspaceFactory make, int w = 1100, int h = 700, float dpi = 2.0f, double t = 4.6, bool hooks = true)
-            : demo(t, hooks)
+        StageRig(tee::ui::WorkspaceFactory make, int w = 1100, int h = 700, float dpi = 2.0f, double t = 4.6,
+                 const tee::ui::DemoHooks& hooks = true)
+            : demo(t, own(make, hooks))
         {
             open(make, w, h, { 0.0f, 0.0f, static_cast<float>(w), static_cast<float>(h) }, dpi);
         }
-        StageRig(tee::ui::WorkspaceFactory make, FrameSize size, float dpi = 2.0f, double t = 4.6, bool hooks = true)
-            : demo(t, hooks)
+        StageRig(tee::ui::WorkspaceFactory make, FrameSize size, float dpi = 2.0f, double t = 4.6,
+                 const tee::ui::DemoHooks& hooks = true)
+            : demo(t, own(make, hooks))
         {
             const int w = size == FrameSize::smallest ? 1100 : 1600, h = size == FrameSize::smallest ? 700 : 1000;
             open(make, w, h, tee::ui::AppFrame::stageFor(w, h), dpi);
@@ -91,6 +97,22 @@ namespace tee::test::views
         {
             demo.at(t);
             settle();
+        }
+        // `true` (all) means the workspace's own hook: its id read from a workspace made over a bare demo.
+        static tee::ui::DemoHooks own(tee::ui::WorkspaceFactory make, const tee::ui::DemoHooks& hooks)
+        {
+            if (!hooks.all)
+                return hooks;
+            tee::ui::DemoRig bare(4.6, tee::ui::DemoHooks::none());
+            std::unique_ptr<tee::ui::Workspace> probe = make(bare.ctx);
+            // A package's workspaces share their hooks (ui-design.md section 6's packages); no other package's apply.
+            static const std::vector<std::vector<std::string>> kPackages = {
+                { "engine", "valves" }, { "air", "exhaust" }, { "tune", "car", "dyno" }, { "garage", "scope" }, { "drive" } };
+            const std::string id = probe->id();
+            for (const auto& package : kPackages)
+                if (std::find(package.begin(), package.end(), id) != package.end())
+                    return tee::ui::DemoHooks::of(package);
+            return tee::ui::DemoHooks::of({ id });
         }
         void open(tee::ui::WorkspaceFactory make, int w, int h, const funkgui::Rect& stage, float dpi)
         {
