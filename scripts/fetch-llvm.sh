@@ -11,7 +11,8 @@
 #
 # The version and the repository are cmake/TeePins.cmake's (TEE_LLVM_VERSION, TEE_LLVM_RELEASE_REPOSITORY). The
 # archive is fetched by its URL; where that is refused (a cloud container's proxy answers 403 for release archives),
-# through `gh api` instead, which reaches the same asset.
+# through `gh api` instead, which reaches the same asset; and where the session may not read that repository at all,
+# from the mirror release on this one (below, fetch_from).
 #
 # TEE_DEPS_DIR: the environment's; else /home/user/.tee-deps where that exists (a cloud container); else .tee-deps in
 # this checkout, as cmake/TeeDeps.cmake has it.
@@ -57,18 +58,33 @@ trap 'rm -rf "$work"' EXIT
 cd "$work"   # relative names below: Git Bash's tar takes D:\... for a remote host
 
 echo "fetch-llvm: $name from the release $tag of $repo"
-if curl -fsSL --retry 3 -o "$name" "$url" 2>/dev/null && curl -fsSL --retry 3 -o "$name.sha256" "$url.sha256" 2>/dev/null; then
-  echo "fetch-llvm: downloaded by URL"
-elif command -v gh >/dev/null; then
-  echo "fetch-llvm: the URL is refused here; asking the GitHub API for the same assets (gh api)"
+# The archive from one repository's release: by its URL, else through the GitHub API. A session whose GitHub access
+# does not cover that repository is refused both ways (a cloud session started on this repository alone, asking
+# Snipet/FMinus): then the mirror, the pre-release of the same tag on this repository (TEE_LLVM_MIRROR), which holds
+# the Linux archive and its .sha256 as FMinus published them.
+fetch_from() {
+  local from=$1 from_url="https://github.com/$1/releases/download/$tag/$name" asset id
+  rm -f "$name" "$name.sha256"
+  if curl -fsSL --retry 3 -o "$name" "$from_url" 2>/dev/null && curl -fsSL --retry 3 -o "$name.sha256" "$from_url.sha256" 2>/dev/null; then
+    echo "fetch-llvm: downloaded by URL from $from"
+    return 0
+  fi
+  command -v gh >/dev/null || return 1
   for asset in "$name" "$name.sha256"; do
-    id=$(gh api "repos/$repo/releases/tags/$tag" --jq ".assets[] | select(.name == \"$asset\") | .id")
-    [ -n "$id" ] || { echo "fetch-llvm: the release $tag of $repo has no asset $asset" >&2; exit 1; }
-    gh api -H "Accept: application/octet-stream" "repos/$repo/releases/assets/$id" > "$asset"
+    id=$(gh api "repos/$from/releases/tags/$tag" --jq ".assets[] | select(.name == \"$asset\") | .id" 2>/dev/null) || return 1
+    [ -n "$id" ] || return 1
+    gh api -H "Accept: application/octet-stream" "repos/$from/releases/assets/$id" > "$asset" 2>/dev/null || return 1
   done
-else
-  echo "fetch-llvm: could not download $url, and there is no gh to ask the GitHub API with" >&2
-  exit 1
+  echo "fetch-llvm: downloaded through the GitHub API from $from"
+}
+
+mirror=${TEE_LLVM_MIRROR:-Snipet/TheEngineEngine}
+if ! fetch_from "$repo"; then
+  echo "fetch-llvm: $repo's release is not reachable from here; trying the mirror on $mirror"
+  if [ "$mirror" = "$repo" ] || ! fetch_from "$mirror"; then
+    echo "fetch-llvm: could not download $name from $repo or from $mirror (by URL or with gh)" >&2
+    exit 1
+  fi
 fi
 
 if command -v sha256sum >/dev/null; then sha256sum -c "$name.sha256"; else shasum -a 256 -c "$name.sha256"; fi

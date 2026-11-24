@@ -235,6 +235,10 @@ set(FMINUS_WERROR OFF)                       # third-party code never gets -Werr
 set(FMINUS_JSON ON)
 add_subdirectory("${_tee_fminus_dir}" "${PROJECT_BINARY_DIR}/_deps/fminus" EXCLUDE_FROM_ALL SYSTEM)
 
+# ---- SDL3 (the shell's: shell/cmake/TeeSdl.cmake) --------------------------------------------------------------------
+# Before FunkGui, whose desktop host takes the SDL3::SDL3 it finds defined.
+include("${TEE_SOURCE_DIR}/shell/cmake/TeeSdl.cmake")
+
 # ---- FunkGui ---------------------------------------------------------------------------------------------------------
 # Its JUCE-free core for now: no JUCE, no bgfx, no tools, no tests, and nothing fetched. FunkGui::core is an INTERFACE
 # library: its sources compile into the target that links it, which also calls funkgui_configure_product(). When the pin
