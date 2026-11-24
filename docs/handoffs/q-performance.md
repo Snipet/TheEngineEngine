@@ -14,23 +14,29 @@ modules under the lead's 14:58 rule. Machine: this container (Xeon 2.10 GHz, AVX
   back in 3a3bcaa: it saves nothing; my first "8 %" was host noise (q3-q4-changes.md, corrected).
 - 42c3dd5: `TEE_FAST`, the program's one fast switch (`#ifdef` in exhaust/duct.fm): valves in 2 passes, **10.3 % of
   R** (7 runs, both orders), not exact: bands 1-20 kHz +0.3-0.7 dB on free-revs, 250 Hz +1.0-1.3 dB on drive-car.
-- q-rule.md (the rule: exact first; 7 runs both orders; ensemble floor; one switch). q5-design-note.md (parallel
-  parts: FMinus region ~1 us, 2.3x latency, +5-8 % CPU; pipes as arrays; 48 kHz inside: 0.48 cost, torque within 1.2 %).
-- Tools: docs/measurements/tools/qbench (A/B, bit test, bands, levels, speed, CPU ratio, defines), par (regions).
+- Pipes as arrays prototyped (`proto/duct-lanes.patch`, G's, waits for G): exact (null 59/59, exhaust tests green),
+  3-8 % on 8-12 cylinders, nothing on the inline six. README.md: the method, every earlier figure restated.
+- q-rule.md (exact first; 7 runs both orders; ensemble floor; one switch); q5 design note (parallel parts: region
+  ~1 us, 2.3x less latency, +5-8 % CPU; 48 kHz inside). Tools: qbench (A/B, bit test, bands, CPU ratio), par.
 
-**Not done**: the ensemble floor of 8+ perturbed runs (one perturbed run measured; qbench does pairs, the ensemble is
-a loop of them); boost's budget (0.24 R vs 0.12: F's own three suggestions stand; its pipe-end exit saves <1 %); the
-pipes as arrays (G's network, exact, est. 8-12 %); Cylinder::volumeSlope table (not exact); the hour soak.
+**Not done**: the 8-run ensemble floor (one perturbed run measured); boost's budget (now ~0.17 R by the method, not
+0.24: no exact win found; F's suggestions are not exact); Cylinder::volumeSlope table (not exact); the hour soak.
 
-**Measurements**: sim/ref 1.016 over V8 + Large Diesel (free-revs, drive-car) with D's hooks in: exact work paid for
-them. Twin-turbo V8 1.26 R; + G's dual X system 0.31 R = ~1.57 R (47-63 % of the owner's core at R = 30-40 %); with
-exact changes ~1.53 R; with TEE_FAST ~1.41 R (42-56 %). **The card's target is not met**: exact work gave ~3 %, not a
-fifth; TEE_FAST + pipes as arrays would reach it. Compile 1.5-2.0 s here at -O2 (221 kB of code).
+**Measurements** (7 runs, both orders): exact work committed ~3 % of R; twin-turbo V8 ~1.18 R; with G's dual X
+system (+0.31 R, G's figure, not re-measured) **~1.49 R today**; 48 kHz inside 0.49 of the cost. Compile 1.5-2.0 s.
 
-**Wanted outside my paths**: host (B/C) to pass `defines["TEE_FAST"]` only after the owner's listening; -O0 first
-sound then -O2 swap (lead: later); card C: 48 kHz numbers relayed; tee-dyno on large-diesel gives negative torques.
+**The realistic ceiling** (lead's question): every exact thing I can see (the lanes patch ~0.07 R on this engine and
+G's pipes, the junctions' 1/z sums ~1 %) lands the twin-turbo V8 with a dual exhaust at **~1.40 R: 56 % of the
+owner's core on the slower figure (R = 40 %), 42 % on the faster** - under 60 % but with no margin, and before
+variable timing, maps and G's builder add their shares (the card allows 1.6 R = 64 %). Exact work cannot make 60 %
+certain. Non-exact: TEE_FAST (-10 %) ~1.27 R = 51 %; plus a volume table and the pipes' back/flow16 every 64 samples
+~1.2 R = 48 %, each behind the switch and the owner's ears. **The honest answer for slow machines is a quality
+setting**: 48 kHz inside costs 0.49, so ~0.7 R = 28 % (even a 1.6 R build: 31 %); it loses the top octave (bands from
+about 10 kHz 13-24 dB down: the rasp and hiss on top of the note thin out), keeps levels and speed within the floor
+and the torque within 1.2 %.
 
-**FMinus**: no bug. Observations for the owner: the loop vectoriser vectorises no hot loop (loops over modules whose
-methods write state); a `parallel { }` region costs ~1 us; two tasks' modules adjacent in memory false-share (40 %).
+**Wanted outside my paths**: host passes `defines["TEE_FAST"]` only after the owner listens; -O0-then-swap later;
+card C: the 48 kHz numbers; tee-dyno gives the Large Diesel negative torques. **FMinus**: no bug; the loop vectoriser
+takes no hot loop (module-method loops); a `parallel { }` region ~1 us; adjacent tasks' modules false-share (40 %).
 
 **Listen to**: TEE_FAST off vs on, loudness-matched: v8 and default, free-revs and drive-car (pairs sent to X).
