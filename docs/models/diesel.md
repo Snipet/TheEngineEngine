@@ -64,8 +64,10 @@ from cycle to cycle; not yet understood). **The vanes shut by the brake** (boost
 still acting). At 2000 rpm, High: the matched turbo (size 1) over-speeds (12,417 rad/s against its 11,932 limit), its
 relief opens the vanes to 0.78 and the manifold stops at 2.48 bar, 257 kW; size 1.3: 2.84 bar, 282 kW; size 1.6: 3.04
 bar with the vanes shut, 294 kW (motoring 61). So the boost comes, but the power follows it less than the ideal says
-(+25 % manifold, +5 % power): not yet understood (the charge's temperature off a hot compressor; the turbine's back
-pressure not reaching the cylinders under card F's exhaust stand-in). Not yet done: the pressure-volume loop of one
+(+25 % manifold, +5 % power) with the reference's exhaust, whose turbine's back pressure does not reach the cylinders.
+With card G's network (exhaust.model 1) it does: size 1.6, High, 2000 rpm: manifold 3.41 bar, before the turbine 5.86
+bar, **406 kW** (motoring 98 kW: the vanes at their stop): the published ~450 at 2100 rpm. The missing half was the
+vanes and the turbine's back pressure. Not yet done: the pressure-volume loop of one
 braking cylinder against one motoring from the Scope (the picture asked for).
 
 ## The exhaust brake (`ecu.exhaustBrake`, `ecu.exBrakeSwitch`)

@@ -30,14 +30,14 @@ namespace
 } // namespace
 
 TEST_CASE("fuzz: random Specs inside the ranges with seeds 1 to 6 and six seconds of random driving each",
-          "[nightly][fuzz-long]")
+          "[combo][fuzz]")
 {
-    // nightly while X-007 (a crash of the JIT's code without the checks) is open: the lead's ruling
+    // back in the default run since D's ae5c99b (X-007: no state-counted loop, a diverged engine put at rest)
     fuzz(1, 6, 6.0, false);
 }
 
 TEST_CASE("fuzz: the ranges' corners with seeds 1 to 6 and six seconds of random driving each",
-          "[nightly][fuzz-long]")
+          "[combo][fuzz]")
 {
     fuzz(1, 6, 6.0, true);
 }

@@ -481,6 +481,19 @@ namespace combo
                           run.stopReason().c_str());
             v.failures.push_back({"guard", b});
         }
+        // the engine's own guard (D's ae5c99b): a crank not finite or past five times the redline is put at rest and
+        // FLAG_FAULT (4) set in tel.engine.flags: a failure of the guard's kind
+        {
+            const auto flags = run.tel("engine.flags");
+            for (std::size_t i = 0; i < flags.size(); ++i)
+                if ((static_cast<int>(flags.values()[i]) & 4) != 0)
+                {
+                    std::snprintf(b, sizeof b, "the engine's guard put it at rest at %.2f s (FLAG_FAULT)",
+                                  flags.times()[i]);
+                    v.failures.push_back({"guard", b});
+                    break;
+                }
+        }
         if (!run.left().finite() || !run.right().finite())
             v.failures.push_back({"finite", "a sample is not finite"});
         const double peak = std::max(run.left().peak(), run.right().peak());
