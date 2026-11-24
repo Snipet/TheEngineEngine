@@ -1,0 +1,23 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "X-026 (seed 298: a 50 cc compression-25 engine with a 4 L blower, the clearances leaking back in)",
+  "notes": "Corner seed 298's remainder after N2's inlet fix, reduced by tee-fuzz --reduce (card N1): the blower's clearance leak ran back into a 0.2 L charge pipe as air at 0 K, cooling it to its floor until it went non-finite at 2.69 s while cranking. tee-fuzz --build <this> --seed 298 --seconds 6",
+  "spec": {
+    "boost": {
+      "chargeVolume": 0.0005,
+      "icEffect": 0,
+      "kind": 4,
+      "model": 1,
+      "scDisplacement": 0.004
+    },
+    "engine": {
+      "compression": 25,
+      "displacement": 5e-05,
+      "redlineTrim": -3000
+    },
+    "fuel": {
+      "kind": 1
+    }
+  }
+}
