@@ -349,3 +349,40 @@ burn's lengthening took 5 K off and the count to none. H9 is skipped on this fin
 
 The decision is the lead's: the collector's mean, or the blowdown's gas at the valve, which `overrun.fm`'s own comment
 names.
+
+## H. The four-cam V8's no-start on long runners: the parked overlap, not the runner (measured; content, to P)
+
+P's p-idle-warm scenario on the tip, the four-cam 5.0 V8, statistics over 4 to 14 s (target 700 rpm):
+
+| Runner | Mean | sd | Low |
+|---|---|---|---|
+| 0.45 m | 694 rpm | 87 | 515 |
+| 0.50 m | 694 rpm | 110 | 493 |
+| 0.57 m | 698 rpm | 134 | 455 |
+
+Every length hunts: a 4-second limit cycle, the idle valve 0 to 0.23, the manifold 50 to 87 kPa. A longer runner only
+deepens the dips; on f907a83 they reached a stall.
+
+The idle loop's gains are not it. In scratch trees, on the 0.57 m runner:
+
+- the spark integral's unwind at 1/s instead of 4/s: identical to the bit;
+- the valve integral halved: sd 137;
+- the spark proportional halved: sd 154.
+
+The plant is: the build parks both cams at a fixed cam's centres (38 degrees of seat overlap at idle), and the
+cylinders trap 38 to 67 % burned gas, around the burn's dilution limit. With the intake parked later, on the 0.57 m
+runner:
+
+| Intake centre | Idle sd | Range |
+|---|---|---|
+| 108 (as built) | 134 rpm | 455 to 883 |
+| 118 | 66 rpm | 561 to 785 |
+| 128 | 6 rpm | 649 to 714 |
+
+Full load is unchanged within ±2.5 %, since the phaser rule advances it back.
+
+A real phaser locks at its late, least-overlap end to crank and idle. Content for P: phased archetypes park the intake
+about 20 degrees past the fixed-cam centre.
+
+The 7.0 pushrod V8 (no phaser, 57 degrees of overlap) does not stall on the tip at 0.45 or 0.57 m: 748 rpm, sd 43 to
+49, a big cam's lope.

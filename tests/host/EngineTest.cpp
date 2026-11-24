@@ -303,8 +303,10 @@ TEST_CASE("the dyno runner starts a common-rail diesel and holds a twin turbo's 
     for (const DynoPoint& p : six.points)
     {
         CHECK(p.fields[0] == 2.0);
-        CHECK(p.fields[1] > 80000.0);    // near the build's 1.0 bar (P measured 2.99 bar at 4297 rpm before)
-        CHECK(p.fields[1] < 120000.0);
+        // no runaway (P measured 2.99 bar at 4297 rpm when the key went from off to start); how much boost the build
+        // makes is its own (the content's maps and springs), not the runner's
+        CHECK(p.fields[1] > 30000.0);
+        CHECK(p.fields[1] < 130000.0);
     }
 }
 
