@@ -968,6 +968,7 @@ module Engine
         if (spec.valve.model != 0)
         {
             vt.oil(heat.oilPressure(), heat.oilTemperature());
+            vt.tCool = heat.tCool;   // (N1, for card E: the cam stage's gate reads the coolant, as an ECU does)
             vt.control16(d16, crank.omega, ecu.redRpm * 0.10471976f, ecu.throttle, crank.theta, &lay.fire[0], ecu.camTarget(0),
                          ecu.camTarget(1), ecu.liftCommand());
         }
