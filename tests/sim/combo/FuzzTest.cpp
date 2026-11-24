@@ -40,7 +40,9 @@ namespace
                     cylinders = x.value;
             }
             if (custom != 0.0 && (rotors >= 2.0 || cylinders >= 12.0))
+            {
                 for (auto it = v.failures.begin(); it != v.failures.end();)
+                {
                     if (it->check == "cost")
                     {
                         WARN("known X-016 (the heavy case): seed " << seed << ": " << it->detail << " (custom, "
@@ -49,6 +51,8 @@ namespace
                     }
                     else
                         ++it;
+                }
+            }
             const std::string name = std::string(corners ? "corners " : "random ") + std::to_string(seed);
             report(v, name, "fuzz", corners ? "corners" : "random");
         }
