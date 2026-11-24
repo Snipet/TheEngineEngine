@@ -107,7 +107,16 @@ namespace tee
         int maxBlock = 1024;                    // the longest call of Engine::process (a longer block is cut)
         std::size_t commandSlots = 16384;
         std::size_t poolBytes = std::size_t{1} << 21;
-        float guardLimit = 1.0f;                // a sample beyond this is refused (the contract's +-1)
+        // The output's safety stage. A sample beyond guardLimit (the contract's +-1) but finite and within absurdLimit
+        // is a loud moment, not a fault: clamped to guardLimit, its block counted (HostStats::clippedBlocks) and the
+        // largest sample kept (HostStats::largestSample); nothing restarts. A sample not finite, or beyond absurdLimit
+        // (16: +24 dB over full scale), is a fault: the block silenced and a fresh instance made off the audio thread.
+        float guardLimit = 1.0f;
+        float absurdLimit = 16.0f;
+        // After a fault's fresh instance, an ignition the driver left on cranks it (ctl.ignition 2, written by the
+        // host) until it runs (tel.engine.state 2) or for at most crankSeconds: the engine comes back as the person
+        // left it, not silently off. 0: it does not (the instance waits, stopped, for the driver's start).
+        double restartCrankSeconds = 3.0;
         bool worker = true;                     // a thread of the host's own calls service()
         bool log = false;                       // keep the session log (takeLog)
         double crossfadeSeconds = 0.02;         // a reload's crossfade
@@ -223,6 +232,8 @@ namespace tee
         int fadeInLeft_ = 0;
         SimControls controlsApplied_;
         float lastLeft_ = 0.0f, lastRight_ = 0.0f;
+        std::int64_t crankLeft_ = 0;          // samples the host still cranks a fresh instance after a fault
+        bool clippedNow_ = false;             // a sample of this chunk was clamped
         std::vector<float> scratchLeft_, scratchRight_;
         std::vector<unsigned char> publishBuffer_;
         HostStats stats_;

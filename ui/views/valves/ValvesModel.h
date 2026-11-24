@@ -32,6 +32,7 @@ namespace tee::ui::valves
         liftControl, liftMin, liftThrottle,
         deacMask, deacLow, deacHigh, deacLoad,
         train, springRate, springPreload, valveMass,
+        freeInOpen, freeInClose, freeExOpen, freeExClose, freeFlank, auxOn, auxOpen, auxDur, auxLift,
         count
     };
     inline constexpr FieldPath kValveFields[] = {
@@ -79,24 +80,43 @@ namespace tee::ui::valves
         { "valve.springRate", "" },
         { "valve.springPreload", "" },
         { "valve.valveMass", "" },
+        { "valve.freeInOpen", "" },                  // a free valve's events: the cycle's degrees
+        { "valve.freeInClose", "" },
+        { "valve.freeExOpen", "" },
+        { "valve.freeExClose", "" },
+        { "valve.freeFlank", "" },
+        { "valve.auxOn", "" },                       // the second exhaust event (a compression brake's lobe)
+        { "valve.auxOpen", "" },
+        { "valve.auxDur", "" },
+        { "valve.auxLift", "" },
     };
     static_assert(std::size(kValveFields) == static_cast<std::size_t>(VF::count));
     inline const FieldPath& path(VF f) { return kValveFields[static_cast<int>(f)]; }
     double fieldValue(const FieldDoc& doc, VF f);
 
-    // Telemetry (E's tel.valve, not on the branch yet: the names are this table's guess) and the Scope's lifts.
-    inline constexpr const char* kTelInPhase = "valve.inPhase";       // degrees from parked, the intake phaser's now
+    // Telemetry (E's tel.valve, sim/spec/telemetry.fm) and the Scope's lifts.
+    inline constexpr const char* kTelInPhase = "valve.inPhase";       // crank degrees from parked, the intake phaser's now
     inline constexpr const char* kTelExPhase = "valve.exPhase";
+    inline constexpr const char* kTelInTarget = "valve.inPhaseTarget";   // and where it is asked to go
+    inline constexpr const char* kTelExTarget = "valve.exPhaseTarget";
     inline constexpr const char* kTelStage = "valve.stage";           // 0 stage A, 1 stage B
     inline constexpr const char* kTelLift = "valve.lift";             // the continuous lift's share now, 0..1
     inline constexpr const char* kTelFloat = "valve.floatSpeed";      // rad/s: the speed the valves float at
+    inline constexpr const char* kTelFloating = "valve.floating";     // 1 while they float
     inline constexpr const char* kTelActive = "valve.active";         // a bit a cylinder: those firing now
+    inline constexpr const char* kTelEvents[5] = { "valve.ivo", "valve.ivc", "valve.evo", "valve.evc", "valve.overlap" };
+    // the flow bench as the simulator computes it, an element a name ("valve.benchLift[3]"): m, and m^3/s at 28 in
+    // of water. (The shell does not yet offer array telemetry by element; until it does the bench is the port below.)
+    inline constexpr const char* kTelBenchLift = "valve.benchLift[%d]";
+    inline constexpr const char* kTelBenchIn = "valve.benchIntake[%d]";
+    inline constexpr const char* kTelBenchEx = "valve.benchExhaust[%d]";
 
     // One cam lobe as the generator makes it (cam.fm).
     struct Lobe
     {
         double durSeat = kNaN, dur1mm = kNaN, lift = kNaN, centre = kNaN, fat = 0.5;   // centre: the cycle's angle
         bool free = false;           // a free valve (not drawn by the generator's lobe: a flat-topped event)
+        double flank = 40.0;         // a free valve's flanks, degrees each
         // made
         double p = 1.25, k = 4.0, kNorm = 1.0, span = kNaN, open = kNaN;
         bool known() const noexcept { return std::isfinite(durSeat) && std::isfinite(centre) && durSeat > 1.0; }
@@ -115,6 +135,7 @@ namespace tee::ui::valves
     {
         Lobe in, ex;                 // stage A (or the only one)
         Lobe inB, exB;               // stage B, when `stages`
+        Lobe aux;                    // the second exhaust event, when on (known() otherwise false)
         bool stages = false, reference = false, labOff = false;   // the reference's dial; the lab's model is off
         double inPhaseRange = kNaN, exPhaseRange = kNaN;           // degrees
         double stageSpeed = kNaN;                                   // rad/s
@@ -137,8 +158,11 @@ namespace tee::ui::valves
         int nIn = 1, nEx = 1;
         double dIn = kNaN, dEx = kNaN;
         bool known = false;
+        bool simulated = false;      // the simulator's own (telemetry), not this port
     };
     Bench benchOf(const FieldDoc& doc, double bore);
+    // The simulator's bench when its telemetry has all of it, else benchOf().
+    Bench benchOf(const FieldDoc& doc, double bore, const Live& live);
     // One head's flow at lift l (m): bench.fm's orifice through area.fm's effective area.
     double benchFlow(int n, double d, double q, double l);
 }

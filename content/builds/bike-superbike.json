@@ -41,6 +41,19 @@
       "stroke": 0.0509,
       "redlineSpeed": 1466.077
     },
+    "intake": {
+      "model": "Lab",
+      "throttleKind": "A body a runner",
+      "trumpets": "The air box"
+    },
+    "exhaust": {
+      "headers": 0.25,
+      "pipe": 0.2,
+      "muffler": 0.15
+    },
+    "valve": {
+      "cam": 0.55
+    },
     "fuel": {
       "kind": "Gasoline"
     },
