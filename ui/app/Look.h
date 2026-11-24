@@ -222,6 +222,36 @@ namespace tee::ui::look
         c.rrect(r.x - 3.0f, r.y - 3.0f, r.w + 6.0f, r.h + 6.0f, radius + 3.0f, kClear, kDiagram.selectRing, p.selected);
     }
 
+    // A tachometer's scale for a redline (rpm): the cockpit's rev bar and DRIVE's dial share it. The top a tenth past
+    // the redline (at least half a step), rounded up to a step; a step of 1000 rpm (numerals in thousands) from a 4000
+    // rpm redline up, else 500 (numerals in hundreds: a governed diesel's 2000 rpm reads 0 5 10 15 20 25, not a bar to
+    // 4000 half of it red). The shift lights' distances below the redline shrink with it (a 7000 rpm engine's own).
+    struct RpmScale
+    {
+        double top = 8000.0, step = 1000.0, divisor = 1000.0;
+        const char* unit = "X1000 RPM";
+    };
+    inline RpmScale rpmScale(double redline)
+    {
+        RpmScale s;
+        if (!std::isfinite(redline) || redline <= 0.0)
+            redline = 7000.0;
+        if (redline < 4000.0)
+        {
+            s.step = 500.0;
+            s.divisor = 100.0;
+            s.unit = "X100 RPM";
+        }
+        s.top = std::ceil((redline + std::max(0.1 * redline, 0.5 * s.step)) / s.step) * s.step;
+        return s;
+    }
+    inline double shiftLightBefore(double redline, int light)   // light 0..4: its distance below the redline, rpm
+    {
+        static constexpr double kBefore[5] = { 1500.0, 1100.0, 750.0, 450.0, 200.0 };
+        const double k = std::isfinite(redline) && redline > 0.0 ? std::min(1.0, redline / 7000.0) : 1.0;
+        return kBefore[std::clamp(light, 0, 4)] * k;
+    }
+
     // A lamp with a word: a disc (filled when on, a ring when off) and the word beside it. The word carries the meaning.
     inline float lamp(funkgui::Canvas& c, const Palette& p, float x, float cy, std::string_view word, bool on, Col ink)
     {
