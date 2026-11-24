@@ -46,7 +46,7 @@ module ValveSpec
         [[ui::help("How far the intake valve opens at the top of its lobe")]]
         [[ui::quantity("length")]];
     float inCentre [[fminus::range(60, 160)]] [[fminus::default(110)]] [[ui::label("Intake centreline")]]
-        [[ui::quantity("angle")]] [[ui::help("degrees after the overlap's top dead centre")]];
+        [[ui::quantity("angle")]] [[ui::help("degrees after the overlap's top dead centre. With an intake phaser this is where it parks: its late end, the least overlap, where it cranks and idles; the phaser advances it from here under load")]];
     float inFat [[fminus::range(0, 1)]] [[fminus::default(0.5)]] [[ui::label("Intake lobe fatness")]]
         [[ui::help("The intake lobe's shape: higher holds the valve near full lift for longer")]]
         [[ui::quantity("fraction")]];
@@ -97,7 +97,7 @@ module ValveSpec
         [[ui::quantity("length")]];
     // phasers
     float inPhaseRange [[fminus::range(0, 80)]] [[fminus::default(0)]] [[ui::label("Intake phaser range")]]
-        [[ui::quantity("angle")]] [[ui::group("Variable timing")]] [[ui::help("crank degrees of advance; 0: no phaser")]];
+        [[ui::quantity("angle")]] [[ui::group("Variable timing")]] [[ui::help("crank degrees of advance from the parked centreline (the late end); 0: no phaser")]];
     float exPhaseRange [[fminus::range(0, 80)]] [[fminus::default(0)]] [[ui::label("Exhaust phaser range")]]
         [[ui::quantity("angle")]] [[ui::help("crank degrees of retard; 0: no phaser")]];
     float phaseRate [[fminus::range(20, 1000)]] [[fminus::default(200)]] [[ui::label("Phaser speed")]]

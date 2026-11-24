@@ -61,3 +61,10 @@ Open: Boost::exhaustStandIn's removal (N2, then engine.fm's call); D2's flap and
 residuals (flat-plane V8 45, V12 65, V10: idles 998, 882, 952 rpm); every archetype's low-speed torque and idle after
 the backflow and the walls' single count; a boost.model 1 build's exhaust (the builder's now, coupled to its housings);
 the rotary twins at full load (port gas 1100 to 1400 K).
+
+**Since (to 24 Nov 18:25)**: a diesel's walls counted once (9e3a44f: chargeDiesel keeps 0.98 with Woschni's walls,
+the reference's 0.62 without; the "dead diesels" of 17:59 were a marginal start in a one-second-crank harness, not a
+fault in the engine); a test that the diesel archetypes and the turbo four make torque and keep their books within 1 %;
+Engine no longer calls Boost's exhaust stand-in (910fed3); a firing engine let go from its start runs past half its
+idle speed, both ECUs, null unchanged (a64e511); tel.engine.layoutReason (6141a60). Reviewed: card I's car.traction,
+D2's flap and vane release (62484fc). Failing, not card D's: diesel.diesel turbo (the VGT's 2x over the single).

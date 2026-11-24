@@ -289,9 +289,7 @@ module HeavyDiesel
         if (engaged[c] == 0)
             return 0.0f;
         const float x = s / lobeDur * (float)HD_LOBE;
-        int i = (int)x;
-        if (i > HD_LOBE - 1)
-            i = HD_LOBE - 1;
+        const int i = (int)fminf(fmaxf(x, 0.0f), (float)(HD_LOBE - 1));     // (a NaN angle reads 0, not INT_MIN)
         const float f = x - (float)i;
         return lobe[i] + (lobe[i + 1] - lobe[i]) * f;
     }

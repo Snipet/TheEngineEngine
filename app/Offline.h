@@ -14,6 +14,7 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace tee::input
 {
@@ -55,6 +56,9 @@ namespace tee::app
         // Waits up to `seconds` for the dyno's first predicted curve (a picture that should show it); false: none
         // came (`error`: the dyno's own words), or there is no dyno. Empty function: no frame.
         std::function<bool(double, std::string& error)> waitForDyno;
+        // The frame's workspaces by id, and one shown (--workspace all: each pictured in turn). Empty: no frame.
+        std::function<std::vector<std::string>()> workspaces;
+        std::function<void(int)> showWorkspace;
         // Not empty: what the options asked for could not be shown (a --workspace that is none, or with no frame);
         // the run stops with it.
         std::string problem;

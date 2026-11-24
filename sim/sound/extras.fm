@@ -337,6 +337,8 @@ module Extras
         if (voOn != 0)
         {
             vo.start.tick(crankHz, starterOn);
+            if (!(vo.start.out > -1.0e6f && vo.start.out < 1.0e6f))
+                vo.start.clear();
             vo.starter = vo.start.out;
             starter = vo.starter;
         }

@@ -334,7 +334,11 @@ TEST_CASE("12: the runner's tuning: VE's bump moves with the runner's length as 
         return std::make_pair(peakOf(x, y), *std::max_element(y.begin(), y.end()));
     };
     const auto main1 = peakIn(v1, 4000.0, 8250.0), main2 = peakIn(v2, 4000.0, 8250.0);
-    const auto low1 = peakIn(v1, 1750.0, 4000.0), low2 = peakIn(v2, 1750.0, 4000.0);
+    // (the lower bump's window ends at 4000 rpm or three quarters of the main bump's speed, the lower: card N1's loss
+    // at the runner's end in the plenum (intake.fm, Idelchik's K) damps the lower bumps as a real manifold's are, and the
+    // 0.60 m runner's main bump, rising from 4000 rpm, then outranked its own lower bump at 2250 at the window's edge)
+    const auto low1 = peakIn(v1, 1750.0, std::fmin(4000.0, 0.75 * main1.first));
+    const auto low2 = peakIn(v2, 1750.0, std::fmin(4000.0, 0.75 * main2.first));
     // the acoustics' ratio
     const double r = std::sqrt(area / 3.14159265358979);
     const double v = vc + 0.5 * vd;
