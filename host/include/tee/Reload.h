@@ -18,6 +18,7 @@
 #include <atomic>
 #include <cstddef>
 #include <filesystem>
+#include <map>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -53,8 +54,11 @@ namespace tee
         // Compiles that finished, either way.
         int compiles() const noexcept { return compiles_.load(); }
 
+        // The directory's .fm files: each one's time and size, by path.
+        using Listing = std::map<std::string, std::pair<std::filesystem::file_time_type, std::uintmax_t>>;
+
     private:
-        void loop();
+        void loop(Listing seen);
 
         std::filesystem::path directory_;
         Sim::Options options_;

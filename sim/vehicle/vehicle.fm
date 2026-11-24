@@ -457,12 +457,8 @@ module Vehicle
         if (g == gearSeen && !dirty)
             return;
         dirty = false;
-        if (gearSeen != g && gearSeen != -1.0f && box.kind != VEH_CVT)
-        {
-            // a new ratio: the shafts unwound (as the reference's regear)
-            twist = 0.0f;
-            open = false;
-        }
+        // (the shafts keep their wind-up through a shift: a dual clutch's and an automatic's hand the torque over
+        // without unloading them; the reference unwound them at each new ratio)
         gearSeen = g;
         // the propeller shaft and the final drive's crown wheel, at the wheels (judgement: 0.05 kg m^2 at the input
         // of a final drive), the gearbox's gears (the reference's 0.015 kg m^2 at its input) through the ratio, and a

@@ -1,0 +1,289 @@
+// harness.fm: the exhaust builder alone, driven by made-up port flows (card G's standalone tests).
+//
+// XTest holds the builder (sim/exhaust/slots.fm) and the reference's own exhaust (refexhaust.fm), fitted to one of the
+// reference's layouts at its own size and the reference's default dials, stopped and warm. A test sets the builder's
+// description (b.sp) by path, builds, and runs blocks of samples with the flows it gives each port; both systems run
+// their 16-sample control as the reference does, with the gas's temperature and flow held where the test puts them.
+#pragma once
+#include "../../../sim/exhaust/slots.fm"
+#include "refexhaust.fm"
+
+module XTest
+{
+    XBuild b;
+    RefExh r;
+    Layout lay;
+    float rate;
+    int layoutIdx;
+    int tick;
+    int tickR;
+    float tPort;        // the gas the ports let out (K) and its flow (kg/s), held
+    float mdot;
+    float warm;
+    float qs[XS_PORTS];
+    float energy;       // the waves in flight in the builder's pipes, after the last sample (J, up to a constant)
+
+    void init(float rateIn)
+    {
+        rate = rateIn;
+        b.setup(rate);
+        r.setup(rate);
+        tPort = 1000.0f;
+        mdot = 0.02f;
+        warm = 1.0f;
+    }
+
+    void end()
+    {
+        b.release();
+        r.release();
+    }
+
+    // Every field of the builder's description at its default (the reference)
+    void defaults()
+    {
+        b.sp.model = 1;
+        for (int i = 0; i < XS_PORTS; ++i)
+        {
+            b.sp.primaryTo[i] = -2;
+            b.sp.primLen[i] = 0.0f;
+            b.sp.primD[i] = 0.0f;
+        }
+        b.sp.primSpread = 0.06f;
+        b.sp.primStepAt = 0.0f;
+        b.sp.primStepD = 1.1f;
+        for (int c = 0; c < XS_COLL; ++c)
+        {
+            b.sp.collectorTo[c] = -1;
+            b.sp.colLen[c] = 0.0f;
+            b.sp.colD[c] = 0.0f;
+            b.sp.colVol[c] = 0.0f;
+        }
+        b.sp.sides = 0;
+        b.sp.crossover = 1;
+        b.sp.crossAt = 0;
+        b.sp.crossD = 0.0f;
+        b.sp.crossLen = 0.25f;
+        b.sp.postLen = 0.4f;
+        b.sp.linkLen = 0.4f;
+        b.sp.bypassD = 0.0f;
+        b.sp.bypassRpm = 3500.0f;
+        b.sp.bypassLoad = 0.5f;
+        b.sp.bypassTime = 0.3f;
+        for (int s = 0; s < XS_SIDES; ++s)
+        {
+            b.sp.mainLen[s] = 0.0f;
+            b.sp.mainD[s] = 0.0f;
+            b.sp.converter[s] = 1;
+            b.sp.resonator[s] = 0;
+            b.sp.resHz[s] = 200.0f;
+            b.sp.resD[s] = 0.0f;
+            b.sp.resVol[s] = 0.003f;
+            b.sp.resLen[s] = 0.4f;
+            b.sp.muffler[s] = 2;
+            b.sp.mufSize[s] = -1.0f;
+            b.sp.mufLen[s] = 0.0f;
+            b.sp.bypass[s] = 0;
+            b.sp.tailLen[s] = 0.0f;
+            b.sp.tailD[s] = 0.0f;
+            b.sp.tips[s] = 1;
+            b.sp.exitAt[s] = -1;
+        }
+    }
+
+    // The engine: a reference layout at its own size and the reference's default dials (HEADERS, PIPE, MUFFLER 0.5,
+    // X-PIPE 0), naturally aspirated, in air at 300 K
+    void engine(int layout)
+    {
+        lay.load(layout);
+        layoutIdx = layout;
+        XEngine* e = &b.eng;
+        e->ports = lay.ports;
+        for (int i = 0; i < XS_PORTS; ++i)
+            e->bank[i] = 0;
+        for (int c = 0; c < lay.n; ++c)
+            e->bank[lay.port[c]] = lay.bank[c];
+        e->topo = lay.topo;
+        e->bore = expf(0.33333333f * logf(1.2732395f * lay.swept));
+        e->hdr = lay.hdr;
+        e->hdrBank1 = lay.hdrBank1;
+        e->mainLen = lay.mainLen;
+        e->pipeD = lay.pipeD;
+        e->tailD = lay.tailD;
+        e->muff = lay.muff;
+        e->bike = lay.bike;
+        e->smHdr = 0.5f;
+        e->smPipe = 0.5f;
+        e->smXp = 0.0f;
+        e->smMuf = 0.5f;
+        e->aspUse = 0;
+        e->smTb = 0.5f;
+        e->smTs = 1.0f;
+        e->tAmb = 300.0f;
+        e->vAir = 0.0f;
+        e->tPort = tPort;
+        e->mdotSlow = mdot;
+        e->rpm = 3000.0f;
+        e->load = 0.5f;
+        e->ecuValve = 0.0f;
+        r.smHdr = 0.5f;
+        r.smPipe = 0.5f;
+        r.smXp = 0.0f;
+        r.smMuf = 0.5f;
+        r.aspUse = 0;
+        r.smTb = 0.5f;
+        r.smTs = 1.0f;
+        r.tAmb = 300.0f;
+        r.vAir = 0.0f;
+        defaults();
+    }
+
+    // The dials both systems see (the reference's HEADERS, PIPE, X-PIPE, MUFFLER)
+    void dials(float hdr, float pipe, float xp, float muf)
+    {
+        b.eng.smHdr = hdr;
+        b.eng.smPipe = pipe;
+        b.eng.smXp = xp;
+        b.eng.smMuf = muf;
+        r.smHdr = hdr;
+        r.smPipe = pipe;
+        r.smXp = xp;
+        r.smMuf = muf;
+    }
+
+    // The noise's strengths, times the reference's (0: none), in both
+    void noise(float k)
+    {
+        b.net.flowK = 0.017f * k;
+        b.net.valveK = 0.15f * k;
+        b.net.jetK = 0.005f * k;
+        r.flowK = 0.017f * k;
+        r.valveK = 0.15f * k;
+        r.jetK = 0.005f * k;
+    }
+
+    // Builds both, at rest, warm
+    void configure()
+    {
+        b.eng.tPort = tPort;
+        b.eng.mdotSlow = mdot;
+        b.build(1, warm);
+        r.configure(layoutIdx, warm, mdot);
+        tick = 0;
+        tickR = 0;
+    }
+
+    // n samples of the builder: q holds n rows of XS_PORTS flows (m^3/s into each port); out n samples a channel
+    void runB(float* q, float* outL, float* outR, int n)
+    {
+        for (int t = 0; t < n; ++t)
+        {
+            if (tick == 0)
+            {
+                b.eng.tPort = tPort;
+                b.eng.mdotSlow = mdot;
+                b.control(16.0f / rate);
+            }
+            tick = tick + 1 >= 16 ? 0 : tick + 1;
+            b.read();
+            for (int i = 0; i < XS_PORTS; ++i)
+                qs[i] = q[t * XS_PORTS + i];
+            b.step(qs);
+            outL[t] = b.net.outL;
+            outR[t] = b.net.outR;
+        }
+        energy = 0.0f;
+        for (int i = 0; i < XN_DUCTS; ++i)
+        {
+            if (b.net.dUse[i] != 0)
+            {
+                const Duct* p = &b.net.d[i];
+                float s = 0.0f;
+                const int dl = p->di + 2;
+                for (int k = 1; k <= dl; ++k)
+                {
+                    int j = p->w - k;
+                    if (j < 0)
+                        j += p->cap;
+                    s += p->fw[j] * p->fw[j] + p->bw[j] * p->bw[j];
+                }
+                energy += s / p->z;
+            }
+        }
+    }
+
+    // n samples of the reference's exhaust on the same flows
+    void runR(float* q, float* outL, float* outR, int n)
+    {
+        for (int t = 0; t < n; ++t)
+        {
+            if (tickR == 0)
+                r.control16(16.0f / rate, tPort, mdot);
+            tickR = tickR + 1 >= 16 ? 0 : tickR + 1;
+            for (int i = 0; i < XS_PORTS; ++i)
+                qs[i] = q[t * XS_PORTS + i];
+            r.sampleTick(qs);
+            outL[t] = r.outL;
+            outR[t] = r.outR;
+        }
+    }
+
+    // The flow summed in at the ports and out at the ends since the last call (m^3/s samples)
+    float flowIn()
+    {
+        const float v = b.net.portIn;
+        b.net.portIn = 0.0f;
+        return v;
+    }
+
+    float flowOut()
+    {
+        float v = 0.0f;
+        for (int e = 0; e < b.net.ne; ++e)
+        {
+            v += b.net.ends[e].qSum;
+            b.net.ends[e].qSum = 0.0f;
+        }
+        return v;
+    }
+
+    int ends()
+    {
+        return b.net.ne;
+    }
+
+    float fireAngle(int c)
+    {
+        return lay.fire[c];
+    }
+
+    int portOf(int c)
+    {
+        return lay.port[c];
+    }
+
+    int cylinders()
+    {
+        return lay.n;
+    }
+
+    float pMuf(int s)
+    {
+        return b.pMuf[s];
+    }
+
+    float pConv(int s)
+    {
+        return b.pConv[s];
+    }
+
+    float valve(int s)
+    {
+        return b.vPos[s];
+    }
+
+    void popAt(int c, float a)
+    {
+        b.popAt(c, a);
+    }
+};
