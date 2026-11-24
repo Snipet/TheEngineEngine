@@ -63,6 +63,7 @@ module Ecu
     float offHold;      // seconds the start key has been held while it ran (a second switches it off)
     bool offArmed;      // that key went down while it ran
     float kRet;         // the spark its ECU has taken back for knock, degrees
+    float askedNow;     // the last charge's spark asked (the formula's per charge, before knock's retard), degrees (0: none)
     // ecu.model 1 (card H)
     Ecu1 one;
     EcuIn in1;
@@ -98,6 +99,7 @@ module Ecu
     {
         spec = specIn;
         overBoostRef = 0.0f;
+        askedNow = 0.0f;
         fuelSpec = fuelIn;
         ctl = ctlIn;
         tel = telIn;
@@ -383,7 +385,9 @@ module Ecu
             bake();
         }
         // the telemetry
-        tel->advanceAsked = one.spark;
+        // (with the spark's formula on, each charge asks its own: Combustion's, before knock's retard)
+        tel->advanceAsked = spec->maps.sparkAuto && askedNow != 0.0f ? askedNow : one.spark;
+        tel->knockTable = spec->maps.sparkAuto && !spec->maps.knockLimitAuto ? 1 : 0;
         tel->advance = one.sparkFor;
         for (int c = 0; c < MAX_CYL; ++c)
             tel->knockByCylinder[c] = one.knock.retard[c];
