@@ -90,6 +90,9 @@ module HeavyDiesel
     float back;         // Pa added to the headers' arriving waves (half the back pressure)
     float backP;        // the back pressure over the outside (Pa)
     int exOn;
+    float vaneOpen;     // the brake's vanes backed off the shut stop to keep the shaft under its limit (0 to 1)
+    float shaftWas;     // the shaft's speed over its limit at the last tick
+    float shaftRate;    // its rate, smoothed (1/s)
     int flapReal;       // 1: card G's butterfly is fitted (exh.flapFitted()): it makes the back pressure, not this
     // the measures (cylinder 1)
     float aPrev;
@@ -129,6 +132,9 @@ module HeavyDiesel
         back = 0.0f;
         backP = 0.0f;
         exOn = 0;
+        vaneOpen = 0.0f;
+        shaftWas = 0.0f;
+        shaftRate = 0.0f;
         flapReal = 0;
         aPrev = 0.0f;
         pPrev = 101325.0f;
@@ -259,11 +265,29 @@ module HeavyDiesel
 
     // The turbine's vanes as the brakes want them (card F's Boost::vanesAndPurge, boost.model 1): -1 its own loop; 0 shut
     // to their stop, the gate held closed (a VGT's brake position: the compression brake's or the vanes' exhaust brake)
-    float vaneCommand()
+    // Every 16 samples: a VGT's position while a brake owns it (-1: its own loop). shaft: the turbo shaft's speed over
+    // its limit (omegaMax); vMin: the vanes' shut stop (the brake's position). As a production ECU's brake mode does it,
+    // the shaft is held under the limit by the vane command itself: past 95 % of it the vanes open from their shut stop,
+    // a PID on the excess (integral 1 a second a unit, proportional 2, and 3 s on the shaft's rate: judgement, tried
+    // on the truck six's brake at 2000 rpm with card G's network, its flow close off: the shaft lags the vanes some
+    // 0.3 s and its torque flips as they open, so it still swings, 8300 to 9300 rad/s, peaks under the limit after 4 s).
+    // The machine's relief at 105 % (card F's, bang-bang) is then the hardware's last resort (N2, 2026-11-24)
+    float vaneCommand(float d16, float shaft, float vMin)
     {
-        if (on == 0)
+        const int owns = on != 0 && (braking != 0 || (exOn != 0 && spec->exhaustBrake == 2)) ? 1 : 0;
+        if (owns == 0)
+        {
+            vaneOpen = 0.0f;
+            shaftWas = shaft;
+            shaftRate = 0.0f;
             return -1.0f;
-        return braking != 0 || (exOn != 0 && spec->exhaustBrake == 2) ? 0.0f : -1.0f;
+        }
+        shaftRate += ((shaft - shaftWas) / d16 - shaftRate) * fminf(d16 / 0.05f, 1.0f);
+        shaftWas = shaft;
+        const float e = shaft - 0.95f;
+        vaneOpen = fminf(fmaxf(vaneOpen + 1.0f * d16 * e, 0.0f), 1.0f);
+        const float open = fminf(fmaxf(vaneOpen + 2.0f * e + 3.0f * shaftRate, 0.0f), 1.0f);
+        return vMin + (1.0f - vMin) * open;
     }
 
     // Into the diesel's charge (Combustion's DieselFields): the lever, and whether the fuel is metered by the rack
