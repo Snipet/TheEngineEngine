@@ -9,16 +9,18 @@
 // person hears keeps playing), coarse speeds first (the ribbon draws those at once), the rest after. A newer request
 // cancels the one running at its next block; curves are kept by the build's hash, so an undo answers at once.
 //
-// The brake: the program's own when it has one (tel.engine.torque and ctl.mode MODE_DYNO_ENGINE, 02-contracts.md,
-// section 4: the dyno holds the speed and the absorbed torque is read). A program without it (the simulator until the
-// mechanics package adds its dyno mode) is braked by the host: after every few samples the crank's speed (crank.omega)
-// is put back where it is held, and the torque is the inertia (mech.jBase, the flywheel and bench-load dials, as
-// Mechanics::inertia has it) times the speed the engine gained, over the time: exactly what the reference's bench step
-// would have done with that torque. The curve says which brake made it (PredictCurve::brake).
+// The brake. The host's, where it can: after every 32 samples the crank's speed (crank.omega) is put back where it is
+// held, and the torque is the inertia (mech.jBase, the flywheel and bench-load dials, as Mechanics::inertia has it)
+// times the speed the engine gained over the time: exactly what the bench's step did with that torque, the speed held
+// exactly, nothing to settle after a change of speed. The program's own dyno otherwise (tel.engine.torque, ctl.mode
+// MODE_DYNO_ENGINE: core/dyno.fm's absorber, its torque dyno.tqAbs averaged over whole cycles): a custom engine
+// (engine.custom on) steps its crank with an inertia that varies round the turn, which the host does not model. The
+// program's absorber is a 6 Hz speed loop: after a change of speed it needs some 5 to 10 cycles more to settle, and
+// near the redline its overshoot meets the limiter. The curve says which brake made it (PredictCurve::brake).
 //
-// The engine is made warm before it starts (the coolant at its thermostat, the oil and the chamber's walls as a warm
-// engine's: heat.*, when the program has them): a dyno's curve is a warm engine's, and the simulator would take
-// minutes of simulated running to warm.
+// The engine is warm and held so (the coolant at its thermostat, the oil and the chamber's walls as a warm engine's:
+// heat.*, when the program has them, put back each cycle as a dyno cell's conditioning holds them): a dyno's curve is
+// a warm engine's; the simulator would take minutes to warm, and at full load for minutes it overheats.
 //
 //   tee::PredictService predict(sim);                    // once; its threads wait
 //   predict.request(build);                              // a moment after each edit: the newest wins
@@ -52,6 +54,9 @@ namespace tee
         double tolerance = 0.01;      // two cycles in a row within this share of each other: settled
         int minCycles = 3;            // cycles run at each speed at least (the first is never counted) ...
         int maxCycles = 14;           // ... and at most: a point that has not settled then says so
+        // Which brake: "auto" (the host's where it knows the crank's inertia: the reference's crank, engine.custom off;
+        // else the program's dyno), "host" or "program" (above).
+        std::string brake = "auto";
         double sampleRate = 96000.0;  // the instances' host rate: the simulator's own, so nothing is resampled
         int block = 32;               // samples a process call (the held brake's step)
         double startSeconds = 0.12;   // the key held at the first speed before full throttle

@@ -37,7 +37,7 @@ namespace tee::ui
         enum class Sort : std::uint8_t { name, power, displacement, layout };
         enum class Filter : std::uint8_t { all, whole, engine, car, tune };
 
-        // `library` nullptr: its own, over the frame's services when they list builds (ServicesLibrary), else a
+        // `library` nullptr: the context's (WorkspaceContext::library), else its own, over the frame's services when they list builds (ServicesLibrary), else a
         // DemoLibrary of made-up builds over the document.
         explicit GarageWorkspace(WorkspaceContext& c, garage::Library* library = nullptr);
         ~GarageWorkspace() override;

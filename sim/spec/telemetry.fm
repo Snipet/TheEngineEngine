@@ -136,6 +136,7 @@ module CarTel
 module SoundTel
 {
     float peak [[ui::label("Peak")]] [[ui::quantity("fraction")]] [[ui::help("The call's largest sample, either channel")]];
+    float rate [[ui::label("Sample rate")]] [[ui::quantity("frequency")]] [[ui::help("The host's, the sound's")]];
 };
 
 module Telemetry

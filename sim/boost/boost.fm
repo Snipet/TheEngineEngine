@@ -226,4 +226,63 @@ module Boost
     {
         return asp == 4 ? boost * 1.0e5f * vTotal * (1.0f + boost) * 0.1326f * fminf(omega / 5.0f, 1.0f) : 0.0f;
     }
+
+    // ---- the integrator's hooks (sim/README.md): called only with boost.model 1; card F fills them. Until then they
+    // give what the reference's engine computes from the old fields ----
+    float crankTorque;      // N m the boost machinery takes from the crank (a supercharger's), with boost.model 1
+
+    // the air at the throttle: pressure (Pa absolute) and temperature (K)
+    float pressure()
+    {
+        return 101325.0f + 100000.0f * boost;
+    }
+
+    float temperature()
+    {
+        return 300.0f;
+    }
+
+    // each sample: the mass flow (kg/s) the engine draws through it, then the step at the crank's speed and the plenum's
+    // pressure
+    void draw(float m)
+    {
+    }
+
+    void tick(float omegaCrank, float pPlenum)
+    {
+    }
+
+    // every 16 samples, with the ECU's boost target (Pa over the air), anti-lag and nitrous (named control16: Boost's
+    // control is the reference's)
+    void control16(float d16, float target, float antiLagOn, float nitrousOn)
+    {
+    }
+
+    // the oxygen in the charge over air's (1 without nitrous): Combustion's (card H)
+    float oxygenShare()
+    {
+        return 1.0f;
+    }
+
+    // the turbine's housings, with card G (docs/plan/integration-queue.md): which housing a collector ends in (-1 none),
+    // a housing's pressure (Pa over the air) from what its pipes drive into it, a downpipe's and an external gate's
+    int housingOf(int bank, int group, int banks)
+    {
+        return -1;
+    }
+
+    float housing(int h, float drive, float admit, float tGas)
+    {
+        return 0.0f;
+    }
+
+    float downpipe(int side, float a, float z)
+    {
+        return 0.0f;
+    }
+
+    float gatePipe(int t, float a, float z)
+    {
+        return 0.0f;
+    }
 };

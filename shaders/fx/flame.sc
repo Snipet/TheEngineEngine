@@ -26,7 +26,7 @@ void main()
     float n = noise(vec2(x * 6.0 - in1 * 9.0, y * 3.0 + in1 * 2.0));
     // The tongue: wide at the pipe, narrowing to its tip, its edge broken by the noise.
     float width = (1.0 - x / len) * (0.75 + 0.35 * n);
-    float body = clamp((width - abs(y)) * 6.0, 0.0, 1.0) * step(x, len);
+    float body = clamp((width - abs(y)) * 6.0, 0.0, 1.0) * step(x, len) * smoothstep(0.0, 0.08, x);   // no hard edge at the pipe
     vec3 root = vec3(1.0, 0.86, 0.45);
     vec3 tip = vec3(0.95, 0.28, 0.08);
     vec3 col = mix(root, tip, clamp(x / len + 0.3 * n, 0.0, 1.0));

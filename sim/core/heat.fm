@@ -106,4 +106,15 @@ module Heat
                             ? fminf(pHot * expf(0.3f * logf(viscK)) * fminf(omega / 20.0f, 1.0f), 75.0f * 6894.76f) : 0.0f;
         pOil += (pWant - pOil) * (1.0f - expf(-fmaxf(d16, 0.0f) / 0.25f));
     }
+
+    // For the valvetrain's phasers (card E): the oil's pressure (Pa over the air) and temperature (K)
+    float oilPressure()
+    {
+        return pOil;
+    }
+
+    float oilTemperature()
+    {
+        return tOil;
+    }
 };

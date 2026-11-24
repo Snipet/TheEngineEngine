@@ -80,6 +80,14 @@ module Ecu
     int bakeSeen;
     float lastFuel;     // the fuel of the last firing, kg (the injectors' duty)
     int cylinders;
+    float vSlip;        // the vehicle's values (vehicle()), and whether it has given them
+    float vSpeed;
+    int vGear;
+    int vUp;
+    int vUpSeen;
+    float vCut;
+    float vBlip;
+    int vSeen;
 
     // In init: the Spec's sections and blocks ecu.model 1 reads and writes
     void setup(float d16, EcuSpec* specIn, FuelSpec* fuelIn, Controls* ctlIn, EcuTel* telIn, Scope* scopeIn, Heat* heatIn)
@@ -292,12 +300,13 @@ module Ecu
         in->launchButton = (ctl->buttons & BTN_LAUNCH) != 0;
         in->nitrousButton = (ctl->buttons & BTN_NITROUS) != 0;
         in->gear = drive != 0 ? gear : 0;
-        in->upshift = drive != 0 && gear > lastGear && lastGear > 0;
+        in->upshift = drive != 0 && (vSeen != 0 ? vUp != vUpSeen : gear > lastGear && lastGear > 0);
+        vUpSeen = vUp;
         lastGear = in->gear;
-        in->carSpeed = carSpeed;
-        in->slip = 0.0f;                                   // card I's slip: its hook
-        in->dogCut = 0.0f;
-        in->blip = 0.0f;
+        in->carSpeed = vSeen != 0 && drive != 0 ? fabsf(vSpeed) : carSpeed;
+        in->slip = vSeen != 0 && drive != 0 ? vSlip : 0.0f;
+        in->dogCut = vSeen != 0 && drive != 0 ? vCut : 0.0f;
+        in->blip = vSeen != 0 && drive != 0 ? vBlip : 0.0f;
         in->coolant = heatP->tCool;
         in->warm = warm;
         in->key = 1;
@@ -390,32 +399,53 @@ module Ecu
         }
     }
 
-    // The ECU's boost target (Pa over the air), anti-lag and nitrous, the cams' and the lift's targets: for cards F and E
-    float boostTarget()
-    {
-        return model1() ? one.boost : 0.0f;
-    }
-
-    bool antiLag()
-    {
-        return model1() && one.antiLag.active;
-    }
-
-    bool nitrous()
-    {
-        return model1() && one.nitrous.active;
-    }
-
-    // Crank degrees (0 intake: advance; 1 exhaust: retard); 0 under ecu.model 0
+    // ---- the integrator's hooks (sim/README.md): what other packages read of ecu.model 1 ----
+    // For card E: the cam's target (crank degrees: 0 the intake's advance, 1 the exhaust's retard; -1: the
+    // valvetrain's own schedule, as under ecu.model 0 and with the cam's map on its formula) and the lift command (0
+    // to 1: the lift map's; its formula 1)
     float camTarget(int cam)
     {
         if (!model1())
-            return 0.0f;
-        return cam == 0 ? one.camIn : one.camEx;
+            return -1.0f;
+        if (cam == 0)
+            return spec->maps.camInAuto ? -1.0f : one.camIn;
+        return spec->maps.camExAuto ? -1.0f : one.camEx;
     }
 
     float liftCommand()
     {
-        return model1() ? one.lift : 1.0f;
+        return model1() ? one.lift : 0.0f;
+    }
+
+    // For card F: the boost wanted (Pa over the air; -1: the boost section's own level, as under ecu.model 0 and with
+    // the boost map on its formula), anti-lag (0 off, 1 on), nitrous (0 to 1)
+    float boostTarget()
+    {
+        if (!model1() || spec->maps.boostAuto)
+            return -1.0f;
+        return one.boost;
+    }
+
+    float antiLag()
+    {
+        return model1() && one.antiLag.active ? 1.0f : 0.0f;
+    }
+
+    float nitrous()
+    {
+        return model1() && one.nitrous.active ? 1.0f : 0.0f;
+    }
+
+    // Every 16 samples, driven, with ecu.model 1: the vehicle's values (Car's: the driven wheels' slip, the speed m/s,
+    // the gear, upshifts counted, seconds of cut a dog box asks, the plate a downshift's blip asks); control1 reads them
+    void vehicle(float drivenSlip, float speed, int gear, int upshifts, float cutRequest, float blipRequest)
+    {
+        vSlip = drivenSlip;
+        vSpeed = speed;
+        vGear = gear;
+        vUp = upshifts;
+        vCut = cutRequest;
+        vBlip = blipRequest;
+        vSeen = 1;
     }
 };

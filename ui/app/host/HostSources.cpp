@@ -97,6 +97,12 @@ namespace tee::ui
         p.to = r.to;
         p.rate = r.rate;
         p.pedal = r.pedal;
+        if (!r.steps.empty())
+        {
+            p.steps = r.steps;
+            p.settle = r.dwell;
+        }
+        // r.gear: DynoPlan has no gear yet (card C); a chassis run is in the car's gear.
         runName_ = r.name.empty() ? "Run " + std::to_string(runs_.size() + 1) : r.name;
         tee::DynoCurve cached;
         if (runner_->request(build_, p, cached))
