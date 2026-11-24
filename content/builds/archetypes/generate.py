@@ -938,7 +938,10 @@ def main():
                       "Then drive: in first, hold the brake, press the launch button, floor the pedal and let go for a "
                       "launch-control start (traction control holds the wheelspin), and listen to the direct injection's "
                       "tick and the turbo's whistle as the dual clutch shifts.\n\n" + first["notes"])
-    # (on the default Rear camera: L, 22:36, withdrew Side: through it the radiator fan's 560 Hz stood over the engine)
+    # the Tailpipe camera, model 1's form of the reference's default view, what the owner heard before first.json
+    # (the lead's ruling, 22:53, on his renders and L's: within 1 to 5 dB of the reference in every octave; Side was
+    # 9 dB down at 500 Hz and up in the highs, Rear 7 down at 1 kHz)
+    first["spec"]["sound"]["camera"] = "Tailpipe"
     write(os.path.join(ROOT, "content", "builds", "first.json"), first)
     loose_parts(A)
     manual(A)
