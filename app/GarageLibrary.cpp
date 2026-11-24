@@ -60,6 +60,13 @@ namespace tee::app
         rescan();
     }
 
+    GarageLibrary::GarageLibrary(files::BuildFile& document, std::function<std::shared_ptr<Sim>()> sim, fs::path shipped,
+                                 fs::path user)
+        : GarageLibrary(document, std::shared_ptr<Sim>(), std::move(shipped), std::move(user))
+    {
+        simLater_ = std::move(sim);
+    }
+
     GarageLibrary::~GarageLibrary()
     {
         dyno_.reset();      // its worker joined here, before the program it holds a share of is let go
@@ -152,6 +159,8 @@ namespace tee::app
 
     void GarageLibrary::askNextCurve()
     {
+        if (!sim_ && simLater_)
+            sim_ = simLater_();
         if (!sim_ || asking_ || !curveError_.empty())
             return;
         for (const Entry& e : entries_)

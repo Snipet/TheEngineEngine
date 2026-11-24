@@ -89,6 +89,11 @@ namespace tee::input
         void setClutchStrip(float value, bool held);
         void setHandbrakeStrip(float value, bool held);
 
+        // Whether the start key does anything (false while the engine is not ready to play: its compile). Off: a press
+        // from any source is dropped, and a crank under way stops.
+        void setStartEnabled(bool on) noexcept;
+        bool startEnabled() const noexcept { return startEnabled_; }
+
         // The frame's mode from now on (ControlsFrame::mode: MODE_BENCH 0, MODE_DRIVE 1, MODE_DYNO_ENGINE 2).
         void setMode(int mode);
 
@@ -122,7 +127,8 @@ namespace tee::input
         float startHeld_ = 0;
         float startLatch_ = 0;
         bool startLatchFresh_ = false;
-        float crankLeft_ = 0;           // seconds the starter still cranks a stopped engine after a press  // set by a press: the frame that sees it first does not count down      // seconds the start is still said after a press, whatever the key does
+        float crankLeft_ = 0;
+        bool startEnabled_ = true;           // seconds the starter still cranks a stopped engine after a press  // set by a press: the frame that sees it first does not count down      // seconds the start is still said after a press, whatever the key does
         int ignition_ = 0;
         // the gears
         int shiftUp_ = 0, shiftDown_ = 0;

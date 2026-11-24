@@ -115,6 +115,13 @@ namespace tee::app
        #endif
     }
 
+    std::string compilingLine(double seconds)
+    {
+        char text[96];
+        std::snprintf(text, sizeof text, "compiling the engine: %.0f s", seconds);
+        return text;
+    }
+
     Shown makePanel(const Options& o, Engine& engine, input::Controls& controls, bool window)
     {
         const AppServices services = controls.services();
@@ -134,15 +141,16 @@ namespace tee::app
             struct Kept
             {
                 Kept(player::SimAdapter& sim, std::filesystem::path shipped)
-                    : doc(sim.build()), scope(sim.host()), dyno(sim.host().sim(), sim.build()), file(sim.build()),
+                    : doc(sim.build()), scope(sim.host()), dyno(sim), file(sim.build()),
                       library(shipped, Presets::userDirectory()),
-                      garage(file, sim.host().sim(), std::move(shipped), Presets::userDirectory())
+                      garage(file, [&sim] { return sim.ready() ? sim.host().sim() : std::shared_ptr<Sim>(); }, std::move(shipped),
+                             Presets::userDirectory())
                 {
                 }
                 ui::BuildDoc doc;
                 ui::Units units;
                 ui::SimScope scope;
-                ui::ServiceDyno dyno;
+                LateDyno dyno;                    // U1's ServiceDyno, made when the engine's compile is in
                 files::BuildFile file;
                 files::BuildLibrary library;
                 GarageLibrary garage;             // GARAGE's (U5's Library), over `file`: after it, so destroyed first
@@ -258,6 +266,10 @@ namespace tee::app
 
         // ---- the engine ---------------------------------------------------------------------------------------------
         Engine engine = loadEngine(o, static_cast<double>(o.rate));
+        // --hold-compile S: the machine code is not taken until S seconds into the run (a test of the window's wait)
+        const bool holding = engine.sim != nullptr && o.holdCompile > 0.0;
+        if (holding)
+            engine.sim->holdCompile(true);
         if (!engine.notes.empty())
             std::fprintf(stderr, "%s", engine.notes.c_str());
         if (!engine.error.empty())
@@ -288,7 +300,7 @@ namespace tee::app
             host.resize(o.width, o.height);
         // --dyno-wait S: the first predicted curve is waited for (up to S seconds of this machine's time) before the
         // first frame, so a picture of a workspace with the ribbon shows it
-        if (o.dynoWait > 0.0 && shown.waitForDyno)
+        if (o.dynoWait > 0.0 && shown.waitForDyno && !holding)
         {
             // (its error, if it has one, is in the picture: the ribbon says it)
             const auto t0 = std::chrono::steady_clock::now();
@@ -337,6 +349,8 @@ namespace tee::app
             if (list.missingGlyphs != 0)
                 std::fprintf(stderr, "note: %s: %u characters the font does not have\n", file.c_str(), list.missingGlyphs);
         };
+
+        bool wasCompiling = false;
 
         // ---- the frames ---------------------------------------------------------------------------------------------
         const audio::ScopedFtz ftz;
@@ -401,9 +415,23 @@ namespace tee::app
             if (ended)
                 break;
 
+            // the compile held back (--hold-compile): taken, and waited for, when its time comes
+            if (holding && !engine.ready() && now + 1e-9 >= o.holdCompile)
+            {
+                engine.sim->holdCompile(false);
+                if (!engine.sim->waitReady(600.0))
+                    std::fprintf(stderr, "error: the engine's compile did not finish: %s\n", engine.sim->compileError().c_str());
+            }
             engine.frame();
             if (shown.frame)
                 shown.frame();
+            // while the engine compiles: START does nothing, and the status line says so with the seconds (the run's)
+            controls.driver().setStartEnabled(engine.ready());
+            if (!engine.ready())
+                controls.setStatus(compilingLine(now));
+            else if (holding && frame > 0 && wasCompiling)
+                controls.setStatus(engine.name + "   no audio device (rendering offline)");
+            wasCompiling = !engine.ready();
             controls.tick(dt);
 
             // this frame's share of the audio, in blocks
@@ -447,6 +475,8 @@ namespace tee::app
                     }
                     else if (e->name == "rpm")
                         x = rpm();
+                    else if (e->name == "ready")
+                        x = engine.ready() ? 1.0 : 0.0;
                     else if (e->name.rfind("param ", 0) == 0)
                     {
                         const int i = params.findParam(e->name.substr(6));

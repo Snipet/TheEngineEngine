@@ -64,3 +64,8 @@ Card G, branch `claude/awesome-gates-ntdb58`, pushed at cf267fb.
 - **Seen, not mine**: combo `every choice and switch of spec.boost / spec.exhaust stepped` fail on
   `boost.intercoolerOut` and `boost.throttleIn` = 0 at 0.01 s (card F's telemetry range).
 - FMinus: `0` is not a null pointer (use a flag beside it). Listen to: V8 bank vs `v8-180-degree`; the bypass at 0.3 s.
+- **Since (16:20-17:00)**: `tel.exhaust.headerTemperature` (both models) and `scope.ductMid[84]` (dacb9f8).
+  `Duct::filtFirst` fixes card T's pack()/extra() passivity finding, set by the builder only where a pass could exceed
+  unity, so model 0 and model 1 at its defaults are still identical (57c9876). `spec.exhaust.heatSettle` gives card C
+  its settle of the ports' gas and every wall, in both models (859bc7d). Still open: glides; external gates' pipes; the
+  heavy diesel's flap (asked the lead what it should be).

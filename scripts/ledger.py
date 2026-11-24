@@ -109,11 +109,11 @@ def find_tool(name, bin_dir):
     sys.exit(f"ledger: no {name} (build it: cmake --build --preset dev --target {name}); or --bin DIR")
 
 
-def known_fields(tee_schema):
+def known_fields(tee_schema, sim=""):
     """The tel fields the simulator has (tee-schema --json): {name without tel.: the name to ask the dyno for}, an
     array's first element (a turbo's [0])."""
     try:
-        text = subprocess.run([tee_schema, "--json"], capture_output=True, text=True, cwd=ROOT).stdout
+        text = subprocess.run([tee_schema, "--json"] + (["--sim", sim] if sim else []), capture_output=True, text=True, cwd=ROOT).stdout
         doc = json.loads(text)
     except (OSError, ValueError):
         return None
@@ -125,14 +125,14 @@ def known_fields(tee_schema):
     return out or None
 
 
-def run_dyno(dyno, spec_doc, speeds, fields, settle, measure):
+def run_dyno(dyno, spec_doc, speeds, fields, settle, measure, sim=""):
     with tempfile.TemporaryDirectory() as tmp:
         build = os.path.join(tmp, "build.json")
         with open(build, "w") as f:
             json.dump(spec_doc, f)
         out = os.path.join(tmp, "dyno.csv")
         cmd = [dyno, "--build", build, "--steps", ",".join(f"{w:.3f}" for w in speeds), "--settle", str(settle),
-               "--measure", str(measure), "--fields", ",".join(fields), "--csv", out, "--quiet"]
+               "--measure", str(measure), "--fields", ",".join(fields), "--csv", out, "--quiet"] + (["--sim", sim] if sim else [])
         r = subprocess.run(cmd, capture_output=True, text=True, cwd=ROOT)
         if r.returncode != 0:
             raise RuntimeError(r.stderr.strip() or r.stdout.strip())
@@ -338,6 +338,7 @@ def main():
     ap.add_argument("--settle", type=float, default=1.2, help="seconds each step is held before it is measured")
     ap.add_argument("--measure", type=float, default=1.0, help="seconds averaged (the engine is chaotic: means over cycles)")
     ap.add_argument("--bin", default="", help="the directory of tee-dyno and tee-schema (else build-*/bin)")
+    ap.add_argument("--sim", default="", help="the simulator's directory (else this checkout's sim/)")
     ap.add_argument("--out", default="", help="markdown to this file (else stdout)")
     ap.add_argument("--json", default="", help="the numbers as JSON to this file")
     ap.add_argument("--write", action="store_true",
@@ -356,7 +357,9 @@ def main():
         ap.error("name a build, or --na, --boost, --diesel, --all")
 
     dyno = find_tool("tee-dyno", a.bin)
-    have = known_fields(find_tool("tee-schema", a.bin))
+    have = known_fields(find_tool("tee-schema", a.bin), a.sim)
+    if have is None:
+        sys.exit("ledger: tee-schema could not read the simulator (does it compile?)")
     fields = [have[f] if have else f for f in FIELDS if have is None or f in have]
     missing = [f for f in FIELDS if have is not None and f not in have]
 
@@ -369,7 +372,7 @@ def main():
         kind = kind_of(spec)
         speeds = [float(x) * RPM for x in a.rpm.split(",")] if a.rpm else speeds_of(spec, a.points)
         try:
-            rows = run_dyno(dyno, doc, speeds, fields, a.settle, a.measure)
+            rows = run_dyno(dyno, doc, speeds, fields, a.settle, a.measure, a.sim)
         except RuntimeError as e:
             return slug, doc.get("name", slug), kind, None, str(e)
         return slug, doc.get("name", slug), kind, ledger_points(rows, spec, kind), ""
