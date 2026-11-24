@@ -28,8 +28,10 @@ says "no port pressure" there. `exhaust::exhaustTwoStrokePort(b, out, max)` give
 **Checked live**: card G's wiring (cf267fb, 95d7d16) under the real simulator, exhaust.model 1, default V8: every
 tel.exhaust and Scope name above reads; ductUsed's slots (0-7, 32-33, 48, 53-55, 59, 63, 68-70, 74, 78) are slots.fm's.
 G's `ductMid` (dacb9f8) bound: each pipe's trace bends through its middle (`ui.exhaust.ductmid`).
+Card T's two-stroke (two-stroke-mx125.json's spec, custom engine): degrees 360, pipePoints 7, portExhaust 360
+entries (absolute), tsPipeTemperature 614 K at 12 500 rpm: each read as the stage expects.
 
-**Whole suite**: `tee-view-tests all` 111 of 111 pass after U1's LISTEN re-bless.
+**Whole suite**: `tee-view-tests all` 112 of 112 pass after U1's LISTEN re-bless.
 
 **Wanted from the lead**: a simulator "slow time" control would let SLOW show the waves truly slowed. Today SLOW replays
 the frame-rate copies at an eighth of their pace.
