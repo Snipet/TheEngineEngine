@@ -363,3 +363,70 @@ TEST_CASE("the exhaust's telemetry is physical from the first block", "[exhaust]
         CHECK(tw > 200.0);
     }
 }
+
+// After the passivity fix: the card's typical dual system (content/builds/exhausts/dual-x-resonated-valved.json: an X
+// after the main pipes, quarter-wave stubs, chambered mufflers with valves by speed and load) on the V8, 60 s of
+// random throttle and dyno speeds (the valves opening and shutting): every sample finite and within full scale, and
+// after the key is off the output dies away
+TEST_CASE("the dual X with stubs and valves soaks", "[exhaust][engine][soak]")
+{
+    EnginePlayer& p = player();
+    p.reset();
+    EngineBuild part;
+    std::string error, warnings;
+    REQUIRE(loadBuild(p, std::filesystem::path(TEE_SOURCE_DIR) / "content/builds/exhausts/dual-x-resonated-valved.json",
+                      part, error, warnings));
+    EngineBuild b = test::engineBuild(p, "v8");
+    for (const auto& [path, v] : part.values)
+        b.values[path] = v;
+    applyBuild(p, b);
+    std::mt19937 g(99u);
+    std::uniform_real_distribution<double> unit(0.0, 1.0);
+    EnginePlayer::Controls& c = p.controls();
+    c.mode = EnginePlayer::kModeBench;
+    c.ignition = EnginePlayer::kIgnitionStart;
+    std::vector<float> l(512), r(512);
+    bool finite = true;
+    double peakAll = 0.0;
+    double valveMoves = 0.0, lastValve = 0.0;
+    const int calls = static_cast<int>(60.0 * 48000.0 / 512.0);
+    for (int k = 0; k < calls; ++k)
+    {
+        // started on the bench (1.5 s on the starter), then on the dyno (mode 2: the crank held at a speed, the
+        // throttle where it is put): a new speed and throttle every second
+        if (k == 140)
+            c.ignition = EnginePlayer::kIgnitionOn;
+        if (k >= 240 && k % 90 == 0)
+        {
+            c.mode = 2;
+            c.throttle = static_cast<float>(unit(g));
+            c.dynoSpeed = static_cast<float>((1500.0 + 5000.0 * unit(g)) * 0.10471976);
+        }
+        p.process(l.data(), r.data(), 512);
+        for (int i = 0; i < 512; ++i)
+        {
+            finite = finite && std::isfinite(l[i]) && std::isfinite(r[i]);
+            peakAll = std::max(peakAll, static_cast<double>(std::max(std::fabs(l[i]), std::fabs(r[i]))));
+        }
+        const double v = test::field(p, "tel.exhaust.valve[0]");
+        valveMoves += std::fabs(v - lastValve);
+        lastValve = v;
+    }
+    c.mode = EnginePlayer::kModeBench;
+    c.ignition = EnginePlayer::kIgnitionOff;
+    c.throttle = 0.0f;
+    double tail = 0.0;
+    for (int k = 0; k < static_cast<int>(6.0 * 48000.0 / 512.0); ++k)
+    {
+        p.process(l.data(), r.data(), 512);
+        if (k > static_cast<int>(5.0 * 48000.0 / 512.0))
+            for (int i = 0; i < 512; ++i)
+                tail = std::max(tail, static_cast<double>(std::fabs(l[i])));
+    }
+    std::printf("dual X soak: 60 s, finite %s, largest %.3f, the valve travelled %.1f (open to shut and back counts 2), "
+                "6 s after the key is off %.3g\n", finite ? "yes" : "no", peakAll, valveMoves, tail);
+    CHECK(finite);
+    CHECK(peakAll <= 1.0);
+    CHECK(valveMoves > 2.0);
+    CHECK(tail < 1.0e-3);
+}
