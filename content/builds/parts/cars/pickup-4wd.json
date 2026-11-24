@@ -1,0 +1,43 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "part": "car",
+  "name": "Car: pickup 4wd",
+  "notes": "A car of its class alone (card P's archetypes' cars), to take any engine.",
+  "spec": {
+    "car": {
+      "model": "Vehicle",
+      "kind": "Car",
+      "mass": 2500,
+      "drive": "All",
+      "wheelbase": 3.68,
+      "cgHeight": 0.75,
+      "frontWeight": 0.57,
+      "track": 1.71,
+      "cdA": 1.25,
+      "tyre": "Street",
+      "tyreRadius": 0.39,
+      "gearbox": "Automatic",
+      "finalDrive": 3.55,
+      "centreSplit": 0.4,
+      "liveAxle": true,
+      "wheelInertia": 2.2,
+      "gears": 10,
+      "autoGearing": false,
+      "ratio": [
+        4.7,
+        2.99,
+        2.15,
+        1.8,
+        1.52,
+        1.28,
+        1.0,
+        0.85,
+        0.69,
+        0.64
+      ],
+      "brakeDecel": 1.1,
+      "abs": true
+    }
+  }
+}

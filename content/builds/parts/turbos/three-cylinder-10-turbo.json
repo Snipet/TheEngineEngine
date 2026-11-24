@@ -1,0 +1,19 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "1.0 L three-cylinder turbo: turbo",
+  "notes": "The forced induction of the archetype \"1.0 L three-cylinder turbo\" alone (turbo, 1.00 bar); loaded as a part it replaces only the boost fields it sets. Its sizes are matched to whatever engine it goes on.",
+  "spec": {
+    "boost": {
+      "model": "Machine",
+      "kind": "Turbo",
+      "level": 0.619,
+      "blowOff": 0.7,
+      "size": 1.0,
+      "target": 100000.0,
+      "gateSpring": 60000.0,
+      "blowOffKind": "Recirculating",
+      "icEffect": 0.75
+    }
+  }
+}

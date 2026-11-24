@@ -1,0 +1,112 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "part": "engine",
+  "name": "Four-cam 5.0 L V8 (engine)",
+  "notes": "The engine of the archetype \"Four-cam 5.0 L V8\" alone, to put in another car.",
+  "spec": {
+    "engine": {
+      "layout": "V8 crossplane",
+      "custom": true,
+      "compression": 12.0,
+      "cylinders": 8,
+      "bankAngle": [
+        45,
+        -45
+      ],
+      "bank": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1
+      ],
+      "pin": [
+        45,
+        45,
+        135,
+        135,
+        315,
+        315,
+        225,
+        225
+      ],
+      "fireRev": [
+        0,
+        1,
+        0,
+        0,
+        1,
+        1,
+        1,
+        0
+      ],
+      "place": [
+        0.0,
+        0.033,
+        0.1,
+        0.133,
+        0.2,
+        0.233,
+        0.3,
+        0.333
+      ],
+      "displacement": 0.0050376,
+      "boreStroke": 1.0032,
+      "bore": 0.093,
+      "stroke": 0.0927,
+      "rodLength": 0.1507,
+      "redlineSpeed": 785.398,
+      "frictionValvetrain": "Finger follower",
+      "rough": 0.2,
+      "benchLoad": 0.3
+    },
+    "valve": {
+      "model": "Lab",
+      "valves": 4,
+      "dIn": 0.037,
+      "dEx": 0.031,
+      "train": "Finger",
+      "inDurSeat": 260,
+      "inDur1mm": 228,
+      "inLift": 0.012,
+      "inCentre": 108,
+      "exDurSeat": 256,
+      "exDur1mm": 224,
+      "exLift": 0.011,
+      "exCentre": 112,
+      "inPhaseRange": 50,
+      "exPhaseRange": 50
+    },
+    "intake": {
+      "model": 1
+    },
+    "boost": {
+      "model": "Machine",
+      "kind": "Natural",
+      "level": 0.0,
+      "blowOff": 0.7
+    },
+    "exhaust": {
+      "model": "Builder",
+      "sides": 2,
+      "converter": [
+        1,
+        1
+      ],
+      "mufKind": [
+        2,
+        2
+      ]
+    },
+    "fuel": {
+      "kind": "Gasoline",
+      "model": "Fuels",
+      "grade": "Premium (91)",
+      "direct": 1
+    }
+  }
+}

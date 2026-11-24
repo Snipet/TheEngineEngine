@@ -1,0 +1,108 @@
+{
+  "format": "tee-scenario",
+  "version": 1,
+  "name": "p-pull-paddles",
+  "description": "Card P's, for a gearbox worked by the shift counters (manual with the lever in neutral, sequential, dual clutch): start, first at 3 s, half pedal then full, an upshift every 2.5 s to fourth, lift at 13 s, brake, off at 18 s. Starts, idles, pulls through the gears, stops.",
+  "seconds": 20,
+  "warm": true,
+  "events": [
+    {
+      "t": 0.0,
+      "ctl": {
+        "mode": 1,
+        "lever": 0,
+        "clutch": 0,
+        "throttle": 0,
+        "brake": 0,
+        "ignition": 1
+      }
+    },
+    {
+      "t": 0.25,
+      "ctl": {
+        "ignition": 2
+      }
+    },
+    {
+      "t": 2.0,
+      "ctl": {
+        "ignition": 1
+      }
+    },
+    {
+      "t": 3.0,
+      "press": [
+        "shiftUp"
+      ]
+    },
+    {
+      "t": 3.3,
+      "ctl": {
+        "throttle": 0.5
+      },
+      "ramp": 0.2
+    },
+    {
+      "t": 4.5,
+      "ctl": {
+        "throttle": 1
+      },
+      "ramp": 0.1
+    },
+    {
+      "t": 7.0,
+      "press": [
+        "shiftUp"
+      ]
+    },
+    {
+      "t": 9.5,
+      "press": [
+        "shiftUp"
+      ]
+    },
+    {
+      "t": 12.0,
+      "press": [
+        "shiftUp"
+      ]
+    },
+    {
+      "t": 13.0,
+      "ctl": {
+        "throttle": 0
+      },
+      "ramp": 0.05
+    },
+    {
+      "t": 14.0,
+      "ctl": {
+        "brake": 0.6
+      },
+      "ramp": 0.2
+    },
+    {
+      "t": 17.0,
+      "ctl": {
+        "clutch": 1
+      },
+      "ramp": 0.2
+    },
+    {
+      "t": 18.0,
+      "ctl": {
+        "ignition": 0
+      }
+    }
+  ],
+  "assertions": [
+    {
+      "audio": "finite"
+    },
+    {
+      "audio": "peak",
+      "<=": 1,
+      "source": "02-contracts.md, section 1: within +-1"
+    }
+  ]
+}

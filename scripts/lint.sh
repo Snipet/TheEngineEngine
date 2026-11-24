@@ -66,6 +66,22 @@ for f in "${sources[@]}"; do
   done < <(code "$f" | grep -nE "$owner")
 done
 
+# ---- a build tree configured before the files its configure reads (a warning, not a failure) -------------------------
+# Test names, workspaces and packages are found at configure time (globs, VIEW_TEST lines, register.h): a tree whose
+# CMake has not re-run since a merge runs an old list against new files, and its results mislead (a whole suite's
+# count once). `cmake --build` re-runs CMake for most of them; `ctest` alone never does.
+for tree in build-*/; do
+  [ -f "$tree/CMakeCache.txt" ] || continue
+  stamp="$tree/CMakeCache.txt"
+  [ -f "$tree/build.ninja" ] && stamp="$tree/build.ninja"
+  newer=$(git ls-files -- '*CMakeLists.txt' '*.cmake' '*/register.h' 'tests/ui/views/*.cpp' 'CMakePresets.json' \
+          | while IFS= read -r f; do if [ "$f" -nt "$stamp" ]; then echo "$f"; fi; done | head -3 || true)
+  if [ -n "$newer" ]; then
+    echo "lint: warning: ${tree%/} was configured before $(echo "$newer" | paste -sd, -) changed:" \
+         "run cmake --preset $(basename "${tree#build-}") (or cmake --build) before trusting its tests"
+  fi
+done
+
 # ---- 5. the Spec's lint ---------------------------------------------------------------------------------------------
 if [ "${TEE_LINT_SCHEMA:-1}" != 0 ] && [ -f sim/engine.fm ]; then
   schema=$(ls -t build-*/bin/tee-schema build-*/bin/tee-schema.exe 2>/dev/null | head -1 || true)

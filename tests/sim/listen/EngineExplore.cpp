@@ -3,6 +3,9 @@
 
 #include <cmath>
 #include <cstdio>
+#include <cstdlib>
+#include <filesystem>
+#include <string>
 
 using tee::test::core::Bench;
 
@@ -46,5 +49,32 @@ TEST_CASE("explore: each build's raw exhaust at full throttle on the dyno", "[.e
         std::printf("%-26s n %2.0f vd %.5f idle %5.0f red %5.0f rpm exTrim %.3f norm %.3f | ex idle %6.1f 0.4 %6.1f 0.75 %6.1f | mix %6.1f %6.1f %6.1f\n",
                     b, bench.tel("engine.cylinders"), bench.field("vTotal"), idle * 9.5493, red * 9.5493,
                     bench.field("exTrim"), bench.field("gainNorm"), lev[0], lev[1], lev[2], mix[0], mix[1], mix[2]);
+    }
+}
+
+TEST_CASE("explore: the loudest ordinary moments' peaks before the limiter", "[.explore][engine]")
+{
+    for (const char* name : {"v8", "v10", "engines/ref-15-v12-60", "engines/ref-00-single", "boost/ls-twin-turbo"})
+    {
+        if (!std::filesystem::exists(std::filesystem::path(TEE_SOURCE_DIR) / "content" / "builds" / (std::string(name) + ".json")))
+            continue;
+        Bench b(name);
+        b.write("spec.sound.model", std::getenv("M0") ? 0 : 1);
+        b.write("spec.sound.rev", b.field("spec.sound.rev") + 1);
+        b.start(1.0);
+        b.write("listen.prePeak", 0.0);
+        b.play(1.0);
+        const double idle = b.field("listen.prePeak");
+        b.write("listen.prePeak", 0.0);
+        b.ctl().throttle = 1.0f;
+        b.play(3.0);
+        const double revs = b.field("listen.prePeak");
+        b.write("listen.prePeak", 0.0);
+        b.ctl().mode = 2;
+        b.ctl().dynoSpeed = float(0.75 * b.tel("engine.redline"));
+        b.play(2.0);
+        std::printf("least lim %.3f idle %.3f ", b.field("listen.limLeast"), idle);
+        std::printf("%-24s before the limiter: free revs %.3f, then full load %.3f; limiter %.1f dB\n", name, revs,
+                    b.field("listen.prePeak"), b.tel("sound.limiter"));
     }
 }

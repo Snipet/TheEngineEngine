@@ -1,0 +1,69 @@
+{
+ "format": "tee-scenario",
+ "version": 1,
+ "name": "bike-crossplane-vs-screamer",
+ "description": "The crossplane four on the bench (no vehicle), its speed held by the bench's driver to 9,000 rpm and held, then the engine changed to the screamer (180-degree crank) at the same revs. Listen for: the crossplane's uneven 270-180-90-180 beat (a lumpy, V-like growl) giving way, at 7 s, to the screamer's even four-a-cycle howl at the same speed.",
+ "build": "bike-superbike",
+ "seconds": 11,
+ "events": [
+  {
+   "t": 0.0,
+   "spec": {
+    "env.temperature": 300,
+    "env.pressure": 101325
+   },
+   "ctl": {
+    "mode": 0,
+    "lever": 0,
+    "clutch": 0,
+    "brake": 0,
+    "throttle": 0,
+    "ignition": 1
+   }
+  },
+  {
+   "t": 0.25,
+   "ctl": {
+    "ignition": 2
+   }
+  },
+  {
+   "t": 2.0,
+   "ctl": {
+    "ignition": 1
+   }
+  },
+  {
+   "t": 3.0,
+   "ctl": {
+    "holdSpeed": 942.5
+   }
+  },
+  {
+   "t": 3.0,
+   "ctl": {
+    "throttle": 0.6
+   }
+  },
+  {
+   "t": 7.0,
+   "spec": {
+    "engine.pin[1]": 180,
+    "engine.pin[2]": 180,
+    "engine.pin[3]": 0,
+    "engine.fireRev[1]": 0,
+    "engine.fireRev[2]": 1,
+    "engine.fireRev[3]": 1
+   }
+  }
+ ],
+ "assertions": [
+  {
+   "audio": "finite"
+  },
+  {
+   "audio": "peak",
+   "<=": 1
+  }
+ ]
+}
