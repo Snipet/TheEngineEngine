@@ -18,8 +18,7 @@ namespace tee::ui::engine
     TwoStroke twoStrokeOf(const FieldDoc& doc)
     {
         TwoStroke t;
-        const double cycle = fieldValue(doc, EF::cycle);
-        t.on = std::isfinite(cycle) && cycle >= 0.5;
+        t.on = twoStrokeRuns(doc);
         if (!t.on)
             return t;
         const double n = field(doc, "engine.tsCylinders");

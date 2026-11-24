@@ -142,6 +142,10 @@ namespace tee::ui::engine
     // A preset's index by a choice's text: the spec's names, and the short ones a build may use ("V8", "I4").
     int presetByName(std::string_view name);
 
+    // Whether the build runs as a two-stroke (package D's configure, X-025): engine.cycle 1 with a custom layout of
+    // pistons; without custom the cycle is ignored and the dial's layout runs; a custom rotary runs as itself (and D
+    // flags the refusal). A document without D's custom switch (the demo's) runs the cycle as asked.
+    bool twoStrokeRuns(const FieldDoc& doc);
     // The layout the document describes (custom, a preset by its choice, or none). `cycle2` false: as though the
     // cycle were four-stroke (what runs when D refuses a two-stroke of a rotary).
     Layout layoutOf(const FieldDoc& doc, bool cycle2 = true);
