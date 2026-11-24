@@ -5,6 +5,9 @@
 //   tee-fuzz --seed 17 --reduce                         a failing seed reduced to the fewest fields that still fail;
 //                                                       writes out/combo/fuzz-<seed>.json (a build) and prints the
 //                                                       one-line command that shows it
+//   tee-fuzz ... --checks                               the program compiled with FMinus's bounds checks and loop
+//                                                       budget: an access out of bounds stops the call with
+//                                                       FMinus's words (a crash without them)
 //   tee-fuzz --build file.json --seed 17                that build (and nothing random) under seed 17's driving
 //   tee-fuzz --play v8 tour car.model+engine.custom     one combination (switch paths joined by +, or none, or all)
 //                                                       on an archetype through a scenario, judged as the tests do
@@ -73,10 +76,15 @@ namespace
         return out;
     }
 
+    bool gChecks = false;   // --checks: the program compiled with its loop budget and bounds checks
+
     Verdict once(const std::vector<Value>& spec, std::uint64_t seed, double seconds)
     {
         Times tm;
-        const tee::test::Run r = fuzzScenario(spec, seed, seconds, tm).run(tm.end);
+        tee::test::Scenario sc = fuzzScenario(spec, seed, seconds, tm);
+        if (gChecks)
+            sc.checks();
+        const tee::test::Run r = sc.run(tm.end);
         return judgeFuzz(r, tm);
     }
 
@@ -292,6 +300,8 @@ int main(int argc, char** argv)
         }
         else if (a == "--seed")
             o.first = o.last = std::strtoull(next().c_str(), nullptr, 10);
+        else if (a == "--checks")
+            gChecks = true;
         else if (a == "--corners")
             o.corners = true;
         else if (a == "--reduce")

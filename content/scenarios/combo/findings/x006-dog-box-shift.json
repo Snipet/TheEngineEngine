@@ -1,0 +1,91 @@
+{
+  "format": "tee-scenario",
+  "version": 1,
+  "name": "x006-dog-box-shift",
+  "seconds": 8,
+  "events": [
+    {
+      "t": 0,
+      "spec": {
+        "env.temperature": 293.15,
+        "car.model": 0,
+        "ecu.model": 1,
+        "car.gearbox": "Sequential"
+      },
+      "ctl": {
+        "mode": 1,
+        "lever": 0,
+        "clutch": 0,
+        "throttle": 0,
+        "ignition": 1
+      }
+    },
+    {
+      "t": 0.25,
+      "ctl": {
+        "ignition": 2
+      }
+    },
+    {
+      "t": 2.0,
+      "ctl": {
+        "ignition": 1
+      }
+    },
+    {
+      "t": 3.0,
+      "press": [
+        "shiftUp"
+      ]
+    },
+    {
+      "t": 3.3,
+      "ctl": {
+        "throttle": 1
+      },
+      "ramp": 0.2
+    },
+    {
+      "t": 5.0,
+      "press": [
+        "shiftUp"
+      ]
+    },
+    {
+      "t": 6.5,
+      "press": [
+        "shiftUp"
+      ]
+    }
+  ],
+  "assertions": [
+    {
+      "audio": "step",
+      "during": [
+        4.9,
+        5.3
+      ],
+      "<": 12,
+      "source": "the upshift at 5 s"
+    },
+    {
+      "audio": "step",
+      "during": [
+        6.4,
+        6.8
+      ],
+      "<": 12,
+      "source": "the upshift at 6.5 s"
+    },
+    {
+      "audio": "step",
+      "during": [
+        4.0,
+        4.9
+      ],
+      "<": 12,
+      "source": "pulling in first, no shift"
+    }
+  ],
+  "description": "Package X's finding X-006 (2026-11-24, card H): a dog box's upshifts at 5 and 6.5 s with ecu.model 1 (nothing else on): the shift cut's step against the reference's at the same shifts (5.9 and 5.5)."
+}
