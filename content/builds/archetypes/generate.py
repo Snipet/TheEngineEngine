@@ -183,14 +183,17 @@ arch(slug="air-cooled-flat-six-36", runner=0.35, name="Air-cooled flat six", geo
            "Rennlist, Pelican Parts), its runners' lengths not found in any source. The cooling fan's whir is the "
            "viscous fan. In a rear-engined coupe, five-speed manual.")
 arch(slug="big-block-74-pushrod-v8", name="Big-block 7.4 L pushrod V8", geo="ref-12-v8-cross",
-     layout="V8 crossplane", bore=107.95, stroke=101.6, rod=155.8, cr=10.25, valves=2, dIn=52.6, dEx=44.5,
+     # the 1972 LS5's 8.5:1 (over-drive-magazine.com's 1972 Chevelle fact sheet; a corvetteforum post agrees; one
+     # other says 8.25), the net-rated engine its band is (the lead, 20:46: hardware and target the same engine)
+     layout="V8 crossplane", bore=107.95, stroke=101.6, rod=155.8, cr=8.5, valves=2, dIn=52.6, dEx=44.5,
      cam=(282, 224, 11.9, 110, 290, 234, 11.9, 114), train="Pushrod", redline=5600, idle=650,
-     intake=dict(runnerLength=0.20, plenumVolume=0.003), friction="Flat tappet", grade="Premium (91)",
+     intake=dict(runnerLength=0.20, plenumVolume=0.003), friction="Flat tappet", grade="Regular (87)",
      car="muscle-auto", timing="Chain", fan="Viscous clutch",
-     notes="A 1970-era 454 cubic inch big block: 4.25 x 4.00 in (107.95 x 101.6 mm, 7440 cc), 10.25:1, two valves "
-           "on pushrods and a flat-tappet hydraulic cam, one four-barrel-sized throttle over a single plenum. Rated "
-           "some 250 to 300 kW net and 650 N m (makers' net figures of the era; gross ratings were 20 % higher). "
-           "In a heavy muscle car with a three-speed automatic.")
+     notes="A 1972 454 cubic inch big block (the LS5): 4.25 x 4.00 in (107.95 x 101.6 mm, 7440 cc), 8.5:1, two "
+           "valves on pushrods and a flat-tappet hydraulic cam (its cam figures from memory), one four-barrel-sized "
+           "throttle over a single plenum. Rated 270 hp SAE net at 4000 rpm and 390 lb ft at 3200 (201 kW, 529 N m: "
+           "carnut.com, over-drive-magazine.com); 1973-74's LS4 270-275 hp. In a heavy muscle car with a three-speed "
+           "automatic.")
 arch(slug="rotary-twin-13", name="Rotary twin", geo="ref-16-rotary-2", layout="Rotary", displacement=0.001308,
      cr=9.0, redline=8000, idle=800,
      boost=dict(kind="Twin turbos", layout="Sequential", target=0.7, spring=0.5),

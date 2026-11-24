@@ -8,7 +8,7 @@
     "engine": {
       "layout": "V8 crossplane",
       "custom": true,
-      "compression": 10.25,
+      "compression": 8.5,
       "cylinders": 8,
       "bankAngle": [
         45,
@@ -111,7 +111,7 @@
     "fuel": {
       "kind": "Gasoline",
       "model": "Fuels",
-      "grade": "Premium (91)"
+      "grade": "Regular (87)"
     }
   }
 }
