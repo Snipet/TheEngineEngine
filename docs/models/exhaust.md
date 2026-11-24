@@ -310,6 +310,51 @@ the signal, with octave bands within ±0.1 dB except 63 Hz at -1.2. The bands ar
 | A: the wall's shelves off on pipes under 0.6 m (stubs, links, the X) | some 0.03 R (1.722 to 1.701 of the reference) | +0.1 to 0.3 dB from 2 to 16 kHz: the short pipes lose less of the highs |
 | B: the flow's losses and `shape()` every 64 samples instead of 16 | some 0.04 R (to 1.693) | none beyond the floor |
 
+## The valves' mean flow closed (`flowClose`, model 1; the lead's ruling, 24 Nov)
+
+The valve gives its pipe g q, not q (duct.fm, `Valve`: the simple wave's stiffening, g = 1 + (gamma + 1)/4 u/c), and
+the cylinder's mass `mE` is reckoned from q. Over a cycle g q is not q: the blowdown's fast gas carries its square term
+out.
+
+Measured with each port's sums added in 1024-sample blocks (a first try in plain float over 10^6 samples carried a few
+per cent of rounding). Pipes given / let out (Σ qEa / Σ qE):
+
+| build | idle | full throttle |
+|---|---|---|
+| big-block V8 | 1.046 | 1.128 (2500 rpm), 1.156 (4000) |
+| air-cooled flat six | | 1.14 to 1.19 |
+| 2.0 turbo four | | 1.18 to 1.22 |
+
+The closing: `Exhaust::stepLet(qe, qeLet, np)` follows each port's surplus (qEa - qE) over 20 ms, as the intake's
+plenum does (intake.fm, `mStiff`), and takes it off what that port's pipe is given. The pulse keeps its gain; the
+mean is what the valve let out. Measured: 1.000 within 0.2 % in every case.
+
+Before and after, full throttle on the dyno, warm, heat settled (collectors' mean over the air; the port's absolute):
+
+| build, rpm | collectors | port | boost | gate | torque |
+|---|---|---|---|---|---|
+| big-block, idle | 0.5 -> 0.5 kPa | 101.8 -> 101.8 | | | 18 -> 18 N m |
+| big-block, 2500 | 12.4 -> 10.9 | 114.0 -> 112.5 | | | 590 -> 594 |
+| big-block, 4000 | 21.7 -> 18.4 | 123.5 -> 120.3 | | | 555 -> 559 |
+| flat six, 2500 | 10.2 -> 8.8 | 111.7 -> 110.3 | | | 336 -> 336 |
+| flat six, 4500 | 23.4 -> 19.1 | 125.3 -> 120.9 | | | 364 -> 365 |
+| flat six, 6500 | 29.0 -> 23.8 | 131.1 -> 125.9 | | | 275 -> 277 |
+| turbo four, 2000 | 50.3 -> 28.3 | 151.9 -> 129.8 | 44.0 -> 23.2 kPa | 0 -> 0 | 229 -> 194 |
+| turbo four, 3000 | 142.1 -> 134.3 | 243.9 -> 236.5 | 120.6 -> 117.3 | 0.20 -> 0.06 | 336 -> 333 |
+| turbo four, 5500 | 153.8 -> 147.4 | 256.0 -> 250.2 | 99.6 -> 100.3 | 0.66 -> 0.47 | 283 -> 283 |
+
+The sound at the tail, drive-car, by octave band, against each build's control (a change of 1e-6 in `xiWall`, which
+moves the bands by at most 0.35 dB):
+- **big-block V8:** +0.5 to 0.8 dB from 31.5 to 250 Hz; -0.45 to -0.84 dB from 2 to 16 kHz.
+- **turbo four:** +1.6 to 1.8 dB at 63 and 125 Hz; -1.2 to -2.6 dB from 2 to 16 kHz; -2.7 dB at 31.5 Hz; the level
+  -0.6 dB.
+
+What a person should hear: a little less hiss and rush (the flow noise goes as the mean gas speed squared, and that
+speed fell 12 to 20 %), and a slightly fuller low end on the NA engine. On the turbo four, less turbine and jet rush
+and a softer low-speed pull, as its boost at 2000 rpm halves.
+
+`flowClose` 0 gives the reference's g q, which is how test 2 compares with the reference.
+
 ## Glide and rebuild (dragging a slider)
 
 These fields glide toward the Spec with a 0.2 s time constant (`XBuild::glide`). The pipes' delays, areas and
