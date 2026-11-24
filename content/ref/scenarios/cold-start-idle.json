@@ -1,0 +1,12 @@
+{
+  "format": "tee-ref-scenario/1",
+  "name": "cold-start-idle",
+  "description": "A cold start to idle: the starter cranks it at 20 F, it fires, runs up and settles on its fast idle.",
+  "seconds": 16,
+  "events": [
+    { "t": 0.0, "note": "played from the keys; the engine has stood at 20 F (-7 C); it idles on for a minute after the key",
+      "dials": { "drive": 0, "starter": 1, "hold": 60, "ambient": 20, "load": 0 } },
+    { "t": 0.25, "note": "C2: the key that asks for the idle speed; the first key cranks it", "key": 36, "velocity": 0.5 },
+    { "t": 0.75, "keyUp": true }
+  ]
+}
