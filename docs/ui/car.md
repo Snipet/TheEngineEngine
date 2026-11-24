@@ -4,7 +4,8 @@
 
 ## What the stage shows
 
-- **The car from the side, to scale**: the body and cabin outlined, the wheels at the tyre's radius on the
+- **The car from the side, to scale**: the body as `look::carProfile`'s outline (DRIVE's car), squatting or diving a
+  few px with the load moved, the wheels at the tyre's radius on the
   wheelbase, the centre of mass (a disc with a cross, "CM") at its height and place; the wheelbase dimensioned. Under
   each axle a bar of its live load as a share of the weight, a tick at its load at rest, the number and the share;
   under them "SQUAT" or "DIVE" with the load moved (`car.pitch` where the program gives it). Drag as an arrow back from the tail and downforce as arrows on the
