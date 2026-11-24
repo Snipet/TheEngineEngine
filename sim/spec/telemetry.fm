@@ -226,6 +226,12 @@ module SoundTel
     float exhaustLevel [[ui::label("Exhaust radiation")]] [[ui::unit("dB")]] [[ui::help("The tailpipes' radiation before any gain, its mean square over the last 0.4 s")]];
     float mixLevel [[ui::label("Mix level")]] [[ui::unit("dB")]] [[ui::help("What the listener hears before the level and the compressor, its mean square over the last 0.4 s")]];
     float limiter [[ui::label("Limiter")]] [[ui::unit("dB")]] [[ui::help("The last stage's deepest gain reduction over the last 0.4 s (0: not working)")]];
+    float listenerX [[ui::label("Listener across")]] [[ui::quantity("length")]] [[ui::help("The camera's place, the car's frame: x right, y forward from the rear bumper")]];
+    float listenerY [[ui::label("Listener along")]] [[ui::quantity("length")]];
+    float facing [[ui::label("Listener facing")]] [[ui::unit("deg")]] [[ui::help("From the car's forward, toward its right")]];
+    float srcX [[ui::label("Source across")]] [[ui::quantity("length")]] [[ui::help("Each source's place: tailpipes, intake, bay, bay (carrying), tyres, wind, gearbox, axle, tank")]] [10];
+    float srcY [[ui::label("Source along")]] [[ui::quantity("length")]] [10];
+    float srcLevel [[ui::label("Source level")]] [[ui::unit("dB")]] [[ui::help("Each source at the listener, 0.4 s mean, before the cabin's ways in; -200 silent")]] [10];
     int ceilingParts [[ui::label("Ceiling")]] [[ui::help("How many 16-sample parts the soft ceiling has bent, counted from the start")]];
 };
 

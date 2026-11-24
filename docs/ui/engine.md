@@ -26,6 +26,17 @@ edge or overlaps other text, on every tab.
 | DERIVED FROM THE BUILD | Displacement, bore over stroke, rod over stroke, mean piston speed at the limiter (m/s, or ft/min where road speed is in mph), compression, swept volume of a cylinder: each with the formula it comes from in small type. |
 | PRESSURE AGAINST VOLUME | The Scope's pressure against its volume, linear or log-log (two buttons), each stroke in its ink and named in the key, the point now marked. With no Scope: the axes and "NO SCOPE YET". |
 
+## A two-stroke
+
+With card T's `engine.cycle` 1 the cycle is 360 degrees: `tsCylinders` in a row, firing evenly or together
+(`tsFiring`). The section has no valves: its ports are windows in the wall (the exhaust's at the right, the transfers'
+at the left with their passage down to the crankcase), each bright where the crown has passed its top edge, the
+exhaust's top lowered by the power valve's blade at low speed; the crankcase under the piston is a volume tinted by its
+own pressure (the Scope's `portIntake`), with the number under the drawing; the inlet by its kind (a reed's petals
+opened by the crankcase's pull, a disc's or a piston port's duct lit while its window is open); the spark at `tsSpark`.
+The phase is named: POWER, BLOWDOWN, SCAVENGE, TRAPPING, COMPRESSION. The loop is coloured by power, ports open and
+compression. A Scope of another cycle (a four-stroke's 720 degrees) is not drawn. `ui.engine.twostroke`.
+
 ## What is clickable
 
 | Press on | Selects | The inspector shows |
