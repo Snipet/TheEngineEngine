@@ -33,6 +33,11 @@ cd "$(dirname "$0")/.."
 fail=0
 say() { echo "lint: $*"; fail=1; }
 
+# ---- 0. nothing generated is tracked: Python's bytecode ------------------------------------------------------------
+while IFS= read -r f; do
+  [ -n "$f" ] && say "$f: Python bytecode is tracked (generated: git rm --cached it; .gitignore has __pycache__/ and *.pyc)"
+done < <(git ls-files -- '*.pyc' '*/__pycache__/*' '__pycache__/*')
+
 # ---- C and C++ sources of ours ----------------------------------------------------------------------------------------
 mapfile -t sources < <(git ls-files -- '*.c' '*.cc' '*.cpp' '*.cxx' '*.h' '*.hpp' '*.inc' '*.mm')
 

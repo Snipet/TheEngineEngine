@@ -3,6 +3,10 @@ build-*/
 out/
 .tee-deps/
 
+# Python's bytecode (a script run in the checkout writes it beside the script)
+__pycache__/
+*.pyc
+
 # Editors and systems
 .vscode/
 .idea/
