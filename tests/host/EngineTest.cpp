@@ -426,3 +426,96 @@ TEST_CASE("predicted points are the stepped dyno's settled torque within 3 %: th
     // knock-limited (its retard a sawtooth, at its ceiling at 2910 rpm): each side's mean over whole teeth of it
     predictedMatchesSteps("turbo-four-20-gdi.json", {304.7, 423.8, 542.9}, 0.03);
 }
+
+TEST_CASE("the knock limit's key moves with what moves the knock limit, and not with the air or the person's timing",
+          "[engine][sim][bake]")
+{
+    if (!haveSim())
+        SKIP("sim/engine.fm is not there yet");
+    std::string error;
+    const auto sim = compiled(simDir(), {}, error);
+    REQUIRE(sim != nullptr);
+    Build build(sim->fields());
+    std::vector<std::string> warnings;
+    REQUIRE(build.loadFile(std::filesystem::path(TEE_SOURCE_DIR) / "content/builds/archetypes/turbo-four-20-gdi.json",
+                           BuildPart::Whole, warnings, error));
+    const std::int64_t key = knockLimitKey(build, *sim);
+    CHECK(key >= 0);
+    CHECK(key <= 0x7fffffff);
+    CHECK(knockLimitKey(build, *sim) == key);   // the same build, the same key
+    CHECK(sim->sourceHash() != 0);
+    // not the air's temperature (baked at 300 K), nor ecu.timing (the person's offset on top)
+    if (build.fieldOf("env.temperature") >= 0)
+    {
+        build.set("env.temperature", build.get("env.temperature") + 20.0);
+        CHECK(knockLimitKey(build, *sim) == key);
+    }
+    if (build.fieldOf("ecu.timing") >= 0)
+    {
+        build.set("ecu.timing", build.get("ecu.timing") + 3.0);
+        CHECK(knockLimitKey(build, *sim) == key);
+    }
+    // the compression, the fuel and the boost's section do
+    const double compression = build.get("engine.compression");
+    build.set("engine.compression", compression - 0.5);
+    CHECK(knockLimitKey(build, *sim) != key);
+    build.set("engine.compression", compression);
+    CHECK(knockLimitKey(build, *sim) == key);
+    for (const FieldInfo& f : build.fields().all())
+        if (f.path.rfind("spec.boost.", 0) == 0 && !f.hidden && f.kind == FieldKind::Number && f.maximum && f.minimum
+            && build.get(f.path) < *f.maximum)
+        {
+            INFO(f.path);
+            const double was = build.get(f.path);
+            build.set(f.path, std::min(was + 0.25 * (*f.maximum - *f.minimum), *f.maximum));
+            CHECK(knockLimitKey(build, *sim) != key);
+            build.set(f.path, was);
+            break;
+        }
+    // a program without the table is never current
+    if (build.fieldOf("ecu.maps.knockLimitAuto") < 0)
+        CHECK_FALSE(knockLimitCurrent(build, *sim));
+}
+
+TEST_CASE("the knock limit baked on the turbo four: a knocking point's cell its mean retard and 2, none 0, lower "
+          "pedals run only where it knocks",
+          "[engine][sim][bake][nightly]")
+{
+    if (!haveSim())
+        SKIP("sim/engine.fm is not there yet");
+    std::string error;
+    const auto sim = compiled(simDir(), {}, error);
+    REQUIRE(sim != nullptr);
+    Build build(sim->fields());
+    std::vector<std::string> warnings;
+    REQUIRE(build.loadFile(std::filesystem::path(TEE_SOURCE_DIR) / "content/builds/archetypes/turbo-four-20-gdi.json",
+                           BuildPart::Whole, warnings, error));
+    KnockBakeOptions options;
+    options.speeds = 5;
+    options.pedals = {1.0, 0.5};
+    KnockBakeResult r;
+    REQUIRE(bakeKnockLimit(sim, build, options, r, error));
+    REQUIRE(r.speeds.size() == 5);
+    REQUIRE(r.limit.size() == 5);
+    CHECK(r.key == knockLimitKey(build, *sim));
+    bool someKnock = false;
+    for (std::size_t s = 0; s < r.speeds.size(); ++s)
+    {
+        INFO(s);
+        REQUIRE_FALSE(r.measured[s].empty());
+        const KnockBakeCell& full = r.measured[s].front();
+        CHECK(full.pedal == 1.0);
+        // the second pedal only where full throttle knocked
+        CHECK((r.measured[s].size() == 2) == (full.valid && full.retardMean >= options.knockLimit));
+        someKnock = someKnock || full.retardMean >= options.knockLimit;
+        // at the load full throttle gave, the table is its cell (by straight lines between the measured loads)
+        double want = full.retardMean >= options.knockLimit ? full.retardMean + options.margin : 0.0;
+        for (std::size_t j = 0; j < r.loads.size(); ++j)
+        {
+            CHECK(r.limit[s][j] >= 0.0);
+            if (std::fabs(r.loads[j] - full.load) < 1e-9)
+                CHECK(r.limit[s][j] == want);
+        }
+    }
+    CHECK(someKnock);   // a turbo four on its archetype's boost knocks somewhere at full throttle
+}

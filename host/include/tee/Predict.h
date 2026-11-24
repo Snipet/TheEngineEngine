@@ -50,6 +50,7 @@ namespace tee
         int points = 16;              // speeds in the refined curve (the coarse ones among them)
         double from = 0.0;            // rad/s; 0: 1000 rpm, or the idle's speed when that is higher
         double to = 0.0;              // rad/s; 0: just under the redline (tel.engine.redline)
+        std::vector<double> speeds;   // rad/s, ascending: these speeds instead of from, to and points (a bake's own)
         double pedal = 1.0;           // the throttle, 0 to 1
         double tolerance = 0.01;      // two cycles in a row within this share of each other: settled
         std::vector<std::string> fields;   // telemetry read at each point's end ("boost.pressure", "car.wheelSlip[2]")
@@ -103,6 +104,7 @@ namespace tee
         // windows of the retard's sawtooth (above), whose least and most retard over them are these
         bool knockLimited = false;
         double retardMin = 0.0, retardMax = 0.0;
+        double retardMean = 0.0;      // the mean retard over those windows (else the retard at the point's end)
         std::vector<double> history;  // each cycle's mean torque there, in order (the first after a change of speed)
     };
 

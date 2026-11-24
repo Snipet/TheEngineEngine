@@ -67,7 +67,10 @@ bar with the vanes shut, 294 kW (motoring 61). So the boost comes, but the power
 (+25 % manifold, +5 % power) with the reference's exhaust, whose turbine's back pressure does not reach the cylinders.
 With card G's network (exhaust.model 1) it does: size 1.6, High, 2000 rpm: manifold 3.41 bar, before the turbine 5.86
 bar, **406 kW** (motoring 98 kW: the vanes at their stop): the published ~450 at 2100 rpm. The missing half was the
-vanes and the turbine's back pressure. Not yet done: the pressure-volume loop of one
+vanes and the turbine's back pressure. **But** (24 Nov, card G's aaedbf4): 45 % of that turbine's gas by mass was
+phantom, a choked release's very large simple-wave gain in the pipes; with the valves' mean flow closed the pipe gets
+1.03 times what the cylinders let out. On real mass size 1.6 makes 240 kW at 1.8 bar; the matched size 1 is the turbo
+again (below, "On D's gas and G's closed exhaust"). Not yet done: the pressure-volume loop of one
 braking cylinder against one motoring from the Scope (the picture asked for).
 
 ## The exhaust brake (`ecu.exhaustBrake`, `ecu.exBrakeSwitch`)
@@ -119,26 +122,40 @@ rating (~450 kW, 605 hp): the governor's full rack is flat to the rated speed, w
 curve (not modelled). The 36 t rig: 0-50 km/h 17.6 s; 6 % at 56.8 km/h on 400 kW (power and weight: 54.9); down 6 %
 braked to 32 km/h, free to 53.5 (the redline). The compression brake, High, 2000 rpm: 249 kW with the reference turbo
 and exhaust; 404 kW with the vanes shut and card G's network. Cold starts unchanged but one: governor Reference with
-H's models 1 at 233 K now takes 12.7 s of cranking (1.1 s at 253 K). The table below is from before (the reference's
-fuelling).
+H's models 1 at 233 K now takes 12.7 s of cranking (1.1 s at 253 K). The table below is current (24 Nov evening).
 
-## Measured (tee-tests-diesel; the 15 L six, 300 K, 101325 Pa)
+## On D's gas and G's closed exhaust (24 Nov evening)
+
+Three changes under the engines: D's single-zone gamma with a lean term (8b20b176), then a diesel's charge kept as air
+until it burns (b551cd0: the first alone made a diesel compress with products' gamma, some 50 K short at the top, and
+the slowest cold start went from 12.7 to 18.3 s); G's exhaust valves' mean flow closed (aaedbf4: the phantom gas
+above); N2's surge guard re-derived on real mass. The brake's VGT position now also governs the shaft
+(`vaneCommand(d16, shaft / omegaMax, vaneMin)`, a PID past 95 % of the limit, as a production brake mode does it in
+the vane command rather than leaving it to the machine's 105 % relief). It does not yet hold: on the matched turbo
+it swings, some 0.6 s a cycle, and the shaft peaks at 12539 rad/s against 11932. The turbine's torque flips as the
+vanes open past about 0.4, and commands below the shut stop are a dead zone; rate limits of 0.2 to 1 a second and
+other gains did not settle it. The test is `[!mayfail]` on it.
+
+## Measured (tee-tests-diesel; the 15 L six, 300 K, 101325 Pa; 24 Nov evening)
 
 | What | Measured | Compared with |
 |---|---|---|
-| Compression brake, 2000 rpm, stages 0/1/2/3 | 56 / 104 / 164 / 239-247 kW | 15 L Jakes rated ~450 kW at 2100 (Jacobs, makers' brochures): at the low edge; the asserted 200-550 kW is judgement |
-| Same, High, 1200 / 1600 / 2000 rpm | 114 / 173 / 239 kW | rising with speed, as published curves |
-| Bark against motoring (exhaust only, below the compressor) | +8.4 dB rms; harmonics 2-10 of 100 Hz ~25 dB up, 20+ dB over the bins between | |
-| Exhaust flap, 2000 rpm | 3.0 bar held, 117 kW (+61); with the Jake 318 kW | makers' 2.5-4 bar; 110-190 kW |
-| Droop line (both governors) | rack 1.00 / 0.49 / 0.00 at rated, half way, high idle | |
-| Idle | mechanical 637-781 rpm (145 swing); electronic 681-685 | |
-| Pilot 4 %, 1200 rpm full load | rise 11.2 -> 5.4 bar/deg; noise 160 -> 61 Pa | DI diesels 3-10 bar/deg; a pilot ~halves it (Heywood ch. 10) |
-| Injection 6 degrees later | rise 4.7 bar/deg | |
-| Over-fuel 30 %, no limiter, 1400 rpm | 2019 -> 2446 N m; 1.3 -> 7.3 FSN | |
-| Tuned pickup floored at 1600 rpm | 10 FSN while spooling (25 kPa), 4.4 spooled; stock 1.8 | |
-| Cold start (all governors, H's models 0 and 1) | 253 K: runs after 1.0-1.9 s cranking; 233 K: 2.9-4.5 s | |
-| 36 t rig | 0-50 km/h 19.3 s; 6 %: 42 km/h at 278 kW (power and weight: 39); down 6 % from 45 km/h: free to 63 (the redline), braked to 39 | 36-40 t, 400-450 kW: 45-60 km/h on 6 % (judgement) |
-| Card F's turbos at 1300 rpm | big single 59 kPa, 90 % in 2.05 s; vanes 192 kPa in 0.65 s; compound 202 kPa in 1.9 s | |
+| Rated, truck-15l-six (H's fuel model, electronic governor) | 2783 N m, 553 kW at 2121 rpm | Cummins ISX15 2780 N m (2050 lb ft); top rating ~450 kW (no torque shaping modelled) |
+| Other builds | V8 truck 3125 N m / 536 kW; mechanical classic 2170 / 436; tuned pickup 1214 / 228; marine V12 3423 / 593 | |
+| Compression brake, 2000 rpm, stages 0/1/2/3 (reference turbo) | 63 / 115 / 180 / 254 kW; with the flap 311 | 15 L Jakes rated ~450 kW at 2100 (Jacobs, makers' brochures) |
+| Same, High, 1200 / 1600 / 2000 rpm | 118 / 182 / 254 kW | rising with speed, as published curves |
+| VGT brake, matched turbo, G's network, High, 2000 rpm | 359 kW; manifold 295 kPa over a second; shaft to 12539 rad/s (`[!mayfail]`) | matched VGT brakes 2.5-4 bar (recalled, not cited) |
+| Bark against motoring | harmonics 2-10 of 100 Hz ~25 dB over the bins between | |
+| Exhaust flap, 2000 rpm | stand-in 3.0 bar, 131 kW; G's butterfly 358 kPa, 146 kW (open 63) | makers' 2.5-4 bar; 110-190 kW |
+| Droop line (both governors) | rack 1.00 / 0.50 / 0.00 at rated, half way, high idle | |
+| Idle | mechanical 640-809 rpm (169 swing); electronic 681-685 | |
+| Pilot 4 %, 1200 rpm full load | rise 15.6 -> 8.0 bar/deg; noise 244 -> 179 Pa | a pilot ~halves it (Heywood ch. 10) |
+| Injection 6 degrees later | rise 8.1 bar/deg | |
+| Over-fuel 30 %, no limiter, 1400 rpm | 2780 -> 3326 N m; 1.3 -> 7.2 FSN | |
+| Tuned pickup floored at 1600 rpm | 10 FSN while spooling (25 kPa), 1.4 spooled; stock 1.8 / 0.1 | |
+| Cold start (all governors, H's models 0 and 1; asserted per case) | 253 K: 0.5-1.9 s cranking; 233 K: 1.1-5.2 s | |
+| 36 t rig | 0-50 km/h 17.6 s; 6 %: 57.8 km/h at 407 kW (power and weight: 55.8); down 6 % from 45 km/h: free to 53.4, braked to 31.6 | 36-40 t, 400-450 kW: 45-60 km/h on 6 % (judgement) |
+| Card F's turbos at 1300 rpm | big single 208 kPa, 90 % in 2.80 s; VGT 209 kPa in 2.60 s; compound 213 kPa in 1.90 s | |
 
 **Limits**: the reference turbo limits low-speed torque (peak 2000 N m at 1400-1600 rpm, not 1000-1200); a 15 L's
 brake sits at the low edge of published figures. The model takes at most 30 L and 16 cylinders, a diesel's redline
