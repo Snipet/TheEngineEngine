@@ -1,0 +1,16 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "X-026 (a supercharged 50 cc, the redline trimmed down)",
+  "notes": "X-026's remainder after N2's inlet bound, reduced by tee-fuzz from the ranges' corners seeds 217, 237 and 298 (each to these four fields): a 50 cc engine with a supercharger on boost.model 1 and the redline trimmed 3000 rpm down goes non-finite (engine.torque, boost.superchargerPower) at 1.39 s under seed 217's driving: tee-fuzz --build <this> --seed 217 --seconds 6",
+  "spec": {
+    "boost": {
+      "kind": 4,
+      "model": 1
+    },
+    "engine": {
+      "displacement": 5e-05,
+      "redlineTrim": -3000
+    }
+  }
+}

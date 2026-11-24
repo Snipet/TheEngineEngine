@@ -34,6 +34,16 @@ BASIS = {
     "Port gas, mass mean (information)": "judgement",
     "Quarter mile: time": "recalled", "Quarter mile: trap speed": "recalled", "Top speed": "judgement",
 }
+# builds with a part fitted to their own rows (the lead's list, 20:46): their power, torque, speed, VE and boost rows
+# are judgement until the part comes from the real engine or a class default
+_PORTS = "its head's port quality is a class fitted by N1 to measured torque over the target (content/builds/archetypes/generate.py PORTS)"
+FITTED = {s_: _PORTS for s_ in ("big-block-74-pushrod-v8", "small-block-57-carb", "supercharged-v8-62", "pushrod-v6-38",
+                                 "vr6-28", "flat-plane-v8-45", "v10-52", "v12-65", "straight-six-32-high-rev",
+                                 "two-stage-cam-20", "flat-plane-v8-39-twin-turbo", "inline-five-turbo-rally")}
+FITTED["kei-660-triple-turbo"] = "its boost taper was measured by N2 to meet the class's power cap"
+FITTED_ROWS = ("Peak power", "Peak torque", "Speed at peak power", "Speed at peak torque", "Boost at its target",
+               "Volumetric efficiency at its torque peak", "Volumetric efficiency low down")
+
 # archetypes whose power and torque rows were looked up (slug: the pages), turning recalled into cited
 CITED = {
     "air-cooled-flat-six-36": "en.wikipedia.org/wiki/Porsche_964 (184 kW at 6100, 310 N m at 4800)",
@@ -162,6 +172,11 @@ def targets(slug, b):
             k["source"] = k["source"] + "; looked up: " + CITED[slug]
         else:
             k["basis"] = "cited" if name.startswith("Invariant") else BASIS[name]
+        # a row its build was fitted to is judgement, whatever its source (the lead, 20:52: so the cited count is not
+        # flattered while the part is replaced)
+        if slug in FITTED and name in FITTED_ROWS:
+            k["basis"] = "judgement"
+            k["source"] = k["source"] + "; JUDGEMENT here: " + FITTED[slug]
         out.append(k)
 
     # ---- the invariants: hard --------------------------------------------------------------------------------

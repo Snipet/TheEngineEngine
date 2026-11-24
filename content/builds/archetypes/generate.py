@@ -178,19 +178,25 @@ arch(slug="air-cooled-flat-six-36", runner=0.35, name="Air-cooled flat six", geo
      grade="Premium (91)", car="rear-engine-classic", timing="Chain", fan="Viscous clutch",
      notes="A 3.6 L air- and oil-cooled flat six, two valves a cylinder on rockers, dry sump: 100 x 76.4 mm "
            "(3600 cc), 11.3:1; 184 kW at 6100 rpm and 310 N m at 4800 (the 1989 M64-type engine; Wikipedia, "
-           "auto-data.net). Its intake here is one hand-set runner a cylinder: JUDGEMENT, not the real engine's. The real one is a two-stage resonance intake, a "
+           "auto-data.net). The real intake is a two-stage resonance intake, a "
            "flap between its two plenum halves (closed some 3000 to 5000-5500 rpm at large throttle: forums only, "
            "Rennlist, Pelican Parts), its runners' lengths not found in any source. The cooling fan's whir is the "
            "viscous fan. In a rear-engined coupe, five-speed manual.")
 arch(slug="big-block-74-pushrod-v8", name="Big-block 7.4 L pushrod V8", geo="ref-12-v8-cross",
-     layout="V8 crossplane", bore=107.95, stroke=101.6, rod=155.8, cr=10.25, valves=2, dIn=52.6, dEx=44.5,
-     cam=(282, 224, 11.9, 110, 290, 234, 11.9, 114), train="Pushrod", redline=5600, idle=650,
-     intake=dict(runnerLength=0.20, plenumVolume=0.003), friction="Flat tappet", grade="Premium (91)",
+     # the 1972 LS5's 8.5:1 (over-drive-magazine.com's 1972 Chevelle fact sheet; a corvetteforum post agrees; one
+     # other says 8.25), the net-rated engine its band is (the lead, 20:46: hardware and target the same engine)
+     # its cam and valves: the LS5's cam 3883986, 213/217 deg (at 0.050 in, as quoted elsewhere) and .460/.488 in
+     # lift, the oval-port heads' 2.06/1.72 in valves (clacoa.com's big-block ID table, an enthusiast reference); the
+     # seat 268/274 deg (a corvetteforum post, unverified)
+     layout="V8 crossplane", bore=107.95, stroke=101.6, rod=155.8, cr=8.5, valves=2, dIn=52.3, dEx=43.7,
+     cam=(268, 213, 11.7, 110, 274, 217, 12.4, 114), train="Pushrod", redline=5600, idle=650,
+     intake=dict(runnerLength=0.20, plenumVolume=0.003), friction="Flat tappet", grade="Regular (87)",
      car="muscle-auto", timing="Chain", fan="Viscous clutch",
-     notes="A 1970-era 454 cubic inch big block: 4.25 x 4.00 in (107.95 x 101.6 mm, 7440 cc), 10.25:1, two valves "
-           "on pushrods and a flat-tappet hydraulic cam, one four-barrel-sized throttle over a single plenum. Rated "
-           "some 250 to 300 kW net and 650 N m (makers' net figures of the era; gross ratings were 20 % higher). "
-           "In a heavy muscle car with a three-speed automatic.")
+     notes="A 1972 454 cubic inch big block (the LS5): 4.25 x 4.00 in (107.95 x 101.6 mm, 7440 cc), 8.5:1, two "
+           "valves on pushrods and the LS5's flat-tappet hydraulic cam (3883986: clacoa.com), one four-barrel-sized "
+           "throttle over a single plenum. Rated 270 hp SAE net at 4000 rpm and 390 lb ft at 3200 (201 kW, 529 N m: "
+           "carnut.com, over-drive-magazine.com); 1973-74's LS4 270-275 hp. In a heavy muscle car with a three-speed "
+           "automatic.")
 arch(slug="rotary-twin-13", name="Rotary twin", geo="ref-16-rotary-2", layout="Rotary", displacement=0.001308,
      cr=9.0, redline=8000, idle=800,
      boost=dict(kind="Twin turbos", layout="Sequential", target=0.7, spring=0.5),
@@ -562,6 +568,17 @@ def build(a):
         i["runnerLength"] = 0.40
     i.update(a.get("intake", {}))
     rule_runner = "runnerLength" not in a.get("intake", {}) and a["layout"] != "Rotary"
+    # the naturally aspirated engines' runners by their manifold's class (the lead, 20:52), over any length set by
+    # hand above: written down before any table was run on them, and never from the engine's own rows
+    if a["slug"] in MANIFOLD:
+        cls = MANIFOLD[a["slug"]]
+        for k_ in ("runnerLength2", "runnerSwitch"):
+            i.pop(k_, None)
+        i["runnerLength"] = RUNNER[cls][0]
+        if a["slug"] in SWITCHED:
+            i["runnerLength2"] = round(0.65 * RUNNER[cls][0], 2)
+            i["runnerSwitch"] = round(0.65 * a["redline"] * RPM, 1)
+        rule_runner = False
 
     bo = {"model": "Machine", "kind": "Natural", "level": 0.0, "blowOff": 0.7}
     if "boost" in a:
@@ -680,7 +697,16 @@ def build(a):
             "car": car, "env": {"temperature": 288.15, "pressure": 101325.0}, "voices": vo, "sound": snd}
     switches_on(spec, a["slug"])
     notes = a["notes"]
-    if rule_runner and "runnerLength" in i and "JUDGEMENT" not in notes:
+    if a["slug"] in MANIFOLD:
+        cls = MANIFOLD[a["slug"]]
+        notes += (" Its intake: the %s class's runner, %.2f m from the valve to the plenum (%s)%s: JUDGEMENT, a class "
+                  "default, not the real engine's (no source found)." % (
+                      cls, RUNNER[cls][0], RUNNER[cls][1],
+                      "; a second, short runner of %.2f m above %.0f rpm, as the real engine switches (%s; its "
+                      "lengths and speed the class's judgement)" % (i["runnerLength2"], i["runnerSwitch"] / RPM,
+                                                                    SWITCHED[a["slug"]])
+                      if a["slug"] in SWITCHED else ""))
+    elif rule_runner and "runnerLength" in i and "JUDGEMENT" not in notes:
         notes += (" Its intake runner, %.2f m from the valve to the plenum, is %s: JUDGEMENT, not the real engine's (no "
                   "source found)." % (i["runnerLength"], "a hand-set length" if "runner" in a else "the class default"))
     return {"format": "tee-build", "version": 1, "name": a["name"], "notes": notes, "spec": spec}
@@ -695,6 +721,33 @@ def _levels():
 
 
 LEVELS = _levels()
+
+# The naturally aspirated engines' intake runners by the class of their manifold (the lead, 20:52), valve to plenum,
+# JUDGEMENT, written down before any table ran on them (24 Nov, 20:55 UTC) and never chosen from an engine's rows;
+# a second, switched runner only where the real engine switches (0.65 of the class's length above 0.65 of the limiter:
+# judgement). The class goes by the manifold the real engine has, not by its targets.
+RUNNER = {
+    "carburettor": (0.20, "a four-barrel over a dual-plane or open plenum, 1960s to 80s"),
+    "long-runner": (0.45, "a port-injected road engine's tuned long runners, 1985 to 2005"),
+    "modern": (0.38, "a road engine's composite plenum manifold, 2005 on"),
+    "sports": (0.30, "a high-revving engine's short runners or a throttle a cylinder"),
+}
+MANIFOLD = {
+    "big-block-74-pushrod-v8": "carburettor", "small-block-57-carb": "carburettor",
+    "air-cooled-flat-six-36": "long-runner", "vr6-28": "long-runner", "pushrod-v6-38": "long-runner",
+    "twin-cam-roadster-18": "long-runner", "hot-hatch-16-16v": "long-runner",
+    "big-bore-70-pushrod-v8": "modern", "four-cam-v8-50": "modern", "economy-four-15": "modern",
+    "v6-35-na": "modern",
+    "straight-six-32-high-rev": "sports", "two-stage-cam-20": "sports", "flat-plane-v8-45": "sports",
+    "v10-52": "sports", "v12-65": "sports",
+}
+SWITCHED = {
+    "v6-35-na": "the 2GR-FE's ACIS, a valve in the upper manifold closed at low and middle speeds (toyota-club.net; "
+                "service-manual mirrors give some 3600 to 4450 rpm, unverified)",
+    "flat-plane-v8-45": "the 458's three throttle valves between its two plenums giving four configurations, with "
+                        "short, almost straight tracts (Ferrari's launch text, pistonheads.com): a plenum's geometry "
+                        "switched, here as a second runner",
+}
 
 # where each class carries its engine (the listener's paths to each camera)
 ENGINE_PLACE = {"mid-engine": "Mid", "awd-supercar": "Mid", "rear-engine-classic": "Rear"}
