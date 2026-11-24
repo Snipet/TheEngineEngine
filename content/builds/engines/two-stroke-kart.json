@@ -1,0 +1,63 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Two-stroke kart, 100 cc rotary disc",
+  "notes": "A 100 cc racing kart engine: 50.6 x 49.6 mm (99.7 cc), a rotary disc opening 145 degrees before top dead centre for 200, exhaust 196, transfers 132, an expansion chamber tuned near 14,500 rpm, a straight-through silencer. Redline 17,500. Published figures for the class: some 20 kW near 17,000 rpm. Ports and pipe are judgement for the class.",
+  "spec": {
+    "engine": {
+      "layout": "Single",
+      "displacement": 9.97e-05,
+      "compression": 14.0,
+      "custom": true,
+      "cylinders": 1,
+      "bankAngle": [
+        0.0
+      ],
+      "bank": [
+        0
+      ],
+      "pin": [
+        0.0
+      ],
+      "fireRev": [
+        0
+      ],
+      "place": [
+        0.0
+      ],
+      "bore": 0.0506,
+      "stroke": 0.0496,
+      "rodLength": 0.1,
+      "redlineSpeed": 1832.596,
+      "cycle": "Two-stroke",
+      "tsCylinders": 1,
+      "flywheelInertia": 0.003,
+      "idleTrim": 1500,
+      "tsExhaustDur": 196,
+      "tsTransferDur": 132,
+      "tsInletKind": "Rotary disc",
+      "tsDiscOpen": 215,
+      "tsDiscDur": 200,
+      "tsSilencer": "Packed",
+      "tsHeaderLen": 0.115,
+      "tsDiffuserLen": 0.238,
+      "tsBellyLen": 0.086,
+      "tsBaffleLen": 0.173,
+      "tsStingerLen": 0.158,
+      "tsHeaderDiam": 0.036,
+      "tsBellyDiam": 0.105,
+      "tsStingerDiam": 0.021,
+      "frictionValvetrain": "None",
+      "alternator": 0
+    }
+  },
+  "expect": {
+    "firingOrder": [
+      1
+    ],
+    "firingIntervals": [
+      720
+    ],
+    "note": "the custom geometry's four-stroke derivation (core/layout.fm), which the two-stroke does not use: it fires once a turn a cylinder, evenly"
+  }
+}

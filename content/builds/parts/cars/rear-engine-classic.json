@@ -1,0 +1,36 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "part": "car",
+  "name": "Car: rear engine classic",
+  "notes": "A car of its class alone (card P's archetypes' cars), to take any engine.",
+  "spec": {
+    "car": {
+      "model": "Vehicle",
+      "kind": "Car",
+      "mass": 1450,
+      "drive": "Rear",
+      "wheelbase": 2.27,
+      "cgHeight": 0.48,
+      "frontWeight": 0.4,
+      "track": 1.4,
+      "cdA": 0.62,
+      "tyre": "Street",
+      "tyreRadius": 0.31,
+      "gearbox": "Manual",
+      "finalDrive": 3.44,
+      "wheelInertia": 1.1,
+      "gears": 5,
+      "autoGearing": false,
+      "ratio": [
+        3.5,
+        2.12,
+        1.43,
+        1.03,
+        0.79
+      ],
+      "brakeDecel": 1.1,
+      "abs": true
+    }
+  }
+}

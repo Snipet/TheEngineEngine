@@ -340,3 +340,38 @@ TEST_CASE("package M's driveline is heard from under the car, not from the bay",
     CHECK(rel[0] > 6.0);
     CHECK(rel[1] < -4.0);
 }
+
+TEST_CASE("the last stage: whatever comes in, what leaves is inside 0.95", "[listen]")
+{
+    // model 1's headroom as it ships, every source driven far past anything an engine makes (a sine 60 dB over the
+    // rig's level with impulses on it), at the closest camera
+    Rig rig;
+    rig.set("ss.model", 1);
+    rig.set("ln.kHead", 0.116);
+    rig.set("ln.sc.windOff", 1);
+    rig.set("distance", 0.0);
+    rig.set("levelDb", 12.0);
+    double peak = 0.0;
+    for (int cam = 0; cam < 7; ++cam)
+    {
+        rig.set("ss.camera", cam);
+        for (int src : {kTails, kIntake, kMech, kTurbo})
+        {
+            rig.set("src", src);
+            rig.set("sig", 1);
+            rig.set("freq", 120.0 + 40.0 * cam);
+            rig.set("amp", 2.0);
+            rig.clear();
+            rig.play(0.3);
+            rig.set("sig", 2);
+            rig.set("amp", 200.0);
+            rig.play(0.05);
+            for (std::size_t i = 0; i < rig.left().size(); ++i)
+                peak = std::max({peak, double(std::fabs(rig.left()[i])), double(std::fabs(rig.right()[i]))});
+        }
+    }
+    std::printf("the last stage at 96 kHz, every camera, sources 60 dB too loud: peak %.4f, the ceiling bent %.0f parts\n", peak,
+                rig.get("st.ceilingParts"));
+    // (the limiter's attack is instant: it holds every sample at 0.7, and the ceiling past it is a guard)
+    CHECK(peak <= 0.95);
+}

@@ -1,0 +1,178 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "V12 6.5 L",
+  "notes": "A naturally aspirated 6.5 L V12 of the 2010s: 95 x 76.4 mm (6496 cc), 13.5:1, direct injection, four valves, all cams phased (engines of the kind: 515 to 588 kW at 8250 to 9000 rpm, 690 to 720 N m at 6000 to 7000; makers' figures). In a front-mid-engined GT with a seven-speed dual clutch.",
+  "spec": {
+    "engine": {
+      "layout": "V12",
+      "custom": true,
+      "compression": 13.5,
+      "cylinders": 12,
+      "bankAngle": [
+        -30,
+        30
+      ],
+      "bank": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "pin": [
+        330,
+        210,
+        90,
+        90,
+        210,
+        330,
+        330,
+        210,
+        90,
+        90,
+        210,
+        330
+      ],
+      "fireRev": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1
+      ],
+      "place": [
+        0.0,
+        0.1,
+        0.2,
+        0.3,
+        0.4,
+        0.5,
+        0.033,
+        0.133,
+        0.233,
+        0.333,
+        0.433,
+        0.533
+      ],
+      "displacement": 0.0064985,
+      "boreStroke": 1.2435,
+      "bore": 0.095,
+      "stroke": 0.07640000000000001,
+      "rodLength": 0.145,
+      "redlineSpeed": 932.006,
+      "frictionValvetrain": "Finger follower",
+      "rough": 0.2,
+      "benchLoad": 0.3
+    },
+    "valve": {
+      "model": "Lab",
+      "valves": 4,
+      "dIn": 0.037,
+      "dEx": 0.031,
+      "train": "Finger",
+      "inDurSeat": 272,
+      "inDur1mm": 246,
+      "inLift": 0.012199999999999999,
+      "inCentre": 106,
+      "exDurSeat": 264,
+      "exDur1mm": 238,
+      "exLift": 0.0112,
+      "exCentre": 110,
+      "inPhaseRange": 50,
+      "exPhaseRange": 40
+    },
+    "intake": {
+      "model": 1
+    },
+    "boost": {
+      "model": "Machine",
+      "kind": "Natural",
+      "level": 0.0,
+      "blowOff": 0.7
+    },
+    "exhaust": {
+      "model": "Builder",
+      "sides": 2,
+      "converter": [
+        1,
+        1
+      ],
+      "mufKind": [
+        2,
+        2
+      ]
+    },
+    "fuel": {
+      "kind": "Gasoline",
+      "model": "Fuels",
+      "grade": "Premium (91)",
+      "direct": 1
+    },
+    "ecu": {
+      "model": "Maps",
+      "timing": 0,
+      "pops": 0.1,
+      "starter": true,
+      "limiter": {
+        "kind": "Fuel cut",
+        "speed": 932.006
+      },
+      "idle": {
+        "speed": 94.248
+      }
+    },
+    "car": {
+      "model": "Vehicle",
+      "kind": "Car",
+      "mass": 1750,
+      "drive": "Rear",
+      "wheelbase": 2.72,
+      "cgHeight": 0.47,
+      "frontWeight": 0.47,
+      "track": 1.66,
+      "cdA": 0.68,
+      "tyre": "Semi-slick",
+      "tyreRadius": 0.35,
+      "gearbox": "Dual clutch",
+      "finalDrive": 4.8,
+      "wheelInertia": 1.6,
+      "gears": 7,
+      "autoGearing": false,
+      "ratio": [
+        3.08,
+        2.19,
+        1.63,
+        1.29,
+        1.03,
+        0.84,
+        0.69
+      ],
+      "brakeDecel": 1.1,
+      "abs": true
+    },
+    "env": {
+      "temperature": 288.15,
+      "pressure": 101325.0
+    },
+    "voices": {
+      "timing": "Chain",
+      "lifters": "Solid",
+      "injection": "Direct"
+    }
+  }
+}

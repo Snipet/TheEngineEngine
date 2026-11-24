@@ -92,3 +92,8 @@ sheet will include every registered workspace.
   goes round the whole window (the frame's items, the stage's, the inspector's): a workspace's Board does not wrap
   (`Board::setTabWraps(false)`, set by `Workspace`). Check your stage names every control:
   `CHECK_MSG(unnamedControls(*rig.host).empty(), unnamedControls(*rig.host));` (ViewKit).
+- **Demo hooks by package (important)**: `StageRig` now applies only the demo hooks of the workspace's own package
+  (U2 engine+valves, U3 air+exhaust, U4 tune+car+dyno, U5 garage+scope), so another package's data never moves your
+  goldens. A test that needs another package's names passes them: `StageRig(make, w, h, dpi, t,
+  tee::ui::DemoHooks::of({ "scope", "tune" }))`; `DemoRig(t, DemoHooks)` the same. The frame's contact sheet still
+  applies every hook. Better still: put the names your stage reads in your own hook.

@@ -49,7 +49,12 @@ namespace tee::ui
         }
     }
 
-    std::vector<FieldInfo> demoFields(bool hooks)
+    bool DemoHooks::wants(const char* id) const
+    {
+        return all || std::find(only.begin(), only.end(), std::string_view(id)) != only.end();
+    }
+
+    std::vector<FieldInfo> demoFields(const DemoHooks& hooks)
     {
         std::vector<FieldInfo> out;
         std::string group;
@@ -172,25 +177,25 @@ namespace tee::ui
         add("sound.distance", FieldKind::number, 0.5, 100, 5, "Distance", Quantity::length).logTaper = true;
         add("sound.room", FieldKind::number, 0, 1, 0.2, "Room", Quantity::fraction);
         add("sound.level", FieldKind::number, 0, 1, 0.7, "Level", Quantity::fraction);
-        if (hooks)
-            for (const DemoHook h : registeredDemos())
+        for (std::size_t k = 0; k < registeredDemos().size(); ++k)
+            if (hooks.wants(registeredDemoIds()[k]))
             {
                 DemoExtras x;
                 x.fields = &out;
-                h(x);
+                registeredDemos()[k](x);
             }
         return out;
     }
 
     // ---- the engine ------------------------------------------------------------------------------------------------
-    DemoEngine::DemoEngine(const FieldDoc* doc, bool hooks) : doc_(doc)
+    DemoEngine::DemoEngine(const FieldDoc* doc, const DemoHooks& hooks) : doc_(doc)
     {
-        if (hooks)
-            for (const DemoHook h : registeredDemos())
+        for (std::size_t k = 0; k < registeredDemos().size(); ++k)
+            if (hooks.wants(registeredDemoIds()[k]))
             {
                 DemoExtras x;
                 x.engine = this;
-                h(x);
+                registeredDemos()[k](x);
             }
         for (const char* n : kNames)
             names_.emplace_back(n);
@@ -517,7 +522,7 @@ namespace tee::ui
     }
 
     // ---- the rig ----------------------------------------------------------------------------------------------------
-    DemoRig::DemoRig(double t, bool hooks) : doc(demoFields(hooks)), engine(&doc, hooks) { at(t); }
+    DemoRig::DemoRig(double t, const DemoHooks& hooks) : doc(demoFields(hooks)), engine(&doc, hooks) { at(t); }
 
     void DemoRig::at(double t)
     {

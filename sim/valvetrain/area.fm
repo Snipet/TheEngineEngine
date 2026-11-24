@@ -101,6 +101,7 @@ module AreaTable
     float tailDeg;
     float tailK;
     float tail[VT_TAIL + 1];
+    float leak;         // a floating valve that no longer seals: the area it leaves open while it should be shut (0)
 
     // From a cam's shape: ex 0 the intake's valves, 1 the exhaust's
     void build(CamShape* cam, Head* head, int ex)
@@ -142,6 +143,7 @@ module AreaTable
     {
         tailDeg = 0.0f;
         tailK = 0.0f;
+        leak = 0.0f;
         for (int i = 0; i <= VT_TAIL; ++i)
             tail[i] = 0.0f;
     }
@@ -162,7 +164,7 @@ module AreaTable
         {
             const float t = s - span;
             if (t >= tailDeg)
-                return 0.0f;
+                return leak;
             const float y = t * tailK;
             int j = (int)y;
             if (j > VT_TAIL - 1)
