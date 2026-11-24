@@ -5,6 +5,7 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+#include <cmath>
 #include <cstdio>
 
 using tee::calib::Row;
@@ -152,4 +153,35 @@ TEST_CASE("calibration boost: twin turbos on one bank, each fed by its own colle
     CHECK(r.at("boost.shaftSpeed[1]") > 0.8 * r.at("boost.shaftSpeed[0]"));
     CHECK(r.at("boost.shaftSpeed[1]") < 1.25 * r.at("boost.shaftSpeed[0]"));
     CHECK(r.at("boost.pressure") > 85000.0);
+}
+
+TEST_CASE("calibration boost: variable vanes past the surge line open (one state, no worse than a fixed nozzle)",
+          "[calibration][boost]")
+{
+    // Card D2's 15 L truck at 1300 rpm, full load, its target out of reach (the spring's 220 kPa): the vanes' loop
+    // shut them to 0.47 and the engine stood in a second state, 98 kPa and 882 N m, its compressor surging, against
+    // 209 kPa and 1945 N m with the vanes at 0.9 (a fixed nozzle 206 kPa). Now the surge guard opens them: the same
+    // state whether 1300 rpm is reached from 800 or from 2000, and at least the fixed nozzle's boost.
+    Sims s;
+    const std::vector<std::pair<std::string, double>> base = {{"boost.model", 1},       {"boost.kind", 1},
+                                                              {"boost.layout", 1},      {"boost.gateSpring", 220000},
+                                                              {"boost.icFlow", 0.8},    {"boost.chargeVolume", 0.02}};
+    const auto run = [&](double vanes, double from) {
+        auto sets = base;
+        sets.emplace_back("boost.vanes", vanes);
+        std::vector<Row> rows;
+        std::string error;
+        REQUIRE(tee::calib::dyno(s.sim, "content/builds/truck-15l-six.json", {from, 1300.0}, sets,
+                                 {"boost.pressure", "engine.torque"}, rows, error, 5.0, 1.0));
+        return rows[1];
+    };
+    const Row fixed = run(0, 800.0);
+    const Row up = run(1, 800.0);
+    const Row down = run(1, 2000.0);
+    std::printf("truck at 1300 rpm: fixed %.1f kPa %.0f N m; vanes from 800 %.1f kPa %.0f N m, from 2000 %.1f kPa %.0f N m\n",
+                fixed.at("boost.pressure") / 1000.0, fixed.at("engine.torque"), up.at("boost.pressure") / 1000.0,
+                up.at("engine.torque"), down.at("boost.pressure") / 1000.0, down.at("engine.torque"));
+    CHECK(std::fabs(up.at("boost.pressure") - down.at("boost.pressure")) < 0.05 * down.at("boost.pressure"));
+    CHECK(up.at("boost.pressure") > 0.97 * fixed.at("boost.pressure"));
+    CHECK(up.at("engine.torque") > 0.95 * fixed.at("engine.torque"));
 }
