@@ -72,8 +72,9 @@ enum
     CAM_ENGINE = 3,
     CAM_DRIVER = 4,
     CAM_TRACKSIDE = 5,  // beside the road; the car passes
-    CAM_CHASE = 6,      // behind the car, moving with it
-    CAM_COUNT = 7
+    CAM_CHASE = 6,      // behind the car, moving with it, dropping back as it goes faster
+    CAM_FREE = 7,       // anywhere: spec.sound.listenerX, Y, Z and facing (a LISTEN view's dragged point)
+    CAM_COUNT = 8
 };
 
 // One listener: its place in the car's frame, its facing, its ears, and each tap's delay, gain and filter as they glide
@@ -146,6 +147,14 @@ module Scene
     float windK;
     float windStrength; // the wind's level at 40 m/s (Listen sets it)
     int windOff;        // 1: no wind (a test's)
+    float freeX;        // the free camera, as it has walked
+    float freeY;
+    float freeZ;
+    float freeFx;
+    float freeFy;
+    int freeInit;
+    float levAcc[LS_N]; // each source's power at the listener, summed, and the samples summed
+    int levN;
     int ready;
 
     void setup(float rateIn)
@@ -328,12 +337,53 @@ module Scene
             v->fx = -1.0f;
             v->fy = 0.0f;
         }
+        else if (c == CAM_FREE)
+        {
+            v->lx = freeX;
+            v->ly = freeY;
+            v->lz = freeZ;
+            v->fx = freeFx;
+            v->fy = freeFy;
+        }
         else
         {
+            // (a chasing car keeps about a quarter of a second back: 7.5 m more at 30 m/s)
             v->lx = 0.0f;
-            v->ly = -3.0f - r;
+            v->ly = -3.0f - r - 0.25f * fabsf(speed);
             v->lz = 1.3f;
         }
+    }
+
+    // The free camera's place (m, the car's frame) and facing (degrees from forward, toward the right), as asked; it
+    // walks there at 8 m/s at most and turns at once (a turn moves no path)
+    void aimFree(float x, float y, float z, float facingDeg)
+    {
+        const float st = 8.0f * 16.0f / rate;
+        if (freeInit == 0)
+        {
+            freeX = x;
+            freeY = y;
+            freeZ = z;
+            freeInit = 1;
+        }
+        freeX += fminf(fmaxf(x - freeX, -st), st);
+        freeY += fminf(fmaxf(y - freeY, -st), st);
+        freeZ += fminf(fmaxf(z - freeZ, -st), st);
+        const float a = 0.01745329f * facingDeg;
+        freeFx = sinf(a);
+        freeFy = cosf(a);
+    }
+
+    // Each source's level at the listener (into lev[], dB; 0.4 s means; heard before the cabin's ways in) and the
+    // listener's place; the meters cleared
+    void meters(float* lev, int n)
+    {
+        for (int s = 0; s < LS_N && s < n; ++s)
+        {
+            lev[s] = act[s] != 0 && levN > 0 ? 4.3429448f * logf(fmaxf(levAcc[s] / (float)levN, 1.0e-20f)) : -200.0f;
+            levAcc[s] = 0.0f;
+        }
+        levN = 0;
     }
 
     // A source's level and its highs toward a direction (ux, uy, uz: unit, from the source to the listener); into
@@ -641,6 +691,8 @@ module Scene
             }
             const float yl = y[0] + (cab != 0 ? 0.0f : y[2]);
             const float yr = y[1] + (cab != 0 ? 0.0f : y[2]);
+            if (k == cur)
+                levAcc[s] += 0.5f * (yl * yl + yr * yr);
             if (cab == 0)
             {
                 bus0[0] += yl;
@@ -687,6 +739,7 @@ module Scene
         for (int s = 0; s < LS_N; ++s)
             buf[s * LS_CAP + w] = act[s] != 0 ? in[s] : 0.0f;
         hear(cur);
+        levN += 1;
         float L = bus0[0];
         float R = bus0[1];
         if (vw[1 - cur].on != 0)
