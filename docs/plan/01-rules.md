@@ -37,8 +37,13 @@ and the lead (the session that wrote these files) settles what a card leaves ope
 - **A long test never holds a push back twice** (the lead's rule, 2026-11-24 15:55 UTC: the null test takes eight
   minutes and the branch moves forty commits in that time, so "green on a freshly merged tree" never came true for
   the packages that edit `sim/engine.fm`, and finished work sat unpushed for an hour). Run your tests once on a tree
-  merged at that moment. When they pass, fetch and merge again and push at once, in one command, whatever the branch
-  did meanwhile: `git fetch origin <branch> && git merge --no-edit FETCH_HEAD && git push -u origin <branch>`. Only a
+  merged at that moment. When they pass, fetch and merge again, check that the program still compiles (a second:
+  `scripts/lint.sh` compiles `sim/` with `tee-schema --lint` when a build tree has it) and push at once, in one
+  command, whatever the branch did meanwhile:
+  `git fetch origin <branch> && git merge --no-edit FETCH_HEAD && scripts/lint.sh && git push -u origin <branch>`.
+  (The compile check was added at 16:28, half an hour into the rule: two changes that merged without a conflict,
+  a function given a fourth argument and a new call written with three, left the tip not compiling for six
+  minutes. A merge can break what neither side broke; the one-second check catches the kind that stops everyone.) Only a
   merge that conflicts in a file your change touches earns a second look: resolve it, build (the program must
   compile), run the one test nearest the conflict, push. The sum is the steward's to check (its full runs and CI),
   and it tells the owner whose change broke it.
