@@ -155,7 +155,7 @@ TEST_CASE("diesel brake: with a variable-vane turbo the brake shuts the vanes an
     // its brake position (vanes shut, gate held shut). Real brakes run 3 to 3.5 bar absolute in the manifold there.
     // With card G's exhaust network (exhaust.model 1) the turbine's back pressure reaches the cylinders.
     double kw[2] = {0.0, 0.0};
-    const double sizeK = 1.6;    // (the matched size, 1, over-speeds its shaft on the brake: its relief opens the vanes at 2.5 bar)
+    const double sizeK = 1.0;    // (the matched size: 1.6 until G closed the exhaust's mean flow (aaedbf4), when a choked release's phantom 45 % of mass over-sped the matched shaft)
     for (int k = 0; k < 2; ++k)
     {
         Engine e("truck-15l-six");

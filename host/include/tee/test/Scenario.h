@@ -220,7 +220,8 @@ namespace tee::test
     void setContentDirectory(std::filesystem::path directory);
     std::filesystem::path simDirectory();
     std::filesystem::path contentDirectory();
-    // The Sim of a directory and options, compiled once a process (a Sim with the checks is compiled for each caller:
-    // it belongs to one host). nullptr, with `errors`, when it does not compile.
+    // The Sim of a directory and options, compiled once a process. A Sim with the checks plays for one host at a time
+    // (Sim::claim): one that no host holds is lent again, and another is compiled only while every one kept is held
+    // (a test's two hosts at once). nullptr, with `errors`, when it does not compile.
     std::shared_ptr<Sim> compiled(const std::filesystem::path& directory, const Sim::Options& options, std::string& errors);
 } // namespace tee::test

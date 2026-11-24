@@ -109,7 +109,7 @@ namespace
 } // namespace
 
 // The quick form, in every run (01-rules.md §3, the build steward at the lead's leave): the default build alone.
-TEST_CASE("8: an advanced intake cam fills in the torque low down and costs it at the top; later closing moves the peak up (quick: the default build alone)", "[valvetrain][integrated]")
+TEST_CASE("8: an advanced intake cam fills in the torque low down and costs it at the top; later closing moves the peak up (quick: the default build alone)", "[valvetrain][integrated][part-1]")
 {
     caseOf_8__an_advanced_intake_ca({"default"});
 }
@@ -120,7 +120,7 @@ TEST_CASE("8: an advanced intake cam fills in the torque low down and costs it a
     caseOf_8__an_advanced_intake_ca({"default", "engines/ref-05-inline-4"});
 }
 
-TEST_CASE("9: two stages: the curves cross, and a change set at the crossing shows no dip", "[valvetrain][integrated]")
+TEST_CASE("9: two stages: the curves cross, and a change set at the crossing shows no dip", "[valvetrain][integrated][part-1]")
 {
     const Fields stages = {{"valve.model", 1.0},       {"valve.stages", 1.0},       {"valve.valves", 4.0},
                            {"valve.inDurSeat", 230.0}, {"valve.inDur1mm", 205.0},   {"valve.inLift", 0.0085},
@@ -207,7 +207,7 @@ TEST_CASE("9: two stages: the curves cross, and a change set at the crossing sho
 }
 
 TEST_CASE("10: deactivation on a V8: half the firing lines, and the manifold's pressure up for the same torque",
-          "[valvetrain][integrated]")
+          "[valvetrain][integrated][part-2]")
 {
     const double rpm = 2000.0;
     const double want = 90.0;      // N m: light load
@@ -248,7 +248,7 @@ TEST_CASE("10: deactivation on a V8: half the firing lines, and the manifold's p
 }
 
 TEST_CASE("11: throttles a runner: the trumpets louder at full throttle than the plenum's box, the idle's ripple larger",
-          "[valvetrain][integrated]")
+          "[valvetrain][integrated][part-2]")
 {
     auto measure = [](int kind, double& radiated, double& ripple) {
         Rig r("default", {{"intake.model", 1.0}, {"intake.throttleKind", double(kind)}, {"intake.trumpets", 1.0}});
@@ -374,16 +374,18 @@ TEST_CASE("12: the runner's tuning: VE's bump moves with the runner's length as 
     CHECK(worst < 0.03);
 }
 
-TEST_CASE("13: past the float speed the power falls; nothing goes non-finite at twice it", "[valvetrain][integrated]")
+TEST_CASE("13: past the float speed the power falls; nothing goes non-finite at twice it", "[valvetrain][integrated][part-3]")
 {
     const char* build = "engines/ref-05-inline-4";
     // springs that let the four's valves float near 5000 rpm
     const Fields springs = {{"valve.model", 1.0}, {"valve.train", 0.0}, {"valve.springRate", 30000.0},
                             {"valve.springPreload", 250.0}, {"valve.valveMass", 0.10}};
-    Rig probe(build, springs);
-    probe.start(0.3);
-    const double wf = probe.tel("valve.floatSpeed");
-    const double rf = wf * 30.0 / 3.14159265358979;
+    // (the probe gone before the curves, so each Rig after it takes the one kept player: tests/sim/valvetrain/Engine.h)
+    const double rf = [&] {
+        Rig probe(build, springs);
+        probe.start(0.3);
+        return probe.tel("valve.floatSpeed") * 30.0 / 3.14159265358979;
+    }();
     REQUIRE(rf > 3000.0);
     REQUIRE(rf < 7000.0);
     const std::vector<double> rpms = {0.85 * rf, 1.1 * rf, 1.25 * rf};
