@@ -2,6 +2,9 @@
 #
 # They compile sim/core/*.fm with rig.fm (a bench of the mechanics' own) through the host's tee::Program, and read the
 # layout presets of content/builds/engines/. Every .cpp here is a source.
+if(TARGET tee-tests-core)
+  return()
+endif()
 include(Catch)
 file(GLOB _tee_core_test_sources CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
 add_executable(tee-tests-core ${_tee_core_test_sources})
