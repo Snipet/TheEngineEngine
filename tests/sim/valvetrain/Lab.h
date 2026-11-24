@@ -19,7 +19,8 @@ namespace tee::test::lab
     // after it (a test's own module).
     inline tee::Program& program(const std::string& entry, const std::string& appended = {})
     {
-        static std::map<std::string, std::unique_ptr<tee::Program>> programs;
+        // never destroyed: a static owning a compiled program would be destroyed after the JIT at exit (macOS)
+        static auto& programs = *new std::map<std::string, std::unique_ptr<tee::Program>>();
         auto& slot = programs[entry + "\n" + appended];
         if (!slot)
         {
