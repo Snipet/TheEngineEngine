@@ -81,7 +81,10 @@ lines: "CUSTOM LAYOUT REFUSED: THE DIAL'S RUNS" and, when the build shows why, t
 TOGETHER", or a cylinder in a bank with no angle). The layout's inspector page carries the whole sentence under its
 LAYOUT group: "THIS CUSTOM LAYOUT WAS REFUSED: THE ENGINE IS RUNNING THE LAYOUT DIAL'S INSTEAD". Both go when the flag
 does. The reason is D's `engine.layoutReason` when it is set (1 cylinders fire together, 2 rotors fire together, 3 a
-cylinder's bank outside the banks), else derived from the build. ENGINE's demo hook gives both as 0.
+cylinder's bank outside the banks), else derived from the build. Reason 4 (a two-stroke asked of a custom rotary,
+X-025) is the exception: the rotary runs as itself, a four-stroke-equivalent rotary, so the block keeps the custom
+rotary and the lines read "TWO-STROKE REFUSED: THE ROTARY RUNS" and "A ROTARY HAS NO TWO-STROKE". ENGINE's demo hook
+gives both as 0. Cylinders that fire together share one tick on the firing ring, their numbers together ("1,4").
 `ui.engine.refused`.
 
 ## Derived, not set
