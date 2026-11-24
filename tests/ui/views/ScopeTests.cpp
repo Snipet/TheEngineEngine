@@ -99,7 +99,8 @@ namespace
         std::unique_ptr<ScopeWorkspace> ws;
         std::unique_ptr<funkgui::HeadlessHost> host;
 
-        explicit ScopeRig(int w = 1100, int h = 700, float dpi = 2.0f, double t = 4.6, int theme = 0) : demo(t)
+        explicit ScopeRig(int w = 1100, int h = 700, float dpi = 2.0f, double t = 4.6, int theme = 0)
+            : demo(t, tee::ui::DemoHooks::of({ "scope", "garage" }))
         {
             ws = std::make_unique<ScopeWorkspace>(ctx);
             host = std::make_unique<funkgui::HeadlessHost>(*ws, theme, dpi);
@@ -335,7 +336,7 @@ namespace
         CHECK(!ws.moving());
         golden("scope.absent", host);
         // The demo without the ports: that plot alone says so.
-        tee::ui::DemoRig plain;
+        tee::ui::DemoRig plain(4.6, tee::ui::DemoHooks::of({ "scope", "garage" }));
         plain.engine.forget("ecu.advance");   // U1's demo has it now (the lead's ask); this case wants it absent
         WorkspaceContext pctx{ plain.doc, plain.engine, plain.engine, plain.engine, plain.units, plain.selection, plain.app };
         ScopeWorkspace pws(pctx);

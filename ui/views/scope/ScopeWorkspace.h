@@ -41,8 +41,8 @@ namespace tee::ui
 
         const char* id() const override { return "scope"; }
         const char* title() const override { return "SCOPE"; }
-        // The inspector: the listener (sim/spec/sound.fm), until it has a workspace of its own.
-        std::vector<std::string> sections() const override { return { "sound" }; }
+        // No Spec section of its own: the listener's page is LISTEN's now (its inspector shows the units).
+        std::vector<std::string> sections() const override { return {}; }
         bool moving() const override;
         std::uint64_t drawKey() const override;
 

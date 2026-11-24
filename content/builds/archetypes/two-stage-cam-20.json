@@ -72,7 +72,8 @@
       "exCentreB": 112
     },
     "intake": {
-      "model": 1
+      "model": 1,
+      "runnerLength": 0.3
     },
     "boost": {
       "model": "Machine",
@@ -136,7 +137,8 @@
         0.81
       ],
       "brakeDecel": 1.1,
-      "abs": true
+      "abs": true,
+      "converterK": 16.0
     },
     "env": {
       "temperature": 288.15,

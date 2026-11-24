@@ -1,0 +1,115 @@
+// tests/sim/diesel/BrakeTest.cpp: card D2: the compression-release brake and the exhaust brake on the engine dyno, in
+// the whole simulator, the 15 L truck six (content/builds/truck-15l-six.json; air at 300 K, 101325 Pa).
+#include "Diesel.h"
+
+#include <cstdio>
+
+using d2::Engine;
+
+namespace
+{
+    // The brake's retarding power (W) at rpm with the switch at stage (0: none: the engine motoring, fuel off), and the
+    // exhaust brake on or off: the dyno holds the speed, the pedal up; the mean brake torque over the last second
+    double retard(int stage, double rpm, int exhaustBrake = 0, double* backOut = nullptr)
+    {
+        Engine e("truck-15l-six");
+        e.spec("ecu.brakeSwitch", stage);
+        if (exhaustBrake != 0)
+        {
+            e.spec("ecu.exhaustBrake", exhaustBrake);
+            e.spec("ecu.exBrakeSwitch", 1);
+        }
+        e.start();
+        e.dyno(rpm, 0.0f);
+        REQUIRE(e.run(4.0));
+        const double tq = e.mean("engine.torque", 1.0);
+        if (backOut != nullptr)
+            *backOut = e.tel("ecu.backPressure");
+        std::printf("stage %d, exhaust brake %d, %.0f rpm: brake torque %.0f N m, %.0f kW retarding, boost %.0f kPa, back %.0f kPa, "
+                    "braking cylinders %.0f\n",
+                    stage, exhaustBrake, rpm, tq, -tq * rpm * 0.10471976 / 1000.0, e.tel("boost.pressure") / 1000.0,
+                    e.tel("ecu.backPressure") / 1000.0, e.tel("ecu.brakeCylinders"));
+        return -tq * rpm * 0.10471976;
+    }
+} // namespace
+
+TEST_CASE("diesel brake: the compression brake's retarding power rises with speed and with stages", "[diesel][brake]")
+{
+    // Published: Jacobs' brakes on 15 L engines (Cummins ISX15, Detroit DD15) are rated some 450 kW (600 hp) at 2100
+    // rpm (makers' brochures; Jacobs' "up to 600 bhp"); at 1500 rpm the published curves give some 250 to 300 kW. The
+    // range asserted, 200 to 550 kW at 2000 rpm, is judgement around those.
+    const double motoring = retard(0, 2000.0);
+    double p[4] = {motoring, 0.0, 0.0, 0.0};
+    for (int s = 1; s <= 3; ++s)
+        p[s] = retard(s, 2000.0);
+    for (int s = 1; s <= 3; ++s)
+        CHECK(p[s] > p[s - 1] * 1.15);
+    CHECK(p[3] > 200000.0);
+    CHECK(p[3] < 550000.0);
+    const double low = retard(3, 1200.0);
+    const double mid = retard(3, 1600.0);
+    CHECK(low < mid);
+    CHECK(mid < p[3]);
+}
+
+TEST_CASE("diesel brake: the bark: lines at the firing frequency, louder than the engine motoring", "[diesel][brake][sound]")
+{
+    // 2000 rpm, six cylinders: a release every 120 degrees, 100 Hz, and its harmonics. The same engine motoring with the
+    // fuel off (stage 0) is the comparison: its exhaust events push out air at about the manifold's pressure. The exhaust
+    // alone (the intake's and the mechanical sources' levels 0), the level at -24 dB, below the mix's compressor (it
+    // starts at -30 dB of envelope) and its limiter, so levels compare
+    const double rpm = 2000.0;
+    const double fire = rpm / 60.0 * 3.0;
+    double rms[2] = {0.0, 0.0};
+    double harm[2] = {0.0, 0.0};     // the mean of harmonics 2 to 10 (dB)
+    double gap[2] = {0.0, 0.0};      // the mean of the bins half way between them
+    for (int k = 0; k < 2; ++k)
+    {
+        Engine e("truck-15l-six");
+        e.spec("sound.intake", 0.0);
+        e.spec("sound.mechanical", 0.0);
+        e.spec("sound.level", -24.0);
+        e.spec("ecu.brakeSwitch", k == 0 ? 0 : 3);
+        e.start();
+        e.dyno(rpm, 0.0f);
+        REQUIRE(e.run(3.0));
+        e.recording = true;
+        REQUIRE(e.run(1.0));
+        rms[k] = d2::rmsDb(e.rec);
+        std::printf("%s at %.0f rpm: rms %.1f dB; harmonics of %.0f Hz (line / between):", k == 0 ? "motoring" : "compression brake",
+                    rpm, rms[k], fire);
+        for (int h = 1; h <= 10; ++h)
+        {
+            const double on = d2::lineDb(e.rec, e.rate, fire * h, 2.0);
+            const double off = d2::lineDb(e.rec, e.rate, fire * (h + 0.5), 2.0);
+            std::printf(" %.0f/%.0f", on, off);
+            if (h >= 2)
+            {
+                harm[k] += on / 9.0;
+                gap[k] += off / 9.0;
+            }
+        }
+        std::printf("\n");
+    }
+    // measured (this model): +8.4 dB rms; the harmonics some 25 dB up, the fundamental itself about level (the release
+    // and the exhaust stroke's push 250 degrees apart partly cancel at 100 Hz)
+    CHECK(rms[1] > rms[0] + 6.0);
+    CHECK(harm[1] > harm[0] + 15.0);
+    CHECK(harm[1] > gap[1] + 15.0);
+}
+
+TEST_CASE("diesel brake: the exhaust brake holds its back pressure and retards, alone and with the compression brake",
+          "[diesel][brake]")
+{
+    // A regulated flap holds some 2.5 to 4 bar (makers' figures: Jacobs' and Pacbrake's exhaust brakes on 15 L engines
+    // retard some 150 to 250 kW at governed speed); its 3 bar here, at 2000 rpm
+    double back = 0.0;
+    const double motoring = retard(0, 2000.0);
+    const double flap = retard(0, 2000.0, 1, &back);
+    const double both = retard(3, 2000.0, 1);
+    const double jake = retard(3, 2000.0);
+    CHECK(back > 0.8 * 300000.0);
+    CHECK(back <= 300001.0);
+    CHECK(flap > motoring + 50000.0);
+    CHECK(both > jake);
+}

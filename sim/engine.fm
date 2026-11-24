@@ -41,6 +41,7 @@
 #include "core/work.fm"
 #include "core/dyno.fm"
 #include "core/wallheat.fm"
+#include "combustion/heavy.fm"
 
 // The reference's dials, in its units, as Engine has taken them from the Spec and the Controls (readSpec,
 // readControls): what the carved modules are handed
@@ -182,7 +183,11 @@ module Engine
     CycleWork work;     // p dV per cylinder per cycle: IMEP, PMEP, peak pressure, VE (core/work.fm); every engine
     Dyno dyno;          // MODE_DYNO_ENGINE's absorber (core/dyno.fm); every engine
     WallHeat wall;      // Woschni's wall heat, with spec.engine.wallHeat 1 (core/wallheat.fm)
+    HeavyDiesel hd;     // card D2: a diesel's governor, compression and exhaust brakes (combustion/heavy.fm); hd.on 0 at the defaults
     int customUse;      // 1: the engine configured from spec.engine's custom fields
+    int modelUse[10];    // each package's model switch in use (valve, intake, boost, exhaust, fuel, ecu, car, voices; the wall
+    int modelWant[10];  // heat; the listener), and the one the host asked for: a change waits for the fade (holdModel)
+    int modelRev[10];    // each one's section's rev as holdModel last saw it
     int lastIgn;        // ctl.ignition at the last call (voices.model 1: its rise from off renders the key's sounds)
     int layoutRefused;  // 1: its geometry was refused (cylinders firing together), the layout dial's table runs
     float rodRatio;     // the rod over the crank's radius the cylinders are set up with (the reference's 3.3)
@@ -283,6 +288,7 @@ module Engine
         set.timing = 0.0f;
         comb.setup(rate, &noise, &ecu, &heat, &lay, &exh.pop[0], &spec.fuel, &spec.engine);
         comb.oxygen = 1.0f;
+        hd.setup(rate, &spec.ecu, &spec.valve);                                             // card D2
         ecu.setup(16.0f / rate, &spec.ecu, &spec.fuel, &ctl, &tel.ecu, &scope, &heat);     // card H's model 1
         set.bov = 0.7f;
         set.intake = 0.5f;
@@ -332,6 +338,7 @@ module Engine
     // The engine for the layout and the size dial: its cylinders, valves and pipes. Everything starts at rest.
     void configure()
     {
+        applyModels();
         lay.load(set.layout);
         customUse = spec.engine.custom ? 1 : 0;
         layoutRefused = 0;
@@ -766,6 +773,10 @@ module Engine
         if (ecu.control(d16, ped, set.drive, set.modwheel, set.pressure, crank.rpm, fuelUse, heat.warm, car.shiftCut, car.gear,
                         set.clutch, crank.omega, intk.pPlenum, set.drive != 0 ? fabsf(car.v) : 0.0f, exh.gasTemperature(0)))
             crank.omega = 0.0f;
+        // card D2: a diesel's governor and brakes (nothing at the defaults: hd.on 0, the lever the reference's)
+        hd.control16(d16, fuelUse, ecu.state, ecu.throttle, crank.omega, ecu.idleRpm, ecu.redRpm, ecu.sinceStart,
+                     set.drive != 0 ? set.clutch : 0.0f, exh.mdot, exh.tPort, boost.boost, vTotal, lay.n, bore, heat.tAmb);
+        hd.feed(&comb.diesel);
         // the exhaust's mass flow and its power, for the turbo
         exh.flowRate();
         const float mRef = 1.2f * vTotal * ecu.redRpm / 120.0f * 0.9f;
@@ -830,15 +841,19 @@ module Engine
             const int bm1 = spec.boost.model != 0 && boost.mach.active != 0 ? 1 : 0;
             const float gateNow = bm1 != 0 ? fmaxf(fmaxf(boost.mach.telGate[0], boost.mach.telGate[1]), fmaxf(boost.mach.telGate[2], boost.mach.telGate[3]))
                                            : fminf(fmaxf((bShare - 0.95f) * 20.0f, 0.0f), 1.0f);
+            // (card B2's motorcycle: its own sequential box, its input and ratio from Car; the chain is its final drive, so
+            // the final drive's whine gets no speed)
+            const int bk = car.model == 1 && car.bikeOn != 0 ? 1 : 0;
             ex.control16(d16, ctl.ignition, ecu.state, crank.omega * 0.15915494f, heat.tCool, set.drive != 0 ? 1 : 0,
-                         m1 != 0 ? spec.car.gearbox : 0, car.truck, car.gear,
-                         m1 != 0 ? crank.omega - car.m1.slipC : car.wG,
-                         m1 != 0 ? car.m1.box.ratioOf(car.gear) : car.ratioOf(car.gear),
-                         m1 != 0 ? car.m1.box.fd : car.finalDrive,
-                         m1 != 0 ? (float)car.m1.v / fmaxf(car.m1.radius, 0.05f) * car.m1.box.fd : car.wW * car.finalDrive,
-                         tqBrake, peakTorque(), m1 != 0 ? car.m1.engage * car.m1.box.robot : car.engage * car.robot,
+                         bk != 0 ? 1 : (m1 != 0 ? spec.car.gearbox : 0), car.truck, bk != 0 ? car.gearNow() : car.gear,
+                         bk != 0 ? car.bikeGearboxInput() : (m1 != 0 ? crank.omega - car.m1.slipC : car.wG),
+                         bk != 0 ? car.bikeGearboxRatio() : (m1 != 0 ? car.m1.box.ratioOf(car.gear) : car.ratioOf(car.gear)),
+                         bk != 0 ? 1.0f : (m1 != 0 ? car.m1.box.fd : car.finalDrive),
+                         bk != 0 ? 0.0f : (m1 != 0 ? (float)car.m1.v / fmaxf(car.m1.radius, 0.05f) * car.m1.box.fd : car.wW * car.finalDrive),
+                         tqBrake, peakTorque(), bk != 0 ? 1.0f - set.clutch : (m1 != 0 ? car.m1.engage * car.m1.box.robot : car.engage * car.robot),
                          aspUse, bShare, gateNow, bm1 != 0 ? spec.boost.gate : 0, exh.mdot / fmaxf(mRef, 1.0e-6f),
-                         lay.n, lay.cyc, vt.clatter, vTotal, fuelUse);
+                         lay.n, lay.cyc, vt.clatter, vTotal, fuelUse, bk, car.sprocketSpeed(),
+                         spec.car.frontSprocket, spec.car.clutchDry ? 1 : 0, spec.car.primaryRatio, 1.0f - set.clutch);
         }
     }
 
@@ -1006,7 +1021,14 @@ module Engine
                 bI += 0.5f * intk.run[pi].z * (iShare[pi] - qI0[c]);
             }
             // (valve.model 1: the valvetrain gives the valves' areas; card E)
-            if (spec.valve.model != 0)
+            if (hd.on != 0)
+            {
+                // (card D2: the compression brake's lobe added to the exhaust valve's area; the exhaust brake's back pressure)
+                cy->stepAreas(a, dDeg, dt, vt.areaEx(cy, c, a) + hd.brakeArea(c, a), vt.areaIn(cy, c, a), bE + hd.back, exh.prim[pi].z, tH,
+                              bI, intk.run[pi].z, intk.tAir);
+                hd.sample(cy, c, a);
+            }
+            else if (spec.valve.model != 0)
                 cy->stepAreas(a, dDeg, dt, vt.areaEx(cy, c, a), vt.areaIn(cy, c, a), bE, exh.prim[pi].z, tH, bI, intk.run[pi].z, intk.tAir);
             else
                 cy->step(a, dDeg, dt, bE, exh.prim[pi].z, tH, bI, intk.run[pi].z, intk.tAir);
@@ -1096,7 +1118,7 @@ module Engine
         omMin = fminf(omMin, crank.omega);
         omMax = fmaxf(omMax, crank.omega);
         const float drop = fminf(fmaxf(1.0f - intk.pPlenum / intk.pBox, 0.0f), 1.0f);
-        ex.tick(intk.qThr, drop, crank.omega * 0.15915494f, dps, spec.intake.model, intk.sound);
+        ex.tick(intk.qThr, drop, crank.omega * 0.15915494f, dps, spec.intake.model, intk.sound, car.lashStrike());
         boost.sound(crank.omega * 0.15915494f, exh.mdot, set.bov);
         ex.tickStarter(crank.omega * 0.15915494f, ecu.starterOn);
     }
@@ -1164,7 +1186,10 @@ module Engine
                 cutG = cutWant != 0 ? fmaxf(cutG - cutDn, 0.0f) : fminf(cutG + cutUp, 1.0f);
                 listen.mix(i, exh.outL, exh.outR, ex.intake, crank.tqNow, ex.mech, ex.block, boost.turbo, ex.starter, ex.comb, exh.shell[0],
                            lay.topo == 0 ? exh.shell[0] : exh.shell[1], set.drive, rd, cutG,
-                           spec.voices.model != 0 ? ex.vo.gearbox + ex.vo.axle : 0.0f);
+                           spec.voices.model != 0 ? ex.vo.gearbox : 0.0f, spec.voices.model != 0 ? ex.vo.axle : 0.0f,
+                           spec.voices.model != 0 ? ex.vo.front : 0.0f, spec.voices.model != 0 ? ex.vo.head : 0.0f,
+                           spec.voices.model != 0 ? ex.vo.tank : 0.0f, spec.voices.model != 0 ? ex.vo.gateOut : 0.0f,
+                           spec.voices.model != 0 ? ex.vo.all : 0.0f, ex.mouth);
             }
             listen.finish(left, right, at, m);
             at += m;
@@ -1209,6 +1234,21 @@ module Engine
     void init(float hostRate)
     {
         clickRpm = -1.0f;
+        modelUse[0] = spec.valve.model;
+        modelUse[1] = spec.intake.model;
+        modelUse[2] = spec.boost.model;
+        modelUse[3] = spec.exhaust.model;
+        modelUse[4] = spec.fuel.model;
+        modelUse[5] = spec.ecu.model;
+        modelUse[6] = spec.car.model;
+        modelUse[7] = spec.voices.model;
+        modelUse[8] = spec.engine.wallHeat;
+        modelUse[9] = spec.sound.model;
+        for (int k = 0; k < 10; ++k)
+        {
+            modelWant[k] = modelUse[k];
+            modelRev[k] = -1;
+        }
         lastIgn = IGN_OFF;
         hostRateSeen = hostRate;
         setupAll(hostRate);
@@ -1299,6 +1339,65 @@ module Engine
             s->mech = spec.sound.mechanical;
         }
         fresh = 0;
+        // every package's model switch (and the wall heat's) under the fade, one rule for all: running, a change is held
+        // back (the Spec keeps its old value) and made at the fade's quiet, by configure (applyModels)
+        holdModel(0, &spec.valve.model, &spec.valve.rev);
+        holdModel(1, &spec.intake.model, &spec.intake.rev);
+        holdModel(2, &spec.boost.model, &spec.boost.rev);
+        holdModel(3, &spec.exhaust.model, &spec.exhaust.rev);
+        holdModel(4, &spec.fuel.model, &spec.fuel.rev);
+        holdModel(5, &spec.ecu.model, &spec.ecu.rev);
+        holdModel(6, &spec.car.model, &spec.car.rev);
+        holdModel(7, &spec.voices.model, &spec.voices.rev);
+        holdModel(8, &spec.engine.wallHeat, &spec.engine.rev);
+        holdModel(9, &spec.sound.model, &spec.sound.rev);
+    }
+
+    // Section k's model switch as the host wrote it: stopped, taken at once; running, a change held until the fade's
+    // quiet (the field put back to the value in use, the one wanted kept, the fade asked for)
+    void holdModel(int k, int* field, int* rev)
+    {
+        // (only when the host has written the section: its rev moved since this was last here)
+        if (*rev == modelRev[k])
+            return;
+        modelRev[k] = *rev;
+        modelWant[k] = *field;
+        if (*field == modelUse[k])
+            return;
+        if (ecu.state == 0)
+        {
+            modelUse[k] = *field;
+            modelWant[k] = *field;
+            return;
+        }
+        *field = modelUse[k];
+        cutWant |= 1;
+    }
+
+    // At configure: section k's held switch made (its rev moved, so a package that caches its section reads it again)
+    int applyModel(int k, int* field, int* rev)
+    {
+        if (modelWant[k] != *field)
+        {
+            *field = modelWant[k];
+            *rev += 1;
+        }
+        modelRev[k] = *rev;
+        return *field;
+    }
+
+    void applyModels()
+    {
+        modelUse[0] = applyModel(0, &spec.valve.model, &spec.valve.rev);
+        modelUse[1] = applyModel(1, &spec.intake.model, &spec.intake.rev);
+        modelUse[2] = applyModel(2, &spec.boost.model, &spec.boost.rev);
+        modelUse[3] = applyModel(3, &spec.exhaust.model, &spec.exhaust.rev);
+        modelUse[4] = applyModel(4, &spec.fuel.model, &spec.fuel.rev);
+        modelUse[5] = applyModel(5, &spec.ecu.model, &spec.ecu.rev);
+        modelUse[6] = applyModel(6, &spec.car.model, &spec.car.rev);
+        modelUse[7] = applyModel(7, &spec.voices.model, &spec.voices.rev);
+        modelUse[8] = applyModel(8, &spec.engine.wallHeat, &spec.engine.rev);
+        modelUse[9] = applyModel(9, &spec.sound.model, &spec.sound.rev);
     }
 
     // A paddle's press as the reference's wheel made it: its button down until Car's shift logic (drive16) has seen
@@ -1434,7 +1533,7 @@ module Engine
         tel.engine.crank = crank.theta;
         mechanicsTelemetry();
         tel.boost.pressure = boost.boost * 100000.0f;
-        boost.telemetry(&tel.boost);
+        boost.telemetry(&tel.boost, intk.tAir);
         if (ctl.scopeOn != 0)
             boost.scope(&scope);
         tel.exhaust.portTemperature = exh.tPort;
@@ -1448,6 +1547,7 @@ module Engine
         tel.sound.peak = peak;
         vt.telemetry(&tel.valve);
         intk.telemetry(&tel.intake);
+        hd.telemetry(&tel.ecu, &comb.diesel, fuelUse, spec.fuel.model);      // card D2: the smoke number, the diesel's measures
     }
 
     // card D's part of tel.engine

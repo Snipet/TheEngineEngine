@@ -340,3 +340,76 @@ TEST_CASE("package M's driveline is heard from under the car, not from the bay",
     CHECK(rel[0] > 6.0);
     CHECK(rel[1] < -4.0);
 }
+
+TEST_CASE("the last stage: whatever comes in, what leaves is inside 0.95", "[listen]")
+{
+    // model 1's headroom as it ships, every source driven far past anything an engine makes (a sine 60 dB over the
+    // rig's level with impulses on it), at the closest camera
+    Rig rig;
+    rig.set("ss.model", 1);
+    rig.set("ln.kHead", 0.116);
+    rig.set("ln.sc.windOff", 1);
+    rig.set("distance", 0.0);
+    rig.set("levelDb", 12.0);
+    double peak = 0.0;
+    for (int cam = 0; cam < 7; ++cam)
+    {
+        rig.set("ss.camera", cam);
+        for (int src : {kTails, kIntake, kMech, kTurbo})
+        {
+            rig.set("src", src);
+            rig.set("sig", 1);
+            rig.set("freq", 120.0 + 40.0 * cam);
+            rig.set("amp", 2.0);
+            rig.clear();
+            rig.play(0.3);
+            rig.set("sig", 2);
+            rig.set("amp", 200.0);
+            rig.play(0.05);
+            for (std::size_t i = 0; i < rig.left().size(); ++i)
+                peak = std::max({peak, double(std::fabs(rig.left()[i])), double(std::fabs(rig.right()[i]))});
+        }
+    }
+    std::printf("the last stage at 96 kHz, every camera, sources 60 dB too loud: peak %.4f, the ceiling bent %.0f parts\n", peak,
+                rig.get("st.ceilingParts"));
+    // (the limiter's attack is instant: it holds every sample at 0.7, and the ceiling past it is a guard)
+    CHECK(peak <= 0.95);
+}
+
+TEST_CASE("the free camera, the meters a LISTEN view draws, and the chase dropping back", "[listen]")
+{
+    Rig rig;
+    rig.set("ss.model", 1);
+    rig.set("ss.ground", 2);
+    rig.set("ln.sc.windOff", 1);
+    rig.set("src", kTails);
+    // SIDE at the default distance stands at (0.9 + 1.707, 1.3, 1.2) facing the car from its right: the free camera
+    // put there hears the same
+    rig.set("ss.camera", 2);
+    const double side = dB(heard(rig, kTails));
+    rig.set("ss.camera", 7);
+    rig.set("ss.listenerX", 0.9 + 0.5 * std::exp(4.0943446 * 0.3));
+    rig.set("ss.listenerY", 1.3);
+    rig.set("ss.listenerZ", 1.2);
+    rig.set("ss.facing", -90.0);
+    const double free = dB(heard(rig, kTails));
+    std::printf("free camera where SIDE stands: %.2f dB against SIDE's %.2f; listener at (%.2f, %.2f) facing %.1f deg\n",
+                free, side, rig.get("st.listenerX"), rig.get("st.listenerY"), rig.get("st.facing"));
+    CHECK(std::fabs(free - side) < 0.3);     // (another second of the same noise: its own spread)
+    CHECK(rig.get("st.facing") == Catch::Approx(-90.0).margin(0.5));
+    // the meters: the tailpipes heard, the intake's line silent (nothing fed it)
+    CHECK(rig.get("st.srcLevel[0]") > -150.0);
+    CHECK(rig.get("st.srcLevel[2]") < -150.0);
+    CHECK(rig.get("st.srcY[3]") == Catch::Approx(3.4));
+    // the chase: 7.5 m further back at 30 m/s
+    rig.set("ss.camera", 6);
+    rig.set("driven", 1);
+    rig.set("carSpeed", 0.0);
+    heard(rig, kTails, 0.1, 0.1);
+    const double near = rig.get("st.range");
+    rig.set("carSpeed", 30.0);
+    heard(rig, kTails, 0.1, 0.1);
+    const double far = rig.get("st.range");
+    std::printf("chase: %.1f m from the car's middle standing, %.1f m at 30 m/s\n", near, far);
+    CHECK(far - near == Catch::Approx(7.5).margin(0.2));
+}

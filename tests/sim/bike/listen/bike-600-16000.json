@@ -1,0 +1,60 @@
+{
+ "format": "tee-scenario",
+ "version": 1,
+ "name": "bike-600-16000",
+ "description": "The 600 in neutral flat out to its 16,000 rpm limiter for three seconds. Listen for: a scream rising to a firing rate near 530 Hz, held on the limiter by its cut, with the intake's roar from the throttle bodies.",
+ "build": "bike-supersport-600",
+ "seconds": 8,
+ "events": [
+  {
+   "t": 0.0,
+   "spec": {
+    "env.temperature": 300,
+    "env.pressure": 101325
+   },
+   "ctl": {
+    "mode": 1,
+    "lever": 0,
+    "clutch": 0,
+    "brake": 0,
+    "throttle": 0,
+    "ignition": 1
+   }
+  },
+  {
+   "t": 0.25,
+   "ctl": {
+    "ignition": 2
+   }
+  },
+  {
+   "t": 2.0,
+   "ctl": {
+    "ignition": 1
+   }
+  },
+  {
+   "t": 3.0,
+   "ctl": {
+    "throttle": 1
+   },
+   "ramp": 0.1
+  },
+  {
+   "t": 6.5,
+   "ctl": {
+    "throttle": 0
+   },
+   "ramp": 0.05
+  }
+ ],
+ "assertions": [
+  {
+   "audio": "finite"
+  },
+  {
+   "audio": "peak",
+   "<=": 1
+  }
+ ]
+}

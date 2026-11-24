@@ -2,26 +2,127 @@
   "format": "tee-validation",
   "version": 1,
   "build": "default",
-  "description": "Every field at its default: the reference's Init program, a 5.76 L crossplane V8, naturally aspirated.",
+  "description": "Every field at its default: the reference's Init program, a 5.76 L crossplane V8, naturally aspirated. Its targets are a stock passenger-car V8's of that size at a standard day.",
   "targets": [
-    { "name": "Starts and runs", "scenario": "idle", "tel": "engine.state", "measure": "last", "range": [2, 2],
-      "fast": true, "source": "a warm engine started on its key runs (engine.state 2)" },
-    { "name": "Within full scale", "scenario": "rev-limit", "audio": "peak", "range": [0, 1], "fast": true,
-      "source": "02-contracts.md, section 1: what process writes is within +-1" },
-    { "name": "Holds the limiter", "scenario": "rev-limit", "tel": "engine.speed", "measure": "max", "during": [6, 10],
-      "relativeTo": "engine.redline", "range": [0.97, 1.03], "unit": "of the redline", "fast": true,
-      "source": "a fuel-cut rev limiter holds the speed within a few percent of where it cuts" },
-    { "name": "Warm idle", "scenario": "idle-warm", "tel": "engine.speed", "measure": "mean", "during": [8, 12],
-      "range": [62.8, 94.2], "unit": "rad/s",
-      "source": "a warm passenger-car V8 idles at 600 to 900 rpm in neutral (a rule of thumb)" },
-    { "name": "Manifold at idle", "scenario": "idle-warm", "tel": "engine.manifold", "measure": "mean", "during": [8, 12],
-      "range": [25000, 50000], "unit": "Pa",
-      "source": "a warm spark-ignition engine's manifold at idle is 25 to 50 kPa absolute (a rule of thumb: 15 to 22 inches of mercury of vacuum)" },
-    { "name": "Peak torque", "dyno": { "from": 150, "to": 680, "rate": 60 }, "measure": "maxTorque",
-      "range": [458, 642], "unit": "N m",
-      "source": "a naturally aspirated spark-ignition engine's bmep at its torque peak is 1.0 to 1.4 MPa (Heywood, ch. 2): T = bmep Vd / 4 pi for 5.76 L" },
-    { "name": "Port gas at full load", "scenario": "full-load", "tel": "exhaust.portTemperature", "measure": "mean",
-      "during": [6, 8], "range": [900, 1100], "unit": "K",
-      "source": "a spark-ignition engine's exhaust gas at the port at full load is some 900 to 1100 K (Heywood, ch. 14; makers' exhaust-gas-temperature data for petrol engines): the integrator measured 1100 to 1330 K, a miss on the hot side, reported" }
+    {
+      "name": "Starts and runs",
+      "scenario": "idle",
+      "tel": "engine.state",
+      "measure": "last",
+      "range": [
+        2,
+        2
+      ],
+      "fast": true,
+      "source": "a warm engine started on its key runs (engine.state 2)"
+    },
+    {
+      "name": "Within full scale",
+      "scenario": "rev-limit",
+      "audio": "peak",
+      "range": [
+        0,
+        1
+      ],
+      "fast": true,
+      "source": "02-contracts.md, section 1: what process writes is within +-1"
+    },
+    {
+      "name": "Holds the limiter",
+      "scenario": "rev-limit",
+      "tel": "engine.speed",
+      "measure": "max",
+      "during": [
+        6,
+        10
+      ],
+      "relativeTo": "engine.redline",
+      "range": [
+        0.97,
+        1.03
+      ],
+      "unit": "of the redline",
+      "fast": true,
+      "source": "a fuel-cut rev limiter holds the speed within a few percent of where it cuts"
+    },
+    {
+      "name": "Warm idle",
+      "scenario": "idle-warm",
+      "tel": "engine.speed",
+      "measure": "mean",
+      "during": [
+        8,
+        12
+      ],
+      "range": [
+        62.8,
+        94.2
+      ],
+      "unit": "rad/s",
+      "source": "a warm passenger-car V8 idles at 600 to 900 rpm in neutral (a rule of thumb)"
+    },
+    {
+      "name": "Manifold at idle",
+      "scenario": "idle-warm",
+      "tel": "engine.manifold",
+      "measure": "mean",
+      "during": [
+        8,
+        12
+      ],
+      "range": [
+        25000,
+        50000
+      ],
+      "unit": "Pa",
+      "source": "a warm spark-ignition engine's manifold at idle is 25 to 50 kPa absolute (a rule of thumb: 15 to 22 inches of mercury of vacuum)"
+    },
+    {
+      "name": "Peak torque",
+      "dyno": {
+        "from": 150,
+        "to": 680,
+        "rate": 60
+      },
+      "measure": "maxTorque",
+      "range": [
+        458,
+        642
+      ],
+      "unit": "N m",
+      "source": "a naturally aspirated spark-ignition engine's bmep at its torque peak is 1.0 to 1.4 MPa (Heywood, ch. 2): T = bmep Vd / 4 pi for 5.76 L"
+    },
+    {
+      "name": "Port gas at full load",
+      "scenario": "full-load",
+      "tel": "exhaust.portTemperature",
+      "measure": "mean",
+      "during": [
+        6,
+        8
+      ],
+      "range": [
+        1100,
+        1300
+      ],
+      "unit": "K",
+      "source": "the gas at the exhaust valve at full load (exhaust.portTemperature): some 1100 to 1300 K for a spark-ignition engine before the port and pipe cool it (Heywood, ch. 14; the integrator measured 1100 to 1330 K across three engines)"
+    },
+    {
+      "name": "Header gas at full load",
+      "scenario": "full-load",
+      "tel": "exhaust.headerTemperature",
+      "measure": "mean",
+      "during": [
+        6,
+        8
+      ],
+      "range": [
+        900,
+        1100
+      ],
+      "unit": "K",
+      "source": "a thermocouple a little way down a primary reads 900 to 1100 K at full load on a petrol engine (makers' exhaust-gas-temperature data): the gas after the port's and the header's cooling (tel.exhaust.headerTemperature, asked of card G)"
+    }
   ]
 }

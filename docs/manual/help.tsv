@@ -1,0 +1,244 @@
+path	help
+spec.engine.cylinders	How many cylinders the custom engine has (a rotary: its rotors)
+spec.engine.bank	Which bank of the vee or boxer this cylinder stands in; its exhaust goes to that bank's side
+spec.engine.fireRev	Whether this cylinder fires on the cycle's first crank turn or its second
+spec.engine.place	How far along the crank this cylinder stands, from the front; it sets the rocking couples
+spec.engine.rodRecip	The share of the rod's mass that moves up and down with the piston; the rest turns with the crank (a third is usual)
+spec.engine.balance1	Shafts that cancel the first-order shake at crank speed, as a big single or a 90-degree V-twin may carry
+spec.engine.balance2	Shafts turning at twice crank speed that cancel an inline four's second-order shake
+spec.engine.fricSpeed	Rings' and skirts' friction, growing with the mean piston speed
+spec.engine.fricSpeed2	Friction growing with the square of piston speed: the oil's shear and the pumping of the crankcase
+spec.engine.fricBearing	The bearings' friction for each 1000 rpm
+spec.engine.alternator	The electrical load the alternator takes off the crank
+spec.engine.airCon	On, the air conditioner's compressor takes its load off the crank and the idle rises to carry it
+spec.engine.portExDur	A rotary's exhaust port: how long it is open, in degrees of the eccentric shaft
+spec.engine.portInOpen	A rotary's intake port: where it opens, in degrees of the eccentric shaft
+spec.engine.portInDur	A rotary's intake port: how long it is open, in degrees of the eccentric shaft; bridge and peripheral ports are longer
+spec.engine.cycle	Four-stroke: valves and a cam; two-stroke: ports in the cylinder wall and the crankcase as the pump
+spec.engine.tsCylinders	How many cylinders the two-stroke has
+spec.engine.tsExhaustDur	How many crank degrees the exhaust port is uncovered; longer gives power higher up
+spec.engine.tsTransferDur	How many crank degrees the transfer ports are uncovered
+spec.engine.tsTransferRadius	The rounding of the transfer ports' corners, as a share of their width; rounder is gentler on the rings
+spec.engine.tsPortCd	How freely gas passes the ports compared with a perfect hole (0.6 to 0.8 is usual)
+spec.engine.tsValveFrom	The speed at which the exhaust power valve starts to open
+spec.engine.tsValveTo	The speed at which the exhaust power valve is fully open
+spec.engine.tsCrankcaseRatio	The crankcase's largest volume over its smallest; higher pumps harder
+spec.engine.tsInletKind	How the crankcase's inlet is opened: by reed petals, by a rotating disc, or by the piston's skirt
+spec.engine.tsInletArea	The inlet's open area when fully open
+spec.engine.tsReedDamping	How quickly the reed petals' swinging dies away
+spec.engine.tsDiscDur	How many crank degrees the disc valve's cut-out lets the inlet open
+spec.engine.tsCarbArea	The carburettor's bore as an area: it limits the engine's breathing at the top
+spec.engine.tsBurnDur	How many crank degrees the flame takes to burn the charge
+spec.engine.tsAfr	The mixture's air over its fuel (petrol burns completely at about 14.7)
+spec.engine.tsHeaderLen	The expansion chamber's straight first part, from the port
+spec.engine.tsDiffuserLen	The widening cone after the header: it sends the suction wave back that pulls the charge through
+spec.engine.tsBellyLen	The chamber's widest, straight middle
+spec.engine.tsBaffleLen	The narrowing cone that sends the pressure wave back to plug the port
+spec.engine.tsStingerLen	The narrow outlet pipe; it sets the chamber's back pressure and temperature
+spec.engine.tsHeaderDiam	The header's inside diameter, near the port's
+spec.engine.tsBellyDiam	The belly's inside diameter
+spec.engine.tsStingerDiam	The stinger's inside diameter
+spec.engine.tsChamber	A plain pipe, or a tuned expansion chamber that gives a strong, narrow power band
+spec.engine.tsSilencerLen	The silencer's length after the stinger
+spec.engine.tsSilencerDiam	The silencer's inside diameter
+spec.engine.wallHeat	Off means the reference: its fixed share of heat lost. Woschni: the heat to the walls from the gas's speed and temperature
+spec.valve.model	Reference: the one cam dial. Lab: real valves, cams, phasers, springs and stages
+spec.valve.valves	Valves a cylinder: two, three, four or five; more valves flow more for the same bore
+spec.valve.dEx	The exhaust valve's head diameter; 0: from the bore, as real heads are
+spec.valve.portEx	How well the exhaust port flows, over a plain port's
+spec.valve.inKind	A cam opens the intake valve, or a free valve (electro-hydraulic) opens it at any angle
+spec.valve.inDur1mm	How many crank degrees the intake valve is open more than 1 mm: the figure cams are compared by
+spec.valve.inLift	How far the intake valve opens at the top of its lobe
+spec.valve.inFat	The intake lobe's shape: higher holds the valve near full lift for longer
+spec.valve.exKind	A cam opens the exhaust valve, or a free valve opens it at any angle
+spec.valve.exDurSeat	How many crank degrees the exhaust valve is off its seat at all
+spec.valve.exDur1mm	How many crank degrees the exhaust valve is open more than 1 mm
+spec.valve.exLift	How far the exhaust valve opens at the top of its lobe
+spec.valve.exFat	The exhaust lobe's shape: higher holds the valve near full lift for longer
+spec.valve.freeInOpen	A free intake valve opens here, in degrees of the cycle
+spec.valve.freeInClose	A free intake valve closes here, in degrees of the cycle
+spec.valve.freeExOpen	A free exhaust valve opens here, in degrees of the cycle
+spec.valve.freeExClose	A free exhaust valve closes here, in degrees of the cycle
+spec.valve.auxOn	A second small exhaust opening: a compression brake's near the top of compression. Always on when on: an engine with a compression brake on does not start
+spec.valve.auxOpen	Where the second exhaust event opens, in degrees of the cycle
+spec.valve.auxDur	How many degrees the second exhaust event lasts
+spec.valve.auxLift	How far the valve opens for the second event
+spec.valve.phaseRate	How fast the cam phasers move, in crank degrees a second (slower with cold oil)
+spec.valve.stages	On: a second, wilder cam profile a valve, switched in above the stage speed
+spec.valve.inDurSeatB	The second intake profile's duration at the seat
+spec.valve.inDur1mmB	The second intake profile's duration at 1 mm
+spec.valve.inLiftB	The second intake profile's lift
+spec.valve.inCentreB	The second intake profile's centreline, crank degrees after top dead centre
+spec.valve.exDurSeatB	The second exhaust profile's duration at the seat
+spec.valve.exDur1mmB	The second exhaust profile's duration at 1 mm
+spec.valve.exLiftB	The second exhaust profile's lift
+spec.valve.exCentreB	The second exhaust profile's centreline, crank degrees before top dead centre
+spec.valve.stageSpeed	The engine speed where the second profile is switched in
+spec.valve.stageHyst	How far below the stage speed it switches back, so it does not flicker at the change
+spec.valve.liftControl	On: the intake lift is varied continuously and can do the throttle's work
+spec.valve.liftMin	The least intake lift continuous lift control goes down to, as a share of full lift
+spec.valve.deacLow	Cylinders are shut down only above this speed
+spec.valve.deacHigh	Cylinders are shut down only below this speed
+spec.valve.deacLoad	Cylinders are shut down only below this load
+spec.valve.train	How the cam works the valve: pushrods, rockers, buckets, finger followers or air springs; it sets the moving mass and the friction
+spec.valve.springPreload	The spring's force with the valve shut; it holds the valve on its seat
+spec.intake.model	Reference: the original intake. Lab: throttle bodies, plenum, runners, trumpets and the air box as sized here
+spec.intake.throttleKind	One throttle in front of a shared plenum, or a throttle body for each runner
+spec.intake.trumpets	Where individual throttle bodies' trumpets draw from: a shared air box, or the open air
+spec.intake.runnerSwitch	Above this speed the runners switch to their second length
+spec.boost.kind	Natural, a turbo, two, four, or a supercharger driven by the crank
+spec.boost.layout	How the turbos are arranged: one, one a bank, sequential (a small one first), compound (one feeding the other) or four
+spec.boost.compAR	The compressor housing's area over radius
+spec.boost.compEta	The compressor's best efficiency, at the middle of its map
+spec.boost.turbEta	The turbine's best efficiency
+spec.boost.scrolls	A twin-scroll housing keeps the firing pulses of two groups of cylinders apart, so the turbo spools sooner
+spec.boost.vanes	Variable vanes narrow the turbine's nozzle at low speed for early boost and open it at the top
+spec.boost.vaneMin	How far the variable vanes can close, as a share of fully open
+spec.boost.bearing	Ball bearings spin the shaft up with less friction than journal bearings
+spec.boost.assist	An electric motor on the turbo's shaft that helps it spool
+spec.boost.gate	An internal wastegate in the turbine housing, or an external one with its own pipe
+spec.boost.blowOffKind	What the blow-off valve does with the trapped charge when the throttle shuts: none (it surges), vents it to the air, or returns it to the intake
+spec.boost.blowOffDiameter	The blow-off valve's bore
+spec.boost.icEffect	How much of the compressor's heat the intercooler takes out at its rated flow
+spec.boost.icFlow	The air flow the intercooler is sized for
+spec.boost.icMass	The intercooler core's mass: a heavier core heat-soaks more slowly
+spec.boost.chargeVolume	The volume of the pipes between the compressor and the throttle: more takes longer to fill
+spec.boost.charger	A Roots or twin-screw blower pumps a fixed volume each turn (boost from idle); a centrifugal one builds boost with speed
+spec.boost.scRatio	The blower's speed over the crank's
+spec.boost.scBypass	On: a valve lets the blower idle at part throttle, as road superchargers do
+spec.boost.antiLag	On: fuel burned in the exhaust manifold with the throttle shut keeps the turbo spinning
+spec.boost.nitrousShot	The extra power the nitrous oxide is jetted for
+spec.boost.nitrousBottle	How much nitrous oxide the bottle holds
+spec.exhaust.model	Reference: the original four dials. Builder: every pipe, collector, crossover, resonator and muffler as drawn
+spec.exhaust.colLen	The length of the pipe after a collector
+spec.exhaust.colD	The bore of the pipe after a collector
+spec.exhaust.mainLen	The length of each side's main pipe
+spec.exhaust.mainD	The bore of each side's main pipe
+spec.exhaust.converter	Each side's catalytic converter: none, a standard one, or a high-flow one
+spec.exhaust.crossKind	A crossover between the two sides: none, an H-pipe (a deeper note) or an X-pipe (a smoother, higher one)
+spec.exhaust.crossAt	Where the crossover joins: near the heads or after the main pipes
+spec.exhaust.crossLen	The length of an H-pipe's crossing tube
+spec.exhaust.postLen	The pipe after the crossover
+spec.exhaust.resonator	A resonator on each side that cancels a drone: a quarter-wave stub, a Helmholtz bottle, or a packed bottle
+spec.exhaust.resHz	The note a resonator is tuned to cancel
+spec.exhaust.resVol	A Helmholtz resonator's chamber volume
+spec.exhaust.resLen	A packed bottle's length
+spec.exhaust.linkLen	The pipe after the resonator
+spec.exhaust.mufKind	Each side's muffler: none, straight-through (loud), chambered, or three-pass (quiet)
+spec.exhaust.bypass	A valve around the muffler: none, always shut, always open, opened by speed and load, or by the ECU
+spec.exhaust.bypassRpm	The bypass valve opens above this speed
+spec.exhaust.bypassLoad	... and above this load
+spec.exhaust.bypassTime	How long the bypass valve takes to open or shut
+spec.exhaust.tailLen	Each tailpipe's length
+spec.exhaust.tailD	Each tailpipe's bore
+spec.exhaust.tips	One tip or two at each tailpipe
+spec.exhaust.gateD	An external wastegate's pipe bore
+spec.exhaust.exitAt	Where the tailpipes leave the car; it sets where the sound comes from
+spec.fuel.kind	Petrol (spark ignition) or diesel (compression ignition)
+spec.fuel.model	Reference: the original burn. Fuels: each fuel's heat, octane, burn speed and knock
+spec.fuel.grade	The fuel: its octane decides how much advance and boost it takes before knocking
+spec.fuel.soiAdd	Injection timing moved against the map: earlier is louder and stronger, later quieter and smokier
+spec.fuel.pilot	The share of a diesel's fuel injected early as a pilot: it softens the clatter
+spec.fuel.rail	A common-rail diesel's injection pressure: higher atomises the fuel finer
+spec.ecu.limiter.soft	The soft limiter's band below the limit, where the spark is retarded before any cylinder is cut
+spec.ecu.limiter.retard	How far the soft limiter retards the spark at the band's end
+spec.ecu.launch.on	On: with the launch button, or the clutch down at a standstill and the pedal floored, the ECU holds the launch speed
+spec.ecu.launch.speed	The engine speed launch control holds on the line
+spec.ecu.launch.retard	How far launch control retards the spark to hold the speed (and heat the turbo)
+spec.ecu.launch.flatShift	On: an upshift with the pedal held down cuts the sparks while the clutch is down instead of lifting
+spec.ecu.overrun.retard	How late the fuel let through on the overrun is lit; later burns more of it in the pipes
+spec.ecu.knock.step	How far a cylinder's spark is retarded at each knock
+spec.ecu.knock.most	The most knock control may retard any cylinder
+spec.ecu.knock.recover	How fast the knock retard is given back once the knocking stops
+spec.ecu.traction.on	On: wheelspin past the slip target is cut back by retarding the spark, then by cutting cylinders
+spec.ecu.traction.slip	The wheelspin traction control allows, as slip (0.1: the wheel turns 10 % faster than the road)
+spec.ecu.antiLag.on	On: with the pedal lifted inside its speed window, the ECU retards the spark and enriches so the turbo keeps spinning
+spec.ecu.antiLag.low	Anti-lag works only above this speed
+spec.ecu.antiLag.high	Anti-lag works only below this speed
+spec.ecu.antiLag.retard	How far anti-lag retards the spark
+spec.ecu.antiLag.lambda	The mixture anti-lag gives (under 1 is rich)
+spec.ecu.nitrous.low	Nitrous is let in only above this speed
+spec.ecu.nitrous.gear	Nitrous is let in only in this gear or above
+spec.ecu.nitrous.retard	How far the spark is retarded while the nitrous flows
+spec.ecu.nitrous.lambda	The mixture while the nitrous flows
+spec.ecu.maps.spark	Spark advance by engine speed and load, crank degrees before top dead centre
+spec.ecu.maps.sparkAuto	On: the spark comes from the formula; off: from the map as drawn
+spec.ecu.maps.lambda	The mixture asked for by engine speed and load (1 burns all the fuel; under 1 is rich)
+spec.ecu.maps.lambdaAuto	On: lambda comes from the formula; off: from the map as drawn
+spec.ecu.maps.boost	The boost asked for by engine speed and gear
+spec.ecu.maps.boostAuto	On: the boost target is the build's boost level in every gear; off: the map as drawn
+spec.ecu.maps.camIn	The intake cam's phase by engine speed and load
+spec.ecu.maps.camInAuto	On: the phasers' own schedule; off: the map as drawn
+spec.ecu.maps.camEx	The exhaust cam's phase by engine speed and load
+spec.ecu.maps.camExAuto	On: the phasers' own schedule; off: the map as drawn
+spec.ecu.maps.pedal	How far the throttle opens for each pedal position and speed (drive by wire)
+spec.ecu.maps.pedalAuto	On: the throttle follows the pedal one to one; off: the map as drawn
+spec.ecu.maps.lift	The continuous-lift command by speed and load
+spec.ecu.maps.liftAuto	On: full lift always; off: the map as drawn
+spec.car.mass	The car's mass with its driver and fuel
+spec.car.drive	Which wheels the engine drives
+spec.car.wheelbase	The distance between the front and rear axles; longer shifts less weight under acceleration
+spec.car.cgHeight	How high the centre of mass is: higher shifts more weight to the rear when pulling away
+spec.car.frontWeight	The share of the weight on the front wheels at rest
+spec.car.track	The distance between the left and right wheels
+spec.car.cdA	The drag coefficient times the frontal area: what the air holds the car back with at speed
+spec.car.aeroBalance	The share of the downforce on the front axle
+spec.car.tyre	The tyres' compound: how much grip, how it grows with heat and how it falls away past the peak
+spec.car.tyreRadius	The driven tyres' rolling radius
+spec.car.wheelInertia	Each wheel's and tyre's inertia
+spec.car.brakeBias	The share of the braking done by the front wheels
+spec.car.abs	On: the brakes are released before a wheel locks
+spec.car.gearbox	Manual (H-pattern and clutch), sequential (a dog box), dual clutch, automatic (torque converter) or CVT
+spec.car.gears	How many forward gears
+spec.car.ratio	Each gear's ratio, first gear first: crank turns to the output's one
+spec.car.reverseRatio	The reverse gear's ratio
+spec.car.finalDrive	The differential's ratio, multiplying every gear
+spec.car.gearEfficiency	The share of the power the gearbox and differential pass on
+spec.car.converterRatio	The torque converter's torque multiplication when the car is held still (its stall ratio)
+spec.car.couplingPoint	The speed ratio where the converter stops multiplying torque and couples
+spec.car.lockUp	On: a clutch locks the converter solid at cruising speed
+spec.car.cvtLow	The CVT's lowest (pulling-away) ratio
+spec.car.cvtHigh	The CVT's highest (cruising) ratio
+spec.car.cvtEfficiency	The share of the power the CVT's belt passes on
+spec.car.centrePreload	The torque the centre differential's clutches pass before the axles may turn at different speeds
+spec.car.centreKSpeed	The centre differential's viscous locking for each rad/s of difference
+spec.car.centreKTorque	The centre differential's torque bias: how much more the gripping axle may take
+spec.car.centreLocked	On: the centre differential is locked solid
+spec.car.frontPreload	The front differential's preload
+spec.car.frontKSpeed	The front differential's viscous locking
+spec.car.frontKTorque	The front differential's torque bias
+spec.car.frontLocked	On: the front differential is locked solid
+spec.car.rearPreload	The rear differential's preload
+spec.car.rearKSpeed	The rear differential's viscous locking
+spec.car.rearKTorque	The rear differential's torque bias
+spec.car.rearLocked	On: the rear differential is locked solid (a spool)
+spec.car.cdATuck	A motorcycle's drag area with the rider tucked in
+spec.car.bikeTyre	A motorcycle's tyres
+spec.car.frontSprocket	A motorcycle's front sprocket's teeth; fewer is lower gearing
+spec.car.rearSprocket	A motorcycle's rear sprocket's teeth; more is lower gearing
+spec.car.quickshiftCut	How long the quickshifter cuts the ignition for an upshift
+spec.car.wheelieAngle	The wheelie control holds the front wheel at about this angle
+spec.env.temperature	The outside air's temperature: colder air is denser and makes more power (15 C is the standard day)
+spec.env.pressure	The outside air's pressure: lower at altitude (101.3 kPa at sea level)
+spec.env.surface	The road under the tyres
+spec.env.surfaceLeft	The road under the left wheels, when it differs from the right's (a split-grip test)
+spec.sound.view	Where the listener is, as the reference's five views
+spec.sound.room	How much of the room's reverberation is heard
+spec.sound.level	The output's overall level
+spec.sound.camera	Where the listener is: at the tailpipe, behind, beside, in the engine bay, in the driver's seat, at the trackside or chasing
+spec.sound.enginePlace	Where the engine sits in the car; it sets the paths its sound takes to each camera
+spec.voices.whine	The gearbox's gear whine
+spec.voices.axle	The final drive's whine
+spec.voices.timingLevel	The cam drive's sound: a chain's, a belt's or gears'
+spec.voices.fan	The engine's cooling fan: none, viscous (turning with the engine) or electric
+spec.voices.fanBlades	The fan's blades; their count sets its tone
+spec.voices.fanLevel	The fan's level
+spec.voices.injectors	The injectors' tick
+spec.voices.prime	How long the fuel pump primes when the key is turned on
+spec.voices.valveLevel	The valvetrain's tick and, when the valves float, their clatter
+spec.voices.starter	A direct-drive starter or a gear-reduction one (higher, whinier)
+spec.voices.starterLevel	The starter's level
+spec.ecu.brakeMin	Below this engine speed the engine and exhaust brakes let go, so they never stall the engine
+spec.ecu.exhaustBrake	A heavy diesel's exhaust brake: none, a flap in the pipe, or the turbine's vanes closed to hold the engine back
+spec.ecu.exBrakeSwitch	The dash switch that arms the exhaust brake: on, it works whenever the pedal is up
+spec.voices.chain	A motorcycle's drive chain's whine

@@ -179,7 +179,9 @@ module Combustion
         // (ecu.model 1: its idle governor's fuel, 0.5 of full at the most, with no floor under it: the reference's 0.12
         // floor held a heavy diesel above its idle)
         const float idleFuel = ecu->model1() ? 0.5f * ecu->bypass : 0.12f + 0.5f * ecu->bypass;
-        const float lever = fminf(fmaxf(fmaxf(ecu->throttle, idleFuel), 0.45f * expf(-ecu->sinceStart / 1.0f)), 1.0f) * droop;
+        float lever = fminf(fmaxf(fmaxf(ecu->throttle, idleFuel), 0.45f * expf(-ecu->sinceStart / 1.0f)), 1.0f) * droop;
+        if (diesel.lever >= 0.0f)
+            lever = diesel.lever;                    // (card D2's governor: heavy.fm)
         const bool f1 = fuel->model == 1;
         if (f1)
         {
@@ -188,7 +190,9 @@ module Combustion
             diesel.rail = fuel->rail;
             diesel.overFuel = fuel->overFuel;
         }
-        const float phi = f1 ? diesel.phiAt(lever) : 0.75f * lever;
+        float phi = f1 ? diesel.phiAt(lever) : 0.75f * lever;
+        if (diesel.metered != 0)
+            phi = diesel.phiMetered(air, lever);     // (card D2: the fuel by the rack, capped by the compensator)
         const float sigma = 0.015f + 0.06f * rough;
         float q = air * phi / 14.5f * 42.5e6f * 0.62f * fmaxf(1.0f + cy->bias + sigma * nz->gauss(), 0.0f) * ecu->trim;
         if (ecu->fuelCut)

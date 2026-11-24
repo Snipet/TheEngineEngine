@@ -44,6 +44,9 @@ namespace tee::ui::air
         static constexpr const char* runnerLength = "intake.runnerLength";    // m, 0: the reference's 0.30 (a bike's 0.16)
         static constexpr const char* runnerLength2 = "intake.runnerLength2";  // m, 0: one length
         static constexpr const char* runnerSwitch = "intake.runnerSwitch";    // rad/s: the second length from
+        static constexpr const char* runnerBore = "intake.runnerBore";        // m, 0: from the cylinder's bore
+        static constexpr const char* boreStroke = "engine.boreStroke";
+        static constexpr const char* compression = "engine.compression";
         static constexpr const char* trumpets = "intake.trumpets";          // to the air box, to the air
         static constexpr const char* ambientP = "env.pressure";
         static constexpr const char* ambientT = "env.temperature";
@@ -101,6 +104,8 @@ namespace tee::ui::air
         double scRatio = 2.4, gateSpring = 70e3, target = 0, nitrousBottle = 4.5;
         bool itb = false, trumpetsToAir = false;
         double runner = 0.30, runner2 = 0.0, runnerSwitch = 0.0;   // m, m (0: one length), rad/s
+        double runnerArea = 0.0;        // m^2, as the simulator sizes it (sim/intake/intake.fm runners())
+        double cylinderMean = 0.0;      // m^3: a cylinder's mean volume over the intake stroke (clearance + half swept)
         double ambientP = 101325, ambientT = 293.15;
         CompressorMap map;              // turbo 1's (or a centrifugal blower's)
         double omegaMax = 0;            // the shaft's limit, rad/s
@@ -109,4 +114,16 @@ namespace tee::ui::air
     };
 
     AirBuild resolveAir(const FieldDoc& doc);
+
+    // Where a runner of `length` (m) is tuned, derived (card E's relation, tests/sim/valvetrain/IntegratedTest.cpp test
+    // 12's ring(): with the intake valve open the runner rings as a pipe loaded by the cylinder's volume, x tan x =
+    // A L / V with L its length plus 0.6 of its radius, at f = x c / (2 pi L), c = 350 m/s). The speeds the ring meets
+    // the intake event at: the main bump (each cycle) and the lower (every other), from card E's measured bumps on a
+    // 2.0 L four with a 280-degree cam (7640 and 3180 rpm at 161 Hz, 5250 and 2300 at 117 Hz): 46.2 and 19.7 rpm a hertz
+    // (judgement: a cam of another duration moves them some per cent).
+    struct RamTune
+    {
+        double hz = 0, mainRpm = 0, lowerRpm = 0;
+    };
+    RamTune ramTune(const AirBuild& b, double length);
 }
