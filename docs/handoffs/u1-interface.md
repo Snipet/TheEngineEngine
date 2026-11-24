@@ -84,5 +84,11 @@ sheet will include every registered workspace.
   stands (coarse, partial or refined: `refined()` says), `before()` the last refined curve of the build before the
   edit. Runs stay on `tee::DynoService`. `SimScope::generation()` itself asks the host for a newer copy, so a reader
   that waits for it to move (as ENGINE does) gets one (`ui.build.scope`, over a real SimHost).
-- **Telemetry names**: `Live::first({...})` and `Live::lambda()` (exhaust.lambda, ecu.lambda, engine.lambda: none is
-  settled in telemetry.fm yet). The demo adds `engine.torque`, `power`, `firing`, `imep`, `bmep`, `veAir`.
+- **Telemetry names**: `Live::first({...})` and `Live::lambda()` (`ecu.lambda`, settled; the oil's temperature is
+  `engine.oilTemperature`). The demo adds `engine.torque`, `power`, `firing`, `imep`, `bmep`, `veAir`.
+- **Settings, rail, keys** (frame): the top bar's SETTINGS shows the settings page in the inspector (audio:
+  `FrameServices::audioInfo`, `audioMenu`; theme: FunkGui's `UiPreferences`; units; keys); the rail has a pictogram
+  beside each word (`look::pictogram(c, id, cx, cy, size, ink)`, yours to use) and short words alone under 1280 px. Tab
+  goes round the whole window (the frame's items, the stage's, the inspector's): a workspace's Board does not wrap
+  (`Board::setTabWraps(false)`, set by `Workspace`). Check your stage names every control:
+  `CHECK_MSG(unnamedControls(*rig.host).empty(), unnamedControls(*rig.host));` (ViewKit).

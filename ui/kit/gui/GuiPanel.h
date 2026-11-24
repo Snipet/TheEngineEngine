@@ -80,6 +80,9 @@ namespace tee::ui
             int insetLeft = 0, insetTop = 0, insetRight = 0, insetBottom = 0;
             // U1: a dial's value at its default drawn dim (the seed's look) or in the value's ink (the frame's inspector).
             bool dimAtDefault = true;
+            // U1: Tab past the last control wraps to the first (alone in a window), or leaves the panel (its owner's turn:
+            // the frame's inspector page, so Tab goes round the whole window).
+            bool tabWraps = true;
             // False: no shader's program is looked up or registered, and every shader element draws its placeholder
             // with kShadersOff as the reason, whatever the build has. A test's golden takes the panel so, so that its
             // picture is the same in a build with a GPU layer (the shaders built and registered: the software
