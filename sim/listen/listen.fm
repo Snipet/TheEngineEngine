@@ -258,10 +258,12 @@ module Listen
         boomStep = 16.0f / (0.25f * rate);
         loud = 1.0f;
         exLoud = 1.0f;
-        // (the V8 build at full load, 0.75 of its redline, at the default camera and distance peaks at 4.3 before
-        // this stage: 0.5 after it, 6 dB under full scale. The reference's own path peaks at 7.3 there and lives on
-        // its limiter, 24 dB of reduction on a free rev)
-        kHead = 0.116f;
+        // (staged on the archetypes (content/builds/archetypes): a free rev at the Rear camera on the field peaks
+        // near 0.35, 9 dB under full scale, for the middle of them; the loudest (a V12, a big-bore pushrod V8, the
+        // reference's wild-cam V8 build) reach the limiter on their peaks. First staged on that V8 build alone, at
+        // 0.116: it is some 20 dB louder than a typical build, which left the rest 23 to 30 dB under the reference's
+        // mix. The reference's own path lives on its limiter: 24 dB of reduction on a free rev)
+        kHead = 0.58f;
         limLeast = 1.0f;
         loudSig = -1.0f;
         driveHeld = 100000;
