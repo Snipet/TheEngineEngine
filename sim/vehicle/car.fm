@@ -723,6 +723,7 @@ module Car
             bikeOn = wantBike;
             reset();
             m1.reset();
+            m1.tyresSeeded = false;     // (they take the air's temperature as spec.env comes in, below)
             b1.reset();
             lastDrive = want == 1 ? drive : 0;
             lastLever = 0;

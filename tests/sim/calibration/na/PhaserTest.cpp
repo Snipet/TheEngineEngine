@@ -56,7 +56,7 @@ namespace
     }
 } // namespace
 
-TEST_CASE("the intake phaser's schedule cuts no hole in a long cam's full-load curve", "[calibration][na]")
+TEST_CASE("the intake phaser's schedule cuts no hole in a long cam's full-load curve", "[nightly][calibration][na]")
 {
     struct Point
     {

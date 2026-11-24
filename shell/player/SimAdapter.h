@@ -172,6 +172,10 @@ namespace tee::player
         int maxBlock_ = 0;
         std::unique_ptr<LoadOptions> load_;
         std::unique_ptr<SimHost> host_;
+        // the program whose Fields the document is bound to, kept alive while it is (before build_: it outlives it).
+        // A quality change puts another in the host, which takes only writes resolved against that one's Fields: the
+        // next frame() binds the document to it (Build::rebind), every value sent again.
+        std::shared_ptr<Sim> bound_;
         std::unique_ptr<tee::Build> build_;
         std::vector<ParamInfo> infos_;
         std::vector<std::string> paths_;                    // each parameter's path in the Build ("spec....")

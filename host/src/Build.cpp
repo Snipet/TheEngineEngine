@@ -477,6 +477,15 @@ namespace tee
     void Build::rebind(const Fields& fields)
     {
         const Fields* old = fields_;
+        // The same fields in the same order (a quality change; the compile of the program the preview read): the
+        // undo steps, which name fields by index, still hold.
+        bool same = old->all().size() == fields.all().size();
+        for (std::size_t i = 0; same && i < fields.all().size(); ++i)
+        {
+            const FieldInfo& a = old->all()[i];
+            const FieldInfo& b = fields.all()[i];
+            same = a.path == b.path && a.type == b.type && a.size == b.size && a.count == b.count;
+        }
         std::vector<std::vector<double>> oldValues = std::move(values_);
         fields_ = &fields;
         defaults();
@@ -495,9 +504,12 @@ namespace tee
                 clampValues(is, values_[static_cast<std::size_t>(now)]);
             }
         }
-        undo_.clear();
-        redo_.clear();
-        gesture_.clear();
+        if (!same)
+        {
+            undo_.clear();
+            redo_.clear();
+            gesture_.clear();
+        }
         attach(host_);
     }
 

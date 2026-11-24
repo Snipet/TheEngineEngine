@@ -1,9 +1,16 @@
 // tests/sim/calibration/balance/Balance.cpp: the books of Balance.h, read from the simulator's own state each sample.
 #include "Balance.h"
 
+#include "tee/Build.h"
+#include "tee/Fields.h"
+
+#include <cstdint>
+#include <cstring>
+
 #include <algorithm>
 #include <cstdio>
 #include <functional>
+#include <map>
 
 namespace tee::balance
 {
@@ -13,26 +20,40 @@ namespace tee::balance
         constexpr double kAfr[] = {14.0, 14.0, 14.0, 14.6, 9.80, 6.47, 14.5, 15.6, 34.3};
         constexpr double kLhv[] = {42.2e6, 42.2e6, 42.2e6, 44.0e6, 29.3e6, 19.9e6, 42.5e6, 46.35e6, 120.0e6};
 
-        double gammaAt(double t)   // sim/core/cylinder.fm's
+        // sim/core/cylinder.fm's gammaAt: the physical cylinder (conserve 1) Gatowski's with the lean term on the
+        // cylinder's phi; the reference's otherwise
+        struct Gas
         {
-            return std::min(std::max(1.39 - 7.5e-5 * (t - 300.0), 1.24), 1.40);
-        }
-        // The sim's gas's sensible energy and enthalpy from 0 K (J/kg): u(T) = integral of cv = R / (gamma(T) - 1),
+            int conserve = 1;
+            double phi = 1.0;
+            double gamma(double t) const
+            {
+                if (conserve != 0)
+                    return std::min(std::max(1.392 - 8.13e-5 * t + 0.037 * (1.0 - std::min(phi, 1.0)), 1.15), 1.40);
+                return std::min(std::max(1.39 - 7.5e-5 * (t - 300.0), 1.24), 1.40);
+            }
+        };
+        // The gas's sensible energy and enthalpy from 0 K (J/kg): u(T) = integral of cv = R / (gamma(T) - 1),
         // h = u + R T. (The cylinder's step is m cv(T) dT = dQ - p dV + (h - u) dm, so these close its books; cp(T) T,
-        // which the step writes, is the same thing only where gamma is constant.)
-        double uAt(double t)
+        // which the step writes, is the same thing only where gamma is constant.) A table a gas, kept by its key.
+        double uAt(const Gas& g, double t)
         {
-            static const std::vector<double> table = [] {
+            static std::map<long, std::vector<double>> tables;
+            const long key = g.conserve != 0 ? std::lround(std::min(g.phi, 1.0) * 1000.0) : -1;
+            auto it = tables.find(key);
+            if (it == tables.end())
+            {
                 std::vector<double> u(3601, 0.0);
                 for (int i = 1; i <= 3600; ++i)
-                    u[std::size_t(i)] = u[std::size_t(i - 1)] + 287.0 / (gammaAt(i - 0.5) - 1.0);
-                return u;
-            }();
+                    u[std::size_t(i)] = u[std::size_t(i - 1)] + 287.0 / (g.gamma(i - 0.5) - 1.0);
+                it = tables.emplace(key, std::move(u)).first;
+            }
+            const std::vector<double>& table = it->second;
             const double x = std::clamp(t, 0.0, 3599.0);
             const auto i = std::size_t(x);
             return table[i] + (table[i + 1] - table[i]) * (x - double(i));
         }
-        double hAt(double t) { return uAt(t) + 287.0 * t; }
+        double hAt(const Gas& g, double t) { return uAt(g, t) + 287.0 * t; }
 
         struct Kept
         {
@@ -53,6 +74,48 @@ namespace tee::balance
             bool ok = false;
         };
     } // namespace
+
+    bool loadWhole(EnginePlayer& p, const std::filesystem::path& file, std::string& error)
+    {
+        std::unique_ptr<Fields> fields = Fields::of(p.schema(), error);
+        if (!fields)
+            return false;
+        Build build(*fields);
+        std::vector<std::string> warnings;
+        if (!build.loadFile(file, BuildPart::Whole, warnings, error))
+            return false;
+        unsigned char* base = static_cast<unsigned char*>(p.instance().data());
+        const std::vector<FieldInfo>& all = fields->all();
+        for (std::size_t i = 0; i < all.size(); ++i)
+        {
+            const FieldInfo& f = all[i];
+            if (f.block != "spec")
+                continue;
+            const std::vector<double>& v = build.values(int(i));
+            std::size_t at = 0;
+            for (const FieldInfo::Leaf& leaf : f.leaves)
+                for (std::size_t k = 0; k < leaf.count && at < v.size(); ++k, ++at)
+                {
+                    unsigned char* q = base + f.offset + leaf.offset + k * leaf.stride;
+                    switch (leaf.scalar)
+                    {
+                    case Scalar::Float: { const float x = float(v[at]); std::memcpy(q, &x, 4); break; }
+                    case Scalar::Double: { const double x = v[at]; std::memcpy(q, &x, 8); break; }
+                    case Scalar::Int: { const std::int32_t x = std::int32_t(std::lround(v[at])); std::memcpy(q, &x, 4); break; }
+                    case Scalar::Bool: { const bool x = v[at] != 0.0; std::memcpy(q, &x, 1); break; }
+                    default: break;
+                    }
+                }
+        }
+        for (const Section& sec : fields->sections())
+        {
+            std::int32_t rev = 0;
+            std::memcpy(&rev, base + sec.revOffset, 4);
+            ++rev;
+            std::memcpy(base + sec.revOffset, &rev, 4);
+        }
+        return true;
+    }
 
     void keepPlayer(bool keep)
     {
@@ -81,17 +144,34 @@ namespace tee::balance
         else
             k.player->reset(o.sampleRate);
         EnginePlayer& p = *k.player;
-        EngineBuild build;
         std::filesystem::path file = slug;
         if (!std::filesystem::exists(file))
             file = std::filesystem::path(TEE_SOURCE_DIR) / "content" / "builds" / "archetypes" / (slug + ".json");
-        std::string warnings;
-        if (!loadBuild(p, file, build, error, warnings))
+        // The build through tee::Build, the loader tee-dyno and P's table use (it reads every nested section: the
+        // ECU's idle, limiter, knock and baked maps, which the older loadBuild drops: the lead's note, 24 Nov), its
+        // values written into the instance field by field and every section's rev moved
+        if (!loadWhole(p, file, error))
             return false;
-        applyBuild(p, build);
         for (const auto& [path, value] : o.set)
             if (!p.setSpec(path, value, error))
                 return false;
+        if (!o.raw.empty())
+        {
+            for (const auto& [path, value] : o.raw)
+                if (!p.instance().write(p.schema(), path, value, error))
+                    return false;
+            std::unique_ptr<Fields> fields = Fields::of(p.schema(), error);
+            if (!fields)
+                return false;
+            unsigned char* base = static_cast<unsigned char*>(p.instance().data());
+            for (const Section& sec : fields->sections())
+            {
+                std::int32_t rev = 0;
+                std::memcpy(&rev, base + sec.revOffset, 4);
+                ++rev;
+                std::memcpy(base + sec.revOffset, &rev, 4);
+            }
+        }
 
         const Schema& schema = p.schema();
         Instance& inst = p.instance();
@@ -180,7 +260,7 @@ namespace tee::balance
         struct Cyl
         {
             H p, v, t, m, mInert, hA, tw, mE, mI, ang, sparkAt, evo, ivo, idur, burnAt, ivcNow, qTot, released, vd,
-                exStore, exStoreMT, rvMass, rvMT;
+                exStore, exStoreMT, rvMass, rvMT, phi, conserve;
             double pL, vL, tL, aL, relL, exStoreL, exStoreMTL, rvMassL, rvMTL;
         };
         std::vector<Cyl> cy(std::size_t(std::max(n, 0)));
@@ -211,16 +291,24 @@ namespace tee::balance
             x.exStoreMT = handle(q + "exStoreMT");
             x.rvMass = handle(q + "rvMass");
             x.rvMT = handle(q + "rvMT");
+            x.phi = handle(q + "phi");
+            x.conserve = handle(q + "conserve");
             b.vd += rd(x.vd);
         }
         const H airThr = handle("airThrottle"), airVal = handle("airValves"), gasEx = handle("gasExhaust");
         const H oneFuel = handle("comb.one.fuel"), oneLambda = handle("comb.one.lambdaOut"), mixHeat = handle("comb.one.mix.heat"),
                 oxygen = handle("comb.oxygen"), tAirH = handle("intk.tAir"), pPlenH = handle("intk.pPlenum"), tAmbH = handle("heat.tAmb");
         const double pumpFrom = rdPath("work.pumpFrom"), pumpTo = rdPath("work.pumpTo"), cycDeg = rdPath("cyl[0].cyc");
+        auto gasOf = [&](const Cyl& x) {
+            Gas g;
+            g.conserve = x.conserve.ok ? int(rd(x.conserve)) : 0;
+            g.phi = x.phi.ok ? rd(x.phi) : 1.0;
+            return g;
+        };
         auto energy = [&] {
             double u = 0.0;
             for (Cyl& x : cy)
-                u += rd(x.m) * uAt(rd(x.t));
+                u += rd(x.m) * uAt(gasOf(x), rd(x.t));
             return u;
         };
         for (Cyl& x : cy)
@@ -244,6 +332,7 @@ namespace tee::balance
             const double tA = rd(tAirH);
             for (Cyl& x : cy)
             {
+                const Gas g = gasOf(x);
                 const double pN = rd(x.p), vN = rd(x.v), tN = rd(x.t), aN = rd(x.ang), mE = rd(x.mE), mI = rd(x.mI);
                 // the walls, by phase (the step took hA (T - T_wall) at the start's temperature)
                 const double q = rd(x.hA) * (x.tL - rd(x.tw)) * dt;
@@ -272,22 +361,22 @@ namespace tee::balance
                 // the enthalpy through the valves (out positive)
                 if (mE >= 0.0)
                 {
-                    b.hOut += hAt(x.tL) * mE * dt;
+                    b.hOut += hAt(g, x.tL) * mE * dt;
                     b.mOutExhaust += mE * dt;
                 }
                 else
                 {
                     const double tb = x.exStoreL > 1e-12 ? x.exStoreMTL / x.exStoreL : x.tL;
-                    b.hOut += hAt(tb) * mE * dt;
+                    b.hOut += hAt(g, tb) * mE * dt;
                     b.mOutExhaust += mE * dt;
                 }
                 if (mI >= 0.0)
-                    b.hIn -= hAt(x.tL) * mI * dt;
+                    b.hIn -= hAt(g, x.tL) * mI * dt;
                 else
                 {
                     const double take = std::min(x.rvMassL, -mI * dt);
                     const double tr = x.rvMassL > 1e-12 ? x.rvMTL / x.rvMassL : tA;
-                    b.hIn += hAt(tr) * take + hAt(tA) * (-mI * dt - take);
+                    b.hIn += hAt(g, tr) * take + hAt(g, tA) * (-mI * dt - take);
                 }
                 // an intake closing: what is trapped, and what the charge was given
                 if (rd(x.ivcNow) != 0.0)
@@ -329,6 +418,8 @@ namespace tee::balance
             ++count;
         });
         b.uEnd = energy();
+        for (const std::string& path : o.read)
+            b.reads[path] = rdPath(path);
         b.airThrottle = rd(airThr) - thr0;
         b.airValves = rd(airVal) - val0;
         b.gasExhaust = rd(gasEx) - ex0;
@@ -350,7 +441,7 @@ namespace tee::balance
         b.tIvc = b.closings > 0 ? sumTivc / b.closings : 0.0;
         b.lhv = kLhv[grade];
         b.fuelEnergy = b.fuel * b.lhv;
-        b.hOutAtInlet = b.mOutExhaust * hAt(b.tAirHeated);
+        b.hOutAtInlet = b.mOutExhaust * hAt(Gas{}, b.tAirHeated);
         b.cycles = b.closings / double(std::max(n, 1));
         if (!keeping)
             k.player.reset();

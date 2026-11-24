@@ -43,7 +43,8 @@ module Intake
     float mPlenum;
     float tAir;
     float pBox;         // the air box (with the turbo's boost), Pa
-    float qThr;         // the volume flow through the throttle, m^3/s
+    float qThr;         // the volume flow through the throttle, m^3/s (with throttles a runner: what the trumpets draw,
+                        // not what the cylinders take; on the six it read 0.69 to 1.03 of the valves' (causes.md K))
     // model 1 (card E)
     int model;          // in use
     int itbs;           // 1: a throttle a runner (in use)
@@ -74,13 +75,9 @@ module Intake
     // nowhere, left out): throttle and valves then agree over whole cycles. The waves are as before.
     float mValves;
     int haveValves;
-    float kOff;         // the plenum's draw over the waves' less 1: the valves' mass over theirs, followed over some 0.5 s
-    float kWant;        // the last whole cycle's
-    float sumValves;    // this cycle's so far: the valves' mass, the waves' mass (kg), its seconds
-    float sumWave;
-    float sumT;
-    float cycleNow;     // a cycle's seconds (control's)
+    float mStiff;       // what the valves took that the runners were not given (kg/s), followed over 20 ms
     float heatRise;
+    int seenSettle;     // spec.intake.heatSettle as last acted on
 
     void setup(float rate)
     {
@@ -94,6 +91,8 @@ module Intake
     // spec.intake, when its rev moved
     void apply(IntakeSpec* s)
     {
+        if (haveSpec == 0)
+            seenSettle = s->heatSettle;
         spec = s;
         haveSpec = 1;
     }
@@ -129,7 +128,6 @@ module Intake
     // that override them, the runner's length, the box; the manifold's ripple over each cycle (cycle: its seconds)
     void control(float d16, float omega, float vTotal, float cycle)
     {
-        cycleNow = fminf(fmaxf(cycle, 0.01f), 2.0f);
         vTotalNow = vTotal;
         // (a model asked between configures, as a build that keeps the layout and the size does: taken here)
         if (model == 0 && haveSpec != 0 && spec->model == 1)
@@ -160,6 +158,8 @@ module Intake
         // Combustion Engine Fundamentals, section 6.2.1: the charge heated in the manifold and ports lowers the
         // volumetric efficiency by a few to ten percent); the 0.29 is judgement within that range. Cold, none. The
         // walls follow the coolant at once; the rise follows the flow over some 0.5 s (the walls' own lag left out).
+        // (the host's dyno and predictor raise spec.intake.heatSettle to put it at once where the flow would hold it, as
+        // spec.exhaust.heatSettle settles the exhaust's heat)
         // Taken into tAir, which Engine set this tick from the air (or the boost's charge): so the plenum's air, the
         // throttle's density and the cylinders' intake all see it (the throttle's density should be the cold air's:
         // a choked throttle passes some 3 % less for a 20 K rise; left so).
@@ -168,7 +168,13 @@ module Intake
             const float m = fmaxf(fabsf(qThr) * pBox / (287.0f * fmaxf(tAir, 200.0f)), 0.02f * mRef);
             const float ntu = 0.29f * expf(-0.2f * logf(m / mRef));
             const float want = tCoolant > tAir ? (tCoolant - tAir) * (1.0f - expf(-ntu)) : 0.0f;
-            heatRise += (want - heatRise) * fminf(d16 * 2.0f, 1.0f);
+            if (spec->heatSettle != seenSettle)
+            {
+                seenSettle = spec->heatSettle;
+                heatRise = want;
+            }
+            else
+                heatRise += (want - heatRise) * fminf(d16 * 2.0f, 1.0f);
             tAir += heatRise;
         }
         box.setup(spec->boxVolume, spec->snorkelLength, spec->snorkelBore, vTotal, aThrottle, rateNow);
@@ -311,6 +317,10 @@ module Intake
             const float pg = pPlenum - 101325.0f;
             float qIn = 0.0f;
             const float rho = pPlenum / (287.0f * fmaxf(tAir, 200.0f));
+            // (the volume each runner was given at its valve this sample: Engine's rNear is its arriving wave plus z times it)
+            float qGiven = 0.0f;
+            for (int i = 0; i < np; ++i)
+                qGiven += (rNear[i] - run[i].near) / run[i].z;
             for (int i = 0; i < np; ++i)
             {
                 // the runner's end in the plenum loses K 1/2 rho u|u| (as the exhaust's ends do: ends.fm, lossFlow):
@@ -334,29 +344,22 @@ module Intake
             const float rt = 287.0f * tAir;
             // (with the valves' mass supplied: the runners' far ends give the plenum its flow from instant to instant, as
             // their waves deliver it (fed anything else, the plenum and throttle lose the runners' coupling and swing on
-            // their own: a V8's idle plenum rippled 24 to 28 kPa against the runners' 2, valvetrain test 11), scaled by
-            // the ratio of what the valves took to what the waves gave over the last whole cycle, followed over some
-            // 0.5 s and held within 0.8 to 1.25: the books close over whole cycles in steady running. A ratio, not an
-            // added flow: the waves' and the valves' books part where flow and the port's pressure rise together, in
-            // proportion to the flow; an added flow measured over a cranking cycle went on drawing through the start's
-            // flare and pulled a warm flat six's plenum to 17 kPa, and it stalled (p-idle-warm; the added flow was ab65e06's))
+            // their own: a V8's idle plenum rippled 24 to 28 kPa against the runners' 2, valvetrain test 11), and with
+            // it what the valves took that the runners were never given. The valve gives its runner g q, not q
+            // (duct.fm, Valve: the pipe's stiffening, g = 1 + (gamma + 1)/4 u/c, the simple wave's pressure for a
+            // flow), and g q over a cycle is not q: its square term carries the flow's back and forth toward the
+            // backflow. At a big cam's idle, where the back and forth is ten times the net (a 7.0 L V8 at 750 rpm on
+            // the bench: 15.1 g/s back into the runners against 16.9 drawn), the runners were given half the net the
+            // cylinders drew (1.14 against 2.12 g/s at the plenum's density), and the plenum gave up only what they
+            // were given. That difference, at the plenum's density, followed over 20 ms (it is the flow's square, at
+            // the firing's harmonics), is given up here: the books close every sample, with no cycle to measure over.
+            // (Before: the shortfall measured over each whole cycle, as an added flow (ab65e06) or a ratio (b6676a5);
+            // measured on a start's flare it drained the plenum and stalled the engine, and as a ratio of the small
+            // net it magnified the back and forth and the 7.0's idle hunted 430 rpm (card N1, p-idle-warm))
             const float mWave = qIn * pPlenum / rt;
-            const float mIn = haveValves != 0 ? mWave * (1.0f + kOff) : mWave;
             if (haveValves != 0)
-            {
-                kOff += (kWant - kOff) * fminf(dt * 2.0f, 1.0f);
-                sumValves += mValves * dt;
-                sumWave += mWave * dt;
-                sumT += dt;
-                if (sumT >= cycleNow)
-                {
-                    // (the valves' mass flows into the runners positive: a draw is negative, as the waves' is)
-                    kWant = fabsf(sumWave) > 1.0e-7f ? fminf(fmaxf(sumValves / sumWave, 0.8f), 1.25f) - 1.0f : 0.0f;
-                    sumValves = 0.0f;
-                    sumWave = 0.0f;
-                    sumT = 0.0f;
-                }
-            }
+                mStiff += (mValves - qGiven * pPlenum / rt - mStiff) * fminf(dt / 0.02f, 1.0f);
+            const float mIn = haveValves != 0 ? mWave + mStiff : mWave;
             float mT = 0.0f;
             int choked = 0;
             const float dp = up - pPlenum;

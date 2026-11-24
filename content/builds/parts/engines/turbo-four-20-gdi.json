@@ -46,7 +46,9 @@
       "frictionValvetrain": "Finger follower",
       "balance2": true,
       "rough": 0.2,
-      "benchLoad": 0.3
+      "benchLoad": 0.3,
+      "wallHeat": "Woschni",
+      "cycle": "Four-stroke"
     },
     "valve": {
       "model": "Lab",
@@ -81,7 +83,9 @@
       "gateSpring": 60000.0,
       "blowOffKind": "Recirculating",
       "scrolls": "Twin scroll",
-      "icEffect": 0.75
+      "icEffect": 0.75,
+      "icFlow": 0.253,
+      "chargeVolume": 0.004
     },
     "exhaust": {
       "model": "Builder",

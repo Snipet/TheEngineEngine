@@ -31,6 +31,11 @@
 # slow platform (macOS, which may wait for a runner) never holds back the others' results. A run whose job was
 # replaced shows "cancelled" for that platform alone; scripts/ci-status.sh reads each platform's newest finished job.
 #
+# main is moved forward by the lead alone, at each checkpoint, to a commit the integration branch already carries
+# (docs/plan/01-rules.md section 2): its run builds, tests and packs the fast tier on every platform, for the owner's
+# artefacts and main's own green mark, and skips the soak tier, which the integration branch's runs already give that
+# commit (and which would hold a Linux runner for the longest job twice).
+#
 # On Linux the preset's tree is built right after the configure, before the application: a compile error anywhere
 # fails the run in about three minutes instead of eight (every session's push lands here; docs/plan/01-rules.md §3).
 #
@@ -92,6 +97,7 @@ jobs:
           ONLY: ${{ inputs.platforms || 'all' }}
           # (the head commit's message, by the environment, never pasted into the script)
           MESSAGE: ${{ github.event.head_commit.message }}
+          REF: ${{ github.ref }}
           ALL: >-
             [
               {"platform": "macos-arm64", "os": "macos-latest", "jobs": 3, "tests": 3},
@@ -115,6 +121,9 @@ jobs:
           # says [soak] (their minutes are dear)
           soak='["linux-x64"]'
           case "$MESSAGE" in *"[soak]"*) soak='["linux-x64","macos-arm64","windows-x64"]' ;; esac
+          # main moves only forward to a commit the integration branch already carries, which its own soak covers: main
+          # builds, tests and packs the fast tier on every platform (the owner's artefacts), and soaks nothing
+          [ "$REF" = refs/heads/main ] && soak='[]'
           matrix=$(jq -c --argjson soak "$soak" \
             'map(. + {tier: "fast"}) + map(select(.platform as $p | $soak | index($p)) + {tier: "soak"})' <<< "$matrix")
           echo "building: $(jq -r 'map(.platform + " " + .tier) | join(", ")' <<< "$matrix")"
@@ -580,6 +589,9 @@ jobs:
           if [ "$TIER" = soak ]; then
             # the failures by kind, each with its run and the tee-fuzz command that reproduces it (scripts/soak-summary.py)
             py=python3; command -v python3 > /dev/null || py=python
+            # which commit this soak ran on: a soak job is never cancelled in flight, so it may be several pushes behind
+            echo "### The soak tier at ${GITHUB_SHA::7} ($(git log -1 --format='%cI %s' | cut -c1-100))" >> "$GITHUB_STEP_SUMMARY"
+            echo "soak tier at $GITHUB_SHA"
             "$py" scripts/soak-summary.py "$log" >> "$GITHUB_STEP_SUMMARY" || echo "::warning::soak-summary.py did not run"
           fi
           exit $rc
@@ -611,6 +623,13 @@ jobs:
           [ -f "$bench" ] || bench="$bench.exe"
           "$bench" --quick --out "$dir/bench-quick.md"
           cat "$dir/bench-quick.md" >> "$GITHUB_STEP_SUMMARY"
+          # the budget table again, scaled to the reference runner by this runner's own compile time (runners differ
+          # by up to 1.4 times; scripts/test-budget.sh)
+          if [ -f "$RUNNER_TEMP/ctest-fast.log" ]; then
+            budget=$(scripts/test-budget.sh "$RUNNER_TEMP/ctest-fast.log" "$dir/bench-quick.md" || true)
+            { echo; echo "### The fast tier by package, scaled to the reference runner"; echo; echo "$budget"; } >> "$GITHUB_STEP_SUMMARY"
+            echo "---- the fast tier by package, scaled to the reference runner:"; echo "$budget"
+          fi
           # R on this runner and the simulator's cost against it, from the same inputs (a number in the log, not a
           # gate: a hosted runner is shared; docs/handoffs/p0-keel.md, "Measuring a package's cost")
           echo "---- the simulator (sim/engine.fm, build default) against the reference, free revs"

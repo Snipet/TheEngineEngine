@@ -90,3 +90,17 @@ its Test steps fail outside my paths (`ui.frame.ribbon`, `ui.build.frame`; `tee-
 
 **For a person.** On the Mac: the frame, every workspace; F2 and F9; Ctrl/Cmd+S on an untitled build (the save dialog);
 an edit on ENGINE and the ribbon answering; the audio device menu with headphones plugged and unplugged.
+
+**Launch (the lead's 20:06 ask).** With no `--preset` and nothing remembered the window opens the first build,
+`content/builds/first.json` (P's file; until it exists, the simulator's defaults as before), as a remembered build is
+opened (`app/Launch.h`): clean, its name in the top bar, its values sent as Spec writes after init. `--reference` opens
+none, every model at Reference; so does a scripted window (--frames, --shot) unless it names one (--first-build,
+--preset), by the lead's ruling: CI's pictures and timings do not move with a content file. A shipped build is never written over by Ctrl+S (it asks for a file). tee-headless is
+unchanged. Tests: `LaunchTest.cpp` (the choice), `shell.window.first` (first.json named; its "Try first" line, its name, and
+every model switch the Schema has on, in the document and as the engine was sent them: one at 0 fails it), `shell.window.last` (nightly: the remembered
+build wins).
+
+**What a person should look at.** A first launch shows the first build, not the bare reference engine. GARAGE is where
+the other archetypes are (the bikes, the diesels, the V8s and V10s, the truck); `--reference` shows the bare engine
+for a comparison.
+

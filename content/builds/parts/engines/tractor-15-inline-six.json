@@ -53,7 +53,9 @@
       "redlineSpeed": 210.906,
       "frictionValvetrain": "Finger follower",
       "rough": 0.2,
-      "benchLoad": 0.3
+      "benchLoad": 0.3,
+      "wallHeat": "Woschni",
+      "cycle": "Four-stroke"
     },
     "valve": {
       "model": "Lab",
@@ -89,7 +91,9 @@
       "gateSpring": 200000.0,
       "blowOffKind": "None",
       "vanes": "Variable vanes",
-      "icEffect": 0.75
+      "icEffect": 0.75,
+      "icFlow": 0.765,
+      "chargeVolume": 0.02
     },
     "exhaust": {
       "model": "Builder",

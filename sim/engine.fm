@@ -203,6 +203,7 @@ module Engine
     int modelRev[11];    // for the fade (holdModel); each one's section's rev as holdModel last saw it
     int faults;         // the crank's state found absurd and the engine put at rest afresh (guard), since init
     int faultNow;       // in this call
+    int lastVoices;     // spec.voices.model at the last call (its rise with the key on renders the key's sounds too)
     int lastIgn;        // ctl.ignition at the last call (voices.model 1: its rise from off renders the key's sounds)
     int cycleRefused;   // 1: engine.cycle 1 asked of a rotary (X-025): refused, the rotary runs as itself
     int layoutWhy;      // why (LayoutGeom::reason: 1 cylinders fire together, 2 rotors, 3 a bank outside the banks)
@@ -431,7 +432,7 @@ module Engine
             rodRatio = fminf(fmaxf(spec.engine.rodLength / (0.5f * strokeUse), 2.2f), 6.0f);
         // (a big cam's overlap dilutes the idle more the slower it turns: its tune idles it higher, as real ones are)
         ecu.idleRpm = fmaxf(idleBase + set.idle + 350.0f * fmaxf(set.cam - 0.35f, 0.0f) / 0.65f + heat.coldIdle(fuelUse), 350.0f);
-        ecu.redRpm = fmaxf(redBase + set.redline, ecu.idleRpm + 1500.0f);
+        ecu.redRpm = ecu.redlineFor(redBase + set.redline);
         exh.nDuals = lay.topo == 2 ? 2 : 1;
         // the throttle and the plenum go with the engine's size
         intk.aThrottle = 0.0028f * sqrtf(vTotal / 0.002f) * (lay.bike > 0.5f ? 1.25f : 1.0f);
@@ -905,6 +906,7 @@ module Engine
         {
             // (card F: its machine's air at the throttle, toward the ECU's target; card H's)
             boost.airSpeed(set.drive != 0 ? fabsf(car.v) : 0.0f);
+            boost.testCell(dynoOn);   // (N2: an engine test cell's rated cooling, SAE J1349)
             if (hd.on != 0)
                 boost.vanesAndPurge(hd.vaneCommand(), 0);   // (card D2: a VGT's brake position while a brake is on; -1 its own loop)
             boost.control16(d16, ecu.boostTarget(), ecu.antiLag(), ecu.nitrous());
@@ -1494,6 +1496,7 @@ module Engine
             modelRev[k] = -1;
         }
         lastIgn = IGN_OFF;
+        lastVoices = 0;
         hostRateSeen = hostRate;
         setupAll(hostRate);
         for (int k = 0; k < SPEC_SECTIONS; ++k)
@@ -1738,9 +1741,12 @@ module Engine
     {
         const int ign = ctl.ignition;
         // (mechanical voices, voices.model 1: the key turned on is heard before a start: the fuel pump's prime)
-        if (spec.voices.model != 0 && ign != IGN_OFF && lastIgn == IGN_OFF)
+        // (and voices switched on with the key already on: the same, so the order of the two makes the same engine: M's
+        // finding through X, 24 Nov)
+        if (spec.voices.model != 0 && ign != IGN_OFF && (lastIgn == IGN_OFF || lastVoices == 0))
             sounding = 1;
         lastIgn = ign;
+        lastVoices = spec.voices.model;
         if (ign == IGN_START)
         {
             if (ecu.state == 0 || ecu.state == 3)

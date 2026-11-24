@@ -60,6 +60,9 @@ module Boost
     float thrSlow;      // the throttle a tenth of a second behind
     float turbo;        // this sample's sound
     int model;          // spec.boost.model: 0 the reference above, 1 the machine
+    BoostSpec* spec;    // the Spec's section, from applyMachine (haveSpec 1): read every 16 samples for heatSettle
+    int haveSpec;
+    int seenSettle;     // spec.boost.heatSettle as last acted on
     BoostMachine mach;
     int mapRev;         // the map's lines last copied to the Scope
     float crankTorque;  // N m the machine takes from the crank (model 1), as of the last sample
@@ -67,6 +70,8 @@ module Boost
     void setup(float rateIn, Noise* noise)
     {
         mach.setup(rateIn, 0.002f, 7000.0f);   // (the engine's own rate: 96 kHz, or a lighter tier's)
+        haveSpec = 0;
+        seenSettle = 0;
         rate = rateIn;
         nz = noise;
         nScale = sqrtf(rate / 48000.0f);
@@ -266,6 +271,10 @@ module Boost
     void applyMachine(BoostSpec* s, float vd, float redRpm, float pAmb, float tAmb)
     {
         model = s->model;
+        if (haveSpec == 0)
+            seenSettle = s->heatSettle;
+        spec = s;
+        haveSpec = 1;
         mach.vd = vd;
         mach.redRpm = redRpm;
         mach.ambient(pAmb, tAmb);
@@ -375,6 +384,12 @@ module Boost
         mach.cmdNitrous = nitrousOn > 0.5f ? 1 : 0;
         mach.control(d16);
         crankTorque = mach.crankTorque;
+        // (card C's settle: at each press, the intercooler's core where the present flow holds it)
+        if (haveSpec != 0 && spec->heatSettle != seenSettle)
+        {
+            seenSettle = spec->heatSettle;
+            mach.settleCore();
+        }
     }
 
     // The vanes' position from the ECU's map (below 0: the machine's own loop), and purges counted (a press counter)
@@ -388,6 +403,13 @@ module Boost
     void airSpeed(float v)
     {
         mach.airSpeed = v;
+    }
+
+    // 1: on an engine test cell (MODE_DYNO_ENGINE with the absorber on): the cell's charge-air cooling holds the
+    // intercooler's core at the air's temperature (SAE J1349; machine.fm, the core)
+    void testCell(int on)
+    {
+        mach.cellHeld = on != 0 ? 1 : 0;
     }
 
     // tel.boost's card F fields (model 0: zeros, the shafts none). tCharge: the charge air's temperature as the engine
@@ -416,6 +438,36 @@ module Boost
         t->blowOffValve = on != 0 ? mach.bovLift : 0.0f;
         t->superchargerPower = on != 0 ? mach.telScPower : 0.0f;
         t->oxygen = on != 0 ? mach.telO2 : 0.0f;
+        // (card N2: the charge system against the engine, the lead's X-021 ruling: the fields mean what they say, so
+        // a 15 L engine with a 2 L engine's cooler makes little boost; these say so. Warnings, not physics, the
+        // thresholds judgement: an intercooler rated under half the engine's matched flow (the compressor's at its
+        // redline, mMatch); a wastegate spring under a tenth of the boost asked (the target, the ECU's or the spec's:
+        // a low spring under a duty is a real design, P's kei's 10 kPa under 65; a tenth is where the exhaust's push
+        // alone opens it); charge pipes under 0.3 or over 4 times 2.5 displacements (F's defaults' ratio on a 2 L
+        // engine: 5 L of pipes; the twin rotor's 2.6 L sit at 0.4). Turbos and superchargers alike; no target, no
+        // spring warning)
+        int mm = 0;
+        float springWants = 0.0f;
+        float volWants = 0.0f;
+        if (on != 0)
+        {
+            const float asked = mach.cmdTarget > 0.0f ? mach.cmdTarget : mach.target;
+            springWants = mach.sc == 0 ? fmaxf(asked, 0.0f) : 0.0f;
+            volWants = 2.5f * mach.vd;
+            if (mach.icFlowHas < 0.5f * mach.mMatch)
+                mm |= 1;
+            if (springWants > 0.0f && mach.gateSpring < 0.1f * springWants)
+                mm |= 2;
+            if (mach.chargeVolHas < 0.3f * volWants || mach.chargeVolHas > 4.0f * volWants)
+                mm |= 4;
+        }
+        t->mismatch = mm;
+        t->coolerHas = on != 0 ? mach.icFlowHas : 0.0f;
+        t->coolerWants = on != 0 ? mach.mMatch : 0.0f;
+        t->springHas = on != 0 && mach.sc == 0 ? mach.gateSpring : 0.0f;
+        t->springWants = springWants;
+        t->volumeHas = on != 0 ? mach.chargeVolHas : 0.0f;
+        t->volumeWants = volWants;
         t->flags = on != 0 ? mach.flags : 0;
     }
 

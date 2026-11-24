@@ -5,8 +5,10 @@
 #include "player/SimAdapter.h"
 #define TEE_REGISTER_SHARED_SIM
 #include "support/SharedSim.h"
+#include "tee/Build.h"
 #include "tee/SimHost.h"
 
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 #include <algorithm>
@@ -121,6 +123,55 @@ TEST_CASE("shell: the simulator's Spec as parameters, its telemetry by name, and
     CHECK(tel.value(state) != 2.0);
     CHECK(finite);
     CHECK(peak <= 1.0);
+    CHECK(sim->why().empty());
+}
+
+// A quality change compiles the program again, and the host then takes only writes resolved against the new
+// program's Fields: the document follows it at the next frame, so that an engine changed after it is heard, and its
+// undo stays (the same layout).
+TEST_CASE("shell: after a quality change the document's edits still reach the simulator, its undo kept",
+          "[shell][sim][sharedsim][quality]")
+{
+    std::string errors;
+    const std::unique_ptr<player::SimAdapter> sim = test::sharedAdapter(errors);
+    INFO(errors);
+    REQUIRE(sim != nullptr);
+    sim->prepare(48000.0, 256);
+    REQUIRE(sim->waitReady(600.0));
+    sim->frame();
+    Build& build = sim->build();
+    const auto inSim = [&](const char* path) {
+        std::string why;
+        return sim->host().readSpec(sim->host().fields().ref(path, why));
+    };
+    const double before = build.get("spec.engine.displacement");
+    REQUIRE(build.set("spec.engine.displacement", 0.9 * before));    // an edit before: one undo step
+    sim->frame();
+    CHECK(inSim("spec.engine.displacement") == Catch::Approx(0.9 * before));
+
+    sim->requestQuality(1);                                          // Economy: compiled again
+    REQUIRE(sim->waitQuality(600.0));
+    REQUIRE(sim->qualityError().empty());
+    sim->frame();
+    CHECK(sim->host().quality() == SimHost::Quality::Economy);
+    CHECK(inSim("spec.engine.displacement") == Catch::Approx(0.9 * before));   // the Spec carried
+
+    REQUIRE(build.set("spec.engine.displacement", 0.8 * before));    // the engine changed after it
+    sim->frame();
+    CHECK(inSim("spec.engine.displacement") == Catch::Approx(0.8 * before));
+    CHECK(build.flush());                                            // nothing left refused
+    REQUIRE(build.canUndo());
+    REQUIRE(build.undo());
+    REQUIRE(build.undo());
+    sim->frame();
+    CHECK(inSim("spec.engine.displacement") == Catch::Approx(before));
+
+    sim->requestQuality(0);                                          // and back to Full
+    REQUIRE(sim->waitQuality(600.0));
+    sim->frame();
+    REQUIRE(build.set("spec.engine.displacement", 0.7 * before));
+    sim->frame();
+    CHECK(inSim("spec.engine.displacement") == Catch::Approx(0.7 * before));
     CHECK(sim->why().empty());
 }
 

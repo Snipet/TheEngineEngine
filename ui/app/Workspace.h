@@ -119,6 +119,27 @@ namespace tee::ui
         // 1220ca3): 1 settled, 0 cold walls (a short step reads a few percent low), -1 not said (a sweep, a prediction,
         // an old source). Label a run by wallsWord(); never mix the two unlabelled.
         int settled = -1;
+        // Knock-limited points (card C's PredictPoint/DynoPoint::knockLimited, 765684a): knock control's retard reached
+        // 0.5 degrees there, the torque a mean over its sawtooth; empty when the source says nothing. Mark such a
+        // point (not by colour alone) and say knockText(i): "knock-limited, retard 7 to 11 deg".
+        std::vector<char> knock;
+        std::vector<double> retardMin, retardMax;   // degrees, at each point
+        bool knockLimited(std::size_t i) const noexcept { return i < knock.size() && knock[i] != 0; }
+        int knockCount() const noexcept
+        {
+            int n = 0;
+            for (const char k : knock)
+                n += k != 0 ? 1 : 0;
+            return n;
+        }
+        std::string knockText(std::size_t i) const
+        {
+            if (!knockLimited(i))
+                return {};
+            const auto deg = [](double v) { return std::to_string(static_cast<int>(std::lround(v))); };
+            const double lo = i < retardMin.size() ? retardMin[i] : 0.0, hi = i < retardMax.size() ? retardMax[i] : lo;
+            return "knock-limited, retard " + deg(lo) + (std::lround(hi) != std::lround(lo) ? " to " + deg(hi) : std::string()) + " deg";
+        }
         const char* wallsWord() const noexcept { return settled > 0 ? "walls settled" : settled == 0 ? "cold walls" : ""; }
         bool empty() const noexcept { return speed.empty(); }
         // The peak of torque or power: its value and the speed at it (NaN, NaN when empty).
@@ -247,6 +268,11 @@ namespace tee::ui
         // the frame works it out from the peak held over three seconds); blocks the audio device missed since load
         // (none: not shown).
         std::function<float()> simLoadPeak;
+        // The first launch's TRY FIRST card (TryFirst.h; the lead's ask 20:19): the build's notes while the card should
+        // show (empty: not, as after it was closed), and the call that closes it for good (a per-viewer setting the
+        // shell keeps). The frame closes it at its Close button or once the engine has been started and stopped.
+        std::function<std::string()> tryFirst;
+        std::function<void()> tryFirstDone;
         std::function<int()> loadFits;
         std::function<long()> dropouts;
         std::function<int()> mode;                                // 0 bench, 1 dyno, 2 drive (ControlsFrame::mode)

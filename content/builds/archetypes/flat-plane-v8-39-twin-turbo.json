@@ -61,7 +61,9 @@
       "redlineSpeed": 837.758,
       "frictionValvetrain": "Finger follower",
       "rough": 0.2,
-      "benchLoad": 0.3
+      "benchLoad": 0.3,
+      "wallHeat": "Woschni",
+      "cycle": "Four-stroke"
     },
     "valve": {
       "model": "Lab",
@@ -99,7 +101,9 @@
       "gateSpring": 70000.0,
       "blowOffKind": "Recirculating",
       "scrolls": "Twin scroll",
-      "icEffect": 0.75
+      "icEffect": 0.75,
+      "icFlow": 0.589,
+      "chargeVolume": 0.0078
     },
     "exhaust": {
       "model": "Builder",
@@ -172,8 +176,16 @@
       "pressure": 101325.0
     },
     "voices": {
+      "model": "Voices",
       "timing": "Chain",
       "injection": "Direct"
+    },
+    "sound": {
+      "model": "Places",
+      "camera": "Rear",
+      "place": "Field",
+      "ground": "Asphalt",
+      "enginePlace": "Mid"
     }
   }
 }

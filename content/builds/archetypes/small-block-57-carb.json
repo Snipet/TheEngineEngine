@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "Small-block 5.7 L, carburettor-like",
-  "notes": "A 350 cubic inch small block (4.00 x 3.48 in: 101.6 x 88.4 mm, 5733 cc), 9:1, two valves on pushrods, a flat-tappet cam, one big throttle over an open plenum as a four-barrel carburettor's. Some 150 to 200 kW net and 400 to 450 N m (makers' net ratings of the 1970s and 80s). Four-speed manual, live axle.",
+  "notes": "A 350 cubic inch small block (4.00 x 3.48 in: 101.6 x 88.4 mm, 5733 cc), 9:1, two valves on pushrods, a flat-tappet cam (the L48's), one big throttle over an open plenum as a four-barrel carburettor's. The L48 of 1975 to 1980 is rated 123 to 145 kW net (165 to 195 hp) and 346 to 380 N m (255 to 280 lb ft), 1977's 180 hp at 4000 rpm and 270 lb ft at 2400; the L82 157 kW at 5200 and 346 N m at 3600 (SAE net, looked up: corvsport.com, corvetteactioncenter.com). Four-speed manual, live axle.",
   "spec": {
     "engine": {
       "layout": "V8 crossplane",
@@ -61,7 +61,9 @@
       "redlineSpeed": 575.959,
       "frictionValvetrain": "Flat tappet",
       "rough": 0.2,
-      "benchLoad": 0.3
+      "benchLoad": 0.3,
+      "wallHeat": "Woschni",
+      "cycle": "Four-stroke"
     },
     "valve": {
       "model": "Lab",
@@ -69,13 +71,13 @@
       "dIn": 0.0493,
       "dEx": 0.0381,
       "train": "Pushrod",
-      "inDurSeat": 268,
-      "inDur1mm": 214,
-      "inLift": 0.0109,
+      "inDurSeat": 251,
+      "inDur1mm": 197,
+      "inLift": 0.0099,
       "inCentre": 110,
-      "exDurSeat": 276,
-      "exDur1mm": 224,
-      "exLift": 0.0109,
+      "exDurSeat": 256,
+      "exDur1mm": 204,
+      "exLift": 0.0104,
       "exCentre": 114,
       "portIn": 1.15,
       "portEx": 1.3,
@@ -155,9 +157,17 @@
       "pressure": 101325.0
     },
     "voices": {
+      "model": "Voices",
       "timing": "Chain",
       "fan": "Viscous clutch",
       "injection": "Port"
+    },
+    "sound": {
+      "model": "Places",
+      "camera": "Rear",
+      "place": "Field",
+      "ground": "Asphalt",
+      "enginePlace": "Front"
     }
   }
 }

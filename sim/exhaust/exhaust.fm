@@ -173,6 +173,8 @@ module Exhaust
     int tcN;
     float tcPort;       // the bead's reading at the port's exit, K (over some 0.5 s)
     float tcPlain;      // the plain time mean of the port's local gas, K
+    float tcU;          // the mean speed past the bead (|q| / the port's area), summed over a telemetry step, m/s
+    float tcUMean;      // and its mean over some 0.5 s
     float kTc;
     float kStag;
     int prepared;       // 1: prepare() was called this sample (the turbines' seam), before step()
@@ -230,6 +232,8 @@ module Exhaust
         tcN = 0;
         tcPort = 0.0f;
         tcPlain = 0.0f;
+        tcU = 0.0f;
+        tcUMean = 0.0f;
         kTc = 1.0f - expf(-16.0f / (0.5f * rateIn));
         kStag = 1.0f - expf(-1.0f / (0.036f * rateIn));
         rate = rateIn;
@@ -796,8 +800,33 @@ module Exhaust
             tcW += w;
             tcWT += w * tl;
             tcT += tl;
+            tcU += fabsf(q) / aP;
             tcN += 1;
         }
+    }
+
+    // A thermocouple's bead in a stream of gas at tg inside a wall at tw reads below the gas by its radiation to the wall:
+    // h (tg - tb) = eps sigma (tb^4 - tw^4) (the radiation error: Mills, Heat Transfer; Incropera's thermocouple
+    // example). h from Ranz and Marshall's sphere, Nu = 2 + 0.6 Re^0.5 Pr^(1/3), at the mean speed past it (tcUMean);
+    // the bead a 1.5 mm sheathed junction, its emissivity 0.8 (an oxidised sheath): judgement, an instrument's. The gas's
+    // properties as the port's (viscosity 3.3e-7 T^0.7, cp 1150, Pr 0.7) at the mean pressure there. Newton, from tg.
+    float bead(float tg, float tw)
+    {
+        const float d = 0.0015f;
+        const float mu = 3.3e-7f * expf(0.7f * logf(fmaxf(tg, 300.0f)));
+        const float rho = (101325.0f + pPortMean) / (287.0f * fmaxf(tg, 300.0f));
+        const float re = rho * fmaxf(tcUMean, 0.0f) * d / mu;
+        const float nu = 2.0f + 0.6f * sqrtf(re) * 0.8879f;
+        const float h = nu * (mu * 1150.0f / 0.7f) / d;
+        const float es = 0.8f * 5.670e-8f;
+        float tb = tg;
+        for (int it = 0; it < 6; ++it)
+        {
+            const float f = h * (tg - tb) - es * (tb * tb * tb * tb - tw * tw * tw * tw);
+            const float df = -h - 4.0f * es * tb * tb * tb;
+            tb -= f / df;
+        }
+        return tb;
     }
 
     // The gas as it leaves the ports for the headers and the turbine (after the port's walls): card F's turbine's
@@ -1554,6 +1583,8 @@ module Exhaust
             const float tp = tcT / (float)tcN;
             tcPort = tcPort > 0.0f ? tcPort + (tb - tcPort) * kTc : tb;
             tcPlain = tcPlain > 0.0f ? tcPlain + (tp - tcPlain) * kTc : tp;
+            tcUMean += (tcU / (float)tcN - tcUMean) * kTc;
+            tcU = 0.0f;
             tcW = 0.0f;
             tcWT = 0.0f;
             tcT = 0.0f;
@@ -1561,8 +1592,27 @@ module Exhaust
         }
         // (before the bead's mean has had a sample, the gas's own: physical from the first block)
         const float tcNow = tcPort > 0.0f ? tcPort : exitTemperature();
-        t->portThermocouple = tcNow;
-        t->headerThermocouple = tcNow + (t->headerTemperature - exitTemperature());
+        t->portThermocouple = bead(tcNow, tWallPort);
+        // the system as built, element by element (the builder is built at every configure, in model 0 too, as the
+        // reference's topology): for what it costs (docs/models/exhaust.md, "What the network costs, by element")
+        int nNode = 0;
+        int nPair = 0;
+        int nEnd = 0;
+        for (int j = 0; j < b.net.nj; ++j)
+        {
+            if (b.net.jKind[j] == XJ_NODE)
+                nNode += 1;
+            else if (b.net.jKind[j] == XJ_PAIR)
+                nPair += 1;
+            else if (b.net.jKind[j] == XJ_OPEN)
+                nEnd += 1;
+        }
+        t->pipes = b.net.nUsed;
+        t->nodes = nNode;
+        t->pairs = nPair;
+        t->openEnds = nEnd;
+        t->headerThermocouple = bead(tcNow + (t->headerTemperature - exitTemperature()),
+                                     model != 0 ? b.heat.tWall[XH_PRIM] : tWall[0]);
         t->portCoolantHeat = qCool;
         t->portWallTemperature = tWallPort;
         t->portExitTemperature = exitTemperature();

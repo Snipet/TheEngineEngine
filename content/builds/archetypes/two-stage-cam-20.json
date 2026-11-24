@@ -44,7 +44,9 @@
       "redlineSpeed": 942.478,
       "frictionValvetrain": "Finger follower",
       "rough": 0.2,
-      "benchLoad": 0.3
+      "benchLoad": 0.3,
+      "wallHeat": "Woschni",
+      "cycle": "Four-stroke"
     },
     "valve": {
       "model": "Lab",
@@ -65,12 +67,12 @@
       "springRate": 81750.0,
       "springPreload": 510.0,
       "stages": "On",
-      "inDurSeatB": 290,
-      "inDur1mmB": 258,
-      "inLiftB": 0.0118,
-      "exDurSeatB": 284,
-      "exDur1mmB": 252,
-      "exLiftB": 0.0112,
+      "inDurSeatB": 280,
+      "inDur1mmB": 248,
+      "inLiftB": 0.01265,
+      "exDurSeatB": 278,
+      "exDur1mmB": 246,
+      "exLiftB": 0.01214,
       "stageSpeed": 628.3185307179587,
       "inCentreB": 110,
       "exCentreB": 112
@@ -149,9 +151,17 @@
       "pressure": 101325.0
     },
     "voices": {
+      "model": "Voices",
       "timing": "Chain",
       "lifters": "Solid",
       "injection": "Port"
+    },
+    "sound": {
+      "model": "Places",
+      "camera": "Rear",
+      "place": "Field",
+      "ground": "Asphalt",
+      "enginePlace": "Front"
     }
   }
 }

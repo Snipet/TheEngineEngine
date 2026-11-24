@@ -52,14 +52,18 @@ Taken before the keys above (so Ctrl+S saves and does not brake). On a Mac, Cmd 
 |---|---|
 | Ctrl+N | A new build, every field at its default. With unsaved changes it asks first (discard, or save them first). |
 | Ctrl+O | Open a build (a `.json` of `docs/formats.md`), through the system's file chooser. |
-| Ctrl+S | Save the build to its file; an untitled one asks for a file. |
+| Ctrl+S | Save the build to its file; an untitled one, or a shipped one (the first build, an archetype), asks for a file of your own. |
 | Ctrl+Shift+S | Save it as another file. |
 | F2 | The File menu: the above, the recent files, the builds of the library (shipped and your own), and a part (engine, car, tune) loaded from or saved to a file apart from the rest. |
 | F9 | The Audio menu: the device by name (or the system's default), the rate (or the device's own), the buffer asked for; the QUALITY (Full: the engine at 96 kHz inside, the default; Economy: 48 kHz inside, about half the load, the top octave lost; a change compiles the engine again and crossfades to it, the engine cranked back if the key was on; a build on the edge of lighting, such as a diesel whose charge only just lights, may come back on the other branch, lit or misfiring, as after any reload); and the recorder, which writes what is heard to a WAV file in the user's folder (`recordings/` beside `builds/`). |
 
 The top bar shows the build's name with a star while it has unsaved changes. A build still unsaved when the window
 closes is kept as the build "Unsaved changes" in your folder of builds, and opens at the next start; otherwise the
-build last opened or saved opens. The device, the rate, the buffer and the recent files are remembered in the
+build last opened or saved opens. A first launch (nothing remembered) opens the first build, `content/builds/first.json`:
+a whole engine with every model on, its name in the top bar, clean, and a TRY FIRST card with its notes' opening
+paragraph (closed once, it is not shown again: `tryFirstSeen` in the settings). The other archetypes are in GARAGE.
+`--reference` opens no build: the simulator's defaults, every model switch at Reference, for comparisons; `--preset
+NAME` opens that build instead of either. The device, the rate, the buffer and the recent files are remembered in the
 settings file (`shell/settings/Settings.h`). A device that is unplugged: the system's default plays in its place,
 and the named one is taken back when it returns.
 
@@ -118,6 +122,9 @@ drive, scope), `--size WxH` gives the window or the picture a logical size, `--s
 a logical px, and `--dyno-wait S` has tee-headless wait for the dyno ribbon's first curve before it draws:
 
     tee-headless --workspace exhaust --size 1280x800 --scale 2 --frames 120 --script tests/shell/scripts/workspace.txt --shot out/exhaust.png
+
+A scripted window (`--frames`, `--shot`) opens no build unless one is named (`--first-build FILE`, `--preset NAME`):
+the simulator's defaults, as `--reference`, so its pictures and timings do not change with a content file.
 
 `tee-headless` (and the window with `--script`) reads the same keys from a script, by name: `w`, `s`, `up`, `down`,
 `e`, `q`, `n`, `space`, `return`, `enter`, `lshift`, `pageup`, `pagedown`, `1` to `6`. `app/Script.h` has the

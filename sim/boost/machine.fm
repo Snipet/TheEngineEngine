@@ -125,6 +125,9 @@ module BoostMachine
                         // one-sided exhaust empties into side 0's downpipe
     float omegaMax[BOOST_TURBOS];
     float mMatch;                   // the engine's flow at its redline, matched, kg/s
+    // (card N2: the charge system against the engine it is on, for the telemetry's warnings: has, wants; see apply)
+    float icFlowHas;
+    float chargeVolHas;
     // the inlet
     float kFilter;
     float mInlet;       // through the filter (negative: out of it), kg/s
@@ -145,6 +148,9 @@ module BoostMachine
     float gCool;
     float tIcOut;
     float airSpeed;     // the air through the car's front, m/s
+    int cellHeld;       // 1: an engine test cell's charge-air cooling holds the core at the air's temperature
+    float mIcSlow;      // the cooler's flow (kg/s) and its inlet's temperature (K), followed over 1 s (the settle's)
+    float tIcInSlow;
     // the intake's side
     float mDraw;
     float pPlenum;
@@ -336,6 +342,9 @@ module BoostMachine
         mIc = 0.0f;
         mNa = 0.0f;
         tCore = tOut;
+        cellHeld = 0;
+        mIcSlow = 0.0f;
+        tIcInSlow = tOut;
         qCore = 0.0f;
         tIcOut = tOut;
         mDraw = 0.0f;
@@ -482,6 +491,8 @@ module BoostMachine
         v2.resize(0.6f * s->chargeVolume);
         icEff = s->icEffect;
         icK = s->icDrop / (s->icFlow * s->icFlow);
+        icFlowHas = s->icFlow;
+        chargeVolHas = s->chargeVolume;
         icDuct = dt * 0.008f / 0.8f;
         cCore = s->icMass * 900.0f;
         bovKind = s->blowOffKind;
@@ -1064,6 +1075,18 @@ module BoostMachine
         }
     }
 
+    // Card C's settle (spec.boost.heatSettle): the intercooler's core put where the present flow and the air through
+    // it hold it (its steady state: the charge's heat, effectiveness times the flow times the temperature over the
+    // core's, equal to the cooling air's, gCool times the core over the air), as G's exhaust and C's intake settle
+    // their walls: a dyno's sweep without waiting the core's 15 to 25 s
+    void settleCore()
+    {
+        const float h = icEff * mIcSlow * kBoostCpA;
+        tCore = (h * tIcInSlow + gCool * tOut) / fmaxf(h + gCool, 1.0e-3f);
+        if (cellHeld != 0)
+            tCore = tOut;
+    }
+
     // ---- every 16 samples -------------------------------------------------------------------------------------------
 
     void control(float d16) [[clang::nonblocking]]
@@ -1133,11 +1156,19 @@ module BoostMachine
                     // and the turbine's energy with them, a second steady state below the first: card D2's 15 L truck
                     // at 1300 rpm stood at 98 kPa and 882 N m with its vanes at 0.47, surging two thirds of the time,
                     // against 209 kPa and 1945 N m at 0.9. While the compressor surges, an integral opens the vanes at
-                    // 0.5 a second; it gives back a quarter of that rate while it does not, so the vanes settle at the
-                    // surge line's edge. Judgement, as the limit above is: a maker's vane map keeps its own margin)
+                    // 1 a second and gives back 0.3 of that rate while it does not: the vanes settle where it surges
+                    // some 23 % of the time, the surge line's edge (2 a second put the 15 L tractor at 1000 rpm off its
+                    // boost, 0.5 left the truck's spool a second behind a fixed nozzle's). Judgement, as the limit
+                    // above is: a maker's vane map keeps its own margin)
                     const float phiS = comp[t].mdot / fmaxf(comp[t].mc, 1.0e-5f);
-                    const int surging = comp[t].mdot < 0.0f || (phiS < 0.8f * comp[t].phiK && comp[t].pr > 1.15f) ? 1 : 0;
-                    surgeOpen[t] = fminf(fmaxf(surgeOpen[t] + d16 * 0.5f * (surging != 0 ? 1.0f : -0.25f), 0.0f), 1.0f);
+                    // (only the loop's own surge counts: with the pedal down (the plenum not under the throttle's
+                    // vacuum, as the assist's test) and the boost short of what is asked; a lift's surge on a closed
+                    // throttle is the blow-off valve's matter, and then the guard only gives back)
+                    const int surging = (comp[t].mdot < 0.0f || (phiS < 0.8f * comp[t].phiK && comp[t].pr > 1.15f)) &&
+                                                pPlenum > 0.85f * pOut && boost < want
+                                            ? 1
+                                            : 0;
+                    surgeOpen[t] = fminf(fmaxf(surgeOpen[t] + d16 * 1.0f * (surging != 0 ? 1.0f : -0.3f), 0.0f), 1.0f);
                     v = fmaxf(v, turb[t].vaneMin + surgeOpen[t]);
                 }
                 else
@@ -1198,9 +1229,23 @@ module BoostMachine
         }
         crankTorque = driveSum / 16.0f / fmaxf(omegaCrank, 10.0f);
         driveSum = 0.0f;
-        // the intercooler's core: what the charge gave it, less what the air through it took
+        // the intercooler's core: what the charge gave it, less what the air through it took. In an engine test cell
+        // (MODE_DYNO_ENGINE, Boost::testCell) the core is held at the air's temperature: SAE J1349 has the laboratory's
+        // charge-air cooling set so the manifold air is what the installed cooler gives at its rated condition, and
+        // the cooler's own effectiveness (spec.boost.icEffect) is stated against its cooling air, so a core at the
+        // air's temperature gives exactly that effectiveness. On the chassis dyno and the road, the air through the
+        // car's front (the roller's or the car's speed); standing, still air
         gCool = 200.0f + 30.0f * airSpeed;
-        tCore += (qCore - d16 * gCool * (tCore - tOut)) / fmaxf(cCore, 1.0f);
+        {
+            const float tin = mIc >= 0.0f ? v1.t : v2.t;
+            const float kS = 1.0f - expf(-d16 / 1.0f);
+            mIcSlow += (fabsf(mIc) - mIcSlow) * kS;
+            tIcInSlow += (tin - tIcInSlow) * kS;
+        }
+        if (cellHeld != 0)
+            tCore = tOut;
+        else
+            tCore += (qCore - d16 * gCool * (tCore - tOut)) / fmaxf(cCore, 1.0f);
         qCore = 0.0f;
         // nitrous: its purge
         if (cmdPurge != purgeSeen)
