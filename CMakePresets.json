@@ -1,0 +1,62 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": { "major": 3, "minor": 30, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build-${presetName}"
+    },
+    {
+      "name": "dev",
+      "displayName": "dev: RelWithDebInfo; the host library, the tools and the tests",
+      "inherits": [ "base" ],
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "RelWithDebInfo" }
+    },
+    {
+      "name": "release",
+      "displayName": "release: Release; the host library, the tools and the tests",
+      "inherits": [ "base" ],
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
+    }
+  ],
+  "buildPresets": [
+    { "name": "dev",     "configurePreset": "dev",     "jobs": 3 },
+    { "name": "release", "configurePreset": "release", "jobs": 3 }
+  ],
+  "testPresets": [
+    {
+      "name": "dev",
+      "configurePreset": "dev",
+      "output": { "outputOnFailure": true },
+      "execution": { "jobs": 3, "timeout": 900 }
+    },
+    {
+      "name": "release",
+      "configurePreset": "release",
+      "output": { "outputOnFailure": true },
+      "execution": { "jobs": 3, "timeout": 900 }
+    }
+  ],
+  "workflowPresets": [
+    {
+      "name": "dev-verify",
+      "displayName": "dev: configure, build, run every test",
+      "steps": [
+        { "type": "configure", "name": "dev" },
+        { "type": "build",     "name": "dev" },
+        { "type": "test",      "name": "dev" }
+      ]
+    },
+    {
+      "name": "release-verify",
+      "displayName": "release: configure, build, run every test",
+      "steps": [
+        { "type": "configure", "name": "release" },
+        { "type": "build",     "name": "release" },
+        { "type": "test",      "name": "release" }
+      ]
+    }
+  ]
+}
