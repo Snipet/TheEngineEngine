@@ -1,0 +1,75 @@
+{
+ "format": "tee-engine-scenario/1",
+ "name": "d2-jake-muffled",
+ "build": "truck-15l-six",
+ "description": "The compression brake held on a grade (the dyno at 1900 rpm, pedal up), the build's muffler: off, Low from 5 s, Medium 8 s, High 11 s; from 14 s the speed falls as on a grade eased (10 rad/s^2, to some 1350 rpm), off at 20 s.",
+ "seconds": 23,
+ "events": [
+  {
+   "t": 0.0,
+   "spec": {
+    "env.temperature": 300,
+    "env.pressure": 101325
+   },
+   "ctl": {
+    "mode": 0,
+    "lever": 0,
+    "clutch": 0,
+    "brake": 0,
+    "throttle": 0,
+    "ignition": 1
+   }
+  },
+  {
+   "t": 0.2,
+   "ctl": {
+    "ignition": 2
+   }
+  },
+  {
+   "t": 2.2,
+   "ctl": {
+    "ignition": 1
+   }
+  },
+  {
+   "t": 3.0,
+   "ctl": {
+    "mode": 2,
+    "dynoSpeed": 198.968,
+    "dynoRate": 0,
+    "throttle": 0
+   }
+  },
+  {
+   "t": 5.0,
+   "spec": {
+    "ecu.brakeSwitch": 1
+   }
+  },
+  {
+   "t": 8.0,
+   "spec": {
+    "ecu.brakeSwitch": 2
+   }
+  },
+  {
+   "t": 11.0,
+   "spec": {
+    "ecu.brakeSwitch": 3
+   }
+  },
+  {
+   "t": 14.0,
+   "ctl": {
+    "dynoRate": -10
+   }
+  },
+  {
+   "t": 20.0,
+   "spec": {
+    "ecu.brakeSwitch": 0
+   }
+  }
+ ]
+}
