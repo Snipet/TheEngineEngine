@@ -365,7 +365,11 @@ TEST_CASE("the intake cam baked by a sweep of the fast dyno: the best advance by
     REQUIRE(map.size() == 16 + 16 + 256 + 2);
     CHECK(std::fabs(map[0] - r.speeds[0]) < 1e-3 * r.speeds[0]);
     CHECK(map[16 + 16 + 256] == 3.0);   // nx
-    CHECK(map[16 + 16 + 0 * 16 + 0] == r.best[0]);
+    CHECK(map[16 + 16 + 256 + 1] == 4.0);   // ny: the load axis 0, 0.75, 0.95, 3
+    CHECK(map[16 + 16 + 0 * 16 + 0] == 0.0);   // parked at light load (idle)
+    CHECK(map[16 + 16 + 0 * 16 + 1] == 0.0);
+    CHECK(map[16 + 16 + 0 * 16 + 2] == r.best[0]);   // the bake's advance from 0.95 up
+    CHECK(map[16 + 16 + 0 * 16 + 3] == r.best[0]);
     CHECK(build.canUndo());
     WARN("v12-65's intake cam baked in " << r.wallSeconds << " s: " << r.best[0] << ", " << r.best[1] << ", " << r.best[2]
                                          << " deg at 2000, 4000, 6000 rpm");
@@ -697,4 +701,50 @@ TEST_CASE("a quality change keeps the engine's heat as it was, not its initial t
     INFO("oil " << before << " K before the swap, " << after << " K after it");
     CHECK(after == Catch::Approx(before).margin(0.2));
     CHECK(std::fabs(after - 378.0) > 0.05);   // not its initial value again
+}
+
+TEST_CASE("the knock limit's corrections: a cell whose mean retard was over 12 degrees measured again with the table "
+          "applied, its residual added, said when it still knocks",
+          "[engine][sim][bake][nightly]")
+{
+    if (!haveSim())
+        SKIP("sim/engine.fm is not there yet");
+    std::string error;
+    const auto sim = compiled(simDir(), {}, error);
+    REQUIRE(sim != nullptr);
+    Build build(sim->fields());
+    std::vector<std::string> warnings;
+    REQUIRE(build.loadFile(std::filesystem::path(TEE_SOURCE_DIR)
+                               / "content/builds/archetypes/straight-six-twin-turbo-30.json",
+                           BuildPart::Whole, warnings, error));
+    if (build.fieldOf("ecu.maps.knockLimitAuto") < 0)
+        SKIP("the program has no knock-limit table yet");
+    KnockBakeOptions options;
+    options.speeds = 8;       // (2686 rpm among them: N2's 2450)
+    options.pedals = {1.0};
+    options.boostSteps = 1;   // the build's own level: where the retard sits at its ceiling
+    KnockBakeResult r;
+    REQUIRE(bakeKnockLimit(sim, build, options, r, error));
+    int corrected = 0;
+    for (std::size_t s = 0; s < r.measured.size(); ++s)
+        for (const KnockBakeCell& c : r.measured[s])
+        {
+            INFO("speed " << r.speeds[s] << ": mean " << c.retardMean << ", corrections " << c.corrections
+                          << ", residual " << c.residual << ", cell " << c.limit);
+            if (c.valid && c.retardMean > options.correctAbove)
+            {
+                CHECK(c.corrections >= 1);
+                CHECK(c.corrections <= options.corrections);
+                CHECK(c.limit >= c.retardMean + options.margin);
+                CHECK(c.stillKnocking == (c.residual >= options.knockLimit));
+                ++corrected;
+            }
+            else
+            {
+                CHECK(c.corrections == 0);
+                CHECK_FALSE(c.stillKnocking);
+            }
+        }
+    CHECK(corrected >= 1);   // the six at its full boost has a cell at the ceiling (N2's proof: 2450 rpm)
+    REQUIRE(r.stillKnocking.size() == r.speeds.size());
 }

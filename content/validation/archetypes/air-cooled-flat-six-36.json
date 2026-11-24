@@ -122,6 +122,39 @@
       "basis": "judgement"
     },
     {
+      "name": "Starts hot",
+      "scenario": "validation/scenarios/p-hot-start.json",
+      "tel": "engine.state",
+      "measure": "min",
+      "during": [
+        6,
+        11.5
+      ],
+      "range": [
+        2,
+        2
+      ],
+      "source": "a warm engine in 318 K air (a hot day's under-bonnet) starts within some four seconds of cranking and keeps running (judgement, as the cold row)",
+      "basis": "judgement"
+    },
+    {
+      "name": "Hot idle",
+      "scenario": "validation/scenarios/p-hot-start.json",
+      "tel": "engine.speed",
+      "measure": "mean",
+      "during": [
+        8,
+        11.5
+      ],
+      "range": [
+        78.5,
+        99.5
+      ],
+      "unit": "rad/s",
+      "source": "the warm engine in 318 K air idles within 100 rpm of the 850 rpm its ECU asks (judgement)",
+      "basis": "judgement"
+    },
+    {
       "name": "Peak power",
       "dyno": {
         "from": 83.8,

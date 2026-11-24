@@ -184,6 +184,88 @@ namespace tee
             if (result.added == addedBefore)
                 break;   // (again over the intervals the new rows made, to three passes: a row can spoil its neighbours')
         }
+        // smooth across speed: the advances chosen together, the most torque less a cost for each step between
+        // neighbouring rows (stepCost of the best torque per 10 degrees: judgement), so the map does not swing back and
+        // forth between cells chasing the waves' teeth (a turbo four's grid bake read 20, 20, 0, 30, 0, 20, 30, 20; the
+        // lead's 22:35). Cells set aside for knock stay set aside
+        if (options.stepCost > 0.0 && result.speeds.size() >= 2)
+        {
+            const std::size_t ns = result.speeds.size(), na = result.advances.size();
+            double tMax = 0.0;
+            for (std::size_t s = 0; s < ns; ++s)
+                if (std::isfinite(result.bestTorque[s]))
+                    tMax = std::fmax(tMax, result.bestTorque[s]);
+            const double cost = options.stepCost * tMax / 10.0;
+            const double bad = -std::numeric_limits<double>::infinity();
+            auto ok = [&](std::size_t a, std::size_t s) {
+                return std::isfinite(result.torque[a][s]) && result.knock[a][s] <= result.knock.front()[s] + options.knockLimit;
+            };
+            std::vector<std::vector<double>> score(ns, std::vector<double>(na, bad));
+            std::vector<std::vector<std::size_t>> from(ns, std::vector<std::size_t>(na, 0));
+            for (std::size_t a = 0; a < na; ++a)
+                if (ok(a, 0))
+                    score[0][a] = result.torque[a][0];
+            for (std::size_t s = 1; s < ns; ++s)
+                for (std::size_t a = 0; a < na; ++a)
+                {
+                    if (!ok(a, s))
+                        continue;
+                    for (std::size_t b = 0; b < na; ++b)
+                    {
+                        if (score[s - 1][b] == bad)
+                            continue;
+                        const double v = score[s - 1][b] + result.torque[a][s]
+                                         - cost * std::fabs(result.advances[a] - result.advances[b]);
+                        if (v > score[s][a])
+                            score[s][a] = v, from[s][a] = b;
+                    }
+                }
+            std::size_t last = 0;
+            for (std::size_t a = 1; a < na; ++a)
+                if (score[ns - 1][a] > score[ns - 1][last])
+                    last = a;
+            if (score[ns - 1][last] != bad)
+                for (std::size_t s = ns; s-- > 0;)
+                {
+                    result.best[s] = result.advances[last];
+                    result.bestTorque[s] = result.torque[last][s];
+                    last = from[s][last];
+                }
+        }
+        // acceptance: the map applied against the auto schedule at full load, at the map's own speeds; where it makes more
+        // than acceptLoss less (the knock control's state moves a settled point by up to some 3 %: card N1), that row
+        // takes the auto schedule's own phase there. The idle and light load are parked by the map's load axis
+        // (applyIntakeCam), as the auto schedule is at idle (the lead's 22:35: the bake's own acceptance before it writes)
+        if (options.accept && !result.speeds.empty() && build.fieldOf("ecu.maps.camInAuto") >= 0)
+        {
+            Build autoB(build.fields());
+            std::vector<std::string> warnings;
+            if (!autoB.load(build.save(), BuildPart::Whole, warnings, error))
+                return false;
+            autoB.set("ecu.maps.camInAuto", 1.0);
+            Build mapB(build.fields());
+            if (!mapB.load(build.save(), BuildPart::Whole, warnings, error) || !applyIntakeCam(mapB, result, error))
+                return false;
+            PredictOptions po = options.predict;
+            po.speeds = result.speeds;
+            po.fields = {"valve.inPhaseTarget"};
+            PredictCurve autoC, mapC;
+            if (!predictCurve(sim, autoB, po, autoC, error, cancel) || !predictCurve(sim, mapB, po, mapC, error, cancel))
+                return false;
+            for (std::size_t s = 0; s < result.speeds.size() && s < autoC.points.size() && s < mapC.points.size(); ++s)
+            {
+                const PredictPoint& pa = autoC.points[s];
+                const PredictPoint& pm = mapC.points[s];
+                if (!pa.valid || !pm.valid || pa.torque <= 0.0)
+                    continue;
+                if (pm.torque < (1.0 - options.acceptLoss) * pa.torque && !pa.fields.empty())
+                {
+                    result.best[s] = pa.fields[0];
+                    result.bestTorque[s] = pa.torque;
+                    result.fellBack += 1;
+                }
+            }
+        }
         result.wallSeconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
         return true;
     }
@@ -200,17 +282,22 @@ namespace tee
             error = "the program has no ecu.maps.camIn to bake into";
             return false;
         }
-        // speeds as the map's x (at most 16), the same full-load row at no load and at three times the air's pressure
+        // speeds as the map's x (at most 16)
         std::vector<double> x = result.speeds, best = result.best;
         if (x.size() > 16)
         {
             x.resize(16);
             best.resize(16);
         }
-        const std::vector<double> y = {0.0, 3.0};
-        std::vector<std::vector<double>> z(x.size(), std::vector<double>{0.0, 0.0});
+        // the load axis (the manifold over the air's): the bake measures full load only, so the map asks its advance at
+        // full load and none (parked: the least overlap, as the auto schedule and a maker's map at idle and light load;
+        // idle is the most throttled condition and the most residual, the burn's least stable: SAE 2004-01-1356 counts it
+        // stable under 3 % CoV of IMEP) up to 0.75, the advance coming in by 0.95. Before: one row for every load asked
+        // the full-load phase at idle, and a flat-plane V8 idled at 95 kPa, sd 108 rpm (the lead's 22:35)
+        const std::vector<double> y = {0.0, 0.75, 0.95, 3.0};
+        std::vector<std::vector<double>> z(x.size(), std::vector<double>{0.0, 0.0, 0.0, 0.0});
         for (std::size_t i = 0; i < x.size(); ++i)
-            z[i] = {best[i], best[i]};
+            z[i] = {0.0, 0.0, best[i], best[i]};
         build.beginGesture();
         const bool ok = build.setMap("ecu.maps.camIn", x, y, z) && build.set("ecu.maps.camInAuto", 0.0);
         build.endGesture();
@@ -348,6 +435,25 @@ namespace tee
                                        : "pedals";
         }
 
+        // a build at step k: its pedal's predict options aside, the boost target, and a table when one is given
+        const auto stepBuildOf = [&](std::size_t k, const KnockBakeResult* table, Build& out) {
+            std::vector<std::string> said;
+            if (!out.load(build.save(), BuildPart::Whole, said, error))
+                return false;
+            if (steps[k].boost >= 0.0)
+            {
+                out.set("ecu.maps.boostAuto", 1.0);
+                out.set("boost.target", steps[k].boost);
+            }
+            return table == nullptr || applyKnockLimit(out, *table, error);
+        };
+        const auto speedIndex = [&](double w) {
+            std::size_t at = 0;
+            while (at + 1 < result.speeds.size() && std::fabs(result.speeds[at] - w) > 1e-6)
+                ++at;
+            return at;
+        };
+
         std::vector<double> active;   // the speeds still knocking at the step above
         for (std::size_t k = 0; k < steps.size(); ++k)
         {
@@ -358,16 +464,8 @@ namespace tee
             }
             predict.pedal = steps[k].pedal;
             Build stepBuild(build.fields());
-            {
-                std::vector<std::string> said;
-                if (!stepBuild.load(build.save(), BuildPart::Whole, said, error))
-                    return false;
-            }
-            if (steps[k].boost >= 0.0)
-            {
-                stepBuild.set("ecu.maps.boostAuto", 1.0);
-                stepBuild.set("boost.target", steps[k].boost);
-            }
+            if (!stepBuildOf(k, nullptr, stepBuild))
+                return false;
             if (k > 0)
             {
                 if (active.empty())
@@ -389,9 +487,6 @@ namespace tee
             std::vector<double> next;
             for (const PredictPoint& p : curve.points)
             {
-                std::size_t at = 0;
-                while (at + 1 < result.speeds.size() && std::fabs(result.speeds[at] - p.speed) > 1e-6)
-                    ++at;
                 KnockBakeCell cell;
                 cell.pedal = predict.pedal;
                 cell.boostTarget = std::max(steps[k].boost, 0.0);
@@ -401,7 +496,9 @@ namespace tee
                 cell.torque = p.torque;
                 cell.knockLimited = p.knockLimited;
                 cell.valid = p.valid;
-                result.measured[at].push_back(cell);
+                cell.limit = p.retardMean >= options.knockLimit ? p.retardMean + options.margin : 0.0;
+                cell.step = static_cast<int>(k);
+                result.measured[speedIndex(p.speed)].push_back(cell);
                 if (p.valid && p.retardMean >= options.knockLimit)
                     next.push_back(p.speed);   // still knocking: the next pedal down is run here
             }
@@ -417,45 +514,118 @@ namespace tee
         const int ny = std::clamp(options.loads, 2, 16);
         for (int j = 0; j < ny; ++j)
             result.loads.push_back(0.2 + (most - 0.2) * j / (ny - 1));
-        for (const auto& column : result.measured)
-        {
-            std::vector<std::pair<double, double>> at;   // (load, cell)
-            for (const KnockBakeCell& c : column)
-                if (c.valid)
-                    at.emplace_back(c.load, c.retardMean >= options.knockLimit ? c.retardMean + options.margin : 0.0);
-            std::sort(at.begin(), at.end());
-            std::vector<double> row;
-            std::vector<bool> flat;
-            for (const double y : result.loads)
+        const auto tabulate = [&] {
+            result.limit.clear();
+            result.extrapolated.clear();
+            result.stillKnocking.clear();
+            for (const auto& column : result.measured)
             {
-                if (at.empty())
+                struct At
                 {
-                    row.push_back(0.0);
-                    flat.push_back(true);
-                }
-                else if (y <= at.front().first)
+                    double load, limit;
+                    bool knocking;
+                };
+                std::vector<At> at;
+                for (const KnockBakeCell& c : column)
+                    if (c.valid)
+                        at.push_back({c.load, c.limit, c.stillKnocking});
+                std::sort(at.begin(), at.end(), [](const At& a, const At& b) { return a.load < b.load; });
+                std::vector<double> row;
+                std::vector<bool> flat, knocking;
+                for (const double y : result.loads)
                 {
-                    row.push_back(at.front().second);
-                    flat.push_back(at.front().second != 0.0 && y < at.front().first);   // under a 0: 0 by the rule
+                    if (at.empty())
+                    {
+                        row.push_back(0.0);
+                        flat.push_back(true);
+                        knocking.push_back(false);
+                    }
+                    else if (y <= at.front().load)
+                    {
+                        row.push_back(at.front().limit);
+                        flat.push_back(at.front().limit != 0.0 && y < at.front().load);   // under a 0: 0 by the rule
+                        knocking.push_back(at.front().knocking);
+                    }
+                    else if (y >= at.back().load)
+                    {
+                        row.push_back(at.back().limit);
+                        flat.push_back(y > at.back().load);
+                        knocking.push_back(at.back().knocking);
+                    }
+                    else
+                    {
+                        std::size_t i = 1;
+                        while (at[i].load < y)
+                            ++i;
+                        const double u = (y - at[i - 1].load) / std::max(at[i].load - at[i - 1].load, 1e-9);
+                        row.push_back(at[i - 1].limit + u * (at[i].limit - at[i - 1].limit));
+                        flat.push_back(false);
+                        knocking.push_back(at[i - 1].knocking || at[i].knocking);
+                    }
                 }
-                else if (y >= at.back().first)
-                {
-                    row.push_back(at.back().second);
-                    flat.push_back(y > at.back().first);
-                }
-                else
-                {
-                    std::size_t i = 1;
-                    while (at[i].first < y)
-                        ++i;
-                    const double u = (y - at[i - 1].first) / std::max(at[i].first - at[i - 1].first, 1e-9);
-                    row.push_back(at[i - 1].second + u * (at[i].second - at[i - 1].second));
-                    flat.push_back(false);
-                }
+                result.limit.push_back(std::move(row));
+                result.extrapolated.push_back(std::move(flat));
+                result.stillKnocking.push_back(std::move(knocking));
             }
-            result.limit.push_back(std::move(row));
-            result.extrapolated.push_back(std::move(flat));
+        };
+        tabulate();
+
+        // the corrections: a cell whose mean was over correctAbove measured again with the table applied, its residual
+        // added, at most `corrections` times (a program without the table: none)
+        const bool canApply = build.fieldOf("ecu.maps.knockLimit") >= 0 && build.fieldOf("ecu.maps.knockLimitAuto") >= 0
+                              && build.fieldOf("ecu.maps.knockLimitKey") >= 0;
+        for (int pass = 0; canApply && pass < options.corrections; ++pass)
+        {
+            // the cells to measure again, by step: their speeds
+            std::vector<std::vector<double>> again(steps.size());
+            for (std::size_t s2 = 0; s2 < result.measured.size(); ++s2)
+                for (const KnockBakeCell& c : result.measured[s2])
+                    if (c.valid && c.retardMean > options.correctAbove
+                        && (c.corrections == 0 || c.residual >= options.knockLimit))
+                        again[static_cast<std::size_t>(c.step)].push_back(result.speeds[s2]);
+            bool any = false;
+            for (std::size_t k = 0; k < steps.size(); ++k)
+            {
+                if (again[k].empty())
+                    continue;
+                if (cancel != nullptr && cancel->load())
+                {
+                    error = "cancelled";
+                    return false;
+                }
+                any = true;
+                Build stepBuild(build.fields());
+                if (!stepBuildOf(k, &result, stepBuild))
+                    return false;
+                predict.pedal = steps[k].pedal;
+                predict.speeds = again[k];
+                predict.points = predict.coarse = static_cast<int>(again[k].size());
+                PredictCurve curve;
+                if (!predictCurve(sim, stepBuild, predict, curve, error, cancel))
+                    return false;
+                result.points += static_cast<int>(curve.points.size());
+                result.simulatedSeconds += curve.simulatedSeconds;
+                for (const PredictPoint& p : curve.points)
+                    for (KnockBakeCell& c : result.measured[speedIndex(p.speed)])
+                        if (c.step == static_cast<int>(k))
+                        {
+                            ++c.corrections;
+                            c.residual = p.valid ? p.retardMean : 0.0;
+                            if (c.residual >= options.knockLimit)
+                                c.limit += c.residual;
+                        }
+            }
+            if (!any)
+                break;
+            tabulate();
         }
+        for (auto& column : result.measured)
+            for (KnockBakeCell& c : column)
+                c.stillKnocking = c.corrections > 0 ? c.residual >= options.knockLimit
+                                                    : (canApply ? false : c.retardMean > options.correctAbove);
+        // (a cell measured again whose last residual still knocks; a program without the table could not correct)
+        tabulate();
+
         result.key = knockLimitKey(build, *sim);
         result.wallSeconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
         return true;

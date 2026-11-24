@@ -34,7 +34,11 @@ namespace tee
         // interpolated advance makes more than midLoss less torque than the best cell there, that point is added as a
         // row of its own (the worst first, to the map's 16). Off: the grid alone (a V12's exhaust wave returning into a big low-speed overlap at 2049 rpm made
         // a 30 % hole the grid's 1500 and 2500 rpm rows straddled: card N1, N3's finding). Off: the grid alone.
-        bool refine = false;          // (off until the held cells' sweep and the map's own curve agree near a tooth:
+        double stepCost = 0.01;       // smoothing: the share of the best torque given up for each 10 degrees between
+                                      // neighbouring rows (0: each row its own best)
+        bool refine = false;
+        bool accept = true;           // the map against the auto schedule at full load, a row falling back to the auto's
+        double acceptLoss = 0.02;     // phase where it makes more than this share less          // (off until the held cells' sweep and the map's own curve agree near a tooth:
                                       // refined, a V12's hole at 2000 rpm filled +16 % but 1500-1750 fell 4 %; card N1)
         double midLoss = 0.03;
         PredictOptions predict;       // the curves' (their range, speeds: 8 by default here)
@@ -53,6 +57,7 @@ namespace tee
         double parkedCentre = 0.0;                   // the build's intake centreline (degrees after top), parked
         double wallSeconds = 0.0;
         int added = 0;                               // midpoints added as rows of their own (refine)
+        int fellBack = 0;                            // rows given the auto schedule's phase by the acceptance
     };
 
     // Sweeps `build`'s intake cam (above). False, with `error`, when the program or the build has no intake phaser to
@@ -89,6 +94,12 @@ namespace tee
         int speeds = 8;               // over PredictOptions' from and to (0: 1000 rpm, the redline less 100)
         int loads = 8;                // the table's loads: from 0.2 atm to the most a pedal gave, evenly
         double margin = 2.0;          // degrees over the mean retard
+        // Where a cell's mean retard was over correctAbove degrees (the retard at or near knock control's ceiling, its
+        // mean then understating the need: N2's proof, the rotary at 5200, the six at 2450, the hot vee at 2380), the
+        // table is applied and the cell measured again, its residual retard added to it; at most `corrections` times.
+        // A cell that still knocks after them is said (stillKnocking): TUNE shows it knock-limited there, not finished.
+        double correctAbove = 12.0;
+        int corrections = 2;
         double knockLimit = 0.5;      // degrees: a mean retard under it is no knock
         PredictOptions predict;       // the points' (fields: engine.manifold is added)
     };
@@ -103,6 +114,11 @@ namespace tee
         double torque = 0.0;          // N m
         bool knockLimited = false;
         bool valid = true;
+        double limit = 0.0;           // the cell: retardMean + margin, or 0; with the corrections' residuals added
+        int corrections = 0;          // times it was measured again with the table applied
+        double residual = 0.0;        // the mean retard at its last measure with the table applied
+        bool stillKnocking = false;   // its residual still at knockLimit or more after the corrections
+        int step = 0;                 // (the bake's step it was measured at)
     };
 
     struct KnockBakeResult
@@ -112,6 +128,7 @@ namespace tee
         std::vector<std::vector<KnockBakeCell>> measured; // [speed]: the pedals run there, full first
         std::vector<std::vector<double>> limit;           // [speed][load]: degrees from best torque
         std::vector<std::vector<bool>> extrapolated;      // [speed][load]: flat past the measured loads
+        std::vector<std::vector<bool>> stillKnocking;     // [speed][load]: made from a cell still knocking (above)
         std::int64_t key = 0;                             // knockLimitKey(build, sim) when it was baked
         std::string notes;                                // how its loads were made
         int points = 0;                                   // fast-dyno points run
