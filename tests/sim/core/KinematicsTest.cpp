@@ -5,6 +5,7 @@
 
 #include <cmath>
 #include <cstdio>
+#include <string>
 
 using tee::test::core::Rig;
 
@@ -54,4 +55,27 @@ TEST_CASE("the slider-crank's volume, slope and acceleration match the closed fo
         CHECK(worstD < 2e-5);
         CHECK(worstDD < 5e-4);    // (the double's finite difference itself is good to some 1e-7)
     }
+}
+
+TEST_CASE("the size and bore/stroke dials and the bore and stroke are one setting", "[core][kinematics]")
+{
+    Rig rig;
+    auto dials = rig.method<void(void*, float, float, int)>("sizeFromDials");
+    auto red = rig.method<float(void*, int)>("redline");
+    for (double bs : {0.5, 0.8, 1.0, 1.25, 2.0})
+    {
+        // the reference's: a square cylinder's bore (the cube root of 4 vd / pi), times the ratio's cube root
+        const double litres = 5.76, n = 8.0, vd = litres * 1e-3 / n;
+        dials(rig.data(), float(litres), float(bs), 8);
+        const double boreSq = std::cbrt(1.2732395 * vd);
+        const double bore = boreSq * std::cbrt(bs);
+        CHECK(std::abs(rig.get("size.bore") - bore) < 1e-6 * bore);
+        CHECK(std::abs(rig.get("size.stroke") - bore / bs) < 1e-6 * bore);
+        CHECK(std::abs(M_PI / 4 * rig.get("size.bore") * rig.get("size.bore") * rig.get("size.stroke") - vd) < 1e-5 * vd);
+    }
+    // the redline by piston speed: an 86 mm stroke to 25 m/s is 8721 rpm; a diesel's 13.5 m/s 4709
+    dials(rig.data(), 2.0f, 1.0f, 4);
+    rig.set("size.stroke", 0.086);
+    CHECK(std::abs(red(rig.data(), 0) * 30.0 / M_PI - 25.0 * 60.0 / (2 * 0.086)) < 1.0);
+    CHECK(std::abs(red(rig.data(), 1) * 30.0 / M_PI - 13.5 * 60.0 / (2 * 0.086)) < 1.0);
 }
