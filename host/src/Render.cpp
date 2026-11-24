@@ -1,6 +1,8 @@
 // host/src/Render.cpp: the offline renderer (Render.h).
 #include "tee/Render.h"
 
+#include "tee/Clock.h"
+
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -139,14 +141,17 @@ namespace tee
             float* r = options.keepAudio ? result.audio.right.data() + at : right.data();
 
             const bool sounded = player.sounding();
+            const double cpuStart = threadCpuSeconds();
             const Clock::time_point start = Clock::now();
             player.process(l, r, static_cast<int>(n));
             const double took = std::chrono::duration<double>(Clock::now() - start).count();
+            const double cpuTook = threadCpuSeconds() - cpuStart;
             ++result.calls;
             if (sounded)
             {
                 result.soundingFrames += n;
                 result.soundingSeconds += took;
+                result.soundingCpuSeconds += cpuTook;
                 result.worstCallShare = std::max(result.worstCallShare, took * rate / static_cast<double>(n));
             }
             for (std::int64_t i = 0; i < n; ++i)
