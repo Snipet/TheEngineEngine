@@ -121,6 +121,8 @@ module BoostMachine
     int compOut[BOOST_TURBOS];      // 0: v1; 1: vInter; 2: vSec
     int turbOut[BOOST_TURBOS];      // -1: a downpipe (turbSide); a housing's index otherwise
     int turbSide[BOOST_TURBOS];
+    int exSides;        // the exhaust's sides (card G tells, at every configure; 2 until it does): a turbo of side 1 on a
+                        // one-sided exhaust empties into side 0's downpipe
     float omegaMax[BOOST_TURBOS];
     float mMatch;                   // the engine's flow at its redline, matched, kg/s
     // the inlet
@@ -264,6 +266,7 @@ module BoostMachine
         rate = rateIn;
         dt = 1.0f / rate;
         kAt = 1.0f - expf(-dt / 0.001f);
+        exSides = 2;
         pOut = 101325.0f;
         tOut = 293.15f;
         vd = vdIn;
@@ -515,14 +518,22 @@ module BoostMachine
     {
         if (active == 0 || turbos == 0 || sc != 0)
             return -1;
+        // (twin turbos: a bank each; on one bank, its collectors in order, the front's to turbo 0 and the rear's to
+        // turbo 1, a straight six's 1-3 and 4-6: so each wheel has its gas, card N2's)
         if (layout == BOOST_TWIN)
-            return 2 * (bank & 1) + (scrolls == 2 ? (group & 1) : 0);
+            return banks > 1 ? 2 * (bank & 1) + (scrolls == 2 ? (group & 1) : 0) : 2 * (group & 1);
         if (layout == BOOST_QUAD)
             return 2 * (2 * (bank & 1) + (group & 1));
         // one wheel takes every collector (a sequential pair's first, a compound pair's high-pressure stage)
         if (scrolls == 2)
             return banks > 1 ? (bank & 1) : (group & 1);
         return 0;
+    }
+
+    // The downpipe (exhaust side) turbo t empties into: its own, or side 0's when the exhaust has one side
+    int sideOf(int t)
+    {
+        return turbSide[t] < exSides ? turbSide[t] : 0;
     }
 
     // One sample, for each housing the exhaust's pipes end in, before it writes them: the pipes' drive (sum of
@@ -557,7 +568,7 @@ module BoostMachine
         float qSum = 0.0f;
         int sources = 0;
         for (int t = 0; t < turbos; ++t)
-            if (turbOut[t] < 0 && turbSide[t] == s)
+            if (turbOut[t] < 0 && sideOf(t) == s)
             {
                 qSum += qSrc[2 * t];
                 sources += 1;
@@ -571,7 +582,7 @@ module BoostMachine
         for (int sweep = 0; sweep < sweeps; ++sweep)
             for (int t = 0; t < turbos; ++t)
             {
-                if (turbOut[t] >= 0 || turbSide[t] != s)
+                if (turbOut[t] >= 0 || sideOf(t) != s)
                     continue;
                 const int h = 2 * t;
                 const float area = turb[t].nozzle() + (turb[t].gateExt == 0 ? turb[t].aGate * turb[t].liftAt : 0.0f);
@@ -594,7 +605,7 @@ module BoostMachine
         float hSum = 0.0f;
         for (int t = 0; t < turbos; ++t)
         {
-            if (turbOut[t] >= 0 || turbSide[t] != s)
+            if (turbOut[t] >= 0 || sideOf(t) != s)
                 continue;
             const int h0 = 2 * t;
             const float an = turb[t].nozzle() / (float)scrolls;

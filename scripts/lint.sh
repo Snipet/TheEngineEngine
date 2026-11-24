@@ -29,6 +29,9 @@
 #      V8 for half a second, every switch off and every switch on, judged as the combos judge: 8 s). A new field with
 #      no sane first value turned 65 combo cases red on every platform twice on 2026-11-24. Skipped, and said, when no
 #      build tree has a tee-tests-combo that holds the case. TEE_LINT_TELEMETRY=0 skips it.
+#   8. no float becomes an array index without a clamp at both ends (scripts/lint-index.py: a NaN's cast is INT_MIN on
+#      x86, X-019's SIGSEGV): tableIndex(x, last) (sim/core/mathx.fm), fminf(fmaxf(...)), or a lower check, or the line
+#      says `// lint: index-ok: <why>`. The places known on 2026-11-24 are in scripts/lint-index.allow, reported.
 #
 # Our files are the ones git knows (the dependencies are not in the checkout).
 set -euo pipefail
@@ -137,6 +140,17 @@ if [ "${TEE_LINT_SYNTAX:-1}" != 0 ] && command -v python3 > /dev/null; then
   else
     echo "lint: no build tree with compile_commands.json: the C++ syntax check skipped"
   fi
+fi
+
+# ---- 8. a float as an index, clamped at both ends --------------------------------------------------------------------
+if command -v python3 > /dev/null; then
+  if ! out=$(python3 scripts/lint-index.py 2>&1); then
+    while IFS= read -r l; do
+      case "$l" in known*) ;; "") ;; *) say "$l: a float as an index without a clamp at both ends (tableIndex, sim/core/mathx.fm)" ;; esac
+    done <<< "$out"
+  fi
+  n=$(grep -c '^known' <<< "$out" || true)
+  [ "$n" = 0 ] || echo "lint: note: $n known places use a float as an index unclamped (scripts/lint-index.allow): their owners have them"
 fi
 
 # ---- 7. telemetry in range from the first block ----------------------------------------------------------------------

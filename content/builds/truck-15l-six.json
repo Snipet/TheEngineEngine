@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "Truck 15 L six, 36 t",
-  "notes": "Card D2. A highway tractor and loaded trailer, 36 t: a 15 L inline six (137 x 169 mm, 17:1, twin turbos as the reference has them), an electronic governor, a three-stage compression-release brake and an exhaust flap (both off at their switches); an eighteen-speed (Eaton RTLO-18918B's ratios) on 295/75R22.5 tyres, 3.55 axle. Air at 300 K, 101325 Pa. Card M's voices on: a viscous fan clutch, nine blades.",
+  "notes": "Card D2. A highway tractor and loaded trailer, 36 t: a 15 L inline six (137 x 169 mm, 17:1, twin turbos as the reference has them), an electronic governor, a three-stage compression-release brake and an exhaust flap (both off at their switches); an eighteen-speed (Eaton RTLO-18918B: the lever, the splitter and the range; ctl.lever 1-4, 5 the L slot, buttons 16 and 32) on 295/75R22.5 tyres, 3.55 axle. Air at 300 K, 101325 Pa. Card M's voices on: a viscous fan clutch, nine blades.",
   "spec": {
     "engine": {
       "layout": "Inline 6",
@@ -65,32 +65,12 @@
       "brakeDecel": 0.6,
       "brakeBias": 0.4,
       "abs": true,
-      "gearbox": "Manual",
-      "gears": 18,
-      "autoGearing": false,
-      "ratio": [
-        14.4,
-        12.29,
-        8.56,
-        7.3,
-        6.05,
-        5.16,
-        4.38,
-        3.74,
-        3.2,
-        2.73,
-        2.29,
-        1.95,
-        1.62,
-        1.38,
-        1.17,
-        1.0,
-        0.86,
-        0.73
-      ],
+      "gearbox": "Eighteen-speed",
       "reverseRatio": 13.1,
       "finalDrive": 3.55,
-      "clutchTorque": 3500
+      "clutchTorque": 3500,
+      "truckAir": true,
+      "autoGearing": false
     },
     "env": {
       "temperature": 300,

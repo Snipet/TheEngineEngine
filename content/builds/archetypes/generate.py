@@ -79,7 +79,7 @@ CARS = {
     "family-diesel": dict(mass=1500, drive="Front", wheelbase=2.64, cgHeight=0.55, frontWeight=0.62, track=1.55,
                           cdA=0.66, tyre="Economy", tyreRadius=0.315, gearbox="Manual",
                           ratio=[3.77, 2.09, 1.32, 0.98, 0.76, 0.64], finalDrive=3.39, wheelInertia=1.1),
-    "tractor": dict(kind="Truck", mass=36000, drive="Rear", wheelbase=5.8, cgHeight=1.5, frontWeight=0.25, track=2.0,
+    "tractor": dict(kind="Truck", truckAir=True, mass=36000, drive="Rear", wheelbase=5.8, cgHeight=1.5, frontWeight=0.25, track=2.0,
                     cdA=6.0, tyre="Truck", tyreRadius=0.51, gearbox="Manual",
                     ratio=[14.4, 12.29, 8.51, 7.26, 6.05, 5.16, 4.38, 3.74, 3.20, 2.73, 2.29, 1.95, 1.62, 1.38, 1.17,
                            1.00, 0.86, 0.73], finalDrive=3.55, wheelInertia=40.0),
@@ -152,12 +152,11 @@ def arch(**k):
 arch(slug="straight-six-twin-turbo-30", runner=0.3, name="3.0 L straight six, twin turbo", geo="ref-10-inline-6",
      layout="Inline 6", bore=84.0, stroke=89.6, rod=144.35, cr=10.2, valves=4, dIn=31.4, dEx=28.0,
      cam=(252, 220, 9.7, 105, 252, 220, 9.7, 105), train="Finger", phase=(70, 55), redline=7000, idle=650,
-     boost=dict(kind="Twin turbos", layout="One", target=1.0, spring=0.7, scrolls="Twin scroll"),
+     boost=dict(kind="Twin turbos", layout="Two, a bank each", target=1.0, spring=0.7, scrolls="Twin scroll"),
+     exhaust={"primaryTo": [0, 0, 0, 1, 1, 1], "sides": 2, "collectorTo": [0, 1]},
      direct=True, grade="Premium (91)", car="sports-sedan", timing="Chain",
      notes="A modern 3 L twin-turbo straight six with direct injection: 84 x 89.6 mm (2979 cc), 10.2:1, four valves, "
-           "both cams phased, two twin-scroll turbos each fed by three cylinders at about 1 bar (for now one twin-scroll turbo matched to the whole engine: "
-           "an inline six's collectors all reach the first turbo today, so the second stood dead; the pair returns when the exhaust "
-           "gives each its own collector). Production engines "
+           "both cams phased, two twin-scroll turbos each fed by three cylinders at about 1 bar (cylinders 1-3 and 4-6 each into its own collector and turbo, a dual exhaust). Production engines "
            "of this kind make 250 to 340 kW and 450 to 600 N m (makers' figures). In a rear-drive sports sedan with "
            "a seven-speed dual clutch.")
 arch(slug="flat-plane-v8-45", name="Flat-plane 4.5 L V8", geo="ref-13-v8-flat", layout="V8 flat-plane",

@@ -363,12 +363,16 @@ namespace combo
                 hi = 1e300;
             }
             bool bad = false, out = false;
-            double worst = 0.0, worstAt = 0.0;
+            double worst = 0.0, worstAt = 0.0, badAt = -1.0;
             for (std::size_t row = 0; row < r.rowCount(); ++row)
             {
                 const double x = r.at(row, c);
                 if (!std::isfinite(x))
+                {
+                    if (!bad)
+                        badAt = r.rowTime[row];
                     bad = true;
+                }
                 else if (x < lo || x > hi)
                 {
                     if (!out || std::fabs(x) > std::fabs(worst))
@@ -380,7 +384,11 @@ namespace combo
                 }
             }
             if (bad)
-                nonFinite += (nonFinite.empty() ? "" : ", ") + r.columns[c];
+            {
+                char b[96];
+                std::snprintf(b, sizeof b, "%s from %.2f s", r.columns[c].c_str(), badAt);
+                nonFinite += (nonFinite.empty() ? "" : ", ") + std::string(b);
+            }
             if (out)
             {
                 // one failure a field, named "tel-range:<field>", so that a known finding names its fields alone
@@ -442,9 +450,34 @@ namespace combo
         return step;
     }
 
+    namespace
+    {
+        double gCostOfR = 0.0;
+    }
+
+    double referenceStepWithPops(const std::string& build, Kind kind)
+    {
+        double worst = 0.0;
+        for (double dT : {0.0, 0.01, 0.02})
+        {
+            Times tm;
+            tee::test::Scenario sc = scenario(kind, build, 0u, tm);
+            sc.at(0.0).spec("ecu.pops", 0.3).spec("env.temperature", 293.15 + dT);
+            const tee::test::Run r = sc.run(tm.end);
+            const double from = tm.started + 0.5, to = tm.off > 0.0 ? tm.off : tm.end;
+            worst = std::max({worst, r.left().during(from, to).largestStep(), r.right().during(from, to).largestStep()});
+        }
+        return worst;
+    }
+
+    double costOfRIfMeasured()
+    {
+        return gCostOfR;
+    }
+
     double costOfR()
     {
-        static double cost = 0.0;
+        double& cost = gCostOfR;
         if (cost > 0.0)
             return cost;
         std::vector<double> c;

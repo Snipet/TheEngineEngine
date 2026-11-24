@@ -11,14 +11,14 @@ Branch `claude/awesome-gates-ntdb58`. Model and numbers: [docs/models/diesel.md]
 - Cold: starts 253 K in 1-1.9 s, 233 K in 2.9-4.5 s, every governor, H's models 0 and 1 (no no-start). Soak 40 s random: bounded.
 - 36 t rig (I's vehicle, paddles): 0-50 km/h 19.3 s; 6 % at 42 km/h on 278 kW (power/weight 39); down 6 % braked to 39 km/h, free to 63.
 - F's machine: big single 59 kPa t90 2.05 s at 1300 rpm; VGT 192 kPa 0.65 s; compound 202 kPa 1.9 s.
-- 18-speed alone: lever/range/splitter give all 18; a matched float goes in silently, 300 rpm off grinds (60 Hz clash) and stays out. Air: cut-out 8.3 bar with purge; spring-brake release heard.
+- 18-speed through card I's vehicle (gearbox "Eighteen-speed") in the whole engine: all 18 gears at rest; rolling, a float into 5 (revs within 25 rpm) silent; 300 rpm over 7's grinds and is refused (EighteenTest). Its grind at L's gearbox place. Air system (spec.car.truckAir) at L's places: purge at 8.3 bar, spring-brake release heard (sound.model 1).
 
 **Cost** (`tee-bench --engine`, free-revs/truck, 2 runs, sim ~1.9 us a sample here): large-diesel (D2 off) 1.004/1.007; truck-15l-six 1.073/1.086 and mechanical classic 1.085/1.093, both with I's vehicle model and H's fuel model in them (D2's own part some 0.02-0.03 R: a table lookup a cylinder a sample).
 
-**Not done**: the 18-speed does not drive I's gearbox, and the grind and air sounds are not mixed (below); the PV-loop picture; a 30 deg / 3.5 mm lobe loses the bark's lines (not understood). Whole suite on the tip: combo archetype/step tests fail on card T's `engine.tsPipeTemperature`=0 (not mine, told the steward); my tests and the null test pass.
+**Not done**: the PV-loop picture; a 30 deg / 3.5 mm lobe loses the bark's lines (not understood). Whole suite on the tip: combo archetype/step tests fail on card T's `engine.tsPipeTemperature`=0 (not mine, told the steward); my tests and the null test pass.
 
 **Changes I made outside my paths (gated, null-tested)**: `controls.fm` BTN_SPLITTER 16, BTN_RANGE 32, BTN_ENGINE_BRAKE 64 (lead; shell bound Z, X, J); `sim/engine.fm` five hooks (the fifth: `boost.vanesAndPurge(hd.vaneCommand(), 0)`, agreed with N2/F) (no answer from D in 20 min; README "The hooks" rows); H's `diesel.fm` (fields `lever`, `metered`, `fuelFull`, `afcPhi`, `phiAsked`, `phiMetered`) and two lines in `chargeDiesel`; `tel.ecu` D2 block; `sim/README.md` rows.
-**Wanted** (asked directly: U1 the lamp; L the places; M the grind's owner; I's hook text through the lead): Card I: a hook in `VehGearbox.control` for kind Manual with `spec.car.kind` Truck: take `Roadranger::gear` and its `wShaft` (the box is mine; it needs the output shaft's speed and the clutch). D/L: mix `Roadranger::grind()` and `TruckAir::out()` (each sample, driven truck) at the gearbox's and the chassis's place; a spec switch for them in my `spec.car` block. M: the grind could be your voice instead of mine.
+**Done with others**: I's "Eighteen-speed" gearbox (51908c2), L's places, U1's brake lamps, G's flap, N2's vane brake position. Nothing wanted now but the kept-share change (D/H), after which the brake, cold starts and rig are to be re-checked.
 **FMinus**: no issues.
 
 **Listen to** (`tests/sim/diesel/listen/`, README there): the Jake by stages muffled and straight, with the flap; a cold mechanical idle; the pilot softening the clatter; a big single's whistle and the vanes' quick spool; the loaded pull-away and the grade. Nobody here has heard any of it.
