@@ -1,0 +1,53 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Parallel twin, 360-degree crank",
+  "notes": "Both pistons together, firing alternately: 360-360, the old British twin's beat. 76 x 71 mm (644 cc), 9.5:1, redline 8,000.",
+  "spec": {
+    "engine": {
+      "layout": "Twin 360",
+      "displacement": 0.0006442,
+      "compression": 9.5,
+      "custom": true,
+      "cylinders": 2,
+      "bankAngle": [
+        0.0
+      ],
+      "bank": [
+        0,
+        0
+      ],
+      "pin": [
+        0.0,
+        0.0
+      ],
+      "fireRev": [
+        0,
+        1
+      ],
+      "place": [
+        0.0,
+        0.09
+      ],
+      "bore": 0.076,
+      "stroke": 0.071,
+      "redlineSpeed": 837.758
+    }
+  },
+  "expect": {
+    "firingOrder": [
+      1,
+      2
+    ],
+    "firingIntervals": [
+      360.0,
+      360.0
+    ],
+    "firingAngles": [
+      0.0,
+      360.0
+    ],
+    "redlineRpm": 8000,
+    "displacementCc": 644.2
+  }
+}

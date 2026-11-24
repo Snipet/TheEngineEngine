@@ -61,6 +61,7 @@ module Intake
     float ripple;
     float since;        // seconds since the ripple was last taken
     float sound;        // what model 1 radiates this sample (the reference's intake scale)
+    float soundMs;      // its mean square, over some 50 ms (for measuring)
 
     void setup(float rate)
     {
@@ -110,6 +111,14 @@ module Intake
     void control(float d16, float omega, float vTotal, float cycle)
     {
         vTotalNow = vTotal;
+        // (a model asked between configures, as a build that keeps the layout and the size does: taken here)
+        if (model == 0 && haveSpec != 0 && spec->model == 1)
+        {
+            model = 1;
+            itbs = spec->throttleKind == 1 ? 1 : 0;
+            box.clear();
+            len.reset();
+        }
         if (model == 0)
             return;
         if (spec->throttleArea > 0.0f)
@@ -286,6 +295,7 @@ module Intake
         }
         pLo = fminf(pLo, pPlenum);
         pHi = fmaxf(pHi, pPlenum);
+        soundMs += (sound * sound - soundMs) * fminf(20.0f * dt, 1.0f);
     }
 
     void telemetry(IntakeTel* t)

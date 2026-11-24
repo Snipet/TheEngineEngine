@@ -1,0 +1,60 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Inline three, 120-degree crank",
+  "notes": "Even firing every 240 degrees, 1-2-3: 78 x 53.4 mm (765 cc), 12.9:1, redline 13,000.",
+  "spec": {
+    "engine": {
+      "layout": "Crossplane I4",
+      "displacement": 0.0007655,
+      "compression": 12.9,
+      "custom": true,
+      "cylinders": 3,
+      "bankAngle": [
+        0.0
+      ],
+      "bank": [
+        0,
+        0,
+        0
+      ],
+      "pin": [
+        0.0,
+        120.0,
+        240.0
+      ],
+      "fireRev": [
+        0,
+        0,
+        1
+      ],
+      "place": [
+        0.0,
+        0.085,
+        0.17
+      ],
+      "bore": 0.078,
+      "stroke": 0.053399999999999996,
+      "redlineSpeed": 1361.357
+    }
+  },
+  "expect": {
+    "firingOrder": [
+      1,
+      2,
+      3
+    ],
+    "firingIntervals": [
+      240.0,
+      240.0,
+      240.0
+    ],
+    "firingAngles": [
+      0.0,
+      240.0,
+      480.0
+    ],
+    "redlineRpm": 13000,
+    "displacementCc": 765.5
+  }
+}

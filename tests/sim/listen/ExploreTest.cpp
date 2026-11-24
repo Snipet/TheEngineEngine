@@ -57,3 +57,44 @@ TEST_CASE("explore: the cabin's boom by frequency", "[.explore]")
         std::printf("%6.0f Hz  ref %6.1f  new %6.1f  diff %5.1f\n", f, dB(p[0]), dB(p[1]), dB(p[1] / p[0]));
     }
 }
+
+TEST_CASE("explore: steps at each change", "[.explore]")
+{
+    Rig rig;
+    rig.set("ss.model", 1);
+    rig.set("ln.sc.windOff", 1);
+    rig.set("src", kTails);
+    rig.set("sig", 1);
+    rig.set("freq", 180.0);
+    rig.set("amp", 0.002);
+    rig.reset();
+    rig.play(0.3, false);
+    for (int a = 0; a < 7; ++a)
+    {
+        rig.clear();
+        rig.set("ss.camera", a);
+        const bool pl = std::getenv("PLACE") != nullptr;
+        if (pl)
+            rig.set("ss.place", a % 5);
+        if (std::getenv("DIST") != nullptr)
+            rig.set("distance", 0.15 * double(a % 4));
+        rig.play(0.4);
+        const auto& l = rig.left();
+        double worst = 0.0;
+        std::size_t at = 0;
+        for (std::size_t i = 960; i + 960 < l.size(); ++i)
+        {
+            double s = 0.0;
+            for (std::size_t j = i - 960; j < i + 960; j += 4)
+                s += double(l[j]) * l[j];
+            const double rms = std::sqrt(s / 480.0);
+            const double st = std::fabs(double(l[i]) - l[i - 1]) / std::max(rms, 1e-12);
+            if (st > worst)
+            {
+                worst = st;
+                at = i;
+            }
+        }
+        std::printf("to camera %d: worst %.4f at %.1f ms\n", a, worst, double(at) / 96.0);
+    }
+}

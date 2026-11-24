@@ -1,0 +1,97 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Superbike (litre four, crossplane)",
+  "notes": "A litre superbike: 201 kg wet, 1.41 m, an 80 kg rider, hypersport tyres, a quickshifter and an auto-blipper, a slipper clutch, wheelie control. The crossplane four. A class's numbers in round figures, not one model's.",
+  "spec": {
+    "engine": {
+      "layout": "Crossplane I4",
+      "displacement": 0.000998,
+      "compression": 13.0,
+      "custom": true,
+      "cylinders": 4,
+      "bankAngle": [
+        0.0
+      ],
+      "bank": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "pin": [
+        0.0,
+        270.0,
+        90.0,
+        180.0
+      ],
+      "fireRev": [
+        0,
+        1,
+        0,
+        1
+      ],
+      "place": [
+        0.0,
+        0.085,
+        0.17,
+        0.255
+      ],
+      "bore": 0.079,
+      "stroke": 0.0509,
+      "redlineSpeed": 1466.077
+    },
+    "fuel": {
+      "kind": "Gasoline"
+    },
+    "car": {
+      "kind": "Motorcycle",
+      "model": "Vehicle",
+      "mass": 201,
+      "wheelbase": 1.41,
+      "cgHeight": 0.56,
+      "frontWeight": 0.53,
+      "cdA": 0.5,
+      "tyreRadius": 0.31,
+      "wheelInertia": 0.8,
+      "brakeDecel": 1.2,
+      "brakeBias": 0.5,
+      "gears": 6,
+      "autoGearing": false,
+      "ratio": [
+        2.6,
+        2.0,
+        1.67,
+        1.44,
+        1.3,
+        1.19
+      ],
+      "gearEfficiency": 0.97,
+      "riderMass": 80,
+      "riderHeight": 1.0,
+      "riderForward": 0.42,
+      "tuck": 1.0,
+      "cdATuck": 0.3,
+      "pitchInertia": 50,
+      "bikeTyre": "Hypersport",
+      "primaryRatio": 1.63,
+      "frontSprocket": 16,
+      "rearSprocket": 43,
+      "chainEfficiency": 0.97,
+      "chainLash": 0.035,
+      "slipper": true,
+      "slipperTorque": 0.15,
+      "quickshifter": true,
+      "quickshiftCut": 0.05,
+      "autoBlip": true,
+      "wheelieControl": "By the throttle",
+      "wheelieAngle": 4
+    },
+    "sound": {
+      "view": "Exhaust"
+    }
+  },
+  "expect": {
+    "engine": "bike-i4-crossplane"
+  }
+}
