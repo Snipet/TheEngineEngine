@@ -17,6 +17,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <cstdio>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -689,9 +690,11 @@ namespace tee::ui
             return best;
         }
 
-        std::array<double, 15> liveValues() const
+        std::array<double, 19> liveValues() const
         {
-            std::array<double, 15> v{};
+            std::array<double, 19> v{};
+            for (int i = 0; i < 4; ++i)
+                v[static_cast<std::size_t>(15 + i)] = ctx_.live.get(N::cost[i]);
             v[0] = ctx_.live.get(N::port);
             v[1] = ctx_.live.get(N::collector);
             v[2] = ctx_.live.get(N::tail);
@@ -1305,6 +1308,26 @@ namespace tee::ui
             }
         }
 
+        // The network's counts as built, if the simulator gives all four (else nothing is invented: a dash).
+        std::optional<NetworkCost> networkCost() const
+        {
+            double v[4];
+            for (int i = 0; i < 4; ++i)
+            {
+                v[i] = ctx_.live.get(N::cost[i]);
+                if (!std::isfinite(v[i]) || v[i] < 0.0)
+                    return std::nullopt;
+            }
+            NetworkCost n;
+            n.pipes = static_cast<int>(std::lround(v[0]));
+            n.nodes = static_cast<int>(std::lround(v[1]));
+            n.pairs = static_cast<int>(std::lround(v[2]));
+            n.openEnds = static_cast<int>(std::lround(v[3]));
+            if (n.pipes <= 0)
+                return std::nullopt;
+            return n;
+        }
+
         // ---- the numbers at the port, the collector and the tail; the pulses' legend ------------------------------
         void drawReadouts(Canvas& c, const Palette& p) const
         {
@@ -1342,6 +1365,14 @@ namespace tee::ui
             }
             else
                 c.text("no pipe pressure from the Scope yet", lx, y + 15.0f, look::kBody, p.dim);
+            // what the network as built costs the simulator (card G's counts, priced by docs/models/exhaust.md)
+            {
+                const float cy = s.bottom() - 16.0f;
+                c.text("NETWORK", s.x + 20.0f, cy, look::kCaps, p.label);
+                const auto cost = networkCost();
+                c.text(cost ? cost->line().c_str() : "-", s.x + 28.0f + c.textWidth("NETWORK", look::kCaps), cy, look::kUnit,
+                       p.dim);
+            }
             // on the diagram: the numbers at cylinder 1's port and its collector, only where there are numbers
             if (b.ports > 0)
             {

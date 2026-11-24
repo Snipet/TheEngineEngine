@@ -209,8 +209,14 @@ module Cylinder
     }
 
     // The ratio of the gas's specific heats at a temperature (air near 1.39 cold; hot burned gas 1.25 to 1.3)
+    // The physical cylinder (conserve 1): the single-zone fit for an engine's cylinder gas, the fuel-air mixture, the
+    // residual and the equilibrium products with their dissociation together: Gatowski et al., "Heat Release Analysis of
+    // Engine Pressure Data", SAE 841359 (1984): 1.392 - 8.13e-5 T (N3's finding, 24 Nov: the reference's ran 0.025 to
+    // 0.04 higher from 500 to 2500 K, its expansion giving too much work). The reference's line otherwise, to the bit.
     float gammaAt(float tk)
     {
+        if (conserve != 0)
+            return fminf(fmaxf(1.392f - 8.13e-5f * tk, 1.15f), 1.40f);
         return fminf(fmaxf(1.39f - 7.5e-5f * (tk - 300.0f), 1.24f), 1.40f);
     }
 

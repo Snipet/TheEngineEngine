@@ -52,6 +52,21 @@ namespace tee::ui::exhaust
         static constexpr const char* cycle = "engine.cycle";            // 0 four-stroke, 1 two-stroke (card T)
     };
 
+    // What the exhaust's network costs the simulator, from its counts as built (tel.exhaust.pipes, nodes, pairs,
+    // openEnds). The one place these constants live: docs/models/exhaust.md, "What the network costs, by element"
+    // (ns a 96 kHz sample, tee-bench --profile --engine; R, the reference engine's whole cost, 1962 ns there).
+    struct NetworkCost
+    {
+        static constexpr double kPipe = 37.0, kNode = 51.0, kPair = 17.0, kOpenEnd = 46.0;   // ns each
+        static constexpr double kFixed = 330.0;       // ns: meters, thermocouples, pops, control steps, XHeat
+        static constexpr double kReference = 1962.0;  // ns: R, the reference engine's whole cost on that machine
+        int pipes = 0, nodes = 0, pairs = 0, openEnds = 0;
+        double ns() const noexcept { return kFixed + kPipe * pipes + kNode * nodes + kPair * pairs + kOpenEnd * openEnds; }
+        double ofReference() const noexcept { return ns() / kReference; }
+        // "32 pipes, 9 junctions, 8 joints, 2 open ends: about 1.1 of the reference engine"
+        std::string line() const;
+    };
+
     // Where a radiating end is (sim/exhaust/ends.fm XTAG_*).
     enum class Tag : int { rearCentre = 0, rearLeft, rearRight, sideLeft, sideRight, front, up };
     const char* tagName(Tag t) noexcept;   // "REAR LEFT"

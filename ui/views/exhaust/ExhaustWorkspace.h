@@ -50,6 +50,8 @@ namespace tee::ui
             static constexpr const char* ductFar = "ductFar";                // [84]
             static constexpr const char* ductMid = "ductMid";                // [84], at the pipe's middle (else drawn straight)
             static constexpr const char* ambient = "env.pressure";     // a field: the air outside
+            // card G's network as built (NetworkCost, ExhaustModel.h, prices them)
+            static constexpr const char* cost[4] = { "exhaust.pipes", "exhaust.nodes", "exhaust.pairs", "exhaust.openEnds" };
             // card T's two-stroke (engine.cycle 1)
             static constexpr const char* tsPipeTemp = "engine.tsPipeTemperature";   // K, cylinder 1's pipe's gas
             // cylinder 1's exhaust port pressure each degree (absolute), read when the Scope's cycle is a turn (360);

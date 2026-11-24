@@ -1133,11 +1133,19 @@ module BoostMachine
                     // and the turbine's energy with them, a second steady state below the first: card D2's 15 L truck
                     // at 1300 rpm stood at 98 kPa and 882 N m with its vanes at 0.47, surging two thirds of the time,
                     // against 209 kPa and 1945 N m at 0.9. While the compressor surges, an integral opens the vanes at
-                    // 0.5 a second; it gives back a quarter of that rate while it does not, so the vanes settle at the
-                    // surge line's edge. Judgement, as the limit above is: a maker's vane map keeps its own margin)
+                    // 1 a second and gives back 0.3 of that rate while it does not: the vanes settle where it surges
+                    // some 23 % of the time, the surge line's edge (2 a second put the 15 L tractor at 1000 rpm off its
+                    // boost, 0.5 left the truck's spool a second behind a fixed nozzle's). Judgement, as the limit
+                    // above is: a maker's vane map keeps its own margin)
                     const float phiS = comp[t].mdot / fmaxf(comp[t].mc, 1.0e-5f);
-                    const int surging = comp[t].mdot < 0.0f || (phiS < 0.8f * comp[t].phiK && comp[t].pr > 1.15f) ? 1 : 0;
-                    surgeOpen[t] = fminf(fmaxf(surgeOpen[t] + d16 * 0.5f * (surging != 0 ? 1.0f : -0.25f), 0.0f), 1.0f);
+                    // (only the loop's own surge counts: with the pedal down (the plenum not under the throttle's
+                    // vacuum, as the assist's test) and the boost short of what is asked; a lift's surge on a closed
+                    // throttle is the blow-off valve's matter, and then the guard only gives back)
+                    const int surging = (comp[t].mdot < 0.0f || (phiS < 0.8f * comp[t].phiK && comp[t].pr > 1.15f)) &&
+                                                pPlenum > 0.85f * pOut && boost < want
+                                            ? 1
+                                            : 0;
+                    surgeOpen[t] = fminf(fmaxf(surgeOpen[t] + d16 * 1.0f * (surging != 0 ? 1.0f : -0.3f), 0.0f), 1.0f);
                     v = fmaxf(v, turb[t].vaneMin + surgeOpen[t]);
                 }
                 else

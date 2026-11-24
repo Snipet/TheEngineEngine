@@ -450,7 +450,7 @@ TEST_CASE("targets: a one-second key starts every archetype with nothing and eve
 }
 
 TEST_CASE("the switches reach the same decisions on the default block as on a block one cc larger",
-          "[fast][combo][decisions]")
+          "[nightly][decisions]")
 {
     // D's f89d40c: a switch written while stopped on the default V8's own layout and size (no configure follows) left
     // the physical cylinder and the builder's exhaust as the defaults made them. The same switches, written as events
