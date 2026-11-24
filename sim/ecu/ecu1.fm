@@ -177,7 +177,7 @@ module Ecu1
                        set->launch.speed * 9.5492966f, set->launch.retard, set->launch.flatShift, in->upshift, in->dogCut,
                        in->blip, d16);
         traction.control(set->traction.on, in->slip, set->traction.slip, set->traction.pitSpeed, in->carSpeed,
-                         fminf(fmaxf((rpm - idle.target - 300.0f) / 1200.0f, 0.0f), 1.0f), d16);
+                         fminf(fmaxf((rpm - idle.target - 200.0f) / 300.0f, 0.0f), 1.0f), d16);
         antiLag.control(set->antiLag.on, running, rpm, set->antiLag.low * 9.5492966f, set->antiLag.high * 9.5492966f,
                         pedal, set->antiLag.retard, set->antiLag.lambda);
         nitrous.control(set->nitrous.on && in->nitrousButton, running, rpm, set->nitrous.low * 9.5492966f, pedal,
@@ -199,7 +199,7 @@ module Ecu1
         camEx = maps.read(&m->camEx, m->camExAuto, MAP_CAM_EX, w, load);
         lift = maps.read(&m->lift, m->liftAuto, MAP_LIFT, w, load);
         plate = running ? maps.read(&m->pedal, m->pedalAuto, MAP_PEDAL, w, pedal) : 0.0f;
-        plate = fmaxf(fminf(plate, limiter.plateMax), launch.plateMin);
+        plate = fmaxf(fminf(plate, fminf(limiter.plateMax, set->traction.on ? traction.plateMax : 1.0f)), launch.plateMin);
         bypass = idle.bypass;
         // what is taken back and cut
         spark -= limiter.retard + launch.retard + traction.retard + antiLag.retard + nitrous.retard;
