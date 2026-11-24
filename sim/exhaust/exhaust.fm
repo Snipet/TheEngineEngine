@@ -792,4 +792,16 @@ module Exhaust
         for (int i = 0; i < np; ++i)
             prim[i].write(hNear[i], hFar[i]);
     }
+
+    // ---- the integrator's hooks (sim/README.md): card G fills them ----
+    // a bang of unburned fuel in bank's collector, its amplitude (Pa) (named popAt: Exhaust's pop is its Pops)
+    void popAt(int bank, float amplitude)
+    {
+    }
+
+    // the gas's temperature leaving bank's ports (K)
+    float gasTemperature(int bank)
+    {
+        return tPort;
+    }
 };

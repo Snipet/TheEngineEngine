@@ -8,7 +8,14 @@
 #include "views/garage/GarageWorkspace.h"
 
 #include <cmath>
+#include <vector>
 #include <string>
+
+namespace tee::test::u5
+{
+    funkgui::Rect frameStage(int w, int h);   // ScopeTests.cpp
+    std::string textFaults(const funkgui::PrimList& prims, const funkgui::Rect& stage, const std::vector<funkgui::Rect>& panels);
+}
 
 namespace
 {
@@ -198,6 +205,37 @@ namespace
         golden("garage.compare.dpi1", *one.host);
         CHECK(press(rig, "BACK TO BUILDS"));
         CHECK(!g.comparing());
+        return 0;
+    }
+
+    // At the frame's own stages: the cards fit (none wider than the room), the bar wraps, no text leaves the stage or
+    // overlaps other text; the cards and the comparison pictured at both densities.
+    VIEW_TEST(testGarageFrameStage, "garage.framestage")
+    {
+        for (const auto& win : { std::pair<int, int>{ 1100, 700 }, std::pair<int, int>{ 1600, 1000 } })
+        {
+            const funkgui::Rect st = tee::test::u5::frameStage(win.first, win.second);
+            const int w = static_cast<int>(st.w), h = static_cast<int>(st.h);
+            const std::string tag = win.first == 1100 ? "small" : "large";
+            for (const float dpi : { 2.0f, 1.0f })
+            {
+                StageRig rig(tee::ui::makeGarageWorkspace, w, h, dpi);
+                GarageWorkspace& g = garageOf(rig);
+                for (int k = 0; k < static_cast<int>(g.shown().size()); ++k)
+                {
+                    const funkgui::Rect r = g.cardRect(k);
+                    CHECK(r.x >= 0.0f && r.right() <= st.w);
+                }
+                std::string why = tee::test::u5::textFaults(rig.host->draw(), { 0.0f, 0.0f, st.w, st.h }, {});
+                CHECK_MSG(why.empty(), tag + " cards: " + why);
+                golden("garage.frame." + tag + (dpi == 1.0f ? ".dpi1" : ""), *rig.host);
+                g.compareWith(named(g, "Hot Six")->id);
+                rig.settle();
+                why = tee::test::u5::textFaults(rig.host->draw(), { 0.0f, 0.0f, st.w, st.h }, {});
+                CHECK_MSG(why.empty(), tag + " compare: " + why);
+                golden("garage.frame." + tag + ".compare" + (dpi == 1.0f ? ".dpi1" : ""), *rig.host);
+            }
+        }
         return 0;
     }
 

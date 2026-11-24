@@ -78,6 +78,8 @@ namespace tee::ui
             // Room kept around the interface for an owner's own things (the application's frame: its rail, top bar and
             // bottom strip): the interface is laid out inside it, and the natural size grows by it.
             int insetLeft = 0, insetTop = 0, insetRight = 0, insetBottom = 0;
+            // U1: a dial's value at its default drawn dim (the seed's look) or in the value's ink (the frame's inspector).
+            bool dimAtDefault = true;
             // False: no shader's program is looked up or registered, and every shader element draws its placeholder
             // with kShadersOff as the reason, whatever the build has. A test's golden takes the panel so, so that its
             // picture is the same in a build with a GPU layer (the shaders built and registered: the software

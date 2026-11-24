@@ -50,6 +50,20 @@ set_tests_properties(shell.headless.ref shell.headless.sim shell.headless.drive 
                      shell.headless.refuses
   PROPERTIES TIMEOUT 900 LABELS shell)
 
+# The garage's Library as the shell implements it (app/GarageLibrary.h): an executable of its own, where the frame is.
+if(TARGET tee_ui_build AND TARGET tee_ui_test_funkgui AND NOT TEE_PLACEHOLDER_PANEL)
+  add_executable(tee-shell-frame-tests "${CMAKE_CURRENT_SOURCE_DIR}/frame/GarageLibraryTest.cpp"
+                                       "${PROJECT_SOURCE_DIR}/app/GarageLibrary.cpp")
+  tee_target_defaults(tee-shell-frame-tests)
+  target_include_directories(tee-shell-frame-tests PRIVATE "${PROJECT_SOURCE_DIR}/app")
+  target_compile_definitions(tee-shell-frame-tests PRIVATE TEE_HAS_UI_FRAME=1
+    "TEE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\"" "TEE_SOURCE_SIM_DIR=\"${PROJECT_SOURCE_DIR}/sim\"")
+  # (FunkGui's sources compiled in, as the interface package's own tests have them)
+  target_link_libraries(tee-shell-frame-tests PRIVATE tee_ui_build tee_ui_test_funkgui Tee::shell_files Tee::shell_ref Tee::host
+                                                      Catch2::Catch2WithMain)
+  catch_discover_tests(tee-shell-frame-tests DISCOVERY_MODE PRE_TEST PROPERTIES TIMEOUT 600)
+endif()
+
 # Each workspace of the frame, opened by the application over the simulator (tee-headless --workspace): it opens,
 # runs 120 frames (2 s) with the engine started, draws, writes its picture (out/shell/workspace-<id>.png) and exits 0. A
 # workspace the frame does not have is an error (exit 2), so a renamed one fails here. shell.workspace.none: that.

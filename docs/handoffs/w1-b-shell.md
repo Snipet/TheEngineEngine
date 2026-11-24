@@ -45,3 +45,48 @@ speedometer's "1" of 100 to 180 is under a pixel wide (right at scale 2). On the
 (checked on every one), without our `-Werror`.
 
 **For a person:** `docs/checkpoints/M1.md`; if the application will not run, the listen artefact's WAV.
+
+## Second handoff (2026-11-24, afternoon): the frame is the application; slice 2
+
+*Card B, branch `claude/awesome-gates-ntdb58`; a second session continuing the first. Run here: Ubuntu 24.04 x86-64,
+4 cores, no GPU, display or sound, a `dev` tree with `TEE_BUILD_APP=ON`.*
+
+**Done, by test** (`ctest -R '^shell'`: 51 of 51 pass here; the window's under `scripts/xvfb-run.sh`, Mesa's software
+Vulkan, SDL's dummy audio):
+- The frame over the simulator is the default (`--engine ref`/`--ref-panel` keep the reference and `RefPanel`). It is
+  given U1's `ServiceDyno` and `SimScope`, the shell's services (`unsaved`, `simLoad`, `mode`/`setMode`, `clutch`,
+  the build's name and files) and GARAGE's library (`AppFrame::setLibrary`). `shell.workspace.<id>` for each of the
+  ten: opens over the simulator, starts the engine, 120 frames, a picture; `shell.workspace.none`: an unknown id exits 2.
+- `--size WxH`, `--scale S`, `--dyno-wait S` (tee-headless; returns at the dyno's error with its words). Every workspace:
+  `for w in garage engine valves air exhaust tune car dyno drive scope; do build-dev/bin/tee-headless --workspace $w
+  --size 1280x800 --scale 2 --frames 120 --script tests/shell/scripts/workspace.txt --shot out/sheet/$w.png; done`.
+- `PanelControls` gained `clutch` and `handbrake` (the lead's decision), merged as throttle and brake are (ControlsTest).
+- Builds on disk (`shell/files/BuildFiles`, BuildFilesTest): new, open, save, save as, a part apart, recent files, the
+  dirty flag, a library by name. In the window: Ctrl/Cmd+N/O/S/Shift+S, F2 the File menu, F9 the Audio menu (device
+  by name, rate, buffer, recorder), FunkGui's menus and SDL's file dialogs; the last build opens at start; a build
+  unsaved at close is kept as "Unsaved changes". Not tried by a person; the dialogs never opened here (no desktop).
+- GARAGE's `Library` (U5's header) in `app/GarageLibrary` (`tee-shell-frame-tests`, 66 assertions): shipped and user
+  builds and parts, values, current, load (a part loads only the fields its file sets: `Build::loadFile` with a part
+  puts the rest of the part's sections back to their defaults), save, save as, duplicate, delete, revert, notes,
+  curves by card C's dyno runner in the background cached by hash.
+- The audio device by name from the settings, taken back when it returns (not tested: the dummy driver has one device).
+- The wheel: `shell/input/WheelMap` (a table a device, a learn mode) tested with a made-up wheel (WheelTest); no device.
+- `-ffp-contract=off` on all 112 compiles of `tee_app`, `tee-headless` and `TheEngineEngine` (100 FunkGui's). No static
+  in `shell/` or `app/` owns a program or a thread.
+
+**Measured.** The ribbon's predicted curve arrives 2.7 s after the frame opens (card D's `tel.engine.torque`; default
+V8: 505 N m at 1,439 rpm, 224 kW at 5,254 rpm). The window on Xvfb: 70 fps, LOAD 14 %. tee-headless's LOAD reads high
+(91 %): it renders faster than real time, so a callback's time over its buffer's means nothing there.
+
+**Not done.** GARAGE uses the shell's library only once U5 reads `ctx.library` (asked). A wheel opened through SDL, its
+table in settings, a window to learn in. A settings page in the window (the frame has none yet: the keys stand in).
+Robustness was not exercised on a real device (unplug, rate change); the paths are SDL's and the code's own.
+
+**CI.** Run 45407345444 built, packed, uploaded and ran the application on Linux and Windows (macOS was still running);
+its Test steps fail outside my paths (`ui.frame.ribbon`, `ui.build.frame`; `tee-host-tests.exe` 0xc0000374 on Windows).
+
+**Outside my paths, wanted.** U5: `makeGarageWorkspace` to take `ctx.library`; `scope.gui`'s brace-less panel. The
+`cams/*.json` set the lab valvetrain's fields, which `sim/engine.fm` does not have: they load nothing yet.
+
+**For a person.** On the Mac: the frame, every workspace; F2 and F9; Ctrl/Cmd+S on an untitled build (the save dialog);
+an edit on ENGINE and the ribbon answering; the audio device menu with headphones plugged and unplugged.
