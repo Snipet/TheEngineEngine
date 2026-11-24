@@ -27,8 +27,14 @@ The exhaust as built, drawn from the same rules the simulator's builder uses to 
 - **Radiating ends** are three arcs, the position tag (REAR LEFT, SIDE RIGHT, ...) and the end's level as a bar and
   in dB.
 - **Heat.** Every wall is tinted by its section's temperature, cold blue through ink to orange and red; the scale is
-  in the header. The gas temperatures are numbers at the port, at the collector and at the tail, and again under the
-  stage.
+  in the header.
+  - The gas temperatures are numbers, each with its label: under the stage, and on the drawing at the port and the
+    collector (only where there is a number).
+  - Without wall temperatures, the pipes are outlines and the header says "NO WALL TEMPERATURES YET" once. The tinted
+    state is pictured with made-up demo telemetry (`exhaust.build.*`, `exhaust.stage`).
+- **It fits any stage.** The parts' widths are in a unit that shrinks to 0.55 on the frame's narrowest stage, and the
+  primaries stay to scale with each other. It is tested at the frame's stage for a 1100x700 and a 1600x1000 window
+  (`ui.exhaust.framestage`: every part inside, room for the ends' tags).
 - **Pulses.** The Scope's `pipePressure` is cylinder 1's path from port to tail: 64 points spaced evenly by length.
   It rides that path as a trace, offset across the pipe by pressure (+-40 kPa is the full swing). Blowdown pulses can
   be watched running out, meeting the collector and coming back from the open end.

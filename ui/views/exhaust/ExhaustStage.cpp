@@ -45,6 +45,9 @@ namespace tee::ui::exhaust
         Geo g;
         g.diagram = d;
         const float W = d.w;
+        // the unit the parts' widths are in: 1 on a wide stage, down to 0.55 on the frame's narrowest, so the whole
+        // system fits whatever stage it is given (the primaries stay to scale with each other at any unit)
+        const float u = std::clamp(W / 1060.0f, 0.55f, 1.0f);
 
         // ---- the heads and the ports ----------------------------------------------------------------------------
         const float headW = 44.0f;
@@ -82,10 +85,10 @@ namespace tee::ui::exhaust
         for (int i = 0; i < b.ports; ++i)
             maxL = std::max(maxL, b.primLen[static_cast<std::size_t>(i)]);
         const bool stacks = b.openStacks();
-        const float primZone = stacks ? std::max(150.0f, W * (b.ports == 1 ? 0.5f : 0.34f)) : std::max(150.0f, W * 0.23f);
-        const float bend = 36.0f;
+        const float primZone = stacks ? std::max(150.0f * u, W * (b.ports == 1 ? 0.5f : 0.34f)) : std::max(110.0f * u, W * (u < 0.8f ? 0.2f : 0.23f));
+        const float bend = 36.0f * u;
         g.scale = (primZone - bend) / maxL;
-        const float coneX = g.headX + primZone, coneW = 30.0f;
+        const float coneX = g.headX + primZone, coneW = 30.0f * u;
         for (int i = 0; i < b.ports; ++i)
         {
             const auto k = static_cast<std::size_t>(i);
@@ -99,7 +102,7 @@ namespace tee::ui::exhaust
 
         // ---- the first collectors and the merges ------------------------------------------------------------------
         const bool merges = b.anyMerge();
-        const float mergeX = coneX + coneW + 46.0f, mergeW = 24.0f;
+        const float mergeX = coneX + coneW + 46.0f * u, mergeW = 24.0f * u;
         for (int c = 0; c < kCollectors; ++c)
         {
             const auto k = static_cast<std::size_t>(c);
@@ -180,7 +183,7 @@ namespace tee::ui::exhaust
         }
 
         // ---- the sides' heads and the turbines ----------------------------------------------------------------------
-        g.laneX = (merges ? mergeX + mergeW : coneX + coneW) + 44.0f;
+        g.laneX = (merges ? mergeX + mergeW : coneX + coneW) + 44.0f * u;
         if (b.sides == 2)
             g.laneY = { d.y + d.h * 0.25f, d.y + d.h * 0.75f };
         else
@@ -199,7 +202,7 @@ namespace tee::ui::exhaust
         g.chainX = g.laneX;
         if (b.turbos != Turbos::none && !stacks)
         {
-            const float r = 17.0f, x = g.laneX + 26.0f;
+            const float r = 17.0f * std::max(u, 0.75f), x = g.laneX + 26.0f * u;
             const float mid = (g.laneY[0] + g.laneY[b.sides - 1]) * 0.5f;
             switch (b.turbos)
             {
@@ -210,7 +213,7 @@ namespace tee::ui::exhaust
                     break;
                 case Turbos::compound:
                     g.housings.push_back({ x, mid, r, 0 });
-                    g.housings.push_back({ x + 44.0f, mid, r * 0.75f, 0 });
+                    g.housings.push_back({ x + 44.0f * u, mid, r * 0.75f, 0 });
                     break;
                 case Turbos::perBank:
                 case Turbos::fourPerBank:
@@ -233,7 +236,7 @@ namespace tee::ui::exhaust
                 right = std::max(right, h.x + h.r);
             // a housing that feeds both sides needs room for its downpipes to part
             const bool parts = b.sides == 2 && (b.turbos == Turbos::one || b.turbos == Turbos::sequential || b.turbos == Turbos::compound);
-            chainX = right + (parts ? 64.0f : 22.0f);
+            chainX = right + (parts ? 64.0f : 22.0f) * u;
             g.chainX = chainX;
             for (std::size_t i = 0; i < g.housings.size(); ++i)
             {
@@ -256,30 +259,30 @@ namespace tee::ui::exhaust
             anyMuf = anyMuf || b.muf[k] != 0;
         }
         const bool chain = b.sideOn[0] || b.sideOn[1];
-        const float endW = 118.0f, gap = 16.0f;
+        const float endW = std::max(100.0f, 118.0f * u), gap = 16.0f * u;
         float fixed = endW;
         if (b.cross != 0)
-            fixed += 54.0f + gap;
+            fixed += 54.0f * u + gap;
         if (anyConv)
-            fixed += 58.0f + gap;
+            fixed += 58.0f * u + gap;
         if (anyRes)
-            fixed += 54.0f + gap;
+            fixed += 54.0f * u + gap;
         if (anyMuf)
-            fixed += 112.0f + gap;
-        const float flex = std::max(80.0f, d.right() - chainX - fixed);
+            fixed += 112.0f * u + gap;
+        const float flex = std::max(60.0f, d.right() - chainX - fixed);
         float x = chainX;
         if (chain)
         {
             if (b.cross != 0 && b.crossAt == 0)
             {
                 g.crossX0 = x;
-                g.crossX1 = x + 54.0f;
+                g.crossX1 = x + 54.0f * u;
                 x = g.crossX1 + gap;
             }
             if (anyConv)
             {
                 g.convX0 = x;
-                g.convX1 = x + 58.0f;
+                g.convX1 = x + 58.0f * u;
                 x = g.convX1 + gap;
             }
             g.mainX0 = x;
@@ -288,19 +291,19 @@ namespace tee::ui::exhaust
             if (b.cross != 0 && b.crossAt == 1)
             {
                 g.crossX0 = x + gap;
-                g.crossX1 = x + gap + 54.0f;
+                g.crossX1 = x + gap + 54.0f * u;
                 x = g.crossX1;
             }
             if (anyRes)
             {
                 g.resX0 = x + gap;
-                g.resX1 = x + gap + 54.0f;
+                g.resX1 = x + gap + 54.0f * u;
                 x = g.resX1;
             }
             if (anyMuf)
             {
                 g.mufX0 = x + gap;
-                g.mufX1 = x + gap + 112.0f;
+                g.mufX1 = x + gap + 112.0f * u;
                 x = g.mufX1;
             }
             g.tailX0 = x;

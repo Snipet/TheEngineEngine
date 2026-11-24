@@ -1,6 +1,8 @@
 // tests/sim/core/KinematicsTest.cpp: card D's test 2, the slider-crank against its closed form.
 #include "Core.h"
 
+static constexpr double kPi = 3.14159265358979323846;
+
 #include <catch2/catch_test_macros.hpp>
 
 #include <cmath>
@@ -22,7 +24,7 @@ TEST_CASE("the slider-crank's volume, slope and acceleration match the closed fo
     const double bore = 0.0971;
     const double stroke = 0.0971;
     const double cr = 10.0;
-    const double area = M_PI / 4.0 * bore * bore;
+    const double area = kPi / 4.0 * bore * bore;
     const double vd = area * stroke;
     const double vc = vd / (cr - 1.0);
     for (double lambda : {2.8, 3.3, 3.6, 4.0, 4.5})
@@ -33,7 +35,7 @@ TEST_CASE("the slider-crank's volume, slope and acceleration match the closed fo
         for (int deg = 0; deg < 720; ++deg)
         {
             kin(rig.data(), float(deg));
-            const double t = deg * M_PI / 180.0;
+            const double t = deg * kPi / 180.0;
             const double h = 1e-4;
             const double x = xAt(r, lambda, t);
             const double d1 = (xAt(r, lambda, t + h) - xAt(r, lambda, t - h)) / (2 * h);
@@ -71,11 +73,11 @@ TEST_CASE("the size and bore/stroke dials and the bore and stroke are one settin
         const double bore = boreSq * std::cbrt(bs);
         CHECK(std::abs(rig.get("size.bore") - bore) < 1e-6 * bore);
         CHECK(std::abs(rig.get("size.stroke") - bore / bs) < 1e-6 * bore);
-        CHECK(std::abs(M_PI / 4 * rig.get("size.bore") * rig.get("size.bore") * rig.get("size.stroke") - vd) < 1e-5 * vd);
+        CHECK(std::abs(kPi / 4 * rig.get("size.bore") * rig.get("size.bore") * rig.get("size.stroke") - vd) < 1e-5 * vd);
     }
     // the redline by piston speed: an 86 mm stroke to 25 m/s is 8721 rpm; a diesel's 13.5 m/s 4709
     dials(rig.data(), 2.0f, 1.0f, 4);
     rig.set("size.stroke", 0.086);
-    CHECK(std::abs(red(rig.data(), 0) * 30.0 / M_PI - 25.0 * 60.0 / (2 * 0.086)) < 1.0);
-    CHECK(std::abs(red(rig.data(), 1) * 30.0 / M_PI - 13.5 * 60.0 / (2 * 0.086)) < 1.0);
+    CHECK(std::abs(red(rig.data(), 0) * 30.0 / kPi - 25.0 * 60.0 / (2 * 0.086)) < 1.0);
+    CHECK(std::abs(red(rig.data(), 1) * 30.0 / kPi - 13.5 * 60.0 / (2 * 0.086)) < 1.0);
 }
