@@ -1022,3 +1022,79 @@ The real engine's features (the lead's list), and the model:
   intake's rule reads no pressure across the engine (item 1), so nothing schedules scavenging.
 - *An electric gate held shut until the target*: equivalent. The model's gate is pneumatic with a duty, and it reads
   0 below the target at every low-speed point measured.
+
+**B-3, the knock limit sized** (the lead's 23:13; measured by 23:11 `date -u`). Base: designShare 0.40, the phaser parked,
+1800 rpm full load: 293 N m at 114 kPa (plenum 215), charge at closing 416 K, residual 0.052, lambda 0.82, knock
+retard 12.5 degrees, spark about TDC; the cited 333 to 368 N m. One change a run:
+
+| change | N m | boost kPa | residual | T_ivc K | knock ret. | spark |
+|---|---|---|---|---|---|---|
+| base | 293.1 | 114.3 | 0.052 | 416 | 12.5 | -0.4 |
+| air +10 K (env 298 K) | 287.7 | 117.5 | 0.052 | 424 | 12.7 | -1.0 |
+| lambda 0.87 (map) | 299.6 | 113.5 | 0.050 | 416 | 13.8 | -2.2 |
+| lambda 0.92 | 301.6 | 114.5 | 0.050 | 416 | 14.1 | -2.1 |
+| lambda 1.00 | 282.0 | 112.5 | 0.052 | 416 | 13.6 | -0.9 |
+| phaser to 10 degrees | 307.8 | 118.4 | 0.055 | 409 | 14.6 | -2.8 |
+| phaser to 20 | 308.5 | 122.0 | 0.067 | 411 | 14.8 | -3.4 |
+| phaser to 30 | 292.5 | 119.4 | 0.090 | 422 | 15.0 | -3.6 |
+| phaser to 40 | 232.3 | 93.8 | 0.133 | 450 | 15.0 | -3.9 |
+| RON 93 (grade 1) | 290.3 | 115.9 | 0.051 | 416 | 14.3 | -2.3 |
+| RON 104 (grade 3) | 300.9 | 114.8 | 0.052 | 415 | 9.0 | 3.4 |
+| compression 10.0 | 298.5 | 119.7 | 0.050 | 415 | 13.5 | -1.4 |
+| knock control off | 307.4 | 116.4 | 0.054 | 415 | 0 | 11.3 |
+| knock off, the phaser on N1's rule (49 degrees) | 189.4 | 48.8 | 0.160 | 451 | 0 | 11.9 |
+
+The knock model (combustion/knock.fm: Livengood and Wu over Douaud and Eyzat's delay) reads the end gas's pressure and
+temperature (T_ivc less the fuel's evaporation, then isentropic) and the octane index (RON: "Premium (91)" is RON 96,
+MON 86, K = 0). The residual and lambda have no term of their own in the delay: the residual acts through T_ivc, lambda
+through the evaporation's cooling. The controller trades spark for knock (a step on each knock, 15 degrees at most,
+2 degrees a second back), so torque moves far less than the retard:
+- *per 10 K at intake closing*: about +0.3 degrees and -7 N m (the air +10 K run: +8 K at closing; the boost moved too);
+- *per 0.01 of residual*: through T_ivc only; mixing 0.01 of exhaust at about 900 K into a 416 K charge is about
+  +5 K, so about +0.15 degrees and -3 to -4 N m on the rule above (the phaser runs move the closing too, so they
+  cannot separate it);
+- *per 0.05 of lambda*: +6 to +8 N m going 0.82 to 0.87 to 0.92 (the burn nearer its best), then -20 N m from 0.92 to
+  1.00; the retard moves less than a degree either way;
+- *per RON*: about 0.5 degrees and 1 N m (93 to 104: 14.3 to 9.0 degrees, 290 to 301 N m);
+- *the knock's whole cost here*: 14 N m (293 to 307 with the control off).
+
+Against cited values:
+- *Direct injection's charge cooling*: Kasseris and Heywood (SAE 2012-01-1275, abstract) measured 14 K for gasoline
+  in a turbocharged DI engine (49 K for E85), about 70 to 80 % of the theoretical (second-hand). The model takes
+  0.85 of the full evaporation in the cylinder: 28 K at lambda 0.82, 23 K at 1.0. So the model's is twice the measured:
+  at the cited 14 K the charge would be about 14 K hotter, about -10 N m. Generous already; it does not close the gap.
+- *Lambda at 1800 full load*: the EA888 gen 3 targets lambda 1 over the whole envelope (EcuTek's tuning notes: a
+  tuner's guide, not the maker's; VW's Evo4 release says the engine needs no enrichment at high load). The model's
+  map formula runs 0.82 at this boost. At 1.0 the model loses 11 N m (282). Unknown from the maker; if cited, it widens
+  the gap.
+- *Compression and octane*: the build's 9.6:1 is the real engine's (Audi 920243). The real fuel: 95 RON in Europe
+  (98 recommended for the Performance's rating, not confirmed by me), US 91 AKI (about 95 to 96 RON). The build's RON 96
+  matches. Not a lever here.
+- *Residual with scavenging*: a scavenged engine traps nearly none at low speed (no cited figure for this engine found);
+  0.052 to 0.02 is about -15 K at closing on the mixing rule, about +10 N m.
+
+**None closes 293 to 350, nor do they together** (at cited values they net about -10 N m: the DI cooling and lambda 1
+take, the scavenged residual gives). The gap is air: the fresh charge trapped is 1.82 g per litre per cycle, about
+0.77 of the plenum's density (215 kPa, about 2.38 g/L after the cooler); 350 N m at the same efficiency needs about
+2.08, about 0.87 of it. The parked cam closes the intake 70 degrees after bottom (pushing charge back at 1800); the
+rule's 49 degrees closes it early but its overlap back-fills (fresh 1.14, residual 0.16). Ten to twenty degrees is the
+model's best (+5 %). What the real engine has to trap more at an early closing is scavenging through the overlap: the
+pressure across the cylinder, item 1, N1's. Knock is the third order here, not the closer.
+
+**Item 5, the top's boost on one hardware set** (6200 rpm, the boost map's 6000 and 6500 rows set for the run):
+
+| match | target kPa | boost kPa | N m | p3 kPa | gate |
+|---|---|---|---|---|---|
+| 0.85 | 55 | 58.1 | 246 | 159 | 0.64 |
+| 0.85 | 62 | 62.1 | 252 | 161 | 0.67 |
+| 0.85 | 70 | 69.6 | 262 | 165 | 0.63 |
+| 0.85 | 80 (as built) | 80.6 | 276 | 172 | 0.61 |
+| 0.50 | 62 or 80 | 63.8 | 220 | 189 | 0.89 |
+| 0.40 | 80 (as built) | 34.1 | 164 | 185 | 0.94 |
+
+On the matched turbo the cited 250 N m is 62 kPa at 6200 (p3 161 kPa, gate 0.67). The 0.50 and 0.40 cannot get
+there with any taper: their shafts are at the speed limit (omegaMax, 245 and 274 krpm; the gate opened by it, not by
+the target), the compressors choked (efficiency 0.54 and 0.33), and the turbine's pressure 28 kPa higher than the
+matched one's at the same boost: 220 N m at 64 kPa on the 0.50. On this model's map family no one set holds both ends:
+the low end wants 0.30 to 0.40, the top 0.5 or more. For N2 (the map's width, the tip-speed limit of 560 m/s:
+judgement) and P (the boost taper: 62 kPa at 6200 on the matched turbo).
