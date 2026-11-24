@@ -161,12 +161,12 @@ if(TARGET TheEngineEngine AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
     # The launch (app/Launch.h): a launch with no settings that names the first build (content/builds/first.json: a
     # scripted run opens none unless named) shows its notes' first line ("Try first: ...") and ends with its name and
     # every model switch the Schema has on, in the document and as the engine was sent them (a switch at 0, or one not
-    # sent, fails it), opened clean, and its cam stage changing across its speed on a warm launch (scripts/first-stage.txt:
-    # the owner's report; the script's edits leave it with unsaved changes); a launch whose settings remember a build (tests/shell/fixtures/launch-last) ends with that one.
+    # sent, fails it), opened clean, warm (the oil at its working temperature) and its cam stage changing across its speed
+    # (scripts/first-launch.txt: the owner's report; the script's edits leave it with unsaved changes); a launch whose settings remember a build (tests/shell/fixtures/launch-last) ends with that one.
     add_test(NAME shell.window.first
       COMMAND "${PROJECT_SOURCE_DIR}/scripts/xvfb-run.sh" $<TARGET_FILE:TheEngineEngine>
               --first-build "${PROJECT_SOURCE_DIR}/content/builds/first.json" --frames 30
-              --script "${_scripts}/first-stage.txt"
+              --script "${_scripts}/first-launch.txt"
       WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
     add_test(NAME shell.window.last
       COMMAND "${PROJECT_SOURCE_DIR}/scripts/xvfb-run.sh" $<TARGET_FILE:TheEngineEngine>
@@ -194,23 +194,16 @@ if(TARGET TheEngineEngine AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
       ENVIRONMENT "SDL_AUDIODRIVER=dummy;TEE_SETTINGS_DIR=${_out}/edits-no-settings"
       PASS_REGULAR_EXPRESSION "checks: [0-9]+, 0 failed.*tee-app: ok")
     # A launch's cam stage changing across its speed (scripts/first-stage.txt: the owner's report), on the first build,
-    # cold (--cold: the default run has it warm, in shell.window.first). And the warm start itself (the oil at its working
-    # temperature after a launch on the first build): it waits for sim/core/heat.fm's stood(), which makes a build whose
-    # air is not the default's (first.json: 288.15 K) cold again at its first configure; the soak tier's until then.
+    # cold (--cold: the default run has it warm, in shell.window.first).
     add_test(NAME shell.window.stage.cold
       COMMAND "${PROJECT_SOURCE_DIR}/scripts/xvfb-run.sh" $<TARGET_FILE:TheEngineEngine> --cold
               --first-build "${PROJECT_SOURCE_DIR}/content/builds/first.json" --script "${_scripts}/first-stage.txt"
               --frames 30
       WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
-    add_test(NAME shell.window.warm
-      COMMAND "${PROJECT_SOURCE_DIR}/scripts/xvfb-run.sh" $<TARGET_FILE:TheEngineEngine>
-              --first-build "${PROJECT_SOURCE_DIR}/content/builds/first.json" --script "${_scripts}/warm-start.txt"
-              --frames 30
-      WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
-    set_tests_properties(shell.window.stage.cold shell.window.warm PROPERTIES TIMEOUT 600
+    set_tests_properties(shell.window.stage.cold PROPERTIES TIMEOUT 600
       LABELS "shell;window" RUN_SERIAL TRUE ENVIRONMENT "SDL_AUDIODRIVER=dummy;TEE_SETTINGS_DIR=${_out}/stage-no-settings"
       PASS_REGULAR_EXPRESSION "checks: [0-9]+, 0 failed.*tee-app: ok")
-    set_tests_properties(shell.window.stage.cold shell.window.warm PROPERTIES LABELS "shell;window;nightly")
+    set_tests_properties(shell.window.stage.cold PROPERTIES LABELS "shell;window;nightly")
     # The owner's two-stage-cam four in the window, warm as a launch is: the stage at 6,000 rpm on opening, after QUALITY and back, and
     # opened over first.json (tests/shell/scripts/two-stage-cams.txt; the lead's 21:56 question). The soak tier's.
     add_test(NAME shell.window.twostage

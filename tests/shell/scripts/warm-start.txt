@@ -1,9 +1,0 @@
-# The application's engine starts at its working temperatures (LoadOptions::initial, Warm.h's warmEngine(): oil 378 K),
-# on the first build, and is still warm once started and idling.
-0.05  expect engine.oilTemperature > 360
-0.20  key return down
-0.50  key return up
-3.00  expect engine.state == 2
-3.00  expect engine.oilTemperature > 360
-3.00  print
-3.10  end
