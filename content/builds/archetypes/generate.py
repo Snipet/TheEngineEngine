@@ -263,7 +263,10 @@ arch(slug="boxer-four-turbo-unequal", runner=0.3, name="Boxer four turbo with un
 arch(slug="two-stage-cam-20", runner=0.3, convK=16.0, name="Two-stage-cam 2.0 L", geo="ref-05-inline-4", layout="Inline 4",
      bore=87.0, stroke=84.0, rod=153.0, cr=11.7, valves=4, dIn=34.0, dEx=29.0,
      cam=(236, 204, 8.5, 110, 232, 200, 8.0, 112), train="Rocker", redline=9000, idle=900,
-     stages=dict(inDurSeatB=290, inDur1mmB=258, inLiftB=0.0118, exDurSeatB=284, exDur1mmB=252, exLiftB=0.0112,
+     # the high stage as the K20A Type R's (N3, 20:18): 280/278 deg, 12.65/12.14 mm lift (motorreviewer.com, an
+     # aggregator that does not say where duration is measured: read as the seat; 1 mm some 32 deg shorter, as the low
+     # stage's), switched at 6000 rpm (the DC5's: honda.co.jp factbook)
+     stages=dict(inDurSeatB=280, inDur1mmB=248, inLiftB=0.01265, exDurSeatB=278, exDur1mmB=246, exLiftB=0.01214,
                  stageSpeed=6000 * RPM),
      grade="Premium (91)", car="roadster", timing="Chain", lifters="Solid",
      notes="A 2.0 L four with two cam profiles a valve switched at 6000 rpm: 87 x 84 mm (1997 cc), 11.7:1, 9000 rpm "
@@ -441,12 +444,14 @@ SPRINGS = {
 }
 
 
-PORTS = {"wedge": (1.15, 1.3), "high": (1.65, 1.8), "race": (1.75, 1.9)}
+PORTS = {"wedge": (1.15, 1.3), "high": (1.65, 1.8), "race": (1.75, 1.9), "cnc": (1.6, 1.8)}
+# (cnc: the LS7's CNC-ported heads, about 1.6 on N3's bench-flow scale, q = Cd / 0.4 at lift d/4:
+# docs/measurements/calibration/balance/discharge.md; the small block's and the 3.8's 1.15 match its 1.15 to 1.2)
 # N1's values with the charge heating and the conserving intake in (measured peak torque over target's middle:
 # flat six 1.35, VR6 1.30, 7.0 V8 1.26, pushrod V6 1.25, small block 1.14): stock two-valve wedge and pushrod
 # heads 1.15/1.3; a great two-valve (the 7.0, the air-cooled six) and production four-valves at the default
 # 1.35/1.5; high-output four-valves 1.65/1.8; the rally five 1.75/1.9
-HEADS = {"big-block-74-pushrod-v8": "wedge", "small-block-57-carb": "wedge", "supercharged-v8-62": "wedge",
+HEADS = {"big-bore-70-pushrod-v8": "cnc", "big-block-74-pushrod-v8": "wedge", "small-block-57-carb": "wedge", "supercharged-v8-62": "wedge",
          "pushrod-v6-38": "wedge", "vr6-28": "wedge", "flat-plane-v8-45": "high",
          "v10-52": "high", "v12-65": "high", "straight-six-32-high-rev": "high", "two-stage-cam-20": "high",
          "flat-plane-v8-39-twin-turbo": "high", "inline-five-turbo-rally": "race"}
