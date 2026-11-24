@@ -1,0 +1,123 @@
+{
+  "format": "tee-scenario",
+  "version": 1,
+  "name": "listen-cabin-windows",
+  "description": "Package L: from the driver's seat, lugging in fourth from low speed (the boom through the mounts), the windows opened at 9 s: the outside comes in (the highs' share rises some 12 dB).",
+  "seconds": 14,
+  "events": [
+    {
+      "t": 0,
+      "spec": {
+        "env.temperature": 293.15
+      }
+    },
+    {
+      "t": 0,
+      "spec": {
+        "sound.model": 1
+      }
+    },
+    {
+      "t": 0,
+      "ctl": {
+        "mode": 1
+      }
+    },
+    {
+      "t": 0,
+      "ctl": {
+        "lever": 0
+      }
+    },
+    {
+      "t": 0,
+      "ctl": {
+        "clutch": 0
+      }
+    },
+    {
+      "t": 0,
+      "ctl": {
+        "throttle": 0
+      }
+    },
+    {
+      "t": 0,
+      "ctl": {
+        "brake": 0
+      }
+    },
+    {
+      "t": 0,
+      "ctl": {
+        "ignition": 1
+      }
+    },
+    {
+      "t": 0,
+      "spec": {
+        "sound.camera": 4,
+        "sound.windows": 0
+      }
+    },
+    {
+      "t": 0.25,
+      "ctl": {
+        "ignition": 2
+      }
+    },
+    {
+      "t": 2,
+      "ctl": {
+        "ignition": 1
+      }
+    },
+    {
+      "t": 3,
+      "press": [
+        "shiftUp"
+      ]
+    },
+    {
+      "t": 3.3,
+      "ctl": {
+        "throttle": 0.6
+      },
+      "ramp": 0.2
+    },
+    {
+      "t": 4.5,
+      "press": [
+        "shiftUp"
+      ]
+    },
+    {
+      "t": 5.0,
+      "press": [
+        "shiftUp"
+      ]
+    },
+    {
+      "t": 5.5,
+      "ctl": {
+        "throttle": 1
+      },
+      "ramp": 0.5
+    },
+    {
+      "t": 9,
+      "spec": {
+        "sound.windows": 1
+      }
+    }
+  ],
+  "assertions": [
+    {
+      "audio": "finite"
+    },
+    {
+      "audio": "peak",
+      "<=": 1
+    }
+  ]
+}

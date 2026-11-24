@@ -78,3 +78,23 @@ TEST_CASE("explore: the loudest ordinary moments' peaks before the limiter", "[.
                     b.field("listen.prePeak"), b.tel("sound.limiter"));
     }
 }
+
+TEST_CASE("explore: a bike's intake signals", "[.explore][engine]")
+{
+    for (const char* name : {"bike-superbike", "v8"})
+    {
+        Bench b(name);
+        b.write("spec.sound.model", 1);
+        b.write("spec.sound.rev", b.field("spec.sound.rev") + 1);
+        b.start(1.0);
+        b.ctl().throttle = 1.0f;
+        double mo = 0.0, in = 0.0, ex = 0.0;
+        b.play(1.5, [&] {
+            mo = std::max(mo, std::fabs(b.field("ex.mouth")));
+            in = std::max(in, std::fabs(b.field("ex.intake")));
+            ex = std::max(ex, std::fabs(b.field("exh.outL")));
+        });
+        std::printf("%s: |mouth| %.3g |intake| %.3g |exh.outL| %.3g, intake.model %.0f sIn %.3g sEx %.3g\n", name, mo, in, ex,
+                    b.field("spec.intake.model"), b.field("listen.sIn"), b.field("listen.sEx"));
+    }
+}

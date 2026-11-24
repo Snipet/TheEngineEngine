@@ -40,9 +40,11 @@ module Charge1
     // kind: the fuel's row; firing: CHARGE_*; air: the charge's burnable mass (kg: its mass less its burned gas);
     // oxy: its oxygen over air's; lambda: asked; direct: the injection's share in the cylinder; t: the charge's
     // temperature (K); share: the walls' share kept; factor: dilution, spread and trim; sparkAfter: degrees after the
-    // top the spark comes (negative before it); u: a uniform number in [0, 1) for the misfire's chance
+    // top the spark comes (negative before it); u: a uniform number in [0, 1) for the misfire's chance; extra: the fuel
+    // injected over what the mixture holds (a cold start's enrichment: the extra wets the walls and the oil and does not
+    // reach the pipe as fuel that could light there; 1 warm)
     void make(int kind, int firing, float air, float oxy, float lambda, float direct, float t, float share, float factor,
-              float sparkAfter, float u)
+              float sparkAfter, float u, float extra)
     {
         const int f = fuelRow(kind);
         heat = 0.0f;
@@ -57,13 +59,14 @@ module Charge1
             return;
         const float lam = firing == CHARGE_OVERRUN ? 1.0f : lambda;
         mix.set(kind, lam, air, oxy, direct);
-        fuel = mix.fuel;
+        const float wet = mix.fuel * (fmaxf(extra, 1.0f) - 1.0f);
+        fuel = mix.fuel + wet;
         lambdaOut = lam;
         tEnd = t - mix.coolCyl;
         burnK = mix.burnK;
         if (firing == CHARGE_SPARK_CUT || u < mix.misfire)
         {
-            outFuel = fuel;
+            outFuel = mix.fuel;
             return;
         }
         lit = true;
@@ -72,8 +75,8 @@ module Charge1
             inCyl = fminf(fmaxf(1.0f - sparkAfter / 60.0f, 0.0f), 1.0f);
         heat = mix.heat * share * factor * inCyl;
         // what is not burned: the mixture's own leftover, the late burn's, and the air its fuel did not need
-        const float burned = (fuel - mix.unburned) * inCyl;
-        outFuel = fuel - burned;
+        const float burned = (mix.fuel - mix.unburned) * inCyl;
+        outFuel = mix.fuel - burned;
         outAir = fmaxf(air * oxy - burned * kFuelAfr[f], 0.0f);
     }
 };

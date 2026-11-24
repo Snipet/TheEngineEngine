@@ -1,0 +1,117 @@
+{
+  "format": "tee-scenario",
+  "version": 1,
+  "name": "listen-place-tunnel",
+  "description": "Package L: revving in neutral at the side camera in the tunnel: its early reflections and its reverberation after each lift.",
+  "seconds": 10,
+  "events": [
+    {
+      "t": 0,
+      "spec": {
+        "env.temperature": 293.15
+      }
+    },
+    {
+      "t": 0,
+      "spec": {
+        "sound.model": 1
+      }
+    },
+    {
+      "t": 0,
+      "ctl": {
+        "mode": 0
+      }
+    },
+    {
+      "t": 0,
+      "ctl": {
+        "ignition": 1
+      }
+    },
+    {
+      "t": 0,
+      "spec": {
+        "sound.camera": 2,
+        "sound.place": 3
+      }
+    },
+    {
+      "t": 0.25,
+      "ctl": {
+        "ignition": 2
+      }
+    },
+    {
+      "t": 2,
+      "ctl": {
+        "ignition": 1
+      }
+    },
+    {
+      "t": 3.0,
+      "ctl": {
+        "throttle": 0.8
+      },
+      "ramp": 0.05
+    },
+    {
+      "t": 3.6,
+      "ctl": {
+        "throttle": 0
+      },
+      "ramp": 0.05
+    },
+    {
+      "t": 4.5,
+      "ctl": {
+        "throttle": 0.8
+      },
+      "ramp": 0.05
+    },
+    {
+      "t": 5.1,
+      "ctl": {
+        "throttle": 0
+      },
+      "ramp": 0.05
+    },
+    {
+      "t": 6.0,
+      "ctl": {
+        "throttle": 0.8
+      },
+      "ramp": 0.05
+    },
+    {
+      "t": 6.6,
+      "ctl": {
+        "throttle": 0
+      },
+      "ramp": 0.05
+    },
+    {
+      "t": 7.5,
+      "ctl": {
+        "throttle": 0.8
+      },
+      "ramp": 0.05
+    },
+    {
+      "t": 8.1,
+      "ctl": {
+        "throttle": 0
+      },
+      "ramp": 0.05
+    }
+  ],
+  "assertions": [
+    {
+      "audio": "finite"
+    },
+    {
+      "audio": "peak",
+      "<=": 1
+    }
+  ]
+}
