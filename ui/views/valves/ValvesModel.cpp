@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <string>
 
 namespace tee::ui::valves
 {
@@ -75,7 +76,7 @@ namespace tee::ui::valves
         const double u = s / span;
         if (free)
         {
-            const double f = std::min(40.0 / span, 0.5), t = std::min(std::min(u, 1.0 - u) / f, 1.0);
+            const double f = std::min(flank / span, 0.5), t = std::min(std::min(u, 1.0 - u) / f, 1.0);
             return t * t * t * (10.0 + t * (-15.0 + 6.0 * t));
         }
         return raw(u, p, k) * kNorm;
@@ -101,6 +102,19 @@ namespace tee::ui::valves
             const double f = v(fat);
             l.fat = std::isfinite(f) ? f : 0.5;
             l.free = v(kind) >= 0.5;
+            if (l.free)
+            {
+                // a free valve: where it opens and closes outright (the cycle's degrees), over its flanks
+                const double o = v(intake ? VF::freeInOpen : VF::freeExOpen), cl = v(intake ? VF::freeInClose : VF::freeExClose);
+                if (std::isfinite(o) && std::isfinite(cl))
+                {
+                    l.durSeat = wrap(cl - o, 720.0);
+                    l.centre = wrap(o + 0.5 * l.durSeat, 720.0);
+                }
+                const double fl = v(VF::freeFlank);
+                if (std::isfinite(fl))
+                    l.flank = fl;
+            }
             l.build();
             return l;
         };
@@ -129,6 +143,17 @@ namespace tee::ui::valves
         {
             t.inB = lobe(VF::inDurSeatB, VF::inDur1mmB, VF::inLiftB, VF::inCentreB, VF::inFat, true, VF::inKind);
             t.exB = lobe(VF::exDurSeatB, VF::exDur1mmB, VF::exLiftB, VF::exCentreB, VF::exFat, false, VF::exKind);
+        }
+        if (v(VF::auxOn) >= 0.5)
+        {
+            const double o = v(VF::auxOpen), d = v(VF::auxDur);
+            if (std::isfinite(o) && std::isfinite(d))
+            {
+                t.aux.durSeat = d;
+                t.aux.centre = wrap(o + 0.5 * d, 720.0);
+                t.aux.lift = v(VF::auxLift);
+                t.aux.build();
+            }
         }
         t.inPhaseRange = v(VF::inPhaseRange);
         t.exPhaseRange = v(VF::exPhaseRange);
@@ -194,5 +219,27 @@ namespace tee::ui::valves
         }
         b.known = true;
         return b;
+    }
+
+    Bench benchOf(const FieldDoc& doc, double bore, const Live& live)
+    {
+        Bench b = benchOf(doc, bore);
+        Bench sim = b;
+        for (int i = 0; i < 16; ++i)
+        {
+            const auto at = [&](const char* path) {
+                std::string n(path);
+                n.replace(n.find("%d"), 2, std::to_string(i));
+                return live.get(n);
+            };
+            const double l = at(kTelBenchLift), qi = at(kTelBenchIn), qe = at(kTelBenchEx);
+            if (!(std::isfinite(l) && std::isfinite(qi) && std::isfinite(qe) && l > 0.0))
+                return b;
+            sim.lift[static_cast<std::size_t>(i)] = l;
+            sim.flowIn[static_cast<std::size_t>(i)] = qi;
+            sim.flowEx[static_cast<std::size_t>(i)] = qe;
+        }
+        sim.known = sim.simulated = true;
+        return sim;
     }
 }

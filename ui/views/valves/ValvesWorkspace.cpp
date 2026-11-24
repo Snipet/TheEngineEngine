@@ -22,6 +22,7 @@
 #include "kit/widgets/Basic.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdio>
 #include <string>
@@ -76,7 +77,8 @@ namespace tee::ui
             k.mix(ctx_.doc.revision()).mix(ctx_.selection.revision()).mix(ctx_.units.revision());
             const double a = crankAngle();
             k.mix(std::isfinite(a) ? static_cast<std::int64_t>(std::lround(a * 2.0)) : -1);
-            for (const char* n : { kTelInPhase, kTelExPhase, kTelStage, kTelLift, kTelFloat, kTelActive, en::kTelSpeed })
+            for (const char* n : { kTelInPhase, kTelExPhase, kTelInTarget, kTelExTarget, kTelStage, kTelLift, kTelFloat, kTelFloating,
+                                   kTelActive, en::kTelSpeed, kTelEvents[0], kTelEvents[1], kTelEvents[2], kTelEvents[3], kTelEvents[4] })
                 k.mix(static_cast<float>(ctx_.live.get(n)));
             k.mix(drag_).mix(hot_).mix(static_cast<float>(yMax_));
             return k.h;
@@ -341,6 +343,22 @@ namespace tee::ui
             const bool intake = drag_ < exPeak, b = stageB(t);
             const Lobe& l = lobe(t, intake);
             const double a = std::clamp(angleAt(pt.x), kA0, kA1);
+            if (l.free)
+            {
+                // a free valve is where it opens and closes: the peak moves both, a seat mark its own; the lift as a cam's
+                const VF open = intake ? VF::freeInOpen : VF::freeExOpen, close = intake ? VF::freeInClose : VF::freeExClose;
+                if (drag_ % 3 == 0)
+                {
+                    const double shift = a - l.centre;
+                    write(open, en::wrap(l.seatOpen() + shift, 720.0));
+                    write(close, en::wrap(l.seatClose() + shift, 720.0));
+                    if (metres(l))
+                        write(intake ? VF::inLift : VF::exLift, liftAt(pt.y));
+                }
+                else
+                    write(drag_ % 3 == 1 ? open : close, en::wrap(a, 720.0));
+                return;
+            }
             if (drag_ % 3 == 0)
             {
                 // the peak: across moves the centreline (a cam card's: after the overlap's top for the intake,
@@ -418,7 +436,14 @@ namespace tee::ui
             const Units& u = ctx_.units;
             const Lobe& li = lobe(t, true);
             const Lobe& le = lobe(t, false);
-            const Events ev = eventsOf(li, le);
+            // the cams as they run now: each phaser's shift, and the overlap that makes (the simulator's when it says)
+            const double inPh = ctx_.live.get(kTelInPhase), exPh = ctx_.live.get(kTelExPhase);
+            const double inShift = phaseShift(true, inPh), exShift = phaseShift(false, exPh);
+            Events ev = eventsOf(li, le);
+            if (const double ov = ctx_.live.get(kTelEvents[4]); std::isfinite(ov))
+                ev.overlap = ov;
+            else if (std::isfinite(ev.overlap))
+                ev.overlap = std::max(0.0, ev.overlap - inShift + exShift);
             // the piston's room: the least between each valve and the crown near the overlap's top, and where
             const en::Layout lay = en::layoutOf(ctx_.doc);
             const en::Cylinder cyl = en::cylinderOf(ctx_.doc, lay);
@@ -431,12 +456,12 @@ namespace tee::ui
                 leastIn = leastEx = 1e9;
                 for (double a = 300.0; a <= 420.0; a += 0.5)
                 {
-                    if (const double r = room(a) - li.liftAt(a); r < leastIn)
+                    if (const double r = room(a) - li.liftAt(a - inShift); r < leastIn)
                     {
                         leastIn = r;
                         atIn = a;
                     }
-                    if (const double r = room(a) - le.liftAt(a); r < leastEx)
+                    if (const double r = room(a) - le.liftAt(a - exShift); r < leastEx)
                     {
                         leastEx = r;
                         atEx = a;
@@ -510,8 +535,6 @@ namespace tee::ui
                 return;
             }
             const funkgui::Canvas::ClipScope clip(c, { plot_.x, plot_.y, plot_.w, plot_.h + 62.0f });   // the plot and its key
-            const double inPh = ctx_.live.get(kTelInPhase), exPh = ctx_.live.get(kTelExPhase);
-            const double inShift = phaseShift(true, inPh), exShift = phaseShift(false, exPh);
             // under everything: each lobe's area as it runs now, and the overlap (the area under both)
             fill(c, le, exShift, p.over(p.hot, 0.12f));
             fill(c, li, inShift, p.over(p.cold, 0.12f));
@@ -557,6 +580,9 @@ namespace tee::ui
                 curve(c, le, 0.0, p.over(p.hot, 0.4f), kClear, 1.0f);
             curve(c, le, exShift, p.hot, kClear, lk::kTrace);
             curve(c, li, inShift, p.cold, kClear, lk::kTrace);
+            // the second exhaust event (a compression brake's small lobe), when on
+            if (t.aux.known())
+                curve(c, t.aux, exShift, p.hot, p.over(p.hot, 0.2f), 1.5f);
             // the phasers: their ranges as bands along the top, where each is now
             const auto band = [&](const Lobe& l, double range, double now, bool intake, float y) {
                 if (!(range > 0.0) || !l.known())
@@ -565,6 +591,10 @@ namespace tee::ui
                 const Col ink = intake ? p.cold : p.hot;
                 c.rrect(X(a0), y, X(a1) - X(a0), 8.0f, 4.0f, p.over(ink, 0.3f), 1.0f, p.over(ink, 0.7f));
                 c.segment(X(l.centre), y - 2.0f, X(l.centre), y + 10.0f, 1.0f, p.label);
+                // where it is asked to go (a ring), and where it is (a disc)
+                const double target = ctx_.live.get(intake ? kTelInTarget : kTelExTarget);
+                if (std::isfinite(target))
+                    c.disc(X(l.centre + phaseShift(intake, target)), y + 4.0f, 6.5f, kClear, 1.5f, p.value);
                 if (std::isfinite(now))
                 {
                     const float nx = X(l.centre + phaseShift(intake, now));
@@ -587,6 +617,8 @@ namespace tee::ui
                     keys.push_back(stageB(t) ? "FAINT: STAGE A" : "FAINT: STAGE B");
                 if (inShift != 0.0 || exShift != 0.0)
                     keys.push_back("FAINTER: PARKED");
+                if (t.aux.known())
+                    keys.push_back("SMALL LOBE: THE SECOND EXHAUST EVENT");
                 if (piston)
                 {
                     keys.push_back("GREY: THE PISTON'S CROWN, IN " + lu);
@@ -643,9 +675,23 @@ namespace tee::ui
         // ---- the timing ring -----------------------------------------------------------------------------------------
         void drawRing(Canvas& c, const lk::Palette& p, const Train& t) const
         {
-            lk::region(c, p, ring_, "TIMING", ctx_.selection.is("valve.timing"));
+            // the simulator's events now (cylinder 1's, phased: the cycle's degrees) when telemetry has them, else the
+            // cams' at the seat
+            Events ev = eventsOf(lobe(t, true), lobe(t, false));
+            double now[5];
+            bool live = true;
+            for (int i = 0; i < 5; ++i)
+                live = std::isfinite(now[i] = ctx_.live.get(kTelEvents[i])) && live;
+            if (live)
+            {
+                ev.ivo = 360.0 - now[0];
+                ev.ivc = now[1] - 540.0;
+                ev.evo = 180.0 - now[2];
+                ev.evc = now[3] - 360.0;
+                ev.overlap = now[4];
+            }
+            lk::region(c, p, ring_, live ? "TIMING, LIVE" : "TIMING, AT THE SEAT", ctx_.selection.is("valve.timing"));
             const Rect in = content(ring_);
-            const Events ev = eventsOf(lobe(t, true), lobe(t, false));
             const float R = std::max(20.0f, std::min(in.w * 0.5f - 24.0f, (in.h - 84.0f) * 0.5f));
             const Point ctr{ in.centreX(), in.y + 18.0f + R };
             c.arc(ctr, R + 10.0f, 0.0f, static_cast<float>(2.0 * stage::kPi), 1.0f, p.grid);
@@ -690,8 +736,11 @@ namespace tee::ui
             const Units& u = ctx_.units;
             const en::Layout lay = en::layoutOf(ctx_.doc);
             const en::Cylinder cyl = en::cylinderOf(ctx_.doc, lay);
-            const Bench b = benchOf(ctx_.doc, cyl.bore);
+            const Bench b = benchOf(ctx_.doc, cyl.bore, ctx_.live);
             c.rrect(plot.x, plot.y, plot.w, plot.h, 0.0f, kClear, 1.0f, p.grid);
+            if (b.known)
+                put(c, b.simulated ? "THE SIMULATOR'S" : "FROM THE HEAD'S FIELDS", plot.right(), in.y - 2.0f + down, lk::kCaps, p.dim,
+                    Align::right);
             put(c, "CFM", plot.x - 40.0f, in.y - 2.0f + down, lk::kCaps, p.label);
             put(c, std::string("LIFT, ") + u.unit(Quantity::length).name, plot.right(), plot.bottom() + 16.0f, lk::kCaps,
                 p.label, Align::right);
@@ -740,15 +789,27 @@ namespace tee::ui
             {
                 const double li = lobe(t, true).liftAt(a - phaseShift(true, ctx_.live.get(kTelInPhase)));
                 const double le = lobe(t, false).liftAt(a - phaseShift(false, ctx_.live.get(kTelExPhase)));
-                const auto mark = [&](double l, int n, double d, double q, Col ink) {
+                // on the curve drawn: between its points (the first from 0)
+                const auto mark = [&](double l, const std::array<double, 16>& q, Col ink) {
                     if (!(l > 0.0))
                         return;
-                    const double f = benchFlow(n, d, q, l);
-                    c.disc(X(std::min(l, lmax)), Y(f), 4.5f, ink, 1.5f, p.ground);
+                    const double lc = std::min(l, lmax);
+                    double l0 = 0.0, q0 = 0.0, f = q[15];
+                    for (int i = 0; i < 16; ++i)
+                    {
+                        const double l1 = b.lift[static_cast<std::size_t>(i)], q1 = q[static_cast<std::size_t>(i)];
+                        if (lc <= l1)
+                        {
+                            f = q0 + (q1 - q0) * (lc - l0) / std::max(1e-9, l1 - l0);
+                            break;
+                        }
+                        l0 = l1;
+                        q0 = q1;
+                    }
+                    c.disc(X(lc), Y(f), 4.5f, ink, 1.5f, p.ground);
                 };
-                const double qi = fieldValue(ctx_.doc, VF::portIn), qe = fieldValue(ctx_.doc, VF::portEx);
-                mark(li, b.nIn, b.dIn, std::isfinite(qi) && qi > 0.0 ? qi : 1.0, p.cold);
-                mark(le, b.nEx, b.dEx, std::isfinite(qe) && qe > 0.0 ? qe : 1.0, p.hot);
+                mark(li, b.flowIn, p.cold);
+                mark(le, b.flowEx, p.hot);
             }
         }
 
@@ -767,7 +828,7 @@ namespace tee::ui
             // four cells, two by two: each a label, its value, and a bar or a lamp under it
             const float cw = std::floor(in.w * 0.5f), ch = std::floor(in.h * 0.5f);
             const auto cell = [&](int i) { return Point{ in.x + cw * static_cast<float>(i % 2), in.y + ch * static_cast<float>(i / 2) }; };
-            const auto phaser = [&](int i, const char* name, double range, double now, Col ink) {
+            const auto phaser = [&](int i, const char* name, double range, double now, double target, Col ink) {
                 const Point at = cell(i);
                 put(c, name, at.x, at.y, lk::kCaps, p.label);
                 if (!(range > 0.0))
@@ -775,12 +836,14 @@ namespace tee::ui
                     put(c, std::isfinite(range) ? "none" : "-", at.x, at.y + 14.0f, lk::kBody, p.dim);
                     return;
                 }
-                put(c, (std::isfinite(now) ? deg(now) : std::string("-")) + " of " + deg(range) + " deg", at.x, at.y + 14.0f,
-                    lk::kBody, p.value);
+                std::string txt = (std::isfinite(now) ? deg(now) : std::string("-")) + " of " + deg(range) + " deg";
+                if (std::isfinite(target) && std::isfinite(now) && std::fabs(target - now) >= 0.5)
+                    txt += ", to " + deg(target);
+                put(c, txt, at.x, at.y + 14.0f, lk::kBody, p.value);
                 lk::level(c, p, { at.x, at.y + 31.0f, cw - 14.0f, 4.0f }, std::isfinite(now) ? now / range : en::kNaN, ink);
             };
-            phaser(0, "INTAKE PHASER", t.inPhaseRange, ctx_.live.get(kTelInPhase), p.cold);
-            phaser(1, "EXHAUST PHASER", t.exPhaseRange, ctx_.live.get(kTelExPhase), p.hot);
+            phaser(0, "INTAKE PHASER", t.inPhaseRange, ctx_.live.get(kTelInPhase), ctx_.live.get(kTelInTarget), p.cold);
+            phaser(1, "EXHAUST PHASER", t.exPhaseRange, ctx_.live.get(kTelExPhase), ctx_.live.get(kTelExTarget), p.hot);
             // the stages: which is engaged now, in words
             {
                 const Point at = cell(2);
@@ -825,10 +888,11 @@ namespace tee::ui
             // valve float: the speed it would float at, and how far below it the engine is
             const double fl = ctx_.live.get(kTelFloat), w = ctx_.live.get(en::kTelSpeed);
             const double margin = std::isfinite(fl) && std::isfinite(w) ? fl - w : en::kNaN;
-            const bool near = std::isfinite(margin) && margin < 500.0 * stage::kPi / 30.0;
+            const bool floating = ctx_.live.get(kTelFloating) >= 0.5;
+            const bool near = floating || (std::isfinite(margin) && margin < 500.0 * stage::kPi / 30.0);
             const float wa = stage::readout(c, p, in.x, in.y, "FLOATS AT", std::isfinite(fl) ? u.number(Quantity::rotation, fl) : "-",
                                          u.unit(Quantity::rotation).name, lk::kNumberS);
-            stage::readout(c, p, in.x + std::max(96.0f, wa + 24.0f), in.y, near ? "NEAR FLOAT" : "MARGIN",
+            stage::readout(c, p, in.x + std::max(96.0f, wa + 24.0f), in.y, floating ? "FLOATING NOW" : near ? "NEAR FLOAT" : "MARGIN",
                         std::isfinite(margin) ? u.number(Quantity::rotation, margin) : "-", u.unit(Quantity::rotation).name,
                         lk::kNumberS, near ? p.warning : kClear);
             const double rate = fieldValue(ctx_.doc, VF::springRate);

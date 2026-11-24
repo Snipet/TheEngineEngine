@@ -27,7 +27,7 @@ module VoicesSpec
         [[ui::decimals(1)]];
     float rattle [[fminus::range(-60, 12)]] [[fminus::default(0)]] [[ui::label("Neutral rattle")]] [[ui::unit("dB")]]
         [[ui::decimals(1)]] [[ui::help("The idle gears' rattle in neutral with the clutch up: a dog box's loudest")]];
-    int pinion [[fminus::range(0, 17)]] [[fminus::default(0)]] [[ui::label("Pinion teeth")]]
+    int pinion [[fminus::range(0, 17)]] [[fminus::default(0)]] [[ui::label("Pinion teeth")]] [[ui::unit("teeth")]]
         [[ui::help("The final drive's pinion; 0: from the ratio (a ring of about 41 teeth)")]];
     // the drives at the front of the engine
     int timing [[fminus::range(0, 2)]] [[fminus::default(0)]] [[ui::label("Cam drive")]] [[ui::group("Drives")]]
@@ -43,7 +43,7 @@ module VoicesSpec
         [[ui::choices("None", "Viscous clutch", "Electric")]];
     float fanOn [[fminus::range(300, 400)]] [[fminus::default(368)]] [[ui::label("Fan comes in at")]]
         [[ui::quantity("temperature")]] [[ui::help("The coolant's temperature: an electric fan's switch, a viscous clutch's full lock")]];
-    int fanBlades [[fminus::range(2, 12)]] [[fminus::default(7)]] [[ui::label("Fan blades")]];
+    int fanBlades [[fminus::range(2, 12)]] [[fminus::default(7)]] [[ui::label("Fan blades")]] [[ui::unit("blades")]];
     float fanLevel [[fminus::range(-60, 12)]] [[fminus::default(0)]] [[ui::label("Fan level")]] [[ui::unit("dB")]]
         [[ui::decimals(1)]];
     // fuel

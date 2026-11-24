@@ -1079,7 +1079,7 @@ module Engine
         omMin = fminf(omMin, crank.omega);
         omMax = fmaxf(omMax, crank.omega);
         const float drop = fminf(fmaxf(1.0f - intk.pPlenum / intk.pBox, 0.0f), 1.0f);
-        ex.tick(intk.qThr, drop, crank.omega * 0.15915494f, dps);
+        ex.tick(intk.qThr, drop, crank.omega * 0.15915494f, dps, spec.intake.model, intk.sound);
         boost.sound(crank.omega * 0.15915494f, exh.mdot, set.bov);
         ex.tickStarter(crank.omega * 0.15915494f, ecu.starterOn);
     }
@@ -1132,7 +1132,7 @@ module Engine
             listen.block(v, set.intake, set.mech, set.distance, set.room, set.level, aspUse, exTrim, gainNorm, exh.nDuals,
                          lay.bike, lay.tailD, &spec.sound, &tel.sound, car.speedNow(), set.drive != 0 ? 1 : 0, vTotal, lay.n,
                          customUse != 0 ? shake.fx : 0.0f, customUse != 0 ? shake.fy : 0.0f,
-                         customUse != 0 ? shake.mx : 0.0f, customUse != 0 ? shake.my : 0.0f);
+                         customUse != 0 ? shake.mx : 0.0f, customUse != 0 ? shake.my : 0.0f, lay.fire, lay.cyc, lay.rotary);
             for (int i = 0; i < m; ++i)
             {
                 if (tick16 == 0)
@@ -1146,7 +1146,8 @@ module Engine
                 // (the fade's gain eased: a smooth step)
                 cutG = cutWant != 0 ? fmaxf(cutG - cutDn, 0.0f) : fminf(cutG + cutUp, 1.0f);
                 listen.mix(i, exh.outL, exh.outR, ex.intake, crank.tqNow, ex.mech, ex.block, boost.turbo, ex.starter, ex.comb, exh.shell[0],
-                           lay.topo == 0 ? exh.shell[0] : exh.shell[1], set.drive, rd, cutG);
+                           lay.topo == 0 ? exh.shell[0] : exh.shell[1], set.drive, rd, cutG,
+                           spec.voices.model != 0 ? ex.vo.gearbox + ex.vo.axle : 0.0f);
             }
             listen.finish(left, right, at, m);
             at += m;

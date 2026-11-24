@@ -42,6 +42,15 @@ While stage B is engaged the handles edit stage B's fields. The lift axis holds 
 reference's CAM dial (no lab fields) the curves are the dial's (224 degrees on 112 when mild, 300 on 106 when wild)
 and there are no handles; with the lab's model switched off, the editor says the engine runs the dial.
 
+## E's integration
+
+The fields and telemetry are E's own now (`sim/spec/valve.fm`, `tel.valve`): the phasers' targets show as a ring beside
+the disc of where each phaser is; a free valve (`inKind`/`exKind` 1) is drawn and dragged by where it opens and closes
+(`freeInOpen` ...), its peak moving both; the second exhaust event (`auxOn`) is a small hot lobe; FLOATING NOW replaces
+the margin's label while `valve.floating` is set; the ring and the overlap take the simulator's events (`valve.ivo` ...
+`overlap`, phased) when telemetry has them; the bench takes the simulator's (`valve.benchLift[i]` ...) when every
+element is in telemetry, else this port of `bench.fm` from the head's fields, and says which.
+
 ## What is read, and from where
 
 By path through `kValveFields` in `ui/views/valves/ValvesModel.h` (package E's `sim/valvetrain/lab-spec.fm` names,
