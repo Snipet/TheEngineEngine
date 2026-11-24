@@ -21,4 +21,12 @@ module Scope
     float liftIntake [[ui::label("Intake lift")]] [[ui::quantity("fraction")]] [SCOPE_DEGREES];
     int pipePoints [[ui::label("Pipe points")]];
     float pipePressure [[ui::label("Pipe pressure")]] [[ui::quantity("pressure")]] [SCOPE_PIPE_POINTS];
+    // the ECU's maps baked from its formulas at their breakpoints (ctl.bakeMaps; card H fills them, the host copies
+    // them into the build): how many bakes, each map's points in x and y, its axes and its values (z[i * 16 + j])
+    int bakeCount [[ui::label("Bakes")]];
+    int bakedNx [[ui::label("Baked points in x")]] [7];
+    int bakedNy [[ui::label("Baked points in y")]] [7];
+    float bakedX [[ui::label("Baked x")]] [7][16];
+    float bakedY [[ui::label("Baked y")]] [7][16];
+    float baked [[ui::label("Baked values")]] [7][256];
 };
