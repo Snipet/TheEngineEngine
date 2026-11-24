@@ -135,7 +135,8 @@ module XBuild
     float kUse;
     float keepH;
     float keepP;
-    float kMean;                // the meters' smoothing, every sample (some 0.2 s)
+    float kMean;                // the meters' smoothing, every 4th sample (some 0.2 s)
+    int tick4;
     // telemetry: means and what a view shows
     float pTurb;                // mean pressure at the collectors (before a turbine), Pa over the air outside
     float pConv[XS_SIDES];      // at each side's head (before the converter)
@@ -183,7 +184,8 @@ module XBuild
         xiWall = 0.025f;
         k16Flow = 1.0f - expf(-16.0f / (0.06f * rate));
         kUse = 1.0f - expf(-16.0f / (0.3f * rate));
-        kMean = 1.0f - expf(-1.0f / (0.2f * rate));
+        kMean = 1.0f - expf(-4.0f / (0.2f * rate));
+        tick4 = 0;
         keepH = 0.878f;
         keepP = 0.769f;
         for (int s = 0; s < XS_SIDES; ++s)
@@ -1321,7 +1323,10 @@ module XBuild
     void step(float* q) [[clang::nonblocking]]
     {
         net.step(q);
-        // the meters
+        // the meters: every 4th sample (means over some 0.2 s)
+        tick4 = tick4 + 1 >= 4 ? 0 : tick4 + 1;
+        if (tick4 != 0)
+            return;
         float pc = 0.0f;
         int nc = 0;
         for (int c = 0; c < XS_COLL; ++c)
