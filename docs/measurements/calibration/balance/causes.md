@@ -1262,3 +1262,30 @@ intake fixed through camIn the reading is 0.0 exactly in every run (it is taken 
 reading at fixed phases). On this tree (merged at 23:27) the short lobe at intake 30 reads 309 N m at 1800 (332 in the
 grid above, run before the merge; with the exhaust +30, 326 against 331): the branch moved between, or the cells
 scatter by up to 7 %; read the grid's best to about 20 N m.
+
+**B-3, the top at the cited boost** (23:30 `date -u`). turbo-four-20-gdi as built (0.85 match), 6200 rpm, 81 kPa held (the
+real boost, P's VCDS log): 272 N m on this tree (276 earlier) against the cited 237 to 262 (250 for 162 kW). One change
+each: lambda 0.84 (the map's formula) to 1.00 (EcuTek: the EA888 gen 3 at lambda 1 everywhere; a tuner's guide) 263
+(-9 N m), to 0.90 278; the intercooler's effectiveness 0.75 to 0.60 266 (-6; no cited figure for the real one); the
+turbine's back pressure, a 0.40 turbine (p3 238 against 172 kPa) 233 (-15 %, measured above). Friction: FMEP 222 kPa
+(Chen-Flynn), pumping 130, gross IMEP 2081; no published FMEP at 6200 for this engine found, not a lever I can size
+against a figure. No knock at 6200 (spark 20 BTDC). So the top's 9 % over is the turbine's back pressure first (the real
+IS20 is a small turbine: P's wheel sizes, 41.8 / 54.0 mm, no map), then the enrichment if lambda 1 is confirmed (-3 %),
+the cooler's effectiveness unknown (-2 % per 0.15).
+
+### B-3 in one table (the turbo four against the EA888 gen 3: 333 to 368 N m at 1500 and 1800, 237 to 262 at 6200)
+
+| cause | at 1500 | at 1800 | at 6200 | owner | sourced? |
+|---|---|---|---|---|---|
+| The intake phase at boosted low speed: N1's rule against a baked map | rule 164 / 234 against bake 253 (long / short lobe) | rule 181 / 222 against bake 309 / 319: +44 to +71 % | none (the rule helps above 4000) | N1 (the bake; the rule the fallback) | the rule judgement; the bake measured |
+| The exhaust lobe and an exhaust that closes earlier (AVS small lobe; the phaser's parked end) | bake 253 to 303 with 20 of advance: +20 % | 309 to 325-332: +5 to +7 % (±20 N m) | none (the large lobe above 3100) | P (the lobe, SSP 922903, ruled at 1 mm; the parked end unknown) | lobe cited; the parked end not |
+| The turbo's spool and the compressor's map width | 0.40 match 112 kPa of 120 (about 3 %); the 0.50 57 kPa | at target on the 0.40 | the 0.40 / 0.50 matches choke (164 / 220); the 0.85 holds | N2 | no compressor map near the IS20 found |
+| The turbine's back pressure at the top | | | 0.85 turbine 272, 0.40 233 at 81 kPa: the cited 250 between | P with N2 | wheel sizes only |
+| The knock-limited burn (retard at its 15 degree cap at the best cells) | about 10 % of what is left | 0 to 6 % left; knock control off is no better | no knock | C (the table), the DI cooling (twice Kasseris and Heywood's measured 14 K) to its owner | the DI cooling cited; the rest the model's |
+| Lambda: the map's 0.82 to 0.84 against lambda 1 | | -11 N m at 1 | -9 N m at 1 | the ECU maps' owner | a tuner's guide only |
+| The exhaust's heat before the turbine | | 29 % of the valves' enthalpy at 1800 (G's): third order | 13 % at 4000 | G | within a 1976 SAE bound |
+| The intercooler | | | -2 % per 0.15 of effectiveness | N2 / P | no figure |
+| Friction | | | FMEP 222 kPa | (none named) | no figure found |
+
+Best the model reaches with cited or ruled hardware and a fixed-phase bake: about 303 at 1500 (-9 to -18 %), about
+310 to 330 at 1800 (0 to -7 %), and 233 to 272 at 6200 by the turbine's size (the cited 250 inside).
