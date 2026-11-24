@@ -78,7 +78,8 @@ namespace tee::ui
             k.mix(ctx_.doc.revision()).mix(ctx_.selection.revision()).mix(ctx_.units.revision());
             const double a = crankAngle();
             k.mix(std::isfinite(a) ? static_cast<std::int64_t>(std::lround(a * 2.0)) : -1);
-            for (const char* n : { kTelInPhase, kTelExPhase, kTelInTarget, kTelExTarget, kTelStage, kTelLift, kTelFloat, kTelFloating,
+            for (const char* n : { en::kTelPurity, en::kTelDelivery, en::kTelTrapping, en::kTelPowerValve, en::kTelCrankcase,
+                                   kTelInPhase, kTelExPhase, kTelInTarget, kTelExTarget, kTelStage, kTelLift, kTelFloat, kTelFloating,
                                    kTelActive, en::kTelSpeed, kTelEvents[0], kTelEvents[1], kTelEvents[2], kTelEvents[3], kTelEvents[4] })
                 k.mix(static_cast<float>(ctx_.live.get(n)));
             k.mix(drag_).mix(hot_).mix(static_cast<float>(yMax_)).mix(two_).mix(scopeVersion_).mix(tab_);
@@ -1062,8 +1063,7 @@ namespace tee::ui
             const bool geo = cyl.known() && std::isfinite(t.exDur);
             const double r = cyl.radius(), L = std::isfinite(cyl.rod) ? cyl.rod : 3.3 * r;
             const Units& u = ctx_.units;
-            const double speed = ctx_.live.get(en::kTelSpeed);
-            const double exNow = t.exDurAt(speed);
+            const double exNow = en::exhaustDurationNow(t, ctx_.live);
             // the numbers a tuner quotes
             const auto len = [&](double m) { return std::isfinite(m) ? u.number(Quantity::length, m) : std::string("-"); };
             const std::string lu = u.unit(Quantity::length).name;
@@ -1221,7 +1221,7 @@ namespace tee::ui
         {
             lk::region(c, p, ring_, "PORT TIMING", ctx_.selection.is("valve.ports"));
             const Rect in = content(ring_);
-            const double exNow = t.exDurAt(ctx_.live.get(en::kTelSpeed));
+            const double exNow = en::exhaustDurationNow(t, ctx_.live);
             const float R = std::max(20.0f, std::min(in.w * 0.5f - 24.0f, (in.h - 84.0f) * 0.5f));
             const Point ctr{ in.centreX(), in.y + 18.0f + R };
             c.arc(ctr, R + 10.0f, 0.0f, static_cast<float>(2.0 * stage::kPi), 1.0f, p.grid);
@@ -1290,7 +1290,7 @@ namespace tee::ui
             {
                 const float sx = Xs(std::clamp(speed, 0.0, w1));
                 c.segment(sx, plot.y, sx, plot.bottom(), 1.5f, p.value);
-                c.disc(sx, Yd(t.exDurAt(speed)), 4.5f, p.hot, 1.5f, p.ground);
+                c.disc(sx, Yd(en::exhaustDurationNow(t, ctx_.live)), 4.5f, p.hot, 1.5f, p.ground);
             }
         }
 
@@ -1317,6 +1317,8 @@ namespace tee::ui
                 lo = *std::min_element(crankcase_.begin(), crankcase_.end());
                 hi = *std::max_element(crankcase_.begin(), crankcase_.end());
             }
+            if (const double now = ctx_.live.get(en::kTelCrankcase); std::isfinite(now) && now > 0.0)
+                put(c, "NOW " + u.format(Quantity::pressure, now), cell(3).x, cell(3).y + 30.0f, lk::kCaps, p.label);
             item(3, "PRESSURE, A TURN",
                  std::isfinite(lo) ? u.number(Quantity::pressure, lo) + " to " + u.format(Quantity::pressure, hi) : std::string("-"),
                  std::isfinite(lo) ? p.value : p.dim);
@@ -1333,11 +1335,21 @@ namespace tee::ui
                 const int f = ctx_.doc.find(path);
                 return f < 0 ? en::kNaN : ctx_.doc.get(f);
             };
+            // live, the simulator's: how much fresh charge stays, how much was sent, how pure what stays is
+            const float c3 = std::floor(in.w / 3.0f);
+            const auto pct = [&](const char* name) {
+                const double v = ctx_.live.get(name);
+                return std::isfinite(v) ? lk::num(v * 100.0, "%.0f") : std::string("-");
+            };
+            stage::readout(c, p, in.x, top, "PURITY", pct(en::kTelPurity), "%", lk::kNumberS);
+            stage::readout(c, p, in.x + c3, top, "DELIVERY", pct(en::kTelDelivery), "%", lk::kNumberS);
+            stage::readout(c, p, in.x + 2 * c3, top, "TRAPPING", pct(en::kTelTrapping), "%", lk::kNumberS);
+            // the build's: how the fresh charge meets the burnt
             const double mix = field("engine.tsMixing"), shortc = field("engine.tsShortCircuit");
-            stage::readout(c, p, in.x, top, "MIXING", lk::num(mix * 100.0, "%.0f"), "%", lk::kNumberS);
-            stage::readout(c, p, in.x + cw, top, "SHORT-CIRCUITED", lk::num(shortc * 100.0, "%.0f"), "%", lk::kNumberS);
-            put(c, "0 %: THE FRESH CHARGE PUSHES THE BURNT OUT", in.x, top + 44.0f, lk::kUnit, p.dim);
-            put(c, "100 %: IT MIXES WITH IT AT ONCE", in.x, top + 58.0f, lk::kUnit, p.dim);
+            stage::readout(c, p, in.x, top + 42.0f, "MIXING", lk::num(mix * 100.0, "%.0f"), "%", lk::kNumberS);
+            stage::readout(c, p, in.x + cw, top + 42.0f, "SHORT-CIRCUITED", lk::num(shortc * 100.0, "%.0f"), "%", lk::kNumberS);
+            if (in.h > 110.0f)
+                put(c, "MIXING 0 %: THE FRESH CHARGE PUSHES THE BURNT OUT", in.x, top + 84.0f, lk::kUnit, p.dim);
         }
 
         int drag_ = -1, hot_ = -1;
