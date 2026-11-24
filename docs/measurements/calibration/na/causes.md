@@ -311,3 +311,41 @@ The remaining 2 to 3 % at full load is the books' throttle term, not the engine.
 `pBox`, where `qThr` was converted at the box's pressure `pBox + box.p`: an over-read by the box's depression.
 
 It waits for D's two lines in `engine.fm`; until then the intake keeps its old path.
+
+## G. The burn's angle against speed, and where an overrun's bang lights (the lead's go, 17:37)
+
+**The burn's angle against speed.** Under fuel.model 1 a petrol burn's angle is now multiplied by
+(rpm / 3000)^kBurnSpeedExp (`sim/combustion/combustion.fm`, header). The form is Heywood §9.3's (the burn angles grow
+with speed, more slowly than it). The exponent, 1/3, is judgement (turbulent flame speed near the turbulence
+intensity) and is one named constant, to be corrected from the figure.
+
+The independent check: the full-load spark aimed at the half-burn now rises with speed, as every real map does. It was
+flat. On the engine dyno (degrees before top; the advance asked stays 13.2 and 13.5, being the formula's base):
+
+| Engine | 1500 rpm | 3000 rpm | 4500 rpm | 6000 rpm |
+|---|---|---|---|---|
+| 3.2 six, before | 9.2 | 12.0 | 13.4 | 13.4 |
+| 3.2 six, after | 6.2 | 13.3 | 16.6 | 19.1 (+13 over 1500) |
+| Economy four, before | 0.5 | 4.0 | 8.4 | 12.7 |
+| Economy four, after | -2.1 | 6.3 | 13.8 | 18.7 |
+
+The economy four is knock-limited at the bottom: its retard there is 14 degrees. The half-burn sits at 8 to 10.6
+degrees from 3000 rpm up.
+
+Gross indicated efficiency barely moves: 0.407 → 0.404 at 6000 rpm on the six, 0.396 → 0.393 on the economy four.
+With the spark re-aimed, a longer burn costs about 1 %. So this was a real omission but **not** the cause of the 5 to
+10 % over at speed, which stays an open observation. H6 (the half-burn at best torque): 5.47 → 5.59, still an expected
+failure.
+
+**Where an overrun's bang lights.** Measured on the V8 preset, both models on:
+
+| Gas | Full load | On the overrun (30 degrees of retard, a quarter of the firings fuelled) |
+|---|---|---|
+| Cylinder 1 at its exhaust opening | 1511 to 1706 K (1500 to 5000 rpm) | 650 to 1050 K |
+| The collector's mean, where the bangs' store lights | about 850 K (H's reading) | 691 to 714 K |
+
+The overrun's collector reading sits on the store's 700 K floor. H9's fuelled-overrun bangs turn on a few kelvin: the
+burn's lengthening took 5 K off and the count to none. H9 is skipped on this finding (it is `[nightly]`).
+
+The decision is the lead's: the collector's mean, or the blowdown's gas at the valve, which `overrun.fm`'s own comment
+names.
