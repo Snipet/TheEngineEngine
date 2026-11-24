@@ -130,6 +130,7 @@ namespace tee::settings
             { "units", s.units == Units::imperial ? "imperial" : "metric" },
             { "unitChoices", s.unitChoices },
             { "lastBuild", s.lastBuild },
+            { "recentBuilds", s.recentBuilds },
             { "window", { { "width", s.windowWidth }, { "height", s.windowHeight } } },
         };
         return root.dump(2) + "\n";
@@ -204,6 +205,17 @@ namespace tee::settings
             return bad("unit choices");
         if (!text(root, "lastBuild", s.lastBuild))
             return bad("last build");
+        if (const auto recent = root.find("recentBuilds"); recent != root.end())
+        {
+            if (!recent->is_array())
+                return bad("recent builds");
+            for (const json& f : *recent)
+            {
+                if (!f.is_string())
+                    return bad("recent builds");
+                s.recentBuilds.push_back(f.get<std::string>());
+            }
+        }
         if (const auto window = root.find("window"); window != root.end())
         {
             if (!window->is_object() || !number(*window, "width", s.windowWidth, 0, 16384)

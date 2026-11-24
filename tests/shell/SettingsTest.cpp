@@ -43,6 +43,7 @@ TEST_CASE("shell: settings read back as they were written", "[shell][settings]")
     s.units = settings::Units::imperial;
     s.unitChoices = "pressure=psi\npower=hp\n";
     s.lastBuild = "builds/my v8.json";
+    s.recentBuilds = { "builds/my v8.json", "C:\\Users\\me\\a diesel.json" };
     s.windowWidth = 1280;
     s.windowHeight = 800;
     std::string why;
@@ -67,6 +68,7 @@ TEST_CASE("shell: settings read back as they were written", "[shell][settings]")
     CHECK(l.settings.units == settings::Units::imperial);
     CHECK(l.settings.unitChoices == "pressure=psi\npower=hp\n");
     CHECK(l.settings.lastBuild == s.lastBuild);
+    CHECK(l.settings.recentBuilds == s.recentBuilds);
     CHECK(l.settings.windowWidth == 1280);
     CHECK(l.settings.windowHeight == 800);
 }

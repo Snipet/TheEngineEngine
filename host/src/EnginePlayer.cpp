@@ -419,11 +419,11 @@ namespace tee
 
     // ---- builds ----------------------------------------------------------------------------------------------------
 
-    bool parseBuild(const EnginePlayer& player, std::string_view json, std::string_view fileName, Build& build,
+    bool parseBuild(const EnginePlayer& player, std::string_view json, std::string_view fileName, EngineBuild& build,
                     std::string& error, std::string& warnings)
     {
         const std::string file(fileName);
-        build = Build{};
+        build = EngineBuild{};
         Json document = Json::parse(json, nullptr, false);
         if (document.is_discarded() || !document.is_object())
         {
@@ -525,7 +525,7 @@ namespace tee
         return true;
     }
 
-    bool loadBuild(const EnginePlayer& player, const std::filesystem::path& file, Build& build, std::string& error,
+    bool loadBuild(const EnginePlayer& player, const std::filesystem::path& file, EngineBuild& build, std::string& error,
                    std::string& warnings)
     {
         const std::optional<std::string> text = readWhole(file);
@@ -537,7 +537,7 @@ namespace tee
         return parseBuild(player, *text, file.filename().generic_string(), build, error, warnings);
     }
 
-    std::string buildJson(const EnginePlayer& player, const Build& build)
+    std::string buildJson(const EnginePlayer& player, const EngineBuild& build)
     {
         Json document = Json::object();
         document["format"] = "tee-build";
@@ -584,7 +584,7 @@ namespace tee
         return document.dump(2) + "\n";
     }
 
-    void applyBuild(EnginePlayer& player, const Build& build)
+    void applyBuild(EnginePlayer& player, const EngineBuild& build)
     {
         player.setSpecDefaults();
         for (const auto& [path, values] : build.values)
@@ -597,9 +597,9 @@ namespace tee
         }
     }
 
-    Build currentBuild(const EnginePlayer& player, std::string name, std::string notes)
+    EngineBuild currentBuild(const EnginePlayer& player, std::string name, std::string notes)
     {
-        Build build;
+        EngineBuild build;
         build.name = std::move(name);
         build.notes = std::move(notes);
         for (std::size_t k = 0; k < player.specFields().size(); ++k)
@@ -778,7 +778,7 @@ namespace tee
         return parseEngineScenario(*text, file.filename().generic_string(), scenario, error);
     }
 
-    bool renderEngine(EnginePlayer& player, const Build& build, const EngineScenario& scenario,
+    bool renderEngine(EnginePlayer& player, const EngineBuild& build, const EngineScenario& scenario,
                       const RenderOptions& options, RenderResult& result, std::string& error)
     {
         using Clock = std::chrono::steady_clock;
@@ -915,7 +915,7 @@ namespace tee
     // Where the engine's state (0 off, 1 cranking, 2 running, 3 running down) is in Engine, for the twin
     constexpr const char* kStatePath = "ecu.state";
 
-    bool playTwin(EnginePlayer& engine, RefPlayer& ref, const Build& build, const EngineScenario& scenario,
+    bool playTwin(EnginePlayer& engine, RefPlayer& ref, const EngineBuild& build, const EngineScenario& scenario,
                   const TwinOptions& options, TwinResult& result, std::string& error)
     {
         using Clock = std::chrono::steady_clock;

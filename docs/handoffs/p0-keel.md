@@ -31,6 +31,35 @@ CI's virtual M1: V8 24.7 %, V12 28.6 %. Compile 0.10, 1.24, 1.38 s at -O0, -O1, 
 Linux, 2 min 4 s macOS, 4 min 8 s Windows, no caches). Since then Linux stays green; macOS and Windows have failed on
 other packages' code. `scripts/ci-status.sh` says how it stands now.
 
+## `tee-bench` today, and how a package measures its cost against R
+
+R is the reference V8's cost a sample: nanoseconds of the rendering thread's processor time for one sample of the
+engine's own 96 kHz rate, release options (`docs/plan/02-contracts.md` §9). Here (a shared Xeon at 2.1 GHz) R is
+about 2.3 to 2.4 us; budgets are stated in R, so a figure means something only beside an R taken on the same
+machine in the same minute. Build `tee-bench` in the `release` preset for a figure to quote (`dev` is
+RelWithDebInfo: close, not the same). Every mode prints a Markdown table; `--out <file>` keeps it.
+
+| Command | What it prints | Time here |
+|---|---|---|
+| `tee-bench --quick` | the reference: V8 and V12 on free revs, ns a sample, share of a core at 48 kHz in blocks of 512, slowest call, with and without the checks; and compile times at -O0/-O1/-O2. The V8's "ns" **is R**. | 35 s |
+| `tee-bench` | the same for every preset and scenario, least of 3 | minutes |
+| `tee-bench --engine [--builds a,b] [--scenarios a,b] [--repeat n]` | the simulator (`sim/engine.fm`, each build of `content/builds`) and the reference played side by side from the same inputs (`tee::playTwin`): ns a sample each, and **simulator / reference, the figure in R** | 20 s a build and scenario at `--repeat 1` |
+| `tee-bench --profile [--preset v8] [--scenario free-revs]` | where the reference's time goes: by module and by function, ns a sample each (a sampler at 4 kHz on the rendering thread; Linux and macOS) | 3 s with `--seconds 5` |
+| `tee-bench --profile --engine [--build default] [--scenario free-revs] [--seconds s] [--all]` | the same for the simulator. A function the optimiser inlined has no row of its own: its time is its caller's, listed in the "inlined into it" column | 3 s with `--seconds 5` |
+
+**A package's own cost**, in R:
+1. `tee-bench --engine --builds <a build that turns your feature on>,default --scenarios <yours>,free-revs --repeat 3`:
+   the ratio column is the build's cost in R; the difference between your build's row and `default`'s is what your
+   feature adds (a quiet machine; repeat until two runs agree to 2 %).
+2. `tee-bench --profile --engine --build <yours> --seconds 10`: your module's row in ns a sample, divided by the
+   R of step 1's reference column, is your module's share in R. Look in "inlined into it" before concluding your
+   module is cheap: a small function of yours may be inside another module's row.
+3. Put the command, both numbers and the machine (`/proc/cpuinfo`'s model, `nproc`) in your handoff.
+
+Today (default build, free revs, here): the simulator is 1.02 R. Its biggest modules: Duct 30 %, Valve 22 %, Exhaust
+15 %, Cylinder 14 %. CI's Linux, macOS and Windows jobs print R (`--quick`) and the simulator against it (`--engine`,
+default build, free revs) in each run's summary: a number for each runner, not a gate (a hosted runner is shared).
+
 **Not done.** macOS and Windows have only CI behind them. No test holds the single's, the inline five's, the
 flat-plane V8's or the rotary's strongest line (seen once: 2, 3 and 1.5 times the firing frequency; the rotary's 0.93
 of it, unexplained). The plugin's way of playing (smoothed dials, calls of 16 samples, its frozen copy) is not

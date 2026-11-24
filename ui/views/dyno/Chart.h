@@ -125,6 +125,32 @@ namespace tee::ui::chart
     // The decimals a tick step needs.
     inline int decimalsFor(double step) { return step >= 1.0 ? 0 : step >= 0.1 ? 1 : 2; }
 
+    // Text cut into lines at spaces to fit `w`, drawn from y down `lineH` apart, at most `maxLines` (what is left over is
+    // not drawn). Returns the lines drawn.
+    inline int wrap(funkgui::Canvas& c, const std::string& text, float x, float y, float w, const funkgui::TextStyle& style,
+                    funkgui::Col ink, float lineH, int maxLines = 4)
+    {
+        int lines = 0;
+        std::size_t at = 0;
+        while (at < text.size() && lines < maxLines)
+        {
+            std::size_t end = text.size();
+            while (end > at && c.textWidth(text.substr(at, end - at).c_str(), style) > w)
+            {
+                const std::size_t sp = text.rfind(' ', end - 1);
+                if (sp == std::string::npos || sp <= at)
+                    break;
+                end = sp;
+            }
+            c.text(text.substr(at, end - at).c_str(), x, y + lineH * static_cast<float>(lines), style, ink);
+            ++lines;
+            at = end;
+            while (at < text.size() && text[at] == ' ')
+                ++at;
+        }
+        return lines;
+    }
+
     // Drawing over the widgets made before it (a trail over a table, a note over a plot): an item that takes no press,
     // no focus and no key, drawn in its turn. `draw` must change nothing; `key` mixes what it reads.
     class Layer final : public Widget
