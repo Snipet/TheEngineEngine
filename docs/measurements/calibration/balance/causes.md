@@ -836,3 +836,11 @@ Zielke, Brunone, Vardy and Brown); (2) the port's and the valve seat's losses pe
 heat exchanged in the oscillating thermal layer beyond Kirchhoff's (the wall's temperature swing); (4) for the exhaust,
 the junctions' loss and the radiation of the open end. Not to be sized to our own targets: the 6 to 9 % is the target,
 the archetypes' curves then are the result.
+
+*G on the exhaust's side of N3-15:* no measured trace or VE curve held with its numbers. SAE 2001-01-1797 (Blair et al.,
+"Exhaust tuning on a four-stroke engine; experimentation and simulation": measured exhaust pressure diagrams and power
+on a YZ400 with three exhaust ends) is the right kind of data; only its abstract was reachable. The model's exhaust
+damping today: the junctions' K 0.3 to 0.6 a merge (judgement but the Borda area changes), the open end's radiation and
+jet loss, Kirchhoff's quasi-steady wall shelves and a mean-flow friction ξ 0.025; no unsteady friction beyond
+Kirchhoff's √f. G will measure the reflected pulse at the port against the junction K and the end loss once a bound
+exists. Open until that paper's full text (or another measured trace) is found.
