@@ -37,7 +37,10 @@ namespace
         "  --block <n>        the longest call of process (512)\n"
         "  --no-checks        leave out the runs with the loop budget and the bounds checks\n"
         "  --out <file>       write the table there too (it is always printed)\n"
-        "  --sim <dir>, --content <dir>   as tee-render's\n";
+        "  --sim <dir>, --content <dir>   as tee-render's\n"
+        "\n"
+        "  tee-bench --engine ...   the simulator (sim/engine.fm) against the reference, build by build (--engine --help)\n"
+        "  tee-bench --profile ...  where the time goes, by module and by function (--profile --help)\n";
 
     std::vector<std::string> split(const std::string& list)
     {
@@ -154,9 +157,14 @@ namespace
 
 // tee-bench --engine: the simulator against the reference (engine.cpp)
 int engineBenchMain(int argc, char** argv);
+// tee-bench --profile: where the time goes, by module and by function (profile.cpp)
+int profileMain(int argc, char** argv);
 
 int main(int argc, char** argv)
 {
+    for (int i = 1; i < argc; ++i)
+        if (std::string(argv[i]) == "--profile")
+            return profileMain(argc, argv);
     for (int i = 1; i < argc; ++i)
         if (std::string(argv[i]) == "--engine")
             return engineBenchMain(argc, argv);
