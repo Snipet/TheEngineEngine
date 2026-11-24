@@ -16,6 +16,7 @@
 #include "tee/Telemetry.h"
 #include "tee/Warm.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -201,7 +202,7 @@ int main(int argc, char** argv)
     c.dynoSpeed = static_cast<float>(rpms.front() * 0.10471976);
     c.ignition = 1;                  // (the key on first, then to start: card C's 8098b36)
     c.throttle = 0.0f;
-    c.scopeOn = 1;
+    c.scopeOn = 0;                   // (on only while measuring)
     const double blockSeconds = 512.0 / 48000.0;
     double t = 0.0;
     const auto play = [&](double seconds, const std::function<void()>& each) {
@@ -216,11 +217,14 @@ int main(int argc, char** argv)
                 each();
         }
     };
-    play(0.1, {});
+    // (as tee::runDyno starts since 8098b36: the key on 0.25 s, then cranked until max(1, min(2, warmup / 2)) s: a heavy
+    // diesel needs more than 1 s of cranking to catch)
+    const double crankEnd = std::max(1.0, std::min(2.0, 0.5 * warmup));
+    play(0.25, {});
     c.ignition = 2;
-    play(1.0, {});
+    play(crankEnd - 0.25, {});
     c.ignition = 1;
-    play(0.5 * warmup - 1.0, {});
+    play(0.5 * warmup - crankEnd, {});
     c.throttle = 1.0f;
     play(0.5 * warmup, {});
 
@@ -231,7 +235,9 @@ int main(int argc, char** argv)
     for (const double rpm : rpms)
     {
         c.dynoSpeed = static_cast<float>(rpm * 0.10471976);
+        c.scopeOn = 0;
         play(settle, {});
+        c.scopeOn = 1;
         for (auto& l : lines)
             l.sum = 0.0, l.n = 0;
         double exSum = 0.0, inSum = 0.0;

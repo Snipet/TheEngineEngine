@@ -93,3 +93,31 @@ same (told T). With D's x2 and the gates of 2 and 2b the boost is held (above); 
 - The supercharged V8's boost rises 58 to 135 kPa from 2000 to 5500 rpm (pulley 2.4, no loop).
 - engine.wallHeat 1 adds 11 to 13 % on the turbo four: the double count D is fixing (Woschni's walls under fuel.model 1
   with the reference's reduced burn share). Tables say which they used.
+
+## Open: matching a turbo to the build's own ratio (measured, not adopted)
+
+F's matching sizes every turbo for a pressure ratio of 1.9 at the redline, whatever the build asks. Sizing instead for
+the build's own ratio at the redline (match-to-target.md, all fourteen boosted archetypes) leaves the one-bar builds
+where they were and makes the heavy diesels WORSE at their torque peak (the tractor 1784 -> 1216 N m at 1462 rpm: the
+larger compressor no longer spools). A truck's turbo is matched to its peak-torque flow, its vanes giving the low end.
+The right rule needs the speed at which the build asks its target (its torque peak), a field no build states today:
+with it, the compressor would pass the engine's air at the target ratio at that speed with its surge line short of it
+and its choke past the redline's flow at the ratio the boost map asks there. Not today's work.
+
+## 4. The heavy diesels: shut vanes pumping the engine (a limit added, sim/boost/machine.fm, 5eaac6f)
+
+Not the over-boost cut nor the gate (both cleared by switching them). The VGT loop shut the vanes to their stop chasing
+a target the matched compressor could not reach (in choke 93 % of the time: matched for a ratio of 1.9 at the redline,
+the tractor asks 3.6), and with G's coupled housings the cylinders felt it: PMEP 2.5 to 5 bar, the exhaust port 1.7 to
+2.5 times the intake's. A production VGT controller limits the pressure before the turbine: spec.boost.backPressure
+(p3/p2, absolute, default 1.4, judgement; bypassed while the ECU commands the vanes, so D2's brake keeps its 406 kW).
+On the tip (7e0ce9d, the harness cranking as tee::runDyno does), limit on against off (4.0):
+
+| build | rpm | N m on | N m off | p3/p2 on | p3/p2 off |
+|---|---|---|---|---|---|
+| tractor-15-inline-six | 1000 / 1300 / 1800 | 427 / 1702 / 1396 | 498 / 1523 / 1067 | 1.41 / 1.42 / 1.40 | 1.85 / 1.81 / 2.12 |
+| pickup-diesel-67-inline-six | 1600 / 2600 / 3000 | 679 / 667 / 577 | 709 / 410 / 395 | 1.39 / 1.41 / 1.42 | 1.50 / 2.59 / 2.32 |
+
+At the lowest speeds the limit costs 4 to 14 % (it opens vanes before the boost has built); everywhere above it gains
+12 to 63 %. The diesels are still short of their ranges: the fuelling's (the reference's 0.62 kept share under Woschni's
+walls, routed to D). Their lambda now reads 1 / phi (1.33): chargeDiesel told the sensor nothing before (71d7869).
