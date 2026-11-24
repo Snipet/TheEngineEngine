@@ -449,6 +449,12 @@ TEST_CASE("a cam edited while the engine runs: each cylinder takes the new one w
     for (int c = 0; c < 8; ++c)
         CHECK(v.lab.get("useIn[" + std::to_string(c) + "]") == 10.0);     // the new copy
     CHECK(v.lab.get("tab[10].peak") > v.lab.get("tab[0].peak"));
+    // the events the cylinder detects are the new cam's: 262 at the seat about the same centreline
+    auto* ivo = v.lab.fn<float(void*, int)>("ivo");
+    auto* ivc = v.lab.fn<float(void*, int)>("ivc");
+    const double span = v.lab.get("tab[10].span");
+    CHECK(std::fmod(ivc(v.lab.data(), 3) - ivo(v.lab.data(), 3) + 720.0, 720.0) == Catch::Approx(span).margin(1e-3));
+    CHECK(span > 262.0);
 }
 
 TEST_CASE("deactivation: chosen cylinders rest in their power stroke, exhaust shut, and come back", "[valvetrain][deac]")

@@ -19,6 +19,7 @@ namespace tee::player
         int findValue(std::string_view) const override { return -1; }
         double value(int) const override { return 0.0; }
         float outputPeak() const override { return 0.0f; }
+        int outputTail(float*, int) const override { return 0; }
         void setControls(const ControlsFrame&) override {}
         void prepare(double, int) override {}
         void process(float* l, float* r, int n) noexcept override

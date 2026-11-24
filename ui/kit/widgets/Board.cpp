@@ -65,6 +65,7 @@ namespace tee::ui
         drawGround(c, th);
         if (funkgui::Panel* in = inner())
             in->draw(c, th);
+        drawOver(c, th);
         for (std::size_t i = 0; i < items_.size(); ++i)
             if (items_[i]->shown())
                 items_[i]->draw(c, th, ring_ && focus_ == static_cast<int>(i));
