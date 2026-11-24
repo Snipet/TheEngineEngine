@@ -47,13 +47,22 @@ pipe 0.73 m to the baffle cone's middle. This is judgement from published tuning
 - **Where the plug lands.** Traces at 9000 rpm: blowdown peaks some 24° after the exhaust port opens; the diffuser's
   suction arrives while the transfers are open; the baffle cone's plug comes back 144° later (2.67 ms; 2L/c =
   2.62 ms) and pushes gas back in before the port closes.
-- **Tuning against the pipe's length.** The pipe's gain (trapped fresh charge over a straight pipe's) is centred at
-  11 548, 9627 and 9320 rpm for pipes ×0.8, ×1 and ×1.25. The returning wave's prediction, (192 − 25)° = 6N · 2L/c,
-  gives 13 267, 10 614 and 8491: −13 %, −9 % and +10 %, within the 15 % asked. The longest pipe's band hardly moves
-  from the default's, so the response to length is weaker than 1/L there; secondary reflections are the likely cause,
-  not examined further.
-- **On the pipe.** 15.1 N m within 1000 rpm of the band's centre, against 11.2 N m at 0.7 of it and 8.4 N m for a
-  straight pipe there.
+- **Tuning against the pipe's length** (card T's open finding, settled). The handoff found the band moved less than
+  1/L with the pipe's length. The cause was the measurement, not the pipe: the gain was taken over a straight pipe that
+  was one duct, and a duct is cut at 0.98 m, so the straight pipes for the ×1 and ×1.25 chambers (1.07 and 1.34 m) were
+  the same 0.98 m pipe, whose own tuning (its open end's rarefaction) was divided into the gain. The straight pipe is
+  now cut into equal sections, and the band is measured against an **endless pipe** (the far end sends back none of
+  what moves, but its mean pressure is the air's: a matched end would also hold z Q of back pressure, 0.3 bar at
+  15 500 rpm, and bias any baseline against speed). Centres for pipes ×0.8, ×1, ×1.25: 13 900, 11 753 and 9 125 rpm
+  (before: 11 548, 9 627, 9 320); the returning wave says 13 267, 10 614, 8 491: +4.8, +10.7, +7.5 %. The centres'
+  ratio ×1.25/×0.8 is 0.656 against 1/L's 0.640 (before: 0.81). The plug's own timing scales exactly: the port's
+  pressure at closing peaks at 13 500, 11 000 and 8 500 rpm (N L within 2 %). Also tried and ruled out: the cones'
+  junction losses on the whole drive instead of its slow part moved nothing by more than 2 %.
+- **On the pipe.** Strictly periodic at every speed (no spread from cycle to cycle). The chamber's torque (×1) rises
+  48 % in 1000 rpm, from 10.6 N m at 8500 to the band (8750 to 11 000 rpm, the plug at the port as it closes); best
+  15.5 N m at 10 750; 14.2 N m within 500 rpm of it against 9.6 at 0.7 of that speed and 11.2 for a straight pipe of
+  the same length. A second, lower lump at 12 000 to 13 500 rpm (13.6 N m) with a dip between (11.6 at 11 500), as
+  the plug passes the port's closing; above 14 500 rpm the chamber is no better than the straight pipe.
 - **Cone steps.** The band's centre moves 2.5 % from 1 to 2 steps a cone, 1.2 % from 2 to 3, and under 0.3 % after
   that: 3 steps settle the tuned speed, and 8 is the default. The sound's dependence on the steps was not measured.
 - **Four-stroking.** At closed throttle and 7000 rpm, fire and misfire alternate on every cycle (purity 0.39), from
