@@ -18,7 +18,7 @@
 //                                   for, the mass, the redline, a motorcycle's wheels, a truck: every 16 samples
 //   car.pedals(clutch, brake, k)    the pedals (0 up to 1 down), smoothed by k: every 16 samples
 //   car.select(g)                   a gear: -1 R, 0 N, 1 to 6 (a truck's to 18)
-//   w = car.step(w, tq, dt)         one sample: the crank's speed after it, from its speed and its torque (the
+//   w = car.step(w, tq, dt, jCrank) one sample: the crank's speed after it, from its speed and its torque (the
 //                                   cylinders' less friction, with the starter's)
 //   y = car.road(kSq)               one sample of the tyres on the road (their squeal at its share kSq) and the
 //                                   driveline's clunk
@@ -534,7 +534,9 @@ module Car
 
     // One sample. w: the crank's speed; tq: its torque (the cylinders', less friction, with the starter's). Returns the
     // crank's speed after it.
-    float step(float w, float tq, float dt)
+    // jCrank: the crank's inertia now (a custom engine's, which varies round the turn), 0 for the one configure gave;
+    // model 1 steps the crank with it (model 0, the reference, with its own)
+    float step(float w, float tq, float dt, float jCrank)
     {
         if (model == 1 && bikeOn != 0)
         {
@@ -544,7 +546,7 @@ module Car
         }
         if (model == 1)
         {
-            const float wn = m1.step(w, tq, dt);
+            const float wn = m1.step(w, tq, dt, jCrank);
             v = (float)m1.v;
             return wn;
         }
