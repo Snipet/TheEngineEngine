@@ -132,7 +132,7 @@ TEST_CASE("fan: a viscous clutch's roar grows with the coolant's heat and with t
         rig.set("spec.fan", 1);
         rig.set("coolant", coolant);
         rig.set("crankHz", hz);
-        rig.run(20.0, Fan);                         // the fluid's 4 s
+        rig.run(14.0, Fan);                         // the fluid's 4 s
         return rms(rig.run(0.5, Fan));
     };
     double last = 0.0;
