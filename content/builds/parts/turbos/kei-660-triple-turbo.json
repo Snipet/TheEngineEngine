@@ -13,6 +13,7 @@
       "target": 65000.0,
       "gateSpring": 15000.0,
       "blowOffKind": "Recirculating",
+      "gateDiameter": 0.026,
       "icEffect": 0.75
     }
   }
