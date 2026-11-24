@@ -146,6 +146,8 @@ module Exhaust
     float rpmNow;
     float loadNow;
     int tick128;
+    int seenSettle;     // spec.exhaust.heatSettle as last acted on
+    float tPortNow;     // the ports' gas as the cylinders give it now (gas(), before its 0.8 s smoothing)
     int prepared;       // 1: prepare() was called this sample (the turbines' seam), before step()
 
     void setup(float rateIn, Noise* noise, Layout* layIn, Heat* heatIn, ExhaustSpec* specIn, ExhaustTel* telIn,
@@ -181,6 +183,8 @@ module Exhaust
         loadNow = 0.0f;
         tick128 = 0;
         prepared = 0;
+        seenSettle = spec->heatSettle;
+        tPortNow = 0.0f;
         rate = rateIn;
         noiseSrc = noise;
         lay = layIn;
@@ -586,6 +590,7 @@ module Exhaust
         if (mSum > 1.0e-9f)
         {
             const float tNew = eSum / mSum;
+            tPortNow = tNew;
             tPort += (tNew - tPort) * (1.0f - expf(-d16 / 0.8f));
         }
         else
@@ -1143,6 +1148,11 @@ module Exhaust
     // waits for the fade
     void checkSpec()
     {
+        if (spec->heatSettle != seenSettle)
+        {
+            seenSettle = spec->heatSettle;
+            settleHeat();
+        }
         if (spec->rev == seenRev)
             return;
         seenRev = spec->rev;
@@ -1195,6 +1205,33 @@ module Exhaust
             nDuals = lay->topo == 2 ? 2 : 1;
             refPipes(boreNow, aspNow, smTbNow, smTsNow, rate);
         }
+    }
+
+    // Card C's settle (spec.exhaust.heatSettle): the gas at the ports where the cylinders now put it, the mass flow at
+    // its present mean, and every wall of the exhaust where that gas and the air outside hold it (the soak run on over
+    // some 20 minutes in 3 s steps), the pipes then set to the gas: what a long run at this load leaves. Either model.
+    void settleHeat()
+    {
+        if (tPortNow > 0.0f)
+            tPort = tPortNow;
+        mdotSlow = mdot;
+        if (model != 0)
+        {
+            fillEngine();
+            for (int it = 0; it < 400; ++it)
+                b.heat.soak(tPort, mdotSlow, 3.0f, heat->tAmb, vAirNow);
+            for (int i = 0; i < XH_SECT; ++i)
+                b.heat.tUse[i] = b.heat.tGas[i];
+            tUse[0] = b.heat.tUse[XH_PRIM];
+            b.shape();
+            return;
+        }
+        for (int it = 0; it < 400; ++it)
+            soak(tPort, mdotSlow, 3.0f, boreNow, vAirNow);
+        atRestBuild = 0;
+        for (int i = 0; i < 5; ++i)
+            tUse[i] = tGas[i];
+        refPipes(boreNow, aspNow, smTbNow, smTsNow, rate);
     }
 
     // Card H: the gas's temperature where a bank's bangs light (K)
