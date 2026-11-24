@@ -92,7 +92,7 @@
       "gateSpring": 60000.0,
       "blowOffKind": "Recirculating",
       "icEffect": 0.75,
-      "icFlow": 0.336,
+      "icFlow": 0.377,
       "chargeVolume": 0.007
     },
     "exhaust": {
