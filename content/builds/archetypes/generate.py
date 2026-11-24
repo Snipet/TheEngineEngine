@@ -429,9 +429,13 @@ SPRINGS = {
 }
 
 
-PORTS = {"wedge": (1.2, 1.35), "high": (1.65, 1.8), "race": (1.75, 1.9)}
+PORTS = {"wedge": (1.15, 1.3), "high": (1.65, 1.8), "race": (1.75, 1.9)}
+# N1's values with the charge heating and the conserving intake in (measured peak torque over target's middle:
+# flat six 1.35, VR6 1.30, 7.0 V8 1.26, pushrod V6 1.25, small block 1.14): stock two-valve wedge and pushrod
+# heads 1.15/1.3; a great two-valve (the 7.0, the air-cooled six) and production four-valves at the default
+# 1.35/1.5; high-output four-valves 1.65/1.8; the rally five 1.75/1.9
 HEADS = {"big-block-74-pushrod-v8": "wedge", "small-block-57-carb": "wedge", "supercharged-v8-62": "wedge",
-         "pushrod-v6-38": "wedge", "vr6-28": "wedge", "big-bore-70-pushrod-v8": "high", "flat-plane-v8-45": "high",
+         "pushrod-v6-38": "wedge", "vr6-28": "wedge", "flat-plane-v8-45": "high",
          "v10-52": "high", "v12-65": "high", "straight-six-32-high-rev": "high", "two-stage-cam-20": "high",
          "flat-plane-v8-39-twin-turbo": "high", "inline-five-turbo-rally": "race"}
 for _a in A:
@@ -439,7 +443,7 @@ for _a in A:
         _a["ports"] = HEADS[_a["slug"]]
 # sports exhausts on the tuned engines (N1: as built every archetype breathes through a road converter and a
 # chambered muffler, 154 kPa at the six's port at 7600 rpm against 10 to 30 kPa over the air at rated power)
-SPORTS = ("straight-six-32-high-rev", "flat-plane-v8-45", "v10-52", "v12-65", "two-stage-cam-20",
+SPORTS = ("straight-six-32-high-rev", "flat-plane-v8-45", "v12-65", "two-stage-cam-20",
           "flat-plane-v8-39-twin-turbo", "big-bore-70-pushrod-v8", "inline-five-turbo-rally")
 for _a in A:
     if _a["slug"] in SPORTS:
