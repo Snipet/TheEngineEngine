@@ -334,7 +334,7 @@ module ValveLab
             return 0.0f;
         CamShape* c = &cam[t % VT_PROFILES];
         const float x = s * tb->k;
-        int i = (int)x;
+        int i = (int)fminf(fmaxf(x, 0.0f), (float)(VT_STEPS - 1));
         if (i > VT_STEPS - 1)
             i = VT_STEPS - 1;
         return c->lift * (c->shape[i] + (c->shape[i + 1] - c->shape[i]) * (x - (float)i));
@@ -350,7 +350,7 @@ module ValveLab
             return 0.0f;
         CamShape* c = &cam[VT_IN_A];
         const float x = s * inLive.k;
-        int i = (int)x;
+        int i = (int)fminf(fmaxf(x, 0.0f), (float)(VT_STEPS - 1));
         if (i > VT_STEPS - 1)
             i = VT_STEPS - 1;
         const float sh = liftMin + (1.0f - liftMin) * liftCmd;
@@ -411,7 +411,7 @@ module ValveLab
             if ((dirty & (((1 << VT_LIFTS) - 1) << VT_LIFT0)) == 0 && fabsf(liftCmd - liftMade) > 0.002f)
             {
                 const float x = liftCmd * (float)(VT_LIFTS - 1);
-                int j = (int)x;
+                int j = (int)fminf(fmaxf(x, 0.0f), (float)(VT_LIFTS - 2));
                 if (j > VT_LIFTS - 2)
                     j = VT_LIFTS - 2;
                 inLive.blend(&tab[newest(VT_LIFT0 + j)], &tab[newest(VT_LIFT0 + j + 1)], x - (float)j);

@@ -1,0 +1,21 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "X-025: a two-stroke rotary",
+  "notes": "Package X's finding X-025 (2026-11-24, T and D), reduced by tee-fuzz from the random seed 229: reports running and is silent.",
+  "spec": {
+    "car": {
+      "model": 1
+    },
+    "ecu": {
+      "starter": 0
+    },
+    "engine": {
+      "benchLoad": 0.921526517,
+      "custom": 1,
+      "cycle": 1,
+      "flywheelInertia": 3.09278621,
+      "rotors": 1
+    }
+  }
+}

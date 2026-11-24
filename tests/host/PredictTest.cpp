@@ -49,6 +49,7 @@ TEST_CASE("predicted points are the stand-in's torque law, between its idle and 
     PredictOptions options;
     options.threads = 2;
     options.points = 12;
+    options.minHoldSeconds = 0.0;   // the settling rule alone (the stand-in has nothing slow)
     options.sampleRate = 48000.0;
     PredictCurve curve;
     std::string error;

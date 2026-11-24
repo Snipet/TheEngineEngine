@@ -138,7 +138,7 @@ module EngineSpec
     // used. Made under the fade: cycle, the cylinders, firing, ports, inlet, pipe's sections. Glided: the power valve, the
     // pipe's gas. Defaults: a 125 cc racing single's ports and pipe (judgement from Jennings's and Blair's books). ----
     int cycle [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Cycle")]]
-        [[ui::help("Four-stroke: valves and a cam; two-stroke: ports in the cylinder wall and the crankcase as the pump")]]
+        [[ui::help("Four-stroke: valves and a cam; two-stroke: ports in the cylinder wall and the crankcase as the pump (a custom piston engine only: a rotary, or the layout dial's table, stays four-stroke)")]]
         [[ui::choices("Four-stroke", "Two-stroke")]]
         [[ui::group("Two-stroke")]];
     // ---- the engine: how many cylinders and how they fire (bore, stroke, rod and compression are the fields above) ----
