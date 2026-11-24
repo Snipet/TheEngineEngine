@@ -101,8 +101,8 @@ TEST_CASE("a reload carries a running engine's speed across and crossfades", "[r
     Program::Files files = standinFiles();
     files["engine.fm"] = replaced(files["engine.fm"], "    float heard;", "    float added;\n    float heard;");
     files["engine.fm"] = replaced(files["engine.fm"], "const float out = loud * s;", "const float out = 0.5f * loud * s;");
-    files["spec.fm"] = replaced(files["spec.fm"], "[[ui::label(\"Harmonics\")]] [4];", "[[ui::label(\"Harmonics\")]] [5];");
-    files["spec.fm"] = replaced(files["spec.fm"], "    int tap [[", "    float extra [[fminus::range(0, 1)]] [[fminus::default(0.25)]] [[ui::label(\"Extra\")]];\n    int tap [[");
+    files["spec.fm"] = replaced(files["spec.fm"], "[[ui::quantity(\"fraction\")]] [4];", "[[ui::quantity(\"fraction\")]] [5];");
+    files["spec.fm"] = replaced(files["spec.fm"], "    int tap [[", "    float extra [[fminus::range(0, 1)]] [[fminus::default(0.25)]] [[ui::label(\"Extra\")]] [[ui::quantity(\"fraction\")]];\n    int tap [[");
     files["engine.fm"] = replaced(files["engine.fm"], "for (int k = 0; k < 4; ++k)", "for (int k = 0; k < 4; ++k) // five now, the fifth silent\n           ");
     auto second = edited(files, error);
     INFO(error);

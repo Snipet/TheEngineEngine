@@ -1,0 +1,57 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Two-stroke single, 125 cc motocross",
+  "notes": "A 125 cc motocross single: 54 x 54.5 mm (124.8 cc), a 38 mm carburettor and a reed block into the crankcase, an exhaust port with its auxiliaries 0.85 of the bore wide and five transfers 1.4, exhaust port open 192 degrees with a power valve (178 below 8,000 rpm, fully up by 9,500), transfers 130, an expansion chamber tuned near 10,500 rpm. Redline 12,500. Port timings and pipe from published tuning practice for the class (Jennings; Blair), not one maker's drawing.",
+  "spec": {
+    "engine": {
+      "layout": "Single",
+      "displacement": 0.0001248,
+      "compression": 13.0,
+      "custom": true,
+      "cylinders": 1,
+      "bankAngle": [
+        0.0
+      ],
+      "bank": [
+        0
+      ],
+      "pin": [
+        0.0
+      ],
+      "fireRev": [
+        0
+      ],
+      "place": [
+        0.0
+      ],
+      "bore": 0.054,
+      "stroke": 0.0545,
+      "rodLength": 0.11,
+      "flywheelInertia": 0.006,
+      "redlineSpeed": 1308.997,
+      "idleTrim": 800,
+      "cycle": "Two-stroke",
+      "tsCylinders": 1,
+      "tsValveDur": 178,
+      "tsValveFrom": 837.758,
+      "tsValveTo": 994.838,
+      "tsSilencer": "Packed",
+      "frictionValvetrain": "None",
+      "alternator": 50,
+      "tsExhaustWidth": 0.85,
+      "tsTransferWidth": 1.4,
+      "tsInletArea": 0.0016,
+      "tsCarbArea": 0.00113
+    }
+  },
+  "expect": {
+    "firingOrder": [
+      1
+    ],
+    "firingIntervals": [
+      720
+    ],
+    "note": "the custom geometry's four-stroke derivation (core/layout.fm), which the two-stroke does not use: it fires once a turn a cylinder, evenly"
+  }
+}
