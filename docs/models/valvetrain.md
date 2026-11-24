@@ -64,6 +64,17 @@ A cam is asked as a cam card gives it: duration at the seat, at 1 mm, lift, cent
 
 ## Phasers (`phaser.fm`)
 
+- **Where a phased cam parks** (card N1, measured): the intake centreline (`valve.inCentre`) is the phaser's parked
+  end, the LATE one: the least overlap, where it cranks and idles (a real vane phaser's lock pin holds it there), and
+  it advances from there under load. A build that parks it at a fixed cam's middle idles with too much overlap: the
+  four-cam 5.0 V8 so built trapped 38 to 67 % burned gas at idle and hunted 450 to 880 rpm (sd 134) on a 0.57 m runner;
+  parked 20 degrees later it idled 650 to 715 (sd 6), its full-load torque within 2.5 % (the schedule advances it
+  back). Rule of thumb: park the intake some 20 degrees (at most half the range) later than a fixed cam's centreline.
+- **The schedule without an ECU map** (`scheduleIntake`): a target intake closing at the seat, 20 degrees after bottom
+  at a quarter of the redline and below, rising to 67 at three quarters and above; the advance is what brings the
+  parked closing there (card N1; within 2 to 8 % of each swept best fixed advance on three archetypes; a baked map,
+  card C's `tee-dyno --bake-cam`, is exact).
+
 - Phase is crank degrees from the parked stop: the intake advances, the exhaust retards (**published**: most vane
   phasers' arrangement).
 - Slew: `rate` (200 crank degrees a second warm, at full pressure: **judgement**) times the oil pressure's share between 70 and 200 kPa (**judgement**)

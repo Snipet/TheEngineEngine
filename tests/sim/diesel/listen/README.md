@@ -12,6 +12,7 @@ its air (300 K, 101325 Pa, but the cold one). Render, e.g.:
 | d2-cold-mechanical | a mechanical-pump six's cold start at 253 K and its cold idle: the clatter, the governor's slow hunt (tens of rpm) |
 | d2-pilot | full load at 1200 rpm: the combustion clatter, then softer with a 4 % pilot (rate of rise 11 to 5 bar/deg measured), then with later injection |
 | d2-turbo-whistle | a big single turbo's slow spool from 5 s (59 kPa after 2 s measured), then variable vanes' quick one from 15 s |
+| d2-eighteen-pull | the 36 t rig on the eighteen-speed: away in 3 on the clutch, the splitter to 4 at 14 s (a lever shift needs a closed-loop foot: EighteenTest.cpp) |
 | d2-pull-away | the 36 t rig pulling away and up the paddles' gears; a 6 % grade from 40 s (the shifts are timed, not driven: some may fall at odd revs) |
 
 Not mixed yet, so not in these: the eighteen-speed's grind and the air system's purge and spring brakes

@@ -3,7 +3,6 @@
 # (tableIndex(x, last), sim/core/mathx.fm; or `int i = (int)fminf(fmaxf(x, 0.0f), (float)last);`, exact for every
 # finite x from 0 up). A new place is a failure.
 sim/sound/osc.fm:30  M: X-019 itself: (x - floorf(x)) * 1024 of a NaN; M has the fix
-sim/combustion/heavy.fm:292  D2: s / lobeDur * HD_LOBE: only the upper end clamped; a NaN angle reads at INT_MIN
 sim/valvetrain/area.fm:169  E: t * tailK: only the upper end clamped; a NaN angle reads at INT_MIN
 sim/valvetrain/area.fm:175  E: s * k: the same
 sim/valvetrain/lab.fm:337  E: s * tb->k: the same

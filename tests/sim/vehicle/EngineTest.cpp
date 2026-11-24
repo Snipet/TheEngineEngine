@@ -1,8 +1,12 @@
 // tests/sim/vehicle/EngineTest.cpp: the vehicle model (car.model 1) driven by the whole engine (sim/engine.fm) through
 // card C's tee::test::Scenario: card I's integrated tests. (car.model 0 is the reference to the bit: the null test,
 // tests/sim/NullTest.cpp, runs with it.)
+//
+// The fast tier's budget (01-rules.md §3; moved by the build steward at the lead's leave, no assertion or bound changed):
+// the quarter mile's quick form runs the light front-drive four alone, its full form every archetype [nightly].
 #include "tee/test/Scenario.h"
 
+#include <initializer_list>
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
@@ -165,15 +169,17 @@ TEST_CASE("engine.stall: a clutch dumped at idle in a tall gear stalls the engin
     CHECK(r.tel("engine.speed").last() < 10.0);
 }
 
-TEST_CASE("engine.quartermile: each archetype's quarter mile within 8 % of what weight and power predict",
-          "[vehicle][engine]")
+namespace
+{
+    // the body of "engine.quartermile:...": every case of `cases` (the quick form takes the first, the full form all)
+    void caseOf_engine_quartermile_(std::initializer_list<const char*> cases)
 {
     // Each archetype at its own mass with an engine of its kind (the reference's layouts), on drag radials (tyres that hook), through an automatic
     // (the rule of thumb's cars shift themselves): a burnout on the line lock to warm them, staged at 6 s, the green at
     // 8.5 s, the brakes off and the pedal brought down over 0.6 s (a driver who keeps them hooked). The rule of thumb
     // (ET = 5.825 (lb/hp)^(1/3) s, trap = 234 (hp/lb)^(1/3) mph) takes the engine's power: here the 90th percentile of
     // what the wheels saw from the green to the finish, over the gears' 0.97 (a peak would take the shafts' swing).
-    for (const std::string car : {"light-fwd-four", "rwd-v8-coupe", "awd-turbo-six"})
+    for (const std::string car : cases)
     {
         tee::test::Scenario s = started("default");
         withCar(s, car);
@@ -211,4 +217,17 @@ TEST_CASE("engine.quartermile: each archetype's quarter mile within 8 % of what 
         CHECK(t == Catch::Approx(et).epsilon(0.08));
         CHECK(v == Catch::Approx(mph).epsilon(0.08));
     }
+}
+} // namespace
+
+// The quick form, in every run (01-rules.md §3, the build steward at the lead's leave): the light front-drive four alone.
+TEST_CASE("engine.quartermile: each archetype's quarter mile within 8 % of what weight and power predict (quick: the light front-drive four alone)", "[vehicle][engine]")
+{
+    caseOf_engine_quartermile_({"light-fwd-four"});
+}
+
+// The full form, nightly: every case.
+TEST_CASE("engine.quartermile: each archetype's quarter mile within 8 % of what weight and power predict", "[vehicle][engine][nightly]")
+{
+    caseOf_engine_quartermile_({"light-fwd-four", "rwd-v8-coupe", "awd-turbo-six"});
 }
