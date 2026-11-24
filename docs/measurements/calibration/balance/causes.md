@@ -467,3 +467,41 @@ scavenging (G's closing moves NA engines under 1 %).
   strong as it is (on matched runners). Halving it would trade the seven for the nine.
 - *To decide:* re-measure the seven on the real engines' runners (P); if a tooth of this height at the right speed still
   leaves them over, and the tuned ones are met with real runners, a sourced damping has its case. Neither yet.
+
+## The sixteen on P's class runners and cited bands (20:56 by `date -u`; P's b24fbca and after, G's flowClose live)
+
+Every NA petrol runner now P's class default of 0.40 m (judgement) or a hand-set length (judgement); every band cited.
+Torque at the target's peak-torque speed, power at its peak-power speed, against the band's middle:
+
+```
+torque: mean -7.2 %, sd 16.3 %, in band 4 of 16
+power: mean +2.4 %, sd 14.0 %, in band 6 of 16
+
+  small-block-57-carb        cited    torque  +23.7 % (448 at 3000 for [340, 385], VE 0.80)  power  +38.4 % (194 kW at 4600 for [120, 160], VE 0.79)
+  twin-cam-roadster-18       cited    torque  +10.3 % (180 at 5000 for [155, 172], VE 0.94)  power  +15.2 % (119 kW at 6650 for [95, 112], VE 0.95)
+  air-cooled-flat-six-36     cited    torque   +7.4 % (333 at 4750 for [300, 320], VE 0.86)  power   +9.4 % (205 kW at 6050 for [180, 195], VE 0.87)
+  big-block-74-pushrod-v8    cited    torque   +6.8 % (561 at 3000 for [510, 540], VE 0.78)  power  +17.9 % (239 kW at 4200 for [195, 210], VE 0.79)
+  vr6-28                     cited    torque   +5.8 % (249 at 4200 for [230, 240], VE 0.87)  power   +6.4 % (137 kW at 5800 for [125, 132], VE 0.85)
+  pushrod-v6-38              cited    torque   +1.8 % (321 at 4000 for [300, 330], VE 0.85)  power   -1.8 % (147 kW at 5200 for [140, 160], VE 0.79)
+  big-bore-70-pushrod-v8     cited    torque   -0.9 % (632 at 4800 for [630, 645], VE 0.87)  power   +4.9 % (396 kW at 6300 for [370, 385], VE 0.90)
+  economy-four-15            cited    torque   -1.9 % (143 at 4400 for [135, 156], VE 0.88)  power   +4.8 % (93 kW at 6300 for [80, 97], VE 0.93)
+  hot-hatch-16-16v           cited    torque   -2.6 % (144 at 6050 for [140, 155], VE 0.87)  power   -6.1 % (96 kW at 6850 for [85, 120], VE 0.84)
+  straight-six-32-high-rev   cited    torque  -14.5 % (312 at 4900 for [355, 375], VE 0.89)  power   -6.6 % (236 kW at 7800 for [245, 260], VE 0.90)
+  v6-35-na                   cited    torque  -15.9 % (294 at 4750 for [335, 365], VE 0.81)  power   -4.4 % (201 kW at 6350 for [195, 225], VE 0.87)
+  four-cam-v8-50             cited    torque  -16.4 % (458 at 4500 for [520, 575], VE 0.84)  power   +8.1 % (349 kW at 6850 for [300, 345], VE 0.94)
+  v10-52                     cited    torque  -27.1 % (397 at 6500 for [520, 570], VE 0.76)  power   -7.8 % (397 kW at 8350 for [385, 475], VE 0.90)
+  v12-65                     cited    torque  -28.1 % (507 at 6250 for [680, 730], VE 0.72)  power   +0.4 % (547 kW at 8575 for [500, 590], VE 0.90)
+  two-stage-cam-20           cited    torque  -30.0 % (149 at 7500 for [205, 220], VE 0.76)  power  -18.5 % (145 kW at 8300 for [170, 185], VE 0.85)
+  flat-plane-v8-45           cited    torque  -33.4 % (360 at 6000 for [520, 560], VE 0.74)  power  -21.1 % (333 kW at 8500 for [400, 445], VE 0.82)
+```
+
+**The lead's question answered:** with the runners no longer tuned to the measured speed, the ram's tooth at the wrong
+speed leaves the cited seven at -1 to +10 % in torque (7.0 -0.9, 3.8 V6 +1.8, VR6 +5.8, flat six +7.4, roadster +10.3)
+but for the small block (+23.7, N3-7, open) and the four-cam, now short (-16.4). The tooth no longer inflates them: no
+case for a damping from the seven's side.
+
+**The tuned four-valves are the miss now:** torque 27 to 33 % short (V10, V12, two-stage, flat-plane) with VE 0.72 to
+0.76 at their torque peaks; power closer (-21 to +0.4 %). N3-9 showed the flat-plane reaching VE 1.0 and 410 kW on a
+0.35 m second runner and the two-stage's stage B VE 1.03 on 0.40 m: their runners remain judgement, and no real engine's
+runner was found. Stage B re-measured on G's closing (live in the engine): 159 / 149 / 173 N m at 6500 / 7500 / 8500 rpm,
+VE 0.769 / 0.758 / 0.887 (stage A held: 206 / 194 / 196, VE 0.946 / 0.927 / 0.974): unchanged by it.

@@ -144,8 +144,8 @@
         50000
       ],
       "unit": "W",
-      "source": "published figures of its kind (makers' figures, firm (the class's 47 kW cap)): 658 cc; 67 to 76 kW a litre",
-      "basis": "recalled"
+      "source": "published figures of its kind (makers' figures, firm (the class's 47 kW cap)): 658 cc; 67 to 76 kW a litre; JUDGEMENT here: its boost taper was measured by N2 to meet the class's power cap",
+      "basis": "judgement"
     },
     {
       "name": "Speed at peak power",
@@ -170,8 +170,8 @@
         733.0
       ],
       "unit": "rad/s",
-      "source": "published figures of its kind (makers' figures, firm (the class's 47 kW cap)): 658 cc: 6000 to 7000 rpm",
-      "basis": "recalled"
+      "source": "published figures of its kind (makers' figures, firm (the class's 47 kW cap)): 658 cc: 6000 to 7000 rpm; JUDGEMENT here: its boost taper was measured by N2 to meet the class's power cap",
+      "basis": "judgement"
     },
     {
       "name": "Peak torque",
@@ -196,8 +196,8 @@
         110
       ],
       "unit": "N m",
-      "source": "published figures of its kind (makers' figures, firm (the class's 47 kW cap)): 658 cc; BMEP 19.1 to 21.0 bar (a naturally aspirated petrol engine 10 to 13 bar, turbocharged 18 to 25, a modern truck diesel 20 to 25: Heywood, Internal Combustion Engine Fundamentals, ch. 2)",
-      "basis": "recalled"
+      "source": "published figures of its kind (makers' figures, firm (the class's 47 kW cap)): 658 cc; BMEP 19.1 to 21.0 bar (a naturally aspirated petrol engine 10 to 13 bar, turbocharged 18 to 25, a modern truck diesel 20 to 25: Heywood, Internal Combustion Engine Fundamentals, ch. 2); JUDGEMENT here: its boost taper was measured by N2 to meet the class's power cap",
+      "basis": "judgement"
     },
     {
       "name": "Speed at peak torque",
@@ -222,8 +222,8 @@
         418.9
       ],
       "unit": "rad/s",
-      "source": "published figures of its kind (makers' figures, firm (the class's 47 kW cap)): 658 cc: 3000 to 4000 rpm (a turbocharged engine's plateau: its whole span)",
-      "basis": "recalled"
+      "source": "published figures of its kind (makers' figures, firm (the class's 47 kW cap)): 658 cc: 3000 to 4000 rpm (a turbocharged engine's plateau: its whole span); JUDGEMENT here: its boost taper was measured by N2 to meet the class's power cap",
+      "basis": "judgement"
     },
     {
       "name": "Warm idle",
@@ -290,7 +290,7 @@
         80000.0
       ],
       "unit": "Pa over the air",
-      "source": "the build's own target (0.65 bar); a wastegate or vane loop holds a steady full load within some 0.1 bar of its target once spooled (makers' boost-control tolerances; judgement)",
+      "source": "the build's own target (0.65 bar); a wastegate or vane loop holds a steady full load within some 0.1 bar of its target once spooled (makers' boost-control tolerances; judgement); JUDGEMENT here: its boost taper was measured by N2 to meet the class's power cap",
       "basis": "judgement"
     },
     {

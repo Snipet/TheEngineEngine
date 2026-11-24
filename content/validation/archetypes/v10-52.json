@@ -133,8 +133,8 @@
         475000
       ],
       "unit": "W",
-      "source": "published figures of its kind (makers' figures, firm): 5204 cc; 74 to 91 kW a litre; looked up: en.wikipedia.org/wiki/Audi_R8_(Type_42) (386-412 kW at 8000, 530-540 N m at 6500); en.wikipedia.org/wiki/Lamborghini_Gallardo (LP560-4 412 kW, 540 N m)",
-      "basis": "cited"
+      "source": "published figures of its kind (makers' figures, firm): 5204 cc; 74 to 91 kW a litre; looked up: en.wikipedia.org/wiki/Audi_R8_(Type_42) (386-412 kW at 8000, 530-540 N m at 6500); en.wikipedia.org/wiki/Lamborghini_Gallardo (LP560-4 412 kW, 540 N m); JUDGEMENT here: its head's port quality is a class fitted by N1 to measured torque over the target (content/builds/archetypes/generate.py PORTS)",
+      "basis": "judgement"
     },
     {
       "name": "Speed at peak power",
@@ -148,8 +148,8 @@
         911.1
       ],
       "unit": "rad/s",
-      "source": "published figures of its kind (makers' figures, firm): 5204 cc: 8000 to 8700 rpm; looked up: en.wikipedia.org/wiki/Audi_R8_(Type_42) (386-412 kW at 8000, 530-540 N m at 6500); en.wikipedia.org/wiki/Lamborghini_Gallardo (LP560-4 412 kW, 540 N m)",
-      "basis": "cited"
+      "source": "published figures of its kind (makers' figures, firm): 5204 cc: 8000 to 8700 rpm; looked up: en.wikipedia.org/wiki/Audi_R8_(Type_42) (386-412 kW at 8000, 530-540 N m at 6500); en.wikipedia.org/wiki/Lamborghini_Gallardo (LP560-4 412 kW, 540 N m); JUDGEMENT here: its head's port quality is a class fitted by N1 to measured torque over the target (content/builds/archetypes/generate.py PORTS)",
+      "basis": "judgement"
     },
     {
       "name": "Peak torque",
@@ -163,8 +163,8 @@
         570
       ],
       "unit": "N m",
-      "source": "published figures of its kind (makers' figures, firm): 5204 cc; BMEP 12.6 to 13.8 bar (a naturally aspirated petrol engine 10 to 13 bar, turbocharged 18 to 25, a modern truck diesel 20 to 25: Heywood, Internal Combustion Engine Fundamentals, ch. 2); looked up: en.wikipedia.org/wiki/Audi_R8_(Type_42) (386-412 kW at 8000, 530-540 N m at 6500); en.wikipedia.org/wiki/Lamborghini_Gallardo (LP560-4 412 kW, 540 N m)",
-      "basis": "cited"
+      "source": "published figures of its kind (makers' figures, firm): 5204 cc; BMEP 12.6 to 13.8 bar (a naturally aspirated petrol engine 10 to 13 bar, turbocharged 18 to 25, a modern truck diesel 20 to 25: Heywood, Internal Combustion Engine Fundamentals, ch. 2); looked up: en.wikipedia.org/wiki/Audi_R8_(Type_42) (386-412 kW at 8000, 530-540 N m at 6500); en.wikipedia.org/wiki/Lamborghini_Gallardo (LP560-4 412 kW, 540 N m); JUDGEMENT here: its head's port quality is a class fitted by N1 to measured torque over the target (content/builds/archetypes/generate.py PORTS)",
+      "basis": "judgement"
     },
     {
       "name": "Speed at peak torque",
@@ -178,8 +178,8 @@
         733.0
       ],
       "unit": "rad/s",
-      "source": "published figures of its kind (makers' figures, firm): 5204 cc: 6000 to 7000 rpm (a turbocharged engine's plateau: its whole span); looked up: en.wikipedia.org/wiki/Audi_R8_(Type_42) (386-412 kW at 8000, 530-540 N m at 6500); en.wikipedia.org/wiki/Lamborghini_Gallardo (LP560-4 412 kW, 540 N m)",
-      "basis": "cited"
+      "source": "published figures of its kind (makers' figures, firm): 5204 cc: 6000 to 7000 rpm (a turbocharged engine's plateau: its whole span); looked up: en.wikipedia.org/wiki/Audi_R8_(Type_42) (386-412 kW at 8000, 530-540 N m at 6500); en.wikipedia.org/wiki/Lamborghini_Gallardo (LP560-4 412 kW, 540 N m); JUDGEMENT here: its head's port quality is a class fitted by N1 to measured torque over the target (content/builds/archetypes/generate.py PORTS)",
+      "basis": "judgement"
     },
     {
       "name": "Warm idle",
@@ -246,8 +246,8 @@
         1.02
       ],
       "unit": "fraction",
-      "source": "a naturally aspirated four-stroke's VE at full load near its torque peak is 0.85 to 1.0 (Heywood, Internal Combustion Engine Fundamentals, ch. 6, fig. 6-9 and the text); measured at 7500 rpm",
-      "basis": "recalled"
+      "source": "a naturally aspirated four-stroke's VE at full load near its torque peak is 0.85 to 1.0 (Heywood, Internal Combustion Engine Fundamentals, ch. 6, fig. 6-9 and the text); measured at 7500 rpm; JUDGEMENT here: its head's port quality is a class fitted by N1 to measured torque over the target (content/builds/archetypes/generate.py PORTS)",
+      "basis": "judgement"
     },
     {
       "name": "Volumetric efficiency low down",
@@ -263,7 +263,7 @@
         0.95
       ],
       "unit": "fraction",
-      "source": "VE's shape: below the torque peak it falls away, the more so the hotter the cam (Heywood, Internal Combustion Engine Fundamentals, ch. 6); measured at 2000 rpm",
+      "source": "VE's shape: below the torque peak it falls away, the more so the hotter the cam (Heywood, Internal Combustion Engine Fundamentals, ch. 6); measured at 2000 rpm; JUDGEMENT here: its head's port quality is a class fitted by N1 to measured torque over the target (content/builds/archetypes/generate.py PORTS)",
       "basis": "judgement"
     },
     {
