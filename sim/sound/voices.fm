@@ -11,6 +11,8 @@
 //   tank      the fuel pump                                                        (the fuel tank, at the back)
 //   gate      the wastegate's chatter and an external gate's dump                  (the turbo)
 //   starter   the starter and its solenoid                                         (the flywheel's end of the block)
+//   chain     a motorcycle's chain and the clunk of its lash                       (the rear sprocket, the swingarm)
+//   clutch    a motorcycle's dry clutch's rattle                                   (its cover, the engine's side)
 // and `all`, their sum but the starter's, which Extras adds to the reference's mechanical sum (its starter replaces
 // the reference's). The levels are judgement, each beside the reference's own engine bay (docs/models/voices.md).
 #pragma once
@@ -22,6 +24,7 @@
 #include "valvegear.fm"
 #include "gate.fm"
 #include "starter.fm"
+#include "bike.fm"
 #include "spec/voices.fm"
 
 module Voices
@@ -35,6 +38,7 @@ module Voices
     ValveVoice valve;
     GateVoice gate;
     StarterVoice start;
+    BikeVoice bike;
     int timing;         // the cam drive's kind (0 chain: the reference's)
     int direct;         // direct injection (a gasoline engine's)
     float hpPump;       // the high-pressure pump's tick, with direct injection
@@ -47,6 +51,8 @@ module Voices
     float tank;
     float gateOut;
     float starter;
+    float chain;
+    float clutch;
     float all;
 
     void setup(float rateIn)
@@ -60,6 +66,7 @@ module Voices
         valve.setup(rate);
         gate.setup(rate, &sn);
         start.setup(rate, &sn);
+        bike.setup(rate, &sn);
         clear();
     }
 
@@ -72,6 +79,7 @@ module Voices
         valve.clear();
         gate.clear();
         start.clear();
+        bike.clear();
         timing = 0;
         direct = 0;
         hpPump = 0.0f;
@@ -83,6 +91,8 @@ module Voices
         tank = 0.0f;
         gateOut = 0.0f;
         starter = 0.0f;
+        chain = 0.0f;
+        clutch = 0.0f;
         all = 0.0f;
     }
 
@@ -96,7 +106,8 @@ module Voices
     void control16(VoicesSpec* s, float fade, float d16, int ignition, int state, float crankHz, float coolant, int driven,
                    int boxKind, int truck, int gearIn, float wIn, float ratioTotal, float fd, float wOut, float torque,
                    float peak, float engaged, int asp, float boostShare, float gateOpen, int gateExternal, float flowShare,
-                   int cylinders, float cycleDeg, float clatter, float displacement, int diesel)
+                   int cylinders, float cycleDeg, float clatter, float displacement, int diesel, int isBike, float wSprocket,
+                   int frontTeeth, int dryClutch, float primaryRatio, float lever)
     {
         const float all0 = fade * voiceGain(s->level);
         // the gearbox
@@ -123,22 +134,28 @@ module Voices
         gate.control(turbo, gateExternal, s->gateDump, gateOpen, flowShare, firingHz, all0 * voiceGain(s->gate));
         // the starter
         start.control(s->starter, s->starterPower, displacement, diesel, all0 * voiceGain(s->starterLevel));
+        // a motorcycle's
+        bike.control(isBike, wSprocket, frontTeeth, dryClutch, primaryRatio, load, lever, all0 * voiceGain(s->chain),
+                     all0 * voiceGain(s->lashLevel), all0 * voiceGain(s->dryClutch));
     }
 
     // One sample, after the reference's engine bay. crankHz; dDeg: the crank's degrees this sample
-    void tick(float crankHz)
+    void tick(float crankHz, float lashStrike)
     {
         gear.tick(crankHz);
         drive.tick(crankHz);
         fan.tick();
         fuel.tick();
         gate.tick();
+        bike.tick(crankHz, lashStrike);
         gearbox = gear.whine + gear.rattle;
         axle = gear.axle;
         front = drive.belt + drive.timingOut + drive.blower + fan.out;
         head = valve.out + 0.6f * fuel.inject;
         tank = fuel.pump;
         gateOut = gate.out;
-        all = gearbox + axle + front + head + tank + gateOut;
+        chain = bike.chain;
+        clutch = bike.clutch;
+        all = gearbox + axle + front + head + tank + gateOut + chain + clutch;
     }
 };

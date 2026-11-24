@@ -114,7 +114,7 @@ matters most (G's +0.31 R is nearly all per-pipe cost). G's builder already hold
 ## 3. A second fidelity: 48 kHz inside, for the dyno ribbon
 
 The engine's rate is one number (`Engine::setupAll`: `rate = 96000.0f`); every module takes it. Changed to 48000 in
-a copy (with the exact valve exit applied; the host at 48 kHz, so no resampler), measured against the same copy at
+a copy (the host at 48 kHz, so no resampler), measured against the same copy at
 96 kHz:
 
 **Cost**: 0.48 of 96 kHz's a second of sound (qbench: V8 free-revs 0.536, drive-car 0.476, defaults 0.497 and 0.426).
@@ -143,9 +143,21 @@ on this core with tee-dyno's present settling; the rate halves the engine's part
 is the other half of the budget. Fewer pipe filters (the wall's shelves off: they shape the highs, not the tuning)
 would take a further 10 to 15 % off at 48 kHz, not measured. The compile is not in it (a Spec edit recompiles nothing).
 
+### As a quality setting for slow machines
+
+The same switch could be the user's: "Quality: full (96 kHz inside) / light (48 kHz inside)". What light costs: half
+the processor time (0.48 measured), so a build at 1.5 R plays at about 0.75 R. What it loses, measured on the V8 and
+the defaults: **the top octave**, the third-octave bands from about 10 kHz up 13 to 24 dB down (the engine's own
+Nyquist is then 24 kHz and its pipes' filters and the valves' jets lose their highs: the rasp and the hiss on top of
+the note thin out); the level of each quarter second and the engine's speed within the floor of the same engine on
+another day; the torque within 1.2 %. It is a different rendering, not a cheaper exact one: the null test's pairs
+would not apply to it, and every package's tests would need running at 48 kHz too (F's machine must take the rate
+first, as above). Offer it only to a machine that cannot play the full one in real time, with the highs' loss named
+in the setting.
+
 ## 4. In order
 
-1. The exact patches (q3-q4-changes.md): 11 % of R now, no decision needed beyond the owners'.
+1. The exact changes (q3-q4-changes.md): about 3 % of R, committed.
 2. The pipes as arrays (G, exact): 8 to 12 % more, most where the builder adds pipes.
 3. The two-pass valve, if a person hears no difference (G): 10 to 13 %.
 4. 48 kHz inside for the dyno ribbon (C, D; F's rate first).

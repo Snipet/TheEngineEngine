@@ -235,7 +235,7 @@ namespace
         CHECK(names.size() == 6 && names[0] == "engine.bore" && names[1] == "engine.stroke" && names[2] == "engine.rod"
               && names[3] == "engine.compression" && names[4] == "engine.flywheel" && names[5] == "engine.friction");
         const std::vector<int> lay = open("engine.layout", "engine.inspector.layout");
-        CHECK(lay.size() == 2);   // the layout menu and the demo's cylinders
+        CHECK(lay.size() == 3);   // the layout menu, the cycle (card T's, through the hook) and the demo's cylinders
         const std::vector<int> cyl = open("engine.cylinder[2]", "engine.inspector.cylinder3");
         CHECK(cyl.size() == 1 && rig.demo.doc.info(cyl[0]).path == "engine.layout");
         return 0;
@@ -379,6 +379,183 @@ namespace
         rig.settle();
         CHECK(frameHash() != asScope);
         picture("engine.events", *rig.host);
+        return 0;
+    }
+}
+
+#include "views/engine/TwoStroke.h"
+
+namespace tee::test::u2
+{
+    // A two-stroke's Scope for tests (the demo's is a four-stroke's 720 degrees): 360 degrees, 0 the firing top; the
+    // cylinder's pressure (compressed from the exhaust's closing, burnt over 45 degrees, expanded to the exhaust's
+    // opening, then near the crankcase's), its volume, the ports' shares from the geometry, the crankcase's pressure
+    // (pulled below the air outside as the piston rises, pushed above as it falls, evened out while the transfers are
+    // open). Made-up but plausible, from the document's fields.
+    class TwoStrokeScope final : public tee::ui::ScopeSource
+    {
+    public:
+        explicit TwoStrokeScope(const tee::ui::FieldDoc& doc) : doc_(doc) {}
+        int find(std::string_view name) const override
+        {
+            const char* names[] = { "degrees", "pressure", "volume", "liftExhaust", "liftIntake", "portIntake" };
+            for (int i = 0; i < 6; ++i)
+                if (name == names[i])
+                    return i;
+            return -1;
+        }
+        int read(int h, float* out, int max) override
+        {
+            namespace en = tee::ui::engine;
+            const tee::ui::engine::Layout l = en::layoutOf(doc_);
+            const en::Cylinder c = en::cylinderOf(doc_, l);
+            const en::TwoStroke t = en::twoStrokeOf(doc_);
+            if (h == 0)
+            {
+                out[0] = 360.0f;
+                return 1;
+            }
+            const double r = c.radius(), L = c.rod, cr = std::isfinite(c.compression) ? c.compression : 12.0;
+            const double area = en::kPi / 4.0 * c.bore * c.bore, clear = c.swept() / (cr - 1.0);
+            const auto vol = [&](double a) { return clear + area * en::pistonDrop(a, r, L); };
+            const double vTrap = vol(t.exCloses()), pTrap = 105e3;
+            const int n = std::min(max, 360);
+            for (int i = 0; i < n; ++i)
+            {
+                const double a = i;
+                double v = 0.0;
+                switch (h)
+                {
+                    case 1:
+                    {
+                        const double vc = vol(a);
+                        const double comp = pTrap * std::pow(vTrap / vc, 1.3);
+                        const double peak = pTrap * std::pow(vTrap / vol(0.0), 1.3) * 3.2;
+                        if (a >= t.exOpens() && a < t.exCloses())
+                            v = 101325.0 + 60e3 * std::exp(-(a - t.exOpens()) / 12.0);
+                        else if (a < t.exOpens())
+                            v = std::max(peak * std::pow(vol(15.0) / std::max(vc, vol(15.0)), 1.3) * std::min(1.0, 0.45 + a / 30.0), comp);
+                        else
+                            v = comp;
+                        break;
+                    }
+                    case 2: v = vol(a); break;
+                    case 3: v = en::portShare(a, t.exDur, r, L); break;
+                    case 4: v = en::portShare(a, t.trDur, r, L); break;
+                    case 5:
+                    {
+                        const double ratio = std::isfinite(t.crankcaseRatio) ? t.crankcaseRatio : 1.4;
+                        v = 101325.0 * (1.0 + (ratio - 1.0) * 0.6 * (en::pistonDrop(a, r, L) / (2.0 * r) - 0.5) * 2.0);
+                        if (a >= t.trOpens() && a < t.trCloses())
+                            v = 101325.0 + (v - 101325.0) * 0.4;
+                        break;
+                    }
+                    default: return 0;
+                }
+                out[i] = static_cast<float>(v);
+            }
+            return n;
+        }
+        std::uint64_t generation() const override { return 1; }
+
+    private:
+        const tee::ui::FieldDoc& doc_;
+    };
+
+    // The demo as a two-stroke: a 125 cc racing single's fields (two-stroke-mx125.json), or `cylinders` evenly.
+    void makeTwoStroke(tee::ui::MemoryDoc& doc, int cylinders = 1)
+    {
+        const auto set = [&](const char* path, double v) {
+            const int f = doc.find(path);
+            if (f >= 0)
+                doc.set(f, v);
+        };
+        set("engine.cycle", 1.0);
+        set("engine.tsCylinders", cylinders);
+        set("engine.bore", 0.054);
+        set("engine.stroke", 0.0545);
+        set("engine.rod", 0.11);
+        set("engine.compression", 13.0);
+        set("engine.tsValveDur", 178.0);
+        set("engine.tsValveFrom", 837.758);
+        set("engine.tsValveTo", 994.838);
+        set("engine.tsExhaustWidth", 0.85);
+        set("engine.tsTransferWidth", 1.4);
+    }
+}
+
+namespace
+{
+    // A two-stroke host for the ENGINE or VALVES stage: the demo with card T's fields set, a two-stroke's Scope.
+    struct TwoStrokeRig
+    {
+        tee::ui::DemoRig demo;
+        tee::test::u2::TwoStrokeScope scope{ demo.doc };
+        tee::ui::WorkspaceContext ctx{ demo.doc, demo.engine, scope, demo.engine, demo.units, demo.selection, demo.app };
+        std::unique_ptr<tee::ui::Workspace> ws;
+        std::unique_ptr<funkgui::HeadlessHost> host;
+        TwoStrokeRig(tee::ui::WorkspaceFactory make, int cylinders, int w, int h, float dpi, double crank)
+        {
+            tee::test::u2::makeTwoStroke(demo.doc, cylinders);
+            demo.engine.set("engine.crank", crank);
+            demo.engine.set("engine.speed", 9000.0 * tee::ui::engine::kPi / 30.0);
+            ws = make(ctx);
+            host = std::make_unique<funkgui::HeadlessHost>(*ws, 0, dpi);
+            host->resize(w, h);
+            ws->place({ 0.0f, 0.0f, static_cast<float>(w), static_cast<float>(h) });
+            host->tick(60);
+        }
+    };
+
+    // A two-stroke (card T): a 360-degree cycle, its cylinders evenly or together; its ports open about bottom dead
+    // centre, open as the geometry says; its phases named; and its section, ring and loop at the frame's stages with no
+    // text out of place. The inlet's three kinds pictured.
+    VIEW_TEST(testEngineTwoStroke, "engine.twostroke")
+    {
+        namespace en = tee::ui::engine;
+        {
+            tee::ui::DemoRig d;
+            tee::test::u2::makeTwoStroke(d.doc, 2);
+            const en::Layout l = en::layoutOf(d.doc);
+            CHECK(l.twoStroke && l.cyc == 360.0 && l.n == 2);
+            CHECK_MSG(l.intervalText() == "even, 180", l.intervalText());
+            d.doc.set(d.doc.find("engine.tsFiring"), 1.0);
+            CHECK_MSG(en::layoutOf(d.doc).intervalText() == "together, 360", en::layoutOf(d.doc).intervalText());
+            const en::TwoStroke t = en::twoStrokeOf(d.doc);
+            const en::Cylinder c = en::cylinderOf(d.doc, en::layoutOf(d.doc));
+            CHECK_NEAR(t.exOpens(), 84.0, 1e-9);
+            CHECK_NEAR(en::portShare(t.exOpens(), t.exDur, c.radius(), c.rod), 0.0, 1e-9);
+            CHECK_NEAR(en::portShare(180.0, t.exDur, c.radius(), c.rod), 1.0, 1e-9);
+            CHECK(std::string(en::twoStrokePhase(30.0, t)) == "POWER" && std::string(en::twoStrokePhase(100.0, t)) == "BLOWDOWN"
+                  && std::string(en::twoStrokePhase(180.0, t)) == "SCAVENGE" && std::string(en::twoStrokePhase(260.0, t)) == "TRAPPING"
+                  && std::string(en::twoStrokePhase(300.0, t)) == "COMPRESSION");
+            // the power valve: shut below its speed, open above, between in between
+            CHECK_NEAR(t.exDurAt(500.0), 178.0, 1e-9);
+            CHECK_NEAR(t.exDurAt(2000.0), 192.0, 1e-9);
+        }
+        const funkgui::Rect sizes[] = { { 64, 48, 696, 574 }, { 112, 48, 1128, 874 } };
+        for (const funkgui::Rect& st : sizes)
+        {
+            const std::string tag = st.w < 700.0f ? "small" : "large";
+            for (const float dpi : { 2.0f, 1.0f })
+            {
+                TwoStrokeRig rig(tee::ui::makeEngineWorkspace, 2, static_cast<int>(st.w), static_cast<int>(st.h), dpi, 150.0);
+                const std::string why = tee::test::u2::textFaults(rig.host->draw(), { 0, 0, st.w, st.h }, tee::ui::enginePanels(*rig.ws));
+                CHECK_MSG(why.empty(), tag + ": " + why);
+                golden("engine.twostroke." + tag + (dpi == 1.0f ? ".dpi1" : ""), *rig.host);
+            }
+        }
+        // the inlet's kinds, at the small stage, at 300 degrees (the piston rising, the crankcase drawing in)
+        const char* kinds[] = { "reed", "disc", "pistonport" };
+        for (int k = 0; k < 3; ++k)
+        {
+            TwoStrokeRig rig(tee::ui::makeEngineWorkspace, 1, 696, 574, 1.0f, 300.0);
+            rig.demo.doc.set(rig.demo.doc.find("engine.tsInletKind"), k);
+            rig.host->tick(5);
+            const std::string why = tee::test::u2::textFaults(rig.host->draw(), { 0, 0, 696, 574 }, tee::ui::enginePanels(*rig.ws));
+            CHECK_MSG(why.empty(), std::string(kinds[k]) + ": " + why);
+            picture(std::string("engine.twostroke.") + kinds[k], *rig.host);
+        }
         return 0;
     }
 }
