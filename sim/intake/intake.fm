@@ -43,7 +43,8 @@ module Intake
     float mPlenum;
     float tAir;
     float pBox;         // the air box (with the turbo's boost), Pa
-    float qThr;         // the volume flow through the throttle, m^3/s
+    float qThr;         // the volume flow through the throttle, m^3/s (with throttles a runner: what the trumpets draw,
+                        // not what the cylinders take; on the six it read 0.69 to 1.03 of the valves' (causes.md K))
     // model 1 (card E)
     int model;          // in use
     int itbs;           // 1: a throttle a runner (in use)
@@ -76,6 +77,7 @@ module Intake
     int haveValves;
     float mStiff;       // what the valves took that the runners were not given (kg/s), followed over 20 ms
     float heatRise;
+    int seenSettle;     // spec.intake.heatSettle as last acted on
 
     void setup(float rate)
     {
@@ -89,6 +91,8 @@ module Intake
     // spec.intake, when its rev moved
     void apply(IntakeSpec* s)
     {
+        if (haveSpec == 0)
+            seenSettle = s->heatSettle;
         spec = s;
         haveSpec = 1;
     }
@@ -154,6 +158,8 @@ module Intake
         // Combustion Engine Fundamentals, section 6.2.1: the charge heated in the manifold and ports lowers the
         // volumetric efficiency by a few to ten percent); the 0.29 is judgement within that range. Cold, none. The
         // walls follow the coolant at once; the rise follows the flow over some 0.5 s (the walls' own lag left out).
+        // (the host's dyno and predictor raise spec.intake.heatSettle to put it at once where the flow would hold it, as
+        // spec.exhaust.heatSettle settles the exhaust's heat)
         // Taken into tAir, which Engine set this tick from the air (or the boost's charge): so the plenum's air, the
         // throttle's density and the cylinders' intake all see it (the throttle's density should be the cold air's:
         // a choked throttle passes some 3 % less for a 20 K rise; left so).
@@ -162,7 +168,13 @@ module Intake
             const float m = fmaxf(fabsf(qThr) * pBox / (287.0f * fmaxf(tAir, 200.0f)), 0.02f * mRef);
             const float ntu = 0.29f * expf(-0.2f * logf(m / mRef));
             const float want = tCoolant > tAir ? (tCoolant - tAir) * (1.0f - expf(-ntu)) : 0.0f;
-            heatRise += (want - heatRise) * fminf(d16 * 2.0f, 1.0f);
+            if (spec->heatSettle != seenSettle)
+            {
+                seenSettle = spec->heatSettle;
+                heatRise = want;
+            }
+            else
+                heatRise += (want - heatRise) * fminf(d16 * 2.0f, 1.0f);
             tAir += heatRise;
         }
         box.setup(spec->boxVolume, spec->snorkelLength, spec->snorkelBore, vTotal, aThrottle, rateNow);
