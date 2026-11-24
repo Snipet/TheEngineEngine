@@ -351,7 +351,11 @@ TEST_CASE("the intake cam baked by a sweep of the fast dyno: the best advance by
     CamBakeResult r;
     REQUIRE(bakeIntakeCam(sim, build, options, r, error));
     INFO(error);
-    REQUIRE(r.advances.size() == 3);
+    REQUIRE(r.advances.size() >= 3);   // the grid's three, and the half steps beside each speed's best
+    for (const double cell : {0.0, 25.0, 50.0})
+        CHECK(std::find(r.advances.begin(), r.advances.end(), cell) != r.advances.end());
+    CHECK((r.halfSteps > 0) == (r.advances.size() > 3));
+    CHECK(std::is_sorted(r.advances.begin(), r.advances.end()));
     REQUIRE(r.speeds.size() == 3);
     for (std::size_t s = 0; s < r.speeds.size(); ++s)
     {

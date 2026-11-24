@@ -64,6 +64,71 @@ namespace tee
             result.knock.push_back(std::move(knock));
         }
 
+        // a curve with the phaser held at `advance`, at `speeds` (empty: the options' own)
+        auto heldCurve = [&](double advance, const std::vector<double>& speeds, PredictCurve& curve) {
+            Build held(build.fields());
+            std::vector<std::string> warnings;
+            if (!held.load(build.save(), BuildPart::Whole, warnings, error))
+                return false;
+            held.set("valve.inPhaseRange", 0.0);
+            held.set("valve.inCentre", result.parkedCentre - advance);
+            PredictOptions po = options.predict;
+            if (!speeds.empty())
+                po.speeds = speeds;
+            return predictCurve(sim, held, po, curve, error, cancel);
+        };
+        const double nan = std::numeric_limits<double>::quiet_NaN();
+        // a row at `speed` measured at every advance, inserted in order (the stage's rows)
+        auto insertRows = [&](const std::vector<double>& at) {
+            std::vector<std::vector<double>> tAt(result.advances.size()), kAt(result.advances.size());
+            for (std::size_t a = 0; a < result.advances.size(); ++a)
+            {
+                PredictCurve curve;
+                if (!heldCurve(result.advances[a], at, curve))
+                    return false;
+                for (const PredictPoint& p : curve.points)
+                {
+                    tAt[a].push_back(p.valid ? p.torque : nan);
+                    kAt[a].push_back(p.knockRetard);
+                }
+            }
+            for (std::size_t k = 0; k < at.size() && k < tAt.front().size(); ++k)
+            {
+                std::size_t pos = 0;
+                while (pos < result.speeds.size() && result.speeds[pos] < at[k])
+                    ++pos;
+                result.speeds.insert(result.speeds.begin() + static_cast<std::ptrdiff_t>(pos), at[k]);
+                for (std::size_t a = 0; a < result.advances.size(); ++a)
+                {
+                    result.torque[a].insert(result.torque[a].begin() + static_cast<std::ptrdiff_t>(pos), tAt[a][k]);
+                    result.knock[a].insert(result.knock[a].begin() + static_cast<std::ptrdiff_t>(pos), kAt[a][k]);
+                }
+            }
+            return true;
+        };
+        // A build with two-stage cams (spec.valve.stages): each steady point already runs on the lobe the engine runs
+        // at that speed (the stage switches itself in the predictor as on the road), but two rows either side of the
+        // change would let the map blend the two lobes' advances across it: a row just below the change back down
+        // (stageSpeed less its hysteresis) and one just above the change up, so the map steps there (N3, causes.md
+        // B-3: the turbo four's advance on its short lobe and on its long one differ; baked on one, run on the other,
+        // -6 %)
+        if (options.stageRows && build.fieldOf("valve.stages") >= 0 && build.get("valve.stages") > 0.5
+            && build.fieldOf("valve.stageSpeed") >= 0 && result.speeds.size() >= 2 && result.speeds.size() <= 14)
+        {
+            const double up = build.get("valve.stageSpeed");
+            const double hyst = build.fieldOf("valve.stageHyst") >= 0 ? build.get("valve.stageHyst") : 0.0;
+            std::vector<double> at;
+            for (const double w : {(up - hyst) * 0.99, up * 1.01})
+                if (w > result.speeds.front() && w < result.speeds.back())
+                    at.push_back(w);
+            if (!at.empty())
+            {
+                if (!insertRows(at))
+                    return false;
+                result.stageRows = static_cast<int>(at.size());
+            }
+        }
+
         // at each speed the most torque among the cells that do not knock more than the parked one by the limit
         for (std::size_t s = 0; s < result.speeds.size(); ++s)
         {
@@ -187,6 +252,68 @@ namespace tee
             if (result.added == addedBefore)
                 break;   // (again over the intervals the new rows made, to three passes: a row can spoil its neighbours')
         }
+        // The optimum can be narrower than the grid (N3's turbo four at 1800 rpm on its short exhaust lobe: 28 degrees
+        // 302 N m, 35 degrees 319, 50 degrees 220): at each speed the half steps either side of its best cell measured
+        // too, a curve for each such advance over just the speeds whose best is beside it, and the best taken again
+        // over all
+        if (options.halfSteps && result.advances.size() >= 2)
+        {
+            const double h = 0.5 * step;
+            std::vector<double> extra;
+            for (std::size_t sp = 0; sp < result.speeds.size(); ++sp)
+                for (const double c : {result.best[sp] - h, result.best[sp] + h})
+                    if (c > 0.0 && c < range && std::find(extra.begin(), extra.end(), c) == extra.end())
+                        extra.push_back(c);
+            std::sort(extra.begin(), extra.end());
+            for (const double c : extra)
+            {
+                if (cancel != nullptr && cancel->load())
+                {
+                    error = "cancelled";
+                    return false;
+                }
+                std::vector<double> at;
+                std::vector<std::size_t> where;
+                for (std::size_t sp = 0; sp < result.speeds.size(); ++sp)
+                    if (std::fabs(result.best[sp] - c) < h + 1e-9)
+                    {
+                        at.push_back(result.speeds[sp]);
+                        where.push_back(sp);
+                    }
+                PredictCurve curve;
+                if (!heldCurve(c, at, curve))
+                    return false;
+                std::vector<double> torque(result.speeds.size(), nan), knock(result.speeds.size(), nan);
+                for (std::size_t k = 0; k < curve.points.size() && k < where.size(); ++k)
+                {
+                    torque[where[k]] = curve.points[k].valid ? curve.points[k].torque : nan;
+                    knock[where[k]] = curve.points[k].knockRetard;
+                }
+                std::size_t pos = 0;
+                while (pos < result.advances.size() && result.advances[pos] < c)
+                    ++pos;
+                result.advances.insert(result.advances.begin() + static_cast<std::ptrdiff_t>(pos), c);
+                result.torque.insert(result.torque.begin() + static_cast<std::ptrdiff_t>(pos), std::move(torque));
+                result.knock.insert(result.knock.begin() + static_cast<std::ptrdiff_t>(pos), std::move(knock));
+                result.halfSteps += static_cast<int>(at.size());
+            }
+            for (std::size_t sp = 0; sp < result.speeds.size(); ++sp)
+            {
+                const double parkedKnock = result.knock.front()[sp];
+                for (std::size_t a = 0; a < result.advances.size(); ++a)
+                {
+                    const double t = result.torque[a][sp];
+                    if (!std::isfinite(t) || !(result.knock[a][sp] <= parkedKnock + options.knockLimit))
+                        continue;
+                    if (t > result.bestTorque[sp] || !std::isfinite(result.bestTorque[sp]))
+                    {
+                        result.bestTorque[sp] = t;
+                        result.best[sp] = result.advances[a];
+                    }
+                }
+            }
+        }
+
         // smooth across speed: the advances chosen together, the most torque less a cost for each step between
         // neighbouring rows (stepCost of the best torque per 10 degrees: judgement), so the map does not swing back and
         // forth between cells chasing the waves' teeth (a turbo four's grid bake read 20, 20, 0, 30, 0, 20, 30, 20; the
