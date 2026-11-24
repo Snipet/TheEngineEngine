@@ -234,3 +234,63 @@ TEST_CASE("gearbox.nohunt: an automatic under a full pedal on spinning tyres onl
         CHECK(downs == 0);
     }
 }
+
+TEST_CASE("gearbox.eighteen: the eighteen-speed goes in from rest on the clutch, floats in with matched revs, grinds "
+          "and stays out with them apart", "[vehicle][gearbox]")
+{
+    Rig rig;
+    rig.set("car.spec.gearbox", 5);
+    rig.set("car.spec.tyre", Truck);
+    rig.set("car.spec.mass", 15000.0);
+    rig.set("car.spec.tyreRadius", 0.52);
+    rig.set("car.spec.wheelInertia", 25.0);
+    rig.set("jE", 3.0);
+    rig.set("peak", 2500.0);
+    rig.set("idleW", 63.0);
+    rig.set("redW", 220.0);
+    rig.set("curve", 2);
+    rig.settle();
+    rig.seconds(0.5);
+    // from rest: the clutch floored (its brake stops the input shaft), L in, the clutch let up
+    rig.set("clutch", 1.0);
+    rig.seconds(0.5);
+    rig.set("lever", 5);
+    rig.seconds(0.2);
+    CHECK(rig.get("car.tel.gear") == 1.0);
+    rig.pullAway(5, 0.6, 110.0);
+    rig.seconds(2.0);
+    CHECK(rig.get("car.tel.gear") == 1.0);
+    CHECK(rig.get("car.v") > 0.5);
+    // a float into L's split (gear 2): off the pedal, into neutral, the revs matched, the lever in, no clutch
+    rig.set("throttle", 0.0);
+    rig.set("lever", 0);
+    rig.seconds(0.1);
+    CHECK(rig.get("car.tel.gear") == 0.0);
+    const double grindsBefore = rig.get("car.rr.grinds");
+    rig.set("buttons", 16);
+    const double want = rig.get("car.wo") * rig.get("car.box.fd") * 12.29;
+    rig.set("w", want);
+    rig.samples(16);            // (the crank's speed as the gearbox sees it: the last sample's)
+    rig.set("lever", 5);
+    rig.samples(32);
+    std::printf("eighteen: float into gear 2 at %.1f rad/s: gear %g, grinds %g\n", want, rig.get("car.tel.gear"),
+                rig.get("car.rr.grinds") - grindsBefore);
+    CHECK(rig.get("car.tel.gear") == 2.0);
+    CHECK(rig.get("car.rr.grinds") == grindsBefore);
+    // 300 rpm off: it grinds and stays in neutral
+    rig.set("lever", 0);
+    rig.seconds(0.1);
+    rig.set("buttons", 0);
+    rig.set("w", rig.get("car.wo") * rig.get("car.box.fd") * 14.40 + 31.4);
+    rig.samples(16);
+    rig.set("lever", 5);
+    rig.clear();
+    rig.seconds(0.2);
+    std::printf("eighteen: 300 rpm off: gear %g, grinding %.2f, refused %g, the road's peak %.3f\n", rig.get("car.tel.gear"),
+                rig.get("car.rr.grinding"), rig.get("car.tel.shift"), rig.get("roadPeak"));
+    CHECK(rig.get("car.tel.gear") == 0.0);
+    CHECK(rig.get("car.rr.grinds") > grindsBefore);
+    CHECK(rig.get("car.tel.shift") == 3.0);
+    CHECK(rig.get("car.rr.env") > 0.05);         // (its sound's envelope: grindOut() rings)
+    CHECK(rig.get("finite") == 1.0);
+}

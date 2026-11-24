@@ -85,6 +85,10 @@ target_compile_definitions(tee-view-tests PRIVATE
 foreach(_t IN LISTS TEE_VIEW_TESTS)
   add_test(NAME ui.${_t} COMMAND tee-view-tests ${_t})
   set_tests_properties(ui.${_t} PROPERTIES SKIP_RETURN_CODE 77)
+  # a name ending ".pictures" makes pictures and checks nothing: labelled nightly (01-rules.md section 3's budget)
+  if(_t MATCHES "\\.pictures$")
+    set_tests_properties(ui.${_t} PROPERTIES LABELS nightly)
+  endif()
 endforeach()
 
 # J2: the binding over card C's tee::Build with the real Spec (sim/), where the host is (the root's build).

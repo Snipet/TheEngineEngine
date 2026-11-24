@@ -25,6 +25,13 @@
 #   6. the C++ that is about to be pushed compiles (scripts/syntax-check.py, -fsyntax-only, 2 s): the host's public
 #      headers in one unit, and each .cpp that differs from the integration branch, with the newest build tree's
 #      compile_commands.json. Skipped, and said, without a build tree. TEE_LINT_SYNTAX=0 skips it.
+#   7. every telemetry field is inside its range from the first block (tee-tests-combo's FirstBlockTest: the default
+#      V8 for half a second, every switch off and every switch on, judged as the combos judge: 8 s). A new field with
+#      no sane first value turned 65 combo cases red on every platform twice on 2026-11-24. Skipped, and said, when no
+#      build tree has a tee-tests-combo that holds the case. TEE_LINT_TELEMETRY=0 skips it.
+#   8. no float becomes an array index without a clamp at both ends (scripts/lint-index.py: a NaN's cast is INT_MIN on
+#      x86, X-019's SIGSEGV): tableIndex(x, last) (sim/core/mathx.fm), fminf(fmaxf(...)), or a lower check, or the line
+#      says `// lint: index-ok: <why>`. The places known on 2026-11-24 are in scripts/lint-index.allow, reported.
 #
 # Our files are the ones git knows (the dependencies are not in the checkout).
 set -euo pipefail
@@ -132,6 +139,35 @@ if [ "${TEE_LINT_SYNTAX:-1}" != 0 ] && command -v python3 > /dev/null; then
     fi
   else
     echo "lint: no build tree with compile_commands.json: the C++ syntax check skipped"
+  fi
+fi
+
+# ---- 8. a float as an index, clamped at both ends --------------------------------------------------------------------
+if command -v python3 > /dev/null; then
+  if ! out=$(python3 scripts/lint-index.py 2>&1); then
+    while IFS= read -r l; do
+      case "$l" in known*) ;; "") ;; *) say "$l: a float as an index without a clamp at both ends (tableIndex, sim/core/mathx.fm)" ;; esac
+    done <<< "$out"
+  fi
+  n=$(grep -c '^known' <<< "$out" || true)
+  [ "$n" = 0 ] || echo "lint: note: $n known places use a float as an index unclamped (scripts/lint-index.allow): their owners have them"
+fi
+
+# ---- 7. telemetry in range from the first block ----------------------------------------------------------------------
+if [ "${TEE_LINT_TELEMETRY:-1}" != 0 ]; then
+  combo=$(ls -t build-*/bin/tee-tests-combo build-*/bin/tee-tests-combo.exe 2>/dev/null | head -1 || true)
+  case_name='telemetry: every field inside its range from the first block\, every switch off and every switch on'
+  if [ -n "$combo" ]; then
+    if ! out=$("$combo" "$case_name" 2>&1); then
+      if grep -q 'No test cases matched\|No tests ran' <<< "$out"; then
+        echo "lint: $combo has no first-block telemetry case yet (rebuild tee-tests-combo): skipped"
+      else
+        while IFS= read -r l; do say "telemetry: ${l# *}"; done < <(grep -E 'tel-range|tel-finite' <<< "$out" | sed 's/^ *//' | sort -u)
+        grep -qE 'tel-range|tel-finite' <<< "$out" || say "telemetry: the first-block case failed ($combo): run it to see why"
+      fi
+    fi
+  else
+    echo "lint: no build tree with tee-tests-combo: the first-block telemetry check skipped"
   fi
 fi
 

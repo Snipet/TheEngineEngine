@@ -1247,8 +1247,6 @@ module Engine
                 iShare[pi] += qI0[c];
             }
         }
-        const float exM0 = exh.mSum;      // (card F, model 1: this sample's exhaust gas, for the turbine's stand-in)
-        const float exE0 = exh.eSum;
         for (int c = 0; c < lay.n; ++c)
         {
             Cylinder* cy = &cyl[c];
@@ -1311,12 +1309,7 @@ module Engine
         }
         if (ctl.scopeOn != 0)
             scopeTap();
-        exh.step(qe, np);
-        // (card F, model 1: unless card G's network ends its collectors in the turbine's housings (exhaust.model 1, whose
-        // step calls the housings), the cylinders' gas this sample feeds them as a flow, and the downpipes are open
-        // ends of the collector pipe's impedance)
-        if (spec.boost.model != 0 && exh.turbinesFed() == 0)
-            boost.exhaustStandIn(exh.mSum - exM0, exh.eSum - exE0, exh.sec[0].z);
+        exh.step(qe, np);       // (with boost.model 1 the builder runs, its collectors ending in the turbines' housings)
         float rNear[MAX_PORTS];
         for (int i = 0; i < np; ++i)
             rNear[i] = intk.run[i].near + intk.run[i].z * qi[i];
@@ -1416,6 +1409,8 @@ module Engine
                 const float rd = set.drive != 0 ? car.road(v == 4 ? 0.45f : 1.0f) : 0.0f;
                 // (the fade's gain eased: a smooth step)
                 cutG = cutWant != 0 ? fmaxf(cutG - cutDn, 0.0f) : fminf(cutG + cutUp, 1.0f);
+                if (set.drive != 0 && spec.car.model != 0 && spec.car.gearbox == 5)
+                    listen.extra(LS_PLACE_GEARBOX, 4.0f * car.grindOut());    // (card D2: an eighteen-speed's grind; card I's Car)
                 if (spec.car.truckAir)
                 {
                     // (card D2: the air system's purge and brakes, at card L's places; heard with sound.model 1)

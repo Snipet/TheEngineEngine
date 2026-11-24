@@ -28,7 +28,7 @@ using namespace tee::vehicle;
 TEST_CASE("passive: a crank of varying inertia gains no energy from the vehicle, whatever the gearbox", "[vehicle][property]")
 {
     int runs = 0;
-    for (int box = 0; box < 5; ++box)
+    for (int box = 0; box < 6; ++box)
         for (double jE : {0.01, 0.5})
             for (double jp : {0.0, 0.3})
                 for (int geared = 0; geared < 2; ++geared)
@@ -47,6 +47,14 @@ TEST_CASE("passive: a crank of varying inertia gains no energy from the vehicle,
                     {
                         if (box == Manual || box == Sequential || box == DualClutch)
                             rig.set("up", 1);
+                        else if (box == 5)
+                        {
+                            // (the eighteen-speed: in from rest on the floored clutch, L)
+                            rig.set("clutch", 1.0);
+                            rig.seconds(0.5);
+                            rig.set("lever", 5);
+                            rig.seconds(0.1);
+                        }
                         else
                             rig.set("lever", 1);
                     }
@@ -55,7 +63,7 @@ TEST_CASE("passive: a crank of varying inertia gains no energy from the vehicle,
                     {
                         rig.set("throttle", rig.random() < 0.2f ? 0.0 : rig.random());
                         rig.set("brake", rig.random() < 0.85f ? 0.0 : rig.random());
-                        if (box == Manual && geared != 0)
+                        if ((box == Manual || box == 5) && geared != 0)
                             rig.set("clutch", rig.random() < 0.7f ? 0.0 : rig.random());
                         rig.seconds(0.1);
                     }
@@ -157,6 +165,7 @@ TEST_CASE("passive.engine: X-007's single, automatic and manual, never runs away
 TEST_CASE("passive.engine: custom singles at their Spec's corners with each gearbox never run away",
           "[vehicle][property][nightly]")
 {
-    const int runs = passiveEngine({"Manual", "Sequential", "Dual clutch", "Automatic", "CVT"}, {0, 1, 2, 3});
+    const int runs =
+        passiveEngine({"Manual", "Sequential", "Dual clutch", "Automatic", "CVT", "Eighteen-speed"}, {0, 1, 2, 3});
     std::printf("passive.engine: %d runs of 5 s with the checks on\n", runs);
 }

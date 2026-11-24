@@ -64,7 +64,7 @@
       "inDurSeat": 252,
       "inDur1mm": 220,
       "inLift": 0.009699999999999999,
-      "inCentre": 105,
+      "inCentre": 125.0,
       "exDurSeat": 252,
       "exDur1mm": 220,
       "exLift": 0.009699999999999999,
@@ -93,7 +93,7 @@
     },
     "exhaust": {
       "model": "Builder",
-      "sides": 1,
+      "sides": 2,
       "converter": [
         1,
         1
@@ -101,6 +101,18 @@
       "mufKind": [
         2,
         2
+      ],
+      "primaryTo": [
+        0,
+        0,
+        0,
+        1,
+        1,
+        1
+      ],
+      "collectorTo": [
+        0,
+        1
       ]
     },
     "fuel": {

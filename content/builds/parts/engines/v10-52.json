@@ -81,7 +81,7 @@
       "inDurSeat": 268,
       "inDur1mm": 240,
       "inLift": 0.011800000000000001,
-      "inCentre": 108,
+      "inCentre": 128.0,
       "exDurSeat": 260,
       "exDur1mm": 232,
       "exLift": 0.0108,
@@ -107,12 +107,12 @@
       "model": "Builder",
       "sides": 2,
       "converter": [
-        2,
-        2
-      ],
-      "mufKind": [
         1,
         1
+      ],
+      "mufKind": [
+        2,
+        2
       ]
     },
     "fuel": {

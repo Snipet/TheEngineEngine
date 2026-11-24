@@ -80,6 +80,8 @@ def show(t, v):
         return "%.0f K" % v
     if unit == "N m":
         return "%.0f N m" % v
+    if unit == "%":
+        return "%.1f %%" % v
     if unit == "fraction":
         return "%.2f" % v
     return "%.3g" % v
@@ -88,6 +90,62 @@ def show(t, v):
 def rng(t):
     a, b = t["range"]
     return "%s to %s" % (show(t, a), show(t, b))
+
+
+def curve(bin_dir, slug, out_dir, build_path, plan):
+    """The predicted curve at tee-validate's own spacing (Validation.cpp: one point every 15 rad/s, 8 to 48 points),
+    from tee-dyno --predict, cached as out_dir/<slug>.curve.csv: [(rad/s, N m, W)]."""
+    path = os.path.join(out_dir, slug + ".curve.txt")
+    if not os.path.exists(path):
+        n = min(max(int((plan["to"] - plan["from"]) / 15.0) + 1, 8), 48)
+        cmd = [os.path.join(bin_dir, "tee-dyno"), "--predict", "--points", str(n), "--from", str(plan["from"]),
+               "--to", str(plan["to"]), "--build", build_path]
+        if SIM:
+            cmd += ["--sim", SIM]
+        r = subprocess.run(cmd, capture_output=True, text=True, cwd=ROOT)
+        with open(path, "w") as f:
+            f.write(r.stdout)
+    pts = []
+    with open(path) as f:
+        for line in f:   # the printed table: rpm, torque N m, power kW, cycles, settled
+            m = re.match(r"\s+(\d+)\s+(-?[\d.]+)\s+(-?[\d.]+)\s+\d+\s+\w+", line)
+            if m:
+                pts.append((float(m.group(1)) * RPM, float(m.group(2)), float(m.group(3)) * 1000.0))
+    return sorted(pts)
+
+
+def smoothed(rows, pts):
+    """The lead's ruling (18:13): the predicted curve's peaks read as the three-point mean (a real dyno's curve is
+    averaged over hundreds of rpm), and the curve's sharpest point (the largest excess of a point over the mean of its
+    two neighbours, %) a target of its own, a miss over 5 %. Changes the dyno rows of `rows` in place."""
+    # leave out the points on the limiter or below running (torque under a tenth of the curve's best): their cut
+    # would make a tooth of the point beside them
+    if pts:
+        top = max(p[1] for p in pts)
+        pts = [p for p in pts if p[1] > 0.1 * top]
+    if len(pts) < 3:
+        return rows
+    sm = [(pts[i][0], (pts[i - 1][1] + pts[i][1] + pts[i + 1][1]) / 3.0, (pts[i - 1][2] + pts[i][2] + pts[i + 1][2]) / 3.0)
+          for i in range(1, len(pts) - 1)]
+    tq = max(sm, key=lambda p: p[1])
+    pw = max(sm, key=lambda p: p[2])
+    # the tooth is looked for where a dyno's curve is drawn: from 1500 rpm (the full-load points near idle swing
+    # widely: the start of a curve, not its shape)
+    band = [p for p in pts if p[0] >= 1500.0 * RPM]
+    sharp = max([100.0 * (band[i][1] / (0.5 * (band[i - 1][1] + band[i + 1][1])) - 1.0)
+                 for i in range(1, len(band) - 1)] or [0.0])
+    vals = {"Peak torque": tq[1], "Speed at peak torque": tq[0], "Peak power": pw[2], "Speed at peak power": pw[0]}
+    out = []
+    for t, v, st in rows:
+        if t["name"] in vals and "dyno" in t and "steps" not in t["dyno"]:
+            v = vals[t["name"]]
+            st = "pass" if t["range"][0] <= v <= t["range"][1] else "FAIL"
+        out.append((t, v, st))
+    t = {"name": "The curve's sharpest point", "range": [0, 5], "unit": "%",
+         "source": "a real engine's full-load curve has no tooth: the largest excess of any point of the predicted curve "
+                   "over the mean of its two neighbours, a miss over 5 % (the lead's ruling, 18:13)"}
+    out.append((t, sharp, "pass" if sharp <= 5 else "FAIL"))
+    return out
 
 
 def main():
@@ -113,6 +171,12 @@ def main():
     with ThreadPoolExecutor(a.jobs) as ex:
         texts = dict(zip(slugs, ex.map(lambda s: run(a.bin, s, a.src), slugs)))
     results = {s: parse(texts[s], docs[s]["targets"]) for s in slugs}
+    content = a.content or os.path.join(ROOT, "content")
+    for s_ in slugs:
+        plan = next((t["dyno"] for t in docs[s_]["targets"] if "dyno" in t and "steps" not in t["dyno"]), None)
+        if plan and results[s_] is not None:
+            pts = curve(a.bin, s_, a.src, os.path.join(content, docs[s_]["build"]), plan)
+            results[s_] = smoothed(results[s_], pts)
 
     commit = a.commit or subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True,
                                         cwd=ROOT).stdout.strip()
@@ -124,7 +188,9 @@ def main():
            "starts, stays within full scale, holds its limiter, pulls away, stops at the key) must pass; every other "
            "miss is reported, not failed. **The misses are the simulator's to-do list.**", "",
            "Peak power and torque: naturally aspirated archetypes on the predicted dyno curve (steady full-throttle points, "
-           "warm, `tee-dyno --predict`); boosted ones on the full engine dyno, nine steps held 5 s and measured 1 s "
+           "warm, `tee-dyno --predict` at tee-validate's 48 points), read as its THREE-POINT MEAN (a real dyno's curve is "
+           "averaged over hundreds of rpm: one sharp point must not decide a target), with the curve's sharpest point a "
+           "target of its own (a miss over 5 %); boosted ones on the full engine dyno, nine steps held 5 s and measured 1 s "
            "(the predicted curve reads a boosted engine some 10 % high: its slow states do not settle). The rest "
            "on the scenarios of "
            "`content/validation/scenarios/` (`p-*`), in the build's own air (15 C, 101.3 kPa).", ""]
