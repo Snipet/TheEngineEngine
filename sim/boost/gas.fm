@@ -207,9 +207,13 @@ module BoostEnd
             }
             if (rr < rc)
             {
-                const float c = area * pc * sqrtf(kBoostR * tc) * psiS;
-                q = (sqrtf(pq * pq + 4.0f * z * c) - pq) / (2.0f * z);
-                rr = (pq + z * q) / pc;
+                // choked: q (pq + z q) = K (pc - zc q), K = A sqrt(R T) psi*, the housing's own give zc taken as the
+                // unchoked passes above take it (without it the flow jumped where the passes switched to this branch:
+                // a narrow nozzle on a big diesel's pulses crossed it every pulse, a click each time)
+                const float kc = area * sqrtf(kBoostR * tc) * psiS;
+                const float bq = pq + kc * zc;
+                q = (sqrtf(bq * bq + 4.0f * z * kc * pc) - bq) / (2.0f * z);
+                rr = (pq + z * q) / fmaxf(pc - zc * q, 1.0f);
             }
             ratio = rr;
             return q;

@@ -13,7 +13,9 @@ spring less the poppet's push (85.4 measured, 84.7 expected). Null test 59/59; t
 C told through the lead). 1, no back pressure: the ports saw 0.61-0.87 of the intake (G's housings fixed it: 1.06-1.48).
 2, the runaway: F's matched gate (0.85 nozzle area) could not hold its spring; spooled at the top the four ran to 255
 kPa, gate open, knock retard pinned, 27 bar; fixed (aGate = aNoz/0.65, Bell; Watson and Janota). 3, a rotary's turbo
-matched to half its air (D has the x2 locally). SC V8: engine VE flat, the blower's leak model makes the rise (no
+matched to half its air (D's 2df7ea6; with the sequential gate sized for the whole flow it holds 72-75 kPa against
+70). 2b, clicks (X-010/X-014): valves moved in 16-sample stairs and the nozzle's choked branch jumped: both fixed (the
+six 39 -> 8, the pickup at its reference; the four 20 against 8 with a recirculating valve; the tractor still 53). SC V8: engine VE flat, the blower's leak model makes the rise (no
 source to change it); ~7 % of it is pattern 1.
 
 **Numbers now** (engine.wallHeat 1, as after D's double-count fix): 2.0 four with P's boost taper 401 N m, 222.6 kW
@@ -21,7 +23,7 @@ source to change it); ~7 % of it is pattern 1.
 floors the boost at 20 kPa: P asked for gateSpring 5 kPa); 3.0
 twin six 404 N m, 217 kW (UNDER: breathes 0.51-0.65 on the manifold: N1); SC V8 835-936 N m (over).
 
-**Not done**: the table re-run on the gate (P's); the rotary after D's x2 (D's commit awaited); the SC's leak model
+**Not done**: the table re-run on the gate (P's); the tractor's click (X-010, open); the rotary's torque (not boost); the SC's leak model
 (needs a published twin-screw VE map); X-010 (diesel steps, coming from X); N1's ledger runs boosted builds at 1.2 s
 settle (asked 4-5 s and a boost-over-target line).
 

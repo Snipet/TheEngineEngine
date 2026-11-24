@@ -83,6 +83,7 @@ namespace tee
         // False when the simulator found its engine diverged during the point (FLAG_FAULT: put at rest afresh): its
         // torque and power are NaN, not to be plotted, and the curve counts it (PredictCurve::faults).
         bool valid = true;
+        double knockRetard = 0.0;     // degrees, knock control's retard at the point's end (mean over retarded cylinders)
         std::vector<double> history;  // each cycle's mean torque there, in order (the first after a change of speed)
     };
 
