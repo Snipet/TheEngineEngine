@@ -446,12 +446,13 @@ SPRINGS = {
 
 PORTS = {"wedge": (1.15, 1.3), "high": (1.65, 1.8), "race": (1.75, 1.9), "cnc": (1.6, 1.8)}
 # (cnc: the LS7's CNC-ported heads, about 1.6 on N3's bench-flow scale, q = Cd / 0.4 at lift d/4:
-# docs/measurements/calibration/balance/discharge.md; the small block's and the 3.8's 1.15 match its 1.15 to 1.2)
+# docs/measurements/calibration/balance/discharge.md; the small block's and the 3.8's 1.15 match its 1.15 to 1.2.
+# Held off the 7.0 for now (N3, 20:19: it is already some 10 % over; not before N1 settles the runner's ram))
 # N1's values with the charge heating and the conserving intake in (measured peak torque over target's middle:
 # flat six 1.35, VR6 1.30, 7.0 V8 1.26, pushrod V6 1.25, small block 1.14): stock two-valve wedge and pushrod
 # heads 1.15/1.3; a great two-valve (the 7.0, the air-cooled six) and production four-valves at the default
 # 1.35/1.5; high-output four-valves 1.65/1.8; the rally five 1.75/1.9
-HEADS = {"big-bore-70-pushrod-v8": "cnc", "big-block-74-pushrod-v8": "wedge", "small-block-57-carb": "wedge", "supercharged-v8-62": "wedge",
+HEADS = {"big-block-74-pushrod-v8": "wedge", "small-block-57-carb": "wedge", "supercharged-v8-62": "wedge",
          "pushrod-v6-38": "wedge", "vr6-28": "wedge", "flat-plane-v8-45": "high",
          "v10-52": "high", "v12-65": "high", "straight-six-32-high-rev": "high", "two-stage-cam-20": "high",
          "flat-plane-v8-39-twin-turbo": "high", "inline-five-turbo-rally": "race"}
