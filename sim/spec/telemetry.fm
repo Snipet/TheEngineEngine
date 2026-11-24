@@ -139,6 +139,8 @@ module ExhaustTel
         [[ui::help("1 while a bang burns near a tail in hot gas (a view draws flame)")]];
     float headerTemperature [[ui::label("Header gas")]] [[ui::quantity("temperature")]]
         [[ui::help("The gas in the primaries after the port's and the pipe's cooling: a header thermocouple's reading")]];
+    float portPressure [[ui::label("Port pressure")]] [[ui::quantity("pressure")]]
+        [[ui::help("The exhaust ports' mean pressure, absolute: the back pressure the cylinders blow down and pump against (over some 0.1 s)")]];
 };
 
 module EcuTel
