@@ -210,3 +210,14 @@ ns in the profile's units (2.05 to 2.06 R).
 +0.48 R over model 0, from +0.56: over its card's 0.25 R by about 0.23 R now**. The whole build 4111 / 4185 ns in the
 profile's units (2.10 / 2.13 R: the container had just restarted, the spread is wider than the exhaust's saving).
 G's own figure for the same two: 1.749 -> 1.708 of the reference (drive-car, cmp-identical WAVs).
+
+## First-launch candidates (P's question, 20:06 UTC, at 4eaa5d2)
+
+qbench, A = B, least of 8 renders of 8 s; R = the reference V8 by `tee-bench --engine` in the same session (1866 ns
+drive-car, 1834 free-revs; the simulator's own V8 read 1.032 / 1.034 of it); host quiet (just restarted).
+
+| Archetype (every model on, as P built it) | drive-car | free-revs |
+|---|---:|---:|
+| `straight-six-twin-turbo-30.json` (3.0 L, two twin-scroll turbos, dual exhaust) | 1.46 R | 1.48 R |
+| `turbo-four-20-gdi.json` | 0.92 R | 0.92 R |
+| `three-cylinder-10-turbo.json` | 0.78 R | 0.80 R |
