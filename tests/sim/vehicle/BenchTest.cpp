@@ -31,7 +31,7 @@ namespace
     }
 } // namespace
 
-TEST_CASE("vehicle.bench: the model's cost a sample, every part in use", "[.bench]")
+TEST_CASE("bench: the model's cost a sample, every part in use", "[.bench]")
 {
     for (int box = 0; box < 5; ++box)
     {
