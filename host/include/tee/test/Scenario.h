@@ -152,7 +152,7 @@ namespace tee::test
         const std::vector<LogEvent>& log() const noexcept { return log_; }
 
     private:
-        friend class Scenario;
+        friend class ::tee::test::Scenario;
         RunResult result_;
         std::shared_ptr<std::vector<float>> left_, right_, mid_;
         std::string error_;

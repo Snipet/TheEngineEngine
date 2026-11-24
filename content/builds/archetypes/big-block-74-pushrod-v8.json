@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "Big-block 7.4 L pushrod V8",
-  "notes": "A 1972 454 cubic inch big block (the LS5): 4.25 x 4.00 in (107.95 x 101.6 mm, 7440 cc), 8.5:1, two valves on pushrods and the LS5's flat-tappet hydraulic cam (3883986: clacoa.com), one four-barrel-sized throttle over a single plenum. Rated 270 hp SAE net at 4000 rpm and 390 lb ft at 3200 (201 kW, 529 N m: carnut.com, over-drive-magazine.com); 1973-74's LS4 270-275 hp. In a heavy muscle car with a three-speed automatic. Its intake: the carburettor class's runner, 0.20 m from the valve to the plenum (a four-barrel over a dual-plane or open plenum, 1960s to 80s): JUDGEMENT, a class default, not the real engine's (no source found).",
+  "notes": "A 1972 454 cubic inch big block (the LS5): 4.25 x 4.00 in (107.95 x 101.6 mm, 7440 cc), 8.5:1, two valves on pushrods and the LS5's flat-tappet hydraulic cam (3883986: clacoa.com), one four-barrel-sized throttle over a single plenum. Rated 270 hp SAE net at 4000 rpm and 390 lb ft at 3200 (201 kW, 529 N m: carnut.com, over-drive-magazine.com); 1973-74's LS4 270-275 hp. In a heavy muscle car with a three-speed automatic. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its intake: the carburettor class's runner, 0.20 m from the valve to the plenum (a four-barrel over a dual-plane or open plenum, 1960s to 80s): JUDGEMENT, a class default, not the real engine's (no source found).",
   "spec": {
     "engine": {
       "layout": "V8 crossplane",
@@ -105,7 +105,8 @@
       "mufKind": [
         2,
         2
-      ]
+      ],
+      "headers": 0.0
     },
     "fuel": {
       "kind": "Gasoline",
