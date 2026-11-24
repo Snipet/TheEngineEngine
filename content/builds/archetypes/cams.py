@@ -44,16 +44,20 @@ def main():
     ap.add_argument("--sim", default=None)
     ap.add_argument("--jobs", type=int, default=3)
     ap.add_argument("--tmp", default=os.path.join(ROOT, "out", "cams"))
+    ap.add_argument("slugs", nargs="*", help="only these (merged into cam-maps.json); default every phased archetype")
     a = ap.parse_args()
     os.makedirs(a.tmp, exist_ok=True)
     paths = sorted(os.path.join(HERE, f) for f in os.listdir(HERE) if f.endswith(".json") and f != "cam-maps.json")
-    phased = [p for p in paths if json.load(open(p))["spec"]["valve"].get("inPhaseRange")]
+    phased = [p for p in paths if json.load(open(p))["spec"]["valve"].get("inPhaseRange")
+              and (not a.slugs or os.path.basename(p)[:-5] in a.slugs)]
     with ThreadPoolExecutor(a.jobs) as ex:
         res = dict(zip(phased, ex.map(lambda p: bake(a.bin, a.sim, p, a.tmp), phased)))
-    maps = {}
+    keep = os.path.join(HERE, "cam-maps.json")
+    maps = json.load(open(keep)) if a.slugs and os.path.exists(keep) else {}
     for p in phased:
         slug = os.path.basename(p)[:-5]
         m, lines = res[p]
+        maps.pop(slug, None)
         if m:
             maps[slug] = m
         print("%-30s %s  %s" % (slug, "baked" if m else "KEPT THE FORMULA", " ".join(lines)), flush=True)
