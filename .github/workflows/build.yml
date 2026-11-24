@@ -1,0 +1,311 @@
+# Builds TheEngineEngine and runs every test on macOS (Apple silicon), Windows (x64, clang-cl) and Linux (x86-64,
+# Ubuntu 24.04), on every push to main and to a claude/** branch, on every pull request, and by hand. Modelled on
+# TestingPlayground's build.yml.
+#
+# FMinus's LLVM comes prebuilt: the archive for the platform from FMinus's release deps-llvm-<TEE_LLVM_VERSION>,
+# checked against its SHA-256 (scripts/fetch-llvm.sh); with it come Bison and Flex (WinFlexBison on Windows). Nothing
+# builds LLVM. Everything else is fetched at its pin (cmake/TeePins.cmake).
+#
+# Linux is the cloud containers' own recipe: scripts/bootstrap-cloud.sh on Ubuntu 24.04, then the preset. So a run
+# that passes there is the proof that a fresh container can build with one script.
+#
+# Two caches keep a warm run to minutes (actions/cache's restore and save, apart):
+#
+#   sources   the dependencies' sources in the dependency cache's src/ (FMinus, FunkGui, Catch2, nlohmann/json, and
+#             FMinus's own four): key sources-<platform>-<hash of cmake/TeePins.cmake>. Saved by a run that missed.
+#   compiler  the compilers' objects, through CMake's compiler launchers: ccache on macOS and Linux (CCACHE_DIR; the
+#             compiler told apart by its --version), sccache on Windows (ccache refuses clang-cl's /clang: options, and
+#             cmake/TeeFlags.cmake passes one). sccache is pinned: its release's archive is checked against the SHA-256
+#             written below. Key ccache-<platform>-<hash of cmake/TeePins.cmake>-<commit>, restored from the newest with
+#             the same pins, else the newest of the platform. Saved after every build that succeeded on a push (the
+#             branches share nothing else), and by a pull request only when nothing was restored. At most 500 MB each.
+#   (shaderc, bgfx's shader compiler, joins them when the application builds: TEE_BUILD_APP.)
+#
+# A push or a pull request that changes only files under docs/, or only *.md files, starts nothing (paths-ignore): no
+# build or test reads them. A push while a run is in flight waits for it, and replaces any push already waiting.
+#
+# Each platform's run uploads its tools as an artefact (tee-<platform>: bin/tee-render, bin/tee-bench, with sim/ref and
+# content/ref beside bin/, where the tools look for them), kept 14 days, and writes tee-bench's quick table into the
+# run's summary: how the reference costs on a hosted runner. A failed run keeps its test log and out/.
+#
+# Run by hand (Actions, Build, Run workflow), `platforms` builds only the platforms named (macos-arm64, windows-x64,
+# linux-x64; spaces or commas between them; "all", the default, every one).
+#
+# Each action is pinned to its release's full commit SHA, with the tag in a comment: a tag can be moved, a SHA cannot.
+name: Build
+
+on:
+  push:
+    branches: [main, 'claude/**']
+    paths-ignore: ['docs/**', '**.md']
+  pull_request:
+    paths-ignore: ['docs/**', '**.md']
+  workflow_dispatch:
+    inputs:
+      platforms:
+        description: "The platforms to build: all, or some of macos-arm64 windows-x64 linux-x64"
+        type: string
+        default: all
+
+# nothing by default; each job asks for what it needs
+permissions: {}
+
+# a pull request's newer push replaces its run in flight; a branch's runs each finish (the newest waiting one is kept)
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  # the platforms to build: every one, but by hand with `platforms`
+  platforms:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.platforms.outputs.matrix }}
+    steps:
+      # jobs: the build's at once; tests: the tests' (the Mac has 3 cores)
+      - id: platforms
+        shell: bash
+        env:
+          ONLY: ${{ inputs.platforms || 'all' }}
+          ALL: >-
+            [
+              {"platform": "macos-arm64", "os": "macos-latest", "jobs": 3, "tests": 3},
+              {"platform": "windows-x64", "os": "windows-latest", "jobs": 4, "tests": 4},
+              {"platform": "linux-x64", "os": "ubuntu-24.04", "jobs": 4, "tests": 4}
+            ]
+        run: |
+          names=$(printf '%s\n' "$ONLY" | tr ', ' '\n\n' | sed '/^$/d' | sort -u)
+          if [ -z "$names" ] || [ "$names" = all ]; then
+            matrix=$(jq -c . <<< "$ALL")
+          else
+            for n in $names; do
+              jq -e --arg n "$n" 'any(.[]; .platform == $n)' <<< "$ALL" > /dev/null || {
+                echo "::error::no platform $n: platforms takes all, or some of $(jq -r 'map(.platform) | join(" ")' <<< "$ALL")"
+                exit 1; }
+            done
+            matrix=$(jq -c --arg names "$names" '($names | split("\n")) as $n | map(select(.platform as $p | any($n[]; . == $p)))' <<< "$ALL")
+          fi
+          echo "building: $(jq -r 'map(.platform) | join(" ")' <<< "$matrix")"
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: ${{ matrix.platform }}
+    needs: platforms
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.platforms.outputs.matrix) }}
+    defaults:
+      run:
+        shell: bash
+    env:
+      PRESET: release
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Ninja and ccache (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          for tool in ninja ccache; do
+            command -v "$tool" || HOMEBREW_NO_AUTO_UPDATE=1 brew install "$tool"
+          done
+          cmake --version | head -1
+
+      # sccache's release, checked against the SHA-256 its release published (the archive's .sha256), written here so
+      # that a replaced archive fails the run; a new version changes all three lines
+      - name: sccache (Windows)
+        if: runner.os == 'Windows'
+        env:
+          VERSION: v0.19.0
+          SHA256: 130e4f8eb672e76590e9993c2ab890c4763b88238577bb11d8062158c7698353
+        run: |
+          name="sccache-${VERSION}-x86_64-pc-windows-msvc"
+          cd "$RUNNER_TEMP"   # relative names below: Git Bash's tar takes D:\... for a remote host
+          curl -fsSL --retry 3 -o "$name.tar.gz" "https://github.com/mozilla/sccache/releases/download/${VERSION}/$name.tar.gz"
+          echo "$SHA256  $name.tar.gz" | sha256sum -c
+          tar -xzf "$name.tar.gz"
+          exe=$(cygpath -m "$RUNNER_TEMP/$name/sccache.exe")
+          "$exe" --version
+          echo "TEE_SCCACHE=$exe" >> "$GITHUB_ENV"
+
+      - name: Visual Studio's environment and its clang-cl (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $clang = 'Microsoft.VisualStudio.Component.VC.Llvm.Clang'
+          $vs = & $vswhere -latest -products * -requires $clang -property installationPath
+          if (-not $vs) { throw "no Visual Studio with its C++ Clang tools" }
+          cmd /c "`"$vs\VC\Auxiliary\Build\vcvars64.bat`" >nul && set" | ForEach-Object {
+            if ($_ -match '^([^=]+)=(.*)$') {
+              "$($matches[1])=$($matches[2])" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+            }
+          }
+          "$vs\VC\Tools\Llvm\x64\bin" | Out-File $env:GITHUB_PATH -Append -Encoding utf8   # its clang-cl first
+
+      # the dependency cache and the compiler's cache, outside the checkout
+      - name: The caches' folders and keys
+        id: keys
+        run: |
+          deps="$RUNNER_TEMP/tee-deps"
+          if [ "$RUNNER_OS" = Windows ]; then deps=$(cygpath -m "$deps"); fi
+          mkdir -p "$deps/src" "$deps/install"
+          echo "TEE_DEPS_DIR=$deps" >> "$GITHUB_ENV"
+          if [ "$RUNNER_OS" = Windows ]; then
+            dir=$(cygpath -m "$RUNNER_TEMP/sccache")
+            mkdir -p "$dir"
+            echo "cache=sccache" >> "$GITHUB_OUTPUT"
+            {
+              echo "TEE_CI_CACHE=$dir"
+              echo "SCCACHE_DIR=$dir"
+              echo "SCCACHE_CACHE_SIZE=500M"
+              # one server for the whole Build step (its statistics are the run's), stopped at its end; a server
+              # that fails leaves the compile to clang-cl, uncached, rather than failing the build
+              echo "SCCACHE_IDLE_TIMEOUT=0"
+              echo "SCCACHE_IGNORE_SERVER_IO_ERROR=1"
+            } >> "$GITHUB_ENV"
+          else
+            mkdir -p "$RUNNER_TEMP/ccache"
+            echo "cache=ccache" >> "$GITHUB_OUTPUT"
+            {
+              echo "TEE_CI_CACHE=$RUNNER_TEMP/ccache"
+              echo "CCACHE_DIR=$RUNNER_TEMP/ccache"
+              echo "CCACHE_MAXSIZE=500M"
+              # the compiler by what it says it is, not by its file's time (Apple's clang is a shim)
+              echo "CCACHE_COMPILERCHECK=string:$(clang --version | cksum | cut -d' ' -f1)"
+            } >> "$GITHUB_ENV"
+          fi
+
+      - name: Restore the dependencies' sources
+        id: sources
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.TEE_DEPS_DIR }}/src
+          key: sources-${{ matrix.platform }}-${{ hashFiles('cmake/TeePins.cmake') }}
+
+      - name: Restore the compiler's cache
+        id: cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.TEE_CI_CACHE }}
+          key: ${{ steps.keys.outputs.cache }}-${{ matrix.platform }}-${{ hashFiles('cmake/TeePins.cmake') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ steps.keys.outputs.cache }}-${{ matrix.platform }}-${{ hashFiles('cmake/TeePins.cmake') }}-
+            ${{ steps.keys.outputs.cache }}-${{ matrix.platform }}-
+
+      # Linux: the cloud containers' script, whole (apt, CMake, LLVM, the sources by git)
+      - name: Bootstrap (Linux, scripts/bootstrap-cloud.sh)
+        if: runner.os == 'Linux'
+        run: scripts/bootstrap-cloud.sh
+
+      - name: FMinus's LLVM, Bison and Flex (prebuilt; macOS and Windows)
+        if: runner.os != 'Linux'
+        run: scripts/fetch-llvm.sh ${{ matrix.platform }}
+
+      - name: Configure
+        run: |
+          cmd=(cmake --preset "$PRESET" -DTEE_DEPS_DIR="$TEE_DEPS_DIR")
+          if [ "$RUNNER_OS" = Windows ]; then
+            cmd+=(-DCMAKE_C_COMPILER_LAUNCHER="$TEE_SCCACHE" -DCMAKE_CXX_COMPILER_LAUNCHER="$TEE_SCCACHE")
+          else
+            cmd+=(-DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache)
+          fi
+          "${cmd[@]}"
+
+      # a run that missed keeps the sources its configure fetched
+      - name: Save the dependencies' sources
+        if: steps.sources.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.TEE_DEPS_DIR }}/src
+          key: ${{ steps.sources.outputs.cache-primary-key }}
+
+      # the compiler cache's statistics zeroed before and printed after, whatever the build's outcome: the run's hit
+      # rate and the cache's size (sccache's server, started by the zeroing, is stopped after, so that its folder is
+      # whole when it is saved)
+      - name: Build
+        run: |
+          cmd=(cmake --build --preset "$PRESET" --parallel ${{ matrix.jobs }})
+          if [ "$RUNNER_OS" = Windows ]; then
+            "$TEE_SCCACHE" --zero-stats || true
+            rc=0; "${cmd[@]}" || rc=$?
+            "$TEE_SCCACHE" --show-stats || true
+            "$TEE_SCCACHE" --stop-server > /dev/null || true
+            du -sh "$SCCACHE_DIR" || true
+            exit $rc
+          fi
+          ccache -z
+          rc=0; "${cmd[@]}" || rc=$?
+          ccache -s
+          exit $rc
+
+      - name: Save the compiler's cache
+        if: >-
+          success() && steps.cache.outputs.cache-hit != 'true' &&
+          (github.event_name != 'pull_request' || steps.cache.outputs.cache-matched-key == '')
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.TEE_CI_CACHE }}
+          key: ${{ steps.cache.outputs.cache-primary-key }}
+
+      - name: Test
+        run: ctest --preset "$PRESET" --parallel ${{ matrix.tests }}
+
+      # the tools as someone would unpack and run them: bin/ with sim/ref and content/ref beside it
+      - name: Pack the tools
+        id: pack
+        run: |
+          out="tee-${{ matrix.platform }}"
+          mkdir -p "$out/bin" "$out/sim" "$out/content"
+          found=0
+          for exe in "build-$PRESET"/bin/tee-render* "build-$PRESET"/bin/tee-bench*; do
+            case "$exe" in *.pdb|*.ilk|*.lib|*.exp) continue ;; esac
+            [ -f "$exe" ] || continue
+            cp "$exe" "$out/bin/"; found=$((found + 1))
+          done
+          [ "$found" -gt 0 ] || { echo "::error::no tool in build-$PRESET/bin"; exit 1; }
+          cp -R sim/ref "$out/sim/ref"
+          cp -R content/ref "$out/content/ref"
+          cp LICENSE "$out/"
+          ls -l "$out/bin"
+          echo "dir=$out" >> "$GITHUB_OUTPUT"
+
+      # what the reference costs on this runner, in the run's summary and beside the tools (a hosted runner is a
+      # shared machine: the numbers are a rough guide, not a measurement to quote)
+      - name: The bench, quickly
+        run: |
+          dir="${{ steps.pack.outputs.dir }}"
+          bench="$dir/bin/tee-bench"
+          [ -f "$bench" ] || bench="$bench.exe"
+          if [ -f "$bench" ]; then
+            "$bench" --quick --out "$dir/bench-quick.md"
+            cat "$dir/bench-quick.md" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "no tee-bench in this build yet"
+          fi
+
+      - name: Upload the tools
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: tee-${{ matrix.platform }}
+          path: tee-${{ matrix.platform }}/
+          retention-days: 14
+          if-no-files-found: error
+
+      - name: Keep the test log and what the tests wrote
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: tests-${{ matrix.platform }}
+          path: |
+            build-${{ env.PRESET }}/Testing/Temporary/LastTest*.log
+            out/
+          retention-days: 7
+          if-no-files-found: ignore

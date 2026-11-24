@@ -23,9 +23,9 @@ namespace tee::tools
         const std::filesystem::path exe = std::filesystem::weakly_canonical(std::filesystem::path(argv0), ec);
         if (!ec && exe.has_parent_path())
         {
-            const std::filesystem::path near = exe.parent_path().parent_path() / beside;
-            if (std::filesystem::is_directory(near, ec))
-                return near;
+            const std::filesystem::path sibling = exe.parent_path().parent_path() / beside;
+            if (std::filesystem::is_directory(sibling, ec))
+                return sibling;
         }
         return source;
     }
