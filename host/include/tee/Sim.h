@@ -59,6 +59,10 @@ namespace tee
         const fminus::Program::Module& module() const noexcept { return *module_; }
         const Options& options() const noexcept { return options_; }
         const std::filesystem::path& directory() const noexcept { return directory_; }
+        // A hash of the program as compiled: every source file's name and text (the directory's .fm files, or the
+        // files given), the entry, the module and the defines (not the optimisation or the checks: the same program).
+        // What a calibration baked on it (Bake.h) is keyed by, so a bake made on another program is known as stale.
+        std::uint64_t sourceHash() const noexcept { return sourceHash_; }
 
         InitFn* init() const noexcept { return init_; }
         ProcessFn* process() const noexcept { return process_; }
@@ -85,6 +89,7 @@ namespace tee
         InitFn* init_ = nullptr;
         ProcessFn* process_ = nullptr;
         EndFn* end_ = nullptr;
+        std::uint64_t sourceHash_ = 0;
         mutable std::atomic<bool> claimed_{false};
     };
 } // namespace tee

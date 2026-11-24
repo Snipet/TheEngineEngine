@@ -10,6 +10,8 @@
 //            [--tolerance X] [--min-cycles N] [--max-cycles N] [--cold] [--history] [--repeat N]
 //            [--brake auto|host|program] [--hold S] [--no-settle] [--warmup-seconds S] [--inner-rate HZ]
 //   tee-dyno --bake-cam --build B [--from W --to W --points N]   the intake cam swept, best advance by speed (Bake.h)
+//   tee-dyno --bake-spark --build B [--points N] [--inner-rate HZ] [--save FILE]   the knock limit baked (Bake.h);
+//            --save writes the build with it applied (ecu.maps.knockLimit, knockLimitAuto off, its key)
 //            [--ramp A]                                     and against a slow sweep at A rad/s^2 with the same brake
 #include "common/Paths.h"
 
@@ -155,7 +157,8 @@ int main(int argc, char** argv)
     tee::Sim::Options options;
     tee::DynoPlan plan;
     tee::PredictOptions predictOptions;
-    bool quiet = false, predictMode = false, history = false, bakeCam = false;
+    bool quiet = false, predictMode = false, history = false, bakeCam = false, bakeSpark = false;
+    std::string saveFile;
     double rampRate = 0.0, repeat = 1.0;
     const auto number = [&](double& out) {
         if (!args.value(value))
@@ -231,6 +234,10 @@ int main(int argc, char** argv)
             predictMode = true;
         else if (args.is("--bake-cam"))
             bakeCam = true;
+        else if (args.is("--bake-spark"))
+            bakeSpark = true;
+        else if (args.is("--save"))
+            ok = args.value(saveFile);
         else if (args.is("--history"))
             history = true;
         else if (args.is("--cold"))
@@ -273,7 +280,7 @@ int main(int argc, char** argv)
     }
     // the curve's file: named now, and last run's removed before anything can fail, so a failed run never leaves the
     // last one's behind to be read as this one's
-    if (!predictMode && !bakeCam)
+    if (!predictMode && !bakeCam && !bakeSpark)
     {
         if (csv.empty())
         {
@@ -304,6 +311,52 @@ int main(int argc, char** argv)
         }
         for (const std::string& w : warnings)
             std::fprintf(stderr, "tee-dyno: warning: %s\n", w.c_str());
+    }
+    if (bakeSpark)
+    {
+        tee::KnockBakeOptions bake;
+        bake.predict = predictOptions;
+        if (predictOptions.points != tee::PredictOptions{}.points)
+            bake.speeds = predictOptions.points;
+        tee::KnockBakeResult r;
+        if (!tee::bakeKnockLimit(compiled, build, bake, r, errors))
+        {
+            std::fprintf(stderr, "tee-dyno: %s\n", errors.c_str());
+            return 1;
+        }
+        std::printf("knock limit baked: %d points, %.1f s of engine time in %.1f s; key %lld%s\n", r.points,
+                    r.simulatedSeconds, r.wallSeconds, static_cast<long long>(r.key),
+                    tee::knockLimitCurrent(build, *compiled) ? " (the build's bake was current)" : "");
+        std::printf("measured (pedal: load atm, mean retard deg, tooth deg, torque N m):\n");
+        for (std::size_t s2 = 0; s2 < r.speeds.size(); ++s2)
+        {
+            std::printf("%8.0f", rpm(r.speeds[s2]));
+            for (const tee::KnockBakeCell& c : r.measured[s2])
+                std::printf("  %.2f: %.2f %.1f %.1f %.0f%s", c.pedal, c.load, c.retardMean, c.retardTooth, c.torque,
+                            c.valid ? "" : " (fault)");
+            std::printf("\n");
+        }
+        std::printf("degrees from best torque by load (atm; * extrapolated flat):\n%8s", "rpm");
+        for (const double y : r.loads)
+            std::printf(" %6.2f", y);
+        std::printf("\n");
+        for (std::size_t s2 = 0; s2 < r.speeds.size(); ++s2)
+        {
+            std::printf("%8.0f", rpm(r.speeds[s2]));
+            for (std::size_t j = 0; j < r.loads.size(); ++j)
+                std::printf(" %5.1f%s", r.limit[s2][j], r.extrapolated[s2][j] ? "*" : " ");
+            std::printf("\n");
+        }
+        if (!saveFile.empty())
+        {
+            if (!tee::applyKnockLimit(build, r, errors) || !build.saveFile(saveFile, tee::BuildPart::Whole, errors))
+            {
+                std::fprintf(stderr, "tee-dyno: %s\n", errors.c_str());
+                return 1;
+            }
+            std::printf("saved with the knock limit: %s\n", saveFile.c_str());
+        }
+        return 0;
     }
     if (bakeCam)
     {

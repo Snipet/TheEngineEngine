@@ -4,9 +4,51 @@
 #include "tee/Telemetry.h"
 
 #include <algorithm>
+#include <fstream>
+#include <sstream>
+#include <string_view>
 
 namespace tee
 {
+    namespace
+    {
+        std::uint64_t fnv(std::uint64_t h, std::string_view text) noexcept
+        {
+            for (const char c : text)
+            {
+                h ^= static_cast<unsigned char>(c);
+                h *= 1099511628211ull;
+            }
+            return h;
+        }
+
+        std::uint64_t hashOf(const Program::Files& files, const Sim::Options& options) noexcept
+        {
+            std::uint64_t h = 1469598103934665603ull;
+            for (const auto& [name, text] : files)   // (a map: in the name's order)
+                h = fnv(fnv(fnv(h, name), "\n"), text);
+            h = fnv(fnv(h, options.entry), options.module);
+            for (const auto& [k, v] : options.defines)
+                h = fnv(fnv(fnv(h, k), "="), v);
+            return h;
+        }
+
+        Program::Files sourcesOf(const std::filesystem::path& directory)
+        {
+            Program::Files files;
+            std::error_code ec;
+            for (std::filesystem::recursive_directory_iterator it(directory, ec), end; !ec && it != end; it.increment(ec))
+                if (it->is_regular_file(ec) && it->path().extension() == ".fm")
+                {
+                    std::ifstream in(it->path(), std::ios::binary);
+                    std::ostringstream text;
+                    text << in.rdbuf();
+                    files[std::filesystem::relative(it->path(), directory, ec).generic_string()] = text.str();
+                }
+            return files;
+        }
+    } // namespace
+
     Sim::~Sim() = default;
 
     std::shared_ptr<Sim> Sim::compile(const std::filesystem::path& directory, const Options& options, std::string& errors)
@@ -21,11 +63,13 @@ namespace tee
         sim->program_ = Program::fromDirectory(directory, options.entry, compile, errors);
         if (!sim->program_ || !sim->bind(errors))
             return nullptr;
+        sim->sourceHash_ = hashOf(sourcesOf(directory), options);
         return sim;
     }
 
     std::shared_ptr<Sim> Sim::compileFiles(Program::Files files, const Options& options, std::string& errors)
     {
+        const std::uint64_t sourceHash = hashOf(files, options);
         Program::Options compile;
         compile.optimisation = options.optimisation;
         compile.checks = options.checks;
@@ -35,6 +79,7 @@ namespace tee
         sim->program_ = Program::fromFiles(std::move(files), options.entry, compile, errors);
         if (!sim->program_ || !sim->bind(errors))
             return nullptr;
+        sim->sourceHash_ = sourceHash;
         return sim;
     }
 
