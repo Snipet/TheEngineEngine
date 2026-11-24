@@ -1,0 +1,360 @@
+// car.fm: the car the engine drives (DRIVE CAR), or the semi truck (DRIVE TRUCK): a friction clutch, a gearbox (the
+// car's six gears, the truck's eighteen, and reverse) with its final drive, the driveline's give, the wheels on their
+// tyres, and the vehicle on the road against its air, its rolling and its brakes.
+//
+// The clutch is two plates the pedal presses together. While their speeds differ it passes what their friction can
+// (its engagement times its capacity, somewhat above the engine's torque) from the faster to the slower; when the
+// speeds meet it locks, the crank and the gearbox's input one body, until what it must pass to hold them together is
+// more than it can, and it slips again. Past the gearbox the driveline is a soft spring with a little play (the
+// half-shafts wind up: a car bucks on them a few times a second in first, faster in the high gears, and clunks as the
+// play closes when the load turns over), then the wheels, and the tyres, whose grip grows with how fast they slip on
+// the road up to what the road gives: the wheels spin when the engine gives them more, and the brakes, which stop
+// short of the grip, slow them without locking until the car has all but stopped.
+//
+// Speeds are rad/s, the gearbox's input at the crank's side, the wheels at theirs; the car's in m/s.
+//
+//   car.reset()                     at rest, in neutral
+//   car.configure(jE, peak, gearTq, kg, redRpm, bike, truck)   the engine's inertia and torque, the torque it is geared
+//                                   for, the mass, the redline, a motorcycle's wheels, a truck: every 16 samples
+//   car.pedals(clutch, brake, k)    the pedals (0 up to 1 down), smoothed by k: every 16 samples
+//   car.select(g)                   a gear: -1 R, 0 N, 1 to 6 (a truck's to 18)
+//   w = car.step(w, tq, dt)         one sample: the crank's speed after it, from its speed and its torque (the
+//                                   cylinders' less friction, with the starter's)
+//   y = car.road(kSq)               one sample of the tyres on the road (their squeal at its share kSq) and the
+//                                   driveline's clunk
+#pragma once
+#include "onepole.fm"
+#include "biquad.fm"
+
+module Car
+{
+    // what the engine, the layout and the dials made
+    float jE;           // the engine's inertia (crank and flywheel), kg m^2
+    float cap;          // what the clutch passes fully engaged, N m
+    float mass;         // kg
+    float radius;       // the wheels' rolling radius, m
+    float finalDrive;
+    float jG;           // the gearbox's input (the clutch's disc, the input shaft and its gears), kg m^2
+    float jW;           // the wheels, all four as one, with their brakes and hubs
+    float kW;           // the driveline's stiffness at the wheels, N m / rad
+    float cW;           // and its damping, for the gear in (N m s / rad)
+    float lash;         // its play, rad at the wheels
+    float grip;         // the most the tyres take from the road, N
+    float cdA;          // the drag's area, m^2
+    float roll;         // the rolling resistance, N
+    float brakeMax;     // the brakes' torque at a full pedal, N m
+    int truck;          // 1: a semi truck (its eighteen gears, its tyres, its air), 0: the car
+    int nGears;         // its forward gears: the car's 6, a truck's 18
+    // the gear
+    int gear;           // -1 R, 0 N, 1 to nGears
+    float G;            // crank turns to a wheel's turn through it and the final drive (negative in reverse, 0 in N)
+    float iG;           // 1 / G (0 in neutral)
+    // the pedals
+    float engage;       // the clutch's engagement: 0 (the pedal down) to 1 (up)
+    float robot;        // the paddles' own clutch: closing with the revs as they pull away, open while they shift (1
+                        // with the shifter in a gear)
+    float brakeT;       // the brakes' torque now, N m
+    // the state
+    bool locked;        // the clutch: the crank and the gearbox's input one body
+    float wG;           // the gearbox's input
+    float wW;           // the wheels
+    float v;            // the car
+    float twist;        // the driveline's wind-up, rad at the wheels
+    bool open;          // its play open
+    float slip;         // the clutch's slip now (the crank's speed less the gearbox's), rad/s
+    // the road's sound
+    int rs;
+    OnePole rdHp;
+    OnePole rdLp;
+    Biquad squeal;
+    Biquad thud;        // the play closing: a thud in the shafts, a ring in the gearbox's case
+    Biquad ring;
+    float clunk;        // its strike, for the next sample
+    float kStrike;      // a strike's size for the same loudness at any sample rate
+
+    float rnd()
+    {
+        const int hi = rs / 127773;
+        const int lo = rs % 127773;
+        rs = 16807 * lo - 2836 * hi;
+        if (rs <= 0)
+            rs += 2147483647;
+        return 2.0f * ((float)rs / 2147483647.0f) - 1.0f;
+    }
+
+    void setup(float rate)
+    {
+        rs = 31337;
+        rdHp.set(110.0f, rate);
+        rdLp.set(700.0f, rate);
+        squeal.setBandpass(950.0f, 9.0f, rate);
+        thud.setBandpass(140.0f, 2.5f, rate);
+        ring.setBandpass(1350.0f, 14.0f, rate);
+        kStrike = rate / 48000.0f;
+        jE = 0.1f;
+        cap = 300.0f;
+        mass = 1400.0f;
+        radius = 0.33f;
+        finalDrive = 3.6f;
+        truck = 0;
+        nGears = 6;
+        reset();
+    }
+
+    void reset()
+    {
+        locked = false;
+        wG = 0.0f;
+        wW = 0.0f;
+        v = 0.0f;
+        twist = 0.0f;
+        open = false;
+        clunk = 0.0f;
+        slip = 0.0f;
+        engage = 1.0f;
+        robot = 1.0f;
+        brakeT = 0.0f;
+        gear = 0;
+        G = 0.0f;
+        iG = 0.0f;
+    }
+
+    // a cube root (x > 0)
+    float cbrt3(float x)
+    {
+        return expf(logf(fmaxf(x, 1.0e-6f)) * 0.33333333f);
+    }
+
+    // Crank turns to a wheel's turn in gear g (a sports car's six, close in the middle, the sixth an overdrive; a truck's
+    // eighteen, an Eaton Fuller 18-speed's: two deep reductions to start a heavy load, then steps of some 17 %, the top
+    // an overdrive)
+    float ratioOf(int g)
+    {
+        if (truck != 0)
+        {
+            const float t[20] = {-12.85f, 0.0f, 14.40f, 12.29f, 8.56f, 7.30f, 6.05f, 5.16f, 4.38f, 3.74f, 3.20f, 2.73f,
+                                 2.29f, 1.95f, 1.62f, 1.38f, 1.17f, 1.00f, 0.86f, 0.73f};
+            const int kt = g < -1 ? 0 : (g > 18 ? 19 : g + 1);
+            return t[kt] * finalDrive;
+        }
+        const float r[8] = {-3.30f, 0.0f, 3.15f, 2.18f, 1.62f, 1.28f, 1.05f, 0.86f};
+        const int k = g < -1 ? 0 : (g > 6 ? 7 : g + 1);
+        return r[k] * finalDrive;
+    }
+
+    void configure(float jEngine, float peak, float gearTq, float kg, float redRpm, float bike, int truckIn)
+    {
+        jE = jEngine;
+        cap = 1.35f * peak;
+        mass = kg;
+        truck = truckIn;
+        nGears = truck != 0 ? 18 : 6;
+        if (truck != 0)
+        {
+            // a semi truck: 295/75R22.5 tyres, eighteen wheels with their drums, a twin-plate clutch, a stiffer driveline
+            // with more play (its long shafts and two drive axles), truck tyres' low rolling and the grip of its drive
+            // axles (some 45 % of a loaded rig's weight), a tractor and trailer's air (Cd 0.6 on some 10 m^2); geared to
+            // cruise at 105 km/h (65 mph, a fleet's usual top speed) in its top gear at six tenths of the redline
+            radius = 0.52f;
+            jG = 0.06f;
+            jW = 220.0f;
+            kW = 20.0f * mass;
+            lash = 0.015f;
+            grip = 0.45f * 9.81f * mass;
+            cdA = 6.0f;
+            roll = 0.0065f * 9.81f * mass;
+            finalDrive = 0.6f * redRpm * 0.10471976f * radius / (29.2f * 0.73f);
+            brakeMax = 0.92f * grip * radius;
+            regear();
+            return;
+        }
+        radius = bike > 0.5f ? 0.31f : 0.33f;
+        jG = 0.015f;
+        jW = bike > 0.5f ? 1.2f : 4.4f;
+        kW = 9.0f * mass;
+        lash = 0.009f;
+        grip = 1.05f * 9.81f * mass;
+        cdA = bike > 0.5f ? 0.45f : 0.70f;
+        roll = 0.013f * 9.81f * mass;
+        // geared for its engine, as a maker gears a car: fifth reaches the redline at the speed its power holds against
+        // the air and the rolling (90 % of it at the wheels; its power at the redline some 0.88 of the full-load torque
+        // there), sixth an overdrive past it. A small engine's gears come short, a big one's long: a 1.5 L four's
+        // second turns its wheels once for 9.5 turns of the crank (on these tyres the push a 2010 Fit's 8.6 gives on
+        // its smaller ones), a 5.8 L V8's 5.8.
+        const float wRed = redRpm * 0.10471976f;
+        const float pw = 0.9f * 0.88f * gearTq * wRed;
+        const float ka = 0.6f * cdA;
+        float vm = cbrt3(pw / ka);
+        for (int it = 0; it < 4; ++it)
+            vm -= (ka * vm * vm * vm + roll * vm - pw) / (3.0f * ka * vm * vm + roll);
+        finalDrive = wRed * radius / (fmaxf(vm, 10.0f) * 1.05f);
+        // (short of the grip: the wheels slow without locking, as ABS keeps them)
+        brakeMax = 0.92f * grip * radius;
+        regear();
+    }
+
+    // The gear's ratio and the driveline's damping for it; a new ratio leaves the gearbox's input at the speed the
+    // wheels turn it (its synchromesh) and the clutch to slip until the crank comes to it
+    void regear()
+    {
+        const float g = ratioOf(gear);
+        if (g != G)
+        {
+            G = g;
+            iG = gear == 0 ? 0.0f : 1.0f / g;
+            locked = false;
+            twist = 0.0f;
+            open = false;
+            if (gear != 0)
+                wG = wW * G;
+        }
+        if (gear != 0)
+        {
+            // damped to about 0.4 of critical, whatever the gear: the engine (through the gear) and the car swing on it
+            const float j1 = jE * G * G;
+            const float j2 = mass * radius * radius + jW;
+            cW = 0.8f * sqrtf(kW * j1 * j2 / (j1 + j2));
+        }
+        else
+            cW = 0.0f;
+    }
+
+    void select(int g)
+    {
+        gear = g < -1 ? -1 : (g > 18 ? 18 : g);
+        regear();
+    }
+
+    // The pedals, 0 up to 1 down. The clutch bites a third of the way up from the floor and is fully in three quarters
+    // of the way up; the brakes come on progressively.
+    void pedals(float clutch, float brake, float k)
+    {
+        const float up = 1.0f - fminf(fmaxf(clutch, 0.0f), 1.0f);
+        const float x = fminf(fmaxf((up - 0.32f) / 0.43f, 0.0f), 1.0f);
+        engage += (x * x * (3.0f - 2.0f * x) - engage) * k;
+        const float b = fminf(fmaxf(brake, 0.0f), 1.0f);
+        brakeT += (brakeMax * b * sqrtf(b) - brakeT) * k;
+    }
+
+    // Still moving (the voice plays on while it does)
+    bool moving()
+    {
+        return fabsf(v) > 0.05f;
+    }
+
+    float kmh()
+    {
+        return fabsf(v) * 3.6f;
+    }
+
+    // One sample. w: the crank's speed; tq: its torque (the cylinders', less friction, with the starter's). Returns the
+    // crank's speed after it.
+    float step(float w, float tq, float dt)
+    {
+        // a crank its start or a stall moved is not held to the gearbox
+        if (locked && fabsf(w - wG) > 1.0f)
+            locked = false;
+        // the driveline's torque at the wheels (none while its play is open), and so at the gearbox's input
+        float tw = 0.0f;
+        float ts = 0.002f * wG;                         // (in neutral only the gearbox's oil drags it)
+        if (gear != 0)
+        {
+            const float x = twist > lash ? twist - lash : (twist < -lash ? twist + lash : 0.0f);
+            if (x != 0.0f)
+            {
+                // (the play just closed: it clunks as hard as it closed)
+                if (open)
+                    clunk += kStrike * fminf(fabsf(wG * iG - wW), 8.0f);
+                open = false;
+                tw = kW * x + cW * (wG * iG - wW);
+                // (the shafts only push: their damping never pulls the play shut)
+                tw = x > 0.0f ? fmaxf(tw, 0.0f) : fminf(tw, 0.0f);
+            }
+            else
+                open = true;
+            ts = tw * iG;
+        }
+        // the clutch
+        const float tc = cap * engage * robot;
+        float wn = w;
+        float gn = wG;
+        float need = 0.0f;
+        if (locked)
+        {
+            const float a = (tq - ts) / (jE + jG);
+            need = ts + jG * a;                         // what it passes to hold the two together
+            if (fabsf(need) <= tc)
+            {
+                wn = w + a * dt;
+                gn = wn;
+            }
+            else
+                locked = false;
+        }
+        if (!locked)
+        {
+            const float s = w - wG;
+            const float dir = s > 0.0f ? 1.0f : (s < 0.0f ? -1.0f : (need >= 0.0f ? 1.0f : -1.0f));
+            const float tcl = tc * dir;
+            wn = w + (tq - tcl) / jE * dt;
+            gn = wG + (tcl - ts) / jG * dt;
+            if (tc > 0.0f && (wn - gn) * dir <= 0.0f)
+            {
+                // the speeds met: the plates lock, their momentum kept
+                wn = (jE * wn + jG * gn) / (jE + jG);
+                gn = wn;
+                locked = true;
+            }
+        }
+        // the engine does not turn backwards (its compression holds it)
+        if (wn < 0.0f)
+        {
+            wn = 0.0f;
+            if (locked)
+                gn = 0.0f;
+        }
+        // the tyres: their grip from how fast they slip on the road, nearly all of it by a tenth's slip (at a crawl, by
+        // a few cm/s)
+        const float u = (wW * radius - v) / (0.12f + 0.025f * fabsf(v));
+        const float ft = grip * u / sqrtf(1.0f + u * u);
+        // the brakes and the rolling hold the wheels; stopped, they stay so while what turns them is less
+        const float hold = brakeT + roll * radius;
+        const float tWheel = tw - ft * radius;
+        float wwn = 0.0f;
+        if (wW > 0.0f)
+            wwn = fmaxf(wW + (tWheel - hold) / jW * dt, 0.0f);
+        else if (wW < 0.0f)
+            wwn = fminf(wW + (tWheel + hold) / jW * dt, 0.0f);
+        else if (tWheel > hold)
+            wwn = (tWheel - hold) / jW * dt;
+        else if (tWheel < -hold)
+            wwn = (tWheel + hold) / jW * dt;
+        // the car: the tyres' push against the air (half the air's density, 1.2 kg/m^3)
+        v += (ft - 0.6f * cdA * v * fabsf(v)) / mass * dt;
+        // the shafts wind up by what the gearbox's output and the wheels turn apart
+        if (gear != 0)
+            twist += (gn * iG - wwn) * dt;
+        wG = gn;
+        wW = wwn;
+        slip = wn - gn;
+        return wn;
+    }
+
+    // One sample of the tyres on the road: a rumble growing with the speed, and a squeal (its share kSq) while they
+    // spin or slide
+    float road(float kSq)
+    {
+        const float s = fminf(fabsf(v) / 30.0f, 1.6f);
+        const float n = rnd();
+        // (a truck's eighteen big tyres: twice the rumble)
+        float y = s * s * (truck != 0 ? 2.0f : 1.0f) * rdLp.lowpass(rdHp.highpass(n));
+        const float u = fabsf(wW * radius - v);
+        const float sq = fminf(fmaxf((u - 1.2f) / 4.0f, 0.0f), 1.0f);
+        if (sq > 0.0f)
+            y += 32.0f * kSq * sq * squeal.tick(n);
+        // the play's clunk
+        y += 4.0f * thud.tick(clunk) + 1.0f * ring.tick(clunk);
+        clunk = 0.0f;
+        return y;
+    }
+};

@@ -1,0 +1,50 @@
+// runner.fm: a runner of two lengths (a variable-length intake manifold), and the glide between them.
+//
+// A two-length runner (BMW's DIVA, Ford's, Porsche's VarioRam, a switched flap opening a short path) has its tuning
+// peak where the wave's round trip meets the valve's next opening; long runners for the torque low down, short ones up
+// top. The change is a flap, but the waveguide (the reference's Duct, read between samples) is built to change length
+// smoothly, so the length glides to the new one over about 80 ms (the contract's glide for what the sound can follow):
+// the peaks this moves are the waveguide's own. It switches up past the speed and back down 3 % under it.
+//
+//   len.setup(l1, l2, switchSpeed)    lengths (m; l2 0: one length) and the speed (rad/s) between them
+//   len.control(d16, omega)           every 16 samples: leaves now (m), the length to set the duct to
+#pragma once
+
+module RunnerLength
+{
+    float l1;
+    float l2;
+    float speed;
+    int up;             // 1: the second length asked
+    float now;
+
+    void setup(float len1, float len2, float switchSpeed)
+    {
+        l1 = len1;
+        l2 = len2 > 0.0f ? len2 : len1;
+        speed = switchSpeed;
+        if (now <= 0.0f)
+            now = l1;
+    }
+
+    void reset()
+    {
+        up = 0;
+        now = l1;
+    }
+
+    void control(float d16, float omega)
+    {
+        if (speed > 0.0f)
+        {
+            if (up == 0 && omega > speed)
+                up = 1;
+            else if (up == 1 && omega < 0.97f * speed)
+                up = 0;
+        }
+        else
+            up = 0;
+        const float want = up != 0 ? l2 : l1;
+        now += (want - now) * (1.0f - expf(-d16 / 0.08f));
+    }
+};

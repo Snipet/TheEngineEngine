@@ -1,0 +1,44 @@
+// knockctl.fm: knock control, each cylinder its own (ecu.model 1; ecu.knock).
+//
+// The knock sensor hears a cylinder knock (combustion/knock.fm's event) and the ECU takes that cylinder's spark back
+// by a step (1.5 degrees, the reference's), more for a harder knock (up to twice the step), to a most (15, the
+// reference's), and gives it back slowly (2 degrees a second, the reference's), each cylinder on its own, as an ECU
+// with a sensor per bank and the firing order to tell the cylinders apart does. Off (at the user's risk), it takes
+// nothing back. The reference's one retard for all cylinders stays behind ecu.model 0.
+#pragma once
+
+module KnockControl
+{
+    float retard[16];   // each cylinder's degrees taken back
+    float most;         // the most of them, for the telemetry
+    int count;          // knocks heard since the start
+
+    void reset()
+    {
+        for (int c = 0; c < 16; ++c)
+            retard[c] = 0.0f;
+        most = 0.0f;
+        count = 0;
+    }
+
+    // Cylinder c knocked, at an intensity (the unburned share that lit: 0 to 1)
+    void heard(bool on, int c, float intensity, float step, float limit)
+    {
+        count += 1;
+        if (!on || c < 0 || c >= 16)
+            return;
+        retard[c] = fminf(retard[c] + step * (1.0f + fminf(fmaxf(intensity, 0.0f), 1.0f)), limit);
+        most = fmaxf(most, retard[c]);
+    }
+
+    // Every 16 samples: give back `recover` degrees a second to the n cylinders
+    void control(bool on, int n, float recover, float d16)
+    {
+        most = 0.0f;
+        for (int c = 0; c < 16; ++c)
+        {
+            retard[c] = on && c < n ? fmaxf(retard[c] - recover * d16, 0.0f) : 0.0f;
+            most = fmaxf(most, retard[c]);
+        }
+    }
+};

@@ -39,11 +39,13 @@ namespace tee
         // The column of a name ("showRpm"), or -1.
         int column(std::string_view name) const noexcept;
 
-        // The calls, timed with the steady clock.
+        // The calls, timed: by the steady clock (wall time, which a busy machine lengthens) and by the thread's own
+        // processor time (Clock.h), which is what the code cost.
         std::int64_t frames = 0;             // samples rendered
         std::int64_t calls = 0;              // calls of process
         std::int64_t soundingFrames = 0;     // samples of the calls in which the engine ran (the voice sounded)
         double soundingSeconds = 0.0;        // the wall time those calls took
+        double soundingCpuSeconds = 0.0;     // the processor time they took
         double worstCallShare = 0.0;         // the slowest such call: its wall time over its samples' duration
         double peak = 0.0;                   // the largest sample's magnitude, either channel
 

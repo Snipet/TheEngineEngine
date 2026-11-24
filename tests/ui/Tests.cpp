@@ -714,6 +714,13 @@ namespace
         }
         CHECK(sawCutoff);
         CHECK(items.size() >= 15);
+        // The page with pointer properties (an area's x and y, a box's x and down): their ids are their own too.
+        CHECK(rig.page("DISPLAYS"));
+        std::set<uint32_t> more;
+        for (const funkgui::A11yItem& it : rig.host.accessibility())
+            CHECK_MSG(more.insert(it.id).second, "an id twice: " + it.title);
+        CHECK(more.size() >= 10);
+        CHECK(rig.page("KNOBS"));
         for (const funkgui::A11yItem& it : items)
             if (it.role == funkgui::A11yRole::slider && (it.title.find("RESONANCE") != std::string::npos
                                                          || it.title.find("resonance") != std::string::npos))

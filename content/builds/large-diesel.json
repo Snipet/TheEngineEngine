@@ -1,0 +1,57 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Large Diesel",
+  "notes": "The reference's preset Large Diesel, converted (its DRIVE CAR as the vehicle Car; HOLD is no part of a build).",
+  "spec": {
+    "engine": {
+      "layout": "Inline 6",
+      "displacement": 0.0148906,
+      "boreStroke": 0.8798,
+      "compression": 17.488,
+      "flywheel": 1,
+      "idleTrim": 0,
+      "redlineTrim": 0,
+      "rough": 0,
+      "benchLoad": 0
+    },
+    "valve": {
+      "cam": 0.9999
+    },
+    "boost": {
+      "kind": "Twin turbos",
+      "level": 1,
+      "size": 1,
+      "blowOff": 1
+    },
+    "exhaust": {
+      "headers": 0.3247,
+      "pipe": 0.6325,
+      "crossover": 0,
+      "muffler": 0.1071
+    },
+    "fuel": {
+      "kind": "Diesel"
+    },
+    "ecu": {
+      "timing": 0,
+      "pops": 0,
+      "starter": true
+    },
+    "car": {
+      "kind": "Car",
+      "mass": 4048.1526
+    },
+    "env": {
+      "temperature": 233.15
+    },
+    "sound": {
+      "view": "Exhaust",
+      "distance": 0.2994,
+      "room": 0.6176,
+      "level": 2.8467,
+      "intake": 0.5,
+      "mechanical": 0.6503
+    }
+  }
+}

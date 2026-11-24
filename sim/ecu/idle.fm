@@ -1,0 +1,146 @@
+// idle.fm: the speed the ECU goes by, the idle (its speed, the idle valve, the spark's quick trim) and the driver that
+// holds ctl.holdSpeed (ecu.model 1). Each is the reference's control16 as it was, moved here with its explanations; the
+// speeds are rpm inside, as the reference's.
+//
+// The speed: the crank's, its firing ripple smoothed out (35 ms), and how fast it changes (50 ms). The idle speed: the
+// layout's, moved by the trim, raised for a big cam (its overlap dilutes the idle more the slower it turns: its tune
+// idles it higher, as real ones are) and for a cold engine (its ECU idles it up to 500 rpm higher, a diesel's 250, as
+// the coolant is colder than 55 C: at 80 F some 190, at 0 F some 420; none once warm). The idle valve holds that speed
+// by an integral (slow: the plenum lags) and a proportional part on where the speed is going; the spark, which acts
+// at once, gives more torque when the speed sags and less when it runs up. Driven, it is an ECU's idle spark: with the
+// pedal up it takes the torque down as far as idling needs (no step back to full at idle + 450, which made an engine
+// whose cam and boost give more than its friction there run up into the overrun cut and out again), with the pedal
+// down it only helps below the idle, against a stall. Coasting down from speed the valve stays open a little (a
+// dashpot), so the plenum is not pulled to nothing.
+//
+// The driver for ctl.holdSpeed (the reference's key governor): the pedal toward the speed asked, gently near it (an
+// integral finds the throttle that holds it), hard when far below, looking ahead at the rate the speed goes (the
+// plenum and the cycle lag the pedal); holding, it trims the spark the same way, with an integral (no steady error).
+#pragma once
+
+module EcuSpeed
+{
+    float rpm;          // the crank's, now
+    float avg;          // the firing's ripple smoothed out
+    float rate;         // rpm/s, smoothed
+    float last;
+    float kAvg;         // the smoothings' steps, every 16 samples
+    float kRate;
+
+    void setup(float d16)
+    {
+        kAvg = 1.0f - expf(-d16 / 0.035f);
+        kRate = 1.0f - expf(-d16 / 0.05f);
+    }
+
+    void reset()
+    {
+        rpm = 0.0f;
+        avg = 0.0f;
+        rate = 0.0f;
+        last = 0.0f;
+    }
+
+    void control(float omega, float d16)
+    {
+        rpm = omega * 9.5492966f;
+        avg += (rpm - avg) * kAvg;
+        rate += ((avg - last) / d16 - rate) * kRate;
+        last = avg;
+    }
+};
+
+module IdleControl
+{
+    float target;       // the idle speed now, rpm
+    float integral;     // the idle valve's integral
+    float bypass;       // the idle valve, 0 to 1
+    float trim;         // the spark's quick hand: the torque over the map's, 0.3 to 1.35
+
+    void reset()
+    {
+        integral = 0.0f;
+        bypass = 0.0f;
+        trim = 1.0f;
+    }
+
+    // A cold engine's fast idle, rpm over the warm idle: up to `rise` (500; a diesel's 250) as the coolant (K) is
+    // colder than 328 K
+    float coldIdle(float coolant, float rise)
+    {
+        return rise * fminf(fmaxf((328.0f - coolant) / 75.0f, 0.0f), 1.0f);
+    }
+
+    // The idle speed: the base (the layout's, and the trim), the cam's share of overlap over 0.35 (the reference's cam
+    // dial, 0 to 1), the coolant
+    void speed(float base, float cam, float coolant, float rise)
+    {
+        target = fmaxf(base + 350.0f * fmaxf(cam - 0.35f, 0.0f) / 0.65f + coldIdle(coolant, rise), 350.0f);
+    }
+
+    // Every 16 samples: the speed, the pedal, whether driven (a car's idle spark), seconds since the pedal lifted, the
+    // actual speed (for the dashpot) and whether a gasoline engine (a diesel has no dashpot)
+    void control(EcuSpeed* s, float pedal, bool driven, float sinceLift, bool gasoline, float d16)
+    {
+        const float ie = (target - s->avg) * 0.001f;
+        const float iep = (target - s->avg - 0.2f * s->rate) * 0.001f;
+        if (s->avg < target + 500.0f)
+            integral = fminf(fmaxf(integral + 0.5f * ie * d16, 0.0f), 1.0f);
+        bypass = fminf(fmaxf(integral + 0.5f * iep, 0.0f), 1.0f);
+        const float tr = 1.0f + 1.6f * (target - s->avg - 0.08f * s->rate) * 0.001f;
+        if (driven)
+            trim = pedal < 0.02f ? fminf(fmaxf(tr, 0.3f), 1.35f) : fminf(fmaxf(tr, 1.0f), 1.35f);
+        else
+            trim = s->avg < target + 450.0f ? fminf(fmaxf(tr, 0.55f), 1.35f) : 1.0f;
+        if (gasoline)
+            bypass = fmaxf(bypass, 0.35f * fminf(fmaxf((s->rpm - target - 400.0f) * 0.001f, 0.0f), 1.0f) * expf(-sinceLift / 0.6f));
+    }
+};
+
+module SpeedDriver
+{
+    float integral;     // the pedal's integral
+    float trimInt;      // the spark trim's
+    float pedal;        // what it asks
+    bool holding;       // it is near enough to trim the spark
+    float trim;         // its spark trim (1: none)
+
+    void reset()
+    {
+        integral = 0.0f;
+        trimInt = 0.0f;
+        pedal = 0.0f;
+        holding = false;
+        trim = 1.0f;
+    }
+
+    // Every 16 samples: the speed asked (rpm; at or under the idle + 120, nothing), the speed, the idle speed, the most
+    // pedal (1)
+    void control(float want, EcuSpeed* s, float idle, float most, float d16)
+    {
+        holding = false;
+        trim = 1.0f;
+        if (want <= idle + 120.0f)
+        {
+            integral *= 0.98f;
+            trimInt *= 0.95f;
+            pedal = 0.0f;
+            return;
+        }
+        const float e = (want - s->avg) * 0.001f;
+        const float ep = (want - s->avg - 0.15f * s->rate) * 0.001f;
+        const float pp = 0.15f * ep + 1.5f * fmaxf(ep - 0.7f, 0.0f);
+        const float raw = pp + integral;
+        if (fabsf(e) < 2.0f && !(raw > most && e > 0.0f) && !(raw < 0.0f && e < 0.0f))
+            integral = fminf(fmaxf(integral + 0.8f * e * d16, 0.0f), most);
+        pedal = fminf(fmaxf(pp + integral, 0.0f), most);
+        if (s->avg > want - 400.0f)
+        {
+            holding = true;
+            trimInt = fminf(fmaxf(trimInt + 0.004f * (want - s->avg) * d16, -0.4f), 0.3f);
+            trim = fminf(fmaxf(1.0f - 2.5f * (s->avg + 0.05f * s->rate - want) * 0.001f + trimInt, 0.1f), 1.3f);
+        }
+        else
+            trimInt *= 0.95f;
+    }
+};

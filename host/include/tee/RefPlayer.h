@@ -79,7 +79,13 @@ namespace tee
             double minimum = 0.0;      // its fminus::range
             double maximum = 0.0;
             double defaultValue = 0.0; // its fminus::default
+            // FMinus's own description of it, its attributes among them: the Program's, valid while the player lives.
+            const fminus::Program::Parameter* parameter = nullptr;
         };
+
+        // The text compiled after program.fm's last line: tee_ref_start, tee_ref_process and tee_ref_stop, each
+        // marked [[clang::nonblocking]] and calling the Voice's method of that name.
+        static const char* shims() noexcept;
 
         // Compiles the reference in `options.directory` and makes it ready to play: instances made, pointers set,
         // dials at their defaults, Shared's init run. nullptr, with `errors` holding FMinus's messages (or what is

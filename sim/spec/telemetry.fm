@@ -1,0 +1,74 @@
+// spec/telemetry.fm: what the machine does (tel). The simulator writes it during Engine::process; the host reads it
+// after each call. Values are as they stand at the call's end, unless a label says mean or peak. Nested as the Spec is,
+// each section appended to by its Spec section's owner; a label and a quantity make a gauge.
+#pragma once
+
+enum
+{
+    STATE_OFF = 0,         // tel.engine.state
+    STATE_CRANKING = 1,
+    STATE_RUNNING = 2,
+    STATE_RUNNING_DOWN = 3,
+};
+
+enum
+{
+    FLAG_LIMITER = 1,      // tel.engine.flags: the rev limiter (a diesel: its governor) holds it
+    FLAG_FUEL_CUT = 2,     // the fuel is cut while it runs (the limiter, the overrun, a shift)
+};
+
+module EngineTel
+{
+    int state [[fminus::range(0, 3)]] [[ui::label("State")]] [[ui::choices("Off", "Cranking", "Running", "Running down")]];
+    float speed [[ui::label("Speed")]] [[ui::quantity("rotation")]];
+    float redline [[ui::label("Redline")]] [[ui::quantity("rotation")]];
+    float idle [[ui::label("Idle")]] [[ui::quantity("rotation")]];
+    float throttle [[ui::label("Throttle plate")]] [[ui::quantity("fraction")]];
+    float manifold [[ui::label("Manifold")]] [[ui::quantity("pressure")]] [[ui::help("Absolute")]];
+    float coolant [[ui::label("Coolant")]] [[ui::quantity("temperature")]];
+    float oilPressure [[ui::label("Oil pressure")]] [[ui::quantity("pressure")]] [[ui::help("Over the air outside")]];
+    int flags [[ui::label("Flags")]] [[ui::help("FLAG_LIMITER, FLAG_FUEL_CUT")]];
+    float cycle [[ui::label("Cycle")]] [[ui::quantity("fraction")]]
+        [[ui::help("A slowed copy of the crank's cycle, 0 to 1, for pictures that turn with it")]];
+    float crank [[ui::label("Crank")]] [[ui::quantity("angle")]] [[ui::help("0 to 2160: a common cycle of every layout")]];
+};
+
+module BoostTel
+{
+    float pressure [[ui::label("Boost")]] [[ui::quantity("pressure")]] [[ui::help("Over the air outside")]];
+};
+
+module ExhaustTel
+{
+    float portTemperature [[ui::label("Exhaust gas")]] [[ui::quantity("temperature")]]
+        [[ui::help("At the ports, smoothed")]];
+};
+
+module EcuTel
+{
+    float knockRetard [[ui::label("Knock retard")]] [[ui::quantity("angle")]]
+        [[ui::help("The spark taken back for knock")]];
+};
+
+module CarTel
+{
+    float speed [[ui::label("Speed")]] [[ui::quantity("speed")]];
+    int gear [[ui::label("Gear")]] [[ui::help("-1 R, 0 N, 1 up")]];
+    float brake [[ui::label("Brake")]] [[ui::quantity("fraction")]];
+    float clutch [[ui::label("Clutch")]] [[ui::quantity("fraction")]];
+};
+
+module SoundTel
+{
+    float peak [[ui::label("Peak")]] [[ui::quantity("fraction")]] [[ui::help("The call's largest sample, either channel")]];
+};
+
+module Telemetry
+{
+    EngineTel engine [[ui::label("Engine")]];
+    BoostTel boost [[ui::label("Boost")]];
+    ExhaustTel exhaust [[ui::label("Exhaust")]];
+    EcuTel ecu [[ui::label("ECU")]];
+    CarTel car [[ui::label("Vehicle")]];
+    SoundTel sound [[ui::label("Sound")]];
+};

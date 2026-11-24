@@ -115,7 +115,9 @@ namespace tee::ui
         display,                                                                 // a display (PanelSpec::displays)
         keyboard,                                                                // an instrument's keys, played
         shader,                                                                  // a program's own fragment shader
-        area                                                                     // draws nothing: the pointer's alone
+        area,                                                                    // draws nothing: the pointer's alone
+        widget                                                                   // J2: a widget its owner makes (plot, gauge,
+                                                                                 // map, curve, bar, lamp): GuiNode::widget
     };
     enum class GuiAlign : uint8_t { stretch, start, center, end };              // across a container's direction
     enum class GuiJustify : uint8_t { start, center, end, between, around };    // along it, when there is room
@@ -213,6 +215,9 @@ namespace tee::ui
         PanelPointer pointer;                               // what the pointer writes over it (area, shader, a
                                                             // container, a label, a display)
         int shader = -1;                                    // a shader's program (PanelSpec::shaders)
+        std::string widget;                                 // J2: a widget's element (plot, gauge, map, curve, bar, lamp);
+                                                            // `file` is what it shows (a Spec path, a telemetry name) and
+                                                            // `text` its label=
         bool operator==(const GuiNode&) const = default;
     };
 

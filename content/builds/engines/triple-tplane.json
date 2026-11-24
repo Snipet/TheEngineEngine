@@ -1,0 +1,52 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Inline three, T-plane crank",
+  "notes": "The outer pins opposed, the middle at 90 degrees: 1-3-2, 180-270-270.",
+  "spec": {
+    "engine": {
+      "custom": true,
+      "cylinders": 3,
+      "bankAngle": [
+        0.0
+      ],
+      "bank": [
+        0,
+        0,
+        0
+      ],
+      "pin": [
+        0,
+        270,
+        180
+      ],
+      "fireRev": [
+        0,
+        1,
+        0
+      ],
+      "place": [
+        0.0,
+        0.1,
+        0.2
+      ]
+    }
+  },
+  "expect": {
+    "firingOrder": [
+      1,
+      3,
+      2
+    ],
+    "firingIntervals": [
+      180,
+      270,
+      270
+    ],
+    "firingAngles": [
+      0.0,
+      450.0,
+      180.0
+    ]
+  }
+}

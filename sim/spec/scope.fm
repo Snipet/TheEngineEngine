@@ -1,0 +1,24 @@
+// spec/scope.fm: the taps, too big to copy every block (scope). The simulator fills it while ctl.scopeOn is set, and
+// costs nothing when it is not; the host copies it only while a view asks.
+//
+// Cylinder 1's pressure, volume and both valves' lifts for each crank degree of its last whole cycle (720 degrees; a
+// rotary's face 1080), and the pressure along the pipes. Packages append their own taps.
+#pragma once
+
+enum
+{
+    SCOPE_DEGREES = 1080,      // the longest cycle, in degrees
+    SCOPE_PIPE_POINTS = 64,
+};
+
+module Scope
+{
+    int degrees [[ui::label("Degrees")]] [[ui::help("How many of the arrays' entries the cycle fills (720, 1080)")]];
+    int cycles [[ui::label("Cycles")]] [[ui::help("Counts the whole cycles written: it moves when a new one is in")]];
+    float pressure [[ui::label("Cylinder pressure")]] [[ui::quantity("pressure")]] [SCOPE_DEGREES];
+    float volume [[ui::label("Cylinder volume")]] [[ui::quantity("volume")]] [SCOPE_DEGREES];
+    float liftExhaust [[ui::label("Exhaust lift")]] [[ui::quantity("fraction")]] [SCOPE_DEGREES];
+    float liftIntake [[ui::label("Intake lift")]] [[ui::quantity("fraction")]] [SCOPE_DEGREES];
+    int pipePoints [[ui::label("Pipe points")]];
+    float pipePressure [[ui::label("Pipe pressure")]] [[ui::quantity("pressure")]] [SCOPE_PIPE_POINTS];
+};

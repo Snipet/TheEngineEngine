@@ -1,0 +1,11 @@
+{
+  "format": "tee-build", "version": 1,
+  "name": "Race cam",
+  "notes": "A race pushrod V8's: 310 at the seat, 270 at 1 mm, 0.60 in lift, 106 lobe separation, a fat lobe; stiff springs and a titanium-light valve.",
+  "spec": { "valve": {
+    "model": "Lab", "valves": 2, "train": "Pushrod", "portIn": 1.6, "portEx": 1.7,
+    "inDurSeat": 310, "inDur1mm": 270, "inLift": 0.0152, "inCentre": 104, "inFat": 0.65,
+    "exDurSeat": 316, "exDur1mm": 276, "exLift": 0.0150, "exCentre": 108, "exFat": 0.65,
+    "springRate": 87500, "springPreload": 890, "valveMass": 0.085
+  } }
+}
