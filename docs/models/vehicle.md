@@ -63,6 +63,18 @@ stands above the engine's own work by more than 2 %, the crank's float rounding 
 on: no stop, no refused block, the crank under 3000 rad/s); with the two fixes taken out, the latter fails on X-007's
 corner with the automatic and the CVT.
 
+## A launch under traction control (finding X-011)
+
+At walking pace the wheels' speed for 10 % slip is the engine's under where the automatic clutch closes, so the ECU's
+engine-side traction control cannot hold it alone. `Vehicle::launch`: with traction control on (`Car::traction`, from
+spec.ecu) and the car's own clutch (the paddles' robotised one, a dual clutch; not a dog box, an automatic or the
+driver's pedal), from a standstill and until the clutch has locked for 0.1 s, the clutch passes at most what the driven
+tyres push at the target slip (each one's peak force now times S(target); an open axle twice its weaker wheel's),
+through the gear, trimmed by the slip's error (proportional 3, integral 12 up and 20 down: past the peak the force
+falls, so it comes down faster); the automatic clutch's closing with the revs narrows to a stall guard 50 to 250 rpm
+over the idle. Measured (`vehicle.launch.*`, reference V8 in the coupe, first, floored, 2 s): wet, 5.51 m/s and mean slip
+0.081 against 4.31 and 1.0 without traction control; dry, 9.33 and 0.086 against 6.99 and 1.0.
+
 ## Tyres
 
 `Fx = Fz mu S(kappa)`, with `S` Pacejka's Magic Formula `sin(C atan(B k - E (B k - atan(B k))))` scaled to a peak of 1
