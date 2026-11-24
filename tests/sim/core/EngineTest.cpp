@@ -4,6 +4,7 @@
 #include "Engine.h"
 #include "Presets.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 
@@ -181,4 +182,27 @@ TEST_CASE("a sixteen-cylinder build starts, runs and stops; its cost", "[core][e
     CHECK(idle < 1500.0);
     CHECK(b.tel("engine.state") == 0);
     CHECK(b.tel("engine.speed") == 0.0);
+}
+
+TEST_CASE("custom on with the Spec's own geometry (every pin 0) refuses it and runs the layout dial's (X-001)", "[core][engine][custom]")
+{
+    Bench b("default");
+    std::string error;
+    REQUIRE(b.player().setSpec("engine.custom", 1, error));
+    b.start();
+    const double idle = b.tel("engine.speed") * kRpm;
+    b.ctl().throttle = 1.0f;
+    double top = 0;
+    b.play(2.0, [&] { top = std::max(top, b.tel("engine.speed") * kRpm); });
+    std::printf("custom on, the default geometry: refused %d, %d cylinders, idling at %.0f rpm, %.0f within 2 s at full throttle\n",
+                int(b.tel("engine.layoutRefused")), int(b.tel("engine.cylinders")), idle, top);
+    CHECK(b.tel("engine.layoutRefused") == 1.0);
+    CHECK(b.tel("engine.cylinders") == 8.0);
+    CHECK(idle > 500.0);
+    CHECK(top > 4000.0);
+    // and a geometry that runs is not refused
+    Bench g("engines/ref-12-v8-cross");
+    g.start();
+    CHECK(g.tel("engine.layoutRefused") == 0.0);
+    CHECK(g.tel("engine.speed") * kRpm > 500.0);
 }

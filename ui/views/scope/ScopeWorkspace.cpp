@@ -27,7 +27,7 @@ namespace tee::ui
         constexpr int kMaxDegrees = 1080;                   // sim/spec/scope.fm SCOPE_DEGREES
         constexpr int kTail = 8192;                         // the shell keeps 8192 (shell/player/Boxes.h)
         constexpr double kDefaultRate = 48000.0;            // until telemetry says the device's rate ("sound.rate")
-        constexpr float kBarH = 58.0f, kGap = 10.0f;
+        constexpr float kBarH = 58.0f, kGap = 10.0f, kKnockH = 30.0f;
 
         // The round number at or above v (1, 2, 2.5, 5 times a power of ten), and at or below.
         double niceUp(double v)
@@ -157,6 +157,13 @@ namespace tee::ui
                     const float xs[2] = { x, x }, ys[2] = { a.y + 18.0f, a.bottom() - 26.0f };
                     dashedPolyline(cv, xs, ys, 2, 1.25f, p.value, 4.0f, 3.0f);
                     cv.text("SPARK", x - 4.0f, a.y + 18.0f, look::kCaps, p.text, funkgui::Align::right);
+                }
+                if (std::isfinite(f_.halfBurn))
+                {
+                    const float x = cv.snapX(pl.pxX(f_.halfBurn));
+                    const float xs[2] = { x, x }, ys[2] = { a.y + 18.0f, a.bottom() - 26.0f };
+                    dashedPolyline(cv, xs, ys, 2, 1.25f, p.label, 2.0f, 3.0f);
+                    cv.text("50% BURNED", x + 4.0f, a.bottom() - 44.0f, look::kCaps, p.text);
                 }
                 // The valves' events in numbers, at the top right (where the expansion has fallen away).
                 cv.text(("EVO " + fmt("%.0f", f_.evo) + "  EVC " + fmt("%.0f", f_.evc)).c_str(), a.right() - 6.0f, a.y + 22.0f,
@@ -292,6 +299,16 @@ namespace tee::ui
         ++revision_;
     }
 
+    void ScopeWorkspace::readCombustion()
+    {
+        f_.halfBurn = ctx_.live.get("ecu.halfBurn");
+        f_.knocks = ctx_.live.get("ecu.knock");
+        const int n = std::clamp(f_.cylinders > 0 ? f_.cylinders : 0, 0, 16);
+        f_.knockRetard.assign(static_cast<std::size_t>(n), kNaN);
+        for (int c = 0; c < n; ++c)
+            f_.knockRetard[static_cast<std::size_t>(c)] = ctx_.live.get("ecu.knockByCylinder[" + std::to_string(c) + "]");
+    }
+
     double ScopeWorkspace::rpmNow() const
     {
         const double w = ctx_.live.get("engine.speed");
@@ -361,6 +378,7 @@ namespace tee::ui
         f_.firingHz = f_.firingOrder > 0.0 && std::isfinite(f_.rpm) ? f_.rpm / 60.0 * f_.firingOrder : kNaN;
         const double adv = ctx_.live.get("ecu.advance");
         f_.sparkDeg = adv;
+        readCombustion();
         f_.peakPa = f_.peakDeg = f_.ivo = f_.ivc = f_.evo = f_.evc = kNaN;
         if (n <= 0)
             return;
@@ -400,6 +418,17 @@ namespace tee::ui
     {
         const int n = ctx_.telemetry.outputTail(tail_.data(), kTail);
         const double rpm = rpmNow();
+        {
+            const std::vector<double> was = f_.knockRetard;
+            const double hb = f_.halfBurn, kn = f_.knocks;
+            readCombustion();
+            const auto same = [](double a, double b) { return (std::isnan(a) && std::isnan(b)) || a == b; };
+            bool moved = !same(hb, f_.halfBurn) || !same(kn, f_.knocks) || was.size() != f_.knockRetard.size();
+            for (std::size_t i = 0; !moved && i < was.size(); ++i)
+                moved = !same(was[i], f_.knockRetard[i]);
+            if (moved)
+                ++revision_;
+        }
         if (std::isfinite(rpm) != std::isfinite(f_.rpm) || std::fabs(rpm - f_.rpm) > 0.5)
         {
             f_.rpm = rpm;
@@ -839,8 +868,12 @@ namespace tee::ui
         for (int i = 0; i < 6; ++i)
         {
             const Rect& r = cells_[static_cast<std::size_t>(i)];
-            plots[i]->setPlace(r.isEmpty() ? Rect{} : Rect{ r.x + 8.0f, r.y + 8.0f, r.w - 14.0f, r.h - 12.0f }, !r.isEmpty());
+            // The pressure's panel keeps a strip at its foot for the knock by cylinder.
+            const float foot = i == 0 ? kKnockH : 0.0f;
+            plots[i]->setPlace(r.isEmpty() ? Rect{} : Rect{ r.x + 8.0f, r.y + 8.0f, r.w - 14.0f, r.h - 12.0f - foot }, !r.isEmpty());
         }
+        const Rect& pr = cells_[0];
+        knock_ = pr.isEmpty() ? Rect{} : Rect{ pr.x + 12.0f, pr.bottom() - kKnockH - 2.0f, pr.w - 24.0f, kKnockH - 4.0f };
     }
 
     void ScopeWorkspace::choosePlot(int i)
@@ -895,6 +928,43 @@ namespace tee::ui
         for (const Rect& r : cells_)
             if (!r.isEmpty())
                 c.rrect(r.x, r.y, r.w, r.h, look::kRadius, p.panel, 1.0f, p.edge);
+        drawKnock(c, p);
+    }
+
+    // Under the pressure: each cylinder's knock retard, a box a cylinder with its number and its degrees (amber and
+    // filled while it retards: the number says it too), and the count of knocks heard.
+    void ScopeWorkspace::drawKnock(Canvas& c, const look::Palette& p) const
+    {
+        if (knock_.isEmpty())
+            return;
+        const float cy = knock_.centreY();
+        c.text("KNOCK DEG", knock_.x, c.capCentreTop(cy, look::kCaps), look::kCaps, p.label);
+        const std::string count = "COUNT " + fmt("%.0f", f_.knocks);
+        const float cw = c.textWidth(count.c_str(), look::kCaps);
+        c.text(count.c_str(), knock_.right(), c.capCentreTop(cy, look::kCaps), look::kCaps,
+               std::isfinite(f_.knocks) && f_.knocks > 0.0 ? p.warning : p.label, funkgui::Align::right);
+        const int n = static_cast<int>(f_.knockRetard.size());
+        const float x0 = knock_.x + 78.0f, room = knock_.right() - cw - 14.0f - x0;
+        if (n == 0)
+        {
+            c.text("-", x0, c.capCentreTop(cy, look::kUnit), look::kUnit, p.dim);
+            return;
+        }
+        const float w = std::min(46.0f, (room - (n - 1) * 3.0f) / n);
+        for (int i = 0; i < n; ++i)
+        {
+            const double v = f_.knockRetard[static_cast<std::size_t>(i)];
+            const bool on = std::isfinite(v) && v > 0.05;
+            const Rect b{ x0 + i * (w + 3.0f), knock_.y + 2.0f, w, knock_.h - 4.0f };
+            c.rrect(b.x, b.y, b.w, b.h, 3.0f, on ? p.over(p.warning, 0.35f) : p.raised, 1.0f, on ? p.warning : p.edge);
+            // Wide: "3: 1.3"; narrow: the degrees while it retards (a decimal), else the cylinder's number; absent: "-".
+            const std::string t = !std::isfinite(v) ? (w >= 40.0f ? std::to_string(i + 1) + ": -" : std::string("-"))
+                                : w >= 40.0f       ? std::to_string(i + 1) + ": " + fmt("%.1f", v)
+                                : on               ? fmt("%.1f", v)
+                                                   : std::to_string(i + 1);
+            c.text(t.c_str(), b.centreX(), c.capCentreTop(b.centreY(), look::kUnit), look::kUnit, on ? p.value : p.label,
+                   funkgui::Align::centre);
+        }
     }
 
     std::unique_ptr<Workspace> makeScopeWorkspace(WorkspaceContext& c) { return std::make_unique<ScopeWorkspace>(c); }

@@ -1,0 +1,55 @@
+{
+ "format": "tee-engine-scenario/1",
+ "name": "m-cam-drive",
+ "description": "Bench at 3000 rpm: the reference's chain, gear-driven cams from 7 s, a toothed belt from 12 s.",
+ "seconds": 16,
+ "events": [
+  {
+   "t": 0.0,
+   "spec": {
+    "sound.view": 3,
+    "voices.model": 1
+   },
+   "ctl": {
+    "mode": 0,
+    "lever": 0,
+    "clutch": 0,
+    "brake": 0,
+    "throttle": 0,
+    "ignition": 1
+   }
+  },
+  {
+   "t": 0.25,
+   "ctl": {
+    "ignition": 2
+   }
+  },
+  {
+   "t": 2.0,
+   "ctl": {
+    "ignition": 1
+   }
+  },
+  {
+   "t": 2.5,
+   "ctl": {
+    "holdSpeed": 314
+   }
+  },
+  {
+   "t": 7.0,
+   "spec": {
+    "voices.timing": 2
+   },
+   "note": "gear-driven cams"
+  },
+  {
+   "t": 12.0,
+   "spec": {
+    "voices.timing": 1
+   },
+   "note": "toothed belt"
+  }
+ ]
+}

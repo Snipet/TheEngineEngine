@@ -27,7 +27,7 @@ and `...Auto` (no: `sim/ecu/settings.fm`, awaiting K3b), `boost.duty` (demo), `e
 `frontWeight`, `track`, `cdA`, `clA`, `aeroBalance`, `tyreRadius`, `gearbox`, `gears`, `ratio[i]`, `gearEfficiency`,
 `brake*`, `centre*`/`front*`/`rear*` diff fields, `env.surface` (VehSpec; no: starred defaults until integration).
 Telemetry: `engine.speed/state/manifold/throttle/redline/flags`, `car.speed/gear`, `ecu.knockRetard` exist;
-`ecu.lambda`, `exhaust.lambda`, `ecu.knock`, `ecu.flags` (advance: the demo's `ecu.advance`) (ECU_FLAG_*), `car.accel`, `car.flags`,
+the integrated ECU's `ecu.lambda` (sensor), `ecu.lambdaTarget`, `ecu.knock` (count), `ecu.knockByCylinder[i]`, `ecu.load`, `ecu.advance`, `ecu.flags` (on the branch since 5b3a1c8) (ECU_FLAG_*), `car.accel`, `car.flags`,
 `car.wheelLoad[i]`, `wheelSlip[i]`, `wheelTorque[i]` do not (names I chose: one line each in the tables). Scope:
 `bakeCount`, `bakedNx/Ny/X/Y`, `baked` (in scope.fm; not in the demo: BAKE says so).
 **Wanted**: U1 gave the run's partial trace (DYNO draws it), steps, dwell and gear (SWEEP/STEPS, gear passed), saveText
