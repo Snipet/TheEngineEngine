@@ -1,8 +1,11 @@
 # Port quality by class of head, from bench flow (card N3, taken over from N1; started 20:15 by `date -u`)
 
 *What `valve.portIn` (card E's `sim/valvetrain/area.fm`) should be for each class of head, read off published flow-bench
-figures. Every archetype uses the defaults, 1.35 intake and 1.5 exhaust (N1's causes §B). Not yet complete: the
-two-valve pushrod rows have figures; the overhead-cam and four-valve rows do not yet.*
+figures. P's builds already set three classes (read 20:19 by `date -u`): the older pushrods (5.7 small block, 3.8 V6,
+7.4 big block, the supercharged 6.2) and the VR6 1.15 / 1.3; the tuned four-valves (3.2 six, flat-plane V8s, two-stage
+2.0, V10, V12) 1.65 / 1.8, the rally five 1.75 / 1.9; every other archetype the defaults 1.35 / 1.5. (N1's causes §B
+"all on the defaults" predates them.) Not yet complete: the two-valve pushrod rows have figures; the overhead-cam and
+four-valve rows do not yet.*
 
 ## The conversion
 
@@ -25,13 +28,15 @@ tables at 0.100 to 0.600 in), LS Engine DIY's head guides; to be checked against
 Vortec or L98 (older small-block) table was found; those heads flow less than the LS1's (a smaller port, a 1.94 in
 valve), so a carburettor-era small block sits at or under q 1.18.
 
-What follows for the archetypes (proposed to P, not yet run as a table):
-- the 5.7 small block (carburettor-like) and the 3.8 V6 (a 1990s pushrod): portIn 1.15 to 1.2, not 1.35;
-- the 7.0 pushrod V8 (LS7): 1.6;
-- the 7.4 big block: an older rectangular port, not looked up.
+What follows for the archetypes:
+- the 5.7 small block (carburettor-like), the 3.8 V6 and the big block: P's 1.15 agrees with the LS1's 1.18 (older
+  heads flow less); no change;
+- the 7.0 pushrod V8 (LS7): its build has the default 1.35; its CNC-ported head reads about 1.6 (unconfirmed: the
+  bench's pressure was not stated). Raising it would make the 7.0, already +10 % over, stronger: held until the
+  breathing model's own causes (N1: the runner's ram) are settled, and the LS7 figure confirmed.
 
-Measured sensitivity on the flat six (present tip, 4750 rpm): portIn 1.35 → 1.15 takes 3 % of the torque at the
-runner's tune, 7 % at 6050 rpm (causes.md N3-3's table).
+Measured sensitivity on the flat six (4750 rpm): portIn 1.35 → 1.15 takes 3 % of the torque at the runner's tune, 7 % at
+6050 rpm (causes.md N3-3's table).
 
 ## Still to do
 
