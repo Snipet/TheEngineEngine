@@ -269,8 +269,9 @@ arch(slug="tractor-15-inline-six", runner=0.4, name="Highway tractor 15 L", geo=
      cam=(232, 200, 14.0, 112, 232, 200, 13.0, 112), train="Rocker", redline=2250, idle=700, diesel=True,
      boost=dict(kind="Turbo", target=2.6, spring=2.0, vanes=True), car="tractor", timing="Gears",
      compressionBrake=True,
-     notes="A 15 L straight-six truck diesel: 137 x 169 mm (14.9 L), 17:1, one variable-vane turbo; its compression "
-           "brake is left off until the ECU can switch it (the X15 kind: 298 to 451 kW, 1966 to 2779 N m at 900 to 1000 rpm, governed at 1900 to 2100, "
+     notes="A 15 L straight-six truck diesel: 137 x 169 mm (14.9 L), 17:1, one variable-vane turbo whose vanes "
+           "close as an exhaust brake on the overrun (the compression brake is left off: it cannot be switched yet) "
+           "(the X15 kind: 298 to 451 kW, 1966 to 2779 N m at 900 to 1000 rpm, governed at 1900 to 2100, "
            "idle 600 to 700; cummins.com, international.com); its limiter is the governed no-load speed, 2250 rpm, some 12 % over the rated 2000. In a 36 t tractor-trailer, eighteen speeds.")
 # ---- the second batch ----
 arch(slug="three-cylinder-10-turbo", runner=0.3, convK=17.0, name="1.0 L three-cylinder turbo", geo="ref-04-inline-3", layout="Inline 3",
@@ -321,7 +322,7 @@ arch(slug="pickup-diesel-67-inline-six", runner=0.35, name="6.7 L straight-six t
      boost=dict(kind="Turbo", target=2.0, spring=1.6, vanes=True), car="heavy-pickup", timing="Gears",
      compressionBrake=True,
      notes="A 6.7 L straight-six turbo diesel, 107 x 124 mm (6690 cc), 16.2:1, pushrods and four valves, a "
-           "variable-vane turbo (engines of the kind: 260 to 310 kW at 2800 to 3000 rpm, 1000 "
+           "variable-vane turbo that doubles as an exhaust brake (engines of the kind: 260 to 310 kW at 2800 to 3000 rpm, 1000 "
            "to 1460 N m at 1600 to 1800; makers' figures). In a heavy-duty pickup, six-speed automatic.")
 arch(slug="twin-turbo-hot-vee-v8-40", runner=0.25, name="Twin-turbo 4.0 L hot-vee V8", geo="ref-12-v8-cross",
      layout="V8 crossplane", bore=86.0, stroke=86.0, rod=143.0, cr=10.5, valves=4, dIn=33.0, dEx=28.0,
@@ -375,6 +376,47 @@ arch(slug="flat-plane-v8-39-twin-turbo", runner=0.25, name="Flat-plane 3.9 L V8,
            "mid-engined coupe, seven-speed dual clutch.")
 
 
+# ---- valve springs ------------------------------------------------------------------------------------------------
+# Rate (N/m) and preload (N) that put the intake valves' float speed (tel.valve.floatSpeed, card E's
+# w_float = sqrt((F0 + k L) / (m |L''|))) 10 % past each engine's limiter: measured with a trial spring of
+# 40 kN/m over 250 N, then both scaled by (1.10 x redline / float speed)^2 (w goes as the square root of the force).
+# Floored at a soft road spring (25 kN/m over 150 N). The pushrod engines need two to four times a real spring
+# (the 7.0 L: 228 kN/m, some 1300 lb/in, where the real one runs some 340): the float model reads pessimistic for a
+# pushrod train (reported to card E). The two-stage cam's figures are stage A's: its B profile is sharper, so it
+# carries half as much again.
+SPRINGS = {
+    "air-cooled-flat-six-36": (48500, 303),
+    "big-block-74-pushrod-v8": (123900, 774),
+    "big-bore-70-pushrod-v8": (228000, 1425),
+    "boxer-four-turbo-unequal": (28100, 175),
+    "diesel-20-common-rail": (9000, 56),
+    "economy-four-15": (17400, 109),
+    "flat-plane-v8-39-twin-turbo": (29200, 183),
+    "flat-plane-v8-45": (38900, 243),
+    "four-cam-v8-50": (30000, 187),
+    "hot-hatch-16-16v": (24300, 152),
+    "inline-five-turbo-rally": (23600, 147),
+    "kei-660-triple-turbo": (25000, 156),
+    "pickup-diesel-67-inline-six": (19900, 124),
+    "pushrod-v6-38": (88100, 550),
+    "small-block-57-carb": (119700, 748),
+    "straight-six-32-high-rev": (35900, 225),
+    "straight-six-twin-turbo-30": (20200, 126),
+    "supercharged-v8-62": (174500, 1090),
+    "three-cylinder-10-turbo": (16000, 100),
+    "tractor-15-inline-six": (8300, 52),
+    "turbo-four-20-gdi": (25000, 156),
+    "twin-cam-roadster-18": (25900, 162),
+    "twin-turbo-hot-vee-v8-40": (22900, 143),
+    "two-stage-cam-20": (54500, 340),
+    "v10-52": (34000, 213),
+    "v12-65": (41700, 260),
+    "v6-35-na": (24300, 152),
+    "v6-35-twin-turbo-pickup": (18600, 117),
+    "vr6-28": (37900, 237),
+}
+
+
 # ---- writing them ------------------------------------------------------------------------------------------------
 def build(a):
     e = {"layout": a["layout"], "custom": True, "compression": a["cr"]}
@@ -407,6 +449,10 @@ def build(a):
                  exDurSeat=de, exDur1mm=d1e, exLift=le / 1000.0, exCentre=ce)
         if "phase" in a:
             v["inPhaseRange"], v["exPhaseRange"] = a["phase"]
+        if a["slug"] in SPRINGS:
+            k, f0 = SPRINGS[a["slug"]]
+            m = 1.5 if "stages" in a else 1.0
+            v["springRate"], v["springPreload"] = max(k * m, 25000.0), max(f0 * m, 150.0)
         if "stages" in a:
             v["stages"] = "On"
             v.update(a["stages"])
@@ -463,6 +509,11 @@ def build(a):
     t = {"model": "Maps", "timing": 0, "pops": 0.1, "starter": True,
          "limiter.kind": a.get("limiter", "Fuel cut"), "limiter.speed": e["redlineSpeed"],
          "idle.speed": round(a["idle"] * RPM, 3)}
+    if a.get("compressionBrake"):
+        # the exhaust brake by the turbine's vanes, armed on the dash (card D2's); the compression brake (valve.auxOn)
+        # stays off, see above
+        t["exhaustBrake"] = "Turbine vanes"
+        t["exBrakeSwitch"] = "On"
     if a.get("antiLag"):
         t["antiLag.on"] = True
         t["launch.on"] = True
