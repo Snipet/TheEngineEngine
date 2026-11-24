@@ -7,6 +7,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <chrono>
+#include <cstdlib>
 #include <filesystem>
 #include <memory>
 #include <string>
@@ -33,7 +34,9 @@ namespace tee::test::core
                 return kept;
             }
             EnginePlayer::Options options;
-            options.directory = std::filesystem::path(TEE_SOURCE_DIR) / "sim";
+            // (TEE_CORE_SIM: another sim/ tree, for a bisect; the source tree's otherwise)
+            const char* other = std::getenv("TEE_CORE_SIM");
+            options.directory = other != nullptr ? std::filesystem::path(other) : std::filesystem::path(TEE_SOURCE_DIR) / "sim";
             options.sampleRate = kRate;
             std::string errors;
             EnginePlayer* p = EnginePlayer::create(options, errors).release();
