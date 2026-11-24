@@ -1,0 +1,115 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Turbo six (combo)",
+  "notes": "A 3 L inline six with one turbo, in an all-wheel-drive coupe. Package X's (tests/sim/combo): every model switch at 0, the custom engine's geometry filled in to match the layout but off, so that a test can switch each package on over the same machine.",
+  "spec": {
+    "engine": {
+      "layout": "Inline 6",
+      "displacement": 0.003,
+      "boreStroke": 0.8798,
+      "compression": 9.5,
+      "flywheel": 0.2,
+      "idleTrim": 0,
+      "redlineTrim": 0,
+      "rough": 0,
+      "benchLoad": 0.3,
+      "custom": false,
+      "cylinders": 6,
+      "bankAngle": [
+        0.0
+      ],
+      "bank": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "pin": [
+        0,
+        240,
+        120,
+        120,
+        240,
+        0
+      ],
+      "fireRev": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        1
+      ],
+      "place": [
+        0.0,
+        0.1,
+        0.2,
+        0.3,
+        0.4,
+        0.5
+      ]
+    },
+    "valve": {
+      "cam": 0.9999
+    },
+    "boost": {
+      "kind": "Turbo",
+      "level": 0.6,
+      "size": 0.5,
+      "blowOff": 1
+    },
+    "exhaust": {
+      "headers": 0.3247,
+      "pipe": 0.6325,
+      "crossover": 0,
+      "muffler": 0
+    },
+    "fuel": {
+      "kind": "Gasoline"
+    },
+    "ecu": {
+      "timing": 0,
+      "pops": 0,
+      "starter": true
+    },
+    "car": {
+      "mass": 1550,
+      "drive": "All",
+      "wheelbase": 2.67,
+      "cgHeight": 0.5,
+      "frontWeight": 0.55,
+      "track": 1.55,
+      "cdA": 0.68,
+      "clA": 0.1,
+      "aeroBalance": 0.4,
+      "tyre": "Sport",
+      "tyreRadius": 0.33,
+      "wheelInertia": 1.3,
+      "brakeDecel": 1.25,
+      "brakeBias": 0.63,
+      "abs": true,
+      "gearbox": "Dual clutch",
+      "gears": 6,
+      "autoGearing": true,
+      "shiftTime": 0.12,
+      "centreSplit": 0.35,
+      "centreKSpeed": 40,
+      "rearPreload": 60,
+      "rearKTorque": 0.2
+    },
+    "env": {
+      "temperature": 293.15
+    },
+    "sound": {
+      "view": "Exhaust",
+      "distance": 0.2994,
+      "room": 0.6176,
+      "level": 2.8467,
+      "intake": 0.5,
+      "mechanical": 0.6503
+    }
+  }
+}

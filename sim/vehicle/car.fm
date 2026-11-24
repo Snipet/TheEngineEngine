@@ -28,10 +28,16 @@
 // and VehEnv when their revs move) and ctl (the counters, the buttons, the mode, the strip, the dyno) through the
 // pointers setup was given, and writes its fields of tel.car. `v`, `gear`, `shiftCut` and `lastButtons` are kept as the
 // model has them, for Engine and the ECU. Model 0, the default, runs the reference's code above, untouched.
+//
+// card B2: with spec.car.model 1 and spec.car.kind Motorcycle, the motorcycle (bike.fm, docs/models/bike.md) in place
+// of m1: Car hands drive16, step and road to its `Bike b1` the same way, copies spec.car's fields it reads (card I's
+// and card B2's block) into b1's VehSpec and BikeSpec, and fills tel.car's fields (card I's and card B2's). lashStrike()
+// is the driveline's play closing this sample (rad/s at the rear wheel; 0 otherwise), for the mechanical voices.
 #pragma once
 #include "lib/onepole.fm"
 #include "lib/biquad.fm"
 #include "vehicle.fm"
+#include "bike.fm"
 
 module Car
 {
@@ -97,6 +103,9 @@ module Car
     CarTel* ct;
     int csRev;          // their revs as m1 last took them (-1: never)
     int esRev;
+    // card B2: the motorcycle (spec.car.model 1, spec.car.kind Motorcycle)
+    Bike b1;
+    int bikeOn;         // 1: b1 drives in place of m1
 
     float rnd()
     {
@@ -118,6 +127,8 @@ module Car
         esRev = -1;
         model = 0;
         m1.setup(rate);
+        bikeOn = 0;
+        b1.setup(rate);
         rs = 31337;
         rdHp.set(110.0f, rate);
         rdLp.set(700.0f, rate);
@@ -331,6 +342,45 @@ module Car
             p->rearLocked = cs->rearLocked;
             p->liveAxle = cs->liveAxle;
             p->proTree = cs->proTree;
+            // card B2: what the motorcycle reads of card I's fields, and its own
+            VehSpec* q = &b1.spec;
+            q->mass = cs->mass;
+            q->wheelbase = cs->wheelbase;
+            q->cgHeight = cs->cgHeight;
+            q->frontWeight = cs->frontWeight;
+            q->cdA = cs->cdA;
+            q->tyreRadius = cs->tyreRadius;
+            q->wheelInertia = cs->wheelInertia;
+            q->brakeDecel = cs->brakeDecel;
+            q->brakeBias = cs->brakeBias;
+            q->abs = cs->abs;
+            q->gears = cs->gears;
+            q->autoGearing = cs->autoGearing;
+            for (int i = 0; i < MAX_GEARS; ++i)
+                q->ratio[i] = cs->ratio[i];
+            q->clutchTorque = cs->clutchTorque;
+            q->gearEfficiency = cs->gearEfficiency;
+            q->proTree = cs->proTree;
+            BikeSpec* k = &b1.bs;
+            k->riderMass = cs->riderMass;
+            k->riderHeight = cs->riderHeight;
+            k->riderForward = cs->riderForward;
+            k->tuck = cs->tuck;
+            k->cdATuck = cs->cdATuck;
+            k->pitchInertia = cs->pitchInertia;
+            k->bikeTyre = cs->bikeTyre;
+            k->primaryRatio = cs->primaryRatio;
+            k->frontSprocket = cs->frontSprocket;
+            k->rearSprocket = cs->rearSprocket;
+            k->chainEfficiency = cs->chainEfficiency;
+            k->chainLash = cs->chainLash;
+            k->slipper = cs->slipper;
+            k->slipperTorque = cs->slipperTorque;
+            k->quickshifter = cs->quickshifter;
+            k->quickshiftCut = cs->quickshiftCut;
+            k->autoBlip = cs->autoBlip;
+            k->wheelieControl = cs->wheelieControl;
+            k->wheelieAngle = cs->wheelieAngle;
             esRev = -1;     // (apply below, once)
         }
         if (es->rev != esRev)
@@ -338,12 +388,20 @@ module Car
             esRev = es->rev;
             VehEnv* e = &m1.env;
             e->temperature = es->temperature;
-            // (spec.env's density, surface and grade are the lead's to add: until then the defaults)
-            e->density = 1.2f;
-            e->surface = 0;
-            e->surfaceLeft = -1;
-            e->grade = 0.0f;
+            // the air's density from its pressure and temperature; the road's surface each side and its grade
+            e->density = es->pressure / (287.05f * fmaxf(es->temperature, 150.0f));
+            e->surface = es->surface;
+            e->surfaceLeft = es->surfaceLeft;
+            e->grade = es->grade;
             m1.apply();
+            // card B2: the motorcycle's environment is the same
+            VehEnv* eb = &b1.env;
+            eb->temperature = e->temperature;
+            eb->density = e->density;
+            eb->surface = e->surface;
+            eb->surfaceLeft = e->surfaceLeft;
+            eb->grade = e->grade;
+            b1.apply();
         }
     }
 
@@ -395,6 +453,67 @@ module Car
         return ped;
     }
 
+    // card B2: every 16 samples with the motorcycle, as vehicle16 is with m1
+    float bike16(float d16, float jEngine, float peak, float redRpm, float clutch, float brake, int buttons, float gas,
+                 float idleRpm, float rpmAvg)
+    {
+        takeSpec();
+        b1.configure(jEngine, peak, idleRpm * 0.10471976f, redRpm * 0.10471976f);
+        b1.control(d16, gas, clutch, brake, cc->handbrake, cc->shiftUp, cc->shiftDown, cc->mode, cc->strip);
+        lastButtons = buttons;
+        gear = b1.box.gear;
+        v = (float)b1.v;
+        shiftCut = b1.cutWanted();
+        const float ped = b1.pedalOut(gas, rpmAvg * 0.10471976f);
+        VehTel* s = &b1.tel;
+        ct->accel = s->accel;
+        ct->distance = s->distance;
+        ct->shift = s->shift;
+        for (int i = 0; i < MAX_WHEELS; ++i)
+        {
+            ct->wheelSpeed[i] = s->wheelSpeed[i];
+            ct->wheelSlip[i] = s->wheelSlip[i];
+            ct->wheelLoad[i] = s->wheelLoad[i];
+            ct->wheelForce[i] = s->wheelForce[i];
+            ct->wheelTorque[i] = s->wheelTorque[i];
+            ct->wheelTemp[i] = s->wheelTemp[i];
+        }
+        ct->clutchSlip = s->clutchSlip;
+        ct->shaftTorque = s->shaftTorque;
+        ct->wheelPower = s->wheelPower;
+        ct->pitch = s->pitch;
+        ct->flags = s->flags;
+        ct->ratio = s->ratio;
+        ct->stripState = s->stripState;
+        ct->tReaction = s->tReaction;
+        ct->t60 = s->t60;
+        ct->t330 = s->t330;
+        ct->t660 = s->t660;
+        ct->v660 = s->v660;
+        ct->t1000 = s->t1000;
+        ct->t1320 = s->t1320;
+        ct->v1320 = s->v1320;
+        BikeTel* b = &b1.btel;
+        ct->liftAngle = b->liftAngle;
+        ct->liftRate = b->liftRate;
+        ct->bikeFlags = b->bikeFlags;
+        ct->chainLash = b->chainLash;
+        ct->chainLashSpeed = b->chainLashSpeed;
+        ct->chainLashSide = b->chainLashSide;
+        ct->backTorque = b->backTorque;
+        ct->slipperSlip = b->slipperSlip;
+        ct->quickshifts = b->quickshifts;
+        ct->blips = b->blips;
+        ct->wheelieLimit = b->wheelieLimit;
+        return ped;
+    }
+
+    // card B2: the driveline's play closing this sample, rad/s at the rear wheel (0: not this sample)
+    float lashStrike()
+    {
+        return model == 1 && bikeOn != 0 ? b1.lashStrike() : 0.0f;
+    }
+
     bool moving()
     {
         return fabsf(v) > 0.05f;
@@ -409,6 +528,12 @@ module Car
     // crank's speed after it.
     float step(float w, float tq, float dt)
     {
+        if (model == 1 && bikeOn != 0)
+        {
+            const float wb = b1.step(w, tq, dt);
+            v = (float)b1.v;
+            return wb;
+        }
         if (model == 1)
         {
             const float wn = m1.step(w, tq, dt);
@@ -508,6 +633,8 @@ module Car
     // spin or slide
     float road(float kSq)
     {
+        if (model == 1 && bikeOn != 0)
+            return b1.road();
         if (model == 1)
             return m1.road();
         const float s = fminf(fabsf(v) / 30.0f, 1.6f);
@@ -565,13 +692,16 @@ module Car
                   float clutch, float brake, int lever, int buttons, float gas, float rpm, float idleRpm, float rpmAvg)
     {
         const int want = cs->model == 1 ? 1 : 0;
-        if (want != model || (model == 1 && lastDrive != drive))
+        const int wantBike = want == 1 && cs->kind == 2 ? 1 : 0;
+        if (want != model || (model == 1 && lastDrive != drive) || wantBike != bikeOn)
         {
             // a change of model (or, in model 1, of DRIVE): at rest, in neutral. (Model 0's own change of DRIVE is the
             // reference's, in followLever.)
             model = want;
+            bikeOn = wantBike;
             reset();
             m1.reset();
+            b1.reset();
             lastDrive = want == 1 ? drive : 0;
             lastLever = 0;
             lastPos = 0;
@@ -580,6 +710,8 @@ module Car
             csRev = -1;
             esRev = -1;
         }
+        if (model == 1 && bikeOn != 0)
+            return bike16(d16, jEngine, peak, redRpm, clutch, brake, buttons, gas, idleRpm, rpmAvg);
         if (model == 1)
             return vehicle16(d16, jEngine, peak, redRpm, clutch, brake, lever, buttons, gas, idleRpm, rpmAvg);
         followLever(drive, lever);
@@ -652,31 +784,45 @@ module Car
     // its model where it has them ----
     float drivenSlip()      // the driven wheels' slip ratio (0: rolling)
     {
-        return 0.0f;
+        if (model == 1 && bikeOn != 0)
+            return b1.slip();                                   // (card B2: the rear tyre's)
+        return cs->model == 1 ? m1.slip() : 0.0f;
     }
 
     float speedNow()        // m/s
     {
-        return v;
+        if (model == 1 && bikeOn != 0)
+            return (float)b1.v;                                 // (card B2)
+        return cs->model == 1 ? m1.speedNow() : v;
     }
 
     int gearNow()           // -1 R, 0 N, 1 up
     {
-        return gear;
+        if (model == 1 && bikeOn != 0)
+            return b1.box.gear;                                 // (card B2)
+        return cs->model == 1 ? m1.gearNow() : gear;
     }
 
     int upshifts()          // a counter: one more at each upshift begun
     {
+        if (model == 1 && bikeOn != 0)
+            return b1.box.upshifts;                             // (card B2)
         return 0;
     }
 
     float cutRequest()      // s: how long the ECU is asked to cut the spark or fuel (0: none)
     {
+        if (model == 1 && bikeOn != 0)
+            return shiftCut ? b1.bs.quickshiftCut : 0.0f;     // (card B2: the quickshifter's)
+        if (cs->model == 1)
+            return m1.cutWanted() ? m1.spec.shiftTime : 0.0f;
         return shiftCut ? 0.05f : 0.0f;
     }
 
     float blipRequest()     // rad/s: the crank speed a downshift's blip asks for (0: none)
     {
-        return 0.0f;
+        if (model == 1 && bikeOn != 0)
+            return b1.blipSpeed();                              // (card B2: the auto-blipper's)
+        return cs->model == 1 ? m1.blipSpeed() : 0.0f;
     }
 };

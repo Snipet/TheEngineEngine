@@ -38,6 +38,7 @@ its place and its default that does nothing) has added the custom engine, the en
 | `ecu/ecu.fm` | `Ecu` | H | the state, the speed it goes by, idle and redline, the driver, idle valve, trim, limiter, cuts, stall |
 | `vehicle/car.fm` | `Car` | I | clutch, gearbox, driveline, tyres, the road; the shifter and paddles; the road's sound |
 | `sound/extras.fm` | `Extras` | wave 2 | intake mouth, valvetrain, injectors, block, knock, clatter, pump, chain, starter |
+| `sound/voices.fm` and `sound/*.fm` | `Voices` (`GearVoice`, `DriveVoice`, `FanVoice`, `FuelVoice`, `ValveVoice`, `GateVoice`, `StarterVoice`) | M | spec.voices.model 1: gear whine and rattle, final drive, belts and cam drive, fan, fuel pump and direct injectors, lifters and float, wastegate, starter (docs/models/voices.md) |
 | `listen/listen.fm`, `listen/hall.fm` | `Listen`, `Hall` | wave 2 | views, distance, room, compressor, limiter, ceiling, resampler |
 | `lib/` | `OnePole`, `DcBlock`, `Biquad`, `Noise` | anyone (read) | filters; the reference's white noise |
 
@@ -99,9 +100,11 @@ What replaces the reference's keys (`Engine::readControls`, `Engine::ignition`, 
 | `ignition` 2, start | while stopped or running down (state 0 or 3): `keyDown(36, 1)`, the reference's start key: it cranks (without a starter it runs at its idle at once). Held: started again if it stops |
 | `ignition` leaves 2 | `keyUp(36)`; still cranking (state 1): state 0, the starter stops |
 | `ignition` 0, off | cranking or running: state 3, running down (`ecu.stallT` 0, `ecu.offArmed` false) |
+| `ignition` rising from off (voices.model 1 only) | the engine renders from the key's turn, so the fuel pump's prime is heard before a start; and it keeps rendering while `ex.busy()` (card M) |
 | `holdSpeed` > 0 (bench, running) | the key driver (`Ecu::driver`) aimed at that speed: a key of the pitch whose firing it is (`set.keys` 1), velocity 1 |
 | `mode` MODE_DYNO_ENGINE (running) | on the bench, the absorber (`Dyno`) holds `dynoSpeed`, or sweeps from where the crank is at `dynoRate` (rad/s^2); the bench's load dial and the inertia it adds rest meanwhile |
-| `handbrake`, `steer`, `buttons`, `strip`, `bakeMaps` | not read yet |
+| `buttons` (`BTN_LAUNCH`, `BTN_NITROUS`), `bakeMaps` | ecu.model 1 only: launch control, nitrous; a bake of the maps into the Scope on each increase |
+| `handbrake`, `steer`, `buttons`' other bits, `strip` | not read yet |
 
 `set.hold` is 1e9 s: the engine never switches itself off. `Engine` renders only while it sounds: from a start until
 `audible()` is false (stopped, the room rung out, the car at rest) with the key up; otherwise it writes silence and the
@@ -119,7 +122,7 @@ torque: the gases' less friction and a supercharger's drag over some 0.1 s; on t
 `gasTorque` (the gases', its 20 ms mean), `firing` (Hz: firings a second, every cylinder's), `power`, `imep` (gross), `pmep`, `fmep`, `bmep` (4 pi torque / displacement), `veManifold`,
 `veAir` (the fresh charge at intake closing over the swept volume at those densities), `peakPressure`, `pistonSpeed`,
 `ripple` (the crank's speed's spread over the last cycle), `dynoTorque`, `dynoSpeed`; a custom engine's only:
-`inertiaTorque`, `shake1`, `shake2` (N), `rock1`, `rock2` (N m); `cylinders`; and the arrays (readable by path, not
+`inertiaTorque`, `shake1`, `shake2` (N), `rock1`, `rock2` (N m); `cylinders`; `layoutRefused` (1: a custom geometry was refused); `oilTemperature` (K); and the arrays (readable by path, not
 gauges) `firingAngle[c]` (degrees after cylinder 1's at which it fires), `cylPeak[c]`, `cylPeakAngle[c]`.
 
 Scope (`Engine::scopeTap`, each sample while `ctl.scopeOn`): cylinder 1's `pressure` (Pa), `volume` (m^3),
@@ -127,7 +130,9 @@ Scope (`Engine::scopeTap`, each sample while `ctl.scopeOn`): cylinder 1's `press
 round (`degrees`: 720, a rotary's 1080; `cycles` counts them), and `pipePressure[0..7]` (Pa absolute: the first header,
 collector pipe, main pipe, chamber, tube, chamber, tail, and the plenum) at that moment. It only reads: the sound is the
 same with it on (the null test's `views` runs with it on). Off, it costs one test a sample. The baked maps' fields
-(`bakeCount` ...) are card H's to fill.
+(`bakeCount`, `bakedNx[7]`, `bakedNy[7]`, `bakedX[7][16]`, `bakedY[7][16]`, `baked[7][256]`: map k's z[i][j] at
+`baked[k][i * 16 + j]`, k in maps.fm's order spark, lambda, boost, camIn, camEx, pedal, lift) are filled by ecu.model
+1 on each `ctl.bakeMaps` increase.
 
 ## The order of work
 
@@ -143,7 +148,7 @@ engine's change at the fade's quiet, where `configure` runs; `Listen::block`; th
 3. Each cylinder: its angle; `cyl[c].step(a, dDeg, dt, vt.areaEx(c, a), vt.areaIn(c, a), bE, zE, tH, bI, zI, tAir)`
    with its valves' areas and its header's and runner's arriving waves and impedances (a rotary's faces sharing a
    port solved together first: `exhaustFlowAt`, `intakeFlowAt`, with the areas too); its flows summed per port into `qe`, `qi`; its torque into the total; its gas into `exh.eSum`,
-   `exh.mSum`; `work.sample(c, a, p, v)`; at intake closing `work.trapped(...)` and, if `vt.active(c)`, `comb.charge(...)`; its events to `ex.*Click` (the
+   `exh.mSum`; `work.sample(c, a, p, v)`; `comb.sample(cy, c, dt)` (card H's model 1: nothing at the defaults); at intake closing `work.trapped(...)` and, if `vt.active(c)`, `comb.charge(...)`; its events to `ex.*Click` (the
    valves' louder while they float: `vt.clatter`); then `scopeTap()` while scopeOn.
 4. `exh.step(qe, np)`: the ports' waves in, the collectors, the merge, the converter, the muffler, the tails out
    (`exh.outL`, `exh.outR`), every pipe written.
@@ -184,7 +189,9 @@ above 0) set the swept volume and the bore/stroke ratio the dial glides to (`bsO
 `Cylinder::setup` gets (`rodRatio`, else 3.3); the redline is `redlineSpeed` or 25 m/s of piston speed (13.5 a diesel)
 in `boreStroke`; a rotary's port fields override the cam dial's in `valves()` (`customPorts`). A change to any of
 these fields is seen through `geometry()` (a weighted sum of them, 0 while custom is off) and made as a new layout is:
-at a start while stopped, under the fade while running. With custom off nothing of this is read:
+at a start while stopped, under the fade while running. A geometry whose cylinders fire together cannot run (the
+Spec's own defaults, every pin 0, are one): it is refused, the layout dial's table runs with the custom sizes, masses
+and friction (`geo.fromTable`), and `tel.engine.layoutRefused` says so. With custom off nothing of this is read:
 `tests/sim/core/EngineTest.cpp` plays a build with every custom field filled in and custom off, to the bit the same.
 
 ## The modules, their functions and what they read
@@ -287,20 +294,47 @@ aspUse, float smTb, float smTs, float rate)`; every 16: `flowRate()`, `gas(float
 float vAir)`, `flow16()`, `bands()`; each sample: `read()` first, `step(float* qe, int np)` after the cylinders.
 Inside: `node`, `coneNoise`, `flowBand`, `jetBand`, `backFc`.
 
-**Combustion** (`combustion/combustion.fm`): `droop`, `dilution[MAX_CYL]`. Pointers: `Noise*`, `Ecu*`, `Heat*`,
-`Layout*`, `Pop*`. `void setup(float rate, Noise* noise, Ecu* ecu, Heat* heat, Layout* lay, Pop* pops)`; `void
+**Combustion** (`combustion/combustion.fm`; card H): `droop`, `dilution[MAX_CYL]`; fuel.model 1's `one` (Charge1),
+`gas[MAX_CYL]` (EndGas), `diesel` (DieselFields). Pointers: `Noise*`, `Ecu*`, `Heat*`, `Layout*`, `Pop*`, `FuelSpec*`.
+`void setup(float rate, Noise* noise, Ecu* ecu, Heat* heat, Layout* lay, Pop* pops, FuelSpec* fuel)` in init; `void
 charge(Cylinder* cy, int ci, int fuelUse, float pPlenum, float rpm, float smCR, float crBs, float burnK, float pops,
-float rough, float timing)` at a cylinder's intake closing (and, at a start without a starter, for the cylinders between
-intake closing and spark). Reads the Ecu's cuts, trim, throttle, bypass and speeds, the Heat's temperatures. Writes
-Heat's `heatJ`, Ecu's `kRet` (its knock sensor hears the knock), fires `Pop`s.
+float rough, float timing)` at a cylinder's intake closing (and, at a start without a starter, for the cylinders
+between intake closing and spark); `void sample(Cylinder* cy, int c, float dt)` each sample after cylinder c's `step`
+(returns at once under fuel.model 0 and ecu.model 0). Under both models 0 it is the reference's `charge` and
+`chargeDiesel`, bit for bit. Under either model 1 a gasoline charge is `charge1`: the firing (`Ecu::one.fire`: burn,
+fuel cut, spark cut, overrun), the spark and lambda from `Ecu1` (ecu.model 1) or the reference's; the heat from
+`Charge1` and the fuel's row (fuel.model 1) or the reference's; knock from `EndGas` ticked every 4 samples in `sample`
+(fuel.model 1, running only) or the reference's rule; the unburned fuel and air into `Ecu::one.account`, whose bangs
+`sample` fires in the `Pop`s. A diesel under fuel.model 1 takes `spec.fuel`'s `soiAdd`, `pilot`, `rail`, `overFuel`.
+Reads the cylinder's `p`, `t`, `m`, `mInert`, `ang`, `burnAt`, `xPrev` (the burned share), the Ecu's cuts, trim,
+throttle, bypass, speeds and `one`, the Heat's temperatures; writes the cylinder's charge (`qTot`, `sparkAt`,
+`burnDur`, `knock`, `cBurn`, `beta`, `dur2`; under fuel.model 1, at a knock or pre-ignition during the cycle, its
+`qTot`, `knock`, and for pre-ignition `burnAt`, `xPrev`, `burnDur`, `sparkAt`), Heat's `heatJ`, the Ecu's `kRet`, its
+knock control, its sensors (`sensor`, `meter`, `watch`), and fires `Pop`s.
 
-**Ecu** (`ecu/ecu.fm`): `state`, `idleRpm`, `redRpm`, `rpmAvg`, `rpmRate`, `throttle`, `pedal`, `bypass`, `trim`,
-`fuelCut`, `limiting`, `dfco`, `starterOn`, `kRet`, the key list (`keyCount`, `keyNote`, `keyVel`: the reference's key
-interface, which `Engine::ignition` and holdSpeed drive). `float targetOf(...)`; every 16: `void sense(float d16,
-float rpm, float idleBase, float idleDial, float cam, float coldIdle, float redBase, float redlineDial)` first, `float
-driver(float d16, int drive, float bend, float bendRange, int keys, int rotary, int n)`, `bool control(float d16, float
-pedIn, int drive, float modwheel, float pressure, float rpm, int fuelUse, float warm, bool shiftCut, int gear, float
-clutch, float omega)`. Engine's `keyDown`, `keyUp`, `ignition` and `configure` write its state too.
+**Ecu** (`ecu/ecu.fm`; card H): `state`, `idleRpm`, `redRpm`, `rpmAvg`, `rpmRate`, `throttle`, `pedal`, `bypass`,
+`trim`, `fuelCut`, `limiting`, `dfco`, `starterOn`, `kRet`, the key list (`keyCount`, `keyNote`, `keyVel`: the
+reference's key interface, which `Engine::ignition` and holdSpeed drive); ecu.model 1's `one` (Ecu1: `sim/ecu/ecu1.fm`
+and the files beside it), `in1`, `sensor` (the lambda sensor), `meter` (the injectors), `watch` (cylinder 1's burn).
+`void setup(float d16, EcuSpec* spec, FuelSpec* fuel, Controls* ctl, EcuTel* tel, Scope* scope, Heat* heat)` in init;
+`float targetOf(...)`; every 16: `void sense(float d16, float rpm, float idleBase, float idleDial, float cam, float
+coldIdle, float redBase, float redlineDial)` first, `float driver(float d16, int drive, float bend, float bendRange,
+int keys, int rotary, int n)`, `bool control(float d16, float pedIn, int drive, float modwheel, float pressure, float
+rpm, int fuelUse, float warm, bool shiftCut, int gear, float clutch, float omega, float manifold, float carSpeed,
+float gasT)` (manifold: `intk.pPlenum`; carSpeed: the car's, m/s, 0 on the bench; gasT: `exh.tPort`, where the bangs
+light). `control` runs the reference's (`control0`) and, under ecu.model 1, `control1` over it: Ecu1's plate, idle
+valve, trim, idle speed, limiter, overrun and cut flags in the reference's fields, `kRet` the most of its per-cylinder
+retards, `tel.ecu`'s fields, and a bake into the Scope on each `ctl.bakeMaps` increase. The state machine, the key and
+the held-speed driver stay the reference's under both models. The hooks (card H fills them; each called only under its
+caller's model 1): `float camTarget(int cam)` (0 intake advance, 1 exhaust retard, crank degrees; -1 the valvetrain's
+own schedule: under ecu.model 0, or that cam's map on its formula), `float liftCommand()` (the lift map's, 1 on its
+formula; 0 under ecu.model 0), `float boostTarget()` (Pa over the air; -1 the boost section's own level: under ecu.model
+0 or the boost map on its formula), `float antiLag()`, `float nitrous()` (0 or 1), `void vehicle(float drivenSlip,
+float speed, int gear, int upshifts, float cutRequest, float blipRequest)` (every 16 samples, driven, ecu.model 1:
+stored for the next `control1`; the blip's crank speed made a plate as the reference's paddle blip does). Combustion
+fires the reference's `Pop`s for the bangs until G's `popAt` is filled, and reads `Exhaust::gasTemperature(0)` (through
+`control`'s gasT). Engine's `keyDown`,
+`keyUp`, `ignition` and `configure` write its state too.
 
 **Car** (`vehicle/car.fm`): the clutch, gearbox, driveline, tyres, the car's speed `v`, `gear`, the shifter and the
 paddles (`lastButtons`, `shiftCut`, ...). `void setup(float rate, CarSpec* carSpec, EnvSpec* envSpec, Controls*
@@ -317,9 +351,13 @@ pedal with a downshift's blip in it. `step`, `road` go to `m1`; `followLever` do
 reference's code, untouched (the null test).
 
 **Extras** (`sound/extras.fm`): the engine bay's sources; its own `Noise noise` (Boost draws from it too). `setup(float
-rate, float boxHz)`; `setClatter(int diesel, float swept)` and `pumpOn` in configure; the clicks at the cylinders'
-events; `void tick(float qThrottle, float dropRatio, float crankHz, float dpdt)` then `void tickStarter(float crankHz,
-float starterOn)` each sample; out: `intake`, `mech`, `block`, `comb`, `starter`.
+rate, float boxHz, VoicesSpec* voices)`; `setClatter(int diesel, float swept)` and `pumpOn` in configure; the clicks at
+the cylinders' events (`valveClick(amp, intake)`: 1 at intake closing, 0 at exhaust closing); `void tick(float qThrottle,
+float dropRatio, float crankHz, float dpdt)` then `void tickStarter(float crankHz, float starterOn)` each sample;
+`control16(...)` last in `Engine::control16`, only while `spec.voices.model` is 1 or the voices glide out (card M: the
+car's gearbox, the torque, the coolant, the key, the boost and gate, `vt.clatter`); `busy()` (the pump's prime, a fan,
+the starter running down); out: `intake`, `mech`, `block`, `comb`, `starter`, and with model 1 each voice's own:
+`vo.gearbox`, `vo.axle`, `vo.front`, `vo.head`, `vo.tank`, `vo.gateOut`, `vo.starter` (docs/models/voices.md).
 
 **Listen** (`listen/listen.fm`): `setup(float rate, float hostRate)`, `release()`, `resetPaths()`; per part `block(int
 v, float intakeK, float mechK, float distance, float room, float levelDb, int asp, float exTrim, float gainNorm, int

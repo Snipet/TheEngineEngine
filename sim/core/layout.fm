@@ -97,6 +97,27 @@ module LayoutGeom
         finish();
     }
 
+    // The geometry the engine's own table runs (when a custom geometry was refused): n cylinders whose firing angles
+    // in Engine's convention are fire[c] (a cylinder sits at crank theta + fire[c] in its cycle), all upright, a pitch
+    // of 0.1 m apart
+    void fromTable(int count, float cycle, int isRotary, const float* fire0)
+    {
+        n = count;
+        cyc = cycle;
+        rotary = isRotary != 0 ? count / 3 : 0;
+        ok = 1;
+        same = 0;
+        for (int c = 0; c < n; ++c)
+        {
+            tdc[c] = wrap(-fire0[c], 360.0f);
+            fire[c] = wrap(cyc - fire0[c], cyc);
+            axisX[c] = 0.0f;
+            axisY[c] = 1.0f;
+            z[c] = 0.1f * (float)c;
+        }
+        finish();
+    }
+
     // Firing angles relative to cylinder 1's, the order, the intervals; places about the crank's middle
     void finish()
     {

@@ -111,6 +111,7 @@ namespace tee::ui
 
     private:
         void update();
+        static double interpolate(const DynoTrace& c, double speed);   // a curve's torque at a speed
         DynoTrace curveFor(double compression, double boost, const std::string& name) const;
         double fieldOr(std::string_view path, double fallback) const;
 

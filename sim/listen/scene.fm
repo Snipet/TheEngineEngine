@@ -1,0 +1,683 @@
+// listen/scene.fm: the sources in their places on the car, and a listener who hears each by its paths (module Scene,
+// package L). Model 1 of spec.sound; Listen (listen.fm) calls it when spec.sound.model is 1.
+//
+// Each thing that sounds is a signal and a place on the car: each tailpipe, the intake's mouth, the engine bay (in two
+// parts: what the bonnet and the cabin shade, the valvetrain's and the block's rattle and the headers' walls; and what
+// carries round the car, the turbo's or the supercharger's whine, the starter, the combustion's knock and clatter), the
+// tyres, the wind, the driveline. The car's frame: x across to its right, y along it forward, z up, the rear bumper's
+// middle on the ground at the origin (the reference's). Where the engine sits (front, mid, rear: spec.sound.enginePlace)
+// moves the bay, the intake and the driver's seat.
+//
+// The listener is a place and a facing, on or off the car, and two ears: outside, the reference's ORTF pair (two
+// cardioids 17 cm apart, each turned 55 degrees out), because a recording of a car is made with a pair of microphones
+// and that is what the reference's views have been heard as; in the cabin, a head: two ears 16 cm apart, each hearing
+// what is on the far side of the head later (by the path) and duller (its shadow: a low-pass falling to 1.5 kHz, 3 dB
+// down, for a source straight across).
+//
+// Each source reaches each ear by its direct path, and both ears by its image in the ground (the path off the road, at
+// the ears' midpoint): three taps a source. A tap is a read of the source's delay line at a fractional delay (third-order
+// Lagrange) that moves every sample, gliding to where the geometry puts it each 16 samples: so a car that moves past the
+// listener bends in pitch by exactly the rate its path shortens (Doppler, for free), and nothing steps when it moves.
+// Along each tap: the level falls as 1 / r; the air takes the highs (ISO 9613-1 at 20 C and 50 % humidity: about
+// 0.1 dB a metre at 8 kHz, as a one-pole low-pass whose loss at 8 kHz is that); the source's directivity (a tailpipe's
+// highs beam along its axis as a piston's do, the reference's own law; the bay's sounds come out of its openings, up,
+// forward and down, and the cabin shades them behind it); the microphone's pattern or the head's shadow. The ground
+// reflects with a coefficient (asphalt 0.9, grass 0.6 and duller, or none): the direct and the reflected paths add into
+// a comb whose notches sit at odd multiples of c / (2 (r_image - r_direct)), and move as the car and the listener do.
+//
+// In the cabin the outside sources come through the body, not the air: the exhaust's, the tyres' and the driveline's
+// through the floor (the reference's 260 Hz low-pass), the intake's and the bay's through the firewall (its 800 Hz),
+// the wind's through the glass (a 1.2 kHz one-pole, 6 dB an octave as the mass law has it); an open window lets each in
+// past its filter (half its level). The engine's shaking reaches the cabin through the mounts: listen/cabin.fm.
+//
+// A change of camera (or the trackside camera moving on to its next spot) never clicks: a second listener is set up at
+// the new place and the two are crossfaded over 250 ms at equal power (the scene is crossfaded, not the samples).
+//
+// What it leaves out: diffraction round the body (the shading is a pattern, not a solved field); the ground's own
+// impedance by angle (a constant reflection, grass's duller); reflections off the car's own panels; the wind's
+// turbulence at the microphones.
+#pragma once
+#include "../lib/onepole.fm"
+#include "../lib/biquad.fm"
+#include "../lib/noise.fm"
+
+enum
+{
+    LS_TAIL0 = 0,       // the tailpipes (the exhaust's two channels)
+    LS_TAIL1 = 1,
+    LS_INTAKE = 2,      // the intake's mouth
+    LS_BAY = 3,         // the engine bay, shaded: valvetrain, block, headers' walls
+    LS_BAYOPEN = 4,     // the engine bay, carrying: turbo or supercharger, starter, combustion
+    LS_TYRES = 5,       // the tyres on the road (and the driveline's clunk the reference puts with them)
+    LS_WIND = 6,        // the wind on the body
+    LS_DRIVE = 7,       // the gearbox and differential (package M's voices; silent until they exist)
+    LS_N = 8,
+    LS_TAPS = 24,       // LS_N * 3: ear 0, ear 1, the ground's image
+    LS_CAP = 32768,     // each source's delay line (samples): 0.34 s at 96 kHz, 117 m of path
+    LS_MASK = 32767
+};
+
+// how much of the bay's sound gets out behind the cabin, at the least (fitted: docs/models/listen.md)
+const float LS_SHADE_BAY = 0.1f;
+const float LS_SHADE_INTAKE = 0.3f;
+const float LS_SHADE_OPEN = 0.7f;
+
+enum
+{
+    CAM_TAILPIPE = 0,   // the reference's five views, as places
+    CAM_REAR = 1,
+    CAM_SIDE = 2,
+    CAM_ENGINE = 3,
+    CAM_DRIVER = 4,
+    CAM_TRACKSIDE = 5,  // beside the road; the car passes
+    CAM_CHASE = 6,      // behind the car, moving with it
+    CAM_COUNT = 7
+};
+
+// One listener: its place in the car's frame, its facing, its ears, and each tap's delay, gain and filter as they glide
+module SceneView
+{
+    int on;
+    int fresh;          // 1: the next part jumps to its targets (a new listener)
+    int cam;
+    float lx;           // the place (m, the car's frame) and the facing (unit, level)
+    float ly;
+    float lz;
+    float fx;
+    float fy;
+    int head;           // 0: the ORTF pair; 1: a head
+    int cabin;          // 1: inside the car, the sources through the body
+    float d[LS_TAPS];   // each tap's delay (samples) and gain now, and their steps a sample
+    float dS[LS_TAPS];
+    float g[LS_TAPS];
+    float gS[LS_TAPS];
+    float fc[LS_TAPS];  // each tap's low-pass, as last set
+    OnePole f[LS_TAPS];
+    float range;        // the listener's distance from the car's middle (m) and the path's slope (samples a sample) of
+    float slope;        // tailpipe 0's ear 0, for the telemetry
+};
+
+module Scene
+{
+    float rate;
+    float* buf;         // each source's delay line, LS_CAP long, one after the other
+    int w;
+    float sx[LS_N];     // each source's place (m, the car's frame)
+    float sy[LS_N];
+    float sz[LS_N];
+    int act[LS_N];      // 1: it sounds (taps read)
+    float in[LS_N];     // this sample's signals
+    int bus[LS_N];      // in the cabin, its way in: 0 the floor, 1 the firewall, 2 the glass
+    float tau[LS_N];    // and how much of it gets through there, besides the filter (fitted to the CABIN view)
+    SceneView vw[2];
+    int cur;            // the listener heard; the other is fading out while fade < 1
+    float fade;
+    float fadeStep;
+    float xA;           // this part's crossfade: the gains at its start and their step a sample (new, old)
+    float xB;
+    float xAS;
+    float xBS;
+    int camUse;
+    float rS;           // the camera's distance (m), gliding at a walking listener's speed at most
+    float rel;          // trackside: where the listener stands along the road, from the car's rear bumper (m)
+    float tailD;        // the tailpipes' bore (m)
+    int pipes;
+    int place;          // the engine's: 0 front, 1 mid, 2 rear
+    float groundR;      // the ground's reflection, and its low-pass (Hz)
+    float groundFc;
+    float windows;      // 0 shut to 1 open
+    float speed;        // the car's (m/s, forward)
+    // the cabin's ways in, each ear: the floor, the firewall, the glass
+    Biquad floorF[2];
+    Biquad wallF[2];
+    OnePole glassF[2];
+    float bus0[2];      // this sample's sums at each ear: outside (or straight in), the floor, the firewall, the glass
+    float bus1[2];
+    float bus2[2];
+    float bus3[2];
+    float outL;
+    float outR;
+    // the wind
+    Noise noise;
+    OnePole windHp;
+    OnePole windLp;
+    float windK;
+    float windStrength; // the wind's level at 40 m/s (Listen sets it)
+    int windOff;        // 1: no wind (a test's)
+    int ready;
+
+    void setup(float rateIn)
+    {
+        rate = rateIn;
+        buf = calloc(LS_N * LS_CAP, sizeof(float));
+        for (int i = 0; i < 2; ++i)
+        {
+            floorF[i].setLowpass(260.0f, 0.8f, rate);
+            wallF[i].setLowpass(800.0f, 0.7f, rate);
+            glassF[i].set(1200.0f, rate);
+        }
+        windHp.set(250.0f, rate);
+        windLp.set(2500.0f, rate);
+        noise.rs = 90210;
+        fadeStep = 16.0f / (0.25f * rate);
+        ready = 1;
+        reset();
+    }
+
+    void release()
+    {
+        if (ready != 0)
+            free(buf);
+        ready = 0;
+    }
+
+    // Everything at rest: the lines empty, no listener yet (the next part places one without a fade)
+    void reset()
+    {
+        for (int i = 0; i < LS_N * LS_CAP; ++i)
+            buf[i] = 0.0f;
+        w = 0;
+        for (int k = 0; k < 2; ++k)
+        {
+            vw[k].on = 0;
+            for (int j = 0; j < LS_TAPS; ++j)
+                vw[k].f[j].clear();
+        }
+        cur = 0;
+        fade = 1.0f;
+        camUse = -1;
+        rS = -1.0f;
+        rel = 30.0f;
+        for (int i = 0; i < 2; ++i)
+        {
+            floorF[i].clear();
+            wallF[i].clear();
+            glassF[i].clear();
+        }
+        windHp.clear();
+        windLp.clear();
+    }
+
+    // The sources' places for the engine's place (0 front, 1 mid, 2 rear) and the tailpipes (n, a motorcycle's: bike)
+    void placeSources(int where, int n, float bike)
+    {
+        place = where;
+        pipes = n;
+        const float pz = bike > 0.5f ? 0.45f : 0.35f;
+        sx[LS_TAIL0] = n == 2 ? -0.55f : 0.4f;
+        sx[LS_TAIL1] = n == 2 ? 0.55f : 0.4f;
+        sy[LS_TAIL0] = 0.0f;
+        sy[LS_TAIL1] = 0.0f;
+        sz[LS_TAIL0] = pz;
+        sz[LS_TAIL1] = pz;
+        // the bay's middle and the intake's mouth: in front of the cabin, behind it, or over the rear axle
+        const float by[3] = {3.4f, 1.1f, 0.55f};
+        const float bz[3] = {0.6f, 0.5f, 0.5f};
+        const float ix[3] = {0.35f, 0.0f, 0.0f};
+        const float iy[3] = {3.9f, 1.4f, 0.65f};
+        const float iz[3] = {0.75f, 1.05f, 0.9f};
+        const int p = where < 0 ? 0 : (where > 2 ? 2 : where);
+        sx[LS_BAY] = 0.0f;
+        sy[LS_BAY] = by[p];
+        sz[LS_BAY] = bz[p];
+        sx[LS_BAYOPEN] = 0.0f;
+        sy[LS_BAYOPEN] = by[p];
+        sz[LS_BAYOPEN] = bz[p];
+        sx[LS_INTAKE] = ix[p];
+        sy[LS_INTAKE] = iy[p];
+        sz[LS_INTAKE] = iz[p];
+        sx[LS_TYRES] = 0.0f;
+        sy[LS_TYRES] = 2.2f;
+        sz[LS_TYRES] = 0.1f;
+        sx[LS_WIND] = 0.0f;
+        sy[LS_WIND] = 2.4f;
+        sz[LS_WIND] = 1.2f;
+        sx[LS_DRIVE] = 0.0f;
+        sy[LS_DRIVE] = p == 0 ? 2.4f : 0.9f;
+        sz[LS_DRIVE] = 0.35f;
+        // (dB: exhaust +2.6, intake +4.3 (the air box against the firewall), the bay's shaded -6.5, its carrying -4.7,
+        // tyres -0.7)
+        tau[LS_TAIL0] = 1.357f;
+        tau[LS_TAIL1] = 1.357f;
+        tau[LS_INTAKE] = 1.641f;
+        tau[LS_BAY] = 0.473f;
+        tau[LS_BAYOPEN] = 0.582f;
+        tau[LS_TYRES] = 0.923f;
+        tau[LS_WIND] = 1.0f;
+        tau[LS_DRIVE] = 1.0f;
+        bus[LS_TAIL0] = 0;
+        bus[LS_TAIL1] = 0;
+        bus[LS_INTAKE] = 1;
+        bus[LS_BAY] = 1;
+        bus[LS_BAYOPEN] = 1;
+        bus[LS_TYRES] = 0;
+        bus[LS_WIND] = 2;
+        bus[LS_DRIVE] = 0;
+    }
+
+    // The driver's head in the car's frame (y), by the engine's place
+    float seatY()
+    {
+        const float sy3[3] = {1.7f, 2.1f, 2.0f};
+        return sy3[place < 0 ? 0 : (place > 2 ? 2 : place)];
+    }
+
+    // Where camera c puts the listener at distance r (m): view k's place, facing and ears
+    void placeListener(int k, int c, float r)
+    {
+        SceneView* v = &vw[k];
+        v->cam = c;
+        v->head = 0;
+        v->cabin = 0;
+        v->fx = 0.0f;
+        v->fy = 1.0f;
+        if (c == CAM_TAILPIPE)
+        {
+            v->lx = pipes == 2 ? 0.0f : 0.4f;
+            v->ly = -r;
+            v->lz = 0.7f;
+        }
+        else if (c == CAM_REAR)
+        {
+            v->lx = 0.0f;
+            v->ly = -2.0f - r;
+            v->lz = 1.2f;
+        }
+        else if (c == CAM_SIDE)
+        {
+            v->lx = 0.9f + r;
+            v->ly = 1.3f;
+            v->lz = 1.2f;
+            v->fx = -1.0f;
+            v->fy = 0.0f;
+        }
+        else if (c == CAM_ENGINE)
+        {
+            v->lx = 0.0f;
+            v->ly = sy[LS_BAY] + 0.5f * r;
+            v->lz = 1.4f;
+            v->fy = -1.0f;
+        }
+        else if (c == CAM_DRIVER)
+        {
+            v->lx = -0.35f;
+            v->ly = seatY();
+            v->lz = 1.1f;
+            v->head = 1;
+            v->cabin = 1;
+        }
+        else if (c == CAM_TRACKSIDE)
+        {
+            v->lx = 0.9f + 2.0f * r;
+            v->ly = rel;
+            v->lz = 1.5f;
+            v->fx = -1.0f;
+            v->fy = 0.0f;
+        }
+        else
+        {
+            v->lx = 0.0f;
+            v->ly = -3.0f - r;
+            v->lz = 1.3f;
+        }
+    }
+
+    // A source's level and its highs toward a direction (ux, uy, uz: unit, from the source to the listener); into
+    // pat[0] (gain) and pat[1] (a low-pass, Hz). The engine bay is open up, forward and down (the bonnet over it is
+    // open in the ENGINE camera), and the cabin shades it behind: a pattern a + (1 - a) ((1 + u.axis) / 2)^2 about an
+    // axis forward and up (up for a mid or rear engine, whose bay opens through the deck and the grilles), shaded paths
+    // duller (diffraction takes the highs first)
+    void pattern(int s, float ux, float uy, float uz, float bonnetOpen, float* pat)
+    {
+        float gain = 1.0f;
+        float fc = 1.0e6f;
+        if (s == LS_TAIL0 || s == LS_TAIL1)
+        {
+            // the pipe's axis points back (-y): the reference's piston law, from ka = 2.5 off the axis; looking
+            // forward along the car, the body stands between the pipes and the listener (to a third, 9.5 dB)
+            const float ct = -uy;
+            const float st = sqrtf(fmaxf(1.0f - ct * ct, 0.0f));
+            const float se = ct >= 0.0f ? fmaxf(st, 0.02f) : 2.0f - st;
+            fc = 2.5f * 347.2f / (3.14159265f * tailD * se);
+            gain = uy > 0.0f ? 1.0f - 0.67f * uy : 1.0f;
+        }
+        else if (s == LS_INTAKE || s == LS_BAY || s == LS_BAYOPEN)
+        {
+            // open forward and up (c1), and out to the sides under the car and through the wheel wells (c2)
+            const float ay = place == 0 ? 0.6f : (place == 1 ? 0.0f : -0.3f);
+            const float az = place == 0 ? 0.8f : (place == 1 ? 1.0f : 0.95f);
+            const float c1 = 0.5f * (1.0f + uy * ay + uz * az);
+            const float c2 = fabsf(ux);
+            const float c = fmaxf(c1 * c1, c2 * c2 * c2);
+            const float a = s == LS_BAY ? LS_SHADE_BAY : (s == LS_INTAKE ? LS_SHADE_INTAKE : LS_SHADE_OPEN);
+            float open = a + (1.0f - a) * c;
+            if (bonnetOpen > 0.5f && uz > 0.5f)
+                open = 1.0f;
+            gain = open;
+            fc = 2000.0f + 18000.0f * open * open;
+        }
+        pat[0] = gain;
+        pat[1] = fc;
+    }
+
+    // The air's loss of highs over r metres as a one-pole's cutoff: its loss at 8 kHz is 0.1 dB a metre (ISO 9613-1,
+    // 20 C, 50 % humidity), 10 log10(1 + (8000 / fc)^2) = 0.1 r
+    float airFc(float r)
+    {
+        const float e = expf(0.0023025851f * r) - 1.0f;
+        return 8000.0f / sqrtf(fmaxf(e, 1.0e-9f));
+    }
+
+    // Every 16 samples, for view k: each tap's target delay, gain and filter, from the geometry now
+    void aim(int k)
+    {
+        SceneView* v = &vw[k];
+        const float c = 343.2f;
+        const float rx = v->fy;          // the listener's right
+        const float ry = -v->fx;
+        const float half = v->head != 0 ? 0.08f : 0.085f;
+        const float bonnet = v->cam == CAM_ENGINE ? 1.0f : 0.0f;
+        const float hiCut = 0.45f * rate;
+        float pat[2];
+        float patG[2];
+        // the listener's distance from the car's middle
+        {
+            const float mx = v->lx;
+            const float my = v->ly - 2.2f;
+            const float mz = v->lz - 0.6f;
+            v->range = sqrtf(mx * mx + my * my + mz * mz);
+        }
+        for (int s = 0; s < LS_N; ++s)
+        {
+            const int j0 = s * 3;
+            if (act[s] == 0)
+                continue;
+            for (int m = 0; m < 2; ++m)
+            {
+                const float sg = m == 0 ? -1.0f : 1.0f;
+                const float ex = v->lx + sg * half * rx;
+                const float ey = v->ly + sg * half * ry;
+                const float ez = v->lz;
+                const float ux = ex - sx[s];
+                const float uy = ey - sy[s];
+                const float uz = ez - sz[s];
+                const float dist = fmaxf(sqrtf(ux * ux + uy * uy + uz * uz), 0.05f);
+                const float inv = 1.0f / dist;
+                pattern(s, ux * inv, uy * inv, uz * inv, bonnet, pat);
+                const float tret = v->cabin != 0 ? dist / c : retarded(uy, dist);
+                float gm = 1.0f;
+                float fh = 1.0e6f;
+                if (v->head == 0)
+                {
+                    // the cardioid, turned 55 degrees out; w the way to the source
+                    const float axx = 0.5735764f * v->fx + sg * 0.8191520f * rx;
+                    const float axy = 0.5735764f * v->fy + sg * 0.8191520f * ry;
+                    gm = 0.5f - 0.5f * (axx * ux + axy * uy) * inv;
+                }
+                else
+                {
+                    // the head's shadow: a source on the far side of the head is duller and a little weaker
+                    const float side = -(sg * rx * ux + sg * ry * uy) * inv;
+                    if (side < 0.0f)
+                    {
+                        const float q = 1.0f + side;
+                        fh = 1500.0f + 20000.0f * q * q;
+                        gm = 1.0f + 0.3f * side;
+                    }
+                }
+                const float fa = airFc(dist);
+                const float fcj = 1.0f / sqrtf(1.0f / (fa * fa) + 1.0f / (pat[1] * pat[1]) + 1.0f / (fh * fh)
+                                               + 1.0f / (hiCut * hiCut));
+                target(v, j0 + m, tret * rate, pat[0] * gm * inv * (v->cabin != 0 ? tau[s] : 1.0f), fcj);
+            }
+            // the ground's image, heard at the ears' middle: none in the cabin
+            if (v->cabin != 0 || groundR <= 0.0f)
+            {
+                target(v, j0 + 2, v->d[j0 + 0], 0.0f, v->fc[j0 + 2] > 0.0f ? v->fc[j0 + 2] : hiCut);
+            }
+            else
+            {
+                const float ux = v->lx - sx[s];
+                const float uy = v->ly - sy[s];
+                const float uz = v->lz + sz[s];
+                const float dist = fmaxf(sqrtf(ux * ux + uy * uy + uz * uz), 0.05f);
+                const float inv = 1.0f / dist;
+                pattern(s, ux * inv, uy * inv, -uz * inv, bonnet, patG);
+                float gm = 1.0f;
+                if (v->head == 0)
+                    gm = 0.5f - 0.5f * 0.5735764f * (v->fx * ux + v->fy * uy) * inv;
+                const float fa = airFc(dist);
+                const float fcj = 1.0f / sqrtf(1.0f / (fa * fa) + 1.0f / (patG[1] * patG[1])
+                                               + 1.0f / (groundFc * groundFc) + 1.0f / (hiCut * hiCut));
+                target(v, j0 + 2, retarded(uy, dist) * rate, groundR * patG[0] * gm * inv, fcj);
+            }
+        }
+        // tailpipe 0's ear 0: its path's slope, for the telemetry (Doppler's ratio is 1 less it)
+        v->slope = v->dS[0];
+        v->fresh = 0;
+    }
+
+    // The time (s) the sound now arriving left the source: the car moves forward at `speed` through still air, the
+    // listener is (ux, uy, uz) from where the source is now (dist away), so the sound left it from |u + V tau| = c tau
+    // behind: tau = (u.V + sqrt((u.V)^2 + (c^2 - V^2) |u|^2)) / (c^2 - V^2), exact for a steady speed
+    float retarded(float uy, float dist)
+    {
+        const float c2 = 343.2f * 343.2f;
+        const float vv = fminf(fabsf(speed), 200.0f);
+        const float uv = uy * speed;
+        const float den = c2 - vv * vv;
+        return (uv + sqrtf(uv * uv + den * dist * dist)) / den;
+    }
+
+    // One tap's targets: a new listener jumps there, else each glides there over the 16 samples
+    void target(SceneView* v, int j, float dSamples, float gain, float fc)
+    {
+        const float dd = fminf(fmaxf(dSamples, 1.0f), (float)(LS_CAP - 4));
+        if (v->fresh != 0)
+        {
+            v->d[j] = dd;
+            v->dS[j] = 0.0f;
+            v->g[j] = gain;
+            v->gS[j] = 0.0f;
+        }
+        else
+        {
+            v->dS[j] = (dd - v->d[j]) * 0.0625f;
+            v->gS[j] = (gain - v->g[j]) * 0.0625f;
+        }
+        if (v->fresh != 0 || fabsf(fc - v->fc[j]) > 0.01f * fc)
+        {
+            v->fc[j] = fc;
+            v->f[j].set(fc, rate);
+        }
+    }
+
+    // Every 16 samples: the camera (c), its distance (r, m), the car's speed (m/s), the ground (0 asphalt, 1 grass,
+    // 2 none), the windows (0 to 1 open), which sources sound. A new camera, or the trackside one moving on, starts a
+    // crossfade from the listener heard.
+    void block(int c, float rTarget, float carSpeed, int ground, float win, float bore, int nPipes, float bike,
+               int where, int drivenOn, int driveOn)
+    {
+        const float dt = 16.0f / rate;
+        speed = carSpeed;
+        windows = win;
+        tailD = fmaxf(bore, 0.02f);
+        groundR = ground == 0 ? 0.9f : (ground == 1 ? 0.6f : 0.0f);
+        groundFc = ground == 1 ? 1800.0f : 1.0e6f;
+        if (where != place || nPipes != pipes || camUse < 0)
+            placeSources(where, nPipes, bike);
+        act[LS_TAIL0] = 1;
+        act[LS_TAIL1] = nPipes == 2 ? 1 : 0;
+        act[LS_INTAKE] = 1;
+        act[LS_BAY] = 1;
+        act[LS_BAYOPEN] = 1;
+        act[LS_TYRES] = drivenOn;
+        act[LS_WIND] = drivenOn;
+        act[LS_DRIVE] = driveOn;
+        // the camera's distance: a listener walks (at most 8 m/s: the pitch moves 2.3 % while the dial does)
+        if (rS < 0.0f)
+            rS = rTarget;
+        else
+            rS += fminf(fmaxf((rTarget - rS) * 0.02f, -8.0f * dt), 8.0f * dt);
+        // trackside: the listener stands still while the car goes by (beside it while it stands); 60 m past, the camera moves on to a spot 40 m
+        // ahead (or as far behind, reversing)
+        rel -= carSpeed * dt;
+        int move = 0;
+        const float past = rel - 2.2f;
+        if (c == CAM_TRACKSIDE && camUse == CAM_TRACKSIDE && fade >= 1.0f && (past < -60.0f || past > 60.0f))
+            move = 1;
+        if (camUse < 0)
+        {
+            camUse = c;
+            if (c == CAM_TRACKSIDE)
+                rel = 2.2f + (fabsf(carSpeed) < 0.5f ? 0.0f : (carSpeed < 0.0f ? -40.0f : 40.0f));
+            cur = 0;
+            vw[0].on = 1;
+            vw[0].fresh = 1;
+            vw[1].on = 0;
+            placeListener(0, c, rS);
+            fade = 1.0f;
+        }
+        else if ((c != camUse || move != 0) && fade >= 1.0f)
+        {
+            if (c == CAM_TRACKSIDE)
+                rel = 2.2f + (fabsf(carSpeed) < 0.5f ? 0.0f : (carSpeed < 0.0f ? -40.0f : 40.0f));
+            camUse = c;
+            cur = 1 - cur;
+            vw[cur].on = 1;
+            vw[cur].fresh = 1;
+            for (int j = 0; j < LS_TAPS; ++j)
+                vw[cur].f[j].clear();
+            placeListener(cur, c, rS);
+            fade = 0.0f;
+        }
+        else
+        {
+            placeListener(cur, camUse, rS);
+        }
+        aim(cur);
+        // the crossfade: equal power, eased at both ends
+        const float f0 = fade;
+        if (fade < 1.0f)
+        {
+            fade = fminf(fade + fadeStep, 1.0f);
+            aim(1 - cur);
+        }
+        const float a0 = sinf(1.57079633f * f0);
+        const float a1 = sinf(1.57079633f * fade);
+        const float b0 = cosf(1.57079633f * f0);
+        const float b1 = cosf(1.57079633f * fade);
+        xA = a0;
+        xB = b0;
+        xAS = (a1 - a0) * 0.0625f;
+        xBS = (b1 - b0) * 0.0625f;
+        if (f0 >= 1.0f)
+            vw[1 - cur].on = 0;
+        // the wind: its level as the cube of the speed (a dipole's pressure), its band
+        const float vv = fminf(fabsf(carSpeed) / 40.0f, 2.0f);
+        windK = windOff != 0 ? 0.0f : windStrength * vv * vv * vv;
+    }
+
+    // One sample through view k: each active source's three taps into the buses
+    void hear(int k)
+    {
+        SceneView* v = &vw[k];
+        for (int m = 0; m < 2; ++m)
+        {
+            bus0[m] = 0.0f;
+            bus1[m] = 0.0f;
+            bus2[m] = 0.0f;
+            bus3[m] = 0.0f;
+        }
+        const int cab = v->cabin;
+        for (int s = 0; s < LS_N; ++s)
+        {
+            if (act[s] == 0)
+                continue;
+            const int base = s * LS_CAP;
+            float y[3];
+            const int taps = cab != 0 ? 2 : 3;
+            for (int t = 0; t < taps; ++t)
+            {
+                const int j = s * 3 + t;
+                const float dd = v->d[j];
+                const int di = (int)dd;
+                const float fr = dd - (float)di;
+                const int b = w - di;
+                const float s0 = buf[base + ((b + 1) & LS_MASK)];
+                const float s1 = buf[base + (b & LS_MASK)];
+                const float s2 = buf[base + ((b - 1) & LS_MASK)];
+                const float s3 = buf[base + ((b - 2) & LS_MASK)];
+                const float tm1 = fr - 1.0f;
+                const float tm2 = fr - 2.0f;
+                const float tp1 = fr + 1.0f;
+                const float x = -fr * tm1 * tm2 * 0.16666667f * s0 + tp1 * tm1 * tm2 * 0.5f * s1
+                                - tp1 * fr * tm2 * 0.5f * s2 + tp1 * fr * tm1 * 0.16666667f * s3;
+                y[t] = v->f[j].lowpass(x * v->g[j]);
+                v->d[j] = dd + v->dS[j];
+                v->g[j] += v->gS[j];
+            }
+            const float yl = y[0] + (cab != 0 ? 0.0f : y[2]);
+            const float yr = y[1] + (cab != 0 ? 0.0f : y[2]);
+            if (cab == 0)
+            {
+                bus0[0] += yl;
+                bus0[1] += yr;
+            }
+            else if (bus[s] == 0)
+            {
+                bus1[0] += yl;
+                bus1[1] += yr;
+            }
+            else if (bus[s] == 1)
+            {
+                bus2[0] += yl;
+                bus2[1] += yr;
+            }
+            else
+            {
+                bus3[0] += yl;
+                bus3[1] += yr;
+            }
+        }
+        if (cab != 0)
+        {
+            // through the body, or past it through an open window (half its level)
+            const float o = 0.5f * windows;
+            const float sh = 1.0f - windows;
+            for (int m = 0; m < 2; ++m)
+            {
+                const float fl = floorF[m].tick(bus1[m]);
+                const float fw = wallF[m].tick(bus2[m]);
+                const float fg = glassF[m].lowpass(bus3[m]);
+                bus0[m] = sh * (fl + fw + fg) + o * (bus1[m] + bus2[m] + bus3[m]);
+            }
+        }
+    }
+
+    // One sample: the sources' signals (in[], set by the caller) into their lines, then heard by the listener (and the
+    // one fading out); into outL, outR
+    void tick()
+    {
+        // the wind: noise in a band, as loud as the speed makes it
+        in[LS_WIND] = windK * windLp.lowpass(windHp.highpass(noise.rnd()));
+        w = (w + 1) & LS_MASK;
+        for (int s = 0; s < LS_N; ++s)
+            buf[s * LS_CAP + w] = act[s] != 0 ? in[s] : 0.0f;
+        hear(cur);
+        float L = bus0[0];
+        float R = bus0[1];
+        if (vw[1 - cur].on != 0)
+        {
+            L *= xA;
+            R *= xA;
+            hear(1 - cur);
+            L += xB * bus0[0];
+            R += xB * bus0[1];
+            xA += xAS;
+            xB += xBS;
+        }
+        outL = L;
+        outR = R;
+    }
+};

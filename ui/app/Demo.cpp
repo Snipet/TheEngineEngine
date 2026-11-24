@@ -21,6 +21,7 @@ namespace tee::ui
             "boost.pressure", "exhaust.portTemperature", "ecu.knockRetard",
             "car.speed", "car.gear", "car.brake", "car.clutch", "sound.peak",
             "ecu.advance", "sound.rate",
+            "engine.torque", "engine.power", "engine.firing", "engine.imep", "engine.bmep", "engine.veAir",
         };
         const char* const kScope[] = { "degrees", "cycles", "pressure", "volume", "liftExhaust", "liftIntake",
                                        "pipePoints", "pipePressure", "portIntake", "portExhaust" };
@@ -194,8 +195,8 @@ namespace tee::ui
         for (const char* n : kNames)
             names_.emplace_back(n);
         values_.assign(names_.size(), 0.0);
-        update();
         predicted_ = curveFor(fieldOr("engine.compression", 10.0), fieldOr("boost.level", 80e3), "predicted");
+        update();
         seenRevision_ = doc_ != nullptr ? doc_->revision() : 0;
     }
 
@@ -295,6 +296,10 @@ namespace tee::ui
         const double boostPa = std::min(1.0, boost) * fieldOr("boost.level", 80e3);
         const double manifold = 28e3 + throttle_ * (101e3 - 28e3) + boostPa;
         const double gear = 3.0;
+        // The brake torque: the predicted curve's at this speed, by the throttle (a part-throttle engine makes less);
+        // the brake mean effective pressure from it (4 pi T / displacement, 5.7 L).
+        const double torque = std::max(0.0, interpolate(predicted_, w) * (0.15 + 0.85 * throttle_) - 25.0);
+        const double bmep = 4.0 * 3.14159265358979 * torque / 0.0057;
         const double carSpeed = w / (1.36 * fieldOr("car.finalDrive", 3.55)) * fieldOr("car.tyre", 0.33);
         const double v[] = {
             2.0, w, kRedline * kRpm, kIdle * kRpm, throttle_, manifold,
@@ -303,6 +308,7 @@ namespace tee::ui
             720.0 + 420.0 * throttle_ + 0.03 * rpm_, rpm_ > 5200.0 && throttle_ > 0.9 ? 1.5 : 0.0,
             carSpeed, gear, 0.0, 0.0, 0.25 + 0.5 * throttle_,
             12.0 + 22.0 * std::min(1.0, rpm_ / 5000.0) - 8.0 * throttle_, 48000.0,
+            torque, torque * w, rpm_ / 60.0 * 4.0, bmep * 1.18 + 1.2e5, bmep, 0.55 + 0.4 * throttle_ + 0.3 * std::min(1.0, boostPa / 1e5),
         };
         for (std::size_t i = 0; i < values_.size(); ++i)
             values_[i] = v[i];
@@ -316,6 +322,21 @@ namespace tee::ui
     void DemoEngine::addScope(std::string name, std::function<int(const DemoEngine&, float*, int)> read)
     {
         extraScope_.emplace_back(std::move(name), std::move(read));
+    }
+
+    double DemoEngine::interpolate(const DynoTrace& c, double speed)
+    {
+        if (c.speed.empty())
+            return 0.0;
+        if (speed <= c.speed.front())
+            return c.torque.front() * speed / std::max(c.speed.front(), 1.0);
+        for (std::size_t i = 1; i < c.speed.size(); ++i)
+            if (speed <= c.speed[i])
+            {
+                const double t = (speed - c.speed[i - 1]) / (c.speed[i] - c.speed[i - 1]);
+                return c.torque[i - 1] + (c.torque[i] - c.torque[i - 1]) * t;
+            }
+        return c.torque.back();
     }
 
     void DemoEngine::set(std::string_view name, double v)

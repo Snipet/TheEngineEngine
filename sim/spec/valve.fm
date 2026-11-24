@@ -19,7 +19,7 @@ module ValveSpec
     int model [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Valvetrain model")]]
         [[ui::choices("Reference", "Lab")]];
     // the head
-    int valves [[fminus::range(2, 5)]] [[fminus::default(2)]] [[ui::label("Valves a cylinder")]] [[ui::group("Head")]];
+    int valves [[fminus::range(2, 5)]] [[fminus::default(2)]] [[ui::label("Valves a cylinder")]] [[ui::unit("valves")]] [[ui::group("Head")]];
     float dIn [[fminus::range(0, 0.08)]] [[fminus::default(0)]] [[ui::label("Intake valve diameter")]]
         [[ui::quantity("length")]] [[ui::help("0: from the bore, as real heads are")]];
     float dEx [[fminus::range(0, 0.07)]] [[fminus::default(0)]] [[ui::label("Exhaust valve diameter")]]
@@ -63,7 +63,7 @@ module ValveSpec
     float freeFlank [[fminus::range(10, 90)]] [[fminus::default(40)]] [[ui::label("Free valve flank")]]
         [[ui::quantity("angle")]] [[ui::help("degrees each opening and closing takes")]];
     // the auxiliary exhaust event (a compression brake's, or a second event of a free valve)
-    int auxOn [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Second exhaust event")]] [[ui::group("Free valves")]];
+    int auxOn [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Second exhaust event")]] [[ui::choices("Off", "On")]] [[ui::group("Free valves")]];
     float auxOpen [[fminus::range(0, 720)]] [[fminus::default(680)]] [[ui::label("Second event opens")]] [[ui::quantity("angle")]];
     float auxDur [[fminus::range(20, 200)]] [[fminus::default(60)]] [[ui::label("Second event duration")]] [[ui::quantity("angle")]];
     float auxLift [[fminus::range(0.0005, 0.01)]] [[fminus::default(0.002)]] [[ui::label("Second event lift")]]
@@ -75,7 +75,7 @@ module ValveSpec
         [[ui::quantity("angle")]] [[ui::help("crank degrees of retard; 0: no phaser")]];
     float phaseRate [[fminus::range(20, 1000)]] [[fminus::default(200)]] [[ui::label("Phaser speed")]] [[ui::unit("deg/s")]];
     // two stages
-    int stages [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Two-stage cams")]] [[ui::group("Two stages")]];
+    int stages [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Two-stage cams")]] [[ui::choices("Off", "On")]] [[ui::group("Two stages")]];
     float inDurSeatB [[fminus::range(140, 360)]] [[fminus::default(270)]] [[ui::label("Intake B duration at the seat")]]
         [[ui::quantity("angle")]];
     float inDur1mmB [[fminus::range(100, 340)]] [[fminus::default(240)]] [[ui::label("Intake B duration at 1 mm")]]
@@ -93,12 +93,12 @@ module ValveSpec
     float stageHyst [[fminus::range(0, 150)]] [[fminus::default(31.4)]] [[ui::label("Stage change hysteresis")]]
         [[ui::quantity("rotation")]];
     // continuous lift (the intake's)
-    int liftControl [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Continuous lift")]] [[ui::group("Lift control")]];
+    int liftControl [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Continuous lift")]] [[ui::choices("Off", "On")]] [[ui::group("Lift control")]];
     float liftMin [[fminus::range(0.03, 1)]] [[fminus::default(0.15)]] [[ui::label("Least lift")]] [[ui::quantity("fraction")]];
-    int liftThrottle [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Lift is the load control")]]
+    int liftThrottle [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Lift is the load control")]] [[ui::choices("Off", "On")]]
         [[ui::help("the plate stays open and the lift follows the pedal")]];
     // deactivation
-    int deacMask [[fminus::range(0, 65535)]] [[fminus::default(0)]] [[ui::label("Cylinders that can rest")]]
+    int deacMask [[fminus::range(0, 65535)]] [[fminus::default(0)]] [[ui::label("Cylinders that can rest")]] [[ui::unit("bits")]]
         [[ui::group("Deactivation")]] [[ui::help("a bit a cylinder, in the layout's order; 0: none")]];
     float deacLow [[fminus::range(50, 600)]] [[fminus::default(115)]] [[ui::label("Deactivation from")]] [[ui::quantity("rotation")]];
     float deacHigh [[fminus::range(100, 800)]] [[fminus::default(340)]] [[ui::label("Deactivation to")]] [[ui::quantity("rotation")]];

@@ -181,6 +181,8 @@ module Engine
     CycleWork work;     // p dV per cylinder per cycle: IMEP, PMEP, peak pressure, VE (core/work.fm); every engine
     Dyno dyno;          // MODE_DYNO_ENGINE's absorber (core/dyno.fm); every engine
     int customUse;      // 1: the engine configured from spec.engine's custom fields
+    int lastIgn;        // ctl.ignition at the last call (voices.model 1: its rise from off renders the key's sounds)
+    int layoutRefused;  // 1: its geometry was refused (cylinders firing together), the layout dial's table runs
     float rodRatio;     // the rod over the crank's radius the cylinders are set up with (the reference's 3.3)
     float strokeUse;    // m: the stroke (piston speed, the inertia)
     float jFly;         // a custom engine's crank and flywheel (kg m^2), before the bench's load
@@ -277,7 +279,8 @@ module Engine
         set.bs = 1.0f;
         set.ambF = 80.33f;
         set.timing = 0.0f;
-        comb.setup(rate, &noise, &ecu, &heat, &lay, &exh.pop[0]);
+        comb.setup(rate, &noise, &ecu, &heat, &lay, &exh.pop[0], &spec.fuel);
+        ecu.setup(16.0f / rate, &spec.ecu, &spec.fuel, &ctl, &tel.ecu, &scope, &heat);     // card H's model 1
         set.bov = 0.7f;
         set.intake = 0.5f;
         set.mech = 0.4f;
@@ -328,6 +331,7 @@ module Engine
     {
         lay.load(set.layout);
         customUse = spec.engine.custom ? 1 : 0;
+        layoutRefused = 0;
         geoUsed = geometry();
         geoSig = geoUsed;
         if (customUse != 0)
@@ -502,6 +506,14 @@ module Engine
     void customLayout()
     {
         geo.derive(&spec.engine);
+        // a geometry that cannot run (two cylinders firing together: the Spec's own defaults, every pin 0, are one) is
+        // refused: the layout dial's table runs, with the custom engine's sizes, masses and friction (X-001)
+        layoutRefused = geo.ok == 0 ? 1 : 0;
+        if (layoutRefused != 0)
+        {
+            geo.fromTable(lay.n, lay.cyc, lay.rotary, &lay.fire[0]);
+            return;
+        }
         lay.n = geo.n;
         lay.cyc = geo.cyc;
         lay.rotary = geo.rotary > 0 ? 1 : 0;
@@ -748,7 +760,7 @@ module Engine
         else
             car.lastDrive = 0;
         if (ecu.control(d16, ped, set.drive, set.modwheel, set.pressure, crank.rpm, fuelUse, heat.warm, car.shiftCut, car.gear,
-                        set.clutch, crank.omega))
+                        set.clutch, crank.omega, intk.pPlenum, set.drive != 0 ? fabsf(car.v) : 0.0f, exh.gasTemperature(0)))
             crank.omega = 0.0f;
         // the exhaust's mass flow and its power, for the turbo
         exh.flowRate();
@@ -975,6 +987,7 @@ module Engine
             else
                 cy->step(a, dDeg, dt, bE, exh.prim[pi].z, tH, bI, intk.run[pi].z, intk.tAir);
             work.sample(c, a, cy->p, cy->v);
+            comb.sample(cy, c, dt);                     // card H: nothing under fuel.model 0 and ecu.model 0
             qe[pi] += cy->qEa;
             qi[pi] += cy->qIa;
             torque += cy->tq;
@@ -1109,7 +1122,9 @@ module Engine
             }
             const int v = vUse;
             listen.block(v, set.intake, set.mech, set.distance, set.room, set.level, aspUse, exTrim, gainNorm, exh.nDuals,
-                         lay.bike, lay.tailD);
+                         lay.bike, lay.tailD, &spec.sound, &tel.sound, car.speedNow(), set.drive != 0 ? 1 : 0, vTotal, lay.n,
+                         customUse != 0 ? shake.fx : 0.0f, customUse != 0 ? shake.fy : 0.0f,
+                         customUse != 0 ? shake.mx : 0.0f, customUse != 0 ? shake.my : 0.0f);
             for (int i = 0; i < m; ++i)
             {
                 if (tick16 == 0)
@@ -1161,12 +1176,14 @@ module Engine
     // Still sounding: the engine runs, or the room still rings after it stopped (or, driven, the car still rolls)
     bool audible()
     {
-        return ecu.state != 0 || quiet < (0.4f + 2.2f * set.room + 0.3f) * rate || (set.drive != 0 && car.moving());
+        return ecu.state != 0 || quiet < (0.4f + 2.2f * set.room + 0.3f) * rate || (set.drive != 0 && car.moving())
+               || (spec.voices.model != 0 && ex.busy());
     }
 
     void init(float hostRate)
     {
         clickRpm = -1.0f;
+        lastIgn = IGN_OFF;
         hostRateSeen = hostRate;
         setupAll(hostRate);
         for (int k = 0; k < SPEC_SECTIONS; ++k)
@@ -1342,6 +1359,10 @@ module Engine
     void ignition()
     {
         const int ign = ctl.ignition;
+        // (mechanical voices, voices.model 1: the key turned on is heard before a start: the fuel pump's prime)
+        if (spec.voices.model != 0 && ign != IGN_OFF && lastIgn == IGN_OFF)
+            sounding = 1;
+        lastIgn = ign;
         if (ign == IGN_START)
         {
             if (ecu.state == 0 || ecu.state == 3)
@@ -1428,6 +1449,8 @@ module Engine
         e->rock1 = customUse != 0 ? shake.moment1 : 0.0f;
         e->rock2 = customUse != 0 ? shake.moment2 : 0.0f;
         e->cylinders = lay.n;
+        e->layoutRefused = layoutRefused;
+        e->oilTemperature = heat.tOil;
         for (int c = 0; c < MAX_CYL; ++c)
         {
             // (the angle after cylinder 1's at which each fires: the cycle less where it stands at cylinder 1's firing)

@@ -307,7 +307,7 @@ namespace tee::ui
             return std::isfinite(v) ? units_.number(Quantity::pressure, v) : std::string("-");
         }, [this] { return std::string(units_.unit(Quantity::pressure).name); });
         (void) boost;
-        add("Lambda", [this] { return look::num(ctx_->live.get("engine.lambda"), "%.2f"); }, {});
+        add("Lambda", [this] { return look::num(ctx_->live.lambda(), "%.2f"); }, {});
         Readout& coolant = add("Coolant", [this] {
             const double v = ctx_->live.get(telemetry::kCoolant);
             return std::isfinite(v) ? units_.number(Quantity::temperature, v, 0) : std::string("-");

@@ -704,6 +704,7 @@ namespace tee
         const std::uint64_t key = predictKey(build, options_);
         const std::lock_guard<std::mutex> lock(mutex_);
         const std::uint64_t number = ++number_;
+        made_ = 0;
         cancel_ = true;   // the one running is older
         for (auto it = cache_.begin(); it != cache_.end(); ++it)
             if (it->key == key)
@@ -713,6 +714,7 @@ namespace tee
                 done_.cached = true;
                 done_.wallSeconds = 0.0;
                 ready_ = true;
+                made_ = 1;
                 error_.clear();
                 cache_.splice(cache_.begin(), cache_, it);
                 waiting_ = false;
@@ -786,6 +788,7 @@ namespace tee
                 done_ = p;
                 done_.request = number;
                 ready_ = true;
+                ++made_;
                 revision_.fetch_add(1);
             };
             const bool ok = build.load(json, BuildPart::Whole, warnings, error)
@@ -805,6 +808,7 @@ namespace tee
                             cache_.pop_back();
                         done_ = curve;
                         ready_ = true;
+                        ++made_;
                         error_.clear();
                         progress_ = 1.0;
                     }

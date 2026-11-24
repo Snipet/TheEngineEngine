@@ -179,3 +179,26 @@ the whole program, off in the null test, on in the application only after it pas
 to named before-and-after pairs (in X's listening pack); (3) exact changes come first and need neither.
 FMinus's own levers give nothing: -O2 with denormals flushed stays; no `param` on the fuel and cycle switches.
 Later, for the shell: compile at -O0 (0.13 s) for a first sound and swap to -O2 at a part boundary.
+
+## Found 14:55: three of the four shipped builds stand in air at -40 degrees
+
+`content/builds/v8.json`, `v10.json` and `large-diesel.json` (the reference's presets, converted) carry
+`env.temperature` 233.15 K, the dial's lowest value; `default.json` carries 300 K. Air at 233 K is 28 % denser than
+at 300 K, so every figure measured on those three is a cold-day figure: the V8's 696 to 700 N m and 346 to 347 kW
+(card C's validation), the vehicle tests' drag (two had to state their air), the null test's pairs (which must keep
+the presets as they are). For content (package P) and the owner: is -40 meant, or was the dial left at its stop?
+Shipped builds should stand at 288 or 300 K; the reference's presets stay as they are under `content/ref/` and for
+the null test. Until settled, quote dyno figures with the build's air.
+- **E**: the contract test is red only on `spec.valve.valves`, `auxOn`, `stages`, `liftControl`, `liftThrottle`.
+- **D, done 14:42**: the car reads `spec.env`; the six values for the ECU forward from the vehicle model.
+
+## From H's integration (14:50)
+
+- **H**: test 10 (traction) now that the car's values forward; **the idle** (lopes 900 to 1500 rpm on the V8, stalls
+  at 800: the validation's loud miss); the kept share in `charge1` as the combustion efficiency alone, with D.
+- **D**: pass `oxygenShare()` in; the cylinder's wall heat (half-burn at best torque is 0.3 degrees after top where
+  engines show 6 to 12; the port gas runs 1155 to 1330 K where 900 to 1100 is usual); the README says -1 from
+  `camTarget` and `boostTarget` means "use your own schedule".
+- **E, F**: treat -1 from `camTarget` / `boostTarget` as "use your own schedule". **G**: `popAt` is still a stub.
+- **C**: `PredictTest.cpp:94` assumes the first take is coarse: fails on a fast Windows runner.
+- **U4, U5**: the ECU's final telemetry, flags, maps and baked arrays (sent 14:57).
