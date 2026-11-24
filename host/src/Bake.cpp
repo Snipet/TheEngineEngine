@@ -318,4 +318,156 @@ namespace tee
             error = "the baked knock limit does not fit ecu.maps.knockLimit";
         return ok;
     }
+
+    // ---- the background bake ------------------------------------------------------------------------------------------
+
+    const char* knockBakeStateName(KnockBakeState state) noexcept
+    {
+        switch (state)
+        {
+            case KnockBakeState::NoTable: return "no table";
+            case KnockBakeState::Current: return "baked";
+            case KnockBakeState::Waiting: return "waiting to bake";
+            case KnockBakeState::Baking: return "baking";
+            case KnockBakeState::Ready: return "baked, to apply";
+            case KnockBakeState::Failed: return "bake failed";
+        }
+        return "no table";
+    }
+
+    KnockBakeService::KnockBakeService(std::shared_ptr<Sim> sim, KnockBakeOptions options, double debounceSeconds)
+        : sim_(std::move(sim)), options_(std::move(options)), debounce_(std::max(debounceSeconds, 0.0))
+    {
+        thread_ = std::thread([this] { coordinator(); });
+    }
+
+    KnockBakeService::~KnockBakeService()
+    {
+        {
+            const std::lock_guard<std::mutex> lock(mutex_);
+            stop_ = true;
+        }
+        cancel_ = true;
+        wake_.notify_all();
+        if (thread_.joinable())
+            thread_.join();
+    }
+
+    void KnockBakeService::setState(KnockBakeState s)
+    {
+        if (state_ != s)
+        {
+            state_ = s;
+            ++revision_;
+        }
+    }
+
+    KnockBakeState KnockBakeService::consider(Build& build)
+    {
+        if (build.fieldOf("ecu.maps.knockLimit") < 0 || build.fieldOf("ecu.maps.knockLimitAuto") < 0
+            || build.fieldOf("ecu.maps.knockLimitKey") < 0)
+        {
+            const std::lock_guard<std::mutex> lock(mutex_);
+            setState(KnockBakeState::NoTable);
+            return state_;
+        }
+        const std::int64_t key = knockLimitKey(build, *sim_);
+        if (knockLimitCurrent(build, *sim_))
+        {
+            const std::lock_guard<std::mutex> lock(mutex_);
+            if (key_ != key)
+                cancel_ = true;   // what runs is for another build: not wanted
+            asked_ = false;
+            ready_ = false;
+            key_ = key;
+            setState(KnockBakeState::Current);
+            return state_;
+        }
+        // stale: the table set aside now (the engine on its knock control alone), a bake asked
+        if (build.get("ecu.maps.knockLimitAuto") == 0.0)
+            build.set("ecu.maps.knockLimitAuto", 1.0);
+        const std::lock_guard<std::mutex> lock(mutex_);
+        if (key == key_ && state_ != KnockBakeState::Failed && state_ != KnockBakeState::Current)
+            return state_;   // asked already (waiting, baking, or ready to take)
+        key_ = key;
+        json_ = build.save();
+        asked_ = true;
+        ready_ = false;
+        due_ = std::chrono::steady_clock::now() + std::chrono::duration_cast<std::chrono::steady_clock::duration>(
+                                                     std::chrono::duration<double>(debounce_));
+        cancel_ = true;   // a bake running is of an older build
+        setState(KnockBakeState::Waiting);
+        wake_.notify_all();
+        return state_;
+    }
+
+    bool KnockBakeService::take(KnockBakeResult& out)
+    {
+        const std::lock_guard<std::mutex> lock(mutex_);
+        if (!ready_)
+            return false;
+        out = done_;
+        ready_ = false;
+        return true;
+    }
+
+    KnockBakeState KnockBakeService::state() const
+    {
+        const std::lock_guard<std::mutex> lock(mutex_);
+        return state_;
+    }
+
+    std::string KnockBakeService::error() const
+    {
+        const std::lock_guard<std::mutex> lock(mutex_);
+        return error_;
+    }
+
+    void KnockBakeService::coordinator()
+    {
+        std::unique_lock<std::mutex> lock(mutex_);
+        while (!stop_)
+        {
+            if (!asked_)
+            {
+                wake_.wait(lock);
+                continue;
+            }
+            if (std::chrono::steady_clock::now() < due_)
+            {
+                wake_.wait_until(lock, due_);   // an edit within the debounce moves due_ and wakes it
+                continue;
+            }
+            asked_ = false;
+            const std::string json = json_;
+            const std::int64_t key = key_;
+            cancel_ = false;
+            setState(KnockBakeState::Baking);
+            lock.unlock();
+
+            KnockBakeResult result;
+            std::string error;
+            Build build(sim_->fields());
+            std::vector<std::string> warnings;
+            bool ok = build.load(json, BuildPart::Whole, warnings, error);
+            if (ok)
+                ok = bakeKnockLimit(sim_, build, options_, result, error, &cancel_);
+
+            lock.lock();
+            if (stop_ || asked_ || key != key_ || cancel_)
+                continue;   // a newer build was asked meanwhile, or this one was set aside: dropped
+            if (ok)
+            {
+                done_ = std::move(result);
+                ready_ = true;
+                error_.clear();
+                setState(KnockBakeState::Ready);
+            }
+            else
+            {
+                error_ = error;
+                setState(KnockBakeState::Failed);
+            }
+        }
+    }
 } // namespace tee

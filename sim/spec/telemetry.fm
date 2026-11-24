@@ -214,6 +214,8 @@ module EcuTel
     int brakeCylinders [[ui::label("Braking cylinders")]];
     float backPressure [[ui::label("Exhaust brake pressure")]] [[ui::quantity("pressure")]] [[ui::help("Over the air")]];
     float governorSpeed [[ui::label("Governed speed")]] [[ui::quantity("rotation")]];
+    // (card N2: the baked knock-limit table, spec.ecu.maps.knockLimit)
+    int knockTable [[ui::label("Spark map baked")]] [[ui::help("1: the spark's formula less the baked knock-limit table; 0: not baked (or stale), the knock control does the work")]];
 };
 
 module CarTel

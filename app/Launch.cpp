@@ -100,4 +100,16 @@ namespace tee::app
         }
         return line;
     }
+
+    bool readSent(player::SimAdapter& sim, const std::string& path, double& out)
+    {
+        if (!sim.ready())
+            return false;
+        std::string error;
+        const FieldRef ref = sim.host().fields().ref(path.rfind("spec.", 0) == 0 ? path : "spec." + path, error);
+        if (!error.empty())
+            return false;
+        out = sim.host().readSpec(ref);
+        return true;
+    }
 }

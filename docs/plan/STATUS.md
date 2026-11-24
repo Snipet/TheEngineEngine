@@ -37,6 +37,27 @@
 
 ## Landed
 
+- **21:53 the lead's check-in; `main` fast-forwarded** f69bf016 to 445453da (the one case red on all three systems,
+  core's trapped-unburned check, restated by D in f2d8e19e; X-022's quick case green again). Windows builds and
+  tests again (the friend declaration: 006c1a6c, 6b54fe2a); main's run on f69bf016 packed the application on all
+  three (run 45488426712). **THE OWNER LISTENED AND LOOKED, on a Mac build of main:** (1) "a high pitched hum … far
+  too loud", "more airy", the engine quieter: measured on first.json's idle: the in-tank fuel pump's lines (3895
+  and 760 Hz) and the electric fan's (280, 560 Hz); the voices sit 23 to 35 dB higher against the exhaust through
+  L's Places than through the reference mix, and the engine 10 dB lower. M lowers the pump 17 dB and steepens the
+  fan at source (every voice level is judgement: the owner's ears are the only measure); L owns the path: open.
+  (2) the two-stage-cam archetype's lift change at 6000 rpm seen and heard in one build and not in the next: the
+  simulator switches (tel.valve.stage at 6000 rpm on four commits and under Economy), so it is the application:
+  B (what is sent) and U2 (what ENGINE and VALVES draw) are testing: open. (3) the owner's local commit 392b6a4f:
+  the macOS bundle copies sim/ and content/ only when the executable relinks, so a sim-only pull leaves a stale
+  engine in the .app: not pushed; the lead recommends landing it. **Since 21:10**: table I (dc24110): 123 of 741
+  missed (19 of 187 cited); power 14, torque 12 of 31: lower in power because the builds no longer carry runners
+  tuned to their own torque rows; L's auto level (c686d345: a camera's exposure, true levels a switch away; the
+  limiter a guard again); N2: the blow-off case and the VGT's surge guard re-derived on real exhaust mass
+  (the vanes sooner than the single again), X-024 fixed, the rotary's pair short of boost at the top (turbines
+  matched at the redline at a fixed ratio: to be matched at the build's own design point); N1: seeds 298 and 217;
+  N3: the boosted fourteen: 9 torque and 10 power rows in band, boost collapsing at the power peak on four, two
+  air-book gaps to chase; C: the knock-limit bake's host side (32a6dc47); D2's final numbers; the brake's shaft
+  governor marked. Next check-in 22:35.
 - **21:10 the lead's check-in; `main` fast-forwarded** 35286df to f69bf016 (141 commits; the tip compiles, lint ok).
   **CI, newest finished fast jobs**: Linux green (c51e77a) and macOS green (7ef0f53), both holding the first
   build, the level fix, the gamma, the tyres and the one loader; Windows failed at BUILD from 127c350 (a friend
