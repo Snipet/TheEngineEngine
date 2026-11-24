@@ -577,6 +577,11 @@ jobs:
             { echo; echo "### The fast tier's time by package, against its budget (Linux's is the one that binds)"; echo; echo "$budget"; } >> "$GITHUB_STEP_SUMMARY"
             echo "---- the fast tier's time by package (docs/plan/01-rules.md §3):"; echo "$budget"
           fi
+          if [ "$TIER" = soak ]; then
+            # the failures by kind, each with its run and the tee-fuzz command that reproduces it (scripts/soak-summary.py)
+            py=python3; command -v python3 > /dev/null || py=python
+            "$py" scripts/soak-summary.py "$log" >> "$GITHUB_STEP_SUMMARY" || echo "::warning::soak-summary.py did not run"
+          fi
           exit $rc
 
       # what was built, as someone would unpack and run it: the build's bin/ without its tests, sim/ and content/
