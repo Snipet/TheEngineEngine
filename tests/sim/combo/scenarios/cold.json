@@ -1,0 +1,23 @@
+{
+  "format": "tee-scenario",
+  "version": 1,
+  "name": "cold",
+  "description": "Package X's cold (tests/sim/combo/Combo.cpp writes it: edit there, not here).",
+  "seconds": 13,
+  "events": [
+    { "t": 0, "spec": { "env.temperature": 253.15 } },
+    { "t": 0, "ctl": { "mode": 1 } },
+    { "t": 0, "ctl": { "lever": 0 } },
+    { "t": 0, "ctl": { "clutch": 0 } },
+    { "t": 0, "ctl": { "throttle": 0 } },
+    { "t": 0, "ctl": { "brake": 0 } },
+    { "t": 0, "ctl": { "ignition": 1 } },
+    { "t": 0.25, "ctl": { "ignition": 2 } },
+    { "t": 4.25, "ctl": { "ignition": 1 } },
+    { "t": 10, "ctl": { "ignition": 0 } }
+  ],
+  "assertions": [
+    { "audio": "finite" },
+    { "audio": "peak", "<=": 1 }
+  ]
+}
