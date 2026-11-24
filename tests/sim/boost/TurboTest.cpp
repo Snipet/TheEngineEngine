@@ -218,16 +218,20 @@ TEST_CASE("boost: the wastegate holds a target across speeds, and its spring hol
             rig.run(4.0);
             rig.clear();
             rig.run(1.0);
-            // (what the spring holds is what its actuator feels: the compressor's outlet, before the intercooler)
+            // (what the spring holds is what its actuator feels: the compressor's outlet, before the intercooler, less
+            // the exhaust's push on the poppet, kFace of the housing's pressure over the outside: a gate held barely
+            // open sits that far under its spring, as an internal gate's boost falls off at speed)
             const double boost = rig.mean("sSignal");
             const double gate = rig.get("boost.telGate[0]");
-            std::printf("spring %.0f kPa at %.0f rpm: %.1f kPa at the actuator (%.1f before the throttle), gate %.2f\n",
-                        spring / 1000.0, rpm, boost / 1000.0, rig.mean("sBoost") / 1000.0, gate);
+            const double hold = spring - rig.get("boost.kFace") * (rig.mean("sPTurb") - rig.get("boost.pOut"));
+            std::printf("spring %.0f kPa at %.0f rpm: %.1f kPa at the actuator (%.1f before the throttle; the spring less "
+                        "the poppet's push %.1f), gate %.2f\n",
+                        spring / 1000.0, rpm, boost / 1000.0, rig.mean("sBoost") / 1000.0, hold / 1000.0, gate);
             if (gate > 0.02)
             {
                 ++sprung;
                 INFO(spring << " Pa spring, " << rpm << " rpm");
-                CHECK(boost == Catch::Approx(spring).epsilon(0.05));
+                CHECK(boost == Catch::Approx(hold).epsilon(0.05));
             }
         }
     CHECK(sprung >= 5);
