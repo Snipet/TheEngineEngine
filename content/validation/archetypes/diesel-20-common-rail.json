@@ -38,13 +38,12 @@
         6,
         9
       ],
-      "relativeTo": "engine.redline",
       "range": [
-        0.97,
-        1.03
+        430.7,
+        457.3
       ],
-      "unit": "of the redline",
-      "source": "a rev limiter holds the speed within a few percent of where it cuts (some 100 to 200 rpm at 6500)"
+      "unit": "rad/s",
+      "source": "a diesel's governor holds its high idle, the rated speed plus its 6 % droop (4240 rpm), within a few percent"
     },
     {
       "name": "Invariant: pulls away",

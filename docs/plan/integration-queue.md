@@ -295,3 +295,16 @@ them: a cam card that prints acceleration, or Norton's *Cam Design and Manufactu
 weighed parts (a maker's catalogue) for the second. A nose limit changes every lab cam's flow area, so it is a
 change for whoever has the page, with the table run before and after. Until then the archetypes' spring rates are
 the model's equivalents, not real ones (`docs/models/valvetrain.md` says so when N1 has written it).
+
+## Open: "match the charge system" as an action (lead, 19:28, from X-021)
+
+X-021 (a large diesel that cannot pull away with `boost.model` 1) is not a fault of the model: only the turbine and
+the compressor are sized to the displacement, and the cooler's rated flow, the gate's spring and the charge volume
+keep defaults that suit two to three litres (0.25 kg/s, 70 kPa, 5 L). A 15 L engine with them makes 23 kPa where
+its matched values give 206. The fields mean what they say, so the defaults do not silently scale; instead:
+
+- **N2, now**: telemetry that says so (the cooler's rated flow against the compressor's matched flow, the gate's
+  spring against the target, the charge volume against the displacement: has and wants), and explicit fields for
+  the combination build (X's file).
+- **Later**: N2 writes the sizing rule with its sources in the boost model's doc; C's host applies it when asked
+  (as it bakes a cam); U3's AIR workspace shows the warning and offers "match to this engine" beside it.
