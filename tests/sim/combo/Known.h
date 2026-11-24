@@ -18,5 +18,15 @@ const Known kKnown[] = {
      "the tractor's running mean at 0.0050 of full scale with boost on"},
     {"X-014", "2026-11-24", "N2 and G (boost into the exhaust builder)", "as built", "straight-six-twin-turbo-30", "tour",
      "click", "boost.model 1 with exhaust.model 1: steps of 38 to 39 at the throttle's onset and the blip (8 without either)"},
+    {"X-015", "2026-11-24", "N2 and G (boost into the exhaust builder)", "+engine.custom+valve.model+boost.model+exhaust.model",
+     "large-diesel", "*", "click",
+     "the large diesel with the custom engine, the valvetrain, boost and the exhaust builder: clicks of 42 to 66 every "
+     "0.4 s at full load"},
+    {"X-015", "2026-11-24", "N2 and G (boost into the exhaust builder)", "+engine.custom+valve.model+boost.model+exhaust.model",
+     "v8", "load", "click", "the same while the large diesel is loaded over the V8 with every switch on"},
+    {"X-016", "2026-11-24", "Q (cost)", "random 1", "fuzz", "random", "cost",
+     "random Spec seed 1 costs 4.6 R since the exhaust builder runs (1.29 R before)"},
+    {"X-016", "2026-11-24", "Q (cost)", "corners 1", "fuzz", "corners", "cost",
+     "the ranges' corners seed 1 costs 4.9 R since the exhaust builder runs (0.76 R before)"},
     {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},   // the end (an array is never empty)
 };
