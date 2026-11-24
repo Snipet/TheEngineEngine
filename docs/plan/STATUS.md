@@ -36,6 +36,19 @@
 
 ## Landed
 
+- **16:19 a double count found** (N2 measured it, the lead read it in the code; D fixing): `sim/engine.fm:821`
+  turns Woschni's walls on under `wallHeat == 1 || fuel.model != 0`, but `sim/combustion/combustion.fm:261` gives
+  the burn its 0.97 share of the heat only when the field `wallHeat` is 1. Every archetype sets `fuel.model` and
+  leaves `wallHeat` 0, so each takes its wall loss twice: +11 to 13 % torque on the turbo four with it counted once.
+  The table of 16:15 (174 of 581 missed, every invariant met on all thirty) will be re-run after the fix.
+- 16:16 N2: the fast dyno reads 9 to 10 % over the stepped dyno on a boosted engine (437 for 401 N m), so the
+  validation table and the ribbon inflate boosted engines by that (C has it); the kei's matched gate cannot hold
+  its own spring over 5000 rpm; the twin-screw's boost rises 58 to 135 kPa with speed.
+- 16:16 Q, every landed model on (`docs/measurements/q6-all-models.md`): the twin-turbo V8 with a dual X costs 1.44
+  to 1.47 R today (budget 1.6); about 1.75 once G's builder lands at its own 0.31; about 1.55 with the pipes as
+  arrays and the valves in two passes; Economy about 0.87. **New risk: the program compiles in 3.7 to 4.1 s here**
+  (465 kB of machine code; the reference 1.4 s, 158 kB): Q studies compiling less (a switched-off model not
+  instantiated at all), C reports compile time on every CI system.
 - **16:14 X-007 fixed at its cause** (card I, f9e26f1, checked on origin): the car stepped the crank with the
   flywheel dial's inertia while the engine's torque carried the moving masses' inertia torque, which made energy
   (a heavy piston on a light flywheel ran away to 8809 rad/s); and a converter's torque could overshoot in one
