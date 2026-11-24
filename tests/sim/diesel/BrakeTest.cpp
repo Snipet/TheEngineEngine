@@ -149,14 +149,11 @@ TEST_CASE("diesel brake: the driver's button engages it at High with the dash sw
     CHECK(e.tel("ecu.brakeCylinders") == 0.0);
 }
 
-TEST_CASE("diesel brake: with a variable-vane turbo the brake shuts the vanes and the manifold reaches 3 bar", "[diesel][brake][turbo][!mayfail]")
+TEST_CASE("diesel brake: with a variable-vane turbo the brake shuts the vanes and the manifold reaches 3 bar", "[diesel][brake][turbo]")
 {
-    // [!mayfail] on a named finding (D2, 2026-11-24; the lead's rule for the default run): at the matched size, read
-    // over one second, the shaft peaks at 12539 rad/s against omegaMax 11932: the brake's own shaft governor
-    // (heavy.fm vaneCommand, a PID past 95 %) swings, some 0.6 s a cycle, into card F's 105 % relief; a rate limit
-    // on the vanes (0.2 to 1 a second) and other gains did not settle it. The instant readings this case took before
-    // (11183 rad/s) landed on the swing by luck. To do: a governor that holds the shaft (D2, with N2 on the turbine's
-    // response near the shut stop). Bounds kept.
+    // (marked [!mayfail] for an hour on 24 Nov: read over one second, the shaft peaked at 12539 rad/s against omegaMax
+    // 11932, the brake's PID past 95 % hunting into card F's 105 % relief. The governor rebuilt on the plant's measured
+    // response (heavy.fm vaneCommand): the shaft at most 11713 rad/s over the whole run (on the way up), 11090 settled. Plain again.)
     // card F's machine (boost.model 1), one turbo with variable vanes: the compression brake on High at 2000 rpm puts it in
     // its brake position (vanes shut, gate held shut). Real brakes run 3 to 3.5 bar absolute in the manifold there.
     // With card G's exhaust network (exhaust.model 1) the turbine's back pressure reaches the cylinders.
@@ -175,10 +172,15 @@ TEST_CASE("diesel brake: with a variable-vane turbo the brake shuts the vanes an
         e.spec("ecu.brakeSwitch", k == 0 ? 0 : 3);
         e.start();
         e.dyno(2000.0, 0.0f);
-        REQUIRE(e.run(5.0));
+        double shaftMost = 0.0;   // (the shaft's most over the whole run, its spool-up included)
+        for (int q = 0; q < 50; ++q)
+        {
+            REQUIRE(e.run(0.1));
+            shaftMost = std::max(shaftMost, e.tel("boost.shaftSpeed[0]"));
+        }
         // (over one second, every 512 samples: the torque's and the manifold's means, the shaft's most. The brake's own
         // shaft governor swings, some 0.6 s a cycle, so an instant's reading lands anywhere on it)
-        double tq = 0.0, man = 0.0, shaftMost = 0.0;
+        double tq = 0.0, man = 0.0;
         const int calls = static_cast<int>(e.rate / 512.0 + 0.5);
         for (int q = 0; q < calls; ++q)
         {
