@@ -66,6 +66,9 @@ allocation or logging on the audio thread. No JUCE, anywhere. Third-party code o
   it changes, in closed form, as the reference's `lossFlow` does; and test "at rest, nothing flows". With an
   inertia that varies round the turn, an explicit `dw/dt` step of the crank loses energy (15 % in 20 s on a free
   single): step the kinetic energy instead (`sim/core/inertia.fm`).
+- **Found on macOS, 2026-11-24**: never keep a `tee::Program`, or anything that owns one, in a static with a
+  destructor. At exit it is destroyed after FMinus's and LLVM's own statics and its destructor runs on a JIT that is
+  gone (38 tests crashed at exit on macOS; Linux's order hides it). Free it before `main` returns.
 - No transcendental function per sample where a table or a control-rate update will do. Your card gives a CPU
   budget; `tee-bench` measures it.
 - Every Spec field has `[[fminus::range]]`, `[[fminus::default]]`, `[[ui::label]]` and, for a quantity,

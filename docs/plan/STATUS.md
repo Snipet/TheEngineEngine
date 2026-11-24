@@ -35,7 +35,8 @@
   `Workspace` interface, the look and the demo engine (`docs/handoffs/u1-interface.md`).
 - 13:14 to 13:20 CI: Windows did not build at 0ee89f4 (`M_PI` in card D's tests: the keel defines
   `_USE_MATH_DEFINES`, 3cb314c); the kit's two golden tests failed where shaders were compiled (fixed, 9f8bb0d).
-  **Open: on macOS 38 of card C's host tests segfault at start** (they pass on Linux); C is on it.
+  On macOS 38 of card C's host tests crashed at exit (a static map of compiled programs destroyed after the JIT's own
+  statics; fixed, e69ea09). The first run with all three fixes is 45402917543: not finished yet.
 - 12:50 the owner asked for the interface to be redesigned from scratch: [ui-design.md](ui-design.md); package U1 started; U2 to U5 follow when its interface is on the branch.
 - 12:39 two-strokes, standalone (wave 2's card T, started early by D's session while it waits for K3b): the cylinder,
   the crankcase, the expansion chamber from the reference's ducts; 7 tests; four-stroking at a closed throttle
