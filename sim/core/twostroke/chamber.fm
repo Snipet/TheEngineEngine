@@ -40,11 +40,18 @@ module ExpansionChamber
     float tuned;        // the length to the baffle cone's middle (m): where the plugging pulse comes back from
     float c;            // the speed of sound in it (m/s)
     float rate;
+    int anechoic;       // 1: a test's endless pipe: the far end of the last section sends back none of what moves (a
+                        // baseline with no tuning of its own), while its mean pressure stays the air's, as an open end's
+    float aMean;        // (the arriving wave's slow part, which the endless end sends back inverted)
+    int fullLoss;       // (experiment) 1: the junctions' losses act on the whole drive, not its slow part
     int ready;
 
     void configure(float rateIn)
     {
         rate = rateIn;
+        anechoic = 0;
+        aMean = 0.0f;
+        fullLoss = 0;
         // (no section is longer than 1 m: a wave crosses it in at most 1 m / 300 m/s)
         const int cap = (int)(1.0f * rate / 300.0f) + 16;
         for (int i = 0; i < TS_MAX_SEG; ++i)
@@ -72,8 +79,11 @@ module ExpansionChamber
         const int k = s->coneSteps < 1 ? 1 : (s->coneSteps > TS_MAX_STEPS ? TS_MAX_STEPS : s->coneSteps);
         if (s->chamber == 0)
         {
-            n = 1;
-            section(0, s->headerLen + s->diffuserLen + s->bellyLen + s->baffleLen + s->stingerLen, s->headerDiam, c);
+            // (in equal sections of at most 0.9 m: a duct holds at most a metre)
+            const float total = s->headerLen + s->diffuserLen + s->bellyLen + s->baffleLen + s->stingerLen;
+            n = (int)(total / 0.9f) + 1;
+            for (int i = 0; i < n; ++i)
+                section(i, total / (float)n, s->headerDiam, c);
             tuned = 0.0f;
         }
         else
@@ -103,6 +113,7 @@ module ExpansionChamber
             n = i;
             tuned = s->headerLen + s->diffuserLen + s->bellyLen + 0.5f * s->baffleLen;
         }
+        aMean = 0.0f;
         for (int i = 0; i < n; ++i)
         {
             seg[i].clear();
@@ -144,15 +155,16 @@ module ExpansionChamber
             const float zs = seg[i].z + seg[i + 1].z;
             const float d = 2.0f * (seg[i].far - seg[i + 1].near);
             q[i] = d / zs - lossHold(sl[i], zs, sl[i] >= 0.0f ? kf[i] : kr[i]);
-            sl[i] += seg[i + 1].qsA * (d - sl[i]);
+            sl[i] += (fullLoss != 0 ? 1.0f : seg[i + 1].qsA) * (d - sl[i]);
         }
         // the open end: inverted, less the exit's loss
         const int e = n - 1;
         const float a = seg[e].far;
         const float ze = seg[e].z;
         const float d = 2.0f * a;
-        q[e] = d / ze - lossHold(sl[e], ze, sl[e] >= 0.0f ? kf[e] : kr[e]);
-        sl[e] += seg[e].qsA * (d - sl[e]);
+        aMean += 0.0003f * (a - aMean);
+        q[e] = anechoic != 0 ? (a + aMean) / ze : d / ze - lossHold(sl[e], ze, sl[e] >= 0.0f ? kf[e] : kr[e]);
+        sl[e] += (fullLoss != 0 ? 1.0f : seg[e].qsA) * (d - sl[e]);
         const float nearPort = seg[0].near + seg[0].z * qPort;
         for (int i = 0; i < n; ++i)
         {
