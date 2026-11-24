@@ -33,4 +33,4 @@ steppers.
 Nothing is invented: every number is a `DynoTrace`'s. The plan is this workspace's state, not a Spec field, so it is on the stage
 and `sections()` is empty.
 
-Tests: `ui.dyno.stage`, `ui.dyno.large` (with `dyno.paper`), `ui.dyno.run`, `ui.dyno.absent`, `ui.dyno.sheet`.
+Tests: `ui.dyno.stage` (goldens dyno.stage, .large, .paper), `ui.dyno.run`, `ui.dyno.absent`, `ui.dyno.text`; nightly: `ui.dyno.sheet.pictures`, `ui.dyno.framestages.pictures`.
