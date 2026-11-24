@@ -7,11 +7,14 @@
 module FuelSpec
 {
     int rev [[ui::hidden]];
-    int kind [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Fuel")]] [[ui::choices("Gasoline", "Diesel")]];
+    int kind [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Fuel")]]
+        [[ui::help("Petrol (spark ignition) or diesel (compression ignition)")]] [[ui::choices("Gasoline", "Diesel")]];
     // fuel.model 1 (card H): the fuels of sim/combustion/ (0: the reference's gasoline and diesel, bit for bit)
     int model [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Combustion model")]]
+        [[ui::help("Reference: the original burn. Fuels: each fuel's heat, octane, burn speed and knock")]]
         [[ui::choices("Reference", "Fuels")]];
     int grade [[fminus::range(0, 8)]] [[fminus::default(0)]] [[ui::label("Fuel")]]
+        [[ui::help("The fuel: its octane decides how much advance and boost it takes before knocking")]]
         [[ui::choices("Regular (87)", "Midgrade (89)", "Premium (91)", "Race", "E85", "Methanol", "Diesel", "Propane (untested)",
                       "Hydrogen (untested)")]];
     float direct [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Direct injection")]] [[ui::quantity("fraction")]]
@@ -20,9 +23,14 @@ module FuelSpec
         [[ui::taper("log")]] [[ui::help("Douaud and Eyzat's ignition delay times this (3: the reference's V8 on regular at its knock edge)")]];
     float injector [[fminus::range(1e-4, 2e-2)]] [[fminus::default(3.7e-3)]] [[ui::label("Injector size")]] [[ui::unit("kg/s")]]
         [[ui::help("Each injector's flow wide open (3.7e-3 kg/s: some 300 cc/min of gasoline)")]];
-    float soiAdd [[fminus::range(-20, 20)]] [[fminus::default(0)]] [[ui::label("Injection timing")]] [[ui::quantity("angle")]];
-    float pilot [[fminus::range(0, 0.1)]] [[fminus::default(0)]] [[ui::label("Pilot injection")]] [[ui::quantity("fraction")]];
-    float rail [[fminus::range(200, 3000)]] [[fminus::default(1000)]] [[ui::label("Rail pressure")]] [[ui::unit("bar")]];
+    float soiAdd [[fminus::range(-20, 20)]] [[fminus::default(0)]] [[ui::label("Injection timing")]]
+        [[ui::help("Injection timing moved against the map: earlier is louder and stronger, later quieter and smokier")]]
+        [[ui::quantity("angle")]];
+    float pilot [[fminus::range(0, 0.1)]] [[fminus::default(0)]] [[ui::label("Pilot injection")]]
+        [[ui::help("The share of a diesel's fuel injected early as a pilot: it softens the clatter")]]
+        [[ui::quantity("fraction")]];
+    float rail [[fminus::range(200, 3000)]] [[fminus::default(1000)]] [[ui::label("Rail pressure")]]
+        [[ui::help("A common-rail diesel's injection pressure: higher atomises the fuel finer")]] [[ui::unit("bar")]];
     float overFuel [[fminus::range(0, 0.4)]] [[fminus::default(0)]] [[ui::label("Over-fuel")]] [[ui::quantity("fraction")]]
         [[ui::help("Fuel past the smoke limit: more torque, black smoke")]];
 };

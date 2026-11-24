@@ -1,6 +1,6 @@
 // tests/sim/combo/SoakTest.cpp: package X's long soak of the full combination: every switch on, the typical build
 // (turbo V8, dual exhaust), random driving for TEE_SOAK_SECONDS (600 by default: ten minutes) under ctest's nightly
-// label; an hour by hand: TEE_NIGHTLY=1 TEE_SOAK_SECONDS=3600 build-dev/bin/tee-tests-combo "[soak]". Judged as a
+// label (ctest --preset nightly); an hour by hand: TEE_SOAK_SECONDS=3600 build-dev/bin/tee-tests-combo "[soak]". Judged as a
 // fuzz run is (finite, no guard, no blast, not silent while running), and the engine must still run at the end.
 #include "Combo.h"
 
@@ -11,10 +11,8 @@
 
 using namespace combo;
 
-TEST_CASE("nightly soak: every switch on and the turbo V8 driven at random for ten minutes", "[.][nightly][soak]")
+TEST_CASE("nightly soak: every switch on and the turbo V8 driven at random for ten minutes", "[nightly][soak]")
 {
-    if (std::getenv("TEE_NIGHTLY") == nullptr)
-        SKIP("set TEE_NIGHTLY to run");
     double seconds = 600.0;
     if (const char* s = std::getenv("TEE_SOAK_SECONDS"))
         seconds = std::atof(s);

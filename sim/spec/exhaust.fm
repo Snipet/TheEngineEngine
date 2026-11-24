@@ -27,6 +27,7 @@ module ExhaustSpec
         [[ui::help("From a straight-through can to big packed chambers")]];
     // ---- the exhaust builder (card G) ----
     int model [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Exhaust model")]]
+        [[ui::help("Reference: the original four dials. Builder: every pipe, collector, crossover, resonator and muffler as drawn")]]
         [[ui::choices("Reference", "Builder")]];
     // ---- the headers ----
     int primaryTo [[fminus::range(-2, 7)]] [[fminus::default(-2)]] [[ui::label("Primary joins")]] [[ui::group("Headers")]]
@@ -49,8 +50,10 @@ module ExhaustSpec
                       "Collector 5", "Collector 6", "Collector 7", "Collector 8")]]
         [[ui::help("-1 the layout's; 0 or 1: that side; 2 to 9: the collector (2 less) its pipe merges into")]] [MAX_COLLECTORS];
     float colLen [[fminus::range(0, 1.5)]] [[fminus::default(0)]] [[ui::label("Collector pipe length")]]
+        [[ui::help("The length of the pipe after a collector")]]
         [[ui::quantity("length")]] [MAX_COLLECTORS];
     float colD [[fminus::range(0, 0.15)]] [[fminus::default(0)]] [[ui::label("Collector pipe bore")]]
+        [[ui::help("The bore of the pipe after a collector")]]
         [[ui::quantity("length")]] [MAX_COLLECTORS];
     float colVol [[fminus::range(0, 0.004)]] [[fminus::default(0)]] [[ui::label("Collector volume")]]
         [[ui::quantity("volume")]] [[ui::help("Above 0: a log manifold's chamber at the collector")]] [MAX_COLLECTORS];
@@ -58,59 +61,81 @@ module ExhaustSpec
     int sides [[fminus::range(0, 2)]] [[fminus::default(0)]] [[ui::label("Sides")]] [[ui::group("Chain")]] [[ui::choices("Layout's", "Single", "Dual")]]
         [[ui::help("0: the layout's; 1 single; 2 dual")]];
     float mainLen [[fminus::range(0, 5)]] [[fminus::default(0)]] [[ui::label("Main pipe length")]]
+        [[ui::help("The length of each side's main pipe")]]
         [[ui::quantity("length")]] [MAX_SIDES];
     float mainD [[fminus::range(0, 0.13)]] [[fminus::default(0)]] [[ui::label("Main pipe bore")]]
+        [[ui::help("The bore of each side's main pipe")]]
         [[ui::quantity("length")]] [MAX_SIDES];
     int converter [[fminus::range(0, 2)]] [[fminus::default(1)]] [[ui::label("Converter")]]
+        [[ui::help("Each side's catalytic converter: none, a standard one, or a high-flow one")]]
         [[ui::choices("None", "Standard", "High-flow")]] [MAX_SIDES];
     int crossKind [[fminus::range(0, 2)]] [[fminus::default(1)]] [[ui::label("Crossover kind")]]
+        [[ui::help("A crossover between the two sides: none, an H-pipe (a deeper note) or an X-pipe (a smoother, higher one)")]]
         [[ui::choices("None", "H", "X")]];
     int crossAt [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Crossover at")]]
+        [[ui::help("Where the crossover joins: near the heads or after the main pipes")]]
         [[ui::choices("Head", "After main pipe")]];
     float crossD [[fminus::range(0, 0.13)]] [[fminus::default(0)]] [[ui::label("Crossover bore")]]
         [[ui::quantity("length")]] [[ui::help("0: the Crossover dial's area")]];
     float crossLen [[fminus::range(0.05, 1)]] [[fminus::default(0.25)]] [[ui::label("H pipe length")]]
+        [[ui::help("The length of an H-pipe's crossing tube")]]
         [[ui::quantity("length")]];
     float postLen [[fminus::range(0.1, 2)]] [[fminus::default(0.4)]] [[ui::label("Pipe after crossover")]]
+        [[ui::help("The pipe after the crossover")]]
         [[ui::quantity("length")]];
     int resonator [[fminus::range(0, 3)]] [[fminus::default(0)]] [[ui::label("Resonator")]]
+        [[ui::help("A resonator on each side that cancels a drone: a quarter-wave stub, a Helmholtz bottle, or a packed bottle")]]
         [[ui::choices("None", "Quarter-wave", "Helmholtz", "Packed bottle")]] [MAX_SIDES];
     float resHz [[fminus::range(40, 2000)]] [[fminus::default(200)]] [[ui::label("Resonator note")]]
+        [[ui::help("The note a resonator is tuned to cancel")]]
         [[ui::quantity("frequency")]] [[ui::taper("log")]] [MAX_SIDES];
     float resD [[fminus::range(0, 0.13)]] [[fminus::default(0)]] [[ui::label("Resonator bore")]]
         [[ui::quantity("length")]] [[ui::help("A stub's or a neck's; 0: the pipe's (a neck: half of it)")]] [MAX_SIDES];
     float resVol [[fminus::range(0.0002, 0.02)]] [[fminus::default(0.003)]] [[ui::label("Chamber volume")]]
+        [[ui::help("A Helmholtz resonator's chamber volume")]]
         [[ui::quantity("volume")]] [MAX_SIDES];
     float resLen [[fminus::range(0.1, 1)]] [[fminus::default(0.4)]] [[ui::label("Bottle length")]]
+        [[ui::help("A packed bottle's length")]]
         [[ui::quantity("length")]] [MAX_SIDES];
     float linkLen [[fminus::range(0.1, 2)]] [[fminus::default(0.4)]] [[ui::label("Pipe after resonator")]]
+        [[ui::help("The pipe after the resonator")]]
         [[ui::quantity("length")]];
     int mufKind [[fminus::range(0, 3)]] [[fminus::default(2)]] [[ui::label("Muffler kind")]]
+        [[ui::help("Each side's muffler: none, straight-through (loud), chambered, or three-pass (quiet)")]]
         [[ui::choices("None", "Straight-through", "Chambered", "Three-pass")]] [MAX_SIDES];
     float mufSize [[fminus::range(-1, 1)]] [[fminus::default(-1)]] [[ui::label("Muffler size")]]
         [[ui::quantity("fraction")]] [[ui::help("-1: the Muffler dial's")]] [MAX_SIDES];
     float mufLen [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Muffler chamber")]]
         [[ui::quantity("length")]] [[ui::help("Its first chamber's length; 0: the layout's")]] [MAX_SIDES];
     int bypass [[fminus::range(0, 4)]] [[fminus::default(0)]] [[ui::label("Bypass valve")]]
+        [[ui::help("A valve around the muffler: none, always shut, always open, opened by speed and load, or by the ECU")]]
         [[ui::choices("None", "Shut", "Open", "By speed and load", "By the ECU")]] [MAX_SIDES];
     float bypassD [[fminus::range(0, 0.13)]] [[fminus::default(0)]] [[ui::label("Bypass bore")]]
         [[ui::quantity("length")]] [[ui::help("0: the main pipe's")]];
     float bypassRpm [[fminus::range(1000, 9000)]] [[fminus::default(3500)]] [[ui::label("Valve opens above")]]
+        [[ui::help("The bypass valve opens above this speed")]]
         [[ui::unit("rpm")]];
     float bypassLoad [[fminus::range(0, 1)]] [[fminus::default(0.5)]] [[ui::label("and above load")]]
+        [[ui::help("... and above this load")]]
         [[ui::quantity("fraction")]];
     float bypassTime [[fminus::range(0.05, 2)]] [[fminus::default(0.3)]] [[ui::label("Valve travel")]]
+        [[ui::help("How long the bypass valve takes to open or shut")]]
         [[ui::quantity("time")]];
     float tailLen [[fminus::range(0, 2)]] [[fminus::default(0)]] [[ui::label("Tailpipe length")]]
+        [[ui::help("Each tailpipe's length")]]
         [[ui::quantity("length")]] [MAX_SIDES];
     float tailD [[fminus::range(0, 0.13)]] [[fminus::default(0)]] [[ui::label("Tailpipe bore")]]
+        [[ui::help("Each tailpipe's bore")]]
         [[ui::quantity("length")]] [MAX_SIDES];
-    int tips [[fminus::range(1, 2)]] [[fminus::default(1)]] [[ui::label("Tips")]] [[ui::unit("tips")]] [MAX_SIDES];
+    int tips [[fminus::range(1, 2)]] [[fminus::default(1)]] [[ui::label("Tips")]]
+        [[ui::help("One tip or two at each tailpipe")]] [[ui::unit("tips")]] [MAX_SIDES];
     float gateLen [[fminus::range(0.05, 1)]] [[fminus::default(0.3)]] [[ui::label("Wastegate pipe length")]]
         [[ui::quantity("length")]] [[ui::help("An external wastegate's own pipe, to the air")]];
     float gateD [[fminus::range(0.015, 0.08)]] [[fminus::default(0.038)]] [[ui::label("Wastegate pipe bore")]]
+        [[ui::help("An external wastegate's pipe bore")]]
         [[ui::quantity("length")]];
     int exitAt [[fminus::range(-1, 6)]] [[fminus::default(-1)]] [[ui::label("Exits")]]
+        [[ui::help("Where the tailpipes leave the car; it sets where the sound comes from")]]
         [[ui::choices("The layout's", "Rear centre", "Rear left", "Rear right", "Side left", "Side right", "Front", "Up")]]
         [MAX_SIDES];
 };

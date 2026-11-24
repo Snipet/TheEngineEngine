@@ -188,7 +188,8 @@ scenarios/` holds the shipped ones. `tee::parseTimeline` also reads K3a's `tee-e
 `tee-render --build <b> --scenario <s>` plays one through `SimHost` (the host the application uses): a WAV of 32-bit
 floats (`--pcm24`: 24-bit integers), a CSV of the telemetry (`--tel a,b`: those fields and what the assertions read;
 none: every number), a row a block; it prints each assertion's line and exits 3 when one fails. `--build defaults`
-takes every field's default whatever the scenario names; `--rate`, `--block` and `--seconds` override the file's.
+takes every field's default whatever the scenario names; `--rate`, `--block` and `--seconds` override the file's;
+`--define NAME[=V]` (repeatable) compiles the program with a define, a compile-time switch such as `TEE_FAST`.
 
 ## A validation: `tee-validation`, version 1
 

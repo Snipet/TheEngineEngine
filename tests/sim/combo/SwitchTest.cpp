@@ -160,6 +160,10 @@ FLIP_CASES(6)
 FLIP_CASES(7)
 FLIP_CASES(8)
 FLIP_CASES(9)
+FLIP_CASES(10)
+FLIP_CASES(11)
+FLIP_CASES(12)
+FLIP_CASES(13)
 
 #define STEP_CASE(section)                                                                                             \
     TEST_CASE("every choice and switch of spec." section " stepped while the V8 revs", "[combo][step]")                \
@@ -206,5 +210,42 @@ TEST_CASE("a build loaded over another while it runs: V8 then small four then la
         Verdict v = judge(r, tm, nullptr, false, ref);
         mustRun(r, 3.0, tm.end, v);
         report(v, all ? "load, all on" : "load", "v8", "load");
+    }
+}
+
+TEST_CASE("every switch flipped in the same block while the V8 and the turbo six pull in gear", "[combo][flip]")
+{
+    // the integrator holds a changed model until the fade's quiet (Engine::holdModel, 02bf4db): all at once must be
+    // one clean change, and the engine still running after each
+    for (const char* build : {"v8", "turbo-six"})
+    {
+        Times tm;
+        tm.idleFrom = 2.5;
+        tm.idleTo = 3.0;
+        tm.off = 12.0;
+        tm.end = 15.0;
+        tee::test::Scenario sc(buildPath(build));
+        sc.at(0.0).spec("env.temperature", 293.15).control("mode", 1).lever(0).clutch(0).ignition(tee::On);
+        sc.at(tm.start).ignition(tee::Start);
+        sc.at(tm.started).ignition(tee::On);
+        sc.at(3.0).shiftUp();
+        sc.at(3.3).throttle(0.6).ramp(0.3);
+        for (double t : {5.0, 6.5, 8.0, 9.5})
+        {
+            const bool on = t == 5.0 || t == 8.0;
+            sc.at(t);
+            for (const Switch& w : switches())
+                if (w.path != "engine.cycle")   // a two-stroke needs its own build (card T's): not over a V8
+                    sc.spec(w.path, on ? w.on : 0);
+        }
+        sc.at(7.0).shiftUp();
+        sc.at(9.0).throttle(1.0).ramp(0.1);
+        sc.at(10.5).throttle(0.0).ramp(0.05);
+        sc.at(10.6).brake(0.7).ramp(0.2);
+        sc.at(12.0).ignition(tee::Off);
+        const tee::test::Run r = sc.run(tm.end);
+        Verdict v = judge(r, tm, archetype(build), true, referenceStep(build, Kind::Pull));
+        mustRun(r, 3.0, 11.0, v);
+        report(v, "flip all at once", build, "flip");
     }
 }

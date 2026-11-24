@@ -1,0 +1,63 @@
+{
+ "format": "tee-engine-scenario/1",
+ "name": "d2-jake-flap",
+ "build": "truck-15l-six",
+ "description": "The compression brake on High at 1900 rpm from 5 s; the exhaust flap closed as well from 10 s (3 bar back pressure: the bark a little softer, the whole lower), the flap alone from 15 s (the compression brake off).",
+ "seconds": 20,
+ "events": [
+  {
+   "t": 0.0,
+   "spec": {
+    "env.temperature": 300,
+    "env.pressure": 101325
+   },
+   "ctl": {
+    "mode": 0,
+    "lever": 0,
+    "clutch": 0,
+    "brake": 0,
+    "throttle": 0,
+    "ignition": 1
+   }
+  },
+  {
+   "t": 0.2,
+   "ctl": {
+    "ignition": 2
+   }
+  },
+  {
+   "t": 2.2,
+   "ctl": {
+    "ignition": 1
+   }
+  },
+  {
+   "t": 3.0,
+   "ctl": {
+    "mode": 2,
+    "dynoSpeed": 198.968,
+    "dynoRate": 0,
+    "throttle": 0
+   }
+  },
+  {
+   "t": 5.0,
+   "spec": {
+    "ecu.brakeSwitch": 3
+   }
+  },
+  {
+   "t": 10.0,
+   "spec": {
+    "ecu.exBrakeSwitch": 1
+   }
+  },
+  {
+   "t": 15.0,
+   "spec": {
+    "ecu.brakeSwitch": 0
+   }
+  }
+ ]
+}
