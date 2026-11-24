@@ -1,0 +1,69 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Two-stroke twin, 250 cc road bike",
+  "notes": "A 250 cc road twin of the late 1970s and 1980s kind: 54 x 54 mm (247 cc), crank pins 180 apart (one firing a half turn), reed valves into each crankcase, exhaust ports open 186 degrees with a power valve (174 below 6,500 rpm, up by 8,000), transfers 124, a chamber a cylinder tuned near 8,500 rpm, packed silencers. Redline 10,000. Published figures for the class: some 26 kW at 8,500 rpm (Yamaha RZ250: 35 PS at 8,500). Ports and pipes are judgement for the class, not the maker's drawings.",
+  "spec": {
+    "engine": {
+      "layout": "Twin 270",
+      "displacement": 0.0002473,
+      "compression": 12.5,
+      "custom": true,
+      "cylinders": 2,
+      "bankAngle": [
+        0.0
+      ],
+      "bank": [
+        0,
+        0
+      ],
+      "pin": [
+        0.0,
+        180.0
+      ],
+      "fireRev": [
+        0,
+        0
+      ],
+      "place": [
+        0.0,
+        0.07
+      ],
+      "bore": 0.054,
+      "stroke": 0.054,
+      "rodLength": 0.105,
+      "redlineSpeed": 1047.198,
+      "cycle": "Two-stroke",
+      "tsCylinders": 2,
+      "flywheelInertia": 0.012,
+      "idleTrim": 300,
+      "tsExhaustDur": 186,
+      "tsTransferDur": 124,
+      "tsValveDur": 174,
+      "tsValveFrom": 680.678,
+      "tsValveTo": 837.758,
+      "tsSilencer": "Packed",
+      "tsHeaderLen": 0.197,
+      "tsDiffuserLen": 0.406,
+      "tsBellyLen": 0.148,
+      "tsBaffleLen": 0.295,
+      "tsStingerLen": 0.271,
+      "tsHeaderDiam": 0.038,
+      "tsBellyDiam": 0.115,
+      "tsStingerDiam": 0.022,
+      "frictionValvetrain": "None",
+      "alternator": 100
+    }
+  },
+  "expect": {
+    "firingOrder": [
+      1,
+      2
+    ],
+    "firingIntervals": [
+      180.0,
+      540.0
+    ],
+    "note": "the custom geometry's four-stroke derivation (core/layout.fm), which the two-stroke does not use: it fires once a turn a cylinder, evenly"
+  }
+}
