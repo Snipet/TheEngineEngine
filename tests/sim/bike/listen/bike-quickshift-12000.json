@@ -1,0 +1,96 @@
+{
+ "format": "tee-scenario",
+ "version": 1,
+ "name": "bike-quickshift-12000",
+ "description": "The superbike from rest flat out through first, second and third on the quickshifter, each shift at about 12,000 rpm (8.9, 11.6 and 15.0 s), and lifted at 17.5 s. Listen for: each upshift a 50 ms gap in the bark, cut clean (no clutch), the next gear picking up 2,000 rpm lower with a clunk from the dogs and the chain.",
+ "build": "bike-superbike",
+ "seconds": 18.5,
+ "events": [
+  {
+   "t": 0.0,
+   "spec": {
+    "env.temperature": 300,
+    "env.pressure": 101325
+   },
+   "ctl": {
+    "mode": 1,
+    "lever": 0,
+    "clutch": 0,
+    "brake": 0,
+    "throttle": 0,
+    "ignition": 1
+   }
+  },
+  {
+   "t": 0.25,
+   "ctl": {
+    "ignition": 2
+   }
+  },
+  {
+   "t": 2.0,
+   "ctl": {
+    "ignition": 1
+   }
+  },
+  {
+   "t": 2.5,
+   "ctl": {
+    "clutch": 1
+   }
+  },
+  {
+   "t": 2.7,
+   "press": "shiftUp"
+  },
+  {
+   "t": 2.9,
+   "ctl": {
+    "throttle": 0.5
+   },
+   "ramp": 0.2
+  },
+  {
+   "t": 3.1,
+   "ctl": {
+    "clutch": 0
+   },
+   "ramp": 0.8
+  },
+  {
+   "t": 3.6,
+   "ctl": {
+    "throttle": 1
+   },
+   "ramp": 0.3
+  },
+  {
+   "t": 8.9,
+   "press": "shiftUp"
+  },
+  {
+   "t": 11.6,
+   "press": "shiftUp"
+  },
+  {
+   "t": 15.0,
+   "press": "shiftUp"
+  },
+  {
+   "t": 17.5,
+   "ctl": {
+    "throttle": 0
+   },
+   "ramp": 0.1
+  }
+ ],
+ "assertions": [
+  {
+   "audio": "finite"
+  },
+  {
+   "audio": "peak",
+   "<=": 1
+  }
+ ]
+}

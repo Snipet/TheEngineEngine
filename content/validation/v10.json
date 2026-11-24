@@ -1,0 +1,49 @@
+{
+  "format": "tee-validation",
+  "version": 1,
+  "build": "v10",
+  "description": "The owner's V10 preset. The owner's own preset, converted faithfully (a race cam at 0.9999, the air at 233 K, the muffler open: on purpose): stock-engine figures are no target of it. Its targets are the contract's and what the preset is meant to do; it has no published figure.",
+  "targets": [
+    {
+      "name": "Starts and runs",
+      "scenario": "idle",
+      "tel": "engine.state",
+      "measure": "last",
+      "range": [
+        2,
+        2
+      ],
+      "fast": true,
+      "source": "a warm engine started on its key runs (engine.state 2)"
+    },
+    {
+      "name": "Within full scale",
+      "scenario": "rev-limit",
+      "audio": "peak",
+      "range": [
+        0,
+        1
+      ],
+      "fast": true,
+      "source": "02-contracts.md, section 1: what process writes is within +-1"
+    },
+    {
+      "name": "Holds the limiter",
+      "scenario": "rev-limit",
+      "tel": "engine.speed",
+      "measure": "max",
+      "during": [
+        6,
+        10
+      ],
+      "relativeTo": "engine.redline",
+      "range": [
+        0.97,
+        1.03
+      ],
+      "unit": "of the redline",
+      "fast": true,
+      "source": "a fuel-cut rev limiter holds the speed within a few percent of where it cuts"
+    }
+  ]
+}

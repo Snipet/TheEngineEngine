@@ -1,0 +1,108 @@
+{
+ "format": "tee-scenario",
+ "version": 1,
+ "name": "bike-autoblip",
+ "description": "The superbike rolled off at about 4,500 rpm in fourth, then down three gears on the auto-blipper (9.0, 9.8 and 10.6 s). Listen for: three sharp blips, each lifting the revs to the lower gear's before the dogs go in, and no chirp or chatter from the rear.",
+ "build": "bike-superbike",
+ "seconds": 12,
+ "events": [
+  {
+   "t": 0.0,
+   "spec": {
+    "env.temperature": 300,
+    "env.pressure": 101325
+   },
+   "ctl": {
+    "mode": 1,
+    "lever": 0,
+    "clutch": 0,
+    "brake": 0,
+    "throttle": 0,
+    "ignition": 1
+   }
+  },
+  {
+   "t": 0.25,
+   "ctl": {
+    "ignition": 2
+   }
+  },
+  {
+   "t": 2.0,
+   "ctl": {
+    "ignition": 1
+   }
+  },
+  {
+   "t": 2.5,
+   "ctl": {
+    "clutch": 1
+   }
+  },
+  {
+   "t": 2.7,
+   "press": "shiftUp"
+  },
+  {
+   "t": 2.9,
+   "ctl": {
+    "throttle": 0.5
+   },
+   "ramp": 0.2
+  },
+  {
+   "t": 3.1,
+   "ctl": {
+    "clutch": 0
+   },
+   "ramp": 0.8
+  },
+  {
+   "t": 3.6,
+   "ctl": {
+    "throttle": 0.8
+   },
+   "ramp": 0.3
+  },
+  {
+   "t": 4.8,
+   "press": "shiftUp"
+  },
+  {
+   "t": 6.0,
+   "press": "shiftUp"
+  },
+  {
+   "t": 7.2,
+   "press": "shiftUp"
+  },
+  {
+   "t": 8.6,
+   "ctl": {
+    "throttle": 0
+   },
+   "ramp": 0.05
+  },
+  {
+   "t": 9.0,
+   "press": "shiftDown"
+  },
+  {
+   "t": 9.8,
+   "press": "shiftDown"
+  },
+  {
+   "t": 10.6,
+   "press": "shiftDown"
+  }
+ ],
+ "assertions": [
+  {
+   "audio": "finite"
+  },
+  {
+   "audio": "peak",
+   "<=": 1
+  }
+ ]
+}

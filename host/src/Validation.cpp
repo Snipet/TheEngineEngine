@@ -134,6 +134,84 @@ namespace tee
         return changed;
     }
 
+    int modelsOnSettings(Build& build)
+    {
+        int changed = 0;
+        const Fields& fields = build.fields();
+        for (std::size_t i = 0; i < fields.all().size(); ++i)
+        {
+            const FieldInfo& f = fields.all()[i];
+            if (f.block != "spec" || f.count != 1 || f.scalar != Scalar::Int || !f.maximum)
+                continue;
+            if (f.path.substr(f.path.rfind('.') + 1) != "model")
+                continue;
+            if (build.get(f.path) != *f.maximum)
+            {
+                build.set(f.path, *f.maximum);
+                ++changed;
+            }
+        }
+        return changed;
+    }
+
+    std::string validationColumns(const std::vector<std::string>& titles,
+                                  const std::vector<std::vector<ValidationRow>>& columns)
+    {
+        std::string out;
+        char line[1024];
+        const auto cell = [](const ValidationRow* r) {
+            char text[64];
+            if (r == nullptr)
+                return std::string("-");
+            if (!r->measured)
+                return std::string("n/a");
+            std::snprintf(text, sizeof text, "%.4g %s", *r->measured, r->pass ? "pass" : "MISS");
+            return std::string(text);
+        };
+        std::snprintf(line, sizeof line, "%-24s %-26s", "target", "range");
+        out += line;
+        for (const std::string& t : titles)
+        {
+            std::snprintf(line, sizeof line, " %-16s", t.c_str());
+            out += line;
+        }
+        out += " source\n";
+        if (columns.empty())
+            return out;
+        std::vector<std::vector<std::string>> misses(columns.size());
+        for (const ValidationRow& first : columns.front())
+        {
+            const ValidationTarget& t = *first.target;
+            char range[64];
+            std::snprintf(range, sizeof range, "%.4g to %.4g %s", t.low, t.high, t.unit.c_str());
+            std::snprintf(line, sizeof line, "%-24s %-26s", t.name.c_str(), range);
+            out += line;
+            std::string note;
+            for (std::size_t c = 0; c < columns.size(); ++c)
+            {
+                const ValidationRow* r = nullptr;
+                for (const ValidationRow& candidate : columns[c])
+                    if (candidate.target == first.target)
+                        r = &candidate;
+                std::snprintf(line, sizeof line, " %-16s", cell(r).c_str());
+                out += line;
+                if (r != nullptr && r->measured && !r->pass)
+                    misses[c].push_back(t.name);
+                if (r != nullptr && note.empty())
+                    note = !r->why.empty() ? "  -- " + r->why : !r->how.empty() ? "  (" + r->how + ")" : "";
+            }
+            out += " " + t.source + note + "\n";
+        }
+        for (std::size_t c = 0; c < columns.size(); ++c)
+        {
+            std::string list;
+            for (const std::string& n : misses[c])
+                list += (list.empty() ? "" : ", ") + n;
+            out += (c < titles.size() ? titles[c] : std::string("?")) + " misses: " + (list.empty() ? "none" : list) + "\n";
+        }
+        return out;
+    }
+
     bool runValidation(const std::shared_ptr<Sim>& sim, const Validation& v, const std::filesystem::path& content,
                        bool fastOnly, std::vector<ValidationRow>& rows, std::string& error,
                        const std::function<void(Build&)>& adjust)

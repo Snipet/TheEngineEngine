@@ -9,7 +9,8 @@
 //   primary drive, the gear, the sprockets) to the output, at the gears' and the chain's efficiency whichever way the
 //   power goes. Its capacity is `clutchTorque` (0: 1.35 times the engine's peak) times the rider's lever, times the
 //   launch helper (it closes with the revs from just over idle, as the vehicle model's robotised clutch: a rider who
-//   never stalls). Open, its oil still drags: 0.6 % of its capacity (judgement: a wet clutch creeps a little cold).
+//   never stalls). Open, its oil still drags: 0.6 % of its capacity (judgement: a wet clutch creeps a little cold); a dry one
+//   (`clutchDry`) does not.
 //   A slipper clutch passes backwards (the wheel driving the engine) only `slipperTorque` of its capacity: its ramps
 //   lift the pressure plate when the back torque is more, so a downshift that would spin the engine up hard slips the
 //   clutch instead of the tyre. Without one the clutch passes its whole capacity both ways.
@@ -592,7 +593,7 @@ module Bike
         const float c = clutchCap * engage * box.robot;
         capA = fminf(c, capWheelie);
         capBack = bs.slipper ? fminf(capA, bs.slipperTorque * clutchCap) : capA;
-        capDrag = 0.006f * clutchCap;
+        capDrag = bs.clutchDry ? 0.0f : 0.006f * clutchCap;
         // the brakes: the lever on the front, the pedal on the rear; ABS lets a wheel off past its tyre's peak
         bool absOn = false;
         const float wantF = brakeMaxF * brakeIn;
@@ -734,6 +735,7 @@ module Bike
         btel.quickshifts = box.quickshifts;
         btel.blips = box.blips;
         btel.wheelieLimit = aWheelie;
+        btel.sprocketSpeed = (float)wo * box.chain;
         backMax = 0.0f;
         slipMax = 0.0f;
         slipping = false;
@@ -856,5 +858,11 @@ module Bike
     float lashStrike()
     {
         return lashNow;
+    }
+
+    // the front sprocket's speed (the gearbox's output), rad/s
+    float sprocketSpeed()
+    {
+        return (float)wo * box.chain;
     }
 };
