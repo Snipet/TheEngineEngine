@@ -78,6 +78,11 @@ endif()
 if(TEE_BUILD_TESTS)
   add_subdirectory(tests)
 endif()
+# The interface kit (card J): its libraries (tee_ui) and, with TEE_BUILD_TESTS, its headless tests (ui.*). It needs
+# FunkGui's core alone, so it is built whether or not the application is.
+if(NOT TARGET tee_ui)
+  add_subdirectory(ui)
+endif()
 if(TEE_BUILD_APP)
   if(EXISTS "${PROJECT_SOURCE_DIR}/shell/CMakeLists.txt")
     add_subdirectory(shell)
