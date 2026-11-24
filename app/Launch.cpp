@@ -2,6 +2,7 @@
 #include "Launch.h"
 
 #include "Engine.h"
+#include "Script.h"
 #include "files/BuildFiles.h"
 #include "player/SimAdapter.h"
 
@@ -111,5 +112,20 @@ namespace tee::app
             return false;
         out = sim.host().readSpec(ref);
         return true;
+    }
+
+    void openInScript(files::BuildFile* document, const ScriptEvent& e)
+    {
+        if (document == nullptr)
+        {
+            std::fprintf(stderr, "note: script line %d: no document to open %s in\n", e.line, e.name.c_str());
+            return;
+        }
+        std::vector<std::string> warnings;
+        std::string error;
+        if (document->open(e.name, BuildPart::Whole, warnings, error))
+            std::printf("file: opened %s (script line %d)\n", e.name.c_str(), e.line);
+        else
+            std::fprintf(stderr, "note: script line %d: %s did not open: %s\n", e.line, e.name.c_str(), error.c_str());
     }
 }
