@@ -149,19 +149,21 @@ namespace tee::app
                 const std::size_t colon = o.workspace.find(':');
                 const std::string id = lower(o.workspace.substr(0, colon));
                 const int page = colon == std::string::npos ? 1 : std::atoi(o.workspace.c_str() + colon + 1);
-                int found = -1;
-                std::string names;
-                for (int s = 0; s < frame->screenCount(); ++s)
-                {
-                    const std::string name = lower(frame->screenDef(s).name);
-                    names += (s == 0 ? "" : ", ") + name;
-                    if (name == id)
-                        found = s;
-                }
+                const int found = frame->find(id);
                 if (found < 0)
+                {
+                    std::string names;
+                    for (int s = 0; s < frame->workspaceCount(); ++s)
+                        names += (s == 0 ? "" : ", ") + std::string(frame->workspace(s).id());
                     std::fprintf(stderr, "--workspace: no workspace '%s' (there are: %s)\n", o.workspace.c_str(), names.c_str());
+                }
                 else
-                    frame->show(found, std::clamp(page, 1, std::max(1, frame->pageCount(found))) - 1);
+                {
+                    // the workspace, then the page of its inspector (the frame makes the pages when it shows one)
+                    frame->show(found);
+                    if (frame->inspectorPageCount() > 0)
+                        frame->showInspectorPage(std::clamp(page, 1, frame->inspectorPageCount()) - 1);
+                }
             }
             shown.panel = std::move(frame);
             shown.keep = kept;

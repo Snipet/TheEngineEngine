@@ -43,9 +43,15 @@ if [ ${#missing[@]} -gt 0 ]; then
   say "apt: installing ${missing[*]}"
   as=()
   [ "$(id -u)" = 0 ] || as=(sudo)
-  # (another session may hold apt's lock: wait for it rather than fail)
+  # a hosted CI runner: the packages' triggers rebuild the boot image (15 s) and restart services, for a machine that
+  # is thrown away after the job; neither is wanted there (a cloud container has no boot image to rebuild)
+  if [ "${GITHUB_ACTIONS:-}" = true ] && [ -f /etc/initramfs-tools/update-initramfs.conf ]; then
+    echo 'update_initramfs=no' | "${as[@]}" tee /etc/initramfs-tools/update-initramfs.conf > /dev/null || true
+  fi
+  # (another session may hold apt's lock: wait for it rather than fail; the environment through env, as sudo drops it)
   "${as[@]}" apt-get -o DPkg::Lock::Timeout=600 update -qq || echo "apt-get update reported errors: going on with the lists there are"
-  DEBIAN_FRONTEND=noninteractive "${as[@]}" apt-get -o DPkg::Lock::Timeout=600 install -y -qq --no-install-recommends "${missing[@]}"
+  "${as[@]}" env DEBIAN_FRONTEND=noninteractive NEEDRESTART_SUSPEND=1 \
+    apt-get -o DPkg::Lock::Timeout=600 install -y -qq --no-install-recommends "${missing[@]}"
 else
   say "apt: every package is installed"
 fi
