@@ -1,0 +1,46 @@
+{
+  "format": "tee-scenario",
+  "version": 1,
+  "name": "short-key",
+  "description": "Package X: the key held one second, let go, idle to 6 s",
+  "seconds": 6,
+  "events": [
+    {
+      "t": 0,
+      "spec": {
+        "env.temperature": 293.15
+      },
+      "ctl": {
+        "mode": 1,
+        "lever": 0,
+        "clutch": 0,
+        "throttle": 0,
+        "ignition": 1
+      }
+    },
+    {
+      "t": 0.25,
+      "ctl": {
+        "ignition": 2
+      }
+    },
+    {
+      "t": 1.25,
+      "ctl": {
+        "ignition": 1
+      }
+    }
+  ],
+  "assertions": [
+    {
+      "tel": "engine.state",
+      "measure": "min",
+      "during": [
+        3,
+        6
+      ],
+      ">=": 2,
+      "source": "running from 3 s on"
+    }
+  ]
+}

@@ -53,12 +53,23 @@ namespace tee::calib
         std::vector<std::string> warnings;
         if (!build.loadFile(std::filesystem::path(TEE_SOURCE_DIR) / buildFile, BuildPart::Whole, warnings, error))
             return false;
-        for (const auto& [p, v] : sets)
-            if (!build.set(p, v))
+        for (const auto& [p0, v] : sets)
+        {
+            // ("path[i]" sets element i of an array field)
+            std::string p = p0;
+            std::size_t index = 0;
+            const auto open = p.find('[');
+            if (open != std::string::npos)
             {
-                error = "cannot set " + p;
+                index = static_cast<std::size_t>(std::atoi(p.c_str() + open + 1));
+                p = p.substr(0, open);
+            }
+            if (!build.set(p, v, index))
+            {
+                error = "cannot set " + p0;
                 return false;
             }
+        }
         build.attach(&host);
 
         struct Bound

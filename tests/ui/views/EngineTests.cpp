@@ -617,3 +617,72 @@ namespace
         return 0;
     }
 }
+
+namespace
+{
+    // A custom layout the simulator refused (D's tel.engine.layoutRefused, finding X-001): while the flag reads 1 an
+    // amber line in words on the stage and in the layout's page, and the block draws the layout dial's (what runs),
+    // not the custom one asked for; both go when the flag does. The reason is D's (tel.engine.layoutReason) when it
+    // gives one, else the build's. The demo hook gives both as 0.
+    VIEW_TEST(testEngineRefused, "engine.refused")
+    {
+        tee::ui::DemoRig base;
+        // the demo's fields and D's custom-layout switch, as a two-cylinder custom whose cylinders fire together
+        std::vector<tee::ui::FieldInfo> fields;
+        for (int i = 0; i < base.doc.count(); ++i)
+            fields.push_back(base.doc.info(i));
+        tee::ui::FieldInfo custom;
+        custom.path = "engine.custom";
+        custom.kind = tee::ui::FieldKind::integer;
+        custom.max = 1.0;
+        custom.label = "Custom layout";
+        fields.push_back(custom);
+        tee::ui::MemoryDoc doc(fields);
+        doc.set(doc.find("engine.custom"), 1.0);
+        doc.set(doc.find("engine.cylinders"), 2.0);
+        tee::ui::WorkspaceContext ctx{ doc, base.engine, base.engine, base.engine, base.units, base.selection, base.app };
+        auto ws = tee::ui::makeEngineWorkspace(ctx);
+        funkgui::HeadlessHost host(*ws, 0, 1.0f);
+        host.resize(696, 574);
+        ws->place({ 0.0f, 0.0f, 696.0f, 574.0f });
+        host.tick(5);
+        base.selection.select("engine.layout");
+        const auto refusedText = [&] { return ws->inspectorPage().find("WAS REFUSED") != std::string::npos; };
+        CHECK(std::isfinite(base.ctx.live.get(en::kTelLayoutRefused)));   // the hook gives it
+        CHECK(!refusedText());
+        CHECK_MSG(tee::ui::engineRunningLayout(*ws) == "Custom", tee::ui::engineRunningLayout(*ws));
+        const std::uint64_t calm = ws->drawKey();
+        base.engine.set(en::kTelLayoutRefused, 1.0);
+        ctx.live.reset();
+        host.tick(1);
+        CHECK(refusedText());
+        CHECK(ws->inspectorPage().find("FIRE TOGETHER") != std::string::npos);   // the reason, from the build
+        CHECK(ws->drawKey() != calm);
+        const std::string dial = en::dialLayoutOf(doc).name;
+        CHECK_MSG(!dial.empty() && tee::ui::engineRunningLayout(*ws) == dial, tee::ui::engineRunningLayout(*ws));
+        const std::string why = tee::test::u2::textFaults(host.draw(), { 0, 0, 696, 574 }, tee::ui::enginePanels(*ws));
+        CHECK_MSG(why.empty(), why);
+        picture("engine.refused", host);
+        {
+            tee::ui::GuiPanel::Options o;
+            o.width = 320;
+            tee::ui::FieldPage fp(doc, base.units, base.engine, { { "page.gui", ws->inspectorPage() } }, o);
+            CHECK_MSG(fp.notes().empty(), fp.notes());
+            funkgui::HeadlessHost ph(fp, 0, 1.0f);
+            ph.tick(2);
+            picture("engine.inspector.refused", ph);
+        }
+        // D's reason, when it gives one, in its words
+        base.engine.set(en::kTelLayoutReason, 3.0);
+        ctx.live.reset();
+        host.tick(1);
+        CHECK(ws->inspectorPage().find("BANK IS OUTSIDE THE BANKS") != std::string::npos);
+        base.engine.set(en::kTelLayoutRefused, 0.0);
+        base.engine.set(en::kTelLayoutReason, 0.0);
+        ctx.live.reset();
+        host.tick(1);
+        CHECK(!refusedText());
+        CHECK(tee::ui::engineRunningLayout(*ws) == "Custom");
+        return 0;
+    }
+}

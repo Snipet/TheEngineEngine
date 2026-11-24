@@ -204,6 +204,7 @@ module Engine
     int faults;         // the crank's state found absurd and the engine put at rest afresh (guard), since init
     int faultNow;       // in this call
     int lastIgn;        // ctl.ignition at the last call (voices.model 1: its rise from off renders the key's sounds)
+    int layoutWhy;      // why (LayoutGeom::reason: 1 cylinders fire together, 2 rotors, 3 a bank outside the banks)
     int layoutRefused;  // 1: its geometry was refused (cylinders firing together), the layout dial's table runs
     float rodRatio;     // the rod over the crank's radius the cylinders are set up with (the reference's 3.3)
     float strokeUse;    // m: the stroke (piston speed, the inertia)
@@ -601,6 +602,7 @@ module Engine
         // a geometry that cannot run (two cylinders firing together: the Spec's own defaults, every pin 0, are one) is
         // refused: the layout dial's table runs, with the custom engine's sizes, masses and friction (X-001)
         layoutRefused = geo.ok == 0 ? 1 : 0;
+        layoutWhy = geo.reason;             // (for tel.engine.layoutReason: the table's below clears geo's)
         if (layoutRefused != 0)
         {
             geo.fromTable(lay.n, lay.cyc, lay.rotary, &lay.fire[0]);
@@ -1247,8 +1249,6 @@ module Engine
                 iShare[pi] += qI0[c];
             }
         }
-        const float exM0 = exh.mSum;      // (card F, model 1: this sample's exhaust gas, for the turbine's stand-in)
-        const float exE0 = exh.eSum;
         for (int c = 0; c < lay.n; ++c)
         {
             Cylinder* cy = &cyl[c];
@@ -1311,12 +1311,7 @@ module Engine
         }
         if (ctl.scopeOn != 0)
             scopeTap();
-        exh.step(qe, np);
-        // (card F, model 1: unless card G's network ends its collectors in the turbine's housings (exhaust.model 1, whose
-        // step calls the housings), the cylinders' gas this sample feeds them as a flow, and the downpipes are open
-        // ends of the collector pipe's impedance)
-        if (spec.boost.model != 0 && exh.turbinesFed() == 0)
-            boost.exhaustStandIn(exh.mSum - exM0, exh.eSum - exE0, exh.sec[0].z);
+        exh.step(qe, np);       // (with boost.model 1 the builder runs, its collectors ending in the turbines' housings)
         float rNear[MAX_PORTS];
         for (int i = 0; i < np; ++i)
             rNear[i] = intk.run[i].near + intk.run[i].z * qi[i];
@@ -1416,6 +1411,8 @@ module Engine
                 const float rd = set.drive != 0 ? car.road(v == 4 ? 0.45f : 1.0f) : 0.0f;
                 // (the fade's gain eased: a smooth step)
                 cutG = cutWant != 0 ? fmaxf(cutG - cutDn, 0.0f) : fminf(cutG + cutUp, 1.0f);
+                if (set.drive != 0 && spec.car.model != 0 && spec.car.gearbox == 5)
+                    listen.extra(LS_PLACE_GEARBOX, 4.0f * car.grindOut());    // (card D2: an eighteen-speed's grind; card I's Car)
                 if (spec.car.truckAir)
                 {
                     // (card D2: the air system's purge and brakes, at card L's places; heard with sound.model 1)
@@ -1752,8 +1749,10 @@ module Engine
         {
             keyUp((float)START_NOTE);
             held = 0;
+            // (a firing engine let go from its start runs: one already past half its idle speed (a big diesel cranks
+            // slowly and catches below the ECU's 550 rpm; N1's finding, 24 Nov), else the key's release stops it)
             if (ecu.state == 1)
-                ecu.state = 0;
+                ecu.state = crank.rpm > 0.5f * ecu.idleRpm ? 2 : 0;
         }
         if (ign == IGN_OFF && (ecu.state == 1 || ecu.state == 2))
         {
@@ -1827,6 +1826,7 @@ module Engine
         e->rock2 = shake.moment2;
         e->cylinders = lay.n;
         e->layoutRefused = layoutRefused;
+        e->layoutReason = layoutRefused != 0 ? layoutWhy : 0;
         e->oilTemperature = heat.tOil;
         // (card T: a two-stroke's)
         e->tsPurity = cycleUse != 0 ? two.purity : 0.0f;
