@@ -84,7 +84,7 @@
       "level": 0.619,
       "blowOff": 0.7,
       "size": 1.0,
-      "layout": "Two, a bank each",
+      "layout": "One",
       "target": 100000.0,
       "gateSpring": 70000.0,
       "blowOffKind": "Recirculating",
