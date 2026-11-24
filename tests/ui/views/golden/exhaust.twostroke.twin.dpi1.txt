@@ -1,5 +1,5 @@
-geometry 6bbc259ff334d93c
-text 917346859f0a65da
+geometry d3f21831af64e0d5
+text bff9b40b726215b2
 statics 867
 live 0
 texts 221
