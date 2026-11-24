@@ -8,7 +8,8 @@ include(Catch)
 file(GLOB _tee_shell_tests CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
 add_executable(tee-shell-tests ${_tee_shell_tests})
 tee_target_defaults(tee-shell-tests)
-target_link_libraries(tee-shell-tests PRIVATE tee_app Tee::shell_core Tee::shell_ref Tee::shell_sdl Catch2::Catch2WithMain)
+target_link_libraries(tee-shell-tests PRIVATE tee_app Tee::shell_core Tee::shell_settings Tee::shell_ref Tee::shell_sdl
+                                              Catch2::Catch2WithMain)
 target_compile_definitions(tee-shell-tests PRIVATE
   "TEE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
   "TEE_SOURCE_SIM_DIR=\"${PROJECT_SOURCE_DIR}/sim\"")
