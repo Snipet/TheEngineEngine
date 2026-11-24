@@ -80,6 +80,14 @@ and the lead (the session that wrote these files) settles what a card leaves ope
   and `combo` what is left, 120. What does not fit goes to the soak tier, by the owner's choice of what
   guards most per second. `scripts/test-budget.sh <ctest log>` prints the table (each fast CI job's summary has it);
   run it on your own `ctest --preset dev | tee ctest.log` before a push that adds tests.
+- **One compile a process** (the lead's decision, 2026-11-24): compiling sim/ costs about 6.6 CPU-s, and
+  catch_discover_tests runs each case in a process of its own, so a package with ten simulator cases pays it ten
+  times. Group a package's simulator-heavy cases into one ctest entry (e.g. `add_test(NAME <pkg>.sim COMMAND
+  tee-tests-<pkg> "[sim]")`, the light ones discovered as before), with one kept player or Sim a process, as the
+  shell and the host do (D2's "one kept player a process, reset per test" took diesel from 321 to 202 CPU-s). The
+  caution: a kept player is **reset** between cases to the state a fresh one has, so that no case passes because of
+  what the one before it left behind; prove it once by running the cases in reverse order (`--order rand` or the
+  list reversed) and say so in the commit.
 
 ## 4. Code
 
