@@ -41,6 +41,7 @@
 #include "core/work.fm"
 #include "core/dyno.fm"
 #include "core/wallheat.fm"
+#include "combustion/heavy.fm"
 
 // The reference's dials, in its units, as Engine has taken them from the Spec and the Controls (readSpec,
 // readControls): what the carved modules are handed
@@ -182,6 +183,7 @@ module Engine
     CycleWork work;     // p dV per cylinder per cycle: IMEP, PMEP, peak pressure, VE (core/work.fm); every engine
     Dyno dyno;          // MODE_DYNO_ENGINE's absorber (core/dyno.fm); every engine
     WallHeat wall;      // Woschni's wall heat, with spec.engine.wallHeat 1 (core/wallheat.fm)
+    HeavyDiesel hd;     // card D2: a diesel's governor, compression and exhaust brakes (combustion/heavy.fm); hd.on 0 at the defaults
     int customUse;      // 1: the engine configured from spec.engine's custom fields
     int lastIgn;        // ctl.ignition at the last call (voices.model 1: its rise from off renders the key's sounds)
     int layoutRefused;  // 1: its geometry was refused (cylinders firing together), the layout dial's table runs
@@ -283,6 +285,7 @@ module Engine
         set.timing = 0.0f;
         comb.setup(rate, &noise, &ecu, &heat, &lay, &exh.pop[0], &spec.fuel);
         comb.oxygen = 1.0f;
+        hd.setup(rate, &spec.ecu, &spec.valve);                                             // card D2
         ecu.setup(16.0f / rate, &spec.ecu, &spec.fuel, &ctl, &tel.ecu, &scope, &heat);     // card H's model 1
         set.bov = 0.7f;
         set.intake = 0.5f;
@@ -766,6 +769,10 @@ module Engine
         if (ecu.control(d16, ped, set.drive, set.modwheel, set.pressure, crank.rpm, fuelUse, heat.warm, car.shiftCut, car.gear,
                         set.clutch, crank.omega, intk.pPlenum, set.drive != 0 ? fabsf(car.v) : 0.0f, exh.gasTemperature(0)))
             crank.omega = 0.0f;
+        // card D2: a diesel's governor and brakes (nothing at the defaults: hd.on 0, the lever the reference's)
+        hd.control16(d16, fuelUse, ecu.state, ecu.throttle, crank.omega, ecu.idleRpm, ecu.redRpm, ecu.sinceStart,
+                     set.drive != 0 ? set.clutch : 0.0f, exh.mdot, exh.tPort, boost.boost, vTotal, lay.n, bore, heat.tAmb);
+        hd.feed(&comb.diesel);
         // the exhaust's mass flow and its power, for the turbo
         exh.flowRate();
         const float mRef = 1.2f * vTotal * ecu.redRpm / 120.0f * 0.9f;
@@ -1006,7 +1013,14 @@ module Engine
                 bI += 0.5f * intk.run[pi].z * (iShare[pi] - qI0[c]);
             }
             // (valve.model 1: the valvetrain gives the valves' areas; card E)
-            if (spec.valve.model != 0)
+            if (hd.on != 0)
+            {
+                // (card D2: the compression brake's lobe added to the exhaust valve's area; the exhaust brake's back pressure)
+                cy->stepAreas(a, dDeg, dt, vt.areaEx(cy, c, a) + hd.brakeArea(c, a), vt.areaIn(cy, c, a), bE + hd.back, exh.prim[pi].z, tH,
+                              bI, intk.run[pi].z, intk.tAir);
+                hd.sample(cy, c, a);
+            }
+            else if (spec.valve.model != 0)
                 cy->stepAreas(a, dDeg, dt, vt.areaEx(cy, c, a), vt.areaIn(cy, c, a), bE, exh.prim[pi].z, tH, bI, intk.run[pi].z, intk.tAir);
             else
                 cy->step(a, dDeg, dt, bE, exh.prim[pi].z, tH, bI, intk.run[pi].z, intk.tAir);
@@ -1451,6 +1465,7 @@ module Engine
         tel.sound.peak = peak;
         vt.telemetry(&tel.valve);
         intk.telemetry(&tel.intake);
+        hd.telemetry(&tel.ecu, &comb.diesel, fuelUse, spec.fuel.model);      // card D2: the smoke number, the diesel's measures
     }
 
     // card D's part of tel.engine
