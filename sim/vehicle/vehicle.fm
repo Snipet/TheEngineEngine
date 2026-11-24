@@ -74,6 +74,7 @@ enum
     VEH_FLAG_SHIFT = 16,
     VEH_FLAG_CUT = 32,
     VEH_FLAG_BLIP = 64,
+    VEH_FLAG_LIMIT = 128,   // a driven tyre at 90 % of its grip or more: traction limited
 };
 
 // The reference's six forward ratios (car.fm)
@@ -617,6 +618,8 @@ module Vehicle
             power += tDrive[i] * ww[i];
             if (share[i] > 0.0f && tyre[i].kappa > 1.5f * curve.kPeak)
                 flags |= VEH_FLAG_SPIN;
+            if (share[i] > 0.0f && fabsf(tyre[i].force) >= 0.9f * tyre[i].d && tyre[i].d > 0.0f)
+                flags |= VEH_FLAG_LIMIT;
         }
         if (wheelie)
             flags |= VEH_FLAG_WHEELIE;

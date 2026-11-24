@@ -253,7 +253,7 @@ namespace tee::ui
             const float leftW = std::floor((s.w - 3.0f * pad) * 0.58f);
             sideBox_ = { s.x + pad, s.y + pad, leftW, topH };
             tyreBox_ = { sideBox_.right() + pad, s.y + pad, s.w - 3.0f * pad - leftW, topH };
-            const float lowW = std::floor((s.w - 3.0f * pad) * 0.44f);
+            const float lowW = std::floor((s.w - 3.0f * pad) * (s.w < 900.0f ? 0.52f : 0.44f));
             lineBox_ = { s.x + pad, sideBox_.bottom() + pad, lowW, s.h - 3.0f * pad - topH };
             gearBox_ = { lineBox_.right() + pad, lineBox_.y, s.w - 3.0f * pad - lowW, lineBox_.h };
         }
@@ -417,11 +417,10 @@ namespace tee::ui
             c.segment(cx, cy - 7.0f, cx, cy + 7.0f, 1.5f, p.value);
             c.segment(cx, cy + 9.0f, cx, s.ground, 1.0f, p.dim);
             c.text("CM", cx - 8.0f, cy - 22.0f, look::kCaps, p.value);
-            const std::string cgt = "CENTRE OF MASS (CM) " + u.format(Quantity::length, cg, 0) + star(fromCg) + " UP, " +
+            const std::string cgWords = "CENTRE OF MASS (CM) " + u.format(Quantity::length, cg, 0) + star(fromCg) + " UP, " +
                                     u.format(Quantity::length, (1.0 - fw) * wb, 0) + " BEHIND THE FRONT AXLE   " +
                                     u.format(Quantity::mass, mass, 0) + star(fromMass) + ", " + look::num(fw * 100.0) +
                                     star(fromFw) + " % ON THE FRONT";
-            c.text(cgt.c_str(), sideBox_.x + look::kPad, sideBox_.y + 46.0f, look::kUnit, p.label);
             // The load on each axle, live: a bar under it, a tick at the load at rest, the number and its share.
             const double weight = mass * kG;
             const double rest[2] = { weight * fw, weight * (1.0 - fw) };
@@ -487,12 +486,22 @@ namespace tee::ui
                     c.segment(x, tip, x + 5.0f, tip + d, 2.0f, p.cold);
                     c.text((look::num(f / 1000.0, "%.2f") + " kN").c_str(), x + 8.0f, y0, look::kUnit, p.text);
                 }
-            std::string at = "AT " + (std::isfinite(v) ? u.format(Quantity::speed, v, 0) : std::string("-")) + ": DRAG FROM CD A " +
-                             look::num(cdA, "%.2f") + star(fromCd) + " M2, DOWNFORCE FROM CL A " + look::num(clA, "%.2f") + star(fromCl);
-            c.text(at.c_str(), sideBox_.x + look::kPad, sideBox_.y + 30.0f, look::kUnit, p.label);
+            // The words: what the aero is drawn from, the centre of mass, and the note on starred values, wrapped to
+            // the box (the note at the title's right when there is room for both).
+            const std::string at = "AT " + (std::isfinite(v) ? u.format(Quantity::speed, v, 0) : std::string("-")) + ": DRAG FROM CD A " +
+                                   look::num(cdA, "%.2f") + star(fromCd) + " M2, DOWNFORCE FROM CL A " + look::num(clA, "%.2f") + star(fromCl);
+            const float ix = sideBox_.x + look::kPad, iw = sideBox_.w - 2.0f * look::kPad;
+            int n = chart::wrap(c, at, ix, sideBox_.y + 30.0f, iw, look::kUnit, p.label, 13.0f, 2);
+            n += chart::wrap(c, cgWords, ix, sideBox_.y + 30.0f + 13.0f * static_cast<float>(n), iw, look::kUnit, p.label, 13.0f, 2);
             if (any)
-                c.text("* not in this build yet: the Spec's default", sideBox_.right() - look::kPad, sideBox_.y + 9.0f, look::kUnit,
-                       p.dim, funkgui::Align::right);
+            {
+                const char* note = "* not in this build yet: the Spec's default";
+                const float title = c.textWidth("THE CAR FROM THE SIDE, TO SCALE", look::kCaps);
+                if (title + 24.0f + c.textWidth(note, look::kUnit) <= iw)
+                    c.text(note, sideBox_.right() - look::kPad, sideBox_.y + 9.0f, look::kUnit, p.dim, funkgui::Align::right);
+                else
+                    chart::wrap(c, note, ix, sideBox_.y + 30.0f + 13.0f * static_cast<float>(n), iw, look::kUnit, p.dim, 13.0f, 1);
+            }
         }
 
         // ---- the tyre's grip curve ---------------------------------------------------------------------------------
@@ -574,6 +583,7 @@ namespace tee::ui
             Rect engine, clutch, gearbox, wheels[4];
             std::vector<Rect> diffs;   // front, rear, centre, as used
             Rect front, rear, centre;  // empty when not used
+            bool compact = false;      // a narrow box: the clutch drawn in the gearbox, all-wheel drive's centre too
         };
         Line line() const
         {
@@ -585,20 +595,25 @@ namespace tee::ui
             l.wheels[1] = { fx - ww * 0.5f, a.bottom() - wh, ww, wh };
             l.wheels[2] = { rx - ww * 0.5f, a.y, ww, wh };
             l.wheels[3] = { rx - ww * 0.5f, a.bottom() - wh, ww, wh };
-            const float bh = std::min(52.0f, a.h * 0.26f), bw = std::min(124.0f, a.w * 0.19f), gap = std::min(18.0f, a.w * 0.025f);
+            l.compact = a.w < 400.0f;
+            const float bh = std::min(52.0f, a.h * 0.26f), bw = std::max(66.0f, std::min(124.0f, a.w * 0.19f));
+            const float gap = std::max(8.0f, std::min(18.0f, a.w * 0.025f));
+            const float dw = std::max(56.0f, std::min(104.0f, a.w * 0.17f)), dh = bh * 0.8f;
             const Drive d = drive();
-            float x = fx + (d == Drive::rear ? -bw * 0.4f : bw * 0.55f + gap);
+            float x = fx + (d == Drive::rear ? -bw * 0.4f : dw * 0.5f + gap);
             l.engine = { x, cy - bh * 0.5f, bw, bh };
             x += bw + gap;
-            l.clutch = { x, cy - bh * 0.4f, bw * 0.62f, bh * 0.8f };
-            x += bw * 0.62f + gap;
+            if (!l.compact)
+            {
+                l.clutch = { x, cy - bh * 0.4f, std::max(58.0f, bw * 0.62f), bh * 0.8f };
+                x += l.clutch.w + gap;
+            }
             l.gearbox = { x, cy - bh * 0.5f, bw, bh };
-            const float dw = std::min(104.0f, a.w * 0.17f), dh = bh * 0.8f;
             if (d != Drive::rear)
                 l.front = { fx - dw * 0.5f, cy - dh * 0.5f, dw, dh };
             if (d != Drive::front)
                 l.rear = { rx - dw * 0.5f, cy - dh * 0.5f, dw, dh };
-            if (d == Drive::all)
+            if (d == Drive::all && !l.compact)
                 l.centre = { l.gearbox.right() + gap, cy - dh * 0.5f, dw, dh };
             for (const Rect* r : { &l.front, &l.rear, &l.centre })
                 if (!r->isEmpty())
@@ -613,7 +628,7 @@ namespace tee::ui
             };
             const double locked = get("Locked"), pre = get("Preload"), ks = get("KSpeed"), kt = get("KTorque");
             if (!std::isfinite(locked) && !std::isfinite(pre))
-                return "-";
+                return "KIND -";
             if (locked >= 0.5)
                 return "LOCKED";
             if (kt > 0.0)
@@ -636,8 +651,13 @@ namespace tee::ui
             const Col shaft = p.label;
             const float cy = l.engine.centreY();
             // Shafts first, under the boxes.
-            c.segment(l.engine.right(), cy, l.clutch.x, cy, 4.0f, shaft);
-            c.segment(l.clutch.right(), cy, l.gearbox.x, cy, 4.0f, shaft);
+            if (l.compact)
+                c.segment(l.engine.right(), cy, l.gearbox.x, cy, 4.0f, shaft);
+            else
+            {
+                c.segment(l.engine.right(), cy, l.clutch.x, cy, 4.0f, shaft);
+                c.segment(l.clutch.right(), cy, l.gearbox.x, cy, 4.0f, shaft);
+            }
             const auto axle = [&](const Rect& diff, int w0) {
                 const float x = diff.centreX();
                 c.segment(x, l.wheels[w0].bottom(), x, diff.y, 3.0f, shaft);
@@ -665,10 +685,13 @@ namespace tee::ui
             }
             else
             {
-                c.segment(l.gearbox.right(), cy, l.centre.x, cy, 4.0f, shaft);
-                c.segment(l.centre.right(), cy, l.rear.x, cy, 4.0f, shaft);
-                c.segment(l.centre.centreX(), l.centre.bottom(), l.centre.centreX(), under, 3.0f, shaft);
-                c.segment(l.centre.centreX(), under, l.front.centreX(), under, 3.0f, shaft);
+                // The centre differential: its own box, or (compact) inside the gearbox as a transfer case.
+                const Rect& cd = l.centre.isEmpty() ? l.gearbox : l.centre;
+                if (!l.centre.isEmpty())
+                    c.segment(l.gearbox.right(), cy, l.centre.x, cy, 4.0f, shaft);
+                c.segment(cd.right(), cy, l.rear.x, cy, 4.0f, shaft);
+                c.segment(cd.centreX(), cd.bottom(), cd.centreX(), under, 3.0f, shaft);
+                c.segment(cd.centreX(), under, l.front.centreX(), under, 3.0f, shaft);
                 c.segment(l.front.centreX(), under, l.front.centreX(), l.front.bottom(), 3.0f, shaft);
                 axle(l.front, 0);
                 axle(l.rear, 2);
@@ -684,10 +707,16 @@ namespace tee::ui
             const std::string kind = lower(gb);
             const bool conv = kind.find("automatic") != std::string::npos, cvt = kind.find("cvt") != std::string::npos;
             box(l.engine, "ENGINE", ctx_.live.has(kTel.engine) ? u.format(Quantity::rotation, ctx_.live.get(kTel.engine), 0) : "-", false);
-            box(l.clutch, conv ? "CONV." : cvt ? "BELT" : "CLUTCH", "", ctx_.selection.is("car.gearbox"));
+            if (!l.compact)
+                box(l.clutch, conv ? "CONV." : cvt ? "BELT" : "CLUTCH", "", ctx_.selection.is("car.gearbox"));
             const double g = ctx_.live.get(kTel.gear);
             const std::string inGear = std::isfinite(g) ? (g < 0 ? "IN R" : g < 0.5 ? "IN N" : "IN " + look::num(g)) : "-";
-            box(l.gearbox, gbx >= 0 ? upper(gb) : "GEARBOX", look::num(gears()) + " GEARS  " + inGear, ctx_.selection.is("car.gearbox"));
+            std::string gsub = look::num(gears()) + " GEARS  " + inGear;
+            if (l.compact || c.textWidth(gsub.c_str(), look::kUnit) > l.gearbox.w - 10.0f)
+                gsub = inGear;
+            if (l.compact && d == Drive::all)
+                gsub = look::num(field(fCentreSplit) * 100.0) + " % FRONT";
+            box(l.gearbox, gbx >= 0 ? upper(gb) : "GEARBOX", gsub, ctx_.selection.is("car.gearbox"));
             const bool dsel = ctx_.selection.is("car.diffs");
             // The torque reaching each axle: the sum of its wheels' drive torque.
             const auto axleTorque = [&](int w0) {
@@ -736,9 +765,11 @@ namespace tee::ui
         // ---- the gearing chart -------------------------------------------------------------------------------------
         void drawGearing(Canvas& c, const look::Palette& p) const
         {
-            look::region(c, p, gearBox_, "GEARING: ROAD SPEED AGAINST ENGINE SPEED", ctx_.selection.is("car.gearbox"));
+            const bool narrow = gearBox_.w < 520.0f;
+            look::region(c, p, gearBox_, narrow ? "GEARING" : "GEARING: ROAD SPEED AGAINST ENGINE SPEED", ctx_.selection.is("car.gearbox"));
             const Units& u = ctx_.units;
-            const Rect a{ gearBox_.x + 52.0f, gearBox_.y + 40.0f, gearBox_.w - 52.0f - 150.0f, gearBox_.h - 40.0f - 62.0f };
+            const float side = narrow ? 104.0f : 150.0f;
+            const Rect a{ gearBox_.x + 52.0f, gearBox_.y + 40.0f, gearBox_.w - 52.0f - side, gearBox_.h - 40.0f - 62.0f };
             const int n = gears();
             const double lim = limiter();
             bool fromR = true, any = false;
@@ -757,7 +788,7 @@ namespace tee::ui
             if (std::isfinite(vTop))
                 vMax = std::max(vMax, vTop);
             const double ux1 = u.toUser(Quantity::rotation, lim * 1.06), uy1 = u.toUser(Quantity::speed, vMax * 1.08);
-            const double xs = chart::niceStep(ux1, 7), ys = chart::niceStep(uy1, 5);
+            const double xs = chart::niceStep(ux1, std::max(3, static_cast<int>(a.w / 64.0f))), ys = chart::niceStep(uy1, 5);
             const chart::Scale X{ 0.0, std::ceil(ux1 / xs) * xs, a.x, a.right() }, Y{ 0.0, std::ceil(uy1 / ys) * ys, a.bottom(), a.y };
             for (double v = 0.0; v <= Y.d1 + 1e-9; v += ys)
             {
@@ -826,19 +857,21 @@ namespace tee::ui
                 chart::stroke(c, { a.x, a.right() }, { y, y }, 1.5f, p.ok, { 7.0f, 4.0f });
                 const std::string t = "TOP SPEED " + u.format(Quantity::speed, vTop, 0) + " IN " + look::num(topGear + 1) +
                                       (bound ? ", AT THE LIMITER" : "");
+                c.rrect(a.x + 2.0f, y - 18.0f, c.textWidth(t.c_str(), look::kCaps) + 8.0f, 15.0f, 3.0f, p.panel);
                 c.text(t.c_str(), a.x + 6.0f, y - 15.0f, look::kCaps, p.ok);
-                c.text("DERIVED: THE PREDICTED POWER AGAINST DRAG AND ROLLING", a.x, ky, look::kCaps, p.label);
+                c.text(narrow ? "DERIVED: POWER MEETS DRAG" : "DERIVED: THE PREDICTED POWER AGAINST DRAG AND ROLLING", a.x, ky,
+                       look::kCaps, p.label);
             }
             else
-                c.text("TOP SPEED  -   NO PREDICTED POWER YET", a.x, ky, look::kCaps, p.dim);
+                c.text(narrow ? "TOP SPEED  -  NO CURVE YET" : "TOP SPEED  -   NO PREDICTED POWER YET", a.x, ky, look::kCaps, p.dim);
             if (any)
                 {
-                c.disc(a.right() + 14.0f, ky + 5.0f, 3.5f, p.panel, 1.5f, p.ok);
-                c.text("SHIFT POINT", a.right() + 24.0f, ky, look::kCaps, p.ok);
+                c.disc(a.right() + 14.0f, ky - 9.0f, 3.5f, p.panel, 1.5f, p.ok);
+                c.text("SHIFT POINT", a.right() + 24.0f, ky - 14.0f, look::kCaps, p.ok);
             }
             if (!fromR)
-                c.text("* RATIOS NOT IN THIS BUILD: A TYPICAL SIX-SPEED", a.right() + 148.0f, gearBox_.y + 9.0f, look::kUnit, p.dim,
-                       funkgui::Align::right);
+                c.text(narrow ? "* TYPICAL RATIOS" : "* RATIOS NOT IN THIS BUILD: A TYPICAL SIX-SPEED", gearBox_.right() - look::kPad,
+                       gearBox_.y + 9.0f, look::kUnit, p.dim, funkgui::Align::right);
         }
 
         Rect sideBox_{}, tyreBox_{}, lineBox_{}, gearBox_{};

@@ -2,6 +2,11 @@
 //
 // The reference's DRIVE (CAR or TRUCK: used in MODE_DRIVE) and WEIGHT dials. The kind takes effect the next time the
 // vehicle is set up (a change of kind puts it at rest, in neutral, as the reference's DRIVE dial did); the mass at once.
+//
+// Then card I's: `model` (0 the reference's car, bit for bit: the default; 1 the vehicle model of sim/vehicle/vehicle.fm,
+// docs/models/vehicle.md) and the model's fields, read only when `model` is 1. None is glided: each takes effect at the
+// next 16-sample step; `model`, `gearbox`, `drive` and `gears` put the vehicle in neutral at rest. `mass` is the
+// reference's, shared. The model reads them through its own VehSpec (vehicle/vspec.fm), whose fields have these names.
 #pragma once
 
 module CarSpec
@@ -11,4 +16,92 @@ module CarSpec
         [[ui::help("A car: six gears; a semi truck: eighteen")]];
     float mass [[fminus::range(100, 50000)]] [[fminus::default(1400)]] [[ui::label("Mass")]] [[ui::quantity("mass")]]
         [[ui::taper("log")]] [[ui::decimals(0)]];
+    int model [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Vehicle model")]]
+        [[ui::choices("Reference", "Vehicle")]] [[ui::group("Vehicle")]]
+        [[ui::help("Reference: the reference's car, bit for bit. Vehicle: tyres, loads, differentials and gearboxes")]];
+    int drive [[fminus::range(0, 2)]] [[fminus::default(1)]] [[ui::label("Driven wheels")]]
+        [[ui::choices("Front", "Rear", "All")]];
+    float wheelbase [[fminus::range(1, 8)]] [[fminus::default(2.6)]] [[ui::label("Wheelbase")]] [[ui::quantity("length")]]
+        [[ui::group("Body")]];
+    float cgHeight [[fminus::range(0.2, 2.5)]] [[fminus::default(0.5)]] [[ui::label("Centre of mass height")]]
+        [[ui::quantity("length")]];
+    float frontWeight [[fminus::range(0.2, 0.8)]] [[fminus::default(0.53)]] [[ui::label("Weight on the front")]]
+        [[ui::quantity("fraction")]];
+    float track [[fminus::range(0.8, 2.6)]] [[fminus::default(1.55)]] [[ui::label("Track")]] [[ui::quantity("length")]];
+    float cdA [[fminus::range(0.2, 12)]] [[fminus::default(0.7)]] [[ui::label("Drag area (Cd A)")]]
+        [[ui::quantity("area")]];
+    float clA [[fminus::range(-2, 5)]] [[fminus::default(0)]] [[ui::label("Downforce area (Cl A)")]]
+        [[ui::quantity("area")]] [[ui::help("Positive presses the car down; negative is lift")]];
+    float aeroBalance [[fminus::range(0, 1)]] [[fminus::default(0.45)]] [[ui::label("Downforce on the front")]]
+        [[ui::quantity("fraction")]];
+    int tyre [[fminus::range(0, 9)]] [[fminus::default(1)]] [[ui::label("Tyres")]] [[ui::group("Tyres")]]
+        [[ui::choices("Economy", "Street", "Sport", "Semi-slick", "Slick", "Drag radial", "Drag slick", "Winter",
+                      "Truck", "Motorcycle")]];
+    float tyreRadius [[fminus::range(0.2, 0.7)]] [[fminus::default(0.33)]] [[ui::label("Rolling radius")]]
+        [[ui::quantity("length")]];
+    float wheelInertia [[fminus::range(0.2, 60)]] [[fminus::default(1.1)]] [[ui::label("Wheel inertia (each)")]]
+        [[ui::quantity("inertia")]];
+    float brakeDecel [[fminus::range(0.3, 2.5)]] [[fminus::default(1.2)]] [[ui::label("Brakes")]] [[ui::unit("g")]]
+        [[ui::group("Brakes")]] [[ui::help("The deceleration a full pedal asks for, before the tyres' grip")]];
+    float brakeBias [[fminus::range(0.3, 0.9)]] [[fminus::default(0.65)]] [[ui::label("Brake bias to the front")]]
+        [[ui::quantity("fraction")]];
+    bool abs [[fminus::default(1)]] [[ui::label("ABS")]];
+    int gearbox [[fminus::range(0, 4)]] [[fminus::default(0)]] [[ui::label("Gearbox")]] [[ui::group("Gearbox")]]
+        [[ui::choices("Manual", "Sequential", "Dual clutch", "Automatic", "CVT")]];
+    int gears [[fminus::range(1, 18)]] [[fminus::default(6)]] [[ui::label("Forward gears")]];
+    bool autoGearing [[fminus::default(1)]] [[ui::label("Gear it for the engine")]]
+        [[ui::help("The reference's rule: the ratios and final drive chosen for the engine's power and redline")]];
+    float ratio [[fminus::range(0.3, 20)]] [[fminus::default(1)]] [[ui::label("Ratios")]]
+        [[ui::quantity("ratio")]] [MAX_GEARS];
+    float reverseRatio [[fminus::range(1, 20)]] [[fminus::default(3.3)]] [[ui::label("Reverse")]]
+        [[ui::quantity("ratio")]];
+    float finalDrive [[fminus::range(1, 12)]] [[fminus::default(3.6)]] [[ui::label("Final drive")]]
+        [[ui::quantity("ratio")]];
+    float clutchTorque [[fminus::range(0, 20000)]] [[fminus::default(0)]] [[ui::label("Clutch capacity")]]
+        [[ui::quantity("torque")]] [[ui::help("0: 1.35 times the engine's peak torque, as the reference sizes it")]];
+    float gearEfficiency [[fminus::range(0.8, 1)]] [[fminus::default(0.97)]] [[ui::label("Gearbox efficiency")]]
+        [[ui::quantity("fraction")]];
+    float shiftTime [[fminus::range(0.05, 1)]] [[fminus::default(0.15)]] [[ui::label("Shift time")]]
+        [[ui::quantity("time")]] [[ui::help("A dual clutch's handover; an automatic's overlap is 2.5 times it")]];
+    float converterK [[fminus::range(5, 40)]] [[fminus::default(13.5)]] [[ui::label("Converter capacity")]]
+        [[ui::unit("rad/s/sqrt(N m)")]] [[ui::group("Converter")]]
+        [[ui::help("The impeller's speed over the square root of its torque at stall")]];
+    float converterRatio [[fminus::range(1, 3)]] [[fminus::default(1.9)]] [[ui::label("Stall torque ratio")]]
+        [[ui::quantity("ratio")]];
+    float couplingPoint [[fminus::range(0.6, 0.95)]] [[fminus::default(0.85)]] [[ui::label("Coupling point")]]
+        [[ui::quantity("fraction")]];
+    bool lockUp [[fminus::default(1)]] [[ui::label("Lock-up clutch")]];
+    float cvtLow [[fminus::range(1.5, 5)]] [[fminus::default(2.5)]] [[ui::label("CVT lowest ratio")]]
+        [[ui::quantity("ratio")]] [[ui::group("CVT")]];
+    float cvtHigh [[fminus::range(0.3, 1.2)]] [[fminus::default(0.45)]] [[ui::label("CVT highest ratio")]]
+        [[ui::quantity("ratio")]];
+    float cvtEfficiency [[fminus::range(0.8, 1)]] [[fminus::default(0.9)]] [[ui::label("CVT belt efficiency")]]
+        [[ui::quantity("fraction")]];
+    float centreSplit [[fminus::range(0, 1)]] [[fminus::default(0.4)]] [[ui::label("Torque to the front")]]
+        [[ui::quantity("fraction")]] [[ui::group("Differentials")]] [[ui::help("All-wheel drive's centre differential")]];
+    float centrePreload [[fminus::range(0, 5000)]] [[fminus::default(0)]] [[ui::label("Centre preload")]]
+        [[ui::quantity("torque")]];
+    float centreKSpeed [[fminus::range(0, 500)]] [[fminus::default(0)]] [[ui::label("Centre viscous")]]
+        [[ui::unit("N m s/rad")]];
+    float centreKTorque [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Centre torque bias")]]
+        [[ui::quantity("fraction")]];
+    bool centreLocked [[fminus::default(0)]] [[ui::label("Centre locked")]];
+    float frontPreload [[fminus::range(0, 5000)]] [[fminus::default(0)]] [[ui::label("Front preload")]]
+        [[ui::quantity("torque")]];
+    float frontKSpeed [[fminus::range(0, 500)]] [[fminus::default(0)]] [[ui::label("Front viscous")]]
+        [[ui::unit("N m s/rad")]];
+    float frontKTorque [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Front torque bias")]]
+        [[ui::quantity("fraction")]];
+    bool frontLocked [[fminus::default(0)]] [[ui::label("Front locked")]];
+    float rearPreload [[fminus::range(0, 5000)]] [[fminus::default(0)]] [[ui::label("Rear preload")]]
+        [[ui::quantity("torque")]];
+    float rearKSpeed [[fminus::range(0, 500)]] [[fminus::default(0)]] [[ui::label("Rear viscous")]]
+        [[ui::unit("N m s/rad")]];
+    float rearKTorque [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Rear torque bias")]]
+        [[ui::quantity("fraction")]];
+    bool rearLocked [[fminus::default(0)]] [[ui::label("Rear locked")]];
+    bool liveAxle [[fminus::default(0)]] [[ui::label("Live rear axle")]]
+        [[ui::help("The propeller shaft's torque reaction unloads the right rear tyre")]];
+    bool proTree [[fminus::default(0)]] [[ui::label("Pro tree")]] [[ui::group("Strip")]]
+        [[ui::help("The three ambers together, green 0.4 s later; otherwise half a second apart")]];
 };

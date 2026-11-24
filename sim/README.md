@@ -216,11 +216,18 @@ pedIn, int drive, float modwheel, float pressure, float rpm, int fuelUse, float 
 clutch, float omega)`. Engine's `keyDown`, `keyUp`, `ignition` and `configure` write its state too.
 
 **Car** (`vehicle/car.fm`): the clutch, gearbox, driveline, tyres, the car's speed `v`, `gear`, the shifter and the
-paddles (`lastButtons`, `shiftCut`, ...). `void setup(float rate)`; `void followLever(int drive, int lever)` at a key
+paddles (`lastButtons`, `shiftCut`, ...). `void setup(float rate, CarSpec* carSpec, EnvSpec* envSpec, Controls*
+controls, CarTel* carTel)` (Engine passes `&spec.car`, `&spec.env`, `&ctl`, `&tel.car`; Car reads them only with
+`spec.car.model` 1); `void followLever(int drive, int lever)` at a key
 and in `drive16`; `float drive16(int drive, float d16, float jEngine, float peak, float gearTorque, float kg, float
 redRpm, float bike, float clutch, float brake, int lever, int buttons, float gas, float rpm, float idleRpm, float
 rpmAvg)` every 16 when driven; `float step(float w, float tq, float dt)` and `float road(float kSq)` each sample when
-driven; `kmh()`, `moving()`.
+driven; `kmh()`, `moving()`. With `spec.car.model` 1 (card I) `drive16` hands everything to its `Vehicle m1`
+(`vehicle/vehicle.fm`, docs/models/vehicle.md): it copies spec.car and spec.env into `m1.spec`, `m1.env` when their revs
+move, reads ctl's counters, buttons, mode, strip and dyno itself, writes its fields of tel.car, and keeps `v`, `gear`,
+`shiftCut` (a dog box's or a paddle's upshift cut) and `lastButtons` as Engine and the ECU read them; it returns the
+pedal with a downshift's blip in it. `step`, `road` go to `m1`; `followLever` does nothing. Model 0, the default, is the
+reference's code, untouched (the null test).
 
 **Extras** (`sound/extras.fm`): the engine bay's sources; its own `Noise noise` (Boost draws from it too). `setup(float
 rate, float boxHz)`; `setClatter(int diesel, float swept)` and `pumpOn` in configure; the clicks at the cylinders'
