@@ -241,12 +241,23 @@ namespace
             funkgui::HeadlessHost h(gated, 0, 2.0f);
             h.tick(5);
             const int before = late.demo.askedCount;
+            bool compiling = false, modeOff = false;
+            for (const funkgui::A11yItem& it : h.accessibility())
+            {
+                compiling = compiling || (it.title == "Compiling" && !it.enabled);
+                modeOff = modeOff || (it.title == "BENCH" && !it.enabled);
+            }
+            CHECK(compiling && modeOff);
             const funkgui::Rect st = gated.startRect();
             h.press(st.centreX(), st.centreY());
             h.release();
             CHECK(late.demo.askedCount == before);
             ready = true;
             h.tick(2);
+            bool back = false;
+            for (const funkgui::A11yItem& it : h.accessibility())
+                back = back || (it.title == "Start" && it.enabled);
+            CHECK(back);
             h.press(st.centreX(), st.centreY());
             CHECK(late.demo.asked.startHeld);
             h.release();
