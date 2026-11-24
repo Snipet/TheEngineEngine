@@ -58,7 +58,7 @@ namespace tee::ui::exhaust
 
     std::vector<FieldInfo> exhaustDemoFields()
     {
-        std::vector<FieldInfo> out = demoFields();
+        std::vector<FieldInfo> out = demoFields(false);   // U1's alone (the hooks add this list to it)
         // the real Spec's layouts and aspirations (the demo's are shorter lists)
         std::vector<std::string> layouts;
         for (int k = 0; k < 17; ++k)
@@ -219,6 +219,24 @@ namespace tee::ui::exhaust
         return known;
     }
 
+    std::vector<std::pair<const char*, double>> exhaustLiveValues(double rpm, double load)
+    {
+        load = std::clamp(load, 0.0, 1.0);
+        const double hot = std::clamp(0.35 + 0.65 * load * std::min(1.0, rpm / 6000.0), 0.0, 1.0);
+        const double port = 820.0 + 330.0 * hot;
+        // the gas cools along the system; the walls sit below it
+        const double valve = rpm > 3500.0 && load > 0.5 ? 1.0 : 0.0;
+        return {
+            { "exhaust.collectorTemperature", port - 70.0 }, { "exhaust.tailTemperature", 420.0 + 190.0 * hot },
+            { "exhaust.wallPrimaries", port - 120.0 },       { "exhaust.wallCollectors", port - 170.0 },
+            { "exhaust.wallMerges", port - 200.0 },          { "exhaust.wallMain", port - 330.0 },
+            { "exhaust.wallLink", port - 400.0 },            { "exhaust.wallMufflers", 430.0 + 160.0 * hot },
+            { "exhaust.wallTails", 390.0 + 140.0 * hot },    { "exhaust.tailLevel[0]", 0.18 + 0.55 * hot },
+            { "exhaust.tailLevel[1]", 0.16 + 0.52 * hot },   { "exhaust.valve[0]", valve },
+            { "exhaust.valve[1]", valve },
+        };
+    }
+
     void exhaustDemoLive(DemoEngine& engine)
     {
         const auto get = [&](const char* name, double fallback) {
@@ -226,24 +244,33 @@ namespace tee::ui::exhaust
             const double v = h >= 0 ? engine.value(h) : fallback;
             return std::isfinite(v) ? v : fallback;
         };
-        const double load = std::clamp(get("engine.throttle", 0.3), 0.0, 1.0);
-        const double rpm = get("engine.speed", 300.0) * 30.0 / 3.14159265358979;
-        const double hot = std::clamp(0.35 + 0.65 * load * std::min(1.0, rpm / 6000.0), 0.0, 1.0);
-        const double port = 820.0 + 330.0 * hot;
-        // the gas cools along the system; the walls sit below it
-        engine.set("exhaust.collectorTemperature", port - 70.0);
-        engine.set("exhaust.tailTemperature", 420.0 + 190.0 * hot);
-        const double walls[7] = { port - 120.0, port - 170.0, port - 200.0, port - 330.0, port - 400.0, 430.0 + 160.0 * hot,
-                                  390.0 + 140.0 * hot };
-        static const char* const kWalls[7] = { "exhaust.wallPrimaries", "exhaust.wallCollectors", "exhaust.wallMerges",
-                                               "exhaust.wallMain", "exhaust.wallLink", "exhaust.wallMufflers",
-                                               "exhaust.wallTails" };
-        for (int i = 0; i < 7; ++i)
-            engine.set(kWalls[i], walls[i]);
-        engine.set("exhaust.tailLevel[0]", 0.18 + 0.55 * hot);
-        engine.set("exhaust.tailLevel[1]", 0.16 + 0.52 * hot);
-        const double valve = rpm > 3500.0 && load > 0.5 ? 1.0 : 0.0;
-        engine.set("exhaust.valve[0]", valve);
-        engine.set("exhaust.valve[1]", valve);
+        for (const auto& [name, v] : exhaustLiveValues(get("engine.speed", 300.0) * 30.0 / 3.14159265358979, get("engine.throttle", 0.3)))
+            engine.set(name, v);
+    }
+}
+
+namespace tee::ui
+{
+    // U1's demo hook (TEE_UI_DEMO in register.h): the exhaust builder's fields, and the telemetry the simulator does
+    // not write yet, following the demo's script.
+    void exhaustDemo(DemoExtras& x)
+    {
+        if (x.fields != nullptr)
+            for (const FieldInfo& f : exhaust::exhaustDemoFields())
+                if (f.section() == "exhaust"
+                    && std::none_of(x.fields->begin(), x.fields->end(), [&](const FieldInfo& g) { return g.path == f.path; }))
+                    x.fields->push_back(f);
+        if (x.engine != nullptr)
+            for (const auto& [name, v0] : exhaust::exhaustLiveValues(3000.0, 0.5))
+            {
+                (void)v0;
+                const char* n = name;
+                x.engine->addTelemetry(n, [n](const DemoEngine& e) {
+                    for (const auto& [m, v] : exhaust::exhaustLiveValues(e.rpm(), e.throttle()))
+                        if (std::string_view(m) == n)
+                            return v;
+                    return std::nan("");
+                });
+            }
     }
 }

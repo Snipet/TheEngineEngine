@@ -1,0 +1,156 @@
+// rig.fm: package M's voices (sim/sound/voices.fm) driven alone, for the standalone tests: the test writes the inputs
+// Extras would hand them every 16 samples, and the events it would pass on (valves landing, injectors), and reads
+// each voice's output into a buffer.
+//
+// The crank: crankHz, plus a ripple at the firing frequency (ripple, as a share of the speed: what rattles a dog box
+// at idle). The valves: each cylinder's intake and exhaust closing at their places in a four-stroke cycle, evenly
+// fired. The starter's current: starterOn.
+#include "sound/voices.fm"
+
+module Rig
+{
+    Voices vo;
+    VoicesSpec spec;
+    float rate;
+    float dt;
+    int tick16;
+    float cycleDeg;     // the crank's place in its cycle, degrees
+    // the inputs
+    float d16;
+    int ignition;
+    int state;
+    float crankHz;
+    float ripple;
+    float coolant;
+    int driven;
+    int boxKind;
+    int truck;
+    int gear;
+    float wIn;
+    float ratioTotal;
+    float fd;
+    float wOut;
+    float torque;
+    float peak;
+    float engaged;
+    int asp;
+    float boostShare;
+    float gateOpen;
+    int gateExternal;
+    float flowShare;
+    int cylinders;
+    float clatter;
+    float displacement;
+    int diesel;
+    float starterOn;
+    // what came out
+    float hzNow;        // the crank's speed with its ripple, this sample
+    int bounces;        // valve bounces since init
+    float bounceSum;
+    int directTicks;
+    float peakAbs;
+    bool finite;
+
+    void init(float rateIn)
+    {
+        rate = rateIn;
+        dt = 1.0f / rate;
+        d16 = 16.0f * dt;
+        vo.setup(rate);
+        tick16 = 0;
+        cycleDeg = 0.0f;
+        bounces = 0;
+        bounceSum = 0.0f;
+        directTicks = 0;
+        peakAbs = 0.0f;
+        finite = true;
+    }
+
+    float channel(int which)
+    {
+        if (which == 0)
+            return vo.gearbox;
+        if (which == 1)
+            return vo.axle;
+        if (which == 2)
+            return vo.front;
+        if (which == 3)
+            return vo.head;
+        if (which == 4)
+            return vo.tank;
+        if (which == 5)
+            return vo.gateOut;
+        if (which == 6)
+            return vo.starter;
+        if (which == 7)
+            return vo.gear.rattle;
+        if (which == 8)
+            return vo.fan.out;
+        if (which == 9)
+            return vo.drive.timingOut;
+        if (which == 10)
+            return vo.drive.belt;
+        if (which == 11)
+            return vo.drive.blower;
+        return vo.all + vo.starter;
+    }
+
+    // n samples; out (n floats): the channel `which`
+    void run(int n, float* out, int which) [[clang::nonblocking]]
+    {
+        const int nc = cylinders < 1 ? 1 : cylinders;
+        const float gap = 720.0f / (float)nc;
+        for (int i = 0; i < n; ++i)
+        {
+            // the crank, rippling at the firing frequency
+            const float fire = cycleDeg / gap;
+            hzNow = crankHz * (1.0f + ripple * vo.sn.at(fire - floorf(fire)));
+            if (tick16 == 0)
+                vo.control16(&spec, 1.0f, d16, ignition, state, hzNow, coolant, driven, boxKind, truck, gear, wIn, ratioTotal, fd,
+                             wOut, torque, peak, engaged, asp, boostShare, gateOpen, gateExternal, flowShare, nc, 720.0f,
+                             clatter, displacement, diesel);
+            tick16 += 1;
+            if (tick16 == 16)
+                tick16 = 0;
+            // the valves: cylinder c's intake closes at 240 degrees of its cycle, its exhaust at 370 (into the next turn)
+            const float dDeg = hzNow * 360.0f * dt;
+            const float before = cycleDeg;
+            cycleDeg += dDeg;
+            if (cycleDeg >= 720.0f)
+                cycleDeg -= 720.0f;
+            for (int c = 0; c < nc; ++c)
+            {
+                const float base = (float)c * gap;
+                for (int e = 0; e < 2; ++e)
+                {
+                    float at = base + (e == 0 ? 240.0f : 370.0f);
+                    at -= 720.0f * floorf(at / 720.0f);
+                    const bool crossed = before <= cycleDeg ? (at > before && at <= cycleDeg) : (at > before || at <= cycleDeg);
+                    if (crossed)
+                    {
+                        vo.valve.landed(0.5f, e == 0 ? 1 : 0);
+                        if (e == 1 && vo.direct != 0)
+                        {
+                            vo.fuel.directClick(0.3f * 3.3333333f * vo.kInj);
+                            directTicks += 1;
+                        }
+                    }
+                }
+            }
+            vo.valve.tick(dDeg);
+            if (vo.valve.bounce != 0.0f)
+            {
+                bounces += 1;
+                bounceSum += vo.valve.bounce;
+            }
+            vo.tick(hzNow);
+            vo.start.tick(hzNow, starterOn);
+            vo.starter = vo.start.out;
+            const float y = channel(which);
+            if (!(y == y) || y > 1.0e6f || y < -1.0e6f)
+                finite = false;
+            peakAbs = fmaxf(peakAbs, fabsf(vo.all + vo.starter));
+            out[i] = y;
+        }
+    }
+};

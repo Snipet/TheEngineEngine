@@ -245,7 +245,7 @@ module Engine
         intk.setup(rate);
         // the longest each pipe could be, cold (330 m/s), at this rate
         exh.setup(rate, &noise, &lay, &heat);
-        ex.setup(rate, 90.0f);
+        ex.setup(rate, 90.0f, &spec.voices);
         boost.setup(rate, &ex.noise);
         quiet = 1.0e9f;
         gainNorm = 1.0f;
@@ -277,7 +277,8 @@ module Engine
         set.bs = 1.0f;
         set.ambF = 80.33f;
         set.timing = 0.0f;
-        comb.setup(rate, &noise, &ecu, &heat, &lay, &exh.pop[0]);
+        comb.setup(rate, &noise, &ecu, &heat, &lay, &exh.pop[0], &spec.fuel);
+        ecu.setup(16.0f / rate, &spec.ecu, &spec.fuel, &ctl, &tel.ecu, &scope, &heat);     // card H's model 1
         set.bov = 0.7f;
         set.intake = 0.5f;
         set.mech = 0.4f;
@@ -748,7 +749,7 @@ module Engine
         else
             car.lastDrive = 0;
         if (ecu.control(d16, ped, set.drive, set.modwheel, set.pressure, crank.rpm, fuelUse, heat.warm, car.shiftCut, car.gear,
-                        set.clutch, crank.omega))
+                        set.clutch, crank.omega, intk.pPlenum, set.drive != 0 ? fabsf(car.v) : 0.0f, exh.gasTemperature(0)))
             crank.omega = 0.0f;
         // the exhaust's mass flow and its power, for the turbo
         exh.flowRate();
@@ -788,6 +789,22 @@ module Engine
         if (spec.ecu.model != 0 && set.drive != 0)
             ecu.vehicle(car.drivenSlip(), car.speedNow(), car.gearNow(), car.upshifts(), car.cutRequest(), car.blipRequest());
         mechanics16();
+        // package M's mechanical voices (spec.voices.model 1; with model 0 it returns at once): their inputs, the car's
+        // gearbox as either car model keeps it, the reference turbo's gate as open when its boost reaches its most
+        if (spec.voices.model != 0 || ex.voOn != 0)
+        {
+            const int m1 = spec.car.model != 0 ? 1 : 0;
+            const float bShare = boost.boost / fmaxf(boost.maxB, 0.01f);
+            ex.control16(d16, ctl.ignition, ecu.state, crank.omega * 0.15915494f, heat.tCool, set.drive != 0 ? 1 : 0,
+                         m1 != 0 ? spec.car.gearbox : 0, car.truck, car.gear,
+                         m1 != 0 ? crank.omega - car.m1.slipC : car.wG,
+                         m1 != 0 ? car.m1.box.ratioOf(car.gear) : car.ratioOf(car.gear),
+                         m1 != 0 ? car.m1.box.fd : car.finalDrive,
+                         m1 != 0 ? (float)car.m1.v / fmaxf(car.m1.radius, 0.05f) * car.m1.box.fd : car.wW * car.finalDrive,
+                         tqBrake, peakTorque(), m1 != 0 ? car.m1.engage * car.m1.box.robot : car.engage * car.robot,
+                         aspUse, bShare, fminf(fmaxf((bShare - 0.95f) * 20.0f, 0.0f), 1.0f), 0, exh.mdot / fmaxf(mRef, 1.0e-6f),
+                         lay.n, lay.cyc, vt.clatter, vTotal, fuelUse);
+        }
     }
 
     // Every 16 samples, last: the mechanics' slow part. The cycle's speed spread; a custom engine's inertia with the
@@ -959,6 +976,7 @@ module Engine
             else
                 cy->step(a, dDeg, dt, bE, exh.prim[pi].z, tH, bI, intk.run[pi].z, intk.tAir);
             work.sample(c, a, cy->p, cy->v);
+            comb.sample(cy, c, dt);                     // card H: nothing under fuel.model 0 and ecu.model 0
             qe[pi] += cy->qEa;
             qi[pi] += cy->qIa;
             torque += cy->tq;
@@ -972,11 +990,11 @@ module Engine
                 work.trapped(c, fmaxf(cy->m - cy->mInert, 0.0f), intk.pPlenum, intk.tAir, 101325.0f, heat.tAmb);
                 if (vt.active(c))
                     comb.charge(&cyl[c], c, fuelUse, intk.pPlenum, crank.rpm, smCR, crBs, burnK, set.pops, set.rough, set.timing);
-                ex.valveClick(clickAmp * (1.0f + 2.0f * vt.clatter));
+                ex.valveClick(clickAmp * (1.0f + 2.0f * vt.clatter), 1);
             }
             if (cy->evcNow)
             {
-                ex.valveClick(clickAmp * (1.0f + 2.0f * vt.clatter));
+                ex.valveClick(clickAmp * (1.0f + 2.0f * vt.clatter), 0);
                 if (fuelUse == 0)
                     ex.injectorClick(0.3f);
             }

@@ -141,12 +141,15 @@ namespace tee::ui
         {
             DrawKey k;
             k.mix(ctx_.doc.revision()).mix(ctx_.selection.revision()).mix(ctx_.units.revision());
-            for (const char* n : { N::boost, N::manifold, N::throttle, N::target, N::speed[0], N::speed[1], N::ratio[0],
-                                   N::ratio[1], N::flow[0], N::flow[1], N::outT[0], N::outT[1], N::gate, N::vanes,
-                                   N::icOut, N::scPower, N::scBypass, N::blowOff, N::antiLag, N::nitrous, N::bottle,
+            for (const char* n : { N::boost, N::manifold, N::throttle, N::turbos, N::speed[0], N::speed[1], N::ratio[0],
+                                   N::ratio[1], N::flow[0], N::flow[1], N::eta, N::outT[0], N::outT[1], N::gate, N::vanes,
+                                   N::drive, N::chargePipe, N::icOut, N::throttleIn, N::scPower, N::blowOff, N::flags,
                                    N::box, N::plenumT })
                 k.mix(static_cast<float>(ctx_.live.get(n)));
-            k.mix(static_cast<int>(trail_.size())).mix(static_cast<int>(history_.size()));
+            k.mix(static_cast<int>(trail_.size())).mix(static_cast<int>(history_.size())).mix(mapRev_).mix(mapFromScope_ ? 1 : 0);
+            k.mix(static_cast<int>(scopeTrail_.size()));
+            if (!scopeTrail_.empty())
+                k.mix(scopeTrail_.back().x).mix(scopeTrail_.back().y);
             return k.h;
         }
 
@@ -201,6 +204,7 @@ namespace tee::ui
                     lowerLayout();
                 }
             }
+            readScopeMap();
             // the operating point's trail: a point each time it moves (a spool, a shift, a surge's flutter)
             const double f = ctx_.live.get(N::flow[0]), r = ctx_.live.get(N::ratio[0]);
             if (std::isfinite(f) && std::isfinite(r))
@@ -243,7 +247,8 @@ namespace tee::ui
         {
             seenDoc_ = ctx_.doc.revision();
             build_ = resolveAir(ctx_.doc);
-            lines_ = build_.hasMap() ? mapLines(build_.map) : MapLines{};
+            mirror_ = build_.hasMap() ? mapLines(build_.map) : MapLines{};
+            lines_ = mapFromScope_ ? lines_ : mirror_;
             parts_.clear();
             hits_.clear();
             const Rect& s = stage_;
@@ -374,6 +379,88 @@ namespace tee::ui
             return valveR_.y + 34.0f + (build_.charger == Charger::none ? 10.0f : 96.0f + (boostBelow_ ? 52.0f : 0.0f)) + 12.0f;
         }
 
+        // The map and the trail as the simulator computes them (the Scope's arrays, card F's, while it fills them):
+        // used whenever they are there, the lines read again only when boostMapRev moves; else the mirror of the
+        // arithmetic (a build edited with the engine stopped).
+        void readScopeMap()
+        {
+            ScopeSource& sc = ctx_.scope;
+            if (!build_.hasMap())
+                return;
+            const int hRev = sc.find(N::mapRev);
+            float rev = 0;
+            if (hRev < 0 || sc.read(hRev, &rev, 1) < 1 || rev <= 0.0f)
+            {
+                if (mapFromScope_)
+                {
+                    mapFromScope_ = false;
+                    lines_ = mirror_;
+                }
+                scopeTrail_.clear();
+                return;
+            }
+            if (!mapFromScope_ || rev != mapRev_)
+            {
+                float speed[8] = {}, lf[128] = {}, lr[128] = {}, ce[5] = {}, cf[80] = {}, cr[80] = {};
+                const auto get = [&](const char* name, float* out, int n) {
+                    const int h = sc.find(name);
+                    return h >= 0 && sc.read(h, out, n) == n;
+                };
+                if (get(N::lineSpeed, speed, 8) && get(N::lineFlow, lf, 128) && get(N::lineRatio, lr, 128))
+                {
+                    MapLines m;
+                    for (int l = 0; l < MapLines::kLines; ++l)
+                    {
+                        const auto li = static_cast<std::size_t>(l);
+                        m.speed[li] = speed[l];
+                        for (int i = 0; i < MapLines::kPoints; ++i)
+                        {
+                            const auto ii = static_cast<std::size_t>(i);
+                            m.flow[li][ii] = lf[l * 16 + i];
+                            m.pr[li][ii] = lr[l * 16 + i];
+                            m.maxFlow = std::max(m.maxFlow, m.flow[li][ii]);
+                            m.maxPr = std::max(m.maxPr, m.pr[li][ii]);
+                        }
+                    }
+                    // each contour's 16 points: its left crossings up the lines, then its right ones down; laid into
+                    // the islands' rings at their two ends (the run logic joins them round the low speeds)
+                    for (auto& row : m.islandFlow)
+                        row.fill(-1.0f);
+                    if (get(N::contourEta, ce, 5) && get(N::contourFlow, cf, 80) && get(N::contourRatio, cr, 80))
+                        for (int v = 0; v < MapLines::kLevels; ++v)
+                        {
+                            const auto vi = static_cast<std::size_t>(v);
+                            m.islandEta[vi] = ce[v];
+                            for (int j = 0; j < 16; ++j)
+                            {
+                                const std::size_t slot = j < 8 ? static_cast<std::size_t>(j)
+                                                               : static_cast<std::size_t>(2 * MapLines::kIslandSteps - 16 + j);
+                                m.islandFlow[vi][slot] = cf[v * 16 + j];
+                                m.islandPr[vi][slot] = cr[v * 16 + j];
+                            }
+                        }
+                    lines_ = m;
+                    mapFromScope_ = true;
+                    mapRev_ = rev;
+                }
+            }
+            // the trail: a ring of 256, the newest at trailAt - 1 (entries never written are 0)
+            float at = 0, tf[256] = {}, tr[256] = {};
+            const int hAt = sc.find(N::trailAt), hF = sc.find(N::trailFlow), hR = sc.find(N::trailRatio);
+            scopeTrail_.clear();
+            if (hAt >= 0 && hF >= 0 && hR >= 0 && sc.read(hAt, &at, 1) == 1 && sc.read(hF, tf, 256) == 256
+                && sc.read(hR, tr, 256) == 256)
+            {
+                const int start = std::clamp(static_cast<int>(at), 0, 255);
+                for (int k = 0; k < 256; ++k)
+                {
+                    const int i = (start + k) % 256;
+                    if (tr[i] > 0.0f)
+                        scopeTrail_.push_back({ tf[i], tr[i] });
+                }
+            }
+        }
+
         const Hit* hitAt(Point pt) const
         {
             for (auto it = hits_.rbegin(); it != hits_.rend(); ++it)
@@ -398,13 +485,18 @@ namespace tee::ui
                 case Kind::turbo:
                 {
                     const int i = std::min(part.index, 1);
-                    const double r = live(N::ratio[i]);
-                    pa = std::isfinite(r) ? r * ambientP() : (!build_.intercooler && std::isfinite(boost) ? boost + ambientP() : nan);
+                    // the charge pipe's pressure (after the compressors), else this compressor's ratio
+                    const double r = live(N::ratio[i]), cp = live(N::chargePipe);
+                    const bool lowStage = build_.arrangement == Arrangement::compound && part.index == 0;
+                    pa = !lowStage && std::isfinite(cp) ? cp + ambientP() : std::isfinite(r) ? r * ambientP() : nan;
                     k = live(N::outT[i]);
                     break;
                 }
                 case Kind::blower:
-                    pa = std::isfinite(boost) ? boost + ambientP() : nan;
+                {
+                    const double cp = live(N::chargePipe);
+                    pa = std::isfinite(cp) ? cp + ambientP() : std::isfinite(boost) ? boost + ambientP() : nan;
+                }
                     k = live(N::outT[0]);
                     break;
                 case Kind::cooler:
@@ -414,8 +506,12 @@ namespace tee::ui
                 case Kind::throttle:
                 case Kind::plenum:
                 case Kind::runners:
+                    // after the throttle: the manifold's pressure; its temperature the plenum's (card E's, to come), else
+                    // the air's before the throttle (a throttle hardly changes it)
                     pa = live(N::manifold);
                     k = live(N::plenumT);
+                    if (!std::isfinite(k))
+                        k = live(N::throttleIn);
                     break;
             }
         }
@@ -667,6 +763,9 @@ namespace tee::ui
                 return;
             }
             const Rect in = look::region(c, p, mapR_, b.turbos > 1 ? "COMPRESSOR MAP, TURBO 1'S" : "COMPRESSOR MAP");
+            if (mapFromScope_)   // the simulator's own map (else the same arithmetic, here, from the build's sizes)
+                c.text("FROM THE SIMULATOR", mapR_.right() - 12.0f - c.textWidth("FROM THE SIMULATOR", look::kCaps), mapR_.y + 9.0f,
+                       look::kCaps, p.dim);
             // the operating point's numbers in a column at the right; the plot takes the rest
             const float colW = kMapCol;
             const Rect plot{ in.x + 34.0f, in.y + 4.0f, in.w - 34.0f - colW - 30.0f, in.h - 30.0f };
@@ -691,6 +790,20 @@ namespace tee::ui
                 {
                     const double w2 = live(N::speed[1]);
                     row("TURBO 2", look::num(w2 * 60.0 / kTwoPi / 1000.0, "%.0f"), "krpm");
+                }
+                if (b.charger == Charger::turbo)
+                    row("DRIVE", look::num(live(N::drive), "%.2f"), "");
+                // what the simulator flags: surge, choke, over-speed, in words
+                const double fl = live(N::flags);
+                if (std::isfinite(fl))
+                {
+                    const int bits = static_cast<int>(fl);
+                    const char* word = (bits & 1) != 0 ? "SURGING" : (bits & 2) != 0 ? "CHOKED" : (bits & 4) != 0 ? "OVER-SPEED" : nullptr;
+                    if (word != nullptr)
+                    {
+                        look::lamp(c, p, x, y + 4.0f, word, true, p.warning);
+                        y += 22.0f;
+                    }
                 }
                 if (b.vanes && y + 56.0f < in.bottom())
                     drawVanes(c, p, { x, y, colW, 56.0f }, y);
@@ -788,11 +901,12 @@ namespace tee::ui
                 c.text("CHOKE", choke[2].x + 6.0f, choke[2].y + 4.0f, look::kCaps, p.label);
             }
             // the trail, fading with age, and the operating points
-            for (std::size_t i = 1; i < trail_.size(); ++i)
+            const std::vector<Point>& trail = scopeTrail_.empty() ? trail_ : scopeTrail_;
+            for (std::size_t i = 1; i < trail.size(); ++i)
             {
-                const float age = static_cast<float>(i) / static_cast<float>(trail_.size());
+                const float age = static_cast<float>(i) / static_cast<float>(trail.size());
                 const Col ink = Palette::mix(p.panel, p.selected, 0.12f + 0.75f * age * age);
-                c.segment(X(trail_[i - 1].x), Y(trail_[i - 1].y), X(trail_[i].x), Y(trail_[i].y), 1.5f, ink);
+                c.segment(X(trail[i - 1].x), Y(trail[i - 1].y), X(trail[i].x), Y(trail[i].y), 1.5f, ink);
             }
             const double f1 = live(N::flow[0]), r1 = live(N::ratio[0]);
             if (std::isfinite(f1) && std::isfinite(r1))
@@ -829,10 +943,8 @@ namespace tee::ui
             {
                 const Rect in = look::region(c, p, R, "DRIVE", ctx_.selection.is("boost.supercharger"));
                 look::readout(c, p, in.x, in.y, "PULLEY RATIO", look::num(b.scRatio, "%.2f"), ": 1");
-                const double bp = live(N::scBypass);
-                const bool known = std::isfinite(bp) || !b.scBypass;
-                look::lamp(c, p, in.x, in.y + 62.0f, !b.scBypass ? "NO BYPASS" : !std::isfinite(bp) ? "BYPASS -" : bp > 0.5 ? "BYPASS OPEN" : "BYPASS SHUT",
-                           known && std::isfinite(bp) && bp > 0.5, p.cold);
+                // the bypass as built (the simulator opens it at part throttle; its position is not in the telemetry)
+                c.text(b.scBypass ? "BYPASS AT PART THROTTLE" : "NO BYPASS", in.x, in.y + 56.0f, look::kCaps, p.text);
                 const double pw = live(N::scPower);
                 look::readout(c, p, in.x, in.y + 84.0f, "POWER IT TAKES", std::isfinite(pw) ? ctx_.units.format(Quantity::power, pw) : "-");
                 return;
@@ -896,9 +1008,8 @@ namespace tee::ui
             {
                 // boost against its target: two bars on one scale, each with its number
                 const double boost = live(N::boost);
-                double target = live(N::target);
-                if (!std::isfinite(target))
-                    target = b.target > 0 ? b.target : b.gateSpring;
+                // the build's target, else its spring alone (an ECU's own target is not in the telemetry yet)
+                const double target = b.target > 0 ? b.target : b.gateSpring;
                 const double scale = std::max({ 100e3, target * 1.4, std::isfinite(boost) ? boost * 1.1 : 0.0 });
                 // beside the valves where there is room, else under them
                 float x = bovR_.right() + 18.0f, w = valveR_.right() - 12.0f - x, y = gateR_.y + 4.0f, below = gateR_.bottom();
@@ -928,21 +1039,19 @@ namespace tee::ui
             const float ly = lampY();
             if (b.antiLag)
             {
-                const double on = live(N::antiLag);
-                look::lamp(c, p, valveR_.x + 12.0f, ly, std::isfinite(on) && on > 0.5 ? "ANTI-LAG ACTIVE" : "ANTI-LAG ARMED",
-                           std::isfinite(on) && on > 0.5, p.warning);
+                look::lamp(c, p, valveR_.x + 12.0f, ly, "ANTI-LAG ARMED", true, p.warning);
             }
             if (b.nitrous)
             {
-                const double on = live(N::nitrous), left = live(N::bottle);
+                const double fl = live(N::flags);
+                const double on = std::isfinite(fl) ? ((static_cast<int>(fl) & 32) != 0 ? 1.0 : 0.0) : std::nan("");
                 const bool own = !b.antiLag || valveR_.w >= 330.0f;
                 const float x = own && b.antiLag ? valveR_.x + 142.0f : valveR_.x + 12.0f;
                 const float nly = own ? ly : ly + 34.0f;
                 const float w = look::lamp(c, p, x, nly, std::isfinite(on) && on > 0.5 ? "NITROUS ON" : "NITROUS ARMED",
                                            std::isfinite(on) && on > 0.5, p.cold);
                 char t[48];
-                std::snprintf(t, sizeof t, "%s OF %s", std::isfinite(left) ? ctx_.units.format(Quantity::mass, left).c_str() : "-",
-                              ctx_.units.format(Quantity::mass, b.nitrousBottle).c_str());
+                std::snprintf(t, sizeof t, "A %s BOTTLE", ctx_.units.format(Quantity::mass, b.nitrousBottle).c_str());
                 c.text(t, x + 15.0f, nly + 9.0f, look::kUnit, p.label);
                 (void)w;
             }
@@ -1016,7 +1125,10 @@ namespace tee::ui
         }
 
         AirBuild build_;
-        MapLines lines_;
+        MapLines lines_, mirror_;
+        bool mapFromScope_ = false;
+        float mapRev_ = 0;
+        std::vector<Point> scopeTrail_;   // the simulator's own trail, when the Scope has it
         std::vector<Part> parts_;
         std::vector<Hit> hits_;
         Rect row_{}, mapR_{}, shaftR_{}, valveR_{}, gateR_{}, bovR_{};
