@@ -153,6 +153,19 @@ TEST_CASE("shell: the reference starts, idles, revs and switches off from a Cont
     CHECK((static_cast<long>(rig.value("showLamps")) & 3) == 2);
     CHECK(rig.tel().findValue("no such value") == -1);
 
+    // the output's newest samples, mono, oldest first: the last block's are its end
+    {
+        rig.run(256.0 / 48000.0);                           // one whole block more: l and r hold all of it
+        std::vector<float> tail(100000);
+        REQUIRE(rig.tel().outputTail(tail.data(), 4096) == 4096);
+        bool same = true;
+        for (std::size_t i = 0; i < 256; ++i)
+            same = same && tail[4096 - 256 + i] == 0.5f * (rig.l[i] + rig.r[i]);
+        CHECK(same);
+        CHECK(rig.tel().outputTail(tail.data(), 100000) == 8192);
+        CHECK(rig.tel().outputTail(tail.data(), 0) == 0);
+    }
+
     rig.frame.throttle = 1.0f;                              // the pedal
     rig.run(2.0);
     CHECK(rig.rpm() > 3.0 * idle);

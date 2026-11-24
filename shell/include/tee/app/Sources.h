@@ -45,6 +45,16 @@ namespace tee
         virtual int findValue(std::string_view name) const = 0;   // a handle for value(); -1: none (the names: below)
         virtual double value(int handle) const = 0;               // 0 for a handle that is none
         virtual float outputPeak() const = 0;                     // the output's level over the newest block, 0 to 1
+        // The output's newest samples, mono (the two channels' mean), oldest first, into mono[0..max): returns how
+        // many were written (0: none). A source keeps at least 4096; a spectrum or a scope reads them each frame.
+        // (Every Player of the shell implements it. It has a body, answering none, only so that a Player written
+        // before it was added still builds.)
+        virtual int outputTail(float* mono, int max) const
+        {
+            (void) mono;
+            (void) max;
+            return 0;
+        }
     };
 
     // What the driver is doing (docs/plan/02-contracts.md section 4, the part a person's hands and feet give).

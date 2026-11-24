@@ -18,8 +18,8 @@ funkgui_compile_shaders(tee_ui_test_funkgui)
 target_link_libraries(tee_ui_test_funkgui PUBLIC tee_ui_funkgui_headers
                       $<TARGET_PROPERTY:FunkGuiCore,INTERFACE_LINK_LIBRARIES>)
 
-add_executable(tee-ui-tests Tests.cpp MockPlayer.h RefTests.inc)
-target_link_libraries(tee-ui-tests PRIVATE tee_ui_ref tee_ui_kit tee_ui_test_funkgui)
+add_executable(tee-ui-tests Tests.cpp MockPlayer.h MockSpec.h RefTests.inc WidgetTests.inc BindTests.inc AppTests.inc)
+target_link_libraries(tee-ui-tests PRIVATE tee_ui_app tee_ui_ref tee_ui_kit tee_ui_test_funkgui)
 tee_ui_warnings(tee-ui-tests)
 target_compile_definitions(tee-ui-tests PRIVATE
   "TEE_UI_TEST_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}\""
@@ -34,7 +34,12 @@ set(TEE_UI_TESTS
   knob.drag knob.wheel knob.keys knob.reset slider.drag switch.click buttons.click menu.pick xy.drag pointer.area
   tabs.switch resize.layout scroll.wheel display.telemetry keyboard.hidden a11y
   shader.text shader.placeholder
-  ref.strip ref.fallback ref.panel)
+  ref.strip ref.fallback ref.panel
+  # J2
+  units button.click toggle.click stepper.click textfield.type list.select instruments plot.zoom curve.drag map.edit
+  widgets.gallery
+  fieldport fieldparams page.generated gui.auto gui.widgets page.split
+  app.frame app.set app.start app.garage app.resize app.sheet)
 foreach(_t IN LISTS TEE_UI_TESTS)
   add_test(NAME ui.${_t} COMMAND tee-ui-tests ${_t})
 endforeach()
