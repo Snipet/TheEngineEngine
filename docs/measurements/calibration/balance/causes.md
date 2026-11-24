@@ -199,3 +199,15 @@ than the real head's (P to check against the source engine). Routed to N1 and P.
 The 0.50 m runner tunes near 2800 rpm; the switch to 0.30 m at 4000 rpm (`intake.runnerSwitch` 419 rad/s) does not
 lift 4200 to 5500, and only 6350 recovers. The target's peak torque is 335 to 365 N m near 4750. The runners' lengths
 and switch speed are the build's (P); the phaser's schedule is N1's rule (its advance falls to 3 degrees by 5500).
+
+## Since N3-1 (20:24 by `date -u`, tee::Build path)
+
+- **P's trims (2a4fb34).** Roadster (31 / 26 mm valves, 236 / 232 degree cams): 161 / 176 / 155 N m at 3000 / 5000 / 6650
+  rpm, target 155 to 172. Small block (the L48's cam): 482 / 478 / 424 N m at 2000 / 3000 / 4600 rpm, VE 0.82 to 0.83. Its
+  target is now the L48 and L82's SAE net ratings, 340 to 385 N m (P, from looked-up figures): **25 % over again**.
+- **The two-stage cam's stage B as the K20A's** (280 / 278 at the seat, 12.65 / 12.14 mm, switching at 6000 rpm: Honda's
+  factbook for the switch): B still loses. VE with A held 0.946 / 0.925 / 0.971 against 0.773 / 0.759 / 0.881 with B at
+  6500 / 7500 / 8500 rpm; torque 206 / 193 / 195 against 160 / 149 / 171. N3-4 is the model's (N1's path).
+- **The 7.0's ports at 1.6 / 1.8** (P, from discharge.md's LS7 row, which is one posting): 723 and 630 N m at 4800 and
+  6300 rpm against 700 and 560 at 1.35 / 1.5 (target 630 to 645). Asked P to put the defaults back until a second
+  figure agrees (the lead's rule).
