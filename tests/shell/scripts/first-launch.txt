@@ -1,0 +1,22 @@
+# A first launch as a person's (warm: the application's engine starts at its working temperatures, LoadOptions::initial
+# through D's d17d6808, which keeps a warm start in a build's own air), on the first build: the oil warm at the first
+# block and still once idling, and the owner's report: the cam stage changing across its speed (scripts/first-stage.txt
+# has the same without the oil, run cold by shell.window.stage.cold). shell.window.first runs this.
+0.05  expect engine.oilTemperature > 360
+0.10  set valve.stages 1
+0.10  set valve.stageSpeed 300
+0.30  expect sent valve.stages == 1
+0.30  expect sent valve.stageSpeed == 300
+0.40  key return down
+0.70  key return up
+3.00  expect engine.state == 2
+3.00  expect engine.oilTemperature > 360
+3.00  expect valve.stage == 0
+3.00  print
+3.10  key w down
+5.50  expect rpm > 3500
+5.50  expect valve.stage == 1
+5.50  expect valve.inPhase > 1
+5.50  print
+5.60  key w up
+6.00  end

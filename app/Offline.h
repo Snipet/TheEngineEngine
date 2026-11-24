@@ -74,6 +74,8 @@ namespace tee::app
             std::function<void(int)> qualityChosen;     // the QUALITY row's choice, for the settings file
             std::function<std::string()> tryFirst;      // the first build's notes while its TRY FIRST card is wanted
             std::function<void()> tryFirstDone;         // the card was closed: not again
+            std::function<bool()> coldStart;            // the settings' coldStart (ENGINE START: from the next launch)
+            std::function<void(bool)> setColdStart;
         };
         std::shared_ptr<WindowHooks> window;
         files::BuildFile* document = nullptr;
