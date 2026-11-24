@@ -221,6 +221,18 @@ namespace tee::ui::valves
         return b;
     }
 
+    OilHold oilHold(const Live& live, double temp, double pressure)
+    {
+        OilHold h;
+        h.temp = live.get(kTelOilTemp);
+        const double pr = live.get(kTelOilPressure);
+        const bool cold = std::isfinite(h.temp) && h.temp < temp;
+        const bool low = std::isfinite(pr) && pr < pressure;
+        h.held = cold || low;
+        h.cold = cold;
+        return h;
+    }
+
     Bench benchOf(const FieldDoc& doc, double bore, const Live& live)
     {
         Bench b = benchOf(doc, bore);
