@@ -2,10 +2,11 @@
 //
 // Traction control: while the driven wheels slip more than the target (card I gives their slip ratio), torque comes
 // out: a proportional and integral reduction, 0 to 1, made of retard over its first half (up to 20 degrees) and cut
-// firings (by fuel) over its second (up to three in four), as factory systems take it out by the spark first and
-// then by cylinders; it gives the torque back as the slip falls. Its authority fades from 1500 rpm over the idle to
-// none 300 over it, and its integral holds meanwhile: a slip ratio stays near 1 while the wheels outrun a car that
-// is barely moving, and a reduction that waited for it to fall would drag the engine down and stall it. The pit limiter
+// firings (by fuel) over its second (to every firing: no torque), as factory systems take it out by the spark first
+// and then by cylinders, until the wheels come back; it gives the torque back as the slip falls. It lets go only
+// under the idle (its authority fading over the last 200 rpm above 100 under the idle, its integral holding
+// meanwhile): a stall is the clutch's to prevent (the automatic clutch opens near the idle), not the traction
+// control's, which must be able to take every bit of torque on a wet road (finding X-011). The pit limiter
 // holds the car's speed under a set one by the same soft hold the rev limiter has (limiter.fm), over the last 2 m/s.
 //
 // Anti-lag: inside its window (speed, the pedal lifted under 20 %, running) the spark is taken back hard and the
@@ -20,8 +21,10 @@ module TractionControl
     bool active;
     float reduce;       // 0 to 1
     float integral;
+    float ePrev;        // the slip's error at the last step (the derivative's)
     float retard;       // degrees
     float share;        // firings cut
+    float plateMax;     // the throttle plate's ceiling (a drive-by-wire plate closes)
     SoftHold pit;
     bool pitActive;
 
@@ -40,10 +43,12 @@ module TractionControl
     // the integral does not wind while it is held back)
     void control(bool on, float slip, float target, float pitSpeed, float carSpeed, float authority, float d16)
     {
-        const float e = on ? slip - target : -1.0f;
+        const float e = on ? fminf(slip - target, 1.0f) : -1.0f;
         if (authority >= 1.0f || e < 0.0f)
-            integral = fminf(fmaxf(integral + 2.0f * e * d16, 0.0f), 1.0f);
-        reduce = fminf(fmaxf(1.0f * e + integral, 0.0f), 1.0f) * fminf(fmaxf(authority, 0.0f), 1.0f);
+            integral = fminf(fmaxf(integral + 4.0f * e * d16, 0.0f), 1.0f);
+        const float de = (e - ePrev) / fmaxf(d16, 1.0e-6f);
+        ePrev = e;
+        reduce = fminf(fmaxf(1.0f * e + integral + 0.0f * de, 0.0f), 1.0f) * fminf(fmaxf(authority, 0.0f), 1.0f);
         if (!on)
         {
             integral = 0.0f;
@@ -51,7 +56,8 @@ module TractionControl
         }
         active = reduce > 0.0f;
         retard = 20.0f * fminf(2.0f * reduce, 1.0f);
-        share = 0.75f * fminf(fmaxf(2.0f * reduce - 1.0f, 0.0f), 1.0f);
+        share = fminf(fmaxf((reduce - 0.7f) / 0.3f, 0.0f), 1.0f);
+        plateMax = 1.0f - 0.85f * reduce;
         pitActive = false;
         if (pitSpeed > 0.0f)
         {

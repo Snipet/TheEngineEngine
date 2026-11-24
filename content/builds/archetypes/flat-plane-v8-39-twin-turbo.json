@@ -79,6 +79,8 @@
       "exCentre": 112,
       "inPhaseRange": 40,
       "exPhaseRange": 40,
+      "portIn": 1.65,
+      "portEx": 1.8,
       "springRate": 29200.0,
       "springPreload": 183.0
     },
@@ -103,12 +105,12 @@
       "model": "Builder",
       "sides": 2,
       "converter": [
-        1,
-        1
-      ],
-      "mufKind": [
         2,
         2
+      ],
+      "mufKind": [
+        1,
+        1
       ]
     },
     "fuel": {

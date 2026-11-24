@@ -199,7 +199,7 @@ int main(int argc, char** argv)
     tee::SimControls c;
     c.mode = 2;
     c.dynoSpeed = static_cast<float>(rpms.front() * 0.10471976);
-    c.ignition = 2;
+    c.ignition = 1;                  // (the key on first, then to start: card C's 8098b36)
     c.throttle = 0.0f;
     c.scopeOn = 1;
     const double blockSeconds = 512.0 / 48000.0;
@@ -216,6 +216,8 @@ int main(int argc, char** argv)
                 each();
         }
     };
+    play(0.1, {});
+    c.ignition = 2;
     play(1.0, {});
     c.ignition = 1;
     play(0.5 * warmup - 1.0, {});

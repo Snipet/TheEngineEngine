@@ -134,6 +134,49 @@ reference's start; the reference-topology test settles its copy of the reference
 sample. (Without settling either, the two differ by -45 to -85 dB at full load for as long as the test ran: the
 steepening system at 34 kPa pulses forgets a small difference only slowly.)
 
+## Passivity of a packed pipe (card T's finding; model 1)
+
+A pipe's 12 Hz tracker takes its steady flow out before its filters, as the reference's does. With a shelf or a
+low-pass after it and little loss a pass, one pass exceeds unity near 25 Hz. The builder computes each used pipe's
+exact one-pass gain, |H| at 48 log-spaced frequencies from 4 Hz to 4 kHz (`XBuild::passGain`), at a build and every
+32 control steps. Where it exceeds 0.9999 the pipe puts its filters first and its tracker after (`Duct::filtFirst`),
+which is passive whatever the filter. Measured over a sweep of keep, gain, packing and a low-pass (180 pipes): the
+largest pass 0.99986, where the reference's order would reach 1.0718.
+
+The engine at its defaults is still identical to model 0 on all 17 layouts. In the harness (cold, other dials) a few
+of the reference's own pipes pass more than unity: 6 of the 26 reference-test runs. There model 1 leaves the
+reference's sound by -47 to -58 dB. The reference test therefore compares with the fix off (`XBuild::passFix = 0`, a
+test's switch) and prints the difference the fix makes.
+
+## External wastegates (card F's seam)
+
+With `boost.gate` external, each turbo's gate gets its own pipe (gateLen, gateD; XD_GATE). The pipe runs from an
+EXTP junction to an open end tagged front, a screamer pipe; F has no recirculated choice yet. The count comes from
+`Boost::externalGates()`, read at every configure (a change rebuilds under the fade). Each sample, `Boost::gatePipe(t,
+a, z)` solves turbo t's gate against the pipe's near end, as `downpipe()` does. Measured at 4500 rpm full throttle:
+- the 2 L four, gate external: 67.3 kPa of boost, 0.116 kg/s through its gate pipe;
+- the V8 with two: 42.1 kPa, 0.013 kg/s;
+- both finite and quiet after the key is off.
+
+## Glide and rebuild (dragging a slider)
+
+These fields glide toward the Spec with a 0.2 s time constant (`XBuild::glide`). The pipes' delays, areas and
+losses follow them every control step in `shape()`, with no rebuild and no fade:
+- every length: primLen, colLen, mainLen, crossLen, postLen, resLen, linkLen, mufLen, tailLen, gateLen;
+- every bore: primD, colD, mainD, crossD, resD, bypassD, tailD, gateD;
+- colVol, resHz, resVol, mufSize, primSpread, primStepAt, primStepD.
+
+These rebuild under the exhaust's fade (6 ms down, 12 ms up):
+- the kinds: converter, resonator, mufKind, bypass, tips, exitAt, crossKind, crossAt, sides;
+- the tables: primaryTo, collectorTo;
+- a size moving between 0 (the layout's) and a value of its own (for mufSize, -1);
+- a collector's volume appearing or going, and the primaries' step appearing or going.
+
+The bypass valve's position already travels by its own rule over bypassTime, and the valve's rule fields act at once.
+Measured: the V8 at 3000 rpm, half throttle, its main pipes dragged from 1.5 to 3 m and 60 to 80 mm in 20 steps over
+a second. The fade never moved, and the largest step between samples was 0.3865 against 0.3901 in the second before.
+A second after the last step the pipes were within 0.06 % of the target. A muffler's kind changed took the fade down to 0.388.
+
 ## Seams
 
 In the engine the seams are `Exhaust`'s (sim/README.md). The builder's own, per sample: `read()`; the cylinders

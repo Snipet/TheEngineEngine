@@ -18,7 +18,7 @@
 // is passive. The stinger's end is open: what arrives goes back inverted, less the exit's loss. A straight pipe
 // (`chamber` 0) is one duct of the header's bore and the whole length, for comparison.
 //
-// After the stinger, a silencer (on by default): a perforated core wrapped in packing (a loss on its waves), its
+// After the stinger, a silencer (off by default): a perforated core wrapped in packing (shelves on its waves), its
 // own end the outlet, or a can (a bore over twice the stinger's) and a short outlet tube of the stinger's bore. The
 // outlet's open end is what radiates. Every two-stroke on a road or a track has one; without it the
 // chamber's own rings (the 6th to 8th multiples of the firing frequency at full load) are the loudest lines.
@@ -80,6 +80,7 @@ module ExpansionChamber
         seg[i].set(fminf(len, 0.98f), d, 0.78539816f * d * d, cIn, rate);
         seg[i].pack(0.0f, 0.0f, 0.0f, 0.0f, rate);
         seg[i].extra(0.0f, 1.0f, rate);
+        seg[i].filtFirst = 0;
     }
 
     // The silencer after section i - 1: its packed can and its outlet; returns the sections now in use
@@ -88,11 +89,12 @@ module ExpansionChamber
         if (s->tsSilencer == 0)
             return i;
         section(i, s->tsSilencerLen, s->tsSilencerDiam, cIn);
-        // (the packing: silencerPack dB a pass from all that moves, the steady flow passing whole, as a gain on the
-        // core's waves. Not the Duct's packing shelves: around its steady-flow tracker they pass up to 4 % more than
-        // they take at some 25 Hz (16 dB of packing), and a pipe closed at the port and open at the outlet then rings
-        // for ever when stopped; the same for its turbine's low-pass. Reported to card G.)
-        seg[i].extra(0.0f, expf(-0.11512925f * s->tsSilencerPack), rate);
+        // (the packing: silencerPack dB a pass above some 400 Hz and half as much again above 2 kHz, a fibre-packed
+        // straight-through silencer's order, judgement; its shelves act on the whole wave before the steady flow is taken
+        // out (filtFirst, card G's: in the other order they passed up to 4 % more than they took near 25 Hz, and a
+        // stopped pipe closed at the port rang for ever))
+        seg[i].pack(400.0f, s->tsSilencerPack, 2000.0f, 0.5f * s->tsSilencerPack, rate);
+        seg[i].filtFirst = 1;
         // a can (twice the stinger's bore or more) ends in an outlet tube of the stinger's bore; a straight-through
         // silencer's outlet is its own core
         if (s->tsSilencerDiam < 2.0f * s->tsStingerDiam)

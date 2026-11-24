@@ -64,4 +64,8 @@ module Scope
     float ductNear [[ui::label("Pressure at the pipe's near end")]] [[ui::quantity("pressure")]] [SCOPE_EXHAUST_DUCTS];
     float ductFar [[ui::label("Pressure at the pipe's far end")]] [[ui::quantity("pressure")]] [SCOPE_EXHAUST_DUCTS];
     float ductMid [[ui::label("Pressure at the pipe's middle")]] [[ui::quantity("pressure")]] [SCOPE_EXHAUST_DUCTS];
+    // ---- card T: a two-stroke's inlet (spec.engine.cycle 1): cylinder 1's reed, disc or piston port, its open share at
+    // each degree of the 360-degree cycle; 0 otherwise ----
+    float inletOpen [[ui::label("Inlet open")]] [[ui::quantity("fraction")]]
+        [[ui::help("Two-stroke: cylinder 1's inlet (reed petal, disc window or piston port) open, 0 shut to 1 fully, by degree")]] [SCOPE_DEGREES];
 };

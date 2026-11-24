@@ -345,7 +345,7 @@ arch(slug="vr6-28", runner=0.45, name="Narrow-angle VR6 2.8 L", geo="vr6", layou
 arch(slug="straight-six-32-high-rev", name="3.2 L straight six, high-revving", geo="ref-10-inline-6",
      layout="Inline 6", bore=87.0, stroke=91.0, rod=139.0, cr=11.5, valves=4, dIn=35.0, dEx=30.5,
      cam=(264, 236, 11.8, 106, 260, 232, 11.0, 110), train="Bucket", phase=(60, 45), redline=8000, idle=850,
-     intake=dict(throttleKind="A body a runner", runnerLength=0.25), grade="Premium (91)", car="coupe-six",
+     intake=dict(throttleKind="A body a runner"), grade="Premium (91)", car="coupe-six",
      timing="Chain", lifters="Solid",
      notes="A naturally aspirated 3.2 L straight six with a throttle body a cylinder: 87 x 91 mm (3246 cc), 11.5:1, "
            "8000 rpm (the S54 kind: 252 kW at 7900 rpm, 365 N m at 4900; makers' figures, from memory, firm to 5 %). "
@@ -421,6 +421,30 @@ SPRINGS = {
 }
 
 
+PORTS = {"wedge": (1.2, 1.35), "high": (1.65, 1.8), "race": (1.75, 1.9)}
+HEADS = {"big-block-74-pushrod-v8": "wedge", "small-block-57-carb": "wedge", "supercharged-v8-62": "wedge",
+         "pushrod-v6-38": "wedge", "vr6-28": "wedge", "big-bore-70-pushrod-v8": "high", "flat-plane-v8-45": "high",
+         "v10-52": "high", "v12-65": "high", "straight-six-32-high-rev": "high", "two-stage-cam-20": "high",
+         "flat-plane-v8-39-twin-turbo": "high", "inline-five-turbo-rally": "race"}
+for _a in A:
+    if _a["slug"] in HEADS:
+        _a["ports"] = HEADS[_a["slug"]]
+# sports exhausts on the tuned engines (N1: as built every archetype breathes through a road converter and a
+# chambered muffler, 154 kPa at the six's port at 7600 rpm against 10 to 30 kPa over the air at rated power)
+SPORTS = ("straight-six-32-high-rev", "flat-plane-v8-45", "v10-52", "v12-65", "two-stage-cam-20",
+          "flat-plane-v8-39-twin-turbo", "big-bore-70-pushrod-v8", "inline-five-turbo-rally")
+for _a in A:
+    if _a["slug"] in SPORTS:
+        _a.setdefault("exhaust", {}).update({"converter": [2, 2], "mufKind": [1, 1]})
+# the torque-peak speeds of each kind (rpm), from the validation's table, for the runners
+import importlib.util as _iu
+import sys as _sys
+_sys.dont_write_bytecode = True    # no __pycache__ beside the validation's generator
+_spec = _iu.spec_from_file_location("_val", os.path.join(ROOT, "content", "validation", "archetypes", "generate.py"))
+_val = _iu.module_from_spec(_spec)
+_spec.loader.exec_module(_val)
+TORQUE_PEAK = {k: v[3] for k, v in _val.T.items()}
+
 # ---- writing them ------------------------------------------------------------------------------------------------
 def build(a):
     e = {"layout": a["layout"], "custom": True, "compression": a["cr"]}
@@ -453,6 +477,11 @@ def build(a):
                  exDurSeat=de, exDur1mm=d1e, exLift=le / 1000.0, exCentre=ce)
         if "phase" in a:
             v["inPhaseRange"], v["exPhaseRange"] = a["phase"]
+        # port quality by head (N1, from card E's calibration: q 1.35 is a stock 232 CFM small-block head; racing
+        # ports flow 20 to 30 % more, Heywood fig. 6-18): two-valve wedge and pushrod heads 1.2/1.35, production
+        # four-valve 1.35/1.5 (the default), high-output four-valve 1.65/1.8, race 1.75/1.9
+        if a.get("ports"):
+            v["portIn"], v["portEx"] = PORTS[a["ports"]]
         if a["slug"] in SPRINGS:
             k, f0 = SPRINGS[a["slug"]]
             m = 1.5 if "stages" in a else 1.0
@@ -473,6 +502,11 @@ def build(a):
     i = {"model": 1}
     if "runner" in a:
         i["runnerLength"] = a["runner"]
+    if "boost" not in a and a["layout"] != "Rotary" and a["slug"] in TORQUE_PEAK and "runnerLength2" not in a.get("intake", {}):
+        # a naturally aspirated engine's runner tuned to its kind's torque-peak speed: from N1's measurements on the
+        # 3.2 six (best VE at 5000 rpm on 0.50 m, 6000-7000 on 0.35, 4000-4500 on 0.70), L = 0.50 (5000 / rpm)^1.3
+        lo, hi = TORQUE_PEAK[a["slug"]]
+        i["runnerLength"] = round(min(max(0.50 * (5000.0 / (0.5 * (lo + hi))) ** 1.3, 0.22), 0.9), 2)
     i.update(a.get("intake", {}))
 
     bo = {"model": "Machine", "kind": "Natural", "level": 0.0, "blowOff": 0.7}
