@@ -1,0 +1,213 @@
+// rig.fm: the motorcycle (sim/vehicle/bike.fm) driven by a made-up engine, for card B2's standalone tests.
+//
+// The engine is a flywheel with a torque curve, a friction and what an ECU does that the bike needs: an idle valve, a
+// fuel cut at the redline, the quickshifter's cut and the throttle the bike hands back (the wheelie control's share, a
+// rider's roll-off, an auto-blip). A clutch-dumping rider is a test's: it writes the controls and calls run(n).
+// Curves: 0 a parabola (0.75 of the peak at idle, the peak at 70 % of the redline, 0.85 of it at the redline);
+// 1 constant power `power` up to the peak torque; 2 a table `tq[]` at `rpm[]` (rad/s), 8 points.
+#include "vehicle/bike.fm"
+
+module BikeRig
+{
+    Bike bike;
+    float rate;
+    float dt;
+    // the engine
+    float w;
+    float jE;
+    float peak;
+    float power;
+    float idleW;
+    float redW;
+    int curve;
+    float tqTab[8];
+    float wTab[8];
+    float fric0;
+    float fric1;
+    float drag2;        // a pumping loss with the throttle shut, N m per (rad/s)^2 (engine braking)
+    bool running;
+    bool noStall;
+    float idleInt;
+    float tqEngine;
+    float thr;          // the throttle the engine got, lagged by its manifold (30 ms)
+    float wAvg;
+    // the controls
+    float throttle;
+    float clutch;
+    float brake;
+    float rearBrake;
+    int up;
+    int down;
+    int mode;
+    int strip;
+    // measures
+    double t;
+    int phase;
+    float wMin;
+    float wMax;
+    float vMax;
+    float thetaMax;
+    float frontMin;
+    float rearSlipMin;
+    float rearSlipMax;
+    float backMax;
+    float chainMin;
+    float chainMax;
+    float roadPeak;
+    int hopBlocks;
+    int lashSeen;
+    bool finite;
+    bool cutSeen;
+    double cutStart;
+    double cutEnd;
+    int rs;
+
+    void init(float hostRate)
+    {
+        rate = hostRate;
+        dt = 1.0f / rate;
+        jE = 0.05f;
+        peak = 110.0f;
+        power = 0.0f;
+        idleW = 130.0f;
+        redW = 1380.0f;
+        curve = 0;
+        fric0 = 4.0f;
+        fric1 = 0.008f;
+        drag2 = 0.00001f;
+        running = true;
+        w = idleW;
+        wAvg = w;
+        thr = 0.0f;
+        mode = VEH_MODE_DRIVE;
+        rs = 4711;
+        bike.setup(rate);
+        settle();
+        clearMeasures();
+    }
+
+    void settle()
+    {
+        bike.configure(jE, peak, idleW, redW);
+        bike.apply();
+        bike.configure(jE, peak, idleW, redW);
+    }
+
+    void clearMeasures()
+    {
+        wMin = 1.0e9f;
+        wMax = -1.0e9f;
+        vMax = -1.0e9f;
+        thetaMax = 0.0f;
+        frontMin = 1.0e9f;
+        rearSlipMin = 1.0e9f;
+        rearSlipMax = -1.0e9f;
+        backMax = 0.0f;
+        chainMin = 1.0e9f;
+        chainMax = -1.0e9f;
+        roadPeak = 0.0f;
+        hopBlocks = 0;
+        finite = true;
+        cutSeen = false;
+        cutStart = -1.0;
+        cutEnd = -1.0;
+    }
+
+    float full(float s)
+    {
+        if (curve == 1)
+            return fminf(peak, power / fmaxf(s, 1.0f));
+        if (curve == 2)
+        {
+            if (s <= wTab[0])
+                return tqTab[0];
+            for (int i = 1; i < 8; ++i)
+                if (s <= wTab[i])
+                    return tqTab[i - 1] + (tqTab[i] - tqTab[i - 1]) * (s - wTab[i - 1]) / (wTab[i] - wTab[i - 1]);
+            return tqTab[7];
+        }
+        const float p = 0.7f * redW;
+        const float a = (s - p) / p;
+        const float k = s < p ? 0.25f / (((idleW - p) / p) * ((idleW - p) / p)) : 0.15f / 0.1837f;
+        return peak * fmaxf(1.0f - k * a * a, 0.3f);
+    }
+
+    float torque()
+    {
+        const float f = fric0 + fric1 * w + drag2 * w * w;
+        if (!running)
+            return w > 0.0f ? -f : 0.0f;
+        float th = bike.pedalOut(throttle, wAvg);
+        const float e = (idleW - w) * 0.01f;
+        idleInt = fminf(fmaxf(idleInt + 2.0f * e * dt, 0.0f), 0.3f);
+        th = fmaxf(th, fminf(fmaxf(idleInt + 0.5f * e, 0.0f), 0.4f));
+        thr += (th - thr) * dt / 0.03f;
+        float g = thr;
+        if (w > redW || bike.cutWanted())
+            g = 0.0f;
+        return g * full(w) - f * (1.0f - 0.7f * thr);
+    }
+
+    void run(int n)
+    {
+        for (int i = 0; i < n; ++i)
+        {
+            if (phase == 0)
+            {
+                bike.control(16.0f * dt, throttle, clutch, brake, rearBrake, up, down, mode, strip);
+                if ((bike.btel.bikeFlags & BIKE_FLAG_HOP) != 0)
+                    hopBlocks += 1;
+                thetaMax = fmaxf(thetaMax, bike.theta);
+                if (bike.v > 1.0)
+                    frontMin = fminf(frontMin, bike.fzF);
+                if (bike.v > 2.0)
+                {
+                    rearSlipMin = fminf(rearSlipMin, bike.rear.kappa);
+                    rearSlipMax = fmaxf(rearSlipMax, bike.rear.kappa);
+                }
+            }
+            phase = (phase + 1) & 15;
+            const float tq = torque();
+            tqEngine = tq;
+            w = bike.step(w, tq, dt);
+            wAvg += (w - wAvg) * dt / 0.01f;
+            if (running && w < 0.33f * idleW && !noStall)
+                running = false;
+            const float y = bike.road();
+            t += (double)dt;
+            wMin = fminf(wMin, w);
+            wMax = fmaxf(wMax, w);
+            vMax = fmaxf(vMax, (float)bike.v);
+            backMax = fmaxf(backMax, -bike.tClutch);
+            chainMin = fminf(chainMin, bike.tsh);
+            chainMax = fmaxf(chainMax, bike.tsh);
+            roadPeak = fmaxf(roadPeak, fabsf(y));
+            if (bike.lashStrike() > 0.0f)
+                lashSeen += 1;
+            if (!(w == w) || !(bike.v == bike.v) || !(y == y) || fabsf((float)bike.v) > 1000.0f || w > 10000.0f)
+                finite = false;
+            if (bike.cutWanted() && !cutSeen)
+            {
+                cutSeen = true;
+                cutStart = t;
+            }
+            if (cutSeen && cutEnd < 0.0 && !bike.cutWanted())
+                cutEnd = t;
+        }
+    }
+
+    void runNonblocking(int n) [[clang::nonblocking]]
+    {
+        run(n);
+    }
+
+    float random()
+    {
+        const int hi = rs / 127773;
+        const int lo = rs % 127773;
+        rs = 16807 * lo - 2836 * hi;
+        if (rs <= 0)
+            rs += 2147483647;
+        return (float)rs / 2147483647.0f;
+    }
+};
