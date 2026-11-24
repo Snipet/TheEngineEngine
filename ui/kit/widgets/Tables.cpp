@@ -346,6 +346,29 @@ namespace tee::ui
         sy_ = std::clamp(row, -1, std::max(0, map_.ny - 1));
         if (sx_ < 0 && sy_ < 0)
             sy_ = 0;
+        ax_ = sx_;
+        ay_ = sy_;
+    }
+
+    bool MapEdit::block(int& column0, int& row0, int& column1, int& row1) const noexcept
+    {
+        if (sx_ < 0 || sy_ < 0 || map_.nx <= 0 || map_.ny <= 0)
+            return false;
+        const int ax = std::clamp(ax_, 0, map_.nx - 1), ay = std::clamp(ay_, 0, map_.ny - 1);
+        column0 = std::min(ax, sx_);
+        column1 = std::max(ax, sx_);
+        row0 = std::min(ay, sy_);
+        row1 = std::max(ay, sy_);
+        return true;
+    }
+
+    void MapEdit::selectBlock(int column0, int row0, int column1, int row1) noexcept
+    {
+        select(column0, row0);
+        if (sx_ < 0 || sy_ < 0)
+            return;
+        sx_ = std::clamp(column1, 0, std::max(0, map_.nx - 1));
+        sy_ = std::clamp(row1, 0, std::max(0, map_.ny - 1));
     }
 
     Col MapEdit::heat(const Look& l, double z) const noexcept
@@ -410,6 +433,13 @@ namespace tee::ui
             const float px = first.x + (liveShown_[0] + 0.5f) * first.w, py = first.y + (liveShown_[1] + 0.5f) * first.h;
             c.disc(px, py, 3.5f, l.value, 1.5f, l.ground);
         }
+        // The block, when it is more than one cell: its outline.
+        int b0 = 0, r0 = 0, b1 = 0, r1 = 0;
+        if (block(b0, r0, b1, r1) && (b1 > b0 || r1 > r0))
+        {
+            const Rect a = cellRect(b0, r0), z = cellRect(b1, r1);
+            c.rrect(a.x - 1.0f, a.y - 1.0f, z.right() - a.x + 2.0f, z.bottom() - a.y + 2.0f, 3.0f, kClear, 2.0f, l.accent);
+        }
         // The selection, and the value being typed in it.
         const Rect s = cellRect(sx_, sy_);
         c.rrect(s.x, s.y, s.w, s.h, 2.0f, kClear, focusRing || editing_ ? 2.0f : 1.5f, l.accent);
@@ -438,6 +468,14 @@ namespace tee::ui
         int i = 0, j = 0;
         if (e.popup || !hit({ e.x, e.y }, i, j))
             return;
+        if (e.mods.shift && i >= 0 && j >= 0 && sx_ >= 0 && sy_ >= 0)
+        {
+            if (editing_)
+                commit();
+            sx_ = i;                                     // the block grows from its anchor to here
+            sy_ = j;
+            return;
+        }
         select(i, j);
         if (i >= 0 && j >= 0)                            // a cell: a drag up raises it
         {
@@ -519,10 +557,22 @@ namespace tee::ui
         }
         switch (e.key)
         {
-            case Key::left: select(sx_ - 1, sy_); return true;
-            case Key::right: select(sx_ + 1, sy_); return true;
-            case Key::up: select(sx_, sy_ - 1); return true;
-            case Key::down: select(sx_, sy_ + 1); return true;
+            case Key::left:
+            case Key::right:
+            case Key::up:
+            case Key::down:
+            {
+                const int dx = e.key == Key::left ? -1 : e.key == Key::right ? 1 : 0;
+                const int dy = e.key == Key::up ? -1 : e.key == Key::down ? 1 : 0;
+                if (e.mods.shift && sx_ >= 0 && sy_ >= 0)
+                {
+                    sx_ = std::clamp(sx_ + dx, 0, std::max(0, map_.nx - 1));   // the block grows or shrinks
+                    sy_ = std::clamp(sy_ + dy, 0, std::max(0, map_.ny - 1));
+                }
+                else
+                    select(sx_ + dx, sy_ + dy);
+                return true;
+            }
             case Key::enter:
                 edit_.set(axisOf(sx_, sy_).text.format ? axisOf(sx_, sy_).text.format(valueAt(sx_, sy_)) : plainNumber(valueAt(sx_, sy_)), 16);
                 editing_ = true;
@@ -618,6 +668,6 @@ namespace tee::ui
                 k.mix(static_cast<float>(m.z[static_cast<std::size_t>(j)][static_cast<std::size_t>(i)]));
         for (int i = 0; i < kTableMax; ++i)
             k.mix(static_cast<float>(m.x[static_cast<std::size_t>(i)])).mix(static_cast<float>(m.y[static_cast<std::size_t>(i)]));
-        return k.mix(sx_).mix(sy_).mix(editing_).mix(edit_.buffer).mix(liveTarget_[0]).mix(liveTarget_[1]).h;
+        return k.mix(sx_).mix(sy_).mix(ax_).mix(ay_).mix(editing_).mix(edit_.buffer).mix(liveTarget_[0]).mix(liveTarget_[1]).h;
     }
 }

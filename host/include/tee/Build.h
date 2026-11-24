@@ -53,11 +53,6 @@ namespace tee
     // Whether a section belongs to a part (every section is in Whole; env and sound in no other).
     bool inPart(std::string_view section, BuildPart part) noexcept;
 
-    // The document's own inline namespace keeps its symbols apart from K3a's `tee::Build` struct in EnginePlayer.h (a
-    // name the contract gives this class): in source it is tee::Build; a file that includes both headers must name
-    // this one tee::document::Build.
-    inline namespace document
-    {
     class Build
     {
     public:
@@ -151,7 +146,6 @@ namespace tee
         SimHost* host_ = nullptr;
         std::set<int> waiting_;
     };
-    } // namespace document
 
     // The builds a person can pick: content/builds/ and the user's own folder.
     struct PresetEntry

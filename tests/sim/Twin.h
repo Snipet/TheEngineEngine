@@ -41,9 +41,9 @@ namespace tee::test
         return player;
     }
 
-    inline Build engineBuild(const EnginePlayer& player, const std::string& name)
+    inline EngineBuild engineBuild(const EnginePlayer& player, const std::string& name)
     {
-        Build build;
+        EngineBuild build;
         std::string error, warnings;
         if (!loadBuild(player, buildFile(name), build, error, warnings))
             throw std::runtime_error(error);
@@ -92,7 +92,7 @@ namespace tee::test
     };
 
     // Plays `scenario` from `build` through both (tee::playTwin), in blocks of `block`, and measures the difference.
-    inline Null twin(EnginePlayer& engine, RefPlayer& ref, const Build& build, const EngineScenario& scenario, int block,
+    inline Null twin(EnginePlayer& engine, RefPlayer& ref, const EngineBuild& build, const EngineScenario& scenario, int block,
                      double seconds = 0.0)
     {
         Null out;

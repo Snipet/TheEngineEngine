@@ -27,10 +27,7 @@ namespace tee
     class SimHost;
     struct FieldInfo;
     struct TelemetryFrame;
-    inline namespace document
-    {
-        class Build;
-    }
+    class Build;
 }
 
 namespace tee::player
