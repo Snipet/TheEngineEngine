@@ -54,7 +54,7 @@ module EngineTel
     float dynoTorque [[ui::label("Dyno torque")]] [[ui::quantity("torque")]] [[ui::help("The absorber's, its mean over 0.1 s (MODE_DYNO_ENGINE)")]];
     float dynoSpeed [[ui::label("Dyno set speed")]] [[ui::quantity("rotation")]];
     float inertiaTorque [[ui::label("Inertia torque")]] [[ui::quantity("torque")]] [[ui::help("The reciprocating masses' (a custom engine's)")]];
-    float shake1 [[ui::label("Shaking force, 1st order")]] [[ui::unit("N")]] [[ui::help("Amplitude at this speed (a custom engine's), after balance shafts")]];
+    float shake1 [[ui::label("Shaking force, 1st order")]] [[ui::unit("N")]] [[ui::help("Amplitude at this speed, after balance shafts (a reference layout's cylinders taken upright)")]];
     float shake2 [[ui::label("Shaking force, 2nd order")]] [[ui::unit("N")]];
     float rock1 [[ui::label("Rocking moment, 1st order")]] [[ui::quantity("torque")]];
     float rock2 [[ui::label("Rocking moment, 2nd order")]] [[ui::quantity("torque")]];

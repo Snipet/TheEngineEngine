@@ -8,7 +8,8 @@
 // (30 % of the idle, 250 to 450 rpm) for 80 ms. The engine never switches itself off otherwise.
 //
 // The fuel of a start: while it cranks, a cold engine's fuel stays on the walls and in the oil, so its ECU gives
-// more: lambda asked times 0.7 at -20 C rising to 1 warm (judgement, as factory cranking tables run), and no fuel
+// more (`enrich` is lambda's multiplier for the fuel injected; the mixture the burn sees stays the one asked: the extra
+// is what the walls take, ecu1.fm's fuelFactor): lambda asked times 0.7 at -20 C rising to 1 warm (judgement, as factory cranking tables run), and no fuel
 // while it turns slower than 120 rpm (a cold engine's starter turns it slower: 40 rpm when cold), the reference's.
 // After the start the enrichment decays over some 20 seconds, and a cold engine runs a little rich until it is warm
 // (lambda times 0.92 at 0 C to 1 warm, judgement).

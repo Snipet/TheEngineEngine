@@ -104,7 +104,10 @@ module Ecu1
     float bypass;       // the idle valve
     float trim;         // the spark's quick hand on the torque (the reference's trim)
     float spark;        // degrees before the top, before a cylinder's knock retard
-    float lambda;
+    float sparkBase;    // the map's (or its formula's) alone, before the timing and every retard
+    float lambda;       // the mixture the burn is to see
+    float fuelFactor;   // the fuel injected over what that mixture holds: a start's and a cold engine's enrichment (the
+                        // extra wets the cold walls and the oil, state.fm), 1 warm
     float boost;        // Pa over the air
     float camIn;
     float camEx;
@@ -150,7 +153,10 @@ module Ecu1
         speed.control(in->omega, d16);
         const float rpm = speed.rpm;
         const float w = in->omega;
-        idle.speed(set->idle.speed > 0.0f ? set->idle.speed * 9.5492966f : in->idleBase, set->idle.speed > 0.0f ? 0.35f : in->cam, in->coolant, (in->gasoline ? 1.0f : 0.5f) * set->idle.coldRise * 9.5492966f);
+        // (the warm idle: the Spec's, else the layout's; a diesel's, a quarter-odd of its governed speed: heavy diesels
+        // idle at some 25 to 30 % of their rated speed and 600 to 800 rpm: at most 750, judgement; and no big cam's bump,
+        // which is a spark engine's answer to its overlap's dilution)
+        idle.speed(set->idle.speed > 0.0f ? set->idle.speed * 9.5492966f : (in->gasoline ? in->idleBase : fminf(0.28f * in->redBase, 750.0f)), set->idle.speed > 0.0f || !in->gasoline ? 0.35f : in->cam, in->coolant, (in->gasoline ? 1.0f : 0.5f) * set->idle.coldRise * 9.5492966f);
         const float redRpm = fmaxf(in->redBase, idle.target + 1500.0f);
         if (in->external)
             key.follow(in->stateIn, in->omega, speed.avg, in->warm, in->coolant, d16);
@@ -160,7 +166,7 @@ module Ecu1
         // the pedal: the driver's, or the driver for a held speed (a bench's)
         driver.control(running && !in->driven ? in->holdSpeed * 9.5492966f : 0.0f, &speed, idle.target, 1.0f, d16);
         pedal = running ? fmaxf(in->pedal, driver.pedal) : 0.0f;
-        idle.control(&speed, pedal, in->driven, overrun.sinceLift, in->gasoline, d16);
+        idle.control(&speed, pedal, in->driven, overrun.sinceLift, in->gasoline, key.sinceStart, d16);
         trim = driver.holding ? driver.trim : idle.trim;
         overrun.control(pedal, speed.avg, idle.target, running, d16);
         // the limiter, launch, flat-shift, traction
@@ -170,7 +176,8 @@ module Ecu1
         launch.control(set->launch.on, in->launchButton, pedal, in->clutch, in->carSpeed, rpm, speed.rate,
                        set->launch.speed * 9.5492966f, set->launch.retard, set->launch.flatShift, in->upshift, in->dogCut,
                        in->blip, d16);
-        traction.control(set->traction.on, in->slip, set->traction.slip, set->traction.pitSpeed, in->carSpeed, d16);
+        traction.control(set->traction.on, in->slip, set->traction.slip, set->traction.pitSpeed, in->carSpeed,
+                         fminf(fmaxf((rpm - idle.target - 300.0f) / 1200.0f, 0.0f), 1.0f), d16);
         antiLag.control(set->antiLag.on, running, rpm, set->antiLag.low * 9.5492966f, set->antiLag.high * 9.5492966f,
                         pedal, set->antiLag.retard, set->antiLag.lambda);
         nitrous.control(set->nitrous.on && in->nitrousButton, running, rpm, set->nitrous.low * 9.5492966f, pedal,
@@ -183,8 +190,10 @@ module Ecu1
         EcuMapsSpec* m = &set->maps;
         maps.tune.redRpm = redRpm;
         maps.tune.idleRpm = idle.target;
-        spark = maps.read(&m->spark, m->sparkAuto, MAP_SPARK, w, m->sparkAuto ? loadRef : load) + in->timing;
-        lambda = maps.read(&m->lambda, m->lambdaAuto, MAP_LAMBDA, w, load) * key.enrich;
+        sparkBase = maps.read(&m->spark, m->sparkAuto, MAP_SPARK, w, m->sparkAuto ? loadRef : load);
+        spark = sparkBase + in->timing;
+        lambda = maps.read(&m->lambda, m->lambdaAuto, MAP_LAMBDA, w, load);
+        fuelFactor = 1.0f / fmaxf(key.enrich, 0.3f);
         boost = maps.read(&m->boost, m->boostAuto, MAP_BOOST, w, (float)(in->gear < 1 ? 1 : in->gear));
         camIn = maps.read(&m->camIn, m->camInAuto, MAP_CAM_IN, w, load);
         camEx = maps.read(&m->camEx, m->camExAuto, MAP_CAM_EX, w, load);
