@@ -32,6 +32,7 @@ namespace tee::app
     {
         std::filesystem::path file;     // empty: no build is opened
         const char* what = "";          // what it is, for the console: "the last build", "the first build", or why none
+        bool first = false;             // the first build (a first launch: its notes' first line is shown)
     };
 
     // `content` is where content/ is (findContent()); empty: there is none.
