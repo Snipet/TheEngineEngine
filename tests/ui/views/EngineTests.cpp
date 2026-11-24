@@ -346,3 +346,39 @@ namespace
         return 0;
     }
 }
+
+namespace
+{
+    // The section's valves open where the simulator says (valve.ivo, valve.evo) when telemetry has it: moving the
+    // intake's event alone moves what is drawn; with the event where the Scope's own lift opens, nothing moves.
+    VIEW_TEST(testEngineEvents, "engine.events")
+    {
+        StageRig rig(tee::ui::makeEngineWorkspace, 1100, 700, 1.0f, 4.6);
+        rig.demo.selection.select("engine.bore");
+        const auto frameHash = [&] {
+            std::uint64_t h = 1469598103934665603ull;
+            for (const funkgui::Prim& p : rig.host->draw().prims)
+                h = (h ^ static_cast<std::uint64_t>(std::lround(p.y0 * 4.0f) + 7919 * std::lround(p.x0 * 4.0f))) * 1099511628211ull;
+            return h;
+        };
+        // the demo's Scope: the intake leaves its seat at 346, the exhaust at 131 (ui/app/Demo.cpp: opening at 345, 130); cylinder 1 at 400 degrees,
+        // the intake well open
+        rig.demo.engine.set("engine.crank", 400.0);
+        rig.demo.engine.set("valve.ivo", 346.0);
+        rig.demo.engine.set("valve.evo", 131.0);
+        rig.demo.ctx.live.reset();
+        rig.settle();
+        const std::uint64_t asScope = frameHash();
+        rig.demo.engine.forget("valve.ivo");
+        rig.demo.engine.forget("valve.evo");
+        rig.demo.ctx.live.reset();
+        rig.settle();
+        CHECK(frameHash() == asScope);   // absent: the Scope's own timing, the same picture
+        rig.demo.engine.set("valve.ivo", 385.0);   // the intake opening 40 degrees later
+        rig.demo.ctx.live.reset();
+        rig.settle();
+        CHECK(frameHash() != asScope);
+        picture("engine.events", *rig.host);
+        return 0;
+    }
+}
