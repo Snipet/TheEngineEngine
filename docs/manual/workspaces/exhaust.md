@@ -73,6 +73,19 @@ and its name on a tag.
 5. **Overrun.** Rev to the limiter and lift off. With Pops set above 0 on TUNE, look for the flame at the tails on a
    graphics card and listen for pops; set Pops to 0 and repeat.
 
+## A two-stroke's pipe
+
+With a two-stroke engine (Cycle set to Two-stroke, `engine.cycle`) the stage draws each cylinder's expansion chamber
+instead of a four-stroke's system: header, widening diffuser cone, belly, narrowing baffle cone and stinger, all to
+one scale so a cone looks as steep as it is, with a packed silencer when one is fitted. The pulse and the wave it sends
+back ride cylinder 1's pipe. Under the pipe, a plot of the exhaust port's pressure over one turn marks where the port
+OPENS and CLOSES: the baffle's returning pulse should arrive just before it closes, pushing back the fresh charge that
+escaped. **ON THE PIPE NEAR n rpm** is the speed at which that happens, worked out from the pipe's length and the gas's
+temperature: the middle of the power band. Lengthen the pipe and the band moves down; shorten it and it moves up.
+Clicking a section of the pipe selects its lengths and bores.
+
+Each tailpipe's end also shows how loud it is, in dB, with a bar under the loudest.
+
 ## What is not there yet
 
 - The running engine does not use the builder's settings yet (above). The crossover, resonator, muffler kind, bypass
