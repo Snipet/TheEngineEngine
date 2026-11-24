@@ -20,6 +20,23 @@ BUILDS = os.path.join(ROOT, "content", "builds", "archetypes")
 RPM = math.pi / 30.0
 SC = "validation/scenarios/"
 
+# each target's kind of source (the invariants: cited, the contracts and the build's own figures)
+BASIS = {
+    "Starts cold": "judgement",
+    "Sound: a free rev is loud enough": "judgement", "Sound: the idle is audible": "judgement",
+    "Peak power": "recalled", "Speed at peak power": "recalled", "Peak torque": "recalled",
+    "Speed at peak torque": "recalled",
+    "Warm idle": "recalled", "Idle steadiness": "judgement", "Idle low point": "judgement",
+    "Boost at its target": "judgement", "Charge temperature under boost": "recalled",
+    "Lambda at full load under boost": "recalled",
+    "Volumetric efficiency at its torque peak": "recalled", "Volumetric efficiency low down": "judgement",
+    "Port gas at full load": "judgement", "Header gas at full load": "judgement",
+    "Port gas, mass mean (information)": "judgement",
+    "Quarter mile: time": "recalled", "Quarter mile: trap speed": "recalled", "Top speed": "judgement",
+}
+# archetypes whose power and torque rows were looked up (slug: the pages), turning recalled into cited
+CITED = {}
+
 # slug: published peak power (kW range, rpm range), torque (N m range, rpm range), warm idle (rpm range),
 # boost check speed (rpm of a p-full-load scenario), the source's firmness, and top speed if the kind's is published
 # unrestricted (km/h range; None: worked out from power and drag).
@@ -102,6 +119,16 @@ def targets(slug, b):
     out = []
 
     def add(**k):
+        # what the target is measured against (the lead, 20:23): cited (a page, a figure, a standard or a maker's datum
+        # looked up, named in the source), recalled (a maker's figure or a textbook range written from memory, believed
+        # right) or judgement (a band set because it seemed reasonable: it catches a wild value; nobody should move
+        # the model toward it)
+        name = k["name"]
+        if name in ("Peak power", "Peak torque", "Speed at peak power", "Speed at peak torque") and slug in CITED:
+            k["basis"] = "cited"
+            k["source"] = k["source"] + "; looked up: " + CITED[slug]
+        else:
+            k["basis"] = "cited" if name.startswith("Invariant") else BASIS[name]
         out.append(k)
 
     # ---- the invariants: hard --------------------------------------------------------------------------------
@@ -109,6 +136,15 @@ def targets(slug, b):
         during=[6, 14], range=[2, 2], source="a warm engine started on its key runs and keeps running (engine.state 2)")
     add(name="Invariant: within full scale", scenario=SC + "p-free-rev.json", audio="peak", range=[0, 1],
         source="02-contracts.md, section 1: what process writes is within +-1")
+    # ---- the sound's level: floors beside the cap (the lead, 20:11: with L's listener on, a first launch played 23 to
+    # 30 dB under the reference mix, near silent, and no row caught it) --------------------------------------------
+    add(name="Sound: a free rev is loud enough", scenario=SC + "p-free-rev.json", audio="peak", range=[0.2, 1],
+        source="the lead's ruling (20:11): at a build's defaults a free rev peaks at 0.3 to 0.6 of full scale; under "
+               "0.2 is too quiet to hear the work (L's listener at 23 to 30 dB under the reference mix: L's finding)")
+    add(name="Sound: the idle is audible", scenario=SC + "p-idle-warm.json", audio="rms", during=[8, 14],
+        range=[-40, 0], unit="dB",
+        source="the lead's ruling (20:11): the idle plainly audible: its level over 8 to 14 s at least -40 dB of full "
+               "scale (judgement: a quiet room's background against a full-scale peak)")
     gov = s["ecu"].get("governor") == "Electronic"
     if gov:
         # a governed diesel: its limit is the governor's high idle (rated x 1.06), read absolutely: tel.engine.redline
@@ -208,8 +244,9 @@ def targets(slug, b):
         measure="mean", during=[8, 10], range=thead, unit="K",
         source=("a thermocouple a little way down a diesel's manifold reads some 700 to 950 K at full load (makers' "
                 "pre-turbine limits near 1000 K; %s, ch. 14); tel.exhaust.headerThermocouple" if diesel else
-                "a thermocouple a little way down a primary reads 900 to 1100 K at full load on a petrol engine (makers' "
-                "exhaust-gas-temperature data; %s, ch. 14); tel.exhaust.headerThermocouple") % HEYWOOD)
+                "a thermocouple a little way down a primary reads 900 to 1100 K at full load on a petrol engine "
+                "(JUDGEMENT from memory of makers' exhaust-gas-temperature data, not a cited full-load figure: under "
+                "review, the lead's question of 20:17; %s, ch. 14); tel.exhaust.headerThermocouple") % HEYWOOD)
     add(name="Port gas, mass mean (information)", scenario=SC + "p-full-load-%d.json" % fl,
         tel="exhaust.portTemperature", measure="mean", during=[8, 10], range=[0, 3000], unit="K",
         source="the gas's mass (enthalpy) mean at the port, kept for information: above a thermocouple's reading, not "

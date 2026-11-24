@@ -39,6 +39,12 @@ def run(bin_dir, slug, out_dir):
         return f.read()
 
 
+def basis(t):
+    """A target's kind of source: cited, recalled or judgement (judgement where its file says none, as the curve's
+    sharpest point, the lead's ruling)."""
+    return t.get("basis", "judgement")
+
+
 def parse(text, targets):
     lines = text.splitlines()
     try:
@@ -242,9 +248,38 @@ def main():
     out += ["## The misses, target by target", "",
             "%d targets over %d archetypes; %d missed or not measurable. Each line: the archetype, what was measured, "
             "the range it should be in." % (total, len(slugs), missed), ""]
+    # what the table is measured against (the lead, 20:23): every target by the kind of its source, and its misses
+    kinds = {"cited": [0, 0], "recalled": [0, 0], "judgement": [0, 0]}
+    for s in slugs:
+        for t, v, st in results[s] or []:
+            k = kinds[basis(t)]
+            k[0] += 1
+            k[1] += st != "pass"
+    line = ("**Missed: %d of %d** (%d of %d cited, %d of %d recalled, %d of %d judgement). *Cited*: a page, a "
+            "figure, a standard or a maker's datum looked up and named in its source; *recalled*: a maker's figure or "
+            "a textbook range written from memory, believed right; *judgement*: a band set because it seemed "
+            "reasonable, which catches a wild value but is no reason to move the model toward it." %
+            (missed, total, kinds["cited"][1], kinds["cited"][0], kinds["recalled"][1], kinds["recalled"][0],
+             kinds["judgement"][1], kinds["judgement"][0]))
+    out[out.index("## The archetypes at a glance")] = line + "\n\n## The archetypes at a glance"
+    out += [line, ""]
+    # the worst five, by how far outside its range, with each one's kind
+    worst = []
+    for s in slugs:
+        for t, v, st in results[s] or []:
+            if st == "FAIL" and v is not None and "range" in t:
+                lo, hi = sorted(t["range"])
+                ref = lo if v < lo else hi
+                if ref:
+                    worst.append((abs(v - ref) / abs(ref), s, t, v))
+    worst.sort(key=lambda w: -w[0])
+    out += ["**The worst five** (by how far outside the range, as a share of its nearer edge):", ""]
+    out += ["%d. %s, %s: %s against %s (%.0f %% out; %s)" % (i + 1, builds[s]["name"], t["name"], show(t, v), rng(t),
+                                                            100 * d, basis(t)) for i, (d, s, t, v) in enumerate(worst[:5])]
+    out.append("")
     order = sorted(by, key=lambda n: (not n.startswith("Invariant"), -len(by[n])))
     for name in order:
-        out += ["### %s (%d)" % (name, len(by[name])), ""]
+        out += ["### %s (%d; %s)" % (name, len(by[name]), basis(by[name][0][1])), ""]
         src = by[name][0][1]["source"]
         out += ["*Source: %s.*" % src.rstrip("."), ""] if name not in ("Peak power", "Peak torque", "Speed at peak power",
                                                                       "Speed at peak torque") else \
