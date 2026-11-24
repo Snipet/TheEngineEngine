@@ -234,7 +234,7 @@
     },
     "sound": {
       "model": "Places",
-      "camera": "Side",
+      "camera": "Rear",
       "place": "Field",
       "ground": "Asphalt",
       "enginePlace": "Front"
