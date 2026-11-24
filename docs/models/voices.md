@@ -98,7 +98,7 @@ runs; test `engine: levels at idle`:
 
 | Voice | dB(A) | 250 Hz | 500 | 1 k | 2 k | 4 k | 8 k | Bound (judgement) |
 |---|---|---|---|---|---|---|---|---|
-| Fuel pump | -59.9 | -121 | -110 | -49.1 | -99 | -37.4 | -79 | 50 dB(A) and 35 dB in every octave under: an in-tank pump under a running engine is at most barely heard outside the car |
+| Fuel pump | -49.5 | -112 | -108 | -40.1 | -99 | -28.2 | -80 | A record only: its bound is through Places, where the tank's wall is (below) |
 | Electric fan | -23.3 | -21.8 | -12.9 | -15.6 | -14.9 | -17.4 | -25.4 | 15 to 35 dB(A) under, 12 under at 4 and 8 kHz: a fan is heard in front of an idling car, its broadband falling above its peak |
 | Direct injectors | -34.3 | -90 | -61 | -53 | -40.1 | -14.2 | -11.0 | 25 to 45 dB(A) under, within 25 dB at 4 kHz: the tick heard beside a DI engine |
 | Accessory belt | -60.3 | -101 | -78 | -70 | -46.4 | -50.7 | -46.9 | 45 dB(A) under |
@@ -115,7 +115,25 @@ at idle:
 |---|---|---|---|---|
 | As shipped to the owner | 0.0035 | -30 | -8.2 | Judgement: "heard through the floor, about the chain's at idle" |
 | -20 dB (57bd971a) | 0.00035 | -49.2 | -29.7 | The owner (21:32): "a high pitched hum that almost sounds like the turbo at idle, but far too loud" |
-| -30 dB (1a3812e6) | 0.00011 | -59.9 | -37.4 | The lead's ruling (22:19): the owner's "far too loud"; an in-tank pump under a running engine is at most barely heard outside the car; 1.6 to 3.4 dB of margin on the small engines' hum row was one camera from red. Not scaled by the engine's size |
+| -30 dB (1a3812e6), before the wall | 0.00011 | -59.9 | -37.4 | The lead's ruling (22:19): the owner's "far too loud"; an in-tank pump under a running engine is at most barely heard outside the car; 1.6 to 3.4 dB of margin on the small engines' hum row was one camera from red. Not scaled by the engine's size |
+
+| The tank's wall (L's f6bf38ec) | - | - | - | Places radiated the in-tank pump as in open air under the car: 5 mm of HDPE by the mass law (Bies and Hansen) takes 27 dB at 760 Hz, 38 at 3.9 kHz, in the path |
+| -20 dB (the lead's 23:01) | 0.00035 | -49.5 (a record only) | -28.2 | 20 of the 30 given back for the wall, on the masking criterion: through Places every line at least 10 dB under the engine's third octave about it (judgement: a tone is masked by the noise in its own critical band), cold and warm, at Tailpipe, Rear, Side and Driver |
+
+Measured at -20 dB, first.json, the pump's energy against the engine's in the third octave about each line (dB;
+warm through tee-render's warm hold, cold through the same scenario without it, 8 to 14 s); and the prime (key on,
+no start, 0.3 to 1.9 s, rms) over the same key-on with the pump silent:
+
+| Camera | 95 Hz warm / cold | 760 Hz | 3895 Hz | Prime over the silence, warm / cold |
+|---|---|---|---|---|
+| Tailpipe | -47.9 / -45.6 | -22.9 / -26.7 | -24.6 / -27.1 | +19.0 / +1.7 |
+| Rear | -48.2 / -44.5 | -11.2 / -15.3 | -20.5 / -23.0 | +16.2 / +1.0 |
+| Side | -43.8 / -40.1 | -15.7 / -19.2 | -41.5 / -43.2 | +14.2 / +0.8 |
+| Driver | -43.1 / -40.3 | -19.1 / -21.3 | -37.6 / -38.8 | +14.1 / +0.7 |
+
+The cold key-on's "silence" is not silent: with the engine standing, the pipes' gas settles from the simulator's 300 K
+start to the build's air (first.json's 288 K), some 21 dB over a warm key-on's floor; heard only because voices.model 1
+renders from the key. Reported to the lead and card D (23:05); it buries a cold prime until that is cured.
 
 The prime keeps the same level as the pump's hum (the lead, 22:27: a louder prime would be a judgement on a judgement;
 it is heard at key-on because nothing else sounds, and from the cabin, which is the listener's business).
