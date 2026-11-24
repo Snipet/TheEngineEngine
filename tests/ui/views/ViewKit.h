@@ -61,9 +61,8 @@ namespace tee::test::views
     std::string unnamedControls(funkgui::HeadlessHost& host);
 
     // A workspace alone in a headless host over the demo (ui/app/Demo.h). `t` is the demo script's time; at(t) moves
-    // it and ticks the host so the eases land. `hooks`: with the demo data of the workspace's package (the TEE_UI_DEMO
-    // hooks of its package's workspaces, no other package's, so another package's data never moves this test's
-    // goldens); false: none. A test that wants
+    // it and ticks the host so the eases land. `hooks`: the base demo and the workspace's own hook (TEE_UI_DEMO), no
+    // other, so another workspace's data never moves this test's goldens; false: the base alone. A test that wants
     // other hooks too passes them by id: StageRig(make, ..., tee::ui::DemoHooks::of({ "tune", "car" })).
     //
     // The stage the frame gives (AppFrame::stageFor) is much smaller than the window. Lay out for the smallest and
@@ -105,13 +104,7 @@ namespace tee::test::views
                 return hooks;
             tee::ui::DemoRig bare(4.6, tee::ui::DemoHooks::none());
             std::unique_ptr<tee::ui::Workspace> probe = make(bare.ctx);
-            // A package's workspaces share their hooks (ui-design.md section 6's packages); no other package's apply.
-            static const std::vector<std::vector<std::string>> kPackages = {
-                { "engine", "valves" }, { "air", "exhaust" }, { "tune", "car", "dyno" }, { "garage", "scope" }, { "drive" } };
             const std::string id = probe->id();
-            for (const auto& package : kPackages)
-                if (std::find(package.begin(), package.end(), id) != package.end())
-                    return tee::ui::DemoHooks::of(package);
             return tee::ui::DemoHooks::of({ id });
         }
         void open(tee::ui::WorkspaceFactory make, int w, int h, const funkgui::Rect& stage, float dpi)

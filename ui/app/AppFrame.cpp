@@ -146,7 +146,11 @@ namespace tee::ui
               "Round tachometer and speedometer, boost, lambda, temperatures; the car on its road; the strip's tree and the "
               "time slip; the wheels' slip as bars.",
               "package U1", false },
-            { "scope", "SCOPE", "SCP", { "sound" },
+            { "listen", "LISTEN", "LSN", { "sound" },
+              "Where the car is heard from: the car from above with every source as a dot sized by its level, and a "
+              "listener to drag; the cameras, the places, the cabin; the loudness and the limiter.",
+              "package U5", true },
+            { "scope", "SCOPE", "SCP", {},
               "Cylinder pressure against crank angle and against volume; the ports' pressures; the output's wave; a "
               "spectrum, and a spectrum against engine speed where the firing orders stand as lines.",
               "package U5", true },
@@ -193,6 +197,12 @@ namespace tee::ui
             const float p = peak();
             return p <= 0.001f ? std::string("-60 dB") : look::num(20.0 * std::log10(static_cast<double>(p)), "%.0f") + " dB";
         });
+        // The listener's limiter: its gain reduction (tel.sound.limiter, dB), a small bar under the output's while it is
+        // not zero, with the number.
+        limiter_ = &make<Bar>("Limiter", [this] {
+            const double db = ctx_->live.get("sound.limiter");
+            return std::isfinite(db) ? static_cast<float>(std::clamp(std::fabs(db) / 12.0, 0.0, 1.0)) : 0.0f;
+        }, [this] { return look::num(-std::fabs(ctx_->live.get("sound.limiter")), "%.1f") + " dB"; });
         unitsButton_ = &make<Button>("Settings", [this] { showUnits(!unitsPage_); });
         unitsButton_->setLit([this] { return unitsPage_; });
         undo_ = &make<Button>("Undo", [this] { if (services_.undo) services_.undo(); });
@@ -685,7 +695,12 @@ namespace tee::ui
         right(undo_, 62.0f, 9.0f, 30.0f);
         right(unitsButton_, 68.0f, 9.0f, 30.0f);
         x -= 8.0f;
-        right(level_, 120.0f, 6.0f, 36.0f);
+        {
+            const double db = ctx_->live.get("sound.limiter");
+            const bool limiting = std::isfinite(db) && std::fabs(db) > 0.05;
+            right(level_, 120.0f, 6.0f, limiting ? 26.0f : 36.0f);
+            limiter_->setPlace({ x + 8.0f, 33.0f, 120.0f, 13.0f }, limiting);
+        }
         x -= 18.0f;                                       // a clear gap: each label with its own number and bar
         right(load_, 100.0f, 6.0f, 36.0f);
         const float left = railWidth() + 16.0f;
@@ -923,6 +938,8 @@ namespace tee::ui
             }
         }
         modes_[0]->setTitle(kModes[std::clamp(services_.mode ? services_.mode() : localMode_, 0, 2)]);
+        if (const double db = ctx_->live.get("sound.limiter"); (std::isfinite(db) && std::fabs(db) > 0.05) != limiter_->shown())
+            arrange();   // the limiter's bar comes or goes
         Board::tick(dt);
         if (Board::wantsFullRate())
             dirty_ = true;

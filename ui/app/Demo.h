@@ -64,6 +64,8 @@ namespace tee::ui
 
     // `hooks`: the registered workspaces' own fields (DemoHook) to add.
     std::vector<FieldInfo> demoFields(const DemoHooks& hooks = true);
+    // Spec fields defined twice by the base demo and the registered hooks: a line each, naming both ("" : none).
+    std::string demoFieldConflicts();
 
     class DemoEngine final : public TelemetrySource, public ScopeSource, public DynoSource
     {
@@ -72,6 +74,12 @@ namespace tee::ui
         // telemetry and Scope arrays (DemoHook).
         explicit DemoEngine(const FieldDoc* doc = nullptr, const DemoHooks& hooks = true);
 
+        // Names defined twice (the base demo and a hook, or two hooks): one line each, naming both ("" : none). A
+        // hook's names must be its own (ui.demo.hooks fails on any).
+        const std::string& conflicts() const noexcept { return conflicts_; }
+        // The base demo's names (a contract, frozen 2026-11-24: a new name comes through its workspace's hook).
+        static std::vector<std::string> baseTelemetry();
+        static std::vector<std::string> baseScope();
         // A package's own (DemoHook): a telemetry value that follows the script (read when asked), a Scope array (the
         // function writes up to max entries into out and answers how many).
         void addTelemetry(std::string name, std::function<double(const DemoEngine&)> value);
@@ -119,6 +127,7 @@ namespace tee::ui
         bool startRun(const DynoRequest& r) override;
         bool running() const override { return runLeft_ > 0.0; }
         void stopRun() override { runLeft_ = 0.0; }
+        std::uint64_t requests() const override { return requests_; }
         const DynoTrace* runSoFar() const override { return runLeft_ > 0.0 ? &partial_ : nullptr; }
 
         static constexpr double kPeriod = 8.0;     // the script's length, seconds
@@ -130,6 +139,8 @@ namespace tee::ui
         double fieldOr(std::string_view path, double fallback) const;
 
         const FieldDoc* doc_;
+        std::string hookId_ = "the base demo", conflicts_;
+        std::map<std::string, std::string, std::less<>> owner_;   // a name's definer
         std::vector<std::pair<std::string, std::function<double(const DemoEngine&)>>> extraTel_;
         std::vector<std::pair<std::string, std::function<int(const DemoEngine&, float*, int)>>> extraScope_;
         double t_ = 0.0, rpm_ = 850.0, throttle_ = 0.0, phase_ = 0.0;
@@ -146,6 +157,7 @@ namespace tee::ui
         DynoRequest runPlan_;
         std::uint64_t seenRevision_ = 0, dynoRevision_ = 1;
         double quiet_ = 0.0, waiting_ = -1.0, runLeft_ = 0.0;
+        std::uint64_t requests_ = 0;
     };
 
     // A whole context over the demo: a MemoryDoc of demoFields(), the units, the engine, a selection, services that
