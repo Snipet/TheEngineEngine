@@ -239,6 +239,11 @@ module Engine
     // main pipe, the muffler, the tail), each part's wall, and what the pipes are set to (the gas's, a third of a second
     // behind)
     float quiet;
+    int prime;          // the standing engine renders for its voices alone (the key's sounds before a start): the
+                        // engine's ticks rest, the voices run on their own (X-028: a sound switch leaves the engine)
+    int primeTick;      // the voices' own 16-sample tick while prime
+    int primeAhead;     // the resampler's lead as prime began (put back as it ends: the engine's parts fall on the host's
+    float primeFrac;    // samples as they would have unrendered)
     // the junctions' losses (pipes.fm, lossKap: K rho / 2A^2 for each direction) and the catalytic converter
                         // to tail), each for flow onward and back
     // the car (DRIVE CAR)
@@ -1426,6 +1431,20 @@ module Engine
                          tel.car.liftAngle);
             for (int i = 0; i < m; ++i)
             {
+                if (prime != 0)
+                {
+                    // the voices alone (prime): their inputs read from the resting engine every 16 samples of their
+                    // own, their sounds at no flow and no speed; the engine's ticks, Heat, the ECU and the stores rest
+                    if (primeTick == 0)
+                        voicesInputs(16.0f * dt, 1.2f * vTotal * ecu.redRpm / 120.0f * 0.9f);
+                    primeTick = primeTick == 15 ? 0 : primeTick + 1;
+                    ex.tick(0.0f, 0.0f, 0.0f, 0.0f, spec.intake.model, 0.0f, 0.0f);
+                    ex.tickStarter(0.0f, 0.0f);
+                    listen.mix(i, 0.0f, 0.0f, ex.intake, 0.0f, ex.mech, ex.block, 0.0f, ex.starter, ex.comb, 0.0f, 0.0f,
+                               set.drive, 0.0f, cutG, ex.vo.gearbox, ex.vo.axle, ex.vo.front, ex.vo.head, ex.vo.tank,
+                               ex.vo.gateOut, ex.vo.all, ex.mouth, ex.vo.chain, ex.vo.clutch);
+                    continue;
+                }
                 if (tick16 == 0)
                     control16();
                 tick16 += 1;
@@ -1458,7 +1477,7 @@ module Engine
         }
         if (ecu.state != 0)
             quiet = 0.0f;
-        else
+        else if (prime == 0)
             quiet += (float)n;
         // the panel's
         showRpm = crank.rpm;
@@ -1484,6 +1503,16 @@ module Engine
         showPipes = floorf(99.0f * fminf(fmaxf(exh.smHdr, 0.0f), 1.0f) + 0.5f) * 10000.0f
                     + floorf(99.0f * fminf(fmaxf(exh.smPipe, 0.0f), 1.0f) + 0.5f) * 100.0f
                     + floorf(99.0f * fminf(fmaxf(exh.smXp, 0.0f), 1.0f) + 0.5f);
+    }
+
+    // Prime ended (the start, or the voices fallen silent): the resampler's lead put back as it was when prime began
+    void endPrime()
+    {
+        if (prime == 0)
+            return;
+        prime = 0;
+        listen.rsAhead = primeAhead;
+        listen.rsFrac = primeFrac;
     }
 
     // Still sounding: the engine runs, or the room still rings after it stopped (or, driven, the car still rolls)
@@ -1516,6 +1545,10 @@ module Engine
         }
         lastIgn = IGN_OFF;
         lastVoices = 0;
+        prime = 0;
+        primeTick = 0;
+        primeAhead = 0;
+        primeFrac = 0.0f;
         hostRateSeen = hostRate;
         setupAll(hostRate);
         for (int k = 0; k < SPEC_SECTIONS; ++k)
@@ -1763,8 +1796,15 @@ module Engine
         // (mechanical voices, voices.model 1: the key turned on is heard before a start: the fuel pump's prime)
         // (and voices switched on with the key already on: the same, so the order of the two makes the same engine: M's
         // finding through X, 24 Nov)
-        if (spec.voices.model != 0 && ign != IGN_OFF && (lastIgn == IGN_OFF || lastVoices == 0))
+        // (the lead's ruling on X-028, 24 Nov: a sound switch leaves the engine to the bit. A standing engine rendered
+        // only for its voices is prime: its ticks rest as they do unrendered, the voices alone run; the start ends it)
+        if (spec.voices.model != 0 && ign != IGN_OFF && (lastIgn == IGN_OFF || lastVoices == 0) && sounding == 0)
+        {
             sounding = 1;
+            prime = 1;
+            primeAhead = listen.rsAhead;
+            primeFrac = listen.rsFrac;
+        }
         lastIgn = ign;
         lastVoices = spec.voices.model;
         if (ign == IGN_START)
@@ -1776,6 +1816,7 @@ module Engine
                 keyDown((float)START_NOTE, 1.0f);
                 held = 1;
                 sounding = 1;
+                endPrime();
             }
             return;
         }
@@ -1941,7 +1982,9 @@ module Engine
                 }
                 recover();
             }
-            sounding = held != 0 || audible() ? 1 : 0;
+            sounding = held != 0 || (audible() && (prime == 0 || spec.voices.model != 0)) ? 1 : 0;
+            if (sounding == 0)
+                endPrime();
             for (int i = 0; i < n; ++i)
                 peak = fmaxf(peak, fmaxf(fabsf(left[i]), fabsf(right[i])));
         }
