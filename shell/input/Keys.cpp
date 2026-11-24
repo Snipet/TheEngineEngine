@@ -13,7 +13,8 @@ namespace tee::input
             std::string_view name;
         };
 
-        constexpr std::array<KeyNameRow, 27> kKeyNames{ {
+        constexpr std::array<KeyNameRow, 30> kKeyNames{ {
+            { key::kJ, "j" },           { key::kX, "x" },           { key::kZ, "z" },
             { key::kA, "a" },           { key::kD, "d" },           { key::kE, "e" },
             { key::kN, "n" },           { key::kQ, "q" },           { key::kR, "r" },
             { key::kS, "s" },           { key::kW, "w" },           { key::k1, "1" },
@@ -28,6 +29,7 @@ namespace tee::input
         constexpr std::array<std::string_view, static_cast<std::size_t>(Action::count)> kActionNames{
             "none",     "throttle", "brake", "clutch", "handbrake", "start", "shiftup", "shiftdown",
             "neutral",  "gear1",    "gear2", "gear3",  "gear4",     "gear5", "gear6",   "reverse",
+            "splitter", "range",    "enginebrake",
         };
     }
 
@@ -44,6 +46,8 @@ namespace tee::input
             { key::k1, Action::gear1 },           { key::k2, Action::gear2 },
             { key::k3, Action::gear3 },           { key::k4, Action::gear4 },
             { key::k5, Action::gear5 },           { key::k6, Action::gear6 },
+            { key::kZ, Action::splitter },        { key::kX, Action::range },
+            { key::kJ, Action::engineBrake },
         };
     }
 

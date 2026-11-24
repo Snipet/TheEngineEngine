@@ -106,6 +106,8 @@ namespace tee::player
         lo.sim.optimisation = options.optimisation;
         lo.sim.checks = options.checks;
         lo.sampleRate = options.sampleRate;
+        for (const auto& [path, value] : options.hold)
+            lo.hold.push_back({ path, value });
 
         // The front end alone, here: the program's errors, its Schema and its Fields (a tenth of a second). The
         // machine code is not made: no function is looked up.
@@ -244,7 +246,12 @@ namespace tee::player
     {
         if (!compileError_.empty())
             return compileError_;
-        return ready() ? host_->stopReason() : std::string();
+        if (!ready())
+            return std::string();
+        // (an engine that diverged is put at rest and restarted by the host: no stop, said apart from the stops:
+        // HostStats::engineFaults)
+        const std::string reason = host_->stopReason();
+        return reason.rfind("the engine diverged", 0) == 0 ? std::string() : reason;
     }
 
     const ParamInfo& SimAdapter::info(int i) const
