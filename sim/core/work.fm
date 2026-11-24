@@ -76,6 +76,14 @@ module CycleWork
         pumpFrom = cyc > 900.0f ? 270.0f : 180.0f;
         pumpTo = cyc > 900.0f ? 810.0f : 540.0f;
         vBmep = cyc > 900.0f ? 0.66666667f * (float)n * vd : (float)n * vd;
+        if (cyc < 400.0f)
+        {
+            // (a two-stroke's 360 degrees: one loop, all of it the power loop's; it fires every turn, so BMEP = 2 pi T / V,
+            // 4 pi T over half its displacement)
+            pumpFrom = 0.0f;
+            pumpTo = 0.0f;
+            vBmep = 0.5f * (float)n * vd;
+        }
         for (int c = 0; c < MAX_CYL; ++c)
         {
             CylWork* k = &w[c];

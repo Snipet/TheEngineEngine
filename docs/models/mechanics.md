@@ -145,13 +145,17 @@ matter at low speed and little at high. A third term, the unburned trailing end 
 place (N1 acts for it).
 
 Measured (`EngineExplore`, "[.rotarybmep]": the rotary twin archetype, engine dyno, full throttle, warm, every model
-on; BMEP in bar, without these two terms / with):
+on; BMEP in bar):
 
 | | 3000 | 4000 | 5000 | 6000 | 7000 rpm | leaked | port |
 |---|---|---|---|---|---|---|---|
-| unboosted | 7.98 / 7.23 | 9.26 / 8.42 | 11.12 / 10.22 | 9.89 / 9.21 | 9.25 / 8.64 | 4.0 to 1.7 % | 864 to 1062 K |
-| its turbos (68 to 128 kPa) | 20.3 / 15.5 | 20.7 / 18.4 | 20.3 / 18.5 | 18.2 / 16.2 | 18.8 / 16.4 | 4.3 to 1.8 % | 906 to 1105 K |
+| unboosted, before the two terms | 7.98 | 9.26 | 11.12 | 9.89 | 9.25 | | |
+| unboosted, with them | 7.23 | 8.42 | 10.22 | 9.21 | 8.64 | 4.0 to 1.7 % | 864 to 1062 K |
+| unboosted, and the walls counted once (e81f79f) and the backflow conserved (e8c6575) | 5.53 | 6.10 | 8.50 | 7.85 | 7.47 | 4.3 to 1.8 % | 1076 to 1238 K |
+| its turbos at 70 kPa, the same | 11.58 | 10.99 | 15.14 | 13.07 | 13.48 | 4.3 to 2.0 % | 1208 to 1345 K |
 
-The targets: about 10 to 10.5 bar unboosted (a 1.3 L twin-rotor road engine's 210 to 216 N m), met at 5000 rpm
-without a fudge; about 14 bar at 0.7 to 0.8 bar, missed by 16 to 30 %. The boosted engines' common excess (pumping
-gained from the boost, PMEP below 0) is on the boost's and the exhaust's side, not the rotor's.
+The targets: about 14 bar at 0.7 to 0.8 bar of boost (the 13B-REW's 294 N m): met within 10 % at 5000 to 7000 rpm
+(13.1 to 15.1). About 10 to 10.5 bar unboosted (a 1.3 L twin-rotor road engine's 210 to 216 N m): 8.5, some 17 % short.
+That case is the archetype with its turbos taken off, not a naturally aspirated rotary's ports and intake, so part of the
+gap is the build's, not the rotor's (judgement). The unburned trailing end (card H's, N1 acting) is still to come and
+takes some 5 % more from both. The port gas runs hot, as a rotary's does.

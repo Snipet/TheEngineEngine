@@ -418,7 +418,9 @@ module Combustion
             ecu->watch.tick(cy->p, a, cy->burnAt >= 0.0f ? cy->xPrev : 0.0f);
             if (ecu->model1())
                 for (int b = 0; b < 2; ++b)
-                    if (ecu->one.account.pulse[b] > 0.0f)
+                    // (a bank's bangs never overlap: a Pop fired again inside its pulse would restart it from 0, a
+                    // one-sample step from near its peak; finding X-018)
+                    if (ecu->one.account.pulse[b] > 0.0f && pop[b].n >= pop[b].len)
                     {
                         pop[b].fire(ecu->one.account.pulse[b], rate, 99 + b);
                         ecu->one.account.pulse[b] = 0.0f;
