@@ -90,6 +90,8 @@ jobs:
         shell: bash
         env:
           ONLY: ${{ inputs.platforms || 'all' }}
+          # (the head commit's message, by the environment, never pasted into the script)
+          MESSAGE: ${{ github.event.head_commit.message }}
           ALL: >-
             [
               {"platform": "macos-arm64", "os": "macos-latest", "jobs": 3, "tests": 3},
@@ -108,11 +110,18 @@ jobs:
             done
             matrix=$(jq -c --arg names "$names" '($names | split("\n")) as $n | map(select(.platform as $p | any($n[]; . == $p)))' <<< "$ALL")
           fi
-          echo "building: $(jq -r 'map(.platform) | join(" ")' <<< "$matrix")"
+          # two tiers (docs/plan/01-rules.md §3): `fast`, every platform, the default tests; `soak`, the [nightly]
+          # tests (ctest --preset nightly): Linux at every push, macOS and Windows when the head commit's message
+          # says [soak] (their minutes are dear)
+          soak='["linux-x64"]'
+          case "$MESSAGE" in *"[soak]"*) soak='["linux-x64","macos-arm64","windows-x64"]' ;; esac
+          matrix=$(jq -c --argjson soak "$soak" \
+            'map(. + {tier: "fast"}) + map(select(.platform as $p | $soak | index($p)) + {tier: "soak"})' <<< "$matrix")
+          echo "building: $(jq -r 'map(.platform + " " + .tier) | join(", ")' <<< "$matrix")"
           echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
 
   build:
-    name: ${{ matrix.platform }}
+    name: ${{ matrix.platform }}${{ matrix.tier == 'soak' && '-soak' || '' }}
     needs: platforms
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
@@ -121,7 +130,7 @@ jobs:
     # a platform's job in flight finishes; only its newest waiting one is kept (a pull request's newer push replaces
     # even the one in flight)
     concurrency:
-      group: build-${{ github.ref }}-${{ matrix.platform }}
+      group: ${{ matrix.tier == 'soak' && 'soak' || 'build' }}-${{ github.ref }}-${{ matrix.platform }}
       cancel-in-progress: ${{ github.event_name == 'pull_request' }}
     strategy:
       fail-fast: false
@@ -140,7 +149,7 @@ jobs:
       # the platform rules a Linux build cannot see (M_PI's kin is the configure's: cmake/TeeChecks.cmake), in a
       # second, before the macOS and Windows jobs would find them
       - name: Lint (Linux, scripts/lint.sh)
-        if: runner.os == 'Linux'
+        if: matrix.tier == 'fast' && runner.os == 'Linux'
         run: scripts/lint.sh
 
       - name: Ninja and ccache (macOS)
@@ -276,6 +285,7 @@ jobs:
       # The application's own tree: the preset's settings with the window on, and neither the tools nor the tests
       # (the preset's tree builds and runs those). Before the sources are saved, so that bgfx's are among them.
       - name: Configure the application
+        if: matrix.tier == 'fast'
         run: |
           cmd=(cmake --preset "$PRESET" -B build-app -DTEE_DEPS_DIR="$TEE_DEPS_DIR" -DTEE_BUILD_APP=ON
                -DTEE_BUILD_TOOLS=OFF -DTEE_BUILD_TESTS=OFF)
@@ -288,7 +298,7 @@ jobs:
 
       # a run that missed keeps the sources the two configures fetched
       - name: Save the dependencies' sources
-        if: steps.sources.outputs.cache-hit != 'true'
+        if: matrix.tier == 'fast' && steps.sources.outputs.cache-hit != 'true'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ env.TEE_DEPS_DIR }}/src
@@ -298,7 +308,7 @@ jobs:
       # finds, so that a run that fails later has still warmed the slowest cache
       - name: Build the shader compiler
         id: build-shaderc
-        if: steps.shaderc.outputs.cache-hit != 'true'
+        if: matrix.tier == 'fast' && steps.shaderc.outputs.cache-hit != 'true'
         env:
           VERSION: ${{ steps.keys.outputs.bgfx_version }}
           SHA: ${{ steps.keys.outputs.bgfx_sha }}
@@ -317,7 +327,7 @@ jobs:
           if [ "$RUNNER_OS" = Windows ]; then "$TEE_SCCACHE" --stop-server > /dev/null || true; fi
 
       - name: Save the shader compiler
-        if: steps.build-shaderc.outputs.ready == 'true'
+        if: matrix.tier == 'fast' && steps.build-shaderc.outputs.ready == 'true'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ env.TEE_DEPS_DIR }}/tools/shaderc-${{ steps.keys.outputs.bgfx_version }}
@@ -330,6 +340,7 @@ jobs:
       # below is still built with warnings as errors, and fails on the warning as it should.
       - name: Build the application
         id: app
+        if: matrix.tier == 'fast'
         run: |
           build() { cmake --build build-app --target TheEngineEngine tee-headless --parallel ${{ matrix.jobs }}; }
           rc=0
@@ -346,6 +357,7 @@ jobs:
       # the application as someone would unpack and run it (docs/checkpoints/M1.md)
       - name: Pack the application
         id: pack-app
+        if: matrix.tier == 'fast'
         env:
           TEE_PLATFORM: ${{ matrix.platform }}     # (not PLATFORM: Visual Studio's environment has a Platform of its own)
         run: |
@@ -436,6 +448,7 @@ jobs:
           echo "dir=$dir" >> "$GITHUB_OUTPUT"
 
       - name: Upload the application
+        if: matrix.tier == 'fast'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ${{ steps.pack-app.outputs.name }}
@@ -450,6 +463,7 @@ jobs:
       # sound card), reported and no reason to fail the job: those two are proven by a person running the artefact.
       - name: Run the application
         id: run-app
+        if: matrix.tier == 'fast'
         continue-on-error: ${{ runner.os != 'Linux' }}
         env:
           TEE_PLATFORM: ${{ matrix.platform }}
@@ -494,7 +508,7 @@ jobs:
           exit $rc
 
       - name: Upload what the application rendered and drew
-        if: always() && steps.pack-app.outcome == 'success'
+        if: matrix.tier == 'fast' && always() && steps.pack-app.outcome == 'success'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: TheEngineEngine-listen-${{ matrix.platform }}
@@ -524,21 +538,48 @@ jobs:
 
       - name: Save the compiler's cache
         if: >-
-          success() && steps.cache.outputs.cache-hit != 'true' &&
+          matrix.tier == 'fast' && success() && steps.cache.outputs.cache-hit != 'true' &&
           (github.event_name != 'pull_request' || steps.cache.outputs.cache-matched-key == '')
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ env.TEE_CI_CACHE }}
           key: ${{ steps.cache.outputs.cache-primary-key }}
 
+      # The fast tier: the default tests, and in the job's summary every one over 30 s with its package (the rule:
+      # under 30 s a test, docs/plan/01-rules.md §3; the build steward tells the owners). The soak tier: the
+      # [nightly] tests (ctest --preset nightly).
       - name: Test
-        run: ctest --preset "$PRESET" --parallel ${{ matrix.tests }}
+        env:
+          TIER: ${{ matrix.tier }}
+        run: |
+          preset="$PRESET"; [ "$TIER" = soak ] && preset=nightly
+          log="$RUNNER_TEMP/ctest-$TIER.log"
+          set +e
+          ctest --preset "$preset" --parallel ${{ matrix.tests }} 2>&1 | tee "$log"
+          rc=${PIPESTATUS[0]}
+          set -e
+          if [ "$TIER" = fast ]; then
+            slow=$(sed -nE 's/^ *[0-9]+\/ *[0-9]+ Test +#[0-9]+: (.*[^ .]) \.+ *([A-Za-z*]+.*) +([0-9.]+) sec$/\3\t\1/p' "$log" \
+                   | awk -F'\t' '$1 > 30' | sort -rn)
+            {
+              echo "### Default-run tests over 30 s ($(echo -n "$slow" | grep -c . || true))"
+              echo
+              if [ -n "$slow" ]; then
+                echo "| s | package | test |"; echo "|---:|---|---|"
+                echo "$slow" | awk -F'\t' '{ p = $2; sub(/[.:].*/, "", p); if (p == $2) p = "tee-tests"; printf "| %.0f | %s | %s |\n", $1, p, $2 }'
+              else
+                echo "none"
+              fi
+            } >> "$GITHUB_STEP_SUMMARY"
+            [ -z "$slow" ] || { echo "---- default-run tests over 30 s (docs/plan/01-rules.md §3):"; echo "$slow"; }
+          fi
+          exit $rc
 
       # what was built, as someone would unpack and run it: the build's bin/ without its tests, sim/ and content/
       # beside the executables (the application's build copies them there; a build without it gets them here)
       - name: Pack what was built
         id: pack
-        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        if: ${{ matrix.tier == 'fast' && !cancelled() && steps.build.outcome == 'success' }}
         run: |
           out="tee-${{ matrix.platform }}"
           rm -rf "$out"
@@ -554,7 +595,7 @@ jobs:
       # what the reference costs on this runner, in the run's summary and beside the tools (a hosted runner is a
       # shared machine: the numbers are a rough guide, not a measurement to quote)
       - name: The bench, quickly
-        if: ${{ !cancelled() && steps.pack.outcome == 'success' }}
+        if: ${{ matrix.tier == 'fast' && !cancelled() && steps.pack.outcome == 'success' }}
         run: |
           dir="${{ steps.pack.outputs.dir }}"
           bench="$dir/tee-bench"
@@ -571,7 +612,7 @@ jobs:
           fi
 
       - name: Upload what was built
-        if: ${{ !cancelled() && steps.pack.outcome == 'success' }}
+        if: ${{ matrix.tier == 'fast' && !cancelled() && steps.pack.outcome == 'success' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: tee-${{ matrix.platform }}
@@ -583,7 +624,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: tests-${{ matrix.platform }}
+          name: tests-${{ matrix.platform }}${{ matrix.tier == 'soak' && '-soak' || '' }}
           path: |
             build-${{ env.PRESET }}/Testing/Temporary/LastTest*.log
             out/
