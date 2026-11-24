@@ -1208,6 +1208,7 @@ module Exhaust
     {
         ExhaustTel* t = telOut;
         t->model = model;
+        t->headerTemperature = model != 0 ? b.heat.tGas[XH_PRIM] : tGas[0];
         const int secOfRef[7] = {0, 1, -1, 2, -1, 3, 4};
         for (int i = 0; i < 7; ++i)
         {
@@ -1300,6 +1301,19 @@ module Exhaust
             o->ductLength[i] = b.net.dUse[i] != 0 ? d->len : 0.0f;
             o->ductNear[i] = b.net.dUse[i] != 0 ? d->near + b.net.nearIn[i] : 0.0f;
             o->ductFar[i] = b.net.dUse[i] != 0 ? d->far + b.net.farIn[i] : 0.0f;
+            // the middle: the outgoing wave written half the delay ago plus the returning one written half its delay ago
+            float pm = 0.0f;
+            if (b.net.dUse[i] != 0)
+            {
+                int jf = d->w - 1 - d->di / 2;
+                int jb = d->w - 1 - d->bdi / 2;
+                if (jf < 0)
+                    jf += d->cap;
+                if (jb < 0)
+                    jb += d->cap;
+                pm = d->fw[jf] + d->bw[jb];
+            }
+            o->ductMid[i] = pm;
         }
         o->exhaustRefreshes += 1;
     }

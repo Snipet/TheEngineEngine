@@ -63,4 +63,5 @@ module Scope
     float ductLength [[ui::label("Pipe length")]] [[ui::quantity("length")]] [SCOPE_EXHAUST_DUCTS];
     float ductNear [[ui::label("Pressure at the pipe's near end")]] [[ui::quantity("pressure")]] [SCOPE_EXHAUST_DUCTS];
     float ductFar [[ui::label("Pressure at the pipe's far end")]] [[ui::quantity("pressure")]] [SCOPE_EXHAUST_DUCTS];
+    float ductMid [[ui::label("Pressure at the pipe's middle")]] [[ui::quantity("pressure")]] [SCOPE_EXHAUST_DUCTS];
 };
