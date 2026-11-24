@@ -1,7 +1,7 @@
 # T: two-strokes (handoff)
 
 Card T, branch `claude/awesome-gates-ntdb58`. Model, sources and measurements: [docs/models/twostroke.md](../models/twostroke.md).
-**Done** (`tee-tests-twostroke`, 16 cases, all pass in this container; nothing run on macOS or Windows):
+**Done** (`tee-tests-twostroke`, 17 cases, all pass in this container; nothing run on macOS or Windows):
 - Tuned length (`PipeTest`): the weak response was the measurement (straight-pipe baseline cut at 0.98 m, so x1 and x1.25
   were divided by the same pipe). Against an endless pipe: x0.8/x1/x1.25 centred -1.8/-1.4/-5.3 % from the returning
   wave (before: 11 548/9 627/9 320 rpm, now 13 033/10 466/8 044). On the pipe: +42 % torque in 1000 rpm. Cones: the
