@@ -12,8 +12,6 @@ const Known kKnown[] = {
      "traction control on a wet road holds the revs, not the slip (it stays at 1); its spark cut bangs at the shift"},
     {"X-012", "2026-11-24", "T (two-strokes)", "*", "*", "*", "tel-range:engine.tsPipeTemperature",
      "tel.engine.tsPipeTemperature reads 0 K on every four-stroke (no pipe): it should read a physical temperature"},
-    {"X-013", "2026-11-24", "G (exhaust)", "*", "*", "*", "tel-range:exhaust.headerTemperature",
-     "tel.exhaust.headerTemperature reads 0 K in the first block, physical after"},
     {"X-010", "2026-11-24", "N2 (boost, for card F)", "as built", "tractor-15-inline-six", "tour", "dc",
      "the tractor's running mean at 0.0050 of full scale with boost on"},
     {"X-014", "2026-11-24", "N2 and G (boost into the exhaust builder)", "as built", "straight-six-twin-turbo-30", "tour",
