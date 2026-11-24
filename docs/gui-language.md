@@ -161,7 +161,8 @@ elements bind to is `ui/kit/bind/Binding.h`. `tests/ui/BindTests.inc` uses each.
 (letters, digits and `_` between the dots) is read as one, as `shared->x` and `bands[2]` were. On a `FieldPage`
 (a `GuiPanel` bound to a document of Spec fields) the control's parameter is that field, in the user's units; a
 display or a widget of a telemetry value names it the same way (`gauge engine.speed`). A path longer than 31
-characters is cut (J1's `Control::name`).
+characters is cut (J1's `Control::name`). An array's element is `engine.pin[2]`; an index past the array is a note
+that says how many elements it has.
 
 **`auto "boost"`** on a line of its own stands for the generated page of the section `boost`: a `section` a
 `ui::group` (in the order the fields come; a field with no group under the section's name), a wrapping row of
@@ -179,6 +180,7 @@ file's other lines keep their numbers in notes. A section the document does not 
 | `plot NAME` | a telemetry value | `Plot` of its last ten seconds | 320 x 180 |
 | `bar NAME` | a telemetry value | `Bar`, in the value's usual range | 150 x 44 |
 | `lamp NAME` | a telemetry value | `Lamp`, lit above 0.5 | 64 x 44 |
+| `array PATH` | an array of numbers (`engine.pin`) | one row of cells, an element each (a one-row `MapEdit`) | 640 x 76 |
 
 The reader keeps the element and the name; the panel's owner makes the item (`GuiPanel::Options::widget`; a
 `FieldPage` does it with `fieldWidget`). A name nothing answers makes nothing, and the cell stays empty. Widgets

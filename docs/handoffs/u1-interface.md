@@ -75,3 +75,7 @@ sheet will include every registered workspace.
   `predicted()` with `revision()` moving; `before()` is the curve before the edit, not before the refinement.
 - **Saving a file**: `FrameServices::saveText(suggestedName, text, error)` (`ctx_.services`, may be null or empty): the
   host's save dialog when the shell fills it; until then copy the text (`HostServices::copyText`).
+- **Later still**: `look::carProfile(fx, rx, wy, r, squat, xs, ys)` and `look::carWindow(...)` (one car for DRIVE and
+  CAR; front to either side); `FrameServices::bakeMaps()` (TUNE's BAKE presses `ctl.bakeMaps`; may be empty); the
+  clutch pedal also goes through `PanelControls::clutch`; inspector tabs wrap to two rows past three and a `Button`'s
+  title is cut with an ellipsis to its width.

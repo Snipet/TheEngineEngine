@@ -1,0 +1,102 @@
+// sound/osc.fm: what the mechanical voices share: a sine by table, a level that glides over 16 samples, and a shaft's
+// turning kept as a phase (module SineTable, Glide, Shaft).
+//
+// A voice's tones are the teeth or blades of something that turns. Each shaft keeps its own phase in turns (0 to 1);
+// a mesh of z teeth on it is at the phase z times the shaft's, wrapped: so every tone of one shaft stays locked to it
+// whatever its speed does, and a change of speed never clicks (the phase is continuous). The sine is read from a
+// table of 1024 points with a straight line between them (its error under 5e-6, -106 dB): no transcendental function
+// per sample. A level is set every 16 samples and moves there in a straight line over the next 16, so a voice that
+// starts or stops ramps in 0.17 ms rather than stepping.
+//
+//   SineTable sn;  sn.setup();  y = sn.at(turns);         turns any value from -1e6 to 1e6
+//   Glide g;  g.to(level);  (every 16)   y = g.next();   (each sample)
+//   Shaft s;  s.turn(hz, dt);  m = s.mesh(z);            (each sample)
+#pragma once
+
+module SineTable
+{
+    float t[1025];
+
+    void setup()
+    {
+        for (int i = 0; i <= 1024; ++i)
+            t[i] = sinf(6.28318531f * (float)i / 1024.0f);
+    }
+
+    // sin(2 pi x)
+    float at(float x)
+    {
+        const float f = (x - floorf(x)) * 1024.0f;
+        int i = (int)f;
+        if (i > 1023)
+            i = 1023;
+        const float r = f - (float)i;
+        return t[i] + r * (t[i + 1] - t[i]);
+    }
+
+    // cos(2 pi x)
+    float cosAt(float x)
+    {
+        return at(x + 0.25f);
+    }
+};
+
+module Glide
+{
+    float v;
+    float tgt;
+    float step;
+    int left;
+
+    void to(float target)
+    {
+        tgt = target;
+        step = (target - v) * 0.0625f;
+        left = 16;
+    }
+
+    float next()
+    {
+        if (left > 0)
+        {
+            v += step;
+            left -= 1;
+            if (left == 0)
+                v = tgt;
+        }
+        return v;
+    }
+
+    void clear()
+    {
+        v = 0.0f;
+        tgt = 0.0f;
+        step = 0.0f;
+        left = 0;
+    }
+};
+
+module Shaft
+{
+    float ph;           // turns, 0 to 1
+
+    void turn(float hz, float dt)
+    {
+        ph += hz * dt;
+        if (ph >= 1.0f || ph < 0.0f)
+            ph -= floorf(ph);
+    }
+
+    // the phase of a mesh of z teeth on it, in turns of the tooth (0 to 1)
+    float mesh(float z)
+    {
+        const float m = z * ph;
+        return m - floorf(m);
+    }
+};
+
+// dB to a gain; -60 and below is off (0)
+float voiceGain(float db)
+{
+    return db <= -59.9f ? 0.0f : expf(0.115129255f * db);
+}

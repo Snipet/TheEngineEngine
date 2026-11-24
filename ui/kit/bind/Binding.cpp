@@ -77,6 +77,53 @@ namespace tee::ui
             void endEdit() override { doc.endGesture(); }
         };
 
+        // An array's elements as a map of one row: x the elements' numbers (1, 2, ...; not editable), z their values.
+        struct ArraySource final : MapSource
+        {
+            FieldDoc& doc;
+            std::vector<int> elements;
+            ArraySource(FieldDoc& d, std::vector<int> e) : doc(d), elements(std::move(e)) {}
+            Map16 map() const override
+            {
+                Map16 m;
+                m.nx = static_cast<int>(std::min<std::size_t>(elements.size(), kTableMax));
+                m.ny = 1;
+                for (int i = 0; i < m.nx; ++i)
+                {
+                    m.x[static_cast<std::size_t>(i)] = i + 1;
+                    m.z[0][static_cast<std::size_t>(i)] = doc.get(elements[static_cast<std::size_t>(i)]);
+                }
+                return m;
+            }
+            void setMap(const Map16& m) override
+            {
+                for (int i = 0; i < m.nx && i < static_cast<int>(elements.size()); ++i)
+                {
+                    const int f = elements[static_cast<std::size_t>(i)];
+                    if (doc.get(f) != m.z[0][static_cast<std::size_t>(i)])
+                        doc.set(f, m.z[0][static_cast<std::size_t>(i)]);
+                }
+            }
+            void beginEdit() override { doc.beginGesture(); }
+            void endEdit() override { doc.endGesture(); }
+        };
+
+        struct ArrayHolder
+        {
+            ArraySource source;
+        };
+
+        class FieldArrayEdit final : private ArrayHolder, public MapEdit
+        {
+        public:
+            FieldArrayEdit(uint32_t id, std::string title, FieldDoc& doc, std::vector<int> elements, MapEdit::Axis x,
+                           MapEdit::Axis y, MapEdit::Axis z)
+                : ArrayHolder{ ArraySource(doc, std::move(elements)) },
+                  MapEdit(id, std::move(title), source, std::move(x), std::move(y), std::move(z))
+            {
+            }
+        };
+
         struct CurveHolder
         {
             FieldCurveSource source;
@@ -385,8 +432,15 @@ namespace tee::ui
         return out;
     }
 
+    bool arrayAsTable(const FieldInfo& f) noexcept
+    {
+        return !f.array.empty() && f.shape[0] == 0 && f.extent > kArrayKnobs && f.extent <= kTableMax;
+    }
+
     std::vector<std::vector<int>> splitPages(const FieldDoc& doc, const std::vector<int>& fields, int maxControls)
     {
+        // A table, and an array's element shown in its array's table, is no control of the panel's.
+        const auto controlOf = [&](int f) { return doc.info(f).table() || arrayAsTable(doc.info(f)) ? 0 : 1; };
         std::vector<std::vector<int>> pages(1);
         int controls = 0;
         std::size_t i = 0;
@@ -396,7 +450,7 @@ namespace tee::ui
             std::size_t j = i;
             int run = 0;
             while (j < fields.size() && doc.info(fields[j]).group == doc.info(fields[i]).group)
-                run += doc.info(fields[j++]).table() ? 0 : 1;
+                run += controlOf(fields[j++]);
             if (controls > 0 && controls + run > maxControls)
             {
                 pages.emplace_back();
@@ -404,7 +458,7 @@ namespace tee::ui
             }
             for (; i < j; ++i)
             {
-                const int c = doc.info(fields[i]).table() ? 0 : 1;
+                const int c = controlOf(fields[i]);
                 if (controls + c > maxControls)
                 {
                     pages.emplace_back();
@@ -437,6 +491,16 @@ namespace tee::ui
             for (std::size_t k = i; k < j; ++k)
             {
                 const FieldInfo& f = doc.info(fields[k]);
+                if (arrayAsTable(f))
+                {
+                    // An array of 9 to 16 elements: one row of cells (`array`), at its first element on the page.
+                    const bool first = std::none_of(fields.begin(), fields.begin() + static_cast<long>(k), [&](int o) {
+                        return doc.info(o).array == f.array;
+                    });
+                    if (first)
+                        tables += " array " + f.array + " label=" + quoted(f.arrayLabel.empty() ? nameOfPath(f.array) : f.arrayLabel) + " ;";
+                    continue;
+                }
                 switch (f.kind)
                 {
                     case FieldKind::number:
@@ -540,6 +604,26 @@ namespace tee::ui
                                       TelemetrySource& telemetry)
     {
         const std::string& w = node.widget;
+        if (w == "array")
+        {
+            const std::vector<int> elements = arrayElements(doc, node.file);
+            if (elements.empty())
+                return nullptr;
+            const FieldInfo& first = doc.info(elements.front());
+            const std::string title = !node.text.empty() ? node.text : (first.arrayLabel.empty() ? nameOfPath(node.file) : first.arrayLabel);
+            const std::string unit = unitName(units, first.quantity, first.unit);
+            TableText none{ [](double v) { return formatNumber(v, 0); }, [](std::string_view, double&) { return false; } };
+            TableText row{ [](double) { return std::string(); }, [](std::string_view, double&) { return false; } };
+            TableText values{ [&units, &first](double v) { return fieldText(first, v, units); },
+                              [&units, &first](std::string_view s, double& v) { return parseField(first, s, units, v); } };
+            // A unit's name is in the title, not in each cell: the cells show numbers (a choice its name).
+            if (first.kind == FieldKind::number && first.quantity != Quantity::none)
+                values.format = [&units, q = first.quantity, d = first.decimals](double v) { return units.number(q, v, d); };
+            MapEdit::Axis x{ "#", 1.0, static_cast<double>(elements.size()), std::move(none) };
+            MapEdit::Axis y{ unit.empty() ? std::string("value") : unit, 0.0, 0.0, std::move(row) };
+            MapEdit::Axis z{ unit.empty() ? std::string("value") : unit, first.min, first.max, std::move(values) };
+            return std::make_unique<FieldArrayEdit>(id, title, doc, elements, std::move(x), std::move(y), std::move(z));
+        }
         if (w == "map" || w == "curve")
         {
             const int f = doc.find(node.file);
@@ -635,6 +719,18 @@ namespace tee::ui
         return p;
     }
 
+    std::vector<int> fieldsOfWidget(const FieldDoc& doc, const GuiNode& node)
+    {
+        if (node.kind != GuiKind::widget)
+            return {};
+        if (node.widget == "array")
+            return arrayElements(doc, node.file);
+        if (node.widget == "map" || node.widget == "curve")
+            if (const int f = doc.find(node.file); f >= 0)
+                return { f };
+        return {};
+    }
+
     // ---- FieldPage ---------------------------------------------------------------------------------------------------
     std::vector<int> FieldPage::fieldsOf(const FieldDoc& doc, const Sources& files)
     {
@@ -660,5 +756,61 @@ namespace tee::ui
         : detail::FieldPageParams(doc, units, fieldsOf(doc, files)),
           GuiPanel(std::move(files), fieldParams, telemetry, withBinding(std::move(options), doc, units, telemetry))
     {
+        // An array's element past its extent: the reader says there is no such parameter; say why.
+        for (const SourceFile& f : GuiPanel::files())
+        {
+            if (!isGuiFile(f.name))
+                continue;
+            const std::string& t = f.text;
+            int line = 1;
+            std::size_t lineStart = 0;
+            for (std::size_t i = 0; i < t.size(); ++i)
+            {
+                if (t[i] == '\n')
+                {
+                    ++line;
+                    lineStart = i + 1;
+                    continue;
+                }
+                if (t[i] != '[' || i == 0)
+                    continue;
+                std::size_t b = i;
+                while (b > 0 && (std::isalnum(static_cast<unsigned char>(t[b - 1])) || t[b - 1] == '_' || t[b - 1] == '.'))
+                    --b;
+                // Its indexes: one, or two for an array of arrays.
+                std::vector<long> index;
+                std::size_t e = i;
+                while (e < t.size() && t[e] == '[' && index.size() < 2)
+                {
+                    std::size_t d = e + 1;
+                    while (d < t.size() && std::isdigit(static_cast<unsigned char>(t[d])))
+                        ++d;
+                    if (d == e + 1 || d >= t.size() || t[d] != ']')
+                        break;
+                    index.push_back(std::strtol(t.substr(e + 1, d - e - 1).c_str(), nullptr, 10));
+                    e = d + 1;
+                }
+                if (index.empty() || b == i)
+                    continue;
+                const std::string base = t.substr(b, i - b);
+                const std::vector<int> elements = arrayElements(doc, base);
+                if (elements.empty())
+                    continue;
+                const std::array<int, 2> shape = doc.info(elements.front()).shape;
+                const std::string at = f.name + ":" + std::to_string(line) + ":" + std::to_string(b - lineStart + 1) + ": note: ";
+                const std::string named = t.substr(b, e - b);
+                if (shape[0] > 0)
+                {
+                    if (index.size() != 2 || index[0] >= shape[0] || index[1] >= shape[1])
+                        addNote(at + named + " is not an element: " + base + " has " + std::to_string(shape[0]) + " x "
+                                + std::to_string(shape[1]) + " elements, " + base + "[0][0] to " + base + "["
+                                + std::to_string(shape[0] - 1) + "][" + std::to_string(shape[1] - 1) + "]\n");
+                }
+                else if (index.size() != 1 || index[0] >= static_cast<long>(elements.size()))
+                    addNote(at + named + " is past the array: it has " + std::to_string(elements.size()) + " elements, "
+                            + base + "[0] to " + base + "[" + std::to_string(elements.size() - 1) + "]\n");
+                i = e - 1;
+            }
+        }
     }
 }

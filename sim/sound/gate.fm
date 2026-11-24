@@ -1,0 +1,92 @@
+// sound/gate.fm: a turbo's wastegate (module GateVoice): an internal gate's chatter, an external gate's open dump.
+//
+// An internal wastegate is a flap on an arm through a bushing in the turbine's housing. Held shut by its actuator, or
+// pushed wide open, it is quiet; part open, nothing holds it but the gas, and each exhaust pulse knocks it against its
+// arm's play: the metallic chatter (or rattle) such gates are known for, worst at part openings and light loads
+// (the well-known complaint about the VW/Audi EA888's gate; here judgement). So each firing (the engine's firing
+// frequency, from the crank and the layout) kicks the flap with the pulse's strength (the exhaust's mass flow over its
+// most) times 4 g (1 - g) for an opening g, a little different each time, ringing the housing (2.7 and 4.1 kHz, high Q).
+// An external gate is a poppet valve with its own spring, so it does not chatter; vented to the air (a "screamer
+// pipe") its open flow comes out of a short pipe of its own, unsilenced: a raw, loud rasp, here the jet's noise (its
+// power as the gate's flow squared: amplitude as the flow) in a broad band about 1.2 kHz, pulsing with each firing.
+// Vented into the exhaust its sound is the exhaust's (card G's pipe).
+#pragma once
+#include "lib/biquad.fm"
+#include "lib/noise.fm"
+#include "osc.fm"
+
+module GateVoice
+{
+    float rate;
+    float dt;
+    Noise noise;
+    SineTable* sn;
+    float nScale;
+    Shaft fire;         // the firings, a turn each
+    float fireHz;
+    Biquad hres[2];
+    Biquad jet;
+    Biquad jetLow;
+    float flapK;        // a firing's kick (0: no chatter)
+    Glide aDump;
+    // out
+    float out;
+
+    void setup(float rateIn, SineTable* table)
+    {
+        rate = rateIn;
+        dt = 1.0f / rate;
+        sn = table;
+        noise.rs = 223606;
+        nScale = sqrtf(rate / 48000.0f);
+        hres[0].setBandpass(2700.0f, 18.0f, rate);
+        hres[1].setBandpass(4100.0f, 22.0f, rate);
+        jet.setBandpass(1200.0f, 0.7f, rate);
+        jetLow.setLowpass(400.0f, 0.7f, rate);
+        clear();
+    }
+
+    void clear()
+    {
+        hres[0].clear();
+        hres[1].clear();
+        jet.clear();
+        jetLow.clear();
+        aDump.clear();
+        fireHz = 0.0f;
+        flapK = 0.0f;
+        out = 0.0f;
+    }
+
+    // Every 16 samples. turbo: a turbo fitted (1); external: its gate external (1); toAir: an external gate vented to
+    // the air (1); open: the gate's opening, 0 to 1; flowShare: the exhaust's mass flow over its most; firingHz; k: gain
+    void control(int turbo, int external, int toAir, float open, float flowShare, float firingHz, float k)
+    {
+        fireHz = firingHz;
+        const float g = fminf(fmaxf(open, 0.0f), 1.0f);
+        const float f = fminf(fmaxf(flowShare, 0.0f), 1.5f);
+        flapK = turbo != 0 && external == 0 ? k * 4.0f * g * (1.0f - g) * f : 0.0f;
+        aDump.to(turbo != 0 && external != 0 && toAir != 0 ? k * 0.25f * g * f : 0.0f);
+    }
+
+    void tick()
+    {
+        const float before = fire.ph;
+        fire.turn(fireHz, dt);
+        out = 0.0f;
+        // a firing: the flap is knocked
+        float kick = 0.0f;
+        if (fire.ph < before && flapK != 0.0f)
+            kick = flapK * (0.7f + 0.3f * noise.rnd());
+        out = 0.4f * (hres[0].tick(kick) + 0.6f * hres[1].tick(kick));
+        const float ad = aDump.next();
+        if (ad != 0.0f)
+        {
+            // the jet, pulsing with the firings (a raised sine: each pulse's flow)
+            const float s = sn->at(fire.ph);
+            const float p = 0.35f + 0.65f * s * s;
+            const float n = nScale * noise.rnd();
+            out += ad * p * (jet.tick(n) + 0.5f * jetLow.tick(n));
+        }
+    }
+};

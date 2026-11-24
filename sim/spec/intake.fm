@@ -1,12 +1,38 @@
 // spec/intake.fm: the intake (spec.intake). Owner: package E.
 //
-// Nothing yet: the reference sizes its throttle, plenum and runners from the engine (core/monolith.fm, configure).
-// Package E appends the throttle's kind, the plenum, the runners and the air box here.
+// model 0 (the default) is the reference's induction: it sizes its throttle, plenum and runners from the engine
+// (Engine::configure). model 1 is card E's (sim/intake/, docs/models/intake.md), each size left at 0 the reference's.
+// What glides and what waits: the runners' lengths glide (runner.fm); the plenum's and the box's volumes and the
+// throttle's area act on the next tick (they change no delay line); the throttle's kind (a plenum or ITBs) and model
+// change the pipes' topology, so the engine makes them under its fade.
 #pragma once
 
 module IntakeSpec
 {
     int rev [[ui::hidden]];
     // the package's model (the integrator's switch, sim/README.md): 0 the reference's, bit for bit; 1 the package's own
-    int model [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Induction model")]] [[ui::choices("Reference", "New")]];
+    int model [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Induction model")]]
+        [[ui::choices("Reference", "Lab")]];
+    int throttleKind [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Throttle")]] [[ui::group("Throttle")]]
+        [[ui::choices("One body and a plenum", "A body a runner")]];
+    float throttleArea [[fminus::range(0, 0.02)]] [[fminus::default(0)]] [[ui::label("Throttle area")]]
+        [[ui::quantity("area")]] [[ui::help("wide open, all bodies together; 0: from the displacement (one body) or the runners' bores")]];
+    int trumpets [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Trumpets open to")]]
+        [[ui::choices("The air box", "The air")]];
+    float plenumVolume [[fminus::range(0, 0.03)]] [[fminus::default(0)]] [[ui::label("Plenum volume")]]
+        [[ui::quantity("volume")]] [[ui::group("Manifold")]] [[ui::help("0: 0.8 of the displacement, as the reference")]];
+    float runnerLength [[fminus::range(0, 1.2)]] [[fminus::default(0)]] [[ui::label("Runner length")]]
+        [[ui::quantity("length")]] [[ui::help("0: the reference's 0.30 m (a bike's 0.16)")]];
+    float runnerBore [[fminus::range(0, 0.08)]] [[fminus::default(0)]] [[ui::label("Runner bore")]]
+        [[ui::quantity("length")]] [[ui::help("0: from the bore, as the reference")]];
+    float runnerLength2 [[fminus::range(0, 1.2)]] [[fminus::default(0)]] [[ui::label("Second runner length")]]
+        [[ui::quantity("length")]] [[ui::help("0: one length")]];
+    float runnerSwitch [[fminus::range(0, 1100)]] [[fminus::default(0)]] [[ui::label("Second length from")]]
+        [[ui::quantity("rotation")]];
+    float boxVolume [[fminus::range(0, 0.05)]] [[fminus::default(0)]] [[ui::label("Air box volume")]]
+        [[ui::quantity("volume")]] [[ui::group("Air box")]] [[ui::help("0: twice the displacement")]];
+    float snorkelLength [[fminus::range(0, 1.5)]] [[fminus::default(0)]] [[ui::label("Snorkel length")]]
+        [[ui::quantity("length")]] [[ui::help("0: for the reference's 90 Hz")]];
+    float snorkelBore [[fminus::range(0, 0.15)]] [[fminus::default(0)]] [[ui::label("Snorkel bore")]]
+        [[ui::quantity("length")]] [[ui::help("0: 1.3 times the throttle's")]];
 };

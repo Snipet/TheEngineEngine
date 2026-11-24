@@ -333,7 +333,9 @@ namespace tee::ui
             report();
         }, &pedalBrake));
         pedals_.push_back(&make<PedalBar>("Clu", sent(&ControlsFrame::clutch), [this](bool held, float v) {
-            if (services_.clutch)
+            controls_.clutch = held ? v : -1.0f;   // PanelControls::clutch (card B, 920397d)
+            report();
+            if (services_.clutch)                  // the earlier route, while a shell still serves it
                 services_.clutch(held ? v : -1.0f);
         }, &pedalClutch));
     }
@@ -564,10 +566,16 @@ namespace tee::ui
         return { s.right(), s.bottom() - h, static_cast<float>(width()) - s.right(), h };
     }
 
+    int AppFrame::tabRows() const noexcept
+    {
+        const int n = unitsPage_ ? 0 : std::min(inspectorPageCount(), kMaxTabs);
+        return n <= 1 ? 0 : n <= 3 ? 1 : 2;   // more than three: two rows, so each title has room
+    }
+
     funkgui::Rect AppFrame::inspectorRect() const
     {
         const funkgui::Rect s = stageRect();
-        const float top = s.y + kHeadH + (inspectorPageCount() > 1 && !unitsPage_ ? 30.0f : 0.0f);
+        const float top = s.y + kHeadH + 28.0f * static_cast<float>(tabRows()) + (tabRows() > 0 ? 2.0f : 0.0f);
         const funkgui::Rect rib = ribbonRect();
         const float bottom = rib.isEmpty() ? s.bottom() : rib.y;
         return { s.right(), top, static_cast<float>(width()) - s.right(), std::max(40.0f, bottom - top) };
@@ -576,9 +584,10 @@ namespace tee::ui
     funkgui::Rect AppFrame::inspectorTabRect(int p) const
     {
         const funkgui::Rect s = stageRect();
-        const int n = std::min(inspectorPageCount(), kMaxTabs);
-        const float x0 = s.right() + 10.0f, w = (static_cast<float>(width()) - x0 - 10.0f) / static_cast<float>(std::max(1, n));
-        return { x0 + w * static_cast<float>(p), s.y + kHeadH, w - 4.0f, 24.0f };
+        const int n = std::min(inspectorPageCount(), kMaxTabs), rows = std::max(1, tabRows());
+        const int perRow = (n + rows - 1) / rows, row = p / std::max(1, perRow), col = p % std::max(1, perRow);
+        const float x0 = s.right() + 10.0f, w = (static_cast<float>(width()) - x0 - 10.0f) / static_cast<float>(std::max(1, perRow));
+        return { x0 + w * static_cast<float>(col), s.y + kHeadH + 2.0f + 28.0f * static_cast<float>(row), w - 4.0f, 24.0f };
     }
 
     funkgui::Rect AppFrame::startRect() const
@@ -934,11 +943,9 @@ namespace tee::ui
                 for (int i = 0; i < page.params().count(); ++i)   // a page scrolls: each of its controls is reachable
                     out.insert(page.params().field(i));
                 for (const GuiPanel::WidgetAt& wa : page.widgets())
-                {
-                    const int f = doc_.find(page.spec().gui.nodes[static_cast<std::size_t>(wa.node)].file);
-                    if (f >= 0 && page.items()[static_cast<std::size_t>(wa.item)]->shown())
-                        out.insert(f);
-                }
+                    if (page.items()[static_cast<std::size_t>(wa.item)]->shown())   // a table, or an array's elements
+                        for (const int f : fieldsOfWidget(doc_, page.spec().gui.nodes[static_cast<std::size_t>(wa.node)]))
+                            out.insert(f);
             }
         }
         show(wasShown);

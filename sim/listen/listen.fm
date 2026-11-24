@@ -559,20 +559,33 @@ module Listen
             return;
         }
         hall.process(sA, sB, sC, sD, m, rt);
+        // (three passes over the part, each sample computed exactly as one pass would: the levels and the compressor's
+        // envelope in order; then its gain, a log and an exp a sample, in a loop of its own that vectorises (FMinus's
+        // Vector math gives a vector lane the scalar's result, bit for bit); then the limiter and the ceiling in order)
         for (int i = 0; i < m; ++i)
         {
             outS += (outT - outS) * kGlide;
             wetS += (wetT - wetS) * kGlide;
-            float L = (sA[i] + wetS * sC[i]) * outS;
-            float R = (sB[i] + wetS * sD[i]) * outS;
+            const float L = (sA[i] + wetS * sC[i]) * outS;
+            const float R = (sB[i] + wetS * sD[i]) * outS;
             // a gentle compressor, as a recording of an engine has: the idle a little nearer the full-throttle roar
             const float pw = 0.5f * (L * L + R * R);
             env += (pw - env) * (pw > env ? compA : compR);
-            const float db = 4.3429448f * logf(fmaxf(env, 1.0e-12f));
+            sA[i] = L;
+            sB[i] = R;
+            sC[i] = env;
+        }
+        for (int i = 0; i < m; ++i)
+        {
+            const float db = 4.3429448f * logf(fmaxf(sC[i], 1.0e-12f));
             const float over = fmaxf(db + 30.0f, 0.0f);
-            float gc = expf(-0.115129255f * (over * 0.4f - 5.0f));
-            L *= gc;
-            R *= gc;
+            sD[i] = expf(-0.115129255f * (over * 0.4f - 5.0f));
+        }
+        for (int i = 0; i < m; ++i)
+        {
+            const float gc = sD[i];
+            float L = sA[i] * gc;
+            float R = sB[i] * gc;
             // a limiter for the loudest moments, then a soft ceiling
             const float pk = fmaxf(fabsf(L), fabsf(R)) * lim;
             if (pk > 0.85f)
@@ -751,11 +764,24 @@ module Listen
         const int k0 = ph * rsN;
         float yl = 0.0f;
         float yr = 0.0f;
-        for (int t = 0; t < rsN; ++t)
+        if (f == 0.0f)
         {
-            const float h = rsTab[k0 + t] + f * (rsTab[k0 + rsN + t] - rsTab[k0 + t]);
-            yl += h * rsL[i0 + t];
-            yr += h * rsR[i0 + t];
+            // (on a phase of the table: at 48 kHz every output is; the same sums without the blend, which adds 0)
+            for (int t = 0; t < rsN; ++t)
+            {
+                const float h = rsTab[k0 + t];
+                yl += h * rsL[i0 + t];
+                yr += h * rsR[i0 + t];
+            }
+        }
+        else
+        {
+            for (int t = 0; t < rsN; ++t)
+            {
+                const float h = rsTab[k0 + t] + f * (rsTab[k0 + rsN + t] - rsTab[k0 + t]);
+                yl += h * rsL[i0 + t];
+                yr += h * rsR[i0 + t];
+            }
         }
         left[i] += yl;
         right[i] += yr;

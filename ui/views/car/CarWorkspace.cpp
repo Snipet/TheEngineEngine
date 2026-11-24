@@ -88,11 +88,21 @@ namespace tee::ui
             { "Motorcycle", 13.5, 1.55, -0.2, 1.10, 0.0120, { 1.00, 0.82, 0.65, 0.15, 1.08 } },
         };
         const char* const kSurfaces[] = { "dry", "damp", "wet", "snow", "prepared strip" };
-        // S(kappa): the Magic Formula's shape, peak 1 (tyre.fm).
+        // The force over the load's share of mu at slip kappa, as tyre.fm tabulates it: the Magic Formula's
+        // S(k) = sin(C atan(B k - E (B k - atan(B k)))) over its peak for k in 0..1, odd in k, held at its k = 1 value
+        // beyond.
+        double rawShape(const Compound& k, double kappa)
+        {
+            const double bk = k.b * std::min(std::fabs(kappa), 1.0);
+            return std::sin(k.c * std::atan(bk - k.e * (bk - std::atan(bk))));
+        }
         double shape(const Compound& k, double kappa)
         {
-            const double bk = k.b * kappa;
-            return std::sin(k.c * std::atan(bk - k.e * (bk - std::atan(bk))));
+            double peak = 0.0;
+            for (int i = 0; i <= 128; ++i)
+                peak = std::max(peak, rawShape(k, i / 128.0));
+            const double s = peak > 0.0 ? rawShape(k, kappa) / peak : 0.0;
+            return kappa < 0.0 ? -s : s;
         }
 
         // Telemetry, by name: wheels are front left, front right, rear left, rear right (VEH_WHEELS).
@@ -179,7 +189,7 @@ namespace tee::ui
         {
             DrawKey k;
             k.mix(ctx_.doc.revision()).mix(ctx_.selection.revision()).mix(ctx_.units.revision()).mix(ctx_.dyno.revision());
-            for (const char* n : { kTel.speed, kTel.accel, kTel.gear, kTel.engine })
+            for (const char* n : { kTel.speed, kTel.accel, kTel.gear, kTel.engine, "car.pitch" })
                 k.mix(static_cast<float>(ctx_.live.get(n)));
             for (int i = 0; i < 4; ++i)
                 k.mix(static_cast<float>(wheelTel(kTel.load, i))).mix(static_cast<float>(wheelTel(kTel.slip, i)))
@@ -347,16 +357,21 @@ namespace tee::ui
         struct Side
         {
             float k = 1.0f, ground = 0.0f, front = 0.0f, rear = 0.0f, r = 0.0f;   // px a metre, the ground's y, the axles' x
-            Rect body, cabin, wheel[2], brake[2], drag;
+            float squat = 0.0f;                                       // px: the rear down
+            std::array<float, look::kCarPoints> xs{}, ys{};           // look::carProfile's outline
+            Rect body, wheel[2], brake[2], drag;
         };
-        // The profile of a car, front at the left (x in metres from the front axle, y up from the ground): nose, bonnet,
-        // screen, roof, back window, deck, tail, sill. The same shape as DRIVE's scene; to move to ui/app/Look.h (asked
-        // of U1) so that both draw one car.
-        static constexpr int kProfile = 11;
-        static void profile(double wb, std::array<double, kProfile>& x, std::array<double, kProfile>& y)
+        // The load moved to the rear (N): the simulator's own (car.pitch) where it gives it, else from the wheels' loads
+        // against their loads at rest; NaN with neither.
+        double movedLoad() const
         {
-            x = { -0.85, -0.90, -0.62, 0.30 * wb, 0.46 * wb, 0.80 * wb, wb + 0.35, wb + 0.93, wb + 0.97, wb + 0.85, -0.85 };
-            y = { 0.30, 0.62, 0.82, 0.94, 1.36, 1.36, 1.02, 0.94, 0.48, 0.30, 0.30 };
+            const double pitch = ctx_.live.get("car.pitch");
+            if (std::isfinite(pitch))
+                return pitch;
+            const double l2 = wheelTel(kTel.load, 2), l3 = wheelTel(kTel.load, 3);
+            if (!std::isfinite(l2) || !std::isfinite(l3))
+                return std::nan("");
+            return l2 + l3 - field(fMass) * kG * (1.0 - field(fFront));
         }
 
         Side side() const
@@ -364,24 +379,50 @@ namespace tee::ui
             Side s;
             const Rect a = sideBox_;
             const double wb = field(fWheelbase), r = field(fTyreRadius);
-            const double front = 0.90, rear = 0.97, length = wb + front + rear;
+            // look::carProfile's car: 1.62 wheelbases long (0.28 of one ahead of the front axle), 3.9 wheel radii tall.
+            const double length = wb * 1.62 + r * 0.1, ahead = 0.48 * 1.62 * wb - 0.5 * wb, tall = 3.9 * r;
             // Room: two lines of words at the top, the wheelbase over the roof, the axle bars under the ground.
             const float top = a.y + 62.0f + 28.0f;
             s.ground = a.bottom() - 66.0f;
-            s.k = static_cast<float>(std::min((a.w - 2.0f * look::kPad - 130.0f) / length, (s.ground - top) / 1.36));
-            s.front = a.x + look::kPad + 8.0f + static_cast<float>(front) * s.k;
+            s.k = static_cast<float>(std::min((a.w - 2.0f * look::kPad - 130.0f) / length, (s.ground - top) / tall));
+            s.front = a.x + look::kPad + 8.0f + static_cast<float>(ahead) * s.k;
             s.rear = s.front + static_cast<float>(wb) * s.k;
             s.r = static_cast<float>(r) * s.k;
-            s.body = { s.front - static_cast<float>(front) * s.k, s.ground - 1.36f * s.k, static_cast<float>(length) * s.k, 1.06f * s.k };
-            s.cabin = { s.front + static_cast<float>(0.46 * wb) * s.k, s.ground - 1.36f * s.k, static_cast<float>(0.34 * wb) * s.k, 0.4f * s.k };
+            // Squat (the rear down) or dive, a few px for the load moved, as DRIVE's car does.
+            const double moved = movedLoad();
+            s.squat = std::isfinite(moved) ? static_cast<float>(std::clamp(moved / (field(fMass) * kG) * 40.0, -6.0, 6.0)) : 0.0f;
+            look::carProfile(s.front, s.rear, s.ground - s.r, s.r, s.squat, s.xs.data(), s.ys.data());
+            float x0 = 1e9f, x1 = -1e9f, y0 = 1e9f, y1 = -1e9f;
+            for (int i = 0; i < look::kCarPoints; ++i)
+            {
+                x0 = std::min(x0, s.xs[static_cast<std::size_t>(i)]);
+                x1 = std::max(x1, s.xs[static_cast<std::size_t>(i)]);
+                y0 = std::min(y0, s.ys[static_cast<std::size_t>(i)]);
+                y1 = std::max(y1, s.ys[static_cast<std::size_t>(i)]);
+            }
+            s.body = { x0, y0, x1 - x0, y1 - y0 };
             for (int i = 0; i < 2; ++i)
             {
                 const float x = i == 0 ? s.front : s.rear;
                 s.wheel[i] = { x - s.r, s.ground - 2.0f * s.r, 2.0f * s.r, 2.0f * s.r };
                 s.brake[i] = { x - s.r * 0.25f, s.ground - s.r - s.r * 0.55f, s.r * 0.5f, s.r * 0.35f };
             }
-            s.drag = { s.body.right() + 4.0f, s.ground - 1.0f * s.k, 120.0f, 0.7f * s.k };
+            s.drag = { s.body.right() + 4.0f, s.body.y, 120.0f, s.body.h };
             return s;
+        }
+        // The top of the body at x (the profile's highest point over it).
+        static float bodyTop(const Side& s, float x)
+        {
+            float y = s.ground;
+            for (int i = 0; i + 1 < look::kCarPoints; ++i)
+            {
+                const float xa = s.xs[static_cast<std::size_t>(i)], xb = s.xs[static_cast<std::size_t>(i + 1)];
+                if ((x - xa) * (x - xb) > 0.0f || xa == xb)
+                    continue;
+                const float t = (x - xa) / (xb - xa);
+                y = std::min(y, s.ys[static_cast<std::size_t>(i)] + t * (s.ys[static_cast<std::size_t>(i + 1)] - s.ys[static_cast<std::size_t>(i)]));
+            }
+            return y;
         }
 
         // ---- drawing: the car from the side ------------------------------------------------------------------------
@@ -397,22 +438,13 @@ namespace tee::ui
             const auto star = [](bool from) { return from ? "" : "*"; };
             // The ground.
             c.segment(sideBox_.x + look::kPad, s.ground, sideBox_.right() - look::kPad, s.ground, 1.0f, p.edge);
-            // The body as its profile (a polyline), the side window's line; selected: in the accent, and ringed.
+            // The body as its profile (look::carProfile, DRIVE's car), the side window's line; selected: in the accent, ringed.
             {
-                std::array<double, kProfile> px{}, py{};
-                profile(wb, px, py);
-                float xs[kProfile], ys[kProfile];
-                for (int i = 0; i < kProfile; ++i)
-                {
-                    xs[i] = s.front + static_cast<float>(px[static_cast<std::size_t>(i)]) * s.k;
-                    ys[i] = s.ground - static_cast<float>(py[static_cast<std::size_t>(i)]) * s.k;
-                }
                 const bool sel = ctx_.selection.is("car.body");
-                c.polyline(xs, ys, kProfile, 2.0f, sel ? p.selected : p.value);
-                c.segment(s.front + static_cast<float>(0.36 * wb) * s.k, s.ground - 0.98f * s.k, s.rear + 0.30f * s.k,
-                          s.ground - 1.0f * s.k, 1.25f, p.label);
-                c.segment(s.front + static_cast<float>(0.50 * wb) * s.k, s.ground - 1.30f * s.k,
-                          s.front + static_cast<float>(0.75 * wb) * s.k, s.ground - 1.30f * s.k, 1.25f, p.label);
+                c.polyline(s.xs.data(), s.ys.data(), look::kCarPoints, 2.0f, sel ? p.selected : p.value);
+                float wx0 = 0.0f, wy0 = 0.0f, wx1 = 0.0f, wy1 = 0.0f;
+                look::carWindow(s.front, s.rear, s.ground - s.r, s.r, s.squat, wx0, wy0, wx1, wy1);
+                c.segment(wx0, wy0, wx1, wy1, 1.25f, p.label);
                 if (sel)
                     look::selectRing(c, p, s.body, 6.0f);
             }
@@ -469,7 +501,7 @@ namespace tee::ui
             // Squat or dive, in words: the load moved from where it rests.
             if (std::isfinite(live[1]))
             {
-                const double moved = live[1] - rest[1];
+                const double moved = movedLoad();
                 const std::string w = std::fabs(moved) < 50.0 ? "LOADS AT REST"
                                     : moved > 0.0 ? "SQUAT: " + look::num(moved / 1000.0, "%.2f") + " kN MOVED TO THE REAR"
                                                   : "DIVE: " + look::num(-moved / 1000.0, "%.2f") + " kN MOVED TO THE FRONT";
@@ -502,7 +534,7 @@ namespace tee::ui
                     const double f = down * (a == 0 ? bal : 1.0 - bal);
                     // Down onto the bonnet over the front axle and onto the deck over the rear one.
                     const float x = a == 0 ? s.front : s.rear;
-                    const float surface = s.ground - (a == 0 ? 0.86f : 1.14f) * s.k - 3.0f;
+                    const float surface = bodyTop(s, x) - 3.0f;
                     const float l = static_cast<float>(std::min(26.0, 10.0 + std::fabs(f) / 30.0));
                     const float y0 = surface - l, y1 = surface;
                     const float tip = f >= 0.0 ? y1 : y0, tail = f >= 0.0 ? y0 : y1, d = f >= 0.0 ? -6.0f : 6.0f;

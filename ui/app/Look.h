@@ -233,6 +233,44 @@ namespace tee::ui::look
         return 15.0f + c.textWidth(w.c_str(), kCaps);
     }
 
+    // A car's side profile (DRIVE's, CAR's): sill, tail, boot, roof, screen, bonnet, nose, as one closed polyline of
+    // kCarPoints points into xs, ys, for wheels of radius r whose centres are at x = fx (front axle) and rx (rear) on
+    // the line y = wy; the front is at the right when fx > rx, at the left otherwise. `squat` (px) takes the rear down and
+    // the front up by half (the load moved back as it pulls; negative: it dives). Draw it with Canvas::polyline (an
+    // outline: no filled polygon) and the wheels as discs at (fx, wy), (rx, wy). carWindow gives the side window's line.
+    inline constexpr int kCarPoints = 11;
+    inline int carProfile(float fx, float rx, float wy, float r, float squat, float* xs, float* ys) noexcept
+    {
+        const float dir = fx >= rx ? 1.0f : -1.0f, wb = std::fabs(fx - rx), cx = (fx + rx) * 0.5f, len = wb * 1.62f;
+        const float rideF = wy - r * 0.55f - squat * 0.5f, rideR = wy - r * 0.55f + squat;
+        const float bodyH = r * 1.25f, roofH = r * 2.35f;
+        // Along the car from its centre (u, front positive) and up from the sill (h).
+        const float u[kCarPoints] = { -len * 0.52f, -len * 0.52f - r * 0.1f, -len * 0.52f + r * 0.3f, -wb * 0.28f, -wb * 0.05f,
+                                      wb * 0.22f, wb * 0.42f, len * 0.48f - r * 0.2f, len * 0.48f, len * 0.48f - r * 0.05f,
+                                      -len * 0.52f };
+        const float h[kCarPoints] = { 0.0f, bodyH * 0.9f, bodyH, roofH, roofH, bodyH * 1.02f, bodyH, bodyH * 0.75f, bodyH * 0.25f,
+                                      0.0f, 0.0f };
+        for (int k = 0; k < kCarPoints; ++k)
+        {
+            const float uu = k == 1 ? u[0] : (k == 9 ? u[8] : u[k]);   // the ends' heights at the ends
+            const float ride = rideR + (rideF - rideR) * (uu + wb * 0.5f) / std::max(wb, 1.0f);
+            xs[k] = cx + dir * u[k];
+            ys[k] = ride - h[k];
+        }
+        return kCarPoints;
+    }
+    // The side window's line for the same car: from (x0, y0) to (x1, y1).
+    inline void carWindow(float fx, float rx, float wy, float r, float squat, float& x0, float& y0, float& x1, float& y1) noexcept
+    {
+        const float dir = fx >= rx ? 1.0f : -1.0f, wb = std::fabs(fx - rx), cx = (fx + rx) * 0.5f;
+        const float rideF = wy - r * 0.55f - squat * 0.5f, rideR = wy - r * 0.55f + squat;
+        const auto ride = [&](float uu) { return rideR + (rideF - rideR) * (uu + wb * 0.5f) / std::max(wb, 1.0f); };
+        x0 = cx - dir * wb * 0.25f;
+        y0 = ride(-wb * 0.25f) - r * 2.35f + 6.0f;
+        x1 = cx + dir * wb * 0.18f;
+        y1 = ride(wb * 0.18f) - r * 1.25f - 4.0f;
+    }
+
     // A text that says what will be here (a placeholder's): a title and lines of plain words, centred in r.
     void placeholder(funkgui::Canvas& c, const Palette& p, const funkgui::Rect& r, std::string_view title,
                      std::string_view body);

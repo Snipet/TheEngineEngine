@@ -42,6 +42,14 @@ and the lead (the session that wrote these files) settles what a card leaves ope
   use the compiler cache the presets configure (ccache).
 - Release archives fetched by URL are refused here (HTTP 403). Fetch by git at a pinned commit. GitHub Actions
   runners and the user's machines have no such limit; do not weaken a pin to suit the cloud: add a git route.
+- **Before every push**: `scripts/lint.sh` (a second: the platform rules Linux cannot see). **Before a push that
+  touches a header others include** (`host/include/`, `sim/`'s shared modules, a test support header such as
+  `tests/support/` or a package's `Rig.h`), build every target, not only yours:
+  `cmake --build --preset dev -j3 && scripts/lint.sh`. A rename that breaks another package's build breaks every
+  session's next run (the build of 6651274). CI's Linux job builds everything first and fails within about three
+  minutes; look with `scripts/ci-status.sh` after you push.
+- Long soak tests (minutes) carry the Catch tag `[nightly]` and are left out of the default runs and CI; `ctest
+  --preset nightly` runs them (the rule in `tests/CMakeLists.txt`).
 
 ## 4. Code
 

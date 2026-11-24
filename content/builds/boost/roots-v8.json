@@ -1,0 +1,13 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "V8, Roots blower (the machine)",
+  "notes": "The default V8 with a Roots blower as card F's machine (boost.model 1), its displacement matched to the engine.",
+  "spec": {
+    "boost": {
+      "kind": "Supercharger",
+      "model": "Machine",
+      "charger": "Roots"
+    }
+  }
+}

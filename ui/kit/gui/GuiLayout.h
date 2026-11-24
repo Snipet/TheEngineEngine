@@ -96,7 +96,7 @@ namespace tee::ui
     };
     GuiKnobGeom guiKnobGeom(const GuiNode& n, float labelWidth);
     // J2: a widget element's cell: its width= and height=, else its kind's (plot 320 x 180, curve 320 x 200, map
-    // 560 x 300, gauge 170 x 170, bar 150 x 44, lamp 64 x 44).
+    // 560 x 300, gauge 170 x 170, bar 150 x 44, lamp 64 x 44, array 640 x 76).
     GuiExtent guiWidgetSize(const GuiNode& n);
 
     // White keys among `keys` from `from` (a keyboard's width in keys).
