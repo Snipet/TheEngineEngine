@@ -69,6 +69,7 @@ namespace tee
                 t.plan.measure = d.value("measure", t.plan.measure);
                 t.plan.pedal = d.value("pedal", t.plan.pedal);
                 t.plan.warmup = d.value("warmup", t.plan.warmup);
+                t.sweep = d.value("sweep", false);
                 t.plan.torque = d.value("torque", t.plan.torque);
                 t.plan.chassis = d.value("chassis", false);
                 for (const nlohmann::json& s : d.value("steps", nlohmann::json::array()))
@@ -163,10 +164,10 @@ namespace tee
                 {
                     DynoCurve curve;
                     std::string why;
-                    if (sim->fields().find("tel." + t.plan.torque) == nullptr && t.plan.steps.empty())
+                    if (t.plan.steps.empty() && !t.sweep)
                     {
-                        // no brake of the program's own yet: the predicted curve's steady points (Predict.h), the
-                        // host braking the crank, every 15 rad/s or so over the plan's speeds
+                        // the predicted curve's steady points (Predict.h): a warm engine, its exhaust settled, every
+                        // 15 rad/s or so over the plan's speeds (a sweep's curve depends on how long it took)
                         PredictOptions o;
                         o.from = t.plan.from;
                         o.to = t.plan.to;
@@ -195,7 +196,7 @@ namespace tee
                 }
                 const DynoCurve& c = curves[key];
                 if (hostBraked.count(key) != 0)
-                    row.how = "steady points, the host's brake";
+                    row.how = "steady points";
                 if (c.points.empty())
                     row.why = "not measurable: the dyno gave no points";
                 else

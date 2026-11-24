@@ -1,0 +1,12 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "V8, twin turbos (the machine)",
+  "notes": "The default V8 with two turbos, a bank each, as card F's machine (boost.model 1): sizes matched to the engine.",
+  "spec": {
+    "boost": {
+      "kind": "Twin turbos",
+      "model": "Machine"
+    }
+  }
+}
