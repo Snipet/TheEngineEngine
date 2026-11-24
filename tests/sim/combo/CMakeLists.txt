@@ -19,21 +19,22 @@ tee_target_defaults(tee-tests-combo)
 target_include_directories(tee-tests-combo PRIVATE "${PROJECT_SOURCE_DIR}/tests" "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(tee-tests-combo PRIVATE tee-combo-harness Catch2::Catch2WithMain nlohmann_json::nlohmann_json)
 target_compile_definitions(tee-tests-combo PRIVATE "TEE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\"")
-# The fast tier's cases run as two ctest entries, combo.fast-1 and combo.fast-2 (the Catch tags [fast-1] and [fast-2]),
+# The fast tier's cases run as three ctest entries, combo.fast-1 to combo.fast-3 (the Catch tags [fast-1] to [fast-3]),
 # so the program compiles once a process (about 6.6 CPU-s each otherwise; 01-rules.md section 3) and each stays under
-# section 3's 90 s for a grouped entry. The tier is held near combo's share of the CI budget (120 s scaled): the cases
-# that hold a fixed finding or cover a path once are fast; the broad ones (the pairs, each switch's decisions, the
-# corpus build, the load while running) are nightly. Every run makes a fresh host from tee::test's cached Sim, so no
+# section 3's 90 s for a grouped entry. The tier is held near combo's share of the CI budget (165 s scaled, the lead's):
+# the cases that hold a fixed finding or cover a path once are fast, and each switch's decisions (fast-3: a switch that
+# decides wrongly must fail on the push that causes it); the broad ones (the pairs, the corpus build, the load while
+# running) are nightly. Every run makes a fresh host from tee::test's cached Sim, so no
 # state passes from one case to the next: shown by running them in reverse and in random order (the commit says so).
-# Every [fast] case carries one of the two tags: combo.fast-tags fails if one does not. The rest (the nightly tier) are
+# Every [fast] case carries one of the three tags: combo.fast-tags fails if one does not. The rest (the nightly tier) are
 # discovered one by one.
 catch_discover_tests(tee-tests-combo DISCOVERY_MODE PRE_TEST ADD_TAGS_AS_LABELS TEST_PREFIX "combo."
   TEST_SPEC "~[fast]" PROPERTIES TIMEOUT 7200)
-foreach(_part 1 2)
+foreach(_part 1 2 3)
   add_test(NAME combo.fast-${_part} COMMAND tee-tests-combo "[fast-${_part}]")
   set_tests_properties(combo.fast-${_part} PROPERTIES LABELS "combo;fast" TIMEOUT 900)
 endforeach()
-add_test(NAME combo.fast-tags COMMAND tee-tests-combo --list-tests "[fast]~[fast-1]~[fast-2]")
+add_test(NAME combo.fast-tags COMMAND tee-tests-combo --list-tests "[fast]~[fast-1]~[fast-2]~[fast-3]")
 set_tests_properties(combo.fast-tags PROPERTIES LABELS "combo;fast" TIMEOUT 60
   PASS_REGULAR_EXPRESSION "[^0-9]0 matching test cases")
 

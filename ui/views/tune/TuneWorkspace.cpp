@@ -56,9 +56,13 @@ namespace tee::ui
             { "Exhaust cam", { "ecu.maps.camEx", nullptr }, "ecu.maps.camExAuto", 1.0, LiveY::load },
             { "Pedal to plate", { "ecu.maps.pedal", nullptr }, "ecu.maps.pedalAuto", 0.02, LiveY::pedal },
             { "Lift command", { "ecu.maps.lift", nullptr }, "ecu.maps.liftAuto", 0.02, LiveY::load },
+            // Card N2's knock-limit table: baked once for a build by a dyno sweep (card C's), not by the ECU's formulas;
+            // its switch on means "no table yet".
+            { "Knock limit", { "ecu.maps.knockLimit", nullptr }, "ecu.maps.knockLimitAuto", 0.5, LiveY::load },
             { "Wastegate duty", { "boost.duty", nullptr }, nullptr, 0.02, LiveY::load },
         };
         constexpr int kMapCount = static_cast<int>(std::size(kMaps));
+        constexpr int kKnockLimit = 7;   // kMaps' knock-limit table (its own words and its own bake)
 
         // Telemetry, by name (ui/app/Workspace.h: NaN while absent).
         struct Tel
@@ -240,7 +244,7 @@ namespace tee::ui
         {
             DrawKey k;
             k.mix(shown_).mix(ctx_.selection.revision()).mix(ctx_.units.revision()).mix(ctx_.doc.revision()).mix(message_);
-            k.mix(historyRevision_);
+            k.mix(historyRevision_).mix(sparkMapWords());
             return k.h;
         }
 
@@ -486,7 +490,8 @@ namespace tee::ui
                     m->setPlace(tableRect_, k == shown_ && !tableRect_.isEmpty());
             const Slot& s = slot();
             auto_->setPlace(auto_->bounds(), s.autoField >= 0);
-            bake_->setPlace(bake_->bounds(), s.autoField >= 0);
+            auto_->setTitle(shown_ == kKnockLimit ? "Not baked (no table)" : "Formula (auto)");
+            bake_->setPlace(bake_->bounds(), s.autoField >= 0 && shown_ != kKnockLimit);   // card C bakes the knock limit
             for (Button* b : { down_, up_, smooth_, fill_ })
                 b->setPlace(b->bounds(), s.field >= 0);
             sliceX_->setPlace(sliceX_->bounds(), s.field >= 0 && !narrow_);
@@ -787,7 +792,9 @@ namespace tee::ui
                 if (sel)
                     c.rrect(r.x, r.y, r.w, r.h, 5.0f, p.over(p.selected, 0.12f), 1.5f, p.selected);
                 c.text(kMaps[i].name, r.x + 8.0f, r.y + 5.0f, look::kBody, there ? p.value : p.dim);
-                const char* state = !there ? "not in this build" : s.autoField < 0 ? "table" : isAuto(i) ? "formula (auto)" : "table";
+                const char* state = !there ? "not in this build" : s.autoField < 0 ? "table"
+                                  : i == kKnockLimit ? (isAuto(i) ? "not baked" : "baked table")
+                                  : isAuto(i) ? "formula (auto)" : "table";
                 c.text(state, r.x + 8.0f, r.y + 21.0f, look::kUnit, there && isAuto(i) ? p.selected : p.label);
             }
             if (absent > 0)
@@ -823,6 +830,7 @@ namespace tee::ui
             else
                 left = bake_->bounds().right() + 16.0f;
             const std::string words = !message_.empty() ? message_
+                                    : (shown_ == 0 || shown_ == kKnockLimit) && !sparkMapWords().empty() ? sparkMapWords()
                                     : "Shift-click a block; Page Up, Page Down nudge it.";
             // Whole, at the top right; else under the table after the tools; else (a hint) not at all.
             const float right = mapBox_.right() - look::kPad, ww = c.textWidth(words.c_str(), look::kBody);
@@ -836,6 +844,20 @@ namespace tee::ui
                 const Canvas::ClipScope clip(c, { left, mapBox_.y, std::max(0.0f, right - left), mapBox_.h });
                 c.text(words.c_str(), left, mapBox_.y + 36.0f, look::kBody, ink);
             }
+        }
+
+        // The spark map's knock limit as the host says it (card C's bake: FrameServices::sparkMap), with what the program
+        // runs (tel ecu.knockTable: 1 the baked table is in use); "" when neither is served.
+        std::string sparkMapWords() const
+        {
+            const std::string state = ctx_.services != nullptr && ctx_.services->sparkMap ? ctx_.services->sparkMap() : std::string();
+            const double inUse = ctx_.live.get("ecu.knockTable");
+            if (state.empty() && !std::isfinite(inUse))
+                return {};
+            std::string w = "Knock limit: " + (state.empty() ? std::string("-") : state);
+            if (std::isfinite(inUse))
+                w += inUse >= 0.5 ? "; in use" : "; not in use";
+            return w;
         }
 
         // Over the table: the trail of the live point, and the formula's note while auto has the map.
@@ -885,8 +907,11 @@ namespace tee::ui
             if (isAuto(shown_))
             {
                 const Rect b = s.edit->bounds();
-                const std::string words = "FORMULA IN USE: the ECU makes this map itself; the table is kept, not read. "
-                                          "Bake copies the formula in.";
+                const std::string words = shown_ == kKnockLimit
+                                              ? "NOT BAKED: best-torque spark, the knock control does the work. A dyno sweep bakes "
+                                                "this table for the build (its state is over the map)."
+                                              : "FORMULA IN USE: the ECU makes this map itself; the table is kept, not read. "
+                                                "Bake copies the formula in.";
                 const float w = b.w - 54.0f, lines = c.textWidth(words.c_str(), look::kBody) > w - 20.0f ? 2.0f : 1.0f;
                 const Rect note{ b.x + 54.0f, b.bottom() - 12.0f - 15.0f * lines, w, 12.0f + 15.0f * lines };
                 c.rrect(note.x, note.y, note.w, note.h, 4.0f, p.raised, 1.5f, p.selected);
