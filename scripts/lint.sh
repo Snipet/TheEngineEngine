@@ -13,6 +13,11 @@
 #   3. POSIX-only calls (clock_gettime and its thread clock, <unistd.h>, <pthread.h>, <dlfcn.h>, <sys/time.h>,
 #      <sys/resource.h>, getrusage) only in a file that also says _WIN32, i.e. one that has the Windows branch.
 #      For the thread's processor time use tee::threadCpuSeconds() (tee/Clock.h).
+#   4. no static that owns a compiled program: a `static` whose type holds a tee::Program, Instance, Sim,
+#      EnginePlayer, RefPlayer or SimHost by value or through a smart pointer or a container is destroyed at exit
+#      after FMinus's and LLVM's own statics on macOS, and its destructor runs on a JIT that is gone (38 tests crashed
+#      so; docs/plan/01-rules.md §4). A raw pointer that is never deleted is the way (a `static Program*`), or the test
+#      library's never-destroyed cache. A struct that holds one by a name of its own is not seen: mind it.
 #
 # Our files are the ones git knows (the dependencies are not in the checkout).
 set -euo pipefail
@@ -46,6 +51,16 @@ for f in "${sources[@]}"; do
   code "$f" | grep -nE "$posix" | head -1 | while IFS=: read -r line _; do
     echo "lint: $f:$line: a POSIX-only call in a file with no _WIN32 branch (for processor time: tee::threadCpuSeconds, tee/Clock.h)"
   done | grep . && fail=1 || true
+done
+
+# ---- 4. a static that owns a compiled program ------------------------------------------------------------------------
+owner='\bstatic\s+[^(;=]*\b(Program|Instance|Sim|EnginePlayer|RefPlayer|SimHost)\b[^(;=*]*\s[A-Za-z_][A-Za-z0-9_]*\s*(=|;|\{)'
+for f in "${sources[@]}"; do
+  [ -f "$f" ] || continue
+  grep -qE '\bstatic\b' "$f" || continue
+  while IFS=: read -r line _; do
+    say "$f:$line: a static that owns a compiled program (destroyed after the JIT at exit on macOS): a never-deleted pointer instead"
+  done < <(code "$f" | grep -nE "$owner")
 done
 
 if [ "$fail" -ne 0 ]; then

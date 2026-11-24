@@ -186,7 +186,7 @@ namespace tee
                     bool ok = p.is_array() ? std::all_of(p.begin(), p.end(), add) : add(p);
                     if (!ok)
                     {
-                        error = at + "\"press\" is a counter's name (shiftUp, shiftDown, strip) or an array of them";
+                        error = at + "\"press\" is a counter's name (shiftUp, shiftDown, strip, bakeMaps) or an array of them";
                         return false;
                     }
                 }

@@ -19,6 +19,9 @@
       "source": "a naturally aspirated spark-ignition engine's brake mean effective pressure at its torque peak is 1.0 to 1.4 MPa (Heywood, Internal Combustion Engine Fundamentals, ch. 2); T = bmep Vd / 4 pi for 6.2 L" },
     { "name": "Peak power", "dyno": { "from": 150, "to": 680, "rate": 60 }, "measure": "maxPower",
       "range": [248000, 465000], "unit": "W",
-      "source": "a naturally aspirated road engine makes 40 to 75 kW a litre (a rule of thumb), 248 to 465 kW for 6.2 L" }
+      "source": "a naturally aspirated road engine makes 40 to 75 kW a litre (a rule of thumb), 248 to 465 kW for 6.2 L" },
+    { "name": "Port gas at full load", "scenario": "full-load", "tel": "exhaust.portTemperature", "measure": "mean",
+      "during": [6, 8], "range": [900, 1100], "unit": "K",
+      "source": "a spark-ignition engine's exhaust gas at the port at full load is some 900 to 1100 K (Heywood, ch. 14; makers' exhaust-gas-temperature data for petrol engines): the integrator measured 1100 to 1330 K, a miss on the hot side, reported" }
   ]
 }
