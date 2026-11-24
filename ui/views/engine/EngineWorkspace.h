@@ -15,6 +15,7 @@
 #include "app/Workspace.h"
 
 #include <memory>
+#include <string>
 #include <vector>
 
 namespace tee::ui
@@ -24,4 +25,6 @@ namespace tee::ui
     // over a panel of tabs: FIRING, P-V LOOP, DERIVED).
     std::vector<funkgui::Rect> enginePanels(const Workspace& w);
     bool engineCompact(const Workspace& w);
+    // For tests: the name of the layout the block draws (the dial's while the simulator refuses a custom one).
+    std::string engineRunningLayout(const Workspace& w);
 }
