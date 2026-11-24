@@ -795,9 +795,19 @@ TEST_CASE("probe: the boost charge path from the key", "[.probe-boost]")
     std::printf("%6s %6s %9s %9s %9s %9s %9s %9s %9s\n", "t s", "rpm", "v1 kPa", "v2 kPa", "mIc g/s", "pdDel", "mDraw", "v1 K",
                 "vol1 L");
     const int n = int(secs / step + 0.5);
+    const bool blips = std::getenv("PROBE_BLIPS") != nullptr;
+    const double from = std::getenv("PROBE_FROM") ? std::atof(std::getenv("PROBE_FROM")) : 0.0;
     for (int i = 0; i < n; ++i)
     {
+        const double tNow = step * i;
+        if (blips)
+        {
+            c.ignition = tNow < 1.0 ? 2 : 1;
+            c.throttle = tNow > 2.0 && std::fmod(tNow, 1.0) < 0.5 ? 1.0f : 0.0f;
+        }
         pr.play(step);
+        if (tNow + step < from)
+            continue;
         const double v1 = pr.get("boost.mach.v1.p"), v2 = pr.get("boost.mach.v2.p");
         std::printf("%6.3f %6.0f %9.2f %9.2f %9.3f %9.3f %9.3f %9.1f %9.4f\n", step * (i + 1), pr.tel("engine.speed") * 30.0 / M_PI,
                     v1 * 1e-3, v2 * 1e-3, pr.get("boost.mach.mIc") * 1e3, pr.get("boost.mach.pd.mDel") * 1e3,
@@ -809,5 +819,42 @@ TEST_CASE("probe: the boost charge path from the key", "[.probe-boost]")
         if (!std::isfinite(v1) || !std::isfinite(v2) || std::fabs(v1) > 1e8)
             break;
     }
+    SUCCEED();
+}
+
+// X022Test's fast form against PROBE_SIM (a bisect): the X-022 build, the key, two blips, 4 s, the guard's faults
+TEST_CASE("probe: X-022's blips against a tree", "[.probe-x022t]")
+{
+    tee::EnginePlayer::Options options;
+    options.directory = std::getenv("PROBE_SIM") ? std::filesystem::path(std::getenv("PROBE_SIM"))
+                                                  : std::filesystem::path(TEE_SOURCE_DIR) / "sim";
+    options.sampleRate = 48000.0;
+    std::string errors, warnings;
+    auto p = tee::EnginePlayer::create(options, errors);
+    REQUIRE(p != nullptr);
+    tee::EngineBuild b;
+    REQUIRE(tee::loadBuild(*p, std::filesystem::path(TEE_SOURCE_DIR) / "content" / "builds" / "combo" / "findings" /
+                                   "x022-supercharger-itb-small-charge.json", b, errors, warnings));
+    tee::applyBuild(*p, b);
+    auto& c = p->controls();
+    const int block = 256;
+    float l[block], r[block];
+    const int flags = p->telemetryIndex("engine.flags");
+    int faults = 0;
+    double first = -1.0;
+    for (int i = 0; i < int(4.0 * options.sampleRate / block); ++i)
+    {
+        const double t = i * block / options.sampleRate;
+        c.ignition = t < 1.0 ? 2 : 1;
+        c.throttle = t > 2.0 && std::fmod(t, 1.0) < 0.5 ? 1.0f : 0.0f;
+        p->process(l, r, block);
+        if ((int(p->telemetry(std::size_t(flags))) & 4) != 0)
+        {
+            if (first < 0.0)
+                first = t;
+            ++faults;
+        }
+    }
+    std::printf("X-022 blips: faults %d, the first at %.3f s\n", faults, first);
     SUCCEED();
 }
