@@ -1,0 +1,326 @@
+// rig.fm: card F's made-up engine, for testing the forced induction (sim/boost/) on its own.
+//
+// An air pump on the intake side: the throttle (the reference's law for its area) fills a plenum from the volume
+// before it (the boost model's), and the cylinders draw mdot = VE rho Vd N / 120 from the plenum. On the other side
+// it gives that mass back hot, with its fuel: steadily, or as each cylinder's blowdown (a half-sine over 220 crank
+// degrees from its exhaust valve's opening, the cylinders firing evenly), into pipes (lossless delay lines, each a
+// cylinder group's: the ones firing 360 degrees apart share one) that end in the turbine's housing, solved against
+// it as card G's pipes will be. The port end takes back 20 % of what moves on each return (the cylinder's valve
+// absorbs), not of the steady flow, so the mass goes through whole. The downpipe is anechoic, with a muffler's back
+// pressure that grows with its flow squared. The crank's speed is set (a dyno holds it); the torque is the fuel's
+// heat (gasoline at lambda 1 on the charge's oxygen, 43 MJ/kg; and nitrous's decomposition, 1.86 MJ/kg) at a brake
+// efficiency of 0.33, less what a supercharger takes.
+#include "boost/machine.fm"
+
+enum
+{
+    RIG_PIPES = 4,
+    RIG_LINE = 1024
+};
+
+module RigPipe
+{
+    float fw[RIG_LINE];
+    float bw[RIG_LINE];
+    int w;
+    int d;
+    float z;
+    float far;
+    float near;
+    float mean;         // the near end's steady part (the port's absorption leaves it alone)
+    float pMean;        // the port's steady pressure, above the outside
+
+    void set(int delay, float zIn)
+    {
+        d = delay < 2 ? 2 : (delay > RIG_LINE - 2 ? RIG_LINE - 2 : delay);
+        z = zIn;
+    }
+
+    void read()
+    {
+        const int k = (w - d + RIG_LINE) % RIG_LINE;
+        far = fw[k];
+        near = bw[k];
+    }
+
+    void write(float nearIn, float farIn)
+    {
+        fw[w] = nearIn;
+        bw[w] = farIn;
+        w = (w + 1) % RIG_LINE;
+    }
+};
+
+module BoostRig
+{
+    BoostMachineSpec spec;
+    int applied;
+    BoostMachine boost;
+    // the engine
+    float vd;
+    int cyl;
+    float ve;
+    float rpm;
+    float throttle;
+    float aThrottle;
+    float tExhaust;
+    int pulsed;
+    float phase;        // crank degrees, 0 to 720
+    BoostVolume plenum;
+    float mAir;
+    float mThr;
+    float mFuel;
+    float torque;       // N m, this sample
+    float airSpeed;
+    // the exhaust
+    RigPipe pipe[RIG_PIPES];
+    int pipes;
+    float zPipe;
+    float zDown;
+    float kMuffler;
+    float qDown[BOOST_SIDES];
+    float zGate;
+    float drive[BOOST_HOUSINGS];
+    float admit[BOOST_HOUSINGS];
+    // means since the last clear()
+    double n;
+    double sTorque;
+    double sAir;
+    double sBoost;
+    double sSignal;     // the gate actuator's signal: the compressor's outlet above the outside
+    double sPlenum;
+    double sPTurb;
+    double sMEx;
+    double sMDown;
+    double sShaftPower;
+    float minFlow;      // the compressor's flow, its least and most since clear()
+    float maxFlow;
+    int bad;            // a value that was not finite
+
+    void init(float vdIn, int cylIn, float redRpm)
+    {
+        vd = vdIn;
+        cyl = cylIn;
+        ve = 0.9f;
+        rpm = 3000.0f;
+        throttle = 1.0f;
+        aThrottle = 0.785398f * 0.06f * 0.06f * expf(0.5f * logf(vdIn / 0.002f));
+        tExhaust = 1100.0f;
+        pulsed = 0;
+        phase = 0.0f;
+        plenum.setup(1.5f * vdIn + 0.001f, 101325.0f, 293.15f, kBoostCpA, kBoostCvA);
+        pipes = 2;
+        // (a collector's pipe of 45 mm and 0.45 m in gas at some 1000 K: its impedance rho c / A)
+        const float area = 0.785398f * 0.045f * 0.045f;
+        const float c = sqrtf(1.33f * 287.0f * 1000.0f);
+        zPipe = (101325.0f / (287.0f * 1000.0f)) * c / area;
+        for (int k = 0; k < RIG_PIPES; ++k)
+            pipe[k].set((int)(0.45f / c * 96000.0f), zPipe);
+        const float aDown = 0.785398f * 0.065f * 0.065f;
+        zDown = (101325.0f / (287.0f * 800.0f)) * sqrtf(1.33f * 287.0f * 800.0f) / aDown;
+        zGate = 2.0f * zDown;
+        kMuffler = 4.0e5f;      // (some 18 kPa at 0.21 m^3/s of hot gas: 0.09 kg/s at 1100 K)
+        boost.setup(96000.0f, vdIn, redRpm);
+        applied = -1;
+        clear();
+    }
+
+    void clear()
+    {
+        n = 0.0;
+        sTorque = 0.0;
+        sAir = 0.0;
+        sBoost = 0.0;
+        sSignal = 0.0;
+        sPlenum = 0.0;
+        sPTurb = 0.0;
+        sMEx = 0.0;
+        sMDown = 0.0;
+        sShaftPower = 0.0;
+        minFlow = 1.0e9f;
+        maxFlow = -1.0e9f;
+    }
+
+    void run(int count) [[clang::nonblocking]]
+    {
+        if (spec.rev != applied)
+        {
+            applied = spec.rev;
+            boost.apply(&spec);
+        }
+        const float dt = 1.0f / 96000.0f;
+        const float omega = rpm * 0.10471976f;
+        boost.airSpeed = airSpeed;
+        for (int i = 0; i < count; ++i)
+        {
+            // the throttle, from before it into the plenum; the cylinders from the plenum
+            const float plate = fminf(fmaxf(throttle, 0.0f), 1.0f);
+            const float aT = aThrottle * (expf(1.8f * logf(fmaxf(plate, 1.0e-4f))) + 0.0006f);
+            const float pB = boost.pressure();
+            const float tB = boost.temperature();
+            mThr = boostOrifice(pB, tB, plenum.p, plenum.t, aT, 0);
+            boost.draw(mThr);
+            plenum.flow(mThr, tB, boost.oxygen());
+            mAir = ve * plenum.p / (kBoostR * plenum.t) * vd * rpm / 120.0f;
+            plenum.flow(-mAir, 0.0f, 0.0f);
+            const float o2 = plenum.o2;
+            plenum.step(dt);
+            // the fuel and the torque: gasoline at lambda 1 on the charge's oxygen; nitrous's own heat
+            const float xN = fminf(fmaxf((o2 - 0.232f) / 0.132f, 0.0f), 1.0f);
+            mFuel = mAir * o2 / 3.41f;
+            const float heat = mFuel * 43.0e6f + xN * mAir * 1.86e6f;
+            torque = 0.33f * heat / fmaxf(omega, 1.0f) - boost.crankTorque;
+            // the exhaust: its mass, steady or in blowdowns, into the pipes
+            const float mEx = mAir + mFuel;
+            float qPort[RIG_PIPES];
+            for (int k = 0; k < RIG_PIPES; ++k)
+                qPort[k] = 0.0f;
+            phase += rpm * 6.0f * dt;
+            if (phase >= 720.0f)
+                phase -= 720.0f;
+            if (pulsed != 0)
+            {
+                const float mPulse = mEx * 120.0f / (fmaxf(rpm, 1.0f) * (float)cyl);
+                for (int c = 0; c < cyl; ++c)
+                {
+                    float th = phase - 720.0f * (float)c / (float)cyl;
+                    if (th < 0.0f)
+                        th += 720.0f;
+                    if (th < 220.0f)
+                        qPort[c % pipes] += mPulse * 3.14159265f / 440.0f * sinf(3.14159265f * th / 220.0f) * rpm * 6.0f;
+                }
+            }
+            else
+                for (int k = 0; k < pipes; ++k)
+                    qPort[k] = mEx / (float)pipes;
+            for (int h = 0; h < BOOST_HOUSINGS; ++h)
+            {
+                drive[h] = 0.0f;
+                admit[h] = 0.0f;
+            }
+            for (int k = 0; k < pipes; ++k)
+            {
+                pipe[k].read();
+                const int h = boost.housingOf(0, k, 1);
+                if (h >= 0)
+                {
+                    drive[h] += 2.0f * pipe[k].far / zPipe;
+                    admit[h] += 1.0f / zPipe;
+                }
+            }
+            float pg[BOOST_HOUSINGS];
+            for (int h = 0; h < BOOST_HOUSINGS; ++h)
+                pg[h] = admit[h] > 0.0f ? boost.housing(h, drive[h], admit[h], tExhaust) : 0.0f;
+            for (int k = 0; k < pipes; ++k)
+            {
+                const int h = boost.housingOf(0, k, 1);
+                const float back = h >= 0 ? pg[h] - pipe[k].far : -pipe[k].far;
+                pipe[k].mean += 0.0005f * (pipe[k].near - pipe[k].mean);
+                const float q = qPort[k] * kBoostR * tExhaust / (boost.pOut + pipe[k].pMean);
+                const float sent = pipe[k].mean + 0.8f * (pipe[k].near - pipe[k].mean) + zPipe * q;
+                pipe[k].pMean += 0.0005f * (pipe[k].near + sent - pipe[k].pMean);
+                pipe[k].write(sent, back);
+            }
+            // the downpipes: anechoic, with the muffler's back pressure; the external gates' pipes open
+            float pt = 0.0f;
+            for (int s = 0; s < BOOST_SIDES; ++s)
+            {
+                const float a = 0.5f * kMuffler * qDown[s] * fabsf(qDown[s]);
+                const float p = boost.downpipe(s, a, zDown);
+                const float q = (p - 2.0f * a) / zDown;
+                qDown[s] += 0.002f * (q - qDown[s]);
+            }
+            for (int t = 0; t < BOOST_TURBOS; ++t)
+                boost.gatePipe(t, 0.0f, zGate);
+            pt = boost.house[0].p;
+            boost.tick(omega, plenum.p);
+            if ((i & 15) == 15)
+                boost.control(16.0f * dt);
+            // the means
+            n += 1.0;
+            sTorque += (double)torque;
+            sAir += (double)mAir;
+            sBoost += (double)(boost.pressure() - boost.pOut);
+            sSignal += (double)(boost.v1.p - boost.pOut);
+            sPlenum += (double)plenum.p;
+            sPTurb += (double)pt;
+            sMEx += (double)mEx;
+            sMDown += (double)(boost.dpMass[0] + boost.dpMass[1]);
+            sShaftPower += (double)(boost.turb[0].power);
+            const float f = boost.comp[0].mdot;
+            minFlow = fminf(minFlow, f);
+            maxFlow = fmaxf(maxFlow, f);
+            if (!(pB < 1.0e7f && pB > 1000.0f && boost.shaft[0].omega < 1.0e5f && boost.house[0].p < 1.0e7f && boost.house[0].p > 1000.0f))
+                bad = 1;
+        }
+    }
+
+    // ---- probes for the map's tests ----
+    float mapRatio(float phi, float omega)
+    {
+        boost.comp[0].speed(omega, 101325.0f, 293.15f);
+        const float c = 1.0f + boost.comp[0].rise(phi);
+        return c * c * c * sqrtf(c);
+    }
+
+    float mapEta(float phi, float omega)
+    {
+        boost.comp[0].speed(omega, 101325.0f, 293.15f);
+        return boost.comp[0].efficiency(phi);
+    }
+
+    float mapChoke(float omega)
+    {
+        boost.comp[0].speed(omega, 101325.0f, 293.15f);
+        return boost.comp[0].mc;
+    }
+};
+
+// Passivity: one pipe's end at turbo 0's housing, random waves arriving on a random impedance, the wheel locked, no
+// fuel; the downpipe anechoic. What comes back is summed against what went in.
+module PassRig
+{
+    BoostMachineSpec spec;
+    BoostMachine boost;
+    float z;
+    float zd;
+    double eIn;
+    double eOut;
+    int seed;
+    float lp;
+    float level;
+
+    void init()
+    {
+        boost.setup(96000.0f, 0.002f, 7000.0f);
+    }
+
+    void start()
+    {
+        boost.apply(&spec);
+        boost.reset();
+        boost.shaft[0].locked = 1;
+        eIn = 0.0;
+        eOut = 0.0;
+        lp = 0.0f;
+    }
+
+    void run(int count) [[clang::nonblocking]]
+    {
+        for (int i = 0; i < count; ++i)
+        {
+            seed += 1;
+            lp += 0.2f * (randf(seed) - lp);
+            const float a = level * lp;
+            const float pg = boost.housing(0, 2.0f * a / z, 1.0f / z, 900.0f);
+            const float b = pg - a;
+            eIn += (double)(a * a / z);
+            eOut += (double)(b * b / z);
+            boost.downpipe(0, 0.0f, zd);
+            boost.gatePipe(0, 0.0f, zd);
+            boost.tick(0.0f, 101325.0f);
+            if ((i & 15) == 15)
+                boost.control(16.0f / 96000.0f);
+        }
+    }
+};
