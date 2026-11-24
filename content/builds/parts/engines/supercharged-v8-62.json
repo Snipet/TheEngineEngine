@@ -96,7 +96,9 @@
       "target": 62000.0,
       "charger": "Twin-screw",
       "scDisplacement": 0.0019,
-      "scBypass": true
+      "scBypass": true,
+      "icFlow": 0.479,
+      "chargeVolume": 0.0123
     },
     "exhaust": {
       "model": "Builder",

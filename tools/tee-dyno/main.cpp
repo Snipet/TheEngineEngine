@@ -102,7 +102,9 @@ namespace
         {
             std::printf("%8.0f %10.1f %10.1f %7d %8s", rpm(p.speed), p.torque, p.power / 1000.0, p.cycles,
                         p.settled ? "yes" : "NO");
-            if (p.knockRetard > 0.0)
+            if (p.knockLimited)
+                std::printf("  knock-limited, retard %.1f to %.1f deg", p.retardMin, p.retardMax);
+            else if (p.knockRetard > 0.0)
                 std::printf("  knock %.1f deg", p.knockRetard);
             for (std::size_t k = 0; k < p.fields.size() && k < options.fields.size(); ++k)
                 std::printf("  %s %.5g", options.fields[k].c_str(), p.fields[k]);
@@ -350,6 +352,10 @@ int main(int argc, char** argv)
         std::printf("%s", curve.chart().c_str());
         std::printf("%s\n", curve.settled ? "the exhaust's heat settled at each step (steady state)"
                                            : "the exhaust's heat not settled: a step's first seconds, its walls warming");
+        for (const tee::DynoPoint& p : curve.points)
+            if (p.knockLimited)
+                std::printf("  %.0f rpm knock-limited: retard %.1f to %.1f deg over its span\n",
+                            p.speed * 60.0 / (2.0 * 3.141592653589793), p.retardMin, p.retardMax);
         std::printf("%zu points, %.1f s simulated in %.2f s: %.1f times real time; %s\n", curve.points.size(),
                     curve.simulatedSeconds, curve.wallSeconds, curve.realTime(), csv.c_str());
     }

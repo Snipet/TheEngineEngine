@@ -89,7 +89,9 @@
       "gateSpring": 200000.0,
       "blowOffKind": "None",
       "vanes": "Variable vanes",
-      "icEffect": 0.75
+      "icEffect": 0.75,
+      "icFlow": 0.765,
+      "chargeVolume": 0.02
     },
     "exhaust": {
       "model": "Builder",

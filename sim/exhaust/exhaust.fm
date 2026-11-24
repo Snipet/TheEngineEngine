@@ -1562,6 +1562,24 @@ module Exhaust
         // (before the bead's mean has had a sample, the gas's own: physical from the first block)
         const float tcNow = tcPort > 0.0f ? tcPort : exitTemperature();
         t->portThermocouple = tcNow;
+        // the system as built, element by element (the builder is built at every configure, in model 0 too, as the
+        // reference's topology): for what it costs (docs/models/exhaust.md, "What the network costs, by element")
+        int nNode = 0;
+        int nPair = 0;
+        int nEnd = 0;
+        for (int j = 0; j < b.net.nj; ++j)
+        {
+            if (b.net.jKind[j] == XJ_NODE)
+                nNode += 1;
+            else if (b.net.jKind[j] == XJ_PAIR)
+                nPair += 1;
+            else if (b.net.jKind[j] == XJ_OPEN)
+                nEnd += 1;
+        }
+        t->pipes = b.net.nUsed;
+        t->nodes = nNode;
+        t->pairs = nPair;
+        t->openEnds = nEnd;
         t->headerThermocouple = tcNow + (t->headerTemperature - exitTemperature());
         t->portCoolantHeat = qCool;
         t->portWallTemperature = tWallPort;

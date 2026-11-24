@@ -401,6 +401,34 @@ namespace
         return 0;
     }
 
+    // A low redline (D's e0bcf8f: a governed diesel's stated limiter is its redline, about 2000 rpm): the rev bar's
+    // scale follows it (to 2500, numerals in hundreds), the red zone a fifth of it, the shift lights' spacing shrunk
+    // with it (none lit at idle); a petrol with a 4500 rpm limiter to 5000 in thousands. The 6800 rpm demo keeps 8000.
+    VIEW_TEST(testFrameRedline, "frame.redline")
+    {
+        constexpr double kRpm = 3.14159265358979323846 / 30.0;
+        CHECK(tee::ui::look::rpmScale(6800.0).top == 8000.0 && tee::ui::look::rpmScale(7000.0).top == 8000.0);
+        CHECK(tee::ui::look::rpmScale(8500.0).top == 10000.0);
+        FrameRig rig(1280, 800, 2.0f);
+        CHECK(rig.frame->rpmBar().scaleTop() == 8000.0);
+        struct Case { double red, idle, near; double top; const char* name; };
+        const Case cases[] = { { 2014.0, 700.0, 1990.0, 2500.0, "diesel" }, { 4500.0, 850.0, 4450.0, 5000.0, "petrol4500" } };
+        for (const Case& k : cases)
+        {
+            rig.demo.engine.set("engine.redline", k.red * kRpm);
+            rig.demo.engine.set("engine.speed", k.idle * kRpm);
+            rig.showWorkspace("drive");
+            rig.host->tick(30);
+            CHECK_MSG(rig.frame->rpmBar().scaleTop() == k.top, std::to_string(rig.frame->rpmBar().scaleTop()));
+            CHECK_MSG(rig.frame->rpmBar().lightsLit() == 0, k.name);
+            rig.demo.engine.set("engine.speed", k.near * kRpm);
+            rig.host->tick(30);
+            CHECK_MSG(rig.frame->rpmBar().lightsLit() >= 4, k.name);
+            picture(std::string("frame.redline.") + k.name, *rig.host);
+        }
+        return 0;
+    }
+
     VIEW_TEST(testFrameGarage, "frame.garage")
     {
         FrameRig rig;
@@ -482,6 +510,28 @@ namespace
         CHECK(rig.demo.engine.requests() == asked + 1);   // one drag of many steps: one curve asked for, after its quiet
         CHECK(!rig.demo.engine.before().empty() && rig.demo.engine.predicted().peakTorque().value > before);
         golden("frame.ribbon", *rig.host);
+        const auto plotText = [&] {
+            for (const funkgui::A11yItem& it : rig.host->accessibility())
+                if (it.title == "Predicted torque and power")
+                    return it.value;
+            return std::string("(none)");
+        };
+        CHECK(plotText().find("KNOCK") == std::string::npos && rig.demo.engine.predicted().knockCount() == 0);
+        // Knock-limited points (card C's): the demo knocks past 160 kPa of boost from 4500 rpm; ringed on the plot, the
+        // span and retard in the title row's words and in the plot's accessible text.
+        {
+            const int bf = rig.demo.doc.find("boost.level");
+            rig.demo.doc.beginGesture();
+            rig.demo.doc.set(bf, 190e3);
+            rig.demo.doc.endGesture();
+            rig.host->tick(60);
+            const tee::ui::DynoTrace& d = rig.demo.engine.predicted();
+            CHECK(d.knockCount() > 0 && !d.knockLimited(0));
+            std::size_t last = d.speed.size() - 1;
+            CHECK_MSG(d.knockText(last) == "knock-limited, retard 6 to 10 deg", d.knockText(last));
+            CHECK_MSG(plotText().find("; KNOCK-LIMITED 4500-7000 RPM, RETARD 1 TO 10 DEG") != std::string::npos, plotText());
+            picture("frame.ribbon.knock", *rig.host);
+        }
         const float open = f.inspectorRect().h;
         f.foldRibbon(true);
         rig.host->tick(2);

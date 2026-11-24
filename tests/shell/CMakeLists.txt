@@ -39,7 +39,7 @@ add_test(NAME shell.headless.hold
   COMMAND tee-headless --engine sim --sim "${PROJECT_SOURCE_DIR}/sim" --hold-compile 1.0
           --script "${_scripts}/hold-compile.txt"
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
-set_tests_properties(shell.headless.hold PROPERTIES TIMEOUT 900 LABELS shell)
+set_tests_properties(shell.headless.hold PROPERTIES TIMEOUT 900 LABELS "shell;nightly")
 # An engine the simulator finds diverged (FLAG_FAULT: put at rest and restarted) fails an offline run (exit 1), unless
 # the run says it expected it (--expect-fault): made to diverge by holding the crank's speed absurd before every call.
 add_test(NAME shell.headless.fault
@@ -82,6 +82,9 @@ set_tests_properties(shell.headless.refuses PROPERTIES WILL_FAIL TRUE)
 set_tests_properties(shell.headless.ref shell.headless.sim shell.headless.drive shell.headless.tone shell.headless.error
                      shell.headless.refuses
   PROPERTIES TIMEOUT 900 LABELS shell)
+# (the full forms, the soak tier's: the simulator's run alone with its WAV, whose checks shell.workspace.all also makes;
+# the reference's start, rev and stop, and the reference driven: the application's retired engine)
+set_tests_properties(shell.headless.sim shell.headless.drive shell.headless.ref PROPERTIES LABELS "shell;nightly")
 
 # The garage's Library as the shell implements it (app/GarageLibrary.h): an executable of its own, where the frame is.
 if(TARGET tee_ui_build AND TARGET tee_ui_test_funkgui AND NOT TEE_PLACEHOLDER_PANEL)
@@ -117,9 +120,11 @@ if(TARGET tee_ui_build AND NOT TEE_PLACEHOLDER_PANEL)
   list(APPEND _tee_workspace_tests shell.workspace.none)
   # (each workspace alone is the full form: [nightly]; the default run pictures them all in one process below)
   set_tests_properties(${_tee_workspace_tests} PROPERTIES TIMEOUT 600 LABELS "shell;workspace;nightly")
+  # (it runs the simulator's start, rev and stop with its checks too, so one compile serves shell.headless.sim's
+  # quick form: that one alone, with its WAV, is the nightly's)
   add_test(NAME shell.workspace.all
-    COMMAND tee-headless --engine sim --sim "${PROJECT_SOURCE_DIR}/sim" --workspace all --frames 120
-            --script "${_scripts}/workspace.txt" --shot "${_out}/workspace.png"
+    COMMAND tee-headless --engine sim --sim "${PROJECT_SOURCE_DIR}/sim" --workspace all
+            --script "${_scripts}/sim-start-rev-stop.txt" --shot "${_out}/workspace.png"
     WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
   set_tests_properties(shell.workspace.all PROPERTIES TIMEOUT 600 LABELS "shell;workspace"
                        PASS_REGULAR_EXPRESSION "workspaces: [0-9]+ pictured.*tee-offline: ok")

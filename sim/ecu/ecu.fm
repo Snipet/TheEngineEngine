@@ -342,8 +342,10 @@ module Ecu
         throttle = plateWas + (one.plate - plateWas) * (1.0f - expf(-d16 / 0.03f));
         idleRpm = one.idle.target;
         // (the redline: the limiter's speed when the Spec sets one, which is also where a diesel's governor takes the fuel
-        // back: chargeDiesel's droop)
-        redRpm = fmaxf(spec->limiter.speed > 0.0f ? spec->limiter.speed * 9.5492966f : redBaseIn, idleRpm + 1500.0f);
+        // back: chargeDiesel's droop; the reference's floor, idle + 1500, only for a build that states none (it bound on a
+        // diesel idling near 700 and put the dash's red 200 rpm past where the governor holds it; card D as integrator,
+        // 24 Nov, the lead's ruling), with 200 over the idle at the least)
+        redRpm = spec->limiter.speed > 0.0f ? fmaxf(spec->limiter.speed * 9.5492966f, idleRpm + 200.0f) : fmaxf(redBaseIn, idleRpm + 1500.0f);
         if (fuelUse != 0)
             bypass = one.bypass;           // a diesel's idle governor: its fuel (Combustion::chargeDiesel)
         if (fuelUse == 0)

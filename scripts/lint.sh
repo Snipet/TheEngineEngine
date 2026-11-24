@@ -34,6 +34,10 @@
 #   8. no float becomes an array index without a clamp at both ends (scripts/lint-index.py: a NaN's cast is INT_MIN on
 #      x86, X-019's SIGSEGV): tableIndex(x, last) (sim/core/mathx.fm), fminf(fmaxf(...)), or a lower check, or the line
 #      says `// lint: index-ok: <why>`. The places known on 2026-11-24 are in scripts/lint-index.allow, reported.
+#  10. a file under tests/ or tools/ that calls tee::loadBuild or parseBuild reads its `warnings` (beyond declaring
+#      it and passing it): the loader drops what it cannot take there (a nested ecu.limiter, ecu.idle, ecu.knock), and
+#      until 2026-11-24 the rigs ran 62 archetypes without their own idle and limiter so. A note, not a failure, until
+#      the one strict loader lands.
 #
 # Our files are the ones git knows (the dependencies are not in the checkout).
 set -euo pipefail
@@ -153,6 +157,17 @@ while IFS= read -r cm; do
     say "$cm: its tests have [nightly] tags but catch_discover_tests has no ADD_TAGS_AS_LABELS: they run in the fast tier"
   fi
 done < <(git ls-files -- 'tests/*CMakeLists.txt')
+
+# ---- 10. a rig that loads a build reads what the loader dropped ------------------------------------------------------
+# tee::loadBuild / parseBuild put what they could not take (a nested ecu.limiter, ecu.idle, ecu.knock: 62 archetypes
+# ran without their own idle and limiter so) in `warnings`; a caller that never reads it measures another engine.
+while IFS= read -r f; do
+  [ -n "$f" ] || continue
+  if ! grep -vE '(loadBuild|parseBuild)[[:space:]]*\(|^[[:space:]]*std::string[^;(]*warnings[^;(]*;' "$f" | grep -q 'warnings'; then
+    # a note until C's one strict loader lands (then a failure): the lead's call, 2026-11-24
+    echo "lint: note: $f: calls loadBuild/parseBuild and never reads its warnings (what the build had that the loader dropped): fail on them, or print them"
+  fi
+done < <(git grep -lE '(loadBuild|parseBuild)[[:space:]]*\(' -- 'tests/*' 'tools/*' || true)
 
 # ---- 8. a float as an index, clamped at both ends --------------------------------------------------------------------
 if command -v python3 > /dev/null; then
