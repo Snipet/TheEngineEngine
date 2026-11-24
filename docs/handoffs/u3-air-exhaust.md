@@ -19,12 +19,11 @@ Package U3, branch `claude/awesome-gates-ntdb58`. Pages: `docs/ui/air.md` and `d
   Scope: exhaustPressure/exhaustX (cylinder 1's path), ductUsed/ductNear/ductFar (every pipe's own pulse).
 - AIR, card F: tel.boost.*. The Scope's compressor map is used when present; otherwise the mirror of compressor.fm.
 - AIR, card E: intake names, and ram tuning from the runner length (mirrors E's IntegratedTest ring()).
-- Two-stroke, card T: the engine.ts* fields; the tuned speed mirrors chamber.fm's `tuned`.
+- Two-stroke, card T: engine.ts* fields; tel.engine.tsPipeTemperature (else 680 K, said); Scope portExhaust when
+  `degrees` is 360, pipePressure's six along the chamber at chamber.fm's section middles ([6], the crankcase, not drawn).
 
-**Provisional** (one line each in `ExhaustNames`; until then a dash or a model trace):
-- `engine.tsPipeTemperature` (pipe gas, else 680 K assumed and said so).
-- `tsPortPressure` (port pressure each degree, else U1's `portExhaust`).
-  Waiting on card T's names.
+**Wanted from U1**: the demo's Scope is a four-stroke's (720 degrees) for a two-stroke build too, so the port plot
+says "no port pressure" there. `exhaust::exhaustTwoStrokePort(b, out, max)` gives card T's measured turn to serve.
 
 **Checked live**: card G's wiring (cf267fb, 95d7d16) under the real simulator, exhaust.model 1, default V8: every
 tel.exhaust and Scope name above reads; ductUsed's slots (0-7, 32-33, 48, 53-55, 59, 63, 68-70, 74, 78) are slots.fm's.
