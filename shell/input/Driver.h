@@ -86,6 +86,7 @@ namespace tee::input
         void setBrakeStrip(float value, bool held);
         // The clutch pedal from the mouse (the frame's pedal bar): while held, the pedal is at least value.
         void setClutchStrip(float value, bool held);
+        void setHandbrakeStrip(float value, bool held);
 
         // The frame's mode from now on (ControlsFrame::mode: MODE_BENCH 0, MODE_DRIVE 1, MODE_DYNO_ENGINE 2).
         void setMode(int mode);
@@ -112,8 +113,8 @@ namespace tee::input
         float throttle_ = 0, brake_ = 0, clutch_ = 0, handbrake_ = 0;                // the keys' eased pedals
         float padThrottle_ = 0, padBrake_ = 0, padSteer_ = 0, padClutch_ = 0;
         float strip_ = 0, brakeStrip_ = 0;
-        float clutchStrip_ = 0;
-        bool stripHeld_ = false, brakeStripHeld_ = false, clutchStripHeld_ = false;
+        float clutchStrip_ = 0, handbrakeStrip_ = 0;
+        bool stripHeld_ = false, brakeStripHeld_ = false, clutchStripHeld_ = false, handbrakeStripHeld_ = false;
         // the start key
         bool startWas_ = false;
         bool startOnRunning_ = false;
