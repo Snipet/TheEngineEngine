@@ -47,6 +47,15 @@ namespace tee
         return h;
     }
 
+    double DynoPlan::warmupFor(const Build& build) const
+    {
+        if (warmup >= 0.0)
+            return warmup;
+        const bool turbo = build.fieldOf("boost.kind") >= 0 && build.get("boost.kind") != 0.0;
+        const bool diesel = build.fieldOf("fuel.kind") >= 0 && build.get("fuel.kind") != 0.0;
+        return turbo || diesel ? 8.0 : 2.0;
+    }
+
     std::string DynoCurve::csv() const
     {
         std::string out = "speed_rad_s,rpm,torque_N_m,power_kW";
@@ -170,9 +179,10 @@ namespace tee
         at(0.0, "dynoSpeed", plan.from);
         at(0.0, "dynoRate", 0.0);
         at(0.0, "ignition", 2);
-        at(std::min(1.0, 0.5 * plan.warmup), "ignition", 1);
-        at(0.5 * plan.warmup, "throttle", plan.pedal);
-        const double start = plan.warmup + plan.settle;
+        const double warmup = plan.warmupFor(build);
+        at(std::min(1.0, 0.5 * warmup), "ignition", 1);
+        at(0.5 * warmup, "throttle", plan.pedal);
+        const double start = warmup + plan.settle;
         struct Window
         {
             double from, to;
@@ -187,7 +197,7 @@ namespace tee
         }
         else
         {
-            double time = plan.warmup;
+            double time = warmup;
             for (const double s : plan.steps)
             {
                 at(time, "dynoSpeed", s);
