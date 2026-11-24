@@ -963,7 +963,7 @@ matched turbine to the 0.30), and the rest of the gap at 1800 is the compressor'
 judgement), then the turbine's, then the exhaust's heat. A smaller design point alone (P's cited hardware) does not
 reach the class's figure on this model while items 1 and 2 stand.
 
-**B-3, measured again on N2's field** (23:12 by `date -u`): `spec.boost.designShare` (N2's, pushed): it sizes the whole
+**B-3, measured again on N2's field** (23:06 by `date -u`): `spec.boost.designShare` (N2's, pushed): it sizes the whole
 match at that share of the redline (the compressor, the turbine's nozzle and the gate), not the nozzle alone as the
 turbAR stand-in above did. Same probe and settle; as built, and the phaser parked (`valve.inPhaseRange=0`). The cited
 curve (P's rows, the EA888 gen 3 in the Mk7 GTI): 333 to 368 N m at 1500 / 1800 / 2500 / 4000, 237 to 262 at 6200.
