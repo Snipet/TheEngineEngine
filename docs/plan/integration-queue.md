@@ -105,3 +105,18 @@ fixes its own when it next touches its tests, and deletes its hook.
 - **G**: pipe pressures per element of the system as built, so EXHAUST (U3) can draw every primary's pulse along its
   own pipe; wall temperatures per element.
 - **U1**: `garage::Library* library` on `WorkspaceContext` (U5's `ui/views/garage/Library.h`); the shell implements it.
+
+## From U3 and U4's handoffs (13:45 to 13:52)
+
+- **G with D**: `XSpec`'s `crossover` and `muffler` collide with `spec.exhaust`'s dials of the same names (the
+  reference's `xpipe` and `muffler`). One meaning a name: the builder's fields get their own names, or the dials
+  become the model-0 fields under names that say so. U3's EXHAUST handles both readings until it is settled.
+- **H and I**: the telemetry names the interface reads (sent to both, 13:46): `ecu.lambda`, `ecu.lambdaTarget`,
+  `ecu.knock`, `ecu.knockRetard`, one of `ecu.spark` / `ecu.advance`, `ecu.flags`; `car.accel`, `car.flags`,
+  `car.wheelLoad[i]`, `car.wheelSlip[i]`, `car.wheelTorque[i]`, `car.stripState`, the time slip's fields.
+- **Card C**: on Windows `tee-host-tests.exe --list-tests` exits with heap corruption, which stops every test
+  there (the tests' replacement of global `new` and `delete`); the same replacement must be compiled out under
+  ThreadSanitizer.
+- **An idea for the owner, not for today** (from U3): a slow-time control in the simulator, so the SLOW switches of
+  ENGINE and EXHAUST show the waves truly slowed (the sound would fall in pitch with it), instead of replaying the
+  Scope's last cycle.
