@@ -115,6 +115,16 @@ module Ecu
         return wired != 0 && spec->model == 1;
     }
 
+    // The redline (rpm) from the layout's and the dial's: the reference's, at least the idle + 1500; under ecu.model 1 a
+    // stated limiter's speed (at least the idle + 200), where a diesel's governor takes its fuel back. One rule for every
+    // reader: the engine's configure (the car's gearing and launch take it there), sense, and model 1's control
+    float redlineFor(float base)
+    {
+        if (model1() && spec->limiter.speed > 0.0f)
+            return fmaxf(spec->limiter.speed * 9.5492966f, idleRpm + 200.0f);
+        return fmaxf(base, idleRpm + 1500.0f);
+    }
+
     // The speed a key asks for: across the keyboard from idle (C2) to the redline (C6), or (DRIVE PITCH) the speed at
     // which the engine's firing is the note's pitch
     float targetOf(float note, float bend, float bendRange, int keys, int rotary, int n)
@@ -138,7 +148,7 @@ module Ecu
         kRet = fmaxf(kRet - 2.0f * d16, 0.0f);
         // (a big cam's overlap dilutes the idle more the slower it turns: its tune idles it higher, as real ones are)
         idleRpm = fmaxf(idleBase + idleDial + 350.0f * fmaxf(cam - 0.35f, 0.0f) / 0.65f + coldIdle, 350.0f);
-        redRpm = fmaxf(redBase + redlineDial, idleRpm + 1500.0f);
+        redRpm = redlineFor(redBase + redlineDial);
         rpmAvg += (rpm - rpmAvg) * (1.0f - expf(-d16 / 0.035f));
         rpmRate += ((rpmAvg - rpmLast) / d16 - rpmRate) * (1.0f - expf(-d16 / 0.05f));
         rpmLast = rpmAvg;
@@ -345,7 +355,7 @@ module Ecu
         // back: chargeDiesel's droop; the reference's floor, idle + 1500, only for a build that states none (it bound on a
         // diesel idling near 700 and put the dash's red 200 rpm past where the governor holds it; card D as integrator,
         // 24 Nov, the lead's ruling), with 200 over the idle at the least)
-        redRpm = spec->limiter.speed > 0.0f ? fmaxf(spec->limiter.speed * 9.5492966f, idleRpm + 200.0f) : fmaxf(redBaseIn, idleRpm + 1500.0f);
+        redRpm = redlineFor(redBaseIn);
         if (fuelUse != 0)
             bypass = one.bypass;           // a diesel's idle governor: its fuel (Combustion::chargeDiesel)
         if (fuelUse == 0)

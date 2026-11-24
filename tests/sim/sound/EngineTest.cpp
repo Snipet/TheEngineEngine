@@ -39,7 +39,7 @@ namespace
 TEST_CASE("engine: on the bench no gearbox (the whine's switch changes nothing, to the bit), the alternator's line at "
           "100.8 a turn, and the fuel pump's prime at key-on before the first crank", "[sound][engine]")
 {
-    // (one test, so that the simulator is compiled once for the three: the fast tier's budget)
+    // (one test, so that the simulator is compiled once for all of them: the fast tier's budget)
     {
         auto run = [](double whineDb) {
             tee::test::Scenario s = base(0);
@@ -247,4 +247,30 @@ TEST_CASE("engine: a bike's own sequential box whines at its constant mesh's tee
         return s.run(5.0);
     }();
     CHECK(tee::test::sound::rms(diff(on, axleOff, 0.0, 5.0)) == 0.0);
+}
+
+TEST_CASE("engine: voices switched on with the key or after it end in the same idle, and the pump primes either way",
+          "[sound][engine]")
+{
+    // the two routes to "voices on, key on" end alike (X, 20:02; card D's c93c3391 renders from the voices' rise
+    // too): voices with the key, or the key first and the voices 0.3 s later. The idle at 2.2 to 2.6 s
+    // (the cold V8's, after a start at 1 s; the ECU's cold idle target glides meanwhile, so a later toggle needs
+    // the glide to have settled by then) within 1 rad/s; before the fix 188.75 against 181.65. And the pump
+    // primes in the late route too, before the first crank.
+    auto run = [](double voicesAt, double pumpDb) {
+        tee::test::Scenario s("v8");
+        s.at(0.0).mode(0).throttle(0.0).ignition(tee::On).spec("voices.model", voicesAt <= 0.0 ? 1.0 : 0.0)
+            .spec("voices.pump", pumpDb);
+        if (voicesAt > 0.0)
+            s.at(voicesAt).spec("voices.model", 1.0);
+        s.at(1.0).ignition(tee::Start).until(2.0).ignition(tee::On);
+        return s.run(2.6);
+    };
+    const auto first = run(0.0, 0.0);
+    const double idleFirst = first.tel("engine.speed").during(2.2, 2.6).mean();
+    const auto lateOn = run(0.3, 0.0), lateQuiet = run(0.3, -60.0);
+    const double idleLate = lateOn.tel("engine.speed").during(2.2, 2.6).mean();
+    INFO("voices with the key: " << idleFirst << " rad/s; 0.3 s after: " << idleLate);
+    CHECK(std::fabs(idleLate - idleFirst) < 1.0);
+    CHECK(tee::test::sound::rms(diff(lateOn, lateQuiet, 0.4, 0.95)) > 0.0);
 }
