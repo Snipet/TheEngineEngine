@@ -528,6 +528,10 @@ namespace tee
                 for (const std::string& a : {f.axisX, f.axisY})
                     if (!a.empty() && !isQuantity(a))
                         say(f, "ui::axes names \"" + a + "\", which is no quantity");
+                // its own fields (x, y, z, n) carry nothing for the display: the table says it all. A curve's value is
+                // its second axis; a map's z is the table's ui::unit or ui::quantity
+                if (f.kind == FieldKind::Map && f.quantity.empty() && f.unit.empty())
+                    say(f, "a map's value (z) has no ui::unit or ui::quantity (its x and y are ui::axes)");
                 continue;
             }
             if (!f.defaultValue)
@@ -549,6 +553,11 @@ namespace tee
                         say(f, std::to_string(f.choices.size()) + " choices for a range of " + number(span) + " values");
                 }
             }
+            // what the number is, for its display (01-rules.md, section 4): a quantity, a unit, or its choices' names
+            if (f.kind != FieldKind::Switch && f.scalar != Scalar::Bool && f.quantity.empty() && f.unit.empty()
+                && f.choices.empty())
+                say(f, "no ui::unit, ui::quantity or ui::choices (a count: ui::unit(\"gears\"); a kind or a switch: "
+                       "ui::choices; a fraction: ui::quantity(\"fraction\"))");
             if (!f.taper.empty() && f.taper != "log" && f.taper != "linear")
                 say(f, "ui::taper(\"" + f.taper + "\") is neither \"log\" nor \"linear\"");
             if (f.taper == "log" && f.hasRange() && !(*f.minimum > 0))
