@@ -5,7 +5,7 @@
 
 module TsRig
 {
-    TwoStrokeSpec spec;
+    EngineSpec spec;
     TwoStroke eng;
     float bore;         // the geometry (a 125 cc racing single's, 54 by 54.5 mm, unless a test sets it)
     float stroke;

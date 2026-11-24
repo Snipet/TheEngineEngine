@@ -28,9 +28,11 @@ module LRig
     int driven;
     float vTotal;
     int nCyl;
+    float fire[16];     // the engine's firing angles (a V8's, cross-plane, by default) and its cycle
+    float cyc;
     float shake;        // the free forces' amplitude (N), fed as a sine at freq into fy when src is 3
     // the test signal: src 0 the left tail, 1 the right, 2 the intake, 3 the torque (cabin), 4 mech, 5 block, 6 turbo,
-    // 7 starter, 8 comb, 9 the headers' walls (both), 10 the road; 11 both tails
+    // 7 starter, 8 comb, 9 the headers' walls (both), 10 the road; 11 both tails; 12 the driveline (package M's)
     int src;
     int sig;            // 0 noise in an engine's band (100 Hz to 1.5 kHz), 1 a sine at freq, 2 an impulse at the next
                         // sample, 4 white noise
@@ -59,8 +61,8 @@ module LRig
         room = 0.0f;
         levelDb = 0.0f;
         asp = 0;
-        exTrim = 1.0f;
-        gainNorm = 1.0f;
+        exTrim = 8.169f;     // the V8's trims, which model 1's computed level is held to
+        gainNorm = 0.6645f;
         nPipes = 2;
         bike = 0.0f;
         tailD = 0.06f;
@@ -68,6 +70,9 @@ module LRig
         driven = 0;
         vTotal = 0.0057f;
         nCyl = 8;
+        cyc = 720.0f;
+        for (int c = 0; c < 8; ++c)
+            fire[c] = 90.0f * (float)c;
         src = 0;
         sig = 0;
         freq = 1000.0f;
@@ -116,21 +121,26 @@ module LRig
         {
             const float sh = src == 3 ? shake : 0.0f;
             ln.block(view, intakeK, mechK, distance, room, levelDb, asp, exTrim, gainNorm, nPipes, bike, tailD, &ss, &st,
-                     carSpeed, driven, vTotal, nCyl, 0.0f, 0.0f, 0.0f, 0.0f);
+                     carSpeed, driven, vTotal, nCyl, 0.0f, 0.0f, 0.0f, 0.0f, fire, cyc, 0);
             for (int i = 0; i < 16; ++i)
             {
                 const float x = signal();
-                float s[12];
-                for (int k = 0; k < 12; ++k)
+                float s[13];
+                for (int k = 0; k < 13; ++k)
                     s[k] = 0.0f;
                 if (src == 11)
                 {
                     s[0] = x;
                     s[1] = x;
                 }
+                else if (src == 12)
+                {
+                    s[4] = x;   // the driveline comes in mech too, as Extras gives it
+                    s[11] = x;
+                }
                 else
                     s[src < 0 ? 0 : (src > 10 ? 10 : src)] = x;
-                ln.mix(i, s[0], s[1], s[2], s[3], s[4], s[5], s[6], s[7], s[8], s[9], s[9], driven, s[10], cutG);
+                ln.mix(i, s[0], s[1], s[2], s[3], s[4], s[5], s[6], s[7], s[8], s[9], s[9], driven, s[10], cutG, s[11]);
             }
             ln.finish(left, right, at, 16);
             at += 16;

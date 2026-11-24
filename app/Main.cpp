@@ -261,10 +261,14 @@ namespace
 
         funkgui::desktop::DesktopHost host(*panel, std::move(options));
         commands.attach(&host);
-        if (shown.saveText)
-            *shown.saveText = [&commands](const std::string& name, const std::string& text, std::string& error) {
+        if (shown.window)
+        {
+            shown.window->saveText = [&commands](const std::string& name, const std::string& text, std::string& error) {
                 return commands.saveText(name, text, error);
             };
+            shown.window->audioInfo = [&audioLine] { return audioLine; };
+            shown.window->audioMenu = [&commands] { commands.audioMenu(); };
+        }
         std::string why;
         if (!host.open(why))
         {
@@ -374,6 +378,8 @@ namespace
         const std::uint64_t callbacks = device.callbacks();
         const int largest = device.largestRequest();
         host.close();
+        if (shown.window)
+            *shown.window = {};             // they hold the commands and this function's locals, which go first
         device.close();
         if (recorder.recording())
         {

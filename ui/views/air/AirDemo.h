@@ -16,7 +16,7 @@ namespace tee::ui::air
 {
     std::vector<FieldInfo> airDemoFields();
     // "na4-itb", "turbo4" (one turbo, variable vanes, external gate, anti-lag, nitrous), "tt-v8", "sc-v8" (Roots),
-    // "seq6" (sequential), "cmp6" (compound), "cf-v8" (centrifugal blower); false for none.
+    // "seq6" (sequential), "cmp6" (compound), "cf-v8" (centrifugal blower), "var-v8" (two runner lengths); false for none.
     bool setAirDemoBuild(FieldDoc& doc, std::string_view name);
     // The live values a build would show at a speed (rpm) and a load (0..1): telemetry names and SI values (NaN: none).
     std::vector<std::pair<const char*, double>> airLiveValues(const AirBuild& b, double rpm, double load);
