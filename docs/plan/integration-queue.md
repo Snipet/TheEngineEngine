@@ -70,7 +70,7 @@ fixes its own when it next touches its tests, and deletes its hook.
 
 ## FunkGui, after card A (13:19)
 
-- The owner pushes the tag `v0.28.0` on FunkGui's main (19d06ab); then card B names the tag beside its pinned commit.
+- ~~The owner pushes the tag `v0.28.0` on FunkGui's main (19d06ab)~~ done 13:28; card B names the tag beside its pinned commit.
 - The lead looks at `fg.desktop.menu`'s 40 candidate golden rows and adopts them or says why not.
 - Card A's requests outside its paths (`tools/check-headers.sh`, `tools/GalleryApp/CMakeLists.txt`, the POSIX-only
   tools and tests on Windows): `docs/handoffs/a-funkgui-desktop.md`. None blocks TheEngineEngine.
@@ -96,3 +96,12 @@ fixes its own when it next touches its tests, and deletes its hook.
   LLVM's own statics there, and its destructor then runs on a JIT that is gone (38 host tests crashed at exit; Linux's
   order hides it). Never keep a `tee::Program` or anything holding one in a static with a destructor: free it before
   `main` returns, or keep it in an object that is never destroyed (e69ea09).
+
+## From the interface (13:35)
+
+- **D**: the Scope arrays `portIntake`, `portExhaust` (cylinder 1's port pressures by degree, Pa absolute) and the
+  telemetry `ecu.advance` (degrees before top dead centre), `sound.rate` (Hz): SCOPE (U5) draws them and shows a
+  dash until they exist.
+- **G**: pipe pressures per element of the system as built, so EXHAUST (U3) can draw every primary's pulse along its
+  own pipe; wall temperatures per element.
+- **U1**: `garage::Library* library` on `WorkspaceContext` (U5's `ui/views/garage/Library.h`); the shell implements it.

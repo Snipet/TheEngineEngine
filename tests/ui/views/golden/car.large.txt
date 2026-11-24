@@ -1,0 +1,11 @@
+geometry eefefc4013d93fa7
+text 756c1c78b1f3fd1a
+statics 1028
+live 0
+texts 773
+rrects 63
+segments 192
+areas 0
+shaders 0
+images 0
+size 1600 x 1000

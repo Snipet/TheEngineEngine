@@ -24,7 +24,7 @@
 // What it leaves out: the rod's own rotary inertia about its centre of mass (the two-mass split's small error), the
 // crank's torsional twist, the valvetrain's masses.
 #pragma once
-#include "mechspec.fm"
+#include "../spec/engine.fm"
 #include "kinematics.fm"
 #include "layout.fm"
 
@@ -35,8 +35,8 @@ module MovingMasses
     float mRec;                 // a cylinder's reciprocating mass, kg
     float mRot;                 // a cylinder's rod mass turning with the pin, kg
     float j0;                   // what turns at a steady inertia: flywheel, crank, the rods' turning parts, kg m^2
-    float cph[MECH_MAX_CYL];    // each cylinder's top dead centre, as a cosine and a sine
-    float sph[MECH_MAX_CYL];
+    float cph[MAX_CYL];    // each cylinder's top dead centre, as a cosine and a sine
+    float sph[MAX_CYL];
     // at the last call
     float jNow;                 // the inertia the crank feels, kg m^2
     float jSlope;               // half its slope over the angle (sum of m x' x''), kg m^2 per radian
@@ -44,7 +44,7 @@ module MovingMasses
     float jMean;                // J's mean over a turn: J0 plus half of n m r^2 (to the first order in 1 / lambda)
 
     // The masses for a cylinder of this bore, stroke and rod (m), its compression, and the turning inertia (kg m^2)
-    void setup(const MechSpec* s, const LayoutGeom* g, float bore, float stroke, float rod, float compression, float flywheel)
+    void setup(const EngineSpec* s, const LayoutGeom* g, float bore, float stroke, float rod, float compression, float flywheel)
     {
         sc.setup(bore, stroke, rod, compression);
         n = g->n;

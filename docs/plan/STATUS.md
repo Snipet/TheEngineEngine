@@ -4,28 +4,42 @@
 
 | Package | State | Where it runs | Since | Notes |
 |---|---|---|---|---|
-| A: FunkGui desktop | **landed and merged 13:19** | local agent (finished) | 11:22 | Snipet/FunkGui pull request 38 merged to main at `19d06ab` (version 0.28.0): `DesktopHost` on SDL3, the menu overlay, file dialogs, clipboard, preferences, `FunkGui::gpu` without JUCE; CI green on Windows (44 tests, Direct3D 11), macOS (70, Metal), Linux (70, Vulkan on lavapipe). **The tag `v0.28.0` waits for the owner**: this session type may not push a tag. 40 new golden rows of `fg.desktop.menu` are candidates the lead has not adopted yet. Handoff: `docs/handoffs/a-funkgui-desktop.md` |
-| K1, K2: the keel | **landed** (handoff 13:00) | local agent | 11:27 | R measured: the reference V8 is 2.3 us a sample, 22 to 23 % of a core here, 24.7 % on CI's M1; `scripts/ci-status.sh` |
-| B: shell and application | running | local agent, `/home/user/work/shell` | 11:30 | interfaces pushed (`Sources.h`, `MainPanel.h`) |
+| A: FunkGui desktop | **landed and merged 13:19** | local agent (finished) | 11:22 | Snipet/FunkGui pull request 38 merged to main at `19d06ab` (version 0.28.0): `DesktopHost` on SDL3, the menu overlay, file dialogs, clipboard, preferences, `FunkGui::gpu` without JUCE; CI green on Windows (44 tests, Direct3D 11), macOS (70, Metal), Linux (70, Vulkan on lavapipe). Tagged `v0.28.0` by the owner at 13:28. 40 new golden rows of `fg.desktop.menu` are candidates the lead has not adopted yet. Handoff: `docs/handoffs/a-funkgui-desktop.md` |
+| K1, K2: the keel; now the build and CI steward | **landed** (handoff 13:00); steward running | cloud session `session_01LFAGgPuDhrgAnggttDA8nH` (since 13:30; the local agent was stopped by an accidental interrupt at 13:26, nothing lost) | 11:27 | R measured: the reference V8 is 2.3 us a sample, 22 to 23 % of a core here, 24.7 % on CI's M1; `scripts/ci-status.sh`; `tee-bench --profile`. The steward watches CI on the three systems, keeps it fast, runs ThreadSanitizer once |
+| B: shell and application | running (slice 2; the frame as the application) | cloud session `session_01LFAGgPYzYByoQt6gue8ek5` (since 13:30; the local agent was stopped at 13:26, nothing lost) | 11:30 | slice 1 landed: the application on three systems, artefacts in CI, `tee-headless`; the simulator in the interface's frame (`--engine sim`). Next: FunkGui pinned at v0.28.0, the frame by default, any workspace pictured with `--workspace`, builds on disk |
 | J1: interface kit | **landed 12:04** | cloud session | 11:32 | the panel code ported (36 files, provenance in `ui/kit/SEED.tsv`), `RefPanel`, shaders compiled for Metal and SPIR-V; 29 headless tests; no shader drawn yet (no GPU path ran) |
-| K3: the split | K3a **landed 12:30**; K3b running | local agent, `/home/user/work/split` | 11:55 | carved so far (13:04): Listen, Extras, Car, Heat, Boost, Ecu, Combustion; signal for integration: `docs/handoffs/k3b.md` and no `sim/core/monolith.fm` |
-| C: host and tools | **landed** (first handoff, 13:00) | local agent | 11:55 | 45 tests: Schema and its lint, `SimHost`, `Build`, reload, the dyno runner, the scenario library, replay, validation. ThreadSanitizer never ran here (no runtime in the container). The dyno on the real engine waits for K3b and D |
-| I: vehicle | standalone half **landed 12:45**; integration waits for K3b | local agent (finished) | 12:00 | 32 tests: tyres, differentials, loads, five gearboxes, the strip's timers, a chassis dyno; three car builds |
-| F: forced induction | standalone half **landed 13:04**; integration waits for K3b | local agent (finished) | 12:00 | 26 tests: the map from sizes, lag and spool trends, energy and mass balance, the gate's loop, surge at 26 Hz with no valve, twin-scroll, three superchargers, nitrous, a passive housing, a ten-minute soak |
-| E: valvetrain and induction | standalone half **landed 12:38**; integration waits for K3b | local agent (finished) | 12:00 | 14 tests |
-| H: combustion and ECU | standalone half **landed 12:28**; integration waits for K3b | local agent (finished) | 12:00 | 19 tests |
-| D: mechanics and layouts | running | cloud session `session_01LFAGgTFpHiA9YGryQgFytL` | 12:07 | standalone first (layouts from geometry, inertia, shaking, friction, work); the integrator's job after K3b |
-| G: exhaust builder | standalone half **landed 13:08**; integration waits for K3b | cloud session `session_01LFAGgSkq1paVPmFHkoNNei` | 12:08 | 12 tests: bit-identical to the reference's exhaust at its defaults for all 17 layouts; passivity over 50 random topologies; conservation; headers, crossovers, resonators, mufflers, the valve measured in dB. Over its CPU budget for a typical dual system (0.31 R against 0.25 R) |
+| K3: the split | **landed**: K3a 12:30, K3b 13:20 (handoff written by the lead 13:43) | (finished) | 11:55 | every module of 02-contracts.md §6 carved; `sim/README.md` is the seam document; verified by the lead at 45474be: 272 of 272 tests, the null test identical to the bit, the cost 1.03 of the reference |
+| C: host and tools | first slice **landed 13:24**; second slice running | cloud session `session_01LFAGgSy2V7eFxcA5Jr8M6s` (since 13:30; the local agent was stopped at 13:26, nothing lost) | 11:55 | 45 tests: Schema and its lint, `SimHost`, `Build`, reload, the dyno runner, the scenario library, replay, validation. Second slice: a dyno fast enough for the ribbon (a first curve within a second of an edit), one `tee::Build`, `tee-render` with builds and scenarios |
+| I: vehicle | standalone half **landed 12:45**; **integrating since 13:33** | local agent (resumed 13:33) | 12:00 | 32 tests: tyres, differentials, loads, five gearboxes, the strip's timers, a chassis dyno; three car builds |
+| F: forced induction | standalone half **landed 13:04**; **integrating since 13:33** | local agent (resumed 13:33) | 12:00 | 26 tests: the map from sizes, lag and spool trends, energy and mass balance, the gate's loop, surge at 26 Hz with no valve, twin-scroll, three superchargers, nitrous, a passive housing, a ten-minute soak |
+| E: valvetrain and induction | standalone half **landed 12:38**; **integrating since 13:33** | local agent (resumed 13:33) | 12:00 | 14 tests |
+| H: combustion and ECU | standalone half **landed 12:28**; **integrating since 13:33** | local agent (resumed 13:33) | 12:00 | 19 tests |
+| D: mechanics and layouts; **the integrator** | integrating (since 13:33) | cloud session `session_01LFAGgTFpHiA9YGryQgFytL` | 12:07 | first the hooks for every package as no-ops, the fields asked of the lead, one model switch a package; then its own (layouts as data, moving masses, friction, the engine dyno). Two-strokes (standalone, 7 tests) parked |
+| G: exhaust builder | standalone half **landed 13:08**; **integrating since 13:33** | cloud session `session_01LFAGgSkq1paVPmFHkoNNei` | 12:08 | 12 tests: bit-identical to the reference's exhaust at its defaults for all 17 layouts; passivity over 50 random topologies; conservation; headers, crossovers, resonators, mufflers, the valve measured in dB. Over its CPU budget for a typical dual system (0.31 R against 0.25 R) |
 | J2: widgets, binding, the frame | **landed 12:47** | cloud session | 12:05 | eleven Canvas widgets (gauge, plot, map and curve editors among them), units, the binding to the real `tee::Build`, generated pages, a first frame of nine screens; 56 UI tests; contact sheets at density 1 and 2 |
 | U1: the redesigned frame | interface **landed 13:12**; the frame running | cloud session `session_01LFAGgPEvM8vsbaJsuRqXAz` | 12:53 | [ui-design.md](ui-design.md): the `Workspace` interface and the look first (U2 to U5 wait on it), then the frame, the cockpit, DRIVE |
 | U2: ENGINE, VALVES | running | cloud session `session_01LFAGgQaoxE3tRGwUcwpU2G` | 13:19 | the block from above with its firing ring, one cylinder in section, the cam editor and timing ring |
 | U3: AIR, EXHAUST | running | cloud session `session_01LFAGgTSo5cKehJoa4H3k2A` | 13:19 | the charge path and the compressor map; the exhaust as built, with heat and travelling pulses |
 | U4: TUNE, CAR, DYNO | running | cloud session `session_01LFAGgPYn8yFr9MJ2vQvgRd` | 13:19 | the maps with the live cell; the car from the side, the driveline, the gearing chart; the big dyno plot |
 | U5: GARAGE, SCOPE, atmosphere shaders | running | cloud session `session_01LFAGgSKtL3Z967uRP5DGT9` | 13:19 | builds as cards and compared; the instrument bench with a spectrum against speed; the shaders last |
-| Wave 2 | after the gate (M2) | | | Q (performance) as soon as K3b lands |
+| Q: performance | running | cloud session `session_01LFAGgPBEbLATNvMiRU1PGS` | 13:44 | where R goes by module; FMinus's own levers; the resampler and the unowned modules first; patches for the pipes and the cylinder through the lead. Target: R down by a fifth, a turbo V8 with a dual exhaust under 60 % of a core |
+| Wave 2, the rest | after the gate (M2) | | | the listener, mechanical voices, two-strokes (started), diesels, bikes, content, the wheel, release |
 
 ## Landed
 
+- **13:33 integration began**: K3b verified by the lead (272 of 272 tests at 45474be; `docs/handoffs/k3b.md`); D is
+  the integrator; E, H, F, I (resumed local agents) and G (cloud) wire their models in behind switches.
+- 13:32 to 13:34 the first three workspace stages landed: ENGINE (U2), SCOPE (U5), EXHAUST (U3). The lead rendered
+  the frame in every workspace at both densities, sent five pictures to the owner, and sent each session its
+  corrections (lay out for the frame's stage, text collisions, four red view tests, the frame's goldens).
+- 13:26 the owner pressed ESC by accident, which stopped the four agents still running on the lead's machine (the
+  keel, the shell, the split, the host and tools). All four working copies were clean and pushed: nothing was lost.
+  They cannot be woken; at 13:30 the shell, the keel (as build and CI steward) and the host and tools were started
+  again as cloud sessions on Opus 5.5, which an interrupt here cannot stop. The split was finished but for its
+  handoff; the lead verifies it and writes that.
+- 13:28 the owner pushed FunkGui's tag `v0.28.0` (on 19d06ab).
+- 13:32 the branch did not build for about ten minutes (the frame's new interface against `app/Offline.cpp`); fixed
+  by the lead, 45474be.
 - **13:15 checkpoint M1, step 2, Windows, first part: passed.** The owner ran the application (run 45399202005) on a
   real Windows machine: the reference engine compiles in 2.11 s; WASAPI at 48 kHz with a 480-frame (10 ms) buffer;
   Direct3D 11 at 150 % scale; `--engine tone` held 60.0 frames a second for 789 frames with 1381 audio callbacks and
