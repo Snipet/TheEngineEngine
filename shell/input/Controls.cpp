@@ -49,6 +49,8 @@ namespace tee::input
         driver_.set(Source::panel, Action::start, p.startHeld);
         driver_.setStrip(p.throttle, p.throttle >= 0.0f);
         driver_.setBrakeStrip(p.brake, p.brake >= 0.0f);
+        driver_.setClutchStrip(p.clutch, p.clutch >= 0.0f);
+        driver_.setHandbrakeStrip(p.handbrake, p.handbrake >= 0.0f);
         // the counts: each increase a press (a count that jumped far is a new Panel's: followed, not pressed)
         const auto presses = [this](int now, int& seen, Action action) {
             const int more = now - seen;

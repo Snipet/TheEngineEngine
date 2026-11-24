@@ -3,7 +3,13 @@
 // cursor reading the traces; a quantity the runs did not record drawn as a dash, not invented.
 #include "ViewKit.h"
 
+#include "views/car/Car.h"
+#include "views/car/CarDemo.h"
+#include "views/tune/Tune.h"
+#include "views/tune/TuneDemo.h"
+
 #include <funkgui/core/Theme.h>
+#include <funkgui/text/FontService.h>
 
 #include <algorithm>
 
@@ -148,6 +154,86 @@ namespace
         rig.host->click(plotRight - 12.0f - 68.0f * 1.5f, bandY);
         rig.settle();
         picture("dyno.absent", *rig.host);
+        return 0;
+    }
+
+    // The contact sheet of package U4: DYNO, TUNE and CAR a row each; across, each at 1100 x 700 and 1600 x 1000, at
+    // density 1 then 2 (out/ui/sheet.u4.png). Every tile is the software rasteriser's, shrunk to half its logical size.
+    VIEW_TEST(testU4Sheet, "dyno.sheet")
+    {
+        struct Col
+        {
+            int w, h;
+            float dpi;
+        };
+        const Col cols[] = { { 1100, 700, 1.0f }, { 1600, 1000, 1.0f }, { 1100, 700, 2.0f }, { 1600, 1000, 2.0f } };
+        constexpr int kGap = 24;
+        int sheetW = kGap;
+        for (const Col& c : cols)
+            sheetW += c.w / 2 + kGap;
+        const int rowH = 1000 / 2 + kGap, sheetH = kGap + 3 * rowH;
+        funkgui::Image out;
+        out.w = sheetW;
+        out.h = sheetH;
+        out.rgba.assign(static_cast<std::size_t>(sheetW) * static_cast<std::size_t>(sheetH) * 4, 255);
+        for (std::size_t i = 0; i < out.rgba.size(); i += 4)
+            out.rgba[i] = out.rgba[i + 1] = out.rgba[i + 2] = 8;
+        for (int row = 0; row < 3; ++row)
+        {
+            int ox = kGap;
+            for (const Col& col : cols)
+            {
+                const tee::ui::WorkspaceFactory make =
+                    row == 0 ? tee::ui::makeDynoWorkspace : row == 1 ? tee::ui::makeTuneWorkspace : tee::ui::makeCarWorkspace;
+                StageRig rig(make, col.w, col.h, col.dpi, row == 1 ? 0.0 : 4.6);
+                if (row == 0)
+                {
+                    editBoost(rig, 110e3);
+                    runOnce(rig);
+                    editBoost(rig, 85e3);
+                    rig.host->move(col.w * 0.45f, col.h * 0.4f);
+                }
+                else if (row == 1)
+                {
+                    tee::ui::tunedemo::fillDocument(rig.demo.doc);
+                    for (int i = 0; i < 300; ++i)
+                    {
+                        rig.demo.at(i / 60.0);
+                        tee::ui::tunedemo::setLive(rig.demo.engine, i / 60.0);
+                        rig.host->tick(1);
+                    }
+                }
+                else
+                    tee::ui::cardemo::setLive(rig.demo.engine);
+                rig.settle();
+                const funkgui::Image img = funkgui::rasterise(rig.host->draw(), funkgui::FontService::get().atlas(), 1);
+                const int tw = col.w / 2, th = col.h / 2, oy = kGap + row * rowH;
+                const double sc = static_cast<double>(img.w) / tw;
+                for (int y = 0; y < th; ++y)
+                    for (int x = 0; x < tw; ++x)
+                    {
+                        const int x0 = static_cast<int>(x * sc), x1 = std::max(x0 + 1, static_cast<int>((x + 1) * sc));
+                        const int y0 = static_cast<int>(y * sc), y1 = std::max(y0 + 1, static_cast<int>((y + 1) * sc));
+                        unsigned sum[3] = { 0, 0, 0 }, n = 0;
+                        for (int yy = y0; yy < y1 && yy < img.h; ++yy)
+                            for (int xx = x0; xx < x1 && xx < img.w; ++xx)
+                            {
+                                const std::size_t k = (static_cast<std::size_t>(yy) * static_cast<std::size_t>(img.w) + static_cast<std::size_t>(xx)) * 4;
+                                for (int ch = 0; ch < 3; ++ch)
+                                    sum[ch] += img.rgba[k + static_cast<std::size_t>(ch)];
+                                ++n;
+                            }
+                        const std::size_t d = (static_cast<std::size_t>(oy + y) * static_cast<std::size_t>(sheetW) + static_cast<std::size_t>(ox + x)) * 4;
+                        for (int ch = 0; ch < 3; ++ch)
+                            out.rgba[d + static_cast<std::size_t>(ch)] = static_cast<uint8_t>(n > 0 ? sum[ch] / n : 0);
+                    }
+                ox += tw + kGap;
+            }
+        }
+        const std::string path = (outDir() / "sheet.u4.png").string();
+        CHECK_MSG(tee::test::writePng(out, path), path);
+        std::printf("  contact sheet: %s (software rasteriser; rows DYNO, TUNE, CAR; columns 1100 x 700 and 1600 x 1000 "
+                    "at density 1, then at 2)\n", path.c_str());
         return 0;
     }
 }
