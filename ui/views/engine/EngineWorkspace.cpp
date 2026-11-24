@@ -7,6 +7,7 @@
 #include "views/engine/EngineWorkspace.h"
 
 #include "views/engine/EngineModel.h"
+#include "views/engine/PageText.h"
 
 #include "app/Look.h"
 #include "kit/widgets/Basic.h"
@@ -131,6 +132,58 @@ namespace tee::ui
         {
             ctx_.selection.hover(hitAt({ e.x, e.y }));
             Board::pointerMove(e);
+        }
+
+        // The inspector for what is selected: the layout (and its presets), one cylinder's place on the crank, or the
+        // cylinder's geometry with its masses and friction; nothing selected: the generated pages of `engine`.
+        std::string inspectorPage() const override
+        {
+            const std::string& s = ctx_.selection.path();
+            // the field's path in this build: the branch's, else the standalone's or the demo's (never both)
+            const auto both = [&](EF f, int i = -1) {
+                std::vector<std::string> v;
+                if (std::string x = fieldPath(ctx_.doc, f, i); !x.empty())
+                    v.push_back(std::move(x));
+                return v;
+            };
+            const auto cat = [](std::vector<std::vector<std::string>> parts) {
+                std::vector<std::string> v;
+                for (auto& p : parts)
+                    v.insert(v.end(), p.begin(), p.end());
+                return v;
+            };
+            const Layout& l = model().layout;
+            if (s == "engine.layout")
+            {
+                std::vector<std::string> banks;
+                for (int b = 0; b < kMaxBanks; ++b)
+                    for (const std::string& x : both(EF::bankAngle, b))
+                        banks.push_back(x);
+                return pages::page(ctx_.doc,
+                                   { { "LAYOUT", cat({ both(EF::layout), both(EF::custom) }) },
+                                     { "CUSTOM LAYOUT", cat({ both(EF::cylinders), both(EF::rotors), banks }) },
+                                     { "LIMITS", { "engine.idleTrim", "engine.redlineTrim", "engine.redline", "engine.rough" } } },
+                                   "THE PRESETS ARE THE LAYOUT MENU; CUSTOM PLACES EACH CYLINDER");
+            }
+            if (const int k = selectedCylinder(); k >= 0)
+            {
+                const std::string title = "CYLINDER " + std::to_string(k + 1);
+                std::string note = l.custom ? "" : "THIS CYLINDER STANDS WHERE THE LAYOUT PUTS IT; CUSTOM MOVES IT";
+                return pages::page(ctx_.doc,
+                                   { { title, cat({ both(EF::bank, k), both(EF::pin, k), both(EF::fireRev, k), both(EF::place, k) }) },
+                                     { "LAYOUT", cat({ both(EF::layout), both(EF::custom) }) } },
+                                   note);
+            }
+            if (s == "engine.bore")
+                return pages::page(ctx_.doc,
+                                   { { "CYLINDER", cat({ both(EF::displacement), both(EF::boreStroke), both(EF::bore), both(EF::stroke),
+                                                         both(EF::rod), both(EF::compression) }) },
+                                     { "MOVING MASSES", cat({ both(EF::pistonMass), both(EF::rodMass), both(EF::rodRecip), both(EF::flywheel),
+                                                              { "engine.balance1", "engine.balance2" } }) },
+                                     { "FRICTION", { "engine.friction", "engine.fricConst", "engine.fricPeak", "engine.fricSpeed",
+                                                     "engine.fricSpeed2", "engine.fricBearing", "engine.valvetrain", "engine.alternator",
+                                                     "engine.airCon" } } });
+            return {};
         }
 
         // The selected cylinder (0-based), -1: none.
