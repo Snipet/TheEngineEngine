@@ -9,5 +9,8 @@ const Known kKnown[] = {
      "a sample): 3.2 to 4.6 R; reported, not required in real time (Q: Economy or TEE_FAST)"},
     {"X-016", "2026-11-24", "Q (cost)", "corners 1", "fuzz", "corners", "cost",
      "the ranges' corners seed 1: 2.1 to 4.9 R (Q measured 2.1 to 2.4 on a quieter host); reported as the heavy case"},
+    {"X-027", "2026-11-24", "D and H (ecu model 1's idle spark look-ahead)", "ecu.model+car.model", "v8",
+     "wet-rolling-traction-off", "click",
+     "a step of 29.6 (bound 24.2) at 4.75 s, 0.25 s after the shift to second at light throttle; from 3930eadb (ecu.fillShare)"},
     {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},   // the end (an array is never empty)
 };
