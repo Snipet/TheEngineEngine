@@ -70,7 +70,9 @@ namespace combo
     const char* kindName(Kind k);
     std::vector<Kind> allKinds();
     // The scenario on a build with a set of switches on from the start. `times` gets its times.
-    tee::test::Scenario scenario(Kind kind, const std::string& build, std::uint32_t mask, Times& times);
+    // shiftPhase: seconds added to every upshift after the pull-away (a shift cut's phase among the firings)
+    tee::test::Scenario scenario(Kind kind, const std::string& build, std::uint32_t mask, Times& times,
+                                 double shiftPhase = 0.0);
     // Its timeline as a tee-scenario file (for the tools and the listening pack).
     std::string scenarioJson(Kind kind, std::uint32_t mask);
     // Where those files are: content/scenarios/combo/ (tee-render takes them by path, not by name).

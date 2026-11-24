@@ -711,7 +711,9 @@ def build(a):
     e["cycle"] = "Four-stroke"
     # package L's listener on: every source where it is on the car; the first camera behind the car in the open,
     # the engine where the class carries it
-    snd = {"model": "Places", "camera": "Rear", "place": "Field", "ground": "Asphalt",
+    # (no camera: model 1 opens on Tailpipe, the default, the lead's ruling 23:34; a build states one only when it
+    # means one)
+    snd = {"model": "Places", "place": "Field", "ground": "Asphalt",
            "enginePlace": ENGINE_PLACE.get(a["car"], "Front")}
     spec = {"engine": e, "valve": v, "intake": i, "boost": bo, "exhaust": x, "fuel": f, "ecu": nest(t),
             "car": car, "env": {"temperature": 288.15, "pressure": 101325.0}, "voices": vo, "sound": snd}
@@ -945,10 +947,7 @@ def main():
                       "Then drive: in first, hold the brake, press the launch button, floor the pedal and let go for a "
                       "launch-control start (traction control holds the wheelspin), and listen to the direct injection's "
                       "tick and the turbo's whistle as the dual clutch shifts.\n\n" + first["notes"])
-    # the Tailpipe camera, model 1's form of the reference's default view, what the owner heard before first.json
-    # (the lead's ruling, 22:53, on his renders and L's: within 1 to 5 dB of the reference in every octave; Side was
-    # 9 dB down at 500 Hz and up in the highs, Rear 7 down at 1 kHz)
-    first["spec"]["sound"]["camera"] = "Tailpipe"
+    # (on the default camera, Tailpipe: model 1's form of the reference's default view, the lead's ruling 22:53)
     write(os.path.join(ROOT, "content", "builds", "first.json"), first)
     loose_parts(A)
     manual(A)

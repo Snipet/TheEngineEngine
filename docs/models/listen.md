@@ -71,6 +71,12 @@ The taps' filters are combined into one one-pole each (`1/fc^2` summed). Cost: a
 
 ## Cameras (`spec.sound.camera`)
 
+The default is Tailpipe (camera 0; lead, 23:34): an engine-sound program opens where the exhaust note is, and it is
+the reference's default view (EXHAUST), which every earlier build played: the engine alone through it is within 2 to
+5 dB of the reference's in every octave. Rear, Side and the rest are a person's choice from there; Rear is right as
+what a person behind the car hears (the bay shaded by the body: some 11 dB darker at 8 kHz than the reference's REAR,
+whose bay no geometry gives; the ground's notch near 1 kHz). A build states a camera only when it means one.
+
 | Camera | Where (r: DISTANCE's 0.5 to 30 m) | Ears |
 |---|---|---|
 | Tailpipe | (0 or 0.4, -r, 0.7), facing the car | ORTF |

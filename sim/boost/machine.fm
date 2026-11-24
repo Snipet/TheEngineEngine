@@ -550,7 +550,14 @@ module BoostMachine
         antiLag = s->antiLag ? 1 : 0;
         nRated = nShot / 2.13e6f;
         nBottle = s->nitrousBottle;
-        if (st != structure)
+        // (at rest, every configure puts the machine's gas at the build's air at once: its volumes, ducts, housings
+        // and the intercooler's core; kept from the simulator's 300 K start, they settled to a 288 K build's air
+        // through the throttle's air temperature and sounded at key-on, D's finding: -54 dBFS with the engine standing)
+        int still = omegaCrank < 1.0f ? 1 : 0;
+        for (int t = 0; t < BOOST_TURBOS; ++t)
+            if (shaft[t].omega > 1.0f)
+                still = 0;
+        if (st != structure || still != 0)
         {
             structure = st;
             reset();
