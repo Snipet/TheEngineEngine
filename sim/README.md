@@ -182,7 +182,8 @@ shaking, work integral and dyno for the engine as configured).
 
 **The physical cylinder**: friction by part (Chen and Flynn's, `core/friction.fm`, by mean piston speed) is used for a
 custom engine and whenever `fuel.model` is 1; Woschni's wall heat (`core/wallheat.fm`) whenever `fuel.model` is 1 or
-`engine.wallHeat` is 1. The new combustion implies the physical cylinder, its walls and its friction together; the
+`engine.wallHeat` is 1 (a rotary's faces: the chamber's walls, `coefficientRotary`; with `fuel.model` 1 its seals'
+leakage, `Cylinder::leakA`; docs/models/mechanics.md). The new combustion implies the physical cylinder, its walls and its friction together; the
 reference's one friction curve (fitted to its V8, too high for small bores: 4.5 bar at 24.8 m/s on a 250 cc cylinder)
 and its one wall coefficient only under the reference's models. `engine.custom` means only that the geometry is the
 build's own. The engine runs at 96 kHz; compiled with `TEE_ENGINE_RATE_48000` defined (card C's prediction service
