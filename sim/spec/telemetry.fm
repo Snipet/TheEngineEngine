@@ -60,6 +60,9 @@ module EngineTel
     float firingAngle [[ui::label("Firing angle")]] [[ui::quantity("angle")]] [[ui::help("Each cylinder's, after cylinder 1's, in the order it fires")]] [MAX_CYL];
     float cylPeak [[ui::label("Cylinder's peak pressure")]] [[ui::quantity("pressure")]] [MAX_CYL];
     float cylPeakAngle [[ui::label("Its angle")]] [[ui::quantity("angle")]] [[ui::help("After the firing top dead centre")]] [MAX_CYL];
+    int layoutRefused [[ui::label("Custom layout refused")]]
+        [[ui::help("1: the custom geometry has cylinders firing together; the layout dial's runs instead")]];
+    float oilTemperature [[ui::label("Oil temperature")]] [[ui::quantity("temperature")]];
 };
 
 module BoostTel
