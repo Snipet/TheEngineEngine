@@ -8,8 +8,9 @@
 // advance by engine speed and load) with ecu.maps.camInAuto off.
 //
 // What it leaves out: part load. A maker trades torque there for fuel (BSFC at a held torque) and internal EGR; not
-// measured yet, so the full-load row stands for every load (the map's two rows are the same). The exhaust phaser is
-// left as the build has it.
+// measured yet, so the map is parked at light load and idle and takes the full-load row from 0.95 of the air's
+// pressure up (applyIntakeCam). Before a map is written to a file, checkIdle runs P's idle gate on it. The exhaust
+// phaser is left as the build has it.
 #pragma once
 
 #include "tee/Predict.h"
@@ -18,6 +19,7 @@
 #include <chrono>
 #include <condition_variable>
 #include <cstdint>
+#include <filesystem>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -30,17 +32,20 @@ namespace tee
     {
         double step = 10.0;           // degrees of advance between cells, from 0 to spec.valve.inPhaseRange
         double knockLimit = 2.0;      // degrees of knock retard over the parked cell's that set a cell aside
+        // Smoothing: a path over the speeds that gives up stepCost of the best torque for each 10 degrees between
+        // neighbouring rows (0: each row its own best). The turbo four's grid alone read 20, 20, 0, 30, 0, 20, 30, 20.
+        double stepCost = 0.01;
         // Between each two speeds the map interpolates its advance; where at an interval's quarter points the
         // interpolated advance makes more than midLoss less torque than the best cell there, that point is added as a
-        // row of its own (the worst first, to the map's 16). Off: the grid alone (a V12's exhaust wave returning into a big low-speed overlap at 2049 rpm made
-        // a 30 % hole the grid's 1500 and 2500 rpm rows straddled: card N1, N3's finding). Off: the grid alone.
-        double stepCost = 0.01;       // smoothing: the share of the best torque given up for each 10 degrees between
-                                      // neighbouring rows (0: each row its own best)
+        // row of its own (the worst first, to the map's 16). A V12's exhaust wave returning into a big low-speed
+        // overlap at 2049 rpm made a 30 % hole the grid's 1500 and 2500 rpm rows straddled (N3's finding). Off by
+        // default: refined, the V12's hole at 2000 rpm filled +16 % but 1500-1750 fell 4 % (card N1).
         bool refine = false;
-        bool accept = true;           // the map against the auto schedule at full load, a row falling back to the auto's
-        double acceptLoss = 0.02;     // phase where it makes more than this share less          // (off until the held cells' sweep and the map's own curve agree near a tooth:
-                                      // refined, a V12's hole at 2000 rpm filled +16 % but 1500-1750 fell 4 %; card N1)
         double midLoss = 0.03;
+        // Acceptance: the map against the auto schedule at full load, a row falling back to the auto's phase where it
+        // makes more than acceptLoss less.
+        bool accept = true;
+        double acceptLoss = 0.02;
         PredictOptions predict;       // the curves' (their range, speeds: 8 by default here)
 
         CamBakeOptions() { predict.points = 8; predict.coarse = 8; }
@@ -65,9 +70,25 @@ namespace tee
     bool bakeIntakeCam(const std::shared_ptr<Sim>& sim, const Build& build, const CamBakeOptions& options,
                        CamBakeResult& result, std::string& error, const std::atomic<bool>* cancel = nullptr);
 
-    // Writes the result into `build`: ecu.maps.camIn over the swept speeds, the same row at no load and at three times
-    // the air's pressure, and ecu.maps.camInAuto off. One undo step.
+    // Writes the result into `build`: ecu.maps.camIn over the swept speeds, parked (0) at loads 0 and 0.75 of the
+    // air's pressure and the baked advance at 0.95 and 3, and ecu.maps.camInAuto off. One undo step.
     bool applyIntakeCam(Build& build, const CamBakeResult& result, std::string& error);
+
+    // The idle gate (P's, content/builds/archetypes/generate.py idle_check, the same windows and limits, so that the
+    // two never disagree: the lead, 22:55). On the scenarios p-idle-warm (8 to 14 s: the mean within 100 rpm of
+    // ecu.idle.speed, the deviation under 25 rpm) and p-cold-start (8 to 11.5 s: running, engine.state 2 throughout,
+    // the deviation under 60 rpm), found in `scenarios`.
+    struct IdleCheck
+    {
+        double asked = 0.0;                     // rpm
+        double warmMean = 0.0, warmSd = 0.0;    // rpm
+        double coldMean = 0.0, coldSd = 0.0;    // rpm
+        bool coldRunning = false;
+        bool pass = false;
+        std::vector<std::string> failures;      // a line each
+    };
+    bool checkIdle(const std::shared_ptr<Sim>& sim, const Build& build, const std::filesystem::path& scenarios,
+                   IdleCheck& result, std::string& error);
 
     // ---- the knock limit ------------------------------------------------------------------------------------------
     //
