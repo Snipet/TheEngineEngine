@@ -3,6 +3,7 @@
 
 #include "tee/Denormals.h"
 
+#include <cstdlib>
 #include <nlohmann/json.hpp>
 
 #include <algorithm>
@@ -105,11 +106,16 @@ namespace tee
         // A float as the shortest decimal that reads back as it: what a file shows of a value the Spec holds.
         double shortest(float v)
         {
+            // (read back with strtod, not std::from_chars: libc++'s floating-point from_chars is "introduced in
+            // macOS 26.0" and does not compile for our deployment target; the digits are C's, the locale "C")
             char text[32];
-            const auto done = std::to_chars(text, text + sizeof text, v);
-            double out = static_cast<double>(v);
-            std::from_chars(text, done.ptr, out);
-            return out;
+            const auto done = std::to_chars(text, text + sizeof text - 1, v);
+            if (done.ec != std::errc())
+                return static_cast<double>(v);
+            *done.ptr = '\0';
+            char* end = nullptr;
+            const double out = std::strtod(text, &end);
+            return end == done.ptr ? out : static_cast<double>(v);
         }
     } // namespace
 
