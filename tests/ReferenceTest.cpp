@@ -227,6 +227,37 @@ TEST_CASE("the same samples whatever the block size", "[ref][blocks]")
     }
 }
 
+TEST_CASE("with the checks the reference plays the same samples, and a budget too small stops it", "[ref][checks]")
+{
+    // A development build (the loop budget and the bounds checks on) computes what the release build does, bit for
+    // bit, as FMinus promises of a call that stays within its budget and its arrays: 6 s of the V8's free revs.
+    const Preset p = preset("v8");
+    const Scenario s = scenario("free-revs");
+    const auto plain = refPlayer(48000.0, false);
+    const auto checked = refPlayer(48000.0, true);
+    const RenderResult a = rendered(*plain, p, s, 512, 6.0);
+    const RenderResult b = rendered(*checked, p, s, 512, 6.0);
+    CHECK(a.peak > 0.1);
+    CHECK(maxDifference(a.audio.left, b.audio.left) == 0.0);
+    CHECK(maxDifference(a.audio.right, b.audio.right) == 0.0);
+
+    // And the budget is really counted: process, called with ten loop iterations to spend, returns early and says so
+    // (the player gives a call 2^32 iterations a second of its samples, which nothing that plays comes near).
+    checked->reset();
+    checked->start(36.0f, 1.0f);
+    REQUIRE_FALSE(checked->stopped());
+    std::string errors;
+    auto* process = checked->program().function<bool(void*, float*, float*, int)>("tee_ref_process", errors);
+    REQUIRE(process != nullptr);
+    fminus::Program& fm = checked->program().fminus();
+    float left[64] = {};
+    float right[64] = {};
+    fm.setLoopBudget(10);
+    (void)process(checked->voice().data(), left, right, 64);
+    CHECK(fm.loopBudgetExceeded());
+    CHECK_FALSE(fm.boundsViolation().has_value());
+}
+
 TEST_CASE("the same sound at 44.1, 48 and 96 kHz, resampled, to a stated tolerance", "[ref][rates]")
 {
     // The engine runs at 96 kHz whatever the host's rate, so the three renders are one simulation heard through

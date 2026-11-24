@@ -1,50 +1,43 @@
-# F: forced induction (standalone handoff)
+# F: forced induction — standalone handoff
 
-Card F ([w1-f-boost.md](../plan/w1-f-boost.md)), branch `claude/awesome-gates-ntdb58`. The model (`boost.model = 1`)
-is built and proven on card F's made-up engine. **Integration waits for K3b** (`docs/handoffs/k3b.md` and
-`sim/core/monolith.fm` gone); nothing outside card F's paths was touched. Equations, sources and judgement:
-[docs/models/boost.md](../models/boost.md).
+Card F, branch `claude/awesome-gates-ntdb58`. `boost.model = 1` (compressor map from sizes, inertial duct that surges,
+turbine housing and nozzle, shaft, charge path and intercooler, gate/PI/vanes, blow-off, Roots/twin-screw/centrifugal,
+sequential/compound/quad, anti-lag, nitrous, sounds) is built in `sim/boost/` (my files beside K3's `boost.fm`; no name
+clashes) and proven on a made-up engine (`tests/sim/boost/rig.fm`). Model, numbers and judgement: `docs/models/boost.md`.
+**Integration waits for K3b** (`docs/handoffs/k3b.md` and `sim/core/monolith.fm` gone): not started.
 
-**Done, standalone** (`tee-tests-boost`, ctest `boost.*`; the rig is `tests/sim/boost/rig.fm`, a 2 L four as an air
-pump with steady or pulsed hot exhaust through waveguide pipes into the turbine's housing):
-1. map: choke flow with the inducer's area (to 0.2 %); the knee's tau with tip speed squared; 60 mm wheel at 150 krpm
-   makes 2.5 to 3.1; the efficiency's peak where set (`MapTest`).
-2. bigger turbine A/R spools later and chokes later; bigger compressor lags more; time to boost grows with J (`TurboTest`).
-3. steady state: turbine = compressor + bearings + rotor's energy change within 0.3 %; mass kept within 0.5 %.
-4. PI on the target within 5 % at every speed where the turbo can make it (measured within 0.6 %); spring alone
-   within 5 % at its actuator (the compressor's outlet).
-5. throttle shut, no valve: deep surge at 26 Hz, reverses, swing dies to under a tenth as the rotor slows; with a
-   valve (to the air or recirculating) the flow never reverses (`SurgeTest`).
-6. pulses into a twin scroll at 2000 rpm, rotor held: 2.2 times the single scroll's turbine power, same mean flow.
-7. Roots keeps over half its most boost 2000 to 6500 rpm (centrifugal 0.09); hotter than a matched twin-screw (440 K
-   against 394 K at 145 kPa); centrifugal boost goes as speed^2.1; crank power = air's work over efficiency within 3 %.
-8. intercooler outlet = T_in - eps (T_in - T_core) within 1.5 K, its core soaking; nitrous's torque step 90, 180, 270
-   N m against 89, 178, 267 rated (`ChargerTest`).
-9. housing passive for 40 random sizes (worst returned 0.987 of what it took); ten minutes of random chops on random
-   builds stay finite and bounded (`SafetyTest`). Also: at rest the flows die away (`RestTest`; orifices between
-   volumes solved implicitly, volumes' mass in double); sequential, compound, vanes, anti-lag, assist (`LayoutTest`).
+**Done, standalone** (`tee-tests-boost`, ctest `boost.*`, 26 cases, all pass):
+1 map: choke flow with inducer area (0.2 %), knee tau with U^2, 60 mm at 150 krpm 2.5-3.1, efficiency peak placed.
+2 bigger turbine A/R spools and chokes later; bigger compressor lags more; time to boost grows with J (monotonic).
+3 steady: turbine = compressor + bearings + rotor energy within 0.3 %; mass kept within 0.5 %.
+4 PI holds target within 5 % wherever the turbo can make it (measured 0.6 %); spring holds its own within 5 %.
+5 shut throttle, no valve: surge 26 Hz, flow reverses, swing dies to 1/60; valve (air or recirc): never reverses.
+6 twin scroll at 2000 rpm (rotor held): 2.2x the single scroll's turbine power from the same mean flow.
+7 Roots keeps >0.5 of its peak boost 2000-6500 rpm (centrifugal 0.09), 440 K vs matched twin-screw 394 K at
+  145 kPa; centrifugal boost ~ speed^2.1; crank power = air work / efficiency within 3 %.
+8 intercooler outlet = Tin - eps(Tin - Tcore) within 1.5 K, core soaks; nitrous step 90/180/270 vs 89/178/267 N m.
+9 housing passive over 40 random sizes (worst 0.987 returned); 600 s of random chops on 29 random builds bounded.
+Also: at rest every flow dies away (implicit orifices, double-precision volumes); sequential, compound, vanes,
+anti-lag, assist each do what they should (`LayoutTest`).
 
-**Cost** (this machine, load average 9 to 18 on 4 cores; ratios measured in the same window): R (tee-bench, V8
-free-revs) 6162 ns; the machine with two turbos some 300 to 490 ns (0.05 to 0.08 R), one twin-scroll pair some
-540 ns (0.09 R), a Roots 50 to 110 ns; 0 work when the kind is none (it returns at once). Within 0.12 R.
+**Cost** (least of five interleaved; machine load 9-18 on 4 cores, ratios only): over the rig, one turbo 289 ns a
+96 kHz sample, two 394, two twin-scroll 576, Roots 123; R (tee-bench V8 free-revs, same session) 6162 ns: two turbos
+~0.06 R, twin-scroll pair ~0.09 R (share 0.12 R). Kind none, no nitrous: returns at once. Not run idle or Release.
 
-**Seam with card G** (to write into `sim/README.md` with G's agent, once K3b lands), all per sample, `Boost` the
-carved module's name for `BoostMachine`:
-- `int Boost::housingOf(int bank, int group, int banks)`: the housing a collector ends in, -1 none.
-- `float Boost::housing(int h, float drive, float admit, float tGas)`: drive = sum 2 a_i / z_i (m^3/s), admit = sum
-  1 / z_i, tGas K; returns the housing's pressure above the outside, Pa; G writes b_i = p - a_i.
-- `float Boost::downpipe(int side, float a, float z)`: returns the downpipe's end pressure above the outside (G
-  writes p - a); `dpMass[side]` kg/s and `dpTemp[side]` K are what went in.
-- `float Boost::gatePipe(int t, float a, float z)`: the same for an external gate's own pipe (`gateMass`, `gateTemp`).
-Intake (card E): `float Boost::pressure()`, `temperature()` where the reference read pBox and tAir;
-`void Boost::draw(float m)` the throttle's mass flow; `tick(omegaCrank, pPlenum)` after; `control(d16)` every 16.
-Combustion (H): `float Boost::oxygen()`. Mechanics (D): `crankTorque` (N m). ECU (H): fields `cmdTarget` (Pa, below 0:
-the spec's), `cmdVanes`, `cmdAntiLag` (kg/s), `cmdNitrous`, `cmdPurge`; the PI loop is card F's.
+**Seam I need from card G** (per sample; `Boost` = the carved module holding a `BoostMachine`):
+`int Boost::housingOf(int bank, int group, int banks)` (-1: no turbine);
+`float Boost::housing(int h, float drive, float admit, float tGas)` — drive = sum 2a_i/z_i, admit = sum 1/z_i;
+returns housing pressure above outside, G writes b_i = p - a_i;
+`float Boost::downpipe(int side, float a, float z)` — returns end pressure, G writes p - a; `dpMass[side]`, `dpTemp[side]`;
+`float Boost::gatePipe(int t, float a, float z)` — external gate's own pipe; `gateMass[t]`, `gateTemp[t]`.
+Intake (E): `pressure()`, `temperature()` for pBox/tAir, `draw(float m)`, then `tick(omegaCrank, pPlenum)`;
+`control(d16)` every 16. Combustion (H): `oxygen()`. Mechanics (D): `crankTorque`. ECU (H): `cmdTarget` (Pa, <0 =
+spec's), `cmdVanes`, `cmdAntiLag` (kg/s), `cmdNitrous`, `cmdPurge`; the PI loop is F's.
 
-**What waits for K3b**: append `machinespec.fm`'s fields to `sim/spec/boost.fm` (K3's `kind` and `size` exist: drop
-mine), the carved `Boost` calling `BoostMachine` when `model = 1` (0 stays the reference bit for bit, null test), the
-seams above with G and E, `tel.boost` and its Scope arrays (the map's lines, contours and trail are already fields),
-integrated tests (2 L turbo four's boost and BMEP, drive pressure 1 to 2 x boost, shaft speeds, bench).
+**Remaining after K3b**: append `machinespec.fm`'s fields to `sim/spec/boost.fm` (use K3's `kind`, `size`; drop mine);
+`Boost` calls `BoostMachine` when `model = 1`, 0 stays the reference (null test); agree and write the seams above in
+`sim/README.md` with G and E; `tel.boost` and Scope arrays (map lines, contours, trail already exist as fields);
+integrated tests (2 L turbo four's boost and BMEP, drive pressure 1-2x boost, shaft speeds, bench).
 
-**Outside my paths**: none needed yet. Card E's throttle should be solved implicitly against the boost volume and the
-plenum (`boostOrificeStep`, as the rig does). FMinus issues: none met.
+**Outside my paths**: none needed. Suggest card E solve its throttle implicitly (`boostOrificeStep`, as the rig).
+FMinus issues: none. Listen to: surge after a chop with no valve; blow-off; Roots vs twin-screw whine; anti-lag.
