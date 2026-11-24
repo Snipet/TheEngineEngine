@@ -77,6 +77,7 @@ namespace tee::ui
                 k.mix(static_cast<float>(ctx_.live.get(row[0])));
             const ControlsFrame cf = ctx_.app.controls ? ctx_.app.controls() : ControlsFrame{};
             k.mix(cf.throttle).mix(cf.brake).mix(cf.clutch);
+            k.mix(qsFlash_ > 0.0f ? 1 : 0).mix(blipFlash_ > 0.0f ? 1 : 0).mix(static_cast<float>(ctx_.live.get("car.bikeFlags")));
             k.mix(roll_).mix(squat_).mix(ctx_.selection.revision()).mix(ctx_.units.revision());
             return k.h;
         }
@@ -164,6 +165,12 @@ namespace tee::ui
             accel = std::clamp(accel, -12.0, 12.0);
             const double target = std::isfinite(pitch) ? std::clamp(pitch / 3000.0, -1.0, 1.0) : std::clamp(accel / 8.0, -1.0, 1.0);
             squat_ = funkgui::ease::toward(squat_, static_cast<float>(target), dt, 0.25f, 1e-3f);
+            // The bike's counters: a flash on each increase.
+            const double qs = ctx_.live.get("car.quickshifts"), bl = ctx_.live.get("car.blips");
+            qsFlash_ = std::isfinite(qs) && qs != lastQs_ && std::isfinite(lastQs_) ? 0.3f : std::max(0.0f, qsFlash_ - dt);
+            blipFlash_ = std::isfinite(bl) && bl != lastBlips_ && std::isfinite(lastBlips_) ? 0.3f : std::max(0.0f, blipFlash_ - dt);
+            lastQs_ = qs;
+            lastBlips_ = bl;
             // The tachometer's span follows the redline.
             const double red = ctx_.live.get(telemetry::kRedline) * kToRpm;
             if (std::isfinite(red) && red > 1000.0)
@@ -355,6 +362,17 @@ namespace tee::ui
             const char* word = (bits & 64) != 0 ? "STOPPIE" : (bits & 4) != 0 ? "WHEELIE CONTROL" : ((cbits & 2) != 0 || th > 0.035f) ? "WHEELIE" : nullptr;
             if (word != nullptr)
                 c.text((std::string(word) + "  " + look::num(lift, "%.0f") + " DEG").c_str(), s.x, s.y, look::kCaps, p.warning);
+            // The rest of car.bikeFlags as words in a row: a quickshift's cut and an auto-blip held 0.3 s past their
+            // counters' increase (car.quickshifts, car.blips; a 50 ms bit is easily missed between frames), the slipper
+            // clutch slipping, the rear hopping.
+            float wx = s.x;
+            const auto flag = [&](const char* text, bool on, funkgui::Col ink) {
+                wx += look::lamp(c, p, wx, s.y + 22.0f, text, on, ink) + 14.0f;
+            };
+            flag("QUICKSHIFT", (bits & 16) != 0 || qsFlash_ > 0.0f, p.ok);
+            flag("BLIP", (bits & 32) != 0 || blipFlash_ > 0.0f, p.ok);
+            flag("SLIPPER", (bits & 8) != 0, p.warning);
+            flag("REAR HOP", (bits & 1) != 0, p.warning);
             static const char* const kBikeWheels[2] = { "FRONT", "REAR" };
             drawSlips(c, p, s, { 0, 2 }, kBikeWheels);
         }
@@ -402,7 +420,8 @@ namespace tee::ui
         Gauge *tach_ = nullptr, *speedo_ = nullptr;
         funkgui::Rect instruments_{}, scene_{}, strip_{};
         funkgui::Rect carHit_{}, tree_{};
-        float spin_ = 0.0f, roll_ = 0.0f, squat_ = 0.0f;
+        float spin_ = 0.0f, roll_ = 0.0f, squat_ = 0.0f, qsFlash_ = 0.0f, blipFlash_ = 0.0f;
+        double lastQs_ = std::nan(""), lastBlips_ = std::nan("");
         double lastSpeed_ = 0.0;
     };
 
