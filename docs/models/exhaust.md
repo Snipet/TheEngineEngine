@@ -187,6 +187,32 @@ Measured in the harness: the 2 L four's layout with a source of 0.12 m^3/s, gas 
 
 Not yet measured: a real diesel motoring in the engine, which waits for D2's hook.
 
+## The exhaust port's cooling (`portHeat`, model 1)
+
+The gas loses heat to the water-cooled port between the valve and the header's flange. This uses Caton and Heywood's
+exhaust-port correlation as cited in Heywood ch. 12: Nu = 0.0483 Re^0.783 on the port's diameter, with Re from each
+port's mean mass flow.
+- Gas properties: viscosity 3.3e-7 T^0.7 Pa s, cp 1150 J/kg K, Pr 0.7.
+- Port: diameter 0.46 of the bore, length 1.6 diameters (judgement).
+- Wall: the coolant's temperature plus 60 K (judgement).
+- The gas leaves at tW + (tPort - tW) exp(-NTU).
+
+`tel.exhaust.portTemperature` stays the gas at the valve. `portExitTemperature` is what feeds the headers,
+`portHeat` is the heat taken (W), and `Exhaust::exitTemperature()` is offered to card F's turbine. `portHeat` 0 and
+model 0 have none, which is how test 2 compares model 1 with the reference.
+
+Measured on the V8 on the dyno at full throttle:
+
+| rpm | at the valve | leaving the port | header | port walls take | brake |
+|---|---|---|---|---|---|
+| 1500 | 964 K | 925 K | 816 K | 4.5 kW | 95.4 kW |
+| 3000 | 1057 K | 1020 K | 918 K | 8.6 kW | 181.9 kW |
+| 5000 | 1152 K | 1118 K | 1024 K | 13.5 kW | 242.8 kW |
+
+That is a drop of 34 to 38 K, about 1.5 to 2 % of the fuel's energy at an assumed 30 % efficiency. N1's figures
+(100 to 200 K, 5 to 10 %) are larger. The coefficient is as I know it from the literature, unverified here, and
+uncalibrated: not tuned to either.
+
 ## Glide and rebuild (dragging a slider)
 
 These fields glide toward the Spec with a 0.2 s time constant (`XBuild::glide`). The pipes' delays, areas and
