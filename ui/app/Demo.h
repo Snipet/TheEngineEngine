@@ -37,7 +37,8 @@ namespace tee::ui
         explicit DemoEngine(const FieldDoc* doc = nullptr);
 
         // Time: the script's position (seconds, wraps at 8) and a step along it (advance). tick() is the DynoSource's
-        // (the frame calls it each frame): it moves only the dyno, so a picture at setTime(t) stays at t.
+        // (the frame calls it each frame): it moves the dyno and the Scope's generation, not the script, so a picture at
+        // setTime(t) stays at t.
         void advance(double dt);
         void tick(float dt) override;
         void setTime(double t);
