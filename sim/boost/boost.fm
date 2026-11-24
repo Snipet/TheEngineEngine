@@ -291,6 +291,13 @@ module Boost
         return model == 1 ? mach.downpipe(side, a, z) : 0.0f;
     }
 
+    // The exhaust's side count (card G: at every configure, before housingOf): a turbo whose side the exhaust does not
+    // build empties into side 0's downpipe, so no turbo is left without one
+    void exhaustSides(int n)
+    {
+        mach.exSides = n < 1 ? 1 : (n > 2 ? 2 : n);
+    }
+
     // External gates (card G asked): how many turbos have a gate of their own pipe; gatePipe(t, ...) takes t from 0
     // to this less 1 (turbo t's). 0 under model 0, for a supercharger and for internal gates.
     int externalGates()

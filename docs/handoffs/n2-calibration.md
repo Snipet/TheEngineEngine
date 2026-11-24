@@ -21,7 +21,7 @@ source to change it); ~7 % of it is pattern 1.
 **Numbers now** (engine.wallHeat 1, as after D's double-count fix): 2.0 four with P's boost taper 401 N m, 222.6 kW
 (both in); kei with P's taper 100 N m (in), 47-48 kW at 5250-6000 (in), 52-59 kW above 6490 (the actuator's spring
 floors the boost at 20 kPa: P asked for gateSpring 5 kPa); 3.0
-twin six 404 N m, 217 kW (UNDER: breathes 0.51-0.65 on the manifold: N1); SC V8 835-936 N m (over).
+twin six 507/475/442 N m at 2866/4297/5729 (in; turbo 1 had stood: one-bank twins now split by collector group, Boost::exhaustSides); SC V8 835-936 N m (over).
 
 **Closed with others**: X-010/014/015 (X, c1e1b36); C's predictor waits for boost to settle; D's 959454c: cut on.
 **Not done**: the table re-run on the gate (P's); the rotary's torque (not boost); the SC's leak model
@@ -37,4 +37,4 @@ and the rotary's x2 vd (done locally by D). T: the same x2 for a two-stroke. D2:
 
 **Listen** (nobody here can hear): the 2 L four at full load 5000-6500 rpm (gate open 0.6-0.9 now, not pinned); a
 tip-in at 5000 rpm (no overshoot, no knock run); the over-boost cut (boost.gateDiameter 0.0263, ecu.overBoost 150000,
-full load 5300 rpm): a rhythmic fuel cut; the kei's taper and its gate's hiss at 6000-7600.
+full load 5300 rpm): a rhythmic fuel cut; the kei's taper and its gate's hiss at 6000-7600; the twin six: two turbo whines at one pitch, no backflow chuff.

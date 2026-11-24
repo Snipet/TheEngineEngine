@@ -98,6 +98,9 @@ namespace combo
     // The reference's (every switch off) largest step while running, on a build through a scenario: measured once a
     // process and kept.
     double referenceStep(const std::string& build, Kind kind);
+    // The bang rule's baseline (cuts that send fuel to the pipe, the new ECU's): the largest step of three reference
+    // copies with ecu.pops at 0.3, 0.01 K apart in the air (one run of a chaotic engine is no bound: 11.9 to 20.5 measured).
+    double referenceStepWithPops(const std::string& build, Kind kind);
     // Where tee::measure::largestStep finds its step: seconds from the span's start.
     double largestStepTime(std::span<const float> x, double rate);
 
@@ -108,6 +111,8 @@ namespace combo
     // The reference's cost on this machine: the default build through the same host, wall seconds a simulated
     // second, measured once a process (the median of three short runs).
     double costOfR();
+    // R if this process has measured it already, else 0 (no runs)
+    double costOfRIfMeasured();
 
     // The known failures: reported, not failed (Known.h holds the list).
     struct Known
