@@ -130,7 +130,7 @@ TEST_CASE("shell: the simulator's Spec as parameters, its telemetry by name, and
 // program's Fields: the document follows it at the next frame, so that an engine changed after it is heard, and its
 // undo stays (the same layout).
 TEST_CASE("shell: after a quality change the document's edits still reach the simulator, its undo kept",
-          "[shell][sim][sharedsim][quality]")
+          "[shell][sim][sharedsim][quality][nightly]")
 {
     std::string errors;
     const std::unique_ptr<player::SimAdapter> sim = test::sharedAdapter(errors);

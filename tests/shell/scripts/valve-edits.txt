@@ -3,9 +3,8 @@
 # Edits before the first start, while running, after a stop and a restart, and after a QUALITY change and back. Times
 # are seconds from the engine's being ready.
 #
-# What the engine does with them is checked too: the application's engine starts at its working temperatures
-# (LoadOptions::initial), so the phasers move and the second cam stage changes from the first minute (the valvetrain
-# waits for oil over 313 K and 333 K: sim/valvetrain/phaser.fm, lab.fm).
+# What the engine does with them is checked too: the phasers move and the second cam stage changes from the first
+# minute (N1's 83f34ce5: the stage waits for coolant over 10 C with oil pressure; the phasers are commanded from cold).
 # -- before the first start: two-stage cams on, the stage change at 300 rad/s (2,865 rpm)
 0.10  set valve.stages 1
 0.10  set valve.stageSpeed 300
@@ -16,7 +15,6 @@
 0.90  key return up
 3.50  expect engine.state == 2
 3.50  print
-3.50  expect engine.oilTemperature > 340
 3.50  expect valve.stage == 0
 4.00  key w down
 6.50  expect rpm > 3500

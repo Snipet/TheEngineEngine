@@ -38,10 +38,6 @@ module Heat
     {
         tAmb = 300.0f;
         tCool = 300.0f;
-        fanModel = 0;
-        fanAir = 0.0f;
-        roadSpeed = 0.0f;
-        still = 0.05f;
         tOil = 300.0f;
         tSurf = 300.0f;
         ambSeen = 80.33f;
@@ -50,10 +46,12 @@ module Heat
         viscK = 1.0f;
     }
 
-    // (stopped, with AMBIENT moved: it has stood in that air, as cold or as warm as it is)
+    // (stopped, with AMBIENT moved: a cold engine has stood in that air, as cold or as warm as it is; one set warm (the
+    // application's warm start writes warm 1 once at load, before the build's air arrives) stays warm: B's finding, 24
+    // Nov, the lead's ruling)
     void stood(int state, float ambF)
     {
-        if (state == 0 && fabsf(ambF - ambSeen) > 0.25f)
+        if (state == 0 && fabsf(ambF - ambSeen) > 0.25f && warm < 0.5f)
         {
             ambSm = ambF;
             tCool = 300.0f + 0.5555556f * (ambF - 80.33f);
@@ -79,11 +77,6 @@ module Heat
     // coolant does), sinking back to it over minutes once it stops. Its thickness (a 5W-30's:
     // Vogel's fit through 10.5 cSt at 100 C, 62 at 40, 645 at 0) over a warm engine's makes its pressure: the pump's
     // 10 psi plus 14 a 1000 rpm warm, as the thickness's 0.3th power, under the relief valve's 75.
-    int fanModel;       // 1: package M's fan cools the radiator (spec.voices.model 1; Engine sets these before control)
-    float fanAir;       // its air through the radiator, a share of a full electric fan's (FanVoice::air)
-    float roadSpeed;    // m/s through the grille
-    float still;        // the share of a full fan's air the radiator has in still air with its fan off (judgement: card D)
-
     void control(float d16, float ambF, float vTotal, int state, float rpm, float omega)
     {
         ambSm += (ambF - ambSm) * (1.0f - expf(-fmaxf(d16, 0.0f) / 2.0f));
@@ -97,11 +90,7 @@ module Heat
             const float litres = vTotal * 1000.0f;
             const float cHeat = 9000.0f * expf(0.9f * logf(fmaxf(litres, 0.05f)));
             const float open = fminf(fmaxf((tCool - 363.0f) / 12.0f, 0.0f), 1.0f);
-            // (the radiator's air with package M's fan (spec.voices.model 1, fanModel): still air passes `still` of a full
-            // fan's flow, the fan or the road (15 m/s full) the rest; with the reference's the radiator has its full air
-            // always, as before (the literal 1: to the bit))
-            const float air = fanModel != 0 ? still + (1.0f - still) * fminf(fmaxf(fanAir, roadSpeed / 15.0f), 1.0f) : 1.0f;
-            const float ua = (10.0f + 600.0f * open * air) * expf(0.7f * logf(fmaxf(litres, 0.05f)));
+            const float ua = (10.0f + 600.0f * open) * expf(0.7f * logf(fmaxf(litres, 0.05f)));
             const float qIn = (0.4f * heatJ + 0.6f * fricJ) / dh;
             tCool = fminf(fmaxf(tCool + (qIn - ua * (tCool - tAmb)) * dh / cHeat, tAmb - 1.0f), 420.0f);
             tOil += (tCool + (state == 2 ? 10.0f : 0.0f) - tOil) * (1.0f - expf(-dh / 240.0f));
