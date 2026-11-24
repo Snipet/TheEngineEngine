@@ -34,7 +34,9 @@
       "muffler": 0.1071
     },
     "fuel": {
-      "kind": "Diesel"
+      "kind": "Diesel",
+      "model": "Fuels",
+      "grade": "Diesel"
     },
     "ecu": {
       "timing": 0,

@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
@@ -213,12 +214,20 @@ TEST_CASE("truck air in the engine: the tanks charge while it runs and the sprin
     CHECK(e.get("air.p") > p0);
     e.recording = true;
     REQUIRE(e.run(0.5));
-    const double before = d2::rmsDb(e.rec);
+    // (the loudest 50 ms: the release is a short blast over the engine's idle)
+    auto loudest = [&](const std::vector<float>& x) {
+        double best = -200.0;
+        const size_t w = static_cast<size_t>(0.05 * e.rate);
+        for (size_t i = 0; i + w <= x.size(); i += w / 2)
+            best = std::max(best, d2::rmsDb(std::vector<float>(x.begin() + static_cast<std::ptrdiff_t>(i), x.begin() + static_cast<std::ptrdiff_t>(i + w))));
+        return best;
+    };
+    const double before = loudest(e.rec);
     e.rec.clear();
     e.ctl().handbrake = 0.0f;
     REQUIRE(e.run(0.5));
-    const double after = d2::rmsDb(e.rec);
+    const double after = loudest(e.rec);
     std::printf("truck air in the engine: tanks %.2f -> %.2f bar; idling %.1f dB, the spring brakes released %.1f dB\n", p0 / 1e5,
                 e.get("air.p") / 1e5, before, after);
-    CHECK(after > before + 1.0);
+    CHECK(after > before + 2.0);
 }
