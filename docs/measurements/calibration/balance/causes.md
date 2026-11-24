@@ -325,3 +325,57 @@ Unmeasured: a carburettor's wet manifold's spread of mixture between cylinders, 
 - *The flat six's intake (content, P).* The 964's induction is a resonance system with a flap between two plenum
   halves; the build's single 0.53 m runner is P's rule, not the engine's. Asked P to mark it as judgement and to build
   the real geometry if a source turns up.
+
+## The sixteen on the tip's gas (20:43 by `date -u`; the lead's table)
+
+Each NA petrol archetype's torque at its target's peak-torque speed over the torque band's middle, and its power at the
+target's peak-power speed over the power band's middle (settled dyno, tee::Build path), with P's basis for the rows:
+
+```
+torque: mean -1.7 %, sd 16.2 %, median -3.2 %
+power: mean -0.2 %, sd 14.1 %, median -1.0 %
+
+sorted by torque over the band's middle:
+  air-cooled-flat-six-36     cited      +27.7 %   (torque 396 for [300, 320], power 226 kW for [180, 195])
+  small-block-57-carb        cited      +23.1 %   (torque 446 for [340, 385], power 192 kW for [120, 160])
+  vr6-28                     cited      +14.3 %   (torque 269 for [230, 240], power 124 kW for [125, 132])
+  big-bore-70-pushrod-v8     cited       +9.9 %   (torque 700 for [630, 645], power 369 kW for [370, 385])
+  pushrod-v6-38              cited       +8.8 %   (torque 343 for [300, 330], power 127 kW for [140, 160])
+  twin-cam-roadster-18       cited       +7.3 %   (torque 176 for [155, 172], power 108 kW for [95, 112])
+  four-cam-v8-50             cited       +2.4 %   (torque 560 for [520, 575], power 325 kW for [300, 345])
+  straight-six-32-high-rev   recalled    -2.5 %   (torque 356 for [355, 375], power 223 kW for [245, 260])
+  hot-hatch-16-16v           recalled    -3.8 %   (torque 147 for [140, 165], power 114 kW for [85, 120])
+  economy-four-15            recalled    -7.2 %   (torque 137 for [140, 156], power 89 kW for [80, 97])
+  big-block-74-pushrod-v8    recalled    -7.6 %   (torque 596 for [600, 690], power 277 kW for [240, 310])
+  v12-65                     recalled    -9.4 %   (torque 639 for [680, 730], power 567 kW for [500, 590])
+  v10-52                     recalled   -14.6 %   (torque 466 for [520, 570], power 408 kW for [385, 475])
+  v6-35-na                   recalled   -16.1 %   (torque 294 for [335, 365], power 200 kW for [195, 225])
+  two-stage-cam-20           recalled   -28.3 %   (torque 149 for [200, 215], power 143 kW for [165, 185])
+  flat-plane-v8-45           recalled   -31.9 %   (torque 368 for [520, 560], power 335 kW for [400, 445])
+
+sorted by power over the band's middle:
+  small-block-57-carb        cited      +36.9 %   (torque 446 for [340, 385], power 192 kW for [120, 160])
+  air-cooled-flat-six-36     cited      +20.7 %   (torque 396 for [300, 320], power 226 kW for [180, 195])
+  hot-hatch-16-16v           recalled   +11.5 %   (torque 147 for [140, 165], power 114 kW for [85, 120])
+  twin-cam-roadster-18       cited       +4.2 %   (torque 176 for [155, 172], power 108 kW for [95, 112])
+  v12-65                     recalled    +4.0 %   (torque 639 for [680, 730], power 567 kW for [500, 590])
+  big-block-74-pushrod-v8    recalled    +0.8 %   (torque 596 for [600, 690], power 277 kW for [240, 310])
+  four-cam-v8-50             cited       +0.8 %   (torque 560 for [520, 575], power 325 kW for [300, 345])
+  economy-four-15            recalled    +0.2 %   (torque 137 for [140, 156], power 89 kW for [80, 97])
+  big-bore-70-pushrod-v8     cited       -2.2 %   (torque 700 for [630, 645], power 369 kW for [370, 385])
+  vr6-28                     cited       -3.6 %   (torque 269 for [230, 240], power 124 kW for [125, 132])
+  v6-35-na                   recalled    -4.9 %   (torque 294 for [335, 365], power 200 kW for [195, 225])
+  v10-52                     recalled    -5.1 %   (torque 466 for [520, 570], power 408 kW for [385, 475])
+  straight-six-32-high-rev   recalled   -11.9 %   (torque 356 for [355, 375], power 223 kW for [245, 260])
+  pushrod-v6-38              cited      -15.6 %   (torque 343 for [300, 330], power 127 kW for [140, 160])
+  two-stage-cam-20           recalled   -18.1 %   (torque 149 for [200, 215], power 143 kW for [165, 185])
+  flat-plane-v8-45           recalled   -20.7 %   (torque 368 for [520, 560], power 335 kW for [400, 445])
+```
+
+The mean is near nothing and the spread wide: no common level is left in the model. What remains is each build's
+content and the breathing, and the class pattern still shows (the cited mild two-valve engines over, the recalled tuned
+four-valve ones under).
+
+**The small block, stopped (the lead's call).** Open: some 14 % unexplained after P's L48 parts. Sized: accessories 1 to
+3 % (forum figures only: no change to friction.fm until a better source), the chamber's burn about 1 %, the spark about
+1.5 % (no source); unmeasured: the carburettor's spread of mixture between cylinders, an older engine's friction.
