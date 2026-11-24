@@ -299,3 +299,40 @@ TEST_CASE("fixed X-001: the custom engine over the default build, its geometry a
     report(v, "engine.custom", "defaults", "X-001");
     CHECK(r.tel("engine.layoutRefused").last() == 1.0);
 }
+
+TEST_CASE("fixed X-003: the new combustion and ECU together start every archetype at -20 C", "[combo][fixed]")
+{
+    // found 2026-11-24 (no start in 10 s at 253 K with fuel.model and ecu.model on); fixed by H in b09a0a6
+    std::uint32_t mask = 0;
+    const auto& sw = switches();
+    for (std::size_t i = 0; i < sw.size(); ++i)
+        if (sw[i].path == "fuel.model" || sw[i].path == "ecu.model")
+            mask |= 1u << i;
+    REQUIRE(mask != 0);
+    for (const char* b : {"v8", "small-four", "turbo-six", "turbo-v8-dual"})
+    {
+        Times tm;
+        const tee::test::Run r = scenario(Kind::Cold, b, mask, tm).run(tm.end);
+        const Verdict v = judge(r, tm, archetype(b), true, referenceStep(b, Kind::Cold));
+        report(v, comboName(mask), b, "X-003");
+    }
+}
+
+TEST_CASE("fixed X-007's hang: the reduced Spec plays in no time and flags its fault", "[combo][fixed]")
+{
+    // found 2026-11-24 (Engine::process never returned, or SIGSEGV); D's ae5c99b puts a diverged engine at rest and
+    // sets FLAG_FAULT. The divergence itself (an 18 kg piston on a single with the automatic) is still open: X-007.
+    const auto file = tee::test::contentDirectory() / "builds" / "combo" / "findings" / "x007-heavy-piston.json";
+    Times tm;
+    tm.idleFrom = -1.0;
+    tee::test::Scenario s = scenario(Kind::Tour, file.string(), 0u, tm);
+    const tee::test::Run r = s.run(tm.end);
+    CHECK(r.ok());
+    CHECK(r.audio().finite());
+    CHECK(r.host().guardTrips == 0);
+    CHECK(r.speed() > 2.0);   // faster than real time: nothing spins in a loop
+    double flags = 0;
+    for (double f : r.tel("engine.flags").values())
+        flags = std::max(flags, static_cast<double>(static_cast<int>(f) & 4));
+    CHECK(flags == 4.0);      // FLAG_FAULT said so
+}
