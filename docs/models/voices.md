@@ -114,7 +114,7 @@ at idle:
 | | Gain in `fuel.fm` | dB(A) | 4 kHz octave | Why |
 |---|---|---|---|---|
 | As shipped to the owner | 0.0035 | -30 | -8.2 | Judgement: "heard through the floor, about the chain's at idle" |
-| -20 dB (f074ab47's parent) | 0.00035 | -49.2 | -29.7 | The owner (21:32): "a high pitched hum that almost sounds like the turbo at idle, but far too loud" |
+| -20 dB (57bd971a) | 0.00035 | -49.2 | -29.7 | The owner (21:32): "a high pitched hum that almost sounds like the turbo at idle, but far too loud" |
 | -30 dB (1a3812e6) | 0.00011 | -59.9 | -37.4 | The lead's ruling (22:19): the owner's "far too loud"; an in-tank pump under a running engine is at most barely heard outside the car; 1.6 to 3.4 dB of margin on the small engines' hum row was one camera from red. Not scaled by the engine's size |
 
 The prime keeps the same level as the pump's hum (the lead, 22:27: a louder prime would be a judgement on a judgement;
