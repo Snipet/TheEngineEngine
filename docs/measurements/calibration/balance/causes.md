@@ -302,3 +302,26 @@ whole exhaust with its manifolds and mufflers (a converter from 1975). The fan i
 build-side list above is the larger share: the exhaust as fitted, the factory's timing, the air cleaner's and the
 carburettor's restriction (not yet measured: the build has a single throttle and an air box). The model's accessories
 (the water pump is in friction.fm's constant) are a smaller question than first thought.
+
+N1's suggestion (the ram adding to the exhaust's tuning), tested: with `exhaust.model` 0 the flat six reads the same to
+the bit at both runner lengths (4750 and 5500 rpm), and the burned share trapped is the same at 0.30 and 0.53 m (0.030
+and 0.030 at 4750). The 0.53 m runner's gain is the intake's own ram, not better scavenging.
+
+**On P's 9c71eb1** (the L48's 8.5:1, one source; its installed exhaust, both banks into one converter, two sources; 20:40 by
+`date -u`): 460 / 457 / 446 / 436 / 410 N m at 2000 / 2400 / 3000 / 3600 / 4400 rpm, VE 0.80, gross 0.342 to 0.353,
+brake 0.301 to 0.274: still some 20 % over 340 to 385. Candidates sized since (scratch trees; none isolated as the
+cause):
+- the chamber's burn 30 % longer at the best spark (`combustion.fm` burnBase x 1.3): 455 and 432 N m at 2000 and 3600
+  rpm (-1.1 %);
+- an engine-driven fan: the figures found are forum postings (a clutched V8 fan about 10 hp at speed; big fans 10 to
+  15 hp on a stationary dyno) and a patent for the cube law in the fan's speed; 10 hp at 4000 rpm would be about 1 % at
+  2000 rpm and 3 % at 3600. A build property worth adding (the lead's design: era defaults by P, model-on), not the 20 %;
+- the factory spark: no source (P).
+Unmeasured: a carburettor's wet manifold's spread of mixture between cylinders, and an older engine's higher friction.
+
+**Open, the integration queue's way:**
+- *N3-6, the runner's ram (open).* What would settle it: a measured intake-port pressure trace after closing, or a
+  measured VE against runner length for a known runner, built and compared. Until then the model's 12 to 18 % stands.
+- *The flat six's intake (content, P).* The 964's induction is a resonance system with a flap between two plenum
+  halves; the build's single 0.53 m runner is P's rule, not the engine's. Asked P to mark it as judgement and to build
+  the real geometry if a source turns up.
