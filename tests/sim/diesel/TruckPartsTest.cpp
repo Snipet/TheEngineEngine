@@ -211,6 +211,8 @@ TEST_CASE("truck air in the engine: the tanks charge while it runs and the sprin
     // 14 dB, which put the release on the limiter, 3.3 dB of reduction, and squeezed it to 2.0 dB over the idle. The
     // property is the air system's sound against the engine's, not the limiter's)
     e.spec("sound.level", -14.0);
+    e.spec("sound.autoLevel", 0);   // (L's auto level, c686d345, takes the gain down within 5 ms of a louder sound: off,
+                                    // the air system is heard against the engine at a fixed gain; on: 4.8 dB, the same)
     e.ctl().handbrake = 1.0f;
     e.start();
     const double p0 = e.get("air.p");
