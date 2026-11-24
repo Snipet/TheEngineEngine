@@ -938,8 +938,7 @@ def main():
                       "Then drive: in first, hold the brake, press the launch button, floor the pedal and let go for a "
                       "launch-control start (traction control holds the wheelspin), and listen to the direct injection's "
                       "tick and the turbo's whistle as the dual clutch shifts.\n\n" + first["notes"])
-    # L (20:27): for the first minute standing, the Side camera hears the exhaust and the bay together
-    first["spec"]["sound"]["camera"] = "Side"
+    # (on the default Rear camera: L, 22:36, withdrew Side: through it the radiator fan's 560 Hz stood over the engine)
     write(os.path.join(ROOT, "content", "builds", "first.json"), first)
     loose_parts(A)
     manual(A)
