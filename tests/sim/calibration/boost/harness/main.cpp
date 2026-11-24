@@ -4,7 +4,7 @@
 // mean over each whole cycle of cylinder 1's exhaust and intake port pressures (the back pressure the cylinder sees).
 //
 //   tee-calib-boost --build content/builds/archetypes/turbo-four-20-gdi.json --rpm 2000,3500,5000,6500
-//                   [--settle 6] [--measure 1] [--set boost.model=0 ...] [--hold path=value ...] [--sim DIR]
+//                   [--settle 6] [--measure 1] [--heat-settle] [--set boost.model=0 ...] [--hold path=value ...] [--sim DIR]
 //
 // Output: one line a speed, key=value, then a table. Means over cycles, never a waveform (the engine is chaotic).
 #include "common/Paths.h"
@@ -70,6 +70,7 @@ int main(int argc, char** argv)
     std::string simFlag, buildFile, value;
     std::vector<double> rpms = {2000, 3500, 5000, 6500};
     double settle = 6.0, measure = 1.0, warmup = 8.0;
+    bool heatSettle = false;   // (--heat-settle: at each speed, 1 s in, the exhaust's and the intercooler's heat settled)
     std::vector<std::pair<std::string, double>> sets;
     std::vector<tee::HeldValue> holds;
     std::vector<std::string> extra;
@@ -77,6 +78,11 @@ int main(int argc, char** argv)
     {
         if (args.is("--sim") && args.value(simFlag))
             continue;
+        if (args.is("--heat-settle"))
+        {
+            heatSettle = true;
+            continue;
+        }
         if (args.is("--build") && args.value(buildFile))
             continue;
         if (args.is("--rpm") && args.value(value))
@@ -236,7 +242,18 @@ int main(int argc, char** argv)
     {
         c.dynoSpeed = static_cast<float>(rpm * 0.10471976);
         c.scopeOn = 0;
-        play(settle, {});
+        if (heatSettle)
+        {
+            static int presses = 0;
+            const double first = std::min(1.0, settle);
+            play(first, {});
+            ++presses;
+            build.set("exhaust.heatSettle", presses);
+            build.set("boost.heatSettle", presses);
+            play(settle - first, {});
+        }
+        else
+            play(settle, {});
         c.scopeOn = 1;
         for (auto& l : lines)
             l.sum = 0.0, l.n = 0;

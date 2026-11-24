@@ -89,6 +89,12 @@ namespace tee
         int speeds = 8;               // over PredictOptions' from and to (0: 1000 rpm, the redline less 100)
         int loads = 8;                // the table's loads: from 0.2 atm to the most a pedal gave, evenly
         double margin = 2.0;          // degrees over the mean retard
+        // Where a cell's mean retard was over correctAbove degrees (the retard at or near knock control's ceiling, its
+        // mean then understating the need: N2's proof, the rotary at 5200, the six at 2450, the hot vee at 2380), the
+        // table is applied and the cell measured again, its residual retard added to it; at most `corrections` times.
+        // A cell that still knocks after them is said (stillKnocking): TUNE shows it knock-limited there, not finished.
+        double correctAbove = 12.0;
+        int corrections = 2;
         double knockLimit = 0.5;      // degrees: a mean retard under it is no knock
         PredictOptions predict;       // the points' (fields: engine.manifold is added)
     };
@@ -103,6 +109,11 @@ namespace tee
         double torque = 0.0;          // N m
         bool knockLimited = false;
         bool valid = true;
+        double limit = 0.0;           // the cell: retardMean + margin, or 0; with the corrections' residuals added
+        int corrections = 0;          // times it was measured again with the table applied
+        double residual = 0.0;        // the mean retard at its last measure with the table applied
+        bool stillKnocking = false;   // its residual still at knockLimit or more after the corrections
+        int step = 0;                 // (the bake's step it was measured at)
     };
 
     struct KnockBakeResult
@@ -112,6 +123,7 @@ namespace tee
         std::vector<std::vector<KnockBakeCell>> measured; // [speed]: the pedals run there, full first
         std::vector<std::vector<double>> limit;           // [speed][load]: degrees from best torque
         std::vector<std::vector<bool>> extrapolated;      // [speed][load]: flat past the measured loads
+        std::vector<std::vector<bool>> stillKnocking;     // [speed][load]: made from a cell still knocking (above)
         std::int64_t key = 0;                             // knockLimitKey(build, sim) when it was baked
         std::string notes;                                // how its loads were made
         int points = 0;                                   // fast-dyno points run

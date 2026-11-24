@@ -849,7 +849,7 @@ module Exhaust
     // h (tg - tb) = eps sigma (tb^4 - tw^4) (the radiation error: Mills, Heat Transfer; Incropera's thermocouple
     // example). h from Ranz and Marshall's sphere, Nu = 2 + 0.6 Re^0.5 Pr^(1/3), at the mean speed past it (tcUMean);
     // the bead a 1.5 mm sheathed junction, its emissivity 0.8 (an oxidised sheath): judgement, an instrument's. The gas's
-    // properties as the port's (viscosity 3.3e-7 T^0.7, cp 1150, Pr 0.7) at the mean pressure there. Newton, from tg.
+    // properties as the port's (viscosity 3.3e-7 T^0.7, cp 1150, Pr 0.7) at the mean pressure there.
     float bead(float tg, float tw)
     {
         const float d = 0.0015f;
@@ -859,14 +859,23 @@ module Exhaust
         const float nu = 2.0f + 0.6f * sqrtf(re) * 0.8879f;
         const float h = nu * (mu * 1150.0f / 0.7f) / d;
         const float es = 0.8f * 5.670e-8f;
-        float tb = tg;
-        for (int it = 0; it < 6; ++it)
+        // (the bead lies between the wall and the gas: bisection there, 24 halvings, about 1e-4 K on a 1000 K span. A
+        // Newton step from the gas overshot below zero where radiation outweighs a slow stream's convection, and its
+        // slope then vanished: the soak's fuzz found it non-finite, 24 Nov)
+        if (!(tg > 0.0f && tg < 1.0e5f) || !(tw > 0.0f && tw < 1.0e5f) || !(h > 0.0f && h < 1.0e9f))
+            return tg > 0.0f && tg < 1.0e5f ? tg : exitTemperature();
+        float lo = fminf(tg, tw);
+        float hi = fmaxf(tg, tw);
+        for (int it = 0; it < 24; ++it)
         {
+            const float tb = 0.5f * (lo + hi);
             const float f = h * (tg - tb) - es * (tb * tb * tb * tb - tw * tw * tw * tw);
-            const float df = -h - 4.0f * es * tb * tb * tb;
-            tb -= f / df;
+            if (f > 0.0f)
+                lo = tb;
+            else
+                hi = tb;
         }
-        return tb;
+        return 0.5f * (lo + hi);
     }
 
     // The gas as it leaves the ports for the headers and the turbine (after the port's walls): card F's turbine's
