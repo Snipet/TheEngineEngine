@@ -89,7 +89,7 @@
       "blowOffKind": "None",
       "vanes": "Variable vanes",
       "icEffect": 0.75,
-      "icFlow": 0.535,
+      "icFlow": 0.578,
       "chargeVolume": 0.0134
     },
     "exhaust": {

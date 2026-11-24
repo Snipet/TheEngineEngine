@@ -80,7 +80,7 @@
     },
     "intake": {
       "model": 1,
-      "runnerLength": 0.51,
+      "runnerLength": 0.4,
       "throttleKind": "A body a runner"
     },
     "boost": {
