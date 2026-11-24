@@ -1,0 +1,48 @@
+{
+  "format": "tee-scenario",
+  "version": 1,
+  "name": "p-full-load-1200",
+  "description": "Card P's: on the engine dyno, warm, in the build's air: started, then held at 1200 rpm at full throttle; the gas and the boost settle over the last seconds (read from 8 to 10 s).",
+  "seconds": 10,
+  "warm": true,
+  "events": [
+    {
+      "t": 0.0,
+      "ctl": {
+        "mode": 2,
+        "dynoSpeed": 125.66,
+        "dynoRate": 0,
+        "ignition": 1
+      }
+    },
+    {
+      "t": 0.25,
+      "ctl": {
+        "ignition": 2
+      }
+    },
+    {
+      "t": 1.5,
+      "ctl": {
+        "ignition": 1
+      }
+    },
+    {
+      "t": 2.0,
+      "ctl": {
+        "throttle": 1
+      },
+      "ramp": 0.2
+    }
+  ],
+  "assertions": [
+    {
+      "audio": "finite"
+    },
+    {
+      "audio": "peak",
+      "<=": 1,
+      "source": "02-contracts.md, section 1: within +-1"
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "part": "tune",
+  "name": "Twin-turbo 4.0 L hot-vee V8 (tune)",
+  "notes": "The tune of the archetype \"Twin-turbo 4.0 L hot-vee V8\" alone.",
+  "spec": {
+    "ecu": {
+      "model": "Maps",
+      "timing": 0,
+      "pops": 0.1,
+      "starter": true,
+      "limiter": {
+        "kind": "Fuel cut",
+        "speed": 712.094
+      },
+      "idle": {
+        "speed": 68.068
+      },
+      "knock": {
+        "on": true
+      }
+    }
+  }
+}

@@ -1,0 +1,100 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "part": "engine",
+  "name": "Diesel 2.0 L common rail (engine)",
+  "notes": "The engine of the archetype \"Diesel 2.0 L common rail\" alone, to put in another car.",
+  "spec": {
+    "engine": {
+      "layout": "Inline 4",
+      "custom": true,
+      "compression": 16.5,
+      "cylinders": 4,
+      "bankAngle": [
+        0.0
+      ],
+      "bank": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "pin": [
+        0,
+        180,
+        180,
+        0
+      ],
+      "fireRev": [
+        0,
+        1,
+        0,
+        1
+      ],
+      "place": [
+        0.0,
+        0.1,
+        0.2,
+        0.3
+      ],
+      "displacement": 0.0019684,
+      "boreStroke": 0.8482,
+      "bore": 0.081,
+      "stroke": 0.0955,
+      "rodLength": 0.144,
+      "redlineSpeed": 502.655,
+      "frictionValvetrain": "Finger follower",
+      "balance2": true,
+      "rough": 0.2,
+      "benchLoad": 0.3
+    },
+    "valve": {
+      "model": "Lab",
+      "valves": 4,
+      "dIn": 0.027,
+      "dEx": 0.024,
+      "train": "Finger",
+      "inDurSeat": 228,
+      "inDur1mm": 196,
+      "inLift": 0.008,
+      "inCentre": 112,
+      "exDurSeat": 228,
+      "exDur1mm": 196,
+      "exLift": 0.008,
+      "exCentre": 112
+    },
+    "intake": {
+      "model": 1
+    },
+    "boost": {
+      "model": "Machine",
+      "kind": "Turbo",
+      "level": 1.0,
+      "blowOff": 0.7,
+      "size": 1.0,
+      "target": 140000.0,
+      "gateSpring": 100000.0,
+      "blowOffKind": "None",
+      "vanes": "Variable vanes",
+      "icEffect": 0.75
+    },
+    "exhaust": {
+      "model": "Builder",
+      "sides": 1,
+      "converter": [
+        1,
+        1
+      ],
+      "mufKind": [
+        2,
+        2
+      ]
+    },
+    "fuel": {
+      "kind": "Diesel",
+      "model": "Fuels",
+      "grade": "Diesel",
+      "direct": 1
+    }
+  }
+}

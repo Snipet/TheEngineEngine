@@ -1,0 +1,48 @@
+{
+  "format": "tee-scenario",
+  "version": 1,
+  "name": "p-cold-start",
+  "description": "Card P's: a cold start in the build's own air (the engine at the air's temperature): the key held for up to four seconds, then idle to 12 s, then off.",
+  "seconds": 14,
+  "events": [
+    {
+      "t": 0.0,
+      "ctl": {
+        "mode": 1,
+        "lever": 0,
+        "clutch": 0,
+        "throttle": 0,
+        "brake": 0,
+        "ignition": 1
+      }
+    },
+    {
+      "t": 0.25,
+      "ctl": {
+        "ignition": 2
+      }
+    },
+    {
+      "t": 4.25,
+      "ctl": {
+        "ignition": 1
+      }
+    },
+    {
+      "t": 12.0,
+      "ctl": {
+        "ignition": 0
+      }
+    }
+  ],
+  "assertions": [
+    {
+      "audio": "finite"
+    },
+    {
+      "audio": "peak",
+      "<=": 1,
+      "source": "02-contracts.md, section 1: within +-1"
+    }
+  ]
+}

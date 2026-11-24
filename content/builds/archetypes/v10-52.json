@@ -1,0 +1,170 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "V10 5.2 L",
+  "notes": "A 90-degree V10 with split crankpins for even firing: 84.5 x 92.8 mm (5204 cc), 12.5:1, direct and port injection, 8700 rpm (the 5.2 L V10 of 2008 on: 386 to 470 kW at 8000 to 8700 rpm, 530 to 565 N m at 6500; makers' figures). In an all-wheel-drive mid-engined car.",
+  "spec": {
+    "engine": {
+      "layout": "V10",
+      "custom": true,
+      "compression": 12.5,
+      "cylinders": 10,
+      "bankAngle": [
+        -45,
+        45
+      ],
+      "bank": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "pin": [
+        315,
+        27,
+        243,
+        99,
+        171,
+        333,
+        45,
+        261,
+        117,
+        189
+      ],
+      "fireRev": [
+        0,
+        0,
+        1,
+        1,
+        0,
+        0,
+        1,
+        1,
+        1,
+        0
+      ],
+      "place": [
+        0.0,
+        0.1,
+        0.2,
+        0.3,
+        0.4,
+        0.033,
+        0.133,
+        0.233,
+        0.333,
+        0.433
+      ],
+      "displacement": 0.0052042,
+      "boreStroke": 0.9106,
+      "bore": 0.0845,
+      "stroke": 0.0928,
+      "rodLength": 0.154,
+      "redlineSpeed": 911.062,
+      "frictionValvetrain": "Finger follower",
+      "rough": 0.2,
+      "benchLoad": 0.3
+    },
+    "valve": {
+      "model": "Lab",
+      "valves": 4,
+      "dIn": 0.0338,
+      "dEx": 0.028,
+      "train": "Finger",
+      "inDurSeat": 268,
+      "inDur1mm": 240,
+      "inLift": 0.011800000000000001,
+      "inCentre": 108,
+      "exDurSeat": 260,
+      "exDur1mm": 232,
+      "exLift": 0.0108,
+      "exCentre": 112,
+      "inPhaseRange": 42,
+      "exPhaseRange": 42
+    },
+    "intake": {
+      "model": 1
+    },
+    "boost": {
+      "model": "Machine",
+      "kind": "Natural",
+      "level": 0.0,
+      "blowOff": 0.7
+    },
+    "exhaust": {
+      "model": "Builder",
+      "sides": 2,
+      "converter": [
+        1,
+        1
+      ],
+      "mufKind": [
+        2,
+        2
+      ]
+    },
+    "fuel": {
+      "kind": "Gasoline",
+      "model": "Fuels",
+      "grade": "Premium (91)",
+      "direct": 1
+    },
+    "ecu": {
+      "model": "Maps",
+      "timing": 0,
+      "pops": 0.1,
+      "starter": true,
+      "limiter": {
+        "kind": "Fuel cut",
+        "speed": 911.062
+      },
+      "idle": {
+        "speed": 94.248
+      }
+    },
+    "car": {
+      "model": "Vehicle",
+      "kind": "Car",
+      "mass": 1650,
+      "drive": "All",
+      "wheelbase": 2.65,
+      "cgHeight": 0.46,
+      "frontWeight": 0.42,
+      "track": 1.64,
+      "cdA": 0.65,
+      "tyre": "Semi-slick",
+      "tyreRadius": 0.345,
+      "gearbox": "Dual clutch",
+      "finalDrive": 4.0,
+      "centreSplit": 0.3,
+      "wheelInertia": 1.5,
+      "gears": 7,
+      "autoGearing": false,
+      "ratio": [
+        3.13,
+        2.59,
+        1.96,
+        1.55,
+        1.24,
+        1.0,
+        0.85
+      ],
+      "brakeDecel": 1.1,
+      "abs": true
+    },
+    "env": {
+      "temperature": 288.15,
+      "pressure": 101325.0
+    },
+    "voices": {
+      "timing": "Chain",
+      "injection": "Direct"
+    }
+  }
+}

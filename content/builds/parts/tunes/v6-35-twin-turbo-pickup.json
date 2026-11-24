@@ -1,0 +1,25 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "part": "tune",
+  "name": "3.5 L twin-turbo V6 pickup (tune)",
+  "notes": "The tune of the archetype \"3.5 L twin-turbo V6 pickup\" alone.",
+  "spec": {
+    "ecu": {
+      "model": "Maps",
+      "timing": 0,
+      "pops": 0.1,
+      "starter": true,
+      "limiter": {
+        "kind": "Fuel cut",
+        "speed": 628.319
+      },
+      "idle": {
+        "speed": 68.068
+      },
+      "knock": {
+        "on": true
+      }
+    }
+  }
+}

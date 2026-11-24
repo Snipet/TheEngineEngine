@@ -1,0 +1,102 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "part": "engine",
+  "name": "Two-stage-cam 2.0 L (engine)",
+  "notes": "The engine of the archetype \"Two-stage-cam 2.0 L\" alone, to put in another car.",
+  "spec": {
+    "engine": {
+      "layout": "Inline 4",
+      "custom": true,
+      "compression": 11.7,
+      "cylinders": 4,
+      "bankAngle": [
+        0.0
+      ],
+      "bank": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "pin": [
+        0,
+        180,
+        180,
+        0
+      ],
+      "fireRev": [
+        0,
+        1,
+        0,
+        1
+      ],
+      "place": [
+        0.0,
+        0.1,
+        0.2,
+        0.3
+      ],
+      "displacement": 0.0019974,
+      "boreStroke": 1.0357,
+      "bore": 0.087,
+      "stroke": 0.084,
+      "rodLength": 0.153,
+      "redlineSpeed": 942.478,
+      "frictionValvetrain": "Finger follower",
+      "rough": 0.2,
+      "benchLoad": 0.3
+    },
+    "valve": {
+      "model": "Lab",
+      "valves": 4,
+      "dIn": 0.034,
+      "dEx": 0.029,
+      "train": "Rocker",
+      "inDurSeat": 236,
+      "inDur1mm": 204,
+      "inLift": 0.0085,
+      "inCentre": 110,
+      "exDurSeat": 232,
+      "exDur1mm": 200,
+      "exLift": 0.008,
+      "exCentre": 112,
+      "stages": "On",
+      "inDurSeatB": 290,
+      "inDur1mmB": 258,
+      "inLiftB": 0.0118,
+      "exDurSeatB": 284,
+      "exDur1mmB": 252,
+      "exLiftB": 0.0112,
+      "stageSpeed": 628.3185307179587,
+      "inCentreB": 110,
+      "exCentreB": 112
+    },
+    "intake": {
+      "model": 1
+    },
+    "boost": {
+      "model": "Machine",
+      "kind": "Natural",
+      "level": 0.0,
+      "blowOff": 0.7
+    },
+    "exhaust": {
+      "model": "Builder",
+      "sides": 1,
+      "converter": [
+        1,
+        1
+      ],
+      "mufKind": [
+        2,
+        2
+      ]
+    },
+    "fuel": {
+      "kind": "Gasoline",
+      "model": "Fuels",
+      "grade": "Premium (91)"
+    }
+  }
+}

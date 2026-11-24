@@ -1,0 +1,109 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "part": "engine",
+  "name": "7.0 L pushrod V8, dry sump (engine)",
+  "notes": "The engine of the archetype \"7.0 L pushrod V8, dry sump\" alone, to put in another car.",
+  "spec": {
+    "engine": {
+      "layout": "V8 crossplane",
+      "custom": true,
+      "compression": 11.0,
+      "cylinders": 8,
+      "bankAngle": [
+        45,
+        -45
+      ],
+      "bank": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1
+      ],
+      "pin": [
+        45,
+        45,
+        135,
+        135,
+        315,
+        315,
+        225,
+        225
+      ],
+      "fireRev": [
+        0,
+        1,
+        0,
+        0,
+        1,
+        1,
+        1,
+        0
+      ],
+      "place": [
+        0.0,
+        0.033,
+        0.1,
+        0.133,
+        0.2,
+        0.233,
+        0.3,
+        0.333
+      ],
+      "displacement": 0.0070113,
+      "boreStroke": 1.0315,
+      "bore": 0.10479999999999999,
+      "stroke": 0.1016,
+      "rodLength": 0.158,
+      "redlineSpeed": 733.038,
+      "frictionValvetrain": "Roller",
+      "rough": 0.2,
+      "benchLoad": 0.3
+    },
+    "valve": {
+      "model": "Lab",
+      "valves": 2,
+      "dIn": 0.056,
+      "dEx": 0.041,
+      "train": "Pushrod",
+      "inDurSeat": 282,
+      "inDur1mm": 230,
+      "inLift": 0.015,
+      "inCentre": 112,
+      "exDurSeat": 288,
+      "exDur1mm": 234,
+      "exLift": 0.014,
+      "exCentre": 116
+    },
+    "intake": {
+      "model": 1
+    },
+    "boost": {
+      "model": "Machine",
+      "kind": "Natural",
+      "level": 0.0,
+      "blowOff": 0.7
+    },
+    "exhaust": {
+      "model": "Builder",
+      "sides": 2,
+      "converter": [
+        1,
+        1
+      ],
+      "mufKind": [
+        2,
+        2
+      ]
+    },
+    "fuel": {
+      "kind": "Gasoline",
+      "model": "Fuels",
+      "grade": "Premium (91)"
+    }
+  }
+}

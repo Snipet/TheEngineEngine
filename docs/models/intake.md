@@ -72,8 +72,13 @@ last volume, the sources to `Listen`, `tel.intake` (manifold pressure and its ri
 - ITBs (test 11), the default V8 at 4000 rpm wide open: the trumpets in the air radiate +31.2 dB against the single
   throttle's snorkel; the idle's manifold ripple 23.4 kPa against 2.3 (**measured**). What Intake radiates (`sound`)
   is not yet mixed: Extras still rings its own box filter (a change wave 2 or the lead must make).
-- The runner's length (test 12, the four at 1500 rpm): the intake port rings at 115 Hz with 0.75 m (its quarter wave
-  with the end correction: 113 Hz) and 135 Hz with 0.45 m (185 Hz predicted): the direction is right, the card's 20 %
-  is not met (the shorter runner's ring is pulled toward the cycle's strong low orders), and the torque curves'
-  peaks are too ragged to read a tuning peak from.
+- The runner's tuning (test 12, a 2.0 L four with a 280-degree cam, 300 K air, wide open on the dyno; **measured**): VE
+  against speed has two bumps for each length, the runner's ring meeting the intake event each cycle (main) and
+  every other (lower). With the valve open the runner rings as a pipe loaded by the cylinder's volume (x tan x =
+  A L / V, the distributed form of Engelman's Helmholtz), not as a closed pipe's quarter wave: 161 Hz for 0.40 m,
+  117 Hz for 0.60 m. The bumps move with it: main 7640 and 5250 rpm (ratio 0.687), lower 3180 and 2300 (0.722),
+  against 0.729. VE reaches 1.14 at the 0.60 m runner's tuned speed (1.03 at the 0.40 m's). The two-length
+  manifold (0.60 m, 0.40 from 6300 rpm) follows the envelope of both main bumps within 0.1 %; one switch cannot
+  also keep the short runner's lower bump. The earlier measurement (the port's strongest harmonic) read that
+  loaded ring: 135 Hz for 0.45 m, where the loaded pipe gives 134.
 - The single throttle is solved with its plenum (one Newton step on the end pressure), as F asked.
