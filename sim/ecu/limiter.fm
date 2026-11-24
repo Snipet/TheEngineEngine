@@ -1,0 +1,137 @@
+// limiter.fm: the rev limiter's kinds (ecu.model 1; ecu.limiter.kind), and the two pieces the launch control, the
+// flat-shift and the traction control share with it: an even pattern of cut firings, and a soft hold of a speed.
+//
+// Fuel cut (the reference's, and kind 0): past the limit no cylinder gets fuel, until the speed is 140 rpm under it;
+// the charge goes out as air. Spark cut: the same hysteresis, but the injectors keep firing and the sparks stop, so
+// each cut cylinder's charge goes out unburned into the hot pipe, where it may light (overrun.fm's account): the
+// limiter's bangs. Soft: over the last `soft` of speed below the limit the spark is taken back (up to `retard`
+// degrees over the first half), then cylinders are cut (by fuel) progressively over the second, all of them at the
+// limit. Throttle: a drive-by-wire plate closes as the speed nears the limit (a proportional and integral hold of the
+// plate's ceiling 50 rpm under it), with the fuel cut 200 rpm over it behind it.
+//
+// Which firings a share cuts: each firing adds the share to an accumulator and is cut when it passes 1 (a first-order
+// sigma-delta): a share of a third cuts every third firing, evenly, whatever the cylinder count, so the torque comes
+// out as even as the share allows and no cylinder is cut every cycle (its plug would foul and its walls cool).
+#pragma once
+
+enum
+{
+    LIMIT_FUEL,
+    LIMIT_SPARK,
+    LIMIT_SOFT,
+    LIMIT_THROTTLE
+};
+
+// An even pattern of cut firings for a share 0 to 1
+module CutPattern
+{
+    float acc;
+
+    // Whether this firing is cut, at `share`
+    bool next(float share)
+    {
+        if (share <= 0.0f)
+        {
+            acc = 0.0f;
+            return false;
+        }
+        if (share >= 1.0f)
+            return true;
+        acc += share;
+        if (acc >= 1.0f)
+        {
+            acc -= 1.0f;
+            return true;
+        }
+        return false;
+    }
+};
+
+// A soft hold under a speed: retard over the first half of the band below it, cut over the second
+module SoftHold
+{
+    float retard;       // degrees
+    float share;        // firings cut, 0 to 1
+
+    // `rpm` (with its rate, rpm/s: the hold looks 30 ms ahead) under `limit`, over a band of `band` rpm, up to `most`
+    // degrees of retard
+    void hold(float rpm, float rate, float limit, float band, float most)
+    {
+        const float b = fmaxf(band, 10.0f);
+        const float x = (rpm + 0.03f * rate - (limit - b)) / b;
+        retard = most * fminf(fmaxf(2.0f * x, 0.0f), 1.0f);
+        share = fminf(fmaxf(2.0f * x - 1.0f, 0.0f), 1.0f);
+    }
+};
+
+module RevLimiter
+{
+    // what it asks, every 16 samples
+    bool active;        // it acts (the telemetry's limiter flag)
+    bool fuelCut;       // every cylinder's fuel cut
+    bool sparkCut;      // every cylinder's spark cut (its fuel goes out unburned)
+    float share;        // firings cut by fuel (soft), 0 to 1
+    float retard;       // degrees taken from the spark
+    float plateMax;     // the throttle plate's ceiling, 0 to 1
+    float plateInt;     // its integral
+    bool hard;          // the throttle kind's fuel cut behind it
+    SoftHold soft;
+
+    void reset()
+    {
+        active = false;
+        fuelCut = false;
+        sparkCut = false;
+        share = 0.0f;
+        retard = 0.0f;
+        plateMax = 1.0f;
+        plateInt = 1.0f;
+        hard = false;
+    }
+
+    // Every 16 samples (d16 seconds): the kind (LIMIT_*), the speed and its rate (rpm, rpm/s), the limit (rpm), the
+    // soft kind's band (rpm) and its most retard (degrees)
+    void control(int kind, float rpm, float rate, float limit, float band, float most, float d16)
+    {
+        fuelCut = false;
+        sparkCut = false;
+        share = 0.0f;
+        retard = 0.0f;
+        if (kind == LIMIT_SOFT)
+        {
+            soft.hold(rpm, rate, limit, band, most);
+            retard = soft.retard;
+            share = soft.share;
+            fuelCut = rpm > limit;
+            active = retard > 0.0f || fuelCut;
+            plateMax = 1.0f;
+            return;
+        }
+        if (kind == LIMIT_THROTTLE)
+        {
+            // the plate's ceiling: 0.3 of the plate a 1000 rpm under the hold's speed (looking 100 ms ahead: the plate,
+            // the plenum and the cycle lag), and an integral that finds the ceiling which holds it, closing three times
+            // faster than it opens; wide open 400 rpm below
+            const float e = (limit - 50.0f - rpm - 0.1f * rate) * 0.001f;
+            if (e < 0.4f)
+                plateInt = fminf(fmaxf(plateInt + (e < 0.0f ? 3.0f : 1.0f) * e * d16, 0.0f), 1.0f);
+            else
+                plateInt = 1.0f;
+            plateMax = fminf(fmaxf(plateInt + 0.3f * e, 0.0f), 1.0f);
+            if (rpm > limit + 200.0f)
+                hard = true;
+            else if (rpm < limit + 60.0f)
+                hard = false;
+            fuelCut = hard;
+            active = hard || plateMax < 0.98f;
+            return;
+        }
+        plateMax = 1.0f;
+        if (rpm > limit)
+            active = true;
+        else if (rpm < limit - 140.0f)
+            active = false;
+        fuelCut = active && kind != LIMIT_SPARK;
+        sparkCut = active && kind == LIMIT_SPARK;
+    }
+};

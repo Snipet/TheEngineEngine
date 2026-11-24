@@ -83,12 +83,15 @@ namespace tee
         // Seconds fminus::Program::compile took: the front end, and with the checks on the optimiser and the code
         // generator too (FMinus compiles those programs whole).
         double compileSeconds() const noexcept { return compileSeconds_; }
+        // The same in the compiling thread's processor time (Clock.h): what it cost, on a machine however busy.
+        double compileCpuSeconds() const noexcept { return compileCpuSeconds_; }
 
         // Generates the program's machine code now, if no function has been looked up yet (FMinus runs the optimiser
         // and the code generator at the first look-up otherwise, wherever that happens). False, with `errors` set,
         // when the code does not link. linkSeconds() is how long that took, and codeBytes() the machine code's size.
         bool link(std::string& errors);
         double linkSeconds() const noexcept { return linkSeconds_; }
+        double linkCpuSeconds() const noexcept { return linkCpuSeconds_; }
         std::size_t codeBytes() const noexcept { return codeBytes_; }
 
         // The function `name` ("Shared::init", "tee_ref_process"), as fminus::Program::function gives it: the
@@ -110,7 +113,9 @@ namespace tee
         std::string entry_;
         std::vector<std::string> filesRead_;
         double compileSeconds_ = 0.0;
+        double compileCpuSeconds_ = 0.0;
         double linkSeconds_ = 0.0;
+        double linkCpuSeconds_ = 0.0;
         std::size_t codeBytes_ = 0;
         bool linked_ = false;
     };

@@ -32,8 +32,9 @@ cmake --workflow --preset dev-verify          # configure, build (3 jobs), run e
 ```
 
 The script is safe to run again. The cache is `/home/user/.tee-deps`: never delete it, never write into it by hand.
-A first build compiles FMinus (about three minutes with three jobs); after that the compiler cache makes a fresh
-checkout's build a matter of seconds.
+LLVM is FMinus's own release archive (`deps-llvm-23.1.3` of Snipet/FMinus), checked against the release's SHA-256;
+a session whose GitHub access does not reach that repository takes the same archive from the mirror, the
+pre-release of the same tag on this repository (`TEE_LLVM_MIRROR` names another), checked the same way.
 
 **macOS (Apple silicon).** Xcode's command line tools, and CMake, Ninja and ccache (Homebrew's):
 

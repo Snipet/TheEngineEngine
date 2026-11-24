@@ -1,0 +1,9 @@
+{
+  "format": "tee-build", "version": 1,
+  "name": "Cylinder deactivation on a V8",
+  "notes": "The reference's cross-plane V8 rests every other cylinder in its firing order (cylinders 1, 4, 6 and 7 of its layout's order: bits 0, 3, 5, 6) between 1100 and 3250 rpm under 35 % load, as GM's Active Fuel Management.",
+  "spec": { "valve": {
+    "model": "Lab", "valves": 2, "train": "Pushrod",
+    "deacMask": 105, "deacLow": 115, "deacHigh": 340, "deacLoad": 0.35
+  } }
+}

@@ -4,7 +4,7 @@
 
 | Package | State | Where it runs | Since | Notes |
 |---|---|---|---|---|
-| A: FunkGui desktop | running | local agent, `/home/user/FunkGui` | 11:22 | five commits pushed by 11:47 (GPU layer without JUCE, `DesktopHost`, the gallery tool, CI); its first CI run is building |
+| A: FunkGui desktop | running (stage 2) | local agent, `/home/user/FunkGui` | 11:22 | **gallery artefacts exist (12:15)**: Windows and Linux jobs green in run 45389650505, macOS built; draft pull request Snipet/FunkGui#38 carries the run instructions; nothing has drawn on Metal or on a real Windows GPU yet |
 | K1, K2: the keel | running | local agent, `/home/user/work/keel` | 11:27 | pushed by 11:52: build, bootstrap, `sim/ref/`, `tee_host`, `tee-render`, CI; finishing the bench and tests |
 | B: shell and application | running | local agent, `/home/user/work/shell` | 11:30 | interfaces pushed (`Sources.h`, `MainPanel.h`) |
 | J1: interface kit | **landed 12:04** | cloud session | 11:32 | the panel code ported (36 files, provenance in `ui/kit/SEED.tsv`), `RefPanel`, shaders compiled for Metal and SPIR-V; 29 headless tests; no shader drawn yet (no GPU path ran) |
@@ -24,6 +24,7 @@
 - 11:19 stage 1: the abstract plan, reviewed; the answers recorded.
 - 11:45 stage 2: every file of this folder.
 - 11:52 the keel's first slice: the build, the bootstrap, `sim/ref/`, `tee_host`, `tee-render`, CI (first run green).
+- 12:15 card A, stage 1: FunkGui's gallery in an SDL3 window builds on all three systems; on Linux its GPU path (Vulkan on Xvfb) draws the expected picture in CI.
 - 12:04 J1: the interface kit's first slice (`docs/handoffs/j1-ui-kit.md`).
 
 ## Blocked, or wanting a decision
