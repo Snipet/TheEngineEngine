@@ -50,7 +50,7 @@ set(TEE_UI_TESTS
   widgets.gallery
   fieldport fieldparams page.generated gui.auto gui.widgets page.split
   display.tail
-  gui.element page.array)
+  gui.element page.array page.array.narrow)
 foreach(_t IN LISTS TEE_UI_TESTS)
   add_test(NAME ui.${_t} COMMAND tee-ui-tests ${_t})
 endforeach()
@@ -112,7 +112,10 @@ if(TARGET tee_ui_build)
     "TEE_UI_SIM_DIR=\"${TEE_UI_REPO}/sim\""
     "TEE_UI_BUILDS_DIR=\"${TEE_UI_REPO}/content/builds\""
     "TEE_UI_OUT_DIR=\"${TEE_UI_REPO}/out/ui\"")
-  foreach(_t IN LISTS TEE_BUILD_TESTS)
-    add_test(NAME ui.${_t} COMMAND tee-ui-build-tests ${_t})
-  endforeach()
+  # One CTest test for them all (the lead's decision, 2026-11-24: sim/ compiled once a process, not once a case; the
+  # rig reset between cases); the nightly ui.build.reverse runs them last first. TEE_BUILD_TESTS (the names) is kept
+  # for the reader: each case's name is in the log.
+  add_test(NAME ui.build COMMAND tee-ui-build-tests all)
+  add_test(NAME ui.build.reverse COMMAND tee-ui-build-tests --reverse)
+  set_tests_properties(ui.build.reverse PROPERTIES LABELS nightly)
 endif()

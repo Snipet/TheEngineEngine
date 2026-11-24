@@ -115,6 +115,11 @@ namespace tee::ui
         std::vector<double> speed, torque, power;
         std::vector<std::string> fields;         // more telemetry at each point, by name
         std::vector<std::vector<double>> values; // values[f][point]
+        // Whether a run's exhaust walls were settled at each step (card C's DynoCurve::settled, the lead's ruling
+        // 1220ca3): 1 settled, 0 cold walls (a short step reads a few percent low), -1 not said (a sweep, a prediction,
+        // an old source). Label a run by wallsWord(); never mix the two unlabelled.
+        int settled = -1;
+        const char* wallsWord() const noexcept { return settled > 0 ? "walls settled" : settled == 0 ? "cold walls" : ""; }
         bool empty() const noexcept { return speed.empty(); }
         // The peak of torque or power: its value and the speed at it (NaN, NaN when empty).
         struct Peak
@@ -148,6 +153,7 @@ namespace tee::ui
         std::vector<double> steps;   // speeds held in turn, rad/s (empty: the sweep above)
         double dwell = 0.6;          // seconds each step is held before it is measured
         int gear = 0;                // a chassis run's gear (0: the one the car is in)
+        bool settleExhaust = true;   // a stepped run: settle the exhaust's walls at each step (DynoPlan::settleExhaust)
     };
 
     // The predicted curve of the build as it stands (card C's dyno runner, in the background, a moment after each
@@ -236,6 +242,13 @@ namespace tee::ui
         // U1
         std::function<bool()> unsaved;                            // the build differs from what was loaded or saved
         std::function<float()> simLoad;                           // the simulator's share of its time budget, 0..1+
+        // The top bar's load (LoadMeter.h; the lead's ask 19:20): the PEAK share of a core in the last second or so
+        // (HostStats::loadPeak; none: simLoad, the mean); the host's verdict on Full, 1 fits, 0 tight, -1 over (none:
+        // the frame works it out from the peak held over three seconds); blocks the audio device missed since load
+        // (none: not shown).
+        std::function<float()> simLoadPeak;
+        std::function<int()> loadFits;
+        std::function<long()> dropouts;
         std::function<int()> mode;                                // 0 bench, 1 dyno, 2 drive (ControlsFrame::mode)
         std::function<void(int)> setMode;
         // The clutch pedal from the mouse while it is held (0..1), or a negative number when let go. The frame now

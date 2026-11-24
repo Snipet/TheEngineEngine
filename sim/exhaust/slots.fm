@@ -1649,11 +1649,51 @@ module XBuild
     // Whether a pipe must take its steady flow out after its filters to stay passive (duct.fm, filtFirst): when a pass
     // in the reference's order could give more than it took. A pipe that is passive in the reference's order keeps it
     // (the reference's pipes, so model 1 at its defaults stays the reference's arithmetic)
+    // (Q measured the check at 63 ns a sample on the typical build: it is skipped while every input lies within 1e-4
+    // of those last checked, relative, and that answer stood at least 1e-3 from the threshold: inputs moved that little
+    // move a pass's gain by some 1e-4, so the answer cannot change. The shelves drift with the gas's temperature.)
     int filterFirst(Duct* p)
     {
         if (p->wallOn == 0 && p->packOn == 0 && p->backOn == 0 && p->lp <= 0.0f)
+        {
+            p->pgHave = 0;
             return 0;
-        return passGain(p) > 0.9999f ? 1 : 0;
+        }
+        float in[24];
+        in[0] = p->kDc;
+        in[1] = p->keep;
+        in[2] = p->lp;
+        for (int k = 0; k < 3; ++k)
+        {
+            in[3 + k] = p->wallOn != 0 ? p->sb0[k] : 0.0f;
+            in[6 + k] = p->wallOn != 0 ? p->sb1[k] : 0.0f;
+            in[9 + k] = p->wallOn != 0 ? p->sa1[k] : 0.0f;
+        }
+        for (int k = 0; k < 2; ++k)
+        {
+            in[12 + k] = p->packOn != 0 ? p->pb0[k] : 0.0f;
+            in[14 + k] = p->packOn != 0 ? p->pb1[k] : 0.0f;
+            in[16 + k] = p->packOn != 0 ? p->pa1[k] : 0.0f;
+            in[18 + k] = p->backOn != 0 ? p->rb0[k] : 0.0f;
+            in[20 + k] = p->backOn != 0 ? p->rb1[k] : 0.0f;
+            in[22 + k] = p->backOn != 0 ? p->ra1[k] : 0.0f;
+        }
+        if (p->pgHave != 0 && fabsf(p->pgLast - 0.9999f) >= 1.0e-3f)
+        {
+            int same = 1;
+            for (int k = 0; k < 24; ++k)
+            {
+                if (fabsf(in[k] - p->pgIn[k]) > 1.0e-4f * (fabsf(p->pgIn[k]) + 1.0e-3f))
+                    same = 0;
+            }
+            if (same != 0)
+                return p->pgLast > 0.9999f ? 1 : 0;
+        }
+        for (int k = 0; k < 24; ++k)
+            p->pgIn[k] = in[k];
+        p->pgLast = passGain(p);
+        p->pgHave = 1;
+        return p->pgLast > 0.9999f ? 1 : 0;
     }
 
     // ---- every 16 samples ----

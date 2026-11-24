@@ -60,7 +60,7 @@
         120
       ],
       "unit": "m/s",
-      "source": "started, in gear and on the pedal, the car moves (a 36 t tractor at least 3 m/s in ten seconds)"
+      "source": "started, in gear and on the pedal, the car moves (a 36 t tractor in third of eighteen at least 1.5 m/s)"
     },
     {
       "name": "Invariant: stops at the key",
@@ -100,7 +100,7 @@
         190000
       ],
       "unit": "W",
-      "source": "published figures of its kind (makers' figures by market and year, from memory, firm to 5 %): the RENESIS kind of 2003: 170 to 184 kW at 8200 to 8500 rpm, 211 to 216 N m at 5500; makers' figures by market and year, from memory, firm to 5 %; 126 to 145 kW a litre"
+      "source": "published figures of its kind (makers' figures by market and year, from memory, firm to 5 %): N1, from memory, to some 10 degrees; 126 to 145 kW a litre"
     },
     {
       "name": "Speed at peak power",
@@ -114,7 +114,7 @@
         921.5
       ],
       "unit": "rad/s",
-      "source": "published figures of its kind (makers' figures by market and year, from memory, firm to 5 %): the RENESIS kind of 2003: 170 to 184 kW at 8200 to 8500 rpm, 211 to 216 N m at 5500; makers' figures by market and year, from memory, firm to 5 %: 8000 to 8800 rpm"
+      "source": "published figures of its kind (makers' figures by market and year, from memory, firm to 5 %): N1, from memory, to some 10 degrees: 8000 to 8800 rpm"
     },
     {
       "name": "Peak torque",
@@ -128,7 +128,7 @@
         220
       ],
       "unit": "N m",
-      "source": "published figures of its kind (makers' figures by market and year, from memory, firm to 5 %): the RENESIS kind of 2003: 170 to 184 kW at 8200 to 8500 rpm, 211 to 216 N m at 5500; makers' figures by market and year, from memory, firm to 5 %; BMEP 19.7 to 21.1 bar (a naturally aspirated petrol engine 10 to 13 bar, turbocharged 18 to 25, a modern truck diesel 20 to 25: Heywood, Internal Combustion Engine Fundamentals, ch. 2)"
+      "source": "published figures of its kind (makers' figures by market and year, from memory, firm to 5 %): N1, from memory, to some 10 degrees; BMEP 19.7 to 21.1 bar (a naturally aspirated petrol engine 10 to 13 bar, turbocharged 18 to 25, a modern truck diesel 20 to 25: Heywood, Internal Combustion Engine Fundamentals, ch. 2)"
     },
     {
       "name": "Speed at peak torque",
@@ -142,7 +142,7 @@
         628.3
       ],
       "unit": "rad/s",
-      "source": "published figures of its kind (makers' figures by market and year, from memory, firm to 5 %): the RENESIS kind of 2003: 170 to 184 kW at 8200 to 8500 rpm, 211 to 216 N m at 5500; makers' figures by market and year, from memory, firm to 5 %: 5000 to 6000 rpm (a turbocharged engine's plateau: its whole span)"
+      "source": "published figures of its kind (makers' figures by market and year, from memory, firm to 5 %): N1, from memory, to some 10 degrees: 5000 to 6000 rpm (a turbocharged engine's plateau: its whole span)"
     },
     {
       "name": "Warm idle",
@@ -211,7 +211,7 @@
     {
       "name": "Port gas at full load",
       "scenario": "validation/scenarios/p-full-load-6000.json",
-      "tel": "exhaust.portTemperature",
+      "tel": "exhaust.portThermocouple",
       "measure": "mean",
       "during": [
         8,
@@ -222,12 +222,12 @@
         1300
       ],
       "unit": "K",
-      "source": "the gas at the exhaust valve at full load, before the port and pipe cool it: some 1100 to 1300 K for a spark-ignition engine (Heywood, Internal Combustion Engine Fundamentals, ch. 14; card C's target on default.json, which this follows)"
+      "source": "what a thermocouple at the exhaust port reads at full load (a time mean, below the gas's mass mean): some 1100 to 1300 K for a spark-ignition engine (Heywood, Internal Combustion Engine Fundamentals, ch. 14; card C's target on default.json); tel.exhaust.portThermocouple, card G's mixing cup"
     },
     {
       "name": "Header gas at full load",
       "scenario": "validation/scenarios/p-full-load-6000.json",
-      "tel": "exhaust.headerTemperature",
+      "tel": "exhaust.headerThermocouple",
       "measure": "mean",
       "during": [
         8,
@@ -238,7 +238,23 @@
         1100
       ],
       "unit": "K",
-      "source": "a thermocouple a little way down a primary reads 900 to 1100 K at full load on a petrol engine (makers' exhaust-gas-temperature data; Heywood, Internal Combustion Engine Fundamentals, ch. 14); n/a until the exhaust reports it"
+      "source": "a thermocouple a little way down a primary reads 900 to 1100 K at full load on a petrol engine (makers' exhaust-gas-temperature data; Heywood, Internal Combustion Engine Fundamentals, ch. 14); tel.exhaust.headerThermocouple"
+    },
+    {
+      "name": "Port gas, mass mean (information)",
+      "scenario": "validation/scenarios/p-full-load-6000.json",
+      "tel": "exhaust.portTemperature",
+      "measure": "mean",
+      "during": [
+        8,
+        10
+      ],
+      "range": [
+        0,
+        3000
+      ],
+      "unit": "K",
+      "source": "the gas's mass (enthalpy) mean at the port, kept for information: above a thermocouple's reading, not a target (card G, f703892)"
     },
     {
       "name": "Quarter mile: time",

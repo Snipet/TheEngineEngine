@@ -22,7 +22,7 @@ Thirty archetypes in `content/builds/archetypes/`, each a whole build (engine, c
 | Two-stage-cam 2.0 L | 2.00 L Inline 4 | 87.0 x 84.0 mm | 11.7:1 | Natural | 9000 rpm | Rear-drive, 1250 kg | Manual, 6 gears |
 | Kei 660 cc triple turbo | 0.66 L Inline 3 | 68.0 x 60.4 mm | 8.6:1 | Turbo, 0.7 bar | 8000 rpm | Rear-drive, 780 kg | Manual, 5 gears |
 | Diesel 2.0 L common rail | 1.97 L Inline 4 | 81.0 x 95.5 mm | 16.5:1 | Turbo, 1.4 bar | 4800 rpm | Front-drive, 1500 kg | Manual, 6 gears |
-| Highway tractor 15 L | 14.95 L Inline 6 | 137.0 x 169.0 mm | 17.0:1 | Turbo, 2.6 bar | 2250 rpm | Rear-drive, 36000 kg | Manual, 18 gears |
+| Highway tractor 15 L | 14.95 L Inline 6 | 137.0 x 169.0 mm | 17.0:1 | Turbo, 2.6 bar | 2250 rpm | Rear-drive, 36000 kg | Eighteen-speed, 18 gears |
 | 1.0 L three-cylinder turbo | 1.00 L Inline 3 | 71.9 x 82.0 mm | 10.0:1 | Turbo, 1.0 bar | 6500 rpm | Front-drive, 1200 kg | Manual, 6 gears |
 | 1.5 L economy four | 1.50 L Inline 4 | 75.0 x 84.7 mm | 11.0:1 | Natural | 6600 rpm | Front-drive, 1250 kg | CVT, 1 gears |
 | 2.0 L turbo four, direct injection | 1.98 L Inline 4 | 82.5 x 92.8 mm | 9.6:1 | Turbo, 1.2 bar | 6800 rpm | Front-drive, 1450 kg | Dual clutch, 6 gears |
@@ -50,7 +50,7 @@ Thirty archetypes in `content/builds/archetypes/`, each a whole build (engine, c
 
 **Rotary twin** (`rotary-twin-13.json`). A twin-rotor Wankel, 2 x 654 cc, 9.0:1, with two sequential turbos (the 13B-REW kind: 206 to 280 PS, the latter at 6500 rpm, some 294 N m at 5000; Wikipedia, makers' figures, firm to 10 %). In a light rear-drive coupe.
 
-**Rotary twin, side ports** (`rotary-twin-na-side-port.json`). A naturally aspirated twin-rotor Wankel with side exhaust ports, 2 x 654 cc, 10:1, a 9000 rpm limiter and a two-stage intake (the RENESIS kind of 2003: 170 to 184 kW at 8200 to 8500 rpm, 211 to 216 N m at 5500; makers' figures by market and year, from memory, firm to 5 %). High-flow converter, straight-through mufflers. In a light rear-drive coupe.
+**Rotary twin, side ports** (`rotary-twin-na-side-port.json`). A naturally aspirated twin-rotor Wankel with side exhaust ports, 2 x 654 cc, 10:1, a 9000 rpm limiter and a two-stage intake; its side ports' timing EO 50 BBDC, EC 3 ATDC, IO 3 ATDC, IC 65 ABDC in eccentric-shaft degrees (N1, from memory, to some 10 degrees) (the RENESIS kind of 2003: 170 to 184 kW at 8200 to 8500 rpm, 211 to 216 N m at 5500; makers' figures by market and year, from memory, firm to 5 %). High-flow converter, straight-through mufflers. In a light rear-drive coupe.
 
 **1.6 L 16-valve hot hatch** (`hot-hatch-16-16v.json`). A light front-drive hatch with a twin-cam 16-valve 1.6: 81 x 77.4 mm (1595 cc), 10.4:1; engines of the kind made 85 to 118 kW at 6500 to 7600 rpm and 140 to 160 N m (makers' figures of the 1980s and 90s).
 
@@ -149,6 +149,10 @@ Made by the packages that built each part of the simulator, to show or test thei
 | `combo/findings/x003-h-cold.json` | X-003: the V8 with the new combustion and ECU | Package X's finding X-003 (2026-11-24, card H): the combo V8 with fuel.model 1 and ecu.model 1, nothing else on. |
 | `combo/findings/x004-six-launch.json` | X-004: the turbo six, eight switches on | Package X's finding X-004 (2026-11-24): the combo turbo six with engine.custom, valve, intake, boost, fuel, ecu, car and sound models on (exhaust and voices ... |
 | `combo/findings/x007-heavy-piston.json` | fuzz 2 | tee-fuzz --reduce: the fields that still fail 'guard' under the seed's driving; every other field at its default |
+| `combo/findings/x021-diesel-boost-vehicle.json` | X-021: the large diesel, the new turbo and the new vehicle | Package X's finding X-021 (2026-11-24): the combo large diesel (15 L, twin turbos, the reference's truck mass) with boost.model 1 and car.model 1, nothing ... |
+| `combo/findings/x022-supercharger-itb-small-charge.json` | X-022: a supercharger into ITBs through a tiny charge volume | Package X's finding X-022 (2026-11-24), reduced by tee-fuzz from the ranges' corners seed 3 (503 fields to 6; every other field at its default: the ... |
+| `combo/findings/x024-tiny-engine-huge-inducer.json` | X-024: a 0.23 L engine with an 85 mm inducer | Package X's finding X-024 (2026-11-24, N2 and L), reduced by tee-fuzz from the random seed 130: tel.boost.flow non-finite from 0.29 s; with sound.model 1 an ... |
+| `combo/findings/x025-two-stroke-rotary-silent.json` | X-025: a two-stroke rotary | Package X's finding X-025 (2026-11-24, T and D), reduced by tee-fuzz from the random seed 229: reports running and is silent. |
 | `combo/pack/large-diesel-all.json` | Large diesel, every package on | The archetype with every model switch at 1 and the custom engine on (package X's listening pack: scripts/listening-pack.tsv) |
 | `combo/pack/small-four-all.json` | Small four, every package on | The archetype with every model switch at 1 and the custom engine on (package X's listening pack: scripts/listening-pack.tsv) |
 | `combo/pack/turbo-six-all.json` | Turbo six, every package on | The archetype with every model switch at 1 and the custom engine on (package X's listening pack: scripts/listening-pack.tsv) |

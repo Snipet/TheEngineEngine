@@ -49,6 +49,7 @@ TEST_CASE("predicted points are the stand-in's torque law, between its idle and 
     PredictOptions options;
     options.threads = 2;
     options.points = 12;
+    options.minHoldSeconds = 0.0;   // the settling rule alone (the stand-in has nothing slow)
     options.sampleRate = 48000.0;
     PredictCurve curve;
     std::string error;
@@ -65,7 +66,7 @@ TEST_CASE("predicted points are the stand-in's torque law, between its idle and 
         CHECK(p.settled);
         CHECK(std::fabs(p.torque - expected(build, p.speed)) < 0.5);
         CHECK(std::fabs(p.power - p.torque * p.speed) < 1e-9 * std::fabs(p.power) + 1e-9);
-        CHECK(p.cycles == options.minCycles);   // a steady law agrees at once
+        CHECK(p.cycles == 6);   // a steady law settles in the fewest the rule allows: six (three against three)
     }
 }
 

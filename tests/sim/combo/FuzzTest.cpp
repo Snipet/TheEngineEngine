@@ -25,20 +25,47 @@ namespace
             if (checks)
                 sc.checks();
             const tee::test::Run r = sc.run(tm.end);
-            const Verdict v = judgeFuzz(r, tm);
+            Verdict v = judgeFuzz(r, tm);
+            // the contract's heavy case (02-contracts section 9: reported, not required in real time): a custom rotary of
+            // two or more rotors (each face solved twice a sample on a shared port) or of twelve or more cylinders.
+            // Its cost is X-016's, reported here, not failed (Q measured 2 to 10 R on such builds).
+            double custom = 0.0, rotors = 0.0, cylinders = 0.0;
+            for (const Value& x : spec)
+            {
+                if (x.path == "engine.custom")
+                    custom = x.value;
+                else if (x.path == "engine.rotors")
+                    rotors = x.value;
+                else if (x.path == "engine.cylinders")
+                    cylinders = x.value;
+            }
+            if (custom != 0.0 && (rotors >= 2.0 || cylinders >= 12.0))
+            {
+                for (auto it = v.failures.begin(); it != v.failures.end();)
+                {
+                    if (it->check == "cost")
+                    {
+                        WARN("known X-016 (the heavy case): seed " << seed << ": " << it->detail << " (custom, "
+                                                                 << rotors << " rotors, " << cylinders << " cylinders)");
+                        it = v.failures.erase(it);
+                    }
+                    else
+                        ++it;
+                }
+            }
             const std::string name = std::string(corners ? "corners " : "random ") + std::to_string(seed);
             report(v, name, "fuzz", corners ? "corners" : "random");
         }
     }
 } // namespace
 
-TEST_CASE("fuzz: random Spec seed 2 (the one that once crashed) with six seconds of random driving", "[combo][fuzz]")
+TEST_CASE("fuzz: random Spec seed 2 (the one that once crashed) with six seconds of random driving", "[fast][combo][fuzz]")
 {
     fuzz(2, 1, 6.0, false, true);
 }
 
 TEST_CASE("fuzz: the ranges' corners seed 3 (the one that once overshot) with six seconds of random driving",
-          "[combo][fuzz]")
+          "[fast][combo][fuzz]")
 {
     fuzz(3, 1, 6.0, true, true);
 }

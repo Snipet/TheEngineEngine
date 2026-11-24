@@ -68,3 +68,12 @@ fault in the engine); a test that the diesel archetypes and the turbo four make 
 Engine no longer calls Boost's exhaust stand-in (910fed3); a firing engine let go from its start runs past half its
 idle speed, both ECUs, null unchanged (a64e511); tel.engine.layoutReason (6141a60). Reviewed: card I's car.traction,
 D2's flap and vane release (62484fc). Failing, not card D's: diesel.diesel turbo (the VGT's 2x over the single).
+
+**Since (to 24 Nov 19:10)**: the cylinder's side of an overrun's pop (76690a7: `Cylinder::exUnburnedJ`, the per-burn
+books; N1 takes it into H's store); the model switches' decisions taken again after every readSpec (f89d40c: before,
+a switch set while stopped on a build with the default layout and size never reached `comb.walls`, `conserve`,
+`exh.implied`); core under the test budget, its long forms [nightly]; the V12's teeth traced to the intake runner's
+standing wave (not the cylinder; N1's end loss ab65e06 takes most of it); a firing engine let go from its start runs.
+**Listen to**, added: an overrun's pops on the model-on path once N1 lights exUnburnedJ in the pipe.
+
+**Listening note (19:30)**: builds and renders before f89d40c are not the ones to judge the default V8's model-on sound on, where a model switch was written while the engine stood (after the program's init, with no layout or size change to follow it): those ran without the physical cylinder and the implied exhaust.

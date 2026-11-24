@@ -49,7 +49,7 @@
       "bore": 0.137,
       "stroke": 0.169,
       "rodLength": 0.262,
-      "redlineSpeed": 235.619,
+      "redlineSpeed": 210.906,
       "frictionValvetrain": "Finger follower",
       "rough": 0.2,
       "benchLoad": 0.3
@@ -115,11 +115,14 @@
       "starter": true,
       "limiter": {
         "kind": "Fuel cut",
-        "speed": 235.619
+        "speed": 210.906
       },
       "idle": {
         "speed": 73.304
       },
+      "governor": "Electronic",
+      "ratedSpeed": 199.0,
+      "fuelBoost": 108000,
       "engineBrake": "Compression release",
       "brakeSwitch": "Medium",
       "knock": {
@@ -139,7 +142,7 @@
       "cdA": 6.0,
       "tyre": "Truck",
       "tyreRadius": 0.51,
-      "gearbox": "Manual",
+      "gearbox": "Eighteen-speed",
       "finalDrive": 3.55,
       "wheelInertia": 40.0,
       "gears": 18,

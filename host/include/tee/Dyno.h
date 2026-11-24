@@ -46,6 +46,13 @@ namespace tee
         // fuel and the brake reads its friction: a negative torque that is right.
         double warmup = -1.0;
         bool warm = true;              // the engine held at its working temperatures (Warm.h), as a dyno cell holds it
+        // The exhaust's heat settled (spec.exhaust.heatSettle) at each step, twice, and at a sweep's start: a held step
+        // reads the steady state, as a predicted point does (Predict.h), the walls as a minute at that speed leaves
+        // them. Off: a step's first seconds, its walls still warming (some 3 % low on the V12 near 6700 rpm: 769
+        // against 779 after a minute). A run says which it is (DynoCurve::settled). The one switch for every slow heat
+        // the program can settle: with the exhaust's, the intake's charge heating (spec.intake.heatSettle) and the
+        // boost's intercooler (spec.boost.heatSettle) where it has them; the predictor's settleExhaust likewise.
+        bool settleExhaust = true;
         std::string torque = "engine.torque";   // the tel field the absorbed torque is read from
         std::vector<std::string> fields;        // more tel fields at each point: "boost.pressure", "engine.manifold"
         double sampleRate = 48000.0;
@@ -75,6 +82,7 @@ namespace tee
         // The simulator found its engine diverged (FLAG_FAULT in tel.engine.flags) and put it at rest: the run
         // stopped there, the point it was measuring dropped. A failure of the program's invariant, never normal.
         int faults = 0;
+        bool settled = false;          // the exhaust's heat was settled at each step (DynoPlan::settleExhaust)
         std::uint64_t key = 0;         // the build's hash with the plan's
 
         double realTime() const noexcept { return wallSeconds > 0.0 ? simulatedSeconds / wallSeconds : 0.0; }

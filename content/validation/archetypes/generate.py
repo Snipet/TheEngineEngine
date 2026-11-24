@@ -109,13 +109,24 @@ def targets(slug, b):
         during=[6, 14], range=[2, 2], source="a warm engine started on its key runs and keeps running (engine.state 2)")
     add(name="Invariant: within full scale", scenario=SC + "p-free-rev.json", audio="peak", range=[0, 1],
         source="02-contracts.md, section 1: what process writes is within +-1")
-    add(name="Invariant: holds its limiter", scenario=SC + "p-free-rev.json", tel="engine.speed", measure="max",
-        during=[6, 9], relativeTo="engine.redline", range=[0.97, 1.03], unit="of the redline",
-        source="a rev limiter holds the speed within a few percent of where it cuts (some 100 to 200 rpm at 6500)")
-    pull = SC + ("p-pull-auto.json" if auto else "p-pull-paddles.json")
+    gov = s["ecu"].get("governor") == "Electronic"
+    if gov:
+        # a governed diesel: its limit is the governor's high idle (rated x 1.06), read absolutely: tel.engine.redline
+        # is floored at idle + 1500 rpm by the ECU, above a slow truck's high idle (D2's finding, for H and D)
+        hi = e["redlineSpeed"]
+        add(name="Invariant: holds its limiter", scenario=SC + "p-free-rev.json", tel="engine.speed", measure="max",
+            during=[6, 9], range=[round(0.97 * hi, 1), round(1.03 * hi, 1)], unit="rad/s",
+            source="a diesel's governor holds its high idle, the rated speed plus its 6 %% droop (%d rpm), within a few "
+                   "percent" % round(hi / RPM))
+    else:
+        add(name="Invariant: holds its limiter", scenario=SC + "p-free-rev.json", tel="engine.speed", measure="max",
+            during=[6, 9], relativeTo="engine.redline", range=[0.97, 1.03], unit="of the redline",
+            source="a rev limiter holds the speed within a few percent of where it cuts (some 100 to 200 rpm at 6500)")
+    pull = SC + ("p-pull-auto.json" if auto else "p-pull-eighteen.json" if car["gearbox"] == "Eighteen-speed"
+                 else "p-pull-paddles.json")
     add(name="Invariant: pulls away", scenario=pull, tel="car.speed", measure="max", during=[3, 13],
-        range=[3 if slug.startswith("tractor") else 8, 120], unit="m/s",
-        source="started, in gear and on the pedal, the car moves (a 36 t tractor at least 3 m/s in ten seconds)")
+        range=[1.5 if slug.startswith("tractor") else 8, 120], unit="m/s",
+        source="started, in gear and on the pedal, the car moves (a 36 t tractor in third of eighteen at least 1.5 m/s)")
     add(name="Invariant: stops at the key", scenario=pull, tel="engine.state", measure="last", range=[0, 0],
         source="the key off stops the engine (engine.state 0 by the run's end)")
     add(name="Starts cold", scenario=SC + "p-cold-start.json", tel="engine.state", measure="min", during=[6, 11.5],
@@ -176,19 +187,25 @@ def targets(slug, b):
             source="VE's shape: below the torque peak it falls away, the more so the hotter the cam (%s, ch. 6); "
                    "measured at %d rpm" % (HEYWOOD, lo_rpm))
     tport = [850, 1100] if diesel else [1100, 1300]
-    add(name="Port gas at full load", scenario=SC + "p-full-load-%d.json" % fl, tel="exhaust.portTemperature",
+    add(name="Port gas at full load", scenario=SC + "p-full-load-%d.json" % fl, tel="exhaust.portThermocouple",
         measure="mean", during=[8, 10], range=tport, unit="K",
-        source=("the gas at a diesel's exhaust valve at full load, before the port and pipe cool it: some 850 to 1100 K "
-                "(judgement: the header's 700 to 950 K, below, plus the port's cooling; %s, ch. 14)" if diesel else
-                "the gas at the exhaust valve at full load, before the port and pipe cool it: some 1100 to 1300 K for a "
-                "spark-ignition engine (%s, ch. 14; card C's target on default.json, which this follows)") % HEYWOOD)
+        source=("what a thermocouple at a diesel's exhaust port reads at full load (a time mean, below the gas's mass "
+                "mean: the blowdown is most of the mass and little of the time): some 850 to 1100 K (judgement; %s, ch. "
+                "14); tel.exhaust.portThermocouple, card G's mixing cup" if diesel else
+                "what a thermocouple at the exhaust port reads at full load (a time mean, below the gas's mass mean): "
+                "some 1100 to 1300 K for a spark-ignition engine (%s, ch. 14; card C's target on default.json); "
+                "tel.exhaust.portThermocouple, card G's mixing cup") % HEYWOOD)
     thead = [700, 950] if diesel else [900, 1100]
-    add(name="Header gas at full load", scenario=SC + "p-full-load-%d.json" % fl, tel="exhaust.headerTemperature",
+    add(name="Header gas at full load", scenario=SC + "p-full-load-%d.json" % fl, tel="exhaust.headerThermocouple",
         measure="mean", during=[8, 10], range=thead, unit="K",
         source=("a thermocouple a little way down a diesel's manifold reads some 700 to 950 K at full load (makers' "
-                "pre-turbine limits near 1000 K; %s, ch. 14)" if diesel else
+                "pre-turbine limits near 1000 K; %s, ch. 14); tel.exhaust.headerThermocouple" if diesel else
                 "a thermocouple a little way down a primary reads 900 to 1100 K at full load on a petrol engine (makers' "
-                "exhaust-gas-temperature data; %s, ch. 14); n/a until the exhaust reports it") % HEYWOOD)
+                "exhaust-gas-temperature data; %s, ch. 14); tel.exhaust.headerThermocouple") % HEYWOOD)
+    add(name="Port gas, mass mean (information)", scenario=SC + "p-full-load-%d.json" % fl,
+        tel="exhaust.portTemperature", measure="mean", during=[8, 10], range=[0, 3000], unit="K",
+        source="the gas's mass (enthalpy) mean at the port, kept for information: above a thermocouple's reading, not "
+               "a target (card G, f703892)")
 
     # ---- the car ----------------------------------------------------------------------------------------------
     pmid = 0.5 * (plo + phi)

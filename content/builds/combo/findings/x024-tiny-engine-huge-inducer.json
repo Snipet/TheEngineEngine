@@ -1,0 +1,20 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "X-024: a 0.23 L engine with an 85 mm inducer",
+  "notes": "Package X's finding X-024 (2026-11-24, N2 and L), reduced by tee-fuzz from the random seed 130: tel.boost.flow non-finite from 0.29 s; with sound.model 1 an output offset.",
+  "spec": {
+    "boost": {
+      "compInducer": 0.085366687,
+      "kind": 1,
+      "layout": 3,
+      "model": 1
+    },
+    "engine": {
+      "displacement": 0.000233630132
+    },
+    "sound": {
+      "model": 1
+    }
+  }
+}

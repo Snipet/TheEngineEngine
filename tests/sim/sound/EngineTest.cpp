@@ -36,47 +36,66 @@ namespace
     }
 }
 
-TEST_CASE("engine: on the bench there is no gearbox: the whine's switch changes nothing, to the bit", "[sound][engine]")
+TEST_CASE("engine: on the bench no gearbox (the whine's switch changes nothing, to the bit), the alternator's line at "
+          "100.8 a turn, and the fuel pump's prime at key-on before the first crank", "[sound][engine]")
 {
-    auto run = [](double whineDb) {
-        tee::test::Scenario s = base(0);
-        s.at(0.0).spec("voices.whine", whineDb).spec("voices.axle", whineDb).spec("voices.rattle", whineDb);
-        s.at(3.0).holdSpeed(300.0);
-        return s.run(5.0);
-    };
-    const auto on = run(0.0), off = run(-60.0);
-    const auto d = diff(on, off, 0.0, 5.0);
-    double m = 0.0;
-    for (float v : d)
-        m = std::max(m, static_cast<double>(std::fabs(v)));
-    CHECK(m == 0.0);
+    // (one test, so that the simulator is compiled once for the three: the fast tier's budget)
+    {
+        auto run = [](double whineDb) {
+            tee::test::Scenario s = base(0);
+            s.at(0.0).spec("voices.whine", whineDb).spec("voices.axle", whineDb).spec("voices.rattle", whineDb);
+            s.at(2.5).holdSpeed(300.0);
+            return s.run(3.5);
+        };
+        const auto on = run(0.0), off = run(-60.0);
+        const auto d = diff(on, off, 0.0, 3.5);
+        double m = 0.0;
+        for (float v : d)
+            m = std::max(m, static_cast<double>(std::fabs(v)));
+        CHECK(m == 0.0);
+    }
+    {
+        auto run = [](double beltDb) {
+            tee::test::Scenario s = base(0);
+            s.at(0.0).spec("voices.belt", beltDb);
+            s.at(2.5).holdSpeed(300.0);
+            return s.run(4.0);
+        };
+        const auto on = run(12.0), off = run(-60.0);
+        const double hz = on.tel("engine.speed").during(3.5, 4.0).mean() / kTwoPi;
+        const auto d = diff(on, off, 3.5, 4.0);
+        const double f = 100.8 * hz;
+        double best = 0.0, bestA = -1.0;
+        for (double g = f * 0.98; g <= f * 1.02; g += f * 0.0005)
+            if (const double a = tee::test::sound::line(d, g); a > bestA)
+            {
+                bestA = a;
+                best = g;
+            }
+        INFO("crank " << hz << " Hz: expected " << f << ", found " << best);
+        CHECK(std::fabs(best - f) < 0.01 * f);
+        CHECK(tee::test::sound::rms(d) > 0.0);
+    }
+    {
+        auto run = [](double model, double pumpDb) {
+            tee::test::Scenario s("v8");
+            s.rate(96000.0);
+            s.at(0.0).mode(0).throttle(0.0).ignition(tee::On).spec("voices.model", model).spec("voices.pump", pumpDb);
+            s.at(1.0).ignition(tee::Start);
+            return s.run(1.1);
+        };
+        const auto ref = run(0.0, 0.0), on = run(1.0, 0.0), off = run(1.0, -60.0);
+        CHECK(ref.audio().during(0.0, 0.95).rms() == 0.0);           // the reference renders nothing before the start
+        CHECK(on.tel("engine.state").during(0.0, 0.95).max() == 0.0);
+        const double prime = tee::test::sound::rms(diff(on, off, 0.1, 0.9));
+        INFO("prime " << prime);
+        CHECK(prime > 0.0);
+        CHECK(on.audio().during(0.1, 0.9).rms() > off.audio().during(0.1, 0.9).rms());
+    }
 }
 
-TEST_CASE("engine: the alternator's line at 100.8 a turn of the crank, held at speed on the bench", "[sound][engine]")
-{
-    auto run = [](double beltDb) {
-        tee::test::Scenario s = base(0);
-        s.at(0.0).spec("voices.belt", beltDb);
-        s.at(2.5).holdSpeed(300.0);
-        return s.run(5.0);
-    };
-    const auto on = run(12.0), off = run(-60.0);
-    const double hz = on.tel("engine.speed").during(4.0, 5.0).mean() / kTwoPi;
-    const auto d = diff(on, off, 4.0, 5.0);
-    const double f = 100.8 * hz;
-    double best = 0.0, bestA = -1.0;
-    for (double g = f * 0.98; g <= f * 1.02; g += f * 0.0005)
-        if (const double a = tee::test::sound::line(d, g); a > bestA)
-        {
-            bestA = a;
-            best = g;
-        }
-    INFO("crank " << hz << " Hz: expected " << f << ", found " << best);
-    CHECK(std::fabs(best - f) < 0.01 * f);
-    CHECK(tee::test::sound::rms(d) > 0.0);
-}
 
-TEST_CASE("engine: driven in third the gearbox whines at the constant mesh's 19 teeth; in neutral it does not", "[sound][engine]")
+TEST_CASE("engine: driven in third the gearbox whines at the constant mesh's 19 teeth; in neutral it does not", "[sound][engine][nightly]")
 {
     auto run = [](double whineDb, int lever) {
         tee::test::Scenario s = base(1);
@@ -104,7 +123,7 @@ TEST_CASE("engine: driven in third the gearbox whines at the constant mesh's 19 
     CHECK(tee::test::sound::rms(diff(nOn, nOff, 15.75, 16.0)) < 0.3 * tee::test::sound::rms(d));
 }
 
-TEST_CASE("engine: the starter is package M's while it cranks, and a reduction starter's differs from a direct one", "[sound][engine]")
+TEST_CASE("engine: the starter is package M's while it cranks, and a reduction starter's differs from a direct one", "[sound][engine][nightly]")
 {
     auto run = [](int kind) {
         tee::test::Scenario s = base(0);
@@ -117,25 +136,8 @@ TEST_CASE("engine: the starter is package M's while it cranks, and a reduction s
     CHECK(red.audio().peak() <= 1.0f);
 }
 
-TEST_CASE("engine: the fuel pump's prime is heard at key-on, before the first crank", "[sound][engine]")
-{
-    auto run = [](double model, double pumpDb) {
-        tee::test::Scenario s("v8");
-        s.rate(96000.0);
-        s.at(0.0).mode(0).throttle(0.0).ignition(tee::On).spec("voices.model", model).spec("voices.pump", pumpDb);
-        s.at(1.0).ignition(tee::Start).until(2.5).ignition(tee::On);
-        return s.run(3.0);
-    };
-    const auto ref = run(0.0, 0.0), on = run(1.0, 0.0), off = run(1.0, -60.0);
-    CHECK(ref.audio().during(0.0, 0.95).rms() == 0.0);           // the reference renders nothing before the start
-    CHECK(on.tel("engine.state").during(0.0, 0.95).max() == 0.0);
-    const double prime = tee::test::sound::rms(diff(on, off, 0.1, 0.9));
-    INFO("prime " << prime);
-    CHECK(prime > 0.0);
-    CHECK(on.audio().during(0.1, 0.9).rms() > off.audio().during(0.1, 0.9).rms());
-}
 
-TEST_CASE("engine: card F's wastegate chatters at full load on the dyno; an external one vented to the air is louder", "[sound][engine]")
+TEST_CASE("engine: card F's wastegate chatters at full load on the dyno; an external one vented to the air is louder", "[sound][engine][nightly]")
 {
     auto run = [](double gateDb, double external, double toAir) {
         tee::test::Scenario s("builds/boost/turbo-four.json");
@@ -160,7 +162,7 @@ TEST_CASE("engine: card F's wastegate chatters at full load on the dyno; an exte
     CHECK(dump > 2.0 * chatter);
 }
 
-TEST_CASE("engine: a naked twin's chain whines at its sprocket's teeth and its lash clunks on and off the throttle", "[sound][engine][bike]")
+TEST_CASE("engine: a naked twin's chain whines at its sprocket's teeth and its lash clunks on and off the throttle", "[sound][engine][bike][nightly]")
 {
     auto run = [](double db) {
         tee::test::Scenario s("bike-naked-twin");
@@ -196,7 +198,7 @@ TEST_CASE("engine: a naked twin's chain whines at its sprocket's teeth and its l
     CHECK(tee::test::sound::rms(diff(on, off, 5.9, 7.9)) > 0.0);
 }
 
-TEST_CASE("engine: a bike's own sequential box whines at its constant mesh's teeth on its input shaft; no final drive's", "[sound][engine][bike]")
+TEST_CASE("engine: a bike's own sequential box whines at its constant mesh's teeth on its input shaft; no final drive's", "[sound][engine][bike][nightly]")
 {
     auto run = [](double db) {
         tee::test::Scenario s("bike-naked-twin");

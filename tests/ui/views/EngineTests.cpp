@@ -637,6 +637,15 @@ namespace
         custom.max = 1.0;
         custom.label = "Custom layout";
         fields.push_back(custom);
+        if (base.doc.find("engine.rotors") < 0)
+        {
+            tee::ui::FieldInfo rotors;
+            rotors.path = "engine.rotors";
+            rotors.kind = tee::ui::FieldKind::integer;
+            rotors.max = 4.0;
+            rotors.label = "Rotors";
+            fields.push_back(rotors);
+        }
         tee::ui::MemoryDoc doc(fields);
         doc.set(doc.find("engine.custom"), 1.0);
         doc.set(doc.find("engine.cylinders"), 2.0);
@@ -677,6 +686,22 @@ namespace
         ctx.live.reset();
         host.tick(1);
         CHECK(ws->inspectorPage().find("BANK IS OUTSIDE THE BANKS") != std::string::npos);
+        // D's reason 4: a two-stroke asked of a custom rotary; the rotary runs as itself, so the block keeps it
+        doc.set(doc.find("engine.rotors"), 2.0);
+        doc.set(doc.find("engine.cycle"), 1.0);
+        base.engine.set(en::kTelLayoutReason, 4.0);
+        ctx.live.reset();
+        host.tick(1);
+        CHECK_MSG(ws->inspectorPage().find("THE ROTARY RUNS") != std::string::npos, ws->inspectorPage());
+        CHECK(ws->inspectorPage().find("HAS NO TWO-STROKE") != std::string::npos);   // (the page's lines wrap)
+        CHECK_MSG(tee::ui::engineRunningLayout(*ws) == "Custom", tee::ui::engineRunningLayout(*ws));
+        {
+            const std::string bad = tee::test::u2::textFaults(host.draw(), { 0, 0, 696, 574 }, tee::ui::enginePanels(*ws));
+            CHECK_MSG(bad.empty(), bad);
+            picture("engine.refused.rotary", host);
+        }
+        doc.set(doc.find("engine.rotors"), 0.0);
+        doc.set(doc.find("engine.cycle"), 0.0);
         base.engine.set(en::kTelLayoutRefused, 0.0);
         base.engine.set(en::kTelLayoutReason, 0.0);
         ctx.live.reset();

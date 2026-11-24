@@ -204,6 +204,7 @@ module Engine
     int faults;         // the crank's state found absurd and the engine put at rest afresh (guard), since init
     int faultNow;       // in this call
     int lastIgn;        // ctl.ignition at the last call (voices.model 1: its rise from off renders the key's sounds)
+    int cycleRefused;   // 1: engine.cycle 1 asked of a rotary (X-025): refused, the rotary runs as itself
     int layoutWhy;      // why (LayoutGeom::reason: 1 cylinders fire together, 2 rotors, 3 a bank outside the banks)
     int layoutRefused;  // 1: its geometry was refused (cylinders firing together), the layout dial's table runs
     float rodRatio;     // the rod over the crank's radius the cylinders are set up with (the reference's 3.3)
@@ -281,6 +282,7 @@ module Engine
         boost.setup(rate, &ex.noise);
         two.setup(rate);
         cycleUse = 0;
+        cycleRefused = 0;
         tsSig = 0.0f;
         quiet = 1.0e9f;
         gainNorm = 1.0f;
@@ -510,6 +512,8 @@ module Engine
         intk.mPlenum = intk.pPlenum * intk.vPlenum / (287.0f * intk.tAir);
         pipes();
         cycleUse = spec.engine.cycle != 0 && customUse != 0 && lay.rotary == 0 ? 1 : 0;    // (card T's, set before the mechanics)
+        // (a two-stroke rotary is no engine any model defines: refused, the rotary run as itself; X-025)
+        cycleRefused = spec.engine.cycle != 0 && customUse != 0 && lay.rotary != 0 ? 1 : 0;
         mechanicsSetup();
         // (card F: boost.model 1's machine sized to this engine, at rest, on its four-stroke-equivalent displacement: a
         // rotary's faces fire once a shaft turn and a two-stroke's cylinders once a turn, twice vTotal; nothing in model 0)
@@ -858,7 +862,7 @@ module Engine
         // layout is)
         if (cycleUse != 0)
             two.control16(&spec.engine, crank.omega, d16, heat.tSurf, heat.tAmb);
-        if ((spec.engine.cycle != 0 && customUse != 0 ? 1 : 0) != cycleUse || (cycleUse != 0 && two.signature(&spec.engine) != tsSig))
+        if ((spec.engine.cycle != 0 && customUse != 0 && lay.rotary == 0 ? 1 : 0) != cycleUse || (cycleUse != 0 && two.signature(&spec.engine) != tsSig))
             cutWant |= 1;
         float ped = ecu.driver(d16, set.drive, set.bend, set.bendRange, set.keys, lay.rotary, lay.n);
         car.traction(spec.ecu.model != 0 && spec.ecu.traction.on, spec.ecu.traction.slip, spec.ecu.model != 0 && spec.ecu.launch.on, spec.ecu.launch.speed);   // (card I: a launch)
@@ -1593,6 +1597,10 @@ module Engine
         holdModel(8, &spec.engine.wallHeat, &spec.engine.rev);
         holdModel(9, &spec.sound.model, &spec.sound.rev);
         holdModel(10, &spec.engine.cycle, &spec.engine.rev);
+        // (the decisions the switches make, taken again each call: a switch set while the engine is stopped is taken at
+        // once above, with no configure to follow it; while running a held switch leaves them as they were)
+        physicalCylinder();
+        exh.implied = builderImplied();
     }
 
     // Section k's model switch as the host wrote it: stopped, taken at once; running, a change held until the fade's
@@ -1825,8 +1833,8 @@ module Engine
         e->rock1 = shake.moment1;
         e->rock2 = shake.moment2;
         e->cylinders = lay.n;
-        e->layoutRefused = layoutRefused;
-        e->layoutReason = layoutRefused != 0 ? layoutWhy : 0;
+        e->layoutRefused = layoutRefused != 0 || cycleRefused != 0 ? 1 : 0;
+        e->layoutReason = layoutRefused != 0 ? layoutWhy : (cycleRefused != 0 ? 4 : 0);
         e->oilTemperature = heat.tOil;
         // (card T: a two-stroke's)
         e->tsPurity = cycleUse != 0 ? two.purity : 0.0f;

@@ -19,6 +19,8 @@ namespace tee
     namespace
     {
         constexpr double kFourPi = 12.566370614359172;   // a cycle: two turns of the crank, whatever the engine
+        // the sections besides the exhaust whose spec.<section>.heatSettle the one settle raises, where the program has them
+        constexpr const char* kOtherHeatSettles[] = {"intake", "boost"};
         constexpr int kModeDynoEngine = 2;
 
         using Clock = std::chrono::steady_clock;
@@ -108,7 +110,7 @@ namespace tee
                     const int section = fields.sectionOf("exhaust");
                     heatSettle_ = find("spec.exhaust.heatSettle", heatSettleH_) && section >= 0;
                     if (heatSettle_)
-                        exhaustRev_ = fields.sections()[static_cast<std::size_t>(section)].revOffset;
+                        settles_.push_back({heatSettleH_, fields.sections()[static_cast<std::size_t>(section)].revOffset});
                     else if (find("exh.tPort", h))
                         slow_.push_back({h, 0, 0, 1.0, 250.0, 1500.0, 0.0, 0.0, 0.0});
                     // the reference's turbo (boost.model 0): its shaft's speed, 0 to 1 (boost/boost.fm), spooling over
@@ -120,6 +122,17 @@ namespace tee
                     if (!heatSettle_ && find("exh.tWall", h))
                         for (std::size_t i = 0; i < h.count; ++i)
                             slow_.push_back({h, i, 1, 1.0, 250.0, 1500.0, 0.0, 0.0, 0.0});
+                    // the other sections' settles where the program has them, raised with the exhaust's: the intake's
+                    // charge heating (spec.intake.heatSettle), the boost's intercooler (spec.boost.heatSettle)
+                    for (const char* other : kOtherHeatSettles)
+                    {
+                        const int sec = fields.sectionOf(other);
+                        if (sec >= 0 && find(("spec." + std::string(other) + ".heatSettle").c_str(), h))
+                        {
+                            settles_.push_back({h, fields.sections()[static_cast<std::size_t>(sec)].revOffset});
+                            heatSettle_ = true;
+                        }
+                    }
                 }
                 redline_ = find("tel.engine.redline", redlineH_);
                 idle_ = find("tel.engine.idle", idleH_);
@@ -292,7 +305,10 @@ namespace tee
                 // boost need, to some three seconds
                 const int knockMost = hasRetard_ || hasBoost_
                                           ? std::max(options_.maxCycles, static_cast<int>(3.0 * speed / kFourPi)) : 0;
-                const int most = options_.holdSeconds > 0.0 ? 1 << 30 : std::max(options_.maxCycles, knockMost) + settling;
+                const int holdMost = static_cast<int>((options_.minHoldSeconds + 1.0) * speed / kFourPi);
+                const int most = options_.holdSeconds > 0.0
+                                     ? 1 << 30
+                                     : std::max({options_.maxCycles, knockMost, holdMost}) + settling;
                 double lastRetard = knockRetard();
                 double lastBoost = boostNow();
                 std::vector<double> counted;   // the counted cycles' torques
@@ -369,7 +385,8 @@ namespace tee
                                          - (counted[m - 4] + counted[m - 5] + counted[m - 6]))
                                        / 3.0
                                    <= scale;
-                        const bool steady = k + 1 >= options_.minCycles && held >= options_.holdSeconds && retardSteady
+                        const bool steady = k + 1 >= options_.minCycles && held >= options_.holdSeconds
+                                            && held >= options_.minHoldSeconds && retardSteady
                                             && boostSteady && noTrend && std::fabs(t - previous) <= scale;
                         if (steady && heatSettle_ && !resettled)
                         {
@@ -463,15 +480,19 @@ namespace tee
             void set(const Schema::Handle& h, double v) noexcept { instance_->write(h, v); }
 
             // n samples held at `speed`; the mean torque the brake took over them (N m)
-            // spec.exhaust.heatSettle raised by one, and the exhaust section's rev, so the simulator takes it
+            // each heatSettle the program has (the exhaust's, the intake's, the boost's) raised by one, and its section's
+            // rev, so the simulator takes it
             void askHeatSettle()
             {
                 unsigned char* data = static_cast<unsigned char*>(instance_->data());
-                instance_->write(heatSettleH_, instance_->read(heatSettleH_) + 1.0);
-                std::int32_t rev = 0;
-                std::memcpy(&rev, data + exhaustRev_, 4);
-                ++rev;
-                std::memcpy(data + exhaustRev_, &rev, 4);
+                for (const auto& [handle, revOffset] : settles_)
+                {
+                    instance_->write(handle, instance_->read(handle) + 1.0);
+                    std::int32_t rev = 0;
+                    std::memcpy(&rev, data + revOffset, 4);
+                    ++rev;
+                    std::memcpy(data + revOffset, &rev, 4);
+                }
             }
 
             double boostNow() const { return hasBoost_ ? instance_->read(boostH_) : 0.0; }
@@ -630,7 +651,7 @@ namespace tee
             std::vector<std::pair<const FieldInfo*, std::size_t>> extra_;   // PredictOptions::fields
             bool heatSettle_ = false, hasBoost_ = false;
             Schema::Handle boostH_;
-            std::size_t exhaustRev_ = 0;
+            std::vector<std::pair<Schema::Handle, std::size_t>> settles_;   // each heatSettle and its section's rev
             Schema::Handle state_, absorberH_;
             std::vector<Slow> slow_;
             std::vector<std::pair<Schema::Handle, double>> held_;   // Warm.h's warm engine
@@ -826,7 +847,7 @@ namespace tee
         std::uint64_t h = build.hash();
         for (const double v : {static_cast<double>(o.coarse), static_cast<double>(o.points), o.from, o.to, o.pedal,
                                o.tolerance, static_cast<double>(o.minCycles), static_cast<double>(o.maxCycles),
-                               o.sampleRate, static_cast<double>(o.block), o.startSeconds, o.warm ? 1.0 : 0.0, o.warmupSeconds, o.settleExhaust ? 1.0 : 0.0, o.holdSeconds, o.brake == "host" ? 1.0 : o.brake == "program" ? 2.0 : 0.0, o.innerRate, static_cast<double>(o.fields.size())})
+                               o.sampleRate, static_cast<double>(o.block), o.startSeconds, o.warm ? 1.0 : 0.0, o.warmupSeconds, o.settleExhaust ? 1.0 : 0.0, o.holdSeconds, o.brake == "host" ? 1.0 : o.brake == "program" ? 2.0 : 0.0, o.innerRate, static_cast<double>(o.fields.size()), o.minHoldSeconds})
             h = mix(h, v);
         return h;
     }

@@ -5,6 +5,8 @@
 #include "views/garage/ServicesLibrary.h"
 #include "views/scope/Layout.h"
 
+#include <funkgui/widgets/Scroll.h>
+
 #include <algorithm>
 #include <cctype>
 #include <cmath>
@@ -25,6 +27,9 @@ namespace tee::ui
         constexpr double kRpmPerRad = 30.0 / kPi;
         constexpr double kNaN = std::numeric_limits<double>::quiet_NaN();
         constexpr float kGap = 10.0f, kBarH = 44.0f, kCardW = 232.0f, kCardH = 164.0f, kButtonH = 26.0f;
+        // The wheel as everything scrolls (funkgui::scroll::wheelPx: the delta in JUCE's units, a trackpad's point a
+        // px, a notch three rows): a notch 48 px of the cards, 40 of the differences.
+        constexpr float kCardsWheelRow = 16.0f, kDiffWheelRow = 40.0f / 3.0f;
         constexpr uint32_t kCardA11y = 0x00F00000u;   // the cards' accessibility ids (below the Board's items')
         constexpr funkgui::TextStyle kName{ 14.0f, 0.2f, 0.0f, false };
 
@@ -635,13 +640,13 @@ namespace tee::ui
         if (!comparing_ && grid_.contains({ e.x, e.y }))
         {
             const float most = std::max(0.0f, contentHeight() - grid_.h);
-            scroll_ = std::clamp(scroll_ - e.dy * (e.smooth ? 1.0f : 48.0f), 0.0f, most);
+            scroll_ = std::clamp(scroll_ - funkgui::scroll::wheelPx(e.dy, e.smooth, kCardsWheelRow), 0.0f, most);
             ++revision_;
             return true;
         }
         if (comparing_ && diffRect_.contains({ e.x, e.y }))
         {
-            diffScroll_ = std::max(0.0f, diffScroll_ - e.dy * (e.smooth ? 1.0f : 40.0f));
+            diffScroll_ = std::max(0.0f, diffScroll_ - funkgui::scroll::wheelPx(e.dy, e.smooth, kDiffWheelRow));
             ++revision_;
             return true;
         }

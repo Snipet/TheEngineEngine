@@ -80,7 +80,7 @@ CARS = {
                           cdA=0.66, tyre="Economy", tyreRadius=0.315, gearbox="Manual",
                           ratio=[3.77, 2.09, 1.32, 0.98, 0.76, 0.64], finalDrive=3.39, wheelInertia=1.1),
     "tractor": dict(kind="Truck", truckAir=True, mass=36000, drive="Rear", wheelbase=5.8, cgHeight=1.5, frontWeight=0.25, track=2.0,
-                    cdA=6.0, tyre="Truck", tyreRadius=0.51, gearbox="Manual",
+                    cdA=6.0, tyre="Truck", tyreRadius=0.51, gearbox="Eighteen-speed",
                     ratio=[14.4, 12.29, 8.51, 7.26, 6.05, 5.16, 4.38, 3.74, 3.20, 2.73, 2.29, 1.95, 1.62, 1.38, 1.17,
                            1.00, 0.86, 0.73], finalDrive=3.55, wheelInertia=40.0),
     "small-hatch": dict(mass=1200, drive="Front", wheelbase=2.56, cgHeight=0.54, frontWeight=0.62, track=1.52, cdA=0.62,
@@ -190,12 +190,12 @@ arch(slug="rotary-twin-13", name="Rotary twin", geo="ref-16-rotary-2", layout="R
      notes="A twin-rotor Wankel, 2 x 654 cc, 9.0:1, with two sequential turbos (the 13B-REW kind: 206 to 280 PS, "
            "the latter at 6500 rpm, some 294 N m at 5000; Wikipedia, makers' figures, firm to 10 %). In a light "
            "rear-drive coupe.")
-arch(slug="rotary-twin-na-side-port", name="Rotary twin, side ports", geo="ref-16-rotary-2", layout="Rotary",
+arch(slug="rotary-twin-na-side-port", rotaryCam=0.15, rotaryPorts=(146.7, 362.0, 362.0, 583.3), name="Rotary twin, side ports", geo="ref-16-rotary-2", layout="Rotary",
      displacement=0.001308, cr=10.0, redline=9000, idle=800,
      intake=dict(runnerLength=0.45, runnerLength2=0.30, runnerSwitch=5500 * RPM),
      exhaust={"converter": [2, 2], "mufKind": [1, 1]}, grade="Premium (91)", car="light-coupe-rotary", timing="Gears",
      notes="A naturally aspirated twin-rotor Wankel with side exhaust ports, 2 x 654 cc, 10:1, a 9000 rpm limiter and a "
-           "two-stage intake (the RENESIS kind of 2003: 170 to 184 kW at 8200 to 8500 rpm, 211 to 216 N m at 5500; "
+           "two-stage intake; its side ports' timing EO 50 BBDC, EC 3 ATDC, IO 3 ATDC, IC 65 ABDC in eccentric-shaft degrees (N1, from memory, to some 10 degrees) (the RENESIS kind of 2003: 170 to 184 kW at 8200 to 8500 rpm, 211 to 216 N m at 5500; "
            "makers' figures by market and year, from memory, firm to 5 %). High-flow converter, straight-through "
            "mufflers. In a light rear-drive coupe.")
 arch(slug="hot-hatch-16-16v", runner=0.35, convK=18.0, name="1.6 L 16-valve hot hatch", geo="ref-05-inline-4", layout="Inline 4",
@@ -269,14 +269,14 @@ arch(slug="kei-660-triple-turbo", runner=0.28, convK=24.0, name="Kei 660 cc trip
      notes="A Japanese kei-class three: 68 x 60.4 mm (658 cc), 8.6:1, four valves, a small turbo at a production 0.65 bar falling to 0.12 bar by 7000 rpm (the class's power cap is met by the ECU's boost taper; the K6A kind: "
            "47 kW (the class's 64 PS cap) at 6500 rpm, 103 to 108 N m at 3500; Wikipedia, goo-net-exchange). In a "
            "780 kg rear-drive sports kei.")
-arch(slug="diesel-20-common-rail", runner=0.3, name="Diesel 2.0 L common rail", geo="ref-05-inline-4", layout="Inline 4",
+arch(slug="diesel-20-common-rail", governor=(4000, 130000), runner=0.3, name="Diesel 2.0 L common rail", geo="ref-05-inline-4", layout="Inline 4",
      bore=81.0, stroke=95.5, rod=144.0, cr=16.5, valves=4, dIn=27.0, dEx=24.0,
      cam=(228, 196, 8.0, 112, 228, 196, 8.0, 112), train="Finger", redline=4800, idle=800, diesel=True,
      boost=dict(kind="Turbo", target=1.4, spring=1.0, vanes=True), car="family-diesel", timing="Toothed belt",
      notes="A 2.0 L four-valve common-rail diesel with a variable-vane turbo: 81 x 95.5 mm (1968 cc), 16.5:1 (engines "
            "of the kind: 103 to 125 kW at 3500 to 4000 rpm, 320 to 380 N m from 1750; makers' figures). Balance "
            "shafts. In a front-drive family car, six-speed manual.", balance2=True)
-arch(slug="tractor-15-inline-six", runner=0.4, name="Highway tractor 15 L", geo="ref-10-inline-6", layout="Inline 6",
+arch(slug="tractor-15-inline-six", governor=(1900, 108000), runner=0.4, name="Highway tractor 15 L", geo="ref-10-inline-6", layout="Inline 6",
      bore=137.0, stroke=169.0, rod=262.0, cr=17.0, valves=4, dIn=46.0, dEx=43.0,
      cam=(232, 200, 14.0, 112, 232, 200, 13.0, 112), train="Rocker", redline=2250, idle=700, diesel=True,
      boost=dict(kind="Turbo", target=2.6, spring=2.0, vanes=True), car="tractor", timing="Gears",
@@ -329,7 +329,7 @@ arch(slug="twin-cam-roadster-18", runner=0.4, convK=17.0, name="1.8 L twin-cam r
      timing="Toothed belt",
      notes="A 1.8 L twin-cam 16-valve four: 83 x 85 mm (1839 cc), 10:1 (engines of the kind in light roadsters: 96 "
            "to 110 kW at 6500 to 7000 rpm, 160 to 170 N m at 5000; makers' figures). Rear drive, six-speed manual.")
-arch(slug="pickup-diesel-67-inline-six", runner=0.35, name="6.7 L straight-six turbo diesel pickup", geo="ref-10-inline-6",
+arch(slug="pickup-diesel-67-inline-six", governor=(2900, 106000), runner=0.35, name="6.7 L straight-six turbo diesel pickup", geo="ref-10-inline-6",
      layout="Inline 6", bore=107.0, stroke=124.0, rod=192.0, cr=16.2, valves=4, dIn=36.0, dEx=33.0,
      cam=(228, 196, 11.0, 112, 228, 196, 10.5, 112), train="Pushrod", redline=3200, idle=750, diesel=True,
      boost=dict(kind="Turbo", target=2.0, spring=1.6, vanes=True), car="heavy-pickup", timing="Gears",
@@ -512,7 +512,15 @@ def build(a):
         if a.get("compressionBrake") == "release":
             v.update(auxOpen=695, auxDur=100, auxLift=0.0025)
     else:
-        v["cam"] = 0.55    # a rotary's ports: the cam dial's, mid-way (street port)
+        # a rotary's ports by the cam dial: a peripheral-exhaust turbo rotary mid-way (0.55); a side-exhaust-port
+        # rotary has almost no overlap: 0.15 (N1: 47 degrees of overlap at 0.55 cost it a quarter of its torque)
+        v["cam"] = a.get("rotaryCam", 0.55)
+        if "rotaryPorts" in a:
+            # the ports' own timing, as free events in four-stroke-equivalent degrees (x1.5 the eccentric shaft's;
+            # N1's reading of the rotary's port fields): (exhaust opens, closes, intake opens, closes)
+            eo, ec, io, ic = a["rotaryPorts"]
+            v.update(inKind="Free valve", exKind="Free valve", freeExOpen=eo, freeExClose=ec, freeInOpen=io,
+                     freeInClose=ic)
 
     # the runners' length: what the kind has (long for low-speed torque, short for high revs, two lengths where the
     # real ones had them): the loaded-pipe relation x tan x = A L / V puts the ram's bump where the kind wants it
@@ -567,6 +575,16 @@ def build(a):
     t = {"model": "Maps", "timing": 0, "pops": 0.1, "starter": True,
          "limiter.kind": a.get("limiter", "Fuel cut"), "limiter.speed": e["redlineSpeed"],
          "idle.speed": round(a["idle"] * RPM, 3)}
+    if "governor" in a:
+        # a diesel's rack-metered governor (card D2's): full fuel to the rated speed, the rack's stroke set by the boost
+        # it is matched to (D2's measured values put each at its maker's rated power, lambda about 1.5)
+        rated, fuel_boost = a["governor"]
+        t["governor"] = "Electronic"
+        t["ratedSpeed"] = round(rated * RPM, 1)
+        t["fuelBoost"] = fuel_boost
+        # its limit is the governor's high idle, the rated speed plus its droop (0.06): the limiter and the redline there
+        e["redlineSpeed"] = round(rated * 1.06 * RPM, 3)
+        t["limiter.speed"] = e["redlineSpeed"]
     if a.get("compressionBrake") == "release":
         # a compression-release engine brake (card D2's: the ECU opens the exhaust near the compression top with the
         # pedal up and the clutch in, above ecu.brakeMin), its stage switch at Medium; the lobe as D2's trucks have it
