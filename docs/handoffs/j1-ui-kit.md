@@ -1,7 +1,7 @@
 # Handoff: card J, slice J1 (the interface kit) — branch `claude/awesome-gates-ntdb58`
 
 **Done** (29 tests, `ctest -R '^ui\.'`, pass standalone `cmake -S ui -B build-ui` and in the root's `dev` preset, Linux):
-- Items 1, 2: TestingPlayground's `.gui` code at `47bac40` in `ui/kit/gui`, `ui/kit/shaders` (37 rows in `ui/kit/SEED.tsv`;
+- Items 1, 2: TestingPlayground's `.gui` code at `47bac40` in `ui/kit/gui`, `ui/kit/shaders` (36 rows in `ui/kit/SEED.tsv`;
   `ui.seed`), namespace `tee::ui`, plugin ties cut (table in `docs/ui-kit.md`); `docs/gui-language.md`.
 - Bound to the shell's real header: `ui.ports`, `ui.gui.parse`, `ui.gui.notes`, `ui.display.telemetry`.
 - Item 5, every control kind and look by scripted input: `ui.knob.drag/.wheel/.keys/.reset`, `ui.slider.drag`,
@@ -21,10 +21,8 @@
   not run there (the build stopped at `tee-tests`, below). The goldens are proven on Linux only.
 - `scope`/`spectrum out` draw a flat line (`TelemetrySource` has no samples). `needsDraw()` is always true.
 - `shaders/ref/` is unused (the sources stay in `sim/ref/`).
-
-**Commits**: 2081dda..b9580ed (mine: the `ui:`, `build: add ui/`, `docs: the .gui language` ones), plus this file.
-**Sizes**: `ui/` about 12,600 lines, 10,900 of them from the seed; tests 1,300. The 29 tests take 7 s.
-
+**Commits**: 673a9a1..b9580ed (mine: the `ui:`, `build: add ui/`, `docs: the .gui language` ones), plus this file.
+**Sizes**: `ui/` 13,400 lines of C++, most of it the seed; the 29 tests take 7 s.
 **Wanted outside my paths**
 1. Keel: `tee-tests` fails to link on macOS and Windows (Catch2 `StringMaker<std::string_view>::convert` undefined;
    run 45389000657). Not mine, but it hides my tests there.
@@ -36,9 +34,7 @@
 5. Lead/card A: when `FunkGui::desktop` exists, `ui/CMakeLists.txt` turns shaders on by itself (`TEE_UI_GPU`);
    someone with that build should run `ui.ref.panel` there (it then checks the three programs are registered).
 
-**FunkGui issues met**: its JUCE-free `writePng` returns false (worked around: `tests/ui/Png.h`). `FunkGui::core`
-being INTERFACE-with-sources means our libraries take only its headers (`tee_ui_funkgui_headers`).
-
+**FunkGui issues met**: its JUCE-free `writePng` returns false (worked around: `tests/ui/Png.h`).
 **For a person to look at** (software rasteriser; shaders are placeholders): run `tee-ui-tests all`, then
 `out/ui/ref.page1..3.png`, `ref.small.png`, `ref.large.png`, `kinds.knobs/.switches/.displays/.frames.png`.
 On a machine with a GPU, once the app builds: the header, the dashboard and the engine layout shaders, never yet seen.
