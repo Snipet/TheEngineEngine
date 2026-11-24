@@ -208,8 +208,9 @@ namespace tee::ui
                     return v;
             return std::numeric_limits<double>::quiet_NaN();
         }
-        // Lambda (the air-fuel ratio over stoichiometric) by whichever name the program gives it.
-        double lambda() const { return first({ "exhaust.lambda", "ecu.lambda", "engine.lambda" }); }
+        // Lambda (the air-fuel ratio over stoichiometric) as the ECU's sensor reads it: tel.ecu.lambda (settled
+        // 2026-11-24; its target is ecu.lambdaTarget). NaN until the program has it.
+        double lambda() const { return get("ecu.lambda"); }
         TelemetrySource& source() const noexcept { return *source_; }
 
     private:
@@ -238,6 +239,10 @@ namespace tee::ui
         // The clutch pedal from the mouse while it is held (0..1), or a negative number when let go. The frame now
         // reports it in PanelControls::clutch too; this stays for a shell that serves it.
         std::function<void(float)> clutch;
+        // The settings page (the top bar's SETTINGS): the audio device, rate and buffer in a line, and the device's
+        // menu (the shell's F9); none: the status line, and no menu.
+        std::function<std::string()> audioInfo;
+        std::function<void()> audioMenu;
         // The ECU's maps baked from its formulas now (ctl.bakeMaps pressed once; TUNE's BAKE). None: not here.
         std::function<void()> bakeMaps;
         // A text saved as a file the person chooses (a dyno run's CSV, an export): the host's save dialog, starting at

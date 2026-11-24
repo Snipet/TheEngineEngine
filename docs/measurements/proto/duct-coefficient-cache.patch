@@ -1,0 +1,52 @@
+diff --git a/sim/exhaust/duct.fm b/sim/exhaust/duct.fm
+index ab520d0..0f5f241 100644
+--- a/sim/exhaust/duct.fm
++++ b/sim/exhaust/duct.fm
+@@ -117,6 +117,8 @@ module Duct
+                         // a one-pole's coefficient for that, from its mean flow
+     float rateD;
+     int ready;
++    float rateK;        // the rate kDc and kMin were last computed for (they depend on nothing else)
++    float pkKey[5];     // pack's last arguments: its shelves are designed again only when one of them moves
+ 
+     void configure(int capacity)
+     {
+@@ -196,6 +198,9 @@ module Duct
+         mach = 0.0f;
+         qsA = 0.01f;
+         rateD = 48000.0f;
++        rateK = -1.0f;
++        for (int i = 0; i < 5; ++i)
++            pkKey[i] = -1.0f;
+         ready = 1;
+     }
+ 
+@@ -311,8 +316,12 @@ module Duct
+         setDelay(len * rate / c);
+         if (fabsf(c - cWall) > 1.5f || fabsf(len - lWall) > 0.001f)
+             wall(rate);
+-        kDc = 1.0f - expf(-6.28318531f * 12.0f / rate);
+-        kMin = 1.0f - expf(-6.28318531f * 5.0f / rate);
++        if (rate != rateK)
++        {
++            rateK = rate;
++            kDc = 1.0f - expf(-6.28318531f * 12.0f / rate);
++            kMin = 1.0f - expf(-6.28318531f * 5.0f / rate);
++        }
+     }
+ 
+     // One of a muffler's packing's shelves: depthDb taken from the highs about fc (half of it from fc / 2 to 2 fc)
+@@ -334,6 +343,13 @@ module Duct
+     void pack(float fLow, float dLow, float fHigh, float dHigh, float rate)
+     {
+         packOn = dLow + dHigh > 0.05f ? 1 : 0;
++        if (fLow == pkKey[0] && dLow == pkKey[1] && fHigh == pkKey[2] && dHigh == pkKey[3] && rate == pkKey[4])
++            return;
++        pkKey[0] = fLow;
++        pkKey[1] = dLow;
++        pkKey[2] = fHigh;
++        pkKey[3] = dHigh;
++        pkKey[4] = rate;
+         packShelf(0, fLow, dLow, rate);
+         packShelf(1, fHigh, dHigh, rate);
+     }

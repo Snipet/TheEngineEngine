@@ -24,6 +24,9 @@ namespace tee::ui
         Button(uint32_t id, std::string label, std::function<void()> onPress = {});
         void setOnHold(std::function<void(bool)> f) { onHold_ = std::move(f); }
         void setLit(std::function<bool()> f) { lit_ = std::move(f); }
+        // U1: room kept at the left (px) for what its owner draws there (the rail's pictogram); the title is centred in
+        // the rest.
+        void setLeftRoom(float px) noexcept { leftRoom_ = px; }
         int presses() const noexcept { return presses_; }
 
         void draw(funkgui::Canvas& c, const funkgui::Theme& th, bool focusRing) const override;
@@ -49,7 +52,7 @@ namespace tee::ui
         std::function<void(bool)> onHold_;
         std::function<bool()> lit_;
         bool held_ = false, inside_ = false;
-        float down_ = 0.0f, litShown_ = 0.0f;
+        float down_ = 0.0f, litShown_ = 0.0f, leftRoom_ = 0.0f;
         int presses_ = 0;
     };
 

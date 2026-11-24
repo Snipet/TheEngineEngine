@@ -86,6 +86,8 @@ namespace tee::ui::air
         out.push_back(choice("intake.trumpets", "Trumpets open to", { "The air box", "The air" }, 0, "Throttle"));
         out.push_back(field("intake.plenumVolume", FieldKind::number, 0, 0.03, 0, "Plenum volume", Q::volume, "Manifold"));
         out.push_back(field("intake.runnerLength", FieldKind::number, 0, 1.2, 0, "Runner length", Q::length, "Manifold"));
+        out.push_back(field("intake.runnerLength2", FieldKind::number, 0, 1.2, 0, "Second runner length", Q::length, "Manifold"));
+        out.push_back(field("intake.runnerSwitch", FieldKind::number, 0, 1100, 0, "Second length from", Q::rotation, "Manifold"));
         out.push_back(field("intake.boxVolume", FieldKind::number, 0, 0.05, 0, "Air box volume", Q::volume, "Air box"));
         return out;
     }
@@ -149,6 +151,15 @@ namespace tee::ui::air
             set(doc, "boost.kind", 2);
             set(doc, "boost.layout", 4);
         }
+        else if (name == "var-v8")   // a natural V8 on a variable manifold: long runners low, short ones above 5000 rpm
+        {
+            set(doc, "engine.layout", 13);
+            set(doc, "engine.displacement", 0.0045);
+            set(doc, "boost.kind", 0);
+            set(doc, "intake.runnerLength", 0.45);
+            set(doc, "intake.runnerLength2", 0.22);
+            set(doc, "intake.runnerSwitch", 5000.0 * 0.10471976);
+        }
         else if (name == "cf-v8")
         {
             set(doc, "engine.layout", 13);
@@ -177,8 +188,13 @@ namespace tee::ui::air
             boost = (b.blower == Blower::centrifugal ? 75e3 * std::pow(rpm / b.redRpm, 2.1) : 60e3 * std::min(1.0, rpm / 2500.0)) * load;
         const double pr = (amb + boost + 8e3 * (boost > 0)) / amb;
         put("boost.pressure", boost);
-        put("engine.manifold", b.charger == Charger::none ? amb * (0.3 + 0.68 * load) : amb + boost - 3e3);
-        put("intake.boxPressure", amb - 1500.0 * load * rpm / 6000.0);
+        const double mani = b.charger == Charger::none ? amb * (0.3 + 0.68 * load) : amb + boost - 3e3;
+        put("engine.manifold", mani);
+        put("intake.manifold", mani);
+        put("intake.box", -1500.0 * load * rpm / 6000.0);
+        // the pulsing: a throttle a runner feels each cylinder (most at idle); a plenum calms it
+        put("intake.ripple", b.itb ? 3e3 + 20e3 * (1.0 - load) : 1.2e3 + 1.5e3 * load);
+        put("intake.runnerLength", b.runner2 > 0.0 && b.runnerSwitch > 0.0 && rpm * 0.10471976 > b.runnerSwitch ? b.runner2 : b.runner);
         const double t2 = tAmb * (1.0 + (std::pow(pr, 1.0 / 3.5) - 1.0) / 0.72);
         const double tIc = b.intercooler ? t2 - 0.7 * (t2 - tAmb) : t2;
         const bool forced = b.charger != Charger::none;
@@ -187,8 +203,7 @@ namespace tee::ui::air
         put("boost.compressorOut[0]", forced ? t2 : nan);
         put("boost.compressorOut[1]", b.turbos > 1 ? t2 - 4.0 : nan);
         put("boost.intercoolerOut", b.intercooler ? tIc : nan);
-        put("boost.throttleIn", tIc);
-        put("intake.plenumTemperature", tIc + 6.0);
+        put("boost.throttleIn", forced ? tIc : 0.0);   // the simulator's 0 K with no machine in the path
         put("boost.blowOffValve", forced ? (load < 0.05 && boost > 5e3 ? 1.0 : 0.0) : nan);
         double flags = 0.0;
         if (b.hasMap())
@@ -287,7 +302,7 @@ namespace tee::ui
         {
             static const char* const kNames[] = {
                 "boost.turbos", "boost.chargePipe", "boost.compressorOut[0]", "boost.compressorOut[1]",
-                "boost.intercoolerOut", "boost.throttleIn", "intake.plenumTemperature", "intake.boxPressure",
+                "boost.intercoolerOut", "boost.throttleIn", "intake.manifold", "intake.box", "intake.ripple", "intake.runnerLength",
                 "boost.blowOffValve", "boost.shaftSpeed[0]", "boost.shaftSpeed[1]", "boost.ratio[0]", "boost.ratio[1]",
                 "boost.flow[0]", "boost.flow[1]", "boost.efficiency[0]", "boost.gate[0]", "boost.vanes[0]",
                 "boost.drive[0]", "boost.superchargerPower", "boost.flags",
