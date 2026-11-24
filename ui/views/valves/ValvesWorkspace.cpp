@@ -837,13 +837,17 @@ namespace tee::ui
                 ev.evc = now[3] - 360.0;
                 ev.overlap = now[4];
             }
-            lk::region(c, p, ring_, live ? "TIMING, LIVE" : "TIMING, AT THE SEAT", ctx_.selection.is("valve.timing"));
+            const char* ringTitle = live ? "TIMING, LIVE" : "TIMING, AT THE SEAT";
+            lk::region(c, p, ring_, ringTitle, ctx_.selection.is("valve.timing"));
+            const float titleEnd = ring_.x + lk::kPad + c.textWidth(ringTitle, lk::kCaps);
             const Rect in = content(ring_);
             const float R = std::max(20.0f, std::min(in.w * 0.5f - 24.0f, (in.h - 84.0f) * 0.5f));
             const Point ctr{ in.centreX(), in.y + 18.0f + R };
             c.arc(ctr, R + 10.0f, 0.0f, static_cast<float>(2.0 * stage::kPi), 1.0f, p.grid);
             // TDC up, BDC down
-            put(c, "TDC", ctr.x, ctr.y - R - 30.0f, lk::kCaps, p.text, Align::centre);
+            // TDC over its tick, on the title's line: moved right of a title long enough to reach it
+            const float tdcW = c.textWidth("TDC", lk::kCaps);
+            put(c, "TDC", std::max(ctr.x, titleEnd + 10.0f + tdcW * 0.5f), ctr.y - R - 30.0f, lk::kCaps, p.text, Align::centre);
             put(c, "BDC", ctr.x, ctr.y + R + 18.0f, lk::kCaps, p.text, Align::centre);
             c.segment(ctr.x, ctr.y - R - 16.0f, ctr.x, ctr.y + R + 16.0f, 1.0f, p.dim);
             if (t.ex.known())
