@@ -73,6 +73,13 @@ and the lead (the session that wrote these files) settles what a card leaves ope
   the dev and release presets leave out and `ctest --preset nightly` runs. CI's soak tier runs the `[nightly]` tests
   on Linux at every push, and on macOS and Windows when the head commit's message contains `[soak]`. Each CI job's
   summary lists the default-run tests over 30 s with their package; the build steward tells their owners.
+- **A budget a package** (the rule's second half: tests under 30 s each do not by themselves bound the whole): the
+  fast tier's CPU-seconds on CI's Linux runner, the sum of a package's test times. The whole fast tier is capped at
+  2400 (ten minutes of wall on four cores), and that cap binds: it is shared out by the lead's weights scaled by
+  2400 / 4500: `null` 600 (the guardian, kept whole), `diesel`, `exhaust` and the host 135, every other package 80,
+  and `combo` what is left, 120. What does not fit goes to the soak tier, by the owner's choice of what
+  guards most per second. `scripts/test-budget.sh <ctest log>` prints the table (each fast CI job's summary has it);
+  run it on your own `ctest --preset dev | tee ctest.log` before a push that adds tests.
 
 ## 4. Code
 
@@ -100,6 +107,13 @@ allocation or logging on the audio thread. No JUCE, anywhere. Third-party code o
 - **Found on macOS, 2026-11-24**: never keep a `tee::Program`, or anything that owns one, in a static with a
   destructor. At exit it is destroyed after FMinus's and LLVM's own statics and its destructor runs on a JIT that is
   gone (38 tests crashed at exit on macOS; Linux's order hides it). Free it before `main` returns.
+- **Found the hard way, 2026-11-24** (X-007, X-019): a float is never an index (or a loop's bound) without a clamp at
+  both ends and a non-finite check. A NaN's cast to int is INT_MIN on x86 and 0 on arm64, so macOS hides the read
+  off a table that Linux and Windows crash on, in a shipped build, on a Spec inside its ranges. `if (i > last) i =
+  last;` alone does not stop it (a NaN compares false with everything). Call `tableIndex(x, last)` or write
+  `(int)fminf(fmaxf(x, 0.0f), (float)last)` (FMinus's fminf and fmaxf return the other operand for a NaN); wrap an
+  angle with `wrapCycle` (sim/core/mathx.fm), never `while (a >= cyc) a -= cyc;`. `scripts/lint.sh` (rule 8)
+  fails on a new one. CI's soak tier runs the fuzz at the corners without bounds checks, so a crash is a crash there.
 - No transcendental function per sample where a table or a control-rate update will do. Your card gives a CPU
   budget; `tee-bench` measures it.
 - Every Spec field has `[[fminus::range]]`, `[[fminus::default]]`, `[[ui::label]]` and says what its number is:
