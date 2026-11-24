@@ -327,14 +327,28 @@ arch(slug="economy-four-15", runner=0.45, convK=18.0, name="1.5 L economy four",
            "Through a CVT.")
 arch(slug="turbo-four-20-gdi", runner=0.3, name="2.0 L turbo four, direct injection", geo="ref-05-inline-4", layout="Inline 4",
      bore=82.5, stroke=92.8, rod=144.0, cr=9.6, valves=4, dIn=33.8, dEx=28.0,
-     cam=(240, 208, 10.7, 110, 236, 204, 9.0, 112), train="Finger", phase=(60, 0), redline=6800, idle=750,
+     # the exhaust's two lobes (Audi valvelift, the lead's ruling 23:19): stage A, the small lobe, below 3100 rpm:
+     # 6.35 mm, 180 deg at 1 mm (212 at the seat by the build's ramp), closing 2 deg ATDC (centre 88); stage B, the
+     # large lobe: 10 mm, 215 deg at 1 mm (247 at the seat), closing 8 deg BTDC (centre 115.5): from gen 2's SSP 922903
+     # page 8 (gen 3's not published; its reference lift not stated, 1 mm implied by the large lobe), the switch from its
+     # page 12. Intake phaser 60 deg (the earlier 2.0 TSI's, vwparts press); exhaust phaser 30 deg (JUDGEMENT: the
+     # feature is cited, SSP 920243; its range is not)
+     cam=(240, 208, 10.7, 110, 212, 180, 6.35, 88), train="Finger", phase=(60, 30), redline=6800, idle=750,
+     stages=dict(inDurSeatB=240, inDur1mmB=208, inLiftB=0.0107, inCentreB=110,
+                 exDurSeatB=247, exDur1mmB=215, exLiftB=0.010, exCentreB=115.5, stageSpeed=round(3100 * RPM, 1)),
      boost=dict(kind="Turbo", target=1.2, spring=0.6, scrolls="Twin scroll"), direct=True, grade="Premium (91)",
      boostTaper=[(1500, 120), (4500, 120), (5300, 105), (6000, 85), (6500, 75), (7000, 70)],
      car="hot-hatch-dct", timing="Chain",
-     notes="A 2.0 L direct-injection turbo four: 82.5 x 92.8 mm (1984 cc), 9.6:1 (engines of the kind in hot "
-           "hatches: 155 to 228 kW at 5000 to 6500 rpm, 350 to 400 N m from 1600 to 4500; makers' figures). "
-           "Its boost is trimmed above 4500 rpm (1.2 bar falling to 0.7), as production two-litres do. Front drive, "
-           "six-speed dual clutch.", balance2=True)
+     notes="The 2.0 L EA888 generation 3 of the Mk7 Golf GTI: 82.5 x 92.8 mm (1984 cc), 9.6:1, direct and port "
+           "injection, both cams phased, two-stage exhaust valve lift, one IHI IS20 turbo with an electric wastegate "
+           "(Audi SSP 920243; the turbo's model: eqtuning.com, enthusiast); 162 kW at 4500 to 6200 rpm, 350 N m from "
+           "1500 to 4400 (VW's press presentation). What is known and what is guessed: the exhaust's two lobes are gen "
+           "2's (SSP 922903: the small 6.35 mm, 180 deg, used to about 3100 rpm and from just after a start above "
+           "-10 C; the large 10 mm, 215 deg; durations read at 1 mm); the intake phaser's 60 deg is the earlier "
+           "2.0 TSI's; the exhaust phaser's 30 deg is judgement; the boost taper (1.2 bar to 4500 rpm, 0.7 by 7000) is "
+           "judgement, its top end agreeing with an owner's stock log (81 kPa at 6048 rpm: carworklog.com); the "
+           "turbine's size is the model's default until N2 reads published maps. Front drive, six-speed dual clutch.",
+     balance2=True)
 arch(slug="v6-35-na", intake=dict(runnerLength=0.50, runnerLength2=0.30, runnerSwitch=4000 * RPM), name="3.5 L V6", geo="ref-09-v6-60", layout="V6", bore=94.0, stroke=83.0, rod=152.0,
      cr=10.8, valves=4, dIn=35.0, dEx=29.0, cam=(240, 208, 10.2, 110, 236, 204, 9.4, 112), train="Finger",
      phase=(40, 30), redline=6700, idle=700, car="family-sedan-auto", timing="Toothed belt",
@@ -777,9 +791,9 @@ EXHAUST_CLASS = {
 
 
 # Baked intake cam maps (cams.py, N1's tee-dyno --bake-cam --save): applied only while BAKED_CAMS is on, which waits
-# for the lead's clearance (22:35: a map without a load axis asked the full-load phase at idle; N1's 2b04859c gives
+# (cleared by the lead, 23:19: N1's 2b04859c gives
 # the axis, the smoothing, the fallback and the idle check)
-BAKED_CAMS = False
+BAKED_CAMS = True
 
 
 def _cams():
