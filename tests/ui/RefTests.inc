@@ -83,7 +83,8 @@ int refPanel()
     RefMock player;
     CHECK(player.count() == 32);
     Services app;
-    RefPanel panel(files, player, app.make(), {});
+    // Shaders off: its goldens are the same with a GPU layer in the build and without (GuiPanel::Options::shaders).
+    RefPanel panel(files, player, app.make(), { 0, 0, {}, false });
     funkgui::HeadlessHost host(panel, 0, 2.0f);
     host.tick(3);
     // The file is taken whole: every dial has its control, every field its telemetry, every shader its element.
@@ -202,7 +203,19 @@ int refPanel()
         CHECK(cluster->cell().w > 300.0f && cluster->cell().h > 300.0f);
     }
 #if TEE_UI_GPU
-    CHECK(header != nullptr && header->program() != 0 && cluster->program() != 0 && layout->program() != 0);
+    {
+        // With a GPU layer, the reference's three programs are built and registered: a panel with its shaders on.
+        RefPanel gpu(files, player, app.make(), {});
+        funkgui::HeadlessHost gpuHost(gpu, 0, 2.0f);
+        gpuHost.tick(2);
+        int registered = 0;
+        for (const int i : gpu.view().shaders())
+        {
+            const auto& item = static_cast<const GuiShaderItem&>(*gpu.items()[static_cast<std::size_t>(i)]);
+            registered += item.shown() && item.program() != 0 ? 1 : 0;
+        }
+        CHECK(registered == 3);
+    }
 #endif
     // The strip stands in the keyboard's cell, on every page.
     const std::vector<funkgui::Rect> keys = panel.keyboardRects();

@@ -67,3 +67,32 @@ fixes its own when it next touches its tests, and deletes its hook.
 - FMinus has no `atanf` and a program may declare no external function: a package that needs one writes it
   (`sim/vehicle/` has `vehAtan`, a polynomial good to 2e-6 rad). Candidates for a shared `sim/core/mathx.fm` at
   integration, so there is one copy.
+
+## FunkGui, after card A (13:19)
+
+- The owner pushes the tag `v0.28.0` on FunkGui's main (19d06ab); then card B names the tag beside its pinned commit.
+- The lead looks at `fg.desktop.menu`'s 40 candidate golden rows and adopts them or says why not.
+- Card A's requests outside its paths (`tools/check-headers.sh`, `tools/GalleryApp/CMakeLists.txt`, the POSIX-only
+  tools and tests on Windows): `docs/handoffs/a-funkgui-desktop.md`. None blocks TheEngineEngine.
+- A notched mouse wheel scrolls slowly on macOS (SDL does not tell it from a trackpad): ask the owner at the Mac test.
+
+## From card C's handoff (13:24)
+
+- **K3**: `host/include/tee/EnginePlayer.h` declares its own `struct tee::Build`; the contract's `tee::Build` is the
+  document (`host/include/tee/Build.h`). K3 renames its own (asked 13:25).
+- **D, as integrator**: a telemetry field `tel.engine.firing` (Hz), so tests need not work the firing rate out from
+  the speed and a cylinder count; the dyno mode in `ctl.mode` and the brake torque in `tel.engine.torque`, which the
+  dyno runner and the validation's torque and power targets wait for (they read "n/a" until then).
+- **The keel**: `libclang-rt-18-dev` in `scripts/bootstrap-cloud.sh`, then `tee-host-tests` once under the `tsan`
+  preset (never run: no runtime here). `tee-bench`'s breakdown by module.
+- **The contract's wording**: §7 names `ControlsFrame`; the shell's `tee::ControlsFrame` (`Sources.h`) is the
+  interface's and the host's is `tee::SimControls` (every field of §4); the shell's adapter converts. The lead
+  corrects 02-contracts.md at the next edit.
+- **For H (the ECU's idle) and the owner's ears**: validated against published ranges, the reference itself is off:
+  the V8 idles warm at 1221 rpm (600 to 900 expected); the diesel idles at 1129 rpm and is governed at 2600 rpm
+  (600 to 800; 1800 to 2400). The reference stays as it is behind its defaults; the new idle control and the
+  presets should land inside the ranges, and `content/validation/` then passes.
+- **A finding for everyone, macOS**: a static that owns a compiled FMinus program is destroyed after FMinus's and
+  LLVM's own statics there, and its destructor then runs on a JIT that is gone (38 host tests crashed at exit; Linux's
+  order hides it). Never keep a `tee::Program` or anything holding one in a static with a destructor: free it before
+  `main` returns, or keep it in an object that is never destroyed (e69ea09).

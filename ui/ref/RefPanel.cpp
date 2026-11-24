@@ -27,6 +27,7 @@ namespace tee::ui
             g.minHeight = 300;
             g.name = "ref";
             g.scope = o.scope;
+            g.shaders = o.shaders;
             return g;
         }
 

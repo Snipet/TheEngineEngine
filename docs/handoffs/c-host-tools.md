@@ -23,7 +23,10 @@ library 1.9 to 4.2x real time. Real-engine dyno: not measurable yet (below).
 
 **Not done / not run.** ThreadSanitizer: the `tsan` preset is in, but never ran here: the container's clang has no
 `libclang_rt.tsan` and installing it was refused. tee-render's build-and-scenario path (K3 owns `--engine`), tee-bench's
-breakdown by module (the keel's file; no keel handoff yet). `--hq` is wave 2.
+breakdown by module (the keel's file; no keel handoff yet). `--hq` is wave 2. CI (run 45399202005): Windows compiled
+all of card C's sources clean (it stopped on D's `M_PI`); macOS ran tee-host-tests, and 38 passed every assertion then
+crashed at exit: Tee::test's static cache of Sims outlived LLVM's statics. Fixed (never-destroyed cache, e69ea09);
+the next macOS result is not seen yet.
 
 **Waits for K3b/D.** The dyno on the real engine: `ctl.mode` MODE_DYNO_ENGINE and a brake torque in
 `tel.engine.torque` (N m); the validation's torque and power targets read `n/a` until then.

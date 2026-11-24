@@ -10,8 +10,16 @@
 #include "input/Controls.h"
 #include "input/Keys.h"
 #include "player/RefAdapter.h"
+#include "player/SimAdapter.h"
 #include "panel/PlaceholderPanel.h"
 #include "tee/app/MainPanel.h"
+
+#if defined(TEE_HAS_UI_FRAME)
+ #include "app/AppFrame.h"                  // the interface package's (ui/): the frame, its document over a tee::Build
+ #include "kit/bind/Units.h"
+ #include "kit/bind/host/BuildDoc.h"
+ #include "tee/Build.h"
+#endif
 
 #include <fminus/FMinus.h>
 #include <funkgui/canvas/SoftRaster.h>
@@ -20,8 +28,10 @@
 #include <funkgui/text/FontService.h>
 
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <cstdio>
+#include <cstdlib>
 #include <filesystem>
 #include <string>
 #include <vector>
@@ -87,12 +97,75 @@ namespace tee::app
         };
     }
 
-    std::unique_ptr<funkgui::Panel> makePanel(const Options& o, Player& player, const AppServices& services)
+    namespace
     {
+       #if defined(TEE_HAS_UI_FRAME)
+        std::string lower(std::string s)
+        {
+            for (char& c : s)
+                c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+            return s;
+        }
+       #endif
+    }
+
+    Shown makePanel(const Options& o, Engine& engine, const AppServices& services)
+    {
+        Shown shown;
+        Player& player = *engine.player;
         // a program that did not start has nothing an interface could bind to: the plain Panel says why
         if (o.panel == "plain" || player.count() == 0)
-            return ui::makePlaceholderPanel(player, services);
-        return ui::makeMainPanel(player, services);
+        {
+            shown.panel = ui::makePlaceholderPanel(player, services);
+            return shown;
+        }
+       #if defined(TEE_HAS_UI_FRAME)
+        if (engine.sim != nullptr)
+        {
+            // the application's frame over the simulator's document (docs/handoffs/j2-ui-kit.md)
+            struct Kept
+            {
+                explicit Kept(tee::Build& build) : doc(build) {}
+                ui::BuildDoc doc;
+                ui::Units units;
+            };
+            const auto kept = std::make_shared<Kept>(engine.sim->build());
+            const std::filesystem::path content = findContent();
+            std::unique_ptr<ui::AppFrame> frame =
+                ui::makeAppFrame(kept->doc, kept->units, player,
+                                 ui::buildServices(engine.sim->build(), content.empty() ? content : content / "builds",
+                                                   Presets::userDirectory(), services));
+            // --workspace ID[:PAGE]: the frame opens there (a name that is none is said, and the first one shown)
+            if (!o.workspace.empty())
+            {
+                const std::size_t colon = o.workspace.find(':');
+                const std::string id = lower(o.workspace.substr(0, colon));
+                const int page = colon == std::string::npos ? 1 : std::atoi(o.workspace.c_str() + colon + 1);
+                int found = -1;
+                std::string names;
+                for (int s = 0; s < frame->screenCount(); ++s)
+                {
+                    const std::string name = lower(frame->screenDef(s).name);
+                    names += (s == 0 ? "" : ", ") + name;
+                    if (name == id)
+                        found = s;
+                }
+                if (found < 0)
+                    std::fprintf(stderr, "--workspace: no workspace '%s' (there are: %s)\n", o.workspace.c_str(), names.c_str());
+                else
+                    frame->show(found, std::clamp(page, 1, std::max(1, frame->pageCount(found))) - 1);
+            }
+            shown.panel = std::move(frame);
+            shown.keep = kept;
+            return shown;
+        }
+       #endif
+        // the reference's own panel reads the reference's dials and its raw fields: for the reference alone
+        if (engine.ref != nullptr)
+            shown.panel = ui::makeMainPanel(player, services);
+        else
+            shown.panel = ui::makePlaceholderPanel(player, services);
+        return shown;
     }
 
     void printVersions()
@@ -141,8 +214,8 @@ namespace tee::app
         input::Controls controls(player, player);
         controls.setStatus(engine.error.empty() ? engine.name + "   no audio device (rendering offline)"
                                                 : "error: the program did not start\n" + engine.error);
-        const std::unique_ptr<funkgui::Panel> panel = makePanel(o, player, controls.services());
-        funkgui::HeadlessHost host(*panel, o.theme, static_cast<float>(o.dpi));
+        const Shown shown = makePanel(o, engine, controls.services());
+        funkgui::HeadlessHost host(*shown.panel, o.theme, static_cast<float>(o.dpi));
 
         audio::WavWriter wav;
         if (!o.wav.empty())
@@ -246,6 +319,7 @@ namespace tee::app
             if (ended)
                 break;
 
+            engine.frame();
             controls.tick(dt);
 
             // this frame's share of the audio, in blocks
@@ -262,6 +336,7 @@ namespace tee::app
                 rendered += n;
             }
 
+            engine.frame();             // the telemetry the Panel and the checks read is this frame's
             host.tick(1, dt);
 
             for (const ScriptEvent* e : after)
@@ -315,9 +390,9 @@ namespace tee::app
             shoot(o.shot);
         if (!o.wav.empty())
             wroteAll = wav.close() && wroteAll;
-        if (engine.ref != nullptr && engine.ref->stopped())
+        if (const std::string stopped = engine.stopped(); !stopped.empty())
         {
-            std::fprintf(stderr, "error: the program was stopped: %s\n", engine.ref->why().c_str());
+            std::fprintf(stderr, "error: the program was stopped: %s\n", stopped.c_str());
             ++failures;
         }
         if (!whole.finite)

@@ -208,7 +208,7 @@ namespace tee::ui
                 tapHandle_[static_cast<std::size_t>(d.tap)] = telemetry_.findValue(telemetryName(d.source));
         // The shaders the build made for this panel (kit/shaders/Registry.h; none in a build without a GPU layer).
         for (PanelShader& sh : spec_.shaders)
-            if (const shaders::Built* built = shaders::find(options_.name, sh.file))
+            if (const shaders::Built* built = options_.shaders ? shaders::find(options_.name, sh.file) : nullptr)
             {
                 sh.binary.assign(built->data, built->data + built->size);
                 sh.id = shaderId(sh.binary);
@@ -225,7 +225,7 @@ namespace tee::ui
         std::string shaderNotes = notes_;
         for (const PanelShader& sh : spec_.shaders)
             if (sh.binary.empty())
-                shaderNotes += sh.file + ":1:1: note: " + shaders::whyNone() + "\n";
+                shaderNotes += sh.file + ":1:1: note: " + (options_.shaders ? shaders::whyNone() : kShadersOff) + "\n";
         view_.registerShaders(spec_, files_, shaderNotes);
         // Its natural size: the root's when it is given no room at all.
         view_.layout(spec_, controls_, funkgui::Rect{ 0.0f, 0.0f, 1.0f, 1.0f });

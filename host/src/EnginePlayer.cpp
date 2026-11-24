@@ -913,7 +913,7 @@ namespace tee
     } // namespace
 
     // Where the engine's state (0 off, 1 cranking, 2 running, 3 running down) is in Engine, for the twin
-    constexpr const char* kStatePath = "mono.ecu.state";
+    constexpr const char* kStatePath = "ecu.state";
 
     bool playTwin(EnginePlayer& engine, RefPlayer& ref, const Build& build, const EngineScenario& scenario,
                   const TwinOptions& options, TwinResult& result, std::string& error)
