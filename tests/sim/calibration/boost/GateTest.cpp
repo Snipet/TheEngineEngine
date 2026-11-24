@@ -185,3 +185,30 @@ TEST_CASE("calibration boost: variable vanes past the surge line open (one state
     CHECK(up.at("boost.pressure") > 0.97 * fixed.at("boost.pressure"));
     CHECK(up.at("engine.torque") > 0.95 * fixed.at("engine.torque"));
 }
+
+TEST_CASE("calibration boost: the telemetry says when the charge system is far from its engine", "[calibration][boost]")
+{
+    // (the lead's X-021 ruling) A 15 L diesel with F's defaults (a 0.25 kg/s cooler and 5 L of pipes, a 2 to 3 L
+    // engine's) makes little boost, as it should; tel.boost.mismatch says why, with each pair (has, wants). The 2 L
+    // four, its own sizes, says nothing.
+    Sims s;
+    const auto read = [&](const std::string& build, const std::vector<std::pair<std::string, double>>& sets) {
+        std::vector<Row> rows;
+        std::string error;
+        REQUIRE(tee::calib::dyno(s.sim, build, {2000.0}, sets,
+                                 {"boost.mismatch", "boost.coolerHas", "boost.coolerWants", "boost.volumeHas",
+                                  "boost.volumeWants"},
+                                 rows, error, 0.2, 0.1, 2.0));
+        return rows[0];
+    };
+    const Row big = read("content/builds/combo/large-diesel.json",
+                         {{"boost.model", 1}, {"boost.icFlow", 0.25}, {"boost.chargeVolume", 0.005}});
+    const Row four = read("content/builds/archetypes/turbo-four-20-gdi.json", {});
+    std::printf("mismatch: large diesel %d (cooler %.2f against %.2f kg/s, pipes %.1f against %.1f L); turbo four %d\n",
+                static_cast<int>(big.at("boost.mismatch")), big.at("boost.coolerHas"), big.at("boost.coolerWants"),
+                1000.0 * big.at("boost.volumeHas"), 1000.0 * big.at("boost.volumeWants"),
+                static_cast<int>(four.at("boost.mismatch")));
+    CHECK(static_cast<int>(big.at("boost.mismatch")) == 5);
+    CHECK(big.at("boost.coolerWants") > 2.0 * big.at("boost.coolerHas"));
+    CHECK(static_cast<int>(four.at("boost.mismatch")) == 0);
+}

@@ -72,6 +72,8 @@ namespace tee::app
             std::function<std::string()> audioInfo;
             std::function<void()> audioMenu;
             std::function<void(int)> qualityChosen;     // the QUALITY row's choice, for the settings file
+            std::function<std::string()> tryFirst;      // the first build's notes while its TRY FIRST card is wanted
+            std::function<void()> tryFirstDone;         // the card was closed: not again
         };
         std::shared_ptr<WindowHooks> window;
         files::BuildFile* document = nullptr;
