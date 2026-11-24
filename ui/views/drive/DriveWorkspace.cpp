@@ -178,10 +178,17 @@ namespace tee::ui
             const double red = ctx_.live.get(telemetry::kRedline) * kToRpm;
             if (std::isfinite(red) && red > 1000.0)
             {
-                const double top = std::ceil((red + 1000.0) / 1000.0) * 1000.0;
-                tach_->setRange(0.0, top);
-                tach_->setTicks(static_cast<int>(top / 1000.0), 2);
+                const look::RpmScale sc = look::rpmScale(red);   // the cockpit's rev bar's scale
+                tach_->setRange(0.0, sc.top);
+                tach_->setTicks(static_cast<int>(std::lround(sc.top / sc.step)), 2);
                 tach_->setRedline(red);
+                if (sc.divisor != tachDivisor_)
+                {
+                    tachDivisor_ = sc.divisor;
+                    const double d = sc.divisor;
+                    tach_->setNumerals([d](double v) { return std::to_string(static_cast<int>(std::lround(v / d))); });
+                    tach_->setUnit(sc.unit);
+                }
             }
             // The speedometer in the user's unit, to a round top.
             const double vmax = ctx_.units.toUser(Quantity::speed, 300.0 / 3.6);
@@ -432,6 +439,7 @@ namespace tee::ui
         float spin_ = 0.0f, roll_ = 0.0f, squat_ = 0.0f, qsFlash_ = 0.0f, blipFlash_ = 0.0f;
         double lastQs_ = std::nan(""), lastBlips_ = std::nan("");
         double lastSpeed_ = 0.0;
+        double tachDivisor_ = 1000.0;   // the tachometer's numerals: thousands, or hundreds under a 4000 rpm redline
     };
 
     std::unique_ptr<Workspace> makeDriveWorkspace(WorkspaceContext& c) { return std::make_unique<DriveWorkspace>(c); }
