@@ -91,7 +91,10 @@ to 4000 rpm; let go, the engine runs on to the limiter.
 ## Overrun and the bangs
 
 The cut (the reference's): pedal under 0.02 for 0.12 s above idle + 700 rpm; out under idle + 320 or with the pedal.
-`ecu.overrun.fuel` (a share of a stoichiometric charge) is injected anyway, burned `ecu.overrun.retard` late.
+`ecu.overrun.fuel` is the share of the overrun's firings fuelled anyway (each a stoichiometric charge, in the cuts'
+even pattern: a little fuel in every cylinder would be too lean to light), burned `ecu.overrun.retard` late; model 1's
+charge burns in the cylinder the share `1 - spark after the top / 60 degrees` of it (judgement) and sends the rest to
+the pipe.
 
 The bangs by account (`FuelAccount`, per bank): fuel and air leaving a cylinder unburned are added to the bank's store;
 both flow out with a 0.25 s time constant (judgement); a hazard rises at `40 /s x hot x burnable / 2 mg`, hot = 0 under
