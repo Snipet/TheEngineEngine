@@ -70,7 +70,7 @@ namespace
             std::fprintf(stderr, "%s", engine.notes.c_str());
         if (!engine.error.empty())
             std::fprintf(stderr, "error: the program did not start\n%s\n", engine.error.c_str());
-        else if (engine.ref != nullptr)
+        else if (engine.ref != nullptr || engine.sim != nullptr)
             std::printf("engine: %s, compiled in %.2f s\n", engine.name.c_str(), engine.compileSeconds);
         if (!engine.warnings.empty())
             std::fprintf(stderr, "%s\n", engine.warnings.c_str());
@@ -145,7 +145,8 @@ namespace
         std::size_t nextEvent = 0;
 
         // ---- the window ---------------------------------------------------------------------------------------------
-        const std::unique_ptr<funkgui::Panel> panel = app::makePanel(o, player, controls.services());
+        const app::Shown shown = app::makePanel(o, engine, controls.services());
+        funkgui::Panel* const panel = shown.panel.get();
         const bool machine = o.frames >= 0 || !o.shot.empty();
         const std::uint32_t frames = static_cast<std::uint32_t>(o.frames >= 0 ? o.frames : 120);
 
@@ -180,14 +181,15 @@ namespace
                         params.set(i, e.a);
                 }
             }
+            engine.frame();
             controls.tick(dt);
             bool changed = device.pump();
             if (changed)
                 audioLine = device.isOpen() ? device.info().line() : "the audio device went away: waiting for one";
-            if (stopped.empty() && engine.ref != nullptr && engine.ref->stopped())
+            if (stopped.empty())
             {
-                stopped = engine.ref->why();
-                changed = true;
+                stopped = engine.stopped();
+                changed = changed || !stopped.empty();
             }
             if (changed)
                 controls.setStatus(statusOf(engine, audioLine, stopped));
@@ -226,7 +228,7 @@ namespace
             std::printf("window: %d x %d logical px, %d x %d pixels, scale %.3f (display scale %.3f)\n", d.logicalW,
                         d.logicalH, d.physW, d.physH, d.scale, d.displayScale);
             std::printf("engine: %s%s\n", engine.name.c_str(), engine.error.empty() ? "" : " (it did not start)");
-            if (engine.ref != nullptr)
+            if (engine.ref != nullptr || engine.sim != nullptr)
                 std::printf("compile: %.2f s\n", engine.compileSeconds);
             std::printf("audio: %s\n", audioLine.c_str());
             const std::string pad = sdlInput.gamepadName();

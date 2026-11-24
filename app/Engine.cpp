@@ -3,8 +3,10 @@
 
 #include "player/RefAdapter.h"
 #include "player/SilentPlayer.h"
+#include "player/SimAdapter.h"
 #include "player/TonePlayer.h"
 
+#include "tee/Build.h"
 #include "tee/Scenario.h"
 
 #include <cstdint>
@@ -79,9 +81,22 @@ namespace tee::app
         }
     }
 
+    void Engine::frame()
+    {
+        if (sim != nullptr)
+            sim->frame();
+    }
+
+    std::string Engine::stopped() const
+    {
+        if (ref != nullptr)
+            return ref->stopped() ? ref->why() : std::string();
+        return sim != nullptr ? sim->why() : std::string();
+    }
+
     fs::path findSim(const Options& o)
     {
-        const fs::path probe = fs::path("ref") / "program.fm";
+        const fs::path probe = o.engine == "sim" ? fs::path("engine.fm") : fs::path("ref") / "program.fm";
         if (!o.sim.empty())
             return firstWith({ fs::path(o.sim) }, probe);
         std::vector<fs::path> candidates{ fromEnvironment("TEE_SIM_DIR") };
@@ -110,10 +125,39 @@ namespace tee::app
                 params.set(i, value);
         }
 
+        // The simulator's preset is a build (content/builds/<name>.json, or a file), loaded into its document.
+        void applyBuild(Engine& e, const Options& o)
+        {
+            std::error_code ec;
+            fs::path file = o.preset;
+            if (!fs::is_regular_file(file, ec))
+            {
+                const fs::path content = findContent();
+                file = content / "builds" / (o.preset + ".json");
+                if (content.empty() || !fs::is_regular_file(file, ec))
+                {
+                    e.notes += "--preset: no build '" + o.preset + "' (a file, or a name in content/builds)\n";
+                    return;
+                }
+            }
+            std::vector<std::string> warnings;
+            std::string error;
+            if (!e.sim->build().loadFile(file, BuildPart::Whole, warnings, error))
+                e.notes += "--preset: " + error + "\n";
+            for (const std::string& w : warnings)
+                e.notes += "--preset: " + w + "\n";
+            e.sim->frame();
+        }
+
         void applyPreset(Engine& e, const Options& o)
         {
             if (o.preset.empty())
                 return;
+            if (e.sim != nullptr)
+            {
+                applyBuild(e, o);
+                return;
+            }
             std::error_code ec;
             fs::path file = o.preset;
             if (!fs::is_regular_file(file, ec))
@@ -149,11 +193,30 @@ namespace tee::app
         else
         {
             e.simDir = findSim(o);
+            const std::string entry = o.engine == "sim" ? "engine.fm" : "ref/program.fm";
             if (e.simDir.empty())
                 e.error = o.sim.empty()
-                    ? "no sim/ref/program.fm beside the executable (" + executableDir().string()
+                    ? "no sim/" + entry + " beside the executable (" + executableDir().string()
                           + "): the simulator's source is missing. --sim DIR names another place."
-                    : "no ref/program.fm in " + o.sim;
+                    : "no " + entry + " in " + o.sim;
+            else if (o.engine == "sim")
+            {
+                player::SimAdapter::Options so;
+                so.directory = e.simDir;
+                so.checks = o.checks;
+                so.sampleRate = rate;
+                std::unique_ptr<player::SimAdapter> sim = player::SimAdapter::create(so, e.error);
+                if (sim)
+                {
+                    e.compileSeconds = sim->compileSeconds();
+                    e.warnings = sim->warnings();
+                    e.sim = sim.get();
+                    e.player = std::move(sim);
+                    e.name = "the simulator (sim/engine.fm)";
+                }
+                else if (e.error.empty())
+                    e.error = "the simulator did not compile, and FMinus gave no message";
+            }
             else
             {
                 player::RefAdapter::Options ro;

@@ -12,7 +12,8 @@ namespace tee::app
         bool help = false;
         bool version = false;
         bool info = false;              // --info: print the versions, the renderer and the audio device, and exit
-        std::string engine = "ref";     // --engine ref|tone: the reference simulator, or the stand-in tone
+        std::string engine = "ref";     // --engine ref|sim|tone: the reference (sim/ref), the simulator (sim/engine.fm),
+                                        // or the stand-in tone
         std::string sim;                // --sim DIR: the folder that holds ref/program.fm (default: beside the executable)
         std::string preset;             // --preset NAME|FILE
         std::vector<std::pair<std::string, double>> sets;   // --set id=value, in order, after the preset
@@ -31,6 +32,7 @@ namespace tee::app
         bool themeGiven = false;        // the window follows the saved preference without it
         double dpi = 1.0;               // --dpi X: a headless picture's pixels a logical px
         std::string panel;              // --panel plain: the shell's own plain Panel, not the interface package's
+        bool refPanel = false;          // --ref-panel: the reference engine in its own panel (what --engine ref shows)
         bool noAudio = false;           // --no-audio: the window with no device (nothing plays)
         bool keepGoing = false;         // --keep-going: a program that does not compile is no reason to stop a render
     };
