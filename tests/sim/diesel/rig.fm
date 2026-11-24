@@ -1,0 +1,44 @@
+// rig.fm: card D2's truck parts with no engine (sim/vehicle/roadranger.fm, truckair.fm), for the standalone tests: the
+// test writes the controls and the speeds, calls tick16 every 16 samples (run does), and reads the sound.
+#include "vehicle/roadranger.fm"
+#include "vehicle/truckair.fm"
+
+module Rig
+{
+    Roadranger box;
+    TruckAir air;
+    float rate;
+    int lever;
+    int buttons;
+    float clutch;
+    float pedal;
+    float wCrank;
+    float wOut;
+    float brake;
+    float park;
+    int k;
+
+    void init(float rateIn)
+    {
+        rate = rateIn;
+        box.setup(rate);
+        air.setup(rate);
+        k = 0;
+    }
+
+    // n samples of the grind into g and the air's hiss into a
+    void run(float* g, float* a, int n) [[clang::nonblocking]]
+    {
+        for (int i = 0; i < n; ++i)
+        {
+            if (k == 0)
+            {
+                box.control(16.0f / rate, lever, buttons, clutch, pedal, wCrank, wOut);
+                air.control(16.0f / rate, wCrank, brake, park);
+            }
+            k = k + 1 >= 16 ? 0 : k + 1;
+            g[i] = box.grind();
+            a[i] = air.out();
+        }
+    }
+};
