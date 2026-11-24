@@ -187,6 +187,20 @@ namespace tee::app
                 if (!real(o.holdCompile, 0.0, 600.0))
                     return false;
             }
+            else if (arg == "--hold-value")
+            {
+                std::string text;
+                if (!value(text))
+                    return false;
+                const std::size_t eq = text.find('=');
+                double v = 0.0;
+                if (eq == std::string::npos || eq == 0 || !number(text.substr(eq + 1), v))
+                {
+                    why = "--hold-value: '" + text + "' is not PATH=VALUE";
+                    return false;
+                }
+                o.holds.emplace_back(text.substr(0, eq), v);
+            }
             else if (arg == "--expect-fault")
                 o.expectFault = true;
             else if (arg == "--size")
@@ -255,6 +269,7 @@ namespace tee::app
              "  --quality full|economy the simulator inside at 96 kHz (full, the default) or 48 kHz (economy: about half\n"
              "                         the CPU, the top octave lost); the settings file's when not given\n"
              "  --expect-fault         an offline run in which the engine diverges and is restarted still exits 0\n"
+             "  --hold-value PATH=V    (tests) a value of the simulator's held before every call: crank.omega=1e7\n"
              "  --version, --help\n";
         return u;
     }

@@ -41,6 +41,7 @@ namespace tee::app
         bool keepGoing = false;
         std::string quality;            // --quality full|economy: the simulator's inner rate (empty: the settings')
         bool expectFault = false;
+        std::vector<std::pair<std::string, double>> holds;   // --hold-value PATH=VALUE (a test's): held before every call
         double holdCompile = 0.0;       // --hold-compile S (tee-headless, a test's): the engine's compile is held back for
                                         // S seconds of the run (its frames drawn meanwhile), then waited for
         bool background = false;        // not an option: the window compiles the engine in the background       // --expect-fault: a run where the engine diverges and is restarted is not a failure         // --keep-going: a program that does not compile is no reason to stop a render
