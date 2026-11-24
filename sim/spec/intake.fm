@@ -1,0 +1,10 @@
+// spec/intake.fm: the intake (spec.intake). Owner: package E.
+//
+// Nothing yet: the reference sizes its throttle, plenum and runners from the engine (core/monolith.fm, configure).
+// Package E appends the throttle's kind, the plenum, the runners and the air box here.
+#pragma once
+
+module IntakeSpec
+{
+    int rev [[ui::hidden]];
+};

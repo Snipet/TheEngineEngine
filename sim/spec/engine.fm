@@ -1,0 +1,40 @@
+// spec/engine.fm: the engine itself (spec.engine). Owner: package D.
+//
+// The reference's engine dials, with their meanings kept: the layout (one of the reference's seventeen, each with its
+// firing order, banks and pipes: core/layouts.fm), its displacement (SI: m^3; the reference's SIZE dial in litres), the
+// bore over the stroke, the compression ratio, the flywheel (the INERTIA dial: 0.45 to 2.2 times the layout's own
+// inertia, 1 at 0.5), the idle and redline trims (rpm over the layout's own), how rough it runs, and the load a bench
+// puts on it (MODE_BENCH only; driven, the car is the load).
+//
+// What the simulator does with a change: the layout, the displacement and nothing else here are taken under the
+// reference's short fade (6 ms down, the change, 80 ms back up), the displacement once its value has rested 0.15 s;
+// stopped, at once. The bore over the stroke and the compression glide over 80 ms; the trims, rough and the load act
+// at once.
+#pragma once
+
+module EngineSpec
+{
+    int rev [[ui::hidden]];
+    int layout [[fminus::range(0, 16)]] [[fminus::default(12)]] [[ui::label("Layout")]]
+        [[ui::choices("Single", "Twin 360", "Twin 270", "V-twin 45", "Inline 3", "Inline 4", "Flat 4", "Crossplane I4",
+                      "Inline 5", "V6", "Inline 6", "Flat 6", "V8 crossplane", "V8 flat-plane", "V10", "V12", "Rotary")]]
+        [[ui::help("The cylinders, their firing order and their exhaust's layout")]];
+    float displacement [[fminus::range(0.00005, 0.03)]] [[fminus::default(0.00576)]] [[ui::label("Displacement")]]
+        [[ui::quantity("volume")]] [[ui::taper("log")]] [[ui::decimals(2)]]
+        [[ui::help("All the cylinders' swept volume (a rotary's: its two rotors' chambers)")]];
+    float boreStroke [[fminus::range(0.5, 2)]] [[fminus::default(1)]] [[ui::label("Bore / stroke")]]
+        [[ui::quantity("ratio")]] [[ui::decimals(2)]]
+        [[ui::help("Above 1 oversquare: a wide bore, a short stroke, high revs")]];
+    float compression [[fminus::range(6, 25)]] [[fminus::default(10)]] [[ui::label("Compression")]]
+        [[ui::quantity("ratio")]] [[ui::decimals(1)]] [[ui::help("The compression ratio")]];
+    float flywheel [[fminus::range(0, 1)]] [[fminus::default(0.5)]] [[ui::label("Flywheel")]]
+        [[ui::quantity("fraction")]] [[ui::help("The crank and flywheel's inertia: 0.45 to 2.2 times the layout's")]];
+    float idleTrim [[fminus::range(-400, 800)]] [[fminus::default(0)]] [[ui::label("Idle trim")]] [[ui::unit("rpm")]]
+        [[ui::decimals(0)]] [[ui::help("The idle speed over the layout's own")]];
+    float redlineTrim [[fminus::range(-3000, 3000)]] [[fminus::default(0)]] [[ui::label("Redline trim")]]
+        [[ui::unit("rpm")]] [[ui::decimals(0)]] [[ui::help("The redline over the layout's own")]];
+    float rough [[fminus::range(0, 1)]] [[fminus::default(0.3)]] [[ui::label("Rough")]] [[ui::quantity("fraction")]]
+        [[ui::help("How much one cycle differs from the next")]];
+    float benchLoad [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Bench load")]]
+        [[ui::quantity("fraction")]] [[ui::help("The load a bench puts on the crank, with no vehicle")]];
+};
