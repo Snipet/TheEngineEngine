@@ -118,7 +118,8 @@ TEST_CASE("the reference's seventeen layouts' firing angles, exactly", "[core][l
     {
         const auto doc = loadPreset(name);
         const auto& engine = doc["spec"]["engine"];
-        if (!engine.contains("layout"))
+        // (the reference's seventeen are the ref-* presets; other builds here, the bikes', name their layout dial)
+        if (name.rfind("ref-", 0) != 0 || !engine.contains("layout") || !engine["layout"].is_number())
             continue;
         const int k = engine["layout"].get<int>();
         Rig rig;

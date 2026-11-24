@@ -1,0 +1,37 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "part": "car",
+  "name": "Car: hot hatch dct",
+  "notes": "A car of its class alone (card P's archetypes' cars), to take any engine.",
+  "spec": {
+    "car": {
+      "model": "Vehicle",
+      "kind": "Car",
+      "mass": 1450,
+      "drive": "Front",
+      "wheelbase": 2.63,
+      "cgHeight": 0.53,
+      "frontWeight": 0.62,
+      "track": 1.54,
+      "cdA": 0.68,
+      "tyre": "Sport",
+      "tyreRadius": 0.32,
+      "gearbox": "Dual clutch",
+      "finalDrive": 3.65,
+      "wheelInertia": 1.1,
+      "gears": 6,
+      "autoGearing": false,
+      "ratio": [
+        3.56,
+        2.53,
+        1.68,
+        1.02,
+        0.79,
+        0.64
+      ],
+      "brakeDecel": 1.1,
+      "abs": true
+    }
+  }
+}

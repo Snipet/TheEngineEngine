@@ -195,3 +195,72 @@ TEST_CASE("the real V8's predicted curve: braked by the host, coarse within seco
                                       << " s of engine time; peak " << peakTorque << " N m, " << peakPower / 1000.0
                                       << " kW");
 }
+
+TEST_CASE("the curve at 48 kHz inside is the 96 kHz curve within 2 % of the peak torque (a diesel 5 %), on each shipped build",
+          "[predict][engine][sim]")
+{
+    const std::filesystem::path source = std::filesystem::path(TEE_SOURCE_DIR) / "sim";
+    if (!std::filesystem::exists(source / "engine.fm"))
+        SKIP("no simulator");
+    std::string error;
+    // the program as it is, if it takes TEE_ENGINE_RATE_48000; else a copy under out/ with the hook card D is asked
+    // for (engine.fm's `rate = 96000.0f;` chosen by #ifdef), so that the service's side is tested meanwhile
+    std::filesystem::path dir = source;
+    auto sim = compiled(dir, {}, error);
+    REQUIRE(sim != nullptr);
+    std::shared_ptr<Sim> inner = simAtInnerRate(sim, 48000.0, error);
+    if (!inner)
+    {
+        dir = std::filesystem::path(TEE_SOURCE_DIR) / "out" / "tests" / "sim48";
+        std::filesystem::remove_all(dir);
+        std::filesystem::copy(source, dir, std::filesystem::copy_options::recursive);
+        std::ifstream in(dir / "engine.fm");
+        std::stringstream text;
+        text << in.rdbuf();
+        std::string program = text.str();
+        const std::string line = "        rate = 96000.0f;\n";
+        if (program.find(line) == std::string::npos)
+            SKIP("engine.fm neither takes TEE_ENGINE_RATE_48000 nor sets rate = 96000.0f where the test can hook it");
+        program.replace(program.find(line), line.size(),
+                        "#ifdef TEE_ENGINE_RATE_48000\n        rate = 48000.0f;\n#else\n        rate = 96000.0f;\n#endif\n");
+        std::ofstream(dir / "engine.fm") << program;
+        sim = compiled(dir, {}, error);
+        REQUIRE(sim != nullptr);
+        inner = simAtInnerRate(sim, 48000.0, error);
+        WARN("sim/ does not take TEE_ENGINE_RATE_48000 yet: tested on a hooked copy");
+    }
+    INFO(error);
+    REQUIRE(inner != nullptr);
+    for (const char* name : {"default", "v8", "v10", "large-diesel"})
+    {
+        CAPTURE(name);
+        Build build(sim->fields());
+        std::vector<std::string> warnings;
+        REQUIRE(build.loadFile(std::filesystem::path(TEE_SOURCE_DIR) / "content" / "builds" / (std::string(name) + ".json"),
+                               BuildPart::Whole, warnings, error));
+        PredictOptions options;
+        PredictCurve full, half;
+        REQUIRE(predictCurve(sim, build, options, full, error));
+        options.innerRate = 48000.0;
+        REQUIRE(predictCurve(sim, build, options, half, error, nullptr, inner));
+        CHECK(full.innerRate == 96000.0);
+        const bool machine = build.fieldOf("boost.model") >= 0 && build.get("boost.model") != 0.0;
+        CHECK(half.innerRate == (machine ? 96000.0 : 48000.0));
+        REQUIRE(full.points.size() == half.points.size());
+        double peak = 0.0, worst = 0.0;
+        for (const PredictPoint& p : full.points)
+            peak = std::max(peak, std::fabs(p.torque));
+        for (std::size_t i = 0; i < full.points.size(); ++i)
+        {
+            CHECK(full.points[i].speed == half.points[i].speed);
+            worst = std::max(worst, std::fabs(half.points[i].torque - full.points[i].torque) / peak);
+        }
+        // a petrol engine within 2 %; the diesel within 5 %: between 1300 and 1650 rpm its charge lights only just
+        // (a jump of speed misfires it for some cycles), and a small difference sends a point either way
+        const bool diesel = build.fieldOf("fuel.kind") >= 0 && build.get("fuel.kind") != 0.0;
+        CHECK(worst < (diesel ? 0.05 : 0.02));
+        WARN(name << ": 48 kHz against 96 kHz, worst " << 100.0 * worst << " % of the peak; engine time "
+                  << half.simulatedSeconds << " s against " << full.simulatedSeconds << " s, wall " << half.wallSeconds
+                  << " s against " << full.wallSeconds << " s");
+    }
+}

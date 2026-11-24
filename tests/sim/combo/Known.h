@@ -4,9 +4,6 @@
 
 const Known kKnown[] = {
     // id, date, owner, combo, build, scenario, check, what
-    {"X-002", "2026-11-24", "X (reducing)", "load, all on", "v8", "load", "tel-range:engine.bmep",
-     "a build loaded over another with every switch on: tel.engine.bmep reaches -2.08 MPa (-20.8 bar), past the "
-     "-20 bar bound for a pressure; being reduced to its package before it is reported"},
     {"X-003", "2026-11-24", "H (combustion and ECU)", "+fuel.model+ecu.model", "*", "cold", "*",
      "fuel.model 1 with ecu.model 1: no start at -20 C in 4 s of cranking (10 s neither); starts at -10 C in 0.64 s; "
      "each alone starts at -20 C (content/builds/combo/findings/x003-h-cold.json)"},
@@ -22,5 +19,25 @@ const Known kKnown[] = {
      "the charge air's temperature"},
     {"X-005", "2026-11-24", "Q (sim/boost/)", "*", "*", "*", "tel-range:boost.throttleIn",
      "tel.boost.throttleIn reads 0 K when no machine is in the path, as intercoolerOut"},
+    {"X-006", "2026-11-24", "H (via the lead)", "ecu.model+car.model", "v8", "dog-box", "click",
+     "the new ECU's shift cut and spark-cut limiter step the output 2 to 3 times the reference at the same moments "
+     "(content/scenarios/combo/findings/x006-*.json)"},
+    {"X-006", "2026-11-24", "H (via the lead)", "ecu.model+car.model", "v8", "launch-control", "click",
+     "the new ECU's shift cut and spark-cut limiter step the output 2 to 3 times the reference at the same moments "
+     "(content/scenarios/combo/findings/x006-*.json)"},
+    {"X-006", "2026-11-24", "H (via the lead)", "ecu.model+car.model", "v8", "wet-traction-off", "click",
+     "the new ECU's shift cut and spark-cut limiter step the output 2 to 3 times the reference at the same moments "
+     "(content/scenarios/combo/findings/x006-*.json)"},
+    {"X-006", "2026-11-24", "H (via the lead)", "ecu.model+car.model", "v8", "wet-traction-on", "click",
+     "the new ECU's shift cut and spark-cut limiter step the output 2 to 3 times the reference at the same moments "
+     "(content/scenarios/combo/findings/x006-*.json)"},
+    {"X-006", "2026-11-24", "H (via the lead)", "ecu.model+car.model", "v8", "limiter-1", "click",
+     "the new ECU's shift cut and spark-cut limiter step the output 2 to 3 times the reference at the same moments "
+     "(content/scenarios/combo/findings/x006-*.json)"},
+    {"X-007", "2026-11-24", "X (reducing)", "random 2", "fuzz", "random", "guard",
+     "random Spec seed 2: core/cylinder.fm:176 indexes kCamArea with -2147483648 (a NaN made an int); without the "
+     "checks the process dies (SIGSEGV in the JIT's code)"},
+    {"X-008", "2026-11-24", "X (reducing)", "corners 3", "fuzz", "corners", "guard",
+     "the ranges' corners, seed 3: a block beyond full scale or not finite; the guard restarts it"},
     {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},   // the end (an array is never empty)
 };

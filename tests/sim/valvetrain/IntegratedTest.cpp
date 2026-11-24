@@ -255,76 +255,99 @@ TEST_CASE("11: throttles a runner: the trumpets louder at full throttle than the
     CHECK(ripItb > 1.5 * ripPlenum);
 }
 
-TEST_CASE("12: a longer runner moves its tuning down by what the acoustics predict", "[valvetrain][integrated]")
+TEST_CASE("12: the runner's tuning: VE's bump moves with the runner's length as the acoustics say, above 1 where tuned, "
+          "and two lengths give the envelope of both", "[valvetrain][integrated]")
 {
-    // The four's runners as the intake port sees them: a pipe shut at the valve and open at the plenum rings at its
-    // quarter wave, c / 4 (L + 0.6 r) (the open end's correction), and its ram peaks follow that frequency down as
-    // the runner grows. Measured: the intake port's pressure over whole cycles (the Scope, by degree) at 1500 rpm
-    // wide open on the dyno, the strongest harmonic of the cycle (12.5 Hz apart) between 75 and 400 Hz, by its
-    // parabola; and the torque curves, printed.
+    // A 2.0 L four (the inline four's layout at 2 L, a 280-degree cam, four valves, its redline raised 1500 rpm so the
+    // limiter stays out of the sweep), 300 K air, wide open on the engine dyno. VE (tel.engine.veAir: the mass trapped
+    // over what the swept volume holds at the air outside) against speed for runners of 0.40 and 0.60 m. Each curve
+    // has two bumps, the runner's ring meeting the intake event every cycle (the main one) and every other (the lower,
+    // at about half the speed). The acoustics: with the valve open the runner rings as a pipe loaded by the cylinder's
+    // volume (x tan x = A L / V, f = x c / 2 pi L, L with its open end's 0.6 r; V the cylinder's mean volume over the
+    // intake stroke), and the tuned speed goes with that frequency.
+    const Fields engine = {{"engine.displacement", 0.002}, {"engine.redlineTrim", 1500.0}, {"env.temperature", 300.0},
+                           {"intake.model", 1.0},         {"valve.model", 1.0},          {"valve.valves", 4.0},
+                           {"valve.inDurSeat", 280.0},    {"valve.inDur1mm", 246.0},     {"valve.inLift", 0.010},
+                           {"valve.exDurSeat", 276.0},    {"valve.exDur1mm", 242.0},     {"valve.exLift", 0.009}};
     const char* build = "engines/ref-05-inline-4";
-    const double l1 = 0.45, l2 = 0.75;
-    auto ring = [&](double len, double& rad) {
-        Rig r(build, {{"intake.model", 1.0}, {"intake.runnerLength", len}});
-        r.start(0.5);
-        rad = std::sqrt(r.field("intk.run[0].area") / 3.14159265358979);
-        r.ctl().scopeOn = 1;
-        r.torqueAt(1500.0, 1.0, 1.5, 0.05);
-        const int bins = 33;
-        std::vector<double> mag(bins, 0.0);
-        double cycles = r.field("scope.cycles");
-        int taken = 0;
-        while (taken < 6)
-        {
-            r.play(0.02);
-            if (r.field("scope.cycles") == cycles)
-                continue;
-            cycles = r.field("scope.cycles");
-            std::vector<double> x(720);
-            double mean = 0.0;
-            for (int d = 0; d < 720; ++d)
-            {
-                x[std::size_t(d)] = r.field("scope.portIntake[" + std::to_string(d) + "]");
-                mean += x[std::size_t(d)] / 720.0;
-            }
-            for (int k = 1; k < bins; ++k)
-            {
-                double re = 0.0, im = 0.0;
-                for (int d = 0; d < 720; ++d)
-                {
-                    re += (x[std::size_t(d)] - mean) * std::cos(2.0 * 3.14159265358979 * k * d / 720.0);
-                    im += (x[std::size_t(d)] - mean) * std::sin(2.0 * 3.14159265358979 * k * d / 720.0);
-                }
-                mag[std::size_t(k)] += std::sqrt(re * re + im * im);
-            }
-            taken += 1;
-        }
-        const double f0 = 1500.0 / 120.0;      // the cycle's rate: 12.5 Hz
-        // (above 75 Hz: below it the cycle's own low orders, forced by the valve's opening, are stronger than any ring)
-        std::size_t best = 6;
-        for (std::size_t k = 6; k + 1 < mag.size(); ++k)
-            if (mag[k] > mag[best])
-                best = k;
-        const double a = mag[best - 1], b = mag[best], c = mag[best + 1];
-        const double d = a - 2.0 * b + c;
-        return (double(best) + (d != 0.0 ? 0.5 * (a - c) / d : 0.0)) * f0;
-    };
-    double r1 = 0.0, r2 = 0.0;
-    const double f1 = ring(l1, r1);
-    const double f2 = ring(l2, r2);
-    const double predicted = (l1 + 0.6 * r1) / (l2 + 0.6 * r2);
-    std::printf("[e] the intake port rings at %.0f Hz with a %.2f m runner (a quarter wave at 350 m/s: %.0f Hz), %.0f Hz "
-                "with %.2f m (%.0f Hz): ratio %.3f, the acoustics' %.3f\n", f1, l1, 350.0 / (4.0 * (l1 + 0.6 * r1)), f2, l2,
-                350.0 / (4.0 * (l2 + 0.6 * r2)), f2 / f1, predicted);
-    CHECK(f2 < f1);
-    // (the card's 20 % against the acoustics is NOT asserted: the longer runner matches its quarter wave, the shorter
-    // one's ring is pulled down toward the cycle's strong low orders, and the torque curves' peaks are not clean enough
-    // to read a tuning peak from. Reported in docs/handoffs/e-valvetrain-intake.md as not met.)
     std::vector<double> rpms;
-    for (double x = 1500.0; x <= 6000.0; x += 500.0)
+    for (double x = 1750.0; x <= 8250.0; x += 250.0)
         rpms.push_back(x);
-    print("torque, runner 0.45 m", rpms, curve(build, {{"intake.model", 1.0}, {"intake.runnerLength", l1}}, rpms));
-    print("torque, runner 0.75 m", rpms, curve(build, {{"intake.model", 1.0}, {"intake.runnerLength", l2}}, rpms));
+    auto veCurve = [&](const Fields& f, double& area, double& vd, double& vc) {
+        Rig r(build, f);
+        r.start(0.5);
+        area = r.field("intk.run[0].area");
+        vd = r.field("cyl[0].vd");
+        vc = r.field("cyl[0].vc");
+        std::vector<double> ve;
+        for (double rpm : rpms)
+        {
+            r.torqueAt(rpm, 1.0, 1.2, 0.05);
+            double v = 0.0;
+            int n = 0;
+            r.play(0.6, [&] {
+                v += r.tel("engine.veAir");
+                n += 1;
+            });
+            ve.push_back(v / n);
+        }
+        return ve;
+    };
+    double area = 0.0, vd = 0.0, vc = 0.0;
+    const double l1 = 0.40, l2 = 0.60;
+    const auto v1 = veCurve(with(engine, {{"intake.runnerLength", l1}}), area, vd, vc);
+    const auto v2 = veCurve(with(engine, {{"intake.runnerLength", l2}}), area, vd, vc);
+    const auto vs = veCurve(with(engine, {{"intake.runnerLength", l2}, {"intake.runnerLength2", l1}, {"intake.runnerSwitch", 6300.0 * 3.14159265358979 / 30.0}}),
+                            area, vd, vc);
+    print("VE x 1000, runner 0.40 m", rpms, [&] { std::vector<double> x; for (double v : v1) x.push_back(1000 * v); return x; }());
+    print("VE x 1000, runner 0.60 m", rpms, [&] { std::vector<double> x; for (double v : v2) x.push_back(1000 * v); return x; }());
+    print("VE x 1000, 0.60 m then 0.40 from 6300 rpm", rpms, [&] { std::vector<double> x; for (double v : vs) x.push_back(1000 * v); return x; }());
+    // the peaks: each curve's largest above 4000 rpm (the main bump) and below 4000 (the lower)
+    auto peakIn = [&](const std::vector<double>& v, double lo, double hi) {
+        std::vector<double> x, y;
+        for (std::size_t i = 0; i < rpms.size(); ++i)
+            if (rpms[i] >= lo && rpms[i] <= hi)
+            {
+                x.push_back(rpms[i]);
+                y.push_back(v[i]);
+            }
+        return std::make_pair(peakOf(x, y), *std::max_element(y.begin(), y.end()));
+    };
+    const auto main1 = peakIn(v1, 4000.0, 8250.0), main2 = peakIn(v2, 4000.0, 8250.0);
+    const auto low1 = peakIn(v1, 1750.0, 4000.0), low2 = peakIn(v2, 1750.0, 4000.0);
+    // the acoustics' ratio
+    const double r = std::sqrt(area / 3.14159265358979);
+    const double v = vc + 0.5 * vd;
+    auto ring = [&](double l) {
+        const double le = l + 0.6 * r;
+        const double k = area * le / v;
+        double lo = 0.0, hi = 1.5707;
+        for (int it = 0; it < 60; ++it)
+        {
+            const double mid = 0.5 * (lo + hi);
+            (mid * std::tan(mid) < k ? lo : hi) = mid;
+        }
+        return 0.5 * (lo + hi) * 350.0 / (2.0 * 3.14159265358979 * le);
+    };
+    const double predicted = ring(l2) / ring(l1);
+    std::printf("[e] the runner loaded by the cylinder rings at %.0f Hz (0.40 m) and %.0f Hz (0.60 m): ratio %.3f\n", ring(l1),
+                ring(l2), predicted);
+    std::printf("[e] main bump %.0f rpm (VE %.3f) with 0.40 m, %.0f rpm (VE %.3f) with 0.60: ratio %.3f; lower bump %.0f and "
+                "%.0f rpm: ratio %.3f\n", main1.first, main1.second, main2.first, main2.second, main2.first / main1.first,
+                low1.first, low2.first, low2.first / low1.first);
+    CHECK(main2.first < main1.first);
+    CHECK(std::fabs(main2.first / main1.first - predicted) < 0.2 * predicted);
+    CHECK(std::fabs(low2.first / low1.first - predicted) < 0.2 * predicted);
+    // above 1 where tuned
+    CHECK(main2.second > 1.0);
+    // two lengths: from 4000 rpm up, the envelope of both main bumps (within 3 % of the better at each speed away from
+    // the change at 6300). (Below 4000 one switch cannot follow both lower bumps: the short runner's at 3200 is lost.)
+    double worst = 0.0;
+    for (std::size_t i = 0; i < rpms.size(); ++i)
+        if (rpms[i] >= 4000.0 && std::fabs(rpms[i] - 6300.0) > 300.0)
+            worst = std::max(worst, std::max(v1[i], v2[i]) / vs[i] - 1.0);
+    std::printf("[e] two lengths, from 4000 rpm: the most the envelope of both is above it, away from the change: %.1f %%\n", 100.0 * worst);
+    CHECK(worst < 0.03);
 }
 
 TEST_CASE("13: past the float speed the power falls; nothing goes non-finite at twice it", "[valvetrain][integrated]")
@@ -344,11 +367,11 @@ TEST_CASE("13: past the float speed the power falls; nothing goes non-finite at 
     const auto soft = curve(build, springs, rpms);
     std::printf("[e] float at %.0f rpm: torque without float / with: %.0f/%.0f at 0.85, %.0f/%.0f at 1.1, %.0f/%.0f at 1.25 "
                 "times it\n", rf, stiff[0], soft[0], stiff[1], soft[1], stiff[2], soft[2]);
-    // below it the same; past it falling, more the further past
+    // below it the same; past it a cliff: a tenth or more lost 10 % past the speed, a third or more 25 % past it
     CHECK(soft[0] == Catch::Approx(stiff[0]).epsilon(0.02));
-    CHECK(soft[1] < stiff[1]);
+    CHECK(soft[1] < 0.9 * stiff[1]);
     CHECK(soft[2] / stiff[2] < soft[1] / stiff[1]);
-    CHECK(soft[2] < 0.97 * stiff[2]);
+    CHECK(soft[2] < 0.67 * stiff[2]);
     // twice it, held by the dyno: finite, within the output's bounds
     Rig r(build, springs);
     r.start(0.3);

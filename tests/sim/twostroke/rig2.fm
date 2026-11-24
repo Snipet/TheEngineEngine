@@ -51,6 +51,11 @@ module TsRig
         compression = 13.5f;
     }
 
+    // (nothing: a test that sets the geometry calls it in place of init's defaults; init has run)
+    void init2()
+    {
+    }
+
     void end()
     {
         eng.release();
