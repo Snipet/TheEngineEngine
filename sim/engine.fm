@@ -843,6 +843,7 @@ module Engine
         if ((spec.engine.cycle != 0 && customUse != 0 ? 1 : 0) != cycleUse || (cycleUse != 0 && two.signature(&spec.engine) != tsSig))
             cutWant |= 1;
         float ped = ecu.driver(d16, set.drive, set.bend, set.bendRange, set.keys, lay.rotary, lay.n);
+        car.traction(spec.ecu.model != 0 && spec.ecu.traction.on, spec.ecu.traction.slip);     // (card I: a launch's slip)
         if (set.drive != 0)
             ped = car.drive16(set.drive, d16, mech.jBase * expf(1.6094379f * (set.inertia - 0.5f)), peakTorque(), gearTq, set.mass,
                               ecu.redRpm, lay.bike, set.clutch, set.brake, set.lever, set.buttons, set.gas, crank.rpm, ecu.idleRpm, ecu.rpmAvg);

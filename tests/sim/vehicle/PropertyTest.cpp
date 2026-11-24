@@ -10,7 +10,8 @@
 //
 //   in the engine: custom singles at the corners of their Spec's ranges (bore, stroke, piston mass, flywheel) in
 //   car.model 1 with each gearbox, in neutral and in gear, random pedals, the development build's checks on: no check
-//   stops a call, no block is refused, the crank stays under 3000 rad/s, and the sound is finite.
+//   stops a call, no block is refused, the engine's guard never puts a run-away crank at rest (FLAG_FAULT in
+//   tel.engine.flags, HostStats::engineFaults), the crank stays under 3000 rad/s, and the sound is finite.
 #include "Rig.h"
 
 #include "tee/test/Scenario.h"
@@ -76,7 +77,8 @@ TEST_CASE("passive: a crank of varying inertia gains no energy from the vehicle,
 namespace
 {
     // custom singles at the given corners of their Spec's ranges, with the given gearboxes, in neutral and in gear:
-    // random pedals, the checks on; no check stops a call, no block is refused, the crank stays under 3000 rad/s
+    // random pedals, the checks on; no check stops a call, no block is refused, the engine's guard never finds a fault
+    // (FLAG_FAULT, HostStats::engineFaults), the crank stays under 3000 rad/s
     int passiveEngine(std::initializer_list<const char*> boxes, std::initializer_list<int> corners)
     {
         int runs = 0;
@@ -116,10 +118,19 @@ namespace
                     const tee::test::Run r = s.run(5.0);
                     REQUIRE(r.ok());
                     const double top = r.tel("engine.speed").max();
-                    if (r.host().stops != 0 || r.host().guardTrips != 0 || top > 3000.0)
-                        std::printf("passive.engine: %s, corner %d, in gear %d: stops %u, guard trips %u, crank up to "
-                                    "%.0f rad/s (%s)\n",
-                                    box, corner, geared, r.host().stops, r.host().guardTrips, top,
+                    // (the engine's guard, ae5c99b, puts a crank past five times its redline or not finite at rest and
+                    // sets FLAG_FAULT for that call: a run-away it caught is a run-away all the same)
+                    int faults = 0;
+                    for (double f : r.tel("engine.flags").values())
+                        faults += (static_cast<int>(f) & 4) != 0 ? 1 : 0;
+                    CHECK(faults == 0);
+                    CHECK(r.host().engineFaults == 0);
+                    if (r.host().stops != 0 || r.host().guardTrips != 0 || top > 3000.0 || faults != 0
+                        || r.host().engineFaults != 0)
+                        std::printf("passive.engine: %s, corner %d, in gear %d: stops %u, guard trips %u, faults %d (%u), "
+                                    "crank up to %.0f rad/s (%s)\n",
+                                    box, corner, geared, r.host().stops, r.host().guardTrips, faults,
+                                    r.host().engineFaults, top,
                                     r.stopReason().c_str());
                     CHECK(r.host().stops == 0);
                     CHECK(r.host().guardTrips == 0);
@@ -133,7 +144,9 @@ namespace
 
 // The quick form, in every run (01-rules.md §3: under 30 s): X-007's own corner (a heavy piston on a long stroke and a
 // light flywheel), which ran away through an automatic's converter, with the Automatic and a Manual, in neutral and in
-// gear. It is the corner the fixes of f9e26f1 were proven on: without them it runs away.
+// gear. Re-proven after the engine's guard landed (ae5c99b), in a scratch copy of today's tree: with f9e26f1's two
+// fixes taken out (the crank stepped with configure's inertia, the converter's torque unlimited) the automatic's runs
+// fail, the guard restarting the engine 392 times in 5 s (FLAG_FAULT); with them in, all four pass.
 TEST_CASE("passive.engine: X-007's single, automatic and manual, never runs away", "[vehicle][property]")
 {
     const int runs = passiveEngine({"Automatic", "Manual"}, {0});

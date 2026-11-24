@@ -334,7 +334,7 @@ TEST_CASE("H10: on a wet road from a standstill: no stall, no slower", "[ecu][in
     CHECK(on.speedAt2 >= off.speedAt2 * 0.98);
 }
 
-TEST_CASE("H10: on a wet road from a standstill the slip is held", "[ecu][integrated][traction][!mayfail]")
+TEST_CASE("H10: on a wet road from a standstill the slip is held", "[ecu][integrated][traction]")
 {
     // Expected to fail: at walking pace the wheels' speed for 10 % slip is the engine's under the speed where the clutch
     // closes, so only a slipping clutch holds it (a launch: card I's automatic clutch, or launch control's hold);
