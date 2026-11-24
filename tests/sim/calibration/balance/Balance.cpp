@@ -328,7 +328,13 @@ namespace tee::balance
         double sumRpm = 0.0, sumTq = 0.0, sumLam = 0.0, sumTA = 0.0, sumTH = 0.0, sumPP = 0.0, sumTivc = 0.0;
         double sVeA = 0.0, sVeM = 0.0, sF = 0.0, sI = 0.0, sP = 0.0, sB = 0.0, sS = 0.0;
         long count = 0;
+        std::vector<H> traceH;
+        for (const std::string& path : o.trace)
+            traceH.push_back(handle(path));
+        b.traces.assign(traceH.size(), {});
         play(o.measure, [&] {
+            for (std::size_t i = 0; i < traceH.size(); ++i)
+                b.traces[i].push_back(rd(traceH[i]));
             const double tA = rd(tAirH);
             for (Cyl& x : cy)
             {

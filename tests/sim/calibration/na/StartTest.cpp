@@ -12,6 +12,7 @@
 #include <cmath>
 #include <cstdio>
 #include <filesystem>
+#include <initializer_list>
 #include <string>
 
 namespace
@@ -53,7 +54,30 @@ namespace
     }
 } // namespace
 
-TEST_CASE("a start on the engine dyno: diesels and a boosted engine fire and pull", "[calibration][na]")
+namespace
+{
+    void startsAndPulls(std::initializer_list<const char*> slugs)
+    {
+        for (const char* slug : slugs)
+        {
+            double torque = 0.0;
+            int state = 0;
+            startOnDyno(slug, torque, state);
+            std::printf("%s: state %d, %.0f N m at 1300 rpm, full throttle\n", slug, state, torque);
+            CHECK(state == 2);
+            CHECK(torque > 0.0);
+        }
+    }
+} // namespace
+
+// (the fast tier: the heaviest diesel, whose start the 550 rpm threshold left to chance, and the boosted petrol engine;
+// the steward's budget, a case under 30 s on CI's runner)
+TEST_CASE("a start on the engine dyno: the 15 L diesel and a boosted engine fire and pull", "[calibration][na]")
+{
+    startsAndPulls({"tractor-15-inline-six", "turbo-four-20-gdi"});
+}
+
+TEST_CASE("a start on the engine dyno: diesels and a boosted engine fire and pull", "[nightly][calibration][na]")
 {
     for (const char* slug : {"tractor-15-inline-six", "pickup-diesel-67-inline-six", "turbo-four-20-gdi", "economy-four-15"})
     {
