@@ -67,6 +67,16 @@ In the right-hand panel, as tall as what it shows:
 **Anti-lag and nitrous**, where the build has them: a lamp and words (ARMED, ACTIVE or ON) and the bottle's state
 ("3.69 kg OF 4.50 kg").
 
+## A charge system far from its engine
+
+Card N2's `tel.boost.mismatch` bits, each with its has and wants, become a line under the charge path's row, in amber
+and words ("CHECK INTERCOOLER rated 250.0 g/s, this engine's match 680.0 g/s"). The part concerned gets an amber
+outline: the cooler (1), the turbo for the gate's spring (2), the plenum or the ITB runners for the charge pipes'
+volume (4). The thresholds are N2's judgement (sim/boost/boost.fm). The parts shorten by a line each warning (to 64
+at the least), so the panels below keep their height. The line's right end is kept clear for a "match to this
+engine" button once card C's host gives the action; none is drawn until it does. No bits, no warnings. Test
+`ui.air.mismatch`.
+
 ## What is clickable
 
 Each part's inspector page lists its fields (those the build has):

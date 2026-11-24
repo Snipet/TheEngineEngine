@@ -468,6 +468,12 @@ namespace
                 CHECK(!overlap(card.bounds, itemOf(rig, "Load").bounds));
                 CHECK(rig.frame->stageRect().contains({ card.bounds.x, card.bounds.y }));
                 CHECK(card.bounds.bottom() <= rig.frame->stageRect().bottom());
+                // It covers nothing live: the workspace is laid out under it, every control and gauge of the stage clear.
+                const tee::ui::Workspace& ws = rig.frame->workspace(rig.frame->shown());
+                CHECK(!overlap(card.bounds, ws.stage()) && ws.stage().y >= card.bounds.bottom());
+                for (const funkgui::A11yItem& it : rig.host->accessibility())
+                    if (it.visible && it.title != "Try first" && it.title != "Close" && rig.frame->stageRect().contains({ it.bounds.centreX(), it.bounds.centreY() }))
+                        CHECK_MSG(!overlap(card.bounds, it.bounds), it.title);
                 golden(std::string("frame.tryfirst.") + z.name + (dpi < 1.5f ? ".dpi1" : ""), *rig.host);
                 // Close: gone for good, the shell told once.
                 const funkgui::A11yItem close = itemOf(rig, "Close");

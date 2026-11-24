@@ -148,6 +148,9 @@ namespace tee::ui
                 k.mix(static_cast<float>(ctx_.live.get(n)));
             k.mix(static_cast<int>(trail_.size())).mix(static_cast<int>(history_.size())).mix(mapRev_).mix(mapFromScope_ ? 1 : 0);
             k.mix(static_cast<int>(scopeTrail_.size()));
+            for (const Warn& w : warns_)
+                for (const char ch : w.text)
+                    k.mix(static_cast<int>(ch));
             if (!scopeTrail_.empty())
                 k.mix(scopeTrail_.back().x).mix(scopeTrail_.back().y);
             return k.h;
@@ -177,7 +180,7 @@ namespace tee::ui
 
         void step(float) override
         {
-            if (ctx_.doc.revision() != seenDoc_)
+            if (ctx_.doc.revision() != seenDoc_ || warnings() != warns_)
                 rebuild();
             // the boost's and the shaft's recent history (a point each time either moves)
             {
@@ -253,10 +256,14 @@ namespace tee::ui
             hits_.clear();
             const Rect& s = stage_;
             // the row: the parts' names, the parts (h tall), their pressures and temperatures just beneath
-            const float h = std::clamp(s.h * 0.17f, 100.0f, 150.0f);
+            // (each of card N2's warnings takes a line under the row: the parts give up that height, to 64 at the least,
+            // so the panels below keep theirs)
+            warns_ = warnings();
+            const float h = std::max(64.0f, std::clamp(s.h * 0.17f, 100.0f, 150.0f) - kWarnLine * static_cast<float>(warns_.size()));
             yc_ = s.y + 62.0f + 22.0f + 10.0f + h * 0.5f;
             readY_ = yc_ + h * 0.5f + 12.0f;
-            row_ = { s.x + 20.0f, s.y + 62.0f, s.w - 40.0f, readY_ + 64.0f - (s.y + 62.0f) };   // a third line: the ram
+            // a third line: the ram; then a line for each mismatch card N2 reports
+            row_ = { s.x + 20.0f, s.y + 62.0f, s.w - 40.0f, readY_ + 64.0f + kWarnLine * static_cast<float>(warns_.size()) - (s.y + 62.0f) };
             const AirBuild& b = build_;
             // the parts and their widths
             struct W
@@ -597,7 +604,59 @@ namespace tee::ui
                             ry + 18.0f, look::kNumberS, std::isfinite(k) ? tint : p.dim);
                 }
             }
+            drawWarnings(c, p);
             c.hairlineH(row_.x, row_.bottom() - 2.0f, row_.w, p.grid);
+        }
+
+        // ---- a charge system far from its engine (card N2's) ----------------------------------------------------------
+        // Each mismatch: the part it concerns, and its words ("INTERCOOLER rated 0.25 kg/s, this engine's match 0.68
+        // kg/s"). Only what the simulator says: no bits, no warnings; a value absent, a dash in its place.
+        struct Warn
+        {
+            Kind part;
+            std::string text;
+            bool operator==(const Warn& o) const { return part == o.part && text == o.text; }
+            bool operator!=(const Warn& o) const { return !(*this == o); }
+        };
+        std::vector<Warn> warnings() const
+        {
+            std::vector<Warn> out;
+            const double bits = ctx_.live.get(N::mismatch);
+            if (!std::isfinite(bits) || bits < 0.5)
+                return out;
+            const int m = static_cast<int>(std::lround(bits));
+            const auto val = [&](const char* name, Quantity q) {
+                const double v = ctx_.live.get(name);
+                return std::isfinite(v) ? ctx_.units.format(q, v) : std::string("-");
+            };
+            if ((m & 1) != 0)
+                out.push_back({ Kind::cooler, "INTERCOOLER rated " + val(N::coolerHas, Quantity::flow) + ", this engine's match "
+                                                  + val(N::coolerWants, Quantity::flow) });
+            if ((m & 2) != 0)
+                out.push_back({ Kind::turbo, "GATE SPRING " + val(N::springHas, Quantity::pressure) + ", the boost asked "
+                                                 + val(N::springWants, Quantity::pressure) });
+            if ((m & 4) != 0)
+                out.push_back({ build_.itb ? Kind::runners : Kind::plenum, "CHARGE PIPES " + val(N::volumeHas, Quantity::volume)
+                                                                               + ", this engine's " + val(N::volumeWants, Quantity::volume) });
+            return out;
+        }
+        // An amber outline on each part concerned, and the words a line each under the row, from the row's left (the
+        // line's right end kept clear for a "match to this engine" button when card C's host gives the action).
+        void drawWarnings(Canvas& c, const Palette& p) const
+        {
+            float y = readY_ + 56.0f;
+            for (const Warn& w : warns_)
+            {
+                for (const Part& part : parts_)
+                    if (part.kind == w.part && part.index == 0)
+                    {
+                        const Rect r = part.r;
+                        c.rrect(r.x - 5.0f, r.y - 5.0f, r.w + 10.0f, r.h + 10.0f, 7.0f, kClear, 1.5f, p.warning);
+                    }
+                c.text("CHECK", row_.x, y, look::kCaps, p.warning);
+                c.text(w.text.c_str(), row_.x + 8.0f + c.textWidth("CHECK", look::kCaps), y, look::kUnit, p.warning);
+                y += kWarnLine;
+            }
         }
 
         // Where the runners are tuned, derived (ramTune): under the runners, the main bump's speed and the lower's,
@@ -1238,6 +1297,8 @@ namespace tee::ui
         std::size_t rowHits_ = 0;
         bool speedTrace_ = false, boostTrace_ = false, boostBelow_ = false;   // whether there is a trace to show (lowerLayout)
         std::uint64_t seenDoc_ = 0;
+        std::vector<Warn> warns_;
+        static constexpr float kWarnLine = 16.0f;
         std::vector<Point> trail_;
         std::vector<Point> history_;   // x: boost (Pa over the air outside), y: shaft speed (rad/s)
     };
