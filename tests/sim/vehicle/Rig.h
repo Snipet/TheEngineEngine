@@ -37,7 +37,7 @@ namespace tee::vehicle
         return s.str();
     }
 
-    // The rig's program: rig.fm and every file of sim/vehicle/ under "vehicle/"
+    // The rig's program: rig.fm, every file of sim/vehicle/ under "vehicle/" and of sim/lib/ under "lib/"
     inline tee::Program::Files rigFiles()
     {
         tee::Program::Files files;
@@ -46,6 +46,9 @@ namespace tee::vehicle
         for (const auto& entry : std::filesystem::directory_iterator(root / "sim/vehicle"))
             if (entry.path().extension() == ".fm")
                 files["vehicle/" + entry.path().filename().string()] = readFile(entry.path());
+        for (const auto& entry : std::filesystem::directory_iterator(root / "sim/lib"))
+            if (entry.path().extension() == ".fm")
+                files["lib/" + entry.path().filename().string()] = readFile(entry.path());
         return files;
     }
 

@@ -850,6 +850,11 @@ module Car
         return shiftCut ? 0.05f : 0.0f;
     }
 
+    float grindOut()        // each sample after road(): an eighteen-speed's grind (card D2's), for the mix; 0 otherwise
+    {
+        return cs->model == 1 ? m1.grindNow : 0.0f;
+    }
+
     float blipRequest()     // rad/s: the crank speed a downshift's blip asks for (0: none)
     {
         if (model == 1 && bikeOn != 0)
