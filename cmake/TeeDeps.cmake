@@ -259,10 +259,18 @@ if(NOT TARGET nlohmann_json::nlohmann_json)
 endif()
 
 # ---- Catch2 (tests only) ---------------------------------------------------------------------------------------------
-if(TEE_BUILD_TESTS)
-  tee_source(catch2 _tee_catch2_dir)
+# Catch2's library is compiled as C++20, as the tests are: it asks only for C++14, and at the compiler's default (C++14
+# or older with Apple's clang and with clang-cl) it leaves out what a C++17 test then links against, such as its
+# printer of std::string_view. A function, so that the standard is set for Catch2's directory alone.
+function(_tee_add_catch2 dir)
+  set(CMAKE_CXX_STANDARD 20)
+  set(CMAKE_CXX_STANDARD_REQUIRED ON)
   set(CATCH_INSTALL_DOCS OFF)
   set(CATCH_INSTALL_EXTRAS OFF)
-  add_subdirectory("${_tee_catch2_dir}" "${PROJECT_BINARY_DIR}/_deps/catch2" EXCLUDE_FROM_ALL SYSTEM)
+  add_subdirectory("${dir}" "${PROJECT_BINARY_DIR}/_deps/catch2" EXCLUDE_FROM_ALL SYSTEM)
+endfunction()
+if(TEE_BUILD_TESTS)
+  tee_source(catch2 _tee_catch2_dir)
+  _tee_add_catch2("${_tee_catch2_dir}")
   list(APPEND CMAKE_MODULE_PATH "${_tee_catch2_dir}/extras")       # Catch.cmake: catch_discover_tests()
 endif()
