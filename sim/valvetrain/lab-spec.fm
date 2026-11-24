@@ -20,9 +20,9 @@ module ValveLabSpec
         [[ui::quantity("length")]] [[ui::help("0: from the bore, as real heads are")]];
     float dEx [[fminus::range(0, 0.07)]] [[fminus::default(0)]] [[ui::label("Exhaust valve diameter")]]
         [[ui::quantity("length")]];
-    float portIn [[fminus::range(0.5, 1.6)]] [[fminus::default(1)]] [[ui::label("Intake port quality")]]
-        [[ui::unit("x")]] [[ui::help("1: the reference's discharge coefficients; a racing port some 1.2 to 1.3")]];
-    float portEx [[fminus::range(0.5, 1.6)]] [[fminus::default(1)]] [[ui::label("Exhaust port quality")]] [[ui::unit("x")]];
+    float portIn [[fminus::range(0.5, 2)]] [[fminus::default(1.35)]] [[ui::label("Intake port quality")]]
+        [[ui::unit("x")]] [[ui::help("1: a discharge coefficient of 0.4 at a quarter of the diameter; 1.35 and 1.5 give the reference V8's areas")]];
+    float portEx [[fminus::range(0.5, 2)]] [[fminus::default(1.5)]] [[ui::label("Exhaust port quality")]] [[ui::unit("x")]];
     // the intake cam (stage A)
     int inKind [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Intake actuation")]] [[ui::group("Intake cam")]]
         [[ui::choices("Cam", "Free valve")]];

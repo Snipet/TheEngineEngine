@@ -204,6 +204,17 @@ TEST_CASE("area against lift: the curtain low down, flat past a quarter of the d
                 "four valves %.0f CFM\n", cfm500, bench4.get("flowIn[9]") * 2118.88);
     CHECK(cfm500 > 120.0);
     CHECK(cfm500 < 300.0);
+    // the lab at its defaults (ports 1.35 and 1.5, 10 mm of lift) gives the reference V8's areas: 0.118 and 0.091 of
+    // the piston's (sim/ref/engine.fm, valves)
+    Obj spec(labProgram(), "ValveLabSpec");
+    spec.defaults();
+    Obj lab(labProgram(), "ValveLab");
+    lab.call<void>("setup", bore, 8, 720.0f);
+    lab.call<void>("reset");
+    lab.call<void>("apply", spec.data(), 1);
+    const double piston = 0.785398 * bore * bore;
+    CHECK(lab.get("tab[0].peak") == Catch::Approx(0.118 * piston).epsilon(0.005));
+    CHECK(lab.get("tab[2].peak") == Catch::Approx(0.091 * piston).epsilon(0.005));
 }
 
 TEST_CASE("phaser: a step at its slew rate, slower cold, parked colder, never out of its range", "[valvetrain][phaser]")
