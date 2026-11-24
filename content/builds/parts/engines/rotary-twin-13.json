@@ -54,7 +54,9 @@
       "target": 70000.0,
       "gateSpring": 50000.0,
       "blowOffKind": "Recirculating",
-      "icEffect": 0.75
+      "icEffect": 0.75,
+      "icFlow": 0.231,
+      "chargeVolume": 0.0026
     },
     "exhaust": {
       "model": "Builder",

@@ -99,7 +99,9 @@
       "gateSpring": 70000.0,
       "blowOffKind": "Recirculating",
       "scrolls": "Twin scroll",
-      "icEffect": 0.75
+      "icEffect": 0.75,
+      "icFlow": 0.589,
+      "chargeVolume": 0.0078
     },
     "exhaust": {
       "model": "Builder",

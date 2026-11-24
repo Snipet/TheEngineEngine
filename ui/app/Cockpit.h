@@ -163,6 +163,9 @@ namespace tee::ui
         bool a11yAction(uint32_t, funkgui::A11yAction, double, funkgui::GestureController&) override { return false; }
         uint64_t drawKey() const override;
         std::string peaksText() const;
+        // The predicted curve's knock-limited span and retard, or empty; `shortly`: the retard alone (the title row's;
+        // the span is ringed on the plot).
+        std::string knockText(bool shortly = false) const;
 
     protected:
         const char* kind() const override { return "dyno"; }

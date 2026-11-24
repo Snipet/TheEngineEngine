@@ -84,7 +84,9 @@
       "gateSpring": 80000.0,
       "blowOffKind": "Recirculating",
       "antiLag": true,
-      "icEffect": 0.75
+      "icEffect": 0.75,
+      "icFlow": 0.292,
+      "chargeVolume": 0.0045
     },
     "exhaust": {
       "model": "Builder",

@@ -381,6 +381,58 @@ namespace
         return 0;
     }
 
+    // What the network costs: card G's counts priced by docs/models/exhaust.md's table, for G's two topologies (the
+    // typical build, the V8's reference), as a line at the stage's foot; a dash when the counts are absent.
+    VIEW_TEST(testExhaustCost, "exhaust.cost")
+    {
+        ex::NetworkCost typical{};
+        typical.pipes = 32, typical.nodes = 9, typical.pairs = 8, typical.openEnds = 2;
+        CHECK(std::fabs(typical.ns() - 2201.0) < 0.5);
+        CHECK(typical.line() == "32 pipes, 9 junctions, 8 joints, 2 open ends: about 1.1 of the reference engine");
+        ex::NetworkCost reference{};
+        reference.pipes = 21, reference.nodes = 4, reference.pairs = 8, reference.openEnds = 2;
+        CHECK(std::fabs(reference.ns() - 1539.0) < 0.5);
+        CHECK(reference.line() == "21 pipes, 4 junctions, 8 joints, 2 open ends: about 0.8 of the reference engine");
+        ex::NetworkCost one{};
+        one.pipes = 1, one.nodes = 1, one.pairs = 1, one.openEnds = 1;
+        CHECK(one.line().rfind("1 pipe, 1 junction, 1 joint, 1 open end:", 0) == 0);
+        // on the stage: the counts move its key; with them absent it still draws (a dash)
+        ExRig rig("tt-v8-x", 1100, 700, 1.0f);
+        const std::uint64_t k = rig.ws->drawKey();
+        rig.demo.engine.set("exhaust.pipes", 21.0);
+        rig.demo.engine.set("exhaust.nodes", 4.0);
+        rig.host->tick(1);
+        CHECK(rig.ws->drawKey() != k);
+        CHECK(tee::test::u3::textCollisions(rig.host->draw()).empty());
+        // with the host's load: the exhaust's share of it, a share of a core (typical: 2201 / (1962 - 765 + 2201) of 0.4)
+        CHECK(typical.line(0.4) == "32 pipes, 9 junctions, 8 joints, 2 open ends: about 26 % of a core, of the 40 % the simulator takes");
+        CHECK(typical.line(0.0) == typical.line());
+        tee::ui::FrameServices services;
+        services.simLoad = [] { return 0.4f; };
+        rig.ctx.services = &services;
+        const std::uint64_t k2 = rig.ws->drawKey();
+        services.simLoad = [] { return 0.5f; };
+        CHECK(rig.ws->drawKey() != k2);
+        {
+            // the longer line fits the frame's narrowest stage, clear of every other text
+            const funkgui::Rect st = tee::test::u3::frameStage(1100, 700);
+            ExRig narrow("tt-v8-x", static_cast<int>(st.w), static_cast<int>(st.h), 1.0f);
+            narrow.ctx.services = &services;
+            narrow.host->tick(1);
+            const std::string hits = tee::test::u3::textCollisions(narrow.host->draw());
+            CHECK_MSG(hits.empty(), hits);
+            picture("exhaust.cost.load", *narrow.host);
+            narrow.ctx.services = nullptr;
+        }
+        services.simLoad = [] { return 0.0f; };   // compiling: absent, back to the reference
+        CHECK(!rig.host->draw().prims.empty());
+        rig.ctx.services = nullptr;
+        rig.demo.engine.set("exhaust.pipes", std::nan(""));
+        rig.host->tick(1);
+        CHECK(!rig.host->draw().prims.empty());
+        return 0;
+    }
+
     // card G's ductMid: each pipe's trace bends through its middle's pressure; without it the trace runs straight
     // between the ends, and the stage draws either way.
     VIEW_TEST(testExhaustDuctMid, "exhaust.ductmid")

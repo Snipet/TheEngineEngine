@@ -114,7 +114,7 @@ TEST_CASE("shell: the reference's dials are parameters with their ranges, names 
     CHECK(p.get(engine) == 14.0);
 }
 
-TEST_CASE("shell: the reference starts, idles, revs and switches off from a ControlsFrame", "[shell][ref]")
+TEST_CASE("shell: the reference starts, idles, revs and switches off from a ControlsFrame", "[shell][ref][nightly]")
 {
     Rig rig;
     rig.set("drive", 1.0);                                  // in a car, in neutral: the application's own start
