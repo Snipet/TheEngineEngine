@@ -509,6 +509,14 @@ namespace tee::app
             std::fprintf(stderr, "error: the program was stopped: %s\n", stopped.c_str());
             ++failures;
         }
+        // an engine the simulator found diverged (put at rest and restarted: HostStats::engineFaults) fails the run
+        // unless it was expected (--expect-fault)
+        const unsigned faults = engine.sim != nullptr ? engine.sim->hostStats().engineFaults : 0u;
+        if (faults != 0 && !o.expectFault)
+        {
+            std::fprintf(stderr, "FAILED: the engine diverged and was restarted %u times (FLAG_FAULT)\n", faults);
+            ++failures;
+        }
         if (!whole.finite)
         {
             std::fprintf(stderr, "FAILED: the output held a sample that is not finite\n");
@@ -516,9 +524,9 @@ namespace tee::app
         }
 
         std::printf("tee-offline: %s frames=%d seconds=%.3f rate=%d block=%d peak=%.5f rms=%.5f checks=%d failed=%d shots=%d"
-                    " compile=%.2fs%s%s\n",
+                    " compile=%.2fs faults=%u%s%s\n",
                     failures == 0 && wroteAll ? "ok" : "FAILED", frame, static_cast<double>(rendered) / o.rate, o.rate, o.block,
-                    whole.peak, whole.rms(), checks, failures, shots, engine.compileSeconds, o.wav.empty() ? "" : " wav=",
+                    whole.peak, whole.rms(), checks, failures, shots, engine.compileSeconds, faults, o.wav.empty() ? "" : " wav=",
                     o.wav.c_str());
         return failures == 0 && wroteAll ? 0 : 1;
     }

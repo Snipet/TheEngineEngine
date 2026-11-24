@@ -345,14 +345,15 @@ module Boost
             mach.gatePipe(i, 0.0f, z);
     }
 
-    // The level over which an ECU's over-boost cut acts by default (Pa over the air): the machine's own over-boost
-    // flag's, 1.4 times its target or spring, for turbos; 0 (none) for a supercharger, whose boost no loop holds, and
-    // under model 0. Engine hands it to Ecu::overBoostRef (card N2's).
+    // The level over which an ECU's over-boost cut acts by default (Pa over the air): 1.3 times the target or the
+    // spring, whichever is more (makers' boost limits sit some 1.2 to 1.3 of the target: a stock build never reaches
+    // it), for turbos; 0 (none) for a supercharger, whose boost no loop holds, and under model 0. Engine hands it to
+    // Ecu::overBoostRef (card N2's).
     float overBoostLevel()
     {
         if (model != 1 || mach.active == 0 || mach.sc != 0 || mach.turbos == 0)
             return 0.0f;
-        return mach.overBoost;
+        return 1.3f * fmaxf(mach.target, mach.gateSpring);
     }
 
     // Before the throttle: Pa absolute and K (model 1; called by Engine only then)

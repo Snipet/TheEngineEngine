@@ -57,9 +57,9 @@ bit for bit, for spark, lambda, boost and the pedal.
 - **Boost control**: the target is the map's (above); the loop that moves the gate or the vanes is card F's (agreed
   seam below).
 - **Over-boost cut** (added by card N2): the fuel is cut once the boost (the manifold over the air) has stood over
-  `spec.ecu.overBoost` for 0.2 s, until it falls under 85 % of it; 0 takes the boost machine's own over-boost level
-  (`Boost::overBoostLevel()`: 1.4 times its target or spring, turbos only, handed over by Engine as `Ecu::overBoostRef`),
-  -1 never. Production ECUs have such a boost limit (Bosch ME7's and its kind's); the 0.2 s and 85 % are judgement. It
+  `spec.ecu.overBoost` for 1 s, until it falls under 85 % of it; 0 takes the boost machine's own over-boost level
+  (`Boost::overBoostLevel()`: 1.3 times its target or spring, turbos only, handed over by Engine as `Ecu::overBoostRef`),
+  -1 never. Production ECUs have such a boost limit (Bosch ME7's and its kind's), acting after one to two seconds; the 85 % is judgement. It
   is the net under a build whose gate cannot hold its boost: the 2 L four with a 26.3 mm gate, spooled at 5271 rpm,
   runs away to 249 kPa and 434 N m with it off, 151 kPa and 250 N m with it at 150 kPa
   (tests/sim/calibration/boost/GateTest.cpp).
