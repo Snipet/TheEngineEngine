@@ -807,10 +807,12 @@ module Car
     // The ECU's traction control, every 16 samples before drive16 (Engine::control16): on, and its slip target. With
     // car.model 1 a standing start on the car's own clutch holds the clutch's torque to the target slip
     // (Vehicle::launch) until it has locked; the ECU's engine-side control then has it alone.
-    void traction(bool on, float slipTarget)
+    // (and launch control's switch and speed: the engine speed a launch holds while its clutch slips)
+    void traction(bool on, float slipTarget, bool launchOn, float launchSpeed)
     {
         m1.tcOn = on;
         m1.tcTarget = fminf(fmaxf(slipTarget, 0.01f), 0.5f);
+        m1.launchSet = launchOn ? launchSpeed : 0.0f;
     }
 
     float drivenSlip()      // the driven wheels' slip ratio (0: rolling)
