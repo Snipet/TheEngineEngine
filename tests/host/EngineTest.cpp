@@ -160,3 +160,54 @@ TEST_CASE("SimControls carries every field of the program's Controls, and nothin
     CHECK(setControl(c, "bakeMaps", 3));
     CHECK(c.bakeMaps == 3);
 }
+
+TEST_CASE("an engine the simulator found diverged (FLAG_FAULT) is counted, said in words, and cranked back",
+          "[engine][sim][simhost][guard]")
+{
+    if (!haveSim())
+        SKIP("sim/engine.fm is not there yet");
+    std::string error;
+    const auto sim = compiled(simDir(), {}, error);
+    REQUIRE(sim != nullptr);
+    SimHost host;
+    LoadOptions load = offline(48000.0, 512);
+    REQUIRE(host.attach(sim, load, error));
+    SimControls c;
+    c.mode = 1;
+    c.ignition = 2;
+    host.setControls(c);
+    std::vector<float> l(512), r(512);
+    const auto play = [&](int blocks) {
+        for (int i = 0; i < blocks; ++i)
+        {
+            host.process(l.data(), r.data(), 512);
+            host.service();
+        }
+    };
+    play(200);   // some 2 s: started
+    c.ignition = 1;
+    host.setControls(c);
+    play(50);
+    TelemetryFrame t;
+    REQUIRE(host.telemetry(t));
+    REQUIRE(tel(host, t, "tel.engine.state") == 2);
+    CHECK(t.host.engineFaults == 0);
+
+    // a crank speed past five times the redline, held before every call (LoadOptions::hold): the simulator puts the
+    // engine at rest each time, and says so
+    SimHost broken;
+    LoadOptions held = offline(48000.0, 512);
+    held.hold = {{"crank.omega", 1.0e7}};
+    REQUIRE(broken.attach(sim, held, error));
+    broken.setControls(c);
+    for (int i = 0; i < 20; ++i)
+    {
+        broken.process(l.data(), r.data(), 512);
+        broken.service();
+    }
+    REQUIRE(broken.telemetry(t));
+    CHECK(t.host.engineFaults > 0);
+    CHECK(broken.stopReason().find("the engine diverged and was restarted") != std::string::npos);
+    for (const float v : l)
+        CHECK(std::isfinite(v));
+}

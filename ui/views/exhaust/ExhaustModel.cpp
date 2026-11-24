@@ -200,6 +200,52 @@ namespace tee::ui::exhaust
         return s;
     }
 
+    std::vector<float> TwoStrokePipe::sectionMids() const
+    {
+        std::vector<float> mids;
+        float at = 0.0f;
+        const auto section = [&](float len) {
+            mids.push_back(at + 0.5f * len);
+            at += len;
+        };
+        const int k = std::clamp(coneSteps, 1, 16);
+        if (!chamber)
+        {
+            const float total = length();
+            const int k0 = static_cast<int>(total / 0.9f) + 1;
+            for (int i = 0; i < k0; ++i)
+                section(total / static_cast<float>(k0));
+        }
+        else
+        {
+            section(header);
+            for (int j = 0; j < k; ++j)
+                section(diffuser / static_cast<float>(k));
+            if (belly > 0.005f)
+                section(belly);
+            for (int j = 0; j < k; ++j)
+                section(baffle / static_cast<float>(k));
+            section(stinger);
+        }
+        if (silencer)
+        {
+            section(silLen);
+            if (!(silDiam < 2.0f * dStinger))
+                section(0.08f);
+        }
+        return mids;
+    }
+
+    std::array<float, 6> TwoStrokePipe::scopePoints() const
+    {
+        const std::vector<float> m = sectionMids();
+        const int last = static_cast<int>(m.size()) - 1;
+        std::array<float, 6> out{};
+        for (int k = 0; k < 6; ++k)
+            out[static_cast<std::size_t>(k)] = m[static_cast<std::size_t>((k * last) / 5)];
+        return out;
+    }
+
     double TwoStrokePipe::tunedRpm(double gasK) const noexcept
     {
         const double l = tunedLength();
@@ -379,6 +425,7 @@ namespace tee::ui::exhaust
             t.dBelly = f("tsBellyDiam", 0.115);
             t.dStinger = f("tsStingerDiam", 0.022);
             t.silencer = f("tsSilencer", 0) > 0.5f;
+            t.coneSteps = std::clamp(static_cast<int>(std::lround(f("tsConeSteps", 8))), 1, 16);
             t.silLen = f("tsSilencerLen", 0.40);
             t.silDiam = f("tsSilencerDiam", 0.026);
             t.exhaustDur = f("tsExhaustDur", 192);

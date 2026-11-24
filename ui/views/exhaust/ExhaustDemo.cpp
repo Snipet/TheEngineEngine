@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cmath>
 #include <string>
+#include <iterator>
 
 namespace tee::ui::exhaust
 {
@@ -361,6 +362,38 @@ namespace tee::ui::exhaust
             mid[base + 11] = static_cast<float>(0.1 * side[s] * std::sin(deg * 0.04 - 0.6));
             farP[base + 11] = 0.0f;   // an open end
         }
+    }
+
+    int exhaustTwoStrokePort(const ExhaustBuild& b, float* out, int max)
+    {
+        // card T's measures (degrees after top dead centre, bar over the air), a closed loop round the turn
+        static const double kAt[] = { 84, 96, 108, 132, 156, 180, 216, 246, 264, 276, 306, 342 };
+        static const double kBar[] = { -0.02, 0.45, 0.58, 0.17, -0.16, -0.21, -0.06, 0.05, 0.29, 0.18, 0.37, -0.19 };
+        const int k = static_cast<int>(std::size(kAt));
+        const double stretch = std::clamp(static_cast<double>(b.ts.exhaustDur), 60.0, 300.0) / 192.0;
+        const auto at = [&](int i) {   // the measure's angle at this build's timing, unwrapped round the turn
+            const int j = ((i % k) + k) % k;
+            const double turns = std::floor(static_cast<double>(i) / k);
+            return 180.0 + (kAt[j] - 180.0) * stretch + 360.0 * turns;
+        };
+        const auto bar = [&](int i) { return kBar[((i % k) + k) % k]; };
+        const int m = std::min(max, 360);
+        int seg = -1;
+        for (int d = 0; d < m; ++d)
+        {
+            double x = d;
+            if (x < at(0))
+                x += 360.0;
+            while (seg < 0 || !(x >= at(seg) && x < at(seg + 1)))
+                seg = seg < 0 || x < at(seg) ? 0 : seg + 1;
+            // Catmull-Rom through the loop's points, so the curve is smooth through each measure
+            const double t = (x - at(seg)) / (at(seg + 1) - at(seg));
+            const double p0 = bar(seg - 1), p1 = bar(seg), p2 = bar(seg + 1), p3 = bar(seg + 2);
+            const double v = 0.5 * (2.0 * p1 + (-p0 + p2) * t + (2.0 * p0 - 5.0 * p1 + 4.0 * p2 - p3) * t * t
+                                    + (-p0 + 3.0 * p1 - 3.0 * p2 + p3) * t * t * t);
+            out[d] = static_cast<float>(101325.0 + 1e5 * v);
+        }
+        return m;
     }
 
     void exhaustDemoLive(DemoEngine& engine)
