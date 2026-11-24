@@ -1,0 +1,97 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Small single",
+  "notes": "A light naked single: 172 kg wet, 1.36 m, an 80 kg rider sitting up, sport tyres, 373 cc. A slipper clutch.",
+  "spec": {
+    "engine": {
+      "layout": "Single",
+      "displacement": 0.0003733,
+      "compression": 12.6,
+      "custom": true,
+      "cylinders": 1,
+      "bankAngle": [
+        0.0
+      ],
+      "bank": [
+        0
+      ],
+      "pin": [
+        0.0
+      ],
+      "fireRev": [
+        0
+      ],
+      "place": [
+        0.0
+      ],
+      "bore": 0.089,
+      "stroke": 0.06,
+      "redlineSpeed": 1099.557
+    },
+    "intake": {
+      "model": "Lab",
+      "throttleKind": "A body a runner",
+      "trumpets": "The air box"
+    },
+    "exhaust": {
+      "headers": 0.25,
+      "pipe": 0.2,
+      "muffler": 0.15
+    },
+    "valve": {
+      "cam": 0.55
+    },
+    "fuel": {
+      "kind": "Gasoline"
+    },
+    "car": {
+      "kind": "Motorcycle",
+      "model": "Vehicle",
+      "mass": 172,
+      "wheelbase": 1.36,
+      "cgHeight": 0.54,
+      "frontWeight": 0.5,
+      "cdA": 0.55,
+      "tyreRadius": 0.3,
+      "wheelInertia": 0.6,
+      "brakeDecel": 1.0,
+      "brakeBias": 0.5,
+      "gears": 6,
+      "autoGearing": false,
+      "ratio": [
+        2.67,
+        1.88,
+        1.43,
+        1.18,
+        1.0,
+        0.88
+      ],
+      "gearEfficiency": 0.97,
+      "riderMass": 80,
+      "riderHeight": 1.05,
+      "riderForward": 0.4,
+      "tuck": 0.2,
+      "cdATuck": 0.42,
+      "pitchInertia": 40,
+      "bikeTyre": "Sport",
+      "primaryRatio": 2.97,
+      "frontSprocket": 15,
+      "rearSprocket": 45,
+      "chainEfficiency": 0.97,
+      "chainLash": 0.04,
+      "slipper": true,
+      "slipperTorque": 0.2,
+      "quickshifter": false,
+      "autoBlip": false,
+      "wheelieControl": "By the throttle",
+      "wheelieAngle": 4
+    },
+    "sound": {
+      "view": "Exhaust"
+    }
+  },
+  "expect": {
+    "engine": "bike-single"
+  }
+}

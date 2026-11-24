@@ -1,0 +1,68 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "V4, 90 degrees, even firing (a screamer)",
+  "notes": "Pins at 45 and 135 degrees, each shared by a front and a rear cylinder: a firing every 180 degrees. 81 x 48.4 mm (998 cc), 13.6:1, redline 14,500.",
+  "spec": {
+    "engine": {
+      "layout": "Crossplane I4",
+      "displacement": 0.0009976,
+      "compression": 13.6,
+      "custom": true,
+      "cylinders": 4,
+      "bankAngle": [
+        45.0,
+        -45.0
+      ],
+      "bank": [
+        0,
+        1,
+        0,
+        1
+      ],
+      "pin": [
+        45.0,
+        135.0,
+        45.0,
+        135.0
+      ],
+      "fireRev": [
+        0,
+        0,
+        1,
+        1
+      ],
+      "place": [
+        0.0,
+        0.0,
+        0.035,
+        0.035
+      ],
+      "bore": 0.081,
+      "stroke": 0.0484,
+      "redlineSpeed": 1518.436
+    }
+  },
+  "expect": {
+    "firingOrder": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "firingIntervals": [
+      180.0,
+      180.0,
+      180.0,
+      180.0
+    ],
+    "firingAngles": [
+      0.0,
+      180.0,
+      360.0,
+      540.0
+    ],
+    "redlineRpm": 14500,
+    "displacementCc": 997.6
+  }
+}

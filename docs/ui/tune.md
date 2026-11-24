@@ -13,8 +13,11 @@
   formula is in use a note over the table says the table is kept but not read.
 - **Slices** (right): the map cut through the live point along speed and along load, the live point marked; through
   the middle when the engine is stopped.
-- **The traces** (under): the last six seconds, sampled at 20 Hz: lambda measured (solid) against asked (dashed);
-  knock intensity as bars and the retard it pulled as a line; the advance. The newest value of each at the right.
+- **The traces** (under): the last six seconds, sampled at 20 Hz: lambda from the sensor (`ecu.lambda`, solid)
+  against what was asked (`ecu.lambdaTarget`, dashed); knocks as bars (the rise of the `ecu.knock` count each sample)
+  and the retard pulled (`ecu.knockRetard`) as a line; the advance (`ecu.advance`). The newest value of each at the right.
+- **Knock by cylinder**: each cylinder's retard now (`ecu.knockByCylinder[i]`, as many as `engine.cylinders`) as a
+  row of small bars, numbered, amber past half a degree.
 - **Lamps**: limiter (with fuel cut or spark cut and its speed), launch, overrun cut, traction, knock: a filled lamp
   and words when active, a ring and "off" when not, "-" while the program gives no flags.
 
@@ -29,7 +32,8 @@ selects its part of the ECU (`ecu.limiter`, `ecu.launch`, ...); a lane its secti
 
 ## What is derived
 
-The trail and slices are the map read where the telemetry puts the engine. BAKE asks the simulator for a bake (`FrameServices::bakeMaps`,
+The live cell, trail and slices are the map read where the engine is: `engine.speed` across, `ecu.load` down
+(the boost target's: `car.gear`; the pedal map's: `ctl.throttle`, else the pedal as sent). BAKE asks the simulator for a bake (`FrameServices::bakeMaps`,
 `ctl.bakeMaps`) and, when the Scope's `bakeCount` moves, copies `scope.baked*` into the table and turns the formula
 off, one step of undo; with no way to ask it copies the newest bake there is. Nothing else is computed here.
 

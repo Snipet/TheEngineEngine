@@ -9,7 +9,7 @@
 //   tee-fuzz --play v8 tour car.model+engine.custom     one combination (switch paths joined by +, or none, or all)
 //                                                       on an archetype through a scenario, judged as the tests do
 //                                                       (against the reference's own step); --wav f.wav keeps it
-//   tee-fuzz --write-scenarios                          tests/sim/combo/scenarios/*.json from the harness
+//   tee-fuzz --write-scenarios                          content/scenarios/combo/*.json from the harness
 //   tee-fuzz --match -20 a.wav b.wav ...                the files to one loudness, in place (the listening pack's
 //                                                       pairs): each file's gated RMS (100 ms windows, those within
 //                                                       30 dB of the loudest) brought to the target in dBFS; when a
@@ -255,8 +255,9 @@ namespace
         {
             tee::Audio a;
             a.sampleRate = r.result().rate;
-            a.left = r.result().left;
-            a.right = r.result().right;
+            const auto l = r.left().samples(), rr = r.right().samples();
+            a.left.assign(l.begin(), l.end());
+            a.right.assign(rr.begin(), rr.end());
             std::string error;
             if (!tee::writeWav(wav, a, error))
                 std::fprintf(stderr, "tee-fuzz: %s\n", error.c_str());

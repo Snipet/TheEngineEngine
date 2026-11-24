@@ -97,7 +97,7 @@ namespace
     // The builds, each after a pull (the trail on the map), density 2; one also at 1.
     VIEW_TEST(testAirBuilds, "air.builds")
     {
-        for (const char* b : { "na4-itb", "turbo4", "tt-v8", "sc-v8", "seq6", "cmp6", "cf-v8" })
+        for (const char* b : { "na4-itb", "turbo4", "tt-v8", "sc-v8", "seq6", "cmp6", "cf-v8", "var-v8" })
         {
             AirRig rig(b);
             golden(std::string("air.build.") + b, *rig.host);
@@ -253,7 +253,7 @@ namespace
         {
             const funkgui::Rect st = tee::test::u3::frameStage(win.first, win.second);
             const int w = static_cast<int>(st.w), h = static_cast<int>(st.h);
-            for (const char* b : { "na4-itb", "turbo4", "tt-v8", "sc-v8", "seq6", "cmp6", "cf-v8" })
+            for (const char* b : { "na4-itb", "turbo4", "tt-v8", "sc-v8", "seq6", "cmp6", "cf-v8", "var-v8" })
             {
                 AirRig rig(b, w, h, 1.0f);
                 const std::vector<air::AirHit> hits = air::airHits(*rig.ws);
@@ -291,7 +291,7 @@ namespace
         for (const auto& win : { std::pair<int, int>{ 1100, 700 }, std::pair<int, int>{ 1600, 1000 } })
         {
             const funkgui::Rect st = tee::test::u3::frameStage(win.first, win.second);
-            for (const char* b : { "na4-itb", "turbo4", "tt-v8", "sc-v8", "seq6", "cmp6", "cf-v8" })
+            for (const char* b : { "na4-itb", "turbo4", "tt-v8", "sc-v8", "seq6", "cmp6", "cf-v8", "var-v8" })
             {
                 AirRig rig(b, static_cast<int>(st.w), static_cast<int>(st.h), 1.0f);
                 const std::string hits = tee::test::u3::textCollisions(rig.host->draw());

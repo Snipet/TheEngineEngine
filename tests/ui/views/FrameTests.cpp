@@ -241,7 +241,7 @@ namespace
         rig.host->tick(5);
         CHECK(rig.a11yValue("Gear") == "3");
         CHECK(rig.a11yValue("Lambda") == "-");       // not in the program yet
-        rig.demo.engine.set("engine.lambda", 0.86);
+        rig.demo.engine.set("ecu.lambda", 0.86);
         rig.host->tick(2);
         CHECK(rig.a11yValue("Lambda") == "0.86");
         // The rpm bar: the shift lights come on in turn; the limiter's word.
@@ -288,8 +288,16 @@ namespace
         f.showInspectorPage(1);
         const int k = f.inspector()->params().findParam("boost.level");
         CHECK(k >= 0 && f.inspector()->params().info(k).unit == "psi");
-        // The units page from the top bar, anywhere.
-        const funkgui::Rect u = find("Units");
+        // The settings page from the top bar, anywhere (pictured at the smallest window).
+        {
+            FrameRig small(1100, 700, 1.0f);
+            small.showWorkspace("valves");
+            small.frame->showSettings(true);
+            small.host->tick(5);
+            CHECK(small.frame->settingsShown() && small.frame->ribbonRect().isEmpty());
+            golden("frame.settings.dpi1", *small.host);
+        }
+        const funkgui::Rect u = find("Settings");
         rig.host->click(u.centreX(), u.centreY());
         CHECK(f.unitsShown() && f.inspector() == nullptr);
         rig.host->click(u.centreX(), u.centreY());
@@ -381,6 +389,53 @@ namespace
         CHECK(!f.needsDraw());
         rig.host->click(f.railRect(2).centreX(), f.railRect(2).centreY());
         CHECK(f.needsDraw());
+        return 0;
+    }
+
+    // Keyboard and screen reader: every control of the frame is named, in every workspace (U1's own pages fail the
+    // test; another package's stage is said, its own test's to fail); Tab reaches the rail and the inspector's controls
+    // with the focus drawn, and Enter on a rail button shows its workspace.
+    VIEW_TEST(testFrameKeys, "frame.keys")
+    {
+        {
+            FrameRig rig;
+            for (const char* id : kIds)
+            {
+                rig.showWorkspace(id);
+                const std::string unnamed = unnamedControls(*rig.host);
+                CHECK_MSG(unnamed.empty(), std::string(id) + ":\n" + unnamed);
+            }
+        }
+        {
+            FrameRig real(1280, 800, 2.0f, 4.6, false);
+            for (const char* id : kIds)
+            {
+                real.showWorkspace(id);
+                const std::string unnamed = unnamedControls(*real.host);
+                if (!unnamed.empty())
+                    std::printf("  note (%s's stage): %s", id, unnamed.c_str());
+            }
+        }
+        FrameRig rig;
+        AppFrame& f = *rig.frame;
+        rig.showWorkspace("air");
+        // Tab from nothing: the frame's items in turn (the rail first), then the inspector's controls.
+        bool rail = false, inspector = false;
+        for (int k = 0; k < 120 && !(rail && inspector); ++k)
+        {
+            typeKeys(*rig.host, "tab");
+            rail = rail || f.railFocus() >= 0;
+            inspector = inspector || (f.inspector() != nullptr && f.inspector()->focus() >= 0);
+        }
+        CHECK(rail && inspector);
+        // Enter on a rail button shows its workspace.
+        FrameRig again;
+        for (int k = 0; k < 120 && again.frame->railFocus() != 3; ++k)
+            typeKeys(*again.host, "tab");
+        CHECK(again.frame->railFocus() == 3);
+        typeKeys(*again.host, "enter");
+        again.host->tick(5);
+        CHECK(again.frame->shown() == 3);
         return 0;
     }
 
