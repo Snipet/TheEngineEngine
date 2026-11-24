@@ -34,7 +34,9 @@ never edited, and what is built from them lives in the build tree.
 Kept as they were, apart from the namespace (`playground` and `playground::ui` are both `tee::ui`), the include
 paths and a first line naming the origin: `GuiLayout.*`, `GuiItems.*`, `Looks.*`, `DialLayout.*`, `Scroll.*`,
 `TabStrip.*`, `GuiView.*`, `Dropdown.h`, `Items.cpp`, `ShaderLib.*`, `ShaderFont.*`, `ShaderLibraryNone.cpp`.
-None of them names JUCE.
+None of them names JUCE. Since then `GuiLayout.*` has J2's widget elements (`guiWidgetSize`): one without `width=`
+takes at most the width its container offers, so that a generated page never scrolls sideways in the inspector's
+column, and an `array` narrower than its 640 px is as tall as the lines its cells wrap onto (`guiTableLines`).
 
 | File here | From | What was cut | What stands in |
 |---|---|---|---|
@@ -193,7 +195,9 @@ index past the array is a note that gives its extent ("engine.pin[20] is past th
 engine.pin[0] to engine.pin[15]"). A generated page shows an array of up to 8 elements a control each, in its group's
 row (`kArrayKnobs`); of 9 to 16 elements one row of cells, the `array PATH` element (a `MapEdit` of one row: a cell
 typed, a choice by its name or index, or dragged, one undo step each; the header of element numbers is not
-editable); of more than 16 a control each again (and `splitPages` counts them). An array of arrays is a field an
+editable; in a column too narrow for the row, the inspector's, the cells wrap onto lines of as many as keep 36 px
+each, the element numbers over each line, `MapEdit::lines`; a value longer than its cell, a choice's name, is cut
+with an ellipsis); of more than 16 a control each again (and `splitPages` counts them). An array of arrays is a field an
 element too, `engine.gain[1][2]`, labelled "Gain 2.3" (`FieldInfo::shape`), a control each on a generated page; an
 element outside it is a note that gives its shape ("cyl.gain[2][0] is not an element: cyl.gain has 2 x 3 elements"). The Spec's per-cylinder arrays are
 `MAX_CYL` (16) long, so they come as rows of cells.

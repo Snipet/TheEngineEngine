@@ -197,11 +197,11 @@ namespace tee::ui
             }
             return line;
         }, kWidgetSmall, Label::Ink::label, funkgui::Align::right);
-        load_ = &make<Bar>("Load", [this] { return services_.simLoad ? std::clamp(services_.simLoad(), 0.0f, 1.0f) : 0.0f; },
-                           [this] {
-                               return services_.simLoad ? std::to_string(static_cast<int>(std::lround(services_.simLoad() * 100.0f))) + " %"
-                                                        : std::string("-");
-                           });
+        // The load: the peak share of a core, its verdict and the dropouts; while the build does not fit, the sentence
+        // and QUALITY one click away (it never switches by itself: Economy changes the sound, the owner's choice).
+        load_ = &make<LoadMeter>(LoadSources{ services_.simLoadPeak, services_.simLoad, services_.loadFits, services_.dropouts });
+        advice_ = &make<LoadAdvice>([this] { return services_.quality && services_.quality() == 1; });
+        adviceButton_ = &make<Button>("Quality", [this] { showSettings(true); });
         // The output's peak: the bar on a scale of decibels (-60 to 0 dBFS), its number in dB.
         const auto peak = [this] {
             return std::clamp(services_.outputLevel ? services_.outputLevel() : telemetry_.outputPeak(), 0.0f, 1.0f);
@@ -727,10 +727,26 @@ namespace tee::ui
             limiter_->setPlace({ x + 8.0f, 33.0f, 120.0f, 13.0f }, limiting);
         }
         x -= 18.0f;                                       // a clear gap: each label with its own number and bar
-        right(load_, 100.0f, 6.0f, 36.0f);
+        right(load_, 150.0f, 5.0f, 40.0f);
         const float left = railWidth() + 16.0f;
-        const float statusW = std::clamp(x - left - 420.0f, 0.0f, 300.0f);
-        status_->setPlace({ x - statusW, 18.0f, statusW, 14.0f }, statusW > 60.0f);
+        float statusW = 0.0f;
+        if (load_->verdict() < 1)
+        {
+            // The build does not fit (tight or over): the sentence and QUALITY in the status line's place, the name and
+            // the engine's sentence keep at least 170 px.
+            x -= 6.0f;
+            right(adviceButton_, 72.0f, 10.0f, 28.0f);
+            statusW = std::clamp(x - left - 170.0f, 120.0f, 330.0f);
+            advice_->setPlace({ x - statusW, 6.0f, statusW, 34.0f }, true);
+            status_->setPlace({}, false);
+        }
+        else
+        {
+            adviceButton_->setPlace({}, false);
+            advice_->setPlace({}, false);
+            statusW = std::clamp(x - left - 420.0f, 0.0f, 300.0f);
+            status_->setPlace({ x - statusW, 18.0f, statusW, 14.0f }, statusW > 60.0f);
+        }
         const float room = std::max(80.0f, x - statusW - 12.0f - left);
         name_->setPlace({ left, 6.0f, room, 22.0f }, true);
         sentence_->setPlace({ left, 28.0f, room, 16.0f }, true);
@@ -1008,6 +1024,8 @@ namespace tee::ui
         start_->setTitle(!services_.engineReady || services_.engineReady() ? "Start" : "Compiling");
         if (const double db = ctx_->live.get("sound.limiter"); (std::isfinite(db) && std::fabs(db) > 0.05) != limiter_->shown())
             arrange();   // the limiter's bar comes or goes
+        if ((load_->verdict() < 1) != advice_->shown())
+            arrange();   // the build stopped fitting, or fits again: the sentence comes or goes by itself
         if (engineBrakeState(*ctx_).shown != brake_->shown())
             arrange();   // a truck loaded, or one put away: its brake's lamps
         Board::tick(dt);

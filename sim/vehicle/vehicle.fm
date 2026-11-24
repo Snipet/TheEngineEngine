@@ -177,6 +177,11 @@ module Vehicle
     // a launch under traction control (launch(): the ECU's switch and slip target, given by Car every 16 samples)
     bool tcOn;
     float tcTarget;
+    float tqSum;        // the engine's torque summed over the 16 samples since control()
+    float tqSeen;       // the most of its 16-sample means, fading over a minute
+    float tqLast;       // its last 16-sample mean
+    float launchSet;    // launch control's speed (rad/s) when it is on, else 0
+    float wLaunch;      // the engine speed a launch holds: launchSet, or 60 % of the redline
     bool launching;
     float tcTrim;
     float lockT;
@@ -531,6 +536,13 @@ module Vehicle
                  int btn, int ctlMode, float dynoSpeed, float dynoRate, int stripCount)
     {
         kPedal = 1.0f - expf(-d16 / 0.02f);
+        // the engine's torque as it has shown it (a mean over the 16 samples), and its most, remembered for a while (a
+        // launch sizes its clutch on it: one sized on 1.35 times the engine's own estimate of its peak slipped under an
+        // engine that made more, P's NA rotary)
+        const float tqMean = tqSum / 16.0f;
+        tqSum = 0.0f;
+        tqLast = tqMean;
+        tqSeen = fmaxf(tqSeen * (1.0f - d16 / 60.0f), tqMean);
         mode = ctlMode;
         buttons = btn;
         pedal = fminf(fmaxf(throttle, 0.0f), 1.0f);
@@ -646,12 +658,19 @@ module Vehicle
     // to what the driven tyres carry at the ECU's slip target (their peak force at that slip, from their loads and grip
     // now, through the gear), trimmed by the slip's own error, so the wheels come to the target and stay there; once the
     // clutch has locked (and the automatic clutch is fully closed) for a tenth of a second the ECU's engine-side control
-    // has it alone. At walking pace the engine cannot hold 10 % slip itself: the wheels' speed for it is the engine's
-    // under where the clutch closes (finding X-011). Off, or with the driver's own clutch pedal, nothing changes.
+    // has it alone. Meanwhile, under a launch speed (launch control's when it is on, else 60 % of the redline: near
+    // most engines' torque peak) and with the pedal floored, the clutch passes at most what the engine makes beyond what
+    // takes it up to that speed within a tenth of a second, so it never drags the engine down to where it makes nothing
+    // (a bog: an engine weak low down stayed there, finding P's NA rotary; launchCap), and locks when the car has caught
+    // the engine up. It goes on through an upshift taken before the clutch has locked. At walking pace the engine cannot
+    // hold 10 % slip itself: the wheels' speed for it is the engine's under where the clutch closes (finding X-011).
+    // Off, or with the driver's own clutch pedal, nothing changes.
     void launch(float d16)
     {
         const bool own = box.kind == VEH_DUALCLUTCH || (box.kind == VEH_MANUAL && box.paddles);
-        if (!tcOn || !own || box.gear != 1 || box.shifting || mode != VEH_MODE_DRIVE)
+        // (it starts in first from a standstill and goes on through an upshift taken before the clutch has locked: a
+        // dual clutch's next gear, a paddle's)
+        if (!tcOn || !own || box.gear < 1 || mode != VEH_MODE_DRIVE || (!launching && (box.gear != 1 || box.shifting)))
         {
             launching = false;
             tcTrim = 0.0f;
@@ -665,7 +684,8 @@ module Vehicle
         }
         if (!launching)
             return;
-        lockT = fabsf(slipC) < 3.0f && box.robot >= 0.999f ? lockT + d16 : 0.0f;
+        wLaunch = launchSet > 0.0f ? fminf(launchSet, 0.95f * redW) : 0.6f * redW;
+        lockT = fabsf(slipC) < 3.0f && box.robot >= 0.999f && !box.shifting ? lockT + d16 : 0.0f;
         if (lockT >= 0.1f)
         {
             launching = false;
@@ -690,14 +710,21 @@ module Vehicle
         const float e = tcTarget - k;
         tcTrim = fminf(fmaxf(tcTrim + (e > 0.0f ? 12.0f : 20.0f) * e * d16, -0.7f), 0.2f);
         const float factor = fminf(fmaxf(1.0f + tcTrim + 3.0f * e, 0.2f), 1.2f);
-        const float g = fabsf(box.ratioOf(1));
-        const float cap = fmaxf(force * radius / (g * eff) * factor, 0.0f);
+        const float wheel = fmaxf(force * radius / eff * factor, 0.0f);      // at the wheels: each gear's share through it
         // (the automatic clutch's own closing with the revs is narrowed to a guard against a stall, 50 to 250 rpm over the
         // idle: the ECU's traction control takes the engine's torque down meanwhile, and the revs with it, and the clutch
         // must not open under the launch for that)
         const float x = fminf(fmaxf((wLast - idleW - 5.2f) / 20.9f, 0.0f), 1.0f);
         const float guard = box.kind == VEH_MANUAL || box.kind == VEH_SEQUENTIAL || box.kind == VEH_DUALCLUTCH ? x * x * (3.0f - 2.0f * x) : 1.0f;
-        capA = fminf(clutchCap * engage * guard, cap) * box.aFrom;
+        const float rob = box.shifting ? box.robot : guard;     // (a paddle's shift still opens and closes its clutch)
+        const float gFrom = fabsf(box.ratioOf(box.shifting ? box.from : box.gear));
+        const float most = spec.clutchTorque > 0.0f ? clutchCap : 1.35f * fmaxf(peakTq, tqSeen);
+        capA = gFrom > 0.0f ? fminf(most * engage * rob, wheel / gFrom) * box.aFrom : 0.0f;
+        if (box.shifting && box.kind == VEH_DUALCLUTCH)
+        {
+            const float gTo = fabsf(box.ratioOf(box.to));
+            capB = gTo > 0.0f ? fminf(most * engage * rob, wheel / gTo) * box.aTo : 0.0f;
+        }
     }
 
     void stage()
@@ -776,6 +803,20 @@ module Vehicle
 
     // A coupling from the crank (or the turbine) to the output through ratio g, at efficiency eff whichever way the
     // power goes. Returns the torque at the crank's side (the output gets the efficiency's share of g times it).
+    // A launch (the pedal past 80 %) never drags the engine down: under its launch speed the clutch passes at most what
+    // the engine makes (its mean over the last 16 samples) beyond what takes it up to the launch speed within a quarter
+    // second, so the engine rises to the launch speed
+    // while the car moves, a strong engine biting at once and a weak one (finding P's NA rotary: weak low down) kept off
+    // the speeds where it makes nothing; above it, only the tyres' share. The cap it returns, at the crank.
+    float launchCap(float w, float cap)
+    {
+        if (!launching || w >= wLaunch || pedal < 0.8f)
+            return cap;
+        // (what is left of the engine's torque after it has risen towards the launch speed within a tenth of a second)
+        const float rise = (wLaunch - w) * 10.0f * jE;
+        return fminf(cap, fmaxf(tqLast - rise, 0.0f));
+    }
+
     // (vehCouple's law, with the efficiency in what the output gets; idt is 1 / dt)
     float gearTorque(float wa, float ta, float ia, float g, float cap, float to, float idt)
     {
@@ -804,6 +845,7 @@ module Vehicle
     float step(float w, float tq, float dt, float jCrank)
     {
         const float idt = 1.0f / dt;
+        tqSum += tq;
         // the crank's inertia this sample: the engine's own where it varies round the turn (a custom engine's moving
         // masses, whose inertia torque is in tq), else configure's. Stepped with any other, the inertia torque makes
         // energy: with a heavy piston on a light flywheel, a run-away (finding X-007).
@@ -900,14 +942,14 @@ module Vehicle
         {
             if (gA != 0.0f && capA > 0.0f)
             {
-                tcA = gearTorque(w, te, iE, gA, capA, to, idt);
+                tcA = gearTorque(w, te, iE, gA, launchCap(w, capA), to, idt);
                 fA = gearFactor(tcA, w, gA);
                 te -= tcA;
                 to += fA * tcA;
             }
             if (gB != 0.0f && capB > 0.0f)
             {
-                tcB = gearTorque(w, te, iE, gB, capB, to, idt);
+                tcB = gearTorque(w, te, iE, gB, launchCap(w, capB), to, idt);
                 fB = gearFactor(tcB, w, gB);
                 te -= tcB;
                 to += fB * tcB;

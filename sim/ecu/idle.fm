@@ -56,12 +56,14 @@ module IdleControl
     float integral;     // the idle valve's integral
     float bypass;       // the idle valve, 0 to 1
     float trim;         // the spark's quick hand: the torque over the map's, 0.3 to 1.35
+    float startAir;     // the valve's integral as the engine caught (its start position): the after-start air
     float trimInt;      // its integral (model 1's own): what the spark must take out to hold the idle once the valve is
                         // shut, the torque in reserve a real idle's retarded spark keeps
 
     void reset()
     {
         integral = 0.0f;
+        startAir = 0.0f;
         bypass = 0.0f;
         trim = 1.0f;
         trimInt = 0.0f;
@@ -110,6 +112,16 @@ module IdleControl
             trim = pedal < 0.02f ? fminf(fmaxf(tr, 0.3f), 1.35f) : fminf(fmaxf(tr, 1.0f), 1.35f);
         else
             trim = s->avg < target + 450.0f ? fminf(fmaxf(tr, 0.3f), 1.35f) : 1.0f;
+        // after the start, the valve closes no faster than its start position decays (2 s): an idle actuator gives
+        // the start and after-start air (Bosch, Gasoline-Engine Management: idle-speed control, start and post-start
+        // phases) and is not snapped shut by the start's flare. Without it the proportional part on the flare's rate
+        // shut the valve at the catch, a warm 7.0 L V8's plenum fell to 39 kPa while it ran at 1100 rpm, its charge to a
+        // tenth, and it stalled (card N1, p-idle-warm). The start position is the integral's as it cranked (the
+        // proportional part already read the flare); the 2 s is judgement ("a few seconds")
+        if (gasoline && sinceStart <= 0.0f)
+            startAir = integral;
+        if (gasoline)
+            bypass = fmaxf(bypass, startAir * expf(-sinceStart / 2.0f));
         if (gasoline)
             bypass = fmaxf(bypass, 0.35f * fminf(fmaxf((s->rpm - target - 400.0f) * 0.001f, 0.0f), 1.0f) * expf(-sinceLift / 0.6f));
     }

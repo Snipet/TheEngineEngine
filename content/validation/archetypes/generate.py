@@ -109,9 +109,19 @@ def targets(slug, b):
         during=[6, 14], range=[2, 2], source="a warm engine started on its key runs and keeps running (engine.state 2)")
     add(name="Invariant: within full scale", scenario=SC + "p-free-rev.json", audio="peak", range=[0, 1],
         source="02-contracts.md, section 1: what process writes is within +-1")
-    add(name="Invariant: holds its limiter", scenario=SC + "p-free-rev.json", tel="engine.speed", measure="max",
-        during=[6, 9], relativeTo="engine.redline", range=[0.97, 1.03], unit="of the redline",
-        source="a rev limiter holds the speed within a few percent of where it cuts (some 100 to 200 rpm at 6500)")
+    gov = s["ecu"].get("governor") == "Electronic"
+    if gov:
+        # a governed diesel: its limit is the governor's high idle (rated x 1.06), read absolutely: tel.engine.redline
+        # is floored at idle + 1500 rpm by the ECU, above a slow truck's high idle (D2's finding, for H and D)
+        hi = e["redlineSpeed"]
+        add(name="Invariant: holds its limiter", scenario=SC + "p-free-rev.json", tel="engine.speed", measure="max",
+            during=[6, 9], range=[round(0.97 * hi, 1), round(1.03 * hi, 1)], unit="rad/s",
+            source="a diesel's governor holds its high idle, the rated speed plus its 6 %% droop (%d rpm), within a few "
+                   "percent" % round(hi / RPM))
+    else:
+        add(name="Invariant: holds its limiter", scenario=SC + "p-free-rev.json", tel="engine.speed", measure="max",
+            during=[6, 9], relativeTo="engine.redline", range=[0.97, 1.03], unit="of the redline",
+            source="a rev limiter holds the speed within a few percent of where it cuts (some 100 to 200 rpm at 6500)")
     pull = SC + ("p-pull-auto.json" if auto else "p-pull-eighteen.json" if car["gearbox"] == "Eighteen-speed"
                  else "p-pull-paddles.json")
     add(name="Invariant: pulls away", scenario=pull, tel="car.speed", measure="max", during=[3, 13],
