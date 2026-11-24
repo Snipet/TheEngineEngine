@@ -10,7 +10,7 @@ the split (K3b): see "Integration" at the end.*
 
 | File | What it holds |
 |---|---|
-| `maps.fm` | `EcuMap16` (the shape of `Map16`, a stand-in until `spec/tables.fm` lands), `EcuTune` (the formulas), `EcuMaps` (outputs and baking) |
+| `maps.fm` | `EcuTune` (the formulas), `EcuMaps` (outputs, an exact read of `spec/tables.fm`'s `Map16`, baking) |
 | `limiter.fm` | `CutPattern` (an even pattern of cut firings), `SoftHold`, `RevLimiter` (the four kinds) |
 | `idle.fm` | `EcuSpeed` (the speed it goes by), `IdleControl`, `SpeedDriver` (the driver for `ctl.holdSpeed`) |
 | `state.fm` | `EcuKey`: the key, cranking, stall, run-down, a start's and a cold engine's fuel |
@@ -23,7 +23,8 @@ the split (K3b): see "Integration" at the end.*
 
 ## Maps
 
-Seven maps, 16 by 16, bilinear between breakpoints (exact at them: `a (1 - f) + b f`), flat beyond the ends: spark
+Seven maps, `spec/tables.fm`'s `Map16`, 16 by 16, bilinear between breakpoints (read by `EcuMaps.exactAt`, exact at
+them: `a (1 - f) + b f`, where `Map16::at`'s `a + (b - a) f` can be a rounding off at the last), flat beyond the ends: spark
 advance, lambda, boost target (speed by gear), intake and exhaust cam phase (card E reads them), the pedal's map to
 the plate, the lift command. Axes: speed (rpm inside, rad/s in the Spec) and load (the manifold over the air
 outside; for a throttle with no plenum, the pedal). Each has `auto`, on by default: the output is then the formula:
@@ -131,7 +132,6 @@ pit, knock); the idle valve; the state.
 
 ## Integration (waits for K3b)
 
-Append `EcuSettings`' fields to `spec.ecu`; switch `EcuMap16` for `spec/tables.fm`'s `Map16` (and its read, if its z
-is ordered the other way); in the carved `Ecu`, `ecu.model 1` fills an `EcuIn` every 16 samples and runs `Ecu1`,
+Append `EcuSettings`' fields to `spec.ecu`; in the carved `Ecu`, `ecu.model 1` fills an `EcuIn` every 16 samples and runs `Ecu1`,
 `Combustion` asks `Ecu1.fire(c)` at each intake closing; keep model 0 the reference bit for bit (the null test, card
 test 5); then the integrated tests 6 to 11.

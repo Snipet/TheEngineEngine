@@ -1,0 +1,1195 @@
+// machine.fm: forced induction as a machine in the gas path (boost.model = 1): turbochargers and superchargers, the
+// charge path they fill and the exhaust that drives them, solved every sample.
+//
+// The charge path is a chain of volumes that hold mass and energy (gas.fm's BoostVolume), filled and emptied every
+// sample: the air outside, through the filter's loss (quasi-steady: 2.5 kPa at the engine's full flow) into the
+// compressor (compressor.fm: its map, and the air in its duct, which is what surges); the charge pipe (v1) with the
+// blow-off valve's tap; the intercooler, a duct whose air has inertia and whose loss grows with the flow squared
+// (its rated drop at its rated flow), an effectiveness against a core that warms (a thermal mass of aluminium, 900
+// J/kg K, cooled by the air through it: 200 W/K standing, 30 more each m/s); and the volume before the throttle
+// (v2), whose pressure and temperature the intake reads where the reference read pBox and tAir, and from which the
+// intake draws (draw()). Volumes are stepped first and the inertial flows after, each sample (symplectic Euler): the
+// pipes' and the cooler's Helmholtz oscillations neither grow nor die by the integration.
+//
+// The exhaust side is the turbine's housing (turbine.fm), a volume the exhaust's pipes end in: the exhaust gives it
+// each sample the pipes' drive and admittance and it gives back its pressure (housing()); the nozzle and an internal
+// gate empty it into the downpipe, solved against that pipe's end (downpipe()); an external gate into a pipe of its
+// own (gatePipe()). The shaft (shaft.fm) takes the turbine's power less the compressor's and the bearings'.
+//
+// Control (every 16 samples): the wastegate's actuator is a spring that opens the gate as the boost passes its
+// rating (fully 10 kPa over it: a stiff actuator; judgement) and a little more with the exhaust's push on its poppet
+// (3 % of the pressure before the turbine above the outside; judgement), and a duty that bleeds its signal (a PI loop here on the boost
+// before the throttle, to the ECU's target or the spec's) so the gate stays shut longer. A variable nozzle's vanes
+// take the loop's output instead. The blow-off valve opens on the pressure across the throttle against its spring
+// (in 5 ms). A sequential pair's second turbo joins above an engine flow (its exhaust transfer valve and its
+// compressor's outlet open together in 0.15 s; below 80 % of it they close). Over-speed, over-boost, surge and choke
+// are flagged.
+//
+// Arrangements (layout): one; two side by side, a bank each, into one charge pipe; sequential (turbo 0 alone below
+// the flow, turbo 1 joining); compound (turbo 1 the big low-pressure stage, its compressor first and its turbine
+// last; turbo 0 the small high-pressure one, fed by an interstage volume and emptying into turbo 1's housing); four,
+// two a bank. Superchargers (kind 4): Roots and twin-screw (supercharger.fm) or a centrifugal (this file's
+// compressor on a gear, comp[0], its speed the crank's times the pulley's and the step-up's); a bypass round it at
+// part throttle; the crank's torque from its work over its efficiency (0.9 for the positive-displacement ones, 0.95
+// for the centrifugal's gear).
+//
+// Anti-lag (the ECU decides when, card H): the fuel it sends past the engine burns in turbo 0's housing in events at
+// random (some 3 ms apart while the housing is above 750 K, each its pool's heat over half a millisecond, at 70 % of
+// the fuel's 43 MJ/kg): the wheel keeps its speed off the throttle, and each event is a bang. Nitrous (the ECU opens
+// its window): a mass flow by the shot's size (the rating over 2.13 MJ a kilogram: its oxygen's share, 0.364, burning
+// gasoline at 3.41 kg of oxygen a kilogram and 43 MJ/kg, with its decomposition's 1.86 MJ/kg, at a brake
+// efficiency of 0.33), from a bottle whose pressure falls to 65 % as it empties; into v2, its oxygen raising the
+// charge's oxygen share (oxygen(): 0.232 for air), its evaporation (300 kJ/kg: judgement, between N2O's latent heat
+// at 20 C and at its boiling point) cooling the charge. A purge vents it, as a sound.
+//
+// Sizes left at 0 are matched to the engine (match()): the flow the engine takes at its redline at a pressure ratio
+// of 1.9 and 90 % volumetric efficiency, shared among the turbos; the compressor chokes 15 % above it; the turbine's
+// nozzle passes 65 % of it at 2.4 bar and 1150 K, choked (the gate the rest); the times the spec's size. A 2 L four
+// at 7000 rpm gets a 45 mm inducer and a 61 mm exducer: a GT28's class.
+//
+// Left out: the turbine's housing walls' heat; heat between the turbine and the compressor; the compressor inlet's
+// swirl and recirculation; the gate's flutter; the intercooler's own volume's Helmholtz (folded into v2); a second
+// intercooler between a compound pair's stages; anti-lag's misfires in the cylinders (card H).
+//
+// The order of a sample (the exhaust's and the intake's calls are theirs; what this file asks of them):
+//   housing(h, drive, admit, tGas)   the exhaust, for each housing its pipes end in, before it writes them
+//   downpipe(s, a, z), gatePipe(t, a, z)   the exhaust, for each downpipe and external gate's pipe
+//   pressure(), temperature()        the intake, for the throttle (the state at the start of this sample)
+//   draw(m)                          the intake: what the throttle took this sample, kg/s
+//   tick(omegaCrank, pPlenum)        then this: the charge path, the shafts, the sounds
+//   control(d16)                     every 16 samples
+#pragma once
+#include "gas.fm"
+#include "compressor.fm"
+#include "turbine.fm"
+#include "shaft.fm"
+#include "supercharger.fm"
+#include "sound.fm"
+#include "machinespec.fm"
+
+enum
+{
+    BOOST_ONE = 1,
+    BOOST_TWIN = 2,
+    BOOST_SEQUENTIAL = 3,
+    BOOST_COMPOUND = 4,
+    BOOST_QUAD = 5
+};
+
+enum
+{
+    BOOST_FLAG_SURGE = 1,
+    BOOST_FLAG_CHOKE = 2,
+    BOOST_FLAG_OVERSPEED = 4,
+    BOOST_FLAG_OVERBOOST = 8,
+    BOOST_FLAG_BLOWOFF = 16,
+    BOOST_FLAG_NITROUS = 32
+};
+
+module BoostMachine
+{
+    float rate;
+    float dt;
+    float pOut;         // the air outside: Pa absolute, K
+    float tOut;
+    float vd;           // the engine's displacement, m^3, and its redline, rpm (for matched sizes)
+    float redRpm;
+    int active;         // the charge path runs: a turbo, a supercharger, or nitrous
+    int kind;           // 0 natural, 1 to 3 turbos, 4 a supercharger
+    int turbos;         // shafts in use (a centrifugal supercharger: comp[0], no turbine)
+    int layout;
+    int sc;             // 0 none, 1 Roots, 2 twin-screw, 3 centrifugal
+    int scrolls;
+    int structure;      // what apply() last built (a change of it rebuilds at rest)
+    BoostCompressor comp[BOOST_TURBOS];
+    BoostTurbine turb[BOOST_TURBOS];
+    BoostShaft shaft[BOOST_TURBOS];
+    BoostHousing house[BOOST_HOUSINGS];
+    BoostEnd end;
+    BoostSupercharger pd;
+    BoostVolume vInter;     // between a compound pair's stages
+    BoostVolume vSec;       // a sequential pair's second compressor's outlet
+    BoostVolume v1;         // the charge pipe, compressor to intercooler
+    BoostVolume v2;         // intercooler to throttle: what the intake draws from
+    BoostSound snd;
+    int compIn[BOOST_TURBOS];       // 0: the air outside; 1: vInter
+    int compOut[BOOST_TURBOS];      // 0: v1; 1: vInter; 2: vSec
+    int turbOut[BOOST_TURBOS];      // -1: a downpipe (turbSide); a housing's index otherwise
+    int turbSide[BOOST_TURBOS];
+    float omegaMax[BOOST_TURBOS];
+    float mMatch;                   // the engine's flow at its redline, matched, kg/s
+    // the inlet
+    float kFilter;
+    float mInlet;       // through the filter (negative: out of it), kg/s
+    float p1;
+    float t1;
+    float mBack;        // hot air sent back out of the inlet (surge, a recirculating valve, leaks), kg/s, and its K
+    float tBack;
+    // the intercooler
+    float icK;
+    float icDuct;
+    float mIc;
+    float mNa;          // a natural engine's (nitrous only): the inlet's duct straight into v1
+    float icEff;
+    float tCore;
+    float cCore;
+    float gCool;
+    float tIcOut;
+    float airSpeed;     // the air through the car's front, m/s
+    // the intake's side
+    float mDraw;
+    float pPlenum;
+    float omegaCrank;
+    // blow-off
+    int bovKind;
+    float bovArea;
+    float bovSpring;
+    float bovLift;
+    float mBov;
+    // control
+    float gateSpring;
+    float gateSpan;
+    float kFace;
+    float target;       // the spec's boost target, Pa (0: the spring)
+    float cmdTarget;    // the ECU's (below 0: none given)
+    float cmdVanes;     // the ECU's vanes (below 0: the loop's)
+    float duty;
+    float integ;
+    float overBoost;
+    float assistCmd;
+    // sequential
+    float seqOpen;
+    float seqWant;
+    float seqFlow;
+    float aTransfer;
+    float aSecValve;
+    float drawMean;
+    // supercharger
+    float scRatio;
+    float scStepUp;
+    int scBypass;
+    float bypassArea;
+    float bypassOpen;
+    float scDrive;      // W from the crank this sample
+    float crankTorque;  // N m the forced induction takes from the crank, over the last 16 samples
+    float driveSum;
+    // nitrous
+    float nShot;
+    float nRated;
+    float nBottle;
+    float nLeft;
+    int cmdNitrous;     // the ECU's window: 1 open
+    int cmdPurge;       // counts purges
+    int purgeSeen;
+    float purge;
+    float mNitrous;
+    // anti-lag
+    int antiLag;
+    float cmdAntiLag;   // kg/s of fuel the ECU sends to burn in the housing
+    float alPool;
+    float alHeat;       // W, released over the event
+    int alLeft;
+    int alSeed;
+    float alKick;
+    // the downpipes and external gates' pipes: what goes into them
+    float dpMass[BOOST_SIDES];
+    float dpTemp[BOOST_SIDES];
+    float qSrc[BOOST_HOUSINGS];
+    float qGate[BOOST_HOUSINGS];
+    float gateMass[BOOST_TURBOS];
+    float gateTemp[BOOST_TURBOS];
+    // what the outside reads: every 16 samples (instantaneous unless the name says mean)
+    float telSpeed[BOOST_TURBOS];   // rad/s
+    float telPr[BOOST_TURBOS];      // the compressor's pressure ratio
+    float telFlow[BOOST_TURBOS];    // its corrected flow, kg/s at 101325 Pa and 293.15 K
+    float telEta[BOOST_TURBOS];
+    float telT2[BOOST_TURBOS];      // its outlet's temperature, K
+    float telGate[BOOST_TURBOS];    // the gate's opening, 0 to 1
+    float telVanes[BOOST_TURBOS];
+    float telPTurb[BOOST_TURBOS];   // before the turbine, Pa absolute (a twin scroll's mean)
+    float telTTurb[BOOST_TURBOS];
+    float telDrive[BOOST_TURBOS];   // that over the boost's absolute pressure
+    float telBoost;                 // before the throttle, Pa above the outside
+    float telIcOut;                 // K
+    float telScPower;               // W the supercharger takes from the crank
+    float telO2;
+    int flags;
+    // the map, for a view: speed lines (corrected flow and ratio), the surge line, efficiency contours, the trail
+    float lineFlow[BOOST_LINES][BOOST_LINEPTS];
+    float linePr[BOOST_LINES][BOOST_LINEPTS];
+    float lineSpeed[BOOST_LINES];               // rad/s of each line
+    float surgeFlow[BOOST_LINES];
+    float surgePr[BOOST_LINES];
+    float contourFlow[BOOST_LEVELS][BOOST_CONTOUR];   // a contour's points (flow below 0: none there)
+    float contourPr[BOOST_LEVELS][BOOST_CONTOUR];
+    float contourEta[BOOST_LEVELS];
+    float trailFlow[BOOST_TRAIL];
+    float trailPr[BOOST_TRAIL];
+    int trailAt;
+    int trailTick;
+    // sums for tests and means (seconds of energy and mass)
+    double sumPt[BOOST_TURBOS];     // J the turbine gave
+    double sumPc[BOOST_TURBOS];     // J the compressor took
+    double sumPf[BOOST_TURBOS];     // J the bearings took
+    double sumPm[BOOST_TURBOS];     // J the motor gave
+    double sumMComp;                // kg through the compressors (first stage)
+    double sumMDraw;                // kg the intake drew
+    double sumMPipes;               // kg the exhaust's pipes put into the housings
+    double sumMDown;                // kg into the downpipes
+    double sumMGate;                // kg into external gates' pipes
+    double sumMBov;
+    double sumScDrive;              // J from the crank
+    double sumScAir;                // J of the air's work (the supercharger's)
+    double sumMNitrous;
+    // the sounds, this sample
+    float outInlet;
+    float outVent;
+    float outCase;
+    float outBang;
+
+    void setup(float rateIn, float vdIn, float redIn)
+    {
+        rate = rateIn;
+        dt = 1.0f / rate;
+        pOut = 101325.0f;
+        tOut = 293.15f;
+        vd = vdIn;
+        redRpm = redIn;
+        structure = -1;
+        kind = 0;
+        active = 0;
+        turbos = 0;
+        cmdTarget = -1.0f;
+        cmdVanes = -1.0f;
+        v1.setup(0.002f, pOut, tOut, kBoostCpA, kBoostCvA);
+        v2.setup(0.003f, pOut, tOut, kBoostCpA, kBoostCvA);
+        vInter.setup(0.0015f, pOut, tOut, kBoostCpA, kBoostCvA);
+        vSec.setup(0.0008f, pOut, tOut, kBoostCpA, kBoostCvA);
+        for (int h = 0; h < BOOST_HOUSINGS; ++h)
+            house[h].setup(0.0002f, pOut, tOut);
+        snd.setup(rate);
+        reset();
+    }
+
+    // The air outside (the environment's), Pa absolute and K
+    void ambient(float p, float t)
+    {
+        pOut = p;
+        tOut = t;
+    }
+
+    // At rest: every volume at the air outside, every flow and shaft stopped
+    void reset()
+    {
+        v1.reset(pOut, tOut);
+        v2.reset(pOut, tOut);
+        vInter.reset(pOut, tOut);
+        vSec.reset(pOut, tOut);
+        for (int h = 0; h < BOOST_HOUSINGS; ++h)
+        {
+            house[h].setup(house[h].vol, pOut, tOut);
+            qSrc[h] = 0.0f;
+            qGate[h] = 0.0f;
+        }
+        for (int t = 0; t < BOOST_TURBOS; ++t)
+        {
+            comp[t].reset(pOut, tOut);
+            shaft[t].omega = 0.0f;
+            turb[t].begin();
+            turb[t].lift = 0.0f;
+            turb[t].vanes = 1.0f;
+            gateMass[t] = 0.0f;
+            gateTemp[t] = tOut;
+        }
+        for (int s = 0; s < BOOST_SIDES; ++s)
+        {
+            dpMass[s] = 0.0f;
+            dpTemp[s] = tOut;
+        }
+        mInlet = 0.0f;
+        p1 = pOut;
+        t1 = tOut;
+        mBack = 0.0f;
+        tBack = tOut;
+        mIc = 0.0f;
+        mNa = 0.0f;
+        tCore = tOut;
+        tIcOut = tOut;
+        mDraw = 0.0f;
+        pPlenum = pOut;
+        bovLift = 0.0f;
+        mBov = 0.0f;
+        duty = 0.0f;
+        integ = 0.0f;
+        seqOpen = 0.0f;
+        seqWant = 0.0f;
+        drawMean = 0.0f;
+        bypassOpen = 1.0f;
+        scDrive = 0.0f;
+        crankTorque = 0.0f;
+        driveSum = 0.0f;
+        nLeft = nBottle;
+        purge = 0.0f;
+        mNitrous = 0.0f;
+        alPool = 0.0f;
+        alHeat = 0.0f;
+        alLeft = 0;
+        alKick = 0.0f;
+        flags = 0;
+        trailAt = 0;
+        trailTick = 0;
+        for (int i = 0; i < BOOST_TRAIL; ++i)
+        {
+            trailFlow[i] = 0.0f;
+            trailPr[i] = 1.0f;
+        }
+        snd.clear();
+        outInlet = 0.0f;
+        outVent = 0.0f;
+        outCase = 0.0f;
+        outBang = 0.0f;
+        telBoost = 0.0f;
+        telIcOut = tOut;
+        telO2 = 0.232f;
+    }
+
+    // The spec's section, read when its rev moves. A change of what the machine is (the kind, the arrangement, the
+    // scrolls, the supercharger) rebuilds it at rest; the rest is taken as it comes.
+    void apply(BoostMachineSpec* s)
+    {
+        kind = s->kind;
+        int lay = s->layout;
+        if (kind >= 1 && kind <= 3)
+        {
+            if (lay == 0)
+                lay = kind == 1 ? BOOST_ONE : (kind == 2 ? BOOST_TWIN : BOOST_QUAD);
+        }
+        else
+            lay = 0;
+        layout = lay;
+        sc = kind == 4 ? 1 + s->charger : 0;
+        scrolls = sc == 0 && kind != 0 ? s->scrolls : 1;
+        turbos = layout == BOOST_ONE ? 1 : (layout == BOOST_QUAD ? 4 : (layout == 0 ? 0 : 2));
+        if (sc == 3)
+            turbos = 1;
+        nShot = s->nitrousShot;
+        active = kind != 0 || nShot > 0.0f ? 1 : 0;
+        const int st = kind + 8 * layout + 64 * scrolls + 256 * sc + 2048 * active;
+        // the topology
+        for (int t = 0; t < BOOST_TURBOS; ++t)
+        {
+            compIn[t] = 0;
+            compOut[t] = 0;
+            turbOut[t] = -1;
+            turbSide[t] = 0;
+        }
+        if (layout == BOOST_TWIN)
+            turbSide[1] = 1;
+        if (layout == BOOST_QUAD)
+        {
+            turbSide[2] = 1;
+            turbSide[3] = 1;
+        }
+        if (layout == BOOST_SEQUENTIAL)
+            compOut[1] = 2;
+        if (layout == BOOST_COMPOUND)
+        {
+            compIn[0] = 1;
+            compOut[1] = 1;
+            turbOut[0] = 2;      // turbo 1's (first) housing
+        }
+        // sizes: matched to the engine where left at 0
+        mMatch = fmaxf(vd * redRpm / 120.0f * 1.204f * 1.9f * 0.9f, 0.01f);
+        const float share = layout == BOOST_TWIN ? 0.5f : (layout == BOOST_QUAD ? 0.25f : (layout == BOOST_SEQUENTIAL ? 0.55f : 1.0f));
+        for (int t = 0; t < BOOST_TURBOS; ++t)
+        {
+            // (a compound pair's high-pressure stage meets air already compressed some 1.6 times: a smaller wheel)
+            const float mt = mMatch * share * s->size * (layout == BOOST_COMPOUND && t == 0 ? 0.65f : 1.0f);
+            const float wide = expf(0.25f * logf(fmaxf(s->compAR, 0.2f) / 0.6f));
+            const float aAnn = 1.15f * mt / (0.45f * 1.204f * 343.2f * wide);
+            float dInd = s->compInducer > 0.0f ? s->compInducer : 2.0f * sqrtf(aAnn / (0.91f * 3.14159265f));
+            float dEx = s->compExducer > 0.0f ? s->compExducer : dInd / 0.7416f;
+            if (sc == 3 && s->compExducer <= 0.0f)
+            {
+                // a centrifugal supercharger's wheel: about 300 m/s at the tip at the redline
+                const float wRed = redRpm * 0.10471976f * s->scRatio * s->scStepUp;
+                dEx = fmaxf(dInd / 0.8f, 600.0f / fmaxf(wRed, 100.0f));
+            }
+            comp[t].size(dInd, dEx, s->compAR, s->compEta);
+            const float dT = s->turbWheel > 0.0f ? s->turbWheel : 0.9f * dEx;
+            const float rc = 0.6f * dT;
+            float aNoz = 0.0f;
+            if (s->turbAR > 0.0f)
+                aNoz = s->turbAR * 0.0254f * rc;
+            else
+                aNoz = 0.65f * mt * sqrtf(kBoostR * 1150.0f) / (2.4e5f * 0.667f);
+            turb[t].rWheel = 0.5f * dT;
+            turb[t].aNoz = aNoz;
+            turb[t].etaMax = s->turbEta;
+            turb[t].vgt = s->vanes;
+            turb[t].vaneMin = s->vaneMin;
+            turb[t].gateExt = s->gate;
+            turb[t].scrolls = scrolls;
+            const float dg = s->gateDiameter > 0.0f ? s->gateDiameter : sqrtf(4.0f * aNoz / 3.14159265f);
+            turb[t].aGate = 0.785398f * dg * dg * 0.85f;
+            const float vh = s->housingVolume > 0.0f ? s->housingVolume : 4.0f * 3.14159265f * rc * aNoz;
+            for (int k = 0; k < 2; ++k)
+                house[2 * t + k].resize(vh / (float)scrolls);
+            shaft[t].size(s->inertia, dT, dEx, s->bearing, s->assist);
+            omegaMax[t] = s->maxSpeed > 0.0f ? s->maxSpeed : 560.0f / comp[t].rTip;
+        }
+        aTransfer = turb[1].aNoz;
+        aSecValve = comp[1].aInd * 1.5f;
+        seqFlow = s->seqFlow > 0.0f ? s->seqFlow : 0.4f * mMatch;
+        // the charge path
+        kFilter = 2500.0f / (mMatch * mMatch);
+        v1.resize(0.4f * s->chargeVolume);
+        v2.resize(0.6f * s->chargeVolume);
+        icEff = s->icEffect;
+        icK = s->icDrop / (s->icFlow * s->icFlow);
+        icDuct = dt * 0.008f / 0.8f;
+        cCore = s->icMass * 900.0f;
+        bovKind = s->blowOffKind;
+        bovArea = 0.785398f * s->blowOffDiameter * s->blowOffDiameter * 0.8f;
+        bovSpring = s->blowOffSpring;
+        gateSpring = s->gateSpring;
+        gateSpan = 10000.0f;
+        kFace = 0.03f;
+        target = s->target;
+        overBoost = s->overBoost > 0.0f ? s->overBoost : 1.4f * fmaxf(target, gateSpring);
+        // superchargers
+        scRatio = s->scRatio;
+        scStepUp = s->scStepUp;
+        scBypass = s->scBypass ? 1 : 0;
+        const float disp = s->scDisplacement > 0.0f ? s->scDisplacement : 0.27f * vd * s->size;
+        pd.size(disp, sc == 2 ? s->scVolumeRatio : 1.0f);
+        bypassArea = 0.785398f * 0.045f * 0.045f * expf(0.5f * logf(fmaxf(vd / 0.003f, 0.1f)));
+        // extras
+        antiLag = s->antiLag ? 1 : 0;
+        nRated = nShot / 2.13e6f;
+        nBottle = s->nitrousBottle;
+        if (st != structure)
+        {
+            structure = st;
+            reset();
+            mapLines();
+        }
+    }
+
+    // ---- the exhaust's side ---------------------------------------------------------------------------------------
+
+    // Which housing a collector feeds: the bank it is on (0, 1), which group of cylinders it gathers (0, 1: a twin
+    // scroll's or a second turbo's on that bank), and how many banks the engine has. -1: no turbine (its pipe goes on
+    // as the reference's does).
+    int housingOf(int bank, int group, int banks)
+    {
+        if (active == 0 || turbos == 0 || sc != 0)
+            return -1;
+        if (layout == BOOST_TWIN)
+            return 2 * (bank & 1) + (scrolls == 2 ? (group & 1) : 0);
+        if (layout == BOOST_QUAD)
+            return 2 * (2 * (bank & 1) + (group & 1));
+        // one wheel takes every collector (a sequential pair's first, a compound pair's high-pressure stage)
+        if (scrolls == 2)
+            return banks > 1 ? (bank & 1) : (group & 1);
+        return 0;
+    }
+
+    // One sample, for each housing the exhaust's pipes end in, before it writes them: the pipes' drive (sum of
+    // 2 a_i / z_i, m^3/s) and admittance (sum of 1 / z_i) and their gas's temperature (K). Returns the housing's
+    // pressure above the outside (Pa): each pipe then sends back b_i = p - a_i.
+    float housing(int h, float drive, float admit, float tGas) [[clang::nonblocking]]
+    {
+        if (active == 0 || h < 0 || h >= 2 * turbos)
+            return 0.0f;
+        const float pg = house[h].solve(drive, admit, tGas, pOut, dt);
+        sumMPipes += (double)(house[h].qPipes * house[h].p / (kBoostR * (house[h].qPipes >= 0.0f ? tGas : house[h].t)) * dt);
+        return pg;
+    }
+
+    // One sample, for downpipe s (one a bank): the wave arriving at its near end (Pa) and its impedance. Solves every
+    // nozzle and internal gate that empties into it against that end at once; returns the end's pressure above the
+    // outside (the pipe sends back p - a). dpMass[s] and dpTemp[s] are then what went in.
+    float downpipe(int s, float a, float z) [[clang::nonblocking]]
+    {
+        const float pq = pOut + 2.0f * a;
+        if (active == 0 || turbos == 0 || sc != 0)
+        {
+            dpMass[s] = 0.0f;
+            return 0.0f;
+        }
+        float qSum = 0.0f;
+        for (int t = 0; t < turbos; ++t)
+            if (turbOut[t] < 0 && turbSide[t] == s)
+                for (int k = 0; k < scrolls; ++k)
+                    qSum += qSrc[2 * t + k];
+        for (int sweep = 0; sweep < 2; ++sweep)
+        {
+            for (int t = 0; t < turbos; ++t)
+            {
+                if (turbOut[t] >= 0 || turbSide[t] != s)
+                    continue;
+                const float area = (turb[t].nozzle() + (turb[t].gateExt == 0 ? turb[t].aGate * turb[t].lift : 0.0f)) / (float)scrolls;
+                for (int k = 0; k < scrolls; ++k)
+                {
+                    const int h = 2 * t + k;
+                    const float q = end.flow(house[h].p, house[h].t, pq + z * (qSum - qSrc[h]), z, area, dpTemp[s]);
+                    qSum += q - qSrc[h];
+                    qSrc[h] = q;
+                }
+            }
+        }
+        const float pp = pq + z * qSum;
+        float mSum = 0.0f;
+        float hSum = 0.0f;
+        for (int t = 0; t < turbos; ++t)
+        {
+            if (turbOut[t] >= 0 || turbSide[t] != s)
+                continue;
+            const float an = turb[t].nozzle() / (float)scrolls;
+            const float area = an + (turb[t].gateExt == 0 ? turb[t].aGate * turb[t].lift / (float)scrolls : 0.0f);
+            for (int k = 0; k < scrolls; ++k)
+            {
+                const int h = 2 * t + k;
+                const float q = qSrc[h];
+                if (q >= 0.0f)
+                {
+                    const float m = q * pp / (kBoostR * house[h].t);
+                    house[h].mOutPipe = m;
+                    const float mn = area > 1.0e-10f ? m * an / area : 0.0f;
+                    const float w = turb[t].work(mn, house[h].t, pp / house[h].p, shaft[t].omega);
+                    turb[t].mNoz += mn;
+                    turb[t].mGate += m - mn;
+                    mSum += m;
+                    hSum += m * kBoostCpE * house[h].t - w;
+                }
+                else
+                {
+                    const float m = q * pp / (kBoostR * dpTemp[s]);
+                    house[h].mOutPipe = m;
+                    mSum += m;
+                    hSum += m * kBoostCpE * dpTemp[s];
+                }
+            }
+        }
+        dpMass[s] = mSum;
+        if (mSum > 1.0e-6f)
+            dpTemp[s] = fminf(fmaxf(hSum / (mSum * kBoostCpE), 250.0f), 2500.0f);
+        sumMDown += (double)(mSum * dt);
+        return pp - pOut;
+    }
+
+    // One sample, for turbo t's external gate: the wave arriving at its pipe's near end and its impedance. Returns the
+    // end's pressure above the outside; gateMass[t] and gateTemp[t] are what went in.
+    float gatePipe(int t, float a, float z) [[clang::nonblocking]]
+    {
+        if (active == 0 || t >= turbos || turb[t].gateExt == 0 || sc != 0)
+        {
+            gateMass[t] = 0.0f;
+            return 0.0f;
+        }
+        const float pq = pOut + 2.0f * a;
+        const float area = turb[t].aGate * turb[t].lift / (float)scrolls;
+        float qSum = 0.0f;
+        for (int k = 0; k < scrolls; ++k)
+            qSum += qGate[2 * t + k];
+        for (int sweep = 0; sweep < 2; ++sweep)
+            for (int k = 0; k < scrolls; ++k)
+            {
+                const int h = 2 * t + k;
+                const float q = end.flow(house[h].p, house[h].t, pq + z * (qSum - qGate[h]), z, area, tOut);
+                qSum += q - qGate[h];
+                qGate[h] = q;
+            }
+        const float pp = pq + z * qSum;
+        float mSum = 0.0f;
+        float hSum = 0.0f;
+        for (int k = 0; k < scrolls; ++k)
+        {
+            const int h = 2 * t + k;
+            const float tg = qGate[h] >= 0.0f ? house[h].t : tOut;
+            const float m = qGate[h] * pp / (kBoostR * tg);
+            house[h].mOutGate = m;
+            mSum += m;
+            hSum += m * tg;
+        }
+        gateMass[t] = mSum;
+        if (mSum > 1.0e-6f)
+            gateTemp[t] = hSum / mSum;
+        turb[t].mGate += mSum;
+        sumMGate += (double)(mSum * dt);
+        return pp - pOut;
+    }
+
+    // ---- the intake's side ----------------------------------------------------------------------------------------
+
+    // The pressure (Pa absolute) and temperature (K) before the throttle; the air outside's when there is nothing
+    float pressure()
+    {
+        return active != 0 ? v2.p : pOut;
+    }
+
+    float temperature()
+    {
+        return active != 0 ? v2.t : tOut;
+    }
+
+    // The oxygen's share of the charge's mass (Combustion's: 0.232 for air)
+    float oxygen()
+    {
+        return active != 0 ? v2.o2 : 0.232f;
+    }
+
+    // What the throttle took from before it this sample, kg/s (negative: pushed back)
+    void draw(float m)
+    {
+        mDraw = m;
+    }
+
+    // ---- one sample -------------------------------------------------------------------------------------------------
+
+    void tick(float omegaCrankIn, float pPlenumIn) [[clang::nonblocking]]
+    {
+        omegaCrank = omegaCrankIn;
+        pPlenum = pPlenumIn;
+        if (active == 0)
+        {
+            outInlet = 0.0f;
+            outVent = 0.0f;
+            outCase = 0.0f;
+            outBang = 0.0f;
+            crankTorque = 0.0f;
+            return;
+        }
+        exhaustSide();
+        chargeSide();
+        // the shafts
+        for (int t = 0; t < turbos; ++t)
+        {
+            if (sc == 3)
+            {
+                shaft[t].omega = omegaCrank * scRatio * scStepUp;
+                scDrive = comp[t].power / 0.95f;
+            }
+            else
+            {
+                shaft[t].step(turb[t].torque, comp[t].power, assistCmd, dt);
+                sumPt[t] += (double)(turb[t].power * dt);
+                sumPf[t] += (double)(shaft[t].friction * dt);
+                sumPm[t] += (double)(shaft[t].motor * dt);
+            }
+            sumPc[t] += (double)(comp[t].power * dt);
+            turb[t].begin();
+        }
+        driveSum += scDrive;
+        sumScDrive += (double)(scDrive * dt);
+        sounds();
+    }
+
+    // The exhaust's volumes that no pipe of the exhaust's ends in (stepped here), and the flows between the model's
+    // own volumes, for the next sample's solves
+    void exhaustSide()
+    {
+        const int nh = sc == 0 ? 2 * turbos : 0;
+        for (int h = 0; h < nh; ++h)
+        {
+            if (house[h].stepped == 0)
+                house[h].solve(0.0f, 0.0f, tOut, pOut, dt);
+            house[h].stepped = 0;
+            house[h].mIn = 0.0f;
+            house[h].hIn = 0.0f;
+            house[h].mOutInt = 0.0f;
+            house[h].heatIn = 0.0f;
+        }
+        if (layout == BOOST_COMPOUND || layout == BOOST_SEQUENTIAL)
+        {
+            // compound: the high-pressure turbine (0) and its gate empty into the low-pressure one's housing; sequential:
+            // the transfer valve from the first housing to the second's
+            const int lp = 2;
+            for (int k = 0; k < scrolls; ++k)
+            {
+                const int h = k;
+                const int hd = lp + k;
+                float an = 0.0f;
+                float area = 0.0f;
+                if (layout == BOOST_COMPOUND)
+                {
+                    an = turb[0].nozzle() / (float)scrolls;
+                    area = an + turb[0].aGate * turb[0].lift / (float)scrolls;
+                }
+                else
+                    area = aTransfer * seqOpen / (float)scrolls;
+                const float m = boostOrifice(house[h].p, house[h].t, house[hd].p, house[hd].t, area, 1);
+                if (m >= 0.0f)
+                {
+                    const float mn = area > 1.0e-10f ? m * an / area : 0.0f;
+                    const float w = an > 0.0f ? turb[0].work(mn, house[h].t, house[hd].p / house[h].p, shaft[0].omega) : 0.0f;
+                    turb[0].mNoz += mn;
+                    house[h].mOutInt += m;
+                    house[hd].mIn += m;
+                    house[hd].hIn += m * kBoostCpE * house[h].t - w;
+                }
+                else
+                {
+                    house[hd].mOutInt -= m;
+                    house[h].mIn -= m;
+                    house[h].hIn -= m * kBoostCpE * house[hd].t;
+                }
+            }
+        }
+        // anti-lag: the fuel sent past the engine pools in turbo 0's housing and lights at random when it is hot
+        alKick = 0.0f;
+        if (antiLag != 0 && turbos > 0 && sc == 0)
+        {
+            alPool = fminf(alPool + cmdAntiLag * dt, 2.0e-4f);
+            if (alLeft > 0)
+            {
+                house[0].heatIn += alHeat;
+                alLeft -= 1;
+            }
+            else if (alPool > 1.0e-7f && house[0].t > 750.0f)
+            {
+                alSeed += 1;
+                if (randf(alSeed + 7919) > 0.9935f)
+                {
+                    const float q = alPool * 43.0e6f * 0.7f;
+                    alHeat = q / (48.0f * dt);
+                    alLeft = 48;
+                    alPool = 0.0f;
+                    alKick = q / 400.0f;
+                }
+            }
+        }
+    }
+
+    // The charge path: flows into and out of the volumes, the volumes stepped, then the inertial flows
+    void chargeSide()
+    {
+        // the filter: what the wheels drew from outside the sample before
+        p1 = turbos == 0 && sc == 0 ? pOut : pOut - kFilter * mInlet * fabsf(mInlet);
+        const float mFresh = fmaxf(mInlet, 0.0f);
+        // (what was sent back out of the inlet comes back in warm: mixed with the fresh air by their flows)
+        t1 = mBack > 1.0e-6f ? (mFresh * tOut + mBack * tBack) / fmaxf(mFresh + mBack, 1.0e-6f) : tOut;
+        t1 = fmaxf(t1, tOut);
+        float mIn = 0.0f;
+        float mOutBack = 0.0f;
+        float hOutBack = 0.0f;
+        for (int t = 0; t < turbos; ++t)
+        {
+            const float m = comp[t].mdot;
+            const float pIn = compIn[t] == 1 ? vInter.p : p1;
+            const float tIn = compIn[t] == 1 ? vInter.t : t1;
+            comp[t].p1 = pIn;
+            comp[t].t1 = tIn;
+            float tOutl = 0.0f;
+            if (compOut[t] == 0)
+                tOutl = v1.t;
+            else if (compOut[t] == 1)
+                tOutl = vInter.t;
+            else
+                tOutl = vSec.t;
+            if (compOut[t] == 0)
+                v1.flow(m, comp[t].t2, 0.232f);
+            else if (compOut[t] == 1)
+                vInter.flow(m, comp[t].t2, 0.232f);
+            else
+                vSec.flow(m, comp[t].t2, 0.232f);
+            if (compIn[t] == 1)
+                vInter.flow(-m, tOutl, 0.232f);
+            else
+            {
+                mIn += m;
+                if (m < 0.0f)
+                {
+                    mOutBack -= m;
+                    hOutBack -= m * tOutl;
+                }
+            }
+        }
+        if (turbos == 0 && sc == 0)
+        {
+            v1.flow(mNa, t1, 0.232f);
+            mIn += mNa;
+        }
+        if (sc == 1 || sc == 2)
+        {
+            const float n = omegaCrank * 0.15915494f * scRatio;
+            pd.step(n, p1, t1, v1.p, v1.t);
+            v1.flow(pd.mDel, pd.t2, 0.232f);
+            v1.flow(-pd.mLeak, 0.0f, 0.0f);
+            mIn += pd.mDel - pd.mLeak;
+            mOutBack += pd.mLeak;
+            hOutBack += pd.mLeak * v1.t;
+            scDrive = pd.drive;
+            sumScAir += (double)(pd.power * dt);
+        }
+        if (sc != 0 && scBypass != 0)
+        {
+            const float m = boostOrifice(v1.p, v1.t, p1, t1, bypassArea * bypassOpen, 0);
+            v1.flow(-m, t1, 0.232f);
+            mIn -= m;
+            if (m > 0.0f)
+            {
+                mOutBack += m;
+                hOutBack += m * v1.t;
+            }
+        }
+        if (layout == BOOST_SEQUENTIAL)
+        {
+            // the second compressor's outlet joins through its check valve as it opens; shut, a bleed keeps it from
+            // dead-heading
+            const float m = fmaxf(boostOrifice(vSec.p, vSec.t, v1.p, v1.t, aSecValve * seqOpen, 0), 0.0f);
+            vSec.flow(-m, 0.0f, 0.0f);
+            v1.flow(m, vSec.t, 0.232f);
+            const float mb = boostOrifice(vSec.p, vSec.t, p1, t1, 0.15f * comp[1].aInd * (1.0f - seqOpen), 0);
+            vSec.flow(-mb, t1, 0.232f);
+            mIn -= mb;
+            if (mb > 0.0f)
+            {
+                mOutBack += mb;
+                hOutBack += mb * vSec.t;
+            }
+        }
+        // the intercooler: the duct's flow, cooled against its core
+        {
+            const float m = mIc;
+            const float tin = m >= 0.0f ? v1.t : v2.t;
+            const float q = icEff * fabsf(m) * kBoostCpA * (tin - tCore);
+            tIcOut = tin - (fabsf(m) > 1.0e-7f ? q / (fabsf(m) * kBoostCpA) : 0.0f);
+            if (m >= 0.0f)
+            {
+                v1.flow(-m, 0.0f, 0.0f);
+                v2.flow(m, tIcOut, v1.o2);
+            }
+            else
+            {
+                v2.flow(m, 0.0f, 0.0f);
+                v1.flow(-m, tIcOut, v2.o2);
+            }
+            tCore += dt * (q - gCool * (tCore - tOut)) / cCore;
+        }
+        // the blow-off valve, from before the throttle: to the air, or back to the compressor's inlet
+        mBov = 0.0f;
+        if (bovKind != 0 && bovLift > 0.0f)
+        {
+            const float pd2 = bovKind == 1 ? pOut : p1;
+            mBov = fmaxf(boostOrifice(v2.p, v2.t, pd2, tOut, bovArea * bovLift, 0), 0.0f);
+            v2.flow(-mBov, 0.0f, 0.0f);
+            if (bovKind == 2)
+            {
+                mIn -= mBov;
+                mOutBack += mBov;
+                hOutBack += mBov * v2.t;
+            }
+            sumMBov += (double)(mBov * dt);
+        }
+        // nitrous: into the charge before the throttle, its evaporation taking heat
+        mNitrous = 0.0f;
+        if (nRated > 0.0f && cmdNitrous != 0 && nLeft > 0.0f)
+        {
+            const float full = nLeft / fmaxf(nBottle, 0.01f);
+            mNitrous = nRated * sqrtf(0.65f + 0.35f * full);
+            nLeft -= mNitrous * dt;
+            v2.flow(mNitrous, 288.0f, 0.364f);
+            v2.heat(-mNitrous * 3.0e5f);
+            sumMNitrous += (double)(mNitrous * dt);
+        }
+        if (purge > 0.0f && nLeft > 0.0f)
+            nLeft -= 0.5f * nRated * purge * dt;
+        // the intake's draw
+        v2.flow(-mDraw, v2.t, v2.o2);
+        sumMDraw += (double)(mDraw * dt);
+        // the volumes, then the inertial flows against their new pressures
+        v1.step(dt);
+        v2.step(dt);
+        if (layout == BOOST_COMPOUND)
+            vInter.step(dt);
+        if (layout == BOOST_SEQUENTIAL)
+            vSec.step(dt);
+        for (int t = 0; t < turbos; ++t)
+        {
+            float p2 = v1.p;
+            if (compOut[t] == 1)
+                p2 = vInter.p;
+            else if (compOut[t] == 2)
+                p2 = vSec.p;
+            comp[t].step(p2);
+        }
+        {
+            const float d = v1.p - v2.p;
+            const float a = fabsf(mIc);
+            mIc += icDuct * (d - icK * mIc * a) / (1.0f + icDuct * 2.0f * icK * a);
+        }
+        if (turbos == 0 && sc == 0)
+        {
+            // (the filter's loss is the duct's own here: kFilter m |m|)
+            const float a = fabsf(mNa);
+            mNa += icDuct * (pOut - v1.p - kFilter * mNa * a) / (1.0f + icDuct * 2.0f * kFilter * a);
+        }
+        mInlet = mIn;
+        mBack = mOutBack;
+        tBack = mOutBack > 1.0e-7f ? hOutBack / mOutBack : tOut;
+        for (int t = 0; t < turbos; ++t)
+            if (compIn[t] == 0)
+                sumMComp += (double)(comp[t].mdot * dt);
+        if (sc == 1 || sc == 2)
+            sumMComp += (double)((pd.mDel - pd.mLeak) * dt);
+    }
+
+    void sounds()
+    {
+        float rushLevel = 0.0f;
+        float whistle = 0.0f;
+        for (int t = 0; t < turbos; ++t)
+        {
+            const float sh = fminf(shaft[t].omega / omegaMax[t], 1.2f);
+            const float flowShare = fminf(fabsf(comp[t].mdot) / fmaxf(comp[t].mc, 1.0e-4f), 1.0f);
+            rushLevel += sh * sh * flowShare;
+            if (sc == 0)
+                whistle += snd.whistle(t, shaft[t].omega * 0.15915494f, sh * sh);
+        }
+        const float rho = pOut / (kBoostR * tOut);
+        const float bovRef = fmaxf(bovArea * 450.0f, 1.0e-4f);
+        const float bv = fminf(mBov / bovRef, 1.5f);
+        const float bovAir = bovKind == 1 ? bv * bv : 0.0f;
+        const float bovRe = bovKind == 2 ? bv * bv : 0.0f;
+        snd.tick(mInlet / rho, rushLevel / sqrtf((float)(turbos > 0 ? turbos : 1)), bovAir, bovRe, purge, alKick);
+        outInlet = snd.inlet + whistle / sqrtf((float)(turbos > 0 ? turbos : 1));
+        outVent = snd.vent;
+        outBang = snd.bang;
+        outCase = 0.0f;
+        if (sc != 0)
+        {
+            // a positive-displacement blower's pockets (six a turn of a Roots's rotors, four of a twin-screw's male
+            // rotor); a centrifugal's gear mesh (31 teeth on its input gear)
+            const float n = omegaCrank * 0.15915494f * scRatio;
+            const float pockets = sc == 1 ? 6.0f : (sc == 2 ? 4.0f : 31.0f);
+            const float sp = fminf(omegaCrank / 600.0f, 1.0f);
+            const float ld = fminf(fmaxf((v1.p - pOut) / 80000.0f, 0.0f), 1.0f);
+            outCase = snd.whine(pockets * n, n, sp * (0.3f + 0.7f * ld));
+        }
+    }
+
+    // ---- every 16 samples -------------------------------------------------------------------------------------------
+
+    void control(float d16) [[clang::nonblocking]]
+    {
+        if (active == 0)
+            return;
+        const float boost = v2.p - pOut;
+        const float signal = v1.p - pOut;
+        const float tg = cmdTarget >= 0.0f ? cmdTarget : target;
+        // the loop: the boost before the throttle to its target
+        float u = 0.0f;
+        if (tg > 0.0f)
+        {
+            const float e = (tg - boost) / tg;
+            integ = fminf(fmaxf(integ + 4.0f * e * d16, -0.5f), 1.0f);
+            u = fminf(fmaxf(2.5f * e + integ, 0.0f), 0.95f);
+        }
+        else
+            integ = 0.0f;
+        duty = u;
+        // electric assist: below the target (or the spring, the pedal down), the motor helps
+        const float want = tg > 0.0f ? tg : gateSpring;
+        assistCmd = pPlenum > 0.85f * pOut ? fminf(fmaxf(3.0f * (want - boost) / want, 0.0f), 1.0f) : 0.0f;
+        flags = 0;
+        for (int t = 0; t < turbos; ++t)
+        {
+            // the map at the shaft's speed
+            float pIn = p1;
+            float tIn = t1;
+            if (compIn[t] == 1)
+            {
+                pIn = vInter.p;
+                tIn = vInter.t;
+            }
+            comp[t].speed(shaft[t].omega, pIn, tIn);
+            if (sc == 3)
+                continue;
+            // the gate: its spring against the boost's signal (bled by the duty) and the exhaust's push on its poppet
+            const int hh = 2 * t;
+            const float push = kFace * (house[hh].p - pOut);
+            float s = signal * (1.0f - (turb[t].vgt != 0 ? 0.0f : duty)) + push;
+            if (layout == BOOST_SEQUENTIAL && t == 1)
+                s = signal + push;
+            const float open = fminf(fmaxf((s - gateSpring) / gateSpan, 0.0f), 1.0f);
+            turb[t].lift += (open - turb[t].lift) * (1.0f - expf(-d16 / 0.04f));
+            if (turb[t].vgt != 0)
+            {
+                float v = 0.0f;
+                if (cmdVanes >= 0.0f)
+                    v = cmdVanes;
+                else if (tg > 0.0f)
+                    v = 1.0f - u;
+                else
+                    v = turb[t].vaneMin + (1.0f - turb[t].vaneMin) * fminf(fmaxf((signal - 0.8f * gateSpring) / (0.2f * gateSpring + gateSpan), 0.0f), 1.0f);
+                v = fminf(fmaxf(v, turb[t].vaneMin), 1.0f);
+                turb[t].vanes += (v - turb[t].vanes) * (1.0f - expf(-d16 / 0.05f));
+                // (with vanes the gate is a relief only: well above the target)
+                if (tg > 0.0f && boost < 1.2f * tg)
+                    turb[t].lift = 0.0f;
+            }
+            // flags
+            const float phi = comp[t].mdot / fmaxf(comp[t].mc, 1.0e-5f);
+            if (comp[t].mdot < 0.0f || (phi < 0.8f * comp[t].phiK && comp[t].pr > 1.15f))
+                flags |= BOOST_FLAG_SURGE;
+            if (phi > 0.98f && comp[t].u > 50.0f)
+                flags |= BOOST_FLAG_CHOKE;
+            if (shaft[t].omega > omegaMax[t])
+                flags |= BOOST_FLAG_OVERSPEED;
+        }
+        if (boost > overBoost && overBoost > 0.0f)
+            flags |= BOOST_FLAG_OVERBOOST;
+        // the blow-off valve: the pressure across the throttle against its spring
+        {
+            const float across = v2.p - pPlenum;
+            const float open = bovKind != 0 ? fminf(fmaxf((across - bovSpring) / 15000.0f, 0.0f), 1.0f) : 0.0f;
+            bovLift += (open - bovLift) * (1.0f - expf(-d16 / 0.005f));
+            if (bovLift > 0.1f)
+                flags |= BOOST_FLAG_BLOWOFF;
+        }
+        // sequential: the second joins above a flow
+        drawMean += (mDraw - drawMean) * (1.0f - expf(-d16 / 0.1f));
+        if (layout == BOOST_SEQUENTIAL)
+        {
+            if (drawMean > seqFlow)
+                seqWant = 1.0f;
+            else if (drawMean < 0.8f * seqFlow)
+                seqWant = 0.0f;
+            seqOpen += (seqWant - seqOpen) * (1.0f - expf(-d16 / 0.15f));
+        }
+        // a supercharger's bypass: open with the vacuum after the throttle
+        {
+            const float want2 = fminf(fmaxf((pOut - pPlenum - 5000.0f) / 25000.0f, 0.0f), 1.0f);
+            bypassOpen += (want2 - bypassOpen) * (1.0f - expf(-d16 / 0.05f));
+        }
+        crankTorque = driveSum / 16.0f / fmaxf(omegaCrank, 10.0f);
+        driveSum = 0.0f;
+        // the intercooler's cooling air
+        gCool = 200.0f + 30.0f * airSpeed;
+        // nitrous: its purge
+        if (cmdPurge != purgeSeen)
+        {
+            purgeSeen = cmdPurge;
+            purge = 1.0f;
+        }
+        purge *= expf(-d16 / 0.4f);
+        if (purge < 0.001f)
+            purge = 0.0f;
+        if (mNitrous > 0.0f)
+            flags |= BOOST_FLAG_NITROUS;
+        // the sounds' bands
+        {
+            const float sh = turbos > 0 ? fminf(shaft[0].omega / omegaMax[0], 1.2f) : 0.0f;
+            const float n = omegaCrank * 0.15915494f * scRatio;
+            const float pockets = sc == 1 ? 6.0f : (sc == 2 ? 4.0f : 31.0f);
+            snd.control(sh, pockets * n, pd.pulse);
+        }
+        telemetry();
+        trailTick += 1;
+        if (trailTick >= 32)
+        {
+            trailTick = 0;
+            trailFlow[trailAt] = telFlow[0];
+            trailPr[trailAt] = telPr[0];
+            trailAt = trailAt + 1 >= BOOST_TRAIL ? 0 : trailAt + 1;
+        }
+    }
+
+    void telemetry()
+    {
+        for (int t = 0; t < BOOST_TURBOS; ++t)
+        {
+            if (t >= turbos)
+            {
+                telSpeed[t] = 0.0f;
+                telPr[t] = 1.0f;
+                telFlow[t] = 0.0f;
+                telEta[t] = 0.0f;
+                telT2[t] = tOut;
+                telGate[t] = 0.0f;
+                telVanes[t] = 1.0f;
+                telPTurb[t] = pOut;
+                telTTurb[t] = tOut;
+                telDrive[t] = 1.0f;
+                continue;
+            }
+            telSpeed[t] = shaft[t].omega;
+            telPr[t] = comp[t].pr;
+            telFlow[t] = comp[t].mdot * sqrtf(comp[t].t1 / 293.15f) / (comp[t].p1 / 101325.0f);
+            telEta[t] = comp[t].eta;
+            telT2[t] = comp[t].t2;
+            telGate[t] = turb[t].lift;
+            telVanes[t] = turb[t].vgt != 0 ? turb[t].vanes : 1.0f;
+            const int h = 2 * t;
+            const float ph = scrolls == 2 ? 0.5f * (house[h].p + house[h + 1].p) : house[h].p;
+            telPTurb[t] = ph;
+            telTTurb[t] = scrolls == 2 ? 0.5f * (house[h].t + house[h + 1].t) : house[h].t;
+            telDrive[t] = ph / v1.p;
+        }
+        telBoost = v2.p - pOut;
+        telIcOut = tIcOut;
+        telScPower = sc != 0 ? crankTorque * omegaCrank : 0.0f;
+        telO2 = v2.o2;
+    }
+
+    // The map's lines for a view, at the standard inlet (101325 Pa, 293.15 K): speed lines from tip Mach 0.4 to
+    // 1.45, each from its knee (the surge line) to choke; efficiency contours where each line crosses a level. Off the
+    // audio thread (in apply).
+    void mapLines()
+    {
+        BoostCompressor c = comp[0];
+        const float a0 = sqrtf(1.4f * kBoostR * 293.15f);
+        for (int l = 0; l < BOOST_LINES; ++l)
+        {
+            const float mach = 0.4f + 0.15f * (float)l;
+            const float w = mach * a0 / fmaxf(c.rTip, 1.0e-4f);
+            c.speed(w, 101325.0f, 293.15f);
+            lineSpeed[l] = w;
+            for (int i = 0; i < BOOST_LINEPTS; ++i)
+            {
+                const float phi = c.phiK + (1.0f - c.phiK) * (float)i / (float)(BOOST_LINEPTS - 1);
+                const float tau = c.rise(phi);
+                const float cc = 1.0f + tau;
+                lineFlow[l][i] = phi * c.mc;
+                linePr[l][i] = cc * cc * cc * sqrtf(cc);
+            }
+            surgeFlow[l] = lineFlow[l][0];
+            surgePr[l] = linePr[l][0];
+            for (int v = 0; v < BOOST_LEVELS; ++v)
+            {
+                const float levels[BOOST_LEVELS] = {0.02f, 0.05f, 0.08f, 0.12f, 0.18f};
+                const float level = c.etaMax - levels[v];
+                contourEta[v] = level;
+                const float room = c.etaM - level;
+                float fl = -1.0f;
+                float fr = -1.0f;
+                float pl = 1.0f;
+                float pr = 1.0f;
+                if (room > 0.0f)
+                {
+                    const float dphi = sqrtf(room / 0.9f);
+                    const float phl = c.phiB - dphi;
+                    const float phr = c.phiB + dphi;
+                    if (phl > 0.0f)
+                    {
+                        const float cl = 1.0f + c.rise(phl);
+                        fl = phl * c.mc;
+                        pl = cl * cl * cl * sqrtf(cl);
+                    }
+                    if (phr < 1.0f)
+                    {
+                        const float cr = 1.0f + c.rise(phr);
+                        fr = phr * c.mc;
+                        pr = cr * cr * cr * sqrtf(cr);
+                    }
+                }
+                contourFlow[v][l] = fl;
+                contourPr[v][l] = pl;
+                contourFlow[v][BOOST_CONTOUR - 1 - l] = fr;
+                contourPr[v][BOOST_CONTOUR - 1 - l] = pr;
+            }
+        }
+    }
+};
