@@ -98,17 +98,23 @@ runs; test `engine: levels at idle`:
 
 | Voice | dB(A) | 250 Hz | 500 | 1 k | 2 k | 4 k | 8 k | Bound (judgement) |
 |---|---|---|---|---|---|---|---|---|
-| Fuel pump | -49.2 | -111 | -102 | -39.9 | -101 | -29.7 | -81 | 40 dB(A) and 25 dB in every octave under: an in-tank pump is made to go unheard in a quiet cabin |
+| Fuel pump | -59.9 | -121 | -110 | -49.1 | -99 | -37.4 | -79 | 50 dB(A) and 35 dB in every octave under: an in-tank pump under a running engine is at most barely heard outside the car |
 | Electric fan | -23.3 | -21.8 | -12.9 | -15.6 | -14.9 | -17.4 | -25.4 | 15 to 35 dB(A) under, 12 under at 4 and 8 kHz: a fan is heard in front of an idling car, its broadband falling above its peak |
 | Direct injectors | -34.3 | -90 | -61 | -53 | -40.1 | -14.2 | -11.0 | 25 to 45 dB(A) under, within 25 dB at 4 kHz: the tick heard beside a DI engine |
 | Accessory belt | -60.3 | -101 | -78 | -70 | -46.4 | -50.7 | -46.9 | 45 dB(A) under |
 
-What changed for it: the pump 20 dB down (before: -30 dB(A), -8.2 in the 4 kHz octave); the fan's broadband now falls
+What changed for it: the pump 30 dB down (before: -30 dB(A), -8.2 in the 4 kHz octave; 20 dB for the report, 10 more by
+the lead's ruling of 22:19, not scaled by the engine's size); the fan's broadband now falls
 18 dB an octave above twice its band (before: -3.4 in the 8 kHz octave). The fan's 280 Hz line is as it was.
 
 The same voices through Places, camera Side (first.json's own listener), measured the same way: the pump -11.7 dB(A)
 before the 20 dB, the fan +3.9, the belt -40.4, that is 23 to 35 dB higher against the exhaust than at the source,
 with the silent mix itself 15 dB(A) lower than through the reference's. That part is the path's (card L's).
+
+The prime at key-on (first.json, warm, the key on and no start, 0.3 to 1.9 s, rms): through the reference's listener
+-105.6 dBFS against -106.3 without the pump (the listener's own floor), some 80 dB under the idle's mix (-25.8):
+heard only with the volume far up. Through Places Side -68.4 dBFS against -81.5 without it, 42 dB under the idle's
+mix (-26.1): the one sound at key-on there. At idle the pump is -80.6 dBFS through Places Side, 54 dB under the mix.
 
 What a person should compare by ear (the owner's ears are the only measurement these levels will have), each through
 the reference's listener (`sound.model` Reference), at a warm idle, with `voices.level` 0, one voice's slider moved:
