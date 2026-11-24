@@ -62,7 +62,8 @@ namespace tee::ui
             int width = 0, height = 0;           // the size it opens at; 0: the interface's natural size
             int minWidth = 320, minHeight = 200; // the least a window may make it (it scrolls when smaller than natural)
             std::string name = "panel";          // the name its shaders were built under (cmake/TeeShaders.cmake's)
-            // The output's last n samples, oldest first, for a scope or a spectrum of `out`; none: silence.
+            // The output's last n samples, oldest first, for a scope or a spectrum of `out`; none: the source's own
+            // (TelemetrySource::outputTail).
             std::function<void(float* out, int n)> scope;
 
             // ---- J2 (card J, items 8 and 9) ----

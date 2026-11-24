@@ -147,6 +147,7 @@ namespace tee::app
             {
                 if (!whole(o.buffer, 16, 8192))
                     return false;
+                o.bufferGiven = true;
             }
             else if (arg == "--theme")
             {
@@ -185,7 +186,7 @@ namespace tee::app
              "  --wav FILE.wav         write what was rendered (with --seconds, or --frames in tee-headless)\n"
              "  --script FILE          inputs at times: keys, the pointer, parameters, pictures, checks\n"
              "  --rate N, --block N    the rate and block size of a render with no device (48000, 256)\n"
-             "  --buffer N             the buffer asked of the audio device, in frames (256)\n"
+             "  --buffer N             the buffer asked of the audio device, in frames (the settings file's; 256)\n"
              "  --no-audio             open no audio device\n"
              "  --panel plain          the plain Panel (numbers and dials), whatever interface the build has\n"
              "  --theme 0|1, --dpi X   the theme; a headless picture's pixels a logical px\n"
