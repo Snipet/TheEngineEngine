@@ -152,10 +152,18 @@ def targets(slug, b):
         range=[round(ilo * RPM, 1), round(ihi * RPM, 1)], unit="rad/s",
         source="makers' service specifications of the kind: %d to %d rpm warm in neutral (a rule of thumb, firm to "
                "100 rpm); the ECU is asked for %d" % (ilo, ihi, round(s["ecu"]["idle"]["speed"] / RPM)))
-    add(name="Idle steadiness", scenario=SC + "p-idle-warm.json", tel="engine.speed", measure="max", during=[8, 14],
-        range=[round(ilo * RPM, 1), round((ihi + 150) * RPM, 1)], unit="rad/s",
-        source="a warm idle's speed wanders some 20 to 50 rpm (a rule of thumb); a lope of more than 150 rpm over the "
-               "range's top is a fault")
+    # its spread as two targets, its highest and its lowest point about the speed asked, so a hunt cannot pass on its
+    # mean (the lead, 19:50: the 7.0's idle between 497 and 929 rpm passed its mean and its old max of the range's top
+    # plus 150 rpm)
+    asked = s["ecu"]["idle"]["speed"] / RPM
+    add(name="Idle steadiness", scenario=SC + "p-idle-warm.json", tel="engine.speed", measure="max", during=[6, 14],
+        range=[round(asked * RPM, 1), round((asked + 100) * RPM, 1)], unit="rad/s",
+        source="a warm idle's speed wanders some 20 to 50 rpm (a rule of thumb): its highest point from 6 to 14 s more "
+               "than 100 rpm over the %d rpm asked is a hunt" % round(asked))
+    add(name="Idle low point", scenario=SC + "p-idle-warm.json", tel="engine.speed", measure="min", during=[6, 14],
+        range=[round((asked - 100) * RPM, 1), round(asked * RPM, 1)], unit="rad/s",
+        source="a warm idle's speed wanders some 20 to 50 rpm (a rule of thumb): its lowest point from 6 to 14 s more "
+               "than 100 rpm under the %d rpm asked is a hunt (or a stall coming)" % round(asked))
 
     # ---- full load: VE, boost, the port's gas ----------------------------------------------------------------
     fl = full_load_speed(trhi if not boosted else max(boost_at, 1200), red_rpm)

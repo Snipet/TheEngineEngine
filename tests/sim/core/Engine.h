@@ -7,6 +7,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <chrono>
+#include <cstdio>
 #include <cstdlib>
 #include <filesystem>
 #include <memory>
@@ -57,6 +58,8 @@ namespace tee::test::core
             const bool ok = loadBuild(*player_, file, b, errors, warnings);
             INFO(errors);
             REQUIRE(ok);
+            if (std::getenv("TEE_CORE_WARN") != nullptr && !warnings.empty())
+                std::printf("%s: %s\n", build.c_str(), warnings.c_str());
             applyBuild(*player_, b);
         }
 

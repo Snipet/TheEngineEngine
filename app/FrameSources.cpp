@@ -85,6 +85,10 @@ namespace tee::app
     {
         s.simLoad = [&player] { return static_cast<float>(player.load()); };
         s.simLoadPeak = [&player] { return static_cast<float>(player.hostStats().loadPeak); };   // (0 until ready)
+        // the host's verdict on the load (1 fits, 0 tight, -1 over: "fits" while nothing plays yet, its stats all 0) and
+        // the callbacks that came late since load (dropouts)
+        s.loadFits = [&player] { return player.ready() ? static_cast<int>(player.hostStats().fits) : 1; };
+        s.dropouts = [&player] { return static_cast<long>(player.hostStats().lateCallbacks); };
         // START is disabled while the engine's machine code is being made (SimAdapter::ready)
         s.engineReady = [&player] { return player.ready(); };
         s.quality = [&player] { return player.quality(); };

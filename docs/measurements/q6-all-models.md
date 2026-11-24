@@ -203,3 +203,10 @@ drive-car (the retarded time moves the taps while the car accelerates): about 0.
 drive-car): listener 334 and 369 ns (Scene 212 / 228, of which `Scene::hear` 152 / 156; Listen 79 / 84; Hall 37 / 53),
 against 425 (hear 195) at 19:30's table: **+0.10 to +0.12 R over model 0, from +0.15**. The whole build 4021 and 4042
 ns in the profile's units (2.05 to 2.06 R).
+
+**The exhaust's row re-measured by Q after G's b861eca (lossHold skipped where the loss is exactly 0) and c4ce28f**
+(19:49 UTC, two profiles of the typical build, drive-car): exhaust 1692 and 1707 ns (Duct 891 / 911, XNet 430 / 426,
+`xNode` 170 / 176, XBuild 81 / 75 with `passGain` 11, Exhaust 105 / 101) against 1863 at 19:30's table: **+0.48 to
++0.48 R over model 0, from +0.56: over its card's 0.25 R by about 0.23 R now**. The whole build 4111 / 4185 ns in the
+profile's units (2.10 / 2.13 R: the container had just restarted, the spread is wider than the exhaust's saving).
+G's own figure for the same two: 1.749 -> 1.708 of the reference (drive-car, cmp-identical WAVs).

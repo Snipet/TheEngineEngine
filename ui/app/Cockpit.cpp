@@ -36,16 +36,15 @@ namespace tee::ui
         title_ = "Engine speed";
     }
 
-    double RpmBar::scaleTop() const noexcept { return std::ceil((red_ + 1000.0) / 1000.0) * 1000.0; }
+    double RpmBar::scaleTop() const noexcept { return look::rpmScale(red_).top; }
 
     int RpmBar::lightsLit() const noexcept
     {
         if (!std::isfinite(target_))
             return 0;
-        static constexpr double kBefore[5] = { 1500.0, 1100.0, 750.0, 450.0, 200.0 };
         int n = 0;
-        for (double b : kBefore)
-            n += target_ >= red_ - b ? 1 : 0;
+        for (int i = 0; i < 5; ++i)
+            n += target_ >= red_ - look::shiftLightBefore(red_, i) ? 1 : 0;
         return n;
     }
 
@@ -71,7 +70,8 @@ namespace tee::ui
         const funkgui::Rect b = bounds_;
         const float digitsW = 92.0f, lightsH = 14.0f;
         const funkgui::Rect bar{ b.x, b.y + lightsH + 6.0f, std::max(40.0f, b.w - digitsW - 10.0f), 14.0f };
-        const double top = scaleTop();
+        const look::RpmScale sc = look::rpmScale(red_);
+        const double top = sc.top;
         const auto xOf = [&](double rpm) { return bar.x + bar.w * static_cast<float>(std::clamp(rpm / top, 0.0, 1.0)); };
         // The track, the redline zone (red, hatched), the fill.
         c.rrect(bar.x, bar.y, bar.w, bar.h, 3.0f, p.over(p.faint, 0.9f));
@@ -83,21 +83,21 @@ namespace tee::ui
         if (fx > bar.x + 0.5f)
             c.rrect(bar.x, bar.y + 3.0f, fx - bar.x, bar.h - 6.0f, 2.0f, shown_ >= red_ ? p.hotter : p.value);
         c.segment(fx, bar.y - 3.0f, fx, bar.bottom() + 3.0f, look::kNeedle, shown_ >= red_ ? p.hotter : p.selected);
-        // Numerals every 1000 (the thousands), ticks every 500.
-        for (int k = 0; k * 500.0 <= top + 1e-9; ++k)
+        // Numerals every step (thousands, or hundreds under a 4000 rpm redline), ticks every half step.
+        for (int k = 0; k * sc.step * 0.5 <= top + 1e-9; ++k)
         {
-            const double rpm = k * 500.0;
+            const double rpm = k * sc.step * 0.5;
             const float x = xOf(rpm);
             const bool major = k % 2 == 0;
             const funkgui::Col ink = rpm >= red_ ? p.hotter : (major ? p.text : p.dim);
             c.segment(x, bar.bottom() + 1.0f, x, bar.bottom() + (major ? 6.0f : 3.5f), 1.0f, ink);
             if (major)
             {
-                const std::string n = std::to_string(static_cast<int>(rpm / 1000.0));
+                const std::string n = std::to_string(static_cast<int>(std::lround(rpm / sc.divisor)));
                 c.text(n.c_str(), x, bar.bottom() + 7.0f, look::kUnit, ink, funkgui::Align::centre);
             }
         }
-        c.text("X1000 RPM", bar.x, b.y, look::kCaps, p.label);
+        c.text(sc.unit, bar.x, b.y, look::kCaps, p.label);
         // The shift lights, right-aligned over the bar's end: green, green, amber, amber, red.
         const int lit = lightsLit();
         const funkgui::Col inks[5] = { p.ok, p.ok, p.warning, p.warning, p.hotter };

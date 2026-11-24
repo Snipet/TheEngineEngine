@@ -112,6 +112,9 @@
       "idle": {
         "speed": 78.54
       },
+      "launch": {
+        "on": true
+      },
       "knock": {
         "on": true
       },
