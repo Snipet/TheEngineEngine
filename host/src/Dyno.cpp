@@ -37,7 +37,7 @@ namespace tee
     {
         std::uint64_t h = 1469598103934665603ull;
         for (const double v : {chassis ? 1.0 : 0.0, from, to, rate, spacing, settle, measure, pedal, warmup, sampleRate,
-                               static_cast<double>(block), warm ? 1.0 : 0.0, settleExhaust ? 1.0 : 0.0})
+                               static_cast<double>(block), warm ? 1.0 : 0.0, settleExhaust ? 1.0 : 0.0, upward ? 1.0 : 0.0})
             h = mix(h, v);
         for (const double s : steps)
             h = mix(h, s);
@@ -222,7 +222,10 @@ namespace tee
         else
         {
             double time = warmup;
-            for (const double s : plan.steps)
+            std::vector<double> steps = plan.steps;
+            if (plan.upward)
+                std::sort(steps.begin(), steps.end());
+            for (const double s : steps)
             {
                 at(time, "dynoSpeed", s);
                 // twice: once the speed is there, and again later in the hold, the flow then the speed's own
@@ -242,6 +245,7 @@ namespace tee
             double speed = 0.0, torque = 0.0;
             std::vector<double> fields;
             int n = 0;
+            double retardMin = 1e300, retardMax = -1e300;
         };
         std::map<long, Sum> bins;
         std::vector<Sum> stepSums(windows.size());
@@ -249,6 +253,7 @@ namespace tee
         options.keepAudio = false;
         options.telemetry = {"engine.speed"};
         const FieldInfo* flags = fields.find("tel.engine.flags");
+        const FieldInfo* retard = fields.find("tel.ecu.knockRetard");
         bool faulted = false;
         options.cancelled = [cancel, &faulted] {
             return faulted || (cancel != nullptr && cancel->load(std::memory_order_relaxed));
@@ -282,6 +287,12 @@ namespace tee
                 sum->fields.resize(extra.size(), 0.0);
                 for (std::size_t k = 0; k < extra.size(); ++k)
                     sum->fields[k] += frame.get(*extra[k], extraAt[k]);
+                if (retard != nullptr)
+                {
+                    const double r = frame.get(*retard);
+                    sum->retardMin = std::min(sum->retardMin, r);
+                    sum->retardMax = std::max(sum->retardMax, r);
+                }
                 ++sum->n;
             }
             if (progress && time - lastProgress > 0.25)
@@ -305,6 +316,12 @@ namespace tee
             p.power = p.torque * p.speed;
             for (const double f : s.fields)
                 p.fields.push_back(f / s.n);
+            if (retard != nullptr)
+            {
+                p.retardMin = s.retardMin;
+                p.retardMax = s.retardMax;
+                p.knockLimited = s.retardMax >= 0.5;
+            }
             curve.points.push_back(std::move(p));
         };
         if (plan.steps.empty())
