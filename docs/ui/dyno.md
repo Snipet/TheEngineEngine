@@ -28,6 +28,12 @@
   their difference is not the engine's. A run that does not say (a sweep, a prediction) shows nothing. A stepped run's plan has SETTLE (lit: settle the
   walls at each step, card C's default; `DynoRequest::settleExhaust`).
 
+- **Knock-limited points.** Where card C says knock control's retard reached half a degree (`DynoTrace::knock`,
+  `retardMin`, `retardMax`; that point's torque is a mean over the retard's sawtooth): an amber ring on the torque
+  curve and a tick under the plot, "KNOCK-LIMITED" in the legend, and under the curve's line in the cursor's card its
+  words ("knock-limited, retard 5 to 9 deg"). The CSV adds `knock_limited,retard_min_deg,retard_max_deg`. Points are
+  read by speed, so card C's upward stepped runs need nothing else.
+
 ## What is clickable
 
 A row (chooses it: the header's readouts, the NAME field and COPY CSV follow it); a row's box (shows or hides it);
@@ -40,4 +46,4 @@ steppers.
 Nothing is invented: every number is a `DynoTrace`'s. The plan is this workspace's state, not a Spec field, so it is on the stage
 and `sections()` is empty.
 
-Tests: `ui.dyno.stage` (goldens dyno.stage, .large, .paper), `ui.dyno.run`, `ui.dyno.absent`, `ui.dyno.text`, `ui.dyno.walls`; nightly: `ui.dyno.sheet.pictures`, `ui.dyno.framestages.pictures`.
+Tests: `ui.dyno.stage` (goldens dyno.stage, .large, .paper), `ui.dyno.run`, `ui.dyno.absent`, `ui.dyno.text`, `ui.dyno.walls`, `ui.dyno.knock`; nightly: `ui.dyno.sheet.pictures`, `ui.dyno.framestages.pictures`.

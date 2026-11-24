@@ -8,6 +8,11 @@
 // 40 ms, then slows by a tenth as the pressure it pumps against rises over a quarter of a second, and stops when the
 // prime ends (spinning down in some 80 ms) unless the engine turns: it then runs as long as the crank does. Its
 // level is judgement: heard through the floor at the back of the car, about the chain's at idle.
+// The pump is a sound only: it takes nothing from the engine (no electrical load on the crank, no rail pressure in
+// the model). With spec.voices.model 1 Engine renders from the key's turn (so the prime is heard), and rendering a
+// resting engine lets the ECU's idle target glide before the start (on a cold build, 92.9 to 162 rad/s in the second
+// before cranking): that, not the pump, is why the idle after such a start differs (X, 20:02; measured with the
+// pump at -60 dB: the same idle as with it on).
 //
 // The injectors. A port injector's solenoid opens a pintle against 3 bar: a soft click (the reference's, extras.fm).
 // A gasoline direct injector's opens against 100 to 200 bar and its needle strikes its stop, then its seat: a sharp,
