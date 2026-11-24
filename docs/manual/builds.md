@@ -40,7 +40,7 @@ Thirty archetypes in `content/builds/archetypes/`, each a whole build (engine, c
 
 ## Each build
 
-**3.0 L straight six, twin turbo** (`straight-six-twin-turbo-30.json`). A modern 3 L twin-turbo straight six with direct injection: 84 x 89.6 mm (2979 cc), 10.2:1, four valves, both cams phased, two twin-scroll turbos each fed by three cylinders at about 1 bar. Production engines of this kind make 250 to 340 kW and 450 to 600 N m (makers' figures). In a rear-drive sports sedan with a seven-speed dual clutch.
+**3.0 L straight six, twin turbo** (`straight-six-twin-turbo-30.json`). A modern 3 L twin-turbo straight six with direct injection: 84 x 89.6 mm (2979 cc), 10.2:1, four valves, both cams phased, two twin-scroll turbos each fed by three cylinders at about 1 bar (for now one twin-scroll turbo matched to the whole engine: an inline six's collectors all reach the first turbo today, so the second stood dead; the pair returns when the exhaust gives each its own collector). Production engines of this kind make 250 to 340 kW and 450 to 600 N m (makers' figures). In a rear-drive sports sedan with a seven-speed dual clutch.
 
 **Flat-plane 4.5 L V8** (`flat-plane-v8-45.json`). A high-revving flat-plane V8: 94 x 81 mm (4497 cc), 12.5:1, direct injection, four valves, 9000 rpm (the published figures of the 4.5 L 90-degree flat-plane V8 of 2009, F136-type: 419 kW at 9000 rpm, 540 N m at 6000; Wikipedia and the maker's site). Variable-length runners. In a mid-engined coupe.
 
