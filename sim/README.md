@@ -162,6 +162,18 @@ engine's change at the fade's quiet, where `configure` runs; `Listen::block`; th
    spread (reports only).
 7. `ex.tick(qThr, drop, crankHz, dps)`, `boost.sound(crankHz, mdot, bov)`, `ex.tickStarter(crankHz, starterOn)`.
 
+**A two-stroke** (`spec.engine.cycle` 1 on a custom engine: `cycleUse`, card T, docs/models/twostroke.md): after step 2,
+`twoStrokeTick(dDeg)` in place of steps 3 to 7: `two.step(...)` (each cylinder with its crankcase and its own expansion
+chamber: the gases' torque; the throttle is `ecu.throttle` plus 0.12 of `ecu.bypass`, the ECU's `fuelCut` the spark's);
+`scopeTwo()` while scopeOn; `mech.torques(...)`; friction by part on `two.peak`; the dyno; the custom engine's crank
+(`mm.advance` or `car.step`); `ex.tick`, `boost.sound` and `ex.tickStarter` on the two-stroke's flows. Its stingers'
+`two.outL`, `two.outR` (times `TS_LEVEL`) replace `exh.outL`, `exh.outR` in `listen.mix`. Every 16 samples, before the
+driver, `two.control16(...)` (the power valve, the pipes' gas, the flows' losses), and a moved `two.signature(...)` or
+`cycle` asks for the fade. In `configure`, last: `two.configure(...)`, `lay.n`, `lay.cyc` = 360 and `lay.fire` from its
+cylinders, then `mechanicsSetup()` again. The Scope's cycle is 360 degrees: `liftExhaust`, `liftIntake` carry the
+exhaust and transfer ports' open shares, `portIntake` the crankcase's pressure; `pipePressure[0..5]` along the chamber,
+`[6]` the crankcase. At `cycle` 0 it costs one integer test a sample.
+
 **Every 16 samples** (`Engine::control16`): `crank.sense()`; `heat.control(...)` and the walls into the cylinders;
 `ecu.sense(...)`; the size and the layout watched (the fade); the dials glided (`exh.sm*`, `boost.glide`, `vt.smCam` →
 `valves()`, the compression → `cyl[c].setup`, the bore/stroke → `boreStroke`, `valves`); `ecu.driver(...)`; driven,
@@ -421,6 +433,7 @@ integrator's.
 | F, G | `int Boost::housingOf(int bank, int group, int banks)`, `float housing(int h, float drive, float admit, float tGas)`, `float downpipe(int side, float a, float z)`, `float gatePipe(int t, float a, float z)` | as docs/plan/integration-queue.md has them (stubs: -1, 0) | not yet: with exhaust.model or boost.model 1, the sequence `exh.read()`; cylinders; `exh.prepare()`; the housings, downpipes and gates; `exh.step(q)` goes in `sampleTick` step 4, in place of `exh.step(qe, np)`: G and F add it there together and tell the integrator |
 | G | `void Exhaust::popAt(int bank, float amplitude)`, `float gasTemperature(int bank)` | Pa; K (stubs: nothing; `tPort`). Named popAt: `Exhaust::pop` is its Pops | by Combustion (card H) |
 | M | `void Extras::control16(float d16, int ignition, int state, float crankHz, float coolant, int driven, int boxKind, int truck, int gear, float wIn, float ratioTotal, float fd, float wOut, float torque, float peak, float engaged, int asp, float boostShare, float gateOpen, int gateExternal, float flowShare, int cylinders, float cycleDeg, float clatter, float displacement, int diesel)` | s; ctl.ignition; ecu.state; Hz; K; 0 bench; `spec.car.gearbox` (model 0: 0); car.truck; -1 R, 0 N; rad/s at the gearbox's input; crank turns to the wheels' (0 in N); the final drive; rad/s of the propshaft; N m (tqBrake) and the engine's most (peakTorque()); the clutch 0 out to 1 in; aspUse; boost over its most; the gate's opening 0 to 1 (boost.model 1: card F's most open gate, else the reference turbo's at its most boost); `spec.boost.gate` with boost.model 1; exhaust mass flow over its most; lay.n, lay.cyc; vt.clatter; m^3; fuelUse | every 16, last, with spec.voices.model 1 (and 16 samples after it returns to 0, to glide out) |
+| T (done) | `TwoStroke` (`core/twostroke/twostroke.fm`): `setup(float rate)`, `release()`, `configure(EngineSpec*, float bore, float stroke, float rod, float compression, float theta, float pAir, float tAir)`, `control16(EngineSpec*, float omega, float d16, float tWall, float tAir)`, `float step(EngineSpec*, float theta, float dDeg, float dt, float omega, float throttle, int fire, float pAir, float tAir)`, `float signature(EngineSpec*)`, `openExhaust(c)`, `openTransfer(c)`; fields `outL`, `outR`, `mIn`, `mdot`, `peak`, `purity`, `delivery`, `trapping`, `valve`, `tPipe`, `vd`, `n`, `offset[]` | N m from step; m^3/s^2 radiated; kg/s; Pa | with spec.engine.cycle 1: setupAll/releaseAll; configure's end; every 16 before the driver; each sample after the crank (twoStrokeTick); tel.engine.ts* in mechanicsTelemetry |
 | M | `bool Extras::busy()` | the pump's prime, a fan or the starter running down | `audible()`, voices.model 1 (card D, with rendering from the ignition's rise) |
 
 The lead's fields, added by the integrator: `spec.env.pressure` (Pa), `.surface`, `.surfaceLeft` (-1 the same),

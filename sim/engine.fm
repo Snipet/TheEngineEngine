@@ -42,6 +42,7 @@
 #include "core/dyno.fm"
 #include "core/wallheat.fm"
 #include "combustion/heavy.fm"
+#include "core/twostroke/twostroke.fm"
 
 // The reference's dials, in its units, as Engine has taken them from the Spec and the Controls (readSpec,
 // readControls): what the carved modules are handed
@@ -184,6 +185,9 @@ module Engine
     Dyno dyno;          // MODE_DYNO_ENGINE's absorber (core/dyno.fm); every engine
     WallHeat wall;      // Woschni's wall heat, with spec.engine.wallHeat 1 (core/wallheat.fm)
     HeavyDiesel hd;     // card D2: a diesel's governor, compression and exhaust brakes (combustion/heavy.fm); hd.on 0 at the defaults
+    TwoStroke two;      // card T: a two-stroke's cylinders, crankcases and pipes (core/twostroke/), with spec.engine.cycle 1
+    int cycleUse;       // 1: the engine configured as a two-stroke (spec.engine.cycle 1 on a custom engine)
+    float tsSig;        // the two-stroke's fields made under the fade, as configured (TwoStroke::signature)
     int customUse;      // 1: the engine configured from spec.engine's custom fields
     int modelUse[9];    // each package's model switch in use (valve, intake, boost, exhaust, fuel, ecu, car, voices; the wall
     int modelWant[9];   // heat), and the one the host asked for: a change waits for the fade (holdModel)
@@ -256,6 +260,9 @@ module Engine
         exh.setup(rate, &noise, &lay, &heat);
         ex.setup(rate, 90.0f, &spec.voices);
         boost.setup(rate, &ex.noise);
+        two.setup(rate);
+        cycleUse = 0;
+        tsSig = 0.0f;
         quiet = 1.0e9f;
         gainNorm = 1.0f;
         cutG = 1.0f;
@@ -331,6 +338,7 @@ module Engine
             exh.release();
             intk.release();
             listen.release();
+            two.release();
         }
         ready = 0;
     }
@@ -484,6 +492,20 @@ module Engine
         mechanicsSetup();
         // (card F: boost.model 1's machine sized to this engine, at rest; nothing in model 0)
         boost.applyMachine(&spec.boost, vTotal, ecu.redRpm, 101325.0f, heat.tAmb);
+        // (card T: a two-stroke, on a custom engine's geometry and mechanics: its cylinders and pipes at rest where the
+        // crank stands; the four-stroke's cylinders, valves and pipes above stay configured, unused)
+        cycleUse = spec.engine.cycle != 0 && customUse != 0 && lay.rotary == 0 ? 1 : 0;
+        tsSig = two.signature(&spec.engine);
+        if (cycleUse != 0)
+        {
+            two.configure(&spec.engine, bore, strokeUse, 0.5f * rodRatio * strokeUse, smCR, crank.theta, 101325.0f, heat.tAmb);
+            // (a 360-degree engine for the mechanics, the Scope and the telemetry: its cylinders as TwoStroke fires them)
+            lay.n = two.n;
+            lay.cyc = 360.0f;
+            for (int c = 0; c < two.n; ++c)
+                lay.fire[c] = c == 0 ? 0.0f : 360.0f - two.offset[c];
+            mechanicsSetup();
+        }
     }
 
     // ---- card D: the mechanics (docs/models/mechanics.md) ----
@@ -764,6 +786,12 @@ module Engine
             boreStroke();
             valves();
         }
+        // (card T: the two-stroke's power valve, pipes' gas and flows' losses; its fields made under the fade, as the
+        // layout is)
+        if (cycleUse != 0)
+            two.control16(&spec.engine, crank.omega, d16, heat.tSurf, heat.tAmb);
+        if ((spec.engine.cycle != 0 && customUse != 0 ? 1 : 0) != cycleUse || (cycleUse != 0 && two.signature(&spec.engine) != tsSig))
+            cutWant |= 1;
         float ped = ecu.driver(d16, set.drive, set.bend, set.bendRange, set.keys, lay.rotary, lay.n);
         if (set.drive != 0)
             ped = car.drive16(set.drive, d16, mech.jBase * expf(1.6094379f * (set.inertia - 0.5f)), peakTorque(), gearTq, set.mass,
@@ -940,6 +968,81 @@ module Engine
 
     // ---- one sample ----
 
+    // ---- card T: a two-stroke's sample (spec.engine.cycle 1), in place of the cylinders, valves, intake and exhaust ----
+
+    void twoStrokeTick(float dDeg)
+    {
+        // the carburettors' slides: the throttle, with the idle valve as a slide carburettor's idle stop (at most 12 % of
+        // the bore, judgement; the reference's plenum gives its idle valve 4.5 %, too little for a two-stroke to idle)
+        const float thr = fminf(ecu.throttle + 0.12f * ecu.bypass, 1.0f);
+        const float torque = two.step(&spec.engine, crank.theta, dDeg, dt, crank.omega, thr, ecu.fuelCut ? 0 : 1, 101325.0f, heat.tAmb);
+        if (ctl.scopeOn != 0)
+            scopeTwo();
+        intk.qThr = two.mIn / 1.18f;
+        mech.torques(crank.rpm, crank.omega, strokeK, heat.viscK, fuelUse, smCR, vTotal, set.load, ecu.redRpm, heat.tAmb, ecu.starterOn,
+                     two.vd);
+        const float tf = fric.torque(&spec.engine, crank.omega, fmaxf(two.peak, 3.0e6f), oilK);
+        heat.fricJ += tf * crank.omega * dt;
+        tqAbs = dynoOn != 0 ? dyno.step(crank.omega, ctl.dynoSpeed, ctl.dynoRate, dt) : 0.0f;
+        const float th = (crank.theta + geo.tdc[0]) * 0.01745329252f;
+        const float sn = sinf(th);
+        const float cs = cosf(th);
+        if (set.drive == 0)
+            crank.omega = mm.advance(crank.omega, torque - tf - (dynoOn != 0 ? tqAbs : mech.tl) + mech.ts, dt, sn, cs);
+        else
+            crank.omega = car.step(crank.omega, torque + mm.torque(sn, cs, crank.omega) - tf + mech.ts, dt);
+        crank.ripple(torque);
+        tqBrake += (torque - tf - tqBrake) * 1.0e-4f;
+        omMin = fminf(omMin, crank.omega);
+        omMax = fmaxf(omMax, crank.omega);
+        ex.tick(intk.qThr, 0.0f, crank.omega * 0.15915494f, 0.0f, 0, 0.0f);
+        boost.sound(crank.omega * 0.15915494f, two.mdot, set.bov);
+        ex.tickStarter(crank.omega * 0.15915494f, ecu.starterOn);
+    }
+
+    // The Scope for a two-stroke: cylinder 1's cycle of 360 degrees; the exhaust and transfer ports' open shares in
+    // place of the valves' lifts; the port's pressure; along the pipe, its sections' pressures (header, the diffuser's
+    // middle, the belly, the baffle's middle, the stinger) and the crankcase's
+    void scopeTwo()
+    {
+        const float a = two.angleOf(0, crank.theta);
+        if (a < scAng)
+        {
+            for (int d = 0; d < 360; ++d)
+            {
+                scope.pressure[d] = scP[d];
+                scope.volume[d] = scV[d];
+                scope.liftExhaust[d] = scE[d];
+                scope.liftIntake[d] = scI[d];
+                scope.portIntake[d] = scPi[d];
+                scope.portExhaust[d] = scPe[d];
+            }
+            scope.degrees = 360;
+            scope.cycles += 1;
+            ExpansionChamber* pc = &two.ch[0];
+            const int last = pc->n - 1;
+            scope.pipePoints = 7;
+            for (int k = 0; k < 6; ++k)
+            {
+                const int i = (k * last) / 5;
+                scope.pipePressure[k] = 101325.0f + pc->seg[i].near + pc->seg[i].far;
+            }
+            scope.pipePressure[6] = two.cy[0].pc;
+        }
+        scAng = a;
+        const int d = (int)a;
+        if (d != scDeg && d >= 0 && d < 360)
+        {
+            scDeg = d;
+            scP[d] = two.cy[0].p;
+            scV[d] = two.cy[0].v;
+            scE[d] = two.openExhaust(0);
+            scI[d] = two.openTransfer(0);
+            scPi[d] = two.cy[0].pc;                              // (the crankcase: what feeds the transfers)
+            scPe[d] = 101325.0f + two.pPort[0];
+        }
+    }
+
     void sampleTick()
     {
         const int np = lay.ports;
@@ -947,6 +1050,11 @@ module Engine
         intk.read(np);
         // the crank
         const float dDeg = crank.advance(dt);
+        if (cycleUse != 0)
+        {
+            twoStrokeTick(dDeg);
+            return;
+        }
         // the cylinders
         float qe[MAX_PORTS];
         float qi[MAX_PORTS];
@@ -1180,7 +1288,7 @@ module Engine
                 const float rd = set.drive != 0 ? car.road(v == 4 ? 0.45f : 1.0f) : 0.0f;
                 // (the fade's gain eased: a smooth step)
                 cutG = cutWant != 0 ? fmaxf(cutG - cutDn, 0.0f) : fminf(cutG + cutUp, 1.0f);
-                listen.mix(i, exh.outL, exh.outR, ex.intake, crank.tqNow, ex.mech, ex.block, boost.turbo, ex.starter, ex.comb, exh.shell[0],
+                listen.mix(i, cycleUse != 0 ? two.outL * TS_LEVEL : exh.outL, cycleUse != 0 ? two.outR * TS_LEVEL : exh.outR, ex.intake, crank.tqNow, ex.mech, ex.block, boost.turbo, ex.starter, ex.comb, exh.shell[0],
                            lay.topo == 0 ? exh.shell[0] : exh.shell[1], set.drive, rd, cutG,
                            spec.voices.model != 0 ? ex.vo.gearbox : 0.0f, spec.voices.model != 0 ? ex.vo.axle : 0.0f,
                            spec.voices.model != 0 ? ex.vo.front : 0.0f, spec.voices.model != 0 ? ex.vo.head : 0.0f,
@@ -1570,6 +1678,16 @@ module Engine
         e->cylinders = lay.n;
         e->layoutRefused = layoutRefused;
         e->oilTemperature = heat.tOil;
+        // (card T: a two-stroke's)
+        e->tsPurity = cycleUse != 0 ? two.purity : 0.0f;
+        e->tsDelivery = cycleUse != 0 ? two.delivery : 0.0f;
+        e->tsTrapping = cycleUse != 0 ? two.trapping : 0.0f;
+        e->tsPowerValve = cycleUse != 0 ? two.valve : 0.0f;
+        e->tsPipeTemperature = cycleUse != 0 ? two.tPipe : 0.0f;
+        e->tsCrankcase = cycleUse != 0 ? two.cy[0].pc : 0.0f;
+        e->tsReed = cycleUse != 0 ? two.cy[0].reed : 0.0f;
+        if (cycleUse != 0)
+            e->peakPressure = two.peak;
         for (int c = 0; c < MAX_CYL; ++c)
         {
             // (the angle after cylinder 1's at which each fires: the cycle less where it stands at cylinder 1's firing)
