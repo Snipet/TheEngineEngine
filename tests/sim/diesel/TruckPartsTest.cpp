@@ -197,3 +197,28 @@ TEST_CASE("truck air: the governor cuts out at 8.3 bar with the dryer's purge; t
     std::printf("air: the spring brakes released: rms %.3f over 0.5 s\n", release);
     CHECK(release > 0.01);
 }
+
+#include "Diesel.h"
+
+TEST_CASE("truck air in the engine: the tanks charge while it runs and the spring brakes' release is heard", "[diesel][truckparts][sound]")
+{
+    // spec.car.truckAir with card L's listener (sound.model 1): the parts at their places
+    d2::Engine e("truck-15l-six");
+    e.spec("car.truckAir", 1);
+    e.spec("sound.model", 1);
+    e.ctl().handbrake = 1.0f;
+    e.start();
+    const double p0 = e.get("air.p");
+    REQUIRE(e.run(2.0));
+    CHECK(e.get("air.p") > p0);
+    e.recording = true;
+    REQUIRE(e.run(0.5));
+    const double before = d2::rmsDb(e.rec);
+    e.rec.clear();
+    e.ctl().handbrake = 0.0f;
+    REQUIRE(e.run(0.5));
+    const double after = d2::rmsDb(e.rec);
+    std::printf("truck air in the engine: tanks %.2f -> %.2f bar; idling %.1f dB, the spring brakes released %.1f dB\n", p0 / 1e5,
+                e.get("air.p") / 1e5, before, after);
+    CHECK(after > before + 1.0);
+}
