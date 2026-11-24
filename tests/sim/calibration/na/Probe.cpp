@@ -15,6 +15,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -137,6 +138,7 @@ TEST_CASE("probe: a cylinder's gas exchange at intake closing", "[.probe]")
         double exSum = 0, exN = 0, inSum = 0, inN = 0, torque = 0, tN = 0, man = 0, wall = 0, heat = 0, thr = 0, trap = 0;
         const int cyls = int(pr.tel("engine.cylinders"));
         const double dt = 1.0 / pr.p->sampleRate();
+        std::vector<double> halves, burns;
         pr.play(measure, [&] {
             const double ang = pr.get("cyl[0].ang");
             const double pc = pr.get("cyl[0].p");
@@ -148,6 +150,11 @@ TEST_CASE("probe: a cylinder's gas exchange at intake closing", "[.probe]")
             wall += pr.get("cyl[0].hA") * (tg - pr.get("cyl[0].tw")) * dt;
             if (pr.get("cyl[0].sparkNow") != 0.0)
                 heat += pr.get("cyl[0].qTot");
+            if (pr.get("cyl[0].evoNow") != 0.0)
+            {
+                halves.push_back(pr.tel("ecu.halfBurn"));
+                burns.push_back(pr.get("cyl[0].qTot"));
+            }
             if (pr.get("cyl[0].ivcNow") != 0.0)
             {
                 const double m = pr.get("cyl[0].m");
@@ -188,6 +195,19 @@ TEST_CASE("probe: a cylinder's gas exchange at intake closing", "[.probe]")
                     inSum / std::max(inN, 1.0), man / tN / 1e3, portI / 1e3, portE / 1e3);
         std::printf("        air: through the throttle %.2f g/s, trapped fresh %.2f g/s (%.3f of it)\n", 1e3 * thr / measure,
                     1e3 * trap / measure, trap / std::max(thr, 1e-12));
+        {
+            std::vector<double> h = halves;
+            std::sort(h.begin(), h.end());
+            int over20 = 0, weak = 0;
+            double qMean = 0;
+            for (double q : burns)
+                qMean += q / std::max<std::size_t>(burns.size(), 1);
+            for (std::size_t k = 0; k < halves.size(); ++k)
+                over20 += halves[k] > 20.0, weak += burns[k] < 0.5 * qMean;
+            if (!h.empty())
+                std::printf("        half-burn (tel, at each exhaust opening): min %.1f median %.1f max %.1f; %d of %zu over 20 deg; "
+                            "%d burns under half the mean heat\n", h.front(), h[h.size() / 2], h.back(), over20, h.size(), weak);
+        }
         std::printf("        walls %.3f of the burns' heat (%.0f J of %.0f J), port gas %.0f K\n", wall / std::max(heat, 1e-9), wall, heat,
                     pr.tel("exhaust.portTemperature"));
     }
