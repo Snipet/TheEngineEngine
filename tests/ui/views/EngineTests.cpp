@@ -462,6 +462,11 @@ namespace tee::test::u2
         const tee::ui::FieldDoc& doc_;
     };
 
+    std::unique_ptr<tee::ui::ScopeSource> twoStrokeScope(const tee::ui::FieldDoc& doc)
+    {
+        return std::make_unique<TwoStrokeScope>(doc);
+    }
+
     // The demo as a two-stroke: a 125 cc racing single's fields (two-stroke-mx125.json), or `cylinders` evenly.
     void makeTwoStroke(tee::ui::MemoryDoc& doc, int cylinders = 1)
     {
