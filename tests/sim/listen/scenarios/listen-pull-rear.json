@@ -1,0 +1,124 @@
+{
+  "format": "tee-scenario",
+  "version": 1,
+  "name": "listen-pull-rear",
+  "description": "Package L: the same pull (1st to 4th, full throttle from 4.5 s, lift at 10.5 s) heard from the rear camera, its LEVEL +3.4 dB so the pull's rms matches the tailpipe's (a comparison of character, not of level). Listen for the balance of exhaust, intake and bay, and (trackside) the pass.",
+  "seconds": 13,
+  "events": [
+    {
+      "t": 0,
+      "spec": {
+        "env.temperature": 293.15
+      }
+    },
+    {
+      "t": 0,
+      "spec": {
+        "sound.model": 1
+      }
+    },
+    {
+      "t": 0,
+      "ctl": {
+        "mode": 1
+      }
+    },
+    {
+      "t": 0,
+      "ctl": {
+        "lever": 0
+      }
+    },
+    {
+      "t": 0,
+      "ctl": {
+        "clutch": 0
+      }
+    },
+    {
+      "t": 0,
+      "ctl": {
+        "throttle": 0
+      }
+    },
+    {
+      "t": 0,
+      "ctl": {
+        "brake": 0
+      }
+    },
+    {
+      "t": 0,
+      "ctl": {
+        "ignition": 1
+      }
+    },
+    {
+      "t": 0,
+      "spec": {
+        "sound.camera": 1,
+        "sound.level": 3.4
+      }
+    },
+    {
+      "t": 0.25,
+      "ctl": {
+        "ignition": 2
+      }
+    },
+    {
+      "t": 2,
+      "ctl": {
+        "ignition": 1
+      }
+    },
+    {
+      "t": 3,
+      "press": [
+        "shiftUp"
+      ]
+    },
+    {
+      "t": 3.3,
+      "ctl": {
+        "throttle": 0.5
+      },
+      "ramp": 0.2
+    },
+    {
+      "t": 4.5,
+      "ctl": {
+        "throttle": 1
+      },
+      "ramp": 0.1
+    },
+    {
+      "t": 6.5,
+      "press": [
+        "shiftUp"
+      ]
+    },
+    {
+      "t": 8.5,
+      "press": [
+        "shiftUp"
+      ]
+    },
+    {
+      "t": 10.5,
+      "ctl": {
+        "throttle": 0
+      },
+      "ramp": 0.05
+    }
+  ],
+  "assertions": [
+    {
+      "audio": "finite"
+    },
+    {
+      "audio": "peak",
+      "<=": 1
+    }
+  ]
+}

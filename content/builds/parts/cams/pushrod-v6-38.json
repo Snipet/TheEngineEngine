@@ -1,0 +1,22 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "3.8 L pushrod V6 cams",
+  "notes": "The cams, springs and phasers of the archetype \"3.8 L pushrod V6\" alone (intake 240/196 degrees at the seat/1 mm, 9.4 mm; exhaust 244/200, 9.4 mm): loaded as a part, they replace only the valvetrain's cam fields.",
+  "spec": {
+    "valve": {
+      "model": "Lab",
+      "train": "Pushrod",
+      "inDurSeat": 240,
+      "inDur1mm": 196,
+      "inLift": 0.0094,
+      "inCentre": 112,
+      "exDurSeat": 244,
+      "exDur1mm": 200,
+      "exLift": 0.0094,
+      "exCentre": 114,
+      "springRate": 88100.0,
+      "springPreload": 550.0
+    }
+  }
+}

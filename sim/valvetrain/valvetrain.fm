@@ -32,6 +32,7 @@
 //   telemetry(t)            tel.valve
 #pragma once
 #include "core/cylinder.fm"
+#include "core/mathx.fm"
 #include "spec/valve.fm"
 #include "spec/telemetry.fm"
 #include "valvetrain/lab.fm"
@@ -160,10 +161,7 @@ module Valvetrain
             return;
         for (int k = 0; k < nCyl; ++k)
         {
-            float a = theta + fire[k];
-            while (a >= cycNow)
-                a -= cycNow;
-            ang[k] = a;
+            ang[k] = wrapCycle(theta + fire[k], cycNow);
         }
         lab.control(d16, omega, redline, load, pOil, tOil, &ang[0], inT, exT, liftT);
         clatter = lab.clatter;

@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "Highway tractor 15 L",
-  "notes": "A 15 L straight-six truck diesel: 137 x 169 mm (14.9 L), 17:1, one variable-vane turbo; its compression brake is left off until the ECU can switch it (the X15 kind: 298 to 451 kW, 1966 to 2779 N m at 900 to 1000 rpm, governed at 1900 to 2100, idle 600 to 700; cummins.com, international.com). In a 36 t tractor-trailer, eighteen speeds.",
+  "notes": "A 15 L straight-six truck diesel: 137 x 169 mm (14.9 L), 17:1, one variable-vane turbo whose vanes close as an exhaust brake on the overrun (the compression brake is left off: it cannot be switched yet) (the X15 kind: 298 to 451 kW, 1966 to 2779 N m at 900 to 1000 rpm, governed at 1900 to 2100, idle 600 to 700; cummins.com, international.com); its limiter is the governed no-load speed, 2250 rpm, some 12 % over the rated 2000. In a 36 t tractor-trailer, eighteen speeds.",
   "spec": {
     "engine": {
       "layout": "Inline 6",
@@ -49,7 +49,7 @@
       "bore": 0.137,
       "stroke": 0.169,
       "rodLength": 0.262,
-      "redlineSpeed": 209.44,
+      "redlineSpeed": 235.619,
       "frictionValvetrain": "Finger follower",
       "rough": 0.2,
       "benchLoad": 0.3
@@ -67,10 +67,13 @@
       "exDurSeat": 232,
       "exDur1mm": 200,
       "exLift": 0.013,
-      "exCentre": 112
+      "exCentre": 112,
+      "springRate": 25000.0,
+      "springPreload": 150.0
     },
     "intake": {
-      "model": 1
+      "model": 1,
+      "runnerLength": 0.4
     },
     "boost": {
       "model": "Machine",
@@ -109,11 +112,13 @@
       "starter": true,
       "limiter": {
         "kind": "Fuel cut",
-        "speed": 209.44
+        "speed": 235.619
       },
       "idle": {
-        "speed": 68.068
+        "speed": 73.304
       },
+      "exhaustBrake": "Turbine vanes",
+      "exBrakeSwitch": "On",
       "knock": {
         "on": true
       }

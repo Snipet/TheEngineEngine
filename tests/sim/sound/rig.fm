@@ -43,6 +43,13 @@ module Rig
     float displacement;
     int diesel;
     float starterOn;
+    int bike;
+    float wSprocket;
+    int frontTeeth;
+    int dryClutch;
+    float primaryRatio;
+    float lever;
+    float strike;       // a lash's closing (rad/s) on the next sample, then 0
     // what came out
     float hzNow;        // the crank's speed with its ripple, this sample
     int bounces;        // valve bounces since init
@@ -92,6 +99,10 @@ module Rig
             return vo.drive.belt;
         if (which == 11)
             return vo.drive.blower;
+        if (which == 12)
+            return vo.chain;
+        if (which == 13)
+            return vo.clutch;
         return vo.all + vo.starter;
     }
 
@@ -108,7 +119,7 @@ module Rig
             if (tick16 == 0)
                 vo.control16(&spec, 1.0f, d16, ignition, state, hzNow, coolant, driven, boxKind, truck, gear, wIn, ratioTotal, fd,
                              wOut, torque, peak, engaged, asp, boostShare, gateOpen, gateExternal, flowShare, nc, 720.0f,
-                             clatter, displacement, diesel);
+                             clatter, displacement, diesel, bike, wSprocket, frontTeeth, dryClutch, primaryRatio, lever);
             tick16 += 1;
             if (tick16 == 16)
                 tick16 = 0;
@@ -143,7 +154,8 @@ module Rig
                 bounces += 1;
                 bounceSum += vo.valve.bounce;
             }
-            vo.tick(hzNow);
+            vo.tick(hzNow, strike);
+            strike = 0.0f;
             vo.start.tick(hzNow, starterOn);
             vo.starter = vo.start.out;
             const float y = channel(which);

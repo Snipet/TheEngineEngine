@@ -1,0 +1,22 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Supercharged 6.2 L V8 cams",
+  "notes": "The cams, springs and phasers of the archetype \"Supercharged 6.2 L V8\" alone (intake 270/213 degrees at the seat/1 mm, 12.6 mm; exhaust 270/220, 12.4 mm): loaded as a part, they replace only the valvetrain's cam fields.",
+  "spec": {
+    "valve": {
+      "model": "Lab",
+      "train": "Pushrod",
+      "inDurSeat": 270,
+      "inDur1mm": 213,
+      "inLift": 0.0126,
+      "inCentre": 113,
+      "exDurSeat": 270,
+      "exDur1mm": 220,
+      "exLift": 0.0124,
+      "exCentre": 118,
+      "springRate": 174500.0,
+      "springPreload": 1090.0
+    }
+  }
+}

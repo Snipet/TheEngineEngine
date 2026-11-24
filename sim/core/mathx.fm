@@ -1,0 +1,21 @@
+// mathx.fm: small numeric helpers shared by the simulator's packages (card D keeps it).
+//
+// wrapCycle: an angle into [0, cyc) whatever it is. A `while (a >= cyc) a -= cyc;` loops for ever on an infinite angle
+// and for a very long time on a huge one, on the audio thread (X-007); this subtracts the cycle at most eight times,
+// exactly as that loop does for every angle the engine has in normal running (its crank, 0 to 2160, plus a cylinder's
+// offset, up to a cycle: at most four subtractions), so the null test is unchanged to the bit; past that the
+// remainder in closed form; and an angle that is not finite (or is absurd) comes back as 0.
+#pragma once
+
+float wrapCycle(float a, float cyc)
+{
+    float x = a;
+    for (int k = 0; k < 8 && x >= cyc; ++k)
+        x -= cyc;
+    if (x < cyc && x >= 0.0f)
+        return x;
+    if (!(x < 1.0e9f && x > -1.0e9f))
+        return 0.0f;
+    x = x - cyc * floorf(x / cyc);
+    return x >= 0.0f && x < cyc ? x : 0.0f;
+}

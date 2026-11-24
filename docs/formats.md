@@ -188,7 +188,8 @@ scenarios/` holds the shipped ones. `tee::parseTimeline` also reads K3a's `tee-e
 `tee-render --build <b> --scenario <s>` plays one through `SimHost` (the host the application uses): a WAV of 32-bit
 floats (`--pcm24`: 24-bit integers), a CSV of the telemetry (`--tel a,b`: those fields and what the assertions read;
 none: every number), a row a block; it prints each assertion's line and exits 3 when one fails. `--build defaults`
-takes every field's default whatever the scenario names; `--rate`, `--block` and `--seconds` override the file's.
+takes every field's default whatever the scenario names; `--rate`, `--block` and `--seconds` override the file's;
+`--define NAME[=V]` (repeatable) compiles the program with a define, a compile-time switch such as `TEE_FAST`.
 
 ## A validation: `tee-validation`, version 1
 
@@ -217,10 +218,15 @@ What a build should measure as, each target with its source (card C, section 8).
   temperatures settled, every 15 rad/s over the plan's `from` to `to`), the curve the interface's ribbon shows; with
   `"sweep": true` (or `steps`) on the dyno runner instead (`tee::runDyno`, the program's MODE_DYNO_ENGINE), whose
   curve depends on how long the sweep took (the exhaust's walls warm over minutes).
-- `tee-validate` runs each file twice: the build with every model switch at the reference's setting (Spec switches
-  named `model` or `custom`, and those whose help starts "Off: the reference": `tee::referenceSettings`) and the build
-  as it is; it prints both columns and which targets each misses. A miss of the reference's is reported, not failed;
-  the exit status is 1 only when the simulator misses a target the reference meets, or a fast target fails.
+- `tee-validate` runs each file in three columns: every model off (the reference: Spec switches named `model` or
+  `custom`, and those whose help starts "Off: the reference": `tee::referenceSettings`), the build as it is, and every
+  new model on (each `model` at its range's top: `tee::modelsOnSettings`); a column whose build is one already run is
+  merged into it (its title says `=`). It prints each column and which targets each misses. A miss is reported, not
+  failed; the exit status is 1 only when a fast target fails, or a column misses a target the reference meets.
+- Each target belongs to the build it is true of: `default.json` and the content package's archetypes
+  (`builds/archetypes/...`, given as a path) carry a stock engine's figures; the owner's presets (`v8`, `v10`,
+  `large-diesel`: converted faithfully, a race cam, 233 K air, an open muffler) carry the contract's targets and what
+  the preset is meant to do.
 
 ## A dyno curve: CSV
 

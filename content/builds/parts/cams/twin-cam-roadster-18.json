@@ -1,0 +1,22 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "1.8 L twin-cam roadster cams",
+  "notes": "The cams, springs and phasers of the archetype \"1.8 L twin-cam roadster\" alone (intake 244/212 degrees at the seat/1 mm, 9.0 mm; exhaust 240/208, 8.5 mm): loaded as a part, they replace only the valvetrain's cam fields.",
+  "spec": {
+    "valve": {
+      "model": "Lab",
+      "train": "Bucket",
+      "inDurSeat": 244,
+      "inDur1mm": 212,
+      "inLift": 0.009,
+      "inCentre": 110,
+      "exDurSeat": 240,
+      "exDur1mm": 208,
+      "exLift": 0.0085,
+      "exCentre": 112,
+      "springRate": 25900.0,
+      "springPreload": 162.0
+    }
+  }
+}

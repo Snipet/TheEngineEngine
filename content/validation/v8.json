@@ -2,26 +2,64 @@
   "format": "tee-validation",
   "version": 1,
   "build": "v8",
-  "description": "The reference's V8 preset: a 6.2 L crossplane V8, naturally aspirated, gasoline. Its targets are those of a passenger-car V8 of that size; the fast ones (ctest's) are the contract's and the limiter's.",
+  "description": "The owner's V8 preset: a 6.2 L crossplane V8. The owner's own preset, converted faithfully (a race cam at 0.9999, the air at 233 K, the muffler open: on purpose): stock-engine figures are no target of it. Its targets are the contract's and what the preset is meant to do; it has no published figure.",
   "targets": [
-    { "name": "Starts and runs", "scenario": "idle", "tel": "engine.state", "measure": "last", "range": [2, 2],
-      "fast": true, "source": "a warm engine started on its key runs (engine.state 2)" },
-    { "name": "Within full scale", "scenario": "rev-limit", "audio": "peak", "range": [0, 1], "fast": true,
-      "source": "02-contracts.md, section 1: what process writes is within +-1" },
-    { "name": "Holds the limiter", "scenario": "rev-limit", "tel": "engine.speed", "measure": "max", "during": [6, 10],
-      "relativeTo": "engine.redline", "range": [0.97, 1.03], "unit": "of the redline", "fast": true,
-      "source": "a fuel-cut rev limiter holds the speed within a few percent of where it cuts (some 100 to 200 rpm at 6500)" },
-    { "name": "Warm idle", "scenario": "idle-warm", "tel": "engine.speed", "measure": "mean", "during": [8, 12],
-      "range": [62.8, 94.2], "unit": "rad/s",
-      "source": "a warm passenger-car V8 idles at 600 to 900 rpm in neutral (a rule of thumb from makers' service specifications)" },
-    { "name": "Peak torque", "dyno": { "from": 150, "to": 680, "rate": 60 }, "measure": "maxTorque",
-      "range": [490, 690], "unit": "N m",
-      "source": "a naturally aspirated spark-ignition engine's brake mean effective pressure at its torque peak is 1.0 to 1.4 MPa (Heywood, Internal Combustion Engine Fundamentals, ch. 2); T = bmep Vd / 4 pi for 6.2 L" },
-    { "name": "Peak power", "dyno": { "from": 150, "to": 680, "rate": 60 }, "measure": "maxPower",
-      "range": [248000, 465000], "unit": "W",
-      "source": "a naturally aspirated road engine makes 40 to 75 kW a litre (a rule of thumb), 248 to 465 kW for 6.2 L" },
-    { "name": "Port gas at full load", "scenario": "full-load", "tel": "exhaust.portTemperature", "measure": "mean",
-      "during": [6, 8], "range": [900, 1100], "unit": "K",
-      "source": "a spark-ignition engine's exhaust gas at the port at full load is some 900 to 1100 K (Heywood, ch. 14; makers' exhaust-gas-temperature data for petrol engines): the integrator measured 1100 to 1330 K, a miss on the hot side, reported" }
+    {
+      "name": "Starts and runs",
+      "scenario": "idle",
+      "tel": "engine.state",
+      "measure": "last",
+      "range": [
+        2,
+        2
+      ],
+      "fast": true,
+      "source": "a warm engine started on its key runs (engine.state 2)"
+    },
+    {
+      "name": "Within full scale",
+      "scenario": "rev-limit",
+      "audio": "peak",
+      "range": [
+        0,
+        1
+      ],
+      "fast": true,
+      "source": "02-contracts.md, section 1: what process writes is within +-1"
+    },
+    {
+      "name": "Holds the limiter",
+      "scenario": "rev-limit",
+      "tel": "engine.speed",
+      "measure": "max",
+      "during": [
+        6,
+        10
+      ],
+      "relativeTo": "engine.redline",
+      "range": [
+        0.97,
+        1.03
+      ],
+      "unit": "of the redline",
+      "fast": true,
+      "source": "a fuel-cut rev limiter holds the speed within a few percent of where it cuts"
+    },
+    {
+      "name": "Lumpy idle",
+      "scenario": "idle-warm",
+      "tel": "engine.speed",
+      "measure": "mean",
+      "during": [
+        8,
+        12
+      ],
+      "range": [
+        99.5,
+        120.4
+      ],
+      "unit": "rad/s",
+      "source": "the preset's race cam idles lumpy near 1050 rpm in the plugin it was made in (the owner, through the lead): 950 to 1150 rpm"
+    }
   ]
 }

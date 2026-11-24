@@ -1,0 +1,24 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Flat-plane 4.5 L V8 cams",
+  "notes": "The cams, springs and phasers of the archetype \"Flat-plane 4.5 L V8\" alone (intake 276/248 degrees at the seat/1 mm, 12.0 mm; exhaust 268/240, 11.0 mm): loaded as a part, they replace only the valvetrain's cam fields.",
+  "spec": {
+    "valve": {
+      "model": "Lab",
+      "train": "Finger",
+      "inDurSeat": 276,
+      "inDur1mm": 248,
+      "inLift": 0.012,
+      "inCentre": 106,
+      "exDurSeat": 268,
+      "exDur1mm": 240,
+      "exLift": 0.011,
+      "exCentre": 110,
+      "inPhaseRange": 50,
+      "exPhaseRange": 40,
+      "springRate": 38900.0,
+      "springPreload": 243.0
+    }
+  }
+}

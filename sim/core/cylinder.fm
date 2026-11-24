@@ -172,6 +172,9 @@ module Cylinder
         int i = (int)x;
         if (i > 127)
             i = 127;
+        // (a NaN angle turns into the least int: never a read outside the table)
+        if (i < 0)
+            i = 0;
         const float f = x - (float)i;
         return kCamArea[i] + (kCamArea[i + 1] - kCamArea[i]) * f;
     }

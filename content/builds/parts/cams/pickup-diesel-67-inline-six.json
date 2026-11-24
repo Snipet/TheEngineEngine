@@ -1,0 +1,22 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "6.7 L straight-six turbo diesel pickup cams",
+  "notes": "The cams, springs and phasers of the archetype \"6.7 L straight-six turbo diesel pickup\" alone (intake 228/196 degrees at the seat/1 mm, 11.0 mm; exhaust 228/196, 10.5 mm): loaded as a part, they replace only the valvetrain's cam fields.",
+  "spec": {
+    "valve": {
+      "model": "Lab",
+      "train": "Pushrod",
+      "inDurSeat": 228,
+      "inDur1mm": 196,
+      "inLift": 0.011,
+      "inCentre": 112,
+      "exDurSeat": 228,
+      "exDur1mm": 196,
+      "exLift": 0.0105,
+      "exCentre": 112,
+      "springRate": 25000.0,
+      "springPreload": 150.0
+    }
+  }
+}

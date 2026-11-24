@@ -1,0 +1,296 @@
+{
+  "format": "tee-validation",
+  "version": 1,
+  "build": "builds/archetypes/flat-plane-v8-39-twin-turbo.json",
+  "description": "Card P's targets for \"Flat-plane 3.9 L V8, twin turbo\": the invariants are hard; the rest are reported, never failed: their misses are the simulator's to-do list. Predicted strongest lines (not measured: the validation format has no line measure yet): the firing frequency, rpm/60 x 8/2, 60.0 Hz at the 900 rpm idle and 533 Hz at the 7999 rpm limiter; each bank fires evenly (four cylinders each), so the firing line dominates and second order shakes.",
+  "targets": [
+    {
+      "name": "Invariant: starts warm and runs",
+      "scenario": "validation/scenarios/p-idle-warm.json",
+      "tel": "engine.state",
+      "measure": "min",
+      "during": [
+        6,
+        14
+      ],
+      "range": [
+        2,
+        2
+      ],
+      "source": "a warm engine started on its key runs and keeps running (engine.state 2)"
+    },
+    {
+      "name": "Invariant: within full scale",
+      "scenario": "validation/scenarios/p-free-rev.json",
+      "audio": "peak",
+      "range": [
+        0,
+        1
+      ],
+      "source": "02-contracts.md, section 1: what process writes is within +-1"
+    },
+    {
+      "name": "Invariant: holds its limiter",
+      "scenario": "validation/scenarios/p-free-rev.json",
+      "tel": "engine.speed",
+      "measure": "max",
+      "during": [
+        6,
+        9
+      ],
+      "relativeTo": "engine.redline",
+      "range": [
+        0.97,
+        1.03
+      ],
+      "unit": "of the redline",
+      "source": "a rev limiter holds the speed within a few percent of where it cuts (some 100 to 200 rpm at 6500)"
+    },
+    {
+      "name": "Invariant: pulls away",
+      "scenario": "validation/scenarios/p-pull-paddles.json",
+      "tel": "car.speed",
+      "measure": "max",
+      "during": [
+        3,
+        13
+      ],
+      "range": [
+        8,
+        120
+      ],
+      "unit": "m/s",
+      "source": "started, in gear and on the pedal, the car moves (a 36 t tractor at least 3 m/s in ten seconds)"
+    },
+    {
+      "name": "Invariant: stops at the key",
+      "scenario": "validation/scenarios/p-pull-paddles.json",
+      "tel": "engine.state",
+      "measure": "last",
+      "range": [
+        0,
+        0
+      ],
+      "source": "the key off stops the engine (engine.state 0 by the run's end)"
+    },
+    {
+      "name": "Starts cold",
+      "scenario": "validation/scenarios/p-cold-start.json",
+      "tel": "engine.state",
+      "measure": "min",
+      "during": [
+        6,
+        11.5
+      ],
+      "range": [
+        2,
+        2
+      ],
+      "source": "a sound engine starts from the air's temperature within some four seconds of cranking and keeps running (a rule of thumb; makers' cold-start specifications are 2 to 5 s)"
+    },
+    {
+      "name": "Peak power",
+      "dyno": {
+        "from": 83.8,
+        "to": 837.8
+      },
+      "measure": "maxPower",
+      "range": [
+        450000,
+        535000
+      ],
+      "unit": "W",
+      "source": "published figures of its kind (makers' figures, firm): 3902 cc; 115 to 137 kW a litre"
+    },
+    {
+      "name": "Speed at peak power",
+      "dyno": {
+        "from": 83.8,
+        "to": 837.8
+      },
+      "measure": "speedAtMaxPower",
+      "range": [
+        785.4,
+        837.8
+      ],
+      "unit": "rad/s",
+      "source": "published figures of its kind (makers' figures, firm): 3902 cc: 7500 to 8000 rpm"
+    },
+    {
+      "name": "Peak torque",
+      "dyno": {
+        "from": 83.8,
+        "to": 837.8
+      },
+      "measure": "maxTorque",
+      "range": [
+        760,
+        805
+      ],
+      "unit": "N m",
+      "source": "published figures of its kind (makers' figures, firm): 3902 cc; BMEP 24.5 to 25.9 bar (a naturally aspirated petrol engine 10 to 13 bar, turbocharged 18 to 25, a modern truck diesel 20 to 25: Heywood, Internal Combustion Engine Fundamentals, ch. 2)"
+    },
+    {
+      "name": "Speed at peak torque",
+      "dyno": {
+        "from": 83.8,
+        "to": 837.8
+      },
+      "measure": "speedAtMaxTorque",
+      "range": [
+        314.2,
+        602.1
+      ],
+      "unit": "rad/s",
+      "source": "published figures of its kind (makers' figures, firm): 3902 cc: 3000 to 5750 rpm (a turbocharged engine's plateau: its whole span)"
+    },
+    {
+      "name": "Warm idle",
+      "scenario": "validation/scenarios/p-idle-warm.json",
+      "tel": "engine.speed",
+      "measure": "mean",
+      "during": [
+        8,
+        14
+      ],
+      "range": [
+        83.8,
+        104.7
+      ],
+      "unit": "rad/s",
+      "source": "makers' service specifications of the kind: 800 to 1000 rpm warm in neutral (a rule of thumb, firm to 100 rpm); the ECU is asked for 900"
+    },
+    {
+      "name": "Idle steadiness",
+      "scenario": "validation/scenarios/p-idle-warm.json",
+      "tel": "engine.speed",
+      "measure": "max",
+      "during": [
+        8,
+        14
+      ],
+      "range": [
+        83.8,
+        120.4
+      ],
+      "unit": "rad/s",
+      "source": "a warm idle's speed wanders some 20 to 50 rpm (a rule of thumb); a lope of more than 150 rpm over the range's top is a fault"
+    },
+    {
+      "name": "Boost at its target",
+      "scenario": "validation/scenarios/p-full-load-5000.json",
+      "tel": "boost.pressure",
+      "measure": "mean",
+      "during": [
+        8,
+        10
+      ],
+      "range": [
+        115000.0,
+        145000.0
+      ],
+      "unit": "Pa over the air",
+      "source": "the build's own target (1.30 bar); a wastegate or vane loop holds a steady full load within some 0.1 bar of its target once spooled (makers' boost-control tolerances; judgement)"
+    },
+    {
+      "name": "Charge temperature under boost",
+      "scenario": "validation/scenarios/p-full-load-5000.json",
+      "tel": "boost.throttleIn",
+      "measure": "mean",
+      "during": [
+        8,
+        10
+      ],
+      "range": [
+        293,
+        340
+      ],
+      "unit": "K",
+      "source": "an air-to-air intercooler of 0.6 to 0.8 effectiveness leaves the charge some 10 to 50 K over the outside air at full boost (makers' and tuners' intake-air-temperature logs; judgement): reported so the over-delivery at a given boost can be judged (the lead's ask)"
+    },
+    {
+      "name": "Lambda at full load under boost",
+      "scenario": "validation/scenarios/p-full-load-5000.json",
+      "tel": "ecu.lambda",
+      "measure": "mean",
+      "during": [
+        8,
+        10
+      ],
+      "range": [
+        0.76,
+        0.88
+      ],
+      "unit": "ratio",
+      "source": "a boosted petrol engine at full load is enriched to lambda 0.76 to 0.88 to cool the charge and the turbine (factory calibrations; Heywood, Internal Combustion Engine Fundamentals, ch. 7)"
+    },
+    {
+      "name": "Port gas at full load",
+      "scenario": "validation/scenarios/p-full-load-5000.json",
+      "tel": "exhaust.portTemperature",
+      "measure": "mean",
+      "during": [
+        8,
+        10
+      ],
+      "range": [
+        1100,
+        1300
+      ],
+      "unit": "K",
+      "source": "the gas at the exhaust valve at full load, before the port and pipe cool it: some 1100 to 1300 K for a spark-ignition engine (Heywood, Internal Combustion Engine Fundamentals, ch. 14; card C's target on default.json, which this follows)"
+    },
+    {
+      "name": "Header gas at full load",
+      "scenario": "validation/scenarios/p-full-load-5000.json",
+      "tel": "exhaust.headerTemperature",
+      "measure": "mean",
+      "during": [
+        8,
+        10
+      ],
+      "range": [
+        900,
+        1100
+      ],
+      "unit": "K",
+      "source": "a thermocouple a little way down a primary reads 900 to 1100 K at full load on a petrol engine (makers' exhaust-gas-temperature data; Heywood, Internal Combustion Engine Fundamentals, ch. 14); n/a until the exhaust reports it"
+    },
+    {
+      "name": "Quarter mile: time",
+      "scenario": "validation/scenarios/p-quarter-mile.json",
+      "tel": "car.t1320",
+      "measure": "last",
+      "range": [
+        9.57,
+        11.59
+      ],
+      "unit": "s",
+      "source": "Hale's rule, ET = 5.825 (lb/hp)^(1/3) s, with the kind's published power (492 kW) and the build's mass: 10.07 s; 5 % quicker to 15 % slower for street tyres and an automatic's launch (card I's test holds drag radials to 8 %)"
+    },
+    {
+      "name": "Quarter mile: trap speed",
+      "scenario": "validation/scenarios/p-quarter-mile.json",
+      "tel": "car.v1320",
+      "measure": "last",
+      "range": [
+        55.6,
+        64.1
+      ],
+      "unit": "m/s",
+      "source": "Hale's rule, trap = 234 (hp/lb)^(1/3) mph: 60.5 m/s (218 km/h), within 8 % under to 6 % over"
+    },
+    {
+      "name": "Top speed",
+      "scenario": "validation/scenarios/p-top-speed.json",
+      "tel": "car.speed",
+      "measure": "max",
+      "range": [
+        87.7,
+        100.9
+      ],
+      "unit": "m/s",
+      "source": "the redline in top gear with the build's gearing: 340 km/h, within 7 % (geared, not drag-limited); no speed governor is simulated"
+    }
+  ]
+}

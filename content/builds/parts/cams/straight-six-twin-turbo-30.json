@@ -1,0 +1,24 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "3.0 L straight six, twin turbo cams",
+  "notes": "The cams, springs and phasers of the archetype \"3.0 L straight six, twin turbo\" alone (intake 252/220 degrees at the seat/1 mm, 9.7 mm; exhaust 252/220, 9.7 mm): loaded as a part, they replace only the valvetrain's cam fields.",
+  "spec": {
+    "valve": {
+      "model": "Lab",
+      "train": "Finger",
+      "inDurSeat": 252,
+      "inDur1mm": 220,
+      "inLift": 0.009699999999999999,
+      "inCentre": 105,
+      "exDurSeat": 252,
+      "exDur1mm": 220,
+      "exLift": 0.009699999999999999,
+      "exCentre": 105,
+      "inPhaseRange": 70,
+      "exPhaseRange": 55,
+      "springRate": 25000.0,
+      "springPreload": 150.0
+    }
+  }
+}

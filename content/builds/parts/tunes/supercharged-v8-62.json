@@ -11,7 +11,7 @@
       "pops": 0.1,
       "starter": true,
       "limiter": {
-        "kind": "Fuel cut",
+        "kind": "Soft",
         "speed": 649.262
       },
       "idle": {

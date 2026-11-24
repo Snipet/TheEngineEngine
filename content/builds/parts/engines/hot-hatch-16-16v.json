@@ -60,10 +60,13 @@
       "exDurSeat": 248,
       "exDur1mm": 216,
       "exLift": 0.0088,
-      "exCentre": 110
+      "exCentre": 110,
+      "springRate": 25000.0,
+      "springPreload": 152.0
     },
     "intake": {
-      "model": 1
+      "model": 1,
+      "runnerLength": 0.35
     },
     "boost": {
       "model": "Machine",

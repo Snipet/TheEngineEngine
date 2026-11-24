@@ -27,6 +27,10 @@
 #include "charge1.fm"
 #include "diesel.fm"
 
+// Where ecu.model 1's spark formula puts the half of the burn: degrees after the top (best torque has it 6 to 12 in
+// engines: Heywood, ch. 9; 8, judgement)
+const float kHalfBurn = 8.0f;
+
 module Combustion
 {
     float rate;
@@ -40,13 +44,15 @@ module Combustion
     float dilution[MAX_CYL]; // each cylinder's burned-gas share at its last intake closing
     // fuel.model 1 and ecu.model 1 (card H)
     FuelSpec* fuel;
+    EngineSpec* eng;    // its wallHeat: whose walls take the burn's heat
     Charge1 one;
     EndGas gas[MAX_CYL];
     DieselFields diesel;
     int ticks;          // samples, for the end gas's tick every 4
 
-    void setup(float rateIn, Noise* noise, Ecu* ecuIn, Heat* heatIn, Layout* layIn, Pop* pops, FuelSpec* fuelIn)
+    void setup(float rateIn, Noise* noise, Ecu* ecuIn, Heat* heatIn, Layout* layIn, Pop* pops, FuelSpec* fuelIn, EngineSpec* engIn)
     {
+        eng = engIn;
         fuel = fuelIn;
         diesel.defaults();
         rate = rateIn;
@@ -170,7 +176,12 @@ module Combustion
         dilution[ci] = fminf(cy->mInert / fmaxf(cy->m, 1.0e-9f), 0.95f);
         cy->cBurn = 1.0f;
         droop = fminf(fmaxf((ecu->redRpm + 50.0f - rpm) / 250.0f, 0.0f), 1.0f);
-        const float lever = fminf(fmaxf(fmaxf(ecu->throttle, 0.12f + 0.5f * ecu->bypass), 0.45f * expf(-ecu->sinceStart / 1.0f)), 1.0f) * droop;
+        // (ecu.model 1: its idle governor's fuel, 0.5 of full at the most, with no floor under it: the reference's 0.12
+        // floor held a heavy diesel above its idle)
+        const float idleFuel = ecu->model1() ? 0.5f * ecu->bypass : 0.12f + 0.5f * ecu->bypass;
+        float lever = fminf(fmaxf(fmaxf(ecu->throttle, idleFuel), 0.45f * expf(-ecu->sinceStart / 1.0f)), 1.0f) * droop;
+        if (diesel.lever >= 0.0f)
+            lever = diesel.lever;                    // (card D2's governor: heavy.fm)
         const bool f1 = fuel->model == 1;
         if (f1)
         {
@@ -179,7 +190,9 @@ module Combustion
             diesel.rail = fuel->rail;
             diesel.overFuel = fuel->overFuel;
         }
-        const float phi = f1 ? diesel.phiAt(lever) : 0.75f * lever;
+        float phi = f1 ? diesel.phiAt(lever) : 0.75f * lever;
+        if (diesel.metered != 0)
+            phi = diesel.phiMetered(air, lever);     // (card D2: the fuel by the rack, capped by the compensator)
         const float sigma = 0.015f + 0.06f * rough;
         float q = air * phi / 14.5f * 42.5e6f * 0.62f * fmaxf(1.0f + cy->bias + sigma * nz->gauss(), 0.0f) * ecu->trim;
         if (ecu->fuelCut)
@@ -241,24 +254,45 @@ module Combustion
             ecu->watch.cycle();
         const float dil = fminf(cy->mInert / fmaxf(cy->m, 1.0e-9f), 0.95f);
         const float burnable = fmaxf(cy->m - cy->mInert, 0.0f);
-        const float share = 0.60f + 0.20f * fminf(pPlenum / 101325.0f, 1.2f);
+        // (the gas keeps: with Woschni's walls (spec.engine.wallHeat 1) and fuel.model 1 the burn's own efficiency, 0.97,
+        // the mixture's heat having already left out what goes unburned and the walls taking theirs through the cylinder;
+        // with the reference's walls the reference's 0.60 + 0.20 x manifold, its walls' and its unburned share at once:
+        // the energy counted once whichever way the two switches stand)
+        const float share = f1 && eng->wallHeat == 1 ? 0.97f : 0.60f + 0.20f * fminf(pPlenum / 101325.0f, 1.2f);
         const float d50 = (lay->rotary != 0 ? 0.62f : 0.56f) * (1.0f + (0.015f + 0.03f * rough) * nz->gauss());
         const float cb = 1.0f / (1.0f + expf((dil - d50) / 0.035f));
         cy->cBurn = cb;
         dilution[ci] = dil;
         const float sigma = 0.015f + 0.06f * rough;
         const float factor = cb * fmaxf(1.0f + cy->bias + sigma * nz->gauss(), 0.0f) * ecu->trim;
+        // the burn's length without its scatter (degrees; as the reference's below), and the diluted charge's late lighting
+        const float dx = fmaxf(dil - 0.15f, 0.0f);
+        const float burnBase = (44.0f + 11.0f * fmaxf(0.8f - pPlenum / 101325.0f, 0.0f)) * (1.0f + 2.5f * dx) * burnK
+                               * expf(-0.3f * logf(smCR * 0.1f));
         // the ECU's decision and spark (degrees before the top)
         int firing = CHARGE_BURN;
         float adv = 0.0f;
         float lambda = 1.0f;
+        float extra = 1.0f;
         float kRetC = ecu->kRet;
         if (e1)
         {
             ecu->one.maps.tune.burnK = burnK;
             firing = ecu->one.fire(ci);
-            adv = ecu->one.sparkFor;
+            ecu->one.maps.tune.compression = smCR;
             lambda = ecu->one.lambda;
+            // (the spark's formula, when the map is on it, for this charge: the half of its burn at kHalfBurn degrees
+            // after the top: the Wiebe curve's first half (0.517 of its length; its length as below, the mixture's flame
+            // in it under fuel.model 1) and the diluted charge's late lighting before it, ahead of that; the ECU's
+            // timing (an offset over the formula) and its retards over it)
+            adv = ecu->one.sparkFor;
+            if (ecu->spec->maps.sparkAuto)
+            {
+                const float flame = f1 ? 1.0f / sqrtf(one.mix.flameShare(fuel->grade, 1.0f / fmaxf(lambda, 0.3f))
+                                                      * kFuelFlame[fuelRow(fuel->grade)]) : 1.0f;
+                adv += 0.517f * burnBase * flame + 25.0f * fminf(dx, 0.3f) - kHalfBurn - ecu->one.sparkBase;
+            }
+            extra = ecu->one.fuelFactor;
             kRetC = ecu->one.knock.retard[ci < 16 ? ci : 15];
         }
         else
@@ -276,7 +310,7 @@ module Combustion
         if (f1)
         {
             one.make(fuel->grade, firing, burnable, oxygen, lambda, fuel->direct, cy->t, share, factor, -adv,
-                     0.5f + 0.5f * nz->rnd());
+                     0.5f + 0.5f * nz->rnd(), extra);
             q = one.heat;
             outFuel = one.outFuel;
             outAir = one.outAir;
@@ -304,7 +338,6 @@ module Combustion
         cy->qTot = q;
         heat->heatJ += q;
         cy->knock = 0.0f;
-        const float dx = fmaxf(dil - 0.15f, 0.0f);
         cy->sparkAt = lay->cyc - adv + 1.5f * rough * nz->gauss() + 25.0f * fminf(dx, 0.3f);
         if (cy->sparkAt >= lay->cyc)
             cy->sparkAt -= lay->cyc;

@@ -78,10 +78,13 @@
       "exLift": 0.0095,
       "exCentre": 112,
       "inPhaseRange": 42,
-      "exPhaseRange": 42
+      "exPhaseRange": 42,
+      "springRate": 25000.0,
+      "springPreload": 150.0
     },
     "intake": {
-      "model": 1
+      "model": 1,
+      "runnerLength": 0.25
     },
     "boost": {
       "model": "Machine",

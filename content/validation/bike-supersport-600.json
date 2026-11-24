@@ -1,0 +1,79 @@
+{
+  "format": "tee-validation",
+  "version": 1,
+  "build": "bike-supersport-600",
+  "description": "Card B2's 600: a 599 cc four, redline 16,000.",
+  "targets": [
+    {
+      "name": "Starts and runs",
+      "scenario": "idle",
+      "tel": "engine.state",
+      "measure": "last",
+      "range": [
+        2,
+        2
+      ],
+      "fast": true,
+      "source": "a warm engine started on its key runs (engine.state 2)"
+    },
+    {
+      "name": "Within full scale",
+      "scenario": "rev-limit",
+      "audio": "peak",
+      "range": [
+        0,
+        1
+      ],
+      "fast": true,
+      "source": "02-contracts.md, section 1: what process writes is within +-1"
+    },
+    {
+      "name": "Holds the limiter",
+      "scenario": "rev-limit",
+      "tel": "engine.speed",
+      "measure": "max",
+      "during": [
+        6,
+        10
+      ],
+      "relativeTo": "engine.redline",
+      "range": [
+        0.97,
+        1.03
+      ],
+      "unit": "of the redline",
+      "fast": true,
+      "source": "a fuel-cut or ignition-cut rev limiter holds the speed within a few percent of where it cuts"
+    },
+    {
+      "name": "Peak torque",
+      "dyno": {
+        "from": 150,
+        "to": 1676,
+        "rate": 60
+      },
+      "measure": "maxTorque",
+      "range": [
+        60,
+        70
+      ],
+      "unit": "N m",
+      "source": "a 600 supersport four makes 62 to 68 N m at about 11,000 rpm (makers' claims). Reported, not failed: a miss until the engine's breathing and friction at high piston speed are right (card B2's handoff)."
+    },
+    {
+      "name": "Peak power",
+      "dyno": {
+        "from": 150,
+        "to": 1676,
+        "rate": 60
+      },
+      "measure": "maxPower",
+      "range": [
+        82000,
+        95000
+      ],
+      "unit": "W",
+      "source": "a 600 supersport four makes about 88 to 92 kW at 14,500 rpm (makers' claims, e.g. the R6's 87.1 kW). Reported, not failed: as above."
+    }
+  ]
+}

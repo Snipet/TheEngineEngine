@@ -1,0 +1,32 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Two-stage-cam 2.0 L cams",
+  "notes": "The cams, springs and phasers of the archetype \"Two-stage-cam 2.0 L\" alone (intake 236/204 degrees at the seat/1 mm, 8.5 mm; exhaust 232/200, 8.0 mm): loaded as a part, they replace only the valvetrain's cam fields.",
+  "spec": {
+    "valve": {
+      "model": "Lab",
+      "train": "Rocker",
+      "inDurSeat": 236,
+      "inDur1mm": 204,
+      "inLift": 0.0085,
+      "inCentre": 110,
+      "exDurSeat": 232,
+      "exDur1mm": 200,
+      "exLift": 0.008,
+      "exCentre": 112,
+      "springRate": 81750.0,
+      "springPreload": 510.0,
+      "stages": "On",
+      "inDurSeatB": 290,
+      "inDur1mmB": 258,
+      "inLiftB": 0.0118,
+      "exDurSeatB": 284,
+      "exDur1mmB": 252,
+      "exLiftB": 0.0112,
+      "stageSpeed": 628.3185307179587,
+      "inCentreB": 110,
+      "exCentreB": 112
+    }
+  }
+}

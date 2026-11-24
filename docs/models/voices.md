@@ -33,8 +33,11 @@ steps on or off (test `clicks`). A level of -60 dB is off and costs nothing.
 | Valve float | `valvegear.fm` | Card E's `vt.clatter` (0-1): two bounces 0.6 and 1.3 ms after each landing at 0.6 and 0.3 x clatter (card E also makes the landing 1 + 2 clatter harder). | `vt.clatter` | the head's ring (Extras' `vres`) |
 | Wastegate | `gate.fm` | Internal flap: knocked each firing by 4 g(1-g) x exhaust flow share, ringing 2.7/4.1 kHz (EA888's known rattle; judgement). External to the air: jet noise ~ gate flow, 1.2 kHz band + low part, pulsed with firings. | gate opening (reference: open as boost reaches its most), exhaust flow, firing rate | `vo.gateOut` (turbo) |
 | Starter | `starter.fm` | Pinion 10 on ring 130 (13:1); direct drive armature 13x crank, reduction 3.6 more (47x); pinion mesh, commutator 20 segments, planetary sun 12; housing at 420 Hz (1.2 kW / P)^(1/3); level ~ sqrt(P); P by size 1.2 kW sqrt(V / 2 L), 0.8-3 kW, diesel x1.6. Solenoid knock (180 Hz, 1.1 kHz), pinion strike 3 ms later (2.6 kHz); run-down 0.25 s after the key. | ECU's starterOn, crank | `vo.starter`, replaces Extras' `starter` |
+| Chain (motorcycle) | `bike.fm` | Roller chain's chordal action and roller impacts at front sprocket teeth x its turns, gear-mesh level law k min(f/1 kHz, 4)(0.15 + load), straight-cut harmonics, 12 % once a sprocket turn (Binder, *Roller chain drives*) | card B2's `Car::sprocketSpeed()`, `spec.car.frontSprocket`, torque | `vo.chain` (rear sprocket, swingarm) |
+| Lash clunk (motorcycle) | `bike.fm` | The drive's play closing on and off the throttle: its closing speed / 3 rad/s rings 140 Hz (swingarm, frame), 650 Hz (sprocket), 2.1 kHz (links) | card B2's `Car::lashStrike()` each sample | `vo.chain` |
+| Dry clutch rattle (motorcycle) | `bike.fm` | Two plates in the basket's slots (6, 9 mrad of play, drag 15, 25 /s) driven by the basket (crank / primary ratio), as the gearbox's rattle; quiet under load (gone by a third of the most), with the lever pulled, or wet | crank each sample, `spec.car.clutchDry`, `primaryRatio`, lever (1 - clutch) | `vo.clutch` (clutch cover) |
 
-`vo.all` (every voice but the starter) is added to `Extras::mech`, so today's mix hears them until card L places
+`vo.all` (every voice but the starter: gearbox, axle, front, head, tank, gateOut, chain, clutch) is added to `Extras::mech`, so today's mix hears them until card L places
 each output.
 
 ## The intake's voice with card E's induction
@@ -65,6 +68,14 @@ Test `intake:` (the default four at 4000 rpm wide open on the dyno): ITBs over a
   V8 drive-car 1.092 against 1.021 off, free-revs 1.087 against 1.027: about 0.06-0.07 R (budget 0.08). Profile:
   GearVoice 46 ns, DriveVoice 38, FanVoice 28, StarterVoice 16, FuelVoice 14, the rest under 5 a sample.
 
+Bike (`bike:`): chain line at the computed frequency for 14/16/18 teeth at 60/150 rad/s; louder with load; none
+without a bike; the clunk grows with the closing's speed (4.5 rad/s over twice 1.9's peak); the dry clutch rattles at
+idle with the lever out and is silent pulled, under half load, or wet. In the engine (bike-naked-twin): the chain's line
+found at 257.2 Hz against 257.5 from `tel.car.sprocketSpeed`; four lash closings heard on and off the throttle. A
+bike's own gearbox (card B2's `Car::bikeGearboxInput()`, `bikeGearboxRatio()`, `gearNow()`) feeds the gear whine as a
+sequential (straight-cut) box; its chain is its final drive, so the final drive's whine gets no speed: the constant
+mesh at 19 x crank / primary found at 792.0 Hz against 796.8.
+
 ## Judgement
 
 Every level; the constant ratio 1.55 and the 48-tooth sum; the 12 % eccentricity; the rattle's backlash, drag and
@@ -73,7 +84,7 @@ clutch curve and band; the pump's speeds and vane count; the gate's chatter law.
 
 ## Not done
 
-- The key-on prime is heard only once Engine renders before a start (asked of card D: `sounding = 1` on the
-  ignition's rise with model 1, `audible() || ex.busy()`); until then it plays from the start key.
-- Card F's `boost.model` 1 gate (`telGate`, external gate kind) is not wired: `gateExternal` is passed 0 and the
-  opening is the reference turbo's estimate. A spider-gear voice (cornering) waits for steering.
+- A spider-gear voice (the differential's own gears, cornering) waits for steering.
+- Done since the first handoff: the key-on prime (card D renders from the ignition's rise; test `engine: the fuel
+  pump's prime`), card F's gate (`telGate`, `spec.boost.gate`; test `engine: card F's wastegate`), the intake's own
+  sound (`intake:`), the motorcycle's voices and gearbox (`bike:`, `engine: a naked twin's`, `engine: a bike's`).

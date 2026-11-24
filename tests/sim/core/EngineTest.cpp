@@ -2,10 +2,14 @@
 // off is the reference, besides tests/sim/NullTest.cpp), 6 (the engine dyno), 7 (the default V8's mean effective
 // pressures and volumetric efficiency), 8 (a sixteen-cylinder build starts, runs and stops; its cost).
 #include "Engine.h"
+#include "tee/Program.h"
 #include "Presets.h"
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
+#include <utility>
+#include <vector>
 #include <cstdio>
 
 using tee::test::core::Bench;
@@ -205,4 +209,74 @@ TEST_CASE("custom on with the Spec's own geometry (every pin 0) refuses it and r
     g.start();
     CHECK(g.tel("engine.layoutRefused") == 0.0);
     CHECK(g.tel("engine.speed") * kRpm > 500.0);
+}
+
+TEST_CASE("a package's model switch made while running waits for the fade, and is made", "[core][engine][models]")
+{
+    Bench b("default");
+    b.start();
+    std::string error;
+    REQUIRE(b.player().setSpec("valve.model", 1, error));
+    // the call the change reaches: held back (the Spec shows the model in use) and the fade asked for
+    std::vector<float> l(1), r(1);
+    b.player().process(l.data(), r.data(), 1);
+    const double held = b.field("spec.valve.model");
+    b.play(0.2);
+    const double after = b.field("spec.valve.model");
+    std::printf("valve.model 0 -> 1 while running: %g in the first call, %g 0.2 s later; state %g\n", held, after, b.tel("engine.state"));
+    CHECK(held == 0.0);
+    CHECK(after == 1.0);
+    CHECK(b.tel("engine.state") == 2.0);
+}
+
+TEST_CASE("X-007: a diverging model never hangs the call or reads out of bounds; the engine is put at rest and says so", "[core][engine][guard]")
+{
+    // tee-fuzz's reduction: a custom single, 37 by 153 mm, an 18.4 kg piston, the new vehicle with an automatic, in neutral
+    Bench b("default");
+    std::string e;
+    for (const auto& [path, value] : std::vector<std::pair<const char*, double>>{
+             {"engine.custom", 1}, {"engine.layout", 0}, {"engine.bore", 0.0373}, {"engine.stroke", 0.1529},
+             {"engine.pistonMass", 18.42}, {"engine.flywheel", 0.244}, {"car.model", 1}, {"car.gearbox", 3}, {"env.temperature", 300}})
+        REQUIRE(b.player().setSpec(path, value, e));
+    b.ctl().mode = 1;
+    b.ctl().lever = 0;
+    b.ctl().throttle = 0.3f;
+    b.ctl().ignition = tee::EnginePlayer::kIgnitionStart;
+    b.play(3.0);
+    b.ctl().ignition = tee::EnginePlayer::kIgnitionOn;
+    b.play(1.0);
+    std::printf("X-007 after the start: state %g, %.0f rad/s, cylinders %g, refused %g\n", b.tel("engine.state"), b.tel("engine.speed"),
+                b.tel("engine.cylinders"), b.tel("engine.layoutRefused"));
+    b.ctl().throttle = 1.0f;
+    int faults = 0;
+    double top = 0;
+    bool finite = true;
+    const auto t0 = std::chrono::steady_clock::now();
+    b.play(6.0, [&] {
+        faults += (int(b.tel("engine.flags")) & 4) != 0 ? 1 : 0;
+        const double w = b.tel("engine.speed");
+        finite = finite && std::isfinite(w);
+        top = std::max(top, w);
+        for (float s : b.left())
+            finite = finite && std::isfinite(s);
+    });
+    const double secs = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+    std::printf("X-007: 6 s played in %.2f s of wall time; calls flagged a fault: %d; the fastest the crank was seen %.0f rad/s; all finite %d\n",
+                secs, faults, top, finite ? 1 : 0);
+    CHECK(secs < 30.0);
+    CHECK(finite);
+    CHECK(top < 20000.0);
+    CHECK(std::isfinite(b.tel("engine.speed")));
+}
+
+TEST_CASE("the engine compiles and links at 48 kHz inside (TEE_ENGINE_RATE_48000, card C's prediction)", "[core][engine][rate]")
+{
+    tee::Program::Options options;
+    options.defines["TEE_ENGINE_RATE_48000"] = "1";
+    std::string errors;
+    auto p = tee::Program::fromDirectory(std::filesystem::path(TEE_SOURCE_DIR) / "sim", "engine.fm", options, errors);
+    INFO(errors);
+    REQUIRE(p != nullptr);
+    REQUIRE(p->link(errors));
+    CHECK(p->function<void(void*, float*, float*, int)>("Engine::process", errors) != nullptr);
 }

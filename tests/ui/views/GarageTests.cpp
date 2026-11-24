@@ -95,7 +95,7 @@ namespace
         golden("garage.large", *big.host);
         StageRig one(tee::ui::makeGarageWorkspace, 1600, 1000, 1.0f);
         golden("garage.large.dpi1", *one.host);
-        tee::ui::DemoRig demo;
+        tee::ui::DemoRig demo(4.6, tee::ui::DemoHooks::of({ "garage", "scope" }));
         auto ws = tee::ui::makeGarageWorkspace(demo.ctx);
         funkgui::HeadlessHost host(*ws, 1, 2.0f);
         host.resize(1100, 700);

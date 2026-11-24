@@ -84,6 +84,15 @@ namespace tee
     // that setting the simulator is the reference sample for sample: tests/sim/NullTest.cpp).
     int referenceSettings(Build& build);
 
+    // Every Spec field named "model" (a package's switch from the reference's behaviour to its own) at its range's top:
+    // every new model on. engine.custom is left as it is (it wants a geometry). How many it changed.
+    int modelsOnSettings(Build& build);
+
+    // Columns of rows side by side (the same targets, run on builds that differ in their settings): target, range,
+    // a column each with its measure and pass or MISS, source; then which targets each column misses.
+    std::string validationColumns(const std::vector<std::string>& titles,
+                                  const std::vector<std::vector<ValidationRow>>& columns);
+
     // The reference's rows and the simulator's side by side: target, range, reference, simulator, source; then which
     // targets each misses.
     std::string validationComparison(const std::vector<ValidationRow>& reference, const std::vector<ValidationRow>& simulator,

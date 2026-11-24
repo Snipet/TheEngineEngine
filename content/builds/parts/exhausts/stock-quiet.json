@@ -1,0 +1,27 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Stock exhaust, quiet",
+  "notes": "A road car's system: medium headers, a resonator and a three-pass muffler on each side. Loaded as a part, it replaces only the exhaust fields it sets. Today the engine hears the four dials (headers, pipe, crossover, muffler); the builder's pipes are kept for when it runs them.",
+  "spec": {
+    "exhaust": {
+      "headers": 0.5,
+      "pipe": 0.5,
+      "crossover": 0.0,
+      "muffler": 0.85,
+      "model": "Builder",
+      "converter": [
+        1,
+        1
+      ],
+      "resonator": [
+        2,
+        2
+      ],
+      "mufKind": [
+        3,
+        3
+      ]
+    }
+  }
+}

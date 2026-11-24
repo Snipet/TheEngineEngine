@@ -16,6 +16,8 @@ enum
 {
     FLAG_LIMITER = 1,      // tel.engine.flags: the rev limiter (a diesel: its governor) holds it
     FLAG_FUEL_CUT = 2,     // the fuel is cut while it runs (the limiter, the overrun, a shift)
+    FLAG_FAULT = 4,        // this call found the crank's state not finite or absurd and put the engine at rest afresh
+                           // (Engine::guard): a fault, for the host's guard to treat as one
 };
 
 module EngineTel
@@ -28,7 +30,7 @@ module EngineTel
     float manifold [[ui::label("Manifold")]] [[ui::quantity("pressure")]] [[ui::help("Absolute")]];
     float coolant [[ui::label("Coolant")]] [[ui::quantity("temperature")]];
     float oilPressure [[ui::label("Oil pressure")]] [[ui::quantity("pressure")]] [[ui::help("Over the air outside")]];
-    int flags [[ui::label("Flags")]] [[ui::help("FLAG_LIMITER, FLAG_FUEL_CUT")]];
+    int flags [[ui::label("Flags")]] [[ui::help("FLAG_LIMITER, FLAG_FUEL_CUT, FLAG_FAULT")]];
     float cycle [[ui::label("Cycle")]] [[ui::quantity("fraction")]]
         [[ui::help("A slowed copy of the crank's cycle, 0 to 1, for pictures that turn with it")]];
     float crank [[ui::label("Crank")]] [[ui::quantity("angle")]] [[ui::help("0 to 2160: a common cycle of every layout")]];
@@ -52,7 +54,7 @@ module EngineTel
     float dynoTorque [[ui::label("Dyno torque")]] [[ui::quantity("torque")]] [[ui::help("The absorber's, its mean over 0.1 s (MODE_DYNO_ENGINE)")]];
     float dynoSpeed [[ui::label("Dyno set speed")]] [[ui::quantity("rotation")]];
     float inertiaTorque [[ui::label("Inertia torque")]] [[ui::quantity("torque")]] [[ui::help("The reciprocating masses' (a custom engine's)")]];
-    float shake1 [[ui::label("Shaking force, 1st order")]] [[ui::unit("N")]] [[ui::help("Amplitude at this speed (a custom engine's), after balance shafts")]];
+    float shake1 [[ui::label("Shaking force, 1st order")]] [[ui::unit("N")]] [[ui::help("Amplitude at this speed, after balance shafts (a reference layout's cylinders taken upright)")]];
     float shake2 [[ui::label("Shaking force, 2nd order")]] [[ui::unit("N")]];
     float rock1 [[ui::label("Rocking moment, 1st order")]] [[ui::quantity("torque")]];
     float rock2 [[ui::label("Rocking moment, 2nd order")]] [[ui::quantity("torque")]];
@@ -124,6 +126,13 @@ module EcuTel
     float smoke [[ui::label("Smoke")]] [[ui::help("A diesel's filter smoke number, 0 to 10")]];
     int limiter [[ui::label("Limiter")]] [[ui::help("1 while a limiter acts (rev, launch, flat-shift, pit)")]];
     float load [[ui::label("Load")]] [[ui::quantity("ratio")]] [[ui::help("The maps' y axis now: the manifold over the air outside")]];
+    // ---- card D2 (heavy diesels: sim/combustion/heavy.fm): filled while one of its spec.ecu fields is in use on a diesel
+    float riseRate [[ui::label("Pressure rise")]] [[ui::unit("Pa/deg")]] [[ui::help("Cylinder 1's most rate of pressure rise, its last cycle")]];
+    float pressureHf [[ui::label("Combustion noise")]] [[ui::quantity("pressure")]] [[ui::help("Cylinder 1's pressure, high-passed (its second difference), rms over its last cycle")]];
+    float rack [[ui::label("Rack")]] [[ui::quantity("fraction")]] [[ui::help("The governor's fuel lever (-1: the reference's)")]];
+    int brakeCylinders [[ui::label("Braking cylinders")]];
+    float backPressure [[ui::label("Exhaust brake pressure")]] [[ui::quantity("pressure")]] [[ui::help("Over the air")]];
+    float governorSpeed [[ui::label("Governed speed")]] [[ui::quantity("rotation")]];
 };
 
 module CarTel
@@ -175,6 +184,8 @@ module CarTel
     int blips [[ui::label("Auto-blips")]] [[ui::help("A counter")]];
     float wheelieLimit [[ui::label("Wheelie limit")]] [[ui::unit("m/s^2")]]
         [[ui::help("The acceleration at which the front leaves the road now")]];
+    float sprocketSpeed [[ui::label("Front sprocket")]] [[ui::quantity("rotation")]]
+        [[ui::help("The gearbox's output: the chain's teeth pass at this times the front sprocket's teeth over 2 pi")]];
     // ---- end of card B2's block ----
 };
 
@@ -191,6 +202,19 @@ module SoundTel
     float exhaustLevel [[ui::label("Exhaust radiation")]] [[ui::unit("dB")]] [[ui::help("The tailpipes' radiation before any gain, its mean square over the last 0.4 s")]];
     float mixLevel [[ui::label("Mix level")]] [[ui::unit("dB")]] [[ui::help("What the listener hears before the level and the compressor, its mean square over the last 0.4 s")]];
     float limiter [[ui::label("Limiter")]] [[ui::unit("dB")]] [[ui::help("The last stage's deepest gain reduction over the last 0.4 s (0: not working)")]];
+    float listenerX [[ui::label("Listener across")]] [[ui::quantity("length")]] [[ui::help("The camera's place, the car's frame: x right, y forward from the rear bumper")]];
+    float listenerY [[ui::label("Listener along")]] [[ui::quantity("length")]];
+    float facing [[ui::label("Listener facing")]] [[ui::unit("deg")]] [[ui::help("From the car's forward, toward its right")]];
+    float srcX [[ui::label("Source across")]] [[ui::quantity("length")]] [[ui::help("Each source's place: tailpipes, intake, bay, bay (carrying), tyres, wind, gearbox, axle, tank")]] [10];
+    float srcY [[ui::label("Source along")]] [[ui::quantity("length")]] [10];
+    float srcLevel [[ui::label("Source level")]] [[ui::unit("dB")]] [[ui::help("Each source at the listener, 0.4 s mean, before the cabin's ways in; -200 silent")]] [10];
+    int srcCount [[ui::label("Sources")]] [[ui::help("How many of srcX, srcY, srcLevel are in use")]];
+    float pathFloor [[ui::label("Through the floor")]] [[ui::unit("dB")]] [[ui::help("Camera Driver: the exhaust, tyres and driveline as they come through the floor (and an open window), 0.4 s; -200 otherwise")]];
+    float pathFirewall [[ui::label("Through the firewall")]] [[ui::unit("dB")]];
+    float pathGlass [[ui::label("Through the glass")]] [[ui::unit("dB")]];
+    float pathStructure [[ui::label("Through the mounts")]] [[ui::unit("dB")]] [[ui::help("The boom: the engine's shaking through its mounts into the cabin's modes")]];
+    float rearAxleY [[ui::label("Rear axle")]] [[ui::quantity("length")]] [[ui::help("The car's outline for a plan: the rear axle's y (0.85 m; a bike's rear contact 0.3) and the front's (that plus spec.car.wheelbase)")]];
+    float frontAxleY [[ui::label("Front axle")]] [[ui::quantity("length")]];
     int ceilingParts [[ui::label("Ceiling")]] [[ui::help("How many 16-sample parts the soft ceiling has bent, counted from the start")]];
 };
 

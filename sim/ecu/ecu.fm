@@ -331,7 +331,11 @@ module Ecu
         // its outputs over the reference's
         throttle = plateWas + (one.plate - plateWas) * (1.0f - expf(-d16 / 0.03f));
         idleRpm = one.idle.target;
-        redRpm = fmaxf(redBaseIn, idleRpm + 1500.0f);
+        // (the redline: the limiter's speed when the Spec sets one, which is also where a diesel's governor takes the fuel
+        // back: chargeDiesel's droop)
+        redRpm = fmaxf(spec->limiter.speed > 0.0f ? spec->limiter.speed * 9.5492966f : redBaseIn, idleRpm + 1500.0f);
+        if (fuelUse != 0)
+            bypass = one.bypass;           // a diesel's idle governor: its fuel (Combustion::chargeDiesel)
         if (fuelUse == 0)
         {
             bypass = one.bypass;
@@ -368,7 +372,6 @@ module Ecu
         tel->idleTarget = idleRpm * 0.10471976f;
         tel->boostTarget = one.boost;
         tel->state = state;
-        tel->smoke = 0.0f;
         tel->limiter = (one.flags & (ECU_FLAG_LIMITER | ECU_FLAG_LAUNCH | ECU_FLAG_FLAT_SHIFT | ECU_FLAG_PIT)) != 0 ? 1 : 0;
         tel->load = in->manifold / in->ambient;
     }

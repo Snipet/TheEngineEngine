@@ -1,0 +1,24 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "V10 5.2 L cams",
+  "notes": "The cams, springs and phasers of the archetype \"V10 5.2 L\" alone (intake 268/240 degrees at the seat/1 mm, 11.8 mm; exhaust 260/232, 10.8 mm): loaded as a part, they replace only the valvetrain's cam fields.",
+  "spec": {
+    "valve": {
+      "model": "Lab",
+      "train": "Finger",
+      "inDurSeat": 268,
+      "inDur1mm": 240,
+      "inLift": 0.011800000000000001,
+      "inCentre": 108,
+      "exDurSeat": 260,
+      "exDur1mm": 232,
+      "exLift": 0.0108,
+      "exCentre": 112,
+      "inPhaseRange": 42,
+      "exPhaseRange": 42,
+      "springRate": 34000.0,
+      "springPreload": 213.0
+    }
+  }
+}

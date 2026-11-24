@@ -55,10 +55,13 @@
       "exDurSeat": 236,
       "exDur1mm": 204,
       "exLift": 0.007,
-      "exCentre": 112
+      "exCentre": 112,
+      "springRate": 25000.0,
+      "springPreload": 156.0
     },
     "intake": {
-      "model": 1
+      "model": 1,
+      "runnerLength": 0.28
     },
     "boost": {
       "model": "Machine",
@@ -129,7 +132,8 @@
         0.85
       ],
       "brakeDecel": 1.1,
-      "abs": true
+      "abs": true,
+      "converterK": 24.0
     },
     "env": {
       "temperature": 288.15,
