@@ -9,7 +9,5 @@ const Known kKnown[] = {
      "a sample): 3.2 to 4.6 R; reported, not required in real time (Q: Economy or TEE_FAST)"},
     {"X-016", "2026-11-24", "Q (cost)", "corners 1", "fuzz", "corners", "cost",
      "the ranges' corners seed 1: 2.1 to 4.9 R (Q measured 2.1 to 2.4 on a quieter host); reported as the heavy case"},
-    {"X-020", "2026-11-24", "N2 (boost, for card F)", "load, all on", "v8", "load", "tel-finite",
-     "tel.boost.efficiency[1] goes non-finite from the moment the twin-turbo large diesel is loaded over a running build"},
     {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},   // the end (an array is never empty)
 };

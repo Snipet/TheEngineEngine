@@ -177,11 +177,24 @@ namespace tee::app
             say("file: this window has no file chooser");
     }
 
+    bool WindowCommands::shipped(const std::filesystem::path& file) const
+    {
+        if (ctx_.library == nullptr || ctx_.library->shippedDirectory().empty())
+            return false;
+        std::error_code ec;
+        const std::filesystem::path dir = std::filesystem::weakly_canonical(ctx_.library->shippedDirectory(), ec);
+        const std::filesystem::path f = std::filesystem::weakly_canonical(file, ec);
+        const std::filesystem::path rel = f.lexically_relative(dir);
+        return !rel.empty() && *rel.begin() != "..";
+    }
+
     void WindowCommands::save()
     {
         if (ctx_.document == nullptr)
             return;
-        if (ctx_.document->file().empty())
+        // an untitled build, and a shipped one (content/builds: the first build a launch opens, an archetype), ask
+        // for a file of the person's own: a shipped build is not written over
+        if (ctx_.document->file().empty() || shipped(ctx_.document->file()))
         {
             saveAs();
             return;
