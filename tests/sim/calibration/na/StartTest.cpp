@@ -69,8 +69,7 @@ TEST_CASE("a start on the engine dyno: diesels and a boosted engine fire and pul
 TEST_CASE("a start on the engine dyno: the 2.0 common-rail diesel fires and pulls", "[calibration][na]")
 {
     // (it cranks to some 490 rpm in the starter's second, firing, and goes off as the key returns: the key's release
-    // while cranking is Engine's (card D), asked: a firing engine released from its start runs)
-    SKIP("the key's release while cranking a firing engine: card D's sim/engine.fm, asked 18:10");
+    // while cranking was Engine's: since card D's release rule, a firing engine let go from its start runs)
     double torque = 0.0;
     int state = 0;
     startOnDyno("diesel-20-common-rail", torque, state);
