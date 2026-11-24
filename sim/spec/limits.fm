@@ -1,0 +1,16 @@
+// spec/limits.fm: the simulator's fixed maxima. FMinus sizes every array when it compiles (an enumeration constant
+// names a size; a `const int` does not), so what can vary at run time is held in arrays of these sizes, with a count
+// that says how many are in use. Raising one costs memory and nothing else; the lead owns this file.
+#pragma once
+
+enum
+{
+    MAX_CYL = 16,          // cylinders (a rotary's faces count as cylinders)
+    MAX_PORTS = 16,        // headers and intake runners in use
+    MAX_COLLECTORS = 8,    // collectors after the headers
+    MAX_SIDES = 2,         // pipes after the collectors: one, or two with a crossover between them
+    MAX_TURBOS = 4,
+    MAX_GEARS = 18,        // forward gears
+    MAX_WHEELS = 4,
+    TABLE_POINTS = 16,     // the points of a Curve16 and each axis of a Map16 (spec/tables.fm)
+};

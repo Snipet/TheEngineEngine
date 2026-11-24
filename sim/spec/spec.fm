@@ -1,0 +1,32 @@
+// spec/spec.fm: what the machine is. The host writes it, between calls only, and adds one to a section's `rev` after
+// writing any of its fields; the simulator looks at a section's fields only when its `rev` has moved
+// (02-contracts.md, section 2). Each section is a module in its own file, owned by one package, appended to and never
+// reordered. With every field at its fminus::default (the host sets them: FMinus initialises nothing) the simulator
+// is the reference's V8 as its Init program has it.
+#pragma once
+#include "limits.fm"
+#include "tables.fm"
+#include "engine.fm"
+#include "valve.fm"
+#include "intake.fm"
+#include "boost.fm"
+#include "exhaust.fm"
+#include "fuel.fm"
+#include "ecu.fm"
+#include "car.fm"
+#include "env.fm"
+#include "sound.fm"
+
+module Spec
+{
+    EngineSpec engine [[ui::label("Engine")]];
+    ValveSpec valve [[ui::label("Valvetrain")]];
+    IntakeSpec intake [[ui::label("Intake")]];
+    BoostSpec boost [[ui::label("Boost")]];
+    ExhaustSpec exhaust [[ui::label("Exhaust")]];
+    FuelSpec fuel [[ui::label("Fuel")]];
+    EcuSpec ecu [[ui::label("ECU")]];
+    CarSpec car [[ui::label("Vehicle")]];
+    EnvSpec env [[ui::label("Environment")]];
+    SoundSpec sound [[ui::label("Sound")]];
+};

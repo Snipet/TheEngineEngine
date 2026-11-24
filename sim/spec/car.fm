@@ -1,0 +1,14 @@
+// spec/car.fm: the vehicle (spec.car). Owner: package I.
+//
+// The reference's DRIVE (CAR or TRUCK: used in MODE_DRIVE) and WEIGHT dials. The kind takes effect the next time the
+// vehicle is set up (a change of kind puts it at rest, in neutral, as the reference's DRIVE dial did); the mass at once.
+#pragma once
+
+module CarSpec
+{
+    int rev [[ui::hidden]];
+    int kind [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Vehicle")]] [[ui::choices("Car", "Truck")]]
+        [[ui::help("A car: six gears; a semi truck: eighteen")]];
+    float mass [[fminus::range(100, 50000)]] [[fminus::default(1400)]] [[ui::label("Mass")]] [[ui::quantity("mass")]]
+        [[ui::taper("log")]] [[ui::decimals(0)]];
+};
