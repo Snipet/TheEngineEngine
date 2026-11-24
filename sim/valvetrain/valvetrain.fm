@@ -186,9 +186,28 @@ module Valvetrain
             ang[k] = wrapCycle(theta + fire[k], cycNow);
         }
         lab.tCool = tCool;
+        if (dpN > 0)
+        {
+            dpOverlap += (dpSum / (float)dpN - dpOverlap) * fminf(d16 / 0.1f, 1.0f);
+            dpSum = 0.0f;
+            dpN = 0;
+        }
+        lab.dpOverlap = dpOverlap;
         lab.control(d16, omega, redline, load, pOil, tOil, &ang[0], inT, exT, liftT);
         clatter = lab.clatter;
         place();
+    }
+
+    // ---- each sample: cylinder c at its angle a (degrees in the cycle) and the pressure across it, its intake port's
+    // over its exhaust port's (Pa): kept over the overlap's crank angles the schedule would ask (lab.ovFrom to ovTo,
+    // four-strokes) ----
+    void overlapSample(float a, float dp)
+    {
+        if (cycNow == 720.0f && a >= lab.ovFrom && a <= lab.ovTo)
+        {
+            dpSum += dp;
+            dpN += 1;
+        }
     }
 
     // ---- each sample (the integrator's hook, called with valve.model 1): cylinder c's valves' areas (m^2) at its angle
@@ -217,6 +236,13 @@ module Valvetrain
     float pOil;
     float tOil;
     float tCool;        // the coolant's (K), set by Engine each tick (0: unknown): the stage's gate reads it, as an ECU does
+    // The pressure across the cylinders at their overlap: the intake port's over the exhaust port's (Pa), over the
+    // overlap's crank angles the schedule would ask, every cylinder, smoothed over some 0.1 s. Above 0 the intake
+    // stands above the exhaust there and an overlap scavenges; below, the exhaust pushes back through it (N3's turbo
+    // four at 1800, causes.md B-3; the V12's hole at 2000). Engine gives a sample each (overlapSample).
+    float dpSum;
+    int dpN;
+    float dpOverlap;
 
     void oil(float pressure, float temperature)
     {
@@ -275,6 +301,7 @@ module Valvetrain
         t->stage = lab.stageWant;
         t->waiting = lab.waiting;
         t->waitTemp = lab.waitTemp;
+        t->dpOverlap = dpOverlap;
         t->lift = lab.liftOn != 0 ? lab.liftCmd : 1.0f;
         t->active = lab.activeMask;
         t->floating = lab.floating;
