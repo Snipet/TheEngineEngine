@@ -128,6 +128,7 @@ namespace tee::settings
                 { "autoClutch", s.driver.autoClutch },
                 { "offHold", s.driver.offHold } } },
             { "units", s.units == Units::imperial ? "imperial" : "metric" },
+            { "unitChoices", s.unitChoices },
             { "lastBuild", s.lastBuild },
             { "window", { { "width", s.windowWidth }, { "height", s.windowHeight } } },
         };
@@ -199,6 +200,8 @@ namespace tee::settings
         if (!text(root, "units", units) || !(units.empty() || units == "metric" || units == "imperial"))
             return bad("units");
         s.units = units == "imperial" ? Units::imperial : Units::metric;
+        if (!text(root, "unitChoices", s.unitChoices))
+            return bad("unit choices");
         if (!text(root, "lastBuild", s.lastBuild))
             return bad("last build");
         if (const auto window = root.find("window"); window != root.end())

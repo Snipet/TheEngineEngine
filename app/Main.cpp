@@ -59,8 +59,9 @@ namespace
         return engine.name + "   " + audio;
     }
 
-    int run(const app::Options& o)
+    int run(const app::Options& given)
     {
+        app::Options o = given;
         SDL_SetMainReady();
         SDL_SetAppMetadata("TheEngineEngine", TEE_VERSION, "com.snipet.theengineengine");
 
@@ -80,6 +81,7 @@ namespace
         const settings::Loaded remembered = settings::load();
         if (!remembered.note.empty())
             std::fprintf(stderr, "settings: %s\n", remembered.note.c_str());
+        o.unitChoices = remembered.settings.unitChoices;
 
         input::Controls controls(player, player);
         controls.bindings() = remembered.settings.bindings;
@@ -288,12 +290,15 @@ namespace
                         recorder.dropped() != 0 ? " (some frames were dropped: the disk kept the writer waiting)" : "",
                         whole ? "" : " (the file is not whole: a write failed)");
         }
-        // a first run leaves the settings file behind, with the defaults, for a person to find and edit; a file that
-        // is there is a person's and is left as it is (nothing in the window changes a setting yet)
-        if (!remembered.found && !machine)
+        // A first run leaves the settings file behind, with the defaults, for a person to find and edit. After that
+        // the file is written only when something the window can change did: the units chosen in the frame.
+        settings::Settings now = remembered.settings;
+        if (shown.unitChoices)
+            now.unitChoices = shown.unitChoices();
+        if (!machine && (!remembered.found || now.unitChoices != remembered.settings.unitChoices))
         {
             std::string notSaved;
-            if (!settings::save(remembered.settings, notSaved))
+            if (!settings::save(now, notSaved))
                 std::fprintf(stderr, "settings: %s\n", notSaved.c_str());
         }
         std::printf("tee-app: %s renderer=%s frames=%u ticks=%u fps=%.1f audio-callbacks=%llu audio-frames=%llu "

@@ -11,7 +11,9 @@
 
 #include <funkgui/panel/Panel.h>
 
+#include <functional>
 #include <memory>
+#include <string>
 
 namespace tee::app
 {
@@ -31,6 +33,8 @@ namespace tee::app
     {
         std::shared_ptr<void> keep;                 // the frame's document and units; destroyed after the Panel
         std::unique_ptr<funkgui::Panel> panel;
+        // The units as the frame has them now, as the settings file keeps them; empty function: no frame.
+        std::function<std::string()> unitChoices;
 
         Shown() = default;
         Shown(Shown&&) = default;

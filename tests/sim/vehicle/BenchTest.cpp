@@ -3,19 +3,16 @@
 // from ctest ("[.bench]": a busy machine makes it noisy); run it by hand: tee-tests-vehicle "[.bench]".
 #include "Rig.h"
 
+#include "tee/Clock.h"
+
+#include <cmath>
 #include <cstdio>
-#include <ctime>
 
 using namespace tee::vehicle;
 
 namespace
 {
-    double cpuSeconds()
-    {
-        timespec ts{};
-        clock_gettime(CLOCK_THREAD_CPUTIME_ID, &ts);
-        return static_cast<double>(ts.tv_sec) + 1e-9 * static_cast<double>(ts.tv_nsec);
-    }
+    double cpuSeconds() { return tee::threadCpuSeconds(); }   // portable: clock_gettime has no thread clock on Windows
 
     double nsPerSample(Rig& rig, double seconds)
     {

@@ -41,6 +41,7 @@ TEST_CASE("shell: settings read back as they were written", "[shell][settings]")
     s.driver.autoClutch = false;
     s.driver.offHold = 2.0f;
     s.units = settings::Units::imperial;
+    s.unitChoices = "pressure=psi\npower=hp\n";
     s.lastBuild = "builds/my v8.json";
     s.windowWidth = 1280;
     s.windowHeight = 800;
@@ -64,6 +65,7 @@ TEST_CASE("shell: settings read back as they were written", "[shell][settings]")
     CHECK_FALSE(l.settings.driver.autoClutch);
     CHECK(l.settings.driver.offHold == Catch::Approx(2.0f));
     CHECK(l.settings.units == settings::Units::imperial);
+    CHECK(l.settings.unitChoices == "pressure=psi\npower=hp\n");
     CHECK(l.settings.lastBuild == s.lastBuild);
     CHECK(l.settings.windowWidth == 1280);
     CHECK(l.settings.windowHeight == 800);
