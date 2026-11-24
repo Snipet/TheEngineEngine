@@ -255,7 +255,7 @@ module Combustion
         // (past some 18, a higher compression's tighter chamber gives its walls more of the burn: 1.5 % a point)
         q *= 1.0f - 0.015f * fmaxf(smCR - 18.0f, 0.0f);
         cy->qTot = q;
-        cy->phi = phi;                  // (the physical cylinder's gamma reads it: card D, 24 Nov)
+        cy->phi = q > 0.0f ? phi : 0.0f;   // (the physical cylinder's gamma reads it, a cut or unlit charge plain air's: card D)
         heat->heatJ += q;
         cy->sparkAt = lay->cyc - soi + delay + rough * nz->gauss();
         if (cy->sparkAt >= lay->cyc)
@@ -374,7 +374,7 @@ module Combustion
             ecu->one.account.add(b, outFuel, outAir);
         }
         cy->qTot = q;
-        cy->phi = 1.0f / fmaxf(lambda, 0.3f);     // (the physical cylinder's gamma reads it: card D, 24 Nov)
+        cy->phi = q > 0.0f ? 1.0f / fmaxf(lambda, 0.3f) : 0.0f;   // (the physical cylinder's gamma reads it, a cut charge plain air's: card D)
         heat->heatJ += q;
         cy->knock = 0.0f;
         cy->sparkAt = lay->cyc - adv + 1.5f * rough * nz->gauss() + 25.0f * fminf(dx, 0.3f);

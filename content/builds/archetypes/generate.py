@@ -220,7 +220,9 @@ arch(slug="supercharged-v8-62", runner=0.3, name="Supercharged 6.2 L V8", geo="r
            "table for the compression). In a heavy six-speed coupe.")
 arch(slug="small-block-57-carb", name="Small-block 5.7 L, carburettor-like", geo="ref-12-v8-cross",
      layout="V8 crossplane", bore=101.6, stroke=88.4, rod=144.8, cr=9.0, valves=2, dIn=49.3, dEx=38.1,
-     cam=(268, 214, 10.9, 110, 276, 224, 10.9, 114), train="Pushrod", redline=5500, idle=700,
+     # the L48's cam (N3, 20:06: toward the target's middle, not the hotter L82's): about 195/202 deg at 0.050 in and
+     # 0.390/0.410 in lift (from memory, firm to some 5 deg), the seat some 54 deg longer as this hydraulic flat tappet's
+     cam=(251, 197, 9.9, 110, 256, 204, 10.4, 114), train="Pushrod", redline=5500, idle=700,
      intake=dict(runnerLength=0.18, plenumVolume=0.0025), friction="Flat tappet", grade="Regular (87)",
      car="muscle-manual", timing="Chain", fan="Viscous clutch",
      notes="A 350 cubic inch small block (4.00 x 3.48 in: 101.6 x 88.4 mm, 5733 cc), 9:1, two valves on pushrods, a "
@@ -329,8 +331,10 @@ arch(slug="v6-35-twin-turbo-pickup", runner=0.3, name="3.5 L twin-turbo V6 picku
            "a bank (engines of the kind: 280 to 300 kW at 5000 to 6000 rpm, 640 to 690 N m at 3500; makers' "
            "figures). Four-wheel drive, ten-speed automatic.")
 arch(slug="twin-cam-roadster-18", runner=0.4, convK=17.0, name="1.8 L twin-cam roadster", geo="ref-05-inline-4", layout="Inline 4",
-     bore=83.0, stroke=85.0, rod=133.0, cr=10.0, valves=4, dIn=33.0, dEx=28.0,
-     cam=(244, 212, 9.0, 110, 240, 208, 8.5, 112), train="Bucket", redline=7000, idle=850, car="roadster",
+     # the real head's valves and cams (N3, 20:06; the sheets): about 31/26 mm, some 230 to 240 deg at the seat and
+     # 8.5 mm lift (from memory, firm to 1 mm and 5 deg)
+     bore=83.0, stroke=85.0, rod=133.0, cr=10.0, valves=4, dIn=31.0, dEx=26.0,
+     cam=(236, 204, 8.6, 110, 232, 200, 8.3, 112), train="Bucket", redline=7000, idle=850, car="roadster",
      timing="Toothed belt",
      notes="A 1.8 L twin-cam 16-valve four: 83 x 85 mm (1839 cc), 10:1 (engines of the kind in light roadsters: 96 "
            "to 110 kW at 6500 to 7000 rpm, 160 to 170 N m at 5000; makers' figures). Rear drive, six-speed manual.")
@@ -622,7 +626,8 @@ def build(a):
         t["maps.boostAuto"] = False
         t["maps.boost"] = {"x": xs, "y": gears, "z": [[k * 1000.0] * len(gears) for _, k in a["boostTaper"]]}
 
-    vo = {"timing": a.get("timing", "Chain")}
+    # the mechanical voices (package M) on, with what belongs to this engine (the lead, 20:09: every model switch on)
+    vo = {"model": "Voices", "timing": a.get("timing", "Chain")}
     if a.get("lifters"):
         vo["lifters"] = a["lifters"]
     if a.get("fan"):
@@ -642,9 +647,49 @@ def build(a):
     # estimated peak) slips under the real torque (the lead, 19:36: the NA rotary's after its launch)
     if "clutchTorque" in a:
         car["clutchTorque"] = a["clutchTorque"]
+    # Woschni's walls, said outright (fuel.model 1 brings them anyway: engine.fm's walls()); four strokes
+    e["wallHeat"] = "Woschni"
+    e["cycle"] = "Four-stroke"
+    # package L's listener on: every source where it is on the car; the first camera behind the car in the open,
+    # the engine where the class carries it
+    snd = {"model": "Places", "camera": "Rear", "place": "Field", "ground": "Asphalt",
+           "enginePlace": ENGINE_PLACE.get(a["car"], "Front")}
     spec = {"engine": e, "valve": v, "intake": i, "boost": bo, "exhaust": x, "fuel": f, "ecu": nest(t),
-            "car": car, "env": {"temperature": 288.15, "pressure": 101325.0}, "voices": vo}
+            "car": car, "env": {"temperature": 288.15, "pressure": 101325.0}, "voices": vo, "sound": snd}
+    switches_on(spec, a["slug"])
     return {"format": "tee-build", "version": 1, "name": a["name"], "notes": a["notes"], "spec": spec}
+
+
+# where each class carries its engine (the listener's paths to each camera)
+ENGINE_PLACE = {"mid-engine": "Mid", "awd-supercar": "Mid", "rear-engine-classic": "Rear"}
+
+
+def _switches():
+    """Every model switch the Schema has (each spec field named `model`, and engine.wallHeat), from tee-schema --json;
+    None where the tool is not built."""
+    tool = os.environ.get("TEE_SCHEMA", os.path.join(ROOT, "build-dev", "bin", "tee-schema"))
+    if not os.path.exists(tool):
+        return None
+    import subprocess
+    d = json.loads(subprocess.run([tool, "--json"], capture_output=True, text=True).stdout)
+    return {f["path"][len("spec."):]: f.get("choices") for f in d["fields"]
+            if f["path"].startswith("spec.") and f["path"].split(".")[-1] in ("model", "wallHeat")}
+
+
+SWITCHES = _switches()
+
+
+def switches_on(spec, slug):
+    """Fails unless every model switch the Schema has is set on (not its first choice, the reference) in `spec`: so
+    "every switch on" is true by construction (the lead, 20:09). Warns and passes where tee-schema is not built."""
+    if SWITCHES is None:
+        print("warning: tee-schema not built: the model switches are not checked")
+        return
+    for path, choices in SWITCHES.items():
+        sec, field = path.split(".", 1)
+        val = spec.get(sec, {}).get(field)
+        if val is None or val == 0 or (choices and val == choices[0]):
+            raise SystemExit("%s: spec.%s is not on (%r): every archetype sets every model switch" % (slug, path, val))
 
 
 def nest(flat):
@@ -665,7 +710,7 @@ def write(path, doc):
         f.write("\n")
 
 
-FIRST = "straight-six-twin-turbo-30"
+FIRST = "turbo-four-20-gdi"
 ENGINE_SECTIONS = ("engine", "valve", "intake", "boost", "exhaust", "fuel")
 
 
@@ -690,12 +735,14 @@ def main():
     # there is no --preset and no remembered build): an archetype inside its power, torque, idle and warm-start rows,
     # steady at idle, cheap to run, and fun in the first minute
     first = build(next(a for a in A if a["slug"] == FIRST))
-    first["name"] = "3.0 L twin-turbo six"
-    first["notes"] = ("Try first: turn the key, then floor it on the dyno and watch the two turbos spool in AIR (each "
-                      "fed by three cylinders) and the pulses split between the two collectors in EXHAUST.\n"
-                      "Then drive: in first, hold the brake, bring the revs up and let go for a standing start (traction "
-                      "control holds the wheelspin), and listen to the straight six through its dual exhaust as the "
-                      "dual clutch shifts.\n\n" + first["notes"])
+    # (the 2.0 turbo four: Q measured the 3.0 six at 1.46 R at Full before the listener and the voices, over the 1.4
+    # the lead asked; the four 0.92 R)
+    first["name"] = "2.0 L turbo four"
+    first["notes"] = ("Try first: turn the key, then floor it on the dyno and watch the turbo spool and the wastegate "
+                      "open in AIR, and the four pulses run down the exhaust in EXHAUST.\n"
+                      "Then drive: in first, hold the brake, press the launch button, floor the pedal and let go for a "
+                      "launch-control start (traction control holds the wheelspin), and listen to the direct injection's "
+                      "tick and the turbo's whistle as the dual clutch shifts.\n\n" + first["notes"])
     write(os.path.join(ROOT, "content", "builds", "first.json"), first)
     loose_parts(A)
     manual(A)

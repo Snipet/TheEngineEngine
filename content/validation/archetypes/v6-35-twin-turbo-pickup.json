@@ -30,6 +30,31 @@
       "source": "02-contracts.md, section 1: what process writes is within +-1"
     },
     {
+      "name": "Sound: a free rev is loud enough",
+      "scenario": "validation/scenarios/p-free-rev.json",
+      "audio": "peak",
+      "range": [
+        0.2,
+        1
+      ],
+      "source": "the lead's ruling (20:11): at a build's defaults a free rev peaks at 0.3 to 0.6 of full scale; under 0.2 is too quiet to hear the work (L's listener at 23 to 30 dB under the reference mix: L's finding)"
+    },
+    {
+      "name": "Sound: the idle is audible",
+      "scenario": "validation/scenarios/p-idle-warm.json",
+      "audio": "rms",
+      "during": [
+        8,
+        14
+      ],
+      "range": [
+        -40,
+        0
+      ],
+      "unit": "dB",
+      "source": "the lead's ruling (20:11): the idle plainly audible: its level over 8 to 14 s at least -40 dB of full scale (judgement: a quiet room's background against a full-scale peak)"
+    },
+    {
       "name": "Invariant: holds its limiter",
       "scenario": "validation/scenarios/p-free-rev.json",
       "tel": "engine.speed",
@@ -314,7 +339,7 @@
         1100
       ],
       "unit": "K",
-      "source": "a thermocouple a little way down a primary reads 900 to 1100 K at full load on a petrol engine (makers' exhaust-gas-temperature data; Heywood, Internal Combustion Engine Fundamentals, ch. 14); tel.exhaust.headerThermocouple"
+      "source": "a thermocouple a little way down a primary reads 900 to 1100 K at full load on a petrol engine (JUDGEMENT from memory of makers' exhaust-gas-temperature data, not a cited full-load figure: under review, the lead's question of 20:17; Heywood, Internal Combustion Engine Fundamentals, ch. 14); tel.exhaust.headerThermocouple"
     },
     {
       "name": "Port gas, mass mean (information)",

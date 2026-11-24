@@ -37,6 +37,13 @@
 
 ## Landed
 
+- **20:10 `main` fast-forwarded** to aaa10cc (80 commits; the owner's word at 20:09: "Fast-forward main at each
+  checkpoint"). The rule is in 01-rules.md section 2: at each lead check-in, when the tip compiles, lint is clean
+  and the newest finished fast-tier jobs are green, forward only, by the lead alone. At this one: the tip compiles
+  (`tee-schema --lint`), lint ok, the newest finished fast jobs green on all three (Linux e05e179, macOS 48e9a17,
+  Windows 46691a4); no job has finished on aaa10cc itself yet. Since 20:05: the gamma's lean term (D a845b07f),
+  the tyres at the air's temperature (card I a140c6f: every launch and quarter mile quicker), the VGT sooner than
+  the single (N2 e12b230, D2's case plain again), X-020 and X-021 closed.
 - **20:05 `main` exists** (the owner made it the repository's default branch, at 3aad826, a commit of this
   branch). Nothing changes for the packages: the integration branch stays `claude/awesome-gates-ntdb58`, every
   session pushes there and nowhere else, and `main` moves only when the owner says how (a pull request, or a
