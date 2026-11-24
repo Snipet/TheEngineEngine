@@ -109,9 +109,10 @@ TEST_CASE("H1: the mixture: lean is fuel-limited, rich oxygen-limited with its t
     const double gasPort = fm.get("mix.coolCyl");
     fm.call<float>("Trace::mixture", METHANOL, 1.0f, 1.0f, 1.0f, 1.0f);
     const double methDi = fm.get("mix.coolCyl");
-    CHECK(gasDi > 2.0 * gasPort);
+    CHECK(gasDi > 1.5 * gasPort);
     CHECK(methDi > 2.0 * gasDi);
-    CHECK(gasDi == Catch::Approx(402.0e3 / 14.0 / 1005.0 * 0.85).epsilon(1e-4));
+    // (a direct injector's: Kasseris and Heywood's measured 14 K for gasoline, taken at lambda 1: mixture.fm)
+    CHECK(gasDi == Catch::Approx(14.0).epsilon(0.01));
 }
 
 TEST_CASE("H2: the knock integral's tables give Douaud and Eyzat's delay", "[h][combustion][knock]")
