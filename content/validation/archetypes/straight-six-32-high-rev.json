@@ -133,8 +133,8 @@
         260000
       ],
       "unit": "W",
-      "source": "published figures of its kind (makers' figures from memory, firm to 5 %): 3246 cc; 75 to 80 kW a litre; looked up: en.wikipedia.org/wiki/BMW_S54 (252 kW at 7900, 365 N m at 4900)",
-      "basis": "cited"
+      "source": "published figures of its kind (makers' figures from memory, firm to 5 %): 3246 cc; 75 to 80 kW a litre; looked up: en.wikipedia.org/wiki/BMW_S54 (252 kW at 7900, 365 N m at 4900); JUDGEMENT here: its head's port quality is a class fitted by N1 to measured torque over the target (content/builds/archetypes/generate.py PORTS)",
+      "basis": "judgement"
     },
     {
       "name": "Speed at peak power",
@@ -148,8 +148,8 @@
         837.8
       ],
       "unit": "rad/s",
-      "source": "published figures of its kind (makers' figures from memory, firm to 5 %): 3246 cc: 7600 to 8000 rpm; looked up: en.wikipedia.org/wiki/BMW_S54 (252 kW at 7900, 365 N m at 4900)",
-      "basis": "cited"
+      "source": "published figures of its kind (makers' figures from memory, firm to 5 %): 3246 cc: 7600 to 8000 rpm; looked up: en.wikipedia.org/wiki/BMW_S54 (252 kW at 7900, 365 N m at 4900); JUDGEMENT here: its head's port quality is a class fitted by N1 to measured torque over the target (content/builds/archetypes/generate.py PORTS)",
+      "basis": "judgement"
     },
     {
       "name": "Peak torque",
@@ -163,8 +163,8 @@
         375
       ],
       "unit": "N m",
-      "source": "published figures of its kind (makers' figures from memory, firm to 5 %): 3246 cc; BMEP 13.7 to 14.5 bar (a naturally aspirated petrol engine 10 to 13 bar, turbocharged 18 to 25, a modern truck diesel 20 to 25: Heywood, Internal Combustion Engine Fundamentals, ch. 2); looked up: en.wikipedia.org/wiki/BMW_S54 (252 kW at 7900, 365 N m at 4900)",
-      "basis": "cited"
+      "source": "published figures of its kind (makers' figures from memory, firm to 5 %): 3246 cc; BMEP 13.7 to 14.5 bar (a naturally aspirated petrol engine 10 to 13 bar, turbocharged 18 to 25, a modern truck diesel 20 to 25: Heywood, Internal Combustion Engine Fundamentals, ch. 2); looked up: en.wikipedia.org/wiki/BMW_S54 (252 kW at 7900, 365 N m at 4900); JUDGEMENT here: its head's port quality is a class fitted by N1 to measured torque over the target (content/builds/archetypes/generate.py PORTS)",
+      "basis": "judgement"
     },
     {
       "name": "Speed at peak torque",
@@ -178,8 +178,8 @@
         544.5
       ],
       "unit": "rad/s",
-      "source": "published figures of its kind (makers' figures from memory, firm to 5 %): 3246 cc: 4600 to 5200 rpm (a turbocharged engine's plateau: its whole span); looked up: en.wikipedia.org/wiki/BMW_S54 (252 kW at 7900, 365 N m at 4900)",
-      "basis": "cited"
+      "source": "published figures of its kind (makers' figures from memory, firm to 5 %): 3246 cc: 4600 to 5200 rpm (a turbocharged engine's plateau: its whole span); looked up: en.wikipedia.org/wiki/BMW_S54 (252 kW at 7900, 365 N m at 4900); JUDGEMENT here: its head's port quality is a class fitted by N1 to measured torque over the target (content/builds/archetypes/generate.py PORTS)",
+      "basis": "judgement"
     },
     {
       "name": "Warm idle",
@@ -246,8 +246,8 @@
         1.02
       ],
       "unit": "fraction",
-      "source": "a naturally aspirated four-stroke's VE at full load near its torque peak is 0.85 to 1.0 (Heywood, Internal Combustion Engine Fundamentals, ch. 6, fig. 6-9 and the text); measured at 5000 rpm",
-      "basis": "recalled"
+      "source": "a naturally aspirated four-stroke's VE at full load near its torque peak is 0.85 to 1.0 (Heywood, Internal Combustion Engine Fundamentals, ch. 6, fig. 6-9 and the text); measured at 5000 rpm; JUDGEMENT here: its head's port quality is a class fitted by N1 to measured torque over the target (content/builds/archetypes/generate.py PORTS)",
+      "basis": "judgement"
     },
     {
       "name": "Volumetric efficiency low down",
@@ -263,7 +263,7 @@
         0.95
       ],
       "unit": "fraction",
-      "source": "VE's shape: below the torque peak it falls away, the more so the hotter the cam (Heywood, Internal Combustion Engine Fundamentals, ch. 6); measured at 2000 rpm",
+      "source": "VE's shape: below the torque peak it falls away, the more so the hotter the cam (Heywood, Internal Combustion Engine Fundamentals, ch. 6); measured at 2000 rpm; JUDGEMENT here: its head's port quality is a class fitted by N1 to measured torque over the target (content/builds/archetypes/generate.py PORTS)",
       "basis": "judgement"
     },
     {
