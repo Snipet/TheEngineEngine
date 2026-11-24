@@ -178,6 +178,14 @@ namespace tee::ui
                     return;
                 const Rect a = pl.plotArea();
                 float x = a.right() - 200.0f;
+                if (x < pl.titleRight(cv) + 12.0f)   // no room beside the title: inside the area's top right
+                {
+                    cv.rrect(a.right() - 206.0f, a.y + 2.0f, 204.0f, 16.0f, 3.0f, p.panel);
+                    x += 2.0f;
+                    x += legendEntry(cv, p, x, a.y + 5.0f, "INTAKE", p.cold, look::kTrace, false);
+                    legendEntry(cv, p, x, a.y + 5.0f, "EXHAUST", p.hot, 2.0f, true);
+                    return;
+                }
                 x += legendEntry(cv, p, x, a.y - 15.0f, "INTAKE", p.cold, look::kTrace, false);
                 legendEntry(cv, p, x, a.y - 15.0f, "EXHAUST", p.hot, 2.0f, true);
             });
@@ -220,29 +228,27 @@ namespace tee::ui
                          [](Canvas& cv, const look::Palette& p, const ScopePlot& pl) {
                              if (pl.cursorOn())
                                  return;
-                             // The scale: levels as the cells show them.
+                             // The scale: levels as the cells show them; beside the title, or in the area's top left.
                              const Rect a = pl.plotArea();
-                             const float w = 14.0f, h = 9.0f;
-                             float x = a.right() - 6 * w - 70.0f;
-                             cv.text("-90", x, a.y - 16.0f, look::kUnit, p.label);
+                             const float w = 10.0f, h = 9.0f;
+                             float x = a.right() - 6 * w - 54.0f, y = a.y - 15.0f;
+                             if (x < pl.titleRight(cv) + 10.0f)
+                             {
+                                 x = a.x + 4.0f;
+                                 y = a.y + 5.0f;
+                                 cv.rrect(x - 2.0f, y - 3.0f, 6 * w + 58.0f, 16.0f, 3.0f, p.panel);
+                             }
+                             cv.text("-90", x, y - 1.0f, look::kUnit, p.label);
                              x += 22.0f;
                              for (int i = 0; i < 6; ++i)
-                                 cv.rrect(x + i * w, a.y - 15.0f, w, h, 0.0f, p.over(p.value, (i + 0.5f) / 6.0f));
-                             cv.text("0 dB", x + 6 * w + 4.0f, a.y - 16.0f, look::kUnit, p.label);
+                                 cv.rrect(x + i * w, y, w, h, 0.0f, p.over(p.value, (i + 0.5f) / 6.0f));
+                             cv.text("0 dB", x + 6 * w + 4.0f, y - 1.0f, look::kUnit, p.label);
                          });
 
         p_.assign(kMaxDegrees, 0.0f);
         v_ = li_ = le_ = pi_ = pe_ = p_;
         tail_.assign(kTail, 0.0f);
         refreshPlots();
-    }
-
-    std::string ScopeWorkspace::inspectorPage() const
-    {
-        // The listener, until it has a workspace of its own (sim/spec/sound.fm).
-        return "panel \"SCOPE\"\n"
-               "section \"LISTENER\"\n"
-               "auto \"sound\"\n";
     }
 
     bool ScopeWorkspace::moving() const { return (live_ && !frozen_) || wantsFullRate(); }
@@ -515,7 +521,7 @@ namespace tee::ui
         else
             ports_->setAxes(-half, half, false, 0.0, niceUp(u.toUser(Quantity::pressure, 2.0 * kAtm)), false);
         ports_->setNote(n <= 0 ? "no Scope from this program yet"
-                               : qmax > 0.0 ? "" : "no port pressures from this program yet (portIntake, portExhaust)");
+                               : qmax > 0.0 ? "" : "no port pressures from this program yet");
         ports_->touched();
 
         // The output's wave, triggered on the crank's cycle.

@@ -17,7 +17,9 @@
 #include "files/BuildFiles.h"
 #if defined(TEE_HAS_UI_FRAME)
  #include "FrameSources.h"
- #include "app/AppFrame.h"                  // the interface package's (ui/): the frame, its document over a tee::Build
+ #include "app/AppFrame.h"
+ #include "app/host/HostSources.h"     // U1's: the Scope and the dyno over card C's host
+                  // the interface package's (ui/): the frame, its document over a tee::Build
  #include "kit/bind/Units.h"
  #include "kit/bind/host/BuildDoc.h"
  #include "tee/Build.h"
@@ -131,14 +133,14 @@ namespace tee::app
             struct Kept
             {
                 Kept(player::SimAdapter& sim, std::filesystem::path shipped)
-                    : doc(sim.build()), scope(sim.host()), dyno(sim), file(sim.build()),
+                    : doc(sim.build()), scope(sim.host()), dyno(sim.host().sim(), sim.build()), file(sim.build()),
                       library(std::move(shipped), Presets::userDirectory())
                 {
                 }
                 ui::BuildDoc doc;
                 ui::Units units;
-                SimScope scope;
-                SimDyno dyno;
+                ui::SimScope scope;
+                ui::ServiceDyno dyno;
                 files::BuildFile file;
                 files::BuildLibrary library;
             };
@@ -160,8 +162,7 @@ namespace tee::app
             addFileServices(frameServices, kept->file, kept->library);
             std::unique_ptr<ui::AppFrame> frame =
                 ui::makeAppFrame(kept->doc, kept->units, player, std::move(frameServices), &kept->dyno, &kept->scope);
-            shown.frame = [kept] { kept->scope.frame(); };
-            shown.waitForDyno = [kept](double seconds) { return kept->dyno.waitForCurve(seconds); };
+            shown.waitForDyno = [kept](double seconds) { return waitForCurve(kept->dyno, seconds); };
             // --size WxH: the frame's logical size (raised to its smallest, 1100 x 700)
             if (o.width > 0 && o.height > 0)
                 frame->resize(std::max(o.width, frame->minWidth()), std::max(o.height, frame->minHeight()));

@@ -37,8 +37,8 @@ namespace tee::app
 
     // The Panel for this run, and what it needs kept alive beside it.
     //   the simulator (--engine sim), in a build with the interface's frame: tee::ui::AppFrame over the engine's
-    //     tee::Build (a BuildDoc, the user's Units, the garage's builds), its Scope (SimScope) and its dyno
-    //     (SimDyno, app/FrameSources.h), opened on --workspace and at --size;
+    //     tee::Build (a BuildDoc, the user's Units, the garage's builds), its Scope and its dyno (U1's
+    //     SimScope and ServiceDyno, ui/app/host/HostSources.h), opened on --workspace and at --size;
     //   the reference: the interface's tee::ui::makeMainPanel (the reference's own panel);
     //   --panel plain, a program that did not start, or a build with no interface package: the shell's plain Panel.
     struct Shown
