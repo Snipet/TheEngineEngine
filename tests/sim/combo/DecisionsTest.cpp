@@ -222,3 +222,54 @@ TEST_CASE("decisions: with each switch on the default block's torque lies on its
     for (const Switch& w : switches())
         smoothInSize(w.path, w.on);
 }
+
+namespace
+{
+    // The idle's 1 s means from 6 to 14 s (rad/s), on a build file with `values` written in, the key on at 0 and the
+    // start at 0.2 s.
+    std::vector<double> idleSeconds(const std::string& block, const Values& values, const std::string& tag)
+    {
+        tee::test::Scenario s(buildWith(block, values, tag));
+        s.at(0.0).control("mode", 0).lever(0).clutch(0).throttle(0).ignition(tee::On);
+        s.at(0.2).ignition(tee::Start);
+        s.at(1.8).ignition(tee::On);
+        const tee::test::Run r = s.run(14.0);
+        REQUIRE(r.ok());
+        std::vector<double> out;
+        for (int a = 6; a < 14; ++a)
+            out.push_back(r.tel("engine.speed").during(a, a + 1).mean());
+        return out;
+    }
+
+    double largestApart(const std::vector<double>& a, const std::vector<double>& b)
+    {
+        double d = 0.0;
+        for (std::size_t i = 0; i < a.size() && i < b.size(); ++i)
+            d = std::max(d, std::fabs(a[i] - b[i]));
+        return d;
+    }
+} // namespace
+
+// A sound switch leaves the engine as it was (the lead, 22:57). The bound comes from the engine's own sensitivity: the
+// same build with the air 0.02 K warmer (measured 0.4 rad/s, 4 rpm, at most); the switch may move the idle's 1 s means
+// by three times that, or 1 rad/s. X-028: with voices.model on at the key, the stopped engine renders and the ECU's idle
+// target glides before the crank (887 rpm with voices off, 1282 with them on, at 0.19 s), and the idle's hunt (about
+// 2 s, +-20 rpm) runs shifted after: 1 s means apart by up to 33 rpm.
+TEST_CASE("decisions: voices.model leaves the engine as it was: the turbo six's idle with the voices on at the key",
+          "[fast][fast-1][combo][decisions]")
+{
+    const std::vector<double> off = idleSeconds("turbo-six", {{"voices.model", 0.0}}, "voices-off");
+    const std::vector<double> warm =
+        idleSeconds("turbo-six", {{"voices.model", 0.0}, {"env.temperature", 293.17}}, "voices-off-warm");
+    const std::vector<double> on = idleSeconds("turbo-six", {{"voices.model", 1.0}}, "voices-on");
+    const double own = largestApart(off, warm), apart = largestApart(off, on);
+    const double bound = std::max(1.0, 3.0 * own);
+    std::printf("decisions | turbo-six      | voices.model     | the idle's 1 s means from 6 to 14 s: the air 0.02 K warmer "
+                "moves them %.2f rad/s (%.0f rpm), the voices %.2f rad/s (%.0f rpm); bound %.2f\n",
+                own, own * 9.5493, apart, apart * 9.5493, bound);
+    Verdict v;
+    if (!(apart <= bound))
+        v.failures.push_back({"sound-engine", "voices.model on moves the idle's 1 s means by " + std::to_string(apart) +
+                                                  " rad/s (bound " + std::to_string(bound) + ")"});
+    report(v, "voices.model", "turbo-six", "idle");
+}
