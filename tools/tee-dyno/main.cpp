@@ -273,6 +273,8 @@ int main(int argc, char** argv)
             ok = number(predictOptions.tolerance);
         else if (args.is("--threads"))
             ok = whole(predictOptions.threads);
+        else if (args.is("--shares"))
+            ok = whole(predictOptions.shares);
         else if (args.is("--points"))
             ok = whole(predictOptions.points);
         else if (args.is("--coarse"))

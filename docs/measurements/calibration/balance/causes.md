@@ -1098,3 +1098,104 @@ the target), the compressors choked (efficiency 0.54 and 0.33), and the turbine'
 matched one's at the same boost: 220 N m at 64 kPa on the 0.50. On this model's map family no one set holds both ends:
 the low end wants 0.30 to 0.40, the top 0.5 or more. For N2 (the map's width, the tip-speed limit of 560 m/s:
 judgement) and P (the boost taper: 62 kPa at 6200 on the matched turbo).
+
+**B-3, P's sources tried in the model** (23:16 `date -u`; P's docs/measurements/validation/2026-11-24-2314-ea888-gen3-sources.md).
+(a) *The AVS small exhaust lobe* (gen 2's, SSP 922903: 6.35 mm, 180 degrees, closing 2 degrees after TDC, below
+about 3100 rpm; whether the 180 is at the seat or at 1 mm is not stated): set in place of the build's exhaust cam
+(exLift 6.35 mm, centre 88 degrees before TDC), designShare 0.40, 1800 rpm, one run each:
+
+| exhaust cam, intake | N m | boost kPa | residual | fresh g/L/cycle | T_ivc K | knock ret. | p3 kPa | gate |
+|---|---|---|---|---|---|---|---|---|
+| the build's (236 seat), N1's rule (49 degrees) | 181 | 53 | 0.157 | | 462 | 14.9 | 128 | 0 |
+| 180 at the seat (150 at 1 mm), N1's rule (48) | **316** | 119.7 | 0.073 | 2.065 | 399 | 15.0 | 154 | 0.24 |
+| the same, knock control off | 317 | 119.9 | 0.100 | 1.953 | 410 | 0 | 155 | 0.15 |
+| 180 at 1 mm (212 seat), N1's rule (49) | 225 | 98.7 | 0.157 | 1.473 | 465 | 15.0 | 147 | 0 |
+| 180 at 1 mm, phaser parked | 292 | 118.8 | 0.058 | 1.814 | 423 | 13.1 | 155 | 0.10 |
+| 180 at 1 mm, phaser at 20 | 302 | 118.1 | 0.069 | 1.925 | 415 | 14.8 | 155 | 0.18 |
+
+The short lobe at the seat reading scavenges in the model: with the rule's 48 degrees of intake advance the fresh charge
+reaches 2.07 g per litre per cycle (the 0.87 of the plenum that 350 N m needs), the boost reaches the target and the
+gate opens. 316 N m against 333 to 368; knock at its cap. The lobe read at 1 mm (32 degrees longer at the seat) does
+not: it closes the exhaust 16 degrees later, inside the intake's opening. So item 1 has a cited hardware answer the model
+already holds (valve.stages: a second lobe by speed) once the lobe's seat duration is known: P's (the build's exhaust
+cam), with N1's rule left as is for this engine. Scavenging is not missing from the model; the build's long exhaust
+lobe was.
+
+(b) *The top at the real boost*: an owner's stock VCDS log (P: carworklog.com, a transient pull, enthusiast) reads
+81 kPa at 6048 rpm and 76 at 6400: the build's held 81 kPa at 6200 is the real boost, so 276 against 237 to 262 N m is
+the model's at that boost, not a taper. At 6200, 81 kPa held, by the turbine's size (the turbine's nozzle by turbAR as
+the match's at that share; the compressor and gate the 0.85 match's):
+
+| turbine | N m | p3 kPa | gate | residual | etaC |
+|---|---|---|---|---|---|
+| 0.85 (as built) | 276 | 172 | 0.61 | 0.046 | 0.76 |
+| 0.40 | 233 | 238 | 0.57 | 0.071 | 0.76 |
+| 0.30 | 207 | 287 | 0.47 | 0.085 | 0.75 |
+
+The top's torque at the real boost is set by the turbine's back pressure; the cited 250 lies between the 0.85 and the
+0.40 turbines (about 0.5 to 0.6 of the redline by the match's rule). With the field's whole match at 0.40 or 0.50 the
+compressor chokes at the top (the shaft at its limit; with the limit lifted by 1.3 the 0.40 reaches 81 kPa at p3 407 kPa,
+etaC 0.18, 101 N m; the 0.50 at p3 249, 0.35, 198 N m). The 0.85 compressor with a 0.40 turbine holds the top (233 at
+6200, 313 at 4000) but not the low end (1800 with the short lobe 171 N m at 36 kPa, etaC 0.46; 1500 179 at 22): the
+compressor that holds 6200 runs far left of its island at 1800. **The one conflict left is the compressor's map
+width**: the low end wants the 0.40 match's wheel (0.67 at 1800), the top the 0.85's. The real IS20's maps are not
+published (P). N2's: the model's family's width (A/R term and the island's shape, judgement) against a published
+compressor map of a wheel this size.
+
+The ranking after P's sources: the exhaust lobe (content, P; the model has the stage), then the compressor's map width
+(N2), then the turbine's size by the cited top (P with N2), then knock (C: at its cap with the lobe in; costs about
+nothing in torque at 1800 there, knock off 317). N1's rule stands on this engine with the short lobe.
+
+**B-3, the lobe's reference lift settled, and both cams free** (the lead's 23:21; 23:21 by `date -u`).
+*The reference lift.* P's page (SSP 922903, via P's sources file) gives the small lobe 6.35 mm, 180 degrees, closing 2
+degrees after TDC, and the large 10 mm, 215 degrees, closing 8 before. The model's generator (valvetrain/cam.fm) takes
+both the seat duration (0.15 mm) and the 1 mm duration and fits the ramp between them; its family spans, at the build's
+exhaust fatness (0.5):
+
+| lobe | if the figure is at 1 mm: seat | if it is at the seat: 1 mm |
+|---|---|---|
+| 10 mm, 215 | 234 to 263 (247 on the build's own ramp, k 1.74) | 176 to 198 (187) |
+| 6.35 mm, 180 | 204 to 232 (215) | 140 to 159 (151) |
+
+The family alone excludes neither, and the lead's check is not clean: the build's 236-degree seat lobe at 10 mm reads
+206 at 1 mm, between the two. Two other things settle it. (1) The page's own events: 180 degrees closing 2 degrees after
+TDC opens 2 degrees *before bottom* at its reference lift; at the seat that is an exhaust opening at bottom dead centre
+(no blowdown before the stroke turns), not a lobe anyone runs; at 1 mm the seat opening is some 17 degrees earlier.
+(2) Audi's practice: its stated timing figures are at 1 mm of lift (AudiWorld and Nefarious Motorsports forum posts,
+enthusiast: "all Audi stated numbers are at 1mm valve lift"); P's agent is reading the SSP's own wording. **Taken: at
+1 mm.** The small lobe is 180 at 1 mm, about 215 at the seat on the build's ramp (exLift 6.35 mm, exCentre 88): the
+225 N m case of the table above under N1's rule. The 316 N m row stands as measured but on a lobe the page does not
+describe.
+
+*Both cams free, on that lobe* (the exhaust phaser given 40 degrees: the real range is not published; N1's automatic
+schedule asks the exhaust nothing at full load, so the cams were fixed through the ECU's maps, camIn and camEx, one
+value each run: a small bake). N m; boost kPa in brackets:
+
+| match, rpm | N1's rule (in, ex) | in 0 | in 20 | in 35 | in 50 | best |
+|---|---|---|---|---|---|---|
+| 0.40, 1500 | 234 (80) (38, 0) | 193 / 155 / 145 | **253** / 194 / 188 | 247 / 225 / 195 | 229 / 194 / 180 | 253, in 20 ex 0 (85 kPa) |
+| 0.40, 1800 | 222 (98) (49, 0) | 283 / 253 / 177 | 299 / 289 / 201 | **319** / 254 / 173 | 220 / 194 / 101 | 319, in 35 ex 0 (122 kPa) |
+| 0.50, 1500 | 237 (44) (38, 0) | 162 / 142 / 137 | 204 / 187 / 189 | 236 / 214 / 208 | **242** / 230 / 208 | 242, in 50 ex 0 (47 kPa) |
+| 0.50, 1800 | 264 (86) (49, 0) | 214 / 207 / 159 | 272 / 265 / 235 | **282** / 262 / 236 | 261 / 240 / 192 | 282, in 35 ex 0 (97 kPa) |
+
+(each cell: exhaust phase 0 / 20 / 40.) The model's exhaust phaser retards (later events) and every retard costs at full
+load here; an exhaust advance (earlier closing, the scavenging direction) is not in the model's phaser to try. The
+optimum is narrow: 0.40 at 1800, intake 28 gives 302 and 35 gives 319, 50 gives 220. Knock costs nothing at the best
+cells: with the control off, 306.5 (1800, in 35) and 249.7 (1500, in 20), against 319 and 253 with it (the retard's
+later burn leaves the turbine more). The build's long lobe on the same match, its intake fixed (the phaser's range
+capping N1's rule, earlier in B-3): best 309 at 1800 (in 10 to 20).
+
+*A baked map* (N1's tool, the lead's ruling) on the best case: if the bake sweeps the intake with the stage that is
+active at each speed (the short lobe below about 3100), it lands at about in 35 at 1800 and in 20 at 1500 on 0.40:
+319 and 253 N m. Baked with the long lobe and run on the short, it would choose 10 to 20 at 1800 and get 299 (6 % less):
+the tool must bake each stage on its own lobe. Its step needs to be finer than 15 degrees here.
+
+**The ranking, the lobe at 1 mm** (0.40 match, against 333 to 368 N m):
+1. *The intake's phase at boosted low speed*: N1's rule 222 / 181 (short / long lobe) against a bake's 319 / 309 at 1800:
+   +44 to +71 %. N1's bake is the answer (ruled); the rule stays the fallback.
+2. *The turbo's spool at 1500 and below* (N2): the 0.40 match makes 85 kPa at 1500 at its best phase, the 0.50 47;
+   253 and 242 N m against the cited 333 and up. Matching and the compressor's map width as before.
+3. *The short exhaust lobe* (P): +3 % at 1800 in the bake (309 to 319); helpful, not decisive, read at 1 mm.
+4. *The exhaust phaser*: retard only in the model and it costs at full load; the real one's direction and range unknown.
+5. *Knock*: costs nothing at the best cells (control off is no better).
+At 1800 the best is 319 against 333 to 368 (-4 to -13 %); at 1500 253 (-24 %).
