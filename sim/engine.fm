@@ -195,6 +195,8 @@ module Engine
     float geoSig;       // a custom engine's geometry as read (geometry()), and as configured: a change is made under the fade
     float geoUsed;
     float hostRateSeen; // the host's rate, as init was given it
+    float clickRpm;     // the speed the valves' click amplitude was last worked out at, and that amplitude
+    float clickAmpC;
     float oilK;         // the oil's thickness factor on the friction (the reference's: its 0.15th power, at most 3)
     Extras ex;
     Boost boost;        // turbos or a supercharger: their shafts, boost, valves and sounds (boost/boost.fm)
@@ -466,6 +468,8 @@ module Engine
         intk.mPlenum = intk.pPlenum * intk.vPlenum / (287.0f * intk.tAir);
         pipes();
         mechanicsSetup();
+        // (card F: boost.model 1's machine sized to this engine, at rest; nothing in model 0)
+        boost.applyMachine(&spec.boost, vTotal, ecu.redRpm, 101325.0f, heat.tAmb);
     }
 
     // ---- card D: the mechanics (docs/models/mechanics.md) ----
@@ -611,7 +615,7 @@ module Engine
     // The pipes' sizes for the layout and the dials, and their lengths at the gas's temperatures now
     void pipes()
     {
-        exh.pipes(bore, aspUse, boost.smTb, boost.smTs, rate);
+        exh.pipes(bore, spec.boost.model != 0 ? 0 : aspUse, boost.smTb, boost.smTs, rate);   // (model 1: the machine's turbine)
         intk.runners(lay.ports, lay.bike, bore, rate);
     }
 
@@ -754,6 +758,7 @@ module Engine
         if (spec.boost.model != 0)
         {
             // (card F: its machine's air at the throttle, toward the ECU's target; card H's)
+            boost.airSpeed(set.drive != 0 ? fabsf(car.v) : 0.0f);
             boost.control16(d16, ecu.boostTarget(), ecu.antiLag(), ecu.nitrous());
             intk.pBox = boost.pressure();
             intk.tAir = boost.temperature();
@@ -887,7 +892,13 @@ module Engine
         }
         float torque = 0.0f;
         float dps = 0.0f;
-        const float clickAmp = 0.15f + 0.5f * expf(0.8f * logf(fmaxf(fminf(crank.rpm / 4000.0f, 1.6f), 0.01f)));
+        // (its expf and logf only when the speed they follow has moved: crank.rpm changes every 16 samples, and at a start)
+        if (crank.rpm != clickRpm)
+        {
+            clickRpm = crank.rpm;
+            clickAmpC = 0.15f + 0.5f * expf(0.8f * logf(fmaxf(fminf(crank.rpm / 4000.0f, 1.6f), 0.01f)));
+        }
+        const float clickAmp = clickAmpC;
         // (a piston's slap: its skirt hits the bore as the side thrust changes sides at the top, harder with the gas's
         // pressure there and the piston's speed)
         const float slapAmp = 0.4f + 0.6f * fminf(crank.rpm / 3000.0f, 2.0f);
@@ -924,6 +935,8 @@ module Engine
                 iShare[pi] += qI0[c];
             }
         }
+        const float exM0 = exh.mSum;      // (card F, model 1: this sample's exhaust gas, for the turbine's stand-in)
+        const float exE0 = exh.eSum;
         for (int c = 0; c < lay.n; ++c)
         {
             Cylinder* cy = &cyl[c];
@@ -982,6 +995,10 @@ module Engine
         if (ctl.scopeOn != 0)
             scopeTap();
         exh.step(qe, np);
+        // (card F, model 1: until card G's network ends its collectors in the turbine's housings, the cylinders' gas
+        // this sample feeds them as a flow, and the downpipes are open ends of the collector pipe's impedance)
+        if (spec.boost.model != 0)
+            boost.exhaustStandIn(exh.mSum - exM0, exh.eSum - exE0, exh.sec[0].z);
         float rNear[MAX_PORTS];
         for (int i = 0; i < np; ++i)
             rNear[i] = intk.run[i].near + intk.run[i].z * qi[i];
@@ -1130,6 +1147,7 @@ module Engine
 
     void init(float hostRate)
     {
+        clickRpm = -1.0f;
         hostRateSeen = hostRate;
         setupAll(hostRate);
         for (int k = 0; k < SPEC_SECTIONS; ++k)
@@ -1184,6 +1202,7 @@ module Engine
             s->turbo = spec.boost.level;
             s->tsize = spec.boost.size;
             s->bov = spec.boost.blowOff;
+            boost.applyMachine(&spec.boost, vTotal, ecu.redRpm, 101325.0f, heat.tAmb);
         }
         if (moved(4, spec.exhaust.rev))
         {
@@ -1231,7 +1250,8 @@ module Engine
     void readControls()
     {
         Dials* s = &set;
-        const bool driven = ctl.mode == MODE_DRIVE;
+        // (the chassis dyno is the vehicle's: driven, as on the road)
+        const bool driven = ctl.mode == MODE_DRIVE || ctl.mode == MODE_DYNO_CHASSIS;
         s->drive = driven ? (spec.car.kind == 1 ? 2 : 1) : 0;
         s->hold = 1.0e9f;            // it never switches itself off (the reference's HOLD idled it out)
         s->bendRange = 12.0f;
@@ -1344,6 +1364,9 @@ module Engine
         tel.engine.crank = crank.theta;
         mechanicsTelemetry();
         tel.boost.pressure = boost.boost * 100000.0f;
+        boost.telemetry(&tel.boost);
+        if (ctl.scopeOn != 0)
+            boost.scope(&scope);
         tel.exhaust.portTemperature = exh.tPort;
         tel.ecu.knockRetard = ecu.kRet;
         tel.ecu.advance = lay.cyc - cyl[0].sparkAt;

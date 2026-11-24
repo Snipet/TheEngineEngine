@@ -78,7 +78,29 @@ namespace tee::ui
             slowBtn_->setLit([this] { return slow_; });
             linear_->setLit([this] { return !log_; });
             logLog_->setLit([this] { return log_; });
+            // on a small stage the firing ring, the loop and the numbers share one panel, chosen by these
+            const char* names[3] = { "Firing", "P-V loop", "Derived" };
+            for (int t = 0; t < 3; ++t)
+            {
+                tabs_[t] = &make<Button>(names[t], [this, t] {
+                    tab_ = t;
+                    arrange();
+                });
+                tabs_[t]->setLit([this, t] { return tab_ == t; });
+            }
         }
+
+        // The panels drawn now (for tests: no text may cross one's edge).
+        std::vector<Rect> panels() const
+        {
+            std::vector<Rect> v{ block_, section_ };
+            if (!compact_)
+                v.insert(v.end(), { ring_, pv_, derived_ });
+            else
+                v.push_back(ring_);   // the shared panel
+            return v;
+        }
+        bool compact() const noexcept { return compact_; }
 
         const char* id() const override { return "engine"; }
         const char* title() const override { return "ENGINE"; }
@@ -91,7 +113,7 @@ namespace tee::ui
             DrawKey k;
             k.mix(ctx_.doc.revision()).mix(ctx_.selection.revision()).mix(ctx_.units.revision());
             k.mix(std::isfinite(a) ? static_cast<std::int64_t>(std::lround(a * 4.0)) : -1);
-            k.mix(slow_).mix(log_).mix(paceIndex_).mix(scopeVersion_);
+            k.mix(slow_).mix(log_).mix(paceIndex_).mix(scopeVersion_).mix(tab_).mix(compact_);
             k.mix(static_cast<float>(ctx_.live.get(kTelSpeed)));
             return k.h;
         }
@@ -179,24 +201,48 @@ namespace tee::ui
         {
             const float pad = 16.0f;
             const Rect in{ s.x + pad, s.y + pad, s.w - 2 * pad, s.h - 2 * pad };
-            const float wA = std::floor(in.w * 0.41f), wB = std::floor(in.w * 0.25f);
-            const float wC = in.w - wA - wB - 2 * kGap;
-            const float hBlock = in.h - std::clamp(std::floor(in.h * 0.36f), 150.0f, 190.0f) - kGap;
-            block_ = { in.x, in.y, wA, hBlock };
-            derived_ = { in.x, in.y + hBlock + kGap, wA, in.h - hBlock - kGap };
-            section_ = { in.x + wA + kGap, in.y, wB, in.h };
-            const float hRing = std::floor(in.h * 0.5f);
-            ring_ = { section_.right() + kGap, in.y, wC, hRing };
-            pv_ = { ring_.x, in.y + hRing + kGap, wC, in.h - hRing - kGap };
+            // a small stage (the frame's at its smallest window, some 700 x 570): the block over a panel of tabs, the
+            // section beside them, tall; a large one: every panel at once
+            compact_ = in.w < 980.0f;
+            if (compact_)
+            {
+                const float wL = std::floor(in.w * 0.56f), hB = std::floor(in.h * 0.5f);
+                block_ = { in.x, in.y, wL, hB };
+                ring_ = pv_ = derived_ = { in.x, in.y + hB + kGap, wL, in.h - hB - kGap };
+                section_ = { in.x + wL + kGap, in.y, in.w - wL - kGap, in.h };
+            }
+            else
+            {
+                // BLOCK over FIRING at the left, the section in the middle, the loop over the numbers at the right
+                const float wA = std::floor(in.w * 0.36f), wB = std::floor(in.w * 0.29f);
+                const float wC = in.w - wA - wB - 2 * kGap;
+                const float hBlock = std::floor(in.h * 0.48f);
+                block_ = { in.x, in.y, wA, hBlock };
+                ring_ = { in.x, in.y + hBlock + kGap, wA, in.h - hBlock - kGap };
+                section_ = { in.x + wA + kGap, in.y, wB, in.h };
+                const float hDer = std::clamp(std::floor(in.h * 0.26f), 170.0f, 210.0f);
+                pv_ = { section_.right() + kGap, in.y, wC, in.h - hDer - kGap };
+                derived_ = { pv_.x, pv_.bottom() + kGap, wC, hDer };
+            }
+            const float tw = std::min(84.0f, (ring_.w - 2 * lk::kPad - 8.0f) / 3.0f);
+            for (int t = 0; t < 3; ++t)
+                tabs_[t]->setPlace({ ring_.x + lk::kPad + (tw + 4.0f) * static_cast<float>(t), ring_.y + 6.0f, tw, 20.0f }, compact_);
 
-            const float by = section_.y + 30.0f, bw = std::min(64.0f, (section_.w - 24.0f - 8.0f) / 3.4f);
-            live_->setPlace({ section_.x + lk::kPad, by, bw, 22.0f }, true);
-            slowBtn_->setPlace({ section_.x + lk::kPad + bw + 4.0f, by, bw, 22.0f }, true);
-            const float px = section_.x + lk::kPad + 2 * bw + 12.0f;
+            // LIVE, SLOW and the pace across the section's top; the pace's words shorten to fit
+            const float bx = section_.x + lk::kPad, bwAll = section_.w - 2 * lk::kPad;
+            const float by = section_.y + 30.0f, bw = std::min(64.0f, std::floor(bwAll / 4.0f));
+            live_->setPlace({ bx, by, bw, 22.0f }, true);
+            slowBtn_->setPlace({ bx + bw + 4.0f, by, bw, 22.0f }, true);
+            const float px = bx + 2 * bw + 10.0f;
+            paceShort_ = section_.right() - lk::kPad - px < 112.0f;
+            pace_->setTitle(paceText());
             pace_->setPlace({ px, by, section_.right() - lk::kPad - px, 22.0f }, true);
+            // LINEAR and LOG-LOG on the loop's axis line, at its right
+            const Rect pc = inner(pv_);
             const float lw = 58.0f;
-            logLog_->setPlace({ pv_.right() - lk::kPad - lw, pv_.y + 6.0f, lw, 20.0f }, true);
-            linear_->setPlace({ pv_.right() - lk::kPad - 2 * lw - 4.0f, pv_.y + 6.0f, lw, 20.0f }, true);
+            const bool pvShown = !compact_ || tab_ == 1;
+            logLog_->setPlace({ pc.right() - lw, pc.y - 4.0f, lw, 18.0f }, pvShown);
+            linear_->setPlace({ pc.right() - 2 * lw - 4.0f, pc.y - 4.0f, lw, 18.0f }, pvShown);
         }
 
         void step(float dt) override
@@ -229,10 +275,13 @@ namespace tee::ui
             const Model& m = model();
             const double a1 = stageAngle();
             drawBlock(c, p, m, a1);
-            drawDerived(c, p, m);
             drawSection(c, p, m, a1);
-            drawRing(c, p, m, a1);
-            drawPv(c, p, m, a1);
+            if (!compact_ || tab_ == 0)
+                drawRing(c, p, m, a1);
+            if (!compact_ || tab_ == 1)
+                drawPv(c, p, m, a1);
+            if (!compact_ || tab_ == 2)
+                drawDerived(c, p, m);
         }
 
     private:
@@ -279,6 +328,15 @@ namespace tee::ui
             get(kScopeLiftIn, sli_);
             get(kScopeLiftEx, sle_);
             scopeN_ = std::min(np, nv);
+            // where each lift peaks (the cams' noses point down there)
+            const auto peak = [](const std::vector<float>& v) {
+                if (v.empty())
+                    return kNaN;
+                const auto it = std::max_element(v.begin(), v.end());
+                return *it > 0.0f ? static_cast<double>(it - v.begin()) : kNaN;
+            };
+            inPeak_ = peak(sli_);
+            exPeak_ = peak(sle_);
             ++scopeVersion_;
         }
         // Scope array at a cylinder's angle (NaN when it has none)
@@ -304,7 +362,7 @@ namespace tee::ui
         std::string paceText() const
         {
             char b[32];
-            std::snprintf(b, sizeof b, "%.0f s a cycle", kPaces[paceIndex_]);
+            std::snprintf(b, sizeof b, paceShort_ ? "%.0f s" : "%.0f s a cycle", kPaces[paceIndex_]);
             return b;
         }
 
@@ -334,8 +392,11 @@ namespace tee::ui
         {
             BlockGeo g;
             const Rect in = inner(block_);
-            const float pinsH = l.rotors > 0 ? 0.0f : std::min(96.0f, in.h * 0.3f);
-            g.area = { in.x, in.y + 26.0f, in.w, in.h - 26.0f - pinsH };
+            // the block takes the panel's width (or its height), the crank's pins right under it, the two together
+            // in the middle of the room under the panel's header line
+            const float head = 22.0f, avail = in.h - head;
+            const float pinsH = l.rotors > 0 ? 0.0f : std::min(84.0f, avail * 0.32f);
+            g.area = { in.x, in.y + head, in.w, avail - pinsH };
             g.pins = { in.x, g.area.bottom(), in.w, pinsH };
             if (l.empty())
                 return g;
@@ -348,19 +409,25 @@ namespace tee::ui
             double lo = 0.0, hi = 0.0;
             for (int b = 0; b < l.banks; ++b)
             {
-                f[static_cast<std::size_t>(b)] = std::sin(l.bankAngle[static_cast<std::size_t>(b)] * kPi / 180.0) * 1.25;
+                f[static_cast<std::size_t>(b)] = std::sin(l.bankAngle[static_cast<std::size_t>(b)] * kPi / 180.0) * 1.15;
                 lo = std::min(lo, f[static_cast<std::size_t>(b)]);
                 hi = std::max(hi, f[static_cast<std::size_t>(b)]);
             }
+            const float rows = static_cast<float>(hi - lo) + 1.3f;   // the block's height in bores
             const float pitchRoom = (g.area.w - left - right) / static_cast<float>(span + 1.0);
-            const float sizeH = g.area.h / static_cast<float>(hi - lo + 1.5);
+            const float sizeH = (avail - pinsH - 8.0f) / rows;
             const float pitch = std::min(pitchRoom, sizeH / 0.84f);
             g.d = std::min(pitch * 0.84f, sizeH);
             if (l.rotors > 0)
-                g.d = std::min(pitch * 0.8f, g.area.h * 0.8f);
+                g.d = std::min(pitch * 0.8f, avail * 0.6f);
+            const float blockH = l.rotors > 0 ? g.d * 1.5f : rows * g.d;
+            const float groupH = blockH + (pinsH > 0.0f ? 8.0f + pinsH : 0.0f);
+            const float top0 = in.y + head + std::max(0.0f, (avail - groupH) * 0.5f);
+            g.area = { in.x, top0, in.w, blockH };
+            g.pins = { in.x, g.area.bottom() + 8.0f, in.w, pinsH };
             const float x0 = g.area.x + left + (g.area.w - left - right - pitch * static_cast<float>(span + 1.0)) * 0.5f
                 + pitch * 0.5f;
-            const float cy = g.area.centreY() - static_cast<float>((hi + lo) * 0.5) * g.d;
+            const float cy = l.rotors > 0 ? g.area.centreY() - g.d * 0.15f : top0 + 0.65f * g.d - static_cast<float>(lo) * g.d;
             g.rowY.resize(static_cast<std::size_t>(l.banks));
             for (int b = 0; b < l.banks; ++b)
                 g.rowY[static_cast<std::size_t>(b)] = cy + static_cast<float>(f[static_cast<std::size_t>(b)]) * g.d;
@@ -532,7 +599,8 @@ namespace tee::ui
             // the crank's pins, from the front: each throw's circle, its pin where the crank has it now
             if (g.pins.h > 30.0f && !g.throws.empty())
             {
-                put(c, "CRANK PINS, FROM THE FRONT", g.pins.x, g.pins.y + 2.0f, lk::kCaps, p.label);
+                put(c, std::isfinite(a1) ? "CRANK PINS, FROM THE FRONT" : "CRANK PINS AT CRANK 0: NO ANGLE", g.pins.x, g.pins.y + 2.0f,
+                    lk::kCaps, p.label);
                 const double theta = (std::isfinite(a1) ? a1 : 0.0) + l.bankAngle[static_cast<std::size_t>(l.bank[0])];
                 const float cy = g.pins.y + 18.0f + g.throwR;
                 for (const Throw& t : g.throws)
@@ -545,8 +613,6 @@ namespace tee::ui
                     c.disc(pin.x, pin.y, std::max(2.0f, g.throwR * 0.26f), p.value);
                     put(c, t.label, ctr.x, cy + g.throwR + 4.0f, lk::kUnit, p.text, Align::centre);
                 }
-                if (!std::isfinite(a1))
-                    put(c, "AT CRANK 0: NO CRANK ANGLE", g.pins.right(), g.pins.y + 2.0f, lk::kCaps, p.dim, Align::right);
             }
         }
 
@@ -564,7 +630,7 @@ namespace tee::ui
         // ---- derived numbers ---------------------------------------------------------------------------------------
         void drawDerived(Canvas& c, const lk::Palette& p, const Model& m) const
         {
-            lk::region(c, p, derived_, "DERIVED FROM THE BUILD");
+            lk::region(c, p, derived_, compact_ ? "" : "DERIVED FROM THE BUILD");
             const Rect in = inner(derived_);
             const Derived& d = m.derived;
             const Units& u = ctx_.units;
@@ -592,7 +658,7 @@ namespace tee::ui
                 { "SWEPT A CYLINDER", number(Quantity::volume, m.cyl.known() ? m.cyl.swept() : kNaN),
                   u.unit(Quantity::volume).name, m.cyl.boreDerived ? "from size and B / S" : "pi/4 B^2 S" },
             };
-            const int cols = in.w > 330.0f ? 3 : 2;
+            const int cols = in.w > 420.0f ? 3 : 2;
             const int rows = (static_cast<int>(std::size(cells)) + cols - 1) / cols;
             const float cw = in.w / static_cast<float>(cols), rh = std::min(64.0f, in.h / static_cast<float>(rows));
             for (int i = 0; i < static_cast<int>(std::size(cells)); ++i)
@@ -620,11 +686,11 @@ namespace tee::ui
             const char* mode = slow_ ? "SLOW: THE SCOPE'S LAST CYCLE" : "LIVE: THE CRANK AS IT TURNS";
             put(c, mode, in.x, in.y + 30.0f, lk::kCaps, slow_ ? p.selected : p.label);
             if (!slow_ && !std::isfinite(liveAngle()))
-                put(c, "NO CRANK ANGLE: AT REST AT TDC", in.x, in.y + 44.0f, lk::kCaps, p.dim);
+                put(c, "NO CRANK ANGLE: AT REST AT TDC", in.x, in.y + 43.0f, lk::kCaps, p.dim);
             else if (cyl != 0)
-                put(c, "CYLINDER 1'S SCOPE, AT ITS ANGLE", in.x, in.y + 44.0f, lk::kCaps, p.dim);
+                put(c, "CYLINDER 1'S SCOPE, AT ITS ANGLE", in.x, in.y + 43.0f, lk::kCaps, p.dim);
 
-            const Rect draw{ in.x, in.y + 60.0f, in.w, in.h - 60.0f - 78.0f };
+            const Rect draw{ in.x, in.y + 56.0f, in.w, in.h - 56.0f - 98.0f };
             const Cylinder& cy = m.cyl;
             if (l.rotors > 0 || !cy.known())
             {
@@ -637,12 +703,14 @@ namespace tee::ui
             const double B = cy.bore, r = cy.radius(), L = std::isfinite(cy.rod) ? cy.rod : 3.3 * r;
             const double cr = std::isfinite(cy.compression) && cy.compression > 1.05 ? cy.compression : 10.0;
             const double clear = 2.0 * r / (cr - 1.0);               // the clearance volume as a height in the bore
-            const double stems = 0.30 * B, head = 0.22 * B, pinDown = 0.38 * B, skirt = 0.62 * B, below = 0.26 * B;
+            const double stems = 0.42 * B, head = 0.22 * B, pinDown = 0.38 * B, skirt = 0.62 * B, below = 0.2 * B;
             const double total = stems + head + clear + pinDown + L + 2.0 * r + below;
             const double wide = B * 1.40;
-            const double k = std::min((draw.w - 96.0) / wide, draw.h / total);   // px a metre, the same both ways
-            const float cx = std::floor(draw.x + 30.0f + static_cast<float>(wide * k) * 0.5f);
-            const float top = draw.y + static_cast<float>((draw.h - total * k) * 0.5);
+            // px a metre, the same both ways: as large as the panel allows, with room for TDC at the left, the gas's
+            // number at the right and the valves' names over the cams
+            const double k = std::min((draw.w - 30.0 - 78.0) / wide, (draw.h - 16.0) / total);
+            const float cx = std::floor(draw.x + 30.0f + (draw.w - 30.0f - 78.0f) * 0.5f);
+            const float top = draw.y + 16.0f + static_cast<float>((draw.h - 16.0 - total * k) * 0.5);
             const float headTop = top + static_cast<float>(stems * k), headBot = headTop + static_cast<float>(head * k);
             const float crownTdc = headBot + static_cast<float>(clear * k);
             const float crown = crownTdc + static_cast<float>(pistonDrop(ca, r, L) * k);
@@ -659,32 +727,62 @@ namespace tee::ui
             const double pa = turning ? at(sp_, ca) : kNaN;
             const Col gas = std::isfinite(pa) ? p.over(p.pressure(pa, 101325.0, 5.0e6), 0.55f) : p.panel;
             c.rrect(cx - hb + 1.0f, headBot, 2 * hb - 2.0f, std::max(1.0f, crown - headBot), 0.0f, gas);
-            // the valves: intake at the left (cold), exhaust at the right (hot), each lifted by the Scope's curve
-            const double li = turning ? at(sli_, ca) : kNaN, le = turning ? at(sle_, ca) : kNaN;
-            const auto valve = [&](float vx, double dia, double lift01, double fullLift, Col ink) {
-                const double full = std::isfinite(fullLift) ? fullLift : 0.26 * dia;   // drawn to scale when the build says
-                const float lift = std::isfinite(lift01) ? static_cast<float>(lift01 * full * k) : 0.0f;
-                const float hw = static_cast<float>(dia * 0.5 * k), face = std::max(3.0f, static_cast<float>(0.05 * B * k));
-                c.segment(vx, top + 2.0f + lift, vx, headBot - face + lift, std::max(2.0f, static_cast<float>(0.06 * B * k)), ink);
-                c.rrect(vx - hw, headBot - face + lift, 2 * hw, face, std::min(2.0f, face * 0.5f), ink);
-            };
+            // the ports through the head, each in its gas's ink, faintly
             const Col inInk = p.cold, exInk = p.hot;
-            valve(cx - static_cast<float>(0.24 * B * k), 0.40 * B, li, m.liftIn, inInk);
-            valve(cx + static_cast<float>(0.25 * B * k), 0.34 * B, le, m.liftEx, exInk);
-            // the spark plug, and the spark at the firing top (a burst and a word)
+            const float vxIn = cx - static_cast<float>(0.24 * B * k), vxEx = cx + static_cast<float>(0.25 * B * k);
+            const float portY = headTop + (headBot - headTop) * 0.3f, portH = headBot - portY - 1.0f;
+            c.rrect(cx - hb - wall + 1.0f, portY, vxIn - (cx - hb - wall) + 4.0f, portH, 3.0f, p.over(inInk, 0.25f));
+            c.rrect(vxEx - 4.0f, portY, cx + hb + wall - vxEx + 3.0f, portH, 3.0f, p.over(exInk, 0.25f));
+            // the valves: intake at the left (cold), exhaust at the right (hot), each lifted by the Scope's curve, its
+            // head opening into the chamber; over each stem its cam, turning at half the crank's speed
+            const double li = turning ? at(sli_, ca) : kNaN, le = turning ? at(sle_, ca) : kNaN;
+            const float rb = std::max(4.0f, static_cast<float>(0.09 * B * k));
+            const auto valve = [&](float vx, double dia, double lift01, double fullLift, double peakDeg, Col ink) {
+                const double full = std::isfinite(fullLift) ? fullLift : 0.26 * dia;   // to scale when the build says
+                const float fullPx = static_cast<float>(full * k);
+                const float lift = std::isfinite(lift01) ? static_cast<float>(lift01) * fullPx : 0.0f;
+                const float hw = static_cast<float>(dia * 0.5 * k), face = std::max(3.0f, static_cast<float>(0.05 * B * k));
+                const float faceY = headBot - face + lift, neckY = faceY - static_cast<float>(0.1 * B * k);
+                const float camY = top + rb + 2.0f;
+                c.segment(vx, camY + rb + lift, vx, faceY, std::max(2.0f, static_cast<float>(0.06 * B * k)), ink);
+                c.segment(vx, neckY, vx - hw * 0.8f, faceY, 2.0f, ink);
+                c.segment(vx, neckY, vx + hw * 0.8f, faceY, 2.0f, ink);
+                c.rrect(vx - hw, faceY, 2 * hw, face, std::min(2.0f, face * 0.5f), ink);
+                // the lobe: its base circle and its nose, pointing down at full lift
+                if (std::isfinite(peakDeg))
+                {
+                    const double phi = 180.0 + (ca - peakDeg) * 0.5;
+                    const Point nose = polar({ vx, camY }, phi, rb + fullPx - rb * 0.45f);
+                    c.segment(vx, camY, nose.x, nose.y, rb * 0.9f, p.label);
+                }
+                c.disc(vx, camY, rb, p.label);
+                c.disc(vx, camY, std::max(1.5f, rb * 0.25f), p.panel);
+            };
+            valve(vxIn, 0.40 * B, li, m.liftIn, inPeak_, inInk);
+            valve(vxEx, 0.34 * B, le, m.liftEx, exPeak_, exInk);
+            // each valve's name in its port, or over the cams when the port is too narrow for it
+            const float inRoom = vxIn - static_cast<float>(0.2 * B * k) - (cx - hb - wall) - 6.0f;
+            const float exRoom = (cx + hb + wall) - (vxEx + static_cast<float>(0.17 * B * k)) - 6.0f;
+            const float nameY = portH >= 12.0f ? c.capCentreTop(portY + portH * 0.5f, lk::kCaps) : top - 14.0f;
+            const bool inPort = portH >= 12.0f && inRoom >= c.textWidth("INTAKE", lk::kCaps);
+            const bool exPort = portH >= 12.0f && exRoom >= c.textWidth("EXHAUST", lk::kCaps);
+            put(c, "INTAKE", cx - hb - wall + 4.0f, inPort ? nameY : top - 14.0f, lk::kCaps, inInk);
+            put(c, "EXHAUST", cx + hb + wall - 4.0f, exPort ? nameY : top - 14.0f, lk::kCaps, exInk, Align::right);
+            // the spark plug, and the spark at the ECU's advance (a burst and a word)
             const float plugW = std::max(3.0f, static_cast<float>(0.05 * B * k));
-            c.segment(cx, top + static_cast<float>(0.08 * B * k), cx, headBot + 1.0f, plugW, p.label);
-            const bool spark = turning && (ca > (l.cyc - 22.0) || ca < 6.0);
-            if (spark)
+            c.segment(cx, headTop - static_cast<float>(0.06 * B * k), cx, headBot + 1.0f, plugW, p.label);
+            const double adv = ctx_.live.get(kTelAdvance);
+            const double fromSpark = std::isfinite(adv) ? wrap(ca - (l.cyc - adv), l.cyc) : kNaN;
+            if (turning && std::isfinite(fromSpark) && fromSpark < 14.0)
             {
-                const float s = std::max(5.0f, static_cast<float>(0.07 * B * k));
+                const float sp = std::max(5.0f, static_cast<float>(0.07 * B * k));
                 for (int i = 0; i < 6; ++i)
                 {
-                    const Point a = polar({ cx, headBot + 3.0f }, 90.0 + i * 36.0, s * 0.4);
-                    const Point b = polar({ cx, headBot + 3.0f }, 90.0 + i * 36.0, s * 1.3);
+                    const Point a = polar({ cx, headBot + 3.0f }, 90.0 + i * 36.0, sp * 0.4);
+                    const Point b = polar({ cx, headBot + 3.0f }, 90.0 + i * 36.0, sp * 1.3);
                     c.segment(a.x, a.y, b.x, b.y, 1.5f, p.warning);
                 }
-                put(c, "SPARK", cx + 8.0f, top - 2.0f, lk::kCaps, p.warning);
+                put(c, "SPARK", cx + 6.0f, headBot + 4.0f + sp, lk::kCaps, p.warning);
             }
             // TDC and BDC beside the bore: the stroke
             const float crownBdc = crownTdc + static_cast<float>(2.0 * r * k);
@@ -726,11 +824,6 @@ namespace tee::ui
             };
             const auto [lin, lunit] = liftText(li, m.liftIn);
             const auto [lex, eunit] = liftText(le, m.liftEx);
-            const float ly = std::max(gy + 40.0f, crankY - static_cast<float>(r * k) - 40.0f);
-            stage::readout(c, p, rx, ly, "IN LIFT", lin, lunit, lk::kNumberS, lin == "-" ? kClear : inInk);
-            stage::readout(c, p, rx, ly + 36.0f, "EX LIFT", lex, eunit, lk::kNumberS, lex == "-" ? kClear : exInk);
-            put(c, "INTAKE", cx - static_cast<float>(0.24 * B * k), top - 14.0f, lk::kCaps, inInk, Align::centre);
-            put(c, "EXHAUST", cx + static_cast<float>(0.25 * B * k), top - 14.0f, lk::kCaps, exInk, Align::centre);
 
             // where in the cycle and which stroke; the geometry it is drawn from (to scale with each other)
             const float ry = draw.bottom() + 6.0f;
@@ -738,18 +831,20 @@ namespace tee::ui
             const std::string ang = std::isfinite(a1) ? fmt(ca, "%.0f") : "-";
             stage::readout(c, p, in.x, ry, "ANGLE", ang, "deg", lk::kNumberS);
             stage::readout(c, p, in.x + colW, ry, "STROKE", std::isfinite(a1) ? strokeName(ca, false) : "-", "", lk::kNumberS);
-            const std::string lu = u.unit(Quantity::length).name;
-            stage::readout(c, p, in.x, ry + 38.0f, "BORE", u.number(Quantity::length, B), lu, lk::kNumberS);
-            stage::readout(c, p, in.x + colW, ry + 38.0f, "STROKE", u.number(Quantity::length, 2.0 * r), lu, lk::kNumberS);
-            stage::readout(c, p, in.x + 2 * colW, ry + 38.0f, cy.rodDerived ? "ROD, 3.3 r" : "ROD", u.number(Quantity::length, L), lu,
-                        lk::kNumberS);
+            stage::readout(c, p, in.x + 2 * colW, ry, "SPARK", std::isfinite(adv) ? fmt(adv, "%.0f") : "-", "BTDC", lk::kNumberS);
+            stage::readout(c, p, in.x, ry + 36.0f, "IN LIFT", lin, lunit, lk::kNumberS, lin == "-" ? kClear : inInk);
+            stage::readout(c, p, in.x + colW, ry + 36.0f, "EX LIFT", lex, eunit, lk::kNumberS, lex == "-" ? kClear : exInk);
+            const std::string geo = u.number(Quantity::length, B) + " x " + u.number(Quantity::length, 2.0 * r) + ", rod "
+                + u.number(Quantity::length, L) + " " + u.unit(Quantity::length).name;
+            put(c, "BORE X STROKE", in.x, ry + 76.0f, lk::kCaps, p.label);
+            put(c, geo, in.x + c.textWidth("BORE X STROKE", lk::kCaps) + 10.0f, ry + 75.0f, lk::kBody, p.value);
         }
 
         // ---- the firing ring ---------------------------------------------------------------------------------------
         void drawRing(Canvas& c, const lk::Palette& p, const Model& m, double a1) const
         {
             const Layout& l = m.layout;
-            lk::region(c, p, ring_, l.rotors > 0 ? "FIRING, 1080 DEGREES" : "FIRING, 720 DEGREES",
+            lk::region(c, p, ring_, compact_ ? "" : l.rotors > 0 ? "FIRING, 1080 DEGREES" : "FIRING, 720 DEGREES",
                        ctx_.selection.path() == "engine.layout");
             const Rect in = inner(ring_);
             if (l.empty())
@@ -759,7 +854,7 @@ namespace tee::ui
             }
             const int banks = l.rotors > 0 ? 1 : l.banks;
             const float legend = 16.0f * static_cast<float>(banks > 1 ? banks + 1 : 1) + 4.0f;
-            const float R = std::max(20.0f, std::min(in.w, in.h - legend) * 0.5f - 20.0f);
+            const float R = std::max(20.0f, std::min(in.w, in.h - legend) * 0.5f - 26.0f);
             const Point ctr{ in.centreX(), in.y + (in.h - legend) * 0.5f };
             c.arc(ctr, R, 0.0f, static_cast<float>(2.0 * kPi), 1.5f, p.edge);
             // the cycle's quarters, faintly: each 90 degrees of crank
@@ -836,7 +931,7 @@ namespace tee::ui
         // ---- the pressure-volume loop ------------------------------------------------------------------------------
         void drawPv(Canvas& c, const lk::Palette& p, const Model& m, double a1) const
         {
-            lk::region(c, p, pv_, "PRESSURE AGAINST VOLUME");
+            lk::region(c, p, pv_, compact_ ? "" : "PRESSURE AGAINST VOLUME");
             const Rect in = inner(pv_);
             const Rect plot{ in.x + 46.0f, in.y + 18.0f, in.w - 50.0f, in.h - 18.0f - 30.0f };
             const Units& u = ctx_.units;
@@ -942,12 +1037,9 @@ namespace tee::ui
                 }
                 c.polyline(xs.data(), ys.data(), static_cast<int>(xs.size()), lk::kTrace, inks[s]);
             }
-            float kx = plot.right() - 8.0f;
-            for (int s = 3; s >= 0; --s)
-            {
-                put(c, words[s], kx, plot.y + 6.0f, lk::kCaps, inks[s], Align::right);
-                kx -= c.textWidth(words[s], lk::kCaps) + 10.0f;
-            }
+            // the key: a word a stroke, stacked at the top right (where the loop never goes)
+            for (int s = 0; s < 4; ++s)
+                put(c, words[s], plot.right() - 8.0f, plot.y + 6.0f + 14.0f * static_cast<float>(s), lk::kCaps, inks[s], Align::right);
             if (std::isfinite(a1) && m.layout.rotors == 0)
             {
                 const int cylSel = selectedCylinder();
@@ -973,7 +1065,7 @@ namespace tee::ui
                 }
                 return "engine.layout";
             }
-            if (ring_.contains(pt))
+            if (ring_.contains(pt) && (!compact_ || tab_ == 0) && pt.y > ring_.y + 30.0f)
                 return "engine.layout";
             if (section_.contains(pt) && pt.y > section_.y + 60.0f)
                 return "engine.bore";
@@ -981,13 +1073,16 @@ namespace tee::ui
         }
 
         Button *live_ = nullptr, *slowBtn_ = nullptr, *pace_ = nullptr, *linear_ = nullptr, *logLog_ = nullptr;
-        bool slow_ = false, log_ = false;
+        bool slow_ = false, log_ = false, compact_ = false, paceShort_ = false;
+        int tab_ = 0;
+        Button* tabs_[3] = {};
         int paceIndex_ = 1;
         double slowAngle_ = 0.0;
         Rect block_{}, derived_{}, section_{}, ring_{}, pv_{};
         // the Scope as last read
         std::vector<float> sp_, sv_, sli_, sle_;
         int scopeN_ = 0;
+        double inPeak_ = kNaN, exPeak_ = kNaN;
         std::uint64_t seenGeneration_ = 0;
         bool scopeRead_ = false;
         std::uint32_t scopeVersion_ = 0;
@@ -998,4 +1093,15 @@ namespace tee::ui
     };
 
     std::unique_ptr<Workspace> makeEngineWorkspace(WorkspaceContext& c) { return std::make_unique<EngineWorkspace>(c); }
+
+    std::vector<funkgui::Rect> enginePanels(const Workspace& w)
+    {
+        const auto* e = dynamic_cast<const EngineWorkspace*>(&w);
+        return e != nullptr ? e->panels() : std::vector<funkgui::Rect>{};
+    }
+    bool engineCompact(const Workspace& w)
+    {
+        const auto* e = dynamic_cast<const EngineWorkspace*>(&w);
+        return e != nullptr && e->compact();
+    }
 }

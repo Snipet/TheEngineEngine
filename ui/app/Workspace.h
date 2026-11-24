@@ -224,9 +224,11 @@ namespace tee::ui
         std::function<float()> simLoad;                           // the simulator's share of its time budget, 0..1+
         std::function<int()> mode;                                // 0 bench, 1 dyno, 2 drive (ControlsFrame::mode)
         std::function<void(int)> setMode;
-        // The clutch pedal from the mouse while it is held (0..1), or a negative number when let go. PanelControls
-        // has no clutch yet (a change for the lead: docs/handoffs/u1-frame.md).
+        // The clutch pedal from the mouse while it is held (0..1), or a negative number when let go. The frame now
+        // reports it in PanelControls::clutch too; this stays for a shell that serves it.
         std::function<void(float)> clutch;
+        // The ECU's maps baked from its formulas now (ctl.bakeMaps pressed once; TUNE's BAKE). None: not here.
+        std::function<void()> bakeMaps;
         // A text saved as a file the person chooses (a dyno run's CSV, an export): the host's save dialog, starting at
         // `suggestedName`. False, with `error`, when it was not saved (cancelled: error empty). None: no saving here
         // (a workspace then copies the text: HostServices::copyText).
