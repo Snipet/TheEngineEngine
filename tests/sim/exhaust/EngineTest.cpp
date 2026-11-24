@@ -803,3 +803,56 @@ TEST_CASE("measure: the exhaust's temperatures at full load, mass means and ther
                     f("tel.exhaust.portThermocouple"), f("exh.tcPlain"), f("tel.exhaust.headerThermocouple"));
     }
 }
+
+// The lead's ruling (24 Nov): the exhaust valves give their pipes g q (the simple wave's stiffening), 5 to 20 % more
+// than the cylinders let out over a cycle; Exhaust::stepLet closes the mean (spec.exhaust.flowClose, on under model 1).
+// What the pipes are given against what the valves let out (exh.flowGiven, exh.flowLet: m^3, summed in blocks), over a
+// second: the big block at idle and at 4000 rpm full throttle, the 2.0 turbo four at 3000: within a per cent.
+TEST_CASE("the pipes are given what the exhaust valves let out", "[exhaust][engine][books]")
+{
+    struct Case
+    {
+        const char* file;
+        double rpm;     // 0: idle
+    };
+    for (const Case& k : {Case{"big-block-74-pushrod-v8.json", 0.0}, Case{"big-block-74-pushrod-v8.json", 4000.0},
+                          Case{"turbo-four-20-gdi.json", 3000.0}})
+    {
+        EnginePlayer& p = player();
+        p.reset();
+        EngineBuild b;
+        std::string error, warnings;
+        REQUIRE(loadBuild(p, std::filesystem::path(TEE_SOURCE_DIR) / "content/builds/archetypes" / k.file, b, error, warnings));
+        b.values["env.temperature"] = {293.15};
+        b.values["exhaust.model"] = {1.0};
+        applyBuild(p, b);
+        EnginePlayer::Controls& c = p.controls();
+        c.mode = EnginePlayer::kModeBench;
+        c.ignition = EnginePlayer::kIgnitionStart;
+        std::vector<float> l(512), r(512);
+        auto run = [&](double s) {
+            for (int n = 0; n < static_cast<int>(s * 48000.0 / 512.0); ++n)
+                p.process(l.data(), r.data(), 512);
+        };
+        run(1.5);
+        c.ignition = EnginePlayer::kIgnitionOn;
+        c.throttle = 0.0f;
+        if (k.rpm > 0.0)
+        {
+            c.mode = 2;
+            c.dynoSpeed = static_cast<float>(k.rpm * 0.10471976);
+            c.throttle = 1.0f;
+        }
+        run(3.0);
+        const double g0 = test::field(p, "exh.flowGiven"), l0 = test::field(p, "exh.flowLet");
+        run(1.0);
+        const double g1 = test::field(p, "exh.flowGiven"), l1 = test::field(p, "exh.flowLet");
+        if (l1 - l0 <= 0.0)
+            SKIP("the engine does not call Exhaust::stepLet yet (D's two engine.fm lines)");
+        const double ratio = (g1 - g0) / (l1 - l0);
+        std::printf("books: %s %s: the pipes given %.5f m^3 a second against %.5f let out: %.4f\n", k.file,
+                    k.rpm > 0.0 ? "full throttle" : "idle", g1 - g0, l1 - l0, ratio);
+        INFO(k.file << " at " << k.rpm);
+        CHECK(std::fabs(ratio - 1.0) < 0.01);
+    }
+}

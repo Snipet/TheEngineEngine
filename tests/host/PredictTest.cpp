@@ -274,11 +274,8 @@ namespace
     }
 } // namespace
 
-TEST_CASE("the curve at 48 kHz inside is the 96 kHz curve within 3 % of the peak torque: the V8", "[predict][engine][sim]")
-{
-    ratesAgree({"v8"});   // the quick form; every shipped build: [nightly] below
-}
-
+// (the 48 kHz curve against the 96 kHz one: [nightly] alone, on every shipped build, the V8 among them; the default
+// run's host budget had no room for its second compile)
 TEST_CASE("the curve at 48 kHz inside is the 96 kHz curve within 3 % of the peak torque (a diesel 5 % on its plateau), on each shipped build",
           "[predict][engine][sim][nightly]")
 {

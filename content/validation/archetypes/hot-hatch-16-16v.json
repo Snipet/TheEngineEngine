@@ -133,8 +133,8 @@
         120000
       ],
       "unit": "W",
-      "source": "published figures of its kind (makers' figures of the kind, loose (the kind's spread)): 1595 cc; 53 to 75 kW a litre",
-      "basis": "recalled"
+      "source": "published figures of its kind (makers' figures of the kind, looked up): 1595 cc; 53 to 75 kW a litre; looked up: en.wikipedia.org/wiki/Honda_B_engine (B16A 110-118 kW at 7600, 144-150 N m at 7000-7100); en.wikipedia.org/wiki/Toyota_A_engine (4A-GE 91-103 kW at 6600-7200, 142-147 N m at 5200-6000)",
+      "basis": "cited"
     },
     {
       "name": "Speed at peak power",
@@ -148,8 +148,8 @@
         754.0
       ],
       "unit": "rad/s",
-      "source": "published figures of its kind (makers' figures of the kind, loose (the kind's spread)): 1595 cc: 6500 to 7600 rpm",
-      "basis": "recalled"
+      "source": "published figures of its kind (makers' figures of the kind, looked up): 1595 cc: 6500 to 7600 rpm; looked up: en.wikipedia.org/wiki/Honda_B_engine (B16A 110-118 kW at 7600, 144-150 N m at 7000-7100); en.wikipedia.org/wiki/Toyota_A_engine (4A-GE 91-103 kW at 6600-7200, 142-147 N m at 5200-6000)",
+      "basis": "cited"
     },
     {
       "name": "Peak torque",
@@ -160,11 +160,11 @@
       "measure": "maxTorque",
       "range": [
         140,
-        165
+        155
       ],
       "unit": "N m",
-      "source": "published figures of its kind (makers' figures of the kind, loose (the kind's spread)): 1595 cc; BMEP 11.0 to 13.0 bar (a naturally aspirated petrol engine 10 to 13 bar, turbocharged 18 to 25, a modern truck diesel 20 to 25: Heywood, Internal Combustion Engine Fundamentals, ch. 2)",
-      "basis": "recalled"
+      "source": "published figures of its kind (makers' figures of the kind, looked up): 1595 cc; BMEP 11.0 to 12.2 bar (a naturally aspirated petrol engine 10 to 13 bar, turbocharged 18 to 25, a modern truck diesel 20 to 25: Heywood, Internal Combustion Engine Fundamentals, ch. 2); looked up: en.wikipedia.org/wiki/Honda_B_engine (B16A 110-118 kW at 7600, 144-150 N m at 7000-7100); en.wikipedia.org/wiki/Toyota_A_engine (4A-GE 91-103 kW at 6600-7200, 142-147 N m at 5200-6000)",
+      "basis": "cited"
     },
     {
       "name": "Speed at peak torque",
@@ -174,12 +174,12 @@
       },
       "measure": "speedAtMaxTorque",
       "range": [
-        471.2,
-        628.3
+        523.6,
+        743.5
       ],
       "unit": "rad/s",
-      "source": "published figures of its kind (makers' figures of the kind, loose (the kind's spread)): 1595 cc: 4500 to 6000 rpm (a turbocharged engine's plateau: its whole span)",
-      "basis": "recalled"
+      "source": "published figures of its kind (makers' figures of the kind, looked up): 1595 cc: 5000 to 7100 rpm (a turbocharged engine's plateau: its whole span); looked up: en.wikipedia.org/wiki/Honda_B_engine (B16A 110-118 kW at 7600, 144-150 N m at 7000-7100); en.wikipedia.org/wiki/Toyota_A_engine (4A-GE 91-103 kW at 6600-7200, 142-147 N m at 5200-6000)",
+      "basis": "cited"
     },
     {
       "name": "Warm idle",

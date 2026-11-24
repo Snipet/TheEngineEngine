@@ -133,8 +133,8 @@
         445000
       ],
       "unit": "W",
-      "source": "published figures of its kind (the maker's figures, firm): 4497 cc; 89 to 99 kW a litre",
-      "basis": "recalled"
+      "source": "published figures of its kind (the maker's figures, firm): 4497 cc; 89 to 99 kW a litre; looked up: en.wikipedia.org/wiki/Ferrari_458 (419 kW at 9000, 540 N m at 6000)",
+      "basis": "cited"
     },
     {
       "name": "Speed at peak power",
@@ -148,8 +148,8 @@
         942.5
       ],
       "unit": "rad/s",
-      "source": "published figures of its kind (the maker's figures, firm): 4497 cc: 8000 to 9000 rpm",
-      "basis": "recalled"
+      "source": "published figures of its kind (the maker's figures, firm): 4497 cc: 8000 to 9000 rpm; looked up: en.wikipedia.org/wiki/Ferrari_458 (419 kW at 9000, 540 N m at 6000)",
+      "basis": "cited"
     },
     {
       "name": "Peak torque",
@@ -163,8 +163,8 @@
         560
       ],
       "unit": "N m",
-      "source": "published figures of its kind (the maker's figures, firm): 4497 cc; BMEP 14.5 to 15.6 bar (a naturally aspirated petrol engine 10 to 13 bar, turbocharged 18 to 25, a modern truck diesel 20 to 25: Heywood, Internal Combustion Engine Fundamentals, ch. 2)",
-      "basis": "recalled"
+      "source": "published figures of its kind (the maker's figures, firm): 4497 cc; BMEP 14.5 to 15.6 bar (a naturally aspirated petrol engine 10 to 13 bar, turbocharged 18 to 25, a modern truck diesel 20 to 25: Heywood, Internal Combustion Engine Fundamentals, ch. 2); looked up: en.wikipedia.org/wiki/Ferrari_458 (419 kW at 9000, 540 N m at 6000)",
+      "basis": "cited"
     },
     {
       "name": "Speed at peak torque",
@@ -178,8 +178,8 @@
         680.7
       ],
       "unit": "rad/s",
-      "source": "published figures of its kind (the maker's figures, firm): 4497 cc: 5500 to 6500 rpm (a turbocharged engine's plateau: its whole span)",
-      "basis": "recalled"
+      "source": "published figures of its kind (the maker's figures, firm): 4497 cc: 5500 to 6500 rpm (a turbocharged engine's plateau: its whole span); looked up: en.wikipedia.org/wiki/Ferrari_458 (419 kW at 9000, 540 N m at 6000)",
+      "basis": "cited"
     },
     {
       "name": "Warm idle",

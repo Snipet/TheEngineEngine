@@ -29,7 +29,7 @@ namespace
     }
 } // namespace
 
-TEST_CASE("the rigs' loader reads a build's nested sections as tee::Build does, and round-trips them",
+TEST_CASE("the rigs' loader reads a build's nested sections as tee::Build does, round-trips them, and is strict",
           "[build][loader][sim]")
 {
     if (!std::filesystem::exists(kRoot / "sim" / "engine.fm"))
@@ -89,30 +89,24 @@ TEST_CASE("the rigs' loader reads a build's nested sections as tee::Build does, 
         INFO(path);
         CHECK(again.values.at(path) == values);
     }
-}
 
-TEST_CASE("the rigs' loader fails on a field the program lacks; the lenient one keeps it, nested, and writes it back",
-          "[build][loader][sim]")
-{
-    if (!std::filesystem::exists(kRoot / "sim" / "engine.fm"))
-        SKIP("sim/engine.fm is not there yet");
-    const auto p = player();
-    const char* const json = R"({"format": "tee-build", "version": 1, "name": "x", "notes": "",
+    // (one player for both: an EnginePlayer is a compile of its own)
+    // a field the program lacks: the rigs' strict call fails on it; the lenient one keeps it, nested, and writes it back
+    const char* const lackingJson = R"({"format": "tee-build", "version": 1, "name": "x", "notes": "",
         "spec": {"ecu": {"idle": {"speed": 90.0}, "knock": {"on": false, "fromTheFuture": 3}}}})";
-    EngineBuild build;
-    std::string error, warnings;
-    CHECK_FALSE(parseBuild(*p, json, "x.json", build, error, warnings));
+    EngineBuild lacking;
+    CHECK_FALSE(parseBuild(*p, lackingJson, "x.json", lacking, error, warnings));
     CHECK(error.find("spec.ecu.knock.fromTheFuture") != std::string::npos);
 
     error.clear();
-    REQUIRE(parseBuild(*p, json, "x.json", build, error, warnings, false));
+    REQUIRE(parseBuild(*p, lackingJson, "x.json", build, error, warnings, false));
     CHECK(static_cast<float>(build.values.at("ecu.idle.speed")[0]) == 90.0f);
     CHECK(build.values.at("ecu.knock.on")[0] == 0.0);
     CHECK(build.unknown.count("ecu.knock.fromTheFuture") == 1);
     CHECK(warnings.find("ecu.knock.fromTheFuture") != std::string::npos);
     const std::string out = buildJson(*p, build);
-    EngineBuild again;
-    REQUIRE(parseBuild(*p, out, "again", again, error, warnings, false));
-    CHECK(again.unknown == build.unknown);
-    CHECK(again.values == build.values);
+    EngineBuild back;
+    REQUIRE(parseBuild(*p, out, "again", back, error, warnings, false));
+    CHECK(back.unknown == build.unknown);
+    CHECK(back.values == build.values);
 }
