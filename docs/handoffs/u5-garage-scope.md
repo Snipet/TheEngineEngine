@@ -37,5 +37,4 @@
 
 **Not done / not run**: no workspace calls the fx helpers yet (U3's EXHAUST, U1's DRIVE may). Nobody has seen these
 stages on a real display or GPU; macOS and Windows only by CI, which had not reached these commits when this was written.
-Baseline before my work: `ui.app.sheet` failed. **Measured**: FFT 4096 points at most 30 times a second; 39 view tests
-of mine run in about 40 s here.
+Baseline: `ui.app.sheet` failed before my work. **Measured**: my 19 view tests pass, 14 s here.
