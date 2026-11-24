@@ -70,3 +70,10 @@ packages' hooks), both models 1 1.067: model 1 adds some 0.02 R (budget 0.06 R).
 is passed in); G: fill `popAt` (Combustion fires the reference's `Pop`s meanwhile); I: fill the car's six values
 (`Ecu::vehicle` stores them). Upstream's
 `tests/sim/core/EngineExplore.cpp` does not compile on the tip (`Build` undeclared): D's.
+
+**Energy accounting (the lead's question)**: `fuel.model 1` keeps the reference's kept share, `0.60 + 0.20 x
+manifold` (`Charge1.make`'s `share`), applied to the mixture's heat (`m_air/AFR x LHV x H(phi)`, the unburned fuel
+already out of it), so it double-counts the walls as the reference does. The physical form, once the integrator's
+`hA` takes the walls' real share: `share` becomes the combustion efficiency alone (0.95 to 0.98) under fuel.model 1,
+a one-line change in `Combustion::charge1`, with `fuel.knockDelay` and the bangs' lighting threshold (650 to 900 K of
+`tPort`, set when I read 770 K on the limiter, cut cylinders' air in it) checked again after. To agree with D.
