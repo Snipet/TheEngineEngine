@@ -21,7 +21,7 @@ namespace tee::ui
         DynoTrace t;
         t.name = std::move(name);
         t.fields = c.fields;
-        t.walls = c.settled ? 1 : 0;
+        t.settled = c.settled ? 1 : 0;   // a sweep's is said -1 by startRun's caller (runStepped_)
         t.values.assign(c.fields.size(), {});
         for (const tee::DynoPoint& p : c.points)
         {
@@ -100,7 +100,11 @@ namespace tee::ui
             {
                 running_ = false;
                 if (!run.cancelled)
+                {
                     runs_.push_back(traceOf(run, runName_));
+                    if (!runStepped_)
+                        runs_.back().settled = -1;   // a sweep: its walls are not said
+                }
                 ++revision_;
             }
         }
@@ -120,13 +124,17 @@ namespace tee::ui
         {
             p.steps = r.steps;
             p.settle = r.dwell;
+            p.settleExhaust = r.settleExhaust;
         }
+        runStepped_ = !r.steps.empty();
         // r.gear: DynoPlan has no gear yet (card C); a chassis run is in the car's gear.
         runName_ = r.name.empty() ? "Run " + std::to_string(runs_.size() + 1) : r.name;
         tee::DynoCurve cached;
         if (runner_->request(build_, p, cached))
         {
             runs_.push_back(traceOf(cached, runName_));
+            if (!runStepped_)
+                runs_.back().settled = -1;
             running_ = false;
         }
         else
