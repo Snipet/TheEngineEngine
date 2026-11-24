@@ -1,7 +1,8 @@
-# A first launch, warm (the application's engine starts at its working temperatures): the cam stage changes across
-# its speed. On the first build (a Lab valvetrain), two-stage cams on with the change at 300 rad/s (2,865 rpm),
-# started, idled (stage A), floored in neutral (stage B), and the intake phaser off its stop. The owner's report (a
-# stage change that went quiet when the engine started cold) must not come back: shell.window.first runs this.
+# A launch's cam stage changing across its speed, cold or warm (the second stage waits for coolant over 10 C with oil
+# pressure, the phasers are commanded from cold: N1's 83f34ce5). On the first build (a Lab valvetrain), two-stage
+# cams on with the change at 300 rad/s (2,865 rpm), started, idled (stage A), floored in neutral (stage B), the intake
+# phaser off its stop. The owner's report (a stage change that went quiet) must not come back: shell.window.first
+# runs this in the default run (warm), shell.window.stage.cold with --cold.
 0.10  set valve.stages 1
 0.10  set valve.stageSpeed 300
 0.30  expect sent valve.stages == 1
@@ -9,7 +10,6 @@
 0.40  key return down
 0.70  key return up
 3.00  expect engine.state == 2
-3.00  expect engine.oilTemperature > 340
 3.00  expect valve.stage == 0
 3.00  print
 3.10  key w down

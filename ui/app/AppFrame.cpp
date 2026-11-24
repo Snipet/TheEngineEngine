@@ -280,6 +280,10 @@ namespace tee::ui
         economy_ = &make<Button>("Economy", [this] { if (services_.setQuality) services_.setQuality(1); });
         full_->setLit([quality] { return quality() == 0; });
         economy_->setLit([quality] { return quality() == 1; });
+        warmStart_ = &make<Button>("Warm", [this] { if (services_.setColdStart) services_.setColdStart(false); });
+        coldStart_ = &make<Button>("Cold", [this] { if (services_.setColdStart) services_.setColdStart(true); });
+        warmStart_->setLit([this] { return services_.coldStart && !services_.coldStart(); });
+        coldStart_->setLit([this] { return services_.coldStart && services_.coldStart(); });
         ribbon_ = &make<DynoRibbon>(*dyno_, units_);
         fold_ = &make<Button>("Fold", [this] { foldRibbon(!folded_); });
         makeCockpit();
@@ -875,11 +879,26 @@ namespace tee::ui
         economy_->setPlace({ settingsHeadX_ + bw + 6.0f, y + 16.0f, bw, 26.0f }, on);
         qualityNoteY_ = y + 48.0f;
         y += 48.0f + 13.0f * (services_.setQuality ? 2.0f : 3.0f) + 8.0f;   // the sentence's lines
+        // ENGINE START: warm (the default) or cold, from the next launch; only where the shell serves it.
+        const bool start = on && services_.coldStart && services_.setColdStart;
+        // One row: its heading and "from the next launch" at the left, the buttons under QUALITY's at the right.
+        warmStart_->setPlace({ settingsHeadX_, y + 2.0f, bw, 26.0f }, start);
+        coldStart_->setPlace({ settingsHeadX_ + bw + 6.0f, y + 2.0f, bw, 26.0f }, start);
+        startNoteY_ = -1.0f;
+        if (start)
+        {
+            settingsHeads_.push_back({ "ENGINE START", y + 2.0f });
+            startNoteY_ = y + 16.0f;
+            y += 38.0f;
+        }
         settingsHeads_.push_back({ "UNITS", y });
         // One column: each quantity's name in full at the left, its stepper at the right.
+        // 25 px apart, closer (to 23, the stepper's own height) where the room is short.
+        const float n = static_cast<float>(std::max<std::size_t>(1, unitSteppers_.size()));
+        const float pitch = std::clamp((room.bottom() - y - 16.0f - 4.0f) / n, 23.0f, 25.0f);
         for (std::size_t i = 0; i < unitSteppers_.size(); ++i)
-            unitSteppers_[i]->setPlace({ x, y + 16.0f + static_cast<float>(i) * 25.0f, w, 23.0f }, on);
-        y += 16.0f + 25.0f * static_cast<float>(unitSteppers_.size()) + 8.0f;
+            unitSteppers_[i]->setPlace({ x, y + 16.0f + static_cast<float>(i) * pitch, w, 23.0f }, on);
+        y += 16.0f + pitch * static_cast<float>(unitSteppers_.size()) + 8.0f;
         keysY_ = y + 16.0f;
         if (keysY_ + 14.0f <= room.bottom())   // a heading only with a key under it
             settingsHeads_.push_back({ "KEYS", y });
@@ -925,6 +944,8 @@ namespace tee::ui
             const funkgui::Rect room = inspectorRect();
             for (const auto& [heading, hy] : settingsHeads_)
                 c.text(heading.c_str(), heading == "QUALITY" ? settingsHeadX_ : room.x + 12.0f, hy, look::kCaps, p.label);
+            if (startNoteY_ >= 0.0f)
+                c.text("from the next launch", room.x + 12.0f, startNoteY_, look::kUnit, p.label);
             const std::string note = std::string("Economy: the engine at half its inner rate: about half the load, the highest "
                                                  "octave lost.") + (services_.setQuality ? "" : " Not in this build.");
             // Wrapped at words onto at most three lines.

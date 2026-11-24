@@ -274,6 +274,10 @@ namespace tee::ui
         // The spark map's knock limit (card C's bake, ServiceBake in app/host/HostSources.h): "no table", "waiting to
         // bake", "baking", "baked, to apply", "baked", "bake failed"; empty function: not served. TUNE shows it.
         std::function<std::string()> sparkMap;
+        // How the engine starts (the lead's ruling: warm, a cold start the person's choice; card B's settings key
+        // "coldStart", taken from the next launch). The settings page's ENGINE START row; empty: not shown.
+        std::function<bool()> coldStart;
+        std::function<void(bool)> setColdStart;
         std::function<std::string()> tryFirst;
         std::function<void()> tryFirstDone;
         std::function<int()> loadFits;

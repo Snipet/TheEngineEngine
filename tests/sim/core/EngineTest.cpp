@@ -350,7 +350,19 @@ namespace
         const double t0 = b.field("airThrottle"), v0 = b.field("airValves"), e0 = b.field("gasExhaust"), f0 = b.field("airTrapped");
         const double p0 = b.field("intk.mPlenum");
         const double g0 = b.field("exh.flowGiven"), l0 = b.field("exh.flowLet");
+        // (what the cylinders hold at the window's ends: with a big overlap at idle it moves over a few seconds, and the
+        // exhaust valves' out plus what the cylinders gained is what came in. The ports' stores swing within a cycle and
+        // a sample at each end of the window is no measure of them: left out, the window long against a cycle)
+        const int nc = int(b.tel("engine.cylinders"));
+        auto held = [&](const char* f) {
+            double h = 0.0;
+            for (int c = 0; c < nc; ++c)
+                h += b.field("cyl[" + std::to_string(c) + "]." + f);
+            return h;
+        };
+        const double m0 = held("m");
         b.play(seconds);
+        const double dm = held("m") - m0;
         pipesGiven = (b.field("exh.flowGiven") - g0) / std::max(b.field("exh.flowLet") - l0, 1e-12);
         const double k = 1000.0 / seconds;
         // (the throttle's air less what the plenum stored over the window: it is not quite steady on a boosted diesel;
@@ -358,7 +370,7 @@ namespace
         thr = (b.field("airThrottle") - t0 - (b.field("intk.mPlenum") - p0)) * k;
         fresh = (b.field("airTrapped") - f0) * k;
         valves = (b.field("airValves") - v0) * k;
-        exhaust = -(b.field("gasExhaust") - e0) * k;
+        exhaust = -(b.field("gasExhaust") - e0) * k + dm * k;
     }
 } // namespace
 
@@ -674,3 +686,29 @@ TEST_CASE("a governed diesel's launch and its redline follow its limiter (ecu.mo
     std::printf("tractor driving: the vehicle's redline %.0f rpm\n", red);
     CHECK(std::fabs(red - 2014.0) < 5.0);
 }
+
+TEST_CASE("an engine set warm stays warm when the air moves while it stands; a cold one soaks to the air", "[core][engine][heat]")
+{
+    // (B's finding, the lead's ruling: the application writes a warm engine once at load, then the build's air arrives:
+    // Heat::stood took the warm engine for one that had stood in that air. A cold engine still soaks: -20 C and a cold
+    // start can be tried)
+    for (int warm = 0; warm < 2; ++warm)
+    {
+        Bench b("first");
+        b.play(0.1);
+        if (warm != 0)
+        {
+            b.write("heat.tCool", 368.0); b.write("heat.tOil", 378.0); b.write("heat.tSurf", 455.0);
+            b.write("heat.warm", 1.0); b.write("heat.warmS", 1.0);
+        }
+        std::string e;
+        REQUIRE(b.player().setSpec("env.temperature", 253.15, e));
+        b.play(0.5);
+        std::printf("%s, the air set to -20 C while it stands: oil %.1f K\n", warm != 0 ? "set warm" : "cold", b.field("heat.tOil"));
+        if (warm != 0)
+            CHECK(b.field("heat.tOil") > 370.0);
+        else
+            CHECK(b.field("heat.tOil") < 260.0);
+    }
+}
+
