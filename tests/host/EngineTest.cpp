@@ -4,6 +4,7 @@
 
 #include "EngineTwin.h"
 
+#include <set>
 #include <catch2/catch_test_macros.hpp>
 
 #include <cstring>
@@ -128,4 +129,34 @@ TEST_CASE("a telemetry array's elements are columns, assertions and dyno fields 
     for (int c = 0; c < 8; ++c)
         CHECK(r.tel("engine.cylPeak[" + std::to_string(c) + "]").during(2.5, 3.0).max() > 5.0e5);
     CHECK(r.tel("engine.cylPeak[8]").during(2.5, 3.0).max() == 0.0);
+}
+
+TEST_CASE("SimControls carries every field of the program's Controls, and nothing it lacks", "[engine][sim][simhost]")
+{
+    if (!haveSim())
+        SKIP("sim/engine.fm is not there yet");
+    std::string error;
+    const auto sim = compiled(simDir(), {}, error);
+    REQUIRE(sim != nullptr);
+    std::set<std::string> carried;
+    for (const ControlField& c : controlFields())
+        carried.insert(c.name);
+    std::set<std::string> program;
+    for (const FieldInfo& f : sim->fields().all())
+        if (f.block == "ctl")
+            program.insert(f.path.substr(4));
+    // a field added to sim/spec/controls.fm must be added to SimControls and controlFields() (SimHost.h)
+    for (const std::string& name : program)
+    {
+        CAPTURE(name);
+        CHECK(carried.count(name) == 1);
+    }
+    for (const std::string& name : carried)
+    {
+        CAPTURE(name);
+        CHECK(program.count(name) == 1);
+    }
+    SimControls c;
+    CHECK(setControl(c, "bakeMaps", 3));
+    CHECK(c.bakeMaps == 3);
 }
