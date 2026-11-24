@@ -86,6 +86,36 @@ A cam is asked as a cam card gives it: duration at the seat, at 1 mm, lift, cent
   redline, none at the top or idle; exhaust retarded at part load in the middle): **judgement**, a placeholder for
   card H's maps.
 
+### Known limit: the schedule at the top of a high-revving engine (card N3, measured; causes.md N3-10, N3-11)
+
+The schedule (`Phaser::scheduleIntake`, by a target intake closing) is a fallback for a build without its own cam map.
+A baked map (card C's bake-cam, `ecu.maps.camIn`) is the exact answer for a build.
+
+At full load the schedule is at the best fixed advance at the torque peaks:
+
+| Engine, speed | Schedule | Best fixed advance |
+|---|---|---|
+| Flat-plane 4.5, 6000 rpm | 25 degrees, 403 N m | 400 N m at 30 |
+| V10, 6500 rpm | 15 degrees, 410 N m | 411 N m at 10 |
+
+It falls short at the top of a high-revving engine:
+
+| Engine, speed | Schedule | Better advance |
+|---|---|---|
+| Flat-plane 4.5, 8500 rpm | 17 degrees, 395 N m | 436 N m at 50 (+10 %); C's bake-cam wants 50 from 7400 rpm |
+
+On the V12 against both phasers parked (N m, 3000 / 4500 / 5500 / 6250 / 7000 / 8000 / 8575 rpm):
+
+| | 3000 | 4500 | 5500 | 6250 | 7000 | 8000 | 8575 |
+|---|---|---|---|---|---|---|---|
+| Schedule | 504 | 645 | 548 | 548 | 490 | 626 | 579 |
+| Parked | 527 | 523 | 512 | 531 | 467 | 595 | 554 |
+
+The schedule helps everywhere but 3000 rpm (-4 %), most at 4500 (+23 %).
+
+The schedule is left as it is: no physical reason is known for more advance at the top beyond what this one build's
+map shows, and fitting the rule to it would be fitting.
+
 ## Two stages
 
 The stage wants B above `stageSpeed`, A again below it less `stageHyst`, only with oil above 100 kPa and above 60 C

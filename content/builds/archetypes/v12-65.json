@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "V12 6.5 L",
-  "notes": "A naturally aspirated 6.5 L V12 of the 2010s: 95 x 76.4 mm (6496 cc), 13.5:1, direct injection, four valves, all cams phased (engines of the kind: 515 to 588 kW at 8250 to 9000 rpm, 690 to 720 N m at 6000 to 7000; makers' figures). In a front-mid-engined GT with a seven-speed dual clutch. Its intake: the sports class's runner, 0.30 m from the valve to the plenum (a high-revving engine's short runners or a throttle a cylinder): JUDGEMENT, a class default, not the real engine's (no source found).",
+  "notes": "A naturally aspirated 6.5 L V12 of the 2010s: 95 x 76.4 mm (6496 cc), 13.5:1, direct injection, four valves, all cams phased (engines of the kind: 515 to 588 kW at 8250 to 9000 rpm, 690 to 720 N m at 6000 to 7000; makers' figures). In a front-mid-engined GT with a seven-speed dual clutch. Its exhaust: tuned long-primary headers, the primaries 1.63 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its intake: the sports class's runner, 0.30 m from the valve to the plenum (a high-revving engine's short runners or a throttle a cylinder): JUDGEMENT, a class default, not the real engine's (no source found).",
   "spec": {
     "engine": {
       "layout": "V12",
@@ -122,7 +122,8 @@
       "mufKind": [
         1,
         1
-      ]
+      ],
+      "headers": 1.0
     },
     "fuel": {
       "kind": "Gasoline",
