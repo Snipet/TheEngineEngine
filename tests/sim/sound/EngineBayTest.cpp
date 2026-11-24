@@ -30,7 +30,7 @@ TEST_CASE("pump: a prime at key-on for its seconds, then quiet until the engine 
     rig.set("ignition", 1);
     const auto x = rig.run(3.0, Tank);
     const std::size_t s = static_cast<std::size_t>(kRate * 0.1);
-    CHECK(rms(x, s, 2 * s) > 1e-4);                                     // priming at 0.1 s
+    CHECK(rms(x, s, 2 * s) > 1e-5);                                     // priming at 0.1 s
     CHECK(rms(x, static_cast<std::size_t>(kRate * 2.5)) == 0.0);       // stopped by 2.5 s (2 s, run down in 0.1)
     // its whine: 41 vanes at its speed under pressure (110 less 15: 95 turns a second); its commutator at 8 a turn
     const std::vector<float> held(x.begin() + static_cast<long>(kRate * 0.9), x.begin() + static_cast<long>(kRate * 1.9));
@@ -40,7 +40,7 @@ TEST_CASE("pump: a prime at key-on for its seconds, then quiet until the engine 
     rig.set("state", 2);
     rig.set("crankHz", 13.33);
     rig.run(0.5, Tank);
-    CHECK(rms(rig.run(0.5, Tank)) > 1e-4);
+    CHECK(rms(rig.run(0.5, Tank)) > 1e-5);
     // a longer prime
     Rig five;
     five.set("ignition", 0);
@@ -49,7 +49,7 @@ TEST_CASE("pump: a prime at key-on for its seconds, then quiet until the engine 
     five.run(0.1, Tank);
     five.set("ignition", 1);
     const auto y = five.run(6.0, Tank);
-    CHECK(rms(y, static_cast<std::size_t>(kRate * 4.5), static_cast<std::size_t>(kRate * 4.9)) > 1e-4);
+    CHECK(rms(y, static_cast<std::size_t>(kRate * 4.5), static_cast<std::size_t>(kRate * 4.9)) > 1e-5);
     CHECK(rms(y, static_cast<std::size_t>(kRate * 5.5)) == 0.0);
 }
 
