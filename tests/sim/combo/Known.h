@@ -39,5 +39,22 @@ const Known kKnown[] = {
      "piston and the new vehicle's automatic runs away; without the checks process hangs (or, earlier, SIGSEGV)"},
     {"X-008", "2026-11-24", "X (reducing)", "corners 3", "fuzz", "corners", "guard",
      "the ranges' corners, seed 3: a block beyond full scale or not finite; the guard restarts it"},
+    {"X-006", "2026-11-24", "H (via the lead)", "+fuel.model+ecu.model", "*", "tour", "click",
+     "the new ECU's cut sends a whole charge to the pipe and its bang is five times too loud (H's fix, not yet on "
+     "the branch at 15:45): with fuel.model and ecu.model both on the limiter's steps reach 22 against 11"},
+    {"X-006", "2026-11-24", "H (via the lead)", "+fuel.model+ecu.model", "*", "pull", "click",
+     "the new ECU's cut sends a whole charge to the pipe and its bang is five times too loud (H's fix, not yet on "
+     "the branch at 15:45): with fuel.model and ecu.model both on the limiter's steps reach 22 against 11"},
+    {"X-006", "2026-11-24", "H (via the lead)", "+fuel.model+ecu.model", "*", "launch", "click",
+     "the new ECU's cut sends a whole charge to the pipe and its bang is five times too loud (H's fix, not yet on "
+     "the branch at 15:45): with fuel.model and ecu.model both on the limiter's steps reach 22 against 11"},
+    {"X-006", "2026-11-24", "H (via the lead)", "+fuel.model+ecu.model", "*", "cold", "click",
+     "the new ECU's cut sends a whole charge to the pipe and its bang is five times too loud (H's fix, not yet on "
+     "the branch at 15:45): with fuel.model and ecu.model both on the limiter's steps reach 22 against 11"},
+    {"X-006", "2026-11-24", "H (via the lead)", "as built", "*", "tour", "click",
+     "the archetype corpus has fuel.model and ecu.model on: with both, the output steps 24 to 41 at the throttle's "
+     "onset and the blip (8 without either)"},
+    {"X-009", "2026-11-24", "D (via the lead)", "as built", "*", "tour", "tel-range:engine.veManifold",
+     "tel.engine.veManifold reads -5.8 on the lift after the limiter (straight-six-32-high-rev)"},
     {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},   // the end (an array is never empty)
 };

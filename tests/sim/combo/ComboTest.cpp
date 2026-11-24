@@ -7,6 +7,8 @@
 
 #include <algorithm>
 #include <cstdlib>
+#include <filesystem>
+#include <vector>
 
 using namespace combo;
 
@@ -104,6 +106,9 @@ PAIRS_CASE(8)
 PAIRS_CASE(9)
 PAIRS_CASE(10)
 PAIRS_CASE(11)
+PAIRS_CASE(12)
+PAIRS_CASE(13)
+PAIRS_CASE(14)
 
 TEST_CASE("nightly: every triple of switches on every archetype through the tour and the pull", "[.][nightly][triples]")
 {
@@ -134,5 +139,27 @@ TEST_CASE("the scenario files of content/scenarios/combo are the ones the tests 
         }
         INFO(path.string() << ": regenerate with tee-fuzz --write-scenarios");
         CHECK(text == scenarioJson(k, 0));
+    }
+}
+
+TEST_CASE("the archetype corpus: every build of content/builds/archetypes through the tour", "[combo][corpus]")
+{
+    // the content session's thirty archetypes, each with every model on as the build says: a plausible idle (here
+    // 350 to 2000 rpm, bikes and diesels among them), revs, stops, and the judge's every other measure
+    const auto dir = tee::test::contentDirectory() / "builds" / "archetypes";
+    if (!std::filesystem::is_directory(dir))
+        SKIP("no content/builds/archetypes yet");
+    std::vector<std::filesystem::path> files;
+    for (const auto& e : std::filesystem::directory_iterator(dir))
+        if (e.is_regular_file() && e.path().extension() == ".json")
+            files.push_back(e.path());
+    std::sort(files.begin(), files.end());
+    const Archetype generic{"corpus", 36.6, 209.4, false};
+    for (const auto& f : files)
+    {
+        Times tm;
+        const tee::test::Run r = scenario(Kind::Tour, f.string(), 0u, tm).run(tm.end);
+        const Verdict v = judge(r, tm, &generic, true, referenceStep("v8", Kind::Tour));
+        report(v, "as built", f.stem().string(), "tour");
     }
 }
