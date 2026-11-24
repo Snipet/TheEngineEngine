@@ -18,10 +18,11 @@
 //     asks for a blip.
 //   Automatic. A torque converter (converter.fm), and clutches and bands that change gear by handing over, as the
 //     dual clutch does, over 2.5 times the shift time (0.375 s). The lever: R, N, D (any forward position). A shift
-//     schedule by the input's speed and the pedal (light pedal: up at 30 % of the way from idle to the redline;
-//     full: at 90 %), a downshift when the input falls to 10 to 45 % of it, and a kickdown (the pedal past 90 %)
-//     to the lowest gear that keeps the engine under 80 % of its redline; up also when the engine reaches 97 % of its
-//     redline at a full pedal. A lock-up clutch from third above 30 km/h (at any pedal, as a modern one), released for each shift
+//     schedule by the pedal: up when the engine passes 30 % of the way from idle to the redline at a light pedal, 90 %
+//     at a full one (or 97 % of its redline); down when the speed the car's own speed gives the input falls to 10 to
+//     45 % of the way, the car slower than a tenth under its speed at the upshift into the gear, and no driven tyre
+//     past its peak slip (a spinning tyre's flaring output made a schedule on it hunt 1-2-1); a kickdown (the pedal past
+//     90 %) to the lowest gear that keeps the engine under 80 % of its redline. A lock-up clutch from third above 30 km/h (at any pedal, as a modern one), released for each shift
 //     and when the input falls towards idle (it would stall the engine).
 //   CVT. A converter and a belt whose ratio moves (at most 1.5 times a second, in ratio's logarithm) to hold the
 //     engine at a speed the pedal sets: a little over idle when it is light, 90 % of the redline when it is down;
@@ -64,6 +65,7 @@ module VehGearbox
     float sinceShift;
     float lastPedal;
     float shiftTime;
+    float upKmh[VEH_GEARS];     // [g - 1]: the car's speed when it last shifted up out of gear g (an automatic's), km/h
     bool lockAllowed;   // the build has a lock-up clutch
 
     void reset()
@@ -86,6 +88,8 @@ module VehGearbox
         sinceShift = 10.0f;
         lastPedal = 0.0f;
         cvt = cvtLo;
+        for (int i = 0; i < VEH_GEARS; ++i)
+            upKmh[i] = 1.0e9f;
     }
 
     // Crank turns to a wheel's turn in gear g, through the final drive (negative in reverse, 0 in neutral)
@@ -141,8 +145,10 @@ module VehGearbox
     // Every 16 samples. d16: seconds since the last call; lever, upCount, downCount: the controls; engage: the clutch
     // pedal's engagement (0 down, 1 up); pedal: the throttle; w: the crank's speed; wOut: the output's (the wheels'
     // side); idleW, redW: the engine's idle and redline (rad/s); kmh: the car's speed.
+    // wRoad: the output's speed the car's own speed says (no tyre's slip in it); spinning: a driven tyre is past its
+    // peak slip (an automatic then shifts on neither the flaring output nor down)
     void control(float d16, int lever, int upCount, int downCount, float engage, float pedal, float w, float wOut,
-                 float idleW, float redW, float kmh)
+                 float idleW, float redW, float kmh, float wRoad, bool spinning)
     {
         const int ups = upCount - lastUp;
         const int downs = downCount - lastDown;
@@ -312,21 +318,28 @@ module VehGearbox
                 k = 1;
             else if (kind == VEH_AUTOMATIC)
             {
-                // the schedule, on the input's speed in this gear
-                const float wIn = fabsf(wOut * ratioOf(gear));
+                // the schedule: up on the engine's own speed; down on the speed the car's speed gives the input (a tyre
+                // that spins makes the output flare and fall back, and a schedule on it hunts 1-2-1), never while a
+                // driven tyre is past its peak, and only below the car's speed at the upshift into this gear less a
+                // tenth (a hysteresis in the car's speed)
+                const float wIn = fabsf(wRoad * ratioOf(gear));
                 const float span = redW - idleW;
                 const float wUp = idleW + (0.30f + 0.60f * pedal) * span;
                 const float wDown = idleW + (0.10f + 0.35f * pedal) * span;
-                // (up also when the engine itself reaches 97 % of its redline at a full pedal, whatever the converter slips)
-                if (gear < n && (wIn > wUp || (pedal > 0.8f && w > 0.97f * redW)) && sinceShift > 0.8f)
+                const bool slower = gear < 2 || kmh < 0.9f * upKmh[gear - 2];
+                if (gear < n && (w > wUp || w > 0.97f * redW) && sinceShift > 0.8f)
+                {
                     k = gear + 1;
-                else if (gear > 1 && wIn < wDown && fabsf(wOut * ratioOf(gear - 1)) < 0.9f * redW && sinceShift > 0.8f)
+                    upKmh[gear - 1] = kmh;     // (the speed at which it left this gear for the next)
+                }
+                else if (gear > 1 && !spinning && slower && wIn < wDown && fabsf(wRoad * ratioOf(gear - 1)) < 0.9f * redW
+                         && sinceShift > 0.8f)
                     k = gear - 1;
-                else if (gear > 1 && pedal > 0.9f && lastPedal <= 0.9f)
+                else if (gear > 1 && !spinning && pedal > 0.9f && lastPedal <= 0.9f)
                 {
                     // the kickdown: as low as keeps the engine under 80 % of its redline
                     int g = gear;
-                    while (g > 1 && fabsf(wOut * ratioOf(g - 1)) < 0.8f * redW)
+                    while (g > 1 && fabsf(wRoad * ratioOf(g - 1)) < 0.8f * redW)
                         g -= 1;
                     k = g;
                 }

@@ -28,6 +28,7 @@
 #include <cstdio>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace tee::ui::look
 {
@@ -271,9 +272,38 @@ namespace tee::ui::look
         y1 = ride(wb * 0.18f) - r * 1.25f - 4.0f;
     }
 
+    // A motorcycle from the side (U4's CAR drew it first; DRIVE and CAR share it): polylines of the swingarm, the tail,
+    // seat and tank, the fairing, the engine, the fork, the rider's back and arm and leg (tucked by `tuck`, 0..1), and
+    // last two single points: the front wheel's centre and the rider's head's. Each point in metres ahead of the rear
+    // axle and up from the ground, turned about the rear tyre's contact by `liftDeg` (a wheelie: front up), drawn at
+    // `k` px a metre with the rear contact at (rearX, groundY); `dir` +1 puts the front at the right, -1 at the left.
+    // The rear wheel's centre is the swingarm's first point. Wheels and head are the caller's (discs).
+    inline std::vector<std::vector<funkgui::Point>> bikeLines(float rearX, float groundY, float k, double wb, double r,
+                                                              double liftDeg, double tuck, float dir)
+    {
+        const double a = liftDeg * 3.14159265358979323846 / 180.0, ca = std::cos(a), sa = std::sin(a);
+        const double t = std::clamp(tuck, 0.0, 1.0);
+        const auto P = [&](double x, double y) {
+            const double xr = x * ca - y * sa, yr = x * sa + y * ca;   // turned about the contact, front up
+            return funkgui::Point{ rearX + dir * static_cast<float>(xr) * k, groundY - static_cast<float>(yr) * k };
+        };
+        const double sx = 0.48 * wb + 0.08 * wb * t, sy = 1.38 - 0.25 * t;   // the rider's shoulder
+        return {
+            { P(0.0, r), P(0.36 * wb, r + 0.10) },                                                       // swingarm
+            { P(-0.12 * wb, 0.78), P(0.05 * wb, 0.80), P(0.30 * wb, 0.80), P(0.42 * wb, 0.86), P(0.58 * wb, 0.98),
+              P(0.74 * wb, 0.95) },                                                                      // tail, seat, tank
+            { P(0.74 * wb, 0.95), P(0.88 * wb, 0.99), P(0.92 * wb, 0.72), P(0.80 * wb, 0.50) },            // fairing
+            { P(0.38 * wb, 0.30), P(0.68 * wb, 0.30), P(0.70 * wb, 0.62), P(0.42 * wb, 0.66), P(0.38 * wb, 0.30) },   // engine
+            { P(0.74 * wb, 0.95), P(wb, r) },                                                              // fork
+            { P(0.28 * wb, 0.88), P(sx, sy), P(0.74 * wb, 1.02) },                                         // back, arm
+            { P(0.28 * wb, 0.88), P(0.45 * wb, 0.62), P(0.32 * wb, 0.40) },                                // leg
+            { P(wb, r), P(sx + 0.06 * wb, sy + 0.16) },                                                    // centres
+        };
+    }
+
     // A workspace's pictogram (the rail's, beside its word): a few strokes in `ink` within a square of `size` px about
     // (cx, cy), by the workspace's id ("garage", "engine", "valves", "air", "exhaust", "tune", "car", "dyno", "drive",
-    // "scope"; another id: a small square). Lines only, 1.25 px; never the only sign (the word is beside it).
+    // "listen", "scope"; another id: a small square). Lines only, 1.25 px; never the only sign (the word is beside it).
     void pictogram(funkgui::Canvas& c, std::string_view id, float cx, float cy, float size, Col ink);
 
     // A text that says what will be here (a placeholder's): a title and lines of plain words, centred in r.

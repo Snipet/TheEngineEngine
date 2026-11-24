@@ -39,7 +39,7 @@
 //                                       when they change (the gearing follows them while autoGearing is on)
 //   v.control(d16, throttle, clutch, brake, handbrake, lever, up, down, buttons, mode, dynoSpeed, dynoRate, strip)
 //                                       every 16 samples: the controls, as 02-contracts.md §4 has them
-//   w = v.step(w, tq, dt)               one sample: the crank's speed after it, from its speed and torque
+//   w = v.step(w, tq, dt, jCrank)       one sample: the crank's speed after it, from its speed and torque
 //   y = v.road()                        one sample of the road, the tyres and the driveline
 //   For the ECU: v.slip() (the driven tyres' largest slip ratio), v.gearNow(), v.cutWanted(), v.blipSpeed() (rad/s at
 //   the crank, 0 for none), v.speedNow() (m/s).
@@ -101,7 +101,7 @@ module Vehicle
     float rate;
     // the engine
     float jE;
-    float iE;
+    float iEcfg;        // 1 / jE (step() takes the engine's inertia of the moment instead when it is given)
     float peakTq;
     float idleW;
     float redW;
@@ -139,6 +139,7 @@ module Vehicle
     float capB;
     float capLock;
     float gearSeen;     // the ratio the output's inertia and the shafts' damping were made for
+    bool joinSeen;      // and whether a converter's turbine was joined to it
     bool dirty;         // the gearing wants making again
     // the controls
     float engage;       // the clutch pedal's engagement, 0 down to 1 up
@@ -195,7 +196,7 @@ module Vehicle
         rate = hostRate;
         snd.setup(rate);
         jE = 0.15f;
-        iE = 1.0f / jE;
+        iEcfg = 1.0f / jE;
         peakTq = 300.0f;
         idleW = 80.0f;
         redW = 680.0f;
@@ -238,6 +239,9 @@ module Vehicle
         capB = 0.0f;
         capLock = 0.0f;
         gearSeen = -1.0f;
+        joinSeen = false;
+        jO = fmaxf(0.05f * box.fd * box.fd, 0.01f);
+        iO = 1.0f / jO;
         for (int i = 0; i < VEH_WHEELS; ++i)
         {
             ww[i] = 0.0f;
@@ -270,7 +274,7 @@ module Vehicle
     {
         const bool regear = fabsf(peak - peakTq) > 0.01f * peakTq || fabsf(red - redW) > 1.0f;
         jE = fmaxf(jEngine, 0.01f);
-        iE = 1.0f / jE;
+        iEcfg = 1.0f / jE;
         peakTq = fmaxf(peak, 10.0f);
         idleW = idle;
         redW = fmaxf(red, idle + 50.0f);
@@ -454,22 +458,48 @@ module Vehicle
     // The output's inertia and the shafts' damping for the gear in (only when the gear changed)
     void driveline()
     {
-        const float g = box.kind == VEH_CVT ? box.ratioOf(box.gear) : (box.shifting ? box.ratioOf(box.to) : box.ratioOf(box.gear));
-        if (g == gearSeen && !dirty)
+        // (the gears in mesh with the output: the one engaged; a dual clutch's or an automatic's next one too, both
+        // turning with it through a handover)
+        const bool both = box.shifting && (box.kind == VEH_DUALCLUTCH || box.kind == VEH_AUTOMATIC);
+        const float g = box.kind == VEH_CVT ? box.ratioOf(box.gear) : (both ? box.ratioOf(box.to) : box.ratioOf(box.gear));
+        const bool join = fluid && !box.shifting && box.gear != 0;
+        if (g == gearSeen && join == joinSeen && !dirty)
             return;
         dirty = false;
         // (the shafts keep their wind-up through a shift: a dual clutch's and an automatic's hand the torque over
         // without unloading them; the reference unwound them at each new ratio)
-        gearSeen = g;
         // the propeller shaft and the final drive's crown wheel, at the wheels (judgement: 0.05 kg m^2 at the input
         // of a final drive), the gearbox's gears (the reference's 0.015 kg m^2 at its input) through the ratio, and a
         // joined turbine
-        jO = 0.05f * box.fd * box.fd + 0.015f * g * g + (fluid ? jT * g * g : 0.0f);
+        const float jNew = 0.05f * box.fd * box.fd + 0.015f * g * g + (join ? jT * g * g : 0.0f);
+        if (jO > 0.0f && jNew != jO)
+        {
+            // what joins the output is brought to its speed (a synchromesh, a dog, a turbine joining) with the momentum
+            // kept: the difference comes from (or goes to) the wheels and the car, which the output turns with, so the
+            // energy can only fall
+            double dl = (double)(jNew - jO) * wo;
+            if (join && !joinSeen)
+                dl -= (double)(jT * g * wt);
+            if (jNew < jO)
+                dl = 0.0;       // (what leaves takes its own momentum and energy with it)
+            const double ground = mode == VEH_MODE_DYNO_CHASSIS ? 1500.0 : (double)mass;
+            const double jw4 = ground * (double)(radius * radius) + 4.0 * (double)jw;
+            const double dw = dl / jw4;
+            for (int i = 0; i < VEH_WHEELS; ++i)
+                ww[i] -= dw;
+            if (mode == VEH_MODE_DYNO_CHASSIS)
+                vr -= dw * (double)radius;
+            else
+                v -= dw * (double)radius;
+        }
+        gearSeen = g;
+        joinSeen = join;
+        jO = jNew;
         iO = 1.0f / jO;
         // damped to about 0.4 of critical: the engine (through the gear) and the car swing on the shafts
         const float j1 = jE * g * g + jO;
         const float j2 = mass * radius * radius + 4.0f * jw;
-        cW = g != 0.0f ? 0.8f * sqrtf(kW * j1 * j2 / (j1 + j2)) : 0.0f;
+        cW = 0.8f * sqrtf(kW * j1 * j2 / (j1 + j2));
     }
 
     // Every 16 samples: the controls (02-contracts.md §4)
@@ -501,7 +531,12 @@ module Vehicle
         }
         strip.control(d16, x, spec.proTree);
         // the gearbox
-        box.control(d16, lever, up, down, engage, pedal, wLast, wo, idleW, redW, fabsf(v) * 3.6f);
+        bool spinning = false;
+        for (int i = 0; i < VEH_WHEELS; ++i)
+            if (share[i] > 0.0f && fabsf(tyre[i].kappa) > 1.5f * curve.kPeak)
+                spinning = true;
+        const float wRoad = (float)((mode == VEH_MODE_DYNO_CHASSIS ? vr : v) / (double)radius);
+        box.control(d16, lever, up, down, engage, pedal, wLast, wo, idleW, redW, fabsf(v) * 3.6f, wRoad, spinning);
         driveline();
         // the couplings the step will use
         const float gIn = box.shifting ? box.ratioOf(box.from) : box.ratioOf(box.gear);
@@ -679,9 +714,13 @@ module Vehicle
         return tc * wa >= 0.0f ? g * eff : g / eff;
     }
 
-    float step(float w, float tq, float dt)
+    float step(float w, float tq, float dt, float jCrank)
     {
         const float idt = 1.0f / dt;
+        // the crank's inertia this sample: the engine's own where it varies round the turn (a custom engine's moving
+        // masses, whose inertia torque is in tq), else configure's. Stepped with any other, the inertia torque makes
+        // energy: with a heavy piston on a light flywheel, a run-away (finding X-007).
+        const float iE = jCrank > 0.0f ? 1.0f / jCrank : iEcfg;
         const float gf = groundFront();
         const float gr = groundRear();
         // the tyres' forces, from their deflections as they stand
@@ -692,11 +731,10 @@ module Vehicle
             f[i] = tyre[i].push(&curve, ww[i] * radius, i < 2 ? gf : gr);
             tw[i] = -f[i] * radius;
         }
-        // the shafts: their torque at the wheels from their wind-up beyond the play (none in neutral)
+        // the shafts: their torque at the wheels from their wind-up beyond the play (in neutral too: the propeller shaft
+        // turns with the wheels, the gearbox's output on it)
         const float wc = share[0] * ww[0] + share[1] * ww[1] + share[2] * ww[2] + share[3] * ww[3];
-        const bool inGear = gA != 0.0f || gB != 0.0f || (fluid && box.shifting);
         float ts = 0.0f;
-        if (inGear)
         {
             const float xs = twist > lash ? twist - lash : (twist < -lash ? twist + lash : 0.0f);
             if (xs != 0.0f)
@@ -732,8 +770,10 @@ module Vehicle
             if (merged)
             {
                 conv.torques(w, gA * wo);
-                te -= conv.tPump;
                 fA = gearFactor(conv.tTurb, gA * wo, gA);
+                // (passive within the step: never past the speeds' meeting, given both sides' inertias)
+                conv.limit((float)((w + te * iE * dt) - gA * (wo + to * iO * dt)), iE, fA * gA * iO, dt);
+                te -= conv.tPump;
                 to += fA * conv.tTurb;
                 if (capLock > 0.0f)
                 {
@@ -748,6 +788,7 @@ module Vehicle
             else
             {
                 conv.torques(w, wt);
+                conv.limit((w + te * iE * dt) - wt, iE, iT, dt);
                 te -= conv.tPump;
                 tt = conv.tTurb;
                 if (gA != 0.0f && capA > 0.0f)
@@ -887,18 +928,11 @@ module Vehicle
             v += fNet / mass * dt;
             vr = 0.0f;
         }
-        // neutral: the output follows the wheels, its shafts unloaded
-        if (!inGear)
-        {
-            won = share[0] * ww[0] + share[1] * ww[1] + share[2] * ww[2] + share[3] * ww[3];
-            twist = 0.0f;
-        }
         // the springs move with the new speeds
         if (fluid && merged)
             wtn = gA * won;
         const float wcn = share[0] * ww[0] + share[1] * ww[1] + share[2] * ww[2] + share[3] * ww[3];
-        if (inGear)
-            twist += (won - wcn) * dt;
+        twist += (won - wcn) * dt;
         const float gfn = groundFront();
         const float grn = groundRear();
         for (int i = 0; i < VEH_WHEELS; ++i)
@@ -956,8 +990,7 @@ module Vehicle
     double kinetic(float w)
     {
         double e = 0.5 * (double)jE * (double)w * (double)w;
-        if (gA != 0.0f || gB != 0.0f || (fluid && box.shifting))
-            e += 0.5 * (double)jO * (double)wo * (double)wo;
+        e += 0.5 * (double)jO * (double)wo * (double)wo;
         if (fluid && !merged)
             e += 0.5 * (double)jT * (double)wt * (double)wt;
         for (int i = 0; i < VEH_WHEELS; ++i)

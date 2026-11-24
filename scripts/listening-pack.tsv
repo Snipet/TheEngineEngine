@@ -88,3 +88,10 @@
 35-fast-default-free-revs	b-tee-fast	0	default.json	tests/sim/scenarios/free-revs.json	TEE_FAST
 36-fast-default-drive	a-three-passes	0	default.json	tests/sim/scenarios/drive-car.json
 36-fast-default-drive	b-tee-fast	0	default.json	tests/sim/scenarios/drive-car.json	TEE_FAST
+37-diesel-jake	a-muffled	0	truck-15l-six.json	tests/sim/diesel/listen/d2-jake-muffled.json
+37-diesel-jake	b-straight	0	truck-15l-six.json	tests/sim/diesel/listen/d2-jake-straight.json
+37-diesel-jake	c-exhaust-flap	0	truck-15l-six.json	tests/sim/diesel/listen/d2-jake-flap.json
+38-diesel-cold-mechanical	a-253K	0	diesel-mechanical-classic.json	tests/sim/diesel/listen/d2-cold-mechanical.json
+39-diesel-pilot	a-pilot-and-timing	0	truck-15l-six.json	tests/sim/diesel/listen/d2-pilot.json
+40-diesel-turbo-whistle	a-single-vs-vanes	0	truck-15l-six.json	tests/sim/diesel/listen/d2-turbo-whistle.json
+41-diesel-pull-away	a-36t-up-a-grade	0	truck-15l-six.json	tests/sim/diesel/listen/d2-pull-away.json

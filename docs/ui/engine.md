@@ -66,6 +66,13 @@ standalone's or the demo's). Absent reads as NaN and draws a dash.
 - Telemetry: `engine.crank`, `engine.speed`, `engine.redline`. Scope: `pressure`, `volume`, `liftIntake`, `liftExhaust`.
 - Valve lifts for the section's scale: `valve.inLift`/`valve.exLift` (or the demo's `valve.intakeLift`/`exhaustLift`).
 
+## Geometry no engine has
+
+The Spec's ranges allow builds no engine has; the engine survives them and the inspector warns, in amber words under
+the fields concerned on the cylinder's page (`engine.bore`), never blocking a value: a piston heavier than about
+1500 kg/m^3 x bore^3 (about twice a real one's); stroke / bore outside 0.5 to 2; a mean piston speed over 30 m/s at
+the limiter; rod / stroke under 1.4 (a rod set outright, not the reference's 3.3 r). `ui.engine.warnings`.
+
 ## Derived, not set
 
 Displacement, the two ratios, piston speed, the clearance height, the pins of a preset, the firing order and intervals

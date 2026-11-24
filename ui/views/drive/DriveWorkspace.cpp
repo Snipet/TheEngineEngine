@@ -77,6 +77,7 @@ namespace tee::ui
                 k.mix(static_cast<float>(ctx_.live.get(row[0])));
             const ControlsFrame cf = ctx_.app.controls ? ctx_.app.controls() : ControlsFrame{};
             k.mix(cf.throttle).mix(cf.brake).mix(cf.clutch);
+            k.mix(qsFlash_ > 0.0f ? 1 : 0).mix(blipFlash_ > 0.0f ? 1 : 0).mix(static_cast<float>(ctx_.live.get("car.bikeFlags")));
             k.mix(roll_).mix(squat_).mix(ctx_.selection.revision()).mix(ctx_.units.revision());
             return k.h;
         }
@@ -164,6 +165,12 @@ namespace tee::ui
             accel = std::clamp(accel, -12.0, 12.0);
             const double target = std::isfinite(pitch) ? std::clamp(pitch / 3000.0, -1.0, 1.0) : std::clamp(accel / 8.0, -1.0, 1.0);
             squat_ = funkgui::ease::toward(squat_, static_cast<float>(target), dt, 0.25f, 1e-3f);
+            // The bike's counters: a flash on each increase.
+            const double qs = ctx_.live.get("car.quickshifts"), bl = ctx_.live.get("car.blips");
+            qsFlash_ = std::isfinite(qs) && qs != lastQs_ && std::isfinite(lastQs_) ? 0.3f : std::max(0.0f, qsFlash_ - dt);
+            blipFlash_ = std::isfinite(bl) && bl != lastBlips_ && std::isfinite(lastBlips_) ? 0.3f : std::max(0.0f, blipFlash_ - dt);
+            lastQs_ = qs;
+            lastBlips_ = bl;
             // The tachometer's span follows the redline.
             const double red = ctx_.live.get(telemetry::kRedline) * kToRpm;
             if (std::isfinite(red) && red > 1000.0)
@@ -325,28 +332,30 @@ namespace tee::ui
             // wheelie), the points turned by hand (no rotation on the Canvas).
             const int wbField = ctx_.doc.find("car.wheelbase");
             const float wbM = wbField >= 0 ? static_cast<float>(ctx_.doc.get(wbField)) : 1.45f;
-            const float scale = gm.scale * 1.35f, wb = std::clamp(wbM, 1.0f, 2.2f) * scale, r = 0.31f * scale;
+            const float scale = std::min(gm.scale * 1.35f, (gm.roadY - gm.inner.y - 46.0f) / 1.75f);   // the rider's head in room
             const double lift = ctx_.live.get("car.liftAngle");
             const float th = std::isfinite(lift) ? static_cast<float>(std::clamp(lift, -15.0, 80.0) * kPi / 180.0) : 0.0f;
-            const float px = gm.cx - wb * 0.5f, py = gm.roadY;   // the rear tyre's contact
-            const float ct = std::cos(th), st = std::sin(th);
-            const auto pt = [&](float u, float v) {
-                // Turned by th, the front going up: x = u cos - v sin ... with v measured up (screen y down).
-                return funkgui::Point{ px + u * ct - v * st, py - (u * st + v * ct) };
-            };
+            const float px = gm.cx - wbM * scale * 0.5f, py = gm.roadY;   // the rear tyre's contact
+            const int tuckField = ctx_.doc.find("car.tuck"), radiusField = ctx_.doc.find("car.tyreRadius");
+            const double tuck = tuckField >= 0 ? ctx_.doc.get(tuckField) : 1.0;
+            const double rM = radiusField >= 0 ? ctx_.doc.get(radiusField) : 0.31;
+            const float k = scale;   // px a metre
+            const auto lines = look::bikeLines(px, py, k, wbM, rM, th * 180.0 / kPi, tuck, 1.0f);
             const funkgui::Col frame = ctx_.selection.is("car") ? p.selected : p.value;
-            const funkgui::Point rear = pt(0.0f, r), front = pt(wb, r);
-            const funkgui::Point pivot = pt(wb * 0.33f, r * 1.35f), head = pt(wb * 0.80f, r * 3.0f), bars = pt(wb * 0.74f, r * 3.6f);
-            const funkgui::Point seat0 = pt(wb * 0.02f, r * 2.55f), seat1 = pt(wb * 0.42f, r * 2.55f), tank = pt(wb * 0.72f, r * 3.05f);
-            c.segment(rear.x, rear.y, pivot.x, pivot.y, 2.5f, frame);            // the swingarm
-            c.segment(front.x, front.y, head.x, head.y, 2.5f, frame);            // the fork
-            c.segment(head.x, head.y, bars.x, bars.y, 2.0f, frame);              // the bars
-            const float fxs[] = { pivot.x, seat1.x, head.x }, fys[] = { pivot.y, seat1.y, head.y };
-            c.polyline(fxs, fys, 3, 2.0f, frame);                               // the frame
-            const float txs[] = { seat0.x, seat1.x, tank.x, head.x }, tys[] = { seat0.y, seat1.y, tank.y, head.y };
-            c.polyline(txs, tys, 4, 2.0f, frame);                               // the seat and the tank
-            const funkgui::Point eng = pt(wb * 0.48f, r * 1.75f);
-            c.disc(eng.x, eng.y, r * 0.55f, look::kClear, 1.5f, p.label);       // the engine
+            for (std::size_t i = 0; i + 1 < lines.size(); ++i)
+            {
+                std::vector<float> xs, ys;
+                for (const funkgui::Point& q : lines[i])
+                {
+                    xs.push_back(q.x);
+                    ys.push_back(q.y);
+                }
+                c.polyline(xs.data(), ys.data(), static_cast<int>(xs.size()), i == 0 || i == 4 ? 2.5f : 2.0f,
+                           i >= 5 ? p.text : frame);   // the rider in the text's ink, the bike in the value's
+            }
+            const funkgui::Point rear = lines[0][0], front = lines.back()[0], head = lines.back()[1];
+            c.disc(head.x, head.y, static_cast<float>(0.13 * k), look::kClear, 2.0f, p.text);
+            const float r = static_cast<float>(rM) * k;
             drawWheel(c, p, rear.x, rear.y, r, ctx_.live.get(idx("car.wheelSlip", 2)));
             drawWheel(c, p, front.x, front.y, r, ctx_.live.get(idx("car.wheelSlip", 0)));
             // A wheelie (or the control holding one) and a stoppie say so in words: car.bikeFlags 4 and 64, car.flags 2.
@@ -355,6 +364,17 @@ namespace tee::ui
             const char* word = (bits & 64) != 0 ? "STOPPIE" : (bits & 4) != 0 ? "WHEELIE CONTROL" : ((cbits & 2) != 0 || th > 0.035f) ? "WHEELIE" : nullptr;
             if (word != nullptr)
                 c.text((std::string(word) + "  " + look::num(lift, "%.0f") + " DEG").c_str(), s.x, s.y, look::kCaps, p.warning);
+            // The rest of car.bikeFlags as words in a row: a quickshift's cut and an auto-blip held 0.3 s past their
+            // counters' increase (car.quickshifts, car.blips; a 50 ms bit is easily missed between frames), the slipper
+            // clutch slipping, the rear hopping.
+            float wx = s.x;
+            const auto flag = [&](const char* text, bool on, funkgui::Col ink) {
+                wx += look::lamp(c, p, wx, s.y + 22.0f, text, on, ink) + 14.0f;
+            };
+            flag("QUICKSHIFT", (bits & 16) != 0 || qsFlash_ > 0.0f, p.ok);
+            flag("BLIP", (bits & 32) != 0 || blipFlash_ > 0.0f, p.ok);
+            flag("SLIPPER", (bits & 8) != 0, p.warning);
+            flag("REAR HOP", (bits & 1) != 0, p.warning);
             static const char* const kBikeWheels[2] = { "FRONT", "REAR" };
             drawSlips(c, p, s, { 0, 2 }, kBikeWheels);
         }
@@ -402,7 +422,8 @@ namespace tee::ui
         Gauge *tach_ = nullptr, *speedo_ = nullptr;
         funkgui::Rect instruments_{}, scene_{}, strip_{};
         funkgui::Rect carHit_{}, tree_{};
-        float spin_ = 0.0f, roll_ = 0.0f, squat_ = 0.0f;
+        float spin_ = 0.0f, roll_ = 0.0f, squat_ = 0.0f, qsFlash_ = 0.0f, blipFlash_ = 0.0f;
+        double lastQs_ = std::nan(""), lastBlips_ = std::nan("");
         double lastSpeed_ = 0.0;
     };
 

@@ -36,7 +36,8 @@ K3b, D and G after K3b):
 
 **Gate**: checkpoint M2, integration, the user's ears.
 
-**Wave 2**: [w2-cards.md](w2-cards.md), in outline until the gate: performance (early), the listener and the
+**Wave 2**: [w2-n-calibration.md](w2-n-calibration.md) (card N, the numbers: calibration against the misses
+table, two sessions); [ui-design.md](ui-design.md) (U1 to U5, the interface); and [w2-cards.md](w2-cards.md), in outline until the gate: performance (early), the listener and the
 cabin, mechanical voices, two-strokes, heavy diesels, motorcycles, the views (two packages), content and the
 manual, the wheel, release.
 

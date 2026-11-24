@@ -92,3 +92,26 @@ normalised by its peak; mu = column 3 x `VEH_SURFACE[compound][surface]` x tempe
   read the flags instead. Asking for array elements as columns.
 - Known gap: an automatic whose tyres spin shifts up on the flaring output speed and can shift down again as they hook.
 - `vehAtan` is the candidate for a shared `sim/core/mathx.fm` (to D, through the lead).
+
+# I: finding X-007 and the automatic's hunting (fixed)
+
+- **X-007** (a custom single, 18.4 kg piston, light flywheel, model 1, automatic or CVT, ran away in neutral). Two
+  causes: `Car::step` stepped the crank with the dial's inertia while `tq` carried the moving masses' inertia torque
+  (made for their real inertia: it makes energy against another), and the converter's explicit torque could overshoot
+  the speeds' meeting. Now `Car::step(w, tq, dt, jCrank)` takes `mm.jNow` (engine.fm: that call's arguments only, 0 on
+  the plain path) and `VehConverter::limit` caps the converter each sample at what brings its sides together. Also: what
+  joins the gearbox's output takes its momentum from the wheels and car (energy can only fall), and the shaft and
+  output turn with the wheels in neutral. My render of an X-007-like build (built from the description; the finding's
+  file was not on the branch) with the tour: no trips, no stops, in the shipped build and with the checks.
+- **Tests**: `vehicle.passive` (rig crank of varying inertia, 5 gearboxes x light/heavy flywheel x light/heavy pistons
+  x neutral/gear, random pedals, 40 runs of 6 s: energy never above the engine's work by more than 2 %, the float
+  crank's rounding at a chattering limiter; crank under 3000 rad/s) and `vehicle.passive.engine` (custom singles at
+  their Spec's corners x 5 gearboxes x neutral/gear, checks on, 40 runs of 5 s: no stop, no refused block, crank under
+  3000 rad/s, audio finite). With the two fixes taken out the second fails on X-007's corner (automatic, CVT; 8809 rad/s).
+- **Hunting**: an automatic shifts up on the engine's own speed (or 97 % of the redline), down on the speed the car's
+  speed gives its input, only 10 % under the car's speed at the upshift into the gear, never while a driven tyre is past
+  its peak; the kickdown on the car's speed too. `vehicle.gearbox.nohunt`: 200 kW on economy tyres, front and rear
+  drive, 15 s of full pedal spinning: ups only.
+- Full null test green before the commit, quick null after each merge; `ctest -R '^vehicle\.'` 40 of 40.
+- For the owner of `sim/vehicle/bike.fm` (wave 2's motorcycle, in `Car::b1`): `b1.step(w, tq, dt)` has the same
+  inertia question with a custom engine; it should take `jCrank` as `m1` does.
