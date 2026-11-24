@@ -52,6 +52,11 @@ namespace tee::ui
         // a map's z) are the field's own quantity and range (min, max).
         std::array<Quantity, 2> axes{ Quantity::none, Quantity::none };
         std::array<double, 2> axisLo{ 0.0, 0.0 }, axisHi{ 1.0, 1.0 };
+        // An element of an array of numbers (the Spec's `float bankAngle[MAX_CYL]`): the array's path ("engine.bankAngle";
+        // the element's own is "engine.bankAngle[2]"), its label ("Bank angle"; the element's is "Bank angle 3", counted
+        // from 1), the element's index from 0 and how many the array holds. `array` empty: no array's element.
+        std::string array, arrayLabel;
+        int element = -1, extent = 0;
 
         std::string_view section() const noexcept { return std::string_view(path).substr(0, path.find('.')); }
         bool table() const noexcept { return kind == FieldKind::curve || kind == FieldKind::map; }
@@ -79,6 +84,9 @@ namespace tee::ui
         // Moves at every change, from any writer.
         virtual std::uint64_t revision() const = 0;
     };
+
+    // An array's elements (FieldInfo::array), in index order; none when `arrayPath` is no array of the document's.
+    std::vector<int> arrayElements(const FieldDoc& doc, std::string_view arrayPath);
 
     // The sections the fields are in, in the order they first come.
     std::vector<std::string> sectionsOf(const FieldDoc& doc);

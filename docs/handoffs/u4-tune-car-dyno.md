@@ -27,14 +27,12 @@ and `...Auto` (no: `sim/ecu/settings.fm`, awaiting K3b), `boost.duty` (demo), `e
 `frontWeight`, `track`, `cdA`, `clA`, `aeroBalance`, `tyreRadius`, `gearbox`, `gears`, `ratio[i]`, `gearEfficiency`,
 `brake*`, `centre*`/`front*`/`rear*` diff fields, `env.surface` (VehSpec; no: starred defaults until integration).
 Telemetry: `engine.speed/state/manifold/throttle/redline/flags`, `car.speed/gear`, `ecu.knockRetard` exist;
-`ecu.lambda`, `exhaust.lambda`, `ecu.knock`, `ecu.spark`, `ecu.flags` (ECU_FLAG_*), `car.accel`, `car.flags`,
+`ecu.lambda`, `exhaust.lambda`, `ecu.knock`, `ecu.flags` (advance: the demo's `ecu.advance`) (ECU_FLAG_*), `car.accel`, `car.flags`,
 `car.wheelLoad[i]`, `wheelSlip[i]`, `wheelTorque[i]` do not (names I chose: one line each in the tables). Scope:
 `bakeCount`, `bakedNx/Ny/X/Y`, `baked` (in scope.fm; not in the demo: BAKE says so).
-**Wanted**:
-- U1: `DynoSource` a partial trace of the run in progress (I shade the swept span from the plan's rate); `DynoRequest`
-  `steps` and `gear` (chassis); a save-file service for CSV (now the clipboard, `HostServices::copyText`); a way to
-  press `ctl.bakeMaps` (BAKE only reads a bake already made); the demo hook, to move TuneDemo/CarDemo into.
-- H/I at integration: the telemetry names above (or tell me theirs: a line each).
-- The plan of a run is not a Spec field, so DYNO's inspector is empty and its plan is on the stage.
-**Not done**: the auto switch was not exercised (the demo has no `...Auto` field); GPU path under Xvfb not run;
+**Wanted**: U1 gave the run's partial trace (DYNO draws it), steps, dwell and gear (SWEEP/STEPS, gear passed), saveText
+(SAVE CSV when the shell fills it) and the demo hook (TuneDemo.cpp, CarDemo.cpp). Still wanted: a way to press
+`ctl.bakeMaps` (BAKE only reads a bake made); `look::carProfile` in Look.h (CAR keeps DRIVE's shape locally); the
+inspector's tab strip eliding titles; card C's DynoPlan a gear. H/I: the telemetry names above, or theirs.
+**Not done**: GPU path under Xvfb not run;
 macOS/Windows only by CI. Others' failures seen: `ui.frame.workspaces`, `ui.build.frame` (scope.gui notes), `ui.exhaust.*` once.

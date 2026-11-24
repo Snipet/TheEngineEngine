@@ -17,8 +17,8 @@ Six plots, everything live, read only while the workspace is shown (its `step()`
 The inspector is the listener (`sound` section's generated page) until it has a workspace of its own.
 
 **Absent data** draws an empty plot with words saying what is missing, and a dash for a number; nothing is made up
-(`scope.absent`). Names read that the branch does not have yet: Scope `portIntake`, `portExhaust`; telemetry
-`ecu.advance`, `sound.rate` (48000 is assumed until then). `ScopeDemo.h` makes them up for the tests, in one place.
+(`scope.absent`). Names read that the simulator does not write yet: Scope `portIntake`, `portExhaust`; telemetry
+`ecu.advance`, `sound.rate` (48000 is assumed until then). U1's demo has all four, so the tests and pictures show them.
 
 **At rest** (frozen, or the output unchanged) `moving()` is false and `drawKey()` stands (`scope.rest`, `scope.freeze`).
 

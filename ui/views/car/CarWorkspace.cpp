@@ -500,14 +500,18 @@ namespace tee::ui
                 for (int a = 0; a < 2; ++a)
                 {
                     const double f = down * (a == 0 ? bal : 1.0 - bal);
-                    const float x = (a == 0 ? s.front : s.rear) + (a == 0 ? 22.0f : -22.0f);
-                    const float l = static_cast<float>(std::min(40.0, 10.0 + std::fabs(f) / 30.0));
-                    const float y0 = s.cabin.y - 34.0f - l, y1 = s.cabin.y - 34.0f;
+                    // Down onto the bonnet over the front axle and onto the deck over the rear one.
+                    const float x = a == 0 ? s.front : s.rear;
+                    const float surface = s.ground - (a == 0 ? 0.86f : 1.14f) * s.k - 3.0f;
+                    const float l = static_cast<float>(std::min(26.0, 10.0 + std::fabs(f) / 30.0));
+                    const float y0 = surface - l, y1 = surface;
                     const float tip = f >= 0.0 ? y1 : y0, tail = f >= 0.0 ? y0 : y1, d = f >= 0.0 ? -6.0f : 6.0f;
                     c.segment(x, tail, x, tip, 2.0f, p.cold);
                     c.segment(x, tip, x - 5.0f, tip + d, 2.0f, p.cold);
                     c.segment(x, tip, x + 5.0f, tip + d, 2.0f, p.cold);
-                    c.text((look::num(f / 1000.0, "%.2f") + " kN").c_str(), x + 8.0f, y0, look::kUnit, p.text);
+                    // The number beside it, outward: left of the front arrow, right of the rear one, at its tail.
+                    c.text((look::num(f / 1000.0, "%.2f") + " kN").c_str(), a == 0 ? x - 8.0f : x + 8.0f, y0 - 6.0f, look::kUnit,
+                           p.text, a == 0 ? funkgui::Align::right : funkgui::Align::left);
                 }
             // The words: two lines (what the aero is drawn from; the mass and the centre of mass), and the note on
             // starred values at the title's right.
@@ -590,7 +594,9 @@ namespace tee::ui
                 const float x = xs.px(kap), y = ys.px(f);
                 c.disc(x, y, 5.5f, past ? p.warning : p.ok, 2.0f, p.ground);
                 const std::string lab = std::string(kWheelName[w]) + (past ? " PAST THE PEAK" : "");
-                c.text(lab.c_str(), x + 6.0f, y + 10.0f + 13.0f * static_cast<float>(shown), look::kCaps, past ? p.warning : p.ok);
+                const float ly = y + 10.0f + 14.0f * static_cast<float>(shown);
+                c.rrect(x + 2.0f, ly - 2.0f, c.textWidth(lab.c_str(), look::kCaps) + 8.0f, 14.0f, 3.0f, p.panel);
+                c.text(lab.c_str(), x + 6.0f, ly, look::kCaps, past ? p.warning : p.ok);
                 ++shown;
             }
             if (shown == 0)
@@ -656,11 +662,11 @@ namespace tee::ui
             if (locked >= 0.5)
                 return "LOCKED";
             if (kt > 0.0)
-                return "TORQUE BIAS";
+                return "T. BIAS";
             if (ks > 0.0)
                 return "VISCOUS";
             if (pre > 0.0)
-                return "CLUTCH LSD";
+                return "LSD";
             return "OPEN";
         }
 

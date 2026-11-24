@@ -110,6 +110,10 @@ namespace tee::ui
                         FieldInfo el = info;
                         el.path = info.path + "[" + std::to_string(e) + "]";
                         el.label = label + " " + std::to_string(e + 1);
+                        el.array = info.path;
+                        el.arrayLabel = label;
+                        el.element = static_cast<int>(e);
+                        el.extent = static_cast<int>(f.count);
                         infos_.push_back(std::move(el));
                         sources_.push_back({ f.path, static_cast<int>(k), e });
                     }
