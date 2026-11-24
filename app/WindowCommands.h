@@ -4,7 +4,7 @@
 //
 //   Ctrl+N (Cmd on a Mac)    a new build (every field at its default); asks first when the build has unsaved changes
 //   Ctrl+O                   open a build (a whole build's file)
-//   Ctrl+S, Ctrl+Shift+S     save; save as (an untitled build asks for a file)
+//   Ctrl+S, Ctrl+Shift+S     save; save as (an untitled build, or a shipped one, asks for a file)
 //   F2                       the File menu: the above, the recent files, the library's builds, and the three parts
 //                            (engine, car, tune) loaded or saved apart
 //   F9                       the Audio menu: the device by name, the rate, the buffer; the recorder on and off
@@ -16,6 +16,7 @@
 
 #include "audio/AudioDevice.h"
 
+#include <filesystem>
 #include <functional>
 #include <string>
 
@@ -88,6 +89,7 @@ namespace tee::app
         void openFile(const std::string& path, int part);
         void reopenAudio(const audio::Request&);
         void say(const std::string& line) const;
+        bool shipped(const std::filesystem::path& file) const;      // under the library's shipped folder
 
         Context ctx_;
         funkgui::HostServices* host_ = nullptr;

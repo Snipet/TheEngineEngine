@@ -563,3 +563,68 @@ TEST_CASE("probe: a warm start's flare", "[.probe-warm]")
     }
     SUCCEED();
 }
+
+// The two books on the bench, shut throttle and warm: what the intake valves passed back into the runners (backflow)
+// and drew from them, each sample's intk.mValves split by sign, against the plenum correction's ratio (valves' mass over
+// the waves', intk.kWant + 1) and the plenum. Over 2 s after 3 s at each PROBE_RPM (700,1100). PROBE_BUILD (slug),
+// PROBE_SIM, PROBE_THROTTLE (0).
+TEST_CASE("probe: backflow into the runners against the plenum's books", "[.probe-backflow]")
+{
+    const char* buildEnv = std::getenv("PROBE_BUILD");
+    const std::string slug = buildEnv ? buildEnv : "big-bore-70-pushrod-v8";
+    const char* rpmEnv = std::getenv("PROBE_RPM");
+    const float thr = std::getenv("PROBE_THROTTLE") ? float(std::atof(std::getenv("PROBE_THROTTLE"))) : 0.0f;
+    std::printf("%s, throttle %.2f; mass g/s, and the same volumes at the plenum's density\n%7s %8s %8s %8s %8s %7s %7s %7s\n",
+                slug.c_str(), thr, "rpm", "draw", "back", "drawVol", "backVol", "m/vol", "ratio", "kPa");
+    for (const std::string& s : split(rpmEnv ? rpmEnv : "700,1100", ','))
+    {
+        const double rpm = std::atof(s.c_str());
+        Probe pr;
+        tee::EnginePlayer::Options options;
+        options.directory = std::getenv("PROBE_SIM") ? std::filesystem::path(std::getenv("PROBE_SIM"))
+                                                      : std::filesystem::path(TEE_SOURCE_DIR) / "sim";
+        options.sampleRate = 48000.0;
+        std::string errors, warnings;
+        pr.p = tee::EnginePlayer::create(options, errors);
+        REQUIRE(pr.p != nullptr);
+        tee::EngineBuild b;
+        std::filesystem::path file = slug;
+        if (!std::filesystem::exists(file))
+            file = std::filesystem::path(TEE_SOURCE_DIR) / "content" / "builds" / "archetypes" / (slug + ".json");
+        REQUIRE(tee::loadBuild(*pr.p, file, b, errors, warnings));
+        tee::applyBuild(*pr.p, b);
+        auto& c = pr.p->controls();
+        c.mode = 2;
+        c.dynoSpeed = float(rpm * M_PI / 30.0);
+        c.ignition = 2;
+        pr.play(1.0);
+        c.ignition = 1;
+        c.throttle = thr;
+        pr.play(3.0);
+        int nc = 0;
+        while (nc < 16 && std::isfinite(pr.get("cyl[" + std::to_string(nc) + "].mI")))
+            ++nc;
+        std::vector<std::string> mPath, qPath, aPath;
+        for (int i = 0; i < nc; ++i)
+            mPath.push_back("cyl[" + std::to_string(i) + "].mI"), qPath.push_back("cyl[" + std::to_string(i) + "].qI"), aPath.push_back("cyl[" + std::to_string(i) + "].qIa");
+        double back = 0.0, draw = 0.0, backV = 0.0, drawV = 0.0, ratio = 0.0, plen = 0.0, netA = 0.0;
+        long n = 0;
+        pr.play(2.0, [&] {
+            const double rho = pr.get("intk.pPlenum") / (287.0 * pr.get("intk.tAir"));
+            for (int i = 0; i < nc; ++i)
+            {
+                const double m = pr.get(mPath[std::size_t(i)]), q = pr.get(qPath[std::size_t(i)]) * rho;
+                (m > 0.0 ? back : draw) += m;
+                (q > 0.0 ? backV : drawV) += q;
+                netA += pr.get(aPath[std::size_t(i)]) * rho;
+            }
+            ratio += pr.get("intk.kWant") + 1.0;
+            plen += pr.get("intk.pPlenum");
+            ++n;
+        });
+        const double k = 1e3 / n;
+        std::printf("%7.0f %8.2f %8.2f %8.2f %8.2f %7.3f %7.3f %7.1f  netQIa %.3f netQI %.3f\n", rpm, -draw * k, back * k, -drawV * k, backV * k,
+                    (draw + back) / (drawV + backV), ratio / n, plen / n * 1e-3, netA * k, (drawV + backV) * k);
+    }
+    SUCCEED();
+}

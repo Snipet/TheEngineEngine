@@ -95,3 +95,26 @@ for platform in "${soaks[@]}"; do
   elif [ "$platform" = linux-x64-soak ]; then echo; echo "$platform: no finished job among the last $seen runs"
   fi
 done
+
+# main: the lead fast-forwards it to the integration branch's tip at each checkpoint (01-rules.md section 2); one line
+# a platform, its newest finished job, so a check-in can say "main is at X, green on a, b, c"
+if [ "$branch" != main ]; then
+  echo
+  main_sha=$(gh api "repos/$repo/branches/main" --jq '.commit.sha[0:7]' 2>/dev/null || echo "?")
+  echo "== main (at $main_sha; the lead moves it forward at each checkpoint)"
+  mruns=$(gh api "repos/$repo/actions/runs?branch=main&per_page=30" \
+    --jq '.workflow_runs[] | select(.name == "Build") | "\(.id) \(.status) \(.head_sha[0:7]) \(.created_at)"' 2>/dev/null || true)
+  if [ -z "$mruns" ]; then echo "  no Build run on main yet"; else
+    awk '{print $1}' <<< "$mruns" | xargs -P8 -n1 bash -c 'fetch_jobs "$1"' _
+    for platform in "${platforms[@]}"; do
+      line=""
+      while read -r run status sha created; do
+        l=$(grep "^$platform " "$tmp/$run" 2>/dev/null || true)
+        read -r _ _ s c _ <<< "${l:-x x x x}"
+        if [ "$s" = completed ] && { [ "$c" = success ] || [ "$c" = failure ]; }; then line="$c at $sha ($created), run $run"; break; fi
+        [ "$s" = in_progress ] && [ -z "$line" ] && line="in flight at $sha, run $run (no finished job before it among the last 30 runs)"
+      done <<< "$mruns"
+      echo "  $platform: ${line:-no finished job among the last 30 runs on main}"
+    done
+  fi
+fi

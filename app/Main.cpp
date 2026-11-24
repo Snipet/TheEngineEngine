@@ -13,6 +13,7 @@
 // It is a console program on Windows for now: what it prints (the compile's time, the audio device, an error) is
 // what a person testing it is asked for (docs/checkpoints/M1.md).
 #include "Engine.h"
+#include "Launch.h"
 #include "Offline.h"
 #include "Options.h"
 #include "Script.h"
@@ -229,19 +230,36 @@ namespace
         {
             shown.document->recent().load(remembered.settings.recentBuilds);
             shown.document->recent().prune();
-            // the build last open, in a window a person uses (not a machine's run, and not over a --preset)
-            std::error_code ec;
-            if (!machine && o.preset.empty() && !remembered.settings.lastBuild.empty()
-                && std::filesystem::is_regular_file(remembered.settings.lastBuild, ec))
+            // The build the window opens with (app/Launch.h): the one last open, else the first build
+            // (content/builds/first.json), opened as a person opens a file: clean, its name in the top bar, its values
+            // sent to the engine as a loaded build's are. None over a --preset, and none with --reference.
+            const app::LaunchBuild launch = app::chooseLaunchBuild(o, machine, remembered.settings.lastBuild);
+            if (!launch.file.empty())
             {
                 std::vector<std::string> warnings;
                 std::string error;
-                if (shown.document->open(remembered.settings.lastBuild, BuildPart::Whole, warnings, error))
-                    std::printf("file: the last build, %s\n", remembered.settings.lastBuild.c_str());
+                if (shown.document->open(launch.file, BuildPart::Whole, warnings, error))
+                {
+                    std::printf("file: %s, %s\n", launch.what, launch.file.string().c_str());
+                    // a first launch's hand-hold: the first line of the first build's notes ("Try first: ...") on the
+                    // status line, until a command says something else
+                    if (launch.first)
+                    {
+                        const std::string& notes = shown.document->build().notes;
+                        note = notes.substr(0, notes.find('\n'));
+                        if (!note.empty())
+                        {
+                            std::printf("note: %s\n", note.c_str());
+                            showStatus();
+                        }
+                    }
+                }
                 else
-                    std::fprintf(stderr, "file: the last build (%s) did not open: %s\n",
-                                 remembered.settings.lastBuild.c_str(), error.c_str());
+                    std::fprintf(stderr, "file: %s (%s) did not open: %s\n", launch.what, launch.file.string().c_str(),
+                                 error.c_str());
             }
+            else if (launch.what[0] != '\0')
+                std::printf("file: %s\n", launch.what);
         }
         funkgui::Panel* const panel = shown.panel.get();
         const std::uint32_t frames = static_cast<std::uint32_t>(o.frames >= 0 ? o.frames : 120);
@@ -572,6 +590,10 @@ namespace
             if (!settings::save(now, notSaved))
                 std::fprintf(stderr, "settings: %s\n", notSaved.c_str());
         }
+        // what the window ended with: the build's name (the top bar's), its file, and each model switch as the document
+        // holds it and as the engine was sent it (a test's read-back: tests/shell/CMakeLists.txt, shell.window.first)
+        if (machine && shown.document != nullptr)
+            std::printf("%s\n", app::launchReadBack(*shown.document, engine.sim).c_str());
         std::printf("tee-app: %s renderer=%s frames=%u ticks=%u fps=%.1f audio-callbacks=%llu audio-frames=%llu "
                     "largest-request=%d engine-state=%.0f rpm=%.0f faults=%u\n",
                     code == 0 ? "ok" : "FAILED", d.renderer.c_str(), static_cast<unsigned>(d.frames),
