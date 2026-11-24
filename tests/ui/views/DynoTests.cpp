@@ -6,7 +6,6 @@
 #include "app/AppFrame.h"
 #include "views/car/Car.h"
 #include "views/dyno/Dyno.h"
-#include "views/car/CarDemo.h"
 #include "views/tune/Tune.h"
 #include "views/tune/TuneDemo.h"
 
@@ -87,12 +86,9 @@ namespace
             for (int i = 0; i < 300; ++i)
             {
                 rig.demo.at(i / 60.0);
-                tee::ui::tunedemo::setLive(rig.demo.engine, i / 60.0);
                 rig.host->tick(1);
             }
         }
-        else
-            tee::ui::cardemo::setLive(rig.demo.engine);
         rig.settle();
     }
 
@@ -326,12 +322,19 @@ namespace
                     sb = { std::min(sb.x0, gs[j].x0), std::min(sb.y0, gs[j].y0), std::max(sb.x1, gs[j].x1), std::max(sb.y1, gs[j].y1) };
                     ++j;
                 }
-                const float cx = (gs[i].x0 + gs[i].x1) * 0.5f, cy = (gs[i].y0 + gs[i].y1) * 0.5f;
-                const Box* in = nullptr;
-                for (const Box& b : boxes)
-                    if (cx > b.x0 && cx < b.x1 && cy > b.y0 && cy < b.y1 &&
-                        (in == nullptr || (b.x1 - b.x0) * (b.y1 - b.y0) < (in->x1 - in->x0) * (in->y1 - in->y0)))
-                        in = &b;
+                // Its box: the smallest holding its first glyph's middle, else (centred text that overflows on both
+                // sides) the smallest holding the string's middle.
+                const auto smallest = [&](float cx, float cy) {
+                    const Box* in = nullptr;
+                    for (const Box& b : boxes)
+                        if (cx > b.x0 && cx < b.x1 && cy > b.y0 && cy < b.y1 &&
+                            (in == nullptr || (b.x1 - b.x0) * (b.y1 - b.y0) < (in->x1 - in->x0) * (in->y1 - in->y0)))
+                            in = &b;
+                    return in;
+                };
+                const Box* in = smallest((gs[i].x0 + gs[i].x1) * 0.5f, (gs[i].y0 + gs[i].y1) * 0.5f);
+                if (in == nullptr)
+                    in = smallest((sb.x0 + sb.x1) * 0.5f, (sb.y0 + sb.y1) * 0.5f);
                 if (in != nullptr && (sb.x0 < in->x0 - 1.0f || sb.x1 > in->x1 + 1.0f || sb.y0 < in->y0 - 1.0f || sb.y1 > in->y1 + 1.0f))
                 {
                     std::snprintf(m, sizeof m, "text at %.0f, %.0f (to %.0f, %.0f) leaves its box %.0f, %.0f to %.0f, %.0f", sb.x0,

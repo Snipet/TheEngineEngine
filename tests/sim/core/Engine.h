@@ -29,7 +29,7 @@ namespace tee::test::core
             player_ = EnginePlayer::create(options, errors);
             INFO(errors);
             REQUIRE(player_ != nullptr);
-            Build b;
+            EngineBuild b;
             std::string warnings;
             const auto file = std::filesystem::path(TEE_SOURCE_DIR) / "content" / "builds" / (build + ".json");
             const bool ok = loadBuild(*player_, file, b, errors, warnings);

@@ -943,11 +943,9 @@ namespace tee::ui
                 for (int i = 0; i < page.params().count(); ++i)   // a page scrolls: each of its controls is reachable
                     out.insert(page.params().field(i));
                 for (const GuiPanel::WidgetAt& wa : page.widgets())
-                {
-                    const int f = doc_.find(page.spec().gui.nodes[static_cast<std::size_t>(wa.node)].file);
-                    if (f >= 0 && page.items()[static_cast<std::size_t>(wa.item)]->shown())
-                        out.insert(f);
-                }
+                    if (page.items()[static_cast<std::size_t>(wa.item)]->shown())   // a table, or an array's elements
+                        for (const int f : fieldsOfWidget(doc_, page.spec().gui.nodes[static_cast<std::size_t>(wa.node)]))
+                            out.insert(f);
             }
         }
         show(wasShown);

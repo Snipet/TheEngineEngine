@@ -13,7 +13,7 @@
   own Magic Formula and table, `sim/vehicle/tyre.fm`), its peak marked, the dry curve dashed when the road is not
   dry; each driven wheel's live point, green below the peak, amber and "PAST THE PEAK" beyond it.
 - **The driveline**, from above, front at the left, for the layout chosen: engine, clutch (converter, belt), gearbox
-  with its gear, and front, rear and centre differentials by kind (open, clutch LSD, viscous, torque bias, locked),
+  with its gear, and front, rear and centre differentials by kind (OPEN, LSD for a clutch pack, VISCOUS, T. BIAS for torque-biasing, LOCKED),
   shafts to the wheels; driven wheels filled; the torque reaching each axle; a slipping wheel outlined in amber with
   "SLIP 16 %".
 - **The gearing chart**: road speed against engine speed for each gear to the limiter, each gear's speed there at the
