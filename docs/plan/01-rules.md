@@ -81,7 +81,8 @@ and the lead (the session that wrote these files) settles what a card leaves ope
 - **A budget a package** (the rule's second half: tests under 30 s each do not by themselves bound the whole): the
   fast tier's CPU-seconds on CI's Linux runner, the sum of a package's test times. The whole fast tier is capped at
   2400 (ten minutes of wall on four cores), and that cap binds: it is shared out by the lead's weights scaled by
-  2400 / 4500: `null` 580 (the guardian, kept whole), `diesel`, `exhaust` and the host 135, `vehicle` 100, every
+  2400 / 4500: `null` 580 (the guardian, kept whole), `diesel` and `exhaust` 135, the host 70 and `ref`
+  (tee-tests: the reference's and the program's top-level tests, its own row since 2026-11-24 23:04) 100, `vehicle` 100, every
   other package 80, and `combo` 165 (the lead's ruling, 2026-11-24 22:18: each switch's decisions back in the fast
   tier; the whole tier has the room). (`vehicle` took 20 from `null`'s allowance, which used about 364 on
   the reference runner, on 2026-11-24: since card I's last two findings it carries the dry and wet launches, the tyres'

@@ -577,7 +577,7 @@ jobs:
               echo
               if [ -n "$slow" ]; then
                 echo "| s | package | test |"; echo "|---:|---|---|"
-                echo "$slow" | awk -F'\t' '{ p = $2; sub(/[.:].*/, "", p); if (p == $2) p = "tee-tests"; printf "| %.0f | %s | %s |\n", $1, p, $2 }'
+                echo "$slow" | awk -F'\t' '{ p = $2; sub(/[.:].*/, "", p); if (p == $2) p = "host"; printf "| %.0f | %s | %s |\n", $1, p, $2 }'
               else
                 echo "none"
               fi
