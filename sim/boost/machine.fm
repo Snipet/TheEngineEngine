@@ -869,7 +869,10 @@ module BoostMachine
     void chargeSide()
     {
         // the filter: what the wheels drew from outside the sample before
-        p1 = turbos == 0 && sc == 0 ? pOut : pOut - kFilter * mInlet * fabsf(mInlet);
+        // (its loss at most half the air's pressure: a filter sized for the engine (2.5 kPa at its matched flow)
+        // passes far more only past any filter's choke; unbounded, a 50 cc engine's blower put the inlet below 0 and
+        // the machine diverged at the start, card X's X-026. Normal builds never come near it)
+        p1 = turbos == 0 && sc == 0 ? pOut : fmaxf(pOut - kFilter * mInlet * fabsf(mInlet), 0.5f * pOut);
         const float mFresh = fmaxf(mInlet, 0.0f);
         // (what was sent back out of the inlet comes back in warm: mixed with the fresh air by their flows)
         t1 = mBack > 1.0e-6f ? (mFresh * tOut + mBack * tBack) / fmaxf(mFresh + mBack, 1.0e-6f) : tOut;
