@@ -226,6 +226,38 @@ Measured (`the exhaust port's walls cool the gas, in full`; warm day, full throt
   the port's.
 - Energy: what the gas gave equals what the coolant took plus what the walls stored, to within 0.7 %.
 
+**The enthalpy lost before a turbine** (N3's energy book; the lead's ruling 24 Nov: recorded, no change). The 2.0
+turbo four at full throttle, warm day, heat settled, in kW above 298 K (cp 1150), the soak's section outlets read out:
+
+| | 1800 rpm (0.031 kg/s) | 4000 rpm (0.146 kg/s) |
+|---|---|---|
+| out of the valves | 30.8 | 179.3 |
+| the port | -5.0 (16 %); gas 1156 -> 1018 K, wall 345 K | -17.5 (9.8 %); wall 556 K |
+| the primaries | -3.2 (10 %); 1018 -> 929 K, wall 641 K, NTU 0.27, 19 ms | -4.6 (2.6 %); wall 1112 K, NTU 0.20, 3 ms |
+| the collector | -1.2 (4 %); 929 -> 895 K, wall 655 K, NTU 0.13, 10 ms | -1.7 (0.9 %); wall 1124 K, 1.6 ms |
+| into the housing | 22.0 (29 % lost) | 156.7 (13 % lost) |
+
+By cause:
+- **The law:** Caton and Heywood with Mills' factor in the port, Dittus-Boelter with an enhancement downstream. Heat
+  goes as m^0.8 and enthalpy as m, so the share rises as the flow falls.
+- **Cooler walls at low flow.**
+- **A longer residence.**
+
+The port is half the loss at 1800 rpm.
+
+Sources:
+- Caton and Heywood, Int. J. Heat Mass Transfer 24(4), 581-595 (1981), and SAE 800290: the port's transfer is
+  dominated by the valve's jet.
+- SAE 760766/760767 (1976): a port designed for minimum heat transfer raises the exhaust gas some 250 F, about 140 K.
+  That bounds what a port takes; the model's port drop is 104 to 138 K.
+- **No cited share of the enthalpy at low speed was found** (the papers paywalled, an open copy refused).
+
+The softest number is the port's wall, 345 K at 1800 rpm: my judged 6 mm of iron and 10 kW/m^2 K on the jacket.
+- **Probe (not adopted, no source for a port's wall in a water-cooled head):** the wall floored at 450 K at 1800 rpm
+  takes the port's heat from 4.9 to 4.3 kW. The loss before the turbine goes 28.5 to 26.8 %, the boost 6.5 to 6.8
+  kPa, and the torque stays at 147 N m.
+- At 4000 rpm the wall is already 543 K, so the floor changes nothing.
+
 ## Mass means and thermocouples (telemetry)
 
 `portTemperature`, `portExitTemperature` and `headerTemperature` are mass (enthalpy) means: of the gas the valves pass,
