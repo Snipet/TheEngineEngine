@@ -286,12 +286,24 @@ jobs:
           path: ${{ env.TEE_DEPS_DIR }}/tools/shaderc-${{ steps.keys.outputs.bgfx_version }}
           key: ${{ steps.shaderc.outputs.cache-primary-key }}
 
-      # the application first: its artefact exists whatever the rest of the build and the tests do
+      # The application first: its artefact exists whatever the rest of the build and the tests do. Many hands commit
+      # to this branch and none of them can compile for Windows or macOS before they push, so a warning one of those
+      # compilers alone raises would otherwise cost the artefact for a whole run: when the strict build fails, the
+      # application is built once more with warnings as warnings (TEE_WERROR=OFF), said aloud, and the tree is put
+      # back, so that the Build step below still fails on the warning as it should.
       - name: Build the application
         id: app
         run: |
+          build() { cmake --build "build-$PRESET" --target TheEngineEngine tee-headless --parallel ${{ matrix.jobs }}; }
           rc=0
-          cmake --build "build-$PRESET" --target TheEngineEngine tee-headless --parallel ${{ matrix.jobs }} || rc=$?
+          build || rc=$?
+          if [ $rc -ne 0 ]; then
+            echo "::warning::the application did not build under -Werror on $RUNNER_OS: building it with TEE_WERROR=OFF for the artefact; the Build step will say what is wrong"
+            cmake -S . -B "build-$PRESET" -DTEE_WERROR=OFF > /dev/null
+            rc=0
+            build || rc=$?
+            cmake -S . -B "build-$PRESET" -DTEE_WERROR=ON > /dev/null
+          fi
           if [ "$RUNNER_OS" = Windows ]; then "$TEE_SCCACHE" --stop-server > /dev/null || true; fi
           exit $rc
 
