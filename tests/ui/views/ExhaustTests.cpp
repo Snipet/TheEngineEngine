@@ -108,11 +108,23 @@ namespace
         int w, h;
 
         ExRig(const char* build, int width = 1100, int height = 700, float dpi = 2.0f, double t = 4.6, int theme = 0)
-            : demo(t), w(width), h(height)
+            : demo(t, false), w(width), h(height)
         {
             if (build != nullptr)
                 ex::setExhaustDemoBuild(doc, build);
             ex::exhaustDemoLive(demo.engine);
+            // every pipe's pressure at its ends, for this rig's own build (the hook's follow U1's demo document)
+            for (int which = 0; which < 3; ++which)
+                demo.engine.addScope(which == 0 ? "ductUsed" : which == 1 ? "ductNear" : "ductFar",
+                                     [this, which](const tee::ui::DemoEngine& e, float* out, int max) {
+                                         float u[84], n[84], f[84];
+                                         ex::exhaustDucts(ex::resolveExhaust(doc), e.phase(), e.rpm(), e.throttle(), u, n, f);
+                                         const float* src = which == 0 ? u : which == 1 ? n : f;
+                                         const int m = std::min(max, 84);
+                                         for (int i = 0; i < m; ++i)
+                                             out[i] = src[i];
+                                         return m;
+                                     });
             ws = tee::ui::makeExhaustWorkspace(ctx);
             host = std::make_unique<funkgui::HeadlessHost>(*ws, theme, dpi);
             host->resize(w, h);
@@ -171,7 +183,7 @@ namespace
         CHECK(b.ports == 4 && b.bank[1] == 1 && b.primLen[1] > b.primLen[0] * 1.5f);   // the boxer's unequal lengths
 
         // the demo's own Spec (no builder fields): the layout by its label, the crossover by its switch
-        tee::ui::MemoryDoc plain{ tee::ui::demoFields() };
+        tee::ui::MemoryDoc plain{ tee::ui::demoFields(false) };
         b = ex::resolveExhaust(plain);
         CHECK(b.layout == 12 && b.sides == 2 && b.cross == 2 && b.turbos == ex::Turbos::one);
         CHECK(ex::layoutFromLabel("I4") == 5 && ex::layoutFromLabel("V8 flat-plane") == 13 && ex::layoutFromLabel("x") == -1);
@@ -327,7 +339,7 @@ namespace
             { "exhaust.muffler[1]", "exhaust.mufLen[1]", "exhaust.mufLen[0]" },
             { "exhaust.primary[3]", "exhaust.primLen[3]", "exhaust.primLen[2]" },
             { "exhaust.collector[1]", "exhaust.colVol[1]", "exhaust.tailLen[0]" },
-            { "exhaust.crossover", "exhaust.crossAt", "exhaust.muffler[0]" },
+            { "exhaust.crossover", "exhaust.crossKind", "exhaust.mufKind[0]" },
             { "exhaust.bypass[0]", "exhaust.bypassRpm", "exhaust.bypass[1]" },
             { "exhaust.tail[1]", "exhaust.exitAt[1]", "exhaust.exitAt[0]" },
             { "boost", "boost.kind", "exhaust.sides" },

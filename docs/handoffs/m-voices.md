@@ -29,12 +29,14 @@ I added the `ex.control16` call (last in `Engine::control16`, skipped at model 0
 from card D, and wired `vt.clatter` into it after E's merge. Each voice has its own output for card L: `ex.vo.gearbox`,
 `.axle`, `.front`, `.head`, `.tank`, `.gateOut`, `.starter`; their sum is in `ex.mech` meanwhile.
 
-**Wanted outside my paths**:
-- Card D (asked): with model 1, render from key-on (`sounding = 1` when the ignition rises from off) and
-  `audible() || ex.busy()`, so the pump's prime is heard before a start.
-- Card F: when `boost.model` 1 is integrated, pass the gate's opening (`telGate`) and its kind (`gate`) in the
-  `ex.control16` call in place of the reference estimate and the 0.
-- Card L: place the seven outputs (gearbox, differential, front of engine, head, tank, turbo, flywheel end).
+**Since the handoff**: card D's key-on rendering landed: `engine: the fuel pump's prime is heard at key-on` passes
+(the prime before the first crank; the reference renders nothing there). Card F's gate wired: with `boost.model` 1 the
+call passes the most open of `mach.telGate[]` and `spec.boost.gate`; `engine: card F's wastegate` (turbo-four, dyno at
+5500 rpm full load): no chatter while idling with the gate shut, chatter 1.5e-5 rms at full load, an external gate to
+the air 2.4e-4. README rows added. Listening scenarios: `tests/sim/sound/listen/` (ten files and a README for X).
+
+**Wanted outside my paths**: card L, place the seven outputs (gearbox, differential, front of engine, head, tank,
+turbo, flywheel end). Card B2: the chain's lash as an event, for the bike voices.
 
 **FMinus**: no bug. A pointer cannot be compared with 0 (`out != 0` refused): the rig always writes.
 

@@ -255,8 +255,9 @@ namespace
         {
             tee::Audio a;
             a.sampleRate = r.result().rate;
-            a.left = r.result().left;
-            a.right = r.result().right;
+            const auto l = r.left().samples(), rr = r.right().samples();
+            a.left.assign(l.begin(), l.end());
+            a.right.assign(rr.begin(), rr.end());
             std::string error;
             if (!tee::writeWav(wav, a, error))
                 std::fprintf(stderr, "tee-fuzz: %s\n", error.c_str());

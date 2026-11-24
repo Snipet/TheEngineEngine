@@ -1,0 +1,65 @@
+{
+ "format": "tee-engine-scenario/1",
+ "name": "m-fan",
+ "description": "Idle: no fan, electric on 5-10 s, viscous locked from 14 s, revs from 17 s.",
+ "seconds": 22,
+ "events": [
+  {
+   "t": 0.0,
+   "spec": {
+    "sound.view": 3,
+    "voices.model": 1,
+    "voices.fanOn": 400
+   },
+   "ctl": {
+    "mode": 0,
+    "lever": 0,
+    "clutch": 0,
+    "brake": 0,
+    "throttle": 0,
+    "ignition": 1
+   }
+  },
+  {
+   "t": 0.25,
+   "ctl": {
+    "ignition": 2
+   }
+  },
+  {
+   "t": 2.0,
+   "ctl": {
+    "ignition": 1
+   }
+  },
+  {
+   "t": 5.0,
+   "spec": {
+    "voices.fanOn": 300
+   },
+   "note": "the electric fan switches on"
+  },
+  {
+   "t": 10.0,
+   "spec": {
+    "voices.fanOn": 400
+   },
+   "note": "and off: it coasts down"
+  },
+  {
+   "t": 14.0,
+   "spec": {
+    "voices.fan": 1,
+    "voices.fanOn": 300
+   },
+   "note": "a viscous fan, locked"
+  },
+  {
+   "t": 17.0,
+   "ctl": {
+    "holdSpeed": 500
+   },
+   "note": "revs up: its roar"
+  }
+ ]
+}

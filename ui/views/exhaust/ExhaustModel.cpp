@@ -25,6 +25,13 @@ namespace tee::ui::exhaust
             { 0, 0, 0, 1, 1, 1 }, { 0, 1, 0, 1, 0, 1, 0, 1 }, { 0, 0, 0, 0, 1, 1, 1, 1 }, { 0, 0, 0, 0, 0, 1, 1, 1, 1, 1 },
             { 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1 }, {},
         };
+        const float kFire[kLayouts][12] = {
+            {}, { 0, 360 }, { 0, 270 }, { 0, 315 }, { 0, 240, 480 }, { 0, 540, 180, 360 }, { 0, 360, 180, 540 },
+            { 0, 450, 270, 540 }, { 0, 144, 576, 288, 432 }, { 0, 120, 240, 360, 480, 600 }, { 0, 480, 240, 600, 120, 360 },
+            { 0, 240, 480, 360, 600, 120 }, { 0, 630, 270, 180, 450, 360, 540, 90 }, { 0, 540, 180, 360, 90, 630, 270, 450 },
+            { 0, 288, 432, 576, 144, 72, 360, 504, 648, 216 }, { 0, 480, 240, 600, 120, 360, 60, 540, 300, 660, 180, 420 },
+            { 0, 360, 720, 180, 540, 900 },
+        };
         const int kTopo[kLayouts] = { 0, 0, 0, 0, 0, 0, 1, 0, 0, 2, 1, 2, 2, 2, 2, 2, 0 };
         const float kHdr[kLayouts] = { 0.60f, 0.55f, 0.55f, 0.95f, 0.55f, 0.60f, 0.45f, 0.50f, 0.65f, 0.55f, 0.55f, 0.60f,
                                        0.75f, 0.70f, 0.65f, 0.65f, 0.45f };
@@ -202,7 +209,13 @@ namespace tee::ui::exhaust
         const bool rotary = layout == 16;
         b.ports = rotary ? 2 : kCyl[layout];
         for (int i = 0; i < kPorts; ++i)
+        {
             b.bank[static_cast<std::size_t>(i)] = i < 12 && !rotary ? kBank[layout][i] : 0;
+            b.fire[static_cast<std::size_t>(i)] = i < 12 ? kFire[layout][i] : 0.0f;
+        }
+        if (rotary)   // a rotor's port: its first face's
+            b.fire = { 0.0f, 180.0f };
+        b.cycle = rotary ? 1080.0f : 720.0f;
         const int topo = kTopo[layout];
         const bool bike = kBike[layout];
 
@@ -292,9 +305,11 @@ namespace tee::ui::exhaust
 
         // the crossover: a choice of three, or the demo's switch (an X), or the reference's dial (an H when open)
         {
-            const int f = doc.find(P::crossover);
+            const int fk = doc.find(P::crossKind), f = doc.find(P::crossover);
             int cross = 1;
-            if (f >= 0)
+            if (fk >= 0)
+                cross = clampi(doc.get(fk), 0, 2);
+            else if (f >= 0)
             {
                 const FieldInfo& info = doc.info(f);
                 const double v = doc.get(f);
@@ -318,7 +333,7 @@ namespace tee::ui::exhaust
             const auto k = static_cast<std::size_t>(s);
             b.conv[k] = clampi(fieldOr(doc, P::converter, s, 1.0), 0, 2);
             b.res[k] = clampi(fieldOr(doc, P::resonator, s, 0.0), 0, 3);
-            b.muf[k] = clampi(fieldOr(doc, P::muffler, s, 2.0), 0, 3);
+            b.muf[k] = clampi(fieldOr(doc, P::mufKind, s, fieldOr(doc, P::muffler, s, 2.0)), 0, 3);
             b.byp[k] = b.muf[k] != 0 ? clampi(fieldOr(doc, P::bypass, s, 0.0), 0, 4) : 0;
             b.tips[k] = fieldOr(doc, P::tips, s, 1.0) >= 1.5 ? 2 : 1;
             const int ea = static_cast<int>(std::lround(fieldOr(doc, P::exitAt, s, -1.0)));
