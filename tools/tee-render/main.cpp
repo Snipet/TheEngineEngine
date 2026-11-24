@@ -265,7 +265,10 @@ int main(int argc, char** argv)
                 rate, block);
     std::printf("  compile %.2f s, machine code %.2f s (%zu bytes), -O%d%s\n", player->program().compileSeconds(),
                 player->program().linkSeconds(), player->program().codeBytes(), level, checks ? ", checks on" : "");
-    std::printf("  render %.2f s: %.1f %% of real time while the engine ran, the slowest call %.1f %%\n", took,
+    std::printf("  render %.2f s: %.1f %% of real time while the engine ran (processor time; %.1f %% by the clock), the "
+                "slowest call %.1f %%\n",
+                took,
+                result.soundingFrames > 0 ? 100.0 * result.soundingCpuSeconds * rate / static_cast<double>(result.soundingFrames) : 0.0,
                 result.soundingFrames > 0 ? 100.0 * result.soundingSeconds * rate / static_cast<double>(result.soundingFrames) : 0.0,
                 100.0 * result.worstCallShare);
     std::printf("  peak %.4f%s\n", result.peak, result.peak > 1.0 ? " (over full scale)" : "");

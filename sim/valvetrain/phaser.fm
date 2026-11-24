@@ -1,0 +1,84 @@
+// phaser.fm: a cam phaser (variable valve timing): the cam turned against its sprocket by oil.
+//
+// A vane phaser is a hydraulic actuator in the cam's sprocket: the engine's oil, let into one side of its vanes or the
+// other by a solenoid valve the ECU drives, turns the cam some tens of degrees against the crank. Its speed is the oil's:
+// with too little pressure it cannot move (a lock pin holds it at its parked end, and the cam's own torque pushes it
+// back there), and thick cold oil moves it slowly. It never goes past its stops.
+//
+// Here the phase is degrees of the crank away from the parked end, 0 to range. The intake's phaser advances its cam
+// (the events earlier), the exhaust's retards its own (later), as most engines' do: both park where the engine starts
+// and idles best (the least overlap). The target is the ECU's (card H's maps); an engine without one has the schedule
+// of schedule() below. The phase moves toward the target at rate (degrees a second, warm and at full pressure), less
+// with less oil pressure (none below 70 kPa, all of it from 200 kPa: some 10 and 29 psi) and slower cold (a quarter of
+// it at 40 C, all of it from 80 C); below 40 C, or with no pressure, it is parked: it goes back to 0 at half its rate,
+// whatever the target. Every number here but the stops is judgement: docs/models/valvetrain.md says which.
+//
+// Only the events' angles move (AreaTable::place): no table is rebuilt.
+#pragma once
+
+module Phaser
+{
+    float range;        // degrees from parked to the far stop (0: no phaser)
+    float rate;         // degrees a second, warm, at full pressure
+    float target;       // degrees from parked, asked
+    float phase;        // and reached
+    int parked;         // 1: held at its parked end (cold, or no oil pressure)
+
+    void setup(float rangeIn, float rateIn)
+    {
+        range = fmaxf(rangeIn, 0.0f);
+        rate = fmaxf(rateIn, 1.0f);
+        phase = fminf(phase, range);
+        target = fminf(target, range);
+    }
+
+    void reset()
+    {
+        phase = 0.0f;
+        target = 0.0f;
+        parked = 1;
+    }
+
+    // Every 16 samples (d16 seconds): toward want (degrees from parked), with the oil's pressure (Pa above the air's)
+    // and temperature (K)
+    void control(float d16, float want, float pOil, float tOil)
+    {
+        target = fminf(fmaxf(want, 0.0f), range);
+        parked = tOil < 313.0f || pOil < 70000.0f ? 1 : 0;
+        if (range <= 0.0f)
+        {
+            phase = 0.0f;
+            return;
+        }
+        float goal = target;
+        float r = 0.5f * rate;
+        if (parked == 0)
+        {
+            const float fp = fminf((pOil - 70000.0f) / 130000.0f, 1.0f);
+            const float ft = fminf(fmaxf(0.25f + 0.75f * (tOil - 313.0f) / 40.0f, 0.25f), 1.0f);
+            r = rate * fp * ft;
+        }
+        else
+            goal = 0.0f;
+        const float step = r * d16;
+        const float e = goal - phase;
+        phase += fminf(fmaxf(e, -step), step);
+        phase = fminf(fmaxf(phase, 0.0f), range);
+    }
+
+    // A schedule for an engine whose ECU has none (degrees from parked, for the speed's share of the redline and the
+    // load, 0 to 1). The intake's (in 1): most advance at full load from low to middling speeds, where the early
+    // closing traps more charge, none at the top (its late closing rams in more) or at idle (overlap there dilutes);
+    // the exhaust's (in 0): retard at part load in the middle (overlap draws exhaust back: internal EGR, less pumping),
+    // none at full load.
+    float schedule(float speedShare, float load, int intake)
+    {
+        const float x = fminf(fmaxf(speedShare, 0.0f), 1.2f);
+        const float l = fminf(fmaxf(load, 0.0f), 1.0f);
+        const float up = fminf(fmaxf((x - 0.12f) / 0.13f, 0.0f), 1.0f);
+        const float dn = 1.0f - fminf(fmaxf((x - 0.5f) / 0.35f, 0.0f), 1.0f);
+        if (intake != 0)
+            return range * up * dn * (0.4f + 0.6f * l);
+        return range * up * dn * (1.0f - l);
+    }
+};

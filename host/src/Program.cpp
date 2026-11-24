@@ -1,6 +1,8 @@
 // host/src/Program.cpp: tee::Program (Program.h).
 #include "tee/Program.h"
 
+#include "tee/Clock.h"
+
 #include <chrono>
 #include <fstream>
 #include <functional>
@@ -54,7 +56,8 @@ namespace tee
 
     static std::unique_ptr<fminus::Program> compileWith(const Reader& read, const std::string& entry,
                                                         const Program::Options& options, std::string& errors,
-                                                        std::vector<std::string>& filesRead, double& seconds)
+                                                        std::vector<std::string>& filesRead, double& seconds,
+                                                        double& cpuSeconds)
     {
         errors.clear();
         filesRead.clear();
@@ -103,9 +106,11 @@ namespace tee
             return std::nullopt;
         };
 
+        const double cpuStart = threadCpuSeconds();
         const Clock::time_point start = Clock::now();
         std::unique_ptr<fminus::Program> program = fminus::Program::compile(*source, errors, o);
         seconds = secondsSince(start);
+        cpuSeconds = threadCpuSeconds() - cpuStart;
         return program;
     }
 
@@ -129,7 +134,8 @@ namespace tee
         std::unique_ptr<Program> out(new Program());
         out->options_ = options;
         out->entry_ = entryName;
-        out->program_ = compileWith(read, entryName, options, errors, out->filesRead_, out->compileSeconds_);
+        out->program_ = compileWith(read, entryName, options, errors, out->filesRead_, out->compileSeconds_,
+                                    out->compileCpuSeconds_);
         if (!out->program_)
             return nullptr;
         return out;
@@ -154,7 +160,8 @@ namespace tee
         std::unique_ptr<Program> out(new Program());
         out->options_ = options;
         out->entry_ = entryName;
-        out->program_ = compileWith(read, entryName, options, errors, out->filesRead_, out->compileSeconds_);
+        out->program_ = compileWith(read, entryName, options, errors, out->filesRead_, out->compileSeconds_,
+                                    out->compileCpuSeconds_);
         if (!out->program_)
             return nullptr;
         return out;
@@ -164,9 +171,11 @@ namespace tee
     {
         if (linked_)
             return true;
+        const double cpuStart = threadCpuSeconds();
         const Clock::time_point start = Clock::now();
         const std::vector<fminus::Program::CodeRange> ranges = program_->codeRanges(errors);
         linkSeconds_ = secondsSince(start);
+        linkCpuSeconds_ = threadCpuSeconds() - cpuStart;
         if (ranges.empty())
         {
             if (errors.empty())
