@@ -15,7 +15,13 @@
 #include "tee/Predict.h"
 
 #include <atomic>
+#include <chrono>
+#include <condition_variable>
+#include <cstdint>
+#include <memory>
+#include <mutex>
 #include <string>
+#include <thread>
 #include <vector>
 
 namespace tee
@@ -114,4 +120,67 @@ namespace tee
     // Writes it: ecu.maps.knockLimit, knockLimitAuto off, knockLimitKey its key. One undo step. False when the program
     // has no knock-limit table.
     bool applyKnockLimit(Build& build, const KnockBakeResult& result, std::string& error);
+
+    // The knock limit baked in the background, for the application (the lead's ruling: nobody waits on it, and its
+    // state is shown). After each edit the UI thread calls consider(build): a build whose table is current is left as
+    // it is; one whose key moved (an edit of what moves the knock limit) has its table set aside at once
+    // (knockLimitAuto on: the engine runs on its knock control alone, as before any bake) and a bake of it is asked,
+    // debounced (a knob's drag asks once, when it rests), a newer one cancelling the one running. Controls never move
+    // the key, so they never bake. take() gives the finished bake of the newest asked: apply it (applyKnockLimit) if
+    // the build's key is still its key. TUNE shows state(): "spark map: baking", "baked".
+    //
+    //   tee::KnockBakeService bakes(sim);                  // once
+    //   bakes.consider(build);                             // after each edit, and when a build is loaded
+    //   tee::KnockBakeResult r;
+    //   if (bakes.take(r) && knockLimitKey(build, *sim) == r.key) applyKnockLimit(build, r, error);   // each frame
+    enum class KnockBakeState
+    {
+        NoTable,      // the program has no knock-limit table
+        Current,      // the build's table is baked and its key is the build's
+        Waiting,      // stale: a bake is asked, waiting for the edits to rest
+        Baking,       // stale: being baked
+        Ready,        // baked: take() has it
+        Failed,       // the bake failed (error())
+    };
+
+    const char* knockBakeStateName(KnockBakeState state) noexcept;   // "no table", "baked", "baking" ...
+
+    class KnockBakeService
+    {
+    public:
+        explicit KnockBakeService(std::shared_ptr<Sim> sim, KnockBakeOptions options = {}, double debounceSeconds = 1.5);
+        ~KnockBakeService();
+        KnockBakeService(const KnockBakeService&) = delete;
+        KnockBakeService& operator=(const KnockBakeService&) = delete;
+
+        // ---- the UI thread ---------------------------------------------------------------------------------------
+        KnockBakeState consider(Build& build);
+        bool take(KnockBakeResult& out);
+        KnockBakeState state() const;
+        std::string error() const;
+        // Moves when the state changes.
+        std::uint64_t revision() const noexcept { return revision_.load(); }
+
+    private:
+        void coordinator();
+        void setState(KnockBakeState s);   // under mutex_
+
+        std::shared_ptr<Sim> sim_;
+        KnockBakeOptions options_;
+        double debounce_ = 1.5;
+        std::thread thread_;
+        mutable std::mutex mutex_;
+        std::condition_variable wake_;
+        bool stop_ = false;
+        bool asked_ = false;               // a bake of json_ waits to start
+        std::string json_;                 // the build asked, saved
+        std::int64_t key_ = -1;            // its key
+        std::chrono::steady_clock::time_point due_{};
+        std::atomic<bool> cancel_{false};
+        std::atomic<std::uint64_t> revision_{0};
+        KnockBakeState state_ = KnockBakeState::NoTable;
+        bool ready_ = false;
+        KnockBakeResult done_;
+        std::string error_;
+    };
 } // namespace tee

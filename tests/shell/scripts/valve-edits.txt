@@ -1,0 +1,79 @@
+# The application's path from an edit to the engine, on the first build (content/builds/first.json: valve.model Lab,
+# the intake phaser's range 60), in the window: each edit held by the document (`param`) and sent to the host (`sent`).
+# Edits before the first start, while running, after a stop and a restart, and after a QUALITY change and back. Times
+# are seconds from the engine's being ready.
+#
+# What the engine does with them is the valvetrain's (sim/valvetrain/phaser.fm, lab.fm): the application's engine
+# starts cold (host/include/tee/Warm.h: never held warm), and the phasers stay parked below 313 K of oil, the second
+# cam stage below 333 K. From cold at full revs that is some 80 s and 175 s (oil 288 K at the start), so here, in the
+# first minute, both read 0: the checks below say so, and fail the day the engine starts warm (then: check they move).
+# -- before the first start: two-stage cams on, the stage change at 300 rad/s (2,865 rpm)
+0.10  set valve.stages 1
+0.10  set valve.stageSpeed 300
+0.50  expect param valve.stages == 1
+0.50  expect sent valve.stages == 1
+0.50  expect sent valve.stageSpeed == 300
+0.60  key return down
+0.90  key return up
+3.50  expect engine.state == 2
+3.50  print
+3.50  expect engine.oilTemperature < 313
+3.50  expect valve.inPhase == 0
+4.00  key w down
+6.50  expect rpm > 3500
+6.50  print
+# -- while running: the phaser's range to 0 (parked) and back
+6.60  set valve.inPhaseRange 0
+7.00  expect param valve.inPhaseRange == 0
+7.00  expect sent valve.inPhaseRange == 0
+8.00  print
+8.10  set valve.inPhaseRange 60
+8.50  expect sent valve.inPhaseRange == 60
+9.50  print
+# -- while running: two-stage cams off and on again, the revs held
+9.60  set valve.stages 0
+10.00 expect sent valve.stages == 0
+10.60 set valve.stages 1
+11.00 expect sent valve.stages == 1
+11.50 print
+11.60 key w up
+# -- a stop, edits while stopped, a restart
+12.00 key return down
+13.40 key return up
+15.50 expect engine.state != 2
+15.60 set valve.stageSpeed 350
+15.60 set valve.inPhaseRange 40
+16.00 expect sent valve.stageSpeed == 350
+16.00 expect sent valve.inPhaseRange == 40
+16.10 key return down
+16.40 key return up
+19.00 expect engine.state == 2
+19.10 key w down
+21.50 expect rpm > 3800
+21.50 print
+21.60 key w up
+# -- a QUALITY change (the program compiled again and swapped in), then edits
+22.00 quality economy
+40.00 expect param valve.stages == 1
+40.00 print
+40.10 set valve.stages 0
+40.10 set valve.inPhaseRange 0
+40.50 expect sent valve.stages == 0
+40.50 expect sent valve.inPhaseRange == 0
+40.60 key w down
+43.00 expect rpm > 3800
+43.00 print
+43.10 key w up
+# -- and back to Full, then an edit
+43.50 quality full
+60.00 print
+60.10 set valve.stages 1
+60.10 set valve.inPhaseRange 60
+60.50 expect sent valve.stages == 1
+60.50 expect sent valve.inPhaseRange == 60
+60.60 key w down
+63.00 expect engine.oilTemperature < 333
+63.00 expect valve.stage == 0
+63.00 print
+63.10 key w up
+64.00 end
