@@ -865,4 +865,20 @@ module Bike
     {
         return (float)wo * box.chain;
     }
+
+    // the gearbox's own ratio in the gear in (0 in neutral and while the dogs are out)
+    float gearboxRatio()
+    {
+        if (box.gear <= 0)
+            return 0.0f;
+        return box.r[(box.gear > box.n ? box.n : box.gear) - 1];
+    }
+
+    // the gearbox's input shaft (the clutch's hub), rad/s: the output through the gear; in neutral the clutch's basket
+    // (the crank over the primary drive), as an engaged clutch turns it
+    float gearboxInput()
+    {
+        const float g = gearboxRatio();
+        return g > 0.0f ? sprocketSpeed() * g : wLast / box.primary;
+    }
 };
