@@ -523,3 +523,46 @@ namespace
         return 0;
     }
 }
+
+namespace
+{
+    // Cold oil holds the phasers parked (below 313 K or 70 kPa) and stage B back (below 333 K or 100 kPa), as the
+    // lab does: said in amber words in the PHASERS AND STAGES panel and on the editor's phaser band, at the frame's
+    // stages with no text out of place, and gone once the oil is warm.
+    VIEW_TEST(testValvesOil, "valves.oil")
+    {
+        const funkgui::Rect sizes[] = { { 64, 48, 696, 574 }, { 112, 48, 1128, 874 } };
+        for (const funkgui::Rect& st : sizes)
+        {
+            const std::string tag = st.w < 700.0f ? "small" : "large";
+            LabRig rig(static_cast<int>(st.w), static_cast<int>(st.h), 1.0f);
+            rig.live();
+            rig.engine.set("valve.stage", 0.0);
+            rig.engine.set(vv::kTelOilTemp, 288.0);
+            rig.engine.set(vv::kTelOilPressure, 400000.0);
+            rig.ctx.live.reset();
+            const std::uint64_t k = rig.ws->drawKey();
+            rig.host->tick(5);
+            if (st.w < 700.0f)
+            {
+                // the small stage: the PHASERS tab (the workspace's second item: BENCH, PHASERS, SPRINGS)
+                const funkgui::Point tab = rig.ws->item(1).centre();
+                rig.host->click(tab.x, tab.y);
+                rig.host->tick(5);
+            }
+            const std::string words = tee::ui::valvesOilWords(*rig.ws);
+            CHECK_MSG(words.find("PARKED: OIL 15") != std::string::npos && words.find("B WAITS: OIL 15") != std::string::npos, words);
+            const std::string why = tee::test::u2::textFaults(rig.host->draw(), { 0, 0, st.w, st.h }, tee::ui::valvesPanels(*rig.ws));
+            CHECK_MSG(why.empty(), tag + ": " + why);
+            picture("valves.oil." + tag, *rig.host);
+            // warm enough for the phasers, not for B; then warm
+            rig.engine.set(vv::kTelOilTemp, 320.0);
+            CHECK(rig.ws->drawKey() != k);
+            CHECK_MSG(tee::ui::valvesOilWords(*rig.ws).find("PARKED") == std::string::npos, tee::ui::valvesOilWords(*rig.ws));
+            CHECK(tee::ui::valvesOilWords(*rig.ws).find("B WAITS") != std::string::npos);
+            rig.engine.set(vv::kTelOilTemp, 360.0);
+            CHECK(tee::ui::valvesOilWords(*rig.ws).empty());
+        }
+        return 0;
+    }
+}

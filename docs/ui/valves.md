@@ -61,6 +61,18 @@ the margin's label while `valve.floating` is set; the ring and the overlap take 
 `overlap`, phased) when telemetry has them; the bench takes the simulator's (`valve.benchLift[i]` ...) when every
 element is in telemetry, else this port of `bench.fm` from the head's fields, and says which.
 
+## Cold oil
+
+The lab lets a phaser move only with the oil above 313 K (40 C) and 70 kPa (valvetrain/phaser.fm), and stage B only
+above 333 K (60 C) and 100 kPa (valvetrain/lab.fm); below, the phaser stays parked and stage A runs. From a cold start
+the oil follows the coolant some 4 minutes behind (core/heat.fm), so for the first minutes of a run the phaser and the
+second stage do nothing, by the model's rule. VALVES says so while it holds (`engine.oilTemperature`,
+`engine.oilPressure`): the editor's band reads "INTAKE PHASER PARKED: OIL COLD", the PHASERS AND STAGES panel
+"PARKED: OIL 15 C, MOVES AT 40 C" under the phaser's "0 of 60 deg, to 3" and "B WAITS: OIL 15 C, NEEDS 60 C" under the
+stage's lamp, in amber; the words go once the oil is warm. `ui.valves.oil`; on the first build through the frame (the
+TRY FIRST strip showing, the handles dragged where they are drawn, the phaser and stage B from telemetry):
+`ui.build.valves.first` (tests/ui/build/ValvesFirstTests.cpp).
+
 ## What is read, and from where
 
 By path through `kValveFields` in `ui/views/valves/ValvesModel.h` (package E's `sim/valvetrain/lab-spec.fm` names,
