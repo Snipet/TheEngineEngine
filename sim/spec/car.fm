@@ -196,4 +196,8 @@ module CarSpec
     bool clutchDry [[fminus::default(0)]] [[ui::label("Dry clutch")]]
         [[ui::help("Off: a wet multi-plate clutch in oil (it drags a little when open); on: a dry one (no drag; it rattles at idle)")]];
     // ---- end of card B2's block ----
+    // ---- card D2's block (heavy diesels: sim/vehicle/truckair.fm) ----
+    bool truckAir [[fminus::default(0)]] [[ui::label("Air system")]] [[ui::group("Truck")]]
+        [[ui::help("A truck's air brakes heard: the compressor's governor and the dryer's purge, the brakes' release, the spring brakes (with the listener, sound.model 1)")]];
+    // ---- end of card D2's block ----
 };

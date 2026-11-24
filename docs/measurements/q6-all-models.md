@@ -116,3 +116,7 @@ inside the 1.6 R budget. Why it was dear: a rotary's faces share a port, and `En
 valves twice a sample (for the port's share, then with the others' flows added), which is the reference's method;
 with one face open on a port, the most common case, the second solve repeated the first exactly. X-016's 3 to 5 R
 seed is a four-rotor with every other field random (its listener's camera, the vehicle's), not this.
+
+P's naturally aspirated rotary (`archetypes/rotary-twin-na-side-port.json`, every model on), scaled to three and four
+rotors the same way, after 4845579 (4 runs; R 1840 ns drive-car, 1913 free-revs): twin 0.72 / 0.70 R, three rotors
+0.93 / 0.89 R, four rotors 1.13 / 1.07 R (drive-car / free-revs): about 0.2 R a rotor.
