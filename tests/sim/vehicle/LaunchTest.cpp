@@ -140,3 +140,94 @@ TEST_CASE("launch.weak: an engine weak low down launches at its launch speed, no
     CHECK(t72 > 0.0);
     CHECK(t72 < 5.6);
 }
+
+namespace
+{
+    // An automatic's launch, as a driver makes it: from idle (the brakes off, the pedal from 0.15 to the floor over
+    // 0.6 s), or brake-torqued (the brakes held and the pedal at `hold` for a second, so the converter stalls against
+    // them and the revs come up; then the brakes off and the same ramp from there). The time to 18.29 m (60 ft).
+    double autoLaunch(const char* build, double hold, bool tc)
+    {
+        Sim s(build);
+        s.set("car.model", 1);
+        s.set("car.gearbox", 3);
+        s.set("ecu.model", 1);
+        s.set("ecu.traction.on", tc ? 1 : 0);
+        s.set("env.temperature", 300.0);
+        s.ctl().mode = tee::EnginePlayer::kModeDrive;
+        s.ctl().ignition = tee::EnginePlayer::kIgnitionStart;
+        s.run(1.5);
+        s.ctl().ignition = tee::EnginePlayer::kIgnitionOn;
+        s.ctl().brake = 1.0f;
+        s.run(1.0);
+        s.ctl().lever = 1;
+        s.run(0.5);
+        double from = 0.15;
+        if (hold > 0.0)
+        {
+            s.ctl().throttle = static_cast<float>(hold);
+            s.run(1.0);
+            from = hold;
+        }
+        const double rpm = s.tel("engine.speed") * 9.5492966;
+        const double x0 = s.tel("car.distance");
+        s.ctl().brake = 0.0f;
+        double t = 0.0;
+        for (int i = 0; i < 400 && s.tel("car.distance") - x0 < 18.288; ++i)
+        {
+            const double p = std::fmin(from + (1.0 - from) * (t / 0.6), 1.0);
+            s.ctl().throttle = static_cast<float>(p);
+            s.run(512.0 / 48000.0);
+            t += 512.0 / 48000.0;
+        }
+        std::printf("automatic launch (%s, %s, traction %s): %.0f rpm at the release, 60 ft in %.3f s\n", build,
+                    hold > 0.0 ? "brake-torqued" : "from idle", tc ? "on" : "off", rpm, t);
+        return t;
+    }
+} // namespace
+
+TEST_CASE("launch.automatic: a brake-torque launch on an automatic is no slower to 60 ft than one from idle",
+          "[vehicle][launch]")
+{
+    // (held at a fifth of the pedal: where the rear brakes still hold against the converter's stall torque; at a
+    // full pedal they do not on most cars, and the rear tyres spin against them before the green: a burnout)
+    for (bool tc : {false, true})
+    {
+        const double idle = autoLaunch("combo/v8", 0.0, tc);
+        const double torqued = autoLaunch("combo/v8", 0.2, tc);
+        CHECK(torqued <= idle + 0.01);
+    }
+}
+
+TEST_CASE("launch.automatic.spin: an automatic whose tyres spin does not shift up at walking pace", "[vehicle][launch]")
+{
+    // (finding P's brake-torque launches: floored against the brakes the rear tyres spin before the green, and a
+    // schedule on the engine's speed took the big block through second and third under 5 m/s, slower than from idle)
+    Sim s("combo/v8");
+    s.set("car.model", 1);
+    s.set("car.gearbox", 3);
+    s.set("ecu.model", 1);
+    s.ctl().mode = tee::EnginePlayer::kModeDrive;
+    s.ctl().ignition = tee::EnginePlayer::kIgnitionStart;
+    s.run(1.5);
+    s.ctl().ignition = tee::EnginePlayer::kIgnitionOn;
+    s.ctl().brake = 1.0f;
+    s.run(1.0);
+    s.ctl().lever = 1;
+    s.run(0.5);
+    s.ctl().throttle = 1.0f;
+    s.run(1.5);
+    s.ctl().brake = 0.0f;
+    double most = 0.0;
+    int spun = 0;
+    for (int i = 0; i < 300 && s.tel("car.speed") < 8.0; ++i)
+    {
+        s.run(512.0 / 48000.0);
+        most = std::fmax(most, s.tel("car.gear"));
+        spun |= static_cast<int>(s.tel("car.flags")) & 1;
+    }
+    std::printf("automatic, floored on the brakes: under 8 m/s its highest gear %g (spinning: %s)\n", most,
+                spun != 0 ? "yes" : "no");
+    CHECK(spun != 0);
+    CHECK(most == 1.0);
+}
