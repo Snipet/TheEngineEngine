@@ -1,6 +1,8 @@
 // shell/player/SimAdapter.cpp: SimAdapter.h.
 #include "player/SimAdapter.h"
 
+#include "tee/Timeline.h"
+
 #include "tee/Build.h"
 #include "tee/Fields.h"
 #include "tee/SimHost.h"
@@ -116,6 +118,7 @@ namespace tee::player
             else if (f.block == "tel" && f.count == 1 && f.extents.empty() && f.scalar != Scalar::None && f.path.size() > 4)
             {
                 a->tel_.push_back(&f);
+                a->telIndex_.push_back(0);
                 a->telNames_.push_back(f.path.substr(4));   // without "tel."
             }
         }
@@ -171,7 +174,25 @@ namespace tee::player
         for (std::size_t i = 0; i < telNames_.size(); ++i)
             if (telNames_[i] == name)
                 return static_cast<int>(i);
-        return -1;
+        // an element of an array ("car.wheelSlip[2]", "a.b[1][2]"), resolved as the host resolves it (Timeline.h), and
+        // kept as a handle of its own: read from the same block as the scalars
+        if (name.find('[') == std::string_view::npos)
+            return -1;
+        const FieldInfo* field = nullptr;
+        std::size_t index = 0;
+        std::string error;
+        if (!telemetryElement(host_->fields(), name, field, index, error) || field == nullptr || field->table())
+            return -1;
+        tel_.push_back(field);
+        telIndex_.push_back(index);
+        telNames_.emplace_back(name);
+        return static_cast<int>(tel_.size()) - 1;
+    }
+
+    HostStats SimAdapter::hostStats() const
+    {
+        refresh();
+        return have_ ? frame_->host : HostStats{};
     }
 
     // The newest block's telemetry, copied out of the host at most every few milliseconds: a frame of the interface
@@ -191,7 +212,8 @@ namespace tee::player
         if (handle < 0 || handle >= static_cast<int>(tel_.size()))
             return 0.0;
         refresh();
-        return have_ ? frame_->get(*tel_[static_cast<std::size_t>(handle)]) : 0.0;
+        const auto h = static_cast<std::size_t>(handle);
+        return have_ ? frame_->get(*tel_[h], telIndex_[h]) : 0.0;
     }
 
     double SimAdapter::load() const

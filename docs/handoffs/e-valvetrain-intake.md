@@ -57,3 +57,13 @@ Status: integrated on the branch. Model 0 matches the reference to the bit (null
 - Test 12 is not met.
 - The float effect is mild.
 - ITB idle air uses the reference's bypass shared among the runners. No idle control was tuned for it.
+
+## Card E, round 3 (the lead's three asks)
+1. **Runner (test 12): met.** On a 2.0 L four at 300 K, VE was measured against speed for 0.40 m and 0.60 m runners.
+   - Each length gives two bumps, and they move with the runner's ring as loaded by the cylinder (x tan x = A L / V).
+   - Measured ratios: 0.687 for the main bumps and 0.722 for the lower ones, against 0.729 predicted.
+   - VE reaches 1.14 at the 0.60 m runner's tuned speed.
+   - The two-length manifold follows both main bumps within 0.1 %.
+   - The earlier 135 Hz reading was this loaded ring, not a quarter wave (the loaded pipe gives 134 Hz).
+2. **Float: now a cliff.** The bounce is longer and larger, and the seat leaks while the valve should be shut. Torque falls 21 % at 1.1× and 64 % at 1.25× the float speed. The sizes are judgement.
+3. **Cost:** `ValveLab` takes 52 ns and `Valvetrain` 2 ns per 96 kHz sample, about 0.02 R. Nothing was worth taking out.

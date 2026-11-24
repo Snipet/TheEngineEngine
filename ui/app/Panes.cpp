@@ -121,8 +121,20 @@ namespace tee::ui
 
     bool Panes::key(const funkgui::KeyEvent& e)
     {
+        // Tab with no pane pressed yet: the panes in turn, from the last (the inspector's page) back, the first that
+        // takes it keeps the keys.
+        if (keys_ < 0 && e.key == funkgui::Key::tab)
+            for (int i = static_cast<int>(panes_.size()) - 1; i >= 0; --i)
+                if (funkgui::Panel* p = pane(i); p != nullptr && p->key(e))
+                {
+                    keys_ = i;
+                    return true;
+                }
         funkgui::Panel* p = pane(keys_);
-        return p != nullptr && p->key(e);
+        const bool used = p != nullptr && p->key(e);
+        if (!used && e.key == funkgui::Key::tab)
+            keys_ = -1;   // Tab went past the pane's last control: the next Tab starts again from the panes' turn
+        return used;
     }
 
     funkgui::Cursor Panes::cursor() const

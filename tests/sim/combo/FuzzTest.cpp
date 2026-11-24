@@ -19,7 +19,9 @@ namespace
         {
             Times tm;
             const auto spec = randomSpec(seed, corners);
-            const tee::test::Run r = fuzzScenario(spec, seed, seconds, tm).run(tm.end);
+            // with FMinus's bounds checks and loop budget: an access out of bounds stops the call with its words
+            // (and is reported) instead of taking the test process down
+            const tee::test::Run r = fuzzScenario(spec, seed, seconds, tm).checks().run(tm.end);
             const Verdict v = judgeFuzz(r, tm);
             const std::string name = std::string(corners ? "corners " : "random ") + std::to_string(seed);
             report(v, name, "fuzz", corners ? "corners" : "random");

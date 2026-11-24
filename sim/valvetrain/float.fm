@@ -15,8 +15,13 @@
 // 49 mm (a small-block's intake) as the diameter's 2.5th power.
 //
 // Beyond it (s = (w / w_float)^2 - 1 above 0) the valve lands late and bounces: area for some degrees after it should
-// be shut, a tail on the area table (AreaTable::tail): two bounces, the second a third of the first, over 10 + 60 s
-// degrees (at most 60), the first as high as 0.6 s of the most area (at most 0.4). The cylinder loses its charge back
+// be shut, a tail on the area table (AreaTable::tail): two bounces, the second a third of the first, over 15 + 130 s
+// degrees (at most 100), the first as high as 2 s of the most area (at most 0.6). So 5 % past the float speed (s 0.1)
+// the valve lets a fifth of its area through for 28 degrees after it should have shut, and 15 % past it (s 0.32) more
+// than half for 57: the charge goes back up the runner and the compression leaks, and the power falls off as a
+// pushrod engine's does a few hundred rpm past float (some 10 to 30 % within 10 % of the speed, as dyno sheets of
+// floating engines show it: judgement, not a fit to a measured engine). And a valve that bounces no longer seals:
+// while it should be shut it leaves 5 s % of its area open (at most 3 %), so the compression and the burn leak. The cylinder loses its charge back
 // into the runner and the overlap draws exhaust back: the power falls over, from the gas model itself. Each landing is
 // a clatter for the sound (clatter, 0 to 1). No damage. The bounce's size and length are judgement.
 #pragma once
@@ -87,9 +92,10 @@ module ValveFloat
             t->noTail();
             return;
         }
-        t->tailDeg = fminf(10.0f + 60.0f * sev, 60.0f);
+        t->tailDeg = fminf(15.0f + 130.0f * sev, 100.0f);
         t->tailK = (float)VT_TAIL / t->tailDeg;
-        const float amp = fminf(0.6f * sev, 0.4f) * t->peak;
+        const float amp = fminf(2.0f * sev, 0.6f) * t->peak;
+        t->leak = fminf(0.05f * sev, 0.03f) * t->peak;
         for (int i = 0; i <= VT_TAIL; ++i)
         {
             // two bounces, each a half sine, the second a third of the first

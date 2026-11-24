@@ -21,6 +21,15 @@
   right, the gear in use in the accent, where the car is now; shift points (where the next gear pulls harder, from
   the predicted torque); the top speed as a dashed line.
 
+## A motorcycle
+
+When `car.kind` is "Motorcycle" (card B2): the side view is a bike with its rider (tucked by `car.tuck`), its front
+lifted by `car.liftAngle` about the rear tyre's contact (the points turned, not the Canvas); the axle loads are wheels
+[0] and [2] and the weight includes `car.riderMass`; the grip curve is `car.bikeTyre`'s (`bike.fm`'s BIKE_TYRE_MU over
+its compound's curve); the driveline is engine, clutch (SLIPPER with `car.slipper`), gearbox and chain (`frontSprocket`
+/ `rearSprocket`) to the rear wheel; the gearing goes through `primaryRatio x ratio[g] x rearSprocket / frontSprocket`;
+no downforce; and each group lists what a bike reads (rider, chain and wheelie, shifting), none of a car's it ignores.
+
 ## What is clickable
 
 The body (mass and geometry), a wheel (tyres), a caliper (brakes), the drag arrow (aero), the grip curve (tyres),
