@@ -13,7 +13,8 @@ A timed run as it is made (the lead, 19:36), each part a switch so the table's n
   --launch prerev  the revs held at the green: the brake held and the pedal floored 1.5 s before it (the paddles'
                    and the dual clutch's own clutch stays open while the brake is held: a pre-rev against the clutch),
                    with the launch button held where the car has launch control (ecu.launch.on), so it holds its
-                   launch speed; an automatic's is a brake-torque launch against its converter. (idle: the pedal floored
+                   launch speed; an automatic's is a brake-torque launch at a fifth of the pedal for a second (where its brakes hold
+                   against the converter: card I's), then the pedal to the floor over 0.6 s. (idle: the pedal floored
                    at the green from idle, as before.)
   --tyres warm     the tyres in their compound's window, as a timed run makes them (the scenario's "warmTyres":
                    true, card C's: the host holds car.m1.warmTyres, card I's a140c6f). (air: at the air's temperature,
@@ -66,7 +67,13 @@ def events(run, shifts):
     if not run.auto:
         ev += [{"t": 0.0, "spec": {"ecu.traction.on": True}}]
     ev += [{"t": run.stage, "press": ["strip"]}]
-    if run.launch == "prerev":
+    if run.launch == "prerev" and run.auto:
+        # an automatic's brake-torque launch as a driver makes it (card I's launch.automatic): the brakes held and the
+        # pedal at a fifth for a second, where the rear brakes still hold against the converter's stall (at a full
+        # pedal they do not: a burnout before the green), then the brakes off and the pedal to the floor over 0.6 s
+        ev += [{"t": g - 1.0, "ctl": {"throttle": 0.2}}, {"t": g, "ctl": {"brake": 0}},
+               {"t": g, "ctl": {"throttle": 1}, "ramp": 0.6}]
+    elif run.launch == "prerev":
         ev += [{"t": g - 1.5, "ctl": {"throttle": 1}, "ramp": 0.3}, {"t": g, "ctl": {"brake": 0}}]
         if run.button:
             ev += [{"t": g - 1.6, "ctl": {"buttons": 2}}, {"t": g + 1.0, "ctl": {"buttons": 0}}]
