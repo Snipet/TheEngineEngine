@@ -1,7 +1,7 @@
 // parts.fm: the diesel's fields and the tuner's readings, held for the tests.
 #include "combustion/diesel.fm"
 #include "combustion/watch.fm"
-#include "combustion/settings.fm"
+#include "spec/fuel.fm"
 
 module Parts
 {
@@ -9,7 +9,7 @@ module Parts
     BurnWatch watch;
     LambdaSensor sensor;
     InjectorMeter meter;
-    FuelSettings settings;
+    FuelSpec settings;
 
     void setup()
     {

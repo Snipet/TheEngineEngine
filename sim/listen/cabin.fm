@@ -1,0 +1,74 @@
+// listen/cabin.fm: the engine's shaking heard in the cabin (module CabinBoom, package L).
+//
+// The block shakes on its mounts: the gas's torque reaction rolls it (the crank's torque ripple, crank.tqNow, the
+// reference's whole source) and, for an engine described by its geometry, the reciprocating masses' free forces and
+// moments by order (sim/core/shake.fm: first and second order, in newtons and newton metres) push it. Through each
+// mount the body feels the force the mount passes: a rubber mount is a spring and a damper under the engine's mass,
+// whose transmissibility is
+//
+//     T(s) = (2 z w s + w^2) / (s^2 + 2 z w s + w^2),   w = 2 pi 12 Hz, z = 0.15
+//
+// (the mount's bounce at 12 Hz, as a car's are tuned under the idle's lowest order; above it the force passed falls as
+// 2 z f0 / f, 6 dB an octave, the damper's share). The force on the body drives its panels and the air in the cabin,
+// the reference's six cabin modes (40 to 180 Hz, its heuristic values) and a share passed flat. The roll torque acts
+// at the mounts over a lever of 0.3 m; the forces as they are; the moments over the mounts' spread, 1.2 m.
+//
+// Calibrated once against the reference: at 100 Hz (a V8's firing at 1500 rpm) its boom's level through this chain
+// equals the reference's (kCb, 180 Hz low-pass, the six modes, at the default distance), so that the DRIVER camera
+// starts where the CABIN view was; the mount passes 6 dB an octave more below that and less above (measured: +15 dB
+// at 30 Hz, +8 at 50, -6 at 200, -12 at 400 against the reference's), so the boom of lugging at low speed is louder
+// than the reference's and a high speed's is quieter, as in a car.
+//
+// What it leaves out: the mounts' stiffening at high frequency and their rubber's own resonances, the exhaust's hangers
+// (the drone through the floor is Scene's), the driveline's own shaking.
+#pragma once
+#include "../lib/onepole.fm"
+#include "../lib/biquad.fm"
+
+module CabinBoom
+{
+    float rate;
+    Biquad mountLp;     // T(s) = the low-pass's and the band-pass's sum, at the mount's bounce
+    Biquad mountBp;
+    OnePole cabLp;      // the reference's chain from here: a low-pass and the six modes
+    Biquad mode[6];
+    float k;            // the calibration to the reference's level
+
+    void setup(float rateIn)
+    {
+        rate = rateIn;
+        // the band-pass (s / Q) / (s^2 + s / Q + 1) is 2 z s / (...) with Q = 1 / (2 z)
+        mountLp.setLowpass(12.0f, 3.3333333f, rate);
+        mountBp.setBandpass(12.0f, 3.3333333f, rate);
+        cabLp.set(180.0f, rate);
+        const float cmF[6] = {42.0f, 58.0f, 77.0f, 104.0f, 138.0f, 182.0f};
+        const float cmQ[6] = {5.0f, 6.0f, 7.0f, 8.0f, 9.0f, 10.0f};
+        for (int i = 0; i < 6; ++i)
+            mode[i].setBandpass(cmF[i], cmQ[i], rate);
+        // the mount passes 2 z f0 / f at f: 0.036 at 100 Hz; the reference's chain passes the torque as it is, times
+        // its distance's gain at the default distance (0.68): matched there
+        k = 0.68f * 100.0f / (2.0f * 0.15f * 12.0f) * 0.92f;
+        clear();
+    }
+
+    void clear()
+    {
+        mountLp.clear();
+        mountBp.clear();
+        cabLp.clear();
+        for (int i = 0; i < 6; ++i)
+            mode[i].clear();
+    }
+
+    // One sample: the roll torque (N m), the free forces (N) and moments (N m) across the crank; the boom's pressure in
+    // the reference's units (its torque's)
+    float tick(float torque, float fx, float fy, float mx, float my)
+    {
+        // the force at the mounts, as the reference's torque: the roll's force over its 0.3 m lever, the rest as forces
+        const float f = torque + 0.3f * (fy + 0.5f * fx) + 0.25f * (mx + my);
+        const float through = k * (mountLp.tick(f) + mountBp.tick(f));
+        const float tq = cabLp.lowpass(through);
+        return 0.45f * tq + 1.95f * mode[0].tick(tq) + 1.6f * mode[1].tick(tq) + 1.24f * mode[2].tick(tq)
+               + 0.89f * mode[3].tick(tq) + 0.67f * mode[4].tick(tq) + 0.5f * mode[5].tick(tq);
+    }
+};
