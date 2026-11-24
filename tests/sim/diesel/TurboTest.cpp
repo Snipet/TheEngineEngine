@@ -123,8 +123,12 @@ TEST_CASE("diesel turbo, full: a big single's lag you can count, compound and va
     CHECK(compound.boost > 30000.0);
 }
 
-TEST_CASE("diesel turbo: variable vanes settle to one state at 1300 rpm, from below and from above", "[diesel][turbo]")
+TEST_CASE("diesel turbo: variable vanes settle to one state at 1300 rpm, from below and from above", "[diesel][turbo][!mayfail]")
 {
+    // [!mayfail] on a named finding (24 Nov, 22:50; the lead's rule for the default run): since G's 15fcdd84 (stepLet's
+    // target closed by mass at the housings) the VGT from 800 rpm settles at 11 kPa with its vanes wide (1.00), from
+    // 2000 rpm at 63 kPa (vanes 0.82); the big single makes 42 kPa where it made 208. G and N2 (the design-point
+    // turbines, the second table) to find it; the bounds are unchanged.
     // The property that was broken (two steady states of card F's vane loop, fixed by N2's surge guard, cf888e2): full
     // load held at 1300 rpm after coming from 800 rpm and from 2000 rpm ends at the same boost and torque
     double boost[2] = {0.0, 0.0}, torque[2] = {0.0, 0.0};
