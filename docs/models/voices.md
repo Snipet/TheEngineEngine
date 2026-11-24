@@ -37,6 +37,15 @@ steps on or off (test `clicks`). A level of -60 dB is off and costs nothing.
 `vo.all` (every voice but the starter) is added to `Extras::mech`, so today's mix hears them until card L places
 each output.
 
+## The intake's voice with card E's induction
+
+With `spec.intake.model` 1 (whatever `spec.voices.model`), `Extras::tick` takes card E's own radiated sound
+(`intk.sound`: its air box's snorkel, or individual throttle bodies' trumpets) in place of the reference's box
+filter; the throttle's hiss is added as before. `ex.mouth` is the intake's mouth alone, for the listener to place.
+Test `intake:` (the default four at 4000 rpm wide open on the dyno): ITBs over a plenum's snorkel +31.7 dB in
+`ex.mouth`, as card E's own measure; in the mix, through the listener's compressor and soft ceiling at -24 dB,
++18.2 dB at the firing's first six harmonics.
+
 ## Measured
 
 - Lines: every voice's line within 0.5 % of its computed frequency (standalone, all six gears at 150/300/520 rad/s;
