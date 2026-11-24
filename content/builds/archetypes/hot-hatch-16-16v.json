@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "1.6 L 16-valve hot hatch",
-  "notes": "A light front-drive hatch with a twin-cam 16-valve 1.6: 81 x 77.4 mm (1595 cc), 10.4:1; engines of the kind made 85 to 118 kW at 6500 to 7600 rpm and 140 to 160 N m (makers' figures of the 1980s and 90s). Its intake: the long-runner class's runner, 0.45 m from the valve to the plenum (a port-injected road engine's tuned long runners, 1985 to 2005): JUDGEMENT, a class default, not the real engine's (no source found).",
+  "notes": "A light front-drive hatch with a twin-cam 16-valve 1.6: 81 x 77.4 mm (1595 cc), 10.4:1; engines of the kind made 85 to 118 kW at 6500 to 7600 rpm and 140 to 160 N m (makers' figures of the 1980s and 90s). Its exhaust: short tubular headers, the primaries 1.00 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its intake: the long-runner class's runner, 0.45 m from the valve to the plenum (a port-injected road engine's tuned long runners, 1985 to 2005): JUDGEMENT, a class default, not the real engine's (no source found).",
   "spec": {
     "engine": {
       "layout": "Inline 4",
@@ -85,7 +85,8 @@
       "mufKind": [
         2,
         2
-      ]
+      ],
+      "headers": 0.5
     },
     "fuel": {
       "kind": "Gasoline",

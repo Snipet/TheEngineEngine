@@ -620,6 +620,8 @@ def build(a):
         bo["model"] = "Machine"
 
     x = {"model": "Builder", "sides": 2 if n >= 6 and a["layout"] not in ("Inline 6",) else 1, "converter": [1, 1], "mufKind": [2, 2]}
+    if a["slug"] in EXHAUST_CLASS:
+        x["headers"] = HEADER[EXHAUST_CLASS[a["slug"]]][0]
     x.update(a.get("exhaust", {}))
 
     diesel = a.get("diesel", False)
@@ -657,6 +659,12 @@ def build(a):
         t["launch.on"] = True
     if "boost" in a:
         t["knock.on"] = True
+    if a["slug"] in CAMS:
+        # the maker's calibrated intake cam map, baked by cams.py (C's tee-dyno --bake-cam: the cam swept at full load,
+        # the best advance by speed), the same full-load row at no load and at three times the air (Bake.cpp's form)
+        pts = CAMS[a["slug"]][:16]
+        t["maps.camInAuto"] = False
+        t["maps.camIn"] = {"x": [w for w, _ in pts], "y": [0.0, 3.0], "z": [[adv, adv] for _, adv in pts]}
     if "boostTaper" in a:
         # the class's power cap met as its makers meet it: the boost target falls with speed (a baked boost map,
         # every gear alike; rpm and kPa over the air from N2's measurements on the kei with the resized gate)
@@ -697,6 +705,12 @@ def build(a):
             "car": car, "env": {"temperature": 288.15, "pressure": 101325.0}, "voices": vo, "sound": snd}
     switches_on(spec, a["slug"])
     notes = a["notes"]
+    if a["slug"] in EXHAUST_CLASS:
+        hc = EXHAUST_CLASS[a["slug"]]
+        notes += (" Its exhaust: %s, the primaries %.2f times the layout's length: the class the real engine carries "
+                  "(recalled), its length JUDGEMENT." % (HEADER[hc][1], math.exp(0.9808293 * (HEADER[hc][0] - 0.5))))
+    if a["slug"] in CAMS:
+        notes += " Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py)."
     if a["slug"] in MANIFOLD:
         cls = MANIFOLD[a["slug"]]
         notes += (" Its intake: the %s class's runner, %.2f m from the valve to the plenum (%s)%s: JUDGEMENT, a class "
@@ -748,6 +762,43 @@ SWITCHED = {
                         "short, almost straight tracts (Ferrari's launch text, pistonheads.com): a plenum's geometry "
                         "switched, here as a second runner",
 }
+
+# The exhaust headers by the class the real engine carries (the lead, 21:05), JUDGEMENT, written down before any table
+# ran on them (24 Nov, 21:15 UTC) and never chosen from an engine's rows: exhaust.headers, the primaries 0.61 (0), 1.0
+# (0.5) or 1.63 (1) times the layout's length. The class goes by the real engine's manifold (recalled), not by targets.
+HEADER = {
+    "log": (0.0, "a cast or short log manifold"),
+    "tubular": (0.5, "short tubular headers"),
+    "tuned": (1.0, "tuned long-primary headers"),
+}
+EXHAUST_CLASS = {
+    "big-block-74-pushrod-v8": "log", "small-block-57-carb": "log", "pushrod-v6-38": "log", "vr6-28": "log",
+    "economy-four-15": "log", "v6-35-na": "log",
+    "boxer-four-turbo-unequal": "log", "inline-five-turbo-rally": "log", "kei-660-triple-turbo": "log",
+    "three-cylinder-10-turbo": "log", "turbo-four-20-gdi": "log", "straight-six-twin-turbo-30": "log",
+    "flat-plane-v8-39-twin-turbo": "log", "twin-turbo-hot-vee-v8-40": "log", "v6-35-twin-turbo-pickup": "log",
+    "diesel-20-common-rail": "log", "pickup-diesel-67-inline-six": "log", "tractor-15-inline-six": "log",
+    "air-cooled-flat-six-36": "tubular", "big-bore-70-pushrod-v8": "tubular", "four-cam-v8-50": "tubular",
+    "twin-cam-roadster-18": "tubular", "hot-hatch-16-16v": "tubular", "supercharged-v8-62": "tubular",
+    "flat-plane-v8-45": "tuned", "v10-52": "tuned", "v12-65": "tuned", "two-stage-cam-20": "tuned",
+    "straight-six-32-high-rev": "tuned",
+}
+
+
+def _cams():
+    """Each phased archetype's baked intake cam map (cams.py: tee-dyno --bake-cam), {slug: [(rad/s, advance)]}."""
+    path = os.path.join(HERE, "cam-maps.tsv")
+    out = {}
+    if os.path.exists(path):
+        for line in open(path):
+            if line[:1] == "#":
+                continue
+            slug, w, adv = line.rstrip("\n").split("\t")
+            out.setdefault(slug, []).append((float(w), float(adv)))
+    return out
+
+
+CAMS = _cams()
 
 # where each class carries its engine (the listener's paths to each camera)
 ENGINE_PLACE = {"mid-engine": "Mid", "awd-supercar": "Mid", "rear-engine-classic": "Rear"}

@@ -561,3 +561,61 @@ What each says:
 
 Whose it is: mostly content (the primaries' lengths, the second runner), some the phaser's top end (a baked map). Even
 the best of each alone leaves the flat-plane's torque 13 % and the V10's 8 % under their bands; together not measured.
+
+## N3-12. The exhaust's help at overlap: present, and as large as the intake's ram (21:07 by `date -u`; the lead's item 3)
+
+The V12 and the flat-plane 4.5 at 5500, 6250 and 7000 rpm, every primary at 0.5, 0.705 (as built: the layout's
+default) and 0.9 m, the collector as built; per cycle, cylinder 1 through its overlap (both valves passing gas): the
+exhaust valve's flow out and back, the intake's in and back (g), and the mean gauge pressures at the exhaust port,
+in the cylinder and at the intake port (the port's pressure read as twice its arriving wave):
+
+```
+v12-65 prim 0.5 5500: tq 603.1 ve 0.825 resid 0.026
+  prim 0.5   5500: overlap 2.91 ms/cyc; exh valve out 0.0657 back 0.0057 g; intake in 0.0472 back 0.0050 g; mean gauge kPa: exh port -6.7 (min -33.9), cyl -3.4, intake port -4.3
+v12-65 prim 0.5 6250: tq 622.4 ve 0.861 resid 0.024
+  prim 0.5   6250: overlap 2.05 ms/cyc; exh valve out 0.0518 back 0.0001 g; intake in 0.0718 back 0.0054 g; mean gauge kPa: exh port -7.8 (min -32.7), cyl +2.8, intake port -5.6
+v12-65 prim 0.5 7000: tq 549.5 ve 0.791 resid 0.042
+  prim 0.5   7000: overlap 1.86 ms/cyc; exh valve out 0.0371 back 0.0016 g; intake in 0.0294 back 0.0068 g; mean gauge kPa: exh port -7.2 (min -32.3), cyl -5.0, intake port -12.8
+v12-65 prim 0.705 5500: tq 480.9 ve 0.674 resid 0.080
+  prim 0.705 5500: overlap 2.92 ms/cyc; exh valve out 0.0466 back 0.0002 g; intake in 0.0409 back 0.0222 g; mean gauge kPa: exh port +1.7 (min -33.4), cyl +7.2, intake port -6.5
+v12-65 prim 0.705 6250: tq 520.6 ve 0.738 resid 0.075
+  prim 0.705 6250: overlap 2.05 ms/cyc; exh valve out 0.0254 back 0.0059 g; intake in 0.0445 back 0.0216 g; mean gauge kPa: exh port +10.0 (min -28.6), cyl +17.4, intake port -3.0
+v12-65 prim 0.705 7000: tq 487.2 ve 0.715 resid 0.083
+  prim 0.705 7000: overlap 1.86 ms/cyc; exh valve out 0.0168 back 0.0139 g; intake in 0.0142 back 0.0265 g; mean gauge kPa: exh port +14.8 (min -15.6), cyl +4.3, intake port -12.5
+v12-65 prim 0.9 5500: tq 388.3 ve 0.562 resid 0.144
+  prim 0.9   5500: overlap 2.92 ms/cyc; exh valve out 0.0242 back 0.0238 g; intake in 0.0164 back 0.0444 g; mean gauge kPa: exh port +8.8 (min -15.3), cyl +4.1, intake port -6.7
+v12-65 prim 0.9 6250: tq 528.2 ve 0.743 resid 0.079
+  prim 0.9   6250: overlap 2.05 ms/cyc; exh valve out 0.0153 back 0.0153 g; intake in 0.0252 back 0.0241 g; mean gauge kPa: exh port +14.6 (min -27.6), cyl +9.5, intake port -2.9
+v12-65 prim 0.9 7000: tq 541.8 ve 0.776 resid 0.053
+  prim 0.9   7000: overlap 1.85 ms/cyc; exh valve out 0.0167 back 0.0176 g; intake in 0.0149 back 0.0218 g; mean gauge kPa: exh port +7.3 (min -51.3), cyl -11.7, intake port -12.1
+flat-plane-v8-45 prim 0.5 5500: tq 413.0 ve 0.832 resid 0.035
+  prim 0.5   5500: overlap 2.56 ms/cyc; exh valve out 0.0696 back 0.0129 g; intake in 0.0582 back 0.0173 g; mean gauge kPa: exh port -5.3 (min -54.8), cyl -6.8, intake port -2.2
+flat-plane-v8-45 prim 0.5 6250: tq 407.4 ve 0.834 resid 0.019
+  prim 0.5   6250: overlap 2.38 ms/cyc; exh valve out 0.0699 back 0.0044 g; intake in 0.0944 back 0.0017 g; mean gauge kPa: exh port -9.4 (min -51.0), cyl -5.3, intake port -1.0
+flat-plane-v8-45 prim 0.5 7000: tq 391.2 ve 0.819 resid 0.027
+  prim 0.5   7000: overlap 2.06 ms/cyc; exh valve out 0.0524 back 0.0019 g; intake in 0.0747 back 0.0021 g; mean gauge kPa: exh port -9.7 (min -37.9), cyl -4.0, intake port -4.6
+flat-plane-v8-45 prim 0.705 5500: tq 380.4 ve 0.776 resid 0.048
+  prim 0.705 5500: overlap 2.57 ms/cyc; exh valve out 0.0536 back 0.0024 g; intake in 0.0365 back 0.0101 g; mean gauge kPa: exh port -3.2 (min -35.9), cyl -2.5, intake port -6.1
+flat-plane-v8-45 prim 0.705 6250: tq 385.7 ve 0.788 resid 0.048
+  prim 0.705 6250: overlap 2.44 ms/cyc; exh valve out 0.0387 back 0.0022 g; intake in 0.0359 back 0.0095 g; mean gauge kPa: exh port -1.2 (min -23.6), cyl -3.3, intake port -7.0
+flat-plane-v8-45 prim 0.705 7000: tq 372.8 ve 0.780 resid 0.039
+  prim 0.705 7000: overlap 2.06 ms/cyc; exh valve out 0.0332 back 0.0009 g; intake in 0.0448 back 0.0064 g; mean gauge kPa: exh port -2.1 (min -14.6), cyl -1.9, intake port -6.1
+flat-plane-v8-45 prim 0.9 5500: tq 342.0 ve 0.700 resid 0.079
+  prim 0.9   5500: overlap 2.57 ms/cyc; exh valve out 0.0243 back 0.0042 g; intake in 0.0210 back 0.0177 g; mean gauge kPa: exh port +0.5 (min -17.2), cyl -3.2, intake port -6.1
+flat-plane-v8-45 prim 0.9 6250: tq 386.6 ve 0.796 resid 0.043
+  prim 0.9   6250: overlap 2.44 ms/cyc; exh valve out 0.0230 back 0.0027 g; intake in 0.0286 back 0.0075 g; mean gauge kPa: exh port -3.4 (min -35.8), cyl -6.8, intake port -6.6
+flat-plane-v8-45 prim 0.9 7000: tq 396.0 ve 0.820 resid 0.025
+  prim 0.9   7000: overlap 2.06 ms/cyc; exh valve out 0.0246 back 0.0014 g; intake in 0.0497 back 0.0032 g; mean gauge kPa: exh port -14.5 (min -53.8), cyl -9.3, intake port -5.0
+```
+
+Read across: with primaries that return their suction wave in the overlap (0.5 m on the V12 at 5500 to 6250, on the
+flat-plane at 6250 to 7000), the exhaust port sits 5 to 10 kPa below the air through it (troughs to -33 to -55 kPa),
+gas leaves by the exhaust valve with little back, the intake draws through, the residual falls to 2 to 3 %, and VE
+between the intake's teeth is 0.82 to 0.86. Out of phase (the V12's 0.705 m at 6250 to 7000, its 0.9 m at 5500), the
+port is 9 to 15 kPa over the air, gas comes back from the header and pushes up the intake (0.02 to 0.04 g a cycle),
+the residual is 8 to 14 %, VE 0.56 to 0.74. The swing is some 20 to 30 % of VE: as large as the intake's tooth.
+
+So the model scavenges at overlap as a tuned header should (G's wave reaches the valve), and the intake's ram is not
+asked to do both jobs. The tuned engines' middle is held down by where their primaries are tuned: the layout's default
+length (0.705 m on both, not from the targets) puts the V12's suction outside its overlap from 6250 rpm. The lever is the
+builds' primaries (content, P), as it is the runners'. The runner-at-a-share-of-redline proposal stays held.

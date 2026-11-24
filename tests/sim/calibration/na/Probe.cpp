@@ -403,7 +403,11 @@ TEST_CASE("probe: an overrun's gas temperatures", "[.probe-overrun]")
     {
         double tEvo = 0, nEvo = 0, burning = 0, fired = 0;
         const double b0 = pr.get("ecu.one.account.bangs");
+        const double pj0 = pr.get("comb.popJ");
+        double exMax = 0.0, lastMax = 0.0;
         pr.play(0.1, [&] {
+            exMax = std::max(exMax, pr.get("cyl[0].exUnburnedJ"));
+            lastMax = std::max(lastMax, pr.get("cyl[0].exUnburnedLast"));
             for (int k = 0; k < 8; ++k)
                 if (pr.get("cyl[" + std::to_string(k) + "].evoNow") != 0.0)
                 {
@@ -413,7 +417,9 @@ TEST_CASE("probe: an overrun's gas temperatures", "[.probe-overrun]")
                         fired += 1, burning += pr.get("cyl[" + std::to_string(k) + "].burnAt") >= 0.0 ? 1 : 0;
                 }
         });
-        std::printf("       exhaust openings of fired charges %.0f, still burning %.0f\n", fired, burning);
+        std::printf("       cyl 0: conserve %.0f, exUnburnedJ most %.2f J, its last most %.2f J, burnOut %.2f; burn %.0f deg, spark %.1f deg BTDC, EVO %.0f\n", pr.get("cyl[0].conserve"), exMax, lastMax, pr.get("cyl[0].bookOut"), pr.get("cyl[0].burnDur"), pr.tel("ecu.advance"), pr.get("cyl[0].evo"));
+        std::printf("       exhaust openings of fired charges %.0f, still burning %.0f; to the store %.1f J (popJ), the store's fuel %.2f mg\n",
+                    fired, burning, pr.get("comb.popJ") - pj0, (pr.get("ecu.one.account.fuel[0]") + pr.get("ecu.one.account.fuel[1]")) * 1e6);
         std::printf("%6.1f %6.0f %8.0f %8.0f %8.0f %8.0f %6d\n", 0.1 * (i + 1), pr.tel("engine.speed") * 30.0 / M_PI,
                     pr.get("ecu.blow[0]"), pr.get("tel.exhaust.wallTemperature[0]"), nEvo > 0 ? tEvo / nEvo : 0.0,
                     pr.get("ecu.one.account.bangs") - b0, int(pr.tel("ecu.flags")));
