@@ -226,7 +226,30 @@ Measured (`the exhaust port's walls cool the gas, in full`; warm day, full throt
   the port's.
 - Energy: what the gas gave equals what the coolant took plus what the walls stored, to within 0.7 %.
 
-## Glide and rebuild (dragging a slider)
+## Mass means and thermocouples (telemetry)
+
+`portTemperature`, `portExitTemperature` and `headerTemperature` are mass (enthalpy) means: of the gas the valves pass,
+and of that gas after the port and down the primaries. A thermocouple sits in the port all the time while the
+blowdown is most of the mass in little of the time, so it reads less. `portThermocouple` and `headerThermocouple`
+(`Exhaust::thermocouple`) are a first form of what one reads, and every element of it is judgement:
+- **The port's local gas:** a mixing cup of the port's volume. What the valve passes replaces it, backflow fills it
+  with port-exit gas, and between pulses it cools toward the port's wall (36 ms).
+- **The bead:** the local temperature weighted by the bead's heat transfer, sqrt(u + 2 m/s), with no radiation.
+- **The header's thermocouple:** the port's, less the mean drop to the primaries.
+
+Measured at full throttle, heat settled (the hidden case `measure: the exhaust's temperatures at full load, mass means
+and thermocouples`):
+
+| build | rpm | port: mass mean exit | port: thermocouple | primaries: mass mean | header: thermocouple |
+|---|---|---|---|---|---|
+| flat six | 5000 | 1291 K | 1212 K | 1239 K | 1160 K |
+| small-block | 4500 | 1346 K | 1282 K | 1270 K | 1206 K |
+| 2.0 turbo four | 5500 | 1357 K | 1351 K | 1317 K | 1312 K |
+| 6.7 pickup diesel | 2800 | 1002 K | 919 K | 976 K | 893 K |
+
+On the turbo four the two agree because its ports never stop flowing (the turbine's back pressure).
+
+
 
 These fields glide toward the Spec with a 0.2 s time constant (`XBuild::glide`). The pipes' delays, areas and
 losses follow them every control step in `shape()`, with no rebuild and no fade:

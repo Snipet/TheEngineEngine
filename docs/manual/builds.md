@@ -22,7 +22,7 @@ Thirty archetypes in `content/builds/archetypes/`, each a whole build (engine, c
 | Two-stage-cam 2.0 L | 2.00 L Inline 4 | 87.0 x 84.0 mm | 11.7:1 | Natural | 9000 rpm | Rear-drive, 1250 kg | Manual, 6 gears |
 | Kei 660 cc triple turbo | 0.66 L Inline 3 | 68.0 x 60.4 mm | 8.6:1 | Turbo, 0.7 bar | 8000 rpm | Rear-drive, 780 kg | Manual, 5 gears |
 | Diesel 2.0 L common rail | 1.97 L Inline 4 | 81.0 x 95.5 mm | 16.5:1 | Turbo, 1.4 bar | 4800 rpm | Front-drive, 1500 kg | Manual, 6 gears |
-| Highway tractor 15 L | 14.95 L Inline 6 | 137.0 x 169.0 mm | 17.0:1 | Turbo, 2.6 bar | 2250 rpm | Rear-drive, 36000 kg | Manual, 18 gears |
+| Highway tractor 15 L | 14.95 L Inline 6 | 137.0 x 169.0 mm | 17.0:1 | Turbo, 2.6 bar | 2250 rpm | Rear-drive, 36000 kg | Eighteen-speed, 18 gears |
 | 1.0 L three-cylinder turbo | 1.00 L Inline 3 | 71.9 x 82.0 mm | 10.0:1 | Turbo, 1.0 bar | 6500 rpm | Front-drive, 1200 kg | Manual, 6 gears |
 | 1.5 L economy four | 1.50 L Inline 4 | 75.0 x 84.7 mm | 11.0:1 | Natural | 6600 rpm | Front-drive, 1250 kg | CVT, 1 gears |
 | 2.0 L turbo four, direct injection | 1.98 L Inline 4 | 82.5 x 92.8 mm | 9.6:1 | Turbo, 1.2 bar | 6800 rpm | Front-drive, 1450 kg | Dual clutch, 6 gears |
@@ -149,6 +149,7 @@ Made by the packages that built each part of the simulator, to show or test thei
 | `combo/findings/x003-h-cold.json` | X-003: the V8 with the new combustion and ECU | Package X's finding X-003 (2026-11-24, card H): the combo V8 with fuel.model 1 and ecu.model 1, nothing else on. |
 | `combo/findings/x004-six-launch.json` | X-004: the turbo six, eight switches on | Package X's finding X-004 (2026-11-24): the combo turbo six with engine.custom, valve, intake, boost, fuel, ecu, car and sound models on (exhaust and voices ... |
 | `combo/findings/x007-heavy-piston.json` | fuzz 2 | tee-fuzz --reduce: the fields that still fail 'guard' under the seed's driving; every other field at its default |
+| `combo/findings/x021-diesel-boost-vehicle.json` | X-021: the large diesel, the new turbo and the new vehicle | Package X's finding X-021 (2026-11-24): the combo large diesel (15 L, twin turbos, the reference's truck mass) with boost.model 1 and car.model 1, nothing ... |
 | `combo/pack/large-diesel-all.json` | Large diesel, every package on | The archetype with every model switch at 1 and the custom engine on (package X's listening pack: scripts/listening-pack.tsv) |
 | `combo/pack/small-four-all.json` | Small four, every package on | The archetype with every model switch at 1 and the custom engine on (package X's listening pack: scripts/listening-pack.tsv) |
 | `combo/pack/turbo-six-all.json` | Turbo six, every package on | The archetype with every model switch at 1 and the custom engine on (package X's listening pack: scripts/listening-pack.tsv) |

@@ -48,7 +48,7 @@
     },
     {
       "name": "Invariant: pulls away",
-      "scenario": "validation/scenarios/p-pull-paddles.json",
+      "scenario": "validation/scenarios/p-pull-eighteen.json",
       "tel": "car.speed",
       "measure": "max",
       "during": [
@@ -56,15 +56,15 @@
         13
       ],
       "range": [
-        3,
+        1.5,
         120
       ],
       "unit": "m/s",
-      "source": "started, in gear and on the pedal, the car moves (a 36 t tractor at least 3 m/s in ten seconds)"
+      "source": "started, in gear and on the pedal, the car moves (a 36 t tractor in third of eighteen at least 1.5 m/s)"
     },
     {
       "name": "Invariant: stops at the key",
-      "scenario": "validation/scenarios/p-pull-paddles.json",
+      "scenario": "validation/scenarios/p-pull-eighteen.json",
       "tel": "engine.state",
       "measure": "last",
       "range": [

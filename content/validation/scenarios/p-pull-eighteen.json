@@ -1,0 +1,118 @@
+{
+  "format": "tee-scenario",
+  "version": 1,
+  "name": "p-pull-eighteen",
+  "description": "Card P's pull for an eighteen-speed (card D2's timeline, tests/sim/diesel/listen/d2-eighteen-pull.json): away in 3 (lever 1, low range, low split) on the clutch, the splitter to 4 with a dab of the clutch at 14 s, then lift, brake and the key off at 20 s, in the build's own air. A lever shift needs the revs matched by a closed-loop foot, which a timeline cannot do.",
+  "seconds": 26,
+  "warm": true,
+  "events": [
+    {
+      "t": 0.0,
+      "ctl": {
+        "mode": 1,
+        "lever": 0,
+        "clutch": 1,
+        "brake": 0,
+        "throttle": 0,
+        "buttons": 0,
+        "ignition": 1
+      }
+    },
+    {
+      "t": 0.2,
+      "ctl": {
+        "ignition": 2
+      }
+    },
+    {
+      "t": 2.2,
+      "ctl": {
+        "ignition": 1
+      }
+    },
+    {
+      "t": 3.0,
+      "ctl": {
+        "lever": 1
+      }
+    },
+    {
+      "t": 3.5,
+      "ctl": {
+        "throttle": 0.45
+      },
+      "ramp": 0.5
+    },
+    {
+      "t": 4.0,
+      "ctl": {
+        "clutch": 0
+      },
+      "ramp": 3.0
+    },
+    {
+      "t": 9.0,
+      "ctl": {
+        "throttle": 0.9
+      },
+      "ramp": 0.5
+    },
+    {
+      "t": 14.0,
+      "ctl": {
+        "buttons": 16
+      }
+    },
+    {
+      "t": 14.0,
+      "ctl": {
+        "throttle": 0.0,
+        "clutch": 1
+      }
+    },
+    {
+      "t": 14.4,
+      "ctl": {
+        "clutch": 0
+      },
+      "ramp": 0.6
+    },
+    {
+      "t": 15.0,
+      "ctl": {
+        "throttle": 0.9
+      },
+      "ramp": 0.5
+    },
+    {
+      "t": 19.0,
+      "ctl": {
+        "throttle": 0
+      },
+      "ramp": 0.3
+    },
+    {
+      "t": 19.5,
+      "ctl": {
+        "brake": 0.6,
+        "clutch": 1
+      },
+      "ramp": 0.5
+    },
+    {
+      "t": 20.0,
+      "ctl": {
+        "ignition": 0
+      }
+    }
+  ],
+  "assertions": [
+    {
+      "audio": "finite"
+    },
+    {
+      "audio": "peak",
+      "<=": 1
+    }
+  ]
+}

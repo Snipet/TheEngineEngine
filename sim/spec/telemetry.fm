@@ -160,6 +160,10 @@ module ExhaustTel
         [[ui::help("The exhaust port's wall, between the gas and the water jacket")]];
     float portCoolantHeat [[ui::label("Port to coolant")]] [[ui::quantity("power")]]
         [[ui::help("The heat the exhaust ports' walls give the coolant")]];
+    float portThermocouple [[ui::label("Port thermocouple")]] [[ui::quantity("temperature")]]
+        [[ui::help("What a thermocouple at the port's exit reads: a time mean weighted as a bead's heat transfer (portTemperature is the mass mean of the gas, hotter)")]];
+    float headerThermocouple [[ui::label("Header thermocouple")]] [[ui::quantity("temperature")]]
+        [[ui::help("What a thermocouple a little way down the primary reads: the port's, less the gas's mean drop to there")]];
 };
 
 module EcuTel
