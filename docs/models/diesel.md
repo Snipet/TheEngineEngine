@@ -141,6 +141,27 @@ turbine's power rises with the nozzle area, some 3.5 times its power a unit of v
 the manifold is fixed, so the inlet pressure falls as the vanes open and past about 0.4 the power per step is flat to
 falling. The vanes' actuator in card F's machine is a 50 ms lag; real electric ones take 100-300 ms a stroke.
 
+## The idle's clatter: a hump, not a comb (24 Nov, late)
+
+Card P's idle row found the three diesel archetypes with a line 1-10 dB under their exhaust's note at a warm idle:
+the reference's clatter (sim/sound/extras.fm: six panel modes, 900 to 4800 Hz, lower by the cylinder's size to the
+-1/6), struck at the start of combustion at the same moment every cycle, ringing as sharp firing harmonics (the 2.0 on
+its 1900 Hz mode, the pickup's on 1661, the tractor's on 1454 and 1989). The tractor's and the pickup's exhaust note
+is also some 20 dB quiet at idle: the VGT's vanes sit near shut there and reflect the pulses (G's measure; N2's). Under
+the physical diesel (fuel.model 1) the start of combustion now takes the ignition delay's cycle-to-cycle spread, a
+standard deviation of `socSpread` (0.172) times the model's own delay (`DieselFields::socSpread`, chargeDiesel): at the
+tractor's warm idle (3.73 degrees of delay) 0.64 degrees. The tractor's firing harmonics from 1 to 3 kHz over the
+spectrum midway between them: 9.3 dB without it, 5.5 with it (ClatterTest); card P's measure: the 2.0's line goes
+(-8.6 to -11.9 dB, a pass), the pickup's +1.4 to -2.4, the tractor's unmoved (its exhaust's blowdown carries its
+harmonics there too). A cold start's long delay varies more: the cold starts on H's models take longer (233 K, the
+mechanical governor, 5.2 to 9.4 s; 253 K up to 2.5 s), within their bounds.
+
+**Open**: the spread's size is not cited. It is sigma 0.64 degrees of the peak-pressure angle on a Perkins
+1104D-E44TA, recalled from a search summary, the paper unread (Energies 2025, doi 10.3390/en19051343), its conditions
+not seen; the peak-pressure angle's spread holds the burn's own variation too, so it likely overstates the start of
+combustion's. Its growth with the delay: the trend of a Fischer-Tropsch-fuelled diesel's study (Appl. Sci. 2019, doi
+10.3390/app9102032), unread. A measured sigma of the start of combustion or of the ignition delay at idle replaces it.
+
 ## Measured (tee-tests-diesel; the 15 L six, 300 K, 101325 Pa; 24 Nov evening)
 
 | What | Measured | Compared with |

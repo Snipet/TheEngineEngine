@@ -22,7 +22,7 @@ SC = "validation/scenarios/"
 
 # each target's kind of source (the invariants: cited, the contracts and the build's own figures)
 BASIS = {
-    "Starts cold": "judgement",
+    "Starts cold": "judgement", "Starts hot": "judgement", "Hot idle": "judgement",
     "Sound: a free rev is loud enough": "judgement", "Sound: the idle is audible": "judgement",
     "Peak power": "recalled", "Speed at peak power": "recalled", "Peak torque": "recalled",
     "Speed at peak torque": "recalled",
@@ -216,6 +216,15 @@ def targets(slug, b):
     add(name="Starts cold", scenario=SC + "p-cold-start.json", tel="engine.state", measure="min", during=[6, 11.5],
         range=[2, 2], source="a sound engine starts from the air's temperature within some four seconds of cranking "
                              "and keeps running (a rule of thumb; makers' cold-start specifications are 2 to 5 s)")
+    # a hot start (the lead, 22:51: the V12 took over 1.5 s to start in 318 K air in card I's run): the engine warm in
+    # 318 K air, started within the cold row's time and idling in its band
+    add(name="Starts hot", scenario=SC + "p-hot-start.json", tel="engine.state", measure="min", during=[6, 11.5],
+        range=[2, 2], source="a warm engine in 318 K air (a hot day's under-bonnet) starts within some four seconds of "
+                             "cranking and keeps running (judgement, as the cold row)")
+    _asked = s["ecu"]["idle"]["speed"] / RPM
+    add(name="Hot idle", scenario=SC + "p-hot-start.json", tel="engine.speed", measure="mean", during=[8, 11.5],
+        range=[round((_asked - 100) * RPM, 1), round((_asked + 100) * RPM, 1)], unit="rad/s",
+        source="the warm engine in 318 K air idles within 100 rpm of the %d rpm its ECU asks (judgement)" % round(_asked))
 
     # ---- the dyno ---------------------------------------------------------------------------------------------
     add(name="Peak power", dyno=dyno, measure="maxPower", range=[plo * 1000, phi * 1000], unit="W",

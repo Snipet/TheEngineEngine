@@ -435,6 +435,25 @@ namespace tee
                                        : "pedals";
         }
 
+        // a build at step k: its pedal's predict options aside, the boost target, and a table when one is given
+        const auto stepBuildOf = [&](std::size_t k, const KnockBakeResult* table, Build& out) {
+            std::vector<std::string> said;
+            if (!out.load(build.save(), BuildPart::Whole, said, error))
+                return false;
+            if (steps[k].boost >= 0.0)
+            {
+                out.set("ecu.maps.boostAuto", 1.0);
+                out.set("boost.target", steps[k].boost);
+            }
+            return table == nullptr || applyKnockLimit(out, *table, error);
+        };
+        const auto speedIndex = [&](double w) {
+            std::size_t at = 0;
+            while (at + 1 < result.speeds.size() && std::fabs(result.speeds[at] - w) > 1e-6)
+                ++at;
+            return at;
+        };
+
         std::vector<double> active;   // the speeds still knocking at the step above
         for (std::size_t k = 0; k < steps.size(); ++k)
         {
@@ -445,16 +464,8 @@ namespace tee
             }
             predict.pedal = steps[k].pedal;
             Build stepBuild(build.fields());
-            {
-                std::vector<std::string> said;
-                if (!stepBuild.load(build.save(), BuildPart::Whole, said, error))
-                    return false;
-            }
-            if (steps[k].boost >= 0.0)
-            {
-                stepBuild.set("ecu.maps.boostAuto", 1.0);
-                stepBuild.set("boost.target", steps[k].boost);
-            }
+            if (!stepBuildOf(k, nullptr, stepBuild))
+                return false;
             if (k > 0)
             {
                 if (active.empty())
@@ -476,9 +487,6 @@ namespace tee
             std::vector<double> next;
             for (const PredictPoint& p : curve.points)
             {
-                std::size_t at = 0;
-                while (at + 1 < result.speeds.size() && std::fabs(result.speeds[at] - p.speed) > 1e-6)
-                    ++at;
                 KnockBakeCell cell;
                 cell.pedal = predict.pedal;
                 cell.boostTarget = std::max(steps[k].boost, 0.0);
@@ -488,7 +496,9 @@ namespace tee
                 cell.torque = p.torque;
                 cell.knockLimited = p.knockLimited;
                 cell.valid = p.valid;
-                result.measured[at].push_back(cell);
+                cell.limit = p.retardMean >= options.knockLimit ? p.retardMean + options.margin : 0.0;
+                cell.step = static_cast<int>(k);
+                result.measured[speedIndex(p.speed)].push_back(cell);
                 if (p.valid && p.retardMean >= options.knockLimit)
                     next.push_back(p.speed);   // still knocking: the next pedal down is run here
             }
@@ -504,45 +514,118 @@ namespace tee
         const int ny = std::clamp(options.loads, 2, 16);
         for (int j = 0; j < ny; ++j)
             result.loads.push_back(0.2 + (most - 0.2) * j / (ny - 1));
-        for (const auto& column : result.measured)
-        {
-            std::vector<std::pair<double, double>> at;   // (load, cell)
-            for (const KnockBakeCell& c : column)
-                if (c.valid)
-                    at.emplace_back(c.load, c.retardMean >= options.knockLimit ? c.retardMean + options.margin : 0.0);
-            std::sort(at.begin(), at.end());
-            std::vector<double> row;
-            std::vector<bool> flat;
-            for (const double y : result.loads)
+        const auto tabulate = [&] {
+            result.limit.clear();
+            result.extrapolated.clear();
+            result.stillKnocking.clear();
+            for (const auto& column : result.measured)
             {
-                if (at.empty())
+                struct At
                 {
-                    row.push_back(0.0);
-                    flat.push_back(true);
-                }
-                else if (y <= at.front().first)
+                    double load, limit;
+                    bool knocking;
+                };
+                std::vector<At> at;
+                for (const KnockBakeCell& c : column)
+                    if (c.valid)
+                        at.push_back({c.load, c.limit, c.stillKnocking});
+                std::sort(at.begin(), at.end(), [](const At& a, const At& b) { return a.load < b.load; });
+                std::vector<double> row;
+                std::vector<bool> flat, knocking;
+                for (const double y : result.loads)
                 {
-                    row.push_back(at.front().second);
-                    flat.push_back(at.front().second != 0.0 && y < at.front().first);   // under a 0: 0 by the rule
+                    if (at.empty())
+                    {
+                        row.push_back(0.0);
+                        flat.push_back(true);
+                        knocking.push_back(false);
+                    }
+                    else if (y <= at.front().load)
+                    {
+                        row.push_back(at.front().limit);
+                        flat.push_back(at.front().limit != 0.0 && y < at.front().load);   // under a 0: 0 by the rule
+                        knocking.push_back(at.front().knocking);
+                    }
+                    else if (y >= at.back().load)
+                    {
+                        row.push_back(at.back().limit);
+                        flat.push_back(y > at.back().load);
+                        knocking.push_back(at.back().knocking);
+                    }
+                    else
+                    {
+                        std::size_t i = 1;
+                        while (at[i].load < y)
+                            ++i;
+                        const double u = (y - at[i - 1].load) / std::max(at[i].load - at[i - 1].load, 1e-9);
+                        row.push_back(at[i - 1].limit + u * (at[i].limit - at[i - 1].limit));
+                        flat.push_back(false);
+                        knocking.push_back(at[i - 1].knocking || at[i].knocking);
+                    }
                 }
-                else if (y >= at.back().first)
-                {
-                    row.push_back(at.back().second);
-                    flat.push_back(y > at.back().first);
-                }
-                else
-                {
-                    std::size_t i = 1;
-                    while (at[i].first < y)
-                        ++i;
-                    const double u = (y - at[i - 1].first) / std::max(at[i].first - at[i - 1].first, 1e-9);
-                    row.push_back(at[i - 1].second + u * (at[i].second - at[i - 1].second));
-                    flat.push_back(false);
-                }
+                result.limit.push_back(std::move(row));
+                result.extrapolated.push_back(std::move(flat));
+                result.stillKnocking.push_back(std::move(knocking));
             }
-            result.limit.push_back(std::move(row));
-            result.extrapolated.push_back(std::move(flat));
+        };
+        tabulate();
+
+        // the corrections: a cell whose mean was over correctAbove measured again with the table applied, its residual
+        // added, at most `corrections` times (a program without the table: none)
+        const bool canApply = build.fieldOf("ecu.maps.knockLimit") >= 0 && build.fieldOf("ecu.maps.knockLimitAuto") >= 0
+                              && build.fieldOf("ecu.maps.knockLimitKey") >= 0;
+        for (int pass = 0; canApply && pass < options.corrections; ++pass)
+        {
+            // the cells to measure again, by step: their speeds
+            std::vector<std::vector<double>> again(steps.size());
+            for (std::size_t s2 = 0; s2 < result.measured.size(); ++s2)
+                for (const KnockBakeCell& c : result.measured[s2])
+                    if (c.valid && c.retardMean > options.correctAbove
+                        && (c.corrections == 0 || c.residual >= options.knockLimit))
+                        again[static_cast<std::size_t>(c.step)].push_back(result.speeds[s2]);
+            bool any = false;
+            for (std::size_t k = 0; k < steps.size(); ++k)
+            {
+                if (again[k].empty())
+                    continue;
+                if (cancel != nullptr && cancel->load())
+                {
+                    error = "cancelled";
+                    return false;
+                }
+                any = true;
+                Build stepBuild(build.fields());
+                if (!stepBuildOf(k, &result, stepBuild))
+                    return false;
+                predict.pedal = steps[k].pedal;
+                predict.speeds = again[k];
+                predict.points = predict.coarse = static_cast<int>(again[k].size());
+                PredictCurve curve;
+                if (!predictCurve(sim, stepBuild, predict, curve, error, cancel))
+                    return false;
+                result.points += static_cast<int>(curve.points.size());
+                result.simulatedSeconds += curve.simulatedSeconds;
+                for (const PredictPoint& p : curve.points)
+                    for (KnockBakeCell& c : result.measured[speedIndex(p.speed)])
+                        if (c.step == static_cast<int>(k))
+                        {
+                            ++c.corrections;
+                            c.residual = p.valid ? p.retardMean : 0.0;
+                            if (c.residual >= options.knockLimit)
+                                c.limit += c.residual;
+                        }
+            }
+            if (!any)
+                break;
+            tabulate();
         }
+        for (auto& column : result.measured)
+            for (KnockBakeCell& c : column)
+                c.stillKnocking = c.corrections > 0 ? c.residual >= options.knockLimit
+                                                    : (canApply ? false : c.retardMean > options.correctAbove);
+        // (a cell measured again whose last residual still knocks; a program without the table could not correct)
+        tabulate();
+
         result.key = knockLimitKey(build, *sim);
         result.wallSeconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
         return true;

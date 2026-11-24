@@ -712,3 +712,97 @@ TEST_CASE("an engine set warm stays warm when the air moves while it stands; a c
     }
 }
 
+
+TEST_CASE("the cylinders' books hold at idle under a big overlap, as a person can dial it", "[core][engine][backflow]")
+{
+    // (P's case: the flat-plane V8 at idle with its intake phased far ahead (its baked map at 50 degrees, aa190456),
+    // where the exhaust valves' air read 3.8 % off the intake valves' over 3 s. Not a hole: the cylinders' own mass
+    // moves over the window under such an overlap, and the books count it now. Here dialled as an intake centreline of
+    // 60 degrees: the exhaust valves' out plus the cylinders' gain is the intake valves' in, within 0.5 %)
+    Bench b("archetypes/flat-plane-v8-45");
+    std::string e;
+    REQUIRE(b.player().setSpec("car.model", 0, e));
+    REQUIRE(b.player().setSpec("valve.inCentre", 60.0, e));
+    b.start();
+    b.warm();
+    b.ctl().throttle = 0.0f;
+    b.play(6.0);
+    double thr = 0, fr = 0, v = 0, x = 0;
+    airBooks(b, 3.0, thr, fr, v, x);
+    std::printf("flat-plane at idle, intake centreline 60: %.0f rpm, throttle %.3f, intake valves %.3f, exhaust valves plus the cylinders' gain %.3f g/s\n",
+                b.tel("engine.speed") * kRpm, thr, v, x);
+    CHECK(std::fabs(x / v - 1.0) < 0.005);
+}
+
+
+TEST_CASE("an engine standing takes the build's air at once: nothing in its pipes glides to it", "[core][engine][heat]")
+{
+    // (M's finding: first.json's 288.15 K air was glided to from 300 K over 2 s while the engine stood, moving the
+    // pipes' gas, heard from the key with the voices on. Warm or cold, the air is the build's from the configure)
+    for (int warm = 0; warm < 2; ++warm)
+    {
+        Bench b("first");
+        if (warm != 0)
+        {
+            b.write("heat.tCool", 368.0); b.write("heat.tOil", 378.0); b.write("heat.tSurf", 455.0);
+            b.write("heat.warm", 1.0); b.write("heat.warmS", 1.0);
+        }
+        b.ctl().ignition = 1;
+        b.play(0.2);
+        const double a0 = b.field("heat.tAmb"), p0 = b.field("exh.tPort");
+        b.play(2.0);
+        std::printf("%s, key on, standing: air %.2f then %.2f K, port gas %.2f then %.2f K\n", warm ? "warm" : "cold", a0,
+                    b.field("heat.tAmb"), p0, b.field("exh.tPort"));
+        CHECK(std::fabs(a0 - 288.15) < 0.05);
+        CHECK(std::fabs(b.field("heat.tAmb") - a0) < 0.05);
+        // (the port's gas checked cold only: here the warm state is written after the build's configure, so the pipes
+        // were set up cold and warm up to it; the application writes it before the build's air arrives)
+        if (warm == 0)
+            CHECK(std::fabs(b.field("exh.tPort") - p0) < 0.5);
+    }
+}
+
+TEST_CASE("a key on with the engine standing is silent with every voice silenced, in any air, cold or set warm", "[core][engine][heat][!mayfail]")
+{
+    // ([!mayfail] until the boost machine's volumes and intercooler core start at the build's air at a configure at rest
+    // (N2's; measured 24 Nov: first.json at 288 K rings -54 dBFS in its first half second, -123 with boost.model 0: the
+    // machine's 300 K start reaching the intake's air through boost.temperature(). Heat's own air is fixed, f6a8b88d)
+    // (the lead's ruling after M's measure: a resting engine takes the build's air at once in every store that holds a
+    // temperature or a pressure, and nothing rings at load. first.json, voices.model 1 with every voice at -60 dB, the
+    // key on and no start, the first three seconds: each half second's rms under the floor)
+    const double floorDb = -90.0;
+    for (int warm = 0; warm < 2; ++warm)
+        for (double air : {253.15, 288.15, 300.0, 318.0})
+        {
+            Bench b("first");
+            std::string e;
+            REQUIRE(b.player().setSpec("env.temperature", air, e));
+            REQUIRE(b.player().setSpec("voices.level", -60.0, e));
+            if (warm != 0)
+            {
+                // (as the application's warm start: written once before the build's air reaches a configure)
+                b.write("heat.tCool", 368.0); b.write("heat.tOil", 378.0); b.write("heat.tSurf", 455.0);
+                b.write("heat.warm", 1.0); b.write("heat.warmS", 1.0);
+            }
+            b.ctl().ignition = 1;
+            double worst = -400.0;
+            std::string row;
+            for (int h = 0; h < 6; ++h)
+            {
+                double sum = 0.0, n = 0.0;
+                b.play(0.5, [&] {
+                    for (float s : b.left())
+                    {
+                        sum += double(s) * s;
+                        n += 1.0;
+                    }
+                });
+                const double db = 10.0 * std::log10(std::max(sum / std::max(n, 1.0), 1e-40));
+                worst = std::max(worst, db);
+                row += " " + std::to_string(int(std::lround(db)));
+            }
+            std::printf("key on, standing, %s, air %.2f K: rms per half second (dBFS)%s\n", warm ? "set warm" : "cold", air, row.c_str());
+            INFO(air << (warm ? " warm" : " cold"));
+            CHECK(worst < floorDb);
+        }
+}
