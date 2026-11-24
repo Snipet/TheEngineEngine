@@ -1,0 +1,27 @@
+{
+  "format": "tee-scenario",
+  "version": 1,
+  "name": "tour",
+  "description": "Package X's tour (tests/sim/combo/Combo.cpp writes it: edit there, not here).",
+  "seconds": 14,
+  "events": [
+    { "t": 0, "spec": { "env.temperature": 293.15 } },
+    { "t": 0, "ctl": { "mode": 1 } },
+    { "t": 0, "ctl": { "lever": 0 } },
+    { "t": 0, "ctl": { "clutch": 0 } },
+    { "t": 0, "ctl": { "throttle": 0 } },
+    { "t": 0, "ctl": { "brake": 0 } },
+    { "t": 0, "ctl": { "ignition": 1 } },
+    { "t": 0.25, "ctl": { "ignition": 2 } },
+    { "t": 2, "ctl": { "ignition": 1 } },
+    { "t": 5, "ctl": { "throttle": 1 }, "ramp": 0.15 },
+    { "t": 8.5, "ctl": { "throttle": 0 }, "ramp": 0.05 },
+    { "t": 9.3, "ctl": { "throttle": 0.5 }, "ramp": 0.1 },
+    { "t": 9.6, "ctl": { "throttle": 0 }, "ramp": 0.05 },
+    { "t": 11, "ctl": { "ignition": 0 } }
+  ],
+  "assertions": [
+    { "audio": "finite" },
+    { "audio": "peak", "<=": 1 }
+  ]
+}

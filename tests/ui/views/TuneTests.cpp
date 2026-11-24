@@ -159,4 +159,61 @@ namespace
         CHECK(rig.ws->inspectorPage().empty());          // the frame's generated page of that prefix
         return 0;
     }
+
+    // BAKE: asks the simulator (FrameServices::bakeMaps); when the Scope's bake count moves, the formula's values at the
+    // breakpoints are the table and the table is in use (one step of undo).
+    VIEW_TEST(testTuneBake, "tune.bake")
+    {
+        StageRig rig(tee::ui::makeTuneWorkspace, 1100, 700, 1.0f, 4.6);
+        int asked = 0;
+        tee::ui::FrameServices svc;
+        svc.bakeMaps = [&asked] { ++asked; };
+        rig.demo.ctx.services = &svc;
+        tee::ui::tuneChoose(*rig.ws, 1);                 // lambda, on its formula
+        rig.settle();
+        const funkgui::Rect b = tee::ui::tuneBakeButton(*rig.ws);
+        CHECK(!b.isEmpty());
+        rig.host->click(b.centreX(), b.centreY());
+        CHECK(asked == 1);
+        // The simulator's bake: lambda (map 1) at 4 by 3 breakpoints, 0.8 + i/100 + j/10.
+        float count = 0.0f;
+        rig.demo.engine.addScope("bakeCount", [&count](const tee::ui::DemoEngine&, float* out, int) { out[0] = count; return 1; });
+        rig.demo.engine.addScope("bakedNx", [](const tee::ui::DemoEngine&, float* out, int max) {
+            for (int i = 0; i < max; ++i) out[i] = 4.0f;
+            return max;
+        });
+        rig.demo.engine.addScope("bakedNy", [](const tee::ui::DemoEngine&, float* out, int max) {
+            for (int i = 0; i < max; ++i) out[i] = 3.0f;
+            return max;
+        });
+        rig.demo.engine.addScope("bakedX", [](const tee::ui::DemoEngine&, float* out, int max) {
+            for (int i = 0; i < max; ++i) out[i] = static_cast<float>(100.0 + 100.0 * (i % 16));
+            return max;
+        });
+        rig.demo.engine.addScope("bakedY", [](const tee::ui::DemoEngine&, float* out, int max) {
+            for (int i = 0; i < max; ++i) out[i] = static_cast<float>(0.5 + 0.5 * (i % 16));
+            return max;
+        });
+        rig.demo.engine.addScope("baked", [](const tee::ui::DemoEngine&, float* out, int max) {
+            for (int k = 0; k < max; ++k)
+            {
+                const int i = (k % 256) / 16, j = k % 16;
+                out[k] = static_cast<float>(0.8 + i / 100.0 + j / 10.0);
+            }
+            return max;
+        });
+        rig.settle();
+        auto& doc = rig.demo.doc;
+        const int f = doc.find("ecu.maps.lambda"), a = doc.find("ecu.maps.lambdaAuto");
+        CHECK(doc.get(a) > 0.5);                          // nothing yet: the count has not moved
+        const int steps = doc.steps();
+        count = 1.0f;
+        rig.settle();
+        const tee::ui::Map16 m = doc.map(f);
+        CHECK(m.nx == 4 && m.ny == 3);
+        CHECK_NEAR(m.z[2][3], 0.8 + 0.03 + 0.2, 1e-6);   // z[row j][column i] = baked[i * 16 + j]
+        CHECK(doc.get(a) < 0.5);
+        CHECK(doc.steps() == steps + 1);
+        return 0;
+    }
 }

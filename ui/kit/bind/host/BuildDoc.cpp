@@ -105,11 +105,23 @@ namespace tee::ui
                               : f.scalar == tee::Scalar::Int ? (f.choices.empty() ? FieldKind::integer : FieldKind::choice)
                                                              : FieldKind::number;
                     const std::string label = info.label.empty() ? info.path : info.label;
+                    const bool twoD = f.extents.size() == 2 && f.extents[1] > 0;
                     for (std::size_t e = 0; e < f.count; ++e)
                     {
                         FieldInfo el = info;
-                        el.path = info.path + "[" + std::to_string(e) + "]";
-                        el.label = label + " " + std::to_string(e + 1);
+                        if (twoD)
+                        {
+                            // An array of arrays: "gain[1][2]", "Gain 2.3"; outermost first, as the Schema has it.
+                            const std::size_t i = e / f.extents[1], j = e % f.extents[1];
+                            el.path = info.path + "[" + std::to_string(i) + "][" + std::to_string(j) + "]";
+                            el.label = label + " " + std::to_string(i + 1) + "." + std::to_string(j + 1);
+                            el.shape = { static_cast<int>(f.extents[0]), static_cast<int>(f.extents[1]) };
+                        }
+                        else
+                        {
+                            el.path = info.path + "[" + std::to_string(e) + "]";
+                            el.label = label + " " + std::to_string(e + 1);
+                        }
                         el.array = info.path;
                         el.arrayLabel = label;
                         el.element = static_cast<int>(e);

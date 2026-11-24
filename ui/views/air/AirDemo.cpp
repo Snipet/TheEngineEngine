@@ -162,12 +162,13 @@ namespace tee::ui::air
         return known;
     }
 
-    void airDemoLive(DemoEngine& engine, const FieldDoc& doc)
+    std::vector<std::pair<const char*, double>> airLiveValues(const AirBuild& b, double rpm, double load)
     {
-        const AirBuild b = resolveAir(doc);
-        const double load = std::clamp(get(engine, "engine.throttle", 0.2), 0.0, 1.0);
-        const double rpm = std::max(600.0, get(engine, "engine.speed", 90.0) * 30.0 / 3.14159265358979);
-        const double amb = b.ambientP, tAmb = b.ambientT;
+        std::vector<std::pair<const char*, double>> out;
+        const auto put = [&](const char* n, double v) { out.emplace_back(n, v); };
+        rpm = std::max(600.0, rpm);
+        load = std::clamp(load, 0.0, 1.0);
+        const double amb = b.ambientP, tAmb = b.ambientT, nan = std::nan("");
         // the boost this build would make: a turbo spools with speed and load, a displacement blower follows speed
         double boost = 0.0;
         if (b.charger == Charger::turbo)
@@ -175,17 +176,21 @@ namespace tee::ui::air
         else if (b.charger == Charger::supercharger)
             boost = (b.blower == Blower::centrifugal ? 75e3 * std::pow(rpm / b.redRpm, 2.1) : 60e3 * std::min(1.0, rpm / 2500.0)) * load;
         const double pr = (amb + boost + 8e3 * (boost > 0)) / amb;
-        engine.set("boost.pressure", boost);
-        engine.set("engine.manifold", b.charger == Charger::none ? amb * (0.3 + 0.68 * load) : amb + boost - 3e3);
-        engine.set("boost.target", b.charger == Charger::none ? std::nan("") : (b.target > 0 ? b.target : b.gateSpring));
-        engine.set("intake.boxPressure", amb - 1500.0 * load * rpm / 6000.0);
+        put("boost.pressure", boost);
+        put("engine.manifold", b.charger == Charger::none ? amb * (0.3 + 0.68 * load) : amb + boost - 3e3);
+        put("intake.boxPressure", amb - 1500.0 * load * rpm / 6000.0);
         const double t2 = tAmb * (1.0 + (std::pow(pr, 1.0 / 3.5) - 1.0) / 0.72);
         const double tIc = b.intercooler ? t2 - 0.7 * (t2 - tAmb) : t2;
-        engine.set("boost.compressorTemperature[0]", t2);
-        engine.set("boost.compressorTemperature[1]", t2 - 4.0);
-        engine.set("boost.intercoolerTemperature", tIc);
-        engine.set("intake.plenumTemperature", tIc + 6.0);
-        engine.set("boost.blowOff", load < 0.05 && boost > 5e3 ? 1.0 : 0.0);
+        const bool forced = b.charger != Charger::none;
+        put("boost.turbos", b.turbos);
+        put("boost.chargePipe", forced ? pr * amb - amb : nan);
+        put("boost.compressorOut[0]", forced ? t2 : nan);
+        put("boost.compressorOut[1]", b.turbos > 1 ? t2 - 4.0 : nan);
+        put("boost.intercoolerOut", b.intercooler ? tIc : nan);
+        put("boost.throttleIn", tIc);
+        put("intake.plenumTemperature", tIc + 6.0);
+        put("boost.blowOffValve", forced ? (load < 0.05 && boost > 5e3 ? 1.0 : 0.0) : nan);
+        double flags = 0.0;
         if (b.hasMap())
         {
             // the flow the engine takes, a turbo's share, and the shaft's speed that makes this ratio on its own map
@@ -194,32 +199,107 @@ namespace tee::ui::air
             const double tau = std::pow(pr, 1.0 / 3.5) - 1.0;
             const double u = std::sqrt(std::max(tau, 0.0) * 1005.0 * 293.15 / (0.45 * 0.86));
             const double w = std::max(u / b.map.rTip, 0.12 * b.omegaMax);
-            engine.set("boost.shaftSpeed[0]", w);
-            engine.set("boost.shaftSpeed[1]", w * 0.93);
-            engine.set("boost.ratio[0]", pr);
-            engine.set("boost.ratio[1]", 1.0 + (pr - 1.0) * 0.9);
-            engine.set("boost.flow[0]", mdot);
-            engine.set("boost.flow[1]", mdot * 0.9);
+            put("boost.shaftSpeed[0]", w);
+            put("boost.shaftSpeed[1]", b.turbos > 1 ? w * 0.93 : nan);
+            put("boost.ratio[0]", pr);
+            put("boost.ratio[1]", b.turbos > 1 ? 1.0 + (pr - 1.0) * 0.9 : nan);
+            put("boost.flow[0]", mdot);
+            put("boost.flow[1]", b.turbos > 1 ? mdot * 0.9 : nan);
             // its efficiency there, from the same map (compressor.fm efficiency())
             const CompressorMap::Line line = b.map.at(static_cast<float>(w));
-            engine.set("boost.efficiency[0]", b.map.efficiency(line, static_cast<float>(mdot / std::max(1e-6f, line.mc))));
+            put("boost.efficiency[0]", b.map.efficiency(line, static_cast<float>(mdot / std::max(1e-6f, line.mc))));
         }
         if (b.charger == Charger::turbo)
         {
-            engine.set("boost.gate[0]", std::clamp((boost - 0.8 * (b.target > 0 ? b.target : b.gateSpring)) / 30e3, 0.0, 1.0));
-            engine.set("boost.vanes[0]", std::clamp(1.0 - load * (1.0 - rpm / b.redRpm), 0.2, 1.0));
+            put("boost.gate[0]", std::clamp((boost - 0.8 * (b.target > 0 ? b.target : b.gateSpring)) / 30e3, 0.0, 1.0));
+            put("boost.vanes[0]", b.vanes ? std::clamp(1.0 - load * (1.0 - rpm / b.redRpm), 0.2, 1.0) : 1.0);
+            put("boost.drive[0]", 1.0 + 0.45 * pr * load);
         }
         if (b.charger == Charger::supercharger)
+            put("boost.superchargerPower", 32e3 * load * rpm / 6000.0 + 2e3);
+        if (b.nitrous && load > 0.9 && rpm > 3000.0)
+            flags += 32.0;
+        put("boost.flags", forced ? flags : nan);
+        return out;
+    }
+
+    void airDemoLive(DemoEngine& engine, const FieldDoc& doc)
+    {
+        const double load = get(engine, "engine.throttle", 0.2);
+        const double rpm = get(engine, "engine.speed", 90.0) * 30.0 / 3.14159265358979;
+        for (const auto& [name, v] : airLiveValues(resolveAir(doc), rpm, load))
+            engine.set(name, v);
+    }
+
+    // ---- U1's demo hook (TEE_UI_DEMO in register.h) -----------------------------------------------------------------
+    namespace
+    {
+        // The demo's fields read through the engine (it watches the document): enough of a FieldDoc for resolveAir.
+        class EngineFields final : public FieldDoc
         {
-            engine.set("boost.superchargerPower", 32e3 * load * rpm / 6000.0 + 2e3);
-            engine.set("boost.bypass", load < 0.4 ? 1.0 : 0.0);
+        public:
+            EngineFields(const DemoEngine& e, const std::vector<FieldInfo>& infos) : e_(e), infos_(infos) {}
+            int count() const override { return static_cast<int>(infos_.size()); }
+            const FieldInfo& info(int i) const override { return infos_[static_cast<std::size_t>(i)]; }
+            double get(int i) const override { return e_.field(infos_[static_cast<std::size_t>(i)].path, infos_[static_cast<std::size_t>(i)].def); }
+            void set(int, double) override {}
+            Curve16 curve(int) const override { return {}; }
+            void setCurve(int, const Curve16&) override {}
+            Map16 map(int) const override { return {}; }
+            void setMap(int, const Map16&) override {}
+            void beginGesture() override {}
+            void endGesture() override {}
+            std::uint64_t revision() const override { return 1; }
+
+        private:
+            const DemoEngine& e_;
+            const std::vector<FieldInfo>& infos_;
+        };
+        const std::vector<FieldInfo>& hookInfos()
+        {
+            // the fields as the demo's document has them: U1's, then this package's that it lacks (as the hook adds them)
+            static const std::vector<FieldInfo> infos = [] {
+                std::vector<FieldInfo> v = demoFields(false);
+                for (const FieldInfo& f : airDemoFields())
+                    if ((f.section() == "boost" || f.section() == "intake")
+                        && std::none_of(v.begin(), v.end(), [&](const FieldInfo& g) { return g.path == f.path; }))
+                        v.push_back(f);
+                return v;
+            }();
+            return infos;
         }
-        if (b.antiLag)
-            engine.set("boost.antiLag", load < 0.1 ? 1.0 : 0.0);
-        if (b.nitrous)
+    }
+}
+
+namespace tee::ui
+{
+    void airDemo(DemoExtras& x)
+    {
+        if (x.fields != nullptr)
         {
-            engine.set("boost.nitrous", load > 0.9 && rpm > 3000.0 ? 1.0 : 0.0);
-            engine.set("boost.bottle", b.nitrousBottle * 0.82);
+            // the boost and intake fields the demo lacks (those it has, as it has them)
+            for (const FieldInfo& f : air::airDemoFields())
+                if ((f.section() == "boost" || f.section() == "intake")
+                    && std::none_of(x.fields->begin(), x.fields->end(), [&](const FieldInfo& g) { return g.path == f.path; }))
+                    x.fields->push_back(f);
+        }
+        if (x.engine != nullptr)
+        {
+            static const char* const kNames[] = {
+                "boost.turbos", "boost.chargePipe", "boost.compressorOut[0]", "boost.compressorOut[1]",
+                "boost.intercoolerOut", "boost.throttleIn", "intake.plenumTemperature", "intake.boxPressure",
+                "boost.blowOffValve", "boost.shaftSpeed[0]", "boost.shaftSpeed[1]", "boost.ratio[0]", "boost.ratio[1]",
+                "boost.flow[0]", "boost.flow[1]", "boost.efficiency[0]", "boost.gate[0]", "boost.vanes[0]",
+                "boost.drive[0]", "boost.superchargerPower", "boost.flags",
+            };
+            for (const char* name : kNames)
+                x.engine->addTelemetry(name, [name](const DemoEngine& e) {
+                    const air::EngineFields doc(e, air::hookInfos());
+                    for (const auto& [n, v] : air::airLiveValues(air::resolveAir(doc), e.rpm(), e.throttle()))
+                        if (std::string_view(n) == name)
+                            return v;
+                    return std::nan("");
+                });
         }
     }
 }

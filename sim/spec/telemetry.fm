@@ -2,6 +2,7 @@
 // after each call. Values are as they stand at the call's end, unless a label says mean or peak. Nested as the Spec is,
 // each section appended to by its Spec section's owner; a label and a quantity make a gauge.
 #pragma once
+#include "limits.fm"
 
 enum
 {
@@ -125,7 +126,27 @@ module EcuTel
 {
     float knockRetard [[ui::label("Knock retard")]] [[ui::quantity("angle")]]
         [[ui::help("The spark taken back for knock")]];
-    float advance [[ui::label("Spark advance")]] [[ui::quantity("angle")]] [[ui::help("Cylinder 1's, degrees before top dead centre")]];
+    // ecu.model 1 and fuel.model 1 (card H): 0 under the reference's models where they do not apply
+    float advanceAsked [[ui::label("Spark asked")]] [[ui::quantity("angle")]] [[ui::help("Before the top: the map's, with the timing and every retard but knock's")]];
+    float advance [[ui::label("Spark")]] [[ui::quantity("angle")]] [[ui::help("Before the top: the last firing's, knock's retard taken")]];
+    float knockByCylinder [[ui::label("Knock retard by cylinder")]] [[ui::quantity("angle")]] [MAX_CYL];
+    int knock [[ui::label("Knocks")]] [[ui::help("A count: knocks heard since the start")]];
+    float lambdaTarget [[ui::label("Lambda asked")]] [[ui::quantity("ratio")]];
+    float lambda [[ui::label("Lambda")]] [[ui::quantity("ratio")]] [[ui::help("As a wide-band sensor in the collector reads it")]];
+    float injectorDuty [[ui::label("Injector duty")]] [[ui::quantity("fraction")]];
+    float fuelFlow [[ui::label("Fuel flow")]] [[ui::unit("kg/s")]];
+    float halfBurn [[ui::label("Half burned")]] [[ui::quantity("angle")]] [[ui::help("Degrees after the top, cylinder 1's last cycle")]];
+    float peakPressure [[ui::label("Peak pressure")]] [[ui::quantity("pressure")]] [[ui::help("Cylinder 1's last cycle")]];
+    float peakAngle [[ui::label("Peak at")]] [[ui::quantity("angle")]] [[ui::help("Degrees after the top")]];
+    int flags [[ui::label("ECU flags")]]
+        [[ui::help("1 limiter, 2 fuel cut, 4 spark cut, 8 overrun, 16 launch, 32 flat-shift, 64 anti-lag, 128 nitrous, 256 traction, 512 pit, 1024 knock retard")]];
+    float idleValve [[ui::label("Idle valve")]] [[ui::quantity("fraction")]];
+    float idleTarget [[ui::label("Idle speed")]] [[ui::quantity("rotation")]];
+    float boostTarget [[ui::label("Boost target")]] [[ui::quantity("pressure")]] [[ui::help("Over the air outside")]];
+    int state [[ui::label("ECU state")]] [[ui::choices("Stopped", "Cranking", "Running", "Running down")]];
+    float smoke [[ui::label("Smoke")]] [[ui::help("A diesel's filter smoke number, 0 to 10")]];
+    int limiter [[ui::label("Limiter")]] [[ui::help("1 while a limiter acts (rev, launch, flat-shift, pit)")]];
+    float load [[ui::label("Load")]] [[ui::quantity("ratio")]] [[ui::help("The maps' y axis now: the manifold over the air outside")]];
 };
 
 module CarTel
@@ -165,6 +186,43 @@ module SoundTel
 {
     float peak [[ui::label("Peak")]] [[ui::quantity("fraction")]] [[ui::help("The call's largest sample, either channel")]];
     float rate [[ui::label("Sample rate")]] [[ui::quantity("frequency")]] [[ui::help("The host's, the sound's")]];
+    // package L's (spec.sound.model 1; 0 otherwise)
+    int camera [[ui::label("Camera heard")]] [[ui::choices("Tailpipe", "Rear", "Side", "Engine bay", "Driver", "Trackside", "Chase")]];
+    float range [[ui::label("Listener range")]] [[ui::quantity("length")]] [[ui::help("From the listener to the car's middle")]];
+    float doppler [[ui::label("Doppler")]] [[ui::quantity("ratio")]] [[ui::help("The pitch the exhaust is heard at over the pitch it is made at")]];
+    float roadPosition [[ui::label("Car past the listener")]] [[ui::quantity("length")]] [[ui::help("Trackside: how far the car's middle is past the listener, along the road")]];
+    float loudness [[ui::label("Loudness trim")]] [[ui::unit("dB")]] [[ui::help("The level computed for this build, the reference's table replaced")]];
+};
+
+// tel.valve: card E's valvetrain (model 1; at model 0 the events are the CAM dial's, the rest 0)
+module ValveTel
+{
+    float inPhaseTarget [[ui::label("Intake phase asked")]] [[ui::quantity("angle")]] [[ui::help("Crank degrees of advance from parked")]];
+    float inPhase [[ui::label("Intake phase")]] [[ui::quantity("angle")]];
+    float exPhaseTarget [[ui::label("Exhaust phase asked")]] [[ui::quantity("angle")]] [[ui::help("Crank degrees of retard from parked")]];
+    float exPhase [[ui::label("Exhaust phase")]] [[ui::quantity("angle")]];
+    int stage [[fminus::range(0, 1)]] [[ui::label("Cam stage")]] [[ui::choices("A", "B")]];
+    float lift [[ui::label("Lift command")]] [[ui::quantity("fraction")]];
+    int active [[ui::label("Active cylinders")]] [[ui::help("A bit a cylinder, in the layout's order")]];
+    int floating [[fminus::range(0, 1)]] [[ui::label("Valve float")]];
+    float floatSpeed [[ui::label("Float speed")]] [[ui::quantity("rotation")]] [[ui::help("Where the intake valves begin to float; 0: never")]];
+    float ivo [[ui::label("Intake opens")]] [[ui::quantity("angle")]] [[ui::help("Cylinder 1's, now: degrees of its cycle, 0 the firing top")]];
+    float ivc [[ui::label("Intake closes")]] [[ui::quantity("angle")]];
+    float evo [[ui::label("Exhaust opens")]] [[ui::quantity("angle")]];
+    float evc [[ui::label("Exhaust closes")]] [[ui::quantity("angle")]];
+    float overlap [[ui::label("Overlap at 1 mm")]] [[ui::quantity("angle")]];
+    float benchLift [[ui::label("Bench lift")]] [[ui::quantity("length")]] [16];
+    float benchIntake [[ui::label("Intake flow at 28 in")]] [[ui::quantity("flow")]] [16];
+    float benchExhaust [[ui::label("Exhaust flow at 28 in")]] [[ui::quantity("flow")]] [16];
+};
+
+// tel.intake: card E's induction
+module IntakeTel
+{
+    float manifold [[ui::label("Manifold")]] [[ui::quantity("pressure")]] [[ui::help("Absolute; with throttles a runner, the runners' mean")]];
+    float ripple [[ui::label("Manifold ripple")]] [[ui::quantity("pressure")]] [[ui::help("Peak to peak over the last cycle")]];
+    float runnerLength [[ui::label("Runner length")]] [[ui::quantity("length")]];
+    float box [[ui::label("Air box")]] [[ui::quantity("pressure")]] [[ui::help("Over the air outside (model 1)")]];
 };
 
 module Telemetry
@@ -175,4 +233,6 @@ module Telemetry
     EcuTel ecu [[ui::label("ECU")]];
     CarTel car [[ui::label("Vehicle")]];
     SoundTel sound [[ui::label("Sound")]];
+    ValveTel valve [[ui::label("Valves")]];
+    IntakeTel intake [[ui::label("Intake")]];
 };

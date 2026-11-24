@@ -6,19 +6,31 @@
 // end radiates into it as an open pipe's does. The throttle is an orifice, choked below the critical ratio, its plate's
 // area as the 1.8th power of its opening, with the idle valve beside it; a diesel has none (its plate stands open). The
 // throttle's area goes with the engine's size, the plenum's volume too (Engine's configure sets aThrottle, aBypass,
-// vPlenum). What it leaves out: the air box's own waves (Extras' box resonance stands for them), the air filter's loss,
-// individual throttles, variable runners (package E's).
+// vPlenum). What it leaves out: the air box's own waves (Extras' box resonance stands for them), the air filter's loss.
+//
+// That is model 0 (spec.intake.model, the default: the null test's). Model 1 is card E's (docs/models/intake.md): the
+// runners' length and bore, a second length and the speed it takes over at (runner.fm: it glides), the plenum's
+// volume and the throttle's area as fields (0: the reference's); the air box as a volume and a snorkel (airbox.fm), its
+// pressure what the throttle draws from; or a throttle a runner (itb.fm): each runner's far end its trumpet, through
+// its own plate, into the box or the air, the idle air shared among them, and no plenum (pPlenum is then the runners'
+// ends' pressure, smoothed: what the ECU and the charge go by). The model and the throttle's kind are taken in clear()
+// (configure, under the fade); the sizes on the next tick after the section's rev moves (apply).
 //
 //   setup(rate) in init; release() in end; clear() a new engine's runners at rest
 //   runners(np, bike, bore, rate)        the runners' sizes and their ends (Engine's pipes(), every 16 samples)
 //   flow16(np, xi, k16)                  every 16 samples: the runners' flow losses
 //   read(np)                             each sample, first: the waves arriving at the runners' ends
 //   plenum(np, rNear, fuel, throttle, bypass, dt)   each sample, after the cylinders: the runners' far ends, the plenum
+//   apply(spec)                          the section, when its rev moved; control(d16, omega) every 16 samples (model 1)
+//   telemetry(t)                         tel.intake; sound: what model 1's snorkel or trumpets radiate this sample
 // Its state read by others: run[] (the cylinders' intake ends), pPlenum, tAir (set by Engine from the boost), pBox, qThr.
 #pragma once
 #include "exhaust/duct.fm"
 #include "lib/biquad.fm"
 #include "spec/limits.fm"
+#include "spec/intake.fm"
+#include "spec/telemetry.fm"
+#include "intake/lab.fm"
 
 module Intake
 {
@@ -32,13 +44,39 @@ module Intake
     float tAir;
     float pBox;         // the air box (with the turbo's boost), Pa
     float qThr;         // the volume flow through the throttle, m^3/s
+    // model 1 (card E)
+    int model;          // in use
+    int itbs;           // 1: a throttle a runner (in use)
+    IntakeSpec* spec;
+    int haveSpec;
+    RunnerLength len;
+    AirBox box;
+    ItbEnd itb[MAX_PORTS];
+    float aItb;         // each plate's area wide open
+    float vTotalNow;
+    float rateNow;
+    float pEnds;        // the runners' ends' pressure (Pa absolute), smoothed (ITBs' manifold)
+    float pLo;          // the manifold's least and most over the cycle being measured, and the last whole one's ripple
+    float pHi;
+    float ripple;
+    float since;        // seconds since the ripple was last taken
+    float sound;        // what model 1 radiates this sample (the reference's intake scale)
+    float soundMs;      // its mean square, over some 50 ms (for measuring)
 
     void setup(float rate)
     {
-        // the longest each runner could be, cold (330 m/s), at this rate
+        // the longest each runner could be (1.25 m: model 1's longest), cold (300 m/s), at this rate
+        rateNow = rate;
         const float k = rate / 300.0f;
         for (int i = 0; i < MAX_PORTS; ++i)
-            run[i].configure((int)(0.8f * k) + 16);
+            run[i].configure((int)(1.25f * k) + 16);
+    }
+
+    // spec.intake, when its rev moved
+    void apply(IntakeSpec* s)
+    {
+        spec = s;
+        haveSpec = 1;
     }
 
     void release()
@@ -53,16 +91,76 @@ module Intake
         {
             run[i].clear();
             endRun[i].clear();
+            itb[i].clear();
+        }
+        // the model and the throttle's kind: here, under the fade
+        model = haveSpec != 0 && spec->model == 1 ? 1 : 0;
+        itbs = model == 1 && spec->throttleKind == 1 ? 1 : 0;
+        box.clear();
+        len.reset();
+        pEnds = 101325.0f;
+        pLo = 1.0e9f;
+        pHi = 0.0f;
+        ripple = 0.0f;
+        since = 0.0f;
+        sound = 0.0f;
+    }
+
+    // Model 1, every 16 samples (after Engine's configure has sized the reference's throttle and plenum): the fields
+    // that override them, the runner's length, the box; the manifold's ripple over each cycle (cycle: its seconds)
+    void control(float d16, float omega, float vTotal, float cycle)
+    {
+        vTotalNow = vTotal;
+        // (a model asked between configures, as a build that keeps the layout and the size does: taken here)
+        if (model == 0 && haveSpec != 0 && spec->model == 1)
+        {
+            model = 1;
+            itbs = spec->throttleKind == 1 ? 1 : 0;
+            box.clear();
+            len.reset();
+        }
+        if (model == 0)
+            return;
+        if (spec->throttleArea > 0.0f)
+            aThrottle = spec->throttleArea;
+        aBypass = 0.045f * aThrottle;
+        if (spec->plenumVolume > 0.0f && spec->plenumVolume != vPlenum)
+        {
+            // the same pressure in the new volume (its mass follows)
+            vPlenum = spec->plenumVolume;
+            mPlenum = pPlenum * vPlenum / (287.0f * tAir);
+        }
+        len.control(d16, omega);
+        box.setup(spec->boxVolume, spec->snorkelLength, spec->snorkelBore, vTotal, aThrottle, rateNow);
+        since += d16;
+        if (since >= cycle)
+        {
+            ripple = pHi > pLo ? pHi - pLo : 0.0f;
+            pLo = 1.0e9f;
+            pHi = 0.0f;
+            since = 0.0f;
         }
     }
 
     void runners(int np, float bike, float bore, float rate)
     {
-        const float aRun = 0.9f * 0.27f * 0.785398f * bore * bore / 0.62f;
+        float aRun = 0.9f * 0.27f * 0.785398f * bore * bore / 0.62f;
+        float lRun = bike > 0.5f ? 0.16f : 0.30f;
+        if (model == 1)
+        {
+            if (spec->runnerBore > 0.0f)
+                aRun = 0.785398f * spec->runnerBore * spec->runnerBore;
+            len.setup(spec->runnerLength > 0.0f ? spec->runnerLength : lRun,
+                      spec->runnerLength2 > 0.0f ? spec->runnerLength2 : 0.0f, spec->runnerSwitch);
+            lRun = len.now;
+            aItb = spec->throttleArea > 0.0f ? spec->throttleArea / (float)np : aRun;
+        }
         for (int i = 0; i < np; ++i)
         {
-            run[i].set(bike > 0.5f ? 0.16f : 0.30f, sqrtf(aRun * 1.2732395f), aRun, 350.0f, rate);
+            run[i].set(lRun, sqrtf(aRun * 1.2732395f), aRun, 350.0f, rate);
             run[i].extra(0.0f, 1.0f, rate);
+            if (itbs == 1)
+                itb[i].setup(aRun, run[i].z, rate);
         }
         const float kb = 2.0f * rate;
         const float kb2 = kb * kb;
@@ -92,6 +190,11 @@ module Intake
 
     void plenum(int np, float* rNear, int fuelUse, float throttle, float bypass, float dt)
     {
+        if (model == 1)
+        {
+            plenum1(np, rNear, fuelUse, throttle, bypass, dt);
+            return;
+        }
         // the intake: the runners open into the plenum (its pressure is what they see there; the highs go on into it)
         const float pg = pPlenum - 101325.0f;
         float qIn = 0.0f;
@@ -117,5 +220,89 @@ module Intake
         mPlenum = fmaxf(mPlenum + (mT + qIn * pPlenum / (287.0f * tAir)) * dt, 1.0e-6f);
         pPlenum = mPlenum * 287.0f * tAir / vPlenum;
         qThr = mT * 287.0f * tAir / pBox;
+    }
+
+    // Model 1's sample: the runners' far ends into the plenum (as the reference's) or each through its own plate; the
+    // throttle (or the plates) drawing from the air box
+    void plenum1(int np, float* rNear, int fuelUse, float throttle, float bypass, float dt)
+    {
+        const float plate = fuelUse != 0 ? 1.0f : throttle;
+        const float law = expf(1.8f * logf(fmaxf(plate, 1.0e-4f))) + 0.0006f;
+        const float idle = fuelUse != 0 ? 0.0f : aBypass * bypass;
+        if (itbs == 1)
+        {
+            // each trumpet's outside: the box's pressure (over the air; with the boost) or the air's
+            const float pOut = pBox - 101325.0f + (spec->trumpets == 0 ? box.p : 0.0f);
+            float q = 0.0f;
+            float snd = 0.0f;
+            float pSum = 0.0f;
+            for (int i = 0; i < np; ++i)
+            {
+                const float a = run[i].far;
+                const float back = itb[i].tick(a, pOut, aItb * law + idle / (float)np);
+                q += itb[i].q;
+                snd += itb[i].sound;
+                pSum += a + back;
+                run[i].write(rNear[i], back);
+            }
+            // the trumpets draw from the box (q out of the runners: negative while they draw)
+            box.tick(spec->trumpets == 0 ? -q : 0.0f);
+            sound = spec->trumpets == 0 ? box.sound : snd;
+            qThr = -q;
+            pEnds += (101325.0f + pSum / (float)np - pEnds) * fminf(dt * 6.2831853f * 20.0f, 1.0f);
+            pPlenum = pEnds;
+            mPlenum = pPlenum * vPlenum / (287.0f * tAir);
+        }
+        else
+        {
+            const float pg = pPlenum - 101325.0f;
+            float qIn = 0.0f;
+            for (int i = 0; i < np; ++i)
+            {
+                const float back = 0.5f * pg + endRun[i].tick(run[i].far - 0.5f * pg);
+                qIn += (run[i].far - back) / run[i].z;
+                run[i].write(rNear[i], back);
+            }
+            // the throttle, from the box: solved with the plenum (the step's end pressure in the flow), so it settles
+            // without chattering at rest
+            const float up = pBox + box.p;
+            const float aT = aThrottle * law + idle;
+            const float rt = 287.0f * tAir;
+            const float mIn = qIn * pPlenum / rt;
+            float mT = 0.0f;
+            int choked = 0;
+            const float dp = up - pPlenum;
+            if (dp > 0.0f)
+            {
+                const float rho = up / rt;
+                const float sub = sqrtf(2.0f * rho * dp);
+                const float cap = 0.676f * up / sqrtf(rt);
+                choked = sub > cap ? 1 : 0;
+                mT = aT * fminf(sub, cap);
+            }
+            else
+                mT = -aT * sqrtf(-2.0f * (pPlenum / rt) * dp);
+            // (the implicit step: the flow at the end pressure, by one Newton step on m = f(p_end), so a small plenum and
+            // a wide throttle settle without chattering)
+            const float k = rt * dt / vPlenum;
+            const float slope = fabsf(dp) > 1.0f && choked == 0 ? -0.5f * mT / dp : 0.0f;
+            mT = (mT + slope * k * mIn) / (1.0f - slope * k);
+            mPlenum = fmaxf(mPlenum + (mT + mIn) * dt, 1.0e-6f);
+            pPlenum = mPlenum * rt / vPlenum;
+            qThr = mT * rt / up;
+            box.tick(qThr);
+            sound = box.sound;
+        }
+        pLo = fminf(pLo, pPlenum);
+        pHi = fmaxf(pHi, pPlenum);
+        soundMs += (sound * sound - soundMs) * fminf(20.0f * dt, 1.0f);
+    }
+
+    void telemetry(IntakeTel* t)
+    {
+        t->manifold = pPlenum;
+        t->ripple = ripple;
+        t->runnerLength = run[0].len;
+        t->box = model == 1 ? box.p : 0.0f;
     }
 };

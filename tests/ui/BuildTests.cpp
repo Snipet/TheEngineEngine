@@ -236,7 +236,13 @@ namespace
             }
             return done();
         };
-        waitFor([&] { return !dyno.predicted().empty(); });
+        // The predicted curve (card C's PredictService): coarse first, then refined.
+        bool coarse = false;
+        waitFor([&] {
+            coarse = coarse || (!dyno.predicted().empty() && !dyno.refined());
+            return !dyno.predicted().empty() && dyno.refined();
+        });
+        std::printf("  a coarse curve came first: %s\n", coarse ? "yes" : "no (from the cache, or at once)");
         if (dyno.predicted().empty() && dyno.error().find("lacks") != std::string::npos)
         {
             // The program has no absorbed torque yet (tel.engine.torque, card D/K3): the ribbon says the runner's words.
@@ -261,9 +267,53 @@ namespace
             std::printf("  edited %s\n", info.path.c_str());
             break;
         }
-        CHECK(waitFor([&] { return !dyno.before().empty(); }));
+        CHECK(waitFor([&] { return !dyno.before().empty() && dyno.refined(); }));
         CHECK(dyno.before().peakTorque().value == first.peakTorque().value);
         rig.build->undo();
+        return 0;
+    }
+}
+
+namespace
+{
+    // U1: the Scope over a real SimHost: a reader that reads only when generation() moves (as ENGINE does) gets data.
+    int scopeTest(Rig& rig)
+    {
+        tee::SimHost host;
+        tee::LoadOptions lo;
+        lo.worker = false;
+        std::string errors;
+        CHECK_MSG(host.attach(rig.sim, lo, errors), errors);
+        if (!host.loaded())
+            return 0;
+        host.prepare(lo.sampleRate, 512);
+        tee::SimControls ctl;
+        ctl.ignition = 2;                         // the key held: the starter turns it, then it runs
+        host.setControls(ctl);
+        tee::ui::SimScope scope(host);
+        const int pressure = scope.find("pressure");
+        CHECK(pressure >= 0);
+        std::vector<float> left(512), right(512), buf(2048);
+        std::uint64_t seen = 0;
+        int reads = 0, longest = 0;
+        for (int block = 0; block < 400; ++block)   // 4.3 s at 48 kHz
+        {
+            if (block == 120)
+            {
+                ctl.ignition = 1;
+                host.setControls(ctl);
+            }
+            host.process(left.data(), right.data(), 512);
+            host.service();
+            if (block % 8 == 0 && scope.generation() != seen)   // a frame now and then, gated as ENGINE gates
+            {
+                seen = scope.generation();
+                longest = std::max(longest, scope.read(pressure, buf.data(), static_cast<int>(buf.size())));
+                ++reads;
+            }
+        }
+        std::printf("  %d reads gated on generation(), the longest %d entries\n", reads, longest);
+        CHECK(reads >= 2 && longest >= 360);
         return 0;
     }
 }
@@ -280,7 +330,7 @@ int main(int argc, char** argv)
         const char* name;
         int (*run)(Rig&);
     } tests[] = { { "build.frame", frameTest }, { "build.set", setTest }, { "build.files", filesTest },
-                  { "build.dyno", dynoTest } };
+                  { "build.dyno", dynoTest }, { "build.scope", scopeTest } };
     for (const auto& t : tests)
         if (name == "all" || name == t.name)
         {

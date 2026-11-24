@@ -299,6 +299,16 @@ namespace
         CHECK(g.moving());
         rig.settle();
         CHECK(!g.moving() && g.cardRect(0).y < r.y);
+        // A library given after the workspace is made (the shell's, through AppFrame::setLibrary) takes over at once.
+        garage::DemoLibrary given(rig.demo.doc);
+        rig.demo.ctx.library = &given;
+        rig.host->tick(2);
+        CHECK(&g.library() == &given && !g.demo());
+        rig.demo.ctx.library = nullptr;
+        bool registered = false;
+        for (const auto& e : tee::ui::registeredWorkspaces())
+            registered = registered || std::string(e.id) == "garage";
+        CHECK(registered);
         CHECK(garage::layoutWords("Inline 6") == "straight six" && garage::layoutWords("Flat 4") == "flat four");
         CHECK(garage::layoutWords("V8 crossplane") == "V8 crossplane" && garage::layoutWords("Rotary") == "twin rotor");
         CHECK(garage::layoutWords("V-twin 45") == "V-twin");

@@ -16,7 +16,7 @@ module OneLine
 {
     Ecu1 ecu;
     EcuIn in;
-    EcuSettings set;
+    EcuSpec set;
     float omega;
     float fill;         // the manifold, 0 to 1
     float plate;        // the plate as it is (30 ms behind what is asked)
