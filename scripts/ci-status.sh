@@ -24,20 +24,31 @@ soaks=(linux-x64-soak macos-arm64-soak windows-x64-soak)           # the soak ti
 required=("${platforms[@]}" linux-x64-soak)                         # what the search waits for
 command -v gh >/dev/null || { echo "ci-status: no gh on the PATH" >&2; exit 1; }
 
-# The Build runs of the branch, newest first (a run cancelled as a whole may still hold one platform's finished job).
-runs=$(gh api "repos/$repo/actions/runs?branch=$branch&per_page=60" \
-  --jq '.workflow_runs[] | select(.name == "Build")
-        | "\(.id) \(.status) \(.head_sha[0:7]) \(.created_at)"')
-[ -n "$runs" ] || { echo "ci-status: no Build run on $branch of $repo"; exit 0; }
+# The Build runs of the branch, newest first, a page of 100 at a time until every platform and tier has a finished
+# job (a run cancelled as a whole may still hold one platform's finished job, and with twenty sessions pushing the
+# branch takes more pushes than that while one job runs). Each page's jobs are fetched eight at once.
+tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
+fetch_jobs() {
+  gh api "repos/$repo/actions/runs/$1/jobs" \
+    --jq '.jobs[] | "\(.name) \(.id) \(.status) \(.conclusion // "-") "
+          + ([.steps[]? | select(.conclusion == "failure") | .name] | join("; "))' > "$tmp/$1" 2>/dev/null || true
+}
+export -f fetch_jobs; export repo tmp
 
 echo "CI on $branch of $repo (https://github.com/$repo/actions)"
 declare -A found=() report=()
 done_yet() { for p in "${required[@]}"; do [ -n "${found[$p]:-}" ] || return 1; done; }
+page=1; seen=0
+while ! done_yet && [ "$page" -le "${TEE_CI_PAGES:-10}" ]; do
+runs=$(gh api "repos/$repo/actions/runs?branch=$branch&per_page=100&page=$page" \
+  --jq '.workflow_runs[] | select(.name == "Build")
+        | "\(.id) \(.status) \(.head_sha[0:7]) \(.created_at)"')
+[ -n "$runs" ] || break
+awk '{print $1}' <<< "$runs" | xargs -P8 -n1 bash -c 'fetch_jobs "$1"' _
 while read -r run status sha created; do
   ! done_yet || break
-  jobs=$(gh api "repos/$repo/actions/runs/$run/jobs" \
-    --jq '.jobs[] | "\(.name) \(.id) \(.status) \(.conclusion // "-") "
-          + ([.steps[]? | select(.conclusion == "failure") | .name] | join("; "))')
+  seen=$((seen + 1))
+  jobs=$(cat "$tmp/$run" 2>/dev/null || true)
   if [ "$status" = in_progress ]; then
     echo
     echo "in flight: run $run at $sha, pushed $created"
@@ -68,17 +79,19 @@ while read -r run status sha created; do
     report[$platform]=$text
   done
 done <<< "$runs"
+page=$((page + 1))
+done
 
 echo
 echo "== the fast tier (the default tests, every push)"
 for platform in "${platforms[@]}"; do
   echo
-  echo "${report[$platform]:-$platform: no run among the last 60 in which its job finished}"
+  echo "${report[$platform]:-$platform: no finished job among the last $seen runs}"
 done
 echo
 echo "== the soak tier ([nightly] tests: Linux every push; macOS and Windows when a commit says [soak])"
 for platform in "${soaks[@]}"; do
   if [ -n "${report[$platform]:-}" ]; then echo; echo "${report[$platform]}"
-  elif [ "$platform" = linux-x64-soak ]; then echo; echo "$platform: no run among the last 60 in which its job finished"
+  elif [ "$platform" = linux-x64-soak ]; then echo; echo "$platform: no finished job among the last $seen runs"
   fi
 done

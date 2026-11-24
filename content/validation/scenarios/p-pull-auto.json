@@ -2,8 +2,8 @@
   "format": "tee-scenario",
   "version": 1,
   "name": "p-pull-auto",
-  "description": "Card P's, for an automatic or a CVT: start, the lever to D at 3 s, half pedal then full to 13 s (it shifts itself), lift, brake, off at 18 s.",
-  "seconds": 20,
+  "description": "Card P's, for an automatic or a CVT: start, the lever to D at 3 s, half pedal then full to 13 s (it shifts itself), lift, brake, off at 18 s; six seconds to run down (a fast car's engine spins down from some 3500 rpm with the clutch out).",
+  "seconds": 24,
   "warm": true,
   "events": [
     {

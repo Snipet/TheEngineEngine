@@ -108,3 +108,8 @@ sheet will include every registered workspace.
   last argument of `toUser`, `toSi`, `number`, `format`, `parse`. The inspector's pages and `fieldText` honour it.
   `BuildDoc` fills it from the host's `FieldInfo::prefer` as soon as that exists (the Spec attribute `ui::prefer("m")`
   is card C's and L's to add); until then a page reads in the chosen unit.
+- **A truck's brakes** (card D2): `engineBrakeState(ctx)` (`app/Cockpit.h`): shown for spec.car.kind "Truck" or a
+  fitted brake; `stage` 0..3 from `tel.ecu.brakeCylinders` over `engine.cylinders`, `armed` (spec.ecu.brakeSwitch),
+  `exhaustOn` (`tel.exhaust.flap` past 5 % where present, else `tel.ecu.backPressure` over 1 kPa).
+  `drawEngineBrake(c, p, x, y, state, words)` draws the lamps (DRIVE's scene, top left); the cockpit has them as
+  `BrakeLamp` left of the readouts (narrow, in lambda's place). Tests `ui.frame.truck`, `ui.drive.truck`.

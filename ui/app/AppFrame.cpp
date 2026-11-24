@@ -403,6 +403,7 @@ namespace tee::ui
             const double v = ctx_->live.get("engine.oilTemperature");
             return std::isfinite(v) ? units_.number(Quantity::temperature, v, 0) : std::string("-");
         }, [this] { return std::string(units_.unit(Quantity::temperature).name); });
+        brake_ = &make<BrakeLamp>(*ctx_);
         // The pedals: they show the frame the application sent and, held, ask for their own.
         const auto sent = [this](float ControlsFrame::*m) {
             return [this, m] { return services_.app.controls ? services_.app.controls().*m : 0.0f; };
@@ -765,9 +766,11 @@ namespace tee::ui
         static constexpr float kWidths[6] = { 40.0f, 84.0f, 92.0f, 62.0f, 84.0f, 84.0f };   // gear speed boost lambda coolant oil
         float rx = pedalRect(0).x - 16.0f;
         const bool roomy = w >= 1240.0f;
+        const bool truck = engineBrakeState(*ctx_).shown;
         for (int k = 5; k >= 0; --k)
         {
-            const bool on = k != 5 || roomy;
+            // Narrow: no oil; a truck's brake lamps narrow take lambda's room too (a diesel runs lean at every load).
+            const bool on = (k != 5 || roomy) && (k != 3 || !truck || roomy);
             Readout* r = readouts_[static_cast<std::size_t>(k)];
             if (on)
             {
@@ -778,6 +781,15 @@ namespace tee::ui
             else
                 r->setPlace({}, false);
         }
+        // A truck's engine brake, left of the readouts (it takes its room from the rpm bar).
+        if (truck)
+        {
+            rx -= 140.0f;
+            brake_->setPlace({ rx, c.y + 16.0f, 140.0f, 46.0f }, true);
+            rx -= 8.0f;
+        }
+        else
+            brake_->setPlace({}, false);
         rpm_->setPlace({ 188.0f, c.y + 12.0f, std::max(160.0f, rx - 188.0f - 8.0f), 54.0f }, true);
         setPanes();
         bump();
@@ -996,6 +1008,8 @@ namespace tee::ui
         start_->setTitle(!services_.engineReady || services_.engineReady() ? "Start" : "Compiling");
         if (const double db = ctx_->live.get("sound.limiter"); (std::isfinite(db) && std::fabs(db) > 0.05) != limiter_->shown())
             arrange();   // the limiter's bar comes or goes
+        if (engineBrakeState(*ctx_).shown != brake_->shown())
+            arrange();   // a truck loaded, or one put away: its brake's lamps
         Board::tick(dt);
         if (Board::wantsFullRate())
             dirty_ = true;
