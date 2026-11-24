@@ -201,9 +201,29 @@ namespace tee::ui
         }
         secs.push_back({ "ROOM", { "sound.room", "sound.windows" }, { "ROOM", "WINDOWS" } });
         secs.push_back({ "LEVELS", { "sound.level", "sound.intake", "sound.mechanical" }, { "LEVEL", "INTAKE", "MECHANICAL" } });
-        // Every field is on a page (the frame holds it): the reference's view last, named for the mode that reads it.
+        // Every field is on a page (the frame holds it): what the mode now does not read goes last, named so.
         if (!reference)
             secs.push_back({ "REFERENCE MODE ONLY", { "sound.view" }, { "REFERENCE VIEW" } });
+        else
+            secs.push_back({ "PLACES MODE ONLY",
+                             { "sound.camera", "sound.place", "sound.ground", "sound.enginePlace", "sound.windows",
+                               "sound.listenerX", "sound.listenerY", "sound.listenerZ", "sound.facing" },
+                             { "CAMERA", "PLACE", "GROUND", "ENGINE AT", "WINDOWS", "ACROSS", "ALONG", "HEIGHT", "FACING" } });
+        // And any field of the section this page does not name (one added since), under its own label.
+        pages::Section rest{ "MORE", {}, {} };
+        for (int f = 0; f < ctx_.doc.count(); ++f)
+        {
+            const FieldInfo& fi = ctx_.doc.info(f);
+            if (fi.hidden || fi.section() != "sound")
+                continue;
+            bool named = false;
+            for (const pages::Section& sc : secs)
+                named = named || std::find(sc.paths.begin(), sc.paths.end(), fi.path) != sc.paths.end();
+            if (!named)
+                rest.paths.push_back(fi.path);
+        }
+        if (!rest.paths.empty())
+            secs.push_back(rest);
         return pages::page(ctx_.doc, secs);
     }
 

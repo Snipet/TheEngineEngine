@@ -36,6 +36,4 @@ groups, an optional define column); `--quick` rendered 10 files in 90 s here. `d
 hear in each group and the yes-or-no lines.
 
 **Not run**: the .ps1 (no Windows here), the whole pack (only --quick), the hour soak, the nightly triples; nothing
-on macOS or Windows by me (CI only). Nobody has listened to anything.
-
-**Outside my paths**: none open. **FMinus issues**: none met.
+on macOS or Windows by me (CI only). Nobody has listened to anything. **Outside my paths**: none. **FMinus**: no issue.

@@ -71,15 +71,18 @@ module Phaser
     // EGR, less pumping), none at full load.
     //
     // The intake's (in 1) is scheduleIntake below: what a calibrator moves is where the intake valve closes. Early at
-    // low speed, so the piston does not push back what it drew in; late at the top, where the charge's momentum still
-    // flows in after bottom dead centre (Heywood, Internal Combustion Engine Fundamentals, section 6.3 and fig. 6-12:
-    // the closing for the most air moves later with speed). The target is 35 degrees after bottom (at the seat) at a
-    // quarter of the redline and below, rising to 67 at the redline: the middle of the 30 to 40 and 60 to 75 makers'
-    // full-load calibrations show (judgement, from those ranges). The advance is what brings this cam's parked
-    // closing there, so a long cam parked late takes little and a short one a lot. It is capped by the overlap the
-    // speed can stand: 40 degrees at the seat at the lowest speeds, 100 at the redline (judgement: overlap at low speed
-    // draws the exhaust back in; card N1 measured a flat-plane V8 trapping 26 % burned gas at 2000 rpm with the whole
-    // range in). At idle none (the overlap dilutes a thin charge), and less at part load, as before.
+    // low speed, so the piston does not push back what it drew in; late at speed, where the charge's momentum still
+    // flows in after bottom dead centre (Heywood, Internal Combustion Engine Fundamentals, section 6.3: the closing for
+    // the most air moves later with speed). The target, at the seat: 20 degrees after bottom at a quarter of the
+    // redline and below, rising to 67 at three quarters of it and above (makers' full-load closings run from 30 to 40
+    // at low speed to 60 to 75 at the top). The advance is what brings this cam's parked closing there, so a long cam
+    // parked late takes much and a short one little. Card N1's sweeps on three archetypes (a V12, a 3.2 six and a 1.5
+    // four, with their own runners) put this within 7 % of each one's best fixed advance at every speed: no single
+    // rule does better, since the best closing also follows where the runner's ram is tuned (the 1.5 four wanted its
+    // earliest closing in mid range); an ECU map baked by a sweep (card C) is the exact answer. No overlap cap: one
+    // was tried (40 + 60 x the speed's share, degrees) while the cylinder still made mass on its backflow; with the
+    // cylinder conserving, the long cams wanted 80 degrees of overlap at 2000 rpm, and the cap cost them 15 %. At idle
+    // none (the overlap dilutes a thin charge), and less at part load, as before.
     float schedule(float speedShare, float load, int intake)
     {
         const float x = fminf(fmaxf(speedShare, 0.0f), 1.2f);
@@ -91,17 +94,14 @@ module Phaser
         return range * up * dn * (1.0f - l);
     }
 
-    // ivcParked: the intake's closing at the seat, degrees after bottom dead centre, with the phaser parked;
-    // overlapParked: the overlap at the seats (degrees, the exhaust's closing less the intake's opening) parked
-    float scheduleIntake(float speedShare, float load, float ivcParked, float overlapParked)
+    // ivcParked: the intake's closing at the seat, degrees after bottom dead centre, with the phaser parked
+    float scheduleIntake(float speedShare, float load, float ivcParked)
     {
         const float x = fminf(fmaxf(speedShare, 0.0f), 1.2f);
         const float l = fminf(fmaxf(load, 0.0f), 1.0f);
         const float up = fminf(fmaxf((x - 0.12f) / 0.13f, 0.0f), 1.0f);
-        const float s = fminf(fmaxf((x - 0.25f) / 0.75f, 0.0f), 1.0f);
+        const float s = fminf(fmaxf((x - 0.25f) / 0.5f, 0.0f), 1.0f);
         const float ivcWant = 20.0f + 47.0f * s;
-        const float overlapMost = 40.0f + 60.0f * fminf(x, 1.0f);
-        const float adv = fminf(ivcParked - ivcWant, overlapMost - overlapParked);
-        return fminf(fmaxf(adv, 0.0f), range) * up * (0.4f + 0.6f * l);
+        return fminf(fmaxf(ivcParked - ivcWant, 0.0f), range) * up * (0.4f + 0.6f * l);
     }
 };
