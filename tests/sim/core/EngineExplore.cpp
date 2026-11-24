@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <cstring>
 
 using tee::test::core::Bench;
 
@@ -205,4 +206,29 @@ TEST_CASE("v12 teeth", "[.teeth]")
             std::printf(" %.0f", b.field("scope.portIntake[" + std::to_string(d) + "]") / 1000.0);
         std::printf("\n");
     }
+}
+
+// Which of Engine's fields differ between first.json written after a default init and first.json with the program
+// initialised over it, after 0.2 s at rest (the key off)
+TEST_CASE("first route diff", "[.firstdiff]")
+{
+    Bench a("first");
+    a.play(0.2);
+    Bench b("first", true);
+    b.player().reset(Bench::kRate, true);
+    b.play(0.2);
+    const unsigned char* da = static_cast<const unsigned char*>(a.player().instance().data());
+    const unsigned char* db = static_cast<const unsigned char*>(b.player().instance().data());
+    int shown = 0;
+    a.player().schema().forEach([&](const std::string& path, const tee::Schema::Node& node, std::size_t offset) {
+        if (shown < 80 && std::memcmp(da + offset, db + offset, node.size) != 0)
+        {
+            double va = 0, vb = 0;
+            std::string err;
+            a.player().read(path, va, err);
+            b.player().read(path, vb, err);
+            std::printf("  %s: %g / %g\n", path.c_str(), va, vb);
+            shown += 1;
+        }
+    });
 }
