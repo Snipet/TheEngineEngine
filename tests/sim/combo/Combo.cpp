@@ -266,7 +266,7 @@ namespace combo
 
     std::filesystem::path scenarioDirectory()
     {
-        return tee::test::contentDirectory().parent_path() / "tests" / "sim" / "combo" / "scenarios";
+        return tee::test::contentDirectory() / "scenarios" / "combo";
     }
 
     std::string scenarioJson(Kind kind, std::uint32_t mask)

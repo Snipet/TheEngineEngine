@@ -629,6 +629,9 @@ module Listen
         sSt = kSt * 0.958f;
         sCo = kBk * (0.5f + 1.25f * mechK) * 1.318f;
         sRd = 0.389f;
+        // (the wind, which the reference has not: at 100 km/h in the cabin some 6 dB under the tyres, rising as the
+        // cube of the speed)
+        sc.windStrength = 0.5f;
         shFx = fx;
         shFy = fy;
         shMx = mx;

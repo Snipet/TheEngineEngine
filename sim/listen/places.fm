@@ -130,13 +130,13 @@ module Place
     }
 
     // n samples: the reflections of inL, inR added into outL, outR; a new place is taken with its reflections faded
-    // out and back over some 20 ms (they are quiet against the direct sound: no step)
+    // out and back in, each over some 40 ms (a time constant: no step, no swell)
     void process(float* inL, float* inR, float* outL, float* outR, int n, int kind, float inside)
     {
         if (kind != kindNow && level < 0.01f)
             design(kind);
         levelT = kind != kindNow ? 0.0f : inside;
-        const float kg = 1.0f - expf(-1.0f / (0.006f * rate));
+        const float kg = 1.0f - expf(-1.0f / (0.04f * rate));
         for (int i = 0; i < n; ++i)
         {
             w = (w + 1) & PL_MASK;
