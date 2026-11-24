@@ -43,6 +43,19 @@ The exhaust as built, drawn from the same rules the simulator's builder uses to 
   - Truly slow motion of the waves would need the simulator itself slowed (copies come at frame rate). That is a
     request in the handoff.
 
+## Atmosphere
+
+U5's shaders (`ui/views/fx/Fx.h`) are drawn behind the primitives, and they carry no fact: the numbers and tints stay
+primitives. They are:
+
+- a glow over the headers (from their wall's temperature, else the gas at the ports) and over each turbine housing;
+- a flame at each tail while `exhaust.pop` is live, or while `engine.flags` has the fuel cut and the throttle is shut
+  (the overrun).
+
+On the software rasteriser they draw nothing, so every golden is the stage without them. `ui.exhaust.effects` checks
+that the draw list is identical with the effects on and off, and that the stage at rest stays at rest. Their flicker
+runs only while one of them would draw.
+
 ## What is clickable
 
 Each element selects a path. Its inspector page (`inspectorPage()`) lists that element's own fields: its port's, its

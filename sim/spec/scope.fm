@@ -29,4 +29,8 @@ module Scope
     float bakedX [[ui::label("Baked x")]] [7][16];
     float bakedY [[ui::label("Baked y")]] [7][16];
     float baked [[ui::label("Baked values")]] [7][256];
+    // cylinder 1's port pressures (Pa absolute) at each degree of the same cycle: what its runner and its header see
+    // at the valve (asked by the interface's SCOPE view)
+    float portIntake [[ui::label("Intake port")]] [[ui::quantity("pressure")]] [SCOPE_DEGREES];
+    float portExhaust [[ui::label("Exhaust port")]] [[ui::quantity("pressure")]] [SCOPE_DEGREES];
 };

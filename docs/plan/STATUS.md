@@ -10,7 +10,7 @@
 | J1: interface kit | **landed 12:04** | cloud session | 11:32 | the panel code ported (36 files, provenance in `ui/kit/SEED.tsv`), `RefPanel`, shaders compiled for Metal and SPIR-V; 29 headless tests; no shader drawn yet (no GPU path ran) |
 | K3: the split | **landed**: K3a 12:30, K3b 13:20 (handoff written by the lead 13:43) | (finished) | 11:55 | every module of 02-contracts.md §6 carved; `sim/README.md` is the seam document; verified by the lead at 45474be: 272 of 272 tests, the null test identical to the bit, the cost 1.03 of the reference |
 | C: host and tools | first slice **landed 13:24**; second slice running | cloud session `session_01LFAGgSy2V7eFxcA5Jr8M6s` (since 13:30; the local agent was stopped at 13:26, nothing lost) | 11:55 | 45 tests: Schema and its lint, `SimHost`, `Build`, reload, the dyno runner, the scenario library, replay, validation. Second slice: a dyno fast enough for the ribbon (a first curve within a second of an edit), one `tee::Build`, `tee-render` with builds and scenarios |
-| I: vehicle | standalone half **landed 12:45**; **integrating since 13:33** | local agent (resumed 13:33) | 12:00 | 32 tests: tyres, differentials, loads, five gearboxes, the strip's timers, a chassis dyno; three car builds |
+| I: vehicle | **integrated 14:06** (`docs/handoffs/i-vehicle.md`) | local agent (finished) | 12:00 | behind `car.model` (0 the reference to the bit, 1 the new vehicle); 37 tests: a launch that spins in first and hooks up, a dog box's cut and blip with the ECU, a coast-down within 0.01 % of the analytic one, a stall; quarter miles within 8 % of the rule of thumb (front-drive 1.6: 17.25 s at 80 mph; rear-drive V8: 14.63 s at 103; all-wheel-drive turbo six: 12.07 s at 121); cost about 0.04 R. Waits on D: the env fields (it runs on dry asphalt at 1.2 kg/m^3 meanwhile), the chassis dyno as a driven mode |
 | F: forced induction | standalone half **landed 13:04**; **integrating since 13:33** | local agent (resumed 13:33) | 12:00 | 26 tests: the map from sizes, lag and spool trends, energy and mass balance, the gate's loop, surge at 26 Hz with no valve, twin-scroll, three superchargers, nitrous, a passive housing, a ten-minute soak |
 | E: valvetrain and induction | standalone half **landed 12:38**; **integrating since 13:33** | local agent (resumed 13:33) | 12:00 | 14 tests |
 | H: combustion and ECU | standalone half **landed 12:28**; **integrating since 13:33** | local agent (resumed 13:33) | 12:00 | 19 tests |
@@ -21,12 +21,16 @@
 | U2: ENGINE, VALVES | handoff 13:56 (`docs/handoffs/u2-engine-valves.md`); the review's corrections running | cloud session `session_01LFAGgQaoxE3tRGwUcwpU2G` | 13:19 | 14 tests; all 17 presets' firing orders checked against `layouts.fm`; the cam editor draws `cam.fm`'s own lift |
 | U3: AIR, EXHAUST | handoff 13:52, corrections in at 14:00 (40e9b24) | cloud session `session_01LFAGgTSo5cKehJoa4H3k2A` | 13:19 | 20 tests; both stages fit the frame's real stage at both window sizes over six and seven builds; waits for per-pipe pressures from G |
 | U4: TUNE, CAR, DYNO | handoff 13:45, corrections in at 13:56 (5d98532) | cloud session `session_01LFAGgPYn8yFr9MJ2vQvgRd` | 13:19 | stages fold for a small stage; a text-collision test at four sizes; `MapEdit` gained block selection |
-| U5: GARAGE, SCOPE, atmosphere shaders | both stages in, corrections in at 14:02 (29c7892); the shaders running | cloud session `session_01LFAGgSKtL3Z967uRP5DGT9` | 13:19 | SCOPE folds to three plots with selectors on a small stage; GARAGE's cards and compare; glyph-collision tests from the draw list |
+| U5: GARAGE, SCOPE, atmosphere shaders | handoff 14:08 (`docs/handoffs/u5-garage-scope.md`); registering GARAGE and wiring the shaders' build line | cloud session `session_01LFAGgSKtL3Z967uRP5DGT9` | 13:19 | 19 tests; SCOPE registered; GARAGE built (cards, search, sort, parts apart, compare); four shaders (glow, flame, smoke, shimmer) compiled for SPIR-V and Metal and drawn once on lavapipe; Direct3D 11 compiles only on CI's Windows; no person has seen them on a GPU; no workspace calls them yet |
 | Q: performance | running; the profile **landed 14:04** (`docs/measurements/q1-profile.md`) | cloud session `session_01LFAGgPBEbLATNvMiRU1PGS` | 13:44 | on a quiet core R is 1.79 us a sample (not 2.3); the split is 1.00 to 1.03 R; the valves' solve 24 %, the pipes 23 %, the cylinder 15 %, the exhaust's junctions 12 %. Next: FMinus's own levers, then the resampler |
 | Wave 2, the rest | after the gate (M2) | | | the listener, mechanical voices, two-strokes (started), diesels, bikes, content, the wheel, release |
 
 ## Landed
 
+- **14:06 the vehicle integrated** (card I), the first physics package in the one program: `car.model` 1; the null
+  test green; its Spec and telemetry names are the ones the CAR and DRIVE workspaces already read.
+- 14:05 at 4c11901 the lead re-ran the null test in a full tree: all ten groups pass (the reference to the bit after
+  the integrator's first commits).
 - 13:56 to 14:02: U3, U4 and U5 pushed the review's corrections (stages laid out and tested at the frame's real
   stage rects, collision tests, labels); U2 handed off and has the same corrections to do; the shell made the frame
   the application and can picture any workspace. Open: `ui.build.frame` fails since the mechanics fields landed (the

@@ -10,6 +10,7 @@
 #include "app/Look.h"
 #include "kit/bind/Binding.h"
 #include "kit/widgets/Basic.h"
+#include "views/fx/Fx.h"
 
 #include <algorithm>
 #include <array>
@@ -96,7 +97,7 @@ namespace tee::ui
 
         bool moving() const override
         {
-            return wantsFullRate() || (slow_ && history_.size() >= 2 && play_ < history_.back().t - 1e-6);
+            return wantsFullRate() || effectsLive() || (slow_ && history_.size() >= 2 && play_ < history_.back().t - 1e-6);
         }
 
         std::uint64_t drawKey() const override
@@ -147,6 +148,8 @@ namespace tee::ui
             if (ctx_.doc.revision() != seenDoc_)
                 rebuild();
             clock_ += static_cast<double>(dt);
+            if (effectsLive())   // the effects' flicker: their own time, only while one would draw
+                phase_ = std::fmod(phase_ + dt, 1000.0f);
             readScope();
             // what is shown: the newest copy, or (slow) the copies replayed at an eighth of their pace
             if (history_.empty())
@@ -178,6 +181,7 @@ namespace tee::ui
             const Palette p = Palette::of(th);
             const Rect& s = stage_;
             c.rrect(s.x, s.y, s.w, s.h, 0.0f, p.ground);
+            drawEffects(c, p);
             drawHeader(c, p);
             drawPipes(c, p);
             drawParts(c, p);
@@ -260,6 +264,66 @@ namespace tee::ui
                 return { "engine.layout", "exhaust.model" };
             }
             return {};
+        }
+
+        // ---- atmosphere (ui/views/fx): behind the primitives, carrying no fact; nothing on the software rasteriser ----
+        // The headers' heat 0..1 (their wall, else the gas at the ports), a tail's pop 0..1 (the overrun's fuel cut).
+        double headerHeat() const
+        {
+            double t = wall(kPrim);
+            if (!std::isfinite(t))
+                t = ctx_.live.get(N::port);
+            return std::isfinite(t) ? std::clamp((t - 600.0) / 500.0, 0.0, 1.0) : 0.0;
+        }
+        double turbineHeat() const
+        {
+            double t = wall(kColl);
+            if (!std::isfinite(t))
+                t = ctx_.live.get(N::port);
+            return std::isfinite(t) ? std::clamp((t - 650.0) / 450.0, 0.0, 1.0) : 0.0;
+        }
+        double pop() const
+        {
+            const double v = ctx_.live.get(N::pop);
+            if (std::isfinite(v))
+                return std::clamp(v, 0.0, 1.0);
+            const double flags = ctx_.live.get(N::flags), th = ctx_.live.get(N::throttle);
+            const bool cut = std::isfinite(flags) && (static_cast<int>(flags) & 2) != 0;   // FLAG_FUEL_CUT
+            return cut && std::isfinite(th) && th < 0.05 ? 0.5 : 0.0;
+        }
+        bool effectsLive() const
+        {
+            return (fx::available(fx::Effect::glow) && (headerHeat() > 0.0 || turbineHeat() > 0.0))
+                || (fx::available(fx::Effect::flame) && pop() > 0.0);
+        }
+        void drawEffects(Canvas& c, const Palette& p) const
+        {
+            const Geo& g = geo_;
+            if (const double h = headerHeat(); h > 0.0 && build_.ports > 0)
+            {
+                float top = 1e9f, bottom = -1e9f, right = g.headX;
+                for (int i = 0; i < build_.ports; ++i)
+                {
+                    top = std::min(top, g.portY[static_cast<std::size_t>(i)]);
+                    bottom = std::max(bottom, g.portY[static_cast<std::size_t>(i)]);
+                }
+                for (int ci = 0; ci < kCollectors; ++ci)
+                    if (build_.colOn[static_cast<std::size_t>(ci)])
+                        right = std::max(right, g.colExit[static_cast<std::size_t>(ci)]);
+                fx::glow(c, { g.headX - 10.0f, top - 30.0f, right - g.headX + 30.0f, bottom - top + 60.0f },
+                         static_cast<float>(h), p.hot, phase_, 0.5f);
+            }
+            if (const double h = turbineHeat(); h > 0.0)
+                for (const Housing& hs : g.housings)
+                    fx::glow(c, { hs.x - hs.r * 2.5f, hs.y - hs.r * 2.5f, hs.r * 5.0f, hs.r * 5.0f }, static_cast<float>(h), p.hot,
+                             phase_, 0.4f);
+            if (const double pp = pop(); pp > 0.0 && g.endX > 0)
+                for (int si = 0; si < build_.sides; ++si)
+                    if (build_.sideOn[static_cast<std::size_t>(si)])
+                    {
+                        const float y = g.laneY[static_cast<std::size_t>(si)];
+                        fx::flame(c, { g.endX + 2.0f, y - 14.0f, 48.0f, 28.0f }, static_cast<float>(pp), phase_, false);
+                    }
         }
 
         struct Snap
@@ -928,6 +992,7 @@ namespace tee::ui
         Rect slowButtonRect_{};
         bool slow_ = false;
         double clock_ = 0, play_ = 0;
+        float phase_ = 0.0f;
         int scopeHandle_ = -1;
         std::uint64_t scopeGen_ = ~0ull;
         std::vector<Snap> history_;
