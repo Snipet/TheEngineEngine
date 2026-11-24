@@ -19,8 +19,20 @@
 // stands (at 6000 rpm, 6 crank degrees apart: the heat's rise and fall over the burn is followed); the cylinder's own
 // step then takes hA (T - Twall) each sample, as it does with the reference's.
 //
-// Constants: Woschni's, as Heywood (Internal Combustion Engine Fundamentals, 1988, section 12.4) gives them. A rotary
-// keeps the reference's coefficient (Woschni's is for pistons).
+// Constants: Woschni's, as Heywood (Internal Combustion Engine Fundamentals, 1988, section 12.4) gives them.
+//
+// A rotary's face (setupRotary, coefficientRotary): the same correlation over the chamber's own walls, which is where a
+// Wankel loses (Heywood, section 12.4 and the Wankel's in 1.x; Yamamoto, Rotary Engine, 1981: its surface over volume is
+// two to three times a piston engine's of the same displacement, its walls take more of the heat). The chamber is a
+// prism b deep (the housing's width) between the rotor's flank and the housing's trochoid, closed by the two side
+// plates. Its walls: the two side plates (each V / b) and the flank and the housing's arc between two apexes (each about
+// the chord between them, sqrt(3) R, times b). The proportions where the Spec gives no more than the displacement: a
+// 13B's (R/e 7, b/R 0.76: R 105, e 15, b 80 mm; per face 3 sqrt(3) R e b = 654 cc), scaled to the face's swept volume.
+// The gas's speed against the walls: the chamber's gas rides with the rotor, so it moves along the housing at about half
+// an apex's speed (its centre's orbit e w and its turn R w / 3), and along the flank as fast the other way; that speed
+// takes the mean piston speed's place (C1 2.28 throughout: no valve's jet; judgement, as the Wankel's studies that keep
+// Woschni's form replace the piston's speed by a rotor's). The length in B^-0.2: the four-stroke equivalent's bore, as
+// for a piston.
 #pragma once
 #include "../spec/limits.fm"
 
@@ -33,10 +45,16 @@ module WallHeat
     float vr[MAX_CYL];
     float tr[MAX_CYL];
     float hNow[MAX_CYL];    // the last coefficient worked out (W/(m^2 K)), for reports
+    float rotR;         // a rotary's generating radius, eccentricity and housing width (m); rotR 0: not set
+    float rotE;
+    float rotB;
 
     void setup(float boreIn, float swept)
     {
         bore = fmaxf(boreIn, 0.02f);
+        rotR = 0.0f;
+        rotE = 0.0f;
+        rotB = 0.0f;
         aCrown = 2.1f * 0.78539816f * bore * bore;
         vd = swept;
         for (int c = 0; c < MAX_CYL; ++c)
@@ -46,6 +64,41 @@ module WallHeat
             tr[c] = 330.0f;
             hNow[c] = 0.0f;
         }
+    }
+
+    // A rotary's chamber, from one face's swept volume (m^3), a 13B's proportions
+    void setupRotary(float faceSwept)
+    {
+        // 3 sqrt(3) R e b with e = R / 7, b = 0.762 R: 0.5655 R^3
+        rotR = expf(0.33333333f * logf(fmaxf(faceSwept, 1.0e-6f) / 0.5655f));
+        rotE = rotR / 7.0f;
+        rotB = 0.762f * rotR;
+    }
+
+    // A rotary face's hA (W/K): as coefficient, the chamber's walls and the gas's speed along them at the shaft's speed
+    // omega (rad/s)
+    float coefficientRotary(int c, float p, float t, float v, float omega, int burning)
+    {
+        float w = 2.28f * 0.5f * fabsf(omega) * (rotE + rotR * 0.33333333f);
+        if (burning != 0)
+        {
+            const float pm = pr[c] * expf(1.32f * logf(vr[c] / v));
+            w += 3.24e-3f * vd * tr[c] / (pr[c] * vr[c]) * fmaxf(p - pm, 0.0f);
+        }
+        w = fmaxf(w, 0.1f);
+        const float h = 3.26f * expf(-0.2f * logf(bore) + 0.8f * logf(fmaxf(p, 1000.0f) * 0.001f) - 0.55f * logf(fmaxf(t, 200.0f))
+                                     + 0.8f * logf(w));
+        hNow[c] = h;
+        return h * (2.0f * v / rotB + 2.0f * 1.7320508f * rotR * rotB);
+    }
+
+    // A rotary face's seals' leakage path (m^2, its discharge coefficient in): its two apex seals, each a gap of 0.02 mm
+    // across the housing's width, and the side and corner seals as half as much again, through a coefficient of 0.7.
+    // Judgement in the gap: the seals' leakage is the Wankel's known loss, a few per cent of the charge (Yamamoto; Heywood);
+    // what it takes here is printed by the explore test [.rotarybmep], not fitted
+    float leakArea()
+    {
+        return 0.7f * 1.5f * 2.0f * 4.0e-6f * rotB;
     }
 
     // Cylinder c's intake has closed: the state the motored pressure is reckoned from

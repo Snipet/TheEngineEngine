@@ -194,7 +194,8 @@ shaking, work integral and dyno for the engine as configured).
 
 **The physical cylinder**: friction by part (Chen and Flynn's, `core/friction.fm`, by mean piston speed) is used for a
 custom engine and whenever `fuel.model` is 1; Woschni's wall heat (`core/wallheat.fm`) whenever `fuel.model` is 1 or
-`engine.wallHeat` is 1. The new combustion implies the physical cylinder, its walls and its friction together; the
+`engine.wallHeat` is 1 (a rotary's faces: the chamber's walls, `coefficientRotary`; with `fuel.model` 1 its seals'
+leakage, `Cylinder::leakA`; docs/models/mechanics.md). The new combustion implies the physical cylinder, its walls and its friction together; the
 reference's one friction curve (fitted to its V8, too high for small bores: 4.5 bar at 24.8 m/s on a 250 cc cylinder)
 and its one wall coefficient only under the reference's models. `engine.custom` means only that the geometry is the
 build's own. The engine runs at 96 kHz; compiled with `TEE_ENGINE_RATE_48000` defined (card C's prediction service
@@ -303,6 +304,7 @@ The machine's functions, all on `Boost`, all doing nothing in model 0:
   airSpeed(float v)` the car's speed through the intercooler (m/s); `void vanesAndPurge(float vanes, int purges)` the
   ECU's vane position (below 0: Boost's loop) and purges counted, not called yet.
 - **Combustion (H)**: `float oxygen()` (by mass, 0.232 air) or `float oxygenShare()` (over air's, 1 without nitrous).
+- **The ECU's over-boost cut** (card N2): `float overBoostLevel()` (Pa over the air: 1.3 times the target or spring for turbos; 0 for a supercharger and under model 0), which Engine hands to `Ecu::overBoostRef` after each `applyMachine` (asked of D).
 - **After a call**: `void telemetry(BoostTel* t, float tCharge)` (tel.boost's card F fields; with no machine in the path the two charge temperatures read `tCharge`, Intake's `tAir`), `void scope(Scope* sc)` while
   `ctl.scopeOn` (the compressor map's lines and the trail).
 

@@ -1,0 +1,15 @@
+# The window's wait for the engine's compile, in tee-headless (--hold-compile 1.0: the machine code is taken one second
+# into the run). Meanwhile the frame is drawn and editable, the status line counts the seconds, and START does nothing:
+# a press at 0.1 s starts nothing later. After it, START works.
+0.10  key return down
+0.40  key return up
+0.50  expect ready == 0
+0.50  shot out/shell/hold-compiling.png
+0.90  expect ready == 0
+1.10  expect ready == 1
+1.60  expect engine.state == 0
+1.70  key return down
+1.90  key return up
+3.80  expect engine.state == 2
+3.80  shot out/shell/hold-ready.png
+3.90  end

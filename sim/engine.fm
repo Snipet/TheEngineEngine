@@ -304,6 +304,7 @@ module Engine
         set.timing = 0.0f;
         comb.setup(rate, &noise, &ecu, &heat, &lay, &exh.pop[0], &spec.fuel, &spec.engine);
         comb.oxygen = 1.0f;
+        comb.walls = woschniWalls() ? 1 : 0;
         hd.setup(rate, &spec.ecu, &spec.valve);                                             // card D2
         ecu.setup(16.0f / rate, &spec.ecu, &spec.fuel, &ctl, &tel.ecu, &scope, &heat);     // card H's model 1
         set.bov = 0.7f;
@@ -497,8 +498,9 @@ module Engine
         intk.mPlenum = intk.pPlenum * intk.vPlenum / (287.0f * intk.tAir);
         pipes();
         mechanicsSetup();
-        // (card F: boost.model 1's machine sized to this engine, at rest; nothing in model 0)
-        boost.applyMachine(&spec.boost, vTotal, ecu.redRpm, 101325.0f, heat.tAmb);
+        // (card F: boost.model 1's machine sized to this engine, at rest, on its four-stroke-equivalent displacement: a
+        // rotary's faces fire once a shaft turn, twice vTotal; nothing in model 0)
+        boost.applyMachine(&spec.boost, vTotal * (lay.rotary != 0 ? 2.0f : 1.0f), ecu.redRpm, 101325.0f, heat.tAmb);
         // (card T: a two-stroke, on a custom engine's geometry and mechanics: its cylinders and pipes at rest where the
         // crank stands; the four-stroke's cylinders, valves and pipes above stay configured, unused)
         cycleUse = spec.engine.cycle != 0 && customUse != 0 && lay.rotary == 0 ? 1 : 0;
@@ -523,6 +525,14 @@ module Engine
     bool physicalFriction()
     {
         return customUse != 0 || spec.fuel.model != 0;
+    }
+
+    // Whose walls take the burn's heat: Woschni's (core/wallheat.fm) with spec.engine.wallHeat 1 or fuel.model 1, else
+    // the reference's. One decision, from the two switches as the fade has made them (applyModels), read by the walls
+    // here and handed to Combustion (comb.walls), whose share of the fuel's heat follows it: the walls' loss counted once
+    bool woschniWalls()
+    {
+        return spec.engine.wallHeat == 1 || spec.fuel.model != 0;
     }
 
     // A sum of what makes a custom engine (spec.engine's custom fields, each with its own weight), to see it changed: 0
@@ -594,6 +604,8 @@ module Engine
         fric.setup(&spec.engine, vTotal, strokeUse, lay.rotary);
         work.setup(lay.n, cyl[0].vd, lay.cyc);
         wall.setup(bore, cyl[0].vd);
+        if (lay.rotary != 0)
+            wall.setupRotary(cyl[0].vd);
         dyno.setup(customUse != 0 ? mm.jMean : jFly);
         dynoOn = 0;
         tqAbs = 0.0f;
@@ -824,6 +836,9 @@ module Engine
         hd.feed(&comb.diesel);
         // the exhaust's mass flow and its power, for the turbo
         exh.flowRate();
+        // (the reference turbo's flow scale: a four-stroke's air, vTotal rpm / 120, for every engine; for a rotary, whose
+        // faces fire once a shaft turn, it is half its flow. Known and kept: model 0 is the reference to the bit; boost.model
+        // 1 is matched on the four-stroke-equivalent displacement, below)
         const float mRef = 1.2f * vTotal * ecu.redRpm / 120.0f * 0.9f;
         boost.control(aspUse, boost.smTb, exh.mdot * exh.tPort / 1100.0f / fmaxf(mRef, 1.0e-6f), fuelUse != 0 ? 1.0f : ecu.throttle, ecu.throttle,
                    set.bov, crank.rpm / ecu.redRpm, crank.rpm * 0.016666667f, boost.smTs, d16);
@@ -831,6 +846,8 @@ module Engine
         {
             // (card F: its machine's air at the throttle, toward the ECU's target; card H's)
             boost.airSpeed(set.drive != 0 ? fabsf(car.v) : 0.0f);
+            if (hd.on != 0)
+                boost.vanesAndPurge(hd.vaneCommand(), 0);   // (card D2: a VGT's brake position while a brake is on; -1 its own loop)
             boost.control16(d16, ecu.boostTarget(), ecu.antiLag(), ecu.nitrous());
             intk.pBox = boost.pressure();
             intk.tAir = boost.temperature();
@@ -842,11 +859,22 @@ module Engine
         }
         intk.control(d16, crank.omega, vTotal, 120.0f / fmaxf(crank.rpm, 60.0f));      // (card E; nothing at intake.model 0)
         exh.gas(d16);
-        const float surf = 0.022f * expf(0.6666667f * logf(cyl[0].vd / 0.0005f));
-        for (int c = 0; c < lay.n; ++c)
-            cyl[c].hA = 260.0f * surf * (0.6f + crank.rpm / 2500.0f);
-        // (spec.engine.wallHeat 1: Woschni's, each cylinder from where it stands: core/wallheat.fm)
-        if ((spec.engine.wallHeat == 1 || spec.fuel.model != 0) && lay.rotary == 0)
+        // the walls' heat: Woschni's with spec.engine.wallHeat 1 or fuel.model 1 (each cylinder from where it stands:
+        // core/wallheat.fm), else the reference's (by speed alone, the same through the cycle)
+        if (woschniWalls() && lay.rotary != 0)
+        {
+            // (a rotary's faces: the chamber's own walls and the gas's speed along them, core/wallheat.fm; with fuel.model
+            // 1, the seals' leakage, cylinder.fm)
+            for (int c = 0; c < lay.n; ++c)
+            {
+                Cylinder* cy = &cyl[c];
+                const float a = cy->ang;
+                const int burning = a >= cy->sparkAt || a < cy->evo ? 1 : 0;
+                cy->hA = wall.coefficientRotary(c, cy->p, cy->t, cy->v, crank.omega, burning);
+                cy->leakA = spec.fuel.model != 0 ? wall.leakArea() : 0.0f;
+            }
+        }
+        else if (woschniWalls())
         {
             const float sp = strokeUse * crank.omega * 0.31830989f;
             for (int c = 0; c < lay.n; ++c)
@@ -856,6 +884,15 @@ module Engine
                 const int burning = a >= cy->sparkAt || a < cy->evo ? 1 : 0;
                 const int exchanging = cy->areaAt(a, cy->evo, cy->edur) > 0.0f || cy->areaAt(a, cy->ivo, cy->idur) > 0.0f ? 1 : 0;
                 cy->hA = wall.coefficient(c, a, cy->p, cy->t, cy->v, sp, burning, exchanging);
+            }
+        }
+        else
+        {
+            const float surf = 0.022f * expf(0.6666667f * logf(cyl[0].vd / 0.0005f));
+            for (int c = 0; c < lay.n; ++c)
+            {
+                cyl[c].hA = 260.0f * surf * (0.6f + crank.rpm / 2500.0f);
+                cyl[c].leakA = 0.0f;
             }
         }
         exh.heatUp(d16, bore, set.drive != 0 ? fabsf(car.v) : 0.0f, crank.rpm, ecu.throttle);
@@ -1438,7 +1475,7 @@ module Engine
             s->turbo = spec.boost.level;
             s->tsize = spec.boost.size;
             s->bov = spec.boost.blowOff;
-            boost.applyMachine(&spec.boost, vTotal, ecu.redRpm, 101325.0f, heat.tAmb);
+            boost.applyMachine(&spec.boost, vTotal * (lay.rotary != 0 ? 2.0f : 1.0f), ecu.redRpm, 101325.0f, heat.tAmb);
         }
         if (moved(4, spec.exhaust.rev))
         {
@@ -1528,6 +1565,7 @@ module Engine
         modelUse[7] = applyModel(7, &spec.voices.model, &spec.voices.rev);
         modelUse[8] = applyModel(8, &spec.engine.wallHeat, &spec.engine.rev);
         modelUse[9] = applyModel(9, &spec.sound.model, &spec.sound.rev);
+        comb.walls = woschniWalls() ? 1 : 0;
     }
 
     // A paddle's press as the reference's wheel made it: its button down until Car's shift logic (drive16) has seen

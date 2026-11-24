@@ -204,5 +204,8 @@ module EcuSpec
     float exBrakeLimit [[fminus::range(50000, 500000)]] [[fminus::default(300000)]] [[ui::label("Exhaust brake pressure")]]
         [[ui::quantity("pressure")]] [[ui::help("The most back pressure its spring lets the flap hold, over the air")]];
     float exBrakeLeak [[fminus::range(0.005, 0.5)]] [[fminus::default(0.03)]] [[ui::label("Exhaust brake leak")]]
-        [[ui::quantity("fraction")]] [[ui::help("The closed flap's open area over the pipe's")]];
+        [[ui::quantity("fraction")]] [[ui::help("The closed flap's open area over the pipe's")]];    // (card N2, for card H: ecu.model 1 only)
+    float overBoost [[fminus::range(-1, 400000)]] [[fminus::default(0)]] [[ui::label("Over-boost cut")]]
+        [[ui::quantity("pressure")]]
+        [[ui::help("The fuel is cut while the boost stays over this for 1 s, until it falls under 85 % of it (over the air). 0: the boost machine's own over-boost level, 1.3 times its target or spring (turbos); -1: never")]];
 };

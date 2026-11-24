@@ -84,7 +84,20 @@ namespace tee::app
     void Engine::frame()
     {
         if (sim != nullptr)
+        {
             sim->frame();
+            if (sim->ready() && compileSeconds <= 0.0)
+            {
+                compileSeconds = sim->compileSeconds();
+                if (warnings.empty())
+                    warnings = sim->warnings();
+            }
+        }
+    }
+
+    bool Engine::ready() const
+    {
+        return sim == nullptr || sim->ready();
     }
 
     std::string Engine::stopped() const
@@ -213,6 +226,8 @@ namespace tee::app
                 so.directory = e.simDir;
                 so.checks = o.checks;
                 so.sampleRate = rate;
+                so.background = o.background || o.holdCompile > 0.0;
+                so.hold = o.holds;
                 std::unique_ptr<player::SimAdapter> sim = player::SimAdapter::create(so, e.error);
                 if (sim)
                 {

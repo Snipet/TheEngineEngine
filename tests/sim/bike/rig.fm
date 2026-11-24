@@ -25,6 +25,11 @@ module BikeRig
     float fric0;
     float fric1;
     float drag2;        // a pumping loss with the throttle shut, N m per (rad/s)^2 (engine braking)
+    // a crank whose inertia varies round the turn, as a custom engine's moving masses make it: J = jE (1 + varyJ cos 2a),
+    // its inertia torque -1/2 dJ/da w^2 in the engine's torque; giveJ: the bike is told J of the moment (else 0)
+    float varyJ;
+    bool giveJ;
+    double angle;
     bool running;
     bool noStall;
     float idleInt;
@@ -167,9 +172,19 @@ module BikeRig
                 }
             }
             phase = (phase + 1) & 15;
-            const float tq = torque();
+            float tq = torque();
+            float jNow = 0.0f;
+            if (varyJ > 0.0f)
+            {
+                const float a2 = 2.0f * (float)angle;
+                jNow = jE * (1.0f + varyJ * cosf(a2));
+                tq += jE * varyJ * sinf(a2) * w * w;     // -1/2 dJ/da w^2, dJ/da = -2 jE varyJ sin 2a
+                angle += (double)(w * dt);
+                if (angle > 6.283185307)
+                    angle -= 6.283185307;
+            }
             tqEngine = tq;
-            w = bike.step(w, tq, dt);
+            w = bike.step(w, tq, dt, giveJ ? jNow : 0.0f);
             wAvg += (w - wAvg) * dt / 0.01f;
             if (running && w < 0.33f * idleW && !noStall)
                 running = false;
@@ -199,6 +214,13 @@ module BikeRig
     void runNonblocking(int n) [[clang::nonblocking]]
     {
         run(n);
+    }
+
+    // the crank's kinetic energy now, J (with the varying inertia)
+    double crankEnergy()
+    {
+        const double j = varyJ > 0.0f ? (double)jE * (1.0 + (double)varyJ * (double)cosf((float)(2.0 * angle))) : (double)jE;
+        return 0.5 * j * (double)w * (double)w;
     }
 
     float random()
