@@ -1,0 +1,19 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Supercharged 6.2 L V8: supercharger",
+  "notes": "The forced induction of the archetype \"Supercharged 6.2 L V8\" alone (supercharger, 0.62 bar); loaded as a part it replaces only the boost fields it sets. Its sizes are matched to whatever engine it goes on.",
+  "spec": {
+    "boost": {
+      "model": "Machine",
+      "kind": "Supercharger",
+      "level": 0.493,
+      "blowOff": 0.7,
+      "size": 1.0,
+      "target": 62000.0,
+      "charger": "Twin-screw",
+      "scDisplacement": 0.0019,
+      "scBypass": true
+    }
+  }
+}

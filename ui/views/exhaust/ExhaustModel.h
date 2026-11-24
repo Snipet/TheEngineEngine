@@ -48,6 +48,7 @@ namespace tee::ui::exhaust
         static constexpr const char* tailLen = "exhaust.tailLen";       // [2]
         static constexpr const char* tips = "exhaust.tips";             // [2] 1 or 2
         static constexpr const char* exitAt = "exhaust.exitAt";         // [2] -1 the layout's, then XTAG_*
+        static constexpr const char* cycle = "engine.cycle";            // 0 four-stroke, 1 two-stroke (card T)
     };
 
     // Where a radiating end is (sim/exhaust/ends.fm XTAG_*).
@@ -55,6 +56,28 @@ namespace tee::ui::exhaust
     const char* tagName(Tag t) noexcept;   // "REAR LEFT"
 
     enum class Turbos : int { none = 0, one, perBank, sequential, compound, fourPerBank };
+
+    // A two-stroke's pipe (engine.cycle 1: card T's ts* fields, sim/spec/engine.fm; sim/core/twostroke/chamber.fm):
+    // a header, a diffuser cone, a belly, a baffle cone and a stinger (or one straight pipe), a silencer after it; one
+    // a cylinder.
+    struct TwoStrokePipe
+    {
+        bool on = false;
+        int cylinders = 1;
+        bool chamber = true;                      // false: a straight pipe of the header's bore, the whole length
+        float header = 0.16f, diffuser = 0.33f, belly = 0.12f, baffle = 0.24f, stinger = 0.22f;   // m
+        float dHeader = 0.038f, dBelly = 0.115f, dStinger = 0.022f;                                // m
+        bool silencer = false;
+        float silLen = 0.40f, silDiam = 0.026f;
+        float exhaustDur = 192.0f;                // degrees the exhaust port is open (about bottom dead centre)
+        float length() const noexcept { return header + diffuser + belly + baffle + stinger; }
+        // chamber.fm's `tuned`: the length to the baffle cone's middle, where the plugging pulse comes back from
+        float tunedLength() const noexcept { return chamber ? header + diffuser + belly + 0.5f * baffle : 0.0f; }
+        // The speed the pipe is tuned for (rpm) at the pipe's gas temperature (K): card T's returning wave
+        // (tests/sim/twostroke/PipeTest.cpp predicted(): c (exhaust duration - 25) / (12 L), c = sqrt(1.35 287 T) as
+        // twostroke.fm soundSpeed()). 0 for a straight pipe.
+        double tunedRpm(double gasK) const noexcept;
+    };
 
     struct ExhaustBuild
     {
@@ -76,6 +99,7 @@ namespace tee::ui::exhaust
         std::array<Tag, kSides> tag{};
         std::array<float, kSides> mainLen{}, mufLen{}, tailLen{};
         Turbos turbos = Turbos::none;
+        TwoStrokePipe ts;                   // engine.cycle 1: drawn instead of the four-stroke's system
         bool supercharger = false;
 
         bool openStacks() const noexcept;   // every port an open stack (zoomies, a single's open pipe)

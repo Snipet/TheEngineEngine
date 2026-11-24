@@ -185,6 +185,9 @@ module Engine
     WallHeat wall;      // Woschni's wall heat, with spec.engine.wallHeat 1 (core/wallheat.fm)
     HeavyDiesel hd;     // card D2: a diesel's governor, compression and exhaust brakes (combustion/heavy.fm); hd.on 0 at the defaults
     int customUse;      // 1: the engine configured from spec.engine's custom fields
+    int modelUse[9];    // each package's model switch in use (valve, intake, boost, exhaust, fuel, ecu, car, voices; the wall
+    int modelWant[9];   // heat), and the one the host asked for: a change waits for the fade (holdModel)
+    int modelRev[9];    // each one's section's rev as holdModel last saw it
     int lastIgn;        // ctl.ignition at the last call (voices.model 1: its rise from off renders the key's sounds)
     int layoutRefused;  // 1: its geometry was refused (cylinders firing together), the layout dial's table runs
     float rodRatio;     // the rod over the crank's radius the cylinders are set up with (the reference's 3.3)
@@ -335,6 +338,7 @@ module Engine
     // The engine for the layout and the size dial: its cylinders, valves and pipes. Everything starts at rest.
     void configure()
     {
+        applyModels();
         lay.load(set.layout);
         customUse = spec.engine.custom ? 1 : 0;
         layoutRefused = 0;
@@ -1226,6 +1230,20 @@ module Engine
     void init(float hostRate)
     {
         clickRpm = -1.0f;
+        modelUse[0] = spec.valve.model;
+        modelUse[1] = spec.intake.model;
+        modelUse[2] = spec.boost.model;
+        modelUse[3] = spec.exhaust.model;
+        modelUse[4] = spec.fuel.model;
+        modelUse[5] = spec.ecu.model;
+        modelUse[6] = spec.car.model;
+        modelUse[7] = spec.voices.model;
+        modelUse[8] = spec.engine.wallHeat;
+        for (int k = 0; k < 9; ++k)
+        {
+            modelWant[k] = modelUse[k];
+            modelRev[k] = -1;
+        }
         lastIgn = IGN_OFF;
         hostRateSeen = hostRate;
         setupAll(hostRate);
@@ -1316,6 +1334,63 @@ module Engine
             s->mech = spec.sound.mechanical;
         }
         fresh = 0;
+        // every package's model switch (and the wall heat's) under the fade, one rule for all: running, a change is held
+        // back (the Spec keeps its old value) and made at the fade's quiet, by configure (applyModels)
+        holdModel(0, &spec.valve.model, &spec.valve.rev);
+        holdModel(1, &spec.intake.model, &spec.intake.rev);
+        holdModel(2, &spec.boost.model, &spec.boost.rev);
+        holdModel(3, &spec.exhaust.model, &spec.exhaust.rev);
+        holdModel(4, &spec.fuel.model, &spec.fuel.rev);
+        holdModel(5, &spec.ecu.model, &spec.ecu.rev);
+        holdModel(6, &spec.car.model, &spec.car.rev);
+        holdModel(7, &spec.voices.model, &spec.voices.rev);
+        holdModel(8, &spec.engine.wallHeat, &spec.engine.rev);
+    }
+
+    // Section k's model switch as the host wrote it: stopped, taken at once; running, a change held until the fade's
+    // quiet (the field put back to the value in use, the one wanted kept, the fade asked for)
+    void holdModel(int k, int* field, int* rev)
+    {
+        // (only when the host has written the section: its rev moved since this was last here)
+        if (*rev == modelRev[k])
+            return;
+        modelRev[k] = *rev;
+        modelWant[k] = *field;
+        if (*field == modelUse[k])
+            return;
+        if (ecu.state == 0)
+        {
+            modelUse[k] = *field;
+            modelWant[k] = *field;
+            return;
+        }
+        *field = modelUse[k];
+        cutWant |= 1;
+    }
+
+    // At configure: section k's held switch made (its rev moved, so a package that caches its section reads it again)
+    int applyModel(int k, int* field, int* rev)
+    {
+        if (modelWant[k] != *field)
+        {
+            *field = modelWant[k];
+            *rev += 1;
+        }
+        modelRev[k] = *rev;
+        return *field;
+    }
+
+    void applyModels()
+    {
+        modelUse[0] = applyModel(0, &spec.valve.model, &spec.valve.rev);
+        modelUse[1] = applyModel(1, &spec.intake.model, &spec.intake.rev);
+        modelUse[2] = applyModel(2, &spec.boost.model, &spec.boost.rev);
+        modelUse[3] = applyModel(3, &spec.exhaust.model, &spec.exhaust.rev);
+        modelUse[4] = applyModel(4, &spec.fuel.model, &spec.fuel.rev);
+        modelUse[5] = applyModel(5, &spec.ecu.model, &spec.ecu.rev);
+        modelUse[6] = applyModel(6, &spec.car.model, &spec.car.rev);
+        modelUse[7] = applyModel(7, &spec.voices.model, &spec.voices.rev);
+        modelUse[8] = applyModel(8, &spec.engine.wallHeat, &spec.engine.rev);
     }
 
     // A paddle's press as the reference's wheel made it: its button down until Car's shift logic (drive16) has seen
