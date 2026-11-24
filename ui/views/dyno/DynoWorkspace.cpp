@@ -420,6 +420,9 @@ namespace tee::ui
             out += "speed_rad_s,rpm,torque_N_m,power_kW";
             for (const std::string& f : t.fields)
                 out += "," + f;
+            const bool knock = !t.knock.empty();
+            if (knock)
+                out += ",knock_limited,retard_min_deg,retard_max_deg";
             out += "\n";
             char b[64];
             for (std::size_t i = 0; i < t.speed.size(); ++i)
@@ -431,6 +434,12 @@ namespace tee::ui
                 {
                     const double v = f < t.values.size() && i < t.values[f].size() ? t.values[f][i] : std::nan("");
                     std::snprintf(b, sizeof b, ",%.6g", v);
+                    out += b;
+                }
+                if (knock)
+                {
+                    std::snprintf(b, sizeof b, ",%d,%.2f,%.2f", t.knockLimited(i) ? 1 : 0,
+                                  i < t.retardMin.size() ? t.retardMin[i] : std::nan(""), i < t.retardMax.size() ? t.retardMax[i] : std::nan(""));
                     out += b;
                 }
                 out += "\n";
@@ -592,6 +601,18 @@ namespace tee::ui
             chart::sample(c, lx, lx + 26.0f, ly, kPowerW, p.text);
             lx += 32.0f;
             c.text("POWER (LIGHT)", lx, ly - 5.0f, look::kCaps, p.label);
+            lx += c.textWidth("POWER (LIGHT)", look::kCaps) + 18.0f;
+            // What the amber rings are, when a shown curve has any.
+            {
+                bool knock = false;
+                for (int row : allRows())
+                    knock = knock || (isShown(row) && trace(row).knockCount() > 0);
+                if (knock && lx + 14.0f + c.textWidth("KNOCK-LIMITED", look::kCaps) < plotBox_.right() - look::kPad)
+                {
+                    c.disc(lx + 5.0f, ly, 4.5f, kClear, 1.75f, p.warning);
+                    c.text("KNOCK-LIMITED", lx + 14.0f, ly - 5.0f, look::kCaps, p.warning);
+                }
+            }
             // The grid, from the left axis; the right axis numbers the same lines.
             for (int i = 0; i <= divisions_; ++i)
             {
@@ -650,6 +671,14 @@ namespace tee::ui
                 const Canvas::ClipScope clip(c, { a.x - 4.0f, a.y - 4.0f, a.w + 8.0f, a.h + 8.0f });
                 chart::stroke(c, xs, yt, kTorqueW, s.ink, s.dash);
                 chart::stroke(c, xs, yp, kPowerW, s.ink, s.dash);
+                // Knock-limited points (card C's): a ring on the torque curve and a tick under the plot, amber; the words
+                // are the cursor's (knockText).
+                for (std::size_t i = 0; i < xs.size(); ++i)
+                    if (t.knockLimited(i) && std::isfinite(yt[i]))
+                    {
+                        c.disc(xs[i], yt[i], 4.5f, kClear, 1.75f, p.warning);
+                        c.segment(xs[i], a.bottom() - 7.0f, xs[i], a.bottom() - 1.0f, 2.0f, p.warning);
+                    }
                 // The peaks: a disc on each; the lead's with its number.
                 const auto tq = t.peakTorque(), pw = t.peakPower();
                 const bool lead = row == leadRow();
@@ -812,6 +841,7 @@ namespace tee::ui
             {
                 int row;
                 double tq, pw, ex;
+                std::string knock;   // knockText at the point nearest the cursor, if it is knock-limited
             };
             std::vector<Line> lines;
             const Extra* ex = extra_ >= 0 ? &kExtras[static_cast<std::size_t>(extra_)] : nullptr;
@@ -820,7 +850,17 @@ namespace tee::ui
                 const DynoTrace& t = trace(row);
                 if (!isShown(row) || t.empty())
                     continue;
-                Line l{ row, chart::at(t.speed, t.torque, si), chart::at(t.speed, t.power, si), std::nan("") };
+                Line l{ row, chart::at(t.speed, t.torque, si), chart::at(t.speed, t.power, si), std::nan(""), {} };
+                if (t.knockCount() > 0 && t.speed.size() > 1)
+                {
+                    std::size_t near = 0;
+                    for (std::size_t i = 1; i < t.speed.size(); ++i)
+                        if (std::fabs(t.speed[i] - si) < std::fabs(t.speed[near] - si))
+                            near = i;
+                    const double gap = std::fabs(t.speed[1] - t.speed[0]);
+                    if (std::fabs(t.speed[near] - si) <= gap * 0.6)
+                        l.knock = t.knockText(near);
+                }
                 if (ex != nullptr)
                 {
                     const int f = fieldIndex(t, ex->field);
@@ -842,7 +882,10 @@ namespace tee::ui
                 ex = nullptr;
             const float nameW = std::clamp(plotArea_.w - 176.0f - (ex != nullptr ? 64.0f : 0.0f), 64.0f, 110.0f);
             const float w = nameW + 166.0f + (ex != nullptr ? 64.0f : 0.0f), rowH = 18.0f;
-            const float h = 30.0f + rowH * static_cast<float>(lines.size());
+            int knocks = 0;
+            for (const Line& l : lines)
+                knocks += l.knock.empty() ? 0 : 1;
+            const float h = 30.0f + rowH * static_cast<float>(lines.size() + static_cast<std::size_t>(knocks));
             float cx = x + 14.0f;
             if (cx + w > plotArea_.right())
                 cx = x - 14.0f - w;
@@ -877,6 +920,13 @@ namespace tee::ui
                     c.text(look::num(std::isfinite(l.ex) ? toUser(*ex, l.ex) : l.ex, ex->quantity == Quantity::none ? "%.2f" : "%.1f").c_str(),
                            cx + w - 10.0f, y, look::kUnit, p.value, funkgui::Align::right);
                 y += rowH;
+                if (!l.knock.empty())   // under its line: the knock's words, amber, with the ring
+                {
+                    c.disc(cx + 29.0f, y + 5.0f, 3.5f, kClear, 1.5f, p.warning);
+                    const Canvas::ClipScope clip(c, { cx, y - 2.0f, w - 8.0f, rowH });
+                    c.text(l.knock.c_str(), cx + 38.0f, y, look::kUnit, p.warning);
+                    y += rowH;
+                }
             }
         }
 

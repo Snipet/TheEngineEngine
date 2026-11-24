@@ -1,8 +1,8 @@
 geometry e5603946807eacd4
-text 4d4a09a0d9f41284
-statics 1509
+text b9e9d05b77a4a1b6
+statics 1581
 live 0
-texts 257
+texts 329
 rrects 141
 segments 1107
 areas 4

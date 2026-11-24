@@ -538,6 +538,20 @@ namespace tee
             if (Live* l = slot.exchange(nullptr, std::memory_order_acq_rel))
                 destroyLive(l);
 
+        // the load verdict, on the audio's clock (samples played since the last update)
+        if (rate_ > 0.0)
+        {
+            const std::int64_t samples = samplesNow_.load(std::memory_order_relaxed);
+            if (samples < fitSamples_)
+                fitMeter_.reset();
+            const double seconds = static_cast<double>(std::max<std::int64_t>(samples - fitSamples_, 0)) / rate_;
+            fitSamples_ = samples;
+            if (seconds > 0.0)
+                fitsNow_.store(fitMeter_.update(loadPeakNow_.load(std::memory_order_relaxed),
+                                                lateNow_.load(std::memory_order_relaxed), seconds),
+                               std::memory_order_relaxed);
+        }
+
         if (const std::uint32_t n = engineFaultsNow_.load(std::memory_order_relaxed); n != engineFaultsTold_)
         {
             engineFaultsTold_ = n;
@@ -1130,5 +1144,10 @@ namespace tee
         stats_.hostMicros = host;
         stats_.hostMicrosMean = stats_.block == 1 ? host : stats_.hostMicrosMean + 0.01 * (host - stats_.hostMicrosMean);
         stats_.hostMicrosPeak = std::max(stats_.hostMicrosPeak, host);
+        if (load >= 1.0)
+            ++stats_.lateCallbacks;
+        loadPeakNow_.store(stats_.loadPeak, std::memory_order_relaxed);
+        lateNow_.store(stats_.lateCallbacks, std::memory_order_relaxed);
+        stats_.fits = fitsNow_.load(std::memory_order_relaxed);
     }
 } // namespace tee

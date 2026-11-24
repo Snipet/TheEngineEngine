@@ -940,7 +940,12 @@ namespace tee::ui
             c.rrect(rib.x, rib.y, rib.w, rib.h, 0.0f, bar);
             c.hairlineH(rib.x, c.snapY(rib.y), rib.w, p.edge);
             c.text("DYNO", rib.x + 14.0f, rib.y + 10.0f, look::kCaps, p.text);
-            c.text("PREDICTED, THE LAST CURVE GHOSTED", rib.x + 56.0f, rib.y + 10.0f, look::kCaps, p.label);
+            // The caption, or the predicted curve's knock-limited span while it has one (its points ringed on the plot).
+            const std::string knock = ribbon_->knockText(true);
+            if (knock.empty())
+                c.text("PREDICTED, THE LAST CURVE GHOSTED", rib.x + 56.0f, rib.y + 10.0f, look::kCaps, p.label);
+            else
+                c.text(fitText(c, knock, look::kCaps, folded_ ? 200.0f : rib.w - 56.0f - 70.0f).c_str(), rib.x + 56.0f, rib.y + 10.0f, look::kCaps, p.warning);
             if (folded_)
                 c.text(fitText(c, ribbon_->peaksText(), look::kBody, rib.w - 330.0f).c_str(), rib.right() - 70.0f, rib.y + 9.0f,
                        look::kBody, p.text, funkgui::Align::right);

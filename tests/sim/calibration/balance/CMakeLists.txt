@@ -1,0 +1,15 @@
+# tests/sim/calibration/balance/: card N3's air and energy balance (tee-tests-calibration-balance). The probe
+# ([.balance], hidden) prints an engine's books for scripts/balance.py; the tests hold what the balance fixed.
+if(TARGET tee-tests-calibration-balance)
+  return()
+endif()
+include(Catch)
+file(GLOB _tee_n3_sources CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
+add_executable(tee-tests-calibration-balance ${_tee_n3_sources})
+tee_target_defaults(tee-tests-calibration-balance)
+target_include_directories(tee-tests-calibration-balance PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
+target_link_libraries(tee-tests-calibration-balance PRIVATE Tee::host Catch2::Catch2WithMain)
+target_compile_definitions(tee-tests-calibration-balance PRIVATE "TEE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\"")
+# (one compile a process: the simulator's cases are one ctest entry, sharing a kept player)
+add_test(NAME calibration-balance.sim COMMAND tee-tests-calibration-balance "[sim]")
+set_tests_properties(calibration-balance.sim PROPERTIES TIMEOUT 300)

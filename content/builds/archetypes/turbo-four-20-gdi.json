@@ -80,7 +80,9 @@
       "gateSpring": 60000.0,
       "blowOffKind": "Recirculating",
       "scrolls": "Twin scroll",
-      "icEffect": 0.75
+      "icEffect": 0.75,
+      "icFlow": 0.253,
+      "chargeVolume": 0.004
     },
     "exhaust": {
       "model": "Builder",
@@ -111,6 +113,9 @@
       },
       "idle": {
         "speed": 78.54
+      },
+      "launch": {
+        "on": true
       },
       "knock": {
         "on": true

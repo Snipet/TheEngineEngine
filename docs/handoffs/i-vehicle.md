@@ -129,3 +129,47 @@ normalised by its peak; mu = column 3 x `VEH_SURFACE[compound][surface]` x tempe
 - **51908c2** `gearbox` choice 5 "Eighteen-speed" (appended): `Vehicle::eighteen` drives D2's Roadranger; reverse 13.1
   at a crawl in Vehicle (not in rr); `Car::grindOut()` for L. Tests `vehicle.gearbox.eighteen`, `vehicle.passive` (48 runs
   with it). For D2: `ctl.lever` 5 is the L slot, buttons 16 splitter, 32 range; the crank seen is the last sample's.
+
+# I: a launch that does not bog (0078996)
+
+Under its launch speed (ecu.launch.speed with launch control on, else 60 % of the redline) and with the pedal floored, a
+launch's clutch passes at most what the engine makes beyond what takes it up to that speed in 0.1 s; the launch's
+clutch is sized on the most torque the engine has shown; the launch goes on through an upshift taken before the clutch
+locks. P's drag runs (its qm scenarios, its shift times as placed; first gear's numbers from the green):
+
+| Build | 60 ft before / after | 0-72 km/h | 0-100 km/h | 1/4 mile | launch slip 0-2 s (after) |
+|---|---|---|---|---|---|
+| rotary NA side port | 3.29 / 2.59 | 7.45 / 6.02 | 19.26 / 17.31 | 20.18 / 18.60 | 0.03 (engine-limited) |
+| v12-65 | 2.43 / 2.37 | 4.69 / 3.96 | 6.13 / 5.32 | 12.91 / 12.30 | 0.09 |
+| big-bore 7.0 pushrod | (P: 13.10) | | 5.50 | 12.47 | 0.085 |
+| flat-plane 3.9 TT | (P: 11.99) | | 5.07 | 11.61 | 0.067 |
+
+Why the strong cars were slow: a dual clutch's 1-2 handover taken by P's fixed shift time while the launch clutch still
+slipped closed at full capacity and spun the tyres for 0.8 s (now the launch continues through it); the launch holds
+the target slip on the more-slipping wheel of an open diff (V12: right 0.10, left 0.07); the V12's semi-slicks are cold
+(293 K against a window from 320: 12 % of their grip); every run starts from idle at the green (no pre-rev: launch
+control would). The rotary's quarter is now set by P's shift times (placed for the old launch: it sits 0.9 s on the
+limiter, then three shifts in 1.5 s) and by its clutch (1.35 x the engine's own estimate of its peak) slipping after the
+launch: P should re-place the shifts and set car.clutchTorque.
+
+**Note from card D (24 Nov, e0bcf8f, accepted by the lead for card I)**: `ecu.redRpm` under ecu.model 1 is a stated limiter's speed when the build gives one (the idle + 1500 floor only without); two readers here follow it: the launch's fallback, 60 % of the redline (vehicle.fm, `wLaunch`), and the automatic final drive, 0.6 x the redline (car.fm, `finalDrive`). Whoever touches the redline moves both.
+
+# I: the tyres' start temperature (a140c6f)
+
+The tyres started near 200 K: init put them at rest before the Car seam had copied spec.env in (VehEnv at 0 K,
+tyre.fm's 200 K floor), and nothing set them again. Now: the air's temperature after every reset (`Vehicle::ambient()`,
+clamped to 200 to 350 K; outside 150 to 400 K, 293.15 K), and the middle of the compound's window once after a reset
+while a host holds `car.m1.warmTyres` (asked of C for `tee::warmEngine()`; told P). The reference's car (model 0) has
+no tyre temperature: untouched, null test green. Test `vehicle.tyres.start` (three builds x three airs: at the start,
+after a burnout and a reset, warm); it reads 200 K on the old code.
+
+Before / after, today's tree (V8 in the coupe, 2 s; P's qm runs: 60 ft, 0-100 km/h, quarter):
+- V8 wet TC on 5.66 / 6.41 m/s (slip 0.085 / 0.086), off 4.32 / 4.85; dry TC on 9.48 / 10.78 (0.090 / 0.091), off
+  7.00 / 7.92; driver's pedal 4.12 / 4.65; NA rotary (launch.weak) 72 km/h in 4.00 / 3.75 s.
+- rotary NA 2.42, 12.25, 17.26 / 2.34, 11.66, 16.92; v12-65 2.27, 5.13, 12.21 / 2.21, 4.80, 12.04; 7.0 pushrod 2.44,
+  5.52, 12.45 / 2.39, 5.19, 12.21; 3.9 TT 2.31, 5.02, 11.68 / 2.26, 4.97, 11.48.
+- H's [traction]: 5 of 5 (rolling 11.30 / 12.69 m/s; the spinning-car test's slip 0.093 / 0.088). No bound of mine
+  or H's needed changing. The rig's standalone tests always had the air (the rig writes spec defaults before init).
+- Governed diesel (combo/large-diesel, model 1, ecu.model 1, first, floored): the launch holds 1580 rpm (60 % of
+  its 2530 rpm limiter), no stall; with traction control on 7.68 m/s at 4 s against 7.79 off (no wheelspin there: the
+  launch's speed hold costs 1.4 %). Nothing wrong with D's limiter-as-redline for it.

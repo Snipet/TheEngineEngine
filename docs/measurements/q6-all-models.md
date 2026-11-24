@@ -203,3 +203,25 @@ drive-car (the retarded time moves the taps while the car accelerates): about 0.
 drive-car): listener 334 and 369 ns (Scene 212 / 228, of which `Scene::hear` 152 / 156; Listen 79 / 84; Hall 37 / 53),
 against 425 (hear 195) at 19:30's table: **+0.10 to +0.12 R over model 0, from +0.15**. The whole build 4021 and 4042
 ns in the profile's units (2.05 to 2.06 R).
+
+**The exhaust's row re-measured by Q after G's b861eca (lossHold skipped where the loss is exactly 0) and c4ce28f**
+(19:49 UTC, two profiles of the typical build, drive-car): exhaust 1692 and 1707 ns (Duct 891 / 911, XNet 430 / 426,
+`xNode` 170 / 176, XBuild 81 / 75 with `passGain` 11, Exhaust 105 / 101) against 1863 at 19:30's table: **+0.48 to
++0.48 R over model 0, from +0.56: over its card's 0.25 R by about 0.23 R now**. The whole build 4111 / 4185 ns in the
+profile's units (2.10 / 2.13 R: the container had just restarted, the spread is wider than the exhaust's saving).
+G's own figure for the same two: 1.749 -> 1.708 of the reference (drive-car, cmp-identical WAVs).
+
+## First-launch candidates (P's question, 20:06 UTC, at 4eaa5d2)
+
+qbench, A = B, least of 8 renders of 8 s; R = the reference V8 by `tee-bench --engine` in the same session (1866 ns
+drive-car, 1834 free-revs; the simulator's own V8 read 1.032 / 1.034 of it); host quiet (just restarted).
+
+| Archetype (every model on, as P built it) | drive-car | free-revs |
+|---|---:|---:|
+| `straight-six-twin-turbo-30.json` (3.0 L, two twin-scroll turbos, dual exhaust) | 1.46 R | 1.48 R |
+| `turbo-four-20-gdi.json` | 0.92 R | 0.92 R |
+| `three-cylinder-10-turbo.json` | 0.78 R | 0.80 R |
+
+**D's row after 3990ee4 and a845b07 (the physical cylinder's gamma)**, 20:10 UTC, two profiles of the typical build,
+drive-car: D's modules 567 / 565 ns (Cylinder 322 / 329, `stepAreas` 274 / 267) against 596 (Cylinder 365, stepAreas
+291) at 19:30: no cost from the change (within the profiles' spread; if anything a little lower).
