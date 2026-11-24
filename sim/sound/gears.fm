@@ -1,0 +1,291 @@
+// sound/gears.fm: the gearbox's and the final drive's whine, and the idle gears' rattle in neutral (module GearVoice).
+//
+// Whine. Two gears in mesh never pass the motion on perfectly smoothly: each tooth bends under the load and is cut a
+// little off its ideal form, so the output lags and leads the input by a few micrometres once per tooth (the
+// transmission error). That ripple shakes the shafts, the bearings and the case at the tooth-passing frequency (the
+// mesh frequency: a shaft's turns a second times its gear's teeth) and its harmonics. The case radiates it as the
+// whine. Its velocity grows with the mesh frequency for the same error, and the error has a part from the teeth's form
+// (with no load) and a part from their bending (with the load), so the whine's amplitude here is
+//     a = k * min(fm / 1 kHz, 4) * (0.12 + |load|)
+// (judgement: the 0.12 is the unloaded share, Smith, "Gear Noise and Vibration", 2003, ch. 2 puts the profile error of
+// a ground gear at a few micrometres beside a bending of some ten under full load). A helical gear has several teeth in
+// contact at once (a contact ratio over 2), which averages the error: it is some 10 to 20 dB quieter than a straight-cut
+// spur gear and its harmonics fall faster (Smith ch. 4; Houser's measurements give 8 to 15 dB): here straight cut is
+// 12 dB up, with harmonics 0.6 and 0.35 of the first against helical's 0.3 and 0.1. A gear a little off centre
+// (eccentric, its run-out) makes its error swell and fade once a turn: sidebands at the mesh frequency plus and minus
+// each shaft's own, here an amplitude modulation of 12 % by each of the two shafts in the mesh.
+//
+// The gearbox is a countershaft box: the input shaft's gear drives the layshaft through the constant mesh (19 teeth
+// into 19 * 1.55: the constant ratio 1.55, judgement, a typical one for a car's), and in gear g the layshaft drives
+// the output through that gear's pair, its ratio the gear's over the constant one, its teeth summing to 48 as every
+// pair on the same two shafts does (one centre distance, one module: zl + zo = 48, zo / zl the pair's ratio). In a
+// direct gear (a ratio within 2 % of 1) the input is locked to the output and no gear carries the load: only the
+// constant mesh turns, unloaded. Reverse goes through an idler, always straight cut (13 teeth on the layshaft), and is
+// the loudest. The final drive's pinion (`pinion`, else 41 / the ratio, rounded, at least 7) turns with the output, its
+// ring with the wheels; a hypoid's whine is the same tone at the pinion's teeth (its harmonics as a helical's).
+//
+// Rattle. In neutral with the clutch up the gearbox's input turns with the crank, and the gears that carry no load
+// (the layshaft's loose gears, the idle pairs) float within their backlash. The crank's speed rises and falls at each
+// firing; a loose gear, held only by the oil's drag, cannot follow, so it crosses its backlash and strikes the gear
+// that drives it, then the other flank: the rattle (Ozguven and Houser, "Mathematical models used in gear dynamics",
+// 1988; the impact model of Singh, Xie and Comparin, 1989). Here three loose gears, each an angle b of backlash at the
+// layshaft, its speed pulled toward the layshaft's by the oil's drag (rate kd a second), strike when their angle
+// relative to it reaches +-b; the strike's speed is how hard, and it rings the case (1.9, 3.3 and 5.2 kHz, judgement).
+// After a strike the gear comes off at 0.3 of its speed of approach. Nothing is scripted: the rattle comes and goes
+// with the crank's own fluctuation, loud at a rough idle and gone as the revs rise and smooth out. A dog box (straight
+// cut, large backlash at the dogs) has twice the backlash and four times the level; a helical manual's anti-rattle
+// springs leave it a quarter; a dual clutch's half; an automatic's converter or a CVT's belt none.
+//
+// Every level is judgement against the reference's engine bay (its chain's whine 0.004, its valve clicks some 0.1):
+// a helical box under full load about 0.01 at 1 kHz.
+#pragma once
+#include "lib/biquad.fm"
+#include "lib/noise.fm"
+#include "osc.fm"
+
+enum
+{
+    BOX_MANUAL = 0,
+    BOX_SEQUENTIAL = 1,
+    BOX_DUAL = 2,
+    BOX_AUTO = 3,
+    BOX_CVT = 4,
+};
+
+module GearVoice
+{
+    float rate;
+    float dt;
+    Noise noise;
+    SineTable* sn;
+    Shaft inShaft;      // the gearbox's input
+    Shaft lay;          // the layshaft
+    Shaft outShaft;     // the output, and the final drive's pinion with it
+    Shaft ring;         // the ring gear, with the wheels
+    float hzIn;         // turns a second, glided over the 16 samples
+    float hzInStep;
+    float hzOut;
+    float hzOutStep;
+    float kc;           // the constant mesh's ratio
+    float zIn;          // its input gear's teeth
+    float zPair;        // the gear in's layshaft gear (0: no pair loaded)
+    float zP;           // the pinion's teeth
+    float zRing;
+    float h2;           // the harmonics' shares
+    float h3;
+    Glide aConst;       // the amplitudes, set every 16
+    Glide aPair;
+    Glide aAxle;
+    // the rattle: three loose gears
+    float lu[3];        // each one's speed, rad/s at the layshaft
+    float lx[3];        // and its angle against the layshaft's, rad
+    float lb[3];        // its backlash, rad
+    float lk[3];        // the oil's drag, 1/s
+    float hzPrev;
+    float kick;
+    Biquad rcase[3];
+    Glide aRattle;
+    float rattleOn;
+    // out
+    float whine;        // the gearbox
+    float axle;         // the final drive
+    float rattle;       // the gearbox, neutral
+
+    void setup(float rateIn, SineTable* table)
+    {
+        rate = rateIn;
+        dt = 1.0f / rate;
+        sn = table;
+        noise.rs = 271828;
+        kc = 1.55f;
+        zIn = 19.0f;
+        rcase[0].setBandpass(1900.0f, 6.0f, rate);
+        rcase[1].setBandpass(3300.0f, 9.0f, rate);
+        rcase[2].setBandpass(5200.0f, 12.0f, rate);
+        lb[0] = 0.0040f;
+        lb[1] = 0.0055f;
+        lb[2] = 0.0070f;
+        lk[0] = 20.0f;
+        lk[1] = 35.0f;
+        lk[2] = 50.0f;
+        clear();
+    }
+
+    void clear()
+    {
+        aConst.clear();
+        aPair.clear();
+        aAxle.clear();
+        aRattle.clear();
+        hzIn = 0.0f;
+        hzInStep = 0.0f;
+        hzOut = 0.0f;
+        hzOutStep = 0.0f;
+        hzPrev = 0.0f;
+        kick = 0.0f;
+        zPair = 0.0f;
+        zP = 11.0f;
+        zRing = 41.0f;
+        for (int i = 0; i < 3; ++i)
+        {
+            lu[i] = 0.0f;
+            lx[i] = 0.0f;
+            rcase[i].clear();
+        }
+        whine = 0.0f;
+        axle = 0.0f;
+        rattle = 0.0f;
+        rattleOn = 0.0f;
+    }
+
+    // the mesh's amplitude for its frequency and load
+    float level(float fm, float load)
+    {
+        return fminf(fm * 0.001f, 4.0f) * (0.12f + fminf(fabsf(load), 1.5f));
+    }
+
+    // Every 16 samples. driven: 0 on the bench (no gearbox: silence); kind: BOX_*; straight: the forward gears straight
+    // cut (1) or helical (0); gear: -1 R, 0 N, 1 up; wIn: the gearbox's input (rad/s); ratio: the gearbox's (signed,
+    // 0 in N); fd: the final drive's; wOut: the output's (the propshaft's, rad/s); load: the torque the gearbox carries
+    // over the engine's most (signed: negative on the overrun); engaged: the clutch, 0 out to 1 in; kW, kA, kR: the
+    // whine's, the final drive's and the rattle's gains; pinion: the pinion's teeth (0: from fd)
+    void control(int driven, int kind, int straight, int gear, float wIn, float ratio, float fd, float wOut, float load,
+                 float engaged, float kW, float kA, float kR, int pinion)
+    {
+        const float hzI = driven != 0 ? fabsf(wIn) * 0.15915494f : 0.0f;
+        const float hzO = driven != 0 ? fabsf(wOut) * 0.15915494f : 0.0f;
+        hzInStep = (hzI - hzIn) * 0.0625f;
+        hzOutStep = (hzO - hzOut) * 0.0625f;
+        const float sc = straight != 0 ? 4.0f : 1.0f;
+        h2 = straight != 0 ? 0.6f : 0.3f;
+        h3 = straight != 0 ? 0.35f : 0.1f;
+        // the final drive's teeth
+        const float f = fmaxf(fd, 1.0f);
+        zP = pinion > 0 ? (float)pinion : fmaxf(floorf(41.0f / f + 0.5f), 7.0f);
+        zRing = floorf(f * zP + 0.5f);
+        const float r = fabsf(ratio);
+        const float e = fminf(fmaxf(engaged, 0.0f), 1.0f);
+        const float ld = load * e;
+        float cMesh = 0.0f;
+        float pMesh = 0.0f;
+        zPair = 0.0f;
+        if (driven != 0 && kind != BOX_CVT)
+        {
+            if (gear < 0)
+            {
+                // reverse: the constant mesh, and the idler's straight-cut pair
+                zPair = 13.0f;
+                cMesh = sc * level(hzI * zIn, ld);
+                pMesh = 4.0f * level(hzI / kc * zPair, ld) * (0.5f + 0.5f * e);
+            }
+            else if (gear > 0 && fabsf(r - 1.0f) > 0.02f)
+            {
+                const float p = r / kc;
+                zPair = floorf(48.0f / (1.0f + p) + 0.5f);
+                cMesh = sc * level(hzI * zIn, ld);
+                pMesh = sc * level(hzI / kc * zPair, ld);
+            }
+            else
+            {
+                // neutral, or a direct gear: the constant mesh turns with no load (in neutral only while the clutch is
+                // in: the input turns with the crank)
+                cMesh = sc * level(hzI * zIn, 0.0f) * (gear == 0 ? e : 1.0f);
+            }
+        }
+        // the final drive carries the wheels' torque: the gearbox's times its ratio, over the first gear's
+        const float aLd = gear != 0 ? ld * fminf(r / 3.0f, 1.5f) : 0.0f;
+        const float aA = driven != 0 ? level(hzO * zP, aLd) : 0.0f;
+        aConst.to(0.0025f * kW * cMesh);
+        aPair.to(0.0025f * kW * pMesh);
+        aAxle.to(0.003f * kA * aA);
+        // the rattle: in neutral, the clutch in, the box turning
+        float rk = 0.0f;
+        if (driven != 0 && gear == 0)
+            rk = kind == BOX_SEQUENTIAL ? 1.0f : (kind == BOX_MANUAL ? 0.25f : (kind == BOX_DUAL ? 0.5f : 0.0f));
+        rattleOn = rk * e;
+        const float bk = kind == BOX_SEQUENTIAL ? 2.0f : 1.0f;
+        lb[0] = 0.0040f * bk;
+        lb[1] = 0.0055f * bk;
+        lb[2] = 0.0070f * bk;
+        aRattle.to(kR * rattleOn);
+    }
+
+    // a mesh's tone: its fundamental and two harmonics at phase m (turns), from sin and cos of it
+    float tone(float m)
+    {
+        const float s = sn->at(m);
+        const float c = sn->cosAt(m);
+        return s + h2 * (2.0f * s * c) + h3 * s * (3.0f - 4.0f * s * s);
+    }
+
+    // One sample. crankHz: the crank's turns a second (its rise and fall at each firing drive the rattle)
+    void tick(float crankHz)
+    {
+        hzIn += hzInStep;
+        hzOut += hzOutStep;
+        inShaft.turn(hzIn, dt);
+        lay.turn(hzIn / kc, dt);
+        outShaft.turn(hzOut, dt);
+        ring.turn(hzOut * zP / fmaxf(zRing, 1.0f), dt);
+        whine = 0.0f;
+        axle = 0.0f;
+        const float ac = aConst.next();
+        const float ap = aPair.next();
+        const float aa = aAxle.next();
+        if (ac != 0.0f || ap != 0.0f)
+        {
+            const float si = sn->at(inShaft.ph);
+            const float sl = sn->at(lay.ph);
+            const float so = sn->at(outShaft.ph);
+            if (ac != 0.0f)
+                whine += ac * (1.0f + 0.12f * si + 0.12f * sl) * tone(inShaft.mesh(zIn));
+            if (ap != 0.0f)
+                whine += ap * (1.0f + 0.12f * sl + 0.12f * so) * tone(lay.mesh(zPair));
+        }
+        if (aa != 0.0f)
+        {
+            const float so = sn->at(outShaft.ph);
+            const float sr = sn->at(ring.ph);
+            // (a hypoid's: helical's harmonics)
+            const float m = outShaft.mesh(zP);
+            const float s = sn->at(m);
+            const float c = sn->cosAt(m);
+            axle = aa * (1.0f + 0.12f * so + 0.12f * sr) * (s + 0.3f * (2.0f * s * c) + 0.1f * s * (3.0f - 4.0f * s * s));
+        }
+        // the rattle
+        const float ar = aRattle.next();
+        const float w = crankHz * 6.28318531f / kc;     // the layshaft's speed (rad/s): the input's with the crank's
+        rattle = 0.0f;
+        if (ar != 0.0f || rattleOn != 0.0f)
+        {
+            float k = 0.0f;
+            for (int i = 0; i < 3; ++i)
+            {
+                lu[i] += (w - lu[i]) * lk[i] * dt;
+                lx[i] += (lu[i] - w) * dt;
+                if (lx[i] > lb[i] || lx[i] < -lb[i])
+                {
+                    const float vr = lu[i] - w;
+                    lx[i] = lx[i] > 0.0f ? lb[i] : -lb[i];
+                    // (only a strike toward the flank: off it, it is already leaving)
+                    if (vr * lx[i] > 0.0f)
+                    {
+                        k += fabsf(vr) * (0.8f + 0.2f * noise.rnd());
+                        lu[i] = w - 0.3f * vr;
+                    }
+                }
+            }
+            const float x = k * ar;
+            rattle = 0.05f * (rcase[0].tick(x) + 0.7f * rcase[1].tick(x) + 0.5f * rcase[2].tick(x));
+        }
+        else
+        {
+            for (int i = 0; i < 3; ++i)
+            {
+                lu[i] = w;
+                lx[i] = 0.0f;
+            }
+        }
+        hzPrev = crankHz;
+    }
+};

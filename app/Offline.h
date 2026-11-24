@@ -56,6 +56,9 @@ namespace tee::app
         // the run stops with it.
         std::string problem;
         // The simulator's document on disk and the library of builds (null: not the simulator's frame). Owned by keep.
+        // The frame's FrameServices::saveText calls this once the window sets it (tee-headless never does: the frame
+        // then has none, and a workspace copies its text instead).
+        std::shared_ptr<std::function<bool(const std::string&, const std::string&, std::string&)>> saveText;
         files::BuildFile* document = nullptr;
         files::BuildLibrary* library = nullptr;
 
@@ -66,5 +69,6 @@ namespace tee::app
     };
     struct Engine;
     // `controls` gives the Panel's services and takes the frame's mode and clutch; it outlives the Panel.
-    Shown makePanel(const Options&, Engine&, input::Controls& controls);
+    // `window`: the window's run (it can serve a save dialog), not tee-headless's.
+    Shown makePanel(const Options&, Engine&, input::Controls& controls, bool window = false);
 }

@@ -41,6 +41,30 @@ module EcuKey
         enrich = 1.0f;
     }
 
+    // Every 16 samples, when the engine keeps the state itself (its ignition, the reference's key mapping): the
+    // starter, the time since the start, the fuel's cuts and enrichment for that state, as control() makes them
+    void follow(int s, float omega, float avg, float warm, float coolant, float d16)
+    {
+        state = s;
+        starter = s == ENGINE_CRANKING;
+        stallT = 0.0f;
+        sinceStart = s == ENGINE_RUNNING ? fminf(sinceStart + d16, 600.0f) : 0.0f;
+        fuel(omega, avg, warm, coolant);
+    }
+
+    // The fuel's cuts and its enrichment for the state
+    void fuel(float omega, float avg, float warm, float coolant)
+    {
+        const float rpm = omega * 9.5492966f;
+        const bool crankLow = warm >= 1.0f ? rpm < 120.0f : avg < 120.0f - 80.0f * (1.0f - warm);
+        noFuel = state == ENGINE_STOPPED || state == ENGINE_RUNDOWN || (state == ENGINE_CRANKING && crankLow);
+        const float cold = fminf(fmaxf((363.0f - coolant) / 110.0f, 0.0f), 1.0f);   // 1 at -20 C, 0 at 90 C
+        const float crank = 1.0f - 0.3f * cold;
+        const float after = 1.0f - (1.0f - crank) * expf(-sinceStart / 20.0f);
+        const float run = 1.0f - 0.08f * fminf(fmaxf((363.0f - coolant) / 90.0f, 0.0f), 1.0f);
+        enrich = state == ENGINE_CRANKING ? crank : fminf(after, run);
+    }
+
     // Every 16 samples: the key (0, 1, 2), whether the starter may turn it (in neutral, or the clutch down), the
     // crank's speed (rad/s) and its smoothed rpm, the idle speed (rpm), how warm the engine is (0 at the air outside, 1
     // at its thermostat) and the coolant (K)
@@ -74,13 +98,6 @@ module EcuKey
         if (state == ENGINE_RUNDOWN && omega < 2.0f)
             state = ENGINE_STOPPED;
         sinceStart = state == ENGINE_RUNNING ? fminf(sinceStart + d16, 600.0f) : 0.0f;
-        const bool crankLow = warm >= 1.0f ? rpm < 120.0f : avg < 120.0f - 80.0f * (1.0f - warm);
-        noFuel = state == ENGINE_STOPPED || state == ENGINE_RUNDOWN || (state == ENGINE_CRANKING && crankLow);
-        // a start's enrichment, and a cold engine's
-        const float cold = fminf(fmaxf((363.0f - coolant) / 110.0f, 0.0f), 1.0f);   // 1 at -20 C, 0 at 90 C
-        const float crank = 1.0f - 0.3f * cold;
-        const float after = 1.0f - (1.0f - crank) * expf(-sinceStart / 20.0f);
-        const float run = 1.0f - 0.08f * fminf(fmaxf((363.0f - coolant) / 90.0f, 0.0f), 1.0f);
-        enrich = state == ENGINE_CRANKING ? crank : fminf(after, run);
+        fuel(omega, avg, warm, coolant);
     }
 };

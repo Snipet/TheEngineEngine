@@ -33,6 +33,10 @@ namespace tee::ui
         using N = ExhaustNames;
 
         constexpr double kAmbient = 101325.0;
+        // The heat scale's ends (K): cold below 300, the ink at 400, hottest at 1373 (1100 C), which the gas at the
+        // ports reaches at full load (the integrator measured 1100 to 1330 K).
+        constexpr double kHeatTop = 1373.0;
+        Col heat(const Palette& p, double kelvin) { return p.heat(kelvin, 300.0, 400.0, kHeatTop); }
         constexpr float kPulseScale = 40e3f;       // Pa over the air outside at the trace's full swing
         constexpr float kPulseSwing = 15.0f;       // px
         constexpr int kHistory = 48;               // Scope copies kept for the slow replay
@@ -407,13 +411,13 @@ namespace tee::ui
         Col pipeFill(const Palette& p, int section) const
         {
             const double t = wall(section);
-            return std::isfinite(t) ? p.heat(t) : walls() ? Palette::mix(p.panel, p.text, 0.32f) : p.ground;
+            return std::isfinite(t) ? heat(p, t) : walls() ? Palette::mix(p.panel, p.text, 0.32f) : p.ground;
         }
         // A part's own stroke (a can's outline, a scroll): its tint, or the dim ink.
         Col partInk(const Palette& p, int section) const
         {
             const double t = wall(section);
-            return std::isfinite(t) ? p.heat(t) : p.dim;
+            return std::isfinite(t) ? heat(p, t) : p.dim;
         }
         Col pipeEdge(const Palette& p) const
         {
@@ -446,11 +450,11 @@ namespace tee::ui
             const int n = 24;
             for (int i = 0; i < n; ++i)
             {
-                const double k = 350.0 + (1100.0 - 350.0) * (i + 0.5) / n;
-                c.rrect(x0 + w * static_cast<float>(i) / n, y, w / n + 0.5f, 6.0f, 0.0f, p.heat(k));
+                const double k = 350.0 + (kHeatTop - 350.0) * (i + 0.5) / n;
+                c.rrect(x0 + w * static_cast<float>(i) / n, y, w / n + 0.5f, 6.0f, 0.0f, heat(p, k));
             }
             c.text(temp(350.0).c_str(), x0, y + 9.0f, look::kUnit, p.label);
-            const std::string hot = temp(1100.0);
+            const std::string hot = temp(kHeatTop);
             c.text(hot.c_str(), x1 - c.textWidth(hot.c_str(), look::kUnit), y + 9.0f, look::kUnit, p.label);
         }
 
@@ -927,7 +931,7 @@ namespace tee::ui
             const auto gas = [&](const char* label, double k, bool has) {
                 if (!has)
                     return;
-                x += look::readout(c, p, x, y, label, temp(k), {}, look::kNumberM, std::isfinite(k) ? p.heat(k) : kClear) + 28.0f;
+                x += look::readout(c, p, x, y, label, temp(k), {}, look::kNumberM, std::isfinite(k) ? heat(p, k) : kClear) + 28.0f;
             };
             gas("PORTS", tp, true);
             gas("COLLECTOR", tc, chain);

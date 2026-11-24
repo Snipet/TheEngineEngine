@@ -7,6 +7,7 @@
 #include "app/Look.h"
 #include "views/fx/Fx.h"
 
+#include <cmath>
 #include <fstream>
 #include <regex>
 #include <sstream>
@@ -63,6 +64,10 @@ namespace
         CHECK(prims.shaders.empty());                    // nothing recorded: no placeholder box
         for (const fx::Effect e : { fx::Effect::glow, fx::Effect::flame, fx::Effect::smoke, fx::Effect::shimmer })
             CHECK(!fx::available(e));
+        // The SI helpers' amounts: nothing below their thresholds, all above.
+        CHECK(fx::hotWallAmount(650.0) == 0.0f && fx::hotWallAmount(1200.0) == 1.0f && fx::hotWallAmount(900.0) > 0.4f);
+        CHECK(fx::tyreSmokeAmount(0.05) == 0.0f && fx::tyreSmokeAmount(-0.6) == 1.0f);
+        CHECK(fx::heatHazeAmount(std::nan("")) == 0.0f && fx::heatHazeAmount(1000.0) == 1.0f);
         fx::setEnabled(false);
         CHECK(!fx::enabled());
         fx::setEnabled(true);

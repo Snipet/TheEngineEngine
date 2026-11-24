@@ -185,7 +185,8 @@ tee_ui_warnings(tee_ui_app)
 # empty where no GPU layer is built. Here, in tee_ui_app's directory, so that their shaderc commands are attached.
 set(_tee_fx "${TEE_UI_REPO}/shaders/fx")
 tee_add_panel_shaders(tee_ui_app NAME fx GUI "${_tee_fx}/fx.gui"
-  SHADERS "${_tee_fx}/glow.sc" "${_tee_fx}/flame.sc" "${_tee_fx}/smoke.sc" "${_tee_fx}/shimmer.sc")
+  SHADERS "${_tee_fx}/glow.sc" "${_tee_fx}/flame.sc" "${_tee_fx}/smoke.sc" "${_tee_fx}/shimmer.sc"
+  OPTIONAL)   # an effect a back end refuses is left out there, not a failed build (cmake/TeeShaders.cmake)
 
 # J2: the binding to card C's tee::Build (ui/kit/bind/host/), where the host library is (the root's build).
 if(TARGET tee_host)

@@ -2,9 +2,9 @@
 
 *What `sim/ecu/` models, with each rule, where each number comes from, and which are judgement. `ecu.model 0` (the
 default) is the reference's ECU unchanged (its `control16`'s driver, idle valve, spark trim, limiter, overrun cut and
-state machine; `charge()`'s knock rule, one retard for all cylinders, and pops by chance). Status: built and tested
-standalone on a one-line engine (tests H3, H4, and the parts' below); not yet wired into the simulator, which waits for
-the split (K3b): see "Integration" at the end.*
+state machine; `charge()`'s knock rule, one retard for all cylinders, and pops by chance). Status: built, tested
+standalone on a one-line engine (H3, H4, the parts) and wired into the simulator's `Ecu` (`sim/ecu/ecu.fm`) behind
+`ecu.model`: see "Integrated" at the end.*
 
 ## Files
 
@@ -18,7 +18,7 @@ the split (K3b): see "Integration" at the end.*
 | `knockctl.fm` | `KnockControl`: retard per cylinder |
 | `overrun.fm` | `OverrunCut` (the reference's), `FuelAccount` (the bangs by account) |
 | `traction.fm` | `TractionControl` (and the pit limiter), `AntiLag`, `Nitrous` (their switching) |
-| `settings.fm` | the Spec-shaped settings, appended to `spec.ecu` at integration |
+| `../spec/ecu.fm` | the settings' modules and `spec.ecu`'s fields of model 1 |
 | `ecu1.fm` | `Ecu1`: every piece in order every 16 samples, and each firing's decision (`fire`) |
 
 ## Maps
@@ -98,10 +98,12 @@ the pipe.
 
 The bangs by account (`FuelAccount`, per bank): fuel and air leaving a cylinder unburned are added to the bank's store;
 both flow out with a 0.25 s time constant (judgement); a hazard rises at `40 /s x hot x burnable / 2 mg`, hot = 0 under
-900 K to 1 at 1200 K (judgement for the self-ignition of a rich exhaust's CO, H2 and fuel with air), burnable = the
+650 K to 1 at 900 K of the simulator's port temperature (`exh.tPort`, which reads some 770 K at full load on the
+limiter, some 300 K under measured exhaust temperatures: judgement, for the self-ignition of a rich exhaust's CO, H2
+and fuel with air at some 950 to 1200 K), burnable = the
 fuel the store's air can burn; at 1 the burnable fuel burns and card G's pop gets an amplitude of 3e9 Pa a kg
 (judgement: a few milligrams give the reference's 20 to 30 kPa). Standalone test (part of the card's 9): at 3000 rpm,
-1100 K, 2 mg a firing gives 99 bangs in 2 s, 1.9 mg burned a firing, the largest 23 kPa; 8 mg gives 199 bangs, 7.8 mg
+1100 K, 2 mg a firing gives 133 bangs in 2 s, 1.9 mg burned a firing, the largest 23 kPa; 8 mg gives 199 bangs, 7.8 mg
 a firing, the largest 47 kPa (four times the fuel: four times what burns, larger pulses); no fuel, no air, or a pipe at
 800 K: none.
 
@@ -126,15 +128,36 @@ asks lambda times `1 - 0.3 cold` (cold 1 at -20 C, 0 at 90 C; judgement), decayi
 engine runs lambda times `1 - 0.08` at 0 C to 1 warm (judgement). Test H4: it cranks, runs, settles over 700 rpm,
 stalls under a 400 N m load, and runs down to rest with the key off.
 
-## Telemetry (`tel.ecu`, at integration)
+## Telemetry (`tel.ecu`)
 
-Spark asked and delivered, the knock retard in force (the most, and per cylinder), knocks counted, lambda asked and
-seen (`watch.fm`'s sensor), injector duty, fuel flow, exhaust temperature, the half-burn angle, peak pressure and its
-angle; the flags (`ECU_FLAG_*`: limiter, fuel cut, spark cut, overrun, launch, flat-shift, anti-lag, nitrous, traction,
-pit, knock); the idle valve; the state.
+`knockRetard` (degrees, the most of the cylinders'; the reference's under model 0), and under model 1 (0 otherwise):
+`advanceAsked` and `advance` (degrees before the top: asked, and the last firing's with its knock retard), `knockByCylinder[16]`,
+`knock` (a count since the start), `lambdaTarget`, `lambda` (the sensor's), `injectorDuty`, `fuelFlow` (kg/s),
+`halfBurn`, `peakPressure`, `peakAngle` (cylinder 1's last cycle), `flags` (`ECU_FLAG_*`: 1 limiter, 2 fuel cut, 4
+spark cut, 8 overrun, 16 launch, 32 flat-shift, 64 anti-lag, 128 nitrous, 256 traction, 512 pit, 1024 knock retard),
+`idleValve`, `idleTarget` (rad/s), `boostTarget` (Pa), `state`, `smoke` (0: the diesel's is not wired yet), `limiter`
+(1 while a limiter acts), `load` (the maps' y axis now). Exhaust temperature is `exhaust.portTemperature`.
 
-## Integration (waits for K3b)
+## Integrated
 
-Append `EcuSettings`' fields to `spec.ecu`; in the carved `Ecu`, `ecu.model 1` fills an `EcuIn` every 16 samples and runs `Ecu1`,
-`Combustion` asks `Ecu1.fire(c)` at each intake closing; keep model 0 the reference bit for bit (the null test, card
-test 5); then the integrated tests 6 to 11.
+`Ecu::control` runs the reference's control and, under `ecu.model 1`, `Ecu1` over it (`control1`); the state machine,
+the key mapping and the held-speed driver stay the reference's under both models (Ecu1's own `EcuKey` follows the
+engine's state for its fuel cuts and enrichment). Both models 0: the null test identical to the bit (59 pairs).
+
+Integrated tests (`tests/sim/ecu/IntegratedTest.cpp`, the V8 in neutral in the car):
+
+- **9**: a clean overrun (a full fuel cut) makes no bang; a spark-cut limiter makes 638 in 3 s (30 g of fuel burned in
+  the pipe: the rich full-load charges' whole fuel); the overrun's fuel at a share of 0.1 and 0.4 (30 degrees late)
+  burns 7.2 and 19.9 mg in the pipe over 2.5 s of lift (2 and 4 bangs: the pipe cools under its lighting threshold
+  within a second or two of the lift).
+- **11**: random pedals (and the launch button) through each limiter kind, 40 s each in ctest (`H_SOAK_SECONDS=600` for
+  the card's ten minutes, by hand): finite, within +-1, the most speed 6457 to 6709 rpm against the 6500 redline (the throttle kind's the highest), still
+  running.
+- The bake: each `ctl.bakeMaps` press writes all seven maps into the Scope; the spark's first point is the reference's
+  formula.
+- **10** (traction on card I's car) waits for card I's slip.
+
+**The idle and card C's validation**: the reference's V8 idles at some 1200 rpm (900 to 1500, loping) on a cold
+target of some 1200 after a start in 300 K air: the cam's dilution (the reference's recursion in the charge) holds it
+up and makes it lope. `ecu.idle.speed` (model 1's warm idle; 0 the layout's) set to 800 rpm stalls it within seconds.
+Model 1 does not bring the V8 into 600 to 900; that needs the charge's dilution toll at a slow idle looked at again.

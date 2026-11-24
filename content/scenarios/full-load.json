@@ -1,0 +1,20 @@
+{
+  "format": "tee-scenario",
+  "version": 1,
+  "name": "full-load",
+  "description": "On the engine dyno, warm: started, then held at 4000 rpm (419 rad/s) at full throttle for six seconds, the exhaust's gas settling (some 0.8 s at the ports).",
+  "seconds": 8,
+  "warm": true,
+  "events": [
+    { "t": 0.0, "spec": { "env.temperature": 300 }, "ctl": { "mode": 2, "dynoSpeed": 419, "dynoRate": 0, "ignition": 1 } },
+    { "t": 0.25, "ctl": { "ignition": 2 } },
+    { "t": 1.5, "ctl": { "ignition": 1 } },
+    { "t": 2.0, "ctl": { "throttle": 1 }, "ramp": 0.2 }
+  ],
+  "assertions": [
+    { "tel": "engine.state", "measure": "last", ">=": 2, "source": "it started and runs" },
+    { "tel": "engine.speed", "measure": "mean", "during": [6, 8], "within": [400, 440], "source": "the dyno holds 419 rad/s" },
+    { "audio": "finite" },
+    { "audio": "peak", "<=": 1, "source": "02-contracts.md, section 1: within +-1" }
+  ]
+}
