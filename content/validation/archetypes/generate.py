@@ -89,6 +89,14 @@ def targets(slug, b):
     boosted = s["boost"]["kind"] != "Natural"
     auto = car["gearbox"] in ("Automatic", "CVT")
     dyno = {"from": round(max(ilo * RPM, 60.0), 1), "to": round(red, 1)}
+    if boosted:
+        # on the full engine dyno, held at each speed 5 s before 1 s is measured: the predicted curve's short settling
+        # leaves a boosted engine's slow states (knock retard, the intercooler's core, the shaft) unsettled and reads
+        # some 10 % high (N2's measurement on the 2.0 L turbo four)
+        lo = max(1500.0, ilo * 1.5)
+        n = 9
+        dyno = {"steps": [round((lo + (0.98 * red / RPM - lo) * i / (n - 1)) * RPM, 1) for i in range(n)],
+                "settle": 5, "measure": 1}
     src = "published figures of its kind (%s): %s" % (firm, b["notes"].split("(")[1].split(")")[0] if "(" in b["notes"] else "")
     out = []
 

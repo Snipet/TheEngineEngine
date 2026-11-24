@@ -26,6 +26,10 @@ enum
     BTN_LAUNCH = 2,
     BTN_NITROUS = 4,
     BTN_HORN = 8,
+    BTN_SPLITTER = 16,     // card D2 (allowed by the lead): a truck's eighteen-speed, held: the splitter's high half
+    BTN_RANGE = 32,        // held: the high range
+    BTN_ENGINE_BRAKE = 64, // held (or latched by the shell): the compression brake on, at the stage spec.ecu.brakeSwitch
+                           // sets (High when that switch is Off: a stalk's)
 };
 
 module Controls

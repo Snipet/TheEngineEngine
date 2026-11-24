@@ -2,39 +2,37 @@
 
 Package U3, branch `claude/awesome-gates-ntdb58`. Pages: `docs/ui/air.md` and `docs/ui/exhaust.md`. Paths: `ui/views/{air,exhaust}/`, `tests/ui/views/{Air,Exhaust}Tests.cpp`.
 
-**Done** (`tee-view-tests`, 23 tests, all pass on Linux):
-- `ui.exhaust.*`: model, stage, builds, select, absent, rest, slow, sizes, inspector, sheet, framestage, text (no two texts meet, every build, both frame stages).
-- `ui.air.*`: model, stage, builds, select, absent, rest, sizes, inspector, text, textcheck, framestage (at U1's real stage for 1100x700 and 1600x1000: every part inside, none overlapping).
-- Builds: EXHAUST the card's four, a V12 on logs, a turbo boxer; AIR an ITB four, a turbo with anti-lag and nitrous, twin, Roots, sequential, compound, a centrifugal blower.
+**Done** (`tee-view-tests`, 28 U3 tests, all pass on Linux):
+- `ui.exhaust.*`: model, stage, builds, select, absent, rest, slow, sizes, inspector, sheet, framestage, text, effects, twostroke, ductmid.
+- `ui.air.*`: model, stage, builds, select, absent, rest, sizes, inspector, framestage, text, textcheck, scopemap, ram.
+- Text checks: no two texts meet on any build at both frame stages. On the two-stroke, no trace crosses a label either
+  (the port plot's OPENS and CLOSES now sit above its frame).
+- Builds: EXHAUST four-stroke (card's four, V12 on logs, turbo boxer) and two-stroke (single, twin with silencers).
+  AIR: ITB four, turbo with anti-lag and nitrous, twin, Roots, sequential, compound, centrifugal, variable runners.
 
-**Goldens**: 16 `air.*` and 15 `exhaust.*`, at density 1 and 2, at 1100x700 and 1600x1000, in graphite and paper.
-- All PNGs from the software rasteriser (no GPU here). Looked at before blessing: every build, select, absent, paper, U1's frame.air and frame.exhaust.
-- Contact sheet: `out/ui/sheet.u3.png` (test `ui.exhaust.sheet`).
-**Read today, on the branch**:
-- Telemetry: `engine.manifold`, `engine.throttle`, `boost.pressure`, `exhaust.portTemperature`.
-- Scope: `pipePressure`.
-- Fields: `engine.layout`, `boost.kind`, `exhaust.headers`, `exhaust.pipe`, `env.*`.
+**Goldens**: `air.*` and `exhaust.*` at density 1 and 2, 1100x700 and 1600x1000, graphite and paper.
+- All from the software rasteriser (no GPU here); every PNG looked at before blessing.
+- Contact sheet: `out/ui/sheet.u3.png` (`ui.exhaust.sheet`).
 
-**Read but not on the branch yet** (each draws a dash or a neutral tint; one table each, `ExhaustPaths`/`ExhaustNames`, `AirPaths`/`AirNames`):
-- Fields: buildspec.fm's XSpec as `exhaust.<field>[i]`; machinespec.fm's as `boost.<field>`; lab-spec.fm's as `intake.<field>`; `boost.layout`; `engine.displacement`.
-- Exhaust telemetry:
-  - temperatures: `exhaust.collectorTemperature`, `exhaust.tailTemperature`;
-  - walls: `exhaust.wallPrimaries|Collectors|Merges|Main|Link|Mufflers|Tails`;
-  - `exhaust.tailLevel[s]`, `exhaust.valve[s]`.
-- Boost telemetry:
-  - turbos: `boost.shaftSpeed[i]`, `boost.ratio[i]`, `boost.flow[i]` (corrected), `boost.compressorTemperature[i]`, `boost.gate[0]`, `boost.vanes[0]`;
-  - charge and supercharger: `boost.target`, `boost.intercoolerTemperature`, `boost.superchargerPower`, `boost.bypass`, `boost.blowOff`;
-  - extras: `boost.antiLag`, `boost.nitrous`, `boost.bottle`.
-- Intake telemetry: `intake.boxPressure`, `intake.plenumTemperature`.
+**Bound to the simulator's names**:
+- EXHAUST, card G: crossKind, mufKind; tel.exhaust gas/wallTemperature[7], ends/endLevel/endSlot, valve, flame.
+  Scope: exhaustPressure/exhaustX (cylinder 1's path), ductUsed/ductNear/ductFar (every pipe's own pulse).
+- AIR, card F: tel.boost.*. The Scope's compressor map is used when present; otherwise the mirror of compressor.fm.
+- AIR, card E: intake names, and ram tuning from the runner length (mirrors E's IntegratedTest ring()).
+- Two-stroke, card T: the engine.ts* fields; the tuned speed mirrors chamber.fm's `tuned`.
 
-**Clashes to settle at integration**: XSpec's `crossover` and `muffler` collide with spec.exhaust's dials of those names. The model reads a 3-way choice, the demo's switch, or the old dial. The arrays are read as `exhaust.muffler[s]`.
+**Provisional** (one line each in `ExhaustNames`; until then a dash or a model trace):
+- `engine.tsPipeTemperature` (pipe gas, else 680 K assumed and said so).
+- `tsPortPressure` (port pressure each degree, else U1's `portExhaust`).
+  Waiting on card T's names.
 
-**Demo data**: through U1's hook (`TEE_UI_DEMO`). **EXHAUST on card G's final names**: crossKind, mufKind, tel.exhaust gas/wallTemperature[7], ends/endLevel/endSlot, valve, flame; Scope exhaustPressure/X, ductUsed/Near/Far (every pipe's pulse). **AIR on card F's integration**: tel.boost.* bound; the Scope's map used when present (`ui.air.scopemap`).
-**Wanted**:
-- From U1:
-  - `frame.ribbon` pictures the AIR stage, so its golden moves with my work. Please re-bless it, or picture a placeholder there.
-  - Today `ui.frame.workspaces` fails on scope.gui, and `ui.build.frame` fails on engine.bankAngle fields: not mine.
-- From the lead: a simulator "slow time" control would let SLOW show the waves truly slowed. Today it replays the
-  copies taken at frame rate at an eighth of their pace.
+**Checked live**: card G's wiring (cf267fb, 95d7d16) under the real simulator, exhaust.model 1, default V8: every
+tel.exhaust and Scope name above reads; ductUsed's slots (0-7, 32-33, 48, 53-55, 59, 63, 68-70, 74, 78) are slots.fm's.
+G's `ductMid` (dacb9f8) bound: each pipe's trace bends through its middle (`ui.exhaust.ductmid`).
+
+**Whole suite**: `tee-view-tests all` 111 of 111 pass after U1's LISTEN re-bless.
+
+**Wanted from the lead**: a simulator "slow time" control would let SLOW show the waves truly slowed. Today SLOW replays
+the frame-rate copies at an eighth of their pace.
 
 **Not run**: macOS and Windows builds (CI); the GPU path. **Kit**: no change. FunkGui and FMinus: no issues met.

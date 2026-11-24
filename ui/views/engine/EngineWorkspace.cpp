@@ -117,6 +117,8 @@ namespace tee::ui
             k.mix(slow_).mix(log_).mix(paceIndex_).mix(scopeVersion_).mix(tab_).mix(compact_);
             k.mix(static_cast<float>(ctx_.live.get(kTelSpeed)));
             k.mix(static_cast<float>(ctx_.live.get(kTelIvo))).mix(static_cast<float>(ctx_.live.get(kTelEvo)));
+            for (const char* n : { kTelPowerValve, kTelCrankcase, kTelReed })
+                k.mix(static_cast<float>(ctx_.live.get(n)));
             return k.h;
         }
 
@@ -179,18 +181,25 @@ namespace tee::ui
                                    note);
             }
             if (s == "engine.bore")
+            {
+                pages::Section cylinder{ "CYLINDER", cat({ both(EF::displacement), both(EF::boreStroke), both(EF::bore), both(EF::stroke),
+                                                           both(EF::rod), both(EF::compression) }) };
+                pages::Section masses{ "MOVING MASSES", cat({ both(EF::pistonMass), both(EF::rodMass), both(EF::rodRecip), both(EF::flywheel),
+                                                              { "engine.flywheel", "engine.balance1", "engine.balance2" } }) };
+                // the build's oddities, in amber words under the fields they concern
+                const Model& md = model();
+                for (const Warning& w : geometryWarnings(ctx_.doc, md.layout, md.cyl, md.derived))
+                    (w.fields.front() == EF::pistonMass ? masses : cylinder).warnings.push_back(w.text);
                 return pages::page(ctx_.doc,
-                                   { { "CYLINDER", cat({ both(EF::displacement), both(EF::boreStroke), both(EF::bore), both(EF::stroke),
-                                                         both(EF::rod), both(EF::compression) }) },
-                                     { "MOVING MASSES", cat({ both(EF::pistonMass), both(EF::rodMass), both(EF::rodRecip), both(EF::flywheel),
-                                                              { "engine.flywheel", "engine.balance1", "engine.balance2" } }) },
-                                     { "BURN AND SCAVENGING", model().layout.twoStroke
+                                   { cylinder, masses,
+                                     { "BURN AND SCAVENGING", md.layout.twoStroke
                                                                   ? std::vector<std::string>{ "engine.tsSpark", "engine.tsBurnDur", "engine.tsAfr",
                                                                                               "engine.tsMixing", "engine.tsShortCircuit" }
                                                                   : std::vector<std::string>{} },
                                      { "FRICTION", { "engine.friction", "engine.fricConst", "engine.fricPeak", "engine.fricSpeed",
                                                      "engine.fricSpeed2", "engine.fricBearing", "engine.frictionValvetrain", "engine.alternator",
                                                      "engine.airCon" } } });
+            }
             return {};
         }
 
@@ -898,7 +907,12 @@ namespace tee::ui
             const Units& u = ctx_.units;
 
             // the crankcase: a volume round the crank, tinted by its pressure (the number under the drawing)
-            const double pcc = turning && fits ? at(spi_, ca) : kNaN;
+            // the crankcase's pressure: the Scope's at this angle, else (cylinder 1, live) the simulator's now
+            const bool liveNow = turning && !slow_ && cyl == 0;
+            double pcc = turning && fits ? at(spi_, ca) : kNaN;
+            if (!std::isfinite(pcc) && liveNow)
+                if (const double v = ctx_.live.get(kTelCrankcase); std::isfinite(v) && v > 0.0)
+                    pcc = v;
             const Col caseInk = std::isfinite(pcc) ? p.over(p.pressure(pcc, 101325.0, 180000.0), 0.45f) : p.panel;
             const float caseW = std::max(2.0f * (hb + wall), 2.0f * web + static_cast<float>(0.5 * B * k));
             const float caseBot = crankY + web + static_cast<float>(0.3 * B * k);
@@ -908,7 +922,7 @@ namespace tee::ui
             c.rrect(cx + hb, headBot, wall, linerBot - headBot, 2.0f, p.raised, 1.0f, p.edge);
             c.rrect(cx - hb - wall, headTop, 2 * (hb + wall), headBot - headTop, 6.0f, p.raised, 1.0f, p.edge);
             // the ports, as windows in the walls: open (bright) from the top edge down to the crown, covered below it
-            const double exNow = ts.exDurAt(ctx_.live.get(kTelSpeed));
+            const double exNow = exhaustDurationNow(ts, ctx_.live);
             const auto port = [&](bool right, double dur, Col ink) {
                 const double h = portHeight(dur, r, L);
                 if (!(h > 0.0))
@@ -950,7 +964,10 @@ namespace tee::ui
             if (ts.inlet == Inlet::reed)
             {
                 // the reed's petals, opened by the crankcase's pull below the air outside
-                const double open = std::isfinite(pcc) && std::isfinite(ts.reedFull) && ts.reedFull > 0.0
+                // the simulator's own opening when live, else from the crankcase's pull against tsReedFull
+                const double reedNow = liveNow ? ctx_.live.get(kTelReed) : kNaN;
+                const double open = std::isfinite(reedNow) ? std::clamp(reedNow, 0.0, 1.0)
+                    : std::isfinite(pcc) && std::isfinite(ts.reedFull) && ts.reedFull > 0.0
                     ? std::clamp((101325.0 - pcc) / ts.reedFull, 0.0, 1.0) : 0.0;
                 const float len = duct * 1.1f;
                 for (const float side : { -1.0f, 1.0f })

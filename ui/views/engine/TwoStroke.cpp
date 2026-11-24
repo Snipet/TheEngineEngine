@@ -105,4 +105,12 @@ namespace tee::ui::engine
             return "SCAVENGE";
         return a < 180.0 ? "BLOWDOWN" : "TRAPPING";
     }
+
+    double exhaustDurationNow(const TwoStroke& t, const Live& live)
+    {
+        const double pv = live.get(kTelPowerValve);
+        if (t.hasValve() && std::isfinite(pv))
+            return t.valveDur + (t.exDur - t.valveDur) * std::clamp(pv, 0.0, 1.0);
+        return t.exDurAt(live.get(kTelSpeed));
+    }
 }

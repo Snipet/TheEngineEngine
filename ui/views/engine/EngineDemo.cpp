@@ -7,6 +7,17 @@ namespace tee::ui
 {
     void engineDemo(DemoExtras& x)
     {
+        if (x.engine != nullptr)
+        {
+            // card T's telemetry as its 125 cc single gives it at 11 000 rpm (0 for a four-stroke: the stages read
+            // these only for a two-stroke)
+            x.engine->addTelemetry("engine.tsPurity", [](const DemoEngine&) { return 0.95; });
+            x.engine->addTelemetry("engine.tsDelivery", [](const DemoEngine&) { return 0.85; });
+            x.engine->addTelemetry("engine.tsTrapping", [](const DemoEngine&) { return 0.65; });
+            x.engine->addTelemetry("engine.tsPowerValve", [](const DemoEngine&) { return 1.0; });
+            x.engine->addTelemetry("engine.tsCrankcase", [](const DemoEngine& e) { return 101325.0 * (0.98 + 0.2 * e.phase()); });
+            x.engine->addTelemetry("engine.tsReed", [](const DemoEngine& e) { return e.phase() < 0.5 ? 0.6 : 0.0; });
+        }
         if (x.fields == nullptr)
             return;
         std::string group;
@@ -29,6 +40,10 @@ namespace tee::ui
             FieldInfo& f = add(std::move(path), FieldKind::choice, 0, static_cast<double>(names.size() - 1), def, std::move(label));
             f.choices = std::move(names);
         };
+        // package D's moving masses (the demo's made-up Spec lacks them): 0 is "from the bore", as D's are
+        group = "Moving masses";
+        add("engine.pistonMass", FieldKind::number, 0, 20, 0, "Piston, pin and rings", Quantity::mass);
+        add("engine.rodMass", FieldKind::number, 0, 20, 0, "Rod", Quantity::mass);
         group = "Two-stroke";
         choice("engine.cycle", "Cycle", { "Four-stroke", "Two-stroke" }, 0);
         add("engine.tsCylinders", FieldKind::integer, 1, 4, 1, "Cylinders", Quantity::none, "cyl");

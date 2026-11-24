@@ -40,7 +40,8 @@ The exhaust as built, drawn from the same rules the simulator's builder uses to 
   - **Cylinder 1's path, port to tail,** is a bright trace. It comes from card G's `exhaustPressure`, placed by its
     `exhaustX` distances, or else K3's `pipePressure` (64 points evenly spaced by length).
   - **Every other pipe** (the primaries in their firing order, the main pipes, the tails) has a fainter trace from
-    card G's `ductNear` and `ductFar`: each pipe slot's pressure at its two ends, drawn straight between them.
+    card G's `ductNear`, `ductMid` and `ductFar`: each pipe slot's pressure at its two ends and its middle, drawn
+    straight between them (without `ductMid`, straight from end to end; test `ui.exhaust.ductmid`).
   - **SLOW** replays the last 48 copies at an eighth of their pace, timed only by `step(dt)`. While it catches up,
     the stage keeps moving.
   - Truly slow motion of the waves would need the simulator itself slowed (copies come at frame rate). It is on the
@@ -55,7 +56,7 @@ With card T's two-stroke the stage draws each cylinder's pipe instead of the fou
   cones diverge and converge.
 - **The pulse:** the pulse and its returning wave ride cylinder 1's pipe.
 - **The exhaust port over a turn:** a plot under the pipes, with the port's opening and closing marked (port open
-  `tsExhaustDur` about bottom dead centre). The baffle's plugging pulse should arrive just before CLOSES. The plot
+  `tsExhaustDur` about bottom dead centre); OPENS and CLOSES sit above the plot's frame, clear of the trace. The baffle's plugging pulse should arrive just before CLOSES. The plot
   reads card T's port pressure (`tsPortPressure`, asked), else U1's `portExhaust`.
 - **ON THE PIPE NEAR n rpm, DERIVED:** card T's returning wave (`TwoStrokePipe::tunedRpm`, mirroring PipeTest.cpp's
   `predicted()`: c (exhaust duration - 25) / (12 L), L to the baffle cone's middle as chamber.fm's `tuned`, c as

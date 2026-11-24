@@ -1,0 +1,11 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Builder, the reference's topology",
+  "notes": "Card G's exhaust builder (exhaust.model 1) with every field at its default: the layout's own collectors, sides, converter, H and two-chamber muffler, built from the same pipes and junctions as the reference's (identical to the bit in the engine). A part build: only spec.exhaust; every other field keeps its default.",
+  "spec": {
+    "exhaust": {
+      "model": "Builder"
+    }
+  }
+}

@@ -13,8 +13,12 @@ default it builds the reference's three topologies, sizes and junctions, solved 
 identical to the bit on all 17 layouts and four sets of the four dials (`exhaust.model 1 at its defaults is the
 reference's exhaust`), once both have their steepening pipes settled (below).
 
-Until K3b lands the builder runs standalone on made-up port flows (`tests/sim/exhaust/harness.fm`); its Spec fields
-are `XSpec`'s, to be appended to `sim/spec/exhaust.fm`.
+In the engine (`sim/exhaust/exhaust.fm`, `Exhaust`): `spec.exhaust.model` 1 forwards the carved module's entry points
+to the builder (sim/README.md says how); with every other field at its default it is **identical to model 0 to the bit
+on all 17 layouts** through free revs (`exhaust.model 1 at its defaults is model 0 in the engine, every layout`). The
+builder's fields are appended to `spec.exhaust` (`sim/spec/exhaust.fm`); two are renamed there because the reference's
+dials hold the names: the crossover's kind is `crossKind`, the muffler's `mufKind`. The standalone harness
+(`tests/sim/exhaust/harness.fm`) runs the same files on made-up port flows.
 
 ## Files
 
@@ -132,7 +136,8 @@ steepening system at 34 kPa pulses forgets a small difference only slowly.)
 
 ## Seams
 
-Per sample: `read()`; the cylinders (`net.portWave(i)`, `net.portZ(i)`); `prepare()`; card F's turbines; `step(q)`.
+In the engine the seams are `Exhaust`'s (sim/README.md). The builder's own, per sample: `read()`; the cylinders
+(`net.portWave(i)`, `net.portZ(i)`); `prepare()`; card F's turbines; `step(q)`.
 
 - **Card F** (`Boost` = F's `BoostMachine`): the integrator fills `XEngine.housing[c]` from `Boost::housingOf(bank,
   group, banks)` and `XEngine.gates`, and sets the reference's restriction (`aspUse`) to 0. Each sample, after
@@ -169,8 +174,18 @@ path from `scopePort`'s primary to its tail, spaced by length, every 128 samples
 **Cost** (dev build, this container, R = 2549 ns a 96 kHz sample by `tee-bench --quick`): the reference's own exhaust
 some 920 to 1200 ns a sample on the V8 (the harness's copy, noisy with the machine's load); the builder on the same
 topology +220 to +300 ns (0.09 to 0.12 R): 21 pipes, 54 to 62 ns a pipe with its junctions. A dual system with an X,
-quarter-wave stubs and bypass valves: 32 pipes, +800 ns over the reference's exhaust (0.31 R): over the card's 0.25 R,
+quarter-wave stubs and bypass valves: 32 pipes, +800 ns over the reference's exhaust (0.31 R) standalone; in the engine 1.48 R against 1.04 R (+0.44 R, tee-bench --engine): over the card's 0.25 R,
 nearly all of it the 11 more pipes at the reference's own cost a pipe.
+
+## In the engine (measured)
+
+| Test | Measured |
+|---|---|
+| 1: model 0 is the reference | the null test (tests/sim/NullTest.cpp: every preset and scenario, every layout with a wild cam): identical |
+| 2: model 1 at its defaults | identical to model 0 to the bit, 17 layouts, 8 s of free revs (start, idle, blips, limiter, overrun, off, a restart): the builder starts its pipes as the reference does at a configure (it is built at every configure, even in model 0, so its pipes carry the same history) and draws its noise from the engine's stream in the reference's order |
+| 10: card F's turbine | a 2 L four with one turbo, the V8 with two (boost.model 1): the collectors fed into the housings, 65.5 and 46.2 kPa of boost at 4500 rpm full throttle; the downpipe's head swings 16.0 and 16.9 dB less than the collector's end; with the key off the pressures fall away (to 3 and 57 Pa when the engine falls silent and stops computing) |
+| 11: random topologies while running | ten minutes, the V8 on random pedals, a random description every 4 s (now and then the model switched), under the exhaust's own fade: every sample finite and within full scale, nothing left 6 s after the key is off (numbers printed by the test) |
+| `content/builds/exhausts/` | every part build loads with no unknown field, starts and plays finite on the builder |
 
 ## Not modelled
 
