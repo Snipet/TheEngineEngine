@@ -351,7 +351,7 @@ controls, CarTel* carTel)` (Engine passes `&spec.car`, `&spec.env`, `&ctl`, `&te
 `spec.car.model` 1); `void followLever(int drive, int lever)` at a key
 and in `drive16`; `float drive16(int drive, float d16, float jEngine, float peak, float gearTorque, float kg, float
 redRpm, float bike, float clutch, float brake, int lever, int buttons, float gas, float rpm, float idleRpm, float
-rpmAvg)` every 16 when driven; `float step(float w, float tq, float dt)` and `float road(float kSq)` each sample when
+rpmAvg)` every 16 when driven; `float step(float w, float tq, float dt, float jCrank)` (jCrank: the crank's inertia at this sample, `mm.jNow` for a custom engine, whose inertia torque is in `tq`; 0: the one `drive16` was given. Model 1 steps the crank with it; model 0 ignores it) and `float road(float kSq)` each sample when
 driven; `kmh()`, `moving()`. With `spec.car.model` 1 (card I) `drive16` hands everything to its `Vehicle m1`
 (`vehicle/vehicle.fm`, docs/models/vehicle.md): it copies spec.car and spec.env into `m1.spec`, `m1.env` when their revs
 move, reads ctl's counters, buttons, mode, strip and dyno itself, writes its fields of tel.car, and keeps `v`, `gear`,

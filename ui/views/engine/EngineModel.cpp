@@ -485,4 +485,23 @@ namespace tee::ui::engine
             d.pistonSpeed = 2.0 * c.stroke * limiter / (2.0 * kPi);
         return d;
     }
+
+    std::vector<Warning> geometryWarnings(const FieldDoc& doc, const Layout& l, const Cylinder& c, const Derived& d)
+    {
+        std::vector<Warning> w;
+        if (!c.known())
+            return w;
+        const double piston = fieldValue(doc, EF::pistonMass);
+        if (std::isfinite(piston) && piston > 1500.0 * c.bore * c.bore * c.bore)
+            w.push_back({ "A PISTON THIS HEAVY FOR ITS BORE: ABOUT TWICE A REAL ONE'S", { EF::pistonMass, EF::bore } });
+        const double sb = c.stroke / c.bore;
+        if (sb < 0.5 || sb > 2.0)
+            w.push_back({ "NO PRODUCTION ENGINE IS THIS FAR OVER- OR UNDER-SQUARE", { EF::bore, EF::stroke, EF::boreStroke } });
+        if (std::isfinite(d.pistonSpeed) && d.pistonSpeed > 30.0)
+            w.push_back({ "A MEAN PISTON SPEED OVER 30 M/S AT THE LIMITER: PAST ANY RACE ENGINE'S", { EF::stroke, EF::limiter } });
+        if (std::isfinite(d.rodRatio) && d.rodRatio < 1.4 && !c.rodDerived)
+            w.push_back({ "A ROD THIS SHORT FOR ITS STROKE: SHORTER THAN ANY PRODUCTION ENGINE'S", { EF::rod, EF::stroke } });
+        (void)l;
+        return w;
+    }
 }

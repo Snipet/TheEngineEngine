@@ -186,11 +186,11 @@
         10
       ],
       "range": [
-        75000.0,
-        105000.0
+        50000.0,
+        80000.0
       ],
       "unit": "Pa over the air",
-      "source": "the build's own target (0.90 bar); a wastegate or vane loop holds a steady full load within some 0.1 bar of its target once spooled (makers' boost-control tolerances; judgement)"
+      "source": "the build's own target (0.65 bar); a wastegate or vane loop holds a steady full load within some 0.1 bar of its target once spooled (makers' boost-control tolerances; judgement)"
     },
     {
       "name": "Charge temperature under boost",
