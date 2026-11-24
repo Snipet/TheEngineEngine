@@ -14,11 +14,13 @@
 // What it leaves out: the end's directivity (the reference's listener beams the highs along the axis: wave 2) and the
 // end's own temperature changing within a cycle (it follows the section's gas temperature every 16 samples).
 //
-// XPop is the reference's Pop (sim/ref/engine.fm), copied unchanged until the carved one lands in sim/exhaust/.
+// The collectors' bangs are the carved Pop (pop.fm).
 #pragma once
-#include "../ref/pipes.fm"
-#include "../ref/biquad.fm"
-#include "../ref/onepole.fm"
+#include "duct.fm"
+#include "pop.fm"
+#include "../lib/biquad.fm"
+#include "../lib/onepole.fm"
+#include "../lib/noise.fm"
 
 enum
 {
@@ -92,61 +94,5 @@ module XEnd
         tnHp.set(0.5f * f, rate);
         tnLp.set(3.0f * f, rate);
         jetN = sqrtf(rate / (2.693f * f));
-    }
-};
-
-// A pop in the pipes: unburnt fuel lighting in the hot exhaust. A sharp pressure pulse and a crackle after it.
-// (The reference's Pop, copied.)
-module XPop
-{
-    float amp;
-    int n;
-    int len;
-    float crackle;
-    float decay;
-    float pClick;
-    float aClick;
-    int rs;
-
-    float rnd()
-    {
-        const int hi = rs / 127773;
-        const int lo = rs % 127773;
-        rs = 16807 * lo - 2836 * hi;
-        if (rs <= 0)
-            rs += 2147483647;
-        return 2.0f * ((float)rs / 2147483647.0f) - 1.0f;
-    }
-
-    void fire(float a, float rate, int seed)
-    {
-        amp = a;
-        n = 0;
-        len = (int)((0.00025f + 0.0006f * (0.5f + 0.5f * rnd())) * rate) + 2;
-        crackle = 0.55f * a;
-        decay = expf(-1.0f / ((0.004f + 0.012f * (0.5f + 0.5f * rnd())) * rate));
-        pClick = 1.0f - 0.07f * 48000.0f / rate;
-        aClick = rate / 48000.0f;
-        if (rs == 0)
-            rs = seed;
-    }
-
-    float tick()
-    {
-        float y = 0.0f;
-        if (n < len)
-        {
-            const float s = sinf(3.14159265f * (float)n / (float)len);
-            y = amp * s;
-            n += 1;
-        }
-        if (crackle > 1.0f)
-        {
-            const float r = rnd();
-            if (r > pClick)
-                y += aClick * crackle * rnd();
-            crackle *= decay;
-        }
-        return y;
     }
 };

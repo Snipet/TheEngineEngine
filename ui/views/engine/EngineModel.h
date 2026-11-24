@@ -67,7 +67,7 @@ namespace tee::ui::engine
         { "engine.pistonMass", "" },
         { "engine.rodMass", "" },
         { "engine.rodRecip", "" },
-        { "engine.flywheel", "" },
+        { "engine.flywheelInertia", "engine.flywheel" },   // D's kg m^2; else the reference's dial (and the demo's)
         { "ecu.limiter", "engine.redline" },
     };
     static_assert(std::size(kEngineFields) == static_cast<std::size_t>(EF::count));

@@ -2,9 +2,9 @@
 
 Package U3, branch `claude/awesome-gates-ntdb58`. Pages: `docs/ui/air.md` and `docs/ui/exhaust.md`. Paths: `ui/views/{air,exhaust}/`, `tests/ui/views/{Air,Exhaust}Tests.cpp`.
 
-**Done** (`tee-view-tests`, 18 tests, all pass on Linux):
-- `ui.exhaust.*`: model, stage, builds, select, absent, rest, slow, sizes, inspector, sheet.
-- `ui.air.*`: model, stage, builds, select, absent, rest, sizes, inspector.
+**Done** (`tee-view-tests`, 20 tests, all pass on Linux):
+- `ui.exhaust.*`: model, stage, builds, select, absent, rest, slow, sizes, inspector, sheet, framestage.
+- `ui.air.*`: model, stage, builds, select, absent, rest, sizes, inspector, framestage (at U1's real stage for 1100x700 and 1600x1000: every part inside, none overlapping).
 - Builds: EXHAUST the card's four, a V12 on logs, a turbo boxer; AIR an ITB four, a turbo with anti-lag and nitrous, twin, Roots, sequential, compound, a centrifugal blower.
 
 **Goldens**: 16 `air.*` and 15 `exhaust.*`, at density 1 and 2, at 1100x700 and 1600x1000, in graphite and paper.
