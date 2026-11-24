@@ -188,3 +188,18 @@ R, model 1 1.112 to 1.131 R by camera: model 1 adds 0.07 to 0.09 R over the refe
 - A single, a flat-plane four and a V12 at full load, one after the other: one loudness?
 - Model 0 against model 1 on the same build: model 1 is quieter by design (its headroom) and far less limited; turn
   the host's volume up rather than LEVEL.
+
+## Savings that change the sound (for an Economy tier, never in Full silently)
+
+Measured, not adopted: each renders the V8 on the listening scenarios (tests/sim/listen/scenarios/) against today's
+model 1, and gives the difference's level against the signal and the change of the bands' levels (left channel).
+
+| Candidate | Where it changes the sound | Measured |
+|---|---|---|
+| Linear taps (two reads, not four) for every path | everywhere a path moves or sits between samples | difference -37.6 dB (trackside pass), -39.0 (tailpipe pull), -49.2 (street, revving), -86.1 (driver's seat); highs 10-20 kHz -0.50 to -0.56 dB, 5-10 kHz -0.15 dB, below 5 kHz under 0.03 dB |
+| Linear taps beyond 20 m only (5598 samples of delay) | far sources only: trackside before and after the pass | -59.7 dB on the pass; the other three scenarios unchanged to the bit |
+
+What a person should listen for: a duller top on a close pass, and a faint roughness while the pitch bends
+(linear interpolation's ripple moves with the fraction). The saving was not measured; the read is about half a
+tap's cost (about 3 to 4 ns a tap). Already taken, unchanged to the bit: a still tap's Lagrange weights computed once
+a part (Scene::hear 167 -> 96 ns on the V8's free revs at the tailpipe).
