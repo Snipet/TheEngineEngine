@@ -33,6 +33,7 @@ module LRig
     int moto;           // a motorcycle (package B2's), its tuck and its wheelie (degrees)
     float tuck;
     float lift;
+    int extraPlace;     // src 13: the signal through Listen::extra at this place
     float shake;        // the free forces' amplitude (N), fed as a sine at freq into fy when src is 3
     // the test signal: src 0 the left tail, 1 the right, 2 the intake, 3 the torque (cabin), 4 mech, 5 block, 6 turbo,
     // 7 starter, 8 comb, 9 the headers' walls (both), 10 the road; 11 both tails; 12 the driveline (package M's)
@@ -132,7 +133,9 @@ module LRig
                 float s[13];
                 for (int k = 0; k < 13; ++k)
                     s[k] = 0.0f;
-                if (src == 11)
+                if (src == 13)
+                    ln.extra(extraPlace, x);
+                else if (src == 11)
                 {
                     s[0] = x;
                     s[1] = x;
