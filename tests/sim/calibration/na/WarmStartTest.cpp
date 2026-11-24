@@ -80,10 +80,9 @@ TEST_CASE("a warm start on p-idle-warm: the flat six that stopped starting and t
         warmStart(slug, true);
 }
 
-// Marked (the lead, 19:56): the 7.0 starts (ca76cd6) but its idle lopes, 641 to 846 rpm over 8 to 14 s at c40f041 (sd 45;
-// 8 at c8f2d54, 107 under b6676a5's ratio): the idle loop is lightly damped on this engine (causes.md L). Turns plain
-// when that is fixed.
-TEST_CASE("a warm start on p-idle-warm: the 7.0 runs steadily at 14 s", "[calibration][na][!mayfail]")
+// (marked [!mayfail] until 14890c0 and 3930eadb: its idle loped 640 to 860 rpm, the spark trim's look-ahead short of its
+// manifold's filling time; causes.md L)
+TEST_CASE("a warm start on p-idle-warm: the 7.0 runs steadily at 14 s", "[calibration][na]")
 {
     warmStart("big-bore-70-pushrod-v8", true);
 }

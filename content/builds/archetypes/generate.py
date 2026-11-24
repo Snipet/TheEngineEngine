@@ -185,12 +185,15 @@ arch(slug="air-cooled-flat-six-36", runner=0.35, name="Air-cooled flat six", geo
 arch(slug="big-block-74-pushrod-v8", name="Big-block 7.4 L pushrod V8", geo="ref-12-v8-cross",
      # the 1972 LS5's 8.5:1 (over-drive-magazine.com's 1972 Chevelle fact sheet; a corvetteforum post agrees; one
      # other says 8.25), the net-rated engine its band is (the lead, 20:46: hardware and target the same engine)
-     layout="V8 crossplane", bore=107.95, stroke=101.6, rod=155.8, cr=8.5, valves=2, dIn=52.6, dEx=44.5,
-     cam=(282, 224, 11.9, 110, 290, 234, 11.9, 114), train="Pushrod", redline=5600, idle=650,
+     # its cam and valves: the LS5's cam 3883986, 213/217 deg (at 0.050 in, as quoted elsewhere) and .460/.488 in
+     # lift, the oval-port heads' 2.06/1.72 in valves (clacoa.com's big-block ID table, an enthusiast reference); the
+     # seat 268/274 deg (a corvetteforum post, unverified)
+     layout="V8 crossplane", bore=107.95, stroke=101.6, rod=155.8, cr=8.5, valves=2, dIn=52.3, dEx=43.7,
+     cam=(268, 213, 11.7, 110, 274, 217, 12.4, 114), train="Pushrod", redline=5600, idle=650,
      intake=dict(runnerLength=0.20, plenumVolume=0.003), friction="Flat tappet", grade="Regular (87)",
      car="muscle-auto", timing="Chain", fan="Viscous clutch",
      notes="A 1972 454 cubic inch big block (the LS5): 4.25 x 4.00 in (107.95 x 101.6 mm, 7440 cc), 8.5:1, two "
-           "valves on pushrods and a flat-tappet hydraulic cam (its cam figures from memory), one four-barrel-sized "
+           "valves on pushrods and the LS5's flat-tappet hydraulic cam (3883986: clacoa.com), one four-barrel-sized "
            "throttle over a single plenum. Rated 270 hp SAE net at 4000 rpm and 390 lb ft at 3200 (201 kW, 529 N m: "
            "carnut.com, over-drive-magazine.com); 1973-74's LS4 270-275 hp. In a heavy muscle car with a three-speed "
            "automatic.")
