@@ -1012,7 +1012,8 @@ module Engine
         if (set.drive == 0)
             crank.omega = mm.advance(crank.omega, torque - tf - (dynoOn != 0 ? tqAbs : mech.tl) + mech.ts, dt, sn, cs);
         else
-            crank.omega = car.step(crank.omega, torque + mm.torque(sn, cs, crank.omega) - tf + mech.ts, dt);
+            crank.omega = car.step(crank.omega, torque + mm.torque(sn, cs, crank.omega) - tf + mech.ts, dt,
+                                   mm.jNow);         // (the crank's inertia at this angle, as the four-stroke's step below)
         crank.ripple(torque);
         tqBrake += (torque - tf - tqBrake) * 1.0e-4f;
         omMin = fminf(omMin, crank.omega);
