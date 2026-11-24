@@ -290,8 +290,8 @@ The machine's functions, all on `Boost`, all doing nothing in model 0:
   (the pipe writes p - a; `mach.dpMass[side]` kg/s, `mach.dpTemp[side]` K went in); for each turbo t with an
   external gate, `float gatePipe(int t, float a, float z)` likewise (`mach.gateMass[t]`, `mach.gateTemp[t]`). A
   housing no pipe feeds is stepped by `tick`.
-  G's network calls these inside `exh.step`; with boost.model 1 the builder always runs, so Engine no longer calls the
-  stand-in (`exhaustStandIn`) it used before (24 Nov).
+  G's network calls these inside `exh.step`; with boost.model 1 the builder always runs (the stand-in
+  `exhaustStandIn` was removed on 24 Nov).
 - **The intake (card E's)**: `float pressure()` and `float temperature()` before the throttle (Pa absolute, K), set
   into `intk.pBox` and `intk.tAir` every 16 samples after `control16`; each sample after the plenum `void draw(float
   m)` with the throttle's mass flow out of that volume (kg/s; negative pushed back), then `void tick(float omegaCrank,

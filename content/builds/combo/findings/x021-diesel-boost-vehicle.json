@@ -1,0 +1,96 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "X-021: the large diesel, the new turbo and the new vehicle",
+  "notes": "Package X's finding X-021 (2026-11-24): the combo large diesel (15 L, twin turbos, the reference's truck mass) with boost.model 1 and car.model 1, nothing else on.",
+  "spec": {
+    "engine": {
+      "layout": "Inline 6",
+      "displacement": 0.0148906,
+      "boreStroke": 0.8798,
+      "compression": 17.488,
+      "flywheel": 1,
+      "idleTrim": 0,
+      "redlineTrim": 0,
+      "rough": 0,
+      "benchLoad": 0,
+      "custom": false,
+      "cylinders": 6,
+      "bankAngle": [
+        0.0
+      ],
+      "bank": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "pin": [
+        0,
+        240,
+        120,
+        120,
+        240,
+        0
+      ],
+      "fireRev": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        1
+      ],
+      "place": [
+        0.0,
+        0.1,
+        0.2,
+        0.3,
+        0.4,
+        0.5
+      ]
+    },
+    "valve": {
+      "cam": 0.9999
+    },
+    "boost": {
+      "kind": "Twin turbos",
+      "level": 1,
+      "size": 1,
+      "blowOff": 1,
+      "model": 1
+    },
+    "exhaust": {
+      "headers": 0.3247,
+      "pipe": 0.6325,
+      "crossover": 0,
+      "muffler": 0.1071
+    },
+    "fuel": {
+      "kind": "Diesel"
+    },
+    "ecu": {
+      "timing": 0,
+      "pops": 0,
+      "starter": true
+    },
+    "car": {
+      "kind": "Car",
+      "mass": 4048.1526,
+      "model": 1
+    },
+    "env": {
+      "temperature": 293.15
+    },
+    "sound": {
+      "view": "Exhaust",
+      "distance": 0.2994,
+      "room": 0.6176,
+      "level": 2.8467,
+      "intake": 0.5,
+      "mechanical": 0.6503
+    }
+  }
+}

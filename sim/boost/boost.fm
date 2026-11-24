@@ -26,7 +26,6 @@
 //   draw(m), tick(omegaCrank, pPlenum)            each sample, after the throttle; crankTorque (N m) then
 //   control16(d16, target, antiLag, nitrous)      every 16 samples, with the ECU's
 //   oxygen(), oxygenShare()                       Combustion
-//   exhaustStandIn(m, mt, z)                      until card G's network calls housing() and downpipe()
 //   telemetry(&tel.boost, tAir), scope(&scope)    after a call (tAir: the charge air the engine has, for no machine)
 #pragma once
 #include "lib/biquad.fm"
@@ -314,42 +313,6 @@ module Boost
     float gatePipe(int t, float a, float z)
     {
         return model == 1 ? mach.gatePipe(t, a, z) : 0.0f;
-    }
-
-    // A stand-in for card G's network (model 1, until it lands): this sample's exhaust gas (kg/s, and its mass times
-    // its temperature) shared among the housings the collectors feed, as a flow into each (no wave), and each downpipe
-    // an open end of impedance z
-    void exhaustStandIn(float m, float mt, float z)
-    {
-        if (model != 1 || mach.active == 0 || mach.sc != 0 || mach.turbos == 0)
-            return;
-        const float t = m > 1.0e-9f ? mt / m : 900.0f;
-        int fed[8];
-        int n = 0;
-        for (int b = 0; b < 2; ++b)
-            for (int g = 0; g < 2; ++g)
-            {
-                const int h = mach.housingOf(b, g, 2);
-                int seen = 0;
-                for (int k = 0; k < n; ++k)
-                    if (fed[k] == h)
-                        seen = 1;
-                if (h >= 0 && seen == 0)
-                {
-                    fed[n] = h;
-                    n += 1;
-                }
-            }
-        for (int k = 0; k < n; ++k)
-        {
-            const int h = fed[k];
-            const float q = (m / (float)n) * 287.0f * fmaxf(t, 250.0f) / mach.house[h].p;
-            mach.housing(h, q, 0.0f, fmaxf(t, 250.0f));
-        }
-        mach.downpipe(0, 0.0f, z);
-        mach.downpipe(1, 0.0f, z);
-        for (int i = 0; i < mach.turbos; ++i)
-            mach.gatePipe(i, 0.0f, z);
     }
 
     // The level over which an ECU's over-boost cut acts by default (Pa over the air): 1.3 times the target or the
