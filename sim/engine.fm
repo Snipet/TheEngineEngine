@@ -185,9 +185,9 @@ module Engine
     WallHeat wall;      // Woschni's wall heat, with spec.engine.wallHeat 1 (core/wallheat.fm)
     HeavyDiesel hd;     // card D2: a diesel's governor, compression and exhaust brakes (combustion/heavy.fm); hd.on 0 at the defaults
     int customUse;      // 1: the engine configured from spec.engine's custom fields
-    int modelUse[9];    // each package's model switch in use (valve, intake, boost, exhaust, fuel, ecu, car, voices; the wall
-    int modelWant[9];   // heat), and the one the host asked for: a change waits for the fade (holdModel)
-    int modelRev[9];    // each one's section's rev as holdModel last saw it
+    int modelUse[10];    // each package's model switch in use (valve, intake, boost, exhaust, fuel, ecu, car, voices; the wall
+    int modelWant[10];  // heat; the listener), and the one the host asked for: a change waits for the fade (holdModel)
+    int modelRev[10];    // each one's section's rev as holdModel last saw it
     int lastIgn;        // ctl.ignition at the last call (voices.model 1: its rise from off renders the key's sounds)
     int layoutRefused;  // 1: its geometry was refused (cylinders firing together), the layout dial's table runs
     float rodRatio;     // the rod over the crank's radius the cylinders are set up with (the reference's 3.3)
@@ -1240,7 +1240,8 @@ module Engine
         modelUse[6] = spec.car.model;
         modelUse[7] = spec.voices.model;
         modelUse[8] = spec.engine.wallHeat;
-        for (int k = 0; k < 9; ++k)
+        modelUse[9] = spec.sound.model;
+        for (int k = 0; k < 10; ++k)
         {
             modelWant[k] = modelUse[k];
             modelRev[k] = -1;
@@ -1346,6 +1347,7 @@ module Engine
         holdModel(6, &spec.car.model, &spec.car.rev);
         holdModel(7, &spec.voices.model, &spec.voices.rev);
         holdModel(8, &spec.engine.wallHeat, &spec.engine.rev);
+        holdModel(9, &spec.sound.model, &spec.sound.rev);
     }
 
     // Section k's model switch as the host wrote it: stopped, taken at once; running, a change held until the fade's
@@ -1392,6 +1394,7 @@ module Engine
         modelUse[6] = applyModel(6, &spec.car.model, &spec.car.rev);
         modelUse[7] = applyModel(7, &spec.voices.model, &spec.voices.rev);
         modelUse[8] = applyModel(8, &spec.engine.wallHeat, &spec.engine.rev);
+        modelUse[9] = applyModel(9, &spec.sound.model, &spec.sound.rev);
     }
 
     // A paddle's press as the reference's wheel made it: its button down until Car's shift logic (drive16) has seen
