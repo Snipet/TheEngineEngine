@@ -55,7 +55,9 @@
       "frictionValvetrain": "Roller",
       "balance1": true,
       "rough": 0.2,
-      "benchLoad": 0.3
+      "benchLoad": 0.3,
+      "wallHeat": "Woschni",
+      "cycle": "Four-stroke"
     },
     "valve": {
       "model": "Lab",
