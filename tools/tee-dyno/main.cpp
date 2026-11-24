@@ -4,12 +4,21 @@
 //   tee-dyno --build b.json --from 100 --to 700 --rate 40 --pedal 0.5 --fields boost.pressure,engine.manifold
 //   tee-dyno --build b.json --steps 200,300,400,500 --settle 0.8
 //   --sim DIR (the simulator; sim/ by default), --entry FILE, --csv FILE (else out/<build>-dyno.csv), --quiet
+//
+//   tee-dyno --predict --build content/builds/v8.json       the ribbon's curve (tee::PredictService): steady points on
+//            [--threads N] [--points N] [--coarse N]        several threads, coarse first; the times to the first and
+//            [--tolerance X] [--min-cycles N] [--max-cycles N] [--cold] [--history] [--repeat N]
+//            [--ramp A]                                     and against a slow sweep at A rad/s^2 with the same brake
 #include "common/Paths.h"
 
 #include "tee/Dyno.h"
+#include "tee/Predict.h"
 
+#include <chrono>
+#include <cmath>
 #include <cstdio>
 #include <fstream>
+#include <thread>
 #include <sstream>
 
 namespace
@@ -34,6 +43,94 @@ namespace
                 out.push_back(item);
         return out;
     }
+
+    double rpm(double w)
+    {
+        return w * 30.0 / 3.14159265358979323846;
+    }
+
+    // The ribbon's path, timed as the interface would see it: requested, then polled every millisecond.
+    int predict(const std::shared_ptr<tee::Sim>& sim, const tee::Build& build, const tee::PredictOptions& options,
+                double rampRate, bool history, int repeat)
+    {
+        tee::PredictService service(sim, options);
+        std::printf("predict: %d worker threads, %d speeds (%d coarse), tolerance %.3g, %d to %d cycles%s\n",
+                    service.threads(), options.points, options.coarse, options.tolerance, options.minCycles,
+                    options.maxCycles, options.warm ? ", warm" : ", cold");
+        tee::PredictCurve last;
+        for (int r = 0; r < std::max(repeat, 1); ++r)
+        {
+            tee::Build b = build;
+            if (r > 0)   // another build each time, so the cache does not answer: the idle trim nudged
+                b.set("engine.idleTrim", b.get("engine.idleTrim") + 1e-4 * r);
+            const auto t0 = std::chrono::steady_clock::now();
+            service.request(b);
+            double first = -1.0;
+            while (true)
+            {
+                tee::PredictCurve c;
+                if (service.take(c))
+                {
+                    const double t = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+                    if (first < 0.0)
+                    {
+                        first = t;
+                        std::printf("  run %d: first curve (%zu points) at %.3f s\n", r + 1, c.points.size(), t);
+                    }
+                    if (c.refined)
+                    {
+                        std::printf("  run %d: refined curve (%zu points) at %.3f s; %.2f s of engine time\n", r + 1,
+                                    c.points.size(), t, c.simulatedSeconds);
+                        last = c;
+                        break;
+                    }
+                }
+                if (!service.error().empty())
+                {
+                    std::fprintf(stderr, "tee-dyno: %s\n", service.error().c_str());
+                    return 1;
+                }
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            }
+        }
+        std::printf("brake: %s\n%8s %10s %10s %7s %8s\n", last.brake.c_str(), "rpm", "torque Nm", "power kW", "cycles",
+                    "settled");
+        for (const tee::PredictPoint& p : last.points)
+        {
+            std::printf("%8.0f %10.1f %10.1f %7d %8s", rpm(p.speed), p.torque, p.power / 1000.0, p.cycles,
+                        p.settled ? "yes" : "NO");
+            if (history)
+                for (const double t : p.history)
+                    std::printf(" %.1f", t);
+            std::printf("\n");
+        }
+        if (rampRate > 0.0)
+        {
+            tee::PredictCurve ramp;
+            std::string error;
+            if (!tee::predictRamp(sim, build, options, rampRate, ramp, error))
+            {
+                std::fprintf(stderr, "tee-dyno: %s\n", error.c_str());
+                return 1;
+            }
+            std::printf("against a sweep at %.0f rad/s^2 (%.1f s of engine time in %.1f s):\n%8s %10s %10s %8s\n",
+                        rampRate, ramp.simulatedSeconds, ramp.wallSeconds, "rpm", "sweep Nm", "points Nm", "differ");
+            double worst = 0.0, sum = 0.0, peak = 0.0;
+            for (const tee::PredictPoint& p : ramp.points)
+                peak = std::max(peak, std::fabs(p.torque));
+            for (std::size_t i = 0; i < ramp.points.size() && i < last.points.size(); ++i)
+            {
+                const double d = (last.points[i].torque - ramp.points[i].torque) / std::max(peak, 1.0);
+                worst = std::max(worst, std::fabs(d));
+                sum += std::fabs(d);
+                std::printf("%8.0f %10.1f %10.1f %7.1f%%\n", rpm(ramp.points[i].speed), ramp.points[i].torque,
+                            last.points[i].torque, 100.0 * d);
+            }
+            std::printf("difference over the peak torque: mean %.2f %%, worst %.2f %%\n",
+                        100.0 * sum / std::max<std::size_t>(ramp.points.size(), 1), 100.0 * worst);
+        }
+        return 0;
+    }
 } // namespace
 
 int main(int argc, char** argv)
@@ -42,11 +139,24 @@ int main(int argc, char** argv)
     std::string simFlag, buildFile, csv, value;
     tee::Sim::Options options;
     tee::DynoPlan plan;
-    bool quiet = false;
+    tee::PredictOptions predictOptions;
+    bool quiet = false, predictMode = false, history = false;
+    double rampRate = 0.0, repeat = 1.0;
     const auto number = [&](double& out) {
         if (!args.value(value))
             return false;
         out = std::strtod(value.c_str(), nullptr);
+        return true;
+    };
+    const auto number0 = [](double& out, double v) {
+        out = v;
+        return true;
+    };
+    const auto whole = [&](int& out) {
+        double v = 0.0;
+        if (!number(v))
+            return false;
+        out = static_cast<int>(v);
         return true;
     };
     while (!args.done())
@@ -61,9 +171,9 @@ int main(int argc, char** argv)
         else if (args.is("--csv"))
             ok = args.value(csv);
         else if (args.is("--from"))
-            ok = number(plan.from);
+            ok = number(plan.from) && number0(predictOptions.from, plan.from);
         else if (args.is("--to"))
-            ok = number(plan.to);
+            ok = number(plan.to) && number0(predictOptions.to, plan.to);
         else if (args.is("--rate"))
             ok = number(plan.rate);
         else if (args.is("--spacing"))
@@ -101,6 +211,34 @@ int main(int argc, char** argv)
             plan.chassis = true;
         else if (args.is("--quiet"))
             quiet = true;
+        else if (args.is("--predict"))
+            predictMode = true;
+        else if (args.is("--history"))
+            history = true;
+        else if (args.is("--cold"))
+            predictOptions.warm = false;
+        else if (args.is("--ramp"))
+            ok = number(rampRate);
+        else if (args.is("--repeat"))
+            ok = number(repeat);
+        else if (args.is("--no-settle"))
+            predictOptions.settleExhaust = false;
+        else if (args.is("--hold"))
+            ok = number(predictOptions.holdSeconds);
+        else if (args.is("--warmup-seconds"))
+            ok = number(predictOptions.warmupSeconds);
+        else if (args.is("--tolerance"))
+            ok = number(predictOptions.tolerance);
+        else if (args.is("--threads"))
+            ok = whole(predictOptions.threads);
+        else if (args.is("--points"))
+            ok = whole(predictOptions.points);
+        else if (args.is("--coarse"))
+            ok = whole(predictOptions.coarse);
+        else if (args.is("--min-cycles"))
+            ok = whole(predictOptions.minCycles);
+        else if (args.is("--max-cycles"))
+            ok = whole(predictOptions.maxCycles);
         else
             return usage();
         if (!ok)
@@ -127,6 +265,8 @@ int main(int argc, char** argv)
         for (const std::string& w : warnings)
             std::fprintf(stderr, "tee-dyno: warning: %s\n", w.c_str());
     }
+    if (predictMode)
+        return predict(compiled, build, predictOptions, rampRate, history, static_cast<int>(repeat));
     tee::DynoCurve curve;
     if (!tee::runDyno(compiled, build, plan, curve, errors))
     {
