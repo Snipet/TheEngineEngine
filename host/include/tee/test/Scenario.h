@@ -46,6 +46,10 @@ namespace tee
 
 namespace tee::test
 {
+    // (declared here so that Run's `friend class Scenario` names this namespace's Scenario, not tee::Scenario, the
+    // scenario file's struct, when a translation unit includes both headers: clang-cl refused it on Windows)
+    class Scenario;
+
     // A click: a step between two samples this many times the RMS of the steps around it (Measures.h, largestStep).
     // A smooth sound stays under about 4; the firing pulses of a loud engine may reach 6 to 8.
     inline constexpr double clickLimit = 12.0;
@@ -148,7 +152,7 @@ namespace tee::test
         const std::vector<LogEvent>& log() const noexcept { return log_; }
 
     private:
-        friend class Scenario;
+        friend class ::tee::test::Scenario;
         RunResult result_;
         std::shared_ptr<std::vector<float>> left_, right_, mid_;
         std::string error_;

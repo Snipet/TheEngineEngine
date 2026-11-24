@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "2.0 L turbo four, direct injection",
-  "notes": "A 2.0 L direct-injection turbo four: 82.5 x 92.8 mm (1984 cc), 9.6:1 (engines of the kind in hot hatches: 155 to 228 kW at 5000 to 6500 rpm, 350 to 400 N m from 1600 to 4500; makers' figures). Its boost is trimmed above 4500 rpm (1.2 bar falling to 0.7), as production two-litres do. Front drive, six-speed dual clutch. Its intake runner, 0.30 m from the valve to the plenum, is a hand-set length: JUDGEMENT, not the real engine's (no source found).",
+  "notes": "A 2.0 L direct-injection turbo four: 82.5 x 92.8 mm (1984 cc), 9.6:1 (engines of the kind in hot hatches: 155 to 228 kW at 5000 to 6500 rpm, 350 to 400 N m from 1600 to 4500; makers' figures). Its boost is trimmed above 4500 rpm (1.2 bar falling to 0.7), as production two-litres do. Front drive, six-speed dual clutch. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT.",
   "spec": {
     "engine": {
       "layout": "Inline 4",
@@ -96,7 +96,8 @@
       "mufKind": [
         2,
         2
-      ]
+      ],
+      "headers": 0.0
     },
     "fuel": {
       "kind": "Gasoline",

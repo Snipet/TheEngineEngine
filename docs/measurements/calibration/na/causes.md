@@ -420,6 +420,18 @@ The fuelled overrun has little margin. The limit is now the store's fuel, not th
 overrun charge's unburned share as estimated at its spark, not the share still unburned when its valve opens. That
 would take the cylinder handing its remainder over at the opening (D's cylinder, H's account). Proposed, not done.
 
+**Correction (20:55, measured).** "Still burning as its exhaust valve opens" above read the cylinder's burnAt >= 0.
+burnAt stays non-negative until 1.6 burn durations, while the burn is 0.993 done at one. On H9's overrun (spark 11.5
+degrees after the top, burn 53-55 degrees, exhaust opening at 104) the burns are some 99 % done well before the opening.
+So the 2000 K rule lights the store from charges that have, in the model, already burned. The rule still lights a store
+that holds fuel, but its stated reason (a flame carried into the pipe) does not hold for these charges.
+
+D's cylinder now hands the remainder over (exUnburnedJ, 76690a7). With the store fed from it, and the spark-time cut
+off under the physical cylinder (docs/measurements/calibration/na/pop-store-exUnburned.diff, not applied), the
+remainder reads 0.00 J on every event. H9's fuelled overrun then makes no bangs (0.1 and 0.25: 0). Suspected, not
+measured: the burn on an overrun charge (thin, highly diluted, low pressure) is too short at 55 degrees; that is the
+burn model's (N3's). Until it is settled the store keeps the spark-time estimate (judgement).
+
 ## I. The V12's torque spike: the runner's resonance, too lightly damped (the lead's 18:13; measured)
 
 **What it is.** Held steps (2 s each, so not the predictor's nine cycles), on the V12 with its 0.36 m runner:

@@ -177,7 +177,12 @@ TEST_CASE("diesel brake: with a variable-vane turbo the brake shuts the vanes an
                     e.tel("boost.shaftSpeed[0]"), kw[k]);
         std::printf("  (the shaft's limit, omegaMax: %.0f rad/s)\n", e.get("boost.mach.omegaMax[0]"));
         if (k == 1)
+        {
             CHECK(e.tel("engine.manifold") >= 300000.0);
+            // the brake's vane command holds the shaft under its limit (as a production brake mode), not the machine's
+            // 105 % relief: 10001 against 9433 rad/s before (N2, 2026-11-24)
+            CHECK(e.tel("boost.shaftSpeed[0]") <= e.get("boost.mach.omegaMax[0]"));
+        }
     }
     // published 15 L brakes ~450 kW at 2100 rpm (above); measured 406 kW at 2000 with the manifold at 3.4 bar
     CHECK(kw[1] > kw[0] + 150.0);
