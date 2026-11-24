@@ -21,10 +21,8 @@ modules under the lead's 14:58 rule. Machine: this container (Xeon 2.10 GHz, AVX
 
 **Not done**: the 8-run ensemble floor (one perturbed run measured); boost's budget (now ~0.17 R by the method, not
 0.24: no exact win found; F's suggestions are not exact); Cylinder::volumeSlope table (not exact); the hour soak.
-
 **Measurements** (7 runs, both orders): exact work committed ~3 % of R; twin-turbo V8 ~1.18 R; with G's dual X
 system (+0.31 R, G's figure, not re-measured) **~1.49 R today**; 48 kHz inside 0.49 of the cost. Compile 1.5-2.0 s.
-
 **The realistic ceiling** (lead's question): every exact thing I can see (the lanes patch ~0.07 R on this engine and
 G's pipes, the junctions' 1/z sums ~1 %) lands the twin-turbo V8 with a dual exhaust at **~1.40 R: 56 % of the
 owner's core on the slower figure (R = 40 %), 42 % on the faster** - under 60 % but with no margin, and before
