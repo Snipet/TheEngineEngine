@@ -4,9 +4,9 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <cstdio>
 #include <cstring>
 #include <limits>
-#include <set>
 
 namespace tee
 {
@@ -188,16 +188,82 @@ namespace tee
         PredictOptions predict = options.predict;
         predict.fields.insert(predict.fields.begin(), "engine.manifold");   // the load
         predict.points = predict.coarse = std::min(options.speeds, 16);
-        std::vector<double> active;   // the speeds still knocking at the pedal above
-        std::set<double> knocking;
-        for (std::size_t k = 0; k < options.pedals.size(); ++k)
+
+        // the steps, from the most load down: a turbo's boost targets at full pedal, then the pedals under full
+        struct Step
+        {
+            double pedal, boost;   // boost: spec.boost.target, Pa over the air; < 0: as built
+        };
+        std::vector<Step> steps;
+        const double kind = build.fieldOf("boost.kind") >= 0 ? build.get("boost.kind") : 0.0;
+        const bool turbo = kind >= 1.0 && kind <= 3.0 && options.boostSteps > 0 && build.fieldOf("boost.target") >= 0
+                           && build.fieldOf("boost.gateSpring") >= 0 && build.fieldOf("ecu.maps.boostAuto") >= 0;
+        if (turbo)
+        {
+            const double spring = build.get("boost.gateSpring");
+            double top = std::max(build.get("boost.target"), spring);
+            // a build with its own boost map (boostAuto off): its map's most, which the bake's targets must reach
+            if (build.get("ecu.maps.boostAuto") == 0.0)
+                if (const int m = build.fieldOf("ecu.maps.boost"); m >= 0)
+                {
+                    const FieldInfo& f = build.fields().all()[static_cast<std::size_t>(m)];
+                    const std::vector<double>& v = build.values(m);
+                    std::size_t z = 0, at = 0, nx = 0, ny = 0;
+                    for (const FieldInfo::Leaf& leaf : f.leaves)
+                    {
+                        if (leaf.name == "z")
+                            z = at;
+                        else if (leaf.name == "nx" && at < v.size())
+                            nx = static_cast<std::size_t>(v[at]);
+                        else if (leaf.name == "ny" && at < v.size())
+                            ny = static_cast<std::size_t>(v[at]);
+                        at += leaf.count;
+                    }
+                    for (std::size_t i = 0; i < nx && i < 16; ++i)
+                        for (std::size_t j = 0; j < ny && j < 16; ++j)
+                            if (z + i * 16 + j < v.size())
+                                top = std::max(top, v[z + i * 16 + j]);
+                }
+            const int n = std::max(options.boostSteps, 1);
+            for (int i = 0; i < n; ++i)
+                steps.push_back({1.0, n == 1 ? top : top - (top - spring) * i / (n - 1)});
+            for (const double p : options.pedals)
+                if (p < 1.0)
+                    steps.push_back({p, spring});   // under the spring's boost: the loads below the targets'
+            char text[160];
+            std::snprintf(text, sizeof text,
+                          "a turbo: boost targets %.0f to %.0f kPa over the air at full pedal (boostAuto on), then pedals at the spring's",
+                          top / 1000.0, spring / 1000.0);
+            result.notes = text;
+        }
+        else
+        {
+            for (const double p : options.pedals)
+                steps.push_back({p, -1.0});
+            result.notes = kind >= 4.0 ? "a supercharger: pedals alone (its boost is its pulley's, no loop to command)"
+                                       : "pedals";
+        }
+
+        std::vector<double> active;   // the speeds still knocking at the step above
+        for (std::size_t k = 0; k < steps.size(); ++k)
         {
             if (cancel != nullptr && cancel->load())
             {
                 error = "cancelled";
                 return false;
             }
-            predict.pedal = options.pedals[k];
+            predict.pedal = steps[k].pedal;
+            Build stepBuild(build.fields());
+            {
+                std::vector<std::string> said;
+                if (!stepBuild.load(build.save(), BuildPart::Whole, said, error))
+                    return false;
+            }
+            if (steps[k].boost >= 0.0)
+            {
+                stepBuild.set("ecu.maps.boostAuto", 1.0);
+                stepBuild.set("boost.target", steps[k].boost);
+            }
             if (k > 0)
             {
                 if (active.empty())
@@ -206,7 +272,7 @@ namespace tee
                 predict.points = predict.coarse = static_cast<int>(active.size());
             }
             PredictCurve curve;
-            if (!predictCurve(sim, build, predict, curve, error, cancel))
+            if (!predictCurve(sim, stepBuild, predict, curve, error, cancel))
                 return false;
             result.points += static_cast<int>(curve.points.size());
             result.simulatedSeconds += curve.simulatedSeconds;
@@ -224,6 +290,7 @@ namespace tee
                     ++at;
                 KnockBakeCell cell;
                 cell.pedal = predict.pedal;
+                cell.boostTarget = std::max(steps[k].boost, 0.0);
                 cell.load = p.fields.empty() ? 0.0 : p.fields[0] / 101325.0;
                 cell.retardMean = p.retardMean;
                 cell.retardTooth = std::max(p.retardMax - p.retardMean, 0.0);

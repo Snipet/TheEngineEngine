@@ -514,6 +514,7 @@ TEST_CASE("the knock limit baked on the turbo four: a knocking point's cell its 
     KnockBakeOptions options;
     options.speeds = 5;
     options.pedals = {1.0, 0.5};
+    options.boostSteps = 0;   // the pedals' rules here; the boost targets' below
     KnockBakeResult r;
     REQUIRE(bakeKnockLimit(sim, build, options, r, error));
     REQUIRE(r.speeds.size() == 5);
@@ -539,6 +540,42 @@ TEST_CASE("the knock limit baked on the turbo four: a knocking point's cell its 
         }
     }
     CHECK(someKnock);   // a turbo four on its archetype's boost knocks somewhere at full throttle
+}
+
+TEST_CASE("the knock limit's loads on a turbo: boost targets from its level down to its spring, spreading the loads",
+          "[engine][sim][bake][nightly]")
+{
+    if (!haveSim())
+        SKIP("sim/engine.fm is not there yet");
+    std::string error;
+    const auto sim = compiled(simDir(), {}, error);
+    REQUIRE(sim != nullptr);
+    Build build(sim->fields());
+    std::vector<std::string> warnings;
+    REQUIRE(build.loadFile(std::filesystem::path(TEE_SOURCE_DIR) / "content/builds/archetypes/turbo-four-20-gdi.json",
+                           BuildPart::Whole, warnings, error));
+    KnockBakeOptions options;
+    options.speeds = 3;
+    options.pedals = {1.0};
+    options.boostSteps = 3;
+    KnockBakeResult r;
+    REQUIRE(bakeKnockLimit(sim, build, options, r, error));
+    CHECK(r.notes.find("boost targets") != std::string::npos);
+    const double spring = build.get("boost.gateSpring");
+    bool spread = false;
+    for (const auto& column : r.measured)
+    {
+        REQUIRE_FALSE(column.empty());
+        CHECK(column.front().boostTarget >= spring);   // the build's level first
+        for (std::size_t i = 1; i < column.size(); ++i)
+        {
+            CHECK(column[i].boostTarget < column[i - 1].boostTarget);   // down to the spring
+            CHECK(column[i].boostTarget >= spring - 1.0);
+            if (column[i].valid && column[i - 1].valid && column[i - 1].load - column[i].load > 0.1)
+                spread = true;   // a lower target, a lower load
+        }
+    }
+    CHECK(spread);
 }
 
 TEST_CASE("the background bake: a stale table set aside at once, baked when the edits rest, taken, current; an edit "
