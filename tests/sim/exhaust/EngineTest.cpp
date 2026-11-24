@@ -755,3 +755,49 @@ TEST_CASE("a twin-turbo six into one pipe spins both turbos", "[exhaust][engine]
     CHECK(std::fabs(w0 - w1) < 0.2 * std::max(w0, w1));
     CHECK(torque > 100.0);
 }
+
+// A measurement for the calibration (hidden: run it by name): at full load on archetypes, the heat settled, the gas's
+// mass means along the exhaust (at the valve, leaving the port, the primaries) beside what thermocouples read there
+// (tel.exhaust.portThermocouple, headerThermocouple), and the collectors' gas (a turbine's inlet).
+TEST_CASE("measure: the exhaust's temperatures at full load, mass means and thermocouples", "[.][measure]")
+{
+    struct Case
+    {
+        const char* file;
+        double rpm;
+    };
+    for (const Case& k : {Case{"air-cooled-flat-six-36.json", 5000.0}, Case{"turbo-four-20-gdi.json", 5500.0},
+                          Case{"small-block-57-carb.json", 4500.0}, Case{"pickup-diesel-67-inline-six.json", 2800.0}})
+    {
+        EnginePlayer& p = player();
+        p.reset();
+        EngineBuild b;
+        std::string error, warnings;
+        REQUIRE(loadBuild(p, std::filesystem::path(TEE_SOURCE_DIR) / "content/builds/archetypes" / k.file, b, error, warnings));
+        b.values["env.temperature"] = {293.15};
+        applyBuild(p, b);
+        EnginePlayer::Controls& c = p.controls();
+        c.mode = EnginePlayer::kModeBench;
+        c.ignition = EnginePlayer::kIgnitionStart;
+        std::vector<float> l(512), r(512);
+        auto run = [&](double s) {
+            for (int n = 0; n < static_cast<int>(s * 48000.0 / 512.0); ++n)
+                p.process(l.data(), r.data(), 512);
+        };
+        run(1.5);
+        c.ignition = EnginePlayer::kIgnitionOn;
+        c.mode = 2;
+        c.dynoSpeed = static_cast<float>(k.rpm * 0.10471976);
+        c.throttle = 1.0f;
+        run(8.0);
+        const std::size_t hs = static_cast<std::size_t>(p.specIndex("exhaust.heatSettle"));
+        p.setSpec(hs, p.spec(hs) + 1.0);
+        run(4.0);
+        auto f = [&](const std::string& path) { return test::field(p, path); };
+        std::printf("%s at %.0f rpm WOT (%.0f kW brake): mass means: valve %.0f, port exit %.0f, primaries %.0f, "
+                    "collectors %.0f K; thermocouples: port %.0f (plain time mean %.0f), header %.0f K\n", k.file, k.rpm,
+                    f("tel.engine.torque") * k.rpm * 0.10471976 / 1000.0, f("tel.exhaust.portTemperature"),
+                    f("tel.exhaust.portExitTemperature"), f("tel.exhaust.headerTemperature"), f("exh.b.heat.tGas[1]"),
+                    f("tel.exhaust.portThermocouple"), f("exh.tcPlain"), f("tel.exhaust.headerThermocouple"));
+    }
+}
