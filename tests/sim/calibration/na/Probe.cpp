@@ -9,7 +9,7 @@
 // and the Scope's port pressures. The gas constant is taken as air's for every gas (as the cylinder does).
 //
 //   PROBE_BUILD=straight-six-32-high-rev PROBE_RPM=3000,7600 PROBE_SET="valve.inPhaseRange=0" \
-//     build-dev/bin/tee-tests-calibration-na "[.probe]"
+//     build-dev/bin/tee-tests-calibration-na "[.probe]"     (PROBE_SIM=DIR: another tree's sim/)
 #include "tee/EnginePlayer.h"
 #include "tee/Warm.h"
 
@@ -85,7 +85,7 @@ TEST_CASE("probe: a cylinder's gas exchange at intake closing", "[.probe]")
 
     Probe pr;
     tee::EnginePlayer::Options options;
-    options.directory = std::filesystem::path(TEE_SOURCE_DIR) / "sim";
+    options.directory = std::getenv("PROBE_SIM") ? std::filesystem::path(std::getenv("PROBE_SIM")) : std::filesystem::path(TEE_SOURCE_DIR) / "sim";
     options.sampleRate = 96000.0;
     std::string errors, warnings;
     pr.p = tee::EnginePlayer::create(options, errors);
@@ -134,7 +134,8 @@ TEST_CASE("probe: a cylinder's gas exchange at intake closing", "[.probe]")
         c.dynoSpeed = float(rpm * M_PI / 30.0);
         pr.play(1.2);
         double n = 0, sp = 0, st = 0, sv = 0, sx = 0, sm = 0;
-        double exSum = 0, exN = 0, inSum = 0, inN = 0, torque = 0, tN = 0, man = 0, wall = 0, heat = 0;
+        double exSum = 0, exN = 0, inSum = 0, inN = 0, torque = 0, tN = 0, man = 0, wall = 0, heat = 0, thr = 0, trap = 0;
+        const int cyls = int(pr.tel("engine.cylinders"));
         const double dt = 1.0 / pr.p->sampleRate();
         pr.play(measure, [&] {
             const double ang = pr.get("cyl[0].ang");
@@ -157,6 +158,10 @@ TEST_CASE("probe: a cylinder's gas exchange at intake closing", "[.probe]")
                 sm += m;
                 n += 1;
             }
+            thr += pr.get("intk.qThr") * pr.get("intk.pBox") / (287.0 * pr.get("intk.tAir")) * dt;
+            for (int k = 0; k < cyls; ++k)
+                if (pr.get("cyl[" + std::to_string(k) + "].ivcNow") != 0.0)
+                    trap += pr.get("cyl[" + std::to_string(k) + "].m") - pr.get("cyl[" + std::to_string(k) + "].mInert");
             torque += pr.tel("engine.torque");
             man += pr.tel("engine.manifold");
             tN += 1;
@@ -181,8 +186,64 @@ TEST_CASE("probe: a cylinder's gas exchange at intake closing", "[.probe]")
         std::printf("%6.0f %6.0f %6.3f | %6.3f %6.3f %6.3f %6.3f %6s = %6.3f | %7.0f %7.1f %7.0f %7.0f | %6.1f %6.1f %6.1f\n", rpm,
                     torque / tN, pr.tel("engine.veAir"), f1, f2, f3, f4, "", f1 * f2 * f3 * f4, pI, tI, exSum / std::max(exN, 1.0),
                     inSum / std::max(inN, 1.0), man / tN / 1e3, portI / 1e3, portE / 1e3);
+        std::printf("        air: through the throttle %.2f g/s, trapped fresh %.2f g/s (%.3f of it)\n", 1e3 * thr / measure,
+                    1e3 * trap / measure, trap / std::max(thr, 1e-12));
         std::printf("        walls %.3f of the burns' heat (%.0f J of %.0f J), port gas %.0f K\n", wall / std::max(heat, 1e-9), wall, heat,
                     pr.tel("exhaust.portTemperature"));
+    }
+    SUCCEED();
+}
+
+// Idle, warm, on the bench: what the idle controller asks and gets. PROBE_BUILD, PROBE_SET as above.
+TEST_CASE("probe: a warm idle", "[.probe-idle]")
+{
+    const char* buildEnv = std::getenv("PROBE_BUILD");
+    const std::string slug = buildEnv ? buildEnv : "v12-65";
+    const char* setEnv = std::getenv("PROBE_SET");
+    Probe pr;
+    tee::EnginePlayer::Options options;
+    options.directory = std::getenv("PROBE_SIM") ? std::filesystem::path(std::getenv("PROBE_SIM")) : std::filesystem::path(TEE_SOURCE_DIR) / "sim";
+    options.sampleRate = 96000.0;
+    std::string errors, warnings;
+    pr.p = tee::EnginePlayer::create(options, errors);
+    INFO(errors);
+    REQUIRE(pr.p != nullptr);
+    tee::EngineBuild b;
+    std::filesystem::path file = slug;
+    if (!std::filesystem::exists(file))
+        file = std::filesystem::path(TEE_SOURCE_DIR) / "content" / "builds" / "archetypes" / (slug + ".json");
+    REQUIRE(tee::loadBuild(*pr.p, file, b, errors, warnings));
+    tee::applyBuild(*pr.p, b);
+    if (setEnv)
+        for (const std::string& kv : split(setEnv, ';'))
+        {
+            const auto eq = kv.find('=');
+            std::string e;
+            REQUIRE(pr.p->setSpec(kv.substr(0, eq), std::atof(kv.c_str() + eq + 1), e));
+        }
+    auto& c = pr.p->controls();
+    c.ignition = 2;
+    pr.play(1.0);
+    c.ignition = 1;
+    std::printf("%s%s%s: warm idle on the bench\n%5s %6s %6s %6s %6s %6s %6s %6s %6s %6s %6s %7s %7s\n", slug.c_str(), setEnv ? " with " : "",
+                setEnv ? setEnv : "", "t s", "rpm", "target", "valve", "plate", "man kPa", "spark", "lambda", "IMEPg", "PMEP", "1-xb", "thr g/s", "trap g/s");
+    for (int i = 0; i < 6; ++i)
+    {
+        double rpm = 0, n = 0, xb = 0, nx = 0, thr = 0, trap = 0;
+        const int cyls = int(pr.tel("engine.cylinders"));
+        pr.play(1.0, [&] {
+            rpm += pr.tel("engine.speed") * 30.0 / M_PI;
+            n += 1;
+            thr += pr.get("intk.qThr") * pr.get("intk.pBox") / (287.0 * pr.get("intk.tAir"));
+            for (int k = 0; k < cyls; ++k)
+                if (pr.get("cyl[" + std::to_string(k) + "].ivcNow") != 0.0)
+                    trap += pr.get("cyl[" + std::to_string(k) + "].m") - pr.get("cyl[" + std::to_string(k) + "].mInert");
+        });
+        for (int k = 0; k < 4; ++k)
+            xb += pr.get("comb.dilution[" + std::to_string(k) + "]"), nx += 1;
+        std::printf("%5d %6.0f %6.0f %6.3f %6.3f %6.1f %6.1f %6.3f %6.2f %6.2f %6.3f %7.2f %7.2f\n", i + 2, rpm / n, pr.tel("ecu.idleTarget") * 30.0 / M_PI,
+                    pr.tel("ecu.idleValve"), pr.tel("engine.throttle"), pr.tel("engine.manifold") / 1e3, pr.tel("ecu.advance"),
+                    pr.tel("ecu.lambda"), pr.tel("engine.imep") / 1e5, pr.tel("engine.pmep") / 1e5, 1.0 - xb / nx, 1e3 * thr / n, 1e3 * trap);
     }
     SUCCEED();
 }

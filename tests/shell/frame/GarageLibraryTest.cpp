@@ -55,7 +55,7 @@ TEST_CASE("shell: the garage's library over the builds on disk", "[shell][files]
     tee::Build& build = sim->build();
     files::BuildFile doc(build);
     {
-        app::GarageLibrary lib(doc, nullptr, shipped, user);
+        app::GarageLibrary lib(doc, std::shared_ptr<Sim>(), shipped, user);
 
         // the shipped builds and parts, each with what its file sets
         REQUIRE(lib.builds().size() >= 30);

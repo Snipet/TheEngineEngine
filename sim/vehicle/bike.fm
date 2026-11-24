@@ -54,7 +54,8 @@
 // Not modelled: steering, lean, the suspension's own travel (only its lag), the rear's squat from the chain's pull,
 // a wheelie's gyroscopic effects, the rider falling off.
 //
-//   b.setup(rate); b.apply(); b.configure(jE, peakTq, idleW, redW); b.control(...) every 16; w = b.step(w, tq, dt);
+//   b.setup(rate); b.apply(); b.configure(jE, peakTq, idleW, redW); b.control(...) every 16;
+//   w = b.step(w, tq, dt, jCrank) (the crank's inertia now, 0 for configure's);
 //   y = b.road(); for the engine: b.pedalOut(gas, wCrankAvg), b.cutWanted(), b.blipSpeed(), b.lashStrike()
 #pragma once
 #include "vehicle.fm"
@@ -251,7 +252,7 @@ module Bike
     float rate;
     // the engine
     float jE;
-    float iE;
+    float iEcfg;        // 1 / jE (step takes the engine's inertia of the moment instead when it is given)
     float peakTq;
     float idleW;
     float redW;
@@ -326,7 +327,7 @@ module Bike
         rate = hostRate;
         snd.setup(rate);
         jE = 0.05f;
-        iE = 1.0f / jE;
+        iEcfg = 1.0f / jE;
         peakTq = 100.0f;
         idleW = 120.0f;
         redW = 1300.0f;
@@ -384,7 +385,7 @@ module Bike
     void configure(float jEngine, float peak, float idle, float red)
     {
         jE = fmaxf(jEngine, 0.005f);
-        iE = 1.0f / jE;
+        iEcfg = 1.0f / jE;
         peakTq = fmaxf(peak, 5.0f);
         idleW = idle;
         redW = fmaxf(red, idle + 50.0f);
@@ -743,9 +744,12 @@ module Bike
 
     // ---- one sample ----
 
-    float step(float w, float tq, float dt)
+    // jCrank: the crank's inertia this sample (a custom engine's moving masses vary it round the turn, and their inertia
+    // torque is in tq: stepped with any other inertia that torque makes energy, finding X-007), 0 for configure's
+    float step(float w, float tq, float dt, float jCrank)
     {
         const float idt = 1.0f / dt;
+        const float iE = jCrank > 0.0f ? 1.0f / jCrank : iEcfg;
         const float vf = (float)v;
         // the tyres, from their deflections as they stand
         const float ff = front.push(&curve, (float)wf * radius, vf);
