@@ -525,3 +525,39 @@ where such an engine makes its torque is where its runner is tuned: real ones ar
 With P's rule gone (no part from the engine's own targets) and no real runner found, a class default that does not look
 at the targets would have to come from something else the build holds: for example a runner tuned at a fixed share of
 the engine's own redline. That is P's and the lead's decision; proposed, not done.
+
+## N3-11. The tuned four-valves: three sensitivities side by side (21:04 by `date -u`; the lead's three)
+
+Torque, N m (VE) at each engine's target peak-torque and peak-power speeds; one change at a time from the build as it
+stands on the tip (tee::Build path, G's closing live). Fixed advance: the phaser's range 0 and the intake's centreline
+moved earlier by that many degrees (what a baked map holds at that speed).
+
+| Change | Flat-plane 4.5, 6000 / 8500 | V10, 6500 / 8350 | Two-stage 2.0, 7500 / 8300 |
+|---|---|---|---|
+| As built (phaser by N1's rule) | 403 (0.814) / 395 (0.862) | 410 (0.776) / 453 (0.895) | 149 (0.758) / 166 (0.855) |
+| The rule's advance, deg | 25 / 17 | 15 / 15 | (no phaser) |
+| Best fixed advance | 400 at 30 / 436 at 50 | 411 at 10 / 453 at 20 | 153 at 40 / 168 at 30 |
+| Runner switch: never | 406 / 433 | | |
+| Runner switch at 7000 rpm (from 5850) | 406 / 396 | | |
+| Headers' length dial 0 (0.61 x the layout's) | 366 / 383 | 428 / 456 | 150 / 167 |
+| Headers' length dial 1 (1.63 x the layout's) | **452 (0.897)** / 401 | **478 (0.867)** / **487 (0.957)** | **179 (0.866)** / **186 (0.925)** |
+| A log manifold (every primary 0.05 m) | 291 (0.637) / 279 (0.675) | 423 / 432 | 127 (0.689) / 135 (0.747) |
+| Target band | 520 to 560 / 400 to 445 kW | 520 to 570 / 385 to 475 kW | 205 to 220 / 170 to 185 kW |
+
+(C's `tee-dyno --bake-cam` on the flat-plane, predicted points, agrees: best 404 N m at 20 degrees near 5950 rpm, and
+the most advance there is (50) wanted from 7400 rpm up.)
+
+What each says:
+1. *The phaser.* At the torque peaks the rule is at or near the best fixed advance (flat-plane +0, V10 +0, two-stage has
+   none). At the flat-plane's power peak it is 33 degrees short of best (+10 %). A baked map is worth a few per cent at
+   the top, not the torque rows.
+2. *The runner's switch.* The flat-plane's switch to its short runner (at 5850 rpm) costs 10 % at 8500 rpm (433 never
+   switched against 395) and nothing at 6000: the second length (P's judgement) is too short for its top end.
+3. *The exhaust.* The wave arrives: a log manifold costs the flat-plane 28 %, the two-stage 14 to 19 %, and longer
+   primaries (the dial's top, 1.63 x the layout's) lift every one, +7 to +20 %, the residual falling from 4 to 8 % to 1
+   to 3 %. G's model scavenges as a tuned header should; the primaries' lengths are the builds' (the layout's default
+   scaled by the dial: P's content). The V10 is the odd one: a log is 3 % better than its headers at 6500, so its
+   primaries as laid out arrive out of phase there.
+
+Whose it is: mostly content (the primaries' lengths, the second runner), some the phaser's top end (a baked map). Even
+the best of each alone leaves the flat-plane's torque 13 % and the V10's 8 % under their bands; together not measured.
