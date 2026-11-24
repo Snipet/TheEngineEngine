@@ -13,8 +13,7 @@ exhaust copied alone in `refexhaust.fm`). Files: `sim/exhaust/{network,slots,end
   X 1.8-2.5 dB over H above 250 Hz, both shrink the tails' difference; quarter-wave notch -38.5 dB, Helmholtz -21.2;
   mufflers IL 22.2 / 15.9 / 1.8 dB and back pressure in the card's order; bypass open +16.7 dB; no converter 3.2 vs
   4.6 kPa and +3.8 dB above 2 kHz; zoomies: one end a cylinder.
-- Test 10, standalone form (stand-in housing: a volume and a linear nozzle): passive; downpipe swings 3 dB less.
-- Also: Scope (64 points port to tail), Mach and temperatures a section, back pressures, valve travel, end levels.
+- Test 10, standalone (stand-in housing): passive; downpipe swings 3 dB less. Also the Scope (64 points), meters.
 
 **Not done**: tests 1, 2-in-the-engine, 10 with F's turbine, 11 (all need K3b); `content/builds/exhausts/` (needs the
 Spec fields in `sim/spec/exhaust.fm`).
