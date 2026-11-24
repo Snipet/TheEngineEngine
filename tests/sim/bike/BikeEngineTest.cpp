@@ -229,3 +229,20 @@ TEST_CASE("bike.engine.lash: through the engine, the driveline's play closes as 
     CHECK(side.at(8.4) == 1.0);
     CHECK(side.last() == 0.0);
 }
+
+TEST_CASE("bike.engine.trace: first gear going in at rest, printed", "[.trace]")
+{
+    tee::test::Scenario s = started("bike-superbike");
+    s.at(0.0).spec("car.wheelieControl", "By the clutch");
+    s.at(2.5).clutch(1.0);
+    s.at(2.7).shiftUp();
+    s.at(2.9).throttle(0.5).ramp(0.2);
+    s.at(3.1).clutch(0.0).ramp(0.8);
+    const tee::test::Run r = s.run(3.6);
+    for (double t = 2.6; t < 3.6; t += 0.02)
+        std::printf("t %.2f v %7.3f gear %.0f w %6.1f slip %6.1f ws0 %7.2f ws2 %7.2f F0 %7.0f F2 %7.0f tsh %7.1f eng.thr %.2f clutch %.2f\n", t,
+                    r.tel("car.speed").at(t), r.tel("car.gear").at(t), r.tel("engine.speed").at(t),
+                    r.tel("car.clutchSlip").at(t), r.tel("car.wheelSpeed[0]").at(t), r.tel("car.wheelSpeed[2]").at(t),
+                    r.tel("car.wheelForce[0]").at(t), r.tel("car.wheelForce[2]").at(t), r.tel("car.shaftTorque").at(t),
+                    r.tel("engine.throttle").at(t), r.tel("car.clutch").at(t));
+}

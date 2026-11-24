@@ -2,8 +2,8 @@
   "format": "tee-scenario",
   "version": 1,
   "name": "p-quarter-mile",
-  "description": "Card P's drag run, as card I's test runs one: warm, the gearbox made an automatic for the run (an open-loop timeline cannot shift a manual at the right speeds; the ratios are the build's), staged at 6 s, the green at 8.5 s, the brakes off and the pedal brought down over 0.6 s. Read car.t1320 and car.v1320.",
-  "seconds": 40,
+  "description": "Card P's drag run, as card I's test runs one: warm, the gearbox made an automatic for the run (an open-loop timeline cannot shift a manual at the right speeds; the ratios are the build's), the brake on at 5 s and D at 5.5 s (after the idle has settled), staged at 8 s, the green at 10.5 s, the brakes off and the pedal brought down over 0.6 s. Read car.t1320 and car.v1320.",
+  "seconds": 42,
   "warm": true,
   "events": [
     {
@@ -36,27 +36,32 @@
       }
     },
     {
-      "t": 2.3,
+      "t": 5.0,
       "ctl": {
-        "lever": 1,
         "brake": 1
       }
     },
     {
-      "t": 6.0,
+      "t": 5.5,
+      "ctl": {
+        "lever": 1
+      }
+    },
+    {
+      "t": 8.0,
       "press": [
         "strip"
       ]
     },
     {
-      "t": 8.5,
+      "t": 10.5,
       "ctl": {
         "brake": 0,
         "throttle": 0.15
       }
     },
     {
-      "t": 8.5,
+      "t": 10.5,
       "ctl": {
         "throttle": 1
       },

@@ -1,0 +1,79 @@
+{
+  "format": "tee-validation",
+  "version": 1,
+  "build": "builds/engines/bike-vtwin-90.json",
+  "description": "Card B2's litre-class L-twin: 1099 cc, 90 degrees, redline 11,000.",
+  "targets": [
+    {
+      "name": "Starts and runs",
+      "scenario": "idle",
+      "tel": "engine.state",
+      "measure": "last",
+      "range": [
+        2,
+        2
+      ],
+      "fast": true,
+      "source": "a warm engine started on its key runs (engine.state 2)"
+    },
+    {
+      "name": "Within full scale",
+      "scenario": "rev-limit",
+      "audio": "peak",
+      "range": [
+        0,
+        1
+      ],
+      "fast": true,
+      "source": "02-contracts.md, section 1: what process writes is within +-1"
+    },
+    {
+      "name": "Holds the limiter",
+      "scenario": "rev-limit",
+      "tel": "engine.speed",
+      "measure": "max",
+      "during": [
+        6,
+        10
+      ],
+      "relativeTo": "engine.redline",
+      "range": [
+        0.97,
+        1.03
+      ],
+      "unit": "of the redline",
+      "fast": true,
+      "source": "a fuel-cut or ignition-cut rev limiter holds the speed within a few percent of where it cuts"
+    },
+    {
+      "name": "Peak torque",
+      "dyno": {
+        "from": 150,
+        "to": 1152,
+        "rate": 60
+      },
+      "measure": "maxTorque",
+      "range": [
+        110,
+        128
+      ],
+      "unit": "N m",
+      "source": "a 1.1 L sport L-twin makes 110 to 125 N m (makers' claims). Reported, not failed: a miss until the engine's breathing and friction at high piston speed are right (card B2's handoff)."
+    },
+    {
+      "name": "Peak power",
+      "dyno": {
+        "from": 150,
+        "to": 1152,
+        "rate": 60
+      },
+      "measure": "maxPower",
+      "range": [
+        90000,
+        115000
+      ],
+      "unit": "W",
+      "source": "a 1.1 L sport L-twin makes 90 to 115 kW (makers' claims for 1100 cc air-and-water-cooled to liquid-cooled sport twins). Reported, not failed: as above."
+    }
+  ]
+}
