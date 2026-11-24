@@ -185,6 +185,7 @@ module Valvetrain
         {
             ang[k] = wrapCycle(theta + fire[k], cycNow);
         }
+        lab.tCool = tCool;
         lab.control(d16, omega, redline, load, pOil, tOil, &ang[0], inT, exT, liftT);
         clatter = lab.clatter;
         place();
@@ -215,6 +216,7 @@ module Valvetrain
     // The oil's pressure (Pa over the air) and temperature (K), every 16 samples before control16 (the hook)
     float pOil;
     float tOil;
+    float tCool;        // the coolant's (K), set by Engine each tick (0: unknown): the stage's gate reads it, as an ECU does
 
     void oil(float pressure, float temperature)
     {
@@ -271,6 +273,8 @@ module Valvetrain
         t->exPhaseTarget = lab.phEx.target;
         t->exPhase = lab.phEx.phase;
         t->stage = lab.stageWant;
+        t->waiting = lab.waiting;
+        t->waitTemp = lab.waitTemp;
         t->lift = lab.liftOn != 0 ? lab.liftCmd : 1.0f;
         t->active = lab.activeMask;
         t->floating = lab.floating;
