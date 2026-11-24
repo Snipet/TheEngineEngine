@@ -424,3 +424,36 @@ TEST_CASE("bike.trace.blip: an auto-blipped downshift, printed", "[.trace]")
                     r.get("bike.tsh"));
     }
 }
+
+TEST_CASE("bike.passive.crank: a crank whose inertia varies round the turn, spinning free in neutral, gains no energy "
+          "when the bike is given its inertia of the moment (finding X-007)", "[bike][property]")
+{
+    double gain[2] = {0.0, 0.0};
+    for (int give = 0; give <= 1; ++give)
+    {
+        Rig r;
+        superbike(r);
+        // a heavy piston on a light flywheel: the inertia swings 60 % either way of its mean twice a turn
+        r.set("varyJ", 0.6);
+        r.set("giveJ", give);
+        r.set("running", 0);
+        r.set("noStall", 1);
+        r.set("fric0", 0.0);
+        r.set("fric1", 0.0);
+        r.set("drag2", 0.0);
+        r.set("w", 600.0);
+        r.seconds(0.2);
+        auto* energy = r.function<double(void*)>("BikeRig::crankEnergy");
+        const double e0 = energy(r.instance().data());
+        r.seconds(5.0);
+        const double e1 = energy(r.instance().data());
+        gain[give] = e1 / e0 - 1.0;
+        std::printf("varying inertia, free in neutral, %s: energy %.1f -> %.1f J (%+.3f %%), crank %.0f rad/s\n",
+                    give ? "given its inertia" : "stepped with configure's", e0, e1, 100.0 * gain[give], r.get("w"));
+        CHECK(r.get("finite") == 1.0);
+    }
+    // (the wet clutch's drag takes a little; what matters is that nothing is made)
+    CHECK(gain[0] > 0.05);      // (the test sees the defect: stepped with configure's inertia the crank makes energy)
+    CHECK(gain[1] <= 0.001);
+    CHECK(gain[1] > -0.05);
+}

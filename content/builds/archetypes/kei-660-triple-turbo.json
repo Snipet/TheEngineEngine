@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "Kei 660 cc triple turbo",
-  "notes": "A Japanese kei-class three: 68 x 60.4 mm (658 cc), 8.6:1, four valves, a small turbo at a production 0.65 bar falling to 0.15 bar by 7000 rpm (the class's power cap is met by the ECU's boost taper; the K6A kind: 47 kW (the class's 64 PS cap) at 6500 rpm, 103 to 108 N m at 3500; Wikipedia, goo-net-exchange). In a 780 kg rear-drive sports kei.",
+  "notes": "A Japanese kei-class three: 68 x 60.4 mm (658 cc), 8.6:1, four valves, a small turbo at a production 0.65 bar falling to 0.12 bar by 7000 rpm (the class's power cap is met by the ECU's boost taper; the K6A kind: 47 kW (the class's 64 PS cap) at 6500 rpm, 103 to 108 N m at 3500; Wikipedia, goo-net-exchange). In a 780 kg rear-drive sports kei.",
   "spec": {
     "engine": {
       "layout": "Inline 3",
@@ -72,6 +72,7 @@
       "target": 65000.0,
       "gateSpring": 15000.0,
       "blowOffKind": "Recirculating",
+      "gateDiameter": 0.026,
       "icEffect": 0.75
     },
     "exhaust": {
@@ -113,6 +114,7 @@
             157.08,
             418.88,
             523.6,
+            549.78,
             628.32,
             680.68,
             733.04,
@@ -142,32 +144,25 @@
               65000.0
             ],
             [
-              50000.0,
-              50000.0,
-              50000.0,
-              50000.0,
-              50000.0
+              45000.0,
+              45000.0,
+              45000.0,
+              45000.0,
+              45000.0
             ],
             [
-              32000.0,
-              32000.0,
-              32000.0,
-              32000.0,
-              32000.0
+              36000.0,
+              36000.0,
+              36000.0,
+              36000.0,
+              36000.0
             ],
             [
-              25000.0,
-              25000.0,
-              25000.0,
-              25000.0,
-              25000.0
-            ],
-            [
-              17000.0,
-              17000.0,
-              17000.0,
-              17000.0,
-              17000.0
+              22000.0,
+              22000.0,
+              22000.0,
+              22000.0,
+              22000.0
             ],
             [
               15000.0,
@@ -177,11 +172,25 @@
               15000.0
             ],
             [
-              15000.0,
-              15000.0,
-              15000.0,
-              15000.0,
-              15000.0
+              12000.0,
+              12000.0,
+              12000.0,
+              12000.0,
+              12000.0
+            ],
+            [
+              10000.0,
+              10000.0,
+              10000.0,
+              10000.0,
+              10000.0
+            ],
+            [
+              10000.0,
+              10000.0,
+              10000.0,
+              10000.0,
+              10000.0
             ]
           ]
         }
