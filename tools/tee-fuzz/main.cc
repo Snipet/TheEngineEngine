@@ -9,7 +9,7 @@
 //   tee-fuzz --play v8 tour car.model+engine.custom     one combination (switch paths joined by +, or none, or all)
 //                                                       on an archetype through a scenario, judged as the tests do
 //                                                       (against the reference's own step); --wav f.wav keeps it
-//   tee-fuzz --write-scenarios                          tests/sim/combo/scenarios/*.json from the harness
+//   tee-fuzz --write-scenarios                          content/scenarios/combo/*.json from the harness
 //   tee-fuzz --match -20 a.wav b.wav ...                the files to one loudness, in place (the listening pack's
 //                                                       pairs): each file's gated RMS (100 ms windows, those within
 //                                                       30 dB of the loudest) brought to the target in dBFS; when a
