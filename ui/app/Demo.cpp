@@ -568,6 +568,14 @@ namespace tee::ui
             c.torque.push_back(tq);
             c.power.push_back(tq * rpm * kRpm);
             c.values[0].push_back(boost * spool);
+            // Knock (card C's knock-limited points): past 160 kPa of boost, from 4500 rpm up, the retard growing with
+            // both (the default 80 kPa, and the tests' edits to 150, knock nowhere).
+            const double excess = (boost - 160e3) / 40e3;
+            const bool knocks = excess > 0.0 && rpm >= 4500.0;
+            const double lo = knocks ? 1.0 + 6.0 * std::min(1.0, excess) * (rpm - 4500.0) / 2500.0 : 0.0;
+            c.knock.push_back(knocks ? 1 : 0);
+            c.retardMin.push_back(lo);
+            c.retardMax.push_back(knocks ? lo + 4.0 : 0.0);
         }
         return c;
     }
