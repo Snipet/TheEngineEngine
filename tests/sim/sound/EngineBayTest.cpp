@@ -261,3 +261,41 @@ TEST_CASE("soak: ten minutes of every voice under random inputs stays finite and
     CHECK(rig.get("finite") == 1.0);
     CHECK(rig.get("peakAbs") < 1.0);
 }
+
+TEST_CASE("robust: a NaN or an infinity in any input reads no table out of bounds, and the voices come back after it",
+          "[sound][robust]")
+{
+    // card X's X-019: a NaN crank speed (from a build at the Spec's corners) gave the sine table the index INT_MIN
+    const double nan = std::nan("");
+    const double inf = HUGE_VAL;
+    for (const char* field : {"crankHz", "wIn", "wSprocket", "ratioTotal", "torque", "coolant", "gateOpen", "flowShare"})
+        for (double bad : {nan, inf, -inf})
+        {
+            Rig rig;
+            rig.inGear(3, 300.0, 0.5);
+            rig.set("spec.timing", 2);
+            rig.set("spec.lifters", 1);
+            rig.set("spec.injection", 1);
+            rig.set("asp", 1);
+            rig.set("gateOpen", 0.5);
+            rig.set("flowShare", 1.0);
+            rig.set("bike", 1);
+            rig.set("wSprocket", 100.0);
+            rig.set("dryClutch", 1);
+            rig.set("starterOn", 1.0);
+            rig.set("coolant", 380.0);
+            rig.run(0.1, All);
+            const double before = rig.get(field);
+            rig.set(field, bad);
+            rig.run(0.1, All);
+            rig.set(field, before);
+            rig.run(0.2, All);
+            const auto after = rig.run(0.3, All);
+            bool finite = true;
+            for (float v : after)
+                finite = finite && std::isfinite(v);
+            INFO(field << " = " << bad);
+            CHECK(finite);
+            CHECK(rms(after) > 0.0);
+        }
+}

@@ -3,6 +3,8 @@
 // ControlsFrame as the simulator's Controls: a start, an idle, a rev, a stop.
 #include "audio/Ftz.h"
 #include "player/SimAdapter.h"
+#define TEE_REGISTER_SHARED_SIM
+#include "support/SharedSim.h"
 #include "tee/SimHost.h"
 
 #include <catch2/catch_test_macros.hpp>
@@ -22,12 +24,12 @@ namespace
 }
 
 TEST_CASE("shell: the simulator's Spec as parameters, its telemetry by name, and a start, a rev and a stop",
-          "[shell][sim]")
+          "[shell][sim][sharedsim]")
 {
     player::SimAdapter::Options o;
     o.directory = std::filesystem::path(TEE_SOURCE_SIM_DIR);
     std::string errors;
-    const std::unique_ptr<player::SimAdapter> sim = player::SimAdapter::create(o, errors);
+    const std::unique_ptr<player::SimAdapter> sim = test::sharedAdapter(errors, o);
     INFO(errors);
     REQUIRE(sim != nullptr);
     sim->prepare(48000.0, 256);
@@ -123,12 +125,12 @@ TEST_CASE("shell: the simulator's Spec as parameters, its telemetry by name, and
 }
 
 TEST_CASE("shell: a counter of the simulator's Controls pressed once, what the frame does not carry kept",
-          "[shell][sim]")
+          "[shell][sim][sharedsim]")
 {
     player::SimAdapter::Options o;
     o.directory = std::filesystem::path(TEE_SOURCE_SIM_DIR);
     std::string errors;
-    const std::unique_ptr<player::SimAdapter> sim = player::SimAdapter::create(o, errors);
+    const std::unique_ptr<player::SimAdapter> sim = test::sharedAdapter(errors, o);
     REQUIRE(sim != nullptr);
     REQUIRE(sim->hasControl("strip"));
     CHECK(sim->hasControl("bakeMaps"));          // TUNE's BAKE (card C's SimControls carries it since 2a63c2d)
@@ -148,12 +150,12 @@ TEST_CASE("shell: a counter of the simulator's Controls pressed once, what the f
 }
 
 TEST_CASE("shell: an element of each kind of telemetry array is found by name and reads a plausible number",
-          "[shell][sim]")
+          "[shell][sim][sharedsim]")
 {
     player::SimAdapter::Options o;
     o.directory = std::filesystem::path(TEE_SOURCE_SIM_DIR);
     std::string errors;
-    const std::unique_ptr<player::SimAdapter> sim = player::SimAdapter::create(o, errors);
+    const std::unique_ptr<player::SimAdapter> sim = test::sharedAdapter(errors, o);
     INFO(errors);
     REQUIRE(sim != nullptr);
     const audio::ScopedFtz ftz;
