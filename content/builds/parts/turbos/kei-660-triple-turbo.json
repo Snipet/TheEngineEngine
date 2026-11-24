@@ -1,0 +1,19 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Kei 660 cc triple turbo: turbo",
+  "notes": "The forced induction of the archetype \"Kei 660 cc triple turbo\" alone (turbo, 0.90 bar); loaded as a part it replaces only the boost fields it sets. Its sizes are matched to whatever engine it goes on.",
+  "spec": {
+    "boost": {
+      "model": "Machine",
+      "kind": "Turbo",
+      "level": 0.524,
+      "blowOff": 0.7,
+      "size": 1.0,
+      "target": 90000.0,
+      "gateSpring": 60000.0,
+      "blowOffKind": "Recirculating",
+      "icEffect": 0.75
+    }
+  }
+}

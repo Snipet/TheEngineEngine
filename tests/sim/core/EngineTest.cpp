@@ -206,3 +206,21 @@ TEST_CASE("custom on with the Spec's own geometry (every pin 0) refuses it and r
     CHECK(g.tel("engine.layoutRefused") == 0.0);
     CHECK(g.tel("engine.speed") * kRpm > 500.0);
 }
+
+TEST_CASE("a package's model switch made while running waits for the fade, and is made", "[core][engine][models]")
+{
+    Bench b("default");
+    b.start();
+    std::string error;
+    REQUIRE(b.player().setSpec("valve.model", 1, error));
+    // the call the change reaches: held back (the Spec shows the model in use) and the fade asked for
+    std::vector<float> l(1), r(1);
+    b.player().process(l.data(), r.data(), 1);
+    const double held = b.field("spec.valve.model");
+    b.play(0.2);
+    const double after = b.field("spec.valve.model");
+    std::printf("valve.model 0 -> 1 while running: %g in the first call, %g 0.2 s later; state %g\n", held, after, b.tel("engine.state"));
+    CHECK(held == 0.0);
+    CHECK(after == 1.0);
+    CHECK(b.tel("engine.state") == 2.0);
+}
