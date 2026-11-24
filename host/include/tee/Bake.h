@@ -70,6 +70,7 @@ namespace tee
         int fellBack = 0;                            // rows given the auto schedule's phase by the acceptance
         int halfSteps = 0;                           // points measured at the half steps beside the best cells
         int stageRows = 0;                           // rows added either side of a two-stage cam's change
+        std::int64_t key = 0;                        // intakeCamKey(build, sim) of the build it measured
     };
 
     // Sweeps `build`'s intake cam (above). False, with `error`, when the program or the build has no intake phaser to
@@ -78,8 +79,17 @@ namespace tee
                        CamBakeResult& result, std::string& error, const std::atomic<bool>* cancel = nullptr);
 
     // Writes the result into `build`: ecu.maps.camIn over the swept speeds, parked (0) at loads 0 and 0.75 of the
-    // air's pressure and the baked advance at 0.95 and 3, and ecu.maps.camInAuto off. One undo step.
+    // air's pressure and the baked advance at 0.95 and 3, ecu.maps.camInAuto off and ecu.maps.camInKey the result's
+    // key. One undo step.
     bool applyIntakeCam(Build& build, const CamBakeResult& result, std::string& error);
+
+    // The intake cam map's key: a hash of the program and the fields that move the cam's best (the valvetrain whole,
+    // its stages included, the intake, the exhaust, the boost, the engine, the fuel; never a hidden field nor an ECU
+    // map) with the spark it was chosen on (knockLimitBaseKey: the knock key without the cam maps, so that the
+    // calibration's order, spark then cam then spark again, ends). A 31-bit number, as spec.ecu.maps.camInKey holds it.
+    std::int64_t intakeCamKey(const Build& build, const Sim& sim);
+    // Whether the build's cam map is baked and current: camInAuto off and camInKey this build's key
+    bool intakeCamCurrent(const Build& build, const Sim& sim);
 
     // The idle gate (P's, content/builds/archetypes/generate.py idle_check, the same windows and limits, so that the
     // two never disagree: the lead, 22:55). On the scenarios p-idle-warm (8 to 14 s: the mean within 100 rpm of
