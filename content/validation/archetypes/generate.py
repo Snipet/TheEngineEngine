@@ -146,6 +146,16 @@ def targets(slug, b):
             during=[8, 10], range=[tgt - 15000, tgt + 15000], unit="Pa over the air",
             source="the build's own target (%.2f bar); a wastegate or vane loop holds a steady full load within some "
                    "0.1 bar of its target once spooled (makers' boost-control tolerances; judgement)" % (tgt / 1e5))
+        add(name="Charge temperature under boost", scenario=SC + "p-full-load-%d.json" % fl, tel="boost.throttleIn",
+            measure="mean", during=[8, 10], range=[293, 340], unit="K",
+            source="an air-to-air intercooler of 0.6 to 0.8 effectiveness leaves the charge some 10 to 50 K over the "
+                   "outside air at full boost (makers' and tuners' intake-air-temperature logs; judgement): reported so "
+                   "the over-delivery at a given boost can be judged (the lead's ask)")
+        add(name="Lambda at full load under boost", scenario=SC + "p-full-load-%d.json" % fl, tel="ecu.lambda",
+            measure="mean", during=[8, 10], range=[1.2, 2.0] if diesel else [0.76, 0.88], unit="ratio",
+            source=("a turbo diesel at full load runs lambda 1.2 to 2 (smoke-limited; %s, ch. 10)" if diesel else
+                    "a boosted petrol engine at full load is enriched to lambda 0.76 to 0.88 to cool the charge and the "
+                    "turbine (factory calibrations; %s, ch. 7)") % HEYWOOD)
     else:
         add(name="Volumetric efficiency at its torque peak", scenario=SC + "p-full-load-%d.json" % fl, tel="engine.veAir",
             measure="mean", during=[8, 10], range=[0.82, 1.02], unit="fraction",
@@ -156,13 +166,20 @@ def targets(slug, b):
             measure="mean", during=[8, 10], range=[0.70, 0.95], unit="fraction",
             source="VE's shape: below the torque peak it falls away, the more so the hotter the cam (%s, ch. 6); "
                    "measured at %d rpm" % (HEYWOOD, lo_rpm))
-    tport = [700, 1000] if diesel else [900, 1100]
+    tport = [850, 1100] if diesel else [1100, 1300]
     add(name="Port gas at full load", scenario=SC + "p-full-load-%d.json" % fl, tel="exhaust.portTemperature",
         measure="mean", during=[8, 10], range=tport, unit="K",
-        source=("a diesel's exhaust at the port at full load is some 700 to 1000 K (%s, ch. 14; makers' pre-turbine "
-                "limits near 1020 K)" if diesel else
-                "a spark-ignition engine's exhaust at the port at full load is some 900 to 1100 K (%s, ch. 14; makers' "
-                "EGT data for petrol engines)") % HEYWOOD)
+        source=("the gas at a diesel's exhaust valve at full load, before the port and pipe cool it: some 850 to 1100 K "
+                "(judgement: the header's 700 to 950 K, below, plus the port's cooling; %s, ch. 14)" if diesel else
+                "the gas at the exhaust valve at full load, before the port and pipe cool it: some 1100 to 1300 K for a "
+                "spark-ignition engine (%s, ch. 14; card C's target on default.json, which this follows)") % HEYWOOD)
+    thead = [700, 950] if diesel else [900, 1100]
+    add(name="Header gas at full load", scenario=SC + "p-full-load-%d.json" % fl, tel="exhaust.headerTemperature",
+        measure="mean", during=[8, 10], range=thead, unit="K",
+        source=("a thermocouple a little way down a diesel's manifold reads some 700 to 950 K at full load (makers' "
+                "pre-turbine limits near 1000 K; %s, ch. 14)" if diesel else
+                "a thermocouple a little way down a primary reads 900 to 1100 K at full load on a petrol engine (makers' "
+                "exhaust-gas-temperature data; %s, ch. 14); n/a until the exhaust reports it") % HEYWOOD)
 
     # ---- the car ----------------------------------------------------------------------------------------------
     pmid = 0.5 * (plo + phi)

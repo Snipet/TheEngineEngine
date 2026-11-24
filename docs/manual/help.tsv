@@ -238,3 +238,7 @@ spec.voices.prime	How long the fuel pump primes when the key is turned on
 spec.voices.valveLevel	The valvetrain's tick and, when the valves float, their clatter
 spec.voices.starter	A direct-drive starter or a gear-reduction one (higher, whinier)
 spec.voices.starterLevel	The starter's level
+spec.ecu.brakeMin	Below this engine speed the engine and exhaust brakes let go, so they never stall the engine
+spec.ecu.exhaustBrake	A heavy diesel's exhaust brake: none, a flap in the pipe, or the turbine's vanes closed to hold the engine back
+spec.ecu.exBrakeSwitch	The dash switch that arms the exhaust brake: on, it works whenever the pedal is up
+spec.voices.chain	A motorcycle's drive chain's whine
