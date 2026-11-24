@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "Narrow-angle VR6 2.8 L",
-  "notes": "A 15-degree narrow-angle six, one head over both banks, two valves a cylinder: 81 x 90.3 mm (2792 cc), 10:1 (the 12-valve VR6 of 1991: 128 kW at 5800 rpm, 235 N m at 4200; makers' figures, from memory, firm to 5 %). In a front-drive hatch. Its intake: the long-runner class's runner, 0.45 m from the valve to the plenum (a port-injected road engine's tuned long runners, 1985 to 2005): JUDGEMENT, a class default, not the real engine's (no source found).",
+  "notes": "A 15-degree narrow-angle six, one head over both banks, two valves a cylinder: 81 x 90.3 mm (2792 cc), 10:1 (the 12-valve VR6 of 1991: 128 kW at 5800 rpm, 235 N m at 4200; makers' figures, from memory, firm to 5 %). In a front-drive hatch. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its intake: the long-runner class's runner, 0.45 m from the valve to the plenum (a port-injected road engine's tuned long runners, 1985 to 2005): JUDGEMENT, a class default, not the real engine's (no source found).",
   "spec": {
     "engine": {
       "layout": "Inline 6",
@@ -96,7 +96,8 @@
       "mufKind": [
         2,
         2
-      ]
+      ],
+      "headers": 0.0
     },
     "fuel": {
       "kind": "Gasoline",
