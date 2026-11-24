@@ -118,7 +118,8 @@ namespace tee
         // Sends what the host refused (its queue was full). True when nothing is left waiting. Call it each frame.
         bool flush();
         // The program was reloaded: these Fields are its new ones. Each value is kept by path where its type is
-        // the same, else the field starts at its default; everything is sent again.
+        // the same, else the field starts at its default; everything is sent again. The undo and redo steps are kept
+        // when the new Fields have the same fields in the same order (a quality change), else dropped.
         void rebind(const Fields& fields);
 
         // The bytes of a field as the simulator lays it out (the field's size).
