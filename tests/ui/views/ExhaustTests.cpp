@@ -194,7 +194,8 @@ namespace
         const std::uint64_t k = rig.ws->drawKey();
         rig.host->tick(30);
         CHECK(rig.ws->drawKey() == k && !rig.ws->moving());
-        rig.demo.engine.tick(1.0f / 60.0f);    // the demo's script on: a new Scope copy
+        rig.demo.engine.set("engine.state", 2);   // running: the demo's script moves, a new Scope copy
+        rig.demo.engine.tick(1.0f / 60.0f);
         rig.host->tick(1);
         CHECK(rig.ws->drawKey() != k);
         return 0;
@@ -204,6 +205,7 @@ namespace
     VIEW_TEST(testExhaustSlow, "exhaust.slow")
     {
         ExRig rig("tt-v8-x");
+        rig.demo.engine.set("engine.state", 2);   // running: each tick of the demo a new Scope copy
         rig.host->click(rig.w - 16.0f - 32.0f, 25.0f);   // the SLOW button
         for (int i = 0; i < 12; ++i)
         {
