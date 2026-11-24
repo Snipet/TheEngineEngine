@@ -13,6 +13,7 @@
 #include <array>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace tee::ui::exhaust
 {
@@ -70,6 +71,7 @@ namespace tee::ui::exhaust
         bool silencer = false;
         float silLen = 0.40f, silDiam = 0.026f;
         float exhaustDur = 192.0f;                // degrees the exhaust port is open (about bottom dead centre)
+        int coneSteps = 8;                        // each cone as this many short ducts (engine.tsConeSteps)
         float length() const noexcept { return header + diffuser + belly + baffle + stinger; }
         // chamber.fm's `tuned`: the length to the baffle cone's middle, where the plugging pulse comes back from
         float tunedLength() const noexcept { return chamber ? header + diffuser + belly + 0.5f * baffle : 0.0f; }
@@ -77,6 +79,12 @@ namespace tee::ui::exhaust
         // (tests/sim/twostroke/PipeTest.cpp predicted(): c (exhaust duration - 25) / (12 L), c = sqrt(1.35 287 T) as
         // twostroke.fm soundSpeed()). 0 for a straight pipe.
         double tunedRpm(double gasK) const noexcept;
+        // chamber.fm's build(): each section's middle as its distance from the port (m), in the pipe's order (header,
+        // the diffuser's steps, belly, the baffle's steps, stinger, the silencer and its outlet; a straight pipe in
+        // equal sections of at most 0.9 m). The Scope's pipePressure[k] (k 0..5) is section (k (n - 1)) / 5's.
+        std::vector<float> sectionMids() const;
+        // where the Scope's six pipe points sit (m from the port), from sectionMids()
+        std::array<float, 6> scopePoints() const;
     };
 
     struct ExhaustBuild

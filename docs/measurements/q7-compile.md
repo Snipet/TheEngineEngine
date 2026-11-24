@@ -1,6 +1,6 @@
 # Q7: where the compile goes, and how to compile less
 
-*Package Q, 2026-11-24, 16:40 UTC, at the branch tip of 16:20 (every package but G's builder landed). Compile = qbench's
+*Package Q, 2026-11-24, pushed at about 16:22 UTC, at the branch tip of 16:20 (every package but G's builder landed). Compile = qbench's
 "create": `EnginePlayer::create` and the machine code, wall time on this container (Xeon 2.10 GHz, 4 cores, the host
 shared: about +-0.3 s between two compiles of the same program in one process).*
 

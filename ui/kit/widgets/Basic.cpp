@@ -52,6 +52,8 @@ namespace tee::ui
 
     void Button::fire()
     {
+        if (!enabled())
+            return;
         ++presses_;
         if (onPress_)
             onPress_();
@@ -68,20 +70,21 @@ namespace tee::ui
         const Look l = Look::of(th);
         const Rect& r = bounds_;
         const float rad = std::min(6.0f, r.h * 0.5f);
-        const Col face = funkgui::mix(funkgui::mix(l.face, l.faceHi, hover_), l.accentDim, std::max(down_, litShown_));
-        const Col edge = funkgui::mix(l.edge, l.accent, std::max(down_ * 0.6f, litShown_));
+        const bool on = enabled();
+        const Col face = on ? funkgui::mix(funkgui::mix(l.face, l.faceHi, hover_), l.accentDim, std::max(down_, litShown_)) : l.ground;
+        const Col edge = on ? funkgui::mix(l.edge, l.accent, std::max(down_ * 0.6f, litShown_)) : l.edge;
         c.rrect(r.x, r.y, r.w, r.h, rad, face, 1.0f, edge);
         // U1: a title wider than the button is cut with an ellipsis (a tab's), never drawn over its neighbours.
         textAt(c, fitText(c, upper(title_), kWidgetLabel, std::max(10.0f, r.w - leftRoom_ - 10.0f)), r.centreX() + leftRoom_ * 0.5f,
                r.centreY(), kWidgetLabel,
-               funkgui::mix(l.text, l.value, std::max(hover_, litShown_)), Align::centre);
+               on ? funkgui::mix(l.text, l.value, std::max(hover_, litShown_)) : l.dim, Align::centre);
         if (focusRing)
             ring(c, l, r, rad);
     }
 
     void Button::pointerDown(const funkgui::PointerEvent& e, funkgui::GestureController&, funkgui::HostServices&)
     {
-        if (e.popup)
+        if (e.popup || !enabled())
             return;
         held_ = inside_ = true;
         if (onHold_)
@@ -117,6 +120,7 @@ namespace tee::ui
     void Button::accessibility(std::vector<funkgui::A11yItem>& out) const
     {
         funkgui::A11yItem it = a11yBase(id_, funkgui::A11yRole::button, bounds_, title_);
+        it.enabled = enabled();
         if (lit_)
         {
             it.checkable = true;
@@ -133,7 +137,7 @@ namespace tee::ui
         return true;
     }
 
-    uint64_t Button::drawKey() const { return DrawKey{}.mix(isLit()).mix(title_).h; }
+    uint64_t Button::drawKey() const { return DrawKey{}.mix(isLit()).mix(title_).mix(enabled()).h; }
 
     // ---- Toggle ------------------------------------------------------------------------------------------------------
     Toggle::Toggle(uint32_t id, funkgui::ParamPort& port, std::string label) : Widget(id), port_(port)
