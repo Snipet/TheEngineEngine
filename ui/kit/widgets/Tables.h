@@ -5,7 +5,8 @@
 //               nudge, the plot's pan and zoom elsewhere.
 //   MapEdit     a Map16 as a table and a heat map: a cell is set by typing (a digit starts, Enter keeps, Escape drops)
 //               or by dragging up and down on it; the axes' values are the header row and column, typed the same
-//               way; the operating point lights its cell (live()).
+//               way; the operating point lights its cell (live()). A block of cells is chosen with Shift and a click
+//               or the arrows, from the cell chosen last (block()); its owner acts on it (a nudge, smoothing).
 //
 // What they edit is a CurveSource or a MapSource (ui/kit/bind/ adapts a Spec field of the document to one): read each
 // tick, written whole, each edit (a drag, a typed value, a key's nudge) bracketed by beginEdit and endEdit, one step of
@@ -120,6 +121,11 @@ namespace tee::ui
         int selectedColumn() const noexcept { return sx_; }
         int selectedRow() const noexcept { return sy_; }
         void select(int column, int row) noexcept;
+        // The block of cells chosen: from the anchor (the cell chosen without Shift) to the selected cell, as the
+        // first and last column and row. False (and nothing written) while an axis's header is chosen.
+        bool block(int& column0, int& row0, int& column1, int& row1) const noexcept;
+        // Choose a block: the anchor at (column0, row0), the selected cell at (column1, row1).
+        void selectBlock(int column0, int row0, int column1, int row1) noexcept;
         bool editing() const noexcept { return editing_; }
         const Map16& shownMap() const noexcept { return map_; }
         // Where things are: a cell (column -1: the y header; row -1: the x header), the live cell (-1, -1: none).
@@ -155,7 +161,7 @@ namespace tee::ui
         Axis x_, y_, z_;
         Map16 map_;
         std::function<bool(double&, double&)> live_;
-        int sx_ = 0, sy_ = 0;
+        int sx_ = 0, sy_ = 0, ax_ = 0, ay_ = 0;   // the selected cell, and the block's anchor
         bool editing_ = false, refused_ = false;
         funkgui::text::LineEdit edit_;
         bool dragging_ = false;

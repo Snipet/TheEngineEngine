@@ -167,9 +167,30 @@ namespace tee::app
                     return false;
                 o.themeGiven = true;
             }
-            else if (arg == "--dpi")
+            else if (arg == "--dpi" || arg == "--scale")
             {
                 if (!real(o.dpi, 0.5, 4.0))
+                    return false;
+            }
+            else if (arg == "--size")
+            {
+                std::string text;
+                if (!value(text))
+                    return false;
+                const std::size_t x = text.find_first_of("xX");
+                double w = 0.0, h = 0.0;
+                if (x == std::string::npos || !number(text.substr(0, x), w) || !number(text.substr(x + 1), h) || w < 320
+                    || h < 200 || w > 8192 || h > 8192)
+                {
+                    why = "--size: '" + text + "' is no size (WxH in logical px, as 1280x800)";
+                    return false;
+                }
+                o.width = static_cast<int>(w);
+                o.height = static_cast<int>(h);
+            }
+            else if (arg == "--dyno-wait")
+            {
+                if (!real(o.dynoWait, 0.0, 3600.0))
                     return false;
             }
             else
@@ -208,7 +229,11 @@ namespace tee::app
              "  --buffer N             the buffer asked of the audio device, in frames (the settings file's; 256)\n"
              "  --no-audio             open no audio device\n"
              "  --panel plain          the plain Panel (numbers and dials), whatever interface the build has\n"
-             "  --theme 0|1, --dpi X   the theme; a headless picture's pixels a logical px\n"
+             "  --theme 0|1            the theme (graphite, paper)\n"
+             "  --scale S (--dpi S)    a headless picture's pixels a logical px (1, 1.5, 2)\n"
+             "  --size WxH             the window's or the picture's logical size (the frame's smallest: 1100x700)\n"
+             "  --dyno-wait S          tee-headless: wait up to S seconds for the dyno's first curve before the first\n"
+             "                         frame, so a picture shows it\n"
              "  --keep-going           with --seconds or --frames: go on when the program does not compile\n"
              "  --version, --help\n";
         return u;

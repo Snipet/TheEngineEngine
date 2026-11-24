@@ -21,20 +21,20 @@
 // What it leaves out: the crank's direction of rotation is always the same (a mirrored engine is the same engine
 // numbered the other way); offset (desaxé) cylinders, whose axes miss the crank's, are not modelled.
 #pragma once
-#include "mechspec.fm"
+#include "../spec/engine.fm"
 
 module LayoutGeom
 {
     int n;                      // cylinders (a rotary's faces)
     int rotary;                 // rotors (0: a piston engine)
     float cyc;                  // degrees a cycle: 720, a rotary's face 1080
-    float tdc[MECH_MAX_CYL];    // the crank's angle at each cylinder's top dead centre, 0 to 360 (a face: its rotor's)
-    float fire[MECH_MAX_CYL];   // each one's firing angle after cylinder 1's, 0 to cyc
-    float axisX[MECH_MAX_CYL];  // its bank's axis: sideways and up (a unit vector in the plane across the crank)
-    float axisY[MECH_MAX_CYL];
-    float z[MECH_MAX_CYL];      // its place along the crank, from the crank's middle
-    int order[MECH_MAX_CYL];    // the firing order: cylinder indexes from 0, cylinder 1 (index 0) first
-    float interval[MECH_MAX_CYL];   // degrees from each firing in that order to the next
+    float tdc[MAX_CYL];    // the crank's angle at each cylinder's top dead centre, 0 to 360 (a face: its rotor's)
+    float fire[MAX_CYL];   // each one's firing angle after cylinder 1's, 0 to cyc
+    float axisX[MAX_CYL];  // its bank's axis: sideways and up (a unit vector in the plane across the crank)
+    float axisY[MAX_CYL];
+    float z[MAX_CYL];      // its place along the crank, from the crank's middle
+    int order[MAX_CYL];    // the firing order: cylinder indexes from 0, cylinder 1 (index 0) first
+    float interval[MAX_CYL];   // degrees from each firing in that order to the next
     int ok;                     // 1: a layout that makes sense
     int same;                   // pairs of cylinders that fire together
 
@@ -50,11 +50,11 @@ module LayoutGeom
     }
 
     // From a spec's custom layout
-    void derive(const MechSpec* s)
+    void derive(const EngineSpec* s)
     {
         ok = 1;
         same = 0;
-        rotary = s->rotors > 0 ? (s->rotors > MECH_MAX_ROTORS ? MECH_MAX_ROTORS : s->rotors) : 0;
+        rotary = s->rotors > 0 ? (s->rotors > ENGINE_MAX_ROTORS ? ENGINE_MAX_ROTORS : s->rotors) : 0;
         if (rotary > 0)
         {
             n = 3 * rotary;
@@ -75,12 +75,12 @@ module LayoutGeom
         }
         else
         {
-            n = s->cylinders < 1 ? 1 : (s->cylinders > MECH_MAX_CYL ? MECH_MAX_CYL : s->cylinders);
+            n = s->cylinders < 1 ? 1 : (s->cylinders > MAX_CYL ? MAX_CYL : s->cylinders);
             cyc = 720.0f;
             for (int c = 0; c < n; ++c)
             {
                 int b = s->bank[c];
-                if (b < 0 || b >= MECH_MAX_BANKS)
+                if (b < 0 || b >= ENGINE_MAX_BANKS)
                 {
                     ok = 0;
                     b = 0;
@@ -136,7 +136,7 @@ module LayoutGeom
             if (i + 1 < n && b - a < 0.5f)
                 same += 1;
         }
-        for (int i = n; i < MECH_MAX_CYL; ++i)
+        for (int i = n; i < MAX_CYL; ++i)
         {
             order[i] = -1;
             interval[i] = 0.0f;
