@@ -1,0 +1,76 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Two-stroke triple, 500 cc, piston ports",
+  "notes": "A 500 cc road triple of the early 1970s kind: 60 x 58.8 mm (498 cc), pins 120 apart, piston-port inlets (140 degrees about top dead centre), exhaust 182, transfers 122, a mild chamber a cylinder tuned near 7,000 rpm. Redline 8,000. Published figures for the class: some 44 kW at 7,500 rpm (Kawasaki H1: 60 PS at 7,500). Ports and pipes are judgement, not the maker's.",
+  "spec": {
+    "engine": {
+      "layout": "Inline 3",
+      "displacement": 0.0004988,
+      "compression": 11.5,
+      "custom": true,
+      "cylinders": 3,
+      "bankAngle": [
+        0.0
+      ],
+      "bank": [
+        0,
+        0,
+        0
+      ],
+      "pin": [
+        0.0,
+        120.0,
+        240.0
+      ],
+      "fireRev": [
+        0,
+        0,
+        0
+      ],
+      "place": [
+        0.0,
+        0.07,
+        0.14
+      ],
+      "bore": 0.06,
+      "stroke": 0.0588,
+      "rodLength": 0.115,
+      "redlineSpeed": 837.758,
+      "cycle": "Two-stroke",
+      "tsCylinders": 3,
+      "flywheelInertia": 0.02,
+      "idleTrim": 200,
+      "tsExhaustDur": 182,
+      "tsTransferDur": 122,
+      "tsInletKind": "Piston port",
+      "tsPistonDur": 140,
+      "tsInletArea": 0.0012,
+      "tsCarbArea": 0.00066,
+      "tsSilencer": "Packed",
+      "tsHeaderLen": 0.24,
+      "tsDiffuserLen": 0.495,
+      "tsBellyLen": 0.18,
+      "tsBaffleLen": 0.36,
+      "tsStingerLen": 0.33,
+      "tsHeaderDiam": 0.04,
+      "tsBellyDiam": 0.105,
+      "tsStingerDiam": 0.024,
+      "frictionValvetrain": "None",
+      "alternator": 150
+    }
+  },
+  "expect": {
+    "firingOrder": [
+      1,
+      3,
+      2
+    ],
+    "firingIntervals": [
+      120.0,
+      120.0,
+      480.0
+    ],
+    "note": "the custom geometry's four-stroke derivation (core/layout.fm), which the two-stroke does not use: it fires once a turn a cylinder, evenly"
+  }
+}
