@@ -149,20 +149,34 @@ TEST_CASE("targets: a dog box's upshifts cut and its downshifts blip on the new 
     Times tm = runningTimes(12.0);
     tm.driveFrom = 3.3;
     tm.driveTo = 9.0;
-    auto make = [](bool on) {
-        tee::test::Scenario s = started("v8");
-        s.at(0.0).spec("ecu.model", on ? 1 : 0).spec("car.model", on ? 1 : 0).spec("car.gearbox", "Sequential");
-        s.at(3.0).shiftUp();
-        s.at(3.3).throttle(1.0).ramp(0.2);
-        s.at(5.0).shiftUp();
-        s.at(6.5).shiftUp();
-        s.at(8.5).throttle(0.0).ramp(0.05);
-        s.at(9.0).shiftDown();
-        s.at(10.0).shiftDown();
-        return s;
+    // the upshifts at 5.0 and 6.5 s, and five more phases 1 ms apart: the cut's bang depends on where it ends among
+    // the firings, so the case is judged on the worst of six (the steward's ask; one draw read 32.7 against the 42
+    // ruled at a shift cut); the cut and the blip are read on the first
+    auto makeAt = [](double phase) {
+        return [phase](bool on) {
+            tee::test::Scenario s = started("v8");
+            s.at(0.0).spec("ecu.model", on ? 1 : 0).spec("car.model", on ? 1 : 0).spec("car.gearbox", "Sequential");
+            s.at(3.0).shiftUp();
+            s.at(3.3).throttle(1.0).ramp(0.2);
+            s.at(5.0 + phase).shiftUp();
+            s.at(6.5 + phase).shiftUp();
+            s.at(8.5).throttle(0.0).ramp(0.05);
+            s.at(9.0).shiftDown();
+            s.at(10.0).shiftDown();
+            return s;
+        };
     };
-    const tee::test::Run r = make(true).run(tm.end);
-    Verdict v = judge(r, tm, archetype("v8"), true, bangBaseline(make, tm));
+    const double ref = bangBaseline(makeAt(0.0), tm);
+    const tee::test::Run r = makeAt(0.0)(true).run(tm.end);
+    Verdict v = judge(r, tm, archetype("v8"), true, ref);
+    std::printf("targets: dog box, the upshifts 0 ms later: largest step %.1f\n", v.stepMax);
+    for (int k = 1; k < 6; ++k)
+    {
+        const Verdict one = judge(makeAt(0.001 * k)(true).run(tm.end), tm, archetype("v8"), true, ref);
+        std::printf("targets: dog box, the upshifts %d ms later: largest step %.1f\n", k, one.stepMax);
+        if (one.stepMax > v.stepMax)
+            v = one;
+    }
     const double cut = bitShare(r, "car.flags", 32, 4.9, 5.3) + bitShare(r, "car.flags", 32, 6.4, 6.8);
     const double blip = r.tel("engine.speed").during(9.0, 9.4).max() - r.tel("engine.speed").during(8.8, 9.0).min();
     std::printf("targets: dog box: the cut asked %.0f %% of the upshifts' windows; the downshift blipped %.0f rpm\n",

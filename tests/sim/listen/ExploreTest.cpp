@@ -98,3 +98,94 @@ TEST_CASE("explore: steps at each change", "[.explore]")
         std::printf("to camera %d: worst %.4f at %.1f ms\n", a, worst, double(at) / 96.0);
     }
 }
+
+namespace
+{
+    // Power in [lo, hi) Hz of x (both channels summed), by a plain DFT over 2^k samples (radix 2, a Hann window)
+    void bands(const std::vector<float>& l, const std::vector<float>& r, std::size_t from, double out[3])
+    {
+        const int k = 17;
+        const std::size_t n = std::size_t(1) << k;
+        double p[3] = {0.0, 0.0, 0.0};
+        for (int ch = 0; ch < 2; ++ch)
+        {
+            const auto& x = ch == 0 ? l : r;
+            std::vector<double> re(n), im(n, 0.0);
+            for (std::size_t i = 0; i < n; ++i)
+                re[i] = double(x[from + i]) * (0.5 - 0.5 * std::cos(2.0 * 3.14159265358979 * double(i) / double(n)));
+            for (std::size_t i = 1, j = 0; i < n; ++i)
+            {
+                std::size_t bit = n >> 1;
+                for (; j & bit; bit >>= 1)
+                    j ^= bit;
+                j ^= bit;
+                if (i < j)
+                {
+                    std::swap(re[i], re[j]);
+                    std::swap(im[i], im[j]);
+                }
+            }
+            for (std::size_t len = 2; len <= n; len <<= 1)
+            {
+                const double a = -2.0 * 3.14159265358979 / double(len);
+                for (std::size_t i = 0; i < n; i += len)
+                    for (std::size_t j = 0; j < len / 2; ++j)
+                    {
+                        const double c = std::cos(a * double(j)), s = std::sin(a * double(j));
+                        const double ur = re[i + j], ui = im[i + j];
+                        const double vr = re[i + j + len / 2] * c - im[i + j + len / 2] * s;
+                        const double vi = re[i + j + len / 2] * s + im[i + j + len / 2] * c;
+                        re[i + j] = ur + vr;
+                        im[i + j] = ui + vi;
+                        re[i + j + len / 2] = ur - vr;
+                        im[i + j + len / 2] = ui - vi;
+                    }
+            }
+            const double hz = kRate / double(n);
+            const double edges[4] = {100.0, 1500.0, 6000.0, 16000.0};
+            for (int b = 0; b < 3; ++b)
+                for (std::size_t i = std::size_t(edges[b] / hz); i < std::size_t(edges[b + 1] / hz); ++i)
+                    p[b] += re[i] * re[i] + im[i] * im[i];
+        }
+        for (int b = 0; b < 3; ++b)
+            out[b] = 10.0 * std::log10(p[b] + 1e-30);
+    }
+}
+
+TEST_CASE("explore: each source's highs in each view and camera", "[.explore]")
+{
+    // white noise into each source; model 1's camera minus the reference's view, in three bands: 100 Hz to 1.5 kHz,
+    // 1.5 to 6 kHz, 6 to 16 kHz
+    Rig rig;
+    const int srcs[] = {kTails, kIntake, kMech, kBlock, kShell, kTurbo, kComb};
+    const char* names[] = {"tails", "intake", "mech", "block", "shell", "turbo", "comb"};
+    std::printf("%-8s", "src");
+    for (int v = 0; v < 5; ++v)
+        std::printf("   view %d: lo / mid / hi  ", v);
+    std::printf("\n");
+    for (int k = 0; k < 7; ++k)
+    {
+        std::printf("%-8s", names[k]);
+        rig.set("driven", 0);
+        rig.set("shake", 0.0);
+        for (int v = 0; v < 5; ++v)
+        {
+            double b[2][3];
+            for (int m = 0; m < 2; ++m)
+            {
+                rig.set("view", v);
+                rig.set("ss.camera", v);
+                rig.set("ss.model", m);
+                rig.set("src", srcs[k]);
+                rig.set("sig", 4);
+                rig.reset();
+                rig.clear();
+                rig.play(0.3, false);
+                rig.play(1.4);
+                bands(rig.left(), rig.right(), 0, b[m]);
+            }
+            std::printf("   %+5.1f %+5.1f %+5.1f  ", b[1][0] - b[0][0], b[1][1] - b[0][1], b[1][2] - b[0][2]);
+        }
+        std::printf("\n");
+    }
+}

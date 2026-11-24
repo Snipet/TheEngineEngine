@@ -571,3 +571,37 @@ namespace
         return 0;
     }
 }
+
+namespace
+{
+    // The overlap's pressure (N1's tel.valve.dpOverlap): a stat over the cam editor beside the overlap, "+12 kPa
+    // SCAVENGES" in the intake's ink, "-63 kPa BACK-FILLS" in amber; nothing with no reading (absent or 0). At the
+    // frame's stages with no text out of place.
+    VIEW_TEST(testValvesOverlapPressure, "valves.overlap")
+    {
+        const funkgui::Rect sizes[] = { { 64, 48, 696, 574 }, { 112, 48, 1128, 874 } };
+        for (const funkgui::Rect& st : sizes)
+        {
+            const std::string tag = st.w < 700.0f ? "small" : "large";
+            LabRig rig(static_cast<int>(st.w), static_cast<int>(st.h), 1.0f);
+            rig.live();
+            CHECK(tee::ui::valvesOverlapWords(*rig.ws).empty());   // the demo gives none
+            const std::uint64_t k = rig.ws->drawKey();
+            rig.engine.set(vv::kTelDpOverlap, -63000.0);           // the turbo four at 4040 rpm
+            rig.ctx.live.reset();
+            CHECK(rig.ws->drawKey() != k);
+            rig.host->tick(5);
+            CHECK_MSG(tee::ui::valvesOverlapWords(*rig.ws) == "-63.0 kPa BACK-FILLS", tee::ui::valvesOverlapWords(*rig.ws));
+            std::string why = tee::test::u2::textFaults(rig.host->draw(), { 0, 0, st.w, st.h }, tee::ui::valvesPanels(*rig.ws));
+            CHECK_MSG(why.empty(), tag + ": " + why);
+            picture("valves.overlap." + tag, *rig.host);
+            rig.engine.set(vv::kTelDpOverlap, 12000.0);            // an NA engine near its top
+            CHECK_MSG(tee::ui::valvesOverlapWords(*rig.ws) == "+12.0 kPa SCAVENGES", tee::ui::valvesOverlapWords(*rig.ws));
+            why = tee::test::u2::textFaults(rig.host->draw(), { 0, 0, st.w, st.h }, tee::ui::valvesPanels(*rig.ws));
+            CHECK_MSG(why.empty(), tag + ": " + why);
+            rig.engine.set(vv::kTelDpOverlap, 0.0);                // no reading
+            CHECK(tee::ui::valvesOverlapWords(*rig.ws).empty());
+        }
+        return 0;
+    }
+}
