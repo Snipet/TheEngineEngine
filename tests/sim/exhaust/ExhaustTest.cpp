@@ -453,3 +453,35 @@ TEST_CASE("at rest, nothing flows", "[exhaust][rest]")
     }
     std::printf("at rest: largest mean flow out %.3g m^3/s, largest output %.3g\n", worstQ, worstOut);
 }
+
+
+// Card T's finding (duct.fm, filtFirst): a pipe with deep packing and little loss a pass, taking its steady flow out
+// before its filters, gives back a few % more than it took near 25 Hz. The builder puts such pipes' filters first.
+// Here: straight-through mufflers at their largest (keep 0.95, 26 dB of packing), the engine stopped, a pulse in: the
+// cans are flagged, and the energy is gone (under 1e-6) within 2 s.
+TEST_CASE("a deeply packed pipe at rest is passive", "[exhaust][passive]")
+{
+    Rig rig(5);
+    rig.noise(0.0);
+    rig.set("tPort", 300.0);
+    rig.set("warm", 0.0);
+    rig.set("mdot", 1.0e-4);
+    rig.set("spec.mufKind[0]", 1);
+    rig.set("spec.mufSize[0]", 1.0);
+    rig.configure();
+    CHECK(rig.get("b.net.d[53].filtFirst") == 1.0);
+    CHECK(rig.get("b.net.d[48].filtFirst") == 0.0);
+    const int n = static_cast<int>(3.0 * kRate);
+    std::vector<float> q(static_cast<std::size_t>(n) * kPorts, 0.0f);
+    const int np = static_cast<int>(0.001 * kRate);
+    for (int t = 0; t < np; ++t)
+        q[static_cast<std::size_t>(t) * kPorts] = static_cast<float>(0.002 * (0.5 - 0.5 * std::cos(6.2831853 * t / np)));
+    std::vector<double> e;
+    const double peak = rig.energyAfter(q, e);
+    int last = 0;
+    for (int k = 0; k < n; ++k)
+        if (e[static_cast<std::size_t>(k)] > 1.0e-6 * peak)
+            last = k;
+    std::printf("packed straight-through at rest: gone after %.2f s\n", last / kRate);
+    CHECK(last < static_cast<int>(2.0 * kRate));
+}
