@@ -1,8 +1,8 @@
 // lab.fm: the induction's new parts together, for their standalone tests until the Intake module (K3's carve of the
 // reference) takes them: the air box (airbox.fm), the throttle a runner (itb.fm), the runner of two lengths
-// (runner.fm), and the fields they read (lab-spec.fm).
+// (runner.fm), and the fields they read (spec/intake.fm).
 #pragma once
-#include "lab-spec.fm"
+#include "spec/intake.fm"
 #include "airbox.fm"
 #include "itb.fm"
 #include "runner.fm"

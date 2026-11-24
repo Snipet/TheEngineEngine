@@ -181,3 +181,35 @@ TEST_CASE("boost engine: a throttle chop on boost with no blow-off valve surges,
             CHECK(surging == 0);
     }
 }
+
+TEST_CASE("boost engine: on the dyno, a turbo four's brake mean effective pressure is a turbo engine's", "[boost][engine]")
+{
+    // BMEP = 4 pi T / Vd from the absorber's brake torque (tel.engine.torque) at 5500 rpm, the throttle open: a natural
+    // 2 L four against the same engine with the turbo sized at 0.55 of the match (this engine's port gas is cool: see
+    // the first case). Production 2 L turbo fours make some 15 to 25 bar (300 to 400 N m) and natural ones 10 to 13 (makers' published torques); this engine's natural four makes 9.
+    double bmep[2] = {0.0, 0.0};
+    for (int kind : {0, 1})
+    {
+        Engine e;
+        e.spec("boost.size", 0.55);
+        e.turboFour(kind);
+        auto& c = e.player->controls();
+        c.mode = 2;     // MODE_DYNO_ENGINE: the absorber holds the speed
+        c.dynoSpeed = static_cast<float>(5500.0 * 0.10471976);
+        c.throttle = 1.0f;
+        REQUIRE(e.run(5.0));
+        double sum = 0.0;
+        for (int i = 0; i < 20; ++i)
+        {
+            REQUIRE(e.run(0.05));
+            sum += e.tel("engine.torque");
+        }
+        const double torque = sum / 20.0;
+        bmep[kind] = 4.0 * 3.14159265 * torque / 0.002;
+        std::printf("dyno at 5500 rpm, %s: %.1f N m brake, BMEP %.1f bar, boost %.1f kPa\n", kind ? "turbo" : "natural",
+                    torque, bmep[kind] / 1.0e5, e.tel("boost.pressure") / 1000.0);
+    }
+    CHECK(bmep[1] > 1.3 * bmep[0]);
+    CHECK(bmep[1] > 13.0e5);
+    CHECK(bmep[1] < 25.0e5);
+}

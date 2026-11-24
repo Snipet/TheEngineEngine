@@ -157,7 +157,7 @@ namespace
         std::size_t nextEvent = 0;
 
         // ---- the window ---------------------------------------------------------------------------------------------
-        const app::Shown shown = app::makePanel(o, engine, controls);
+        const app::Shown shown = app::makePanel(o, engine, controls, /*window*/ true);
         if (!shown.problem.empty())
         {
             std::fprintf(stderr, "tee-app: %s\n", shown.problem.c_str());
@@ -261,6 +261,10 @@ namespace
 
         funkgui::desktop::DesktopHost host(*panel, std::move(options));
         commands.attach(&host);
+        if (shown.saveText)
+            *shown.saveText = [&commands](const std::string& name, const std::string& text, std::string& error) {
+                return commands.saveText(name, text, error);
+            };
         std::string why;
         if (!host.open(why))
         {

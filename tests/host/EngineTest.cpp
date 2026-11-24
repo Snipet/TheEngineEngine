@@ -97,3 +97,35 @@ TEST_CASE("the test library drives the simulator: a start, an idle, a rev to the
         steps += std::to_string(static_cast<int>(t)) + " s: " + std::to_string(r.audio().during(t, t + 1.0).largestStep()) + "  ";
     WARN("the largest step each second: " << steps);
 }
+
+TEST_CASE("a telemetry array's elements are columns, assertions and dyno fields by name; a wrong index is said",
+          "[engine][sim][scenario]")
+{
+    if (!haveSim())
+        SKIP("sim/engine.fm is not there yet");
+    std::string error;
+    const auto sim = compiled(simDir(), {}, error);
+    REQUIRE(sim != nullptr);
+    const FieldInfo* f = nullptr;
+    std::size_t index = 0;
+    CHECK(telemetryElement(sim->fields(), "engine.cylPeak[3]", f, index, error));
+    CHECK(index == 3);
+    CHECK(telemetryElement(sim->fields(), "tel.engine.speed", f, index, error));
+    CHECK_FALSE(telemetryElement(sim->fields(), "engine.cylPeak[16]", f, index, error));
+    CHECK(error.find("has 16 elements, 0 to 15") != std::string::npos);
+    CHECK_FALSE(telemetryElement(sim->fields(), "engine.cylPeak", f, index, error));
+    CHECK(error.find("name one") != std::string::npos);
+    CHECK_FALSE(telemetryElement(sim->fields(), "engine.speed[0]", f, index, error));
+    CHECK(error.find("no array") != std::string::npos);
+
+    const Run r = tee::test::Scenario("v8")
+                      .at(0.0).mode(1).ignition(tee::On)
+                      .at(0.25).ignition(tee::Start).until(2.0).ignition(tee::On)
+                      .run(3.0);
+    INFO(r.error());
+    REQUIRE(r.ok());
+    // a running V8: each of its eight cylinders peaks well above the air, the ninth slot is empty
+    for (int c = 0; c < 8; ++c)
+        CHECK(r.tel("engine.cylPeak[" + std::to_string(c) + "]").during(2.5, 3.0).max() > 5.0e5);
+    CHECK(r.tel("engine.cylPeak[8]").during(2.5, 3.0).max() == 0.0);
+}

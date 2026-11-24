@@ -1,9 +1,8 @@
 # The valvetrain lab (card E)
 
 *`sim/valvetrain/`. `valve.model = 0` is the reference's cams (one dial for both cams' duration and their
-separation, one tabulated curve, areas as fixed shares of the piston's); `valve.model = 1` is this lab. Until K3b
-lands, the lab's fields live in `sim/valvetrain/lab-spec.fm` (`ValveLabSpec`) and it is tested standalone
-(`tests/sim/valvetrain/`).*
+separation, one tabulated curve, areas as fixed shares of the piston's); `valve.model = 1` is this lab, its fields
+the ones after `cam` in `sim/spec/valve.fm`, wired through `Valvetrain` (`sim/valvetrain/valvetrain.fm`).*
 
 Every number below says where it comes from: **measured** (a test measures it), **published** (a source), or
 **judgement** (chosen; a person with better data should change it).
@@ -36,7 +35,7 @@ A cam is asked as a cam card gives it: duration at the seat, at 1 mm, lift, cent
   ones (**published**, cam makers' cards), inside that span.
 - The reference's own V8 cam (dial 0.35: a span of 250.6 degrees) measures 231 at the seat and 212 at 1 mm for 10 mm
   of lift; asked for those, the generator makes `p = 1.25, k = 3.99`, span 250.5: the reference's constants back
-  (**measured**). Those are `ValveLabSpec`'s defaults.
+  (**measured**). Those are `spec.valve`'s defaults.
 - Measured back from the generated curve (0.01 degree steps), for a mild, a hot and a race cam: seat and 1 mm
   durations within 1 degree, lift within 1 %, centreline within 1 degree; no negative lift (**measured**).
 - A free valve: open and close given outright, flanks of `freeFlank` degrees (smootherstep, acceleration continuous),
