@@ -195,6 +195,8 @@ module Engine
     float geoSig;       // a custom engine's geometry as read (geometry()), and as configured: a change is made under the fade
     float geoUsed;
     float hostRateSeen; // the host's rate, as init was given it
+    float clickRpm;     // the speed the valves' click amplitude was last worked out at, and that amplitude
+    float clickAmpC;
     float oilK;         // the oil's thickness factor on the friction (the reference's: its 0.15th power, at most 3)
     Extras ex;
     Boost boost;        // turbos or a supercharger: their shafts, boost, valves and sounds (boost/boost.fm)
@@ -766,6 +768,7 @@ module Engine
             intk.pBox = 101325.0f + 100000.0f * boost.boost;
             intk.tAir = heat.tAmb + 5.0f * heat.warm + 25.0f * boost.boost;
         }
+        intk.control(d16, crank.omega, vTotal, 120.0f / fmaxf(crank.rpm, 60.0f));      // (card E; nothing at intake.model 0)
         exh.gas(d16);
         const float surf = 0.022f * expf(0.6666667f * logf(cyl[0].vd / 0.0005f));
         for (int c = 0; c < lay.n; ++c)
@@ -779,7 +782,8 @@ module Engine
         if (spec.valve.model != 0)
         {
             vt.oil(heat.oilPressure(), heat.oilTemperature());
-            vt.control16(d16, ecu.camTarget(0), ecu.liftCommand());
+            vt.control16(d16, crank.omega, ecu.redRpm * 0.10471976f, ecu.throttle, crank.theta, &lay.fire[0], ecu.camTarget(0),
+                         ecu.camTarget(1), ecu.liftCommand());
         }
         if (spec.ecu.model != 0 && set.drive != 0)
             ecu.vehicle(car.drivenSlip(), car.speedNow(), car.gearNow(), car.upshifts(), car.cutRequest(), car.blipRequest());
@@ -862,8 +866,8 @@ module Engine
             scDeg = d;
             scP[d] = c1->p;
             scV[d] = c1->v;
-            scE[d] = c1->lift(a, c1->evo, c1->edur);
-            scI[d] = c1->lift(a, c1->ivo, c1->idur);
+            scE[d] = vt.liftEx(0, a);
+            scI[d] = vt.liftIn(0, a);
             // (the pressure at each port: the wave arriving and the one leaving, over the air's)
             const int pt = lay.port[0];
             scPi[d] = 101325.0f + 2.0f * intk.run[pt].near + intk.run[pt].z * c1->qIa;
@@ -890,7 +894,13 @@ module Engine
         }
         float torque = 0.0f;
         float dps = 0.0f;
-        const float clickAmp = 0.15f + 0.5f * expf(0.8f * logf(fmaxf(fminf(crank.rpm / 4000.0f, 1.6f), 0.01f)));
+        // (its expf and logf only when the speed they follow has moved: crank.rpm changes every 16 samples, and at a start)
+        if (crank.rpm != clickRpm)
+        {
+            clickRpm = crank.rpm;
+            clickAmpC = 0.15f + 0.5f * expf(0.8f * logf(fmaxf(fminf(crank.rpm / 4000.0f, 1.6f), 0.01f)));
+        }
+        const float clickAmp = clickAmpC;
         // (a piston's slap: its skirt hits the bore as the side thrust changes sides at the top, harder with the gas's
         // pressure there and the piston's speed)
         const float slapAmp = 0.4f + 0.6f * fminf(crank.rpm / 3000.0f, 2.0f);
@@ -960,12 +970,13 @@ module Engine
             if (cy->ivcNow)
             {
                 work.trapped(c, fmaxf(cy->m - cy->mInert, 0.0f), intk.pPlenum, intk.tAir, 101325.0f, heat.tAmb);
-                comb.charge(&cyl[c], c, fuelUse, intk.pPlenum, crank.rpm, smCR, crBs, burnK, set.pops, set.rough, set.timing);
-                ex.valveClick(clickAmp);
+                if (vt.active(c))
+                    comb.charge(&cyl[c], c, fuelUse, intk.pPlenum, crank.rpm, smCR, crBs, burnK, set.pops, set.rough, set.timing);
+                ex.valveClick(clickAmp * (1.0f + 2.0f * vt.clatter));
             }
             if (cy->evcNow)
             {
-                ex.valveClick(clickAmp);
+                ex.valveClick(clickAmp * (1.0f + 2.0f * vt.clatter));
                 if (fuelUse == 0)
                     ex.injectorClick(0.3f);
             }
@@ -994,7 +1005,7 @@ module Engine
         float rNear[MAX_PORTS];
         for (int i = 0; i < np; ++i)
             rNear[i] = intk.run[i].near + intk.run[i].z * qi[i];
-        intk.plenum(np, rNear, fuelUse, ecu.throttle, ecu.bypass, dt);
+        intk.plenum(np, rNear, fuelUse, vt.plateOpen() != 0 ? 1.0f : ecu.throttle, ecu.bypass, dt);
         mech.torques(crank.rpm, crank.omega, strokeK, heat.viscK, fuelUse, smCR, vTotal, set.load, ecu.redRpm, heat.tAmb, ecu.starterOn,
                      cyl[0].vd);
         // (a custom engine's friction by part: core/friction.fm, on the last cycle's peak pressure)
@@ -1139,6 +1150,7 @@ module Engine
 
     void init(float hostRate)
     {
+        clickRpm = -1.0f;
         hostRateSeen = hostRate;
         setupAll(hostRate);
         for (int k = 0; k < SPEC_SECTIONS; ++k)
@@ -1185,8 +1197,12 @@ module Engine
             s->load = spec.engine.benchLoad;
         }
         if (moved(1, spec.valve.rev))
+        {
             s->cam = spec.valve.cam;
-        moved(2, spec.intake.rev);
+            vt.apply(&spec.valve);
+        }
+        if (moved(2, spec.intake.rev))
+            intk.apply(&spec.intake);
         if (moved(3, spec.boost.rev))
         {
             s->asp = spec.boost.kind;
@@ -1241,7 +1257,8 @@ module Engine
     void readControls()
     {
         Dials* s = &set;
-        const bool driven = ctl.mode == MODE_DRIVE;
+        // (the chassis dyno is the vehicle's: driven, as on the road)
+        const bool driven = ctl.mode == MODE_DRIVE || ctl.mode == MODE_DYNO_CHASSIS;
         s->drive = driven ? (spec.car.kind == 1 ? 2 : 1) : 0;
         s->hold = 1.0e9f;            // it never switches itself off (the reference's HOLD idled it out)
         s->bendRange = 12.0f;
@@ -1366,6 +1383,8 @@ module Engine
         tel.car.brake = fminf(fmaxf(set.brake, 0.0f), 1.0f);
         tel.car.clutch = fminf(fmaxf(set.clutch, 0.0f), 1.0f);
         tel.sound.peak = peak;
+        vt.telemetry(&tel.valve);
+        intk.telemetry(&tel.intake);
     }
 
     // card D's part of tel.engine
