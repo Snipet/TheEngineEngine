@@ -148,3 +148,5 @@ sheet will include every registered workspace.
   build after each change and applies a finished bake still current; the shell ticks it once a frame and fills
   `FrameServices::sparkMap` (its state: "no table", "waiting to bake", "baking", "baked, to apply", "baked", "bake
   failed"). TUNE reads `ctx_.services->sparkMap` (may be null or empty). Test `ui.build` case `build.bake`.
+- **Engine start** (the lead's ruling: warm, cold the person's choice): `FrameServices::coldStart` / `setColdStart`
+  (card B's settings key "coldStart", from the next launch): the settings page's ENGINE START row, Warm and Cold.
