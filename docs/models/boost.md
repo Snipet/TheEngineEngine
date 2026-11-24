@@ -102,7 +102,9 @@ Wastegate: lift `(s - spring) / 10 kPa`, `s = (p_v1 - p_out)(1 - duty) + 0.03 (p
 actuator, small poppet push), 40 ms lag. PI on the boost before the throttle: `duty = 2.5 e + integral(4 e)`, e the
 error over the target (here: card F owns the loop; card H gives the target). Vanes take the loop's output instead.
 Blow-off valve: lift `(p_v2 - p_plenum - spring) / 10 kPa`, 3 ms lag; default spring 15 kPa (a vacuum-referenced
-valve's few inches of mercury). Sequential: the second joins above 40 % of the matched flow (0.15 s, 80 % hysteresis).
+valve's few inches of mercury), 25 mm (judgement, both). It is plenum-referenced, so it opens on the plenum's decay,
+some 30 ms after a chop: in that time the compressor's point may cross the knee line once with forward flow (the 2 L
+four at 5500 rpm, one 10.7 ms block at 0.062 kg/s); what it prevents is the surge cycle, the reversing flow. Sequential: the second joins above 40 % of the matched flow (0.15 s, 80 % hysteresis).
 
 ## Superchargers
 
