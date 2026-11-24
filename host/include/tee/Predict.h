@@ -46,6 +46,12 @@ namespace tee
     struct PredictOptions
     {
         int threads = 0;              // workers; 0: the machine's cores less one (for the audio and the UI), 1 to 6
+        // The speeds' shares, each run in turn on an instance of its own (the k-th, (k + shares)-th, ... of the order),
+        // a worker running whole shares: fixed, so a point's history and so the curve are the same whatever the
+        // machine's cores (the workers only decide how many shares run at once). 3: a share's instance starts and warms
+        // (some 0.2 s), so more shares cost more on fewer cores (the V8's refined curve on 3 workers: 1.29 s with 3,
+        // 1.81 with 4, 1.45 with 6), and a machine with more cores runs no more than 3 at once
+        int shares = 3;
         int coarse = 6;               // speeds in the first curve
         int points = 16;              // speeds in the refined curve (the coarse ones among them)
         double from = 0.0;            // rad/s; 0: 1000 rpm, or the idle's speed when that is higher
