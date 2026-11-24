@@ -335,5 +335,9 @@ module HeavyDiesel
         t->brakeCylinders = stages;
         t->backPressure = backP;
         t->governorSpeed = setSpeed;
+        // (the rack's fuel flow: what it asks a stroke, each cylinder once a cycle; the compensator's cap is the charge's,
+        // phiAsked of the air, not this)
+        if (d->metered != 0 && lever >= 0.0f)
+            t->fuelFlow = lever * fuelFull * (1.0f + fminf(fmaxf(d->overFuel, 0.0f), 0.4f)) * (float)nCyl * omega / (4.0f * 3.14159265f);
     }
 };
