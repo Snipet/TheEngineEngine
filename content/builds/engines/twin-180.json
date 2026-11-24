@@ -1,0 +1,45 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Parallel twin, 180-degree crank",
+  "notes": "Pins opposed: 180-540.",
+  "spec": {
+    "engine": {
+      "custom": true,
+      "cylinders": 2,
+      "bankAngle": [
+        0.0
+      ],
+      "bank": [
+        0,
+        0
+      ],
+      "pin": [
+        0,
+        180
+      ],
+      "fireRev": [
+        0,
+        0
+      ],
+      "place": [
+        0.0,
+        0.1
+      ]
+    }
+  },
+  "expect": {
+    "firingOrder": [
+      1,
+      2
+    ],
+    "firingIntervals": [
+      180,
+      540
+    ],
+    "firingAngles": [
+      0.0,
+      180.0
+    ]
+  }
+}

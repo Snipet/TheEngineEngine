@@ -1,0 +1,74 @@
+// dyno.fm: an engine dynamometer's absorber on the crank (MODE_DYNO_ENGINE).
+//
+// A dynamometer holds the engine at a set speed whatever its throttle, by taking (or, motoring, giving) the torque that
+// keeps it there; the torque it takes is the engine's brake torque. Here the absorber is a torque on the crank, set
+// each sample by a loop that knows the crank's inertia J:
+//
+//     T_abs = J (2 zeta wn e + wn^2 integral of e) - J a_ref,     e = w - w_ref
+//
+// a proportional-integral loop placed as a second-order system of natural frequency wn and damping zeta on the
+// crank's own dynamics (dw/dt = (T_engine - T_abs) / J), with the set speed's own acceleration fed forward so a sweep
+// is followed without lag. wn is 15 rad/s (2.4 Hz: a real eddy-current or AC dyno's speed loop is of that order) and
+// zeta 1, well under the slowest firing frequency the engines here have (a single at idle, some 6 Hz), so the loop
+// holds the cycle's mean speed and lets the firing ripple through, as a real dyno's does. With `rate` 0 the set speed
+// is `set`; otherwise it moves from where it was at `rate` (rad/s^2), a sweep, and the host says where to start and
+// stop (card C). The brake torque reported is the absorber's mean over the last cycle (its low-pass over 0.1 s).
+//
+// What it leaves out: the absorber's own inertia and its torque's limits (it takes whatever the engine gives), the
+// shaft's twist between them.
+#pragma once
+
+module Dyno
+{
+    float j;            // the crank's inertia, kg m^2
+    float wn;           // the loop's natural frequency (rad/s) and damping
+    float zeta;
+    double ref;         // the speed held now (rad/s): a double, as a sweep adds a ten-thousandth of it a sample
+    float integ;        // the integral of the speed's error (rad)
+    float tqAbs;        // the absorber's torque now (N m): the brake torque
+    float tqMean;       // its mean over some 0.1 s
+    int on;
+
+    void setup(float inertia)
+    {
+        j = inertia;
+        wn = 15.0f;
+        zeta = 1.0f;
+        integ = 0.0f;
+        tqAbs = 0.0f;
+        tqMean = 0.0f;
+        on = 0;
+    }
+
+    // The absorber's torque this sample (N m, taken from the crank), at the crank's speed (rad/s): it holds `set`, or
+    // sweeps from where it is at `rate` (rad/s^2)
+    float step(float omega, float set, float rate, float dt)
+    {
+        if (on == 0)
+        {
+            // (bumpless: it takes the engine where it finds it, and starts with no torque)
+            on = 1;
+            ref = rate != 0.0f ? (double)omega : (double)set;
+            integ = 0.0f;
+        }
+        float a = 0.0f;
+        if (rate != 0.0f)
+        {
+            ref = fmax(ref + (double)rate * (double)dt, 0.0);
+            a = rate;
+        }
+        else
+            ref = (double)set;
+        const float e = omega - (float)ref;
+        integ += e * dt;
+        tqAbs = j * (2.0f * zeta * wn * e + wn * wn * integ - a);
+        tqMean += (tqAbs - tqMean) * fminf(dt / 0.1f, 1.0f);
+        return tqAbs;
+    }
+
+    void stop()
+    {
+        on = 0;
+        tqAbs = 0.0f;
+    }
+};

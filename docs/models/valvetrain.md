@@ -56,12 +56,12 @@ A cam is asked as a cam card gives it: duration at the seat, at 1 mm, lift, cent
   0.375; an LS's 2.00 and 1.55 on 3.90: 0.51, 0.40); four valves 0.39 and 0.33 (Honda K20 35 and 30 mm on 86: 0.41,
   0.35; Toyota 2JZ 33 and 29 on 86: 0.38, 0.34); three (two intakes) 0.37 and 0.44, five (three intakes) 0.32 and
   0.33 (**judgement**: few heads to go by).
-- Port quality `q` 1 is the reference's coefficients. On the flow bench (below) a small-block's two-valve head comes
-  out at 172 CFM at 0.500 in (**measured**); real stock small-block heads flow some 190 to 230 and good aftermarket
-  ones 250 to 300 (flow-bench figures as recalled, not checked against a source here): `q` some 1.2 to 1.6 for
-  those. The reference's own areas
-  (12 % and 9 % of the piston's) are a two-valve head with valves of 0.54 and 0.48 of the bore at `q` 1: larger
-  than real valves, a better port than `q` 1 says.
+- Port quality `q` 1 is the reference's coefficients (Cd 0.4 at a quarter of the diameter). The defaults, 1.35 for
+  the intake and 1.5 for the exhaust, give the reference V8's peak areas (12 % and 9 % of the piston's) with the
+  default valves and 10 mm of lift, within 0.5 % (**measured**, test `area against lift`), so the lab at its
+  defaults breathes as the reference does. On the flow bench (below) a small-block's two-valve head comes out at
+  172 CFM at 0.500 in at `q` 1 and 232 at 1.35 (**measured**); real stock small-block heads flow some 190 to 230 and
+  good aftermarket ones 250 to 300 (flow-bench figures as recalled, not checked against a source here).
 
 ## Phasers (`phaser.fm`)
 

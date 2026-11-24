@@ -1,0 +1,74 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Inline six",
+  "notes": "1-5-3-6-2-4, even 120.",
+  "spec": {
+    "engine": {
+      "custom": true,
+      "layout": 10,
+      "cylinders": 6,
+      "bankAngle": [
+        0.0
+      ],
+      "bank": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "pin": [
+        0,
+        240,
+        120,
+        120,
+        240,
+        0
+      ],
+      "fireRev": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        1
+      ],
+      "place": [
+        0.0,
+        0.1,
+        0.2,
+        0.3,
+        0.4,
+        0.5
+      ]
+    }
+  },
+  "expect": {
+    "firingOrder": [
+      1,
+      5,
+      3,
+      6,
+      2,
+      4
+    ],
+    "firingIntervals": [
+      120,
+      120,
+      120,
+      120,
+      120,
+      120
+    ],
+    "firingAngles": [
+      0.0,
+      480.0,
+      240.0,
+      600.0,
+      120.0,
+      360.0
+    ]
+  }
+}

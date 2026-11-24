@@ -1,0 +1,60 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Inline four, crossplane crank",
+  "notes": "1-3-2-4, pins 0, 270, 90, 180: 270-180-90-180.",
+  "spec": {
+    "engine": {
+      "custom": true,
+      "layout": 7,
+      "cylinders": 4,
+      "bankAngle": [
+        0.0
+      ],
+      "bank": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "pin": [
+        0,
+        270,
+        90,
+        180
+      ],
+      "fireRev": [
+        0,
+        1,
+        0,
+        1
+      ],
+      "place": [
+        0.0,
+        0.1,
+        0.2,
+        0.3
+      ]
+    }
+  },
+  "expect": {
+    "firingOrder": [
+      1,
+      3,
+      2,
+      4
+    ],
+    "firingIntervals": [
+      270,
+      180,
+      90,
+      180
+    ],
+    "firingAngles": [
+      0.0,
+      450.0,
+      270.0,
+      540.0
+    ]
+  }
+}

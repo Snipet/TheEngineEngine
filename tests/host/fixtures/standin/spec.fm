@@ -1,0 +1,48 @@
+// spec.fm: the stand-in's Spec. The shape of sim/spec/spec.fm (02-contracts.md, sections 2 and 3): sections, each
+// starting with `int rev;`, every field with its attributes, a curve and a map.
+#include "tables.fm"
+#include "limits.fm"
+
+module EngineSpec
+{
+    int rev;
+    int layout [[fminus::range(0, 2)]] [[fminus::default(1)]] [[ui::label("Layout")]]
+        [[ui::choices("Inline four", "V8", "V12")]] [[ui::group("Block")]];
+    float displacement [[fminus::range(0.0005, 0.03)]] [[fminus::default(0.0058)]] [[ui::label("Displacement")]]
+        [[ui::quantity("volume")]] [[ui::taper("log")]] [[ui::decimals(1)]];
+    float flywheel [[fminus::range(0.05, 2)]] [[fminus::default(0.25)]] [[ui::label("Flywheel")]]
+        [[ui::quantity("inertia")]] [[ui::help("The rotating parts' moment of inertia about the crank.")]];
+    float torque [[fminus::range(50, 2000)]] [[fminus::default(500)]] [[ui::label("Peak torque")]]
+        [[ui::quantity("torque")]];
+    float friction [[fminus::range(0, 0.5)]] [[fminus::default(0.08)]] [[ui::label("Friction")]] [[ui::unit("N m s")]];
+    float idle [[fminus::range(40, 160)]] [[fminus::default(80)]] [[ui::label("Idle")]] [[ui::quantity("rotation")]]
+        [[ui::group("Speeds")]];
+    float redline [[fminus::range(300, 1200)]] [[fminus::default(680)]] [[ui::label("Redline")]]
+        [[ui::quantity("rotation")]];
+    bool starter [[fminus::default(1)]] [[ui::label("Starter")]];
+    Curve16 torqueShape [[ui::label("Torque curve")]] [[ui::axes("rotation", "fraction")]];
+};
+
+module EcuSpec
+{
+    int rev;
+    float limiterCut [[fminus::range(0, 0.2)]] [[fminus::default(0.05)]] [[ui::label("Limiter hysteresis")]]
+        [[ui::quantity("fraction")]];
+    Map16 spark [[ui::label("Spark trim")]] [[ui::axes("rotation", "fraction")]];
+};
+
+module SoundSpec
+{
+    int rev;
+    float level [[fminus::range(0, 1)]] [[fminus::default(0.3)]] [[ui::label("Level")]] [[ui::quantity("fraction")]];
+    float harmonics [[fminus::range(0, 1)]] [[fminus::default(0.5)]] [[ui::label("Harmonics")]] [4];
+    // Which of the harmonics is loudest in the scope: an index, so that a test can plant one past the array's end.
+    int tap [[fminus::range(0, 3)]] [[fminus::default(0)]] [[ui::label("Tap")]] [[ui::hidden]];
+};
+
+module Spec
+{
+    EngineSpec engine;
+    EcuSpec ecu;
+    SoundSpec sound;
+};

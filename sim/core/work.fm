@@ -1,0 +1,184 @@
+// work.fm: the work each cylinder's gas does over a cycle, and the mean effective pressures and efficiencies from it.
+//
+// The gas's work on the piston over a cycle is the integral of p dV round it. A four-stroke cycle has two loops: the
+// power loop (compression and expansion, from bottom dead centre before the compression to the one after the
+// expansion) and the pumping loop (exhaust and intake, the other two strokes). In a cylinder's own angle (0 at the top
+// of the compression stroke, where it fires: sim/ref/cylinder.fm) the power loop is 540 to 720 and 0 to 180 degrees,
+// the pumping loop 180 to 540. Each over the swept volume is a mean effective pressure:
+//
+//     IMEP (gross)  the power loop's work over the swept volume
+//     PMEP          the pumping loop's work, negated (a throttled engine's pumping takes work: PMEP above 0)
+//     IMEP (net)    gross less PMEP
+//
+// and, with the friction's (sim/core/friction.fm) and the brake torque, FMEP and BMEP = 4 pi T / V_total. (Splitting at
+// the two bottom dead centres makes the split independent of whether p is absolute or gauge: the volume is the same at
+// both ends of each loop.) The integral is the trapezoid's over each sample's change of volume, exact to the sample.
+//
+// Volumetric efficiency: the mass trapped when the intake valve closes over what the swept volume would hold at the
+// manifold's density, and at the outside air's (both, labelled: the first is the cylinder's own filling, the second the
+// engine's, the throttle and the boost included). Peak pressure and its angle (degrees after the firing top dead
+// centre) each cycle. A rotary's face: its cycle is 1080 degrees, and its loops are taken at 270 to 810 for pumping
+// (its chamber's largest volumes, a third of the way either side).
+//
+// What it leaves out: the blowby's mass, the work a cylinder's ring pack takes from its gas.
+#pragma once
+#include "mechspec.fm"
+
+module CylWork
+{
+    double wGross;      // this cycle's power loop so far (J)
+    double wPump;
+    float aLast;        // the angle and the volume and pressure at the last sample
+    float vLast;
+    float pLast;
+    float pPeakNow;
+    float aPeakNow;
+    int started;        // 1 once a whole cycle's start was seen
+    // the last whole cycle's
+    float imep;         // gross, Pa
+    float pmep;
+    float peak;         // Pa
+    float peakAt;       // degrees
+    float trapped;      // kg at intake closing
+    float veManifold;
+    float veAir;
+    int cycles;
+};
+
+module CycleWork
+{
+    CylWork w[MECH_MAX_CYL];
+    int n;
+    float vd;           // a cylinder's swept volume, m^3
+    float cyc;          // 720 or 1080
+    float pumpFrom;     // the pumping loop's angles
+    float pumpTo;
+    float vBmep;        // the displacement BMEP is taken over: the cylinders', a rotary's two chambers a rotor (a
+                        // four-stroke's equivalent: each face fires once in three turns, so a rotor's three faces do
+                        // the work of two cylinders of a face's volume)
+    // the engine's: the means over the cylinders of their last cycles
+    float imepGross;
+    float pmep;
+    float imepNet;
+    float peakMax;
+    float veManifold;
+    float veAir;
+
+    void setup(int cylinders, float swept, float cycleDeg)
+    {
+        n = cylinders;
+        vd = swept;
+        cyc = cycleDeg;
+        pumpFrom = cyc > 900.0f ? 270.0f : 180.0f;
+        pumpTo = cyc > 900.0f ? 810.0f : 540.0f;
+        vBmep = cyc > 900.0f ? 0.66666667f * (float)n * vd : (float)n * vd;
+        for (int c = 0; c < MECH_MAX_CYL; ++c)
+        {
+            CylWork* k = &w[c];
+            k->wGross = 0.0;
+            k->wPump = 0.0;
+            k->started = 0;
+            k->cycles = 0;
+            k->imep = 0.0f;
+            k->pmep = 0.0f;
+            k->peak = 0.0f;
+            k->peakAt = 0.0f;
+            k->pPeakNow = 0.0f;
+            k->aPeakNow = 0.0f;
+            k->aLast = -1.0f;
+            k->trapped = 0.0f;
+            k->veManifold = 0.0f;
+            k->veAir = 0.0f;
+        }
+        imepGross = 0.0f;
+        pmep = 0.0f;
+        imepNet = 0.0f;
+        peakMax = 0.0f;
+        veManifold = 0.0f;
+        veAir = 0.0f;
+    }
+
+    // Cylinder c this sample: its angle in its cycle (degrees), its pressure (Pa) and its volume (m^3)
+    void sample(int c, float a, float p, float v)
+    {
+        CylWork* k = &w[c];
+        if (k->aLast < 0.0f)
+        {
+            k->aLast = a;
+            k->vLast = v;
+            k->pLast = p;
+            return;
+        }
+        // the cycle's end: the angle wrapped round past its firing top dead centre
+        if (a < k->aLast)
+        {
+            if (k->started != 0)
+            {
+                k->imep = (float)(k->wGross / (double)vd);
+                k->pmep = (float)(-k->wPump / (double)vd);
+                k->peak = k->pPeakNow;
+                k->peakAt = k->aPeakNow;
+                k->cycles += 1;
+                means();
+            }
+            k->started = 1;
+            k->wGross = 0.0;
+            k->wPump = 0.0;
+            k->pPeakNow = 0.0f;
+        }
+        const double dw = 0.5 * ((double)p + (double)k->pLast) * ((double)v - (double)k->vLast);
+        // (the sample's work goes to the loop its middle lies in)
+        const float mid = 0.5f * (a + k->aLast);
+        if (a >= k->aLast && mid >= pumpFrom && mid < pumpTo)
+            k->wPump += dw;
+        else
+            k->wGross += dw;
+        if (p > k->pPeakNow)
+        {
+            k->pPeakNow = p;
+            k->aPeakNow = a;
+        }
+        k->aLast = a;
+        k->vLast = v;
+        k->pLast = p;
+    }
+
+    // Cylinder c's intake valve has closed on m kg; the manifold's and the air's pressure (Pa) and temperature (K)
+    void trapped(int c, float m, float pMan, float tMan, float pAir, float tAir)
+    {
+        CylWork* k = &w[c];
+        k->trapped = m;
+        k->veManifold = m / (pMan / (287.0f * tMan) * vd);
+        k->veAir = m / (pAir / (287.0f * tAir) * vd);
+    }
+
+    void means()
+    {
+        float g = 0.0f;
+        float pm = 0.0f;
+        float pk = 0.0f;
+        float vm = 0.0f;
+        float va = 0.0f;
+        for (int c = 0; c < n; ++c)
+        {
+            g += w[c].imep;
+            pm += w[c].pmep;
+            pk = fmaxf(pk, w[c].peak);
+            vm += w[c].veManifold;
+            va += w[c].veAir;
+        }
+        const float inv = 1.0f / (float)n;
+        imepGross = g * inv;
+        pmep = pm * inv;
+        imepNet = imepGross - pmep;
+        peakMax = pk;
+        veManifold = vm * inv;
+        veAir = va * inv;
+    }
+
+    // Brake mean effective pressure (Pa) from a brake torque (N m): 4 pi T / V (vBmep)
+    float bmep(float torque)
+    {
+        return 12.566371f * torque / vBmep;
+    }
+};

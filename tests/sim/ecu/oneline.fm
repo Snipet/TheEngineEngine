@@ -37,6 +37,8 @@ module OneLine
     float rpmMax;
     float rpmMean;
     int samples;
+    float biggest;      // the bangs' largest and smallest pulses (Pa)
+    float smallest;
 
     void setup()
     {
@@ -225,5 +227,59 @@ module OneLine
             m->boostAuto = false;
         if (which == MAP_PEDAL)
             m->pedalAuto = false;
+    }
+
+    // The bangs' account alone: a firing every 90 degrees at `rpm` for `seconds`, each letting `fuel` kg unburned and
+    // `air` kg of air into bank 0's pipe at `gasT` K; returns the fuel burned there (the pulses' sum over 3e9)
+    float bangs(float fuel, float air, float gasT, float rpm, float seconds)
+    {
+        ecu.account.reset();
+        biggest = 0.0f;
+        smallest = 1.0e30f;
+        float angle = 0.0f;
+        float pulses = 0.0f;
+        const int steps = (int)(seconds / d16);
+        for (int s = 0; s < steps; ++s)
+        {
+            angle += rpm * 6.0f * d16;
+            while (angle >= 90.0f)
+            {
+                angle -= 90.0f;
+                ecu.account.add(0, fuel, air);
+            }
+            ecu.account.control(gasT, gasT, 14.0f, d16);
+            pulses += ecu.account.pulse[0];
+            if (ecu.account.pulse[0] > 0.0f)
+            {
+                biggest = fmaxf(biggest, ecu.account.pulse[0]);
+                smallest = fminf(smallest, ecu.account.pulse[0]);
+            }
+        }
+        return pulses / 3.0e9f;
+    }
+
+    // Traction control on a toy wheel: the slip settles (50 ms) toward 0.4 times what the torque is over the grip's,
+    // less 1 (no slip while the torque is under the grip's); the torque is the engine's share left by the retard and
+    // the cuts. Returns the slip's mean over the last second of `seconds`
+    float traction(float drive, float seconds)
+    {
+        float slip = 0.0f;
+        float sum = 0.0f;
+        int n = 0;
+        const int steps = (int)(seconds / d16);
+        for (int s = 0; s < steps; ++s)
+        {
+            ecu.traction.control(set.traction.on, slip, set.traction.slip, 0.0f, 20.0f, d16);
+            const float ret = ecu.traction.retard / 45.0f;
+            const float share = fmaxf(1.0f - ret * ret, 0.2f) * (1.0f - ecu.traction.share);
+            const float want = fmaxf(0.4f * (drive * share - 1.0f), 0.0f);
+            slip += (want - slip) * (1.0f - expf(-d16 / 0.05f));
+            if ((float)s * d16 > seconds - 1.0f)
+            {
+                sum += slip;
+                n += 1;
+            }
+        }
+        return n > 0 ? sum / (float)n : 0.0f;
     }
 };

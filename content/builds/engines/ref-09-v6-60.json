@@ -1,0 +1,75 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "V6, 60 degrees, split pins",
+  "notes": "1-2-3-4-5-6, odd cylinders left; six pins 60 degrees apart: even 120.",
+  "spec": {
+    "engine": {
+      "custom": true,
+      "layout": 9,
+      "cylinders": 6,
+      "bankAngle": [
+        -30,
+        30
+      ],
+      "bank": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        1
+      ],
+      "pin": [
+        330,
+        270,
+        90,
+        30,
+        210,
+        150
+      ],
+      "fireRev": [
+        0,
+        0,
+        0,
+        1,
+        1,
+        1
+      ],
+      "place": [
+        0.0,
+        0.033,
+        0.1,
+        0.133,
+        0.2,
+        0.233
+      ]
+    }
+  },
+  "expect": {
+    "firingOrder": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "firingIntervals": [
+      120,
+      120,
+      120,
+      120,
+      120,
+      120
+    ],
+    "firingAngles": [
+      0.0,
+      120.0,
+      240.0,
+      360.0,
+      480.0,
+      600.0
+    ]
+  }
+}

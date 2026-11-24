@@ -1,0 +1,53 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Inline three, 120-degree crank",
+  "notes": "1-2-3, even.",
+  "spec": {
+    "engine": {
+      "custom": true,
+      "layout": 4,
+      "cylinders": 3,
+      "bankAngle": [
+        0.0
+      ],
+      "bank": [
+        0,
+        0,
+        0
+      ],
+      "pin": [
+        0,
+        120,
+        240
+      ],
+      "fireRev": [
+        0,
+        0,
+        1
+      ],
+      "place": [
+        0.0,
+        0.1,
+        0.2
+      ]
+    }
+  },
+  "expect": {
+    "firingOrder": [
+      1,
+      2,
+      3
+    ],
+    "firingIntervals": [
+      240,
+      240,
+      240
+    ],
+    "firingAngles": [
+      0.0,
+      240.0,
+      480.0
+    ]
+  }
+}

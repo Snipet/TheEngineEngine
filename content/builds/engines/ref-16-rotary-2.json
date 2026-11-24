@@ -1,0 +1,59 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Rotary, two rotors",
+  "notes": "Rotors 180 degrees apart on the eccentric shaft: a face fires each 180.",
+  "spec": {
+    "engine": {
+      "custom": true,
+      "layout": 16,
+      "rotors": 2,
+      "cylinders": 2,
+      "bankAngle": [
+        0
+      ],
+      "bank": [
+        0,
+        0
+      ],
+      "pin": [
+        0,
+        180
+      ],
+      "fireRev": [
+        0,
+        0
+      ],
+      "place": [
+        0.0,
+        0.1
+      ]
+    }
+  },
+  "expect": {
+    "firingOrder": [
+      1,
+      4,
+      2,
+      5,
+      3,
+      6
+    ],
+    "firingIntervals": [
+      180,
+      180,
+      180,
+      180,
+      180,
+      180
+    ],
+    "firingAngles": [
+      0.0,
+      360.0,
+      720.0,
+      180.0,
+      540.0,
+      900.0
+    ]
+  }
+}
