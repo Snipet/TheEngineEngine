@@ -178,6 +178,23 @@ namespace tee
         // program's tel or scope block outgrew the room the host gave them at load.
         bool reload(std::shared_ptr<Sim> next, std::string& errors);
 
+        // The engine's quality (the lead's decision, Q's measures): Full, the simulator at 96 kHz inside (the
+        // default); Economy, at 48 kHz (sim/engine.fm with TEE_ENGINE_RATE_48000: 0.49 of the work, torque within
+        // some 1.2 %, the top octave lost: bands from about 10 kHz 13 to 24 dB down). A change compiles the program
+        // again (seconds: call it off the UI thread too) and swaps it in under the reload's crossfade: the Spec is
+        // carried, the engine's state is not (its rates differ), and an ignition left on cranks it back. Never
+        // switched by the host itself. False, with `errors`, when the program does not compile, was compiled from
+        // memory, or does not take the define. A development reload (Reload.h) compiles at the options it was given.
+        enum class Quality
+        {
+            Full,
+            Economy
+        };
+        bool setQuality(Quality quality, std::string& errors);
+        Quality quality() const noexcept { return quality_; }
+        // The engine's own rate inside (Engine::rate) as the last quality change found it; 96000 until one.
+        double innerRate() const noexcept { return innerRate_; }
+
         // The session log since load (or the last take), when LoadOptions::log is on. Off the audio thread.
         std::vector<LogEvent> takeLog();
         // The Spec as the log began: the module's bytes the host had written when it was loaded.
@@ -232,6 +249,9 @@ namespace tee
         int fadeInLeft_ = 0;
         SimControls controlsApplied_;
         float lastLeft_ = 0.0f, lastRight_ = 0.0f;
+        bool reloadWith(std::shared_ptr<Sim> next, bool carry, std::string& errors);
+        Quality quality_ = Quality::Full;
+        double innerRate_ = 96000.0;
         std::int64_t crankLeft_ = 0;          // samples the host still cranks a fresh instance after a fault
         bool clippedNow_ = false;             // a sample of this chunk was clamped
         std::atomic<std::uint32_t> engineFaultsNow_{0};   // HostStats::engineFaults, for service()'s words
