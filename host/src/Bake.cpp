@@ -80,6 +80,96 @@ namespace tee
             result.best.push_back(bestA);
             result.bestTorque.push_back(std::isfinite(bestT) ? bestT : std::numeric_limits<double>::quiet_NaN());
         }
+        // the midpoints: the map's interpolated advance there against the better of its neighbours' (above)
+        if (options.refine && result.speeds.size() >= 2)
+        {
+            std::vector<double> mids;
+            for (std::size_t s = 0; s + 1 < result.speeds.size(); ++s)
+                mids.push_back(0.5 * (result.speeds[s] + result.speeds[s + 1]));
+            // every cell at every midpoint (one curve a cell, as the grid's)
+            std::vector<std::vector<double>> tMid(result.advances.size()), kMid(result.advances.size());
+            for (std::size_t a = 0; a < result.advances.size(); ++a)
+            {
+                if (cancel != nullptr && cancel->load())
+                {
+                    error = "cancelled";
+                    return false;
+                }
+                Build held(build.fields());
+                std::vector<std::string> warnings;
+                if (!held.load(build.save(), BuildPart::Whole, warnings, error))
+                    return false;
+                held.set("valve.inPhaseRange", 0.0);
+                held.set("valve.inCentre", result.parkedCentre - result.advances[a]);
+                PredictOptions po = options.predict;
+                po.speeds = mids;
+                PredictCurve curve;
+                if (!predictCurve(sim, held, po, curve, error, cancel))
+                    return false;
+                for (const PredictPoint& p : curve.points)
+                {
+                    tMid[a].push_back(p.valid ? p.torque : std::numeric_limits<double>::quiet_NaN());
+                    kMid[a].push_back(p.knockRetard);
+                }
+            }
+            auto cellOf = [&](double adv) {
+                std::size_t best = 0;
+                for (std::size_t a = 1; a < result.advances.size(); ++a)
+                    if (std::fabs(result.advances[a] - adv) < std::fabs(result.advances[best] - adv))
+                        best = a;
+                return best;
+            };
+            const std::vector<double> gridBest = result.best;   // (the grid's own: rows are inserted below)
+            for (std::size_t k = 0; k < mids.size(); ++k)
+            {
+                if (k >= tMid.front().size())
+                    break;
+                const double tA = tMid[cellOf(gridBest[k])][k], tB = tMid[cellOf(gridBest[k + 1])][k];
+                const double aI = 0.5 * (gridBest[k] + gridBest[k + 1]);
+                // the interpolated advance itself, held at the midpoint
+                Build held(build.fields());
+                std::vector<std::string> warnings;
+                if (!held.load(build.save(), BuildPart::Whole, warnings, error))
+                    return false;
+                held.set("valve.inPhaseRange", 0.0);
+                held.set("valve.inCentre", result.parkedCentre - aI);
+                PredictOptions po = options.predict;
+                po.speeds = {mids[k]};
+                PredictCurve curve;
+                if (!predictCurve(sim, held, po, curve, error, cancel))
+                    return false;
+                const double tI = !curve.points.empty() && curve.points.front().valid ? curve.points.front().torque
+                                                                                      : std::numeric_limits<double>::quiet_NaN();
+                const double better = std::fmax(tA, tB);
+                if (!(std::isfinite(tI) && std::isfinite(better)) || tI >= (1.0 - options.midLoss) * better)
+                    continue;
+                // a row of its own: the best cell there that does not knock more than the parked one by the limit
+                double bestT = -std::numeric_limits<double>::infinity(), bestA = 0.0;
+                for (std::size_t a = 0; a < result.advances.size(); ++a)
+                {
+                    const double t = tMid[a][k];
+                    if (!std::isfinite(t) || kMid[a][k] > kMid.front()[k] + options.knockLimit)
+                        continue;
+                    if (t > bestT)
+                        bestT = t, bestA = result.advances[a];
+                }
+                if (!std::isfinite(bestT))
+                    continue;
+                // inserted in order: its speed, every cell's torque and knock there, its best
+                std::size_t at = 0;
+                while (at < result.speeds.size() && result.speeds[at] < mids[k])
+                    ++at;
+                result.speeds.insert(result.speeds.begin() + static_cast<std::ptrdiff_t>(at), mids[k]);
+                for (std::size_t a = 0; a < result.advances.size(); ++a)
+                {
+                    result.torque[a].insert(result.torque[a].begin() + static_cast<std::ptrdiff_t>(at), tMid[a][k]);
+                    result.knock[a].insert(result.knock[a].begin() + static_cast<std::ptrdiff_t>(at), kMid[a][k]);
+                }
+                result.best.insert(result.best.begin() + static_cast<std::ptrdiff_t>(at), bestA);
+                result.bestTorque.insert(result.bestTorque.begin() + static_cast<std::ptrdiff_t>(at), bestT);
+                result.added += 1;
+            }
+        }
         result.wallSeconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
         return true;
     }
