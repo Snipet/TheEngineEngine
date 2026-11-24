@@ -33,9 +33,10 @@
 module BoostHousing
 {
     float vol;          // m^3
-    float p;            // Pa absolute
+    float p;            // Pa absolute (ps's float)
     float t;            // K
-    float m;            // kg
+    double m;           // kg, and the pressure in double: a sample's flow at rest is under a float's step
+    double ps;
     float mOutPipe;     // kg/s out through what empties into a downpipe (nozzle and internal gate), the last solve's
     float mOutGate;     // kg/s out through an external gate, into its own pipe
     float mOutInt;      // kg/s out into another of the model's volumes (a compound pair's, a sequential's transfer)
@@ -49,8 +50,9 @@ module BoostHousing
     {
         vol = v;
         p = pOut;
+        ps = (double)pOut;
         t = tOut;
-        m = p * vol / (kBoostR * t);
+        m = ps * (double)vol / (287.0 * (double)t);
         mOutPipe = 0.0f;
         mOutGate = 0.0f;
         mOutInt = 0.0f;
@@ -64,28 +66,31 @@ module BoostHousing
     void resize(float v)
     {
         vol = fmaxf(v, 1.0e-6f);
-        m = p * vol / (kBoostR * t);
+        m = ps * (double)vol / (287.0 * (double)t);
     }
 
     // One sample: the pipes' drive (m^3/s) and admittance (m^3/s per Pa) and their gas's temperature; the outside's
     // pressure. Returns the housing's pressure above it, Pa.
     float solve(float drive, float admit, float tGas, float pOut, float dt)
     {
-        const float g = 4.0f / 3.0f;
-        const float kv = dt / vol;
+        const double g = 4.0 / 3.0;
+        const double kv = (double)dt / (double)vol;
         const float mOut = mOutPipe + mOutGate + mOutInt;
-        const float h = hIn - kBoostCpE * mOut * t + heatIn;
-        float pn = (p + kv * g * p * (drive + admit * pOut) + kv * (g - 1.0f) * h) / (1.0f + kv * g * p * admit);
-        pn = fmaxf(pn, 0.2f * pOut);
-        const float q = drive - admit * (pn - pOut);
+        const double h = (double)(hIn - kBoostCpE * mOut * t + heatIn);
+        double pn = (ps + kv * g * ps * ((double)drive + (double)admit * (double)pOut) + kv * (g - 1.0) * h)
+                    / (1.0 + kv * g * ps * (double)admit);
+        pn = fmax(pn, 0.2 * (double)pOut);
+        const float q = drive - admit * (float)(pn - (double)pOut);
         const float tq = q >= 0.0f ? tGas : t;
-        m = fmaxf(m + dt * (q * pn / (kBoostR * tq) + mIn - mOut), 1.0e-8f);
-        p = pn;
-        t = fminf(fmaxf(p * vol / (m * kBoostR), 250.0f), 2500.0f);
-        m = p * vol / (kBoostR * t);
+        m = fmax(m + (double)dt * ((double)(q * (float)pn / (kBoostR * tq)) + (double)(mIn - mOut)), 1.0e-10);
+        ps = pn;
+        const double tt = fmin(fmax(ps * (double)vol / (m * 287.0), 250.0), 2500.0);
+        m = ps * (double)vol / (287.0 * tt);
+        t = (float)tt;
+        p = (float)ps;
         qPipes = q;
         stepped = 1;
-        return p - pOut;
+        return (float)(ps - (double)pOut);
     }
 };
 

@@ -22,6 +22,17 @@ module XTest
     float warm;
     float qs[XS_PORTS];
     int measure;        // 0: runB leaves energy as it was
+    // a stand-in turbine on each side (test 10, until card F's is fitted): a housing of volume hVol (m^3) whose gas
+    // leaves through a nozzle of linear resistance hR (Pa s / m^3) into the downpipe; solved implicitly with both
+    int turbo;
+    float hVol;
+    float hR;
+    float hP[2];
+    double hS1;         // the housing's and the downpipe head's pressure, summed and squared (from side 0)
+    double hS2;
+    double dS1;
+    double dS2;
+    int nS;
     float energy;       // the waves in flight in the builder's pipes, after the last sample (J, up to a constant)
 
     void init(float rateIn)
@@ -32,6 +43,9 @@ module XTest
         tPort = 1000.0f;
         mdot = 0.02f;
         measure = 1;
+        turbo = 0;
+        hVol = 0.0005f;
+        hR = 60000.0f;
         warm = 1.0f;
     }
 
@@ -72,6 +86,8 @@ module XTest
         b.sp.bypassRpm = 3500.0f;
         b.sp.bypassLoad = 0.5f;
         b.sp.bypassTime = 0.3f;
+        b.sp.gateLen = 0.3f;
+        b.sp.gateD = 0.038f;
         for (int s = 0; s < XS_SIDES; ++s)
         {
             b.sp.mainLen[s] = 0.0f;
@@ -128,6 +144,9 @@ module XTest
         e->rpm = 3000.0f;
         e->load = 0.5f;
         e->ecuValve = 0.0f;
+        for (int c = 0; c < XS_COLL; ++c)
+            e->housing[c] = -1;
+        e->gates = 0;
         r.smHdr = 0.5f;
         r.smPipe = 0.5f;
         r.smXp = 0.0f;
@@ -188,6 +207,35 @@ module XTest
             }
             tick = tick + 1 >= 16 ? 0 : tick + 1;
             b.read();
+            b.prepare();
+            if (turbo != 0)
+            {
+                for (int s = 0; s < 2; ++s)
+                {
+                    if (b.jHouse[s] < 0 || b.jDown[s] < 0)
+                        continue;
+                    // C dp/dt = (drive - admit p) - q; q = (p - 2 a) / (hR + zDown): implicit in p
+                    const float cv = hVol / (1.33f * 101325.0f);
+                    const float a = b.downWave(s);
+                    const float zd = b.downZ(s);
+                    const float k = cv * rate;
+                    const float p = (k * hP[s] + b.houseDrive(s) + 2.0f * a / (hR + zd))
+                                    / (k + b.houseAdmit(s) + 1.0f / (hR + zd));
+                    const float qn = (p - 2.0f * a) / (hR + zd);
+                    hP[s] = p;
+                    b.setHouse(s, p);
+                    b.setDown(s, p - hR * qn);
+                    if (s == 0)
+                    {
+                        hS1 += (double)p;
+                        hS2 += (double)p * (double)p;
+                        const float pd = p - hR * qn;
+                        dS1 += (double)pd;
+                        dS2 += (double)pd * (double)pd;
+                        nS += 1;
+                    }
+                }
+            }
             for (int i = 0; i < XS_PORTS; ++i)
                 qs[i] = q[t * XS_PORTS + i];
             b.step(qs);
@@ -224,6 +272,49 @@ module XTest
                 energy += s / p->z;
             }
         }
+        // the stand-in housings' energy, 1/2 C p^2, in the same units (per sample)
+        if (turbo != 0)
+        {
+            const float cv = hVol / (1.33f * 101325.0f);
+            energy += 0.5f * cv * (hP[0] * hP[0] + hP[1] * hP[1]) * rate;
+        }
+    }
+
+    // A new topology while running (the engine's fade around it is the owner's): the pipes' heat kept
+    void rebuild()
+    {
+        b.build(0, warm);
+        tick = 0;
+    }
+
+    // The stand-in turbines on (one a bank's collector, each side its own), before configure()
+    void standIn(float vol, float r)
+    {
+        turbo = 1;
+        hVol = vol;
+        hR = r;
+        hP[0] = 0.0f;
+        hP[1] = 0.0f;
+        b.eng.housing[0] = 0;
+        b.eng.housing[1] = 1;
+        hS1 = 0.0;
+        hS2 = 0.0;
+        dS1 = 0.0;
+        dS2 = 0.0;
+        nS = 0;
+    }
+
+    // The housing's and the downpipe head's pressure swings (rms about their means) since standIn, side 0
+    float swingHouse()
+    {
+        const double m = hS1 / (double)nS;
+        return (float)sqrt(hS2 / (double)nS - m * m);
+    }
+
+    float swingDown()
+    {
+        const double m = dS1 / (double)nS;
+        return (float)sqrt(dS2 / (double)nS - m * m);
     }
 
     // n samples of the builder with the waves' energy in flight after each, into e

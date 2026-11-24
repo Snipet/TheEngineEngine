@@ -223,7 +223,6 @@ namespace tee
         HostStats stats_;
         double peakWindow_ = 0.0;             // seconds into the load peak's window
         double windowPeak_ = 0.0;
-        std::uint64_t lastScopeBlock_ = 0;
         std::int64_t lastScopeSample_ = -1000000;
         std::uint32_t sectionsTouched_ = 0;   // bits, during a drain
 

@@ -286,12 +286,24 @@ jobs:
           path: ${{ env.TEE_DEPS_DIR }}/tools/shaderc-${{ steps.keys.outputs.bgfx_version }}
           key: ${{ steps.shaderc.outputs.cache-primary-key }}
 
-      # the application first: its artefact exists whatever the rest of the build and the tests do
+      # The application first: its artefact exists whatever the rest of the build and the tests do. Many hands commit
+      # to this branch and none of them can compile for Windows or macOS before they push, so a warning one of those
+      # compilers alone raises would otherwise cost the artefact for a whole run: when the strict build fails, the
+      # application is built once more with warnings as warnings (TEE_WERROR=OFF), said aloud, and the tree is put
+      # back, so that the Build step below still fails on the warning as it should.
       - name: Build the application
         id: app
         run: |
+          build() { cmake --build "build-$PRESET" --target TheEngineEngine tee-headless --parallel ${{ matrix.jobs }}; }
           rc=0
-          cmake --build "build-$PRESET" --target TheEngineEngine tee-headless --parallel ${{ matrix.jobs }} || rc=$?
+          build || rc=$?
+          if [ $rc -ne 0 ]; then
+            echo "::warning::the application did not build under -Werror on $RUNNER_OS: building it with TEE_WERROR=OFF for the artefact; the Build step will say what is wrong"
+            cmake -S . -B "build-$PRESET" -DTEE_WERROR=OFF > /dev/null
+            rc=0
+            build || rc=$?
+            cmake -S . -B "build-$PRESET" -DTEE_WERROR=ON > /dev/null
+          fi
           if [ "$RUNNER_OS" = Windows ]; then "$TEE_SCCACHE" --stop-server > /dev/null || true; fi
           exit $rc
 
@@ -299,9 +311,9 @@ jobs:
       - name: Pack the application
         id: pack-app
         env:
-          PLATFORM: ${{ matrix.platform }}
+          TEE_PLATFORM: ${{ matrix.platform }}     # (not PLATFORM: Visual Studio's environment has a Platform of its own)
         run: |
-          name="TheEngineEngine-$PLATFORM"
+          name="TheEngineEngine-$TEE_PLATFORM"
           bin="build-$PRESET/bin"
           out="$RUNNER_TEMP/app"
           dir="$out/$name"
@@ -340,7 +352,7 @@ jobs:
           NOTE
           {
             echo "TheEngineEngine: a car engine simulator whose sound is the simulation's own."
-            echo "Built by GitHub Actions from $GITHUB_REPOSITORY at $GITHUB_SHA ($GITHUB_REF_NAME), $PLATFORM."
+            echo "Built by GitHub Actions from $GITHUB_REPOSITORY at $GITHUB_SHA ($GITHUB_REF_NAME), $TEE_PLATFORM."
             echo "What to check is docs/checkpoints/M1.md in the repository. In short:"
             echo
             case "$RUNNER_OS" in
@@ -403,7 +415,7 @@ jobs:
         id: run-app
         continue-on-error: ${{ runner.os != 'Linux' }}
         env:
-          PLATFORM: ${{ matrix.platform }}
+          TEE_PLATFORM: ${{ matrix.platform }}
         run: |
           dir="${{ steps.pack-app.outputs.dir }}"
           out="$RUNNER_TEMP/listen"
@@ -424,17 +436,17 @@ jobs:
           }
           echo "---- tee-headless: the reference through a start, a rev and a stop"
           limited "$headless" --script tests/shell/scripts/start-rev-stop.txt \
-              --wav "$out/reference-start-rev-stop-$PLATFORM.wav" --shot "$out/headless-end-$PLATFORM.png" --panel plain || rc=$?
+              --wav "$out/reference-start-rev-stop-$TEE_PLATFORM.wav" --shot "$out/headless-end-$TEE_PLATFORM.png" --panel plain || rc=$?
           run=()
           if [ "$RUNNER_OS" = Linux ]; then run=(scripts/xvfb-run.sh); export SDL_AUDIODRIVER=dummy; fi
           echo "---- the window: --info"
           limited "${run[@]}" "$app" --info || rc=$?
           echo "---- the window: five seconds, the reference started and revved, the last frame read back from the GPU"
           limited "${run[@]}" "$app" --script tests/shell/scripts/window.txt --frames 60 \
-              --shot "$out/window-$PLATFORM.png" || rc=$?
+              --shot "$out/window-$TEE_PLATFORM.png" || rc=$?
           echo "---- the same with the plain Panel"
           limited "${run[@]}" "$app" --panel plain --script tests/shell/scripts/window.txt --frames 60 \
-              --shot "$out/window-plain-$PLATFORM.png" || rc=$?
+              --shot "$out/window-plain-$TEE_PLATFORM.png" || rc=$?
           ls -l "$out" || true
           exit $rc
 
