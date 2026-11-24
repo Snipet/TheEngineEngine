@@ -21,6 +21,10 @@
 
 ## Landed
 
+- **12:25 checkpoint M1, step 1, Windows: passed.** The owner ran FunkGui's gallery artefact (run 45389650505) on a
+  real Windows machine: the window opened, the primitives drew correctly, `fg.desktop: ok renderer=Direct3D 11
+  frames=825`, no issues reported. Not yet reported: live resize, high-DPI scale, idle CPU; menus and dialogs came
+  after that build.
 - 11:19 stage 1: the abstract plan, reviewed; the answers recorded.
 - 11:45 stage 2: every file of this folder.
 - 11:52 the keel's first slice: the build, the bootstrap, `sim/ref/`, `tee_host`, `tee-render`, CI (first run green).
