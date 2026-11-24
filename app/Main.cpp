@@ -181,8 +181,8 @@ namespace
         // the simulator's health as the host reports it (card C's HostStats): restarting after a fault; clamped (a block
         // with a sample past full scale, held to it) for a moment after it happens
         std::string health;
-        std::uint32_t clippedSeen = 0;
-        double clampedLeft = 0.0;
+        std::uint32_t clippedSeen = 0, faultsSeen = 0;
+        double clampedLeft = 0.0, faultLeft = 0.0;
         std::string compiling;          // "compiling the engine: 3 s" while the machine code is being made
         bool saidReady = false;
         const auto showStatus = [&] {
@@ -322,8 +322,17 @@ namespace
                     clippedSeen = stats.clippedBlocks;
                     clampedLeft = 2.0;
                 }
+                if (stats.engineFaults != faultsSeen)
+                {
+                    faultsSeen = stats.engineFaults;
+                    if (faultLeft <= 0.0)       // (said once an episode: again after five quiet seconds)
+                        std::fprintf(stderr, "engine: it diverged and was restarted (%u times since load)\n", faultsSeen);
+                    faultLeft = 5.0;
+                }
                 clampedLeft = std::max(0.0, clampedLeft - static_cast<double>(dt));
-                const std::string said = stats.restarting != 0 ? std::string("restarting (after a fault)")
+                faultLeft = std::max(0.0, faultLeft - static_cast<double>(dt));
+                const std::string said = faultLeft > 0.0      ? std::string("the engine diverged and was restarted")
+                                        : stats.restarting != 0 ? std::string("restarting (after a fault)")
                                         : clampedLeft > 0.0  ? std::string("clamped (the output went past full scale)")
                                                              : std::string();
                 if (said != health)
@@ -525,10 +534,11 @@ namespace
                 std::fprintf(stderr, "settings: %s\n", notSaved.c_str());
         }
         std::printf("tee-app: %s renderer=%s frames=%u ticks=%u fps=%.1f audio-callbacks=%llu audio-frames=%llu "
-                    "largest-request=%d engine-state=%.0f rpm=%.0f\n",
+                    "largest-request=%d engine-state=%.0f rpm=%.0f faults=%u\n",
                     code == 0 ? "ok" : "FAILED", d.renderer.c_str(), static_cast<unsigned>(d.frames),
                     static_cast<unsigned>(d.ticks), static_cast<double>(d.fps), static_cast<unsigned long long>(callbacks),
-                    static_cast<unsigned long long>(audioFrames), largest, state, rpm);
+                    static_cast<unsigned long long>(audioFrames), largest, state, rpm,
+                    engine.sim != nullptr ? engine.sim->hostStats().engineFaults : 0u);
         return code;
     }
 }

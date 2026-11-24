@@ -7,6 +7,11 @@
 // and whether it lights at all, its premixed share). The burn itself runs in the cylinder (core/cylinder.fm, a Wiebe
 // curve). The reference's own explanations stand with each part below.
 //
+// The share of the fuel's heat the gas keeps (charge, charge1) follows `walls`, the engine's one decision on whose walls
+// take the burn's heat (Engine::woschniWalls): 0.97 with Woschni's, the reference's 0.60 + 0.20 x manifold with its own.
+// (Card D, as integrator, 24 Nov: before, the share read spec.engine.wallHeat alone and fuel.model 1 brought Woschni's
+// walls without it: the walls' loss was taken twice.)
+//
 //   setup(rate, noise, ecu, heat, layout, pops)   in init: the streams and the state it reads and writes
 //   charge(cy, ci, fuel, pPlenum, rpm, compression, crBs, burnK, pops, rough, timing)   at cylinder ci's intake closing
 // It reads the ECU's cuts, trim, throttle, idle valve and speeds, the heat's temperatures; it writes the cylinder's
@@ -44,7 +49,9 @@ module Combustion
     float dilution[MAX_CYL]; // each cylinder's burned-gas share at its last intake closing
     // fuel.model 1 and ecu.model 1 (card H)
     FuelSpec* fuel;
-    EngineSpec* eng;    // its wallHeat: whose walls take the burn's heat
+    EngineSpec* eng;    // the engine's Spec
+    int walls;          // 1: Woschni's walls take the burn's heat (Engine::woschniWalls, handed over by the engine as the
+                        // fade makes the switches; card D as integrator, 24 Nov), 0: the reference's
     Charge1 one;
     EndGas gas[MAX_CYL];
     DieselFields diesel;
@@ -96,7 +103,7 @@ module Combustion
         const float burnable = fmaxf(cy->m - cy->mInert, 0.0f);
         // (of the fuel's heat the gas keeps some 80 % at full load: the rest goes to the walls or out unburned; a
         // larger share at part load, where the charge is thinner and the walls take more)
-        float q = burnable / 14.0f * 44.0e6f * (0.60f + 0.20f * fminf(pPlenum / 101325.0f, 1.2f));
+        float q = burnable / 14.0f * 44.0e6f * (walls != 0 ? 0.97f : 0.60f + 0.20f * fminf(pPlenum / 101325.0f, 1.2f));
         const float d50 = (lay->rotary != 0 ? 0.62f : 0.56f) * (1.0f + (0.015f + 0.03f * rough) * nz->gauss());
         const float cb = 1.0f / (1.0f + expf((dil - d50) / 0.035f));
         cy->cBurn = cb;
@@ -254,11 +261,12 @@ module Combustion
             ecu->watch.cycle();
         const float dil = fminf(cy->mInert / fmaxf(cy->m, 1.0e-9f), 0.95f);
         const float burnable = fmaxf(cy->m - cy->mInert, 0.0f);
-        // (the gas keeps: with Woschni's walls (spec.engine.wallHeat 1) and fuel.model 1 the burn's own efficiency, 0.97,
+        // (the gas keeps: with Woschni's walls (comb.walls: wallHeat 1 or fuel.model 1, the engine's one decision) the
+        // burn's own efficiency, 0.97,
         // the mixture's heat having already left out what goes unburned and the walls taking theirs through the cylinder;
         // with the reference's walls the reference's 0.60 + 0.20 x manifold, its walls' and its unburned share at once:
         // the energy counted once whichever way the two switches stand)
-        const float share = f1 && eng->wallHeat == 1 ? 0.97f : 0.60f + 0.20f * fminf(pPlenum / 101325.0f, 1.2f);
+        const float share = walls != 0 ? 0.97f : 0.60f + 0.20f * fminf(pPlenum / 101325.0f, 1.2f);
         const float d50 = (lay->rotary != 0 ? 0.62f : 0.56f) * (1.0f + (0.015f + 0.03f * rough) * nz->gauss());
         const float cb = 1.0f / (1.0f + expf((dil - d50) / 0.035f));
         cy->cBurn = cb;
