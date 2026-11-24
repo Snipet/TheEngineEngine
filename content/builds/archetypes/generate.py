@@ -660,11 +660,9 @@ def build(a):
     if "boost" in a:
         t["knock.on"] = True
     if a["slug"] in CAMS:
-        # the maker's calibrated intake cam map, baked by cams.py (C's tee-dyno --bake-cam: the cam swept at full load,
-        # the best advance by speed), the same full-load row at no load and at three times the air (Bake.cpp's form)
-        pts = CAMS[a["slug"]][:16]
+        # the maker's calibrated intake cam map, baked and saved by N1's tee-dyno --bake-cam --save (cams.py)
         t["maps.camInAuto"] = False
-        t["maps.camIn"] = {"x": [w for w, _ in pts], "y": [0.0, 3.0], "z": [[adv, adv] for _, adv in pts]}
+        t["maps.camIn"] = CAMS[a["slug"]]
     if "boostTaper" in a:
         # the class's power cap met as its makers meet it: the boost target falls with speed (a baked boost map,
         # every gear alike; rpm and kPa over the air from N2's measurements on the kei with the resized gate)
@@ -778,21 +776,16 @@ EXHAUST_CLASS = {
 }
 
 
+# Baked intake cam maps (cams.py, N1's tee-dyno --bake-cam --save): applied only while BAKED_CAMS is on, which waits
+# for the lead's clearance (22:35: a map without a load axis asked the full-load phase at idle; N1's 2b04859c gives
+# the axis, the smoothing, the fallback and the idle check)
+BAKED_CAMS = False
+
+
 def _cams():
-    """Each phased archetype's baked intake cam map (cams.py: tee-dyno --bake-cam), {slug: [(rad/s, advance)]}.
-    NOT USED (the lead, 22:35): a baked map without a load axis asked the full-load phase at idle (the 4.5 idled at
-    50 deg and hunted; first.json at 20); the maps go back to N1 until one has a load axis, is smooth across speed and
-    passes the idle check. Every phased archetype keeps camInAuto (N1's rule)."""
-    return {}
-    path = os.path.join(HERE, "cam-maps.tsv")
-    out = {}
-    if os.path.exists(path):
-        for line in open(path):
-            if line[:1] == "#":
-                continue
-            slug, w, adv = line.rstrip("\n").split("\t")
-            out.setdefault(slug, []).append((float(w), float(adv)))
-    return out
+    """{slug: the saved ecu.maps.camIn} from cam-maps.json, while BAKED_CAMS is on."""
+    path = os.path.join(HERE, "cam-maps.json")
+    return json.load(open(path)) if BAKED_CAMS and os.path.exists(path) else {}
 
 
 CAMS = _cams()

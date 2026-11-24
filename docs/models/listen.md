@@ -156,7 +156,7 @@ anyone comparing true levels (a muffler against a straight pipe, the cabin again
 into every build cannot.
 
 How it works (`Listen::autoLevel`, `finish1`): P, the loudness exposed for, is taken from the peaks after the
-compressor. P rises to any peak at once and the gain follows within 5 ms, so a rev's onset is caught by the gain, not
+compressor. P rises to any peak at once and the gain follows within 1 ms, measured on each 16-sample part before it is heard, so a rev's onset is caught by the gain, not
 the limiter. P holds 1.5 s, then falls at 4 dB a second. It never falls below 4 times Q, the level of what is heard
 lately (0.1 s windows' peaks: Q falls over 1 s and rises at 0.3 dB a second, so a 4 s rev moves it 1.2 dB). The gain is
 0.4 / P, within -30 to +30 dB of the staged level, and rises over 0.5 s. In a start (the starter turning and 1.5 s
@@ -169,15 +169,20 @@ wider than 12 dB within a setting is closed slowly: a V12's idle comes up some 3
 Faster changes are kept exactly: the gain moves at most 4 dB a second upward. Whatever passes the target is caught
 by the limiter, which reports in `tel.sound.limiter` as before. `tel.sound.autoGain` is the gain now (dB).
 
-Measured (the `the level at the defaults` test after P's re-staging, 76e1b29: each build's own sound settings, a free
-rev's peak from the throttle's opening; true levels before it, at 35e355de, Rear):
+Measured (the `the level at the defaults` test at e1692f91's content: P's builds without trims, M's quieter pump and
+fan; each build's own sound settings; true levels at 35e355de, Rear). A rev's "typical" peak is the 90th percentile
+of its 0.1 s windows' peaks; its largest includes the cracks on the rev limiter, each faster than the 16-sample part
+the auto level looks ahead by, which meet the limiter (0.7) instead:
 
-| build | true levels: idle / free rev peak | auto level: idle / free rev peak | auto gain |
+| build | true levels: idle / free rev peak | auto level: idle / rev typical / rev largest | auto gain |
 |---|---|---|---|
-| first.json (2.0 L turbo four, now Side, +7 dB) | 0.02 / 0.17 | 0.10 / 0.49 | +3.8 dB |
-| kei 660 triple turbo | 0.01 / 0.08 | 0.10 / 0.53 | +6.4 dB |
-| V12 6.5 | (limited) / 0.72 | 0.10 / 0.59 | -15.8 dB |
-| tractor 15 L six | 0.01 / 0.06 | 0.15 / 0.41 | +4.3 dB |
+| first.json (2.0 L turbo four, Side) | 0.02 / 0.17 | 0.10 / 0.41 / 0.50 | +7.5 dB |
+| kei 660 triple turbo | 0.01 / 0.08 | 0.10 / 0.42 / 0.50 | +15.2 dB |
+| V12 6.5 | (limited) / 0.72 | 0.10 / 0.42 / 0.53 | -17.3 dB |
+| tractor 15 L six | 0.01 / 0.06 | 0.13 / 0.18 / 0.30 | +7.0 dB |
+
+The tractor's governed rev (2100 rpm) is only some 3 dB over its idle once its onset is past; the auto level keeps
+that, as it should. The test holds the rev's largest to 0.28 to 0.7 and its typical peaks to 0.15 to 0.6.
 
 The limiter on the loud builds, at first.json's sound settings (Side, Field, +7 dB), a free rev (p-free-rev, 5 to 9 s)
 and a launch (p-quarter-mile, 10.5 to 20 s); the share is of `tel.sound.limiter`'s 0.4 s reads under -0.5 dB:
@@ -197,7 +202,7 @@ On first.json, by camera (free rev peak, true / auto): Rear 0.17 / 0.55, Tailpip
 Engine bay 0.14 / 0.53, Driver 0.09 / 0.53, Trackside 0.11 / 0.53, Chase 0.16 / 0.53 (at 35e355de). The whole run's
 peak stays under 0.7 everywhere. The rig's tests (ListenerTest) run with true levels, so the
 distance law, the Doppler and the balance are measured unaltered; `the auto level` test checks that the Driver is
-5 dB or more under the Rear with it off (5.1 now) and within 2 dB with it on (1.4).
+3 dB or more under the Rear with it off (3.4, by the rev's typical peaks) and within 2 dB with it on (0.3).
 
 Cost: some five operations a sample in the last loop and one window's arithmetic every 0.1 s. tee-render on first.json
 does not resolve it (3.82 to 4.19 s with it off, 3.83 to 4.01 s on, for 14 s of audio).
