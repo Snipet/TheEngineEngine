@@ -73,25 +73,25 @@
       }
     },
     {
-      "t": 11.097,
-      "press": [
-        "shiftUp"
-      ]
-    },
-    {
       "t": 11.5,
       "ctl": {
         "buttons": 0
       }
     },
     {
-      "t": 11.5,
+      "t": 11.575,
       "press": [
         "shiftUp"
       ]
     },
     {
-      "t": 19.351,
+      "t": 11.98,
+      "press": [
+        "shiftUp"
+      ]
+    },
+    {
+      "t": 19.319,
       "press": [
         "shiftUp"
       ]
