@@ -1,0 +1,13 @@
+{
+  "format": "tee-build", "version": 1,
+  "name": "Two-stage cams",
+  "notes": "A four-valve head with a mild lobe and a wild one, changed over at 5500 rpm (576 rad/s) with 300 rpm of hysteresis, as Honda's VTEC: each cylinder takes the wild lobe while its valve is shut.",
+  "spec": { "valve": {
+    "model": "Lab", "valves": 4, "train": "Rocker",
+    "inDurSeat": 230, "inDur1mm": 205, "inLift": 0.0090, "inCentre": 112,
+    "exDurSeat": 232, "exDur1mm": 206, "exLift": 0.0085, "exCentre": 112,
+    "stages": 1, "stageSpeed": 576, "stageHyst": 31.4,
+    "inDurSeatB": 290, "inDur1mmB": 255, "inLiftB": 0.0120, "inCentreB": 108,
+    "exDurSeatB": 286, "exDur1mmB": 250, "exLiftB": 0.0110, "exCentreB": 110
+  } }
+}
