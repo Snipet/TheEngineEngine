@@ -61,6 +61,9 @@ module TwoStroke
     float mIn;          // the air drawn in now (kg/s), all cylinders
     float mdot;         // the gas out of the ports now (kg/s)
     float mIPrev;
+    float peak;         // the largest cylinder pressure (Pa, any cylinder) over cylinder 1's last whole cycle, and so far
+    float peakNow;      // this one
+    float a0Prev;       // (cylinder 1's angle at the last sample: its cycle's turn is seen as it wraps)
     // reports, from the last cycles (cylinder 1's trapping; all cylinders' delivery)
     float purity;
     float delivery;     // delivery ratio: the fresh charge the transfers delivered a cycle over the swept volume's
@@ -137,6 +140,9 @@ module TwoStroke
         intakeOut = 0.0f;
         mIn = 0.0f;
         mIPrev = 0.0f;
+        peak = 0.0f;
+        peakNow = 0.0f;
+        a0Prev = 0.0f;
         mdot = 0.0f;
         purity = 1.0f;
         delivery = 0.0f;
@@ -231,6 +237,15 @@ module TwoStroke
             else
                 right += ch[c].out;
         }
+        for (int c = 0; c < n; ++c)
+            peakNow = fmaxf(peakNow, cy[c].p);
+        const float a0 = angleOf(0, theta);
+        if (a0 < a0Prev)
+        {
+            peak = peakNow;
+            peakNow = 0.0f;
+        }
+        a0Prev = a0;
         if (n == 1)
             right = left;
         torque = tq;

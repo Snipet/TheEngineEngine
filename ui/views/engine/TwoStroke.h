@@ -53,6 +53,17 @@ namespace tee::ui::engine
     };
     TwoStroke twoStrokeOf(const FieldDoc& doc);
 
+    // Card T's telemetry (tel.engine; 0 for a four-stroke): the scavenging's measures, the power valve's place (0 shut,
+    // 1 open), the crankcase's pressure (Pa absolute, cylinder 1's) and the reed's opening (0 shut, 1 on its stop).
+    inline constexpr const char* kTelPurity = "engine.tsPurity";
+    inline constexpr const char* kTelDelivery = "engine.tsDelivery";
+    inline constexpr const char* kTelTrapping = "engine.tsTrapping";
+    inline constexpr const char* kTelPowerValve = "engine.tsPowerValve";
+    inline constexpr const char* kTelCrankcase = "engine.tsCrankcase";
+    inline constexpr const char* kTelReed = "engine.tsReed";
+    // The exhaust's duration now: from the power valve's place when telemetry has it, else from the speed by the fields.
+    double exhaustDurationNow(const TwoStroke& t, const Live& live);
+
     // A port's height (m) above bottom dead centre for its duration, and its share open at angle `deg`.
     double portHeight(double dur, double radius, double rod);
     double portShare(double deg, double dur, double radius, double rod);
