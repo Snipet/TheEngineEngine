@@ -52,6 +52,7 @@ namespace tee
         double to = 0.0;              // rad/s; 0: just under the redline (tel.engine.redline)
         double pedal = 1.0;           // the throttle, 0 to 1
         double tolerance = 0.01;      // two cycles in a row within this share of each other: settled
+        std::vector<std::string> fields;   // telemetry read at each point's end ("boost.pressure", "car.wheelSlip[2]")
         int minCycles = 3;            // cycles run at each speed at least (the first is never counted) ...
         int maxCycles = 14;           // ... and at most: a point that has not settled then says so
         // Which brake: "auto" (the host's where it knows the crank's inertia: the reference's crank, engine.custom off;
@@ -83,6 +84,7 @@ namespace tee
         // False when the simulator found its engine diverged during the point (FLAG_FAULT: put at rest afresh): its
         // torque and power are NaN, not to be plotted, and the curve counts it (PredictCurve::faults).
         bool valid = true;
+        std::vector<double> fields;   // PredictOptions::fields' values at the point's end, in order
         double knockRetard = 0.0;     // degrees, knock control's retard at the point's end (mean over retarded cylinders)
         std::vector<double> history;  // each cycle's mean torque there, in order (the first after a change of speed)
     };

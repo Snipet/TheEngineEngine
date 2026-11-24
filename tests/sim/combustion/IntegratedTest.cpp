@@ -20,7 +20,7 @@ namespace
         METHANOL = 5
     };
 
-    Sim bench(int grade, double throttle, bool knockControl)
+    Sim bench(int grade, double throttle, bool knockControl, double warmup = 30.0)
     {
         Sim s("v8");
         s.set("ecu.model", 1);
@@ -32,7 +32,7 @@ namespace
         s.set("env.temperature", 300.0);
         s.start();
         s.ctl().throttle = static_cast<float>(throttle);
-        s.run(30.0);                     // warm enough that its friction no longer drifts much through a sweep
+        s.run(warmup);                   // warm enough that its friction no longer drifts much through a sweep
         return s;
     }
 
@@ -74,7 +74,7 @@ namespace
     }
 } // namespace
 
-TEST_CASE("H6: a spark sweep at a fixed throttle and load: torque against advance has one maximum", "[combustion][integrated]")
+TEST_CASE("H6: a spark sweep at a fixed throttle and load: torque against advance has one maximum", "[combustion][integrated][nightly]")
 {
     const Sweep w = sparkSweep();
     WARN("best torque at " << w.adv[w.best] << " degrees, half burned " << w.half[w.best] << " after the top");
@@ -87,7 +87,7 @@ TEST_CASE("H6: a spark sweep at a fixed throttle and load: torque against advanc
         CHECK(w.rpm[i] < w.rpm[i - 1] * 1.003);
 }
 
-TEST_CASE("H6: half burned 6 to 12 degrees after the top at the best torque", "[combustion][integrated][!mayfail]")
+TEST_CASE("H6: half burned 6 to 12 degrees after the top at the best torque", "[combustion][integrated][!mayfail][nightly]")
 {
     // Expected to fail: the cylinder (core/cylinder.fm, the reference's single zone with little wall loss) has its best
     // torque with half the charge burned about at the top, as a single zone does (tests/sim/combustion/trace.fm showed
@@ -97,7 +97,7 @@ TEST_CASE("H6: half burned 6 to 12 degrees after the top at the best torque", "[
     CHECK(w.half[w.best] < 12.0);
 }
 
-TEST_CASE("H7: a lambda sweep: torque peaks between 0.85 and 0.92, exhaust temperature near 1", "[combustion][integrated]")
+TEST_CASE("H7: a lambda sweep: torque peaks between 0.85 and 0.92, exhaust temperature near 1", "[combustion][integrated][nightly]")
 {
     Sim s = bench(RACE, 0.35, false);
     double bestT = 0.0, bestTl = 0.0, bestE = 0.0, bestEl = 0.0;
@@ -127,7 +127,7 @@ TEST_CASE("H7: a lambda sweep: torque peaks between 0.85 and 0.92, exhaust tempe
     CHECK(bestEl <= 1.10);
 }
 
-TEST_CASE("H7: the exhaust temperature peaks at lambda 1.0 to 1.05", "[combustion][integrated][!mayfail]")
+TEST_CASE("H7: the exhaust temperature peaks at lambda 1.0 to 1.05", "[combustion][integrated][!mayfail][nightly]")
 {
     // Expected to fail: the heat's share (combustion/mixture.fm) peaks where the torque does, a little rich, and the
     // cylinder's gas has air's properties whatever burned in it, so the gas is hottest there too (measured: 0.90).
@@ -149,7 +149,7 @@ TEST_CASE("H7: the exhaust temperature peaks at lambda 1.0 to 1.05", "[combustio
     CHECK(bestEl <= 1.075);
 }
 
-TEST_CASE("H8: E85 takes more advance than regular before it knocks; methanol more boost", "[combustion][integrated]")
+TEST_CASE("H8: E85 takes more advance than regular before it knocks; methanol more boost", "[combustion][integrated][nightly]")
 {
     auto onset = [](int grade) {
         Sim s = bench(grade, 0.6, false);
@@ -199,4 +199,48 @@ TEST_CASE("H8: E85 takes more advance than regular before it knocks; methanol mo
     const double bMethanol = boostOnset(METHANOL);
     WARN("knock begins at a boost level of " << bRegular << " on regular, " << bMethanol << " on methanol");
     CHECK(bMethanol > bRegular);
+}
+
+// ---- the quick forms (CI's default run, under 30 s each): the same properties on a small fixed sample; the sweeps
+// above are [nightly] ----
+
+TEST_CASE("H6 (quick): torque is higher at the formula's advance than well before or after it", "[combustion][integrated]")
+{
+    Sim s = bench(RACE, 0.35, false);
+    double rpm[3];
+    const double adv[3] = {2.5, 15.0, 35.0};
+    for (int i = 0; i < 3; ++i)
+    {
+        s.flatMap("spark", adv[i]);
+        s.run(2.0);
+        rpm[i] = s.mean("engine.speed", 0.5);
+    }
+    CHECK(rpm[1] > rpm[0]);
+    CHECK(rpm[1] > rpm[2]);
+}
+
+TEST_CASE("H7 (quick): torque at lambda 0.9 above 0.8 and 1.1", "[combustion][integrated]")
+{
+    Sim s = bench(RACE, 0.35, false);
+    double rpm[3];
+    const double l[3] = {0.8, 0.9, 1.1};
+    for (int i = 0; i < 3; ++i)
+    {
+        s.flatMap("lambda", l[i]);
+        s.run(2.0);
+        rpm[i] = s.mean("engine.speed", 0.5);
+    }
+    CHECK(rpm[1] > rpm[0]);
+    CHECK(rpm[1] > rpm[2]);
+}
+
+TEST_CASE("H8 (quick): at 30 degrees regular knocks and E85 does not", "[combustion][integrated]")
+{
+    auto rate = [](int grade) {
+        Sim s = bench(grade, 0.6, false, 5.0);
+        s.flatMap("spark", 30.0);
+        return knockRate(s, 1.0, 1.0);
+    };
+    CHECK(rate(REGULAR) > 2.0);
+    CHECK(rate(E85) < 1.0);
 }

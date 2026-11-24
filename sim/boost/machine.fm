@@ -48,9 +48,9 @@
 // passes the whole of the turbo's share alone at that state (a gate sized at 0.85 of the nozzle could not hold its
 // spring at the redline: the 2 L four spooled at 5300 rpm ran away to 2.6 bar with it wide open; card N2's
 // docs/measurements/calibration/boost/gate.md). A 2 L four at 7000 rpm gets a 45 mm inducer, a 61 mm exducer (a
-// GT28's class) and a 35 mm gate. `vd` is meant as the four-stroke-equivalent displacement: the volume whose
-// four-stroke air at redRpm is the engine's (a rotary's and a two-stroke's twice their swept volume; asked of the
-// integrator: until then a rotary's turbo is matched to half its air).
+// GT28's class) and a 35 mm gate. `vd` is the four-stroke-equivalent displacement: the volume whose four-stroke air
+// at redRpm is the engine's (Engine passes a rotary's and a two-stroke's swept volume twice: 2df7ea6, d9c5544). A
+// sequential pair's first gate passes the whole engine's flow (every collector ends in its housing).
 //
 // Left out: the turbine's housing walls' heat; heat between the turbine and the compressor; the compressor inlet's
 // swirl and recirculation; the gate's flutter; the intercooler's own volume's Helmholtz (folded into v2); a second

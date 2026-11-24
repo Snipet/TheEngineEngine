@@ -41,6 +41,7 @@ module CylWork
     float peak;         // Pa
     float peakAt;       // degrees
     float trapped;      // kg at intake closing
+    float tTrap;        // K, the gas's temperature then
     float veManifold;
     float veAir;
     int cycles;
@@ -64,6 +65,8 @@ module CycleWork
     float peakMax;
     float veManifold;
     float veAir;
+    float trappedMean;  // kg, the mean over the cylinders of their unburned gas at intake closing
+    float tTrapMean;    // K, and of its temperature
 
     void setup(int cylinders, float swept, float cycleDeg)
     {
@@ -88,6 +91,7 @@ module CycleWork
             k->aPeakNow = 0.0f;
             k->aLast = -1.0f;
             k->trapped = 0.0f;
+            k->tTrap = 0.0f;
             k->veManifold = 0.0f;
             k->veAir = 0.0f;
         }
@@ -97,6 +101,8 @@ module CycleWork
         peakMax = 0.0f;
         veManifold = 0.0f;
         veAir = 0.0f;
+        trappedMean = 0.0f;
+        tTrapMean = 0.0f;
     }
 
     // Cylinder c this sample: its angle in its cycle (degrees), its pressure (Pa) and its volume (m^3)
@@ -144,11 +150,12 @@ module CycleWork
         k->pLast = p;
     }
 
-    // Cylinder c's intake valve has closed on m kg; the manifold's and the air's pressure (Pa) and temperature (K)
-    void trapped(int c, float m, float pMan, float tMan, float pAir, float tAir)
+    // Cylinder c's intake valve has closed on m kg at tGas K; the manifold's and the air's pressure (Pa) and temperature (K)
+    void trapped(int c, float m, float tGas, float pMan, float tMan, float pAir, float tAir)
     {
         CylWork* k = &w[c];
         k->trapped = m;
+        k->tTrap = tGas;
         // Below 5 kPa (a shut throttle near vacuum, or a manifold model's pressure fallen to or past 0) the manifold's
         // density is no reference: the last value is held. Both are bounded to 0 to 4.
         if (pMan > 5000.0f && tMan > 100.0f)
@@ -163,6 +170,8 @@ module CycleWork
         float pk = 0.0f;
         float vm = 0.0f;
         float va = 0.0f;
+        float tm = 0.0f;
+        float tt = 0.0f;
         for (int c = 0; c < n; ++c)
         {
             g += w[c].imep;
@@ -170,6 +179,8 @@ module CycleWork
             pk = fmaxf(pk, w[c].peak);
             vm += w[c].veManifold;
             va += w[c].veAir;
+            tm += w[c].trapped;
+            tt += w[c].tTrap;
         }
         const float inv = 1.0f / (float)n;
         imepGross = g * inv;
@@ -178,6 +189,8 @@ module CycleWork
         peakMax = pk;
         veManifold = vm * inv;
         veAir = va * inv;
+        trappedMean = tm * inv;
+        tTrapMean = tt * inv;
     }
 
     // Brake mean effective pressure (Pa) from a brake torque (N m): 4 pi T / V (vBmep)

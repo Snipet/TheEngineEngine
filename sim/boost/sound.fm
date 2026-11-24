@@ -2,6 +2,10 @@
 // runs on a clock of its own).
 //
 //   inlet   what comes out of the compressor's inlet (or a supercharger's): the rate the volume flow through it changes
+//           (a monopole's sound is that rate), heard through the inlet duct and the filter box between the mouth and the
+//           air: an expansion chamber, a low-pass by its volume and its snorkel. Two one-pole stages at 1 kHz stand for
+//           it (judgement: the boost path reads no box; card E's spec.intake.boxVolume and snorkelLength/Bore would give
+//           its Helmholtz corner if the compressor's inlet drew from that box)
 //           (a monopole, as the reference's air box: so surge's reversals are heard as what they are, pulses), the rush
 //           of air through the wheel (noise in a band that rises with the tip speed, as the flow and the tip speed's
 //           square), its whistle at the shaft's own frequency (an unbalance's once a turn) and its blades' passing
@@ -39,6 +43,9 @@ module BoostSound
     BoostBand purgeBand;
     BoostBand bangRes;
     float qPrev;
+    float inLp1;        // the flow's rate of change through the inlet's duct and box: two one-pole stages at 1 kHz
+    float inLp2;
+    float kInLp;
     float inlet;
     float vent;
     float cased;
@@ -47,6 +54,7 @@ module BoostSound
     void setup(float rateIn)
     {
         rate = rateIn;
+        kInLp = 1.0f - expf(-6.28318531f * 1000.0f / rate);
         seed = 0;
         nScale = sqrtf(rate / 48000.0f);
         rush.set(4000.0f, 2.5f, rate);
@@ -73,6 +81,8 @@ module BoostSound
         scPh = 0.0f;
         scPh1 = 0.0f;
         qPrev = 0.0f;
+        inLp1 = 0.0f;
+        inLp2 = 0.0f;
         rush.clear();
         bovBand.clear();
         purgeBand.clear();
@@ -166,7 +176,12 @@ module BoostSound
     // kick: a bang's strength this sample
     void tick(float q, float rushLevel, float bovAir, float bovRecirc, float purge, float kick)
     {
-        inlet = (q - qPrev) * rate * 0.02f;
+        // (the rate of change through the inlet's duct and filter box, an acoustic low-pass: two one-pole stages at
+        // 1 kHz, judgement. Bare, a kink in the duct's flow, as where the compressor's map changes branch on a surge,
+        // was a step in the sound: a click, the tractor's 0.4 of full scale at idle with its vanes shut)
+        inLp1 += ((q - qPrev) * rate * 0.02f - inLp1) * kInLp;
+        inLp2 += (inLp1 - inLp2) * kInLp;
+        inlet = inLp2;
         qPrev = q;
         if (rushLevel > 1.0e-5f || bovRecirc > 1.0e-5f)
         {

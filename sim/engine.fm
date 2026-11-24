@@ -506,6 +506,7 @@ module Engine
         // (card F: boost.model 1's machine sized to this engine, at rest, on its four-stroke-equivalent displacement: a
         // rotary's faces fire once a shaft turn and a two-stroke's cylinders once a turn, twice vTotal; nothing in model 0)
         boost.applyMachine(&spec.boost, vTotal * (lay.rotary != 0 || (spec.engine.cycle != 0 && customUse != 0) ? 2.0f : 1.0f), ecu.redRpm, 101325.0f, heat.tAmb);
+        ecu.overBoostRef = boost.overBoostLevel();     // (N2: the machine's own over-boost level for ecu.model 1's cut)
         // (card T: a two-stroke, on a custom engine's geometry and mechanics: its cylinders and pipes at rest where the
         // crank stands; the four-stroke's cylinders, valves and pipes above stay configured, unused)
         cycleUse = spec.engine.cycle != 0 && customUse != 0 && lay.rotary == 0 ? 1 : 0;
@@ -1228,7 +1229,7 @@ module Engine
             }
             if (cy->ivcNow)
             {
-                work.trapped(c, fmaxf(cy->m - cy->mInert, 0.0f), intk.pPlenum, intk.tAir, 101325.0f, heat.tAmb);
+                work.trapped(c, fmaxf(cy->m - cy->mInert, 0.0f), cy->t, intk.pPlenum, intk.tAir, 101325.0f, heat.tAmb);
                 airTrapped += (double)fmaxf(cy->m - cy->mInert, 0.0f);
                 wall.ivc(c, cy->p, cy->v, cy->t);
                 if (vt.active(c))
@@ -1503,6 +1504,7 @@ module Engine
             s->tsize = spec.boost.size;
             s->bov = spec.boost.blowOff;
             boost.applyMachine(&spec.boost, vTotal * (lay.rotary != 0 || (spec.engine.cycle != 0 && customUse != 0) ? 2.0f : 1.0f), ecu.redRpm, 101325.0f, heat.tAmb);
+            ecu.overBoostRef = boost.overBoostLevel();     // (N2: the machine's own over-boost level for ecu.model 1's cut)
         }
         if (moved(4, spec.exhaust.rev))
         {
@@ -1735,7 +1737,8 @@ module Engine
             boost.scope(&scope);
         tel.exhaust.portTemperature = exh.tPort;
         tel.ecu.knockRetard = ecu.kRet;
-        tel.ecu.advance = lay.cyc - cyl[0].sparkAt;
+        // (degrees before the top; a spark after it, retarded past the top, negative, not a cycle less a little: X-011)
+        tel.ecu.advance = lay.cyc - cyl[0].sparkAt > 0.5f * lay.cyc ? -cyl[0].sparkAt : lay.cyc - cyl[0].sparkAt;
         tel.sound.rate = hostRateSeen;
         tel.car.speed = driven ? fabsf(car.v) : 0.0f;
         tel.car.gear = driven ? car.gear : 0;
@@ -1761,6 +1764,8 @@ module Engine
         e->bmep = work.bmep(e->torque);
         e->veManifold = work.veManifold;
         e->veAir = work.veAir;
+        e->chargeTemperature = work.tTrapMean;
+        e->trappedMass = work.trappedMean;
         e->peakPressure = work.peakMax;
         e->pistonSpeed = strokeUse * crank.omega * 0.31830989f;     // 2 stroke rpm / 60
         e->ripple = ripple;
