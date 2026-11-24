@@ -33,60 +33,58 @@ pair's join flow (0.4 of the matched flow). Explicit sizes in a build are untouc
 The table below is a measurement of what the rule does on the fourteen boosted archetypes (engine dyno, the closed
 exhaust, 0.4, 0.65 and 0.9 of each redline).
 
-## The table (measured 22:01 UTC on the tip with the closed exhaust; before = the redline match at 1.9, after = this rule; engine dyno, settle 5 s, stepped up)
+## The table (re-taken on G's closing by mass at the housings: the four's housings 0.997 of what the valves let out;
+before = the redline match at 1.9, after = this rule; engine dyno, settle 5 s, stepped up; adopted by the lead)
 
-| archetype | rpm | torque before / after N m | change % | boost kPa b / a | turbine in kPa b / a | gate or vanes b / a |
-|---|---|---|---|---|---|---|
-| boxer-four-turbo-unequal | 2800 | 209 / 271 | +29.7 | 24 / 54 | 131 / 152 | 0.00 / 0.00 |
-| boxer-four-turbo-unequal | 4550 | 397 / 392 | -1.1 | 100 / 100 | 230 / 240 | 0.19 / 0.29 |
-| boxer-four-turbo-unequal | 6300 | 347 / 339 | -2.4 | 100 / 99 | 261 / 277 | 0.31 / 0.37 |
-| diesel-20-common-rail | 1696 | 179 / 188 | +5.0 | 26 / 33 | 133 / 147 | 0.00 / 0.00 |
-| diesel-20-common-rail | 2756 | 345 / 335 | -3.0 | 165 / 151 | 291 / 320 | 0.10 / 0.13 |
-| diesel-20-common-rail | 3816 | 319 / 318 | -0.0 | 162 / 167 | 381 / 398 | 0.11 / 0.25 |
-| flat-plane-v8-39-twin-turbo | 3200 | 689 / 596 | -13.4 | 130 / 130 | 147 / 152 | 0.09 / 0.09 |
-| flat-plane-v8-39-twin-turbo | 5200 | 726 / 698 | -3.9 | 130 / 130 | 153 / 162 | 0.47 / 0.57 |
-| flat-plane-v8-39-twin-turbo | 7200 | 658 / 636 | -3.2 | 130 / 130 | 178 / 185 | 0.62 / 0.74 |
-| inline-five-turbo-rally | 2800 | 284 / 405 | +42.6 | 47 / 128 | 142 / 228 | 0.00 / 0.01 |
-| inline-five-turbo-rally | 4550 | 431 / 420 | -2.7 | 129 / 129 | 227 / 247 | 0.24 / 0.35 |
-| inline-five-turbo-rally | 6300 | 389 / 375 | -3.6 | 130 / 130 | 269 / 281 | 0.32 / 0.47 |
-| kei-660-triple-turbo | 3200 | 92 / 95 | +3.4 | 60 / 65 | 161 / 164 | 0.04 / 0.19 |
-| kei-660-triple-turbo | 5200 | 78 / 77 | -1.0 | 38 / 38 | 159 / 163 | 0.39 / 0.55 |
-| kei-660-triple-turbo | 7200 | 62 / 62 | +0.4 | 12 / 14 | 151 / 158 | 0.83 / 0.96 |
-| pickup-diesel-67-inline-six | 1230 | 619 / 615 | -0.6 | 25 / 27 | 129 / 139 | 0.00 / 0.00 |
-| pickup-diesel-67-inline-six | 1998 | 1023 / 1039 | +1.5 | 214 / 230 | 419 / 406 | 0.00 / 0.00 |
-| pickup-diesel-67-inline-six | 2767 | 998 / 977 | -2.1 | 163 / 236 | 370 / 518 | 0.09 / 0.08 |
-| rotary-twin-13 | 3200 | 132 / 221 | +67.0 | 20 / 70 | 127 / 171 | 0.00 / 0.05 |
-| rotary-twin-13 | 5200 | 261 / 220 | -15.9 | 70 / 41 | 208 / 181 | 0.14 / 0.00 |
-| rotary-twin-13 | 7200 | 204 / 194 | -4.6 | 35 / 39 | 189 / 225 | 0.00 / 0.00 |
-| straight-six-twin-turbo-30 | 2800 | 532 / 507 | -4.7 | 100 / 101 | 146 / 147 | 0.14 / 0.24 |
-| straight-six-twin-turbo-30 | 4550 | 510 / 496 | -2.7 | 100 / 100 | 153 / 156 | 0.43 / 0.55 |
-| straight-six-twin-turbo-30 | 6300 | 459 / 442 | -3.7 | 100 / 100 | 167 / 173 | 0.59 / 0.74 |
-| supercharged-v8-62 | 2480 | 799 / 798 | -0.2 | 54 / 54 | 101 / 101 | 0.00 / 0.00 |
-| supercharged-v8-62 | 4030 | 808 / 804 | -0.4 | 60 / 59 | 101 / 101 | 0.00 / 0.00 |
-| supercharged-v8-62 | 5580 | 730 / 721 | -1.3 | 76 / 74 | 101 / 101 | 0.00 / 0.00 |
-| three-cylinder-10-turbo | 2600 | 166 / 176 | +5.9 | 83 / 100 | 188 / 209 | 0.00 / 0.09 |
-| three-cylinder-10-turbo | 4225 | 170 / 168 | -1.2 | 100 / 100 | 219 / 232 | 0.27 / 0.36 |
-| three-cylinder-10-turbo | 5850 | 148 / 147 | -0.9 | 101 / 99 | 246 / 260 | 0.39 / 0.46 |
-| tractor-15-inline-six | 806 | 828 / 834 | +0.7 | 11 / 14 | 117 / 126 | 0.00 / 0.00 |
-| tractor-15-inline-six | 1309 | 2280 / 2293 | +0.5 | 223 / 138 | 460 / 326 | 0.03 / 0.00 |
-| tractor-15-inline-six | 1813 | 2305 / 2188 | -5.1 | 163 / 288 | 372 / 607 | 0.13 / 0.00 |
-| turbo-four-20-gdi | 2720 | 344 / 331 | -3.8 | 119 / 119 | 162 / 166 | 0.07 / 0.13 |
-| turbo-four-20-gdi | 4420 | 372 / 364 | -2.3 | 119 / 121 | 178 / 186 | 0.40 / 0.56 |
-| turbo-four-20-gdi | 6120 | 276 / 271 | -1.8 | 83 / 82 | 174 / 179 | 0.60 / 0.67 |
-| twin-turbo-hot-vee-v8-40 | 2720 | 699 / 651 | -6.8 | 119 / 121 | 153 / 158 | 0.06 / 0.12 |
-| twin-turbo-hot-vee-v8-40 | 4420 | 704 / 713 | +1.3 | 117 / 120 | 162 / 168 | 0.39 / 0.54 |
-| twin-turbo-hot-vee-v8-40 | 6120 | 671 / 652 | -2.8 | 120 / 120 | 186 / 197 | 0.56 / 0.69 |
-| v6-35-twin-turbo-pickup | 2400 | 544 / 615 | +13.0 | 69 / 101 | 173 / 205 | 0.00 / 0.07 |
-| v6-35-twin-turbo-pickup | 3900 | 591 / 581 | -1.7 | 98 / 101 | 219 / 229 | 0.21 / 0.35 |
-| v6-35-twin-turbo-pickup | 5400 | 531 / 523 | -1.6 | 100 / 100 | 240 / 259 | 0.41 / 0.50 |
+| archetype | rpm | torque before / after N m | change % | boost kPa b / a | turbine in kPa b / a | gate or vanes b / a | knock retard b / a |
+|---|---|---|---|---|---|---|---|
+| boxer-four-turbo-unequal | 2800 | 195 / 210 | +7.8 | 10 / 17 | 119 / 125 | 0.00 / 0.00 | 0.0 / 0.0 |
+| boxer-four-turbo-unequal | 4550 | 398 / 393 | -1.4 | 100 / 101 | 221 / 231 | 0.06 / 0.17 | 0.0 / 1.0 |
+| boxer-four-turbo-unequal | 6300 | 351 / 339 | -3.3 | 100 / 100 | 253 / 265 | 0.19 / 0.30 | 0.0 / 0.0 |
+| diesel-20-common-rail | 1696 | 157 / 156 | -0.7 | 14 / 13 | 126 / 124 | 0.00 / 0.00 | 0.0 / 0.0 |
+| diesel-20-common-rail | 2756 | 327 / 341 | +4.2 | 141 / 162 | 326 / 305 | 0.07 / 0.00 | 0.0 / 0.0 |
+| diesel-20-common-rail | 3816 | 319 / 318 | -0.3 | 160 / 165 | 365 / 383 | 0.00 / 0.12 | 0.0 / 0.0 |
+| flat-plane-v8-39-twin-turbo | 3200 | 373 / 399 | +7.2 | 22 / 31 | 111 / 116 | 0.00 / 0.00 | 0.0 / 0.0 |
+| flat-plane-v8-39-twin-turbo | 5200 | 712 / 706 | -0.9 | 131 / 131 | 157 / 161 | 0.32 / 0.46 | 6.0 / 4.6 |
+| flat-plane-v8-39-twin-turbo | 7200 | 683 / 648 | -5.2 | 130 / 130 | 179 / 185 | 0.49 / 0.57 | 0.0 / 0.3 |
+| inline-five-turbo-rally | 2800 | 207 / 218 | +5.3 | 13 / 19 | 116 / 122 | 0.00 / 0.00 | 0.0 / 0.0 |
+| inline-five-turbo-rally | 4550 | 426 / 419 | -1.7 | 127 / 132 | 227 / 245 | 0.09 / 0.22 | 5.9 / 6.1 |
+| inline-five-turbo-rally | 6300 | 391 / 378 | -3.3 | 130 / 129 | 266 / 280 | 0.21 / 0.28 | 0.0 / 0.0 |
+| kei-660-triple-turbo | 3200 | 64 / 72 | +12.2 | 13 / 25 | 121 / 131 | 0.00 / 0.00 | 0.0 / 0.0 |
+| kei-660-triple-turbo | 5200 | 78 / 78 | -0.9 | 38 / 38 | 153 / 158 | 0.13 / 0.27 | 0.0 / 0.0 |
+| kei-660-triple-turbo | 7200 | 62 / 62 | -1.0 | 12 / 12 | 145 / 148 | 0.55 / 0.68 | 0.0 / 0.0 |
+| pickup-diesel-67-inline-six | 1230 | 551 / 534 | -3.2 | 14 / 11 | 123 / 124 | 0.00 / 0.00 | 0.0 / 0.0 |
+| pickup-diesel-67-inline-six | 1998 | 1012 / 954 | -5.7 | 198 / 94 | 418 / 240 | 0.00 / 0.00 | 0.0 / 0.0 |
+| pickup-diesel-67-inline-six | 2767 | 997 / 984 | -1.3 | 163 / 230 | 369 / 496 | 0.00 / 0.00 | 0.0 / 0.0 |
+| rotary-twin-13 | 3200 | 136 / 219 | +61.8 | 22 / 70 | 129 / 171 | 0.00 / 0.06 | 0.0 / 14.9 |
+| rotary-twin-13 | 5200 | 212 / 220 | +3.8 | 35 / 44 | 165 / 189 | 0.00 / 0.00 | 8.6 / 9.4 |
+| rotary-twin-13 | 7200 | 204 / 192 | -6.0 | 36 / 40 | 199 / 234 | 0.00 / 0.00 | 0.0 / 0.0 |
+| straight-six-twin-turbo-30 | 2800 | 297 / 341 | +15.1 | 22 / 41 | 114 / 122 | 0.00 / 0.00 | 0.0 / 0.0 |
+| straight-six-twin-turbo-30 | 4550 | 511 / 489 | -4.2 | 100 / 100 | 149 / 153 | 0.30 / 0.39 | 4.2 / 4.5 |
+| straight-six-twin-turbo-30 | 6300 | 459 / 434 | -5.5 | 101 / 100 | 165 / 171 | 0.48 / 0.53 | 2.7 / 2.7 |
+| supercharged-v8-62 | 2480 | 797 / 796 | -0.1 | 54 / 54 | 101 / 101 | 0.00 / 0.00 | 1.4 / 1.6 |
+| supercharged-v8-62 | 4030 | 808 / 803 | -0.6 | 60 / 59 | 101 / 101 | 0.00 / 0.00 | 0.0 / 0.0 |
+| supercharged-v8-62 | 5580 | 730 / 721 | -1.3 | 76 / 74 | 101 / 101 | 0.00 / 0.00 | 0.0 / 0.0 |
+| three-cylinder-10-turbo | 2600 | 97 / 102 | +5.1 | 13 / 19 | 121 / 128 | 0.00 / 0.00 | 0.0 / 0.0 |
+| three-cylinder-10-turbo | 4225 | 176 / 176 | -0.0 | 100 / 101 | 216 / 226 | 0.09 / 0.22 | 6.5 / 9.1 |
+| three-cylinder-10-turbo | 5850 | 165 / 160 | -2.8 | 100 / 98 | 247 / 266 | 0.26 / 0.27 | 3.7 / 4.0 |
+| tractor-15-inline-six | 806 | 808 / 765 | -5.3 | 11 / 11 | 123 / 142 | 0.00 / 0.00 | 0.0 / 0.0 |
+| tractor-15-inline-six | 1309 | 2287 / 1861 | -18.6 | 216 / 66 | 444 / 202 | 0.00 / 0.00 | 0.0 / 0.0 |
+| tractor-15-inline-six | 1813 | 2300 / 2263 | -1.6 | 163 / 246 | 370 / 506 | 0.05 / 0.00 | 0.0 / 0.0 |
+| turbo-four-20-gdi | 2720 | 199 / 220 | +10.2 | 25 / 35 | 118 / 123 | 0.00 / 0.00 | 0.0 / 0.0 |
+| turbo-four-20-gdi | 4420 | 357 / 352 | -1.3 | 119 / 120 | 170 / 176 | 0.20 / 0.34 | 5.1 / 4.6 |
+| turbo-four-20-gdi | 6120 | 294 / 288 | -2.1 | 82 / 83 | 173 / 177 | 0.42 / 0.56 | 0.0 / 0.0 |
+| twin-turbo-hot-vee-v8-40 | 2720 | 406 / 436 | +7.4 | 22 / 32 | 114 / 119 | 0.00 / 0.00 | 0.0 / 0.0 |
+| twin-turbo-hot-vee-v8-40 | 4420 | 699 / 693 | -0.8 | 119 / 120 | 159 / 166 | 0.23 / 0.33 | 7.6 / 7.9 |
+| twin-turbo-hot-vee-v8-40 | 6120 | 684 / 664 | -2.9 | 120 / 122 | 185 / 199 | 0.40 / 0.56 | 4.7 / 3.9 |
+| v6-35-twin-turbo-pickup | 2400 | 344 / 369 | +7.1 | 14 / 21 | 122 / 130 | 0.00 / 0.00 | 0.0 / 0.0 |
+| v6-35-twin-turbo-pickup | 3900 | 584 / 588 | +0.8 | 98 / 101 | 209 / 219 | 0.09 / 0.24 | 9.3 / 10.5 |
+| v6-35-twin-turbo-pickup | 5400 | 577 / 560 | -2.9 | 101 / 100 | 252 / 274 | 0.29 / 0.33 | 7.8 / 8.2 |
 
-**Read**: the smaller turbines spool the petrol engines whose turbines were oversized for their low end (the boxer at
-2800 rpm 24 -> 54 kPa, +30 %; the five 47 -> 128 kPa, +43 %; the V6 pickup +13 %; the triple +6 %) and cost 2 to 4 %
-at the top (the turbine's inlet 5 to 15 kPa higher: more pumping), the gates sitting more open. The diesels move both
-ways (the tractor at 1309 rpm 223 -> 138 kPa, at 1813 163 -> 288 kPa: its 900 K design turbine is smaller and its
-VGT's loop meets it differently; the pickup's top end 163 -> 236 kPa). The flat-plane V8 at 3200 rpm loses 13 % at
-the same boost (not yet explained: its knock retard is the suspect). **The rotary's pair is not cured**: at 3200 rpm
-the single now spools (20 -> 70 kPa, +67 %), but at 5200 the pair joins earlier and makes 41 kPa, and at 7200 39 kPa
-against 70: the pair's second compressor barely flows (0.027 kg/s against the first's 0.146 at one shaft speed and
-ratio): its delivery through the check valve into the charge pipe, not the turbine's size, is the suspect. Not
-adopted: the lead decides.
+**Read**: at 0.4 of the redline every petrol engine spools sooner (+5 to +15 %, the kei +12 %, the six +15 %, the
+rotary 22 -> 70 kPa, +62 %): their turbines were oversized for their low end. At the top they give 1 to 6 % (the
+turbine's inlet 5 to 20 kPa higher, the gates more open). The flat-plane V8's -13 % at 3200 rpm in the first run is
+gone (+7 % here): it was taken with the housings over-fed (1.14). **The diesels lose in the middle**: the tractor at
+1309 rpm 216 -> 66 kPa (-18.6 %), the pickup at 1998 198 -> 94 kPa (-5.7 %): their compressors, matched now to the
+ratio their builds ask (3.0), are larger, and at mid speed sit on the surge line where the surge guard opens the vanes;
+to D2 (the lead's condition 3). The rotary's pair at 7200 is unchanged (36 -> 40 kPa): its own fault.

@@ -405,6 +405,13 @@ module Boost
         mach.airSpeed = v;
     }
 
+    // A governed diesel's rated speed (rpm) for the machine's design point, before applyMachine; below 0 (or never
+    // called): a spark-ignition engine, matched at 0.85 of its redline (machine.fm, apply)
+    void designSpeed(float rpm)
+    {
+        mach.designRpm = rpm;
+    }
+
     // 1: on an engine test cell (MODE_DYNO_ENGINE with the absorber on): the cell's charge-air cooling holds the
     // intercooler's core at the air's temperature (SAE J1349; machine.fm, the core)
     void testCell(int on)
@@ -466,6 +473,11 @@ module Boost
             // inducer's diameter)
             if (mach.sc == 0 && mach.compFlowHas > 4.0f * 1.15f * mach.mMatch)
                 mm |= 8;
+            // (the lead's ruling on the design point: a turbine's nozzle under half or over twice what the build's
+            // own design point gives (an explicit A/R far from it): it spools early and chokes the engine, or never)
+            if (mach.sc == 0 && mach.turbNozWants > 0.0f
+                && (mach.turbNozHas < 0.5f * mach.turbNozWants || mach.turbNozHas > 2.0f * mach.turbNozWants))
+                mm |= 16;
         }
         t->mismatch = mm;
         t->coolerHas = on != 0 ? mach.icFlowHas : 0.0f;
@@ -476,6 +488,8 @@ module Boost
         t->volumeWants = volWants;
         t->compressorHas = on != 0 && mach.sc == 0 ? mach.compFlowHas : 0.0f;
         t->compressorWants = on != 0 && mach.sc == 0 ? 1.15f * mach.mMatch : 0.0f;
+        t->turbineHas = on != 0 && mach.sc == 0 ? mach.turbNozHas : 0.0f;
+        t->turbineWants = on != 0 && mach.sc == 0 ? mach.turbNozWants : 0.0f;
         t->flags = on != 0 ? mach.flags : 0;
     }
 

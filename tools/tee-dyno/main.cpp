@@ -108,6 +108,8 @@ namespace
                 std::printf("  knock-limited, retard %.1f to %.1f deg", p.retardMin, p.retardMax);
             else if (p.knockRetard > 0.0)
                 std::printf("  knock %.1f deg", p.knockRetard);
+            if (p.boostHunting)
+                std::printf("  boost hunting (a mean over windows)");
             for (std::size_t k = 0; k < p.fields.size() && k < options.fields.size(); ++k)
                 std::printf("  %s %.5g", options.fields[k].c_str(), p.fields[k]);
             if (history)
@@ -261,6 +263,8 @@ int main(int argc, char** argv)
             ok = number(predictOptions.holdSeconds);
         else if (args.is("--min-hold"))
             ok = number(predictOptions.minHoldSeconds);
+        else if (args.is("--boost-hunt"))
+            ok = number(predictOptions.boostHuntSeconds);
         else if (args.is("--warmup-seconds"))
             ok = number(predictOptions.warmupSeconds);
         else if (args.is("--tolerance"))
