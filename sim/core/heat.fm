@@ -1,0 +1,109 @@
+// core/heat.fm: the engine's heat (module Heat). Owner: package D.
+//
+// The air outside, the coolant (with the block), the oil and the combustion chamber's walls, as temperatures that follow
+// what the engine does over seconds to minutes: the burns and the rubbing heat the coolant, the thermostat and the
+// radiator hold it, the oil follows it, the chamber's walls warm long before the coolant does. From them: how warm the
+// engine is (its fast idle, a cold diesel's hard start), the oil's thickness (its friction) and its pressure (the dash's).
+// What it leaves out: the radiator's fan, the heater, an oil cooler; the heat a turbo adds to the coolant.
+//
+//   setup()                      in init: everything at 300 K, as an engine that has stood at 80 F
+//   stood(state, ambF)           when the engine is set up (configure): stopped, with the air moved, it has stood in it
+//   control(d16, ambF, vTotal, state, rpm, omega)   every 16 samples (d16 s; 0: what follows from the temperatures)
+//   coldIdle(fuel)               the ECU's fast idle for the coolant's temperature, rpm
+// Its state is read by others (the cylinders' walls take tSurf; the burns tAmb, warm, tCool; the friction viscK); the
+// burns add their heat into heatJ and the rubbing into fricJ, J.
+#pragma once
+
+module Heat
+{
+    // the heat: the air outside, the coolant and the oil (K); how warm the engine is (0 at the air outside, 1 at its
+    // thermostat); the oil's thickness over a warm engine's and its pressure (Pa over the air); the burns' and the
+    // rubbing's heat since the last time (J); seconds since it started (its glow plugs' after-glow)
+    float tAmb;
+    float tCool;
+    float tOil;
+    float tSurf;        // the combustion chamber's walls (K): warm within some 25 s of running, cooling when it stops
+    float warm;
+    float warmS;        // how warm the chamber's walls are, 0 at the air outside, 1 at a warm engine's 450 K
+    float viscK;
+    float pOil;
+    float heatJ;
+    float fricJ;
+    float heatT;        // seconds since the slow temperatures last stepped
+    float ambSeen;      // AMBIENT as the engine last took it
+    float ambSm;        // AMBIENT followed over some 2 s (the air's temperature does not jump: its pressure would)
+    float runT;
+
+    void setup()
+    {
+        tAmb = 300.0f;
+        tCool = 300.0f;
+        tOil = 300.0f;
+        tSurf = 300.0f;
+        ambSeen = 80.33f;
+        ambSm = 80.33f;
+        warm = 0.0f;
+        viscK = 1.0f;
+    }
+
+    // (stopped, with AMBIENT moved: it has stood in that air, as cold or as warm as it is)
+    void stood(int state, float ambF)
+    {
+        if (state == 0 && fabsf(ambF - ambSeen) > 0.25f)
+        {
+            ambSm = ambF;
+            tCool = 300.0f + 0.5555556f * (ambF - 80.33f);
+            tOil = tCool;
+            tSurf = tCool;
+        }
+        ambSeen = ambF;
+    }
+
+    // A cold engine's fast idle: its ECU idles it up to 500 rpm higher (a diesel's 250) as the coolant is colder than
+    // 55 C (at 80 F some 190, at 0 F some 420; none once it is warm)
+    float coldIdle(int fuelUse)
+    {
+        return (fuelUse != 0 ? 250.0f : 500.0f) * fminf(fmaxf((328.0f - tCool) / 75.0f, 0.0f), 1.0f);
+    }
+
+    // Every 16 samples (d16 s; 0: only what follows from the temperatures): the engine's heat. The burns give the
+    // coolant some 40 % of their heat and the rubbing 60 % of its; the block and its coolant hold some 9 kJ/K a
+    // litre (as the 0.9th power of the size: a 2 L engine warms from 20 to 90 C in some 8 minutes at idle, in one or
+    // two driven hard), lose a little to the air, and the thermostat opens from 195 F, its radiator then holding it
+    // there. The oil follows some 4 minutes behind, 10 K over the coolant while it runs; the combustion chamber's walls
+    // some 25 s behind, 87 K over it while it runs (a cold start's thin flame-quenching walls warm long before the
+    // coolant does), sinking back to it over minutes once it stops. Its thickness (a 5W-30's:
+    // Vogel's fit through 10.5 cSt at 100 C, 62 at 40, 645 at 0) over a warm engine's makes its pressure: the pump's
+    // 10 psi plus 14 a 1000 rpm warm, as the thickness's 0.3th power, under the relief valve's 75.
+    void control(float d16, float ambF, float vTotal, int state, float rpm, float omega)
+    {
+        ambSm += (ambF - ambSm) * (1.0f - expf(-fmaxf(d16, 0.0f) / 2.0f));
+        tAmb = 300.0f + 0.5555556f * (ambSm - 80.33f);
+        // (the slow temperatures step every 20 ms: a 16 samples' change in them is under what a float can add)
+        heatT += fmaxf(d16, 0.0f);
+        if (heatT >= 0.02f)
+        {
+            const float dh = heatT;
+            heatT = 0.0f;
+            const float litres = vTotal * 1000.0f;
+            const float cHeat = 9000.0f * expf(0.9f * logf(fmaxf(litres, 0.05f)));
+            const float open = fminf(fmaxf((tCool - 363.0f) / 12.0f, 0.0f), 1.0f);
+            const float ua = (10.0f + 600.0f * open) * expf(0.7f * logf(fmaxf(litres, 0.05f)));
+            const float qIn = (0.4f * heatJ + 0.6f * fricJ) / dh;
+            tCool = fminf(fmaxf(tCool + (qIn - ua * (tCool - tAmb)) * dh / cHeat, tAmb - 1.0f), 420.0f);
+            tOil += (tCool + (state == 2 ? 10.0f : 0.0f) - tOil) * (1.0f - expf(-dh / 240.0f));
+            tSurf += (tCool + (state == 2 ? 87.0f : 0.0f) - tSurf) * (1.0f - expf(-dh / (state == 2 ? 25.0f : 120.0f)));
+            heatJ = 0.0f;
+            fricJ = 0.0f;
+        }
+        if (d16 > 0.0f)
+            runT = state == 2 ? fminf(runT + d16, 600.0f) : 0.0f;
+        warm = fminf(fmaxf((tCool - tAmb) / (363.0f - tAmb), 0.0f), 1.0f);
+        warmS = fminf(fmaxf((tSurf - tAmb) / (450.0f - tAmb), 0.0f), 1.0f);
+        viscK = fminf(expf(861.0f * (1.0f / fmaxf(tOil - 170.0f, 40.0f) - 1.0f / 203.0f)), 2.0e4f);
+        const float pHot = (10.0f + 14.0f * rpm * 0.001f) * 6894.76f;
+        const float pWant = state != 0 && omega > 1.0f
+                            ? fminf(pHot * expf(0.3f * logf(viscK)) * fminf(omega / 20.0f, 1.0f), 75.0f * 6894.76f) : 0.0f;
+        pOil += (pWant - pOil) * (1.0f - expf(-fmaxf(d16, 0.0f) / 0.25f));
+    }
+};

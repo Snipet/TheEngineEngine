@@ -18,6 +18,7 @@
 #include "Script.h"
 
 #include "audio/AudioDevice.h"
+#include "audio/Recorder.h"
 #include "files/Png.h"
 #include "input/Controls.h"
 #include "input/Keys.h"
@@ -86,7 +87,10 @@ namespace
         input::SdlInput sdlInput(controls);
 
         // ---- the audio device ---------------------------------------------------------------------------------------
-        audio::Device device(player);
+        // (what the device plays is the player, heard on the way by the recorder: --record)
+        audio::Recorder recorder;
+        audio::RecordingSource heard(player, recorder);
+        audio::Device device(heard);
         std::string audioLine = "no audio device (--no-audio)";
         if (!o.noAudio)
         {
@@ -109,6 +113,20 @@ namespace
             if (device.isOpen())
                 std::printf("audio: SDL reports the device's buffer, not the system's whole output latency: %.1f ms is the "
                             "least it can be\n", device.info().bufferMs);
+        }
+        if (!o.record.empty())
+        {
+            std::string why;
+            std::error_code ec;
+            const std::filesystem::path parent = std::filesystem::path(o.record).parent_path();
+            if (!parent.empty())
+                std::filesystem::create_directories(parent, ec);
+            if (!device.isOpen())
+                std::fprintf(stderr, "record: there is no audio device, so nothing plays to record\n");
+            else if (!recorder.start(o.record, device.info().rate, why))
+                std::fprintf(stderr, "record: %s\n", why.c_str());
+            else
+                std::printf("record: writing %s at %d Hz\n", o.record.c_str(), device.info().rate);
         }
         std::string stopped;
         controls.setStatus(statusOf(engine, audioLine, stopped));
@@ -262,6 +280,13 @@ namespace
         const int largest = device.largestRequest();
         host.close();
         device.close();
+        if (recorder.recording())
+        {
+            const bool whole = recorder.stop();
+            std::printf("record: %s: %llu frames%s%s\n", o.record.c_str(), static_cast<unsigned long long>(recorder.written()),
+                        recorder.dropped() != 0 ? " (some frames were dropped: the disk kept the writer waiting)" : "",
+                        whole ? "" : " (the file is not whole: a write failed)");
+        }
         // a first run leaves the settings file behind, with the defaults, for a person to find and edit; a file that
         // is there is a person's and is left as it is (nothing in the window changes a setting yet)
         if (!remembered.found && !machine)

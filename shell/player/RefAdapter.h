@@ -112,5 +112,6 @@ namespace tee::player
         int pulseSamples_ = 480;
         Pulse up_, down_;
         bool noteHeld_ = false;
+        float lastL_ = 0.0f, lastR_ = 0.0f;     // the last sample that left, for the run-down when the program stops
     };
 }

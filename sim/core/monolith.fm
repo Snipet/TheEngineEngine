@@ -13,11 +13,12 @@
 #include "pipes.fm"
 #include "cylinder.fm"
 #include "layouts.fm"
+#include "heat.fm"
 #include "lib/onepole.fm"
 #include "lib/biquad.fm"
 #include "sound/extras.fm"
 #include "listen/listen.fm"
-#include "car.fm"
+#include "vehicle/car.fm"
 
 module Set
 {
@@ -241,6 +242,7 @@ module Shared
     OnePole vnHp;       // the valves' jet noise: white noise, its lows taken out
     OnePole tnHp[2];    // the tail's jet: noise in a band
     OnePole tnLp[2];
+    Heat heat;          // the coolant, the oil, the chamber's walls (core/heat.fm)
     Extras ex;
     Listen listen;      // where it is heard from, the room, the level, the resampler (listen/listen.fm)
     float pBox;         // the air box (with the turbo's boost), Pa
@@ -304,18 +306,9 @@ module Shared
     float k16Flow;      // the flow's loss's smoothing, every 16 samples
     // the car (DRIVE CAR)
     Car car;
-    int lastDrive;
-    int lastLever;      // the shifter where it was: it moving picks its gear
-    int lastPos;        // a truck's shifter's last forward position (coming down from it picks the highest of three)
-    int lastButtons;
-    float shiftT;       // seconds into a paddle shift (negative: none)
-    int shiftTo;
-    bool shiftUp;
-    bool shiftCut;      // the ignition cut through an upshift
     float stallT;       // seconds under the stall speed
     float offHold;      // seconds the start key has been held while it ran (a second switches it off)
     bool offArmed;      // that key went down while it ran
-    float kPedal;       // the pedals' smoothing, every 16 samples
     // what the panel shows (its displays read these whether a key sounds or not)
     float showRpm;      // the crank's speed, rpm
     float showRed;      // the redline, rpm
@@ -425,14 +418,7 @@ module Shared
         set.bendRange = 12.0f;
         set.starter = 1;
         set.hold = 10.0f;
-        tAmb = 300.0f;
-        tCool = 300.0f;
-        tOil = 300.0f;
-        tSurf = 300.0f;
-        ambSeen = 80.33f;
-        ambSm = 80.33f;
-        warm = 0.0f;
-        viscK = 1.0f;
+        heat.setup();
         lastLayout = -1;
         state = 0;
         omega = 0.0f;
@@ -457,11 +443,6 @@ module Shared
         car.setup(rate);
         set.drive = 0;
         set.mass = 1400.0f;
-        lastDrive = 0;
-        lastLever = 0;
-        lastPos = 0;
-        shiftT = -1.0f;
-        kPedal = 1.0f - expf(-16.0f / (0.012f * rate));
         configure();
         showGear = -2.0f;
         ready = 1;
@@ -498,16 +479,11 @@ module Shared
         lastLayout = set.layout;
         fuelUse = set.fuel;
         aspUse = set.asp < 0 ? 0 : (set.asp > 4 ? 4 : set.asp);
-        // (stopped, with AMBIENT moved: it has stood in that air, as cold or as warm as it is)
-        if (state == 0 && fabsf(set.ambF - ambSeen) > 0.25f)
-        {
-            ambSm = set.ambF;
-            tCool = 300.0f + 0.5555556f * (set.ambF - 80.33f);
-            tOil = tCool;
-            tSurf = tCool;
-        }
-        ambSeen = set.ambF;
-        heat16(0.0f);
+        // (stopped, with AMBIENT moved: it has stood in that air, as cold or as heat.warm as it is)
+        heat.stood(state, set.ambF);
+        heat.control(0.0f, set.ambF, vTotal, state, rpm, omega);
+        for (int c = 0; c < lay.n; ++c)
+            cyl[c].tw = heat.tSurf;
         kRet = 0.0f;
         lastSize = set.size;
         lastCam = set.cam;
@@ -546,7 +522,7 @@ module Shared
         smBs = bsOf();
         boreStroke();
         // (a big cam's overlap dilutes the idle more the slower it turns: its tune idles it higher, as real ones are)
-        idleRpm = fmaxf(idleBase + set.idle + 350.0f * fmaxf(set.cam - 0.35f, 0.0f) / 0.65f + coldIdle(), 350.0f);
+        idleRpm = fmaxf(idleBase + set.idle + 350.0f * fmaxf(set.cam - 0.35f, 0.0f) / 0.65f + heat.coldIdle(fuelUse), 350.0f);
         redRpm = fmaxf(redBase + set.redline, idleRpm + 1500.0f);
         nDuals = lay.topo == 2 ? 2 : 1;
         // the throttle and the plenum go with the engine's size
@@ -561,14 +537,14 @@ module Shared
         {
             Cylinder* cy = &cyl[c];
             cy->setup(swept, smCR, 3.3f, lay.rotary, lay.cyc);
-            cy->tw = tSurf;
+            cy->tw = heat.tSurf;
             cy->diesel = fuelUse;
             cy->bias = 0.025f * rnd();
             float a0 = theta + lay.fire[c];
             while (a0 >= lay.cyc)
                 a0 -= lay.cyc;
             cy->reset(a0);
-            cy->t = tAmb + 30.0f * warm;
+            cy->t = heat.tAmb + 30.0f * heat.warm;
             cy->m = cy->p * cy->v / (287.0f * cy->t);
         }
         for (int i = 0; i < 12; ++i)
@@ -648,14 +624,14 @@ module Shared
         const float exT1[17] = {0.288f, 0.348f, 0.402f, 0.400f, 0.884f, 0.995f, 0.999f, 0.439f, 1.527f, 1.113f, 1.609f, 0.501f, 1.415f, 0.853f, 0.837f, 1.123f, 0.401f};
         noiseTrim = sqrtf(sqrtf(exT1[set.layout < 0 ? 0 : (set.layout > 16 ? 16 : set.layout)] / exTrim));
         showRed = redRpm;
-        // stopped, the walls as warm as the engine is (warm: where a long idle leaves them; cold: at the air outside);
+        // stopped, the walls as heat.warm as the engine is (heat.warm: where a long idle leaves them; cold: at the air outside);
         // running (a new layout or size under the fade), the plenum, the throttle, the controllers and the heat go on as
         // they were
         if (state == 0)
         {
             pPlenum = 101325.0f;
-            tAir = tAmb + 5.0f * warm;
-            tPort = tAmb + 20.0f * warm;
+            tAir = heat.tAmb + 5.0f * heat.warm;
+            tPort = heat.tAmb + 20.0f * heat.warm;
             throttle = 0.0f;
             bypass = 0.3f;
             idleInt = 0.15f;
@@ -663,9 +639,9 @@ module Shared
             govInt = 0.0f;
             mdotSlow = 0.36f * vTotal * idleRpm / 120.0f;
             for (int i = 0; i < 5; ++i)
-                tWall[i] = tAmb + 120.0f * warm;
+                tWall[i] = heat.tAmb + 120.0f * heat.warm;
             for (int it = 0; it < 400; ++it)
-                soak(tAmb + 350.0f * warm, mdotSlow, 3.0f * warm);
+                soak(heat.tAmb + 350.0f * heat.warm, mdotSlow, 3.0f * heat.warm);
             for (int i = 0; i < 5; ++i)
                 tUse[i] = tGas[i];
         }
@@ -707,7 +683,7 @@ module Shared
         br[4] = (float)nDuals;
         const float enh[5] = {1.5f, 1.2f, 1.0f, 2.0f, 1.0f};
         const float shellK[5] = {1.0f, 1.0f, 1.0f, 4.0f, 1.0f};      // the outside's area over the inside's
-        const float heat[5] = {9000.0f, 6000.0f, 12000.0f, 10000.0f, 5000.0f};  // J / (m^2 K) of the outside
+        const float hCap[5] = {9000.0f, 6000.0f, 12000.0f, 10000.0f, 5000.0f};  // J / (m^2 K) of the outside
         float t = tIn;
         for (int i = 0; i < 5; ++i)
         {
@@ -719,66 +695,16 @@ module Shared
             t = tw + (t - tw) * e;
             const float sOut = 3.14159265f * dia[i] * len[i] * shellK[i];
             const float gIn = ntu * mb * 1150.0f;
-            const float gOut = (20.0f + 4.0f * vAir + 4.536e-8f * (tw * tw + tAmb * tAmb) * (tw + tAmb)) * sOut;
-            const float tEq = (gIn * tGas[i] + gOut * tAmb) / (gIn + gOut);
-            tWall[i] = tw + (tEq - tw) * fminf(dt * (gIn + gOut) / (heat[i] * sOut), 1.0f);
+            const float gOut = (20.0f + 4.0f * vAir + 4.536e-8f * (tw * tw + heat.tAmb * heat.tAmb) * (tw + heat.tAmb)) * sOut;
+            const float tEq = (gIn * tGas[i] + gOut * heat.tAmb) / (gIn + gOut);
+            tWall[i] = tw + (tEq - tw) * fminf(dt * (gIn + gOut) / (hCap[i] * sOut), 1.0f);
         }
-    }
-
-    // A cold engine's fast idle: its ECU idles it up to 500 rpm higher (a diesel's 250) as the coolant is colder than
-    // 55 C (at 80 F some 190, at 0 F some 420; none once it is warm)
-    float coldIdle()
-    {
-        return (fuelUse != 0 ? 250.0f : 500.0f) * fminf(fmaxf((328.0f - tCool) / 75.0f, 0.0f), 1.0f);
     }
 
     // The TURBO SIZE dial as the engine takes it: 0.5 to 2 (unset: 1, matched)
     float tsOf()
     {
         return set.tsize > 0.0f ? fminf(fmaxf(set.tsize, 0.5f), 2.0f) : 1.0f;
-    }
-
-    // Every 16 samples (d16 s; 0: only what follows from the temperatures): the engine's heat. The burns give the
-    // coolant some 40 % of their heat and the rubbing 60 % of its; the block and its coolant hold some 9 kJ/K a
-    // litre (as the 0.9th power of the size: a 2 L engine warms from 20 to 90 C in some 8 minutes at idle, in one or
-    // two driven hard), lose a little to the air, and the thermostat opens from 195 F, its radiator then holding it
-    // there. The oil follows some 4 minutes behind, 10 K over the coolant while it runs; the combustion chamber's walls
-    // some 25 s behind, 87 K over it while it runs (a cold start's thin flame-quenching walls warm long before the
-    // coolant does), sinking back to it over minutes once it stops. Its thickness (a 5W-30's:
-    // Vogel's fit through 10.5 cSt at 100 C, 62 at 40, 645 at 0) over a warm engine's makes its pressure: the pump's
-    // 10 psi plus 14 a 1000 rpm warm, as the thickness's 0.3th power, under the relief valve's 75.
-    void heat16(float d16)
-    {
-        ambSm += (set.ambF - ambSm) * (1.0f - expf(-fmaxf(d16, 0.0f) / 2.0f));
-        tAmb = 300.0f + 0.5555556f * (ambSm - 80.33f);
-        // (the slow temperatures step every 20 ms: a 16 samples' change in them is under what a float can add)
-        heatT += fmaxf(d16, 0.0f);
-        if (heatT >= 0.02f)
-        {
-            const float dh = heatT;
-            heatT = 0.0f;
-            const float litres = vTotal * 1000.0f;
-            const float cHeat = 9000.0f * expf(0.9f * logf(fmaxf(litres, 0.05f)));
-            const float open = fminf(fmaxf((tCool - 363.0f) / 12.0f, 0.0f), 1.0f);
-            const float ua = (10.0f + 600.0f * open) * expf(0.7f * logf(fmaxf(litres, 0.05f)));
-            const float qIn = (0.4f * heatJ + 0.6f * fricJ) / dh;
-            tCool = fminf(fmaxf(tCool + (qIn - ua * (tCool - tAmb)) * dh / cHeat, tAmb - 1.0f), 420.0f);
-            tOil += (tCool + (state == 2 ? 10.0f : 0.0f) - tOil) * (1.0f - expf(-dh / 240.0f));
-            tSurf += (tCool + (state == 2 ? 87.0f : 0.0f) - tSurf) * (1.0f - expf(-dh / (state == 2 ? 25.0f : 120.0f)));
-            heatJ = 0.0f;
-            fricJ = 0.0f;
-        }
-        if (d16 > 0.0f)
-            runT = state == 2 ? fminf(runT + d16, 600.0f) : 0.0f;
-        warm = fminf(fmaxf((tCool - tAmb) / (363.0f - tAmb), 0.0f), 1.0f);
-        warmS = fminf(fmaxf((tSurf - tAmb) / (450.0f - tAmb), 0.0f), 1.0f);
-        viscK = fminf(expf(861.0f * (1.0f / fmaxf(tOil - 170.0f, 40.0f) - 1.0f / 203.0f)), 2.0e4f);
-        for (int c = 0; c < lay.n; ++c)
-            cyl[c].tw = tSurf;
-        const float pHot = (10.0f + 14.0f * rpm * 0.001f) * 6894.76f;
-        const float pWant = state != 0 && omega > 1.0f
-                            ? fminf(pHot * expf(0.3f * logf(viscK)) * fminf(omega / 20.0f, 1.0f), 75.0f * 6894.76f) : 0.0f;
-        pOil += (pWant - pOil) * (1.0f - expf(-fmaxf(d16, 0.0f) / 0.25f));
     }
 
     // The BORE/STROKE dial as the engine takes it: 0.5 to 2 (a rotary, or the dial unset: 1, square)
@@ -998,7 +924,7 @@ module Shared
         // By the bilinear transform.
         const float aEnd = 0.5f * lay.tailD;
         const float tau = aEnd / 347.2f;
-        const float kEnd = 1.018f * sqrtf(tT / tAmb);
+        const float kEnd = 1.018f * sqrtf(tT / heat.tAmb);
         const float nb1 = (0.613f * kEnd - 0.78f) * tau;
         const float nb2 = 0.2285f * (kEnd - 1.0f) * tau * tau;
         const float da1 = (0.613f * kEnd + 0.78f) * tau;
@@ -1061,7 +987,7 @@ module Shared
     {
         // (stopped, a new layout or size is taken at once; running, under the fade: control16)
         if (state == 0 && (set.layout != lastLayout || set.fuel != fuelUse || set.asp != aspUse || fabsf(set.size - lastSize) > 0.001f
-                           || fabsf(set.ambF - ambSeen) > 0.25f))
+                           || fabsf(set.ambF - heat.ambSeen) > 0.25f))
             configure();
         if (keyCount >= 16)
         {
@@ -1082,7 +1008,7 @@ module Shared
         if (state == 2)
             offArmed = true;
         if (set.drive != 0)
-            followLever();
+            car.followLever(set.drive, set.lever);
         // driven, in gear it cranks only with the clutch's pedal down (as a car's clutch switch has it)
         const bool may = set.drive == 0 || car.gear == 0 || set.clutch > 0.75f;
         if ((state == 0 || state == 3) && may)
@@ -1153,10 +1079,12 @@ module Shared
     {
         const float d16 = 16.0f * dt;
         rpm = omega * 9.5492966f;
-        heat16(d16);
+        heat.control(d16, set.ambF, vTotal, state, rpm, omega);
+        for (int c = 0; c < lay.n; ++c)
+            cyl[c].tw = heat.tSurf;
         kRet = fmaxf(kRet - 2.0f * d16, 0.0f);
         // (a big cam's overlap dilutes the idle more the slower it turns: its tune idles it higher, as real ones are)
-        idleRpm = fmaxf(idleBase + set.idle + 350.0f * fmaxf(set.cam - 0.35f, 0.0f) / 0.65f + coldIdle(), 350.0f);
+        idleRpm = fmaxf(idleBase + set.idle + 350.0f * fmaxf(set.cam - 0.35f, 0.0f) / 0.65f + heat.coldIdle(fuelUse), 350.0f);
         redRpm = fmaxf(redBase + set.redline, idleRpm + 1500.0f);
         rpmAvg += (rpm - rpmAvg) * (1.0f - expf(-d16 / 0.035f));
         rpmRate += ((rpmAvg - rpmLast) / d16 - rpmRate) * (1.0f - expf(-d16 / 0.05f));
@@ -1170,7 +1098,7 @@ module Shared
         else
             sizeRest += d16;
         if (set.layout != lastLayout || set.fuel != fuelUse || set.asp != aspUse || (fabsf(set.size - lastSize) > 0.001f && sizeRest > 0.15f)
-            || (state == 0 && fabsf(set.ambF - ambSeen) > 0.25f))
+            || (state == 0 && fabsf(set.ambF - heat.ambSeen) > 0.25f))
             cutWant |= 1;
         // the dials that shape the pipes and the cams, smoothed
         smMuf += (set.muffler - smMuf) * kDial;
@@ -1217,9 +1145,10 @@ module Shared
         else
             govInt *= 0.98f;
         if (set.drive != 0)
-            ped = drive16(d16);
+            ped = car.drive16(set.drive, d16, jBase * expf(1.6094379f * (set.inertia - 0.5f)), peakTorque(), gearTq, set.mass,
+                              redRpm, lay.bike, set.clutch, set.brake, set.lever, set.buttons, set.gas, rpm, idleRpm, rpmAvg);
         else
-            lastDrive = 0;
+            car.lastDrive = 0;
         ped = fmaxf(ped, fmaxf(set.modwheel, set.pressure));
         if (state != 2)
             ped = state == 1 ? 0.0f : ped;
@@ -1268,8 +1197,8 @@ module Shared
             dfco = true;
         else if (rpmAvg < idleRpm + 320.0f || pedal >= 0.02f)
             dfco = false;
-        const bool crankLow = warm >= 1.0f ? rpm < 120.0f : rpmAvg < 120.0f - 80.0f * (1.0f - warm);
-        fuelCut = limiting || dfco || shiftCut || state == 0 || state == 3 || (state == 1 && crankLow);
+        const bool crankLow = heat.warm >= 1.0f ? rpm < 120.0f : rpmAvg < 120.0f - 80.0f * (1.0f - heat.warm);
+        fuelCut = limiting || dfco || car.shiftCut || state == 0 || state == 3 || (state == 1 && crankLow);
         // the engine's state
         if (state == 1)
         {
@@ -1318,7 +1247,7 @@ module Shared
         ex.turbo16(aspUse, smTb, mdot * tPort / 1100.0f / fmaxf(mRef, 1.0e-6f), fuelUse != 0 ? 1.0f : throttle, throttle,
                    set.bov, rpm / redRpm, rpm * 0.016666667f, smTs, d16);
         pBox = 101325.0f + 100000.0f * ex.boost;
-        tAir = tAmb + 5.0f * warm + 25.0f * ex.boost;
+        tAir = heat.tAmb + 5.0f * heat.warm + 25.0f * ex.boost;
         // the exhaust's temperature: what the ports let out, slowly
         if (mSum > 1.0e-9f)
         {
@@ -1326,7 +1255,7 @@ module Shared
             tPort += (tNew - tPort) * (1.0f - expf(-d16 / 0.8f));
         }
         else
-            tPort += (tAmb - tPort) * (1.0f - expf(-d16 / 4.0f));
+            tPort += (heat.tAmb - tPort) * (1.0f - expf(-d16 / 4.0f));
         eSum = 0.0f;
         mSum = 0.0f;
         const float surf = 0.022f * expf(0.6666667f * logf(cyl[0].vd / 0.0005f));
@@ -1387,56 +1316,7 @@ module Shared
 
     // ---- driven (DRIVE CAR) ----
 
-    // The vehicle at rest when DRIVE first turns to CAR or TRUCK (or from one to the other); the shifter, when it moves,
-    // puts its gear in (whatever the paddles chose meanwhile; its seventh is the sixth). A truck's six positions hold
-    // three gears each (1 to 3, 4 to 6, ... 16 to 18): going up, or in from a standstill, puts in the position's lowest,
-    // coming down its highest; the paddles split between them.
-    void followLever()
-    {
-        if (lastDrive != set.drive)
-        {
-            lastDrive = set.drive;
-            car.reset();
-            lastLever = 0;
-            lastPos = 0;
-            shiftT = -1.0f;
-            shiftCut = false;
-        }
-        const int h = set.lever < -1 ? -1 : (set.lever > 6 ? 6 : set.lever);
-        if (h != lastLever)
-        {
-            lastLever = h;
-            shiftT = -1.0f;
-            shiftCut = false;
-            car.robot = 1.0f;
-            int g = h;
-            if (set.drive == 2 && h > 0)
-            {
-                g = lastPos > h && car.kmh() > 3.0f ? 3 * h : 3 * h - 2;
-                lastPos = h;
-            }
-            car.select(g);
-        }
-    }
-
     float gearTq;       // the full-load torque the car's gearing was chosen for (at the layout's or size's change)
-    // the heat: the air outside, the coolant and the oil (K); how warm the engine is (0 at the air outside, 1 at its
-    // thermostat); the oil's thickness over a warm engine's and its pressure (Pa over the air); the burns' and the
-    // rubbing's heat since the last time (J); seconds since it started (its glow plugs' after-glow)
-    float tAmb;
-    float tCool;
-    float tOil;
-    float tSurf;        // the combustion chamber's walls (K): warm within some 25 s of running, cooling when it stops
-    float warm;
-    float warmS;        // how warm the chamber's walls are, 0 at the air outside, 1 at a warm engine's 450 K
-    float viscK;
-    float pOil;
-    float heatJ;
-    float fricJ;
-    float heatT;        // seconds since the slow temperatures last stepped
-    float ambSeen;      // AMBIENT as the engine last took it
-    float ambSm;        // AMBIENT followed over some 2 s (the air's temperature does not jump: its pressure would)
-    float runT;
     float kRet;         // the spark its ECU has taken back for knock, degrees
     float clatSize;     // a diesel's clatter for its cylinders' size: their panels' area (a cube root of the volume)
 
@@ -1445,77 +1325,6 @@ module Shared
     {
         const float b = aspUse == 0 ? 0.0f : (aspUse == 4 ? 0.25f + 0.75f * set.turbo : 0.35f + 1.05f * set.turbo);
         return 1.6f * idleTq * (1.0f + 0.8f * b);
-    }
-
-    // Every 16 samples, driven: the car for the dials, the pedals, the shifter and the paddles. Returns the throttle the
-    // pedal asks (with a blip through a paddle's downshift).
-    float drive16(float d16)
-    {
-        followLever();
-        car.configure(jBase * expf(1.6094379f * (set.inertia - 0.5f)), peakTorque(), gearTq, set.mass, redRpm, lay.bike,
-                      set.drive == 2 ? 1 : 0);
-        car.pedals(set.clutch, set.brake, kPedal);
-        // the paddles shift in turn while the shifter stands in neutral: the right one up, the left one down, through
-        // R, N, 1 to 6, a truck's to 18 (into reverse only at a crawl, and never down into a gear the speed would take
-        // past the redline); with a truck's shifter in a gear they split between its three
-        const int down = set.buttons & ~lastButtons;
-        lastButtons = set.buttons;
-        const bool split = set.drive == 2 && lastLever > 0;
-        if ((lastLever == 0 || split) && shiftT < 0.0f)
-        {
-            const int lo = split ? 3 * lastLever - 2 : -1;
-            const int hi = split ? 3 * lastLever : car.nGears;
-            int to = car.gear;
-            if ((down & 16) != 0)
-                to = car.gear < hi ? car.gear + 1 : hi;
-            else if ((down & 32) != 0)
-                to = car.gear > lo ? car.gear - 1 : lo;
-            if (to == -1 && car.kmh() > 5.0f)
-                to = 0;
-            if (to > 0 && to < car.gear && fabsf(car.wW * car.ratioOf(to)) * 9.5492966f > 0.97f * redRpm)
-                to = car.gear;
-            if (to != car.gear)
-            {
-                shiftTo = to;
-                shiftUp = to > car.gear;
-                shiftT = 0.0f;
-            }
-        }
-        float ped = set.gas;
-        // the paddles' own clutch: it pulls away and stops as a paddle car's does, closing with the revs from just over
-        // the idle (so they never stall it); the shifter's clutch is the pedal alone
-        float rob = 1.0f;
-        if (lastLever == 0 && car.gear != 0)
-        {
-            // (a truck's diesel turns over a narrower range: its clutch closes over a third as many revs)
-            const float sp = set.drive == 2 ? fminf(fmaxf((redRpm - idleRpm) / 6000.0f, 0.2f), 1.0f) : 1.0f;
-            const float x = fminf(fmaxf((rpm - idleRpm - 150.0f * sp) / (900.0f * sp), 0.0f), 1.0f);
-            rob = x * x * (3.0f - 2.0f * x);
-        }
-        car.robot = rob;
-        if (shiftT >= 0.0f)
-        {
-            // a paddle's shift, as a robotised gearbox does it: its clutch opens (an upshift cuts the ignition), the gear
-            // goes in, the clutch closes again; a downshift blips the throttle to the new gear's speed meanwhile (a
-            // truck's automated gearbox takes two and a half times as long: half a second)
-            const float tk = set.drive == 2 ? 2.5f : 1.0f;
-            shiftT += d16;
-            if (shiftT >= 0.05f * tk && car.gear != shiftTo)
-                car.select(shiftTo);
-            car.robot = rob * (shiftT < 0.035f * tk ? 1.0f - shiftT / (0.035f * tk) : (shiftT < 0.06f * tk ? 0.0f : fminf((shiftT - 0.06f * tk) / (0.15f * tk), 1.0f)));
-            shiftCut = shiftUp && shiftTo > 1 && shiftT < 0.06f * tk;
-            if (!shiftUp && shiftTo != 0)
-            {
-                const float want = fabsf(car.wW * car.ratioOf(shiftTo)) * 9.5492966f;
-                ped = fmaxf(ped, fminf(fmaxf((want - rpmAvg) * 0.002f, 0.0f), 1.0f));
-            }
-            if (shiftT >= 0.21f * tk)
-            {
-                shiftT = -1.0f;
-                shiftCut = false;
-            }
-        }
-        return ped;
     }
 
     // The tail's jet noise in a band about fPeak: from half of it up to three times it (one-pole slopes beyond), at unit
@@ -1895,15 +1704,15 @@ module Shared
         // (the rubbing goes with the pistons' speed: a longer stroke's, BORE/STROKE, faster at the same revs)
         const float nk = rpm * 0.001f * strokeK;
         // (cold, its thick oil rubs more: as the thickness's 0.15th power, 1.4 times at 80 F, twice at 20 F, at most 3)
-        const float fmep = (1.0f + 0.10f * nk + 0.02f * nk * nk) * 100000.0f * fminf(expf(0.15f * logf(viscK)), 3.0f)
+        const float fmep = (1.0f + 0.10f * nk + 0.02f * nk * nk) * 100000.0f * fminf(expf(0.15f * logf(heat.viscK)), 3.0f)
                            * (fuelUse != 0 ? 1.0f + 0.025f * fmaxf(smCR - 18.0f, 0.0f) : 1.0f);
         const float tf = fmep * vTotal * 0.0795775f * fminf(omega / 5.0f, 1.0f);
-        fricJ += tf * omega * dt;
+        heat.fricJ += tf * omega * dt;
         // (a supercharger takes what it pumps from the crank: its boost times the air it moves, at some 60 %)
         const float tsc = aspUse == 4 ? ex.boost * 1.0e5f * vTotal * (1.0f + ex.boost) * 0.1326f * fminf(omega / 5.0f, 1.0f) : 0.0f;
         const float tl = set.load * idleTq * (0.15f + 0.85f * (rpm / redRpm) * (rpm / redRpm));
         // (a cold battery gives less: 65 % at -40 F, all of it from 80 F)
-        const float bat = 1.0f - 0.35f * (1.0f - fminf(fmaxf((tAmb - 233.15f) / 66.85f, 0.0f), 1.0f));
+        const float bat = 1.0f - 0.35f * (1.0f - fminf(fmaxf((heat.tAmb - 233.15f) / 66.85f, 0.0f), 1.0f));
         const float ts = starterOn * 4.5e5f * cyl[0].vd * expf(0.9f * logf(smCR / 10.0f)) * fmaxf(1.0f - omega / 30.0f, 0.0f) * bat;
         if (set.drive == 0)
         {
@@ -1967,14 +1776,14 @@ module Shared
             }
         }
         cy->qTot = q;
-        heatJ += q;
+        heat.heatJ += q;
         // knock: past the compression the fuel takes at this load (some 14 at full load, less with boost, far more at
         // part load) the end gas lights on its own, more often and harder the further past: a ping. More spark advance
         // (TIMING, less what the ECU has taken back: 0.12 a degree), hotter air under the bonnet (0.3 a 10 K) and a
         // hotter engine take that compression lower
         const float mapB = pPlenum / 101325.0f;
         const float crLim = (mapB >= 1.0f ? 14.0f - 2.5f * (mapB - 1.0f) : 14.0f + 20.0f * (1.0f - mapB)) + crBs
-                            - 0.12f * (set.timing - kRet) - 0.03f * (tAmb + 5.0f * warm - 305.0f) - 0.02f * (tCool - 363.0f);
+                            - 0.12f * (set.timing - kRet) - 0.03f * (heat.tAmb + 5.0f * heat.warm - 305.0f) - 0.02f * (heat.tCool - 363.0f);
         const float over = (smCR - crLim) / 3.0f;
         cy->knock = 0.0f;
         if (over > 0.0f && q > 0.0f && 0.5f + 0.5f * rnd() < fminf(4.0f * over, 1.0f))
@@ -2037,9 +1846,9 @@ module Shared
         // while it cranks, and for a minute and a half after a cold start)
         const float soi = 4.0f + 14.0f * fminf(rpm / redRpm, 1.2f) + 3.0f * lever + set.timing;
         const float lr = logf(fmaxf(cy->v / cy->volumeAt(lay.cyc - soi), 1.0f));
-        const float cold = 1.0f - warmS;
+        const float cold = 1.0f - heat.warmS;
         const float nSq = 0.35f - 0.015f * cold - (state == 1 ? 0.08f : 0.0f);
-        const float glow = state == 1 ? 200.0f : 100.0f * (1.0f - warm) * fmaxf(1.0f - runT / 90.0f, 0.0f);
+        const float glow = state == 1 ? 200.0f : 100.0f * (1.0f - heat.warm) * fmaxf(1.0f - heat.runT / 90.0f, 0.0f);
         const float tc = cy->t * expf(nSq * lr) + glow;
         const float pc = cy->p * expf(1.35f * lr) / 101325.0f;
         const float tau = 0.44f * expf(-1.19f * logf(fmaxf(pc, 1.0f))) * expf(4650.0f / fmaxf(tc, 400.0f));
@@ -2062,7 +1871,7 @@ module Shared
         // (past some 18, a higher compression's tighter chamber gives its walls more of the burn: 1.5 % a point)
         q *= 1.0f - 0.015f * fmaxf(smCR - 18.0f, 0.0f);
         cy->qTot = q;
-        heatJ += q;
+        heat.heatJ += q;
         cy->sparkAt = lay.cyc - soi + delay + set.rough * gauss();
         if (cy->sparkAt >= lay.cyc)
             cy->sparkAt -= lay.cyc;
@@ -2149,8 +1958,8 @@ module Shared
         showThr = throttle;
         showMap = (pPlenum - 101325.0f) * 0.00001f;
         showLamps = (float)state + (limiting || droop < 0.95f ? 4.0f : 0.0f) + (fuelCut && state == 2 ? 8.0f : 0.0f) + (set.drive != 0 ? 16.0f : 0.0f)
-                    + 32.0f * floorf(fminf(fmaxf((tCool - 273.15f) * 1.8f + 92.0f, 0.0f), 511.0f) + 0.5f)
-                    + 16384.0f * floorf(fminf(pOil / 6894.76f, 127.0f) + 0.5f) + (set.drive == 2 ? 2097152.0f : 0.0f);
+                    + 32.0f * floorf(fminf(fmaxf((heat.tCool - 273.15f) * 1.8f + 92.0f, 0.0f), 511.0f) + 0.5f)
+                    + 16384.0f * floorf(fminf(heat.pOil / 6894.76f, 127.0f) + 0.5f) + (set.drive == 2 ? 2097152.0f : 0.0f);
         showPedals = 0.0f;
         if (set.drive != 0)
             showPedals = floorf(100.0f * fminf(fmaxf(set.brake, 0.0f), 1.0f) + 0.5f) + 1000.0f * floorf(100.0f * fminf(fmaxf(set.clutch, 0.0f), 1.0f) + 0.5f);
