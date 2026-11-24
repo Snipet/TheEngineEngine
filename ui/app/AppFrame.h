@@ -30,6 +30,7 @@
 
 #include "app/Cockpit.h"
 #include "app/LoadMeter.h"
+#include "app/TryFirst.h"
 #include "app/Panes.h"
 #include "app/Workspace.h"
 #include "kit/bind/Binding.h"
@@ -222,6 +223,11 @@ namespace tee::ui
         LoadMeter* load_ = nullptr;       // the simulator's peak share of a core, its verdict, the dropouts
         LoadAdvice* advice_ = nullptr;    // the sentence while the build does not fit at this quality
         Button* adviceButton_ = nullptr;  // QUALITY: the settings page
+        TryFirstCard* tryFirst_ = nullptr;    // the first launch's card, over the stage's top right
+        Button* tryFirstClose_ = nullptr;
+        std::string tryFirstNotes_;           // what the card shows now (empty: none)
+        bool tryFirstClosed_ = false, sawRunning_ = false;
+        void closeTryFirst();
         Button *undo_ = nullptr, *redo_ = nullptr;
         // the cockpit
         Button* start_ = nullptr;
