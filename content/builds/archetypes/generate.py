@@ -189,7 +189,7 @@ arch(slug="rotary-twin-13", name="Rotary twin", geo="ref-16-rotary-2", layout="R
      notes="A twin-rotor Wankel, 2 x 654 cc, 9.0:1, with two sequential turbos (the 13B-REW kind: 206 to 280 PS, "
            "the latter at 6500 rpm, some 294 N m at 5000; Wikipedia, makers' figures, firm to 10 %). In a light "
            "rear-drive coupe.")
-arch(slug="hot-hatch-16-16v", name="1.6 L 16-valve hot hatch", geo="ref-05-inline-4", layout="Inline 4",
+arch(slug="hot-hatch-16-16v", convK=18.0, name="1.6 L 16-valve hot hatch", geo="ref-05-inline-4", layout="Inline 4",
      bore=81.0, stroke=77.4, rod=134.0, cr=10.4, valves=4, dIn=31.0, dEx=27.0,
      cam=(256, 224, 9.6, 108, 248, 216, 8.8, 110), train="Bucket", redline=7200, idle=850,
      car="hot-hatch-light", timing="Toothed belt",
@@ -241,7 +241,7 @@ arch(slug="boxer-four-turbo-unequal", name="Boxer four turbo with unequal header
            "393 N m at 4000; Wikipedia and enthusiasts' tables). Its headers' primaries of unequal length are the "
            "burble: written in the exhaust builder (primSpread), which the program does not yet run. All-wheel "
            "drive, six-speed manual.")
-arch(slug="two-stage-cam-20", name="Two-stage-cam 2.0 L", geo="ref-05-inline-4", layout="Inline 4",
+arch(slug="two-stage-cam-20", convK=16.0, name="Two-stage-cam 2.0 L", geo="ref-05-inline-4", layout="Inline 4",
      bore=87.0, stroke=84.0, rod=153.0, cr=11.7, valves=4, dIn=34.0, dEx=29.0,
      cam=(236, 204, 8.5, 110, 232, 200, 8.0, 112), train="Rocker", redline=9000, idle=900,
      stages=dict(inDurSeatB=290, inDur1mmB=258, inLiftB=0.0118, exDurSeatB=284, exDur1mmB=252, exLiftB=0.0112,
@@ -250,7 +250,7 @@ arch(slug="two-stage-cam-20", name="Two-stage-cam 2.0 L", geo="ref-05-inline-4",
      notes="A 2.0 L four with two cam profiles a valve switched at 6000 rpm: 87 x 84 mm (1997 cc), 11.7:1, 9000 rpm "
            "(the F20C kind: 176 kW at 8300 rpm, 208 N m at 7500; makers' figures, from memory, firm to 5 %; the "
            "B16A's switch point of 5500 rpm: global.honda). In a light rear-drive roadster.")
-arch(slug="kei-660-triple-turbo", name="Kei 660 cc triple turbo", geo="ref-04-inline-3", layout="Inline 3",
+arch(slug="kei-660-triple-turbo", convK=24.0, name="Kei 660 cc triple turbo", geo="ref-04-inline-3", layout="Inline 3",
      bore=68.0, stroke=60.4, rod=110.0, cr=8.6, valves=4, dIn=24.5, dEx=21.0,
      cam=(240, 208, 7.5, 110, 236, 204, 7.0, 112), train="Bucket", redline=8000, idle=850,
      boost=dict(kind="Turbo", target=0.9, spring=0.6), car="kei", timing="Chain",
@@ -273,14 +273,14 @@ arch(slug="tractor-15-inline-six", name="Highway tractor 15 L", geo="ref-10-inli
            "brake is left off until the ECU can switch it (the X15 kind: 298 to 451 kW, 1966 to 2779 N m at 900 to 1000 rpm, governed at 1900 to 2100, "
            "idle 600 to 700; cummins.com, international.com). In a 36 t tractor-trailer, eighteen speeds.")
 # ---- the second batch ----
-arch(slug="three-cylinder-10-turbo", name="1.0 L three-cylinder turbo", geo="ref-04-inline-3", layout="Inline 3",
+arch(slug="three-cylinder-10-turbo", convK=17.0, name="1.0 L three-cylinder turbo", geo="ref-04-inline-3", layout="Inline 3",
      bore=71.9, stroke=82.0, rod=137.0, cr=10.0, valves=4, dIn=27.0, dEx=23.0,
      cam=(232, 200, 8.0, 112, 228, 196, 7.5, 112), train="Finger", phase=(50, 50), redline=6500, idle=800,
      boost=dict(kind="Turbo", target=1.0, spring=0.6), direct=True, car="small-hatch", timing="Toothed belt",
      notes="A downsized 1.0 L three with a small turbo and direct injection: 71.9 x 82 mm (999 cc), 10:1 (engines of "
            "the kind: 74 to 103 kW at 5500 to 6000 rpm, 170 to 205 N m from 1500; makers' figures). In a small "
            "hatch, six-speed manual.")
-arch(slug="economy-four-15", name="1.5 L economy four", geo="ref-05-inline-4", layout="Inline 4",
+arch(slug="economy-four-15", convK=18.0, name="1.5 L economy four", geo="ref-05-inline-4", layout="Inline 4",
      bore=75.0, stroke=84.7, rod=137.0, cr=11.0, valves=4, dIn=28.0, dEx=23.5,
      cam=(232, 200, 8.3, 112, 228, 196, 7.8, 112), train="Finger", phase=(40, 0), redline=6600, idle=750,
      car="compact-cvt", timing="Chain",
@@ -309,7 +309,7 @@ arch(slug="v6-35-twin-turbo-pickup", name="3.5 L twin-turbo V6 pickup", geo="ref
      notes="A 3.5 L twin-turbo V6 of a full-size pickup: 92.5 x 86.6 mm (3497 cc), 10.5:1, direct injection, a turbo "
            "a bank (engines of the kind: 280 to 300 kW at 5000 to 6000 rpm, 640 to 690 N m at 3500; makers' "
            "figures). Four-wheel drive, ten-speed automatic.")
-arch(slug="twin-cam-roadster-18", name="1.8 L twin-cam roadster", geo="ref-05-inline-4", layout="Inline 4",
+arch(slug="twin-cam-roadster-18", convK=17.0, name="1.8 L twin-cam roadster", geo="ref-05-inline-4", layout="Inline 4",
      bore=83.0, stroke=85.0, rod=133.0, cr=10.0, valves=4, dIn=33.0, dEx=28.0,
      cam=(244, 212, 9.0, 110, 240, 208, 8.5, 112), train="Bucket", redline=7000, idle=850, car="roadster",
      timing="Toothed belt",
@@ -474,8 +474,15 @@ def build(a):
         vo["blowerDrive"] = a["blowerDrive"]
     vo["injection"] = "Direct" if a.get("direct") and not diesel else "Port"
 
+    car = car_section(a["car"])
+    # a torque converter matched to the engine (used by an automatic, and by the drag and top-speed runs that make
+    # the gearbox one): the default's capacity (13.5) suits a big engine and loads a small one's idle with some 40 N m;
+    # small engines' converters are looser: K grows as the square root of the torque falls (judgement, from the
+    # converter's law T = (w / K)^2)
+    if "convK" in a:
+        car["converterK"] = a["convK"]
     spec = {"engine": e, "valve": v, "intake": i, "boost": bo, "exhaust": x, "fuel": f, "ecu": nest(t),
-            "car": car_section(a["car"]), "env": {"temperature": 288.15, "pressure": 101325.0}, "voices": vo}
+            "car": car, "env": {"temperature": 288.15, "pressure": 101325.0}, "voices": vo}
     return {"format": "tee-build", "version": 1, "name": a["name"], "notes": a["notes"], "spec": spec}
 
 
