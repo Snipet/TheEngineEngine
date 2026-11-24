@@ -46,6 +46,8 @@ TEST_CASE("probe: an engine's air and energy books", "[.balance]")
         }
     if (const char* s = std::getenv("BAL_READ"))
         o.read = split(s, ',');
+    if (const char* s = std::getenv("BAL_TRACE"))
+        o.trace = split(s, ',');
     if (const char* s = std::getenv("BAL_SIM"))
         o.sim = s;
     if (const char* s = std::getenv("BAL_SETTLE"))
@@ -89,6 +91,14 @@ TEST_CASE("probe: an engine's air and energy books", "[.balance]")
             if (const char* rdEnv = std::getenv("BAL_READ"))
                 for (const std::string& path : split(rdEnv, ','))
                     std::printf("read %s %.6g\n", path.c_str(), k.reads.count(path) ? k.reads.at(path) : std::nan(""));
+            // BAL_TRACE="a,b": each sample of the window, one line a sample ("trace" and the values)
+            for (std::size_t n = 0; !k.traces.empty() && n < k.traces[0].size(); ++n)
+            {
+                std::printf("trace");
+                for (const auto& tr : k.traces)
+                    std::printf(" %.6g", tr[n]);
+                std::printf("\n");
+            }
             std::printf("end\n");
             std::fflush(stdout);
         }

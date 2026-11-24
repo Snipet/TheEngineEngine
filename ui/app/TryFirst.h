@@ -1,5 +1,6 @@
 // ui/app/TryFirst.h: the first launch's card (the lead's ask, 2026-11-24 20:19): "TRY FIRST", the build's name and
-// the opening of its notes wrapped to the card's width, over the stage's top right (never over START or the load).
+// the opening of its notes wrapped to the card's width, a strip across the stage's top; the frame places the workspace
+// under it, so it covers nothing (the lead's correction, 20:28: over DRIVE it hid the speedometer).
 // The frame shows it while FrameServices::tryFirst says something, and closes it for good (FrameServices::
 // tryFirstDone, a per-viewer setting the shell keeps) at its Close button or once the engine has been started and
 // stopped.
@@ -16,7 +17,9 @@ namespace tee::ui
     class TryFirstCard final : public Widget
     {
     public:
-        static constexpr float kPad = 14.0f, kLineH = 16.0f, kHeadH = 44.0f;
+        // A strip across the stage's top: "TRY FIRST" and the name on one line, the opening under them; the Close
+        // button (the frame's) at the right, the text kept clear of it.
+        static constexpr float kPad = 12.0f, kLineH = 16.0f, kHeadH = 24.0f, kButtonRoom = 88.0f;
         static constexpr int kMaxLines = 6;
 
         explicit TryFirstCard(uint32_t id);

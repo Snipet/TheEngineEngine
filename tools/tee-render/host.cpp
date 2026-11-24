@@ -193,6 +193,9 @@ int hostMain(int argc, char** argv)
     load.worker = false;
     if (timeline.warm)
         load.hold = warmEngine();
+    if (timeline.warmTyres)
+        for (const HeldValue& h : warmTyres())
+            load.hold.push_back(h);
     if (!host.attach(compiled, load, error))
         return failHost(error);
     build.attach(&host);

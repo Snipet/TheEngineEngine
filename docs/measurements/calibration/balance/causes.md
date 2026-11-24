@@ -211,3 +211,171 @@ and switch speed are the build's (P); the phaser's schedule is N1's rule (its ad
 - **The 7.0's ports at 1.6 / 1.8** (P, from discharge.md's LS7 row, which is one posting): 723 and 630 N m at 4800 and
   6300 rpm against 700 and 560 at 1.35 / 1.5 (target 630 to 645). Asked P to put the defaults back until a second
   figure agrees (the lead's rule).
+
+## N3-6. The runner's ram: its height measured, no missing loss found yet (20:31 by `date -u`; the lead's item 1)
+
+The flat six at full load, VE against the outside air, a 0.53 m runner (as built) against 0.30 m, every 250 rpm (tip,
+tee::Build path):
+
+| rpm | 0.30 m | 0.53 m | Ratio |
+|---|---|---|---|
+| 2500 | 0.829 | 0.824 | 0.994 |
+| 2750 | 0.837 | 0.839 | 1.003 |
+| 3000 | 0.833 | 0.824 | 0.988 |
+| 3250 | 0.835 | 0.817 | 0.979 |
+| 3500 | 0.849 | 0.854 | 1.006 |
+| 3750 | 0.856 | 0.893 | 1.043 |
+| 4000 | 0.864 | 0.882 | 1.022 |
+| 4250 | 0.853 | 0.888 | 1.041 |
+| 4500 | 0.876 | 0.979 | 1.117 |
+| 4750 | 0.857 | 1.009 | 1.177 |
+| 5000 | 0.849 | 0.953 | 1.123 |
+| 5250 | 0.846 | 0.944 | 1.115 |
+| 5500 | 0.846 | 0.957 | 1.132 |
+| 5750 | 0.846 | 0.978 | 1.156 |
+| 6000 | 0.851 | 0.976 | 1.148 |
+| 6250 | 0.852 | 0.897 | 1.053 |
+| 6500 | 0.854 | 0.836 | 0.978 |
+
+The 0.30 m runner is flat (0.83 to 0.88); the 0.53 m one rises from 4500 rpm to 1.009 at 4750 and holds 0.94 to 0.98 to
+6000: a gain of 12 to 18 % over a broad band.
+
+Its ringing, read sample by sample at the valve end of cylinder 1's runner with the valve shut (4750 rpm): about 161 Hz
+(a quarter wave of 0.53 m at 350 m/s with its end correction), swings of -24.2, +25.3, -16.3, +22.5, -16.2 kPa about a
+mean of -5.8 kPa: some 10 % lost in the first period, almost none in the second. Lightly damped, but of the size a
+smooth straight duct's own losses give (by hand: Kirchhoff's wall loss about 1.3 % a period at 161 Hz in a 63 mm bore;
+the turbulent friction on the oscillation's some 48 m/s about 3 %; the jet's head at the plenum end, K 1 out, some 7 %
+a period): the losses the lead listed (the walls' viscous and thermal layer, the flow's friction, the end's jet) are all
+in, and of their textbook size.
+
+Experiments at 3500 / 4750 / 6000 rpm (0.53 m; VE):
+- the plenum end's inward K 0.2 → 0.5 (a square edge, Idelchik): 0.858 / 0.995 / 0.953 against 0.854 / 1.009 / 0.976:
+  1.4 % off the peak;
+- the valve's wave stiffening off for the intake (g 1, a scratch Valve): 0.863 / 1.015 / 0.974: none;
+- the runner's bore 63 → 50 → 45 mm: VE at 4750 1.008 → 1.036 → 1.050: a narrower runner rams harder.
+
+Published gains found so far: a petrol engine's VE up to 8.7 % higher with a 528 mm runner, a turbocharged diesel's
+6 % (single studies on ResearchGate, geometry not compared); Ohata and Ishida (SAE 820407) and Heywood's figures not
+reachable here. Not enough to call 12 to 18 % wrong against a known geometry, and no sourced loss is missing from the
+duct: nothing changed. What would settle it: a measured intake-port pressure trace after closing (its decay a period)
+or a measured VE against runner length for a known runner, matched in a build.
+
+## N3-7. The small block against its SAE-net band (20:33 by `date -u`; the lead's item 3)
+
+Target 340 to 385 N m (the L48 and L82's SAE net ratings, P). On the tip, full load, tee::Build path:
+
+| | 2000 rpm | 3600 rpm |
+|---|---|---|
+| Torque, N m | 481.8 | 466.9 |
+| VE (outside air) | 0.821 | 0.827 |
+| Lambda | 0.887 | 0.894 |
+| Spark, deg before top | 13.5 | 18.2 |
+| Released, of the fuel's heat | 0.909 | 0.918 |
+| Walls | 0.167 | 0.140 |
+| Gross indicated | 0.348 | 0.359 |
+| Pumping | 0.006 | 0.019 |
+| Friction (FMEP 1.11 and 1.38 bar) | 0.033 | 0.041 |
+| Brake | 0.310 | 0.300 |
+| Exhaust, sensible | 0.399 | 0.437 |
+
+The air is about right: at brake efficiency 0.26 and this lambda, 385 N m wants VE 0.78. The excess is the efficiency
+(0.31 against some 0.25 to 0.28: a carburetted engine of the 1970s at full load, BSFC 300 to 335 g/kWh).
+
+What the build is not (measured one at a time, 2000 / 3600 rpm, torque):
+- compression 9.0 → 8.5 (the L48's, as recalled: P to source): -1.2 / -2.1 %;
+- dual exhaust → single (`exhaust.sides` 1): -3.0 / -4.3 %;
+- the ECU's best-torque spark 6 degrees later (`ecu.timing` -6, a distributor's curve held back for emissions: P to
+  source): -1.3 / -1.8 %.
+Together some -6 to -8 %: to P as parts, each with its source to find.
+
+What may be the model's (not measured, each to isolate before changing):
+- the accessories: friction.fm counts the alternator (and an air conditioner) only; an SAE-net rating of the 1970s took
+  the water pump, the fan and the air pump off the crank too (a few kW at speed; the rating's own rules to be read);
+- the burn: one base angle (44 degrees at 3000 rpm, combustion.fm) for every head; an open-chamber two-valve wedge
+  burns slower than a modern four-valve pent roof (Heywood ch. 9), which costs a few per cent at the best spark;
+- friction's level: 1.11 bar at 2000 rpm is at the low end of Heywood's eq. 13.15 band (friction with pumping 1.17
+  against 1.47 ± 25 %).
+
+**What an SAE net rating carries** (enthusiast write-ups of J1349; the standard itself not opened): the engine as
+installed, with its alternator and water pump, the factory's ignition timing and carburettor (and air cleaner), and the
+whole exhaust with its manifolds and mufflers (a converter from 1975). The fan is not confirmed either way. So the
+build-side list above is the larger share: the exhaust as fitted, the factory's timing, the air cleaner's and the
+carburettor's restriction (not yet measured: the build has a single throttle and an air box). The model's accessories
+(the water pump is in friction.fm's constant) are a smaller question than first thought.
+
+N1's suggestion (the ram adding to the exhaust's tuning), tested: with `exhaust.model` 0 the flat six reads the same to
+the bit at both runner lengths (4750 and 5500 rpm), and the burned share trapped is the same at 0.30 and 0.53 m (0.030
+and 0.030 at 4750). The 0.53 m runner's gain is the intake's own ram, not better scavenging.
+
+**On P's 9c71eb1** (the L48's 8.5:1, one source; its installed exhaust, both banks into one converter, two sources; 20:40 by
+`date -u`): 460 / 457 / 446 / 436 / 410 N m at 2000 / 2400 / 3000 / 3600 / 4400 rpm, VE 0.80, gross 0.342 to 0.353,
+brake 0.301 to 0.274: still some 20 % over 340 to 385. Candidates sized since (scratch trees; none isolated as the
+cause):
+- the chamber's burn 30 % longer at the best spark (`combustion.fm` burnBase x 1.3): 455 and 432 N m at 2000 and 3600
+  rpm (-1.1 %);
+- an engine-driven fan: the figures found are forum postings (a clutched V8 fan about 10 hp at speed; big fans 10 to
+  15 hp on a stationary dyno) and a patent for the cube law in the fan's speed; 10 hp at 4000 rpm would be about 1 % at
+  2000 rpm and 3 % at 3600. A build property worth adding (the lead's design: era defaults by P, model-on), not the 20 %;
+- the factory spark: no source (P).
+Unmeasured: a carburettor's wet manifold's spread of mixture between cylinders, and an older engine's higher friction.
+
+**Open, the integration queue's way:**
+- *N3-6, the runner's ram (open).* What would settle it: a measured intake-port pressure trace after closing, or a
+  measured VE against runner length for a known runner, built and compared. Until then the model's 12 to 18 % stands.
+- *The flat six's intake (content, P).* The 964's induction is a resonance system with a flap between two plenum
+  halves; the build's single 0.53 m runner is P's rule, not the engine's. Asked P to mark it as judgement and to build
+  the real geometry if a source turns up.
+
+## The sixteen on the tip's gas (20:43 by `date -u`; the lead's table)
+
+Each NA petrol archetype's torque at its target's peak-torque speed over the torque band's middle, and its power at the
+target's peak-power speed over the power band's middle (settled dyno, tee::Build path), with P's basis for the rows:
+
+```
+torque: mean -1.7 %, sd 16.2 %, median -3.2 %
+power: mean -0.2 %, sd 14.1 %, median -1.0 %
+
+sorted by torque over the band's middle:
+  air-cooled-flat-six-36     cited      +27.7 %   (torque 396 for [300, 320], power 226 kW for [180, 195])
+  small-block-57-carb        cited      +23.1 %   (torque 446 for [340, 385], power 192 kW for [120, 160])
+  vr6-28                     cited      +14.3 %   (torque 269 for [230, 240], power 124 kW for [125, 132])
+  big-bore-70-pushrod-v8     cited       +9.9 %   (torque 700 for [630, 645], power 369 kW for [370, 385])
+  pushrod-v6-38              cited       +8.8 %   (torque 343 for [300, 330], power 127 kW for [140, 160])
+  twin-cam-roadster-18       cited       +7.3 %   (torque 176 for [155, 172], power 108 kW for [95, 112])
+  four-cam-v8-50             cited       +2.4 %   (torque 560 for [520, 575], power 325 kW for [300, 345])
+  straight-six-32-high-rev   recalled    -2.5 %   (torque 356 for [355, 375], power 223 kW for [245, 260])
+  hot-hatch-16-16v           recalled    -3.8 %   (torque 147 for [140, 165], power 114 kW for [85, 120])
+  economy-four-15            recalled    -7.2 %   (torque 137 for [140, 156], power 89 kW for [80, 97])
+  big-block-74-pushrod-v8    recalled    -7.6 %   (torque 596 for [600, 690], power 277 kW for [240, 310])
+  v12-65                     recalled    -9.4 %   (torque 639 for [680, 730], power 567 kW for [500, 590])
+  v10-52                     recalled   -14.6 %   (torque 466 for [520, 570], power 408 kW for [385, 475])
+  v6-35-na                   recalled   -16.1 %   (torque 294 for [335, 365], power 200 kW for [195, 225])
+  two-stage-cam-20           recalled   -28.3 %   (torque 149 for [200, 215], power 143 kW for [165, 185])
+  flat-plane-v8-45           recalled   -31.9 %   (torque 368 for [520, 560], power 335 kW for [400, 445])
+
+sorted by power over the band's middle:
+  small-block-57-carb        cited      +36.9 %   (torque 446 for [340, 385], power 192 kW for [120, 160])
+  air-cooled-flat-six-36     cited      +20.7 %   (torque 396 for [300, 320], power 226 kW for [180, 195])
+  hot-hatch-16-16v           recalled   +11.5 %   (torque 147 for [140, 165], power 114 kW for [85, 120])
+  twin-cam-roadster-18       cited       +4.2 %   (torque 176 for [155, 172], power 108 kW for [95, 112])
+  v12-65                     recalled    +4.0 %   (torque 639 for [680, 730], power 567 kW for [500, 590])
+  big-block-74-pushrod-v8    recalled    +0.8 %   (torque 596 for [600, 690], power 277 kW for [240, 310])
+  four-cam-v8-50             cited       +0.8 %   (torque 560 for [520, 575], power 325 kW for [300, 345])
+  economy-four-15            recalled    +0.2 %   (torque 137 for [140, 156], power 89 kW for [80, 97])
+  big-bore-70-pushrod-v8     cited       -2.2 %   (torque 700 for [630, 645], power 369 kW for [370, 385])
+  vr6-28                     cited       -3.6 %   (torque 269 for [230, 240], power 124 kW for [125, 132])
+  v6-35-na                   recalled    -4.9 %   (torque 294 for [335, 365], power 200 kW for [195, 225])
+  v10-52                     recalled    -5.1 %   (torque 466 for [520, 570], power 408 kW for [385, 475])
+  straight-six-32-high-rev   recalled   -11.9 %   (torque 356 for [355, 375], power 223 kW for [245, 260])
+  pushrod-v6-38              cited      -15.6 %   (torque 343 for [300, 330], power 127 kW for [140, 160])
+  two-stage-cam-20           recalled   -18.1 %   (torque 149 for [200, 215], power 143 kW for [165, 185])
+  flat-plane-v8-45           recalled   -20.7 %   (torque 368 for [520, 560], power 335 kW for [400, 445])
+```
+
+The mean is near nothing and the spread wide: no common level is left in the model. What remains is each build's
+content and the breathing, and the class pattern still shows (the cited mild two-valve engines over, the recalled tuned
+four-valve ones under).
+
+**The small block, stopped (the lead's call).** Open: some 14 % unexplained after P's L48 parts. Sized: accessories 1 to
+3 % (forum figures only: no change to friction.fm until a better source), the chamber's burn about 1 %, the spark about
+1.5 % (no source); unmeasured: the carburettor's spread of mixture between cylinders, an older engine's friction.
