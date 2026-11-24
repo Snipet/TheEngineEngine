@@ -17,7 +17,7 @@
         std::unique_ptr<tee::ui::AppFrame> frame;
         std::unique_ptr<funkgui::HeadlessHost> host;
 
-        explicit AppRig(int w = 1280, int h = 800)
+        explicit AppRig(int w = 1280, int h = 800, float dpi = 2.0f)
         {
             const double kRpm = 3.14159265358979 / 30.0;
             player.setTelemetry("engine.state", 2.0);
@@ -61,7 +61,7 @@
                 return true;
             };
             frame = std::make_unique<tee::ui::AppFrame>(doc, units, player, std::move(s), tee::ui::defaultScreens(), w, h);
-            host = std::make_unique<funkgui::HeadlessHost>(*frame, 0, 2.0f);
+            host = std::make_unique<funkgui::HeadlessHost>(*frame, 0, dpi);
             host->tick(40);
         }
         void showScreen(const std::string& screenName)
@@ -230,7 +230,9 @@
 
     // A golden of every screen at 1280 x 800, and the contact sheet: every screen at 1024 x 640 and at 1600 x 1000,
     // scaled to tiles, three screens a row (each screen's two sizes side by side), for a person to look at in one glance.
-    TEST(testAppSheet, "app.sheet")
+    // The contact sheet at one density: every screen at 1024 x 640 and at 1600 x 1000, scaled to tiles, three screens a
+    // row (each screen's two sizes side by side); and each screen at 1280 x 800 as a picture of its own (`suffix`).
+    void contactSheet(float dpi, const std::string& sheetName, const std::string& suffix)
     {
         const std::vector<std::pair<int, int>> sizes = { { 1024, 640 }, { 1600, 1000 } };
         constexpr int kTileW = 480, kTileH = 300, kGap = 12, kPerRow = 3;
@@ -244,19 +246,23 @@
         sheet.rgba.assign(static_cast<std::size_t>(sheetW) * static_cast<std::size_t>(sheetH) * 4, 0);
         for (std::size_t i = 0; i < sheet.rgba.size(); i += 4)
             sheet.rgba[i] = sheet.rgba[i + 1] = sheet.rgba[i + 2] = 8, sheet.rgba[i + 3] = 255;
+        std::error_code ec;
+        std::filesystem::create_directories(kOutDir, ec);
+        if (!suffix.empty())
         {
-            AppRig rig(1280, 800);
+            AppRig rig(1280, 800, dpi);
             for (int s = 0; s < screens; ++s)
             {
                 rig.showScreen(rig.frame->screenDef(s).name);
                 std::string name = "app." + rig.frame->screenDef(s).name;
                 std::transform(name.begin(), name.end(), name.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-                golden(name, *rig.host);
+                tee::test::writePng(funkgui::rasterise(rig.host->draw(), funkgui::FontService::get().atlas(), 1),
+                                    (kOutDir / (name + suffix + ".png")).string());
             }
         }
         for (std::size_t z = 0; z < sizes.size(); ++z)
         {
-            AppRig rig(sizes[z].first, sizes[z].second);
+            AppRig rig(sizes[z].first, sizes[z].second, dpi);
             for (int s = 0; s < screens; ++s)
             {
                 rig.showScreen(rig.frame->screenDef(s).name);
@@ -287,12 +293,28 @@
                     }
             }
         }
-        std::error_code ec;
-        std::filesystem::create_directories(kOutDir, ec);
-        const std::string path = (kOutDir / "sheet.png").string();
+        const std::string path = (kOutDir / sheetName).string();
         CHECK_MSG(tee::test::writePng(sheet, path), path);
-        std::printf("  contact sheet: %s (software rasteriser; each row: three screens, each at 1024 x 640 then 1600 x 1000)\n",
-                    path.c_str());
+        std::printf("  contact sheet: %s (software rasteriser, pixel density %g; each row: three screens, each at 1024 x 640 "
+                    "then 1600 x 1000)\n", path.c_str(), static_cast<double>(dpi));
+    }
+
+    // A golden of every screen at 1280 x 800 (density 2), and the contact sheets at densities 2 and 1, with each
+    // screen's picture at density 1 (out/ui/app.<screen>.dpi1.png): text is at FunkGui's 10 px floor or above.
+    TEST(testAppSheet, "app.sheet")
+    {
+        {
+            AppRig rig(1280, 800);
+            for (int s = 0; s < 9; ++s)
+            {
+                rig.showScreen(rig.frame->screenDef(s).name);
+                std::string name = "app." + rig.frame->screenDef(s).name;
+                std::transform(name.begin(), name.end(), name.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+                golden(name, *rig.host);
+            }
+        }
+        contactSheet(2.0f, "sheet.png", {});
+        contactSheet(1.0f, "sheet.dpi1.png", ".dpi1");
         return 0;
     }
 

@@ -21,6 +21,7 @@ namespace tee::app
         std::string shot;               // --shot FILE.png: the last frame's picture
         double seconds = -1.0;          // --seconds S: render S seconds with no device and exit
         std::string wav;                // --wav FILE.wav: what was rendered
+        std::string record;             // --record FILE.wav: the window's output, written while it plays
         std::string script;             // --script FILE: inputs at times (app/Script.h)
         int rate = 48000;               // --rate N: the rate of a render with no device
         int block = 256;                // --block N: the block size of a render with no device
