@@ -1,0 +1,5 @@
+# A workspace of the frame with the engine started and idling (shell.workspace.*, and the lead's contact sheet):
+# the start key pressed, then nothing. The checks: the engine runs, and the output is finite (tee-headless's own).
+0.05  key return down
+0.35  key return up
+1.90  expect engine.state == 2

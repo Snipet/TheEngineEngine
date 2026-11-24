@@ -99,6 +99,14 @@ namespace tee::ui
         log_ = &make<Button>("LOG P-V", [this] { setLogPv(!logPv_); });
         log_->setLit([this] { return logPv_; });
         clear_ = &make<Button>("CLEAR MAP", [this] { clearMap(); });
+        // What is plotted on a small stage (a large one shows all six).
+        const char* words[6] = { "PRESSURE", "P-V", "PORTS", "WAVE", "SPECTRUM", "MAP" };
+        for (int i = 0; i < 6; ++i)
+        {
+            selectors_[static_cast<std::size_t>(i)] = &make<Button>(words[i], [this, i] { choosePlot(i); });
+            selectors_[static_cast<std::size_t>(i)]->setLit(
+                [this, i] { return std::find(chosen_.begin(), chosen_.end(), i) != chosen_.end(); });
+        }
 
         pressure_ = &make<ScopePlot>("Cylinder pressure");
         pv_ = &make<ScopePlot>("P-V loop");
@@ -178,6 +186,14 @@ namespace tee::ui
                     return;
                 const Rect a = pl.plotArea();
                 float x = a.right() - 200.0f;
+                if (x < pl.titleRight(cv) + 12.0f)   // no room beside the title: inside the area's top right
+                {
+                    cv.rrect(a.right() - 206.0f, a.y + 2.0f, 204.0f, 16.0f, 3.0f, p.panel);
+                    x += 2.0f;
+                    x += legendEntry(cv, p, x, a.y + 5.0f, "INTAKE", p.cold, look::kTrace, false);
+                    legendEntry(cv, p, x, a.y + 5.0f, "EXHAUST", p.hot, 2.0f, true);
+                    return;
+                }
                 x += legendEntry(cv, p, x, a.y - 15.0f, "INTAKE", p.cold, look::kTrace, false);
                 legendEntry(cv, p, x, a.y - 15.0f, "EXHAUST", p.hot, 2.0f, true);
             });
@@ -220,29 +236,27 @@ namespace tee::ui
                          [](Canvas& cv, const look::Palette& p, const ScopePlot& pl) {
                              if (pl.cursorOn())
                                  return;
-                             // The scale: levels as the cells show them.
+                             // The scale: levels as the cells show them; beside the title, or in the area's top left.
                              const Rect a = pl.plotArea();
-                             const float w = 14.0f, h = 9.0f;
-                             float x = a.right() - 6 * w - 70.0f;
-                             cv.text("-90", x, a.y - 16.0f, look::kUnit, p.label);
+                             const float w = 10.0f, h = 9.0f;
+                             float x = a.right() - 6 * w - 54.0f, y = a.y - 15.0f;
+                             if (x < pl.titleRight(cv) + 10.0f)
+                             {
+                                 x = a.x + 4.0f;
+                                 y = a.y + 5.0f;
+                                 cv.rrect(x - 2.0f, y - 3.0f, 6 * w + 58.0f, 16.0f, 3.0f, p.panel);
+                             }
+                             cv.text("-90", x, y - 1.0f, look::kUnit, p.label);
                              x += 22.0f;
                              for (int i = 0; i < 6; ++i)
-                                 cv.rrect(x + i * w, a.y - 15.0f, w, h, 0.0f, p.over(p.value, (i + 0.5f) / 6.0f));
-                             cv.text("0 dB", x + 6 * w + 4.0f, a.y - 16.0f, look::kUnit, p.label);
+                                 cv.rrect(x + i * w, y, w, h, 0.0f, p.over(p.value, (i + 0.5f) / 6.0f));
+                             cv.text("0 dB", x + 6 * w + 4.0f, y - 1.0f, look::kUnit, p.label);
                          });
 
         p_.assign(kMaxDegrees, 0.0f);
         v_ = li_ = le_ = pi_ = pe_ = p_;
         tail_.assign(kTail, 0.0f);
         refreshPlots();
-    }
-
-    std::string ScopeWorkspace::inspectorPage() const
-    {
-        // The listener, until it has a workspace of its own (sim/spec/sound.fm).
-        return "panel \"SCOPE\"\n"
-               "section \"LISTENER\"\n"
-               "auto \"sound\"\n";
     }
 
     bool ScopeWorkspace::moving() const { return (live_ && !frozen_) || wantsFullRate(); }
@@ -464,6 +478,19 @@ namespace tee::ui
                 vmin = std::min(vmin, vol);
             }
         }
+        // Crank degrees ticked at the top and bottom centres, named (the valve events read against them).
+        {
+            std::vector<std::pair<double, std::string>> t;
+            const int quarter = (n > 0 ? n : 720) / 4;
+            for (int k = -2; k <= 2; ++k)
+            {
+                const int d = k * quarter;
+                const bool tdc = k % 2 == 0;
+                t.emplace_back(d, (d == 0 ? std::string("0") : fmt("%.0f", d)) + (tdc ? " TDC" : " BDC"));
+            }
+            pressure_->setXTicks(t);
+            ports_->setXTicks(t);
+        }
         pressure_->yAxis().label = pu;
         pressure_->setAxes(-half, half, false, 0.0, niceUp(u.toUser(Quantity::pressure, std::max(pmax, 2.0 * kAtm)) * 1.05),
                            false);
@@ -515,7 +542,7 @@ namespace tee::ui
         else
             ports_->setAxes(-half, half, false, 0.0, niceUp(u.toUser(Quantity::pressure, 2.0 * kAtm)), false);
         ports_->setNote(n <= 0 ? "no Scope from this program yet"
-                               : qmax > 0.0 ? "" : "no port pressures from this program yet (portIntake, portExhaust)");
+                               : qmax > 0.0 ? "" : "no port pressures from this program yet");
         ports_->touched();
 
         // The output's wave, triggered on the crank's cycle.
@@ -742,27 +769,100 @@ namespace tee::ui
 
     void ScopeWorkspace::layout(const Rect& s)
     {
+        // A large stage shows all six plots; a small one (the frame at its smallest: about 660 x 570) shows the plots
+        // chosen with the selectors, at most three, and keeps the buttons in a row of their own.
+        compact_ = s.w < 1000.0f || s.h < 640.0f;
         bar_ = { s.x + kGap, s.y + kGap, s.w - 2 * kGap, kBarH };
-        // The bar's buttons at its right.
-        const float bw = 96.0f, bh = 28.0f, by = bar_.y + (kBarH - bh) * 0.5f;
-        float bx = bar_.right() - look::kPad - bw;
-        clear_->setPlace({ bx, by, bw, bh }, true);
-        bx -= bw + 8.0f;
-        log_->setPlace({ bx, by, bw, bh }, true);
-        bx -= bw + 8.0f;
-        freeze_->setPlace({ bx, by, bw, bh }, true);
-        // Three columns, two rows.
-        const float top = bar_.bottom() + kGap;
-        const float h = (s.bottom() - kGap - top - kGap) * 0.5f;
-        const float w = (s.w - 4 * kGap) / 3.0f;
+        const float bh = 26.0f;
+        const auto widthOf = [](Button* b) { return 18.0f + 8.4f * static_cast<float>(b->title().size()); };
+        float top = bar_.bottom() + kGap;
+        if (compact_)
+        {
+            tools_ = { bar_.x, top, bar_.w, bh };
+            float x = tools_.x;
+            for (Button* b : selectors_)
+            {
+                const float w = widthOf(b);
+                b->setPlace({ x, tools_.y, w, bh }, true);
+                x += w + 4.0f;
+            }
+            float bx = tools_.right();
+            for (Button* b : { clear_, log_, freeze_ })
+            {
+                const float w = widthOf(b);
+                bx -= w;
+                b->setPlace({ bx, tools_.y, w, bh }, true);
+                bx -= 4.0f;
+            }
+            top = tools_.bottom() + kGap;
+        }
+        else
+        {
+            tools_ = {};
+            for (Button* b : selectors_)
+                b->setPlace({}, false);
+            const float bw = 96.0f, by = bar_.y + (kBarH - 28.0f) * 0.5f;
+            float bx = bar_.right() - look::kPad - bw;
+            for (Button* b : { clear_, log_, freeze_ })
+            {
+                b->setPlace({ bx, by, bw, 28.0f }, true);
+                bx -= bw + 8.0f;
+            }
+        }
         ScopePlot* plots[6] = { pressure_, pv_, ports_, wave_, spec_, map_ };
+        for (Rect& r : cells_)
+            r = {};
+        const float W = s.w - 2 * kGap, H = s.bottom() - kGap - top;
+        if (!compact_)
+        {
+            const float h = (H - kGap) * 0.5f, w = (W - 2 * kGap) / 3.0f;
+            for (int i = 0; i < 6; ++i)
+                cells_[static_cast<std::size_t>(i)] = { s.x + kGap + (i % 3) * (w + kGap), top + (i / 3) * (h + kGap), w, h };
+        }
+        else
+        {
+            // One: the whole room; two: side by side; three: the first across the top, two under it.
+            const int n = static_cast<int>(chosen_.size());
+            const float x0 = s.x + kGap, half = (W - kGap) * 0.5f, hh = (H - kGap) * 0.5f;
+            for (int k = 0; k < n; ++k)
+            {
+                Rect r;
+                if (n == 1)
+                    r = { x0, top, W, H };
+                else if (n == 2)
+                    r = { x0 + k * (half + kGap), top, half, H };
+                else
+                    r = k == 0 ? Rect{ x0, top, W, hh } : Rect{ x0 + (k - 1) * (half + kGap), top + hh + kGap, half, hh };
+                cells_[static_cast<std::size_t>(chosen_[static_cast<std::size_t>(k)])] = r;
+            }
+        }
         for (int i = 0; i < 6; ++i)
         {
-            const int col = i % 3, row = i / 3;
-            cells_[static_cast<std::size_t>(i)] = { s.x + kGap + col * (w + kGap), top + row * (h + kGap), w, h };
             const Rect& r = cells_[static_cast<std::size_t>(i)];
-            plots[i]->setPlace({ r.x + 8.0f, r.y + 8.0f, r.w - 14.0f, r.h - 12.0f }, true);
+            plots[i]->setPlace(r.isEmpty() ? Rect{} : Rect{ r.x + 8.0f, r.y + 8.0f, r.w - 14.0f, r.h - 12.0f }, !r.isEmpty());
         }
+    }
+
+    void ScopeWorkspace::choosePlot(int i)
+    {
+        if (i < 0 || i >= 6)
+            return;
+        auto it = std::find(chosen_.begin(), chosen_.end(), i);
+        if (it != chosen_.end())
+        {
+            if (chosen_.size() > 1)   // one stays shown
+                chosen_.erase(it);
+        }
+        else
+        {
+            chosen_.push_back(i);
+            if (chosen_.size() > 3)
+                chosen_.erase(chosen_.begin());   // the one chosen longest ago goes
+        }
+        if (!stage_.isEmpty())
+            layout(stage_);
+        bump();
+        ++revision_;
     }
 
     void ScopeWorkspace::drawStage(Canvas& c, const funkgui::Theme& th) const
@@ -784,7 +884,7 @@ namespace tee::ui
         block("AT", fmt("%.0f", f_.peakDeg), "deg ATDC");
         block("SPARK", fmt("%.0f", f_.sparkDeg), "deg BTDC");
         // Whether it moves: a lamp and its word.
-        const float lx = freeze_->bounds().x - 100.0f;
+        const float lx = compact_ ? bar_.right() - look::kPad - 80.0f : freeze_->bounds().x - 100.0f;
         if (lx > x)
         {
             if (frozen_)
@@ -793,7 +893,8 @@ namespace tee::ui
                 look::lamp(c, p, lx, bar_.y + bar_.h * 0.5f, live_ ? "LIVE" : "STILL", live_, p.ok);
         }
         for (const Rect& r : cells_)
-            c.rrect(r.x, r.y, r.w, r.h, look::kRadius, p.panel, 1.0f, p.edge);
+            if (!r.isEmpty())
+                c.rrect(r.x, r.y, r.w, r.h, look::kRadius, p.panel, 1.0f, p.edge);
     }
 
     std::unique_ptr<Workspace> makeScopeWorkspace(WorkspaceContext& c) { return std::make_unique<ScopeWorkspace>(c); }

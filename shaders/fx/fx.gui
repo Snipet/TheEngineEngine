@@ -1,0 +1,10 @@
+// fx.gui: the atmosphere shaders as a list for the build (cmake/TeeShaders.cmake reads a .gui file to know a panel's
+// shaders). No panel shows this file: ui/views/fx/Fx.h draws the shaders, each with its own u_params.
+panel {
+    column {
+        shader "glow.sc"
+        shader "flame.sc"
+        shader "smoke.sc"
+        shader "shimmer.sc"
+    }
+}

@@ -6,11 +6,84 @@
 #include "views/scope/ScopeWorkspace.h"
 #include "views/scope/Spectrum.h"
 
+#include "app/AppFrame.h"
+
+#include <funkgui/canvas/Prim.h>
 #include <funkgui/core/Theme.h>
 
 #include <cmath>
 #include <memory>
 #include <string>
+
+namespace tee::test::u5
+{
+    // The stage the frame gives a workspace in a window of w x h (U1's AppFrame over the demo).
+    funkgui::Rect frameStage(int w, int h)
+    {
+        tee::ui::DemoRig demo(4.6);
+        tee::ui::FrameServices s;
+        s.app = demo.app;
+        tee::ui::AppFrame frame(demo.doc, demo.units, demo.engine, std::move(s), &demo.engine, &demo.engine,
+                                tee::ui::defaultSlots(), w, h);
+        funkgui::HeadlessHost host(frame, 0, 1.0f);
+        host.resize(w, h);
+        host.tick(2);
+        return frame.stageRect();
+    }
+
+    // What a frame's text does wrong, in words ("" : nothing): a glyph outside the stage, a glyph across the edge of
+    // one of `panels` (inside one or outside all, never half), two glyphs of different words overlapping. Glyph boxes
+    // are the text prims' quads less their antialiasing apron.
+    std::string textFaults(const funkgui::PrimList& prims, const funkgui::Rect& stage, const std::vector<funkgui::Rect>& panels)
+    {
+        struct Box
+        {
+            float x0, y0, x1, y1;
+        };
+        std::vector<Box> glyphs;
+        for (const funkgui::Prim& p : prims.prims)
+            if (static_cast<int>(p.d2[2] + 0.5f) == static_cast<int>(funkgui::PrimKind::text))
+                glyphs.push_back({ p.x0 + 1.5f, p.y0 + 1.5f, p.x1 - 1.5f, p.y1 - 1.5f });
+        const auto inside = [](const Box& b, const funkgui::Rect& r) {
+            return b.x0 >= r.x - 0.5f && b.y0 >= r.y - 0.5f && b.x1 <= r.right() + 0.5f && b.y1 <= r.bottom() + 0.5f;
+        };
+        const auto meets = [](const Box& b, const funkgui::Rect& r) {
+            return b.x1 > r.x && b.x0 < r.right() && b.y1 > r.y && b.y0 < r.bottom();
+        };
+        char buf[160];
+        for (const Box& b : glyphs)
+        {
+            if (!inside(b, stage))
+            {
+                std::snprintf(buf, sizeof buf, "a glyph at %.0f,%.0f leaves the stage", b.x0, b.y0);
+                return buf;
+            }
+            for (const funkgui::Rect& r : panels)
+                if (!r.isEmpty() && meets(b, r) && !inside(b, r))
+                {
+                    std::snprintf(buf, sizeof buf, "a glyph at %.0f,%.0f crosses the edge of the panel at %.0f,%.0f", b.x0,
+                                  b.y0, r.x, r.y);
+                    return buf;
+                }
+        }
+        if (glyphs.size() < 20)
+            return "too few glyphs to judge: " + std::to_string(glyphs.size());
+        // Overlaps: glyphs of one word sit side by side on one line and do not overlap by more than a sliver.
+        for (std::size_t i = 0; i < glyphs.size(); ++i)
+            for (std::size_t j = i + 1; j < glyphs.size(); ++j)
+            {
+                const Box& a = glyphs[i];
+                const Box& b = glyphs[j];
+                const float ox = std::min(a.x1, b.x1) - std::max(a.x0, b.x0), oy = std::min(a.y1, b.y1) - std::max(a.y0, b.y0);
+                if (ox > 1.0f && oy > 1.0f)
+                {
+                    std::snprintf(buf, sizeof buf, "glyphs overlap at %.0f,%.0f and %.0f,%.0f", a.x0, a.y0, b.x0, b.y0);
+                    return buf;
+                }
+            }
+        return {};
+    }
+}
 
 namespace
 {
@@ -43,7 +116,7 @@ namespace
             demo.at(t);
             for (int i = 0; i < frames; ++i)
             {
-                demo.engine.tick(0.0f);
+                demo.engine.advance(0.0);
                 host->tick(1);
             }
         }
@@ -142,6 +215,46 @@ namespace
         return 0;
     }
 
+    // At the frame's own stages (its smallest window and a 1600 x 1000 one): a small stage shows the chosen plots, a
+    // large one all six; no text leaves its panel or the stage, none overlaps another. Goldens at both densities.
+    VIEW_TEST(testScopeFrameStage, "scope.framestage")
+    {
+        for (const auto& win : { std::pair<int, int>{ 1100, 700 }, std::pair<int, int>{ 1600, 1000 } })
+        {
+            const funkgui::Rect st = tee::test::u5::frameStage(win.first, win.second);
+            CHECK(st.w > 400.0f && st.h > 400.0f);
+            const int w = static_cast<int>(st.w), h = static_cast<int>(st.h);
+            const std::string tag = win.first == 1100 ? "small" : "large";
+            for (const float dpi : { 2.0f, 1.0f })
+            {
+                ScopeRig rig(w, h, dpi);
+                CHECK(rig.ws->compact() == (win.first == 1100));
+                std::vector<funkgui::Rect> panels(rig.ws->panels().begin(), rig.ws->panels().end());
+                panels.push_back(rig.ws->bar());
+                const std::string why = tee::test::u5::textFaults(rig.host->draw(), { 0.0f, 0.0f, st.w, st.h }, panels);
+                CHECK_MSG(why.empty(), tag + ": " + why);
+                golden("scope.frame." + tag + (dpi == 1.0f ? ".dpi1" : ""), *rig.host);
+            }
+            // Every choice of plots on the small stage reads too.
+            if (win.first == 1100)
+            {
+                ScopeRig rig(w, h, 1.0f);
+                for (int i = 0; i < 6; ++i)
+                {
+                    rig.ws->choosePlot(i);
+                    rig.settle();
+                    CHECK(rig.ws->chosenPlots().size() <= 3);
+                    std::vector<funkgui::Rect> panels(rig.ws->panels().begin(), rig.ws->panels().end());
+                    panels.push_back(rig.ws->bar());
+                    const std::string why = tee::test::u5::textFaults(rig.host->draw(), { 0.0f, 0.0f, st.w, st.h }, panels);
+                    CHECK_MSG(why.empty(), "with plot " + std::to_string(i) + ": " + why);
+                }
+                picture("scope.frame.small.others", *rig.host);
+            }
+        }
+        return 0;
+    }
+
     // FREEZE holds every plot: a newer Scope and output are not read; the stage is at rest; again, it reads.
     VIEW_TEST(testScopeFreeze, "scope.freeze")
     {
@@ -187,7 +300,7 @@ namespace
         CHECK(rig.ws->drawKey() == key);
         // Reading the Scope only while shown: a hidden workspace is not ticked, so a newer copy is not read.
         const int reads = rig.ws->scopeReads();
-        rig.demo.engine.tick(0.0f);
+        rig.demo.engine.advance(0.0);
         CHECK(rig.ws->scopeReads() == reads);
         rig.host->tick(1);
         CHECK(rig.ws->scopeReads() == reads + 1);

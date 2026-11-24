@@ -202,6 +202,8 @@ namespace tee::ui
             fill_ = &make<Button>("Fill between corners", [this] { interpolate(); });
             sliceX_ = &make<Plot>("Along speed");
             sliceY_ = &make<Plot>("Along load");
+            prev_ = &make<Button>("Prev", [this] { showMap((shown_ + kMapCount - 1) % kMapCount); });
+            next_ = &make<Button>("Next", [this] { showMap((shown_ + 1) % kMapCount); });
             for (int i = 0; i < kMapCount; ++i)
                 if (slots_[static_cast<std::size_t>(i)].field >= 0)
                 {
@@ -268,7 +270,7 @@ namespace tee::ui
 
         void pointerDown(const funkgui::PointerEvent& e) override
         {
-            for (int i = 0; i < kMapCount; ++i)
+            for (int i = 0; i < kMapCount && !narrow_; ++i)
                 if (listRow(i).contains({ e.x, e.y }))
                 {
                     showMap(i);
@@ -344,17 +346,26 @@ namespace tee::ui
 
         void layout(const Rect& s) override
         {
-            const float pad = 16.0f, listW = std::clamp(s.w * 0.16f, 160.0f, 210.0f);
-            const float sliceW = std::clamp(s.w * 0.24f, 230.0f, 340.0f);
+            // A narrow stage folds the list of maps into PREV and NEXT on the map's title row, and drops the slices: the
+            // table keeps the room its numbers need.
+            narrow_ = s.w < 900.0f;
+            const float pad = 16.0f, listW = narrow_ ? 0.0f : std::clamp(s.w * 0.16f, 160.0f, 210.0f);
+            const float sliceW = narrow_ ? 0.0f : std::clamp(s.w * 0.24f, 230.0f, 340.0f);
             const float traceH = std::clamp(s.h * 0.30f, 180.0f, 300.0f);
-            list_ = { s.x + pad, s.y + pad, listW, s.h - 3.0f * pad - traceH };
-            mapBox_ = { list_.right() + pad, s.y + pad, s.w - 4.0f * pad - listW - sliceW, list_.h };
-            slices_ = { mapBox_.right() + pad, s.y + pad, sliceW, list_.h };
-            traces_ = { s.x + pad, list_.bottom() + pad, s.w - 2.0f * pad, traceH };
-            const float lampW = 190.0f;
+            const float topH = s.h - 3.0f * pad - traceH;
+            list_ = narrow_ ? Rect{} : Rect{ s.x + pad, s.y + pad, listW, topH };
+            const float mx = s.x + pad + (narrow_ ? 0.0f : listW + pad);
+            mapBox_ = { mx, s.y + pad, s.x + s.w - pad - (narrow_ ? 0.0f : sliceW + pad) - mx, topH };
+            slices_ = { mapBox_.right() + pad, s.y + pad, sliceW, topH };
+            traces_ = { s.x + pad, s.y + pad + topH + pad, s.w - 2.0f * pad, traceH };
+            prev_->setPlace({ mapBox_.right() - look::kPad - 116.0f, mapBox_.y + 4.0f, 56.0f, 20.0f }, narrow_);
+            next_->setPlace({ mapBox_.right() - look::kPad - 56.0f, mapBox_.y + 4.0f, 56.0f, 20.0f }, narrow_);
+            fill_->setTitle(narrow_ ? "Fill" : "Fill between corners");
+            const float lampW = std::clamp(traces_.w * 0.2f, 130.0f, 190.0f);
+            lampWords_ = lampW >= 170.0f;
             lanes_ = { traces_.x + look::kPad + 100.0f, traces_.y + 30.0f, traces_.w - 2.0f * look::kPad - 100.0f - lampW - 80.0f,
                        traces_.h - 30.0f - 26.0f };
-            lamps_ = { traces_.right() - look::kPad - lampW, traces_.y + 30.0f, lampW, traces_.h - 42.0f };
+            lamps_ = { traces_.right() - look::kPad - lampW, traces_.y + 30.0f, lampW, traces_.h - 30.0f - 30.0f };
             // The map's tools: the formula switch and bake at the top, the edits under the table.
             const float ix = mapBox_.x + look::kPad, iw = mapBox_.w - 2.0f * look::kPad;
             auto_->setPlace({ ix, mapBox_.y + 30.0f, std::min(230.0f, iw * 0.45f), 24.0f }, true);
@@ -363,7 +374,7 @@ namespace tee::ui
             float bx = ix;
             for (Button* b : { down_, up_, smooth_, fill_ })
             {
-                const float w = b == fill_ ? 150.0f : b == smooth_ ? 74.0f : 66.0f;
+                const float w = b == fill_ ? (narrow_ ? 56.0f : 150.0f) : b == smooth_ ? 74.0f : 66.0f;
                 b->setPlace({ bx, ty, w, 24.0f }, true);
                 bx += w + 6.0f;
             }
@@ -451,8 +462,8 @@ namespace tee::ui
             bake_->setPlace(bake_->bounds(), s.autoField >= 0);
             for (Button* b : { down_, up_, smooth_, fill_ })
                 b->setPlace(b->bounds(), s.field >= 0);
-            sliceX_->setPlace(sliceX_->bounds(), s.field >= 0);
-            sliceY_->setPlace(sliceY_->bounds(), s.field >= 0);
+            sliceX_->setPlace(sliceX_->bounds(), s.field >= 0 && !narrow_);
+            sliceY_->setPlace(sliceY_->bounds(), s.field >= 0 && !narrow_);
             trailPts_.clear();
             message_.clear();
             updateSlices();
@@ -691,16 +702,35 @@ namespace tee::ui
         }
 
         // ---- drawing -----------------------------------------------------------------------------------------------
-        Rect listRow(int i) const { return { list_.x + 6.0f, list_.y + 30.0f + 40.0f * static_cast<float>(i), list_.w - 12.0f, 36.0f }; }
+        // The list: the maps the build has, a row each; then one line for those it has not (not rows of their own).
+        int listSlot(int i) const
+        {
+            if (slots_[static_cast<std::size_t>(i)].field < 0)
+                return -1;
+            int k = 0;
+            for (int j = 0; j < i; ++j)
+                k += slots_[static_cast<std::size_t>(j)].field >= 0 ? 1 : 0;
+            return k;
+        }
+        Rect listRow(int i) const
+        {
+            const int k = listSlot(i);
+            return k < 0 ? Rect{} : Rect{ list_.x + 6.0f, list_.y + 30.0f + 40.0f * static_cast<float>(k), list_.w - 12.0f, 36.0f };
+        }
 
         void drawList(Canvas& c, const look::Palette& p) const
         {
+            if (narrow_)
+                return;
             look::region(c, p, list_, "MAPS", ctx_.selection.is("ecu.maps"));
+            int absent = 0, present = 0;
+            for (int i = 0; i < kMapCount; ++i)
+                (slots_[static_cast<std::size_t>(i)].field >= 0 ? present : absent) += 1;
             for (int i = 0; i < kMapCount; ++i)
             {
                 const Rect r = listRow(i);
-                if (r.bottom() > list_.bottom() - 4.0f)
-                    break;
+                if (r.isEmpty() || r.bottom() > list_.bottom() - 4.0f)
+                    continue;
                 const Slot& s = slots_[static_cast<std::size_t>(i)];
                 const bool sel = i == shown_, there = s.field >= 0;
                 if (sel)
@@ -709,13 +739,20 @@ namespace tee::ui
                 const char* state = !there ? "not in this build" : s.autoField < 0 ? "table" : isAuto(i) ? "formula (auto)" : "table";
                 c.text(state, r.x + 8.0f, r.y + 21.0f, look::kUnit, there && isAuto(i) ? p.selected : p.label);
             }
+            if (absent > 0)
+            {
+                const float y = list_.y + 30.0f + 40.0f * static_cast<float>(present) + 6.0f;
+                const std::string w = std::to_string(absent) + (absent == 1 ? " more map" : " more maps") + " not in this build";
+                chart::wrap(c, w, list_.x + 14.0f, y, list_.w - 28.0f, look::kUnit, p.dim, 13.0f, 2);
+            }
         }
 
         void drawMapFrame(Canvas& c, const look::Palette& p) const
         {
             const Slot& s = slot();
             const bool sel = s.field >= 0 && ctx_.selection.is(ctx_.doc.info(s.field).path);
-            look::region(c, p, mapBox_, upper(kMaps[shown_].name), sel);
+            look::region(c, p, mapBox_, upper(kMaps[shown_].name) + (narrow_ ? "   " + std::to_string(shown_ + 1) + " OF " +
+                                                                             std::to_string(kMapCount) : std::string()), sel);
             if (s.field < 0)
             {
                 look::placeholder(c, p, mapBox_, upper(kMaps[shown_].name),
@@ -735,10 +772,19 @@ namespace tee::ui
             else
                 left = bake_->bounds().right() + 16.0f;
             const std::string words = !message_.empty() ? message_
-                                    : "Type, or drag a cell. Shift-click: a block. Page Up, Page Down: nudge.";
-            const float right = mapBox_.right() - look::kPad;
-            const Canvas::ClipScope clip(c, { left, mapBox_.y, std::max(0.0f, right - left), mapBox_.h });
-            c.text(words.c_str(), right, mapBox_.y + 36.0f, look::kBody, message_.empty() ? p.dim : p.text, funkgui::Align::right);
+                                    : "Shift-click a block; Page Up, Page Down nudge it.";
+            // Whole, at the top right; else under the table after the tools; else (a hint) not at all.
+            const float right = mapBox_.right() - look::kPad, ww = c.textWidth(words.c_str(), look::kBody);
+            const Col ink = message_.empty() ? p.dim : p.text;
+            if (ww <= right - left)
+                c.text(words.c_str(), right, mapBox_.y + 36.0f, look::kBody, ink, funkgui::Align::right);
+            else if (ww <= right - fill_->bounds().right() - 12.0f)
+                c.text(words.c_str(), right, fill_->bounds().y + 6.0f, look::kBody, ink, funkgui::Align::right);
+            else if (!message_.empty())
+            {
+                const Canvas::ClipScope clip(c, { left, mapBox_.y, std::max(0.0f, right - left), mapBox_.h });
+                c.text(words.c_str(), left, mapBox_.y + 36.0f, look::kBody, ink);
+            }
         }
 
         // Over the table: the trail of the live point, and the formula's note while auto has the map.
@@ -897,7 +943,10 @@ namespace tee::ui
             key("RETARD", 1.75f, p.hot, {}, false);
             key("ADVANCE", 1.75f, p.selected, {}, false);
             if (n == 0 || (last != nullptr && !std::isfinite(last->lambda) && !std::isfinite(last->knock) && !std::isfinite(last->advance)))
-                c.text("-  the ECU's live values are not in this program yet", lanes_.x + 10.0f, lanes_.y + 6.0f, look::kBody, p.dim);
+            {
+                const char* w = "-  THE ECU'S LIVE VALUES ARE NOT IN THIS PROGRAM YET";
+                c.text(w, traces_.right() - look::kPad, traces_.y + 9.0f, look::kCaps, p.dim, funkgui::Align::right);
+            }
         }
 
         std::vector<Hit> lampHits() const
@@ -946,7 +995,7 @@ namespace tee::ui
                 if (sel)
                     look::selectRing(c, p, { r.x + 2.0f, r.y + 3.0f, r.w - 4.0f, r.h - 6.0f }, 4.0f);
                 look::lamp(c, p, r.x + 6.0f, r.centreY(), l.word, l.on, l.ink);
-                const std::string w = !known ? "-" : l.on ? l.active : "off";
+                const std::string w = !known ? "-" : l.on ? (lampWords_ ? l.active : std::string("on")) : "off";
                 c.text(w.c_str(), r.right() - 6.0f, r.centreY() - 5.0f, look::kUnit, l.on ? p.value : p.dim, funkgui::Align::right);
             }
         }
@@ -958,6 +1007,8 @@ namespace tee::ui
         Toggle* auto_ = nullptr;
         Button *bake_ = nullptr, *down_ = nullptr, *up_ = nullptr, *smooth_ = nullptr, *fill_ = nullptr;
         Plot *sliceX_ = nullptr, *sliceY_ = nullptr;
+        Button *prev_ = nullptr, *next_ = nullptr;
+        bool narrow_ = false, lampWords_ = true;
         std::deque<Sample> history_;
         std::deque<Pt> trailPts_;
         std::uint64_t historyRevision_ = 0;

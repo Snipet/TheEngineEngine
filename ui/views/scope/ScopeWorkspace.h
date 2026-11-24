@@ -41,8 +41,8 @@ namespace tee::ui
 
         const char* id() const override { return "scope"; }
         const char* title() const override { return "SCOPE"; }
+        // The inspector: the listener (sim/spec/sound.fm), until it has a workspace of its own.
         std::vector<std::string> sections() const override { return { "sound" }; }
-        std::string inspectorPage() const override;
         bool moving() const override;
         std::uint64_t drawKey() const override;
 
@@ -52,6 +52,15 @@ namespace tee::ui
         bool logPv() const noexcept { return logPv_; }
         void setLogPv(bool on);
         void clearMap();
+        // On a small stage: show plot i (0 pressure, 1 P-V, 2 ports, 3 wave, 4 spectrum, 5 speed map), or hide it when
+        // shown (one always stays); at most three, the one chosen longest ago going.
+        void choosePlot(int i);
+        const std::vector<int>& chosenPlots() const noexcept { return chosen_; }
+        bool compact() const noexcept { return compact_; }
+        // The plots' panels as laid out (empty: not shown), and the bar's: for tests of what overlaps.
+        const std::array<funkgui::Rect, 6>& panels() const noexcept { return cells_; }
+        const funkgui::Rect& bar() const noexcept { return bar_; }
+        const funkgui::Rect& tools() const noexcept { return tools_; }
 
         // What the newest data says (NaN when absent).
         struct Facts
@@ -93,7 +102,10 @@ namespace tee::ui
         Button* log_ = nullptr;
         Button* clear_ = nullptr;
         std::array<funkgui::Rect, 6> cells_{};
-        funkgui::Rect bar_{};
+        funkgui::Rect bar_{}, tools_{};
+        std::array<Button*, 6> selectors_{};
+        std::vector<int> chosen_{ 0, 4, 5 };   // a small stage's: pressure, spectrum, speed map
+        bool compact_ = false;
 
         bool frozen_ = false, logPv_ = false;
         // the newest copy

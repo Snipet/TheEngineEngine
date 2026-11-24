@@ -36,43 +36,7 @@ namespace
 
     funkgui::Point centreOf(const funkgui::Rect& r) { return { r.centreX(), r.centreY() }; }
 
-    VIEW_TEST(testTuneStage, "tune.stage")
-    {
-        for (float dpi : { 2.0f, 1.0f })
-        {
-            StageRig rig(tee::ui::makeTuneWorkspace, 1100, 700, dpi, 0.0);
-            prepared(rig);
-            MapEdit* m = tee::ui::tuneMapEdit(*rig.ws);
-            CHECK(m != nullptr && m->shown() && m->shownMap().nx == 16);
-            int c = -1, r = -1;
-            CHECK(m->liveCell(c, r) && c > 0 && r > 0);    // the engine pulling: its cell is lit
-            // A block of three by two chosen.
-            const funkgui::Point a = centreOf(m->cellRect(9, 6)), b = centreOf(m->cellRect(11, 7));
-            rig.host->click(a.x, a.y);
-            rig.host->click(b.x, b.y, funkgui::Mods{ .shift = true });
-            play(rig, 5.0, 12);
-            golden(dpi > 1.5f ? "tune.stage" : "tune.stage.dpi1", *rig.host);
-        }
-        return 0;
-    }
-
-    VIEW_TEST(testTuneLarge, "tune.large")
-    {
-        for (float dpi : { 2.0f, 1.0f })
-        {
-            StageRig rig(tee::ui::makeTuneWorkspace, 1600, 1000, dpi, 0.0);
-            prepared(rig);
-            golden(dpi > 1.5f ? "tune.large" : "tune.large.dpi1", *rig.host);
-        }
-        StageRig paper(tee::ui::makeTuneWorkspace, 1100, 700, 2.0f, 0.0);
-        prepared(paper);
-        paper.host = std::make_unique<funkgui::HeadlessHost>(*paper.ws, 1, 2.0f);
-        paper.host->resize(1100, 700);
-        paper.ws->place({ 0.0f, 0.0f, 1100.0f, 700.0f });
-        play(paper, 5.0, 30);
-        golden("tune.paper", *paper.host);
-        return 0;
-    }
+    // The stage's goldens (at the frame's stage rects) are made in DynoTests.cpp, with DYNO's.
 
     // Edits: each one gesture of the document (one step of undo), so the dyno's prediction answers.
     VIEW_TEST(testTuneEdit, "tune.edit")
@@ -150,6 +114,33 @@ namespace
         const std::uint64_t k = rig.ws->drawKey();
         rig.settle();
         CHECK(rig.ws->drawKey() == k);
+        return 0;
+    }
+}
+
+#include "kit/bind/Binding.h"
+
+namespace
+{
+    // Pressing a map's row selects its field, and the inspector's page names it (and its formula switch when the build
+    // has one); a lamp selects its part of the ECU; a lane its quantity's section.
+    VIEW_TEST(testTuneInspector, "tune.inspector")
+    {
+        StageRig rig(tee::ui::makeTuneWorkspace, 1100, 700, 1.0f, 4.6);
+        tee::ui::tunedemo::fillDocument(rig.demo.doc);
+        rig.settle();
+        auto& sel = rig.demo.selection;
+        rig.host->click(100.0f, 60.0f);                  // the first row: spark advance
+        CHECK_MSG(sel.path() == "ecu.spark", sel.path());
+        const std::string page = rig.ws->inspectorPage();
+        const std::vector<int> fields = tee::ui::fieldsOfGui(rig.demo.doc, page);
+        CHECK_MSG(fields.size() == 1 && fields[0] == rig.demo.doc.find("ecu.spark"), page);
+        rig.host->click(100.0f, 104.0f);                 // wastegate duty: the second map the demo has
+        CHECK_MSG(sel.path() == "boost.duty", sel.path());
+        // The lamps, at the traces' right: the limiter first.
+        rig.host->click(1100.0f - 16.0f - 12.0f - 150.0f, 700.0f - 16.0f - 210.0f + 30.0f + 15.0f);
+        CHECK_MSG(sel.path() == "ecu.limiter", sel.path());
+        CHECK(rig.ws->inspectorPage().empty());          // the frame's generated page of that prefix
         return 0;
     }
 }

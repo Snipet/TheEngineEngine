@@ -40,6 +40,8 @@ namespace tee::audio
 {
     struct Request
     {
+        std::string deviceName;         // the device by its name as devices() lists it; empty: the system's default.
+                                        // A name that is not there now: the default, and info().note says so
         int bufferFrames = 256;         // asked of the device; it gives what it gives
         int rate = 0;                   // 0: the device's own
         bool dummyFallback = true;      // no device opens: run on SDL's dummy driver, silent
@@ -56,6 +58,8 @@ namespace tee::audio
         int deviceChannels = 0;
         int bufferFrames = 0;           // the device's buffer, in frames at deviceRate
         double bufferMs = 0.0;          // that buffer as time: the least the output latency can be
+        bool isDefault = true;          // opened as the system's default (it follows the default when that changes)
+        std::string note;               // not empty: the named device was not there, and the default was opened
         std::string line() const;       // all of it in a line, for a person
     };
 
@@ -71,6 +75,8 @@ namespace tee::audio
         bool open(const Request&, std::string& why);
         void close();
         bool isOpen() const noexcept { return stream_ != nullptr; }
+        // The playback devices' names now (SDL's audio is started for it if it was not), for a person to pick from.
+        std::vector<std::string> devices();
         const DeviceInfo& info() const noexcept { return info_; }
 
         // An SDL event: true when it was an audio device event this took (the device gone, its format changed).

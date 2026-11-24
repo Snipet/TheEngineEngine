@@ -43,6 +43,7 @@ namespace tee::settings
         // their default). The shell keeps the text and hands it back; the interface package reads it.
         std::string unitChoices;
         std::string lastBuild;                  // the file of the build last open; empty: none
+        std::vector<std::string> recentBuilds;  // the files opened or saved last, newest first (files::RecentFiles)
         int windowWidth = 0, windowHeight = 0;  // logical px; 0: the Panel's own size
         // (the theme and the zoom are FunkGui's own preferences, in its file beside this one)
     };

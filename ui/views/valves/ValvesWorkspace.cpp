@@ -14,6 +14,7 @@
 #include "views/valves/ValvesWorkspace.h"
 
 #include "views/engine/EngineModel.h"
+#include "views/engine/PageText.h"
 #include "views/engine/StageDraw.h"
 #include "views/valves/ValvesModel.h"
 
@@ -69,6 +70,63 @@ namespace tee::ui
                 k.mix(static_cast<float>(ctx_.live.get(n)));
             k.mix(drag_).mix(hot_).mix(static_cast<float>(yMax_));
             return k.h;
+        }
+
+        // The inspector for what is selected: a cam (both its stages and its phaser), the timing (both cams and the
+        // model), the head (the bench's), the phasers and stages, the springs and deactivation. Nothing selected: the
+        // generated pages of `valve`.
+        std::string inspectorPage() const override
+        {
+            const std::string& s = ctx_.selection.path();
+            // the sections, each field's label short (its section names the valve): the order a cam card reads in
+            const auto sec = [&](const char* title, std::initializer_list<VF> l, std::vector<std::string> labels) {
+                pages::Section s;
+                s.title = title;
+                std::size_t k = 0;
+                for (VF x : l)
+                {
+                    if (std::string q = en::fieldPath(ctx_.doc, path(x)); !q.empty())
+                    {
+                        s.paths.push_back(std::move(q));
+                        s.labels.push_back(k < labels.size() ? labels[k] : std::string());
+                    }
+                    ++k;
+                }
+                return s;
+            };
+            const std::vector<std::string> cam = { "ACTUATION", "DURATION, SEAT", "DURATION, 1 MM", "LIFT", "CENTRELINE", "FATNESS" };
+            const std::vector<std::string> camB = { "DURATION, SEAT", "DURATION, 1 MM", "LIFT", "CENTRELINE" };
+            const pages::Section inA = sec("INTAKE CAM", { VF::inKind, VF::inDurSeat, VF::inDur1mm, VF::inLift, VF::inCentre, VF::inFat }, cam);
+            const pages::Section exA = sec("EXHAUST CAM", { VF::exKind, VF::exDurSeat, VF::exDur1mm, VF::exLift, VF::exCentre, VF::exFat }, cam);
+            const pages::Section inB = sec("INTAKE, STAGE B", { VF::inDurSeatB, VF::inDur1mmB, VF::inLiftB, VF::inCentreB }, camB);
+            const pages::Section exB = sec("EXHAUST, STAGE B", { VF::exDurSeatB, VF::exDur1mmB, VF::exLiftB, VF::exCentreB }, camB);
+            const pages::Section model = sec("MODEL", { VF::model, VF::cam }, { "MODEL", "CAM DIAL" });
+            const pages::Section timing = sec("VARIABLE TIMING", { VF::inPhaseRange, VF::exPhaseRange, VF::phaseRate },
+                                              { "INTAKE RANGE", "EXHAUST RANGE", "SPEED" });
+            const pages::Section stages = sec("TWO STAGES", { VF::stages, VF::stageSpeed, VF::stageHyst }, { "TWO STAGES", "CHANGE AT", "HYSTERESIS" });
+            const pages::Section lift = sec("LIFT CONTROL", { VF::liftControl, VF::liftMin, VF::liftThrottle },
+                                            { "CONTINUOUS", "LEAST LIFT", "LOAD BY LIFT" });
+            const pages::Section deac = sec("DEACTIVATION", { VF::deacMask, VF::deacLow, VF::deacHigh, VF::deacLoad },
+                                            { "MAY REST", "FROM", "TO", "BELOW LOAD" });
+            const pages::Section springs = sec("SPRINGS", { VF::train, VF::springRate, VF::springPreload, VF::valveMass },
+                                               { "TRAIN", "RATE", "PRELOAD", "VALVE MASS" });
+            const pages::Section head = sec("HEAD", { VF::valves, VF::dIn, VF::dEx, VF::portIn, VF::portEx },
+                                            { "VALVES", "INTAKE DIA", "EXHAUST DIA", "INTAKE PORT", "EXHAUST PORT" });
+            const Train t = trainOf(ctx_.doc);
+            const std::string labNote = t.labOff ? "THE LAB IS OFF: THESE TAKE EFFECT WITH THE LAB MODEL" : "";
+            if (s == "valve.intake")
+                return pages::page(ctx_.doc, stageB(t) ? std::vector{ inB, inA, timing } : std::vector{ inA, inB, timing }, labNote);
+            if (s == "valve.exhaust")
+                return pages::page(ctx_.doc, stageB(t) ? std::vector{ exB, exA, timing } : std::vector{ exA, exB, timing }, labNote);
+            if (s == "valve.timing")
+                return pages::page(ctx_.doc, { model, inA, exA }, labNote);
+            if (s == "valve.head")
+                return pages::page(ctx_.doc, { head }, "THE BENCH IS FROM THESE AND THE BORE");
+            if (s == "valve.phasers")
+                return pages::page(ctx_.doc, { timing, stages, lift }, labNote);
+            if (s == "valve.springs")
+                return pages::page(ctx_.doc, { springs, deac }, labNote);
+            return {};
         }
 
         void pointerDown(const funkgui::PointerEvent& e) override
@@ -312,8 +370,8 @@ namespace tee::ui
             const Events ev = eventsOf(li, le);
             // the numbers that matter at a glance, over the plot
             float x = e.x;
-            x += lk::readout(c, p, x, e.y - 4.0f, "OVERLAP", deg(ev.overlap), "deg", lk::kNumberS) + 22.0f;
-            x += lk::readout(c, p, x, e.y - 4.0f, "LOBE SEPARATION", lk::num(ev.lsa, "%.1f"), "deg", lk::kNumberS) + 22.0f;
+            x += stage::readout(c, p, x, e.y - 4.0f, "OVERLAP", deg(ev.overlap), "deg", lk::kNumberS) + 22.0f;
+            x += stage::readout(c, p, x, e.y - 4.0f, "LOBE SEPARATION", lk::num(ev.lsa, "%.1f"), "deg", lk::kNumberS) + 22.0f;
             // the piston's room: the least between each valve and the crown, near the overlap's top
             const en::Layout lay = en::layoutOf(ctx_.doc);
             const en::Cylinder cyl = en::cylinderOf(ctx_.doc, lay);
@@ -332,9 +390,9 @@ namespace tee::ui
             }
             const auto len = [&](double m) { return std::isfinite(m) ? u.number(Quantity::length, m) : std::string("-"); };
             const std::string lu = u.unit(Quantity::length).name;
-            x += lk::readout(c, p, x, e.y - 4.0f, "ROOM, INTAKE", len(leastIn), lu, lk::kNumberS,
+            x += stage::readout(c, p, x, e.y - 4.0f, "ROOM, INTAKE", len(leastIn), lu, lk::kNumberS,
                              std::isfinite(leastIn) && leastIn < 0.001 ? p.warning : kClear) + 22.0f;
-            lk::readout(c, p, x, e.y - 4.0f, "ROOM, EXHAUST", len(leastEx), lu, lk::kNumberS,
+            stage::readout(c, p, x, e.y - 4.0f, "ROOM, EXHAUST", len(leastEx), lu, lk::kNumberS,
                         std::isfinite(leastEx) && leastEx < 0.001 ? p.warning : kClear);
             // what drives it, in words
             const char* note = t.reference ? "THE REFERENCE'S CAM DIAL: SET IN THE INSPECTOR"
@@ -642,9 +700,9 @@ namespace tee::ui
             const double fl = ctx_.live.get(kTelFloat), w = ctx_.live.get(en::kTelSpeed);
             const double margin = std::isfinite(fl) && std::isfinite(w) ? fl - w : en::kNaN;
             const bool near = std::isfinite(margin) && margin < 500.0 * stage::kPi / 30.0;
-            const float wa = lk::readout(c, p, in.x, in.y, "FLOATS AT", std::isfinite(fl) ? u.number(Quantity::rotation, fl) : "-",
+            const float wa = stage::readout(c, p, in.x, in.y, "FLOATS AT", std::isfinite(fl) ? u.number(Quantity::rotation, fl) : "-",
                                          u.unit(Quantity::rotation).name, lk::kNumberS);
-            lk::readout(c, p, in.x + std::max(110.0f, wa + 24.0f), in.y, near ? "MARGIN: NEAR FLOAT" : "MARGIN",
+            stage::readout(c, p, in.x + std::max(110.0f, wa + 24.0f), in.y, near ? "MARGIN: NEAR FLOAT" : "MARGIN",
                         std::isfinite(margin) ? u.number(Quantity::rotation, margin) : "-", u.unit(Quantity::rotation).name,
                         lk::kNumberS, near ? p.warning : kClear);
             const double rate = fieldValue(ctx_.doc, VF::springRate);

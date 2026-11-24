@@ -67,8 +67,18 @@ namespace tee::ui
         // The axes and the whole view at once; the view is kept (a person's zoom) unless the axes changed.
         void setAxes(double xlo, double xhi, bool xlog, double ylo, double yhi, bool ylog);
 
+        // The x axis's ticks given (a value and its words each: "0 TDC"), in place of the kit's round numbers; empty:
+        // the kit's.
+        void setXTicks(std::vector<std::pair<double, std::string>> ticks)
+        {
+            xTicks_ = std::move(ticks);
+            touched();
+        }
+
         static funkgui::Col inkOf(const look::Palette& p, Ink ink) noexcept;
         bool cursorOn() const noexcept { return cursorShown(); }
+        // Where the title line's words end (an overlay keeps its legend right of it).
+        float titleRight(funkgui::Canvas& c) const;
         funkgui::Point pointer() const noexcept { return pointer_; }
 
         void draw(funkgui::Canvas& c, const funkgui::Theme& th, bool focusRing) const override;
@@ -76,10 +86,12 @@ namespace tee::ui
 
     private:
         void drawTraces(funkgui::Canvas& c, const look::Palette& p) const;
+        void drawFrameTicked(funkgui::Canvas& c, const Look& l) const;
         void drawReadout(funkgui::Canvas& c, const look::Palette& p) const;
 
         std::vector<Style> styles_;
         Overlay inside_, outside_;
         std::string note_, caption_;
+        std::vector<std::pair<double, std::string>> xTicks_;
     };
 }

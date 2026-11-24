@@ -2,6 +2,8 @@
 // parts and range (card D's test 7 needs the whole engine; here the model alone, at the reference V8's size).
 #include "Presets.h"
 
+static constexpr double kPi = 3.14159265358979323846;
+
 #include <catch2/catch_test_macros.hpp>
 
 #include <cmath>
@@ -18,7 +20,7 @@ TEST_CASE("the work integral of an ideal Otto cycle is its closed form, split in
     const double pI = 0.6e5, pE = 1.1e5, rp = 3.0, k = 1.3;
     auto otto = rig.method<void(void*, int, int, float, float, float, float)>("ottoRun");
     otto(rig.data(), 3, 7200, float(pI), float(pE), float(rp), float(k));
-    const double vd = M_PI / 4 * bore * bore * stroke, vc = vd / (cr - 1), vm = vc + vd;
+    const double vd = kPi / 4 * bore * bore * stroke, vc = vd / (cr - 1), vm = vc + vd;
     const double p2 = pI * std::pow(vm / vc, k), p3 = rp * p2, p4 = p3 * std::pow(vc / vm, k);
     const double wGross = (p2 * vc - pI * vm) / (1 - k) + (p4 * vm - p3 * vc) / (1 - k);
     const double imep = wGross / vd, pmep = pE - pI;
@@ -42,7 +44,7 @@ TEST_CASE("the friction model's parts sum to its total, within 0.8 to 2.5 bar fr
     auto fric = rig.method<float(void*, float, float, float)>("friction");
     for (double rpm : {700.0, 2000.0, 4000.0, 6500.0})
     {
-        const double w = rpm * M_PI / 30.0;
+        const double w = rpm * kPi / 30.0;
         const double pk = 20e5 + 40e5 * std::min(rpm / 3000.0, 1.0);      // peak pressure: 20 bar at idle, 60 at load
         const double tq = fric(rig.data(), float(w), float(pk), 1.0f);
         const double fmep = rig.get("fr.fmep");
@@ -59,8 +61,8 @@ TEST_CASE("the friction model's parts sum to its total, within 0.8 to 2.5 bar fr
         CHECK(std::abs(fmep - ref) < 0.3 * ref);
     }
     // thick oil multiplies the rubbing, not the accessories
-    fric(rig.data(), float(3000 * M_PI / 30), 50e5f, 1.0f);
+    fric(rig.data(), float(3000 * kPi / 30), 50e5f, 1.0f);
     const double warm = rig.get("fr.fmep"), acc = rig.get("fr.accessories");
-    fric(rig.data(), float(3000 * M_PI / 30), 50e5f, 2.0f);
+    fric(rig.data(), float(3000 * kPi / 30), 50e5f, 2.0f);
     CHECK(std::abs(rig.get("fr.fmep") - (2.0 * (warm - acc) + acc)) < 1e-3 * warm);
 }
