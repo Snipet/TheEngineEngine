@@ -17,7 +17,7 @@
 #include "lib/biquad.fm"
 #include "sound/extras.fm"
 #include "listen/listen.fm"
-#include "car.fm"
+#include "vehicle/car.fm"
 
 module Set
 {
@@ -304,18 +304,9 @@ module Shared
     float k16Flow;      // the flow's loss's smoothing, every 16 samples
     // the car (DRIVE CAR)
     Car car;
-    int lastDrive;
-    int lastLever;      // the shifter where it was: it moving picks its gear
-    int lastPos;        // a truck's shifter's last forward position (coming down from it picks the highest of three)
-    int lastButtons;
-    float shiftT;       // seconds into a paddle shift (negative: none)
-    int shiftTo;
-    bool shiftUp;
-    bool shiftCut;      // the ignition cut through an upshift
     float stallT;       // seconds under the stall speed
     float offHold;      // seconds the start key has been held while it ran (a second switches it off)
     bool offArmed;      // that key went down while it ran
-    float kPedal;       // the pedals' smoothing, every 16 samples
     // what the panel shows (its displays read these whether a key sounds or not)
     float showRpm;      // the crank's speed, rpm
     float showRed;      // the redline, rpm
@@ -457,11 +448,6 @@ module Shared
         car.setup(rate);
         set.drive = 0;
         set.mass = 1400.0f;
-        lastDrive = 0;
-        lastLever = 0;
-        lastPos = 0;
-        shiftT = -1.0f;
-        kPedal = 1.0f - expf(-16.0f / (0.012f * rate));
         configure();
         showGear = -2.0f;
         ready = 1;
@@ -1082,7 +1068,7 @@ module Shared
         if (state == 2)
             offArmed = true;
         if (set.drive != 0)
-            followLever();
+            car.followLever(set.drive, set.lever);
         // driven, in gear it cranks only with the clutch's pedal down (as a car's clutch switch has it)
         const bool may = set.drive == 0 || car.gear == 0 || set.clutch > 0.75f;
         if ((state == 0 || state == 3) && may)
@@ -1217,9 +1203,10 @@ module Shared
         else
             govInt *= 0.98f;
         if (set.drive != 0)
-            ped = drive16(d16);
+            ped = car.drive16(set.drive, d16, jBase * expf(1.6094379f * (set.inertia - 0.5f)), peakTorque(), gearTq, set.mass,
+                              redRpm, lay.bike, set.clutch, set.brake, set.lever, set.buttons, set.gas, rpm, idleRpm, rpmAvg);
         else
-            lastDrive = 0;
+            car.lastDrive = 0;
         ped = fmaxf(ped, fmaxf(set.modwheel, set.pressure));
         if (state != 2)
             ped = state == 1 ? 0.0f : ped;
@@ -1269,7 +1256,7 @@ module Shared
         else if (rpmAvg < idleRpm + 320.0f || pedal >= 0.02f)
             dfco = false;
         const bool crankLow = warm >= 1.0f ? rpm < 120.0f : rpmAvg < 120.0f - 80.0f * (1.0f - warm);
-        fuelCut = limiting || dfco || shiftCut || state == 0 || state == 3 || (state == 1 && crankLow);
+        fuelCut = limiting || dfco || car.shiftCut || state == 0 || state == 3 || (state == 1 && crankLow);
         // the engine's state
         if (state == 1)
         {
@@ -1387,38 +1374,6 @@ module Shared
 
     // ---- driven (DRIVE CAR) ----
 
-    // The vehicle at rest when DRIVE first turns to CAR or TRUCK (or from one to the other); the shifter, when it moves,
-    // puts its gear in (whatever the paddles chose meanwhile; its seventh is the sixth). A truck's six positions hold
-    // three gears each (1 to 3, 4 to 6, ... 16 to 18): going up, or in from a standstill, puts in the position's lowest,
-    // coming down its highest; the paddles split between them.
-    void followLever()
-    {
-        if (lastDrive != set.drive)
-        {
-            lastDrive = set.drive;
-            car.reset();
-            lastLever = 0;
-            lastPos = 0;
-            shiftT = -1.0f;
-            shiftCut = false;
-        }
-        const int h = set.lever < -1 ? -1 : (set.lever > 6 ? 6 : set.lever);
-        if (h != lastLever)
-        {
-            lastLever = h;
-            shiftT = -1.0f;
-            shiftCut = false;
-            car.robot = 1.0f;
-            int g = h;
-            if (set.drive == 2 && h > 0)
-            {
-                g = lastPos > h && car.kmh() > 3.0f ? 3 * h : 3 * h - 2;
-                lastPos = h;
-            }
-            car.select(g);
-        }
-    }
-
     float gearTq;       // the full-load torque the car's gearing was chosen for (at the layout's or size's change)
     // the heat: the air outside, the coolant and the oil (K); how warm the engine is (0 at the air outside, 1 at its
     // thermostat); the oil's thickness over a warm engine's and its pressure (Pa over the air); the burns' and the
@@ -1445,77 +1400,6 @@ module Shared
     {
         const float b = aspUse == 0 ? 0.0f : (aspUse == 4 ? 0.25f + 0.75f * set.turbo : 0.35f + 1.05f * set.turbo);
         return 1.6f * idleTq * (1.0f + 0.8f * b);
-    }
-
-    // Every 16 samples, driven: the car for the dials, the pedals, the shifter and the paddles. Returns the throttle the
-    // pedal asks (with a blip through a paddle's downshift).
-    float drive16(float d16)
-    {
-        followLever();
-        car.configure(jBase * expf(1.6094379f * (set.inertia - 0.5f)), peakTorque(), gearTq, set.mass, redRpm, lay.bike,
-                      set.drive == 2 ? 1 : 0);
-        car.pedals(set.clutch, set.brake, kPedal);
-        // the paddles shift in turn while the shifter stands in neutral: the right one up, the left one down, through
-        // R, N, 1 to 6, a truck's to 18 (into reverse only at a crawl, and never down into a gear the speed would take
-        // past the redline); with a truck's shifter in a gear they split between its three
-        const int down = set.buttons & ~lastButtons;
-        lastButtons = set.buttons;
-        const bool split = set.drive == 2 && lastLever > 0;
-        if ((lastLever == 0 || split) && shiftT < 0.0f)
-        {
-            const int lo = split ? 3 * lastLever - 2 : -1;
-            const int hi = split ? 3 * lastLever : car.nGears;
-            int to = car.gear;
-            if ((down & 16) != 0)
-                to = car.gear < hi ? car.gear + 1 : hi;
-            else if ((down & 32) != 0)
-                to = car.gear > lo ? car.gear - 1 : lo;
-            if (to == -1 && car.kmh() > 5.0f)
-                to = 0;
-            if (to > 0 && to < car.gear && fabsf(car.wW * car.ratioOf(to)) * 9.5492966f > 0.97f * redRpm)
-                to = car.gear;
-            if (to != car.gear)
-            {
-                shiftTo = to;
-                shiftUp = to > car.gear;
-                shiftT = 0.0f;
-            }
-        }
-        float ped = set.gas;
-        // the paddles' own clutch: it pulls away and stops as a paddle car's does, closing with the revs from just over
-        // the idle (so they never stall it); the shifter's clutch is the pedal alone
-        float rob = 1.0f;
-        if (lastLever == 0 && car.gear != 0)
-        {
-            // (a truck's diesel turns over a narrower range: its clutch closes over a third as many revs)
-            const float sp = set.drive == 2 ? fminf(fmaxf((redRpm - idleRpm) / 6000.0f, 0.2f), 1.0f) : 1.0f;
-            const float x = fminf(fmaxf((rpm - idleRpm - 150.0f * sp) / (900.0f * sp), 0.0f), 1.0f);
-            rob = x * x * (3.0f - 2.0f * x);
-        }
-        car.robot = rob;
-        if (shiftT >= 0.0f)
-        {
-            // a paddle's shift, as a robotised gearbox does it: its clutch opens (an upshift cuts the ignition), the gear
-            // goes in, the clutch closes again; a downshift blips the throttle to the new gear's speed meanwhile (a
-            // truck's automated gearbox takes two and a half times as long: half a second)
-            const float tk = set.drive == 2 ? 2.5f : 1.0f;
-            shiftT += d16;
-            if (shiftT >= 0.05f * tk && car.gear != shiftTo)
-                car.select(shiftTo);
-            car.robot = rob * (shiftT < 0.035f * tk ? 1.0f - shiftT / (0.035f * tk) : (shiftT < 0.06f * tk ? 0.0f : fminf((shiftT - 0.06f * tk) / (0.15f * tk), 1.0f)));
-            shiftCut = shiftUp && shiftTo > 1 && shiftT < 0.06f * tk;
-            if (!shiftUp && shiftTo != 0)
-            {
-                const float want = fabsf(car.wW * car.ratioOf(shiftTo)) * 9.5492966f;
-                ped = fmaxf(ped, fminf(fmaxf((want - rpmAvg) * 0.002f, 0.0f), 1.0f));
-            }
-            if (shiftT >= 0.21f * tk)
-            {
-                shiftT = -1.0f;
-                shiftCut = false;
-            }
-        }
-        return ped;
     }
 
     // The tail's jet noise in a band about fPeak: from half of it up to three times it (one-pole slopes beyond), at unit

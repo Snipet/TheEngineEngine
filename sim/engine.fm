@@ -132,9 +132,9 @@ module Engine
     // it, then up until it has seen that; a press counted meanwhile waits its turn
     int paddle(int pulse, int bit)
     {
-        if (pulse == 1 && (mono.lastButtons & bit) != 0)
+        if (pulse == 1 && (mono.car.lastButtons & bit) != 0)
             return 2;
-        if (pulse == 2 && (mono.lastButtons & bit) == 0)
+        if (pulse == 2 && (mono.car.lastButtons & bit) == 0)
             return 0;
         return pulse;
     }
