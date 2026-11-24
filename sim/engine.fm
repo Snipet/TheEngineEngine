@@ -432,7 +432,7 @@ module Engine
             rodRatio = fminf(fmaxf(spec.engine.rodLength / (0.5f * strokeUse), 2.2f), 6.0f);
         // (a big cam's overlap dilutes the idle more the slower it turns: its tune idles it higher, as real ones are)
         ecu.idleRpm = fmaxf(idleBase + set.idle + 350.0f * fmaxf(set.cam - 0.35f, 0.0f) / 0.65f + heat.coldIdle(fuelUse), 350.0f);
-        ecu.redRpm = fmaxf(redBase + set.redline, ecu.idleRpm + 1500.0f);
+        ecu.redRpm = ecu.redlineFor(redBase + set.redline);
         exh.nDuals = lay.topo == 2 ? 2 : 1;
         // the throttle and the plenum go with the engine's size
         intk.aThrottle = 0.0028f * sqrtf(vTotal / 0.002f) * (lay.bike > 0.5f ? 1.25f : 1.0f);
