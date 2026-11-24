@@ -21,7 +21,9 @@ namespace
     {
         CAPTURE(slug);
         std::string error;
-        static const std::shared_ptr<Sim> sim = Sim::compile(kRoot / "sim", {}, error);
+        // (never deleted: a compiled program destroyed after the JIT at exit crashes on macOS)
+        static const std::shared_ptr<Sim>* const kept = new std::shared_ptr<Sim>(Sim::compile(kRoot / "sim", {}, error));
+        const std::shared_ptr<Sim>& sim = *kept;
         INFO(error);
         REQUIRE(sim != nullptr);
         Timeline t;
