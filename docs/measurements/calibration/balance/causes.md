@@ -806,3 +806,33 @@ low-speed overlap, pushing burned gas back. Not the runner, not knock. A maker's
 headers revert; the bake's speeds may straddle 2049 without one there (to N1, whose bake rule it is). The model's light
 damping (N3-6) keeps these low-speed teeth sharp (VE swinging 0.66 to 0.91 within 500 rpm): it bears on the open ram
 item, as does any published low-speed curve for this engine.
+
+## N3-15. The waves' damping: one item, with a bound from the sources (22:22 by `date -u`; the lead's 22:23)
+
+Three findings point the same way: the intake's ram 12 to 18 % at its tune (N3-6); the V12's reversion dip, VE 0.66 to
+0.91 within 500 rpm (above); the tuned four-valves' curves in teeth (N3-10). What the published measurements bound:
+
+| Source (kind) | What it measured | Result |
+|---|---|---|
+| SI engine, runner length and diameter sweep (ResearchGate 394849080; experiment) | VE against runner length | up to **+8.7 %** at mid speed with a 528 mm runner; +4.2 % at high speed by diameter |
+| Turbocharged multi-cylinder diesel, variable-length manifold (ResearchGate 287040569; experiment) | VE | up to **+6 %** at the optimum length |
+| Two-step runner length with two valve timings (ScienceDirect S187661021931210X; simulation with test) | VE across the speed range | **+5.4 %** on average; +1.4 % from two lengths alone (another study) |
+| Single-cylinder CFR, variable intake length (Colorado State thesis; 1-D model) | VE | about +10 % at low speed against a fixed length |
+| 4-2-1 against 4-1 headers, the same engine (Racefix, a maker's bolt-on test; forum dynos) | torque | the 4-2-1 filled a 4-1's mid-range dip by 25 N m at the same peak; forum peaks +8 to +16 % (bases unstated) |
+| Winterbone and co. (Int. J. Mech. Sci. 1992); a 1-D exhaust pipe study | pressure traces, predicted against measured | no simple relation between the friction and heat-transfer factors; a straight pipe's exhaust pressure error not cured by the discharge coefficient |
+
+The bound, for the intake: a tuned runner's VE gain at its tune of **6 to 9 %** over an untuned one at the same speed
+(the two experimental rows; the simulations at or under 10 %). The model gives 12 to 18 % (the flat six, 0.53 against
+0.30 m), so its resonance stands about twice as tall. For the exhaust's reversion dip no measured depth was found (only
+makers' and forum dynos): no bound yet.
+
+What the model should then show for the same hardware: the flat six's 0.53 m runner some 6 to 9 % over its 0.30 m one at
+4750 rpm (it shows 17.7 %). As a damping: the ram's height goes near the resonance's Q, so the ringing that loses about
+10 % a period after the valve shuts (N3-6) should lose some 20 to 25 %.
+
+Where that loss may physically be (for G and N1 to size, each with its source): (1) the friction of an oscillating flow
+exceeds the quasi-steady friction the duct takes from the mean speed (the unsteady-friction models of water hammer:
+Zielke, Brunone, Vardy and Brown); (2) the port's and the valve seat's losses per pass while the valve is open; (3) the
+heat exchanged in the oscillating thermal layer beyond Kirchhoff's (the wall's temperature swing); (4) for the exhaust,
+the junctions' loss and the radiation of the open end. Not to be sized to our own targets: the 6 to 9 % is the target,
+the archetypes' curves then are the result.
