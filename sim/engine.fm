@@ -211,7 +211,7 @@ module Engine
         noise.rs = 123456789;
         intk.setup(rate);
         // the longest each pipe could be, cold (330 m/s), at this rate
-        exh.setup(rate, &noise, &lay, &heat);
+        exh.setup(rate, &noise, &lay, &heat, &spec.exhaust, &tel.exhaust, &scope);
         ex.setup(rate, 90.0f);
         boost.setup(rate, &ex.noise);
         quiet = 1.0e9f;
@@ -611,7 +611,7 @@ module Engine
         const float surf = 0.022f * expf(0.6666667f * logf(cyl[0].vd / 0.0005f));
         for (int c = 0; c < lay.n; ++c)
             cyl[c].hA = 260.0f * surf * (0.6f + crank.rpm / 2500.0f);
-        exh.heatUp(d16, bore, set.drive != 0 ? fabsf(car.v) : 0.0f);
+        exh.heatUp(d16, bore, set.drive != 0 ? fabsf(car.v) : 0.0f, crank.rpm, ecu.throttle);
         pipes();
         exh.flow16();
         intk.flow16(lay.ports, exh.xiWall, exh.k16Flow);
