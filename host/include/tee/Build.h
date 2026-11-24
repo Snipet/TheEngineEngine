@@ -52,6 +52,8 @@ namespace tee
     bool partFromName(std::string_view name, BuildPart& part) noexcept;
     // Whether a section belongs to a part (every section is in Whole; env and sound in no other).
     bool inPart(std::string_view section, BuildPart part) noexcept;
+    // Whether a field is saved and loaded: not a hidden one (working state), save a hidden fingerprint (unit "hash").
+    bool inFile(const FieldInfo& f) noexcept;
 
     class Build
     {

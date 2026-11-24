@@ -4,9 +4,9 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <cstdio>
 #include <cstring>
 #include <limits>
-#include <set>
 
 namespace tee
 {
@@ -188,16 +188,82 @@ namespace tee
         PredictOptions predict = options.predict;
         predict.fields.insert(predict.fields.begin(), "engine.manifold");   // the load
         predict.points = predict.coarse = std::min(options.speeds, 16);
-        std::vector<double> active;   // the speeds still knocking at the pedal above
-        std::set<double> knocking;
-        for (std::size_t k = 0; k < options.pedals.size(); ++k)
+
+        // the steps, from the most load down: a turbo's boost targets at full pedal, then the pedals under full
+        struct Step
+        {
+            double pedal, boost;   // boost: spec.boost.target, Pa over the air; < 0: as built
+        };
+        std::vector<Step> steps;
+        const double kind = build.fieldOf("boost.kind") >= 0 ? build.get("boost.kind") : 0.0;
+        const bool turbo = kind >= 1.0 && kind <= 3.0 && options.boostSteps > 0 && build.fieldOf("boost.target") >= 0
+                           && build.fieldOf("boost.gateSpring") >= 0 && build.fieldOf("ecu.maps.boostAuto") >= 0;
+        if (turbo)
+        {
+            const double spring = build.get("boost.gateSpring");
+            double top = std::max(build.get("boost.target"), spring);
+            // a build with its own boost map (boostAuto off): its map's most, which the bake's targets must reach
+            if (build.get("ecu.maps.boostAuto") == 0.0)
+                if (const int m = build.fieldOf("ecu.maps.boost"); m >= 0)
+                {
+                    const FieldInfo& f = build.fields().all()[static_cast<std::size_t>(m)];
+                    const std::vector<double>& v = build.values(m);
+                    std::size_t z = 0, at = 0, nx = 0, ny = 0;
+                    for (const FieldInfo::Leaf& leaf : f.leaves)
+                    {
+                        if (leaf.name == "z")
+                            z = at;
+                        else if (leaf.name == "nx" && at < v.size())
+                            nx = static_cast<std::size_t>(v[at]);
+                        else if (leaf.name == "ny" && at < v.size())
+                            ny = static_cast<std::size_t>(v[at]);
+                        at += leaf.count;
+                    }
+                    for (std::size_t i = 0; i < nx && i < 16; ++i)
+                        for (std::size_t j = 0; j < ny && j < 16; ++j)
+                            if (z + i * 16 + j < v.size())
+                                top = std::max(top, v[z + i * 16 + j]);
+                }
+            const int n = std::max(options.boostSteps, 1);
+            for (int i = 0; i < n; ++i)
+                steps.push_back({1.0, n == 1 ? top : top - (top - spring) * i / (n - 1)});
+            for (const double p : options.pedals)
+                if (p < 1.0)
+                    steps.push_back({p, spring});   // under the spring's boost: the loads below the targets'
+            char text[160];
+            std::snprintf(text, sizeof text,
+                          "a turbo: boost targets %.0f to %.0f kPa over the air at full pedal (boostAuto on), then pedals at the spring's",
+                          top / 1000.0, spring / 1000.0);
+            result.notes = text;
+        }
+        else
+        {
+            for (const double p : options.pedals)
+                steps.push_back({p, -1.0});
+            result.notes = kind >= 4.0 ? "a supercharger: pedals alone (its boost is its pulley's, no loop to command)"
+                                       : "pedals";
+        }
+
+        std::vector<double> active;   // the speeds still knocking at the step above
+        for (std::size_t k = 0; k < steps.size(); ++k)
         {
             if (cancel != nullptr && cancel->load())
             {
                 error = "cancelled";
                 return false;
             }
-            predict.pedal = options.pedals[k];
+            predict.pedal = steps[k].pedal;
+            Build stepBuild(build.fields());
+            {
+                std::vector<std::string> said;
+                if (!stepBuild.load(build.save(), BuildPart::Whole, said, error))
+                    return false;
+            }
+            if (steps[k].boost >= 0.0)
+            {
+                stepBuild.set("ecu.maps.boostAuto", 1.0);
+                stepBuild.set("boost.target", steps[k].boost);
+            }
             if (k > 0)
             {
                 if (active.empty())
@@ -206,7 +272,7 @@ namespace tee
                 predict.points = predict.coarse = static_cast<int>(active.size());
             }
             PredictCurve curve;
-            if (!predictCurve(sim, build, predict, curve, error, cancel))
+            if (!predictCurve(sim, stepBuild, predict, curve, error, cancel))
                 return false;
             result.points += static_cast<int>(curve.points.size());
             result.simulatedSeconds += curve.simulatedSeconds;
@@ -224,6 +290,7 @@ namespace tee
                     ++at;
                 KnockBakeCell cell;
                 cell.pedal = predict.pedal;
+                cell.boostTarget = std::max(steps[k].boost, 0.0);
                 cell.load = p.fields.empty() ? 0.0 : p.fields[0] / 101325.0;
                 cell.retardMean = p.retardMean;
                 cell.retardTooth = std::max(p.retardMax - p.retardMean, 0.0);
@@ -317,5 +384,157 @@ namespace tee
         if (!ok)
             error = "the baked knock limit does not fit ecu.maps.knockLimit";
         return ok;
+    }
+
+    // ---- the background bake ------------------------------------------------------------------------------------------
+
+    const char* knockBakeStateName(KnockBakeState state) noexcept
+    {
+        switch (state)
+        {
+            case KnockBakeState::NoTable: return "no table";
+            case KnockBakeState::Current: return "baked";
+            case KnockBakeState::Waiting: return "waiting to bake";
+            case KnockBakeState::Baking: return "baking";
+            case KnockBakeState::Ready: return "baked, to apply";
+            case KnockBakeState::Failed: return "bake failed";
+        }
+        return "no table";
+    }
+
+    KnockBakeService::KnockBakeService(std::shared_ptr<Sim> sim, KnockBakeOptions options, double debounceSeconds)
+        : sim_(std::move(sim)), options_(std::move(options)), debounce_(std::max(debounceSeconds, 0.0))
+    {
+        thread_ = std::thread([this] { coordinator(); });
+    }
+
+    KnockBakeService::~KnockBakeService()
+    {
+        {
+            const std::lock_guard<std::mutex> lock(mutex_);
+            stop_ = true;
+        }
+        cancel_ = true;
+        wake_.notify_all();
+        if (thread_.joinable())
+            thread_.join();
+    }
+
+    void KnockBakeService::setState(KnockBakeState s)
+    {
+        if (state_ != s)
+        {
+            state_ = s;
+            ++revision_;
+        }
+    }
+
+    KnockBakeState KnockBakeService::consider(Build& build)
+    {
+        if (build.fieldOf("ecu.maps.knockLimit") < 0 || build.fieldOf("ecu.maps.knockLimitAuto") < 0
+            || build.fieldOf("ecu.maps.knockLimitKey") < 0)
+        {
+            const std::lock_guard<std::mutex> lock(mutex_);
+            setState(KnockBakeState::NoTable);
+            return state_;
+        }
+        const std::int64_t key = knockLimitKey(build, *sim_);
+        if (knockLimitCurrent(build, *sim_))
+        {
+            const std::lock_guard<std::mutex> lock(mutex_);
+            if (key_ != key)
+                cancel_ = true;   // what runs is for another build: not wanted
+            asked_ = false;
+            ready_ = false;
+            key_ = key;
+            setState(KnockBakeState::Current);
+            return state_;
+        }
+        // stale: the table set aside now (the engine on its knock control alone), a bake asked
+        if (build.get("ecu.maps.knockLimitAuto") == 0.0)
+            build.set("ecu.maps.knockLimitAuto", 1.0);
+        const std::lock_guard<std::mutex> lock(mutex_);
+        if (key == key_ && state_ != KnockBakeState::Failed && state_ != KnockBakeState::Current)
+            return state_;   // asked already (waiting, baking, or ready to take)
+        key_ = key;
+        json_ = build.save();
+        asked_ = true;
+        ready_ = false;
+        due_ = std::chrono::steady_clock::now() + std::chrono::duration_cast<std::chrono::steady_clock::duration>(
+                                                     std::chrono::duration<double>(debounce_));
+        cancel_ = true;   // a bake running is of an older build
+        setState(KnockBakeState::Waiting);
+        wake_.notify_all();
+        return state_;
+    }
+
+    bool KnockBakeService::take(KnockBakeResult& out)
+    {
+        const std::lock_guard<std::mutex> lock(mutex_);
+        if (!ready_)
+            return false;
+        out = done_;
+        ready_ = false;
+        return true;
+    }
+
+    KnockBakeState KnockBakeService::state() const
+    {
+        const std::lock_guard<std::mutex> lock(mutex_);
+        return state_;
+    }
+
+    std::string KnockBakeService::error() const
+    {
+        const std::lock_guard<std::mutex> lock(mutex_);
+        return error_;
+    }
+
+    void KnockBakeService::coordinator()
+    {
+        std::unique_lock<std::mutex> lock(mutex_);
+        while (!stop_)
+        {
+            if (!asked_)
+            {
+                wake_.wait(lock);
+                continue;
+            }
+            if (std::chrono::steady_clock::now() < due_)
+            {
+                wake_.wait_until(lock, due_);   // an edit within the debounce moves due_ and wakes it
+                continue;
+            }
+            asked_ = false;
+            const std::string json = json_;
+            const std::int64_t key = key_;
+            cancel_ = false;
+            setState(KnockBakeState::Baking);
+            lock.unlock();
+
+            KnockBakeResult result;
+            std::string error;
+            Build build(sim_->fields());
+            std::vector<std::string> warnings;
+            bool ok = build.load(json, BuildPart::Whole, warnings, error);
+            if (ok)
+                ok = bakeKnockLimit(sim_, build, options_, result, error, &cancel_);
+
+            lock.lock();
+            if (stop_ || asked_ || key != key_ || cancel_)
+                continue;   // a newer build was asked meanwhile, or this one was set aside: dropped
+            if (ok)
+            {
+                done_ = std::move(result);
+                ready_ = true;
+                error_.clear();
+                setState(KnockBakeState::Ready);
+            }
+            else
+            {
+                error_ = error;
+                setState(KnockBakeState::Failed);
+            }
+        }
     }
 } // namespace tee
