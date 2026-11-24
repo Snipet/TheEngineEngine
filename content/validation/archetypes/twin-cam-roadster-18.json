@@ -133,8 +133,8 @@
         112000
       ],
       "unit": "W",
-      "source": "published figures of its kind (makers' figures, firm): 1839 cc; 52 to 61 kW a litre",
-      "basis": "recalled"
+      "source": "published figures of its kind (makers' figures, firm): 1839 cc; 52 to 61 kW a litre; looked up: auto-data.net, MX-5 NB 1.8 (103 kW at 6500, 162 N m at 4500; 107 kW at 7000, 168 N m at 5000)",
+      "basis": "cited"
     },
     {
       "name": "Speed at peak power",
@@ -148,8 +148,8 @@
         733.0
       ],
       "unit": "rad/s",
-      "source": "published figures of its kind (makers' figures, firm): 1839 cc: 6300 to 7000 rpm",
-      "basis": "recalled"
+      "source": "published figures of its kind (makers' figures, firm): 1839 cc: 6300 to 7000 rpm; looked up: auto-data.net, MX-5 NB 1.8 (103 kW at 6500, 162 N m at 4500; 107 kW at 7000, 168 N m at 5000)",
+      "basis": "cited"
     },
     {
       "name": "Peak torque",
@@ -163,8 +163,8 @@
         172
       ],
       "unit": "N m",
-      "source": "published figures of its kind (makers' figures, firm): 1839 cc; BMEP 10.6 to 11.7 bar (a naturally aspirated petrol engine 10 to 13 bar, turbocharged 18 to 25, a modern truck diesel 20 to 25: Heywood, Internal Combustion Engine Fundamentals, ch. 2)",
-      "basis": "recalled"
+      "source": "published figures of its kind (makers' figures, firm): 1839 cc; BMEP 10.6 to 11.7 bar (a naturally aspirated petrol engine 10 to 13 bar, turbocharged 18 to 25, a modern truck diesel 20 to 25: Heywood, Internal Combustion Engine Fundamentals, ch. 2); looked up: auto-data.net, MX-5 NB 1.8 (103 kW at 6500, 162 N m at 4500; 107 kW at 7000, 168 N m at 5000)",
+      "basis": "cited"
     },
     {
       "name": "Speed at peak torque",
@@ -178,8 +178,8 @@
         576.0
       ],
       "unit": "rad/s",
-      "source": "published figures of its kind (makers' figures, firm): 1839 cc: 4500 to 5500 rpm (a turbocharged engine's plateau: its whole span)",
-      "basis": "recalled"
+      "source": "published figures of its kind (makers' figures, firm): 1839 cc: 4500 to 5500 rpm (a turbocharged engine's plateau: its whole span); looked up: auto-data.net, MX-5 NB 1.8 (103 kW at 6500, 162 N m at 4500; 107 kW at 7000, 168 N m at 5000)",
+      "basis": "cited"
     },
     {
       "name": "Warm idle",
