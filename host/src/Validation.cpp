@@ -259,7 +259,9 @@ namespace tee
                             continue;
                         }
                         for (const PredictPoint& p : pc.points)
-                            curve.points.push_back({p.speed, p.torque, p.power, {}});
+                            if (p.valid)
+                                curve.points.push_back({p.speed, p.torque, p.power, {}});
+                        curve.faults = pc.faults;
                         curve.simulatedSeconds = pc.simulatedSeconds;
                         curve.wallSeconds = pc.wallSeconds;
                         hostBraked.insert(key);
@@ -273,6 +275,8 @@ namespace tee
                     curves[key] = curve;
                 }
                 const DynoCurve& c = curves[key];
+                if (c.faults > 0)
+                    row.invariant = "the engine diverged (FLAG_FAULT) " + std::to_string(c.faults) + " time(s) on the dyno";
                 if (hostBraked.count(key) != 0)
                     row.how = "steady points";
                 if (c.points.empty())
@@ -346,6 +350,9 @@ namespace tee
                     it = runs.emplace(t.scenario, std::move(run)).first;
                 }
                 const RunResult& run = it->second;
+                if (run.host.engineFaults > 0)
+                    row.invariant = "the engine diverged (FLAG_FAULT) " + std::to_string(run.host.engineFaults)
+                                    + " time(s) in " + t.scenario;
                 const double to = t.to < 0.0 ? run.simulatedSeconds : t.to;
                 if (!t.relativeTo.empty())
                 {
@@ -407,6 +414,12 @@ namespace tee
                 row.pass = *row.measured >= t.low && *row.measured <= t.high;
             rows.push_back(row);
         }
+        for (ValidationRow& r : rows)
+            if (!r.invariant.empty())
+            {
+                r.pass = false;
+                r.why = r.invariant;
+            }
         return true;
     }
 

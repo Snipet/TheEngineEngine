@@ -5,12 +5,16 @@
 
 #include "tee/Build.h"
 #include "tee/Fields.h"
+#include "tee/Program.h"
+#include "tee/Schema.h"
+#include "tee/Sim.h"
 #include "tee/SimHost.h"
 #include "tee/Telemetry.h"
 
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <limits>
 
 namespace tee::player
 {
@@ -85,29 +89,51 @@ namespace tee::player
     }
 
     SimAdapter::SimAdapter() = default;
-    SimAdapter::~SimAdapter() = default;
+
+    SimAdapter::~SimAdapter()
+    {
+        // the worker joined here, before anything it writes goes (never left to a static's destructor)
+        if (worker_.joinable())
+            worker_.join();
+    }
 
     std::unique_ptr<SimAdapter> SimAdapter::create(const Options& options, std::string& errors)
     {
         std::unique_ptr<SimAdapter> a(new SimAdapter());
-        a->host_ = std::make_unique<SimHost>();
-        LoadOptions lo;
+        a->started_ = std::chrono::steady_clock::now();
+        a->load_ = std::make_unique<LoadOptions>();
+        LoadOptions& lo = *a->load_;
         lo.sim.optimisation = options.optimisation;
         lo.sim.checks = options.checks;
         lo.sampleRate = options.sampleRate;
-        if (!a->host_->load(options.directory, lo, errors))
+
+        // The front end alone, here: the program's errors, its Schema and its Fields (a tenth of a second). The
+        // machine code is not made: no function is looked up.
+        Program::Options po;
+        po.optimisation = lo.sim.optimisation;
+        po.checks = lo.sim.checks;
+        po.defines = lo.sim.defines;
+        a->preview_ = Program::fromDirectory(options.directory, lo.sim.entry, po, errors);
+        if (!a->preview_)
         {
             if (errors.empty())
-                errors = "the simulator did not load, and the host gave no reason";
+                errors = "the simulator did not compile, and FMinus gave no message";
             return nullptr;
         }
-        const std::shared_ptr<Sim> sim = a->host_->sim();
-        a->compileSeconds_ = sim->program().compileSeconds() + sim->program().linkSeconds();
-        a->warnings_ = sim->program().warnings();
+        std::string error;
+        a->previewSchema_ = Schema::of(a->preview_->fminus(), lo.sim.module, error);
+        if (a->previewSchema_)
+            a->previewFields_ = Fields::of(*a->previewSchema_, error);
+        if (!a->previewFields_)
+        {
+            errors = lo.sim.entry + ": error: " + (error.empty() ? "the program has no module " + lo.sim.module : error);
+            return nullptr;
+        }
+        a->warnings_ = a->preview_->warnings();
 
-        const Fields& fields = a->host_->fields();
+        const Fields& fields = *a->previewFields_;
+        a->host_ = std::make_unique<SimHost>();
         a->build_ = std::make_unique<tee::Build>(fields);
-        a->build_->attach(a->host_.get());
         for (const FieldInfo& f : fields.all())
         {
             if (f.block == "spec" && oneNumber(f) && !f.hidden && f.path.size() > 5)
@@ -123,18 +149,102 @@ namespace tee::player
             }
         }
         a->frame_ = std::make_unique<TelemetryFrame>();
+
+        // The machine code: the whole compile again on a worker (Sim::compile; the front end is a small share of it).
+        SimAdapter* self = a.get();
+        const std::filesystem::path dir = options.directory;
+        const Sim::Options so = lo.sim;
+        a->worker_ = std::thread([self, dir, so] {
+            std::string e;
+            std::shared_ptr<Sim> sim = Sim::compile(dir, so, e);
+            {
+                const std::lock_guard<std::mutex> lock(self->compiled_);
+                self->sim_ = std::move(sim);
+                self->workerErrors_ = e;
+            }
+            self->workerState_.store(self->sim_ ? 1 : 2, std::memory_order_release);
+        });
+        if (!options.background && !a->waitReady(600.0))
+        {
+            errors = a->compileError_.empty() ? std::string("the simulator's machine code was not made") : a->compileError_;
+            return nullptr;
+        }
         return a;
+    }
+
+    double SimAdapter::compilingSeconds() const
+    {
+        return ready() ? 0.0 : std::chrono::duration<double>(std::chrono::steady_clock::now() - started_).count();
+    }
+
+    void SimAdapter::adopt()
+    {
+        if (ready() || held_ || !compileError_.empty())
+            return;
+        const int state = workerState_.load(std::memory_order_acquire);
+        if (state == 0)
+            return;
+        if (worker_.joinable())
+            worker_.join();
+        std::shared_ptr<Sim> sim;
+        {
+            const std::lock_guard<std::mutex> lock(compiled_);
+            sim = sim_;
+            if (state == 2)
+                compileError_ = workerErrors_.empty() ? std::string("the simulator's machine code was not made") : workerErrors_;
+        }
+        if (!sim)
+            return;
+        std::string errors;
+        if (!host_->attach(sim, *load_, errors))
+        {
+            compileError_ = errors.empty() ? std::string("the host did not take the simulator") : errors;
+            return;
+        }
+        if (rate_ > 1000.0)
+            host_->prepare(rate_, maxBlock_ > 0 ? maxBlock_ : host_->maxBlock());
+        // the document: the compiled program's Fields from now on (the same layout), and everything sent to the host
+        build_->rebind(host_->fields());
+        build_->attach(host_.get());
+        build_->flush();
+        compileSeconds_ = sim->program().compileSeconds() + sim->program().linkSeconds();
+        codeBytes_ = sim->program().codeBytes();
+        if (warnings_.empty())
+            warnings_ = sim->program().warnings();
+        ready_.store(true, std::memory_order_release);   // the audio thread plays it from its next call
+    }
+
+    bool SimAdapter::waitReady(double seconds)
+    {
+        const auto start = std::chrono::steady_clock::now();
+        while (!ready() && compileError_.empty())
+        {
+            if (!held_ && workerState_.load(std::memory_order_acquire) != 0)
+            {
+                adopt();
+                continue;
+            }
+            if (std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count() > seconds)
+                return false;
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        }
+        return ready();
     }
 
     void SimAdapter::frame()
     {
-        build_->flush();
+        if (!ready())
+            adopt();
+        if (ready())
+            build_->flush();
         stale_ = true;              // the next value asked is of the newest block, however soon it is asked
     }
 
     std::string SimAdapter::why() const
     {
-        return host_->stopReason();
+        if (!compileError_.empty())
+            return compileError_;
+        return ready() ? host_->stopReason() : std::string();
     }
 
     const ParamInfo& SimAdapter::info(int i) const
@@ -158,7 +268,8 @@ namespace tee::player
         if (p.kind != ParamInfo::Kind::real)
             v = std::round(v);
         build_->set(paths_[u], v);
-        build_->flush();            // to the host's queue at once; what finds it full goes with a later frame()
+        if (ready())
+            build_->flush();            // to the host's queue at once; what finds it full goes with a later frame()
     }
 
     int SimAdapter::findParam(std::string_view id) const
@@ -181,7 +292,7 @@ namespace tee::player
         const FieldInfo* field = nullptr;
         std::size_t index = 0;
         std::string error;
-        if (!telemetryElement(host_->fields(), name, field, index, error) || field == nullptr || field->table())
+        if (!telemetryElement(*previewFields_, name, field, index, error) || field == nullptr || field->table())
             return -1;
         tel_.push_back(field);
         telIndex_.push_back(index);
@@ -204,6 +315,11 @@ namespace tee::player
             return;
         fetched_ = now;
         stale_ = false;
+        if (!ready())
+        {
+            have_ = false;
+            return;
+        }
         have_ = host_->telemetry(*frame_) || have_;
     }
 
@@ -211,6 +327,8 @@ namespace tee::player
     {
         if (handle < 0 || handle >= static_cast<int>(tel_.size()))
             return 0.0;
+        if (!ready())
+            return std::numeric_limits<double>::quiet_NaN();     // nothing plays yet: absent, drawn as a dash
         refresh();
         const auto h = static_cast<std::size_t>(handle);
         return have_ ? frame_->get(*tel_[h], telIndex_[h]) : 0.0;
@@ -236,6 +354,8 @@ namespace tee::player
 
     bool SimAdapter::pressCounter(std::string_view name)
     {
+        if (!ready())
+            return false;
         SimControls c = host_->controls();
         double v = 0.0;
         if (!getControl(c, name, v) || !setControl(c, name, v + 1.0))
@@ -246,6 +366,8 @@ namespace tee::player
 
     void SimAdapter::setControls(const ControlsFrame& f)
     {
+        if (!ready())
+            return;                             // nothing plays yet: the driver's frame waits for the next one
         SimControls c = host_->controls();      // what the frame does not carry (the dyno's, the scope) stays
         c.ignition = f.ignition;
         c.throttle = f.throttle;
@@ -263,14 +385,30 @@ namespace tee::player
 
     void SimAdapter::prepare(double rate, int maxBlock)
     {
+        // (the audio is stopped: kept for the host when it is not ready yet)
         if (rate > 1000.0)
-            host_->prepare(rate, maxBlock > 0 ? maxBlock : host_->maxBlock());
+        {
+            rate_ = rate;
+            maxBlock_ = maxBlock;
+            load_->sampleRate = rate;
+            if (maxBlock > 0)
+                load_->maxBlock = std::max(load_->maxBlock, maxBlock);
+            if (ready())
+                host_->prepare(rate, maxBlock > 0 ? maxBlock : host_->maxBlock());
+        }
     }
 
     void SimAdapter::process(float* l, float* r, int n) noexcept
     {
         if (n <= 0)
             return;
+        if (!ready_.load(std::memory_order_acquire))
+        {
+            std::fill(l, l + n, 0.0f);
+            std::fill(r, r + n, 0.0f);
+            tail_.write(l, r, n);
+            return;
+        }
         host_->process(l, r, n);
         tail_.write(l, r, n);
     }

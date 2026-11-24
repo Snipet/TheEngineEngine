@@ -137,7 +137,7 @@ int main(int argc, char** argv)
                 const tee::ValidationRow& r = columns[c][i];
                 const bool referenceMeets =
                     c > 0 && i < columns[0].size() && columns[0][i].measured && columns[0][i].pass && !simulatorOnly;
-                failed = failed || (r.measured && !r.pass && (r.target->fast || referenceMeets));
+                failed = failed || (r.measured && !r.pass && (r.target->fast || referenceMeets)) || !r.invariant.empty();
             }
     }
     return failed ? 1 : 0;
