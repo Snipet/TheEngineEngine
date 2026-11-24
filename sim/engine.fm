@@ -820,6 +820,10 @@ module Engine
     {
         const float d16 = 16.0f * dt;
         crank.sense();
+        // (package M's fan through the radiator, spec.voices.model 1; the road's air when driven)
+        heat.fanModel = spec.voices.model != 0 ? 1 : 0;
+        heat.fanAir = ex.vo.fan.on != 0 ? 1.0f : 0.0f;
+        heat.roadSpeed = set.drive != 0 ? fabsf(car.speedNow()) : 0.0f;
         heat.control(d16, set.ambF, vTotal, ecu.state, crank.rpm, crank.omega);
         for (int c = 0; c < lay.n; ++c)
             cyl[c].tw = heat.tSurf;
