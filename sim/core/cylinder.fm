@@ -64,6 +64,10 @@ module Cylinder
     float bias;         // this cylinder's own small difference in what it burns (it never changes)
     float hA;           // heat lost to the walls, W per K
     float tw;           // the walls' temperature (K): a warm engine's 450
+    float leakA;        // a rotary face's seals' leakage path (m^2, with its discharge coefficient), to the faces beside
+                        // it, taken at the air's pressure; 0: none (the reference's, and every piston engine's)
+    float mLeak;        // the mass it leaked this cycle (kg), and the last cycle's
+    float mLeakLast;
     // what it did this sample
     float qE;           // volume flow into the header (m^3/s)
     float qI;           // volume flow into the runner (negative: the intake drawing in)
@@ -263,6 +267,8 @@ module Cylinder
         if (evcNow)
         {
             mRes = m;
+            mLeakLast = mLeak;
+            mLeak = 0.0f;
             if (exOut > 1.0e-12f)
                 exFrac = fminf(exInert / exOut, 1.0f);
             exOut = 0.0f;
@@ -297,6 +303,19 @@ module Cylinder
         hOut += mOutE >= 0.0f ? cpC * t * mOutE : 287.0f * gp / (gp - 1.0f) * tPipe * mOutE;
         hOut += mOutI >= 0.0f ? cpC * t * mOutI : 287.0f * ga / (ga - 1.0f) * tAir * mOutI;
         mE = mOutE;
+        // the seals' leakage (a rotary's, fuel.model 1): out to the faces beside it, choked or not, with its heat; the
+        // fuel in what leaks before it burns leaves with it
+        float mLk = 0.0f;
+        if (leakA > 0.0f && p > 101325.0f)
+        {
+            const float rho = p / (287.0f * t);
+            mLk = leakA * fminf(sqrtf(2.0f * rho * (p - 101325.0f)), 0.6847f * p / sqrtf(287.0f * t));
+            hOut += cpC * t * mLk;
+            mLeak += mLk * dt;
+            const float share = fminf(mLk * dt / fmaxf(m, 1.0e-9f), 1.0f);
+            qTot *= 1.0f - share;      // (the fuel is mixed through its unburned gas: the same share of it leaves)
+            mInert = fmaxf(mInert - mLk * dt * fminf(mInert / fmaxf(m, 1.0e-9f), 1.0f), 0.0f);
+        }
         // the burned gas: what leaves takes its share (the gas well mixed); what comes back from the header is
         // burned; what the intake pushes back into its runner waits there, and is the first drawn in again
         {
@@ -356,7 +375,7 @@ module Cylinder
         dq -= hA * (t - tw) * dt;
         const float g1 = gc - 1.0f;
         const float u = p * v / g1 + dq - p * dv - hOut * dt;
-        const float mNew = fmaxf(m - (mOutE + mOutI) * dt, 1.0e-7f);
+        const float mNew = fmaxf(m - (mOutE + mOutI + mLk) * dt, 1.0e-7f);
         const float pOld = p;
         v = vNew;
         p = fmaxf(g1 * u / v, 2000.0f);
