@@ -306,6 +306,7 @@ namespace tee::ui
                     case Kind::turbo:
                         id = "boost.turbo[" + std::to_string(part.index) + "]";
                         name = b.arrangement == Arrangement::compound ? (part.index == 0 ? "LOW-PRESSURE TURBO" : "HIGH-PRESSURE TURBO")
+                             : b.arrangement == Arrangement::sequential ? "SEQUENTIAL TURBOS, 1 THEN 2"
                              : b.turbos > 1 ? "TURBOS" : "TURBO";
                         break;
                     case Kind::blower: id = "boost.supercharger"; name = "SUPERCHARGER"; break;
@@ -488,6 +489,7 @@ namespace tee::ui
                 case Kind::box: return "AIR BOX";
                 case Kind::turbo:
                     return b.arrangement == Arrangement::compound ? (part.index == 0 ? "LOW STAGE" : "HIGH STAGE")
+                         : b.arrangement == Arrangement::sequential ? "SEQUENTIAL"
                          : b.turbos > 1 ? "TURBOS" : "TURBO";
                 case Kind::blower: return "BLOWER";
                 case Kind::cooler: return "COOLER";
@@ -550,8 +552,7 @@ namespace tee::ui
                         c.disc(cx, cy, 3.0f, ink);
                         if (n > 1 && n <= 2)
                         {
-                            const char* tag = b.arrangement == Arrangement::sequential ? (i == 0 ? "PRIMARY" : "SECONDARY")
-                                                                                        : (i == 0 ? "1" : "2");
+                            const char* tag = i == 0 ? "1" : "2";
                             c.text(tag, cx + rr + 6.0f, cy - 6.0f, look::kCaps, p.label);
                         }
                     }

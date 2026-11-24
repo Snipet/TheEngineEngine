@@ -887,7 +887,7 @@ namespace tee::ui
         }
 
         // ---- state -------------------------------------------------------------------------------------------------
-        DynoRequest plan_{ false, 1500.0 * chart::kRpm, 7000.0 * chart::kRpm, 600.0 * chart::kRpm, 1.0, {} };
+        DynoRequest plan_{ false, 1500.0 * chart::kRpm, 7000.0 * chart::kRpm, 600.0 * chart::kRpm, 1.0, {}, {}, 0.6, 0 };
         int gear_ = 4;
         std::vector<RowView> rows_;
         bool showPredicted_ = true, showBefore_ = true;

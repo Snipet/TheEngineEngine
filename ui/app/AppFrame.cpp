@@ -11,6 +11,11 @@
 #include <cmath>
 #include <set>
 
+#if __has_include("views/garage/Library.h")
+#include "views/garage/Library.h"
+#define TEE_UI_HAS_LIBRARY 1
+#endif
+
 namespace tee::ui
 {
     namespace
@@ -529,12 +534,17 @@ namespace tee::ui
         return { 0.0f, static_cast<float>(height()) - kCockpitH, static_cast<float>(width()), kCockpitH };
     }
 
-    funkgui::Rect AppFrame::stageRect() const
+    funkgui::Rect AppFrame::stageFor(int w, int h)
     {
-        const float x = railWidth(), inspector = width() >= 1400 ? kInspectorW + 20.0f : kInspectorW;
-        return { x, kTopH, std::max(100.0f, static_cast<float>(width()) - x - inspector),
-                 static_cast<float>(height()) - kTopH - kCockpitH };
+        w = std::max(w, kMinW);
+        h = std::max(h, kMinH);
+        const float x = w >= 1280 ? kRailW : kRailNarrowW, inspector = w >= 1400 ? kInspectorW + 20.0f : kInspectorW;
+        return { x, kTopH, std::max(100.0f, static_cast<float>(w) - x - inspector), static_cast<float>(h) - kTopH - kCockpitH };
     }
+
+    funkgui::Rect AppFrame::stageRect() const { return stageFor(width(), height()); }
+
+    void AppFrame::setLibrary(garage::Library* library) { ctx_->library = library; }
 
     funkgui::Rect AppFrame::ribbonRect() const
     {
@@ -776,6 +786,10 @@ namespace tee::ui
     void AppFrame::tick(float dt)
     {
         dyno_->tick(dt);
+#ifdef TEE_UI_HAS_LIBRARY
+        if (ctx_->library != nullptr)
+            ctx_->library->tick(dt);
+#endif
         // The units changed: the pages again, with the new units' texts.
         if (units_.revision() != unitsSeen_ && !(gestures() != nullptr && gestures()->dragging()))
         {
