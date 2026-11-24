@@ -1,0 +1,20 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Small-block 5.7 L, carburettor-like cams",
+  "notes": "The cams, springs and phasers of the archetype \"Small-block 5.7 L, carburettor-like\" alone (intake 268/214 degrees at the seat/1 mm, 10.9 mm; exhaust 276/224, 10.9 mm): loaded as a part, they replace only the valvetrain's cam fields.",
+  "spec": {
+    "valve": {
+      "model": "Lab",
+      "train": "Pushrod",
+      "inDurSeat": 268,
+      "inDur1mm": 214,
+      "inLift": 0.0109,
+      "inCentre": 110,
+      "exDurSeat": 276,
+      "exDur1mm": 224,
+      "exLift": 0.0109,
+      "exCentre": 114
+    }
+  }
+}

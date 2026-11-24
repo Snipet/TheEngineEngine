@@ -1,0 +1,25 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Dual exhaust with an H-pipe",
+  "notes": "Two sides joined by an H-pipe: the deeper, classic V8 note. Loaded as a part, it replaces only the exhaust fields it sets. Today the engine hears the four dials (headers, pipe, crossover, muffler); the builder's pipes are kept for when it runs them.",
+  "spec": {
+    "exhaust": {
+      "headers": 0.6,
+      "pipe": 0.55,
+      "crossover": 0.5,
+      "muffler": 0.5,
+      "model": "Builder",
+      "converter": [
+        1,
+        1
+      ],
+      "crossKind": 1,
+      "crossAt": 1,
+      "mufKind": [
+        2,
+        2
+      ]
+    }
+  }
+}

@@ -1,0 +1,91 @@
+{
+  "format": "tee-validation",
+  "version": 1,
+  "build": "builds/archetypes/tractor-15-inline-six.json",
+  "description": "The content package's 15 L inline-six tractor diesel at a standard day, every new model on: a stock heavy-duty diesel's figures.",
+  "targets": [
+    {
+      "name": "Starts and runs",
+      "scenario": "idle",
+      "tel": "engine.state",
+      "measure": "last",
+      "range": [
+        2,
+        2
+      ],
+      "fast": true,
+      "source": "a warm engine started on its key runs (engine.state 2)"
+    },
+    {
+      "name": "Within full scale",
+      "scenario": "rev-limit",
+      "audio": "peak",
+      "range": [
+        0,
+        1
+      ],
+      "fast": true,
+      "source": "02-contracts.md, section 1: what process writes is within +-1"
+    },
+    {
+      "name": "The governor holds",
+      "scenario": "rev-limit",
+      "tel": "engine.speed",
+      "measure": "max",
+      "during": [
+        6,
+        10
+      ],
+      "relativeTo": "engine.redline",
+      "range": [
+        0.97,
+        1.03
+      ],
+      "unit": "of the redline",
+      "fast": true,
+      "source": "a diesel's governor holds the speed at its high idle within a few percent"
+    },
+    {
+      "name": "Warm idle",
+      "scenario": "idle-warm",
+      "tel": "engine.speed",
+      "measure": "mean",
+      "during": [
+        8,
+        12
+      ],
+      "range": [
+        62.8,
+        83.8
+      ],
+      "unit": "rad/s",
+      "source": "a heavy-duty diesel idles at 600 to 800 rpm (a rule of thumb from makers' specifications)"
+    },
+    {
+      "name": "Governed speed",
+      "scenario": "rev-limit",
+      "tel": "engine.redline",
+      "measure": "last",
+      "range": [
+        188.5,
+        251.3
+      ],
+      "unit": "rad/s",
+      "source": "a heavy diesel's rated speed is about 1700 to 2100 rpm and its governed no-load speed some 10 to 15 % above: 1800 to 2400 rpm (a rule of thumb)"
+    },
+    {
+      "name": "Peak torque",
+      "dyno": {
+        "from": 80,
+        "to": 260
+      },
+      "measure": "maxTorque",
+      "range": [
+        2141,
+        2855
+      ],
+      "unit": "N m",
+      "source": "a turbocharged heavy-duty diesel's bmep at its torque peak is 1.8 to 2.4 MPa (Heywood, ch. 2; makers' data for 13 to 16 L sixes): T = bmep Vd / 4 pi for 14.9 L"
+    }
+  ]
+}
