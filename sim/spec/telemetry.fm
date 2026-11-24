@@ -82,6 +82,8 @@ module EngineTel
         [[ui::help("The charge's temperature as the intake valve closes, the mean over the cylinders")]];
     float trappedMass [[ui::label("Trapped charge")]] [[ui::quantity("mass")]]
         [[ui::help("The unburned gas each cylinder holds as its intake valve closes, the mean over the cylinders")]];
+    int layoutReason [[ui::label("Why the custom layout was refused")]]
+        [[ui::choices("Not refused", "Cylinders fire together", "Rotors fire together", "A cylinder's bank is outside the banks")]];
 };
 
 module BoostTel

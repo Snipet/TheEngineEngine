@@ -443,7 +443,7 @@ TEST_CASE("a made-up audio thread in a tight loop while another thread sets ten 
     CHECK(t.host.commandsApplied == 10000);
 }
 
-TEST_CASE("LoadOptions::hold writes its values before every block; a path the program lacks is skipped", "[simhost]")
+TEST_CASE("the values a host holds (LoadOptions::hold) are written before every block; a path the program lacks is skipped", "[simhost]")
 {
     SimHost host;
     std::string errors;

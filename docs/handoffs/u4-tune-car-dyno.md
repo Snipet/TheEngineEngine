@@ -5,11 +5,11 @@ Branch `claude/awesome-gates-ntdb58`. Pages: `docs/ui/tune.md`, `car.md`, `dyno.
 1 of 80 fails, `frame.ribbon`, which pictures AIR):
 - The frame's stage: every stage lays out for the rect it is given and folds on a small one (~660x570: DYNO narrows
   its side and cursor card, TUNE folds its map list into PREV/NEXT and drops the slices, CAR wraps its words and
-  compacts driveline and gearing). `dyno.framestages` pictures each at 660x570 and 1100x860 (`out/ui/*.frame*.png`);
+  compacts driveline and gearing). `dyno.framestages.pictures` (nightly) pictures each at 660x570 and 1100x860 (`out/ui/*.frame*.png`);
   `dyno.text` holds no text over text and none off the stage at 660x570, 1100x700, 1100x860, 1600x1000 (d1), with a
   self-check that it does catch both. Goldens at the frame's exact stage rects wait for U1's numbers.
 - DYNO `ui/views/dyno/`: `dyno.stage`, `dyno.large` (+`dyno.paper`), `dyno.run` (start, watch, land, rename, CSV, stop),
-  `dyno.absent`, `dyno.sheet`. Shared drawing pieces in `dyno/Chart.h` (dashes, ticks, `chart::Layer`).
+  `dyno.absent`, `dyno.sheet.pictures` (nightly). Shared drawing pieces in `dyno/Chart.h` (dashes, ticks, `chart::Layer`).
 - TUNE `ui/views/tune/`: `tune.stage`, `tune.large` (+`tune.paper`), `tune.edit` (block, nudge, fill, smooth, typed,
   undo, the dyno asked), `tune.inspector`, `tune.absent`. Demo data: `tune/TuneDemo.h`.
 - CAR `ui/views/car/`: `car.stage`, `car.large` (+`car.paper`), `car.select`, `car.topspeed`, `car.absent`. Demo data:

@@ -36,6 +36,8 @@ module LayoutGeom
     int order[MAX_CYL];    // the firing order: cylinder indexes from 0, cylinder 1 (index 0) first
     float interval[MAX_CYL];   // degrees from each firing in that order to the next
     int ok;                     // 1: a layout that makes sense
+    int reason;                 // why not: 0 none, 1 cylinders fire together, 2 rotors fire together, 3 a cylinder's bank
+                                // outside the banks
     int same;                   // pairs of cylinders that fire together
 
     // x mod m into [0, m)
@@ -53,6 +55,7 @@ module LayoutGeom
     void derive(const EngineSpec* s)
     {
         ok = 1;
+        reason = 0;
         same = 0;
         rotary = s->rotors > 0 ? (s->rotors > ENGINE_MAX_ROTORS ? ENGINE_MAX_ROTORS : s->rotors) : 0;
         if (rotary > 0)
@@ -83,6 +86,7 @@ module LayoutGeom
                 if (b < 0 || b >= ENGINE_MAX_BANKS)
                 {
                     ok = 0;
+                    reason = 3;
                     b = 0;
                 }
                 const float ba = s->bankAngle[b];
@@ -106,6 +110,7 @@ module LayoutGeom
         cyc = cycle;
         rotary = isRotary != 0 ? count / 3 : 0;
         ok = 1;
+        reason = 0;
         same = 0;
         for (int c = 0; c < n; ++c)
         {
@@ -163,6 +168,10 @@ module LayoutGeom
             interval[i] = 0.0f;
         }
         if (same > 0)
+        {
             ok = 0;
+            if (reason == 0)
+                reason = rotary > 0 ? 2 : 1;
+        }
     }
 };

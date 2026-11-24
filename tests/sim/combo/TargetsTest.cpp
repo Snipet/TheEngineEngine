@@ -82,7 +82,7 @@ namespace
 } // namespace
 
 TEST_CASE("targets: the new turbo with either ECU makes boost; anti-lag and nitrous switched while it pulls",
-          "[combo][targets]")
+          "[nightly][targets]")
 {
     for (int ecu : {0, 1})
     {
@@ -114,7 +114,7 @@ TEST_CASE("targets: the new turbo with either ECU makes boost; anti-lag and nitr
     }
 }
 
-TEST_CASE("targets: launch control holds its speed on the new ECU and the new vehicle", "[combo][targets]")
+TEST_CASE("targets: launch control holds its speed on the new ECU and the new vehicle", "[nightly][targets]")
 {
     // a manual: the driver holds the clutch down and the brake, presses the launch button and floors it; at 6 s lets
     // the brake go and the clutch up over 0.3 s
@@ -144,7 +144,7 @@ TEST_CASE("targets: launch control holds its speed on the new ECU and the new ve
     report(v, "ecu.model+car.model", "v8", "launch-control");
 }
 
-TEST_CASE("targets: a dog box's upshifts cut and its downshifts blip on the new ECU", "[combo][targets]")
+TEST_CASE("targets: a dog box's upshifts cut and its downshifts blip on the new ECU", "[nightly][targets]")
 {
     Times tm = runningTimes(12.0);
     tm.driveFrom = 3.3;
@@ -174,7 +174,7 @@ TEST_CASE("targets: a dog box's upshifts cut and its downshifts blip on the new 
     report(v, "ecu.model+car.model", "v8", "dog-box");
 }
 
-TEST_CASE("targets: traction control on a wet road holds the driven wheels' slip near its target", "[combo][targets]")
+TEST_CASE("targets: traction control on a wet road holds the driven wheels' slip near its target", "[nightly][targets]")
 {
     double slip[2] = {0.0, 0.0};
     for (int tc : {0, 1})
@@ -201,15 +201,13 @@ TEST_CASE("targets: traction control on a wet road holds the driven wheels' slip
     }
     std::printf("targets: on a wet road in first the rear wheels slip %.3f without traction control, %.3f with "
                 "(target ecu.traction.slip 0.10)\n", slip[0], slip[1]);
-    // X-011, from a standstill (2026-11-24; H's half fixed in 0e7257f, the rest with I): at walking pace only a
-    // slipping clutch can hold 10 % slip, so it is a known finding, reported and not failed, until I's clutch does
-    if (!(slip[1] < 0.5 * slip[0] && slip[1] < 0.2))
-        WARN("known X-011 standstill (2026-11-24, I via the lead): from rest traction control holds the slip at "
-             << slip[1] << " against 0.10");
+    // X-011 from a standstill: fixed by I (c0f95c2: the car's own clutch limited to what the tyres carry at the target)
+    CHECK(slip[1] < 0.5 * slip[0]);
+    CHECK(slip[1] < 0.2);
 }
 
 TEST_CASE("targets: traction control on a wet road from rolling: more speed and the slip near its target",
-          "[combo][targets]")
+          "[nightly][targets]")
 {
     // pulled away gently in first, second at 4 s, then floored at 6 s on a wet road: H's fix (0e7257f, 7648df9)
     double slip[2] = {0.0, 0.0}, speed[2] = {0.0, 0.0};
@@ -275,14 +273,14 @@ namespace
 } // namespace
 
 TEST_CASE("targets: the fuel-cut and spark-cut limiters against a wheel that spins up in first on a wet road",
-          "[combo][targets]")
+          "[nightly][targets]")
 {
     limiterCase(0);
     limiterCase(1);
 }
 
 TEST_CASE("targets: the soft and throttle limiters against a wheel that spins up in first on a wet road",
-          "[combo][targets]")
+          "[nightly][targets]")
 {
     limiterCase(2);
     limiterCase(3);
@@ -323,7 +321,7 @@ namespace
     }
 } // namespace
 
-TEST_CASE("targets: full throttle on the engine dyno makes torque: the V8 and the turbo V8", "[combo][targets]")
+TEST_CASE("targets: full throttle on the engine dyno makes torque: the V8 and the turbo V8", "[nightly][targets]")
 {
     dynoCase(*archetype("v8"));
     dynoCase(*archetype("turbo-v8-dual"));
@@ -358,7 +356,7 @@ TEST_CASE("measure: the idle against its set speed, the cam and the air, under b
 }
 
 TEST_CASE("fixed X-001: the custom engine over the default build, its geometry at the Spec's defaults, starts and runs",
-          "[combo][fixed]")
+          "[nightly][fixed]")
 {
     // found 2026-11-24 (every pin at 0: the eight compressed together and the starter stalled); fixed by D in 3d4b400:
     // such a geometry is refused and the layout dial's firing runs, tel.engine.layoutRefused 1
@@ -378,7 +376,7 @@ TEST_CASE("fixed X-001: the custom engine over the default build, its geometry a
     CHECK(r.tel("engine.layoutRefused").last() == 1.0);
 }
 
-TEST_CASE("fixed X-003: the new combustion and ECU together start the V8 at -20 C", "[combo][fixed]")
+TEST_CASE("fixed X-003: the new combustion and ECU together start the V8 at -20 C", "[nightly][fixed]")
 {
     // found 2026-11-24 (no start in 10 s at 253 K with fuel.model and ecu.model on); fixed by H in b09a0a6
     std::uint32_t mask = 0;
@@ -408,4 +406,45 @@ TEST_CASE("fixed X-007: the reduced Spec (an 18 kg piston on a single with the a
     const Verdict v = judge(r, tm, nullptr, false, referenceStep("v8", Kind::Tour));
     report(v, "as reduced", "x007-heavy-piston", "X-007");
     CHECK(r.tel("engine.state").during(3.0, 10.5).min() == 2.0);   // it runs throughout
+}
+
+namespace
+{
+    // A start with the key held one second and let go (the ECU's cranking-to-running rule: N1 found a diesel switched
+    // off at 540 rpm by a petrol figure, 1792025): it must be running at 3 s and idle on.
+    void shortKeyCase(const char* build, bool all)
+    {
+        Times tm;
+        tm.start = 0.25;
+        tm.started = 1.25;
+        tm.idleFrom = 4.0;
+        tm.idleTo = 6.0;
+        tm.end = 6.0;
+        tee::test::Scenario s(buildPath(build));
+        s.at(0.0).spec("env.temperature", 293.15).control("mode", 1).lever(0).clutch(0).throttle(0).ignition(tee::On);
+        if (all)
+            for (const Switch& w : switches())
+                s.spec(w.path, w.on);
+        s.at(tm.start).ignition(tee::Start);
+        s.at(tm.started).ignition(tee::On);
+        const tee::test::Run r = s.run(tm.end);
+        Verdict v = judge(r, tm, archetype(build), false, referenceStep(build, Kind::Tour));
+        if (r.tel("engine.state").during(3.0, 6.0).min() != 2.0)
+            v.failures.push_back({"start", "a one-second key: not running from 3 s on"});
+        report(v, all ? "all" : "none", build, "short-key");
+    }
+} // namespace
+
+TEST_CASE("targets: a one-second key starts the V8 with nothing and everything on", "[combo][targets]")
+{
+    for (const char* b : {"v8"})
+        for (bool all : {false, true})
+            shortKeyCase(b, all);
+}
+
+TEST_CASE("targets: a one-second key starts every archetype with nothing and everything on", "[nightly][targets]")
+{
+    for (const Archetype& a : archetypes())
+        for (bool all : {false, true})
+            shortKeyCase(a.name, all);
 }

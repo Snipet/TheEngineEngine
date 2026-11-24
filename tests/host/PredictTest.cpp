@@ -196,77 +196,90 @@ TEST_CASE("the real V8's predicted curve: braked by the host, coarse within seco
                                       << " kW");
 }
 
-TEST_CASE("the curve at 48 kHz inside is the 96 kHz curve within 3 % of the peak torque (a diesel 5 % on its plateau), on each shipped build",
-          "[predict][engine][sim]")
+namespace
 {
-    const std::filesystem::path source = std::filesystem::path(TEE_SOURCE_DIR) / "sim";
-    if (!std::filesystem::exists(source / "engine.fm"))
-        SKIP("no simulator");
-    std::string error;
-    // the program as it is, if it takes TEE_ENGINE_RATE_48000; else a copy under out/ with the hook card D is asked
-    // for (engine.fm's `rate = 96000.0f;` chosen by #ifdef), so that the service's side is tested meanwhile
-    std::filesystem::path dir = source;
-    auto sim = compiled(dir, {}, error);
-    REQUIRE(sim != nullptr);
-    std::shared_ptr<Sim> inner = simAtInnerRate(sim, 48000.0, error);
-    if (!inner)
+    void ratesAgree(const std::vector<const char*>& names)
     {
-        dir = std::filesystem::path(TEE_SOURCE_DIR) / "out" / "tests" / "sim48";
-        std::filesystem::remove_all(dir);
-        std::filesystem::copy(source, dir, std::filesystem::copy_options::recursive);
-        std::ifstream in(dir / "engine.fm");
-        std::stringstream text;
-        text << in.rdbuf();
-        std::string program = text.str();
-        const std::string line = "        rate = 96000.0f;\n";
-        if (program.find(line) == std::string::npos)
-            SKIP("engine.fm neither takes TEE_ENGINE_RATE_48000 nor sets rate = 96000.0f where the test can hook it");
-        program.replace(program.find(line), line.size(),
-                        "#ifdef TEE_ENGINE_RATE_48000\n        rate = 48000.0f;\n#else\n        rate = 96000.0f;\n#endif\n");
-        std::ofstream(dir / "engine.fm") << program;
-        sim = compiled(dir, {}, error);
+        const std::filesystem::path source = std::filesystem::path(TEE_SOURCE_DIR) / "sim";
+        if (!std::filesystem::exists(source / "engine.fm"))
+            SKIP("no simulator");
+        std::string error;
+        // the program as it is, if it takes TEE_ENGINE_RATE_48000; else a copy under out/ with the hook card D is asked
+        // for (engine.fm's `rate = 96000.0f;` chosen by #ifdef), so that the service's side is tested meanwhile
+        std::filesystem::path dir = source;
+        auto sim = compiled(dir, {}, error);
         REQUIRE(sim != nullptr);
-        inner = simAtInnerRate(sim, 48000.0, error);
-        WARN("sim/ does not take TEE_ENGINE_RATE_48000 yet: tested on a hooked copy");
-    }
-    INFO(error);
-    REQUIRE(inner != nullptr);
-    for (const char* name : {"default", "v8", "v10", "large-diesel"})
-    {
-        CAPTURE(name);
-        Build build(sim->fields());
-        std::vector<std::string> warnings;
-        REQUIRE(build.loadFile(std::filesystem::path(TEE_SOURCE_DIR) / "content" / "builds" / (std::string(name) + ".json"),
-                               BuildPart::Whole, warnings, error));
-        PredictOptions options;
-        PredictCurve full, half;
-        REQUIRE(predictCurve(sim, build, options, full, error));
-        options.innerRate = 48000.0;
-        REQUIRE(predictCurve(sim, build, options, half, error, nullptr, inner));
-        CHECK(full.innerRate == 96000.0);
-        const bool machine = build.fieldOf("boost.model") >= 0 && build.get("boost.model") != 0.0;
-        CHECK(half.innerRate == (machine ? 96000.0 : 48000.0));
-        REQUIRE(full.points.size() == half.points.size());
-        double peak = 0.0, worst = 0.0;
-        for (const PredictPoint& p : full.points)
-            peak = std::max(peak, std::fabs(p.torque));
-        // A petrol engine within 3 % (1.4 to 1.8 % seen on Linux, 2.0 on macOS). The diesel within 5 % on its plateau
-        // only (its points at 90 % of its peak or more): between 1300 and 1650 rpm its charge lights only just (a jump
-        // of speed misfires it for some cycles) and above its governed speed the governor takes the fuel, so a small
-        // difference (another rate, another processor's rounding: 3.7 % on Linux, 11.6 % on macOS) sends a point there
-        // either way. Those points are not compared: the curve's shape there is not a property of the rate.
-        const bool diesel = build.fieldOf("fuel.kind") >= 0 && build.get("fuel.kind") != 0.0;
-        for (std::size_t i = 0; i < full.points.size(); ++i)
+        std::shared_ptr<Sim> inner = simAtInnerRate(sim, 48000.0, error);
+        if (!inner)
         {
-            CHECK(full.points[i].speed == half.points[i].speed);
-            // (a point on the band's edge can be lit at one rate and not at the other: the plateau is where both are)
-            if (diesel && (full.points[i].torque < 0.9 * peak || half.points[i].torque < 0.9 * peak))
-                continue;
-            worst = std::max(worst, std::fabs(half.points[i].torque - full.points[i].torque) / peak);
+            dir = std::filesystem::path(TEE_SOURCE_DIR) / "out" / "tests" / "sim48";
+            std::filesystem::remove_all(dir);
+            std::filesystem::copy(source, dir, std::filesystem::copy_options::recursive);
+            std::ifstream in(dir / "engine.fm");
+            std::stringstream text;
+            text << in.rdbuf();
+            std::string program = text.str();
+            const std::string line = "        rate = 96000.0f;\n";
+            if (program.find(line) == std::string::npos)
+                SKIP("engine.fm neither takes TEE_ENGINE_RATE_48000 nor sets rate = 96000.0f where the test can hook it");
+            program.replace(program.find(line), line.size(),
+                            "#ifdef TEE_ENGINE_RATE_48000\n        rate = 48000.0f;\n#else\n        rate = 96000.0f;\n#endif\n");
+            std::ofstream(dir / "engine.fm") << program;
+            sim = compiled(dir, {}, error);
+            REQUIRE(sim != nullptr);
+            inner = simAtInnerRate(sim, 48000.0, error);
+            WARN("sim/ does not take TEE_ENGINE_RATE_48000 yet: tested on a hooked copy");
         }
-        CHECK(worst < (diesel ? 0.05 : 0.03));
-        WARN(name << ": 48 kHz against 96 kHz, worst " << 100.0 * worst << " % of the peak; engine time "
-                  << half.simulatedSeconds << " s against " << full.simulatedSeconds << " s, wall " << half.wallSeconds
-                  << " s against " << full.wallSeconds << " s");
+        INFO(error);
+        REQUIRE(inner != nullptr);
+        for (const char* name : names)
+        {
+            CAPTURE(name);
+            Build build(sim->fields());
+            std::vector<std::string> warnings;
+            REQUIRE(build.loadFile(std::filesystem::path(TEE_SOURCE_DIR) / "content" / "builds" / (std::string(name) + ".json"),
+                                   BuildPart::Whole, warnings, error));
+            PredictOptions options;
+            PredictCurve full, half;
+            REQUIRE(predictCurve(sim, build, options, full, error));
+            options.innerRate = 48000.0;
+            REQUIRE(predictCurve(sim, build, options, half, error, nullptr, inner));
+            CHECK(full.innerRate == 96000.0);
+            const bool machine = build.fieldOf("boost.model") >= 0 && build.get("boost.model") != 0.0;
+            CHECK(half.innerRate == (machine ? 96000.0 : 48000.0));
+            REQUIRE(full.points.size() == half.points.size());
+            double peak = 0.0, worst = 0.0;
+            for (const PredictPoint& p : full.points)
+                peak = std::max(peak, std::fabs(p.torque));
+            // A petrol engine within 3 % (1.4 to 1.8 % seen on Linux, 2.0 on macOS). The diesel within 5 % on its plateau
+            // only (its points at 90 % of its peak or more): between 1300 and 1650 rpm its charge lights only just (a jump
+            // of speed misfires it for some cycles) and above its governed speed the governor takes the fuel, so a small
+            // difference (another rate, another processor's rounding: 3.7 % on Linux, 11.6 % on macOS) sends a point there
+            // either way. Those points are not compared: the curve's shape there is not a property of the rate.
+            const bool diesel = build.fieldOf("fuel.kind") >= 0 && build.get("fuel.kind") != 0.0;
+            for (std::size_t i = 0; i < full.points.size(); ++i)
+            {
+                CHECK(full.points[i].speed == half.points[i].speed);
+                // (a point on the band's edge can be lit at one rate and not at the other: the plateau is where both are)
+                if (diesel && (full.points[i].torque < 0.9 * peak || half.points[i].torque < 0.9 * peak))
+                    continue;
+                worst = std::max(worst, std::fabs(half.points[i].torque - full.points[i].torque) / peak);
+            }
+            CHECK(worst < (diesel ? 0.05 : 0.03));
+            WARN(name << ": 48 kHz against 96 kHz, worst " << 100.0 * worst << " % of the peak; engine time "
+                      << half.simulatedSeconds << " s against " << full.simulatedSeconds << " s, wall " << half.wallSeconds
+                      << " s against " << full.wallSeconds << " s");
+        }
     }
+} // namespace
+
+TEST_CASE("the curve at 48 kHz inside is the 96 kHz curve within 3 % of the peak torque: the V8", "[predict][engine][sim]")
+{
+    ratesAgree({"v8"});   // the quick form; every shipped build: [nightly] below
+}
+
+TEST_CASE("the curve at 48 kHz inside is the 96 kHz curve within 3 % of the peak torque (a diesel 5 % on its plateau), on each shipped build",
+          "[predict][engine][sim][nightly]")
+{
+    ratesAgree({"default", "v8", "v10", "large-diesel"});
 }

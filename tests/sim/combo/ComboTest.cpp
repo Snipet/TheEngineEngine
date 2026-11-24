@@ -1,8 +1,10 @@
 // tests/sim/combo/ComboTest.cpp: package X's combinations. Each property has a quick form in the default run (under 30 s
 // a case: 01-rules.md section 3) and its full form under the [nightly] tag (ctest --preset nightly; CI's soak tier):
-//   - every archetype with nothing switched on and with everything: the tour (quick); every scenario (nightly);
-//   - each switch alone on the V8's tour and the turbo six's pull (quick); with each switch after it (nightly);
-//   - the archetype corpus: six builds, one of each class (quick); all thirty (nightly);
+//   - the V8 with nothing switched on and with everything through the tour (fast); every archetype, every scenario
+//     (nightly);
+//   - a handful of pairs where packages meet (fast); each switch alone, every pair, every triple (nightly);
+//   - the archetype corpus: the V12 (fast); five more of other classes and all thirty (nightly);
+// The fast tier's budget is 600 CPU-s on CI's runner (01-rules.md section 3).
 //   - every triple of switches (nightly).
 // Each run is judged by combo::judge (Combo.cpp states every bound).
 #include "Combo.h"
@@ -10,6 +12,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <algorithm>
+#include <cstdint>
 #include <cstdlib>
 #include <filesystem>
 #include <vector>
@@ -81,9 +84,9 @@ TEST_CASE("the switches the program has", "[combo]")
     CHECK(s.size() >= 2);
 }
 
-#define ARCHETYPE_CASES(name)                                                                                          \
+#define ARCHETYPE_CASES(name, tier)                                                                                    \
     TEST_CASE("archetype " name " through the tour with nothing switched on and with every switch on",                \
-              "[combo][archetype]")                                                                                    \
+              tier "[archetype]")                                                                                    \
     {                                                                                                                  \
         archetypeCase(name, false, false);                                                                             \
         archetypeCase(name, true, false);                                                                              \
@@ -97,14 +100,14 @@ TEST_CASE("the switches the program has", "[combo]")
         archetypeCase(name, true, true);                                                                               \
     }
 
-ARCHETYPE_CASES("small-four")
-ARCHETYPE_CASES("v8")
-ARCHETYPE_CASES("turbo-six")
-ARCHETYPE_CASES("large-diesel")
-ARCHETYPE_CASES("turbo-v8-dual")
+ARCHETYPE_CASES("small-four", "[nightly]")
+ARCHETYPE_CASES("v8", "[combo]")
+ARCHETYPE_CASES("turbo-six", "[nightly]")
+ARCHETYPE_CASES("large-diesel", "[nightly]")
+ARCHETYPE_CASES("turbo-v8-dual", "[nightly]")
 
 #define PAIRS_CASE(i)                                                                                                  \
-    TEST_CASE("switch " #i " alone", "[combo][pairs]")                                                                  \
+    TEST_CASE("switch " #i " alone", "[nightly][pairs]")                                                                  \
     {                                                                                                                  \
         pairsCase(i, false);                                                                                           \
     }                                                                                                                  \
@@ -186,21 +189,21 @@ namespace
 // the content session's thirty archetypes, each with every model on as the build says: a plausible idle (here 350 to
 // 2000 rpm, bikes and diesels among them), revs, stops, and the judge's every other measure; the click bound twice the
 // build's own reference (a big diesel's own blip steps 18, the V8's 12)
-#define CORPUS_CASE(stem)                                                                                              \
-    TEST_CASE("the archetype corpus: " stem " through the tour", "[combo][corpus]")                                   \
+#define CORPUS_CASE(stem, tier)                                                                                        \
+    TEST_CASE("the archetype corpus: " stem " through the tour", tier "[corpus]")                                   \
     {                                                                                                                  \
         const auto f = corpusDir() / (std::string(stem) + ".json");                                                    \
         if (!std::filesystem::exists(f))                                                                               \
             SKIP("no " << f.string());                                                                                 \
         corpusBuild(f);                                                                                                \
     }
-// the quick form: one of each class (a small four, a pushrod V8, a turbo V8, a diesel, a rotary, a V12)
-CORPUS_CASE("economy-four-15")
-CORPUS_CASE("small-block-57-carb")
-CORPUS_CASE("twin-turbo-hot-vee-v8-40")
-CORPUS_CASE("diesel-20-common-rail")
-CORPUS_CASE("rotary-twin-13")
-CORPUS_CASE("v12-65")
+// one of each class (a small four, a pushrod V8, a turbo V8, a diesel, a rotary, a V12); the V12 in the fast tier
+CORPUS_CASE("economy-four-15", "[nightly]")
+CORPUS_CASE("small-block-57-carb", "[nightly]")
+CORPUS_CASE("twin-turbo-hot-vee-v8-40", "[nightly]")
+CORPUS_CASE("diesel-20-common-rail", "[nightly]")
+CORPUS_CASE("rotary-twin-13", "[nightly]")
+CORPUS_CASE("v12-65", "[combo]")
 
 TEST_CASE("the archetype corpus: every build of content/builds/archetypes through the tour", "[nightly][corpus]")
 {
@@ -213,4 +216,27 @@ TEST_CASE("the archetype corpus: every build of content/builds/archetypes throug
     std::sort(files.begin(), files.end());
     for (const auto& f : files)
         corpusBuild(f);
+}
+
+TEST_CASE("a handful of pairs where packages meet: fuel and ECU, boost and exhaust, ECU and car", "[combo][pairs]")
+{
+    // the fast tier's pairs (every pair is nightly): those whose meeting has produced findings today (X-003, X-006,
+    // X-014, X-015, X-011, X-018)
+    const auto& sw = switches();
+    auto bit = [&](const char* path) {
+        for (std::size_t i = 0; i < sw.size(); ++i)
+            if (sw[i].path == path)
+                return 1u << i;
+        return 0u;
+    };
+    play(bit("fuel.model") | bit("ecu.model"), "v8", Kind::Tour);
+    play(bit("boost.model") | bit("exhaust.model"), "turbo-six", Kind::Pull);
+    {
+        // the new ECU cuts on a shift and the cut's fuel bangs in the pipe: the bang rule (half of it: judge() doubles)
+        const std::uint32_t m = bit("ecu.model") | bit("car.model");
+        Times tm;
+        const tee::test::Run r = scenario(Kind::Launch, "v8", m, tm).run(tm.end);
+        const Verdict v = judge(r, tm, archetype("v8"), true, 0.5 * referenceStepWithPops("v8", Kind::Launch));
+        report(v, comboName(m), "v8", kindName(Kind::Launch));
+    }
 }

@@ -27,47 +27,64 @@ namespace
     }
 } // namespace
 
+namespace
+{
+    // SimHost against K3's EnginePlayer, through the same files, to the bit (each build and scenario named)
+    void playsToTheBit(const std::vector<std::pair<const char*, const char*>>& cases, double seconds)
+    {
+        const std::filesystem::path root = TEE_SOURCE_DIR;
+        for (const auto& [buildName, scenarioName] : cases)
+            {
+                CAPTURE(buildName, scenarioName);
+                const std::string buildFile = (root / "content" / "builds" / (std::string(buildName) + ".json")).string();
+                const std::string scenarioFile =
+                    (root / "tests" / "sim" / "scenarios" / (std::string(scenarioName) + ".json")).string();
+                std::string error;
+                std::vector<float> theirsL, theirsR;
+                REQUIRE(enginePlayerRender(buildFile, scenarioFile, seconds, 512, theirsL, theirsR, error));
+
+                // SimHost, through the same files
+                Timeline t;
+                REQUIRE(loadTimeline(root / "tests" / "sim" / "scenarios" / (std::string(scenarioName) + ".json"), t, error));
+                SimHost host;
+                REQUIRE(host.attach(compiled(simDir(), {}, error), offline(48000.0, 512), error));
+                Build build(host.fields());
+                std::vector<std::string> buildWarnings;
+                REQUIRE(build.loadFile(root / "content" / "builds" / (std::string(buildName) + ".json"), BuildPart::Whole,
+                                       buildWarnings, error));
+                build.attach(&host);
+                SimControls start;
+                start.ignition = 1;   // EnginePlayer's Controls start with the key on
+                host.setControls(start);
+                RunOptions options;
+                options.seconds = seconds;
+                RunResult ours;
+                REQUIRE(runTimeline(host, build, t, options, ours, error));
+
+                REQUIRE(ours.left.size() == theirsL.size());
+                const double depth = measure::nullDepth(theirsL, ours.left);
+                CAPTURE(depth, measure::peak(ours.left));
+                CHECK(std::memcmp(ours.left.data(), theirsL.data(), ours.left.size() * sizeof(float)) == 0);
+                CHECK(std::memcmp(ours.right.data(), theirsR.data(), ours.right.size() * sizeof(float)) == 0);
+                CHECK(measure::peak(ours.left) > 0.01);
+            }
+    }
+} // namespace
+
 TEST_CASE("SimHost plays the simulator to the bit as EnginePlayer does", "[engine][sim]")
 {
     if (!haveSim())
         SKIP("sim/engine.fm is not there yet");
-    const std::filesystem::path root = TEE_SOURCE_DIR;
-    for (const char* buildName : {"v8", "large-diesel"})
-        for (const char* scenarioName : {"free-revs", "drive-car"})
-        {
-            CAPTURE(buildName, scenarioName);
-            const std::string buildFile = (root / "content" / "builds" / (std::string(buildName) + ".json")).string();
-            const std::string scenarioFile =
-                (root / "tests" / "sim" / "scenarios" / (std::string(scenarioName) + ".json")).string();
-            std::string error;
-            std::vector<float> theirsL, theirsR;
-            REQUIRE(enginePlayerRender(buildFile, scenarioFile, 6.0, 512, theirsL, theirsR, error));
+    playsToTheBit({{"v8", "free-revs"}}, 3.0);   // the quick form; every build and scenario: [nightly] below
+}
 
-            // SimHost, through the same files
-            Timeline t;
-            REQUIRE(loadTimeline(root / "tests" / "sim" / "scenarios" / (std::string(scenarioName) + ".json"), t, error));
-            SimHost host;
-            REQUIRE(host.attach(compiled(simDir(), {}, error), offline(48000.0, 512), error));
-            Build build(host.fields());
-            std::vector<std::string> buildWarnings;
-            REQUIRE(build.loadFile(root / "content" / "builds" / (std::string(buildName) + ".json"), BuildPart::Whole,
-                                   buildWarnings, error));
-            build.attach(&host);
-            SimControls start;
-            start.ignition = 1;   // EnginePlayer's Controls start with the key on
-            host.setControls(start);
-            RunOptions options;
-            options.seconds = 6.0;
-            RunResult ours;
-            REQUIRE(runTimeline(host, build, t, options, ours, error));
-
-            REQUIRE(ours.left.size() == theirsL.size());
-            const double depth = measure::nullDepth(theirsL, ours.left);
-            CAPTURE(depth, measure::peak(ours.left));
-            CHECK(std::memcmp(ours.left.data(), theirsL.data(), ours.left.size() * sizeof(float)) == 0);
-            CHECK(std::memcmp(ours.right.data(), theirsR.data(), ours.right.size() * sizeof(float)) == 0);
-            CHECK(measure::peak(ours.left) > 0.01);
-        }
+TEST_CASE("SimHost plays the simulator to the bit as EnginePlayer does: both builds, both scenarios, 6 s",
+          "[engine][sim][nightly]")
+{
+    if (!haveSim())
+        SKIP("sim/engine.fm is not there yet");
+    playsToTheBit({{"v8", "free-revs"}, {"v8", "drive-car"}, {"large-diesel", "free-revs"}, {"large-diesel", "drive-car"}},
+                  6.0);
 }
 
 TEST_CASE("the test library drives the simulator: a start, an idle, a rev to the limiter", "[engine][sim][scenario]")
@@ -215,7 +232,7 @@ TEST_CASE("an engine the simulator found diverged (FLAG_FAULT) is counted, said 
 }
 
 TEST_CASE("a quality change swaps the engine at 48 kHz inside under a crossfade, and the key left on runs it again",
-          "[engine][sim][simhost]")
+          "[engine][sim][simhost][nightly]")
 {
     if (!haveSim())
         SKIP("sim/engine.fm is not there yet");
