@@ -1,0 +1,36 @@
+{
+ "format": "tee-engine-scenario/1",
+ "name": "d2-cold-mechanical",
+ "build": "diesel-mechanical-classic",
+ "description": "The classic mechanical-pump six started at 253 K and left to idle: the hard clatter of a cold direct-injection diesel and its flyweight governor's slow hunt; 30 s.",
+ "seconds": 32,
+ "events": [
+  {
+   "t": 0.0,
+   "spec": {
+    "env.temperature": 253.15,
+    "env.pressure": 101325
+   },
+   "ctl": {
+    "mode": 0,
+    "lever": 0,
+    "clutch": 0,
+    "brake": 0,
+    "throttle": 0,
+    "ignition": 1
+   }
+  },
+  {
+   "t": 0.2,
+   "ctl": {
+    "ignition": 2
+   }
+  },
+  {
+   "t": 4.0,
+   "ctl": {
+    "ignition": 1
+   }
+  }
+ ]
+}
