@@ -54,6 +54,30 @@ namespace tee::app
             inner_->stopRun();
     }
 
+    LateBake::LateBake(player::SimAdapter& player) : player_(player) {}
+    LateBake::~LateBake()
+    {
+        inner_.reset();         // before the program it bakes with
+    }
+
+    void LateBake::tick()
+    {
+        if (player_.ready() && !player_.qualitySwitching())
+            if (std::shared_ptr<Sim> now = player_.host().sim(); now != nullptr && now != made_)
+            {
+                inner_.reset();
+                inner_ = std::make_unique<ui::ServiceBake>(now, player_.build());
+                made_ = std::move(now);
+            }
+        if (inner_)
+            inner_->tick();
+    }
+
+    std::string LateBake::state() const
+    {
+        return inner_ ? inner_->state() : std::string("waiting to bake");
+    }
+
     bool waitForCurve(ui::DynoSource& dyno, double seconds)
     {
         const auto start = std::chrono::steady_clock::now();
