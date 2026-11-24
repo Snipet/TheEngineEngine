@@ -231,3 +231,7 @@ voices on; 20:12 UTC at c4c3a39; R 1857 / 1872 ns): **1.67 R drive-car, 1.65 R f
 the same file before 36b4a24 in the same run: +0.20 R for the listener and the voices together (the lead's estimate
 +0.19). Against P's host load (mean 30 to 32 % of this container's core): 1.66 R x R's 17.9 % of a core at 48 kHz
 (1.86 us x 96000) = 30 %: the two agree.
+
+**`content/builds/first.json` as the 2.0 L turbo four** (with the listener at Places/Rear/Field and the voices on;
+20:18 UTC at 7339839, after 2a4fb34; R 1967 / 1942 ns): **1.05 R drive-car, 1.05 R free-revs**: under P's 1.4 at Full
+(about 42 % of the owner's core at R = 40 %, 32 % at R = 30 %).

@@ -6,9 +6,9 @@
 //   the first build        content/builds/first.json, a whole engine with every model on (--first-build FILE: a
 //                          test's), where it is; else none, as --reference
 //
-// A machine's run (--frames, --shot) skips the remembered build unless its settings were chosen for it
-// (TEE_SETTINGS_DIR): a person's own build does not change what a test sees. The first build it opens all the same:
-// it is what a first launch is.
+// A machine's run (--frames, --shot) opens none of these by default, as --reference: what CI's window runs draw and
+// time does not change with a content file. It opens the first build only when named (--first-build FILE, or --preset
+// first), and the remembered build only when its settings were chosen for it (TEE_SETTINGS_DIR).
 #pragma once
 
 #include "Options.h"
