@@ -216,7 +216,10 @@ namespace tee::ui
     {
         const Look l = Look::of(th);
         const look::Palette p = look::Palette::of(th);
-        drawFrame(c, l);
+        if (xTicks_.empty())
+            drawFrame(c, l);
+        else
+            drawFrameTicked(c, l);
         drawTraces(c, p);
         const Rect a = plotArea();
         if (inside_)
@@ -260,6 +263,48 @@ namespace tee::ui
         drawReadout(c, p);
         if (focusRing)
             ring(c, l, a, 0.0f);
+    }
+
+    // Plot::drawFrame with the x ticks given: the same area, y grid and numbers, title; x lines and words at the ticks.
+    void ScopePlot::drawFrameTicked(Canvas& c, const Look& l) const
+    {
+        const Rect a = plotArea();
+        c.rrect(a.x, a.y, a.w, a.h, 0.0f, l.over(l.edge, 0.3f));
+        // Whole words while they fit between the lines; else the number alone (the words before the first space).
+        float need = 0.0f;
+        for (const auto& t : xTicks_)
+            need += c.textWidth(t.second.c_str(), kWidgetSmall) + 28.0f;
+        const bool whole = need <= a.w;
+        for (const auto& [v, all] : xTicks_)
+        {
+            if (v < vx0_ || v > vx1_)
+                continue;
+            const std::string words = whole ? all : all.substr(0, all.find(' '));
+            const float x = c.snapX(pxX(v));
+            c.hairlineV(x, a.y, a.h, l.over(l.edge, 0.9f));
+            const float tw = c.textWidth(words.c_str(), kWidgetSmall);
+            const float tx = std::clamp(x, a.x + tw * 0.5f - 6.0f, a.right() - tw * 0.5f + 6.0f);
+            c.text(words.c_str(), tx, a.bottom() + 4.0f, kWidgetSmall, l.label, funkgui::Align::centre);
+        }
+        if (!x_.label.empty())
+            c.text(upper(x_.label).c_str(), a.right(), a.bottom() + 16.0f, kWidgetLabel, l.dim, funkgui::Align::right);
+        std::vector<double> tv;
+        std::vector<bool> major;
+        ticks(y_, vy0_, vy1_, a.h, tv, major);
+        const double step = tv.size() > 1 ? tv[1] - tv[0] : 0.0;
+        for (std::size_t i = 0; i < tv.size(); ++i)
+        {
+            const float y = c.snapY(pxY(tv[i]));
+            c.hairlineH(a.x, y, a.w, major[i] ? l.over(l.edge, 0.9f) : l.over(l.edge, 0.5f));
+            if (major[i])
+                c.text(numberOf(y_, tv[i], y_.log ? tv[i] : step).c_str(), a.x - 5.0f, c.capCentreTop(y, kWidgetSmall),
+                       kWidgetSmall, l.label, funkgui::Align::right);
+        }
+        c.rrect(a.x, a.y, a.w, a.h, 0.0f, kClear, 1.0f, l.edge);
+        std::string head = upper(title_);
+        if (!y_.label.empty())
+            head += head.empty() ? upper(y_.label) : "  (" + upper(y_.label) + ")";
+        c.text(head.c_str(), bounds_.x, bounds_.y + 3.0f, kWidgetLabel, l.label);
     }
 
     uint64_t ScopePlot::drawKey() const
