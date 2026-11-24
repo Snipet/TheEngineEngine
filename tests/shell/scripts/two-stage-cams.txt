@@ -1,9 +1,9 @@
 # The owner's two-stage-cam four (content/builds/archetypes/two-stage-cam-20.json: valve.stages On, the stage change at
 # 628.3 rad/s = 6,000 rpm, the limiter at 9,000) in the window, as GARAGE opens it: started and floored in neutral to
 # the limiter; then after a QUALITY change to Economy and back; then opened over first.json and again over that. The
-# stage is the valvetrain's only with warm oil (sim/valvetrain/lab.fm: over 333 K), so the test holds the oil warm
-# (--hold-value heat.tOil=378, as a dyno cell's conditioning does; the application's own engine starts cold and takes
-# minutes): each time, the fields held and sent, the stage A below 6,000 rpm and B above it.
+# stage is the valvetrain's only with warm oil (sim/valvetrain/lab.fm: over 333 K); the application's engine starts at
+# its working temperatures (LoadOptions::initial), so each time: the fields held and sent, the stage A below 6,000 rpm
+# and B above it.
 0.10 expect param valve.stages == 1
 0.10 expect sent valve.stages == 1
 0.10 expect sent valve.stageSpeed > 628
