@@ -583,26 +583,32 @@ namespace
                     "1600 x 1000)\n", path.c_str(), static_cast<double>(dpi));
     }
 
+    // The goldens of U1's own slots (placeholders and DRIVE) at densities 2 and 1: they move only with U1's work.
     VIEW_TEST(testFrameSheet, "frame.sheet")
     {
         for (const float dpi : { 2.0f, 1.0f })
         {
-            // Goldens over U1's own slots (placeholders and DRIVE): they move only with U1's work.
             FrameRig rig(1280, 800, dpi);
             for (const char* id : kIds)
             {
                 rig.showWorkspace(id);
                 golden("frame." + lower(id) + (dpi < 1.5f ? ".dpi1" : ""), *rig.host);
             }
-            // Pictures of the real rail, whatever is registered (no golden: other packages' stages move).
-            FrameRig real(1280, 800, dpi, 4.6, false);
-            for (const char* id : kIds)
-            {
-                real.showWorkspace(id);
-                picture("frame.real." + lower(id) + (dpi < 1.5f ? ".dpi1" : ""), *real.host);
-            }
         }
-        // The paper theme, once: the same frame reads on a light ground.
+        return 0;
+    }
+
+    // Pictures, no checks (labelled nightly by its name's ".pictures": the soak tier makes them at every push, the
+    // default run leaves them out, 01-rules.md section 3): the real rail, whatever is registered, at 1280 x 800; the
+    // paper theme once; the contact sheets (every workspace at 1100 x 700 and 1600 x 1000, densities 2 and 1).
+    VIEW_TEST(testFramePictures, "frame.pictures")
+    {
+        FrameRig real(1280, 800, 2.0f, 4.6, false);
+        for (const char* id : kIds)
+        {
+            real.showWorkspace(id);
+            picture("frame.real." + lower(id), *real.host);
+        }
         {
             FrameRig rig(1280, 800, 2.0f);
             funkgui::HeadlessHost paper(*rig.frame, 1, 2.0f);
