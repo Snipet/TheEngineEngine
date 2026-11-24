@@ -20,7 +20,8 @@
 //     (Moore and Greitzer's: pushing air back through a spinning wheel takes pressure).
 //   - Efficiency: an island, etaMax less 0.9 (phi - phiB)^2 less 0.25 (M - 1.1)^2, phiB 0.45 of the way from the knee
 //     to choke, M the tip Mach number; never under 0.3. (Judgement: the shape real islands have, with their peak
-//     near a ratio of 2.)
+//     near a ratio of 2.) Past choke the wheel's work a kilogram stays the choke point's (Euler's work does not fall
+//     with the ratio; what the ratio loses is heat), so a compressor driven past choke still loads its shaft.
 //
 // Surge is not an effect. The air in the compressor's duct (its inducer's area, a length of ten inducer diameters
 // and 0.2 m) has inertia: d mdot / dt = (A / L) (p1 PR(mdot, U) - p2), p2 the volume it fills. Left of the knee the
@@ -149,10 +150,20 @@ module BoostCompressor
         const float sc = sqrtf(c);
         pr = c * c * c * sc;
         const float dpr = 3.5f * c * c * sc * dtau * im;
-        const float den = fmaxf(1.0f - kDuct * p1 * dpr, 0.5f);
-        mdot += kDuct * (p1 * pr - p2) / den;
-        eta = efficiency(mdot * im);
-        const float tr = fmaxf(tau, 0.0f) / eta;
+        // (the duct's own friction, a linear part: 4 kPa a kg/s, so that its Helmholtz ring dies away at rest with a Q
+        // of some 20 rather than ringing on; judgement)
+        const float den = fmaxf(1.0f - kDuct * p1 * dpr, 0.5f) + kDuct * 4000.0f;
+        mdot += kDuct * (p1 * pr - p2 - 4000.0f * mdot) / den;
+        const float phiN = mdot * im;
+        eta = efficiency(phiN);
+        // (past choke the ratio collapses but the wheel still does its work on every kilogram, the choke point's,
+        // all of it lost to heat in the air: the efficiency falls with the ratio)
+        float tr = fmaxf(tau, 0.0f) / eta;
+        if (phiN > 1.0f)
+        {
+            tr = tauC / efficiency(1.0f);
+            eta = fmaxf(tau, 0.0f) / tr;
+        }
         t2 = t1 * (1.0f + tr);
         power = fabsf(mdot) * kBoostCpA * t1 * tr + windage;
     }
