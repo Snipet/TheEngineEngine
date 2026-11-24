@@ -13,6 +13,7 @@
 #include <thread>
 #include "kit/bind/Binding.h"
 #include "kit/bind/host/BuildDoc.h"
+#include "views/valves/ValvesWorkspace.h"
 
 #include "tee/Build.h"
 #include "tee/Sim.h"
@@ -108,6 +109,53 @@ namespace
         return 0;
     }
 
+    // U2: the VALVES cam editor's handles on the real Spec: the intake cam's peak dragged (its centreline and lift)
+    // and its closing seat mark (its seat and 1 mm durations), each one step of undo that puts every field it moved
+    // back exactly. Run as part of build.set (a drag sets its fields, one undo step).
+    void valvesDragTest(Rig& rig)
+    {
+        tee::ui::AppFrame& f = *rig.frame;
+        const int w = f.find("valves");
+        CHECK(w >= 0);
+        if (w < 0)
+            return;
+        f.show(w);
+        rig.host->tick(5);
+        const char* paths[] = { "valve.inCentre", "valve.inLift", "valve.inDurSeat", "valve.inDur1mm" };
+        int idx[4];
+        for (int i = 0; i < 4; ++i)
+        {
+            idx[i] = rig.doc->find(paths[i]);
+            CHECK_MSG(idx[i] >= 0, paths[i]);
+            if (idx[i] < 0)
+                return;
+        }
+        const auto values = [&] {
+            std::vector<double> v;
+            for (int i : idx)
+                v.push_back(rig.doc->get(i));
+            return v;
+        };
+        for (const int h : { 0, 2 })   // the peak, the closing seat mark
+        {
+            const funkgui::Point at = tee::ui::valvesHandle(f.workspace(w), h);
+            CHECK_MSG(at.x >= 0.0f, "no handle " + std::to_string(h));
+            if (at.x < 0.0f)
+                return;
+            const std::vector<double> before = values();
+            rig.host->drag(at.x, at.y, at.x + 24.0f, at.y - (h == 0 ? 20.0f : 0.0f), 8);
+            const std::vector<double> after = values();
+            if (h == 0)
+                CHECK(after[0] > before[0] && after[1] > before[1] && after[2] == before[2] && after[3] == before[3]);
+            else
+                CHECK(after[2] > before[2] && after[3] > before[3] && after[0] == before[0] && after[1] == before[1]
+                      && std::fabs((after[2] - after[3]) - (before[2] - before[3])) < 1e-6);
+            CHECK(rig.build->undo());
+            CHECK_MSG(values() == before, std::string("handle ") + std::to_string(h) + ": one undo puts every field back");
+            std::printf("  VALVES handle %d: dragged and undone in one step\n", h);
+        }
+    }
+
     int setTest(Rig& rig)
     {
         tee::ui::AppFrame& f = *rig.frame;
@@ -142,6 +190,7 @@ namespace
             }
         }
         CHECK(dragged);
+        valvesDragTest(rig);
         // Tables through the binding, both ways.
         for (int i = 0; i < rig.doc->count(); ++i)
         {
