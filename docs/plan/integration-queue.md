@@ -70,7 +70,7 @@ fixes its own when it next touches its tests, and deletes its hook.
 
 ## FunkGui, after card A (13:19)
 
-- The owner pushes the tag `v0.28.0` on FunkGui's main (19d06ab); then card B names the tag beside its pinned commit.
+- ~~The owner pushes the tag `v0.28.0` on FunkGui's main (19d06ab)~~ done 13:28; card B names the tag beside its pinned commit.
 - The lead looks at `fg.desktop.menu`'s 40 candidate golden rows and adopts them or says why not.
 - Card A's requests outside its paths (`tools/check-headers.sh`, `tools/GalleryApp/CMakeLists.txt`, the POSIX-only
   tools and tests on Windows): `docs/handoffs/a-funkgui-desktop.md`. None blocks TheEngineEngine.

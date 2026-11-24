@@ -1,0 +1,11 @@
+geometry 0a32a28284079244
+text 35b4d405624f41de
+statics 6483
+live 0
+texts 467
+rrects 187
+segments 4751
+areas 1078
+shaders 0
+images 0
+size 1100 x 700
