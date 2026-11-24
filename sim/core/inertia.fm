@@ -1,0 +1,133 @@
+// inertia.fm: the moving masses, and the torque they put on the crank as it turns.
+//
+// Each piston, with its pin and rings and the part of its rod that moves with it (a third, by the usual two-mass split
+// of a rod: the rest turns with the crank pin), is a mass m going up and down at the piston's speed x' w (x' its
+// displacement's slope over the crank angle, sim/core/kinematics.fm; w the crank's speed). Their kinetic energy is
+// (1/2) J(theta) w^2 with
+//
+//     J(theta) = J0 + sum over the cylinders of m x'^2
+//
+// J0 the crank, the flywheel and everything that turns with them (the rods' turning parts at the pins' radius among
+// them). The inertia the crank feels varies round the turn, and Lagrange's equation for the crank gives
+//
+//     J(theta) dw/dt = T - (1/2) J'(theta) w^2,     (1/2) J' w^2 = sum of m w^2 x' x''
+//
+// so each cylinder adds -m w^2 x' x'' to the torque: the inertia torque. Its work over a turn at a steady speed is
+// zero (it is the derivative of m x'^2 / 2 times -w^2), it goes as the square of the speed, and at high revs it is
+// larger than the gas's torque: it reshapes the crank's ripple, which is what a light flywheel lets through.
+//
+// When no mass is given: a piston, pin and rings of 700 kg/m^3 times the bore cubed (0.45 kg at 86 mm, 0.73 at 101.6:
+// production cast pistons; judgement from typical published weights), a rod of 0.6 kg for a 100 mm bore and a
+// 155 mm rod, as the bore squared and the rod's length (judgement). A rotary has no reciprocating mass: its rotors'
+// eccentric masses are balanced by counterweights, and turn with J0.
+//
+// What it leaves out: the rod's own rotary inertia about its centre of mass (the two-mass split's small error), the
+// crank's torsional twist, the valvetrain's masses.
+#pragma once
+#include "mechspec.fm"
+#include "kinematics.fm"
+#include "layout.fm"
+
+module MovingMasses
+{
+    SliderCrank sc;
+    int n;
+    float mRec;                 // a cylinder's reciprocating mass, kg
+    float mRot;                 // a cylinder's rod mass turning with the pin, kg
+    float j0;                   // what turns at a steady inertia: flywheel, crank, the rods' turning parts, kg m^2
+    float cph[MECH_MAX_CYL];    // each cylinder's top dead centre, as a cosine and a sine
+    float sph[MECH_MAX_CYL];
+    // at the last call
+    float jNow;                 // the inertia the crank feels, kg m^2
+    float jSlope;               // half its slope over the angle (sum of m x' x''), kg m^2 per radian
+    float tqNow;                // the inertia torque, N m
+    float jMean;                // J's mean over a turn: J0 plus half of n m r^2 (to the first order in 1 / lambda)
+
+    // The masses for a cylinder of this bore, stroke and rod (m), its compression, and the turning inertia (kg m^2)
+    void setup(const MechSpec* s, const LayoutGeom* g, float bore, float stroke, float rod, float compression, float flywheel)
+    {
+        sc.setup(bore, stroke, rod, compression);
+        n = g->n;
+        const float mp = s->pistonMass > 0.0f ? s->pistonMass : 700.0f * bore * bore * bore;
+        const float mr = s->rodMass > 0.0f ? s->rodMass : 0.6f * (bore / 0.1f) * (bore / 0.1f) * (rod / 0.155f);
+        const float share = fminf(fmaxf(s->rodRecip, 0.0f), 1.0f);
+        if (g->rotary > 0)
+        {
+            mRec = 0.0f;
+            mRot = 0.0f;
+        }
+        else
+        {
+            mRec = mp + share * mr;
+            mRot = (1.0f - share) * mr;
+        }
+        j0 = flywheel + (float)n * mRot * sc.r * sc.r;
+        for (int c = 0; c < n; ++c)
+        {
+            const float t = g->tdc[c] * 0.01745329252f;
+            cph[c] = cosf(t);
+            sph[c] = sinf(t);
+        }
+        jMean = j0 + 0.5f * (float)n * mRec * sc.r * sc.r;
+        jNow = jMean;
+        jSlope = 0.0f;
+        tqNow = 0.0f;
+    }
+
+    // At the crank's angle (its sine and cosine) and speed (rad/s): the inertia torque, J and its half-slope
+    float torque(float sTh, float cTh, float omega)
+    {
+        if (mRec <= 0.0f)
+        {
+            jNow = j0;
+            jSlope = 0.0f;
+            tqNow = 0.0f;
+            return 0.0f;
+        }
+        const float r = sc.r;
+        const float lam2 = sc.lam * sc.lam;
+        float sxx = 0.0f;       // sum of x'^2 / r^2
+        float sxy = 0.0f;       // sum of x' x'' / r^2
+        for (int c = 0; c < n; ++c)
+        {
+            // the angle from this cylinder's top dead centre: theta less its own
+            const float s = sTh * cph[c] - cTh * sph[c];
+            const float co = cTh * cph[c] + sTh * sph[c];
+            const float iq = 1.0f / sqrtf(lam2 - s * s);
+            const float d1 = s * (1.0f + co * iq);
+            const float d2 = co + (co * co - s * s) * iq + s * s * co * co * iq * iq * iq;
+            sxx += d1 * d1;
+            sxy += d1 * d2;
+        }
+        const float mr2 = mRec * r * r;
+        jNow = j0 + mr2 * sxx;
+        jSlope = mr2 * sxy;
+        tqNow = -omega * omega * jSlope;
+        return tqNow;
+    }
+
+    // The crank's acceleration (rad/s^2) under an outside torque (gas, friction, load, starter: N m), with the inertia
+    // torque and the varying inertia, at this angle and speed. (For a picture or a check: the crank is stepped by
+    // advance, below.)
+    float accel(float tq, float sTh, float cTh, float omega)
+    {
+        const float ti = torque(sTh, cTh, omega);
+        return (tq + ti) / jNow;
+    }
+
+    // One step of the crank's speed. The crank has already moved from where jNow was taken (the last call's angle) to
+    // the angle whose sine and cosine are given, by omega dt; the outside torque tq (N m) did tq omega dt of work on the
+    // way. The speed after is the one whose kinetic energy, (1/2) J(new angle) w^2, is the energy before plus that work:
+    // the equation of motion above, stepped so that the moving masses can neither make nor lose energy (an explicit
+    // step of dw/dt loses some 15 % of a free-running single's in 20 s; this, nothing). Below 2 rad/s (a crank at rest
+    // or starting, whose energy is too small to carry the speed) the plain step: the inertia torque there is nothing.
+    float advance(float omega, float tq, float dt, float sNew, float cNew)
+    {
+        const float j1 = jNow;
+        torque(sNew, cNew, omega);
+        if (omega < 2.0f)
+            return fmaxf(omega + (tq + tqNow) / jNow * dt, 0.0f);
+        const float e = 0.5f * j1 * omega * omega + tq * omega * dt;
+        return e > 0.0f ? sqrtf(2.0f * e / jNow) : 0.0f;
+    }
+};
