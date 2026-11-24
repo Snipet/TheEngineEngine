@@ -83,6 +83,14 @@ namespace tee::ui
                                    kTelActive, en::kTelSpeed, kTelEvents[0], kTelEvents[1], kTelEvents[2], kTelEvents[3], kTelEvents[4] })
                 k.mix(static_cast<float>(ctx_.live.get(n)));
             k.mix(drag_).mix(hot_).mix(static_cast<float>(yMax_)).mix(two_).mix(scopeVersion_).mix(tab_);
+            // the oil, as the words say it: whole degrees, and whether it holds the phasers or stage B
+            const double oilT = ctx_.live.get(kTelOilTemp);
+            k.mix(std::isfinite(oilT) ? static_cast<std::int64_t>(std::lround(oilT)) : -1);
+            for (const char* n : { kTelWaiting, kTelWaitTemp, kTelCoolant })
+            {
+                const double v = ctx_.live.get(n);
+                k.mix(std::isfinite(v) ? static_cast<std::int64_t>(std::lround(v)) : -1);
+            }
             return k.h;
         }
 
@@ -357,6 +365,24 @@ namespace tee::ui
         static double phaseShift(bool intake, double phase) { return std::isfinite(phase) ? (intake ? -phase : phase) : 0.0; }
 
         // Stage B is what runs (and what the handles edit) while telemetry says it is engaged.
+        // What holds the cams back, in the words the PHASERS AND STAGES panel shows ("" : nothing)
+        std::string phaserHeldText(bool intake = true) const { return phaserWaitWords(ctx_.live, ctx_.units, intake); }
+        std::string stageHeldText() const { return stageWaitWords(ctx_.live, ctx_.units); }
+    public:
+        // For tests: the oil's words as drawn now (the phasers' and stage B's, where the build has them)
+        std::string oilWords() const
+        {
+            const Train t = trainOf(ctx_.doc);
+            std::string w;
+            if (t.inPhaseRange > 0.0)
+                w += phaserHeldText(true);
+            if (t.exPhaseRange > 0.0)
+                w += (w.empty() ? "" : " | ") + phaserHeldText(false);
+            if (t.stages)
+                w += (w.empty() ? "" : " | ") + stageHeldText();
+            return w;
+        }
+    private:
         bool stageB(const Train& t) const { return t.stages && t.inB.known() && t.exB.known() && ctx_.live.get(kTelStage) >= 0.5; }
         const Lobe& lobe(const Train& t, bool intake) const
         {
@@ -705,8 +731,11 @@ namespace tee::ui
                     const float nx = X(l.centre + phaseShift(intake, now));
                     c.disc(nx, y + 4.0f, 5.0f, ink, 1.5f, p.ground);
                 }
-                const std::string w = std::string(intake ? "INTAKE PHASER " : "EXHAUST PHASER ") + deg(range) + " DEG";
-                put(c, w, intake ? X(a0) - 8.0f : X(a1) + 8.0f, y - 1.0f, lk::kCaps, ink, intake ? Align::right : Align::left);
+                // parked or slowed (the simulator's tel.valve.waiting): said, so a still phaser does not look dead
+                const std::string wait = phaserWaitWords(ctx_.live, ctx_.units, intake, true);
+                const std::string w = std::string(intake ? "INTAKE PHASER " : "EXHAUST PHASER ") + (wait.empty() ? deg(range) + " DEG" : wait);
+                // (clear of the target's ring, which stands at the band's end when it asks the whole range)
+                put(c, w, intake ? X(a0) - 12.0f : X(a1) + 12.0f, y - 1.0f, lk::kCaps, ink, intake ? Align::right : Align::left);
             };
             band(li, t.inPhaseRange, inPh, true, plot_.y + 8.0f);
             band(le, t.exPhaseRange, exPh, false, plot_.y + 8.0f);
@@ -795,13 +824,17 @@ namespace tee::ui
                 ev.evc = now[3] - 360.0;
                 ev.overlap = now[4];
             }
-            lk::region(c, p, ring_, live ? "TIMING, LIVE" : "TIMING, AT THE SEAT", ctx_.selection.is("valve.timing"));
+            const char* ringTitle = live ? "TIMING, LIVE" : "TIMING, AT THE SEAT";
+            lk::region(c, p, ring_, ringTitle, ctx_.selection.is("valve.timing"));
+            const float titleEnd = ring_.x + lk::kPad + c.textWidth(ringTitle, lk::kCaps);
             const Rect in = content(ring_);
             const float R = std::max(20.0f, std::min(in.w * 0.5f - 24.0f, (in.h - 84.0f) * 0.5f));
             const Point ctr{ in.centreX(), in.y + 18.0f + R };
             c.arc(ctr, R + 10.0f, 0.0f, static_cast<float>(2.0 * stage::kPi), 1.0f, p.grid);
             // TDC up, BDC down
-            put(c, "TDC", ctr.x, ctr.y - R - 30.0f, lk::kCaps, p.text, Align::centre);
+            // TDC over its tick, on the title's line: moved right of a title long enough to reach it
+            const float tdcW = c.textWidth("TDC", lk::kCaps);
+            put(c, "TDC", std::max(ctr.x, titleEnd + 10.0f + tdcW * 0.5f), ctr.y - R - 30.0f, lk::kCaps, p.text, Align::centre);
             put(c, "BDC", ctr.x, ctr.y + R + 18.0f, lk::kCaps, p.text, Align::centre);
             c.segment(ctr.x, ctr.y - R - 16.0f, ctr.x, ctr.y + R + 16.0f, 1.0f, p.dim);
             if (t.ex.known())
@@ -946,6 +979,9 @@ namespace tee::ui
                     txt += ", to " + deg(target);
                 put(c, txt, at.x, at.y + 14.0f, lk::kBody, p.value);
                 lk::level(c, p, { at.x, at.y + 31.0f, cw - 14.0f, 4.0f }, std::isfinite(now) ? now / range : en::kNaN, ink);
+                // parked or slowed, in words (tel.valve.waiting)
+                if (const std::string held = phaserHeldText(i == 0); !held.empty())
+                    put(c, held, at.x, at.y + 40.0f, lk::kCaps, p.warning);
             };
             phaser(0, "INTAKE PHASER", t.inPhaseRange, ctx_.live.get(kTelInPhase), ctx_.live.get(kTelInTarget), p.cold);
             phaser(1, "EXHAUST PHASER", t.exPhaseRange, ctx_.live.get(kTelExPhase), ctx_.live.get(kTelExTarget), p.hot);
@@ -962,6 +998,9 @@ namespace tee::ui
                     put(c, "B from " + sp, at.x, at.y + 14.0f, lk::kBody, p.value);
                     const std::string now = !std::isfinite(st) ? "ENGAGED -" : st >= 0.5 ? "B ENGAGED" : "A ENGAGED";
                     lk::lamp(c, p, at.x, at.y + 36.0f, now, std::isfinite(st) && st >= 0.5, p.selected);
+                    // B waits for warm oil with pressure (the lab's rule: 333 K and 100 kPa), in words
+                    if (const std::string held = stageHeldText(); !held.empty())
+                        put(c, held, at.x, at.y + 52.0f, lk::kCaps, p.warning);
                 }
             }
             // continuous lift
@@ -1430,6 +1469,12 @@ namespace tee::ui
     };
 
     std::unique_ptr<Workspace> makeValvesWorkspace(WorkspaceContext& c) { return std::make_unique<ValvesWorkspace>(c); }
+
+    std::string valvesOilWords(const Workspace& w)
+    {
+        const auto* v = dynamic_cast<const ValvesWorkspace*>(&w);
+        return v != nullptr ? v->oilWords() : std::string();
+    }
 
     funkgui::Point valvesHandle(const Workspace& w, int h)
     {

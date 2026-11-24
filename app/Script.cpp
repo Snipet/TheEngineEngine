@@ -106,6 +106,22 @@ namespace tee::app
                 e.name = "param " + w[3];
                 e.op = w[4];
             }
+            else if (verb == "expect" && w.size() == 6 && w[2] == "sent" && comparison(w[4]) && arg(5, e.a))
+            {
+                e.kind = ScriptEvent::Kind::expect;
+                e.name = "sent " + w[3];
+                e.op = w[4];
+            }
+            else if (verb == "open" && w.size() == 3)
+            {
+                e.kind = ScriptEvent::Kind::open;
+                e.name = w[2];
+            }
+            else if (verb == "quality" && w.size() == 3 && (w[2] == "full" || w[2] == "economy"))
+            {
+                e.kind = ScriptEvent::Kind::quality;
+                e.a = w[2] == "economy" ? 1.0 : 0.0;
+            }
             else if (verb == "print" && w.size() == 2)
                 e.kind = ScriptEvent::Kind::print;
             else if (verb == "end" && w.size() == 2)
@@ -159,5 +175,20 @@ namespace tee::app
         parseScript(text, s, why);
         s.end = seconds;
         return s;
+    }
+
+    bool compareScript(double x, const std::string& op, double y)
+    {
+        if (op == ">")
+            return x > y;
+        if (op == "<")
+            return x < y;
+        if (op == ">=")
+            return x >= y;
+        if (op == "<=")
+            return x <= y;
+        if (op == "==")
+            return x == y;
+        return x != y;
     }
 }

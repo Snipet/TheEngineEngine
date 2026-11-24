@@ -46,8 +46,8 @@ module VoicesSpec
         [[ui::help("The engine's cooling fan: none, viscous (turning with the engine) or electric")]]
         [[ui::group("Cooling fan")]]
         [[ui::choices("None", "Viscous clutch", "Electric")]];
-    float fanOn [[fminus::range(300, 400)]] [[fminus::default(368)]] [[ui::label("Fan comes in at")]]
-        [[ui::quantity("temperature")]] [[ui::help("The coolant's temperature: an electric fan's switch, a viscous clutch's full lock")]];
+    float fanOn [[fminus::range(300, 400)]] [[fminus::default(373)]] [[ui::label("Fan comes in at")]]
+        [[ui::quantity("temperature")]] [[ui::help("The coolant's temperature: an electric fan's switch (off 5 K below), a viscous clutch's full lock")]];
     int fanBlades [[fminus::range(2, 12)]] [[fminus::default(7)]] [[ui::label("Fan blades")]]
         [[ui::help("The fan's blades; their count sets its tone")]] [[ui::unit("blades")]];
     float fanLevel [[fminus::range(-60, 12)]] [[fminus::default(0)]] [[ui::label("Fan level")]]

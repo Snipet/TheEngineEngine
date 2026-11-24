@@ -61,6 +61,17 @@ the margin's label while `valve.floating` is set; the ring and the overlap take 
 `overlap`, phased) when telemetry has them; the bench takes the simulator's (`valve.benchLift[i]` ...) when every
 element is in telemetry, else this port of `bench.fm` from the head's fields, and says which.
 
+## What holds the cams back
+
+The simulator says why the cams are not where asked (N1's `tel.valve.waiting`, a bit each: 1 the intake phaser parked
+without oil pressure, 2 the exhaust's, 4 the phasers slowed by cold oil, 8 the stage waiting for the coolant at
+`tel.valve.waitTemp`, 16 the stage waiting for oil pressure). VALVES says it in amber, from those fields and no
+thresholds of its own: the editor's band "INTAKE PHASER PARKED: NO OIL PRESSURE" or "... SLOWED: COLD OIL"; the PHASERS
+AND STAGES panel the same under each phaser ("SLOWED: COLD OIL, 15 C") and "B WAITS: COOLANT 5 C, NEEDS 10 C" (or "B
+WAITS: OIL PRESSURE LOW") under the stage's lamp. ENGINE's section says the stage's reason in the same words, from the
+same function (valves::stageWaitWords). The words go when nothing waits. `ui.valves.oil`, `ui.build.valves.first`,
+`ui.build.stages.archetype`.
+
 ## What is read, and from where
 
 By path through `kValveFields` in `ui/views/valves/ValvesModel.h` (package E's `sim/valvetrain/lab-spec.fm` names,

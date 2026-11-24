@@ -142,25 +142,25 @@ namespace
 } // namespace
 
 TEST_CASE("decisions: each switch turned on while stopped reaches the engine it reaches at start: the default block 1 of 3",
-          "[fast][fast-1][combo][decisions]")
+          "[fast][fast-3][combo][decisions]")
 {
     eachSwitch("", 0, 3);
 }
 
 TEST_CASE("decisions: each switch turned on while stopped reaches the engine it reaches at start: the default block 2 of 3",
-          "[fast][fast-1][combo][decisions]")
+          "[fast][fast-3][combo][decisions]")
 {
     eachSwitch("", 1, 3);
 }
 
 TEST_CASE("decisions: each switch turned on while stopped reaches the engine it reaches at start: the default block 3 of 3",
-          "[fast][fast-2][combo][decisions]")
+          "[fast][fast-3][combo][decisions]")
 {
     eachSwitch("", 2, 3);
 }
 
 TEST_CASE("decisions: every switch loaded over every switch off while stopped reaches the fresh engine: the default block",
-          "[fast][fast-2][combo][decisions]")
+          "[fast][fast-1][combo][decisions]")
 {
     loadedOver("");
 }
@@ -209,7 +209,7 @@ namespace
 // -16.7 %, engine.wallHeat -17.0 %; boost.model -0.1 %, so it is the nightly's). The nightly: every switch (the tip:
 // within 1.1 %, voices.model's prime the largest).
 TEST_CASE("decisions: with fuel.model or engine.wallHeat on the default block's torque lies on its size line",
-          "[fast][fast-2][combo][decisions]")
+          "[fast][fast-1][combo][decisions]")
 {
     for (const char* p : {"fuel.model", "engine.wallHeat"})
         smoothInSize(p, 1.0);

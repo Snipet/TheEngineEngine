@@ -47,6 +47,7 @@ namespace tee::settings
         std::string unitChoices;
         std::string lastBuild;                  // the file of the build last open; empty: none
         std::vector<std::string> recentBuilds;  // the files opened or saved last, newest first (files::RecentFiles)
+        bool coldStart = false;                 // the engine starts cold (oil and water at the air's), not warm
         bool tryFirstSeen = false;              // the first build's TRY FIRST card was closed (it is not shown again)
         int windowWidth = 0, windowHeight = 0;  // logical px; 0: the Panel's own size
         // (the theme and the zoom are FunkGui's own preferences, in its file beside this one)

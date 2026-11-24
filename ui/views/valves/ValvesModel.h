@@ -14,6 +14,7 @@
 #include "views/engine/EngineModel.h"
 
 #include <array>
+#include <string>
 #include <vector>
 
 namespace tee::ui::valves
@@ -100,6 +101,25 @@ namespace tee::ui::valves
     inline constexpr const char* kTelInTarget = "valve.inPhaseTarget";   // and where it is asked to go
     inline constexpr const char* kTelExTarget = "valve.exPhaseTarget";
     inline constexpr const char* kTelStage = "valve.stage";           // 0 stage A, 1 stage B
+    // Why the cams are not where asked (N1's tel.valve.waiting, a bit each), and the coolant the stage waits for
+    // (tel.valve.waitTemp, K; 0 when not waiting): the simulator's own gates, read, not mirrored here.
+    inline constexpr const char* kTelWaiting = "valve.waiting";
+    inline constexpr const char* kTelWaitTemp = "valve.waitTemp";
+    inline constexpr const char* kTelCoolant = "engine.coolant";          // K
+    inline constexpr const char* kTelOilTemp = "engine.oilTemperature";   // K
+    enum WaitBits : int
+    {
+        kWaitInParked = 1,      // the intake phaser parked: no oil pressure
+        kWaitExParked = 2,      // the exhaust phaser parked
+        kWaitSlowed = 4,        // the phasers slowed by cold oil
+        kWaitCoolant = 8,       // the cam stage waiting for the coolant
+        kWaitOilPressure = 16,  // the cam stage waiting for oil pressure
+    };
+    // The words VALVES and ENGINE both say from them ("" : nothing waits), temperatures in the person's units: a
+    // phaser's "PARKED: NO OIL PRESSURE" or "SLOWED: COLD OIL, 15 C"; the stage's "B WAITS: COOLANT 5 C, NEEDS 10 C" or
+    // "B WAITS: OIL PRESSURE LOW". `brief`: the phaser's short form for the editor's band ("SLOWED: COLD OIL").
+    std::string phaserWaitWords(const Live& live, const Units& units, bool intake, bool brief = false);
+    std::string stageWaitWords(const Live& live, const Units& units);
     inline constexpr const char* kTelLift = "valve.lift";             // the continuous lift's share now, 0..1
     inline constexpr const char* kTelFloat = "valve.floatSpeed";      // rad/s: the speed the valves float at
     inline constexpr const char* kTelFloating = "valve.floating";     // 1 while they float

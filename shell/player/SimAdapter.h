@@ -58,6 +58,10 @@ namespace tee::player
             // Values held before every call (LoadOptions::hold: "crank.omega" = 1e7 makes the engine diverge, for a test
             // of what the application does then). Never the application's own engine.
             std::vector<std::pair<std::string, double>> hold;
+            // Each new instance starts at its working temperatures (Warm.h's warmEngine() as LoadOptions::initial: once,
+            // then left to warm and cool by itself): the application's engine, unless a person chose a cold start.
+            // False: the program's own cold start (the simulator's defaults), as tests and tools have it.
+            bool warm = false;
             // A program compiled already (Sim::compile of `directory`, these options): no compile of its own, ready at
             // once. Tests share one this way (a compile is seconds); a Sim compiled with checks cannot be shared.
             std::shared_ptr<Sim> sim;

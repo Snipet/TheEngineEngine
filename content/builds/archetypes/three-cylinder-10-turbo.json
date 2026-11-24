@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "1.0 L three-cylinder turbo",
-  "notes": "A downsized 1.0 L three with a small turbo and direct injection: 71.9 x 82 mm (999 cc), 10:1 (engines of the kind: 74 to 103 kW at 5500 to 6000 rpm, 170 to 205 N m from 1500; makers' figures). In a small hatch, six-speed manual. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT.",
+  "notes": "A downsized 1.0 L three with a small turbo and direct injection: 71.9 x 82 mm (999 cc), 10:1 (engines of the kind: 74 to 103 kW at 5500 to 6000 rpm, 170 to 205 N m from 1500; makers' figures). In a small hatch, six-speed manual. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py).",
   "spec": {
     "engine": {
       "layout": "Inline 3",
@@ -113,6 +113,59 @@
       },
       "knock": {
         "on": true
+      },
+      "maps": {
+        "camInAuto": false,
+        "camIn": {
+          "x": [
+            111.5,
+            191.3,
+            271.2,
+            351.0,
+            430.8,
+            510.6,
+            590.4,
+            670.2
+          ],
+          "y": [
+            0.0,
+            3.0
+          ],
+          "z": [
+            [
+              50.0,
+              50.0
+            ],
+            [
+              40.0,
+              40.0
+            ],
+            [
+              10.0,
+              10.0
+            ],
+            [
+              20.0,
+              20.0
+            ],
+            [
+              20.0,
+              20.0
+            ],
+            [
+              50.0,
+              50.0
+            ],
+            [
+              20.0,
+              20.0
+            ],
+            [
+              20.0,
+              20.0
+            ]
+          ]
+        }
       }
     },
     "car": {
@@ -158,8 +211,7 @@
       "camera": "Rear",
       "place": "Field",
       "ground": "Asphalt",
-      "enginePlace": "Front",
-      "level": 10.1
+      "enginePlace": "Front"
     }
   }
 }

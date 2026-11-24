@@ -284,6 +284,35 @@ namespace
 
 namespace
 {
+    // U1: the knock-limit bake's adapter (card C's KnockBakeService) over the real Spec: a build's state is one of the
+    // service's words; an edit of what moves the knock limit sets the table aside at once (knockLimitAuto on) and asks a
+    // bake, waiting for the edits to rest. The bake itself (some 12 s) is card C's to test: not waited for here.
+    BUILD_TEST(bakeTest, "build.bake")
+    {
+        tee::ui::ServiceBake bake(rig.sim, *rig.build);
+        bake.tick();
+        const std::string first = bake.state();
+        std::printf("  at load: %s\n", first.c_str());
+        if (first == "no table")
+            return 0;   // a program without ecu.maps.knockLimit: nothing to bake
+        const int comp = rig.doc->find("engine.compression"), autoF = rig.doc->find("ecu.maps.knockLimitAuto");
+        CHECK(comp >= 0 && autoF >= 0);
+        const tee::ui::FieldInfo& info = rig.doc->info(comp);
+        rig.doc->beginGesture();
+        rig.doc->set(comp, std::min(info.max, rig.doc->get(comp) + 0.5));
+        rig.doc->endGesture();
+        bake.tick();
+        const std::string after = bake.state();
+        std::printf("  after an edit of the compression: %s\n", after.c_str());
+        CHECK_MSG(after == "waiting to bake" || after == "baking", after);
+        CHECK(rig.doc->get(autoF) > 0.5);   // set aside: the engine on its knock control
+        CHECK(bake.error().empty());
+        return 0;
+    }
+}
+
+namespace
+{
     // U1: the Scope over a real SimHost: a reader that reads only when generation() moves (as ENGINE does) gets data.
     BUILD_TEST(scopeTest, "build.scope")
     {

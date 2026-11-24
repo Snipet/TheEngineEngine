@@ -1,0 +1,50 @@
+# The owner's two-stage-cam four (content/builds/archetypes/two-stage-cam-20.json: valve.stages On, the stage change at
+# 628.3 rad/s = 6,000 rpm, the limiter at 9,000) in the window, as GARAGE opens it: started and floored in neutral to
+# the limiter; then after a QUALITY change to Economy and back; then opened over first.json and again over that. The
+# stage is the valvetrain's only with warm oil (sim/valvetrain/lab.fm: over 333 K); the application's engine starts at
+# its working temperatures (LoadOptions::initial), so each time: the fields held and sent, the stage A below 6,000 rpm
+# and B above it.
+0.10 expect param valve.stages == 1
+0.10 expect sent valve.stages == 1
+0.10 expect sent valve.stageSpeed > 628
+0.20 key return down
+0.50 key return up
+3.00 expect valve.stage == 0
+3.00 print
+3.10 key w down
+3.6 print
+4.1 print
+4.6 print
+5.1 print
+5.6 print
+6.1 print
+7.0 print
+7.10 key w up
+7.50 quality economy
+25.0 expect sent valve.stages == 1
+25.0 expect sent valve.stageSpeed > 628
+25.1 key w down
+27.0 print
+28.0 expect valve.stage == 1
+28.0 print
+28.1 key w up
+28.5 quality full
+46.0 expect sent valve.stages == 1
+46.1 key w down
+48.0 print
+49.0 expect valve.stage == 1
+49.0 print
+49.1 key w up
+50.0 open content/builds/first.json
+51.0 expect sent valve.stages == 0
+51.0 expect param valve.stages == 0
+51.5 open content/builds/archetypes/two-stage-cam-20.json
+52.5 expect param valve.stages == 1
+52.5 expect sent valve.stages == 1
+52.5 expect sent valve.stageSpeed > 628
+52.6 key w down
+54.5 print
+55.5 expect valve.stage == 1
+55.5 print
+55.6 key w up
+56.0 end

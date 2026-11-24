@@ -37,6 +37,78 @@
 
 ## Landed
 
+- **22:30 the lead's check-in; `main` fast-forwarded** 445453da to 40be51d2, the newest commit green on Linux and
+  macOS together (run 45496629256; Windows' newest green is 69c633d, run 45494891308): it carries M's first pump cut
+  and core's restated backflow check. Not moved to the tip: the steward has core's engine cases red locally at
+  174881c0 (EngineTest.cpp:398, at idle the exhaust valves' air 3.8 % off the intake valves' against 1 %) and is
+  bisecting. **The owner's reports since 22:08.** *The cam and the VVT:* fixed at the source: N1 sourced the two
+  gates and both were too strict (83f34ce5, D's 47eb6794): the second stage on the coolant the ECU reads at 10 C with
+  the oil-pressure switch (Honda's service text), the phasers commanded from cold and parked only without oil
+  pressure (SAE 2007-01-1640); the lead's render from cold on two-stage-cam-20: stage 1 at 6053 rpm at 4.9 s, oil
+  300 K. U2: VALVES and ENGINE say why in words from N1's `tel.valve.waiting` / `waitTemp` (ec9c0cd1, 9b46ad10,
+  f8ca8200), and ENGINE's section drew B's lift shrunken (5.7 and 8.5 mm for 8.5 and 12.65): fixed, fcf41db7. The
+  warm start: C's `LoadOptions::initial` (8c698820) and B's app side (1a7eadcc, `--cold`, "coldStart") are in, but
+  `Heat::stood()` cools the warm engine at the first configure of any build whose air differs from the default:
+  D's line, asked 22:26. *The hum:* the lead's cold-idle renders of first.json through Side, main's tree against
+  the tip: pump lines 760 / 3895 Hz -54.7 / -56.1 dBFS to -74.0 / -75.2 (M's -20 dB), voices over the engine alone
+  +19.5 to +3.3 dB at 1 kHz; M then -30 dB in all by the lead's ruling (1a3812e6) and the fan on at 373 K
+  (f074ab47). *Airy, the engine quieter:* with no voice at all Side at the Field is 10 dB down at 500 Hz and 6 to
+  9 dB up from 4 to 16 kHz against the reference's balance: L's, asked 22:01 and 22:13; L has a tank wall for the
+  pump (the mass law, 38 dB at 3.9 kHz) passing its tests and is pushing it; with it the lead's extra 10 dB at the
+  source is to be reviewed (two cures for one fault). **Also:** D's per-sample boost read (b7e64fa0, no cost); G
+  closed the turbine housings' gas by mass (0.997, 1.007) and measured the NA tail's overstatement (0.4 to 0.7 % of
+  torque: recorded, left); N2's design-point rule adopted (its table to be re-run on G's closing) and its knock
+  table proof on 14 archetypes (9 at every speed; C adds a second bake pass where retard sat at its ceiling); D2's
+  VGT brake governed and unmarked (908bbecd) and the diesels' idle lines traced to the clatter struck at the same
+  point every cycle (D2 gives it the burn's own timing) and to the turbine taking 20 to 24 dB off the exhaust's lows
+  at idle (G, N2); N3: the V12's "peak at 2049 rpm" is a dip (the primaries' wave in the baked map's overlap: N1's
+  bake checks midpoints next) and the intake's ram is about twice the published 6 to 9 % (damping, N1); P's
+  one-change quarter mile (9 of 15 miss, none of it the run; the automatics' brake-torque launch to card I); X:
+  each switch's decisions back in the fast tier, combo's budget 165.
+- **22:08 the owner's two reports, where they stand.** (2) **The two-stage cam and the VVT: explained, nothing
+  regressed.** B drove the window by script on first.json (a2605a16, the nightly `shell.window.edits`): every valve
+  edit is held and sent in all four cases (before the first start, running, after a restart, after a QUALITY change
+  and back). The simulator does not obey because the application's engine starts cold (oil 288 K) and the valvetrain
+  parks the phasers under 313 K of oil (phaser.fm:47) and keeps the second stage off under 333 K (lab.fm:424), both
+  there since 12:12: held at 6700 rpm from cold the phase first moves at 90 s and the stage at 180 s. tee-render's
+  scenarios hold the engine warm, which is why the lead's check saw the stage switch. The owner, told: "I didn't test
+  it for that long, so that might have been it". **Ruled:** the application's engine starts at working temperature
+  by default, set once and not held (C: `LoadOptions::initial`, a swap carries the live temperatures; B: the app's
+  side, `--cold` and a settings key); N1 sources the two gates (the lead's recollection, not a source: a car's ECU
+  gates the stage on the coolant it reads, and phasers are commanded from cold) and adds telemetry that says why;
+  U2's VALVES says it in words. (1) **The hum:** M's a00abbf6 measured by the lead at the tip on first.json's warm
+  idle through Places Side: the pump's 3895 Hz line from 17 dB under the 63 Hz octave to 38 dB under; the fan's
+  lines unmoved (280 Hz 14 dB under); the voices' broadband still 11 to 16 dB over a voices-off render from 250 Hz
+  to 4 kHz, where through the reference listener voices on and off differ by under 1 dB: L's path, asked at 22:01,
+  not answered yet. M gives the fan's switch hysteresis (it sits at the warm start's 368 K). P's new validation row
+  (the strongest line above 300 Hz at warm idle at least 10 dB under the exhaust's band) was red on 23 of 31 before
+  M's commit. **Also ruled:** D takes N1's per-sample read of the boost's pressure (landed, b7e64fa0: X-022's
+  blips no longer pull the charge volume to 0 kPa); N2's design-point rule for turbine matching adopted, its table
+  to be re-run after G closes the turbine housings' gas (1.14 times the valves' on the turbo four, N3) and the
+  flat-plane V8's -13 % to be explained; the boosted books' 8 % withdrawn by N3 (a 1 s window on filling stores);
+  C's KnockBakeService in (8572845f) and a bake's key survives a save (b8cdba82); X-026 closed, `Known.h` holds only
+  X-016; the fast tier is under its cap (2179 of 2400 test-seconds scaled, steward).
+- **21:53 the lead's check-in; `main` fast-forwarded** f69bf016 to 445453da (the one case red on all three systems,
+  core's trapped-unburned check, restated by D in f2d8e19e; X-022's quick case green again). Windows builds and
+  tests again (the friend declaration: 006c1a6c, 6b54fe2a); main's run on f69bf016 packed the application on all
+  three (run 45488426712). **THE OWNER LISTENED AND LOOKED, on a Mac build of main:** (1) "a high pitched hum … far
+  too loud", "more airy", the engine quieter: measured on first.json's idle: the in-tank fuel pump's lines (3895
+  and 760 Hz) and the electric fan's (280, 560 Hz); the voices sit 23 to 35 dB higher against the exhaust through
+  L's Places than through the reference mix, and the engine 10 dB lower. M lowers the pump 17 dB and steepens the
+  fan at source (every voice level is judgement: the owner's ears are the only measure); L owns the path: open.
+  (2) the two-stage-cam archetype's lift change at 6000 rpm seen and heard in one build and not in the next: the
+  simulator switches (tel.valve.stage at 6000 rpm on four commits and under Economy), so it is the application:
+  B (what is sent) and U2 (what ENGINE and VALVES draw) are testing: open. (3) the owner's local commit 392b6a4f:
+  the macOS bundle copies sim/ and content/ only when the executable relinks, so a sim-only pull leaves a stale
+  engine in the .app: not pushed; the lead recommends landing it. **Since 21:10**: table I (dc24110): 123 of 741
+  missed (19 of 187 cited); power 14, torque 12 of 31: lower in power because the builds no longer carry runners
+  tuned to their own torque rows; L's auto level (c686d345: a camera's exposure, true levels a switch away; the
+  limiter a guard again); N2: the blow-off case and the VGT's surge guard re-derived on real exhaust mass
+  (the vanes sooner than the single again), X-024 fixed, the rotary's pair short of boost at the top (turbines
+  matched at the redline at a fixed ratio: to be matched at the build's own design point); N1: seeds 298 and 217;
+  N3: the boosted fourteen: 9 torque and 10 power rows in band, boost collapsing at the power peak on four, two
+  air-book gaps to chase; C: the knock-limit bake's host side (32a6dc47); D2's final numbers; the brake's shaft
+  governor marked. Next check-in 22:35.
 - **21:10 the lead's check-in; `main` fast-forwarded** 35286df to f69bf016 (141 commits; the tip compiles, lint ok).
   **CI, newest finished fast jobs**: Linux green (c51e77a) and macOS green (7ef0f53), both holding the first
   build, the level fix, the gamma, the tyres and the one loader; Windows failed at BUILD from 127c350 (a friend

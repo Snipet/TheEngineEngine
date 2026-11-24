@@ -274,3 +274,94 @@ TEST_CASE("engine: voices switched on with the key or after it end in the same i
     CHECK(std::fabs(idleLate - idleFirst) < 1.0);
     CHECK(tee::test::sound::rms(diff(lateOn, lateQuiet, 0.4, 0.95)) > 0.0);
 }
+
+namespace
+{
+    // A signal's energy in the octave about fc (fc / sqrt 2 to fc sqrt 2), or A-weighted over all (fc 0), in dB on
+    // tee::measure's scale
+    double bandDb(const tee::measure::Spectrum& s, double fc)
+    {
+        double e = 0.0;
+        for (std::size_t k = 1; k < s.db.size(); ++k)
+        {
+            const double f = (double)k * s.binHz;
+            double w = 1.0;
+            if (fc > 0.0)
+            {
+                if (f < fc / std::sqrt(2.0) || f >= fc * std::sqrt(2.0))
+                    continue;
+            }
+            else
+            {
+                // IEC 61672's A weighting
+                const double f2 = f * f;
+                const double ra = 12194.0 * 12194.0 * f2 * f2
+                                  / ((f2 + 20.6 * 20.6) * std::sqrt((f2 + 107.7 * 107.7) * (f2 + 737.9 * 737.9)) * (f2 + 12194.0 * 12194.0));
+                w = ra * ra * std::pow(10.0, 0.2);
+            }
+            e += w * std::pow(10.0, s.db[k] / 10.0);
+        }
+        return 10.0 * std::log10(e + 1.0e-30);
+    }
+}
+
+TEST_CASE("engine: levels at idle, each voice alone against the exhaust, A-weighted and in octaves from 250 Hz to 8 kHz",
+          "[sound][engine][nightly]")
+{
+    // The owner's 21:32 report (first.json: a 2.0 litre turbo four, direct injection, an electric fan): what each voice
+    // is at its source beside the idling exhaust. Heard through the reference's listener (spec.sound.model 0: no
+    // places, no distance; card L carries the path to the ear), each voice alone (the others at -60 dB) less the same
+    // run with every voice silent: the voices' sum cancels exactly, and what is left, the reference's mix, is the
+    // exhaust's above all. The fan switched at 300 K and the air at 301 K (the coolant starts at the air's) so it runs
+    // from the start, as at a warm idle (its sound does not depend on the coolant; the air 13 K warmer than first.json's
+    // moves the exhaust's level by its density, some 4 %). The bounds are judgement (docs/models/voices.md, "Levels at idle"):
+    //   pump        an in-tank pump under a running engine is at most barely heard outside the car (the lead's 22:19):
+    //               50 dB(A) and 35 dB in every octave under
+    //   fan         an electric fan is heard in front of an idling car: 15 to 35 dB(A) under, its highs falling (12 dB
+    //               under at 4 and 8 kHz)
+    //   injectors   a direct injector's tick is the one heard beside the car: 25 to 45 dB(A) under, within 25 dB in
+    //               the 4 kHz octave
+    //   belt        the alternator and the pumps at idle: 45 dB(A) under
+    const char* levels[] = {"voices.pump", "voices.fanLevel", "voices.injectors", "voices.belt", "voices.whine",
+                            "voices.axle", "voices.rattle", "voices.timingLevel", "voices.valveLevel", "voices.gate"};
+    auto run = [&](const char* alone) {
+        tee::test::Scenario s("first");
+        s.rate(48000.0);
+        s.at(0.0).mode(1).lever(0).clutch(0.0).brake(0.0).throttle(0.0).ignition(tee::On).spec("voices.model", 1.0)
+            .spec("sound.model", 0.0).spec("voices.fanOn", 300.0).spec("env.temperature", 301.0);
+        for (const char* l : levels)
+            s.spec(l, alone != nullptr && std::string(l) == alone ? 0.0 : -60.0);
+        s.at(0.25).ignition(tee::Start).until(2.0).ignition(tee::On);
+        return s.run(5.5);
+    };
+    const auto quiet = run(nullptr);
+    INFO(quiet.error());
+    REQUIRE(quiet.ok());
+    const auto ref = quiet.audio().during(3.5, 5.5).spectrum();
+    const double fcs[] = {0.0, 250.0, 500.0, 1000.0, 2000.0, 4000.0, 8000.0};
+    auto against = [&](const char* alone, double* out) {
+        const auto on = run(alone);
+        const auto d = diff(on, quiet, 3.5, 5.5);
+        const auto s = tee::measure::spectrum(d, 48000.0);
+        for (int i = 0; i < 7; ++i)
+            out[i] = bandDb(s, fcs[i]) - bandDb(ref, fcs[i]);
+        UNSCOPED_INFO(alone << ": A " << out[0] << ", 250 " << out[1] << ", 500 " << out[2] << ", 1k " << out[3] << ", 2k "
+                            << out[4] << ", 4k " << out[5] << ", 8k " << out[6] << " dB");
+    };
+    double pump[7], fan[7], inj[7], belt[7];
+    against("voices.pump", pump);
+    against("voices.fanLevel", fan);
+    against("voices.injectors", inj);
+    against("voices.belt", belt);
+    CHECK(pump[0] < -50.0);
+    for (int i = 1; i < 7; ++i)
+        CHECK(pump[i] < -35.0);
+    CHECK(fan[0] < -15.0);
+    CHECK(fan[0] > -35.0);
+    CHECK(fan[5] < -12.0);
+    CHECK(fan[6] < -12.0);
+    CHECK(inj[0] < -25.0);
+    CHECK(inj[0] > -45.0);
+    CHECK(inj[5] > -25.0);
+    CHECK(belt[0] < -45.0);
+}

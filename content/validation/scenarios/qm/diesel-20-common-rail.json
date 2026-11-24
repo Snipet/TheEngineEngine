@@ -2,8 +2,8 @@
   "format": "tee-scenario",
   "version": 1,
   "name": "qm-diesel-20-common-rail",
-  "description": "Card P's drag run for \"Diesel 2.0 L common rail\" in its own gearbox: card I's launch (traction control on, the car's own clutch), staged at 8 s, the green at 10.5 s, the upshifts where the engine first reaches 95 % of its redline (placed by content/validation/archetypes/quarter_mile.py). Read car.t1320 and car.v1320. Warm tyres (card C's warmTyres: a timed run's).",
-  "seconds": 40,
+  "description": "Card P's drag run for \"Diesel 2.0 L common rail\": card I's launch (traction control on, the car's own clutch), staged at 8.0 s, the green at 10.5 s; the upshifts where the next gear's wheel torque is the greater (from the predicted curve); the revs held at the green (the brake held, the pedal floored 1.5 s before); the tyres warm, in their window (placed by content/validation/archetypes/quarter_mile.py). Read car.t1320 and car.v1320.",
+  "seconds": 50,
   "warm": true,
   "events": [
     {
@@ -54,33 +54,38 @@
       ]
     },
     {
-      "t": 10.5,
-      "ctl": {
-        "brake": 0,
-        "throttle": 0.15
-      }
-    },
-    {
-      "t": 10.5,
+      "t": 9.0,
       "ctl": {
         "throttle": 1
       },
       "ramp": 0.3
     },
     {
-      "t": 14.277,
+      "t": 10.5,
+      "ctl": {
+        "brake": 0
+      }
+    },
+    {
+      "t": 11.3,
       "press": [
         "shiftUp"
       ]
     },
     {
-      "t": 17.861,
+      "t": 14.916,
       "press": [
         "shiftUp"
       ]
     },
     {
-      "t": 22.48,
+      "t": 19.001,
+      "press": [
+        "shiftUp"
+      ]
+    },
+    {
+      "t": 24.985,
       "press": [
         "shiftUp"
       ]

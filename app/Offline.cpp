@@ -2,6 +2,7 @@
 #include "Offline.h"
 
 #include "Engine.h"
+#include "Launch.h"
 #include "Script.h"
 
 #include "audio/Ftz.h"
@@ -53,20 +54,7 @@ namespace tee::app
         constexpr double kFrameRate = 60.0;
         constexpr double kRadToRpm = 9.549296585513721;
 
-        bool compare(double x, const std::string& op, double y)
-        {
-            if (op == ">")
-                return x > y;
-            if (op == "<")
-                return x < y;
-            if (op == ">=")
-                return x >= y;
-            if (op == "<=")
-                return x <= y;
-            if (op == "==")
-                return x == y;
-            return x != y;
-        }
+        bool compare(double x, const std::string& op, double y) { return compareScript(x, op, y); }
 
         // The folder a file goes into, made if it is not there.
         void makeFolderOf(const std::string& file)
@@ -141,7 +129,7 @@ namespace tee::app
             struct Kept
             {
                 Kept(player::SimAdapter& sim, std::filesystem::path shipped)
-                    : doc(sim.build()), scope(sim.host()), dyno(sim), file(sim.build()),
+                    : doc(sim.build()), scope(sim.host()), dyno(sim), bake(sim), file(sim.build()),
                       library(shipped, Presets::userDirectory()),
                       garage(file, [&sim] { return sim.ready() ? sim.host().sim() : std::shared_ptr<Sim>(); }, std::move(shipped),
                              Presets::userDirectory())
@@ -151,6 +139,7 @@ namespace tee::app
                 ui::Units units;
                 ui::SimScope scope;
                 LateDyno dyno;                    // U1's ServiceDyno, made when the engine's compile is in
+                LateBake bake;                    // U1's ServiceBake (TUNE's spark map), likewise
                 files::BuildFile file;
                 files::BuildLibrary library;
                 GarageLibrary garage;             // GARAGE's (U5's Library), over `file`: after it, so destroyed first
@@ -171,6 +160,8 @@ namespace tee::app
                 engine.sim->build(), content.empty() ? content : content / "builds", Presets::userDirectory(), services);
             addShellServices(frameServices, *engine.sim, controls);
             addFileServices(frameServices, kept->file, kept->library);
+            frameServices.sparkMap = [kept] { return kept->bake.state(); };
+            shown.frame = [kept] { kept->bake.tick(); };
             if (window)
             {
                 const auto hooks = std::make_shared<Shown::WindowHooks>();
@@ -434,6 +425,13 @@ namespace tee::app
                     case ScriptEvent::Kind::wheel:
                         host.wheel(static_cast<float>(e.a), static_cast<float>(e.b), static_cast<float>(e.c));
                         break;
+                    case ScriptEvent::Kind::open:
+                        openInScript(shown.document, e);
+                        break;
+                    case ScriptEvent::Kind::quality:
+                        if (engine.sim != nullptr)
+                            engine.sim->requestQuality(static_cast<int>(e.a));
+                        break;
                     case ScriptEvent::Kind::end:
                         ended = true;
                         break;
@@ -507,6 +505,8 @@ namespace tee::app
                         x = rpm();
                     else if (e->name == "ready")
                         x = engine.ready() ? 1.0 : 0.0;
+                    else if (e->name.rfind("sent ", 0) == 0)
+                        known = engine.sim != nullptr && readSent(*engine.sim, e->name.substr(5), x);
                     else if (e->name.rfind("param ", 0) == 0)
                     {
                         const int i = params.findParam(e->name.substr(6));

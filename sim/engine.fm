@@ -820,6 +820,10 @@ module Engine
     {
         const float d16 = 16.0f * dt;
         crank.sense();
+        // (package M's fan through the radiator, spec.voices.model 1; the road's air when driven)
+        heat.fanModel = spec.voices.model != 0 ? 1 : 0;
+        heat.fanAir = ex.vo.fan.on != 0 ? 1.0f : 0.0f;
+        heat.roadSpeed = set.drive != 0 ? fabsf(car.speedNow()) : 0.0f;
         heat.control(d16, set.ambF, vTotal, ecu.state, crank.rpm, crank.omega);
         for (int c = 0; c < lay.n; ++c)
             cyl[c].tw = heat.tSurf;
@@ -968,6 +972,7 @@ module Engine
         if (spec.valve.model != 0)
         {
             vt.oil(heat.oilPressure(), heat.oilTemperature());
+            vt.tCool = heat.tCool;   // (N1, for card E: the cam stage's gate reads the coolant, as an ECU does)
             vt.control16(d16, crank.omega, ecu.redRpm * 0.10471976f, ecu.throttle, crank.theta, &lay.fire[0], ecu.camTarget(0),
                          ecu.camTarget(1), ecu.liftCommand());
         }
@@ -1326,6 +1331,10 @@ module Engine
         float rNear[MAX_PORTS];
         for (int i = 0; i < np; ++i)
             rNear[i] = intk.run[i].near + intk.run[i].z * qi[i];
+        // (boost.model 1: the boost's volume read each sample, as the intake draws from it each sample: with a small
+        // volume behind runner throttles it moved far in the 16 samples between control ticks, X-022; N1's line)
+        if (spec.boost.model != 0)
+            intk.pBox = boost.pressure();
         intk.haveValves = 1;
         intk.plenum(np, rNear, fuelUse, vt.plateOpen() != 0 ? 1.0f : ecu.throttle, ecu.bypass, dt);
         intk.mValves = 0.0f;

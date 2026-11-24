@@ -76,9 +76,74 @@ bike's own gearbox (card B2's `Car::bikeGearboxInput()`, `bikeGearboxRatio()`, `
 sequential (straight-cut) box; its chain is its final drive, so the final drive's whine gets no speed: the constant
 mesh at 19 x crank / primary found at 792.0 Hz against 796.8.
 
+## Levels at idle
+
+The owner's 21:32 report: first.json (a 2.0 litre turbo four, direct injection, an electric fan) through card L's
+Places listener (camera Side) carried a high hum. Measured (p-idle-warm, 8 to 14 s, each voice set to -60 dB in
+turn): the 3895 Hz line was the fuel pump's impeller (41 vanes x 95 turns/s), 760 Hz its commutator (8 x 95), 280 and
+560 Hz the electric fan's blade passing (7 x 40) and its harmonic. The fan ran because a warm idle holds the coolant
+at 368 K, which was `fanOn`'s default: a few hundredths of a kelvin either side of the hold decided whether the fan
+came in. `fanOn` is now 373 K (100 C) by default, off 5 K below (a thermo switch's two contacts): the warm hold sits
+at the off point, 5 K under the on, so every warm render has the fan off unless its coolant climbs past 373 K by
+itself (a long pull) or the build sets `fanOn` lower.
+
+Who carries what (the lead's ruling, 21:47): package M sets each voice's level at its source,
+stated against the exhaust's through the reference's listener (`spec.sound.model` 0, which has no places and no
+distance); card L carries everything from the scene's inputs to the ear. Neither trims one voice to make up for the
+other's path.
+
+Each voice alone, less the same run with every voice silent (an exact cancellation), in dB against that silent run's
+mix (the exhaust's above all). first.json, cold idle 3.5 to 5.5 s, the fan switched at 300 K with the air at 301 K so it
+runs; test `engine: levels at idle`:
+
+| Voice | dB(A) | 250 Hz | 500 | 1 k | 2 k | 4 k | 8 k | Bound (judgement) |
+|---|---|---|---|---|---|---|---|---|
+| Fuel pump | -59.9 | -121 | -110 | -49.1 | -99 | -37.4 | -79 | 50 dB(A) and 35 dB in every octave under: an in-tank pump under a running engine is at most barely heard outside the car |
+| Electric fan | -23.3 | -21.8 | -12.9 | -15.6 | -14.9 | -17.4 | -25.4 | 15 to 35 dB(A) under, 12 under at 4 and 8 kHz: a fan is heard in front of an idling car, its broadband falling above its peak |
+| Direct injectors | -34.3 | -90 | -61 | -53 | -40.1 | -14.2 | -11.0 | 25 to 45 dB(A) under, within 25 dB at 4 kHz: the tick heard beside a DI engine |
+| Accessory belt | -60.3 | -101 | -78 | -70 | -46.4 | -50.7 | -46.9 | 45 dB(A) under |
+
+What changed for it: the pump 30 dB down (before: -30 dB(A), -8.2 in the 4 kHz octave; 20 dB for the report, 10 more by
+the lead's ruling of 22:19, not scaled by the engine's size); the fan's broadband now falls
+18 dB an octave above twice its band (before: -3.4 in the 8 kHz octave). The fan's 280 Hz line is as it was.
+
+The pump's level, 24 November (the owner's words are why it is where it is: do not raise it again from a spectrum
+alone; a change goes through the owner's ears). Against the voices-off mix through the reference's listener, first.json
+at idle:
+
+| | Gain in `fuel.fm` | dB(A) | 4 kHz octave | Why |
+|---|---|---|---|---|
+| As shipped to the owner | 0.0035 | -30 | -8.2 | Judgement: "heard through the floor, about the chain's at idle" |
+| -20 dB (57bd971a) | 0.00035 | -49.2 | -29.7 | The owner (21:32): "a high pitched hum that almost sounds like the turbo at idle, but far too loud" |
+| -30 dB (1a3812e6) | 0.00011 | -59.9 | -37.4 | The lead's ruling (22:19): the owner's "far too loud"; an in-tank pump under a running engine is at most barely heard outside the car; 1.6 to 3.4 dB of margin on the small engines' hum row was one camera from red. Not scaled by the engine's size |
+
+The prime keeps the same level as the pump's hum (the lead, 22:27: a louder prime would be a judgement on a judgement;
+it is heard at key-on because nothing else sounds, and from the cabin, which is the listener's business).
+
+The same voices through Places, camera Side (first.json's own listener), measured the same way: the pump -11.7 dB(A)
+before the 20 dB, the fan +3.9, the belt -40.4, that is 23 to 35 dB higher against the exhaust than at the source,
+with the silent mix itself 15 dB(A) lower than through the reference's. That part is the path's (card L's).
+
+The prime at key-on (first.json, warm, the key on and no start, 0.3 to 1.9 s, rms): through the reference's listener
+-105.6 dBFS against -106.3 without the pump (the listener's own floor), some 80 dB under the idle's mix (-25.8):
+heard only with the volume far up. Through Places Side -68.4 dBFS against -81.5 without it, 42 dB under the idle's
+mix (-26.1): the one sound at key-on there. At idle the pump is -80.6 dBFS through Places Side, 54 dB under the mix.
+
+What a person should compare by ear (the owner's ears are the only measurement these levels will have), each through
+the reference's listener (`sound.model` Reference), at a warm idle, with `voices.level` 0, one voice's slider moved:
+1. The pump: key on without starting (its 2 s prime, alone), then idling. Beside a real car at idle, is an in-tank
+   pump heard at all? If the prime is heard but the idle's whine is not, the level is about right.
+2. The fan (`fanOn` 300 to force it on): does it sound like an electric radiator fan in front of an idling car,
+   plainly heard but under the exhaust, a hum at 280 Hz with a soft rush, no hiss above it?
+3. The direct injectors' tick against `injection` Port: beside a direct-injection engine at idle, is the ticking as
+   clear as this, clearer, or less?
+4. The belt (`belt` +12 against 0): is the alternator's whine at idle heard at all on a real car?
+Each answer moves one number in the table above, at the source; whether the same holds at camera Side is a question for
+card L's path.
+
 ## Judgement
 
-Every level; the constant ratio 1.55 and the 48-tooth sum; the 12 % eccentricity; the rattle's backlash, drag and
+Every level (the idle bounds above included); the constant ratio 1.55 and the 48-tooth sum; the 12 % eccentricity; the rattle's backlash, drag and
 case modes; the resonances of injectors, lifters, gate housing, starter; the 240-degree tap timing; the fan's
 clutch curve and band; the pump's speeds and vane count; the gate's chatter law.
 

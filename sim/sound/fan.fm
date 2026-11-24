@@ -6,13 +6,18 @@
 // `fanOn` and above) it locks to some 90 %; between, in proportion over the 15 K below. The fluid takes some seconds
 // to fill and drain (a time constant of 4 s here). The famous roar is a locked clutch at high revs, and it fades as
 // the clutch lets go (Horton's and Behr's descriptions of the thermostatic clutch; the numbers are typical ones,
-// judgement). An electric fan switches on at `fanOn` and off 5 K lower, its motor taking it to 2400 rpm in about a
-// second (time constant 0.35 s) and letting it coast down in some three (1.2 s).
+// judgement). An electric fan switches on at `fanOn` (373 K, 100 C, by default) and off 5 K lower, as a thermo switch's
+// two contacts do: the hosts' warm hold (368 K, tee/Warm.h) sits at the off point, 5 K under the on, so a warm render
+// has the fan off unless the coolant climbs past 373 K by itself (with the on point at 368 the hold's few hundredths of
+// a kelvin either side decided whether a 280 Hz line was in the render: the lead's 21:47). Its motor takes it to
+// 2400 rpm in about a second (time constant 0.35 s) and lets it coast down in some three (1.2 s).
 //
 // What it sounds like (Neise, "Noise reduction in centrifugal fans", and the axial fan's literature): the blades'
 // passing, at the blades times the fan's turns, with its harmonic, and the broadband noise of the turbulence off the
 // blades, whose sound power rises as the tip speed's fifth to sixth power: amplitude here as (U / U0)^2.75, shaped
-// into a band an octave or so about the passing frequency's fourth harmonic. An electric fan's motor adds its
+// into a band an octave or so about the passing frequency's fourth harmonic, falling 18 dB an octave above twice
+// that (a fan's broadband spectrum falls steeply above its peak; the band alone, 6 dB an octave, left a 2400 rpm
+// fan's 8 kHz octave 3 dB under the whole idling exhaust's, the owner's 21:32 report). An electric fan's motor adds its
 // commutator's ripple (8 segments, faint). Tip speed at the fan's 0.4 m across.
 #pragma once
 #include "lib/biquad.fm"
@@ -35,6 +40,7 @@ module FanVoice
     float nScale;
     Shaft fan;
     Biquad broad;
+    Biquad soft;        // the broadband's fall above its band
     float hz;           // the fan's turns a second, every 16 samples
     float hzStep;
     float hzSet;        // its speed now (the clutch's, the motor's)
@@ -60,6 +66,7 @@ module FanVoice
     void clear()
     {
         broad.clear();
+        soft.clear();
         aTone.clear();
         aNoise.clear();
         hz = 0.0f;
@@ -75,6 +82,13 @@ module FanVoice
     bool turning()
     {
         return hzSet > 0.5f;
+    }
+
+    // The air it draws through the radiator, as a share of an electric fan's at full speed (its flow goes as its
+    // speed): for card D's heat model, so that the fan cools what switched it on (sim/README.md, the hooks)
+    float air()
+    {
+        return fminf(hzSet / 40.0f, 1.5f);
     }
 
     // Every 16 samples. d16: seconds; kind: FAN_*; crankHz; coolant (K); onAt (K); nBlades; k: its gain; power: the
@@ -116,6 +130,7 @@ module FanVoice
         const float lu = u > 1.0e-4f ? expf(2.75f * logf(u)) : 0.0f;
         const float fb = fmaxf(blades * hzSet, 20.0f);
         broad.setBandpass(fminf(4.0f * fb, 6000.0f), 0.6f, rate);
+        soft.setLowpass(fminf(8.0f * fb, 12000.0f), 0.707f, rate);
         aTone.to(k * 0.004f * fminf(lu, 16.0f));
         aNoise.to(k * 0.012f * fminf(lu, 16.0f));
     }
@@ -133,7 +148,7 @@ module FanVoice
             const float s = sn->at(m);
             const float c = sn->cosAt(m);
             out = at * (s + 0.4f * 2.0f * s * c + 0.05f * motor * sn->at(fan.mesh(8.0f)))
-                  + an * broad.tick(nScale * noise.rnd());
+                  + an * soft.tick(broad.tick(nScale * noise.rnd()));
         }
     }
 };

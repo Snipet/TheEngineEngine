@@ -151,7 +151,7 @@ namespace
         doc.set(autoF, 0.0);
         doc.endGesture();
         rig.settle();
-        rig.host->click(100.0f, 144.0f);                 // wastegate duty, the third
+        rig.host->click(100.0f, 184.0f);                 // wastegate duty, the fourth (after the knock limit)
         CHECK_MSG(sel.path() == "boost.duty", sel.path());
         // The lamps, at the traces' right under the knock by cylinder: the limiter first.
         rig.host->click(1100.0f - 16.0f - 12.0f - 150.0f, 700.0f - 16.0f - 210.0f + 30.0f + 46.0f + 10.0f);
@@ -214,6 +214,32 @@ namespace
         CHECK_NEAR(m.z[2][3], 0.8 + 0.03 + 0.2, 1e-6);   // z[row j][column i] = baked[i * 16 + j]
         CHECK(doc.get(a) < 0.5);
         CHECK(doc.steps() == steps + 1);
+        return 0;
+    }
+
+    // The knock-limit table (card N2's, baked by card C's dyno sweep): its switch says "not baked"; no BAKE (the host
+    // bakes it); the bake's state as the host says it (FrameServices::sparkMap) over the spark map and over it.
+    VIEW_TEST(testTuneKnockLimit, "tune.knocklimit")
+    {
+        StageRig rig(tee::ui::makeTuneWorkspace, 1100, 700, 1.0f, 4.6);
+        tee::ui::FrameServices svc;
+        std::string state = "baking";
+        svc.sparkMap = [&state] { return state; };
+        rig.demo.ctx.services = &svc;
+        rig.demo.engine.set("ecu.knockTable", 0.0);
+        tee::ui::tuneChoose(*rig.ws, 7);
+        rig.settle();
+        CHECK(tee::ui::tuneMapEdit(*rig.ws) != nullptr);
+        CHECK(tee::ui::tuneBakeButton(*rig.ws).isEmpty());
+        const std::uint64_t k0 = rig.ws->drawKey();
+        picture("tune.knocklimit", *rig.host);
+        state = "baked";                                 // the host's bake lands: what is drawn moves
+        rig.demo.engine.set("ecu.knockTable", 1.0);
+        rig.settle();
+        CHECK(rig.ws->drawKey() != k0);
+        tee::ui::tuneChoose(*rig.ws, 0);                 // and it is said over the spark map too
+        rig.settle();
+        picture("tune.knocklimit.spark", *rig.host);
         return 0;
     }
 }

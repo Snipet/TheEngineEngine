@@ -79,6 +79,14 @@ namespace
         SDL_SetMainReady();
         SDL_SetAppMetadata("TheEngineEngine", TEE_VERSION, "com.snipet.theengineengine");
 
+        // ---- what was remembered: the bindings, the pedals' times, the audio buffer (shell/settings/Settings.h) ------
+        const settings::Loaded remembered = settings::load();
+        if (!remembered.note.empty())
+            std::fprintf(stderr, "settings: %s\n", remembered.note.c_str());
+        // a cold start: --cold, or the settings' (a machine's run as a person's: the settings it was given)
+        if (remembered.settings.coldStart)
+            o.cold = true;
+
         // ---- the engine: its program read here (the front end, a tenth of a second: the document and the parameters),
         // its machine code made on a worker while the window opens (the simulator's; the reference's is made here) ----
         o.background = true;
@@ -96,10 +104,6 @@ namespace
             std::fprintf(stderr, "%s\n", engine.warnings.c_str());
         Player& player = *engine.player;
 
-        // ---- what was remembered: the bindings, the pedals' times, the audio buffer (shell/settings/Settings.h) ------
-        const settings::Loaded remembered = settings::load();
-        if (!remembered.note.empty())
-            std::fprintf(stderr, "settings: %s\n", remembered.note.c_str());
         o.unitChoices = remembered.settings.unitChoices;
         // the engine's quality: --quality, else the settings' (made once the engine is ready: never changed by itself)
         const std::string quality = !o.quality.empty() ? o.quality : remembered.settings.audioQuality;
@@ -169,6 +173,52 @@ namespace
             }
         }
         std::size_t nextEvent = 0;
+        std::vector<const app::ScriptEvent*> scriptChecks;
+        int scriptFailures = 0, scriptCheckCount = 0;
+        // A check of the script's, in the window: a telemetry value by name, `rpm`, `ready`, `param ID` (the document),
+        // `sent PATH` (the host's Spec as it was sent); a print: a line of the engine's state.
+        const auto checkScript = [&](const app::ScriptEvent& e, double at) {
+            TelemetrySource& values = player;
+            const auto telemetry = [&values](const char* name) {
+                const int h = values.findValue(name);
+                return h >= 0 ? values.value(h) : 0.0;
+            };
+            if (e.kind == app::ScriptEvent::Kind::print)
+            {
+                std::printf("t=%.2f state=%.0f rpm=%.0f stage=%.0f inPhase=%.2f oil=%.1fK\n", at, telemetry("engine.state"),
+                            telemetry("engine.speed") * 60.0 / (2.0 * 3.14159265358979), telemetry("valve.stage"),
+                            telemetry("valve.inPhase"), telemetry("engine.oilTemperature"));
+                return;
+            }
+            double x = 0.0;
+            bool known = true;
+            if (e.name == "rpm")
+                x = telemetry("engine.speed") * 60.0 / (2.0 * 3.14159265358979);
+            else if (e.name == "ready")
+                x = engine.ready() ? 1.0 : 0.0;
+            else if (e.name.rfind("sent ", 0) == 0)
+                known = engine.sim != nullptr && app::readSent(*engine.sim, e.name.substr(5), x);
+            else if (e.name.rfind("param ", 0) == 0)
+            {
+                ParamSource& params = player;
+                const int i = params.findParam(e.name.substr(6));
+                known = i >= 0;
+                x = known ? params.get(i) : 0.0;
+            }
+            else
+            {
+                const int h = values.findValue(e.name);
+                known = h >= 0;
+                x = known ? values.value(h) : 0.0;
+            }
+            ++scriptCheckCount;
+            if (!known || !app::compareScript(x, e.op, e.a))
+            {
+                ++scriptFailures;
+                std::fprintf(stderr, "FAILED: script line %d at %.2f s: %s %s %g, and it is %s%g\n", e.line, at,
+                             e.name.c_str(), e.op.c_str(), e.a, known ? "" : "unknown: ", x);
+            }
+        };
 
         // ---- the window ---------------------------------------------------------------------------------------------
         const app::Shown shown = app::makePanel(o, engine, controls, /*window*/ true);
@@ -221,6 +271,8 @@ namespace
                 now.audioQuality = q == 1 ? "economy" : "full";
             };
         }
+        commandsContext.coldStart = [&now] { return now.coldStart; };
+        commandsContext.setColdStart = [&now](bool cold) { now.coldStart = cold; };
         commandsContext.audioChanged = [&] {
             audioLine = device.isOpen() ? device.info().line() : "no audio device";
             showStatus();
@@ -306,11 +358,26 @@ namespace
                     ParamSource& params = player;
                     if (const int i = params.findParam(e.name); i >= 0)
                         params.set(i, e.a);
+                    else
+                        std::fprintf(stderr, "note: script line %d: no parameter '%s'\n", e.line, e.name.c_str());
                 }
+                else if (e.kind == app::ScriptEvent::Kind::open)
+                    app::openInScript(shown.document, e);
+                else if (e.kind == app::ScriptEvent::Kind::quality)
+                {
+                    if (engine.sim != nullptr)
+                        engine.sim->requestQuality(static_cast<int>(e.a));
+                }
+                else if (e.kind == app::ScriptEvent::Kind::expect || e.kind == app::ScriptEvent::Kind::print)
+                    scriptChecks.push_back(&e);         // read after this frame's engine.frame(), below
             }
             engine.frame();
             if (shown.frame)
                 shown.frame();
+            // the script's checks and prints (as tee-headless's: app/Script.h), of this frame's telemetry and document
+            for (const app::ScriptEvent* e : scriptChecks)
+                checkScript(*e, seconds);
+            scriptChecks.clear();
             // the engine's compile: START does nothing and the status line counts the seconds until it is ready
             bool compileChanged = false;
             if (engine.sim != nullptr)
@@ -542,6 +609,10 @@ namespace
         }
         else
             code = host.run();
+        if (scriptCheckCount > 0)
+            std::printf("checks: %d, %d failed\n", scriptCheckCount, scriptFailures);
+        if (scriptFailures > 0)
+            code = 1;
 
         const funkgui::desktop::DesktopHost::Diagnostics d = host.diagnostics();
         // what the engine said last, for a machine's log (a person sees it in the window)

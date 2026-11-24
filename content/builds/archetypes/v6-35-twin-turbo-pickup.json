@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "3.5 L twin-turbo V6 pickup",
-  "notes": "A 3.5 L twin-turbo V6 of a full-size pickup: 92.5 x 86.6 mm (3497 cc), 10.5:1, direct injection, a turbo a bank (engines of the kind: 280 to 300 kW at 5000 to 6000 rpm, 640 to 690 N m at 3500; makers' figures). Four-wheel drive, ten-speed automatic. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT.",
+  "notes": "A 3.5 L twin-turbo V6 of a full-size pickup: 92.5 x 86.6 mm (3497 cc), 10.5:1, direct injection, a turbo a bank (engines of the kind: 280 to 300 kW at 5000 to 6000 rpm, 640 to 690 N m at 3500; makers' figures). Four-wheel drive, ten-speed automatic. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py).",
   "spec": {
     "engine": {
       "layout": "V6",
@@ -127,6 +127,59 @@
       },
       "knock": {
         "on": true
+      },
+      "maps": {
+        "camInAuto": false,
+        "camIn": {
+          "x": [
+            104.7,
+            178.0,
+            251.3,
+            324.6,
+            397.9,
+            471.2,
+            544.5,
+            617.8
+          ],
+          "y": [
+            0.0,
+            3.0
+          ],
+          "z": [
+            [
+              30.0,
+              30.0
+            ],
+            [
+              30.0,
+              30.0
+            ],
+            [
+              10.0,
+              10.0
+            ],
+            [
+              0.0,
+              0.0
+            ],
+            [
+              10.0,
+              10.0
+            ],
+            [
+              10.0,
+              10.0
+            ],
+            [
+              30.0,
+              30.0
+            ],
+            [
+              30.0,
+              30.0
+            ]
+          ]
+        }
       }
     },
     "car": {
@@ -177,8 +230,7 @@
       "camera": "Rear",
       "place": "Field",
       "ground": "Asphalt",
-      "enginePlace": "Front",
-      "level": 2.8
+      "enginePlace": "Front"
     }
   }
 }

@@ -228,6 +228,7 @@ namespace tee::app
                 so.sampleRate = rate;
                 so.background = o.background || o.holdCompile > 0.0;
                 so.hold = o.holds;
+                so.warm = !o.cold;      // the application's engine starts warm unless a person chose cold
                 std::unique_ptr<player::SimAdapter> sim = player::SimAdapter::create(so, e.error);
                 if (sim)
                 {
