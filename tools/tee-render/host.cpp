@@ -126,6 +126,15 @@ int hostMain(int argc, char** argv)
         if (!ok)
             return failHost("an option wants a value (--build --help lists them)");
     }
+    // what this run writes, removed before anything can fail: a failed run never leaves the last one's files behind
+    // to be read as this one's (the names given now; the default ones once the scenario says its build)
+    const auto removeOld = [](const std::string& name) {
+        std::error_code removed;
+        if (!name.empty() && name != "-")
+            std::filesystem::remove(name, removed);
+    };
+    removeOld(outName);
+    removeOld(csvName);
     if (scenarioName.empty())
         return failHost("give --scenario (a name under content/scenarios, or a file)");
 
@@ -145,6 +154,17 @@ int hostMain(int argc, char** argv)
         timeline.rate = rate;
     if (blockValue >= 1.0)
         timeline.block = static_cast<int>(blockValue);
+    if (buildName.empty())
+        buildName = timeline.build;
+    const std::string stem = (buildName.empty() ? std::string("defaults")
+                                                 : std::filesystem::path(buildName).stem().generic_string())
+                             + "-" + std::filesystem::path(scenarioName).stem().generic_string();
+    if (outName.empty())
+        outName = "out/" + stem + ".wav";
+    if (csvName.empty())
+        csvName = outName == "-" ? "-" : std::filesystem::path(outName).replace_extension(".csv").generic_string();
+    removeOld(outName);
+    removeOld(csvName);
     if (timeline.rate < 8000.0 || timeline.rate > 768000.0 || timeline.block < 1 || timeline.block > 1048576)
         return failHost("--rate is 8000 to 768000, --block 1 to 1048576");
 
@@ -158,8 +178,6 @@ int hostMain(int argc, char** argv)
         return failHost("the simulator in " + sim.generic_string() + " does not compile");
     }
     Build build(compiled->fields());
-    if (buildName.empty())
-        buildName = timeline.build;
     std::vector<std::string> warnings;
     if (!buildName.empty() && buildName != "defaults"
         && !build.loadFile(named(content / "builds", buildName), BuildPart::Whole, warnings, error))
@@ -189,13 +207,6 @@ int hostMain(int argc, char** argv)
     if (!runTimeline(host, build, timeline, options, run, error))
         return failHost(error);
 
-    const std::string stem = (buildName.empty() ? std::string("defaults")
-                                                 : std::filesystem::path(buildName).stem().generic_string())
-                             + "-" + std::filesystem::path(scenarioName).stem().generic_string();
-    if (outName.empty())
-        outName = "out/" + stem + ".wav";
-    if (csvName.empty())
-        csvName = outName == "-" ? "-" : std::filesystem::path(outName).replace_extension(".csv").generic_string();
     if (outName != "-")
     {
         Audio audio;
