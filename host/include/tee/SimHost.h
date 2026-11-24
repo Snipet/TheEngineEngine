@@ -33,6 +33,7 @@
 #include "tee/Fields.h"
 #include "tee/Instance.h"
 #include "tee/Sim.h"
+#include "tee/Warm.h"
 #include "tee/Telemetry.h"
 
 #include <atomic>
@@ -110,6 +111,9 @@ namespace tee
         bool log = false;                       // keep the session log (takeLog)
         double crossfadeSeconds = 0.02;         // a reload's crossfade
         double fadeInSeconds = 0.02;            // a fresh instance's fade in, after a trip
+        // State written into the instance before each call of Engine::process (Warm.h: a warm engine, held): for
+        // offline runs, tests and tools, never the application's engine. A path the program lacks is skipped.
+        std::vector<HeldValue> hold;
     };
 
     class SimHost
