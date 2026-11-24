@@ -1,0 +1,61 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Boxer four",
+  "notes": "1-3-2-4: cylinders 1 and 3 on the right bank, 2 and 4 on the left; each its own throw.",
+  "spec": {
+    "engine": {
+      "custom": true,
+      "layout": 6,
+      "cylinders": 4,
+      "bankAngle": [
+        90,
+        -90
+      ],
+      "bank": [
+        0,
+        1,
+        0,
+        1
+      ],
+      "pin": [
+        90,
+        270,
+        270,
+        90
+      ],
+      "fireRev": [
+        0,
+        1,
+        0,
+        1
+      ],
+      "place": [
+        0.0,
+        0.1,
+        0.2,
+        0.3
+      ]
+    }
+  },
+  "expect": {
+    "firingOrder": [
+      1,
+      3,
+      2,
+      4
+    ],
+    "firingIntervals": [
+      180,
+      180,
+      180,
+      180
+    ],
+    "firingAngles": [
+      0.0,
+      360.0,
+      180.0,
+      540.0
+    ]
+  }
+}

@@ -1,0 +1,74 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "V6, 90 degrees, common pins",
+  "notes": "Three pins 120 apart, each shared: odd-firing 90-150, as the first 90-degree V6s cut from V8s.",
+  "spec": {
+    "engine": {
+      "custom": true,
+      "cylinders": 6,
+      "bankAngle": [
+        45,
+        -45
+      ],
+      "bank": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        1
+      ],
+      "pin": [
+        45,
+        45,
+        285,
+        285,
+        165,
+        165
+      ],
+      "fireRev": [
+        0,
+        1,
+        1,
+        1,
+        0,
+        0
+      ],
+      "place": [
+        0.0,
+        0.033,
+        0.1,
+        0.133,
+        0.2,
+        0.233
+      ]
+    }
+  },
+  "expect": {
+    "firingOrder": [
+      1,
+      6,
+      5,
+      4,
+      3,
+      2
+    ],
+    "firingIntervals": [
+      150,
+      90,
+      150,
+      90,
+      150,
+      90
+    ],
+    "firingAngles": [
+      0.0,
+      630.0,
+      480.0,
+      390.0,
+      240.0,
+      150.0
+    ]
+  }
+}

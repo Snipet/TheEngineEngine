@@ -1,0 +1,67 @@
+// supercharger.fm: a positive-displacement supercharger, Roots or twin-screw, driven from the crank by a belt.
+//
+// Its rotors carry a volume D a turn of theirs (n turns a second: the crank's times the pulley's ratio) from the inlet to
+// the outlet: rho1 D n of air, less what leaks back through the clearances from the outlet (an orifice whose area is
+// a share of the rotors' size, by the compressible law: more with more boost, the reason such a blower's efficiency
+// falls as it slows). It does not make pressure as a fan does: it delivers its volume, and the pressure is what the
+// engine downstream makes of that much air.
+//
+//   - A Roots blower (built-in volume ratio 1) has no internal compression: each pocket reaches the outlet at the
+//     inlet's pressure and the outlet's air rushes back into it, compressing it irreversibly at constant volume. The
+//     work a turn is D (p2 - p1), more than an isentropic compression's, all of it into the air: its outlet is hot,
+//     and each pocket's opening is a sharp pulse of backflow (p2 - p1 strong).
+//   - A twin-screw compresses each pocket inside, isentropically, by its built-in volume ratio Vi to p_i = p1 Vi^1.4,
+//     before it opens to the outlet; what is left, p2 - p_i, is made up at constant volume (D / Vi) as in a Roots.
+//     Work a turn: p1 D 3.5 (Vi^0.4 - 1) + (D / Vi) (p2 - p_i) when the outlet is above p_i (under-compression); when
+//     it is below (over-compression) the pocket's extra pressure is wasted into the outlet and the first term is the
+//     work. Matched (p2 = p_i), it is an isentropic compressor: cooler, its pulses soft.
+//   - Both turn some 10 % of the belt's work into heat in the case and bearings (mechanical efficiency 0.9).
+//
+// pulse is the opening pocket's pressure step over the inlet's, |p2 - p_i| / p1: what the whine's harmonics are made
+// from (the sharper the step, the more of them).
+#pragma once
+#include "gas.fm"
+
+module BoostSupercharger
+{
+    float disp;         // m^3 a turn of the rotors
+    float vi;           // built-in volume ratio (1: Roots)
+    float leakArea;     // m^2
+    float n;            // rotor turns a second
+    float mDel;         // kg/s carried to the outlet this sample
+    float mLeak;        // kg/s back through the clearances
+    float power;        // W of work on the air
+    float drive;        // W from the crank (the work over the mechanical efficiency)
+    float t2;           // the delivered air's temperature, K (before what leaks back mixes in the outlet)
+    float pulse;
+    float pi;           // the pockets' pressure at opening, Pa
+    float vi4;          // Vi^0.4
+
+    void size(float d, float vIn)
+    {
+        disp = fmaxf(d, 1.0e-5f);
+        vi = fmaxf(vIn, 1.0f);
+        vi4 = expf(0.4f * logf(vi));
+        // (clearances some 0.15 mm along the rotors' edges: an area that grows as D^(2/3))
+        leakArea = 0.012f * expf(0.6666667f * logf(disp));
+    }
+
+    // One sample: rotor turns a second, the inlet's state, the outlet's pressure. Returns the net flow into the outlet.
+    float step(float turns, float p1, float t1, float p2, float t2out)
+    {
+        n = fmaxf(turns, 0.0f);
+        const float rho1 = p1 / (kBoostR * t1);
+        mDel = rho1 * disp * n;
+        mLeak = boostOrifice(p2, t2out, p1, t1, leakArea, 0);
+        // (the pockets' pressure when they open: Vi^1.4 = Vi * Vi^0.4)
+        pi = p1 * vi * vi4;
+        float w = p1 * disp * 3.5f * (vi4 - 1.0f);
+        if (p2 > pi)
+            w += (disp / vi) * (p2 - pi);
+        power = w * n;
+        drive = power / 0.9f;
+        pulse = fabsf(p2 - pi) / p1;
+        t2 = t1 + (mDel > 1.0e-6f ? power / (mDel * kBoostCpA) : 0.0f);
+        return mDel - mLeak;
+    }
+};

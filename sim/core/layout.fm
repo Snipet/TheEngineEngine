@@ -1,0 +1,147 @@
+// layout.fm: an engine's layout as geometry, and the firing angles that follow from it.
+//
+// A piston engine is its cylinders on a crank. Each cylinder stands in a bank, whose axis is at the bank's angle (from
+// vertical, in crank degrees in the direction the crank turns); its rod runs to a crank pin, which sits at the pin's
+// angle on the crank. The piston is at top dead centre when its pin points up its bank's axis: when the crank is at
+// the bank's angle less the pin's. A four-stroke cylinder passes top dead centre twice a cycle, and fires on one of the
+// two (the first revolution or the second: fireRev). So each cylinder's firing angle in the 720-degree cycle is
+//
+//     fire = ((bankAngle - pin) mod 360) + 360 fireRev,
+//
+// and the layout's firing angles are these less cylinder 1's, from 0 up to the cycle. A rotary is its rotors on an
+// eccentric shaft: each rotor's three faces fire a shaft turn apart (1080 degrees a face's cycle), the first when the
+// rotor's eccentric points up (the first bank's angle less the rotor's pin).
+//
+// From the firing angles follow the firing order (cylinder 1 first) and the intervals between firings, written to
+// telemetry so the host can show them, and `ok`, which is 0 when the geometry makes no sense as an engine: two
+// cylinders firing at the same angle (a "big bang" twin-pulse is a deliberate exception the host may allow: `same`
+// counts them), or a cylinder in a bank that has no angle. Places along the crank (metres from its front) are for the
+// rocking moments (sim/core/shake.fm).
+//
+// What it leaves out: the crank's direction of rotation is always the same (a mirrored engine is the same engine
+// numbered the other way); offset (desaxé) cylinders, whose axes miss the crank's, are not modelled.
+#pragma once
+#include "mechspec.fm"
+
+module LayoutGeom
+{
+    int n;                      // cylinders (a rotary's faces)
+    int rotary;                 // rotors (0: a piston engine)
+    float cyc;                  // degrees a cycle: 720, a rotary's face 1080
+    float tdc[MECH_MAX_CYL];    // the crank's angle at each cylinder's top dead centre, 0 to 360 (a face: its rotor's)
+    float fire[MECH_MAX_CYL];   // each one's firing angle after cylinder 1's, 0 to cyc
+    float axisX[MECH_MAX_CYL];  // its bank's axis: sideways and up (a unit vector in the plane across the crank)
+    float axisY[MECH_MAX_CYL];
+    float z[MECH_MAX_CYL];      // its place along the crank, from the crank's middle
+    int order[MECH_MAX_CYL];    // the firing order: cylinder indexes from 0, cylinder 1 (index 0) first
+    float interval[MECH_MAX_CYL];   // degrees from each firing in that order to the next
+    int ok;                     // 1: a layout that makes sense
+    int same;                   // pairs of cylinders that fire together
+
+    // x mod m into [0, m)
+    float wrap(float x, float m)
+    {
+        float r = x - m * floorf(x / m);
+        if (r >= m)
+            r -= m;
+        if (r < 0.0f)
+            r = 0.0f;
+        return r;
+    }
+
+    // From a spec's custom layout
+    void derive(const MechSpec* s)
+    {
+        ok = 1;
+        same = 0;
+        rotary = s->rotors > 0 ? (s->rotors > MECH_MAX_ROTORS ? MECH_MAX_ROTORS : s->rotors) : 0;
+        if (rotary > 0)
+        {
+            n = 3 * rotary;
+            cyc = 1080.0f;
+            for (int r = 0; r < rotary; ++r)
+            {
+                const float t = wrap(s->bankAngle[0] - s->pin[r], 360.0f);
+                for (int f = 0; f < 3; ++f)
+                {
+                    const int c = 3 * r + f;
+                    tdc[c] = t;
+                    fire[c] = t + 360.0f * (float)f;
+                    axisX[c] = 0.0f;
+                    axisY[c] = 1.0f;
+                    z[c] = s->place[r];
+                }
+            }
+        }
+        else
+        {
+            n = s->cylinders < 1 ? 1 : (s->cylinders > MECH_MAX_CYL ? MECH_MAX_CYL : s->cylinders);
+            cyc = 720.0f;
+            for (int c = 0; c < n; ++c)
+            {
+                int b = s->bank[c];
+                if (b < 0 || b >= MECH_MAX_BANKS)
+                {
+                    ok = 0;
+                    b = 0;
+                }
+                const float ba = s->bankAngle[b];
+                tdc[c] = wrap(ba - s->pin[c], 360.0f);
+                fire[c] = tdc[c] + (s->fireRev[c] != 0 ? 360.0f : 0.0f);
+                const float r = ba * 0.01745329252f;
+                axisX[c] = sinf(r);
+                axisY[c] = cosf(r);
+                z[c] = s->place[c];
+            }
+        }
+        finish();
+    }
+
+    // Firing angles relative to cylinder 1's, the order, the intervals; places about the crank's middle
+    void finish()
+    {
+        const float f0 = fire[0];
+        float zm = 0.0f;
+        for (int c = 0; c < n; ++c)
+        {
+            float f = wrap(fire[c] - f0, cyc);
+            // (a hair under the cycle is the cycle's start: the same firing)
+            if (cyc - f < 1.0e-3f)
+                f = 0.0f;
+            fire[c] = f;
+            zm += z[c];
+        }
+        zm /= (float)n;
+        for (int c = 0; c < n; ++c)
+            z[c] -= zm;
+        // the order: by angle, ties by index (cylinder 1 is at 0 and the lowest index, so it comes first)
+        for (int c = 0; c < n; ++c)
+            order[c] = c;
+        for (int i = 1; i < n; ++i)
+        {
+            const int k = order[i];
+            int j = i - 1;
+            while (j >= 0 && (fire[order[j]] > fire[k] || (fire[order[j]] == fire[k] && order[j] > k)))
+            {
+                order[j + 1] = order[j];
+                j -= 1;
+            }
+            order[j + 1] = k;
+        }
+        for (int i = 0; i < n; ++i)
+        {
+            const float a = fire[order[i]];
+            const float b = i + 1 < n ? fire[order[i + 1]] : cyc;
+            interval[i] = b - a;
+            if (i + 1 < n && b - a < 0.5f)
+                same += 1;
+        }
+        for (int i = n; i < MECH_MAX_CYL; ++i)
+        {
+            order[i] = -1;
+            interval[i] = 0.0f;
+        }
+        if (same > 0)
+            ok = 0;
+    }
+};

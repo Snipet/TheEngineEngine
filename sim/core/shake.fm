@@ -1,0 +1,132 @@
+// shake.fm: the shaking forces and rocking moments the reciprocating masses put on the block, by order.
+//
+// A piston's acceleration along its cylinder is w^2 x'' (at a steady speed), and x'' = r (cos t + cos 2t / lambda)
+// to the second order in 1 / lambda (sim/core/kinematics.fm has it exactly; the higher orders are under a twentieth of
+// the second's). So each cylinder shakes the block along its bank's axis with a first-order force m r w^2 cos t and a
+// second-order one m r w^2 cos 2t / lambda, t its crank angle from its own top dead centre. Summed over the cylinders
+// (each along its axis, at its place along the crank for the moments about the crank's middle), an order n's force is
+//
+//     F_n(theta) = m r w^2 k_n (A_n cos n theta + B_n sin n theta),   k_1 = 1, k_2 = 1 / lambda
+//     A_n = sum of axis cos(n tdc),   B_n = sum of axis sin(n tdc)
+//
+// A and B vectors in the plane across the crank: the tip of F_n runs round an ellipse (a line for an inline engine, a
+// circle for some V's), whose largest radius is the order's amplitude. The moments are the same with each cylinder's
+// axis weighted by its place along the crank (the moment's two components are those of the force turned a quarter
+// round: the ellipse's size is the same). These are numbers in telemetry now (in newtons and newton metres at the
+// speed given) and signals for wave 2: the cabin's shake, the picture, the wheel's rim.
+//
+// Balance shafts: a pair turning at an order's speed against each other cancels that order's force exactly (a
+// Lanchester pair, for the second order of an inline four); `balance1` and `balance2` cancel the first and second
+// orders' forces. Their moments are left (a couple-balancing shaft is not modelled).
+//
+// What it leaves out: the rotating masses (the crank's counterweights are taken to balance its pins and the rods'
+// turning parts), the higher orders, the gas's torque reaction (the block's roll, which the crank's ripple already
+// shows), offset cylinders.
+#pragma once
+#include "mechspec.fm"
+#include "layout.fm"
+
+module ShakeByOrder
+{
+    float m;            // a cylinder's reciprocating mass, kg
+    float r;            // crank radius, m
+    float lam;          // rod over crank radius
+    // the sums: for orders 1 and 2, the force's A and B (x across, y up) and the moment's
+    float fA[4];        // A_1x, A_1y, A_2x, A_2y
+    float fB[4];
+    float mA[4];
+    float mB[4];
+    int cancel1;
+    int cancel2;
+    // the amplitudes at the last speed given (N, N m): before and after the balance shafts
+    float force1;
+    float force2;
+    float moment1;
+    float moment2;
+    float force1Raw;
+    float force2Raw;
+    // now (N, N m), at the last angle given
+    float fx;
+    float fy;
+    float mx;
+    float my;
+
+    // The size of the largest radius of the ellipse a cos t + b sin t (vectors) runs round
+    float ellipse(float ax, float ay, float bx, float by)
+    {
+        const float aa = ax * ax + ay * ay;
+        const float bb = bx * bx + by * by;
+        const float ab = ax * bx + ay * by;
+        const float h = 0.5f * (aa - bb);
+        return sqrtf(fmaxf(0.5f * (aa + bb) + sqrtf(h * h + ab * ab), 0.0f));
+    }
+
+    void setup(const MechSpec* s, const LayoutGeom* g, float mass, float crankRadius, float rodRatio)
+    {
+        m = mass;
+        r = crankRadius;
+        lam = rodRatio;
+        cancel1 = s->balance1 ? 1 : 0;
+        cancel2 = s->balance2 ? 1 : 0;
+        for (int i = 0; i < 4; ++i)
+        {
+            fA[i] = 0.0f;
+            fB[i] = 0.0f;
+            mA[i] = 0.0f;
+            mB[i] = 0.0f;
+        }
+        if (g->rotary > 0)
+            return;
+        for (int c = 0; c < g->n; ++c)
+        {
+            const float t = g->tdc[c] * 0.01745329252f;
+            for (int o = 0; o < 2; ++o)
+            {
+                const float ct = cosf((float)(o + 1) * t);
+                const float st = sinf((float)(o + 1) * t);
+                fA[2 * o] += g->axisX[c] * ct;
+                fA[2 * o + 1] += g->axisY[c] * ct;
+                fB[2 * o] += g->axisX[c] * st;
+                fB[2 * o + 1] += g->axisY[c] * st;
+                mA[2 * o] += g->z[c] * g->axisX[c] * ct;
+                mA[2 * o + 1] += g->z[c] * g->axisY[c] * ct;
+                mB[2 * o] += g->z[c] * g->axisX[c] * st;
+                mB[2 * o + 1] += g->z[c] * g->axisY[c] * st;
+            }
+        }
+        // (sums that should cancel come out as float rounding: call them none)
+        for (int i = 0; i < 4; ++i)
+        {
+            fA[i] = fabsf(fA[i]) < 1.0e-5f ? 0.0f : fA[i];
+            fB[i] = fabsf(fB[i]) < 1.0e-5f ? 0.0f : fB[i];
+            mA[i] = fabsf(mA[i]) < 1.0e-6f ? 0.0f : mA[i];
+            mB[i] = fabsf(mB[i]) < 1.0e-6f ? 0.0f : mB[i];
+        }
+    }
+
+    // The amplitudes at a speed (rad/s), and the forces and moments now at a crank angle (radians)
+    void update(float theta, float omega)
+    {
+        const float k = m * r * omega * omega;
+        const float k2 = k / lam;
+        force1Raw = k * ellipse(fA[0], fA[1], fB[0], fB[1]);
+        force2Raw = k2 * ellipse(fA[2], fA[3], fB[2], fB[3]);
+        force1 = cancel1 != 0 ? 0.0f : force1Raw;
+        force2 = cancel2 != 0 ? 0.0f : force2Raw;
+        moment1 = k * ellipse(mA[0], mA[1], mB[0], mB[1]);
+        moment2 = k2 * ellipse(mA[2], mA[3], mB[2], mB[3]);
+        const float c1 = cosf(theta);
+        const float s1 = sinf(theta);
+        const float c2 = c1 * c1 - s1 * s1;
+        const float s2 = 2.0f * s1 * c1;
+        const float g1 = cancel1 != 0 ? 0.0f : k;
+        const float g2 = cancel2 != 0 ? 0.0f : k2;
+        fx = g1 * (fA[0] * c1 + fB[0] * s1) + g2 * (fA[2] * c2 + fB[2] * s2);
+        fy = g1 * (fA[1] * c1 + fB[1] * s1) + g2 * (fA[3] * c2 + fB[3] * s2);
+        // the moment about the crank's middle: z times the force, turned a quarter round
+        const float tx = k * (mA[1] * c1 + mB[1] * s1) + k2 * (mA[3] * c2 + mB[3] * s2);
+        const float ty = k * (mA[0] * c1 + mB[0] * s1) + k2 * (mA[2] * c2 + mB[2] * s2);
+        mx = -tx;
+        my = ty;
+    }
+};

@@ -1,0 +1,111 @@
+// lab-spec.fm: the valvetrain lab's fields, as they will be appended to spec.valve (sim/spec/valve.fm) once that file
+// is K3's and stable. Until then the lab (lab.fm) reads this module, so its tests run without the new engine.
+//
+// Every field here defaults to "off, as before": model 0 is the reference's cams (the one dial), and with model 1
+// every switch (phasers, stages, lift control, deactivation, free valves, the auxiliary event, float) is off until set.
+// Which fields glide and which wait for a fade: the cams' shapes, the head and the spring are rebuilt as tables at the
+// 16-sample rate, one table a tick, and each cylinder takes a new table only while its valve is shut, so nothing
+// clicks; the phasers' ranges and rates, the stage and deactivation conditions and the lift control act at once on
+// the next tick, and every angle they move slews. Nothing here needs the fade.
+#pragma once
+
+module ValveLabSpec
+{
+    int rev;
+    int model [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Valvetrain model")]]
+        [[ui::choices("Reference", "Lab")]];
+    // the head
+    int valves [[fminus::range(2, 5)]] [[fminus::default(2)]] [[ui::label("Valves a cylinder")]] [[ui::group("Head")]];
+    float dIn [[fminus::range(0, 0.08)]] [[fminus::default(0)]] [[ui::label("Intake valve diameter")]]
+        [[ui::quantity("length")]] [[ui::help("0: from the bore, as real heads are")]];
+    float dEx [[fminus::range(0, 0.07)]] [[fminus::default(0)]] [[ui::label("Exhaust valve diameter")]]
+        [[ui::quantity("length")]];
+    float portIn [[fminus::range(0.5, 2)]] [[fminus::default(1.35)]] [[ui::label("Intake port quality")]]
+        [[ui::unit("x")]] [[ui::help("1: a discharge coefficient of 0.4 at a quarter of the diameter; 1.35 and 1.5 give the reference V8's areas")]];
+    float portEx [[fminus::range(0.5, 2)]] [[fminus::default(1.5)]] [[ui::label("Exhaust port quality")]] [[ui::unit("x")]];
+    // the intake cam (stage A)
+    int inKind [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Intake actuation")]] [[ui::group("Intake cam")]]
+        [[ui::choices("Cam", "Free valve")]];
+    float inDurSeat [[fminus::range(140, 360)]] [[fminus::default(231)]] [[ui::label("Intake duration at the seat")]]
+        [[ui::quantity("angle")]] [[ui::help("degrees open at 0.006 in (0.15 mm)")]];
+    float inDur1mm [[fminus::range(100, 340)]] [[fminus::default(212)]] [[ui::label("Intake duration at 1 mm")]]
+        [[ui::quantity("angle")]];
+    float inLift [[fminus::range(0.002, 0.02)]] [[fminus::default(0.010)]] [[ui::label("Intake lift")]]
+        [[ui::quantity("length")]];
+    float inCentre [[fminus::range(60, 160)]] [[fminus::default(110)]] [[ui::label("Intake centreline")]]
+        [[ui::quantity("angle")]] [[ui::help("degrees after the overlap's top dead centre")]];
+    float inFat [[fminus::range(0, 1)]] [[fminus::default(0.5)]] [[ui::label("Intake lobe fatness")]] [[ui::quantity("fraction")]];
+    // the exhaust cam (stage A)
+    int exKind [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Exhaust actuation")]] [[ui::group("Exhaust cam")]]
+        [[ui::choices("Cam", "Free valve")]];
+    float exDurSeat [[fminus::range(140, 360)]] [[fminus::default(231)]] [[ui::label("Exhaust duration at the seat")]]
+        [[ui::quantity("angle")]];
+    float exDur1mm [[fminus::range(100, 340)]] [[fminus::default(212)]] [[ui::label("Exhaust duration at 1 mm")]]
+        [[ui::quantity("angle")]];
+    float exLift [[fminus::range(0.002, 0.02)]] [[fminus::default(0.010)]] [[ui::label("Exhaust lift")]]
+        [[ui::quantity("length")]];
+    float exCentre [[fminus::range(60, 160)]] [[fminus::default(110)]] [[ui::label("Exhaust centreline")]]
+        [[ui::quantity("angle")]] [[ui::help("degrees before the overlap's top dead centre")]];
+    float exFat [[fminus::range(0, 1)]] [[fminus::default(0.5)]] [[ui::label("Exhaust lobe fatness")]] [[ui::quantity("fraction")]];
+    // free valves: where each opens and closes outright (the cycle's degrees, 0 the firing top, 360 the overlap's)
+    float freeInOpen [[fminus::range(0, 720)]] [[fminus::default(350)]] [[ui::label("Free intake opens")]]
+        [[ui::quantity("angle")]] [[ui::group("Free valves")]];
+    float freeInClose [[fminus::range(0, 720)]] [[fminus::default(590)]] [[ui::label("Free intake closes")]]
+        [[ui::quantity("angle")]];
+    float freeExOpen [[fminus::range(0, 720)]] [[fminus::default(130)]] [[ui::label("Free exhaust opens")]]
+        [[ui::quantity("angle")]];
+    float freeExClose [[fminus::range(0, 720)]] [[fminus::default(370)]] [[ui::label("Free exhaust closes")]]
+        [[ui::quantity("angle")]];
+    float freeFlank [[fminus::range(10, 90)]] [[fminus::default(40)]] [[ui::label("Free valve flank")]]
+        [[ui::quantity("angle")]] [[ui::help("degrees each opening and closing takes")]];
+    // the auxiliary exhaust event (a compression brake's, or a second event of a free valve)
+    int auxOn [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Second exhaust event")]] [[ui::group("Free valves")]];
+    float auxOpen [[fminus::range(0, 720)]] [[fminus::default(680)]] [[ui::label("Second event opens")]] [[ui::quantity("angle")]];
+    float auxDur [[fminus::range(20, 200)]] [[fminus::default(60)]] [[ui::label("Second event duration")]] [[ui::quantity("angle")]];
+    float auxLift [[fminus::range(0.0005, 0.01)]] [[fminus::default(0.002)]] [[ui::label("Second event lift")]]
+        [[ui::quantity("length")]];
+    // phasers
+    float inPhaseRange [[fminus::range(0, 80)]] [[fminus::default(0)]] [[ui::label("Intake phaser range")]]
+        [[ui::quantity("angle")]] [[ui::group("Variable timing")]] [[ui::help("crank degrees of advance; 0: no phaser")]];
+    float exPhaseRange [[fminus::range(0, 80)]] [[fminus::default(0)]] [[ui::label("Exhaust phaser range")]]
+        [[ui::quantity("angle")]] [[ui::help("crank degrees of retard; 0: no phaser")]];
+    float phaseRate [[fminus::range(20, 1000)]] [[fminus::default(200)]] [[ui::label("Phaser speed")]] [[ui::unit("deg/s")]];
+    // two stages
+    int stages [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Two-stage cams")]] [[ui::group("Two stages")]];
+    float inDurSeatB [[fminus::range(140, 360)]] [[fminus::default(270)]] [[ui::label("Intake B duration at the seat")]]
+        [[ui::quantity("angle")]];
+    float inDur1mmB [[fminus::range(100, 340)]] [[fminus::default(240)]] [[ui::label("Intake B duration at 1 mm")]]
+        [[ui::quantity("angle")]];
+    float inLiftB [[fminus::range(0.002, 0.02)]] [[fminus::default(0.012)]] [[ui::label("Intake B lift")]] [[ui::quantity("length")]];
+    float inCentreB [[fminus::range(60, 160)]] [[fminus::default(110)]] [[ui::label("Intake B centreline")]] [[ui::quantity("angle")]];
+    float exDurSeatB [[fminus::range(140, 360)]] [[fminus::default(270)]] [[ui::label("Exhaust B duration at the seat")]]
+        [[ui::quantity("angle")]];
+    float exDur1mmB [[fminus::range(100, 340)]] [[fminus::default(240)]] [[ui::label("Exhaust B duration at 1 mm")]]
+        [[ui::quantity("angle")]];
+    float exLiftB [[fminus::range(0.002, 0.02)]] [[fminus::default(0.011)]] [[ui::label("Exhaust B lift")]] [[ui::quantity("length")]];
+    float exCentreB [[fminus::range(60, 160)]] [[fminus::default(110)]] [[ui::label("Exhaust B centreline")]] [[ui::quantity("angle")]];
+    float stageSpeed [[fminus::range(100, 1100)]] [[fminus::default(576)]] [[ui::label("Stage change speed")]]
+        [[ui::quantity("rotation")]];
+    float stageHyst [[fminus::range(0, 150)]] [[fminus::default(31.4)]] [[ui::label("Stage change hysteresis")]]
+        [[ui::quantity("rotation")]];
+    // continuous lift (the intake's)
+    int liftControl [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Continuous lift")]] [[ui::group("Lift control")]];
+    float liftMin [[fminus::range(0.03, 1)]] [[fminus::default(0.15)]] [[ui::label("Least lift")]] [[ui::quantity("fraction")]];
+    int liftThrottle [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Lift is the load control")]]
+        [[ui::help("the plate stays open and the lift follows the pedal")]];
+    // deactivation
+    int deacMask [[fminus::range(0, 65535)]] [[fminus::default(0)]] [[ui::label("Cylinders that can rest")]]
+        [[ui::group("Deactivation")]] [[ui::help("a bit a cylinder, in the layout's order; 0: none")]];
+    float deacLow [[fminus::range(50, 600)]] [[fminus::default(115)]] [[ui::label("Deactivation from")]] [[ui::quantity("rotation")]];
+    float deacHigh [[fminus::range(100, 800)]] [[fminus::default(340)]] [[ui::label("Deactivation to")]] [[ui::quantity("rotation")]];
+    float deacLoad [[fminus::range(0, 1)]] [[fminus::default(0.35)]] [[ui::label("Deactivation below load")]]
+        [[ui::quantity("fraction")]];
+    // the springs and the train (valve float)
+    int train [[fminus::range(0, 4)]] [[fminus::default(0)]] [[ui::label("Valvetrain")]] [[ui::group("Springs")]]
+        [[ui::choices("Pushrod", "Rocker", "Bucket", "Finger", "Pneumatic")]];
+    float springRate [[fminus::range(0, 400000)]] [[fminus::default(0)]] [[ui::label("Spring rate")]] [[ui::unit("N/m")]]
+        [[ui::help("0: the valves never float, as the reference's")]];
+    float springPreload [[fminus::range(0, 2000)]] [[fminus::default(0)]] [[ui::label("Spring preload")]] [[ui::unit("N")]];
+    float valveMass [[fminus::range(0, 0.3)]] [[fminus::default(0)]] [[ui::label("Valve mass")]] [[ui::quantity("mass")]]
+        [[ui::help("0: a steel valve's for its diameter")]];
+};

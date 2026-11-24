@@ -1,0 +1,11 @@
+{
+  "format": "tee-build", "version": 1,
+  "name": "Hot street cam",
+  "notes": "A pushrod V8's big street cam: 280 at the seat, 245 at 1 mm, 0.54 in lift, 108 lobe separation: the lope at idle. Springs for some 6500 rpm.",
+  "spec": { "valve": {
+    "model": "Lab", "valves": 2, "train": "Pushrod",
+    "inDurSeat": 280, "inDur1mm": 245, "inLift": 0.0137, "inCentre": 106, "inFat": 0.55,
+    "exDurSeat": 288, "exDur1mm": 252, "exLift": 0.0137, "exCentre": 110, "exFat": 0.55,
+    "springRate": 52540, "springPreload": 534, "valveMass": 0.12
+  } }
+}

@@ -1,0 +1,71 @@
+// launch.fm: launch control, the flat-shift, and the gearbox's requests the ECU carries out (ecu.model 1).
+//
+// Launch: with the launch button held, or with the clutch's pedal down at a standstill and the accelerator floored,
+// the ECU holds a set speed by cutting sparks and taking the spark back (a soft hold, limiter.fm's, over the last
+// 300 rpm): the fuel of a cut firing goes out unburned and a retarded burn ends late, both heating the pipe and the
+// turbine ahead of the clutch's release (the "two-step"). It lets go as the clutch comes up (under half way) or the
+// car moves. Flat-shift: through an upshift made with the clutch while the accelerator stays floored, the same cut
+// holds the speed the engine had when the clutch went down (so it does not flare) until the clutch comes up. A dog
+// box's cut (card I asks it for so many seconds, the box shifting without a clutch) cuts every spark; a downshift's
+// blip (card I asks a plate) opens the throttle at least that far.
+#pragma once
+#include "limiter.fm"
+
+module LaunchControl
+{
+    bool launching;     // the launch control holds the speed
+    bool shifting;      // the flat-shift holds it
+    float holdRpm;      // the speed it holds
+    float retard;       // what it asks: degrees taken from the spark, sparks cut (0 to 1), every spark cut
+    float share;
+    bool sparkCut;
+    float plateMin;     // the blip: the plate at least this open
+    float dogLeft;      // seconds of a dog box's cut left
+    SoftHold soft;
+
+    void reset()
+    {
+        launching = false;
+        shifting = false;
+        holdRpm = 0.0f;
+        retard = 0.0f;
+        share = 0.0f;
+        sparkCut = false;
+        plateMin = 0.0f;
+        dogLeft = 0.0f;
+    }
+
+    // Every 16 samples. on: launch control fitted (ecu.launch.on); button: the launch button held; the pedals (0 to 1:
+    // the accelerator, the clutch's 1 on the floor), the car's speed (m/s), the speed (rpm, rpm/s), the launch speed
+    // (rpm), the most retard (degrees); flat: the flat-shift fitted; upshift: a gear went up this step; dog: seconds of
+    // cut card I asks (0 none); blip: the plate card I asks (0 none)
+    void control(bool on, bool button, float pedal, float clutch, float carSpeed, float rpm, float rate, float launchRpm,
+                 float most, bool flat, bool upshift, float dog, float blip, float d16)
+    {
+        const bool still = fabsf(carSpeed) < 1.0f;
+        if (on && (button || (clutch > 0.75f && still && pedal > 0.9f)))
+            launching = true;
+        if (!on || clutch < 0.5f || !still || (!button && pedal < 0.5f))
+            launching = false;
+        if (flat && !launching && clutch > 0.75f && pedal > 0.9f && !still && !shifting && upshift)
+        {
+            shifting = true;
+            holdRpm = rpm;
+        }
+        if (!flat || clutch < 0.5f || pedal < 0.5f)
+            shifting = false;
+        if (launching)
+            holdRpm = launchRpm;
+        retard = 0.0f;
+        share = 0.0f;
+        if (launching || shifting)
+        {
+            soft.hold(rpm, rate, holdRpm, 300.0f, most);
+            retard = soft.retard;
+            share = soft.share;
+        }
+        dogLeft = dog > 0.0f ? dog : fmaxf(dogLeft - d16, 0.0f);
+        sparkCut = dogLeft > 0.0f || ((launching || shifting) && rpm > holdRpm);
+        plateMin = fmaxf(blip, 0.0f);
+    }
+};

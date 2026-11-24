@@ -1,0 +1,8 @@
+{
+  "format": "tee-build", "version": 1,
+  "name": "Early intake closing (Miller)",
+  "notes": "A free intake valve shut 30 degrees before the bottom (510 in the cycle): the charge expands before it is compressed, as Miller's cycle with a free valve (Fiat's MultiAir can).",
+  "spec": { "valve": {
+    "model": "Lab", "inKind": "Free valve", "freeInOpen": 352, "freeInClose": 510, "freeFlank": 35, "inLift": 0.0095
+  } }
+}

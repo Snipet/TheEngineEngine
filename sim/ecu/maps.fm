@@ -1,0 +1,168 @@
+// maps.fm: the ECU's maps (ecu.model 1): spark advance, lambda, boost target, the two cam phasers, the pedal's map to
+// the throttle plate and the lift command, each a table of 16 by 16 over the engine's speed and its load, read with
+// bilinear interpolation every 16 samples.
+//
+// Load is the manifold's pressure over the air outside (above 1 boosted); for a throttle with no plenum to speak of
+// (individual throttles), the pedal. The boost target's second axis is the gear, the pedal map's the pedal. Each map
+// has its `auto` switch, on by default: its output is then the reference's formula (or, for a map the reference does
+// not have, the formula that does what it did: lambda's enrichment, phasers at 0, the plate at the pedal, full lift),
+// so ecu.model 1 with every map on auto runs the reference's tune, and no build ever lacks a tune.
+//
+// Baking: on a request the formulas' values at a map's breakpoints (its own, or the default ones below when it has
+// none) are written to `baked`, with the breakpoints, which the host copies into the build as an editable map whose
+// `auto` it turns off: the starting point a tuner edits, reading the formula back exactly at every breakpoint.
+//
+// The maps are spec/tables.fm's Map16 (z[i][j] at x[i], y[j]), read here as its at() reads them but blending as
+// a (1 - f) + b f, which gives b exactly at f = 1: at() blends as a + (b - a) f, a rounding off at a map's last
+// breakpoint, which would keep a baked map from reading its formula back exactly there (asked of the lead).
+//
+// What it leaves out: maps by gear or temperature beyond the boost target's, three-dimensional tables, and the
+// interpolation of other shapes (a map is linear between its breakpoints and flat beyond its ends).
+#pragma once
+#include "spec/tables.fm"
+
+enum
+{
+    MAP_SPARK,          // degrees of advance before the top
+    MAP_LAMBDA,         // lambda asked
+    MAP_BOOST,          // boost asked, Pa over the air outside; its y axis the gear
+    MAP_CAM_IN,         // the intake cam's phase, crank degrees advanced (card E reads it)
+    MAP_CAM_EX,         // the exhaust cam's phase, crank degrees retarded (card E reads it)
+    MAP_PEDAL,          // the throttle plate (0 to 1); its y axis the pedal
+    MAP_LIFT,           // the lift command (0 to 1: card E's stages or continuous lift)
+    MAP_COUNT
+};
+
+// What the formulas depend on besides the speed and the load: the engine's, set when it changes
+module EcuTune
+{
+    float redRpm;       // the redline, rpm
+    float idleRpm;
+    float burnK;        // the burn's degrees over a square engine's (the reference's, from the bore over the stroke)
+    float boostLevel;   // the boost the build is set for, Pa over the air outside (card F's)
+    float maxLoad;      // the highest load the maps span (1 naturally aspirated; 1 + the boost over 1 atm boosted)
+    int gears;          // forward gears (the boost map's y axis)
+
+    // The reference's spark: earlier at speed, later under load (load: the manifold over 1 atm)
+    float spark(float rpm, float load)
+    {
+        return 12.0f + 22.0f * sqrtf(fminf(rpm / fmaxf(redRpm, 1.0f), 1.2f)) - 8.0f * (load - 0.4f) + 22.0f * (burnK - 1.0f);
+    }
+
+    // Lambda: stoichiometric up to 80 % load, then richer, 0.88 at full load unboosted (best power, a little rich of
+    // it for the valves and the knock) and to 0.80 at 1.5 bar of boost (the charge's cooling against the knock); judgement,
+    // as factory tunes run
+    float lambda(float rpm, float load)
+    {
+        const float wot = fminf(fmaxf((load - 0.8f) / 0.2f, 0.0f), 1.0f);
+        const float boost = fminf(fmaxf((load - 1.0f) / 1.5f, 0.0f), 1.0f);
+        return 1.0f - 0.12f * wot - 0.08f * boost;
+    }
+
+    // The boost target: what the build is set for, in every gear
+    float boost(float rpm, float gear)
+    {
+        return boostLevel;
+    }
+
+    float plate(float rpm, float pedal)
+    {
+        return fminf(fmaxf(pedal, 0.0f), 1.0f);
+    }
+
+    // The formula of a map at (u, v): its own axes' units (rpm; load, gear or pedal)
+    float formula(int which, float u, float v)
+    {
+        if (which == MAP_SPARK)
+            return spark(u, v);
+        if (which == MAP_LAMBDA)
+            return lambda(u, v);
+        if (which == MAP_BOOST)
+            return boost(u, v);
+        if (which == MAP_PEDAL)
+            return plate(u, v);
+        if (which == MAP_LIFT)
+            return 1.0f;
+        return 0.0f;                                         // the phasers: the cams as ground
+    }
+
+    // A map's default breakpoints: the speed from 500 rpm to 10 % past the redline; the load from 0.1 to the highest,
+    // the gear from 1 up, the pedal from 0 to 1
+    float xAt(int which, int i)
+    {
+        return 500.0f + (1.1f * redRpm - 500.0f) * (float)i / 15.0f;
+    }
+
+    float yAt(int which, int j)
+    {
+        if (which == MAP_BOOST)
+            return (float)(j + 1);
+        if (which == MAP_PEDAL)
+            return (float)j / 15.0f;
+        return 0.1f + (fmaxf(maxLoad, 1.0f) - 0.1f) * (float)j / 15.0f;
+    }
+
+    int yCount(int which)
+    {
+        return which == MAP_BOOST ? (gears < 1 ? 1 : (gears > 16 ? 16 : gears)) : 16;
+    }
+};
+
+// The maps' outputs, every 16 samples, and the baking
+module EcuMaps
+{
+    EcuTune tune;
+    // what the maps ask now
+    float out[MAP_COUNT];
+    // the last bake: for each map its breakpoints and its values (z[i][j] at baked[map][i * 16 + j]), and how many
+    int bakeCount;
+    float bakedX[MAP_COUNT][16];
+    float bakedY[MAP_COUNT][16];
+    float baked[MAP_COUNT][256];
+    int bakedNx[MAP_COUNT];
+    int bakedNy[MAP_COUNT];
+
+    // A map at (u, v): Map16's at(), exact at every breakpoint
+    float exactAt(Map16* map, float u, float v)
+    {
+        const int kx = map->nx < 16 ? map->nx : 16;
+        const int ky = map->ny < 16 ? map->ny : 16;
+        if (kx <= 0 || ky <= 0)
+            return 0.0f;
+        float fx[1];
+        float fy[1];
+        const int i = map->cell(map->x, kx, u, fx);
+        const int j = map->cell(map->y, ky, v, fy);
+        const int i1 = kx > 1 ? i + 1 : i;
+        const int j1 = ky > 1 ? j + 1 : j;
+        const float a = map->z[i][j] * (1.0f - fy[0]) + map->z[i][j1] * fy[0];
+        const float b = map->z[i1][j] * (1.0f - fy[0]) + map->z[i1][j1] * fy[0];
+        return a * (1.0f - fx[0]) + b * fx[0];
+    }
+
+    // One map's output: the formula when `automatic`, else the map. Axis values: rpm, and the load, gear or pedal
+    float read(Map16* map, bool automatic, int which, float rpm, float v)
+    {
+        if (automatic || map->nx < 1 || map->ny < 1)
+            return tune.formula(which, rpm, v);
+        return exactAt(map, rpm, v);
+    }
+
+    // Writes the formula of map `which` at its breakpoints (the map's own when it has them, else the default ones)
+    void bakeOne(Map16* map, int which)
+    {
+        const bool own = map->nx >= 2 && map->ny >= 1;
+        const int n = own ? (map->nx > 16 ? 16 : map->nx) : 16;
+        const int m = own ? (map->ny > 16 ? 16 : map->ny) : tune.yCount(which);
+        bakedNx[which] = n;
+        bakedNy[which] = m;
+        for (int i = 0; i < 16; ++i)
+        {
+            bakedX[which][i] = i < n ? (own ? map->x[i] : tune.xAt(which, i)) : 0.0f;
+            bakedY[which][i] = i < m ? (own ? map->y[i] : tune.yAt(which, i)) : 0.0f;
+        }
+        for (int i = 0; i < 16; ++i)
+            for (int j = 0; j < 16; ++j)
+                baked[which][i * 16 + j] = i < n && j < m ? tune.formula(which, bakedX[which][i], bakedY[which][j]) : 0.0f;
+    }
+};

@@ -1,0 +1,254 @@
+// hall.fm: a concert hall for the stage to play in.
+//
+// The direct sound is the caller's; this makes what the room does with it: early reflections off the walls (a handful
+// of taps, the stage's left and right mixed across), then the diffuse tail: an eight-line feedback delay network with a
+// Householder mixing matrix, each line damped so the highs die sooner than the lows, its delays swaying a little so no
+// resonance sits still. The input is predelayed (the way to the walls) and diffused before it enters.
+//
+//   hall.setup(rate);                           in init; hall.release() in end
+//   hall.process(inL, inR, outL, outR, n, rt60) a part: the wet signal (reflections and tail) replaces outL, outR
+module Hall
+{
+    float* buf;
+    int total;
+    int off[8];
+    int cap[8];
+    int len[8];
+    int at[8];
+    float lpS[8];
+    float lpC[8];
+    float gl[8];
+    float ph[8];
+    float phStep[8];
+    int rdS[8];         // each line's read position for the 16 samples in hand: a whole number
+    float frS[8];       // and a fraction
+    int tick;           // how far into those 16 samples (the sway moves with the sample count, not with how a host splits its calls)
+    int dOff[2];
+    int dLen[2];
+    int dAt[2];
+    int preOff;
+    int preLen;
+    int preAt;
+    int erOff;          // two histories (left, right), each erLen long
+    int erLen;
+    int erAt;
+    int erTapL[8];
+    int erTapR[8];
+    float erGain[8];
+    float erLp[2];
+    float rate;
+    float lastRt;
+    float outLp[2];     // the tail's own top roll-off
+    float outC;
+    int ready;
+
+    void setup(float rateIn)
+    {
+        release();
+        rate = rateIn;
+        const float k = rate / 48000.0f;
+        int pos = 0;
+        const int base[8] = {1319, 1523, 1789, 2063, 2371, 2693, 3041, 3407};
+        for (int i = 0; i < 8; ++i)
+        {
+            len[i] = (int)((float)base[i] * k);
+            cap[i] = len[i] + 14;
+            off[i] = pos;
+            pos += cap[i] + 4;
+            at[i] = 0;
+            lpS[i] = 0;
+            ph[i] = (float)i * 0.7853981f;
+            phStep[i] = 6.28318531f * (0.13f + 0.047f * (float)i) / rate * 16.0f;   // per 16 samples
+            rdS[i] = len[i] + 3;
+            frS[i] = 0.0f;
+        }
+        tick = 0;
+        dLen[0] = (int)(142.0f * k) + 1;
+        dLen[1] = (int)(379.0f * k) + 1;
+        for (int i = 0; i < 2; ++i)
+        {
+            dOff[i] = pos;
+            pos += dLen[i] + 1;
+            dAt[i] = 0;
+        }
+        preLen = (int)(0.024f * rate) + 1;
+        preOff = pos;
+        pos += preLen + 1;
+        preAt = 0;
+        erLen = (int)(0.095f * rate) + 8;
+        erOff = pos;
+        pos += 2 * erLen;
+        erAt = 0;
+        const float tl[8] = {7.3f, 12.1f, 18.9f, 27.7f, 36.4f, 47.8f, 61.1f, 79.5f};
+        const float tr[8] = {9.1f, 15.4f, 22.2f, 31.3f, 41.9f, 53.6f, 68.2f, 85.0f};
+        // (the sum of the taps is the comb that a note's partials see: at 0.55 it was -5 dB under the direct sound and
+        // notched it by tens of dB here and there, which with a vibrato is a flanger; now -10 dB)
+        const float tg[8] = {0.30f, -0.27f, 0.25f, -0.21f, 0.19f, -0.16f, 0.13f, -0.11f};
+        for (int i = 0; i < 8; ++i)
+        {
+            erTapL[i] = (int)(0.001f * tl[i] * rate);
+            erTapR[i] = (int)(0.001f * tr[i] * rate);
+            erGain[i] = tg[i];
+        }
+        erLp[0] = 0;
+        erLp[1] = 0;
+        outLp[0] = 0;
+        outLp[1] = 0;
+        outC = 1 - expf(-6.28318531f * 7500.0f / rate);
+        total = pos;
+        buf = calloc(pos, sizeof(float));
+        lastRt = -1;
+        ready = 1;
+    }
+
+    void release()
+    {
+        if (ready != 0)
+            free(buf);
+        ready = 0;
+    }
+
+    // The damping for a reverberation time: each line's gain for the lows, and a low-pass that takes the highs down
+    // to half that time at 4 kHz.
+    void design(float rt60)
+    {
+        lastRt = rt60;
+        const float wc = 6.28318531f * 4000.0f / rate;
+        for (int i = 0; i < 8; ++i)
+        {
+            const float tl = (float)len[i] / rate;
+            const float g0 = expf(-6.9078f * tl / rt60);
+            const float gh = expf(-6.9078f * tl / (0.5f * rt60));
+            const float r = fminf(gh / g0, 0.999f);
+            const float r2 = r * r;
+            const float cw = cosf(wc);
+            const float pa = 1 - r2 * cw;
+            const float disc = fmaxf(pa * pa - (1 - r2) * (1 - r2), 0);
+            const float pole = (pa - sqrtf(disc)) / fmaxf(1 - r2, 0.0001f);
+            gl[i] = g0;
+            lpC[i] = 1 - fminf(fmaxf(pole, 0), 0.97f);
+        }
+    }
+
+    void process(float* inL, float* inR, float* outL, float* outR, int n, float rt60)
+    {
+        if (ready == 0)
+            return;
+        if (fabsf(rt60 - lastRt) > 0.01f)
+            design(rt60);
+
+        const float sgnL[8] = {1, -1, 1, -1, 1, -1, 1, -1};
+        const float sgnR[8] = {1, 1, -1, -1, 1, 1, -1, -1};
+        const float inj[8] = {1, -1, -1, 1, 1, 1, -1, -1};
+        for (int s = 0; s < n; ++s)
+        {
+            // the lines' read positions: the delay plus its sway, as a whole number and a fraction, new every 16 samples
+            // (counted from the start, so that a host's way of cutting its blocks does not change what is heard)
+            if (tick == 0)
+            {
+                for (int i = 0; i < 8; ++i)
+                {
+                    ph[i] += phStep[i];
+                    if (ph[i] > 6.28318531f)
+                        ph[i] -= 6.28318531f;
+                    const float d = (float)len[i] + 2.6f * sinf(ph[i]) + 3.0f;
+                    const float kf = floorf(d);
+                    frS[i] = d - kf;
+                    rdS[i] = (int)kf;
+                }
+            }
+            tick += 1;
+            if (tick == 16)
+                tick = 0;
+            const float xl = inL[s];
+            const float xr = inR[s];
+
+            // early reflections: the stage's two sides, mixed across by the odd taps
+            buf[erOff + erAt] = xl;
+            buf[erOff + erLen + erAt] = xr;
+            float el = 0;
+            float er = 0;
+            for (int j = 0; j < 8; ++j)
+            {
+                int a = erAt - erTapL[j];
+                if (a < 0)
+                    a += erLen;
+                int b = erAt - erTapR[j];
+                if (b < 0)
+                    b += erLen;
+                const float gj = erGain[j];
+                if ((j % 2) == 0)
+                {
+                    el += gj * buf[erOff + a];
+                    er += gj * buf[erOff + erLen + b];
+                }
+                else
+                {
+                    el += gj * buf[erOff + erLen + a];
+                    er += gj * buf[erOff + b];
+                }
+            }
+            erAt += 1;
+            if (erAt == erLen)
+                erAt = 0;
+            erLp[0] += 0.55f * (el - erLp[0]);
+            erLp[1] += 0.55f * (er - erLp[1]);
+
+            // the late field's input: predelayed, then two allpass diffusers
+            float x = 0.5f * (xl + xr);
+            const float pd = buf[preOff + preAt];
+            buf[preOff + preAt] = x;
+            preAt += 1;
+            if (preAt == preLen)
+                preAt = 0;
+            x = pd;
+            for (int j = 0; j < 2; ++j)
+            {
+                const float dd = buf[dOff[j] + dAt[j]];
+                const float w = x + 0.62f * dd;
+                buf[dOff[j] + dAt[j]] = w;
+                x = dd - 0.62f * w;
+                dAt[j] += 1;
+                if (dAt[j] == dLen[j])
+                    dAt[j] = 0;
+            }
+
+            // the network
+            float y[8];
+            float v[8];
+            float sum = 0;
+            for (int k = 0; k < 8; ++k)
+            {
+                int p = at[k] - rdS[k];
+                if (p < 0)
+                    p += cap[k];
+                int p2 = p - 1;
+                if (p2 < 0)
+                    p2 += cap[k];
+                const float a0 = buf[off[k] + p];
+                const float a1 = buf[off[k] + p2];
+                const float yk = a0 + frS[k] * (a1 - a0);
+                y[k] = yk;
+                lpS[k] += lpC[k] * (yk - lpS[k]);
+                v[k] = gl[k] * lpS[k];
+                sum += v[k];
+            }
+            const float mix = 0.25f * sum;
+            float oL = 0;
+            float oR = 0;
+            for (int k = 0; k < 8; ++k)
+            {
+                buf[off[k] + at[k]] = v[k] - mix + 0.35f * inj[k] * x;
+                at[k] += 1;
+                if (at[k] == cap[k])
+                    at[k] = 0;
+                oL += sgnL[k] * y[k];
+                oR += sgnR[k] * y[k];
+            }
+            outLp[0] += outC * (0.3f * oL - outLp[0]);
+            outLp[1] += outC * (0.3f * oR - outLp[1]);
+            outL[s] = erLp[0] + outLp[0];
+            outR[s] = erLp[1] + outLp[1];
+        }
+    }
+};

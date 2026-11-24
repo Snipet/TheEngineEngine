@@ -1,0 +1,106 @@
+// kinematics.fm: the slider-crank, the piston's motion as the crank turns it.
+//
+// A crank of radius r (half the stroke) turns; a rod of length l joins its pin to the piston's, which slides along the
+// cylinder's axis. With theta the crank's angle from the cylinder's top dead centre and lambda = l / r, the piston's
+// distance down from top dead centre is
+//
+//     x      = r (1 - cos t + lambda - q),                    q = sqrt(lambda^2 - sin^2 t)
+//     dx/dt  = r sin t (1 + cos t / q)
+//     d2x/dt2 = r (cos t + (cos^2 t - sin^2 t) / q + sin^2 t cos^2 t / q^3)
+//
+// (exact: the textbook series cos t + cos 2t / lambda is their first two orders, sim/core/shake.fm). The volume over the
+// piston is the clearance volume plus the bore's area times x; dV/dt is the area times dx/dt, the reference's
+// Cylinder::volumeSlope exactly (sim/ref/cylinder.fm: its `rr` is lambda, its 0.5 vd is the area times r). Derivatives
+// are per radian of the crank.
+//
+// What it leaves out: the piston pin's offset from the bore's axis (desaxé), the rod's and crank's stretch, the
+// bearings' clearances.
+#pragma once
+
+module SliderCrank
+{
+    float r;        // the crank's radius (half the stroke), m
+    float l;        // the rod, centre to centre, m
+    float lam;      // l over r
+    float area;     // the bore's, m^2
+    float vd;       // swept volume, m^3
+    float vc;       // clearance volume, m^3
+    // at the last angle asked
+    float x;
+    float dx;
+    float ddx;
+    float vol;
+    float dvol;
+
+    void setup(float bore, float stroke, float rod, float compression)
+    {
+        r = 0.5f * stroke;
+        l = rod;
+        lam = l / r;
+        area = 0.78539816f * bore * bore;
+        vd = area * stroke;
+        vc = vd / (compression - 1.0f);
+    }
+
+    // The motion at a crank angle given by its sine and cosine (from the cylinder's top dead centre)
+    void at(float s, float c)
+    {
+        const float q = sqrtf(lam * lam - s * s);
+        const float iq = 1.0f / q;
+        x = r * (1.0f - c + lam - q);
+        dx = r * s * (1.0f + c * iq);
+        ddx = r * (c + (c * c - s * s) * iq + s * s * c * c * iq * iq * iq);
+        vol = vc + area * x;
+        dvol = area * dx;
+    }
+
+    // The same at an angle in degrees
+    void atDeg(float a)
+    {
+        const float t = a * 0.01745329252f;
+        at(sinf(t), cosf(t));
+    }
+};
+
+// The cylinder's size two ways. The reference's dials are the engine's size (litres) and its bore over its stroke;
+// a custom engine's fields are the bore and the stroke. One is the other: at a swept volume vd and a ratio k, the bore
+// is the cube root of 4 vd k / pi (the reference's boreStroke: a square cylinder's bore times k's cube root) and the
+// stroke the bore over k. The redline when none is given: what keeps the mean piston speed (2 stroke rpm / 60) under
+// 25 m/s for a gasoline engine (the most production engines run to: some 21 to 26 m/s at their redlines, a racing
+// engine's 25 to 26) or 13.5 m/s for a diesel (the reference's), and never past 20000 rpm.
+module Sizing
+{
+    float bore;         // m
+    float stroke;       // m
+    float swept;        // m^3 a cylinder
+    float ratio;        // bore over stroke
+
+    void fromDials(float litres, float boreStroke, int cylinders)
+    {
+        swept = litres * 0.001f / (float)cylinders;
+        ratio = boreStroke;
+        bore = expf(0.33333333f * logf(1.2732395f * swept * boreStroke));
+        stroke = bore / boreStroke;
+    }
+
+    void fromBoreStroke(float b, float s)
+    {
+        bore = b;
+        stroke = s;
+        swept = 0.78539816f * b * b * s;
+        ratio = b / s;
+    }
+
+    float litres(int cylinders)
+    {
+        return swept * (float)cylinders * 1000.0f;
+    }
+
+    // rad/s
+    float redlineBySpeed(int diesel)
+    {
+        const float sp = diesel != 0 ? 13.5f : 25.0f;
+        const float rpm = fminf(sp * 60.0f / (2.0f * stroke), 20000.0f);
+        return rpm * 0.10471976f;
+    }
+};

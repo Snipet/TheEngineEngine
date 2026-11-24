@@ -1,0 +1,75 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Boxer six",
+  "notes": "1-6-2-4-3-5; cylinders 1-3 right, 4-6 left; opposed pairs 180 degrees apart.",
+  "spec": {
+    "engine": {
+      "custom": true,
+      "layout": 11,
+      "cylinders": 6,
+      "bankAngle": [
+        90,
+        -90
+      ],
+      "bank": [
+        0,
+        0,
+        0,
+        1,
+        1,
+        1
+      ],
+      "pin": [
+        90,
+        210,
+        330,
+        270,
+        30,
+        150
+      ],
+      "fireRev": [
+        0,
+        0,
+        1,
+        1,
+        1,
+        0
+      ],
+      "place": [
+        0.0,
+        0.12,
+        0.24,
+        0.05,
+        0.17,
+        0.29
+      ]
+    }
+  },
+  "expect": {
+    "firingOrder": [
+      1,
+      6,
+      2,
+      4,
+      3,
+      5
+    ],
+    "firingIntervals": [
+      120,
+      120,
+      120,
+      120,
+      120,
+      120
+    ],
+    "firingAngles": [
+      0.0,
+      240.0,
+      480.0,
+      360.0,
+      600.0,
+      120.0
+    ]
+  }
+}

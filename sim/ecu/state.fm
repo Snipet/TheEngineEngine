@@ -1,0 +1,86 @@
+// state.fm: the engine's state as its ECU keeps it (ecu.model 1): the key, the starter, the stall and the run-down,
+// and the fuel a start takes.
+//
+// The key (ctl.ignition: 0 off, 1 on, 2 start, held): start cranks while it is held and the engine is not running (in
+// gear only with the clutch's pedal down, as a car's clutch switch has it), and the engine runs once it turns over
+// 550 rpm; let go before that, it stops cranking. Off runs it down: no fuel and no spark, the crank coasting to rest
+// (the state is stopped once it turns slower than 2 rad/s). It stalls when the crank is dragged under its stall speed
+// (30 % of the idle, 250 to 450 rpm) for 80 ms. The engine never switches itself off otherwise.
+//
+// The fuel of a start: while it cranks, a cold engine's fuel stays on the walls and in the oil, so its ECU gives
+// more: lambda asked times 0.7 at -20 C rising to 1 warm (judgement, as factory cranking tables run), and no fuel
+// while it turns slower than 120 rpm (a cold engine's starter turns it slower: 40 rpm when cold), the reference's.
+// After the start the enrichment decays over some 20 seconds, and a cold engine runs a little rich until it is warm
+// (lambda times 0.92 at 0 C to 1 warm, judgement).
+#pragma once
+
+enum
+{
+    ENGINE_STOPPED,
+    ENGINE_CRANKING,
+    ENGINE_RUNNING,
+    ENGINE_RUNDOWN
+};
+
+module EcuKey
+{
+    int state;          // ENGINE_*
+    bool starter;       // the starter turns the crank
+    float sinceStart;   // seconds since it started running (0 while it cranks)
+    float stallT;       // seconds under the stall speed
+    bool noFuel;        // the state cuts the fuel: stopped, running down, or cranking too slowly to light it
+    float enrich;       // lambda's multiplier for a start and a cold engine (1 warm and running)
+
+    void reset()
+    {
+        state = ENGINE_STOPPED;
+        starter = false;
+        sinceStart = 0.0f;
+        stallT = 0.0f;
+        noFuel = true;
+        enrich = 1.0f;
+    }
+
+    // Every 16 samples: the key (0, 1, 2), whether the starter may turn it (in neutral, or the clutch down), the
+    // crank's speed (rad/s) and its smoothed rpm, the idle speed (rpm), how warm the engine is (0 at the air outside, 1
+    // at its thermostat) and the coolant (K)
+    void control(int key, bool may, float omega, float avg, float idle, float warm, float coolant, float d16)
+    {
+        const float rpm = omega * 9.5492966f;
+        if (key == 0)
+        {
+            if (state == ENGINE_CRANKING || state == ENGINE_RUNNING)
+                state = ENGINE_RUNDOWN;
+        }
+        else if (key == 2)
+        {
+            if ((state == ENGINE_STOPPED || state == ENGINE_RUNDOWN) && may)
+                state = ENGINE_CRANKING;
+        }
+        else if (state == ENGINE_CRANKING)
+            state = ENGINE_RUNDOWN;                          // let go before it ran
+        if (state == ENGINE_CRANKING && rpm > 550.0f)
+            state = ENGINE_RUNNING;
+        if (state == ENGINE_CRANKING && !may)
+            state = ENGINE_RUNDOWN;                          // the clutch came up in gear
+        starter = state == ENGINE_CRANKING;
+        const float stallRpm = fminf(fmaxf(0.3f * idle, 250.0f), 450.0f);
+        stallT = state == ENGINE_RUNNING && rpm < stallRpm ? stallT + d16 : 0.0f;
+        if (stallT > 0.08f)
+        {
+            state = ENGINE_RUNDOWN;
+            stallT = 0.0f;
+        }
+        if (state == ENGINE_RUNDOWN && omega < 2.0f)
+            state = ENGINE_STOPPED;
+        sinceStart = state == ENGINE_RUNNING ? fminf(sinceStart + d16, 600.0f) : 0.0f;
+        const bool crankLow = warm >= 1.0f ? rpm < 120.0f : avg < 120.0f - 80.0f * (1.0f - warm);
+        noFuel = state == ENGINE_STOPPED || state == ENGINE_RUNDOWN || (state == ENGINE_CRANKING && crankLow);
+        // a start's enrichment, and a cold engine's
+        const float cold = fminf(fmaxf((363.0f - coolant) / 110.0f, 0.0f), 1.0f);   // 1 at -20 C, 0 at 90 C
+        const float crank = 1.0f - 0.3f * cold;
+        const float after = 1.0f - (1.0f - crank) * expf(-sinceStart / 20.0f);
+        const float run = 1.0f - 0.08f * fminf(fmaxf((363.0f - coolant) / 90.0f, 0.0f), 1.0f);
+        enrich = state == ENGINE_CRANKING ? crank : fminf(after, run);
+    }
+};

@@ -1,0 +1,207 @@
+// rig.fm: the vehicle model (sim/vehicle/vehicle.fm) driven by a made-up engine, for the standalone tests.
+//
+// The engine is a flywheel with a torque curve and a friction, and the little an ECU does that the vehicle needs: an
+// idle valve that holds the idle with the throttle shut, a fuel cut at the redline, the ignition cut and the blip
+// the gearbox asks for, and a stall below a third of the idle (after which it gives only its friction). Its curves:
+//   0: a parabola, 0.75 of the peak at idle, the peak at 60 % of the redline, 0.85 of it at the redline;
+//   1: constant power `power` (the torque the lesser of the peak and power / w);
+//   2: constant torque, the peak everywhere.
+// The test writes the controls and the engine's fields, calls run(n) (n samples at `rate`, the vehicle's control
+// every 16), and reads car.tel and the rig's own measures.
+#include "vehicle/vehicle.fm"
+
+module Rig
+{
+    Vehicle car;
+    float rate;
+    float dt;
+    // the engine
+    float w;            // its speed, rad/s
+    float jE;
+    float peak;
+    float power;
+    float idleW;
+    float redW;
+    int curve;
+    float fric0;        // its friction: fric0 + fric1 w, N m
+    float fric1;
+    bool running;
+    bool honour;        // obeys the gearbox's cut and blip
+    float idleInt;
+    float tqEngine;     // what it gave last sample (less friction)
+    // the controls
+    float throttle;
+    float clutch;
+    float brake;
+    float handbrake;
+    int lever;
+    int up;
+    int down;
+    int buttons;
+    int mode;
+    float dynoSpeed;
+    float dynoRate;
+    int strip;
+    // measures over a run
+    double t;           // seconds since init
+    int phase;
+    float shaftMin;     // the shafts' torque's least and most since clearMeasures()
+    float shaftMax;
+    float wMin;
+    float wMax;
+    float vMax;
+    float xMin;
+    float xMax;
+    float roadPeak;
+    float wsum;         // a mean of the crank's speed
+    int wn;
+    bool finite;
+    bool cutSeen;
+    double cutStart;
+    double cutEnd;
+    float rnd01;
+    int rs;
+
+    void init(float hostRate)
+    {
+        rate = hostRate;
+        dt = 1.0f / rate;
+        jE = 0.15f;
+        peak = 300.0f;
+        power = 0.0f;
+        idleW = 85.0f;
+        redW = 680.0f;
+        curve = 0;
+        fric0 = 8.0f;
+        fric1 = 0.02f;
+        running = true;
+        honour = true;
+        w = idleW;
+        mode = VEH_MODE_DRIVE;
+        rs = 777;
+        car.setup(rate);
+        settle();
+        clearMeasures();
+    }
+
+    // After the test has written car.spec, car.env or the engine's fields
+    void settle()
+    {
+        car.configure(jE, peak, idleW, redW);
+        car.apply();
+        car.configure(jE, peak, idleW, redW);
+    }
+
+    void clearMeasures()
+    {
+        shaftMin = 1.0e9f;
+        shaftMax = -1.0e9f;
+        wMin = 1.0e9f;
+        wMax = -1.0e9f;
+        vMax = -1.0e9f;
+        xMin = 1.0e9f;
+        xMax = -1.0e9f;
+        roadPeak = 0.0f;
+        wsum = 0.0f;
+        wn = 0;
+        finite = true;
+        cutSeen = false;
+        cutStart = -1.0;
+        cutEnd = -1.0;
+    }
+
+    float full(float s)
+    {
+        if (curve == 1)
+            return fminf(peak, power / fmaxf(s, 1.0f));
+        if (curve == 2)
+            return peak;
+        const float p = 0.6f * redW;
+        const float a = (s - p) / p;
+        const float k = s < p ? 0.25f / (((idleW - p) / p) * ((idleW - p) / p)) : 0.15f / 0.4444f;
+        return peak * fmaxf(1.0f - k * a * a, 0.3f);
+    }
+
+    float torque()
+    {
+        const float f = fric0 + fric1 * w;
+        if (!running)
+            return w > 0.0f ? -f : 0.0f;
+        float th = throttle;
+        // the idle valve: holds the idle with the throttle shut
+        const float e = (idleW - w) * 0.01f;
+        idleInt = fminf(fmaxf(idleInt + 2.0f * e * dt, 0.0f), 0.5f);
+        th = fmaxf(th, fminf(fmaxf(idleInt + 0.5f * e, 0.0f), 0.6f));
+        if (honour && car.blipSpeed() > 0.0f)
+            th = fmaxf(th, fminf(fmaxf((car.blipSpeed() - w) * 0.01f, 0.0f), 1.0f));
+        if (w > redW || (honour && car.cutWanted()))
+            th = 0.0f;
+        return th * full(w) - f;
+    }
+
+    void run(int n)
+    {
+        for (int i = 0; i < n; ++i)
+        {
+            if (phase == 0)
+                car.control(16.0f * dt, throttle, clutch, brake, handbrake, lever, up, down, buttons, mode, dynoSpeed,
+                            dynoRate, strip);
+            phase = (phase + 1) & 15;
+            const float tq = torque();
+            tqEngine = tq;
+            w = car.step(w, tq, dt);
+            if (running && w < 0.33f * idleW)
+                running = false;
+            const float y = car.road();
+            t += (double)dt;
+            // the measures
+            shaftMin = fminf(shaftMin, car.tsh);
+            shaftMax = fmaxf(shaftMax, car.tsh);
+            wMin = fminf(wMin, w);
+            wMax = fmaxf(wMax, w);
+            vMax = fmaxf(vMax, car.v);
+            xMin = fminf(xMin, car.x);
+            xMax = fmaxf(xMax, car.x);
+            roadPeak = fmaxf(roadPeak, fabsf(y));
+            wsum += w;
+            wn += 1;
+            if (!(w == w) || !(car.v == car.v) || !(y == y) || fabsf(car.v) > 1000.0f || w > 5000.0f)
+                finite = false;
+            if (car.cutWanted() && !cutSeen)
+            {
+                cutSeen = true;
+                cutStart = t;
+            }
+            if (cutSeen && cutEnd < 0.0 && !car.cutWanted())
+                cutEnd = t;
+        }
+    }
+
+    // run() as the audio thread would call it: FMinus proves nothing it reaches can allocate or block
+    void runNonblocking(int n) [[clang::nonblocking]]
+    {
+        run(n);
+    }
+
+    // A random number, 0 to 1 (for the soak)
+    float random()
+    {
+        const int hi = rs / 127773;
+        const int lo = rs % 127773;
+        rs = 16807 * lo - 2836 * hi;
+        if (rs <= 0)
+            rs += 2147483647;
+        return (float)rs / 2147483647.0f;
+    }
+
+    void startAudit()
+    {
+        car.audit = true;
+        car.auditReset();
+    }
+
+    double kinetic()
+    {
+        return car.kinetic(w);
+    }
+};

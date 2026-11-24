@@ -1,0 +1,59 @@
+// tables.fm: the two table shapes of 02-contracts.md (section 2, rule 6), as the stand-in has them: a curve of up to
+// 16 points and a map of up to 16 by 16, each with its interpolating read. Points beyond n (nx, ny) are unused; a
+// table with n of 0 is empty, and reads as `otherwise`.
+module Curve16
+{
+    float x[16];
+    float y[16];
+    int n;
+
+    float at(float v, float otherwise)
+    {
+        if (n <= 0)
+            return otherwise;
+        const int last = n < 16 ? n - 1 : 15;
+        if (v <= x[0])
+            return y[0];
+        if (v >= x[last])
+            return y[last];
+        int i = 0;
+        while (i < last - 1 && v > x[i + 1])
+            ++i;
+        const float span = x[i + 1] - x[i];
+        const float f = span > 0 ? (v - x[i]) / span : 0;
+        return y[i] + f * (y[i + 1] - y[i]);
+    }
+};
+
+// z[i][j] is the value at x[i] and y[j].
+module Map16
+{
+    float x[16];
+    float y[16];
+    float z[16][16];
+    int nx;
+    int ny;
+
+    float at(float a, float b, float otherwise)
+    {
+        if (nx <= 0 || ny <= 0)
+            return otherwise;
+        const int lx = nx < 16 ? nx - 1 : 15;
+        const int ly = ny < 16 ? ny - 1 : 15;
+        int i = 0;
+        while (i < lx - 1 && a > x[i + 1])
+            ++i;
+        int j = 0;
+        while (j < ly - 1 && b > y[j + 1])
+            ++j;
+        const int i1 = lx > 0 ? i + 1 : 0;
+        const int j1 = ly > 0 ? j + 1 : 0;
+        const float sx = x[i1] - x[i];
+        const float sy = y[j1] - y[j];
+        const float fx = sx > 0 ? fminf(fmaxf((a - x[i]) / sx, 0), 1) : 0;
+        const float fy = sy > 0 ? fminf(fmaxf((b - y[j]) / sy, 0), 1) : 0;
+        const float top = z[i][j] + fx * (z[i1][j] - z[i][j]);
+        const float bottom = z[i][j1] + fx * (z[i1][j1] - z[i][j1]);
+        return top + fy * (bottom - top);
+    }
+};

@@ -1,0 +1,57 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Default",
+  "notes": "Every field at its default: the reference's Init V8 (5.76 L crossplane V8).",
+  "spec": {
+    "engine": {
+      "layout": "V8 crossplane",
+      "displacement": 0.00576,
+      "boreStroke": 1.0,
+      "compression": 10.0,
+      "flywheel": 0.5,
+      "idleTrim": 0.0,
+      "redlineTrim": 0.0,
+      "rough": 0.3,
+      "benchLoad": 0.0
+    },
+    "valve": {
+      "cam": 0.35
+    },
+    "boost": {
+      "kind": "Natural",
+      "level": 0.5,
+      "size": 1.0,
+      "blowOff": 0.7
+    },
+    "exhaust": {
+      "headers": 0.5,
+      "pipe": 0.5,
+      "crossover": 0.0,
+      "muffler": 0.5
+    },
+    "fuel": {
+      "kind": "Gasoline"
+    },
+    "ecu": {
+      "timing": 0.0,
+      "pops": 0.3,
+      "starter": true
+    },
+    "car": {
+      "kind": "Car",
+      "mass": 1400.0
+    },
+    "env": {
+      "temperature": 300.0
+    },
+    "sound": {
+      "view": "Exhaust",
+      "distance": 0.3,
+      "room": 0.15,
+      "level": 0.0,
+      "intake": 0.5,
+      "mechanical": 0.4
+    }
+  }
+}

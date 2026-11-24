@@ -1,0 +1,87 @@
+// traction.fm: traction control and the pit limiter (ecu.model 1), anti-lag's and nitrous's switching.
+//
+// Traction control: while the driven wheels slip more than the target (card I gives their slip: the wheels' speed
+// over the road's, less 1), torque comes out: a proportional and integral reduction, 0 to 1, made of retard over its
+// first half (up to 20 degrees) and cut firings (by fuel) over its second (up to three in four), as factory systems
+// take it out by the spark first and then by cylinders; it gives the torque back as the slip falls. The pit limiter
+// holds the car's speed under a set one by the same soft hold the rev limiter has (limiter.fm), over the last 2 m/s.
+//
+// Anti-lag: inside its window (speed, the pedal lifted under 20 %, running) the spark is taken back hard and the
+// mixture made rich, so the charge burns on in the exhaust manifold and keeps the turbine spinning; card F opens its
+// air path and burns it. Nitrous: armed by its button, it flows (card F's) above its speed, with the pedal floored,
+// in or above its gear; the ECU takes back its spark and asks its lambda of the larger oxygen.
+#pragma once
+#include "limiter.fm"
+
+module TractionControl
+{
+    bool active;
+    float reduce;       // 0 to 1
+    float integral;
+    float retard;       // degrees
+    float share;        // firings cut
+    SoftHold pit;
+    bool pitActive;
+
+    void reset()
+    {
+        active = false;
+        reduce = 0.0f;
+        integral = 0.0f;
+        retard = 0.0f;
+        share = 0.0f;
+        pitActive = false;
+    }
+
+    // Every 16 samples: on, the driven wheels' slip and its target; the pit limiter's speed (m/s; 0 off) and the car's
+    void control(bool on, float slip, float target, float pitSpeed, float carSpeed, float d16)
+    {
+        const float e = on ? slip - target : -1.0f;
+        integral = fminf(fmaxf(integral + 6.0f * e * d16, 0.0f), 1.0f);
+        reduce = fminf(fmaxf(3.0f * e + integral, 0.0f), 1.0f);
+        if (!on)
+        {
+            integral = 0.0f;
+            reduce = 0.0f;
+        }
+        active = reduce > 0.0f;
+        retard = 20.0f * fminf(2.0f * reduce, 1.0f);
+        share = 0.75f * fminf(fmaxf(2.0f * reduce - 1.0f, 0.0f), 1.0f);
+        pitActive = false;
+        if (pitSpeed > 0.0f)
+        {
+            pit.hold(fabsf(carSpeed), 0.0f, pitSpeed, 2.0f, 20.0f);
+            pitActive = pit.retard > 0.0f;
+            retard = fmaxf(retard, pit.retard);
+            share = fmaxf(share, pit.share);
+        }
+    }
+};
+
+module AntiLag
+{
+    bool active;
+    float retard;
+    float lambda;       // asked while active (1: none)
+
+    void control(bool on, bool running, float rpm, float lo, float hi, float pedal, float most, float rich)
+    {
+        active = on && running && rpm >= lo && rpm <= hi && pedal < 0.2f;
+        retard = active ? most : 0.0f;
+        lambda = active ? rich : 1.0f;
+    }
+};
+
+module Nitrous
+{
+    bool active;
+    float retard;
+    float lambda;
+
+    void control(bool armed, bool running, float rpm, float lo, float pedal, int gear, int minGear, float most, float rich)
+    {
+        active = armed && running && rpm >= lo && pedal >= 0.95f && gear >= minGear;
+        retard = active ? most : 0.0f;
+        lambda = active ? rich : 1.0f;
+    }
+};
