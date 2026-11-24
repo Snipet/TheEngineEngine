@@ -192,6 +192,7 @@ module Engine
     double airTrapped;  // and the unburned gas the cylinders hold at their intakes' closing
     WallHeat wall;      // Woschni's wall heat, with spec.engine.wallHeat 1 (core/wallheat.fm)
     TruckAir air;       // card D2: a truck's air system's sounds, with spec.car.truckAir (vehicle/truckair.fm)
+    int hdWas;          // card D2: hd.on at the last tick (its fall releases the flap and the vanes)
     HeavyDiesel hd;     // card D2: a diesel's governor, compression and exhaust brakes (combustion/heavy.fm); hd.on 0 at the defaults
     TwoStroke two;      // card T: a two-stroke's cylinders, crankcases and pipes (core/twostroke/), with spec.engine.cycle 1
     int cycleUse;       // 1: the engine configured as a two-stroke (spec.engine.cycle 1 on a custom engine)
@@ -314,6 +315,7 @@ module Engine
         comb.oxygen = 1.0f;
         physicalCylinder();
         hd.setup(rate, &spec.ecu, &spec.valve);
+        hdWas = 0;
         air.setup(rate);                                                                    // card D2
         ecu.setup(16.0f / rate, &spec.ecu, &spec.fuel, &ctl, &tel.ecu, &scope, &heat);     // card H's model 1
         set.bov = 0.7f;
@@ -877,6 +879,14 @@ module Engine
             hd.flapReal = exh.flapFitted();          // (card G's butterfly, where fitted, makes the exhaust brake's back pressure)
             exh.setFlap(hd.flapCommand());
         }
+        else if (hdWas != 0)
+        {
+            // (hd.on fell while a brake may hold the flap or the vanes: release them once)
+            exh.setFlap(0.0f);
+            if (spec.boost.model != 0)
+                boost.vanesAndPurge(-1.0f, 0);
+        }
+        hdWas = hd.on;
         // the exhaust's mass flow and its power, for the turbo
         exh.flowRate();
         // (the reference turbo's flow scale: a four-stroke's air, vTotal rpm / 120, for every engine; for a rotary, whose
