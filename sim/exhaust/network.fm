@@ -1,0 +1,564 @@
+// network.fm: an exhaust system as a graph of pipes and the places they meet (card G, the exhaust builder).
+//
+// Every pipe is a Duct (sim/ref/pipes.fm: two delay lines with the wall's, the flow's and a packing's losses). Every
+// place pipe ends meet is a junction, solved each sample from the waves arriving there and the pipes' impedances, as
+// the reference solves its own (sim/ref/engine.fm, sampleTick): all the waves a sample's junctions use were read
+// before any is solved, so the junctions are independent of each other within a sample and their order does not
+// matter. The kinds:
+//   XJ_NODE    n pipe ends meeting (a collector, a merge, a crossover's node, a resonator's tee): the reference's
+//              node(), copied as xNode below; each branch can have a resistance in series (a converter's monolith, a
+//              muffler's perforations), a loss for flow in and for flow out (K 1/2 rho u|u|, on the drive's slow part)
+//              and a transmission t (a valve: its branch's admittance times t; shut, the branch is a closed end);
+//   XJ_PAIR    two pipe ends joined in series (a change of area, a muffler's chamber to its tube): the reference's
+//              muffler junctions, one slow drive and one loss for the pair, a resistance and a transmission as above;
+//   XJ_OPEN    a pipe's far end in the air: an XEnd (ends.fm), radiating;
+//   XJ_CLOSED  a pipe's far end shut (a quarter-wave resonator's stub, a volume's back wall): the wave comes back whole
+//              (the pipe's own wall loss is all that takes it);
+//   XJ_PORT    a pipe's near end at an engine's port: the flow the cylinder solved goes in (the reference: z q), with
+//              the valve's jet's hiss.
+// Each junction is passive by construction: a lossless scattering of the waves by the impedances, less the losses
+// (lossHold takes flow away from what passes, never adds; a resistance in series only dissipates), so the network can
+// only lose what it holds (tests/sim/exhaust: the passivity property test).
+// Flow noise is the reference's: a band of noise per junction kind, its pressure in series with a branch as a dipole
+// (flowK times the branch's loss coefficient times 1/2 rho u^2).
+//
+// The graph is made by the builder (slots.fm) in init or under the fade; every 16 samples the builder sets each
+// pipe's length, bore and losses (its shape) and the junctions' coefficients. Memory: every Duct is configured in init
+// at its slot's longest length; a build uses some of them, and one that is not used costs nothing per sample.
+//
+//   net.setup(rate)                 in init (allocates); net.release() in end
+//   net.portWave(i), net.portZ(i)   the wave arriving at port i, its pipe's impedance (for the cylinder's solve)
+//   net.step(q)                     q[i]: port i's volume flow into the pipe (m^3/s), this sample; leaves outL, outR
+#pragma once
+#include "../ref/pipes.fm"
+#include "ends.fm"
+
+enum
+{
+    XN_DUCTS = 80,
+    XN_JUNC = 80,
+    XN_BR = 14,
+    XN_ENDS = 24,
+    XN_BANDS = 24,
+    XN_PORTS = 16,
+    XN_POPS = 8
+};
+
+enum
+{
+    XJ_NODE = 0,
+    XJ_PAIR = 1,
+    XJ_OPEN = 2,
+    XJ_CLOSED = 3,
+    XJ_PORT = 4
+};
+
+// The reference's node() (sim/ref/engine.fm), as a free function, with each branch's transmission t (1: as the
+// reference; below 1e-4 the branch is shut: no flow, the pipe sees a closed end). With every t at 1 it is the
+// reference's arithmetic, operation for operation. A node where n pipe ends meet: a[i] the waves arriving, z[i] each
+// branch's impedance (with any resistance in series), kf[i] and kr[i] its loss for flow into the node and out of it
+// (lossKap), sl[i] its drive's slow part and al[i] that part's smoothing, src a volume flow the node makes itself (a
+// pop's gas). Leaves each branch's flow into the node in q[i]; returns the node's pressure.
+float xNode(int n, float* a, float* z, float* t, float* kf, float* kr, float* sl, float* al, float* q, float src)
+{
+    float sy = 0.0f;
+    float sa = src;
+    float h[XN_BR];
+    float ze[XN_BR];
+    for (int i = 0; i < n; ++i)
+    {
+        ze[i] = t[i] >= 1.0f ? z[i] : (t[i] > 1.0e-4f ? z[i] / t[i] : 0.0f);
+        if (ze[i] > 0.0f)
+        {
+            const float x = sl[i];
+            h[i] = lossHold(x, ze[i], x >= 0.0f ? kf[i] : kr[i]);
+            sy += 1.0f / ze[i];
+            sa += 2.0f * a[i] / ze[i] - h[i];
+        }
+        else
+            h[i] = 0.0f;
+    }
+    const float p = sa / sy;
+    for (int i = 0; i < n; ++i)
+    {
+        if (ze[i] > 0.0f)
+        {
+            const float d = 2.0f * a[i] - p;
+            q[i] = d / ze[i] - h[i];
+            sl[i] += al[i] * (d - sl[i]);
+        }
+        else
+            q[i] = 0.0f;
+    }
+    return p;
+}
+
+module XNet
+{
+    Duct d[XN_DUCTS];
+    int dUse[XN_DUCTS];     // 1: in this build (read and written each sample)
+    float nearIn[XN_DUCTS]; // this sample's waves into each pipe's ends
+    float farIn[XN_DUCTS];
+    // the junctions
+    int nj;
+    int jKind[XN_JUNC];
+    int jN[XN_JUNC];        // its branches
+    int jPop[XN_JUNC];      // a pop's index (-1: none): its gas is a source at the node
+    int jRef[XN_JUNC];      // XJ_OPEN: its end's index; XJ_PORT: its port's
+    float jP[XN_JUNC];      // its pressure this sample (Pa over the air outside; a node's, or the end's)
+    // each junction's branches, junction j's at j * XN_BR
+    int bD[XN_JUNC * XN_BR];        // the pipe
+    int bE[XN_JUNC * XN_BR];        // its end here: 0 near, 1 far
+    float bR[XN_JUNC * XN_BR];      // a resistance in series, Pa s / m^3
+    float bT[XN_JUNC * XN_BR];      // the transmission (a valve): 1 open, 0 shut
+    float bKf[XN_JUNC * XN_BR];     // the loss for flow into the node (a pair: from the first pipe to the second), lossKap
+    float bKr[XN_JUNC * XN_BR];     // and out of it
+    float bS[XN_JUNC * XN_BR];      // the drive's slow part
+    int bA[XN_JUNC * XN_BR];        // the pipe whose quasi-steady corner (qsA) smooths it; -1: not smoothed (no loss)
+    int bBand[XN_JUNC * XN_BR];     // its flow noise's band (-1: none)
+    float bNin[XN_JUNC * XN_BR];    // the noise's loss coefficient, flow in and out
+    float bNout[XN_JUNC * XN_BR];
+    float bNa[XN_JUNC * XN_BR];     // the area its speed is taken on (m^2) and the pipe whose gas's density it has
+    int bNrho[XN_JUNC * XN_BR];
+    float bQ[XN_JUNC * XN_BR];      // its last flow into the node (a pair: from the first to the second)
+    // the radiating ends
+    XEnd ends[XN_ENDS];
+    int ne;
+    // the ports
+    int np;
+    int portD[XN_PORTS];            // each port's pipe (its near end)
+    float portQ[XN_PORTS];          // this sample's flow in
+    float portIn;                   // the flow in summed since the host last read it (m^3/s samples)
+    // the pops (at the collectors)
+    XPop pop[XN_POPS];
+    // noise
+    OnePole fnHp[XN_BANDS];
+    OnePole fnLp[XN_BANDS];
+    OnePole fnLp2[XN_BANDS];
+    float fnN[XN_BANDS];
+    float fnG[XN_BANDS];
+    int nBands;
+    OnePole vnHp;
+    OnePole vnLp;
+    float nScale;
+    float flowK;            // the flow noise's strength (the reference's 0.017; 0: none)
+    float valveK;           // the valves' jets' hiss (0.15)
+    float jetK;             // the tails' jets (0.005)
+    float jetA;
+    float noiseTrim;
+    int rs;
+    float rate;
+    float outL;
+    float outR;
+    float level;            // the two channels' sum, its mean square smoothed (telemetry)
+    int ready;
+
+    float rnd()
+    {
+        const int hi = rs / 127773;
+        const int lo = rs % 127773;
+        rs = 16807 * lo - 2836 * hi;
+        if (rs <= 0)
+            rs += 2147483647;
+        return 2.0f * ((float)rs / 2147483647.0f) - 1.0f;
+    }
+
+    // Every pipe's memory, at its slot's longest (cap[i] samples): in init. Not nonblocking.
+    void setup(float rateIn, int* cap)
+    {
+        release();
+        rate = rateIn;
+        for (int i = 0; i < XN_DUCTS; ++i)
+        {
+            d[i].configure(cap[i]);
+            dUse[i] = 0;
+        }
+        for (int i = 0; i < XN_POPS; ++i)
+            pop[i].rs = 1000 + 7777 * i;
+        vnHp.set(700.0f, rate);
+        vnLp.set(20000.0f, rate);
+        nScale = sqrtf(rate / 48000.0f);
+        jetA = 1.0f - expf(-1.0f / (0.06f * rate));
+        flowK = 0.017f;
+        valveK = 0.15f;
+        jetK = 0.005f;
+        noiseTrim = 1.0f;
+        rs = 123456789;
+        nj = 0;
+        ne = 0;
+        np = 0;
+        nBands = 0;
+        ready = 1;
+    }
+
+    void release()
+    {
+        if (ready != 0)
+        {
+            for (int i = 0; i < XN_DUCTS; ++i)
+                d[i].release();
+        }
+        ready = 0;
+    }
+
+    // ---- making the graph (the builder, outside the audio thread's hot path) ----
+
+    void begin()
+    {
+        for (int i = 0; i < XN_DUCTS; ++i)
+            dUse[i] = 0;
+        nj = 0;
+        ne = 0;
+        np = 0;
+        nBands = 0;
+    }
+
+    int junction(int kind)
+    {
+        const int j = nj;
+        nj += 1;
+        jKind[j] = kind;
+        jN[j] = 0;
+        jPop[j] = -1;
+        jRef[j] = -1;
+        jP[j] = 0.0f;
+        return j;
+    }
+
+    // A pipe end joins junction j: its branch's index
+    int branch(int j, int duct, int end)
+    {
+        const int k = j * XN_BR + jN[j];
+        jN[j] += 1;
+        dUse[duct] = 1;
+        bD[k] = duct;
+        bE[k] = end;
+        bR[k] = 0.0f;
+        bT[k] = 1.0f;
+        bKf[k] = 0.0f;
+        bKr[k] = 0.0f;
+        bS[k] = 0.0f;
+        bA[k] = -1;
+        bBand[k] = -1;
+        bNin[k] = 0.0f;
+        bNout[k] = 0.0f;
+        bNa[k] = 1.0f;
+        bNrho[k] = duct;
+        bQ[k] = 0.0f;
+        return k;
+    }
+
+    // A node of the pipe ends given (each duct's end: 0 near, 1 far): its index
+    int node()
+    {
+        return junction(XJ_NODE);
+    }
+
+    // Two pipes joined in series, flow from a's end to b's: the junction (its branch 0 holds the pair's loss)
+    int pair(int a, int ea, int b, int eb)
+    {
+        const int j = junction(XJ_PAIR);
+        branch(j, a, ea);
+        branch(j, b, eb);
+        return j;
+    }
+
+    // A pipe's far end in the air: the end's index
+    int open(int duct, int tag)
+    {
+        const int j = junction(XJ_OPEN);
+        branch(j, duct, 1);
+        const int e = ne;
+        ne += 1;
+        jRef[j] = e;
+        ends[e].clear();
+        ends[e].tag = tag;
+        ends[e].duct = duct;
+        return e;
+    }
+
+    int closed(int duct)
+    {
+        const int j = junction(XJ_CLOSED);
+        branch(j, duct, 1);
+        return j;
+    }
+
+    // A port: its pipe's near end
+    int port(int duct)
+    {
+        const int j = junction(XJ_PORT);
+        branch(j, duct, 0);
+        const int i = np;
+        np += 1;
+        jRef[j] = i;
+        portD[i] = duct;
+        portQ[i] = 0.0f;
+        return i;
+    }
+
+    int band()
+    {
+        const int g = nBands;
+        nBands += 1;
+        fnG[g] = 0.0f;
+        flowBand(g, 300.0f);
+        return g;
+    }
+
+    // A flow noise's band about fPeak (the reference's flowBand)
+    void flowBand(int g, float fPeak)
+    {
+        const float f = fminf(fmaxf(fPeak, 80.0f), 3000.0f);
+        fnHp[g].set(0.5f * f, rate);
+        fnLp[g].set(2.0f * f, rate);
+        fnLp2[g].set(2.0f * f, rate);
+        fnN[g] = sqrtf(rate / (0.67f * f));
+    }
+
+    // Silence: every pipe, junction and end at rest (a new build, under the fade)
+    void clear()
+    {
+        for (int i = 0; i < XN_DUCTS; ++i)
+        {
+            if (dUse[i] != 0)
+                d[i].clear();
+            nearIn[i] = 0.0f;
+            farIn[i] = 0.0f;
+        }
+        for (int j = 0; j < nj; ++j)
+        {
+            jP[j] = 0.0f;
+            for (int b = 0; b < jN[j]; ++b)
+            {
+                bS[j * XN_BR + b] = 0.0f;
+                bQ[j * XN_BR + b] = 0.0f;
+            }
+        }
+        for (int e = 0; e < ne; ++e)
+            ends[e].clear();
+        for (int g = 0; g < XN_BANDS; ++g)
+        {
+            fnHp[g].clear();
+            fnLp[g].clear();
+            fnLp2[g].clear();
+            fnG[g] = 0.0f;
+        }
+        portIn = 0.0f;
+        outL = 0.0f;
+        outR = 0.0f;
+        level = 0.0f;
+    }
+
+    // ---- each sample ----
+
+    float portWave(int i)
+    {
+        return d[portD[i]].near;
+    }
+
+    float portZ(int i)
+    {
+        return d[portD[i]].z;
+    }
+
+    // The wave arriving at a branch's end
+    float arriving(int k)
+    {
+        return bE[k] == 0 ? d[bD[k]].near : d[bD[k]].far;
+    }
+
+    void send(int k, float w)
+    {
+        if (bE[k] == 0)
+            nearIn[bD[k]] = w;
+        else
+            farIn[bD[k]] = w;
+    }
+
+    // A branch's flow noise: the pressure its jet's turbulence puts in series with it
+    float noiseOf(int k, float rho)
+    {
+        const int g = bBand[k];
+        if (g < 0 || flowK <= 0.0f)
+            return 0.0f;
+        const float u = bQ[k] / bNa[k];
+        return flowK * noiseTrim * (u >= 0.0f ? bNin[k] : bNout[k]) * 0.5f * rho * u * u * fnG[g];
+    }
+
+    void read()
+    {
+        for (int i = 0; i < XN_DUCTS; ++i)
+        {
+            if (dUse[i] != 0)
+                d[i].read();
+        }
+    }
+
+    void solveNode(int j)
+    {
+        float na[XN_BR];
+        float nz[XN_BR];
+        float nt[XN_BR];
+        float nkf[XN_BR];
+        float nkr[XN_BR];
+        float ns[XN_BR];
+        float nal[XN_BR];
+        float nq[XN_BR];
+        const int n = jN[j];
+        const int k0 = j * XN_BR;
+        float sy = 0.0f;
+        for (int b = 0; b < n; ++b)
+        {
+            const int k = k0 + b;
+            const Duct* p = &d[bD[k]];
+            na[b] = arriving(k) - 0.5f * noiseOf(k, d[bNrho[k]].rho);
+            nz[b] = p->z + bR[k];
+            nt[b] = bT[k];
+            nkf[b] = bKf[k];
+            nkr[b] = bKr[k];
+            ns[b] = bS[k];
+            nal[b] = bA[k] >= 0 ? d[bA[k]].qsA : 0.0f;
+            if (bT[k] > 1.0e-4f)
+                sy += bT[k] / nz[b];
+        }
+        float src = 0.0f;
+        if (jPop[j] >= 0)
+            src = pop[jPop[j]].tick() * sy;
+        const float pj = xNode(n, na, nz, nt, nkf, nkr, ns, nal, nq, src);
+        jP[j] = pj;
+        for (int b = 0; b < n; ++b)
+        {
+            const int k = k0 + b;
+            bS[k] = ns[b];
+            bQ[k] = nq[b];
+            send(k, arriving(k) - d[bD[k]].z * nq[b]);
+        }
+    }
+
+    // Two pipes in series (the reference's muffler junctions): q from the first to the second, the lossless flow less
+    // what the loss holds back, from the drive's slow part
+    void solvePair(int j)
+    {
+        const int k = j * XN_BR;
+        const int k1 = k + 1;
+        const Duct* pa = &d[bD[k]];
+        const Duct* pb = &d[bD[k1]];
+        const float aa = arriving(k);
+        const float ab = arriving(k1);
+        float q = 0.0f;
+        if (bT[k] > 1.0e-4f)
+        {
+            float zs = pa->z + pb->z + bR[k];
+            if (bT[k] < 1.0f)
+                zs = zs / bT[k];
+            const float dd = 2.0f * (aa - ab);
+            const float e = noiseOf(k, d[bNrho[k]].rho);
+            const float s = bS[k];
+            q = (dd - e) / zs - lossHold(s, zs, s >= 0.0f ? bKf[k] : bKr[k]);
+            if (bA[k] >= 0)
+                bS[k] += d[bA[k]].qsA * (dd - s);
+        }
+        bQ[k] = q;
+        jP[j] = aa + ab;
+        send(k, aa - pa->z * q);
+        send(k1, ab + pb->z * q);
+    }
+
+    // The open end: the lows come back inverted, the highs go out; the jet leaving loses its momentum
+    void solveOpen(int j)
+    {
+        const int k = j * XN_BR;
+        XEnd* e = &ends[jRef[j]];
+        const Duct* p = &d[bD[k]];
+        const float a = p->far;
+        const float dq = a - e->r.tick(a);
+        const float q = dq / p->z - lossHold(e->s, p->z, e->s >= 0.0f ? e->kOut : e->kIn);
+        e->s += p->qsA * (dq - e->s);
+        const float b = a - p->z * q;
+        float rad = (q - e->radPrev) * rate;
+        e->radPrev = q;
+        e->q = q;
+        e->qSum += q;
+        if (jetK > 0.0f)
+        {
+            e->qJet += jetA * (q - e->qJet);
+            const float qm = fmaxf(e->qJet, 1.0e-5f);
+            const float un = fminf(qm / p->area * 0.025f, 4.0f);
+            const float puff = fminf(fmaxf(q / (2.0f * qm), 0.0f), 1.6f);
+            const float noise = e->jetN * e->tnLp.lowpass(e->tnHp.highpass(rnd()));
+            rad += jetK * noiseTrim * un * un * un * puff * noise * 14400.0f * p->area;
+        }
+        e->sig = rad;
+        e->lev += 0.0002f * (rad * rad - e->lev);
+        jP[j] = a + b;
+        farIn[bD[k]] = b;
+    }
+
+    // One sample: the ports' flows q[i] (m^3/s into each port's pipe) in, every junction solved, the pipes written.
+    // Leaves outL and outR: the radiating ends summed by their tags.
+    void step(float* q) [[clang::nonblocking]]
+    {
+        float wn = 0.0f;
+        if (valveK > 0.0f)
+            wn = nScale * vnLp.lowpass(vnHp.highpass(rnd()));
+        if (flowK > 0.0f)
+        {
+            for (int g = 0; g < nBands; ++g)
+                fnG[g] = fnN[g] * fnLp2[g].lowpass(fnLp[g].lowpass(fnHp[g].highpass(rnd())));
+        }
+        for (int j = 0; j < nj; ++j)
+        {
+            const int kind = jKind[j];
+            if (kind == XJ_NODE)
+                solveNode(j);
+            else if (kind == XJ_PAIR)
+                solvePair(j);
+            else if (kind == XJ_OPEN)
+                solveOpen(j);
+            else if (kind == XJ_CLOSED)
+            {
+                const int k = j * XN_BR;
+                const float a = d[bD[k]].far;
+                farIn[bD[k]] = a;
+                jP[j] = 2.0f * a;
+            }
+            else
+            {
+                // a port: the gas through the valve is a jet, a hiss in proportion to the flow, the louder the faster
+                const int k = j * XN_BR;
+                const int i = jRef[j];
+                const Duct* p = &d[bD[k]];
+                const float jet = p->z * q[i];
+                portQ[i] = q[i];
+                portIn += q[i];
+                nearIn[bD[k]] = p->near + jet * (1.0f + valveK * wn * fminf(fabsf(jet) * 0.00004f, 1.0f));
+                jP[j] = 2.0f * p->near + jet;
+            }
+        }
+        for (int i = 0; i < XN_DUCTS; ++i)
+        {
+            if (dUse[i] != 0)
+                d[i].write(nearIn[i], farIn[i]);
+        }
+        float l = 0.0f;
+        float r = 0.0f;
+        for (int e = 0; e < ne; ++e)
+        {
+            const int tg = ends[e].tag;
+            const float s = ends[e].sig;
+            if (tg == XTAG_REAR_L || tg == XTAG_SIDE_L)
+                l += s;
+            else if (tg == XTAG_REAR_R || tg == XTAG_SIDE_R)
+                r += s;
+            else
+            {
+                l += s;
+                r += s;
+            }
+        }
+        outL = l;
+        outR = r;
+        level += 0.0002f * (0.25f * (l + r) * (l + r) - level);
+    }
+};

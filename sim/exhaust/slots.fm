@@ -1,0 +1,1314 @@
+// slots.fm: the exhaust builder (card G): an exhaust system made from data, on the reference's waveguides.
+//
+// The reference (sim/ref/engine.fm) has three fixed topologies chosen by the layout: all the headers into one
+// collector, a collector a bank merging into one pipe, or a collector a bank each into its own pipe with an H between
+// them; each then the same chain: the main pipe with a converter at its head, the muffler's two chambers and tube, the
+// tail. Here the same physics is put together from a description (XSpec, buildspec.fm):
+//
+//   the headers    which collector each port's primary joins, or none (an open stack): 4-into-1, 4-2-1 and tri-Y, a
+//                  collector a bank, 180-degree headers (pairs across the banks), a boxer's unequal lengths, a log
+//                  manifold (a collector that is a small volume), zoomies (every primary its own open end). Each
+//                  primary its length and bore (and a step); each collector its pipe, merging into a side or into a
+//                  second collector;
+//   each side      a chain of slots, each empty or one of a few kinds, in this order: the turbine (card F's; until
+//                  its seam lands, the reference's restriction in the collectors' pipes), the main pipe, the converter
+//                  (none, standard, high-flow), the crossover (none; H: a pipe between the sides; X: the two sides
+//                  meeting in one four-way node and parting again; at the head, as the reference's, or after the main
+//                  pipes), a resonator (none; a quarter-wave stub; a Helmholtz chamber on a neck; a packed bottle), the
+//                  muffler (none, straight-through, chambered: the reference's, three-pass), a bypass valve round the
+//                  muffler, the tail (one or two tips, where it exits).
+//
+// Everything goes through what the reference has: Duct for every pipe, its node() (network.fm, xNode) for every place
+// pipes meet, lossFlow and lossKap for every change of area, the reference's open end for every pipe that ends in
+// air. Each new element is a new arrangement of these, with its loss coefficients from the same textbook rules the
+// reference cites (a sudden expansion's (1 - a/A)^2 on the narrow side's speed, a contraction's half of 1 - a/A);
+// docs/models/exhaust.md states each, its source, and which are judgement.
+//
+// Built with every field at its default, the builder is the reference's system: the same pipes, the same sizes, the
+// same junctions and losses, solved in the same arithmetic (tests/sim/exhaust: the reference-topology test measures
+// how close). Where its order of work differs from the reference's: the reference's header jets' noise, cones' and
+// mufflers' noise draw their random numbers in another order (the noise is statistically the same, not sample for
+// sample), and the flow noise's band at a collector follows that collector's first primary (the reference: the first
+// port's for both banks).
+//
+//   b.setup(rate)            in init (allocates every pipe at its slot's longest); b.release() in end
+//   b.build(atRest, warm)    the topology from sp and eng (outside the audio thread's hot path, under the fade)
+//   b.control(d16)           every 16 samples: the heat, the sizes, the losses, the valve
+//   b.read()                 each sample, first: the waves arriving everywhere (then net.portWave(i), net.portZ(i))
+//   b.step(q)                then: the ports' flows in, every junction solved; leaves net.outL, net.outR
+//   b.popAt(collector, amp)  a bang at a collector (card H's fuel account calls it)
+#pragma once
+#include "network.fm"
+#include "heat2.fm"
+#include "buildspec.fm"
+
+// Each pipe's slot: its index in XNet's ducts
+enum
+{
+    XD_PRIM = 0,        // the primaries (one a port)
+    XD_STEP = 16,       // a stepped primary's wider part
+    XD_COLL = 32,       // each collector's pipe
+    XD_VOL = 40,        // a log manifold's chamber at its collector
+    XD_SIDE = 48,       // each side's chain: XD_SIDE + side * XD_SIDEN + XO_*
+    XD_SIDEN = 15,
+    XD_CROSS = 78       // the H pipe
+};
+
+enum
+{
+    XO_MAIN = 0,
+    XO_POST = 1,        // after a crossover that sits after the main pipe
+    XO_STUB = 2,        // a quarter-wave's stub, a Helmholtz's neck
+    XO_CHAMB = 3,       // a Helmholtz's chamber
+    XO_LINK = 4,        // after a resonator's tee; a packed bottle
+    XO_MUF = 5,         // the muffler's pipes: XO_MUF to XO_MUF + 4
+    XO_BYP = 10,        // the bypass
+    XO_TAIL = 11,
+    XO_TIP = 12         // two tips: 12, 13
+};
+
+module XBuild
+{
+    XNet net;
+    XSpec sp;
+    XEngine eng;
+    XHeat heat;
+    float rate;
+    // the topology as resolved
+    int nSides;
+    int nPorts;
+    int portTo[XS_PORTS];       // each port's collector (-1: an open stack)
+    int colOn[XS_COLL];
+    int colTo[XS_COLL];         // 0, 1: a side; 2 + j: collector j
+    int colFed[XS_COLL];        // 1: fed by other collectors (a second merge)
+    int nColDirect;             // collectors whose pipe ends at a side
+    int nColOn;
+    int crossK;                 // 0 none, 1 H, 2 X (none with one side)
+    int crossPos;               // 0 at the head, 1 after the main pipes
+    int conv[XS_SIDES];
+    int res[XS_SIDES];
+    int muf[XS_SIDES];
+    int byp[XS_SIDES];
+    int tips[XS_SIDES];
+    int tag[XS_SIDES];
+    int hasStep;
+    // the junctions and branches the sizes and the meters need
+    int jCol[XS_COLL];          // each collector's node
+    int kPrim[XS_PORTS];        // each primary's branch at its collector (-1: an open stack)
+    int jStep[XS_PORTS];        // a stepped primary's step
+    int kColUp[XS_COLL];        // each collector's pipe's branch where it ends (a side's head, or a merge)
+    int kVol[XS_COLL];
+    int jHead[XS_SIDES];        // each side's head (the X's, both: the same)
+    int kMain[XS_SIDES];        // the main pipe's branch at the head (the converter in series)
+    int kCrossH[XS_SIDES];      // the H's branch at each side's node
+    int jMid[XS_SIDES];         // the node after the main pipe (a crossover there; -1 none)
+    int kMidIn[XS_SIDES];       // the main pipe's branch there, and the post pipe's
+    int kMidOut[XS_SIDES];
+    int jRes[XS_SIDES];         // the resonator's tee (-1 none)
+    int kResIn[XS_SIDES];
+    int kResStub[XS_SIDES];
+    int kResOut[XS_SIDES];
+    int jNeck[XS_SIDES];        // a Helmholtz's neck into its chamber; a bottle's entry
+    int jMuf[XS_SIDES * 5];     // the muffler's junctions in the gas's order: inlet, inner ones, outlet
+    int nMufJ[XS_SIDES];
+    int kBypIn[XS_SIDES];       // the bypass's branches (inlet: the valve)
+    int kBypOut[XS_SIDES];
+    int kMufIn[XS_SIDES];       // with a bypass: the muffler's inlet and outlet as nodes, their branches
+    int kMufPrev[XS_SIDES];
+    int kMufLast[XS_SIDES];
+    int kMufTail[XS_SIDES];
+    int jTips[XS_SIDES];
+    int prevMuf[XS_SIDES];      // the pipe the muffler's inlet follows
+    int eTail[XS_SIDES * 2];    // each side's radiating ends
+    int ePrim[XS_PORTS];        // each open stack's
+    // flow noise's bands
+    int gCol[XS_COLL];
+    int gCone[XS_SIDES];
+    int gMin[XS_SIDES];
+    int gMout[XS_SIDES];
+    // the bypass valve: its travel (0 shut to 1 open) and its transmission
+    float vPos[XS_SIDES];
+    float vT[XS_SIDES];
+    // the reference's constants
+    float xiWall;
+    float k16Flow;
+    float kUse;
+    float keepH;
+    float keepP;
+    float kMean;                // the meters' smoothing, every sample (some 0.2 s)
+    // telemetry: means and what a view shows
+    float pTurb;                // mean pressure at the collectors (before a turbine), Pa over the air outside
+    float pConv[XS_SIDES];      // at each side's head (before the converter)
+    float pMuf[XS_SIDES];       // before the muffler (back pressure)
+    float qIn;                  // the ports' flow in and the ends' flow out, smoothed (m^3/s)
+    float qOut;
+    int ready;
+
+    void setup(float rateIn)
+    {
+        rate = rateIn;
+        // each slot's longest pipe, cold (300 m/s), at this rate, as the reference's init sizes its own
+        const float k = rate / 300.0f;
+        int cap[XN_DUCTS];
+        for (int i = 0; i < XN_DUCTS; ++i)
+            cap[i] = (int)(1.0f * k) + 16;
+        for (int i = 0; i < XS_PORTS; ++i)
+        {
+            cap[XD_PRIM + i] = (int)(3.6f * k) + 16;
+            cap[XD_STEP + i] = (int)(3.6f * k) + 16;
+        }
+        for (int c = 0; c < XS_COLL; ++c)
+        {
+            cap[XD_COLL + c] = (int)(1.6f * k) + 16;
+            cap[XD_VOL + c] = (int)(0.2f * k) + 16;
+        }
+        for (int s = 0; s < XS_SIDES; ++s)
+        {
+            const int b = XD_SIDE + s * XD_SIDEN;
+            cap[b + XO_MAIN] = (int)(5.2f * k) + 16;
+            cap[b + XO_POST] = (int)(2.1f * k) + 16;
+            cap[b + XO_STUB] = (int)(2.4f * k) + 16;
+            cap[b + XO_CHAMB] = (int)(0.4f * k) + 16;
+            cap[b + XO_LINK] = (int)(2.1f * k) + 16;
+            for (int m = 0; m < 5; ++m)
+                cap[b + XO_MUF + m] = (int)(1.7f * k) + 16;
+            cap[b + XO_BYP] = (int)(2.6f * k) + 16;
+            cap[b + XO_TAIL] = (int)(2.1f * k) + 16;
+            cap[b + XO_TIP] = (int)(0.6f * k) + 16;
+            cap[b + XO_TIP + 1] = (int)(0.6f * k) + 16;
+        }
+        cap[XD_CROSS] = (int)(1.1f * k) + 16;
+        net.setup(rate, cap);
+        xiWall = 0.025f;
+        k16Flow = 1.0f - expf(-16.0f / (0.06f * rate));
+        kUse = 1.0f - expf(-16.0f / (0.3f * rate));
+        kMean = 1.0f - expf(-1.0f / (0.2f * rate));
+        keepH = 0.878f;
+        keepP = 0.769f;
+        for (int s = 0; s < XS_SIDES; ++s)
+        {
+            vPos[s] = 0.0f;
+            vT[s] = 0.0f;
+        }
+        ready = 1;
+    }
+
+    void release()
+    {
+        if (ready != 0)
+            net.release();
+        ready = 0;
+    }
+
+    // The layout's own collector for a port, and side for a collector (the reference's topologies)
+    int autoPort(int i)
+    {
+        return eng.topo == 0 ? 0 : eng.bank[i];
+    }
+
+    // ---- the topology ----
+
+    void resolve()
+    {
+        nPorts = eng.ports < 0 ? 0 : (eng.ports > XS_PORTS ? XS_PORTS : eng.ports);
+        nSides = sp.sides > 0 ? (sp.sides > 2 ? 2 : sp.sides) : (eng.topo == 2 ? 2 : 1);
+        for (int c = 0; c < XS_COLL; ++c)
+        {
+            colOn[c] = 0;
+            colFed[c] = 0;
+        }
+        for (int i = 0; i < XS_PORTS; ++i)
+        {
+            int to = sp.primaryTo[i];
+            if (to == -2 || to < -2 || to >= XS_COLL)
+                to = autoPort(i);
+            portTo[i] = i < nPorts ? to : -1;
+            if (i < nPorts && to >= 0)
+                colOn[to] = 1;
+        }
+        // a collector's pipe goes to a side, or merges into a collector that goes to a side (two levels at most)
+        for (int c = 0; c < XS_COLL; ++c)
+        {
+            int to = sp.collectorTo[c];
+            if (to < 0 || to > XS_COLL + 1)
+                to = nSides == 2 ? (c & 1) : 0;
+            if (to >= 2 && (to - 2 == c))
+                to = 0;
+            colTo[c] = to;
+        }
+        for (int c = 0; c < XS_COLL; ++c)
+        {
+            if (colTo[c] >= 2)
+            {
+                const int j = colTo[c] - 2;
+                // the one it merges into must go to a side
+                if (colTo[j] >= 2)
+                    colTo[j] = 0;
+            }
+        }
+        // a merge collector is in use when something in use feeds it
+        for (int c = 0; c < XS_COLL; ++c)
+        {
+            if (colOn[c] != 0 && colTo[c] >= 2)
+            {
+                colOn[colTo[c] - 2] = 1;
+                colFed[colTo[c] - 2] = 1;
+            }
+        }
+        nColOn = 0;
+        nColDirect = 0;
+        for (int c = 0; c < XS_COLL; ++c)
+        {
+            if (colOn[c] != 0)
+            {
+                nColOn += 1;
+                if (colTo[c] < 2)
+                {
+                    if (colTo[c] >= nSides)
+                        colTo[c] = nSides - 1;
+                    nColDirect += 1;
+                }
+            }
+        }
+        crossK = nSides == 2 ? (sp.crossover < 0 ? 0 : (sp.crossover > 2 ? 2 : sp.crossover)) : 0;
+        crossPos = sp.crossAt != 0 ? 1 : 0;
+        hasStep = sp.primStepAt > 0.01f ? 1 : 0;
+        for (int s = 0; s < XS_SIDES; ++s)
+        {
+            conv[s] = sp.converter[s] < 0 ? 0 : (sp.converter[s] > 2 ? 2 : sp.converter[s]);
+            res[s] = sp.resonator[s] < 0 ? 0 : (sp.resonator[s] > 3 ? 3 : sp.resonator[s]);
+            muf[s] = sp.muffler[s] < 0 ? 0 : (sp.muffler[s] > 3 ? 3 : sp.muffler[s]);
+            byp[s] = muf[s] != 0 ? (sp.bypass[s] < 0 ? 0 : (sp.bypass[s] > 4 ? 4 : sp.bypass[s])) : 0;
+            tips[s] = sp.tips[s] >= 2 ? 2 : 1;
+            const int ea = sp.exitAt[s];
+            if (ea < 0 || ea > 6)
+                tag[s] = nSides == 2 ? (s == 0 ? XTAG_REAR_L : XTAG_REAR_R) : XTAG_REAR_C;
+            else
+                tag[s] = ea;
+        }
+    }
+
+    // The pipe at a side's slot
+    int slot(int s, int o)
+    {
+        return XD_SIDE + s * XD_SIDEN + o;
+    }
+
+    // The graph from the description, every pipe and junction at rest; stopped (atRest), the walls as warm as the
+    // engine is (warm 0 to 1) and the gas settled through them, as the reference's configure does
+    void build(int atRest, float warm)
+    {
+        resolve();
+        net.begin();
+        // the ports and the primaries
+        for (int i = 0; i < XS_PORTS; ++i)
+        {
+            kPrim[i] = -1;
+            jStep[i] = -1;
+            ePrim[i] = -1;
+        }
+        for (int i = 0; i < nPorts; ++i)
+        {
+            net.port(XD_PRIM + i);
+            if (hasStep != 0)
+                jStep[i] = net.pair(XD_PRIM + i, 1, XD_STEP + i, 0);
+            if (portTo[i] < 0)
+            {
+                const int last = hasStep != 0 ? XD_STEP + i : XD_PRIM + i;
+                ePrim[i] = net.open(last, eng.bank[i] == 1 ? XTAG_SIDE_R : XTAG_SIDE_L);
+            }
+        }
+        // the collectors: their primaries (in the ports' order), the collectors merging into them, their own pipe
+        for (int c = 0; c < XS_COLL; ++c)
+        {
+            jCol[c] = -1;
+            kColUp[c] = -1;
+            kVol[c] = -1;
+            gCol[c] = -1;
+        }
+        for (int c = 0; c < XS_COLL; ++c)
+        {
+            if (colOn[c] == 0)
+                continue;
+            const int j = net.node();
+            jCol[c] = j;
+            net.jPop[j] = c;
+            int anyPrim = 0;
+            for (int i = 0; i < nPorts; ++i)
+            {
+                if (portTo[i] == c)
+                {
+                    kPrim[i] = net.branch(j, hasStep != 0 ? XD_STEP + i : XD_PRIM + i, 1);
+                    anyPrim = 1;
+                }
+            }
+            if (anyPrim != 0)
+            {
+                gCol[c] = net.band();
+                for (int i = 0; i < nPorts; ++i)
+                {
+                    if (portTo[i] == c)
+                        net.bBand[kPrim[i]] = gCol[c];
+                }
+            }
+            for (int c2 = 0; c2 < XS_COLL; ++c2)
+            {
+                if (colOn[c2] != 0 && colTo[c2] == 2 + c)
+                    kColUp[c2] = net.branch(j, XD_COLL + c2, 1);
+            }
+            net.branch(j, XD_COLL + c, 0);
+            if (sp.colVol[c] > 1.0e-6f)
+            {
+                kVol[c] = net.branch(j, XD_VOL + c, 0);
+                net.closed(XD_VOL + c);
+            }
+        }
+        // each side's head: its collectors' pipes (in their order), its main pipe, an H at the head. An X at the head:
+        // one node for both sides.
+        for (int s = 0; s < XS_SIDES; ++s)
+        {
+            jHead[s] = -1;
+            kMain[s] = -1;
+            kCrossH[s] = -1;
+            jMid[s] = -1;
+            jRes[s] = -1;
+            jNeck[s] = -1;
+            nMufJ[s] = 0;
+            kBypIn[s] = -1;
+            kBypOut[s] = -1;
+            jTips[s] = -1;
+            gCone[s] = -1;
+            gMin[s] = -1;
+            gMout[s] = -1;
+            eTail[2 * s] = -1;
+            eTail[2 * s + 1] = -1;
+        }
+        const int oneHead = crossK == 2 && crossPos == 0 ? 1 : 0;
+        for (int s = 0; s < nSides; ++s)
+        {
+            int j = 0;
+            if (oneHead != 0 && s == 1)
+                j = jHead[0];
+            else
+                j = net.node();
+            jHead[s] = j;
+            for (int c = 0; c < XS_COLL; ++c)
+            {
+                if (colOn[c] != 0 && colTo[c] == s)
+                    kColUp[c] = net.branch(j, XD_COLL + c, 1);
+            }
+            if (oneHead != 0 && s == 0)
+            {
+                // the X at the head: the other side's collectors meet here too, before the two main pipes
+                for (int c = 0; c < XS_COLL; ++c)
+                {
+                    if (colOn[c] != 0 && colTo[c] == 1)
+                        kColUp[c] = net.branch(j, XD_COLL + c, 1);
+                }
+            }
+            if (oneHead == 0 || s == 1)
+            {
+                for (int m = 0; m < (oneHead != 0 ? 2 : 1); ++m)
+                {
+                    const int ss = oneHead != 0 ? m : s;
+                    kMain[ss] = net.branch(j, slot(ss, XO_MAIN), 0);
+                    gCone[ss] = net.band();
+                    net.bBand[kMain[ss]] = gCone[ss];
+                }
+            }
+            if (crossK == 1 && crossPos == 0)
+                kCrossH[s] = net.branch(j, XD_CROSS, s == 0 ? 0 : 1);
+        }
+        // after the main pipes: a crossover there
+        int cur[XS_SIDES];
+        for (int s = 0; s < nSides; ++s)
+            cur[s] = slot(s, XO_MAIN);
+        if (crossK != 0 && crossPos == 1)
+        {
+            if (crossK == 2)
+            {
+                const int j = net.node();
+                for (int s = 0; s < 2; ++s)
+                {
+                    jMid[s] = j;
+                    kMidIn[s] = net.branch(j, slot(s, XO_MAIN), 1);
+                }
+                for (int s = 0; s < 2; ++s)
+                    kMidOut[s] = net.branch(j, slot(s, XO_POST), 0);
+            }
+            else
+            {
+                for (int s = 0; s < 2; ++s)
+                {
+                    const int j = net.node();
+                    jMid[s] = j;
+                    kMidIn[s] = net.branch(j, slot(s, XO_MAIN), 1);
+                    kMidOut[s] = net.branch(j, slot(s, XO_POST), 0);
+                    kCrossH[s] = net.branch(j, XD_CROSS, s == 0 ? 0 : 1);
+                }
+            }
+            for (int s = 0; s < 2; ++s)
+                cur[s] = slot(s, XO_POST);
+        }
+        for (int s = 0; s < nSides; ++s)
+        {
+            int c = cur[s];
+            // the resonator
+            if (res[s] == 1 || res[s] == 2)
+            {
+                const int j = net.node();
+                jRes[s] = j;
+                kResIn[s] = net.branch(j, c, 1);
+                kResStub[s] = net.branch(j, slot(s, XO_STUB), 0);
+                kResOut[s] = net.branch(j, slot(s, XO_LINK), 0);
+                if (res[s] == 1)
+                    net.closed(slot(s, XO_STUB));
+                else
+                {
+                    jNeck[s] = net.pair(slot(s, XO_STUB), 1, slot(s, XO_CHAMB), 0);
+                    net.closed(slot(s, XO_CHAMB));
+                }
+                c = slot(s, XO_LINK);
+            }
+            else if (res[s] == 3)
+            {
+                jNeck[s] = net.pair(c, 1, slot(s, XO_LINK), 0);
+                c = slot(s, XO_LINK);
+            }
+            prevMuf[s] = c;
+            // the muffler, its pipes in the gas's order
+            int nm = 0;
+            if (muf[s] == 1)
+                nm = 1;
+            else if (muf[s] == 2)
+                nm = 3;
+            else if (muf[s] == 3)
+                nm = 4;
+            const int tl = slot(s, XO_TAIL);
+            if (nm == 0)
+            {
+                jMuf[s * 5] = net.pair(c, 1, tl, 0);
+                nMufJ[s] = 1;
+            }
+            else
+            {
+                const int first = slot(s, XO_MUF);
+                const int last = slot(s, XO_MUF + nm - 1);
+                if (byp[s] != 0)
+                {
+                    const int j = net.node();
+                    jMuf[s * 5] = j;
+                    kMufPrev[s] = net.branch(j, c, 1);
+                    kMufIn[s] = net.branch(j, first, 0);
+                    kBypIn[s] = net.branch(j, slot(s, XO_BYP), 0);
+                }
+                else
+                    jMuf[s * 5] = net.pair(c, 1, first, 0);
+                for (int m = 0; m + 1 < nm; ++m)
+                    jMuf[s * 5 + 1 + m] = net.pair(slot(s, XO_MUF + m), 1, slot(s, XO_MUF + m + 1), 0);
+                if (byp[s] != 0)
+                {
+                    const int j = net.node();
+                    jMuf[s * 5 + nm] = j;
+                    kMufLast[s] = net.branch(j, last, 1);
+                    kMufTail[s] = net.branch(j, tl, 0);
+                    kBypOut[s] = net.branch(j, slot(s, XO_BYP), 1);
+                }
+                else
+                    jMuf[s * 5 + nm] = net.pair(last, 1, tl, 0);
+                nMufJ[s] = nm + 1;
+                gMin[s] = net.band();
+                gMout[s] = net.band();
+                if (byp[s] == 0)
+                {
+                    net.bBand[jMuf[s * 5] * XN_BR] = gMin[s];
+                    net.bBand[jMuf[s * 5 + nm] * XN_BR] = gMout[s];
+                }
+            }
+            // the tail and its tips
+            if (tips[s] == 2)
+            {
+                const int j = net.node();
+                jTips[s] = j;
+                net.branch(j, tl, 1);
+                net.branch(j, slot(s, XO_TIP), 0);
+                net.branch(j, slot(s, XO_TIP + 1), 0);
+                eTail[2 * s] = net.open(slot(s, XO_TIP), tag[s]);
+                eTail[2 * s + 1] = net.open(slot(s, XO_TIP + 1), tag[s]);
+            }
+            else
+                eTail[2 * s] = net.open(tl, tag[s]);
+        }
+        for (int i = 0; i < XH_SECT; ++i)
+            heat.on[i] = 0;
+        pTurb = 0.0f;
+        for (int s = 0; s < XS_SIDES; ++s)
+        {
+            pConv[s] = 0.0f;
+            pMuf[s] = 0.0f;
+            vPos[s] = byp[s] == 2 ? 1.0f : 0.0f;
+            vT[s] = vPos[s];
+        }
+        // (at rest first, then sized: the reference's order in its configure, so a build of its topology starts as
+        // it does)
+        sections();
+        if (atRest != 0)
+            heat.rest(eng.tAmb, warm, eng.mdotSlow, eng.vAir);
+        net.clear();
+        shape();
+        qIn = 0.0f;
+        qOut = 0.0f;
+    }
+
+    // ---- the sizes: the reference's pipes(), over the chain as built ----
+
+    // Where a muffler's scattering starts taking the highs (Hz): the reference's backFc
+    float backFc(float c, float len)
+    {
+        return fmaxf(500.0f, 0.25f * c / fmaxf(len, 0.01f));
+    }
+
+    // A junction's losses from a change of area: flow from area a1 into a2 and back, on the narrower's speed (a sudden
+    // expansion (1 - a/A)^2, a contraction half of 1 - a/A), at the gas's density rho, times k
+    void areaLoss(int kb, float a1, float a2, float rho, float k)
+    {
+        const float an = fminf(a1, a2);
+        const float e = 1.0f - an / fmaxf(a1, a2);
+        const float kExp = k * e * e;
+        const float kCon = k * 0.5f * e;
+        net.bKf[kb] = lossKap(a2 > a1 ? kExp : kCon, rho, an);
+        net.bKr[kb] = lossKap(a2 > a1 ? kCon : kExp, rho, an);
+    }
+
+    // A mean of n values summing to sum, the first of them v0: v0 itself when they are all alike (so a build of the
+    // reference's sizes soaks in its arithmetic)
+    float meanOf(float sum, int n, float v0)
+    {
+        if (n <= 1)
+            return sum;
+        const float m = sum / (float)n;
+        return fabsf(m - v0) <= 1.0e-6f * fabsf(v0) ? v0 : m;
+    }
+
+    // The heat's sections over the chain as built, as the reference's soak() sees its own five
+    void sections()
+    {
+        const float hk = expf(0.9808293f * (eng.smHdr - 0.5f));
+        const float pk = expf(1.3862944f * (eng.smPipe - 0.5f));
+        const float dHead = 0.46f * eng.bore;
+        {
+            float lSum = 0.0f;
+            float dSum = 0.0f;
+            int n = 0;
+            for (int i = 0; i < nPorts; ++i)
+            {
+                lSum += sp.primLen[i] > 0.0f ? sp.primLen[i] : eng.hdr * hk;
+                dSum += sp.primD[i] > 0.0f ? sp.primD[i] : dHead;
+                n += 1;
+            }
+            if (n > 0)
+                heat.kind(XH_PRIM, meanOf(lSum, n, sp.primLen[0] > 0.0f ? sp.primLen[0] : eng.hdr * hk),
+                          meanOf(dSum, n, sp.primD[0] > 0.0f ? sp.primD[0] : dHead), (float)nPorts);
+            int n1 = 0;
+            int n2 = 0;
+            float l1 = 0.0f;
+            float l2 = 0.0f;
+            float d1 = 0.0f;
+            float d2 = 0.0f;
+            float l1First = 0.0f;
+            float d1First = 0.0f;
+            float l2First = 0.0f;
+            float d2First = 0.0f;
+            for (int c = 0; c < XS_COLL; ++c)
+            {
+                if (colOn[c] == 0)
+                    continue;
+                const float l = sp.colLen[c] > 0.0f ? sp.colLen[c] : (eng.bike > 0.5f ? 0.25f : 0.38f);
+                const float dd = sp.colD[c] > 0.0f ? sp.colD[c] : (nColOn == 1 ? eng.pipeD : 0.922f * eng.pipeD);
+                if (colFed[c] != 0)
+                {
+                    if (n2 == 0)
+                    {
+                        l2First = l;
+                        d2First = dd;
+                    }
+                    n2 += 1;
+                    l2 += l;
+                    d2 += dd;
+                }
+                else
+                {
+                    if (n1 == 0)
+                    {
+                        l1First = l;
+                        d1First = dd;
+                    }
+                    n1 += 1;
+                    l1 += l;
+                    d1 += dd;
+                }
+            }
+            heat.on[XH_COLL] = 0;
+            heat.on[XH_COLL2] = 0;
+            if (n1 > 0)
+                heat.kind(XH_COLL, meanOf(l1, n1, l1First), meanOf(d1, n1, d1First), (float)n1);
+            if (n2 > 0)
+                heat.kind(XH_COLL2, meanOf(l2, n2, l2First), meanOf(d2, n2, d2First), (float)n2);
+            float lm = 0.0f;
+            float dm = 0.0f;
+            float lk = 0.0f;
+            float lf = 0.0f;
+            float lt = 0.0f;
+            float dt = 0.0f;
+            int nk = 0;
+            int nf = 0;
+            float lm0 = 0.0f;
+            float dm0 = 0.0f;
+            float lk0 = 0.0f;
+            float lf0 = 0.0f;
+            float lt0 = 0.0f;
+            float dt0 = 0.0f;
+            for (int s = 0; s < nSides; ++s)
+            {
+                const float lms = sp.mainLen[s] > 0.0f ? sp.mainLen[s] : eng.mainLen * pk;
+                const float dms = sp.mainD[s] > 0.0f ? sp.mainD[s] : eng.pipeD;
+                const float lts = sp.tailLen[s] > 0.0f ? sp.tailLen[s] : (eng.bike > 0.5f ? 0.10f : 0.40f);
+                const float dts = sp.tailD[s] > 0.0f ? sp.tailD[s] : eng.tailD;
+                if (s == 0)
+                {
+                    lm0 = lms;
+                    dm0 = dms;
+                    lt0 = lts;
+                    dt0 = dts;
+                }
+                lm += lms;
+                dm += dms;
+                float lks = 0.0f;
+                if (crossK != 0 && crossPos == 1)
+                    lks += sp.postLen;
+                if (res[s] == 1 || res[s] == 2)
+                    lks += sp.linkLen;
+                else if (res[s] == 3)
+                    lks += sp.resLen[s];
+                if (lks > 0.0f)
+                {
+                    if (nk == 0)
+                        lk0 = lks;
+                    lk += lks;
+                    nk += 1;
+                }
+                if (muf[s] != 0)
+                {
+                    const float muff = sp.mufLen[s] > 0.0f ? sp.mufLen[s] : eng.muff;
+                    const float lfs = muff * 1.6f + 0.12f + 0.08f * (1.0f - eng.bike);
+                    if (nf == 0)
+                        lf0 = lfs;
+                    lf += lfs;
+                    nf += 1;
+                }
+                lt += lts;
+                dt += dts;
+            }
+            const float ns = (float)nSides;
+            heat.kind(XH_MAIN, meanOf(lm, nSides, lm0), meanOf(dm, nSides, dm0), ns);
+            heat.on[XH_LINK] = 0;
+            if (nk > 0)
+                heat.kind(XH_LINK, meanOf(lk, nk, lk0), meanOf(dm, nSides, dm0), ns);
+            heat.on[XH_MUFF] = 0;
+            if (nf > 0)
+                heat.kind(XH_MUFF, meanOf(lf, nf, lf0), meanOf(dm, nSides, dm0), ns);
+            heat.kind(XH_TAIL, meanOf(lt, nSides, lt0), meanOf(dt, nSides, dt0), ns);
+        }
+    }
+
+    void shape()
+    {
+        sections();
+        const float hk = expf(0.9808293f * (eng.smHdr - 0.5f));     // headers: 0.61 to 1.63 times
+        const float pk = expf(1.3862944f * (eng.smPipe - 0.5f));    // pipe: half to twice
+        const float dHead = 0.46f * eng.bore;
+        const float aPipe0 = 0.785398f * eng.pipeD * eng.pipeD;
+        const float cH = heat.cOf(XH_PRIM);
+        const float cS = heat.cOf(XH_COLL);
+        const float cS2 = heat.cOf(XH_COLL2);
+        const float cP = heat.cOf(XH_MAIN);
+        const float cL = heat.cOf(XH_LINK);
+        const float cM = heat.cOf(XH_MUFF);
+        const float cT = heat.cOf(XH_TAIL);
+        const float tP = heat.tUse[XH_MAIN];
+        const float tT = heat.tUse[XH_TAIL];
+        // the primaries: each a little different, as real ones are (the reference's pattern, primSpread its size); the
+        // second bank of an unequal-length boxer much longer
+        for (int i = 0; i < nPorts; ++i)
+        {
+            const int b = eng.bank[i];
+            const float own = 1.0f + sp.primSpread * (float)((i * 7) % 5 - 2) / 2.0f;
+            // (a length given is the length built, with the differences; the layout's has its banks' factor)
+            const float len = sp.primLen[i] > 0.0f ? sp.primLen[i] * own : eng.hdr * hk * own * (b == 1 ? eng.hdrBank1 : 1.0f);
+            const float dH = sp.primD[i] > 0.0f ? sp.primD[i] : dHead;
+            const float aH = 0.785398f * dH * dH;
+            Duct* p = &net.d[XD_PRIM + i];
+            int last = XD_PRIM + i;
+            if (hasStep != 0)
+            {
+                // a stepped primary: the step where the pulse has spread, the wider part after it, the header's
+                // per-pass loss shared between them by length
+                const float fa = fminf(fmaxf(sp.primStepAt, 0.05f), 0.95f);
+                const float d2 = dH * sp.primStepD;
+                const float a2 = 0.785398f * d2 * d2;
+                p->set(len * fa, dH, aH, cH, rate);
+                p->extra(0.0f, expf(fa * logf(keepH)), rate);
+                p->steep = 0.87f / 101325.0f;
+                Duct* q = &net.d[XD_STEP + i];
+                q->set(len * (1.0f - fa), d2, a2, cH, rate);
+                q->extra(0.0f, expf((1.0f - fa) * logf(keepH)), rate);
+                q->steep = 0.87f / 101325.0f;
+                const int kb = jStep[i] * XN_BR;
+                areaLoss(kb, aH, a2, p->rho, 1.0f);
+                net.bA[kb] = XD_PRIM + i;
+                last = XD_STEP + i;
+            }
+            else
+            {
+                p->set(len, dH, aH, cH, rate);
+                p->extra(0.0f, keepH, rate);
+                p->steep = 0.87f / 101325.0f;
+            }
+            const Duct* pl = &net.d[last];
+            if (kPrim[i] >= 0)
+            {
+                // a header merging into its collector, and the flow pushed back into it; its jet's noise
+                const int kb = kPrim[i];
+                net.bKf[kb] = lossKap(0.25f, pl->rho, pl->area);
+                net.bKr[kb] = lossKap(0.45f, pl->rho, pl->area);
+                net.bA[kb] = last;
+                net.bNin[kb] = 0.25f;
+                net.bNout[kb] = 0.45f;
+                net.bNa[kb] = pl->area;
+                net.bNrho[kb] = last;
+            }
+            if (ePrim[i] >= 0)
+                net.ends[ePrim[i]].design(pl->diam, pl->rho, heat.tUse[XH_PRIM], eng.tAmb, rate);
+        }
+        // the collectors' pipes: a turbo's turbine sits at each that ends at a side (the reference's: a restriction
+        // that smooths the pulses; one turbo for the engine the most of both, twins less, four between; a smaller
+        // turbine than the match chokes more and smooths less; a supercharger leaves the exhaust free)
+        const float tb = eng.aspUse >= 1 && eng.aspUse <= 3 ? eng.smTb : 0.0f;
+        const float tsr = expf(-0.5f * logf(eng.smTs));
+        const float turbK = fmaxf(1.0f - (eng.aspUse == 2 ? 0.45f : (eng.aspUse == 3 ? 0.5f : 0.55f)) * tb * tsr, 0.15f);
+        const float tbHz = tb > 0.001f ? (1320.0f + 22680.0f * (1.0f - tb) * (1.0f - tb) * (1.0f - tb)) * (eng.aspUse == 2 ? 1.25f : (eng.aspUse == 3 ? 1.1f : 1.0f)) * tsr : 0.0f;
+        int firstCol = -1;
+        for (int c = 0; c < XS_COLL; ++c)
+        {
+            if (colOn[c] == 0)
+                continue;
+            if (firstCol < 0)
+                firstCol = c;
+            float aSec = nColOn == 1 ? aPipe0 : 0.85f * aPipe0;
+            if (sp.colD[c] > 0.0f)
+                aSec = 0.785398f * sp.colD[c] * sp.colD[c];
+            const int direct = colTo[c] < 2 ? 1 : 0;
+            const float aS = direct != 0 ? aSec * turbK : aSec;
+            Duct* p = &net.d[XD_COLL + c];
+            p->set(sp.colLen[c] > 0.0f ? sp.colLen[c] : (eng.bike > 0.5f ? 0.25f : 0.38f), sqrtf(aS * 1.2732395f), aS,
+                   colFed[c] != 0 ? cS2 : cS, rate);
+            p->extra(direct != 0 ? tbHz : 0.0f, 1.0f, rate);
+            p->steep = 0.87f / 101325.0f;
+            if (kColUp[c] >= 0)
+            {
+                const int kb = kColUp[c];
+                net.bKf[kb] = lossKap(0.15f, p->rho, aS);
+                net.bKr[kb] = lossKap(0.30f, p->rho, aS);
+                net.bA[kb] = XD_COLL + c;
+            }
+            if (kVol[c] >= 0)
+            {
+                // a log manifold's chamber: a short wide pipe shut at its far end, the collector's own volume
+                const float av = sp.colVol[c] / 0.06f;
+                Duct* v = &net.d[XD_VOL + c];
+                v->set(0.06f, sqrtf(av * 1.2732395f), av, colFed[c] != 0 ? cS2 : cS, rate);
+                v->extra(0.0f, 1.0f, rate);
+            }
+        }
+        // each side's chain
+        for (int s = 0; s < nSides; ++s)
+        {
+            const float dPipe = sp.mainD[s] > 0.0f ? sp.mainD[s] : eng.pipeD;
+            const float aPipe = 0.785398f * dPipe * dPipe;
+            const float dTail = sp.tailD[s] > 0.0f ? sp.tailD[s] : eng.tailD;
+            const float aTail = 0.785398f * dTail * dTail;
+            // the main pipe and its converter: the monolith's narrow channels' walls take the highs, about as the root
+            // of the frequency (some 2.5 dB at 1 kHz, 5 at 4 kHz, 7.5 at the top each way), and their broadband
+            // absorption is part of the pipe's per-pass share (keepP); its flow resistance some 60 Pa s/m across it at
+            // 700 K with its cones, growing with the gas's viscosity, over the pipe's area. A high-flow converter
+            // (fewer cells, a shorter brick): 0.4 of the resistance, half the absorption. None: neither.
+            Duct* mp = &net.d[slot(s, XO_MAIN)];
+            const float pl = sp.mainLen[s] > 0.0f ? sp.mainLen[s] : eng.mainLen * pk;
+            mp->set(pl, dPipe, aPipe, cP, rate);
+            const float convKeep = conv[s] == 1 ? 1.0f : (conv[s] == 2 ? 1.122f : 1.259f);
+            mp->extra(0.0f, keepP * convKeep, rate);
+            if (conv[s] == 1)
+                mp->pack(700.0f, 2.5f, 4000.0f, 5.0f, rate);
+            else if (conv[s] == 2)
+                mp->pack(700.0f, 1.25f, 4000.0f, 2.5f, rate);
+            else
+                mp->pack(700.0f, 0.0f, 4000.0f, 0.0f, rate);
+            mp->steep = 0.87f / 101325.0f;
+            const float rCat = 60.0f * expf(0.7f * logf(tP / 700.0f)) / aPipe;
+            if (kMain[s] >= 0)
+            {
+                const int kb = kMain[s];
+                net.bR[kb] = conv[s] == 1 ? rCat : (conv[s] == 2 ? 0.4f * rCat : 0.0f);
+                // the converter's cone's (and the merging's) flow noise: K 0.6 on the pipe's own speed
+                net.bNin[kb] = 0.6f;
+                net.bNout[kb] = 0.6f;
+                net.bNa[kb] = mp->area;
+                net.bNrho[kb] = slot(s, XO_MAIN);
+            }
+            // after a crossover at the main pipe's end
+            if (jMid[s] >= 0)
+            {
+                Duct* pp = &net.d[slot(s, XO_POST)];
+                pp->set(sp.postLen, dPipe, aPipe, cL, rate);
+                pp->extra(0.0f, 0.96f, rate);
+                // an X's merging and parting: a merge's loss, K 0.3 each way on each branch's speed (judgement)
+                if (crossK == 2)
+                {
+                    net.bKf[kMidIn[s]] = lossKap(0.3f, mp->rho, aPipe);
+                    net.bKr[kMidIn[s]] = lossKap(0.3f, mp->rho, aPipe);
+                    net.bA[kMidIn[s]] = slot(s, XO_MAIN);
+                    net.bKf[kMidOut[s]] = lossKap(0.3f, pp->rho, aPipe);
+                    net.bKr[kMidOut[s]] = lossKap(0.3f, pp->rho, aPipe);
+                    net.bA[kMidOut[s]] = slot(s, XO_POST);
+                }
+            }
+            // the resonator
+            if (res[s] == 1)
+            {
+                // a quarter-wave stub: a closed side branch a quarter of the note's wavelength long, less the tee's end
+                // correction (some 0.3 of its bore: judgement, between a flanged end's 0.85 r and a tee's)
+                const float dS = sp.resD[s] > 0.0f ? sp.resD[s] : dPipe;
+                const float aS = 0.785398f * dS * dS;
+                Duct* st = &net.d[slot(s, XO_STUB)];
+                const float ls = fmaxf(cP / (4.0f * sp.resHz[s]) - 0.3f * dS, 0.03f);
+                st->set(ls, dS, aS, cP, rate);
+                st->extra(0.0f, 1.0f, rate);
+            }
+            else if (res[s] == 2)
+            {
+                // a Helmholtz chamber on a neck: f = c / 2 pi sqrt(An / (V Leff)), Leff the neck's length and its two
+                // ends' corrections (0.85 r each); the chamber a short wide pipe shut at its end (its length 0.12 m,
+                // well under a quarter wave at its note, so it is a volume)
+                const float dn = sp.resD[s] > 0.0f ? sp.resD[s] : 0.5f * dPipe;
+                const float an = 0.785398f * dn * dn;
+                const float v = sp.resVol[s];
+                const float w = 6.28318531f * sp.resHz[s];
+                const float lEff = an * cP * cP / (v * w * w);
+                const float ln = fminf(fmaxf(lEff - 0.85f * dn, 0.02f), 2.0f);
+                Duct* nk = &net.d[slot(s, XO_STUB)];
+                nk->set(ln, dn, an, cP, rate);
+                nk->extra(0.0f, 1.0f, rate);
+                const float ac = v / 0.12f;
+                Duct* ch = &net.d[slot(s, XO_CHAMB)];
+                ch->set(0.12f, sqrtf(ac * 1.2732395f), ac, cP, rate);
+                ch->extra(0.0f, 1.0f, rate);
+                const int kb = jNeck[s] * XN_BR;
+                areaLoss(kb, an, ac, nk->rho, 1.0f);
+                net.bA[kb] = slot(s, XO_STUB);
+            }
+            if (res[s] == 1 || res[s] == 2)
+            {
+                Duct* lk = &net.d[slot(s, XO_LINK)];
+                lk->set(sp.linkLen, dPipe, aPipe, cL, rate);
+                lk->extra(0.0f, 0.96f, rate);
+            }
+            else if (res[s] == 3)
+            {
+                // a packed bottle (a glasspack): a perforated tube through a packed shell, the gas keeping to the
+                // tube; its packing takes the highs as a muffler's does
+                Duct* bt = &net.d[slot(s, XO_LINK)];
+                bt->set(sp.resLen[s], dPipe, aPipe, cL, rate);
+                bt->extra(0.0f, 0.96f, rate);
+                bt->pack(800.0f, 3.0f * sp.resLen[s] / 0.4f, 3500.0f, 7.0f * sp.resLen[s] / 0.4f, rate);
+            }
+            // the muffler
+            const float mu = sp.mufSize[s] >= 0.0f ? sp.mufSize[s] : eng.smMuf;
+            const float muff = sp.mufLen[s] > 0.0f ? sp.mufLen[s] : eng.muff;
+            const int prev = prevMuf[s];
+            Duct* pv = &net.d[prev];
+            Duct* tl = &net.d[slot(s, XO_TAIL)];
+            tl->set(sp.tailLen[s] > 0.0f ? sp.tailLen[s] : (eng.bike > 0.5f ? 0.10f : 0.40f), dTail, aTail, cT, rate);
+            tl->extra(0.0f, 0.960f, rate);
+            const int j0 = jMuf[s * 5];
+            float scIn = 0.0f;
+            float scOut = 0.0f;
+            if (muf[s] == 2)
+            {
+                // the reference's: from a straight-through tube (0) to big packed chambers (1). Below about a third it
+                // is a straight-through can (the gas keeps to the tube, so it loses little to its flow), above it
+                // chambers the gas expands into and out of; packed throughout, more with the dial. The packing takes the
+                // highs, less as the flow past the perforations grows (they choke with grazing flow).
+                const float ratio1 = 1.0f + 15.0f * mu;
+                const float ratio2 = 1.0f + 9.0f * mu;
+                const float chamb = fminf(fmaxf((mu - 0.25f) / 0.35f, 0.0f), 1.0f);
+                const float chambs = chamb * chamb * (3.0f - 2.0f * chamb);
+                const int g0 = muf[0] != 0 ? slot(0, XO_MUF) : slot(s, XO_MUF);
+                const float graze = 1.0f / (1.0f + 1.5f * net.d[g0].mach);
+                const float lk1 = (muff / 0.45f) * graze;
+                const float lk2 = 0.6f * lk1;
+                Duct* ch1 = &net.d[slot(s, XO_MUF)];
+                Duct* mid = &net.d[slot(s, XO_MUF + 1)];
+                Duct* ch2 = &net.d[slot(s, XO_MUF + 2)];
+                ch1->set(muff, dPipe * sqrtf(ratio1), aPipe * ratio1, cM, rate);
+                ch1->extra(0.0f, expf(0.8f * logf(0.92f - 0.25f * mu)), rate);
+                ch1->pack(1100.0f, (1.5f + 5.0f * mu) * lk1, 5000.0f, (3.0f + 14.0f * mu) * lk1, rate);
+                mid->set(0.12f + 0.08f * (1.0f - eng.bike), dPipe, aPipe, cM, rate);
+                mid->extra(0.0f, 0.935f, rate);
+                ch2->set(0.6f * muff, dPipe * sqrtf(ratio2), aPipe * ratio2, cM, rate);
+                ch2->extra(0.0f, expf(0.8f * logf(0.93f - 0.20f * mu)), rate);
+                ch2->pack(1100.0f, (1.5f + 5.0f * mu) * lk2, 5000.0f, (3.0f + 14.0f * mu) * lk2, rate);
+                // what the muffler sends back loses its highs (up to 40 dB a pass, as strongly as its changes of area
+                // reflect): its chambers, its tube, the tail and the pipe before it no longer ring there as a comb
+                const float sc1 = 40.0f * (1.0f - 1.0f / ratio1);
+                const float sc2 = 40.0f * (1.0f - 1.0f / ratio2);
+                scIn = sc1;
+                scOut = sc2;
+                ch1->back(backFc(ch1->c, ch1->len), sc1, rate);
+                mid->back(backFc(mid->c, mid->len), sc2, rate);
+                ch2->back(backFc(ch2->c, ch2->len), sc2, rate);
+                // the sudden expansions ((1 - a/A)^2 on the narrow side's speed) and contractions (about half of
+                // 1 - a/A), as far as it has chambers; the perforations' resistance (a twentieth to a fifth of rho c)
+                const float rhoM = ch1->rho;
+                const float e1 = 1.0f - 1.0f / ratio1;
+                const float e2 = 1.0f - 1.0f / ratio2;
+                const float aCh2 = aPipe * ratio2;
+                const float e3 = 1.0f - fminf(aTail / aCh2, 1.0f);
+                const float rPerf = (0.05f + 0.15f * mu) * rhoM * cM / aPipe;
+                const float kInM = fmaxf(chambs * e1 * e1, 0.1f);
+                const float kOutM = fmaxf(0.5f * e3, 0.1f);
+                const int k1 = jMuf[s * 5 + 1] * XN_BR;
+                const int k2 = jMuf[s * 5 + 2] * XN_BR;
+                const int k3 = jMuf[s * 5 + 3] * XN_BR;
+                net.bR[k1] = rPerf;
+                net.bKf[k1] = lossKap(chambs * 0.5f * e1, rhoM, aPipe);
+                net.bKr[k1] = lossKap(chambs * e1 * e1, rhoM, aPipe);
+                net.bA[k1] = slot(s, XO_MUF + 1);
+                net.bR[k2] = rPerf;
+                net.bKf[k2] = lossKap(chambs * e2 * e2, rhoM, aPipe);
+                net.bKr[k2] = lossKap(chambs * 0.5f * e2, rhoM, aPipe);
+                net.bA[k2] = slot(s, XO_MUF + 1);
+                if (byp[s] == 0)
+                {
+                    const int k0 = j0 * XN_BR;
+                    net.bKf[k0] = lossKap(chambs * e1 * e1, rhoM, aPipe);
+                    net.bKr[k0] = lossKap(chambs * 0.5f * e1, rhoM, aPipe);
+                    net.bA[k0] = prev;
+                    net.bNin[k0] = kInM;
+                    net.bNout[k0] = kInM;
+                    net.bNa[k0] = pv->area;
+                    net.bNrho[k0] = slot(s, XO_MUF);
+                    net.bKf[k3] = lossKap(0.5f * e3, rhoM, aTail);
+                    net.bKr[k3] = lossKap(e3 * e3, rhoM, aTail);
+                    net.bA[k3] = slot(s, XO_TAIL);
+                    net.bNin[k3] = kOutM;
+                    net.bNout[k3] = kOutM;
+                    net.bNa[k3] = tl->area;
+                    net.bNrho[k3] = slot(s, XO_TAIL);
+                }
+                else
+                {
+                    net.bKf[kMufPrev[s]] = lossKap(chambs * e1 * e1, rhoM, aPipe);
+                    net.bKr[kMufPrev[s]] = lossKap(chambs * 0.5f * e1, rhoM, aPipe);
+                    net.bA[kMufPrev[s]] = prev;
+                    net.bKf[kMufLast[s]] = lossKap(0.5f * e3, rhoM, aTail);
+                    net.bKr[kMufLast[s]] = lossKap(e3 * e3, rhoM, aTail);
+                    net.bA[kMufLast[s]] = slot(s, XO_MUF + 2);
+                }
+            }
+            else if (muf[s] == 1)
+            {
+                // a straight-through: a perforated tube the pipe's bore through a packed shell, as long as the
+                // reference's can; the gas keeps to the tube (no chambers' expansions), the packing behind the
+                // perforations takes the highs (more than the chambered's: it is all packing), less with grazing flow
+                const float graze = 1.0f / (1.0f + 1.5f * net.d[slot(s, XO_MUF)].mach);
+                const float lk = (muff / 0.45f) * graze;
+                Duct* cn = &net.d[slot(s, XO_MUF)];
+                cn->set(muff * 1.6f + 0.12f + 0.08f * (1.0f - eng.bike), dPipe, aPipe, cM, rate);
+                cn->extra(0.0f, 0.95f, rate);
+                cn->pack(900.0f, (2.0f + 6.0f * mu) * lk, 4500.0f, (4.0f + 14.0f * mu) * lk, rate);
+                scIn = 6.0f;
+                scOut = 6.0f;
+                cn->back(backFc(cn->c, cn->len), 6.0f, rate);
+                const int kl = jMuf[s * 5 + 1] * XN_BR;
+                if (byp[s] == 0)
+                {
+                    const int k0 = j0 * XN_BR;
+                    net.bKf[k0] = lossKap(0.05f, cn->rho, aPipe);
+                    net.bKr[k0] = lossKap(0.05f, cn->rho, aPipe);
+                    net.bA[k0] = prev;
+                    net.bNin[k0] = 0.1f;
+                    net.bNout[k0] = 0.1f;
+                    net.bNa[k0] = pv->area;
+                    net.bNrho[k0] = slot(s, XO_MUF);
+                    areaLoss(kl, aPipe, aTail, cn->rho, 1.0f);
+                    net.bA[kl] = slot(s, XO_TAIL);
+                    net.bNin[kl] = 0.1f;
+                    net.bNout[kl] = 0.1f;
+                    net.bNa[kl] = tl->area;
+                    net.bNrho[kl] = slot(s, XO_TAIL);
+                }
+            }
+            else if (muf[s] == 3)
+            {
+                // a three-pass: two chambers the gas turns round in, joined by tubes the pipe's bore, unpacked; it
+                // reflects at each change of area, a smaller one than the chambered's, and loses at each turn (a
+                // sudden expansion and a contraction per pass)
+                const float ratio = 1.0f + 6.0f * mu;
+                const float e = 1.0f - 1.0f / ratio;
+                Duct* c1 = &net.d[slot(s, XO_MUF)];
+                Duct* t1 = &net.d[slot(s, XO_MUF + 1)];
+                Duct* c2 = &net.d[slot(s, XO_MUF + 2)];
+                Duct* t2 = &net.d[slot(s, XO_MUF + 3)];
+                c1->set(0.45f * muff, dPipe * sqrtf(ratio), aPipe * ratio, cM, rate);
+                c1->extra(0.0f, 0.95f, rate);
+                t1->set(0.8f * muff, dPipe, aPipe, cM, rate);
+                t1->extra(0.0f, 0.95f, rate);
+                c2->set(0.45f * muff, dPipe * sqrtf(ratio), aPipe * ratio, cM, rate);
+                c2->extra(0.0f, 0.95f, rate);
+                t2->set(0.8f * muff, dPipe, aPipe, cM, rate);
+                t2->extra(0.0f, 0.95f, rate);
+                const float sc = 25.0f * e;
+                scIn = sc;
+                scOut = sc;
+                c1->back(backFc(c1->c, c1->len), sc, rate);
+                t1->back(backFc(t1->c, t1->len), sc, rate);
+                c2->back(backFc(c2->c, c2->len), sc, rate);
+                t2->back(backFc(t2->c, t2->len), sc, rate);
+                const float rho = c1->rho;
+                if (byp[s] == 0)
+                {
+                    const int k0 = j0 * XN_BR;
+                    areaLoss(k0, pv->area, c1->area, rho, 1.0f);
+                    net.bA[k0] = prev;
+                    net.bNin[k0] = fmaxf(e * e, 0.1f);
+                    net.bNout[k0] = fmaxf(e * e, 0.1f);
+                    net.bNa[k0] = pv->area;
+                    net.bNrho[k0] = slot(s, XO_MUF);
+                    const int k4 = jMuf[s * 5 + 4] * XN_BR;
+                    areaLoss(k4, aPipe, aTail, rho, 1.0f);
+                    net.bA[k4] = slot(s, XO_TAIL);
+                    net.bNin[k4] = 0.1f;
+                    net.bNout[k4] = 0.1f;
+                    net.bNa[k4] = tl->area;
+                    net.bNrho[k4] = slot(s, XO_TAIL);
+                }
+                for (int m = 1; m < 4; ++m)
+                {
+                    const int kb = jMuf[s * 5 + m] * XN_BR;
+                    const Duct* da = &net.d[slot(s, XO_MUF + m - 1)];
+                    const Duct* db = &net.d[slot(s, XO_MUF + m)];
+                    // (a turn: the expansion or contraction and the gas's reversal, K 1 more on the tube's speed: judgement)
+                    areaLoss(kb, da->area, db->area, rho, 1.0f);
+                    net.bKf[kb] += lossKap(0.5f, rho, aPipe);
+                    net.bKr[kb] += lossKap(0.5f, rho, aPipe);
+                    net.bA[kb] = slot(s, XO_MUF + m);
+                }
+            }
+            else
+            {
+                // no muffler: the pipe straight into the tail, its change of area
+                const int k0 = j0 * XN_BR;
+                areaLoss(k0, pv->area, aTail, pv->rho, 1.0f);
+                net.bA[k0] = slot(s, XO_TAIL);
+            }
+            if (scIn > 0.0f)
+            {
+                pv->back(backFc(pv->c, pv->len), scIn, rate);
+                tl->back(backFc(tl->c, tl->len), scOut, rate);
+            }
+            else
+            {
+                pv->back(500.0f, 0.0f, rate);
+                tl->back(500.0f, 0.0f, rate);
+            }
+            // the bypass: a pipe the main pipe's bore round the muffler, its valve at its inlet (a butterfly: its
+            // transmission glides with its travel; its edge's loss K 0.5 on the bypass's speed)
+            if (byp[s] != 0)
+            {
+                const float db = sp.bypassD > 0.0f ? sp.bypassD : dPipe;
+                const float ab = 0.785398f * db * db;
+                Duct* bp = &net.d[slot(s, XO_BYP)];
+                float lb = 0.0f;
+                for (int m = 0; m < 5; ++m)
+                {
+                    if (m < nMufJ[s] - 1)
+                        lb += net.d[slot(s, XO_MUF + m)].len;
+                }
+                bp->set(fmaxf(lb, 0.1f), db, ab, cM, rate);
+                bp->extra(0.0f, 0.96f, rate);
+                net.bKf[kBypIn[s]] = lossKap(0.5f, bp->rho, ab);
+                net.bKr[kBypIn[s]] = lossKap(0.5f, bp->rho, ab);
+                net.bA[kBypIn[s]] = slot(s, XO_BYP);
+                net.bT[kBypIn[s]] = vT[s];
+            }
+            // the tips
+            if (tips[s] == 2)
+            {
+                const float dt2 = dTail * 0.7071f;
+                for (int m = 0; m < 2; ++m)
+                {
+                    Duct* tp = &net.d[slot(s, XO_TIP + m)];
+                    tp->set(0.15f, dt2, 0.5f * aTail, cT, rate);
+                    tp->extra(0.0f, 0.98f, rate);
+                    net.ends[eTail[2 * s + m]].design(dt2, tp->rho, tT, eng.tAmb, rate);
+                }
+            }
+            else
+                net.ends[eTail[2 * s]].design(dTail, tl->rho, tT, eng.tAmb, rate);
+        }
+        // the H: a pipe between the sides, sharp-edged at both ends
+        if (crossK == 1)
+        {
+            const float dP0 = sp.mainD[0] > 0.0f ? sp.mainD[0] : eng.pipeD;
+            const float aP0 = 0.785398f * dP0 * dP0;
+            float xa = fmaxf(eng.smXp, 0.001f);
+            if (sp.crossD > 0.0f)
+                xa = sp.crossD * sp.crossD / (dP0 * dP0);
+            Duct* x = &net.d[XD_CROSS];
+            x->set(sp.crossLen, dP0 * sqrtf(xa), xa * aP0, cP, rate);
+            x->extra(0.0f, 0.960f, rate);
+            const float rhoX = crossPos == 0 && firstCol >= 0 ? net.d[XD_COLL + firstCol].rho : net.d[slot(0, XO_MAIN)].rho;
+            const float kXp = lossKap(0.5f, rhoX, xa * aP0);
+            for (int s = 0; s < 2; ++s)
+            {
+                net.bKf[kCrossH[s]] = kXp;
+                net.bKr[kCrossH[s]] = kXp;
+                net.bA[kCrossH[s]] = XD_CROSS;
+            }
+        }
+    }
+
+    // ---- every 16 samples ----
+
+    void control(float d16)
+    {
+        heat.soak(eng.tPort, eng.mdotSlow, d16, eng.tAmb, eng.vAir);
+        heat.follow(kUse);
+        // the bypass valve: where its rule or the ECU wants it, travelling there in bypassTime (a butterfly's
+        // transmission is smooth in its travel: smoothstep)
+        for (int s = 0; s < nSides; ++s)
+        {
+            if (byp[s] == 0)
+                continue;
+            float want = 0.0f;
+            if (byp[s] == 2)
+                want = 1.0f;
+            else if (byp[s] == 3)
+            {
+                // open above the speed and the load, shut 10 % below either (hysteresis)
+                const int was = vPos[s] > 0.5f ? 1 : 0;
+                const float h = was != 0 ? 0.9f : 1.0f;
+                want = eng.rpm > h * sp.bypassRpm && eng.load > h * sp.bypassLoad ? 1.0f : 0.0f;
+            }
+            else if (byp[s] == 4)
+                want = fminf(fmaxf(eng.ecuValve, 0.0f), 1.0f);
+            const float stp = d16 / fmaxf(sp.bypassTime, 0.01f);
+            vPos[s] = want > vPos[s] ? fminf(vPos[s] + stp, want) : fmaxf(vPos[s] - stp, want);
+            const float x = vPos[s];
+            vT[s] = x * x * (3.0f - 2.0f * x);
+        }
+        shape();
+        // the pipes' flow losses, from the mean speed of the gas through each since the last time
+        for (int i = 0; i < XN_DUCTS; ++i)
+        {
+            if (net.dUse[i] != 0)
+                net.d[i].flow16(xiWall, k16Flow);
+        }
+        // the jets' noise peaks where their Strouhal number is about 0.3 (no higher than 2.5 kHz)
+        for (int e = 0; e < net.ne; ++e)
+        {
+            const Duct* p = &net.d[net.ends[e].duct];
+            const float u = fmaxf(net.ends[e].qJet, 0.0f) / p->area;
+            net.ends[e].band(0.3f * u / sqrtf(p->area * 1.2732395f), rate);
+        }
+        // the flow noise's bands: a Strouhal number of 0.4 on each flow's mean speed over its width
+        for (int c = 0; c < XS_COLL; ++c)
+        {
+            if (gCol[c] < 0)
+                continue;
+            int first = XD_PRIM;
+            for (int i = nPorts - 1; i >= 0; --i)
+            {
+                if (portTo[i] == c)
+                    first = XD_PRIM + i;
+            }
+            const Duct* p = &net.d[first];
+            net.flowBand(gCol[c], 0.4f * p->mach * p->c / p->diam);
+        }
+        for (int s = 0; s < nSides; ++s)
+        {
+            const Duct* p = &net.d[slot(s, XO_MAIN)];
+            if (gCone[s] >= 0)
+                net.flowBand(gCone[s], 0.4f * p->mach * p->c / p->diam);
+            if (gMin[s] >= 0)
+                net.flowBand(gMin[s], 0.4f * p->mach * p->c / p->diam);
+            const Duct* t = &net.d[slot(s, XO_TAIL)];
+            if (gMout[s] >= 0)
+                net.flowBand(gMout[s], 0.4f * t->mach * t->c / t->diam);
+        }
+    }
+
+    // ---- each sample ----
+
+    void read() [[clang::nonblocking]]
+    {
+        net.read();
+    }
+
+    void step(float* q) [[clang::nonblocking]]
+    {
+        net.step(q);
+        // the meters
+        float pc = 0.0f;
+        int nc = 0;
+        for (int c = 0; c < XS_COLL; ++c)
+        {
+            if (jCol[c] >= 0 && colFed[c] == 0)
+            {
+                pc += net.jP[jCol[c]];
+                nc += 1;
+            }
+        }
+        if (nc > 0)
+            pTurb += kMean * (pc / (float)nc - pTurb);
+        float qi = 0.0f;
+        for (int i = 0; i < net.np; ++i)
+            qi += net.portQ[i];
+        float qo = 0.0f;
+        for (int e = 0; e < net.ne; ++e)
+            qo += net.ends[e].q;
+        qIn += kMean * (qi - qIn);
+        qOut += kMean * (qo - qOut);
+        for (int s = 0; s < nSides; ++s)
+        {
+            pConv[s] += kMean * (net.jP[jHead[s]] - pConv[s]);
+            const int j0 = jMuf[s * 5];
+            float pm = net.jP[j0];
+            if (net.jKind[j0] == XJ_PAIR)
+            {
+                // a pair's: the pressure on its upstream side
+                const int k = j0 * XN_BR;
+                pm = net.arriving(k) + (net.bE[k] == 0 ? net.nearIn[net.bD[k]] : net.farIn[net.bD[k]]);
+            }
+            pMuf[s] += kMean * (pm - pMuf[s]);
+        }
+    }
+
+    // A bang at a collector: the reference's pressure pulse and crackle there (card H's fuel account decides when)
+    void popAt(int collector, float amp)
+    {
+        const int c = collector < 0 ? 0 : (collector >= XS_COLL ? XS_COLL - 1 : collector);
+        if (jCol[c] >= 0)
+            net.pop[c].fire(amp, rate, 99 + c);
+    }
+};

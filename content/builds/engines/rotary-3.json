@@ -1,0 +1,71 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Rotary, three rotors",
+  "notes": "Rotors 120 degrees apart: a face fires each 120 degrees of the shaft.",
+  "spec": {
+    "engine": {
+      "custom": true,
+      "rotors": 3,
+      "cylinders": 3,
+      "bankAngle": [
+        0
+      ],
+      "bank": [
+        0,
+        0,
+        0
+      ],
+      "pin": [
+        0,
+        240,
+        120
+      ],
+      "fireRev": [
+        0,
+        0,
+        0
+      ],
+      "place": [
+        0.0,
+        0.1,
+        0.2
+      ]
+    }
+  },
+  "expect": {
+    "firingOrder": [
+      1,
+      4,
+      7,
+      2,
+      5,
+      8,
+      3,
+      6,
+      9
+    ],
+    "firingIntervals": [
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120
+    ],
+    "firingAngles": [
+      0.0,
+      360.0,
+      720.0,
+      120.0,
+      480.0,
+      840.0,
+      240.0,
+      600.0,
+      960.0
+    ]
+  }
+}

@@ -1,0 +1,12 @@
+// spec/valve.fm: the valvetrain (spec.valve). Owner: package E.
+//
+// The reference's one CAM dial until package E replaces it: 0 a mild cam (224 degrees each, 112 degrees apart), 1 a
+// wild one (300 degrees, 106 apart: a long overlap, a lumpy idle, an idle the tune raises). It glides over 80 ms.
+#pragma once
+
+module ValveSpec
+{
+    int rev [[ui::hidden]];
+    float cam [[fminus::range(0, 1)]] [[fminus::default(0.35)]] [[ui::label("Cam")]] [[ui::quantity("fraction")]]
+        [[ui::help("From a mild cam to a wild one: duration and overlap")]];
+};

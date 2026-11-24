@@ -1,0 +1,20 @@
+{
+  "format": "tee-engine-scenario/1",
+  "name": "free-revs",
+  "description": "Free revs in neutral: start, idle, two blips, flat out on the limiter, the overrun, and off.",
+  "seconds": 14,
+  "events": [
+    { "t": 0.0, "note": "in the car, in neutral, the clutch up, on a warm day so that it settles soon",
+      "spec": { "env.temperature": 300, "car.mass": 1500 },
+      "ctl": { "mode": 1, "lever": 0, "clutch": 0, "brake": 0, "throttle": 0, "ignition": 1 } },
+    { "t": 0.25, "note": "the key to start, held until it runs", "ctl": { "ignition": 2 } },
+    { "t": 2.5, "ctl": { "ignition": 1 } },
+    { "t": 4.0, "note": "two blips", "ctl": { "throttle": 0.6 }, "ramp": 0.08 },
+    { "t": 4.35, "ctl": { "throttle": 0 }, "ramp": 0.08 },
+    { "t": 5.2, "ctl": { "throttle": 0.8 }, "ramp": 0.08 },
+    { "t": 5.6, "ctl": { "throttle": 0 }, "ramp": 0.08 },
+    { "t": 6.5, "note": "flat out, and held on the limiter", "ctl": { "throttle": 1 }, "ramp": 0.15 },
+    { "t": 10.0, "note": "lifted: the overrun", "ctl": { "throttle": 0 }, "ramp": 0.05 },
+    { "t": 12.5, "note": "off: it runs down", "ctl": { "ignition": 0 } }
+  ]
+}

@@ -1,0 +1,213 @@
+// engine.fm: a stand-in for the simulator, for the host's tests while sim/engine.fm is being written (card C).
+//
+// It has the outside of 02-contracts.md, section 1: one main module Engine with the four blocks (Spec, Controls,
+// Telemetry, Scope), init, a nonblocking process and end. Inside it is a toy, not an engine: a flywheel that the
+// "combustion" drives with a torque in proportion to the throttle, a starter, an idle governor, a limiter, an ideal
+// engine dyno, and for a sound the firing frequency's first four harmonics. Nothing here is physics worth listening to;
+// what matters is that it moves the way a host and its tests can check (a speed that rises with the throttle, a line
+// at the firing frequency, the Spec's `rev` read every 16 samples).
+#include "spec.fm"
+#include "controls.fm"
+#include "telemetry.fm"
+
+module Engine
+{
+    Spec spec;
+    Controls ctl;
+    Telemetry tel;
+    Scope scope;
+
+    float rate;
+    float dt;
+    float* work;          // taken in init, given back in end: proof that a host runs them where it should
+    int ready;
+    int countdown;        // samples to the next control16
+    int appliedEngine;    // the rev of spec.engine last applied
+    int cylinders;
+    int state;            // 0 off, 1 cranking, 2 running, 3 running down
+    int cut;              // the limiter holds the fuel off
+    float speed;          // rad/s
+    float crank;          // rad, 0 to 4 pi
+    float phase;          // the firing's phase, rad
+    float level;          // the glided level
+    float emphasis;
+    float dynoTarget;
+    int dynoOn;
+    float fuel;           // the throttle the combustion sees, 0 to 1
+    float brakeTorque;
+    float heard;          // the load the sound follows: the fuel glided, so that a cut is no click
+
+    void init(float hostRate)
+    {
+        end();
+        rate = fmaxf(hostRate, 1000);
+        dt = 1 / rate;
+        work = calloc(64, sizeof(float));
+        ready = 1;
+        countdown = 0;
+        appliedEngine = -1;
+        cylinders = 8;
+        state = 0;
+        cut = 0;
+        speed = 0;
+        crank = 0;
+        phase = 0;
+        level = spec.sound.level;
+        emphasis = 0;
+        dynoTarget = 0;
+        dynoOn = 0;
+        fuel = 0;
+        brakeTorque = 0;
+        heard = 0;
+    }
+
+    void end()
+    {
+        if (ready != 0)
+            free(work);
+        ready = 0;
+    }
+
+    void control16()
+    {
+        if (spec.engine.rev != appliedEngine)
+        {
+            appliedEngine = spec.engine.rev;
+            const int layout = spec.engine.layout;
+            cylinders = layout == 0 ? 4 : (layout == 1 ? 8 : 12);
+        }
+        emphasis = spec.sound.harmonics[spec.sound.tap];
+
+        const int ignition = ctl.ignition;
+        if (ignition == 2 && state != 2 && spec.engine.starter)
+            state = 1;
+        if (state == 1 && ignition != 2)
+            state = speed > 0.6f * spec.engine.idle ? 2 : 3;
+        if (state == 1 && speed > 0.6f * spec.engine.idle)
+            state = 2;
+        if (ignition == 0 && (state == 2 || state == 1))
+            state = 3;
+        if (state == 3 && speed < 1)
+            state = 0;
+
+        const float redline = spec.engine.redline;
+        if (speed > redline)
+            cut = 1;
+        if (speed < redline * (1 - spec.ecu.limiterCut))
+            cut = 0;
+
+        float pedal = fminf(fmaxf(ctl.throttle, 0), 1);
+        if (ctl.holdSpeed > 0)
+            pedal = fminf(fmaxf((ctl.holdSpeed - speed) * 0.05f, 0), 1);
+        const float governor = fminf(fmaxf((spec.engine.idle - speed) * 0.01f, 0), 0.3f);
+        fuel = state == 2 && cut == 0 ? fmaxf(pedal, governor) : 0;
+
+        if (ctl.mode == MODE_DYNO_ENGINE)
+        {
+            if (dynoOn == 0)
+                dynoTarget = ctl.dynoSpeed;
+            dynoOn = 1;
+            if (ctl.dynoRate == 0)
+                dynoTarget = ctl.dynoSpeed;
+        }
+        else
+            dynoOn = 0;
+    }
+
+    float combustion()
+    {
+        const float shape = spec.engine.torqueShape.at(speed, 1);
+        const float trim = 1 + spec.ecu.spark.at(speed, fuel, 0);
+        return spec.engine.torque * shape * trim * fuel;
+    }
+
+    void process(float* restrict left, float* restrict right, int n) [[clang::nonblocking]]
+    {
+        for (int i = 0; i < n; ++i)
+        {
+            if (countdown <= 0)
+            {
+                control16();
+                countdown = 16;
+            }
+            --countdown;
+
+            const float drive = combustion();
+            const float friction = spec.engine.friction * speed + (speed > 0 ? 5 : 0);
+            const float starter = state == 1 ? 60 : 0;
+            brakeTorque = drive - friction;
+            if (dynoOn != 0)
+            {
+                dynoTarget += ctl.dynoRate * dt;
+                speed = fmaxf(dynoTarget, 0);
+            }
+            else
+                speed = fmaxf(speed + (drive - friction + starter) / spec.engine.flywheel * dt, 0);
+
+            crank += speed * dt;
+            if (crank >= 12.5663706f)
+                crank -= 12.5663706f;
+            const float firing = speed / 6.28318531f * 0.5f * (float)cylinders;
+            phase += 6.28318531f * firing * dt;
+            if (phase >= 6.28318531f)
+                phase -= 6.28318531f;
+
+            level += (spec.sound.level - level) * 0.0003f;
+            const float alive = fminf(speed / fmaxf(spec.engine.idle, 1), 1);
+            heard += (fuel - heard) * 0.002f;
+            const float loud = level * alive * (0.3f + 0.7f * heard) / 2.1f;
+            float s = 0;
+            for (int k = 0; k < 4; ++k)
+                s += spec.sound.harmonics[k] * sinf((float)(k + 1) * phase) / (float)(k + 1);
+            const float out = loud * s;   // under 1: level, alive and the load are each at most 1, and s / 2.1 is
+            left[i] = out;
+            right[i] = out;
+
+            if (ctl.scopeOn != 0)
+            {
+                int degree = (int)(crank * 57.2957795f);
+                if (degree > SCOPE_POINTS - 1)
+                    degree = SCOPE_POINTS - 1;
+                scope.pressure[degree] = 101325 * (1 + 20 * fmaxf(cosf(crank), 0) * (1 + emphasis));
+                scope.volume[degree] = 0.0007f * (1.1f - cosf(crank));
+                scope.filled = degree + 1;
+            }
+        }
+
+        tel.engine.state = state;
+        tel.engine.speed = speed;
+        tel.engine.redline = spec.engine.redline;
+        tel.engine.idle = spec.engine.idle;
+        tel.engine.throttle = fuel;
+        tel.engine.manifold = 101325 * (0.3f + 0.7f * fuel);
+        tel.engine.coolant = 360;
+        tel.engine.oilPressure = 400 * speed;
+        tel.engine.flags = cut;
+        tel.engine.cycle = crank / 12.5663706f;
+        tel.engine.crank = crank * 57.2957795f;
+        tel.engine.torque = brakeTorque;
+        tel.engine.power = brakeTorque * speed;
+        tel.engine.firing = speed / 6.28318531f * 0.5f * (float)cylinders;
+        tel.car.speed = 0;
+        tel.car.gear = ctl.lever;
+        tel.car.brake = ctl.brake;
+        tel.car.clutch = ctl.clutch;
+        tel.boost.pressure = 0;
+
+        const int n0 = spec.engine.torqueShape.n;
+        float lo = spec.engine.torqueShape.y[0];
+        float hi = lo;
+        for (int k = 1; k < n0 && k < 16; ++k)
+        {
+            lo = fminf(lo, spec.engine.torqueShape.y[k]);
+            hi = fmaxf(hi, spec.engine.torqueShape.y[k]);
+        }
+        tel.probe.curveFirst = spec.engine.torqueShape.y[0];
+        tel.probe.curveSpread = hi - lo;
+        tel.probe.curveN = n0;
+        tel.probe.level = spec.sound.level;
+        tel.probe.engineRev = spec.engine.rev;
+        tel.probe.soundRev = spec.sound.rev;
+        tel.probe.calls = tel.probe.calls + 1;
+    }
+};

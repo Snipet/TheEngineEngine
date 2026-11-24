@@ -1,0 +1,227 @@
+// ecu1.fm: the ECU of ecu.model 1, whole: its pieces in the order they act every 16 samples, and its decision for
+// each firing. The reference's ECU (its control16's driver, idle, limiter, overrun cut and state machine, and charge's
+// knock rule and pops) stays as ecu.model 0, the default.
+//
+// Every 16 samples, from what the engine and the driver do (EcuIn): the speed it goes by; the key's state; the idle
+// speed, the idle valve and the spark's trim; the driver for a held speed; the overrun cut; the limiter; launch and
+// flat-shift; traction control and the pit limiter; anti-lag and nitrous; knock control's recovery; the maps; then what
+// it asks of the engine: the plate, the idle valve, the spark (before each cylinder's knock retard), lambda, the boost
+// target, the cams and the lift, and which firings to cut and how. At each firing (fire) it says whether that cylinder
+// burns, has its fuel cut, or has its spark cut (its charge going out unburned), and the spark it gets.
+//
+// What it leaves out: closed-loop lambda (the lambda asked is the lambda delivered: no sensor's trim), the injectors'
+// own dynamics, a gear's own maps beyond boost, the shift light, the automatic clutch and shifts (later).
+#pragma once
+#include "settings.fm"
+#include "limiter.fm"
+#include "idle.fm"
+#include "state.fm"
+#include "launch.fm"
+#include "knockctl.fm"
+#include "overrun.fm"
+#include "traction.fm"
+
+enum
+{
+    ECU_FLAG_LIMITER = 1,
+    ECU_FLAG_FUEL_CUT = 2,
+    ECU_FLAG_SPARK_CUT = 4,
+    ECU_FLAG_OVERRUN = 8,
+    ECU_FLAG_LAUNCH = 16,
+    ECU_FLAG_FLAT_SHIFT = 32,
+    ECU_FLAG_ANTI_LAG = 64,
+    ECU_FLAG_NITROUS = 128,
+    ECU_FLAG_TRACTION = 256,
+    ECU_FLAG_PIT = 512,
+    ECU_FLAG_KNOCK = 1024
+};
+
+enum
+{
+    FIRE_BURN,          // the cylinder burns
+    FIRE_FUEL_CUT,      // no fuel: its air goes out
+    FIRE_SPARK_CUT,     // no spark: its charge goes out unburned
+    FIRE_OVERRUN        // an overrun firing fuelled (a share ecu.overrun.fuel of them, stoichiometric), burned
+                        // ecu.overrun.retard late
+};
+
+// What the ECU reads, every 16 samples
+module EcuIn
+{
+    float omega;        // the crank, rad/s
+    float manifold;     // the plenum's pressure, Pa
+    float ambient;      // the air's, Pa
+    bool loadByPedal;   // a throttle with no plenum: load is the pedal
+    float pedal;        // the accelerator, 0 to 1 (bench: ctl.throttle)
+    float clutch;       // 1 on the floor
+    bool launchButton;
+    bool nitrousButton;
+    int gear;           // 0 neutral, -1 reverse
+    bool upshift;       // a gear went up since the last time
+    float carSpeed;     // m/s
+    float slip;         // the driven wheels' slip (card I)
+    float dogCut;       // seconds of cut card I asks (a dog box's shift; 0 none)
+    float blip;         // the plate card I asks for a downshift (0 none)
+    float coolant;      // K
+    float warm;         // 0 at the air outside, 1 at the thermostat
+    int key;            // ctl.ignition
+    bool mayStart;      // neutral, or the clutch down
+    float holdSpeed;    // ctl.holdSpeed, rad/s (0 none)
+    bool driven;        // the car is driven (a car's idle spark)
+    bool gasoline;      // a spark-ignition fuel
+    float idleBase;     // the layout's idle and redline, rpm (the trims added)
+    float redBase;
+    float cam;          // the reference's cam dial (0 to 1): a big cam idles higher
+    float timing;       // spec.ecu.timing: degrees over the map
+    float gasT0;        // each bank's exhaust gas temperature where its bangs light, K
+    float gasT1;
+    float afr;          // the fuel's stoichiometric ratio
+    int cylinders;
+};
+
+module Ecu1
+{
+    EcuSpeed speed;
+    EcuKey key;
+    IdleControl idle;
+    SpeedDriver driver;
+    OverrunCut overrun;
+    RevLimiter limiter;
+    LaunchControl launch;
+    TractionControl traction;
+    AntiLag antiLag;
+    Nitrous nitrous;
+    KnockControl knock;
+    FuelAccount account;
+    EcuMaps maps;
+    CutPattern pattern;
+    // what it asks, every 16 samples
+    float pedal;        // the accelerator it acts on (the driver's, or the driver for a held speed)
+    float plate;        // the throttle plate asked (the caller smooths it as the actuator moves)
+    float bypass;       // the idle valve
+    float trim;         // the spark's quick hand on the torque (the reference's trim)
+    float spark;        // degrees before the top, before a cylinder's knock retard
+    float lambda;
+    float boost;        // Pa over the air
+    float camIn;
+    float camEx;
+    float lift;
+    bool fuelCut;       // every firing's fuel cut
+    bool sparkCut;      // every firing's spark cut
+    float fuelShare;    // firings cut by fuel, 0 to 1
+    float sparkShare;   // firings cut by spark
+    float overrunFuel;  // the share of the overrun's firings fuelled (while the overrun cut is in)
+    float overrunRetard;
+    int flags;          // ECU_FLAG_*
+    float limitRpm;     // the limiter's speed in force
+    // the last firing
+    float sparkFor;     // its spark, degrees
+
+    void setup(float d16)
+    {
+        speed.setup(d16);
+        account.setup(d16);
+    }
+
+    void reset()
+    {
+        speed.reset();
+        key.reset();
+        idle.reset();
+        driver.reset();
+        overrun.reset();
+        limiter.reset();
+        launch.reset();
+        traction.reset();
+        knock.reset();
+        account.reset();
+        pattern.acc = 0.0f;
+        plate = 0.0f;
+        bypass = 0.0f;
+        trim = 1.0f;
+        flags = 0;
+    }
+
+    void control(EcuIn* in, EcuSettings* set, float d16)
+    {
+        speed.control(in->omega, d16);
+        const float rpm = speed.rpm;
+        idle.speed(in->idleBase, in->cam, in->coolant, (in->gasoline ? 1.0f : 0.5f) * set->idle.coldRise * 9.5492966f);
+        const float redRpm = fmaxf(in->redBase, idle.target + 1500.0f);
+        key.control(in->key, in->mayStart, in->omega, speed.avg, idle.target, in->warm, in->coolant, d16);
+        const bool running = key.state == ENGINE_RUNNING;
+        // the pedal: the driver's, or the driver for a held speed (a bench's)
+        driver.control(running && !in->driven ? in->holdSpeed * 9.5492966f : 0.0f, &speed, idle.target, 1.0f, d16);
+        pedal = running ? fmaxf(in->pedal, driver.pedal) : 0.0f;
+        idle.control(&speed, pedal, in->driven, overrun.sinceLift, in->gasoline, d16);
+        trim = driver.holding ? driver.trim : idle.trim;
+        overrun.control(pedal, speed.avg, idle.target, running, d16);
+        // the limiter, launch, flat-shift, traction
+        limitRpm = set->limiter.speed > 0.0f ? set->limiter.speed * 9.5492966f : redRpm;
+        limiter.control(in->gasoline ? set->limiter.kind : LIMIT_FUEL, rpm, speed.rate, limitRpm,
+                        set->limiter.soft * 9.5492966f, set->limiter.retard, d16);
+        launch.control(set->launch.on, in->launchButton, pedal, in->clutch, in->carSpeed, rpm, speed.rate,
+                       set->launch.speed * 9.5492966f, set->launch.retard, set->launch.flatShift, in->upshift, in->dogCut,
+                       in->blip, d16);
+        traction.control(set->traction.on, in->slip, set->traction.slip, set->traction.pitSpeed, in->carSpeed, d16);
+        antiLag.control(set->antiLag.on, running, rpm, set->antiLag.low * 9.5492966f, set->antiLag.high * 9.5492966f,
+                        pedal, set->antiLag.retard, set->antiLag.lambda);
+        nitrous.control(set->nitrous.on && in->nitrousButton, running, rpm, set->nitrous.low * 9.5492966f, pedal,
+                        in->gear, set->nitrous.gear, set->nitrous.retard, set->nitrous.lambda);
+        knock.control(set->knock.on, in->cylinders, set->knock.recover, d16);
+        account.control(in->gasT0, in->gasT1, in->afr, d16);
+        // the maps
+        const float load = in->loadByPedal ? pedal : in->manifold / fmaxf(in->ambient, 1000.0f);
+        const float loadRef = in->manifold / 101325.0f;          // the reference's formulas go by 1 atm
+        EcuMapsSpec* m = &set->maps;
+        maps.tune.redRpm = redRpm;
+        maps.tune.idleRpm = idle.target;
+        spark = maps.read(&m->spark, m->sparkAuto, MAP_SPARK, rpm, m->sparkAuto ? loadRef : load) + in->timing;
+        lambda = maps.read(&m->lambda, m->lambdaAuto, MAP_LAMBDA, rpm, load) * key.enrich;
+        boost = maps.read(&m->boost, m->boostAuto, MAP_BOOST, rpm, (float)(in->gear < 1 ? 1 : in->gear));
+        camIn = maps.read(&m->camIn, m->camInAuto, MAP_CAM_IN, rpm, load);
+        camEx = maps.read(&m->camEx, m->camExAuto, MAP_CAM_EX, rpm, load);
+        lift = maps.read(&m->lift, m->liftAuto, MAP_LIFT, rpm, load);
+        plate = running ? maps.read(&m->pedal, m->pedalAuto, MAP_PEDAL, rpm, pedal) : 0.0f;
+        plate = fmaxf(fminf(plate, limiter.plateMax), launch.plateMin);
+        bypass = idle.bypass;
+        // what is taken back and cut
+        spark -= limiter.retard + launch.retard + traction.retard + antiLag.retard + nitrous.retard;
+        lambda = fminf(lambda, fminf(antiLag.lambda, nitrous.lambda));
+        fuelCut = key.noFuel || limiter.fuelCut;
+        sparkCut = !fuelCut && (limiter.sparkCut || launch.sparkCut);
+        fuelShare = fmaxf(limiter.share, traction.share);
+        sparkShare = launch.share;
+        overrunFuel = overrun.on ? set->overrun.fuel : 0.0f;
+        overrunRetard = overrun.on ? set->overrun.retard : 0.0f;
+        flags = (limiter.active ? ECU_FLAG_LIMITER : 0) | (fuelCut ? ECU_FLAG_FUEL_CUT : 0) | (sparkCut ? ECU_FLAG_SPARK_CUT : 0)
+                | (overrun.on ? ECU_FLAG_OVERRUN : 0) | (launch.launching ? ECU_FLAG_LAUNCH : 0)
+                | (launch.shifting ? ECU_FLAG_FLAT_SHIFT : 0) | (antiLag.active ? ECU_FLAG_ANTI_LAG : 0)
+                | (nitrous.active ? ECU_FLAG_NITROUS : 0) | (traction.active ? ECU_FLAG_TRACTION : 0)
+                | (traction.pitActive ? ECU_FLAG_PIT : 0) | (knock.most > 0.0f ? ECU_FLAG_KNOCK : 0);
+    }
+
+    // Cylinder c's firing (at its intake valve's closing): FIRE_*, its spark in sparkFor
+    int fire(int c)
+    {
+        const int k = c < 0 ? 0 : (c > 15 ? 15 : c);
+        if (fuelCut)
+        {
+            sparkFor = spark;
+            return FIRE_FUEL_CUT;
+        }
+        if (overrun.on)
+        {
+            sparkFor = spark - overrunRetard - knock.retard[k];
+            return pattern.next(overrunFuel) ? FIRE_OVERRUN : FIRE_FUEL_CUT;
+        }
+        sparkFor = spark - knock.retard[k];
+        if (sparkCut)
+            return FIRE_SPARK_CUT;
+        // one pattern for both shares: a firing the fuel share cuts, else one the spark share cuts
+        const float both = fminf(fuelShare + sparkShare, 1.0f);
+        if (pattern.next(both))
+            return fuelShare >= sparkShare ? FIRE_FUEL_CUT : FIRE_SPARK_CUT;
+        return FIRE_BURN;
+    }
+};

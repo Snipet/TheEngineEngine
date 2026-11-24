@@ -1,0 +1,358 @@
+// cylinder.fm: one cylinder of a four-stroke engine (or one face of a rotary's rotor), as its gas.
+//
+// The cylinder is a volume that the crank (or the rotor) makes larger and smaller, a mass of gas in it and that gas's
+// energy (filling and emptying: what flows in through the intake valve and out through the exhaust valve carries its
+// heat with it, at its own ratio of specific heats), the burned gas in it (what the last cycles left and what the
+// overlap drew back), and the fuel it burns (a Wiebe curve after the spark, in proportion to what of its charge can
+// burn when the intake valve closes; a diesel's, after its ignition delay, a premixed spike and a diffusion flame). Its
+// valves open on cams (a lift with its ramps, rising and falling over each event) into the ends of two pipes, the
+// intake runner and the exhaust header, and the flow through each is solved with that pipe at once (pipes.fm, Valve:
+// compressible, choked at the blowdown's start): the blowdown when the exhaust valve cracks open is what an engine
+// sounds like, and the waves that come back up the pipes push on the flow as they do in a real engine. Its pressure on
+// the piston turns the crank: the torque.
+//
+// Angles are degrees of the crank (the rotary's: of its eccentric shaft) in the cylinder's own cycle, 0 at the top of
+// the compression stroke where it fires; 720 a cycle (a rotary's face: 1080).
+#pragma once
+#include "pipes.fm"
+
+// A cam's valve's effective flow area over its event (0 to 1 of the event; 128 steps, as a share of the area at full
+// lift): flowArea(lift(...)) below, tabulated (they cost six transcendentals a valve a sample)
+const float kCamArea[129] = {0.000000f, 0.000169f, 0.001587f, 0.005785f, 0.014243f, 0.028170f, 0.048355f, 0.075081f, 0.108107f, 0.146703f, 0.189749f, 0.235877f, 0.283636f, 0.331655f, 0.378765f, 0.424072f, 0.466981f, 0.507170f, 0.544537f, 0.579137f, 0.611126f, 0.640709f, 0.668105f, 0.693523f, 0.717152f, 0.739151f, 0.759657f, 0.778783f, 0.796625f, 0.813263f, 0.828770f, 0.843212f, 0.856648f, 0.869135f, 0.880730f, 0.891484f, 0.901448f, 0.910671f, 0.919201f, 0.927082f, 0.934356f, 0.941065f, 0.947245f, 0.952933f, 0.958162f, 0.962964f, 0.967366f, 0.971397f, 0.975079f, 0.978437f, 0.981490f, 0.984257f, 0.986756f, 0.989002f, 0.991009f, 0.992789f, 0.994354f, 0.995712f, 0.996873f, 0.997844f, 0.998630f, 0.999236f, 0.999667f, 0.999924f, 1.000010f, 0.999924f, 0.999667f, 0.999236f, 0.998630f, 0.997844f, 0.996873f, 0.995712f, 0.994354f, 0.992789f, 0.991009f, 0.989002f, 0.986756f, 0.984257f, 0.981490f, 0.978437f, 0.975079f, 0.971397f, 0.967366f, 0.962964f, 0.958162f, 0.952933f, 0.947245f, 0.941065f, 0.934356f, 0.927082f, 0.919201f, 0.910671f, 0.901448f, 0.891484f, 0.880730f, 0.869135f, 0.856648f, 0.843212f, 0.828770f, 0.813263f, 0.796625f, 0.778783f, 0.759657f, 0.739151f, 0.717152f, 0.693523f, 0.668105f, 0.640709f, 0.611126f, 0.579137f, 0.544537f, 0.507170f, 0.466981f, 0.424072f, 0.378765f, 0.331655f, 0.283636f, 0.235877f, 0.189749f, 0.146703f, 0.108107f, 0.075081f, 0.048355f, 0.028170f, 0.014243f, 0.005785f, 0.001587f, 0.000169f, 0.000000f};
+
+module Cylinder
+{
+    // geometry
+    float vd;           // swept volume, m^3
+    float vc;           // the volume left at the top
+    float rr;           // connecting rod over crank radius
+    int rotary;         // 1: the volume of a rotor's face, a sine over 540 degrees
+    float cyc;          // degrees a cycle
+    // the valves: where each opens and for how long (degrees), and its open area at full lift (with the discharge
+    // coefficient)
+    float evo;
+    float edur;
+    float ivo;
+    float idur;
+    float aE;
+    float aI;
+    Valve vE;           // the valves' flows, each solved with its pipe (pipes.fm)
+    Valve vI;
+    float sparkAt;      // where it fires (degrees, before the end of the cycle: 720 - advance)
+    float burnDur;      // degrees the burn takes
+    int diesel;         // 1: compression ignition: its burn a premixed spike (burnDur) and a diffusion flame (dur2)
+    float beta;         // the premixed share of a diesel's burn
+    float dur2;         // its diffusion flame's degrees
+    // state
+    float p;            // Pa
+    float m;            // kg
+    float t;            // K
+    float v;            // m^3
+    float ang;          // where it is in its cycle now
+    float mRes;         // what stayed in from the last cycle when the exhaust valve closed
+    float mInert;       // the burned gas in it (kg): the last cycles' products, what came back from the header, what
+                        // its intake pushed back into the runner during the overlap and drew in again
+    float rvMass;       // the gas the intake pushed back into its runner, waiting to be drawn in first, and the burned
+    float rvInert;      // part of it
+    float cBurn;        // how much of what could burn this cycle's burn will burn (the dilution's toll)
+    float exOut;        // this exhaust event's gas out and its burned part, and the burned share of the last event's:
+    float exInert;      // what the header holds by the port, and gives back when it flows back in
+    float exFrac;
+    float qTot;         // the heat this cycle's burn will give (J)
+    float burnAt;       // degrees since the spark (negative: not burning)
+    float xPrev;
+    float bias;         // this cylinder's own small difference in what it burns (it never changes)
+    float hA;           // heat lost to the walls, W per K
+    float tw;           // the walls' temperature (K): a warm engine's 450
+    // what it did this sample
+    float qE;           // volume flow into the header (m^3/s)
+    float qI;           // volume flow into the runner (negative: the intake drawing in)
+    float qEa;          // what the header and the runner are given for them (the pipe's stiffening of a finite wave
+    float qIa;          // in: pipes.fm, Valve)
+    float mE;           // mass flow out through the exhaust valve (kg/s)
+    float tq;           // its torque on the crank (N m)
+    float slopeNow;     // dV per radian of the crank at this sample's angle
+    float dpdt;         // how fast its pressure rose (Pa a sample): the combustion's sharpness, for the block's noise
+    // events, set for the sample they happen in
+    bool evoNow;
+    bool evcNow;
+    bool ivcNow;
+    bool slapNow;       // a piston's slap: just after each top dead centre, as its side thrust changes sides
+    bool sparkNow;
+    float knock;        // a gasoline engine's knock this cycle: how hard its end gas pings (0 none)
+    bool knockNow;      // it pings now (the flame two thirds through)
+
+    void setup(float swept, float compression, float rodRatio, int isRotary, float cycleDeg)
+    {
+        if (tw < 200.0f)
+            tw = 450.0f;
+        vd = swept;
+        vc = swept / (compression - 1.0f);
+        rr = rodRatio;
+        rotary = isRotary;
+        cyc = cycleDeg;
+    }
+
+    float volumeAt(float a)
+    {
+        if (rotary != 0)
+            return vc + 0.5f * vd * (1.0f - cosf(a * 0.01163553f));      // 2 pi / 540
+        const float r = a * 0.01745329f;
+        const float s = sinf(r);
+        return vc + 0.5f * vd * (1.0f + rr - cosf(r) - sqrtf(rr * rr - s * s));
+    }
+
+    // The volume at an angle, leaving dV per radian there in slopeNow (one sine, cosine and root for both)
+    float volumeSlope(float a)
+    {
+        if (rotary != 0)
+        {
+            const float w = a * 0.01163553f;
+            slopeNow = 0.5f * vd * 0.66666667f * sinf(w);
+            return vc + 0.5f * vd * (1.0f - cosf(w));
+        }
+        const float r = a * 0.01745329f;
+        const float s = sinf(r);
+        const float c = cosf(r);
+        const float q = sqrtf(rr * rr - s * s);
+        slopeNow = 0.5f * vd * s * (1.0f + c / q);
+        return vc + 0.5f * vd * (1.0f + rr - c - q);
+    }
+
+    // A valve's lift over its event (0 to 1): up fast, a dwell near the top, down; 0 outside it
+    float lift(float a, float open, float dur)
+    {
+        float s = a - open;
+        if (s < 0.0f)
+            s += cyc;
+        if (s >= dur)
+            return 0.0f;
+        if (rotary != 0)
+        {
+            // a port in the housing, uncovered by the apex seal sweeping over it: open fast, wide, closed fast
+            const float f = s / dur;
+            const float up = fminf(f / 0.12f, 1.0f);
+            const float dn = fminf((1.0f - f) / 0.18f, 1.0f);
+            const float g = fminf(up, dn);
+            return g * g * (3.0f - 2.0f * g);
+        }
+        // a cam's lift: it leaves the seat fast once off its ramp (as sin^1.25), dwells near the top, closes; the
+        // ramps at each end lift it slowly (some 12 % of the lift some 9 % into the event, as real cams' 0.050-inch
+        // durations sit 40-50 degrees inside their advertised ones), which is what the overlap breathes through
+        const float ph = 3.14159265f * s / dur;
+        const float x = sinf(ph);
+        const float e = fminf(ph, 3.14159265f - ph) * 4.0f;
+        return expf(1.25f * logf(fmaxf(x, 1.0e-6f))) * (1.0f - expf(-e * e));
+    }
+
+    // A valve's effective area at a lift (0 to 1) as a share of its most: the curtain limits it while it is low (the
+    // discharge coefficient there high, about 0.6 of the curtain's area at a tenth of the valve's diameter), the port
+    // past some four tenths of the lift (0.4 of the curtain at a quarter): tanh(1.7 l), measured valves' shape. A
+    // rotary's port opens in proportion.
+    float flowArea(float l)
+    {
+        if (rotary != 0)
+            return l;
+        const float e = expf(-3.4f * l);
+        return (1.0f - e) / ((1.0f + e) * 0.9354f);
+    }
+
+    // The valve's effective area now (a share of its most), its event from open for dur degrees: the table for a cam,
+    // the port's own shape for a rotary
+    float areaAt(float a, float open, float dur)
+    {
+        float s = a - open;
+        if (s < 0.0f)
+            s += cyc;
+        if (s >= dur)
+            return 0.0f;
+        if (rotary != 0)
+            return lift(a, open, dur);
+        const float x = s / dur * 128.0f;
+        int i = (int)x;
+        if (i > 127)
+            i = 127;
+        const float f = x - (float)i;
+        return kCamArea[i] + (kCamArea[i + 1] - kCamArea[i]) * f;
+    }
+
+    // The ratio of the gas's specific heats at a temperature (air near 1.39 cold; hot burned gas 1.25 to 1.3)
+    float gammaAt(float tk)
+    {
+        return fminf(fmaxf(1.39f - 7.5e-5f * (tk - 300.0f), 1.24f), 1.40f);
+    }
+
+    // The flows its ports would pass now (at angle a) into pipes whose arriving waves are bE and bI, its state unchanged:
+    // for faces that share a port (a rotary's), so each can be solved with the others' flows in the pipe
+    float exhaustFlowAt(float a, float bE, float zE, float tPipe)
+    {
+        const float ae = areaAt(a, evo, edur);
+        return ae > 0.0f ? vE.flow(p, t, bE, zE, aE * ae, tPipe, 1) * vE.g : 0.0f;
+    }
+
+    float intakeFlowAt(float a, float bI, float zI, float tAir)
+    {
+        const float ai = areaAt(a, ivo, idur);
+        return ai > 0.0f ? vI.flow(p, t, bI, zI, aI * ai, tAir, 0) * vI.g : 0.0f;
+    }
+
+    // Did the angle pass ev between the last sample and this one?
+    bool passed(float before, float now, float ev)
+    {
+        if (now >= before)
+            return before < ev && ev <= now;
+        return before < ev || ev <= now;
+    }
+
+    // At rest: air at the outside pressure, no burn waiting
+    void reset(float a)
+    {
+        ang = a;
+        v = volumeAt(a);
+        p = 101325.0f;
+        t = 330.0f;
+        m = p * v / (287.0f * t);
+        mRes = 0.0f;
+        mInert = 0.0f;
+        rvMass = 0.0f;
+        rvInert = 0.0f;
+        cBurn = 1.0f;
+        exOut = 0.0f;
+        exInert = 0.0f;
+        exFrac = 1.0f;
+        qTot = 0.0f;
+        burnAt = -1.0f;
+        xPrev = 0.0f;
+        qE = 0.0f;
+        qI = 0.0f;
+        qEa = 0.0f;
+        qIa = 0.0f;
+        mE = 0.0f;
+        tq = 0.0f;
+        vE.r = 1.0f;
+        vI.r = 1.0f;
+        vE.g = 1.0f;
+        vI.g = 1.0f;
+    }
+
+    // One sample. a: its angle now; dDeg: degrees the crank turned this sample; dt: seconds a sample. The exhaust header's
+    // arriving wave and impedance (and its gas's temperature), the runner's (and the intake air's). Returns nothing: it
+    // leaves the flows, the torque and the events in its fields.
+    void step(float a, float dDeg, float dt, float bE, float zE, float tPipe, float bI, float zI, float tAir)
+    {
+        const float before = ang;
+        ang = a;
+        evoNow = passed(before, a, evo);
+        evcNow = passed(before, a, evo + edur >= cyc ? evo + edur - cyc : evo + edur);
+        const float ivc = ivo + idur >= cyc ? ivo + idur - cyc : ivo + idur;
+        ivcNow = passed(before, a, ivc);
+        slapNow = rotary == 0 && (passed(before, a, 12.0f) || passed(before, a, 372.0f));
+        sparkNow = passed(before, a, sparkAt);
+        knockNow = false;
+        if (evcNow)
+        {
+            mRes = m;
+            if (exOut > 1.0e-12f)
+                exFrac = fminf(exInert / exOut, 1.0f);
+            exOut = 0.0f;
+            exInert = 0.0f;
+        }
+        if (sparkNow && qTot > 0.0f)
+        {
+            burnAt = 0.0f;
+            xPrev = 0.0f;
+        }
+        // the volume
+        const float vNew = volumeSlope(a);
+        const float dv = vNew - v;
+        // the valves, each solved with its pipe
+        const float le = areaAt(a, evo, edur);
+        const float li = areaAt(a, ivo, idur);
+        qE = le > 0.0f ? vE.flow(p, t, bE, zE, aE * le, tPipe, 1) : 0.0f;
+        qI = li > 0.0f ? vI.flow(p, t, bI, zI, aI * li, tAir, 0) : 0.0f;
+        qEa = le > 0.0f ? qE * vE.g : 0.0f;
+        qIa = li > 0.0f ? qI * vI.g : 0.0f;
+        // their mass flows (out of the cylinder positive) at the pipes' pressures, and the heat they carry
+        const float ppE = fmaxf(101325.0f + 2.0f * bE + zE * qEa, 8000.0f);
+        const float ppI = fmaxf(101325.0f + 2.0f * bI + zI * qIa, 8000.0f);
+        const float mOutE = qE >= 0.0f ? qE * ppE / (287.0f * t) : qE * ppE / (287.0f * tPipe);
+        const float mOutI = qI >= 0.0f ? qI * ppI / (287.0f * t) : qI * ppI / (287.0f * tAir);
+        // the heat they carry: each gas's own (cp = R g / (g - 1) at its temperature)
+        const float gc = gammaAt(t);
+        const float gp = gammaAt(tPipe);
+        const float ga = gammaAt(tAir);
+        const float cpC = 287.0f * gc / (gc - 1.0f);
+        float hOut = 0.0f;
+        hOut += mOutE >= 0.0f ? cpC * t * mOutE : 287.0f * gp / (gp - 1.0f) * tPipe * mOutE;
+        hOut += mOutI >= 0.0f ? cpC * t * mOutI : 287.0f * ga / (ga - 1.0f) * tAir * mOutI;
+        mE = mOutE;
+        // the burned gas: what leaves takes its share (the gas well mixed); what comes back from the header is
+        // burned; what the intake pushes back into its runner waits there, and is the first drawn in again
+        {
+            const float fr = fminf(mInert / fmaxf(m, 1.0e-9f), 1.0f);
+            float di = 0.0f;
+            if (mOutE >= 0.0f)
+            {
+                di -= mOutE * dt * fr;
+                exOut += mOutE * dt;
+                exInert += mOutE * dt * fr;
+            }
+            else
+                di -= mOutE * dt * exFrac;
+            if (mOutI >= 0.0f)
+            {
+                di -= mOutI * dt * fr;
+                rvMass += mOutI * dt;
+                rvInert += mOutI * dt * fr;
+            }
+            else
+            {
+                const float take = fminf(rvMass, -mOutI * dt);
+                const float fi = rvMass > 1.0e-12f ? rvInert / rvMass : 0.0f;
+                di += take * fi;
+                rvInert = fmaxf(rvInert - take * fi, 0.0f);
+                rvMass = fmaxf(rvMass - take, 0.0f);
+            }
+            mInert = fminf(fmaxf(mInert + di, 0.0f), fmaxf(m - (mOutE + mOutI) * dt, 1.0e-7f));
+        }
+        // the burn
+        float dq = 0.0f;
+        if (burnAt >= 0.0f)
+        {
+            burnAt += dDeg;
+            const float f = burnAt / burnDur;
+            float x = 1.0f - expf(-5.0f * f * f * f);
+            float fe = f;
+            if (diesel != 0)
+            {
+                // (a diesel's: what was injected during the ignition delay burns at once, the rest as it mixes)
+                const float f2 = burnAt / dur2;
+                x = beta * x + (1.0f - beta) * (1.0f - expf(-5.0f * expf(1.9f * logf(fmaxf(f2, 1.0e-6f)))));
+                fe = f2;
+            }
+            dq = qTot * (x - xPrev);
+            knockNow = knock > 0.0f && xPrev < 0.6f && x >= 0.6f;
+            xPrev = x;
+            if (fe > 1.6f)
+            {
+                burnAt = -1.0f;
+                qTot = 0.0f;
+                // what burned is products now; what did not stays to burn next time
+                mInert += cBurn * fmaxf(m - mInert, 0.0f);
+            }
+        }
+        // energy and mass (and the heat the walls take)
+        dq -= hA * (t - tw) * dt;
+        const float g1 = gc - 1.0f;
+        const float u = p * v / g1 + dq - p * dv - hOut * dt;
+        const float mNew = fmaxf(m - (mOutE + mOutI) * dt, 1.0e-7f);
+        const float pOld = p;
+        v = vNew;
+        p = fmaxf(g1 * u / v, 2000.0f);
+        m = mNew;
+        t = fminf(fmaxf(p * v / (m * 287.0f), 250.0f), 3200.0f);
+        p = m * 287.0f * t / v;
+        dpdt = p - pOld;
+        tq = (p - 101325.0f) * slopeNow;
+    }
+};

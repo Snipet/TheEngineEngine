@@ -1,0 +1,46 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "V-twin, 90 degrees, one pin",
+  "notes": "An L-twin: 270-450.",
+  "spec": {
+    "engine": {
+      "custom": true,
+      "cylinders": 2,
+      "bankAngle": [
+        45,
+        -45
+      ],
+      "bank": [
+        0,
+        1
+      ],
+      "pin": [
+        45,
+        45
+      ],
+      "fireRev": [
+        0,
+        0
+      ],
+      "place": [
+        0.0,
+        0.033
+      ]
+    }
+  },
+  "expect": {
+    "firingOrder": [
+      1,
+      2
+    ],
+    "firingIntervals": [
+      270,
+      450
+    ],
+    "firingAngles": [
+      0.0,
+      270.0
+    ]
+  }
+}

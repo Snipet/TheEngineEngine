@@ -90,24 +90,32 @@ namespace tee::test
         };
         const double cut = 0.45 * std::min(from, to) / from * 2.0;   // the cut over the input's Nyquist
         const double half = 32.0 / cut;                              // the kernel's half width, in input samples
+        // the window, tabled over its half width (read between entries)
+        const int steps = 8192;
         const double beta = 9.0;
-        const double norm = bessel(beta);
+        std::vector<double> window(static_cast<std::size_t>(steps) + 2);
+        for (int i = 0; i <= steps + 1; ++i)
+        {
+            const double w = std::min(static_cast<double>(i) / steps, 1.0);
+            window[static_cast<std::size_t>(i)] = bessel(beta * std::sqrt(1.0 - w * w)) / bessel(beta);
+        }
         const std::size_t count = static_cast<std::size_t>(std::floor(static_cast<double>(x.size()) * to / from));
         std::vector<float> y(count);
         for (std::size_t k = 0; k < count; ++k)
         {
             const double t = static_cast<double>(k) * from / to;
-            const long first = static_cast<long>(std::ceil(t - half));
-            const long last = static_cast<long>(std::floor(t + half));
+            const long first = std::max(static_cast<long>(std::ceil(t - half)), 0L);
+            const long last = std::min(static_cast<long>(std::floor(t + half)), static_cast<long>(x.size()) - 1);
             double sum = 0.0;
-            for (long n = std::max(first, 0L); n <= std::min(last, static_cast<long>(x.size()) - 1); ++n)
+            for (long n = first; n <= last; ++n)
             {
-                const double u = (static_cast<double>(n) - t);
-                const double w = u / half;
-                const double window = bessel(beta * std::sqrt(std::max(1.0 - w * w, 0.0))) / norm;
+                const double u = static_cast<double>(n) - t;
+                const double at = std::fabs(u) / half * steps;
+                const std::size_t i = static_cast<std::size_t>(at);
+                const double shape = window[i] + (at - static_cast<double>(i)) * (window[i + 1] - window[i]);
                 const double arg = kPi * cut * u;
                 const double sinc = std::fabs(arg) < 1.0e-9 ? 1.0 : std::sin(arg) / arg;
-                sum += static_cast<double>(x[static_cast<std::size_t>(n)]) * cut * sinc * window;
+                sum += static_cast<double>(x[static_cast<std::size_t>(n)]) * cut * sinc * shape;
             }
             y[k] = static_cast<float>(sum);
         }

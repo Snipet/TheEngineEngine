@@ -1,0 +1,19 @@
+// spec/exhaust.fm: the exhaust (spec.exhaust). Owner: package G.
+//
+// The reference's HEADERS, PIPE, X-PIPE and MUFFLER dials: the headers' length (0.61 to 1.63 times the layout's), the
+// main pipe's (half to twice), the crossover between two pipes (its area over a pipe's), and the muffler from a
+// straight-through can (0) to big packed chambers (1). All four glide over 80 ms.
+#pragma once
+
+module ExhaustSpec
+{
+    int rev [[ui::hidden]];
+    float headers [[fminus::range(0, 1)]] [[fminus::default(0.5)]] [[ui::label("Headers")]] [[ui::quantity("fraction")]]
+        [[ui::help("The headers' length: 0.61 to 1.63 times the layout's")]];
+    float pipe [[fminus::range(0, 1)]] [[fminus::default(0.5)]] [[ui::label("Pipe")]] [[ui::quantity("fraction")]]
+        [[ui::help("The main pipe's length: half to twice the layout's")]];
+    float crossover [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Crossover")]]
+        [[ui::quantity("fraction")]] [[ui::help("An H-pipe between two pipes: its area over a pipe's")]];
+    float muffler [[fminus::range(0, 1)]] [[fminus::default(0.5)]] [[ui::label("Muffler")]] [[ui::quantity("fraction")]]
+        [[ui::help("From a straight-through can to big packed chambers")]];
+};

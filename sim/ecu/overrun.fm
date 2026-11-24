@@ -1,0 +1,113 @@
+// overrun.fm: the overrun's fuel cut, its fuelling, and the bangs in the pipe kept by account (ecu.model 1).
+//
+// The cut (the reference's): with the pedal up for 0.12 s above the idle + 700 rpm, running, no fuel; it comes back
+// under the idle + 320 or with the pedal. ecu.overrun.fuel is the share of the overrun's firings fuelled anyway (a
+// stoichiometric charge each, in the even pattern the cuts use: a little fuel in every cylinder would be too lean to
+// light; 0: the reference's clean cut), and ecu.overrun.retard the spark taken back meanwhile, so it burns late and
+// leaves the cylinder still burning or unburned: what tuners call pops and bangs.
+//
+// The bangs, by account and not by chance (the reference's dice stay behind ecu.model 0): fuel that leaves a cylinder
+// unburned (a cut spark's whole charge, a rich mixture's excess, a late burn's remainder: combustion's numbers) is
+// added to a store for its bank, with the air that leaves unburned beside it (a cut fuel's air, a lean mixture's
+// excess). The store lights when the gas there is hot enough (none under 900 K, readily from 1200 K: the
+// self-ignition of a rich exhaust's CO, H2 and fuel with air, judgement) and there is oxygen to burn it, more readily
+// the more there is: a hazard accumulates at a rate proportional to the burnable mass (over 2 mg) and the heat, and the
+// store lights when it reaches 1. What burns is what the oxygen allows of it, and the pulse card G's node receives
+// (the reference's Pop) is as large as the fuel that burned: 3e9 Pa a kg (judgement: a few milligrams make the
+// reference's 20 to 30 kPa pops). Whatever does not burn flows on out of the pipe (both stores empty over 0.25 s,
+// judgement for the gas's stay in the system at an overrun's flow).
+#pragma once
+
+module OverrunCut
+{
+    bool on;            // the cut is in
+    float sinceLift;    // seconds since the pedal lifted
+
+    void reset()
+    {
+        on = false;
+        sinceLift = 0.0f;
+    }
+
+    void control(float pedal, float avg, float idle, bool running, float d16)
+    {
+        if (pedal < 0.02f)
+            sinceLift += d16;
+        else
+            sinceLift = 0.0f;
+        if (sinceLift > 0.12f && avg > idle + 700.0f && running)
+            on = true;
+        else if (avg < idle + 320.0f || pedal >= 0.02f)
+            on = false;
+    }
+};
+
+module FuelAccount
+{
+    float fuel[2];      // unburned fuel in each bank's pipe, kg
+    float air[2];       // and air, kg
+    float hazard[2];
+    float pulse[2];     // a bang to fire this step (Pa: the Pop's amplitude), 0 none
+    float burned[2];    // the fuel it burned, kg
+    float total;        // fuel burned in the pipe since the reset, kg
+    int bangs;
+    float kFlush;       // the stores' emptying, a step
+
+    void setup(float d16)
+    {
+        kFlush = 1.0f - expf(-d16 / 0.25f);
+    }
+
+    void reset()
+    {
+        for (int b = 0; b < 2; ++b)
+        {
+            fuel[b] = 0.0f;
+            air[b] = 0.0f;
+            hazard[b] = 0.0f;
+            pulse[b] = 0.0f;
+            burned[b] = 0.0f;
+        }
+        total = 0.0f;
+        bangs = 0;
+    }
+
+    // A cylinder of bank b let out `f` kg of fuel and `a` kg of air unburned
+    void add(int b, float f, float a)
+    {
+        const int k = b == 1 ? 1 : 0;
+        fuel[k] += fmaxf(f, 0.0f);
+        air[k] += fmaxf(a, 0.0f);
+    }
+
+    // Every 16 samples: each bank's gas temperature (K) where it lights, the fuel's stoichiometric ratio
+    void control(float t0, float t1, float afr, float d16)
+    {
+        for (int b = 0; b < 2; ++b)
+        {
+            pulse[b] = 0.0f;
+            burned[b] = 0.0f;
+            const float t = b == 0 ? t0 : t1;
+            const float hot = fminf(fmaxf((t - 900.0f) / 300.0f, 0.0f), 1.0f);
+            const float can = fminf(fuel[b], air[b] / afr);
+            if (hot > 0.0f && can > 0.0f)
+            {
+                hazard[b] += d16 * 40.0f * hot * can / 2.0e-6f;
+                if (hazard[b] >= 1.0f)
+                {
+                    burned[b] = can;
+                    pulse[b] = 3.0e9f * can;
+                    fuel[b] -= can;
+                    air[b] = fmaxf(air[b] - can * afr, 0.0f);
+                    hazard[b] = 0.0f;
+                    total += can;
+                    bangs += 1;
+                }
+            }
+            else
+                hazard[b] = 0.0f;
+            fuel[b] -= fuel[b] * kFlush;
+            air[b] -= air[b] * kFlush;
+        }
+    }
+};

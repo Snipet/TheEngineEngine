@@ -1,0 +1,260 @@
+// tyre.fm: a tyre on the road, along its rolling direction only (no cornering in v1).
+//
+// A tyre pushes on the road by how far its tread is dragged out of shape where it touches: the contact patch is a
+// spring between the wheel's rim and the road. Its longitudinal deflection u (m) grows with the speed at which the rim
+// turns past the road (the slip speed, w R - v) and relaxes as the patch rolls on, over the relaxation length sigma:
+//
+//     du/dt = (w R - v) - |v| u / sigma
+//
+// At speed u settles at sigma times the slip ratio kappa = (w R - v) / |v|, so the force is the usual function of the
+// slip; at a standstill the same equation is a spring, so a car held on its brakes on a hill leans on its tyres and
+// stays where it is (a slip ratio would divide by zero there, and a model that uses one creeps or rings). A little
+// damping in proportion to the slip speed, faded out by 2 m/s, keeps that spring from ringing on the car's mass.
+//
+// The force is Fx = Fz mu S(kappa), with S Pacejka's Magic Formula, sin(C atan(B k - E (B k - atan(B k)))), scaled
+// to a peak of 1: it rises steeply (the tyre's stiffness, B C), peaks at a slip of 8 to 20 % and falls off towards a
+// wheel that spins or is locked. S is tabulated once a compound is chosen (no transcendental function a sample). mu,
+// the peak grip, is the compound's, times the surface's factor for that compound, times what the tread's
+// temperature leaves of it, less a little as the load rises (a tyre under twice the load grips less than twice as
+// hard). Each compound is a row of VEH_COMPOUND below; docs/models/vehicle.md gives where every number came from.
+//
+// The tread warms by half the power its slip scrubs (the rest goes into the road) and cools by a rate that grows
+// with the square root of the speed: a burnout brings a slick up to temperature in a few seconds, as it does at a
+// strip. Rolling resistance is the compound's coefficient times the load, rising with the square of the speed
+// (a quarter more at 250 km/h); it is a torque that holds the wheel, as a brake does.
+//
+// Not modelled: the lateral force and its combination with this one (no steering in v1), camber, pressure, the
+// tyre's own vibration modes, wear.
+//
+//   VehTyreCurve: the compound's S, tabulated            VehTyre: one tyre's state (deflection, temperature)
+#pragma once
+
+enum
+{
+    VEH_COMPOUNDS = 10,     // economy, street, sport, semi-slick, slick, drag radial, drag slick, winter, truck, motorcycle
+    VEH_SURFACES = 5,       // dry, damp, wet, snow, a prepared drag strip
+    VEH_TCOLS = 13,
+    VEH_CURVE = 129,        // the slip curve's points, kappa 0 to 1
+};
+
+// One row a compound. Columns:
+//   0 B, 1 C, 2 E: the Magic Formula's shape (fitted to the peak slip and the falloff in docs/models/vehicle.md)
+//   3 mu: the peak grip on dry asphalt, warm, at the nominal load
+//   4 load sensitivity: the fraction of mu lost per nominal load added
+//   5 the nominal load, N
+//   6 the rolling resistance coefficient at a crawl
+//   7 the working temperature, K; 8 the half-width of its window, K
+//   9 the grip lost 40 K below the window; 10 the grip lost 60 K above it
+//   11 the relaxation length, m; 12 the heat capacity of the tread's surface (the layer that warms in seconds), J/K
+const float VEH_COMPOUND[VEH_COMPOUNDS][VEH_TCOLS] = {
+    {15.0f, 1.50f, 0.1f, 0.90f, 0.10f, 4000.0f, 0.0080f, 320.0f, 40.0f, 0.05f, 0.20f, 0.20f, 2000.0f},   // economy
+    {21.5f, 1.65f, 0.8f, 1.00f, 0.10f, 4000.0f, 0.0100f, 325.0f, 40.0f, 0.06f, 0.20f, 0.20f, 2000.0f},   // street
+    {13.0f, 1.55f, -0.8f, 1.10f, 0.12f, 4000.0f, 0.0110f, 335.0f, 35.0f, 0.10f, 0.22f, 0.18f, 1800.0f},  // sport
+    {19.5f, 1.65f, 0.5f, 1.25f, 0.13f, 4000.0f, 0.0120f, 350.0f, 30.0f, 0.18f, 0.25f, 0.16f, 1600.0f},   // semi-slick
+    {17.5f, 1.65f, 0.0f, 1.45f, 0.15f, 4000.0f, 0.0130f, 365.0f, 25.0f, 0.30f, 0.25f, 0.15f, 1500.0f},   // slick
+    {9.5f, 1.75f, 0.5f, 1.30f, 0.08f, 4500.0f, 0.0150f, 335.0f, 25.0f, 0.20f, 0.25f, 0.25f, 1600.0f},    // drag radial
+    {6.0f, 1.75f, -0.2f, 1.30f, 0.08f, 4500.0f, 0.0250f, 340.0f, 20.0f, 0.35f, 0.30f, 0.35f, 1500.0f},   // drag slick
+    {10.5f, 1.40f, -0.9f, 0.85f, 0.10f, 4000.0f, 0.0120f, 290.0f, 30.0f, 0.03f, 0.30f, 0.20f, 2000.0f},  // winter
+    {20.5f, 1.60f, 0.8f, 0.80f, 0.10f, 25000.0f, 0.0055f, 320.0f, 40.0f, 0.05f, 0.20f, 0.40f, 8000.0f},  // truck
+    {13.5f, 1.55f, -0.2f, 1.10f, 0.10f, 1500.0f, 0.0120f, 335.0f, 30.0f, 0.15f, 0.25f, 0.15f, 1000.0f},  // motorcycle
+};
+
+// The grip a surface leaves each compound, over its grip on dry asphalt: dry, damp, wet, snow, a prepared strip (a
+// strip's traction compound suits soft rubber most)
+const float VEH_SURFACE[VEH_COMPOUNDS][VEH_SURFACES] = {
+    {1.00f, 0.85f, 0.70f, 0.25f, 1.05f},   // economy
+    {1.00f, 0.85f, 0.70f, 0.22f, 1.08f},   // street
+    {1.00f, 0.82f, 0.65f, 0.18f, 1.10f},   // sport
+    {1.00f, 0.75f, 0.50f, 0.12f, 1.15f},   // semi-slick
+    {1.00f, 0.60f, 0.30f, 0.08f, 1.20f},   // slick
+    {1.00f, 0.70f, 0.45f, 0.10f, 1.30f},   // drag radial
+    {1.00f, 0.50f, 0.20f, 0.06f, 2.00f},   // drag slick
+    {1.00f, 0.90f, 0.80f, 0.45f, 1.00f},   // winter
+    {1.00f, 0.85f, 0.70f, 0.28f, 1.02f},   // truck
+    {1.00f, 0.82f, 0.65f, 0.15f, 1.08f},   // motorcycle
+};
+
+// a compound's index, clamped
+int vehCompound(int c)
+{
+    return c < 0 ? 0 : (c >= VEH_COMPOUNDS ? VEH_COMPOUNDS - 1 : c);
+}
+
+float vehCompoundValue(int c, int col)
+{
+    return VEH_COMPOUND[vehCompound(c)][col];
+}
+
+float vehSurfaceGrip(int c, int s)
+{
+    const int k = s < 0 ? 0 : (s >= VEH_SURFACES ? VEH_SURFACES - 1 : s);
+    return VEH_SURFACE[vehCompound(c)][k];
+}
+
+// atan(x), within 2e-6 rad (FMinus has no atanf builtin, and the program declares no external function): an odd
+// polynomial of degree 11 on [-1, 1] (Abramowitz and Stegun 4.4.49's form), pi/2 - atan(1/x) beyond
+float vehAtan(float x)
+{
+    const float a = fabsf(x);
+    const bool inv = a > 1.0f;
+    const float z = inv ? 1.0f / a : a;
+    const float z2 = z * z;
+    const float p = z * (0.99997726f + z2 * (-0.33262347f + z2 * (0.19354346f + z2 * (-0.11643287f + z2 * (0.05265332f
+                    + z2 * -0.01172120f)))));
+    const float r = inv ? 1.57079633f - p : p;
+    return x < 0.0f ? -r : r;
+}
+
+// The Magic Formula's shape at slip ratio k (k >= 0), not yet scaled to its peak
+float vehMagic(float k, float b, float c, float e)
+{
+    const float x = b * k;
+    return sinf(c * vehAtan(x - e * (x - vehAtan(x))));
+}
+
+// A compound's slip curve: S(kappa) for kappa 0 to 1 in VEH_CURVE - 1 steps, peak 1; odd in kappa; past 1 it holds
+// S(1). Made when the compound changes (it calls sinf and atanf 2 x 129 times), read every sample.
+module VehTyreCurve
+{
+    float s[VEH_CURVE];
+    float kPeak;        // the slip ratio at the peak
+    float tail;         // S(1): what a spinning or locked tyre keeps of its peak
+    float slope;        // dS/dkappa at 0: the tyre's stiffness over its peak force
+    int compound;
+
+    void make(int c)
+    {
+        compound = vehCompound(c);
+        const float b = VEH_COMPOUND[compound][0];
+        const float cc = VEH_COMPOUND[compound][1];
+        const float e = VEH_COMPOUND[compound][2];
+        float peak = 0.0f;
+        kPeak = 0.1f;
+        for (int i = 0; i < VEH_CURVE; ++i)
+        {
+            const float k = (float)i / (float)(VEH_CURVE - 1);
+            s[i] = vehMagic(k, b, cc, e);
+            if (s[i] > peak)
+            {
+                peak = s[i];
+                kPeak = k;
+            }
+        }
+        // the peak between two points: a finer search about the best one
+        const float step = 1.0f / (float)(VEH_CURVE - 1);
+        float k0 = kPeak - step;
+        for (int i = 0; i <= 64; ++i)
+        {
+            const float k = fmaxf(k0 + 2.0f * step * (float)i / 64.0f, 0.0f);
+            const float y = vehMagic(k, b, cc, e);
+            if (y > peak)
+            {
+                peak = y;
+                kPeak = k;
+            }
+        }
+        const float inv = 1.0f / fmaxf(peak, 1.0e-3f);
+        for (int i = 0; i < VEH_CURVE; ++i)
+            s[i] *= inv;
+        tail = s[VEH_CURVE - 1];
+        slope = b * cc * inv;
+    }
+
+    // S(k), odd in k: a linear interpolation in the table
+    float at(float k)
+    {
+        const float a = fminf(fabsf(k), 1.0f) * (float)(VEH_CURVE - 1);
+        int i = (int)a;
+        i = i > VEH_CURVE - 2 ? VEH_CURVE - 2 : i;
+        const float f = a - (float)i;
+        const float y = s[i] + (s[i + 1] - s[i]) * f;
+        return k < 0.0f ? -y : y;
+    }
+};
+
+// One tyre. Its deflection and the force it gives are per sample; its load, peak and temperature every 16 samples.
+module VehTyre
+{
+    double u;           // the tread's deflection along the road, m (a double: a car at rest moves it by less than
+                        // a float's resolution in a sample, and a spring that cannot move lets the car drift)
+    float temp;         // the tread's temperature, K
+    float fz;           // its load, N
+    float d;            // its peak force now (fz times the grip), N
+    float sigma;        // the relaxation length, m
+    float iSigma;       // 1 / sigma
+    float uMax;         // the deflection at a slip ratio of 1
+    float cLow;         // the damping at a crawl, N s/m
+    float force;        // the force it gives now, along the road (forward positive), N
+    float slipV;        // the slip speed it was given last, m/s
+    float rate;         // how fast the deflection moved in the last sample, m/s
+    float kappa;        // its slip ratio now (u / sigma)
+    float grip;         // the temperature's factor, 0 to 1
+    float roll;         // its rolling resistance now, N
+
+    void reset(float ambient)
+    {
+        u = 0.0f;
+        rate = 0.0f;
+        temp = ambient;
+        force = 0.0f;
+        slipV = 0.0f;
+        kappa = 0.0f;
+        grip = 1.0f;
+    }
+
+    // Every 16 samples: the load, the peak grip (mu: the compound's on this surface, before load and temperature), the
+    // car's speed (for the rolling resistance and the cooling), the curve, and the time since the last call. heat: the
+    // power the tread took since then, mean, W.
+    void control(float load, float mu, VehTyreCurve* curve, int c, float v, float ambient, float dt16)
+    {
+        fz = fmaxf(load, 0.0f);
+        sigma = vehCompoundValue(c, 11);
+        iSigma = 1.0f / sigma;
+        uMax = sigma;
+        // the temperature: half the slip's power into the tread, out by a rate that grows with the speed
+        const float heat = 0.5f * fabsf(force * slipV);
+        const float cool = (15.0f + 8.0f * sqrtf(fabsf(v))) * (temp - ambient);
+        temp += (heat - cool) / vehCompoundValue(c, 12) * dt16;
+        temp = fminf(fmaxf(temp, 200.0f), 700.0f);
+        const float lo = vehCompoundValue(c, 7) - vehCompoundValue(c, 8);
+        const float hi = vehCompoundValue(c, 7) + vehCompoundValue(c, 8);
+        const float cold = fminf(fmaxf((lo - temp) / 40.0f, 0.0f), 1.0f) * vehCompoundValue(c, 9);
+        const float hot = fminf(fmaxf((temp - hi) / 60.0f, 0.0f), 1.0f) * vehCompoundValue(c, 10);
+        grip = 1.0f - cold - hot;
+        // the load's sensitivity: less grip per newton as the load rises, never below half
+        const float fz0 = vehCompoundValue(c, 5);
+        const float ls = fmaxf(1.0f - vehCompoundValue(c, 4) * (fz - fz0) / fz0, 0.5f);
+        d = fz * mu * grip * ls;
+        // the damping at a crawl: half of critical, for the patch's stiffness (d S'(0) / sigma) on this wheel's share of
+        // the car's mass
+        const float k = d * curve->slope * iSigma;
+        cLow = 2.0f * 0.5f * sqrtf(k * fz * 0.10193680f);
+        // the rolling resistance: a square law in the speed, a quarter more at 70 m/s (250 km/h)
+        roll = vehCompoundValue(c, 6) * fz * (1.0f + v * v * 0.00005102f);
+    }
+
+    // One sample: the force for the rim's speed over the road (wr = w R) and the road's speed under it (vr). Reads the
+    // deflection as it stands; advance() moves it after the bodies have moved.
+    float push(VehTyreCurve* curve, float wr, float vr)
+    {
+        slipV = wr - vr;
+        kappa = (float)u * iSigma;
+        float f = d * curve->at(kappa);
+        // (the damping acts on the tread's own motion, so a tyre that spins at a standstill, its deflection at its
+        // stop, is not damped as if it slid)
+        const float fade = 1.0f - fminf(fabsf(vr) * 0.5f, 1.0f);
+        if (fade > 0.0f)
+            f = fminf(fmaxf(f + cLow * fade * rate, -d), d);
+        force = f;
+        return f;
+    }
+
+    // The deflection after one sample, from the speeds the step ended with
+    void advance(float wr, float vr, float dt)
+    {
+        const double u0 = u;
+        u += (double)((wr - vr - fabsf(vr) * (float)u * iSigma) * dt);
+        u = fmin(fmax(u, (double)-uMax), (double)uMax);
+        rate = (float)((u - u0) / (double)dt);
+    }
+};

@@ -1,0 +1,207 @@
+// cam.fm: one valve's lift over its event, generated from what a person says of a cam.
+//
+// A cam is specified the way a cam card gives it: its duration at the seat (here at 0.006 in, 0.15 mm of lift: the
+// SAE J604 checking height that "advertised" durations are measured at), its duration at 1 mm of lift (the two
+// together say how gentle the ramps are: a race cam's are short, a quiet stock cam's long), its lift at the valve, its
+// centreline, and a fatness (how long it dwells near full lift). The generator makes the lift curve from them in the
+// reference's shape (cylinder.fm, lift: a sine to a power, its ends eased by a ramp), with the two knobs that shape
+// has: the power p (from the fatness) and the ramp's sharpness k (solved so the 1 mm duration comes out as asked).
+//
+//   lift(u) = L sin(pi u)^p (1 - exp(-k^2 sin^2(pi u))) / (1 - exp(-k^2)),   u = 0 to 1 over the event's span
+//
+// The ramp factor uses sin(pi u) where the reference used the distance to the nearer end, so the curve is smooth
+// everywhere: near the seat it rises as u^(p + 2), so its velocity and its acceleration are 0 there and the
+// acceleration is continuous through the whole event (the reference's has a kink at the nose that its constants hide).
+// The ramp can only move the curve's effective power between p (k large: no ramp) and p + 2 (k small: all ramp), so a
+// 1 mm duration outside what that spans cannot be made: the generator then makes the nearest and says so (reached 0).
+//
+// A free valve (an electro-hydraulic or camless actuator: Fiat's MultiAir, Freevalve) is given outright: it opens
+// and closes where it is told, over flanks of a fixed number of degrees (smootherstep, 6t^5 - 15t^4 + 10t^3, whose
+// acceleration is continuous too), and dwells at its lift between them. Late and early intake closing are presets of
+// it (content/builds/cams/).
+//
+// Angles are the cylinder's own (cylinder.fm): 0 at the top of compression, 360 the overlap's top, 720 a cycle. A cam
+// card's centreline is quoted from the overlap's top: an intake's after it, an exhaust's before it; the caller turns
+// those into the cycle's angles (lab.fm).
+//
+// What it leaves out: asymmetric lobes (opening and closing flanks differ on real cams; here they mirror), and the
+// lash (the clearance a solid lifter's ramp takes up: here the curve starts at the seat).
+//
+//   cam.request(durSeat, dur1mm, lift, centre, fat)   or   cam.requestFree(open, close, lift, flank)
+//   cam.build()            the solve and the table: off the per-sample path (lab.fm calls it at most once a tick)
+//   cam.shape[i]           the lift over the span as a share of the lift, 129 points (VT_STEPS steps)
+//   cam.lift01(s)          the same at s degrees into the span (the analytic curve, for measuring and the float)
+#pragma once
+
+enum { VT_STEPS = 128, VT_POINTS = 129 };
+
+// The checking heights (m): the seat's (0.006 in) and the 1 mm of the card
+const float kVtSeat = 0.0001524f;
+const float kVtOneMm = 0.001f;
+
+// An angle in [0, cyc)
+float vtWrap(float a, float cyc)
+{
+    float x = a;
+    while (x >= cyc)
+        x -= cyc;
+    while (x < 0.0f)
+        x += cyc;
+    return x;
+}
+
+module CamShape
+{
+    // what was asked
+    float durSeat;      // degrees open at 0.15 mm
+    float dur1mm;       // degrees open at 1 mm
+    float lift;         // m at the valve
+    float centre;       // the cycle's angle of full lift (degrees)
+    float fat;          // 0 to 1: a pointed nose to a long dwell
+    int kind;           // 0 a cam, 1 a free valve
+    float flank;        // a free valve's flanks (degrees each)
+    // what the generator made
+    float p;
+    float k;
+    float kNorm;        // 1 / (1 - exp(-k^2))
+    float span;         // the event: degrees from leaving the seat to landing on it
+    float open;         // where it leaves the seat (the cycle's angle)
+    int reached;        // 1: the 1 mm duration asked for is the one made
+    float rise1;        // degrees from the seat to 1 mm on the rising side (half the span when it never gets there)
+    int changed;        // 1: asked for something else since the last build
+    float shape[VT_POINTS];
+
+    void request(float durSeatIn, float dur1mmIn, float liftIn, float centreIn, float fatIn)
+    {
+        if (kind != 0 || durSeat != durSeatIn || dur1mm != dur1mmIn || lift != liftIn || centre != centreIn || fat != fatIn)
+            changed = 1;
+        kind = 0;
+        durSeat = durSeatIn;
+        dur1mm = dur1mmIn;
+        lift = liftIn;
+        centre = centreIn;
+        fat = fatIn;
+    }
+
+    // A free valve: open and close where the seat is left and reached (degrees of the cycle), its flanks' degrees
+    void requestFree(float openAt, float closeAt, float liftIn, float flankIn)
+    {
+        kind = 1;
+        float d = closeAt - openAt;
+        if (d <= 0.0f)
+            d += 720.0f;
+        if (kind != 1 || durSeat != d || lift != liftIn || centre != openAt + 0.5f * d || flank != flankIn)
+            changed = 1;
+        durSeat = d;
+        dur1mm = d;
+        lift = liftIn;
+        centre = openAt + 0.5f * d;
+        flank = flankIn;
+        fat = 1.0f;
+    }
+
+    // The cam's curve (no normalising) at u in [0, 1]
+    float raw(float u, float kk)
+    {
+        const float s = sinf(3.14159265f * u);
+        if (s <= 0.0f)
+            return 0.0f;
+        return expf(p * logf(s)) * (1.0f - expf(-kk * kk * s * s));
+    }
+
+    // Where the curve's rising side reaches h (a share of its most), for the power p and ramp kk: u in [0, 0.5]
+    float riseTo(float h, float kk)
+    {
+        const float top = 1.0f - expf(-kk * kk);
+        float lo = 0.0f;
+        float hi = 0.5f;
+        for (int it = 0; it < 40; ++it)
+        {
+            const float mid = 0.5f * (lo + hi);
+            if (raw(mid, kk) < h * top)
+                lo = mid;
+            else
+                hi = mid;
+        }
+        return 0.5f * (lo + hi);
+    }
+
+    // The curve at s degrees into the span, a share of the lift (0 outside the span)
+    float lift01(float s)
+    {
+        if (s <= 0.0f || s >= span)
+            return 0.0f;
+        const float u = s / span;
+        if (kind == 1)
+        {
+            const float f = fminf(flank / span, 0.5f);
+            const float t = fminf(fminf(u, 1.0f - u) / f, 1.0f);
+            return t * t * t * (10.0f + t * (-15.0f + 6.0f * t));
+        }
+        return raw(u, k) * kNorm;
+    }
+
+    // The solve, and the 129-point table
+    void build()
+    {
+        changed = 0;
+        const float liftUse = fmaxf(lift, 0.0012f);
+        if (kind == 1)
+        {
+            span = fmaxf(durSeat, 2.0f * flank + 1.0f);
+            p = 0.0f;
+            k = 0.0f;
+            kNorm = 1.0f;
+            reached = 1;
+        }
+        else
+        {
+            p = 2.0f - 1.5f * fminf(fmaxf(fat, 0.0f), 1.0f);
+            const float hs = kVtSeat / liftUse;
+            const float h1 = kVtOneMm / liftUse;
+            const float want = fminf(fmaxf(dur1mm / fmaxf(durSeat, 1.0f), 0.05f), 1.0f);
+            // the ratio of the 1 mm duration to the seat's grows with k: bisect on log k
+            float lo = -3.0f;
+            float hi = 4.0f;
+            for (int it = 0; it < 32; ++it)
+            {
+                const float mid = 0.5f * (lo + hi);
+                const float kk = expf(mid);
+                const float r = (1.0f - 2.0f * riseTo(h1, kk)) / (1.0f - 2.0f * riseTo(hs, kk));
+                if (r < want)
+                    lo = mid;
+                else
+                    hi = mid;
+            }
+            k = expf(0.5f * (lo + hi));
+            const float rMade = (1.0f - 2.0f * riseTo(h1, k)) / (1.0f - 2.0f * riseTo(hs, k));
+            reached = fabsf(rMade - want) < 0.002f ? 1 : 0;
+            kNorm = 1.0f / (1.0f - expf(-k * k));
+            span = durSeat / (1.0f - 2.0f * riseTo(hs, k));
+        }
+        open = vtWrap(centre - 0.5f * span, 720.0f);
+        for (int i = 0; i < VT_POINTS; ++i)
+            shape[i] = lift01(span * (float)i / (float)VT_STEPS);
+        rise1 = riseDeg(kVtOneMm);
+    }
+
+    // Degrees from the seat to a lift of h (m) on the rising side, from the curve (half the span when it never
+    // reaches h)
+    float riseDeg(float h)
+    {
+        const float x = h / fmaxf(lift, 1.0e-6f);
+        if (x >= 1.0f)
+            return 0.5f * span;
+        float lo = 0.0f;
+        float hi = 0.5f * span;
+        for (int it = 0; it < 24; ++it)
+        {
+            const float mid = 0.5f * (lo + hi);
+            if (lift01(mid) < x)
+                lo = mid;
+            else
+                hi = mid;
+        }
+        return 0.5f * (lo + hi);
+    }
+};
