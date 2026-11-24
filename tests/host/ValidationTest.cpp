@@ -93,7 +93,7 @@ TEST_CASE("the fast targets of every file of content/validation pass on the simu
     fastTargetsPass({});
 }
 
-TEST_CASE("content/scenarios' assertions hold on the default build", "[scenario][sim]")
+TEST_CASE("content/scenarios' assertions hold on the default build", "[scenario][sim][nightly]")
 {
     if (!haveSim())
         SKIP("sim/engine.fm is not there yet");
