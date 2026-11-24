@@ -118,7 +118,8 @@ namespace tee::settings
         const json root{
             { "format", "tee-settings" },
             { "version", kVersion },
-            { "audio", { { "device", s.audioDevice }, { "rate", s.audioRate }, { "buffer", s.audioBuffer } } },
+            { "audio", { { "device", s.audioDevice }, { "rate", s.audioRate }, { "buffer", s.audioBuffer },
+                         { "quality", s.audioQuality } } },
             { "keys", std::move(bindings) },
             { "driver",
               { { "throttle", easing(s.driver.throttle) },
@@ -165,7 +166,11 @@ namespace tee::settings
         if (const auto audio = root.find("audio"); audio != root.end())
         {
             if (!audio->is_object() || !text(*audio, "device", s.audioDevice) || !number(*audio, "rate", s.audioRate, 0, 768000)
-                || !number(*audio, "buffer", s.audioBuffer, 16, 8192))
+                || !number(*audio, "buffer", s.audioBuffer, 16, 8192) || !text(*audio, "quality", s.audioQuality))
+                return bad("audio settings");
+            if (s.audioQuality.empty())
+                s.audioQuality = "full";
+            if (s.audioQuality != "full" && s.audioQuality != "economy")
                 return bad("audio settings");
         }
         if (const auto keys = root.find("keys"); keys != root.end())

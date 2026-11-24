@@ -126,6 +126,9 @@ namespace tee::ui
         s.track = field("car.track", 1.55);
         const double ra = live.get("sound.rearAxleY");
         s.rearAxle = std::isfinite(ra) ? ra : (s.bike ? 0.3 : 0.85);
+        const double fa = live.get("sound.frontAxleY");
+        if (std::isfinite(fa) && std::isfinite(ra) && fa > ra)
+            s.wheelbase = fa - ra;   // L's, the same as the build's
         s.length = s.rearAxle + s.wheelbase + (s.bike ? 0.3 : 0.9);
         s.width = s.bike ? 0.8 : s.track + 0.25;
         // The sources: the program's places and levels, else the model's documented places (no level).
@@ -204,6 +207,29 @@ namespace tee::ui
         const Scene s = scene();
         const Point l = toPx(s.lx, s.ly);
         return { l.x + 30.0f * static_cast<float>(std::sin(s.facing)), l.y - 30.0f * static_cast<float>(std::cos(s.facing)) };
+    }
+
+    std::vector<Rect> ListenWorkspace::wheelRects() const
+    {
+        const Scene s = scene();
+        const float m = static_cast<float>(scale_);
+        std::vector<Rect> out;
+        if (s.bike)
+        {
+            for (const double y : { s.rearAxle, s.rearAxle + s.wheelbase * std::cos(s.lift) })
+            {
+                const Point w = toPx(0.0, y);
+                out.push_back({ w.x - 0.08f * m, w.y - 0.33f * m, 0.16f * m, 0.66f * m });
+            }
+            return out;
+        }
+        for (const double y : { s.rearAxle, s.rearAxle + s.wheelbase })
+            for (const double x : { -s.track / 2, s.track / 2 })
+            {
+                const Point w = toPx(x, y);
+                out.push_back({ w.x - 0.12f * m, w.y - 0.32f * m, 0.24f * m, 0.64f * m });
+            }
+        return out;
     }
 
     void ListenWorkspace::fit()
@@ -546,6 +572,8 @@ namespace tee::ui
             taken.push_back({ q.x - 6.0f, q.y - 6.0f, 12.0f, 12.0f });
         }
         taken.push_back({ l.x - 10.0f, l.y - 10.0f, 20.0f, 20.0f });
+        for (const Rect& w : wheelRects())   // no label on a wheel
+            taken.push_back(w);
         if (!windows_.isEmpty())
             taken.push_back({ windows_.x - 130.0f, windows_.bottom() + 2.0f, 136.0f, 16.0f });   // the window's words
         {
@@ -596,7 +624,10 @@ namespace tee::ui
                 c.disc(q.x, q.y, r, ink, 1.25f, p.ground);
             else
                 c.disc(q.x, q.y, r, kClear, 1.25f, p.dim);
-            const std::string lv = known ? fmt("%.0f dB", loudest) : std::string(std::isfinite(loudest) ? "silent" : "-");
+            // A silent source keeps its hollow dot and no label until it sounds (its place is the model's, said once).
+            if (std::isfinite(loudest) && !known)
+                continue;
+            const std::string lv = known ? fmt("%.0f dB", loudest) : std::string("-");
             const float w = std::max(c.textWidth(name.c_str(), look::kCaps), c.textWidth(lv.c_str(), look::kUnit)) + 4.0f;
             const float h = 26.0f;
             const Rect tries[] = { { q.x + r + 4.0f, q.y - 12.0f, w, h }, { q.x - r - 4.0f - w, q.y - 12.0f, w, h },
@@ -700,7 +731,7 @@ namespace tee::ui
                     break;
                 c.text(w[0], in.x, y, look::kBody, p.text);
                 const double lv = live.get(w[1]);   // not published yet: the way in words alone
-                if (std::isfinite(lv))
+                if (std::isfinite(lv) && lv > -120.0)   // -200: not heard this way (L's)
                     c.text(fmt("%.0f dB", lv).c_str(), in.right(), y, look::kBody, p.value, funkgui::Align::right);
                 y += 16.0f;
             }

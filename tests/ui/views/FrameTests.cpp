@@ -9,6 +9,7 @@
 #include "kit/widgets/Tables.h"
 
 #include <funkgui/text/FontService.h>
+#include <funkgui/text/TextFit.h>
 
 #include <algorithm>
 #include <cctype>
@@ -86,7 +87,7 @@ namespace
         }
     };
 
-    const char* const kIds[10] = { "garage", "engine", "valves", "air", "exhaust", "tune", "car", "dyno", "drive", "scope" };
+    const char* const kIds[11] = { "garage", "engine", "valves", "air", "exhaust", "tune", "car", "dyno", "drive", "listen", "scope" };
 
     // The ten workspaces in the rail's order; the rail shows each; each inspector page reads without a note; every
     // field that is not hidden is on some page.
@@ -97,8 +98,8 @@ namespace
         {
             FrameRig real(1280, 800, 2.0f, 4.6, false);
             AppFrame& f = *real.frame;
-            CHECK(f.workspaceCount() >= 10);
-            for (int i = 0; i < 10 && i < f.workspaceCount(); ++i)
+            CHECK(f.workspaceCount() >= 11);
+            for (int i = 0; i < 11 && i < f.workspaceCount(); ++i)
             {
                 CHECK(f.slot(i).id == kIds[i] && std::string(f.workspace(i).id()) == kIds[i]);
                 real.showWorkspace(kIds[i]);
@@ -295,6 +296,15 @@ namespace
             small.frame->showSettings(true);
             small.host->tick(5);
             CHECK(small.frame->settingsShown() && small.frame->ribbonRect().isEmpty());
+            // Every unit's name whole at the smallest window: its label fits before its stepper's buttons.
+            for (const tee::ui::Stepper* st : small.frame->unitSteppers())
+            {
+                const float room = st->minusRect().x - st->bounds().x - 4.0f;
+                const float need = funkgui::text::width(funkgui::FontService::get().atlas(), tee::ui::upper(st->title()).c_str(),
+                                                        tee::ui::kWidgetLabel);
+                CHECK_MSG(st->shown() && need <= room && st->bounds().bottom() <= small.frame->inspectorRect().bottom(),
+                          st->title() + ": needs " + std::to_string(need) + " px, has " + std::to_string(room));
+            }
             golden("frame.settings.dpi1", *small.host);
         }
         const funkgui::Rect u = find("Settings");
@@ -323,8 +333,10 @@ namespace
         f.showInspectorPage(1);
         rig.host->tick(2);
         const funkgui::Rect r = f.inspector()->controlRect("boost.level");
+        const std::uint64_t asked = rig.demo.engine.requests();
         rig.host->drag(r.centreX(), r.centreY(), r.centreX(), r.centreY() - 60.0f, 10);
         rig.host->tick(60);
+        CHECK(rig.demo.engine.requests() == asked + 1);   // one drag of many steps: one curve asked for, after its quiet
         CHECK(!rig.demo.engine.before().empty() && rig.demo.engine.predicted().peakTorque().value > before);
         golden("frame.ribbon", *rig.host);
         const float open = f.inspectorRect().h;
@@ -345,7 +357,7 @@ namespace
             rig.host->tick(5);
             CHECK(f.width() == w && f.height() == h);
             CHECK((f.railWidth() < AppFrame::kRailW) == (w < 1280));
-            CHECK(f.railRect(9).bottom() <= f.cockpitRect().y);
+            CHECK(f.railRect(10).bottom() <= f.cockpitRect().y);
             CHECK(f.pedalRect(2).right() <= static_cast<float>(w));
             CHECK(f.stageRect().w >= 560.0f && f.stageRect().h >= 500.0f);
             CHECK(f.rpmBar().bounds().w >= 240.0f);
@@ -450,7 +462,7 @@ namespace
     void sheet(float dpi, const std::string& file)
     {
         const std::vector<std::pair<int, int>> sizes = { { 1100, 700 }, { 1600, 1000 } };
-        constexpr int kTileW = 640, kTileH = 400, kGap = 14, kPerRow = 2, kCount = 10;
+        constexpr int kTileW = 640, kTileH = 400, kGap = 14, kPerRow = 2, kCount = 11;
         const int sheetW = kPerRow * (2 * kTileW + kGap) + (kPerRow + 1) * kGap * 2;
         const int rows = (kCount + kPerRow - 1) / kPerRow;
         const int sheetH = rows * (kTileH + kGap * 2) + kGap * 2;

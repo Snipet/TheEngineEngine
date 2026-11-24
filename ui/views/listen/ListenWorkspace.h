@@ -64,6 +64,8 @@ namespace tee::ui
         void toCar(funkgui::Point p, double& x, double& y) const noexcept;
         funkgui::Point listenerPx() const;
         funkgui::Point facingHandlePx() const;
+        // The wheels as drawn (window px): labels keep clear of them.
+        std::vector<funkgui::Rect> wheelRects() const;
         const funkgui::Rect& plan() const noexcept { return plan_; }
         const funkgui::Rect& column() const noexcept { return column_; }
         const funkgui::Rect& bar() const noexcept { return bar_; }

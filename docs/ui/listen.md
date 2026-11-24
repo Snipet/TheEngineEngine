@@ -6,7 +6,7 @@
 **The plan (FROM ABOVE)**: the car drawn to the build's `car.wheelbase` and `car.track` (a bike when `car.kind` is
 Motorcycle), its front marked in words; every sound source a dot at its place in the car's frame (x right, y forward
 from the rear bumper), its size its level at the listener, its name and level beside it (sources at one place share a
-label: "ENGINE, TURBO"); a silent source hollow and "silent", an unknown level "-". The listener: a point in the accent
+label: "ENGINE, TURBO"); a silent source a hollow dot without a label until it sounds, an unknown level "-"; no label on a wheel (the test checks). The listener: a point in the accent
 with its facing and a handle that turns it, rings of distance (1, 2, 5, 10, 20, 30 m) numbered where there is room,
 its camera in words. Drag the listener and the camera becomes FREE at the place it is dropped (`sound.listenerX`,
 `listenerY`, camera 7, one undo step); drag the handle to turn it (`sound.facing`, 5 degree steps). The place drawn
@@ -31,9 +31,10 @@ The inspector shows the `sound` section's generated pages (SCOPE no longer does)
 |---|---|---|
 | Spec `sound.model`, `camera` (8: the last Free), `place`, `enginePlace`, `windows`, `distance`, `view`, `listenerX`, `listenerY`, `facing` (degrees from forward toward the right); `car.wheelbase`, `car.track`, `car.kind` | yes | the button does nothing; no drag |
 | tel `sound.srcX[i]`, `srcY[i]`, `srcLevel[i]` (dB, -200 silent; tailpipe left, right, intake mouth, bay, bay carrying, tyres, wind, gearbox, axle, tank), `listenerX`, `listenerY`, `facing`, `range`, `doppler`, `roadPosition`, `loudness`, `mixLevel`, `limiter`, `ceilingParts`; `car.liftAngle` (a bike's pitch) | yes | the model's documented places, said in words; a dash |
-| tel `sound.pathFloor`, `pathFirewall`, `pathGlass`, `pathStructure` (dB) | not offered yet (asked of L) | the four ways in words, no numbers |
+| tel `sound.pathFloor`, `pathFirewall`, `pathGlass`, `pathStructure` (dB at the ears, -200 when not the driver's camera), `rearAxleY`, `frontAxleY` | yes (L, d546766) | the four ways in words, no numbers; the axles at 0.85 m (a bike's 0.3) and the wheelbase |
 
-The rear axle is drawn 0.85 m forward of the rear bumper (a bike's 0.3 m): no field says it yet. A bike is drawn
+The sources' levels and the paths are before LEVEL and the last stage: they compare with each other, not with the
+output. A bike is drawn
 shortened by its lift about the rear tyre; the sources' places, from L, are already turned.
 
 The demo hook (`ListenDemo.cpp`, `TEE_UI_DEMO(listen, listenDemo)`) adds L's fields and makes the telemetry up.
