@@ -22,9 +22,10 @@ const Known kKnown[] = {
      "0.4 s at full load"},
     {"X-015", "2026-11-24", "N2 and G (boost into the exhaust builder)", "+engine.custom+valve.model+boost.model+exhaust.model",
      "v8", "load", "click", "the same while the large diesel is loaded over the V8 with every switch on"},
-    {"X-016", "2026-11-24", "Q (cost)", "random 1", "fuzz", "random", "cost",
-     "random Spec seed 1 costs 4.6 R since the exhaust builder runs (1.29 R before)"},
+    {"X-016", "2026-11-24", "Q (cost; the heavy case of 02-contracts section 9)", "random 1", "fuzz", "random", "cost",
+     "random Spec seed 1 is a four-rotor rotary (engine.custom, rotors 4: 12 faces on 4 shared ports, each solved twice "
+     "a sample): 3.2 to 4.6 R; reported, not required in real time (Q: Economy or TEE_FAST)"},
     {"X-016", "2026-11-24", "Q (cost)", "corners 1", "fuzz", "corners", "cost",
-     "the ranges' corners seed 1 costs 4.9 R since the exhaust builder runs (0.76 R before)"},
+     "the ranges' corners seed 1: 2.1 to 4.9 R (Q measured 2.1 to 2.4 on a quieter host); reported as the heavy case"},
     {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},   // the end (an array is never empty)
 };
