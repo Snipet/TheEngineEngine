@@ -245,6 +245,9 @@ The machine's functions, all on `Boost`, all doing nothing in model 0:
   (the pipe writes p - a; `mach.dpMass[side]` kg/s, `mach.dpTemp[side]` K went in); for each turbo t with an
   external gate, `float gatePipe(int t, float a, float z)` likewise (`mach.gateMass[t]`, `mach.gateTemp[t]`). A
   housing no pipe feeds is stepped by `tick`.
+  Until card G's network calls these, `Engine` calls `void exhaustStandIn(float m, float mt, float z)` after
+  `exh.step` (this sample's cylinder gas, kg/s, and its mass times temperature; the collector pipe's impedance): the gas
+  shared among the fed housings as a flow, the downpipes open ends. It goes when the network's calls come in.
 - **The intake (card E's)**, each sample: `float pressure(float pBoxRef)` and `float temperature(float tAirRef)` before
   the throttle (Pa absolute, K; model 0 returns the reference's values given), the state at the sample's start; then
   `void draw(float m)` with the throttle's mass flow out of that volume this sample (kg/s; negative pushed back); then

@@ -128,6 +128,25 @@ twelve a turn below 18 kHz, as phasors turned every 16 samples), vent (blow-off 
 whine from pockets: 6 a Roots rotor turn, 4 a twin-screw male turn, 31 a centrifugal's gear; harmonics as the
 reference's, their fall-off from the pocket's pressure step), bang (anti-lag). Levels set beside the reference's.
 
+## In the engine
+
+`Boost` (`sim/boost/boost.fm`) holds the machine; `spec.boost.model` 1 switches to it (README, Boost). The exhaust side
+is a stand-in until card G's network ends its collectors in the housings: each sample's cylinder gas (mass and its
+temperature) is fed into the housings as a flow, the downpipes open ends. **The engine's port gas is cool**: the
+reference's `exh.tPort` reads 450 to 560 K at full throttle on a 2 L four, against 900 to 1100 K in a real gasoline
+engine; the matched sizes assume 1150 K, so on this engine a matched turbo makes about 20 kPa at 5500 rpm, and one sized
+at 0.55 of the match makes its spring (with a drive ratio of 2.0). The turbine takes what the engine gives; the port
+temperature is the cylinders' and the exhaust's (cards D, G, H) to settle.
+
+## Drawing the map elsewhere (the interface)
+
+The map is a function of the compressor's sizes alone; the Scope carries it as the simulator computes it
+(`scope.boostLine*`, `boostSurge*`, `boostContour*`, rebuilt when `boostMapRev` moves). To draw it without the Scope,
+mirror `BoostCompressor` (`sim/boost/compressor.fm`): `size(dInd, dEx, ar, etaPeak)` (matched sizes as `BoostMachine::apply`
+makes them when a size is 0), `speed(omega, 101325, 293.15)`, then `rise(phi)` (PR = (1 + tau)^3.5, flow = phi x mc)
+and `efficiency(phi)` for phi from `phiK` to 1 on each line; `BoostMachine::mapLines` is the loop, with the lines' tip
+Mach numbers 0.4 + 0.15 l and the contours' levels etaMax less 0.02, 0.05, 0.08, 0.12, 0.18.
+
 ## What the tests measured (standalone, `tee-tests-boost`)
 
 See the test files' printed lines for the numbers; the handoff `docs/handoffs/f-boost.md` lists them. Not yet
