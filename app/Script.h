@@ -13,6 +13,8 @@
 //   4.00  expect engine.state == 2 what must hold then (>, <, >=, <=, ==, !=), of a telemetry value by its name
 //                                  (Sources.h), of `rpm` (engine.speed in turns a minute), of a parameter (`param
 //                                  size`), or of the output since the last such check: `peak` (0 to 1) and `rms`
+//   4.00  expect sent valve.stages == 1   a Spec field as the host was sent it (SimHost::readSpec), by its path
+//   5.00  quality economy          the simulator's QUALITY (full, economy), as the Audio menu changes it
 //   9.00  print                    a line of telemetry on the standard output
 //  10.00  end                      the run ends here
 //
@@ -26,7 +28,7 @@ namespace tee::app
 {
     struct ScriptEvent
     {
-        enum class Kind { key, set, pointer, wheel, shot, expect, print, end };
+        enum class Kind { key, set, pointer, wheel, shot, expect, print, quality, end };
         double time = 0.0;
         Kind kind = Kind::print;
         int line = 0;               // in the file, for a message
@@ -42,6 +44,9 @@ namespace tee::app
         std::vector<ScriptEvent> events;    // by time; those of one time in the file's order
         double end = -1.0;                  // the time of its `end`, or of its last event; negative: empty
     };
+
+    // An `expect`'s comparison: x op y (>, <, >=, <=, ==, !=).
+    bool compareScript(double x, const std::string& op, double y);
 
     // Reads a script's text. False, and why (with the line), for a line it cannot read.
     bool parseScript(const std::string& text, Script& out, std::string& why);

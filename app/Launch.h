@@ -44,4 +44,8 @@ namespace tee::app
     // each model switch, as the document holds it and as the engine was sent it ("sent" once the engine is ready):
     //   build: "Economy four" file=.../economy-four-15.json unsaved=no models: valve=1/1 intake=1/1 ...
     std::string launchReadBack(files::BuildFile& document, player::SimAdapter* sim);
+
+    // A Spec field ("valve.stages", "spec." optional) as the host was sent it; false while the engine is not ready or
+    // for a path the program does not have.
+    bool readSent(player::SimAdapter& sim, const std::string& path, double& out);
 }
