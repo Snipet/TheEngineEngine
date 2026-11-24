@@ -127,3 +127,29 @@ TEST_CASE("calibration boost: the ECU's over-boost cut is the net under a gate t
     CHECK(cut[0].at("boost.pressure") < 0.95 * off[0].at("boost.pressure"));
     CHECK(matched[0].at("boost.pressure") < 132000.0);
 }
+
+TEST_CASE("calibration boost: twin turbos on one bank, each fed by its own collector, both spin", "[calibration][boost]")
+{
+    // A straight six's twin turbos: before, Boost::housingOf mapped twin turbos by bank, so on a single bank every
+    // collector ended in turbo 0: turbo 1 stood (0 rad/s, its compressor flowing backwards) and turbo 0 choked and
+    // over-sped (boost 61 kPa at 4300 rpm against 100). Now the front collector (1-3) feeds turbo 0, the rear (4-6)
+    // turbo 1; here a dual exhaust, a downpipe each.
+    Sims s;
+    std::vector<std::pair<std::string, double>> sets = {{"exhaust.sides", 2}, {"exhaust.collectorTo[0]", 0},
+                                                        {"exhaust.collectorTo[1]", 1}};
+    for (int i = 0; i < 6; ++i)
+        sets.emplace_back("exhaust.primaryTo[" + std::to_string(i) + "]", i < 3 ? 0 : 1);
+    std::vector<Row> rows;
+    std::string error;
+    REQUIRE(tee::calib::dyno(s.sim, "content/builds/archetypes/straight-six-twin-turbo-30.json", {4297.0}, sets,
+                             {"boost.pressure", "boost.shaftSpeed[0]", "boost.shaftSpeed[1]", "engine.torque"}, rows,
+                             error, 4.0, 1.0));
+    INFO(error);
+    const Row& r = rows[0];
+    std::printf("twin six at 4297 rpm: boost %.1f kPa, shafts %.0f and %.0f rad/s, %.0f N m\n",
+                r.at("boost.pressure") / 1000.0, r.at("boost.shaftSpeed[0]"), r.at("boost.shaftSpeed[1]"),
+                r.at("engine.torque"));
+    CHECK(r.at("boost.shaftSpeed[1]") > 0.8 * r.at("boost.shaftSpeed[0]"));
+    CHECK(r.at("boost.shaftSpeed[1]") < 1.25 * r.at("boost.shaftSpeed[0]"));
+    CHECK(r.at("boost.pressure") > 85000.0);
+}
