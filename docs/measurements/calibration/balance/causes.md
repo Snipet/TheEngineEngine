@@ -295,3 +295,10 @@ What may be the model's (not measured, each to isolate before changing):
   burns slower than a modern four-valve pent roof (Heywood ch. 9), which costs a few per cent at the best spark;
 - friction's level: 1.11 bar at 2000 rpm is at the low end of Heywood's eq. 13.15 band (friction with pumping 1.17
   against 1.47 ± 25 %).
+
+**What an SAE net rating carries** (enthusiast write-ups of J1349; the standard itself not opened): the engine as
+installed, with its alternator and water pump, the factory's ignition timing and carburettor (and air cleaner), and the
+whole exhaust with its manifolds and mufflers (a converter from 1975). The fan is not confirmed either way. So the
+build-side list above is the larger share: the exhaust as fitted, the factory's timing, the air cleaner's and the
+carburettor's restriction (not yet measured: the build has a single throttle and an air box). The model's accessories
+(the water pump is in friction.fm's constant) are a smaller question than first thought.
