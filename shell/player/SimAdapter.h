@@ -78,6 +78,18 @@ namespace tee::player
         bool waitReady(double seconds);
         // A test's hook: while held, a finished compile is not taken (frame() and waitReady() leave it waiting).
         void holdCompile(bool held) noexcept { held_ = held; }
+        // The engine's quality (card C's SimHost::setQuality): 0 full (96 kHz inside), 1 economy (48 kHz inside). A
+        // change compiles the program again, on a worker of the adapter's (never the UI or the audio thread), and is
+        // swapped in under the host's crossfade; asked before ready(), it is made once the engine is. quality() is the
+        // one asked for; qualitySwitching() while it is being made; qualityError() why the last one was not made.
+        void requestQuality(int quality);
+        int quality() const noexcept { return wantedQuality_; }
+        bool qualitySwitching() const noexcept { return qualityBusy_.load(std::memory_order_acquire); }
+        std::string qualityError() const;
+        double innerRate() const;                   // the engine's own rate inside, as the host says (0 until ready)
+        // Waits until no quality change is being made, or `seconds` pass (tee-headless, before its first frame).
+        bool waitQuality(double seconds);
+
         // The machine code's size, in bytes (0 until ready).
         std::size_t codeBytes() const noexcept { return codeBytes_; }
 
@@ -146,6 +158,13 @@ namespace tee::player
         std::string compileError_;
         std::chrono::steady_clock::time_point started_{};
         std::size_t codeBytes_ = 0;
+        void startQuality();        // UI thread: the worker for the wanted quality, when none runs
+        int wantedQuality_ = 0;
+        std::atomic<int> madeQuality_{0};      // written by the quality worker
+        std::thread qualityWorker_;
+        std::atomic<bool> qualityBusy_{false};
+        mutable std::mutex qualityMutex_;
+        std::string qualityError_;
         double rate_ = 0.0;                     // prepare()'s, kept for the host until it is ready
         int maxBlock_ = 0;
         std::unique_ptr<LoadOptions> load_;
