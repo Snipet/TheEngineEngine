@@ -38,7 +38,7 @@
     },
     "valve": {
       "model": "Lab",
-      "cam": 0.55
+      "cam": 0.15
     },
     "intake": {
       "model": 1,
