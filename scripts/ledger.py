@@ -54,7 +54,8 @@ FIELDS = [
     "boost.intercoolerOut", "boost.throttleIn", "boost.turbineIn", "boost.turbineInTemp", "boost.gate",
     "boost.superchargerPower",
     # wanted, not yet in the telemetry (asked of their owners): read when they appear
-    "engine.chargeTemperature", "engine.trappedMass", "exhaust.portPressure",
+    "engine.chargeTemperature", "engine.trappedMass", "exhaust.portPressure", "exhaust.portExitTemperature",
+    "exhaust.headerTemperature",
 ]
 
 
@@ -205,6 +206,12 @@ LINES = [
     Line("tPort", "Port gas", "K", 0, {"na": (1000.0, 1300.0), "boost": (1000.0, 1350.0), "diesel": (750.0, 1050.0)},
          f"{HEYWOOD}, §14.? and fig. 6-?: a petrol engine's gas leaving the port at full load 1100 to 1300 K "
          "(the header thermocouple's 900 to 1100 K is further down); diesel 750 to 1000 K"),
+    Line("tPortExit", "Port exit gas", "K", 0, {"na": (900.0, 1250.0), "boost": (900.0, 1300.0), "diesel": (650.0, 1000.0)},
+         "the gas leaving the port after its walls (card G's Caton and Heywood port loss): between the valve's and the "
+         "header's"),
+    Line("tHeader", "Header gas", "K", 0, {"na": (900.0, 1100.0), "boost": (900.0, 1150.0), "diesel": (700.0, 950.0)},
+         f"P's target table: a thermocouple a little way down a primary reads 900 to 1100 K at full load on a petrol engine "
+         f"(makers' exhaust-gas-temperature data; {HEYWOOD}, ch. 14)"),
     # boosted (card N2 adds and tunes these)
     Line("boostOver", "Boost over target", "", 2, {"boost": (0.9, 1.1)},
          "the boost (tel.boost.pressure, over the air) over the build's spec.boost.target: a runaway, or a turbo out of "
@@ -265,6 +272,8 @@ def ledger_points(rows, spec, kind):
             "manifold": man / 1e3 if man else None,
             "portP": g("exhaust.portPressure") / 1e3 if g("exhaust.portPressure") else None,
             "tPort": g("exhaust.portTemperature"),
+            "tPortExit": g("exhaust.portExitTemperature"),
+            "tHeader": g("exhaust.headerTemperature"),
         }
         if kind != "na":
             b = g("boost.pressure")
