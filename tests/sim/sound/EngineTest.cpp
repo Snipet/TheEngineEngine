@@ -315,7 +315,8 @@ TEST_CASE("engine: levels at idle, each voice alone against the exhaust, A-weigh
     // exhaust's above all. The fan switched at 300 K and the air at 301 K (the coolant starts at the air's) so it runs
     // from the start, as at a warm idle (its sound does not depend on the coolant; the air 13 K warmer than first.json's
     // moves the exhaust's level by its density, some 4 %). The bounds are judgement (docs/models/voices.md, "Levels at idle"):
-    //   pump        an in-tank pump is made to go unheard in a quiet cabin: 40 dB(A) and 25 dB in every octave under
+    //   pump        an in-tank pump under a running engine is at most barely heard outside the car (the lead's 22:19):
+    //               50 dB(A) and 35 dB in every octave under
     //   fan         an electric fan is heard in front of an idling car: 15 to 35 dB(A) under, its highs falling (12 dB
     //               under at 4 and 8 kHz)
     //   injectors   a direct injector's tick is the one heard beside the car: 25 to 45 dB(A) under, within 25 dB in
@@ -352,9 +353,9 @@ TEST_CASE("engine: levels at idle, each voice alone against the exhaust, A-weigh
     against("voices.fanLevel", fan);
     against("voices.injectors", inj);
     against("voices.belt", belt);
-    CHECK(pump[0] < -40.0);
+    CHECK(pump[0] < -50.0);
     for (int i = 1; i < 7; ++i)
-        CHECK(pump[i] < -25.0);
+        CHECK(pump[i] < -35.0);
     CHECK(fan[0] < -15.0);
     CHECK(fan[0] > -35.0);
     CHECK(fan[5] < -12.0);

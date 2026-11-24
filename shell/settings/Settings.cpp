@@ -133,6 +133,7 @@ namespace tee::settings
             { "lastBuild", s.lastBuild },
             { "recentBuilds", s.recentBuilds },
             { "tryFirstSeen", s.tryFirstSeen },
+            { "coldStart", s.coldStart },
             { "window", { { "width", s.windowWidth }, { "height", s.windowHeight } } },
         };
         return root.dump(2) + "\n";
@@ -213,6 +214,8 @@ namespace tee::settings
             return bad("last build");
         if (!flag(root, "tryFirstSeen", s.tryFirstSeen))
             return bad("TRY FIRST flag");
+        if (!flag(root, "coldStart", s.coldStart))
+            return bad("cold start flag");
         if (const auto recent = root.find("recentBuilds"); recent != root.end())
         {
             if (!recent->is_array())

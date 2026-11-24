@@ -1,0 +1,21 @@
+# A first launch, warm (the application's engine starts at its working temperatures): the cam stage changes across
+# its speed. On the first build (a Lab valvetrain), two-stage cams on with the change at 300 rad/s (2,865 rpm),
+# started, idled (stage A), floored in neutral (stage B), and the intake phaser off its stop. The owner's report (a
+# stage change that went quiet when the engine started cold) must not come back: shell.window.first runs this.
+0.10  set valve.stages 1
+0.10  set valve.stageSpeed 300
+0.30  expect sent valve.stages == 1
+0.30  expect sent valve.stageSpeed == 300
+0.40  key return down
+0.70  key return up
+3.00  expect engine.state == 2
+3.00  expect engine.oilTemperature > 340
+3.00  expect valve.stage == 0
+3.00  print
+3.10  key w down
+5.50  expect rpm > 3500
+5.50  expect valve.stage == 1
+5.50  expect valve.inPhase > 1
+5.50  print
+5.60  key w up
+6.00  end
