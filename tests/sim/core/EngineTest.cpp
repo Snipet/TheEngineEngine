@@ -591,9 +591,7 @@ TEST_CASE("the redline shown is a stated limiter's speed, not the idle's floor (
     // likewise)
     {
         Bench b("archetypes/tractor-15-inline-six");
-        // (written here: the build's own ecu.limiter block does not load today, a nested section: reported to the lead)
-        std::string e;
-        REQUIRE(b.player().setSpec("ecu.limiter.speed", 210.906, e));
+        // (the build's own ecu.limiter block: 210.906 rad/s, 2014 rpm)
         b.start();
         std::printf("tractor: redline %.0f rpm (limiter 2014)\n", b.tel("engine.redline") * kRpm);
         CHECK(std::fabs(b.tel("engine.redline") * kRpm - 2014.0) < 5.0);
@@ -650,7 +648,6 @@ TEST_CASE("a governed diesel's launch and its redline follow its limiter (ecu.mo
     // idle's 2200 floor, and the launch's fallback (no launch control) is 60 % of it)
     Bench b("archetypes/tractor-15-inline-six");
     std::string e;
-    REQUIRE(b.player().setSpec("ecu.limiter.speed", 210.906, e));      // (the build's own block does not load in this rig yet)
     REQUIRE(b.player().setSpec("ecu.launch.on", 0, e));
     b.start();
     b.ctl().mode = 1;

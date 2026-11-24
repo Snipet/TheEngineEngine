@@ -37,6 +37,17 @@
 
 ## Landed
 
+- **20:34 `main` fast-forwarded** aaa10cc to 35286df (159 commits). What held it at 20:28 was one default-run case
+  failing at the tip (diesel's VGT against the single: two loops on one target, 210.1 against 211.4 kPa); the
+  lead restated it within the loops' 2 % in D2's file (35286df), D2 being deep in a re-run; every other failure
+  in the newest finished fast jobs has its fix in this tip. Main's own run on 35286df is the first same-commit
+  run on all three systems that should be green. Since 20:28: C's one strict build loader (127c350), which also
+  fixed tee::Build dropping arrays of choices by name (the exhaust presets' resonators, muffler kinds,
+  converters, bypass were at their defaults in the application: Q re-measures the typical build); the tools'
+  unknown-field error and stale outputs (93187bd); a diesel's gas air until it burns (D b551cd05); the listener
+  +14 dB and a measured level a build (L 35e355d, P 76e1b29: first.json's free rev peaks 0.29); N2's boosted
+  ledger on the new gamma and its ruling to give the auto spark map the knock limit less 2 degrees; U3's AIR
+  mismatch warnings (82a98f3); U1's TRY FIRST as a strip that covers nothing (4bc084b).
 - **20:28 the lead's check-in** (the tip 04a4d11 and after: about 1970 commits; it compiles; lint ok). **CI**: the
   newest finished fast jobs are red on all three, each on a commit from before fixes that are now in the tip:
   core's books on the boosted petrol (N1's b6676a5; fixed by c40f041, checked green on Linux by the steward),

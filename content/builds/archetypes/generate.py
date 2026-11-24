@@ -219,17 +219,22 @@ arch(slug="supercharged-v8-62", runner=0.3, name="Supercharged 6.2 L V8", geo="r
            "some 0.6 bar (the LSA kind: 415 kW at 6100 rpm, 746 N m at 3800; gmauthority.com, a community spec "
            "table for the compression). In a heavy six-speed coupe.")
 arch(slug="small-block-57-carb", name="Small-block 5.7 L, carburettor-like", geo="ref-12-v8-cross",
-     layout="V8 crossplane", bore=101.6, stroke=88.4, rod=144.8, cr=9.0, valves=2, dIn=49.3, dEx=38.1,
+     # the L48's 8.5:1 (corvsport.com's 1977 table; the L82 9.0) and its "2 into 1 into 2" exhaust: both banks into
+     # one converter, split again behind it to two mufflers (restore-an-old-car.com's C3 exhaust; NCRS forum: the last
+     # true duals 1974): here one side through one converter and muffler (N3, 20:34)
+     layout="V8 crossplane", bore=101.6, stroke=88.4, rod=144.8, cr=8.5, valves=2, dIn=49.3, dEx=38.1,
+     exhaust={"sides": 1, "converter": [1, 1], "mufKind": [2, 2]},
      # the L48's cam (N3, 20:06: toward the target's middle, not the hotter L82's): about 195/202 deg at 0.050 in and
      # 0.390/0.410 in lift (from memory, firm to some 5 deg), the seat some 54 deg longer as this hydraulic flat tappet's
      cam=(251, 197, 9.9, 110, 256, 204, 10.4, 114), train="Pushrod", redline=5500, idle=700,
      intake=dict(runnerLength=0.18, plenumVolume=0.0025), friction="Flat tappet", grade="Regular (87)",
      car="muscle-manual", timing="Chain", fan="Viscous clutch",
-     notes="A 350 cubic inch small block (4.00 x 3.48 in: 101.6 x 88.4 mm, 5733 cc), 9:1, two valves on pushrods, a "
+     notes="A 350 cubic inch small block (4.00 x 3.48 in: 101.6 x 88.4 mm, 5733 cc), 8.5:1, two valves on pushrods, a "
            "flat-tappet cam (the L48's), one big throttle over an open plenum as a four-barrel carburettor's. The L48 "
            "of 1975 to 1980 is rated 123 to 145 kW net (165 to 195 hp) and 346 to 380 N m (255 to 280 lb ft), 1977's "
            "180 hp at 4000 rpm and 270 lb ft at 2400; the L82 157 kW at 5200 and 346 N m at 3600 (SAE net, looked up: "
-           "corvsport.com, corvetteactioncenter.com). Four-speed manual, live axle.")
+           "corvsport.com, corvetteactioncenter.com). One converter for both banks (2 into 1 into 2). Four-speed manual, "
+           "live axle.")
 arch(slug="v10-52", runner=0.28, name="V10 5.2 L", geo="v10-90", layout="V10", bore=84.5, stroke=92.8, rod=154.0, cr=12.5,
      valves=4, dIn=33.8, dEx=28.0, cam=(268, 240, 11.8, 108, 260, 232, 10.8, 112), train="Finger", phase=(42, 42),
      redline=8700, idle=900, direct=True, grade="Premium (91)", car="awd-supercar", timing="Chain",
