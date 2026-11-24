@@ -207,8 +207,17 @@ namespace tee::app
             // --size WxH: the frame's logical size (raised to its smallest, 1100 x 700)
             if (o.width > 0 && o.height > 0)
                 frame->resize(std::max(o.width, frame->minWidth()), std::max(o.height, frame->minHeight()));
-            // --workspace ID[:PAGE]: the frame opens there (a name that is none is said, and the first one shown)
-            if (!o.workspace.empty())
+            ui::AppFrame* const f = frame.get();
+            shown.workspaces = [f] {
+                std::vector<std::string> ids;
+                for (int s = 0; s < f->workspaceCount(); ++s)
+                    ids.emplace_back(f->workspace(s).id());
+                return ids;
+            };
+            shown.showWorkspace = [f](int i) { f->show(i); };
+            // --workspace ID[:PAGE]: the frame opens there (a name that is none is said, and the first one shown);
+            // --workspace all: the first, and each pictured in turn at the end
+            if (!o.workspace.empty() && o.workspace != "all")
             {
                 const std::size_t colon = o.workspace.find(':');
                 const std::string id = lower(o.workspace.substr(0, colon));
@@ -516,7 +525,24 @@ namespace tee::app
             }
         }
 
-        if (!o.shot.empty())
+        if (!o.shot.empty() && o.workspace == "all" && shown.workspaces)
+        {
+            // each workspace in turn, a few frames each, pictured as <shot>-<id>.png
+            const std::filesystem::path base(o.shot);
+            const std::vector<std::string> ids = shown.workspaces();
+            for (std::size_t i = 0; i < ids.size(); ++i)
+            {
+                shown.showWorkspace(static_cast<int>(i));
+                for (int k = 0; k < 3; ++k)
+                {
+                    engine.frame();
+                    host.tick(1, dt);
+                }
+                shoot((base.parent_path() / (base.stem().string() + "-" + ids[i] + ".png")).string());
+            }
+            std::printf("workspaces: %zu pictured\n", ids.size());
+        }
+        else if (!o.shot.empty())
             shoot(o.shot);
         if (!o.wav.empty())
             wroteAll = wav.close() && wroteAll;
