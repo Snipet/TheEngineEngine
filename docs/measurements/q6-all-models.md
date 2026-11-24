@@ -190,3 +190,7 @@ Whole build: 4390 ns, **2.24 R** in these units (2.1 R by qbench without the sam
    taps (linear) for the far, quiet sources.
 
 **Within budget**: D (the physical cylinder, the moving masses and the walls: +0.06 R against 0.06), I, H; E 0.01 over.
+
+**After G's c4ce28f** (the passivity check skipped while its inputs stand within 1e-4 of the last; 19:21 UTC, quiet
+host): `XBuild::passGain` 63 -> 12 ns a sample on the typical build (one profile, drive-car), about 0.026 R saved; the
+whole build's profile read 4020 ns against 4390 (one run each: the rest is run-to-run spread, not claimed).

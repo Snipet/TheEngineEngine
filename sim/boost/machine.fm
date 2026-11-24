@@ -156,6 +156,7 @@ module BoostMachine
     float bovLift;
     float bpLimit;      // a variable nozzle's limit on the pressure before the turbine over the boost (absolute)
     float bpOpen[BOOST_TURBOS];  // the limit's opening of the vanes, each turbo
+    float surgeOpen[BOOST_TURBOS];  // the surge guard's opening of the vanes, each turbo
     float bovAt;        // the blow-off valve's opening the air sees: bovLift followed every sample by two 1 ms stages
     float bovMid;
     float kAt;          // that following's step a sample
@@ -318,6 +319,7 @@ module BoostMachine
             turb[t].vanesAt = 1.0f;
             turb[t].vanesMid = 1.0f;
             bpOpen[t] = 0.0f;
+            surgeOpen[t] = 0.0f;
             gateMass[t] = 0.0f;
             gateTemp[t] = tOut;
         }
@@ -1126,9 +1128,23 @@ module BoostMachine
                     const float r3 = house[hh].p / fmaxf(v2.p, 1000.0f);
                     bpOpen[t] = fminf(fmaxf(bpOpen[t] + d16 * 3.0f * (r3 - bpLimit), 0.0f), 1.0f);
                     v = fmaxf(v, turb[t].vaneMin + bpOpen[t]);
+                    // (the surge guard, gain-reversal protection: vanes shut past the compressor's surge line make
+                    // less boost, not more: it cannot deliver, the engine's air and the diesel's smoke-limited fuel fall
+                    // and the turbine's energy with them, a second steady state below the first: card D2's 15 L truck
+                    // at 1300 rpm stood at 98 kPa and 882 N m with its vanes at 0.47, surging two thirds of the time,
+                    // against 209 kPa and 1945 N m at 0.9. While the compressor surges, an integral opens the vanes at
+                    // 0.5 a second; it gives back a quarter of that rate while it does not, so the vanes settle at the
+                    // surge line's edge. Judgement, as the limit above is: a maker's vane map keeps its own margin)
+                    const float phiS = comp[t].mdot / fmaxf(comp[t].mc, 1.0e-5f);
+                    const int surging = comp[t].mdot < 0.0f || (phiS < 0.8f * comp[t].phiK && comp[t].pr > 1.15f) ? 1 : 0;
+                    surgeOpen[t] = fminf(fmaxf(surgeOpen[t] + d16 * 0.5f * (surging != 0 ? 1.0f : -0.25f), 0.0f), 1.0f);
+                    v = fmaxf(v, turb[t].vaneMin + surgeOpen[t]);
                 }
                 else
+                {
                     bpOpen[t] = 0.0f;
+                    surgeOpen[t] = 0.0f;
+                }
                 v = fminf(fmaxf(v, turb[t].vaneMin), 1.0f);
                 turb[t].vanes += (v - turb[t].vanes) * (1.0f - expf(-d16 / 0.05f));
                 // (with vanes the gate is a relief only: well above the target)
