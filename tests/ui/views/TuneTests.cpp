@@ -153,8 +153,8 @@ namespace
         rig.settle();
         rig.host->click(100.0f, 144.0f);                 // wastegate duty, the third
         CHECK_MSG(sel.path() == "boost.duty", sel.path());
-        // The lamps, at the traces' right: the limiter first.
-        rig.host->click(1100.0f - 16.0f - 12.0f - 150.0f, 700.0f - 16.0f - 210.0f + 30.0f + 15.0f);
+        // The lamps, at the traces' right under the knock by cylinder: the limiter first.
+        rig.host->click(1100.0f - 16.0f - 12.0f - 150.0f, 700.0f - 16.0f - 210.0f + 30.0f + 46.0f + 10.0f);
         CHECK_MSG(sel.path() == "ecu.limiter", sel.path());
         CHECK(rig.ws->inspectorPage().empty());          // the frame's generated page of that prefix
         return 0;
