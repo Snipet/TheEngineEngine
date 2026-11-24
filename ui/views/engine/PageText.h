@@ -22,9 +22,26 @@ namespace tee::ui::pages
         std::string title;                // "CYLINDER", in capitals
         std::vector<std::string> paths;   // fields, in order
         std::vector<std::string> labels;  // a short label for each (the section's title says the rest); "" : the field's
+        std::vector<std::string> warnings;   // amber lines in words under the section's fields (the build's oddities)
     };
 
     inline std::string quoted(const std::string& s) { return "\"" + s + "\""; }
+
+    // Text in lines of at most 46 characters (a label's most is 48), broken at spaces.
+    inline std::vector<std::string> lines(const std::string& text)
+    {
+        std::vector<std::string> out;
+        for (std::size_t at = 0; at < text.size();)
+        {
+            std::size_t end = std::min(text.size(), at + 46);
+            if (end < text.size())
+                if (const std::size_t sp = text.rfind(' ', end); sp != std::string::npos && sp > at)
+                    end = sp;
+            out.push_back(text.substr(at, end - at));
+            at = end + (end < text.size() && text[end] == ' ' ? 1 : 0);
+        }
+        return out;
+    }
 
     inline std::string page(const FieldDoc& doc, const std::vector<Section>& sections, const std::string& note = {})
     {
@@ -68,7 +85,11 @@ namespace tee::ui::pages
             out += " section " + quoted(s.title) + " layout=column gap=10 {";
             if (!row.empty())
                 out += " row wrap gap=12 {" + row + " } ;";
-            out += tables + " } ;";
+            out += tables;
+            for (const std::string& w : s.warnings)
+                for (const std::string& line : lines(w))
+                    out += " label " + quoted(line) + " size=small color=yellow ;";
+            out += " } ;";
         }
         if (!any)
             out += " label \"NOTHING TO SET HERE IN THIS BUILD YET\" size=small ;";
