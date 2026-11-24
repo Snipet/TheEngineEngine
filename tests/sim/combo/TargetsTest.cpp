@@ -318,21 +318,16 @@ TEST_CASE("fixed X-003: the new combustion and ECU together start every archetyp
     }
 }
 
-TEST_CASE("fixed X-007's hang: the reduced Spec plays in no time and flags its fault", "[combo][fixed]")
+TEST_CASE("fixed X-007: the reduced Spec (an 18 kg piston on a single with the automatic) runs", "[combo][fixed]")
 {
-    // found 2026-11-24 (Engine::process never returned, or SIGSEGV); D's ae5c99b puts a diverged engine at rest and
-    // sets FLAG_FAULT. The divergence itself (an 18 kg piston on a single with the automatic) is still open: X-007.
+    // found 2026-11-24 (the crank ran away; then Engine::process never returned, or SIGSEGV); D's ae5c99b made the
+    // audio thread safe (no state-counted loop, a diverged engine put at rest with FLAG_FAULT), I's f9e26f1 removed the
+    // cause (Car::step with the crank's real inertia; the converter's torque capped)
     const auto file = tee::test::contentDirectory() / "builds" / "combo" / "findings" / "x007-heavy-piston.json";
     Times tm;
-    tm.idleFrom = -1.0;
     tee::test::Scenario s = scenario(Kind::Tour, file.string(), 0u, tm);
     const tee::test::Run r = s.run(tm.end);
-    CHECK(r.ok());
-    CHECK(r.audio().finite());
-    CHECK(r.host().guardTrips == 0);
-    CHECK(r.speed() > 2.0);   // faster than real time: nothing spins in a loop
-    double flags = 0;
-    for (double f : r.tel("engine.flags").values())
-        flags = std::max(flags, static_cast<double>(static_cast<int>(f) & 4));
-    CHECK(flags == 4.0);      // FLAG_FAULT said so
+    const Verdict v = judge(r, tm, nullptr, false, referenceStep("v8", Kind::Tour));
+    report(v, "as reduced", "x007-heavy-piston", "X-007");
+    CHECK(r.tel("engine.state").during(3.0, 10.5).min() == 2.0);   // it runs throughout
 }

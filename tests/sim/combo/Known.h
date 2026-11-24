@@ -4,9 +4,6 @@
 
 const Known kKnown[] = {
     // id, date, owner, combo, build, scenario, check, what
-    {"X-007", "2026-11-24", "D and I (via the lead)", "random 2", "fuzz", "random", "guard",
-     "random Spec seed 2, reduced to 8 fields (findings/x007-heavy-piston.json): a custom single with an 18 kg "
-     "piston and the new vehicle's automatic runs away; since ae5c99b it is put at rest (FLAG_FAULT), no hang"},
     {"X-009", "2026-11-24", "D (via the lead)", "as built", "*", "tour", "tel-range:engine.veManifold",
      "tel.engine.veManifold reads -5.8 on the lift after the limiter (straight-six-32-high-rev)"},
     {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},   // the end (an array is never empty)
