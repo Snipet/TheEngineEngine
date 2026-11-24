@@ -39,6 +39,11 @@
 #include <string_view>
 #include <vector>
 
+namespace tee::ui::garage
+{
+    class Library;   // ui/views/garage/Library.h (package U5)
+}
+
 namespace tee::ui
 {
     // ---- what is selected -------------------------------------------------------------------------------------------
@@ -138,6 +143,10 @@ namespace tee::ui
         double rate = 60.0;       // rad/s^2 (a sweep)
         double pedal = 1.0;       // 0..1
         std::string name;         // the run's name ("" : numbered)
+        // Added after step 1 (U4): a stepped run instead of a sweep, and a chassis run's gear.
+        std::vector<double> steps;   // speeds held in turn, rad/s (empty: the sweep above)
+        double dwell = 0.6;          // seconds each step is held before it is measured
+        int gear = 0;                // a chassis run's gear (0: the one the car is in)
     };
 
     // The predicted curve of the build as it stands (card C's dyno runner, in the background, a moment after each
@@ -161,6 +170,9 @@ namespace tee::ui
         virtual bool startRun(const DynoRequest&) { return false; }
         virtual bool running() const { return false; }
         virtual void stopRun() {}
+        // The run being made, so far (its points as they come), while running(); nullptr when there is none or the
+        // source cannot say. A curve that refines (coarse first) comes again in predicted() each time: revision() moves.
+        virtual const DynoTrace* runSoFar() const { return nullptr; }
     };
 
     // ---- telemetry by name ------------------------------------------------------------------------------------------
@@ -215,6 +227,10 @@ namespace tee::ui
         // The clutch pedal from the mouse while it is held (0..1), or a negative number when let go. PanelControls
         // has no clutch yet (a change for the lead: docs/handoffs/u1-frame.md).
         std::function<void(float)> clutch;
+        // A text saved as a file the person chooses (a dyno run's CSV, an export): the host's save dialog, starting at
+        // `suggestedName`. False, with `error`, when it was not saved (cancelled: error empty). None: no saving here
+        // (a workspace then copies the text: HostServices::copyText).
+        std::function<bool(const std::string& suggestedName, const std::string& text, std::string& error)> saveText;
     };
 
     // ---- the context ------------------------------------------------------------------------------------------------
@@ -230,6 +246,8 @@ namespace tee::ui
         Selection& selection;
         const AppServices& app;        // the start button, the pedals as sent, the status line
         const FrameServices* services = nullptr;   // the build's files and the rest (the frame's; none in a test's rig)
+        garage::Library* library = nullptr;        // the builds on disk (U5's interface, views/garage/Library.h); the
+                                                   // shell's, or none (GARAGE then uses its own)
         Live live{ telemetry };
     };
 

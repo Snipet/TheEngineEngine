@@ -48,3 +48,30 @@ line). `StageRig rig(make<Name>Workspace, 1100, 700, /*dpi*/ 2.0f, /*t*/ 4.6)` h
 `out/ui/air.stage.png`; make one at dpi 1 too (`golden("air.stage.dpi1", ...)`). Bless only after looking:
 `build-dev/bin/tee-view-tests air.stage --bless`. Run: `ctest --test-dir build-dev -R '^ui\.'`. The frame's contact
 sheet will include every registered workspace.
+
+## Added since (all compatible with what was there)
+
+- **The stage's size.** The frame gives a workspace `AppFrame::stageFor(w, h)`: at the smallest window (1100 x 700)
+  `{64, 48, 696, 574}`, at 1600 x 1000 `{112, 48, 1128, 874}`; the ribbon (folded or not) is in the inspector's column
+  and does not change it. A stage must lay out for the first and look generous at the second. Test both:
+  `StageRig rig(makeX, FrameSize::smallest)` and `StageRig rig(makeX, FrameSize::large)` host the workspace in that
+  window at that stage.
+- **Your own demo data.** A second line in `register.h`: `TEE_UI_DEMO(<id>, <fn>)`, with `void <fn>(DemoExtras& x)` in
+  namespace `tee::ui` in your directory. It is called with `x.fields` (append `FieldInfo`s to the made-up Spec) and,
+  separately, with `x.engine` (`engine->addTelemetry(name, f)`, `engine->addScope(name, f)`, where `f` reads the script
+  through `engine.rpm()`, `throttle()`, `phase()`, `field(path, fallback)`). Every DemoRig made with hooks (the
+  default) has every package's data, so the frame's sheet shows real stages. Keep it in your directory; never edit
+  `ui/app/Demo.*`. (U1's own goldens use `hooks = false`, so your additions never move them.)
+- **Your page's notes are your test's.** `inspectorNotes(*rig.ws, rig.demo)` (ViewKit) is what the `.gui` reader says of
+  your `inspectorPage()` now; check it empty. The frame's tests check only U1's pages (placeholders, DRIVE).
+- **Demo names added**: telemetry `ecu.advance` (degrees before top dead centre), `sound.rate` (Hz); Scope `portIntake`,
+  `portExhaust` (cylinder 1's port pressures per degree, Pa absolute). `DemoEngine::hold(true)` stops the script for
+  a picture (the dyno still answers edits).
+- **GARAGE's library**: `WorkspaceContext::library` (`garage::Library*`, may be null; `views/garage/Library.h`); the frame
+  ticks it once a frame; the shell sets it with `AppFrame::setLibrary`.
+- **Dyno**: `DynoRequest::steps` (rad/s, a stepped run), `dwell` (s), `gear` (a chassis run's; 0: the car's; not yet
+  in card C's `DynoPlan`); `DynoSource::runSoFar()` (the run so far while `running()`, else nullptr; the demo gives
+  it, the host adapter not yet). A curve may come refined (coarse first): each refinement arrives through
+  `predicted()` with `revision()` moving; `before()` is the curve before the edit, not before the refinement.
+- **Saving a file**: `FrameServices::saveText(suggestedName, text, error)` (`ctx_.services`, may be null or empty): the
+  host's save dialog when the shell fills it; until then copy the text (`HostServices::copyText`).

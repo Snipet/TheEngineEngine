@@ -702,18 +702,35 @@ namespace tee::ui
         }
 
         // ---- drawing -----------------------------------------------------------------------------------------------
-        Rect listRow(int i) const { return { list_.x + 6.0f, list_.y + 30.0f + 40.0f * static_cast<float>(i), list_.w - 12.0f, 36.0f }; }
+        // The list: the maps the build has, a row each; then one line for those it has not (not rows of their own).
+        int listSlot(int i) const
+        {
+            if (slots_[static_cast<std::size_t>(i)].field < 0)
+                return -1;
+            int k = 0;
+            for (int j = 0; j < i; ++j)
+                k += slots_[static_cast<std::size_t>(j)].field >= 0 ? 1 : 0;
+            return k;
+        }
+        Rect listRow(int i) const
+        {
+            const int k = listSlot(i);
+            return k < 0 ? Rect{} : Rect{ list_.x + 6.0f, list_.y + 30.0f + 40.0f * static_cast<float>(k), list_.w - 12.0f, 36.0f };
+        }
 
         void drawList(Canvas& c, const look::Palette& p) const
         {
             if (narrow_)
                 return;
             look::region(c, p, list_, "MAPS", ctx_.selection.is("ecu.maps"));
+            int absent = 0, present = 0;
+            for (int i = 0; i < kMapCount; ++i)
+                (slots_[static_cast<std::size_t>(i)].field >= 0 ? present : absent) += 1;
             for (int i = 0; i < kMapCount; ++i)
             {
                 const Rect r = listRow(i);
-                if (r.bottom() > list_.bottom() - 4.0f)
-                    break;
+                if (r.isEmpty() || r.bottom() > list_.bottom() - 4.0f)
+                    continue;
                 const Slot& s = slots_[static_cast<std::size_t>(i)];
                 const bool sel = i == shown_, there = s.field >= 0;
                 if (sel)
@@ -721,6 +738,12 @@ namespace tee::ui
                 c.text(kMaps[i].name, r.x + 8.0f, r.y + 5.0f, look::kBody, there ? p.value : p.dim);
                 const char* state = !there ? "not in this build" : s.autoField < 0 ? "table" : isAuto(i) ? "formula (auto)" : "table";
                 c.text(state, r.x + 8.0f, r.y + 21.0f, look::kUnit, there && isAuto(i) ? p.selected : p.label);
+            }
+            if (absent > 0)
+            {
+                const float y = list_.y + 30.0f + 40.0f * static_cast<float>(present) + 6.0f;
+                const std::string w = std::to_string(absent) + (absent == 1 ? " more map" : " more maps") + " not in this build";
+                chart::wrap(c, w, list_.x + 14.0f, y, list_.w - 28.0f, look::kUnit, p.dim, 13.0f, 2);
             }
         }
 
@@ -749,7 +772,7 @@ namespace tee::ui
             else
                 left = bake_->bounds().right() + 16.0f;
             const std::string words = !message_.empty() ? message_
-                                    : "Type, or drag a cell. Shift-click: a block. Page Up, Page Down: nudge.";
+                                    : "Shift-click a block; Page Up, Page Down nudge it.";
             // Whole, at the top right; else under the table after the tools; else (a hint) not at all.
             const float right = mapBox_.right() - look::kPad, ww = c.textWidth(words.c_str(), look::kBody);
             const Col ink = message_.empty() ? p.dim : p.text;
@@ -920,7 +943,10 @@ namespace tee::ui
             key("RETARD", 1.75f, p.hot, {}, false);
             key("ADVANCE", 1.75f, p.selected, {}, false);
             if (n == 0 || (last != nullptr && !std::isfinite(last->lambda) && !std::isfinite(last->knock) && !std::isfinite(last->advance)))
-                c.text("-  the ECU's live values are not in this program yet", lanes_.x + 10.0f, lanes_.y + 6.0f, look::kBody, p.dim);
+            {
+                const char* w = "-  THE ECU'S LIVE VALUES ARE NOT IN THIS PROGRAM YET";
+                c.text(w, traces_.right() - look::kPad, traces_.y + 9.0f, look::kCaps, p.dim, funkgui::Align::right);
+            }
         }
 
         std::vector<Hit> lampHits() const
