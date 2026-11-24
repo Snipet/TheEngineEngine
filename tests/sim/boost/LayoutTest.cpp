@@ -1,0 +1,123 @@
+// tests/sim/boost/LayoutTest.cpp: the arrangements and the extras on the made-up engine: a sequential pair's second
+// turbo joins above its flow; a compound pair's stages share the ratio; variable vanes make boost sooner; anti-lag holds
+// the shaft's speed off the throttle; electric assist spools sooner.
+#include "Rig.h"
+
+#include <catch2/catch_test_macros.hpp>
+
+#include <cstdio>
+
+using tee::test::boost::Rig;
+
+namespace
+{
+    void build(Rig& rig, int layout, double rpm)
+    {
+        rig.set("spec.kind", 1);
+        rig.set("spec.layout", layout);
+        rig.set("spec.model", 1);
+        rig.spec("rev", 0);
+        rig.set("rpm", rpm);
+        rig.set("throttle", 1.0);
+        rig.set("pulsed", 1);
+    }
+
+    double timeTo(Rig& rig, double target, double limit = 6.0)
+    {
+        for (double t = 0.005; t <= limit; t += 0.005)
+        {
+            rig.run(0.005);
+            if (rig.boost() >= target)
+                return t;
+        }
+        return limit + 1.0;
+    }
+} // namespace
+
+TEST_CASE("boost: a sequential pair's second turbo joins above its flow", "[boost][layout]")
+{
+    Rig low;
+    build(low, 3, 2500.0);
+    low.run(3.0);
+    Rig high;
+    build(high, 3, 6500.0);
+    high.run(3.0);
+    std::printf("sequential at 2500 rpm: valve %.2f, shafts %.0f and %.0f rpm, %.1f kPa; at 6500: valve %.2f, %.0f and %.0f "
+                "rpm, %.1f kPa\n", low.get("boost.seqOpen"), low.shaftRpm(0), low.shaftRpm(1), low.boost() / 1000.0,
+                high.get("boost.seqOpen"), high.shaftRpm(0), high.shaftRpm(1), high.boost() / 1000.0);
+    CHECK(low.get("boost.seqOpen") < 0.05);
+    CHECK(high.get("boost.seqOpen") > 0.95);
+    CHECK(high.shaftRpm(1) > 3.0 * low.shaftRpm(1));
+    CHECK(high.shaftRpm(1) > 30000.0);
+}
+
+TEST_CASE("boost: a compound pair's stages share the pressure ratio", "[boost][layout]")
+{
+    Rig rig;
+    build(rig, 4, 6000.0);
+    rig.set("spec.gateSpring", 200000.0);
+    rig.spec("rev", 0);
+    rig.run(4.0);
+    const double hp = rig.get("boost.comp[0].pr");
+    const double lp = rig.get("boost.comp[1].pr");
+    std::printf("compound at 6000 rpm: low stage %.2f, high stage %.2f, boost %.1f kPa, shafts %.0f and %.0f rpm\n", lp, hp,
+                rig.boost() / 1000.0, rig.shaftRpm(1), rig.shaftRpm(0));
+    CHECK(lp > 1.15);
+    CHECK(hp > 1.15);
+    CHECK(rig.get("boost.vInter.p") > 1.1 * 101325.0);
+    CHECK(rig.get("bad") == 0.0);
+}
+
+TEST_CASE("boost: variable vanes make boost at low speed that a fixed nozzle of their open size cannot", "[boost][layout]")
+{
+    double boost[2];
+    for (int vanes : {0, 1})
+    {
+        Rig rig;
+        build(rig, 1, 2500.0);
+        rig.set("spec.vanes", vanes);
+        rig.set("spec.target", 100000.0);
+        rig.set("spec.turbAR", 0.9);
+        rig.spec("rev", 0);
+        rig.run(4.0);
+        boost[vanes] = rig.boost();
+        std::printf("%s at 2500 rpm: %.1f kPa, vanes %.2f\n", vanes ? "variable vanes" : "fixed nozzle", boost[vanes] / 1000.0,
+                    rig.get("boost.turb[0].vanes"));
+    }
+    CHECK(boost[1] > 1.5 * boost[0]);
+}
+
+TEST_CASE("boost: anti-lag holds the shaft's speed off the throttle", "[boost][layout]")
+{
+    double kept[2];
+    for (int al : {0, 1})
+    {
+        Rig rig;
+        build(rig, 1, 5000.0);
+        rig.set("spec.antiLag", al);
+        rig.spec("rev", 0);
+        rig.run(3.0);
+        const double on = rig.shaftRpm();
+        rig.set("throttle", 0.0);
+        rig.set("boost.cmdAntiLag", al ? 0.003 : 0.0);
+        rig.run(1.0);
+        kept[al] = rig.shaftRpm() / on;
+        std::printf("anti-lag %s: the shaft keeps %.2f of its speed a second off the throttle\n", al ? "on" : "off", kept[al]);
+    }
+    CHECK(kept[1] > kept[0] + 0.1);
+}
+
+TEST_CASE("boost: electric assist spools the shaft sooner", "[boost][layout]")
+{
+    double t[2];
+    for (int a : {0, 1})
+    {
+        Rig rig;
+        build(rig, 1, 2500.0);
+        rig.set("spec.assist", a ? 5000.0 : 0.0);
+        rig.spec("rev", 0);
+        t[a] = timeTo(rig, 15000.0);
+        std::printf("assist %s: 15 kPa at 2500 rpm after %.3f s\n", a ? "5 kW" : "none", t[a]);
+    }
+    CHECK(t[1] < 0.7 * t[0]);
+}

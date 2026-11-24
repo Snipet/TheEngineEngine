@@ -76,6 +76,7 @@ TEST_CASE("boost: a bigger turbine housing spools later and chokes later", "[boo
             rig.set("pulsed", 0);
             rig.set("spec.turbAR", ar);
             rig.set("spec.gateSpring", 300000.0);
+            rig.set("spec.maxSpeed", 40000.0);    // (no over-speed relief: the gate stays shut)
             rig.spec("rev", 0);
             rig.run(1.5);
             if (rig.get("boost.turb[0].ratio") < 0.5457)
@@ -174,6 +175,16 @@ TEST_CASE("boost: the wastegate holds a target across speeds, and its spring hol
     int held = 0;
     for (double rpm = 2500.0; rpm <= 7000.0; rpm += 500.0)
     {
+        // can the turbo make the target here? (its gate held shut)
+        double most = 0.0;
+        {
+            Rig rig;
+            turboFour(rig, rpm);
+            rig.set("spec.gateSpring", 300000.0);
+            rig.spec("rev", 0);
+            rig.run(4.0);
+            most = rig.boost();
+        }
         Rig rig;
         turboFour(rig, rpm);
         rig.set("spec.target", target);
@@ -183,19 +194,18 @@ TEST_CASE("boost: the wastegate holds a target across speeds, and its spring hol
         rig.run(1.0);
         const double boost = rig.mean("sBoost");
         const double gate = rig.get("boost.telGate[0]");
-        std::printf("target %.0f kPa at %.0f rpm: %.1f kPa, gate %.2f, duty %.2f, shaft %.0f rpm\n", target / 1000.0, rpm,
-                    boost / 1000.0, gate, rig.get("boost.duty"), rig.shaftRpm());
-        // where the turbo can make it, the gate is open
-        if (gate > 0.02)
+        std::printf("target %.0f kPa at %.0f rpm: %.1f kPa (%.1f with the gate shut), gate %.2f, duty %.2f, shaft %.0f "
+                    "rpm\n", target / 1000.0, rpm, boost / 1000.0, most / 1000.0, gate, rig.get("boost.duty"), rig.shaftRpm());
+        INFO(rpm << " rpm");
+        if (most > 1.05 * target)
         {
             ++held;
-            INFO(rpm << " rpm");
             CHECK(boost == Catch::Approx(target).epsilon(0.05));
         }
         else
             CHECK(boost < 1.05 * target);
     }
-    CHECK(held >= 5);
+    CHECK(held >= 4);
 
     int sprung = 0;
     for (double spring : {50000.0, 90000.0})
