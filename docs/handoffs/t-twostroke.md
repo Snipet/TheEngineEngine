@@ -28,9 +28,8 @@ Card T, branch `claude/awesome-gates-ntdb58`. Model, sources and measurements: [
 twin 0.59 R, triple 0.87 R, utility 0.24 R. Rig alone: 0.28 R. Fewer cone steps (3) would roughly halve the ducts.
 **Wanted outside my paths**:
 - sim/engine.fm, sim/spec/telemetry.fm, sim/README.md (D's): committed by me with the lead's leave; D to review.
-- sim/exhaust/duct.fm (G): `pack()` and `extra(lowpass)` pass up to 4.4 % more than they take near 25 Hz around the
-  steady-flow tracker (|H(1-LP)+LP| > 1); a stopped pipe closed at one end rings for ever. Sent to G with numbers; I use
-  a broadband gain meanwhile.
+- duct.fm (G): `pack()`/`extra()` gained up to 4.4 % near 25 Hz around the tracker; G added `filtFirst` (57c9876),
+  which the silencer now uses: passive. Also mine with leave: cycle under the fade, scope.inletOpen, turbo vd x2.
 - ECU (H): leaves cranking when the sensed speed passes 550 rpm; a light 50 cc engine spikes past it on one weak fire
   and the starter stops. The utility build has `ecu.starter` off (a pull start) instead.
 - spec.engine's accessory defaults (300 W alternator, a valvetrain's friction) suit cars; each two-stroke build sets its own.

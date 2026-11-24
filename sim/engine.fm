@@ -123,6 +123,7 @@ module Engine
     float scI [[ui::hidden]] [SCOPE_DEGREES];
     float scPi [[ui::hidden]] [SCOPE_DEGREES];
     float scPe [[ui::hidden]] [SCOPE_DEGREES];
+    float scIo [[ui::hidden]] [SCOPE_DEGREES];   // (card T: a two-stroke's inlet open share)
     int scDeg [[ui::hidden]];
     float scAng [[ui::hidden]];
 
@@ -184,15 +185,19 @@ module Engine
     FrictionModel fric; // friction by part (core/friction.fm)
     CycleWork work;     // p dV per cylinder per cycle: IMEP, PMEP, peak pressure, VE (core/work.fm); every engine
     Dyno dyno;          // MODE_DYNO_ENGINE's absorber (core/dyno.fm); every engine
+    double airThrottle; // running totals (kg), for the books (tests, N1's ledger): the air through the throttle, the net
+    double airValves;   // mass in through the intake valves, the net mass in through the exhaust valves
+    double gasExhaust;
+    double airTrapped;  // and the unburned gas the cylinders hold at their intakes' closing
     WallHeat wall;      // Woschni's wall heat, with spec.engine.wallHeat 1 (core/wallheat.fm)
     HeavyDiesel hd;     // card D2: a diesel's governor, compression and exhaust brakes (combustion/heavy.fm); hd.on 0 at the defaults
     TwoStroke two;      // card T: a two-stroke's cylinders, crankcases and pipes (core/twostroke/), with spec.engine.cycle 1
     int cycleUse;       // 1: the engine configured as a two-stroke (spec.engine.cycle 1 on a custom engine)
     float tsSig;        // the two-stroke's fields made under the fade, as configured (TwoStroke::signature)
     int customUse;      // 1: the engine configured from spec.engine's custom fields
-    int modelUse[10];    // each package's model switch in use (valve, intake, boost, exhaust, fuel, ecu, car, voices; the wall
-    int modelWant[10];  // heat; the listener), and the one the host asked for: a change waits for the fade (holdModel)
-    int modelRev[10];    // each one's section's rev as holdModel last saw it
+    int modelUse[11];    // each package's model switch in use (valve, intake, boost, exhaust, fuel, ecu, car, voices; the wall
+    int modelWant[11];  // heat; the listener; the engine's cycle, card T's), and the one the host asked for: a change waits
+    int modelRev[11];    // for the fade (holdModel); each one's section's rev as holdModel last saw it
     int faults;         // the crank's state found absurd and the engine put at rest afresh (guard), since init
     int faultNow;       // in this call
     int lastIgn;        // ctl.ignition at the last call (voices.model 1: its rise from off renders the key's sounds)
@@ -304,7 +309,7 @@ module Engine
         set.timing = 0.0f;
         comb.setup(rate, &noise, &ecu, &heat, &lay, &exh.pop[0], &spec.fuel, &spec.engine);
         comb.oxygen = 1.0f;
-        comb.walls = woschniWalls() ? 1 : 0;
+        physicalCylinder();
         hd.setup(rate, &spec.ecu, &spec.valve);                                             // card D2
         ecu.setup(16.0f / rate, &spec.ecu, &spec.fuel, &ctl, &tel.ecu, &scope, &heat);     // card H's model 1
         set.bov = 0.7f;
@@ -499,11 +504,16 @@ module Engine
         pipes();
         mechanicsSetup();
         // (card F: boost.model 1's machine sized to this engine, at rest, on its four-stroke-equivalent displacement: a
-        // rotary's faces fire once a shaft turn, twice vTotal; nothing in model 0)
-        boost.applyMachine(&spec.boost, vTotal * (lay.rotary != 0 ? 2.0f : 1.0f), ecu.redRpm, 101325.0f, heat.tAmb);
+        // rotary's faces fire once a shaft turn and a two-stroke's cylinders once a turn, twice vTotal; nothing in model 0)
+        boost.applyMachine(&spec.boost, vTotal * (lay.rotary != 0 || (spec.engine.cycle != 0 && customUse != 0) ? 2.0f : 1.0f), ecu.redRpm, 101325.0f, heat.tAmb);
         // (card T: a two-stroke, on a custom engine's geometry and mechanics: its cylinders and pipes at rest where the
         // crank stands; the four-stroke's cylinders, valves and pipes above stay configured, unused)
         cycleUse = spec.engine.cycle != 0 && customUse != 0 && lay.rotary == 0 ? 1 : 0;
+        for (int d = 0; d < SCOPE_DEGREES; ++d)
+        {
+            scIo[d] = 0.0f;
+            scope.inletOpen[d] = 0.0f;
+        }
         tsSig = two.signature(&spec.engine);
         if (cycleUse != 0)
         {
@@ -533,6 +543,16 @@ module Engine
     bool woschniWalls()
     {
         return spec.engine.wallHeat == 1 || spec.fuel.model != 0;
+    }
+
+    // The one decision handed on: Combustion's share of the fuel's heat (comb.walls) and the cylinders' intake backflow
+    // conserved (Cylinder::conserve): both with Woschni's walls, the physical cylinder, and neither under the reference's
+    void physicalCylinder()
+    {
+        const int w = woschniWalls() ? 1 : 0;
+        comb.walls = w;
+        for (int c = 0; c < MAX_CYL; ++c)
+            cyl[c].conserve = w;
     }
 
     // A sum of what makes a custom engine (spec.engine's custom fields, each with its own weight), to see it changed: 0
@@ -1076,6 +1096,7 @@ module Engine
                 scope.liftIntake[d] = scI[d];
                 scope.portIntake[d] = scPi[d];
                 scope.portExhaust[d] = scPe[d];
+                scope.inletOpen[d] = scIo[d];
             }
             scope.degrees = 360;
             scope.cycles += 1;
@@ -1100,6 +1121,7 @@ module Engine
             scI[d] = two.openTransfer(0);
             scPi[d] = two.cy[0].pc;                              // (the crankcase: what feeds the transfers)
             scPe[d] = 101325.0f + two.pPort[0];
+            scIo[d] = two.cy[0].inletOpen;
         }
     }
 
@@ -1196,6 +1218,8 @@ module Engine
             comb.sample(cy, c, dt);                     // card H: nothing under fuel.model 0 and ecu.model 0
             qe[pi] += cy->qEa;
             qi[pi] += cy->qIa;
+            airValves -= (double)(cy->mI * dt);
+            gasExhaust -= (double)(cy->mE * dt);
             torque += cy->tq;
             if (cy->mE > 0.0f)
             {
@@ -1205,6 +1229,7 @@ module Engine
             if (cy->ivcNow)
             {
                 work.trapped(c, fmaxf(cy->m - cy->mInert, 0.0f), intk.pPlenum, intk.tAir, 101325.0f, heat.tAmb);
+                airTrapped += (double)fmaxf(cy->m - cy->mInert, 0.0f);
                 wall.ivc(c, cy->p, cy->v, cy->t);
                 if (vt.active(c))
                     comb.charge(&cyl[c], c, fuelUse, intk.pPlenum, crank.rpm, smCR, crBs, burnK, set.pops, set.rough, set.timing);
@@ -1243,6 +1268,7 @@ module Engine
         for (int i = 0; i < np; ++i)
             rNear[i] = intk.run[i].near + intk.run[i].z * qi[i];
         intk.plenum(np, rNear, fuelUse, vt.plateOpen() != 0 ? 1.0f : ecu.throttle, ecu.bypass, dt);
+        airThrottle += (double)(intk.qThr * intk.pBox / (287.0f * intk.tAir) * dt);
         mech.torques(crank.rpm, crank.omega, strokeK, heat.viscK, fuelUse, smCR, vTotal, set.load, ecu.redRpm, heat.tAmb, ecu.starterOn,
                      cyl[0].vd);
         // (a custom engine's friction by part: core/friction.fm, on the last cycle's peak pressure)
@@ -1411,7 +1437,8 @@ module Engine
         modelUse[7] = spec.voices.model;
         modelUse[8] = spec.engine.wallHeat;
         modelUse[9] = spec.sound.model;
-        for (int k = 0; k < 10; ++k)
+        modelUse[10] = spec.engine.cycle;
+        for (int k = 0; k < 11; ++k)
         {
             modelWant[k] = modelUse[k];
             modelRev[k] = -1;
@@ -1475,7 +1502,7 @@ module Engine
             s->turbo = spec.boost.level;
             s->tsize = spec.boost.size;
             s->bov = spec.boost.blowOff;
-            boost.applyMachine(&spec.boost, vTotal * (lay.rotary != 0 ? 2.0f : 1.0f), ecu.redRpm, 101325.0f, heat.tAmb);
+            boost.applyMachine(&spec.boost, vTotal * (lay.rotary != 0 || (spec.engine.cycle != 0 && customUse != 0) ? 2.0f : 1.0f), ecu.redRpm, 101325.0f, heat.tAmb);
         }
         if (moved(4, spec.exhaust.rev))
         {
@@ -1518,6 +1545,7 @@ module Engine
         holdModel(7, &spec.voices.model, &spec.voices.rev);
         holdModel(8, &spec.engine.wallHeat, &spec.engine.rev);
         holdModel(9, &spec.sound.model, &spec.sound.rev);
+        holdModel(10, &spec.engine.cycle, &spec.engine.rev);
     }
 
     // Section k's model switch as the host wrote it: stopped, taken at once; running, a change held until the fade's
@@ -1565,7 +1593,8 @@ module Engine
         modelUse[7] = applyModel(7, &spec.voices.model, &spec.voices.rev);
         modelUse[8] = applyModel(8, &spec.engine.wallHeat, &spec.engine.rev);
         modelUse[9] = applyModel(9, &spec.sound.model, &spec.sound.rev);
-        comb.walls = woschniWalls() ? 1 : 0;
+        modelUse[10] = applyModel(10, &spec.engine.cycle, &spec.engine.rev);
+        physicalCylinder();
     }
 
     // A paddle's press as the reference's wheel made it: its button down until Car's shift logic (drive16) has seen
@@ -1706,7 +1735,8 @@ module Engine
             boost.scope(&scope);
         tel.exhaust.portTemperature = exh.tPort;
         tel.ecu.knockRetard = ecu.kRet;
-        tel.ecu.advance = lay.cyc - cyl[0].sparkAt;
+        // (degrees before the top; a spark after it, retarded past the top, negative, not a cycle less a little: X-011)
+        tel.ecu.advance = lay.cyc - cyl[0].sparkAt > 0.5f * lay.cyc ? -cyl[0].sparkAt : lay.cyc - cyl[0].sparkAt;
         tel.sound.rate = hostRateSeen;
         tel.car.speed = driven ? fabsf(car.v) : 0.0f;
         tel.car.gear = driven ? car.gear : 0;
@@ -1750,7 +1780,7 @@ module Engine
         e->tsDelivery = cycleUse != 0 ? two.delivery : 0.0f;
         e->tsTrapping = cycleUse != 0 ? two.trapping : 0.0f;
         e->tsPowerValve = cycleUse != 0 ? two.valve : 0.0f;
-        e->tsPipeTemperature = cycleUse != 0 ? two.tPipe : 0.0f;
+        e->tsPipeTemperature = cycleUse != 0 ? two.tPipe : heat.tAmb;      // (no two-stroke pipe: the air's)
         e->tsCrankcase = cycleUse != 0 ? two.cy[0].pc : 0.0f;
         e->tsReed = cycleUse != 0 ? two.cy[0].reed : 0.0f;
         if (cycleUse != 0)

@@ -79,6 +79,7 @@ module TwoStrokeCylinder
     float mcBurned;     // the burned gas in it (what came back down the transfers)
     float reed;         // the reed's petal: its opening (0 shut on its seat, 1 on its stop) and its speed (1/s)
     float reedV;
+    float inletOpen;    // the inlet's open share now (reed, disc or piston port), 0 to 1
     // the burn
     float burnAt;       // degrees since the spark (negative: not burning)
     float xPrev;
@@ -285,6 +286,7 @@ module TwoStrokeCylinder
         mcBurned = 0.0f;
         reed = 0.0f;
         reedV = 0.0f;
+        inletOpen = 0.0f;
         burnAt = -1.0f;
         xPrev = 0.0f;
         qTot = 0.0f;
@@ -414,6 +416,7 @@ module TwoStrokeCylinder
                 aValve = s->tsInletArea * fminf(fminf(f, 1.0f - f) * 6.0f, 1.0f);
             }
         }
+        inletOpen = aValve / s->tsInletArea;
         const float aIn = aValve > 1.0e-10f ? 0.85f / sqrtf(1.0f / (aCarb * aCarb) + 1.0f / (aValve * aValve)) : 0.0f;
         // the flows
         qE = aE > 0.0f ? vE.flow(p, t, bE, zE, aE, tPipe, 1) : 0.0f;

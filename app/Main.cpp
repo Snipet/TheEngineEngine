@@ -100,6 +100,10 @@ namespace
         if (!remembered.note.empty())
             std::fprintf(stderr, "settings: %s\n", remembered.note.c_str());
         o.unitChoices = remembered.settings.unitChoices;
+        // the engine's quality: --quality, else the settings' (made once the engine is ready: never changed by itself)
+        const std::string quality = !o.quality.empty() ? o.quality : remembered.settings.audioQuality;
+        if (engine.sim != nullptr)
+            engine.sim->requestQuality(quality == "economy" ? 1 : 0);
 
         input::Controls controls(player, player);
         controls.bindings() = remembered.settings.bindings;
@@ -182,7 +186,8 @@ namespace
         // with a sample past full scale, held to it) for a moment after it happens
         std::string health;
         std::uint32_t clippedSeen = 0, faultsSeen = 0;
-        double clampedLeft = 0.0, faultLeft = 0.0;
+        double clampedLeft = 0.0, faultLeft = 0.0, loadHigh = 0.0, suggestLeft = 0.0;
+        bool suggested = false;
         std::string compiling;          // "compiling the engine: 3 s" while the machine code is being made
         bool saidReady = false;
         const auto showStatus = [&] {
@@ -207,6 +212,14 @@ namespace
             note = line;
             showStatus();
         };
+        if (engine.sim != nullptr)
+        {
+            commandsContext.quality = [&engine] { return engine.sim->quality(); };
+            commandsContext.setQuality = [&engine, &now](int q) {
+                engine.sim->requestQuality(q);
+                now.audioQuality = q == 1 ? "economy" : "full";
+            };
+        }
         commandsContext.audioChanged = [&] {
             audioLine = device.isOpen() ? device.info().line() : "no audio device";
             showStatus();
@@ -331,7 +344,25 @@ namespace
                 }
                 clampedLeft = std::max(0.0, clampedLeft - static_cast<double>(dt));
                 faultLeft = std::max(0.0, faultLeft - static_cast<double>(dt));
+                // a load over 80 % for five seconds, at Full: ECONOMY suggested, once (never switched by itself)
+                if (engine.sim->quality() == 0 && stats.loadMean > 0.8)
+                    loadHigh += static_cast<double>(dt);
+                else
+                    loadHigh = 0.0;
+                if (loadHigh >= 5.0 && !suggested)
+                {
+                    suggested = true;
+                    suggestLeft = 10.0;
+                }
+                suggestLeft = std::max(0.0, suggestLeft - static_cast<double>(dt));
+                const std::string qualityError = engine.sim->qualityError();
                 const std::string said = faultLeft > 0.0      ? std::string("the engine diverged and was restarted")
+                                        : engine.sim->qualitySwitching()
+                                            ? std::string(engine.sim->quality() == 1 ? "switching to economy: compiling"
+                                                                                     : "switching to full: compiling")
+                                        : !qualityError.empty() ? "quality not changed: " + qualityError
+                                        : suggestLeft > 0.0 ? std::string("the load is high: QUALITY economy (settings, or "
+                                                                          "F9) would about halve it")
                                         : stats.restarting != 0 ? std::string("restarting (after a fault)")
                                         : clampedLeft > 0.0  ? std::string("clamped (the output went past full scale)")
                                                              : std::string();
@@ -354,6 +385,7 @@ namespace
             };
             shown.window->audioInfo = [&audioLine] { return audioLine; };
             shown.window->audioMenu = [&commands] { commands.audioMenu(); };
+            shown.window->qualityChosen = [&now](int q) { now.audioQuality = q == 1 ? "economy" : "full"; };
         }
         std::string why;
         if (!host.open(why))
@@ -428,6 +460,13 @@ namespace
                 std::printf("compile: %.2f s\n", engine.compileSeconds);
             std::printf("audio: %s\n", audioLine.c_str());
             std::printf("effects: %s\n", effectsLine().c_str());
+            if (engine.sim != nullptr)
+            {
+                engine.sim->waitQuality(120.0);
+                std::printf("quality: %s (the engine at %.0f Hz inside)%s\n", engine.sim->quality() == 1 ? "economy" : "full",
+                            engine.sim->innerRate(),
+                            engine.sim->qualityError().empty() ? "" : (" not made: " + engine.sim->qualityError()).c_str());
+            }
             const std::string pad = sdlInput.gamepadName();
             std::printf("gamepad: %s\n", pad.empty() ? "none" : pad.c_str());
             std::printf("settings: %s (%s)\n", settings::file().string().c_str(),

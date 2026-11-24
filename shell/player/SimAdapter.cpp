@@ -92,9 +92,11 @@ namespace tee::player
 
     SimAdapter::~SimAdapter()
     {
-        // the worker joined here, before anything it writes goes (never left to a static's destructor)
+        // the workers joined here, before anything they write goes (never left to a static's destructor)
         if (worker_.joinable())
             worker_.join();
+        if (qualityWorker_.joinable())
+            qualityWorker_.join();
     }
 
     std::unique_ptr<SimAdapter> SimAdapter::create(const Options& options, std::string& errors)
@@ -174,6 +176,63 @@ namespace tee::player
         return a;
     }
 
+    void SimAdapter::requestQuality(int quality)
+    {
+        wantedQuality_ = quality == 1 ? 1 : 0;
+        {
+            const std::lock_guard<std::mutex> lock(qualityMutex_);
+            qualityError_.clear();              // asked again: tried again
+        }
+        if (ready())
+            startQuality();
+    }
+
+    void SimAdapter::startQuality()
+    {
+        if (qualityBusy_.load(std::memory_order_acquire) || wantedQuality_ == madeQuality_)
+            return;
+        if (qualityWorker_.joinable())
+            qualityWorker_.join();
+        const int q = wantedQuality_;
+        qualityBusy_.store(true, std::memory_order_release);
+        qualityWorker_ = std::thread([this, q] {
+            std::string errors;
+            const bool ok = host_->setQuality(q == 1 ? SimHost::Quality::Economy : SimHost::Quality::Full, errors);
+            {
+                const std::lock_guard<std::mutex> lock(qualityMutex_);
+                qualityError_ = ok ? std::string() : (errors.empty() ? std::string("the quality was not changed") : errors);
+            }
+            if (ok)
+                madeQuality_ = q;
+            qualityBusy_.store(false, std::memory_order_release);
+        });
+    }
+
+    std::string SimAdapter::qualityError() const
+    {
+        const std::lock_guard<std::mutex> lock(qualityMutex_);
+        return qualityError_;
+    }
+
+    double SimAdapter::innerRate() const
+    {
+        return ready() ? host_->innerRate() : 0.0;
+    }
+
+    bool SimAdapter::waitQuality(double seconds)
+    {
+        const auto start = std::chrono::steady_clock::now();
+        while (qualitySwitching() || (ready() && wantedQuality_ != madeQuality_ && qualityError().empty()))
+        {
+            if (!qualitySwitching())
+                startQuality();
+            if (std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count() > seconds)
+                return false;
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+        return true;
+    }
+
     double SimAdapter::compilingSeconds() const
     {
         return ready() ? 0.0 : std::chrono::duration<double>(std::chrono::steady_clock::now() - started_).count();
@@ -214,6 +273,8 @@ namespace tee::player
         if (warnings_.empty())
             warnings_ = sim->program().warnings();
         ready_.store(true, std::memory_order_release);   // the audio thread plays it from its next call
+        if (wantedQuality_ != madeQuality_)
+            startQuality();
     }
 
     bool SimAdapter::waitReady(double seconds)
@@ -239,6 +300,9 @@ namespace tee::player
             adopt();
         if (ready())
             build_->flush();
+        // a quality asked for while another was being made: its turn
+        if (ready() && wantedQuality_ != madeQuality_ && !qualitySwitching() && qualityError().empty())
+            startQuality();
         stale_ = true;              // the next value asked is of the newest block, however soon it is asked
     }
 
