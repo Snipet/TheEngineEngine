@@ -1,0 +1,291 @@
+// oneline.fm: a one-line engine for the ECU's standalone tests: a crank whose speed its torque, friction, pumping and
+// a load set, driven by the model-1 ECU (sim/ecu/ecu1.fm) every 16 samples of 96 kHz, as the simulator will drive it.
+//
+// The engine: eight cylinders (a firing every 90 degrees), the inertia of a V8's crank and flywheel (0.2 kg m^2). Each
+// firing's torque is 300 N m at a full manifold (the reference's 5.7-litre V8's), times the manifold's fill, the spark's
+// efficiency at its retard from the map's (1 - (retard / 45)^2, at least 0.2) and the trim, and none for a cut firing;
+// it acts for a firing's interval, two firings (180 degrees) after its intake closed: the charge trapped, squeezed and
+// burned before it pushes. The manifold's fill
+// follows (40 ms) what its throttle passes against what the engine draws: A / (A + 2.8e-4 omega), the plate's area 1
+// wide open, the idle valve's 0.02, a leak of 0.0015. Friction 15 + 0.03 omega + 3e-5 omega^2 N m, pumping 25 N m
+// times the manifold's vacuum share. A cold engine's coolant warms toward 363 K over a time constant of `warmTau`. It
+// is no model of an engine: it is a plant with an engine's speeds, lags and torques to close the ECU's loops on.
+#include "ecu/ecu1.fm"
+
+module OneLine
+{
+    Ecu1 ecu;
+    EcuIn in;
+    EcuSettings set;
+    float omega;
+    float fill;         // the manifold, 0 to 1
+    float plate;        // the plate as it is (30 ms behind what is asked)
+    float load;         // N m against the crank
+    float coolant;
+    float warmTau;
+    float angle;        // degrees to the next firing
+    float queue[4];     // the last `lag` firings' torques: the oldest acts now
+    int lag;            // firings from the intake's closing to the torque (2: 180 degrees, a V8's)
+    int fired;          // firings since the start; cut by fuel, by spark
+    int cutFuel;
+    int cutSpark;
+    float torque;       // acting now
+    float t;            // seconds
+    float d16;
+    // what a run measured
+    float rpmMin;
+    float rpmMax;
+    float rpmMean;
+    int samples;
+    float biggest;      // the bangs' largest and smallest pulses (Pa)
+    float smallest;
+
+    void setup()
+    {
+        d16 = 16.0f / 96000.0f;
+        ecu.setup(d16);
+        ecu.reset();
+        // the settings' defaults (the host applies them from the attributes; here by hand)
+        set.limiter.kind = LIMIT_FUEL;
+        set.limiter.speed = 0.0f;
+        set.limiter.soft = 31.415927f;
+        set.limiter.retard = 15.0f;
+        set.launch.on = false;
+        set.launch.speed = 418.879f;
+        set.launch.retard = 20.0f;
+        set.knock.on = true;
+        set.knock.step = 1.5f;
+        set.knock.most = 15.0f;
+        set.knock.recover = 2.0f;
+        set.idle.coldRise = 52.359878f;
+        set.traction.slip = 0.1f;
+        set.maps.sparkAuto = true;
+        set.maps.lambdaAuto = true;
+        set.maps.boostAuto = true;
+        set.maps.camInAuto = true;
+        set.maps.camExAuto = true;
+        set.maps.pedalAuto = true;
+        set.maps.liftAuto = true;
+        in.ambient = 101325.0f;
+        in.idleBase = 750.0f;
+        in.redBase = 6500.0f;
+        in.cam = 0.35f;
+        in.gasoline = true;
+        in.afr = 14.0f;
+        in.cylinders = 8;
+        in.mayStart = true;
+        in.gasT0 = 300.0f;
+        in.gasT1 = 300.0f;
+        coolant = 363.0f;
+        warmTau = 200.0f;
+        omega = 0.0f;
+        fill = 1.0f;
+        plate = 0.0f;
+        angle = 90.0f;
+        lag = 2;
+        t = 0.0f;
+    }
+
+    // Starts it warm and running at its idle
+    void running()
+    {
+        in.key = 1;
+        ecu.key.state = ENGINE_RUNNING;
+        omega = 750.0f * 0.10471976f;
+        ecu.speed.avg = 750.0f;
+        ecu.speed.last = 750.0f;
+        fill = 0.15f;
+        for (int i = 0; i < 4; ++i)
+            queue[i] = 30.0f;
+        torque = 30.0f;
+    }
+
+    void measure()
+    {
+        rpmMin = 1.0e9f;
+        rpmMax = 0.0f;
+        rpmMean = 0.0f;
+        samples = 0;
+    }
+
+    // `seconds` of running (16 samples a step); the speed's least, most and mean kept from where measure() was called
+    void run(float seconds)
+    {
+        const int steps = (int)(seconds / d16);
+        for (int s = 0; s < steps; ++s)
+        {
+            in.omega = omega;
+            in.manifold = fill * 101325.0f;
+            in.coolant = coolant;
+            in.warm = fminf(fmaxf((coolant - 300.0f) / 63.0f, 0.0f), 1.0f);
+            ecu.control(&in, &set, d16);
+            plate += (ecu.plate - plate) * (1.0f - expf(-d16 / 0.03f));
+            const float area = plate + 0.02f * ecu.bypass + 0.0015f;
+            const float want = area / (area + 2.8e-4f * omega);
+            fill += (want - fill) * (1.0f - expf(-d16 / 0.04f));
+            // the firings in this step
+            angle -= omega * 57.29578f * d16;
+            while (angle <= 0.0f)
+            {
+                angle += 90.0f;
+                const int k = ecu.fire(fired % 8);
+                fired += 1;
+                float tq = 0.0f;
+                if (k == FIRE_BURN && ecu.key.state != ENGINE_STOPPED && ecu.key.state != ENGINE_RUNDOWN)
+                {
+                    const float base = ecu.maps.tune.spark(ecu.speed.rpm, fill) + in.timing;
+                    const float ret = fmaxf(base - ecu.sparkFor, 0.0f) / 45.0f;
+                    tq = 300.0f * fill * fmaxf(1.0f - ret * ret, 0.2f) * ecu.trim;
+                }
+                if (k == FIRE_FUEL_CUT)
+                    cutFuel += 1;
+                if (k == FIRE_SPARK_CUT)
+                    cutSpark += 1;
+                // (the oldest of the last `lag` firings acts now)
+                torque = queue[0];
+                for (int q = 0; q < lag - 1; ++q)
+                    queue[q] = queue[q + 1];
+                queue[lag - 1] = tq;
+            }
+            const float fric = 15.0f + 0.03f * omega + 3.0e-5f * omega * omega + 25.0f * (1.0f - fill);
+            const float starter = ecu.key.starter ? 60.0f * fmaxf(1.0f - omega / 25.0f, 0.0f) + 40.0f : 0.0f;
+            omega = fmaxf(omega + (torque + starter - fric - load) / 0.2f * d16, 0.0f);
+            coolant += (363.0f - coolant) * d16 / warmTau;
+            t += d16;
+            const float rpm = omega * 9.5492966f;
+            rpmMin = fminf(rpmMin, rpm);
+            rpmMax = fmaxf(rpmMax, rpm);
+            rpmMean += rpm;
+            samples += 1;
+        }
+    }
+
+    float mean()
+    {
+        return samples > 0 ? rpmMean / (float)samples : 0.0f;
+    }
+
+    // Bakes every map (maps.fm) at the formulas' default breakpoints, for the tests' copy into the maps
+    void bake()
+    {
+        EcuMapsSpec* m = &set.maps;
+        ecu.maps.tune.redRpm = 6500.0f;
+        ecu.maps.tune.burnK = 1.0f;
+        ecu.maps.tune.maxLoad = 1.0f;
+        ecu.maps.tune.gears = 6;
+        ecu.maps.tune.boostLevel = 50000.0f;
+        ecu.maps.bakeOne(&m->spark, MAP_SPARK);
+        ecu.maps.bakeOne(&m->lambda, MAP_LAMBDA);
+        ecu.maps.bakeOne(&m->boost, MAP_BOOST);
+        ecu.maps.bakeOne(&m->pedal, MAP_PEDAL);
+        ecu.maps.bakeCount += 1;
+    }
+
+    // A map's read and formula, for the tests
+    float mapAt(int which, float u, float v)
+    {
+        EcuMapsSpec* m = &set.maps;
+        if (which == MAP_SPARK)
+            return ecu.maps.read(&m->spark, m->sparkAuto, MAP_SPARK, u, v);
+        if (which == MAP_LAMBDA)
+            return ecu.maps.read(&m->lambda, m->lambdaAuto, MAP_LAMBDA, u, v);
+        if (which == MAP_BOOST)
+            return ecu.maps.read(&m->boost, m->boostAuto, MAP_BOOST, u, v);
+        return ecu.maps.read(&m->pedal, m->pedalAuto, MAP_PEDAL, u, v);
+    }
+
+    float formula(int which, float u, float v)
+    {
+        return ecu.maps.tune.formula(which, u, v);
+    }
+
+    // Copies the last bake of map `which` into its map and turns its formula off (what the host does)
+    void adopt(int which)
+    {
+        EcuMapsSpec* m = &set.maps;
+        Map16* map = &m->spark;
+        if (which == MAP_LAMBDA)
+            map = &m->lambda;
+        if (which == MAP_BOOST)
+            map = &m->boost;
+        if (which == MAP_PEDAL)
+            map = &m->pedal;
+        map->nx = ecu.maps.bakedNx[which];
+        map->ny = ecu.maps.bakedNy[which];
+        for (int i = 0; i < 16; ++i)
+        {
+            map->x[i] = ecu.maps.bakedX[which][i];
+            map->y[i] = ecu.maps.bakedY[which][i];
+            for (int j = 0; j < 16; ++j)
+                map->z[i][j] = ecu.maps.baked[which][i * 16 + j];
+        }
+        if (which == MAP_SPARK)
+            m->sparkAuto = false;
+        if (which == MAP_LAMBDA)
+            m->lambdaAuto = false;
+        if (which == MAP_BOOST)
+            m->boostAuto = false;
+        if (which == MAP_PEDAL)
+            m->pedalAuto = false;
+    }
+
+    // The bangs' account alone: a firing every 90 degrees at `rpm` for `seconds`, each letting `fuel` kg unburned and
+    // `air` kg of air into bank 0's pipe at `gasT` K; returns the fuel burned there (the pulses' sum over 3e9)
+    float bangs(float fuel, float air, float gasT, float rpm, float seconds)
+    {
+        ecu.account.reset();
+        biggest = 0.0f;
+        smallest = 1.0e30f;
+        float angle = 0.0f;
+        float pulses = 0.0f;
+        const int steps = (int)(seconds / d16);
+        for (int s = 0; s < steps; ++s)
+        {
+            angle += rpm * 6.0f * d16;
+            while (angle >= 90.0f)
+            {
+                angle -= 90.0f;
+                ecu.account.add(0, fuel, air);
+            }
+            ecu.account.control(gasT, gasT, 14.0f, d16);
+            pulses += ecu.account.pulse[0];
+            if (ecu.account.pulse[0] > 0.0f)
+            {
+                biggest = fmaxf(biggest, ecu.account.pulse[0]);
+                smallest = fminf(smallest, ecu.account.pulse[0]);
+            }
+        }
+        return pulses / 3.0e9f;
+    }
+
+    // Traction control on a toy wheel: the slip settles (50 ms) toward 0.4 times what the torque is over the grip's,
+    // less 1 (no slip while the torque is under the grip's); the torque is the engine's share left by the retard and
+    // the cuts. Returns the slip's mean over the last second of `seconds`
+    float traction(float drive, float seconds)
+    {
+        float slip = 0.0f;
+        float sum = 0.0f;
+        int n = 0;
+        const int steps = (int)(seconds / d16);
+        for (int s = 0; s < steps; ++s)
+        {
+            ecu.traction.control(set.traction.on, slip, set.traction.slip, 0.0f, 20.0f, d16);
+            const float ret = ecu.traction.retard / 45.0f;
+            const float share = fmaxf(1.0f - ret * ret, 0.2f) * (1.0f - ecu.traction.share);
+            const float want = fmaxf(0.4f * (drive * share - 1.0f), 0.0f);
+            slip += (want - slip) * (1.0f - expf(-d16 / 0.05f));
+            if ((float)s * d16 > seconds - 1.0f)
+            {
+                sum += slip;
+                n += 1;
+            }
+        }
+        return n > 0 ? sum / (float)n : 0.0f;
+    }
+
+    // spec/tables.fm's own read of the spark map, for the test that shows its rounding
+    float tableAt(float u, float v)
+    {
+        return set.maps.spark.at(u, v);
+    }
+};

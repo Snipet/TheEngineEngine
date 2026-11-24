@@ -1,0 +1,146 @@
+// turbine.fm: a radial turbine: its housing, a small volume of hot gas that the exhaust's pipes end in, and its
+// nozzle, which empties that volume through the wheel into the downpipe.
+//
+// The housing (BoostHousing) holds mass and energy. The pipes that end in it are waveguides (card G's): each brings a
+// wave a_i on an impedance z_i, and its end's pressure is the housing's, so it sends back b_i = p - a_i and lets in
+// q_i = (2 a_i - p) / z_i. Summed, the pipes are a drive D = sum 2 a_i / z_i and an admittance Y = sum 1 / z_i, and
+// the housing's pressure is solved implicitly against them (backward Euler: passive at any step, as a lossless volume
+// on a resistance must be): with gamma 4/3,
+//     dp/dt = gamma p (D - Y (p - p_out)) / V + (gamma - 1) (H_in - cp m_out T) / V,
+// the pipes' enthalpy flow being q p cp / R whichever way it goes (its temperature cancels). H_in is what flows in
+// from the rest of the model (a turbine before this one, in a compound pair; anti-lag's burning), m_out what the
+// nozzle and the gate took the sample before (their flow is solved against the downpipe after this, every sample).
+// Its temperature follows from its mass, which is summed with each flow's own gas.
+//
+// The nozzle is an orifice by the compressible law the valves use (gas.fm): its effective area is the volute's throat,
+// A = A/R x R_c with R_c = 0.6 of the wheel's diameter (A/R in inches, as housings are quoted, times 0.0254 m), scaled
+// by a variable nozzle's vanes. It chokes where that law chokes. The wheel's work is the isentropic expansion's,
+//     P = m cp T (1 - r^((gamma-1)/gamma)) eta,   r^(1/4) for gamma 4/3,
+// with an efficiency that peaks at a blade speed ratio x = U / c_s of 0.7 (c_s = sqrt(2 cp T (1 - r^(1/4))), the speed
+// the gas's whole drop would give it) as the textbook parabola, eta = etaMax (x / 0.7) (2 - x / 0.7), nothing at 0
+// and 1.4 (Watson and Janota ch. 5). Its torque is the power over the speed, m c_s r eta_max (2 - x / 0.7) / 1.4:
+// finite standing still (the stall torque, about the Euler torque m c_s r a nozzle's jet gives a held wheel), so the
+// shaft starts from rest. A variable nozzle's vanes cost efficiency when nearly shut (to 0.85 of it).
+//
+// Because the housing's pressure rises with each blowdown and the nozzle's work is taken every sample, a pulse does
+// more work than its mean (the work grows faster than the pressure): a twin scroll, two housings fed by two groups of
+// cylinders into one wheel, keeps its pulses apart and gets that work, as real ones do. The wheel turning is left out
+// of the nozzle's flow (a real turbine passes a little less as it spins faster), and the housing's walls take no
+// heat.
+#pragma once
+#include "gas.fm"
+
+module BoostHousing
+{
+    float vol;          // m^3
+    float p;            // Pa absolute
+    float t;            // K
+    float m;            // kg
+    float mOutPipe;     // kg/s out through what empties into a downpipe (nozzle and internal gate), the last solve's
+    float mOutGate;     // kg/s out through an external gate, into its own pipe
+    float mOutInt;      // kg/s out into another of the model's volumes (a compound pair's, a sequential's transfer)
+    float mIn;          // kg/s in from the model's own (a turbine before this, a transfer)
+    float hIn;          // and its enthalpy, W
+    float heatIn;       // W: anti-lag's burning
+    float qPipes;       // m^3/s in from the pipes, at the last solve
+    int stepped;        // solved this sample (by the exhaust's call)
+
+    void setup(float v, float pOut, float tOut)
+    {
+        vol = v;
+        p = pOut;
+        t = tOut;
+        m = p * vol / (kBoostR * t);
+        mOutPipe = 0.0f;
+        mOutGate = 0.0f;
+        mOutInt = 0.0f;
+        mIn = 0.0f;
+        hIn = 0.0f;
+        heatIn = 0.0f;
+        qPipes = 0.0f;
+        stepped = 0;
+    }
+
+    void resize(float v)
+    {
+        vol = fmaxf(v, 1.0e-6f);
+        m = p * vol / (kBoostR * t);
+    }
+
+    // One sample: the pipes' drive (m^3/s) and admittance (m^3/s per Pa) and their gas's temperature; the outside's
+    // pressure. Returns the housing's pressure above it, Pa.
+    float solve(float drive, float admit, float tGas, float pOut, float dt)
+    {
+        const float g = 4.0f / 3.0f;
+        const float kv = dt / vol;
+        const float mOut = mOutPipe + mOutGate + mOutInt;
+        const float h = hIn - kBoostCpE * mOut * t + heatIn;
+        float pn = (p + kv * g * p * (drive + admit * pOut) + kv * (g - 1.0f) * h) / (1.0f + kv * g * p * admit);
+        pn = fmaxf(pn, 0.2f * pOut);
+        const float q = drive - admit * (pn - pOut);
+        const float tq = q >= 0.0f ? tGas : t;
+        m = fmaxf(m + dt * (q * pn / (kBoostR * tq) + mIn - mOut), 1.0e-8f);
+        p = pn;
+        t = fminf(fmaxf(p * vol / (m * kBoostR), 250.0f), 2500.0f);
+        m = p * vol / (kBoostR * t);
+        qPipes = q;
+        stepped = 1;
+        return p - pOut;
+    }
+};
+
+module BoostTurbine
+{
+    float rWheel;       // m
+    float aNoz;         // the nozzle's effective area, vanes open, m^2
+    float etaMax;
+    float vanes;        // a variable nozzle's opening, vaneMin to 1 (1: a fixed housing)
+    float vaneMin;
+    int vgt;
+    float aGate;        // the wastegate's area, open, m^2
+    float lift;         // its opening, 0 to 1
+    int gateExt;        // 1: an external gate, into a pipe of its own
+    int scrolls;        // 1 or 2
+    float power;        // W this sample, summed over its scrolls
+    float torque;       // N m this sample, likewise
+    float mNoz;         // kg/s through the wheel this sample
+    float mGate;        // and through the gate
+    float tOutNoz;      // the gas leaving the wheel, K
+    float ratio;        // the pressure ratio across the nozzle (downstream over upstream), at the last flow
+    float bsr;          // blade speed ratio, at the last flow
+    float eta;
+
+    // the nozzle's area now
+    float nozzle()
+    {
+        return aNoz * (vgt != 0 ? vanes : 1.0f);
+    }
+
+    // The wheel's work (W) on mass flow m (kg/s) from gas at t (K) expanding by ratio r, at shaft speed omega; its
+    // torque is added to `torque` and its power to `power`
+    float work(float m, float t, float r, float omega)
+    {
+        ratio = r;
+        const float e = 1.0f - sqrtf(sqrtf(fminf(fmaxf(r, 0.0f), 1.0f)));
+        if (m <= 0.0f || e <= 1.0e-6f)
+            return 0.0f;
+        const float cs = sqrtf(2.0f * kBoostCpE * t * e);
+        bsr = omega * rWheel / cs;
+        const float x = bsr / 0.7f;
+        const float g = fmaxf(2.0f - x, 0.0f);
+        const float vk = vgt != 0 ? 0.85f + 0.15f * vanes : 1.0f;
+        eta = etaMax * x * g * vk;
+        const float tq = m * cs * rWheel * etaMax * g * vk / 1.4f;
+        torque += tq;
+        power += tq * omega;
+        return tq * omega;
+    }
+
+    void begin()
+    {
+        power = 0.0f;
+        torque = 0.0f;
+        mNoz = 0.0f;
+        mGate = 0.0f;
+    }
+};

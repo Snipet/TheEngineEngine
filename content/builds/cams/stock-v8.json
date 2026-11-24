@@ -1,0 +1,10 @@
+{
+  "format": "tee-build", "version": 1,
+  "name": "Stock V8 cam",
+  "notes": "Card E's valvetrain lab (valve.model 1) with a mild hydraulic-roller cam of the kind a stock pushrod V8 has: 240 at the seat, 210 at 1 mm, 0.45 in lift, 112 lobe separation. A part build: only spec.valve; every other field keeps its default.",
+  "spec": { "valve": {
+    "model": "Lab", "valves": 2, "train": "Pushrod",
+    "inDurSeat": 240, "inDur1mm": 210, "inLift": 0.0114, "inCentre": 110, "inFat": 0.5,
+    "exDurSeat": 246, "exDur1mm": 214, "exLift": 0.0114, "exCentre": 114, "exFat": 0.5
+  } }
+}

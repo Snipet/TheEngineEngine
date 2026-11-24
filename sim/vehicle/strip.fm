@@ -1,0 +1,120 @@
+// strip.fm: a drag strip's tree and its timers.
+//
+// Each increase of ctl.strip stages the car at the line, at rest (vehicle.fm puts it there). The tree then runs by
+// itself: a second after staging the first amber; a sportsman tree lights its three ambers half a second apart and
+// the green half a second after the last, a pro tree all three at once and the green 0.4 s later. The car starts
+// the clock when its front wheel leaves the starting beam, which it does after rolling out 0.3 m (a typical
+// roll-out); leaving before the green is a red light (the run is still timed). The reaction time is from the green
+// to leaving the beam. Every mark is measured from the starting line, so the car has rolled roll-out plus the
+// mark's distance when it trips it: 60 ft, 330 ft, the eighth mile (660 ft) with its speed, 1000 ft, the quarter
+// mile (1320 ft) and its trap speed. The speeds are what a strip's traps give: the mean over the last 66 ft before
+// the mark. Crossing times are interpolated between two control steps (a sixth of a millisecond apart), so a car of
+// constant acceleration gives the textbook's times to within a microsecond or so.
+#pragma once
+
+enum
+{
+    VEH_STRIP_OFF = 0,
+    VEH_STRIP_STAGED = 1,
+    VEH_STRIP_AMBERS = 2,
+    VEH_STRIP_GREEN = 3,
+    VEH_STRIP_RUNNING = 4,
+    VEH_STRIP_DONE = 5,
+    VEH_STRIP_RED = 6,
+    VEH_MARKS = 9,
+};
+
+// The beams past the starting line, m: 60 ft, 330 ft, 594 ft (the eighth's trap), 660 ft, 1000 ft, 1254 ft (the
+// quarter's trap), 1320 ft
+const float VEH_MARK[VEH_MARKS] = {18.288f, 100.584f, 181.0512f, 201.168f, 304.8f, 382.2192f, 402.336f, 1.0e9f, 1.0e9f};
+
+module VehStrip
+{
+    int state;
+    bool red;
+    float t;            // seconds since staging
+    float tGreen;
+    float tStart;       // when the car left the starting beam (since staging)
+    float rollout;
+    float xLast;        // the distance at the last step
+    float tLast;
+    float cross[VEH_MARKS];     // each mark's crossing, seconds since staging
+    int next;           // the next mark
+    float reaction;
+    float et[VEH_MARKS];        // each mark's elapsed time from leaving the beam
+    float v660;
+    float v1320;
+
+    void reset()
+    {
+        state = VEH_STRIP_OFF;
+        red = false;
+        rollout = 0.3f;
+        for (int i = 0; i < VEH_MARKS; ++i)
+        {
+            cross[i] = 0.0f;
+            et[i] = 0.0f;
+        }
+        reaction = 0.0f;
+        v660 = 0.0f;
+        v1320 = 0.0f;
+    }
+
+    // The car is at the line, at rest, its distance 0
+    void stage(bool pro)
+    {
+        reset();
+        state = VEH_STRIP_STAGED;
+        t = 0.0f;
+        tGreen = pro ? 1.4f : 2.5f;
+        tStart = -1.0f;
+        xLast = 0.0f;
+        tLast = 0.0f;
+        next = 0;
+    }
+
+    // Every 16 samples: d16 seconds on; x, the distance from where it staged
+    void control(float d16, float x, bool pro)
+    {
+        if (state == VEH_STRIP_OFF || state == VEH_STRIP_DONE || state == VEH_STRIP_RED)
+            return;
+        const float t0 = t;
+        t += d16;
+        if (state == VEH_STRIP_STAGED && t >= 1.0f)
+            state = VEH_STRIP_AMBERS;
+        if (state == VEH_STRIP_AMBERS && t >= tGreen)
+            state = VEH_STRIP_GREEN;
+        // leaving the starting beam
+        if (tStart < 0.0f && x >= rollout)
+        {
+            const float f = (rollout - xLast) / fmaxf(x - xLast, 1.0e-9f);
+            tStart = t0 + f * d16;
+            reaction = tStart - tGreen;
+            red = reaction < 0.0f;
+            state = VEH_STRIP_RUNNING;
+        }
+        // the marks
+        while (tStart >= 0.0f && next < 7 && x >= rollout + VEH_MARK[next])
+        {
+            const float f = (rollout + VEH_MARK[next] - xLast) / fmaxf(x - xLast, 1.0e-9f);
+            cross[next] = t0 + f * d16;
+            et[next] = cross[next] - tStart;
+            if (next == 3)
+                v660 = (VEH_MARK[3] - VEH_MARK[2]) / fmaxf(cross[3] - cross[2], 1.0e-6f);
+            if (next == 6)
+            {
+                v1320 = (VEH_MARK[6] - VEH_MARK[5]) / fmaxf(cross[6] - cross[5], 1.0e-6f);
+                state = red ? VEH_STRIP_RED : VEH_STRIP_DONE;
+            }
+            next += 1;
+        }
+        xLast = x;
+        tLast = t;
+    }
+
+    // What the tree shows: 0 dark, 1 staged, 2 ambers, 3 green (and the run's own states)
+    int shown()
+    {
+        return state;
+    }
+};

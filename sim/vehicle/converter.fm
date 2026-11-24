@@ -1,0 +1,83 @@
+// converter.fm: a torque converter, the fluid coupling of an automatic gearbox and of most CVTs.
+//
+// The engine turns the impeller, which throws oil at the turbine; the stator between them turns the oil's return so
+// that, while the turbine is much slower than the impeller, the turbine gets more torque than the impeller takes. The
+// usual description (Kotwicki, "Dynamic models for torque converter equipped vehicles", SAE 820393, and every
+// textbook since) is two curves against the speed ratio nu = w_turbine / w_impeller:
+//
+//   the capacity: the impeller takes (w_impeller / K(nu))^2. K is flat from stall (nu = 0) to about half the coupling
+//   point, then rises without bound as nu nears 1, where the two turn together and no oil circulates;
+//   the torque ratio: T_turbine / T_impeller, the stall ratio (about 1.9 to 2.2 for cars) at stall, falling about
+//   linearly to 1 at the coupling point, then 1 (the stator freewheels: a plain fluid coupling).
+//
+// The capacity's rise is a table of (K_stall / K(nu))^2 (VEH_CONVERTER_Q), the shape of the published curves (a
+// judgement, not one converter's data). At stall the engine meets the converter where its torque equals
+// (w / K)^2: the stall speed, which the tests check against K. Driven backwards (the turbine faster: engine braking)
+// it is a fluid coupling with the roles swapped. Its efficiency, T ratio times nu, is below 1 everywhere: passive.
+//
+// A lock-up clutch (a coupling, diff.fm) joins impeller and turbine once the car is moving in the higher gears.
+#pragma once
+
+enum
+{
+    VEH_CONVERTER_N = 11,   // nu 0, 0.1, ... 1
+};
+
+// (K_stall / K(nu))^2: what the capacity keeps as the turbine catches up (1 at stall, 0 at nu = 1)
+const float VEH_CONVERTER_Q[VEH_CONVERTER_N] = {1.0f, 1.0f, 1.0f, 0.98f, 0.94f, 0.87f, 0.756f, 0.59f, 0.39f, 0.17f, 0.0f};
+
+module VehConverter
+{
+    float iK2;          // 1 / K_stall^2
+    float ratio0;       // the torque ratio at stall
+    float nuC;          // the coupling point
+    float tPump;        // the impeller's torque in the last sample (taken from the engine), N m
+    float tTurb;        // the turbine's (given to the gearbox), N m
+
+    void set(float k, float stallRatio, float coupling)
+    {
+        const float kk = fmaxf(k, 1.0f);
+        iK2 = 1.0f / (kk * kk);
+        ratio0 = fmaxf(stallRatio, 1.0f);
+        nuC = fminf(fmaxf(coupling, 0.5f), 0.98f);
+    }
+
+    float q(float nu)
+    {
+        const float a = fminf(fmaxf(nu, 0.0f), 1.0f) * (float)(VEH_CONVERTER_N - 1);
+        int i = (int)a;
+        i = i > VEH_CONVERTER_N - 2 ? VEH_CONVERTER_N - 2 : i;
+        const float f = a - (float)i;
+        return VEH_CONVERTER_Q[i] + (VEH_CONVERTER_Q[i + 1] - VEH_CONVERTER_Q[i]) * f;
+    }
+
+    // One sample: the impeller's speed wp (the crank's) and the turbine's wt. Sets tPump and tTurb.
+    void torques(float wp, float wt)
+    {
+        const float ap = fabsf(wp);
+        const float at = fabsf(wt);
+        if (ap < 1.0e-3f && at < 1.0e-3f)
+        {
+            tPump = 0.0f;
+            tTurb = 0.0f;
+            return;
+        }
+        if (at <= ap)
+        {
+            // driving: the impeller leads
+            const float nu = wp * wt > 0.0f ? at / ap : 0.0f;
+            const float tr = nu < nuC ? ratio0 - (ratio0 - 1.0f) * nu / nuC : 1.0f;
+            const float t = q(nu) * wp * ap * iK2;
+            tPump = t;
+            tTurb = tr * t;
+        }
+        else
+        {
+            // overrun: the turbine drives the impeller, a plain coupling
+            const float nu = wp * wt > 0.0f ? ap / at : 0.0f;
+            const float t = q(nu) * wt * at * iK2;
+            tPump = -t;
+            tTurb = -t;
+        }
+    }
+};

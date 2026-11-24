@@ -1,0 +1,8 @@
+{
+  "format": "tee-build", "version": 1,
+  "name": "Second exhaust event near the top",
+  "notes": "An auxiliary exhaust event of 2 mm opening 30 degrees before the firing top, as a compression brake's (Jacobs'): the air compressed is let out instead of pushing the piston back down. Wave 2's brake switches it; here it is always on.",
+  "spec": { "valve": {
+    "model": "Lab", "auxOn": 1, "auxOpen": 690, "auxDur": 60, "auxLift": 0.002
+  } }
+}

@@ -166,6 +166,8 @@ namespace tee::ui
                         ++k;
                         if (k + 2 < s.size() && s[k] == '-' && s[k + 1] == '>' && nameStart(s[k + 2]))
                             k += 2;                      // shared->level: a field of Shared, one name
+                        else if (k + 1 < s.size() && s[k] == '.' && nameStart(s[k + 1]))
+                            k += 1;                      // J2: boost.level, a Spec path, one name
                     }
                     // bands[2], grid[1][3]: an array's element (displaySource), one name: digits in brackets.
                     while (k + 2 < s.size() && s[k] == '[' && digit(s[k + 1]))
@@ -478,11 +480,17 @@ namespace tee::ui
             return w == "row" || w == "column" || w == "grid" || w == "section" || w == "box" || w == "tabs" || w == "page";
         }
 
+        // J2's widgets (GuiKind::widget): their owner makes them (GuiPanel::Options::widget).
+        bool isWidgetWord(const std::string& w)
+        {
+            return w == "plot" || w == "gauge" || w == "map" || w == "curve" || w == "bar" || w == "lamp";
+        }
+
         bool isElementWord(const std::string& w)
         {
             return isContainerWord(w) || isDisplay(w) || w == "spacer" || w == "divider" || w == "label" || w == "knob"
                 || w == "slider" || w == "switch" || w == "buttons" || w == "menu" || w == "xy" || w == "envelope"
-                || w == "keyboard" || w == "shader" || w == "area";
+                || w == "keyboard" || w == "shader" || w == "area" || isWidgetWord(w);
         }
 
         // The pointer's properties (PanelPointer): what it writes, then how.
@@ -494,7 +502,8 @@ namespace tee::ui
 
         constexpr const char* kElements = "row, column, grid, section, box, tabs, page, spacer, divider, label, knob, "
                                           "slider, switch, buttons, menu, xy, envelope, keyboard, shader, area, meter, "
-                                          "vu, led, number, scope, spectrum, class or defaults";
+                                          "vu, led, number, scope, spectrum, plot, gauge, map, curve, bar, lamp, "
+                                          "class or defaults";
 
         constexpr const char* kKnobLooks = "modern, vintage, flat, minimal, ring, led, chicken, soft or dot";
 
@@ -1025,6 +1034,8 @@ namespace tee::ui
                     addShader(e, parent);
                 else if (w == "area")
                     addArea(e, parent);
+                else if (isWidgetWord(w))
+                    addWidget(e, parent);
                 else if (isDisplay(w))
                     addDisplay(e, parent);
                 else
@@ -1801,6 +1812,36 @@ namespace tee::ui
                 n.pointer = pointerOf(pointer, "area", false);
                 if (!n.pointer.any() && pointer.empty())
                     note(e.name, "area writes what the pointer does there: give it x=, y=, down=, wheel= or hover=");
+                push(std::move(n), parent);
+            }
+
+            // J2: plot NAME, gauge NAME, map PATH, curve PATH, bar NAME, lamp NAME (label="...", width=, height=): a widget
+            // the panel's owner makes for what NAME is (a Spec path, a telemetry value, a series it keeps). The reader
+            // keeps the word and the name; GuiPanel::Options::widget makes it, and a panel without one shows nothing there.
+            void addWidget(const Element& e, int parent)
+            {
+                const std::string& w = e.name.value;
+                if (e.args.empty() || !(e.args[0].is(Token::Kind::name) || e.args[0].is(Token::Kind::text)))
+                {
+                    note(e.name, w + " takes what it shows: a Spec path or a value's name (" + w + " boost.map)");
+                    return;
+                }
+                GuiNode n;
+                n.kind = GuiKind::widget;
+                n.line = e.name.line;
+                n.widget = w;
+                n.file = e.args[0].value;
+                for (std::size_t a = 1; a < e.args.size(); ++a)
+                    note(e.args[a], w + " takes one name: '" + e.args[a].value + "' is left out");
+                for (const Prop& p : e.props)
+                {
+                    if (layoutProp(n, p, false))
+                        continue;
+                    if (p.key == "label")
+                        n.text = cutText(p.value.value, kMaxGuiText);
+                    else
+                        unknown(p, w, "label=, width=, height=, grow=, margin=, self=");
+                }
                 push(std::move(n), parent);
             }
 

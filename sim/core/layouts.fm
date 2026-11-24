@@ -1,0 +1,134 @@
+// layouts.fm: the engines it can be. For each: how many cylinders, where each fires in the cycle (crank degrees after
+// the first, from its real firing order and crank), which bank's exhaust it goes to, how the exhaust is laid out, and the
+// size of a typical one (cylinder volume, compression, pipes). A rotary's three faces a rotor are three "cylinders" that
+// share their rotor's port.
+//
+//  0 SINGLE     a thumper                                1 cylinder
+//  1 TWIN 360   parallel twin, 360 degree crank         even, 360-360
+//  2 TWIN 270   parallel twin, 270 degree crank (a 90 degree V-twin fires the same): 270-450
+//  3 VTWIN 45   45 degree V-twin, one crank pin           315-405
+//  4 INLINE 3   120 degree crank                          even, 240
+//  5 INLINE 4   flat-plane crank, 1-3-4-2                 even, 180
+//  6 FLAT 4     boxer, 1-3-2-4, unequal-length headers    even, 180, but the left bank's pulses arrive late
+//  7 XPLANE I4  crossplane inline four, 1-3-2-4           270-180-90-180
+//  8 INLINE 5   1-2-4-5-3                                 even, 144
+//  9 V6         60 degree V6, 1-2-3-4-5-6, two banks      even, 120 (each bank 240)
+// 10 INLINE 6   1-5-3-6-2-4, two 3-into-1 headers         even, 120
+// 11 FLAT 6     boxer six, 1-6-2-4-3-5                    even, 120 (each bank 240)
+// 12 V8 CROSS   crossplane V8, 1-8-4-3-6-5-7-2            even, 90; each bank 180-90-180-270: the burble
+// 13 V8 FLAT    flat-plane V8, 1-5-3-7-4-8-2-6            even, 90; each bank 180
+// 14 V10        1-6-5-10-2-7-3-8-4-9                      even, 72 (each bank 144)
+// 15 V12        1-7-5-11-3-9-6-12-2-8-4-10                even, 60 (each bank 120)
+// 16 ROTARY     two rotors, three faces each              a pulse each 180 degrees of the shaft
+#pragma once
+
+module Layout
+{
+    int n;              // cylinders (a rotary's faces)
+    float fire[12];     // where each fires (degrees after the first)
+    int bank[12];       // its exhaust bank: 0 or 1
+    int port[12];       // the port (header and runner) it breathes through: itself, or its rotor
+    int ports;          // headers in use
+    int topo;           // 0: all into one pipe; 1: each bank its own collector, then one pipe; 2: two pipes (dual)
+    float swept;        // m^3 a cylinder
+    float comp;         // compression ratio
+    float cyc;          // degrees a cycle (720; a rotary's face 1080)
+    int rotary;
+    float hdr;          // header length, m
+    float hdrBank1;     // the second bank's headers, times (unequal lengths)
+    float mainLen;      // the main pipe (each, when dual), m
+    float pipeD;        // its diameter, m
+    float tailD;        // the tailpipe's
+    float muff;         // the muffler's first chamber, m
+    float idleRpm;      // its idle and redline, for the dials' scale
+    float redRpm;
+    float inertia;      // kg m^2 (the crank, flywheel and all), before the dial
+    float bike;         // 1 a motorcycle's short pipes and small muffler, 0 a car's
+
+    void load(int which)
+    {
+        const int k = which < 0 ? 0 : (which > 16 ? 16 : which);
+        const int ns[17] = {1, 2, 2, 2, 3, 4, 4, 4, 5, 6, 6, 6, 8, 8, 10, 12, 6};
+        // the firing angle of each cylinder (cylinder 1 first), 12 a layout
+        const float fa[204] = {
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 360, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 270, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 315, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 240, 480, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 540, 180, 360, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 360, 180, 540, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 450, 270, 540, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 144, 576, 288, 432, 0, 0, 0, 0, 0, 0, 0,
+            0, 120, 240, 360, 480, 600, 0, 0, 0, 0, 0, 0,
+            0, 480, 240, 600, 120, 360, 0, 0, 0, 0, 0, 0,
+            0, 240, 480, 360, 600, 120, 0, 0, 0, 0, 0, 0,
+            0, 630, 270, 180, 450, 360, 540, 90, 0, 0, 0, 0,
+            0, 540, 180, 360, 90, 630, 270, 450, 0, 0, 0, 0,
+            0, 288, 432, 576, 144, 72, 360, 504, 648, 216, 0, 0,
+            0, 480, 240, 600, 120, 360, 60, 540, 300, 660, 180, 420,
+            0, 360, 720, 180, 540, 900, 0, 0, 0, 0, 0, 0};
+        // the bank of each cylinder
+        const int bk[204] = {
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0,
+            0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0,
+            0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0,
+            0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+        const int tp[17] = {0, 0, 0, 0, 0, 0, 1, 0, 0, 2, 1, 2, 2, 2, 2, 2, 0};
+        const float sw[17] = {0.60f, 0.45f, 0.45f, 0.90f, 0.333f, 0.50f, 0.625f, 0.25f, 0.50f, 0.58f, 0.50f, 0.60f, 0.72f, 0.50f, 0.50f, 0.50f, 0.654f};
+        const float cr[17] = {10.5f, 11.0f, 11.5f, 9.5f, 11.0f, 10.5f, 10.0f, 12.7f, 10.5f, 10.5f, 10.5f, 11.5f, 10.0f, 11.8f, 12.0f, 11.0f, 9.0f};
+        const float hl[17] = {0.60f, 0.55f, 0.55f, 0.95f, 0.55f, 0.60f, 0.45f, 0.50f, 0.65f, 0.55f, 0.55f, 0.60f, 0.75f, 0.70f, 0.65f, 0.65f, 0.45f};
+        const float ml[17] = {0.45f, 0.45f, 0.45f, 0.35f, 1.80f, 2.20f, 2.10f, 0.40f, 2.30f, 2.40f, 2.40f, 1.60f, 2.60f, 2.20f, 2.30f, 2.40f, 2.10f};
+        const float pd[17] = {0.045f, 0.045f, 0.045f, 0.045f, 0.045f, 0.052f, 0.057f, 0.050f, 0.057f, 0.055f, 0.060f, 0.057f, 0.064f, 0.060f, 0.060f, 0.060f, 0.060f};
+        const float td[17] = {0.040f, 0.040f, 0.040f, 0.045f, 0.040f, 0.050f, 0.060f, 0.050f, 0.055f, 0.055f, 0.060f, 0.055f, 0.064f, 0.060f, 0.060f, 0.060f, 0.064f};
+        const float mu[17] = {0.22f, 0.25f, 0.25f, 0.30f, 0.35f, 0.42f, 0.42f, 0.25f, 0.45f, 0.45f, 0.45f, 0.40f, 0.50f, 0.45f, 0.45f, 0.45f, 0.45f};
+        const float ir[17] = {1300.0f, 1200.0f, 1200.0f, 950.0f, 900.0f, 850.0f, 800.0f, 1300.0f, 800.0f, 750.0f, 700.0f, 850.0f, 700.0f, 1000.0f, 950.0f, 900.0f, 900.0f};
+        const float rl[17] = {8500.0f, 9500.0f, 10000.0f, 5800.0f, 7000.0f, 7000.0f, 6800.0f, 14000.0f, 6800.0f, 6800.0f, 7000.0f, 8500.0f, 6500.0f, 9000.0f, 8500.0f, 8500.0f, 9000.0f};
+        // (a superbike's crank is light; a thumper's and a big twin's flywheels are heavy)
+        const float in[17] = {0.055f, 0.05f, 0.05f, 0.13f, 0.08f, 0.12f, 0.13f, 0.05f, 0.14f, 0.16f, 0.16f, 0.14f, 0.24f, 0.17f, 0.19f, 0.22f, 0.12f};
+        const float bi[17] = {1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+        n = ns[k];
+        ports = n;
+        for (int i = 0; i < 12; ++i)
+        {
+            fire[i] = fa[k * 12 + i];
+            bank[i] = bk[k * 12 + i];
+            port[i] = i;
+        }
+        topo = tp[k];
+        swept = sw[k] * 0.001f;
+        comp = cr[k];
+        rotary = k == 16 ? 1 : 0;
+        cyc = k == 16 ? 1080.0f : 720.0f;
+        if (rotary != 0)
+        {
+            // faces 0..2 on the first rotor's port, 3..5 on the second's
+            for (int i = 0; i < 6; ++i)
+                port[i] = i < 3 ? 0 : 1;
+            ports = 2;
+        }
+        hdr = hl[k];
+        hdrBank1 = k == 6 ? 1.75f : 1.0f;
+        mainLen = ml[k];
+        pipeD = pd[k];
+        tailD = td[k];
+        muff = mu[k];
+        idleRpm = ir[k];
+        redRpm = rl[k];
+        inertia = in[k];
+        bike = bi[k];
+    }
+};

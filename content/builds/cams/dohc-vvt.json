@@ -1,0 +1,12 @@
+{
+  "format": "tee-build", "version": 1,
+  "name": "Four-valve head with two phasers",
+  "notes": "A modern four-valve head (buckets) with an intake phaser of 50 crank degrees of advance and an exhaust phaser of 40 of retard, on the lab's own schedule until the ECU drives them.",
+  "spec": { "valve": {
+    "model": "Lab", "valves": 4, "train": "Bucket",
+    "inDurSeat": 250, "inDur1mm": 222, "inLift": 0.0105, "inCentre": 120, "inFat": 0.5,
+    "exDurSeat": 248, "exDur1mm": 220, "exLift": 0.0095, "exCentre": 105, "exFat": 0.5,
+    "inPhaseRange": 50, "exPhaseRange": 40, "phaseRate": 200,
+    "springRate": 40000, "springPreload": 250
+  } }
+}

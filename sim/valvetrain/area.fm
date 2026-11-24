@@ -1,0 +1,178 @@
+// area.fm: from a valve's lift to the area the gas sees, and the tables the cylinder reads.
+//
+// A poppet valve's flow is limited by the curtain while it is low (the cylinder of air between the valve's head and its
+// seat, pi d L) and by the port and the throat once it is lifted past about a quarter of its diameter, where more lift
+// buys little. The discharge coefficient falls as the lift rises (the jet separates from the seat). The reference
+// (cylinder.fm, flowArea) has that shape as measured valves have it, tanh(1.7 l) with l the lift over a quarter of the
+// diameter, about 0.6 of the curtain at a tenth of the diameter and 0.4 of the valve's area at a quarter. This keeps
+// its form and gives it the geometry:
+//
+//   A(L) = n q 0.4 (pi d^2 / 4) tanh(6.8 L / d) / tanh(1.7)
+//
+// n valves of diameter d, q the port's quality (1: the reference's coefficients; a good racing port flows some 20 to
+// 30 % more at the same valve). Low down this is 0.73 of the curtain, at L = d / 4 it is 0.4 of the valves' area,
+// and above it flattens (6 % more at d / 3). The diameter left at 0 is chosen from the bore as real heads have it
+// (docs/models/valvetrain.md lists the heads): two valves a cylinder, an intake of 0.48 of the bore and an exhaust of
+// 0.39; three (two intakes), 0.37 and 0.44; four, 0.39 and 0.33; five (three intakes), 0.32 and 0.33.
+//
+// An AreaTable is one profile's effective area (m^2) over its event, 129 points, rebuilt only when what made it
+// changes (lab.fm: at the 16-sample rate, one table a tick at most). The cylinder's per-sample read is the reference's
+// areaAt: an offset, a compare, one interpolation. A floating valve's late landing and bounce add a short tail after
+// the event (float.fm), read only past the event's end.
+//
+// What it leaves out: the stem's and the guide's blockage, the port's own resonances (the runner's waveguide has
+// those), the swirl and tumble a port makes.
+#pragma once
+#include "cam.fm"
+
+enum { VT_TAIL = 16 };
+
+module Head
+{
+    int nIn;            // valves a cylinder
+    int nEx;
+    float dIn;          // their diameters (m)
+    float dEx;
+    float qIn;          // the ports' quality
+    float qEx;
+
+    // valves: 2 to 5 a cylinder; dIn, dEx: 0 to choose from the bore
+    void setup(int valves, float bore, float dInSpec, float dExSpec, float qInSpec, float qExSpec)
+    {
+        const int v = valves < 2 ? 2 : (valves > 5 ? 5 : valves);
+        float fi = 0.48f;
+        float fe = 0.39f;
+        nIn = 1;
+        nEx = 1;
+        if (v == 3)
+        {
+            nIn = 2;
+            fi = 0.37f;
+            fe = 0.44f;
+        }
+        else if (v == 4)
+        {
+            nIn = 2;
+            nEx = 2;
+            fi = 0.39f;
+            fe = 0.33f;
+        }
+        else if (v == 5)
+        {
+            nIn = 3;
+            nEx = 2;
+            fi = 0.32f;
+            fe = 0.33f;
+        }
+        dIn = dInSpec > 0.0f ? dInSpec : fi * bore;
+        dEx = dExSpec > 0.0f ? dExSpec : fe * bore;
+        qIn = qInSpec > 0.0f ? qInSpec : 1.0f;
+        qEx = qExSpec > 0.0f ? qExSpec : 1.0f;
+    }
+
+    // The effective area (m^2) of n valves of diameter d, quality q, at lift L (m)
+    float areaOf(int n, float d, float q, float l)
+    {
+        if (l <= 0.0f)
+            return 0.0f;
+        return (float)n * q * 0.4f * 0.785398f * d * d * tanhf(6.8f * l / d) / 0.9354f;
+    }
+
+    float areaIn(float l)
+    {
+        return areaOf(nIn, dIn, qIn, l);
+    }
+
+    float areaEx(float l)
+    {
+        return areaOf(nEx, dEx, qEx, l);
+    }
+};
+
+module AreaTable
+{
+    float a[VT_POINTS]; // m^2 over the event
+    float open;         // where the event starts (the cycle's angle, before any phasing)
+    float openNow;      // and where it starts now, the phaser's shift added (place)
+    float span;         // its degrees
+    float k;            // VT_STEPS / span
+    float peak;         // the most it reaches
+    // a floating valve's tail: tailDeg degrees past the event, its area tail[] (0 when it does not float)
+    float tailDeg;
+    float tailK;
+    float tail[VT_TAIL + 1];
+
+    // From a cam's shape: ex 0 the intake's valves, 1 the exhaust's
+    void build(CamShape* cam, Head* head, int ex)
+    {
+        open = cam->open;
+        openNow = open;
+        span = cam->span;
+        k = (float)VT_STEPS / span;
+        peak = 0.0f;
+        for (int i = 0; i < VT_POINTS; ++i)
+        {
+            const float l = cam->lift * cam->shape[i];
+            a[i] = ex != 0 ? head->areaEx(l) : head->areaIn(l);
+            peak = fmaxf(peak, a[i]);
+        }
+    }
+
+    // This table as a blend of two others (the same open and span assumed): t 0 is x, 1 is y
+    void blend(AreaTable* x, AreaTable* y, float t)
+    {
+        float d = y->open - x->open;
+        if (d > 360.0f)
+            d -= 720.0f;
+        if (d < -360.0f)
+            d += 720.0f;
+        open = vtWrap(x->open + d * t, 720.0f);
+        openNow = open;
+        span = x->span + (y->span - x->span) * t;
+        k = (float)VT_STEPS / span;
+        peak = 0.0f;
+        for (int i = 0; i < VT_POINTS; ++i)
+        {
+            a[i] = x->a[i] + (y->a[i] - x->a[i]) * t;
+            peak = fmaxf(peak, a[i]);
+        }
+    }
+
+    void noTail()
+    {
+        tailDeg = 0.0f;
+        tailK = 0.0f;
+        for (int i = 0; i <= VT_TAIL; ++i)
+            tail[i] = 0.0f;
+    }
+
+    // The event moved later by shift degrees (a phaser's; negative: earlier), every 16 samples
+    void place(float shift, float cyc)
+    {
+        openNow = vtWrap(open + shift, cyc);
+    }
+
+    // The area (m^2) at the cylinder's angle (degrees, 0 to cyc)
+    float at(float ang, float cyc)
+    {
+        float s = ang - openNow;
+        if (s < 0.0f)
+            s += cyc;
+        if (s >= span)
+        {
+            const float t = s - span;
+            if (t >= tailDeg)
+                return 0.0f;
+            const float y = t * tailK;
+            int j = (int)y;
+            if (j > VT_TAIL - 1)
+                j = VT_TAIL - 1;
+            return tail[j] + (tail[j + 1] - tail[j]) * (y - (float)j);
+        }
+        const float x = s * k;
+        int i = (int)x;
+        if (i > VT_STEPS - 1)
+            i = VT_STEPS - 1;
+        return a[i] + (a[i + 1] - a[i]) * (x - (float)i);
+    }
+};

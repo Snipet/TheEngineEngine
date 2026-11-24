@@ -1,0 +1,87 @@
+// spec/tables.fm: the two table shapes a Spec may hold, and their interpolating reads.
+//
+// A Curve16 is y over x at up to sixteen points (n of them in use, x rising); a Map16 is z over a grid of x (nx points,
+// rising) by y (ny points, rising). Between points a read interpolates straight (bilinear on a map); outside them it
+// holds the end's value, as a calibration table does. An empty table reads 0; a table of one point reads that point
+// everywhere. The reads loop at most sixteen times and allocate nothing: a [[clang::nonblocking]] function may call
+// them, though a package reads a table at the control rate (every 16 samples) unless it has a reason not to.
+//
+//   Curve16 c;               a field of a Spec section, with [[ui::axes("rotation", "torque")]] on it
+//   y = c.at(x);
+//   Map16 m;                 [[ui::axes("rotation", "pressure", "angle")]]: x, y, then z
+//   z = m.at(x, y);
+//
+// A package does not invent another table shape without the lead (02-contracts.md, section 2).
+#pragma once
+#include "limits.fm"
+
+module Curve16
+{
+    float x [[ui::label("x")]] [TABLE_POINTS];
+    float y [[ui::label("y")]] [TABLE_POINTS];
+    int n [[fminus::range(0, 16)]] [[fminus::default(0)]] [[ui::label("Points")]];
+
+    // y at v: straight between the two points around it, the end's value outside them
+    float at(float v)
+    {
+        const int k = n < TABLE_POINTS ? n : TABLE_POINTS;
+        if (k <= 0)
+            return 0.0f;
+        if (k == 1 || v <= x[0])
+            return y[0];
+        if (v >= x[k - 1])
+            return y[k - 1];
+        int i = 0;
+        while (i < k - 2 && v >= x[i + 1])
+            i += 1;
+        const float span = x[i + 1] - x[i];
+        const float f = span > 0.0f ? (v - x[i]) / span : 0.0f;
+        return y[i] + (y[i + 1] - y[i]) * f;
+    }
+};
+
+module Map16
+{
+    float x [[ui::label("x")]] [TABLE_POINTS];
+    float y [[ui::label("y")]] [TABLE_POINTS];
+    float z [[ui::label("z")]] [TABLE_POINTS][TABLE_POINTS];   // z[i][j] at x[i], y[j]
+    int nx [[fminus::range(0, 16)]] [[fminus::default(0)]] [[ui::label("Points in x")]];
+    int ny [[fminus::range(0, 16)]] [[fminus::default(0)]] [[ui::label("Points in y")]];
+
+    // Where v falls on an axis of k points: the lower point's index, the fraction toward the next left in frac[0]
+    int cell(float* axis, int k, float v, float* frac)
+    {
+        frac[0] = 0.0f;
+        if (k <= 1 || v <= axis[0])
+            return 0;
+        if (v >= axis[k - 1])
+        {
+            frac[0] = 1.0f;
+            return k - 2;
+        }
+        int i = 0;
+        while (i < k - 2 && v >= axis[i + 1])
+            i += 1;
+        const float span = axis[i + 1] - axis[i];
+        frac[0] = span > 0.0f ? (v - axis[i]) / span : 0.0f;
+        return i;
+    }
+
+    // z at (u, v): bilinear between the four points around it, the edge's values outside the grid
+    float at(float u, float v)
+    {
+        const int kx = nx < TABLE_POINTS ? nx : TABLE_POINTS;
+        const int ky = ny < TABLE_POINTS ? ny : TABLE_POINTS;
+        if (kx <= 0 || ky <= 0)
+            return 0.0f;
+        float fx[1];
+        float fy[1];
+        const int i = cell(x, kx, u, fx);
+        const int j = cell(y, ky, v, fy);
+        const int i1 = kx > 1 ? i + 1 : i;
+        const int j1 = ky > 1 ? j + 1 : j;
+        const float a = z[i][j] + (z[i][j1] - z[i][j]) * fy[0];
+        const float b = z[i1][j] + (z[i1][j1] - z[i1][j]) * fy[0];
+        return a + (b - a) * fx[0];
+    }
+};

@@ -33,6 +33,11 @@ namespace tee
         }
     } // namespace
 
+    const char* RefPlayer::shims() noexcept
+    {
+        return kShims;
+    }
+
     std::unique_ptr<RefPlayer> RefPlayer::create(const Options& options, std::string& errors)
     {
         Program::Options compile;
@@ -136,6 +141,7 @@ namespace tee
             dial.minimum = parameter.minimum.value_or(0.0);
             dial.maximum = parameter.maximum.value_or(0.0);
             dial.defaultValue = parameter.defaultValue.value_or(0.0);
+            dial.parameter = &parameter;
             dials_.push_back(std::move(dial));
             dialParameters_.push_back(&parameter);
         }

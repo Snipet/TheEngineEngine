@@ -1,0 +1,11 @@
+// spec/fuel.fm: the fuel (spec.fuel). Owner: package H.
+//
+// The reference's FUEL dial: gasoline (a spark, a throttle) or diesel (no throttle: the pedal is its fuel; it lights
+// by compression after its ignition delay). Taken under the fade; stopped, at once.
+#pragma once
+
+module FuelSpec
+{
+    int rev [[ui::hidden]];
+    int kind [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Fuel")]] [[ui::choices("Gasoline", "Diesel")]];
+};

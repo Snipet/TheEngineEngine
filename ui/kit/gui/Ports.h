@@ -23,6 +23,15 @@ namespace tee::ui
     // A choice's names, cut to what a panel shows (kMaxOptionLabel characters); none for another kind.
     std::vector<std::string> optionsOf(const ParamInfo& info);
 
+    // J2: a ParamSource that also wants each control's gestures (a document's undo: one step a drag) implements this as
+    // well; SourcePort finds it and brackets its writes with it.
+    struct GestureSink
+    {
+        virtual ~GestureSink() = default;
+        virtual void beginGesture(int index) = 0;
+        virtual void endGesture(int index) = 0;
+    };
+
     class SourcePort final : public funkgui::ParamPort
     {
     public:
@@ -31,9 +40,9 @@ namespace tee::ui
         float value01() const override;
         float default01() const override;
         int numSteps() const override;                   // 0 for a real one, else its values less one
-        void beginGesture() override { ++gestures_; }
+        void beginGesture() override;
         void setValue01(float v) override;               // ParamSource::set, in the parameter's own units
-        void endGesture() override { ++ended_; }
+        void endGesture() override;
         const char* id() const override { return id_.c_str(); }
         void* native() const override { return nullptr; }
 
@@ -47,6 +56,7 @@ namespace tee::ui
 
     private:
         ParamSource& source_;
+        GestureSink* sink_ = nullptr;
         int index_;
         Control control_;
         std::string id_;

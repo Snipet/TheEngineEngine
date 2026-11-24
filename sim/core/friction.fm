@@ -1,0 +1,76 @@
+// friction.fm: the engine's friction by part, as a mean effective pressure and a torque on the crank.
+//
+// The form is Chen and Flynn's (SAE 650733, 1965): friction mean effective pressure as a constant, a term in the
+// cylinder's peak pressure (the rings pressed on the wall by the gas behind them) and terms in the mean piston speed
+// and its square (the rings' and skirts' hydrodynamic shear). Here it is split by part so each can be set:
+//
+//     rings and skirts   fricPeak p_max + fricSpeed S_p + fricSpeed2 S_p^2
+//     bearings           fricBearing per 1000 rpm (the main and rod bearings' shear)
+//     valvetrain         by its kind: flat tappets 20 kPa, rollers 10, finger followers 12, none 0
+//     constant           fricConst (seals, the oil and water pumps' base load)
+//     accessories        the alternator's load and the air conditioner's, as power taken from the crank
+//
+// with S_p = 2 stroke rpm / 60. Everything but the accessories is multiplied by the oil's thickness factor (the
+// reference's: the thickness's 0.15th power over a warm engine's, at most 3), as the reference does with its one curve.
+//
+// The coefficients' defaults are judgement, not measurement: Chen and Flynn's form with values fitted so that, for the
+// reference's V8 (0.72 L a cylinder, square: S_p = 3.24 m/s a 1000 rpm) at a peak pressure of 60 bar, the sum follows the
+// reference's own friction curve (1 + 0.10 N + 0.02 N^2 bar, N in thousands of rpm: 1.3 bar at 2000 rpm, 2.6 at
+// 6800), itself set below the older Chen-Flynn-type correlation that counted the pumping too (sim/ref/engine.fm). The
+// split between the parts follows the usual shares of motored friction (rings and skirts the largest, then bearings,
+// then the valvetrain; roller followers about half of flat tappets'), also judgement. The alternator's efficiency is
+// taken as 0.6, an air conditioner's compressor as 2.5 kW at speed (judgement: a car's 1.5 to 4).
+//
+// What it leaves out: the oil's shear heating, the rings' tension as a field, the boundary-lubrication rise at very
+// low speeds, a dry sump's lower churning.
+#pragma once
+#include "mechspec.fm"
+
+module FrictionModel
+{
+    float vTotal;       // displacement, m^3
+    float stroke;       // m (a rotary's equivalent: 0.07)
+    float kValve;       // the valvetrain's, Pa
+    // the parts' mean effective pressures at the last call (Pa) and the torque (N m)
+    float rings;
+    float bearings;
+    float valves;
+    float constant;
+    float accessories;
+    float fmep;
+    float torqueNow;
+    float pistonSpeed;  // mean, m/s
+
+    void setup(const MechSpec* s, float displacement, float strokeM, int rotary)
+    {
+        vTotal = displacement;
+        stroke = rotary > 0 ? 0.07f : strokeM;
+        const float vk[4] = {20000.0f, 10000.0f, 12000.0f, 0.0f};
+        int k = s->valvetrain < 0 ? 0 : (s->valvetrain > 3 ? 3 : s->valvetrain);
+        if (rotary > 0)
+            k = 3;
+        kValve = vk[k];
+    }
+
+    // The friction torque (N m) at a speed (rad/s), the last cycle's peak pressure (Pa) and the oil's thickness factor
+    float torque(const MechSpec* s, float omega, float pPeak, float oil)
+    {
+        const float w = fmaxf(omega, 0.0f);
+        const float rpm = w * 9.5492966f;
+        pistonSpeed = 2.0f * stroke * rpm / 60.0f;
+        const float sp = pistonSpeed;
+        const float thick = fminf(fmaxf(oil, 0.0f), 3.0f);
+        rings = (s->fricPeak * pPeak + s->fricSpeed * sp + s->fricSpeed2 * sp * sp) * thick;
+        bearings = s->fricBearing * rpm * 0.001f * thick;
+        valves = kValve * thick;
+        constant = s->fricConst * thick;
+        // the accessories: power over the speed (held below 50 rad/s, where a belt's loads fall away with it)
+        const float pAcc = s->alternator / 0.6f + (s->airCon ? 2500.0f : 0.0f);
+        const float tAcc = pAcc / fmaxf(w, 50.0f);
+        accessories = tAcc * 12.566371f / vTotal;
+        fmep = rings + bearings + valves + constant + accessories;
+        // (it holds the crank, it never turns it: none at rest, as the reference's fades in over the first 5 rad/s)
+        torqueNow = fmep * vTotal * 0.0795775f * fminf(w / 5.0f, 1.0f);
+        return torqueNow;
+    }
+};

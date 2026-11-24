@@ -1,0 +1,18 @@
+// spec/boost.fm: forced induction (spec.boost). Owner: package F.
+//
+// The reference's ASPIRATION, BOOST, TURBO SIZE and BOV dials. The kind is taken under the fade (stopped, at once); the
+// level and the size glide over 80 ms; the blow-off valve acts at once.
+#pragma once
+
+module BoostSpec
+{
+    int rev [[ui::hidden]];
+    int kind [[fminus::range(0, 4)]] [[fminus::default(0)]] [[ui::label("Aspiration")]]
+        [[ui::choices("Natural", "Turbo", "Twin turbos", "Quad turbos", "Supercharger")]];
+    float level [[fminus::range(0, 1)]] [[fminus::default(0.5)]] [[ui::label("Boost")]] [[ui::quantity("fraction")]]
+        [[ui::help("How much boost it is set for: 0.35 to 1.4 bar a turbo, 0.25 to 1 a supercharger")]];
+    float size [[fminus::range(0.5, 2)]] [[fminus::default(1)]] [[ui::label("Turbo size")]] [[ui::quantity("ratio")]]
+        [[ui::decimals(2)]] [[ui::help("The turbos' size over ones matched to the engine: smaller spools sooner")]];
+    float blowOff [[fminus::range(0, 1)]] [[fminus::default(0.7)]] [[ui::label("Blow-off valve")]]
+        [[ui::quantity("fraction")]] [[ui::help("Its level; under 0.15, none: the compressor surges")]];
+};

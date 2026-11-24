@@ -12,6 +12,7 @@
 // rasteriser, which is what a person looks at before blessing. The rasteriser draws no shader: a shader element is its
 // placeholder in every picture here.
 #include "MockPlayer.h"
+#include "MockSpec.h"
 #include "Png.h"
 
 #include "kit/gui/DisplayItem.h"
@@ -20,6 +21,14 @@
 #include "kit/gui/GuiSpec.h"
 #include "kit/gui/Ports.h"
 #include "kit/shaders/ShaderText.h"
+#include "kit/bind/Binding.h"
+#include "kit/bind/Fields.h"
+#include "kit/bind/Units.h"
+#include "kit/widgets/Basic.h"
+#include "kit/widgets/Board.h"
+#include "kit/widgets/Gauge.h"
+#include "kit/widgets/Plot.h"
+#include "kit/widgets/Tables.h"
 #include "ref/RefPanel.h"
 
 #include <funkgui/canvas/Fingerprint.h>
@@ -947,6 +956,10 @@ namespace
     int refPanel();                                      // RefTests.inc: the reference's own panel
 #include "RefTests.inc"
     const Add addRefPanel("ref.panel", refPanel);
+
+    // ---- J2 (card J, items 6 to 10) ----
+#include "WidgetTests.inc"
+#include "BindTests.inc"
 
     int run(const std::string& name)
     {
