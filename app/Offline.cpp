@@ -187,6 +187,11 @@ namespace tee::app
                     if (hooks->tryFirstDone)
                         hooks->tryFirstDone();
                 };
+                frameServices.coldStart = [hooks] { return hooks->coldStart && hooks->coldStart(); };
+                frameServices.setColdStart = [hooks](bool cold) {
+                    if (hooks->setColdStart)
+                        hooks->setColdStart(cold);
+                };
                 frameServices.audioMenu = [hooks] {
                     if (hooks->audioMenu)
                         hooks->audioMenu();
