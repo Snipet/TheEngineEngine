@@ -10,7 +10,7 @@ target_compile_definitions(tee-host-tests PRIVATE
   "TEE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
   "TEE_STANDIN_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/fixtures/standin\""
   "TEE_HOST_TESTS_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}\"")
-catch_discover_tests(tee-host-tests DISCOVERY_MODE PRE_TEST PROPERTIES TIMEOUT 900)
+catch_discover_tests(tee-host-tests DISCOVERY_MODE PRE_TEST ADD_TAGS_AS_LABELS PROPERTIES TIMEOUT 900)
 # the tools a test runs, beside the tests in bin/
 target_compile_definitions(tee-host-tests PRIVATE "TEE_BIN_DIR=\"$<TARGET_FILE_DIR:tee-host-tests>\"")
 foreach(_tool tee-dyno tee-render)
