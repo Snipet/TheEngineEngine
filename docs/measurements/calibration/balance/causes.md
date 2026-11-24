@@ -770,3 +770,9 @@ barely flows at 6000 to 7200 rpm). Knock retard: C's baked knock-limit table, no
 diesels over their boost targets low down: the VGT's spring-law vanes and N2's surge guard, after the proof. The cooler's
 0.85 on the four: the build's own icEffect (the test cell holds the core at the air), so P's field (sent to P). The
 housings' 1.14: with G, N2 to be copied before adopting the design point (it would over-drive every matching by that).
+
+**The cooler, corrected (22:11 by `date -u`).** Withdrawn: "0.85 on the turbo four". The cooler does its stated icEffect
+0.75 (every boosted build carries 0.75, P): at 3050 rpm it takes the charge pipe (v1) from 386.8 K to 309.5 K against a
+core held at the air's 288.15 K, 0.78 on time means. B-2's "effectiveness" used the compressor outlet's time-mean
+temperature (459 K), which is not what the cooler sees. Noted for N2, not a finding: that 459 K is above what PR 2.21
+at eta 0.61 gives (about 404 K) and above the charge pipe's 387 K; a time mean weighted by low-flow instants, likely.
