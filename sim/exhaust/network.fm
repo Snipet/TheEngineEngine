@@ -69,6 +69,13 @@ enum
 // branch's impedance (with any resistance in series), kf[i] and kr[i] its loss for flow into the node and out of it
 // (lossKap), sl[i] its drive's slow part and al[i] that part's smoothing, src a volume flow the node makes itself (a
 // pop's gas). Leaves each branch's flow into the node in q[i]; returns the node's pressure.
+// lossHold with no loss is exactly 0 (sqrt(fl(z z)) is z in IEEE arithmetic, so lossFlow(x, z, 0) is x / z to the bit
+// and x / z less it +0): skipped where a branch has none, the same bits for less work (Q's profile of the builder)
+float lossHoldK(float x, float zs, float kap)
+{
+    return kap > 0.0f ? lossHold(x, zs, kap) : 0.0f;
+}
+
 float xNode(int n, float* a, float* z, float* t, float* kf, float* kr, float* sl, float* al, float* q, float src)
 {
     float sy = 0.0f;
@@ -81,7 +88,7 @@ float xNode(int n, float* a, float* z, float* t, float* kf, float* kr, float* sl
         if (ze[i] > 0.0f)
         {
             const float x = sl[i];
-            h[i] = lossHold(x, ze[i], x >= 0.0f ? kf[i] : kr[i]);
+            h[i] = lossHoldK(x, ze[i], x >= 0.0f ? kf[i] : kr[i]);
             sy += 1.0f / ze[i];
             sa += 2.0f * a[i] / ze[i] - h[i];
         }
@@ -530,7 +537,7 @@ module XNet
             const float dd = 2.0f * (aa - ab);
             const float e = noiseOf(k, d[bNrho[k]].rho);
             const float s = bS[k];
-            q = (dd - e) / zs - lossHold(s, zs, s >= 0.0f ? bKf[k] : bKr[k]);
+            q = (dd - e) / zs - lossHoldK(s, zs, s >= 0.0f ? bKf[k] : bKr[k]);
             if (bA[k] >= 0)
                 bS[k] += d[bA[k]].qsA * (dd - s);
         }
@@ -548,7 +555,7 @@ module XNet
         const Duct* p = &d[bD[k]];
         const float a = p->far;
         const float dq = a - e->r.tick(a);
-        const float q = dq / p->z - lossHold(e->s, p->z, e->s >= 0.0f ? e->kOut : e->kIn);
+        const float q = dq / p->z - lossHoldK(e->s, p->z, e->s >= 0.0f ? e->kOut : e->kIn);
         e->s += p->qsA * (dq - e->s);
         const float b = a - p->z * q;
         float rad = (q - e->radPrev) * rate;
@@ -588,7 +595,7 @@ module XNet
                     const float a = bE[k] == 0 ? p->near : p->far;
                     const float z = p->z + bR[k];
                     const float x = bS[k];
-                    dr += 2.0f * a / z - lossHold(x, z, x >= 0.0f ? bKf[k] : bKr[k]);
+                    dr += 2.0f * a / z - lossHoldK(x, z, x >= 0.0f ? bKf[k] : bKr[k]);
                     ad += 1.0f / z;
                 }
                 jDrive[j] = dr;
@@ -615,7 +622,7 @@ module XNet
             const float a = bE[k] == 0 ? pd->near : pd->far;
             const float z = pd->z + bR[k];
             const float x = bS[k];
-            const float h = lossHold(x, z, x >= 0.0f ? bKf[k] : bKr[k]);
+            const float h = lossHoldK(x, z, x >= 0.0f ? bKf[k] : bKr[k]);
             const float dd = 2.0f * a - p;
             const float q = dd / z - h;
             if (bA[k] >= 0)
