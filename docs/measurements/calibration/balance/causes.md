@@ -302,3 +302,7 @@ whole exhaust with its manifolds and mufflers (a converter from 1975). The fan i
 build-side list above is the larger share: the exhaust as fitted, the factory's timing, the air cleaner's and the
 carburettor's restriction (not yet measured: the build has a single throttle and an air box). The model's accessories
 (the water pump is in friction.fm's constant) are a smaller question than first thought.
+
+N1's suggestion (the ram adding to the exhaust's tuning), tested: with `exhaust.model` 0 the flat six reads the same to
+the bit at both runner lengths (4750 and 5500 rpm), and the burned share trapped is the same at 0.30 and 0.53 m (0.030
+and 0.030 at 4750). The 0.53 m runner's gain is the intake's own ram, not better scavenging.
