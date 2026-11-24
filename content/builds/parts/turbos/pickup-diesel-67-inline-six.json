@@ -14,7 +14,9 @@
       "gateSpring": 160000.0,
       "blowOffKind": "None",
       "vanes": "Variable vanes",
-      "icEffect": 0.75
+      "icEffect": 0.75,
+      "icFlow": 0.535,
+      "chargeVolume": 0.0134
     }
   }
 }

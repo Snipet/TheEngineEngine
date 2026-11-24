@@ -200,6 +200,21 @@ namespace tee::ui::exhaust
         return s;
     }
 
+    std::string NetworkCost::line(double load) const
+    {
+        const auto count = [](int n, const char* one, const char* many) {
+            return std::to_string(n) + " " + (n == 1 ? one : many);
+        };
+        char share[96];
+        if (std::isfinite(load) && load > 0.0)
+            std::snprintf(share, sizeof share, "about %.0f %% of a core, of the %.0f %% the simulator takes",
+                          100.0 * ofEngine() * load, 100.0 * load);
+        else
+            std::snprintf(share, sizeof share, "about %.1f of the reference engine", ofReference());
+        return count(pipes, "pipe", "pipes") + ", " + count(nodes, "junction", "junctions") + ", " + count(pairs, "joint", "joints")
+               + ", " + count(openEnds, "open end", "open ends") + ": " + share;
+    }
+
     std::vector<float> TwoStrokePipe::sectionMids() const
     {
         std::vector<float> mids;

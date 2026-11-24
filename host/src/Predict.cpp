@@ -306,9 +306,11 @@ namespace tee
                 const int knockMost = hasRetard_ || hasBoost_
                                           ? std::max(options_.maxCycles, static_cast<int>(3.0 * speed / kFourPi)) : 0;
                 const int holdMost = static_cast<int>((options_.minHoldSeconds + 1.0) * speed / kFourPi);
-                const int most = options_.holdSeconds > 0.0
-                                     ? 1 << 30
-                                     : std::max({options_.maxCycles, knockMost, holdMost}) + settling;
+                const int window = std::max(2, static_cast<int>(std::lround(options_.knockWindowSeconds * speed / kFourPi)));
+                const int knockLimitedMost = static_cast<int>(options_.knockMostSeconds * speed / kFourPi) + settling;
+                int most = options_.holdSeconds > 0.0 ? 1 << 30
+                                                      : std::max({options_.maxCycles, knockMost, holdMost}) + settling;
+                std::vector<double> retards;   // the counted cycles' retards
                 double lastRetard = knockRetard();
                 double lastBoost = boostNow();
                 std::vector<double> counted;   // the counted cycles' torques
@@ -377,6 +379,55 @@ namespace tee
                         // agrees with the three before (no trend: near a runner's resonance the intake's standing wave builds or
                         // decays over many cycles, and two cycles of a slow slide can agree by chance)
                         counted.push_back(t);
+                        retards.push_back(retard);
+                        if (hasRetard_ && retard >= options_.knockLimit && !p.knockLimited)
+                        {
+                            p.knockLimited = true;   // from now on the mean over whole windows (Predict.h)
+                            if (options_.holdSeconds <= 0.0)
+                                most = std::max(most, knockLimitedMost);
+                        }
+                        if (p.knockLimited)
+                        {
+                            const std::size_t m = counted.size(), w = static_cast<std::size_t>(window);
+                            if (m >= 2 * w)
+                            {
+                                double last = 0.0, before = 0.0;
+                                for (std::size_t i = 0; i < w; ++i)
+                                {
+                                    last += counted[m - 1 - i];
+                                    before += counted[m - 1 - w - i];
+                                }
+                                last /= static_cast<double>(w);
+                                before /= static_cast<double>(w);
+                                p.torque = 0.5 * (last + before);
+                                p.retardMin = *std::min_element(retards.end() - static_cast<long>(2 * w), retards.end());
+                                p.retardMax = *std::max_element(retards.end() - static_cast<long>(2 * w), retards.end());
+                                const bool agree = std::fabs(last - before)
+                                                   <= options_.tolerance * std::max(std::fabs(p.torque), 1.0);
+                                if (agree && boostSteady && held >= options_.holdSeconds && held >= options_.minHoldSeconds)
+                                {
+                                    if (heatSettle_ && !resettled)
+                                    {
+                                        askHeatSettle();
+                                        resettled = true;
+                                        counted.clear();
+                                        retards.clear();
+                                        continue;
+                                    }
+                                    p.settled = true;
+                                    break;
+                                }
+                            }
+                            else
+                            {
+                                double all = 0.0;
+                                for (const double v : counted)
+                                    all += v;
+                                p.torque = all / static_cast<double>(m);
+                            }
+                            previous = t;
+                            continue;
+                        }
                         const double scale = options_.tolerance * std::max(std::fabs(p.torque), 1.0);
                         const std::size_t m = counted.size();
                         const bool noTrend =
@@ -395,6 +446,7 @@ namespace tee
                             askHeatSettle();
                             resettled = true;
                             counted.clear();
+                            retards.clear();
                             continue;
                         }
                         if (steady)
@@ -407,6 +459,7 @@ namespace tee
                     {
                         p.torque = t;
                         counted.push_back(t);
+                        retards.push_back(knockRetard());
                     }
                     previous = t;
                 }
@@ -847,7 +900,7 @@ namespace tee
         std::uint64_t h = build.hash();
         for (const double v : {static_cast<double>(o.coarse), static_cast<double>(o.points), o.from, o.to, o.pedal,
                                o.tolerance, static_cast<double>(o.minCycles), static_cast<double>(o.maxCycles),
-                               o.sampleRate, static_cast<double>(o.block), o.startSeconds, o.warm ? 1.0 : 0.0, o.warmupSeconds, o.settleExhaust ? 1.0 : 0.0, o.holdSeconds, o.brake == "host" ? 1.0 : o.brake == "program" ? 2.0 : 0.0, o.innerRate, static_cast<double>(o.fields.size()), o.minHoldSeconds})
+                               o.sampleRate, static_cast<double>(o.block), o.startSeconds, o.warm ? 1.0 : 0.0, o.warmupSeconds, o.settleExhaust ? 1.0 : 0.0, o.holdSeconds, o.brake == "host" ? 1.0 : o.brake == "program" ? 2.0 : 0.0, o.innerRate, static_cast<double>(o.fields.size()), o.minHoldSeconds, o.knockLimit, o.knockWindowSeconds, o.knockMostSeconds})
             h = mix(h, v);
         return h;
     }

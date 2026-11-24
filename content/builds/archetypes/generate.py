@@ -565,6 +565,14 @@ def build(a):
             if a.get("gateDiameter"):
                 bo["gateDiameter"] = a["gateDiameter"]
             bo["icEffect"] = 0.75
+        # the intercooler sized for the engine's air at its rated power and the charge pipes for its size (N2, 19:55:
+        # the defaults, 0.25 kg/s and 5 L, suit 2 to 3 L): air some 1.1 g/s a kW for petrol near lambda 0.85, 1.7 for a
+        # diesel's lean full load (D2's 15 L truck: 0.8 kg/s); the pipes twice the swept volume, 1 to 20 L
+        kw = _val.T[a["slug"]][0][1] if a["slug"] in _val.T else 200
+        bo["icFlow"] = round(min(max(kw * (0.0017 if a.get("diesel") else 0.0011), 0.05), 2.0), 3)
+        bo["chargeVolume"] = round(min(max(2.0 * a["displacement"] if "displacement" in a else
+                                           2.0 * n * math.pi / 4 * (a["bore"] / 1000) ** 2 * a["stroke"] / 1000,
+                                           0.001), 0.02), 4)
     else:
         bo["model"] = "Machine"
 
@@ -657,6 +665,7 @@ def write(path, doc):
         f.write("\n")
 
 
+FIRST = "straight-six-twin-turbo-30"
 ENGINE_SECTIONS = ("engine", "valve", "intake", "boost", "exhaust", "fuel")
 
 
@@ -677,6 +686,17 @@ def main():
               {"format": "tee-build", "version": 1, "part": "car", "name": "Car: " + name.replace("-", " "),
                "notes": "A car of its class alone (card P's archetypes' cars), to take any engine.",
                "spec": {"car": car_section(name)}})
+    # the build the application opens on a first launch (the lead, 20:06; B opens content/builds/first.json when
+    # there is no --preset and no remembered build): an archetype inside its power, torque, idle and warm-start rows,
+    # steady at idle, cheap to run, and fun in the first minute
+    first = build(next(a for a in A if a["slug"] == FIRST))
+    first["name"] = "3.0 L twin-turbo six"
+    first["notes"] = ("Try first: turn the key, then floor it on the dyno and watch the two turbos spool in AIR (each "
+                      "fed by three cylinders) and the pulses split between the two collectors in EXHAUST.\n"
+                      "Then drive: in first, hold the brake, bring the revs up and let go for a standing start (traction "
+                      "control holds the wheelspin), and listen to the straight six through its dual exhaust as the "
+                      "dual clutch shifts.\n\n" + first["notes"])
+    write(os.path.join(ROOT, "content", "builds", "first.json"), first)
     loose_parts(A)
     manual(A)
     print("%d archetypes, %d cars" % (len(A), len(CARS)))

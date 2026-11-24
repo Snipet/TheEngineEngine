@@ -130,3 +130,12 @@ sheet will include every registered workspace.
   the host's `FrameServices::loadFits` (1, 0, -1) when served, else the peak held three seconds. Tight or over: the
   sentence "This build is heavy for this machine at Full: Economy halves it" and a QUALITY button (the settings page)
   in the status line's place; it never switches the quality and goes by itself. Tests `ui.frame.load`.
+- **A tachometer's scale** (`look::rpmScale(redline)`, `look::shiftLightBefore`): the cockpit's rev bar and DRIVE's
+  dial share it. The top a tenth past the redline, rounded up to a step of 1000 rpm, or 500 under a 4000 rpm redline
+  (numerals in hundreds, "X100 RPM": a governed diesel's 2014 reads to 25); the shift lights' distances shrink with
+  the redline. A workspace that draws its own tachometer should use it. Test `ui.frame.redline`.
+- **Knock-limited points** (card C's 765684a): `DynoTrace::knock`, `retardMin`, `retardMax` per point (empty when the
+  source says nothing), `knockLimited(i)`, `knockCount()`, `knockText(i)` ("knock-limited, retard 6 to 10 deg").
+  ServiceDyno fills them for predictions and runs; the demo knocks past 160 kPa of boost from 4500 rpm (the default
+  80 kPa and edits to 150 do not). The ribbon rings them on the torque curve, ticks them under the plot and says the
+  retard in its title row. Card C's `DynoPlan::upward` (default true) runs steps lowest first: read points by speed.
