@@ -568,10 +568,47 @@ namespace combo
         {
             const auto l = run.left().during(from, to), r = run.right().during(from, to);
             const auto& ch = l.largestStep() >= r.largestStep() ? l : r;
-            std::snprintf(b, sizeof b,
-                          "largest step %.1f times the local level at %.3f s (bound %.1f; the reference's %.1f)",
-                          v.stepMax, from + largestStepTime(ch.samples(), ch.rate()), clickBound, refStep);
-            v.failures.push_back({"click", b});
+            const double at = from + largestStepTime(ch.samples(), ch.rate());
+            // The lead's ruling (23:15, through the steward): an upshift's spark cut under the reference's burn
+            // (ecu.model 1, fuel.model 0) is an event of the engine: about 70 ms of near silence and the charge sent
+            // to the pipe lights after it (D's measure: 15 to 29 times the local level by the cut's phase; the small
+            // four's pull 33.6 after the steward's 0cb535ae). At an upshift's cut (car.flags 32, cut asked) and the
+            // 0.15 s after it (with the gear rising), the bound is that step and a margin, 42, and the failure is "click-shift-cut", which
+            // report() accepts for that combination only (Report.cpp, shiftCutRuled); over 42, or anywhere else, it
+            // is a click.
+            constexpr double kShiftCutBound = 42.0;
+            // An upshift's cut: the car asks it (car.flags 32, car.model 1) or the ECU cuts the spark (ecu.flags 4,
+            // with the classic car), in the 0.15 s before the step, while the gear rises in the 0.3 s before it (so a
+            // limiter's spark cut is not one)
+            bool atShiftCut = false;
+            {
+                const double cutFrom = std::max(from, at - 0.15), cutTo = at + 0.005;
+                const auto carFlags = run.tel("car.flags").during(cutFrom, cutTo);
+                const auto ecuFlags = run.tel("ecu.flags").during(cutFrom, cutTo);
+                bool cut = false;
+                for (double x : carFlags.values())
+                    cut = cut || (static_cast<int>(x) & 32) != 0;
+                for (double x : ecuFlags.values())
+                    cut = cut || (static_cast<int>(x) & 4) != 0;
+                const auto gear = run.tel("car.gear").during(std::max(from, at - 0.3), cutTo);
+                const bool up = gear.size() > 1 && gear.values().back() > gear.values().front();
+                atShiftCut = cut && up;
+            }
+            if (atShiftCut && v.stepMax <= kShiftCutBound)
+            {
+                std::snprintf(b, sizeof b,
+                              "largest step %.1f times the local level at %.3f s, at an upshift's cut (the bound there "
+                              "%.0f, the lead's ruling for ecu.model 1 under fuel.model 0; elsewhere %.1f)",
+                              v.stepMax, at, kShiftCutBound, clickBound);
+                v.failures.push_back({"click-shift-cut", b});
+            }
+            else
+            {
+                std::snprintf(b, sizeof b,
+                              "largest step %.1f times the local level at %.3f s (bound %.1f; the reference's %.1f%s)",
+                              v.stepMax, at, clickBound, refStep, atShiftCut ? "; at an upshift's cut, over 42" : "");
+                v.failures.push_back({"click", b});
+            }
         }
 
         judgeTelemetry(run, v);
@@ -872,5 +909,29 @@ namespace combo
         }
         o << "\n  }\n}\n";
         return o.str();
+    }
+
+    // c holds a switch: "all", or one of its '+'-joined names
+    bool holds(const std::string& c, const std::string& sw)
+    {
+        if (c == "all")
+            return true;
+        std::size_t at = 0;
+        while (at <= c.size())
+        {
+            const std::size_t plus = c.find('+', at);
+            const std::size_t end = plus == std::string::npos ? c.size() : plus;
+            if (c.compare(at, end - at, sw) == 0 && end - at == sw.size())
+                return true;
+            at = end + 1;
+        }
+        return false;
+    }
+
+    // The lead's ruling (23:15): a step at an upshift's spark cut, within 42, is the engine's own event for
+    // ecu.model 1 under the reference's burn (fuel.model 0); with fuel.model 1 the steward's 0cb535ae cures it
+    bool shiftCutRuled(const std::string& c, const Failure& f)
+    {
+        return f.check == "click-shift-cut" && holds(c, "ecu.model") && !holds(c, "fuel.model");
     }
 } // namespace combo
