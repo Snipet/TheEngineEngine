@@ -56,6 +56,7 @@ namespace tee
         t.rate = root.value("rate", 48000.0);
         t.block = root.value("block", 512);
         t.seconds = root.value("seconds", 0.0);
+        t.warm = root.value("warm", false);
         if (!(t.rate > 0.0) || t.block < 1 || !(t.seconds >= 0.0))
         {
             error = where + "\"rate\", \"block\" and \"seconds\" are numbers above 0";

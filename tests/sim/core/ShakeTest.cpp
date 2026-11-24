@@ -1,6 +1,8 @@
 // tests/sim/core/ShakeTest.cpp: card D's test 5, shaking forces and rocking moments by order; balance shafts.
 #include "Presets.h"
 
+static constexpr double kPi = 3.14159265358979323846;
+
 #include <catch2/catch_test_macros.hpp>
 
 #include <cmath>
@@ -25,7 +27,7 @@ namespace
         rig.set("spec.balance1", b1 ? 1 : 0);
         rig.set("spec.balance2", b2 ? 1 : 0);
         rig.build(0.09, 0.09, 0.15, 10.0, 0.15);
-        rig.method<void(void*, float, float)>("shakeAt")(rig.data(), 0.3f, float(6000.0 * M_PI / 30.0));
+        rig.method<void(void*, float, float)>("shakeAt")(rig.data(), 0.3f, float(6000.0 * kPi / 30.0));
         Shake s{rig.get("sh.force1"), rig.get("sh.force2"), rig.get("sh.moment1"), rig.get("sh.moment2"),
                 rig.get("sh.force1Raw"), rig.get("sh.force2Raw")};
         std::printf("%-18s at 6000 rpm: force 1st %8.1f N, 2nd %8.1f N; moment 1st %7.1f N m, 2nd %7.1f N m%s%s\n",
@@ -37,7 +39,7 @@ namespace
 TEST_CASE("shaking by order: the known engines", "[core][shake]")
 {
     // m r w^2 for these masses (0.5 + 0.5 / 3 kg, r 45 mm, 6000 rpm): some 11.8 kN; "none" is under a millionth of it
-    const double unit = (0.5 + 0.5 * 0.333) * 0.045 * std::pow(6000.0 * M_PI / 30.0, 2);
+    const double unit = (0.5 + 0.5 * 0.333) * 0.045 * std::pow(6000.0 * kPi / 30.0, 2);
     const double none = 1e-5 * unit;
 
     const Shake i4 = shake("ref-05-inline-4");

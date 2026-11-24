@@ -3,6 +3,7 @@
 // 1 and 2, at 1100x700 and 1600x1000, in both themes. Every picture is the software rasteriser's.
 #include "ViewKit.h"
 
+#include "app/AppFrame.h"
 #include "app/Look.h"
 #include "views/exhaust/ExhaustDemo.h"
 #include "views/exhaust/ExhaustModel.h"
@@ -17,6 +18,25 @@
 
 #include <algorithm>
 #include <cstdio>
+
+
+namespace tee::test::u3
+{
+    // The stage the frame gives a workspace in a window of w x h (U1's AppFrame over the demo): the AIR and EXHAUST
+    // stages are tested and pictured at the frame's smallest (1100 x 700) and at a 1600 x 1000 window's.
+    funkgui::Rect frameStage(int w, int h)
+    {
+        tee::ui::DemoRig demo(4.6);
+        tee::ui::FrameServices s;
+        s.app = demo.app;
+        tee::ui::AppFrame frame(demo.doc, demo.units, demo.engine, std::move(s), &demo.engine, &demo.engine,
+                                tee::ui::defaultSlots(), w, h);
+        funkgui::HeadlessHost host(frame, 0, 1.0f);
+        host.resize(w, h);
+        host.tick(2);
+        return frame.stageRect();
+    }
+}
 
 namespace
 {
@@ -194,7 +214,8 @@ namespace
         const std::uint64_t k = rig.ws->drawKey();
         rig.host->tick(30);
         CHECK(rig.ws->drawKey() == k && !rig.ws->moving());
-        rig.demo.engine.tick(1.0f / 60.0f);    // the demo's script on: a new Scope copy
+        rig.demo.engine.set("engine.state", 2);   // running: the demo's script moves, a new Scope copy
+        rig.demo.engine.tick(1.0f / 60.0f);
         rig.host->tick(1);
         CHECK(rig.ws->drawKey() != k);
         return 0;
@@ -204,6 +225,7 @@ namespace
     VIEW_TEST(testExhaustSlow, "exhaust.slow")
     {
         ExRig rig("tt-v8-x");
+        rig.demo.engine.set("engine.state", 2);   // running: each tick of the demo a new Scope copy
         rig.host->click(rig.w - 16.0f - 32.0f, 25.0f);   // the SLOW button
         for (int i = 0; i < 12; ++i)
         {
@@ -354,6 +376,38 @@ namespace
         CHECK_MSG(tee::test::writePng(out, path), path);
         std::printf("  contact sheet: %s (software rasteriser; rows AIR, EXHAUST twin-turbo V8, EXHAUST supercharged V8 180;"
                     " columns 1100x700 at density 1 and 2, 1600x1000 at 1 and 2)\n", path.c_str());
+        return 0;
+    }
+}
+
+namespace
+{
+    // At the frame's own stage sizes: the whole system inside the stage (every part's bounds), nothing cut off.
+    VIEW_TEST(testExhaustFrameStage, "exhaust.framestage")
+    {
+        for (const auto& win : { std::pair<int, int>{ 1100, 700 }, std::pair<int, int>{ 1600, 1000 } })
+        {
+            const funkgui::Rect st = tee::test::u3::frameStage(win.first, win.second);
+            CHECK(st.w > 400.0f && st.h > 400.0f);
+            const int w = static_cast<int>(st.w), h = static_cast<int>(st.h);
+            for (const char* b : { "na4-421", "tt-v8-x", "sc-v8-180", "single-stack", "v12-log", "flat4" })
+            {
+                ExRig rig(b, w, h, 1.0f);
+                for (const tee::ui::exhaust::Hit& x : rig.geo().hits)
+                    CHECK_MSG(x.r.x >= 0.0f && x.r.right() <= static_cast<float>(w) && x.r.y >= 0.0f
+                                  && x.r.bottom() <= static_cast<float>(h) - 60.0f,
+                              std::string(b) + " " + x.id + " at " + std::to_string(win.first));
+                // the ends' tags: room for them after the last column
+                const tee::ui::exhaust::Geo g = rig.geo();
+                if (g.endX > 0)
+                    CHECK_MSG(g.endX + 100.0f <= static_cast<float>(w), std::string(b) + " tags cut");
+            }
+            const std::string tag = win.first == 1100 ? "small" : "large";
+            ExRig two("tt-v8-x", w, h, 2.0f);
+            golden("exhaust.frame." + tag, *two.host);
+            ExRig one("sc-v8-180", w, h, 1.0f);
+            golden("exhaust.frame." + tag + ".dpi1", *one.host);
+        }
         return 0;
     }
 }

@@ -163,6 +163,9 @@ scenarios/` holds the shipped ones. `tee::parseTimeline` also reads K3a's `tee-e
    {"audio": "step", "during": [1, 14], "<": 12}]}
 ```
 
+- `"warm": true`: the engine at its working temperatures from the start and held there (`tee/Warm.h`: the coolant
+  at its thermostat, the oil and the chamber's walls as a running engine's, written before every block, as a dyno
+  cell's conditioning holds an engine): a warm idle without minutes of warming. `content/scenarios/idle-warm.json`.
 - `build`: a name under `content/builds/`, or a path; none: every field at its default. `rate` (48000), `block` (512,
   the longest call: a block is cut where the next event falls, so the result does not depend on it).
 - An event at `t` seconds: `"ctl"` (or `"controls"`) sets controls by their names in 02-contracts.md, section 4;
@@ -174,6 +177,11 @@ scenarios/` holds the shipped ones. `tee::parseTimeline` also reads K3a's `tee-e
   `peak`; `rms` in dB; `step`, the largest step between samples over the local level, `tee::measure::largestStep`),
   over `"during"` (seconds; the whole run by default), compared by `"<"`, `"<="`, `">"`, `">="` or `"within": [a, b]`;
   `"source"` says why. `tee::checkAssertions` gives a line each.
+
+`tee-render --build <b> --scenario <s>` plays one through `SimHost` (the host the application uses): a WAV of 32-bit
+floats (`--pcm24`: 24-bit integers), a CSV of the telemetry (`--tel a,b`: those fields and what the assertions read;
+none: every number), a row a block; it prints each assertion's line and exits 3 when one fails. `--build defaults`
+takes every field's default whatever the scenario names; `--rate`, `--block` and `--seconds` override the file's.
 
 ## A validation: `tee-validation`, version 1
 
@@ -198,6 +206,13 @@ What a build should measure as, each target with its source (card C, section 8).
   `speedAtMaxPower` or `torqueAt` (with `"at"`).
 - Every target says its `"source"` in words; a target the program cannot be measured for yet (a field it lacks) is
   `n/a`, no failure.
+- A dyno target on a program with no brake of its own (no `tel.engine.torque` yet) is measured on the predicted
+  curve's steady points (`tee/Predict.h`, the host braking the crank, every 15 rad/s over the plan's speeds), and the
+  table says so.
+- `tee-validate` runs each file twice: the build with every model switch at the reference's setting (Spec switches
+  named `model` or `custom`, and those whose help starts "Off: the reference": `tee::referenceSettings`) and the build
+  as it is; it prints both columns and which targets each misses. A miss of the reference's is reported, not failed;
+  the exit status is 1 only when the simulator misses a target the reference meets, or a fast target fails.
 
 ## A dyno curve: CSV
 

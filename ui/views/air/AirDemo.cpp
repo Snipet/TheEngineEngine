@@ -200,6 +200,9 @@ namespace tee::ui::air
             engine.set("boost.ratio[1]", 1.0 + (pr - 1.0) * 0.9);
             engine.set("boost.flow[0]", mdot);
             engine.set("boost.flow[1]", mdot * 0.9);
+            // its efficiency there, from the same map (compressor.fm efficiency())
+            const CompressorMap::Line line = b.map.at(static_cast<float>(w));
+            engine.set("boost.efficiency[0]", b.map.efficiency(line, static_cast<float>(mdot / std::max(1e-6f, line.mc))));
         }
         if (b.charger == Charger::turbo)
         {
