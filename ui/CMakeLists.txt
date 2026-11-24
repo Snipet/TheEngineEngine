@@ -8,6 +8,7 @@
 # Targets:
 #   tee_ui_kit    (static)  ui/kit/gui and ui/kit/shaders: the .gui language, its layout, controls, displays and view
 #   tee_ui_ref    (static)  ui/ref: RefPanel, the reference engine's own panel, and tee::ui::makeMainPanel
+#   tee_ui        (interface) both: what the application links for makeMainPanel
 #   tee-shadergen (a tool)  writes what shaderc is handed for a panel's shaders (cmake/TeeShaders.cmake runs it)
 #   tests/ui                when TEE_UI_BUILD_TESTS is on (the default alone; the root's TEE_BUILD_TESTS otherwise)
 #
@@ -83,15 +84,10 @@ target_include_directories(tee_ui_funkgui_headers SYSTEM INTERFACE
 target_compile_definitions(tee_ui_funkgui_headers INTERFACE
   $<TARGET_PROPERTY:FunkGuiCore,INTERFACE_COMPILE_DEFINITIONS>)
 
-# Card B's interfaces (Player, ParamSource, TelemetrySource): the shell's header when it is in the tree, else the
-# stand-in that holds the card's text (tests/ui/standin/tee/app/Sources.h says why).
+# Card B's interfaces (Player, ParamSource, TelemetrySource, AppServices; makeMainPanel's declaration): the shell's
+# headers, which need nothing of the shell's but themselves.
 add_library(tee_ui_sources_header INTERFACE)
-if(EXISTS "${TEE_UI_REPO}/shell/include/tee/app/Sources.h")
-  target_include_directories(tee_ui_sources_header INTERFACE "${TEE_UI_REPO}/shell/include")
-else()
-  message(STATUS "ui/: shell/include/tee/app/Sources.h is not in the tree: using tests/ui/standin")
-  target_include_directories(tee_ui_sources_header INTERFACE "${TEE_UI_REPO}/tests/ui/standin")
-endif()
+target_include_directories(tee_ui_sources_header INTERFACE "${TEE_UI_REPO}/shell/include")
 
 # Whether a GPU layer of FunkGui's is in this build (FunkGui::gpu under JUCE, or card A's FunkGui::desktop): with one,
 # funkgui::shaders is FunkGui's and panel shaders are built (cmake/TeeShaders.cmake); with none, ShaderLibraryNone.cpp
@@ -124,6 +120,11 @@ tee_ui_warnings(tee-shadergen)
 include("${TEE_UI_REPO}/cmake/TeeShaders.cmake")
 
 add_subdirectory(ref)
+
+# What the application links for its Panel (shell/include/tee/app/MainPanel.h: while no target tee_ui exists the shell
+# uses its placeholder).
+add_library(tee_ui INTERFACE)
+target_link_libraries(tee_ui INTERFACE tee_ui_ref tee_ui_kit)
 
 if(TEE_UI_BUILD_TESTS)
   add_subdirectory("${TEE_UI_REPO}/tests/ui" "${CMAKE_CURRENT_BINARY_DIR}/tests")

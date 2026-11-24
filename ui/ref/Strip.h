@@ -1,17 +1,19 @@
 // ui/ref/Strip.h: what stands where the reference's panel had its keyboard (there is no MIDI here): the driver's
 // controls a mouse can reach. Ours, drawn on FunkGui's Canvas as the kit's items are (kit/gui/Items.h).
 //
-//   START     the key: held down it is the starter (ControlsFrame::ignition 2), let go the ignition stays on (1)
-//   OFF       the ignition off (0)
+//   START     the key: while it is held, PanelControls::startHeld (the shell makes of that what a car's key does:
+//             held is the starter; once the engine runs, a press of a second switches it off)
 //   THROTTLE  a bar to drag: the pedal goes where the pointer is and comes back up when it is let go; the wheel over
-//             it (and the left and right keys) set a rest position it comes back to instead (a held throttle),
-//             a double-click puts that back to 0
+//             it (and the left and right keys) set a rest position it comes back to instead (a held throttle), a
+//             double-click puts that back to 0. The bar shows the pedal as the application last sent it
+//             (AppServices::controls: the keyboard's and a gamepad's too), when it says
 //   - GEAR +  a press of - or + is one shift down or up (the counters shiftDown and shiftUp); the gear shown is the
-//             telemetry's, when it has a value named gear or showGear
+//             telemetry's (car.gear), when it has one
 //
-// Every change goes out as a whole ControlsFrame through StripModel::send. Keys reach an item only when it has the
-// focus and FunkGui sends a Panel no key's release, so Space or Return on START holds the starter for kKeyHold
-// seconds; the application's own keyboard handling (the shell's) is the real way to drive.
+// The strip never drives the engine itself: every change goes out as a tee::PanelControls through StripModel::send
+// (AppServices::panelControls), which the shell merges with the keyboard's and the devices'. Keys reach an item only
+// when it has the focus and FunkGui sends a Panel no key's release, so Space or Return on START holds it for
+// kKeyHold seconds; the shell's own keyboard handling is the real way to drive.
 #pragma once
 
 #include "kit/gui/Items.h"
@@ -25,24 +27,30 @@ namespace tee::ui
 {
     struct StripModel
     {
-        ControlsFrame frame{};
-        std::function<void(const ControlsFrame&)> send;      // the Player's setControls, or the application's own
+        PanelControls out{};                                 // what the strip asks for now
+        std::function<void(const PanelControls&)> send;      // AppServices::panelControls (none: nobody hears)
         float rest = 0.0f;                                   // the throttle's rest position (above)
+        bool dragging = false;                               // the bar is held
+        float drag = 0.0f;                                   // ... at this position
+        float pedal = 0.0f;                                  // the pedal as the bar shows it
         int gear = 0;                                        // as the telemetry says: -1 R, 0 N, 1 up
         bool gearKnown = false;
-        void push() const
+        bool running = false;                                // the engine's state is cranking or running (START lit)
+        // The throttle the strip asks for: the drag's, else the rest position, else none (-1: the pedal is not ours).
+        void push()
         {
+            out.throttle = dragging ? drag : (rest > 0.0f ? rest : -1.0f);
             if (send)
-                send(frame);
+                send(out);
         }
     };
 
-    // A button of the strip: START (held), OFF, - and + (clicked).
+    // A button of the strip: START (held), - and + (clicked).
     class StripButton final : public Item
     {
     public:
-        enum class What : uint8_t { start, off, shiftDown, shiftUp };
-        static constexpr float kKeyHold = 1.5f;              // seconds a key's press holds the starter
+        enum class What : uint8_t { start, shiftDown, shiftUp };
+        static constexpr float kKeyHold = 1.5f;              // seconds a key's press holds START
 
         StripButton(uint32_t id, What what, StripModel& model) : id_(id), what_(what), model_(model) {}
         void place(const funkgui::Rect& r, bool shown)
@@ -63,7 +71,7 @@ namespace tee::ui
         bool a11yAction(uint32_t id, funkgui::A11yAction a, double, funkgui::GestureController&) override;
         void specLine(char* out, std::size_t n) const override;
         bool settled() const override { return !down_ && keyHeld_ <= 0.0f; }
-        uint64_t drawKey() const override { return DrawKey{}.mix(down_).mix(hovered_).mix(model_.frame.ignition).h; }
+        uint64_t drawKey() const override { return DrawKey{}.mix(down_).mix(hovered_).mix(model_.running).h; }
         funkgui::Point centre() const override { return { rect_.centreX(), rect_.centreY() }; }
         bool shown() const override { return shown_; }
 
@@ -107,20 +115,19 @@ namespace tee::ui
         void accessibility(std::vector<funkgui::A11yItem>& out) const override;
         bool a11yAction(uint32_t id, funkgui::A11yAction a, double v, funkgui::GestureController&) override;
         void specLine(char* out, std::size_t n) const override;
-        bool settled() const override { return !dragging_; }
-        uint64_t drawKey() const override { return DrawKey{}.mix(model_.frame.throttle).mix(model_.rest).mix(hovered_).mix(dragging_).h; }
+        bool settled() const override { return !model_.dragging; }
+        uint64_t drawKey() const override { return DrawKey{}.mix(model_.pedal).mix(model_.rest).mix(hovered_).mix(model_.dragging).h; }
         funkgui::Point centre() const override { return { rect_.centreX(), rect_.centreY() }; }
         bool shown() const override { return shown_; }
 
     private:
-        void set(float throttle);
         void setRest(float rest);
         float at(float x) const noexcept;                    // the pedal's position for a pointer's x
 
         uint32_t id_;
         StripModel& model_;
         funkgui::Rect rect_;
-        bool shown_ = false, hovered_ = false, dragging_ = false;
+        bool shown_ = false, hovered_ = false;
     };
 
     // The gear, between the - and + buttons: a readout.

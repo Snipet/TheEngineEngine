@@ -290,29 +290,29 @@ namespace
     TEST(testPorts, "ports")
     {
         MockPlayer player;
-        SourcePort level(player, player.find("level"));
+        SourcePort level(player, player.findParam("level"));
         level.setValue01(0.25f);
         CHECK_NEAR(player.plain("level"), 0.25, 1e-6);
         CHECK_NEAR(level.value01(), 0.25, 1e-6);
         CHECK(level.numSteps() == 0);
-        SourcePort wave(player, player.find("wave"));
+        SourcePort wave(player, player.findParam("wave"));
         CHECK(wave.numSteps() == 3);
         wave.setValue01(1.0f);
         CHECK_NEAR(player.plain("wave"), 3.0, 0.0);
         wave.setValue01(0.4f);                           // the nearest of 0, 1, 2, 3
         CHECK_NEAR(player.plain("wave"), 1.0, 0.0);
-        SourcePort sync(player, player.find("sync"));
+        SourcePort sync(player, player.findParam("sync"));
         sync.setValue01(0.7f);
         CHECK_NEAR(player.plain("sync"), 1.0, 0.0);
-        SourcePort steps(player, player.find("steps"));
+        SourcePort steps(player, player.findParam("steps"));
         CHECK_NEAR(steps.default01(), 1.0 / 3.0, 1e-6);  // 2 in 1..4
         // A log taper (the .gui file's, or the parameter's own): the middle of the travel is the geometric mean.
-        tee::ParamInfo info = player.info(player.find("cutoff"));
+        tee::ParamInfo info = player.info(player.findParam("cutoff"));
         info.logTaper = true;
         Control c = controlOf(info);
         CHECK_NEAR(plainOf(c, 0.5f), std::sqrt(20.0 * 20000.0), 0.5);
         CHECK_NEAR(normOf(c, 2000.0f), std::log(100.0) / std::log(1000.0), 1e-5);
-        CHECK(optionsOf(player.info(player.find("mode"))).size() == 3);
+        CHECK(optionsOf(player.info(player.findParam("mode"))).size() == 3);
         return 0;
     }
 
@@ -794,7 +794,7 @@ namespace
         CHECK_MSG(item.why().find("no GPU renderer") != std::string::npos, item.why());
 #endif
         // Its inputs follow what they name: the parameter's turn, the field, the output's level.
-        rig.player.set(rig.player.find("glow"), 0.75);
+        rig.player.set(rig.player.findParam("glow"), 0.75);
         rig.player.setTelemetry("showRpm", 3000.0);
         rig.player.peak = 0.5f;
         rig.host.tick(3);
@@ -809,11 +809,35 @@ namespace
                             "    number shared->showRpm label=\"RPM\"\n  }\n  keyboard from=36 keys=49\n}\n";
     const char* kNoKeys = "row pad=8 {\n  knob level\n  knob drive\n}\n";
 
-    // The strip stands where the keyboard was and drives the Player's controls.
+    // The application's side of a Panel, made up: what the strip asked for last, the frame "sent", a status line.
+    struct Services
+    {
+        tee::PanelControls asked{};
+        int calls = 0;
+        tee::ControlsFrame sent{};
+        bool merged = false;                             // controls() answers (else the function is empty)
+        std::string status;
+
+        tee::AppServices make()
+        {
+            tee::AppServices s;
+            s.panelControls = [this](const tee::PanelControls& p) {
+                asked = p;
+                ++calls;
+            };
+            if (merged)
+                s.controls = [this] { return sent; };
+            s.status = [this] { return status; };
+            return s;
+        }
+    };
+
+    // The strip stands where the keyboard was and says what the driver's hand asks for; it never drives the Player.
     TEST(testRefStrip, "ref.strip")
     {
         MockPlayer player;
-        RefPanel panel(Sources{ { "panel.gui", kWithKeys } }, player, {});
+        Services app;
+        RefPanel panel(Sources{ { "panel.gui", kWithKeys } }, player, app.make(), {});
         funkgui::HeadlessHost host(panel, 0, 2.0f);
         host.tick(2);
         CHECK_MSG(panel.notes().find("left out") == std::string::npos, panel.notes());
@@ -821,63 +845,65 @@ namespace
         CHECK(keys.size() == 1);
         const funkgui::Rect strip = panel.stripRect();
         CHECK(!keys.empty() && strip.x == keys[0].x && strip.y == keys[0].y && strip.w == keys[0].w);
-        // START: held is the starter, let go leaves the ignition on. OFF switches it off.
+        // START: held while the button is down.
         const funkgui::Rect start = panel.startRect();
         host.press(start.centreX(), start.centreY());
-        CHECK(player.controls.ignition == 2);
+        CHECK(app.asked.startHeld);
         host.tick(30);
-        CHECK(player.controls.ignition == 2);
+        CHECK(app.asked.startHeld);
         host.release();
-        CHECK(player.controls.ignition == 1);
-        const funkgui::Rect off = panel.offRect();
-        host.click(off.centreX(), off.centreY());
-        CHECK(player.controls.ignition == 0);
-        // The throttle: the pedal follows the pointer and comes back up.
+        CHECK(!app.asked.startHeld);
+        // The throttle: the pedal follows the pointer and is let go of (-1: not held) when the button is.
         const funkgui::Rect bar = panel.throttleRect();
         CHECK(bar.w > 100.0f);
+        CHECK(app.asked.throttle < 0.0f);
         host.press(bar.x + bar.w * 0.5f, bar.centreY());
-        CHECK_NEAR(player.controls.throttle, 0.5, 0.02);
+        CHECK_NEAR(app.asked.throttle, 0.5, 0.02);
         host.moveTo(bar.right() + 50.0f, bar.centreY(), 4);
-        CHECK_NEAR(player.controls.throttle, 1.0, 1e-6);
+        CHECK_NEAR(app.asked.throttle, 1.0, 1e-6);
         host.release();
-        CHECK_NEAR(player.controls.throttle, 0.0, 1e-6);
+        CHECK(app.asked.throttle < 0.0f);
         // The wheel sets where it rests; a drag still comes back to that; a double-click clears it.
         host.wheel(bar.centreX(), bar.centreY(), 1.0f);
         host.wheel(bar.centreX(), bar.centreY(), 1.0f);
-        CHECK_NEAR(player.controls.throttle, 0.10, 1e-4);
+        CHECK_NEAR(app.asked.throttle, 0.10, 1e-4);
         host.drag(bar.x + bar.w * 0.8f, bar.centreY(), bar.x + bar.w * 0.9f, bar.centreY());
-        CHECK_NEAR(player.controls.throttle, 0.10, 1e-4);
+        CHECK_NEAR(app.asked.throttle, 0.10, 1e-4);
         host.doubleClick(bar.centreX(), bar.centreY());
-        CHECK_NEAR(player.controls.throttle, 0.0, 1e-6);
+        CHECK(app.asked.throttle < 0.0f);
         // The shifts count presses; the gear is the telemetry's.
         const funkgui::Rect up = panel.shiftRect(true), down = panel.shiftRect(false);
         host.click(up.centreX(), up.centreY());
         host.click(up.centreX(), up.centreY());
         host.click(down.centreX(), down.centreY());
-        CHECK(player.controls.shiftUp == 2 && player.controls.shiftDown == 1);
+        CHECK(app.asked.shiftUp == 2 && app.asked.shiftDown == 1);
         host.tick(2);
         CHECK(panel.gearText() == "N");
-        player.setTelemetry("showGear", 3.0);
+        player.setTelemetry("car.gear", 3.0);
         host.tick(2);
         CHECK(panel.gearText() == "3");
-        player.setTelemetry("showGear", -1.0);
+        player.setTelemetry("car.gear", -1.0);
         host.tick(2);
         CHECK(panel.gearText() == "R");
+        CHECK(player.frames == 0);                       // a Panel never calls Player::setControls
         // The interface's own controls still work beside it.
         const funkgui::Rect knob = panel.controlRect("level");
         host.drag(knob.centreX(), knob.centreY(), knob.centreX(), knob.centreY() - 40.0f);
         CHECK(player.plain("level") > 0.6);
-        golden("ref.strip", host);
-        // An application that merges the strip with its own input takes the frames instead.
+        // The bar shows the pedal the application last sent (a key's, a gamepad's), when it says.
+        CHECK_NEAR(panel.strip().pedal, 0.0, 1e-6);
+        Services merging;
+        merging.merged = true;
+        merging.sent.throttle = 0.6f;
+        merging.status = "error: program.fm:12:3: expected ';'\nmore";
         MockPlayer other;
-        int taken = 0;
-        RefPanel::Options o;
-        o.controls = [&](const tee::ControlsFrame& f) { taken += f.ignition; };
-        RefPanel hooked(Sources{ { "panel.gui", kWithKeys } }, other, o);
-        funkgui::HeadlessHost host2(hooked, 0, 2.0f);
-        host2.tick(1);
-        host2.click(hooked.startRect().centreX(), hooked.startRect().centreY());
-        CHECK(taken == 3 && other.frames == 0);          // 2 at the press, 1 at the release
+        other.setTelemetry("engine.state", 2.0);
+        RefPanel shown(Sources{ { "panel.gui", kWithKeys } }, other, merging.make(), {});
+        funkgui::HeadlessHost host2(shown, 0, 2.0f);
+        host2.tick(2);
+        CHECK_NEAR(shown.strip().pedal, 0.6, 1e-6);
+        CHECK(shown.strip().running);
+        golden("ref.strip", host2);                      // the pedal at 60 %, START lit, the error's first line on top
         return 0;
     }
 
@@ -885,27 +911,29 @@ namespace
     TEST(testRefFallback, "ref.fallback")
     {
         MockPlayer player;
-        RefPanel panel(Sources{ { "panel.gui", kNoKeys } }, player, {});
+        Services app;
+        RefPanel panel(Sources{ { "panel.gui", kNoKeys } }, player, app.make(), {});
         funkgui::HeadlessHost host(panel, 0, 2.0f);
         host.tick(2);
         const funkgui::Rect strip = panel.stripRect();
         CHECK(strip.w > 0.0f && strip.bottom() <= static_cast<float>(panel.height()));
         CHECK(strip.y >= panel.controlRect("level").bottom());
         host.click(panel.startRect().centreX(), panel.startRect().centreY());
-        CHECK(player.controls.ignition == 1 && player.frames == 2);
+        CHECK(app.calls == 2 && !app.asked.startHeld);   // held at the press, let go at the release
         golden("ref.fallback", host);
         host.resize(900, 500);
         host.tick(2);
         CHECK(panel.stripRect().bottom() <= 500.0f && panel.stripRect().w > 800.0f);
 
+        // No file, and an application that gives no functions at all: it says so and nothing breaks.
         MockPlayer none;
-        RefPanel empty(Sources{}, none, {});
+        RefPanel empty(Sources{}, none, tee::AppServices{}, {});
         funkgui::HeadlessHost host3(empty, 0, 2.0f);
         host3.tick(2);
         host3.draw();
         CHECK(empty.notes().find("no .gui file") != std::string::npos);
         host3.click(empty.startRect().centreX(), empty.startRect().centreY());
-        CHECK(none.controls.ignition == 1);              // the strip is there all the same
+        host3.drag(empty.throttleRect().x + 5.0f, empty.throttleRect().centreY(), empty.throttleRect().right(), empty.throttleRect().centreY());
         return 0;
     }
 
