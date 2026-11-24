@@ -111,6 +111,23 @@ namespace tee
     namespace
     {
         constexpr long kFlagFault = 4;   // sim/spec/telemetry.fm's FLAG_FAULT
+        constexpr const char* kEconomyDefine = "TEE_ENGINE_RATE_48000";   // sim/engine.fm's setupAll (D, e9a9748)
+
+        // tel.engine.state and tel.engine.flags, where the program has them
+        template <typename LiveT>
+        void resolveEngineSlots(LiveT& live, const Fields& fields)
+        {
+            if (const FieldInfo* state = fields.find("tel.engine.state"); state != nullptr && state->count == 1)
+            {
+                live.stateOffset = state->offset;
+                live.stateScalar = state->scalar;
+            }
+            if (const FieldInfo* flags = fields.find("tel.engine.flags"); flags != nullptr && flags->count == 1)
+            {
+                live.flagsOffset = flags->offset;
+                live.flagsScalar = flags->scalar;
+            }
+        }
 
         // LoadOptions::hold's paths, found in the program (a path it lacks is skipped)
         template <typename LiveT>
@@ -290,16 +307,7 @@ namespace tee
                 live->controls.push_back({f->offset, f->scalar, c.offset, c.isFloat});
         }
         resolveHeld(*live, *sim, options_.hold);
-        if (const FieldInfo* state = fields.find("tel.engine.state"); state != nullptr && state->count == 1)
-        {
-            live->stateOffset = state->offset;
-            live->stateScalar = state->scalar;
-        }
-        if (const FieldInfo* flags = fields.find("tel.engine.flags"); flags != nullptr && flags->count == 1)
-        {
-            live->flagsOffset = flags->offset;
-            live->flagsScalar = flags->scalar;
-        }
+        resolveEngineSlots(*live, fields);
 
         // the Spec: what the host has sent (its defaults and every write since), when it is of this program
         unsigned char* data = static_cast<unsigned char*>(live->instance->data());
@@ -599,7 +607,58 @@ namespace tee
         }
     }
 
+    bool SimHost::setQuality(Quality quality, std::string& errors)
+    {
+        if (!sim_)
+        {
+            errors = "setQuality: nothing loaded";
+            return false;
+        }
+        if (quality == quality_)
+            return true;
+        if (sim_->directory().empty())
+        {
+            errors = "setQuality: the program was compiled from memory, not from a directory";
+            return false;
+        }
+        Sim::Options o = sim_->options();
+        o.defines.erase(kEconomyDefine);
+        if (quality == Quality::Economy)
+            o.defines[kEconomyDefine] = "1";
+        std::shared_ptr<Sim> next = Sim::compile(sim_->directory(), o, errors);
+        if (!next)
+            return false;
+        // does it run at the rate asked? (a program without the define's hook runs at its own)
+        const double want = quality == Quality::Economy ? 48000.0 : 96000.0;
+        Schema::Handle rate;
+        std::string unused;
+        if (next->schema().find("rate", rate, unused))
+        {
+            Instance probe(next->module());
+            next->writeDefaults(probe.data());
+            next->init()(probe.data(), static_cast<float>(rate_));
+            const double seen = probe.read(rate);
+            next->end()(probe.data());
+            if (std::fabs(seen - want) > 0.5)
+            {
+                errors = "setQuality: the program does not take " + std::string(kEconomyDefine) + " (it runs at "
+                         + std::to_string(seen) + " Hz inside)";
+                return false;
+            }
+            innerRate_ = seen;
+        }
+        if (!reloadWith(std::move(next), false, errors))
+            return false;
+        quality_ = quality;
+        return true;
+    }
+
     bool SimHost::reload(std::shared_ptr<Sim> next, std::string& errors)
+    {
+        return reloadWith(std::move(next), true, errors);
+    }
+
+    bool SimHost::reloadWith(std::shared_ptr<Sim> next, bool carry, std::string& errors)
     {
         if (!sim_ || !next)
             return false;
@@ -658,6 +717,7 @@ namespace tee
                 live->controls.push_back({f->offset, f->scalar, c.offset, c.isFloat});
         }
         resolveHeld(*live, *next, options_.hold);
+        resolveEngineSlots(*live, nf);
         unsigned char* data = static_cast<unsigned char*>(live->instance->data());
         std::memcpy(data + nf.spec().offset, shadow.data() + nf.spec().offset, nf.spec().size);
         {
@@ -671,7 +731,8 @@ namespace tee
             next->init()(data, static_cast<float>(rate_));
             live->begun = true;
         }
-        carryState(old->schema(), snapshot_.data(), next->schema(), data);
+        if (carry)
+            carryState(old->schema(), snapshot_.data(), next->schema(), data);
         std::memcpy(data + nf.spec().offset, shadow.data() + nf.spec().offset, nf.spec().size);
         for (const Section& s : nf.sections())
         {
@@ -690,7 +751,7 @@ namespace tee
         }
         if (old->options().checks)
             old->release();
-        pendingIsReload_.store(1, std::memory_order_relaxed);
+        pendingIsReload_.store(carry ? 1 : 2, std::memory_order_relaxed);
         if (Live* previous = pending_.exchange(live.release(), std::memory_order_acq_rel))
             destroyLive(previous);
         return true;
@@ -785,7 +846,7 @@ namespace tee
             logEvent(LogEvent::Kind::Controls, 0, -1, &c, sizeof c);
         }
         c = controlsApplied_;
-        if (crankLeft_ > 0)
+        if (crankLeft_ > 0 && &live == live_)   // (the instance fading out runs on as it was)
         {
             // a fresh instance after a fault: an ignition left on cranks it until it runs (LoadOptions)
             const bool running = live.stateScalar != Scalar::None
@@ -893,7 +954,10 @@ namespace tee
 
         if (Live* p = pending_.exchange(nullptr, std::memory_order_acq_rel))
         {
-            const bool isReload = pendingIsReload_.exchange(0, std::memory_order_relaxed) != 0;
+            const int reloadKind = pendingIsReload_.exchange(0, std::memory_order_relaxed);
+            const bool isReload = reloadKind != 0;
+            if (reloadKind == 2)   // a fresh engine (another quality): an ignition left on cranks it back
+                crankLeft_ = static_cast<std::int64_t>(options_.restartCrankSeconds * rate_);
             if (isReload && live_ != nullptr && !live_->dead)
             {
                 if (fading_ != nullptr)

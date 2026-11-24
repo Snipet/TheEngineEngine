@@ -44,7 +44,8 @@
 
 enum
 {
-    XB_SCOPE = 64
+    XB_SCOPE = 64,
+    XB_GRID = 48
 };
 
 // Each pipe's slot: its index in XNet's ducts
@@ -150,6 +151,11 @@ module XBuild
     float keepP;
     float kMean;                // the meters' smoothing, every 4th sample (some 0.2 s)
     int tick4;
+    float gridC[XB_GRID];       // cos and sin of the passivity check's frequencies (4 Hz to 4 kHz, log spaced)
+    float gridS[XB_GRID];
+    int tickPass;               // the check runs at a build and every 32 control steps
+    int passFix;                // 1 (always, in the engine): the check above; 0 only for a test that compares with
+                                // the reference's own order (tests/sim/exhaust, the harness reference test)
     // telemetry: means and what a view shows
     float pTurb;                // mean pressure at the collectors (before a turbine), Pa over the air outside
     float pConv[XS_SIDES];      // at each side's head (before the converter)
@@ -211,6 +217,15 @@ module XBuild
         kUse = 1.0f - expf(-16.0f / (0.3f * rate));
         kMean = 1.0f - expf(-4.0f / (0.2f * rate));
         tick4 = 0;
+        tickPass = 0;
+        passFix = 1;
+        for (int g = 0; g < XB_GRID; ++g)
+        {
+            const float f = 4.0f * expf(6.9077553f * (float)g / (float)(XB_GRID - 1));   // 4 Hz to 4 kHz
+            const float w = 6.28318531f * f / rate;
+            gridC[g] = cosf(w);
+            gridS[g] = sinf(w);
+        }
         keepH = 0.878f;
         keepP = 0.769f;
         for (int s = 0; s < XS_SIDES; ++s)
@@ -673,6 +688,7 @@ module XBuild
         if (atRest != 0)
             heat.rest(eng.tAmb, warm, eng.mdotSlow, eng.vAir);
         net.clear();
+        tickPass = 0;
         shape();
         net.list();
         if (settleIt != 0)
@@ -1483,19 +1499,110 @@ module XBuild
             }
         }
         // a pipe that would pass a filter with little loss takes its steady flow out after its filters (duct.fm,
-        // filtFirst): passive whatever the filter; the reference's pipes (more loss a pass) keep the reference's order
-        for (int i = 0; i < XN_DUCTS; ++i)
+        // filtFirst): passive whatever the filter. Most of the reference's pipes lose enough a pass to keep the reference's
+        // order; a few at extreme dials (a 0.96 tail with its shelves, a chamber at a muffler dial's end) do not, and
+        // there model 1 leaves the reference's sound by the fix (some -47 to -58 dB, the harness reference test)
+        if (tickPass == 0)
         {
-            Duct* p = &net.d[i];
-            // (the worst gain a pass can have in the reference's order: card T's measures, a packing's shelves some
-            // 0.19 % over unity a dB of their depth, a one-pole low-pass at f some 9 / f; with 1 % to spare)
-            float over = 1.0f;
-            if (p->packOn != 0)
-                over += 0.0019f * (p->pkKey[1] + p->pkKey[3]);
-            if (p->lp > 0.0f)
-                over += 9.0f / fmaxf(-logf(p->lp) * rate / 6.28318531f, 1.0f);
-            p->filtFirst = net.dUse[i] != 0 && (p->packOn != 0 || p->lp > 0.0f) && p->keep * over >= 0.99f ? 1 : 0;
+            for (int i = 0; i < XN_DUCTS; ++i)
+                net.d[i].filtFirst = net.dUse[i] != 0 && passFix != 0 ? filterFirst(&net.d[i]) : 0;
         }
+        tickPass = tickPass + 1 >= 32 ? 0 : tickPass + 1;
+    }
+
+    // The largest gain a pass of pipe p can have in the reference's order (its steady flow taken out before its
+    // filters), at its keep with no flow's loss, each way: max over f of |keep H(f) (1 - L(f)) + L(f)|, H its filters
+    // (the wall's shelves, a packing's, a low-pass; the returning waves' scattering too), L the 12 Hz tracker. Evaluated
+    // from its own coefficients on XB_GRID frequencies from 4 Hz to 4 kHz (where the tracker's and the filters' phases
+    // meet: card T's finding)
+    float passGain(Duct* p)
+    {
+        float best = 0.0f;
+        for (int g = 0; g < XB_GRID; ++g)
+        {
+            const float cr = gridC[g];
+            const float ci = -gridS[g];             // z^-1 = cos w - j sin w
+            // L = kDc / (1 - (1 - kDc) z^-1)
+            float lr = 0.0f;
+            float li = 0.0f;
+            {
+                const float dr = 1.0f - (1.0f - p->kDc) * cr;
+                const float di = -(1.0f - p->kDc) * ci;
+                const float m = dr * dr + di * di;
+                lr = p->kDc * dr / m;
+                li = -p->kDc * di / m;
+            }
+            for (int dir = 0; dir < 2; ++dir)
+            {
+                float hr = 1.0f;
+                float hi = 0.0f;
+                // a first-order section (b0 + b1 z^-1) / (1 + a1 z^-1), times
+                for (int sct = 0; sct < 8; ++sct)
+                {
+                    float b0 = 1.0f;
+                    float b1 = 0.0f;
+                    float a1 = 0.0f;
+                    int on = 0;
+                    if (sct < 3 && p->wallOn != 0)
+                    {
+                        b0 = p->sb0[sct];
+                        b1 = p->sb1[sct];
+                        a1 = p->sa1[sct];
+                        on = 1;
+                    }
+                    else if (sct >= 3 && sct < 5 && p->packOn != 0)
+                    {
+                        b0 = p->pb0[sct - 3];
+                        b1 = p->pb1[sct - 3];
+                        a1 = p->pa1[sct - 3];
+                        on = 1;
+                    }
+                    else if (sct >= 5 && sct < 7 && dir == 1 && p->backOn != 0)
+                    {
+                        b0 = p->rb0[sct - 5];
+                        b1 = p->rb1[sct - 5];
+                        a1 = p->ra1[sct - 5];
+                        on = 1;
+                    }
+                    else if (sct == 7 && p->lp > 0.0f)
+                    {
+                        b0 = 1.0f - p->lp;
+                        b1 = 0.0f;
+                        a1 = -p->lp;
+                        on = 1;
+                    }
+                    if (on == 0)
+                        continue;
+                    const float nr = b0 + b1 * cr;
+                    const float ni = b1 * ci;
+                    const float dr = 1.0f + a1 * cr;
+                    const float di = a1 * ci;
+                    const float m = dr * dr + di * di;
+                    const float sr = (nr * dr + ni * di) / m;
+                    const float si = (ni * dr - nr * di) / m;
+                    const float tr = hr * sr - hi * si;
+                    hi = hr * si + hi * sr;
+                    hr = tr;
+                }
+                // T = keep H (1 - L) + L
+                const float ar = 1.0f - lr;
+                const float ai = -li;
+                const float tr = p->keep * (hr * ar - hi * ai) + lr;
+                const float ti = p->keep * (hr * ai + hi * ar) + li;
+                best = fmaxf(best, sqrtf(tr * tr + ti * ti));
+            }
+        }
+        return best;
+    }
+
+    // Whether a pipe must take its steady flow out after its filters to stay passive (duct.fm, filtFirst): when a pass
+    // in the reference's order could give more than it took. A pipe that is passive in the reference's order keeps it
+    // (the reference's pipes, so model 1 at its defaults stays the reference's arithmetic)
+    int filterFirst(Duct* p)
+    {
+        if (p->wallOn == 0 && p->packOn == 0 && p->backOn == 0 && p->lp <= 0.0f)
+            return 0;
+        return passGain(p) > 0.9999f ? 1 : 0;
     }
 
     // ---- every 16 samples ----

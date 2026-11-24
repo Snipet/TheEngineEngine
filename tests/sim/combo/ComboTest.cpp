@@ -155,9 +155,18 @@ TEST_CASE("the archetype corpus: every build of content/builds/archetypes throug
     const Archetype generic{"corpus", 36.6, 209.4, false};
     for (const auto& f : files)
     {
+        // the click bound's baseline is the build's own reference: the same build with every switch off (a big
+        // diesel's own blip steps 18, the V8's 12)
         Times tm;
+        tee::test::Scenario off = scenario(Kind::Tour, f.string(), 0u, tm);
+        off.at(0.0);
+        for (const Switch& w : switches())
+            off.spec(w.path, 0);
+        const tee::test::Run r0 = off.run(tm.end);
+        const double from = tm.started + 0.5, to = tm.off;
+        const double ref = std::max(r0.left().during(from, to).largestStep(), r0.right().during(from, to).largestStep());
         const tee::test::Run r = scenario(Kind::Tour, f.string(), 0u, tm).run(tm.end);
-        const Verdict v = judge(r, tm, &generic, true, referenceStep("v8", Kind::Tour));
+        const Verdict v = judge(r, tm, &generic, true, ref);
         report(v, "as built", f.stem().string(), "tour");
     }
 }

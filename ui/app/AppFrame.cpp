@@ -363,6 +363,7 @@ namespace tee::ui
             if (services_.setMode)
                 services_.setMode(m);
         });
+        mode.setEnabled([this] { return !services_.engineReady || services_.engineReady(); });
         modes_.push_back(&mode);
         rpm_ = &make<RpmBar>([this] { return ctx_->live.get(telemetry::kSpeed) * kToRpm; },
                              [this] { return ctx_->live.get(telemetry::kRedline) * kToRpm; },
@@ -991,6 +992,8 @@ namespace tee::ui
             }
         }
         modes_[0]->setTitle(kModes[std::clamp(services_.mode ? services_.mode() : localMode_, 0, 2)]);
+        // While the engine's program compiles START says so (drawn disabled: Button::setEnabled).
+        start_->setTitle(!services_.engineReady || services_.engineReady() ? "Start" : "Compiling");
         if (const double db = ctx_->live.get("sound.limiter"); (std::isfinite(db) && std::fabs(db) > 0.05) != limiter_->shown())
             arrange();   // the limiter's bar comes or goes
         Board::tick(dt);

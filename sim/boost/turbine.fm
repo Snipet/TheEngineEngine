@@ -99,11 +99,15 @@ module BoostTurbine
     float rWheel;       // m
     float aNoz;         // the nozzle's effective area, vanes open, m^2
     float etaMax;
-    float vanes;        // a variable nozzle's opening, vaneMin to 1 (1: a fixed housing)
+    float vanes;        // a variable nozzle's opening, vaneMin to 1 (1: a fixed housing): the actuator's, every 16 samples
+    float vanesAt;      // the opening the gas sees: vanes followed as lift is (vanesMid the first stage)
+    float vanesMid;
     float vaneMin;
     int vgt;
     float aGate;        // the wastegate's area, open, m^2
-    float lift;         // its opening, 0 to 1
+    float lift;         // its opening, 0 to 1: the actuator's, moved every 16 samples
+    float liftAt;       // the opening the gas sees: lift followed every sample by two 1 ms stages (liftMid the first):
+    float liftMid;      // no step in the flow nor in its rate of change (the inlet's sound is that rate)
     int gateExt;        // 1: an external gate, into a pipe of its own
     int scrolls;        // 1 or 2
     float power;        // W this sample, summed over its scrolls
@@ -118,7 +122,7 @@ module BoostTurbine
     // the nozzle's area now
     float nozzle()
     {
-        return aNoz * (vgt != 0 ? vanes : 1.0f);
+        return aNoz * (vgt != 0 ? vanesAt : 1.0f);
     }
 
     // The wheel's work (W) on mass flow m (kg/s) from gas at t (K) expanding by ratio r, at shaft speed omega; its
@@ -133,7 +137,7 @@ module BoostTurbine
         bsr = omega * rWheel / cs;
         const float x = bsr / 0.7f;
         const float g = fmaxf(2.0f - x, 0.0f);
-        const float vk = vgt != 0 ? 0.85f + 0.15f * vanes : 1.0f;
+        const float vk = vgt != 0 ? 0.85f + 0.15f * vanesAt : 1.0f;
         eta = etaMax * x * g * vk;
         const float tq = m * cs * rWheel * etaMax * g * vk / 1.4f;
         torque += tq;
