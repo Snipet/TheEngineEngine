@@ -73,6 +73,8 @@ namespace tee::input
     {
         if (action == Action::start)
         {
+            if (!startEnabled_)
+                return;
             startLatch_ = settings_.startLeast;
             startLatchFresh_ = true;    // the next advance's dt is time before the press: it does not count
             return;
@@ -150,6 +152,16 @@ namespace tee::input
         handbrakeStripHeld_ = isHeld;
     }
 
+    void Driver::setStartEnabled(bool on) noexcept
+    {
+        startEnabled_ = on;
+        if (!on)
+        {
+            startLatch_ = 0.0f;
+            crankLeft_ = 0.0f;
+        }
+    }
+
     void Driver::setMode(int mode)
     {
         settings_.mode = mode;
@@ -192,7 +204,7 @@ namespace tee::input
         // a tap is enough, and a key let go early (the window losing the keyboard as it opens) does not cut it short
         if (seen.running)
             crankLeft_ = 0.0f;
-        const bool start = held(Action::start) || startLatch_ > 0.0f || crankLeft_ > 0.0f;
+        const bool start = startEnabled_ && (held(Action::start) || startLatch_ > 0.0f || crankLeft_ > 0.0f);
         if (startLatchFresh_)
             startLatchFresh_ = false;
         else

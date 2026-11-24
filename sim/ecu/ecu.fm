@@ -25,6 +25,7 @@
 
 module Ecu
 {
+    float overBoostRef; // the boost machine's over-boost level, Pa over the air (Engine sets it; 0: none)
     float sinceStart;   // seconds since it started (0 while it cranks): a diesel's start fuel tapers off
     float idleRpm;      // the idle and the redline this engine has: the layout's, moved by the dials
     float redRpm;
@@ -93,6 +94,7 @@ module Ecu
     void setup(float d16, EcuSpec* specIn, FuelSpec* fuelIn, Controls* ctlIn, EcuTel* telIn, Scope* scopeIn, Heat* heatIn)
     {
         spec = specIn;
+        overBoostRef = 0.0f;
         fuelSpec = fuelIn;
         ctl = ctlIn;
         tel = telIn;
@@ -325,6 +327,7 @@ module Ecu
         in->gasT1 = gasT;
         in->afr = kFuelAfr[fuelRow(fuelSpec->model == 1 ? fuelSpec->grade : (fuelUse != 0 ? FUEL_DIESEL : FUEL_REGULAR))];
         in->cylinders = cylinders;
+        in->boostLimit = spec->overBoost > 0.0f ? spec->overBoost : (spec->overBoost == 0.0f ? overBoostRef : 0.0f);
         one.maps.tune.maxLoad = 1.0f;
         one.maps.tune.gears = 6;
         one.control(in, spec, d16);

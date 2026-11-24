@@ -4,6 +4,84 @@
 
 Telemetry wanted and not yet there (its line reads n/a): `tel.engine.chargeTemperature`, `tel.engine.trappedMass`, `tel.exhaust.portPressure`.
 
+### Air-cooled flat six (`air-cooled-flat-six-36`, naturally aspirated petrol)
+
+Peak of these points: 325 N m (11.35 bar BMEP) at 5199 rpm; 203 kW.
+
+| Line | 1500 rpm | 2733 rpm | 3966 rpm | 5199 rpm | 6432 rpm | Range | |
+|---|---|---|---|---|---|---|---|
+| Torque, N m | 292.0 | 318.9 | 322.4 | 325.2 | 301.7 | | |
+| Power, kW | 45.9 | 91.3 | 133.9 | 177.0 | 203.2 | | |
+| BMEP, bar | 10.19 | 11.13 | 11.25 | 11.35 | 10.53 | 10.00 to 14.50 |  |
+| Gross IMEP, bar | **11.30** | 12.45 | 12.96 | 13.53 | 13.32 | 11.50 to 16.50 | out |
+| Pumping MEP, bar | **0.03** | 0.15 | 0.35 | 0.58 | **0.91** | 0.05 to 0.60 | out |
+| Friction MEP, bar | 1.04 | 1.17 | 1.36 | 1.60 | 1.88 | (reported) |  |
+| Friction + pumping MEP, bar | 1.07 | 1.32 | **1.71** | **2.18** | **2.78** | Heywood 13.15 ±25 % | out |
+| Vol. eff. (outside air) | 0.862 | 0.898 | 0.913 | 0.941 | 0.925 | 0.800 to 1.050 |  |
+| Vol. eff. (manifold) | 0.867 | 0.909 | 0.932 | 0.970 | 0.961 | 0.800 to 1.120 |  |
+| Vol. eff. (manifold), tel | 0.865 | 0.909 | 0.932 | 0.959 | 0.959 | 0.800 to 1.120 |  |
+| Brake efficiency | 0.274 | 0.290 | 0.290 | 0.283 | 0.271 | 0.270 to 0.370 |  |
+| Lambda | 0.882 | 0.887 | 0.892 | 0.891 | 0.903 | 0.780 to 1.000 |  |
+| Spark, deg BTDC | 16.0 | 16.2 | 16.1 | 16.1 | 16.1 | 10.0 to 40.0 |  |
+| Half-burn, deg ATDC | 8.1 | 8.0 | 8.1 | 7.9 | 8.0 | 4.0 to 12.0 |  |
+| Peak cylinder pressure, bar | 66.0 | 69.1 | 71.2 | 74.3 | 73.9 | 45.0 to 95.0 |  |
+| Charge at intake closing, K | n/a | n/a | n/a | n/a | n/a | 320 to 400 | wants tel.engine.chargeTemperature (card D) |
+| Manifold, kPa | 100.7 | 100.0 | 99.2 | 98.3 | 97.5 | 93.0 to 101.3 |  |
+| Exhaust port, mean, kPa | n/a | n/a | n/a | n/a | n/a | 102.0 to 135.0 | wants tel.exhaust.portPressure (card G) |
+| Port gas, K | 1006 | 1116 | 1199 | 1228 | 1250 | 1000 to 1300 |  |
+
+### Big-block 7.4 L pushrod V8 (`big-block-74-pushrod-v8`, naturally aspirated petrol)
+
+Peak of these points: 593 N m (10.02 bar BMEP) at 3438 rpm; 298 kW.
+
+| Line | 1501 rpm | 2469 rpm | 3438 rpm | 4407 rpm | 5376 rpm | Range | |
+|---|---|---|---|---|---|---|---|
+| Torque, N m | 552.9 | 585.4 | 593.1 | 580.7 | 529.6 | | |
+| Power, kW | 86.9 | 151.4 | 213.5 | 268.0 | 298.1 | | |
+| BMEP, bar | **9.34** | **9.89** | 10.02 | **9.81** | **8.95** | 10.00 to 14.50 | out |
+| Gross IMEP, bar | **10.51** | **11.36** | 11.88 | 12.15 | 11.84 | 11.50 to 16.50 | out |
+| Pumping MEP, bar | 0.08 | 0.22 | 0.39 | **0.61** | **0.88** | 0.05 to 0.60 | out |
+| Friction MEP, bar | 1.08 | 1.25 | 1.46 | 1.73 | 2.02 | (reported) |  |
+| Friction + pumping MEP, bar | 1.16 | 1.47 | 1.86 | 2.33 | 2.90 | Heywood 13.15 ±25 % |  |
+| Vol. eff. (outside air) | 0.801 | 0.834 | 0.858 | 0.868 | 0.843 | 0.800 to 1.050 |  |
+| Vol. eff. (manifold) | 0.806 | 0.843 | 0.874 | 0.890 | 0.870 | 0.800 to 1.120 |  |
+| Vol. eff. (manifold), tel | 0.804 | 0.842 | 0.874 | 0.888 | 0.871 | 0.800 to 1.120 |  |
+| Brake efficiency | 0.271 | 0.277 | 0.274 | **0.266** | **0.251** | 0.270 to 0.370 | out |
+| Lambda | 0.882 | 0.886 | 0.891 | 0.894 | 0.900 | 0.780 to 1.000 |  |
+| Spark, deg BTDC | 15.1 | 15.1 | 15.1 | 15.0 | 15.0 | 10.0 to 40.0 |  |
+| Half-burn, deg ATDC | 8.0 | 8.0 | 8.0 | 8.0 | 8.1 | 4.0 to 12.0 |  |
+| Peak cylinder pressure, bar | 59.1 | 61.9 | 62.9 | 64.3 | 62.6 | 45.0 to 95.0 |  |
+| Charge at intake closing, K | n/a | n/a | n/a | n/a | n/a | 320 to 400 | wants tel.engine.chargeTemperature (card D) |
+| Manifold, kPa | 100.7 | 100.2 | 99.5 | 98.8 | 98.2 | 93.0 to 101.3 |  |
+| Exhaust port, mean, kPa | n/a | n/a | n/a | n/a | n/a | 102.0 to 135.0 | wants tel.exhaust.portPressure (card G) |
+| Port gas, K | 1096 | 1187 | 1227 | 1251 | 1271 | 1000 to 1300 |  |
+
+### 7.0 L pushrod V8, dry sump (`big-bore-70-pushrod-v8`, naturally aspirated petrol)
+
+Peak of these points: 575 N m (10.31 bar BMEP) at 2797 rpm; 364 kW.
+
+| Line | 1501 rpm | 2797 rpm | 4110 rpm | 5415 rpm | 6720 rpm | Range | |
+|---|---|---|---|---|---|---|---|
+| Torque, N m | 521.0 | 575.4 | 559.5 | 553.4 | 516.7 | | |
+| Power, kW | 81.9 | 168.5 | 240.8 | 313.8 | 363.6 | | |
+| BMEP, bar | **9.34** | 10.31 | 10.03 | **9.92** | **9.26** | 10.00 to 14.50 | out |
+| Gross IMEP, bar | **10.42** | 11.80 | 12.10 | 12.88 | 13.25 | 11.50 to 16.50 | out |
+| Pumping MEP, bar | 0.07 | 0.25 | 0.51 | **0.99** | **1.55** | 0.05 to 0.60 | out |
+| Friction MEP, bar | 0.99 | 1.23 | 1.56 | 1.97 | 2.45 | (reported) |  |
+| Friction + pumping MEP, bar | 1.07 | 1.49 | 2.07 | 2.96 | 3.99 | Heywood 13.15 ±25 % |  |
+| Vol. eff. (outside air) | **0.785** | 0.847 | 0.852 | 0.901 | 0.925 | 0.800 to 1.050 | out |
+| Vol. eff. (manifold) | **0.789** | 0.860 | 0.871 | 0.930 | 0.968 | 0.800 to 1.120 | out |
+| Vol. eff. (manifold), tel | **0.788** | 0.861 | 0.874 | 0.932 | 0.971 | 0.800 to 1.120 | out |
+| Brake efficiency | 0.277 | 0.285 | 0.277 | **0.261** | **0.239** | 0.270 to 0.370 | out |
+| Lambda | 0.883 | 0.890 | 0.895 | 0.899 | 0.908 | 0.780 to 1.000 |  |
+| Spark, deg BTDC | 14.4 | 14.3 | 14.4 | 14.4 | 14.4 | 10.0 to 40.0 |  |
+| Half-burn, deg ATDC | 7.9 | 8.0 | 8.0 | 8.0 | 8.0 | 4.0 to 12.0 |  |
+| Peak cylinder pressure, bar | 61.7 | 66.2 | 67.7 | 71.5 | 73.8 | 45.0 to 95.0 |  |
+| Charge at intake closing, K | n/a | n/a | n/a | n/a | n/a | 320 to 400 | wants tel.engine.chargeTemperature (card D) |
+| Manifold, kPa | 100.8 | 99.8 | 99.2 | 98.2 | 96.8 | 93.0 to 101.3 |  |
+| Exhaust port, mean, kPa | n/a | n/a | n/a | n/a | n/a | 102.0 to 135.0 | wants tel.exhaust.portPressure (card G) |
+| Port gas, K | 1066 | 1171 | 1217 | 1249 | 1283 | 1000 to 1300 |  |
+
 ### 1.5 L economy four (`economy-four-15`, naturally aspirated petrol)
 
 Peak of these points: 145 N m (12.16 bar BMEP) at 6336 rpm; 96 kW.
@@ -29,6 +107,136 @@ Peak of these points: 145 N m (12.16 bar BMEP) at 6336 rpm; 96 kW.
 | Manifold, kPa | 100.8 | 100.1 | 99.4 | 98.7 | 97.4 | 93.0 to 101.3 |  |
 | Exhaust port, mean, kPa | n/a | n/a | n/a | n/a | n/a | 102.0 to 135.0 | wants tel.exhaust.portPressure (card G) |
 | Port gas, K | **847** | **992** | 1081 | 1122 | 1181 | 1000 to 1300 | out |
+
+### Flat-plane 4.5 L V8 (`flat-plane-v8-45`, naturally aspirated petrol)
+
+Peak of these points: 403 N m (11.27 bar BMEP) at 3285 rpm; 291 kW.
+
+| Line | 1499 rpm | 3285 rpm | 5070 rpm | 6855 rpm | 8640 rpm | Range | |
+|---|---|---|---|---|---|---|---|
+| Torque, N m | 234.0 | 403.1 | 366.8 | 380.3 | 321.4 | | |
+| Power, kW | 36.7 | 138.7 | 194.7 | 273.0 | 290.8 | | |
+| BMEP, bar | **6.54** | 11.27 | 10.25 | 10.63 | **8.98** | 10.00 to 14.50 | out |
+| Gross IMEP, bar | **7.63** | 12.71 | 12.06 | 13.18 | 12.41 | 11.50 to 16.50 | out |
+| Pumping MEP, bar | **0.02** | 0.14 | 0.18 | 0.46 | **0.84** | 0.05 to 0.60 | out |
+| Friction MEP, bar | 0.99 | 1.31 | 1.64 | 2.09 | 2.60 | (reported) |  |
+| Friction + pumping MEP, bar | 1.01 | **1.45** | **1.82** | **2.55** | **3.44** | Heywood 13.15 ±25 % | out |
+| Vol. eff. (outside air) | **0.571** | 0.880 | 0.813 | 0.888 | 0.843 | 0.800 to 1.050 | out |
+| Vol. eff. (manifold) | **0.571** | 0.892 | 0.826 | 0.919 | 0.888 | 0.800 to 1.120 | out |
+| Vol. eff. (manifold), tel | **0.577** | 0.877 | 0.827 | 0.913 | 0.892 | 0.800 to 1.120 | out |
+| Brake efficiency | 0.271 | 0.296 | 0.292 | 0.282 | **0.256** | 0.270 to 0.370 | out |
+| Lambda | 0.886 | 0.880 | 0.891 | 0.897 | 0.912 | 0.780 to 1.000 |  |
+| Spark, deg BTDC | 27.5 | 14.4 | 15.0 | 14.4 | 14.5 | 10.0 to 40.0 |  |
+| Half-burn, deg ATDC | 8.1 | 8.1 | **28.9** | 8.0 | 8.0 | 4.0 to 12.0 | out |
+| Peak cylinder pressure, bar | 58.5 | 81.0 | 77.0 | 80.7 | 75.5 | 45.0 to 95.0 |  |
+| Charge at intake closing, K | n/a | n/a | n/a | n/a | n/a | 320 to 400 | wants tel.engine.chargeTemperature (card D) |
+| Manifold, kPa | 101.2 | 99.9 | 99.8 | 97.9 | 96.2 | 93.0 to 101.3 |  |
+| Exhaust port, mean, kPa | n/a | n/a | n/a | n/a | n/a | 102.0 to 135.0 | wants tel.exhaust.portPressure (card G) |
+| Port gas, K | **718** | 1025 | 1080 | 1164 | 1227 | 1000 to 1300 | out |
+
+### Four-cam 5.0 L V8 (`four-cam-v8-50`, naturally aspirated petrol)
+
+Peak of these points: 476 N m (11.88 bar BMEP) at 5775 rpm; 344 kW.
+
+| Line | 1499 rpm | 2925 rpm | 4350 rpm | 5775 rpm | 7200 rpm | Range | |
+|---|---|---|---|---|---|---|---|
+| Torque, N m | 401.6 | 472.9 | 416.2 | 476.3 | 456.5 | | |
+| Power, kW | 63.0 | 144.8 | 189.6 | 288.1 | 344.2 | | |
+| BMEP, bar | 10.02 | 11.80 | 10.38 | 11.88 | 11.39 | 10.00 to 14.50 |  |
+| Gross IMEP, bar | **11.24** | 13.30 | 12.23 | 14.43 | 14.65 | 11.50 to 16.50 | out |
+| Pumping MEP, bar | **0.05** | 0.19 | 0.25 | 0.53 | **0.79** | 0.05 to 0.60 | out |
+| Friction MEP, bar | 1.08 | 1.31 | 1.60 | 2.02 | 2.48 | (reported) |  |
+| Friction + pumping MEP, bar | 1.13 | 1.50 | **1.85** | **2.55** | **3.27** | Heywood 13.15 ±25 % | out |
+| Vol. eff. (outside air) | 0.850 | 0.932 | 0.832 | 0.983 | 1.000 | 0.800 to 1.050 |  |
+| Vol. eff. (manifold) | 0.854 | 0.945 | 0.847 | 1.016 | 1.055 | 0.800 to 1.120 |  |
+| Vol. eff. (manifold), tel | 0.856 | 0.939 | 0.848 | 1.012 | 1.056 | 0.800 to 1.120 |  |
+| Brake efficiency | 0.280 | 0.295 | 0.290 | 0.286 | 0.273 | 0.270 to 0.370 |  |
+| Lambda | 0.884 | 0.885 | 0.890 | 0.898 | 0.911 | 0.780 to 1.000 |  |
+| Spark, deg BTDC | 13.5 | 13.6 | 13.6 | 13.6 | 13.6 | 10.0 to 40.0 |  |
+| Half-burn, deg ATDC | 8.0 | 8.0 | **39.4** | 8.0 | 8.0 | 4.0 to 12.0 | out |
+| Peak cylinder pressure, bar | 77.8 | 83.2 | 78.4 | 85.8 | 86.6 | 45.0 to 95.0 |  |
+| Charge at intake closing, K | n/a | n/a | n/a | n/a | n/a | 320 to 400 | wants tel.engine.chargeTemperature (card D) |
+| Manifold, kPa | 100.8 | 99.9 | 99.5 | 98.0 | 96.1 | 93.0 to 101.3 |  |
+| Exhaust port, mean, kPa | n/a | n/a | n/a | n/a | n/a | 102.0 to 135.0 | wants tel.exhaust.portPressure (card G) |
+| Port gas, K | **891** | 1076 | 1120 | 1177 | 1218 | 1000 to 1300 | out |
+
+### 1.6 L 16-valve hot hatch (`hot-hatch-16-16v`, naturally aspirated petrol)
+
+Peak of these points: 150 N m (11.81 bar BMEP) at 5559 rpm; 98 kW.
+
+| Line | 1499 rpm | 2856 rpm | 4206 rpm | 5559 rpm | 6912 rpm | Range | |
+|---|---|---|---|---|---|---|---|
+| Torque, N m | 107.2 | 122.5 | 133.6 | 149.9 | 136.0 | | |
+| Power, kW | 16.8 | 36.6 | 58.8 | 87.2 | 98.5 | | |
+| BMEP, bar | **8.44** | **9.65** | 10.52 | 11.81 | 10.72 | 10.00 to 14.50 | out |
+| Gross IMEP, bar | **9.70** | **11.00** | 12.19 | 13.95 | 13.38 | 11.50 to 16.50 | out |
+| Pumping MEP, bar | **0.04** | 0.12 | 0.25 | 0.42 | **0.63** | 0.05 to 0.60 | out |
+| Friction MEP, bar | 1.14 | 1.22 | 1.43 | 1.73 | 2.03 | (reported) |  |
+| Friction + pumping MEP, bar | 1.18 | **1.35** | **1.68** | **2.14** | **2.66** | Heywood 13.15 ±25 % | out |
+| Vol. eff. (outside air) | **0.754** | 0.806 | 0.880 | 0.994 | 0.943 | 0.800 to 1.050 | out |
+| Vol. eff. (manifold) | **0.758** | 0.816 | 0.896 | 1.023 | 0.976 | 0.800 to 1.120 | out |
+| Vol. eff. (manifold), tel | **0.770** | 0.817 | 0.892 | 1.006 | 0.944 | 0.800 to 1.120 | out |
+| Brake efficiency | **0.262** | 0.280 | 0.279 | 0.277 | **0.263** | 0.270 to 0.370 | out |
+| Lambda | 0.891 | 0.889 | 0.887 | 0.887 | 0.880 | 0.780 to 1.000 |  |
+| Spark, deg BTDC | 14.9 | 14.8 | 14.9 | 14.9 | 14.9 | 10.0 to 40.0 |  |
+| Half-burn, deg ATDC | 8.0 | 8.1 | 8.0 | 8.1 | 8.0 | 4.0 to 12.0 |  |
+| Peak cylinder pressure, bar | 55.9 | 59.5 | 63.8 | 73.0 | 70.3 | 45.0 to 95.0 |  |
+| Charge at intake closing, K | n/a | n/a | n/a | n/a | n/a | 320 to 400 | wants tel.engine.chargeTemperature (card D) |
+| Manifold, kPa | 100.9 | 100.1 | 99.6 | 98.4 | 97.9 | 93.0 to 101.3 |  |
+| Exhaust port, mean, kPa | n/a | n/a | n/a | n/a | n/a | 102.0 to 135.0 | wants tel.exhaust.portPressure (card G) |
+| Port gas, K | **846** | **988** | 1101 | 1147 | 1185 | 1000 to 1300 | out |
+
+### 3.8 L pushrod V6 (`pushrod-v6-38`, naturally aspirated petrol)
+
+Peak of these points: 338 N m (11.19 bar BMEP) at 4479 rpm; 159 kW.
+
+| Line | 1500 rpm | 2493 rpm | 3486 rpm | 4479 rpm | 5472 rpm | Range | |
+|---|---|---|---|---|---|---|---|
+| Torque, N m | 312.5 | 329.1 | 314.4 | 337.6 | 277.9 | | |
+| Power, kW | 49.1 | 85.9 | 114.8 | 158.4 | 159.2 | | |
+| BMEP, bar | 10.36 | 10.91 | 10.42 | 11.19 | **9.21** | 10.00 to 14.50 | out |
+| Gross IMEP, bar | **11.43** | 12.27 | 12.17 | 13.54 | 12.19 | 11.50 to 16.50 | out |
+| Pumping MEP, bar | 0.06 | 0.24 | 0.47 | **0.84** | **1.26** | 0.05 to 0.60 | out |
+| Friction MEP, bar | 1.00 | 1.12 | 1.28 | 1.51 | 1.72 | (reported) |  |
+| Friction + pumping MEP, bar | 1.05 | 1.36 | 1.75 | 2.35 | 2.98 | Heywood 13.15 ±25 % |  |
+| Vol. eff. (outside air) | 0.895 | 0.921 | 0.896 | 0.986 | 0.892 | 0.800 to 1.050 |  |
+| Vol. eff. (manifold) | 0.901 | 0.932 | 0.912 | 1.015 | 0.920 | 0.800 to 1.120 |  |
+| Vol. eff. (manifold), tel | 0.899 | 0.931 | 0.914 | 0.996 | 0.924 | 0.800 to 1.120 |  |
+| Brake efficiency | **0.269** | 0.277 | 0.273 | **0.265** | **0.245** | 0.270 to 0.370 | out |
+| Lambda | 0.882 | 0.887 | 0.892 | 0.887 | 0.901 | 0.780 to 1.000 |  |
+| Spark, deg BTDC | 16.0 | 16.0 | 16.1 | 16.1 | 16.1 | 10.0 to 40.0 |  |
+| Half-burn, deg ATDC | 8.0 | 8.1 | 8.1 | 8.0 | 8.0 | 4.0 to 12.0 |  |
+| Peak cylinder pressure, bar | 57.7 | 60.3 | 59.3 | 66.2 | 60.6 | 45.0 to 95.0 |  |
+| Charge at intake closing, K | n/a | n/a | n/a | n/a | n/a | 320 to 400 | wants tel.engine.chargeTemperature (card D) |
+| Manifold, kPa | 100.6 | 100.1 | 99.6 | 98.4 | 98.2 | 93.0 to 101.3 |  |
+| Exhaust port, mean, kPa | n/a | n/a | n/a | n/a | n/a | 102.0 to 135.0 | wants tel.exhaust.portPressure (card G) |
+| Port gas, K | 1072 | 1186 | 1237 | 1278 | **1305** | 1000 to 1300 | out |
+
+### Small-block 5.7 L, carburettor-like (`small-block-57-carb`, naturally aspirated petrol)
+
+Peak of these points: 453 N m (9.93 bar BMEP) at 3390 rpm; 229 kW.
+
+| Line | 1501 rpm | 2445 rpm | 3390 rpm | 4335 rpm | 5280 rpm | Range | |
+|---|---|---|---|---|---|---|---|
+| Torque, N m | 427.6 | 450.6 | 453.2 | 443.8 | 413.6 | | |
+| Power, kW | 67.2 | 115.4 | 160.9 | 201.5 | 228.7 | | |
+| BMEP, bar | **9.37** | **9.88** | **9.93** | **9.73** | **9.06** | 10.00 to 14.50 | out |
+| Gross IMEP, bar | **10.51** | **11.27** | 11.66 | 11.89 | 11.75 | 11.50 to 16.50 | out |
+| Pumping MEP, bar | 0.08 | 0.21 | 0.39 | **0.62** | **0.92** | 0.05 to 0.60 | out |
+| Friction MEP, bar | 1.05 | 1.17 | 1.34 | 1.54 | 1.77 | (reported) |  |
+| Friction + pumping MEP, bar | 1.13 | 1.39 | 1.73 | 2.16 | 2.69 | Heywood 13.15 ±25 % |  |
+| Vol. eff. (outside air) | 0.832 | 0.858 | 0.874 | 0.882 | 0.868 | 0.800 to 1.050 |  |
+| Vol. eff. (manifold) | 0.837 | 0.867 | 0.889 | 0.903 | 0.895 | 0.800 to 1.120 |  |
+| Vol. eff. (manifold), tel | 0.836 | 0.867 | 0.889 | 0.903 | 0.897 | 0.800 to 1.120 |  |
+| Brake efficiency | **0.262** | **0.269** | **0.267** | **0.260** | **0.247** | 0.270 to 0.370 | out |
+| Lambda | 0.883 | 0.887 | 0.891 | 0.894 | 0.899 | 0.780 to 1.000 |  |
+| Spark, deg BTDC | 16.7 | 16.7 | 16.6 | 16.6 | 16.7 | 10.0 to 40.0 |  |
+| Half-burn, deg ATDC | 8.1 | 8.0 | 8.0 | 8.0 | 8.0 | 4.0 to 12.0 |  |
+| Peak cylinder pressure, bar | 53.2 | 55.1 | 55.9 | 56.6 | 56.1 | 45.0 to 95.0 |  |
+| Charge at intake closing, K | n/a | n/a | n/a | n/a | n/a | 320 to 400 | wants tel.engine.chargeTemperature (card D) |
+| Manifold, kPa | 100.7 | 100.2 | 99.6 | 99.0 | 98.3 | 93.0 to 101.3 |  |
+| Exhaust port, mean, kPa | n/a | n/a | n/a | n/a | n/a | 102.0 to 135.0 | wants tel.exhaust.portPressure (card G) |
+| Port gas, K | 1124 | 1218 | 1259 | 1283 | **1306** | 1000 to 1300 | out |
 
 ### 3.2 L straight six, high-revving (`straight-six-32-high-rev`, naturally aspirated petrol)
 
@@ -56,31 +264,161 @@ Peak of these points: 260 N m (10.07 bar BMEP) at 6135 rpm; 198 kW.
 | Exhaust port, mean, kPa | n/a | n/a | n/a | n/a | n/a | 102.0 to 135.0 | wants tel.exhaust.portPressure (card G) |
 | Port gas, K | **913** | **995** | 1072 | 1168 | 1218 | 1000 to 1300 | out |
 
-### Flat-plane 4.5 L V8 (`flat-plane-v8-45`, naturally aspirated petrol)
+### 1.8 L twin-cam roadster (`twin-cam-roadster-18`, naturally aspirated petrol)
 
-Peak of these points: 403 N m (11.27 bar BMEP) at 3285 rpm; 291 kW.
+Peak of these points: 173 N m (11.81 bar BMEP) at 6720 rpm; 122 kW.
 
-| Line | 1499 rpm | 3285 rpm | 5070 rpm | 6855 rpm | 8640 rpm | Range | |
+| Line | 1500 rpm | 2815 rpm | 4110 rpm | 5415 rpm | 6720 rpm | Range | |
 |---|---|---|---|---|---|---|---|
-| Torque, N m | 234.0 | 403.1 | 366.8 | 380.3 | 321.4 | | |
-| Power, kW | 36.7 | 138.7 | 194.7 | 273.0 | 290.8 | | |
-| BMEP, bar | **6.54** | 11.27 | 10.25 | 10.63 | **8.98** | 10.00 to 14.50 | out |
-| Gross IMEP, bar | **7.63** | 12.71 | 12.06 | 13.18 | 12.41 | 11.50 to 16.50 | out |
-| Pumping MEP, bar | **0.02** | 0.14 | 0.18 | 0.46 | **0.84** | 0.05 to 0.60 | out |
-| Friction MEP, bar | 0.99 | 1.31 | 1.64 | 2.09 | 2.60 | (reported) |  |
-| Friction + pumping MEP, bar | 1.01 | **1.45** | **1.82** | **2.55** | **3.44** | Heywood 13.15 ±25 % | out |
-| Vol. eff. (outside air) | **0.571** | 0.880 | 0.813 | 0.888 | 0.843 | 0.800 to 1.050 | out |
-| Vol. eff. (manifold) | **0.571** | 0.892 | 0.826 | 0.919 | 0.888 | 0.800 to 1.120 | out |
-| Vol. eff. (manifold), tel | **0.577** | 0.877 | 0.827 | 0.913 | 0.892 | 0.800 to 1.120 | out |
-| Brake efficiency | 0.271 | 0.296 | 0.292 | 0.282 | **0.256** | 0.270 to 0.370 | out |
-| Lambda | 0.886 | 0.880 | 0.891 | 0.897 | 0.912 | 0.780 to 1.000 |  |
-| Spark, deg BTDC | 27.5 | 14.4 | 15.0 | 14.4 | 14.5 | 10.0 to 40.0 |  |
-| Half-burn, deg ATDC | 8.1 | 8.1 | **28.9** | 8.0 | 8.0 | 4.0 to 12.0 | out |
-| Peak cylinder pressure, bar | 58.5 | 81.0 | 77.0 | 80.7 | 75.5 | 45.0 to 95.0 |  |
+| Torque, N m | 141.2 | 156.1 | 158.2 | 163.4 | 172.9 | | |
+| Power, kW | 22.2 | 46.0 | 68.1 | 92.6 | 121.7 | | |
+| BMEP, bar | **9.64** | 10.66 | 10.80 | 11.16 | 11.81 | 10.00 to 14.50 | out |
+| Gross IMEP, bar | **10.92** | 12.06 | 12.57 | 13.42 | 14.84 | 11.50 to 16.50 | out |
+| Pumping MEP, bar | **0.05** | 0.15 | 0.30 | 0.49 | **0.88** | 0.05 to 0.60 | out |
+| Friction MEP, bar | 1.13 | 1.25 | 1.47 | 1.77 | 2.14 | (reported) |  |
+| Friction + pumping MEP, bar | 1.18 | 1.40 | **1.77** | **2.26** | **3.03** | Heywood 13.15 ±25 % | out |
+| Vol. eff. (outside air) | 0.857 | 0.893 | 0.910 | 0.961 | **1.056** | 0.800 to 1.050 | out |
+| Vol. eff. (manifold) | 0.862 | 0.911 | 0.928 | 0.988 | 1.100 | 0.800 to 1.120 |  |
+| Vol. eff. (manifold), tel | 0.879 | 0.904 | 0.915 | 0.972 | 1.054 | 0.800 to 1.120 |  |
+| Brake efficiency | **0.265** | 0.276 | 0.276 | 0.271 | **0.259** | 0.270 to 0.370 | out |
+| Lambda | 0.895 | 0.887 | 0.883 | 0.886 | 0.880 | 0.780 to 1.000 |  |
+| Spark, deg BTDC | 14.6 | 14.6 | 14.6 | 14.6 | 14.6 | 10.0 to 40.0 |  |
+| Half-burn, deg ATDC | 7.9 | 8.0 | 8.0 | 8.0 | 8.1 | 4.0 to 12.0 |  |
+| Peak cylinder pressure, bar | 59.6 | 62.5 | 63.9 | 67.9 | 76.0 | 45.0 to 95.0 |  |
 | Charge at intake closing, K | n/a | n/a | n/a | n/a | n/a | 320 to 400 | wants tel.engine.chargeTemperature (card D) |
-| Manifold, kPa | 101.2 | 99.9 | 99.8 | 97.9 | 96.2 | 93.0 to 101.3 |  |
+| Manifold, kPa | 100.7 | 99.3 | 99.4 | 98.6 | 97.2 | 93.0 to 101.3 |  |
 | Exhaust port, mean, kPa | n/a | n/a | n/a | n/a | n/a | 102.0 to 135.0 | wants tel.exhaust.portPressure (card G) |
-| Port gas, K | **718** | 1025 | 1080 | 1164 | 1227 | 1000 to 1300 | out |
+| Port gas, K | **898** | 1030 | 1126 | 1172 | 1219 | 1000 to 1300 | out |
+
+### Two-stage-cam 2.0 L (`two-stage-cam-20`, naturally aspirated petrol)
+
+Peak of these points: 178 N m (11.20 bar BMEP) at 3285 rpm; 131 kW.
+
+| Line | 1501 rpm | 3285 rpm | 5070 rpm | 6855 rpm | 8638 rpm | Range | |
+|---|---|---|---|---|---|---|---|
+| Torque, N m | 159.2 | 178.0 | 176.4 | 141.6 | 144.8 | | |
+| Power, kW | 25.0 | 61.2 | 93.6 | 101.7 | 131.0 | | |
+| BMEP, bar | 10.02 | 11.20 | 11.10 | **8.91** | **9.11** | 10.00 to 14.50 | out |
+| Gross IMEP, bar | **11.33** | 12.76 | 13.28 | 11.65 | 12.91 | 11.50 to 16.50 | out |
+| Pumping MEP, bar | 0.05 | 0.21 | 0.48 | 0.60 | **1.07** | 0.05 to 0.60 | out |
+| Friction MEP, bar | 1.15 | 1.35 | 1.70 | 2.13 | 2.72 | (reported) |  |
+| Friction + pumping MEP, bar | 1.20 | 1.56 | **2.18** | **2.73** | **3.79** | Heywood 13.15 ±25 % | out |
+| Vol. eff. (outside air) | 0.862 | 0.901 | 0.918 | 0.801 | 0.886 | 0.800 to 1.050 |  |
+| Vol. eff. (manifold) | 0.867 | 0.914 | 0.941 | 0.821 | 0.920 | 0.800 to 1.120 |  |
+| Vol. eff. (manifold), tel | 0.875 | 0.914 | 0.925 | 0.815 | 0.882 | 0.800 to 1.120 |  |
+| Brake efficiency | 0.272 | 0.291 | 0.281 | **0.260** | **0.238** | 0.270 to 0.370 | out |
+| Lambda | 0.889 | 0.888 | 0.884 | 0.887 | 0.880 | 0.780 to 1.000 |  |
+| Spark, deg BTDC | 13.4 | 14.0 | 14.0 | 14.0 | 14.0 | 10.0 to 40.0 |  |
+| Half-burn, deg ATDC | 8.5 | 8.1 | 8.0 | 8.0 | 8.0 | 4.0 to 12.0 |  |
+| Peak cylinder pressure, bar | 68.1 | 73.7 | 75.6 | 68.8 | 76.7 | 45.0 to 95.0 |  |
+| Charge at intake closing, K | n/a | n/a | n/a | n/a | n/a | 320 to 400 | wants tel.engine.chargeTemperature (card D) |
+| Manifold, kPa | 100.7 | 99.8 | 98.8 | 98.9 | 97.5 | 93.0 to 101.3 |  |
+| Exhaust port, mean, kPa | n/a | n/a | n/a | n/a | n/a | 102.0 to 135.0 | wants tel.exhaust.portPressure (card G) |
+| Port gas, K | **884** | 1044 | 1131 | 1139 | 1194 | 1000 to 1300 | out |
+
+### V10 5.2 L (`v10-52`, naturally aspirated petrol)
+
+Peak of these points: 451 N m (10.90 bar BMEP) at 3213 rpm; 357 kW.
+
+| Line | 1499 rpm | 3213 rpm | 4926 rpm | 6639 rpm | 8352 rpm | Range | |
+|---|---|---|---|---|---|---|---|
+| Torque, N m | 401.4 | 451.3 | 396.5 | 417.1 | 408.7 | | |
+| Power, kW | 63.0 | 151.8 | 204.6 | 290.0 | 357.4 | | |
+| BMEP, bar | **9.69** | 10.90 | **9.58** | 10.07 | **9.87** | 10.00 to 14.50 | out |
+| Gross IMEP, bar | **10.90** | 12.43 | 11.60 | 13.03 | 13.95 | 11.50 to 16.50 | out |
+| Pumping MEP, bar | 0.08 | 0.18 | 0.29 | **0.69** | **1.17** | 0.05 to 0.60 | out |
+| Friction MEP, bar | 1.07 | 1.35 | 1.74 | 2.27 | 2.91 | (reported) |  |
+| Friction + pumping MEP, bar | 1.15 | 1.53 | **2.03** | **2.96** | **4.08** | Heywood 13.15 ±25 % | out |
+| Vol. eff. (outside air) | 0.851 | 0.853 | **0.781** | 0.877 | 0.946 | 0.800 to 1.050 | out |
+| Vol. eff. (manifold) | 0.856 | 0.862 | **0.792** | 0.907 | 1.004 | 0.800 to 1.120 | out |
+| Vol. eff. (manifold), tel | 0.856 | 0.867 | **0.793** | 0.902 | 1.001 | 0.800 to 1.120 | out |
+| Brake efficiency | 0.274 | 0.299 | 0.288 | **0.270** | **0.251** | 0.270 to 0.370 | out |
+| Lambda | 0.884 | 0.890 | 0.889 | 0.897 | 0.913 | 0.780 to 1.000 |  |
+| Spark, deg BTDC | 12.7 | 13.2 | 12.6 | 12.6 | 12.6 | 10.0 to 40.0 |  |
+| Half-burn, deg ATDC | **81.0** | 8.1 | 8.0 | 8.0 | 8.1 | 4.0 to 12.0 | out |
+| Peak cylinder pressure, bar | 75.7 | 80.1 | 75.0 | 80.7 | 86.2 | 45.0 to 95.0 |  |
+| Charge at intake closing, K | n/a | n/a | n/a | n/a | n/a | 320 to 400 | wants tel.engine.chargeTemperature (card D) |
+| Manifold, kPa | 100.7 | 100.3 | 100.0 | 98.1 | 95.5 | 93.0 to 101.3 |  |
+| Exhaust port, mean, kPa | n/a | n/a | n/a | n/a | n/a | 102.0 to 135.0 | wants tel.exhaust.portPressure (card G) |
+| Port gas, K | **931** | 1037 | 1090 | 1177 | 1233 | 1000 to 1300 | out |
+
+### V12 6.5 L (`v12-65`, naturally aspirated petrol)
+
+Peak of these points: 558 N m (10.78 bar BMEP) at 8544 rpm; 499 kW.
+
+| Line | 1500 rpm | 3261 rpm | 5022 rpm | 6783 rpm | 8544 rpm | Range | |
+|---|---|---|---|---|---|---|---|
+| Torque, N m | 498.0 | 528.7 | 456.8 | 538.7 | 557.7 | | |
+| Power, kW | 78.2 | 180.6 | 240.2 | 382.7 | 499.0 | | |
+| BMEP, bar | **9.63** | 10.22 | **8.83** | 10.42 | 10.78 | 10.00 to 14.50 | out |
+| Gross IMEP, bar | **10.74** | 11.68 | **10.63** | 13.15 | 14.33 | 11.50 to 16.50 | out |
+| Pumping MEP, bar | 0.08 | 0.19 | 0.23 | **0.72** | **1.04** | 0.05 to 0.60 | out |
+| Friction MEP, bar | 1.02 | 1.27 | 1.56 | 2.00 | 2.51 | (reported) |  |
+| Friction + pumping MEP, bar | 1.11 | **1.46** | **1.79** | **2.73** | **3.55** | Heywood 13.15 ±25 % | out |
+| Vol. eff. (outside air) | 0.810 | **0.795** | **0.701** | 0.873 | 0.961 | 0.800 to 1.050 | out |
+| Vol. eff. (manifold) | 0.814 | 0.801 | **0.705** | 0.896 | 1.025 | 0.800 to 1.120 | out |
+| Vol. eff. (manifold), tel | 0.815 | **0.797** | **0.706** | 0.898 | 1.026 | 0.800 to 1.120 | out |
+| Brake efficiency | **0.269** | 0.298 | 0.294 | 0.282 | 0.271 | 0.270 to 0.370 | out |
+| Lambda | 0.884 | 0.881 | 0.885 | 0.897 | 0.918 | 0.780 to 1.000 |  |
+| Spark, deg BTDC | 14.4 | 20.2 | 18.5 | 14.5 | 14.5 | 10.0 to 40.0 |  |
+| Half-burn, deg ATDC | 8.2 | 8.0 | 8.1 | 8.0 | 8.0 | 4.0 to 12.0 |  |
+| Peak cylinder pressure, bar | 75.4 | 81.9 | 74.8 | 87.9 | 94.9 | 45.0 to 95.0 |  |
+| Charge at intake closing, K | n/a | n/a | n/a | n/a | n/a | 320 to 400 | wants tel.engine.chargeTemperature (card D) |
+| Manifold, kPa | 100.7 | 100.6 | 100.7 | 98.7 | 95.0 | 93.0 to 101.3 |  |
+| Exhaust port, mean, kPa | n/a | n/a | n/a | n/a | n/a | 102.0 to 135.0 | wants tel.exhaust.portPressure (card G) |
+| Port gas, K | **926** | **982** | 1011 | 1122 | 1192 | 1000 to 1300 | out |
+
+### 3.5 L V6 (`v6-35-na`, naturally aspirated petrol)
+
+Peak of these points: 331 N m (12.05 bar BMEP) at 2733 rpm; 207 kW.
+
+| Line | 1500 rpm | 2733 rpm | 3966 rpm | 5199 rpm | 6432 rpm | Range | |
+|---|---|---|---|---|---|---|---|
+| Torque, N m | 312.1 | 331.5 | 327.1 | 302.8 | 307.0 | | |
+| Power, kW | 49.0 | 94.9 | 135.8 | 164.9 | 206.8 | | |
+| BMEP, bar | 11.35 | 12.05 | 11.89 | 11.01 | 11.16 | 10.00 to 14.50 |  |
+| Gross IMEP, bar | 12.46 | 13.42 | 13.56 | 13.25 | 14.00 | 11.50 to 16.50 |  |
+| Pumping MEP, bar | **0.02** | 0.16 | 0.30 | 0.53 | **0.83** | 0.05 to 0.60 | out |
+| Friction MEP, bar | 1.05 | 1.21 | 1.42 | 1.68 | 2.00 | (reported) |  |
+| Friction + pumping MEP, bar | 1.07 | 1.37 | **1.72** | **2.20** | **2.83** | Heywood 13.15 ±25 % | out |
+| Vol. eff. (outside air) | 0.946 | 0.968 | 0.969 | 0.934 | 0.976 | 0.800 to 1.050 |  |
+| Vol. eff. (manifold) | 0.952 | 0.981 | 0.990 | 0.961 | 1.021 | 0.800 to 1.120 |  |
+| Vol. eff. (manifold), tel | 0.953 | 0.985 | 0.994 | 0.961 | 1.001 | 0.800 to 1.120 |  |
+| Brake efficiency | 0.279 | 0.292 | 0.290 | 0.280 | 0.270 | 0.270 to 0.370 |  |
+| Lambda | 0.885 | 0.891 | 0.896 | 0.897 | 0.897 | 0.780 to 1.000 |  |
+| Spark, deg BTDC | 11.9 | 15.1 | 15.2 | 15.2 | 15.2 | 10.0 to 40.0 |  |
+| Half-burn, deg ATDC | 11.3 | 8.2 | 8.0 | 8.1 | 8.0 | 4.0 to 12.0 |  |
+| Peak cylinder pressure, bar | 64.7 | 73.3 | 73.4 | 71.3 | 75.3 | 45.0 to 95.0 |  |
+| Charge at intake closing, K | n/a | n/a | n/a | n/a | n/a | 320 to 400 | wants tel.engine.chargeTemperature (card D) |
+| Manifold, kPa | 100.6 | 100.0 | 99.1 | 98.5 | 96.9 | 93.0 to 101.3 |  |
+| Exhaust port, mean, kPa | n/a | n/a | n/a | n/a | n/a | 102.0 to 135.0 | wants tel.exhaust.portPressure (card G) |
+| Port gas, K | 1012 | 1091 | 1178 | 1220 | 1253 | 1000 to 1300 |  |
+
+### Narrow-angle VR6 2.8 L (`vr6-28`, naturally aspirated petrol)
+
+Peak of these points: 255 N m (11.47 bar BMEP) at 2685 rpm; 147 kW.
+
+| Line | 1501 rpm | 2685 rpm | 3870 rpm | 5055 rpm | 6240 rpm | Range | |
+|---|---|---|---|---|---|---|---|
+| Torque, N m | 224.4 | 254.9 | 233.0 | 238.8 | 225.3 | | |
+| Power, kW | 35.3 | 71.7 | 94.4 | 126.4 | 147.2 | | |
+| BMEP, bar | 10.10 | 11.47 | 10.49 | 10.75 | 10.14 | 10.00 to 14.50 |  |
+| Gross IMEP, bar | **11.30** | 12.97 | 12.35 | 13.28 | 13.32 | 11.50 to 16.50 | out |
+| Pumping MEP, bar | 0.10 | 0.26 | 0.43 | **0.79** | **1.11** | 0.05 to 0.60 | out |
+| Friction MEP, bar | 1.08 | 1.23 | 1.44 | 1.73 | 2.06 | (reported) |  |
+| Friction + pumping MEP, bar | 1.18 | 1.49 | 1.86 | 2.52 | 3.18 | Heywood 13.15 ±25 % |  |
+| Vol. eff. (outside air) | 0.877 | 0.956 | 0.892 | 0.954 | 0.952 | 0.800 to 1.050 |  |
+| Vol. eff. (manifold) | 0.883 | 0.969 | 0.908 | 0.980 | 0.986 | 0.800 to 1.120 |  |
+| Vol. eff. (manifold), tel | 0.880 | 0.966 | 0.909 | 0.985 | 0.990 | 0.800 to 1.120 |  |
+| Brake efficiency | **0.267** | 0.280 | 0.276 | **0.267** | **0.253** | 0.270 to 0.370 | out |
+| Lambda | 0.882 | 0.886 | 0.891 | 0.900 | 0.903 | 0.780 to 1.000 |  |
+| Spark, deg BTDC | 13.9 | 13.9 | 13.9 | 13.9 | 14.0 | 10.0 to 40.0 |  |
+| Half-burn, deg ATDC | 8.0 | 7.9 | 8.0 | 8.0 | 8.0 | 4.0 to 12.0 |  |
+| Peak cylinder pressure, bar | 62.0 | 67.9 | 64.0 | 69.1 | 69.3 | 45.0 to 95.0 |  |
+| Charge at intake closing, K | n/a | n/a | n/a | n/a | n/a | 320 to 400 | wants tel.engine.chargeTemperature (card D) |
+| Manifold, kPa | 100.7 | 100.0 | 99.6 | 98.7 | 97.8 | 93.0 to 101.3 |  |
+| Exhaust port, mean, kPa | n/a | n/a | n/a | n/a | n/a | 102.0 to 135.0 | wants tel.exhaust.portPressure (card G) |
+| Port gas, K | **991** | 1137 | 1182 | 1224 | 1261 | 1000 to 1300 | out |
 
 ### The ranges' sources
 

@@ -254,9 +254,10 @@ arch(slug="two-stage-cam-20", runner=0.3, convK=16.0, name="Two-stage-cam 2.0 L"
 arch(slug="kei-660-triple-turbo", runner=0.28, convK=24.0, name="Kei 660 cc triple turbo", geo="ref-04-inline-3", layout="Inline 3",
      bore=68.0, stroke=60.4, rod=110.0, cr=8.6, valves=4, dIn=24.5, dEx=21.0,
      cam=(240, 208, 7.5, 110, 236, 204, 7.0, 112), train="Bucket", redline=8000, idle=850,
-     boost=dict(kind="Turbo", target=0.65, spring=0.15), car="kei",
-     boostTaper=[(1500, 65), (4000, 65), (5000, 50), (6000, 32), (6500, 25), (7000, 17), (8000, 15), (8500, 15)], timing="Chain",
-     notes="A Japanese kei-class three: 68 x 60.4 mm (658 cc), 8.6:1, four valves, a small turbo at a production 0.65 bar falling to 0.15 bar by 7000 rpm (the class's power cap is met by the ECU's boost taper; the K6A kind: "
+     boost=dict(kind="Turbo", target=0.65, spring=0.10), car="kei",
+     boostTaper=[(1500, 65), (4000, 65), (5000, 45), (5250, 36), (6000, 22), (6500, 15), (7000, 12), (8000, 10), (8500, 10)],
+     gateDiameter=0.026, timing="Chain",
+     notes="A Japanese kei-class three: 68 x 60.4 mm (658 cc), 8.6:1, four valves, a small turbo at a production 0.65 bar falling to 0.12 bar by 7000 rpm (the class's power cap is met by the ECU's boost taper; the K6A kind: "
            "47 kW (the class's 64 PS cap) at 6500 rpm, 103 to 108 N m at 3500; Wikipedia, goo-net-exchange). In a "
            "780 kg rear-drive sports kei.")
 arch(slug="diesel-20-common-rail", runner=0.3, name="Diesel 2.0 L common rail", geo="ref-05-inline-4", layout="Inline 4",
@@ -293,10 +294,12 @@ arch(slug="turbo-four-20-gdi", runner=0.3, name="2.0 L turbo four, direct inject
      bore=82.5, stroke=92.8, rod=144.0, cr=9.6, valves=4, dIn=33.8, dEx=28.0,
      cam=(240, 208, 10.7, 110, 236, 204, 9.0, 112), train="Finger", phase=(60, 0), redline=6800, idle=750,
      boost=dict(kind="Turbo", target=1.2, spring=0.6, scrolls="Twin scroll"), direct=True, grade="Premium (91)",
+     boostTaper=[(1500, 120), (4500, 120), (5300, 105), (6000, 85), (6500, 75), (7000, 70)],
      car="hot-hatch-dct", timing="Chain",
      notes="A 2.0 L direct-injection turbo four: 82.5 x 92.8 mm (1984 cc), 9.6:1 (engines of the kind in hot "
            "hatches: 155 to 228 kW at 5000 to 6500 rpm, 350 to 400 N m from 1600 to 4500; makers' figures). "
-           "Front drive, six-speed dual clutch.", balance2=True)
+           "Its boost is trimmed above 4500 rpm (1.2 bar falling to 0.7), as production two-litres do. Front drive, "
+           "six-speed dual clutch.", balance2=True)
 arch(slug="v6-35-na", intake=dict(runnerLength=0.50, runnerLength2=0.30, runnerSwitch=4000 * RPM), name="3.5 L V6", geo="ref-09-v6-60", layout="V6", bore=94.0, stroke=83.0, rod=152.0,
      cr=10.8, valves=4, dIn=35.0, dEx=29.0, cam=(240, 208, 10.2, 110, 236, 204, 9.4, 112), train="Finger",
      phase=(40, 30), redline=6700, idle=700, car="family-sedan-auto", timing="Toothed belt",
@@ -495,6 +498,8 @@ def build(a):
                 bo["vanes"] = "Variable vanes"
             if k.get("antiLag"):
                 bo["antiLag"] = True
+            if a.get("gateDiameter"):
+                bo["gateDiameter"] = a["gateDiameter"]
             bo["icEffect"] = 0.75
     else:
         bo["model"] = "Machine"

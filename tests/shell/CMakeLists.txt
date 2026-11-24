@@ -28,6 +28,13 @@ add_test(NAME shell.headless.sim
   COMMAND tee-headless --engine sim --sim "${PROJECT_SOURCE_DIR}/sim" --script "${_scripts}/sim-start-rev-stop.txt"
           --wav "${_out}/sim-start-rev-stop.wav" --shot "${_out}/sim-end.png"
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
+# The window's wait for the engine's compile, in tee-headless: the compile held back a second (--hold-compile), the frame
+# drawn meanwhile with START doing nothing and the status line counting, then the engine started (scripts/hold-compile.txt)
+add_test(NAME shell.headless.hold
+  COMMAND tee-headless --engine sim --sim "${PROJECT_SOURCE_DIR}/sim" --hold-compile 1.0
+          --script "${_scripts}/hold-compile.txt"
+  WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
+set_tests_properties(shell.headless.hold PROPERTIES TIMEOUT 900 LABELS shell)
 add_test(NAME shell.headless.drive
   COMMAND tee-headless --engine ref --sim "${PROJECT_SOURCE_DIR}/sim" --script "${_scripts}/drive.txt"
           --wav "${_out}/ref-drive.wav"
