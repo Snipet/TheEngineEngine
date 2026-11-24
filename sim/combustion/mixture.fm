@@ -1,0 +1,88 @@
+// mixture.fm: what a charge of air and fuel at a given lambda gives the burn (fuel.model 1).
+//
+// The ECU asks a lambda (the air over the air the fuel would need: 1 stoichiometric, below 1 rich). The fuel injected is
+// the oxygen the charge holds over lambda and the stoichiometric ratio: the air's own oxygen, or more when nitrous
+// flows (its oxygen share over air's, card F's). What burns is what the scarcer of fuel and oxygen allows, so the heat
+// grows with the fuel up to lambda 1 and, richer, is held by the oxygen. Richer than that a little more of the oxygen's
+// work is had (more product molecules, less dissociation: the fuel-air cycle's mean pressure peaks some 10 % rich,
+// Heywood §5.5), and then less as the excess fuel only cools; the heat's share is a parabola through 1 at lambda 1 with
+// its top at the fuel's fastest flame. What is not burned (the excess fuel, and the partly burned CO and H2 that carry
+// its heat) leaves with the exhaust as an unburned mass of fuel: what an overrun's or a limiter's bang burns
+// (ecu/overrun.fm).
+//
+// Lambda also moves the flame: fastest a little rich, slower either side (the laminar speed as Metghalchi and Keck's
+// parabola in the equivalence ratio, and the burn's length as its -0.5th power: an engine's turbulent flame cares less
+// than a laminar one, judgement), and near the limits of what a spark lights the burn is incomplete; past them
+// misfires come in by chance. Evaporating fuel cools what it evaporates in: the air in the port (a denser charge:
+// more air trapped) or the charge in the cylinder after the valve closes (a cooler end gas: a later knock); a direct
+// injector does most of it in the cylinder, a port injector most of it in the port, and half of what evaporates on
+// the port's walls cools the walls rather than the air (judgement). A cooling is capped where the charge would
+// saturate before more of the fuel evaporates (judgement: 80 K in the cylinder, 40 K in the port).
+//
+// What it leaves out: wall wetting and its transients (carburettors and port films: later), stratified charges, the
+// burned gas's composition.
+#pragma once
+#include "fuels.fm"
+
+module Mixture
+{
+    // what set() made
+    float fuel;         // fuel injected, kg
+    float heat;         // heat the burn releases into the gas, J (before the walls' share, which the cylinder takes)
+    float unburned;     // fuel that leaves unburned (or partly burned), kg
+    float burnK;        // the burn's length over its length at the fuel's fastest mixture
+    float complete;     // the share of the burnable heat a lit charge releases near the limits (1 well inside them)
+    float misfire;      // the chance this charge does not light at all
+    float coolCyl;      // K the charge cools in the cylinder after the valve closes (the end gas starts that cooler)
+    float coolPort;     // K the air cools in the port before it is trapped (it is that much denser)
+
+    // The heat share of the oxygen's work against the equivalence ratio phi (1 / lambda), the fuel's fastest flame at
+    // phiPeak: phi lean of stoichiometric, then a parabola through 1 at phi 1 whose top is at phiPeak (its height 1 +
+    // (phiPeak - 1) / 2: 6 % for gasoline) and its slope 1 at phi 1, as the lean side's, falling to 0 near the rich
+    // limit (gasoline's: phi 1.63)
+    float heatShare(float phi, float phiPeak)
+    {
+        if (phi <= 1.0f)
+            return fmaxf(phi, 0.0f);
+        const float d = phiPeak - 1.0f;
+        const float x = phi - 1.0f;
+        const float b = 0.5f / fmaxf(d, 0.02f);
+        return fmaxf(1.0f + x - b * x * x, 0.0f);
+    }
+
+    // The flame's laminar speed at phi over its speed at the fastest mixture (no lower than 0.15)
+    float flameShare(int kind, float phi)
+    {
+        const int f = fuelRow(kind);
+        const float d = phi - kFuelPhiPeak[f];
+        return fmaxf(1.0f - kFuelCurv[f] * d * d, 0.15f);
+    }
+
+    // A charge of `air` kg (its oxygen `oxy` times air's) at `lambda`, the fuel `kind`, its injector putting
+    // `direct` (0 port, 1 direct) of its evaporation in the cylinder
+    void set(int kind, float lambda, float air, float oxy, float direct)
+    {
+        const int f = fuelRow(kind);
+        const float lam = fminf(fmaxf(lambda, 0.3f), 10.0f);
+        const float o2 = air * fmaxf(oxy, 0.0f);            // the charge's oxygen, as kg of air
+        const float stoich = o2 / kFuelAfr[f];               // the fuel that oxygen burns completely
+        fuel = stoich / lam;
+        const float phi = 1.0f / lam;
+        // near the limits: an incomplete burn inside the last 0.1 of lambda, misfires past them (all of them 0.2 past)
+        const float lean = kFuelLean[f];
+        const float rich = kFuelRich[f];
+        complete = 1.0f - 0.15f * fminf(fmaxf((lam - (lean - 0.1f)) / 0.1f, 0.0f), 1.0f)
+                   - 0.15f * fminf(fmaxf(((rich + 0.1f) - lam) / 0.1f, 0.0f), 1.0f);
+        misfire = fminf(fmaxf((lam - lean) / 0.2f, 0.0f), 1.0f) + fminf(fmaxf((rich - lam) / 0.2f, 0.0f), 1.0f);
+        misfire = fminf(misfire, 1.0f);
+        const float share = heatShare(phi, kFuelPhiPeak[f]) * complete;
+        heat = stoich * kFuelLhv[f] * share;
+        unburned = fmaxf(fuel - stoich * share, 0.0f);
+        burnK = 1.0f / sqrtf(flameShare(kind, phi) * kFuelFlame[f]);
+        // evaporation: the fuel's latent heat over the air's (cp 1005 J/kg K)
+        const float full = kFuelLatent[f] * fuel / fmaxf(air * 1005.0f, 1.0e-12f);
+        const float inCyl = 0.3f + 0.55f * fminf(fmaxf(direct, 0.0f), 1.0f);
+        coolCyl = fminf(full * inCyl, 80.0f);
+        coolPort = fminf(0.5f * full * (1.0f - inCyl), 40.0f);
+    }
+};
