@@ -1,0 +1,96 @@
+// bspec.fm: what the motorcycle (car.kind Motorcycle with car.model 1, bike.fm) reads and writes beyond the vehicle
+// model's own (vspec.fm): BikeSpec, the fields card B2 appends to spec.car in one marked block; BikeTel, what it appends
+// to tel.car. As VehSpec, the model reads its Spec through a BikeSpec of its own that the Car seam fills from spec.car's
+// fields of the same names when spec.car's rev moves (and a test fills directly).
+//
+// A motorcycle also reads these of VehSpec, with a bike's meaning: `mass` the bike's alone, wet (the rider is
+// `riderMass`); `wheelbase`; `cgHeight` and `frontWeight` the bike's alone (the rider's are added); `cdA` the drag
+// area with the rider sitting up (`cdATuck` tucked in); `tyreRadius`, `wheelInertia` (each wheel); `brakeDecel` (the
+// front brake's at a full lever, ctl.brake), `brakeBias` (1 less it is the rear pedal's share, ctl.handbrake), `abs`; `gears`, `ratio[]` (the
+// gearbox's own ratios, before the primary drive and the chain) with `autoGearing` on for a sport bike's six;
+// `clutchTorque`, `gearEfficiency`; `proTree`. It ignores the drive, the track, the differentials, the converter, the
+// CVT, `gearbox` (a motorcycle's is sequential), `finalDrive` (the sprockets and the primary are), `tyre` (`bikeTyre`
+// is) and `clA`.
+//
+// None is glided: each takes effect at the next 16-sample control step; a change of gears puts the bike in neutral.
+#pragma once
+
+enum
+{
+    BIKE_TYRES = 6,         // touring, sport, hypersport, race slick, dual sport, cruiser
+};
+
+// card B2's bits of tel.car.bikeFlags
+enum
+{
+    BIKE_FLAG_HOP = 1,          // the rear tyre sliding on the overrun: it hops or locks
+    BIKE_FLAG_LOOPED = 2,       // the front past the balance point: over backwards
+    BIKE_FLAG_HOLDING = 4,      // the wheelie control acting
+    BIKE_FLAG_SLIPPER = 8,      // the slipper clutch slipping under back torque
+    BIKE_FLAG_QUICKSHIFT = 16,  // a quickshifter's cut
+    BIKE_FLAG_BLIP = 32,        // an auto-blip
+    BIKE_FLAG_STOPPIE = 64,     // the rear tyre off the road under braking
+};
+
+module BikeSpec
+{
+    float riderMass [[fminus::range(0, 200)]] [[fminus::default(80)]] [[ui::label("Rider")]] [[ui::quantity("mass")]]
+        [[ui::group("Motorcycle")]] [[ui::help("The rider and their kit; the bike's own mass is Mass above")]];
+    float riderHeight [[fminus::range(0.4, 1.6)]] [[fminus::default(1.0)]] [[ui::label("Rider's centre of mass height")]]
+        [[ui::quantity("length")]] [[ui::help("Sitting up; a full tuck lowers it 0.12 m")]];
+    float riderForward [[fminus::range(0, 1)]] [[fminus::default(0.42)]] [[ui::label("Rider ahead of the rear axle")]]
+        [[ui::quantity("fraction")]] [[ui::help("Their centre of mass, as a share of the wheelbase; a full tuck moves it 0.06 forward")]];
+    float tuck [[fminus::range(0, 1)]] [[fminus::default(1)]] [[ui::label("Tuck")]] [[ui::quantity("fraction")]]
+        [[ui::help("0 sitting up (Cd A above), 1 flat on the tank (Cd A tucked)")]];
+    float cdATuck [[fminus::range(0.1, 1.5)]] [[fminus::default(0.32)]] [[ui::label("Drag area tucked in")]]
+        [[ui::quantity("area")]];
+    float pitchInertia [[fminus::range(5, 300)]] [[fminus::default(50)]] [[ui::label("Pitch inertia")]]
+        [[ui::quantity("inertia")]] [[ui::help("The bike and rider about their centre of mass, nose up and down")]];
+    int bikeTyre [[fminus::range(0, 5)]] [[fminus::default(1)]] [[ui::label("Motorcycle tyres")]]
+        [[ui::choices("Touring", "Sport", "Hypersport", "Race slick", "Dual sport", "Cruiser")]];
+    float primaryRatio [[fminus::range(1, 4)]] [[fminus::default(1.7)]] [[ui::label("Primary drive")]]
+        [[ui::quantity("ratio")]] [[ui::group("Chain and clutch")]] [[ui::help("The crank's gear to the clutch's basket")]];
+    int frontSprocket [[fminus::range(10, 30)]] [[fminus::default(16)]] [[ui::label("Front sprocket")]]
+        [[ui::unit("teeth")]];
+    int rearSprocket [[fminus::range(25, 70)]] [[fminus::default(42)]] [[ui::label("Rear sprocket")]] [[ui::unit("teeth")]];
+    float chainEfficiency [[fminus::range(0.85, 1)]] [[fminus::default(0.97)]] [[ui::label("Chain efficiency")]]
+        [[ui::quantity("fraction")]] [[ui::help("A clean O-ring chain's is about 0.97 to 0.98; a belt's 0.95 to 0.97")]];
+    float chainLash [[fminus::range(0, 0.25)]] [[fminus::default(0.035)]] [[ui::label("Driveline lash")]]
+        [[ui::unit("rad")]] [[ui::help("The play between throttle on and off, at the rear wheel: the dogs, the chain's slack, the cush drive")]];
+    bool slipper [[fminus::default(1)]] [[ui::label("Slipper clutch")]]
+        [[ui::help("Lets the clutch slip when the rear wheel drives the engine hard, as on a clumsy downshift")]];
+    float slipperTorque [[fminus::range(0.05, 1)]] [[fminus::default(0.15)]] [[ui::label("Slipper's back torque")]]
+        [[ui::quantity("fraction")]] [[ui::help("The most it passes backwards, as a share of the clutch's capacity")]];
+    bool quickshifter [[fminus::default(1)]] [[ui::label("Quickshifter")]] [[ui::group("Shifting")]]
+        [[ui::help("Upshifts under power without the clutch: the ignition is cut while the dogs change over")]];
+    float quickshiftCut [[fminus::range(0.02, 0.12)]] [[fminus::default(0.05)]] [[ui::label("Quickshift cut")]]
+        [[ui::quantity("time")]];
+    bool autoBlip [[fminus::default(1)]] [[ui::label("Auto-blipper")]]
+        [[ui::help("Downshifts without the clutch: the throttle is blipped to the lower gear's speed")]];
+    int wheelieControl [[fminus::range(0, 2)]] [[fminus::default(1)]] [[ui::label("Wheelie control")]]
+        [[ui::choices("Off", "By the throttle", "By the clutch")]] [[ui::group("Wheelie")]]
+        [[ui::help("What holds the front up at the angle below: a rider or an anti-wheelie control easing the throttle, or a rider slipping the clutch")]];
+    float wheelieAngle [[fminus::range(0, 40)]] [[fminus::default(4)]] [[ui::label("Wheelie held at")]] [[ui::unit("deg")]];
+};
+
+// What the motorcycle shows beyond VehTel (appended to tel.car). VehTel's wheel arrays hold the front in [0] and the
+// rear in [2] ([1] and [3] are 0); `pitch` is the load moved rearward (N), as a car's.
+module BikeTel
+{
+    float liftAngle [[ui::label("Front lifted")]] [[ui::unit("deg")]]
+        [[ui::help("The bike's pitch about its rear tyre: 0 with both wheels down")]];
+    float liftRate [[ui::label("Front lifting at")]] [[ui::unit("deg/s")]];
+    int bikeFlags [[ui::label("Motorcycle flags")]]
+        [[ui::help("1 the rear hopping or locked on the overrun, 2 looped, 4 the wheelie control acting, 8 the slipper slipping, 16 a quickshift's cut, 32 an auto-blip, 64 a stoppie")]];
+    int chainLash [[ui::label("Lash events")]] [[ui::help("A counter: one more each time the driveline's play closes")]];
+    float chainLashSpeed [[ui::label("Last lash's closing speed")]] [[ui::quantity("rotation")]]
+        [[ui::help("At the rear wheel: how hard the play closed")]];
+    int chainLashSide [[ui::label("Last lash's side")]] [[ui::choices("Drive", "Overrun")]];
+    float backTorque [[ui::label("Back torque")]] [[ui::quantity("torque")]]
+        [[ui::help("At the crank: what the rear wheel drives the engine with through the clutch (0 under power)")]];
+    float slipperSlip [[ui::label("Slipper slipping")]] [[ui::quantity("rotation")]];
+    int quickshifts [[ui::label("Quickshifts")]] [[ui::help("A counter")]];
+    int blips [[ui::label("Auto-blips")]] [[ui::help("A counter")]];
+    float wheelieLimit [[ui::label("Wheelie limit")]] [[ui::unit("m/s^2")]]
+        [[ui::help("The acceleration at which the front leaves the road now")]];
+};
