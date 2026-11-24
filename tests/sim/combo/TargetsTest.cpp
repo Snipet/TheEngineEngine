@@ -201,11 +201,47 @@ TEST_CASE("targets: traction control on a wet road holds the driven wheels' slip
     }
     std::printf("targets: on a wet road in first the rear wheels slip %.3f without traction control, %.3f with "
                 "(target ecu.traction.slip 0.10)\n", slip[0], slip[1]);
-    // X-011 (2026-11-24, H): with the new ECU and vehicle the slip stays at 1 with traction control on, as off: kept as
-    // a known finding, reported here and not failed, until H's fix
+    // X-011, from a standstill (2026-11-24; H's half fixed in 0e7257f, the rest with I): at walking pace only a
+    // slipping clutch can hold 10 % slip, so it is a known finding, reported and not failed, until I's clutch does
     if (!(slip[1] < 0.5 * slip[0] && slip[1] < 0.2))
-        WARN("known X-011 (2026-11-24, H (via the lead)): traction control holds the slip at " << slip[1]
-                                                                                             << " against 0.10");
+        WARN("known X-011 standstill (2026-11-24, I via the lead): from rest traction control holds the slip at "
+             << slip[1] << " against 0.10");
+}
+
+TEST_CASE("targets: traction control on a wet road from rolling: more speed and the slip near its target",
+          "[combo][targets]")
+{
+    // pulled away gently in first, second at 4 s, then floored at 6 s on a wet road: H's fix (0e7257f, 7648df9)
+    double slip[2] = {0.0, 0.0}, speed[2] = {0.0, 0.0};
+    for (int tc : {0, 1})
+    {
+        Times tm = runningTimes(10.0);
+        tm.driveFrom = 3.3;
+        tm.driveTo = 9.5;
+        auto make = [tc](bool on) {
+            tee::test::Scenario s = started("v8");
+            s.at(0.0).spec("ecu.model", on ? 1 : 0).spec("car.model", on ? 1 : 0).spec("env.surface", 2);
+            s.at(0.0).spec("ecu.traction.on", tc);
+            s.at(3.0).shiftUp();
+            s.at(3.2).throttle(0.25).ramp(0.3);
+            s.at(4.5).shiftUp();
+            s.at(5.0).throttle(0.2);
+            s.at(6.0).throttle(1.0).ramp(0.1);
+            return s;
+        };
+        const tee::test::Run r = make(true).run(tm.end);
+        Verdict v = judge(r, tm, archetype("v8"), true, tc ? bangBaseline(make, tm) : baseline(make, tm));
+        const auto l = r.tel("car.wheelSlip[2]").during(6.5, 9.5), rr = r.tel("car.wheelSlip[3]").during(6.5, 9.5);
+        slip[tc] = 0.5 * (l.mean() + rr.mean());
+        speed[tc] = r.tel("car.speed").at(9.5);
+        report(v, "ecu.model+car.model", "v8", tc ? "wet-rolling-traction-on" : "wet-rolling-traction-off");
+    }
+    std::printf("targets: on a wet road from rolling, floored in second: slip %.3f without traction control, %.3f with "
+                "(target 0.10); speed at 9.5 s %.1f against %.1f m/s\n",
+                slip[0], slip[1], speed[1], speed[0]);
+    CHECK(slip[1] < 0.2);
+    CHECK(slip[1] < slip[0]);
+    CHECK(speed[1] >= speed[0]);
 }
 
 namespace
