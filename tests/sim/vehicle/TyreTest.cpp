@@ -10,7 +10,7 @@
 
 using namespace tee::vehicle;
 
-TEST_CASE("vehicle.compiles: the model and its rig compile, the rig idles in neutral", "[vehicle]")
+TEST_CASE("compiles: the model and its rig compile, the rig idles in neutral", "[vehicle]")
 {
     Rig rig;
     rig.seconds(1.0);
@@ -36,7 +36,7 @@ namespace
     }
 } // namespace
 
-TEST_CASE("vehicle.tyre.curve: each compound peaks where its kind does and falls off as its kind does", "[vehicle][tyre]")
+TEST_CASE("tyre.curve: each compound peaks where its kind does and falls off as its kind does", "[vehicle][tyre]")
 {
     Rig rig;
     auto* at = rig.function<float(void*, float)>("VehTyreCurve::at");
@@ -63,7 +63,7 @@ TEST_CASE("vehicle.tyre.curve: each compound peaks where its kind does and falls
     CHECK(shape(rig, DragSlick).kPeak > shape(rig, Street).kPeak);
 }
 
-TEST_CASE("vehicle.tyre.surface: the grip each surface leaves each compound", "[vehicle][tyre]")
+TEST_CASE("tyre.surface: the grip each surface leaves each compound", "[vehicle][tyre]")
 {
     Rig rig;
     auto* grip = rig.function<float(int, int)>("vehSurfaceGrip");
@@ -109,7 +109,7 @@ namespace
     }
 } // namespace
 
-TEST_CASE("vehicle.tyre.braking: with ABS a car stops near its tyres' peak, without it on their tail", "[vehicle][tyre]")
+TEST_CASE("tyre.braking: with ABS a car stops near its tyres' peak, without it on their tail", "[vehicle][tyre]")
 {
     // street tyres on dry asphalt: peak mu 1.0 (less what the load moved forward costs the front: the load
     // sensitivity; the rear, unloaded, gains a little), tail 0.75 of it

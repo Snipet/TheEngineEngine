@@ -36,7 +36,7 @@ module Curve16
             i += 1;
         const float span = x[i + 1] - x[i];
         const float f = span > 0.0f ? (v - x[i]) / span : 0.0f;
-        return y[i] + (y[i + 1] - y[i]) * f;
+        return y[i] * (1.0f - f) + y[i + 1] * f;
     }
 };
 
@@ -80,8 +80,8 @@ module Map16
         const int j = cell(y, ky, v, fy);
         const int i1 = kx > 1 ? i + 1 : i;
         const int j1 = ky > 1 ? j + 1 : j;
-        const float a = z[i][j] + (z[i][j1] - z[i][j]) * fy[0];
-        const float b = z[i1][j] + (z[i1][j1] - z[i1][j]) * fy[0];
-        return a + (b - a) * fx[0];
+        const float a = z[i][j] * (1.0f - fy[0]) + z[i][j1] * fy[0];
+        const float b = z[i1][j] * (1.0f - fy[0]) + z[i1][j1] * fy[0];
+        return a * (1.0f - fx[0]) + b * fx[0];
     }
 };

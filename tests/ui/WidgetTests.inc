@@ -30,7 +30,7 @@
         funkgui::HeadlessHost host;
         std::vector<std::unique_ptr<tee::ui::FieldPort>> ports;
 
-        explicit BoardRig(int w = 900, int h = 600) : board(w, h), host(board, 0, 2.0f) {}
+        explicit BoardRig(int w = 900, int h = 600, float dpi = 2.0f) : board(w, h), host(board, 0, dpi) {}
 
         tee::ui::FieldPort& port(const char* path)
         {
@@ -409,7 +409,7 @@
     // The gallery: every widget, drawn by the software rasteriser, three pages.
     struct Gallery
     {
-        BoardRig rig{ 1000, 700 };
+        BoardRig rig;
         std::string name = "Stock V8";
         double rpm = 6120.0;
         struct CurveSrc final : tee::ui::CurveSource
@@ -435,7 +435,7 @@
         std::unique_ptr<CurveSrc> curve;
         std::unique_ptr<MapSrc> map;
 
-        explicit Gallery(int page)
+        explicit Gallery(int page, float dpi = 2.0f) : rig(1000, 700, dpi)
         {
             using namespace tee::ui;
             auto& r = rig;
@@ -556,6 +556,9 @@
         {
             Gallery g(page);
             golden(names[page], g.rig.host);
+            Gallery one(page, 1.0f);                     // and at a pixel density of 1, a picture to look at
+            tee::test::writePng(funkgui::rasterise(one.rig.host.draw(), funkgui::FontService::get().atlas(), 1),
+                                (kOutDir / (std::string(names[page]) + ".dpi1.png")).string());
         }
         return 0;
     }

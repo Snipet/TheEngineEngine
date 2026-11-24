@@ -1,6 +1,6 @@
 # The interface kit (`ui/`)
 
-*Card J, slice J1: the `.gui` panel code that came from TestingPlayground, what was cut from it and what stands
+*Card J, slices J1 and J2: the `.gui` panel code that came from TestingPlayground, what was cut from it and what stands
 in its place, how a panel is bound to an engine, how its shaders are built, and how it is tested. The language
 itself is in [gui-language.md](gui-language.md).*
 
@@ -148,4 +148,79 @@ FunkGui's registry: a shader element draws a placeholder that says so.
   the GPU under Xvfb waits for FunkGui's desktop host (card A).
 - The output's samples for a scope or a spectrum (`TelemetrySource` has none).
 - Skipping unchanged frames (`needsDraw`).
-- Spec paths as names, generated pages, the new widgets: J2.
+- Spec paths as names, generated pages, the new widgets: J2 (below).
+
+# J2: widgets, units, the binding, the frame
+
+*Card J, slice J2 (items 6 to 10). Everything drawn here is drawn with the Canvas alone, so the software rasteriser
+pictures it; none of it reads a clock or the environment, and every motion goes through `funkgui::ease`.*
+
+| Path | What |
+|---|---|
+| `ui/kit/widgets/Widget.h` | `Widget`: an `Item` (J1's) its owner places (`setPlace`), with a hover eased, a focus ring and the theme's colours (`Look`: dark, one accent). |
+| `ui/kit/widgets/Board.*` | `Board`: a `funkgui::Panel` of items its owner places, with an optional inner Panel under them (hover, press and drag, focus and Tab, keys, wheel, accessibility, one `GestureController`). |
+| `ui/kit/widgets/Basic.*` | `Button` (press, hold, lit), `Toggle`, `Stepper`, `TextField` (over `LineEdit`), `List`, `Bar`, `Lamp`, `Label`. |
+| `ui/kit/widgets/Gauge.*` | `Gauge`: a 270-degree arc, ticks, numerals, a red band, a needle eased, the value in digits. |
+| `ui/kit/widgets/Plot.*` | `Plot`: linear and log axes with round ticks, a grid, series as polylines and area strips, a cursor with a readout, pan (drag), zoom (wheel, pinch), double-click back. |
+| `ui/kit/widgets/Tables.*` | `Curve16`, `Map16` as the editors hold them; `CurveEdit` (a `Plot` with points to drag), `MapEdit` (table and heat map, typed or dragged cells, typed axes, the live cell). Each writes through a `CurveSource` or `MapSource`, an edit one gesture. |
+| `ui/kit/bind/Units.*` | `Units`: a quantity's SI value to the chosen unit's text and back (offsets too: C, F), the choices as settings lines. |
+| `ui/kit/bind/Fields.*` | `FieldInfo`, `FieldDoc` (what the binding needs of a Spec and its document), `MemoryDoc` (one in memory, undo by gesture). |
+| `ui/kit/bind/Binding.*` | `FieldPort` (a `ParamPort` over a field), `FieldParams` (a page's fields as a `ParamSource` in the user's units, and a `GestureSink`), `pageGui` (a generated page), `fieldWidget` (the `.gui` widget elements), `FieldPage` (a `GuiPanel` bound to a document). |
+| `ui/kit/bind/host/BuildDoc.*` | `BuildDoc`: card C's `tee::Build` as a `FieldDoc`; `buildServices`: the frame's garage, undo and name over a `Build` and `tee::Presets`. Target `tee_ui_build`, in the root's build only. |
+| `ui/app/AppFrame.*` | `AppFrame`: the application's frame of screens. Target `tee_ui_app`. |
+
+## The binding
+
+A Spec field reaches a control in one of two ways, both bracketing every gesture in the document (one undo step a
+drag, a click, a typed value):
+
+- **A `.gui` page** (`FieldPage`): its `FieldParams` offers the fields the file names (and every field of its `auto`
+  sections) as a `tee::ParamSource` whose values are in the user's units: J1's `GuiPanel` binds to it unchanged, a
+  control naming its field by path. A temperature in C has an offset, which a panel's `scale` cannot say, so the
+  values are converted, not scaled. `FieldParams` is also a `GestureSink` (`ui/kit/gui/Ports.h`), so J1's
+  `SourcePort` brackets each gesture in the document. A change of units makes the pages again.
+- **A widget placed by C++**: `FieldPort`, a `funkgui::ParamPort` over the field (0..1 by its range and taper, steps
+  for a choice, an integer and a switch, `text()` through `Units`).
+
+A generated page is `.gui` text (`pageGui`), so it lays out, draws and is tested as any hand-written page; a section
+with more than 60 controls is cut into pages (`splitPages`, a group kept whole where it fits), since one panel shows
+64 parameters at most (J1's `kMaxControls`).
+
+**Until and after card C.** `FieldDoc` is the small interface the binding needs (fields with their attributes,
+values in SI by index, whole tables, gestures, a revision). `MemoryDoc` implements it for `ui/` alone and its tests,
+with a made-up Spec of every field kind (`tests/ui/MockSpec.h`); `BuildDoc` implements it over the real `tee::Build`
+(an array of numbers is a field an element; a map's z is transposed from the Build's z[i][j] at x[i], y[j]; a table's
+axis ranges, which the Spec does not give, are the quantity's usual span).
+
+## The application's frame
+
+`AppFrame` (`ui/app/AppFrame.h`) is a `Board`: a rail of the nine screens at the left (Build, Valvetrain, Boost,
+Exhaust, Tune, Dyno, Drive, Scope, Garage), a top bar (the build's name and the status line, the engine's state,
+the output's level, undo, redo, START held), a strip of the screen's pages when it has more than one, and a bottom
+strip (the pedals as bars, the gear, the speed, the engine's speed). A screen is a list of Spec sections (a generated
+page each) or a `.gui` text (Dyno, Drive and Scope: gauges, bars, a plot and `auto` sections until wave 2 gives them
+their views). A section no screen names goes to Build, so every field that is not hidden is on a page; the tests hold
+that for the made-up Spec (`ui.app.frame`) and for the real one (`ui.build.frame`). The Garage lists the builds
+(shipped and the user's), loads one, renames this one, saves it, and chooses the units. Cmd (or Ctrl) Z undoes,
+with Shift redoes.
+
+The frame needs a document, the units, the telemetry and `FrameServices` (`buildServices` makes them over a
+`Build`). The shell does not show it yet: `makeMainPanel` is still J1's `RefPanel` over the reference's dials, and
+the frame replaces it once the shell plays the new simulator with a `Build` (the handoff says what the shell does).
+
+## Tests and pictures
+
+`tee-ui-tests` holds J2's tests beside J1's (`WidgetTests.inc`, `BindTests.inc`, `AppTests.inc`); the root's build
+adds `tee-ui-build-tests` (`BuildTests.cpp`: the real `sim/`). Goldens: `widgets.controls`, `widgets.instruments`,
+`widgets.tables` (the gallery) and `app.<screen>` (each screen at 1280 x 800). `ui.app.sheet` writes the contact
+sheets, `out/ui/sheet.png` (pixel density 2) and `out/ui/sheet.dpi1.png` (density 1, as many Windows displays at
+100 %): every screen at 1024 x 640 and at 1600 x 1000, three screens a row; and each screen at 1280 x 800 and density
+1 (`app.<screen>.dpi1.png`), as the gallery's pages are (`widgets.<page>.dpi1.png`). J2's text is at FunkGui's 10 px
+floor or above in logical px (its smallest styles are 10 px; a gauge's numerals are clamped to 10 to 16). Every
+picture is drawn by FunkGui's software rasteriser.
+
+**The same picture on every platform.** The goldens are fingerprints of the geometry, so a float computed
+differently changes them. FunkGui's sources are compiled inside whatever links `FunkGui::core` (an INTERFACE
+library), with that target's flags: the tests' copy (`tee_ui_test_funkgui`) is built with `-ffp-contract=off`, as
+our own code is, because Apple's clang on arm64 otherwise fuses multiply-adds in FunkGui's geometry (its default
+is `-ffp-contract=on`, and arm64 has FMA) and the six J1 goldens failed there alone (run 45390597717).

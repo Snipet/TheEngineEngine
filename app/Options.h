@@ -21,11 +21,14 @@ namespace tee::app
         std::string shot;               // --shot FILE.png: the last frame's picture
         double seconds = -1.0;          // --seconds S: render S seconds with no device and exit
         std::string wav;                // --wav FILE.wav: what was rendered
+        std::string record;             // --record FILE.wav: the window's output, written while it plays
         std::string script;             // --script FILE: inputs at times (app/Script.h)
         int rate = 48000;               // --rate N: the rate of a render with no device
         int block = 256;                // --block N: the block size of a render with no device
         int buffer = 256;               // --buffer N: the buffer asked of the audio device, in frames
+        bool bufferGiven = false;       // without it, the settings file's
         int theme = 0;                  // --theme 0|1
+        bool themeGiven = false;        // the window follows the saved preference without it
         double dpi = 1.0;               // --dpi X: a headless picture's pixels a logical px
         std::string panel;              // --panel plain: the shell's own plain Panel, not the interface package's
         bool noAudio = false;           // --no-audio: the window with no device (nothing plays)

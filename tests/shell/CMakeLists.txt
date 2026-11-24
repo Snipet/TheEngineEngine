@@ -8,7 +8,8 @@ include(Catch)
 file(GLOB _tee_shell_tests CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
 add_executable(tee-shell-tests ${_tee_shell_tests})
 tee_target_defaults(tee-shell-tests)
-target_link_libraries(tee-shell-tests PRIVATE tee_app Tee::shell_core Tee::shell_ref Tee::shell_sdl Catch2::Catch2WithMain)
+target_link_libraries(tee-shell-tests PRIVATE tee_app Tee::shell_core Tee::shell_settings Tee::shell_ref Tee::shell_sdl
+                                              Catch2::Catch2WithMain)
 target_compile_definitions(tee-shell-tests PRIVATE
   "TEE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
   "TEE_SOURCE_SIM_DIR=\"${PROJECT_SOURCE_DIR}/sim\"")
@@ -43,7 +44,7 @@ set_tests_properties(shell.headless.ref shell.headless.drive shell.headless.tone
   PROPERTIES TIMEOUT 900 LABELS shell)
 
 # The window itself, where there is one to test and a headless desktop to open it on (Linux, scripts/xvfb-run.sh: Xvfb,
-# openbox and Mesa's software Vulkan): 300 frames of the application with the reference started and revved by a
+# openbox and Mesa's software Vulkan): five seconds and at least 60 frames of the application with the reference started and revved by a
 # script, on SDL's dummy audio driver, and the last frame read back from the GPU path into out/shell/window-gpu.png.
 # The picture is the software Vulkan driver's, not a GPU's.
 if(TARGET TheEngineEngine AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
@@ -51,11 +52,11 @@ if(TARGET TheEngineEngine AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
   if(TEE_XVFB)
     add_test(NAME shell.window.gpu
       COMMAND "${PROJECT_SOURCE_DIR}/scripts/xvfb-run.sh" $<TARGET_FILE:TheEngineEngine>
-              --script "${_scripts}/window.txt" --frames 300 --shot "${_out}/window-gpu.png"
+              --script "${_scripts}/window.txt" --frames 60 --shot "${_out}/window-gpu.png"
       WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
     add_test(NAME shell.window.plain
       COMMAND "${PROJECT_SOURCE_DIR}/scripts/xvfb-run.sh" $<TARGET_FILE:TheEngineEngine> --panel plain
-              --script "${_scripts}/window.txt" --frames 300 --shot "${_out}/window-plain-gpu.png"
+              --script "${_scripts}/window.txt" --frames 60 --shot "${_out}/window-plain-gpu.png"
       WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
     add_test(NAME shell.window.info
       COMMAND "${PROJECT_SOURCE_DIR}/scripts/xvfb-run.sh" $<TARGET_FILE:TheEngineEngine> --info

@@ -1,5 +1,7 @@
-# The window's own test (tests/shell/CMakeLists.txt, shell.window.*): the start key, then the throttle held, in the
-# window's real time, so that the last of its 300 frames shows a running, revving engine.
+# The window's own test (tests/shell/CMakeLists.txt, shell.window.*; CI's "Run the application"): the start key, then
+# the throttle held, in the window's real time. The run lasts to this script's end however fast or slowly the machine
+# draws, so its last picture shows a running, revving engine.
 0.30  key return down
 0.60  key return up
 2.50  key w down
+5.00  end
