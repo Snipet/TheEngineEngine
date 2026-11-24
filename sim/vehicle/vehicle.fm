@@ -171,6 +171,12 @@ module Vehicle
     bool wheelie;
     float aWheelie;     // the acceleration at which the front's load is zero, m/s^2
     bool lifting;       // the car is at that limit
+    // a launch under traction control (launch(): the ECU's switch and slip target, given by Car every 16 samples)
+    bool tcOn;
+    float tcTarget;
+    bool launching;
+    float tcTrim;
+    float lockT;
     float tsh;          // the shafts' torque, last sample
     float tDrive[VEH_WHEELS];   // the torque the driveline gave each wheel, last sample
     float tClutch;      // what the clutch or converter passed, at the crank
@@ -232,6 +238,8 @@ module Vehicle
         vSet = 0.0f;
         wheelie = false;
         lifting = false;
+        launching = false;
+        tcTrim = 0.0f;
         merged = false;
         gA = 0.0f;
         gB = 0.0f;
@@ -610,7 +618,67 @@ module Vehicle
         vPrev = v;
         aLag += (aNow - aLag) * (1.0f - expf(-d16 / 0.2f));
         loads(d16);
+        launch(d16);
         telemetry(absOn, locked);
+    }
+
+    // A standing start with traction control on and the clutch the car's own (the paddles' robotised clutch, a dual
+    // clutch's; a dog box and an automatic keep their own launches), as such a car's launch does it: while the clutch still slips, the torque it passes is held
+    // to what the driven tyres carry at the ECU's slip target (their peak force at that slip, from their loads and grip
+    // now, through the gear), trimmed by the slip's own error, so the wheels come to the target and stay there; once the
+    // clutch has locked (and the automatic clutch is fully closed) for a tenth of a second the ECU's engine-side control
+    // has it alone. At walking pace the engine cannot hold 10 % slip itself: the wheels' speed for it is the engine's
+    // under where the clutch closes (finding X-011). Off, or with the driver's own clutch pedal, nothing changes.
+    void launch(float d16)
+    {
+        const bool own = box.kind == VEH_DUALCLUTCH || (box.kind == VEH_MANUAL && box.paddles);
+        if (!tcOn || !own || box.gear != 1 || box.shifting || mode != VEH_MODE_DRIVE)
+        {
+            launching = false;
+            tcTrim = 0.0f;
+            return;
+        }
+        if (!launching && fabsf(v) < 1.0f && fabsf(slipC) > 3.0f)
+        {
+            launching = true;
+            tcTrim = -0.1f;
+            lockT = 0.0f;
+        }
+        if (!launching)
+            return;
+        lockT = fabsf(slipC) < 3.0f && box.robot >= 0.999f ? lockT + d16 : 0.0f;
+        if (lockT >= 0.1f)
+        {
+            launching = false;
+            return;
+        }
+        // what the driven tyres push at the target slip: an open axle as much as its weaker wheel twice over
+        const float s = curve.at(tcTarget);
+        float force = 0.0f;
+        if (share[0] > 0.0f)
+            force += front.locked || front.preload + front.kSpeed + front.kTorque > 0.0f ? (tyre[0].d + tyre[1].d) * s
+                                                                                   : 2.0f * fminf(tyre[0].d, tyre[1].d) * s;
+        if (share[2] > 0.0f)
+            force += rear.locked || rear.preload + rear.kSpeed + rear.kTorque > 0.0f ? (tyre[2].d + tyre[3].d) * s
+                                                                                : 2.0f * fminf(tyre[2].d, tyre[3].d) * s;
+        // the slip's error trims it (the wheels' own inertia, the differential's split, the load's lag)
+        float k = 0.0f;
+        for (int i = 0; i < VEH_WHEELS; ++i)
+            if (share[i] > 0.0f)
+                k = fmaxf(k, tyre[i].kappa);
+        // (past the peak the tyre's force falls and what the clutch passes beyond it only spins the wheels up: so the trim
+        // comes down faster than it goes up, and a proportional part acts at once)
+        const float e = tcTarget - k;
+        tcTrim = fminf(fmaxf(tcTrim + (e > 0.0f ? 12.0f : 20.0f) * e * d16, -0.7f), 0.2f);
+        const float factor = fminf(fmaxf(1.0f + tcTrim + 3.0f * e, 0.2f), 1.2f);
+        const float g = fabsf(box.ratioOf(1));
+        const float cap = fmaxf(force * radius / (g * eff) * factor, 0.0f);
+        // (the automatic clutch's own closing with the revs is narrowed to a guard against a stall, 50 to 250 rpm over the
+        // idle: the ECU's traction control takes the engine's torque down meanwhile, and the revs with it, and the clutch
+        // must not open under the launch for that)
+        const float x = fminf(fmaxf((wLast - idleW - 5.2f) / 20.9f, 0.0f), 1.0f);
+        const float guard = box.kind == VEH_MANUAL || box.kind == VEH_SEQUENTIAL || box.kind == VEH_DUALCLUTCH ? x * x * (3.0f - 2.0f * x) : 1.0f;
+        capA = fminf(clutchCap * engage * guard, cap) * box.aFrom;
     }
 
     void stage()

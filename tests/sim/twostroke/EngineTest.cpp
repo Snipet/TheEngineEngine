@@ -157,8 +157,8 @@ TEST_CASE("engine: a two-stroke's work loop: IMEP and BMEP on its 360 degrees", 
     const double imep = b.tel("engine.imep"), bmep = b.tel("engine.bmep"), tq = b.tel("engine.torque");
     std::printf("mx125 at 11 000 rpm, full throttle: IMEP %.2f bar, BMEP %.2f bar (2 pi T / V: %.2f), peak %.1f bar\n", imep / 1e5,
                 bmep / 1e5, 2 * 3.14159265358979 * tq / 124.8e-6 / 1e5, b.tel("engine.peakPressure") / 1e5);
-    // (BMEP printed, not checked: core/work.fm's 360-degree vBmep gives 8 pi T / V, four times 2 pi T / V; sent to card D)
-    const double bmepTwo = 2 * 3.14159265358979 * tq / 124.8e-6;
+    const double bmepTwo = 2 * 3.14159265358979 * tq / 124.8e-6;     // (a two-stroke's: 2 pi T / V)
+    CHECK(std::abs(bmep - bmepTwo) < 0.05 * std::abs(bmepTwo) + 1e4);
     CHECK(imep > bmepTwo);
     CHECK(imep < bmepTwo + 3e5);      // (friction by part: some 1 to 3 bar at 11 000 rpm)
     CHECK(b.tel("engine.peakPressure") > 20e5);

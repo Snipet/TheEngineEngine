@@ -139,6 +139,7 @@ TEST_CASE("probe: a cylinder's gas exchange at intake closing", "[.probe]")
         const int cyls = int(pr.tel("engine.cylinders"));
         const double dt = 1.0 / pr.p->sampleRate();
         std::vector<double> halves, burns;
+        double tEvo = 0, pEvo = 0, nEvo = 0;
         pr.play(measure, [&] {
             const double ang = pr.get("cyl[0].ang");
             const double pc = pr.get("cyl[0].p");
@@ -152,6 +153,7 @@ TEST_CASE("probe: a cylinder's gas exchange at intake closing", "[.probe]")
                 heat += pr.get("cyl[0].qTot");
             if (pr.get("cyl[0].evoNow") != 0.0)
             {
+                tEvo += pr.get("cyl[0].t"), pEvo += pc, nEvo += 1;
                 halves.push_back(pr.tel("ecu.halfBurn"));
                 burns.push_back(pr.get("cyl[0].qTot"));
             }
@@ -208,6 +210,8 @@ TEST_CASE("probe: a cylinder's gas exchange at intake closing", "[.probe]")
                 std::printf("        half-burn (tel, at each exhaust opening): min %.1f median %.1f max %.1f; %d of %zu over 20 deg; "
                             "%d burns under half the mean heat\n", h.front(), h[h.size() / 2], h.back(), over20, h.size(), weak);
         }
+        std::printf("        at exhaust opening: gas %.0f K, %.0f kPa (cylinder 1's mean over %d openings)\n", tEvo / std::max(nEvo, 1.0),
+                    pEvo / std::max(nEvo, 1.0) / 1e3, int(nEvo));
         std::printf("        walls %.3f of the burns' heat (%.0f J of %.0f J), port gas %.0f K\n", wall / std::max(heat, 1e-9), wall, heat,
                     pr.tel("exhaust.portTemperature"));
     }
@@ -321,6 +325,56 @@ TEST_CASE("probe: the air's books", "[.probe-books]")
         const double thr = (pr.get("airThrottle") - t0) * k, val = (pr.get("airValves") - v0) * k;
         std::printf("%7.0f %9.2f %9.2f %9.2f %9.2f %8.3f %8.3f\n", rpm, thr, val, (pr.get("gasExhaust") - e0) * k,
                     (pr.get("airTrapped") - a0) * k, val / thr, (pr.get("intk.mPlenum") - m0) * k);
+    }
+    SUCCEED();
+}
+
+// H9's overrun, watched: the V8 preset in neutral (both models on, warm air), on the limiter 1.5 s, lifted with a
+// fuelled overrun; the collector's gas (where the bangs' store lights), the port's at the valve, cylinder 1's at its
+// exhaust opening, and the bangs. PROBE_SIM as above.
+TEST_CASE("probe: an overrun's gas temperatures", "[.probe-overrun]")
+{
+    Probe pr;
+    tee::EnginePlayer::Options options;
+    options.directory = std::getenv("PROBE_SIM") ? std::filesystem::path(std::getenv("PROBE_SIM"))
+                                                  : std::filesystem::path(TEE_SOURCE_DIR) / "sim";
+    options.sampleRate = 96000.0;
+    std::string errors, warnings;
+    pr.p = tee::EnginePlayer::create(options, errors);
+    INFO(errors);
+    REQUIRE(pr.p != nullptr);
+    tee::EngineBuild b;
+    REQUIRE(tee::loadBuild(*pr.p, std::filesystem::path(TEE_SOURCE_DIR) / "content" / "builds" / "v8.json", b, errors, warnings));
+    tee::applyBuild(*pr.p, b);
+    for (const char* kv : {"ecu.model=1", "fuel.model=1", "engine.wallHeat=1", "env.temperature=300", "ecu.overrun.fuel=0.25",
+                           "ecu.overrun.retard=30"})
+    {
+        const std::string s = kv;
+        const auto eq = s.find('=');
+        std::string e;
+        REQUIRE(pr.p->setSpec(s.substr(0, eq), std::atof(s.c_str() + eq + 1), e));
+    }
+    auto& c = pr.p->controls();
+    c.mode = 1;
+    c.ignition = 2;
+    pr.play(1.5);
+    c.ignition = 1;
+    pr.play(1.0);
+    c.throttle = 1.0f;
+    pr.play(2.0);
+    c.throttle = 0.0f;
+    std::printf("%6s %6s %8s %8s %8s %8s %6s\n", "t s", "rpm", "collect", "valve", "EVO gas", "bangs", "flags");
+    for (int i = 0; i < 10; ++i)
+    {
+        double tEvo = 0, nEvo = 0;
+        const double b0 = pr.get("ecu.one.account.bangs");
+        pr.play(0.1, [&] {
+            if (pr.get("cyl[0].evoNow") != 0.0)
+                tEvo += pr.get("cyl[0].t"), nEvo += 1;
+        });
+        std::printf("%6.1f %6.0f %8.0f %8.0f %8.0f %8.0f %6d\n", 0.1 * (i + 1), pr.tel("engine.speed") * 30.0 / M_PI,
+                    pr.get("exh.tGas[1]"), pr.tel("exhaust.portTemperature"), nEvo > 0 ? tEvo / nEvo : 0.0,
+                    pr.get("ecu.one.account.bangs") - b0, int(pr.tel("ecu.flags")));
     }
     SUCCEED();
 }
