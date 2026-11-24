@@ -16,6 +16,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace tee::ui
@@ -27,4 +28,10 @@ namespace tee::ui
     bool engineCompact(const Workspace& w);
     // For tests: the name of the layout the block draws (the dial's while the simulator refuses a custom one).
     std::string engineRunningLayout(const Workspace& w);
+    // For tests: the full lifts (m, intake and exhaust) the section scales the Scope's lift shares to: the taller of a
+    // two-stage lab's cams, as the simulator's Scope divides by.
+    std::pair<double, double> engineFullLifts(const Workspace& w);
+    // For tests: the cam stage the section names ("STAGE A", "STAGE B"; "" without two stages) and why B is held
+    // while the speed asks for it (VALVES' words; "" none).
+    std::pair<std::string, std::string> engineStageWords(const Workspace& w);
 }

@@ -886,18 +886,20 @@ TEST_CASE("probe: the boosted books", "[.probe-boostbooks]")
     pr.play(1.0, [&] { pr.warm(); });
     c.ignition = 1;
     c.throttle = 1.0f;
-    pr.play(5.0, [&] { pr.warm(); });
+    const double settle = std::getenv("PROBE_SETTLE") ? std::atof(std::getenv("PROBE_SETTLE")) : 5.0;
+    const double meas = std::getenv("PROBE_MEASURE") ? std::atof(std::getenv("PROBE_MEASURE")) : 2.0;
+    pr.play(settle, [&] { pr.warm(); });
     const double d0 = pr.get("boost.mach.sumMDraw"), t0 = pr.get("airThrottle"), v0 = pr.get("airValves"),
                  c0 = pr.get("boost.mach.sumMComp"), m0 = pr.get("intk.mPlenum"), vm0 = pr.get("boost.mach.v2.m") + pr.get("boost.mach.v1.m");
     double pBox = 0, boxP = 0, v2p = 0, v2t = 0, tAir = 0, rise = 0;
     long n = 0;
-    pr.play(2.0, [&] {
+    pr.play(meas, [&] {
         pr.warm();
         pBox += pr.get("intk.pBox"); boxP += pr.get("intk.box.p"); v2p += pr.get("boost.mach.v2.p"); v2t += pr.get("boost.mach.v2.t");
         tAir += pr.get("intk.tAir"); rise += pr.get("intk.heatRise"); ++n;
     });
-    const double k = 1e3 / 2.0;
-    std::printf("%s at %.0f rpm, full load, 2 s (g/s): compressor %.2f, machine's draw %.2f, throttle %.2f, valves %.2f; "
+    const double k = 1e3 / meas;
+    std::printf("%s at %.0f rpm, full load, booked over the window (g/s): compressor %.2f, machine's draw %.2f, throttle %.2f, valves %.2f; "
                 "plenum store %.3f, the machine's v1+v2 store %.3f\n",
                 slug.c_str(), rpm, (pr.get("boost.mach.sumMComp") - c0) * k, (pr.get("boost.mach.sumMDraw") - d0) * k,
                 (pr.get("airThrottle") - t0) * k, (pr.get("airValves") - v0) * k, (pr.get("intk.mPlenum") - m0) * k,

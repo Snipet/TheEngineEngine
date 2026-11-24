@@ -10,6 +10,7 @@
 #include "views/engine/PageText.h"
 #include "views/engine/StageDraw.h"
 #include "views/engine/TwoStroke.h"
+#include "views/valves/ValvesModel.h"
 
 #include "app/Look.h"
 #include "kit/widgets/Basic.h"
@@ -104,6 +105,8 @@ namespace tee::ui
         bool compact() const noexcept { return compact_; }
         // The layout the block shows (the dial's while a custom one is refused).
         std::string runningLayout() const { return model().layout.name; }
+        // The lifts the Scope's shares are scaled to (m): the intake's, the exhaust's.
+        std::pair<double, double> fullLifts() const { return { model().liftIn, model().liftEx }; }
 
         const char* id() const override { return "engine"; }
         const char* title() const override { return "ENGINE"; }
@@ -118,6 +121,10 @@ namespace tee::ui
             k.mix(std::isfinite(a) ? static_cast<std::int64_t>(std::lround(a * 4.0)) : -1);
             k.mix(slow_).mix(log_).mix(paceIndex_).mix(scopeVersion_).mix(tab_).mix(compact_);
             k.mix(ctx_.live.get(kTelLayoutRefused) >= 0.5);
+            {
+                const Stages st = stagesNow();
+                k.mix(std::hash<std::string>{}(st.text + "|" + st.why));
+            }
             const double reason = ctx_.live.get(kTelLayoutReason);
             k.mix(std::isfinite(reason) ? static_cast<std::int64_t>(std::lround(reason)) : -1);
             k.mix(static_cast<float>(ctx_.live.get(kTelSpeed)));
@@ -375,6 +382,19 @@ namespace tee::ui
                 model_.derived = derive(model_.layout, model_.cyl, lim);
                 model_.liftIn = fieldValue(ctx_.doc, FieldPath{ "valve.inLift", "valve.intakeLift" });
                 model_.liftEx = fieldValue(ctx_.doc, FieldPath{ "valve.exLift", "valve.exhaustLift" });
+                // The lab's Scope gives a lift as a share of the taller of the two stages' cams (valvetrain.fm
+                // liftIn: over max(A, B)), whichever stage is in: so the full lift it scales to is that taller one,
+                // and stage B's taller lift is drawn taller (A's alone drew A short and B as A).
+                const double labModel = fieldValue(ctx_.doc, FieldPath{ "valve.model", "" });
+                if (!(std::isfinite(labModel) && labModel < 0.5))
+                {
+                    const double inB = fieldValue(ctx_.doc, FieldPath{ "valve.inLiftB", "" });
+                    const double exB = fieldValue(ctx_.doc, FieldPath{ "valve.exLiftB", "" });
+                    if (std::isfinite(inB) && (!std::isfinite(model_.liftIn) || inB > model_.liftIn))
+                        model_.liftIn = inB;
+                    if (std::isfinite(exB) && (!std::isfinite(model_.liftEx) || exB > model_.liftEx))
+                        model_.liftEx = exB;
+                }
             }
             return model_;
         }
@@ -773,7 +793,10 @@ namespace tee::ui
             else if (cyl != 0)
                 put(c, "CYLINDER 1'S SCOPE, AT ITS ANGLE", in.x, in.y + 43.0f, lk::kCaps, p.dim);
 
-            const Rect draw{ in.x, in.y + 56.0f, in.w, in.h - 56.0f - 98.0f };
+            // (a line more under the readouts for stage B's reason, when the build has two stages)
+            const Stages stg = stagesNow();
+            const float under = stg.on && !m.layout.twoStroke ? 114.0f : 98.0f;
+            const Rect draw{ in.x, in.y + 56.0f, in.w, in.h - 56.0f - under };
             const Cylinder& cy = m.cyl;
             if (l.rotors > 0 || !cy.known())
             {
@@ -924,11 +947,51 @@ namespace tee::ui
             stage::readout(c, p, in.x + 2 * colW, ry, "SPARK", std::isfinite(adv) ? fmt(adv, "%.0f") : "-", "BTDC", lk::kNumberS);
             stage::readout(c, p, in.x, ry + 36.0f, "IN LIFT", lin, lunit, lk::kNumberS, lin == "-" ? kClear : inInk);
             stage::readout(c, p, in.x + colW, ry + 36.0f, "EX LIFT", lex, eunit, lk::kNumberS, lex == "-" ? kClear : exInk);
+            // two-stage cams: the stage in use, in words, as VALVES names it; and why B is not in when the speed
+            // asks for it, in VALVES' words
+            if (stg.on)
+            {
+                stage::readout(c, p, in.x + 2 * colW, ry + 36.0f, "CAM", stg.text, "", lk::kNumberS);
+                if (!stg.why.empty())
+                    put(c, stg.why, in.x, ry + 92.0f, lk::kCaps, p.warning);
+            }
             const std::string geo = u.number(Quantity::length, B) + " x " + u.number(Quantity::length, 2.0 * r) + ", rod "
                 + u.number(Quantity::length, L) + " " + u.unit(Quantity::length).name;
             put(c, "BORE X STROKE", in.x, ry + 76.0f, lk::kCaps, p.label);
             put(c, geo, in.x + c.textWidth("BORE X STROKE", lk::kCaps) + 10.0f, ry + 75.0f, lk::kBody, p.value);
         }
+
+        // Two-stage cams (the lab's valve.stages): the stage in use ("STAGE A", "STAGE B", "-"), and while the speed is
+        // past the stage speed with A still in, the oil's reason in VALVES' words ("" : none to give).
+        struct Stages
+        {
+            bool on = false;
+            std::string text = "-";
+            std::string why;
+        };
+        Stages stagesNow() const
+        {
+            Stages s;
+            const double on = fieldValue(ctx_.doc, FieldPath{ "valve.stages", "" });
+            const double labModel = fieldValue(ctx_.doc, FieldPath{ "valve.model", "" });
+            s.on = std::isfinite(on) && on >= 0.5 && !(std::isfinite(labModel) && labModel < 0.5) && !model().layout.twoStroke;
+            if (!s.on)
+                return s;
+            const double st = ctx_.live.get(valves::kTelStage);
+            s.text = !std::isfinite(st) ? "-" : st >= 0.5 ? "STAGE B" : "STAGE A";
+            const double speed = ctx_.live.get(kTelSpeed), at = fieldValue(ctx_.doc, FieldPath{ "valve.stageSpeed", "" });
+            if (std::isfinite(st) && st < 0.5 && std::isfinite(speed) && std::isfinite(at) && speed > at)
+                s.why = valves::stageWaitWords(ctx_.live, ctx_.units);
+            return s;
+        }
+    public:
+        // For tests: the stage named in the section and the reason B is held ("STAGE B", "" ...).
+        std::pair<std::string, std::string> stageWords() const
+        {
+            const Stages s = stagesNow();
+            return { s.on ? s.text : std::string(), s.why };
+        }
+    private:
 
         // ---- a two-stroke in section -------------------------------------------------------------------------------
         // The cylinder with its ports in the wall (the exhaust's at the right, the transfers' at the left, each window
@@ -1400,6 +1463,16 @@ namespace tee::ui
     {
         const auto* e = dynamic_cast<const EngineWorkspace*>(&w);
         return e != nullptr ? e->panels() : std::vector<funkgui::Rect>{};
+    }
+    std::pair<std::string, std::string> engineStageWords(const Workspace& w)
+    {
+        const auto* e = dynamic_cast<const EngineWorkspace*>(&w);
+        return e != nullptr ? e->stageWords() : std::pair<std::string, std::string>{};
+    }
+    std::pair<double, double> engineFullLifts(const Workspace& w)
+    {
+        const auto* e = dynamic_cast<const EngineWorkspace*>(&w);
+        return e != nullptr ? e->fullLifts() : std::pair<double, double>{ kNaN, kNaN };
     }
     std::string engineRunningLayout(const Workspace& w)
     {

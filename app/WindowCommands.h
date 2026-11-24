@@ -61,6 +61,8 @@ namespace tee::app
             std::function<void()> audioChanged;                 // the device was opened again (its line changed)
             std::function<int()> quality;                       // the engine's quality, 0 full, 1 economy (none: no item)
             std::function<void(int)> setQuality;
+            std::function<bool()> coldStart;                    // the engine starts cold (the settings'; none: no item)
+            std::function<void(bool)> setColdStart;
         };
 
         explicit WindowCommands(Context context) : ctx_(std::move(context)) {}

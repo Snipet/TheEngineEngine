@@ -78,10 +78,13 @@ A cam is asked as a cam card gives it: duration at the seat, at 1 mm, lift, cent
 - Phase is crank degrees from the parked stop: the intake advances, the exhaust retards (**published**: most vane
   phasers' arrangement).
 - Slew: `rate` (200 crank degrees a second warm, at full pressure: **judgement**) times the oil pressure's share between 70 and 200 kPa (**judgement**)
-  times 0.25 to 1 as the oil warms from 40 to 80 C (**judgement**). Parked below 40 C or 70 kPa: back to 0 at half
-  its rate (the cam's torque and the lock pin).
+  times 0.25 to 1 as the oil warms from 40 to 80 C (**judgement** in its numbers; **published** in its shape: a
+  phaser's response is "heavily dependent on engine oil temperature and pressure", SAE 2007-01-1640; its rate limits a
+  table of speed and oil temperature, US patent 7,467,611). Commanded from a cold start: no park below a temperature
+  (no source gives one; card N1, the owner's report: parked below 40 C, a cold start held the phasers 90 s at 6700 rpm).
+  Parked below 70 kPa of oil: back to 0 at half its rate (the cam's torque and the lock pin).
 - Clamped to its range at every tick (**measured**: test `phaser:`, a step of 40 degrees reaches 20 at 0.1 s and 40
-  at 0.2 s warm; at 50 C less than 0.6 of that; parked colder or without pressure; never outside).
+  at 0.2 s warm; at 50 C less than 0.6 of that; at 27 C a quarter of it; parked without pressure; never outside).
 - An engine whose ECU gives no target: `Phaser::schedule` (intake advanced at load from 12 % to 50 % of the
   redline, none at the top or idle; exhaust retarded at part load in the middle): **judgement**, a placeholder for
   card H's maps.
@@ -118,8 +121,13 @@ map shows, and fitting the rule to it would be fitting.
 
 ## Two stages
 
-The stage wants B above `stageSpeed`, A again below it less `stageHyst`, only with oil above 100 kPa and above 60 C
-(**judgement**). Each cylinder takes the new profile, intake and exhaust apart, at the first tick where its old and
+The stage wants B above `stageSpeed`, A again below it less `stageHyst`, only with oil above 100 kPa (the spool's
+pressure switch) and the coolant the ECU reads at 10 C or above (**published**: Honda's VTEC conditions, the Accord's
+service text: engine speed, vehicle speed, load from the manifold's pressure, coolant at 10 C or higher, the oil pressure
+switch; the vehicle's speed is the ECU's to add). Engine hands the valvetrain the coolant's temperature; without it the
+oil's is read. (Before: the oil above 60 C, judgement: a cold start held the stage off for 180 s at 6700 rpm.)
+`tel.valve.waiting` says why the cams are not where asked (bits: 1 and 2 a phaser parked for oil pressure, 4 slowed by
+cold oil, 8 the stage waiting for the coolant, 16 for oil pressure), `tel.valve.waitTemp` the coolant it waits for. Each cylinder takes the new profile, intake and exhaust apart, at the first tick where its old and
 its new table both give no area at its angle, so the change needs no crossfade and goes round the engine in a cycle
 (**measured**: test `two stages:`, every sample's step of area within what the tables' own slopes allow, with a
 phaser moving meanwhile; the last cylinder changed within 720 degrees and a tick of the want).
