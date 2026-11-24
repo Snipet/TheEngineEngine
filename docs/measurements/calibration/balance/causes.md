@@ -505,3 +505,23 @@ case for a damping from the seven's side.
 0.35 m second runner and the two-stage's stage B VE 1.03 on 0.40 m: their runners remain judgement, and no real engine's
 runner was found. Stage B re-measured on G's closing (live in the engine): 159 / 149 / 173 N m at 6500 / 7500 / 8500 rpm,
 VE 0.769 / 0.758 / 0.887 (stage A held: 206 / 194 / 196, VE 0.946 / 0.927 / 0.974): unchanged by it.
+
+## N3-10. A long-cam engine fills only on its runner's tooth (20:57 by `date -u`)
+
+The V12 (cited 680 to 730 N m; its runner 0.30 m, judgement; cams 272 / 264 degrees at the seat, the intake parked at
+126), full load:
+
+| rpm | 3000 | 4500 | 5500 | 6250 | 7000 | 8000 | 8575 |
+|---|---|---|---|---|---|---|---|
+| Torque, phaser scheduled (N1's rule), N m | 504 | 645 | 548 | 548 | 490 | 626 | 579 |
+| VE | 0.696 | 0.866 | 0.755 | 0.771 | 0.719 | 0.905 | 0.861 |
+| Intake advance, deg | 50 | 38 | 27 | 20 | 15 | 15 | 15 |
+| Torque, both phasers parked | 527 | 523 | 512 | 531 | 467 | 595 | 554 |
+| VE | 0.721 | 0.718 | 0.712 | 0.746 | 0.688 | 0.861 | 0.824 |
+
+Between its runner's teeth the long-cam engine fills only 0.70 to 0.75; the phaser lifts the 4500 tooth and a little
+elsewhere, and is not what holds the middle down. A long cam's late closing lives on a ram at its closing (N3-4), so
+where such an engine makes its torque is where its runner is tuned: real ones are tuned at their torque peak by design.
+With P's rule gone (no part from the engine's own targets) and no real runner found, a class default that does not look
+at the targets would have to come from something else the build holds: for example a runner tuned at a fixed share of
+the engine's own redline. That is P's and the lead's decision; proposed, not done.
