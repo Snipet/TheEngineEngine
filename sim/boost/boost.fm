@@ -67,7 +67,7 @@ module Boost
 
     void setup(float rateIn, Noise* noise)
     {
-        mach.setup(96000.0f, 0.002f, 7000.0f);
+        mach.setup(rateIn, 0.002f, 7000.0f);   // (the engine's own rate: 96 kHz, or a lighter tier's)
         rate = rateIn;
         nz = noise;
         nScale = sqrtf(rate / 48000.0f);
