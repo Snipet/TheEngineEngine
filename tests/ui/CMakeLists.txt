@@ -57,6 +57,32 @@ string(REPLACE ";" "," _tee_ui_names "${TEE_UI_TESTS}")
 target_compile_definitions(tee-ui-tests PRIVATE "TEE_UI_TEST_NAMES=\"${_tee_ui_names}\"")
 set_tests_properties(ui.ref.panel PROPERTIES SKIP_RETURN_CODE 77)
 
+# U1 and the workspaces after it: tee-view-tests, the frame's and every workspace's tests (tests/ui/views/ViewKit.h).
+# Every tests/ui/views/*.cpp is compiled in, and the names of its VIEW_TEST(ident, "name") lines are its CTest tests, so
+# a package adds a test file and nothing else. The example workspace (ui/views/_example/) is compiled here only.
+file(GLOB _tee_view_test_sources CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/views/*.cpp")
+set(TEE_VIEW_TESTS "")
+foreach(_f IN LISTS _tee_view_test_sources)
+  file(STRINGS "${_f}" _lines REGEX "^[ \t]*VIEW_TEST\\([A-Za-z0-9_]+, *\"[^\"]+\"\\)")
+  foreach(_l IN LISTS _lines)
+    string(REGEX REPLACE ".*VIEW_TEST\\([A-Za-z0-9_]+, *\"([^\"]+)\"\\).*" "\\1" _n "${_l}")
+    list(APPEND TEE_VIEW_TESTS "${_n}")
+  endforeach()
+endforeach()
+add_executable(tee-view-tests ${_tee_view_test_sources} views/ViewKit.h "${TEE_UI_DIR}/views/_example/ExampleWorkspace.cpp")
+target_include_directories(tee-view-tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/views")
+target_link_libraries(tee-view-tests PRIVATE tee_ui_app tee_ui_kit tee_ui_test_funkgui)
+tee_ui_warnings(tee-view-tests)
+string(REPLACE ";" "," _tee_view_names "${TEE_VIEW_TESTS}")
+target_compile_definitions(tee-view-tests PRIVATE
+  "TEE_VIEW_TEST_NAMES=\"${_tee_view_names}\""
+  "TEE_VIEW_GOLDEN_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/views/golden\""
+  "TEE_UI_OUT_DIR=\"${TEE_UI_REPO}/out/ui\"")
+foreach(_t IN LISTS TEE_VIEW_TESTS)
+  add_test(NAME ui.${_t} COMMAND tee-view-tests ${_t})
+  set_tests_properties(ui.${_t} PROPERTIES SKIP_RETURN_CODE 77)
+endforeach()
+
 # J2: the binding over card C's tee::Build with the real Spec (sim/), where the host is (the root's build).
 if(TARGET tee_ui_build)
   add_executable(tee-ui-build-tests BuildTests.cpp)
