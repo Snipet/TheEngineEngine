@@ -61,7 +61,12 @@ def parse(text, targets):
             val = float(m.group(1))
         except ValueError:
             val = None
-        rows.append((t, val, "FAIL" if m.group(2) == "MISS" else m.group(2)))
+        st = "FAIL" if m.group(2) == "MISS" else m.group(2)
+        # judged again against the range in the file now (tee-validate's own rule), so a band moved on its source
+        # counts when an earlier run's output is re-read
+        if val is not None and st in ("pass", "FAIL") and "range" in t:
+            st = "pass" if min(t["range"]) <= val <= max(t["range"]) else "FAIL"
+        rows.append((t, val, st))
     return rows
 
 

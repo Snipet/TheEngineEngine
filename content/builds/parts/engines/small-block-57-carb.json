@@ -87,7 +87,7 @@
     },
     "intake": {
       "model": 1,
-      "runnerLength": 0.18,
+      "runnerLength": 0.2,
       "plenumVolume": 0.0025
     },
     "boost": {

@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "Four-cam 5.0 L V8",
-  "notes": "A 5.0 L four-cam crossplane V8: 93 x 92.7 mm (5038 cc), 12:1, all four cams phased (engines of the kind: 300 to 343 kW at 6500 to 7000 rpm, 530 to 570 N m at 4250 to 4600; makers' figures). Rear drive, six-speed manual. Its intake runner, 0.57 m from the valve to the plenum, is the generator's rule 0.5 x (5000 / torque-peak rpm)^1.3, tuned to its own torque peak: JUDGEMENT, not the real engine's (no source found yet).",
+  "notes": "A 5.0 L four-cam crossplane V8: 93 x 92.7 mm (5038 cc), 12:1, all four cams phased (engines of the kind: 300 to 343 kW at 6500 to 7000 rpm, 530 to 570 N m at 4250 to 4600; makers' figures). Rear drive, six-speed manual. Its intake: the modern class's runner, 0.38 m from the valve to the plenum (a road engine's composite plenum manifold, 2005 on): JUDGEMENT, a class default, not the real engine's (no source found).",
   "spec": {
     "engine": {
       "layout": "V8 crossplane",
@@ -86,7 +86,7 @@
     },
     "intake": {
       "model": 1,
-      "runnerLength": 0.57
+      "runnerLength": 0.38
     },
     "boost": {
       "model": "Machine",

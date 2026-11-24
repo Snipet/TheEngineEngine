@@ -428,3 +428,80 @@ torque N m):
 The long cam lives on the ram at its closing, the short one hardly cares: a real high-lift stage is matched to its
 runner. So N3-4 is not the model's: it is the build's runner (P's rule, not the K20A's intake). Routed to P for the
 K20A's runner, cited; my note to N1 that it was the model's is withdrawn.
+
+## N3-9. Where the tuned four-valves lose at speed: their runners again (20:50 by `date -u`)
+
+The balance at speed (tip, tee::Build path; before G's flowClose is live):
+
+| Engine, rpm | Torque, N m | kW | VE | Released | Walls | Gross | Pumping | Friction | Brake |
+|---|---|---|---|---|---|---|---|---|---|
+| Flat-plane 4.5, 7000 | 389.6 | 286 | 0.809 | 0.924 | 0.113 | 0.396 | 0.004 | 0.063 | 0.329 |
+| Flat-plane 4.5, 8500 | 376.2 | 335 | 0.825 | 0.937 | 0.110 | 0.403 | 0.009 | 0.077 | 0.316 |
+| Two-stage 2.0, 7500 | 148.8 | 117 | 0.759 | 0.913 | 0.120 | 0.380 | 0.011 | 0.073 | 0.296 |
+| Two-stage 2.0, 8800 | 177.9 | 164 | 0.916 | 0.925 | 0.113 | 0.386 | 0.015 | 0.074 | 0.297 |
+
+Every share but the air is a real engine's; the VE is the short one (95 to 100 kW a litre wants VE above 1.0 at the
+power peak). Not the valves: the flat-plane's Mach index (Heywood §7.3) is 0.23, 0.31, 0.35 at 6000, 8000, 9000 rpm,
+far under the 0.6 where VE falls away, and its ports at 2.0 (from 1.65) do not help (VE 0.785 / 0.813 at 7000 / 8500).
+Its runner does: the build switches to a second length of 0.18 m above 6200 rpm (P's rule):
+
+| Second runner | 7000 rpm | 8000 rpm | 8500 rpm |
+|---|---|---|---|
+| 0.18 m (as built) | 390 N m, VE 0.809 | 378, 0.812 | 376, 0.825 |
+| 0.25 m | 399, 0.831 | 383, 0.827 | 394, 0.867 |
+| 0.30 m | 383, 0.807 | **469, 0.985** (392 kW) | 433, 0.933 |
+| 0.35 m | **480, 0.979** | 441, 0.943 | **460, 1.003** (410 kW) |
+
+The target is 400 to 445 kW at 8000 to 9000 rpm. The two-stage's stage B is the same (N3-4: 211 N m and VE 1.03 at 8000
+on a 0.40 m runner). So the tuned engines' shortfall at speed is their runners too, not a missing flow or an exhaust's
+scavenging (G's closing moves NA engines under 1 %).
+
+## Open: the runner's ram, its height (the lead's frame, both sides)
+
+- *The studies:* published runner-length gains of 6 % (a turbocharged diesel), 8.7 % (a petrol engine, a 528 mm runner)
+  and a 5.4 % average over a speed range from two lengths (single studies, geometry not matched to ours); Ohata and
+  Ishida (SAE 820407) and Heywood §7.6's figures were not opened.
+- *The model:* 12 to 18 % at the tune on the flat six; VE 1.03 on the two-stage's stage B and 1.00 on the flat-plane on
+  matched runners. The losses in it are of textbook size (N3-6).
+- *What the short engines need:* VE 1.0 and over at their power peaks, which the model reaches only with its ram as
+  strong as it is (on matched runners). Halving it would trade the seven for the nine.
+- *To decide:* re-measure the seven on the real engines' runners (P); if a tooth of this height at the right speed still
+  leaves them over, and the tuned ones are met with real runners, a sourced damping has its case. Neither yet.
+
+## The sixteen on P's class runners and cited bands (20:56 by `date -u`; P's b24fbca and after, G's flowClose live)
+
+Every NA petrol runner now P's class default of 0.40 m (judgement) or a hand-set length (judgement); every band cited.
+Torque at the target's peak-torque speed, power at its peak-power speed, against the band's middle:
+
+```
+torque: mean -7.2 %, sd 16.3 %, in band 4 of 16
+power: mean +2.4 %, sd 14.0 %, in band 6 of 16
+
+  small-block-57-carb        cited    torque  +23.7 % (448 at 3000 for [340, 385], VE 0.80)  power  +38.4 % (194 kW at 4600 for [120, 160], VE 0.79)
+  twin-cam-roadster-18       cited    torque  +10.3 % (180 at 5000 for [155, 172], VE 0.94)  power  +15.2 % (119 kW at 6650 for [95, 112], VE 0.95)
+  air-cooled-flat-six-36     cited    torque   +7.4 % (333 at 4750 for [300, 320], VE 0.86)  power   +9.4 % (205 kW at 6050 for [180, 195], VE 0.87)
+  big-block-74-pushrod-v8    cited    torque   +6.8 % (561 at 3000 for [510, 540], VE 0.78)  power  +17.9 % (239 kW at 4200 for [195, 210], VE 0.79)
+  vr6-28                     cited    torque   +5.8 % (249 at 4200 for [230, 240], VE 0.87)  power   +6.4 % (137 kW at 5800 for [125, 132], VE 0.85)
+  pushrod-v6-38              cited    torque   +1.8 % (321 at 4000 for [300, 330], VE 0.85)  power   -1.8 % (147 kW at 5200 for [140, 160], VE 0.79)
+  big-bore-70-pushrod-v8     cited    torque   -0.9 % (632 at 4800 for [630, 645], VE 0.87)  power   +4.9 % (396 kW at 6300 for [370, 385], VE 0.90)
+  economy-four-15            cited    torque   -1.9 % (143 at 4400 for [135, 156], VE 0.88)  power   +4.8 % (93 kW at 6300 for [80, 97], VE 0.93)
+  hot-hatch-16-16v           cited    torque   -2.6 % (144 at 6050 for [140, 155], VE 0.87)  power   -6.1 % (96 kW at 6850 for [85, 120], VE 0.84)
+  straight-six-32-high-rev   cited    torque  -14.5 % (312 at 4900 for [355, 375], VE 0.89)  power   -6.6 % (236 kW at 7800 for [245, 260], VE 0.90)
+  v6-35-na                   cited    torque  -15.9 % (294 at 4750 for [335, 365], VE 0.81)  power   -4.4 % (201 kW at 6350 for [195, 225], VE 0.87)
+  four-cam-v8-50             cited    torque  -16.4 % (458 at 4500 for [520, 575], VE 0.84)  power   +8.1 % (349 kW at 6850 for [300, 345], VE 0.94)
+  v10-52                     cited    torque  -27.1 % (397 at 6500 for [520, 570], VE 0.76)  power   -7.8 % (397 kW at 8350 for [385, 475], VE 0.90)
+  v12-65                     cited    torque  -28.1 % (507 at 6250 for [680, 730], VE 0.72)  power   +0.4 % (547 kW at 8575 for [500, 590], VE 0.90)
+  two-stage-cam-20           cited    torque  -30.0 % (149 at 7500 for [205, 220], VE 0.76)  power  -18.5 % (145 kW at 8300 for [170, 185], VE 0.85)
+  flat-plane-v8-45           cited    torque  -33.4 % (360 at 6000 for [520, 560], VE 0.74)  power  -21.1 % (333 kW at 8500 for [400, 445], VE 0.82)
+```
+
+**The lead's question answered:** with the runners no longer tuned to the measured speed, the ram's tooth at the wrong
+speed leaves the cited seven at -1 to +10 % in torque (7.0 -0.9, 3.8 V6 +1.8, VR6 +5.8, flat six +7.4, roadster +10.3)
+but for the small block (+23.7, N3-7, open) and the four-cam, now short (-16.4). The tooth no longer inflates them: no
+case for a damping from the seven's side.
+
+**The tuned four-valves are the miss now:** torque 27 to 33 % short (V10, V12, two-stage, flat-plane) with VE 0.72 to
+0.76 at their torque peaks; power closer (-21 to +0.4 %). N3-9 showed the flat-plane reaching VE 1.0 and 410 kW on a
+0.35 m second runner and the two-stage's stage B VE 1.03 on 0.40 m: their runners remain judgement, and no real engine's
+runner was found. Stage B re-measured on G's closing (live in the engine): 159 / 149 / 173 N m at 6500 / 7500 / 8500 rpm,
+VE 0.769 / 0.758 / 0.887 (stage A held: 206 / 194 / 196, VE 0.946 / 0.927 / 0.974): unchanged by it.
