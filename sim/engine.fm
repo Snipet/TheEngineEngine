@@ -280,6 +280,7 @@ module Engine
         set.ambF = 80.33f;
         set.timing = 0.0f;
         comb.setup(rate, &noise, &ecu, &heat, &lay, &exh.pop[0], &spec.fuel);
+        comb.oxygen = 1.0f;
         ecu.setup(16.0f / rate, &spec.ecu, &spec.fuel, &ctl, &tel.ecu, &scope, &heat);     // card H's model 1
         set.bov = 0.7f;
         set.intake = 0.5f;
@@ -799,6 +800,8 @@ module Engine
         }
         if (spec.ecu.model != 0 && set.drive != 0)
             ecu.vehicle(car.drivenSlip(), car.speedNow(), car.gearNow(), car.upshifts(), car.cutRequest(), car.blipRequest());
+        // the charge's oxygen (nitrous: Boost's, card F) for Combustion's charge (card H); exactly 1 with boost.model 0
+        comb.oxygen = boost.oxygenShare();
         mechanics16();
         // package M's mechanical voices (spec.voices.model 1; with model 0 it returns at once): their inputs, the car's
         // gearbox as either car model keeps it, the reference turbo's gate as open when its boost reaches its most
