@@ -3,7 +3,9 @@
 // merges them into one ControlsFrame a frame of the application. No SDL and no clock of its own: time comes in through
 // advance(dt), so the same inputs give the same frames in a test (docs/controls.md says what a person sees).
 //
-// The start key. While it is held the frame says ignition 2 (start). Let go, it says 1 (on); let go after it was held
+// The start key. While it is held the frame says ignition 2 (start), and for at least startLeast seconds from its
+// press however briefly it was held: a tap shorter than a frame of the window, or than a block of the audio, still
+// reaches the engine. Let go, it says 1 (on); let go after it was held
 // for offHold seconds on an engine that was running when it went down, it says 0 (off). The reference engine applies
 // the same second itself while its start key is held (sim/ref/engine.fm, "the start key held a second switches it
 // off"), which is why the frame goes on saying 2 until the key comes up: the two clocks never race.
@@ -42,6 +44,7 @@ namespace tee::input
         Easing handbrake{ 0.10f, 0.10f };
         bool autoClutch = true;
         float offHold = 1.0f;       // seconds the start key is held on a running engine to switch it off
+        float startLeast = 0.15f;   // seconds the frame says start after a press of the start key, at the least
         float seekInterval = 0.3f;  // seconds between a gear key's presses of the shift, while the gear is not there
         int seekTries = 12;         // presses a gear key makes before it gives up (a refused downshift)
         int mode = 1;               // the frame's mode: 1 is MODE_DRIVE (docs/plan/02-contracts.md section 4)
@@ -106,6 +109,7 @@ namespace tee::input
         bool startWas_ = false;
         bool startOnRunning_ = false;
         float startHeld_ = 0;
+        float startLatch_ = 0;      // seconds the start is still said after a press, whatever the key does
         int ignition_ = 0;
         // the gears
         int shiftUp_ = 0, shiftDown_ = 0;

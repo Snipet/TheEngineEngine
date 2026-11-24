@@ -19,7 +19,11 @@
 #             written below. Key ccache-<platform>-<hash of cmake/TeePins.cmake>-<commit>, restored from the newest with
 #             the same pins, else the newest of the platform. Saved after every build that succeeded on a push (the
 #             branches share nothing else), and by a pull request only when nothing was restored. At most 500 MB each.
-#   (shaderc, bgfx's shader compiler, joins them when the application builds: TEE_BUILD_APP.)
+#   shaderc   bgfx's shader compiler, which FunkGui's and the panels' shaders are built with: the build's slowest
+#             part by far (about 2,000 CPU-seconds), kept as the prebuilt one shell/cmake/TeeGpu.cmake looks for,
+#             tools/shaderc-<bgfx.cmake's version>/ in the dependency cache with its shaderc.stamp. Key
+#             shaderc-<platform>-<bgfx.cmake's commit>. A run that missed builds it first and saves it at once,
+#             whatever happens to the rest of the run.
 #
 # A push or a pull request that changes only files under docs/, or only *.md files, starts nothing (paths-ignore): no
 # build or test reads them. A push while a run is in flight waits for it, and replaces any push already waiting.
@@ -27,6 +31,17 @@
 # Each platform's run uploads its tools as an artefact (tee-<platform>: bin/tee-render, bin/tee-bench, with sim/ref and
 # content/ref beside bin/, where the tools look for them), kept 14 days, and writes tee-bench's quick table into the
 # run's summary: how the reference costs on a hosted runner. A failed run keeps its test log and out/.
+#
+# The application (TEE_BUILD_APP; docs/plan/w1-b-shell.md, docs/checkpoints/M1.md) is built first and uploaded at
+# once, so that its artefact exists whatever the rest of the build and the tests do:
+#   TheEngineEngine-windows-x64   a folder: TheEngineEngine.exe, tee-headless.exe, sim/, content/, licences/, the
+#                                 Visual C++ runtime's DLLs, README.txt
+#   TheEngineEngine-macos-arm64   TheEngineEngine-macos-arm64.tar.gz (a zip loses the executable bit): the same with
+#                                 TheEngineEngine.app, signed ad hoc, sim/ and content/ in its Resources
+#   TheEngineEngine-linux-x64     TheEngineEngine-linux-x64.tar.gz: the same with the executable
+# and, from every platform, TheEngineEngine-listen-<platform>: the reference started, revved and stopped by
+# tee-headless, as a WAV file and pictures, and what the window's own run on the runner said and drew (Linux: on
+# Xvfb with Mesa's software Vulkan, which must work; macOS and Windows: reported, and no reason to fail the job).
 #
 # Run by hand (Actions, Build, Run workflow), `platforms` builds only the platforms named (macos-arm64, windows-x64,
 # linux-x64; spaces or commas between them; "all", the default, every one).
@@ -156,8 +171,14 @@ jobs:
         run: |
           deps="$RUNNER_TEMP/tee-deps"
           if [ "$RUNNER_OS" = Windows ]; then deps=$(cygpath -m "$deps"); fi
-          mkdir -p "$deps/src" "$deps/install"
+          mkdir -p "$deps/src" "$deps/install" "$deps/tools"
           echo "TEE_DEPS_DIR=$deps" >> "$GITHUB_ENV"
+          # bgfx.cmake's pin names the shader compiler's cache and its folder (shell/cmake/TeeGpu.cmake)
+          bgfx_sha=$(grep -A4 '^tee_pin(bgfx_cmake' cmake/TeePins.cmake | sed -nE 's/^ *COMMIT +([0-9a-f]{40}).*/\1/p')
+          bgfx_version=$(grep -A4 '^tee_pin(bgfx_cmake' cmake/TeePins.cmake | sed -nE 's/^ *VERSION +([^ )]+).*/\1/p')
+          [ -n "$bgfx_sha" ] && [ -n "$bgfx_version" ] || { echo "::error::no bgfx_cmake pin in cmake/TeePins.cmake"; exit 1; }
+          echo "bgfx_sha=$bgfx_sha" >> "$GITHUB_OUTPUT"
+          echo "bgfx_version=$bgfx_version" >> "$GITHUB_OUTPUT"
           if [ "$RUNNER_OS" = Windows ]; then
             dir=$(cygpath -m "$RUNNER_TEMP/sccache")
             mkdir -p "$dir"
@@ -200,6 +221,13 @@ jobs:
             ${{ steps.keys.outputs.cache }}-${{ matrix.platform }}-${{ hashFiles('cmake/TeePins.cmake') }}-
             ${{ steps.keys.outputs.cache }}-${{ matrix.platform }}-
 
+      - name: Restore the shader compiler
+        id: shaderc
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.TEE_DEPS_DIR }}/tools/shaderc-${{ steps.keys.outputs.bgfx_version }}
+          key: shaderc-${{ matrix.platform }}-${{ steps.keys.outputs.bgfx_sha }}
+
       # Linux: the cloud containers' script, whole (apt, CMake, LLVM, the sources by git)
       - name: Bootstrap (Linux, scripts/bootstrap-cloud.sh)
         if: runner.os == 'Linux'
@@ -211,7 +239,7 @@ jobs:
 
       - name: Configure
         run: |
-          cmd=(cmake --preset "$PRESET" -DTEE_DEPS_DIR="$TEE_DEPS_DIR")
+          cmd=(cmake --preset "$PRESET" -DTEE_DEPS_DIR="$TEE_DEPS_DIR" -DTEE_BUILD_APP=ON)
           if [ "$RUNNER_OS" = Windows ]; then
             cmd+=(-DCMAKE_C_COMPILER_LAUNCHER="$TEE_SCCACHE" -DCMAKE_CXX_COMPILER_LAUNCHER="$TEE_SCCACHE")
           else
@@ -226,6 +254,196 @@ jobs:
         with:
           path: ${{ env.TEE_DEPS_DIR }}/src
           key: ${{ steps.sources.outputs.cache-primary-key }}
+
+      # a run that missed builds the shader compiler first and keeps it at once as the prebuilt one the next configure
+      # finds, so that a run that fails later has still warmed the slowest cache
+      - name: Build the shader compiler
+        id: build-shaderc
+        if: steps.shaderc.outputs.cache-hit != 'true'
+        env:
+          VERSION: ${{ steps.keys.outputs.bgfx_version }}
+          SHA: ${{ steps.keys.outputs.bgfx_sha }}
+        run: |
+          cmake --build "build-$PRESET" --target shaderc --parallel ${{ matrix.jobs }}
+          exe=shaderc; if [ "$RUNNER_OS" = Windows ]; then exe=shaderc.exe; fi
+          found=$(/usr/bin/find "build-$PRESET" -type f -name "$exe" | head -1)
+          echo "found: $found"
+          [ -n "$found" ] || { echo "::warning::no $exe under build-$PRESET: not cached"; exit 0; }
+          dir="$TEE_DEPS_DIR/tools/shaderc-$VERSION"
+          mkdir -p "$dir"
+          cp "$found" "$dir/$exe"
+          echo "bgfx.cmake $SHA" > "$dir/shaderc.stamp"
+          ls -l "$dir"
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+          if [ "$RUNNER_OS" = Windows ]; then "$TEE_SCCACHE" --stop-server > /dev/null || true; fi
+
+      - name: Save the shader compiler
+        if: steps.build-shaderc.outputs.ready == 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.TEE_DEPS_DIR }}/tools/shaderc-${{ steps.keys.outputs.bgfx_version }}
+          key: ${{ steps.shaderc.outputs.cache-primary-key }}
+
+      # the application first: its artefact exists whatever the rest of the build and the tests do
+      - name: Build the application
+        id: app
+        run: |
+          rc=0
+          cmake --build "build-$PRESET" --target TheEngineEngine tee-headless --parallel ${{ matrix.jobs }} || rc=$?
+          if [ "$RUNNER_OS" = Windows ]; then "$TEE_SCCACHE" --stop-server > /dev/null || true; fi
+          exit $rc
+
+      # the application as someone would unpack and run it (docs/checkpoints/M1.md)
+      - name: Pack the application
+        id: pack-app
+        env:
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          name="TheEngineEngine-$PLATFORM"
+          bin="build-$PRESET/bin"
+          out="$RUNNER_TEMP/app"
+          dir="$out/$name"
+          rm -rf "$out"; mkdir -p "$dir/licences"
+          case "$RUNNER_OS" in
+            macOS)
+              cp -R "$bin/TheEngineEngine.app" "$dir/"
+              cp "$bin/tee-headless" "$dir/"
+              codesign --verify --deep --strict --verbose=2 "$dir/TheEngineEngine.app" \
+                || echo "::warning::codesign does not verify TheEngineEngine.app"
+              codesign -d --entitlements - "$dir/TheEngineEngine.app" 2>&1 | head -20 || true ;;
+            Windows)
+              cp "$bin/TheEngineEngine.exe" "$bin/tee-headless.exe" "$dir/"
+              cp -R "$bin/sim" "$bin/content" "$dir/"
+              # the Visual C++ runtime the executables link (LLVM's own choice), for a machine that has none
+              crt=$(ls -d "$(cygpath -u "$VCToolsRedistDir")"x64/Microsoft.VC*.CRT 2>/dev/null | head -1)
+              if [ -n "$crt" ]; then cp "$crt"/*.dll "$dir/"; else echo "::warning::no Visual C++ runtime folder found"; fi ;;
+            *)
+              cp "$bin/TheEngineEngine" "$bin/tee-headless" "$dir/"
+              cp -R "$bin/sim" "$bin/content" "$dir/" ;;
+          esac
+          # the licences of what the executables hold: ours, FunkGui's font and bgfx (funkgui_add_font put them beside
+          # the executable or in the bundle), and each dependency's own file from its source
+          cp LICENSE "$dir/licences/TheEngineEngine-LICENSE.txt"
+          [ -d "$bin/licences" ] && cp -R "$bin/licences/." "$dir/licences/" || true
+          for src in "$TEE_DEPS_DIR"/src/*/; do
+            dep=$(basename "$src")
+            for f in LICENSE LICENSE.txt LICENSE.md LICENSE.TXT COPYING LICENSE.MIT LICENSE-MIT; do
+              if [ -f "$src$f" ]; then cp "$src$f" "$dir/licences/$dep-$f"; fi
+            done
+          done
+          llvm=$(ls -d "$TEE_DEPS_DIR"/install/llvm-*/ 2>/dev/null | head -1)
+          cat > "$dir/licences/LLVM-NOTE.txt" << 'NOTE'
+          The executables hold LLVM (https://llvm.org), which FMinus links: Apache License 2.0 with LLVM Exceptions,
+          https://llvm.org/LICENSE.txt
+          NOTE
+          {
+            echo "TheEngineEngine: a car engine simulator whose sound is the simulation's own."
+            echo "Built by GitHub Actions from $GITHUB_REPOSITORY at $GITHUB_SHA ($GITHUB_REF_NAME), $PLATFORM."
+            echo "What to check is docs/checkpoints/M1.md in the repository. In short:"
+            echo
+            case "$RUNNER_OS" in
+              Windows)
+                echo "Double-click TheEngineEngine.exe (a console window opens beside it and says what it found), or from"
+                echo "a Command Prompt or PowerShell in this folder:"
+                echo "    .\\TheEngineEngine.exe"
+                echo "    .\\TheEngineEngine.exe --info" ;;
+              macOS)
+                echo "From Terminal, in this folder (the first line lets a downloaded application run):"
+                echo "    xattr -dr com.apple.quarantine TheEngineEngine.app"
+                echo "    open TheEngineEngine.app"
+                echo "or, to see what it prints:"
+                echo "    ./TheEngineEngine.app/Contents/MacOS/TheEngineEngine"
+                echo "    ./TheEngineEngine.app/Contents/MacOS/TheEngineEngine --info" ;;
+              *)
+                echo "From a terminal in this folder (an X11 or XWayland display, a Vulkan driver, and ALSA, PulseAudio or"
+                echo "PipeWire for the sound):"
+                echo "    ./TheEngineEngine"
+                echo "    ./TheEngineEngine --info" ;;
+            esac
+            echo
+            echo "Press Return to start the engine (hold it a second to switch it off). Up or W is the throttle, Down or S"
+            echo "the brake, E and Q shift up and down, N is neutral, 1 to 6 a gear. --panel plain shows a plain panel of"
+            echo "numbers and dials instead of the instruments; --engine tone plays a plain tone with no simulator, to"
+            echo "tell a silent audio device from a simulator that did not start; --help lists the rest."
+            echo
+            echo "tee-headless is the same application with no window and no audio device: it renders a script of"
+            echo "inputs to a WAV file and pictures (tee-headless --seconds 14 --wav engine.wav --shot engine.png)."
+            echo
+            echo "licences/ holds the licences of the code and the font in the executables."
+          } > "$dir/README.txt"
+          cat "$dir/README.txt"
+          ls -la "$dir"
+          cd "$out"
+          if [ "$RUNNER_OS" = Windows ]; then
+            echo "path=$(cygpath -m "$dir")" >> "$GITHUB_OUTPUT"
+          else
+            # an artefact is a zip, which loses the executable bit and a bundle's links: a tar inside it keeps them
+            tar -czf "$name.tar.gz" "$name"
+            echo "path=$out/$name.tar.gz" >> "$GITHUB_OUTPUT"
+          fi
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          echo "dir=$dir" >> "$GITHUB_OUTPUT"
+
+      - name: Upload the application
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ steps.pack-app.outputs.name }}
+          path: ${{ steps.pack-app.outputs.path }}
+          retention-days: 30
+          if-no-files-found: error
+
+      # What can be known of the application without a person: the reference started, revved and stopped by
+      # tee-headless (a WAV to listen to, pictures from the software rasteriser), and the window itself run where the
+      # runner allows. Linux: Xvfb, openbox and Mesa's software Vulkan, with SDL's dummy audio driver: it must work.
+      # macOS and Windows: the runner's own session (Metal in a virtual machine; Direct3D 11's software adapter; no
+      # sound card), reported and no reason to fail the job: those two are proven by a person running the artefact.
+      - name: Run the application
+        id: run-app
+        continue-on-error: ${{ runner.os != 'Linux' }}
+        env:
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          dir="${{ steps.pack-app.outputs.dir }}"
+          out="$RUNNER_TEMP/listen"
+          mkdir -p "$out"
+          rc=0
+          case "$RUNNER_OS" in
+            macOS) app="$dir/TheEngineEngine.app/Contents/MacOS/TheEngineEngine"; headless="$dir/tee-headless" ;;
+            Windows) app="$dir/TheEngineEngine.exe"; headless="$dir/tee-headless.exe" ;;
+            *) app="$dir/TheEngineEngine"; headless="$dir/tee-headless" ;;
+          esac
+          # a command that has not ended after five minutes is stopped (a window that never draws would hold the job)
+          limited() {
+            "$@" & local pid=$!
+            ( sleep 300; echo "::warning::stopped after five minutes: $*"; kill -9 "$pid" 2>/dev/null ) & local watch=$!
+            local code=0; wait "$pid" || code=$?
+            kill "$watch" 2>/dev/null || true
+            return $code
+          }
+          echo "---- tee-headless: the reference through a start, a rev and a stop"
+          limited "$headless" --script tests/shell/scripts/start-rev-stop.txt \
+              --wav "$out/reference-start-rev-stop-$PLATFORM.wav" --shot "$out/headless-end-$PLATFORM.png" --panel plain || rc=$?
+          run=()
+          if [ "$RUNNER_OS" = Linux ]; then run=(scripts/xvfb-run.sh); export SDL_AUDIODRIVER=dummy; fi
+          echo "---- the window: --info"
+          limited "${run[@]}" "$app" --info || rc=$?
+          echo "---- the window: five seconds, the reference started and revved, the last frame read back from the GPU"
+          limited "${run[@]}" "$app" --script tests/shell/scripts/window.txt --frames 60 \
+              --shot "$out/window-$PLATFORM.png" || rc=$?
+          echo "---- the same with the plain Panel"
+          limited "${run[@]}" "$app" --panel plain --script tests/shell/scripts/window.txt --frames 60 \
+              --shot "$out/window-plain-$PLATFORM.png" || rc=$?
+          ls -l "$out" || true
+          exit $rc
+
+      - name: Upload what the application rendered and drew
+        if: always() && steps.pack-app.outcome == 'success'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: TheEngineEngine-listen-${{ matrix.platform }}
+          path: ${{ runner.temp }}/listen/
+          retention-days: 30
+          if-no-files-found: ignore
 
       # the compiler cache's statistics zeroed before and printed after, whatever the build's outcome: the run's hit
       # rate and the cache's size (sccache's server, started by the zeroing, is stopped after, so that its folder is

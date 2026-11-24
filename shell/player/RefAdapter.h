@@ -69,6 +69,7 @@ namespace tee::player
         int findValue(std::string_view name) const override;
         double value(int handle) const override;
         float outputPeak() const override { return peak_.load(std::memory_order_relaxed); }
+        int outputTail(float* mono, int max) const override { return tail_.read(mono, max); }
 
         // ControlSink
         void setControls(const ControlsFrame& f) override { controls_.set(f); }
@@ -103,6 +104,7 @@ namespace tee::player
         std::unique_ptr<std::atomic<double>[]> tel_;         // the SI values, then the raw show* fields
         std::atomic<float> peak_{ 0.0f };
         std::atomic<bool> stopped_{ false };
+        TailRing tail_;
         ControlsBox controls_;
 
         // the audio thread's own
