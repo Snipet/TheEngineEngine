@@ -857,6 +857,11 @@ module Engine
         hd.control16(d16, fuelUse, ecu.state, ecu.throttle, crank.omega, ecu.idleRpm, ecu.redRpm, ecu.sinceStart,
                      set.drive != 0 ? set.clutch : 0.0f, exh.mdot, exh.tPort, boost.boost, vTotal, lay.n, bore, heat.tAmb, ctl.buttons);
         hd.feed(&comb.diesel);
+        if (hd.on != 0)
+        {
+            hd.flapReal = exh.flapFitted();          // (card G's butterfly, where fitted, makes the exhaust brake's back pressure)
+            exh.setFlap(hd.flapCommand());
+        }
         // the exhaust's mass flow and its power, for the turbo
         exh.flowRate();
         // (the reference turbo's flow scale: a four-stroke's air, vTotal rpm / 120, for every engine; for a rotary, whose

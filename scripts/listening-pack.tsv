@@ -16,10 +16,12 @@
 04-custom-six	b-custom-engine	0	combo/pack/turbo-six-custom.json	content/scenarios/combo/tour.json
 05-turbo	a-reference-turbo	1	combo/turbo-six.json	content/scenarios/combo/pull.json
 05-turbo	b-gas-path-turbo	1	combo/pack/turbo-six-boost.json	content/scenarios/combo/pull.json
-06-exhaust	a-fixed	1	combo/v8.json	content/scenarios/combo/tour.json
-06-exhaust	b-builder-4-2-1	0	exhausts/v8-4-2-1.json	content/scenarios/combo/tour.json
-06-exhaust	c-builder-x-pipe	1	exhausts/v8-x-pipe.json	content/scenarios/combo/tour.json
-06-exhaust	d-builder-straight	0	exhausts/v8-straight.json	content/scenarios/combo/tour.json
+06-exhaust	a-fixed	1	default.json	content/scenarios/combo/tour.json
+06-exhaust	b-builder-reference-topology	0	exhausts/reference-topology.json	content/scenarios/combo/tour.json
+06-exhaust	c-builder-180-degree-headers	0	exhausts/v8-180-degree.json	content/scenarios/combo/tour.json
+06-exhaust	d-builder-dual-x-pipe	1	exhausts/dual-x-resonated-valved.json	content/scenarios/combo/tour.json
+06-exhaust	e-builder-straight-pipes	0	exhausts/straight-pipes.json	content/scenarios/combo/tour.json
+06-exhaust	f-builder-zoomies	0	exhausts/zoomies.json	content/scenarios/combo/tour.json
 07-cam	a-stock	0	cams/stock-v8.json	content/scenarios/combo/tour.json
 07-cam	b-hot-street	0	cams/hot-street.json	content/scenarios/combo/tour.json
 07-cam	c-race	0	cams/race.json	content/scenarios/combo/tour.json

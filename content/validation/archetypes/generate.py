@@ -29,6 +29,7 @@ T = {
     "air-cooled-flat-six-36": ((180, 195), (5800, 6300), (300, 320), (4500, 5000), (800, 950), 0, "makers' figures, firm"),
     "big-block-74-pushrod-v8": ((240, 310), (4400, 5600), (600, 690), (3000, 4000), (550, 750), 0, "net ratings of the era, loose (gross and net ratings differ by 20 %)"),
     "rotary-twin-13": ((190, 210), (6300, 7000), (290, 315), (4500, 5500), (750, 900), 5000, "makers' figures, firm to 10 % (variants differ)"),
+    "rotary-twin-na-side-port": ((165, 190), (8000, 8800), (205, 220), (5000, 6000), (750, 900), 0, "makers' figures by market and year, from memory, firm to 5 %"),
     "hot-hatch-16-16v": ((85, 120), (6500, 7600), (140, 165), (4500, 6000), (800, 950), 0, "makers' figures of the kind, loose (the kind's spread)"),
     "supercharged-v8-62": ((395, 435), (5800, 6300), (720, 780), (3500, 4200), (650, 750), 5000, "makers' figures, firm"),
     "small-block-57-carb": ((140, 210), (4000, 5200), (380, 470), (2400, 3600), (600, 800), 0, "net ratings of the era, loose"),

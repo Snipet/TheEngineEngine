@@ -92,6 +92,32 @@ namespace tee::ui
 
     const Unit& Units::unit(Quantity q) const noexcept { return unitsOf(q)[static_cast<std::size_t>(chosen(q))]; }
 
+    namespace
+    {
+        // Which system a unit's name is of: metric (SI prefixes on one base) or not; the preference crosses no system.
+        bool metric(std::string_view name) noexcept
+        {
+            return name == "mm" || name == "cm" || name == "m" || name == "L" || name == "cm2" || name == "cm3"
+                || name == "m2" || name == "m3" || name == "kPa" || name == "bar" || name == "Pa";
+        }
+    }
+
+    int Units::chosen(Quantity q, std::string_view prefer) const noexcept
+    {
+        const int now = chosen(q);
+        if (prefer.empty())
+            return now;
+        const int want = unitIndex(q, prefer);
+        if (want < 0 || metric(unitsOf(q)[static_cast<std::size_t>(now)].name) != metric(prefer))
+            return now;
+        return want;
+    }
+
+    const Unit& Units::unit(Quantity q, std::string_view prefer) const noexcept
+    {
+        return unitsOf(q)[static_cast<std::size_t>(chosen(q, prefer))];
+    }
+
     bool Units::choose(Quantity q, std::string_view unitName) noexcept
     {
         const int i = unitIndex(q, unitName);
@@ -112,15 +138,15 @@ namespace tee::ui
         }
     }
 
-    double Units::toUser(Quantity q, double si) const noexcept
+    double Units::toUser(Quantity q, double si, std::string_view prefer) const noexcept
     {
-        const Unit& u = unit(q);
+        const Unit& u = unit(q, prefer);
         return si * u.scale + u.offset;
     }
 
-    double Units::toSi(Quantity q, double user) const noexcept
+    double Units::toSi(Quantity q, double user, std::string_view prefer) const noexcept
     {
-        const Unit& u = unit(q);
+        const Unit& u = unit(q, prefer);
         return (user - u.offset) / u.scale;
     }
 
@@ -138,21 +164,21 @@ namespace tee::ui
         return s;
     }
 
-    std::string Units::number(Quantity q, double si, int decimals) const
+    std::string Units::number(Quantity q, double si, int decimals, std::string_view prefer) const
     {
-        return formatNumber(toUser(q, si), decimals >= 0 ? decimals : unit(q).decimals);
+        return formatNumber(toUser(q, si, prefer), decimals >= 0 ? decimals : unit(q, prefer).decimals);
     }
 
-    std::string Units::format(Quantity q, double si, int decimals) const
+    std::string Units::format(Quantity q, double si, int decimals, std::string_view prefer) const
     {
-        std::string s = number(q, si, decimals);
-        const char* name = unit(q).name;
+        std::string s = number(q, si, decimals, prefer);
+        const char* name = unit(q, prefer).name;
         if (name[0] != '\0')
             s += name[0] == '%' ? std::string(name) : std::string(" ") + name;
         return s;
     }
 
-    bool Units::parse(Quantity q, std::string_view text, double& si) const
+    bool Units::parse(Quantity q, std::string_view text, double& si, std::string_view prefer) const
     {
         text = trim(text);
         const std::string s(text);
@@ -161,7 +187,7 @@ namespace tee::ui
         if (end == s.c_str() || !std::isfinite(v))
             return false;
         const std::string_view rest = trim(std::string_view(end));
-        int u = chosen(q);
+        int u = chosen(q, prefer);
         if (!rest.empty())
         {
             u = unitIndex(q, rest);
