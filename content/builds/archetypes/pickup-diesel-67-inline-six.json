@@ -49,7 +49,7 @@
       "bore": 0.107,
       "stroke": 0.124,
       "rodLength": 0.192,
-      "redlineSpeed": 335.103,
+      "redlineSpeed": 321.909,
       "frictionValvetrain": "Flat tappet",
       "rough": 0.2,
       "benchLoad": 0.3
@@ -112,11 +112,14 @@
       "starter": true,
       "limiter": {
         "kind": "Fuel cut",
-        "speed": 335.103
+        "speed": 321.909
       },
       "idle": {
         "speed": 78.54
       },
+      "governor": "Electronic",
+      "ratedSpeed": 303.7,
+      "fuelBoost": 106000,
       "exhaustBrake": "Turbine vanes",
       "exBrakeSwitch": "On",
       "knock": {
