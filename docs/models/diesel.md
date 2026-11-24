@@ -86,6 +86,13 @@ the rms of its pressure's second difference a sample over that cycle (Pa: the hi
 block). `tel.ecu.smoke`: the filter smoke number (with the governor, or with fuel.model 1). `tel.ecu.rack`,
 `brakeCylinders`, `backPressure`, `governorSpeed`.
 
+## A truck build's gearing
+
+With card I's vehicle (`car.model` Vehicle) and the eighteen-speed (`car.gearbox` "Eighteen-speed"), the final drive is
+the reference truck's rule (chosen from the engine's redline and the tyre) unless `car.autoGearing` is false: then
+`car.finalDrive` is used (3.55 in mine). The eighteen ratios are Roadranger's (Eaton RTLO-18918B), whatever `car.ratio`
+holds. The paddles do nothing with it: the lever, `BTN_SPLITTER` and `BTN_RANGE` drive it.
+
 ## The truck's parts (standalone, not yet in the engine)
 
 `sim/vehicle/roadranger.fm`: the eighteen-speed (Eaton RTLO-18918B's ratios): lever positions L (5) and 1 to 4, the range
@@ -102,6 +109,18 @@ at L's valvetrain scale alone a purge was lost under an idling 15 L six). Measur
 mix ~1 dB over 0.5 s (exhaust camera, idling); a purge (36.7 s after a start motoring at 2000 rpm) leaves L's
 limiter at 0 dB (it has 18.7 dB of headroom; lower the purge, not the brakes, if it ever drives it below -3 dB).
 The grind waits on card I taking the eighteen-speed's gear into its gearbox (the hook is asked through the lead).
+
+## After card D's walls counted once (9e3a44f), the trucks on card H's fuel model
+
+With `fuel.model` Fuels a diesel keeps 0.98 of its fuel's heat (the walls taken once, by Woschni's), not the
+reference's 0.62. My truck builds (truck-15l-six, bobtail, the V8) moved to it. Measured, truck-15l-six: most torque
+**2760 N m** (Cummins ISX15's published 2780, 2050 lb ft) and most power 548 kW at 2121 rpm — above the published top
+rating (~450 kW, 605 hp): the governor's full rack is flat to the rated speed, where a real controller shapes the torque
+curve (not modelled). The 36 t rig: 0-50 km/h 17.6 s; 6 % at 56.8 km/h on 400 kW (power and weight: 54.9); down 6 %
+braked to 32 km/h, free to 53.5 (the redline). The compression brake, High, 2000 rpm: 249 kW with the reference turbo
+and exhaust; 404 kW with the vanes shut and card G's network. Cold starts unchanged but one: governor Reference with
+H's models 1 at 233 K now takes 12.7 s of cranking (1.1 s at 253 K). The table below is from before (the reference's
+fuelling).
 
 ## Measured (tee-tests-diesel; the 15 L six, 300 K, 101325 Pa)
 

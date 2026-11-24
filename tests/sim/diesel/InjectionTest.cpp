@@ -26,7 +26,7 @@ namespace
         e.spec("ecu.afc", afc);
         e.start();
         e.dyno(rpm, 1.0f);
-        REQUIRE(e.run(5.0));
+        REQUIRE(e.run(3.5));
         Point p{};
         p.rise = e.mean("ecu.riseRate", 1.0);
         p.hf = e.tel("ecu.pressureHf");

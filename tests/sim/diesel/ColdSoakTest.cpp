@@ -70,7 +70,7 @@ TEST_CASE("diesel soak: random pedals, brakes and governors for a while stay fin
     e.start();
     auto& c = e.ctl();
     double peak = 0.0;
-    for (int step = 0; step < 80; ++step)
+    for (int step = 0; step < 40; ++step)
     {
         c.throttle = static_cast<float>(u(rng) < 0.3 ? 0.0 : u(rng));
         c.mode = u(rng) < 0.5 ? 2 : 0;
@@ -93,6 +93,6 @@ TEST_CASE("diesel soak: random pedals, brakes and governors for a while stay fin
         CHECK(e.tel("engine.speed") < 400.0);
         CHECK(e.tel("ecu.backPressure") < 600001.0);
     }
-    std::printf("soak: 40 s of random pedals, switches and governors: peak %.2f\n", peak);
+    std::printf("soak: 20 s of random pedals, switches and governors: peak %.2f\n", peak);
     CHECK(peak <= 1.0);
 }

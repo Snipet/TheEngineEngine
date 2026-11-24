@@ -9,12 +9,17 @@ include(Catch)
 file(GLOB _tee_shell_tests CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
 add_executable(tee-shell-tests ${_tee_shell_tests})
 tee_target_defaults(tee-shell-tests)
+target_include_directories(tee-shell-tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(tee-shell-tests PRIVATE tee_app Tee::shell_core Tee::shell_settings Tee::shell_files Tee::shell_ref Tee::shell_sdl
                                               Catch2::Catch2WithMain)
 target_compile_definitions(tee-shell-tests PRIVATE
   "TEE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
   "TEE_SOURCE_SIM_DIR=\"${PROJECT_SOURCE_DIR}/sim\"")
-catch_discover_tests(tee-shell-tests DISCOVERY_MODE PRE_TEST
+# The cases tagged [sharedsim] need the simulator compiled (seconds): they run as one test, one process, sharing one
+# compile (support/SharedSim.h); ctest would run each discovered case in a process of its own, a compile each.
+add_test(NAME shell.sim.cases COMMAND tee-shell-tests "[sharedsim]" WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
+set_tests_properties(shell.sim.cases PROPERTIES TIMEOUT 600 LABELS shell ENVIRONMENT "SDL_AUDIODRIVER=dummy")
+catch_discover_tests(tee-shell-tests DISCOVERY_MODE PRE_TEST ADD_TAGS_AS_LABELS TEST_SPEC "~[sharedsim]"
   PROPERTIES TIMEOUT 600 ENVIRONMENT "SDL_AUDIODRIVER=dummy")
 
 set(_out "${PROJECT_SOURCE_DIR}/out/shell")
@@ -44,9 +49,10 @@ add_test(NAME shell.headless.fault.expected
   COMMAND tee-headless --engine sim --sim "${PROJECT_SOURCE_DIR}/sim" --hold-value crank.omega=1e7 --seconds 0.5
           --expect-fault
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
-set_tests_properties(shell.headless.fault PROPERTIES WILL_FAIL TRUE)
+set_tests_properties(shell.headless.fault PROPERTIES WILL_FAIL TRUE LABELS "shell;nightly")
 set_tests_properties(shell.headless.fault.expected PROPERTIES PASS_REGULAR_EXPRESSION "tee-offline: ok .* faults=[1-9]")
-set_tests_properties(shell.headless.fault shell.headless.fault.expected PROPERTIES TIMEOUT 900 LABELS shell)
+set_tests_properties(shell.headless.fault.expected PROPERTIES LABELS "shell;nightly")
+set_tests_properties(shell.headless.fault shell.headless.fault.expected PROPERTIES TIMEOUT 900)
 # QUALITY economy (card C's SimHost::setQuality: the engine at 48 kHz inside): the same start, rev and stop pass, and
 # the summary says the inner rate it ran at
 add_test(NAME shell.headless.economy
@@ -54,7 +60,7 @@ add_test(NAME shell.headless.economy
           --script "${_scripts}/sim-start-rev-stop.txt"
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
 set_tests_properties(shell.headless.economy PROPERTIES PASS_REGULAR_EXPRESSION "tee-offline: ok .* inner=48000" TIMEOUT 900
-                     LABELS shell)
+                     LABELS "shell;nightly")     # (two compiles: the soak tier's)
 add_test(NAME shell.headless.drive
   COMMAND tee-headless --engine ref --sim "${PROJECT_SOURCE_DIR}/sim" --script "${_scripts}/drive.txt"
           --wav "${_out}/ref-drive.wav"
@@ -82,13 +88,13 @@ if(TARGET tee_ui_build AND TARGET tee_ui_test_funkgui AND NOT TEE_PLACEHOLDER_PA
   add_executable(tee-shell-frame-tests "${CMAKE_CURRENT_SOURCE_DIR}/frame/GarageLibraryTest.cpp"
                                        "${PROJECT_SOURCE_DIR}/app/GarageLibrary.cpp")
   tee_target_defaults(tee-shell-frame-tests)
-  target_include_directories(tee-shell-frame-tests PRIVATE "${PROJECT_SOURCE_DIR}/app")
+  target_include_directories(tee-shell-frame-tests PRIVATE "${PROJECT_SOURCE_DIR}/app" "${CMAKE_CURRENT_SOURCE_DIR}")
   target_compile_definitions(tee-shell-frame-tests PRIVATE TEE_HAS_UI_FRAME=1
     "TEE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\"" "TEE_SOURCE_SIM_DIR=\"${PROJECT_SOURCE_DIR}/sim\"")
   # (FunkGui's sources compiled in, as the interface package's own tests have them)
   target_link_libraries(tee-shell-frame-tests PRIVATE tee_ui_build tee_ui_test_funkgui Tee::shell_files Tee::shell_ref Tee::host
                                                       Catch2::Catch2WithMain)
-  catch_discover_tests(tee-shell-frame-tests DISCOVERY_MODE PRE_TEST PROPERTIES TIMEOUT 600)
+  catch_discover_tests(tee-shell-frame-tests DISCOVERY_MODE PRE_TEST ADD_TAGS_AS_LABELS PROPERTIES TIMEOUT 600)
 endif()
 
 # Each workspace of the frame, opened by the application over the simulator (tee-headless --workspace): it opens,
@@ -109,7 +115,14 @@ if(TARGET tee_ui_build AND NOT TEE_PLACEHOLDER_PANEL)
     WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
   set_tests_properties(shell.workspace.none PROPERTIES WILL_FAIL TRUE)
   list(APPEND _tee_workspace_tests shell.workspace.none)
-  set_tests_properties(${_tee_workspace_tests} PROPERTIES TIMEOUT 600 LABELS "shell;workspace")
+  # (each workspace alone is the full form: [nightly]; the default run pictures them all in one process below)
+  set_tests_properties(${_tee_workspace_tests} PROPERTIES TIMEOUT 600 LABELS "shell;workspace;nightly")
+  add_test(NAME shell.workspace.all
+    COMMAND tee-headless --engine sim --sim "${PROJECT_SOURCE_DIR}/sim" --workspace all --frames 120
+            --script "${_scripts}/workspace.txt" --shot "${_out}/workspace.png"
+    WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
+  set_tests_properties(shell.workspace.all PROPERTIES TIMEOUT 600 LABELS "shell;workspace"
+                       PASS_REGULAR_EXPRESSION "workspaces: [0-9]+ pictured.*tee-offline: ok")
 endif()
 
 # The window itself, where there is one to test and a headless desktop to open it on (Linux, scripts/xvfb-run.sh: Xvfb,
@@ -132,11 +145,14 @@ if(TARGET TheEngineEngine AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
       COMMAND "${PROJECT_SOURCE_DIR}/scripts/xvfb-run.sh" $<TARGET_FILE:TheEngineEngine> --panel plain
               --script "${_scripts}/window.txt" --frames 60 --shot "${_out}/window-plain-gpu.png"
       WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
+    # (--engine tone: --info waits for the simulator's compile, and this test is about the renderer)
     add_test(NAME shell.window.info
-      COMMAND "${PROJECT_SOURCE_DIR}/scripts/xvfb-run.sh" $<TARGET_FILE:TheEngineEngine> --info
+      COMMAND "${PROJECT_SOURCE_DIR}/scripts/xvfb-run.sh" $<TARGET_FILE:TheEngineEngine> --engine tone --info
       WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
     set_tests_properties(shell.window.gpu shell.window.ref shell.window.plain shell.window.info PROPERTIES
       TIMEOUT 600 LABELS "shell;window" ENVIRONMENT "SDL_AUDIODRIVER=dummy" RUN_SERIAL TRUE)
+    # (the reference's panel and the plain Panel in a window: the soak tier's; the frame's is the default run's)
+    set_tests_properties(shell.window.ref shell.window.plain PROPERTIES LABELS "shell;window;nightly")
     # (a test with a pattern passes by the pattern alone: each of these lines is printed only when all went well)
     set_tests_properties(shell.window.gpu shell.window.ref shell.window.plain PROPERTIES
       PASS_REGULAR_EXPRESSION "tee-app: ok")
