@@ -4,9 +4,6 @@
 
 const Known kKnown[] = {
     // id, date, owner, combo, build, scenario, check, what
-    {"X-011", "2026-11-24", "I (via the lead): standstill", "ecu.model+car.model", "v8", "wet-traction-on", "click",
-     "traction control from a standstill on a wet road: the slip not held (only a slipping clutch can at walking pace); "
-     "its cuts bang at the shift"},
     {"X-016", "2026-11-24", "Q (cost; the heavy case of 02-contracts section 9)", "random 1", "fuzz", "random", "cost",
      "random Spec seed 1 is a four-rotor rotary (engine.custom, rotors 4: 12 faces on 4 shared ports, each solved twice "
      "a sample): 3.2 to 4.6 R; reported, not required in real time (Q: Economy or TEE_FAST)"},
