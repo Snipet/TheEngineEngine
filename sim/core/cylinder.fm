@@ -54,6 +54,12 @@ module Cylinder
                         // its intake pushed back into the runner during the overlap and drew in again
     float rvMass;       // the gas the intake pushed back into its runner, waiting to be drawn in first, and the burned
     float rvInert;      // part of it
+    float rvMT;         // its mass times its temperature (kg K): the temperature it left at, mass-weighted
+    float exStore;      // conserve 1: this exhaust event's gas out by the port not yet drawn back (kg), its mass times
+    float exStoreMT;    // temperature (kg K) and its burned part (kg); emptied when the exhaust valve shuts
+    float exStoreIn;
+    int conserve;       // 1 (the physical cylinder: Engine::woschniWalls): what the intake pushed back comes back as itself,
+                        // its mass at the temperature it left at; 0: the reference's, as the same volume of the air
     float cBurn;        // how much of what could burn this cycle's burn will burn (the dilution's toll)
     float exOut;        // this exhaust event's gas out and its burned part, and the burned share of the last event's:
     float exInert;      // what the header holds by the port, and gives back when it flows back in
@@ -74,6 +80,7 @@ module Cylinder
     float qEa;          // what the header and the runner are given for them (the pipe's stiffening of a finite wave
     float qIa;          // in: pipes.fm, Valve)
     float mE;           // mass flow out through the exhaust valve (kg/s)
+    float mI;           // and through the intake valve (out positive: the intake drawing in is negative)
     float tq;           // its torque on the crank (N m)
     float slopeNow;     // dV per radian of the crank at this sample's angle
     float dpdt;         // how fast its pressure rose (Pa a sample): the combustion's sharpness, for the block's noise
@@ -223,6 +230,10 @@ module Cylinder
         mInert = 0.0f;
         rvMass = 0.0f;
         rvInert = 0.0f;
+        rvMT = 0.0f;
+        exStore = 0.0f;
+        exStoreMT = 0.0f;
+        exStoreIn = 0.0f;
         cBurn = 1.0f;
         exOut = 0.0f;
         exInert = 0.0f;
@@ -269,6 +280,9 @@ module Cylinder
             mRes = m;
             mLeakLast = mLeak;
             mLeak = 0.0f;
+            exStore = 0.0f;
+            exStoreMT = 0.0f;
+            exStoreIn = 0.0f;
             if (exOut > 1.0e-12f)
                 exFrac = fminf(exInert / exOut, 1.0f);
             exOut = 0.0f;
@@ -292,17 +306,58 @@ module Cylinder
         // their mass flows (out of the cylinder positive) at the pipes' pressures, and the heat they carry
         const float ppE = fmaxf(101325.0f + 2.0f * bE + zE * qEa, 8000.0f);
         const float ppI = fmaxf(101325.0f + 2.0f * bI + zI * qIa, 8000.0f);
-        const float mOutE = qE >= 0.0f ? qE * ppE / (287.0f * t) : qE * ppE / (287.0f * tPipe);
-        const float mOutI = qI >= 0.0f ? qI * ppI / (287.0f * t) : qI * ppI / (287.0f * tAir);
+        float mOutE = qE >= 0.0f ? qE * ppE / (287.0f * t) : qE * ppE / (287.0f * tPipe);
+        // (conserve 1: what flows back from the header is this event's own gas first, at the temperature it left at, and
+        // only then the header's at its own: as the intake's below)
+        float mBackE = 0.0f;
+        float exT = tPipe;
+        float exF = exFrac;
+        if (conserve != 0 && qE < 0.0f && exStore > 1.0e-12f)
+        {
+            exT = fminf(fmaxf(exStoreMT / exStore, 200.0f), 3200.0f);
+            exF = fminf(exStoreIn / exStore, 1.0f);
+            const float vol = -qE * dt;
+            const float vA = fminf(vol, exStore * 287.0f * exT / ppE);
+            mBackE = vA * ppE / (287.0f * exT);
+            mOutE = -(mBackE + (vol - vA) * ppE / (287.0f * tPipe)) / dt;
+        }
+        // (the reference's: what the intake draws in is converted at the air's temperature, the gas it pushed back into
+        // the runner included, though that left at the cylinder's: each round trip makes mass, the backflow's volume coming
+        // back at the air's density (N1's finding, 24 Nov). Kept to the bit with conserve 0; with conserve 1 the pushed-back
+        // gas comes back first at the temperature it left at, then the air)
+        float mOutI = qI >= 0.0f ? qI * ppI / (287.0f * t) : qI * ppI / (287.0f * tAir);
+        float mBack = 0.0f;     // conserve 1: kg of the pushed-back gas drawn in this sample
+        float rvT = tAir;
+        if (conserve != 0 && qI < 0.0f && rvMass > 1.0e-12f)
+        {
+            rvT = fminf(fmaxf(rvMT / rvMass, 200.0f), 3200.0f);
+            const float vol = -qI * dt;
+            const float vA = fminf(vol, rvMass * 287.0f * rvT / ppI);
+            mBack = vA * ppI / (287.0f * rvT);
+            mOutI = -(mBack + (vol - vA) * ppI / (287.0f * tAir)) / dt;
+        }
         // the heat they carry: each gas's own (cp = R g / (g - 1) at its temperature)
         const float gc = gammaAt(t);
         const float gp = gammaAt(tPipe);
         const float ga = gammaAt(tAir);
         const float cpC = 287.0f * gc / (gc - 1.0f);
         float hOut = 0.0f;
-        hOut += mOutE >= 0.0f ? cpC * t * mOutE : 287.0f * gp / (gp - 1.0f) * tPipe * mOutE;
-        hOut += mOutI >= 0.0f ? cpC * t * mOutI : 287.0f * ga / (ga - 1.0f) * tAir * mOutI;
+        if (mBackE > 0.0f)
+        {
+            const float gx = gammaAt(exT);
+            hOut += 287.0f * gx / (gx - 1.0f) * exT * (-mBackE / dt) + 287.0f * gp / (gp - 1.0f) * tPipe * (mOutE + mBackE / dt);
+        }
+        else
+            hOut += mOutE >= 0.0f ? cpC * t * mOutE : 287.0f * gp / (gp - 1.0f) * tPipe * mOutE;
+        if (mBack > 0.0f)
+        {
+            const float gb = gammaAt(rvT);
+            hOut += 287.0f * gb / (gb - 1.0f) * rvT * (-mBack / dt) + 287.0f * ga / (ga - 1.0f) * tAir * (mOutI + mBack / dt);
+        }
+        else
+            hOut += mOutI >= 0.0f ? cpC * t * mOutI : 287.0f * ga / (ga - 1.0f) * tAir * mOutI;
         mE = mOutE;
+        mI = mOutI;
         // the seals' leakage (a rotary's, fuel.model 1): out to the faces beside it, choked or not, with its heat; the
         // fuel in what leaks before it burns leaves with it
         float mLk = 0.0f;
@@ -326,6 +381,20 @@ module Cylinder
                 di -= mOutE * dt * fr;
                 exOut += mOutE * dt;
                 exInert += mOutE * dt * fr;
+                if (conserve != 0)
+                {
+                    exStore += mOutE * dt;
+                    exStoreMT += mOutE * dt * t;
+                    exStoreIn += mOutE * dt * fr;
+                }
+            }
+            else if (mBackE > 0.0f)
+            {
+                // (its own gas back with its burned share, the rest the header's)
+                di += mBackE * exF + (-mOutE * dt - mBackE) * exFrac;
+                exStoreIn = fmaxf(exStoreIn - mBackE * exF, 0.0f);
+                exStoreMT = fmaxf(exStoreMT - mBackE * exT, 0.0f);
+                exStore = fmaxf(exStore - mBackE, 0.0f);
             }
             else
                 di -= mOutE * dt * exFrac;
@@ -334,14 +403,17 @@ module Cylinder
                 di -= mOutI * dt * fr;
                 rvMass += mOutI * dt;
                 rvInert += mOutI * dt * fr;
+                rvMT += mOutI * dt * t;
             }
             else
             {
                 const float take = fminf(rvMass, -mOutI * dt);
                 const float fi = rvMass > 1.0e-12f ? rvInert / rvMass : 0.0f;
+                const float ti = rvMass > 1.0e-12f ? rvMT / rvMass : 0.0f;
                 di += take * fi;
                 rvInert = fmaxf(rvInert - take * fi, 0.0f);
                 rvMass = fmaxf(rvMass - take, 0.0f);
+                rvMT = fmaxf(rvMT - take * ti, 0.0f);
             }
             mInert = fminf(fmaxf(mInert + di, 0.0f), fmaxf(m - (mOutE + mOutI) * dt, 1.0e-7f));
         }

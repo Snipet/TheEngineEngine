@@ -117,6 +117,31 @@ How much the phaser is worth, measured:
 
 So the phaser is a shape fix worth a few percent, not pattern 1's cause.
 
+**Fixed (the lead's decision, 16:26).** `Phaser::schedule` (E's) now schedules the intake by a target intake-closing
+angle at the seat: 20 degrees after bottom at a quarter of the redline and below, rising to 67 at the redline. The
+advance is what brings each cam's parked closing there, capped by an overlap of 40 + 60 x (the speed's share of the
+redline) degrees.
+
+The lead suggested 30 to 40 degrees at low speed. The sweep's best closings for the short cams were 3 to 18 degrees
+(the economy four), so with 35 the 3.5 V6 lost 50 N m of its peak. 20 lets the overlap cap hold the long cams back
+instead.
+
+Before and after, mean torque over seven speeds, as built:
+
+| Engine | Before | After | Calibrated maps |
+|---|---|---|---|
+| Flat-plane V8 | 344 | 355 | 365 |
+| Four-cam V8 | 436 | 441 | 451 |
+| 3.2 six | 246 | 264 | 267 |
+| V10 | 409 | 419 | 424 |
+| V12 | 491 | 522 | 536 |
+| Economy four | 137 | 136 | 139 |
+| 3.5 V6 | 319 | 311 | 316 |
+
+The holes: the 3.2 six at 2700 rpm, 206 to 290 N m; the V12 at 5000 rpm, 495 to 582. Test: `calibration-na.the
+intake phaser's schedule cuts no hole in a long cam's full-load curve` (29 s). The valvetrain's and the intake's 21
+tests pass; the null test passes, 11 of 11.
+
 ## D. Mass created at the intake valve: pattern 4 (measured; D's file, routed to D)
 
 `sim/core/cylinder.fm:290` (the reference has the same line, `sim/ref/cylinder.fm:279`):
@@ -178,3 +203,20 @@ The experiment: the intake valve's gas taken 25 K warmer (`engine.fm`, `stepArea
 
 It is a level, like A: it would take back about a third of Woschni's gain, on every engine alike. It is physics left
 out (E's intake), worth adding with a source for the rise by speed and load. It does not separate the classes.
+
+**Added (on the lead's word, 16:46), waiting for one line of D's.** `Intake::control`, model 1, heats the charge:
+
+    rise = (T_coolant - T_air)(1 - exp(-NTU)),   NTU = 0.29 (m / m_ref)^-0.2
+
+That is a stream past water-jacketed walls; h goes as the flow's 0.8th power, hence the -0.2. The rise is some 19 K at
+full load, 35 K at idle, none cold. The 0.29 is judgement within Heywood's 10 to 40 K. It needs Engine to set
+`intk.tCoolant = heat.tCool` before `intk.control` (D's file). Until then it does nothing.
+
+In a scratch tree with that line, against the tree without it:
+
+| Engine | Torque at 1500 rpm | Torque from 4000 rpm to the top |
+|---|---|---|
+| Economy four | -9 % | -7 to -8 % |
+| 3.2 six | -11 % | -7 % |
+| Small-block | -9 % | -7 % |
+| V12 | -10 % | -6 to -7 % |

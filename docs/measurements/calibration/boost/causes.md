@@ -49,12 +49,30 @@ whatever the turbo's size. After: the four holds 120 kPa spooled at the top and 
 60 kPa to 7800 rpm (gate 0.59 to 0.75); the six holds 100 kPa (no runaway). Test: GateTest.cpp, "a matched wastegate
 holds its target spooled at the top speed".
 
-## 3. A rotary's turbo matched to half its air (routed to D)
+**The sequential pair** (rotary-twin-13): every collector ends in the first turbo's housing, the second turbine fed
+from it only through the transfer valve, so the first gate must bypass the whole engine's flow: sized at its 0.55
+share it still ran away at 5000 to 6000 rpm (95 to 101 kPa against 70, both gates wide open, knock retard 15). Sized
+for the whole flow: 72, 72, 74, 73, 75 kPa at 3000 to 7000 rpm, gates 0.16 to 0.63 (after D's 2df7ea6).
+
+## 2b. Clicks: the valves moved in stairs, and the nozzle's flow jumped where it chokes (fixed in sim/boost/)
+
+X-010 and X-014 (card X): with the turbine coupled into G's pipes, the output stepped at every throttle change (the
+3.0 twin-turbo six 39.1 times the local level against 8.1 with boost.model 0). Two causes, each isolated by removing
+it: the gate's lift, the variable vanes and the blow-off valve moved only every 16 samples (and snapped by the
+reliefs), so the gas through them saw a staircase (no blow-off valve: 24.3; a 50 mm gate: steps all through the run);
+and the nozzle's choked branch left out the housing's own give over the sample that the unchoked passes take, so the
+flow jumped at the switch. Now the opening the gas sees follows its actuator every sample through two 1 ms stages, and
+the choked branch takes the give. After: the six 7.2 to 8.9; the pickup diesel 26.7 (its own reference 26.0); the 2.0
+four 20.3 (reference 8.1: a one-sample step at the throttle's opening from idle, only with a recirculating blow-off
+valve). Open: the tractor 53 (reference 25.8): an offset switched in after a lift with its vanes shut at idle (vanes no
+more shut than 0.8: 25.1; exhaust.model 0: 17.3); suspected, not proven, the housing solve's clamps.
+
+## 3. A rotary's turbo matched to half its air (fixed by D, 2df7ea6)
 
 `machine.fm` matches every size to a four-stroke's air (vd x rpm / 120); Engine passes a rotary's vTotal, which it
 takes every shaft turn: twice. Asked of D (engine.fm: pass the four-stroke-equivalent displacement); a two-stroke the
-same (told T). With every size doubled as a stand-in, the sequential rotary still overboosts (71 to 102 kPa against
-70): to be re-measured after D's change and the gate.
+same (told T). With D's x2 and the gates of 2 and 2b the boost is held (above); its torque, 345 to 445 N m against
+290 to 315, is then the rotary's own (N1, D).
 
 ## 4. Not boost: what is left after 1 and 2 (leads, not yet causes)
 
