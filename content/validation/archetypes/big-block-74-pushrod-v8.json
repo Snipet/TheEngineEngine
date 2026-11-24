@@ -319,7 +319,7 @@
     },
     {
       "name": "Quarter mile: time",
-      "scenario": "validation/scenarios/p-quarter-mile-own.json",
+      "scenario": "validation/scenarios/qm/big-block-74-pushrod-v8.json",
       "tel": "car.t1320",
       "measure": "last",
       "range": [
@@ -332,7 +332,7 @@
     },
     {
       "name": "Quarter mile: trap speed",
-      "scenario": "validation/scenarios/p-quarter-mile-own.json",
+      "scenario": "validation/scenarios/qm/big-block-74-pushrod-v8.json",
       "tel": "car.v1320",
       "measure": "last",
       "range": [

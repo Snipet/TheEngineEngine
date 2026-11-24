@@ -526,8 +526,8 @@ namespace
 
 namespace
 {
-    // Cold oil holds the phasers parked (below 313 K or 70 kPa) and stage B back (below 333 K or 100 kPa), as the
-    // lab does: said in amber words in the PHASERS AND STAGES panel and on the editor's phaser band, at the frame's
+    // What the simulator says holds the cams back (tel.valve.waiting: a phaser parked without oil pressure, slowed by
+    // cold oil; the stage waiting for the coolant at tel.valve.waitTemp, or for oil pressure): said in amber words in the PHASERS AND STAGES panel and on the editor's phaser band, at the frame's
     // stages with no text out of place, and gone once the oil is warm.
     VIEW_TEST(testValvesOil, "valves.oil")
     {
@@ -538,8 +538,11 @@ namespace
             LabRig rig(static_cast<int>(st.w), static_cast<int>(st.h), 1.0f);
             rig.live();
             rig.engine.set("valve.stage", 0.0);
+            // just started cold: the intake phaser without oil pressure yet, the stage waiting for the coolant
             rig.engine.set(vv::kTelOilTemp, 288.0);
-            rig.engine.set(vv::kTelOilPressure, 400000.0);
+            rig.engine.set(vv::kTelCoolant, 278.0);
+            rig.engine.set(vv::kTelWaitTemp, 283.0);
+            rig.engine.set(vv::kTelWaiting, vv::kWaitInParked | vv::kWaitSlowed | vv::kWaitCoolant);
             rig.ctx.live.reset();
             const std::uint64_t k = rig.ws->drawKey();
             rig.host->tick(5);
@@ -551,16 +554,18 @@ namespace
                 rig.host->tick(5);
             }
             const std::string words = tee::ui::valvesOilWords(*rig.ws);
-            CHECK_MSG(words.find("PARKED: OIL 15") != std::string::npos && words.find("B WAITS: OIL 15") != std::string::npos, words);
+            CHECK_MSG(words.find("PARKED: NO OIL PRESSURE") != std::string::npos && words.find("B WAITS: COOLANT 5") != std::string::npos
+                          && words.find("NEEDS 10") != std::string::npos, words);
             const std::string why = tee::test::u2::textFaults(rig.host->draw(), { 0, 0, st.w, st.h }, tee::ui::valvesPanels(*rig.ws));
             CHECK_MSG(why.empty(), tag + ": " + why);
             picture("valves.oil." + tag, *rig.host);
             // warm enough for the phasers, not for B; then warm
-            rig.engine.set(vv::kTelOilTemp, 320.0);
+            // oil pressure up, still cold: the phaser moves, slowly; the stage still waits
+            rig.engine.set(vv::kTelWaiting, vv::kWaitSlowed | vv::kWaitCoolant);
             CHECK(rig.ws->drawKey() != k);
-            CHECK_MSG(tee::ui::valvesOilWords(*rig.ws).find("PARKED") == std::string::npos, tee::ui::valvesOilWords(*rig.ws));
+            CHECK_MSG(tee::ui::valvesOilWords(*rig.ws).find("SLOWED: COLD OIL, 15") != std::string::npos, tee::ui::valvesOilWords(*rig.ws));
             CHECK(tee::ui::valvesOilWords(*rig.ws).find("B WAITS") != std::string::npos);
-            rig.engine.set(vv::kTelOilTemp, 360.0);
+            rig.engine.set(vv::kTelWaiting, 0.0);
             CHECK(tee::ui::valvesOilWords(*rig.ws).empty());
         }
         return 0;

@@ -232,3 +232,31 @@ TEST_CASE("first route diff", "[.firstdiff]")
         }
     });
 }
+
+// The lead's fan cycling (M's switch at 373 K on, 368 off): a warm engine idling in still air, voices.model 1, for
+// each candidate `still`: the coolant's course and the fan's
+TEST_CASE("fan cycles", "[.fan]")
+{
+    for (double still : {0.02, 0.05, 0.1, 0.2})
+    {
+        Bench b("default");
+        std::string e;
+        REQUIRE(b.player().setSpec("voices.model", 1, e));
+        b.write("heat.still", still);
+        b.start();
+        b.write("heat.tCool", 368.0); b.write("heat.tOil", 378.0); b.write("heat.tSurf", 455.0); b.write("heat.warm", 1.0); b.write("heat.warmS", 1.0);
+        double lo = 1e9, hi = 0, onT = 0, t = 0;
+        int switches = 0, last = 0;
+        b.play(600.0, [&] {
+            t += 512.0 / 48000.0;
+            const double tc = b.field("heat.tCool");
+            const int on = int(b.field("ex.vo.fan.on"));
+            if (t > 60.0) { lo = std::min(lo, tc); hi = std::max(hi, tc); }
+            if (on != last) switches += 1;
+            last = on;
+            onT += on ? 512.0 / 48000.0 : 0.0;
+        });
+        std::printf("still %.2f: coolant %.1f to %.1f K after the first minute, the fan on %.0f %% of 600 s, %d switchings, ends %.1f K\n",
+                    still, lo, hi, 100.0 * onT / 600.0, switches, b.field("heat.tCool"));
+    }
+}

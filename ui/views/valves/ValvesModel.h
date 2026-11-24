@@ -101,24 +101,24 @@ namespace tee::ui::valves
     inline constexpr const char* kTelInTarget = "valve.inPhaseTarget";   // and where it is asked to go
     inline constexpr const char* kTelExTarget = "valve.exPhaseTarget";
     inline constexpr const char* kTelStage = "valve.stage";           // 0 stage A, 1 stage B
-    // The oil (tel.engine, core/heat.fm), and what the lab asks of it before it lets the phasers and the stages move:
-    // a phaser stays parked below 313 K or 70 kPa (valvetrain/phaser.fm), stage B waits for 333 K and 100 kPa
-    // (valvetrain/lab.fm). A cold start takes minutes to get there: the oil follows the coolant some 4 minutes behind.
+    // Why the cams are not where asked (N1's tel.valve.waiting, a bit each), and the coolant the stage waits for
+    // (tel.valve.waitTemp, K; 0 when not waiting): the simulator's own gates, read, not mirrored here.
+    inline constexpr const char* kTelWaiting = "valve.waiting";
+    inline constexpr const char* kTelWaitTemp = "valve.waitTemp";
+    inline constexpr const char* kTelCoolant = "engine.coolant";          // K
     inline constexpr const char* kTelOilTemp = "engine.oilTemperature";   // K
-    inline constexpr const char* kTelOilPressure = "engine.oilPressure";  // Pa over the air
-    inline constexpr double kPhaserOilTemp = 313.0, kPhaserOilPressure = 70000.0;
-    inline constexpr double kStageOilTemp = 333.0, kStageOilPressure = 100000.0;
-    // Whether the oil holds back what needs `temp` and `pressure` (false when telemetry has no oil to say)
-    struct OilHold
+    enum WaitBits : int
     {
-        bool held = false;
-        bool cold = false;          // by its temperature (else by its pressure)
-        double temp = kNaN;         // K now
+        kWaitInParked = 1,      // the intake phaser parked: no oil pressure
+        kWaitExParked = 2,      // the exhaust phaser parked
+        kWaitSlowed = 4,        // the phasers slowed by cold oil
+        kWaitCoolant = 8,       // the cam stage waiting for the coolant
+        kWaitOilPressure = 16,  // the cam stage waiting for oil pressure
     };
-    OilHold oilHold(const Live& live, double temp, double pressure);
-    // The words VALVES and ENGINE both say while the oil holds something back ("" : nothing held), temperatures in the
-    // person's units: "PARKED: OIL 15 C, MOVES AT 40 C", "B WAITS: OIL 15 C, NEEDS 60 C" (or "... OIL PRESSURE LOW").
-    std::string phaserParkedWords(const Live& live, const Units& units);
+    // The words VALVES and ENGINE both say from them ("" : nothing waits), temperatures in the person's units: a
+    // phaser's "PARKED: NO OIL PRESSURE" or "SLOWED: COLD OIL, 15 C"; the stage's "B WAITS: COOLANT 5 C, NEEDS 10 C" or
+    // "B WAITS: OIL PRESSURE LOW". `brief`: the phaser's short form for the editor's band ("SLOWED: COLD OIL").
+    std::string phaserWaitWords(const Live& live, const Units& units, bool intake, bool brief = false);
     std::string stageWaitWords(const Live& live, const Units& units);
     inline constexpr const char* kTelLift = "valve.lift";             // the continuous lift's share now, 0..1
     inline constexpr const char* kTelFloat = "valve.floatSpeed";      // rad/s: the speed the valves float at

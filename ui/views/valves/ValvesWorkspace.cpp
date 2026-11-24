@@ -86,7 +86,11 @@ namespace tee::ui
             // the oil, as the words say it: whole degrees, and whether it holds the phasers or stage B
             const double oilT = ctx_.live.get(kTelOilTemp);
             k.mix(std::isfinite(oilT) ? static_cast<std::int64_t>(std::lround(oilT)) : -1);
-            k.mix(oilHold(ctx_.live, kPhaserOilTemp, kPhaserOilPressure).held).mix(oilHold(ctx_.live, kStageOilTemp, kStageOilPressure).held);
+            for (const char* n : { kTelWaiting, kTelWaitTemp, kTelCoolant })
+            {
+                const double v = ctx_.live.get(n);
+                k.mix(std::isfinite(v) ? static_cast<std::int64_t>(std::lround(v)) : -1);
+            }
             return k.h;
         }
 
@@ -361,13 +365,8 @@ namespace tee::ui
         static double phaseShift(bool intake, double phase) { return std::isfinite(phase) ? (intake ? -phase : phase) : 0.0; }
 
         // Stage B is what runs (and what the handles edit) while telemetry says it is engaged.
-        // An oil temperature in the person's units, rounded: "15 C"
-        std::string oilText(double kelvin) const
-        {
-            return ctx_.units.format(Quantity::temperature, kelvin, 0);
-        }
-        // What the oil holds back, in the words the PHASERS AND STAGES panel shows ("" : nothing)
-        std::string phaserHeldText() const { return phaserParkedWords(ctx_.live, ctx_.units); }
+        // What holds the cams back, in the words the PHASERS AND STAGES panel shows ("" : nothing)
+        std::string phaserHeldText(bool intake = true) const { return phaserWaitWords(ctx_.live, ctx_.units, intake); }
         std::string stageHeldText() const { return stageWaitWords(ctx_.live, ctx_.units); }
     public:
         // For tests: the oil's words as drawn now (the phasers' and stage B's, where the build has them)
@@ -375,8 +374,10 @@ namespace tee::ui
         {
             const Train t = trainOf(ctx_.doc);
             std::string w;
-            if (t.inPhaseRange > 0.0 || t.exPhaseRange > 0.0)
-                w += phaserHeldText();
+            if (t.inPhaseRange > 0.0)
+                w += phaserHeldText(true);
+            if (t.exPhaseRange > 0.0)
+                w += (w.empty() ? "" : " | ") + phaserHeldText(false);
             if (t.stages)
                 w += (w.empty() ? "" : " | ") + stageHeldText();
             return w;
@@ -730,11 +731,9 @@ namespace tee::ui
                     const float nx = X(l.centre + phaseShift(intake, now));
                     c.disc(nx, y + 4.0f, 5.0f, ink, 1.5f, p.ground);
                 }
-                // held parked by cold or thin oil (the lab's rule): said, so a parked phaser does not look dead
-                const OilHold oil = oilHold(ctx_.live, kPhaserOilTemp, kPhaserOilPressure);
-                const std::string w = std::string(intake ? "INTAKE PHASER " : "EXHAUST PHASER ")
-                                      + (oil.held ? std::string(oil.cold ? "PARKED: OIL COLD" : "PARKED: OIL PRESSURE LOW")
-                                                  : deg(range) + " DEG");
+                // parked or slowed (the simulator's tel.valve.waiting): said, so a still phaser does not look dead
+                const std::string wait = phaserWaitWords(ctx_.live, ctx_.units, intake, true);
+                const std::string w = std::string(intake ? "INTAKE PHASER " : "EXHAUST PHASER ") + (wait.empty() ? deg(range) + " DEG" : wait);
                 // (clear of the target's ring, which stands at the band's end when it asks the whole range)
                 put(c, w, intake ? X(a0) - 12.0f : X(a1) + 12.0f, y - 1.0f, lk::kCaps, ink, intake ? Align::right : Align::left);
             };
@@ -980,8 +979,8 @@ namespace tee::ui
                     txt += ", to " + deg(target);
                 put(c, txt, at.x, at.y + 14.0f, lk::kBody, p.value);
                 lk::level(c, p, { at.x, at.y + 31.0f, cw - 14.0f, 4.0f }, std::isfinite(now) ? now / range : en::kNaN, ink);
-                // parked by the oil (the lab's rule: 313 K and 70 kPa), in words, with what it waits for
-                if (const std::string held = phaserHeldText(); !held.empty())
+                // parked or slowed, in words (tel.valve.waiting)
+                if (const std::string held = phaserHeldText(i == 0); !held.empty())
                     put(c, held, at.x, at.y + 40.0f, lk::kCaps, p.warning);
             };
             phaser(0, "INTAKE PHASER", t.inPhaseRange, ctx_.live.get(kTelInPhase), ctx_.live.get(kTelInTarget), p.cold);
