@@ -9,6 +9,8 @@
 #include "views/air/AirWorkspace.h"
 
 #include <algorithm>
+#include <array>
+#include <cstring>
 
 namespace
 {
@@ -222,6 +224,16 @@ namespace
             CHECK_MSG(page.find(k.has) != std::string::npos, std::string(k.id) + " lacks " + k.has);
             CHECK_MSG(page.find(k.hasNot) == std::string::npos, std::string(k.id) + " has " + k.hasNot);
         }
+        // every page reads cleanly in U1's demo with this package's hook
+        StageRig hooked(tee::ui::makeAirWorkspace, 1100, 700, 1.0f);
+        for (const char* id : { "intake.airbox", "boost.turbo[0]", "boost.compressor", "boost.supercharger", "boost.intercooler",
+                                "intake.throttle", "intake.plenum", "intake.runners", "boost.shaft", "boost.gate",
+                                "boost.blowOff", "boost.antiLag", "boost.nitrous" })
+        {
+            hooked.demo.selection.select(id);
+            const std::string notes = inspectorNotes(*hooked.ws, hooked.demo);
+            CHECK_MSG(notes.empty(), std::string(id) + ": " + notes);
+        }
         return 0;
     }
 }
@@ -320,6 +332,82 @@ namespace
         CHECK(tee::test::u3::textCollisions(host.draw()).empty());
         AirRig seq("seq6", 700, 574, 1.0f);
         picture("air.text.seq6", *seq.host);
+        return 0;
+    }
+}
+
+namespace
+{
+    // The Scope's map, as card F's simulator sends it, is drawn in place of the mirror of its arithmetic: here a map
+    // made from other sizes (a larger wheel), so the picture must differ from the mirror's; its trail is the
+    // simulator's ring (newest at boostTrailAt - 1). Without the arrays, the mirror again.
+    VIEW_TEST(testAirScopeMap, "air.scopemap")
+    {
+        AirRig rig("turbo4", 696, 574, 2.0f);
+        const std::vector<funkgui::Prim> mirror = rig.host->draw().prims;
+        air::CompressorMap other;
+        other.size(0.056f, 0.076f, 0.7f, 0.78f);
+        const air::MapLines m = air::mapLines(other);
+        auto& e = rig.demo.engine;
+        e.addScope("boostMapRev", [](const tee::ui::DemoEngine&, float* out, int max) { return max >= 1 ? (out[0] = 3.0f, 1) : 0; });
+        e.addScope("boostLineSpeed", [m](const tee::ui::DemoEngine&, float* out, int max) {
+            for (int l = 0; l < 8 && l < max; ++l)
+                out[l] = m.speed[l];
+            return std::min(max, 8);
+        });
+        const auto grid = [](const std::array<std::array<float, 16>, 8>& g) {
+            return [g](const tee::ui::DemoEngine&, float* out, int max) {
+                for (int i = 0; i < 128 && i < max; ++i)
+                    out[i] = g[static_cast<std::size_t>(i / 16)][static_cast<std::size_t>(i % 16)];
+                return std::min(max, 128);
+            };
+        };
+        e.addScope("boostLineFlow", grid(m.flow));
+        e.addScope("boostLineRatio", grid(m.pr));
+        e.addScope("boostContourEta", [m](const tee::ui::DemoEngine&, float* out, int max) {
+            for (int v = 0; v < 5 && v < max; ++v)
+                out[v] = m.islandEta[v];
+            return std::min(max, 5);
+        });
+        // a contour's 16: the mirror's rings sampled at the simulator's eight speeds (left up, right down)
+        const auto contour = [m](bool ratio) {
+            return [m, ratio](const tee::ui::DemoEngine&, float* out, int max) {
+                constexpr int kS = air::MapLines::kIslandSteps;
+                for (int v = 0; v < 5; ++v)
+                    for (int j = 0; j < 16; ++j)
+                    {
+                        const int l = j < 8 ? j : 15 - j;
+                        const int step = l * (kS - 1) / 7;
+                        const int slot = j < 8 ? step : 2 * kS - 1 - step;
+                        const auto& src = ratio ? m.islandPr : m.islandFlow;
+                        if (v * 16 + j < max)
+                            out[v * 16 + j] = src[static_cast<std::size_t>(v)][static_cast<std::size_t>(slot)];
+                    }
+                return std::min(max, 80);
+            };
+        };
+        e.addScope("boostContourFlow", contour(false));
+        e.addScope("boostContourRatio", contour(true));
+        e.addScope("boostTrailAt", [](const tee::ui::DemoEngine&, float* out, int max) { return max >= 1 ? (out[0] = 40.0f, 1) : 0; });
+        e.addScope("boostTrailFlow", [](const tee::ui::DemoEngine&, float* out, int max) {
+            for (int i = 0; i < 256 && i < max; ++i)
+                out[i] = i < 40 ? 0.02f + 0.006f * static_cast<float>(i) : 0.0f;
+            return std::min(max, 256);
+        });
+        e.addScope("boostTrailRatio", [](const tee::ui::DemoEngine&, float* out, int max) {
+            for (int i = 0; i < 256 && i < max; ++i)
+                out[i] = i < 40 ? 1.0f + 0.035f * static_cast<float>(i) : 0.0f;
+            return std::min(max, 256);
+        });
+        rig.host->tick(4);
+        const funkgui::PrimList& fromScope = rig.host->draw();
+        CHECK(fromScope.prims.size() != mirror.size()
+              || std::memcmp(fromScope.prims.data(), mirror.data(), mirror.size() * sizeof(funkgui::Prim)) != 0);
+        golden("air.scopemap", *rig.host);
+        AirRig one("turbo4", 696, 574, 1.0f);
+        one.demo.engine.addScope("boostMapRev", [](const tee::ui::DemoEngine&, float* out, int max) { return max >= 1 ? (out[0] = 0.0f, 1) : 0; });
+        one.host->tick(4);
+        golden("air.scopemap.none.dpi1", *one.host);   // a revision of 0: no map from the simulator yet, the mirror's
         return 0;
     }
 }

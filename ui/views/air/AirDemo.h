@@ -4,9 +4,12 @@
 // and boost and the build's own compressor map. Fixed arithmetic, no clock, no randomness.
 #pragma once
 
+#include "AirModel.h"
+
 #include "app/Demo.h"
 
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace tee::ui::air
@@ -15,6 +18,8 @@ namespace tee::ui::air
     // "na4-itb", "turbo4" (one turbo, variable vanes, external gate, anti-lag, nitrous), "tt-v8", "sc-v8" (Roots),
     // "seq6" (sequential), "cmp6" (compound), "cf-v8" (centrifugal blower); false for none.
     bool setAirDemoBuild(FieldDoc& doc, std::string_view name);
-    // The live values for the build in `doc` at the demo engine's present moment.
+    // The live values a build would show at a speed (rpm) and a load (0..1): telemetry names and SI values (NaN: none).
+    std::vector<std::pair<const char*, double>> airLiveValues(const AirBuild& b, double rpm, double load);
+    // The live values for the build in `doc` at the demo engine's present moment, held (DemoEngine::set).
     void airDemoLive(DemoEngine& engine, const FieldDoc& doc);
 }
