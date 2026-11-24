@@ -37,7 +37,7 @@ namespace tee
     {
         std::uint64_t h = 1469598103934665603ull;
         for (const double v : {chassis ? 1.0 : 0.0, from, to, rate, spacing, settle, measure, pedal, warmup, sampleRate,
-                               static_cast<double>(block)})
+                               static_cast<double>(block), warm ? 1.0 : 0.0})
             h = mix(h, v);
         for (const double s : steps)
             h = mix(h, s);
@@ -140,6 +140,8 @@ namespace tee
         load.sampleRate = plan.sampleRate;
         load.maxBlock = std::max(plan.block, 16);
         load.worker = false;
+        if (plan.warm)
+            load.hold = warmEngine();
         if (!host.attach(sim, load, error))
             return false;
         Build copy(fields);

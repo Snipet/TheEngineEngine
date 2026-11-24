@@ -92,8 +92,8 @@ What replaces the reference's keys (`Engine::readControls`, `Engine::ignition`, 
 
 | Control | What the engine does |
 |---|---|
-| `mode` MODE_BENCH (and the dynos, which do nothing yet) | no vehicle (`set.drive` 0); `ctl.throttle` is the throttle by hand (`set.modwheel`) |
-| `mode` MODE_DRIVE | the car (`spec.car.kind` Car) or the truck: `set.drive` 1 or 2; `ctl.throttle` is the pedal (`set.gas`) |
+| `mode` MODE_BENCH (and MODE_DYNO_ENGINE: below) | no vehicle (`set.drive` 0); `ctl.throttle` is the throttle by hand (`set.modwheel`) |
+| `mode` MODE_DRIVE (and MODE_DYNO_CHASSIS: the vehicle model's rollers) | the car (`spec.car.kind` Car) or the truck: `set.drive` 1 or 2; `ctl.throttle` is the pedal (`set.gas`) |
 | `brake`, `clutch`, `lever` | `set.brake`, `set.clutch`, `set.lever` |
 | `shiftUp`, `shiftDown` | each increase a press of the right (bit 16) or left (bit 32) paddle: down until `car.lastButtons` shows Car's `drive16` saw it, then up until it saw that; a press counted meanwhile waits its turn |
 | `ignition` 2, start | while stopped or running down (state 0 or 3): `keyDown(36, 1)`, the reference's start key: it cranks (without a starter it runs at its idle at once). Held: started again if it stops |
@@ -110,7 +110,8 @@ Telemetry stands still.
 Telemetry (`Engine::writeTelemetry`, after each call): `engine.state` (0 off, 1 cranking, 2 running, 3 running down),
 `.speed`, `.redline`, `.idle` (rad/s), `.throttle` (the plate), `.manifold` (Pa absolute), `.coolant` (K),
 `.oilPressure` (Pa over the air), `.flags` (`FLAG_LIMITER` 1, `FLAG_FUEL_CUT` 2), `.cycle` (0 to 1), `.crank`
-(degrees, 0 to 2160); `boost.pressure` (Pa over the air); `exhaust.portTemperature` (K); `ecu.knockRetard` (degrees);
+(degrees, 0 to 2160: modulo the cycle, 720 or a rotary's 1080, it is cylinder 1's angle, 0 at its firing top dead
+centre, for every layout, custom ones too); `boost.pressure` (Pa over the air); `exhaust.portTemperature` (K); `ecu.knockRetard` (degrees);
 `car.speed` (m/s), `.gear`, `.brake`, `.clutch`; `sound.peak` (the call's largest sample).
 
 Card D's, appended to `tel.engine` (`Engine::mechanicsTelemetry`, every engine unless said): `torque` (the brake
@@ -229,6 +230,39 @@ massFlow, float bovLevel)` each sample between Extras' `tick` and `tickStarter` 
 drag(int asp, float vTotal, float omega)` each sample. Its turbine's restriction on the exhaust is in
 `Exhaust::pipes` (from `smTb`, `smTs`).
 
+*Boost with `spec.boost.model` 1 (card F's machine, `boost/machine.fm`; docs/models/boost.md).* Model 0 runs the
+above unchanged; model 1 makes `control` keep `boost` (bar) from the machine, `sound` the machine's sound, `drag` its
+torque on the crank, and leaves the reference's turbine restriction out (`Exhaust::pipes` should get `aspUse` 0 then).
+The machine's functions, all on `Boost`, all doing nothing in model 0:
+- `void applyMachine(BoostSpec* s, float vd, float redRpm, float pAmb, float tAmb)`: when `spec.boost.rev` moves and in
+  `configure` (vd the displacement m^3, the redline rpm, the air outside Pa and K). A change of the model, kind,
+  layout, scrolls or supercharger rebuilds the machine at rest: make it under the fade.
+- **The exhaust (card G's network)**, each sample after `prepare()` and before `step()`:
+  `int housingOf(int bank, int group, int banks)` (the housing a collector ends in, -1 none: its pipe goes on as
+  without a turbo); for each housing h fed, `float housing(int h, float drive, float admit, float tGas)` with drive =
+  sum over its feeding ends of 2 a / z (with each end's junction-loss hold), admit = sum of 1 / z, tGas their gas
+  (K): returns the housing's pressure over the outside, and each end writes b = p - a; for each downpipe side,
+  `float downpipe(int side, float a, float z)` (z with the converter in series): the end's pressure over the outside
+  (the pipe writes p - a; `mach.dpMass[side]` kg/s, `mach.dpTemp[side]` K went in); for each turbo t with an
+  external gate, `float gatePipe(int t, float a, float z)` likewise (`mach.gateMass[t]`, `mach.gateTemp[t]`). A
+  housing no pipe feeds is stepped by `tick`.
+  Until card G's network calls these, `Engine` calls `void exhaustStandIn(float m, float mt, float z)` after
+  `exh.step` (this sample's cylinder gas, kg/s, and its mass times temperature; the collector pipe's impedance): the gas
+  shared among the fed housings as a flow, the downpipes open ends. It goes when the network's calls come in.
+- **The intake (card E's)**: `float pressure()` and `float temperature()` before the throttle (Pa absolute, K), set
+  into `intk.pBox` and `intk.tAir` every 16 samples after `control16`; each sample after the plenum `void draw(float
+  m)` with the throttle's mass flow out of that volume (kg/s; negative pushed back), then `void tick(float omegaCrank,
+  float pPlenum)` (rad/s; the plenum's Pa absolute): the charge path, the shafts, the sounds; then `float
+  crankTorque` (N m taken from the crank, Mechanics's `tsc`).
+- **Every 16 samples**: `void control16(float d16, float target, float antiLag, float nitrous)` with the ECU's
+  `boostTarget()` (Pa over the air; 0 none: the spec's target or the spring), `antiLag()` (0 off, 1 on) and
+  `nitrous()` (above a half, the window open). The gate's and vanes' loop toward the target is Boost's. `void
+  airSpeed(float v)` the car's speed through the intercooler (m/s); `void vanesAndPurge(float vanes, int purges)` the
+  ECU's vane position (below 0: Boost's loop) and purges counted, not called yet.
+- **Combustion (H)**: `float oxygen()` (by mass, 0.232 air) or `float oxygenShare()` (over air's, 1 without nitrous).
+- **After a call**: `void telemetry(BoostTel* t)` (tel.boost's card F fields), `void scope(Scope* sc)` while
+  `ctl.scopeOn` (the compressor map's lines and the trail).
+
 **Exhaust** (`exhaust/exhaust.fm`): every pipe (`prim`, `sec`, `pipe`, `ch1`, `mid`, `ch2`, `tail`, `cross`),
 `pop[2]`, its dials glided (`smMuf`, `smHdr`, `smPipe`, `smXp`), the junctions' losses and drives, the flow noise, the
 gas's and the walls' temperatures (`tGas`, `tWall`, `tUse`, `tPort`), `mdot`, `outL`, `outR`, `shell[]`. Pointers:
@@ -307,6 +341,7 @@ integrator's.
 | F | `void Boost::control16(float d16, float target, float antiLag, float nitrous)` | the ECU's (named control16: `Boost::control` is the reference's) | every 16, boost.model 1 |
 | F | `float Boost::crankTorque` | N m the machinery takes from the crank | each sample in place of `drag`, boost.model 1 |
 | F | `float Boost::oxygenShare()` | the charge's oxygen over air's (1 without nitrous). **Final name** (F wrote `oxygen()`, H asked `oxygenShare()`) | by Combustion |
+| F (done) | `void Boost::applyMachine(BoostSpec* s, float vd, float redRpm, float pAmb, float tAmb)`; `void airSpeed(float v)`; `void exhaustStandIn(float m, float mt, float z)`; `void telemetry(BoostTel*)`, `void scope(Scope*)` | the machine sized to the engine; the car's m/s through the intercooler; this sample's cylinder gas (kg/s, kg K/s) into the housings until G's network calls them; tel.boost's and the Scope's card F fields | in configure and when spec.boost's rev moves; every 16 before control16; each sample after `exh.step`; after each call (the Scope while scopeOn); all but the last two only with boost.model 1 |
 | F, G | `int Boost::housingOf(int bank, int group, int banks)`, `float housing(int h, float drive, float admit, float tGas)`, `float downpipe(int side, float a, float z)`, `float gatePipe(int t, float a, float z)` | as docs/plan/integration-queue.md has them (stubs: -1, 0) | not yet: with exhaust.model or boost.model 1, the sequence `exh.read()`; cylinders; `exh.prepare()`; the housings, downpipes and gates; `exh.step(q)` goes in `sampleTick` step 4, in place of `exh.step(qe, np)`: G and F add it there together and tell the integrator |
 | G | `void Exhaust::popAt(int bank, float amplitude)`, `float gasTemperature(int bank)` | Pa; K (stubs: nothing; `tPort`). Named popAt: `Exhaust::pop` is its Pops | by Combustion (card H) |
 

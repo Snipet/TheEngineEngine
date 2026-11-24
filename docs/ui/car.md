@@ -7,10 +7,10 @@
 - **The car from the side, to scale**: the body and cabin outlined, the wheels at the tyre's radius on the
   wheelbase, the centre of mass (a disc with a cross, "CM") at its height and place; the wheelbase dimensioned. Under
   each axle a bar of its live load as a share of the weight, a tick at its load at rest, the number and the share;
-  under them "SQUAT" or "DIVE" with the load moved. Drag as an arrow back from the tail and downforce as arrows on the
+  under them "SQUAT" or "DIVE" with the load moved (`car.pitch` where the program gives it). Drag as an arrow back from the tail and downforce as arrows on the
   axles, with numbers, at the speed the car is doing.
 - **The grip curve**: force over load against slip for the chosen compound on the chosen surface (the tyre model's
-  own Magic Formula and table, `sim/vehicle/tyre.fm`), its peak marked, the dry curve dashed when the road is not
+  own Magic Formula and table, `sim/vehicle/tyre.fm`: S over its peak, held at its value at slip 1 beyond), its peak marked, the dry curve dashed when the road is not
   dry; each driven wheel's live point, green below the peak, amber and "PAST THE PEAK" beyond it.
 - **The driveline**, from above, front at the left, for the layout chosen: engine, clutch (converter, belt), gearbox
   with its gear, and front, rear and centre differentials by kind (OPEN, LSD for a clutch pack, VISCOUS, T. BIAS for torque-biasing, LOCKED),
