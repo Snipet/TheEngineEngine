@@ -24,9 +24,11 @@
 # A push or a pull request that changes only files under docs/, or only *.md files, starts nothing (paths-ignore): no
 # build or test reads them. A push while a run is in flight waits for it, and replaces any push already waiting.
 #
-# Each platform's run uploads its tools as an artefact (tee-<platform>: bin/tee-render, bin/tee-bench, with sim/ref and
-# content/ref beside bin/, where the tools look for them), kept 14 days, and writes tee-bench's quick table into the
-# run's summary: how the reference costs on a hosted runner. A failed run keeps its test log and out/.
+# Each platform's run uploads what it built as an artefact, kept 14 days (tee-<platform>: the build's bin/ folder
+# without the test executables: tee-render, tee-bench, tee-headless and, when TEE_BUILD_APP is on, the application,
+# with sim/ and content/ beside them, where each looks for them), and writes tee-bench's quick table into the run's
+# summary and its log: what the reference costs on a hosted runner. The artefact is packed and uploaded whenever the
+# build succeeded, whether or not a test then failed: the job still fails. A failed run keeps its test log and out/.
 #
 # Run by hand (Actions, Build, Run workflow), `platforms` builds only the platforms named (macos-arm64, windows-x64,
 # linux-x64; spaces or commas between them; "all", the default, every one).
@@ -231,6 +233,7 @@ jobs:
       # rate and the cache's size (sccache's server, started by the zeroing, is stopped after, so that its folder is
       # whole when it is saved)
       - name: Build
+        id: build
         run: |
           cmd=(cmake --build --preset "$PRESET" --parallel ${{ matrix.jobs }})
           if [ "$RUNNER_OS" = Windows ]; then
@@ -258,40 +261,36 @@ jobs:
       - name: Test
         run: ctest --preset "$PRESET" --parallel ${{ matrix.tests }}
 
-      # the tools as someone would unpack and run them: bin/ with sim/ref and content/ref beside it
-      - name: Pack the tools
+      # what was built, as someone would unpack and run it: the build's bin/ without its tests, sim/ and content/
+      # beside the executables (the application's build copies them there; a build without it gets them here)
+      - name: Pack what was built
         id: pack
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         run: |
           out="tee-${{ matrix.platform }}"
-          mkdir -p "$out/bin" "$out/sim" "$out/content"
-          found=0
-          for exe in "build-$PRESET"/bin/tee-render* "build-$PRESET"/bin/tee-bench*; do
-            case "$exe" in *.pdb|*.ilk|*.lib|*.exp) continue ;; esac
-            [ -f "$exe" ] || continue
-            cp "$exe" "$out/bin/"; found=$((found + 1))
-          done
-          [ "$found" -gt 0 ] || { echo "::error::no tool in build-$PRESET/bin"; exit 1; }
-          cp -R sim/ref "$out/sim/ref"
-          cp -R content/ref "$out/content/ref"
+          rm -rf "$out"
+          cp -R "build-$PRESET/bin" "$out"
+          rm -f "$out"/*-tests "$out"/*-tests.exe "$out"/*.pdb "$out"/*.ilk "$out"/*.lib "$out"/*.exp
+          [ -d "$out/sim" ] || cp -R sim "$out/sim"
+          [ -d "$out/content" ] || cp -R content "$out/content"
           cp LICENSE "$out/"
-          ls -l "$out/bin"
+          ls -l "$out"
+          ls "$out"/tee-render* > /dev/null || { echo "::error::no tee-render in build-$PRESET/bin"; exit 1; }
           echo "dir=$out" >> "$GITHUB_OUTPUT"
 
       # what the reference costs on this runner, in the run's summary and beside the tools (a hosted runner is a
       # shared machine: the numbers are a rough guide, not a measurement to quote)
       - name: The bench, quickly
+        if: ${{ !cancelled() && steps.pack.outcome == 'success' }}
         run: |
           dir="${{ steps.pack.outputs.dir }}"
-          bench="$dir/bin/tee-bench"
+          bench="$dir/tee-bench"
           [ -f "$bench" ] || bench="$bench.exe"
-          if [ -f "$bench" ]; then
-            "$bench" --quick --out "$dir/bench-quick.md"
-            cat "$dir/bench-quick.md" >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "no tee-bench in this build yet"
-          fi
+          "$bench" --quick --out "$dir/bench-quick.md"
+          cat "$dir/bench-quick.md" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Upload the tools
+      - name: Upload what was built
+        if: ${{ !cancelled() && steps.pack.outcome == 'success' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: tee-${{ matrix.platform }}
