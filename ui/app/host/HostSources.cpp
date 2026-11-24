@@ -28,6 +28,9 @@ namespace tee::ui
             t.speed.push_back(p.speed);
             t.torque.push_back(p.torque);
             t.power.push_back(p.power);
+            t.knock.push_back(p.knockLimited ? 1 : 0);
+            t.retardMin.push_back(p.retardMin);
+            t.retardMax.push_back(p.retardMax);
             for (std::size_t f = 0; f < t.values.size(); ++f)
                 t.values[f].push_back(f < p.fields.size() ? p.fields[f] : 0.0);
         }
@@ -43,6 +46,9 @@ namespace tee::ui
             t.speed.push_back(p.speed);
             t.torque.push_back(p.torque);
             t.power.push_back(p.power);
+            t.knock.push_back(p.knockLimited ? 1 : 0);
+            t.retardMin.push_back(p.retardMin);
+            t.retardMax.push_back(p.retardMax);
         }
         return t;
     }

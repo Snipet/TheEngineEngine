@@ -425,11 +425,45 @@ namespace tee::ui
         {
             trace(now, now.torque, t1, p.value, look::kPlot.trace, false);
             trace(now, now.power, w1, p.text, look::kPlot.trace, true);
+            // Knock-limited points: an amber ring on the torque curve and a tick under the plot (shape and place, not
+            // colour alone); the count in the title row (DynoRibbon::knockText).
+            for (std::size_t i = 0; i < now.speed.size() && i < now.torque.size(); ++i)
+                if (now.knockLimited(i))
+                {
+                    const float x = a.x + a.w * static_cast<float>((now.speed[i] - x0) / (x1 - x0));
+                    const float y = a.bottom() - a.h * static_cast<float>(std::clamp(now.torque[i] / t1, 0.0, 1.0));
+                    c.disc(x, y, 4.0f, look::kClear, 1.5f, p.warning);
+                    c.segment(x, a.bottom() - 6.0f, x, a.bottom(), 2.0f, p.warning);
+                }
         }
+    }
+
+    std::string DynoRibbon::knockText(bool shortly) const
+    {
+        // "KNOCK-LIMITED 4500-7000 RPM, RETARD 1 TO 11 DEG", or empty.
+        const DynoTrace& d = dyno_.predicted();
+        double s0 = 1e18, s1 = -1.0, r0 = 1e18, r1 = -1e18;
+        for (std::size_t i = 0; i < d.speed.size(); ++i)
+            if (d.knockLimited(i))
+            {
+                s0 = std::min(s0, d.speed[i]);
+                s1 = std::max(s1, d.speed[i]);
+                r0 = std::min(r0, i < d.retardMin.size() ? d.retardMin[i] : 0.0);
+                r1 = std::max(r1, i < d.retardMax.size() ? d.retardMax[i] : 0.0);
+            }
+        if (s1 < 0.0)
+            return {};
+        const auto rpm = [](double s) { return std::to_string(static_cast<int>(std::lround(s * 30.0 / kPi))); };
+        const auto deg = [](double v) { return std::to_string(static_cast<int>(std::lround(v))); };
+        if (shortly)
+            return "KNOCK-LIMITED, RETARD " + deg(r0) + "-" + deg(r1) + " DEG";
+        return "KNOCK-LIMITED " + rpm(s0) + (s1 > s0 ? "-" + rpm(s1) : std::string()) + " RPM, RETARD " + deg(r0) + " TO " + deg(r1) + " DEG";
     }
 
     void DynoRibbon::accessibility(std::vector<funkgui::A11yItem>& out) const
     {
-        out.push_back(a11yOf(id_, funkgui::A11yRole::image, bounds_, "Predicted torque and power", peaksText()));
+        const std::string k = knockText();
+        out.push_back(a11yOf(id_, funkgui::A11yRole::image, bounds_, "Predicted torque and power",
+                             peaksText() + (k.empty() ? std::string() : "; " + k)));
     }
 }
