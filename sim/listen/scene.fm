@@ -142,6 +142,8 @@ module Scene
     OnePole windHp;
     OnePole windLp;
     float windK;
+    float windStrength; // the wind's level at 40 m/s (Listen sets it)
+    int windOff;        // 1: no wind (a test's)
     int ready;
 
     void setup(float rateIn)
@@ -517,7 +519,7 @@ module Scene
             rS = rTarget;
         else
             rS += fminf(fmaxf((rTarget - rS) * 0.02f, -8.0f * dt), 8.0f * dt);
-        // trackside: the listener stands still while the car goes by; 60 m past, the camera moves on to a spot 40 m
+        // trackside: the listener stands still while the car goes by (beside it while it stands); 60 m past, the camera moves on to a spot 40 m
         // ahead (or as far behind, reversing)
         rel -= carSpeed * dt;
         int move = 0;
@@ -528,7 +530,7 @@ module Scene
         {
             camUse = c;
             if (c == CAM_TRACKSIDE)
-                rel = 2.2f + (fabsf(carSpeed) < 0.5f ? 8.0f : (carSpeed < 0.0f ? -40.0f : 40.0f));
+                rel = 2.2f + (fabsf(carSpeed) < 0.5f ? 0.0f : (carSpeed < 0.0f ? -40.0f : 40.0f));
             cur = 0;
             vw[0].on = 1;
             vw[0].fresh = 1;
@@ -539,7 +541,7 @@ module Scene
         else if ((c != camUse || move != 0) && fade >= 1.0f)
         {
             if (c == CAM_TRACKSIDE)
-                rel = 2.2f + (fabsf(carSpeed) < 0.5f ? 8.0f : (carSpeed < 0.0f ? -40.0f : 40.0f));
+                rel = 2.2f + (fabsf(carSpeed) < 0.5f ? 0.0f : (carSpeed < 0.0f ? -40.0f : 40.0f));
             camUse = c;
             cur = 1 - cur;
             vw[cur].on = 1;
@@ -573,7 +575,7 @@ module Scene
             vw[1 - cur].on = 0;
         // the wind: its level as the cube of the speed (a dipole's pressure), its band
         const float vv = fminf(fabsf(carSpeed) / 40.0f, 2.0f);
-        windK = vv * vv * vv;
+        windK = windOff != 0 ? 0.0f : windStrength * vv * vv * vv;
     }
 
     // One sample through view k: each active source's three taps into the buses

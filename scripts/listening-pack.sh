@@ -11,7 +11,7 @@
 #   --out DIR    the folder (out/listening-pack, or out/listening-pack-quick)
 #   --level D    each group's gated RMS in dBFS (-20)
 #
-# Run it from a checkout of the branch (the scenarios are in tests/sim/combo/scenarios/); the simulator and the builds
+# Run it from a checkout of the branch (the scenarios are in content/scenarios/combo/); the simulator and the builds
 # are the checkout's sim/ and content/. Takes about a minute a file on a laptop core (the renders run one at a time).
 set -u
 cd "$(dirname "$0")/.."

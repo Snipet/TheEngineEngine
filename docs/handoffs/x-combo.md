@@ -7,7 +7,7 @@ Package X, branch `claude/awesome-gates-ntdb58`, cloud session. Owns `tests/sim/
 in the program's Schema, so a package's switch is covered the moment it lands):
 - `archetype <a> with nothing switched on / with every switch on through every scenario`: five archetypes
   (`content/builds/combo/`: small four, V8, turbo six, large diesel, turbo V8 with a dual exhaust) x four scenarios
-  (tour, pull, launch, cold; `tests/sim/combo/scenarios/`). Judged: finite, within full scale, no guard trip, DC under
+  (tour, pull, launch, cold; `content/scenarios/combo/`). Judged: finite, within full scale, no guard trip, DC under
   0.005 FS, largest step within max(12, 2x the reference's own on the same build and scenario), starts, idles 450 to
   1800 rpm (diesel 350 to 1500), reaches 85 % of its redline in neutral, the car moves, stops after the key; telemetry
   finite and within its declared range (else bounds by quantity).
@@ -26,8 +26,8 @@ in the program's Schema, so a package's switch is covered the moment it lands):
 **Findings** (`tests/sim/combo/Known.h` lists the open ones):
 - X-001 (D, open): `engine.custom` on with the Spec's default geometry (8 cylinders, every pin 0) never starts.
 
-**Asked outside my paths**: card C: `tests/host/ValidationTest.cpp` should skip anything in `content/scenarios/` that is
-not a `.json` file (my scenario files wait in `tests/sim/combo/scenarios/` until then).
+**Asked outside my paths**: none open (card C made ValidationTest skip what is not a `.json` file in `content/scenarios/`,
+9ec5515, so my scenarios are in `content/scenarios/combo/`).
 
 **Not run**: the nightly tier and the soak (not yet in this session); Windows and macOS (CI only); the listening pack on
 a person's machine.
