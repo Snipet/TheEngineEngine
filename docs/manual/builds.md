@@ -11,6 +11,7 @@ Thirty archetypes in `content/builds/archetypes/`, each a whole build (engine, c
 | Air-cooled flat six | 3.60 L Flat 6 | 100.0 x 76.4 mm | 11.3:1 | Natural | 6700 rpm | Rear-drive, 1450 kg | Manual, 5 gears |
 | Big-block 7.4 L pushrod V8 | 7.44 L V8 crossplane | 108.0 x 101.6 mm | 10.2:1 | Natural | 5600 rpm | Rear-drive, 1800 kg | Automatic, 3 gears |
 | Rotary twin | 1.31 L Rotary | two rotors | 9.0:1 | Twin turbos, 0.7 bar | 8000 rpm | Rear-drive, 1330 kg | Manual, 5 gears |
+| Rotary twin, side ports | 1.31 L Rotary | two rotors | 10.0:1 | Natural | 9000 rpm | Rear-drive, 1330 kg | Manual, 5 gears |
 | 1.6 L 16-valve hot hatch | 1.60 L Inline 4 | 81.0 x 77.4 mm | 10.4:1 | Natural | 7200 rpm | Front-drive, 1100 kg | Manual, 5 gears |
 | Supercharged 6.2 L V8 | 6.16 L V8 crossplane | 103.2 x 92.0 mm | 9.1:1 | Supercharger, 0.6 bar | 6200 rpm | Rear-drive, 1950 kg | Manual, 6 gears |
 | Small-block 5.7 L, carburettor-like | 5.73 L V8 crossplane | 101.6 x 88.4 mm | 9.0:1 | Natural | 5500 rpm | Rear-drive, 1600 kg | Manual, 4 gears |
@@ -48,6 +49,8 @@ Thirty archetypes in `content/builds/archetypes/`, each a whole build (engine, c
 **Big-block 7.4 L pushrod V8** (`big-block-74-pushrod-v8.json`). A 1970-era 454 cubic inch big block: 4.25 x 4.00 in (107.95 x 101.6 mm, 7440 cc), 10.25:1, two valves on pushrods and a flat-tappet hydraulic cam, one four-barrel-sized throttle over a single plenum. Rated some 250 to 300 kW net and 650 N m (makers' net figures of the era; gross ratings were 20 % higher). In a heavy muscle car with a three-speed automatic.
 
 **Rotary twin** (`rotary-twin-13.json`). A twin-rotor Wankel, 2 x 654 cc, 9.0:1, with two sequential turbos (the 13B-REW kind: 206 to 280 PS, the latter at 6500 rpm, some 294 N m at 5000; Wikipedia, makers' figures, firm to 10 %). In a light rear-drive coupe.
+
+**Rotary twin, side ports** (`rotary-twin-na-side-port.json`). A naturally aspirated twin-rotor Wankel with side exhaust ports, 2 x 654 cc, 10:1, a 9000 rpm limiter and a two-stage intake (the RENESIS kind of 2003: 170 to 184 kW at 8200 to 8500 rpm, 211 to 216 N m at 5500; makers' figures by market and year, from memory, firm to 5 %). High-flow converter, straight-through mufflers. In a light rear-drive coupe.
 
 **1.6 L 16-valve hot hatch** (`hot-hatch-16-16v.json`). A light front-drive hatch with a twin-cam 16-valve 1.6: 81 x 77.4 mm (1595 cc), 10.4:1; engines of the kind made 85 to 118 kW at 6500 to 7600 rpm and 140 to 160 N m (makers' figures of the 1980s and 90s).
 

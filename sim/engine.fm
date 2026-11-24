@@ -502,6 +502,7 @@ module Engine
         }
         intk.mPlenum = intk.pPlenum * intk.vPlenum / (287.0f * intk.tAir);
         pipes();
+        cycleUse = spec.engine.cycle != 0 && customUse != 0 && lay.rotary == 0 ? 1 : 0;    // (card T's, set before the mechanics)
         mechanicsSetup();
         // (card F: boost.model 1's machine sized to this engine, at rest, on its four-stroke-equivalent displacement: a
         // rotary's faces fire once a shaft turn and a two-stroke's cylinders once a turn, twice vTotal; nothing in model 0)
@@ -509,7 +510,6 @@ module Engine
         ecu.overBoostRef = boost.overBoostLevel();     // (N2: the machine's own over-boost level for ecu.model 1's cut)
         // (card T: a two-stroke, on a custom engine's geometry and mechanics: its cylinders and pipes at rest where the
         // crank stands; the four-stroke's cylinders, valves and pipes above stay configured, unused)
-        cycleUse = spec.engine.cycle != 0 && customUse != 0 && lay.rotary == 0 ? 1 : 0;
         for (int d = 0; d < SCOPE_DEGREES; ++d)
         {
             scIo[d] = 0.0f;
@@ -618,12 +618,14 @@ module Engine
         // (the shaking is every engine's: card L's cabin hears it. A reference layout's cylinders are taken upright, its
         // table giving no bank angles: an inline engine's shaking is right, a V's or a boxer's an approximation; a custom
         // engine's is its own geometry's. Its moving masses step the crank only when custom is on)
-        if (customUse == 0 || layoutRefused != 0)
+        // (a two-stroke: its own cylinders from its firing, unless the custom geometry has as many: then that one's banks
+        // and places stand)
+        if (customUse == 0 || layoutRefused != 0 || (cycleUse != 0 && geo.n != lay.n))
             geo.fromTable(lay.n, lay.cyc, lay.rotary, &lay.fire[0]);
         mm.setup(&spec.engine, &geo, bore, strokeUse, rodLen, smCR, jFly);
         shake.setup(&spec.engine, &geo, mm.mRec, mm.sc.r, mm.sc.lam);
-        fric.setup(&spec.engine, vTotal, strokeUse, lay.rotary);
-        work.setup(lay.n, cyl[0].vd, lay.cyc);
+        fric.setup(&spec.engine, cycleUse != 0 ? (float)lay.n * two.vd : vTotal, strokeUse, lay.rotary);
+        work.setup(lay.n, cycleUse != 0 ? two.vd : cyl[0].vd, lay.cyc);
         wall.setup(bore, cyl[0].vd);
         if (lay.rotary != 0)
             wall.setupRotary(cyl[0].vd);
@@ -855,6 +857,11 @@ module Engine
         hd.control16(d16, fuelUse, ecu.state, ecu.throttle, crank.omega, ecu.idleRpm, ecu.redRpm, ecu.sinceStart,
                      set.drive != 0 ? set.clutch : 0.0f, exh.mdot, exh.tPort, boost.boost, vTotal, lay.n, bore, heat.tAmb, ctl.buttons);
         hd.feed(&comb.diesel);
+        if (hd.on != 0)
+        {
+            hd.flapReal = exh.flapFitted();          // (card G's butterfly, where fitted, makes the exhaust brake's back pressure)
+            exh.setFlap(hd.flapCommand());
+        }
         // the exhaust's mass flow and its power, for the turbo
         exh.flowRate();
         // (the reference turbo's flow scale: a four-stroke's air, vTotal rpm / 120, for every engine; for a rotary, whose

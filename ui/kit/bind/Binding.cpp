@@ -268,7 +268,7 @@ namespace tee::ui
                 break;
         }
         if (f.quantity != Quantity::none)
-            return units.format(f.quantity, si, f.decimals);
+            return units.format(f.quantity, si, f.decimals, f.preferUnit);
         return formatNumber(si, f.decimals) + (f.unit.empty() ? "" : " " + f.unit);
     }
 
@@ -293,7 +293,7 @@ namespace tee::ui
                     return si = f.min + static_cast<double>(k), true;
         if (f.kind == FieldKind::number && f.quantity != Quantity::none)
         {
-            if (!units.parse(f.quantity, t, si))
+            if (!units.parse(f.quantity, t, si, f.preferUnit))
                 return false;
             si = clampTo(f, si);
             return true;
@@ -387,12 +387,12 @@ namespace tee::ui
                     const Quantity q = f.quantity;
                     if (q != Quantity::none)
                     {
-                        p.min = units_.toUser(q, f.min);
-                        p.max = units_.toUser(q, f.max);
-                        p.def = units_.toUser(q, f.def);
+                        p.min = units_.toUser(q, f.min, f.preferUnit);
+                        p.max = units_.toUser(q, f.max, f.preferUnit);
+                        p.def = units_.toUser(q, f.def, f.preferUnit);
                     }
-                    p.unit = unitName(units_, q, f.unit);
-                    p.decimals = f.decimals >= 0 ? f.decimals : (q != Quantity::none ? units_.unit(q).decimals : -1);
+                    p.unit = q != Quantity::none ? units_.unit(q, f.preferUnit).name : f.unit;
+                    p.decimals = f.decimals >= 0 ? f.decimals : (q != Quantity::none ? units_.unit(q, f.preferUnit).decimals : -1);
                     p.logTaper = f.logTaper && p.min > 0.0 && p.max > p.min;
                     break;
                 }
@@ -405,13 +405,14 @@ namespace tee::ui
     {
         const FieldInfo& f = doc_.info(field(i));
         const double v = doc_.get(field(i));
-        return f.kind == FieldKind::number && f.quantity != Quantity::none ? units_.toUser(f.quantity, v) : v;
+        return f.kind == FieldKind::number && f.quantity != Quantity::none ? units_.toUser(f.quantity, v, f.preferUnit) : v;
     }
 
     void FieldParams::set(int i, double value)
     {
         const FieldInfo& f = doc_.info(field(i));
-        doc_.set(field(i), f.kind == FieldKind::number && f.quantity != Quantity::none ? units_.toSi(f.quantity, value) : value);
+        doc_.set(field(i), f.kind == FieldKind::number && f.quantity != Quantity::none ? units_.toSi(f.quantity, value, f.preferUnit)
+                                                                                       : value);
     }
 
     int FieldParams::findParam(std::string_view id) const

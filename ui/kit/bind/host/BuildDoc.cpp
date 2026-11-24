@@ -8,6 +8,17 @@ namespace tee::ui
 {
     namespace
     {
+        // ui::prefer (U1's display rule: Units::chosen(q, prefer)), once the host's FieldInfo carries it (card C / L add
+        // the attribute); until then none.
+        template <typename F>
+        std::string preferredUnit(const F& f)
+        {
+            if constexpr (requires { f.prefer; })
+                return std::string(f.prefer);
+            else
+                return {};
+        }
+
         constexpr std::size_t kPoints = 16;              // TABLE_POINTS (sim/spec/limits.fm)
         constexpr double kRpm = 3.14159265358979323846 / 30.0;
 
@@ -55,6 +66,7 @@ namespace tee::ui
             info.group = f.group;
             info.help = f.help;
             info.hidden = f.hidden;
+            info.preferUnit = preferredUnit(f);
             switch (f.kind)
             {
                 case tee::FieldKind::Number: info.kind = FieldKind::number; break;

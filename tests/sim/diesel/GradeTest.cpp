@@ -52,8 +52,25 @@ namespace
     }
 } // namespace
 
-TEST_CASE("diesel truck: a 36 t rig pulls away loaded and climbs a 6 % grade at the speed its power gives",
-          "[diesel][truck]")
+TEST_CASE("diesel truck: a 36 t rig pulls away loaded on the paddles' gears", "[diesel][truck]")
+{
+    Engine e("truck-15l-six");
+    startDriving(e);
+    Driver d{e};
+    e.ctl().throttle = 1.0f;
+    double t = 0.0;
+    while (t < 30.0 && e.tel("car.speed") < 30.0 / 3.6)
+    {
+        d.step(0.1);
+        t += 0.1;
+    }
+    std::printf("loaded: 0 to 30 km/h in %.1f s, gear %.0f\n", t, e.tel("car.gear"));
+    CHECK(t < 20.0);
+    CHECK(e.tel("car.gear") >= 4.0);
+}
+
+TEST_CASE("diesel truck, full: a 36 t rig pulls away loaded and climbs a 6 % grade at the speed its power gives",
+          "[diesel][truck][nightly]")
 {
     Engine e("truck-15l-six");
     startDriving(e);
@@ -105,7 +122,7 @@ TEST_CASE("diesel truck: a 36 t rig pulls away loaded and climbs a 6 % grade at 
     CHECK(v * 3.6 < 70.0);
 }
 
-TEST_CASE("diesel truck: on the way down a 6 % grade the brakes hold the rig's speed", "[diesel][truck][brake]")
+TEST_CASE("diesel truck, full: on the way down a 6 % grade the brakes hold the rig's speed", "[diesel][truck][brake][nightly]")
 {
     // Down 6 %, pedal up, a gear held: free, the rig runs away; with the compression brake on High and the exhaust
     // flap, its speed settles where the brakes' power is the grade's m g s v (less rolling and air)

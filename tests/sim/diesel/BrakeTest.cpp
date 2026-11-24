@@ -33,7 +33,18 @@ namespace
     }
 } // namespace
 
-TEST_CASE("diesel brake: the compression brake's retarding power rises with speed and with stages", "[diesel][brake]")
+TEST_CASE("diesel brake: the compression brake retards, on High far more than motoring, and less at lower speed", "[diesel][brake]")
+{
+    // the quick form of the next: High against motoring at 2000 rpm, and High at 1200 rpm
+    const double motoring = retard(0, 2000.0);
+    const double high = retard(3, 2000.0);
+    CHECK(high > 3.0 * motoring);
+    CHECK(high > 200000.0);
+    CHECK(high < 550000.0);
+    CHECK(retard(3, 1200.0) < high);
+}
+
+TEST_CASE("diesel brake, full: the compression brake's retarding power rises with speed and with stages", "[diesel][brake][nightly]")
 {
     // Published: Jacobs' brakes on 15 L engines (Cummins ISX15, Detroit DD15) are rated some 450 kW (600 hp) at 2100
     // rpm (makers' brochures; Jacobs' "up to 600 bhp"); at 1500 rpm the published curves give some 250 to 300 kW. The
@@ -98,8 +109,17 @@ TEST_CASE("diesel brake: the bark: lines at the firing frequency, louder than th
     CHECK(harm[1] > gap[1] + 15.0);
 }
 
-TEST_CASE("diesel brake: the exhaust brake holds its back pressure and retards, alone and with the compression brake",
-          "[diesel][brake]")
+TEST_CASE("diesel brake: the exhaust brake holds its back pressure and retards", "[diesel][brake]")
+{
+    double back = 0.0;
+    const double flap = retard(0, 2000.0, 1, &back);
+    CHECK(back > 0.8 * 300000.0);
+    CHECK(back <= 300001.0);
+    CHECK(flap > 56000.0 + 40000.0);     // (motoring at 2000 rpm: 56 kW, the full form measures it)
+}
+
+TEST_CASE("diesel brake, full: the exhaust brake holds its back pressure and retards, alone and with the compression brake",
+          "[diesel][brake][nightly]")
 {
     // A regulated flap holds some 2.5 to 4 bar (makers' figures: Jacobs' and Pacbrake's exhaust brakes on 15 L engines
     // retard some 150 to 250 kW at governed speed); its 3 bar here, at 2000 rpm
@@ -163,4 +183,31 @@ TEST_CASE("diesel brake: with a variable-vane turbo the brake shuts the vanes an
     CHECK(kw[1] > kw[0] + 150.0);
     CHECK(kw[1] > 330.0);
     CHECK(kw[1] < 550.0);
+}
+
+TEST_CASE("diesel brake: card G's butterfly as the exhaust brake holds its back pressure and retards", "[diesel][brake]")
+{
+    // exhaust.model 1 with flapKind Butterfly: the flap in the pipes (its relief at 350 kPa) in place of D2's stand-in
+    double kw[2] = {0.0, 0.0};
+    for (int k = 0; k < 2; ++k)
+    {
+        Engine e("truck-15l-six");
+        e.spec("exhaust.model", 1);
+        e.spec("exhaust.flapKind", 1);
+        e.spec("ecu.exBrakeSwitch", k);
+        e.start();
+        e.dyno(2000.0, 0.0f);
+        REQUIRE(e.run(4.0));
+        const double tq = e.mean("engine.torque", 1.0);
+        kw[k] = -tq * 2000.0 * 0.10471976 / 1000.0;
+        std::printf("butterfly %s at 2000 rpm: flap %.2f, %.0f kPa before it, stand-in %.0f kPa, %.0f kW retarding\n", k ? "shut" : "open",
+                    e.tel("exhaust.flap"), e.tel("exhaust.pFlap") / 1000.0, e.tel("ecu.backPressure") / 1000.0, kw[k]);
+        if (k == 1)
+        {
+            CHECK(e.tel("exhaust.pFlap") > 150000.0);
+            CHECK(e.tel("exhaust.pFlap") < 450000.0);
+            CHECK(e.tel("ecu.backPressure") < 1.0);
+        }
+    }
+    CHECK(kw[1] > kw[0] + 40.0);
 }

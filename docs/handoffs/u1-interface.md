@@ -103,3 +103,8 @@ sheet will include every registered workspace.
   one request).
 - **`ui.build.*` tests**: `BUILD_TEST(ident, "build.name") { ... return 0; }` with `rig` (the real simulator under the
   frame: `tests/ui/build/BuildKit.h`), in `tests/ui/build/<Name>Tests.cpp`; CMake finds the names.
+- **A preferred unit** (kit): `FieldInfo::preferUnit` ("m" for a listener's distance) is used wherever the person's
+  chosen unit is of the same system (mm or cm: m; inches stay inches): `Units::chosen(q, prefer)`, and the optional
+  last argument of `toUser`, `toSi`, `number`, `format`, `parse`. The inspector's pages and `fieldText` honour it.
+  `BuildDoc` fills it from the host's `FieldInfo::prefer` as soon as that exists (the Spec attribute `ui::prefer("m")`
+  is card C's and L's to add); until then a page reads in the chosen unit.
