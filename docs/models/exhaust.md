@@ -249,7 +249,43 @@ and thermocouples`):
 
 On the turbo four the two agree because its ports never stop flowing (the turbine's back pressure).
 
+## What the network costs, by element (the typical build, 19:30)
 
+The build: the twin-turbo V8 with every switch, with `content/builds/exhausts/dual-x-resonated-valved.json`, on
+drive-car. Its network has 32 pipes and 33 junctions:
+- 9 nodes: six of 3 arms, one of 4, two of 5 or more;
+- 8 pairs, 8 ports, 2 open ends, 2 closed, 2 housings, 2 EXTP heads.
+
+From `tee-bench --profile --engine`, ns a 96 kHz sample with the sampler's own cost (about +10 %), R = 1962 ns in
+these units:
+
+| element | ns | R |
+|---|---:|---:|
+| a pipe (Duct: read 24, write 7, the rest 6) | 37 | 0.019 |
+| a node (xNode with solveNode) | 51 | 0.026 |
+| a pair (two pipes in series, with its loss) | 17 | 0.009 |
+| an open end (its radiation filters and jet noise) | 46 | 0.023 |
+| fixed: Exhaust's meters, thermocouples and pops | ~200 | ~0.10 |
+| fixed: XBuild's control steps (shape, the check, the bands) | ~110 | ~0.06 |
+| fixed: XHeat | 20 | 0.01 |
+
+The reference's own exhaust is 765 ns at model 0. The rest is the extra pipes and the general junction solve.
+
+Exact savings taken, each proven by comparing the rendered WAV byte for byte before and after (identical), together
+1.749 to 1.708 of the reference (about 120 ns):
+- the passivity check skipped while its inputs stand (c4ce28f): passGain 68 to 26 ns;
+- lossHold skipped on branches with no loss (exactly 0 there): xNode 291 to 247 ns.
+
+Savings that change the sound, measured but **not** made (Economy / TEE_FAST for the owner's ears). The waveform is
+chaotic at load, so a control that changes `xiWall` by 1e-6 relative already leaves the difference only 2.6 dB under
+the signal, with octave bands within ±0.1 dB except 63 Hz at -1.2. The bands are therefore read against that floor:
+
+| variant | saved | bands against the floor |
+|---|---|---|
+| A: the wall's shelves off on pipes under 0.6 m (stubs, links, the X) | some 0.03 R (1.722 to 1.701 of the reference) | +0.1 to 0.3 dB from 2 to 16 kHz: the short pipes lose less of the highs |
+| B: the flow's losses and `shape()` every 64 samples instead of 16 | some 0.04 R (to 1.693) | none beyond the floor |
+
+## Glide and rebuild (dragging a slider)
 
 These fields glide toward the Spec with a 0.2 s time constant (`XBuild::glide`). The pipes' delays, areas and
 losses follow them every control step in `shape()`, with no rebuild and no fade:
