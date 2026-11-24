@@ -119,7 +119,8 @@ namespace tee::ui
     protected:
         // An item of the subclass's own (above); its index in items().
         int addItem(std::unique_ptr<Item> item);
-        uint32_t nextId() const noexcept;                // an accessibility id for the item about to be added
+        uint32_t nextId() const noexcept;                // an accessibility id for the item about to be added (its
+                                                         // own first, then its parts)
         // After every layout (a resize, a tab chosen): the subclass places its own items.
         virtual void placed() {}
         // Room kept under the interface for the subclass's own items (px; the natural height grows by it), and the
@@ -140,6 +141,8 @@ namespace tee::ui
         void scrollBy(float dx, float dy);
 
         static constexpr uint32_t kA11yStride = 64;      // item i's ids are kA11yStride * (i + 1) + 0..63
+        mutable std::size_t idItems_ = static_cast<std::size_t>(-1);
+        mutable uint32_t idNext_ = 0;
 
         Options options_;
         Sources files_;
