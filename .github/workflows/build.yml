@@ -311,9 +311,9 @@ jobs:
       - name: Pack the application
         id: pack-app
         env:
-          PLATFORM: ${{ matrix.platform }}
+          TEE_PLATFORM: ${{ matrix.platform }}     # (not PLATFORM: Visual Studio's environment has a Platform of its own)
         run: |
-          name="TheEngineEngine-$PLATFORM"
+          name="TheEngineEngine-$TEE_PLATFORM"
           bin="build-$PRESET/bin"
           out="$RUNNER_TEMP/app"
           dir="$out/$name"
@@ -352,7 +352,7 @@ jobs:
           NOTE
           {
             echo "TheEngineEngine: a car engine simulator whose sound is the simulation's own."
-            echo "Built by GitHub Actions from $GITHUB_REPOSITORY at $GITHUB_SHA ($GITHUB_REF_NAME), $PLATFORM."
+            echo "Built by GitHub Actions from $GITHUB_REPOSITORY at $GITHUB_SHA ($GITHUB_REF_NAME), $TEE_PLATFORM."
             echo "What to check is docs/checkpoints/M1.md in the repository. In short:"
             echo
             case "$RUNNER_OS" in
@@ -415,7 +415,7 @@ jobs:
         id: run-app
         continue-on-error: ${{ runner.os != 'Linux' }}
         env:
-          PLATFORM: ${{ matrix.platform }}
+          TEE_PLATFORM: ${{ matrix.platform }}
         run: |
           dir="${{ steps.pack-app.outputs.dir }}"
           out="$RUNNER_TEMP/listen"
@@ -436,17 +436,17 @@ jobs:
           }
           echo "---- tee-headless: the reference through a start, a rev and a stop"
           limited "$headless" --script tests/shell/scripts/start-rev-stop.txt \
-              --wav "$out/reference-start-rev-stop-$PLATFORM.wav" --shot "$out/headless-end-$PLATFORM.png" --panel plain || rc=$?
+              --wav "$out/reference-start-rev-stop-$TEE_PLATFORM.wav" --shot "$out/headless-end-$TEE_PLATFORM.png" --panel plain || rc=$?
           run=()
           if [ "$RUNNER_OS" = Linux ]; then run=(scripts/xvfb-run.sh); export SDL_AUDIODRIVER=dummy; fi
           echo "---- the window: --info"
           limited "${run[@]}" "$app" --info || rc=$?
           echo "---- the window: five seconds, the reference started and revved, the last frame read back from the GPU"
           limited "${run[@]}" "$app" --script tests/shell/scripts/window.txt --frames 60 \
-              --shot "$out/window-$PLATFORM.png" || rc=$?
+              --shot "$out/window-$TEE_PLATFORM.png" || rc=$?
           echo "---- the same with the plain Panel"
           limited "${run[@]}" "$app" --panel plain --script tests/shell/scripts/window.txt --frames 60 \
-              --shot "$out/window-plain-$PLATFORM.png" || rc=$?
+              --shot "$out/window-plain-$TEE_PLATFORM.png" || rc=$?
           ls -l "$out" || true
           exit $rc
 
