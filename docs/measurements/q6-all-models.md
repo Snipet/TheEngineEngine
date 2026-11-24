@@ -261,3 +261,19 @@ The choices' now being read moved nothing beyond the run-to-run spread: the cost
 number is the same. `first.json`'s 1.05 at 20:18 and 1.07 to 1.14 now differ by the two runs' R (1967 against 1828 ns
 on drive-car); against the simulator's own V8 in each run the two agree within 4 %. A first launch: **about 1.1 R at
 Full (44 % of the owner's core at R = 40 %, 33 % at R = 30 %), about 0.55 R on Economy (22 % / 17 %)**.
+
+## With G's valve-flow closing (flowClose, 7624ce2 / aaedbf4), 21:07 UTC at 02cedc8f
+
+`spec.exhaust.flowClose` (default 1 under `exhaust.model` 1: each port's flow into its pipe is what its valve let
+out) against the same builds with `flowClose` 0 written in (`out/q/b/*-nofc.json`), in one qbench run: least of 8
+renders of 8 s; R 1826 ns drive-car, 1842 free-revs (the simulator's own V8 read 1.037 / 1.035 of it); host quiet
+after a restart (load average under 1). The network is the same either way: 32 pipes, 9 nodes, 8 pairs, 2 open ends.
+
+| Build | flowClose 1 (now), drive / free | flowClose 0, drive / free | Economy (flowClose 1), drive / free |
+|---|---:|---:|---:|
+| **Typical build** (twin-turbo V8, every switch, dual X) | **2.05 / 1.99 R** | 2.03 / 2.00 R | **1.01 / 0.97 R** (0.489 / 0.488 of Full) |
+| **`first.json`** (2.0 L turbo four, listener and voices) | **1.15 / 1.09 R** | 1.16 / 1.10 R | **0.56 / 0.55 R** (0.483 / 0.498) |
+
+The closing costs nothing measurable: +0.02 R to -0.01 R, inside the run-to-run spread (G's estimate: one one-pole and
+two sums a port a sample, some 5 ns on a V8). Against 20:37's row (2.04 / 1.93 typical, 1.14 / 1.07 first) nothing has
+moved beyond the spread either.
