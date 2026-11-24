@@ -1,0 +1,87 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Straight eight",
+  "notes": "1-6-2-5-8-3-7-4, even 90 (a split four-and-four crank).",
+  "spec": {
+    "engine": {
+      "custom": true,
+      "cylinders": 8,
+      "bankAngle": [
+        0.0
+      ],
+      "bank": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "pin": [
+        0,
+        180,
+        270,
+        90,
+        90,
+        270,
+        180,
+        0
+      ],
+      "fireRev": [
+        0,
+        0,
+        1,
+        1,
+        0,
+        0,
+        1,
+        1
+      ],
+      "place": [
+        0.0,
+        0.1,
+        0.2,
+        0.3,
+        0.4,
+        0.5,
+        0.6,
+        0.7
+      ]
+    }
+  },
+  "expect": {
+    "firingOrder": [
+      1,
+      6,
+      2,
+      5,
+      8,
+      3,
+      7,
+      4
+    ],
+    "firingIntervals": [
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90
+    ],
+    "firingAngles": [
+      0.0,
+      180.0,
+      450.0,
+      630.0,
+      270.0,
+      90.0,
+      540.0,
+      360.0
+    ]
+  }
+}

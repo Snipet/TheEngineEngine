@@ -1,0 +1,46 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "V-twin, 60 degrees, one pin",
+  "notes": "The rear cylinder 60 degrees behind the front: 300-420.",
+  "spec": {
+    "engine": {
+      "custom": true,
+      "cylinders": 2,
+      "bankAngle": [
+        30,
+        -30
+      ],
+      "bank": [
+        0,
+        1
+      ],
+      "pin": [
+        30,
+        30
+      ],
+      "fireRev": [
+        0,
+        0
+      ],
+      "place": [
+        0.0,
+        0.033
+      ]
+    }
+  },
+  "expect": {
+    "firingOrder": [
+      1,
+      2
+    ],
+    "firingIntervals": [
+      300,
+      420
+    ],
+    "firingAngles": [
+      0.0,
+      300.0
+    ]
+  }
+}

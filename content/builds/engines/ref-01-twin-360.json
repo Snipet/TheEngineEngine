@@ -1,0 +1,46 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Parallel twin, 360-degree crank",
+  "notes": "Both pins together; even firing.",
+  "spec": {
+    "engine": {
+      "custom": true,
+      "layout": 1,
+      "cylinders": 2,
+      "bankAngle": [
+        0.0
+      ],
+      "bank": [
+        0,
+        0
+      ],
+      "pin": [
+        0,
+        0
+      ],
+      "fireRev": [
+        0,
+        1
+      ],
+      "place": [
+        0.0,
+        0.1
+      ]
+    }
+  },
+  "expect": {
+    "firingOrder": [
+      1,
+      2
+    ],
+    "firingIntervals": [
+      360,
+      360
+    ],
+    "firingAngles": [
+      0.0,
+      360.0
+    ]
+  }
+}
