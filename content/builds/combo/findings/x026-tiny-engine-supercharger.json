@@ -1,0 +1,15 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "X-026: a 50 cc engine with a supercharger",
+  "notes": "Package X's finding X-026 (2026-11-24, N2), reduced by tee-fuzz from the ranges' corners seeds 161 and 145 (both to these 3 fields): the engine diverges from the first block, before the start (FLAG_FAULT).",
+  "spec": {
+    "boost": {
+      "kind": 4,
+      "model": 1
+    },
+    "engine": {
+      "displacement": 5e-05
+    }
+  }
+}
