@@ -67,3 +67,11 @@ fixes its own when it next touches its tests, and deletes its hook.
 - FMinus has no `atanf` and a program may declare no external function: a package that needs one writes it
   (`sim/vehicle/` has `vehAtan`, a polynomial good to 2e-6 rad). Candidates for a shared `sim/core/mathx.fm` at
   integration, so there is one copy.
+
+## FunkGui, after card A (13:26)
+
+- The owner pushes the tag `v0.28.0` on FunkGui's main (19d06ab); then card B names the tag beside its pinned commit.
+- The lead looks at `fg.desktop.menu`'s 40 candidate golden rows and adopts them or says why not.
+- Card A's requests outside its paths (`tools/check-headers.sh`, `tools/GalleryApp/CMakeLists.txt`, the POSIX-only
+  tools and tests on Windows): `docs/handoffs/a-funkgui-desktop.md`. None blocks TheEngineEngine.
+- A notched mouse wheel scrolls slowly on macOS (SDL does not tell it from a trackpad): ask the owner at the Mac test.
