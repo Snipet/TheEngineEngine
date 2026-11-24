@@ -38,6 +38,15 @@ module Cylinder
     float aI;
     Valve vE;           // the valves' flows, each solved with its pipe (pipes.fm)
     Valve vI;
+    // (a rotary's faces that share a port: the solve exhaustFlowAt / intakeFlowAt made this sample, its inputs and its
+    // results, which stepAreas takes when its own inputs are the same to the bit: a valve's solve keeps no memory, so
+    // the same inputs give the same flow; 0: none waiting)
+    int mOnE;
+    int mOnI;
+    float mInE[6];
+    float mInI[6];
+    float mOutE[3];
+    float mOutI[3];
     float sparkAt;      // where it fires (degrees, before the end of the cycle: 720 - advance)
     float burnDur;      // degrees the burn takes
     int diesel;         // 1: compression ignition: its burn a premixed spike (burnDur) and a diffusion flame (dur2)
@@ -201,13 +210,13 @@ module Cylinder
     float exhaustFlowAt(float a, float bE, float zE, float tPipe)
     {
         const float ae = areaAt(a, evo, edur);
-        return ae > 0.0f ? vE.flow(p, t, bE, zE, aE * ae, tPipe, 1) * vE.g : 0.0f;
+        return ae > 0.0f ? memoE(bE, zE, aE * ae, tPipe) * vE.g : 0.0f;
     }
 
     float intakeFlowAt(float a, float bI, float zI, float tAir)
     {
         const float ai = areaAt(a, ivo, idur);
-        return ai > 0.0f ? vI.flow(p, t, bI, zI, aI * ai, tAir, 0) * vI.g : 0.0f;
+        return ai > 0.0f ? memoI(bI, zI, aI * ai, tAir) * vI.g : 0.0f;
     }
 
     // Did the angle pass ev between the last sample and this one?
@@ -251,6 +260,62 @@ module Cylinder
         vI.r = 1.0f;
         vE.g = 1.0f;
         vI.g = 1.0f;
+    }
+
+    // The exhaust valve's solve for the shared-port pass, remembered with its inputs
+    float memoE(float b, float z, float area, float tp)
+    {
+        const float q = vE.flow(p, t, b, z, area, tp, 1);
+        mInE[0] = p;
+        mInE[1] = t;
+        mInE[2] = b;
+        mInE[3] = z;
+        mInE[4] = area;
+        mInE[5] = tp;
+        mOutE[0] = q;
+        mOutE[1] = vE.g;
+        mOutE[2] = vE.r;
+        mOnE = 1;
+        return q;
+    }
+
+    float memoI(float b, float z, float area, float ta)
+    {
+        const float q = vI.flow(p, t, b, z, area, ta, 0);
+        mInI[0] = p;
+        mInI[1] = t;
+        mInI[2] = b;
+        mInI[3] = z;
+        mInI[4] = area;
+        mInI[5] = ta;
+        mOutI[0] = q;
+        mOutI[1] = vI.g;
+        mOutI[2] = vI.r;
+        mOnI = 1;
+        return q;
+    }
+
+    // The valves' solves in the step: the remembered one when its inputs are these to the bit, else solved
+    float solveE(float b, float z, float area, float tp)
+    {
+        if (mOnE != 0 && mInE[0] == p && mInE[1] == t && mInE[2] == b && mInE[3] == z && mInE[4] == area && mInE[5] == tp)
+        {
+            vE.g = mOutE[1];
+            vE.r = mOutE[2];
+            return mOutE[0];
+        }
+        return vE.flow(p, t, b, z, area, tp, 1);
+    }
+
+    float solveI(float b, float z, float area, float ta)
+    {
+        if (mOnI != 0 && mInI[0] == p && mInI[1] == t && mInI[2] == b && mInI[3] == z && mInI[4] == area && mInI[5] == ta)
+        {
+            vI.g = mOutI[1];
+            vI.r = mOutI[2];
+            return mOutI[0];
+        }
+        return vI.flow(p, t, b, z, area, ta, 0);
     }
 
     // One sample. a: its angle now; dDeg: degrees the crank turned this sample; dt: seconds a sample. The exhaust header's
@@ -299,8 +364,10 @@ module Cylinder
         // the valves, each solved with its pipe
         const float le = areaE < 0.0f ? areaAt(a, evo, edur) : areaE;
         const float li = areaI < 0.0f ? areaAt(a, ivo, idur) : areaI;
-        qE = le > 0.0f ? vE.flow(p, t, bE, zE, areaE < 0.0f ? aE * le : areaE, tPipe, 1) : 0.0f;
-        qI = li > 0.0f ? vI.flow(p, t, bI, zI, areaI < 0.0f ? aI * li : areaI, tAir, 0) : 0.0f;
+        qE = le > 0.0f ? solveE(bE, zE, areaE < 0.0f ? aE * le : areaE, tPipe) : 0.0f;
+        qI = li > 0.0f ? solveI(bI, zI, areaI < 0.0f ? aI * li : areaI, tAir) : 0.0f;
+        mOnE = 0;
+        mOnI = 0;
         qEa = le > 0.0f ? qE * vE.g : 0.0f;
         qIa = li > 0.0f ? qI * vI.g : 0.0f;
         // their mass flows (out of the cylinder positive) at the pipes' pressures, and the heat they carry
@@ -461,12 +528,12 @@ module Cylinder
     // The flows a shared port's faces would pass with their areas given (m^2): exhaustFlowAt's and intakeFlowAt's
     float exhaustFlowArea(float area, float bE, float zE, float tPipe)
     {
-        return area > 0.0f ? vE.flow(p, t, bE, zE, area, tPipe, 1) * vE.g : 0.0f;
+        return area > 0.0f ? memoE(bE, zE, area, tPipe) * vE.g : 0.0f;
     }
 
     float intakeFlowArea(float area, float bI, float zI, float tAir)
     {
-        return area > 0.0f ? vI.flow(p, t, bI, zI, area, tAir, 0) * vI.g : 0.0f;
+        return area > 0.0f ? memoI(bI, zI, area, tAir) * vI.g : 0.0f;
     }
 
     // The burned gas in it now (kg): what Combustion's charge reads (card H)

@@ -48,6 +48,8 @@ namespace tee::ui
         std::string group;                   // ui::group: its heading on a generated page ("" : the section's)
         std::string help;                    // ui::help
         bool hidden = false;                 // ui::hidden: not shown
+        std::string preferUnit;              // ui::prefer (U1): the unit it reads in where the person's choice allows
+                                             // ("m" for a listener's distance; Units::chosen(q, prefer))
         // A table's axes (ui::axes): the quantities of x and y, and the range each may take. Its values (a curve's y,
         // a map's z) are the field's own quantity and range (min, max).
         std::array<Quantity, 2> axes{ Quantity::none, Quantity::none };

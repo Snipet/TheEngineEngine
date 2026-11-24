@@ -276,3 +276,48 @@ TEST_CASE("no converter is freer and brighter; zoomies radiate from every cylind
     }
 }
 
+
+// The exhaust flap (a diesel's exhaust brake; spec.exhaust.flapKind): a butterfly at the head of the main pipe. The
+// 2 L four's layout, a motoring engine's steady flow (0.12 m^3/s in all, a flow source: it pushes whatever it takes),
+// the gas at 500 K; the flap open, then shut with its relief at the top of its range (600 kPa), then at its default
+// 350 kPa. Measured: the pressure before it open and shut, held by the relief within its 30 % travel above it.
+TEST_CASE("the exhaust flap holds bars behind it, its relief caps them", "[exhaust][character][flap]")
+{
+    struct Case
+    {
+        const char* name;
+        double cmd;
+        double relief;
+    };
+    double p[3] = {0.0, 0.0, 0.0};
+    double flap[3] = {0.0, 0.0, 0.0};
+    int n = 0;
+    for (const Case& k : {Case{"open", 0.0, 350000.0}, Case{"shut, relief at its top, 600 kPa", 1.0, 600000.0},
+                          Case{"shut, relief 350 kPa", 1.0, 350000.0}})
+    {
+        Rig rig(5);
+        rig.noise(0.0);
+        rig.set("tPort", 500.0);
+        rig.set("spec.flapKind", 1);
+        rig.set("spec.flapRelief", k.relief);
+        rig.configure();
+        rig.set("b.fCmd", k.cmd);
+        std::vector<float> q = steadyFlow(rig.cylinders(), 3.0, 0.12 / rig.cylinders());
+        std::vector<float> l, r;
+        rig.run(q, l, r);
+        bool finite = true;
+        for (float x : l)
+            finite = finite && std::isfinite(x);
+        p[n] = rig.get("b.pFl[0]");
+        flap[n] = rig.get("b.fEff[0]");
+        std::printf("exhaust flap %s: before it %.0f Pa over the air, its closing %.3f, finite %s\n", k.name, p[n],
+                    flap[n], finite ? "yes" : "no");
+        CHECK(finite);
+        ++n;
+    }
+    CHECK(p[0] < 20000.0);
+    CHECK(p[1] > 200000.0);
+    CHECK(p[2] > 350000.0 * 0.95);
+    CHECK(p[2] < 350000.0 * 1.3);
+    CHECK(p[2] < p[1]);
+}

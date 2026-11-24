@@ -141,4 +141,16 @@ module ExhaustSpec
     int heatSettle [[fminus::range(0, 1000000)]] [[fminus::default(0)]] [[ui::label("Settle the exhaust's heat")]]
         [[ui::unit("presses")]] [[ui::hidden]]
         [[ui::help("Counts requests: at each increase the gas at the ports and every wall of the exhaust are put at where the present flow would hold them (for a tool: a dyno's sweep without waiting minutes)")]];
+    int flapKind [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Exhaust flap")]]
+        [[ui::help("A butterfly at the head of each main pipe, behind the turbine: a diesel's exhaust brake. The ECU's brake shuts it (spec.ecu.exhaustBrake)")]]
+        [[ui::choices("None", "Butterfly")]];
+    float flapOrifice [[fminus::range(0.005, 0.3)]] [[fminus::default(0.03)]] [[ui::label("Flap shut")]]
+        [[ui::quantity("fraction")]] [[ui::help("The area it leaves shut (a hole in the plate, the gap round it), over the pipe's")]];
+    float flapRelief [[fminus::range(50000, 600000)]] [[fminus::default(350000)]] [[ui::label("Flap relief")]]
+        [[ui::quantity("pressure")]] [[ui::help("Over the air: above it the flap's spring lets the plate blow open")]];
+    float flapTime [[fminus::range(0.02, 1)]] [[fminus::default(0.15)]] [[ui::label("Flap travel")]]
+        [[ui::quantity("time")]] [[ui::help("Open to shut")]];
+    int portHeat [[fminus::range(0, 1)]] [[fminus::default(1)]] [[ui::label("Port cooling")]]
+        [[ui::help("The exhaust port's water-cooled walls take heat from the gas before the headers (the builder; Caton and Heywood's correlation). None: the reference's")]]
+        [[ui::choices("None", "Caton and Heywood")]];
 };
