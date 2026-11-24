@@ -233,10 +233,21 @@ TEST_CASE("a handful of pairs where packages meet: fuel and ECU then boost and e
     play(bit("boost.model") | bit("exhaust.model"), "turbo-six", Kind::Pull);
     {
         // the new ECU cuts on a shift and the cut's fuel bangs in the pipe: the bang rule (half of it: judge() doubles)
+        // The cut's bang depends on where it ends among the firings: the worst of six phases, the upshift moved 0 to
+        // 5 ms (the steward's ask; a single draw read 31.7 against the ruled 42)
         const std::uint32_t m = bit("ecu.model") | bit("car.model");
-        Times tm;
-        const tee::test::Run r = scenario(Kind::Launch, "v8", m, tm).run(tm.end);
-        const Verdict v = judge(r, tm, archetype("v8"), true, 0.5 * referenceStepWithPops("v8", Kind::Launch));
+        const double ref = 0.5 * referenceStepWithPops("v8", Kind::Launch);
+        Verdict v;
+        for (int k = 0; k < 6; ++k)
+        {
+            Times tm;
+            const tee::test::Run r = scenario(Kind::Launch, "v8", m, tm, 0.001 * k).run(tm.end);
+            const Verdict one = judge(r, tm, archetype("v8"), true, ref);
+            std::printf("pairs: ecu.model+car.model / v8 / launch, the upshift %d ms later: largest step %.1f\n", k,
+                        one.stepMax);
+            if (k == 0 || one.stepMax > v.stepMax)
+                v = one;
+        }
         report(v, comboName(m), "v8", kindName(Kind::Launch));
     }
 }
