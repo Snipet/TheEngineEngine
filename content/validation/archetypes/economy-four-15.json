@@ -133,8 +133,8 @@
         97000
       ],
       "unit": "W",
-      "source": "published figures of its kind (makers' figures, firm): 1497 cc; 53 to 65 kW a litre",
-      "basis": "recalled"
+      "source": "published figures of its kind (makers' figures, looked up): 1497 cc; 53 to 65 kW a litre; looked up: en.wikipedia.org/wiki/Honda_L_engine (L15B 97 kW at 6600, 155 N m at 4600); auto-data.net Mazda2 1.5 (85 kW at 6000, 148 N m at 4000); en.wikipedia.org/wiki/Toyota_NR_engine (2NR-FKE 80 kW, 136 N m)",
+      "basis": "cited"
     },
     {
       "name": "Speed at peak power",
@@ -148,8 +148,8 @@
         691.1
       ],
       "unit": "rad/s",
-      "source": "published figures of its kind (makers' figures, firm): 1497 cc: 6000 to 6600 rpm",
-      "basis": "recalled"
+      "source": "published figures of its kind (makers' figures, looked up): 1497 cc: 6000 to 6600 rpm; looked up: en.wikipedia.org/wiki/Honda_L_engine (L15B 97 kW at 6600, 155 N m at 4600); auto-data.net Mazda2 1.5 (85 kW at 6000, 148 N m at 4000); en.wikipedia.org/wiki/Toyota_NR_engine (2NR-FKE 80 kW, 136 N m)",
+      "basis": "cited"
     },
     {
       "name": "Peak torque",
@@ -159,12 +159,12 @@
       },
       "measure": "maxTorque",
       "range": [
-        140,
+        135,
         156
       ],
       "unit": "N m",
-      "source": "published figures of its kind (makers' figures, firm): 1497 cc; BMEP 11.8 to 13.1 bar (a naturally aspirated petrol engine 10 to 13 bar, turbocharged 18 to 25, a modern truck diesel 20 to 25: Heywood, Internal Combustion Engine Fundamentals, ch. 2)",
-      "basis": "recalled"
+      "source": "published figures of its kind (makers' figures, looked up): 1497 cc; BMEP 11.3 to 13.1 bar (a naturally aspirated petrol engine 10 to 13 bar, turbocharged 18 to 25, a modern truck diesel 20 to 25: Heywood, Internal Combustion Engine Fundamentals, ch. 2); looked up: en.wikipedia.org/wiki/Honda_L_engine (L15B 97 kW at 6600, 155 N m at 4600); auto-data.net Mazda2 1.5 (85 kW at 6000, 148 N m at 4000); en.wikipedia.org/wiki/Toyota_NR_engine (2NR-FKE 80 kW, 136 N m)",
+      "basis": "cited"
     },
     {
       "name": "Speed at peak torque",
@@ -178,8 +178,8 @@
         502.7
       ],
       "unit": "rad/s",
-      "source": "published figures of its kind (makers' figures, firm): 1497 cc: 4000 to 4800 rpm (a turbocharged engine's plateau: its whole span)",
-      "basis": "recalled"
+      "source": "published figures of its kind (makers' figures, looked up): 1497 cc: 4000 to 4800 rpm (a turbocharged engine's plateau: its whole span); looked up: en.wikipedia.org/wiki/Honda_L_engine (L15B 97 kW at 6600, 155 N m at 4600); auto-data.net Mazda2 1.5 (85 kW at 6000, 148 N m at 4000); en.wikipedia.org/wiki/Toyota_NR_engine (2NR-FKE 80 kW, 136 N m)",
+      "basis": "cited"
     },
     {
       "name": "Warm idle",

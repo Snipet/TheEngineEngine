@@ -178,8 +178,7 @@ arch(slug="air-cooled-flat-six-36", runner=0.35, name="Air-cooled flat six", geo
      grade="Premium (91)", car="rear-engine-classic", timing="Chain", fan="Viscous clutch",
      notes="A 3.6 L air- and oil-cooled flat six, two valves a cylinder on rockers, dry sump: 100 x 76.4 mm "
            "(3600 cc), 11.3:1; 184 kW at 6100 rpm and 310 N m at 4800 (the 1989 M64-type engine; Wikipedia, "
-           "auto-data.net). Its intake here is one 0.53 m runner a cylinder from the generator's rule, 0.5 x (5000 / "
-           "torque-peak rpm)^1.3: JUDGEMENT, not the real engine's. The real one is a two-stage resonance intake, a "
+           "auto-data.net). Its intake here is one hand-set runner a cylinder: JUDGEMENT, not the real engine's. The real one is a two-stage resonance intake, a "
            "flap between its two plenum halves (closed some 3000 to 5000-5500 rpm at large throttle: forums only, "
            "Rennlist, Pelican Parts), its runners' lengths not found in any source. The cooling fan's whir is the "
            "viscous fan. In a rear-engined coupe, five-speed manual.")
@@ -553,16 +552,16 @@ def build(a):
     i = {"model": 1}
     if "runner" in a:
         i["runnerLength"] = a["runner"]
-    if "boost" not in a and a["layout"] != "Rotary" and a["slug"] in TORQUE_PEAK and "runnerLength2" not in a.get("intake", {}):
-        # a naturally aspirated engine's runner tuned to its kind's torque-peak speed: from N1's measurements on the
-        # 3.2 six (best VE at 5000 rpm on 0.50 m, 6000-7000 on 0.35, 4000-4500 on 0.70), L = 0.50 (5000 / rpm)^1.3
-        lo, hi = TORQUE_PEAK[a["slug"]]
-        i["runnerLength"] = round(min(max(0.50 * (5000.0 / (0.5 * (lo + hi))) ** 1.3, 0.22), 0.9), 2)
+    # A part never comes from the same engine's target rows (the lead, 20:46: the old rule here, 0.5 x (5000 / the
+    # target's torque-peak rpm)^1.3, tuned each runner to the very speed its torque row is read at). A naturally
+    # aspirated road engine without a runner of its own takes the class default: 0.40 m from the valve to the plenum
+    # (judgement; the one figure found, the LS7's manifold runner some 280 mm on its centreline plus its port, a forum's
+    # measurement, agrees). No source gave the seven cited engines' own (searched 24 Nov: LS7, VR6 AAA, 3800 L36,
+    # Coyote 3, MX-5 BP, the 964's two-plenum system).
+    if "boost" not in a and a["layout"] != "Rotary" and "runner" not in a and "runnerLength2" not in a.get("intake", {}):
+        i["runnerLength"] = 0.40
     i.update(a.get("intake", {}))
-    # (where the rule set it, the notes say so: it tunes each runner to the very speed its torque row is read at, N3's
-    # finding N3-8, and is no engine's)
-    rule_runner = ("boost" not in a and a["layout"] != "Rotary" and a["slug"] in TORQUE_PEAK
-                   and "runnerLength2" not in a.get("intake", {}) and "runnerLength" not in a.get("intake", {}))
+    rule_runner = "runnerLength" not in a.get("intake", {}) and a["layout"] != "Rotary"
 
     bo = {"model": "Machine", "kind": "Natural", "level": 0.0, "blowOff": 0.7}
     if "boost" in a:
@@ -590,11 +589,13 @@ def build(a):
             if a.get("gateDiameter"):
                 bo["gateDiameter"] = a["gateDiameter"]
             bo["icEffect"] = 0.75
-        # the intercooler sized for the engine's air at its rated power and the charge pipes for its size (N2, 19:55:
-        # the defaults, 0.25 kg/s and 5 L, suit 2 to 3 L): air some 1.1 g/s a kW for petrol near lambda 0.85, 1.7 for a
-        # diesel's lean full load (D2's 15 L truck: 0.8 kg/s); the pipes twice the swept volume, 1 to 20 L
-        kw = _val.T[a["slug"]][0][1] if a["slug"] in _val.T else 200
-        bo["icFlow"] = round(min(max(kw * (0.0017 if a.get("diesel") else 0.0011), 0.05), 2.0), 3)
+        # the intercooler sized for the engine's air and the charge pipes for its size (N2, 19:55: the defaults, 0.25
+        # kg/s and 5 L, suit 2 to 3 L); the pipes twice the swept volume, 1 to 20 L
+        # (from the engine's own hardware, never its power row: the air it swallows at its limiter, VE 0.9, at its
+        # boost target over the air)
+        swept = a["displacement"] if "displacement" in a else n * math.pi / 4 * (a["bore"] / 1000) ** 2 * a["stroke"] / 1000
+        air = 1.2 * swept * a["redline"] / 120.0 * 0.9 * (1.0 + k["target"])
+        bo["icFlow"] = round(min(max(air, 0.05), 2.0), 3)
         bo["chargeVolume"] = round(min(max(2.0 * a["displacement"] if "displacement" in a else
                                            2.0 * n * math.pi / 4 * (a["bore"] / 1000) ** 2 * a["stroke"] / 1000,
                                            0.001), 0.02), 4)
@@ -679,10 +680,9 @@ def build(a):
             "car": car, "env": {"temperature": 288.15, "pressure": 101325.0}, "voices": vo, "sound": snd}
     switches_on(spec, a["slug"])
     notes = a["notes"]
-    if rule_runner and "JUDGEMENT" not in notes:
-        notes += (" Its intake runner, %.2f m from the valve to the plenum, is the generator's rule 0.5 x (5000 / "
-                  "torque-peak rpm)^1.3, tuned to its own torque peak: JUDGEMENT, not the real engine's (no source "
-                  "found yet)." % i["runnerLength"])
+    if rule_runner and "runnerLength" in i and "JUDGEMENT" not in notes:
+        notes += (" Its intake runner, %.2f m from the valve to the plenum, is %s: JUDGEMENT, not the real engine's (no "
+                  "source found)." % (i["runnerLength"], "a hand-set length" if "runner" in a else "the class default"))
     return {"format": "tee-build", "version": 1, "name": a["name"], "notes": notes, "spec": spec}
 
 
