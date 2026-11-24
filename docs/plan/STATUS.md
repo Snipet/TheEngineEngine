@@ -10,7 +10,7 @@
 | J1: interface kit | **landed 12:04** | cloud session | 11:32 | the panel code ported (36 files, provenance in `ui/kit/SEED.tsv`), `RefPanel`, shaders compiled for Metal and SPIR-V; 29 headless tests; no shader drawn yet (no GPU path ran) |
 | K3: the split | **landed**: K3a 12:30, K3b 13:20 (handoff written by the lead 13:43) | (finished) | 11:55 | every module of 02-contracts.md §6 carved; `sim/README.md` is the seam document; verified by the lead at 45474be: 272 of 272 tests, the null test identical to the bit, the cost 1.03 of the reference |
 | C: host and tools | first slice **landed 13:24**; second slice running | cloud session `session_01LFAGgSy2V7eFxcA5Jr8M6s` (since 13:30; the local agent was stopped at 13:26, nothing lost) | 11:55 | 45 tests: Schema and its lint, `SimHost`, `Build`, reload, the dyno runner, the scenario library, replay, validation. Second slice: a dyno fast enough for the ribbon (a first curve within a second of an edit), one `tee::Build`, `tee-render` with builds and scenarios |
-| I: vehicle | standalone half **landed 12:45**; **integrating since 13:33** | local agent (resumed 13:33) | 12:00 | 32 tests: tyres, differentials, loads, five gearboxes, the strip's timers, a chassis dyno; three car builds |
+| I: vehicle | **integrated 14:06** (`docs/handoffs/i-vehicle.md`) | local agent (finished) | 12:00 | behind `car.model` (0 the reference to the bit, 1 the new vehicle); 37 tests: a launch that spins in first and hooks up, a dog box's cut and blip with the ECU, a coast-down within 0.01 % of the analytic one, a stall; quarter miles within 8 % of the rule of thumb (front-drive 1.6: 17.25 s at 80 mph; rear-drive V8: 14.63 s at 103; all-wheel-drive turbo six: 12.07 s at 121); cost about 0.04 R. Waits on D: the env fields (it runs on dry asphalt at 1.2 kg/m^3 meanwhile), the chassis dyno as a driven mode |
 | F: forced induction | standalone half **landed 13:04**; **integrating since 13:33** | local agent (resumed 13:33) | 12:00 | 26 tests: the map from sizes, lag and spool trends, energy and mass balance, the gate's loop, surge at 26 Hz with no valve, twin-scroll, three superchargers, nitrous, a passive housing, a ten-minute soak |
 | E: valvetrain and induction | standalone half **landed 12:38**; **integrating since 13:33** | local agent (resumed 13:33) | 12:00 | 14 tests |
 | H: combustion and ECU | standalone half **landed 12:28**; **integrating since 13:33** | local agent (resumed 13:33) | 12:00 | 19 tests |
@@ -27,6 +27,10 @@
 
 ## Landed
 
+- **14:06 the vehicle integrated** (card I), the first physics package in the one program: `car.model` 1; the null
+  test green; its Spec and telemetry names are the ones the CAR and DRIVE workspaces already read.
+- 14:05 at 4c11901 the lead re-ran the null test in a full tree: all ten groups pass (the reference to the bit after
+  the integrator's first commits).
 - 13:56 to 14:02: U3, U4 and U5 pushed the review's corrections (stages laid out and tested at the frame's real
   stage rects, collision tests, labels); U2 handed off and has the same corrections to do; the shell made the frame
   the application and can picture any workspace. Open: `ui.build.frame` fails since the mechanics fields landed (the

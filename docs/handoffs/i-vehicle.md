@@ -45,7 +45,7 @@ within 2e-6 rad, used only when a compound is chosen. Attributes go before an ar
 **Look at / listen to** (after integration): the dog box's clunk on an upshift, a burnout's squeal, an open differential
 spinning one wheel on a split surface, the buck of a dumped clutch on the shafts. Nobody has heard any of it.
 
-# I: integration (after K3b), 14:xx
+# I: integration (after K3b), 14:06
 
 Branch `claude/awesome-gates-ntdb58`. `spec.car.model` (0 the reference, default; 1 the vehicle) wired in `Car`
 (`sim/vehicle/car.fm`): with 1, `drive16`/`step`/`road` go to `Car::m1` (`Vehicle`); model 0 untouched. One edit to
