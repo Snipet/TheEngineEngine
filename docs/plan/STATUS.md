@@ -8,10 +8,10 @@
 | K1, K2: the keel | running | local agent, `/home/user/work/keel` | 11:27 | pushed by 11:52: build, bootstrap, `sim/ref/`, `tee_host`, `tee-render`, CI; finishing the bench and tests |
 | B: shell and application | running | local agent, `/home/user/work/shell` | 11:30 | interfaces pushed (`Sources.h`, `MainPanel.h`) |
 | J1: interface kit | **landed 12:04** | cloud session | 11:32 | the panel code ported (36 files, provenance in `ui/kit/SEED.tsv`), `RefPanel`, shaders compiled for Metal and SPIR-V; 29 headless tests; no shader drawn yet (no GPU path ran) |
-| K3: the split | running | local agent, `/home/user/work/split` | 11:55 | K3a first (the new contract over the unchanged reference) |
+| K3: the split | K3a **landed 12:30**; K3b running | local agent, `/home/user/work/split` | 11:55 | carved so far (13:04): Listen, Extras, Car, Heat, Boost, Ecu, Combustion; signal for integration: `docs/handoffs/k3b.md` and no `sim/core/monolith.fm` |
 | C: host and tools | running | local agent, `/home/user/work/hosttools` | 11:55 | Schema lint and the scenario library first |
 | I: vehicle | standalone half **landed 12:45**; integration waits for K3b | local agent (finished) | 12:00 | 32 tests: tyres, differentials, loads, five gearboxes, the strip's timers, a chassis dyno; three car builds |
-| F: forced induction | running | local agent, `/home/user/work/boost` | 12:00 | the same |
+| F: forced induction | standalone half **landed 13:04**; integration waits for K3b | local agent (finished) | 12:00 | 26 tests: the map from sizes, lag and spool trends, energy and mass balance, the gate's loop, surge at 26 Hz with no valve, twin-scroll, three superchargers, nitrous, a passive housing, a ten-minute soak |
 | E: valvetrain and induction | standalone half **landed 12:38**; integration waits for K3b | local agent (finished) | 12:00 | 14 tests |
 | H: combustion and ECU | standalone half **landed 12:28**; integration waits for K3b | local agent (finished) | 12:00 | 19 tests |
 | D: mechanics and layouts | running | cloud session `session_01LFAGgTFpHiA9YGryQgFytL` | 12:07 | standalone first (layouts from geometry, inertia, shaking, friction, work); the integrator's job after K3b |
