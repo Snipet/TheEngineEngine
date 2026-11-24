@@ -114,6 +114,7 @@ int engineBenchMain(int argc, char** argv)
     std::ostringstream table;
     table << "| build | scenario | simulator, ns a 96 kHz sample | reference, ns | simulator / reference |\n"
           << "|---|---|---:|---:|---:|\n";
+    std::fputs(table.str().c_str(), stdout);   // the header too, before the first row (which takes seconds)
     double sumEngine = 0.0, sumRef = 0.0;
     for (const std::string& b : buildNames)
     {
