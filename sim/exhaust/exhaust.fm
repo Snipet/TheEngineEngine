@@ -131,6 +131,7 @@ module Exhaust
     Scope* scopeOut;
     Boost* bo;          // card F's machine: the turbines' housings, downpipes and gates (sim/README.md)
     int hmapBuilt[4];   // the housings as last built
+    int gatesBuilt;     // the external gates as last built
     int fed;            // 1: the builder's collectors end in housings this build (Boost's stand-in is then not fed)
     int model;          // in use: 0 the reference's code, 1 the builder
     int seenRev;        // the section's rev as last looked at, and the builder's description built
@@ -160,6 +161,7 @@ module Exhaust
         fed = 0;
         for (int i = 0; i < 4; ++i)
             hmapBuilt[i] = -1;
+        gatesBuilt = 0;
         spec = specIn;
         telOut = telIn;
         scopeOut = scopeIn;
@@ -1086,8 +1088,9 @@ module Exhaust
         e->rpm = rpmNow;
         e->load = loadNow;
         // card F's turbines (boost.model 1): the housing each bank's collectors end in; none: -1, and the reference's
-        // restriction stands for a turbo (aspUse, which the engine gives 0 with boost.model 1). External gates' pipes:
-        // not yet (Boost lists no function that says how many there are)
+        // restriction stands for a turbo (aspUse, which the engine gives 0 with boost.model 1). External gates: one pipe
+        // each (Boost::externalGates, turbo t's gate solved by Boost::gatePipe at its near end), to the air at the front
+        // (a screamer pipe; F has no recirculated choice yet)
         int banks = 1;
         for (int i = 0; i < lay->ports; ++i)
         {
@@ -1100,7 +1103,7 @@ module Exhaust
                 e->hmap[bk * 2 + g] = bo->housingOf(bk, g, banks);
         }
         e->useHousings = 1;
-        e->gates = 0;
+        e->gates = bo->externalGates();
     }
 
     // Has the housings' map moved since the last build (card F's machine rebuilt)?
@@ -1111,13 +1114,14 @@ module Exhaust
             if (b.eng.hmap[i] != hmapBuilt[i])
                 return 1;
         }
-        return 0;
+        return b.eng.gates != gatesBuilt ? 1 : 0;
     }
 
     void builtWith()
     {
         for (int i = 0; i < 4; ++i)
             hmapBuilt[i] = b.eng.hmap[i];
+        gatesBuilt = b.eng.gates;
         fed = 0;
         for (int h = 0; h < 8; ++h)
         {

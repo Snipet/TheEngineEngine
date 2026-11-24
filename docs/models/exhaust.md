@@ -148,6 +148,16 @@ of the reference's own pipes pass more than unity: 6 of the 26 reference-test ru
 reference's sound by -47 to -58 dB. The reference test therefore compares with the fix off (`XBuild::passFix = 0`, a
 test's switch) and prints the difference the fix makes.
 
+## External wastegates (card F's seam)
+
+With `boost.gate` external, each turbo's gate gets its own pipe (gateLen, gateD; XD_GATE). The pipe runs from an
+EXTP junction to an open end tagged front, a screamer pipe; F has no recirculated choice yet. The count comes from
+`Boost::externalGates()`, read at every configure (a change rebuilds under the fade). Each sample, `Boost::gatePipe(t,
+a, z)` solves turbo t's gate against the pipe's near end, as `downpipe()` does. Measured at 4500 rpm full throttle:
+- the 2 L four, gate external: 67.3 kPa of boost, 0.116 kg/s through its gate pipe;
+- the V8 with two: 42.1 kPa, 0.013 kg/s;
+- both finite and quiet after the key is off.
+
 ## Glide and rebuild (dragging a slider)
 
 These fields glide toward the Spec with a 0.2 s time constant (`XBuild::glide`). The pipes' delays, areas and

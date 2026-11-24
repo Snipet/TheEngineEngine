@@ -123,6 +123,7 @@ module Engine
     float scI [[ui::hidden]] [SCOPE_DEGREES];
     float scPi [[ui::hidden]] [SCOPE_DEGREES];
     float scPe [[ui::hidden]] [SCOPE_DEGREES];
+    float scIo [[ui::hidden]] [SCOPE_DEGREES];   // (card T: a two-stroke's inlet open share)
     int scDeg [[ui::hidden]];
     float scAng [[ui::hidden]];
 
@@ -194,9 +195,9 @@ module Engine
     int cycleUse;       // 1: the engine configured as a two-stroke (spec.engine.cycle 1 on a custom engine)
     float tsSig;        // the two-stroke's fields made under the fade, as configured (TwoStroke::signature)
     int customUse;      // 1: the engine configured from spec.engine's custom fields
-    int modelUse[10];    // each package's model switch in use (valve, intake, boost, exhaust, fuel, ecu, car, voices; the wall
-    int modelWant[10];  // heat; the listener), and the one the host asked for: a change waits for the fade (holdModel)
-    int modelRev[10];    // each one's section's rev as holdModel last saw it
+    int modelUse[11];    // each package's model switch in use (valve, intake, boost, exhaust, fuel, ecu, car, voices; the wall
+    int modelWant[11];  // heat; the listener; the engine's cycle, card T's), and the one the host asked for: a change waits
+    int modelRev[11];    // for the fade (holdModel); each one's section's rev as holdModel last saw it
     int faults;         // the crank's state found absurd and the engine put at rest afresh (guard), since init
     int faultNow;       // in this call
     int lastIgn;        // ctl.ignition at the last call (voices.model 1: its rise from off renders the key's sounds)
@@ -503,11 +504,16 @@ module Engine
         pipes();
         mechanicsSetup();
         // (card F: boost.model 1's machine sized to this engine, at rest, on its four-stroke-equivalent displacement: a
-        // rotary's faces fire once a shaft turn, twice vTotal; nothing in model 0)
-        boost.applyMachine(&spec.boost, vTotal * (lay.rotary != 0 ? 2.0f : 1.0f), ecu.redRpm, 101325.0f, heat.tAmb);
+        // rotary's faces fire once a shaft turn and a two-stroke's cylinders once a turn, twice vTotal; nothing in model 0)
+        boost.applyMachine(&spec.boost, vTotal * (lay.rotary != 0 || (spec.engine.cycle != 0 && customUse != 0) ? 2.0f : 1.0f), ecu.redRpm, 101325.0f, heat.tAmb);
         // (card T: a two-stroke, on a custom engine's geometry and mechanics: its cylinders and pipes at rest where the
         // crank stands; the four-stroke's cylinders, valves and pipes above stay configured, unused)
         cycleUse = spec.engine.cycle != 0 && customUse != 0 && lay.rotary == 0 ? 1 : 0;
+        for (int d = 0; d < SCOPE_DEGREES; ++d)
+        {
+            scIo[d] = 0.0f;
+            scope.inletOpen[d] = 0.0f;
+        }
         tsSig = two.signature(&spec.engine);
         if (cycleUse != 0)
         {
@@ -1090,6 +1096,7 @@ module Engine
                 scope.liftIntake[d] = scI[d];
                 scope.portIntake[d] = scPi[d];
                 scope.portExhaust[d] = scPe[d];
+                scope.inletOpen[d] = scIo[d];
             }
             scope.degrees = 360;
             scope.cycles += 1;
@@ -1114,6 +1121,7 @@ module Engine
             scI[d] = two.openTransfer(0);
             scPi[d] = two.cy[0].pc;                              // (the crankcase: what feeds the transfers)
             scPe[d] = 101325.0f + two.pPort[0];
+            scIo[d] = two.cy[0].inletOpen;
         }
     }
 
@@ -1429,7 +1437,8 @@ module Engine
         modelUse[7] = spec.voices.model;
         modelUse[8] = spec.engine.wallHeat;
         modelUse[9] = spec.sound.model;
-        for (int k = 0; k < 10; ++k)
+        modelUse[10] = spec.engine.cycle;
+        for (int k = 0; k < 11; ++k)
         {
             modelWant[k] = modelUse[k];
             modelRev[k] = -1;
@@ -1493,7 +1502,7 @@ module Engine
             s->turbo = spec.boost.level;
             s->tsize = spec.boost.size;
             s->bov = spec.boost.blowOff;
-            boost.applyMachine(&spec.boost, vTotal * (lay.rotary != 0 ? 2.0f : 1.0f), ecu.redRpm, 101325.0f, heat.tAmb);
+            boost.applyMachine(&spec.boost, vTotal * (lay.rotary != 0 || (spec.engine.cycle != 0 && customUse != 0) ? 2.0f : 1.0f), ecu.redRpm, 101325.0f, heat.tAmb);
         }
         if (moved(4, spec.exhaust.rev))
         {
@@ -1536,6 +1545,7 @@ module Engine
         holdModel(7, &spec.voices.model, &spec.voices.rev);
         holdModel(8, &spec.engine.wallHeat, &spec.engine.rev);
         holdModel(9, &spec.sound.model, &spec.sound.rev);
+        holdModel(10, &spec.engine.cycle, &spec.engine.rev);
     }
 
     // Section k's model switch as the host wrote it: stopped, taken at once; running, a change held until the fade's
@@ -1583,6 +1593,7 @@ module Engine
         modelUse[7] = applyModel(7, &spec.voices.model, &spec.voices.rev);
         modelUse[8] = applyModel(8, &spec.engine.wallHeat, &spec.engine.rev);
         modelUse[9] = applyModel(9, &spec.sound.model, &spec.sound.rev);
+        modelUse[10] = applyModel(10, &spec.engine.cycle, &spec.engine.rev);
         physicalCylinder();
     }
 
@@ -1768,7 +1779,7 @@ module Engine
         e->tsDelivery = cycleUse != 0 ? two.delivery : 0.0f;
         e->tsTrapping = cycleUse != 0 ? two.trapping : 0.0f;
         e->tsPowerValve = cycleUse != 0 ? two.valve : 0.0f;
-        e->tsPipeTemperature = cycleUse != 0 ? two.tPipe : 0.0f;
+        e->tsPipeTemperature = cycleUse != 0 ? two.tPipe : heat.tAmb;      // (no two-stroke pipe: the air's)
         e->tsCrankcase = cycleUse != 0 ? two.cy[0].pc : 0.0f;
         e->tsReed = cycleUse != 0 ? two.cy[0].reed : 0.0f;
         if (cycleUse != 0)
