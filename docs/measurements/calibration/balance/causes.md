@@ -619,3 +619,12 @@ So the model scavenges at overlap as a tuned header should (G's wave reaches the
 asked to do both jobs. The tuned engines' middle is held down by where their primaries are tuned: the layout's default
 length (0.705 m on both, not from the targets) puts the V12's suction outside its overlap from 6250 rpm. The lever is the
 builds' primaries (content, P), as it is the runners'. The runner-at-a-share-of-redline proposal stays held.
+
+## N3-13. The four-cam V8 and the 3.5 V6: their runners again (21:11 by `date -u`; the lead's item 2)
+
+Both burn and lose as real engines do (brake 0.30 to 0.33, walls 0.12 to 0.13, residual 3 to 4 %); both are short of
+air at their torque peaks (VE 0.82 to 0.83). Four-cam (runner 0.38 m, P's modern-composite class; primaries 0.705) at
+4500 rpm, N m (VE): as built 458 (0.832); primaries 0.5 m 436 (0.801), 0.9 m 412 (0.757); runner 0.50 m 491 (0.895),
+0.60 m **541 (0.969)** (band 520 to 575). The 3.5 V6 (0.38 m, switching to 0.25 m above 4350 rpm): at 4750 / 6350 rpm
+as built 302 / 279; second runner 0.38 (or never switching) 311 / 337 (0.848 / 0.965); 0.50 m and never switching **348
+/ 358** (0.945 / 1.027) (band 335 to 365 at 4750). Not the model's: the runner class and its switch (P's judgement).
