@@ -162,7 +162,11 @@ namespace tee::app
             addFileServices(frameServices, kept->file, kept->library);
             std::unique_ptr<ui::AppFrame> frame =
                 ui::makeAppFrame(kept->doc, kept->units, player, std::move(frameServices), &kept->dyno, &kept->scope);
-            shown.waitForDyno = [kept](double seconds) { return waitForCurve(kept->dyno, seconds); };
+            shown.waitForDyno = [kept](double seconds, std::string& error) {
+                const bool got = waitForCurve(kept->dyno, seconds);
+                error = kept->dyno.error();
+                return got;
+            };
             // --size WxH: the frame's logical size (raised to its smallest, 1100 x 700)
             if (o.width > 0 && o.height > 0)
                 frame->resize(std::max(o.width, frame->minWidth()), std::max(o.height, frame->minHeight()));
@@ -264,10 +268,13 @@ namespace tee::app
         // first frame, so a picture of a workspace with the ribbon shows it
         if (o.dynoWait > 0.0 && shown.waitForDyno)
         {
+            // (its error, if it has one, is in the picture: the ribbon says it)
             const auto t0 = std::chrono::steady_clock::now();
-            const bool got = shown.waitForDyno(o.dynoWait);
-            std::fprintf(stderr, "dyno: %s after %.1f s\n", got ? "the predicted curve is in" : "no curve yet",
-                         std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count());
+            std::string dynoError;
+            const bool got = shown.waitForDyno(o.dynoWait, dynoError);
+            std::fprintf(stderr, "dyno: %s after %.1f s%s%s\n", got ? "the predicted curve is in" : "no curve",
+                         std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count(),
+                         dynoError.empty() ? "" : ": ", dynoError.c_str());
         }
 
         audio::WavWriter wav;

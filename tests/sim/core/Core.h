@@ -27,7 +27,9 @@ namespace tee::test::core
     // The rig, compiled once for the whole run (it is read-only once compiled)
     inline Program& program()
     {
-        static std::unique_ptr<Program> compiled = [] {
+        // (never destroyed: a static that owns a compiled program must not run its destructor after FMinus's and LLVM's own
+        // statics are gone, as happens on macOS)
+        static Program* compiled = [] {
             Program::Files files;
             for (const auto& entry : std::filesystem::directory_iterator(std::filesystem::path(TEE_SOURCE_DIR) / "sim" / "core"))
                 if (entry.path().extension() == ".fm")
@@ -41,7 +43,7 @@ namespace tee::test::core
             INFO(errors);
             REQUIRE(p != nullptr);
             REQUIRE(p->link(errors));
-            return p;
+            return p.release();
         }();
         return *compiled;
     }
