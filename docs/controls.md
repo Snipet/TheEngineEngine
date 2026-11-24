@@ -67,10 +67,12 @@ in hand: the code was written against SDL's documentation and compiled.
 
 Not yet. `shell/input/Wheel.h` is the seam it will arrive through (the shell's second slice).
 
-## What the reference engine does with them
+## What the engine does with them
 
-The application plays the reference engine (sim/ref) for now, and starts it in **DRIVE CAR**: in a car, in neutral,
-so the pedal is the throttle and the engine idles until it is switched off. The `drive` dial (DRIVE, on the panel's
+The application plays the simulator (`sim/engine.fm`) in the vehicle (the frame's mode is MODE_DRIVE), in neutral:
+the pedal is the throttle, and the key is a car's (off, on, start). `--ref-panel` (or `--engine ref`) plays the
+reference engine (`sim/ref`) instead, in its own panel, started in **DRIVE CAR**: in a car, in neutral, so the pedal
+is the throttle and the engine idles until it is switched off. The reference's `drive` dial (DRIVE, on its panel's
 SOUND & DRIVE page) changes that:
 
 - **CAR** and **TRUCK**: as above. The start key cranks only in neutral, or with the clutch pedal down.

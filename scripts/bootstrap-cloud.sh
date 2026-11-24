@@ -6,9 +6,9 @@
 #   cmake --workflow --preset dev-verify        # configure, build, run every test
 #
 # What it does:
-#   1. apt packages: Ninja, clang and lld, Flex and Bison (FMinus's grammar), ccache, and what FunkGui's GPU path and
-#      SDL3 need to build and to run without a screen (X11 and Vulkan development packages, Xvfb, Mesa's software
-#      Vulkan, openbox: scripts/xvfb-run.sh).
+#   1. apt packages: Ninja, clang and lld, clang's sanitizer runtimes (the tsan preset), Flex and Bison (FMinus's
+#      grammar), ccache, and what FunkGui's GPU path and SDL3 need to build and to run without a screen (X11 and
+#      Vulkan development packages, Xvfb, Mesa's software Vulkan, openbox: scripts/xvfb-run.sh).
 #   2. CMake 3.30 or newer (Ubuntu 24.04 has 3.28): pip's, when the one on the PATH is older.
 #   3. FMinus's prebuilt LLVM, checked against its release's SHA-256, into $TEE_DEPS_DIR/install (scripts/fetch-llvm.sh).
 #   4. Every dependency's source, cloned by git at its pinned commit into $TEE_DEPS_DIR/src (cmake/TeeFetch.cmake):
@@ -27,7 +27,7 @@ say() { printf '\n== %s\n' "$*"; }
 # ---- 1. apt ----------------------------------------------------------------------------------------------------------
 packages=(
   git curl ca-certificates xz-utils pkg-config python3-pip
-  ninja-build clang lld flex bison ccache
+  ninja-build clang lld libclang-rt-18-dev flex bison ccache
   zlib1g-dev
   libx11-dev libxext-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxfixes-dev libxrender-dev
   libxss-dev libxtst-dev libxkbcommon-dev

@@ -43,8 +43,8 @@
 #   TheEngineEngine-macos-arm64   TheEngineEngine-macos-arm64.tar.gz (a zip loses the executable bit): the same with
 #                                 TheEngineEngine.app, signed ad hoc, sim/ and content/ in its Resources
 #   TheEngineEngine-linux-x64     TheEngineEngine-linux-x64.tar.gz: the same with the executable
-# and, from every platform, TheEngineEngine-listen-<platform>: the reference started, revved and stopped by
-# tee-headless, as a WAV file and pictures, and what the window's own run on the runner said and drew (Linux: on
+# and, from every platform, TheEngineEngine-listen-<platform>: the reference and the simulator started, revved and
+# stopped by tee-headless, as WAV files and pictures, and what the window's own run on the runner said and drew (Linux: on
 # Xvfb with Mesa's software Vulkan, which must work; macOS and Windows: reported, and no reason to fail the job).
 #
 # Run by hand (Actions, Build, Run workflow), `platforms` builds only the platforms named (macos-arm64, windows-x64,
@@ -390,9 +390,10 @@ jobs:
             esac
             echo
             echo "Press Return to start the engine (hold it a second to switch it off). Up or W is the throttle, Down or S"
-            echo "the brake, E and Q shift up and down, N is neutral, 1 to 6 a gear. --panel plain shows a plain panel of"
-            echo "numbers and dials instead of the instruments; --engine tone plays a plain tone with no simulator, to"
-            echo "tell a silent audio device from a simulator that did not start; --help lists the rest."
+            echo "the brake, E and Q shift up and down, N is neutral, 1 to 6 a gear. --ref-panel shows the reference"
+            echo "engine in its own panel (the dashboard); --panel plain a plain panel of numbers and dials, which needs"
+            echo "no shader; --engine tone plays a plain tone with no simulator, to tell a silent audio device from a"
+            echo "simulator that did not start; --help lists the rest."
             echo
             echo "tee-headless is the same application with no window and no audio device: it renders a script of"
             echo "inputs to a WAV file and pictures (tee-headless --seconds 14 --wav engine.wav --shot engine.png)."
@@ -449,15 +450,21 @@ jobs:
             return $code
           }
           echo "---- tee-headless: the reference through a start, a rev and a stop"
-          limited "$headless" --script tests/shell/scripts/start-rev-stop.txt \
+          limited "$headless" --engine ref --script tests/shell/scripts/start-rev-stop.txt \
               --wav "$out/reference-start-rev-stop-$TEE_PLATFORM.wav" --shot "$out/headless-end-$TEE_PLATFORM.png" --panel plain || rc=$?
+          echo "---- tee-headless: the simulator the same way, in the application's frame"
+          limited "$headless" --engine sim --script tests/shell/scripts/sim-start-rev-stop.txt \
+              --wav "$out/simulator-start-rev-stop-$TEE_PLATFORM.wav" --shot "$out/headless-frame-$TEE_PLATFORM.png" || rc=$?
           run=()
           if [ "$RUNNER_OS" = Linux ]; then run=(scripts/xvfb-run.sh); export SDL_AUDIODRIVER=dummy; fi
           echo "---- the window: --info"
           limited "${run[@]}" "$app" --info || rc=$?
-          echo "---- the window: five seconds, the reference started and revved, the last frame read back from the GPU"
+          echo "---- the window: five seconds, the simulator started and revved in the frame, the last frame read back from the GPU"
           limited "${run[@]}" "$app" --script tests/shell/scripts/window.txt --frames 60 \
               --shot "$out/window-$TEE_PLATFORM.png" || rc=$?
+          echo "---- the same with the reference in its own panel (its three shaders)"
+          limited "${run[@]}" "$app" --ref-panel --script tests/shell/scripts/window.txt --frames 60 \
+              --shot "$out/window-ref-panel-$TEE_PLATFORM.png" || rc=$?
           echo "---- the same with the plain Panel"
           limited "${run[@]}" "$app" --panel plain --script tests/shell/scripts/window.txt --frames 60 \
               --shot "$out/window-plain-$TEE_PLATFORM.png" || rc=$?
