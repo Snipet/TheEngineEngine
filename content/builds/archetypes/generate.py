@@ -269,14 +269,14 @@ arch(slug="kei-660-triple-turbo", runner=0.28, convK=24.0, name="Kei 660 cc trip
      notes="A Japanese kei-class three: 68 x 60.4 mm (658 cc), 8.6:1, four valves, a small turbo at a production 0.65 bar falling to 0.12 bar by 7000 rpm (the class's power cap is met by the ECU's boost taper; the K6A kind: "
            "47 kW (the class's 64 PS cap) at 6500 rpm, 103 to 108 N m at 3500; Wikipedia, goo-net-exchange). In a "
            "780 kg rear-drive sports kei.")
-arch(slug="diesel-20-common-rail", runner=0.3, name="Diesel 2.0 L common rail", geo="ref-05-inline-4", layout="Inline 4",
+arch(slug="diesel-20-common-rail", governor=(4000, 130000), runner=0.3, name="Diesel 2.0 L common rail", geo="ref-05-inline-4", layout="Inline 4",
      bore=81.0, stroke=95.5, rod=144.0, cr=16.5, valves=4, dIn=27.0, dEx=24.0,
      cam=(228, 196, 8.0, 112, 228, 196, 8.0, 112), train="Finger", redline=4800, idle=800, diesel=True,
      boost=dict(kind="Turbo", target=1.4, spring=1.0, vanes=True), car="family-diesel", timing="Toothed belt",
      notes="A 2.0 L four-valve common-rail diesel with a variable-vane turbo: 81 x 95.5 mm (1968 cc), 16.5:1 (engines "
            "of the kind: 103 to 125 kW at 3500 to 4000 rpm, 320 to 380 N m from 1750; makers' figures). Balance "
            "shafts. In a front-drive family car, six-speed manual.", balance2=True)
-arch(slug="tractor-15-inline-six", runner=0.4, name="Highway tractor 15 L", geo="ref-10-inline-6", layout="Inline 6",
+arch(slug="tractor-15-inline-six", governor=(1900, 108000), runner=0.4, name="Highway tractor 15 L", geo="ref-10-inline-6", layout="Inline 6",
      bore=137.0, stroke=169.0, rod=262.0, cr=17.0, valves=4, dIn=46.0, dEx=43.0,
      cam=(232, 200, 14.0, 112, 232, 200, 13.0, 112), train="Rocker", redline=2250, idle=700, diesel=True,
      boost=dict(kind="Turbo", target=2.6, spring=2.0, vanes=True), car="tractor", timing="Gears",
@@ -329,7 +329,7 @@ arch(slug="twin-cam-roadster-18", runner=0.4, convK=17.0, name="1.8 L twin-cam r
      timing="Toothed belt",
      notes="A 1.8 L twin-cam 16-valve four: 83 x 85 mm (1839 cc), 10:1 (engines of the kind in light roadsters: 96 "
            "to 110 kW at 6500 to 7000 rpm, 160 to 170 N m at 5000; makers' figures). Rear drive, six-speed manual.")
-arch(slug="pickup-diesel-67-inline-six", runner=0.35, name="6.7 L straight-six turbo diesel pickup", geo="ref-10-inline-6",
+arch(slug="pickup-diesel-67-inline-six", governor=(2900, 106000), runner=0.35, name="6.7 L straight-six turbo diesel pickup", geo="ref-10-inline-6",
      layout="Inline 6", bore=107.0, stroke=124.0, rod=192.0, cr=16.2, valves=4, dIn=36.0, dEx=33.0,
      cam=(228, 196, 11.0, 112, 228, 196, 10.5, 112), train="Pushrod", redline=3200, idle=750, diesel=True,
      boost=dict(kind="Turbo", target=2.0, spring=1.6, vanes=True), car="heavy-pickup", timing="Gears",
@@ -575,6 +575,16 @@ def build(a):
     t = {"model": "Maps", "timing": 0, "pops": 0.1, "starter": True,
          "limiter.kind": a.get("limiter", "Fuel cut"), "limiter.speed": e["redlineSpeed"],
          "idle.speed": round(a["idle"] * RPM, 3)}
+    if "governor" in a:
+        # a diesel's rack-metered governor (card D2's): full fuel to the rated speed, the rack's stroke set by the boost
+        # it is matched to (D2's measured values put each at its maker's rated power, lambda about 1.5)
+        rated, fuel_boost = a["governor"]
+        t["governor"] = "Electronic"
+        t["ratedSpeed"] = round(rated * RPM, 1)
+        t["fuelBoost"] = fuel_boost
+        # its limit is the governor's high idle, the rated speed plus its droop (0.06): the limiter and the redline there
+        e["redlineSpeed"] = round(rated * 1.06 * RPM, 3)
+        t["limiter.speed"] = e["redlineSpeed"]
     if a.get("compressionBrake") == "release":
         # a compression-release engine brake (card D2's: the ECU opens the exhaust near the compression top with the
         # pedal up and the clutch in, above ecu.brakeMin), its stage switch at Medium; the lobe as D2's trucks have it
