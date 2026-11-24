@@ -58,9 +58,7 @@ Card G, branch `claude/awesome-gates-ntdb58`, pushed at cf267fb.
   reference's topology 1.22 R (+0.17 R). V8 with an X, quarter-wave stubs and valved mufflers 1.48 R against 1.04 R
   at model 0 (+0.44 R). **Over the card's 0.25 R**: the extra pipes, plus `shape()` every 16 samples (as the
   reference's `pipes()`). Proposed for the performance package: shape only when something moved; skip bare pipes' filters.
-- **Not done**: glides (every builder field change rebuilds under the fade, 6 + 12 ms); the external gates' pipes not fed
-  (Boost lists no count); `tee-bench --profile` not run; the full suite not run on cf267fb (the null test, exhaust and boost ran on
-  the tree merged just before).
+- **Not done**: `tee-bench --profile` not run (Q profiled it: the generic junction path, see Q's notes).
 - **Seen, not mine**: combo `every choice and switch of spec.boost / spec.exhaust stepped` fail on
   `boost.intercoolerOut` and `boost.throttleIn` = 0 at 0.01 s (card F's telemetry range).
 - FMinus: `0` is not a null pointer (use a flag beside it). Listen to: V8 bank vs `v8-180-degree`; the bypass at 0.3 s.
@@ -69,3 +67,15 @@ Card G, branch `claude/awesome-gates-ntdb58`, pushed at cf267fb.
   unity, so model 0 and model 1 at its defaults are still identical (57c9876). `spec.exhaust.heatSettle` gives card C
   its settle of the ports' gas and every wall, in both models (859bc7d). Still open: glides; external gates' pipes; the
   heavy diesel's flap (asked the lead what it should be).
+- **Since (17:00-17:50), the lead's 16:23 rulings**:
+  - (1) Passivity: the exact one-pass gain (`XBuild::passGain`) decides `filtFirst`. The sweep test: 180 pipes,
+    largest pass 0.99986, where the reference's order reaches 1.0718. The engine at its defaults is still identical
+    on 17 layouts. The harness reference test compares with `passFix` 0 and prints the fix's difference (-47 to
+    -58 dB on 6 of 26 runs). The dual X soak passes: 60 s, peak 0.876, the valves travelled 26.2.
+  - (2) Flap: `flapKind`, `flapOrifice`, `flapRelief`, `flapTime`, with `Exhaust::setFlap` / `flapFitted` for D2
+    (88cb216). Harness: 11.6 kPa open, 655 kPa shut (relief 600), 382 kPa (relief 350).
+  - (3) External gates: `Boost::externalGates()` / `gatePipe`, each gate's own pipe. 2 L four 0.116 kg/s through it.
+  - (4) Glides: every length, bore and size (0.2 s), with no fade. Kinds, tables and 0<->own still rebuild.
+    Measured: the fade never moved, steps 0.3865 against 0.3901 running.
+  - (5) Q answered: the cost is in the generic junction path. (7) N1: diameters answered.
+    Also added `tel.exhaust.portPressure` for N1.
