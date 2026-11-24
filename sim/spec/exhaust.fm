@@ -150,4 +150,7 @@ module ExhaustSpec
         [[ui::quantity("pressure")]] [[ui::help("Over the air: above it the flap's spring lets the plate blow open")]];
     float flapTime [[fminus::range(0.02, 1)]] [[fminus::default(0.15)]] [[ui::label("Flap travel")]]
         [[ui::quantity("time")]] [[ui::help("Open to shut")]];
+    int portHeat [[fminus::range(0, 1)]] [[fminus::default(1)]] [[ui::label("Port cooling")]]
+        [[ui::help("The exhaust port's water-cooled walls take heat from the gas before the headers (the builder; Caton and Heywood's correlation). None: the reference's")]]
+        [[ui::choices("None", "Caton and Heywood")]];
 };
