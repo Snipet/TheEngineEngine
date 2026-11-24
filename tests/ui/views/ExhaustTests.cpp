@@ -143,13 +143,60 @@ namespace
     using namespace tee::test::views;
     namespace ex = tee::ui::exhaust;
 
+    // The Scope as card T's two-stroke gives it (sim/engine.fm), over the demo's for a two-stroke build: a turn of 360
+    // degrees, the port's pressure each degree (absolute; ExhaustDemo's, from card T's measures), and pipePressure's
+    // seven (six along cylinder 1's chamber, absolute, then its crankcase). Any other build: the demo's own.
+    struct TwoStrokeScope final : tee::ui::ScopeSource
+    {
+        tee::ui::ScopeSource& base;
+        tee::ui::FieldDoc& doc;
+        TwoStrokeScope(tee::ui::ScopeSource& b, tee::ui::FieldDoc& d) : base(b), doc(d) {}
+        bool twoStroke() const { return ex::resolveExhaust(doc).ts.on; }
+        int find(std::string_view name) const override
+        {
+            if (twoStroke())
+                for (int i = 0; i < 4; ++i)
+                    if (name == kOwn[i])
+                        return 1000 + i;
+            return base.find(name);
+        }
+        int read(int handle, float* out, int max) override
+        {
+            if (handle < 1000)
+                return base.read(handle, out, max);
+            if (max < 1)
+                return 0;
+            switch (handle - 1000)
+            {
+                case 0: out[0] = 360.0f; return 1;
+                case 1: return ex::exhaustTwoStrokePort(ex::resolveExhaust(doc), out, max);
+                case 2:
+                {
+                    // the pulse along the chamber (its phase from the demo's copy count), then the crankcase
+                    float g[1] = { 0.0f };
+                    const int hg = base.find("cycles");
+                    const double ph = hg >= 0 && base.read(hg, g, 1) == 1 ? 0.37 * g[0] : 0.0;
+                    const int m = std::min(max, 7);
+                    for (int k = 0; k < m; ++k)
+                        out[k] = k == 6 ? 128e3f
+                                        : static_cast<float>(101325.0 + 42e3 * std::sin(6.2831853 * (ph - k / 6.0)) * (1.0 - 0.1 * k));
+                    return m;
+                }
+                default: out[0] = 7.0f; return 1;
+            }
+        }
+        std::uint64_t generation() const override { return base.generation(); }
+        static constexpr const char* kOwn[4] = { "degrees", "portExhaust", "pipePressure", "pipePoints" };
+    };
+
     // The demo with the exhaust builder's fields (ExhaustDemo.h) and one of its builds; the workspace alone in a
     // headless host, its stage the whole window.
     struct ExRig
     {
         tee::ui::DemoRig demo;
         tee::ui::MemoryDoc doc{ ex::exhaustDemoFields() };
-        tee::ui::WorkspaceContext ctx{ doc, demo.engine, demo.engine, demo.engine, demo.units, demo.selection, demo.app };
+        TwoStrokeScope scope{ demo.engine, doc };
+        tee::ui::WorkspaceContext ctx{ doc, demo.engine, scope, demo.engine, demo.units, demo.selection, demo.app };
         std::unique_ptr<tee::ui::Workspace> ws;
         std::unique_ptr<funkgui::HeadlessHost> host;
         int w, h;
@@ -173,19 +220,6 @@ namespace
                                              out[i] = src[i];
                                          return m;
                                      });
-            // a two-stroke's port pressure over a turn (gauge Pa, each degree after top dead centre): the blowdown as
-            // the port opens, the diffuser's suction about bottom dead centre, the baffle's plugging pulse just before
-            // the port closes (the pipe on song)
-            demo.engine.addScope("tsPortPressure", [this](const tee::ui::DemoEngine&, float* out, int max) {
-                const ex::ExhaustBuild b = ex::resolveExhaust(doc);
-                const double epo = 180.0 - 0.5 * b.ts.exhaustDur, epc = 180.0 + 0.5 * b.ts.exhaustDur;
-                const auto bump = [](double x, double at, double w) { return std::exp(-((x - at) / w) * ((x - at) / w)); };
-                const int m = std::min(max, 360);
-                for (int i = 0; i < m; ++i)
-                    out[i] = static_cast<float>(70e3 * bump(i, epo + 25.0, 14.0) - 28e3 * bump(i, 180.0, 26.0)
-                                                + 34e3 * bump(i, epc - 12.0, 12.0));
-                return m;
-            });
             ws = tee::ui::makeExhaustWorkspace(ctx);
             host = std::make_unique<funkgui::HeadlessHost>(*ws, theme, dpi);
             host->resize(w, h);

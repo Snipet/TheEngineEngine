@@ -54,10 +54,13 @@ With card T's two-stroke the stage draws each cylinder's pipe instead of the fou
 - **To scale:** header, diffuser cone, belly, baffle cone and stinger, plus a packed silencer when fitted. One scale
   serves both lengths and bores, so a cone looks as steep as it is. The walls are two lines over a faint fill: the
   cones diverge and converge.
-- **The pulse:** the pulse and its returning wave ride cylinder 1's pipe.
+- **The pulse:** card T's six points along cylinder 1's chamber (the Scope's `pipePressure[0..5]`; `[6]` is the
+  crankcase, not drawn) ride its pipe, each a dot at its section's middle. T takes them evenly by section index, not
+  by length (`TwoStrokePipe::scopePoints`, mirroring chamber.fm's `build()`).
 - **The exhaust port over a turn:** a plot under the pipes, with the port's opening and closing marked (port open
-  `tsExhaustDur` about bottom dead centre); OPENS and CLOSES sit above the plot's frame, clear of the trace. The baffle's plugging pulse should arrive just before CLOSES. The plot
-  reads card T's port pressure (`tsPortPressure`, asked), else U1's `portExhaust`.
+  `tsExhaustDur` about bottom dead centre); OPENS and CLOSES sit above the plot's frame, clear of the trace. The
+  baffle's plugging pulse should arrive just before CLOSES. The plot reads the Scope's `portExhaust` only when its
+  `degrees` is 360 (a 720-degree copy is a four-stroke's). The tests' Scope gives card T's measured 125 single.
 - **ON THE PIPE NEAR n rpm, DERIVED:** card T's returning wave (`TwoStrokePipe::tunedRpm`, mirroring PipeTest.cpp's
   `predicted()`: c (exhaust duration - 25) / (12 L), L to the baffle cone's middle as chamber.fm's `tuned`, c as
   twostroke.fm's `soundSpeed()`), at the pipe's gas temperature, else a warm pipe's 680 K, said in words. Test

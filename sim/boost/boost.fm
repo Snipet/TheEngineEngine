@@ -291,6 +291,19 @@ module Boost
         return model == 1 ? mach.downpipe(side, a, z) : 0.0f;
     }
 
+    // External gates (card G asked): how many turbos have a gate of their own pipe; gatePipe(t, ...) takes t from 0
+    // to this less 1 (turbo t's). 0 under model 0, for a supercharger and for internal gates.
+    int externalGates()
+    {
+        if (model != 1 || mach.active == 0 || mach.sc != 0)
+            return 0;
+        int n = 0;
+        for (int t = 0; t < mach.turbos; ++t)
+            if (mach.turb[t].gateExt != 0)
+                n = t + 1;
+        return n;
+    }
+
     float gatePipe(int t, float a, float z)
     {
         return model == 1 ? mach.gatePipe(t, a, z) : 0.0f;
@@ -330,6 +343,16 @@ module Boost
         mach.downpipe(1, 0.0f, z);
         for (int i = 0; i < mach.turbos; ++i)
             mach.gatePipe(i, 0.0f, z);
+    }
+
+    // The level over which an ECU's over-boost cut acts by default (Pa over the air): the machine's own over-boost
+    // flag's, 1.4 times its target or spring, for turbos; 0 (none) for a supercharger, whose boost no loop holds, and
+    // under model 0. Engine hands it to Ecu::overBoostRef (card N2's).
+    float overBoostLevel()
+    {
+        if (model != 1 || mach.active == 0 || mach.sc != 0 || mach.turbos == 0)
+            return 0.0f;
+        return mach.overBoost;
     }
 
     // Before the throttle: Pa absolute and K (model 1; called by Engine only then)

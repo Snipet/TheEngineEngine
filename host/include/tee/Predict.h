@@ -80,6 +80,9 @@ namespace tee
         double power = 0.0;           // W
         int cycles = 0;               // cycles run there
         bool settled = false;         // two cycles agreed within the tolerance
+        // False when the simulator found its engine diverged during the point (FLAG_FAULT: put at rest afresh): its
+        // torque and power are NaN, not to be plotted, and the curve counts it (PredictCurve::faults).
+        bool valid = true;
         std::vector<double> history;  // each cycle's mean torque there, in order (the first after a change of speed)
     };
 
@@ -94,6 +97,7 @@ namespace tee
         double wallSeconds = 0.0;     // from the request to this curve
         double simulatedSeconds = 0.0;   // engine time run for it, over all workers
         double innerRate = 0.0;       // the engine's own rate it ran at (Engine::rate), 0 when the program has none
+        int faults = 0;               // points the simulator's FLAG_FAULT made invalid: a failure of its invariant
 
         bool empty() const noexcept { return points.empty(); }
     };

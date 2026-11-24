@@ -32,6 +32,9 @@ namespace tee::app
     // options or the script could not be read, or the program did not compile (without --keep-going).
     int runOffline(const Options&);
 
+    // The status line while the engine's machine code is being made: "compiling the engine: 3 s".
+    std::string compilingLine(double seconds);
+
     // The versions, a line each: the application, FMinus and FunkGui.
     void printVersions();
 

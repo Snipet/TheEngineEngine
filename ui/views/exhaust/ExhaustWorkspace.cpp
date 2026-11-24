@@ -535,14 +535,21 @@ namespace tee::ui
                 return;
             const int n = static_cast<int>(shown_.size());
             const float y = tsLane_[0], x0 = tsX_[0], x1 = build_.ts.silencer ? tsEnd_ : tsX_[5];
+            // card T's six points, each at its section's middle (chamber.fm's sections, taken evenly by index);
+            // another count evenly along the pipe
+            const std::array<float, 6> at = build_.ts.scopePoints();
             std::vector<float> xs, ys;
             for (int i = 0; i < n; ++i)
             {
                 const float f = (static_cast<float>(i) + 0.5f) / static_cast<float>(n);
-                xs.push_back(x0 + (x1 - x0) * f);
+                xs.push_back(n == 6 ? std::min(x1, x0 + at[static_cast<std::size_t>(i)] * tsScale_) : x0 + (x1 - x0) * f);
                 ys.push_back(y - std::clamp(shown_[static_cast<std::size_t>(i)] / kPulseScale, -1.0f, 1.0f) * kPulseSwing * 1.6f);
             }
             c.polyline(xs.data(), ys.data(), n, 1.75f, p.value);
+            // card T's six: each a measure, so each a dot (the line between them only joins them)
+            if (n == 6)
+                for (int i = 0; i < n; ++i)
+                    c.rrect(xs[static_cast<std::size_t>(i)] - 3.0f, ys[static_cast<std::size_t>(i)] - 3.0f, 6.0f, 6.0f, 3.0f, p.value);
         }
 
         // The exhaust port's pressure over a turn (the Scope's portExhaust, cylinder 1), with the port's opening and
@@ -609,6 +616,9 @@ namespace tee::ui
             }
             else if (const int h2 = sc.find(N::scopePipe); h2 >= 0 && (n = sc.read(h2, buf, 256)) > 1)
             {
+                // a two-stroke's seven: six along cylinder 1's chamber, then its crankcase (not the pipe's)
+                if (build_.ts.on && n == 7)
+                    n = 6;
                 ambient = fieldOr(ctx_.doc, N::ambient, -1, kAmbient);
                 double mean = 0;
                 for (int i = 0; i < n; ++i)
@@ -621,16 +631,14 @@ namespace tee::ui
             // a two-stroke's port pressure over the turn (the Scope's cycle: `degrees` entries)
             portTrace_.clear();
             if (build_.ts.on)
-                if (const int hp = sc.find(N::tsPortScope) >= 0 ? sc.find(N::tsPortScope) : sc.find(N::portScope); hp >= 0)
+                if (const int hp = sc.find(N::portScope); hp >= 0)
                 {
+                    // only a copy of a turn: a 720-degree one is a four-stroke's, not this engine's
                     float deg[1] = { 0.0f };
                     const int hd = sc.find(N::degrees);
-                    const int want = hd >= 0 && sc.read(hd, deg, 1) == 1 && deg[0] > 0.0f ? static_cast<int>(deg[0]) : 360;
                     std::vector<float> v(1080);
-                    const int got = sc.read(hp, v.data(), 1080);
-                    // a two-stroke's turn is 360 degrees: a longer copy holds two turns; the last turn is the one shown
-                    if (got >= 2)
-                        portTrace_.assign(v.begin() + std::max(0, got - std::min(want, 360)), v.begin() + got);
+                    if (hd >= 0 && sc.read(hd, deg, 1) == 1 && static_cast<int>(deg[0]) == 360 && sc.read(hp, v.data(), 1080) >= 360)
+                        portTrace_.assign(v.begin(), v.begin() + 360);
                 }
             // every pipe slot's pressure at its two ends (card G's)
             ducts_ = false;

@@ -131,3 +131,27 @@ Measured (`EnergyTest`, "[.wallheat]": the default V8, 4000 rpm, full throttle, 
 An engine's 25 to 30 % "to the coolant" includes the exhaust ports' walls and the friction's heat; here the ports'
 and the pipes' heat is taken downstream (the exhaust's soak), so some 17 % in the cylinder is in the published range
 for its own walls. A thermocouple's 900 to 1100 K reads after the port too.
+
+### A rotary's faces
+
+Under the same switches (the lead's yes of 16:09, 24 Nov), each face's walls are the chamber's own
+(`WallHeat::setupRotary`, `coefficientRotary`): Woschni's form over the two side plates (each V / b) and the flank and
+the housing's arc (each about sqrt(3) R b), with the gas's speed along them half an apex's (e w + R w / 3) in the mean
+piston speed's place. R, e and b come from the face's swept volume in a 13B's proportions (R/e 7, b/R 0.76). With
+`fuel.model` 1 the seals leak too (`Cylinder::leakA`): two apex seals and the side and corner seals as an orifice of
+0.7 x 1.5 x 2 x 4 um x b to the air's pressure, the fuel in what leaks leaving with it. The 4 um is bounded, not
+fitted: at 20 um the twin cannot start (a third of each charge gone at cranking), and a Wankel's leakage is known to
+matter at low speed and little at high. A third term, the unburned trailing end (a burn completeness), is card H's
+place (N1 acts for it).
+
+Measured (`EngineExplore`, "[.rotarybmep]": the rotary twin archetype, engine dyno, full throttle, warm, every model
+on; BMEP in bar, without these two terms / with):
+
+| | 3000 | 4000 | 5000 | 6000 | 7000 rpm | leaked | port |
+|---|---|---|---|---|---|---|---|
+| unboosted | 7.98 / 7.23 | 9.26 / 8.42 | 11.12 / 10.22 | 9.89 / 9.21 | 9.25 / 8.64 | 4.0 to 1.7 % | 864 to 1062 K |
+| its turbos (68 to 128 kPa) | 20.3 / 15.5 | 20.7 / 18.4 | 20.3 / 18.5 | 18.2 / 16.2 | 18.8 / 16.4 | 4.3 to 1.8 % | 906 to 1105 K |
+
+The targets: about 10 to 10.5 bar unboosted (a 1.3 L twin-rotor road engine's 210 to 216 N m), met at 5000 rpm
+without a fudge; about 14 bar at 0.7 to 0.8 bar, missed by 16 to 30 %. The boosted engines' common excess (pumping
+gained from the boost, PMEP below 0) is on the boost's and the exhaust's side, not the rotor's.
