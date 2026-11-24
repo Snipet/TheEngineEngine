@@ -69,12 +69,14 @@
       "exDur1mm": 202,
       "exLift": 0.0095,
       "exCentre": 112,
+      "portIn": 1.2,
+      "portEx": 1.35,
       "springRate": 37900.0,
       "springPreload": 237.0
     },
     "intake": {
       "model": 1,
-      "runnerLength": 0.45
+      "runnerLength": 0.63
     },
     "boost": {
       "model": "Machine",

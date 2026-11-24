@@ -78,12 +78,14 @@
       "exDur1mm": 234,
       "exLift": 0.014,
       "exCentre": 116,
+      "portIn": 1.65,
+      "portEx": 1.8,
       "springRate": 228000.0,
       "springPreload": 1425.0
     },
     "intake": {
       "model": 1,
-      "runnerLength": 0.4
+      "runnerLength": 0.53
     },
     "boost": {
       "model": "Machine",
@@ -95,12 +97,12 @@
       "model": "Builder",
       "sides": 2,
       "converter": [
-        1,
-        1
-      ],
-      "mufKind": [
         2,
         2
+      ],
+      "mufKind": [
+        1,
+        1
       ]
     },
     "fuel": {
