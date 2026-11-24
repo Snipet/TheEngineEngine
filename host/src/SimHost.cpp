@@ -328,6 +328,15 @@ namespace tee
         }
         sim->init()(data, static_cast<float>(rate_));
         live->begun = true;
+        // LoadOptions::initial: once, now (a fresh instance: at load, at prepare, after a fault's restart)
+        for (const HeldValue& h : options_.initial)
+        {
+            Schema::Handle handle;
+            std::string unused;
+            if (sim->schema().find(h.path, handle, unused) && handle.scalar() != Scalar::None
+                && handle.scalar() != Scalar::Pointer)
+                live->instance->write(handle, h.value);
+        }
         if (sim->options().checks)
         {
             if (const auto failed = fm.boundsViolation())
@@ -747,6 +756,18 @@ namespace tee
         }
         if (carry)
             carryState(old->schema(), snapshot_.data(), next->schema(), data);
+        else
+            // a swap carries no state but the engine's heat: an engine that has cooled or warmed does not jump
+            // (to its initial temperatures, or to cold)
+            for (const HeldValue& h : warmEngine())
+            {
+                Schema::Handle was, now;
+                std::string unused;
+                if (old->schema().find(h.path, was, unused) && next->schema().find(h.path, now, unused)
+                    && was.scalar() != Scalar::None && was.scalar() != Scalar::Pointer && now.scalar() == was.scalar()
+                    && was.offset + scalarBytes(was.scalar()) <= snapshot_.size())
+                    live->instance->write(now, readScalar(snapshot_.data() + was.offset, was.scalar()));
+            }
         std::memcpy(data + nf.spec().offset, shadow.data() + nf.spec().offset, nf.spec().size);
         for (const Section& s : nf.sections())
         {
