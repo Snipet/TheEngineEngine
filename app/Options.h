@@ -38,13 +38,16 @@ namespace tee::app
         bool refPanel = false;          // --ref-panel: the reference engine in its own panel (as --engine ref)
         std::string workspace;          // --workspace ID[:PAGE]: the frame opens on that workspace (its name on the rail)
         bool noAudio = false;           // --no-audio: the window with no device (nothing plays)
-        bool keepGoing = false;
+        bool keepGoing = false;         // --keep-going: a program that does not compile is no reason to stop a render
         std::string quality;            // --quality full|economy: the simulator's inner rate (empty: the settings')
-        bool expectFault = false;
+        bool expectFault = false;       // --expect-fault: a run where the engine diverges and is restarted is not a failure
         std::vector<std::pair<std::string, double>> holds;   // --hold-value PATH=VALUE (a test's): held before every call
         double holdCompile = 0.0;       // --hold-compile S (tee-headless, a test's): the engine's compile is held back for
                                         // S seconds of the run (its frames drawn meanwhile), then waited for
-        bool background = false;        // not an option: the window compiles the engine in the background       // --expect-fault: a run where the engine diverges and is restarted is not a failure         // --keep-going: a program that does not compile is no reason to stop a render
+        bool reference = false;         // --reference: the window opens no build: the simulator's defaults, every model
+                                        // switch at Reference (for comparisons); without it, the first build
+        std::string firstBuild;         // --first-build FILE (a test's): the first build in place of content/builds/first.json
+        bool background = false;        // not an option: the window compiles the engine in the background
         // not from the command line: the units the settings file remembers, for the frame ("quantity=unit" lines)
         std::string unitChoices;
     };
