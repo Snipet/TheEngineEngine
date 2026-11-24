@@ -686,9 +686,16 @@ namespace
         ctx.live.reset();
         host.tick(1);
         CHECK(ws->inspectorPage().find("BANK IS OUTSIDE THE BANKS") != std::string::npos);
+        // what runs as a two-stroke (D's configure): the cycle with a custom layout of pistons; without custom the
+        // cycle is ignored; a custom rotary runs as itself
+        doc.set(doc.find("engine.cycle"), 1.0);
+        CHECK(en::twoStrokeRuns(doc) && en::layoutOf(doc).twoStroke);
+        doc.set(doc.find("engine.custom"), 0.0);
+        CHECK(!en::twoStrokeRuns(doc) && !en::layoutOf(doc).twoStroke && !en::twoStrokeOf(doc).on);
+        doc.set(doc.find("engine.custom"), 1.0);
         // D's reason 4: a two-stroke asked of a custom rotary; the rotary runs as itself, so the block keeps it
         doc.set(doc.find("engine.rotors"), 2.0);
-        doc.set(doc.find("engine.cycle"), 1.0);
+        CHECK(!en::twoStrokeRuns(doc) && en::layoutOf(doc).rotors == 2);
         base.engine.set(en::kTelLayoutReason, 4.0);
         ctx.live.reset();
         host.tick(1);

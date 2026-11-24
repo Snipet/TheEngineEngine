@@ -13,7 +13,9 @@
 // afresh off the audio thread, with a flag raised: never a blast to the speakers); with a Sim compiled with the checks
 // (development), a call FMinus's loop budget or bounds checks stopped is handled the same way, with the compiler's
 // words kept (stopReason()). A load meter: the callback's time over its buffer's, mean and peak, and the host's own
-// time besides Engine::process, in the telemetry.
+// time besides Engine::process, in the telemetry; and a verdict on it (HostStats::fits, Fit.h: 1 fits, 0 tight, -1
+// over, with hysteresis; lateCallbacks counts the callbacks that took longer than their buffer), worked out by
+// service(), which never acts on it: the interface shows it and names the Economy quality.
 //
 //   tee::SimHost host;
 //   std::string errors;
@@ -31,6 +33,7 @@
 
 #include "tee/Commands.h"
 #include "tee/Fields.h"
+#include "tee/Fit.h"
 #include "tee/Instance.h"
 #include "tee/Sim.h"
 #include "tee/Warm.h"
@@ -282,6 +285,12 @@ namespace tee
         std::size_t scopeRoom_ = 0;
         std::atomic<std::int64_t> scopeAskedAt_{-1};   // the sample a reader last asked at
         std::atomic<std::int64_t> samplesNow_{0};
+        // the load verdict (Fit.h): the audio thread's peak and late count in, service()'s verdict out
+        std::atomic<double> loadPeakNow_{0.0};
+        std::atomic<std::uint32_t> lateNow_{0};
+        std::atomic<std::int32_t> fitsNow_{1};
+        FitMeter fitMeter_;                      // service()'s
+        std::int64_t fitSamples_ = 0;            // service()'s: the samples at its last update
 
         // a reload's snapshot of the playing instance, taken by the audio thread at a block's end
         std::vector<unsigned char> snapshot_;

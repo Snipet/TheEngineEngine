@@ -162,7 +162,9 @@ module BoostCompressor
         if (phiN > 1.0f)
         {
             tr = tauC / efficiency(1.0f);
-            eta = fmaxf(tau, 0.0f) / tr;
+            // (a shaft standing still has no choke rise, tr 0: the efficiency is then the choke point's, not 0 / 0:
+            // card X's X-020, a second turbo created under a running engine)
+            eta = tr > 1.0e-9f ? fmaxf(tau, 0.0f) / tr : efficiency(1.0f);
         }
         t2 = t1 * (1.0f + tr);
         power = fabsf(mdot) * kBoostCpA * t1 * tr + windage;
