@@ -43,11 +43,13 @@ TEST_CASE("app: the build a launch opens: preset, reference, the remembered one,
     l = app::chooseLaunchBuild(o, false, "", content);
     CHECK(l.file == first);
     CHECK(std::string(l.what) == "the first build");
+    CHECK(l.first);
 
     // the remembered build comes first; a remembered file that is gone does not
     l = app::chooseLaunchBuild(o, false, last.string(), content);
     CHECK(l.file == last);
     CHECK(std::string(l.what) == "the last build");
+    CHECK_FALSE(l.first);
     l = app::chooseLaunchBuild(o, false, (content / "gone.json").string(), content);
     CHECK(l.file == first);
 
