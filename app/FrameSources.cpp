@@ -46,6 +46,10 @@ namespace tee::app
                           const std::function<float()>& level)
     {
         s.simLoad = [&player] { return static_cast<float>(player.load()); };
+        // TUNE's BAKE: ctl.bakeMaps pressed once, where the host's Controls carry it (card C's SimControls does not
+        // yet: then none, and TUNE says so)
+        if (player.hasControl("bakeMaps"))
+            s.bakeMaps = [&player] { player.pressCounter("bakeMaps"); };
         s.mode = [&controls] { return toFrame(controls.driver().settings().mode); };
         s.setMode = [&controls](int m) { controls.driver().setMode(toSim(m)); };
         s.clutch = [&controls](float v) { controls.driver().setClutchStrip(v, v >= 0.0f); };
