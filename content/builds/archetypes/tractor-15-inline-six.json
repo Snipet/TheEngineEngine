@@ -1,0 +1,170 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Highway tractor 15 L",
+  "notes": "A 15 L straight-six truck diesel: 137 x 169 mm (14.9 L), 17:1, one variable-vane turbo; its compression brake is left off until the ECU can switch it (the X15 kind: 298 to 451 kW, 1966 to 2779 N m at 900 to 1000 rpm, governed at 1900 to 2100, idle 600 to 700; cummins.com, international.com). In a 36 t tractor-trailer, eighteen speeds.",
+  "spec": {
+    "engine": {
+      "layout": "Inline 6",
+      "custom": true,
+      "compression": 17.0,
+      "cylinders": 6,
+      "bankAngle": [
+        0.0
+      ],
+      "bank": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "pin": [
+        0,
+        240,
+        120,
+        120,
+        240,
+        0
+      ],
+      "fireRev": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        1
+      ],
+      "place": [
+        0.0,
+        0.1,
+        0.2,
+        0.3,
+        0.4,
+        0.5
+      ],
+      "displacement": 0.0149475,
+      "boreStroke": 0.8107,
+      "bore": 0.137,
+      "stroke": 0.169,
+      "rodLength": 0.262,
+      "redlineSpeed": 209.44,
+      "frictionValvetrain": "Finger follower",
+      "rough": 0.2,
+      "benchLoad": 0.3
+    },
+    "valve": {
+      "model": "Lab",
+      "valves": 4,
+      "dIn": 0.046,
+      "dEx": 0.043,
+      "train": "Rocker",
+      "inDurSeat": 232,
+      "inDur1mm": 200,
+      "inLift": 0.014,
+      "inCentre": 112,
+      "exDurSeat": 232,
+      "exDur1mm": 200,
+      "exLift": 0.013,
+      "exCentre": 112
+    },
+    "intake": {
+      "model": 1
+    },
+    "boost": {
+      "model": "Machine",
+      "kind": "Turbo",
+      "level": 1.0,
+      "blowOff": 0.7,
+      "size": 1.0,
+      "target": 260000.0,
+      "gateSpring": 200000.0,
+      "blowOffKind": "None",
+      "vanes": "Variable vanes",
+      "icEffect": 0.75
+    },
+    "exhaust": {
+      "model": "Builder",
+      "sides": 1,
+      "converter": [
+        1,
+        1
+      ],
+      "mufKind": [
+        2,
+        2
+      ]
+    },
+    "fuel": {
+      "kind": "Diesel",
+      "model": "Fuels",
+      "grade": "Diesel",
+      "direct": 1
+    },
+    "ecu": {
+      "model": "Maps",
+      "timing": 0,
+      "pops": 0.1,
+      "starter": true,
+      "limiter": {
+        "kind": "Fuel cut",
+        "speed": 209.44
+      },
+      "idle": {
+        "speed": 68.068
+      },
+      "knock": {
+        "on": true
+      }
+    },
+    "car": {
+      "model": "Vehicle",
+      "kind": "Truck",
+      "mass": 36000,
+      "drive": "Rear",
+      "wheelbase": 5.8,
+      "cgHeight": 1.5,
+      "frontWeight": 0.25,
+      "track": 2.0,
+      "cdA": 6.0,
+      "tyre": "Truck",
+      "tyreRadius": 0.51,
+      "gearbox": "Manual",
+      "finalDrive": 3.55,
+      "wheelInertia": 40.0,
+      "gears": 18,
+      "autoGearing": false,
+      "ratio": [
+        14.4,
+        12.29,
+        8.51,
+        7.26,
+        6.05,
+        5.16,
+        4.38,
+        3.74,
+        3.2,
+        2.73,
+        2.29,
+        1.95,
+        1.62,
+        1.38,
+        1.17,
+        1.0,
+        0.86,
+        0.73
+      ],
+      "brakeDecel": 0.5,
+      "abs": true
+    },
+    "env": {
+      "temperature": 288.15,
+      "pressure": 101325.0
+    },
+    "voices": {
+      "timing": "Gears",
+      "injection": "Port"
+    }
+  }
+}

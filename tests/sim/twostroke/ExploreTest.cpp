@@ -220,3 +220,52 @@ TEST_CASE("stillsil", "[.stillsil]")
                     rig.get("flowMax"));
     }
 }
+
+TEST_CASE("breathing", "[.breathing]")
+{
+    struct C { double carb, reed, tp; };
+    for (C k : {C{0.00057, 0.0008, 800}, C{0.0011, 0.0008, 800}, C{0.0011, 0.0016, 800}, C{0.0011, 0.0016, 650}})
+    {
+        std::printf("carb %.1f cm2, reed %.1f cm2, pipe %.0f K:", k.carb * 1e4, k.reed * 1e4, k.tp);
+        for (double rpm : {7000.0, 9000.0, 10500.0, 12000.0})
+        {
+            Rig r;
+            r.set("spec.tsCarbArea", k.carb);
+            r.set("spec.tsInletArea", k.reed);
+            r.build(k.tp);
+            r.run(rpm, 1.0, 1.0, 30);
+            std::printf("  %5.0f: %5.2f N m %5.1f/%5.1f mg", rpm, r.meanTorque(), r.meanTrapped() * 1e6, r.meanDelivered() * 1e6);
+        }
+        std::printf("\n");
+    }
+}
+
+TEST_CASE("utilityidle", "[.utilityidle]")
+{
+    for (double thr : {0.05, 0.12, 0.3, 1.0})
+    {
+        Rig r;
+        r.set("bore", 0.044);
+        r.set("stroke", 0.033);
+        r.set("rod", 0.065);
+        r.set("compression", 8.0);
+        const std::pair<const char*, double> f[] = {{"spec.tsExhaustDur", 150}, {"spec.tsTransferDur", 118}, {"spec.tsInletKind", 2},
+            {"spec.tsPistonDur", 140}, {"spec.tsInletArea", 0.0005}, {"spec.tsCarbArea", 0.0002}, {"spec.tsExhaustWidth", 0.6},
+            {"spec.tsTransferWidth", 0.9}, {"spec.tsChamber", 0}, {"spec.tsHeaderLen", 0.05}, {"spec.tsDiffuserLen", 0.05},
+            {"spec.tsBellyLen", 0}, {"spec.tsBaffleLen", 0.05}, {"spec.tsStingerLen", 0.05}, {"spec.tsHeaderDiam", 0.02},
+            {"spec.tsStingerDiam", 0.016}, {"spec.tsSilencer", 1}, {"spec.tsSilencerDiam", 0.06}, {"spec.tsSilencerLen", 0.1},
+            {"spec.tsSilencerPack", 0}, {"spec.tsPortCd", 0.65}};
+        for (auto& kv : f)
+            r.set(kv.first, kv.second);
+        r.method<void(void*)>("init2")(r.data());
+        r.build(500);
+        std::printf("throttle %.2f:", thr);
+        for (double rpm : {1500.0, 2500.0, 4000.0, 8000.0})
+        {
+            r.run(rpm, thr, 1.0, 30);
+            std::printf("  %5.0f: %5.2f N m (misfires %d, purity %.2f, delivered %.1f mg)", rpm, r.meanTorque(), int(r.get("eng.cy[0].misfires")),
+                        r.get("puritySum") / r.get("cyc"), r.meanDelivered() * 1e6);
+        }
+        std::printf("\n");
+    }
+}
