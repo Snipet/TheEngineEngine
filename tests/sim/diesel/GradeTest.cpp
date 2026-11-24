@@ -4,6 +4,7 @@
 #include "Diesel.h"
 
 #include <cstdio>
+#include <string>
 
 using d2::Engine;
 
@@ -39,8 +40,18 @@ namespace
         }
     };
 
+    // (these drive the paddles' robotised clutch: the truck's gearbox set to card I's Manual with eighteen ratios; the
+    // eighteen-speed's own lever is EighteenTest.cpp's)
     void startDriving(Engine& e)
     {
+        e.spec("car.gearbox", 0);
+        e.spec("car.gears", 18);
+        e.spec("car.autoGearing", 0);
+        const double r[18] = {14.40, 12.29, 8.56, 7.30, 6.05, 5.16, 4.38, 3.74, 3.20, 2.73, 2.29, 1.95, 1.62, 1.38, 1.17, 1.00, 0.86, 0.73};
+        const int ratio = e.player->specIndex("car.ratio");
+        REQUIRE(ratio >= 0);
+        for (int i = 0; i < 18; ++i)
+            e.player->setSpec(static_cast<std::size_t>(ratio), r[i], static_cast<std::size_t>(i));
         e.start();
         auto& c = e.ctl();
         c.mode = 1;

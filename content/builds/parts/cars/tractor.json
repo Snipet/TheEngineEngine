@@ -8,6 +8,7 @@
     "car": {
       "model": "Vehicle",
       "kind": "Truck",
+      "truckAir": true,
       "mass": 36000,
       "drive": "Rear",
       "wheelbase": 5.8,
