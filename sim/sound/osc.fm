@@ -23,11 +23,16 @@ module SineTable
             t[i] = sinf(6.28318531f * (float)i / 1024.0f);
     }
 
-    // sin(2 pi x)
+    // sin(2 pi x). A value that is not finite, or past +-1e6 turns, reads 0: its index is never taken from it
+    // (found by card X's fuzz at the Spec's corners, X-019: a NaN gave the index INT_MIN)
     float at(float x)
     {
+        if (!(x > -1.0e6f && x < 1.0e6f))
+            return 0.0f;
         const float f = (x - floorf(x)) * 1024.0f;
         int i = (int)f;
+        if (i < 0)
+            i = 0;
         if (i > 1023)
             i = 1023;
         const float r = f - (float)i;
@@ -80,18 +85,28 @@ module Shaft
 {
     float ph;           // turns, 0 to 1
 
+    // (a speed that is not finite, or a phase made so, starts the shaft again at 0: the voice comes back when its
+    // input does)
     void turn(float hz, float dt)
     {
+        if (!(hz > -1.0e7f && hz < 1.0e7f))
+        {
+            ph = 0.0f;
+            return;
+        }
         ph += hz * dt;
         if (ph >= 1.0f || ph < 0.0f)
             ph -= floorf(ph);
+        if (!(ph >= 0.0f && ph < 1.0f))
+            ph = 0.0f;
     }
 
     // the phase of a mesh of z teeth on it, in turns of the tooth (0 to 1)
     float mesh(float z)
     {
         const float m = z * ph;
-        return m - floorf(m);
+        const float r = m - floorf(m);
+        return r >= 0.0f && r < 1.0f ? r : 0.0f;
     }
 };
 

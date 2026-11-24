@@ -154,6 +154,19 @@ namespace tee::player
         }
         a->frame_ = std::make_unique<TelemetryFrame>();
 
+        // A program given compiled: taken at once.
+        if (options.sim)
+        {
+            a->sim_ = options.sim;
+            a->workerState_.store(1, std::memory_order_release);
+            a->adopt();
+            if (!a->ready())
+            {
+                errors = a->compileError_.empty() ? std::string("the given program was not taken") : a->compileError_;
+                return nullptr;
+            }
+            return a;
+        }
         // The machine code: the whole compile again on a worker (Sim::compile; the front end is a small share of it).
         SimAdapter* self = a.get();
         const std::filesystem::path dir = options.directory;

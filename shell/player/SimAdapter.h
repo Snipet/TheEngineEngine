@@ -58,6 +58,9 @@ namespace tee::player
             // Values held before every call (LoadOptions::hold: "crank.omega" = 1e7 makes the engine diverge, for a test
             // of what the application does then). Never the application's own engine.
             std::vector<std::pair<std::string, double>> hold;
+            // A program compiled already (Sim::compile of `directory`, these options): no compile of its own, ready at
+            // once. Tests share one this way (a compile is seconds); a Sim compiled with checks cannot be shared.
+            std::shared_ptr<Sim> sim;
         };
 
         // Reads the simulator's program and makes it ready to play (Options::background: ready later). nullptr, and the
