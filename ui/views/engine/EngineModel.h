@@ -144,6 +144,10 @@ namespace tee::ui::engine
 
     // The layout the document describes (custom, a preset by its choice, or none).
     Layout layoutOf(const FieldDoc& doc);
+    // The layout dial's preset alone (what the simulator plays when it refuses a custom layout), or none.
+    Layout dialLayoutOf(const FieldDoc& doc);
+    // D's flag (finding X-001): 1 while a custom layout is refused and the dial's runs in its place.
+    inline constexpr const char* kTelLayoutRefused = "engine.layoutRefused";
 
     // The firing angles, order and intervals from banks, pins and firing revolutions (sim/core/layout.fm's derive()).
     void deriveFiring(Layout& l, const std::array<int, kMaxCyl>& fireRev);

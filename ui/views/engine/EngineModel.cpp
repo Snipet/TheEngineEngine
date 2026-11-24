@@ -412,6 +412,11 @@ namespace tee::ui::engine
             }
             return l;
         }
+        return dialLayoutOf(doc);
+    }
+
+    Layout dialLayoutOf(const FieldDoc& doc)
+    {
         const int f = findField(doc, kEngineFields[static_cast<int>(EF::layout)]);
         if (f < 0)
             return {};
