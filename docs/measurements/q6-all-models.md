@@ -235,3 +235,29 @@ the same file before 36b4a24 in the same run: +0.20 R for the listener and the v
 **`content/builds/first.json` as the 2.0 L turbo four** (with the listener at Places/Rear/Field and the voices on;
 20:18 UTC at 7339839, after 2a4fb34; R 1967 / 1942 ns): **1.05 R drive-car, 1.05 R free-revs**: under P's 1.4 at Full
 (about 42 % of the owner's core at R = 40 %, 32 % at R = 30 %).
+
+## Re-measured after C's 127c350 (choices by name read from a build), 20:37 UTC at d45fa65
+
+127c350 fixed the loader reading an array of choices given by name (the exhaust's `mufKind`, `resonator`,
+`converter`, `bypass`) as no value: every earlier figure on `dual-x-resonated-valved.json`, and so on the typical
+build, had those at their defaults. The tip also holds G's 35702b3 (the counts), 9d35a75 and 8bb2c80 (each port's
+surplus taken off its pipe's flow). qbench, least of 8 renders of 8 s; R 1828 ns drive-car, 1912 free-revs (the
+simulator's own V8 read 1.046 / 1.039 of it); host quiet after a restart (load under 1).
+
+The network as built (`tel.exhaust.*` at 3 s of drive-car): the typical build 32 pipes, 9 nodes, 8 pairs, 2 open
+ends; `dual-x-resonated-valved.json` alone (no turbos: the collectors are nodes, not housings) 32, 11, 8, 2. The
+network did not grow: G's table's 32 pipes stand.
+
+| Build | before 127c350 (R) | now drive-car | now free-revs |
+|---|---:|---:|---:|
+| Builder at the reference's topology | 1.28 / 1.26 | 1.26 R | 1.22 R |
+| Dual X, stubs, valved mufflers | 1.53 / 1.54 | 1.55 R | 1.47 R |
+| **Typical build** (twin-turbo V8, every switch, that exhaust), Full | ~1.95 to 2.0 | **2.04 R** | **1.93 R** |
+| Typical build, Economy (`TEE_ENGINE_RATE_48000`: 0.49 / 0.51 of Full) | ~1.0 | **1.01 R** | **1.00 R** |
+| **`first.json`** (2.0 L turbo four, listener and voices on), Full | 1.05 (20:18, R 1967) | **1.14 R** | **1.07 R** |
+| `first.json`, Economy (0.484 / 0.483 of Full) | - | **0.56 R** | **0.54 R** |
+
+The choices' now being read moved nothing beyond the run-to-run spread: the cost is the pipes and nodes, and their
+number is the same. `first.json`'s 1.05 at 20:18 and 1.07 to 1.14 now differ by the two runs' R (1967 against 1828 ns
+on drive-car); against the simulator's own V8 in each run the two agree within 4 %. A first launch: **about 1.1 R at
+Full (44 % of the owner's core at R = 40 %, 33 % at R = 30 %), about 0.55 R on Economy (22 % / 17 %)**.

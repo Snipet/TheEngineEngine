@@ -59,13 +59,13 @@ namespace
     }
 } // namespace
 
-TEST_CASE("fuzz: random Spec seed 2 (the one that once crashed) with six seconds of random driving", "[fast][combo][fuzz]")
+TEST_CASE("fuzz: random Spec seed 2 (the one that once crashed) with six seconds of random driving", "[fast][fast-3][combo][fuzz]")
 {
     fuzz(2, 1, 6.0, false, true);
 }
 
 TEST_CASE("fuzz: the ranges' corners seed 3 (the one that once overshot) with six seconds of random driving",
-          "[fast][combo][fuzz]")
+          "[fast][fast-3][combo][fuzz]")
 {
     fuzz(3, 1, 6.0, true, true);
 }
