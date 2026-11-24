@@ -7,9 +7,19 @@
 // car moves. Flat-shift: through an upshift made with the clutch while the accelerator stays floored, the same cut
 // holds the speed the engine had when the clutch went down (so it does not flare) until the clutch comes up. A dog
 // box's cut (card I asks it for so many seconds, the box shifting without a clutch) cuts every spark; a downshift's
-// blip (card I asks a plate) opens the throttle at least that far.
+// blip (card I asks a plate) opens the throttle at least that far. When a dog box's cut ends the spark comes back
+// retarded and with a share of its firings still cut, both falling to nothing over kReinstateTime: a ramped torque
+// reinstatement, as an ECU's quickshifter does, for the driveline and against the bang (the soak of 2026-11-24: the
+// first firing after a cut on a full charge, a step 2 to 4 times the click bound). It cures that under fuel.model 1;
+// under the reference's burn (fuel.model 0) a firing's size does not follow the spark, and the step is the cut's own
+// (the lead's ruling: an event of the engine, bounded at its measured size in the combos). The 15 degrees, the half and
+// the 0.1 s are judgement, not a maker's figure.
 #pragma once
 #include "limiter.fm"
+
+const float kReinstateRetard = 15.0f;   // degrees, at a dog box's cut's end (judgement)
+const float kReinstateTime = 0.1f;      // s, to the map (judgement)
+const float kReinstateShare = 0.5f;     // of the firings still cut at its end, falling with the retard (judgement)
 
 module LaunchControl
 {
@@ -21,6 +31,7 @@ module LaunchControl
     bool sparkCut;
     float plateMin;     // the blip: the plate at least this open
     float dogLeft;      // seconds of a dog box's cut left
+    float reinstate;    // seconds of the reinstatement's ramp left (after a dog box's cut)
     SoftHold soft;
 
     void reset()
@@ -33,6 +44,7 @@ module LaunchControl
         sparkCut = false;
         plateMin = 0.0f;
         dogLeft = 0.0f;
+        reinstate = 0.0f;
     }
 
     // Every 16 samples. on: launch control fitted (ecu.launch.on); button: the launch button held; the pedals (0 to 1:
@@ -64,7 +76,17 @@ module LaunchControl
             retard = soft.retard;
             share = soft.share;
         }
+        const bool wasCut = dogLeft > 0.0f;
         dogLeft = dog > 0.0f ? dog : fmaxf(dogLeft - d16, 0.0f);
+        if (wasCut && dogLeft <= 0.0f)
+            reinstate = kReinstateTime;
+        else if (dogLeft > 0.0f)
+            reinstate = 0.0f;
+        else
+            reinstate = fmaxf(reinstate - d16, 0.0f);
+        // (the retard softens a burn where the spark sets it, fuel.model 1; the share thins the firings as they return)
+        retard += kReinstateRetard * reinstate / kReinstateTime;
+        share = fmaxf(share, kReinstateShare * reinstate / kReinstateTime);
         sparkCut = dogLeft > 0.0f || ((launching || shifting) && rpm > holdRpm);
         plateMin = fmaxf(blip, 0.0f);
     }
