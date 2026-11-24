@@ -2,7 +2,7 @@
 # (docs/plan/w1-b-shell.md). Four static libraries, by what each needs:
 #
 #   tee_shell_core   nothing but the standard library: the interfaces (include/tee/app/), the controls (input/Keys,
-#                    Driver, Controls), the WAV and PNG writers, the stand-in tone and the silent player
+#                    Driver, Controls), the WAV and PNG writers, the recorder, the stand-in tone and the silent player
 #   tee_shell_settings  nlohmann/json: the settings file (settings/Settings)
 #   tee_shell_ref    tee_host: the reference engine as a Player (player/RefAdapter)
 #   tee_shell_sdl    SDL3: the audio device (audio/AudioDevice) and SDL's events into the controls (input/SdlInput)
@@ -14,11 +14,14 @@ add_library(tee_shell_core STATIC
   input/Driver.cpp
   input/Controls.cpp
   audio/Wav.cpp
+  audio/Recorder.cpp
   files/Png.cpp
   player/TonePlayer.cpp)
 add_library(Tee::shell_core ALIAS tee_shell_core)
 tee_target_defaults(tee_shell_core)
 target_include_directories(tee_shell_core PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/include")
+find_package(Threads REQUIRED)                      # the recorder's worker
+target_link_libraries(tee_shell_core PUBLIC Threads::Threads)
 
 # The settings file reads and writes JSON (nlohmann/json, header-only): a library of its own, so that the core needs
 # nothing but the standard library.
