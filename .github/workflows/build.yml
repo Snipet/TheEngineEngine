@@ -610,6 +610,16 @@ jobs:
           else
             echo "::warning::tee-bench --engine did not run"
           fi
+          # the simulator's compile time and code size on this runner (tee-schema --compile: sim/ as the application
+          # compiles it, every model's code in it), beside R
+          schema="$dir/tee-schema"
+          [ -f "$schema" ] || schema="$schema.exe"
+          if [ -f "$schema" ] && line=$("$schema" --sim sim --compile); then
+            echo "---- compiling the simulator: $line"
+            { echo; echo "### Compiling the simulator (sim/engine.fm)"; echo; echo "$line"; } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::warning::tee-schema --compile did not run"
+          fi
 
       - name: Upload what was built
         if: ${{ matrix.tier == 'fast' && !cancelled() && steps.pack.outcome == 'success' }}
