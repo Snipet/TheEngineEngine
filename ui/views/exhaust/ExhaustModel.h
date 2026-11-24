@@ -60,11 +60,16 @@ namespace tee::ui::exhaust
         static constexpr double kPipe = 37.0, kNode = 51.0, kPair = 17.0, kOpenEnd = 46.0;   // ns each
         static constexpr double kFixed = 330.0;       // ns: meters, thermocouples, pops, control steps, XHeat
         static constexpr double kReference = 1962.0;  // ns: R, the reference engine's whole cost on that machine
+        static constexpr double kReferenceExhaust = 765.0;   // ns: the reference's own exhaust (model 0), within R
         int pipes = 0, nodes = 0, pairs = 0, openEnds = 0;
         double ns() const noexcept { return kFixed + kPipe * pipes + kNode * nodes + kPair * pairs + kOpenEnd * openEnds; }
         double ofReference() const noexcept { return ns() / kReference; }
-        // "32 pipes, 9 junctions, 8 joints, 2 open ends: about 1.1 of the reference engine"
-        std::string line() const;
+        // The network's share of the whole engine's cost, the engine taken as the reference's with this network in
+        // place of its own exhaust (R - 765 + this): what of the simulator's load is the exhaust's.
+        double ofEngine() const noexcept { return ns() / (kReference - kReferenceExhaust + ns()); }
+        // "32 pipes, 9 junctions, 8 joints, 2 open ends: about 1.1 of the reference engine"; with the simulator's
+        // measured load (its mean share of a core, > 0): "...: about 26 % of a core, of the 40 % the simulator takes"
+        std::string line(double load = 0.0) const;
     };
 
     // Where a radiating end is (sim/exhaust/ends.fm XTAG_*).
