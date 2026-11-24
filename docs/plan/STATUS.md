@@ -25,10 +25,7 @@
 
 ## Blocked, or wanting a decision
 
-- **Cloud sessions cannot fetch FMinus's prebuilt LLVM.** A child session's GitHub access covers only the
-  repository it was started on; the API and release URLs refuse FMinus there, attaching FMinus from inside a
-  child session is refused by its permission rules, and these sessions may not create a release to mirror the
-  archive. So every package that builds the simulator runs as a local agent on the lead's machine (which has the
-  LLVM) and shares its four cores; only card J, which needs no LLVM, runs in its own cloud session. What would
-  lift this: the owner publishing the Linux archive and its `.sha256` as a pre-release `deps-llvm-23.1.3` of this
-  repository (then `scripts/fetch-llvm.sh` gets a fallback to it).
+- Resolved 12:10: cloud sessions could not fetch FMinus's prebuilt LLVM (their GitHub access covers only this
+  repository). The owner published the Linux archive as the pre-release `deps-llvm-23.1.3` here, and
+  `scripts/fetch-llvm.sh` falls back to it. Packages started from now on can run in their own cloud sessions; the
+  nine already running locally stay where they are.
