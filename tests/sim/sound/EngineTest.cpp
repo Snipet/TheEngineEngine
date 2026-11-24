@@ -156,3 +156,39 @@ TEST_CASE("engine: card F's wastegate chatters at full load on the dyno; an exte
     INFO("dump " << dump);
     CHECK(dump > 2.0 * chatter);
 }
+
+TEST_CASE("engine: a naked twin's chain whines at its sprocket's teeth and its lash clunks on and off the throttle", "[sound][engine][bike]")
+{
+    auto run = [](double db) {
+        tee::test::Scenario s("bike-naked-twin");
+        s.rate(96000.0);
+        s.at(0.0).mode(1).lever(0).clutch(0.0).brake(0.0).throttle(0.0).ignition(tee::On).spec("voices.model", 1.0)
+            .spec("voices.chain", db).spec("voices.lashLevel", db).spec("voices.dryClutch", -60.0)
+            .spec("car.frontSprocket", 16.0);
+        s.at(0.25).ignition(tee::Start).until(2.0).ignition(tee::On);
+        s.at(2.5).shiftUp();
+        s.at(2.8).throttle(0.4).ramp(0.2);
+        s.at(5.0).shiftUp();
+        s.at(6.0).throttle(0.0).ramp(0.05);
+        s.at(6.6).throttle(0.5).ramp(0.05);
+        s.at(7.2).throttle(0.0).ramp(0.05);
+        return s.run(8.0);
+    };
+    const auto on = run(6.0), off = run(-60.0);
+    REQUIRE(on.ok());
+    INFO("lash closings " << on.tel("car.chainLash").last() << ", gear " << on.tel("car.gear").last());
+    CHECK(on.tel("car.chainLash").last() > 0.0);
+    const auto d = diff(on, off, 4.5, 4.75);
+    const double w = on.tel("car.sprocketSpeed").during(4.5, 4.75).mean();
+    const double f = w / kTwoPi * 16.0;     // (the front sprocket, set above)
+    double best = 0.0, bestA = -1.0;
+    for (double g = f * 0.97; g <= f * 1.03; g += f * 0.001)
+        if (const double a = tee::test::sound::line(d, g); a > bestA)
+        {
+            bestA = a;
+            best = g;
+        }
+    INFO("sprocket " << w << " rad/s: expected " << f << ", found " << best);
+    CHECK(std::fabs(best - f) < 0.02 * f);
+    CHECK(tee::test::sound::rms(diff(on, off, 5.9, 7.9)) > 0.0);
+}

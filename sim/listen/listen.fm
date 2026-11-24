@@ -640,7 +640,8 @@ module Listen
                 float gainNorm, int nPipes, float bike, float tailD, float carSpeed, int driven, float vTotal, int nCyl,
                 float fx, float fy, float mx, float my, float* fire, float cyc, int rotary)
     {
-        const int cam = ss->camera < 0 ? 0 : (ss->camera > 6 ? 6 : ss->camera);
+        const int cam = ss->camera < 0 ? 0 : (ss->camera > 7 ? 7 : ss->camera);
+        sc.aimFree(ss->listenerX, ss->listenerY, ss->listenerZ, ss->facing);
         const float rr = 0.5f * expf(4.0943446f * distance);
         // (package M's gearbox, axle and pump are read while each has sounded in the last second)
         driveHeld = driveHeld < 100000 ? driveHeld + 1 : driveHeld;
@@ -699,9 +700,18 @@ module Listen
         st->roadPosition = sc.camUse == CAM_TRACKSIDE ? 2.2f - sc.rel : 0.0f;
         st->loudness = 8.6858896f * logf(fmaxf(exLoud, 1.0e-9f));
         st->ceilingParts = ceilingParts;
+        for (int s = 0; s < LS_N; ++s)
+        {
+            st->srcX[s] = sc.sx[s];
+            st->srcY[s] = sc.sy[s];
+        }
+        st->listenerX = sc.vw[sc.cur].lx;
+        st->listenerY = sc.vw[sc.cur].ly;
+        st->facing = 57.29578f * atan2Approx(sc.vw[sc.cur].fx, sc.vw[sc.cur].fy);
         if ((float)mCount >= 0.4f * rate)
         {
             st->limiter = 8.6858896f * logf(fmaxf(limLeast, 1.0e-6f));
+            sc.meters(st->srcLevel, 10);
             limLeast = 1.0f;
             st->exhaustLevel = 4.3429448f * logf(fmaxf(mExAcc / (float)mCount, 1.0e-20f));
             st->mixLevel = 4.3429448f * logf(fmaxf(mMixAcc / (float)mCount, 1.0e-20f));
@@ -742,6 +752,25 @@ module Listen
         // 26 dB a decade: the level's ratio to the V8's (n_eff 8) is (n_eff / 8)^-1.3; the gain is its inverse
         const float db = 26.0f * 0.43429448f * logf((float)ne / 8.0f) - (rotary != 0 ? 16.0f : 0.0f);
         return expf(0.115129255f * db);
+    }
+
+    // The angle of (x, y) from the y axis toward x (radians): the listener's facing for the telemetry (no atan2 builtin;
+    // the octants and a polynomial within 0.005 rad)
+    float atan2Approx(float x, float y)
+    {
+        const float ax = fabsf(x);
+        const float ay = fabsf(y);
+        const float mx = fmaxf(ax, ay);
+        if (mx < 1.0e-9f)
+            return 0.0f;
+        const float t = fminf(ax, ay) / mx;
+        float a = t * (0.9998660f - 0.3302995f * t * t + 0.1801410f * t * t * t * t - 0.0851330f * t * t * t * t * t * t
+                       + 0.0208351f * t * t * t * t * t * t * t * t);
+        if (ax > ay)
+            a = 1.57079633f - a;
+        if (y < 0.0f)
+            a = 3.14159265f - a;
+        return x < 0.0f ? -a : a;
     }
 
     // Sample i: each source's signal into its place, heard; the cabin's boom; the fade's gain

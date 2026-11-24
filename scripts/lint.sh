@@ -89,6 +89,19 @@ if [ "${TEE_LINT_SCHEMA:-1}" != 0 ] && [ -f sim/engine.fm ]; then
     if ! out=$("$schema" --sim sim --lint 2>&1); then
       while IFS= read -r p; do [ -n "$p" ] && say "sim/engine.fm: $p"; done <<< "$out"
     fi
+    # reported, not a failure: the visible Spec fields with no ui::help (the manual's table fills them:
+    # docs/manual/help.tsv, then scripts/apply-help.py)
+    if command -v python3 > /dev/null && json=$("$schema" --sim sim --json 2> /dev/null); then
+      python3 -c '
+import json, sys
+d = json.loads(sys.stdin.read())
+bare = [f["path"] for f in d["fields"] if f["path"].startswith("spec.") and f.get("kind") != "rev"
+        and not f.get("hidden") and not f.get("help")]
+if bare:
+    more = ", ..." if len(bare) > 5 else ""
+    print("lint: note: %d visible Spec fields have no ui::help (%s%s): docs/manual/help.tsv, then "
+          "scripts/apply-help.py" % (len(bare), ", ".join(bare[:5]), more))' <<< "$json"
+    fi
   else
     echo "lint: no build tree with tee-schema: the Spec's lint skipped (cmake --build --preset dev --target tee-schema)"
   fi

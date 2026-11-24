@@ -202,11 +202,27 @@
         10
       ],
       "range": [
-        700,
-        1000
+        850,
+        1100
       ],
       "unit": "K",
-      "source": "a diesel's exhaust at the port at full load is some 700 to 1000 K (Heywood, Internal Combustion Engine Fundamentals, ch. 14; makers' pre-turbine limits near 1020 K)"
+      "source": "the gas at a diesel's exhaust valve at full load, before the port and pipe cool it: some 850 to 1100 K (judgement: the header's 700 to 950 K, below, plus the port's cooling; Heywood, Internal Combustion Engine Fundamentals, ch. 14)"
+    },
+    {
+      "name": "Header gas at full load",
+      "scenario": "validation/scenarios/p-full-load-2000.json",
+      "tel": "exhaust.headerTemperature",
+      "measure": "mean",
+      "during": [
+        8,
+        10
+      ],
+      "range": [
+        700,
+        950
+      ],
+      "unit": "K",
+      "source": "a thermocouple a little way down a diesel's manifold reads some 700 to 950 K at full load (makers' pre-turbine limits near 1000 K; Heywood, Internal Combustion Engine Fundamentals, ch. 14)"
     },
     {
       "name": "Quarter mile: time",
