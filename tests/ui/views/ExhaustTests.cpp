@@ -404,6 +404,29 @@ namespace
         rig.host->tick(1);
         CHECK(rig.ws->drawKey() != k);
         CHECK(tee::test::u3::textCollisions(rig.host->draw()).empty());
+        // with the host's load: the exhaust's share of it, a share of a core (typical: 2201 / (1962 - 765 + 2201) of 0.4)
+        CHECK(typical.line(0.4) == "32 pipes, 9 junctions, 8 joints, 2 open ends: about 26 % of a core, of the 40 % the simulator takes");
+        CHECK(typical.line(0.0) == typical.line());
+        tee::ui::FrameServices services;
+        services.simLoad = [] { return 0.4f; };
+        rig.ctx.services = &services;
+        const std::uint64_t k2 = rig.ws->drawKey();
+        services.simLoad = [] { return 0.5f; };
+        CHECK(rig.ws->drawKey() != k2);
+        {
+            // the longer line fits the frame's narrowest stage, clear of every other text
+            const funkgui::Rect st = tee::test::u3::frameStage(1100, 700);
+            ExRig narrow("tt-v8-x", static_cast<int>(st.w), static_cast<int>(st.h), 1.0f);
+            narrow.ctx.services = &services;
+            narrow.host->tick(1);
+            const std::string hits = tee::test::u3::textCollisions(narrow.host->draw());
+            CHECK_MSG(hits.empty(), hits);
+            picture("exhaust.cost.load", *narrow.host);
+            narrow.ctx.services = nullptr;
+        }
+        services.simLoad = [] { return 0.0f; };   // compiling: absent, back to the reference
+        CHECK(!rig.host->draw().prims.empty());
+        rig.ctx.services = nullptr;
         rig.demo.engine.set("exhaust.pipes", std::nan(""));
         rig.host->tick(1);
         CHECK(!rig.host->draw().prims.empty());
