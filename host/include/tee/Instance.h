@@ -43,6 +43,8 @@ namespace tee
         void reset() noexcept;
 
         // ---- by handle: no string work, no allocation -----------------------------------------------------------
+        // A plain load and a plain store, a parameter's value included: from the thread that calls the module's
+        // methods. (To set a parameter from another thread, write it by its Schema::Handle or its path, below.)
         template <typename T>
         T get(Field<T> field, std::size_t index = 0) const noexcept
         {
