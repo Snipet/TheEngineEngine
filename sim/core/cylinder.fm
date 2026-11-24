@@ -76,8 +76,9 @@ module Cylinder
     float bookCharged;  // the last finished burn's three, for the energy account
     float bookReleased;
     float bookOut;
-    float phi;          // the charge's equivalence ratio (fuel over the stoichiometric fuel), as Combustion charged it:
-                        // the physical cylinder's gamma reads it (1 until a charge)
+    float phi;          // the charge's equivalence ratio (fuel over the stoichiometric fuel), as Combustion charged it at
+                        // intake closing (0: cut, unfuelled or unlit: plain air's side): the physical cylinder's gamma
+                        // reads it (1 until a charge)
     int conserve;       // 1 (the physical cylinder: Engine::woschniWalls): what the intake pushed back comes back as itself,
                         // its mass at the temperature it left at; 0: the reference's, as the same volume of the air
     float cBurn;        // how much of what could burn this cycle's burn will burn (the dilution's toll)
