@@ -193,7 +193,9 @@ index past the array is a note that gives its extent ("engine.pin[20] is past th
 engine.pin[0] to engine.pin[15]"). A generated page shows an array of up to 8 elements a control each, in its group's
 row (`kArrayKnobs`); of 9 to 16 elements one row of cells, the `array PATH` element (a `MapEdit` of one row: a cell
 typed, a choice by its name or index, or dragged, one undo step each; the header of element numbers is not
-editable); of more than 16 a control each again (and `splitPages` counts them). The Spec's per-cylinder arrays are
+editable); of more than 16 a control each again (and `splitPages` counts them). An array of arrays is a field an
+element too, `engine.gain[1][2]`, labelled "Gain 2.3" (`FieldInfo::shape`), a control each on a generated page; an
+element outside it is a note that gives its shape ("cyl.gain[2][0] is not an element: cyl.gain has 2 x 3 elements"). The Spec's per-cylinder arrays are
 `MAX_CYL` (16) long, so they come as rows of cells.
 
 **Until and after card C.** `FieldDoc` is the small interface the binding needs (fields with their attributes,
