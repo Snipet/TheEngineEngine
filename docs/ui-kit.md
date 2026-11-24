@@ -213,5 +213,14 @@ the frame replaces it once the shell plays the new simulator with a `Build` (the
 `tee-ui-tests` holds J2's tests beside J1's (`WidgetTests.inc`, `BindTests.inc`, `AppTests.inc`); the root's build
 adds `tee-ui-build-tests` (`BuildTests.cpp`: the real `sim/`). Goldens: `widgets.controls`, `widgets.instruments`,
 `widgets.tables` (the gallery) and `app.<screen>` (each screen at 1280 x 800). `ui.app.sheet` writes the contact
-sheet, `out/ui/sheet.png`: every screen at 1024 x 640 and at 1600 x 1000, three screens a row. Every picture is drawn
-by FunkGui's software rasteriser.
+sheets, `out/ui/sheet.png` (pixel density 2) and `out/ui/sheet.dpi1.png` (density 1, as many Windows displays at
+100 %): every screen at 1024 x 640 and at 1600 x 1000, three screens a row; and each screen at 1280 x 800 and density
+1 (`app.<screen>.dpi1.png`), as the gallery's pages are (`widgets.<page>.dpi1.png`). J2's text is at FunkGui's 10 px
+floor or above in logical px (its smallest styles are 10 px; a gauge's numerals are clamped to 10 to 16). Every
+picture is drawn by FunkGui's software rasteriser.
+
+**The same picture on every platform.** The goldens are fingerprints of the geometry, so a float computed
+differently changes them. FunkGui's sources are compiled inside whatever links `FunkGui::core` (an INTERFACE
+library), with that target's flags: the tests' copy (`tee_ui_test_funkgui`) is built with `-ffp-contract=off`, as
+our own code is, because Apple's clang on arm64 otherwise fuses multiply-adds in FunkGui's geometry (its default
+is `-ffp-contract=on`, and arm64 has FMA) and the six J1 goldens failed there alone (run 45390597717).
