@@ -23,8 +23,8 @@
 //   y = car.road(kSq)               one sample of the tyres on the road (their squeal at its share kSq) and the
 //                                   driveline's clunk
 #pragma once
-#include "onepole.fm"
-#include "biquad.fm"
+#include "lib/onepole.fm"
+#include "lib/biquad.fm"
 
 module Car
 {
