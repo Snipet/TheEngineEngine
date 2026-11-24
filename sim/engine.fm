@@ -872,6 +872,7 @@ module Engine
                               ecu.redRpm, lay.bike, set.clutch, set.brake, set.lever, set.buttons, set.gas, crank.rpm, ecu.idleRpm, ecu.rpmAvg);
         else
             car.lastDrive = 0;
+        ecu.fillShare = intk.itbs != 0 ? 0.0f : intk.vPlenum / fmaxf(vTotal, 1.0e-5f);   // (N1, for card H: the idle spark's look-ahead)
         if (ecu.control(d16, ped, set.drive, set.modwheel, set.pressure, crank.rpm, fuelUse, heat.warm, car.shiftCut, car.gear,
                         set.clutch, crank.omega, intk.pPlenum, set.drive != 0 ? fabsf(car.v) : 0.0f, exh.gasTemperature(0)))
             crank.omega = 0.0f;
