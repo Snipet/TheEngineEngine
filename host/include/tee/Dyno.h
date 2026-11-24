@@ -39,13 +39,20 @@ namespace tee
         double settle = 0.6;           // seconds each step (and the sweep's start) is held before it is measured
         double measure = 0.25;         // seconds a step is averaged over
         double pedal = 1.0;            // the throttle, 0 to 1
-        double warmup = 2.0;           // seconds at `from`, started and running, before anything is measured
+        // Seconds at `from`, started and running, before anything is measured; below 0 (the default): 2 for a petrol
+        // engine without a turbo, 8 for a turbo or a diesel. A turbo diesel swept after 2 s has not spooled and its
+        // charge does not yet light every time: it misfires through the sweep (the large diesel at 60 rad/s^2 read
+        // negative torque from 1400 rpm; after 8 s, none). Above a diesel's governed speed the governor takes the
+        // fuel and the brake reads its friction: a negative torque that is right.
+        double warmup = -1.0;
         bool warm = true;              // the engine held at its working temperatures (Warm.h), as a dyno cell holds it
         std::string torque = "engine.torque";   // the tel field the absorbed torque is read from
         std::vector<std::string> fields;        // more tel fields at each point: "boost.pressure", "engine.manifold"
         double sampleRate = 48000.0;
         int block = 512;
 
+        // The warm-up this plan gives `build` (warmup, or its default above).
+        double warmupFor(const Build& build) const;
         // A key for the plan, which with the build's hash keys the cache.
         std::uint64_t hash() const;
     };
