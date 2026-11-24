@@ -50,7 +50,10 @@ The exhaust as built, drawn from the same rules the simulator's builder uses to 
   `nodes`, `pairs`, `openEnds`) and their price as a share of the reference engine's whole cost ("32 pipes, 9
   junctions, 8 joints, 2 open ends: about 1.1 of the reference engine"). The prices are docs/models/exhaust.md's
   ("What the network costs, by element": 37, 51, 17, 46 ns, 330 fixed, R 1962), kept in one table,
-  `NetworkCost` in ExhaustModel.h. Absent counts: a dash. Test `ui.exhaust.cost` (G's two topologies).
+  `NetworkCost` in ExhaustModel.h. With the frame's measured load (`FrameServices::simLoad`, the mean share of a
+  core; 0 while compiling is absent) it reads "about 26 % of a core, of the 40 % the simulator takes": the network's
+  share of the engine (R - 765 + this, the reference with this network for its own exhaust) times the load. Absent
+  counts: a dash. Test `ui.exhaust.cost` (G's two topologies, with and without a load).
 
 ## A two-stroke (engine.cycle 1)
 
