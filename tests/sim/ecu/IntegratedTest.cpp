@@ -211,3 +211,33 @@ TEST_CASE("H10: traction control holds a spinning car's slip near its target", "
     CHECK(onMean < 0.13);                                // near the target, 0.10
     CHECK(onState == 2.0);                               // and no stall
 }
+
+TEST_CASE("H: both models on, the V8 starts at -20 C and at the coldest air", "[ecu][integrated][cold]")
+{
+    // X-003: with fuel.model 1 and ecu.model 1 the cold start's enrichment made the burn's own mixture lambda 0.62
+    // (0.88 at the cranking's full manifold times 0.7), at gasoline's rich limit, where no heat comes: it cranked for
+    // ever. The enrichment is now fuel for the cold walls (Ecu1::fuelFactor), the burn seeing the lambda asked
+    for (double air : {253.15, 233.15})
+    {
+        Sim s("v8");
+        s.set("ecu.model", 1);
+        s.set("fuel.model", 1);
+        s.set("env.temperature", air);
+        s.ctl().mode = tee::EnginePlayer::kModeDrive;
+        s.ctl().ignition = tee::EnginePlayer::kIgnitionStart;
+        double ranAt = -1.0;
+        for (int i = 0; i < 400 && ranAt < 0.0; ++i)
+        {
+            s.run(0.01);
+            if (s.tel("engine.state") == 2.0)
+                ranAt = 0.01 * (i + 1);
+        }
+        s.ctl().ignition = tee::EnginePlayer::kIgnitionOn;
+        const double rpm = s.mean("engine.speed", 3.0) * 9.5492966;
+        std::printf("cold start at %.2f K: running at %.2f s, fast idle %.0f rpm\n", air, ranAt, rpm);
+        CHECK(ranAt > 0.0);
+        CHECK(ranAt < 2.0);
+        CHECK(s.tel("engine.state") == 2.0);
+        CHECK(rpm > 1000.0);
+    }
+}

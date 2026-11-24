@@ -251,6 +251,7 @@ module Combustion
         int firing = CHARGE_BURN;
         float adv = 0.0f;
         float lambda = 1.0f;
+        float extra = 1.0f;
         float kRetC = ecu->kRet;
         if (e1)
         {
@@ -258,6 +259,7 @@ module Combustion
             firing = ecu->one.fire(ci);
             adv = ecu->one.sparkFor;
             lambda = ecu->one.lambda;
+            extra = ecu->one.fuelFactor;
             kRetC = ecu->one.knock.retard[ci < 16 ? ci : 15];
         }
         else
@@ -275,7 +277,7 @@ module Combustion
         if (f1)
         {
             one.make(fuel->grade, firing, burnable, 1.0f, lambda, fuel->direct, cy->t, share, factor, -adv,
-                     0.5f + 0.5f * nz->rnd());
+                     0.5f + 0.5f * nz->rnd(), extra);
             q = one.heat;
             outFuel = one.outFuel;
             outAir = one.outAir;

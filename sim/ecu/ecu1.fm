@@ -104,7 +104,9 @@ module Ecu1
     float bypass;       // the idle valve
     float trim;         // the spark's quick hand on the torque (the reference's trim)
     float spark;        // degrees before the top, before a cylinder's knock retard
-    float lambda;
+    float lambda;       // the mixture the burn is to see
+    float fuelFactor;   // the fuel injected over what that mixture holds: a start's and a cold engine's enrichment (the
+                        // extra wets the cold walls and the oil, state.fm), 1 warm
     float boost;        // Pa over the air
     float camIn;
     float camEx;
@@ -185,7 +187,8 @@ module Ecu1
         maps.tune.redRpm = redRpm;
         maps.tune.idleRpm = idle.target;
         spark = maps.read(&m->spark, m->sparkAuto, MAP_SPARK, w, m->sparkAuto ? loadRef : load) + in->timing;
-        lambda = maps.read(&m->lambda, m->lambdaAuto, MAP_LAMBDA, w, load) * key.enrich;
+        lambda = maps.read(&m->lambda, m->lambdaAuto, MAP_LAMBDA, w, load);
+        fuelFactor = 1.0f / fmaxf(key.enrich, 0.3f);
         boost = maps.read(&m->boost, m->boostAuto, MAP_BOOST, w, (float)(in->gear < 1 ? 1 : in->gear));
         camIn = maps.read(&m->camIn, m->camInAuto, MAP_CAM_IN, w, load);
         camEx = maps.read(&m->camEx, m->camExAuto, MAP_CAM_EX, w, load);
