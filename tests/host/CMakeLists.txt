@@ -13,6 +13,8 @@ target_compile_definitions(tee-host-tests PRIVATE
 catch_discover_tests(tee-host-tests DISCOVERY_MODE PRE_TEST PROPERTIES TIMEOUT 900)
 # the tools a test runs, beside the tests in bin/
 target_compile_definitions(tee-host-tests PRIVATE "TEE_BIN_DIR=\"$<TARGET_FILE_DIR:tee-host-tests>\"")
-if(TARGET tee-dyno)
-  add_dependencies(tee-host-tests tee-dyno)
-endif()
+foreach(_tool tee-dyno tee-render)
+  if(TARGET ${_tool})
+    add_dependencies(tee-host-tests ${_tool})
+  endif()
+endforeach()

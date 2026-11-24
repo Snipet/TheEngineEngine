@@ -49,6 +49,10 @@ namespace tee::test::views
     void typeKeys(funkgui::HeadlessHost& host, std::string_view spec);
     // out/ui/ (made if needed).
     std::filesystem::path outDir();
+    // What the .gui reader says of a workspace's inspectorPage() as it is now, over the demo's document ("" : it reads
+    // clean; a workspace whose page is the frame's generated one has none). Each package checks its own page with it:
+    //     CHECK_MSG(inspectorNotes(*rig.ws, rig.demo).empty(), inspectorNotes(*rig.ws, rig.demo));
+    std::string inspectorNotes(const tee::ui::Workspace& ws, tee::ui::DemoRig& demo);
 
     // A workspace alone in a headless host over the demo (ui/app/Demo.h): its stage the whole window. `t` is the demo
     // script's time; at(t) moves it and ticks the host so the eases land.
