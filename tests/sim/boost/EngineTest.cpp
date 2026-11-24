@@ -1,6 +1,6 @@
 // tests/sim/boost/EngineTest.cpp: card F's integrated tests: the machine (boost.model 1) in the real engine
-// (sim/engine.fm through tee::EnginePlayer), at full load on the engine dyno. The exhaust side is the stand-in in Boost::exhaustStandIn until card G's
-// network ends its collectors in the turbine's housings (sim/README.md, Boost).
+// (sim/engine.fm through tee::EnginePlayer), at full load on the engine dyno. The exhaust side is card G's network,
+// whose collectors end in the turbine's housings (boost.model 1 implies it; sim/README.md, Boost).
 #include "sim/Twin.h"
 
 #include <catch2/catch_approx.hpp>
