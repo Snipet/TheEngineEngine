@@ -479,3 +479,42 @@ TEST_CASE("the books hold, and the engine makes torque, on every diesel archetyp
     booksOn({"archetypes/tractor-15-inline-six", "archetypes/diesel-20-common-rail", "archetypes/pickup-diesel-67-inline-six",
              "archetypes/turbo-four-20-gdi"});
 }
+
+TEST_CASE("a burn still running at exhaust opening lets its unburned fuel out with the gas: its heat released once", "[core][engine][pop]")
+{
+    // (the lead's ruling, 24 Nov, with N1: the cylinder's side of an overrun's pop. The default V8 under the physical
+    // cylinder at full load with its burns made six times as long, so that each runs past the exhaust's opening: per
+    // burn, the heat released in the cylinder and the heat let out unburned sum to the charge's within 1 %)
+    Bench b("default");
+    std::string e;
+    REQUIRE(b.player().setSpec("fuel.model", 1, e));
+    b.start();
+    b.warm();
+    b.ctl().mode = 2;
+    b.ctl().throttle = 1.0f;
+    b.ctl().dynoSpeed = float(3000.0 / 9.5492966);
+    b.write("burnK", 6.0);          // (every burn six times as long: it runs well past the exhaust's opening)
+    b.play(2.0);
+    // (fuel.model 1 set before the start, on a build whose layout makes no configure: the decisions must still reach
+    // Combustion and the cylinders)
+    CHECK(b.field("comb.walls") == 1.0);
+    CHECK(b.field("cyl[0].conserve") == 1.0);
+    std::printf("spark %.1f degrees before the top, burn %.0f degrees, exhaust opens %.0f\n", b.tel("ecu.advance"), b.field("cyl[0].burnDur"),
+                b.field("cyl[0].evo"));
+    double worst = 0.0, outShare = 0.0;
+    int n = 0;
+    b.play(1.0, [&] {
+        const double q = b.field("cyl[0].bookCharged");
+        if (q <= 0.0)
+            return;
+        const double sum = b.field("cyl[0].bookReleased") + b.field("cyl[0].bookOut");
+        worst = std::max(worst, std::fabs(sum / q - 1.0));
+        outShare += b.field("cyl[0].bookOut") / q;
+        n += 1;
+    });
+    std::printf("late burns: %d blocks read, released + let out over charged: worst %.4f off; let out unburned %.1f %% of the charge\n", n,
+                worst, n > 0 ? 100.0 * outShare / n : 0.0);
+    REQUIRE(n > 0);
+    CHECK(worst < 0.01);
+    CHECK(outShare / n > 0.001);
+}
