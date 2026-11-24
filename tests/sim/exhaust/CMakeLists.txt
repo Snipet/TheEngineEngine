@@ -7,7 +7,7 @@ file(GLOB _tee_exhaust_sources CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.
 add_executable(tee-tests-exhaust ${_tee_exhaust_sources})
 tee_target_defaults(tee-tests-exhaust)
 target_include_directories(tee-tests-exhaust PRIVATE "${PROJECT_SOURCE_DIR}/tests")
-target_link_libraries(tee-tests-exhaust PRIVATE Tee::host Catch2::Catch2WithMain)
+target_link_libraries(tee-tests-exhaust PRIVATE Tee::host Catch2::Catch2WithMain nlohmann_json::nlohmann_json)
 target_compile_definitions(tee-tests-exhaust PRIVATE
   "TEE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
   "TEE_SOURCE_SIM_DIR=\"${PROJECT_SOURCE_DIR}/sim/ref\""
