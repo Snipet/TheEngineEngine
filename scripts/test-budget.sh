@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # scripts/test-budget.sh <ctest log>: the fast tier's time by package against its budget (docs/plan/01-rules.md §3),
-# as a Markdown table: each package's CPU-seconds (the sum of its tests' times, as ctest prints them), its budget, and
+# as a Markdown table: each package's test-seconds (the sum of its tests' times as ctest prints them, ctest's sec*proc; not time(1)'s processor time, which counts the JIT's threads), its budget, and
 # whether it is over; then the whole tier against its own. CI's fast tier writes it into each job's summary; run it on
 # any `ctest --preset dev` log (`ctest --preset dev | tee ctest.log`). It reports; it never fails.
 #
@@ -34,10 +34,10 @@ awk -F'\t' -v scale="$scale" '
   END {
     if (scale != 1) {
       printf "This runner is %.2f times the reference runner (tee-bench -O2 compile): the verdict is on the scaled time.\n\n", scale
-      print "| package | tests | CPU-s | scaled | budget | |"
+      print "| package | tests | test-s | scaled | budget | |"
       print "|---|---:|---:|---:|---:|---|"
     } else {
-      print "| package | tests | CPU-s | budget | |"
+      print "| package | tests | test-s | budget | |"
       print "|---|---:|---:|---:|---|"
     }
     cmd = (scale != 1) ? "sort -t\"|\" -k5 -rn" : "sort -t\"|\" -k4 -rn"
@@ -49,6 +49,6 @@ awk -F'\t' -v scale="$scale" '
     }
     close(cmd)
     t = tot / scale
-    if (scale != 1) printf "\nThe whole fast tier: %.0f CPU-s here, %.0f scaled, against %d%s\n", tot, t, whole, (t > whole ? " (**over**)" : "")
-    else printf "\nThe whole fast tier: %.0f CPU-s against %d%s\n", tot, whole, (tot > whole ? " (**over**)" : "")
+    if (scale != 1) printf "\nThe whole fast tier: %.0f test-s here, %.0f scaled, against %d%s\n", tot, t, whole, (t > whole ? " (**over**)" : "")
+    else printf "\nThe whole fast tier: %.0f test-s against %d%s\n", tot, whole, (tot > whole ? " (**over**)" : "")
   }'

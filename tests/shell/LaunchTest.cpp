@@ -43,18 +43,24 @@ TEST_CASE("app: the build a launch opens: preset, reference, the remembered one,
     l = app::chooseLaunchBuild(o, false, "", content);
     CHECK(l.file == first);
     CHECK(std::string(l.what) == "the first build");
+    CHECK(l.first);
 
     // the remembered build comes first; a remembered file that is gone does not
     l = app::chooseLaunchBuild(o, false, last.string(), content);
     CHECK(l.file == last);
     CHECK(std::string(l.what) == "the last build");
+    CHECK_FALSE(l.first);
     l = app::chooseLaunchBuild(o, false, (content / "gone.json").string(), content);
     CHECK(l.file == first);
 
-    // a machine's run, its settings not chosen for it: not the person's build, the first build all the same
+    // a machine's run, its settings not chosen for it: no build (not the person's, and not the first build unless named)
     const char* chosen = std::getenv("TEE_SETTINGS_DIR");
     if (chosen == nullptr || chosen[0] == '\0')
-        CHECK(app::chooseLaunchBuild(o, true, last.string(), content).file == first);
+        CHECK(app::chooseLaunchBuild(o, true, last.string(), content).file.empty());
+    CHECK(app::chooseLaunchBuild(o, true, "", content).file.empty());
+    app::Options named = o;
+    named.firstBuild = first.string();
+    CHECK(app::chooseLaunchBuild(named, true, "", content).file == first);
 
     // --first-build in place of content's; one that is not there: none
     app::Options given = o;

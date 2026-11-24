@@ -154,12 +154,13 @@ if(TARGET TheEngineEngine AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
     add_test(NAME shell.window.info
       COMMAND "${PROJECT_SOURCE_DIR}/scripts/xvfb-run.sh" $<TARGET_FILE:TheEngineEngine> --engine tone --info
       WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
-    # The launch (app/Launch.h): a first launch with no settings opens the first build (here an archetype in place of
-    # content/builds/first.json) and ends with its name and its model switches on, in the document and as the engine was
-    # sent them; a launch whose settings remember a build (tests/shell/fixtures/launch-last) ends with that one.
+    # The launch (app/Launch.h): a launch with no settings that names the first build (content/builds/first.json: a
+    # scripted run opens none unless named) shows its notes' first line ("Try first: ...") and ends with its name and
+    # every model switch the Schema has on, in the document and as the engine was sent them (a switch at 0, or one not
+    # sent, fails it); a launch whose settings remember a build (tests/shell/fixtures/launch-last) ends with that one.
     add_test(NAME shell.window.first
       COMMAND "${PROJECT_SOURCE_DIR}/scripts/xvfb-run.sh" $<TARGET_FILE:TheEngineEngine>
-              --first-build "${PROJECT_SOURCE_DIR}/content/builds/archetypes/economy-four-15.json" --frames 30
+              --first-build "${PROJECT_SOURCE_DIR}/content/builds/first.json" --frames 30
       WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
     add_test(NAME shell.window.last
       COMMAND "${PROJECT_SOURCE_DIR}/scripts/xvfb-run.sh" $<TARGET_FILE:TheEngineEngine>
@@ -169,7 +170,8 @@ if(TARGET TheEngineEngine AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
       TIMEOUT 600 LABELS "shell;window" RUN_SERIAL TRUE)
     set_tests_properties(shell.window.first PROPERTIES
       ENVIRONMENT "SDL_AUDIODRIVER=dummy;TEE_SETTINGS_DIR=${_out}/launch-no-settings"
-      PASS_REGULAR_EXPRESSION "build: \"1\\.5 L economy four\" file=[^ ]*economy-four-15\\.json unsaved=no models:.* valve=[1-9][0-9]*/[1-9][0-9]* .*car=[1-9][0-9]*/[1-9][0-9]*.*\ntee-app: ok")
+      PASS_REGULAR_EXPRESSION "note: Try first.*build: \"[^\"]+\" file=[^ ]*first\\.json unsaved=no models: [a-z]+=[1-9].*\ntee-app: ok"
+      FAIL_REGULAR_EXPRESSION "models:[^\n]* [a-z]+=0/|models:[^\n]* [a-z]+=[0-9]+/0[ \n]|models:[^\n]* [a-z]+=[0-9]+[ \n]")
     # (the remembered build over the first: the soak tier's; the choice itself is LaunchTest.cpp's)
     set_tests_properties(shell.window.last PROPERTIES LABELS "shell;window;nightly"
       ENVIRONMENT "SDL_AUDIODRIVER=dummy;TEE_SETTINGS_DIR=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/launch-last"

@@ -73,8 +73,53 @@ full load, torque N m:
 Best torque stays at λ 0.90, some 5 to 7 % over λ 1.0, as engines show (best power a little rich). Gross indicated
 efficiency on the flat six with Gatowski: 0.383 at λ 0.90, 0.407 at 1.02.
 
-Test: `calibration-balance.sim` holds gross efficiency 0.33 to 0.38 on the small block at 2000, 3000 and 4600 rpm,
-skipped on this finding until D's change lands.
+Test: `calibration-balance.sim` holds gross efficiency 0.33 to 0.38 on the small block at 2000, 3000 and 4600 rpm.
+
+
+**Landed (D's 3990ee47 and a845b07f; measured on the tip by 20:16 by `date -u`, tee::Build path).** Torque, N m, at each
+archetype's target peak-torque and peak-power speeds, before (4bf0fe0) and after; gross indicated efficiency beside.
+Other commits landed between the two runs (N1's, G's); the probe's scratch run with the γ line alone gave the same
+within 0.3 %, so the change is γ's.
+
+| Engine | rpm | Torque before → after | Gross before → after |
+|---|---|---|---|
+| air-cooled-flat-six-36 | 4750 | 417.0 → 392.6 (-5.9 %) | 0.408 → 0.385 |
+| air-cooled-flat-six-36 | 6050 | 381.6 → 354.2 (-7.2 %) | 0.412 → 0.386 |
+| vr6-28 | 4200 | 284.4 → 266.6 (-6.3 %) | 0.395 → 0.372 |
+| vr6-28 | 5800 | 219.5 → 202.5 (-7.7 %) | 0.399 → 0.375 |
+| twin-cam-roadster-18 | 5000 | 183.1 → 171.6 (-6.3 %) | 0.385 → 0.361 |
+| twin-cam-roadster-18 | 6650 | 180.2 → 167.1 (-7.3 %) | 0.399 → 0.374 |
+| small-block-57-carb | 3000 | 486.1 → 455.6 (-6.3 %) | 0.374 → 0.352 |
+| small-block-57-carb | 4600 | 462.1 → 429.4 (-7.1 %) | 0.383 → 0.358 |
+| pushrod-v6-38 | 4000 | 365.5 → 341.2 (-6.6 %) | 0.388 → 0.364 |
+| pushrod-v6-38 | 5200 | 251.0 → 231.1 (-7.9 %) | 0.389 → 0.366 |
+| big-bore-70-pushrod-v8 | 4800 | 748.0 → 699.5 (-6.5 %) | 0.407 → 0.383 |
+| big-bore-70-pushrod-v8 | 6300 | 605.1 → 558.8 (-7.7 %) | 0.412 → 0.387 |
+| four-cam-v8-50 | 4500 | 594.4 → 560.0 (-5.8 %) | 0.414 → 0.390 |
+| four-cam-v8-50 | 6850 | 485.1 → 452.5 (-6.7 %) | 0.422 → 0.397 |
+| economy-four-15 | 4400 | 146.1 → 136.9 (-6.3 %) | 0.393 → 0.370 |
+| economy-four-15 | 6300 | 142.5 → 133.7 (-6.2 %) | 0.406 → 0.382 |
+| hot-hatch-16-16v | 5250 | 154.5 → 145.3 (-6.0 %) | 0.389 → 0.366 |
+| hot-hatch-16-16v | 6850 | 173.2 → 158.3 (-8.6 %) | 0.402 → 0.377 |
+| straight-six-32-high-rev | 4900 | 375.1 → 351.4 (-6.3 %) | 0.408 → 0.384 |
+| straight-six-32-high-rev | 7800 | 289.5 → 270.4 (-6.6 %) | 0.416 → 0.390 |
+| flat-plane-v8-45 | 6000 | 392.9 → 365.7 (-6.9 %) | 0.418 → 0.395 |
+| flat-plane-v8-45 | 8500 | 407.1 → 375.0 (-7.9 %) | 0.425 → 0.401 |
+| two-stage-cam-20 | 7500 | 143.1 → 136.3 (-4.8 %) | 0.398 → 0.375 |
+| two-stage-cam-20 | 8300 | 161.5 → 151.2 (-6.4 %) | 0.397 → 0.373 |
+| v10-52 | 6500 | 495.1 → 465.8 (-5.9 %) | 0.420 → 0.395 |
+| v10-52 | 8350 | 501.5 → 465.1 (-7.3 %) | 0.430 → 0.404 |
+| v12-65 | 6500 | 668.8 → 635.1 (-5.0 %) | 0.425 → 0.402 |
+| v12-65 | 8575 | 666.9 → 628.9 (-5.7 %) | 0.433 → 0.409 |
+| v6-35-na | 4750 | 310.2 → 291.9 (-5.9 %) | 0.401 → 0.378 |
+| v6-35-na | 6350 | 319.3 → 298.8 (-6.4 %) | 0.403 → 0.379 |
+| big-block-74-pushrod-v8 | 3500 | 634.7 → 593.6 (-6.5 %) | 0.392 → 0.368 |
+| big-block-74-pushrod-v8 | 5000 | 570.3 → 527.2 (-7.6 %) | 0.399 → 0.374 |
+
+Diesels, gross IMEP, bar (4.5 s settle): diesel 2.0 2350 rpm 22.22 → 22.44, 3850 23.75 → 22.83; pickup 6.7 1700 21.23 →
+21.16, 2887 21.46 → 21.28; tractor 1100 21.58 → 21.40, 1800 21.83 → 21.70: -3.9 to +1.0 %.
+
+`calibration-balance.sim`'s efficiency case now passes unskipped (small block 0.345, 0.352, 0.358) and holds it.
 
 ## N3-2. The rich mixture's heat (measured; H's file, held, not changed)
 

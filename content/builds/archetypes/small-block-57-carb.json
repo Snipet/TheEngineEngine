@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "Small-block 5.7 L, carburettor-like",
-  "notes": "A 350 cubic inch small block (4.00 x 3.48 in: 101.6 x 88.4 mm, 5733 cc), 9:1, two valves on pushrods, a flat-tappet cam, one big throttle over an open plenum as a four-barrel carburettor's. Some 150 to 200 kW net and 400 to 450 N m (makers' net ratings of the 1970s and 80s). Four-speed manual, live axle.",
+  "notes": "A 350 cubic inch small block (4.00 x 3.48 in: 101.6 x 88.4 mm, 5733 cc), 9:1, two valves on pushrods, a flat-tappet cam (the L48's), one big throttle over an open plenum as a four-barrel carburettor's. The L48 of 1975 to 1980 is rated 123 to 145 kW net (165 to 195 hp) and 346 to 380 N m (255 to 280 lb ft), 1977's 180 hp at 4000 rpm and 270 lb ft at 2400; the L82 157 kW at 5200 and 346 N m at 3600 (SAE net, looked up: corvsport.com, corvetteactioncenter.com). Four-speed manual, live axle.",
   "spec": {
     "engine": {
       "layout": "V8 crossplane",
