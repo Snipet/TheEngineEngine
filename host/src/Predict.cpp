@@ -63,6 +63,8 @@ namespace tee
                 hasState_ = find("tel.engine.state", state_);
                 hasFlags_ = find("tel.engine.flags", flagsH_);
                 hasRetard_ = find("ecu.one.knock.retard", retardH_);
+                hasBoost_ = build.fieldOf("boost.kind") >= 0 && build.get("boost.kind") != 0.0
+                            && find("tel.boost.pressure", boostH_);
                 for (const std::string& name : options_.fields)
                 {
                     const FieldInfo* f = nullptr;
@@ -286,10 +288,13 @@ namespace tee
                 // the exhaust's settle (after the first cycle at this speed) wants some 0.1 s before a measure
                 const int afterSettle = heatSettle_ ? static_cast<int>(std::ceil(0.1 * speed / kFourPi)) : 0;
                 const int settling = std::max(slow_.empty() ? 0 : fresh_ ? 8 : 6, afterSettle);
-                // a build whose knock control acts gets as many cycles as its retard needs, to some two seconds
-                const int knockMost = hasRetard_ ? std::max(options_.maxCycles, static_cast<int>(2.0 * speed / kFourPi)) : 0;
+                // a build whose knock control acts, or whose turbo spools, gets as many cycles as its retard and its
+                // boost need, to some three seconds
+                const int knockMost = hasRetard_ || hasBoost_
+                                          ? std::max(options_.maxCycles, static_cast<int>(3.0 * speed / kFourPi)) : 0;
                 const int most = options_.holdSeconds > 0.0 ? 1 << 30 : std::max(options_.maxCycles, knockMost) + settling;
                 double lastRetard = knockRetard();
+                double lastBoost = boostNow();
                 for (int c = 0; c < most; ++c)
                 {
                     if (cancel != nullptr && cancel->load(std::memory_order_relaxed))
@@ -344,7 +349,13 @@ namespace tee
                         const double retard = knockRetard();
                         const bool retardSteady = !hasRetard_ || std::fabs(retard - lastRetard) <= 0.25;
                         lastRetard = retard;
-                        if (k + 1 >= options_.minCycles && held >= options_.holdSeconds && retardSteady
+                        // a turbo's boost after a tip-in or a change of speed overshoots, the gate pulls it back over
+                        // some 0.5 s and it settles over some 2 (N2's measures): steady within 1 % a cycle
+                        const double boost = boostNow();
+                        const bool boostSteady =
+                            !hasBoost_ || std::fabs(boost - lastBoost) <= 0.01 * std::max(std::fabs(boost), 20000.0);
+                        lastBoost = boost;
+                        if (k + 1 >= options_.minCycles && held >= options_.holdSeconds && retardSteady && boostSteady
                             && std::fabs(t - previous) <= options_.tolerance * std::max(std::fabs(p.torque), 1.0))
                         {
                             p.settled = true;
@@ -435,6 +446,8 @@ namespace tee
                 ++rev;
                 std::memcpy(data + exhaustRev_, &rev, 4);
             }
+
+            double boostNow() const { return hasBoost_ ? instance_->read(boostH_) : 0.0; }
 
             // The knock retard's mean over the retarded cylinders, degrees (0 without knock control's state)
             double knockRetard() const
@@ -588,7 +601,8 @@ namespace tee
                  absorber_ = false, hasFlags_ = false, faulted_ = false, hasRetard_ = false;
             Schema::Handle flagsH_, retardH_, heatSettleH_;
             std::vector<std::pair<const FieldInfo*, std::size_t>> extra_;   // PredictOptions::fields
-            bool heatSettle_ = false;
+            bool heatSettle_ = false, hasBoost_ = false;
+            Schema::Handle boostH_;
             std::size_t exhaustRev_ = 0;
             Schema::Handle state_, absorberH_;
             std::vector<Slow> slow_;

@@ -274,7 +274,11 @@ module Intake
             sound = spec->trumpets == 0 ? box.sound : snd;
             qThr = -q;
             pEnds += (101325.0f + pSum / (float)np - pEnds) * fminf(dt * 6.2831853f * 20.0f, 1.0f);
-            pPlenum = pEnds;
+            // (the runners' far ends are sums of linear waves, whose rarefaction is not bounded by vacuum: on the lift
+            // after the limiter, the closed plates and the cylinders still drawing, it read -11 kPa absolute, and the
+            // ECU's load with it (card N1's test, ItbTest.cpp). The reading takes the floor the cylinder's valve takes
+            // its runner's pressure at, 8 kPa (core/cylinder.fm, ppI); the waves themselves are left as they are)
+            pPlenum = fmaxf(pEnds, 8000.0f);
             mPlenum = pPlenum * vPlenum / (287.0f * tAir);
         }
         else

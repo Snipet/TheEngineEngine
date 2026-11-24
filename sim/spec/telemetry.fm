@@ -75,8 +75,13 @@ module EngineTel
     float tsPowerValve [[ui::label("Power valve")]] [[ui::quantity("fraction")]] [[ui::help("Two-stroke: 0 shut, 1 fully open")]];
     float tsPipeTemperature [[ui::label("Pipe's gas")]] [[ui::quantity("temperature")]]
         [[ui::help("Two-stroke: the expansion chambers' gas; the speed the pipe is tuned for rises with it")]];
-    float tsCrankcase [[ui::label("Crankcase")]] [[ui::quantity("pressure")]] [[ui::help("Two-stroke: cylinder 1's, absolute")]];
+    float tsCrankcase [[ui::label("Crankcase")]] [[ui::quantity("pressure")]] [[ui::help("Two-stroke: cylinder 1's, absolute; the air's pressure (101325 Pa) on a four-stroke")]];
     float tsReed [[ui::label("Reed's opening")]] [[ui::quantity("fraction")]] [[ui::help("Two-stroke: cylinder 1's petal, 0 shut, 1 on its stop")]];
+    // card D, for N1's loss ledger: means over the cylinders' last intake closings
+    float chargeTemperature [[ui::label("Charge temperature")]] [[ui::quantity("temperature")]]
+        [[ui::help("The charge's temperature as the intake valve closes, the mean over the cylinders")]];
+    float trappedMass [[ui::label("Trapped charge")]] [[ui::quantity("mass")]]
+        [[ui::help("The unburned gas each cylinder holds as its intake valve closes, the mean over the cylinders")]];
 };
 
 module BoostTel
@@ -139,6 +144,12 @@ module ExhaustTel
         [[ui::help("1 while a bang burns near a tail in hot gas (a view draws flame)")]];
     float headerTemperature [[ui::label("Header gas")]] [[ui::quantity("temperature")]]
         [[ui::help("The gas in the primaries after the port's and the pipe's cooling: a header thermocouple's reading")]];
+    float portPressure [[ui::label("Port pressure")]] [[ui::quantity("pressure")]]
+        [[ui::help("The exhaust ports' mean pressure, absolute: the back pressure the cylinders blow down and pump against (over some 0.1 s)")]];
+    float flap [[ui::label("Exhaust flap")]] [[ui::quantity("fraction")]]
+        [[ui::help("The flap's closing, 0 open to 1 shut (less what its relief has blown open); 0 with none")]];
+    float pFlap [[ui::label("Before the flap")]] [[ui::quantity("pressure")]]
+        [[ui::help("The pressure before the flap, over the air: the brake's back pressure")]];
 };
 
 module EcuTel

@@ -50,7 +50,8 @@ module FuelAccount
     float fuel[2];      // unburned fuel in each bank's pipe, kg
     float air[2];       // and air, kg
     float hazard[2];
-    float pulse[2];     // a bang to fire this step (Pa: the Pop's amplitude), 0 none
+    float pulse[2];     // a bang waiting to fire (Pa: the Pop's amplitude), 0 none; Combustion fires it when its bank's
+                        // last pulse has ended and clears it
     float burned[2];    // the fuel it burned, kg
     float total;        // fuel burned in the pipe since the reset, kg
     int bangs;
@@ -88,7 +89,6 @@ module FuelAccount
     {
         for (int b = 0; b < 2; ++b)
         {
-            pulse[b] = 0.0f;
             burned[b] = 0.0f;
             const float t = b == 0 ? t0 : t1;
             const float hot = fminf(fmaxf((t - 900.0f) / 300.0f, 0.0f), 1.0f);
@@ -99,7 +99,8 @@ module FuelAccount
                 if (hazard[b] >= 1.0f)
                 {
                     burned[b] = can;
-                    pulse[b] = 30000.0f * (1.0f - expf(-can / 7.0e-6f));
+                    // (a bang not yet fired, its pipe still ringing with the last, merges with it: one volume of gas)
+                    pulse[b] = fmaxf(pulse[b], 30000.0f * (1.0f - expf(-can / 7.0e-6f)));
                     fuel[b] -= can;
                     air[b] = fmaxf(air[b] - can * afr, 0.0f);
                     hazard[b] = 0.0f;
