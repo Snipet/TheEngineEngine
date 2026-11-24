@@ -362,3 +362,187 @@ TEST_CASE("the auto level: cameras near and far brought together; off, each its 
     CHECK(rev[0][1] < rev[0][0] - 4.0);
     CHECK(std::fabs(rev[1][1] - rev[1][0]) < 2.0);
 }
+
+namespace
+{
+    // A spectrum's magnitudes (radix 2, a Hann window), of x's first 2^k samples
+    std::vector<double> spectrum(const std::vector<float>& x, int k)
+    {
+        const std::size_t n = std::size_t(1) << k;
+        std::vector<double> re(n), im(n, 0.0);
+        for (std::size_t i = 0; i < n; ++i)
+            re[i] = double(x[i]) * (0.5 - 0.5 * std::cos(2.0 * 3.14159265358979 * double(i) / double(n)));
+        for (std::size_t i = 1, j = 0; i < n; ++i)
+        {
+            std::size_t bit = n >> 1;
+            for (; j & bit; bit >>= 1)
+                j ^= bit;
+            j ^= bit;
+            if (i < j)
+            {
+                std::swap(re[i], re[j]);
+                std::swap(im[i], im[j]);
+            }
+        }
+        for (std::size_t len = 2; len <= n; len <<= 1)
+        {
+            const double a = -2.0 * 3.14159265358979 / double(len);
+            for (std::size_t i = 0; i < n; i += len)
+                for (std::size_t j = 0; j < len / 2; ++j)
+                {
+                    const double c = std::cos(a * double(j));
+                    const double s = std::sin(a * double(j));
+                    const double ur = re[i + j], ui = im[i + j];
+                    const double vr = re[i + j + len / 2] * c - im[i + j + len / 2] * s;
+                    const double vi = re[i + j + len / 2] * s + im[i + j + len / 2] * c;
+                    re[i + j] = ur + vr;
+                    im[i + j] = ui + vi;
+                    re[i + j + len / 2] = ur - vr;
+                    im[i + j + len / 2] = ui - vi;
+                }
+        }
+        std::vector<double> m(n / 2);
+        for (std::size_t i = 0; i < n / 2; ++i)
+            m[i] = (re[i] * re[i] + im[i] * im[i]) / double(n);
+        return m;
+    }
+
+    // first.json warm at idle, the spectrum of 2^16 samples (1.37 s) of its mono mix after 4 s: through the Places
+    // camera `cam`, or (cam < 0) the reference's view -1 - cam; voices on or off; free: on a free rev instead (from 1 s
+    // after the floor)
+    std::vector<double> heardAt(int cam, bool voices, bool free)
+    {
+        Bench b("first");
+        b.write("spec.voices.model", voices ? 1 : 0);
+        if (cam >= 0)
+            sound(b, "camera", cam);
+        else
+        {
+            sound(b, "model", 0);
+            sound(b, "view", -1 - cam);
+        }
+        // held warm as tee-render's "warm" scenarios hold it (host/include/tee/Warm.h): the coolant at the thermostat,
+        // so the fan runs as it does in p-idle-warm
+        auto hold = [&] {
+            b.write("heat.tCool", 368.0);
+            b.write("heat.tOil", 378.0);
+            b.write("heat.tSurf", 455.0);
+            b.write("heat.warm", 1.0);
+            b.write("heat.warmS", 1.0);
+        };
+        hold();
+        b.ctl().ignition = tee::EnginePlayer::kIgnitionStart;
+        b.play(1.0, hold);
+        b.ctl().ignition = tee::EnginePlayer::kIgnitionOn;
+        b.play(4.0, hold);
+        if (free)
+        {
+            b.ctl().throttle = 1.0f;
+            b.play(1.0, hold);
+        }
+        std::vector<float> x;
+        b.play(1.5, [&] {
+            hold();
+            for (std::size_t i = 0; i < b.left().size(); ++i)
+                x.push_back(0.5f * (b.left()[i] + b.right()[i]));
+        });
+        return spectrum(x, 16);
+    }
+
+    const double kHz = Bench::kRate / 65536.0;
+
+    // The power above 250 Hz, dB
+    double highs(const std::vector<double>& m)
+    {
+        double p = 0.0;
+        for (std::size_t i = std::size_t(250.0 / kHz); i < m.size(); ++i)
+            p += m[i];
+        return 10.0 * std::log10(p + 1e-30);
+    }
+
+    // The strongest tone above 300 Hz that the voices make: a peak standing 15 dB over its neighbours (the median of
+    // 0.8 to 1.25 of its frequency) and 6 dB over the same bins without the voices; dB of its bins, and where
+    double voiceTone(const std::vector<double>& on, const std::vector<double>& off, double& hz)
+    {
+        double best = -300.0;
+        hz = 0.0;
+        std::vector<double> nb;
+        for (std::size_t i = std::size_t(300.0 / kHz); i < std::size_t(16000.0 / kHz); ++i)
+        {
+            if (on[i] < on[i - 1] || on[i] < on[i + 1])
+                continue;
+            nb.clear();
+            for (std::size_t j = std::size_t(double(i) * 0.8); j < std::size_t(double(i) * 1.25); ++j)
+                if (j + 3 < i || j > i + 3)
+                    nb.push_back(on[j]);
+            std::nth_element(nb.begin(), nb.begin() + std::ptrdiff_t(nb.size() / 2), nb.end());
+            const double p = on[i - 1] + on[i] + on[i + 1];
+            const double q = off[i - 1] + off[i] + off[i + 1];
+            const double db = 10.0 * std::log10(p + 1e-30);
+            if (10.0 * std::log10(on[i] / (nb[nb.size() / 2] + 1e-30)) > 15.0 && p > 4.0 * q && db > best)
+            {
+                best = db;
+                hz = double(i) * kHz;
+            }
+        }
+        return best;
+    }
+}
+
+namespace
+{
+    // Package M's voices through Places against the same build through the reference's matching view (Side with
+    // Side, Rear with Rear, Driver with Cabin; the reference's mix is what M staged the voices in), held warm as
+    // p-idle-warm is (the fan running). Their share of what is heard above 250 Hz (voices on over off) within a
+    // camera's tolerance of the reference's; their strongest tone above 300 Hz (15 dB over its neighbours, 6 dB over
+    // the same bins without them) against the engine's own highs (the mix above 250 Hz without the voices) no worse
+    // than the reference's by more than it; and on a free rev none of theirs within 8 dB of the engine's highs.
+    // Measured after the tank's wall (Places / the reference): Side +18.6 / +17.7 dB, the fan's 560 Hz 8.3 / 7.0 dB
+    // over the engine's highs; Rear +8.6 / +4.4, 5.6 / 8.1 under; Driver +19.6 / +11.8, 9.4 / 1.4 over; on a rev, none.
+    // Without the wall (a still idle, the fan off) Side had a share of +12.2 dB against +3.8 and the pump's 760 Hz
+    // 9.5 dB over the engine's highs. The fan's own level is package M's
+    void voicesHeld(int cams)
+    {
+        const int places[] = {2, 1, 4};
+        const int refs[] = {2, 1, 4};
+        const char* names[] = {"Side", "Rear", "Driver / Cabin"};
+        // the tolerance by camera: Side 3 dB; Rear 6 (the fit's worst residual, the bay in REAR: 6.6 dB); the cabin 9,
+        // open: its firewall passes the fan's 560 Hz some 8 dB more than the reference's cabin does (L's next)
+        const double tol[] = {3.0, 6.0, 9.0};
+        for (int k = 0; k < cams; ++k)
+        {
+            const auto pOn = heardAt(places[k], true, false), pOff = heardAt(places[k], false, false);
+            const auto rOn = heardAt(-1 - refs[k], true, false), rOff = heardAt(-1 - refs[k], false, false);
+            const double sP = highs(pOn) - highs(pOff);
+            const double sR = highs(rOn) - highs(rOff);
+            double hzP = 0.0, hzR = 0.0;
+            const double under = highs(pOff) - voiceTone(pOn, pOff, hzP);
+            const double underR = highs(rOff) - voiceTone(rOn, rOff, hzR);
+            std::printf("%-15s idle: the voices' share above 250 Hz %+.1f dB through Places, %+.1f through the reference; "
+                        "their strongest tone %.0f Hz, %.1f dB under the engine's highs (the reference's %.0f Hz, %.1f)\n",
+                        names[k], sP, sR, hzP, under, hzR, underR);
+            CHECK(std::fabs(sP - sR) < tol[k]);
+            CHECK(under > underR - tol[k]); // the path adds no tone; the voices' own levels are M's (8 dB: M's test)
+            const auto fOn = heardAt(places[k], true, true), fOff = heardAt(places[k], false, true);
+            double hzF = 0.0;
+            const double fUnder = highs(fOff) - voiceTone(fOn, fOff, hzF);
+            if (hzF > 0.0)
+                std::printf("%-15s free rev: the voices' share %+.1f dB, their strongest tone %.0f Hz, %.1f dB under the engine's highs\n",
+                            names[k], highs(fOn) - highs(fOff), hzF, fUnder);
+            else
+                std::printf("%-15s free rev: the voices' share %+.1f dB, no tone of theirs stands out\n", names[k],
+                            highs(fOn) - highs(fOff));
+            CHECK(fUnder > 8.0);            // on a rev the engine's highs are 20 to 30 dB up: none of theirs stands out
+        }
+    }
+}
+
+TEST_CASE("the voices through Places: their share is the reference view's, no tone of theirs over the engine", "[listen][engine][nightly]")
+{
+    voicesHeld(3);
+}
+
+TEST_CASE("the voices through Places, quick: at Side (first.json's camera)", "[listen][engine]")
+{
+    voicesHeld(1);
+}

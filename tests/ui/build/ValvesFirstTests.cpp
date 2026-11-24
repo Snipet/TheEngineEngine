@@ -5,7 +5,8 @@
 //
 //   ui.build.valves.first   the cam editor (not a two-stroke's port timing), its handles hit where they are drawn
 //                           with the strip showing, a drag is one undo step; the phaser's target and phase and stage B
-//                           follow telemetry; cold or thin oil holding them back is said in words, and goes when warm
+//                           follow telemetry; what the simulator says holds them back (tel.valve.waiting) is said
+//                           in words, and goes when nothing waits
 #include "build/BuildKit.h"
 
 #include "views/engine/EngineModel.h"
@@ -71,7 +72,9 @@ namespace
         tel.set("engine.state", 2.0);
         tel.set("engine.speed", 6800.0 * en::kPi / 30.0);
         tel.set("engine.oilTemperature", 288.2);
-        tel.set("engine.oilPressure", 408000.0);
+        tel.set("engine.coolant", 289.0);
+        tel.set("valve.waiting", 4.0);    // N1's: the phasers slowed by cold oil
+        tel.set("valve.waitTemp", 0.0);
         tel.set("valve.inPhase", 0.0);
         tel.set("valve.inPhaseTarget", 3.0);
         tel.set("valve.stage", 0.0);
@@ -117,7 +120,7 @@ namespace
 
         // cold: the phaser parked and saying why; nothing about stages (this build has one)
         std::string words = tee::ui::valvesOilWords(ws);
-        CHECK_MSG(words.find("PARKED: OIL") != std::string::npos && words.find("MOVES AT") != std::string::npos, words);
+        CHECK_MSG(words.find("SLOWED: COLD OIL") != std::string::npos, words);
         CHECK_MSG(words.find("B WAITS") == std::string::npos, words);
         // the phase and its target are drawn from telemetry: a move of either is something to draw
         const std::uint64_t k0 = ws.drawKey();
@@ -125,6 +128,7 @@ namespace
         CHECK(ws.drawKey() != k0);
         // warm: the phaser free, at its target; the words gone
         tel.set("engine.oilTemperature", 360.0);
+        tel.set("valve.waiting", 0.0);
         tel.set("valve.inPhase", 13.0);
         host.tick(2);
         CHECK_MSG(tee::ui::valvesOilWords(ws).empty(), tee::ui::valvesOilWords(ws));
@@ -134,11 +138,14 @@ namespace
         host.tick(3);
         const vv::Train t1 = vv::trainOf(doc);
         CHECK(t1.stages && t1.inB.known() && t1.exB.known());
-        tel.set("engine.oilTemperature", 320.0);   // the phaser free, B not yet
+        tel.set("valve.waiting", 8.0);   // the stage waiting for the coolant at 10 C
+        tel.set("engine.coolant", 278.0);
+        tel.set("valve.waitTemp", 283.0);
         host.tick(2);
         words = tee::ui::valvesOilWords(ws);
-        CHECK_MSG(words.find("B WAITS: OIL") != std::string::npos && words.find("PARKED") == std::string::npos, words);
-        tel.set("engine.oilTemperature", 360.0);
+        CHECK_MSG(words.find("B WAITS: COOLANT") != std::string::npos && words.find("SLOWED") == std::string::npos, words);
+        tel.set("valve.waiting", 0.0);
+        tel.set("valve.waitTemp", 0.0);
         tel.set("valve.stage", 1.0);
         host.tick(2);
         CHECK(tee::ui::valvesOilWords(ws).empty());

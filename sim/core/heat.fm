@@ -46,10 +46,12 @@ module Heat
         viscK = 1.0f;
     }
 
-    // (stopped, with AMBIENT moved: it has stood in that air, as cold or as warm as it is)
+    // (stopped, with AMBIENT moved: a cold engine has stood in that air, as cold or as warm as it is; one set warm (the
+    // application's warm start writes warm 1 once at load, before the build's air arrives) stays warm: B's finding, 24
+    // Nov, the lead's ruling)
     void stood(int state, float ambF)
     {
-        if (state == 0 && fabsf(ambF - ambSeen) > 0.25f)
+        if (state == 0 && fabsf(ambF - ambSeen) > 0.25f && warm < 0.5f)
         {
             ambSm = ambF;
             tCool = 300.0f + 0.5555556f * (ambF - 80.33f);

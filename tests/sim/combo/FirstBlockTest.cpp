@@ -12,7 +12,7 @@
 #include <string>
 
 TEST_CASE("telemetry: every field inside its range from the first block, every switch off and every switch on",
-          "[fast][fast-4][combo][telemetry]")
+          "[fast][fast-2][combo][telemetry]")
 {
     const std::uint32_t all = combo::switches().size() >= 32
                                   ? 0xffffffffu

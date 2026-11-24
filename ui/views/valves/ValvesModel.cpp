@@ -221,16 +221,46 @@ namespace tee::ui::valves
         return b;
     }
 
-    OilHold oilHold(const Live& live, double temp, double pressure)
+    namespace
     {
-        OilHold h;
-        h.temp = live.get(kTelOilTemp);
-        const double pr = live.get(kTelOilPressure);
-        const bool cold = std::isfinite(h.temp) && h.temp < temp;
-        const bool low = std::isfinite(pr) && pr < pressure;
-        h.held = cold || low;
-        h.cold = cold;
-        return h;
+        int waitBits(const Live& live)
+        {
+            const double w = live.get(kTelWaiting);
+            return std::isfinite(w) ? static_cast<int>(std::lround(w)) : 0;
+        }
+    }
+
+    std::string phaserWaitWords(const Live& live, const Units& units, bool intake, bool brief)
+    {
+        const int w = waitBits(live);
+        if ((w & (intake ? kWaitInParked : kWaitExParked)) != 0)
+            return "PARKED: NO OIL PRESSURE";
+        if ((w & kWaitSlowed) != 0)
+        {
+            const double t = live.get(kTelOilTemp);
+            if (brief || !std::isfinite(t))
+                return "SLOWED: COLD OIL";
+            return "SLOWED: COLD OIL, " + units.format(Quantity::temperature, t, 0);
+        }
+        return {};
+    }
+
+    std::string stageWaitWords(const Live& live, const Units& units)
+    {
+        const int w = waitBits(live);
+        if ((w & kWaitCoolant) != 0)
+        {
+            const double now = live.get(kTelCoolant), need = live.get(kTelWaitTemp);
+            std::string s = "B WAITS: COOLANT";
+            if (std::isfinite(now))
+                s += " " + units.format(Quantity::temperature, now, 0);
+            if (std::isfinite(need) && need > 0.0)
+                s += std::string(std::isfinite(now) ? "," : "") + " NEEDS " + units.format(Quantity::temperature, need, 0);
+            return s;
+        }
+        if ((w & kWaitOilPressure) != 0)
+            return "B WAITS: OIL PRESSURE LOW";
+        return {};
     }
 
     Bench benchOf(const FieldDoc& doc, double bore, const Live& live)
