@@ -29,6 +29,8 @@ namespace
         float clutch = -1.0f;
         float peak = 0.31f;     // the simulator's peak share of a core (FrameServices::simLoadPeak)
         long dropouts = 0;
+        std::string notes;      // the first launch's TRY FIRST card's text (FrameServices::tryFirst; empty: none)
+        int tryFirstDone = 0;
         int mode = 0;
         std::unique_ptr<AppFrame> frame;
         std::unique_ptr<funkgui::HeadlessHost> host;
@@ -61,6 +63,8 @@ namespace
             s.simLoad = [] { return 0.23f; };
             s.simLoadPeak = [this] { return peak; };
             s.dropouts = [this] { return dropouts; };
+            s.tryFirst = [this] { return notes; };
+            s.tryFirstDone = [this] { ++tryFirstDone; notes.clear(); };
             s.mode = [this] { return mode; };
             s.setMode = [this](int m) { mode = m; };
             s.clutch = [this](float v) { clutch = v; };
@@ -425,6 +429,74 @@ namespace
             rig.host->tick(30);
             CHECK_MSG(rig.frame->rpmBar().lightsLit() >= 4, k.name);
             picture(std::string("frame.redline.") + k.name, *rig.host);
+        }
+        return 0;
+    }
+
+    // The first launch's TRY FIRST card: the build's name and its notes' opening paragraph wrapped to the card, over
+    // the stage's top right, never over START or the load meter, read by the accessibility list; closed for good by
+    // its Close button or once the engine has been started and stopped. At 1100 x 700 and 1600 x 1000, densities 2
+    // and 1.
+    VIEW_TEST(testFrameTryFirst, "frame.tryfirst")
+    {
+        const std::string notes =
+            "Try first: turn the key, then floor it on the dyno and watch the turbo spool in AIR; then open EXHAUST and "
+            "hear the headers change as you shorten them. The builds in GARAGE are yours to change and keep.\n\n"
+            "About this build: a 2.0 L turbocharged four with every model on.";
+        const auto overlap = [](const funkgui::Rect& a, const funkgui::Rect& b) {
+            return a.x < b.right() && b.x < a.right() && a.y < b.bottom() && b.y < a.bottom();
+        };
+        const auto itemOf = [](FrameRig& rig, const std::string& title) -> funkgui::A11yItem {
+            for (const funkgui::A11yItem& it : rig.host->accessibility())
+                if (it.title == title && it.visible)
+                    return it;
+            return {};
+        };
+        struct Size { int w, h; const char* name; };
+        for (const Size& z : { Size{ 1100, 700, "small" }, Size{ 1600, 1000, "large" } })
+            for (const float dpi : { 2.0f, 1.0f })
+            {
+                FrameRig rig(z.w, z.h, dpi);
+                rig.showWorkspace("drive");
+                CHECK(itemOf(rig, "Try first").title.empty());   // no notes: no card
+                rig.notes = notes;
+                rig.host->tick(4);
+                const funkgui::A11yItem card = itemOf(rig, "Try first");
+                CHECK_MSG(card.value.rfind("Demo V8. Try first: turn the key", 0) == 0, card.value);
+                CHECK(card.value.find("About this build") == std::string::npos);   // the opening paragraph only
+                CHECK(!overlap(card.bounds, rig.frame->startRect()));
+                CHECK(!overlap(card.bounds, itemOf(rig, "Load").bounds));
+                CHECK(rig.frame->stageRect().contains({ card.bounds.x, card.bounds.y }));
+                CHECK(card.bounds.bottom() <= rig.frame->stageRect().bottom());
+                golden(std::string("frame.tryfirst.") + z.name + (dpi < 1.5f ? ".dpi1" : ""), *rig.host);
+                // Close: gone for good, the shell told once.
+                const funkgui::A11yItem close = itemOf(rig, "Close");
+                rig.host->click(close.bounds.centreX(), close.bounds.centreY());
+                rig.host->tick(2);
+                CHECK(itemOf(rig, "Try first").title.empty() && rig.tryFirstDone == 1);
+            }
+        // Started and stopped: closed by itself.
+        {
+            FrameRig rig(1280, 800, 1.0f);
+            rig.demo.engine.set("engine.state", 0.0);
+            rig.notes = notes;
+            rig.host->tick(4);
+            CHECK(!itemOf(rig, "Try first").title.empty());
+            rig.demo.engine.set("engine.state", 2.0);
+            rig.host->tick(4);
+            CHECK(!itemOf(rig, "Try first").title.empty());   // running: still there
+            rig.demo.engine.set("engine.state", 0.0);
+            rig.host->tick(4);
+            CHECK(itemOf(rig, "Try first").title.empty() && rig.tryFirstDone == 1);
+        }
+        // A long opening is cut at six lines with an ellipsis.
+        {
+            std::string longer;
+            for (int i = 0; i < 40; ++i)
+                longer += "turn the key and listen ";
+            const std::vector<std::string> lines = tee::ui::TryFirstCard::wrap(longer, 300.0f);
+            CHECK(static_cast<int>(lines.size()) == tee::ui::TryFirstCard::kMaxLines);
+            CHECK(lines.back().size() >= 3 && lines.back().compare(lines.back().size() - 3, 3, "...") == 0);
         }
         return 0;
     }
