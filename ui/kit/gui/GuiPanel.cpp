@@ -411,6 +411,12 @@ namespace tee::ui
     // area), its scroll bars, and the subclass's items over it.
     void GuiPanel::draw(funkgui::Canvas& c, const funkgui::Theme& th)
     {
+        struct Dim   // Options::dimAtDefault for this draw only
+        {
+            bool was;
+            explicit Dim(bool dim) : was(dimAtDefault()) { dimAtDefault() = dim; }
+            ~Dim() { dimAtDefault() = was; }
+        } dim(options_.dimAtDefault);
         theme_ = th;
         c.rrect(0.0f, 0.0f, static_cast<float>(width_), static_cast<float>(height_), 0.0f, style::palette(th).card);
         const funkgui::Theme gth = view_.theme(th, spec_);

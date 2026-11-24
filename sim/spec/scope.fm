@@ -30,6 +30,27 @@ module Scope
     float bakedX [[ui::label("Baked x")]] [7][16];
     float bakedY [[ui::label("Baked y")]] [7][16];
     float baked [[ui::label("Baked values")]] [7][256];
+    // cylinder 1's port pressures (Pa absolute) at each degree of the same cycle: what its runner and its header see
+    // at the valve (asked by the interface's SCOPE view)
+    float portIntake [[ui::label("Intake port")]] [[ui::quantity("pressure")]] [SCOPE_DEGREES];
+    float portExhaust [[ui::label("Exhaust port")]] [[ui::quantity("pressure")]] [SCOPE_DEGREES];
+    // card F's, boost.model 1: turbo 0's compressor map as the simulator computes it from its sizes (at the standard
+    // inlet: 101325 Pa, 293.15 K): 8 speed lines (corrected flow kg/s against pressure ratio, 16 points each from the
+    // knee to choke), the surge line (each line's knee), 5 efficiency contours (16 points each: the lines' left
+    // crossings in order, then their right ones back; a flow below 0 is no point), and the operating point's trail
+    // (256 points, the newest at boostTrailAt - 1, one each 512 samples). Rebuilt when the sizes change.
+    int boostMapRev [[ui::label("Map's revision")]] [[ui::help("Moves when the map's lines are rebuilt")]];
+    float boostLineSpeed [[ui::label("Speed line")]] [[ui::quantity("rotation")]] [8];
+    float boostLineFlow [[ui::label("Speed line flow")]] [[ui::quantity("flow")]] [8][16];
+    float boostLineRatio [[ui::label("Speed line ratio")]] [[ui::quantity("ratio")]] [8][16];
+    float boostSurgeFlow [[ui::label("Surge line flow")]] [[ui::quantity("flow")]] [8];
+    float boostSurgeRatio [[ui::label("Surge line ratio")]] [[ui::quantity("ratio")]] [8];
+    float boostContourEta [[ui::label("Contour efficiency")]] [[ui::quantity("fraction")]] [5];
+    float boostContourFlow [[ui::label("Contour flow")]] [[ui::quantity("flow")]] [5][16];
+    float boostContourRatio [[ui::label("Contour ratio")]] [[ui::quantity("ratio")]] [5][16];
+    int boostTrailAt [[ui::label("Trail's next")]];
+    float boostTrailFlow [[ui::label("Trail flow")]] [[ui::quantity("flow")]] [256];
+    float boostTrailRatio [[ui::label("Trail ratio")]] [[ui::quantity("ratio")]] [256];
     // ---- card G (Exhaust, every 128 samples while it runs model 1): the pressure, over the air outside, along the
     // gas's path from one port (spec.exhaust's scope port: 0) to its tail at exhaustPoints points spaced by length
     // (exhaustX: m from the port), and at both ends of every pipe slot in use (ductUsed), with its length: a view

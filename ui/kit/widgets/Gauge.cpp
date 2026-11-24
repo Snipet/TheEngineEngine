@@ -54,9 +54,18 @@ namespace tee::ui
         c.arc(o, ra, kA0, kA1, 2.0f, l.dim);
         if (std::isfinite(redline_) && redline_ < hi_)
             c.arc(o, ra, angleOf(fractionOf(redline_)), kA1, 5.0f, l.over(l.accent, 0.85f));
-        // Ticks and numerals.
+        // Ticks and numerals. Clear numerals (U1, setClearNumerals): set further in, by their own size, and drawn after
+        // the needle on a backing of the face, so the needle passes under them; the needle's tail short.
         const int n = major_ * minor_;
         const funkgui::TextStyle numeral{ std::clamp(side * 0.075f, 10.0f, 16.0f), 0.0f, 0.0f, false };
+        const funkgui::Col face = l.over(l.edge, 0.35f);
+        struct Numeral
+        {
+            std::string text;
+            float x, y;
+            bool red;
+        };
+        std::vector<Numeral> numerals;
         for (int k = 0; k <= n; ++k)
         {
             const float t = static_cast<float>(k) / static_cast<float>(n);
@@ -69,21 +78,41 @@ namespace tee::ui
                       major ? 2.0f : 1.0f, red ? l.accent : (major ? l.text : l.label));
             if (major && side >= 90.0f)
             {
-                const std::string s = numerals_ ? numerals_(v) : plain(v);
-                const float rn = ra - len - numeral.px * 0.9f;
-                c.text(s.c_str(), o.x + ca * rn, c.capCentreTop(o.y + sa * rn, numeral), numeral, red ? l.accent : l.text,
-                       funkgui::Align::centre);
+                std::string s = numerals_ ? numerals_(v) : plain(v);
+                float rn = ra - len - numeral.px * 0.9f;
+                if (clearNumerals_)
+                {
+                    // Inside the ticks by the numeral's own half-extent along the radius, and a gap.
+                    const float hw = c.textWidth(s.c_str(), numeral) * 0.5f, hh = numeral.px * 0.5f;
+                    rn = ra - len - 6.0f - (hw * std::fabs(ca) + hh * std::fabs(sa));
+                }
+                numerals.push_back({ std::move(s), o.x + ca * rn, o.y + sa * rn, red });
             }
         }
+        const auto drawNumerals = [&] {
+            for (const Numeral& m : numerals)
+            {
+                if (clearNumerals_)
+                {
+                    const float w = c.textWidth(m.text.c_str(), numeral);
+                    c.rrect(m.x - w * 0.5f - 3.0f, m.y - numeral.px * 0.5f - 2.0f, w + 6.0f, numeral.px + 4.0f, 3.0f, face);
+                }
+                c.text(m.text.c_str(), m.x, c.capCentreTop(m.y, numeral), numeral, m.red ? l.accent : l.text, funkgui::Align::centre);
+            }
+        };
+        if (!clearNumerals_)
+            drawNumerals();
         // The readout, then the needle over it, then the hub.
         const funkgui::TextStyle value{ std::clamp(side * 0.13f, 12.0f, 26.0f), 0.0f, 0.0f, true };
         c.text(readoutText().c_str(), o.x, c.capCentreTop(o.y + r * 0.42f, value), value, l.value, funkgui::Align::centre);
         if (!unit_.empty())
             c.text(upper(unit_).c_str(), o.x, c.capCentreTop(o.y + r * 0.42f + value.px * 0.75f + 4.0f, kWidgetLabel),
                    kWidgetLabel, l.label, funkgui::Align::centre);
-        const float a = angleOf(needle_);
-        c.segment(o.x - std::cos(a) * r * 0.12f, o.y - std::sin(a) * r * 0.12f, o.x + std::cos(a) * (ra - 3.0f),
+        const float a = angleOf(needle_), tail = clearNumerals_ ? 0.05f : 0.12f;
+        c.segment(o.x - std::cos(a) * r * tail, o.y - std::sin(a) * r * tail, o.x + std::cos(a) * (ra - 3.0f),
                   o.y + std::sin(a) * (ra - 3.0f), 2.5f, l.accent);
+        if (clearNumerals_)
+            drawNumerals();
         c.disc(o.x, o.y, std::max(4.0f, r * 0.07f), l.faceHi, 1.0f, l.text);
         if (!title_.empty())
             c.text(upper(title_).c_str(), bounds_.centreX(), bounds_.bottom() - 13.0f, kWidgetLabel, l.label,

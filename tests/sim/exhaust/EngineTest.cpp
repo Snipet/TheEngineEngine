@@ -6,6 +6,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <cstdio>
+#include <filesystem>
 #include <cstdlib>
 #include <random>
 
@@ -168,3 +169,129 @@ TEST_CASE("random exhaust topologies changed while the engine runs", "[exhaust][
     CHECK(pc < 50.0);
 }
 
+
+// Card G, test 10: with card F's machine (boost.model 1, a 2 L four with one turbo; and the V8 with two, a bank each)
+// and the builder (exhaust.model 1), the collectors end in the turbines' housings and the main pipes begin at their
+// outlets. It runs (every sample finite, within full scale), it makes boost, the junction is passive (the key off, the
+// pressures in the pipes and the housings die away: the engine stops computing once it falls silent, so what is left
+// is where the decay had reached then, a few tens of Pa, falling), and the downpipe's head swings less than the
+// collector's end at the housing, by itself (the Scope's pipe-end pressures, sampled every 128 samples at full
+// throttle).
+TEST_CASE("the turbine's housing: card F's machine on the builder's collectors", "[exhaust][engine][turbine]")
+{
+    struct Case
+    {
+        const char* name;
+        int layout;
+        double displacement;
+        int kind;
+    };
+    for (const Case& k : {Case{"2 L four, one turbo", 5, 0.002, 1}, Case{"V8, two turbos", 12, 0.0058, 2}})
+    {
+        EnginePlayer& p = player();
+        p.reset();
+        applyBuild(p, test::engineBuild(p, "v8"));
+        std::string error;
+        REQUIRE(p.setSpec("engine.layout", k.layout, error));
+        REQUIRE(p.setSpec("engine.displacement", k.displacement, error));
+        REQUIRE(p.setSpec("boost.kind", k.kind, error));
+        REQUIRE(p.setSpec("boost.model", 1, error));
+        REQUIRE(p.setSpec("exhaust.model", 1, error));
+        EnginePlayer::Controls& c = p.controls();
+        c.mode = EnginePlayer::kModeBench;
+        c.ignition = EnginePlayer::kIgnitionStart;
+        c.scopeOn = 1;
+        std::vector<float> l(512), r(512);
+        bool finite = true;
+        auto run = [&](double seconds, std::vector<double>* coll, std::vector<double>* down) {
+            const int calls = static_cast<int>(seconds * 48000.0 / 512.0);
+            int lastRefresh = -1;
+            for (int n = 0; n < calls; ++n)
+            {
+                p.process(l.data(), r.data(), 512);
+                for (int i = 0; i < 512; ++i)
+                    finite = finite && std::isfinite(l[i]) && std::fabs(l[i]) <= 1.0f;
+                const int refresh = static_cast<int>(test::field(p, "scope.exhaustRefreshes"));
+                if (coll != nullptr && refresh != lastRefresh)
+                {
+                    lastRefresh = refresh;
+                    coll->push_back(test::field(p, "scope.ductFar[32]"));
+                    down->push_back(test::field(p, "scope.ductNear[48]"));
+                }
+            }
+        };
+        run(1.5, nullptr, nullptr);
+        c.ignition = EnginePlayer::kIgnitionOn;
+        c.throttle = 1.0f;
+        c.holdSpeed = static_cast<float>(4500.0 * 0.10471976);
+        run(4.0, nullptr, nullptr);
+        std::vector<double> coll, down;
+        run(2.0, &coll, &down);
+        const double fedNow = test::field(p, "exh.fed");
+        const double boost = test::field(p, "tel.boost.pressure");
+        auto swing = [](const std::vector<double>& x) {
+            double m = 0.0, s = 0.0;
+            for (double v : x)
+                m += v;
+            m /= static_cast<double>(x.size());
+            for (double v : x)
+                s += (v - m) * (v - m);
+            return std::sqrt(s / static_cast<double>(x.size()));
+        };
+        const double sc = swing(coll);
+        const double sd = swing(down);
+        // the key off, the engine stopped: what is left
+        c.ignition = EnginePlayer::kIgnitionOff;
+        c.throttle = 0.0f;
+        c.holdSpeed = 0.0f;
+        run(6.0, nullptr, nullptr);
+        const double pt = std::fabs(test::field(p, "exh.b.pTurb"));
+        std::printf("turbine, %s at 4500 rpm full throttle: the housings fed %s, boost %.1f kPa; pressure swing at the "
+                    "collector's end %.0f Pa, at the downpipe's head %.0f Pa (%.1f dB); 6 s after the key is off the "
+                    "collectors' mean %.2f Pa; finite %s\n",
+                    k.name, fedNow != 0.0 ? "yes" : "no", boost / 1000.0, sc, sd, 20.0 * std::log10(sd / sc), pt,
+                    finite ? "yes" : "no");
+        INFO(k.name);
+        CHECK(fedNow != 0.0);
+        CHECK(finite);
+        CHECK(boost > 5000.0);
+        CHECK(coll.size() > 100);
+        CHECK(sd < sc);
+        CHECK(pt < 100.0);
+    }
+}
+
+// content/builds/exhausts: every part build loads (every field known), and the V8 with it starts and plays 3 s of
+// free revs, every sample finite and within full scale, on the builder (tel.exhaust.model 1)
+TEST_CASE("every exhaust build plays", "[exhaust][engine][builds]")
+{
+    const std::filesystem::path dir = std::filesystem::path(TEE_SOURCE_DIR) / "content" / "builds" / "exhausts";
+    int n = 0;
+    for (const auto& entry : std::filesystem::directory_iterator(dir))
+    {
+        if (entry.path().extension() != ".json")
+            continue;
+        EnginePlayer& p = player();
+        EngineBuild part;
+        std::string error, warnings;
+        const bool ok = loadBuild(p, entry.path(), part, error, warnings);
+        INFO(entry.path().filename().string() << ": " << error << warnings);
+        REQUIRE(ok);
+        CHECK(warnings.empty());
+        EngineBuild b = test::engineBuild(p, "v8");
+        for (const auto& [path, v] : part.values)
+            b.values[path] = v;
+        const Audio a = render(b, test::engineScenario("free-revs"), 3.0);
+        bool finite = true;
+        for (std::size_t i = 0; i < a.left.size(); ++i)
+            finite = finite && std::isfinite(a.left[i]) && std::isfinite(a.right[i]) && std::fabs(a.left[i]) <= 1.0f;
+        const double model = test::field(p, "tel.exhaust.model");
+        std::printf("build %-36s: peak %.3f, model %.0f, radiating ends %.0f\n", entry.path().filename().string().c_str(),
+                    test::peak(a.left), model, test::field(p, "tel.exhaust.ends"));
+        CHECK(finite);
+        CHECK(test::peak(a.left) > 0.05);
+        CHECK(model == 1.0);
+        ++n;
+    }
+    CHECK(n >= 8);
+}

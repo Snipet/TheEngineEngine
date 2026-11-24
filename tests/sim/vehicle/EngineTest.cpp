@@ -8,7 +8,9 @@
 
 #include <nlohmann/json.hpp>
 
+#include <algorithm>
 #include <cmath>
+#include <vector>
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
@@ -157,4 +159,52 @@ TEST_CASE("engine.stall: a clutch dumped at idle in a tall gear stalls the engin
     CHECK(r.tel("engine.state").during(2.4, 3.4).min() == 2.0);
     CHECK(r.tel("engine.state").last() != 2.0);
     CHECK(r.tel("engine.speed").last() < 10.0);
+}
+
+TEST_CASE("engine.quartermile: each archetype's quarter mile within 8 % of what weight and power predict",
+          "[vehicle][engine]")
+{
+    // Each archetype at its own mass with an engine of its kind (the reference's layouts), on drag radials (tyres that hook), through an automatic
+    // (the rule of thumb's cars shift themselves): a burnout on the line lock to warm them, staged at 6 s, the green at
+    // 8.5 s, the brakes off and the pedal brought down over 0.6 s (a driver who keeps them hooked). The rule of thumb
+    // (ET = 5.825 (lb/hp)^(1/3) s, trap = 234 (hp/lb)^(1/3) mph) takes the engine's power: here the 90th percentile of
+    // what the wheels saw from the green to the finish, over the gears' 0.97 (a peak would take the shafts' swing).
+    for (const std::string car : {"light-fwd-four", "rwd-v8-coupe", "awd-turbo-six"})
+    {
+        tee::test::Scenario s = started("default");
+        withCar(s, car);
+        // each with the engine its kind has: a 1.6 L four, a 5.7 L V8, a 3 L six with a turbo
+        if (car == "light-fwd-four")
+            s.at(0.0).spec("engine.layout", "Inline 4").spec("engine.displacement", 0.0016);
+        else if (car == "rwd-v8-coupe")
+            s.at(0.0).spec("engine.layout", "V8 crossplane").spec("engine.displacement", 0.0057);
+        else
+            s.at(0.0).spec("engine.layout", "Inline 6").spec("engine.displacement", 0.003).spec("boost.kind", "Turbo")
+                .spec("boost.level", 0.6);
+        s.at(0.0).spec("car.tyre", "Drag radial").spec("car.gearbox", "Automatic").spec("car.abs", 0.0);
+        s.at(2.3).lever(1).buttons(1);
+        s.at(2.5).throttle(1.0);
+        s.at(5.0).throttle(0.0).buttons(0).brake(1.0);
+        s.at(6.0).strip();
+        s.at(8.5).brake(0.0).throttle(0.15);
+        s.at(8.5).throttle(1.0).ramp(0.6);
+        const tee::test::Run r = s.run(28.0);
+        REQUIRE(r.ok());
+        const auto doc = nlohmann::json::parse(
+            slurp(std::filesystem::path(TEE_SOURCE_DIR) / "content" / "builds" / "cars" / (car + ".json")));
+        const double kg = doc["spec"]["car"]["mass"].get<double>();
+        const double t = r.tel("car.t1320").last(), v = r.tel("car.v1320").last() / 0.44704;
+        std::vector<double> p = r.tel("car.wheelPower").during(8.5, 8.5 + t).values();
+        REQUIRE(!p.empty());
+        std::sort(p.begin(), p.end());
+        const double watts = p[static_cast<std::size_t>(0.9 * static_cast<double>(p.size() - 1))] / 0.97;
+        const double lb = kg * 2.20462, hp = watts / 745.7;
+        const double et = 5.825 * std::cbrt(lb / hp), mph = 234.0 * std::cbrt(hp / lb);
+        std::printf("quarter mile, %s (%.0f kg, %.0f kW): rt %.3f, 60 ft %.3f, ET %.3f s (rule %.3f), trap %.1f mph (rule "
+                    "%.1f)\n",
+                    car.c_str(), kg, watts / 1000.0, r.tel("car.tReaction").last(), r.tel("car.t60").last(), t, et, v, mph);
+        CHECK(r.tel("car.stripState").last() == 5.0);
+        CHECK(t == Catch::Approx(et).epsilon(0.08));
+        CHECK(v == Catch::Approx(mph).epsilon(0.08));
+    }
 }

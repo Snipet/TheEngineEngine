@@ -17,6 +17,7 @@
 #include "files/BuildFiles.h"
 #if defined(TEE_HAS_UI_FRAME)
  #include "FrameSources.h"
+ #include "GarageLibrary.h"
  #include "app/AppFrame.h"
  #include "app/host/HostSources.h"     // U1's: the Scope and the dyno over card C's host
                   // the interface package's (ui/): the frame, its document over a tee::Build
@@ -134,7 +135,8 @@ namespace tee::app
             {
                 Kept(player::SimAdapter& sim, std::filesystem::path shipped)
                     : doc(sim.build()), scope(sim.host()), dyno(sim.host().sim(), sim.build()), file(sim.build()),
-                      library(std::move(shipped), Presets::userDirectory())
+                      library(shipped, Presets::userDirectory()),
+                      garage(file, sim.host().sim(), std::move(shipped), Presets::userDirectory())
                 {
                 }
                 ui::BuildDoc doc;
@@ -143,6 +145,7 @@ namespace tee::app
                 ui::ServiceDyno dyno;
                 files::BuildFile file;
                 files::BuildLibrary library;
+                GarageLibrary garage;             // GARAGE's (U5's Library), over `file`: after it, so destroyed first
             };
             const auto kept = std::make_shared<Kept>(*engine.sim, content.empty() ? content : content / "builds");
             // (the build as the engine was made, a --preset applied, is the clean one: untitled, so a save asks where)
@@ -162,7 +165,12 @@ namespace tee::app
             addFileServices(frameServices, kept->file, kept->library);
             std::unique_ptr<ui::AppFrame> frame =
                 ui::makeAppFrame(kept->doc, kept->units, player, std::move(frameServices), &kept->dyno, &kept->scope);
-            shown.waitForDyno = [kept](double seconds) { return waitForCurve(kept->dyno, seconds); };
+            frame->setLibrary(&kept->garage);
+            shown.waitForDyno = [kept](double seconds, std::string& error) {
+                const bool got = waitForCurve(kept->dyno, seconds);
+                error = kept->dyno.error();
+                return got;
+            };
             // --size WxH: the frame's logical size (raised to its smallest, 1100 x 700)
             if (o.width > 0 && o.height > 0)
                 frame->resize(std::max(o.width, frame->minWidth()), std::max(o.height, frame->minHeight()));
@@ -264,10 +272,13 @@ namespace tee::app
         // first frame, so a picture of a workspace with the ribbon shows it
         if (o.dynoWait > 0.0 && shown.waitForDyno)
         {
+            // (its error, if it has one, is in the picture: the ribbon says it)
             const auto t0 = std::chrono::steady_clock::now();
-            const bool got = shown.waitForDyno(o.dynoWait);
-            std::fprintf(stderr, "dyno: %s after %.1f s\n", got ? "the predicted curve is in" : "no curve yet",
-                         std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count());
+            std::string dynoError;
+            const bool got = shown.waitForDyno(o.dynoWait, dynoError);
+            std::fprintf(stderr, "dyno: %s after %.1f s%s%s\n", got ? "the predicted curve is in" : "no curve",
+                         std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count(),
+                         dynoError.empty() ? "" : ": ", dynoError.c_str());
         }
 
         audio::WavWriter wav;

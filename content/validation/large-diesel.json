@@ -11,7 +11,7 @@
     { "name": "The governor holds", "scenario": "rev-limit", "tel": "engine.speed", "measure": "max", "during": [6, 10],
       "relativeTo": "engine.redline", "range": [0.97, 1.03], "unit": "of the redline", "fast": true,
       "source": "a diesel's governor holds the speed at its high idle within a few percent" },
-    { "name": "Warm idle", "scenario": "idle", "tel": "engine.speed", "measure": "mean", "during": [8, 12],
+    { "name": "Warm idle", "scenario": "idle-warm", "tel": "engine.speed", "measure": "mean", "during": [8, 12],
       "range": [62.8, 83.8], "unit": "rad/s",
       "source": "a heavy-duty diesel idles at 600 to 800 rpm (a rule of thumb from makers' specifications)" },
     { "name": "Governed speed", "scenario": "rev-limit", "tel": "engine.redline", "measure": "last",

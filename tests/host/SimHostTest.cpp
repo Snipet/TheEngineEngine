@@ -436,3 +436,21 @@ TEST_CASE("a made-up audio thread in a tight loop while another thread sets ten 
     CHECK(tel(host, t, "tel.probe.curveFirst") == static_cast<float>(last));
     CHECK(t.host.commandsApplied == 10000);
 }
+
+TEST_CASE("LoadOptions::hold writes its values before every block; a path the program lacks is skipped", "[simhost]")
+{
+    SimHost host;
+    std::string errors;
+    LoadOptions load = offline();
+    load.hold = {{"spec.engine.redline", 600.0}, {"heat.tCool", 368.0}};   // the stand-in has no heat
+    REQUIRE(host.attach(standinSim(), load, errors));
+    // a write through the queue is undone by the hold at the next block
+    REQUIRE(host.set(ref(host, "spec.engine.redline"), 650.0));
+    Blocks b(512);
+    host.setControls(running());
+    b.play(host, 20);
+    TelemetryFrame t;
+    REQUIRE(host.telemetry(t));
+    CHECK(tel(host, t, "tel.engine.redline") == 600.0);
+    CHECK(warmEngine().size() == 5);
+}

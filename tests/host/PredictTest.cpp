@@ -172,7 +172,7 @@ TEST_CASE("the real V8's predicted curve: braked by the host, coarse within seco
     const PredictCurve& curve = taken.back();
     REQUIRE(curve.refined);
     CHECK(curve.points.size() == 16);
-    CHECK(curve.brake == (sim->fields().find("tel.engine.torque") != nullptr ? "program" : "host"));
+    CHECK(curve.brake == "host");   // the reference's crank: the host holds it
     double peakTorque = 0.0, peakPower = 0.0;
     for (const PredictPoint& p : curve.points)
     {

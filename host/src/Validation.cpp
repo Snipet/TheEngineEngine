@@ -1,6 +1,8 @@
 // host/src/Validation.cpp: validation files and their run (Validation.h).
 #include "tee/Validation.h"
 
+#include "tee/Predict.h"
+
 #include "tee/Measures.h"
 
 #include <nlohmann/json.hpp>
@@ -10,6 +12,7 @@
 #include <cstdio>
 #include <fstream>
 #include <map>
+#include <set>
 #include <sstream>
 
 namespace tee
@@ -66,6 +69,7 @@ namespace tee
                 t.plan.measure = d.value("measure", t.plan.measure);
                 t.plan.pedal = d.value("pedal", t.plan.pedal);
                 t.plan.warmup = d.value("warmup", t.plan.warmup);
+                t.sweep = d.value("sweep", false);
                 t.plan.torque = d.value("torque", t.plan.torque);
                 t.plan.chassis = d.value("chassis", false);
                 for (const nlohmann::json& s : d.value("steps", nlohmann::json::array()))
@@ -110,8 +114,29 @@ namespace tee
         }
     } // namespace
 
+    int referenceSettings(Build& build)
+    {
+        int changed = 0;
+        const Fields& fields = build.fields();
+        for (std::size_t i = 0; i < fields.all().size(); ++i)
+        {
+            const FieldInfo& f = fields.all()[i];
+            if (f.block != "spec" || f.count != 1 || (f.scalar != Scalar::Bool && f.scalar != Scalar::Int))
+                continue;
+            const std::string name = f.path.substr(f.path.rfind('.') + 1);
+            const bool isSwitch = name == "model" || name == "custom" || f.help.rfind("Off: the reference", 0) == 0;
+            if (isSwitch && build.get(f.path) != 0.0)
+            {
+                build.set(f.path, 0.0);
+                ++changed;
+            }
+        }
+        return changed;
+    }
+
     bool runValidation(const std::shared_ptr<Sim>& sim, const Validation& v, const std::filesystem::path& content,
-                       bool fastOnly, std::vector<ValidationRow>& rows, std::string& error)
+                       bool fastOnly, std::vector<ValidationRow>& rows, std::string& error,
+                       const std::function<void(Build&)>& adjust)
     {
         rows.clear();
         Build build(sim->fields());
@@ -121,8 +146,11 @@ namespace tee
             if (!build.loadFile(named(content, "builds", v.build), BuildPart::Whole, warnings, error))
                 return false;
         }
+        if (adjust)
+            adjust(build);
         std::map<std::string, RunResult> runs;
         std::map<std::uint64_t, DynoCurve> curves;
+        std::set<std::uint64_t> hostBraked;
         for (const ValidationTarget& t : v.targets)
         {
             if (fastOnly && !t.fast)
@@ -136,7 +164,29 @@ namespace tee
                 {
                     DynoCurve curve;
                     std::string why;
-                    if (!runDyno(sim, build, t.plan, curve, why))
+                    if (t.plan.steps.empty() && !t.sweep)
+                    {
+                        // the predicted curve's steady points (Predict.h): a warm engine, its exhaust settled, every
+                        // 15 rad/s or so over the plan's speeds (a sweep's curve depends on how long it took)
+                        PredictOptions o;
+                        o.from = t.plan.from;
+                        o.to = t.plan.to;
+                        o.pedal = t.plan.pedal;
+                        o.points = std::clamp(static_cast<int>((t.plan.to - t.plan.from) / 15.0) + 1, 8, 48);
+                        PredictCurve pc;
+                        if (!predictCurve(sim, build, o, pc, why))
+                        {
+                            row.why = "not measurable: " + why;
+                            rows.push_back(row);
+                            continue;
+                        }
+                        for (const PredictPoint& p : pc.points)
+                            curve.points.push_back({p.speed, p.torque, p.power, {}});
+                        curve.simulatedSeconds = pc.simulatedSeconds;
+                        curve.wallSeconds = pc.wallSeconds;
+                        hostBraked.insert(key);
+                    }
+                    else if (!runDyno(sim, build, t.plan, curve, why))
                     {
                         row.why = "not measurable: " + why;
                         rows.push_back(row);
@@ -145,6 +195,8 @@ namespace tee
                     curves[key] = curve;
                 }
                 const DynoCurve& c = curves[key];
+                if (hostBraked.count(key) != 0)
+                    row.how = "steady points";
                 if (c.points.empty())
                     row.why = "not measurable: the dyno gave no points";
                 else
@@ -202,6 +254,8 @@ namespace tee
                     load.sampleRate = timeline.rate;
                     load.maxBlock = std::max(16, timeline.block);
                     load.worker = false;
+                    if (timeline.warm)
+                        load.hold = warmEngine();
                     if (!host.attach(sim, load, error))
                         return false;
                     copy.attach(&host);
@@ -291,10 +345,57 @@ namespace tee
             else
                 std::snprintf(measured, sizeof measured, "-");
             std::snprintf(line, sizeof line, "%-28s %-30s %-12s %-6s %s%s%s\n", t.name.c_str(), range, measured,
-                          r.measured ? (r.pass ? "pass" : "FAIL") : "n/a", t.source.c_str(), r.why.empty() ? "" : "  -- ",
-                          r.why.c_str());
+                          r.measured ? (r.pass ? "pass" : "FAIL") : "n/a", t.source.c_str(),
+                          !r.why.empty() ? "  -- " : !r.how.empty() ? "  -- " : "", !r.why.empty() ? r.why.c_str() : r.how.c_str());
             out += line;
         }
+        return out;
+    }
+
+    std::string validationComparison(const std::vector<ValidationRow>& reference, const std::vector<ValidationRow>& simulator,
+                                     bool same)
+    {
+        const auto cell = [](const ValidationRow& r) {
+            char text[64];
+            if (!r.measured)
+                return std::string("n/a");
+            std::snprintf(text, sizeof text, "%.4g %s", *r.measured, r.pass ? "pass" : "MISS");
+            return std::string(text);
+        };
+        std::string out;
+        char line[640];
+        std::snprintf(line, sizeof line, "%-24s %-26s %-16s %-16s %s\n", "target", "range", "reference",
+                      same ? "simulator (=)" : "simulator", "source");
+        out += line;
+        std::vector<std::string> refMiss, simMiss;
+        for (std::size_t i = 0; i < simulator.size(); ++i)
+        {
+            const ValidationRow& s = simulator[i];
+            const ValidationRow* r = nullptr;
+            for (const ValidationRow& candidate : reference)
+                if (candidate.target == s.target)
+                    r = &candidate;
+            const ValidationTarget& t = *s.target;
+            char range[64];
+            std::snprintf(range, sizeof range, "%.4g to %.4g %s", t.low, t.high, t.unit.c_str());
+            const std::string note = !s.why.empty() ? "  -- " + s.why : !s.how.empty() ? "  (" + s.how + ")" : "";
+            std::snprintf(line, sizeof line, "%-24s %-26s %-16s %-16s %s%s\n", t.name.c_str(), range,
+                          r != nullptr ? cell(*r).c_str() : "-", cell(s).c_str(), t.source.c_str(), note.c_str());
+            out += line;
+            if (r != nullptr && r->measured && !r->pass)
+                refMiss.push_back(t.name);
+            if (s.measured && !s.pass)
+                simMiss.push_back(t.name);
+        }
+        const auto list = [](const std::vector<std::string>& names) {
+            std::string text;
+            for (const std::string& n : names)
+                text += (text.empty() ? "" : ", ") + n;
+            return text.empty() ? std::string("none") : text;
+        };
+        out += "the reference misses: " + list(refMiss) + "\n";
+        out += "the simulator at its defaults misses: " + list(simMiss)
+               + (same ? " (the same build: no model switch is on)" : "") + "\n";
         return out;
     }
 } // namespace tee

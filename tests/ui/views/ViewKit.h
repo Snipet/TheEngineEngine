@@ -11,6 +11,7 @@
 
 #include "Png.h"
 
+#include "app/AppFrame.h"
 #include "app/Demo.h"
 #include "app/Workspace.h"
 
@@ -54,26 +55,45 @@ namespace tee::test::views
     //     CHECK_MSG(inspectorNotes(*rig.ws, rig.demo).empty(), inspectorNotes(*rig.ws, rig.demo));
     std::string inspectorNotes(const tee::ui::Workspace& ws, tee::ui::DemoRig& demo);
 
-    // A workspace alone in a headless host over the demo (ui/app/Demo.h): its stage the whole window. `t` is the demo
-    // script's time; at(t) moves it and ticks the host so the eases land.
+    // A workspace alone in a headless host over the demo (ui/app/Demo.h). `t` is the demo script's time; at(t) moves
+    // it and ticks the host so the eases land. `hooks`: with every registered workspace's own demo data (DemoHook).
+    //
+    // The stage the frame gives (AppFrame::stageFor) is much smaller than the window. Lay out for the smallest and
+    // look generous at the large:
+    //     FrameSize::smallest   window 1100 x 700,  stage {64, 48, 696, 574}
+    //     FrameSize::large      window 1600 x 1000, stage {112, 48, 1128, 874}
+    // (the ribbon and its folding are in the inspector's column: the stage is the same either way). The plain
+    // constructor gives the workspace the whole w x h window as its stage.
+    enum class FrameSize { smallest, large };
+
     struct StageRig
     {
         tee::ui::DemoRig demo;
         std::unique_ptr<tee::ui::Workspace> ws;
         std::unique_ptr<funkgui::HeadlessHost> host;
 
-        StageRig(tee::ui::WorkspaceFactory make, int w = 1100, int h = 700, float dpi = 2.0f, double t = 4.6)
-            : demo(t)
+        StageRig(tee::ui::WorkspaceFactory make, int w = 1100, int h = 700, float dpi = 2.0f, double t = 4.6, bool hooks = true)
+            : demo(t, hooks)
         {
-            ws = make(demo.ctx);
-            host = std::make_unique<funkgui::HeadlessHost>(*ws, 0, dpi);
-            host->resize(w, h);
-            ws->place({ 0.0f, 0.0f, static_cast<float>(w), static_cast<float>(h) });
-            settle();
+            open(make, w, h, { 0.0f, 0.0f, static_cast<float>(w), static_cast<float>(h) }, dpi);
+        }
+        StageRig(tee::ui::WorkspaceFactory make, FrameSize size, float dpi = 2.0f, double t = 4.6, bool hooks = true)
+            : demo(t, hooks)
+        {
+            const int w = size == FrameSize::smallest ? 1100 : 1600, h = size == FrameSize::smallest ? 700 : 1000;
+            open(make, w, h, tee::ui::AppFrame::stageFor(w, h), dpi);
         }
         void at(double t)
         {
             demo.at(t);
+            settle();
+        }
+        void open(tee::ui::WorkspaceFactory make, int w, int h, const funkgui::Rect& stage, float dpi)
+        {
+            ws = make(demo.ctx);
+            host = std::make_unique<funkgui::HeadlessHost>(*ws, 0, dpi);
+            host->resize(w, h);
+            ws->place(stage);
             settle();
         }
         // Ticks until the eases land (the demo's script does not move: ticking the host does not tick the demo).

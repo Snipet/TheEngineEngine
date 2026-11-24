@@ -15,9 +15,12 @@
   - the throttle, a butterfly drawn at its opening with the percentage;
   - the plenum;
   - the runners to the head, or individual throttle bodies, each with its trumpet and its own butterfly.
-- **Beneath each part:** its live pressure (absolute) and temperature.
+- **Beneath each part:** its live pressure (absolute) and temperature as numbers. Their units are written once, at the
+  left of the rows. When both are absent, a single dash.
 - **The pipe between two parts** is tinted by the air leaving the first, from blue near the air outside to orange
-  some 190 K above it, with its temperature on the pipe.
+  some 190 K above it, with its temperature on the pipe (only where there is one).
+- **The row fits any stage:** the parts' widths are in a unit that shrinks to 0.58 on the frame's narrowest stage. A
+  name that would touch its neighbour's drops a line.
 
 **The compressor's map** is made from the machine's sizes with the simulator's own arithmetic.
 
@@ -33,21 +36,27 @@
   marked 2). For a compound pair the high-pressure stage's own map differs, and only its point is shown.
 - A Roots or twin-screw blower has no map, and the stage says so in words.
 
-**The shaft:**
+**Beside the map**, in a column of its own, the operating point's numbers and the shaft:
 
-- speed in krpm, and a bar against its limit (a tip speed of 560 m/s, or the build's);
-- a trace of the recent speed, with the limit dotted;
+- pressure ratio, corrected flow and efficiency;
+- the shaft's speed in krpm, and a bar against its limit (a tip speed of 560 m/s, or the build's);
 - the second turbo's speed;
-- for variable vanes, a nozzle ring whose vanes stand more nearly radial as it opens, with the opening in words.
+- for variable vanes, a nozzle ring whose vanes stand more nearly radial as it opens, with the opening.
 
-A supercharger shows its pulley ratio, its bypass (lamp and word) and the power it takes instead. A natural engine
-shows its manifold pressure, vacuum and throttle.
+The map takes the rest of its panel. A press on the column selects the shaft.
+
+Without a map, the left panel shows something else instead:
+
+- a Roots or twin-screw blower: its drive (pulley ratio, bypass, the power it takes);
+- a natural engine: the manifold (pressure, vacuum, throttle).
 
 **The gate and the blow-off valve:**
 
+In the right-hand panel, as tall as what it shows:
+
 - poppet valves drawn lifting off their seats, with the opening or lift in words and numbers;
-- boost against target as a bar with the target marked, both as numbers, and a trace of recent boost with the target
-  dotted.
+- boost against target as a bar with the target marked, both as numbers;
+- a trace of recent boost with the target dotted, only once there is a trace and room for it.
 
 **Anti-lag and nitrous**, where the build has them: a lamp and words (ARMED, ACTIVE or ON) and the bottle's state
 ("3.69 kg OF 4.50 kg").

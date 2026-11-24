@@ -96,6 +96,14 @@ namespace tee::ui
         std::vector<ParamInfo> infos_;
     };
 
+    // How a generated page shows an array of numbers: up to kArrayKnobs elements a control each (a knob, a menu, a
+    // switch, in the group's row); from kArrayKnobs + 1 to kTableMax elements one row of cells (the `array` element: a
+    // MapEdit of one row, typed or dragged); more than that a control each again.
+    inline constexpr int kArrayKnobs = 8;
+    bool arrayAsTable(const FieldInfo& f) noexcept;
+    // The fields a widget element shows: a map's or a curve's field, every element of an `array`'s array; none else.
+    std::vector<int> fieldsOfWidget(const FieldDoc& doc, const GuiNode& node);
+
     // The fields of `section` a generated page shows (not hidden), in the Spec's order.
     std::vector<int> sectionFields(const FieldDoc& doc, std::string_view section);
     // Those cut into pages of at most `maxControls` controls (a table counts as none), a group kept whole when it fits.

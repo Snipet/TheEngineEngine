@@ -1,11 +1,11 @@
-geometry 2087b5ff9009742a
-text c842a0b4385cfbc2
-statics 2226
+geometry bae6b353b2572e5e
+text fc4d5bee07886099
+statics 1942
 live 0
-texts 1408
-rrects 284
-segments 534
+texts 1181
+rrects 241
+segments 520
 areas 0
 shaders 0
 images 0
-size 1100 x 700
+size 696 x 574

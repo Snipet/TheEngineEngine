@@ -43,6 +43,7 @@
 #include "spec/telemetry.fm"
 #include "spec/scope.fm"
 #include "exhaust/slots.fm"
+#include "boost/boost.fm"
 
 module Exhaust
 {
@@ -125,6 +126,9 @@ module Exhaust
     ExhaustSpec* spec;  // the Spec's exhaust section (Engine's)
     ExhaustTel* telOut; // the Telemetry's and the Scope's (Engine's)
     Scope* scopeOut;
+    Boost* bo;          // card F's machine: the turbines' housings, downpipes and gates (sim/README.md)
+    int hmapBuilt[4];   // the housings as last built
+    int fed;            // 1: the builder's collectors end in housings this build (Boost's stand-in is then not fed)
     int model;          // in use: 0 the reference's code, 1 the builder
     int seenRev;        // the section's rev as last looked at, and the builder's description built
     float seenSig;
@@ -145,8 +149,12 @@ module Exhaust
     int prepared;       // 1: prepare() was called this sample (the turbines' seam), before step()
 
     void setup(float rateIn, Noise* noise, Layout* layIn, Heat* heatIn, ExhaustSpec* specIn, ExhaustTel* telIn,
-               Scope* scopeIn)
+               Scope* scopeIn, Boost* boostIn)
     {
+        bo = boostIn;
+        fed = 0;
+        for (int i = 0; i < 4; ++i)
+            hmapBuilt[i] = -1;
         spec = specIn;
         telOut = telIn;
         scopeOut = scopeIn;
@@ -965,10 +973,70 @@ module Exhaust
         e->mdotSlow = mdotSlow;
         e->rpm = rpmNow;
         e->load = loadNow;
-        // card F's turbines: none until its seam is wired (the reference's restriction stands for them)
-        for (int c = 0; c < XS_COLL; ++c)
-            e->housing[c] = -1;
+        // card F's turbines (boost.model 1): the housing each bank's collectors end in; none: -1, and the reference's
+        // restriction stands for a turbo (aspUse, which the engine gives 0 with boost.model 1). External gates' pipes:
+        // not yet (Boost lists no function that says how many there are)
+        int banks = 1;
+        for (int i = 0; i < lay->ports; ++i)
+        {
+            if (portBank[i] == 1)
+                banks = 2;
+        }
+        for (int bk = 0; bk < 2; ++bk)
+        {
+            for (int g = 0; g < 2; ++g)
+                e->hmap[bk * 2 + g] = bo->housingOf(bk, g, banks);
+        }
+        e->useHousings = 1;
         e->gates = 0;
+    }
+
+    // Has the housings' map moved since the last build (card F's machine rebuilt)?
+    int housingsMoved()
+    {
+        for (int i = 0; i < 4; ++i)
+        {
+            if (b.eng.hmap[i] != hmapBuilt[i])
+                return 1;
+        }
+        return 0;
+    }
+
+    void builtWith()
+    {
+        for (int i = 0; i < 4; ++i)
+            hmapBuilt[i] = b.eng.hmap[i];
+        fed = 0;
+        for (int h = 0; h < 8; ++h)
+        {
+            if (b.jHouse[h] >= 0)
+                fed = 1;
+        }
+    }
+
+    // Each sample, model 1, after prepare(): each housing's pressure, each downpipe's and gate's, from card F
+    void turbines()
+    {
+        if (fed == 0)
+            return;
+        for (int h = 0; h < 8; ++h)
+        {
+            if (b.jHouse[h] >= 0)
+                b.setHouse(h, bo->housing(h, b.houseDrive(h), b.houseAdmit(h), b.houseT(h)));
+        }
+        for (int s = 0; s < 2; ++s)
+        {
+            if (b.jDown[s] >= 0)
+                b.setDown(s, bo->downpipe(s, b.downWave(s), b.downZ(s)));
+        }
+        for (int t = 0; t < b.nGates; ++t)
+            b.setGate(t, bo->gatePipe(t, b.gateWave(t), b.gateZ(t)));
+    }
+
+    // 1 while the builder's network feeds card F's housings (the engine then gives Boost no stand-in gas)
+    int turbinesFed()
+    {
+        return model != 0 && fed != 0 ? 1 : 0;
     }
 
     // The builder's noise as the reference's, from Engine's stream
@@ -989,13 +1057,18 @@ module Exhaust
         if (needBuild != 0)
         {
             b.build(atRestBuild, heat->warm, 0);
+            builtWith();
             needBuild = 0;
             seenSig = sig();
             nDuals = b.channels();
             tUse[0] = b.heat.tUse[XH_PRIM];
         }
         else
+        {
+            if (model != 0 && housingsMoved() != 0)
+                want = 1;
             b.shape();
+        }
     }
 
     // Each sample, model 1: the bangs (the pops Combustion fires, ticked as the reference ticks them), the turbines'
@@ -1013,6 +1086,7 @@ module Exhaust
         }
         if (prepared == 0)
             b.prepare();
+        turbines();
         b.step(qe);
         outL = b.net.outL;
         outR = b.net.outR;
@@ -1109,6 +1183,7 @@ module Exhaust
             fillEngine();
             noiseLike();
             b.build(0, heat->warm, 1);
+            builtWith();
             seenSig = sig();
             nDuals = b.channels();
             tUse[0] = b.heat.tUse[XH_PRIM];
@@ -1227,5 +1302,14 @@ module Exhaust
             o->ductFar[i] = b.net.dUse[i] != 0 ? d->far + b.net.farIn[i] : 0.0f;
         }
         o->exhaustRefreshes += 1;
+    }
+
+    // ---- the integrator's hooks (sim/README.md) ----
+    // A bang of unburned fuel in a bank's collector, its amplitude (Pa, as Pop::fire's): the bank's Pop, which both
+    // models tick at that bank's collector
+    void popAt(int bank, float amplitude)
+    {
+        const int k = bank <= 0 ? 0 : 1;
+        pop[k].fire(amplitude, rate, 99 + k);
     }
 };

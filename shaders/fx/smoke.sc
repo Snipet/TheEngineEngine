@@ -23,6 +23,7 @@ void main()
     float n = 0.55 * noise(p) + 0.3 * noise(p * 2.1 + vec2(3.1, 1.7)) + 0.15 * noise(p * 4.3);
     float rise = 1.0 - v_uv.y;                                  // thinner towards the top
     float shape = clamp(1.0 - abs(v_uv.x * 2.0 - 1.0), 0.0, 1.0) * clamp(1.0 - rise * 0.9, 0.0, 1.0);
-    float a = d * clamp(n * 1.6 - 0.35, 0.0, 1.0) * shape * 0.6;
+    float edges = smoothstep(0.0, 0.2, 1.0 - v_uv.y) * smoothstep(0.0, 0.2, v_uv.y);   // no edge at the rect's bottom or top
+    float a = d * clamp(n * 1.6 - 0.35, 0.0, 1.0) * shape * edges * 0.8;
     gl_FragColor = vec4(clamp(vec3(in2, in3, in4), 0.0, 1.0), a);
 }
