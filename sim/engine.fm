@@ -304,6 +304,7 @@ module Engine
         set.timing = 0.0f;
         comb.setup(rate, &noise, &ecu, &heat, &lay, &exh.pop[0], &spec.fuel, &spec.engine);
         comb.oxygen = 1.0f;
+        comb.walls = woschniWalls() ? 1 : 0;
         hd.setup(rate, &spec.ecu, &spec.valve);                                             // card D2
         ecu.setup(16.0f / rate, &spec.ecu, &spec.fuel, &ctl, &tel.ecu, &scope, &heat);     // card H's model 1
         set.bov = 0.7f;
@@ -524,6 +525,14 @@ module Engine
     bool physicalFriction()
     {
         return customUse != 0 || spec.fuel.model != 0;
+    }
+
+    // Whose walls take the burn's heat: Woschni's (core/wallheat.fm) with spec.engine.wallHeat 1 or fuel.model 1, else
+    // the reference's. One decision, from the two switches as the fade has made them (applyModels), read by the walls
+    // here and handed to Combustion (comb.walls), whose share of the fuel's heat follows it: the walls' loss counted once
+    bool woschniWalls()
+    {
+        return spec.engine.wallHeat == 1 || spec.fuel.model != 0;
     }
 
     // A sum of what makes a custom engine (spec.engine's custom fields, each with its own weight), to see it changed: 0
@@ -850,7 +859,7 @@ module Engine
         exh.gas(d16);
         // the walls' heat: Woschni's with spec.engine.wallHeat 1 or fuel.model 1 (each cylinder from where it stands:
         // core/wallheat.fm), else the reference's (by speed alone, the same through the cycle)
-        if ((spec.engine.wallHeat == 1 || spec.fuel.model != 0) && lay.rotary != 0)
+        if (woschniWalls() && lay.rotary != 0)
         {
             // (a rotary's faces: the chamber's own walls and the gas's speed along them, core/wallheat.fm; with fuel.model
             // 1, the seals' leakage, cylinder.fm)
@@ -863,7 +872,7 @@ module Engine
                 cy->leakA = spec.fuel.model != 0 ? wall.leakArea() : 0.0f;
             }
         }
-        else if (spec.engine.wallHeat == 1 || spec.fuel.model != 0)
+        else if (woschniWalls())
         {
             const float sp = strokeUse * crank.omega * 0.31830989f;
             for (int c = 0; c < lay.n; ++c)
@@ -1554,6 +1563,7 @@ module Engine
         modelUse[7] = applyModel(7, &spec.voices.model, &spec.voices.rev);
         modelUse[8] = applyModel(8, &spec.engine.wallHeat, &spec.engine.rev);
         modelUse[9] = applyModel(9, &spec.sound.model, &spec.sound.rev);
+        comb.walls = woschniWalls() ? 1 : 0;
     }
 
     // A paddle's press as the reference's wheel made it: its button down until Car's shift logic (drive16) has seen
