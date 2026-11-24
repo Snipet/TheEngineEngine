@@ -79,6 +79,8 @@ module Cylinder
     float phi;          // the charge's equivalence ratio (fuel over the stoichiometric fuel), as Combustion charged it at
                         // intake closing (0: cut, unfuelled or unlit: plain air's side): the physical cylinder's gamma
                         // reads it (1 until a charge)
+    int lateFuel;       // 1: its fuel is injected late (a diesel's): its gas is air until it burns (phi x the burned share)
+    float xBurn;        // the share of this cycle's charge burned so far (0 from intake closing; 1 once burned)
     int conserve;       // 1 (the physical cylinder: Engine::woschniWalls): what the intake pushed back comes back as itself,
                         // its mass at the temperature it left at; 0: the reference's, as the same volume of the air
     float cBurn;        // how much of what could burn this cycle's burn will burn (the dilution's toll)
@@ -223,7 +225,13 @@ module Cylinder
     float gammaAt(float tk)
     {
         if (conserve != 0)
-            return fminf(fmaxf(1.392f - 8.13e-5f * tk + 0.037f * (1.0f - fminf(phi, 1.0f)), 1.15f), 1.40f);
+        {
+            // (a late-injected charge (a diesel's) compresses plain air and gets its fuel near the top: its gas's
+            // equivalence ratio is the fuel burned so far over its air, phi x the burned share; at phi 0 the form is air's
+            // within 0.004 below 600 K (N3, 24 Nov). A premixed charge carries its fuel through compression: phi)
+            const float pg = lateFuel != 0 ? phi * xBurn : phi;
+            return fminf(fmaxf(1.392f - 8.13e-5f * tk + 0.037f * (1.0f - fminf(pg, 1.0f)), 1.15f), 1.40f);
+        }
         return fminf(fmaxf(1.39f - 7.5e-5f * (tk - 300.0f), 1.24f), 1.40f);
     }
 
@@ -263,6 +271,7 @@ module Cylinder
         rvInert = 0.0f;
         rvMT = 0.0f;
         phi = 1.0f;
+        xBurn = 0.0f;
         exStore = 0.0f;
         exStoreMT = 0.0f;
         exStoreIn = 0.0f;
@@ -360,6 +369,8 @@ module Cylinder
         evcNow = passed(before, a, evo + edur >= cyc ? evo + edur - cyc : evo + edur);
         const float ivc = ivo + idur >= cyc ? ivo + idur - cyc : ivo + idur;
         ivcNow = passed(before, a, ivc);
+        if (ivcNow)
+            xBurn = 0.0f;           // (a new charge: none of it burned)
         slapNow = rotary == 0 && (passed(before, a, 12.0f) || passed(before, a, 372.0f));
         sparkNow = passed(before, a, sparkAt);
         knockNow = false;
@@ -541,6 +552,7 @@ module Cylinder
             }
             dq = qTot * (x - xPrev);
             burnReleased += dq;
+            xBurn = x;
             knockNow = knock > 0.0f && xPrev < 0.6f && x >= 0.6f;
             xPrev = x;
             if (fe > 1.6f)

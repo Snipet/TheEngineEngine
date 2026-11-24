@@ -107,4 +107,8 @@ module BoostSpec
     float backPressure [[fminus::range(1, 4)]] [[fminus::default(1.4)]] [[ui::label("Back-pressure limit")]]
         [[ui::quantity("ratio")]] [[ui::decimals(2)]]
         [[ui::help("Variable vanes: the most pressure before the turbine over the boost, absolute; past it the vanes open whatever the boost asks (an engine brake on the vanes is not limited)")]];
+    // (card N2, for card C's dynos: as spec.exhaust.heatSettle and spec.intake.heatSettle)
+    int heatSettle [[fminus::range(0, 1000000)]] [[fminus::default(0)]] [[ui::label("Settle the intercooler's heat")]]
+        [[ui::unit("presses")]] [[ui::hidden]]
+        [[ui::help("Counts requests: at each increase the intercooler's core is put where the present flow and the air through it would hold it (for a tool: a dyno's sweep without waiting for the core)")]];
 };

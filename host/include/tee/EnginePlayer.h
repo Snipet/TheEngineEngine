@@ -182,12 +182,15 @@ namespace tee
         std::map<std::string, std::string> unknown;          // by path: the JSON text of what the Schema lacks
     };
 
-    // Reads a build against the player's Spec. False, with `error` set, when it is no build or a value is no value of
-    // its field; `warnings` gets a line for each field the Spec lacks.
+    // Reads a build against the player's Spec, as tee::Build reads it (one reading of a build file: nested objects such
+    // as spec.ecu.knock.on are fields, not unknowns). False, with `error` set, when it is no build or a value is no
+    // value of its field. A field the program lacks: with `strict` (the default: the test rigs' and tools' call) an
+    // error naming each; without, kept (EngineBuild::unknown) and written back, with a line in `warnings` (a newer
+    // file on an older program, as the application reads it). `warnings` also gets what was out of its range.
     bool parseBuild(const EnginePlayer& player, std::string_view json, std::string_view fileName, EngineBuild& build,
-                    std::string& error, std::string& warnings);
+                    std::string& error, std::string& warnings, bool strict = true);
     bool loadBuild(const EnginePlayer& player, const std::filesystem::path& file, EngineBuild& build, std::string& error,
-                   std::string& warnings);
+                   std::string& warnings, bool strict = true);
     // The build as JSON: every Spec field (its value, or its default), choices by name; what was unknown written back.
     std::string buildJson(const EnginePlayer& player, const EngineBuild& build);
     // Every Spec field at its default, then the build's values.
