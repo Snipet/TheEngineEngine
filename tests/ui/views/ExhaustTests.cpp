@@ -484,7 +484,7 @@ namespace
 {
     // U3's contact sheet, out/ui/sheet.u3.png: a row a workspace (AIR, then EXHAUST and a second EXHAUST build), each at
     // 1100 x 700 and 1600 x 1000, density 1 then 2, scaled into tiles of the same size. The software rasteriser's.
-    VIEW_TEST(testU3Sheet, "exhaust.sheet")
+    VIEW_TEST(testU3Sheet, "exhaust.sheet.pictures")
     {
         constexpr int kTileW = 560, kTileH = 360, kGap = 16, kCols = 4, kRows = 3;
         funkgui::Image out;
