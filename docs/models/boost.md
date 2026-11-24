@@ -6,7 +6,7 @@ Nobody here has heard any of it.*
 
 `boost.model = 0` is the reference's behavioural turbo (`Extras::turbo16` and its sounds), unchanged. `model = 1`
 replaces it with the model below. Until K3b lands, the model runs standalone on a made-up engine
-(`tests/sim/boost/rig.fm`); its Spec fields are in `sim/boost/machinespec.fm`, to be appended to `sim/spec/boost.fm`.
+(`tests/sim/boost/rig.fm`) and in the engine; its Spec fields are `spec.boost`'s from `model` on (`sim/spec/boost.fm`).
 
 ## Files
 
@@ -19,7 +19,6 @@ replaces it with the model below. Until K3b lands, the model runs standalone on 
 | `supercharger.fm` | `BoostSupercharger` | Roots and twin-screw |
 | `sound.fm` | `BoostSound` | the sources |
 | `machine.fm` | `BoostMachine` | the arrangement, the charge path, control, the seams |
-| `machinespec.fm` | `BoostMachineSpec` | the Spec fields (standalone stand-in for `spec.boost`) |
 
 ## Gases
 

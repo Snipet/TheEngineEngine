@@ -15,9 +15,25 @@
 //   sound(crankHz, massFlow, bovLevel)   each sample, after Extras' tick and before its tickStarter: into turbo
 //   tsOf(tsize)            the TURBO SIZE dial as the engine takes it
 // Its state read by others: boost (bar over the air), smTb, smTs.
+//
+// boost.model 1 (card F): the machine in the gas path (machine.fm, BoostMachine; docs/models/boost.md) in place of
+// all of the above, which then rests (its control keeps `boost` from the machine's pressure, its sound is the
+// machine's, its drag the machine's). Model 0, the default, runs exactly the code above. The machine's seams, here so
+// that Engine and the other modules call one module (README, Boost):
+//   applyMachine(spec, vd, redRpm, pAmb, tAmb)    when spec.boost's rev moves, and in configure
+//   housingOf(bank, group, banks), housing(h, drive, admit, tGas), downpipe(side, a, z), gatePipe(t, a, z)   the exhaust
+//   pressure(), temperature()                     the intake, before its throttle (pBox, tAir)
+//   draw(m), tick(omegaCrank, pPlenum)            each sample, after the throttle
+//   machineControl(d16)                           every 16 samples
+//   oxygen(), oxygenShare(), torque()             Combustion, Mechanics
+//   ecu(target, vanes, antiLagFuel, nitrous, purges)   every 16 samples, from the ECU
+//   telemetry(&tel.boost), scope(&scope)          after a call
 #pragma once
 #include "lib/biquad.fm"
 #include "lib/noise.fm"
+#include "spec/telemetry.fm"
+#include "spec/scope.fm"
+#include "machine.fm"
 
 module Boost
 {
@@ -44,9 +60,13 @@ module Boost
     float lastThrottle;
     float thrSlow;      // the throttle a tenth of a second behind
     float turbo;        // this sample's sound
+    int model;          // spec.boost.model: 0 the reference above, 1 the machine
+    BoostMachine mach;
+    int mapRev;         // the map's lines last copied to the Scope
 
     void setup(float rateIn, Noise* noise)
     {
+        mach.setup(96000.0f, 0.002f, 7000.0f);
         rate = rateIn;
         nz = noise;
         nScale = sqrtf(rate / 48000.0f);
@@ -88,6 +108,11 @@ module Boost
         kind = kindIn;
         tbSize = size;
         tsK = tsz;
+        if (model == 1)
+        {
+            boost = (mach.pressure() - mach.pOut) * 1.0e-5f;
+            return;
+        }
         if (kind == 0 || size <= 0.001f)
         {
             spool = 0.0f;
@@ -159,6 +184,11 @@ module Boost
     {
         // the turbos: each one's whistle at its compressor's blades (smaller ones higher, each a little apart from the
         // others), the rush of air, the blow-off valve, the surge
+        if (model == 1)
+        {
+            turbo = mach.outInlet + mach.outVent + mach.outCase + mach.outBang;
+            return;
+        }
         turbo = 0.0f;
         if (kind == 4 && tbSize > 0.001f)
         {
@@ -224,6 +254,172 @@ module Boost
     // A supercharger takes what it pumps from the crank: its boost times the air it moves, at some 60 % (N m; asp 4)
     float drag(int asp, float vTotal, float omega)
     {
+        if (model == 1)
+            return mach.crankTorque;
         return asp == 4 ? boost * 1.0e5f * vTotal * (1.0f + boost) * 0.1326f * fminf(omega / 5.0f, 1.0f) : 0.0f;
+    }
+
+    // ---- boost.model 1: the machine's seams --------------------------------------------------------------------------
+
+    // The spec's section and the engine it is on (displacement m^3, redline rpm, the air outside Pa and K); when the
+    // section's rev moves and in configure. Model 0 leaves the machine at rest.
+    void applyMachine(BoostSpec* s, float vd, float redRpm, float pAmb, float tAmb)
+    {
+        model = s->model;
+        mach.vd = vd;
+        mach.redRpm = redRpm;
+        mach.ambient(pAmb, tAmb);
+        if (model == 1)
+            mach.apply(s);
+        else
+            mach.active = 0;
+    }
+
+    int housingOf(int bank, int group, int banks)
+    {
+        return model == 1 ? mach.housingOf(bank, group, banks) : -1;
+    }
+
+    float housing(int h, float drive, float admit, float tGas)
+    {
+        return model == 1 ? mach.housing(h, drive, admit, tGas) : 0.0f;
+    }
+
+    float downpipe(int side, float a, float z)
+    {
+        return model == 1 ? mach.downpipe(side, a, z) : 0.0f;
+    }
+
+    float gatePipe(int t, float a, float z)
+    {
+        return model == 1 ? mach.gatePipe(t, a, z) : 0.0f;
+    }
+
+    // Before the throttle: Pa absolute and K (the reference's pBox and tAir in model 0)
+    float pressure(float pBoxRef)
+    {
+        return model == 1 ? mach.pressure() : pBoxRef;
+    }
+
+    float temperature(float tAirRef)
+    {
+        return model == 1 ? mach.temperature() : tAirRef;
+    }
+
+    // The charge's oxygen by mass (0.232 air), and over air's (1 without nitrous)
+    float oxygen()
+    {
+        return model == 1 ? mach.oxygen() : 0.232f;
+    }
+
+    float oxygenShare()
+    {
+        return model == 1 ? mach.oxygen() * 4.3103448f : 1.0f;
+    }
+
+    // N m the forced induction takes from the crank (model 1; model 0's is drag())
+    float torque()
+    {
+        return model == 1 ? mach.crankTorque : 0.0f;
+    }
+
+    void draw(float m)
+    {
+        if (model == 1)
+            mach.draw(m);
+    }
+
+    void tick(float omegaCrank, float pPlenum)
+    {
+        if (model == 1)
+            mach.tick(omegaCrank, pPlenum);
+    }
+
+    void machineControl(float d16)
+    {
+        if (model == 1)
+            mach.control(d16);
+    }
+
+    // The ECU's (card H's): a boost target over the air (Pa; below 0 none: the spec's), the vanes (below 0: the loop's),
+    // anti-lag's fuel (kg/s), nitrous's window (1 open), purges counted
+    void ecu(float target, float vanes, float antiLagFuel, int nitrous, int purges)
+    {
+        mach.cmdTarget = target;
+        mach.cmdVanes = vanes;
+        mach.cmdAntiLag = antiLagFuel;
+        mach.cmdNitrous = nitrous;
+        mach.cmdPurge = purges;
+    }
+
+    // The car's speed through the intercooler, m/s
+    void airSpeed(float v)
+    {
+        mach.airSpeed = v;
+    }
+
+    // tel.boost's card F fields (model 0: zeros, the shafts none)
+    void telemetry(BoostTel* t)
+    {
+        const int on = model == 1 && mach.active != 0 ? 1 : 0;
+        t->turbos = on != 0 ? mach.turbos : 0;
+        for (int i = 0; i < 4; ++i)
+        {
+            t->shaftSpeed[i] = on != 0 ? mach.telSpeed[i] : 0.0f;
+            t->ratio[i] = on != 0 ? mach.telPr[i] : 0.0f;
+            t->flow[i] = on != 0 ? mach.telFlow[i] : 0.0f;
+            t->efficiency[i] = on != 0 ? mach.telEta[i] : 0.0f;
+            t->compressorOut[i] = on != 0 ? mach.telT2[i] : 0.0f;
+            t->gate[i] = on != 0 ? mach.telGate[i] : 0.0f;
+            t->vanes[i] = on != 0 ? mach.telVanes[i] : 0.0f;
+            t->turbineIn[i] = on != 0 ? mach.telPTurb[i] : 0.0f;
+            t->turbineInTemp[i] = on != 0 ? mach.telTTurb[i] : 0.0f;
+            t->drive[i] = on != 0 ? mach.telDrive[i] : 0.0f;
+        }
+        t->chargePipe = on != 0 ? mach.v1.p - mach.pOut : 0.0f;
+        t->intercoolerOut = on != 0 ? mach.telIcOut : 0.0f;
+        t->throttleIn = on != 0 ? mach.v2.t : 0.0f;
+        t->blowOffValve = on != 0 ? mach.bovLift : 0.0f;
+        t->superchargerPower = on != 0 ? mach.telScPower : 0.0f;
+        t->oxygen = on != 0 ? mach.telO2 : 0.0f;
+        t->flags = on != 0 ? mach.flags : 0;
+    }
+
+    // The Scope's map and trail (model 1): the lines when they were rebuilt, the trail each time
+    void scope(Scope* sc)
+    {
+        if (model != 1)
+            return;
+        if (mapRev != mach.mapRev)
+        {
+            mapRev = mach.mapRev;
+            sc->boostMapRev = mapRev;
+            for (int l = 0; l < 8; ++l)
+            {
+                sc->boostLineSpeed[l] = mach.lineSpeed[l];
+                sc->boostSurgeFlow[l] = mach.surgeFlow[l];
+                sc->boostSurgeRatio[l] = mach.surgePr[l];
+                for (int i = 0; i < 16; ++i)
+                {
+                    sc->boostLineFlow[l][i] = mach.lineFlow[l][i];
+                    sc->boostLineRatio[l][i] = mach.linePr[l][i];
+                }
+            }
+            for (int v = 0; v < 5; ++v)
+            {
+                sc->boostContourEta[v] = mach.contourEta[v];
+                for (int i = 0; i < 16; ++i)
+                {
+                    sc->boostContourFlow[v][i] = mach.contourFlow[v][i];
+                    sc->boostContourRatio[v][i] = mach.contourPr[v][i];
+                }
+            }
+        }
+        sc->boostTrailAt = mach.trailAt;
+        for (int i = 0; i < 256; ++i)
+        {
+            sc->boostTrailFlow[i] = mach.trailFlow[i];
+            sc->boostTrailRatio[i] = mach.trailPr[i];
+        }
     }
 };
