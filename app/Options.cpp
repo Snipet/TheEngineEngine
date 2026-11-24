@@ -182,6 +182,11 @@ namespace tee::app
                     return false;
                 }
             }
+            else if (arg == "--hold-compile")
+            {
+                if (!real(o.holdCompile, 0.0, 600.0))
+                    return false;
+            }
             else if (arg == "--expect-fault")
                 o.expectFault = true;
             else if (arg == "--size")

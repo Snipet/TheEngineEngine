@@ -11,6 +11,7 @@
 #include <cstdio>
 #include <cstring>
 #include <functional>
+#include <limits>
 
 namespace tee
 {
@@ -59,6 +60,7 @@ namespace tee
                 // the crank's speed, held by the host while the engine starts (and throughout, with the host's brake)
                 holdCrank_ = find("crank.omega", omega_);
                 hasState_ = find("tel.engine.state", state_);
+                hasFlags_ = find("tel.engine.flags", flagsH_);
                 const bool custom = build.fieldOf("engine.custom") >= 0 && build.get("engine.custom") != 0.0;
                 const bool hostCan = holdCrank_ && find("mech.jBase", jBase_) && find("set.inertia", dialJ_)
                                      && find("set.load", dialLoad_) && !custom;
@@ -243,6 +245,7 @@ namespace tee
                 p.speed = speed;
                 const double perCycle = kFourPi / std::max(speed, 1.0) * options_.sampleRate;   // samples
                 double previous = 0.0, held = 0.0;
+                faulted_ = false;
                 const int settling = slow_.empty() ? 0 : fresh_ ? 8 : 6;
                 const int most = options_.holdSeconds > 0.0 ? 1 << 30 : options_.maxCycles + settling;
                 for (int c = 0; c < most; ++c)
@@ -262,6 +265,15 @@ namespace tee
                     }
                     const double t = sum / static_cast<double>(std::max(total, 1L));
                     held += total / options_.sampleRate;
+                    if (faulted_)
+                    {
+                        // the engine diverged and is at rest: the point is not a measure
+                        p.valid = false;
+                        p.settled = false;
+                        p.torque = std::numeric_limits<double>::quiet_NaN();
+                        p.power = p.torque;
+                        return p;
+                    }
                     // the settling cycles (above), after the first; their torque is not counted
                     if (c >= 1 && c <= settling)
                     {
@@ -355,6 +367,23 @@ namespace tee
             void set(const Schema::Handle& h, double v) noexcept { instance_->write(h, v); }
 
             // n samples held at `speed`; the mean torque the brake took over them (N m)
+            // FLAG_FAULT (4) in tel.engine.flags: the simulator found its engine diverged and put it at rest this call
+            void noteFault()
+            {
+                if (hasFlags_ && (static_cast<long>(instance_->read(flagsH_)) & 4) != 0)
+                    faulted_ = true;
+            }
+
+        public:
+            // Whether a fault was seen since the last call (and forget it).
+            bool takeFault() noexcept
+            {
+                const bool f = faulted_;
+                faulted_ = false;
+                return f;
+            }
+
+        private:
             double step(double speed, int n)
             {
                 void* data = instance_->data();
@@ -366,11 +395,13 @@ namespace tee
                     set(dynoRate_, 0.0);
                     sim_->process()(data, left_.data(), right_.data(), n);
                     samples_ += n;
+                    noteFault();
                     return instance_->read(absorber_ ? absorberH_ : torque_);
                 }
                 set(omega_, speed);
                 sim_->process()(data, left_.data(), right_.data(), n);
                 samples_ += n;
+                noteFault();
                 const double gained = instance_->read(omega_) - static_cast<double>(static_cast<float>(speed));
                 // Mechanics::inertia: the base, the flywheel dial's factor (5x over its travel), the bench load's
                 const double j = instance_->read(jBase_) * std::exp(1.6094379 * (instance_->read(dialJ_) - 0.5))
@@ -469,7 +500,8 @@ namespace tee
             std::unique_ptr<Instance> instance_;
             bool begun_ = false;
             bool hasTorque_ = false, redline_ = false, idle_ = false, holdCrank_ = false, hasState_ = false,
-                 absorber_ = false;
+                 absorber_ = false, hasFlags_ = false, faulted_ = false;
+            Schema::Handle flagsH_;
             Schema::Handle state_, absorberH_;
             std::vector<Slow> slow_;
             std::vector<std::pair<Schema::Handle, double>> held_;   // Warm.h's warm engine
@@ -575,6 +607,8 @@ namespace tee
                 p.refined = final;
                 p.brake = program ? "program" : "host";
                 p.innerRate = rateInside;
+                for (const PredictPoint& q : p.points)
+                    p.faults += q.valid ? 0 : 1;
                 p.wallSeconds = seconds(t0, Clock::now());
                 p.simulatedSeconds = simulated.load();
                 return p;
@@ -609,6 +643,8 @@ namespace tee
                         started = true;
                     }
                     const PredictPoint p = rig.point(w, cancel);
+                    if (!p.valid)
+                        started = false;   // at rest after the fault: the next point starts it again
                     if (cancel != nullptr && cancel->load(std::memory_order_relaxed))
                         break;
                     PredictCurve snapshot;

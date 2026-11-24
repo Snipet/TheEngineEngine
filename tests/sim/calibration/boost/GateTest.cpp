@@ -100,3 +100,29 @@ TEST_CASE("calibration boost: one state: stepped up from 1500 rpm or spooled at 
     CHECK(a == Catch::Approx(b).epsilon(0.1));
     CHECK(a < 1.1 * 120000.0);
 }
+
+TEST_CASE("calibration boost: the ECU's over-boost cut is the net under a gate too small", "[calibration][boost]")
+{
+    // ecu.model 1 (every archetype): the 2 L four with the gate it had before (26.3 mm) runs away spooled at 5271 rpm
+    // (255 kPa, 421 N m) with the cut off; with the cut at 150 kPa the fuel is cut while the boost stands over it, and
+    // the engine never makes the runaway's torque. With the matched gate the cut never acts.
+    Sims s;
+    const char* build = "content/builds/archetypes/turbo-four-20-gdi.json";
+    std::vector<Row> off, cut, matched;
+    std::string error;
+    REQUIRE(tee::calib::dyno(s.sim, build, {5271.0}, {{"boost.gateDiameter", 0.0263}, {"ecu.overBoost", -1.0}},
+                             {"boost.pressure", "engine.torque"}, off, error, 3.0, 1.0, 4.0));
+    INFO(error);
+    REQUIRE(tee::calib::dyno(s.sim, build, {5271.0}, {{"boost.gateDiameter", 0.0263}, {"ecu.overBoost", 150000.0}},
+                             {"boost.pressure", "engine.torque"}, cut, error, 3.0, 1.0, 4.0));
+    REQUIRE(tee::calib::dyno(s.sim, build, {5271.0}, {{"ecu.overBoost", 150000.0}}, {"boost.pressure", "engine.torque"},
+                             matched, error, 3.0, 1.0, 4.0));
+    std::printf("over-boost at 5271 rpm: cut off %.0f kPa %.0f N m; cut at 150 kPa %.0f kPa %.0f N m; matched gate "
+                "%.0f kPa %.0f N m\n", off[0].at("boost.pressure") / 1000.0, off[0].at("engine.torque"),
+                cut[0].at("boost.pressure") / 1000.0, cut[0].at("engine.torque"),
+                matched[0].at("boost.pressure") / 1000.0, matched[0].at("engine.torque"));
+    CHECK(off[0].at("boost.pressure") > 200000.0);
+    CHECK(cut[0].at("engine.torque") < 0.8 * off[0].at("engine.torque"));
+    CHECK(matched[0].at("boost.pressure") < 132000.0);
+    CHECK(matched[0].at("engine.torque") > 0.95 * cut[0].at("engine.torque"));
+}

@@ -36,6 +36,8 @@ namespace tee::app
         void frame();
         // Not empty: a check stopped the program while it played (a build with checks); FMinus's words. UI thread.
         std::string stopped() const;
+        // The engine plays (false while the simulator's machine code is being made in the background). UI thread.
+        bool ready() const;
     };
 
     // The folder that holds the running executable.

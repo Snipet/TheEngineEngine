@@ -341,3 +341,25 @@ TEST_CASE("the exhaust's heat settles on request", "[exhaust][engine][settle]")
         CHECK(moved[0] > 3.0 * moved[1]);
     }
 }
+
+// Finding X-013: the exhaust's telemetry is physical from the first block (written at every configure, not only
+// every 16 samples)
+TEST_CASE("the exhaust's telemetry is physical from the first block", "[exhaust][engine][telemetry]")
+{
+    for (int model : {0, 1})
+    {
+        EnginePlayer& p = player();
+        p.reset();
+        applyBuild(p, test::engineBuild(p, "v8"));
+        std::string error;
+        REQUIRE(p.setSpec("exhaust.model", model, error));
+        std::vector<float> l(512), r(512);
+        p.process(l.data(), r.data(), 512);
+        const double th = test::field(p, "tel.exhaust.headerTemperature");
+        const double tw = test::field(p, "tel.exhaust.wallTemperature[0]");
+        INFO("model " << model << ": header gas " << th << " K, wall " << tw << " K");
+        CHECK(th > 200.0);
+        CHECK(th < 2000.0);
+        CHECK(tw > 200.0);
+    }
+}
