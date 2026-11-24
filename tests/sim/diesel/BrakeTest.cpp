@@ -184,3 +184,30 @@ TEST_CASE("diesel brake: with a variable-vane turbo the brake shuts the vanes an
     CHECK(kw[1] > 330.0);
     CHECK(kw[1] < 550.0);
 }
+
+TEST_CASE("diesel brake: card G's butterfly as the exhaust brake holds its back pressure and retards", "[diesel][brake]")
+{
+    // exhaust.model 1 with flapKind Butterfly: the flap in the pipes (its relief at 350 kPa) in place of D2's stand-in
+    double kw[2] = {0.0, 0.0};
+    for (int k = 0; k < 2; ++k)
+    {
+        Engine e("truck-15l-six");
+        e.spec("exhaust.model", 1);
+        e.spec("exhaust.flapKind", 1);
+        e.spec("ecu.exBrakeSwitch", k);
+        e.start();
+        e.dyno(2000.0, 0.0f);
+        REQUIRE(e.run(4.0));
+        const double tq = e.mean("engine.torque", 1.0);
+        kw[k] = -tq * 2000.0 * 0.10471976 / 1000.0;
+        std::printf("butterfly %s at 2000 rpm: flap %.2f, %.0f kPa before it, stand-in %.0f kPa, %.0f kW retarding\n", k ? "shut" : "open",
+                    e.tel("exhaust.flap"), e.tel("exhaust.pFlap") / 1000.0, e.tel("ecu.backPressure") / 1000.0, kw[k]);
+        if (k == 1)
+        {
+            CHECK(e.tel("exhaust.pFlap") > 150000.0);
+            CHECK(e.tel("exhaust.pFlap") < 450000.0);
+            CHECK(e.tel("ecu.backPressure") < 1.0);
+        }
+    }
+    CHECK(kw[1] > kw[0] + 40.0);
+}
