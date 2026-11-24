@@ -71,8 +71,17 @@ namespace tee::input
     // An action went from up to down: what a press does at once (what a hold does is advance()'s).
     void Driver::pressed(Action action)
     {
+        // the truck's switches: latching, a press each turns one on or off (sim/spec/controls.fm, BTN_*)
+        if (action == Action::splitter || action == Action::range || action == Action::engineBrake)
+        {
+            const int bit = action == Action::splitter ? kButtonSplitter : action == Action::range ? kButtonRange : kButtonEngineBrake;
+            latched_ ^= bit;
+            return;
+        }
         if (action == Action::start)
         {
+            if (!startEnabled_)
+                return;
             startLatch_ = settings_.startLeast;
             startLatchFresh_ = true;    // the next advance's dt is time before the press: it does not count
             return;
@@ -150,6 +159,16 @@ namespace tee::input
         handbrakeStripHeld_ = isHeld;
     }
 
+    void Driver::setStartEnabled(bool on) noexcept
+    {
+        startEnabled_ = on;
+        if (!on)
+        {
+            startLatch_ = 0.0f;
+            crankLeft_ = 0.0f;
+        }
+    }
+
     void Driver::setMode(int mode)
     {
         settings_.mode = mode;
@@ -192,7 +211,7 @@ namespace tee::input
         // a tap is enough, and a key let go early (the window losing the keyboard as it opens) does not cut it short
         if (seen.running)
             crankLeft_ = 0.0f;
-        const bool start = held(Action::start) || startLatch_ > 0.0f || crankLeft_ > 0.0f;
+        const bool start = startEnabled_ && (held(Action::start) || startLatch_ > 0.0f || crankLeft_ > 0.0f);
         if (startLatchFresh_)
             startLatchFresh_ = false;
         else
@@ -248,7 +267,7 @@ namespace tee::input
         frame_.lever = settings_.autoClutch ? 0 : lever_;
         frame_.shiftUp = shiftUp_;
         frame_.shiftDown = shiftDown_;
-        frame_.buttons = 0;
+        frame_.buttons = latched_;
         frame_.mode = settings_.mode;
         return frame_;
     }

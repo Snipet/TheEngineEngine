@@ -100,6 +100,8 @@ namespace
         {
             std::printf("%8.0f %10.1f %10.1f %7d %8s", rpm(p.speed), p.torque, p.power / 1000.0, p.cycles,
                         p.settled ? "yes" : "NO");
+            if (p.knockRetard > 0.0)
+                std::printf("  knock %.1f deg", p.knockRetard);
             if (history)
                 for (const double t : p.history)
                     std::printf(" %.1f", t);
@@ -129,6 +131,12 @@ namespace
             }
             std::printf("difference over the peak torque: mean %.2f %%, worst %.2f %%\n",
                         100.0 * sum / std::max<std::size_t>(ramp.points.size(), 1), 100.0 * worst);
+        }
+        if (last.faults > 0)
+        {
+            std::fprintf(stderr, "tee-dyno: the engine diverged (FLAG_FAULT) at %d point(s): they are NaN, not measures\n",
+                         last.faults);
+            return 1;
         }
         return 0;
     }
@@ -296,6 +304,11 @@ int main(int argc, char** argv)
         std::printf("%s", curve.chart().c_str());
         std::printf("%zu points, %.1f s simulated in %.2f s: %.1f times real time; %s\n", curve.points.size(),
                     curve.simulatedSeconds, curve.wallSeconds, curve.realTime(), csv.c_str());
+    }
+    if (curve.faults > 0)
+    {
+        std::fprintf(stderr, "tee-dyno: the engine diverged (FLAG_FAULT) and was put at rest: the run stopped there\n");
+        return 1;
     }
     return 0;
 }

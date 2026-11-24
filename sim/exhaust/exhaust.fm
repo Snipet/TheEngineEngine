@@ -59,6 +59,9 @@ module Exhaust
     Duct ch2[2];
     Duct tail[2];
     Duct cross;         // between the two pipes (an H-pipe), when dual
+    DuctLanes lanes;    // (lanes) the pipes' trackers and walls, across the pipes
+    int laneKind[32];   // (lanes) each lane's pipe: 0 prim, 1 sec, 2 pipe, 3 ch1, 4 mid, 5 ch2, 6 tail, 7 cross
+    int laneIdx[32];
     Pop pop[2];
     float smMuf;
     float smHdr;
@@ -128,6 +131,7 @@ module Exhaust
     Scope* scopeOut;
     Boost* bo;          // card F's machine: the turbines' housings, downpipes and gates (sim/README.md)
     int hmapBuilt[4];   // the housings as last built
+    int gatesBuilt;     // the external gates as last built
     int fed;            // 1: the builder's collectors end in housings this build (Boost's stand-in is then not fed)
     int model;          // in use: 0 the reference's code, 1 the builder
     int seenRev;        // the section's rev as last looked at, and the builder's description built
@@ -146,6 +150,8 @@ module Exhaust
     float rpmNow;
     float loadNow;
     int tick128;
+    int seenSettle;     // spec.exhaust.heatSettle as last acted on
+    float tPortNow;     // the ports' gas as the cylinders give it now (gas(), before its 0.8 s smoothing)
     int prepared;       // 1: prepare() was called this sample (the turbines' seam), before step()
 
     void setup(float rateIn, Noise* noise, Layout* layIn, Heat* heatIn, ExhaustSpec* specIn, ExhaustTel* telIn,
@@ -155,10 +161,11 @@ module Exhaust
         fed = 0;
         for (int i = 0; i < 4; ++i)
             hmapBuilt[i] = -1;
+        gatesBuilt = 0;
         spec = specIn;
         telOut = telIn;
         scopeOut = scopeIn;
-        b.sp = specIn;
+        b.follow(specIn);
         b.setup(rateIn);
         b.net.noiseSrc = noise;
         b.net.shared = 1;
@@ -181,6 +188,8 @@ module Exhaust
         loadNow = 0.0f;
         tick128 = 0;
         prepared = 0;
+        seenSettle = spec->heatSettle;
+        tPortNow = 0.0f;
         rate = rateIn;
         noiseSrc = noise;
         lay = layIn;
@@ -286,6 +295,58 @@ module Exhaust
         }
         // each layout's loudness, measured: so they come out alike at speed
         cross.clear();
+        lanes.clear();
+    }
+
+    // (lanes) the pipes in read()'s order, each given its lane's coefficients (after every sizing)
+    Duct* laneDuct(int p)
+    {
+        const int k = laneKind[p];
+        const int i = laneIdx[p];
+        if (k == 0)
+            return &prim[i];
+        if (k == 1)
+            return &sec[i];
+        if (k == 2)
+            return &pipe[i];
+        if (k == 3)
+            return &ch1[i];
+        if (k == 4)
+            return &mid[i];
+        if (k == 5)
+            return &ch2[i];
+        if (k == 6)
+            return &tail[i];
+        return &cross;
+    }
+
+    void addLane(int k, int i)
+    {
+        laneKind[lanes.n] = k;
+        laneIdx[lanes.n] = i;
+        lanes.n += 1;
+    }
+
+    void syncLanes()
+    {
+        lanes.n = 0;
+        for (int i = 0; i < lay->ports; ++i)
+            addLane(0, i);
+        const int nb = lay->topo == 0 ? 1 : 2;
+        for (int k = 0; k < nb; ++k)
+            addLane(1, k);
+        for (int k = 0; k < nDuals; ++k)
+        {
+            addLane(2, k);
+            addLane(3, k);
+            addLane(4, k);
+            addLane(5, k);
+            addLane(6, k);
+        }
+        if (nDuals == 2)
+            addLane(7, 0);
+        for (int p = 0; p < lanes.n; ++p)
+            lanes.take(p, laneDuct(p));
     }
 
     // The exhaust's heat (dt seconds on): the gas leaves the ports at tIn and cools along the system toward each part's
@@ -354,17 +415,21 @@ module Exhaust
         aspNow = aspUse;
         smTbNow = smTb;
         smTsNow = smTs;
+        const int configuring = needBuild;
         if (model != 0)
+            builderPipes();
+        else
         {
-            builderPipes();
-            return;
+            refPipes(bore, aspUse, smTb, smTs, rate);
+            // (at a configure the builder is built too, though it does no work a sample: its pipes then carry the
+            // history the reference's carry, whose old timings a configure's clear keeps, so a later configure into
+            // model 1 starts as the reference would)
+            if (needBuild != 0)
+                builderPipes();
         }
-        refPipes(bore, aspUse, smTb, smTs, rate);
-        // (at a configure the builder is built too, though it does no work a sample: its pipes then carry the history
-        // the reference's carry, whose old timings a configure's clear keeps, so a later configure into model 1 starts
-        // as the reference would)
-        if (needBuild != 0)
-            builderPipes();
+        // (a configure: the Telemetry true from the first block, before the first 16 samples have run)
+        if (configuring != 0)
+            writeTelemetry();
     }
 
     // The reference's pipes() (model 0)
@@ -514,6 +579,7 @@ module Exhaust
         for (int k = 0; k < 2; ++k)
             endR[k].design(-1.0f + nb1 * kb + nb2 * kb2, -2.0f - 2.0f * nb2 * kb2, -1.0f - nb1 * kb + nb2 * kb2,
                            1.0f + da1 * kb + da2 * kb2, 2.0f - 2.0f * da2 * kb2, 1.0f - da1 * kb + da2 * kb2);
+        syncLanes();
     }
 
     // The converter's cone's (and the merging's) flow noise for main pipe k: K 0.6 on the pipe's own speed
@@ -586,6 +652,7 @@ module Exhaust
         if (mSum > 1.0e-9f)
         {
             const float tNew = eSum / mSum;
+            tPortNow = tNew;
             tPort += (tNew - tPort) * (1.0f - expf(-d16 / 0.8f));
         }
         else
@@ -691,22 +758,69 @@ module Exhaust
         }
         const int np = lay->ports;
         const int nb = lay->topo == 0 ? 1 : 2;
+        int n = 0;
         for (int i = 0; i < np; ++i)
         {
-            prim[i].read();
+            prim[i].readRaw();
+            lanes.fr[n] = prim[i].rawF;
+            lanes.br[n] = prim[i].rawB;
+            n += 1;
         }
         for (int k = 0; k < nb; ++k)
-            sec[k].read();
+        {
+            sec[k].readRaw();
+            lanes.fr[n] = sec[k].rawF;
+            lanes.br[n] = sec[k].rawB;
+            n += 1;
+        }
         for (int k = 0; k < nDuals; ++k)
         {
-            pipe[k].read();
-            ch1[k].read();
-            mid[k].read();
-            ch2[k].read();
-            tail[k].read();
+            pipe[k].readRaw();
+            lanes.fr[n] = pipe[k].rawF;
+            lanes.br[n] = pipe[k].rawB;
+            ch1[k].readRaw();
+            lanes.fr[n + 1] = ch1[k].rawF;
+            lanes.br[n + 1] = ch1[k].rawB;
+            mid[k].readRaw();
+            lanes.fr[n + 2] = mid[k].rawF;
+            lanes.br[n + 2] = mid[k].rawB;
+            ch2[k].readRaw();
+            lanes.fr[n + 3] = ch2[k].rawF;
+            lanes.br[n + 3] = ch2[k].rawB;
+            tail[k].readRaw();
+            lanes.fr[n + 4] = tail[k].rawF;
+            lanes.br[n + 4] = tail[k].rawB;
+            n += 5;
         }
         if (nDuals == 2)
-            cross.read();
+        {
+            cross.readRaw();
+            lanes.fr[n] = cross.rawF;
+            lanes.br[n] = cross.rawB;
+        }
+        lanes.run();
+        n = 0;
+        for (int i = 0; i < np; ++i)
+        {
+            prim[i].finishRead(lanes.fo[n], lanes.bo[n], lanes.mF[n], lanes.mB[n]);
+            n += 1;
+        }
+        for (int k = 0; k < nb; ++k)
+        {
+            sec[k].finishRead(lanes.fo[n], lanes.bo[n], lanes.mF[n], lanes.mB[n]);
+            n += 1;
+        }
+        for (int k = 0; k < nDuals; ++k)
+        {
+            pipe[k].finishRead(lanes.fo[n], lanes.bo[n], lanes.mF[n], lanes.mB[n]);
+            ch1[k].finishRead(lanes.fo[n + 1], lanes.bo[n + 1], lanes.mF[n + 1], lanes.mB[n + 1]);
+            mid[k].finishRead(lanes.fo[n + 2], lanes.bo[n + 2], lanes.mF[n + 2], lanes.mB[n + 2]);
+            ch2[k].finishRead(lanes.fo[n + 3], lanes.bo[n + 3], lanes.mF[n + 3], lanes.mB[n + 3]);
+            tail[k].finishRead(lanes.fo[n + 4], lanes.bo[n + 4], lanes.mF[n + 4], lanes.mB[n + 4]);
+            n += 5;
+        }
+        if (nDuals == 2)
+            cross.finishRead(lanes.fo[n], lanes.bo[n], lanes.mF[n], lanes.mB[n]);
     }
 
     // Each sample, after the cylinders (qe: each port's volume flow into its header): the ports' waves in, the collectors,
@@ -974,8 +1088,9 @@ module Exhaust
         e->rpm = rpmNow;
         e->load = loadNow;
         // card F's turbines (boost.model 1): the housing each bank's collectors end in; none: -1, and the reference's
-        // restriction stands for a turbo (aspUse, which the engine gives 0 with boost.model 1). External gates' pipes:
-        // not yet (Boost lists no function that says how many there are)
+        // restriction stands for a turbo (aspUse, which the engine gives 0 with boost.model 1). External gates: one pipe
+        // each (Boost::externalGates, turbo t's gate solved by Boost::gatePipe at its near end), to the air at the front
+        // (a screamer pipe; F has no recirculated choice yet)
         int banks = 1;
         for (int i = 0; i < lay->ports; ++i)
         {
@@ -988,7 +1103,7 @@ module Exhaust
                 e->hmap[bk * 2 + g] = bo->housingOf(bk, g, banks);
         }
         e->useHousings = 1;
-        e->gates = 0;
+        e->gates = bo->externalGates();
     }
 
     // Has the housings' map moved since the last build (card F's machine rebuilt)?
@@ -999,13 +1114,14 @@ module Exhaust
             if (b.eng.hmap[i] != hmapBuilt[i])
                 return 1;
         }
-        return 0;
+        return b.eng.gates != gatesBuilt ? 1 : 0;
     }
 
     void builtWith()
     {
         for (int i = 0; i < 4; ++i)
             hmapBuilt[i] = b.eng.hmap[i];
+        gatesBuilt = b.eng.gates;
         fed = 0;
         for (int h = 0; h < 8; ++h)
         {
@@ -1107,8 +1223,15 @@ module Exhaust
         }
     }
 
-    // A signature of the builder's description (all but the valve's rule, which it follows as it goes): a change
-    // rebuilds under the fade
+    // A signature of the builder's description: what rebuilds under the fade. The kinds and the tables, and of each
+    // size only whether it is its own or the layout's (0; for the muffler's size, -1; a collector's volume and the
+    // primaries' step: whether there is one): the sizes themselves glide (XBuild::glide). Not the valve's rule, which
+    // it follows as it goes.
+    float on(float v)
+    {
+        return v > 0.0f ? 1.0f : 0.0f;
+    }
+
     float sig()
     {
         const ExhaustSpec* p = spec;
@@ -1116,26 +1239,26 @@ module Exhaust
         float w = 1.0f;
         for (int i = 0; i < MAX_PORTS; ++i)
         {
-            h += w * ((float)p->primaryTo[i] + 3.1f * p->primLen[i] + 7.3f * p->primD[i]);
+            h += w * ((float)p->primaryTo[i] + 3.1f * on(p->primLen[i]) + 7.3f * on(p->primD[i]));
             w *= 1.0173f;
         }
         for (int c = 0; c < MAX_COLLECTORS; ++c)
         {
-            h += w * ((float)p->collectorTo[c] + 3.1f * p->colLen[c] + 7.3f * p->colD[c] + 1000.0f * p->colVol[c]);
+            h += w * ((float)p->collectorTo[c] + 3.1f * on(p->colLen[c]) + 7.3f * on(p->colD[c])
+                      + 1000.0f * (p->colVol[c] > 1.0e-6f ? 1.0f : 0.0f));
             w *= 1.0173f;
         }
         for (int s = 0; s < MAX_SIDES; ++s)
         {
-            h += w * (p->mainLen[s] + 3.7f * p->mainD[s] + 5.1f * (float)p->converter[s] + 7.9f * (float)p->resonator[s]
-                      + 0.011f * p->resHz[s] + 2.3f * p->resD[s] + 300.0f * p->resVol[s] + 1.9f * p->resLen[s]
-                      + 11.3f * (float)p->mufKind[s] + 0.7f * p->mufSize[s] + 2.9f * p->mufLen[s]
-                      + 13.7f * (float)p->bypass[s] + 1.3f * p->tailLen[s] + 4.1f * p->tailD[s] + 17.1f * (float)p->tips[s]
-                      + 19.3f * (float)p->exitAt[s]);
+            h += w * (on(p->mainLen[s]) + 3.7f * on(p->mainD[s]) + 5.1f * (float)p->converter[s]
+                      + 7.9f * (float)p->resonator[s] + 2.3f * on(p->resD[s]) + 11.3f * (float)p->mufKind[s]
+                      + 0.7f * (p->mufSize[s] >= 0.0f ? 1.0f : 0.0f) + 2.9f * on(p->mufLen[s])
+                      + 13.7f * (float)p->bypass[s] + 1.3f * on(p->tailLen[s]) + 4.1f * on(p->tailD[s])
+                      + 17.1f * (float)p->tips[s] + 19.3f * (float)p->exitAt[s]);
             w *= 1.0173f;
         }
-        h += w * (p->primSpread + 2.0f * p->primStepAt + 3.0f * p->primStepD + 5.0f * (float)p->sides
-                  + 7.0f * (float)p->crossKind + 11.0f * (float)p->crossAt + 13.0f * p->crossD + 17.0f * p->crossLen
-                  + 19.0f * p->postLen + 23.0f * p->linkLen + 29.0f * p->bypassD + 31.0f * p->gateLen + 37.0f * p->gateD);
+        h += w * (2.0f * (p->primStepAt > 0.01f ? 1.0f : 0.0f) + 5.0f * (float)p->sides + 7.0f * (float)p->crossKind
+                  + 11.0f * (float)p->crossAt + 13.0f * on(p->crossD) + 29.0f * on(p->bypassD));
         return h;
     }
 
@@ -1143,6 +1266,11 @@ module Exhaust
     // waits for the fade
     void checkSpec()
     {
+        if (spec->heatSettle != seenSettle)
+        {
+            seenSettle = spec->heatSettle;
+            settleHeat();
+        }
         if (spec->rev == seenRev)
             return;
         seenRev = spec->rev;
@@ -1195,6 +1323,33 @@ module Exhaust
             nDuals = lay->topo == 2 ? 2 : 1;
             refPipes(boreNow, aspNow, smTbNow, smTsNow, rate);
         }
+    }
+
+    // Card C's settle (spec.exhaust.heatSettle): the gas at the ports where the cylinders now put it, the mass flow at
+    // its present mean, and every wall of the exhaust where that gas and the air outside hold it (the soak run on over
+    // some 20 minutes in 3 s steps), the pipes then set to the gas: what a long run at this load leaves. Either model.
+    void settleHeat()
+    {
+        if (tPortNow > 0.0f)
+            tPort = tPortNow;
+        mdotSlow = mdot;
+        if (model != 0)
+        {
+            fillEngine();
+            for (int it = 0; it < 400; ++it)
+                b.heat.soak(tPort, mdotSlow, 3.0f, heat->tAmb, vAirNow);
+            for (int i = 0; i < XH_SECT; ++i)
+                b.heat.tUse[i] = b.heat.tGas[i];
+            tUse[0] = b.heat.tUse[XH_PRIM];
+            b.shape();
+            return;
+        }
+        for (int it = 0; it < 400; ++it)
+            soak(tPort, mdotSlow, 3.0f, boreNow, vAirNow);
+        atRestBuild = 0;
+        for (int i = 0; i < 5; ++i)
+            tUse[i] = tGas[i];
+        refPipes(boreNow, aspNow, smTbNow, smTsNow, rate);
     }
 
     // Card H: the gas's temperature where a bank's bangs light (K)

@@ -11,6 +11,7 @@
 module XTest
 {
     XBuild b;
+    Duct probe;         // one pipe alone, for the passivity sweep
     ExhaustSpec spec;   // the Spec's exhaust section, as the engine holds it
     RefExh r;
     Layout lay;
@@ -39,8 +40,9 @@ module XTest
     void init(float rateIn)
     {
         rate = rateIn;
-        b.sp = &spec;
+        b.follow(&spec);
         b.setup(rate);
+        probe.configure((int)(rate / 300.0f) + 16);
         r.setup(rate);
         tPort = 1000.0f;
         mdot = 0.02f;
@@ -53,6 +55,7 @@ module XTest
 
     void end()
     {
+        probe.release();
         b.release();
         r.release();
     }
@@ -279,6 +282,30 @@ module XTest
         {
             const float cv = hVol / (1.33f * 101325.0f);
             energy += 0.5f * cv * (hP[0] * hP[0] + hP[1] * hP[1]) * rate;
+        }
+    }
+
+    // The probe: a pipe 1 m long, 50 mm bore, gas at 500 m/s, with a packing (dB above 400 Hz and above 2 kHz), a
+    // low-pass (Hz, 0 none) and a pass's gain keep; ff -1 the builder's rule decides its order, else ff
+    void probeSet(float dLow, float dHigh, float lpHz, float keep, int ff)
+    {
+        probe.set(1.0f, 0.05f, 0.0019635f, 500.0f, rate);
+        probe.extra(lpHz, keep, rate);
+        probe.pack(400.0f, dLow, 2000.0f, dHigh, rate);
+        probe.steep = 0.0f;
+        probe.gain = keep;
+        probe.filtFirst = ff < 0 ? b.filterFirst(&probe) : ff;
+        probe.clear();
+    }
+
+    // Its one pass's impulse response: a unit impulse in at the near end, out[t] the wave arriving at the far end
+    void probeRun(float* out, int n)
+    {
+        for (int t = 0; t < n; ++t)
+        {
+            probe.read();
+            out[t] = probe.far;
+            probe.write(t == 0 ? 1.0f : 0.0f, 0.0f);
         }
     }
 

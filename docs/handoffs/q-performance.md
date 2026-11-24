@@ -1,8 +1,7 @@
 # Q: performance (handoff, 2026-11-24)
 
-**Package Q, branch `claude/awesome-gates-ntdb58`.** Owns `docs/measurements/**`; exact changes committed in other
-modules under the lead's 14:58 rule. Machine: this container (Xeon 2.10 GHz, AVX-512, quiet locally, noisy host).
-
+**Package Q, `claude/awesome-gates-ntdb58`.** Owns `docs/measurements/**`; exact changes in others' modules under
+the lead's rule. Machine: this container (Xeon 2.10 GHz, quiet locally, noisy host).
 **Done** (each with numbers in `docs/measurements/`):
 - q1-profile.md: where R goes (V8, V12, Large Diesel; free-revs, drive-car): Valve::flow 24 %, Duct::read+write 23 %,
   Cylinder 15 %, Exhaust::step 12 %, the pipes' per-16 coefficients 5-6 %. R on a quiet core: **1.79 us**, not 2.3.
@@ -14,8 +13,9 @@ modules under the lead's 14:58 rule. Machine: this container (Xeon 2.10 GHz, AVX
   back in 3a3bcaa: it saves nothing; my first "8 %" was host noise (q3-q4-changes.md, corrected).
 - 42c3dd5: `TEE_FAST`, the program's one fast switch (`#ifdef` in exhaust/duct.fm): valves in 2 passes, **10.3 % of
   R** (7 runs, both orders), not exact: bands 1-20 kHz +0.3-0.7 dB on free-revs, 250 Hz +1.0-1.3 dB on drive-car.
-- Pipes as arrays prototyped (`proto/duct-lanes.patch`, G's, waits for G): exact (null 59/59, exhaust tests green),
-  3-8 % on 8-12 cylinders, nothing on the inline six. README.md: the method, every earlier figure restated.
+- Pipes as arrays LANDED for model 0 (cf569cc): exact, 3-8 % on 8-12 cylinders, nothing on the six; inside G's
+  builder (XNet::read) exact but no gain: not landed. Builder in the engine: +0.13-0.14 R at the reference topology,
+  +0.37-0.44 R dual X (q6); its overhead is the generic junction path (next exact target, needs G). README.md: the method, every earlier figure restated.
 - q-rule.md (exact first; 7 runs both orders; ensemble floor; one switch); q5 design note (parallel parts: region
   ~1 us, 2.3x less latency, +5-8 % CPU; 48 kHz inside). Tools: qbench (A/B, bit test, bands, CPU ratio), par.
 
@@ -33,7 +33,8 @@ setting**: 48 kHz inside costs 0.49, so ~0.7 R = 28 % (even a 1.6 R build: 31 %)
 about 10 kHz 13-24 dB down: the rasp and hiss on top of the note thin out), keeps levels and speed within the floor
 and the torque within 1.2 %.
 
-**Wanted outside my paths**: host passes `defines["TEE_FAST"]` only after the owner listens; -O0-then-swap later;
+**Compile**: 466 kB / 3.4-4.2 s at 16:20, 597 kB / 4.8-6.4 s with G's builder: past 4 s (q7: object cache and
+parallel compile asked of FMinus's owner). **Wanted outside my paths**: host passes `defines["TEE_FAST"]` only after the owner listens; -O0-then-swap later;
 card C: the 48 kHz numbers; tee-dyno gives the Large Diesel negative torques. **FMinus**: no bug; the loop vectoriser
 takes no hot loop (module-method loops); a `parallel { }` region ~1 us; adjacent tasks' modules false-share (40 %).
 

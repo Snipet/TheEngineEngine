@@ -59,9 +59,16 @@ is boost: a real brake shuts its turbine's vanes and runs 3 to 3.5 bar absolute 
 same engine gives some 400 kW, the published figure's range. Sweeping the opening: 660, 675, 690, 700 (3.5 mm) gave
 234, 257, 267-272, 252-276 kW. The builds keep 25 degrees and 2.5 mm (some 10 % less): with 30 degrees and 3.5 mm
 the bark loses its lines (at 2000 rpm the bins between the firing harmonics come up to them: the releases scatter
-from cycle to cycle; not yet understood). Not yet done: the pressure-volume loop of one braking cylinder against one motoring
-from the Scope (the picture asked for), and the vanes shut by the brake under boost.model 1 (`Boost::vanesAndPurge`
-is not called yet).
+from cycle to cycle; not yet understood). **The vanes shut by the brake** (boost.model 1, variable vanes; `HeavyDiesel::vaneCommand` into
+`Boost::vanesAndPurge`, card F's brake position: vanes to their stop, the gate held shut, the shaft's over-speed relief
+still acting). At 2000 rpm, High: the matched turbo (size 1) over-speeds (12,417 rad/s against its 11,932 limit), its
+relief opens the vanes to 0.78 and the manifold stops at 2.48 bar, 257 kW; size 1.3: 2.84 bar, 282 kW; size 1.6: 3.04
+bar with the vanes shut, 294 kW (motoring 61). So the boost comes, but the power follows it less than the ideal says
+(+25 % manifold, +5 % power) with the reference's exhaust, whose turbine's back pressure does not reach the cylinders.
+With card G's network (exhaust.model 1) it does: size 1.6, High, 2000 rpm: manifold 3.41 bar, before the turbine 5.86
+bar, **406 kW** (motoring 98 kW: the vanes at their stop): the published ~450 at 2100 rpm. The missing half was the
+vanes and the turbine's back pressure. Not yet done: the pressure-volume loop of one
+braking cylinder against one motoring from the Scope (the picture asked for).
 
 ## The exhaust brake (`ecu.exhaustBrake`, `ecu.exBrakeSwitch`)
 

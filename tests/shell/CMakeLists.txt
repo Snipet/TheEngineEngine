@@ -28,6 +28,33 @@ add_test(NAME shell.headless.sim
   COMMAND tee-headless --engine sim --sim "${PROJECT_SOURCE_DIR}/sim" --script "${_scripts}/sim-start-rev-stop.txt"
           --wav "${_out}/sim-start-rev-stop.wav" --shot "${_out}/sim-end.png"
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
+# The window's wait for the engine's compile, in tee-headless: the compile held back a second (--hold-compile), the frame
+# drawn meanwhile with START doing nothing and the status line counting, then the engine started (scripts/hold-compile.txt)
+add_test(NAME shell.headless.hold
+  COMMAND tee-headless --engine sim --sim "${PROJECT_SOURCE_DIR}/sim" --hold-compile 1.0
+          --script "${_scripts}/hold-compile.txt"
+  WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
+set_tests_properties(shell.headless.hold PROPERTIES TIMEOUT 900 LABELS shell)
+# An engine the simulator finds diverged (FLAG_FAULT: put at rest and restarted) fails an offline run (exit 1), unless
+# the run says it expected it (--expect-fault): made to diverge by holding the crank's speed absurd before every call.
+add_test(NAME shell.headless.fault
+  COMMAND tee-headless --engine sim --sim "${PROJECT_SOURCE_DIR}/sim" --hold-value crank.omega=1e7 --seconds 0.5
+  WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
+add_test(NAME shell.headless.fault.expected
+  COMMAND tee-headless --engine sim --sim "${PROJECT_SOURCE_DIR}/sim" --hold-value crank.omega=1e7 --seconds 0.5
+          --expect-fault
+  WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
+set_tests_properties(shell.headless.fault PROPERTIES WILL_FAIL TRUE)
+set_tests_properties(shell.headless.fault.expected PROPERTIES PASS_REGULAR_EXPRESSION "tee-offline: ok .* faults=[1-9]")
+set_tests_properties(shell.headless.fault shell.headless.fault.expected PROPERTIES TIMEOUT 900 LABELS shell)
+# QUALITY economy (card C's SimHost::setQuality: the engine at 48 kHz inside): the same start, rev and stop pass, and
+# the summary says the inner rate it ran at
+add_test(NAME shell.headless.economy
+  COMMAND tee-headless --engine sim --sim "${PROJECT_SOURCE_DIR}/sim" --quality economy
+          --script "${_scripts}/sim-start-rev-stop.txt"
+  WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
+set_tests_properties(shell.headless.economy PROPERTIES PASS_REGULAR_EXPRESSION "tee-offline: ok .* inner=48000" TIMEOUT 900
+                     LABELS shell)
 add_test(NAME shell.headless.drive
   COMMAND tee-headless --engine ref --sim "${PROJECT_SOURCE_DIR}/sim" --script "${_scripts}/drive.txt"
           --wav "${_out}/ref-drive.wav"

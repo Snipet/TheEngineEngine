@@ -21,6 +21,10 @@
 #   5. the Spec's lint (tee-schema --lint, host/src/Fields.cpp; 01-rules.md §4): every field of sim/engine.fm has its
 #      label, range, default and a ui::unit, ui::quantity or ui::choices; a map its value's. Run when a build tree has
 #      tee-schema (it compiles sim/ as it is now: 5 s); skipped, and said, when none has. TEE_LINT_SCHEMA=0 skips it.
+#      It fails when sim/ does not compile at all (a merge that broke the program: the front end's error is printed).
+#   6. the C++ that is about to be pushed compiles (scripts/syntax-check.py, -fsyntax-only, 2 s): the host's public
+#      headers in one unit, and each .cpp that differs from the integration branch, with the newest build tree's
+#      compile_commands.json. Skipped, and said, without a build tree. TEE_LINT_SYNTAX=0 skips it.
 #
 # Our files are the ones git knows (the dependencies are not in the checkout).
 set -euo pipefail
@@ -28,6 +32,11 @@ cd "$(dirname "$0")/.."
 
 fail=0
 say() { echo "lint: $*"; fail=1; }
+
+# ---- 0. nothing generated is tracked: Python's bytecode ------------------------------------------------------------
+while IFS= read -r f; do
+  [ -n "$f" ] && say "$f: Python bytecode is tracked (generated: git rm --cached it; .gitignore has __pycache__/ and *.pyc)"
+done < <(git ls-files -- '*.pyc' '*/__pycache__/*' '__pycache__/*')
 
 # ---- C and C++ sources of ours ----------------------------------------------------------------------------------------
 mapfile -t sources < <(git ls-files -- '*.c' '*.cc' '*.cpp' '*.cxx' '*.h' '*.hpp' '*.inc' '*.mm')
@@ -86,12 +95,14 @@ done
 if [ "${TEE_LINT_SCHEMA:-1}" != 0 ] && [ -f sim/engine.fm ]; then
   schema=$(ls -t build-*/bin/tee-schema build-*/bin/tee-schema.exe 2>/dev/null | head -1 || true)
   if [ -n "$schema" ]; then
+    jsonfile=$(mktemp); trap 'rm -f "$jsonfile"' EXIT
+    "$schema" --sim sim --json > "$jsonfile" 2> /dev/null & jsonpid=$!   # beside the lint: each compiles sim/ (6 s)
     if ! out=$("$schema" --sim sim --lint 2>&1); then
       while IFS= read -r p; do [ -n "$p" ] && say "sim/engine.fm: $p"; done <<< "$out"
     fi
     # reported, not a failure: the visible Spec fields with no ui::help (the manual's table fills them:
     # docs/manual/help.tsv, then scripts/apply-help.py)
-    if command -v python3 > /dev/null && json=$("$schema" --sim sim --json 2> /dev/null); then
+    if command -v python3 > /dev/null && wait "$jsonpid" && json=$(cat "$jsonfile") && [ -n "$json" ]; then
       python3 -c '
 import json, sys
 d = json.loads(sys.stdin.read())
@@ -104,6 +115,23 @@ if bare:
     fi
   else
     echo "lint: no build tree with tee-schema: the Spec's lint skipped (cmake --build --preset dev --target tee-schema)"
+  fi
+fi
+
+# ---- 6. the C++ about to be pushed compiles ---------------------------------------------------------------------------
+if [ "${TEE_LINT_SYNTAX:-1}" != 0 ] && command -v python3 > /dev/null; then
+  cc=$(ls -t build-*/compile_commands.json 2>/dev/null | head -1 || true)
+  if [ -n "$cc" ]; then
+    upstream=$(git rev-parse --verify -q '@{upstream}' 2>/dev/null || git rev-parse --verify -q origin/claude/awesome-gates-ntdb58 2>/dev/null || true)
+    changed=()
+    if [ -n "$upstream" ]; then
+      mapfile -t changed < <(git diff --name-only --diff-filter=AM "$upstream" HEAD -- '*.cpp' '*.cc' 2>/dev/null | head -40)
+    fi
+    if ! out=$(python3 scripts/syntax-check.py "$(dirname "$cc")" "${changed[@]}" 2>/dev/null); then
+      while IFS= read -r l; do [ -n "$l" ] && say "${l#syntax: }"; done <<< "$out"
+    fi
+  else
+    echo "lint: no build tree with compile_commands.json: the C++ syntax check skipped"
   fi
 fi
 

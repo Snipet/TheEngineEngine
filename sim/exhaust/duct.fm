@@ -116,6 +116,8 @@ module Duct
     float dPrevF;
     float mInF;         // the wave's mean as written (what it steepens over)
     float kMin;
+    float rawF;         // (lanes) this sample's waves as read from the lines, before the tracker and the wall
+    float rawB;
     float far;          // the wave arriving at the far end, this sample
     float near;         // the wave arriving at the near end
     float area;         // m^2
@@ -504,6 +506,67 @@ module Duct
         near = gain * b + mB;
     }
 
+    // (lanes) read() in three parts, for DuctLanes: the lines' reads here, the tracker and the wall across pipes in
+    // DuctLanes::run, the rest in finishRead: the same arithmetic in the same order for each pipe
+    void readRaw()
+    {
+        const int k = w - di + cap;
+        float f = 0.0f;
+        const int kb = w - bdi + cap;
+        rawB = bc0 * bw[kb + 1] + bc1 * bw[kb] + bc2 * bw[kb - 1] + bc3 * bw[kb - 2];
+        if (steep > 0.0f)
+        {
+            ageF += 1;
+            int nx = rF + 1 >= cap ? 0 : rF + 1;
+            while ((float)(ageF - 1) >= fd[nx])
+            {
+                rF = nx;
+                ageF -= 1;
+                nx = rF + 1 >= cap ? 0 : rF + 1;
+            }
+            f = fw[rF] + (fw[nx] - fw[rF]) * (((float)ageF - fd[rF]) / (1.0f + fd[nx] - fd[rF]));
+        }
+        else
+            f = c0 * fw[k + 1] + c1 * fw[k] + c2 * fw[k - 1] + c3 * fw[k - 2];
+        rawF = f;
+    }
+
+    void finishRead(float fIn, float bIn, float mFv, float mBv)
+    {
+        float f = fIn;
+        float b = bIn;
+        if (packOn != 0)
+        {
+            for (int i = 0; i < 2; ++i)
+            {
+                const float yf = pb0[i] * f + pwF[i];
+                pwF[i] = pb1[i] * f - pa1[i] * yf;
+                f = yf;
+                const float yb = pb0[i] * b + pwB[i];
+                pwB[i] = pb1[i] * b - pa1[i] * yb;
+                b = yb;
+            }
+        }
+        if (backOn != 0)
+        {
+            for (int i = 0; i < 2; ++i)
+            {
+                const float yb = rb0[i] * b + rwB[i];
+                rwB[i] = rb1[i] * b - ra1[i] * yb;
+                b = yb;
+            }
+        }
+        if (lp > 0.0f)
+        {
+            sF += (1.0f - lp) * (f - sF);
+            sB += (1.0f - lp) * (b - sB);
+            f = sF;
+            b = sB;
+        }
+        far = gain * f + mFv;
+        near = gain * b + mBv;
+    }
+
     void write(float nearIn, float farIn)
     {
         qAbs += fabsf(nearIn - near) + fabsf(far - farIn);
@@ -670,5 +733,77 @@ module Valve
         r = rr;
         g = gg;
         return -qi;
+    }
+};
+
+// (lanes) The steady flow's tracker and the wall's three shelves of up to 32 pipes, as arrays across the pipes: one loop
+// the vectoriser takes. A pipe without the wall (wallOn 0) passes its waves, its shelves' states standing.
+module DuctLanes
+{
+    float kDc[32];
+    int on[32];         // the pipe's wallOn: off, its wave passes and its shelves' states stand, as in Duct::read
+    float mF[32];
+    float mB[32];
+    float sb0[3][32];
+    float sb1[3][32];
+    float sa1[3][32];
+    float wsF[3][32];
+    float wsB[3][32];
+    float fr[32];
+    float br[32];
+    float fo[32];
+    float bo[32];
+    int n;
+
+    void clear()
+    {
+        for (int p = 0; p < 32; ++p)
+        {
+            mF[p] = 0.0f;
+            mB[p] = 0.0f;
+            for (int i = 0; i < 3; ++i)
+            {
+                wsF[i][p] = 0.0f;
+                wsB[i][p] = 0.0f;
+            }
+        }
+    }
+
+    // lane p takes pipe d's coefficients (every time its pipe is sized)
+    void take(int p, Duct* d)
+    {
+        kDc[p] = d->kDc;
+        on[p] = d->wallOn;
+        for (int i = 0; i < 3; ++i)
+        {
+            sb0[i][p] = d->sb0[i];
+            sb1[i][p] = d->sb1[i];
+            sa1[i][p] = d->sa1[i];
+        }
+    }
+
+    void run()
+    {
+        for (int p = 0; p < n; ++p)
+        {
+            float f = fr[p];
+            float b = br[p];
+            mF[p] += kDc[p] * (f - mF[p]);
+            mB[p] += kDc[p] * (b - mB[p]);
+            f -= mF[p];
+            b -= mB[p];
+            const bool w = on[p] != 0;
+            for (int i = 0; i < 3; ++i)
+            {
+                const float yf = sb0[i][p] * f + wsF[i][p];
+                const float yb = sb0[i][p] * b + wsB[i][p];
+                wsF[i][p] = w ? sb1[i][p] * f - sa1[i][p] * yf : wsF[i][p];
+                wsB[i][p] = w ? sb1[i][p] * b - sa1[i][p] * yb : wsB[i][p];
+                f = w ? yf : f;
+                b = w ? yb : b;
+            }
+            fo[p] = f;
+            bo[p] = b;
+        }
     }
 };

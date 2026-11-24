@@ -44,7 +44,8 @@
 
 enum
 {
-    XB_SCOPE = 64
+    XB_SCOPE = 64,
+    XB_GRID = 48
 };
 
 // Each pipe's slot: its index in XNet's ducts
@@ -77,7 +78,11 @@ enum
 module XBuild
 {
     XNet net;
-    ExhaustSpec* sp;    // the description (spec.exhaust's builder fields), the owner's
+    ExhaustSpec* sp;    // the description as built and shaped: gs (follow() sets it)
+    ExhaustSpec* src;   // the owner's description (spec.exhaust's builder fields)
+    ExhaustSpec gs;     // the owner's, its lengths and bores (and the other sizes, glide()) glided toward the owner's
+    ExhaustSpec gv;     // the glided sizes alone (gs is copied from the owner's every control step, then these put in)
+    float kGlide;       // a control step's share of the glide (0.2 s)
     XEngine eng;
     XHeat heat;
     float rate;
@@ -150,6 +155,11 @@ module XBuild
     float keepP;
     float kMean;                // the meters' smoothing, every 4th sample (some 0.2 s)
     int tick4;
+    float gridC[XB_GRID];       // cos and sin of the passivity check's frequencies (4 Hz to 4 kHz, log spaced)
+    float gridS[XB_GRID];
+    int tickPass;               // the check runs at a build and every 32 control steps
+    int passFix;                // 1 (always, in the engine): the check above; 0 only for a test that compares with
+                                // the reference's own order (tests/sim/exhaust, the harness reference test)
     // telemetry: means and what a view shows
     float pTurb;                // mean pressure at the collectors (before a turbine), Pa over the air outside
     float pConv[XS_SIDES];      // at each side's head (before the converter)
@@ -211,6 +221,16 @@ module XBuild
         kUse = 1.0f - expf(-16.0f / (0.3f * rate));
         kMean = 1.0f - expf(-4.0f / (0.2f * rate));
         tick4 = 0;
+        tickPass = 0;
+        passFix = 1;
+        kGlide = 1.0f - expf(-16.0f / (0.2f * rate));
+        for (int g = 0; g < XB_GRID; ++g)
+        {
+            const float f = 4.0f * expf(6.9077553f * (float)g / (float)(XB_GRID - 1));   // 4 Hz to 4 kHz
+            const float w = 6.28318531f * f / rate;
+            gridC[g] = cosf(w);
+            gridS[g] = sinf(w);
+        }
         keepH = 0.878f;
         keepP = 0.769f;
         for (int s = 0; s < XS_SIDES; ++s)
@@ -365,6 +385,7 @@ module XBuild
     // engine's own configure, so that model 1 at its defaults is the reference); 1 settles them (network.fm, settle)
     void build(int atRest, float warm, int settleIt)
     {
+        snap();
         resolve();
         net.begin();
         // the ports and the primaries
@@ -673,6 +694,7 @@ module XBuild
         if (atRest != 0)
             heat.rest(eng.tAmb, warm, eng.mdotSlow, eng.vAir);
         net.clear();
+        tickPass = 0;
         shape();
         net.list();
         if (settleIt != 0)
@@ -1483,22 +1505,215 @@ module XBuild
             }
         }
         // a pipe that would pass a filter with little loss takes its steady flow out after its filters (duct.fm,
-        // filtFirst): passive whatever the filter; the reference's pipes (more loss a pass) keep the reference's order
-        for (int i = 0; i < XN_DUCTS; ++i)
+        // filtFirst): passive whatever the filter. Most of the reference's pipes lose enough a pass to keep the reference's
+        // order; a few at extreme dials (a 0.96 tail with its shelves, a chamber at a muffler dial's end) do not, and
+        // there model 1 leaves the reference's sound by the fix (some -47 to -58 dB, the harness reference test)
+        if (tickPass == 0)
         {
-            Duct* p = &net.d[i];
-            // (the worst gain a pass can have in the reference's order: card T's measures, a packing's shelves some
-            // 0.19 % over unity a dB of their depth, a one-pole low-pass at f some 9 / f; with 1 % to spare)
-            float over = 1.0f;
-            if (p->packOn != 0)
-                over += 0.0019f * (p->pkKey[1] + p->pkKey[3]);
-            if (p->lp > 0.0f)
-                over += 9.0f / fmaxf(-logf(p->lp) * rate / 6.28318531f, 1.0f);
-            p->filtFirst = net.dUse[i] != 0 && (p->packOn != 0 || p->lp > 0.0f) && p->keep * over >= 0.99f ? 1 : 0;
+            for (int i = 0; i < XN_DUCTS; ++i)
+                net.d[i].filtFirst = net.dUse[i] != 0 && passFix != 0 ? filterFirst(&net.d[i]) : 0;
         }
+        tickPass = tickPass + 1 >= 32 ? 0 : tickPass + 1;
+    }
+
+    // The largest gain a pass of pipe p can have in the reference's order (its steady flow taken out before its
+    // filters), at its keep with no flow's loss, each way: max over f of |keep H(f) (1 - L(f)) + L(f)|, H its filters
+    // (the wall's shelves, a packing's, a low-pass; the returning waves' scattering too), L the 12 Hz tracker. Evaluated
+    // from its own coefficients on XB_GRID frequencies from 4 Hz to 4 kHz (where the tracker's and the filters' phases
+    // meet: card T's finding)
+    float passGain(Duct* p)
+    {
+        float best = 0.0f;
+        for (int g = 0; g < XB_GRID; ++g)
+        {
+            const float cr = gridC[g];
+            const float ci = -gridS[g];             // z^-1 = cos w - j sin w
+            // L = kDc / (1 - (1 - kDc) z^-1)
+            float lr = 0.0f;
+            float li = 0.0f;
+            {
+                const float dr = 1.0f - (1.0f - p->kDc) * cr;
+                const float di = -(1.0f - p->kDc) * ci;
+                const float m = dr * dr + di * di;
+                lr = p->kDc * dr / m;
+                li = -p->kDc * di / m;
+            }
+            for (int dir = 0; dir < 2; ++dir)
+            {
+                float hr = 1.0f;
+                float hi = 0.0f;
+                // a first-order section (b0 + b1 z^-1) / (1 + a1 z^-1), times
+                for (int sct = 0; sct < 8; ++sct)
+                {
+                    float b0 = 1.0f;
+                    float b1 = 0.0f;
+                    float a1 = 0.0f;
+                    int on = 0;
+                    if (sct < 3 && p->wallOn != 0)
+                    {
+                        b0 = p->sb0[sct];
+                        b1 = p->sb1[sct];
+                        a1 = p->sa1[sct];
+                        on = 1;
+                    }
+                    else if (sct >= 3 && sct < 5 && p->packOn != 0)
+                    {
+                        b0 = p->pb0[sct - 3];
+                        b1 = p->pb1[sct - 3];
+                        a1 = p->pa1[sct - 3];
+                        on = 1;
+                    }
+                    else if (sct >= 5 && sct < 7 && dir == 1 && p->backOn != 0)
+                    {
+                        b0 = p->rb0[sct - 5];
+                        b1 = p->rb1[sct - 5];
+                        a1 = p->ra1[sct - 5];
+                        on = 1;
+                    }
+                    else if (sct == 7 && p->lp > 0.0f)
+                    {
+                        b0 = 1.0f - p->lp;
+                        b1 = 0.0f;
+                        a1 = -p->lp;
+                        on = 1;
+                    }
+                    if (on == 0)
+                        continue;
+                    const float nr = b0 + b1 * cr;
+                    const float ni = b1 * ci;
+                    const float dr = 1.0f + a1 * cr;
+                    const float di = a1 * ci;
+                    const float m = dr * dr + di * di;
+                    const float sr = (nr * dr + ni * di) / m;
+                    const float si = (ni * dr - nr * di) / m;
+                    const float tr = hr * sr - hi * si;
+                    hi = hr * si + hi * sr;
+                    hr = tr;
+                }
+                // T = keep H (1 - L) + L
+                const float ar = 1.0f - lr;
+                const float ai = -li;
+                const float tr = p->keep * (hr * ar - hi * ai) + lr;
+                const float ti = p->keep * (hr * ai + hi * ar) + li;
+                best = fmaxf(best, sqrtf(tr * tr + ti * ti));
+            }
+        }
+        return best;
+    }
+
+    // Whether a pipe must take its steady flow out after its filters to stay passive (duct.fm, filtFirst): when a pass
+    // in the reference's order could give more than it took. A pipe that is passive in the reference's order keeps it
+    // (the reference's pipes, so model 1 at its defaults stays the reference's arithmetic)
+    int filterFirst(Duct* p)
+    {
+        if (p->wallOn == 0 && p->packOn == 0 && p->backOn == 0 && p->lp <= 0.0f)
+            return 0;
+        return passGain(p) > 0.9999f ? 1 : 0;
     }
 
     // ---- every 16 samples ----
+
+    // The description to follow: the owner's (src), read through gs (sp) so the sizes a slider drags glide
+    void follow(ExhaustSpec* owner)
+    {
+        src = owner;
+        sp = &gs;
+        snap();
+    }
+
+    // At a build: the description as the owner has it, nothing gliding
+    void snap()
+    {
+        gs = *src;
+        gv = *src;
+    }
+
+    // One size's glide toward the owner's (at it once within a millionth of it, so a glide ends where it is going)
+    float glide1(float x, float y)
+    {
+        const float d = y - x;
+        if (fabsf(d) <= 1.0e-6f * (fabsf(y) + 1.0e-3f))
+            return y;
+        return x + d * kGlide;
+    }
+
+    // Every control step: the continuous sizes (every length and bore, the volumes, the resonator's note, the muffler's
+    // size, the primaries' spread and step) glide toward the owner's in some 0.2 s, the pipes' delays and areas
+    // following them in shape(), with no rebuild and no fade; every other field (the kinds, the tables, the valve's rule)
+    // is the owner's at once. A size moving between 0 (the layout's) and a value of its own changes the signature
+    // (Exhaust::sig) and rebuilds under the fade, as a kind does.
+    void glide()
+    {
+        for (int i = 0; i < MAX_PORTS; ++i)
+        {
+            gv.primLen[i] = glide1(gv.primLen[i], src->primLen[i]);
+            gv.primD[i] = glide1(gv.primD[i], src->primD[i]);
+        }
+        for (int c = 0; c < MAX_COLLECTORS; ++c)
+        {
+            gv.colLen[c] = glide1(gv.colLen[c], src->colLen[c]);
+            gv.colD[c] = glide1(gv.colD[c], src->colD[c]);
+            gv.colVol[c] = glide1(gv.colVol[c], src->colVol[c]);
+        }
+        for (int s = 0; s < MAX_SIDES; ++s)
+        {
+            gv.mainLen[s] = glide1(gv.mainLen[s], src->mainLen[s]);
+            gv.mainD[s] = glide1(gv.mainD[s], src->mainD[s]);
+            gv.resHz[s] = glide1(gv.resHz[s], src->resHz[s]);
+            gv.resD[s] = glide1(gv.resD[s], src->resD[s]);
+            gv.resVol[s] = glide1(gv.resVol[s], src->resVol[s]);
+            gv.resLen[s] = glide1(gv.resLen[s], src->resLen[s]);
+            gv.mufSize[s] = glide1(gv.mufSize[s], src->mufSize[s]);
+            gv.mufLen[s] = glide1(gv.mufLen[s], src->mufLen[s]);
+            gv.tailLen[s] = glide1(gv.tailLen[s], src->tailLen[s]);
+            gv.tailD[s] = glide1(gv.tailD[s], src->tailD[s]);
+        }
+        gv.primSpread = glide1(gv.primSpread, src->primSpread);
+        gv.primStepAt = glide1(gv.primStepAt, src->primStepAt);
+        gv.primStepD = glide1(gv.primStepD, src->primStepD);
+        gv.crossD = glide1(gv.crossD, src->crossD);
+        gv.crossLen = glide1(gv.crossLen, src->crossLen);
+        gv.postLen = glide1(gv.postLen, src->postLen);
+        gv.linkLen = glide1(gv.linkLen, src->linkLen);
+        gv.bypassD = glide1(gv.bypassD, src->bypassD);
+        gv.gateLen = glide1(gv.gateLen, src->gateLen);
+        gv.gateD = glide1(gv.gateD, src->gateD);
+        gs = *src;
+        for (int i = 0; i < MAX_PORTS; ++i)
+        {
+            gs.primLen[i] = gv.primLen[i];
+            gs.primD[i] = gv.primD[i];
+        }
+        for (int c = 0; c < MAX_COLLECTORS; ++c)
+        {
+            gs.colLen[c] = gv.colLen[c];
+            gs.colD[c] = gv.colD[c];
+            gs.colVol[c] = gv.colVol[c];
+        }
+        for (int s = 0; s < MAX_SIDES; ++s)
+        {
+            gs.mainLen[s] = gv.mainLen[s];
+            gs.mainD[s] = gv.mainD[s];
+            gs.resHz[s] = gv.resHz[s];
+            gs.resD[s] = gv.resD[s];
+            gs.resVol[s] = gv.resVol[s];
+            gs.resLen[s] = gv.resLen[s];
+            gs.mufSize[s] = gv.mufSize[s];
+            gs.mufLen[s] = gv.mufLen[s];
+            gs.tailLen[s] = gv.tailLen[s];
+            gs.tailD[s] = gv.tailD[s];
+        }
+        gs.primSpread = gv.primSpread;
+        gs.primStepAt = gv.primStepAt;
+        gs.primStepD = gv.primStepD;
+        gs.crossD = gv.crossD;
+        gs.crossLen = gv.crossLen;
+        gs.postLen = gv.postLen;
+        gs.linkLen = gv.linkLen;
+        gs.bypassD = gv.bypassD;
+        gs.gateLen = gv.gateLen;
+        gs.gateD = gv.gateD;
+    }
 
     // Every 16 samples, all of it (control = heatStep, shape, flowStep, bandStep: the engine calls them apart, in its
     // order of work)
@@ -1513,6 +1728,7 @@ module XBuild
     // the heat, and the valve's travel
     void heatStep(float d16)
     {
+        glide();
         heat.soak(eng.tPort, eng.mdotSlow, d16, eng.tAmb, eng.vAir);
         heat.follow(kUse);
         // the bypass valve: where its rule or the ECU wants it, travelling there in bypassTime (a butterfly's

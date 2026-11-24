@@ -115,6 +115,13 @@ namespace tee::app
        #endif
     }
 
+    std::string compilingLine(double seconds)
+    {
+        char text[96];
+        std::snprintf(text, sizeof text, "compiling the engine: %.0f s", seconds);
+        return text;
+    }
+
     Shown makePanel(const Options& o, Engine& engine, input::Controls& controls, bool window)
     {
         const AppServices services = controls.services();
@@ -134,15 +141,16 @@ namespace tee::app
             struct Kept
             {
                 Kept(player::SimAdapter& sim, std::filesystem::path shipped)
-                    : doc(sim.build()), scope(sim.host()), dyno(sim.host().sim(), sim.build()), file(sim.build()),
+                    : doc(sim.build()), scope(sim.host()), dyno(sim), file(sim.build()),
                       library(shipped, Presets::userDirectory()),
-                      garage(file, sim.host().sim(), std::move(shipped), Presets::userDirectory())
+                      garage(file, [&sim] { return sim.ready() ? sim.host().sim() : std::shared_ptr<Sim>(); }, std::move(shipped),
+                             Presets::userDirectory())
                 {
                 }
                 ui::BuildDoc doc;
                 ui::Units units;
                 ui::SimScope scope;
-                ui::ServiceDyno dyno;
+                LateDyno dyno;                    // U1's ServiceDyno, made when the engine's compile is in
                 files::BuildFile file;
                 files::BuildLibrary library;
                 GarageLibrary garage;             // GARAGE's (U5's Library), over `file`: after it, so destroyed first
@@ -176,6 +184,13 @@ namespace tee::app
                     return hooks->saveText(name, text, error);
                 };
                 frameServices.audioInfo = [hooks] { return hooks->audioInfo ? hooks->audioInfo() : std::string(); };
+                const auto setQuality = frameServices.setQuality;
+                frameServices.setQuality = [hooks, setQuality](int q) {
+                    if (setQuality)
+                        setQuality(q);
+                    if (hooks->qualityChosen)
+                        hooks->qualityChosen(q);
+                };
                 frameServices.audioMenu = [hooks] {
                     if (hooks->audioMenu)
                         hooks->audioMenu();
@@ -258,6 +273,19 @@ namespace tee::app
 
         // ---- the engine ---------------------------------------------------------------------------------------------
         Engine engine = loadEngine(o, static_cast<double>(o.rate));
+        // --hold-compile S: the machine code is not taken until S seconds into the run (a test of the window's wait)
+        const bool holding = engine.sim != nullptr && o.holdCompile > 0.0;
+        // --quality: the engine's inner rate, made before the first frame (it compiles the program again)
+        if (engine.sim != nullptr && !o.quality.empty())
+        {
+            engine.sim->requestQuality(o.quality == "economy" ? 1 : 0);
+            if (!holding && !engine.sim->waitQuality(600.0))
+                std::fprintf(stderr, "error: --quality %s was not made\n", o.quality.c_str());
+            if (!engine.sim->qualityError().empty())
+                std::fprintf(stderr, "error: --quality %s: %s\n", o.quality.c_str(), engine.sim->qualityError().c_str());
+        }
+        if (holding)
+            engine.sim->holdCompile(true);
         if (!engine.notes.empty())
             std::fprintf(stderr, "%s", engine.notes.c_str());
         if (!engine.error.empty())
@@ -288,7 +316,7 @@ namespace tee::app
             host.resize(o.width, o.height);
         // --dyno-wait S: the first predicted curve is waited for (up to S seconds of this machine's time) before the
         // first frame, so a picture of a workspace with the ribbon shows it
-        if (o.dynoWait > 0.0 && shown.waitForDyno)
+        if (o.dynoWait > 0.0 && shown.waitForDyno && !holding)
         {
             // (its error, if it has one, is in the picture: the ribbon says it)
             const auto t0 = std::chrono::steady_clock::now();
@@ -337,6 +365,8 @@ namespace tee::app
             if (list.missingGlyphs != 0)
                 std::fprintf(stderr, "note: %s: %u characters the font does not have\n", file.c_str(), list.missingGlyphs);
         };
+
+        bool wasCompiling = false;
 
         // ---- the frames ---------------------------------------------------------------------------------------------
         const audio::ScopedFtz ftz;
@@ -401,9 +431,23 @@ namespace tee::app
             if (ended)
                 break;
 
+            // the compile held back (--hold-compile): taken, and waited for, when its time comes
+            if (holding && !engine.ready() && now + 1e-9 >= o.holdCompile)
+            {
+                engine.sim->holdCompile(false);
+                if (!engine.sim->waitReady(600.0))
+                    std::fprintf(stderr, "error: the engine's compile did not finish: %s\n", engine.sim->compileError().c_str());
+            }
             engine.frame();
             if (shown.frame)
                 shown.frame();
+            // while the engine compiles: START does nothing, and the status line says so with the seconds (the run's)
+            controls.driver().setStartEnabled(engine.ready());
+            if (!engine.ready())
+                controls.setStatus(compilingLine(now));
+            else if (holding && frame > 0 && wasCompiling)
+                controls.setStatus(engine.name + "   no audio device (rendering offline)");
+            wasCompiling = !engine.ready();
             controls.tick(dt);
 
             // this frame's share of the audio, in blocks
@@ -447,6 +491,8 @@ namespace tee::app
                     }
                     else if (e->name == "rpm")
                         x = rpm();
+                    else if (e->name == "ready")
+                        x = engine.ready() ? 1.0 : 0.0;
                     else if (e->name.rfind("param ", 0) == 0)
                     {
                         const int i = params.findParam(e->name.substr(6));
@@ -479,6 +525,14 @@ namespace tee::app
             std::fprintf(stderr, "error: the program was stopped: %s\n", stopped.c_str());
             ++failures;
         }
+        // an engine the simulator found diverged (put at rest and restarted: HostStats::engineFaults) fails the run
+        // unless it was expected (--expect-fault)
+        const unsigned faults = engine.sim != nullptr ? engine.sim->hostStats().engineFaults : 0u;
+        if (faults != 0 && !o.expectFault)
+        {
+            std::fprintf(stderr, "FAILED: the engine diverged and was restarted %u times (FLAG_FAULT)\n", faults);
+            ++failures;
+        }
         if (!whole.finite)
         {
             std::fprintf(stderr, "FAILED: the output held a sample that is not finite\n");
@@ -486,9 +540,10 @@ namespace tee::app
         }
 
         std::printf("tee-offline: %s frames=%d seconds=%.3f rate=%d block=%d peak=%.5f rms=%.5f checks=%d failed=%d shots=%d"
-                    " compile=%.2fs%s%s\n",
+                    " compile=%.2fs faults=%u inner=%.0f%s%s\n",
                     failures == 0 && wroteAll ? "ok" : "FAILED", frame, static_cast<double>(rendered) / o.rate, o.rate, o.block,
-                    whole.peak, whole.rms(), checks, failures, shots, engine.compileSeconds, o.wav.empty() ? "" : " wav=",
+                    whole.peak, whole.rms(), checks, failures, shots, engine.compileSeconds, faults,
+                    engine.sim != nullptr ? engine.sim->innerRate() : 0.0, o.wav.empty() ? "" : " wav=",
                     o.wav.c_str());
         return failures == 0 && wroteAll ? 0 : 1;
     }

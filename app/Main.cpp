@@ -49,6 +49,8 @@
 #include <SDL3/SDL_main.h>
 
 #include <algorithm>
+#include <chrono>
+#include <cstdlib>
 #include <cstdint>
 #include <cstdio>
 #include <filesystem>
@@ -76,14 +78,19 @@ namespace
         SDL_SetMainReady();
         SDL_SetAppMetadata("TheEngineEngine", TEE_VERSION, "com.snipet.theengineengine");
 
-        // ---- the engine: compiled here, before the window (the compile's time is printed) ---------------------------
+        // ---- the engine: its program read here (the front end, a tenth of a second: the document and the parameters),
+        // its machine code made on a worker while the window opens (the simulator's; the reference's is made here) ----
+        o.background = true;
+        const auto launched = std::chrono::steady_clock::now();
         app::Engine engine = app::loadEngine(o, 48000.0);
         if (!engine.notes.empty())
             std::fprintf(stderr, "%s", engine.notes.c_str());
         if (!engine.error.empty())
             std::fprintf(stderr, "error: the program did not start\n%s\n", engine.error.c_str());
-        else if (engine.ref != nullptr || engine.sim != nullptr)
+        else if (engine.ref != nullptr)
             std::printf("engine: %s, compiled in %.2f s\n", engine.name.c_str(), engine.compileSeconds);
+        else if (engine.sim != nullptr)
+            std::printf("engine: %s, being compiled while the window opens\n", engine.name.c_str());
         if (!engine.warnings.empty())
             std::fprintf(stderr, "%s\n", engine.warnings.c_str());
         Player& player = *engine.player;
@@ -93,6 +100,10 @@ namespace
         if (!remembered.note.empty())
             std::fprintf(stderr, "settings: %s\n", remembered.note.c_str());
         o.unitChoices = remembered.settings.unitChoices;
+        // the engine's quality: --quality, else the settings' (made once the engine is ready: never changed by itself)
+        const std::string quality = !o.quality.empty() ? o.quality : remembered.settings.audioQuality;
+        if (engine.sim != nullptr)
+            engine.sim->requestQuality(quality == "economy" ? 1 : 0);
 
         input::Controls controls(player, player);
         controls.bindings() = remembered.settings.bindings;
@@ -174,10 +185,15 @@ namespace
         // the simulator's health as the host reports it (card C's HostStats): restarting after a fault; clamped (a block
         // with a sample past full scale, held to it) for a moment after it happens
         std::string health;
-        std::uint32_t clippedSeen = 0;
-        double clampedLeft = 0.0;
+        std::uint32_t clippedSeen = 0, faultsSeen = 0;
+        double clampedLeft = 0.0, faultLeft = 0.0, loadHigh = 0.0, suggestLeft = 0.0;
+        bool suggested = false;
+        std::string compiling;          // "compiling the engine: 3 s" while the machine code is being made
+        bool saidReady = false;
         const auto showStatus = [&] {
             std::string line = statusOf(engine, audioLine, stopped);
+            if (stopped.empty() && !compiling.empty())
+                line += "   " + compiling;
             if (stopped.empty() && !health.empty())
                 line += "   " + health;
             if (stopped.empty() && !note.empty())
@@ -196,6 +212,14 @@ namespace
             note = line;
             showStatus();
         };
+        if (engine.sim != nullptr)
+        {
+            commandsContext.quality = [&engine] { return engine.sim->quality(); };
+            commandsContext.setQuality = [&engine, &now](int q) {
+                engine.sim->requestQuality(q);
+                now.audioQuality = q == 1 ? "economy" : "full";
+            };
+        }
         commandsContext.audioChanged = [&] {
             audioLine = device.isOpen() ? device.info().line() : "no audio device";
             showStatus();
@@ -234,12 +258,26 @@ namespace
             return sdlInput.handle(e);
         };
         std::uint64_t last = SDL_GetTicksNS();
-        const std::uint64_t began = last;
+        // A machine's script (--script, --frames) runs on the engine's clock: it starts when the engine is ready to play,
+        // so its keys find an engine whatever the compile took; the frames it asks for are counted from then too.
+        std::uint64_t began = last;
+        std::uint32_t readyTicks = 0, ticksSeen = 0;
+        bool scriptStarted = !machine || engine.ready();
         options.beforeTick = [&] {
             const std::uint64_t now = SDL_GetTicksNS();
             const float dt = static_cast<float>(static_cast<double>(now - last) * 1e-9);
             last = now;
-            const double seconds = static_cast<double>(now - began) * 1e-9;
+            ++ticksSeen;
+            if (ticksSeen == 1)
+                std::printf("window: the first frame %.2f s after launch\n",
+                            std::chrono::duration<double>(std::chrono::steady_clock::now() - launched).count());
+            if (!scriptStarted && engine.ready())
+            {
+                scriptStarted = true;
+                began = now;
+                readyTicks = ticksSeen;
+            }
+            const double seconds = scriptStarted ? static_cast<double>(now - began) * 1e-9 : -1.0;
             while (nextEvent < script.events.size() && script.events[nextEvent].time <= seconds)
             {
                 const app::ScriptEvent& e = script.events[nextEvent++];
@@ -258,8 +296,30 @@ namespace
             engine.frame();
             if (shown.frame)
                 shown.frame();
+            // the engine's compile: START does nothing and the status line counts the seconds until it is ready
+            bool compileChanged = false;
+            if (engine.sim != nullptr)
+            {
+                controls.driver().setStartEnabled(engine.ready());
+                const std::string line = engine.ready() || !engine.sim->compileError().empty()
+                                             ? std::string()
+                                             : app::compilingLine(engine.sim->compilingSeconds());
+                if (line != compiling)
+                {
+                    compiling = line;
+                    compileChanged = true;
+                }
+                if (engine.ready() && !saidReady)
+                {
+                    saidReady = true;
+                    std::printf("engine: %s, compiled in %.2f s in the background, ready %.2f s after launch, %zu kB of "
+                                "machine code\n", engine.name.c_str(), engine.compileSeconds,
+                                std::chrono::duration<double>(std::chrono::steady_clock::now() - launched).count(),
+                                engine.sim->codeBytes() / 1024);
+                }
+            }
             controls.tick(dt);
-            bool changed = device.pump();
+            bool changed = device.pump() || compileChanged;
             if (changed)
                 audioLine = device.isOpen() ? device.info().line() : "the audio device went away: waiting for one";
             if (stopped.empty())
@@ -275,8 +335,35 @@ namespace
                     clippedSeen = stats.clippedBlocks;
                     clampedLeft = 2.0;
                 }
+                if (stats.engineFaults != faultsSeen)
+                {
+                    faultsSeen = stats.engineFaults;
+                    if (faultLeft <= 0.0)       // (said once an episode: again after five quiet seconds)
+                        std::fprintf(stderr, "engine: it diverged and was restarted (%u times since load)\n", faultsSeen);
+                    faultLeft = 5.0;
+                }
                 clampedLeft = std::max(0.0, clampedLeft - static_cast<double>(dt));
-                const std::string said = stats.restarting != 0 ? std::string("restarting (after a fault)")
+                faultLeft = std::max(0.0, faultLeft - static_cast<double>(dt));
+                // a load over 80 % for five seconds, at Full: ECONOMY suggested, once (never switched by itself)
+                if (engine.sim->quality() == 0 && stats.loadMean > 0.8)
+                    loadHigh += static_cast<double>(dt);
+                else
+                    loadHigh = 0.0;
+                if (loadHigh >= 5.0 && !suggested)
+                {
+                    suggested = true;
+                    suggestLeft = 10.0;
+                }
+                suggestLeft = std::max(0.0, suggestLeft - static_cast<double>(dt));
+                const std::string qualityError = engine.sim->qualityError();
+                const std::string said = faultLeft > 0.0      ? std::string("the engine diverged and was restarted")
+                                        : engine.sim->qualitySwitching()
+                                            ? std::string(engine.sim->quality() == 1 ? "switching to economy: compiling"
+                                                                                     : "switching to full: compiling")
+                                        : !qualityError.empty() ? "quality not changed: " + qualityError
+                                        : suggestLeft > 0.0 ? std::string("the load is high: QUALITY economy (settings, or "
+                                                                          "F9) would about halve it")
+                                        : stats.restarting != 0 ? std::string("restarting (after a fault)")
                                         : clampedLeft > 0.0  ? std::string("clamped (the output went past full scale)")
                                                              : std::string();
                 if (said != health)
@@ -298,6 +385,7 @@ namespace
             };
             shown.window->audioInfo = [&audioLine] { return audioLine; };
             shown.window->audioMenu = [&commands] { commands.audioMenu(); };
+            shown.window->qualityChosen = [&now](int q) { now.audioQuality = q == 1 ? "economy" : "full"; };
         }
         std::string why;
         if (!host.open(why))
@@ -355,10 +443,30 @@ namespace
             std::printf("window: %d x %d logical px, %d x %d pixels, scale %.3f (display scale %.3f)\n", d.logicalW,
                         d.logicalH, d.physW, d.physH, d.scale, d.displayScale);
             std::printf("engine: %s%s\n", engine.name.c_str(), engine.error.empty() ? "" : " (it did not start)");
-            if (engine.ref != nullptr || engine.sim != nullptr)
+            if (engine.sim != nullptr)
+            {
+                // the compile waited for, so its time and size can be said
+                const bool done = engine.sim->waitReady(120.0);
+                engine.frame();
+                if (done)
+                    std::printf("compile: %.2f s (in the background; %.2f s from launch to ready), machine code %zu kB\n",
+                                engine.compileSeconds,
+                                std::chrono::duration<double>(std::chrono::steady_clock::now() - launched).count(),
+                                engine.sim->codeBytes() / 1024);
+                else
+                    std::printf("compile: not finished (%s)\n", engine.sim->compileError().c_str());
+            }
+            else if (engine.ref != nullptr)
                 std::printf("compile: %.2f s\n", engine.compileSeconds);
             std::printf("audio: %s\n", audioLine.c_str());
             std::printf("effects: %s\n", effectsLine().c_str());
+            if (engine.sim != nullptr)
+            {
+                engine.sim->waitQuality(120.0);
+                std::printf("quality: %s (the engine at %.0f Hz inside)%s\n", engine.sim->quality() == 1 ? "economy" : "full",
+                            engine.sim->innerRate(),
+                            engine.sim->qualityError().empty() ? "" : (" not made: " + engine.sim->qualityError()).c_str());
+            }
             const std::string pad = sdlInput.gamepadName();
             std::printf("gamepad: %s\n", pad.empty() ? "none" : pad.c_str());
             std::printf("settings: %s (%s)\n", settings::file().string().c_str(),
@@ -374,10 +482,25 @@ namespace
             // the frames asked for, and until the script's end when there is one: a machine that draws slowly (a
             // software GPU) and one that draws fast both get the script's whole story into the last picture.
             const auto scriptRuns = [&] {
-                return script.end >= 0.0 && static_cast<double>(SDL_GetTicksNS() - began) * 1e-9 < script.end;
+                return !scriptStarted
+                       || (script.end >= 0.0 && static_cast<double>(SDL_GetTicksNS() - began) * 1e-9 < script.end);
             };
-            while ((host.diagnostics().ticks < frames || scriptRuns()) && host.pump())
+            const auto waiting = [&] {
+                // the engine's compile, for at most two minutes (one that fails or hangs ends the run all the same)
+                const bool stuck = std::chrono::steady_clock::now() - launched > std::chrono::minutes(2);
+                return engine.sim != nullptr && !engine.ready() && engine.sim->compileError().empty() && !stuck;
+            };
+            while ((waiting() || ticksSeen - readyTicks < frames || scriptRuns()) && host.pump())
+            {
+                if (!scriptStarted && !waiting() && !engine.ready())
+                {
+                    // a compile that failed (or took past two minutes): the script runs on what there is, from now
+                    scriptStarted = true;
+                    began = SDL_GetTicksNS();
+                    readyTicks = ticksSeen;
+                }
                 host.nudgeFullRate();
+            }
             if (!o.shot.empty() && host.isOpen())
             {
                 std::vector<std::uint8_t> rgba;
@@ -450,10 +573,11 @@ namespace
                 std::fprintf(stderr, "settings: %s\n", notSaved.c_str());
         }
         std::printf("tee-app: %s renderer=%s frames=%u ticks=%u fps=%.1f audio-callbacks=%llu audio-frames=%llu "
-                    "largest-request=%d engine-state=%.0f rpm=%.0f\n",
+                    "largest-request=%d engine-state=%.0f rpm=%.0f faults=%u\n",
                     code == 0 ? "ok" : "FAILED", d.renderer.c_str(), static_cast<unsigned>(d.frames),
                     static_cast<unsigned>(d.ticks), static_cast<double>(d.fps), static_cast<unsigned long long>(callbacks),
-                    static_cast<unsigned long long>(audioFrames), largest, state, rpm);
+                    static_cast<unsigned long long>(audioFrames), largest, state, rpm,
+                    engine.sim != nullptr ? engine.sim->hostStats().engineFaults : 0u);
         return code;
     }
 }

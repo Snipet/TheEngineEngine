@@ -146,3 +146,34 @@ TEST_CASE("rotary torque by model", "[.rotary]")
         std::printf("  faces %g, cycle %g\n", b.field("lay.n"), b.field("lay.cyc"));
     }
 }
+
+// The rotary under the physical models (fuel.model 1): BMEP and port gas against speed, unboosted (the targets: some
+// 10 to 10.5 bar, a 1.3 L twin-rotor road engine's 210 to 216 N m) and at its own boost (some 14 bar at 0.7 to 0.8 bar).
+TEST_CASE("rotary BMEP unboosted and boosted", "[.rotarybmep]")
+{
+    for (int boosted = 0; boosted < 2; ++boosted)
+    {
+        Bench b("archetypes/rotary-twin-13");
+        std::string e;
+        REQUIRE(b.player().setSpec("car.model", 0, e));
+        if (boosted == 0)
+            REQUIRE(b.player().setSpec("boost.kind", 0, e));
+        b.start();
+        b.warm();
+        std::printf("%s:\n", boosted != 0 ? "boosted" : "unboosted");
+        for (double rpm : {3000.0, 4000.0, 5000.0, 6000.0, 7000.0})
+        {
+            b.ctl().mode = 2; b.ctl().throttle = 1.0f; b.ctl().dynoSpeed = float(rpm / 9.5492966);
+            b.play(3.0);
+            double tq = 0, n = 0, bst = 0, imep = 0, fmep = 0, pmep = 0, bmep = 0, tp = 0, ve = 0;
+            b.play(1.0, [&] {
+                tq += b.tel("engine.torque"); bst += b.tel("boost.pressure"); imep += b.tel("engine.imep");
+                fmep += b.tel("engine.fmep"); pmep += b.tel("engine.pmep"); bmep += b.tel("engine.bmep");
+                tp += b.field("exh.tPort"); ve += b.tel("engine.veAir"); n += 1;
+            });
+            std::printf("  %4.0f rpm: %4.0f N m %4.0f kW, BMEP %5.2f IMEP %5.2f PMEP %5.2f FMEP %5.2f bar, boost %4.0f kPa, VE %4.2f, port %5.0f K, leaked %4.1f %% of the charge\n",
+                        rpm, tq / n, tq / n * rpm / 9549.3, bmep / n / 1e5, imep / n / 1e5, pmep / n / 1e5, fmep / n / 1e5,
+                        bst / n / 1000, ve / n, tp / n, 100.0 * b.field("cyl[0].mLeakLast") / std::max(b.field("work.w[0].trapped"), 1e-9));
+        }
+    }
+}

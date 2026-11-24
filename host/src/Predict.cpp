@@ -11,6 +11,7 @@
 #include <cstdio>
 #include <cstring>
 #include <functional>
+#include <limits>
 
 namespace tee
 {
@@ -59,6 +60,8 @@ namespace tee
                 // the crank's speed, held by the host while the engine starts (and throughout, with the host's brake)
                 holdCrank_ = find("crank.omega", omega_);
                 hasState_ = find("tel.engine.state", state_);
+                hasFlags_ = find("tel.engine.flags", flagsH_);
+                hasRetard_ = find("ecu.one.knock.retard", retardH_);
                 const bool custom = build.fieldOf("engine.custom") >= 0 && build.get("engine.custom") != 0.0;
                 const bool hostCan = holdCrank_ && find("mech.jBase", jBase_) && find("set.inertia", dialJ_)
                                      && find("set.load", dialLoad_) && !custom;
@@ -156,11 +159,28 @@ namespace tee
                 return true;
             }
 
+            // The key on for a quarter of a second before it is turned to start, as a person turns it (an ECU with a
+            // key's state machine, a diesel's glow plugs, want on before start: from off straight to start the new
+            // ECU never settled its boost and knock as it does after a proper start)
+            void keyOn(double speed)
+            {
+                set(ignition_, 1.0);
+                set(throttle_, 0.0);
+                for (long done = 0; done < std::lround(0.25 * options_.sampleRate); done += options_.block)
+                {
+                    if (holdCrank_ && !hasTorque_)
+                        set(omega_, 0.0);
+                    run(options_.block);
+                }
+                (void)speed;
+            }
+
             // The engine started (held at 1000 rpm until it runs, then 50 ms more: the simulator says its redline and
             // idle for the build only once it runs); then the redline and the idle as it says them.
             void probe(double& idle, double& redline)
             {
                 const double w = 1000.0 * kFourPi / 120.0;
+                keyOn(w);
                 set(ignition_, 2.0);
                 long done = 0;
                 for (; done < std::lround(3.0 * options_.sampleRate); done += options_.block)
@@ -187,6 +207,7 @@ namespace tee
             // program's dyno takes it only once it runs), until it runs or three seconds have gone
             void start(double speed)
             {
+                keyOn(speed);
                 set(ignition_, 2.0);
                 set(throttle_, 0.0);
                 const long least = std::lround(options_.startSeconds * options_.sampleRate);
@@ -243,8 +264,12 @@ namespace tee
                 p.speed = speed;
                 const double perCycle = kFourPi / std::max(speed, 1.0) * options_.sampleRate;   // samples
                 double previous = 0.0, held = 0.0;
+                faulted_ = false;
                 const int settling = slow_.empty() ? 0 : fresh_ ? 8 : 6;
-                const int most = options_.holdSeconds > 0.0 ? 1 << 30 : options_.maxCycles + settling;
+                // a build whose knock control acts gets as many cycles as its retard needs, to some two seconds
+                const int knockMost = hasRetard_ ? std::max(options_.maxCycles, static_cast<int>(2.0 * speed / kFourPi)) : 0;
+                const int most = options_.holdSeconds > 0.0 ? 1 << 30 : std::max(options_.maxCycles, knockMost) + settling;
+                double lastRetard = knockRetard();
                 for (int c = 0; c < most; ++c)
                 {
                     if (cancel != nullptr && cancel->load(std::memory_order_relaxed))
@@ -262,6 +287,15 @@ namespace tee
                     }
                     const double t = sum / static_cast<double>(std::max(total, 1L));
                     held += total / options_.sampleRate;
+                    if (faulted_)
+                    {
+                        // the engine diverged and is at rest: the point is not a measure
+                        p.valid = false;
+                        p.settled = false;
+                        p.torque = std::numeric_limits<double>::quiet_NaN();
+                        p.power = p.torque;
+                        return p;
+                    }
                     // the settling cycles (above), after the first; their torque is not counted
                     if (c >= 1 && c <= settling)
                     {
@@ -279,7 +313,12 @@ namespace tee
                     if (k >= 1)
                     {
                         p.torque = 0.5 * (t + previous);
-                        if (k + 1 >= options_.minCycles && held >= options_.holdSeconds
+                        // knock control's retard (ecu/knockctl.fm: a step a knock, 2 degrees a second given back)
+                        // settles over seconds: a point is not settled while it still moves
+                        const double retard = knockRetard();
+                        const bool retardSteady = !hasRetard_ || std::fabs(retard - lastRetard) <= 0.25;
+                        lastRetard = retard;
+                        if (k + 1 >= options_.minCycles && held >= options_.holdSeconds && retardSteady
                             && std::fabs(t - previous) <= options_.tolerance * std::max(std::fabs(p.torque), 1.0))
                         {
                             p.settled = true;
@@ -291,6 +330,7 @@ namespace tee
                     previous = t;
                 }
                 p.power = p.torque * speed;
+                p.knockRetard = knockRetard();
                 fresh_ = false;
                 return p;
             }
@@ -355,6 +395,39 @@ namespace tee
             void set(const Schema::Handle& h, double v) noexcept { instance_->write(h, v); }
 
             // n samples held at `speed`; the mean torque the brake took over them (N m)
+            // The knock retard's mean over the retarded cylinders, degrees (0 without knock control's state)
+            double knockRetard() const
+            {
+                if (!hasRetard_)
+                    return 0.0;
+                double sum = 0.0;
+                int n = 0;
+                for (std::size_t i = 0; i < retardH_.count; ++i)
+                    if (const double r = instance_->read(retardH_, i); r > 0.0)
+                    {
+                        sum += r;
+                        ++n;
+                    }
+                return n > 0 ? sum / n : 0.0;   // over the cylinders that are retarded (16 slots, as many in use)
+            }
+
+            // FLAG_FAULT (4) in tel.engine.flags: the simulator found its engine diverged and put it at rest this call
+            void noteFault()
+            {
+                if (hasFlags_ && (static_cast<long>(instance_->read(flagsH_)) & 4) != 0)
+                    faulted_ = true;
+            }
+
+        public:
+            // Whether a fault was seen since the last call (and forget it).
+            bool takeFault() noexcept
+            {
+                const bool f = faulted_;
+                faulted_ = false;
+                return f;
+            }
+
+        private:
             double step(double speed, int n)
             {
                 void* data = instance_->data();
@@ -366,11 +439,13 @@ namespace tee
                     set(dynoRate_, 0.0);
                     sim_->process()(data, left_.data(), right_.data(), n);
                     samples_ += n;
+                    noteFault();
                     return instance_->read(absorber_ ? absorberH_ : torque_);
                 }
                 set(omega_, speed);
                 sim_->process()(data, left_.data(), right_.data(), n);
                 samples_ += n;
+                noteFault();
                 const double gained = instance_->read(omega_) - static_cast<double>(static_cast<float>(speed));
                 // Mechanics::inertia: the base, the flywheel dial's factor (5x over its travel), the bench load's
                 const double j = instance_->read(jBase_) * std::exp(1.6094379 * (instance_->read(dialJ_) - 0.5))
@@ -469,7 +544,8 @@ namespace tee
             std::unique_ptr<Instance> instance_;
             bool begun_ = false;
             bool hasTorque_ = false, redline_ = false, idle_ = false, holdCrank_ = false, hasState_ = false,
-                 absorber_ = false;
+                 absorber_ = false, hasFlags_ = false, faulted_ = false, hasRetard_ = false;
+            Schema::Handle flagsH_, retardH_;
             Schema::Handle state_, absorberH_;
             std::vector<Slow> slow_;
             std::vector<std::pair<Schema::Handle, double>> held_;   // Warm.h's warm engine
@@ -575,6 +651,8 @@ namespace tee
                 p.refined = final;
                 p.brake = program ? "program" : "host";
                 p.innerRate = rateInside;
+                for (const PredictPoint& q : p.points)
+                    p.faults += q.valid ? 0 : 1;
                 p.wallSeconds = seconds(t0, Clock::now());
                 p.simulatedSeconds = simulated.load();
                 return p;
@@ -609,6 +687,8 @@ namespace tee
                         started = true;
                     }
                     const PredictPoint p = rig.point(w, cancel);
+                    if (!p.valid)
+                        started = false;   // at rest after the fault: the next point starts it again
                     if (cancel != nullptr && cancel->load(std::memory_order_relaxed))
                         break;
                     PredictCurve snapshot;

@@ -3,6 +3,7 @@
 #include "Support.h"
 
 #include "EngineTwin.h"
+#include "tee/Dyno.h"
 
 #include <set>
 #include <catch2/catch_test_macros.hpp>
@@ -159,4 +160,149 @@ TEST_CASE("SimControls carries every field of the program's Controls, and nothin
     SimControls c;
     CHECK(setControl(c, "bakeMaps", 3));
     CHECK(c.bakeMaps == 3);
+}
+
+TEST_CASE("an engine the simulator found diverged (FLAG_FAULT) is counted, said in words, and cranked back",
+          "[engine][sim][simhost][guard]")
+{
+    if (!haveSim())
+        SKIP("sim/engine.fm is not there yet");
+    std::string error;
+    const auto sim = compiled(simDir(), {}, error);
+    REQUIRE(sim != nullptr);
+    SimHost host;
+    LoadOptions load = offline(48000.0, 512);
+    REQUIRE(host.attach(sim, load, error));
+    SimControls c;
+    c.mode = 1;
+    c.ignition = 2;
+    host.setControls(c);
+    std::vector<float> l(512), r(512);
+    const auto play = [&](int blocks) {
+        for (int i = 0; i < blocks; ++i)
+        {
+            host.process(l.data(), r.data(), 512);
+            host.service();
+        }
+    };
+    play(200);   // some 2 s: started
+    c.ignition = 1;
+    host.setControls(c);
+    play(50);
+    TelemetryFrame t;
+    REQUIRE(host.telemetry(t));
+    REQUIRE(tel(host, t, "tel.engine.state") == 2);
+    CHECK(t.host.engineFaults == 0);
+
+    // a crank speed past five times the redline, held before every call (LoadOptions::hold): the simulator puts the
+    // engine at rest each time, and says so
+    SimHost broken;
+    LoadOptions held = offline(48000.0, 512);
+    held.hold = {{"crank.omega", 1.0e7}};
+    REQUIRE(broken.attach(sim, held, error));
+    broken.setControls(c);
+    for (int i = 0; i < 20; ++i)
+    {
+        broken.process(l.data(), r.data(), 512);
+        broken.service();
+    }
+    REQUIRE(broken.telemetry(t));
+    CHECK(t.host.engineFaults > 0);
+    CHECK(broken.stopReason().find("the engine diverged and was restarted") != std::string::npos);
+    for (const float v : l)
+        CHECK(std::isfinite(v));
+}
+
+TEST_CASE("a quality change swaps the engine at 48 kHz inside under a crossfade, and the key left on runs it again",
+          "[engine][sim][simhost]")
+{
+    if (!haveSim())
+        SKIP("sim/engine.fm is not there yet");
+    std::string error;
+    const auto sim = compiled(simDir(), {}, error);
+    REQUIRE(sim != nullptr);
+    SimHost host;
+    REQUIRE(host.attach(sim, offline(48000.0, 512), error));
+    SimControls c;
+    c.mode = 1;
+    c.ignition = 2;
+    host.setControls(c);
+    std::vector<float> l(512), r(512);
+    double peak = 0.0;
+    bool finite = true;
+    const auto play = [&](int blocks) {
+        peak = 0.0;
+        for (int i = 0; i < blocks; ++i)
+        {
+            host.process(l.data(), r.data(), 512);
+            host.service();
+            for (int k = 0; k < 512; ++k)
+            {
+                finite = finite && std::isfinite(l[k]) && std::isfinite(r[k]);
+                peak = std::max(peak, static_cast<double>(std::fabs(l[k])));
+            }
+        }
+    };
+    play(200);
+    c.ignition = 1;
+    host.setControls(c);
+    play(50);
+    CHECK(host.quality() == SimHost::Quality::Full);
+
+    if (!host.setQuality(SimHost::Quality::Economy, error))
+        SKIP("the program does not take TEE_ENGINE_RATE_48000: " << error);
+    CHECK(host.quality() == SimHost::Quality::Economy);
+    CHECK(host.innerRate() == 48000.0);
+    play(250);   // the crossfade, the crank (some 0.3 s), then running
+    TelemetryFrame t;
+    REQUIRE(host.telemetry(t));
+    CHECK(tel(host, t, "tel.engine.state") == 2);
+    CHECK(t.host.reloads >= 1);
+    CHECK(finite);
+    CHECK(peak > 0.01);
+    CHECK(host.controls().ignition == 1);   // the person's key untouched
+
+    REQUIRE(host.setQuality(SimHost::Quality::Full, error));
+    CHECK(host.innerRate() == 96000.0);
+    play(250);
+    REQUIRE(host.telemetry(t));
+    CHECK(tel(host, t, "tel.engine.state") == 2);
+    CHECK(finite);
+}
+
+TEST_CASE("the dyno runner starts a common-rail diesel and holds a twin turbo's boost on steps", "[engine][sim][dyno]")
+{
+    if (!haveSim())
+        SKIP("sim/engine.fm is not there yet");
+    std::string error;
+    const auto sim = compiled(simDir(), {}, error);
+    REQUIRE(sim != nullptr);
+    const auto run = [&](const char* name, std::vector<double> steps) {
+        Build build(sim->fields());
+        std::vector<std::string> warnings;
+        REQUIRE(build.loadFile(std::filesystem::path(TEE_SOURCE_DIR) / "content/builds/archetypes" / name, BuildPart::Whole,
+                               warnings, error));
+        DynoPlan plan;
+        plan.steps = std::move(steps);
+        plan.settle = 3.0;
+        plan.measure = 0.5;
+        plan.fields = {"engine.state", "boost.pressure"};
+        DynoCurve curve;
+        REQUIRE(runDyno(sim, build, plan, curve, error));
+        INFO(error);
+        return curve;
+    };
+    // P's two: from the key off straight to start, the diesel never cranked, and the twin turbo's boost wandered
+    const DynoCurve diesel = run("diesel-20-common-rail.json", {300.0});
+    REQUIRE(diesel.points.size() == 1);
+    CHECK(diesel.points[0].fields[0] == 2.0);
+    CHECK(diesel.points[0].torque > 50.0);
+    const DynoCurve six = run("straight-six-twin-turbo-30.json", {300.0, 450.0});
+    REQUIRE(six.points.size() == 2);
+    for (const DynoPoint& p : six.points)
+    {
+        CHECK(p.fields[0] == 2.0);
+        CHECK(p.fields[1] > 80000.0);    // near the build's 1.0 bar (P measured 2.99 bar at 4297 rpm before)
+        CHECK(p.fields[1] < 120000.0);
+    }
 }

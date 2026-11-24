@@ -21,6 +21,7 @@ believed until it holds that way. A figure measured otherwise is marked **"one r
 | The twin-turbo V8 (F's machine) over R | 1.26 R (one run, shared host) | 1.16 to 1.19 times the simulator's own V8 (2206 to 2215 ns against 1862 to 1946, 7 runs): **about 1.18 R** | q3-q4 |
 | The boost machine's cost | 0.24 R (F's, on the old R) | about 0.16 to 0.18 R (the twin-turbo V8 over the V8, above) | q3-q4 |
 | G's dual system with an X, stubs and valves | +0.31 R (G's, dev build, shared host) | not re-measured: G's builder is not in `engine.fm` yet | g-exhaust handoff |
+| The pipes as arrays inside the builder (`XNet::read`) | - | exact, 0.981 to 1.023: nothing measurable: **not landed, do not try again** without a new idea (q6) |
 | FMinus's levers (q2) | 4 runs | not re-measured: each within the noise, so none is claimed | q2 |
 
 ## The pages
@@ -32,5 +33,6 @@ believed until it holds that way. A figure measured otherwise is marked **"one r
 - [q-rule.md](q-rule.md): the rule for changes made for speed.
 - [q6-all-models.md](q6-all-models.md): every landed model on, the typical build against the 1.6 R budget.
 - [q7-compile.md](q7-compile.md): where the compile goes, by package; defining models out; what FMinus could do.
+- [q8-aot.md](q8-aot.md): shipping the engine compiled ahead of time: feasible with one small ask of FMinus.
 - `proto/`: patches for modules whose owners have not landed (`duct-lanes.patch`: the pipes as arrays, G's).
 - `tools/`: qbench, the region benchmark (`par/`).

@@ -27,6 +27,10 @@ namespace tee::ui
         // U1: room kept at the left (px) for what its owner draws there (the rail's pictogram); the title is centred in
         // the rest.
         void setLeftRoom(float px) noexcept { leftRoom_ = px; }
+        // U1: whether it can be pressed now (none: always). Disabled, it draws dim, takes no press, no hold, no key,
+        // and tells a screen reader so.
+        void setEnabled(std::function<bool()> f) { enabled_ = std::move(f); }
+        bool enabled() const { return !enabled_ || enabled_(); }
         int presses() const noexcept { return presses_; }
 
         void draw(funkgui::Canvas& c, const funkgui::Theme& th, bool focusRing) const override;
@@ -50,7 +54,7 @@ namespace tee::ui
 
         std::function<void()> onPress_;
         std::function<void(bool)> onHold_;
-        std::function<bool()> lit_;
+        std::function<bool()> lit_, enabled_;
         bool held_ = false, inside_ = false;
         float down_ = 0.0f, litShown_ = 0.0f, leftRoom_ = 0.0f;
         int presses_ = 0;
