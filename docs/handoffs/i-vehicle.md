@@ -153,3 +153,23 @@ limiter, then three shifts in 1.5 s) and by its clutch (1.35 x the engine's own 
 launch: P should re-place the shifts and set car.clutchTorque.
 
 **Note from card D (24 Nov, e0bcf8f, accepted by the lead for card I)**: `ecu.redRpm` under ecu.model 1 is a stated limiter's speed when the build gives one (the idle + 1500 floor only without); two readers here follow it: the launch's fallback, 60 % of the redline (vehicle.fm, `wLaunch`), and the automatic final drive, 0.6 x the redline (car.fm, `finalDrive`). Whoever touches the redline moves both.
+
+# I: the tyres' start temperature (a140c6f)
+
+The tyres started near 200 K: init put them at rest before the Car seam had copied spec.env in (VehEnv at 0 K,
+tyre.fm's 200 K floor), and nothing set them again. Now: the air's temperature after every reset (`Vehicle::ambient()`,
+clamped to 200 to 350 K; outside 150 to 400 K, 293.15 K), and the middle of the compound's window once after a reset
+while a host holds `car.m1.warmTyres` (asked of C for `tee::warmEngine()`; told P). The reference's car (model 0) has
+no tyre temperature: untouched, null test green. Test `vehicle.tyres.start` (three builds x three airs: at the start,
+after a burnout and a reset, warm); it reads 200 K on the old code.
+
+Before / after, today's tree (V8 in the coupe, 2 s; P's qm runs: 60 ft, 0-100 km/h, quarter):
+- V8 wet TC on 5.66 / 6.41 m/s (slip 0.085 / 0.086), off 4.32 / 4.85; dry TC on 9.48 / 10.78 (0.090 / 0.091), off
+  7.00 / 7.92; driver's pedal 4.12 / 4.65; NA rotary (launch.weak) 72 km/h in 4.00 / 3.75 s.
+- rotary NA 2.42, 12.25, 17.26 / 2.34, 11.66, 16.92; v12-65 2.27, 5.13, 12.21 / 2.21, 4.80, 12.04; 7.0 pushrod 2.44,
+  5.52, 12.45 / 2.39, 5.19, 12.21; 3.9 TT 2.31, 5.02, 11.68 / 2.26, 4.97, 11.48.
+- H's [traction]: 5 of 5 (rolling 11.30 / 12.69 m/s; the spinning-car test's slip 0.093 / 0.088). No bound of mine
+  or H's needed changing. The rig's standalone tests always had the air (the rig writes spec defaults before init).
+- Governed diesel (combo/large-diesel, model 1, ecu.model 1, first, floored): the launch holds 1580 rpm (60 % of
+  its 2530 rpm limiter), no stall; with traction control on 7.68 m/s at 4 s against 7.79 off (no wheelspin there: the
+  launch's speed hold costs 1.4 %). Nothing wrong with D's limiter-as-redline for it.
