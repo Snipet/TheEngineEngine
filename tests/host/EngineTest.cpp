@@ -366,3 +366,60 @@ TEST_CASE("the intake cam baked by a sweep of the fast dyno: the best advance by
     WARN("v12-65's intake cam baked in " << r.wallSeconds << " s: " << r.best[0] << ", " << r.best[1] << ", " << r.best[2]
                                          << " deg at 2000, 4000, 6000 rpm");
 }
+
+namespace
+{
+    // The predicted curve against the stepped dyno with the exhaust's heat settled (both the steady state) at the
+    // speeds given, on an archetype: within `bound` of the steps' largest torque.
+    void predictedMatchesSteps(const char* archetype, const std::vector<double>& speeds, double bound)
+    {
+        std::string error;
+        const auto sim = compiled(simDir(), {}, error);
+        REQUIRE(sim != nullptr);
+        Build build(sim->fields());
+        std::vector<std::string> warnings;
+        REQUIRE(build.loadFile(std::filesystem::path(TEE_SOURCE_DIR) / "content/builds/archetypes" / archetype,
+                               BuildPart::Whole, warnings, error));
+        DynoPlan plan;
+        plan.steps = speeds;
+        plan.settle = 4.0;
+        plan.measure = 1.0;
+        DynoCurve steps;
+        REQUIRE(runDyno(sim, build, plan, steps, error));
+        INFO(error);
+        REQUIRE(steps.settled);
+        REQUIRE(steps.points.size() == speeds.size());
+        PredictOptions options;
+        options.from = speeds.front();
+        options.to = speeds.back();
+        options.points = options.coarse = std::max(2, static_cast<int>(speeds.size()));   // (two at one speed)
+        PredictCurve predicted;
+        REQUIRE(predictCurve(sim, build, options, predicted, error));
+        REQUIRE(predicted.points.size() >= speeds.size());
+        double peak = 0.0;
+        for (const DynoPoint& p : steps.points)
+            peak = std::max(peak, std::fabs(p.torque));
+        for (std::size_t i = 0; i < speeds.size(); ++i)
+        {
+            CAPTURE(archetype, speeds[i], predicted.points[i].torque, steps.points[i].torque);
+            CHECK(std::fabs(predicted.points[i].torque - steps.points[i].torque) <= bound * peak);
+        }
+    }
+} // namespace
+
+TEST_CASE("a predicted point is the stepped dyno's settled torque within 3 %: the economy four at 5439 rpm",
+          "[engine][sim][predict][dyno]")
+{
+    if (!haveSim())
+        SKIP("sim/engine.fm is not there yet");
+    predictedMatchesSteps("economy-four-15.json", {569.6}, 0.03);   // P saw 186 N m between steps of about 160
+}
+
+TEST_CASE("predicted points are the stepped dyno's settled torque within 3 %: the V12 by its resonance, the economy four",
+          "[engine][sim][predict][dyno][nightly]")
+{
+    if (!haveSim())
+        SKIP("sim/engine.fm is not there yet");
+    predictedMatchesSteps("v12-65.json", {680.68, 698.79, 717.33}, 0.03);   // 6500, 6673, 6850 rpm (D's)
+    predictedMatchesSteps("economy-four-15.json", {560.0, 569.6, 579.0}, 0.03);
+}

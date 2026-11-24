@@ -77,7 +77,7 @@ void operator delete[](void* p, std::size_t, std::align_val_t) noexcept { std::f
 #endif
 
 TEST_CASE("nothing on the audio thread allocates with every switch on and the switches flipped while it runs",
-          "[combo][realtime]")
+          "[fast][combo][realtime]")
 {
 #if defined(_WIN32)
     SKIP("the counting operator new is not built on Windows");

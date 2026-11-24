@@ -102,7 +102,10 @@ sheet will include every registered workspace.
 - **The dyno's requests**: `DynoSource::requests()` counts the predicted curves asked for (`ui.frame.ribbon`: one drag,
   one request).
 - **`ui.build.*` tests**: `BUILD_TEST(ident, "build.name") { ... return 0; }` with `rig` (the real simulator under the
-  frame: `tests/ui/build/BuildKit.h`), in `tests/ui/build/<Name>Tests.cpp`; CMake finds the names.
+  frame: `tests/ui/build/BuildKit.h`), in `tests/ui/build/<Name>Tests.cpp`; CMake finds the names. They run as one
+  CTest test, `ui.build` (sim/ compiled once a process; the rig reset to a fresh Build, doc and frame before each
+  case; each case's name and ok/FAILED in the log); `tee-ui-build-tests build.name` runs one alone; the nightly
+  `ui.build.reverse` runs them last first, so a case must not lean on another's leftovers.
 - **A preferred unit** (kit): `FieldInfo::preferUnit` ("m" for a listener's distance) is used wherever the person's
   chosen unit is of the same system (mm or cm: m; inches stay inches): `Units::chosen(q, prefer)`, and the optional
   last argument of `toUser`, `toSi`, `number`, `format`, `parse`. The inspector's pages and `fieldText` honour it.

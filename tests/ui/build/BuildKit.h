@@ -3,8 +3,10 @@
 //
 //     BUILD_TEST(myIdent, "build.mything") { ... CHECK(...); return 0; }     // int myIdent(Rig& rig)
 //
-// and CMake reads the names (each a CTest test "ui.<name>"), so a package adds one without editing a CMake file. The
-// Rig (sim/ compiled, a Build, a BuildDoc, the frame over them) is made once for the run.
+// and CMake reads the names, so a package adds one without editing a CMake file. They run as one CTest test, ui.build
+// (sim/ compiled once: the Rig keeps the program and is reset to a fresh Build, BuildDoc and frame before each case;
+// each case's name and "ok" or "FAILED" in the log); `tee-ui-build-tests build.mything` runs one alone, and the nightly
+// ui.build.reverse runs them all in reverse order, so a case that leans on another's leftovers shows.
 #pragma once
 
 #include "app/AppFrame.h"
@@ -47,6 +49,7 @@ namespace tee::test::build
         std::unique_ptr<tee::ui::AppFrame> frame;
         std::unique_ptr<funkgui::HeadlessHost> host;
 
+        // sim/ compiled once for the run (the costly part: about 6.6 CPU-s), then reset() before each case.
         bool open()
         {
             std::string errors;
@@ -56,6 +59,20 @@ namespace tee::test::build
                 std::printf("  sim/ did not compile:\n%s\n", errors.c_str());
                 return false;
             }
+            reset();
+            return true;
+        }
+
+        // A fresh Build, BuildDoc, frame and host over the kept program: each case starts as in a process of its own
+        // (01-rules.md section 3: a kept rig is reset between cases; `tee-ui-build-tests --reverse` proves the order
+        // does not matter).
+        void reset()
+        {
+            host.reset();
+            frame.reset();
+            doc.reset();
+            build.reset();
+            units = tee::ui::Units{};
             build = std::make_unique<tee::Build>(sim->fields());
             build->name = "Test build";
             doc = std::make_unique<tee::ui::BuildDoc>(*build);
@@ -63,7 +80,6 @@ namespace tee::test::build
                                                         tee::ui::buildServices(*build, TEE_UI_BUILDS_DIR, user, {}));
             host = std::make_unique<funkgui::HeadlessHost>(*frame, 0, 2.0f);
             host->tick(10);
-            return true;
         }
     };
 
