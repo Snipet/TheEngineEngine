@@ -117,45 +117,27 @@ namespace
     {
         LabRig rig(1100, 700, 1.0f);
         const vv::Train t0 = vv::trainOf(rig.doc);
-        // find the intake's peak handle: the press that selects the intake and starts a gesture
         const int fc = rig.doc.find("valve.inCentre"), fd = rig.doc.find("valve.inDurSeat"), f1 = rig.doc.find("valve.inDur1mm");
-        bool done = false;
-        for (float y = 60.0f; y < 420.0f && !done; y += 2.0f)
-            for (float x = 360.0f; x < 560.0f && !done; x += 2.0f)
-            {
-                rig.host->press(x, y);
-                if (rig.doc.depth() > 0)
-                {
-                    CHECK(rig.selection.path() == "valve.intake");
-                    rig.host->moveTo(x + 30.0f, y, 4);
-                    rig.host->release();
-                    done = true;
-                }
-                else
-                    rig.host->release();
-            }
-        CHECK(done);
+        // the intake's peak handle, pressed where the stage says it is: the press selects the intake, starts a gesture
+        funkgui::Point at = tee::ui::valvesHandle(*rig.ws, 0);
+        CHECK(at.x >= 0.0f);
+        rig.host->press(at.x, at.y);
+        CHECK(rig.doc.depth() > 0);
+        CHECK(rig.selection.path() == "valve.intake");
+        rig.host->moveTo(at.x + 30.0f, at.y, 4);
+        rig.host->release();
         CHECK(rig.doc.steps() == 1 && rig.doc.depth() == 0);
         CHECK(rig.doc.get(fc) > t0.in.centre - 360.0 + 15.0);   // dragged later: a later centreline
         rig.doc.undo();
         CHECK_NEAR(rig.doc.get(fc), 108.0, 1e-9);
         // the intake's closing seat mark, dragged out: a longer duration, the 1 mm duration the same distance under it
         rig.host->tick(5);
-        done = false;
-        for (float y = 360.0f; y < 460.0f && !done; y += 2.0f)
-            for (float x = 520.0f; x < 640.0f && !done; x += 2.0f)
-            {
-                rig.host->press(x, y);
-                if (rig.doc.depth() > 0)
-                {
-                    rig.host->moveTo(x + 20.0f, y, 4);
-                    rig.host->release();
-                    done = true;
-                }
-                else
-                    rig.host->release();
-            }
-        CHECK(done);
+        at = tee::ui::valvesHandle(*rig.ws, 2);
+        CHECK(at.x >= 0.0f);
+        rig.host->press(at.x, at.y);
+        CHECK(rig.doc.depth() > 0);
+        rig.host->moveTo(at.x + 20.0f, at.y, 4);
+        rig.host->release();
         CHECK(rig.doc.get(fd) > 268.0 + 10.0);
         CHECK_NEAR(rig.doc.get(fd) - rig.doc.get(f1), 268.0 - 244.0, 1e-6);
         return 0;
@@ -396,22 +378,14 @@ namespace
         rig.host->tick(5);
         const int fo = rig.doc.find("valve.freeInOpen"), fc = rig.doc.find("valve.freeInClose");
         const int steps = rig.doc.steps();
-        bool done = false;
-        for (float y = 60.0f; y < 420.0f && !done; y += 2.0f)
-            for (float x = 360.0f; x < 600.0f && !done; x += 2.0f)
-            {
-                rig.host->press(x, y);
-                if (rig.doc.depth() > 0)
-                {
-                    CHECK(rig.selection.path() == "valve.intake");
-                    rig.host->moveTo(x + 20.0f, y, 4);
-                    rig.host->release();
-                    done = true;
-                }
-                else
-                    rig.host->release();
-            }
-        CHECK(done);
+        // the free valve's handle, pressed where the stage says it is, and dragged later
+        const funkgui::Point at = tee::ui::valvesHandle(*rig.ws, 0);
+        CHECK(at.x >= 0.0f);
+        rig.host->press(at.x, at.y);
+        CHECK(rig.doc.depth() > 0);
+        CHECK(rig.selection.path() == "valve.intake");
+        rig.host->moveTo(at.x + 20.0f, at.y, 4);
+        rig.host->release();
         CHECK(rig.doc.steps() == steps + 1);
         CHECK(rig.doc.get(fo) > 350.0 + 5.0 && rig.doc.get(fc) > 590.0 + 5.0);
         CHECK_NEAR(rig.doc.get(fc) - rig.doc.get(fo), 240.0, 1e-6);   // moved, not stretched

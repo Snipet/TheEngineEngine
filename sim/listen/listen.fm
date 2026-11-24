@@ -943,9 +943,8 @@ module Listen
     {
         const int hn = rsN / 2;
         const float x = rsFrac * 128.0f;
-        int ph = (int)x;
-        if (ph > 127)
-            ph = 127;
+        // (clamped both ways before the cast: a NaN would otherwise index at INT_MIN; rsFrac is finite by construction)
+        const int ph = (int)fminf(fmaxf(x, 0.0f), 127.0f);
         const float f = x - (float)ph;
         const int i0 = (rsW - rsAhead - (hn - 1) + 512) % 256;
         const int k0 = ph * rsN;

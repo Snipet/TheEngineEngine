@@ -247,7 +247,6 @@ namespace
                     const std::string why = tee::test::u5::textFaults(rig.host->draw(), { 0.0f, 0.0f, st.w, st.h }, panels);
                     CHECK_MSG(why.empty(), "with plot " + std::to_string(i) + ": " + why);
                 }
-                picture("scope.frame.small.others", *rig.host);
             }
         }
         return 0;
@@ -269,7 +268,6 @@ namespace
         const std::uint64_t key = rig.ws->drawKey();
         rig.host->tick(30);
         CHECK(rig.ws->drawKey() == key);
-        picture("scope.frozen", *rig.host);
         rig.ws->setFrozen(false);
         rig.host->tick(2);
         CHECK(rig.ws->scopeReads() > reads && rig.ws->facts().peakPa != peak);
@@ -345,7 +343,44 @@ namespace
         pws.place({ 0.0f, 0.0f, 1100.0f, 700.0f });
         phost.tick(90);
         CHECK(pws.facts().degrees == 720 && std::isnan(pws.facts().sparkDeg));
-        picture("scope.noports.dpi1", phost);
+        return 0;
+    }
+
+    // Pictures, no checks (labelled nightly by its name's ".pictures": the soak tier makes them at every push, the
+    // default run leaves them out, 01-rules.md section 3).
+    VIEW_TEST(testScopePictures, "scope.pictures")
+    {
+        {
+            // FREEZE held while the engine went on.
+            ScopeRig rig;
+            rig.ws->setFrozen(true);
+            rig.settle();
+            rig.at(2.5, 6);
+            picture("scope.frozen", *rig.host);
+        }
+        {
+            // The small stage after every plot chosen in turn.
+            const funkgui::Rect st = tee::test::u5::frameStage(1100, 700);
+            ScopeRig rig(static_cast<int>(st.w), static_cast<int>(st.h), 1.0f);
+            for (int i = 0; i < 6; ++i)
+            {
+                rig.ws->choosePlot(i);
+                rig.settle();
+            }
+            picture("scope.frame.small.others", *rig.host);
+        }
+        {
+            // The demo without the ports.
+            tee::ui::DemoRig plain(4.6, tee::ui::DemoHooks::of({ "scope", "garage", "tune" }));
+            plain.engine.forget("ecu.advance");
+            WorkspaceContext pctx{ plain.doc, plain.engine, plain.engine, plain.engine, plain.units, plain.selection, plain.app };
+            ScopeWorkspace pws(pctx);
+            funkgui::HeadlessHost phost(pws, 0, 1.0f);
+            phost.resize(1100, 700);
+            pws.place({ 0.0f, 0.0f, 1100.0f, 700.0f });
+            phost.tick(90);
+            picture("scope.noports.dpi1", phost);
+        }
         return 0;
     }
 }

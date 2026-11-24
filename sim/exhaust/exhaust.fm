@@ -1144,7 +1144,10 @@ module Exhaust
         // card F's turbines (boost.model 1): the housing each bank's collectors end in; none: -1, and the reference's
         // restriction stands for a turbo (aspUse, which the engine gives 0 with boost.model 1). External gates: one pipe
         // each (Boost::externalGates, turbo t's gate solved by Boost::gatePipe at its near end), to the air at the front
-        // (a screamer pipe; F has no recirculated choice yet)
+        // (a screamer pipe; F has no recirculated choice yet). First the exhaust's side count, as resolve() will take
+        // it, so every turbo's outlet goes to a downpipe that exists (Boost::exhaustSides: one side, all onto side 0)
+        if (model != 0)
+            bo->exhaustSides(spec->sides > 0 ? (spec->sides > 2 ? 2 : spec->sides) : (lay->topo == 2 ? 2 : 1));
         int banks = 1;
         for (int i = 0; i < lay->ports; ++i)
         {
