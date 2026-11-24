@@ -1,0 +1,137 @@
+// buildspec.fm: what an exhaust is, as data (card G, the exhaust builder), and what the builder needs to know of the
+// engine it is fitted to.
+//
+// XSpec is shaped as a Spec section (docs/plan/02-contracts.md §2, §3): every field with its range, its default, its
+// label and its quantity or unit. Its fields will be appended to `spec.exhaust` (sim/spec/exhaust.fm) once the split
+// (K3b) has landed; until then the builder and its tests use it as it is. Defaults are the reference: `model` 0 is the
+// reference's own code, bit for bit; `model` 1 with every other field at its default is the reference's topology and
+// sizes built by the builder (tests/sim/exhaust: the reference-topology test). A 0 in a size means "the layout's", as
+// the reference sizes it; -2 and -1 in the tables likewise.
+//
+// What the simulator can follow smoothly (glided over some 80 ms, as the reference glides its dials): the lengths and
+// bores (the pipes' delays move between samples), the converter's, the resonators' and the mufflers' sizes, the bypass
+// valve's opening (by its own time). What it cannot (made under the reference's short fade): `model`, the tables
+// (`primaryTo`, `collectorTo`), `sides`, and every slot's kind.
+#pragma once
+
+enum
+{
+    XS_PORTS = 16,      // MAX_PORTS
+    XS_COLL = 8,        // MAX_COLLECTORS
+    XS_SIDES = 2        // MAX_SIDES
+};
+
+module XSpec
+{
+    int rev;
+    int model [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Exhaust model")]]
+        [[ui::choices("Reference", "Builder")]];
+    // ---- the headers ----
+    int primaryTo [[fminus::range(-2, 7)]] [[fminus::default(-2)]] [[ui::label("Primary joins")]] [[ui::group("Headers")]]
+        [[ui::help("Which collector each port's primary joins: -2 the layout's, -1 an open stack")]] [XS_PORTS];
+    float primLen [[fminus::range(0, 3)]] [[fminus::default(0)]] [[ui::label("Primary length")]] [[ui::quantity("length")]]
+        [[ui::help("0: the layout's")]] [XS_PORTS];
+    float primD [[fminus::range(0, 0.12)]] [[fminus::default(0)]] [[ui::label("Primary bore")]] [[ui::quantity("length")]]
+        [[ui::help("0: the layout's, 0.46 of the cylinder's bore")]] [XS_PORTS];
+    float primSpread [[fminus::range(0, 0.3)]] [[fminus::default(0.06)]] [[ui::label("Primary differences")]]
+        [[ui::quantity("fraction")]] [[ui::help("How much the primaries' lengths differ, as built (the reference's 6 %)")]];
+    float primStepAt [[fminus::range(0, 0.9)]] [[fminus::default(0)]] [[ui::label("Step at")]] [[ui::quantity("fraction")]]
+        [[ui::help("Where a stepped primary widens, along it; 0: no step")]];
+    float primStepD [[fminus::range(1, 1.5)]] [[fminus::default(1.1)]] [[ui::label("Step")]] [[ui::quantity("ratio")]]
+        [[ui::help("The bore after the step over the bore before it")]];
+    // ---- the collectors ----
+    int collectorTo [[fminus::range(-1, 9)]] [[fminus::default(-1)]] [[ui::label("Collector joins")]] [[ui::group("Collectors")]]
+        [[ui::help("-1 the layout's; 0 or 1: that side; 2 to 9: the collector (2 less) its pipe merges into")]] [XS_COLL];
+    float colLen [[fminus::range(0, 1.5)]] [[fminus::default(0)]] [[ui::label("Collector pipe length")]]
+        [[ui::quantity("length")]] [XS_COLL];
+    float colD [[fminus::range(0, 0.15)]] [[fminus::default(0)]] [[ui::label("Collector pipe bore")]]
+        [[ui::quantity("length")]] [XS_COLL];
+    float colVol [[fminus::range(0, 0.004)]] [[fminus::default(0)]] [[ui::label("Collector volume")]]
+        [[ui::quantity("volume")]] [[ui::help("Above 0: a log manifold's chamber at the collector")]] [XS_COLL];
+    // ---- each side's chain ----
+    int sides [[fminus::range(0, 2)]] [[fminus::default(0)]] [[ui::label("Sides")]] [[ui::group("Chain")]]
+        [[ui::help("0: the layout's; 1 single; 2 dual")]];
+    float mainLen [[fminus::range(0, 5)]] [[fminus::default(0)]] [[ui::label("Main pipe length")]]
+        [[ui::quantity("length")]] [XS_SIDES];
+    float mainD [[fminus::range(0, 0.13)]] [[fminus::default(0)]] [[ui::label("Main pipe bore")]]
+        [[ui::quantity("length")]] [XS_SIDES];
+    int converter [[fminus::range(0, 2)]] [[fminus::default(1)]] [[ui::label("Converter")]]
+        [[ui::choices("None", "Standard", "High-flow")]] [XS_SIDES];
+    int crossover [[fminus::range(0, 2)]] [[fminus::default(1)]] [[ui::label("Crossover")]]
+        [[ui::choices("None", "H", "X")]];
+    int crossAt [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Crossover at")]]
+        [[ui::choices("Head", "After main pipe")]];
+    float crossD [[fminus::range(0, 0.13)]] [[fminus::default(0)]] [[ui::label("Crossover bore")]]
+        [[ui::quantity("length")]] [[ui::help("0: the X-PIPE dial's")]];
+    float crossLen [[fminus::range(0.05, 1)]] [[fminus::default(0.25)]] [[ui::label("H pipe length")]]
+        [[ui::quantity("length")]];
+    float postLen [[fminus::range(0.1, 2)]] [[fminus::default(0.4)]] [[ui::label("Pipe after crossover")]]
+        [[ui::quantity("length")]];
+    int resonator [[fminus::range(0, 3)]] [[fminus::default(0)]] [[ui::label("Resonator")]]
+        [[ui::choices("None", "Quarter-wave", "Helmholtz", "Packed bottle")]] [XS_SIDES];
+    float resHz [[fminus::range(40, 2000)]] [[fminus::default(200)]] [[ui::label("Resonator note")]]
+        [[ui::quantity("frequency")]] [[ui::taper("log")]] [XS_SIDES];
+    float resD [[fminus::range(0, 0.13)]] [[fminus::default(0)]] [[ui::label("Resonator bore")]]
+        [[ui::quantity("length")]] [[ui::help("A stub's or a neck's; 0: the pipe's (a neck: half of it)")]] [XS_SIDES];
+    float resVol [[fminus::range(0.0002, 0.02)]] [[fminus::default(0.003)]] [[ui::label("Chamber volume")]]
+        [[ui::quantity("volume")]] [XS_SIDES];
+    float resLen [[fminus::range(0.1, 1)]] [[fminus::default(0.4)]] [[ui::label("Bottle length")]]
+        [[ui::quantity("length")]] [XS_SIDES];
+    float linkLen [[fminus::range(0.1, 2)]] [[fminus::default(0.4)]] [[ui::label("Pipe after resonator")]]
+        [[ui::quantity("length")]];
+    int muffler [[fminus::range(0, 3)]] [[fminus::default(2)]] [[ui::label("Muffler")]]
+        [[ui::choices("None", "Straight-through", "Chambered", "Three-pass")]] [XS_SIDES];
+    float mufSize [[fminus::range(-1, 1)]] [[fminus::default(-1)]] [[ui::label("Muffler size")]]
+        [[ui::quantity("fraction")]] [[ui::help("-1: the MUFFLER dial's")]] [XS_SIDES];
+    float mufLen [[fminus::range(0, 1)]] [[fminus::default(0)]] [[ui::label("Muffler chamber")]]
+        [[ui::quantity("length")]] [[ui::help("Its first chamber's length; 0: the layout's")]] [XS_SIDES];
+    int bypass [[fminus::range(0, 4)]] [[fminus::default(0)]] [[ui::label("Bypass valve")]]
+        [[ui::choices("None", "Shut", "Open", "By speed and load", "By the ECU")]] [XS_SIDES];
+    float bypassD [[fminus::range(0, 0.13)]] [[fminus::default(0)]] [[ui::label("Bypass bore")]]
+        [[ui::quantity("length")]] [[ui::help("0: the main pipe's")]];
+    float bypassRpm [[fminus::range(1000, 9000)]] [[fminus::default(3500)]] [[ui::label("Valve opens above")]]
+        [[ui::unit("rpm")]];
+    float bypassLoad [[fminus::range(0, 1)]] [[fminus::default(0.5)]] [[ui::label("and above load")]]
+        [[ui::quantity("fraction")]];
+    float bypassTime [[fminus::range(0.05, 2)]] [[fminus::default(0.3)]] [[ui::label("Valve travel")]]
+        [[ui::quantity("time")]];
+    float tailLen [[fminus::range(0, 2)]] [[fminus::default(0)]] [[ui::label("Tailpipe length")]]
+        [[ui::quantity("length")]] [XS_SIDES];
+    float tailD [[fminus::range(0, 0.13)]] [[fminus::default(0)]] [[ui::label("Tailpipe bore")]]
+        [[ui::quantity("length")]] [XS_SIDES];
+    int tips [[fminus::range(1, 2)]] [[fminus::default(1)]] [[ui::label("Tips")]] [XS_SIDES];
+    int exitAt [[fminus::range(-1, 6)]] [[fminus::default(-1)]] [[ui::label("Exits")]]
+        [[ui::choices("The layout's", "Rear centre", "Rear left", "Rear right", "Side left", "Side right", "Front", "Up")]]
+        [XS_SIDES];
+};
+
+// What the builder knows of the engine (filled by the exhaust's owner each control step: the layout's sizes, the
+// reference's four dials as smoothed, the turbo's state, the air): the reference's names, so its pipes() reads alike.
+module XEngine
+{
+    int ports;
+    int bank[XS_PORTS];
+    int topo;           // the layout's: 0 all into one, 1 a collector a bank then one pipe, 2 dual
+    float bore;         // m
+    float hdr;          // the layout's header length, m
+    float hdrBank1;     // the second bank's headers, times
+    float mainLen;
+    float pipeD;
+    float tailD;
+    float muff;
+    float bike;
+    float smHdr;        // the HEADERS, PIPE, X-PIPE and MUFFLER dials, smoothed (0 to 1)
+    float smPipe;
+    float smXp;
+    float smMuf;
+    int aspUse;         // 0 natural, 1 to 3 turbos, 4 a supercharger
+    float smTb;         // the turbo's level and size (the reference's TURBO and TURBO SIZE, smoothed)
+    float smTs;
+    float tAmb;         // K
+    float vAir;         // the car's speed, m/s (the walls' cooling)
+    float tPort;        // the gas at the ports, K
+    float mdotSlow;     // the exhaust's mass flow over half a second, kg/s
+    float rpm;
+    float load;         // 0 to 1: what the bypass valve's rule goes by
+    float ecuValve;     // 0 to 1: the ECU's word on the valve
+};

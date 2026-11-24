@@ -104,7 +104,10 @@ if(TARGET FunkGui::desktop OR TARGET FunkGui::gpu)
 endif()
 
 file(GLOB _tee_ui_kit_sources CONFIGURE_DEPENDS "${TEE_UI_DIR}/kit/gui/*.cpp" "${TEE_UI_DIR}/kit/gui/*.h"
-                                                "${TEE_UI_DIR}/kit/shaders/*.h")
+                                                "${TEE_UI_DIR}/kit/shaders/*.h"
+                                                # J2: the widgets and the binding to a Spec's fields
+                                                "${TEE_UI_DIR}/kit/widgets/*.cpp" "${TEE_UI_DIR}/kit/widgets/*.h"
+                                                "${TEE_UI_DIR}/kit/bind/*.cpp" "${TEE_UI_DIR}/kit/bind/*.h")
 add_library(tee_ui_kit STATIC ${_tee_ui_kit_sources}
   "${TEE_UI_DIR}/kit/shaders/ShaderText.cpp" "${TEE_UI_DIR}/kit/shaders/ShaderLib.cpp"
   "${TEE_UI_DIR}/kit/shaders/ShaderFont.cpp" "${TEE_UI_DIR}/kit/shaders/Registry.cpp")

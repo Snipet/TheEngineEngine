@@ -21,6 +21,7 @@ module Rig
     CycleWork wk;
     Dyno dy;
     SliderCrank one;
+    Sizing size;
     float theta;            // the crank, rad (unwrapped below 2 pi)
     float omega;
     float bore;
@@ -62,6 +63,40 @@ module Rig
     {
         const float t = a * 0.01745329252f;
         return mm.torque(sinf(t), cosf(t), w);
+    }
+
+    // What the mechanics add to a sample, for the cost: the inertia torque and the crank's step, and the work integral's
+    // sample for each cylinder (its pressure and volume made up: the cylinder has them in the engine)
+    void costRun(int samples, float dt)
+    {
+        float th = 0.0f;
+        float w = 600.0f;
+        for (int i = 0; i < samples; ++i)
+        {
+            th += w * dt;
+            if (th >= 12.56637061f)
+                th -= 12.56637061f;
+            const float s = sinf(th);
+            const float c = cosf(th);
+            w = mm.advance(w, 300.0f - 0.5f * w, dt, s, c);
+            for (int k = 0; k < lay.n; ++k)
+            {
+                const float a = th * 57.29578f + lay.fire[k];
+                const float ak = a >= 720.0f ? a - 720.0f : a;
+                wk.sample(k, ak, 1.0e5f + 1.0e3f * ak, 1.0e-4f + 1.0e-7f * ak);
+            }
+        }
+        omega = w;
+    }
+
+    void sizeFromDials(float litres, float bs, int n)
+    {
+        size.fromDials(litres, bs, n);
+    }
+
+    float redline(int diesel)
+    {
+        return size.redlineBySpeed(diesel);
     }
 
     // The friction torque at a speed, peak pressure and oil factor

@@ -203,7 +203,7 @@ module OneLine
     void adopt(int which)
     {
         EcuMapsSpec* m = &set.maps;
-        EcuMap16* map = &m->spark;
+        Map16* map = &m->spark;
         if (which == MAP_LAMBDA)
             map = &m->lambda;
         if (which == MAP_BOOST)
@@ -281,5 +281,11 @@ module OneLine
             }
         }
         return n > 0 ? sum / (float)n : 0.0f;
+    }
+
+    // spec/tables.fm's own read of the spark map, for the test that shows its rounding
+    float tableAt(float u, float v)
+    {
+        return set.maps.spark.at(u, v);
     }
 };

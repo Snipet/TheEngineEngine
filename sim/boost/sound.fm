@@ -1,0 +1,156 @@
+// sound.fm: the forced induction's own sounds, each a sample from the model's state (the reference's rule: nothing
+// runs on a clock of its own).
+//
+//   inlet   what comes out of the compressor's inlet (or a supercharger's): the rate the volume flow through it changes
+//           (a monopole, as the reference's air box: so surge's reversals are heard as what they are, pulses), the rush
+//           of air through the wheel (noise in a band that rises with the tip speed, as the flow and the tip speed's
+//           square), its whistle at the shaft's own frequency (an unbalance's once a turn) and its blades' passing
+//           (twelve a turn: six blades and six splitters) where that is under 18 kHz, and a recirculating blow-off
+//           valve's breath;
+//   vent    a blow-off valve to the air (its jet's noise, as the square of its mass flow), a nitrous purge;
+//   cased   a supercharger's whine: its pockets opening to the outlet (six a rotor turn for a Roots, four for a
+//           twin-screw's male rotor; a centrifugal's gear mesh and blades), harmonics built as the reference builds
+//           them, falling off less the sharper each pocket's step (its pulse); the case's ring near 2.6 kHz;
+//   bang    anti-lag's burning in the turbine's housing: each event a kick, low and ringing.
+// Levels are set beside the reference's own (its turbo's whistle 0.09, rush 0.15, blow-off 0.35, whine 0.15), so
+// wave 2's mix sees the same scale. Nobody here has heard them: what they are made of is measured by the tests.
+#pragma once
+#include "gas.fm"
+
+module BoostSound
+{
+    float rate;
+    int seed;
+    float nScale;
+    float whPh[BOOST_TURBOS];
+    float bpPh[BOOST_TURBOS];
+    float scPh;
+    float scPh1;
+    float scW[6];
+    BoostBand rush;
+    BoostBand bovBand;
+    BoostBand purgeBand;
+    BoostBand bangRes;
+    float qPrev;
+    float inlet;
+    float vent;
+    float cased;
+    float bang;
+
+    void setup(float rateIn)
+    {
+        rate = rateIn;
+        seed = 0;
+        nScale = sqrtf(rate / 48000.0f);
+        rush.set(4000.0f, 2.5f, rate);
+        bovBand.set(3200.0f, 0.9f, rate);
+        purgeBand.set(1800.0f, 0.7f, rate);
+        bangRes.set(160.0f, 1.5f, rate);
+        clear();
+    }
+
+    void clear()
+    {
+        for (int i = 0; i < BOOST_TURBOS; ++i)
+        {
+            whPh[i] = 0.0f;
+            bpPh[i] = 0.0f;
+        }
+        scPh = 0.0f;
+        scPh1 = 0.0f;
+        qPrev = 0.0f;
+        rush.clear();
+        bovBand.clear();
+        purgeBand.clear();
+        bangRes.clear();
+        inlet = 0.0f;
+        vent = 0.0f;
+        cased = 0.0f;
+        bang = 0.0f;
+    }
+
+    float noise()
+    {
+        seed += 1;
+        return nScale * randf(seed);
+    }
+
+    // Every 16 samples: the rush's band from the tip speed's share of its limit; a supercharger's harmonics from its
+    // pockets' frequency and their step
+    void control(float tipShare, float scHz, float pulse)
+    {
+        rush.set(1500.0f + 5500.0f * tipShare, 2.5f, rate);
+        const float slope = 1.5f - 0.7f * fminf(pulse / 0.5f, 1.0f);
+        const float f0 = fmaxf(scHz, 1.0f);
+        for (int k = 0; k < 6; ++k)
+        {
+            const float fk = (float)(k + 1) * f0;
+            const float x = fk / 2600.0f - 2600.0f / fk;
+            const float res = 1.0f / sqrtf(1.0f + 6.0f * x * x);
+            const float top = fminf(fmaxf((18000.0f - fk) / 4000.0f, 0.0f), 1.0f);
+            scW[k] = top * expf(-slope * logf((float)(k + 1))) * (0.5f + 0.5f * res);
+        }
+    }
+
+    // A turbo's whistle and blade passing: its shaft's turns a second, how loud (0 to 1)
+    float whistle(int t, float hz, float level)
+    {
+        whPh[t] += hz / rate;
+        if (whPh[t] >= 1.0f)
+            whPh[t] -= floorf(whPh[t]);
+        float s = sinf(6.28318531f * whPh[t]);
+        const float bp = 12.0f * hz;
+        if (bp < 18000.0f)
+        {
+            bpPh[t] += bp / rate;
+            if (bpPh[t] >= 1.0f)
+                bpPh[t] -= floorf(bpPh[t]);
+            s += 0.5f * fminf((18000.0f - bp) / 3000.0f, 1.0f) * sinf(6.28318531f * bpPh[t]);
+        }
+        return 0.09f * level * s;
+    }
+
+    // A supercharger's whine: its pockets a second, its rotors' turns a second, how loud
+    float whine(float hz, float rotorHz, float level)
+    {
+        scPh += hz / rate;
+        if (scPh >= 1.0f)
+            scPh -= floorf(scPh);
+        scPh1 += rotorHz / rate;
+        if (scPh1 >= 1.0f)
+            scPh1 -= floorf(scPh1);
+        const float ph = 6.28318531f * scPh;
+        const float c1 = cosf(ph);
+        float s0 = 0.0f;
+        float s1 = sinf(ph);
+        float w = scW[0] * s1;
+        for (int k = 1; k < 6; ++k)
+        {
+            const float s2 = 2.0f * c1 * s1 - s0;
+            w += scW[k] * s2;
+            s0 = s1;
+            s1 = s2;
+        }
+        return 0.15f * level * (1.0f + 0.12f * sinf(6.28318531f * scPh1)) * w;
+    }
+
+    // One sample. q: the volume flow in at the inlet's mouth (m^3/s); rushLevel; bovAir, bovRecirc, purge: 0 to 1;
+    // kick: a bang's strength this sample
+    void tick(float q, float rushLevel, float bovAir, float bovRecirc, float purge, float kick)
+    {
+        inlet = (q - qPrev) * rate * 0.02f;
+        qPrev = q;
+        if (rushLevel > 1.0e-5f || bovRecirc > 1.0e-5f)
+        {
+            const float n = rush.tick(noise());
+            inlet += 0.15f * rushLevel * n + 0.12f * bovRecirc * bovBand.tick(noise());
+        }
+        vent = 0.0f;
+        if (bovAir > 1.0e-5f)
+            vent = 0.35f * bovAir * bovBand.tick(noise());
+        if (purge > 1.0e-5f)
+            vent += 0.3f * purge * purgeBand.tick(noise());
+        bang = 0.8f * bangRes.tick(kick);
+        cased = 0.0f;
+    }
+};

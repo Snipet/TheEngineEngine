@@ -28,8 +28,9 @@
 // (with ABS: a wheel that slips past its tyre's peak has its brake let off and reapplied, some ten times a second),
 // the gearbox's logic, the strip, the dyno, and the telemetry.
 //
-// The front's load cannot fall below zero: when the transfer would take it there the car is on its rear wheels (a
-// flag says so), and the rear tyres can push no harder than what keeps the front just off the road, so the
+// The front's load cannot fall below zero: the car accelerates no harder than leaves the front just on the road
+// (g times the front's static share of the wheelbase over the centre of mass's height), what the tyres push beyond
+// that lifts the front (it is lost when it comes down; the pitch itself is not modelled), and a flag says so: the
 // acceleration is what the wheelie allows (a motorcycle's launch limit is the same code).
 //
 //   v.setup(rate)                       in init: the filters, the state at rest
@@ -151,19 +152,23 @@ module Vehicle
     float kPedal;
     // the state
     float wt;           // the turbine
-    float wo;           // the output (the wheels' side)
+    // (the speeds of the output, the wheels and the car, and the distance, are doubles: at 96 kHz a sample's change of
+    // speed under a rolling resistance is near a float's resolution at 20 m/s, and a coast-down in floats loses it)
+    double wo;          // the output (the wheels' side)
     float twist;        // the shafts' wind-up, rad at the wheels
     bool open;          // their play open
-    float ww[VEH_WHEELS];
-    float v;            // the car (on a chassis dyno, at rest)
-    float x;            // its distance since the last reset or staging, m
-    float vr;           // the dyno's roller, m/s
+    double ww[VEH_WHEELS];
+    double v;           // the car (on a chassis dyno, at rest)
+    double x;            // its distance since the last reset or staging, m
+    double vr;          // the dyno's roller, m/s
     float aNow;         // the acceleration over the last 16 samples
     float aLag;         // and lagged by the pitch
-    float vPrev;
+    double vPrev;
     float fz[VEH_WHEELS];
     float frontLoad0;   // the front axle's load before the transfer, N
     bool wheelie;
+    float aWheelie;     // the acceleration at which the front's load is zero, m/s^2
+    bool lifting;       // the car is at that limit
     float tsh;          // the shafts' torque, last sample
     float tDrive[VEH_WHEELS];   // the torque the driveline gave each wheel, last sample
     float tClutch;      // what the clutch or converter passed, at the crank
@@ -182,6 +187,7 @@ module Vehicle
     double eGrade;
     double eAbsorb;
     double eShaft;
+    double eLift;
 
     void setup(float hostRate)
     {
@@ -223,6 +229,7 @@ module Vehicle
         pedal = 0.0f;
         vSet = 0.0f;
         wheelie = false;
+        lifting = false;
         merged = false;
         gA = 0.0f;
         gB = 0.0f;
@@ -255,6 +262,7 @@ module Vehicle
         eGrade = 0.0;
         eAbsorb = 0.0;
         eShaft = 0.0;
+        eLift = 0.0;
     }
 
     void configure(float jEngine, float peak, float idle, float red)
@@ -406,8 +414,8 @@ module Vehicle
         float fFront = f0 - mass * aLag * h / l;
         float fRear = w * cosG * (1.0f - spec.frontWeight) + down * (1.0f - spec.aeroBalance) + shift;
         frontLoad0 = f0;
-        wheelie = fFront < 0.0f;
-        if (wheelie)
+        wheelie = fFront < 0.0f || lifting;
+        if (fFront < 0.0f)
         {
             fRear += fFront;
             fFront = 0.0f;
@@ -423,17 +431,8 @@ module Vehicle
         fz[3] = fmaxf(0.5f * fRear - live, 0.0f);
         for (int i = 0; i < VEH_WHEELS; ++i)
             tyre[i].control(fz[i], mu[i], &curve, spec.tyre, i < 2 ? groundFront() : groundRear(), env.temperature, d16);
-        // the rear tyres push no harder than keeps the front on the road (the wheelie's limit)
-        if (h > 0.0f)
-        {
-            const float most = fmaxf(f0, 0.0f) * l / h;
-            const float sum = tyre[2].d + tyre[3].d;
-            if (share[2] > 0.0f && sum > most)
-            {
-                tyre[2].d *= most / sum;
-                tyre[3].d *= most / sum;
-            }
-        }
+        // the most the car can accelerate before the front leaves the road
+        aWheelie = h > 0.0f ? fmaxf(f0, 0.0f) * l / (h * mass) : 1.0e9f;
     }
 
     // The road's speed under the rear wheels (a chassis dyno's roller), and under the front
@@ -458,12 +457,8 @@ module Vehicle
         if (g == gearSeen && !dirty)
             return;
         dirty = false;
-        if (gearSeen != g && gearSeen != -1.0f && box.kind != VEH_CVT)
-        {
-            // a new ratio: the shafts unwound (as the reference's regear)
-            twist = 0.0f;
-            open = false;
-        }
+        // (the shafts keep their wind-up through a shift: a dual clutch's and an automatic's hand the torque over
+        // without unloading them; the reference unwound them at each new ratio)
         gearSeen = g;
         // the propeller shaft and the final drive's crown wheel, at the wheels (judgement: 0.05 kg m^2 at the input
         // of a final drive), the gearbox's gears (the reference's 0.015 kg m^2 at its input) through the ratio, and a
@@ -780,7 +775,8 @@ module Vehicle
             tClutch = tcA + tcB;
             slipC = w - (box.shifting ? gB : gA) * wo;
         }
-        // the differentials: the centre's between the axles, then each axle's between its wheels
+        // the differentials: the centre's between the axles, then each axle's between its wheels (a locking torque is the
+        // most the two sides' torques may differ by: the coupling takes half of it from one and gives it to the other)
         float tdC = 0.0f;
         float tdF = 0.0f;
         float tdR = 0.0f;
@@ -788,7 +784,7 @@ module Vehicle
         {
             const float wF = 0.5f * (ww[0] + ww[1]);
             const float wR = 0.5f * (ww[2] + ww[3]);
-            const float cap = centre.capacity(wF - wR, ts);
+            const float cap = 0.5f * centre.capacity(wF - wR, ts);
             tdC = vehCouple(wF, wR, tw[0] + tw[1], tw[2] + tw[3], 0.5f * iw, 0.5f * iw, 1.0f, cap, dt);
             tw[0] -= 0.5f * tdC;
             tw[1] -= 0.5f * tdC;
@@ -801,7 +797,7 @@ module Vehicle
         }
         if (share[0] > 0.0f)
         {
-            const float cap = front.capacity(ww[0] - ww[1], (share[0] + share[1]) * ts);
+            const float cap = 0.5f * front.capacity(ww[0] - ww[1], (share[0] + share[1]) * ts);
             tdF = vehCouple(ww[0], ww[1], tw[0], tw[1], iw, iw, 1.0f, cap, dt);
             tw[0] -= tdF;
             tw[1] += tdF;
@@ -810,7 +806,7 @@ module Vehicle
         }
         if (share[2] > 0.0f)
         {
-            const float cap = rear.capacity(ww[2] - ww[3], (share[2] + share[3]) * ts);
+            const float cap = 0.5f * rear.capacity(ww[2] - ww[3], (share[2] + share[3]) * ts);
             tdR = vehCouple(ww[2], ww[3], tw[2], tw[3], iw, iw, 1.0f, cap, dt);
             tw[2] -= tdR;
             tw[3] += tdR;
@@ -851,6 +847,7 @@ module Vehicle
         const float vr0 = vr;
         float fAir = 0.0f;
         float fHill = 0.0f;
+        float fLift = 0.0f;
         if (mode == VEH_MODE_DYNO_CHASSIS)
         {
             // the roller: the driven tyres push it; the absorber holds it to its set speed (a first-order hold of 0.1 s)
@@ -862,7 +859,17 @@ module Vehicle
         {
             fAir = dragK * v * fabsf(v);
             fHill = mass * 9.81f * sinG;
-            v += (fsum - fAir - fHill) / mass * dt;
+            float fNet = fsum - fAir - fHill;
+            // at the wheelie's limit what the tyres push beyond it lifts the front instead (and is lost when it lands)
+            lifting = fNet > mass * aWheelie;
+            if (lifting)
+            {
+                fLift = fNet - mass * aWheelie;
+                fNet = mass * aWheelie;
+            }
+            else
+                fLift = 0.0f;
+            v += fNet / mass * dt;
             vr = 0.0f;
         }
         // neutral: the output follows the wheels, its shafts unloaded
@@ -918,6 +925,7 @@ module Vehicle
                                + f[3] * (m3 * radius - vbm)) * dt);
             eAero += (double)(fAir * vm * dt);
             eGrade += (double)(fHill * vm * dt);
+            eLift += (double)(fLift * vm * dt);
             eAbsorb += (double)(fAbsorb * vrm * dt);
             // the shafts: what went into their spring and their damping
             const float wcm = 0.5f * (wc + share[0] * ww[0] + share[1] * ww[1] + share[2] * ww[2] + share[3] * ww[3]);

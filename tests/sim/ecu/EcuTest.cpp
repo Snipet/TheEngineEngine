@@ -91,6 +91,32 @@ TEST_CASE("H3: a map reads its breakpoints exactly and interpolates between", "[
     CHECK(fm.call<float>("OneLine::mapAt", MAP_SPARK, 20000.0f, 9.0f) == static_cast<float>(zOf(2, 1)));
 }
 
+TEST_CASE("H3: spec/tables.fm's Map16::at reads every breakpoint exactly", "[h][ecu][maps][!mayfail]")
+{
+    // Map16::at blends a + (b - a) f, which at f = 1 (a map's last breakpoint) can come out one rounding off b; the
+    // ECU reads its maps through EcuMaps::exactAt meanwhile. Expected to fail until tables.fm blends a (1 - f) + b f.
+    Fm fm = engine();
+    const std::string map = "set.maps.spark";
+    for (int i = 0; i < 16; ++i)
+    {
+        fm.set(at(map + ".x", i), 800.0 + 350.0 * i);
+        fm.set(at(map + ".y", i), 0.15 + 0.05 * i);
+        for (int j = 0; j < 16; ++j)
+            fm.set(map + ".z[" + std::to_string(i) + "][" + std::to_string(j) + "]", 10.0 + 1.7 * i - 0.9 * j + 0.13 * i * j);
+    }
+    fm.set(map + ".nx", 16);
+    fm.set(map + ".ny", 16);
+    int off = 0;
+    for (int i = 0; i < 16; ++i)
+        for (int j = 0; j < 16; ++j)
+        {
+            const float want = static_cast<float>(fm.get(map + ".z[" + std::to_string(i) + "][" + std::to_string(j) + "]"));
+            off += fm.call<float>("OneLine::tableAt", static_cast<float>(800.0 + 350.0 * i), static_cast<float>(0.15 + 0.05 * j)) != want ? 1 : 0;
+        }
+    WARN(off << " of 256 breakpoints read off by Map16::at");
+    CHECK(off == 0);
+}
+
 TEST_CASE("H3: a baked map reproduces its formula at every breakpoint", "[h][ecu][maps]")
 {
     Fm fm = engine();

@@ -175,7 +175,8 @@ module VehTyreCurve
 // One tyre. Its deflection and the force it gives are per sample; its load, peak and temperature every 16 samples.
 module VehTyre
 {
-    float u;            // the tread's deflection along the road, m
+    double u;           // the tread's deflection along the road, m (a double: a car at rest moves it by less than
+                        // a float's resolution in a sample, and a spring that cannot move lets the car drift)
     float temp;         // the tread's temperature, K
     float fz;           // its load, N
     float d;            // its peak force now (fz times the grip), N
@@ -237,7 +238,7 @@ module VehTyre
     float push(VehTyreCurve* curve, float wr, float vr)
     {
         slipV = wr - vr;
-        kappa = u * iSigma;
+        kappa = (float)u * iSigma;
         float f = d * curve->at(kappa);
         // (the damping acts on the tread's own motion, so a tyre that spins at a standstill, its deflection at its
         // stop, is not damped as if it slid)
@@ -251,9 +252,9 @@ module VehTyre
     // The deflection after one sample, from the speeds the step ended with
     void advance(float wr, float vr, float dt)
     {
-        const float u0 = u;
-        u += (wr - vr - fabsf(vr) * u * iSigma) * dt;
-        u = fminf(fmaxf(u, -uMax), uMax);
-        rate = (u - u0) / dt;
+        const double u0 = u;
+        u += (double)((wr - vr - fabsf(vr) * (float)u * iSigma) * dt);
+        u = fmin(fmax(u, (double)-uMax), (double)uMax);
+        rate = (float)((u - u0) / (double)dt);
     }
 };

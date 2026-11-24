@@ -14,7 +14,8 @@
 //
 //     preload + kSpeed |dw| + kTorque |T|
 //
-// all zero an open differential (one tyre on ice spins and the other gets as little as it does), a preload and a
+// the most the two outputs' torques may differ by (the bias torque), all zero an open differential (one tyre on ice
+// spins and the other gets as little as it does), a preload and a
 // torque term a clutch pack (it biases torque to the slower side by up to that much), a speed term a viscous unit
 // (the torque grows with the speeds' difference), and locked a spool. dw is the outputs' speeds' difference and T
 // the torque coming in.

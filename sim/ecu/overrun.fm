@@ -1,9 +1,10 @@
 // overrun.fm: the overrun's fuel cut, its fuelling, and the bangs in the pipe kept by account (ecu.model 1).
 //
 // The cut (the reference's): with the pedal up for 0.12 s above the idle + 700 rpm, running, no fuel; it comes back
-// under the idle + 320 or with the pedal. ecu.overrun.fuel is how much is injected anyway, a share of a
-// stoichiometric charge (0: the reference's clean cut), and ecu.overrun.retard the spark taken back meanwhile, so it
-// burns late and leaves the cylinder still burning or unburned: what tuners call pops and bangs.
+// under the idle + 320 or with the pedal. ecu.overrun.fuel is the share of the overrun's firings fuelled anyway (a
+// stoichiometric charge each, in the even pattern the cuts use: a little fuel in every cylinder would be too lean to
+// light; 0: the reference's clean cut), and ecu.overrun.retard the spark taken back meanwhile, so it burns late and
+// leaves the cylinder still burning or unburned: what tuners call pops and bangs.
 //
 // The bangs, by account and not by chance (the reference's dice stay behind ecu.model 0): fuel that leaves a cylinder
 // unburned (a cut spark's whole charge, a rich mixture's excess, a late burn's remainder: combustion's numbers) is
