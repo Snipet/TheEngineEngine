@@ -220,3 +220,50 @@ In a scratch tree with that line, against the tree without it:
 | 3.2 six | -11 % | -7 % |
 | Small-block | -9 % | -7 % |
 | V12 | -10 % | -6 to -7 % |
+
+## Since 16:46 (measured on the tip)
+
+**Pattern 4 is closed** by card D's conserving cylinder (the round trip's store, on the physical path). Warm idle on
+the bench (the probe's `[.probe-idle]`):
+
+| Engine | Idle before | Idle now (target) | Idle valve | Manifold |
+|---|---|---|---|---|
+| V12 | 1244 | 882 rpm (900) | 0.15 | 90 kPa |
+| V10 | 1166 | 952 rpm (950) | 0.11 | 80 kPa |
+| Flat-plane V8 | 1340 | 998 rpm (1000) | 0.12 | 89 kPa |
+
+Every idle valve is working now. The economy four's balance at idle is 1.048 (was 1.58), and the test is unskipped.
+Still unexplained: the big-overlap engines trap about twice the throttle's air at idle (V12 11.6 against 5.9 g/s).
+
+**B on the builder (in the engine since 16:17).** On the 3.2 six:
+
+- The archetypes' exhausts as built give results identical to the bit to exhaust.model 0: the reference's topology,
+  with its road converter and chambered muffler.
+- Open (no converter, straight-through): port mean 154 → 120 kPa at 7600 rpm, burned share 7.2 → 4.3 %, torque +6 to
+  +10 %.
+- Primary length from 0.4 to 1.4 m: ±2 %.
+- Runner length is the lever:
+
+| Runner | Best VE | Torque there | At |
+|---|---|---|---|
+| 0.25 m (as built) | 0.94 | 300 N m | 5000 rpm |
+| 0.35 m | 0.99 | 305 N m | 6000 to 7000 rpm |
+| 0.50 m | 1.05 | 335 N m | 5000 rpm |
+| 0.70 m | 1.04 | 330 N m | 4000 to 5000 rpm |
+
+So the tuned engines' shortfall is content: the runner, the exhaust and the port quality. Values went to P.
+
+**The half-burn readings of 29 to 39 degrees** do not reproduce: 0 of 98 cycles over 20 degrees. The late burns now
+are knock retard on regular fuel at 11:1 (economy four: 13.7 degrees at 1500 rpm, 0.2 at 6336).
+
+**Gas properties (the lead's hypothesis).** `gammaAt` falls from 1.39 to 1.24, near Heywood's values. Gross indicated
+efficiency is 0.34 to 0.36 at 1500 rpm and 0.38 to 0.42 from 4000 rpm up: 5 to 10 % over 0.8 of the fuel-air cycle at
+speed. Port gas runs 1100 to 1530 K. Suspected: too little heat leaves at speed (Woschni under-reads during SI
+combustion; no exhaust-port wall loss). Proposed to the lead and D, not changed.
+
+**Fixed by N1, acting for E and H**, measured before and after:
+
+- the phaser by target intake closing (C);
+- the ITB manifold reading floored at 8 kPa (it read -11.4 kPa on the lift);
+- a rotary's burn 0.92: -4 to -6 %, boosted 318 N m at 5000 rpm for 290 to 315;
+- the charge's heating (F): in, waiting for D's `intk.tCoolant` line.
