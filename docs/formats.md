@@ -173,6 +173,13 @@ scenarios/` holds the shipped ones. `tee::parseTimeline` also reads K3a's `tee-e
   an element as `name[i]`), a number, a switch or a choice's name. `"ramp"`: the event's numbers move there in a
   straight line over that many seconds from the value before, a step every 5 ms. Events of one time apply in the
   file's order.
+- A telemetry name, wherever one is taken (an assertion's `"tel"`, a validation target's `"tel"` and `"relativeTo"`,
+  `tee-render --tel`, `tee-dyno --fields` and `--torque`, the test library's `Run::tel`): a field's path under tel
+  (`engine.speed`; `tel.` optional), or an element of an array field by its index (`car.wheelSlip[2]`,
+  `engine.cylPeak[3]`, `a.b[1][2]` for two dimensions). An array named without an index, an index outside its extent
+  ("car.wheelSlip[7]: car.wheelSlip has 4 elements, 0 to 3") or an index on a field that is no array is an error that
+  says so. A run that names no telemetry keeps every number and each element of every array of at most 64, a column
+  each (`car.wheelSlip[2]`).
 - An assertion: `"tel"` a telemetry field with a `"measure"` (`max`, `min`, `mean`, `last`), or `"audio"` (`finite`;
   `peak`; `rms` in dB; `step`, the largest step between samples over the local level, `tee::measure::largestStep`),
   over `"during"` (seconds; the whole run by default), compared by `"<"`, `"<="`, `">"`, `">="` or `"within": [a, b]`;

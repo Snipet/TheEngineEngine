@@ -228,9 +228,12 @@ namespace tee
             }
             else
             {
-                if (!t.tel.empty() && sim->fields().find("tel." + t.tel) == nullptr)
+                const FieldInfo* field = nullptr;
+                std::size_t element = 0;
+                std::string why;
+                if (!t.tel.empty() && !telemetryElement(sim->fields(), t.tel, field, element, why))
                 {
-                    row.why = "not measurable: the program has no tel." + t.tel;
+                    row.why = "not measurable: " + why;
                     rows.push_back(row);
                     continue;
                 }
