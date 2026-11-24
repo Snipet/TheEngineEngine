@@ -61,6 +61,7 @@ set(TEE_SOURCE_DIR "${PROJECT_SOURCE_DIR}")
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 include(TeePins)
 include(TeeFlags)       # tee_target_defaults()
+include(TeeChecks)      # tee_check_targets(), at the end
 include(TeeDeps)        # the cache, ccache, FMinus::FMinus, FunkGui::core, nlohmann_json, Catch2
 
 # Our own outputs only (set after the dependencies, which place their own).
@@ -87,6 +88,7 @@ endif()
 # window, TheEngineEngine, with TEE_BUILD_APP.
 add_subdirectory(shell)
 add_subdirectory(app)
+tee_check_targets()       # every target of ours has tee_target_defaults() (cmake/TeeChecks.cmake)
 
 message(STATUS "TheEngineEngine ${PROJECT_VERSION}: ${CMAKE_BUILD_TYPE}, tools ${TEE_BUILD_TOOLS}, tests "
                "${TEE_BUILD_TESTS}, app ${TEE_BUILD_APP}, deps cache ${TEE_DEPS_DIR}")

@@ -1,9 +1,10 @@
 # shell/: everything between the operating system and the simulator's host and the interface's Panels
-# (docs/plan/w1-b-shell.md). Four static libraries, by what each needs:
+# (docs/plan/w1-b-shell.md). Five static libraries, by what each needs:
 #
 #   tee_shell_core   nothing but the standard library: the interfaces (include/tee/app/), the controls (input/Keys,
 #                    Driver, Controls), the WAV and PNG writers, the recorder, the stand-in tone and the silent player
 #   tee_shell_settings  nlohmann/json: the settings file (settings/Settings)
+#   tee_shell_files  tee_host and nlohmann/json: builds on disk, recent files, the library (files/BuildFiles)
 #   tee_shell_ref    tee_host: the reference engine and the simulator as Players (player/RefAdapter, SimAdapter)
 #   tee_shell_sdl    SDL3: the audio device (audio/AudioDevice) and SDL's events into the controls (input/SdlInput)
 #
@@ -13,6 +14,7 @@ add_library(tee_shell_core STATIC
   input/Keys.cpp
   input/Driver.cpp
   input/Controls.cpp
+  input/WheelMap.cpp
   audio/Wav.cpp
   audio/Recorder.cpp
   files/Png.cpp
@@ -34,6 +36,12 @@ add_library(tee_shell_ref STATIC player/RefAdapter.cpp player/SimAdapter.cpp)
 add_library(Tee::shell_ref ALIAS tee_shell_ref)
 tee_target_defaults(tee_shell_ref)
 target_link_libraries(tee_shell_ref PUBLIC Tee::shell_core PRIVATE Tee::host)
+
+# Builds on disk (files/BuildFiles): card C's tee::Build, and the head of a build's file read as JSON for a summary.
+add_library(tee_shell_files STATIC files/BuildFiles.cpp)
+add_library(Tee::shell_files ALIAS tee_shell_files)
+tee_target_defaults(tee_shell_files)
+target_link_libraries(tee_shell_files PUBLIC Tee::shell_core Tee::host PRIVATE nlohmann_json::nlohmann_json)
 
 add_library(tee_shell_sdl STATIC audio/AudioDevice.cpp input/SdlInput.cpp)
 add_library(Tee::shell_sdl ALIAS tee_shell_sdl)

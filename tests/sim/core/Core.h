@@ -32,6 +32,9 @@ namespace tee::test::core
             for (const auto& entry : std::filesystem::directory_iterator(std::filesystem::path(TEE_SOURCE_DIR) / "sim" / "core"))
                 if (entry.path().extension() == ".fm")
                     files["core/" + entry.path().filename().string()] = readFile(entry.path());
+            for (const auto& entry : std::filesystem::directory_iterator(std::filesystem::path(TEE_SOURCE_DIR) / "sim" / "spec"))
+                if (entry.path().extension() == ".fm")
+                    files["spec/" + entry.path().filename().string()] = readFile(entry.path());
             files["rig.fm"] = readFile(std::filesystem::path(TEE_SOURCE_DIR) / "tests" / "sim" / "core" / "rig.fm");
             std::string errors;
             auto p = Program::fromFiles(files, "rig.fm", {}, errors);

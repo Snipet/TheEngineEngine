@@ -2,7 +2,7 @@
 //
 // A crank with the moving masses and an outside torque, a made-up engine for the dyno, and a synthetic cycle for the
 // work integral: no gas, no pipes, nothing of the reference. Compiled with sim/core/*.fm (as "core/...").
-#include "core/mechspec.fm"
+#include "spec/engine.fm"
 #include "core/layout.fm"
 #include "core/kinematics.fm"
 #include "core/inertia.fm"
@@ -13,7 +13,7 @@
 
 module Rig
 {
-    MechSpec spec;
+    EngineSpec spec;
     LayoutGeom lay;
     MovingMasses mm;
     ShakeByOrder sh;

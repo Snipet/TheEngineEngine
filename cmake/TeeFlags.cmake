@@ -17,6 +17,7 @@ if(CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
 endif()
 
 function(tee_target_defaults target)
+  set_property(TARGET ${target} PROPERTY TEE_TARGET_DEFAULTS ON)   # what cmake/TeeChecks.cmake looks for
   get_target_property(_type ${target} TYPE)
   if(_type STREQUAL "INTERFACE_LIBRARY")
     target_compile_features(${target} INTERFACE cxx_std_20)

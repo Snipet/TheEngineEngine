@@ -99,6 +99,8 @@ namespace tee
         bool startHeld = false;             // its start button is down
         float throttle = -1;                // 0 to 1 while its throttle strip is held; negative: not held
         float brake = -1;
+        float clutch = -1;                  // the clutch pedal (1 on the floor) while held; negative: not held
+        float handbrake = -1;
         int shiftUp = 0, shiftDown = 0;     // counts of presses, as ControlsFrame's
         bool leverSet = false;              // its gear control asks for `lever` (-1 R, 0 N, 1 up)
         int lever = 0;

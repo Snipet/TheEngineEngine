@@ -129,6 +129,12 @@ jobs:
         with:
           persist-credentials: false
 
+      # the platform rules a Linux build cannot see (M_PI's kin is the configure's: cmake/TeeChecks.cmake), in a
+      # second, before the macOS and Windows jobs would find them
+      - name: Lint (Linux, scripts/lint.sh)
+        if: runner.os == 'Linux'
+        run: scripts/lint.sh
+
       - name: Ninja and ccache (macOS)
         if: runner.os == 'macOS'
         run: |
@@ -539,6 +545,14 @@ jobs:
           [ -f "$bench" ] || bench="$bench.exe"
           "$bench" --quick --out "$dir/bench-quick.md"
           cat "$dir/bench-quick.md" >> "$GITHUB_STEP_SUMMARY"
+          # R on this runner and the simulator's cost against it, from the same inputs (a number in the log, not a
+          # gate: a hosted runner is shared; docs/handoffs/p0-keel.md, "Measuring a package's cost")
+          echo "---- the simulator (sim/engine.fm, build default) against the reference, free revs"
+          if "$bench" --engine --builds default --scenarios free-revs --repeat 1 --out "$dir/bench-engine.md"; then
+            { echo; echo "### The simulator against R"; echo; cat "$dir/bench-engine.md"; } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::warning::tee-bench --engine did not run"
+          fi
 
       - name: Upload what was built
         if: ${{ !cancelled() && steps.pack.outcome == 'success' }}
