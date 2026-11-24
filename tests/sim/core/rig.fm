@@ -1,0 +1,171 @@
+// tests/sim/core/rig.fm: the mechanics on a bench of their own, for the standalone tests (tests/sim/core/).
+//
+// A crank with the moving masses and an outside torque, a made-up engine for the dyno, and a synthetic cycle for the
+// work integral: no gas, no pipes, nothing of the reference. Compiled with sim/core/*.fm (as "core/...").
+#include "core/mechspec.fm"
+#include "core/layout.fm"
+#include "core/kinematics.fm"
+#include "core/inertia.fm"
+#include "core/shake.fm"
+#include "core/friction.fm"
+#include "core/work.fm"
+#include "core/dyno.fm"
+
+module Rig
+{
+    MechSpec spec;
+    LayoutGeom lay;
+    MovingMasses mm;
+    ShakeByOrder sh;
+    FrictionModel fr;
+    CycleWork wk;
+    Dyno dy;
+    SliderCrank one;
+    float theta;            // the crank, rad (unwrapped below 2 pi)
+    float omega;
+    float bore;
+    float stroke;
+    // what the last run measured
+    double workInertia;     // the inertia torque's work over the run (J)
+    double energy0;         // (1/2) J w^2 at the start and the end
+    double energy1;
+    float omegaMin;
+    float omegaMax;
+    double omegaSum;        // for the mean
+    int count;
+    double absSum;
+    double engSum;
+
+    void build(float b, float s, float rod, float cr, float fly)
+    {
+        bore = b;
+        stroke = s;
+        lay.derive(&spec);
+        mm.setup(&spec, &lay, b, s, rod, cr, fly);
+        sh.setup(&spec, &lay, mm.mRec, mm.sc.r, mm.sc.lam);
+        fr.setup(&spec, mm.sc.vd * (float)lay.n, s, lay.rotary);
+        wk.setup(lay.n, mm.sc.vd, lay.cyc);
+        dy.setup(mm.jMean);
+        one.setup(b, s, rod, cr);
+        theta = 0.0f;
+        omega = 0.0f;
+    }
+
+    // For the closed-form checks: the slider-crank at a degree
+    void kin(float a)
+    {
+        one.atDeg(a);
+    }
+
+    // The inertia torque and J at a crank angle (degrees) and speed
+    float inertiaAt(float a, float w)
+    {
+        const float t = a * 0.01745329252f;
+        return mm.torque(sinf(t), cosf(t), w);
+    }
+
+    // The friction torque at a speed, peak pressure and oil factor
+    float friction(float w, float pk, float oil)
+    {
+        return fr.torque(&spec, w, pk, oil);
+    }
+
+    // The shaking at a crank angle (rad) and speed
+    void shakeAt(float th, float w)
+    {
+        sh.update(th, w);
+    }
+
+    // The crank turning n samples of dt with an outside torque tq (N m) and the moving masses; what it measured
+    void spin(int n, float dt, float tq)
+    {
+        workInertia = 0.0;
+        omegaMin = 1.0e9f;
+        omegaMax = 0.0f;
+        omegaSum = 0.0;
+        count = 0;
+        float s = sinf(theta);
+        float c = cosf(theta);
+        mm.torque(s, c, omega);
+        energy0 = 0.5 * (double)mm.jNow * (double)omega * (double)omega;
+        for (int i = 0; i < n; ++i)
+        {
+            workInertia += (double)mm.tqNow * (double)omega * (double)dt;
+            theta += omega * dt;
+            if (theta >= 6.283185307f)
+                theta -= 6.283185307f;
+            s = sinf(theta);
+            c = cosf(theta);
+            omega = mm.advance(omega, tq, dt, s, c);
+            omegaMin = fminf(omegaMin, omega);
+            omegaMax = fmaxf(omegaMax, omega);
+            omegaSum += (double)omega;
+            count += 1;
+        }
+        mm.torque(s, c, omega);
+        energy1 = 0.5 * (double)mm.jNow * (double)omega * (double)omega;
+    }
+
+    // A made-up engine: a full-throttle torque curve (N m, by speed) with a firing ripple of `cyls` pulses a cycle
+    float engineTorque(float w, float th, float cyls)
+    {
+        const float rpm = w * 9.5492966f;
+        const float x = (rpm - 4000.0f) / 3500.0f;
+        const float mean = fmaxf(520.0f * (1.0f - 0.35f * x * x), 50.0f);
+        return mean * (1.0f + 0.9f * sinf(0.5f * cyls * th));
+    }
+
+    // The engine on the dyno for n samples: it holds `set` or sweeps at `rate`; the means of the last `tail` samples
+    void dynoRun(int n, int tail, float dt, float set, float rate, float cyls)
+    {
+        omegaSum = 0.0;
+        absSum = 0.0;
+        engSum = 0.0;
+        count = 0;
+        omegaMin = 1.0e9f;
+        omegaMax = 0.0f;
+        for (int i = 0; i < n; ++i)
+        {
+            const float te = engineTorque(omega, theta, cyls);
+            const float tf = fr.torque(&spec, omega, 6.0e6f, 1.0f);
+            const float ta = dy.step(omega, set, rate, dt);
+            theta += omega * dt;
+            if (theta >= 12.56637061f)
+                theta -= 12.56637061f;
+            omega = mm.advance(omega, te - tf - ta, dt, sinf(theta), cosf(theta));
+            if (i >= n - tail)
+            {
+                omegaSum += (double)omega;
+                absSum += (double)ta;
+                engSum += (double)(te - tf);
+                omegaMin = fminf(omegaMin, omega);
+                omegaMax = fmaxf(omegaMax, omega);
+                count += 1;
+            }
+        }
+    }
+
+    // An ideal Otto cycle in cylinder 0, for the work integral: polytropic compression and expansion (exponent k), the
+    // heat added at top dead centre (the pressure times rp), the exhaust and intake at constant pressures pE and pI;
+    // `cycles` whole cycles of `steps` samples each
+    void ottoRun(int cycles, int steps, float pI, float pE, float rp, float k)
+    {
+        const float vMax = one.vc + one.vd;
+        for (int i = 0; i <= cycles * steps; ++i)
+        {
+            float a = 720.0f * (float)(i % steps) / (float)steps;
+            one.atDeg(a);
+            const float v = one.vol;
+            float p = 0.0f;
+            if (a >= 540.0f)
+                p = pI * expf(k * logf(vMax / v));                      // compression from bottom dead centre at pI
+            else if (a < 180.0f)
+                p = pI * rp * expf(k * logf(vMax / one.vc)) * expf(k * logf(one.vc / v));     // expansion
+            else if (a < 360.0f)
+                p = pE;
+            else
+                p = pI;
+            wk.sample(0, a, p, v);
+        }
+    }
+};
