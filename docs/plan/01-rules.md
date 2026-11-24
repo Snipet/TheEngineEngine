@@ -73,6 +73,12 @@ and the lead (the session that wrote these files) settles what a card leaves ope
   the dev and release presets leave out and `ctest --preset nightly` runs. CI's soak tier runs the `[nightly]` tests
   on Linux at every push, and on macOS and Windows when the head commit's message contains `[soak]`. Each CI job's
   summary lists the default-run tests over 30 s with their package; the build steward tells their owners.
+- **A budget a package** (the rule's second half: tests under 30 s each do not by themselves bound the whole): the
+  fast tier's CPU-seconds on CI's Linux runner, the sum of a package's test times: `combo` 600; `null` 600 (the
+  guardian: left whole); `diesel`, `exhaust` and the host 250; every other package 150; the whole fast tier under
+  2400 (ten minutes of wall on four cores). What does not fit goes to the soak tier, by the owner's choice of what
+  guards most per second. `scripts/test-budget.sh <ctest log>` prints the table (each fast CI job's summary has it);
+  run it on your own `ctest --preset dev | tee ctest.log` before a push that adds tests.
 
 ## 4. Code
 
