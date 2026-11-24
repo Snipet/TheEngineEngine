@@ -190,7 +190,7 @@ arch(slug="rotary-twin-13", name="Rotary twin", geo="ref-16-rotary-2", layout="R
      notes="A twin-rotor Wankel, 2 x 654 cc, 9.0:1, with two sequential turbos (the 13B-REW kind: 206 to 280 PS, "
            "the latter at 6500 rpm, some 294 N m at 5000; Wikipedia, makers' figures, firm to 10 %). In a light "
            "rear-drive coupe.")
-arch(slug="rotary-twin-na-side-port", name="Rotary twin, side ports", geo="ref-16-rotary-2", layout="Rotary",
+arch(slug="rotary-twin-na-side-port", rotaryCam=0.15, name="Rotary twin, side ports", geo="ref-16-rotary-2", layout="Rotary",
      displacement=0.001308, cr=10.0, redline=9000, idle=800,
      intake=dict(runnerLength=0.45, runnerLength2=0.30, runnerSwitch=5500 * RPM),
      exhaust={"converter": [2, 2], "mufKind": [1, 1]}, grade="Premium (91)", car="light-coupe-rotary", timing="Gears",
@@ -512,7 +512,9 @@ def build(a):
         if a.get("compressionBrake") == "release":
             v.update(auxOpen=695, auxDur=100, auxLift=0.0025)
     else:
-        v["cam"] = 0.55    # a rotary's ports: the cam dial's, mid-way (street port)
+        # a rotary's ports by the cam dial: a peripheral-exhaust turbo rotary mid-way (0.55); a side-exhaust-port
+        # rotary has almost no overlap: 0.15 (N1: 47 degrees of overlap at 0.55 cost it a quarter of its torque)
+        v["cam"] = a.get("rotaryCam", 0.55)
 
     # the runners' length: what the kind has (long for low-speed torque, short for high revs, two lengths where the
     # real ones had them): the loaded-pipe relation x tan x = A L / V puts the ram's bump where the kind wants it
