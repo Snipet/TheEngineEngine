@@ -8,8 +8,6 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
-#include <cstdio>
-#include <cstdlib>
 #include <cstring>
 #include <functional>
 
@@ -49,26 +47,41 @@ namespace tee
                 const Fields& fields = sim_->fields();
                 std::string e;
                 const auto find = [&](const char* path, Schema::Handle& h) { return schema.find(path, h, e); };
-                hasTorque_ = find("tel.engine.torque", torque_);
+                const bool programDyno = find("tel.engine.torque", torque_) && find("ctl.mode", mode_)
+                                         && find("ctl.dynoSpeed", dynoSpeed_) && find("ctl.dynoRate", dynoRate_);
                 if (!find("tel.engine.speed", speed_) || !find("ctl.throttle", throttle_)
                     || !find("ctl.ignition", ignition_))
                 {
                     error = "the program has no tel.engine.speed, ctl.throttle or ctl.ignition: it cannot be put on a dyno";
                     return false;
                 }
-                if (hasTorque_)
+                // the crank's speed, held by the host while the engine starts (and throughout, with the host's brake)
+                holdCrank_ = find("crank.omega", omega_);
+                hasState_ = find("tel.engine.state", state_);
+                const bool custom = build.fieldOf("engine.custom") >= 0 && build.get("engine.custom") != 0.0;
+                const bool hostCan = holdCrank_ && find("mech.jBase", jBase_) && find("set.inertia", dialJ_)
+                                     && find("set.load", dialLoad_) && !custom;
+                if (options_.brake == "host" || (options_.brake == "auto" && hostCan))
                 {
-                    if (!find("ctl.mode", mode_) || !find("ctl.dynoSpeed", dynoSpeed_) || !find("ctl.dynoRate", dynoRate_))
+                    if (!hostCan)
                     {
-                        error = "the program has tel.engine.torque but no ctl.mode, ctl.dynoSpeed or ctl.dynoRate";
+                        error = custom ? "the host's brake does not know a custom engine's inertia (engine.custom is on)"
+                                       : "the program lacks what the host brakes by (crank.omega, mech.jBase, set.inertia, "
+                                         "set.load)";
                         return false;
                     }
+                    hasTorque_ = false;
                 }
-                else if (!find("crank.omega", omega_) || !find("mech.jBase", jBase_) || !find("set.inertia", dialJ_)
-                         || !find("set.load", dialLoad_))
+                else if (programDyno)
                 {
-                    error = "the program has neither a dyno (tel.engine.torque) nor the crank and inertia the host brakes "
-                            "by (crank.omega, mech.jBase, set.inertia, set.load)";
+                    hasTorque_ = true;
+                    // the absorber's torque now (core/dyno.fm), averaged here over whole cycles; else tel's mean
+                    absorber_ = find("dyno.tqAbs", absorberH_);
+                }
+                else
+                {
+                    error = "the program has no dyno (tel.engine.torque, ctl.mode, ctl.dynoSpeed, ctl.dynoRate)"
+                            + std::string(hostCan || options_.brake == "program" ? "" : ", nor what the host brakes by");
                     return false;
                 }
                 // the exhaust gas's lags (exhaust/exhaust.fm): the ports' temperature over 0.8 s, the pipes' over 0.3 s
@@ -149,16 +162,21 @@ namespace tee
             }
 
             // Starts the engine held at `speed`: the key in start for a moment, then on, and the pedal down.
+            // (the crank held at `speed` by the host meanwhile, where it can be, so the engine fires at once: the
+            // program's dyno takes it only once it runs), until it runs or three seconds have gone
             void start(double speed)
             {
                 set(ignition_, 2.0);
                 set(throttle_, 0.0);
-                const int n = static_cast<int>(options_.startSeconds * options_.sampleRate);
-                for (int done = 0; done < n;)
+                const long least = std::lround(options_.startSeconds * options_.sampleRate);
+                const long most = std::lround(3.0 * options_.sampleRate);
+                for (long done = 0; done < most; done += options_.block)
                 {
-                    const int k = std::min(options_.block, n - done);
-                    step(speed, k);
-                    done += k;
+                    if (done >= least && (!hasState_ || instance_->read(state_) == 2.0))
+                        break;
+                    if (holdCrank_)
+                        set(omega_, speed);
+                    step(speed, options_.block);
                 }
                 set(ignition_, 1.0);
                 set(throttle_, options_.pedal);
@@ -213,20 +231,6 @@ namespace tee
                     }
                     if (settling > 0 && c == 0)
                         settleBegin();
-                    if (c == settling + 1 && std::getenv("TEE_PREDICT_FORCE") != nullptr)
-                    {
-                        std::string list = std::getenv("TEE_PREDICT_FORCE");
-                        std::size_t at = 0;
-                        for (Slow& v : slow_)
-                        {
-                            const double x = std::strtod(list.c_str() + at, nullptr);
-                            instance_->write(v.handle, x, v.index);
-                            at = list.find(',', at);
-                            if (at == std::string::npos)
-                                break;
-                            ++at;
-                        }
-                    }
                     p.cycles = c + 1;
                     p.history.push_back(t);
                     // the cycles counted: the first after the speed (or the settling) moved is not
@@ -247,13 +251,6 @@ namespace tee
                 }
                 p.power = p.torque * speed;
                 fresh_ = false;
-                if (std::getenv("TEE_PREDICT_DEBUG") != nullptr)
-                {
-                    std::fprintf(stderr, "end %.0f rpm:", speed * 30.0 / 3.14159265);
-                    for (const Slow& v : slow_)
-                        std::fprintf(stderr, " %.1f", instance_->read(v.handle, v.index));
-                    std::fprintf(stderr, "\n");
-                }
                 return p;
             }
 
@@ -321,7 +318,7 @@ namespace tee
                     set(dynoRate_, 0.0);
                     sim_->process()(data, left_.data(), right_.data(), n);
                     samples_ += n;
-                    return instance_->read(torque_);
+                    return instance_->read(absorber_ ? absorberH_ : torque_);
                 }
                 set(omega_, speed);
                 sim_->process()(data, left_.data(), right_.data(), n);
@@ -407,9 +404,6 @@ namespace tee
                         }
                         v.x0 = instance_->read(v.handle, v.index);
                     }
-                    if (std::getenv("TEE_PREDICT_DEBUG") != nullptr)
-                        std::fprintf(stderr, "phase %d [%d] x %.2f drift %.3f -> %.2f\n", phase, static_cast<int>(v.index), x,
-                                     drift, instance_->read(v.handle, v.index));
                 }
             }
 
@@ -424,7 +418,9 @@ namespace tee
             PredictOptions options_;
             std::unique_ptr<Instance> instance_;
             bool begun_ = false;
-            bool hasTorque_ = false, redline_ = false, idle_ = false;
+            bool hasTorque_ = false, redline_ = false, idle_ = false, holdCrank_ = false, hasState_ = false,
+                 absorber_ = false;
+            Schema::Handle state_, absorberH_;
             std::vector<Slow> slow_;
             std::vector<std::pair<Schema::Handle, double>> held_;   // Warm.h's warm engine
             bool fresh_ = true;   // no point made yet since the start
@@ -608,7 +604,7 @@ namespace tee
         std::uint64_t h = build.hash();
         for (const double v : {static_cast<double>(o.coarse), static_cast<double>(o.points), o.from, o.to, o.pedal,
                                o.tolerance, static_cast<double>(o.minCycles), static_cast<double>(o.maxCycles),
-                               o.sampleRate, static_cast<double>(o.block), o.startSeconds, o.warm ? 1.0 : 0.0, o.warmupSeconds, o.settleExhaust ? 1.0 : 0.0, o.holdSeconds})
+                               o.sampleRate, static_cast<double>(o.block), o.startSeconds, o.warm ? 1.0 : 0.0, o.warmupSeconds, o.settleExhaust ? 1.0 : 0.0, o.holdSeconds, o.brake == "host" ? 1.0 : o.brake == "program" ? 2.0 : 0.0})
             h = mix(h, v);
         return h;
     }

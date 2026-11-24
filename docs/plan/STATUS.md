@@ -23,10 +23,19 @@
 | U4: TUNE, CAR, DYNO | handoff 13:45, corrections in at 13:56 (5d98532) | cloud session `session_01LFAGgPYn8yFr9MJ2vQvgRd` | 13:19 | stages fold for a small stage; a text-collision test at four sizes; `MapEdit` gained block selection |
 | U5: GARAGE, SCOPE, atmosphere shaders | handoff 14:08 (`docs/handoffs/u5-garage-scope.md`); registering GARAGE and wiring the shaders' build line | cloud session `session_01LFAGgSKtL3Z967uRP5DGT9` | 13:19 | 19 tests; SCOPE registered; GARAGE built (cards, search, sort, parts apart, compare); four shaders (glow, flame, smoke, shimmer) compiled for SPIR-V and Metal and drawn once on lavapipe; Direct3D 11 compiles only on CI's Windows; no person has seen them on a GPU; no workspace calls them yet |
 | Q: performance | running; the profile **landed 14:04** (`docs/measurements/q1-profile.md`) | cloud session `session_01LFAGgPBEbLATNvMiRU1PGS` | 13:44 | on a quiet core R is 1.79 us a sample (not 2.3); the split is 1.00 to 1.03 R; the valves' solve 24 %, the pipes 23 %, the cylinder 15 %, the exhaust's junctions 12 %. Next: FMinus's own levers, then the resampler |
-| Wave 2, the rest | after the gate (M2) | | | the listener, mechanical voices, two-strokes (started), diesels, bikes, content, the wheel, release |
+| L: the listener, cameras, cabin, places | running | cloud session `session_01LFAGgSygRoYnUE3ciPH5pw` | 14:15 | owns `sim/listen/**` (the resampler stays Q's until Q is done); sources with places, Doppler, the ground, cameras, the cabin, places; `sound.model` 0 is the reference |
+| M: mechanical voices | running | cloud session `session_01LFAGgRQ16hRv6km8TyZqc5` | 14:15 | owns `sim/sound/**` and a new `spec.voices`; gear whine by teeth and load, belts, fan, pump, injectors, valvetrain kinds, wastegate chatter, starters; each voice its own output for L |
+| T: two-strokes | running | cloud session `session_01LFAGgSsS8RRTWd4EdBgNmc` | 14:15 | continues the standalone D parked (7 tests): the tuned-length sensitivity first, then power valve, reed and disc, twins and triples, then integration as a second cylinder model |
+| B2: motorcycles | running | cloud session `session_01LFAGgRiXaNaWQi2eaxy3Mi` | 14:15 | the bike behind `Car`'s calls (wheelie-limited launch, chain and its lash, slipper clutch, quickshifter and auto-blipper); bike engines as builds through layouts-as-data |
+| X: the whole program under test | running | cloud session `session_01LFAGgPEmBJHCJxEdvsiG1Y` | 14:15 | every combination of the integrated models; switching while running; fuzzing inside the declared ranges; soaks; findings reduced and sent to their owners; the listening pack and `docs/checkpoints/M2.md` |
+| Held: D2 heavy diesels, P content and manual, W the wheel's feedback, R release | not started | | | D2 needs E's auxiliary exhaust event, G's flap slot, F's vanes and H's injection fields, all mid-integration; P needs the Spec's names to stop moving; W cannot be proven without the owner's wheel and shares files with the shell; R needs the owner's signing identities |
 
 ## Landed
 
+- 14:15 the owner asked whether more could run: five packages started (L, M, T, B2, X), all cloud sessions on
+  Opus 5.5; four held with reasons (the table). 14:10 macOS: CI's first complete run with the fixes (45407345444 at
+  9f23b8b) builds, the exit crashes are gone, 351 of 353 pass; its `TheEngineEngine-macos-arm64` is the artefact
+  for the owner's Mac test; the commands were given.
 - **14:06 the vehicle integrated** (card I), the first physics package in the one program: `car.model` 1; the null
   test green; its Spec and telemetry names are the ones the CAR and DRIVE workspaces already read.
 - 14:05 at 4c11901 the lead re-ran the null test in a full tree: all ten groups pass (the reference to the bit after
