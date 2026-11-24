@@ -71,13 +71,15 @@
       "exCentre": 110,
       "inPhaseRange": 60,
       "exPhaseRange": 45,
+      "portIn": 1.65,
+      "portEx": 1.8,
       "springRate": 35900.0,
       "springPreload": 225.0
     },
     "intake": {
       "model": 1,
-      "throttleKind": "A body a runner",
-      "runnerLength": 0.25
+      "runnerLength": 0.51,
+      "throttleKind": "A body a runner"
     },
     "boost": {
       "model": "Machine",
@@ -89,12 +91,12 @@
       "model": "Builder",
       "sides": 1,
       "converter": [
-        1,
-        1
-      ],
-      "mufKind": [
         2,
         2
+      ],
+      "mufKind": [
+        1,
+        1
       ]
     },
     "fuel": {

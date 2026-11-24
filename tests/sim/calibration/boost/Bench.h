@@ -102,7 +102,7 @@ namespace tee::calib
         SimControls c;
         c.mode = 2;
         c.dynoSpeed = static_cast<float>(rpms.front() * 0.10471976);
-        c.ignition = 2;
+        c.ignition = 1;              // (the key on first, then to start: off straight to start was card C's dyno fault, 8098b36)
         c.scopeOn = 1;
         const auto play = [&](double seconds, auto&& each) {
             const int blocks = static_cast<int>(seconds * 48000.0 / 512.0 + 0.5);
@@ -115,6 +115,8 @@ namespace tee::calib
             }
         };
         const auto nothing = [] {};
+        play(0.1, nothing);
+        c.ignition = 2;
         play(1.0, nothing);
         c.ignition = 1;
         play(0.5 * warmup - 1.0, nothing);
