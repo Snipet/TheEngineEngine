@@ -1,0 +1,22 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "1.5 L economy four cams",
+  "notes": "The cams, springs and phasers of the archetype \"1.5 L economy four\" alone (intake 232/200 degrees at the seat/1 mm, 8.3 mm; exhaust 228/196, 7.8 mm): loaded as a part, they replace only the valvetrain's cam fields.",
+  "spec": {
+    "valve": {
+      "model": "Lab",
+      "train": "Finger",
+      "inDurSeat": 232,
+      "inDur1mm": 200,
+      "inLift": 0.0083,
+      "inCentre": 112,
+      "exDurSeat": 228,
+      "exDur1mm": 196,
+      "exLift": 0.0078,
+      "exCentre": 112,
+      "inPhaseRange": 40,
+      "exPhaseRange": 0
+    }
+  }
+}
