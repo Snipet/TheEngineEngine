@@ -826,6 +826,11 @@ module Engine
     {
         const float d16 = 16.0f * dt;
         crank.sense();
+        // the radiator's fan, its switch and clutch Heat's (package M's FanVoice reads them); its air cools the radiator
+        // only under the physical switches, the road's under car.model 1 (the lead's ruling, 24 Nov)
+        heat.fanGate = woschniWalls() ? 1 : 0;
+        heat.roadSpeed = set.drive != 0 && spec.car.model != 0 ? fabsf(car.speedNow()) : 0.0f;
+        heat.fan16(d16, spec.voices.fan, spec.voices.fanOn, crank.omega * 0.15915494f, ctl.ignition != IGN_OFF ? 1 : 0);
         heat.control(d16, set.ambF, vTotal, ecu.state, crank.rpm, crank.omega);
         for (int c = 0; c < lay.n; ++c)
             cyl[c].tw = heat.tSurf;
@@ -1005,6 +1010,9 @@ module Engine
         // (card B2's motorcycle: its own sequential box, its input and ratio from Car; the chain is its final drive, so
         // the final drive's whine gets no speed)
         const int bk = car.model == 1 && car.bikeOn != 0 ? 1 : 0;
+        ex.vo.fan.fromHeat = 1;
+        ex.vo.fan.heatOn = heat.fanSwitch;
+        ex.vo.fan.heatLock = heat.fanLock;
         ex.control16(d16, ctl.ignition, ecu.state, crank.omega * 0.15915494f, heat.tCool, set.drive != 0 ? 1 : 0,
                      bk != 0 ? 1 : (m1 != 0 ? spec.car.gearbox : 0), car.truck, bk != 0 ? car.gearNow() : car.gear,
                      bk != 0 ? car.bikeGearboxInput() : (m1 != 0 ? crank.omega - car.m1.slipC : car.wG),

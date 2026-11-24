@@ -86,6 +86,24 @@ module BoostCompressor
         return 0.45f * rho01 * a01 * aInd * arWide * (0.3f + 0.7f * fminf(m / 1.2f, 1.0f));
     }
 
+    // The surge line's pressure ratio at a flow m (kg/s) from an inlet at p, t: on this map the surge line is the
+    // locus of 0.8 of the knee's share at each speed (the flag's), so the speed whose surge point is m is found from the
+    // choke flow's law (0.3 + 0.7 M / 1.2 of the full choke flow), and the ratio is the map's rise there. The ECU's
+    // boost target is capped under it (machine.fm, control): what a maker's target map does at low speed
+    float surgeRatio(float m, float p, float t)
+    {
+        const float a01 = sqrtf(1.4f * kBoostR * t);
+        const float rho01 = p / (kBoostR * t);
+        const float mcFull = 0.45f * rho01 * a01 * aInd * arWide;
+        const float share = fmaxf(m, 0.0f) / fmaxf(0.8f * phiK * mcFull, 1.0e-7f);
+        const float mach = fminf(fmaxf((share - 0.3f) / 0.7f * 1.2f, 0.0f), 1.6f);
+        const float u = mach * a01;
+        const float tk = 0.45f * u * u / (kBoostCpA * t);
+        const float tau = tk * (0.88f + 0.12f * 0.64f * (3.0f - 1.6f));
+        const float c = 1.0f + tau;
+        return c * c * c * sqrtf(c);
+    }
+
     // Every 16 samples: the map at this shaft speed (rad/s) and inlet
     void speed(float omega, float pIn, float tIn)
     {
