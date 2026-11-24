@@ -667,3 +667,40 @@ burns and flame quenching late in the expansion (Heywood ch. 9 on partial burnin
 that stop burning, not a slower whole. That needs its own source (the partial-burn frequency against retard and load)
 before anything is built; until then the pop store's spark-time estimate stands. The expansion's term stays proposed
 for late burns generally (knock retard, catalyst heating), not for the overrun.
+
+# The boosted fourteen (the lead's next block; from 21:52 by `date -u`, commit 810fbbc)
+
+## B-1. The table
+
+Each boosted archetype at its target's peak-torque and peak-power speeds (settled dyno, 4.5 s settle, tee::Build path),
+against the bands' middles, with P's basis (torque/power), the boost measured (tel.boost.pressure, kPa over the air)
+and the build's boost target:
+
+```
+torque: mean -5.5 %, sd 7.0 %, median -6.4 %, in band 9 of 14
+power: mean +0.2 %, sd 11.7 %, median +2.6 %, in band 10 of 14
+
+  supercharged-v8-62           judgement/judgement torque   +8.0 % (810 at 3850 for [720, 780], boost 60 kPa)  power   +0.5 % (417 kW at 6000 for [395, 435], boost 84)  build target 62 kPa
+  straight-six-twin-turbo-30   recalled/recalled torque   +6.8 % (561 at 3350 for [450, 600], boost 100 kPa)  power   -2.6 % (287 kW at 5900 for [250, 340], boost 90)  build target 100 kPa
+  boxer-four-turbo-unequal     recalled/recalled torque   +1.9 % (402 at 4000 for [380, 410], boost 97 kPa)  power   +0.1 % (223 kW at 6100 for [210, 235], boost 107)  build target 100 kPa
+  inline-five-turbo-rally      judgement/judgement torque   -3.1 % (436 at 4500 for [380, 520], boost 116 kPa)  power  +10.7 % (257 kW at 6250 for [200, 265], boost 136)  build target 130 kPa
+  turbo-four-20-gdi            recalled/recalled torque   -4.7 % (357 at 3050 for [350, 400], boost 103 kPa)  power   -9.4 % (174 kW at 5750 for [155, 230], boost 86)  build target 120 kPa
+  tractor-15-inline-six        recalled/recalled torque   -5.6 % (2257 at 1100 for [2000, 2780], boost 261 kPa)  power  +15.8 % (434 kW at 1800 for [300, 450], boost 165)  build target 260 kPa
+  three-cylinder-10-turbo      recalled/recalled torque   -6.4 % (178 at 3000 for [170, 210], boost 101 kPa)  power   -4.2 % (86 kW at 5500 for [74, 105], boost 116)  build target 100 kPa
+  twin-turbo-hot-vee-v8-40     recalled/recalled torque   -6.4 % (726 at 3250 for [700, 850], boost 124 kPa)  power   +4.7 % (429 kW at 6050 for [350, 470], boost 110)  build target 120 kPa
+  flat-plane-v8-39-twin-turbo  judgement/judgement torque   -7.4 % (725 at 4375 for [760, 805], boost 136 kPa)  power   +8.7 % (536 kW at 7750 for [450, 535], boost 124)  build target 130 kPa
+  v6-35-twin-turbo-pickup      recalled/recalled torque   -7.7 % (614 at 3500 for [630, 700], boost 105 kPa)  power   +5.5 % (306 kW at 5500 for [275, 305], boost 115)  build target 100 kPa
+  diesel-20-common-rail        recalled/recalled torque   -8.3 % (321 at 2350 for [320, 380], boost 123 kPa)  power  +11.6 % (128 kW at 3850 for [100, 130], boost 158)  build target 140 kPa
+  kei-660-triple-turbo         judgement/judgement torque  -11.3 % (93 at 3500 for [100, 110], boost 65 kPa)  power  -11.8 % (41 kW at 6500 for [44, 50], boost 17)  build target 65 kPa
+  rotary-twin-13               recalled/recalled torque  -14.1 % (260 at 5000 for [290, 315], boost 59 kPa)  power  -31.8 % (136 kW at 6650 for [190, 210], boost 25)  build target 70 kPa
+  pickup-diesel-67-inline-six  recalled/recalled torque  -18.0 % (1012 at 1700 for [1000, 1470], boost 243 kPa)  power   +5.2 % (300 kW at 2887 for [255, 315], boost 154)  build target 200 kPa
+```
+
+No common level: torque a little under on the mean, power on it, and the spread half the NA set's. The misses group
+by mechanism, not by level:
+- *boost that collapses at the power peak:* the rotary (25 kPa at 6650 rpm against its 70 target: power -32 %) and the
+  kei (17 against 65 at 6500: -12 %). The turbo runs out at speed: the matching (N2's rework of the design point).
+- *boost over its target at low speed, on the diesels:* the pickup 243 kPa at 1700 rpm (target 200), the tractor 261 at
+  1100 (260), the 2.0 158 at 3850 (140); their power rows read over (+5 to +16 %).
+- *the supercharged V8's torque* +8 % at a boost under its target (60 against 62): the machine's or the build's, to see.
+Most bands are recalled or judgement (P is citing them).
