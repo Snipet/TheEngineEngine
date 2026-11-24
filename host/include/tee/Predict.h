@@ -57,6 +57,12 @@ namespace tee
         // Which brake: "auto" (the host's where it knows the crank's inertia: the reference's crank, engine.custom off;
         // else the program's dyno), "host" or "program" (above).
         std::string brake = "auto";
+        // The engine's own rate inside, for the curve only: 0, the program's (96 kHz); 48000 halves the work (the
+        // performance session: the V8's and the default build's torque within 1.2 % at worst, 0.1 to 0.3 % typical,
+        // only the top octave lost). It needs the program to take TEE_ENGINE_RATE_48000 (a define the service compiles
+        // a second Sim with, once; FMinus reads macros only in #ifdef); a program that does not, or a build with boost.model 1 (its machine is built for
+        // 96 kHz until it takes the rate), runs at the program's own rate. PredictCurve::innerRate says which.
+        double innerRate = 0.0;
         double sampleRate = 96000.0;  // the instances' host rate: the simulator's own, so nothing is resampled
         int block = 32;               // samples a process call (the held brake's step)
         double startSeconds = 0.12;   // the key held at the first speed before full throttle
@@ -87,14 +93,21 @@ namespace tee
         std::string brake;            // "program": the simulator's dyno mode; "host": the crank held by the host
         double wallSeconds = 0.0;     // from the request to this curve
         double simulatedSeconds = 0.0;   // engine time run for it, over all workers
+        double innerRate = 0.0;       // the engine's own rate it ran at (Engine::rate), 0 when the program has none
 
         bool empty() const noexcept { return points.empty(); }
     };
 
+    // The Sim `sim` compiled again with the engine's own rate at `rate` (the define TEE_ENGINE_RATE_<rate>, e.g. TEE_ENGINE_RATE_48000): nullptr, with
+    // `error`, when it does not compile or does not take the define (its Engine::rate is not `rate`).
+    std::shared_ptr<Sim> simAtInnerRate(const std::shared_ptr<Sim>& sim, double rate, std::string& error);
+
     // One curve, made now on this thread with `threads` workers (0 as PredictOptions says): what the service does, for
     // tools and tests. False with `error` when the program cannot be braked or played. `cancel` stops it early.
+    // `inner`: the Sim at options.innerRate (simAtInnerRate), or nullptr (the program's own rate).
     bool predictCurve(const std::shared_ptr<Sim>& sim, const Build& build, const PredictOptions& options,
-                      PredictCurve& curve, std::string& error, const std::atomic<bool>* cancel = nullptr);
+                      PredictCurve& curve, std::string& error, const std::atomic<bool>* cancel = nullptr,
+                      const std::shared_ptr<Sim>& inner = nullptr);
 
     // The slow reference the steady points are measured against: one instance, the crank swept from the first speed
     // of `options` to the last at `rate` (rad/s^2) with the same brake, the torque at each of the curve's speeds the mean
@@ -136,6 +149,8 @@ namespace tee
         void coordinator();
 
         std::shared_ptr<Sim> sim_;
+        std::shared_ptr<Sim> inner_;   // at options_.innerRate, compiled on the coordinator's first request
+        bool innerTried_ = false;
         PredictOptions options_;
         int threads_ = 1;
         std::thread thread_;
