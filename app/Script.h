@@ -14,6 +14,7 @@
 //                                  (Sources.h), of `rpm` (engine.speed in turns a minute), of a parameter (`param
 //                                  size`), or of the output since the last such check: `peak` (0 to 1) and `rms`
 //   4.00  expect sent valve.stages == 1   a Spec field as the host was sent it (SimHost::readSpec), by its path
+//   5.00  open content/builds/v8.json   a whole build opened over the document, as GARAGE's LOAD and Ctrl+O do
 //   5.00  quality economy          the simulator's QUALITY (full, economy), as the Audio menu changes it
 //   9.00  print                    a line of telemetry on the standard output
 //  10.00  end                      the run ends here
@@ -28,7 +29,7 @@ namespace tee::app
 {
     struct ScriptEvent
     {
-        enum class Kind { key, set, pointer, wheel, shot, expect, print, quality, end };
+        enum class Kind { key, set, pointer, wheel, shot, expect, print, quality, open, end };
         double time = 0.0;
         Kind kind = Kind::print;
         int line = 0;               // in the file, for a message

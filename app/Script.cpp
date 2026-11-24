@@ -112,6 +112,11 @@ namespace tee::app
                 e.name = "sent " + w[3];
                 e.op = w[4];
             }
+            else if (verb == "open" && w.size() == 3)
+            {
+                e.kind = ScriptEvent::Kind::open;
+                e.name = w[2];
+            }
             else if (verb == "quality" && w.size() == 3 && (w[2] == "full" || w[2] == "economy"))
             {
                 e.kind = ScriptEvent::Kind::quality;

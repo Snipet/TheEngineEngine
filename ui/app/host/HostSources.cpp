@@ -225,4 +225,40 @@ namespace tee::ui
             out[i] = static_cast<float>(frame_.get(field, i));
         return static_cast<int>(n);
     }
+
+    // ---- ServiceBake ------------------------------------------------------------------------------------------------
+    ServiceBake::ServiceBake(std::shared_ptr<tee::Sim> sim, tee::Build& build, tee::KnockBakeOptions options)
+        : sim_(sim), build_(build), bakes_(std::move(sim), std::move(options))
+    {
+    }
+
+    void ServiceBake::tick()
+    {
+        // A change of the build (or the first frame): consider it; its own write (the table set aside) is seen here
+        // and not considered again.
+        if (first_ || build_.hash() != seen_)
+        {
+            first_ = false;
+            bakes_.consider(build_);
+            seen_ = build_.hash();
+        }
+        tee::KnockBakeResult r;
+        if (bakes_.take(r) && tee::knockLimitKey(build_, *sim_) == r.key)
+        {
+            std::string error;
+            if (tee::applyKnockLimit(build_, r, error))
+                applyError_.clear();
+            else
+                applyError_ = error;
+            ++applied_;
+            seen_ = build_.hash();
+        }
+    }
+
+    std::string ServiceBake::state() const
+    {
+        return applyError_.empty() ? std::string(tee::knockBakeStateName(bakes_.state())) : std::string("bake failed");
+    }
+
+    std::string ServiceBake::error() const { return applyError_.empty() ? bakes_.error() : applyError_; }
 }

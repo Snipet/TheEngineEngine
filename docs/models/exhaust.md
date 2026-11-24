@@ -355,6 +355,22 @@ and a softer low-speed pull, as its boost at 2000 rpm halves.
 
 `flowClose` 0 gives the reference's g q, which is how test 2 compares with the reference.
 
+**Closed by mass at the turbines** (N3's books, 24 Nov). The pipes carry volume, linearly, and mass is volume times
+the local pressure over R T. The gas cools from the valve to the collectors, and the cylinders reckon their mass at
+the port's pressure in the blowdown while a housing books its own at its own. So the valves' volume, delivered,
+put the wrong mass into the turbines:
+- turbo four at 3050 rpm: 1.14 of what was let out (the cooling alone gives 1.148);
+- twin-turbo V8 at 4375 rpm: 1.03.
+
+With the turbines fed, `Exhaust::bookLet` closes the target by mass where it is booked. Every 50 ms it moves
+`tLet` by a fifth of Boost's mass from the pipes (`mach.sumMPipes`) over the valves' less one, with the backflow
+reckoned as the cylinder reckons it. The error itself is used, not its log: a window's ratio is noisy, and a log's
+zero mean leaves the ratio's mean 2 % high. Measured over 2 s (N3's probe):
+- turbo four: 0.9972 (tLet 0.887);
+- twin-turbo V8: 1.0071 (tLet 1.004).
+
+Without turbines the target is the valves' volume (tLet 1).
+
 ## Glide and rebuild (dragging a slider)
 
 These fields glide toward the Spec with a 0.2 s time constant (`XBuild::glide`). The pipes' delays, areas and
