@@ -271,6 +271,11 @@ namespace tee::ui::look
         y1 = ride(wb * 0.18f) - r * 1.25f - 4.0f;
     }
 
+    // A workspace's pictogram (the rail's, beside its word): a few strokes in `ink` within a square of `size` px about
+    // (cx, cy), by the workspace's id ("garage", "engine", "valves", "air", "exhaust", "tune", "car", "dyno", "drive",
+    // "scope"; another id: a small square). Lines only, 1.25 px; never the only sign (the word is beside it).
+    void pictogram(funkgui::Canvas& c, std::string_view id, float cx, float cy, float size, Col ink);
+
     // A text that says what will be here (a placeholder's): a title and lines of plain words, centred in r.
     void placeholder(funkgui::Canvas& c, const Palette& p, const funkgui::Rect& r, std::string_view title,
                      std::string_view body);

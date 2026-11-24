@@ -29,6 +29,11 @@ and the lead (the session that wrote these files) settles what a card leaves ope
 - Commit messages: `area: what changed` in the imperative, a body when the why is not obvious. End every message
   with the trailers your own session's instructions give. No model names anywhere else in the repository.
 - Push after every step that builds and passes its tests. Unpushed work is lost when a container is reclaimed.
+- **Green before a push** (the lead's rule, policed by the build steward): on a freshly merged tree, your own
+  package's tests and every test of a package whose files you touched pass (`ctest --preset dev -R '^<package>\.'`),
+  and `scripts/lint.sh` is clean. A test that fails for a filed finding is skipped with the finding's number in its
+  reason (`SKIP("finding F-12: ...")`), never left red. A soak or a fuzz is tagged `[nightly]` (§3). The steward
+  messages each owner its own failing tests after every full run and every finished CI job.
 - Never commit build trees, dependency caches, rendered audio or pictures. `.gitignore` covers `build-*/`, `out/`
   and `.tee-deps/`; test artefacts go under `out/`.
 
@@ -79,8 +84,20 @@ allocation or logging on the audio thread. No JUCE, anywhere. Third-party code o
   gone (38 tests crashed at exit on macOS; Linux's order hides it). Free it before `main` returns.
 - No transcendental function per sample where a table or a control-rate update will do. Your card gives a CPU
   budget; `tee-bench` measures it.
-- Every Spec field has `[[fminus::range]]`, `[[fminus::default]]`, `[[ui::label]]` and, for a quantity,
-  `[[ui::unit]]`. SI units inside; the interface converts.
+- Every Spec field has `[[fminus::range]]`, `[[fminus::default]]`, `[[ui::label]]` and says what its number is:
+  one of `[[ui::quantity]]`, `[[ui::unit]]` or `[[ui::choices]]` (a `bool` needs none). SI units inside; the
+  interface converts. By kind:
+  - a physical quantity: `[[ui::quantity("length")]]` (one of 02-contracts.md §3's list: the user picks its unit);
+  - a fraction or a ratio: `[[ui::quantity("fraction")]]`, `[[ui::quantity("ratio")]]`;
+  - a level or anything else with a fixed unit: `[[ui::unit("dB")]]`, `[[ui::unit("deg")]]`;
+  - a count: its unit, plural: `int gears [[fminus::range(1, 18)]] [[fminus::default(6)]] [[ui::label("Forward
+    gears")]] [[ui::unit("gears")]];` (as `engine.cylinders` has "cylinders");
+  - a kind, or a switch of more than two ways: `[[ui::choices("Layout's", "Single", "Dual")]]`, one name for each
+    value of the range from its minimum (a special value such as -1 "the layout's" is a choice too);
+  - a table: the table field carries `[[ui::label]]` and `[[ui::axes("rotation", "ratio")]]`; a `Map16` also its z's
+    `[[ui::unit]]` or `[[ui::quantity]]`; the table's own x, y, z, n need nothing.
+  `scripts/lint.sh` runs `tee-schema --lint` on `sim/engine.fm` when a build tree has it and names each field and
+  what it lacks; the contract test fails on the same.
 
 **Comments and docs**: say what and why in plain words, as the reference and FMinus's manual do. No decoration.
 

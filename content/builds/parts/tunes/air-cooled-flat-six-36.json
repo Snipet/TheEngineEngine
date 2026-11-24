@@ -1,0 +1,22 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "part": "tune",
+  "name": "Air-cooled flat six (tune)",
+  "notes": "The tune of the archetype \"Air-cooled flat six\" alone.",
+  "spec": {
+    "ecu": {
+      "model": "Maps",
+      "timing": 0,
+      "pops": 0.1,
+      "starter": true,
+      "limiter": {
+        "kind": "Fuel cut",
+        "speed": 701.622
+      },
+      "idle": {
+        "speed": 89.012
+      }
+    }
+  }
+}

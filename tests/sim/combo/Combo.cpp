@@ -318,6 +318,13 @@ namespace combo
                 lo = -0.05;
                 hi = 4.0;
             }
+            else if (q == "pressure" && f.path.find("mep") != std::string::npos)
+            {
+                // a mean effective pressure from the brake torque carries the inertia's torque in a transient: the
+                // engine dyno pulling the diesel up from idle reads -63 bar, a build swapped while running -21 bar
+                lo = -1.0e7;
+                hi = 1.0e7;
+            }
             else if (q == "pressure")
             {
                 lo = -2.0e6;   // gauge readings may be below 0; never this far
@@ -338,7 +345,7 @@ namespace combo
     {
         const tee::Fields* f = programFields();
         const tee::RunResult& r = run.result();
-        std::string nonFinite, outOfRange;
+        std::string nonFinite;
         for (std::size_t c = 0; c < r.columns.size(); ++c)
         {
             const tee::FieldInfo* fi = f ? f->find("tel." + r.columns[c]) : nullptr;
@@ -374,16 +381,15 @@ namespace combo
                 nonFinite += (nonFinite.empty() ? "" : ", ") + r.columns[c];
             if (out)
             {
-                char b[160];
-                std::snprintf(b, sizeof b, "%s%s=%g at %.2f s (bounds %g to %g)", outOfRange.empty() ? "" : ", ",
-                              r.columns[c].c_str(), worst, worstAt, lo, hi);
-                outOfRange += b;
+                // one failure a field, named "tel-range:<field>", so that a known finding names its fields alone
+                char b[200];
+                std::snprintf(b, sizeof b, "%s=%g at %.2f s (bounds %g to %g)", r.columns[c].c_str(), worst, worstAt,
+                              lo, hi);
+                v.failures.push_back({"tel-range:" + r.columns[c], b});
             }
         }
         if (!nonFinite.empty())
             v.failures.push_back({"tel-finite", nonFinite});
-        if (!outOfRange.empty())
-            v.failures.push_back({"tel-range", outOfRange});
     }
 
     double largestStepTime(std::span<const float> x, double rate)
@@ -557,7 +563,7 @@ namespace combo
             if (tm.driveFrom >= 0.0)
             {
                 const double vmax = run.tel("car.speed").during(tm.driveFrom, tm.driveTo).max();
-                if (!(vmax > 5.0))
+                if (!(vmax > 2.0))   // it moves: a 4-tonne truck in first makes 5 m/s in 4 s
                 {
                     std::snprintf(b, sizeof b, "in gear at full throttle the car reached %.1f m/s", vmax);
                     v.failures.push_back({"moves", b});
@@ -595,13 +601,37 @@ namespace combo
         {
             return std::string(pattern) == "*" || s == pattern;
         }
+
+        // A combination's pattern: "*", a comboName exactly, or "+a+b": every combination that has a and b on ("all"
+        // and "load, all on" among them).
+        bool comboMatches(const char* pattern, const std::string& c)
+        {
+            const std::string p = pattern;
+            if (p.empty() || p[0] != '+')
+                return matches(pattern, c);
+            if (c == "all" || c.find("all on") != std::string::npos)
+                return true;
+            const std::string have = "+" + c + "+";
+            std::size_t at = 1;
+            while (at < p.size())
+            {
+                const auto next = p.find('+', at);
+                const std::string one = p.substr(at, next == std::string::npos ? std::string::npos : next - at);
+                if (have.find("+" + one + "+") == std::string::npos)
+                    return false;
+                if (next == std::string::npos)
+                    break;
+                at = next + 1;
+            }
+            return true;
+        }
     } // namespace
 
     const Known* known(const std::string& c, const std::string& build, const std::string& scenario,
                        const std::string& check)
     {
         for (const Known& k : kKnown)
-            if (k.id != nullptr && matches(k.combo, c) && matches(k.build, build) && matches(k.scenario, scenario) &&
+            if (k.id != nullptr && comboMatches(k.combo, c) && matches(k.build, build) && matches(k.scenario, scenario) &&
                 matches(k.check, check))
                 return &k;
         return nullptr;

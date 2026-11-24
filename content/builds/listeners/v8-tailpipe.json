@@ -1,0 +1,59 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "V8, tailpipe",
+  "notes": "The reference's V8 heard by package L's listener at its default camera, behind the tailpipes (the reference's EXHAUST view as a place).",
+  "spec": {
+    "engine": {
+      "layout": "V8 crossplane",
+      "displacement": 0.0062099,
+      "boreStroke": 0.8798,
+      "compression": 13.5844,
+      "flywheel": 0.4586,
+      "idleTrim": 0,
+      "redlineTrim": 0,
+      "rough": 0,
+      "benchLoad": 0.3451
+    },
+    "valve": {
+      "cam": 0.9999
+    },
+    "boost": {
+      "kind": "Natural",
+      "level": 0,
+      "size": 0.7328,
+      "blowOff": 1
+    },
+    "exhaust": {
+      "headers": 0.3247,
+      "pipe": 0.6325,
+      "crossover": 0,
+      "muffler": 0
+    },
+    "fuel": {
+      "kind": "Gasoline"
+    },
+    "ecu": {
+      "timing": 0,
+      "pops": 0,
+      "starter": true
+    },
+    "car": {
+      "kind": "Car",
+      "mass": 4048.1526
+    },
+    "env": {
+      "temperature": 233.15
+    },
+    "sound": {
+      "view": "Exhaust",
+      "distance": 0.2994,
+      "room": 0.6176,
+      "level": 2.8467,
+      "intake": 0.5,
+      "mechanical": 0.6503,
+      "model": "Places",
+      "camera": "Tailpipe"
+    }
+  }
+}

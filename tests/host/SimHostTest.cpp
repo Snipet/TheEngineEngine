@@ -460,3 +460,110 @@ TEST_CASE("LoadOptions::hold writes its values before every block; a path the pr
     CHECK(tel(host, t, "tel.engine.redline") == 600.0);
     CHECK(warmEngine().size() == 5);
 }
+
+namespace
+{
+    // One block with the audio thread's allocations counted (where they can be: AllocationCounter::available()), the
+    // host serviced after, off the count, as its own thread would.
+    long countedBlock(SimHost& host, Blocks& b)
+    {
+        const long before = AllocationCounter::count();
+        AllocationCounter::countThisThread(true);
+        host.process(b.left.data(), b.right.data(), static_cast<int>(b.left.size()));
+        AllocationCounter::countThisThread(false);
+        const long made = AllocationCounter::count() - before;
+        host.service();
+        return made;
+    }
+
+    SimControls keyOn()
+    {
+        SimControls c;
+        c.ignition = 1;
+        c.throttle = 0.4f;
+        return c;
+    }
+} // namespace
+
+TEST_CASE("a finite sample beyond full scale is clamped and counted: no fault, the engine runs on", "[simhost][guard]")
+{
+    SimHost host;
+    std::string errors;
+    REQUIRE(host.attach(standinSim(), offline(), errors));
+    host.setControls(running());
+    Blocks b(512);
+    b.play(host, 100);
+    host.setControls(keyOn());
+    b.play(host, 20);
+    TelemetryFrame t;
+    REQUIRE(host.telemetry(t));
+    REQUIRE(tel(host, t, "tel.engine.state") == 2);
+
+    const float loud = 5.0f;   // five times the level's range: the stand-in's output some 1.5, finite (setBytes: unclamped)
+    REQUIRE(host.setBytes(ref(host, "spec.sound.level"), &loud, sizeof loud));
+    long allocations = 0;
+    double peak = 0.0;
+    for (int i = 0; i < 60; ++i)
+    {
+        allocations += countedBlock(host, b);
+        CHECK(b.finite());
+        peak = std::max(peak, b.peak());
+    }
+    CHECK(peak <= 1.0);
+    REQUIRE(host.telemetry(t));
+    CHECK(t.host.guardTrips == 0);
+    CHECK(t.host.restarts == 0);
+    CHECK(t.host.faulted == 0);
+    CHECK(t.host.clippedBlocks > 0);
+    CHECK(t.host.largestSample > 1.0f);
+    CHECK(t.host.largestSample < 16.0f);
+    CHECK(tel(host, t, "tel.engine.state") == 2);   // still running
+    if (AllocationCounter::available())
+        CHECK(allocations == 0);
+}
+
+TEST_CASE("after a fault's fresh instance, an ignition left on cranks it back to running", "[simhost][guard]")
+{
+    SimHost host;
+    std::string errors;
+    REQUIRE(host.attach(standinSim(), offline(), errors));
+    host.setControls(running());
+    Blocks b(512);
+    b.play(host, 100);
+    host.setControls(keyOn());   // the key on, not held in start: a person who started it and let go
+    b.play(host, 20);
+    TelemetryFrame t;
+    REQUIRE(host.telemetry(t));
+    REQUIRE(tel(host, t, "tel.engine.state") == 2);
+
+    const float nan = std::numeric_limits<float>::quiet_NaN();
+    const FieldRef level = ref(host, "spec.sound.level");
+    REQUIRE(host.setBytes(level, &nan, sizeof nan));
+    long allocations = 0;
+    for (int i = 0; i < 5; ++i)
+    {
+        allocations += countedBlock(host, b);
+        CHECK(b.finite());
+    }
+    REQUIRE(host.telemetry(t));
+    CHECK(t.host.guardTrips >= 1);
+    CHECK(t.host.faulted == 1);
+    CHECK(host.stopReason().find("restarted") != std::string::npos);
+
+    CHECK(host.set(level, 0.3));
+    for (int i = 0; i < 300; ++i)
+    {
+        allocations += countedBlock(host, b);
+        CHECK(b.finite());
+        std::this_thread::sleep_for(std::chrono::microseconds(1500));   // the restart is rate-limited to 4 a second
+    }
+    REQUIRE(host.telemetry(t));
+    CHECK(t.host.faulted == 0);
+    CHECK(t.host.restarts >= 1);
+    CHECK(t.host.restarting == 0);
+    CHECK(tel(host, t, "tel.engine.state") == 2);   // running again, as the person left it
+    CHECK(host.controls().ignition == 1);            // the person's controls untouched
+    CHECK(b.peak() > 0.01);
+    if (AllocationCounter::available())
+        CHECK(allocations == 0);
+}

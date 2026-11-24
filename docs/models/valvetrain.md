@@ -125,3 +125,26 @@ opening, every change made with the valve shut, all eight back under load.
 - Wiring into the cylinder, the ECU's targets, the scope's lift arrays, telemetry: wait for K3b (the handoff lists
   the seam).
 - The lab is for piston engines; a rotary keeps the reference's ports.
+
+## Integrated (valve.model 1 in the engine; tests/sim/valvetrain/IntegratedTest.cpp, engine dyno, wide open)
+
+- Phasing (test 8), a 280-degree cam, intake centreline 95 against 125: the default V8 +13.8 % at 1500 rpm, -0.9 % at
+  6000, peaks 3877 and 4113 rpm; the four +6.1 % and -8.3 %, peaks 2724 and 3335 rpm (**measured**).
+- Two stages (test 9) on the four: the curves cross at 5500 rpm; through the change the gas torque does not dip, and
+  the output's level steps 2.8 dB there against 9.8 dB at most between two firings elsewhere in the sweep.
+- Deactivation (test 10), the V8 at 2000 rpm and 90 N m: the manifold 45.9 kPa on eight, 69.7 on four; the
+  half-firing line from -17.1 to +6.9 dB against the firing line.
+- Float (test 13): past the float speed a longer, larger bounce and a seat that no longer seals (judgement,
+  `float.fm`): on the four, 0 % at 0.85 times it, -21 % at 1.1, -64 % at 1.25; finite at twice it: the cliff a
+  pushrod engine shows a few hundred rpm past float.
+- Cost: `tee-bench --profile --engine` with the four-valve, two-phaser build: `ValveLab` 52 ns a 96 kHz sample and
+  `Valvetrain` 2 (some 0.02 R); `Intake` 83 against 76 at the defaults. The rest of the +0.03 to +0.07 R that
+  `tee-bench --engine` showed is the build's own engine (its cylinders' flows) and the machine's noise.
+- Breathing (`tests/sim/valvetrain/BreathingTest.cpp`, both models 1, 300 K, engine dyno, wide open; **measured**): the
+  6.2 L V8 with a mild cam peaks at 257 kW near 5000 rpm (248 at 6000; the target is 300 to 330), its VE (`veAir`)
+  0.86 to 0.92, 0.82 at 6000; the 998 cc superbike four (76 x 55, four valves, 9.5 mm, 270 at 1 mm, ITBs, 13:1) makes
+  59 kW at 13,500 rpm (the target 125 to 145), its VE 0.68 to 0.77. The bike's shortfall is not mostly breathing: at
+  VE 0.75 it should make some 85 N m, and makes 42 to 47. The torque per unit of air falls with speed: the burn's
+  fixed degrees and the friction by piston speed (cards H and D) take most of it at 12,000 rpm and 25 m/s. What the
+  breathing itself lacks: the VE peaks near 0.9, not 1.0 to 1.1, as no runner here is tuned to ram (test 12's ring
+  is right in direction, not in strength), and the port quality is the reference's.

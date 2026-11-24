@@ -56,9 +56,16 @@ namespace tee::app
         // the run stops with it.
         std::string problem;
         // The simulator's document on disk and the library of builds (null: not the simulator's frame). Owned by keep.
-        // The frame's FrameServices::saveText calls this once the window sets it (tee-headless never does: the frame
-        // then has none, and a workspace copies its text instead).
-        std::shared_ptr<std::function<bool(const std::string&, const std::string&, std::string&)>> saveText;
+        // What only the window serves (a save dialog, the audio device), filled once the window exists. The frame's
+        // FrameServices call these; tee-headless gives the frame none of them (a workspace then copies its text, the
+        // settings page shows the status line).
+        struct WindowHooks
+        {
+            std::function<bool(const std::string&, const std::string&, std::string&)> saveText;
+            std::function<std::string()> audioInfo;
+            std::function<void()> audioMenu;
+        };
+        std::shared_ptr<WindowHooks> window;
         files::BuildFile* document = nullptr;
         files::BuildLibrary* library = nullptr;
 

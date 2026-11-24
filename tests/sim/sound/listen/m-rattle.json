@@ -1,0 +1,58 @@
+{
+ "format": "tee-engine-scenario/1",
+ "name": "m-rattle",
+ "description": "Car model 1 with a sequential box idling in neutral: rattle off, on at 6 s, clutch down 11-14 s.",
+ "seconds": 17,
+ "events": [
+  {
+   "t": 0.0,
+   "spec": {
+    "sound.view": 3,
+    "voices.model": 1,
+    "car.model": 1,
+    "car.gearbox": 1,
+    "voices.rattle": -60
+   },
+   "ctl": {
+    "mode": 1,
+    "lever": 0,
+    "clutch": 0,
+    "brake": 0,
+    "throttle": 0,
+    "ignition": 1
+   }
+  },
+  {
+   "t": 0.25,
+   "ctl": {
+    "ignition": 2
+   }
+  },
+  {
+   "t": 2.0,
+   "ctl": {
+    "ignition": 1
+   }
+  },
+  {
+   "t": 6.0,
+   "spec": {
+    "voices.rattle": 0
+   },
+   "note": "a dog box's rattle in neutral, clutch up"
+  },
+  {
+   "t": 11.0,
+   "ctl": {
+    "clutch": 1
+   },
+   "note": "clutch pressed: the box stops, the rattle goes"
+  },
+  {
+   "t": 14.0,
+   "ctl": {
+    "clutch": 0
+   }
+  }
+ ]
+}

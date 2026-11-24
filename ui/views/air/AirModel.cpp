@@ -241,6 +241,13 @@ namespace tee::ui::air
         b.nitrousBottle = fieldOr(doc, P::nitrousBottle, -1, 4.5);
         b.itb = fieldOr(doc, P::throttleKind, -1, 0.0) > 0.5;
         b.trumpetsToAir = fieldOr(doc, P::trumpets, -1, 0.0) > 0.5;
+        {
+            const bool bike = layout <= 3 || layout == 7;
+            const double r1 = fieldOr(doc, P::runnerLength, -1, 0.0);
+            b.runner = r1 > 0.0 ? r1 : (bike ? 0.16 : 0.30);
+            b.runner2 = std::max(0.0, fieldOr(doc, P::runnerLength2, -1, 0.0));
+            b.runnerSwitch = fieldOr(doc, P::runnerSwitch, -1, 0.0);
+        }
 
         // machine.fm match(): turbo 1's compressor, sized for its share of the engine's flow at the redline
         if (b.hasMap())

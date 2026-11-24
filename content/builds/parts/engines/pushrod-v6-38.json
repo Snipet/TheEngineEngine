@@ -1,0 +1,102 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "part": "engine",
+  "name": "3.8 L pushrod V6 (engine)",
+  "notes": "The engine of the archetype \"3.8 L pushrod V6\" alone, to put in another car.",
+  "spec": {
+    "engine": {
+      "layout": "V6",
+      "custom": true,
+      "compression": 9.4,
+      "cylinders": 6,
+      "bankAngle": [
+        45,
+        -45
+      ],
+      "bank": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        1
+      ],
+      "pin": [
+        45,
+        75,
+        285,
+        315,
+        165,
+        195
+      ],
+      "fireRev": [
+        0,
+        1,
+        1,
+        1,
+        0,
+        0
+      ],
+      "place": [
+        0.0,
+        0.033,
+        0.1,
+        0.133,
+        0.2,
+        0.233
+      ],
+      "displacement": 0.0037915,
+      "boreStroke": 1.1169,
+      "bore": 0.0965,
+      "stroke": 0.0864,
+      "rodLength": 0.145,
+      "redlineSpeed": 596.903,
+      "frictionValvetrain": "Roller",
+      "balance1": true,
+      "rough": 0.2,
+      "benchLoad": 0.3
+    },
+    "valve": {
+      "model": "Lab",
+      "valves": 2,
+      "dIn": 0.046,
+      "dEx": 0.038,
+      "train": "Pushrod",
+      "inDurSeat": 240,
+      "inDur1mm": 196,
+      "inLift": 0.0094,
+      "inCentre": 112,
+      "exDurSeat": 244,
+      "exDur1mm": 200,
+      "exLift": 0.0094,
+      "exCentre": 114
+    },
+    "intake": {
+      "model": 1
+    },
+    "boost": {
+      "model": "Machine",
+      "kind": "Natural",
+      "level": 0.0,
+      "blowOff": 0.7
+    },
+    "exhaust": {
+      "model": "Builder",
+      "sides": 2,
+      "converter": [
+        1,
+        1
+      ],
+      "mufKind": [
+        2,
+        2
+      ]
+    },
+    "fuel": {
+      "kind": "Gasoline",
+      "model": "Fuels",
+      "grade": "Regular (87)"
+    }
+  }
+}

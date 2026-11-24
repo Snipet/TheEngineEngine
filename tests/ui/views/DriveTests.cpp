@@ -34,7 +34,7 @@ namespace
         rig.demo.engine.set("car.tReaction", 0.412);
         rig.demo.engine.set("car.t60", 1.874);
         rig.demo.engine.set("car.t330", 5.102);
-        rig.demo.engine.set("engine.lambda", 0.87);
+        rig.demo.engine.set("ecu.lambda", 0.87);
         rig.settle();
         golden("drive.strip", *rig.host);
         // Pressing the car selects the car's section.
@@ -50,6 +50,38 @@ namespace
         golden("drive.small.dpi1", *rig.host);
         StageRig big(tee::ui::makeDriveWorkspace, 1240, 870, 2.0f, 6.3, false);   // on the limiter
         golden("drive.large", *big.host);
+        return 0;
+    }
+
+    // A motorcycle (spec.car.kind "Motorcycle", card B2): the bike from the side, lifted by car.liftAngle with the word,
+    // the two wheels' slip (front [0], rear [2]).
+    VIEW_TEST(testDriveBike, "drive.bike")
+    {
+        std::vector<tee::ui::FieldInfo> fields = tee::ui::demoFields(false);
+        for (tee::ui::FieldInfo& f : fields)
+            if (f.path == "car.kind")
+            {
+                f.choices.push_back("Motorcycle");
+                f.max = static_cast<double>(f.choices.size() - 1);
+                f.def = f.max;
+            }
+        tee::ui::MemoryDoc doc(fields);
+        tee::ui::Units units;
+        tee::ui::DemoEngine engine(&doc, false);
+        engine.setTime(4.6);
+        tee::ui::Selection selection;
+        tee::AppServices app;
+        tee::ui::WorkspaceContext ctx{ doc, engine, engine, engine, units, selection, app };
+        engine.set("car.liftAngle", 18.0);
+        engine.set("car.bikeFlags", 4.0);
+        engine.set("car.wheelSlip[2]", 0.24);
+        engine.set("car.wheelSlip[0]", 0.0);
+        std::unique_ptr<tee::ui::Workspace> ws = tee::ui::makeDriveWorkspace(ctx);
+        funkgui::HeadlessHost host(*ws, 0, 2.0f);
+        host.resize(900, 640);
+        ws->place({ 0.0f, 0.0f, 900.0f, 640.0f });
+        host.tick(90);
+        golden("drive.bike", host);
         return 0;
     }
 }

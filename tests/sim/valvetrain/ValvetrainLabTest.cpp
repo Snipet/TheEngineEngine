@@ -569,11 +569,14 @@ TEST_CASE("float: the speed rises with the spring, falls with the mass and with 
     CHECK(v.lab.get("floating") == 1.0);
     CHECK(v.lab.get("clatter") > 0.0);
     CHECK(v.lab.get("tab[0].tailDeg") > 10.0);
-    // the tail: area after the event's end, and none past the tail
+    // the tail: area after the event's end, and past the tail only the seat's leak (a few percent of the most)
     auto* at = v.lab.fn<float(void*, int, float)>("areaIn");
     const double end = v.lab.get("tab[0].openNow") + v.lab.get("tab[0].span");
     CHECK(at(v.lab.data(), 0, static_cast<float>(std::fmod(end + 5.0, 720.0))) > 0.0f);
-    CHECK(at(v.lab.data(), 0, static_cast<float>(std::fmod(end + 45.0, 720.0))) == 0.0f);
+    const double leak = v.lab.get("tab[0].leak");
+    CHECK(leak > 0.0);
+    CHECK(leak <= 0.03 * v.lab.get("tab[0].peak") + 1e-12);
+    CHECK(at(v.lab.data(), 0, static_cast<float>(std::fmod(end + 105.0, 720.0))) == Catch::Approx(leak));
 }
 
 namespace

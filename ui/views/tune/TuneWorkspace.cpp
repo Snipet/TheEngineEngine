@@ -68,9 +68,12 @@ namespace tee::ui
             const char* throttle = "engine.throttle";
             const char* state = "engine.state";
             const char* gear = "car.gear";
-            const char* lambdaAsked = "ecu.lambda";
-            const char* lambdaMeasured = "exhaust.lambda";
-            const char* knock = "ecu.knock";
+            const char* load = "ecu.load";               // the maps' y axis (the manifold over the air outside)
+            const char* pedal = "ctl.throttle";          // the pedal map's y axis (else the controls as sent)
+            const char* lambdaAsked = "ecu.lambdaTarget";
+            const char* lambdaMeasured = "ecu.lambda";   // the sensor
+            const char* knock = "ecu.knock";             // a count: the knocks so far
+            const char* knockByCylinder = "ecu.knockByCylinder";   // [16], each cylinder's retard
             const char* retard = "ecu.knockRetard";
             const char* advance = "ecu.advance";
             const char* ecuFlags = "ecu.flags";     // sim/ecu/ecu1.fm's ECU_FLAG_*
@@ -290,7 +293,7 @@ namespace tee::ui
             if (lanes_.contains({ e.x, e.y }))
             {
                 const int lane = static_cast<int>((e.y - lanes_.y) / (lanes_.h / 3.0f));
-                ctx_.selection.select(lane == 0 ? "fuel" : lane == 1 ? "ecu.knock" : "ecu.timing");
+                ctx_.selection.select(lane == 0 ? "fuel" : lane == 1 ? "ecu.knock" : "ecu.maps.spark");
                 return;
             }
             Board::pointerDown(e);
@@ -319,7 +322,16 @@ namespace tee::ui
                     flags = std::isfinite(ef) ? ((static_cast<int>(ef) & 1) ? kFlagLimiter : 0) | ((static_cast<int>(ef) & 2) ? kFlagFuelCut : 0)
                                               : -1.0;
                 }
-                history_.push_back({ l.get(kTel.lambdaMeasured), l.get(kTel.lambdaAsked), l.get(kTel.knock), l.get(kTel.retard),
+                // Knocks: the count's rise since the last sample (a reset counts from 0).
+                const double count = l.get(kTel.knock);
+                const double knocks = !std::isfinite(count) ? count : !std::isfinite(lastCount_) || count < lastCount_ ? 0.0 : count - lastCount_;
+                lastCount_ = count;
+                // Each cylinder's retard, now.
+                const int fc = ctx_.doc.find("engine.cylinders");
+                cylinders_ = std::clamp(fc >= 0 ? static_cast<int>(std::lround(ctx_.doc.get(fc))) : 8, 1, 16);
+                for (int k = 0; k < 16; ++k)
+                    byCylinder_[static_cast<std::size_t>(k)] = l.get(std::string(kTel.knockByCylinder) + "[" + std::to_string(k) + "]");
+                history_.push_back({ l.get(kTel.lambdaMeasured), l.get(kTel.lambdaAsked), knocks, l.get(kTel.retard),
                                      l.get(kTel.advance), std::isfinite(flags) ? static_cast<int>(flags) : -1 });
                 while (static_cast<double>(history_.size()) > kHistory / kSampleEvery)
                     history_.pop_front();
@@ -451,11 +463,15 @@ namespace tee::ui
             switch (kMaps[i].y)
             {
                 case LiveY::gear: y = l.get(kTel.gear); break;
-                case LiveY::pedal: y = l.get(kTel.throttle); break;
+                case LiveY::pedal:
+                    y = l.get(kTel.pedal);
+                    if (!std::isfinite(y) && ctx_.app.controls)
+                        y = ctx_.app.controls().throttle;
+                    break;
                 case LiveY::load:
                 {
-                    const double m = l.get(kTel.manifold);
-                    y = yq == Quantity::pressure ? m : m / kAmbient;
+                    const double m = l.get(kTel.manifold), ld = l.get(kTel.load);
+                    y = yq == Quantity::pressure ? m : std::isfinite(ld) ? ld : m / kAmbient;
                     break;
                 }
             }
@@ -922,7 +938,7 @@ namespace tee::ui
                 }
                 chart::stroke(c, xs, yv, w, ink, d);
             };
-            // Lambda: measured (solid) against asked (dashed); the gap is what is wrong.
+            // Lambda: the sensor's (solid) against what was asked (dashed); the gap is what is wrong.
             lane(0, "LAMBDA", "fuel", 0.7, 1.2, [&](const chart::Scale& ys) {
                 c.hairlineH(lanes_.x, ys.px(1.0), lanes_.w, p.grid);
                 series(&Sample::target, ys, 1.5f, p.label, { 5.0f, 4.0f });
@@ -941,7 +957,7 @@ namespace tee::ui
                     if (std::isfinite(k) && k > 0.0)
                     {
                         const float x = xOf(i);
-                        c.segment(x, ys.px(0.0), x, ys.px(0.0) - static_cast<float>(k) * (ys.p0 - ys.p1), 2.0f, p.warning);
+                        c.segment(x, ys.px(0.0), x, ys.px(0.0) - static_cast<float>(std::min(1.0, k / 3.0)) * (ys.p0 - ys.p1), 2.0f, p.warning);
                     }
                 }
                 series(&Sample::retard, ys, 1.75f, p.hot, {});
@@ -961,7 +977,7 @@ namespace tee::ui
             }
             lo = std::floor(lo / 5.0) * 5.0 - 5.0;
             hi = std::ceil(hi / 5.0) * 5.0 + 5.0;
-            lane(2, "ADVANCE", "ecu.timing", lo, hi, [&](const chart::Scale& ys) { series(&Sample::advance, ys, 1.75f, p.selected, {}); },
+            lane(2, "ADVANCE", "ecu.maps.spark", lo, hi, [&](const chart::Scale& ys) { series(&Sample::advance, ys, 1.75f, p.selected, {}); },
                  last != nullptr ? look::num(last->advance, "%.1f") : "-", "deg BTDC");
             // The key: what each stroke is.
             float kx = lanes_.x;
@@ -974,7 +990,7 @@ namespace tee::ui
                 c.text(word, kx + 28.0f, ky, look::kCaps, p.label);
                 kx += 34.0f + c.textWidth(word, look::kCaps) + 14.0f;
             };
-            key("LAMBDA MEASURED", 1.75f, p.cold, {}, false);
+            key("LAMBDA SENSED", 1.75f, p.cold, {}, false);
             key("ASKED", 1.5f, p.label, { 5.0f, 4.0f }, false);
             key("KNOCK", 2.0f, p.warning, {}, true);
             key("RETARD", 1.75f, p.hot, {}, false);
@@ -990,14 +1006,53 @@ namespace tee::ui
         {
             static const char* const paths[] = { "ecu.limiter", "ecu.launch", "ecu.overrun", "ecu.traction", "ecu.knock" };
             std::vector<Hit> out;
-            const float h = std::min(30.0f, lamps_.h / 5.0f);
+            const float top = lamps_.y + kCylinderH, h = std::min(30.0f, (lamps_.h - kCylinderH) / 5.0f);
             for (int i = 0; i < 5; ++i)
-                out.push_back({ { lamps_.x, lamps_.y + h * static_cast<float>(i), lamps_.w, h }, paths[i] });
+                out.push_back({ { lamps_.x, top + h * static_cast<float>(i), lamps_.w, h }, paths[i] });
             return out;
+        }
+
+        // Over the lamps: each cylinder's knock retard as a small bar, numbered (what a tuner reads first).
+        static constexpr float kCylinderH = 46.0f;
+        void drawCylinders(Canvas& c, const look::Palette& p) const
+        {
+            const bool sel = ctx_.selection.is("ecu.knock");
+            c.text("KNOCK BY CYLINDER", lamps_.x + 6.0f, lamps_.y - 2.0f, look::kCaps, sel ? p.selected : p.label);
+            bool any = false;
+            double most = 3.0;
+            for (int k = 0; k < cylinders_; ++k)
+                if (std::isfinite(byCylinder_[static_cast<std::size_t>(k)]))
+                {
+                    any = true;
+                    most = std::max(most, byCylinder_[static_cast<std::size_t>(k)]);
+                }
+            if (!any)
+            {
+                c.text("-  not in this program yet", lamps_.x + 6.0f, lamps_.y + 16.0f, look::kUnit, p.dim);
+                return;
+            }
+            const float x0 = lamps_.x + 6.0f, w = lamps_.w - 12.0f, gap = 2.0f;
+            const float bw = (w - gap * static_cast<float>(cylinders_ - 1)) / static_cast<float>(cylinders_);
+            const float base = lamps_.y + 30.0f, hh = 16.0f;
+            const bool numbers = bw >= 12.0f || cylinders_ <= 9;
+            for (int k = 0; k < cylinders_; ++k)
+            {
+                const double v = byCylinder_[static_cast<std::size_t>(k)];
+                const float x = x0 + static_cast<float>(k) * (bw + gap);
+                c.rrect(x, base - hh, bw, hh, 1.5f, p.ground);
+                if (std::isfinite(v) && v > 0.0)
+                {
+                    const float bh = std::max(1.5f, hh * static_cast<float>(std::min(1.0, v / most)));
+                    c.rrect(x, base - bh, bw, bh, 1.5f, v > 0.5 ? p.warning : p.label);
+                }
+                if (numbers || k == 0 || k == cylinders_ - 1)
+                    c.text(std::to_string(k + 1).c_str(), x + bw * 0.5f, base + 2.0f, look::kUnit, p.dim, funkgui::Align::centre);
+            }
         }
 
         void drawLamps(Canvas& c, const look::Palette& p) const
         {
+            drawCylinders(c, p);
             const int flags = history_.empty() ? -1 : history_.back().flags;
             const bool known = flags >= 0;
             const double limiter = [&] {
@@ -1049,7 +1104,9 @@ namespace tee::ui
         std::deque<Sample> history_;
         std::deque<Pt> trailPts_;
         std::uint64_t historyRevision_ = 0;
-        double since_ = 0.0;
+        double since_ = 0.0, lastCount_ = std::nan("");
+        int cylinders_ = 8;
+        std::array<double, 16> byCylinder_{};
         int bakeWanted_ = -1;
         float bakeSeen_ = -1.0f;
         std::uint64_t slicesKey_ = 0;

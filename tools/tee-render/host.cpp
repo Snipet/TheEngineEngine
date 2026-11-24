@@ -216,8 +216,10 @@ int hostMain(int argc, char** argv)
                 build.name.empty() ? (buildName.empty() ? "defaults" : buildName.c_str()) : build.name.c_str(),
                 timeline.name.c_str(), run.simulatedSeconds, run.rate, timeline.block, run.wallSeconds,
                 run.wallSeconds > 0.0 ? run.simulatedSeconds / run.wallSeconds : 0.0);
-    std::printf("  host: load mean %.1f %%, peak %.1f %%; guard trips %d\n", 100.0 * run.host.loadMean,
-                100.0 * run.host.loadPeak, static_cast<int>(run.host.guardTrips));
+    std::printf("  host: load mean %.1f %%, peak %.1f %%; guard trips %d, restarts %d; blocks clamped to full scale %u "
+                "(the largest sample %.3g)\n",
+                100.0 * run.host.loadMean, 100.0 * run.host.loadPeak, static_cast<int>(run.host.guardTrips),
+                static_cast<int>(run.host.restarts), run.host.clippedBlocks, static_cast<double>(run.host.largestSample));
     if (outName != "-")
         std::printf("  %s%s\n", outName.c_str(), pcm24 ? " (24-bit)" : "");
     if (csvName != "-")

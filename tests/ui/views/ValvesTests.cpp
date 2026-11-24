@@ -369,3 +369,69 @@ namespace
         return 0;
     }
 }
+
+namespace
+{
+    // E's integration: a free valve is drawn where it opens and closes, and dragged there (one undo step); the second
+    // exhaust event is drawn when on; the ring takes the simulator's events when telemetry has them; the bench
+    // takes the simulator's own when telemetry has every element.
+    VIEW_TEST(testValvesLab, "valves.lab")
+    {
+        tee::ui::MemoryDoc doc(labFields());
+        const auto set = [&](const char* path, double v) { doc.set(doc.find(path), v); };
+        set("valve.inKind", 1.0);
+        set("valve.auxOn", 1.0);
+        const vv::Train t = vv::trainOf(doc);
+        CHECK(t.in.free && !t.ex.free);
+        CHECK_NEAR(t.in.seatOpen(), 350.0, 1e-9);
+        CHECK_NEAR(t.in.seatClose(), 590.0, 1e-9);
+        CHECK_NEAR(t.in.liftAt(470.0), 0.0124, 1e-9);   // dwelling at its lift between the flanks
+        CHECK_NEAR(t.in.liftAt(350.0), 0.0, 1e-9);
+        CHECK(t.aux.known());
+        CHECK_NEAR(t.aux.liftAt(710.0), 0.002, 0.002 * 1e-6);   // the brake's lobe peaks mid-event (680 + 30)
+
+        LabRig rig(1100, 700, 1.0f);
+        rig.doc.set(rig.doc.find("valve.inKind"), 1.0);
+        rig.doc.set(rig.doc.find("valve.auxOn"), 1.0);
+        rig.host->tick(5);
+        const int fo = rig.doc.find("valve.freeInOpen"), fc = rig.doc.find("valve.freeInClose");
+        const int steps = rig.doc.steps();
+        bool done = false;
+        for (float y = 60.0f; y < 420.0f && !done; y += 2.0f)
+            for (float x = 360.0f; x < 600.0f && !done; x += 2.0f)
+            {
+                rig.host->press(x, y);
+                if (rig.doc.depth() > 0)
+                {
+                    CHECK(rig.selection.path() == "valve.intake");
+                    rig.host->moveTo(x + 20.0f, y, 4);
+                    rig.host->release();
+                    done = true;
+                }
+                else
+                    rig.host->release();
+            }
+        CHECK(done);
+        CHECK(rig.doc.steps() == steps + 1);
+        CHECK(rig.doc.get(fo) > 350.0 + 5.0 && rig.doc.get(fc) > 590.0 + 5.0);
+        CHECK_NEAR(rig.doc.get(fc) - rig.doc.get(fo), 240.0, 1e-6);   // moved, not stretched
+        golden("valves.lab", *rig.host);   // a free intake, the brake's lobe, the demo's live events on the ring
+
+        // the bench: the simulator's when every element is in telemetry
+        tee::ui::DemoRig demo;
+        for (int i = 0; i < 16; ++i)
+        {
+            const std::string n = std::to_string(i);
+            demo.engine.set("valve.benchLift[" + n + "]", 0.00127 * (i + 1));
+            demo.engine.set("valve.benchIntake[" + n + "]", 0.05 + 0.001 * i);
+            demo.engine.set("valve.benchExhaust[" + n + "]", 0.04);
+        }
+        const vv::Bench b = vv::benchOf(demo.doc, 0.1016, demo.ctx.live);
+        CHECK(b.simulated && b.known);
+        CHECK_NEAR(b.flowIn[3], 0.053, 1e-12);
+        demo.engine.forget("valve.benchExhaust[7]");
+        demo.ctx.live.reset();
+        CHECK(!vv::benchOf(demo.doc, 0.1016, demo.ctx.live).simulated);   // one missing: this port's
+        return 0;
+    }
+}

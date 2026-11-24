@@ -36,6 +36,7 @@ module Combustion
     Layout* lay;
     Pop* pop;
     float droop;        // a diesel's governor near its redline: the share of the fuel it lets through
+    float oxygen;       // the charge's oxygen over air's: Boost's oxygenShare() (1 without nitrous), set by Engine
     float dilution[MAX_CYL]; // each cylinder's burned-gas share at its last intake closing
     // fuel.model 1 and ecu.model 1 (card H)
     FuelSpec* fuel;
@@ -285,7 +286,7 @@ module Combustion
         float burnLen = 1.0f;
         if (f1)
         {
-            one.make(fuel->grade, firing, burnable, 1.0f, lambda, fuel->direct, cy->t, share, factor, -adv,
+            one.make(fuel->grade, firing, burnable, oxygen, lambda, fuel->direct, cy->t, share, factor, -adv,
                      0.5f + 0.5f * nz->rnd(), extra);
             q = one.heat;
             outFuel = one.outFuel;

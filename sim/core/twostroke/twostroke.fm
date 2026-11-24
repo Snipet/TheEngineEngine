@@ -1,0 +1,249 @@
+// twostroke.fm: a crankcase-scavenged two-stroke engine of one to four cylinders, each with its own expansion chamber
+// (or straight pipe): what the engine (sim/engine.fm) runs in place of its four-stroke cylinders, their valvetrain,
+// combustion, exhaust and intake when spec.engine.cycle is the two-stroke's.
+//
+// The cycle is one turn (360 degrees). Cylinder c fires `offset[c]` degrees after cylinder 1: an even engine one every
+// 360 / n (a 180-degree twin, a 120-degree triple, a 90-degree four), a "together" one all at once (a 360-degree
+// twin). Each cylinder breathes in through its own crankcase and carburettor (TwoStrokeCylinder) and out through its
+// own pipe (ExpansionChamber): no pipe is shared, as on nearly every two-stroke built, whose chambers would spoil one
+// another's waves through a shared one.
+//
+// The pipes' gas: its temperature (and so the speed of sound, and so the speed the pipe is tuned for) follows the gas
+// leaving the ports, mass-weighted, less what the pipe's walls take (the pipe's gas settles at the air's temperature
+// plus 0.8 of the ports' excess over it, judgement: a racing chamber's gas runs some 500 to 650 C at full load, Blair
+// ch. 5), with a time constant of 1.5 s (the walls' warming, judgement). The tuned speed rises as the pipe heats: an
+// engine "comes on the pipe" sooner once warm, as riders know. A test can hold the pipe's temperature (`tFixed`).
+//
+// The power valve: its blade lowers the exhaust's top edge below `valveFrom` and raises it fully by `valveTo`; the
+// actuator moves at its own pace (0.1 s to cross, judgement for a servo or a governor's).
+//
+// Glided: the pipes' temperature, the power valve. Made under the fade (configure): the cylinders' count, firing,
+// geometry, the ports, the inlets, the pipes' sections.
+#pragma once
+#include "exhaust/duct.fm"
+#include "spec/engine.fm"
+#include "core/twostroke/cylinder2.fm"
+#include "core/twostroke/chamber.fm"
+
+enum
+{
+    TS_MAX_CYL = 4
+};
+
+module TwoStroke
+{
+    TwoStrokeCylinder cy[TS_MAX_CYL];
+    ExpansionChamber ch[TS_MAX_CYL];
+    float offset[TS_MAX_CYL];   // degrees after cylinder 1 at which each fires
+    float pPort[TS_MAX_CYL];    // each port's pressure this sample (Pa over the air)
+    int n;
+    float rate;
+    // the pipes' gas
+    float tPipe;        // K, the pipes' gas now
+    float tFixed;       // > 0: held there (a test's)
+    float cSet;         // the sound speed the pipes were last tuned for
+    double hEx;         // the gas out of the ports since the last control: its mass and its mass times temperature
+    double mEx;
+    // the power valve
+    float exDur;        // the exhaust's duration now (degrees)
+    float valve;        // the blade's position, 0 down (shortest duration) to 1 up
+    // out, each sample
+    float torque;       // the gases' torque on the crank (N m)
+    float outL;         // what the stingers radiate (m^3/s^2, as Exhaust's tails): the odd cylinders' on the left,
+    float outR;         // the even's on the right (a single's on both)
+    float intakeOut;    // the carburettors' mouths: the rate the air drawn in changes (kg/s^2)
+    float mIn;          // the air drawn in now (kg/s), all cylinders
+    float mdot;         // the gas out of the ports now (kg/s)
+    float mIPrev;
+    // reports, from the last cycles (cylinder 1's trapping; all cylinders' delivery)
+    float purity;
+    float delivery;     // delivery ratio: the fresh charge the transfers delivered a cycle over the swept volume's
+                        // worth at the air's density
+    float trapping;     // trapping efficiency: of what was delivered, the share trapped
+    float vd;           // a cylinder's swept volume (m^3)
+
+    void setup(float rateIn)
+    {
+        rate = rateIn;
+        for (int c = 0; c < TS_MAX_CYL; ++c)
+            ch[c].configure(rate);
+        n = 1;
+        tFixed = 0.0f;
+        tPipe = 600.0f;
+        cSet = 0.0f;
+    }
+
+    void release()
+    {
+        for (int c = 0; c < TS_MAX_CYL; ++c)
+            ch[c].release();
+    }
+
+    float soundSpeed(float t)
+    {
+        return sqrtf(1.35f * 287.0f * t);
+    }
+
+    // The engine for the spec and its geometry (m; the geometric compression ratio), at rest at crank angle theta
+    // (degrees), the air's pressure and temperature; every pipe cleared
+    void configure(const EngineSpec* s, float bore, float stroke, float rod, float compression, float theta,
+                   float pAir, float tAir)
+    {
+        n = s->tsCylinders < 1 ? 1 : (s->tsCylinders > TS_MAX_CYL ? TS_MAX_CYL : s->tsCylinders);
+        tPipe = tFixed > 0.0f ? tFixed : tAir + 100.0f;
+        cSet = soundSpeed(tPipe);
+        for (int c = 0; c < n; ++c)
+        {
+            offset[c] = s->tsFiring == 1 ? 0.0f : 360.0f * (float)c / (float)n;
+            cy[c].setup(s, bore, stroke, rod, compression);
+            ch[c].build(s, cSet);
+        }
+        vd = cy[0].sc.vd;
+        valve = 0.0f;
+        exDur = cy[0].exhaustDurAt(s, 0.0f);
+        reset(s, theta, pAir, tAir);
+    }
+
+    // Cylinder c's angle in its own cycle for the crank's (degrees: 0 at its top dead centre, 0 to 360)
+    float angleOf(int c, float theta)
+    {
+        float a = theta - offset[c];
+        a -= 360.0f * floorf(a / 360.0f);
+        return a;
+    }
+
+    void reset(const EngineSpec* s, float theta, float pAir, float tAir)
+    {
+        for (int c = 0; c < n; ++c)
+        {
+            cy[c].reset(angleOf(c, theta), pAir, tAir);
+            cy[c].exhaustEdge(exDur);
+            ch[c].build(s, cSet);
+            pPort[c] = 0.0f;
+        }
+        hEx = 0.0;
+        mEx = 0.0;
+        torque = 0.0f;
+        outL = 0.0f;
+        outR = 0.0f;
+        intakeOut = 0.0f;
+        mIn = 0.0f;
+        mIPrev = 0.0f;
+        mdot = 0.0f;
+        purity = 1.0f;
+        delivery = 0.0f;
+        trapping = 0.0f;
+    }
+
+    // Every 16 samples: d16 seconds since the last; omega the crank's speed (rad/s); the walls' temperature (K)
+    void control16(const EngineSpec* s, float omega, float d16, float tWall, float tAir)
+    {
+        // the power valve, at its actuator's pace
+        if (s->tsValveDur > 0.0f)
+        {
+            const float k = fminf(fmaxf((omega - s->tsValveFrom) / fmaxf(s->tsValveTo - s->tsValveFrom, 1.0f), 0.0f), 1.0f);
+            const float want = k * k * (3.0f - 2.0f * k);
+            const float step = d16 / 0.1f;
+            valve += fminf(fmaxf(want - valve, -step), step);
+            exDur = s->tsValveDur + (s->tsExhaustDur - s->tsValveDur) * valve;
+        }
+        else
+        {
+            valve = 1.0f;
+            exDur = s->tsExhaustDur;
+        }
+        for (int c = 0; c < n; ++c)
+        {
+            cy[c].exhaustEdge(exDur);
+            cy[c].tWall = tWall;
+        }
+        // the pipes' gas
+        if (tFixed > 0.0f)
+            tPipe = tFixed;
+        else
+        {
+            const float tPorts = mEx > 1.0e-9 ? (float)(hEx / mEx) : tAir;
+            const float want = tAir + 0.8f * (tPorts - tAir);
+            tPipe += (fminf(fmaxf(want, tAir), 1300.0f) - tPipe) * fminf(d16 / 1.5f, 1.0f);
+        }
+        hEx = 0.0;
+        mEx = 0.0;
+        const float cNow = soundSpeed(tPipe);
+        if (fabsf(cNow - cSet) > 0.5f)
+        {
+            cSet = cNow;
+            for (int c = 0; c < n; ++c)
+                ch[c].retune(cSet);
+        }
+        const float k16 = 1.0f - expf(-d16 / 0.05f);
+        for (int c = 0; c < n; ++c)
+            ch[c].flow16(k16);
+        // the reports
+        purity = cy[0].purity;
+        float del = 0.0f;
+        for (int c = 0; c < n; ++c)
+            del += cy[c].delivered;
+        del /= (float)n;
+        const float rhoAir = 101325.0f / (287.0f * tAir);
+        delivery = del / (vd * rhoAir);
+        trapping = del > 1.0e-9f ? fminf(cy[0].trappedFresh / del, 1.0f) : 0.0f;
+    }
+
+    // One sample: the crank's angle (degrees, any range: taken modulo 360), what it turned (degrees), dt (s), its speed
+    // (rad/s); the throttle (0 to 1); fire 0 when the ignition is cut; the air at the carburettors. Returns the gases'
+    // torque on the crank (N m).
+    float step(const EngineSpec* s, float theta, float dDeg, float dt, float omega, float throttle, int fire,
+               float pAir, float tAir)
+    {
+        const float rpm = omega * 9.5492966f;
+        float tq = 0.0f;
+        float left = 0.0f;
+        float right = 0.0f;
+        float mi = 0.0f;
+        float me = 0.0f;
+        for (int c = 0; c < n; ++c)
+        {
+            ch[c].read();
+            cy[c].step(s, angleOf(c, theta), dDeg, dt, rpm, ch[c].seg[0].near, ch[c].seg[0].z, tPipe, pAir, tAir,
+                       throttle, exDur, fire);
+            pPort[c] = ch[c].write(cy[c].qEa);
+            tq += cy[c].tq;
+            mi += cy[c].mI;
+            me += cy[c].mE;
+            if (cy[c].mE > 0.0f)
+            {
+                mEx += (double)(cy[c].mE * dt);
+                hEx += (double)(cy[c].mE * dt * cy[c].t);
+            }
+            if ((c & 1) == 0)
+                left += ch[c].out;
+            else
+                right += ch[c].out;
+        }
+        if (n == 1)
+            right = left;
+        torque = tq;
+        outL = left;
+        outR = right;
+        mIn = mi;
+        mdot = me;
+        intakeOut = (mi - mIPrev) * rate;
+        mIPrev = mi;
+        return tq;
+    }
+
+    // For the Scope: cylinder c's exhaust and transfer ports' open shares now (0 to 1)
+    float openExhaust(int c)
+    {
+        const float full = cy[c].tableAt(cy[c].aTabE, 64.0f * cy[c].dE, cy[c].dE);
+        const float x = cy[c].sc.x;
+        const float a = x > cy[c].xE ? cy[c].tableAt(cy[c].aTabE, x - cy[c].xE0, cy[c].dE) - cy[c].aCutE : 0.0f;
+        return full > 0.0f ? a / full : 0.0f;
+    }
+
+    float openTransfer(int c)
+    {
+        const float full = cy[c].tableAt(cy[c].aTabT, 64.0f * cy[c].dT, cy[c].dT);
+        return full > 0.0f ? cy[c].tableAt(cy[c].aTabT, cy[c].sc.x - cy[c].xT, cy[c].dT) / full : 0.0f;
+    }
+};
