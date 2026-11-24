@@ -135,8 +135,10 @@ The cold key-on's "silence" is not silent: with the engine standing, the pipes' 
 start to the build's air (first.json's 288 K), some 21 dB over a warm key-on's floor; heard only because voices.model 1
 renders from the key. Reported to the lead and card D (22:50); card D's f6a8b88d makes a standing engine take the
 build's air at once (the pipes' port at 288.15 K from the first block), but most of it is left (22:59, first.json at
-288 K through Side: a transient from the reset peaking at -49 dBFS near 0.1 s, then a steady -83; neither at 300 K):
-with card D. It buries a cold prime until it is cured. (Times here are this session's clock at receipt; the lead's
+288 K through Side: a transient from the reset peaking at -49 dBFS near 0.1 s, then a steady -83; neither at 300 K).
+Card D traced the rest (23:03): the boost machine's volumes and intercooler core (card N2's) start at 300 K and feed
+the intake each sample; with `boost.model` 0 nothing is left above -121 dBFS. The cure, its stores starting at the
+build's air at a configure at rest, is N2's. It buries a cold prime until it is cured. (Times here are this session's clock at receipt; the lead's
 messages of 22:41 and 22:46 carried estimates up to 24 minutes fast.)
 
 The diesel clatter (the reference's, `extras.fm`'s setClatter / clatterClick, kicked at each burn's start) is untouched
