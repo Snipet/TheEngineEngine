@@ -77,6 +77,13 @@ namespace tee
         // with it: first 0.78 s, refined 1.97 s on 3 workers.
         double minHoldSeconds = 1.0;
         double warmupSeconds = 0.0;   // engine time a fresh instance runs at full throttle mid-range before its first point
+        // A knock-limited point (knock control's retard at knockLimit degrees or more in it): the retard is a sawtooth
+        // (a step a knock, given back at some 2 degrees a second, ecu/knockctl.fm), and so is the torque, so no two
+        // cycles agree. Such a point is the mean over the last two windows of knockWindowSeconds each, settled once the
+        // two windows' means agree within the tolerance; it is held knockMostSeconds at most.
+        double knockLimit = 0.5;
+        double knockWindowSeconds = 1.0;
+        double knockMostSeconds = 8.0;
         std::size_t cacheSize = 64;   // curves kept by key
     };
 
@@ -92,6 +99,10 @@ namespace tee
         bool valid = true;
         std::vector<double> fields;   // PredictOptions::fields' values at the point's end, in order
         double knockRetard = 0.0;     // degrees, knock control's retard at the point's end (mean over retarded cylinders)
+        // Knock control's retard reached PredictOptions::knockLimit in the point: its torque is the mean over whole
+        // windows of the retard's sawtooth (above), whose least and most retard over them are these
+        bool knockLimited = false;
+        double retardMin = 0.0, retardMax = 0.0;
         std::vector<double> history;  // each cycle's mean torque there, in order (the first after a change of speed)
     };
 
