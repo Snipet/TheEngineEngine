@@ -1,0 +1,121 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "V8, overrun pops 0 %",
+  "notes": "The V8 with the overrun's pops dial at 0 % (ecu.pops) (package X's listening pack: scripts/listening-pack.tsv)",
+  "spec": {
+    "engine": {
+      "layout": "V8 crossplane",
+      "displacement": 0.0062099,
+      "boreStroke": 0.8798,
+      "compression": 13.5844,
+      "flywheel": 0.4586,
+      "idleTrim": 0,
+      "redlineTrim": 0,
+      "rough": 0,
+      "benchLoad": 0.3451,
+      "custom": false,
+      "cylinders": 8,
+      "bankAngle": [
+        45,
+        -45
+      ],
+      "bank": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1
+      ],
+      "pin": [
+        45,
+        45,
+        135,
+        135,
+        315,
+        315,
+        225,
+        225
+      ],
+      "fireRev": [
+        0,
+        1,
+        0,
+        0,
+        1,
+        1,
+        1,
+        0
+      ],
+      "place": [
+        0.0,
+        0.033,
+        0.1,
+        0.133,
+        0.2,
+        0.233,
+        0.3,
+        0.333
+      ]
+    },
+    "valve": {
+      "cam": 0.9999
+    },
+    "boost": {
+      "kind": "Natural",
+      "level": 0,
+      "size": 0.7328,
+      "blowOff": 1
+    },
+    "exhaust": {
+      "headers": 0.3247,
+      "pipe": 0.6325,
+      "crossover": 0,
+      "muffler": 0
+    },
+    "fuel": {
+      "kind": "Gasoline"
+    },
+    "ecu": {
+      "timing": 0,
+      "pops": 0.0,
+      "starter": true
+    },
+    "car": {
+      "mass": 1700,
+      "drive": "Rear",
+      "wheelbase": 2.72,
+      "cgHeight": 0.53,
+      "frontWeight": 0.54,
+      "track": 1.6,
+      "cdA": 0.77,
+      "clA": 0,
+      "aeroBalance": 0.45,
+      "tyre": "Sport",
+      "tyreRadius": 0.34,
+      "wheelInertia": 1.4,
+      "brakeDecel": 1.2,
+      "brakeBias": 0.62,
+      "abs": true,
+      "gearbox": "Manual",
+      "gears": 6,
+      "autoGearing": true,
+      "rearPreload": 80,
+      "rearKTorque": 0.25
+    },
+    "env": {
+      "temperature": 293.15
+    },
+    "sound": {
+      "view": "Exhaust",
+      "distance": 0.2994,
+      "room": 0.6176,
+      "level": 2.8467,
+      "intake": 0.5,
+      "mechanical": 0.6503
+    }
+  }
+}

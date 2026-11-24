@@ -1,0 +1,160 @@
+// listen/places.fm: where the car is: the early reflections and the reverberation of a place (module Place, package L).
+//
+// A place is its first reflections (each an image of the car in a wall, a ceiling or a facade: a delay by the extra
+// path, a level by the extra spreading and the surface's loss, the highs taken by the air and the surface) and then the
+// reference's hall (listen/hall.fm) as its diffuse tail, at the place's reverberation time and share. The ground's own
+// reflection is not here: it is each source's third path in Scene.
+//
+//   0 Hall      the reference's room, as it was: no early reflections of its own, RT 0.4 + 2.2 ROOM s
+//   1 Field     open ground; one slap off a tree line or a building 34 m away (200 ms), dull and faint; RT 0.3 s
+//   2 Street    a street 14 m wide between buildings, the listener 4 m from one facade: the near facade at 23 ms, the
+//               far at 58 ms, their flutter at 105 and 140 ms; RT 1.4 s
+//   3 Tunnel    9 m wide, 6 m high, concrete: walls and ceiling from 23 ms, dense to 90 ms, little lost; RT 3 s
+//   4 Garage    6 by 7 by 3 m, block walls and a concrete floor: a dense cluster from 5 to 40 ms; RT 0.8 s
+//
+// The levels are the image sources' spreading (the direct path's length over the image's, the car some 4 m from the
+// listener) times the surface's reflection (brick and concrete 0.9, a tree line 0.3), rounded. In the cabin the windows
+// take most of a place (a third of it with them shut, all of it open), as they take the room.
+//
+//   place.setup(rate); place.release();
+//   place.process(inL, inR, outL, outR, n, kind, inside): the early reflections of n samples, added into outL, outR
+//   place.rt(kind, room), place.wet(kind, room): the hall's time and share for the place
+#pragma once
+#include "../lib/onepole.fm"
+
+enum
+{
+    PL_HALL = 0,
+    PL_FIELD = 1,
+    PL_STREET = 2,
+    PL_TUNNEL = 3,
+    PL_GARAGE = 4,
+    PL_CAP = 32768,
+    PL_MASK = 32767
+};
+
+module Place
+{
+    float rate;
+    float* hL;
+    float* hR;
+    int w;
+    int kindNow;
+    int tapL[8];
+    int tapR[8];
+    float gL[8];
+    float gR[8];
+    OnePole lp[2];
+    float level;        // the reflections' level: gliding to 1 (or the cabin's share) at a change
+    float levelT;
+    int ready;
+
+    void setup(float rateIn)
+    {
+        rate = rateIn;
+        hL = calloc(PL_CAP, sizeof(float));
+        hR = calloc(PL_CAP, sizeof(float));
+        w = 0;
+        kindNow = -1;
+        level = 0.0f;
+        ready = 1;
+    }
+
+    void release()
+    {
+        if (ready != 0)
+        {
+            free(hL);
+            free(hR);
+        }
+        ready = 0;
+    }
+
+    void clear()
+    {
+        for (int i = 0; i < PL_CAP; ++i)
+        {
+            hL[i] = 0.0f;
+            hR[i] = 0.0f;
+        }
+        lp[0].clear();
+        lp[1].clear();
+    }
+
+    // The place's taps: ms and level, left and right
+    void design(int kind)
+    {
+        kindNow = kind;
+        const float msL[40] = {
+            0, 0, 0, 0, 0, 0, 0, 0,
+            200, 0, 0, 0, 0, 0, 0, 0,
+            23, 58, 105, 140, 81, 0, 0, 0,
+            23, 26, 37, 52, 61, 75, 90, 44,
+            5, 9, 13, 17, 22, 27, 33, 40};
+        const float msR[40] = {
+            0, 0, 0, 0, 0, 0, 0, 0,
+            203, 0, 0, 0, 0, 0, 0, 0,
+            25, 61, 108, 137, 84, 0, 0, 0,
+            29, 26, 41, 49, 66, 71, 94, 47,
+            6, 8, 14, 18, 21, 28, 34, 39};
+        const float gg[40] = {
+            0, 0, 0, 0, 0, 0, 0, 0,
+            0.05f, 0, 0, 0, 0, 0, 0, 0,
+            0.5f, 0.28f, 0.18f, 0.12f, 0.15f, 0, 0, 0,
+            0.6f, 0.6f, 0.45f, 0.4f, 0.35f, 0.3f, 0.25f, 0.42f,
+            0.55f, 0.5f, 0.45f, 0.42f, 0.38f, 0.33f, 0.3f, 0.25f};
+        const float fc[5] = {20000.0f, 1800.0f, 6000.0f, 8000.0f, 9000.0f};
+        const int k = kind < 0 ? 0 : (kind > 4 ? 4 : kind);
+        for (int i = 0; i < 8; ++i)
+        {
+            tapL[i] = (int)(msL[k * 8 + i] * 0.001f * rate);
+            tapR[i] = (int)(msR[k * 8 + i] * 0.001f * rate);
+            gL[i] = tapL[i] > 0 ? gg[k * 8 + i] : 0.0f;
+            gR[i] = tapR[i] > 0 ? gg[k * 8 + i] : 0.0f;
+        }
+        lp[0].set(fc[k], rate);
+        lp[1].set(fc[k], rate);
+    }
+
+    float rt(int kind, float room)
+    {
+        const float t[5] = {0.0f, 0.3f, 1.4f, 3.0f, 0.8f};
+        return kind <= 0 || kind > 4 ? 0.4f + 2.2f * room : t[kind];
+    }
+
+    // The hall's share for the place, by the ROOM dial (0.15 its default: the place as described)
+    float wet(int kind, float room)
+    {
+        const float s[5] = {1.0f, 0.03f, 0.25f, 0.8f, 0.5f};
+        return kind <= 0 || kind > 4 ? room : s[kind] * room / 0.15f;
+    }
+
+    // n samples: the reflections of inL, inR added into outL, outR; a new place is taken with its reflections faded
+    // out and back in, each over some 40 ms (a time constant: no step, no swell)
+    void process(float* inL, float* inR, float* outL, float* outR, int n, int kind, float inside)
+    {
+        if (kind != kindNow && level < 0.01f)
+            design(kind);
+        levelT = kind != kindNow ? 0.0f : inside;
+        const float kg = 1.0f - expf(-1.0f / (0.04f * rate));
+        for (int i = 0; i < n; ++i)
+        {
+            w = (w + 1) & PL_MASK;
+            hL[w] = inL[i];
+            hR[w] = inR[i];
+            level += (levelT - level) * kg;
+            if (kindNow <= 0)
+                continue;
+            float yl = 0.0f;
+            float yr = 0.0f;
+            for (int t = 0; t < 8; ++t)
+            {
+                // a reflection off a wall on one side reaches the other ear too: the taps cross a little
+                yl += gL[t] * (0.8f * hL[(w - tapL[t]) & PL_MASK] + 0.2f * hR[(w - tapL[t]) & PL_MASK]);
+                yr += gR[t] * (0.8f * hR[(w - tapR[t]) & PL_MASK] + 0.2f * hL[(w - tapR[t]) & PL_MASK]);
+            }
+            outL[i] += level * lp[0].lowpass(yl);
+            outR[i] += level * lp[1].lowpass(yr);
+        }
+    }
+};

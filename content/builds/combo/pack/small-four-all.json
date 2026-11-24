@@ -1,0 +1,111 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "Small four, every package on",
+  "notes": "The archetype with every model switch at 1 and the custom engine on (package X's listening pack: scripts/listening-pack.tsv)",
+  "spec": {
+    "engine": {
+      "layout": "Inline 4",
+      "displacement": 0.0016,
+      "boreStroke": 0.8798,
+      "compression": 10.5,
+      "flywheel": 0.12,
+      "idleTrim": 0,
+      "redlineTrim": 0,
+      "rough": 0,
+      "benchLoad": 0.2,
+      "custom": true,
+      "cylinders": 4,
+      "bankAngle": [
+        0.0
+      ],
+      "bank": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "pin": [
+        0,
+        180,
+        180,
+        0
+      ],
+      "fireRev": [
+        0,
+        1,
+        0,
+        1
+      ],
+      "place": [
+        0.0,
+        0.1,
+        0.2,
+        0.3
+      ]
+    },
+    "valve": {
+      "cam": 0.9999,
+      "model": 1
+    },
+    "boost": {
+      "kind": "Natural",
+      "level": 0,
+      "size": 0.7328,
+      "blowOff": 1,
+      "model": 1
+    },
+    "exhaust": {
+      "headers": 0.3247,
+      "pipe": 0.6325,
+      "crossover": 0,
+      "muffler": 0,
+      "model": 1
+    },
+    "fuel": {
+      "kind": "Gasoline",
+      "model": 1
+    },
+    "ecu": {
+      "timing": 0,
+      "pops": 0,
+      "starter": true,
+      "model": 1
+    },
+    "car": {
+      "mass": 1150,
+      "drive": "Front",
+      "wheelbase": 2.6,
+      "cgHeight": 0.52,
+      "frontWeight": 0.62,
+      "track": 1.5,
+      "cdA": 0.63,
+      "clA": 0,
+      "aeroBalance": 0.45,
+      "tyre": "Street",
+      "tyreRadius": 0.31,
+      "wheelInertia": 0.9,
+      "brakeDecel": 1.1,
+      "brakeBias": 0.7,
+      "abs": true,
+      "gearbox": "Manual",
+      "gears": 6,
+      "autoGearing": true,
+      "model": 1
+    },
+    "env": {
+      "temperature": 293.15
+    },
+    "sound": {
+      "view": "Exhaust",
+      "distance": 0.2994,
+      "room": 0.6176,
+      "level": 2.8467,
+      "intake": 0.5,
+      "mechanical": 0.6503
+    },
+    "intake": {
+      "model": 1
+    }
+  }
+}

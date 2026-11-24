@@ -1,8 +1,9 @@
-# H: combustion, fuels and the ECU (standalone; integration waits for K3b)
+# H: combustion, fuels and the ECU
 
 Card H ([w1-h-combustion-ecu.md](../plan/w1-h-combustion-ecu.md)), branch `claude/awesome-gates-ntdb58`. Models and
-sources: [combustion.md](../models/combustion.md), [ecu.md](../models/ecu.md). Run: configure with
-`-DCMAKE_PROJECT_TheEngineEngine_INCLUDE=$PWD/tests/sim/ecu/standalone.cmake`, then `ctest -R '^h\.'` (19 pass).
+sources: [combustion.md](../models/combustion.md), [ecu.md](../models/ecu.md). The standalone part below
+(its first build: `standalone.cmake`, now gone) is now `tee-tests-combustion` and `tee-tests-ecu`; the integrated part
+follows it.
 
 **Done, standalone** (`sim/combustion/`, `sim/ecu/`; tests in `tests/sim/combustion/`, `tests/sim/ecu/`):
 - H1 fuel energy: each row's LHV/AFR, 2.93 to 3.08 MJ a kg of air (hydrogen 3.50, untested row); mixture: heat's top at lambda 0.86 to 0.92, unburned, misfire limits, cooling.
@@ -29,3 +30,43 @@ sources: [combustion.md](../models/combustion.md), [ecu.md](../models/ecu.md). R
 4. K3b: name carved files apart from mine (`fuels`, `mixture`, `knock`, `diesel`, `watch`, `charge1`, `settings`; `maps`, `limiter`, `idle`, `state`, `launch`, `knockctl`, `overrun`, `traction`, `ecu1`).
 
 **Found**: no FMinus issue. The reference's idle gains limit-cycle (plus or minus 75 to 110 rpm) when the torque lags 270 degrees or more on the one-line engine; they hold at 180. Listen to nothing yet: no model-1 sound exists until integration.
+
+## Integrated (after K3b)
+
+Card H, branch `claude/awesome-gates-ntdb58`. Tests: `ctest -R '^(combustion|ecu)\.'` (`tests/sim/<package>/`, the
+glob's rule). Models: [combustion.md](../models/combustion.md), [ecu.md](../models/ecu.md) ("Integrated").
+
+- **Wired**: `Combustion::charge1`/`sample` behind `fuel.model` or `ecu.model` 1; `Ecu::control1` over the reference's
+  control behind `ecu.model` 1; both models 0 the reference: **null test identical to the bit** (`tee-tests "[null]"`,
+  every pair, run on the merged tip before the push). My `engine.fm` edits: `comb.setup(..., &spec.fuel)`,
+  `ecu.setup(...)` after it, `ecu.control(..., intk.pPlenum, car speed, exh.gasTemperature(0))`, `comb.sample(cy, c, dt)` after each
+  cylinder's step (D's hooks for these were not there; nothing else of `engine.fm` touched). D's stubs in `ecu.fm` are filled with
+  D's signatures: `camTarget` and `boostTarget` return -1 ("the section's own") under model 0 or a map on its formula.
+- **Tests**: 6 one maximum (20 degrees; half-burn there 0.3 after the top, not 6 to 12: `[!mayfail]`, the cylinder's
+  wall loss, D's); 7 torque peaks at lambda 0.90 (exhaust temperature also 0.90, not 1.0 to 1.05: `[!mayfail]`); 8 knock
+  from 27.5 degrees on regular, none to 40 on E85; boost: 0.32 bar regular, 0.92 bar methanol; 9 a clean overrun no
+  bang, a spark-cut limiter 638 bangs in 3 s, overrun fuel 0.1/0.4 burns 7/20 mg; 11 random pedals 40 s a kind (10 min:
+  `H_SOAK_SECONDS=600`, not run), finite, at most the redline + 209 (the throttle kind); the bake; model 0's telemetry stays 0. 10 waits
+  for card I's slip. Standalone 1 to 4 pass as before.
+- **Knock calibration**: `fuel.knockDelay` 3 (the V8 on regular at its knock edge, premium clean; 1 knocks everywhere).
+- **Validation (card C)**: not landed. The V8 idles 900 to 1500 rpm (a lope, the charge's dilution recursion) on a
+  cold target near 1200 under both models; `ecu.idle.speed` 800 rpm stalls it. Needs the dilution toll at slow idle.
+
+**Names for the interface (final)**. Telemetry `tel.ecu.`: `advance` (the engine writes cylinder 1's, both models), `advanceAsked`,
+`knockRetard`, `knockByCylinder[16]`, `knock` (a count), `lambda` (the sensor), `lambdaTarget`, `injectorDuty`,
+`fuelFlow`, `halfBurn`, `peakPressure`, `peakAngle`, `flags` (1 limiter, 2 fuel cut, 4 spark cut, 8 overrun, 16
+launch, 32 flat-shift, 64 anti-lag, 128 nitrous, 256 traction, 512 pit, 1024 knock retard), `limiter` (0/1),
+`idleValve`, `idleTarget`, `boostTarget`, `state`, `smoke`, `load`. No `exhaust.lambda`. Spec `ecu.`: `model`,
+`limiter.{kind,speed,soft,retard}`, `launch.{on,speed,retard,flatShift}`, `overrun.{fuel,retard}`,
+`knock.{on,step,most,recover}`, `idle.{coldRise,speed}`, `traction.{on,slip,pitSpeed}`,
+`antiLag.{on,low,high,retard,lambda}`, `nitrous.{on,low,gear,retard,lambda}`, maps `ecu.maps.{spark,lambda,boost,
+camIn,camEx,pedal,lift}` (Map16) with `ecu.maps.<name>Auto`. Axes: x `engine.speed` (rad/s); y `ecu.load` (boost:
+`car.gear`; pedal: the pedal, `ctl.throttle`). `spec.fuel.`: `model`, `grade`, `direct`, `knockDelay`, `injector`,
+`soiAdd`, `pilot`, `rail`, `overFuel`. Scope: `bakeCount`, `bakedNx[7]`, `bakedNy[7]`, `bakedX[7][16]` (rad/s),
+`bakedY[7][16]`, `baked[7][256]` (z[i][j] at i*16+j), maps in the order above, on each `ctl.bakeMaps` increase.
+
+**Cost** (`tee-bench --engine`, v8 free-revs, least of 2, a loaded machine): models 0 1.046 of the reference (all
+packages' hooks), both models 1 1.067: model 1 adds some 0.02 R (budget 0.06 R). **Asked of others**: F: honour `boostTarget()` -1 as its own level, fill `oxygenShare()` (Combustion uses 1 until it
+is passed in); G: fill `popAt` (Combustion fires the reference's `Pop`s meanwhile); I: fill the car's six values
+(`Ecu::vehicle` stores them). Upstream's
+`tests/sim/core/EngineExplore.cpp` does not compile on the tip (`Build` undeclared): D's.

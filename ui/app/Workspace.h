@@ -32,6 +32,7 @@
 #include <cmath>
 #include <cstdint>
 #include <functional>
+#include <initializer_list>
 #include <limits>
 #include <map>
 #include <memory>
@@ -199,6 +200,16 @@ namespace tee::ui
         // Forget the handles (the source now plays another program).
         void reset() { handles_.clear(); }
         bool has(std::string_view name) const { return std::isfinite(get(name)); }
+        // The first of several names that the source has (a value whose name is not settled yet): NaN when none.
+        double first(std::initializer_list<std::string_view> names) const
+        {
+            for (const std::string_view n : names)
+                if (const double v = get(n); std::isfinite(v))
+                    return v;
+            return std::numeric_limits<double>::quiet_NaN();
+        }
+        // Lambda (the air-fuel ratio over stoichiometric) by whichever name the program gives it.
+        double lambda() const { return first({ "exhaust.lambda", "ecu.lambda", "engine.lambda" }); }
         TelemetrySource& source() const noexcept { return *source_; }
 
     private:
@@ -230,8 +241,9 @@ namespace tee::ui
         // The ECU's maps baked from its formulas now (ctl.bakeMaps pressed once; TUNE's BAKE). None: not here.
         std::function<void()> bakeMaps;
         // A text saved as a file the person chooses (a dyno run's CSV, an export): the host's save dialog, starting at
-        // `suggestedName`. False, with `error`, when it was not saved (cancelled: error empty). None: no saving here
-        // (a workspace then copies the text: HostServices::copyText).
+        // `suggestedName`. True once the dialog is open (the window's dialog answers later: whether it was saved or
+        // cancelled goes on the status line); false, with `error`, when no dialog can open. None: no saving here (a
+        // workspace then copies the text: HostServices::copyText).
         std::function<bool(const std::string& suggestedName, const std::string& text, std::string& error)> saveText;
     };
 

@@ -61,6 +61,8 @@ namespace
             const std::string rest = path.substr(prefix.size());
             if (rest.find("maps.") != std::string::npos && rest.find('.', rest.find("maps.") + 5) != std::string::npos)
                 return;
+            if (node.attribute("ui::hidden") != nullptr)
+                return;                                                  // rev: the host's
             INFO(path);
             seen += 1;
             CHECK(node.attribute("fminus::default") != nullptr);

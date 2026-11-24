@@ -62,13 +62,13 @@ module AntiLag
 {
     bool active;
     float retard;
-    float lambda;       // asked while active (1: none)
+    float lambda;       // asked while active (10, inactive: no lambda is leaner)
 
     void control(bool on, bool running, float rpm, float lo, float hi, float pedal, float most, float rich)
     {
         active = on && running && rpm >= lo && rpm <= hi && pedal < 0.2f;
         retard = active ? most : 0.0f;
-        lambda = active ? rich : 1.0f;
+        lambda = active ? rich : 10.0f;                // (inactive: asks nothing)
     }
 };
 
@@ -82,6 +82,6 @@ module Nitrous
     {
         active = armed && running && rpm >= lo && pedal >= 0.95f && gear >= minGear;
         retard = active ? most : 0.0f;
-        lambda = active ? rich : 1.0f;
+        lambda = active ? rich : 10.0f;                // (inactive: asks nothing)
     }
 };
