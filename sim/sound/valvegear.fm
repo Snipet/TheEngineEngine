@@ -1,0 +1,154 @@
+// sound/valvegear.fm: the valvetrain's character by kind (module ValveVoice): a solid lifter's tick, and a floating
+// valve's clatter (card E's float, docs/models/valvetrain.md).
+//
+// Hydraulic lifters take up their own clearance: the valve's only sound is its landing on its seat (the reference's
+// clicks, extras.fm, unchanged). A solid (mechanical) lifter leaves a clearance, the lash (0.25 mm, 0.010 in, a
+// typical cold setting; 0.15 to 0.6 mm), which the cam's ramp closes with a tap of the rocker on the valve's tip:
+// the tick of a solid-lifter engine, at every valve's opening and again, more faintly, at its closing as the gap
+// opens. Its strength is the speed at which the gap closes, which grows with the lash (the ramp's velocity where the
+// gap closes) and with the speed: here the tap is the reference's click times (lash / 0.25 mm) and rings the rocker
+// and the valve's stem (4.8 and 7.5 kHz, high Q: a hard, bright tick, judgement). The events are the cylinders' own:
+// at each intake closing a tap is due 240 crank degrees later (the exhaust's opening, a typical cam's: 60 degrees
+// after bottom on the intake, 60 before on the power stroke); at each exhaust closing the intake has just opened
+// (some 20 degrees before, in the overlap): the two taps merge into one, 1.4 times as hard.
+//
+// Float (card E): past the speed where the spring can no longer hold the follower to the cam the valve lands late and
+// bounces on its seat. With `clatter` 0 to 1 from the valvetrain (how hard the floating valves land) each landing is
+// followed by two bounces, 0.6 and 1.3 ms later at 0.6 and 0.3 of it times the clatter, each a little different
+// (judgement: the bounce's size and time are card E's float.fm's), and the landing itself is harder by 1 + clatter.
+#pragma once
+#include "lib/biquad.fm"
+#include "lib/noise.fm"
+
+module ValveVoice
+{
+    float rate;
+    Noise noise;
+    Biquad tres[2];
+    float tKick;
+    float due[8];       // taps to come, in crank degrees left (0: none)
+    float dueAmp[8];
+    float bounceAmp[8]; // bounces to come: the kick, and samples left
+    float bounceLeft[8];
+    int solid;
+    float lashK;
+    float clatter;
+    float k;
+    // out
+    float out;          // the lifters' tick (the bounces go to the head's own ring: Extras' vKick)
+    float bounce;       // this sample's bounce kick, for Extras
+
+    void setup(float rateIn)
+    {
+        rate = rateIn;
+        noise.rs = 173205;
+        tres[0].setBandpass(4800.0f, 25.0f, rate);
+        tres[1].setBandpass(7500.0f, 30.0f, rate);
+        clear();
+    }
+
+    void clear()
+    {
+        tres[0].clear();
+        tres[1].clear();
+        tKick = 0.0f;
+        for (int i = 0; i < 8; ++i)
+        {
+            due[i] = 0.0f;
+            dueAmp[i] = 0.0f;
+            bounceAmp[i] = 0.0f;
+            bounceLeft[i] = 0.0f;
+        }
+        solid = 0;
+        lashK = 1.0f;
+        clatter = 0.0f;
+        k = 0.0f;
+        out = 0.0f;
+        bounce = 0.0f;
+    }
+
+    // Every 16 samples. kind: 0 hydraulic, 1 solid; lash (m); clatterIn: card E's, 0 to 1; gain
+    void control(int kind, float lash, float clatterIn, float gain)
+    {
+        solid = kind;
+        lashK = lash / 0.00025f;
+        clatter = fminf(fmaxf(clatterIn, 0.0f), 1.0f);
+        k = gain;
+    }
+
+    void schedule(float deg, float amp)
+    {
+        for (int i = 0; i < 8; ++i)
+        {
+            if (due[i] <= 0.0f)
+            {
+                due[i] = deg;
+                dueAmp[i] = amp;
+                return;
+            }
+        }
+    }
+
+    void bounceAt(float amp, float ms)
+    {
+        for (int i = 0; i < 8; ++i)
+        {
+            if (bounceLeft[i] <= 0.0f)
+            {
+                bounceAmp[i] = amp;
+                bounceLeft[i] = ms * 0.001f * rate;
+                return;
+            }
+        }
+    }
+
+    // A valve landed (the reference's click, amp 0 to 1): intake (1) or exhaust (0) closing. Returns what the landing
+    // adds to the reference's click (the float's harder landing)
+    float landed(float amp, int intake)
+    {
+        if (solid != 0)
+        {
+            if (intake != 0)
+            {
+                tKick += 0.4f * amp * lashK * k;
+                schedule(240.0f, amp * lashK * k);
+            }
+            else
+                tKick += 1.4f * amp * lashK * k;
+        }
+        if (clatter > 0.0f)
+        {
+            bounceAt(0.6f * clatter * amp * k * (0.8f + 0.2f * noise.rnd()), 0.6f + 0.1f * noise.rnd());
+            bounceAt(0.3f * clatter * amp * k * (0.8f + 0.2f * noise.rnd()), 1.3f + 0.2f * noise.rnd());
+            return clatter * amp * k;
+        }
+        return 0.0f;
+    }
+
+    // One sample. dDeg: the crank's degrees this sample
+    void tick(float dDeg)
+    {
+        float kk = tKick;
+        tKick = 0.0f;
+        bounce = 0.0f;
+        for (int i = 0; i < 8; ++i)
+        {
+            if (due[i] > 0.0f)
+            {
+                due[i] -= dDeg;
+                if (due[i] <= 0.0f)
+                {
+                    kk += dueAmp[i];
+                    due[i] = 0.0f;
+                }
+            }
+            if (bounceLeft[i] > 0.0f)
+            {
+                bounceLeft[i] -= 1.0f;
+                if (bounceLeft[i] <= 0.0f)
+                    bounce += bounceAmp[i];
+            }
+        }
+        out = tres[0].tick(kk) + 0.7f * tres[1].tick(kk);
+    }
+};

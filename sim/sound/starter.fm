@@ -1,0 +1,170 @@
+// sound/starter.fm: the starter motor by size and kind (module StarterVoice), and its pinion's engagement with the
+// flywheel's ring gear.
+//
+// A starter is a DC series motor whose pinion (10 teeth here) a solenoid throws into the flywheel's ring gear (130
+// teeth: 13 to 1; Bosch, "Automotive Handbook", starters: 9 to 11 and 110 to 160 are usual). A direct-drive starter's
+// pinion is on the armature's shaft, so the armature turns 13 times the crank; a gear-reduction starter puts a
+// planetary set (its sun of 12 teeth) or an offset gear of about 3.6 to 1 between them, so its small fast motor turns
+// 47 times the crank: the higher, whinier sound of a modern starter against the old direct-drive's growl. Heard:
+//   the pinion on the ring: a straight-cut mesh at 130 times the crank's turns, the strongest line (some 430 Hz at
+//     200 rpm), rising and falling with each compression as the crank's speed does;
+//   the commutator's ripple: 20 segments (judgement) a turn of the armature; a reduction starter's gears: the sun's 12
+//     teeth at the armature's speed less the carrier's;
+//   the motor's housing ringing (at 420 Hz times (1.2 kW / P)^(1/3): a bigger starter, lower) under the brushes' noise.
+// Its size: `starterPower`, else by the engine (1.2 kW for a 2 L gasoline engine, as the square root of the
+// displacement, 0.8 to 3 kW; a diesel's 1.6 times), and its level as the square root of its power.
+// The engagement: as the key turns the solenoid's plunger slams home (a low knock at 180 Hz and a clack at 1.1 kHz)
+// and the pinion strikes the ring gear's teeth 3 ms later (2.6 kHz, sharp); as the key is let go the plunger falls
+// back (a softer clack) and the armature, freed by its overrunning clutch, runs down on its own (time constant 0.25 s)
+// with its whine falling, quieter for having no load.
+#pragma once
+#include "lib/biquad.fm"
+#include "lib/noise.fm"
+#include "osc.fm"
+
+module StarterVoice
+{
+    float rate;
+    float dt;
+    Noise noise;
+    SineTable* sn;
+    float nScale;
+    Shaft arm;          // the armature
+    Shaft pin;          // the pinion
+    Biquad house;
+    Biquad knock;
+    Biquad clack;
+    Biquad strike;
+    int reduction;
+    float red;          // armature turns to the pinion's
+    float level;
+    float wasOn;
+    float armHz;        // the armature's turns a second while it runs down
+    float env;          // the motor's current, eased
+    float armEnv;       // the armature's turning, eased (it runs down after the key)
+    float loadK;        // its load: 1 cranking, 0.4 free
+    float kEnv;
+    float strikeLeft;   // samples until the pinion's strike (0: none)
+    float strikeAmp;
+    float kick;
+    float clackKick;
+    // out
+    float out;
+
+    void setup(float rateIn, SineTable* table)
+    {
+        rate = rateIn;
+        dt = 1.0f / rate;
+        sn = table;
+        noise.rs = 244949;
+        nScale = sqrtf(rate / 48000.0f);
+        knock.setBandpass(180.0f, 4.0f, rate);
+        clack.setBandpass(1100.0f, 8.0f, rate);
+        strike.setBandpass(2600.0f, 15.0f, rate);
+        house.setBandpass(420.0f, 3.0f, rate);
+        reduction = 1;
+        red = 3.6f;
+        level = 1.0f;
+        kEnv = 1.0f - expf(-1.0f / (0.003f * rate));
+        clear();
+    }
+
+    void clear()
+    {
+        house.clear();
+        knock.clear();
+        clack.clear();
+        strike.clear();
+        wasOn = 0.0f;
+        armHz = 0.0f;
+        env = 0.0f;
+        armEnv = 0.0f;
+        loadK = 1.0f;
+        strikeLeft = 0.0f;
+        strikeAmp = 0.0f;
+        kick = 0.0f;
+        clackKick = 0.0f;
+        out = 0.0f;
+    }
+
+    bool busy()
+    {
+        return armEnv > 0.0f || wasOn > 0.0f;
+    }
+
+    // Every 16 samples. kind: 0 direct drive, 1 gear reduction; power (W, 0: by the engine); displacement (m^3);
+    // diesel; k: gain
+    void control(int kind, float power, float displacement, int diesel, float k)
+    {
+        reduction = kind;
+        red = kind != 0 ? 3.6f : 1.0f;
+        float p = power;
+        if (p <= 0.0f)
+            p = fminf(fmaxf(1200.0f * sqrtf(displacement / 0.002f), 800.0f), 3000.0f) * (diesel != 0 ? 1.6f : 1.0f);
+        const float s = p / 1200.0f;
+        level = k * sqrtf(s);
+        house.setBandpass(420.0f * expf(-0.33333333f * logf(fmaxf(s, 0.05f))), 3.0f, rate);
+    }
+
+    // One sample. crankHz; on: the starter's current (the ECU's starterOn, 0 or 1)
+    void tick(float crankHz, float on)
+    {
+        out = 0.0f;
+        if (on > 0.0f && wasOn <= 0.0f)
+        {
+            // the key: the solenoid home, the pinion's strike to follow
+            kick += level;
+            clackKick += level;
+            strikeLeft = 0.003f * rate;
+            strikeAmp = level * (0.8f + 0.2f * noise.rnd());
+        }
+        else if (on <= 0.0f && wasOn > 0.0f)
+        {
+            // let go: the plunger back, the armature free
+            clackKick += 0.5f * level;
+        }
+        wasOn = on;
+        float st = 0.0f;
+        if (strikeLeft > 0.0f)
+        {
+            strikeLeft -= 1.0f;
+            if (strikeLeft <= 0.0f)
+                st = strikeAmp;
+        }
+        out = 0.06f * knock.tick(kick) + 0.03f * clack.tick(clackKick) + 0.05f * strike.tick(st);
+        kick = 0.0f;
+        clackKick = 0.0f;
+        // the motor: its current eased in and out over some 3 ms (no click), the armature running down on its own
+        const float onT = on > 0.0f ? 1.0f : 0.0f;
+        env += (onT - env) * kEnv;
+        loadK += ((on > 0.0f ? 1.0f : 0.4f) - loadK) * kEnv;
+        const float ph = fmaxf(crankHz, 1.0f) * 13.0f;
+        if (on > 0.0f)
+        {
+            armHz = ph * red;
+            armEnv += (1.0f - armEnv) * kEnv;
+        }
+        else
+        {
+            armHz *= 1.0f - dt / 0.25f;
+            armEnv *= 1.0f - dt / 0.25f;
+            if (armEnv < 1.0e-5f)
+                armEnv = 0.0f;
+        }
+        if (env > 1.0e-6f || armEnv > 0.0f)
+        {
+            pin.turn(ph, dt);
+            arm.turn(armHz, dt);
+            float y = 0.0f;
+            if (env > 1.0e-6f)
+            {
+                const float m = pin.mesh(10.0f);   // (the pinion's teeth on the ring: 130 a turn of the crank)
+                y += env * 0.035f * sn->at(m) * (1.0f + 0.6f * sn->cosAt(m));
+                if (reduction != 0)
+                    y += env * 0.010f * sn->at(arm.mesh(12.0f) - pin.mesh(12.0f));
+            }
+            y += armEnv * loadK * (0.012f * sn->at(arm.mesh(20.0f)) + 0.02f * house.tick(nScale * noise.rnd()));
+            out += level * y;
+        }
+    }
+};
