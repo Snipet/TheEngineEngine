@@ -87,6 +87,9 @@ namespace tee::ui
         // Called once the host is known (an inner Panel is attached here).
         virtual void attached() {}
         void bump() noexcept { ++revision_; }            // items appeared, moved or went (accessibility)
+        // U1: with no inner Panel, Tab past the last item wraps to the first (alone in a window, the default) or leaves
+        // the board (a pane of the application's frame: the frame's turn).
+        void setTabWraps(bool wraps) noexcept { tabWraps_ = wraps; }
         void setFocus(int item);
 
     private:
@@ -98,7 +101,7 @@ namespace tee::ui
         funkgui::HostServices* host_ = nullptr;
         std::unique_ptr<funkgui::GestureController> gestures_;
         funkgui::Point pointer_{};
-        bool hasPointer_ = false, innerPress_ = false, ring_ = false;
+        bool hasPointer_ = false, innerPress_ = false, ring_ = false, tabWraps_ = true;
         int pressed_ = -1, focus_ = -1;
         uint32_t revision_ = 1;
     };

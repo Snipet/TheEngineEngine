@@ -221,7 +221,14 @@ def main():
         c = {"kind": "Motorcycle", "model": "Vehicle"}
         c.update(car)
         doc = {"format": "tee-build", "version": 1, "name": title, "notes": notes,
-               "spec": {"engine": spec, "fuel": {"kind": "Gasoline"}, "car": c, "sound": {"view": "Exhaust"}},
+               "spec": {"engine": spec,
+                        # card E's individual throttle bodies, a runner each, trumpets in the air box
+                        "intake": {"model": "Lab", "throttleKind": "A body a runner", "trumpets": "The air box"},
+                        # a short system: short headers, a short pipe, a small can (card G's builder's 4-2-1 when it
+                        # reaches the engine: its fields are not read yet)
+                        "exhaust": {"headers": 0.25, "pipe": 0.2, "muffler": 0.15},
+                        "valve": {"cam": 0.55},
+                        "fuel": {"kind": "Gasoline"}, "car": c, "sound": {"view": "Exhaust"}},
                "expect": {"engine": eng}}
         write(os.path.join(ROOT, "content", "builds", name + ".json"), doc)
         print(f"{name:22s} with {eng}")

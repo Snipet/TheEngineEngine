@@ -356,6 +356,12 @@ module Scene
             gain = open;
             fc = 2000.0f + 18000.0f * open * open;
         }
+        else if (s == LS_DRIVE)
+        {
+            // the gearbox and the axle under the floor: the floor pan shades them from above
+            gain = uz > 0.0f ? 1.0f - 0.8f * uz : 1.0f;
+            fc = 4000.0f + 16000.0f * gain * gain;
+        }
         pat[0] = gain;
         pat[1] = fc;
     }

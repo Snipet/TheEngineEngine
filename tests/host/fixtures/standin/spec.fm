@@ -28,16 +28,16 @@ module EcuSpec
     int rev;
     float limiterCut [[fminus::range(0, 0.2)]] [[fminus::default(0.05)]] [[ui::label("Limiter hysteresis")]]
         [[ui::quantity("fraction")]];
-    Map16 spark [[ui::label("Spark trim")]] [[ui::axes("rotation", "fraction")]];
+    Map16 spark [[ui::label("Spark trim")]] [[ui::axes("rotation", "fraction")]] [[ui::quantity("angle")]];
 };
 
 module SoundSpec
 {
     int rev;
     float level [[fminus::range(0, 1)]] [[fminus::default(0.3)]] [[ui::label("Level")]] [[ui::quantity("fraction")]];
-    float harmonics [[fminus::range(0, 1)]] [[fminus::default(0.5)]] [[ui::label("Harmonics")]] [4];
+    float harmonics [[fminus::range(0, 1)]] [[fminus::default(0.5)]] [[ui::label("Harmonics")]] [[ui::quantity("fraction")]] [4];
     // Which of the harmonics is loudest in the scope: an index, so that a test can plant one past the array's end.
-    int tap [[fminus::range(0, 3)]] [[fminus::default(0)]] [[ui::label("Tap")]] [[ui::hidden]];
+    int tap [[fminus::range(0, 3)]] [[fminus::default(0)]] [[ui::label("Tap")]] [[ui::unit("index")]] [[ui::hidden]];
 };
 
 module Spec
