@@ -118,6 +118,8 @@ namespace tee::ui
             k.mix(std::isfinite(a) ? static_cast<std::int64_t>(std::lround(a * 4.0)) : -1);
             k.mix(slow_).mix(log_).mix(paceIndex_).mix(scopeVersion_).mix(tab_).mix(compact_);
             k.mix(ctx_.live.get(kTelLayoutRefused) >= 0.5);
+            const double reason = ctx_.live.get(kTelLayoutReason);
+            k.mix(std::isfinite(reason) ? static_cast<std::int64_t>(std::lround(reason)) : -1);
             k.mix(static_cast<float>(ctx_.live.get(kTelSpeed)));
             k.mix(static_cast<float>(ctx_.live.get(kTelIvo))).mix(static_cast<float>(ctx_.live.get(kTelEvo)));
             for (const char* n : { kTelPowerValve, kTelCrankcase, kTelReed })
@@ -325,15 +327,26 @@ namespace tee::ui
         const Model& model() const
         {
             const bool refused = ctx_.live.get(kTelLayoutRefused) >= 0.5;
-            if (modelRevision_ != ctx_.doc.revision() || !modelMade_ || refused != model_.refused)
+            const double reasonNow = refused ? ctx_.live.get(kTelLayoutReason) : 0.0;
+            if (modelRevision_ != ctx_.doc.revision() || !modelMade_ || refused != model_.refused
+                || !(reasonNow == reasonSeen_ || (std::isnan(reasonNow) && std::isnan(reasonSeen_))))
             {
                 modelMade_ = true;
                 modelRevision_ = ctx_.doc.revision();
                 model_.refused = refused;
+                reasonSeen_ = reasonNow;
                 model_.asked = layoutOf(ctx_.doc);
                 model_.layout = refused && model_.asked.custom ? dialLayoutOf(ctx_.doc) : model_.asked;
                 model_.why.clear();
-                if (refused && model_.asked.custom && !model_.asked.ok)
+                const double code = ctx_.live.get(kTelLayoutReason);
+                const int reason = refused && std::isfinite(code) ? static_cast<int>(std::lround(code)) : 0;
+                if (reason == 1)
+                    model_.why = "TWO OF ITS CYLINDERS FIRE TOGETHER";
+                else if (reason == 2)
+                    model_.why = "ITS ROTORS FIRE TOGETHER";
+                else if (reason == 3)
+                    model_.why = "A CYLINDER'S BANK IS OUTSIDE THE BANKS";
+                else if (refused && model_.asked.custom && !model_.asked.ok)
                 {
                     bool together = false;
                     for (int i = 0; i + 1 < model_.asked.n; ++i)
@@ -1349,6 +1362,7 @@ namespace tee::ui
         mutable Model model_;
         mutable std::uint64_t modelRevision_ = 0;
         mutable bool modelMade_ = false, limiterFromTelemetry_ = false;
+        mutable double reasonSeen_ = 0.0;   // D's refusal reason the model was made with
     };
 
     std::unique_ptr<Workspace> makeEngineWorkspace(WorkspaceContext& c) { return std::make_unique<EngineWorkspace>(c); }

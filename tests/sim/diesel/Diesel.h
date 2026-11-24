@@ -3,6 +3,7 @@
 #pragma once
 
 #include "sim/Twin.h"
+#include "tee/test/Kept.h"
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -18,7 +19,7 @@ namespace d2
 
     struct Engine
     {
-        std::unique_ptr<EnginePlayer> player;
+        EnginePlayer* player = nullptr;   // the process's one compiled player (6.6 s to compile), reset for each Engine
         std::vector<float> l = std::vector<float>(512);
         std::vector<float> r = std::vector<float>(512);
         std::vector<float> rec;     // the left channel while recording
@@ -28,8 +29,8 @@ namespace d2
         explicit Engine(const std::string& build = "", double rateIn = 48000.0)
         {
             rate = rateIn;
-            player = tee::test::enginePlayer(rate);
-            player->setSpecDefaults();
+            player = &tee::test::kept([] { return tee::test::enginePlayer(48000.0); });   // never destroyed (tee/test/Kept.h)
+            player->reset(rate, false);   // (init again at the rate, every Spec field and Control at its default)
             if (!build.empty())
                 tee::applyBuild(*player, tee::test::engineBuild(*player, build));
         }
@@ -85,7 +86,7 @@ namespace d2
         }
 
         // started on the bench and running
-        void start(double crank = 2.0, double settle = 2.0)
+        void start(double crank = 1.5, double settle = 1.0)
         {
             auto& c = ctl();
             c.mode = EnginePlayer::kModeBench;

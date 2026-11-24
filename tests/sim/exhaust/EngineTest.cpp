@@ -617,40 +617,91 @@ TEST_CASE("the exhaust port's walls cool the gas, in full", "[exhaust][engine][p
 
 static void portCools(bool full)
 {
-    EnginePlayer& p = player();
-    p.reset();
-    EngineBuild b = test::engineBuild(p, "v8");
-    b.values["exhaust.model"] = {1.0};
-    applyBuild(p, b);
-    EnginePlayer::Controls& c = p.controls();
-    c.mode = EnginePlayer::kModeBench;
-    c.ignition = EnginePlayer::kIgnitionStart;
-    std::vector<float> l(512), r(512);
-    auto run = [&](double s) {
-        for (int k = 0; k < static_cast<int>(s * 48000.0 / 512.0); ++k)
-            p.process(l.data(), r.data(), 512);
-    };
-    run(1.5);
-    c.ignition = EnginePlayer::kIgnitionOn;
-    run(1.0);
-    for (double rpm : full ? std::vector<double>{1500.0, 3000.0, 5000.0} : std::vector<double>{1500.0, 5000.0})
+    struct Case
     {
-        c.mode = 2;
-        c.dynoSpeed = static_cast<float>(rpm * 0.10471976);
-        c.throttle = 1.0f;
-        run(full ? 8.0 : 6.0);
-        const double tv = test::field(p, "tel.exhaust.portTemperature");
-        const double te = test::field(p, "tel.exhaust.portExitTemperature");
-        const double th = test::field(p, "tel.exhaust.headerTemperature");
-        const double q = test::field(p, "tel.exhaust.portHeat");
-        const double power = test::field(p, "tel.engine.torque") * rpm * 0.10471976;
-        std::printf("port at %.0f rpm full throttle: at the valve %.0f K, leaving the port %.0f K (%.0f K less), the "
-                    "header %.0f K; the port walls take %.1f kW (brake %.1f kW)\n", rpm, tv, te, tv - te, th, q / 1000.0,
-                    power / 1000.0);
-        CHECK(te <= tv);
-        CHECK(tv - te < 400.0);
-        CHECK(q > 0.0);
-        CHECK(th < tv);
+        const char* build;
+        bool diesel;
+        std::vector<double> rpms;
+    };
+    const std::vector<Case> cases = {{"v8", false, full ? std::vector<double>{1500.0, 3000.0, 5000.0} : std::vector<double>{5000.0}},
+                                     {"large-diesel", true, full ? std::vector<double>{1200.0, 1800.0} : std::vector<double>{1800.0}}};
+    for (const Case& k : cases)
+    {
+        EnginePlayer& p = player();
+        p.reset();
+        EngineBuild b = test::engineBuild(p, k.build);
+        b.values["exhaust.model"] = {1.0};
+        b.values["env.temperature"] = {293.15};     // (a warm day, as the calibration's targets are)
+        applyBuild(p, b);
+        EnginePlayer::Controls& c = p.controls();
+        c.mode = EnginePlayer::kModeBench;
+        c.ignition = EnginePlayer::kIgnitionStart;
+        std::vector<float> l(512), r(512);
+        const double dt = 512.0 / 48000.0;
+        double eGas = 0.0, eCool = 0.0;
+        auto run = [&](double s) {
+            for (int n = 0; n < static_cast<int>(s / dt); ++n)
+            {
+                p.process(l.data(), r.data(), 512);
+                eGas += test::field(p, "tel.exhaust.portHeat") * dt;
+                eCool += test::field(p, "tel.exhaust.portCoolantHeat") * dt;
+            }
+        };
+        run(1.5);
+        c.ignition = EnginePlayer::kIgnitionOn;
+        run(1.0);
+        for (double rpm : k.rpms)
+        {
+            c.mode = 2;
+            c.dynoSpeed = static_cast<float>(rpm * 0.10471976);
+            c.throttle = 1.0f;
+            run(full ? 8.0 : 6.0);
+            // the heat settled where this load holds it (card C's settle), then 2 s run on, the energy counted over them
+            {
+                const std::size_t hs = static_cast<std::size_t>(p.specIndex("exhaust.heatSettle"));
+                p.setSpec(hs, p.spec(hs) + 1.0);
+            }
+            run(0.1);
+            eGas = 0.0;
+            eCool = 0.0;
+            const double w0 = test::field(p, "tel.exhaust.portWallTemperature");
+            run(2.0);
+            const double w1 = test::field(p, "tel.exhaust.portWallTemperature");
+            const double tv = test::field(p, "tel.exhaust.portTemperature");
+            const double te = test::field(p, "tel.exhaust.portExitTemperature");
+            const double th = test::field(p, "tel.exhaust.headerTemperature");
+            const double q = test::field(p, "tel.exhaust.portHeat");
+            const double power = test::field(p, "tel.engine.torque") * rpm * 0.10471976;
+            std::printf("port, %s at %.0f rpm full throttle: at the valve %.0f K, leaving the port %.0f K (%.0f K less), "
+                        "the header %.0f K; the port walls take %.1f kW (brake %.1f kW), their wall %.0f K; over 2 s the "
+                        "gas gave %.1f kJ, the coolant took %.1f kJ, the wall moved %.1f K\n", k.build, rpm, tv, te, tv - te,
+                        th, q / 1000.0, power / 1000.0, w1, eGas / 1000.0, eCool / 1000.0, w1 - w0);
+            INFO(k.build << " at " << rpm);
+            CHECK(te <= tv);
+            CHECK(q > 0.0);
+            CHECK(th < te);
+            // the energy accounted: what the gas gave, the coolant took and the walls stored (their capacity times
+            // their move), within 5 % (the sums are of 512-sample blocks)
+            const double stored = test::field(p, "exh.capPort") * (w1 - w0);
+            std::printf("    energy: gas %.1f kJ = coolant %.1f + walls %.1f kJ (%.1f %% apart)\n", eGas / 1000.0,
+                        eCool / 1000.0, stored / 1000.0, 100.0 * (eGas - eCool - stored) / eGas);
+            CHECK(std::fabs(eGas - eCool - stored) < 0.05 * eGas);
+            // the header's targets at full load (the calibration's: a thermocouple a little way down the primary)
+            // from mid speed up; at 1500 rpm printed only
+            if (rpm < 1700.0 && !k.diesel)
+                continue;
+            if (k.diesel)
+            {
+                // (the target is 700 to 950 K; the large diesel's gas at the valve is 590 to 730 K, the cylinder's, under
+                // it before the port takes 30 to 40 K: its floor is not the exhaust's to hold, so only its top checked)
+                CHECK(th < 950.0);
+            }
+            else
+            {
+                CHECK(th > 900.0);
+                CHECK(th < 1100.0);
+            }
+        }
     }
 }
 

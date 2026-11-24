@@ -6,6 +6,8 @@
 
 #include "files/BuildFiles.h"
 #include "player/SimAdapter.h"
+#define TEE_REGISTER_SHARED_SIM
+#include "support/SharedSim.h"
 #include "tee/SimHost.h"
 
 #include <catch2/catch_test_macros.hpp>
@@ -49,7 +51,7 @@ TEST_CASE("shell: the garage's library over the builds on disk", "[shell][files]
     player::SimAdapter::Options o;
     o.directory = fs::path(TEE_SOURCE_SIM_DIR);
     std::string errors;
-    const std::unique_ptr<player::SimAdapter> sim = player::SimAdapter::create(o, errors);
+    const std::unique_ptr<player::SimAdapter> sim = test::sharedAdapter(errors, o);
     INFO(errors);
     REQUIRE(sim != nullptr);
     tee::Build& build = sim->build();
@@ -154,8 +156,21 @@ TEST_CASE("shell: the garage's library over the builds on disk", "[shell][files]
         lib.tick(0.1f);
         CHECK(byFile(lib, shipped / "v8.json")->curve.empty());
     }
+}
 
-    // with the program: each whole build's curve is made in the background, one at a time (or the dyno says why not)
+TEST_CASE("shell: the garage's library makes each whole build's curve in the background", "[shell][files][garage][nightly]")
+{
+    const fs::path user = fs::path(TEE_SOURCE_DIR) / "out" / "shell" / "files" / "garage-user-curves";
+    std::error_code ec;
+    fs::remove_all(user, ec);
+    const fs::path shipped = fs::path(TEE_SOURCE_DIR) / "content" / "builds";
+    std::string errors;
+    player::SimAdapter::Options o;
+    const std::unique_ptr<player::SimAdapter> sim = test::sharedAdapter(errors, o);
+    INFO(errors);
+    REQUIRE(sim != nullptr);
+    files::BuildFile doc(sim->build());
+    // each whole build's curve is made in the background, one at a time (or the dyno says why not)
     {
         app::GarageLibrary lib(doc, sim->host().sim(), shipped, user);
         CHECK(byFile(lib, shipped / "default.json")->curve.empty());           // nothing blocks: empty until made
