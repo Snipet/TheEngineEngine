@@ -227,6 +227,7 @@ namespace tee::app
                 so.checks = o.checks;
                 so.sampleRate = rate;
                 so.background = o.background || o.holdCompile > 0.0;
+                so.hold = o.holds;
                 std::unique_ptr<player::SimAdapter> sim = player::SimAdapter::create(so, e.error);
                 if (sim)
                 {

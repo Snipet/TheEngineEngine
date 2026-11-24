@@ -178,9 +178,13 @@ namespace tee
         at(0.0, "mode", mode);
         at(0.0, "dynoSpeed", plan.from);
         at(0.0, "dynoRate", 0.0);
-        at(0.0, "ignition", 2);
+        // the key as a person turns it: on, then start a moment later (an ECU with a key's state machine, a diesel
+        // with glow plugs, wants on before start: from off straight to start it never cranked), released once it
+        // has had time to run
         const double warmup = plan.warmupFor(build);
-        at(std::min(1.0, 0.5 * warmup), "ignition", 1);
+        at(0.0, "ignition", 1);
+        at(0.25, "ignition", 2);
+        at(std::max(1.0, std::min(2.0, 0.5 * warmup)), "ignition", 1);
         at(0.5 * warmup, "throttle", plan.pedal);
         const double start = warmup + plan.settle;
         struct Window
