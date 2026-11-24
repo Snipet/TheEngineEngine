@@ -144,3 +144,7 @@ sheet will include every registered workspace.
   `place()` gets the stage under it (shorter by the strip), so it covers nothing of yours: lay out for that too. `FrameServices::tryFirst` gives the notes while it should show (empty: not); the frame calls
   `FrameServices::tryFirstDone` (the shell stores it per viewer) at its Close button or once the engine has been
   started and stopped while it showed. Test `ui.frame.tryfirst`.
+- **The spark map's bake** (card C's KnockBakeService, 8572845f): `ServiceBake` (app/host/HostSources.h) considers the
+  build after each change and applies a finished bake still current; the shell ticks it once a frame and fills
+  `FrameServices::sparkMap` (its state: "no table", "waiting to bake", "baking", "baked, to apply", "baked", "bake
+  failed"). TUNE reads `ctx_.services->sparkMap` (may be null or empty). Test `ui.build` case `build.bake`.
