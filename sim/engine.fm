@@ -1416,6 +1416,8 @@ module Engine
                 const float rd = set.drive != 0 ? car.road(v == 4 ? 0.45f : 1.0f) : 0.0f;
                 // (the fade's gain eased: a smooth step)
                 cutG = cutWant != 0 ? fmaxf(cutG - cutDn, 0.0f) : fminf(cutG + cutUp, 1.0f);
+                if (set.drive != 0 && spec.car.model != 0 && spec.car.gearbox == 5)
+                    listen.extra(LS_PLACE_GEARBOX, 4.0f * car.grindOut());    // (card D2: an eighteen-speed's grind; card I's Car)
                 if (spec.car.truckAir)
                 {
                     // (card D2: the air system's purge and brakes, at card L's places; heard with sound.model 1)
