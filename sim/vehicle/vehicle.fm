@@ -152,16 +152,18 @@ module Vehicle
     float kPedal;
     // the state
     float wt;           // the turbine
-    float wo;           // the output (the wheels' side)
+    // (the speeds of the output, the wheels and the car, and the distance, are doubles: at 96 kHz a sample's change of
+    // speed under a rolling resistance is near a float's resolution at 20 m/s, and a coast-down in floats loses it)
+    double wo;          // the output (the wheels' side)
     float twist;        // the shafts' wind-up, rad at the wheels
     bool open;          // their play open
-    float ww[VEH_WHEELS];
-    float v;            // the car (on a chassis dyno, at rest)
-    float x;            // its distance since the last reset or staging, m
-    float vr;           // the dyno's roller, m/s
+    double ww[VEH_WHEELS];
+    double v;           // the car (on a chassis dyno, at rest)
+    double x;            // its distance since the last reset or staging, m
+    double vr;          // the dyno's roller, m/s
     float aNow;         // the acceleration over the last 16 samples
     float aLag;         // and lagged by the pitch
-    float vPrev;
+    double vPrev;
     float fz[VEH_WHEELS];
     float frontLoad0;   // the front axle's load before the transfer, N
     bool wheelie;
