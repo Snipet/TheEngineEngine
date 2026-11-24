@@ -153,6 +153,8 @@ namespace
             ++scope.gen;
             host.tick(5);
             const std::uint64_t kA = frame.workspace(we).drawKey();
+            CHECK(tee::ui::engineStageWords(frame.workspace(we)).first == "STAGE A");
+            CHECK(tee::ui::engineStageWords(frame.workspace(we)).second.empty());   // below the stage speed: no reason
             shot("stages.engine.A");
             // past 6000 rpm: stage B (the Scope's next copy is B's)
             tel.set("engine.speed", 6500.0 * 3.14159265358979 / 30.0);
@@ -161,7 +163,22 @@ namespace
             ++scope.gen;
             host.tick(5);
             CHECK(frame.workspace(we).drawKey() != kA);
+            CHECK(tee::ui::engineStageWords(frame.workspace(we)).first == "STAGE B");
             shot("stages.engine.B");
+            // past the stage speed with cold oil: A stays in, and ENGINE says why in VALVES' words
+            tel.set("valve.stage", 0.0);
+            tel.set("engine.oilTemperature", 300.0);
+            scope.stage = 0;
+            ++scope.gen;
+            host.tick(5);
+            const auto held = tee::ui::engineStageWords(frame.workspace(we));
+            CHECK_MSG(held.first == "STAGE A" && held.second.find("B WAITS: OIL") != std::string::npos, held.first + " / " + held.second);
+            shot("stages.engine.held");
+            tel.set("engine.oilTemperature", 360.0);
+            tel.set("valve.stage", 1.0);
+            scope.stage = 1;
+            ++scope.gen;
+            host.tick(5);
 
             // VALVES: the stage in use is the one drawn and edited: its peak handle stands on B's taller lobe
             const int wv = frame.find("valves");
@@ -170,6 +187,12 @@ namespace
                 return 0;
             frame.show(wv);
             host.tick(10);
+            // the same reason on VALVES, word for word
+            tel.set("engine.oilTemperature", 300.0);
+            CHECK_MSG(tee::ui::valvesOilWords(frame.workspace(wv)).find(held.second) != std::string::npos,
+                      tee::ui::valvesOilWords(frame.workspace(wv)) + " / " + held.second);
+            tel.set("engine.oilTemperature", 360.0);
+            host.tick(2);
             const float yB = tee::ui::valvesHandle(frame.workspace(wv), 0).y;
             shot("stages.valves.B");
             tel.set("valve.stage", 0.0);
