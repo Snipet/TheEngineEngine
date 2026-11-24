@@ -193,13 +193,16 @@ def targets(slug, b):
     # ---- the car ----------------------------------------------------------------------------------------------
     pmid = 0.5 * (plo + phi)
     qm = "p-quarter-mile-own.json" if auto else "p-quarter-mile.json"
+    if os.path.exists(os.path.join(ROOT, "content", "validation", "scenarios", "qm", slug + ".json")):
+        # the car's own gearbox and card I's launch, its upshifts placed by quarter_mile.py
+        qm = "qm/" + slug + ".json"
     if not slug.startswith("tractor"):
         lb, hp = car["mass"] * 2.20462, pmid * 1.341
         et, trap = 5.825 * (lb / hp) ** (1 / 3), 234 * (hp / lb) ** (1 / 3) * 1.609344 / 3.6
         add(name="Quarter mile: time", scenario=SC + qm, tel="car.t1320", measure="last",
             range=[round(et * 0.95, 2), round(et * 1.15, 2)], unit="s",
             source="Hale's rule, ET = 5.825 (lb/hp)^(1/3) s, with the kind's published power (%.0f kW) and the build's "
-                   "mass: %.2f s; 5 %% quicker to 15 %% slower for street tyres and an automatic's launch (card I's "
+                   "mass: %.2f s; 5 %% quicker to 15 %% slower for the build's own tyres and launch (card I's "
                    "test holds drag radials to 8 %%)" % (pmid, et))
         add(name="Quarter mile: trap speed", scenario=SC + qm, tel="car.v1320", measure="last",
             range=[round(trap * 0.92, 1), round(trap * 1.06, 1)], unit="m/s",
