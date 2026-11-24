@@ -157,5 +157,9 @@ module Voices
         chain = bike.chain;
         clutch = bike.clutch;
         all = gearbox + axle + front + head + tank + gateOut + chain + clutch;
+        // (a voice's state made non-finite by its input, card X's fuzz at the Spec's corners: every voice starts again
+        // at rest, silent this sample, rather than ringing NaN for ever)
+        if (!(all > -1.0e6f && all < 1.0e6f))
+            clear();
     }
 };
