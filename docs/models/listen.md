@@ -25,12 +25,18 @@ The car's frame is the reference's: x across to the right, y forward, z up, the 
 | Source (`LS_*`) | Signal (Engine's, through `Listen::mix`) | Place (front engine; mid; rear) | Pattern |
 |---|---|---|---|
 | `TAIL0`, `TAIL1` | `exh.outL`, `exh.outR` | (-0.55 or 0.4, 0, 0.35); a motorcycle's 0.45 up | the reference's piston law for the highs (2.5 c / (pi D sin)), and the body shading a forward listener: 1 - 0.67 u_y |
-| `INTAKE` | `ex.intake` | (0.35, 3.9, 0.75); (0, 1.4, 1.05); (0, 0.65, 0.9) | the bay's, floor 0.3 |
-| `BAY` | `ex.mech` (less M's driveline), `ex.block`, the headers' walls | (0, 3.4, 0.6); (0, 1.1, 0.5); (0, 0.55, 0.5) | open forward-up and sideways, floor 0.1 |
-| `BAYOPEN` | `boost.turbo`, `ex.starter`, `ex.comb` | as `BAY` | the same, floor 0.7 (these carry round the car) |
+| `INTAKE` | `ex.mouth` (the mouth alone; the throttle's hiss goes to `BAY`) | (0.35, 3.9, 0.75); (0, 1.4, 1.05); (0, 0.65, 0.9) | the bay's, floor 0.3 |
+| `BAY` | `ex.mech` (less M's `vo.all`), M's `vo.front` and `vo.head`, `ex.block`, the headers' walls, the hiss | (0, 3.4, 0.6); (0, 1.1, 0.5); (0, 0.55, 0.5) | open forward-up and sideways, floor 0.1 |
+| `BAYOPEN` | `boost.turbo`, `ex.starter`, `ex.comb`, M's `vo.gateOut` | as `BAY` | the same, floor 0.7 (these carry round the car) |
 | `TYRES` | `car.road(...)` (driven only) | (0, 2.2, 0.1) | none |
 | `WIND` | its own noise, 250 Hz to 2.5 kHz, as the cube of the speed (driven only) | (0, 2.4, 1.2) | none |
-| `DRIVE` | M's `vo.gearbox + vo.axle` (spec.voices.model 1) | (0, 2.4 or 0.9, 0.35) | the floor pan above: 1 - 0.8 u_z |
+| `DRIVE` | M's `vo.gearbox` (spec.voices.model 1) | (0, 2.4; 0.9; 0.9, 0.35) | the floor pan above: 1 - 0.8 u_z |
+| `AXLE` | M's `vo.axle` | (0, 0.9; 0.6; 0.6, 0.3) | as `DRIVE` |
+| `TANK` | M's `vo.tank` | (0.3, 0.8; 3.6; 3.6, 0.35) | as `DRIVE` |
+
+M's voices come summed into `ex.mech` (`vo.all`) for model 0's mix; model 1 takes the sum out and hears each from its
+place (every voice at the valvetrain's strength). `DRIVE`, `AXLE`, `TANK` are read only while their voice has sounded
+in the last second.
 
 The bay's pattern: `a + (1 - a) max(c1^2, |u_x|^3)`, `c1 = (1 + u . axis) / 2`, axis forward-up for a front engine
 (0, 0.6, 0.8), up for a mid (0, 0, 1), up-back for a rear (0, -0.3, 0.95); a shaded path is also duller (a low-pass at
@@ -112,6 +118,17 @@ Levels are the image sources' spreading against a direct path of some 4 m, times
 concrete 0.9, a tree line 0.3), rounded: judgement in the details. In the cabin a place is a third as loud with the
 windows shut. A new place fades its reflections out and in again over 40 ms time constants.
 
+## The last stage: headroom, limiter, ceiling
+
+The reference lives on its limiter: the V8 build peaks at 7.3 before it at full load and takes 24 dB of reduction on
+a free rev. Model 1 is staged so that a build's loudest ordinary moment (the V8 build at full load, 0.75 of its
+redline, the default camera and distance) peaks at 0.5, 6 dB under full scale: a gain of 0.116 (-18.7 dB) after the
+compressor. Then a limiter at 0.7 whose attack is the sample (no sample leaves it above 0.7) and whose release is
+250 ms; a soft ceiling past 0.75 toward 0.95 (`0.75 + 0.2 tanh((|x| - 0.75) / 0.2)`), a guard; and a clamp at 0.99
+after the resampler, whose ripple on a limited peak was measured at 0.733 (48 kHz). `tel.sound.limiter` is the
+deepest reduction over the last 0.4 s; `tel.sound.ceilingParts` counts the parts the ceiling bent. X-004 (a turbo six's
+launch with eight switches on, past 1.0 before): largest sample 0.795, no guard trip.
+
 ## Level
 
 The reference keeps two tables by layout (`exTrim`, `gainNorm`), measured. Model 1 computes the exhaust's level from
@@ -160,3 +177,5 @@ R, model 1 1.112 to 1.131 R by camera: model 1 adds 0.07 to 0.09 R over the refe
 - The chase through the tunnel (`v8-tunnel-chase.json`); the street and the garage at a revving idle.
 - DISTANCE swept slowly at the tailpipe on the field: the comb's notches moving.
 - A single, a flat-plane four and a V12 at full load, one after the other: one loudness?
+- Model 0 against model 1 on the same build: model 1 is quieter by design (its headroom) and far less limited; turn
+  the host's volume up rather than LEVEL.

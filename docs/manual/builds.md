@@ -98,3 +98,115 @@ Thirty archetypes in `content/builds/archetypes/`, each a whole build (engine, c
 **3.8 L pushrod V6** (`pushrod-v6-38.json`). A 90-degree pushrod V6 with split pins for even firing: 96.5 x 86.4 mm (3791 cc), 9.4:1 (engines of the kind: 140 to 155 kW at 5200 rpm, 305 to 325 N m at 4000; makers' figures of the 1990s). A big front-drive sedan, four-speed automatic.
 
 **Flat-plane 3.9 L V8, twin turbo** (`flat-plane-v8-39-twin-turbo.json`). A 3.9 L flat-plane V8 with a turbo a bank: 86.5 x 83 mm (3902 cc), 9.4:1, direct injection (engines of the kind: 450 to 530 kW at 7500 to 8000 rpm, 760 to 800 N m at 3000 to 5750; makers' figures). In a mid-engined coupe, seven-speed dual clutch.
+
+## The other packages' builds
+
+Made by the packages that built each part of the simulator, to show or test their part (motorcycles, two-strokes, layouts, cams, turbos, the reference's converted presets). Not all of them are whole machines: some set one section and leave the rest at its defaults.
+
+| File | Name | Notes |
+|---|---|---|
+| `bike-adventure-twin.json` | Adventure twin (boxer) | A big adventure bike: 249 kg wet, 1.52 m, an 80 kg rider sitting up, dual-sport tyres, a 1254 cc boxer twin; a shaft in the real one, a chain's numbers ... |
+| `bike-cruiser.json` | Cruiser (45-degree V-twin) | A big cruiser: 320 kg wet, 1.67 m, an 80 kg rider sitting up, cruiser tyres, a 1863 cc 45-degree twin, a belt of 30 to 70 teeth. No quickshifter, no slipper. |
+| `bike-naked-twin.json` | Naked twin (parallel, 270) | A middleweight naked: 184 kg wet, 1.40 m, an 80 kg rider sitting up, sport tyres, a 270-degree parallel twin of 689 cc. No quickshifter, no slipper. |
+| `bike-small-single.json` | Small single | A light naked single: 172 kg wet, 1.36 m, an 80 kg rider sitting up, sport tyres, 373 cc. A slipper clutch. |
+| `bike-superbike.json` | Superbike (litre four, crossplane) | A litre superbike: 201 kg wet, 1.41 m, an 80 kg rider, hypersport tyres, a quickshifter and an auto-blipper, a slipper clutch, wheelie control. The ... |
+| `bike-supersport-600.json` | Supersport 600 | A 600 cc supersport: 190 kg wet, 1.38 m, an 80 kg rider, sport tyres, a quickshifter, a slipper clutch. Its four screams to 16,000 rpm. |
+| `default.json` | Default | Every field at its default: the reference's Init V8 (5.76 L crossplane V8). |
+| `large-diesel.json` | Large Diesel | The reference's preset Large Diesel, converted (its DRIVE CAR as the vehicle Car; HOLD is no part of a build). |
+| `truck-15l-six.json` | Truck 15 L inline six | Card D2. A highway tractor's 15 L inline six (137 x 169 mm, 17:1, twin turbos as the reference has them), an electronic governor, a three-stage ... |
+| `v10.json` | V10 | The reference's preset V10, converted: its DRIVE PITCH, HOLD and the key are no part of a build. |
+| `v8.json` | V8 | The reference's preset V8, converted: its DRIVE PITCH, HOLD and the key are no part of a build. |
+| `boost/roots-v8.json` | V8, Roots blower (the machine) | The default V8 with a Roots blower as card F's machine (boost.model 1), its displacement matched to the engine. |
+| `boost/turbo-four.json` | 2.0 inline four, turbo (the machine) | A 2 L four with one turbo as card F's machine (boost.model 1), its sizes matched to the engine. |
+| `boost/twin-turbo-v8.json` | V8, twin turbos (the machine) | The default V8 with two turbos, a bank each, as card F's machine (boost.model 1): sizes matched to the engine. |
+| `cams/compression-brake.json` | Second exhaust event near the top | An auxiliary exhaust event of 2 mm opening 30 degrees before the firing top, as a compression brake's (Jacobs'): the air compressed is let out instead of ... |
+| `cams/continuous-lift.json` | Continuous lift as the load control | The intake's lift and duration follow the pedal from 15 % of full lift up, the throttle plate left open, as BMW's Valvetronic: less pumping at part load. |
+| `cams/cylinder-deactivation.json` | Cylinder deactivation on a V8 | The reference's cross-plane V8 rests every other cylinder in its firing order (cylinders 1, 4, 6 and 7 of its layout's order: bits 0, 3, 5, 6) between 1100 ... |
+| `cams/dohc-vvt.json` | Four-valve head with two phasers | A modern four-valve head (buckets) with an intake phaser of 50 crank degrees of advance and an exhaust phaser of 40 of retard, on the lab's own schedule ... |
+| `cams/early-intake-closing.json` | Early intake closing (Miller) | A free intake valve shut 30 degrees before the bottom (510 in the cycle): the charge expands before it is compressed, as Miller's cycle with a free valve ... |
+| `cams/hot-street.json` | Hot street cam | A pushrod V8's big street cam: 280 at the seat, 245 at 1 mm, 0.54 in lift, 108 lobe separation: the lope at idle. Springs for some 6500 rpm. |
+| `cams/late-intake-closing.json` | Late intake closing (Atkinson) | A free intake valve shut 100 degrees after the bottom (640 in the cycle), pushing part of each charge back: a shorter compression than expansion, as a ... |
+| `cams/race.json` | Race cam | A race pushrod V8's: 310 at the seat, 270 at 1 mm, 0.60 in lift, 106 lobe separation, a fat lobe; stiff springs and a titanium-light valve. |
+| `cams/stock-v8.json` | Stock V8 cam | Card E's valvetrain lab (valve.model 1) with a mild hydraulic-roller cam of the kind a stock pushrod V8 has: 240 at the seat, 210 at 1 mm, 0.45 in lift, 112 ... |
+| `cams/two-stage.json` | Two-stage cams | A four-valve head with a mild lobe and a wild one, changed over at 5500 rpm (576 rad/s) with 300 rpm of hysteresis, as Honda's VTEC: each cylinder takes the ... |
+| `cars/awd-turbo-six.json` | All-wheel-drive turbo six | An all-wheel-drive sports coupe with a dual-clutch six: 1550 kg, 55 % on the front, sport tyres, 35 % of the torque to the front through a centre ... |
+| `cars/light-fwd-four.json` | Light front-drive four | A light front-drive hatchback with a manual six: 1150 kg, 62 % on the front, street tyres, an open front differential. The numbers are a typical small ... |
+| `cars/rwd-v8-coupe.json` | Rear-drive V8 coupe | A front-engined rear-drive coupe with a manual six: 1700 kg, 54 % on the front, sport tyres, a clutch-pack limited-slip rear differential (80 N m of ... |
+| `combo/large-diesel.json` | Large diesel (combo) | The reference's Large Diesel (15 L, twin turbos), on a mild day. Package X's (tests/sim/combo): every model switch at 0, the custom engine's geometry filled ... |
+| `combo/small-four.json` | Small four (combo) | A 1.6 L inline four, naturally aspirated, in a light front-drive car. Package X's (tests/sim/combo): every model switch at 0, the custom engine's geometry ... |
+| `combo/turbo-six.json` | Turbo six (combo) | A 3 L inline six with one turbo, in an all-wheel-drive coupe. Package X's (tests/sim/combo): every model switch at 0, the custom engine's geometry filled in ... |
+| `combo/turbo-v8-dual.json` | Turbo V8, dual exhaust (combo) | The budget's typical build (02-contracts.md section 9): the V8 with twin turbos and a dual exhaust with a crossover; the exhaust builder's topology is added ... |
+| `combo/v8.json` | V8 (combo) | The reference's V8 in a rear-drive coupe. Package X's (tests/sim/combo): every model switch at 0, the custom engine's geometry filled in to match the layout ... |
+| `combo/findings/x001-custom-defaults.json` | X-001: the custom engine at its defaults | Package X's finding X-001 (2026-11-24, card D): every field at its default but engine.custom on. The defaults' geometry (8 cylinders, bank 0, every pin at ... |
+| `combo/findings/x003-h-cold.json` | X-003: the V8 with the new combustion and ECU | Package X's finding X-003 (2026-11-24, card H): the combo V8 with fuel.model 1 and ecu.model 1, nothing else on. |
+| `combo/findings/x004-six-launch.json` | X-004: the turbo six, eight switches on | Package X's finding X-004 (2026-11-24): the combo turbo six with engine.custom, valve, intake, boost, fuel, ecu, car and sound models on (exhaust and voices ... |
+| `combo/pack/large-diesel-all.json` | Large diesel, every package on | The archetype with every model switch at 1 and the custom engine on (package X's listening pack: scripts/listening-pack.tsv) |
+| `combo/pack/small-four-all.json` | Small four, every package on | The archetype with every model switch at 1 and the custom engine on (package X's listening pack: scripts/listening-pack.tsv) |
+| `combo/pack/turbo-six-all.json` | Turbo six, every package on | The archetype with every model switch at 1 and the custom engine on (package X's listening pack: scripts/listening-pack.tsv) |
+| `combo/pack/turbo-six-boost.json` | Turbo six, the new turbo | The turbo six with boost.model 1 (card F's machine in the gas path) (package X's listening pack: scripts/listening-pack.tsv) |
+| `combo/pack/turbo-six-custom.json` | Turbo six, the custom engine | The turbo six with engine.custom on (card D) (package X's listening pack: scripts/listening-pack.tsv) |
+| `combo/pack/turbo-v8-dual-all.json` | Turbo V8, dual exhaust, every package on | The archetype with every model switch at 1 and the custom engine on (package X's listening pack: scripts/listening-pack.tsv) |
+| `combo/pack/v8-all.json` | V8, every package on | The archetype with every model switch at 1 and the custom engine on (package X's listening pack: scripts/listening-pack.tsv) |
+| `combo/pack/v8-custom.json` | V8, the custom engine | The V8 with engine.custom on (card D): its crossplane geometry, moving masses and friction (package X's listening pack: scripts/listening-pack.tsv) |
+| `combo/pack/v8-pops-0-ecu.json` | V8, overrun pops 0 %, the new ECU | The V8 with the pops dial at 0 % and ecu.model 1 (card H's account of unburned fuel) (package X's listening pack: scripts/listening-pack.tsv) |
+| `combo/pack/v8-pops-0.json` | V8, overrun pops 0 % | The V8 with the overrun's pops dial at 0 % (ecu.pops) (package X's listening pack: scripts/listening-pack.tsv) |
+| `combo/pack/v8-pops-100-ecu.json` | V8, overrun pops 100 %, the new ECU | The V8 with the pops dial at 100 % and ecu.model 1 (card H's account of unburned fuel) (package X's listening pack: scripts/listening-pack.tsv) |
+| `combo/pack/v8-pops-100.json` | V8, overrun pops 100 % | The V8 with the overrun's pops dial at 100 % (ecu.pops) (package X's listening pack: scripts/listening-pack.tsv) |
+| `combo/pack/v8-pops-50-ecu.json` | V8, overrun pops 50 %, the new ECU | The V8 with the pops dial at 50 % and ecu.model 1 (card H's account of unburned fuel) (package X's listening pack: scripts/listening-pack.tsv) |
+| `combo/pack/v8-pops-50.json` | V8, overrun pops 50 % | The V8 with the overrun's pops dial at 50 % (ecu.pops) (package X's listening pack: scripts/listening-pack.tsv) |
+| `combo/pack/v8-vehicle.json` | V8, the new vehicle | The V8 coupe with car.model 1 (card I's vehicle) (package X's listening pack: scripts/listening-pack.tsv) |
+| `engines/bike-boxer-twin.json` | Boxer twin, 360 degrees | Opposed cylinders on pins 180 apart: both at top dead centre together, firing alternately, 360-360. 102.5 x 76 mm (1254 cc), 12.5:1, redline 9,000. |
+| `engines/bike-i4-600.json` | Inline four, 600 cc, 180-degree crank | A supersport 600's four: 67 x 42.5 mm (599 cc), 13.1:1, redline 16,000 rpm: the highest-revving engine here. |
+| `engines/bike-i4-crossplane.json` | Inline four, crossplane crank (270-180-90-180) | Pins at 0, 270, 90 and 180 degrees: 1-3-2-4 at 270-180-90-180, the uneven beat of a crossplane superbike four. 79 x 50.9 mm (998 cc), 13.0:1, redline 14,000. |
+| `engines/bike-i4-screamer.json` | Inline four, 180-degree crank (a screamer) | A superbike's litre four, flat-plane: 1-2-4-3, a firing every 180 degrees. 76 x 55 mm (998 cc), 13.0:1, redline 14,500 rpm: a 2010s litre superbike's ... |
+| `engines/bike-single.json` | Single | A road single: 89 x 60 mm (373 cc), 12.6:1, redline 10,500. |
+| `engines/bike-triple.json` | Inline three, 120-degree crank | Even firing every 240 degrees, 1-2-3: 78 x 53.4 mm (765 cc), 12.9:1, redline 13,000. |
+| `engines/bike-twin-180.json` | Parallel twin, 180-degree crank | Pins opposed: 180-540. 83 x 68.6 mm (742 cc), 11.5:1, redline 10,500. |
+| `engines/bike-twin-270.json` | Parallel twin, 270-degree crank | A V-twin's beat from a parallel twin: 270-450. 80 x 68.6 mm (689 cc), 11.5:1, redline 10,000. |
+| `engines/bike-twin-360.json` | Parallel twin, 360-degree crank | Both pistons together, firing alternately: 360-360, the old British twin's beat. 76 x 71 mm (644 cc), 9.5:1, redline 8,000. |
+| `engines/bike-v4-bigbang.json` | V4, 90 degrees, big bang (twin pulse) | Pins offset 70 degrees: 0-90-290-380, two pairs of firings close together, the race V4's twin pulse. 81 x 53.5 mm (1103 cc), 14.0:1, redline 13,000. |
+| `engines/bike-v4-screamer.json` | V4, 90 degrees, even firing (a screamer) | Pins at 45 and 135 degrees, each shared by a front and a rear cylinder: a firing every 180 degrees. 81 x 48.4 mm (998 cc), 13.6:1, redline 14,500. |
+| `engines/bike-vtwin-45.json` | V-twin, 45 degrees, one pin (a cruiser's) | The big cruiser twin's 315-405 potato-potato: 102 x 114 mm (1863 cc), 10.0:1, redline 5,500, a heavy flywheel. |
+| `engines/bike-vtwin-90.json` | V-twin, 90 degrees, one pin | An L-twin's 270-450 (a 90-degree V on one pin): 100 x 70 mm (1099 cc), 12.5:1, redline 11,000. |
+| `engines/inline-8.json` | Straight eight | 1-6-2-5-8-3-7-4, even 90 (a split four-and-four crank). |
+| `engines/ref-00-single.json` | Single | A thumper. |
+| `engines/ref-01-twin-360.json` | Parallel twin, 360-degree crank | Both pins together; even firing. |
+| `engines/ref-02-twin-270.json` | Parallel twin, 270-degree crank | Pins 90 degrees apart: a 90-degree V-twin's firing. |
+| `engines/ref-03-vtwin-45.json` | V-twin, 45 degrees, one pin | The rear cylinder 45 degrees behind the front on a shared pin. |
+| `engines/ref-04-inline-3.json` | Inline three, 120-degree crank | 1-2-3, even. |
+| `engines/ref-05-inline-4.json` | Inline four, flat-plane crank | 1-3-4-2, even. |
+| `engines/ref-06-flat-4.json` | Boxer four | 1-3-2-4: cylinders 1 and 3 on the right bank, 2 and 4 on the left; each its own throw. |
+| `engines/ref-07-xplane-i4.json` | Inline four, crossplane crank | 1-3-2-4, pins 0, 270, 90, 180: 270-180-90-180. |
+| `engines/ref-08-inline-5.json` | Inline five | 1-2-4-5-3, even 144. |
+| `engines/ref-09-v6-60.json` | V6, 60 degrees, split pins | 1-2-3-4-5-6, odd cylinders left; six pins 60 degrees apart: even 120. |
+| `engines/ref-10-inline-6.json` | Inline six | 1-5-3-6-2-4, even 120. |
+| `engines/ref-11-flat-6.json` | Boxer six | 1-6-2-4-3-5; cylinders 1-3 right, 4-6 left; opposed pairs 180 degrees apart. |
+| `engines/ref-12-v8-cross.json` | V8, 90 degrees, crossplane | 1-8-4-3-6-5-7-2, odd cylinders left, pins shared 1-2, 3-4, 5-6, 7-8. |
+| `engines/ref-13-v8-flat.json` | V8, 90 degrees, flat-plane | 1-5-3-7-4-8-2-6, cylinders 1-4 one bank, 5-8 the other. |
+| `engines/ref-14-v10-72.json` | V10, 72 degrees, shared pins | 1-6-5-10-2-7-3-8-4-9, even 72; cylinders 1-5 one bank. |
+| `engines/ref-15-v12-60.json` | V12, 60 degrees | 1-7-5-11-3-9-6-12-2-8-4-10, even 60; cylinders 1-6 one bank. |
+| `engines/ref-16-rotary-2.json` | Rotary, two rotors | Rotors 180 degrees apart on the eccentric shaft: a face fires each 180. |
+| `engines/rotary-3.json` | Rotary, three rotors | Rotors 120 degrees apart: a face fires each 120 degrees of the shaft. |
+| `engines/rotary-4.json` | Rotary, four rotors | Rotors 90 degrees apart (a racing four-rotor's): a face fires each 90. |
+| `engines/triple-tplane.json` | Inline three, T-plane crank | The outer pins opposed, the middle at 90 degrees: 1-3-2, 180-270-270. |
+| `engines/twin-180.json` | Parallel twin, 180-degree crank | Pins opposed: 180-540. |
+| `engines/two-stroke-kart.json` | Two-stroke kart, 100 cc rotary disc | A 100 cc racing kart engine: 50.6 x 49.6 mm (99.7 cc), a rotary disc opening 145 degrees before top dead centre for 200, exhaust 196, transfers 132, an ... |
+| `engines/two-stroke-mx125.json` | Two-stroke single, 125 cc motocross | A 125 cc motocross single: 54 x 54.5 mm (124.8 cc), a 38 mm carburettor and a reed block into the crankcase, an exhaust port with its auxiliaries 0.85 of ... |
+| `engines/two-stroke-road-twin.json` | Two-stroke twin, 250 cc road bike | A 250 cc road twin of the late 1970s and 1980s kind: 54 x 54 mm (247 cc), crank pins 180 apart (one firing a half turn), reed valves into each crankcase, ... |
+| `engines/two-stroke-triple.json` | Two-stroke triple, 500 cc, piston ports | A 500 cc road triple of the early 1970s kind: 60 x 58.8 mm (498 cc), pins 120 apart, piston-port inlets (140 degrees about top dead centre), exhaust 182, ... |
+| `engines/two-stroke-utility.json` | Two-stroke utility engine, 50 cc | A small utility engine (a chainsaw's or a brush cutter's kind): 44 x 33 mm (50.2 cc), piston-port inlet (130 degrees), exhaust 150, transfers 118, a short ... |
+| `engines/v10-90.json` | V10, 90 degrees, 18-degree split pins | 1-6-5-10-2-7-3-8-4-9, even 72: each pin split by 18 degrees. |
+| `engines/v16-45.json` | V16, 45 degrees | Two straight eights on one eight-throw crank, 45 degrees apart: even 45. |
+| `engines/v4-65.json` | V4, 65 degrees, 180-degree crank | Two pins 180 apart, each shared by a front and a rear cylinder. |
+| `engines/v4-90.json` | V4, 90 degrees, 180-degree crank | Two pins 180 apart, each shared by a front and a rear cylinder (a sport-touring V4's): 180-90-180-270. |
+| `engines/v6-90-common.json` | V6, 90 degrees, common pins | Three pins 120 apart, each shared: odd-firing 90-150, as the first 90-degree V6s cut from V8s. |
+| `engines/v6-90-split.json` | V6, 90 degrees, 30-degree split pins | Each shared pin split by 30 degrees: even 120, 1-6-5-4-3-2. |
+| `engines/vr6.json` | VR6, 15 degrees | One head, two staggered rows 15 degrees apart; six pins offset so it fires evenly, 1-5-3-6-2-4. |
+| `engines/vtwin-60.json` | V-twin, 60 degrees, one pin | The rear cylinder 60 degrees behind the front: 300-420. |
+| `engines/vtwin-90.json` | V-twin, 90 degrees, one pin | An L-twin: 270-450. |
+| `engines/w12.json` | W12, two VR6s at 72 degrees | Banks at -43.5, -28.5, 28.5 and 43.5 degrees; 1-12-5-8-3-10-6-7-2-11-4-9. |
+| `engines/w16.json` | W16, two VR8s at 90 degrees | Banks at -52.5, -37.5, 37.5 and 52.5 degrees; 1-14-9-4-7-16-11-6-15-10-3-8-13-2-5-12. |
+| `listeners/v8-driver.json` | V8, driver | The reference's V8 from the driver's seat, windows shut: the exhaust through the floor, the boom through the mounts. |
+| `listeners/v8-tailpipe.json` | V8, tailpipe | The reference's V8 heard by package L's listener at its default camera, behind the tailpipes (the reference's EXHAUST view as a place). |
+| `listeners/v8-trackside.json` | V8, trackside in a field | The reference's V8 heard from beside the road on open ground: drive it past (MODE_DRIVE). |
+| `listeners/v8-tunnel-chase.json` | V8, chase in a tunnel | The reference's V8 followed through a tunnel. |

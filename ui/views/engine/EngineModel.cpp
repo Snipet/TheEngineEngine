@@ -190,6 +190,11 @@ namespace tee::ui::engine
         if (n <= 0)
             return "-";
         char b[24];
+        if (n > 1 && interval[0] < 0.5)
+        {
+            std::snprintf(b, sizeof b, "together, %.0f", cyc);
+            return b;
+        }
         if (even())
         {
             std::snprintf(b, sizeof b, "even, %.0f", interval[0]);
@@ -319,6 +324,36 @@ namespace tee::ui::engine
 
     Layout layoutOf(const FieldDoc& doc)
     {
+        // a two-stroke (card T): its cylinders in a row, firing every turn, evenly or all together
+        if (const double cycle = fieldValue(doc, EF::cycle); std::isfinite(cycle) && cycle >= 0.5)
+        {
+            Layout l;
+            l.twoStroke = true;
+            l.cyc = 360.0;
+            const int nf = doc.find("engine.tsCylinders"), ff = doc.find("engine.tsFiring");
+            l.n = nf >= 0 ? std::clamp(static_cast<int>(std::lround(doc.get(nf))), 1, 4) : 1;
+            const bool together = ff >= 0 && doc.get(ff) >= 0.5;
+            l.name = "Two-stroke " + std::string(l.n == 1 ? "single" : l.n == 2 ? "twin" : l.n == 3 ? "triple" : "four");
+            for (int c = 0; c < l.n; ++c)
+            {
+                const auto i = static_cast<std::size_t>(c);
+                l.fire[i] = together ? 0.0 : 360.0 * c / l.n;
+                l.pin[i] = wrap(-l.fire[i], 360.0);
+                l.along[i] = c;
+            }
+            for (int c = 0; c < l.n; ++c)
+                l.order[static_cast<std::size_t>(c)] = c;
+            std::stable_sort(l.order.begin(), l.order.begin() + l.n, [&](int a, int b) {
+                return l.fire[static_cast<std::size_t>(a)] < l.fire[static_cast<std::size_t>(b)];
+            });
+            for (int i = 0; i < l.n; ++i)
+            {
+                const double a = l.fire[static_cast<std::size_t>(l.order[static_cast<std::size_t>(i)])];
+                const double b = i + 1 < l.n ? l.fire[static_cast<std::size_t>(l.order[static_cast<std::size_t>(i + 1)])] : 360.0;
+                l.interval[static_cast<std::size_t>(i)] = b - a;
+            }
+            return l;   // firing together is the build's choice, not a fault
+        }
         const double custom = fieldValue(doc, EF::custom);
         if (std::isfinite(custom) && custom >= 0.5)
         {

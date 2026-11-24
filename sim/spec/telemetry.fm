@@ -208,6 +208,8 @@ module CarTel
     int blips [[ui::label("Auto-blips")]] [[ui::help("A counter")]];
     float wheelieLimit [[ui::label("Wheelie limit")]] [[ui::unit("m/s^2")]]
         [[ui::help("The acceleration at which the front leaves the road now")]];
+    float sprocketSpeed [[ui::label("Front sprocket")]] [[ui::quantity("rotation")]]
+        [[ui::help("The gearbox's output: the chain's teeth pass at this times the front sprocket's teeth over 2 pi")]];
     // ---- end of card B2's block ----
 };
 

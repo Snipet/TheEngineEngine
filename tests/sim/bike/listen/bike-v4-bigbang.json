@@ -1,0 +1,67 @@
+{
+ "format": "tee-scenario",
+ "version": 1,
+ "name": "bike-v4-bigbang",
+ "description": "The V4 big bang (0-90-290-380) free-revving in neutral through its range. Listen for: two firings close together twice a cycle, a gruff off-beat grumble at low revs that turns into a hard, uneven rasp near the top.",
+ "build": "content/builds/engines/bike-v4-bigbang.json",
+ "seconds": 10,
+ "events": [
+  {
+   "t": 0.0,
+   "spec": {
+    "env.temperature": 300,
+    "env.pressure": 101325
+   },
+   "ctl": {
+    "mode": 1,
+    "lever": 0,
+    "clutch": 0,
+    "brake": 0,
+    "throttle": 0,
+    "ignition": 1
+   }
+  },
+  {
+   "t": 0.25,
+   "ctl": {
+    "ignition": 2
+   }
+  },
+  {
+   "t": 2.0,
+   "ctl": {
+    "ignition": 1
+   }
+  },
+  {
+   "t": 3.0,
+   "ctl": {
+    "throttle": 0.4
+   },
+   "ramp": 0.5
+  },
+  {
+   "t": 5.0,
+   "ctl": {
+    "throttle": 1
+   },
+   "ramp": 0.3
+  },
+  {
+   "t": 7.5,
+   "ctl": {
+    "throttle": 0
+   },
+   "ramp": 0.1
+  }
+ ],
+ "assertions": [
+  {
+   "audio": "finite"
+  },
+  {
+   "audio": "peak",
+   "<=": 1
+  }
+ ]
+}

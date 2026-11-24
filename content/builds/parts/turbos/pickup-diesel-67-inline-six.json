@@ -1,0 +1,20 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "6.7 L straight-six turbo diesel pickup: turbo",
+  "notes": "The forced induction of the archetype \"6.7 L straight-six turbo diesel pickup\" alone (turbo, 2.00 bar); loaded as a part it replaces only the boost fields it sets. Its sizes are matched to whatever engine it goes on.",
+  "spec": {
+    "boost": {
+      "model": "Machine",
+      "kind": "Turbo",
+      "level": 1.0,
+      "blowOff": 0.7,
+      "size": 1.0,
+      "target": 200000.0,
+      "gateSpring": 160000.0,
+      "blowOffKind": "None",
+      "vanes": "Variable vanes",
+      "icEffect": 0.75
+    }
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "V12 6.5 L cams",
+  "notes": "The cams, springs and phasers of the archetype \"V12 6.5 L\" alone (intake 272/246 degrees at the seat/1 mm, 12.2 mm; exhaust 264/238, 11.2 mm): loaded as a part, they replace only the valvetrain's cam fields.",
+  "spec": {
+    "valve": {
+      "model": "Lab",
+      "train": "Finger",
+      "inDurSeat": 272,
+      "inDur1mm": 246,
+      "inLift": 0.012199999999999999,
+      "inCentre": 106,
+      "exDurSeat": 264,
+      "exDur1mm": 238,
+      "exLift": 0.0112,
+      "exCentre": 110,
+      "inPhaseRange": 50,
+      "exPhaseRange": 40
+    }
+  }
+}

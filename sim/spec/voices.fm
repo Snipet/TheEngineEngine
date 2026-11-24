@@ -76,4 +76,11 @@ module VoicesSpec
         [[ui::quantity("power")]] [[ui::help("0: by the engine's size")]];
     float starterLevel [[fminus::range(-60, 12)]] [[fminus::default(0)]] [[ui::label("Starter level")]]
         [[ui::unit("dB")]] [[ui::decimals(1)]];
+    // a motorcycle's (card B2's, spec.car.kind Motorcycle with car.model 1)
+    float chain [[fminus::range(-60, 12)]] [[fminus::default(0)]] [[ui::label("Chain whine")]] [[ui::group("Motorcycle")]]
+        [[ui::unit("dB")]] [[ui::decimals(1)]];
+    float lashLevel [[fminus::range(-60, 12)]] [[fminus::default(0)]] [[ui::label("Chain lash clunk")]] [[ui::unit("dB")]]
+        [[ui::decimals(1)]] [[ui::help("The drive's play closing as the throttle opens or shuts")]];
+    float dryClutch [[fminus::range(-60, 12)]] [[fminus::default(0)]] [[ui::label("Dry clutch rattle")]] [[ui::unit("dB")]]
+        [[ui::decimals(1)]] [[ui::help("Heard only with a dry clutch, at idle, the lever out")]];
 };

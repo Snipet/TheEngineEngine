@@ -87,9 +87,13 @@ def main():
     ap.add_argument("--bin", default=os.path.join(ROOT, "build-dev", "bin"))
     ap.add_argument("--from", dest="src", default=os.path.join(ROOT, "out", "validation-archetypes"))
     ap.add_argument("--jobs", type=int, default=3)
+    ap.add_argument("--existing", action="store_true", help="only the archetypes whose tables are in --from already")
+    ap.add_argument("--out", default=os.path.join(ROOT, "docs", "manual", "validation.md"))
     a = ap.parse_args()
     os.makedirs(a.src, exist_ok=True)
     slugs = sorted(f[:-5] for f in os.listdir(HERE) if f.endswith(".json"))
+    if a.existing:
+        slugs = [s for s in slugs if os.path.exists(os.path.join(a.src, s + ".txt"))]
     docs = {s: json.load(open(os.path.join(HERE, s + ".json"))) for s in slugs}
     builds = {s: json.load(open(os.path.join(ROOT, "content", docs[s]["build"]))) for s in slugs}
     with ThreadPoolExecutor(a.jobs) as ex:
@@ -152,7 +156,7 @@ def main():
         for s, t, v, st in by[name]:
             out.append("| %s | %s%s | %s |" % (builds[s]["name"], show(t, v), " (n/a)" if st == "n/a" else "", rng(t)))
         out.append("")
-    with open(os.path.join(ROOT, "docs", "manual", "validation.md"), "w") as f:
+    with open(a.out, "w") as f:
         f.write("\n".join(out))
     print("%d archetypes, %d targets, %d missed" % (len(slugs), total, missed))
 
