@@ -87,5 +87,15 @@ namespace tee::ui
         e.addTelemetry("sound.ceilingParts", [](const DemoEngine& d) { return d.throttle() > 0.9 ? 12.0 : 0.0; });
         e.addTelemetry("sound.doppler", [](const DemoEngine&) { return 1.0; });
         e.addTelemetry("sound.range", [](const DemoEngine&) { return 5.1; });
+        // the cabin's ways in, at the ears: only in the driver's seat (camera 4), -200 otherwise (as L's)
+        const auto way = [](double shut, double load) {
+            return [shut, load](const DemoEngine& d) {
+                return std::lround(d.field("sound.camera", 0.0)) == 4 ? shut + load * d.throttle() : -200.0;
+            };
+        };
+        e.addTelemetry("sound.pathFloor", way(-30.0, 10.0));
+        e.addTelemetry("sound.pathFirewall", way(-34.0, 8.0));
+        e.addTelemetry("sound.pathGlass", way(-46.0, 0.0));
+        e.addTelemetry("sound.pathStructure", way(-38.0, 6.0));
     }
 }

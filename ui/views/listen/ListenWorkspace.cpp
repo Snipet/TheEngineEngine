@@ -126,6 +126,9 @@ namespace tee::ui
         s.track = field("car.track", 1.55);
         const double ra = live.get("sound.rearAxleY");
         s.rearAxle = std::isfinite(ra) ? ra : (s.bike ? 0.3 : 0.85);
+        const double fa = live.get("sound.frontAxleY");
+        if (std::isfinite(fa) && std::isfinite(ra) && fa > ra)
+            s.wheelbase = fa - ra;   // L's, the same as the build's
         s.length = s.rearAxle + s.wheelbase + (s.bike ? 0.3 : 0.9);
         s.width = s.bike ? 0.8 : s.track + 0.25;
         // The sources: the program's places and levels, else the model's documented places (no level).
@@ -700,7 +703,7 @@ namespace tee::ui
                     break;
                 c.text(w[0], in.x, y, look::kBody, p.text);
                 const double lv = live.get(w[1]);   // not published yet: the way in words alone
-                if (std::isfinite(lv))
+                if (std::isfinite(lv) && lv > -120.0)   // -200: not heard this way (L's)
                     c.text(fmt("%.0f dB", lv).c_str(), in.right(), y, look::kBody, p.value, funkgui::Align::right);
                 y += 16.0f;
             }
