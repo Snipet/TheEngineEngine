@@ -1,0 +1,24 @@
+# The reference V8 through a start, a rev and a stop (docs/plan/w1-b-shell.md, "Slice 1 is done when"). The
+# application starts it in DRIVE CAR, in neutral: the start key cranks it, the throttle key revs it against nothing
+# to its limiter, and the start key held a second switches it off.
+0.00  expect engine.state == 0
+0.20  key return down
+0.50  key return up
+0.60  shot out/shell/ref-cranking.png
+3.50  expect engine.state == 2            # running
+3.50  expect rpm > 400
+3.50  expect rpm < 1600                   # idling
+3.50  expect peak > 0.001                 # and heard
+3.50  shot out/shell/ref-idle.png
+4.00  key w down                          # the throttle eases down while the key is held
+6.50  expect rpm > 3000                   # it revved
+6.50  expect engine.throttle > 0.5
+6.50  shot out/shell/ref-rev.png
+6.50  key w up
+9.00  expect rpm < 2000                   # and came back
+9.00  print
+9.20  key return down                     # held a second on a running engine: off
+10.60 key return up
+13.00 expect engine.state != 2
+13.00 expect rms > 0.0005
+14.00 end

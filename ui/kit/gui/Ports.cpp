@@ -47,7 +47,7 @@ namespace tee::ui
     }
 
     SourcePort::SourcePort(ParamSource& source, int index)
-        : source_(source), index_(index), control_(controlOf(source.info(index))), id_(source.info(index).id)
+        : source_(source), sink_(dynamic_cast<GestureSink*>(&source)), index_(index), control_(controlOf(source.info(index))), id_(source.info(index).id)
     {
     }
 
@@ -59,6 +59,20 @@ namespace tee::ui
         if (control_.type == ControlType::real)
             return 0;
         return std::max(1, static_cast<int>(std::lround(control_.max - control_.min)));
+    }
+
+    void SourcePort::beginGesture()
+    {
+        ++gestures_;
+        if (sink_ != nullptr)
+            sink_->beginGesture(index_);
+    }
+
+    void SourcePort::endGesture()
+    {
+        ++ended_;
+        if (sink_ != nullptr)
+            sink_->endGesture(index_);
     }
 
     void SourcePort::setValue01(float v) { source_.set(index_, static_cast<double>(plainOf(control_, v))); }

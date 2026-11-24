@@ -1,0 +1,91 @@
+// shell/input/Controls.cpp: Controls.h.
+#include "input/Controls.h"
+
+#include <cmath>
+#include <utility>
+
+namespace tee::input
+{
+    Controls::Controls(ControlSink& sink, const TelemetrySource& telemetry)
+        : sink_(&sink), telemetry_(&telemetry), bindings_(defaultBindings())
+    {
+        retarget(sink, telemetry);
+    }
+
+    void Controls::retarget(ControlSink& sink, const TelemetrySource& telemetry)
+    {
+        sink_ = &sink;
+        telemetry_ = &telemetry;
+        stateHandle_ = telemetry.findValue(telemetry::kState);
+        gearHandle_ = telemetry.findValue(telemetry::kGear);
+        drivenHandle_ = telemetry.findValue(telemetry::kDriven);
+    }
+
+    bool Controls::key(int key, bool down)
+    {
+        if (typing_)
+            return false;
+        const Action action = actionOf(bindings_, key);
+        if (action == Action::none)
+            return false;
+        driver_.set(Source::keyboard, action, down);
+        return true;
+    }
+
+    void Controls::setTyping(bool typing)
+    {
+        if (typing && !typing_)
+            driver_.release(Source::keyboard);
+        typing_ = typing;
+    }
+
+    void Controls::focusLost()
+    {
+        driver_.release(Source::keyboard);
+    }
+
+    void Controls::panel(const PanelControls& p)
+    {
+        driver_.set(Source::panel, Action::start, p.startHeld);
+        driver_.setStrip(p.throttle, p.throttle >= 0.0f);
+        driver_.setBrakeStrip(p.brake, p.brake >= 0.0f);
+        // the counts: each increase a press (a count that jumped far is a new Panel's: followed, not pressed)
+        const auto presses = [this](int now, int& seen, Action action) {
+            const int more = now - seen;
+            seen = now;
+            if (more > 0 && more <= 8)
+                for (int i = 0; i < more; ++i)
+                    driver_.press(action);
+        };
+        presses(p.shiftUp, panelUp_, Action::shiftUp);
+        presses(p.shiftDown, panelDown_, Action::shiftDown);
+        if (p.leverSet && (!panelLeverSet_ || p.lever != panelLever_))
+            driver_.requestGear(p.lever);
+        panelLeverSet_ = p.leverSet;
+        panelLever_ = p.lever;
+    }
+
+    void Controls::tick(float dt)
+    {
+        EngineSeen seen;
+        if (stateHandle_ >= 0)
+            seen.running = std::lround(telemetry_->value(stateHandle_)) == 2;
+        // a gearbox answers only while the engine is in a vehicle
+        const bool driven = drivenHandle_ < 0 || telemetry_->value(drivenHandle_) > 0.5;
+        if (gearHandle_ >= 0 && driven)
+        {
+            seen.gearKnown = true;
+            seen.gear = static_cast<int>(std::lround(telemetry_->value(gearHandle_)));
+        }
+        sink_->setControls(driver_.advance(dt, seen));
+    }
+
+    AppServices Controls::services()
+    {
+        AppServices s;
+        s.panelControls = [this](const PanelControls& p) { panel(p); };
+        s.controls = [this] { return driver_.frame(); };
+        s.status = [this] { return status_; };
+        return s;
+    }
+}
