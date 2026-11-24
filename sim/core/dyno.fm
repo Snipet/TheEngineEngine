@@ -8,9 +8,11 @@
 //
 // a proportional-integral loop placed as a second-order system of natural frequency wn and damping zeta on the
 // crank's own dynamics (dw/dt = (T_engine - T_abs) / J), with the set speed's own acceleration fed forward so a sweep
-// is followed without lag. wn is 15 rad/s (2.4 Hz: a real eddy-current or AC dyno's speed loop is of that order) and
-// zeta 1, well under the slowest firing frequency the engines here have (a single at idle, some 6 Hz), so the loop
-// holds the cycle's mean speed and lets the firing ripple through, as a real dyno's does. With `rate` 0 the set speed
+// is followed without lag. wn is 40 rad/s (6.4 Hz) and zeta 1: under the firing frequency of every layout here above
+// some 1000 rpm (a single's at 1000 rpm is 8 Hz; a V8's at 2000, 133 Hz), so the loop holds the cycle's mean speed and
+// lets the firing ripple through, as a real dyno's does, and fast enough to hold a lumpy cam's slow surges (the
+// reference's biggest cam at 2000 rpm swings its torque some 190 N m either way in a second: at 15 rad/s the speed
+// swung 160 rpm with it, at 40 some 25). A real AC dyno's speed loop is of this order (judgement). With `rate` 0 the set speed
 // is `set`; otherwise it moves from where it was at `rate` (rad/s^2), a sweep, and the host says where to start and
 // stop (card C). The brake torque reported is the absorber's mean over the last cycle (its low-pass over 0.1 s).
 //
@@ -32,7 +34,7 @@ module Dyno
     void setup(float inertia)
     {
         j = inertia;
-        wn = 15.0f;
+        wn = 40.0f;
         zeta = 1.0f;
         integ = 0.0f;
         tqAbs = 0.0f;

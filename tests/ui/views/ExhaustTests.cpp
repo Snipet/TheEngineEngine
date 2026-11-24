@@ -3,6 +3,7 @@
 // 1 and 2, at 1100x700 and 1600x1000, in both themes. Every picture is the software rasteriser's.
 #include "ViewKit.h"
 
+#include "app/AppFrame.h"
 #include "app/Look.h"
 #include "views/exhaust/ExhaustDemo.h"
 #include "views/exhaust/ExhaustModel.h"
@@ -10,6 +11,32 @@
 #include "views/exhaust/ExhaustWorkspace.h"
 
 #include <funkgui/core/Theme.h>
+#include <funkgui/text/FontService.h>
+
+#include "views/air/AirDemo.h"
+#include "views/air/AirWorkspace.h"
+
+#include <algorithm>
+#include <cstdio>
+
+
+namespace tee::test::u3
+{
+    // The stage the frame gives a workspace in a window of w x h (U1's AppFrame over the demo): the AIR and EXHAUST
+    // stages are tested and pictured at the frame's smallest (1100 x 700) and at a 1600 x 1000 window's.
+    funkgui::Rect frameStage(int w, int h)
+    {
+        tee::ui::DemoRig demo(4.6);
+        tee::ui::FrameServices s;
+        s.app = demo.app;
+        tee::ui::AppFrame frame(demo.doc, demo.units, demo.engine, std::move(s), &demo.engine, &demo.engine,
+                                tee::ui::defaultSlots(), w, h);
+        funkgui::HeadlessHost host(frame, 0, 1.0f);
+        host.resize(w, h);
+        host.tick(2);
+        return frame.stageRect();
+    }
+}
 
 namespace
 {
@@ -187,7 +214,8 @@ namespace
         const std::uint64_t k = rig.ws->drawKey();
         rig.host->tick(30);
         CHECK(rig.ws->drawKey() == k && !rig.ws->moving());
-        rig.demo.engine.tick(1.0f / 60.0f);    // the demo's script on: a new Scope copy
+        rig.demo.engine.set("engine.state", 2);   // running: the demo's script moves, a new Scope copy
+        rig.demo.engine.tick(1.0f / 60.0f);
         rig.host->tick(1);
         CHECK(rig.ws->drawKey() != k);
         return 0;
@@ -197,6 +225,7 @@ namespace
     VIEW_TEST(testExhaustSlow, "exhaust.slow")
     {
         ExRig rig("tt-v8-x");
+        rig.demo.engine.set("engine.state", 2);   // running: each tick of the demo a new Scope copy
         rig.host->click(rig.w - 16.0f - 32.0f, 25.0f);   // the SLOW button
         for (int i = 0; i < 12; ++i)
         {
@@ -265,6 +294,120 @@ namespace
         StageRig plain(tee::ui::makeExhaustWorkspace, 1100, 700, 1.0f);
         plain.demo.selection.select("exhaust.tail[0]");
         CHECK(plain.ws->inspectorPage().empty());
+        return 0;
+    }
+}
+
+namespace
+{
+    // U3's contact sheet, out/ui/sheet.u3.png: a row a workspace (AIR, then EXHAUST and a second EXHAUST build), each at
+    // 1100 x 700 and 1600 x 1000, density 1 then 2, scaled into tiles of the same size. The software rasteriser's.
+    VIEW_TEST(testU3Sheet, "exhaust.sheet")
+    {
+        constexpr int kTileW = 560, kTileH = 360, kGap = 16, kCols = 4, kRows = 3;
+        funkgui::Image out;
+        out.w = kCols * kTileW + (kCols + 1) * kGap;
+        out.h = kRows * kTileH + (kRows + 1) * kGap;
+        out.rgba.assign(static_cast<std::size_t>(out.w) * static_cast<std::size_t>(out.h) * 4, 8);
+        for (std::size_t i = 3; i < out.rgba.size(); i += 4)
+            out.rgba[i] = 255;
+        const int sizes[2][2] = { { 1100, 700 }, { 1600, 1000 } };
+        const float dpis[2] = { 1.0f, 2.0f };
+        for (int row = 0; row < kRows; ++row)
+            for (int col = 0; col < kCols; ++col)
+            {
+                const int w = sizes[col / 2][0], h = sizes[col / 2][1];
+                const float dpi = dpis[col % 2];
+                std::unique_ptr<ExRig> ex;
+                tee::ui::DemoRig demo(2.0);
+                tee::ui::MemoryDoc doc{ tee::ui::air::airDemoFields() };
+                tee::ui::WorkspaceContext ctx{ doc, demo.engine, demo.engine, demo.engine, demo.units, demo.selection, demo.app };
+                std::unique_ptr<tee::ui::Workspace> ws;
+                std::unique_ptr<funkgui::HeadlessHost> host;
+                funkgui::HeadlessHost* shown = nullptr;
+                if (row == 0)
+                {
+                    tee::ui::air::setAirDemoBuild(doc, "tt-v8");
+                    ws = tee::ui::makeAirWorkspace(ctx);
+                    host = std::make_unique<funkgui::HeadlessHost>(*ws, 0, dpi);
+                    host->resize(w, h);
+                    ws->place({ 0.0f, 0.0f, static_cast<float>(w), static_cast<float>(h) });
+                    for (double t = 2.0; t <= 4.6; t += 0.05)
+                    {
+                        demo.engine.setTime(t);
+                        tee::ui::air::airDemoLive(demo.engine, doc);
+                        host->tick(1);
+                    }
+                    host->tick(60);
+                    shown = host.get();
+                }
+                else
+                {
+                    ex = std::make_unique<ExRig>(row == 1 ? "tt-v8-x" : "sc-v8-180", w, h, dpi);
+                    shown = ex->host.get();
+                }
+                const funkgui::Image img = funkgui::rasterise(shown->draw(), funkgui::FontService::get().atlas(), 1);
+                const int ox = kGap + col * (kTileW + kGap), oy = kGap + row * (kTileH + kGap);
+                const double sc = std::max(static_cast<double>(img.w) / kTileW, static_cast<double>(img.h) / kTileH);
+                for (int y = 0; y < kTileH; ++y)
+                    for (int x = 0; x < kTileW; ++x)
+                    {
+                        const int x0 = static_cast<int>(x * sc), x1 = std::max(x0 + 1, static_cast<int>((x + 1) * sc));
+                        const int y0 = static_cast<int>(y * sc), y1 = std::max(y0 + 1, static_cast<int>((y + 1) * sc));
+                        if (x0 >= img.w || y0 >= img.h)
+                            continue;
+                        unsigned sum[3] = { 0, 0, 0 }, n = 0;
+                        for (int yy = y0; yy < y1 && yy < img.h; ++yy)
+                            for (int xx = x0; xx < x1 && xx < img.w; ++xx)
+                            {
+                                const std::size_t k = (static_cast<std::size_t>(yy) * static_cast<std::size_t>(img.w) + static_cast<std::size_t>(xx)) * 4;
+                                for (int ch = 0; ch < 3; ++ch)
+                                    sum[ch] += img.rgba[k + static_cast<std::size_t>(ch)];
+                                ++n;
+                            }
+                        const std::size_t d = (static_cast<std::size_t>(oy + y) * static_cast<std::size_t>(out.w) + static_cast<std::size_t>(ox + x)) * 4;
+                        for (int ch = 0; ch < 3; ++ch)
+                            out.rgba[d + static_cast<std::size_t>(ch)] = static_cast<uint8_t>(n > 0 ? sum[ch] / n : 0);
+                    }
+                host.reset();
+                ws.reset();
+            }
+        const std::string path = (outDir() / "sheet.u3.png").string();
+        CHECK_MSG(tee::test::writePng(out, path), path);
+        std::printf("  contact sheet: %s (software rasteriser; rows AIR, EXHAUST twin-turbo V8, EXHAUST supercharged V8 180;"
+                    " columns 1100x700 at density 1 and 2, 1600x1000 at 1 and 2)\n", path.c_str());
+        return 0;
+    }
+}
+
+namespace
+{
+    // At the frame's own stage sizes: the whole system inside the stage (every part's bounds), nothing cut off.
+    VIEW_TEST(testExhaustFrameStage, "exhaust.framestage")
+    {
+        for (const auto& win : { std::pair<int, int>{ 1100, 700 }, std::pair<int, int>{ 1600, 1000 } })
+        {
+            const funkgui::Rect st = tee::test::u3::frameStage(win.first, win.second);
+            CHECK(st.w > 400.0f && st.h > 400.0f);
+            const int w = static_cast<int>(st.w), h = static_cast<int>(st.h);
+            for (const char* b : { "na4-421", "tt-v8-x", "sc-v8-180", "single-stack", "v12-log", "flat4" })
+            {
+                ExRig rig(b, w, h, 1.0f);
+                for (const tee::ui::exhaust::Hit& x : rig.geo().hits)
+                    CHECK_MSG(x.r.x >= 0.0f && x.r.right() <= static_cast<float>(w) && x.r.y >= 0.0f
+                                  && x.r.bottom() <= static_cast<float>(h) - 60.0f,
+                              std::string(b) + " " + x.id + " at " + std::to_string(win.first));
+                // the ends' tags: room for them after the last column
+                const tee::ui::exhaust::Geo g = rig.geo();
+                if (g.endX > 0)
+                    CHECK_MSG(g.endX + 100.0f <= static_cast<float>(w), std::string(b) + " tags cut");
+            }
+            const std::string tag = win.first == 1100 ? "small" : "large";
+            ExRig two("tt-v8-x", w, h, 2.0f);
+            golden("exhaust.frame." + tag, *two.host);
+            ExRig one("sc-v8-180", w, h, 1.0f);
+            golden("exhaust.frame." + tag + ".dpi1", *one.host);
+        }
         return 0;
     }
 }
