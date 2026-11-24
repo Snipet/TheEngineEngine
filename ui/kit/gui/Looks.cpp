@@ -1,6 +1,7 @@
 // ui/kit/gui/Looks.cpp: from TestingPlayground, Source/editor/Looks.cpp at 47bac40327ed9e8e59928500de9f3beb63fe8636 (ui/kit/SEED.tsv); what was changed: docs/ui-kit.md.
 // Source/editor/Looks.cpp: the panel's hardware, drawn (Looks.h).
 #include "kit/gui/Looks.h"
+#include "kit/gui/Items.h"
 
 #include <funkgui/core/TypeScale.h>
 
@@ -55,7 +56,7 @@ namespace tee::ui::looks
         // A dial's value as FunkGui's Dial draws it: dim at the default, the accent under the hand.
         Col valueColour(const funkgui::Theme& th, const Knob& k)
         {
-            return k.hover ? th.accent : (k.atDefault ? th.ink32 : th.ink100);
+            return k.hover ? th.accent : (k.atDefault && dimAtDefault() ? th.ink32 : th.ink100);
         }
     }
 

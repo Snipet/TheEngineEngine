@@ -46,6 +46,7 @@ namespace tee::ui
         {
             tach_ = &make<Gauge>("Engine", [this] { return ctx_.live.get(telemetry::kSpeed) * kToRpm; }, 0.0, 8000.0);
             tach_->setTicks(8, 2);
+            tach_->setClearNumerals(true);
             tach_->setNumerals([](double v) { return std::to_string(static_cast<int>(std::lround(v / 1000.0))); });
             tach_->setUnit("X1000 RPM");
             tach_->setReadout([](double v) { return look::num(v, "%.0f"); });
@@ -53,6 +54,7 @@ namespace tee::ui
                 return ctx_.units.toUser(Quantity::speed, ctx_.live.get(telemetry::kCarSpeed));
             }, 0.0, 300.0);
             speedo_->setTicks(6, 2);
+            speedo_->setClearNumerals(true);
             speedo_->setReadout([](double v) { return look::num(v, "%.0f"); });
         }
 

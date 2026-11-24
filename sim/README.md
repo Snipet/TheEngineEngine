@@ -284,6 +284,37 @@ Combustion's scatter and pops, the exhaust's valve, flow and jet noise, in the o
 Boost's sounds), and Car's and each Pop's own. The order of the draws is part of the sound: a module that draws from
 a shared stream draws where the reference did.
 
+## The hooks (the integrator's, card D)
+
+Each package's model is switched by its Spec section's `model` (0: the reference's, bit for bit; 1: the package's):
+`valve.model` (E), `intake.model` (E), `boost.model` (F), `exhaust.model` (G), `fuel.model` (H: combustion),
+`ecu.model` (H), `car.model` (I), and `engine.custom` (D). A hook is called only when its model is 1, so at the
+defaults nothing below runs. Its body is a stub, in the owner's module, that the owner fills; the call's place is the
+integrator's.
+
+| Owner fills | Function | Units, meaning | Called by Engine |
+|---|---|---|---|
+| E | `float Valvetrain::areaEx(Cylinder* cy, int c, float a)`, `areaIn(...)` | m^2, cylinder c's valves' effective areas at its angle a (stubs: the cylinder's own table, as the reference) | each sample, for `Cylinder::stepAreas(a, dDeg, dt, areaE, areaI, bE, zE, tPipe, bI, zI, tAir)` and a rotary's shared ports (`exhaustFlowArea`, `intakeFlowArea`); valve.model 1 |
+| E | `void Valvetrain::oil(float pressure, float temperature)` | Pa over the air, K: from `Heat::oilPressure()`, `oilTemperature()` | every 16, valve.model 1 |
+| E | `void Valvetrain::control16(float d16, float camTarget, float lift)` | crank degrees (-1: its own schedule), 0 to 1: from `Ecu::camTarget(0)`, `liftCommand()` | every 16, valve.model 1 |
+| H | `float Ecu::camTarget(int cam)`, `liftCommand()` | as above (stubs: -1, 0) | from the valvetrain's hook |
+| H | `float Ecu::boostTarget()`, `antiLag()`, `nitrous()` | Pa over the air; 0 or 1; 0 to 1 (stubs: 0) | into `Boost::control16`, boost.model 1 |
+| H | `void Ecu::vehicle(float drivenSlip, float speed, int gear, int upshifts, float cutRequest, float blipRequest)` | the car's values below | every 16, driven, ecu.model 1 |
+| I | `float Car::drivenSlip()`, `float speedNow()`, `int gearNow()`, `int upshifts()`, `float cutRequest()`, `float blipRequest()` | slip ratio (0 rolling); m/s; -1 R, 0 N, 1 up; a counter (one more at each upshift begun); s of cut asked for (0 none); rad/s of crank speed a downshift's blip asks for (0 none). **These names are final**: H's and I's own differed, and `gear()` and `slip()` are Car's fields already | into `Ecu::vehicle` |
+| D (done) | `float Cylinder::burned()` | kg, the burned gas in it now; Combustion sets `qTot`, `burnDur`, `cBurn`, `knock` at intake closing, as now | by Combustion |
+| F | `float Boost::pressure()`, `temperature()` | Pa absolute, K: the air at the throttle (stubs: the reference's boost, 300 K) | every 16, boost.model 1, into `intk.pBox`, `intk.tAir` |
+| F | `void Boost::draw(float m)`, `void tick(float omegaCrank, float pPlenum)` | kg/s drawn through the throttle; rad/s, Pa | each sample, after the plenum, boost.model 1 |
+| F | `void Boost::control16(float d16, float target, float antiLag, float nitrous)` | the ECU's (named control16: `Boost::control` is the reference's) | every 16, boost.model 1 |
+| F | `float Boost::crankTorque` | N m the machinery takes from the crank | each sample in place of `drag`, boost.model 1 |
+| F | `float Boost::oxygenShare()` | the charge's oxygen over air's (1 without nitrous). **Final name** (F wrote `oxygen()`, H asked `oxygenShare()`) | by Combustion |
+| F, G | `int Boost::housingOf(int bank, int group, int banks)`, `float housing(int h, float drive, float admit, float tGas)`, `float downpipe(int side, float a, float z)`, `float gatePipe(int t, float a, float z)` | as docs/plan/integration-queue.md has them (stubs: -1, 0) | not yet: with exhaust.model or boost.model 1, the sequence `exh.read()`; cylinders; `exh.prepare()`; the housings, downpipes and gates; `exh.step(q)` goes in `sampleTick` step 4, in place of `exh.step(qe, np)`: G and F add it there together and tell the integrator |
+| G | `void Exhaust::popAt(int bank, float amplitude)`, `float gasTemperature(int bank)` | Pa; K (stubs: nothing; `tPort`). Named popAt: `Exhaust::pop` is its Pops | by Combustion (card H) |
+
+The lead's fields, added by the integrator: `spec.env.pressure` (Pa), `.surface`, `.surfaceLeft` (-1 the same),
+`.grade` (rise over run), not read by the reference's engine; `scope.portIntake`, `scope.portExhaust` (cylinder 1's
+port pressures by degree, Pa absolute); `tel.ecu.advance` (cylinder 1's spark, degrees before top dead centre),
+`tel.sound.rate` (the host's rate, Hz); `tel.engine.firing` and the dyno (above).
+
 ## Adding a subsystem
 
 Its state goes into its own module in its directory. `Engine` holds one, sets it up in `setupAll`, frees it in

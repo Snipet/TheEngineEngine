@@ -8,6 +8,7 @@
 //   tee-dyno --predict --build content/builds/v8.json       the ribbon's curve (tee::PredictService): steady points on
 //            [--threads N] [--points N] [--coarse N]        several threads, coarse first; the times to the first and
 //            [--tolerance X] [--min-cycles N] [--max-cycles N] [--cold] [--history] [--repeat N]
+//            [--brake auto|host|program] [--hold S] [--no-settle] [--warmup-seconds S]
 //            [--ramp A]                                     and against a slow sweep at A rad/s^2 with the same brake
 #include "common/Paths.h"
 
@@ -223,6 +224,8 @@ int main(int argc, char** argv)
             ok = number(repeat);
         else if (args.is("--no-settle"))
             predictOptions.settleExhaust = false;
+        else if (args.is("--brake"))
+            ok = args.value(predictOptions.brake);
         else if (args.is("--hold"))
             ok = number(predictOptions.holdSeconds);
         else if (args.is("--warmup-seconds"))

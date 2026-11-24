@@ -91,6 +91,8 @@ namespace tee::ui
     GarageWorkspace::GarageWorkspace(WorkspaceContext& c, garage::Library* library) : Workspace(c), lib_(library)
     {
         if (lib_ == nullptr)
+            lib_ = ctx_.library;   // the application's (the shell's, over its files)
+        if (lib_ == nullptr)
         {
             // The frame's own services when they list builds (the application today); else made-up builds.
             if (garage::ServicesLibrary::usable(ctx_))

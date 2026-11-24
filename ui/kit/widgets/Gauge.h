@@ -27,6 +27,9 @@ namespace tee::ui
         void setReadout(std::function<std::string(double)> f) { readout_ = std::move(f); }
         void setUnit(std::string u) { unit_ = std::move(u); }
         void setRange(double lo, double hi) { lo_ = lo; hi_ = hi; }
+        // U1: numerals set clear of the ticks by their own size, over the needle on a backing of the face, and a short
+        // needle tail (DRIVE's instruments). Off (the default): J2's look.
+        void setClearNumerals(bool on) { clearNumerals_ = on; }
 
         double value() const noexcept { return value_; }
         float needle() const noexcept { return needle_; }   // where the needle is, 0..1 of the arc
@@ -55,6 +58,7 @@ namespace tee::ui
         std::function<std::string(double)> numerals_, readout_;
         std::string unit_;
         double value_ = 0.0;
+        bool clearNumerals_ = false;
         float needle_ = 0.0f;
     };
 }
