@@ -12,4 +12,7 @@ namespace tee::ui
     std::unique_ptr<Workspace> makeValvesWorkspace(WorkspaceContext& c);
     // For tests: the panels drawn now (no text may cross one's edge).
     std::vector<funkgui::Rect> valvesPanels(const Workspace& w);
+    // For tests: where a cam's handle is now (0..2 the intake's peak, opening, closing; 3..5 the exhaust's), in window
+    // coordinates; {-1, -1} when the build has no cams to edit.
+    funkgui::Point valvesHandle(const Workspace& w, int h);
 }

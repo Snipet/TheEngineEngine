@@ -937,10 +937,22 @@ namespace tee::ui
 
     public:
         std::vector<Rect> panels() const { return { editor_, ring_, bench_, phasers_, live_ }; }
+        // Where handle h is now (0..2 the intake's peak, opening, closing; 3..5 the exhaust's); {-1, -1}: no handles.
+        Point handle(int h) const
+        {
+            const Train t = trainOf(ctx_.doc);
+            return t.editable && h >= 0 && h < handleCount ? handlePoint(h, t) : Point{ -1.0f, -1.0f };
+        }
         bool compact() const noexcept { return compact_; }
     };
 
     std::unique_ptr<Workspace> makeValvesWorkspace(WorkspaceContext& c) { return std::make_unique<ValvesWorkspace>(c); }
+
+    funkgui::Point valvesHandle(const Workspace& w, int h)
+    {
+        const auto* v = dynamic_cast<const ValvesWorkspace*>(&w);
+        return v != nullptr ? v->handle(h) : funkgui::Point{ -1.0f, -1.0f };
+    }
 
     std::vector<funkgui::Rect> valvesPanels(const Workspace& w)
     {

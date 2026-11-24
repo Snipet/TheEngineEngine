@@ -1096,7 +1096,7 @@ module Engine
         omMin = fminf(omMin, crank.omega);
         omMax = fmaxf(omMax, crank.omega);
         const float drop = fminf(fmaxf(1.0f - intk.pPlenum / intk.pBox, 0.0f), 1.0f);
-        ex.tick(intk.qThr, drop, crank.omega * 0.15915494f, dps);
+        ex.tick(intk.qThr, drop, crank.omega * 0.15915494f, dps, spec.intake.model, intk.sound);
         boost.sound(crank.omega * 0.15915494f, exh.mdot, set.bov);
         ex.tickStarter(crank.omega * 0.15915494f, ecu.starterOn);
     }

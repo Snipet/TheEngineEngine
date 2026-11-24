@@ -22,6 +22,7 @@
 
 #include <algorithm>
 #include <array>
+#include <span>
 #include <cmath>
 #include <string>
 #include <vector>
@@ -87,6 +88,11 @@ namespace tee::ui
             { "Truck", 20.5, 1.60, 0.8, 0.80, 0.0055, { 1.00, 0.85, 0.70, 0.28, 1.02 } },
             { "Motorcycle", 13.5, 1.55, -0.2, 1.10, 0.0120, { 1.00, 0.82, 0.65, 0.15, 1.08 } },
         };
+        // A motorcycle's tyres (sim/vehicle/bike.fm: BIKE_TYRE_MU, BIKE_TYRE_COMPOUND): the peak grip on dry asphalt and
+        // the compound whose curve it has.
+        const double kBikeTyreMu[] = { 1.10, 1.25, 1.40, 1.55, 1.00, 1.05 };
+        const int kBikeTyreCompound[] = { 9, 9, 9, 4, 9, 9 };
+        const char* const kBikeTyreName[] = { "Touring", "Sport", "Hypersport", "Race slick", "Dual sport", "Cruiser" };
         const char* const kSurfaces[] = { "dry", "damp", "wet", "snow", "prepared strip" };
         // The force over the load's share of mu at slip kappa, as tyre.fm tabulates it: the Magic Formula's
         // S(k) = sin(C atan(B k - E (B k - atan(B k)))) over its peak for k in 0..1, odd in k, held at its k = 1 value
@@ -153,6 +159,22 @@ namespace tee::ui
             { "car.brakes", "Brakes", { "car.brakeDecel", "car.brakeBias", "car.abs" } },
         };
 
+        // A motorcycle's groups (docs/models/bike.md: what a bike reads; what it ignores is not listed).
+        const Group kBikeGroups[] = {
+            { "car.body", "Bike and rider", { "car.model", "car.kind", "car.mass", "car.wheelbase", "car.cgHeight", "car.frontWeight",
+                                              "car.riderMass", "car.riderHeight", "car.riderForward", "car.tuck", "car.pitchInertia" } },
+            { "car.tyres", "Tyres", { "car.bikeTyre", "car.tyreRadius", "car.wheelInertia", "env.surface" } },
+            { "car.diffs", "Chain, clutch and wheelie", { "car.primaryRatio", "car.frontSprocket", "car.rearSprocket", "car.chainEfficiency",
+                                                         "car.chainLash", "car.slipper", "car.slipperTorque", "car.wheelieControl",
+                                                         "car.wheelieAngle" } },
+            { "car.gearbox", "Gearbox and shifting", { "car.gears", "car.autoGearing", "car.ratio[0]", "car.ratio[1]", "car.ratio[2]",
+                                                       "car.ratio[3]", "car.ratio[4]", "car.ratio[5]", "car.clutchTorque",
+                                                       "car.gearEfficiency", "car.quickshifter", "car.quickshiftCut", "car.autoBlip",
+                                                       "car.primaryRatio", "car.frontSprocket", "car.rearSprocket" } },
+            { "car.aero", "Aero", { "car.cdA", "car.cdATuck", "car.tuck" } },
+            { "car.brakes", "Brakes", { "car.brakeDecel", "car.brakeBias", "car.abs" } },
+        };
+
         std::string lower(std::string s)
         {
             for (char& ch : s)
@@ -173,7 +195,8 @@ namespace tee::ui
 
         std::string inspectorPage() const override
         {
-            for (const Group& g : kGroups)
+            const bool b = bike();
+            for (const Group& g : b ? std::span<const Group>(kBikeGroups) : std::span<const Group>(kGroups))
                 if (ctx_.selection.is(g.path))
                 {
                     std::vector<int> fields;
@@ -302,6 +325,39 @@ namespace tee::ui
             const std::string l = lower(t);
             return l.find("front") != std::string::npos ? Drive::front : l.find("all") != std::string::npos ? Drive::all : Drive::rear;
         }
+        // What is carried: the vehicle's mass, and a bike's rider (car.riderMass).
+        double totalMass() const
+        {
+            const int r = bike() ? ctx_.doc.find("car.riderMass") : -1;
+            return field(fMass) + (r >= 0 ? ctx_.doc.get(r) : 0.0);
+        }
+        // A motorcycle: car.kind says so (spec.car.kind "Motorcycle").
+        bool bike() const
+        {
+            std::string t;
+            return choiceOf("car.kind", t) >= 0 && lower(t).find("motor") != std::string::npos;
+        }
+        // The tyre drawn: its compound's curve, its peak grip on a dry road, its name.
+        struct Tyre
+        {
+            const Compound* k;
+            double muDry;
+            std::string name;
+            bool fromBuild;
+        };
+        Tyre tyre() const
+        {
+            if (bike())
+            {
+                std::string t;
+                const int i = choiceOf("car.bikeTyre", t);
+                const int j = std::clamp(i >= 0 ? i : 1, 0, 5);
+                return { &kCompounds[kBikeTyreCompound[j]], kBikeTyreMu[j], kBikeTyreName[j], i >= 0 };
+            }
+            bool from = true;
+            const Compound& k = compound(&from);
+            return { &k, k.mu, k.name, from };
+        }
         const Compound& compound(bool* fromBuild = nullptr) const
         {
             std::string t;
@@ -351,13 +407,27 @@ namespace tee::ui
             return std::isfinite(r) && r > 0.0 ? r : 6500.0 * kRpm;
         }
         // Road speed (m/s) at crank speed w (rad/s) in gear g.
-        double roadSpeed(double w, int g) const { return w / (ratio(g) * field(fFinal)) * field(fTyreRadius); }
+        // The overall ratio in gear g: a car's gear and final drive; a bike's primary, gear and sprockets.
+        double overall(int g) const
+        {
+            if (bike())
+            {
+                const auto f = [&](const char* path, double fallback) {
+                    const int i = ctx_.doc.find(path);
+                    return i >= 0 ? ctx_.doc.get(i) : fallback;
+                };
+                return f("car.primaryRatio", 1.7) * ratio(g) * f("car.rearSprocket", 42.0) / std::max(1.0, f("car.frontSprocket", 16.0));
+            }
+            return ratio(g) * field(fFinal);
+        }
+        double roadSpeed(double w, int g) const { return w / overall(g) * field(fTyreRadius); }
 
         // ---- the side view's geometry (also what a press hits) -----------------------------------------------------
         struct Side
         {
             float k = 1.0f, ground = 0.0f, front = 0.0f, rear = 0.0f, r = 0.0f;   // px a metre, the ground's y, the axles' x
             float squat = 0.0f;                                       // px: the rear down
+            float lift = 0.0f;                                        // a bike's front lifted, degrees (car.liftAngle)
             std::array<float, look::kCarPoints> xs{}, ys{};           // look::carProfile's outline
             Rect body, wheel[2], brake[2], drag;
         };
@@ -371,7 +441,7 @@ namespace tee::ui
             const double l2 = wheelTel(kTel.load, 2), l3 = wheelTel(kTel.load, 3);
             if (!std::isfinite(l2) || !std::isfinite(l3))
                 return std::nan("");
-            return l2 + l3 - field(fMass) * kG * (1.0 - field(fFront));
+            return l2 + l3 - totalMass() * kG * (1.0 - field(fFront));
         }
 
         Side side() const
@@ -379,8 +449,11 @@ namespace tee::ui
             Side s;
             const Rect a = sideBox_;
             const double wb = field(fWheelbase), r = field(fTyreRadius);
-            // look::carProfile's car: 1.62 wheelbases long (0.28 of one ahead of the front axle), 3.9 wheel radii tall.
-            const double length = wb * 1.62 + r * 0.1, ahead = 0.48 * 1.62 * wb - 0.5 * wb, tall = 3.9 * r;
+            // look::carProfile's car: 1.62 wheelbases long (0.28 of one ahead of the front axle), 3.9 wheel radii tall; a
+            // bike: its wheels and the rider's head, 1.75 m.
+            const bool b = bike();
+            const double length = b ? wb + 2.0 * r + 0.2 : wb * 1.62 + r * 0.1, ahead = b ? r + 0.1 : 0.48 * 1.62 * wb - 0.5 * wb;
+            const double tall = b ? 1.75 : 3.9 * r;
             // Room: two lines of words at the top, the wheelbase over the roof, the axle bars under the ground.
             const float top = a.y + 62.0f + 28.0f;
             s.ground = a.bottom() - 66.0f;
@@ -390,15 +463,32 @@ namespace tee::ui
             s.r = static_cast<float>(r) * s.k;
             // Squat (the rear down) or dive, a few px for the load moved, as DRIVE's car does.
             const double moved = movedLoad();
-            s.squat = std::isfinite(moved) ? static_cast<float>(std::clamp(moved / (field(fMass) * kG) * 40.0, -6.0, 6.0)) : 0.0f;
-            look::carProfile(s.front, s.rear, s.ground - s.r, s.r, s.squat, s.xs.data(), s.ys.data());
+            s.squat = std::isfinite(moved) ? static_cast<float>(std::clamp(moved / (totalMass() * kG) * 40.0, -6.0, 6.0)) : 0.0f;
             float x0 = 1e9f, x1 = -1e9f, y0 = 1e9f, y1 = -1e9f;
-            for (int i = 0; i < look::kCarPoints; ++i)
+            if (b)
             {
-                x0 = std::min(x0, s.xs[static_cast<std::size_t>(i)]);
-                x1 = std::max(x1, s.xs[static_cast<std::size_t>(i)]);
-                y0 = std::min(y0, s.ys[static_cast<std::size_t>(i)]);
-                y1 = std::max(y1, s.ys[static_cast<std::size_t>(i)]);
+                s.squat = 0.0f;
+                const double lift = ctx_.live.get("car.liftAngle");
+                s.lift = std::isfinite(lift) ? static_cast<float>(lift) : 0.0f;
+                for (const auto& line : bikeLines(s))
+                    for (const funkgui::Point& q : line)
+                    {
+                        x0 = std::min(x0, q.x);
+                        x1 = std::max(x1, q.x);
+                        y0 = std::min(y0, q.y);
+                        y1 = std::max(y1, q.y);
+                    }
+            }
+            else
+            {
+                look::carProfile(s.front, s.rear, s.ground - s.r, s.r, s.squat, s.xs.data(), s.ys.data());
+                for (int i = 0; i < look::kCarPoints; ++i)
+                {
+                    x0 = std::min(x0, s.xs[static_cast<std::size_t>(i)]);
+                    x1 = std::max(x1, s.xs[static_cast<std::size_t>(i)]);
+                    y0 = std::min(y0, s.ys[static_cast<std::size_t>(i)]);
+                    y1 = std::max(y1, s.ys[static_cast<std::size_t>(i)]);
+                }
             }
             s.body = { x0, y0, x1 - x0, y1 - y0 };
             for (int i = 0; i < 2; ++i)
@@ -410,6 +500,34 @@ namespace tee::ui
             s.drag = { s.body.right() + 4.0f, s.body.y, 120.0f, s.body.h };
             return s;
         }
+        // A motorcycle from the side, as polylines in px: swingarm, frame and tank, fairing, engine, fork, the rider (from
+        // the seat, tucked by car.tuck), each point in metres ahead of the rear axle and up from the ground, the whole
+        // turned about the rear tyre's contact by the lift (car.liftAngle): no Canvas rotation, the points are turned.
+        // The last line is the front wheel's centre (one point) and the head's (one point).
+        std::vector<std::vector<funkgui::Point>> bikeLines(const Side& s) const
+        {
+            const double wb = field(fWheelbase), r = field(fTyreRadius);
+            const int ti = ctx_.doc.find("car.tuck");
+            const double t = ti >= 0 ? std::clamp(ctx_.doc.get(ti), 0.0, 1.0) : 1.0;
+            const double a = s.lift * chart::kPi / 180.0, ca = std::cos(a), sa = std::sin(a);
+            const auto P = [&](double x, double y) {
+                const double xr = x * ca - y * sa, yr = x * sa + y * ca;   // turned about the contact, front up
+                return funkgui::Point{ s.rear - static_cast<float>(xr) * s.k, s.ground - static_cast<float>(yr) * s.k };
+            };
+            const double sx = 0.48 * wb + 0.08 * wb * t, sy = 1.38 - 0.25 * t;   // the rider's shoulder
+            return {
+                { P(0.0, r), P(0.36 * wb, r + 0.10) },                                                       // swingarm
+                { P(-0.12 * wb, 0.78), P(0.05 * wb, 0.80), P(0.30 * wb, 0.80), P(0.42 * wb, 0.86), P(0.58 * wb, 0.98),
+                  P(0.74 * wb, 0.95) },                                                                      // tail, seat, tank
+                { P(0.74 * wb, 0.95), P(0.88 * wb, 0.99), P(0.92 * wb, 0.72), P(0.80 * wb, 0.50) },            // fairing
+                { P(0.38 * wb, 0.30), P(0.68 * wb, 0.30), P(0.70 * wb, 0.62), P(0.42 * wb, 0.66), P(0.38 * wb, 0.30) },   // engine
+                { P(0.74 * wb, 0.95), P(wb, r) },                                                              // fork
+                { P(0.28 * wb, 0.88), P(sx, sy), P(0.74 * wb, 1.02) },                                         // back, arm
+                { P(0.28 * wb, 0.88), P(0.45 * wb, 0.62), P(0.32 * wb, 0.40) },                                // leg
+                { P(wb, r), P(sx + 0.06 * wb, sy + 0.16) },                                                    // centres
+            };
+        }
+
         // The top of the body at x (the profile's highest point over it).
         static float bodyTop(const Side& s, float x)
         {
@@ -428,17 +546,41 @@ namespace tee::ui
         // ---- drawing: the car from the side ------------------------------------------------------------------------
         void drawSide(Canvas& c, const look::Palette& p) const
         {
-            look::region(c, p, sideBox_, "THE CAR FROM THE SIDE, TO SCALE", ctx_.selection.is("car.body") || ctx_.selection.is("car.aero"));
+            const bool b = bike();
+            look::region(c, p, sideBox_, b ? "THE BIKE FROM THE SIDE, TO SCALE" : "THE CAR FROM THE SIDE, TO SCALE",
+                         ctx_.selection.is("car.body") || ctx_.selection.is("car.aero"));
             const Side s = side();
             const Units& u = ctx_.units;
             bool fromWb = true, fromCg = true, fromFw = true, fromMass = true;
             const double wb = field(fWheelbase, &fromWb), cg = field(fCg, &fromCg), fw = field(fFront, &fromFw);
-            const double mass = field(fMass, &fromMass);
+            field(fMass, &fromMass);
+            const double mass = totalMass();
             bool any = !(fromWb && fromCg && fromFw && fromMass);
             const auto star = [](bool from) { return from ? "" : "*"; };
             // The ground.
             c.segment(sideBox_.x + look::kPad, s.ground, sideBox_.right() - look::kPad, s.ground, 1.0f, p.edge);
             // The body as its profile (look::carProfile, DRIVE's car), the side window's line; selected: in the accent, ringed.
+            if (b)
+            {
+                const bool sel = ctx_.selection.is("car.body");
+                const auto lines = bikeLines(s);
+                for (std::size_t i = 0; i + 1 < lines.size(); ++i)
+                {
+                    std::vector<float> xs, ys;
+                    for (const funkgui::Point& q : lines[i])
+                    {
+                        xs.push_back(q.x);
+                        ys.push_back(q.y);
+                    }
+                    c.polyline(xs.data(), ys.data(), static_cast<int>(xs.size()), i >= 5 ? 1.75f : 2.0f,
+                               i >= 5 ? p.label : sel ? p.selected : p.value);
+                }
+                const funkgui::Point head = lines.back()[1];
+                c.disc(head.x, head.y, 0.12f * s.k, p.panel, 1.75f, p.label);
+                if (sel)
+                    look::selectRing(c, p, s.body, 6.0f);
+            }
+            else
             {
                 const bool sel = ctx_.selection.is("car.body");
                 c.polyline(s.xs.data(), s.ys.data(), look::kCarPoints, 2.0f, sel ? p.selected : p.value);
@@ -451,11 +593,17 @@ namespace tee::ui
             // The wheels: tyre, rim, the brake's caliper.
             for (int i = 0; i < 2; ++i)
             {
-                const Rect& w = s.wheel[i];
+                Rect w = s.wheel[i];
+                if (b && i == 0)   // a bike's front wheel goes up with the lift
+                {
+                    const funkgui::Point fc = bikeLines(s).back()[0];
+                    w = { fc.x - s.r, fc.y - s.r, 2.0f * s.r, 2.0f * s.r };
+                }
                 c.disc(w.centreX(), w.centreY(), s.r, p.ground, 2.0f, p.value);
-                c.disc(w.centreX(), w.centreY(), s.r * 0.62f, p.panel, 1.25f, p.label);
-                const Rect& b = s.brake[i];
-                c.rrect(b.x, b.y, b.w, b.h, 2.0f, ctx_.selection.is("car.brakes") ? p.selected : p.label);
+                c.disc(w.centreX(), w.centreY(), s.r * (b ? 0.8f : 0.62f), p.panel, 1.25f, p.label);
+                const Rect& cal = s.brake[i];
+                if (!b || i == 1)
+                    c.rrect(cal.x, cal.y, cal.w, cal.h, 2.0f, ctx_.selection.is("car.brakes") ? p.selected : p.label);
                 if (ctx_.selection.is("car.tyres"))
                     c.disc(w.centreX(), w.centreY(), s.r + 4.0f, kClear, 2.0f, p.selected);
             }
@@ -473,7 +621,7 @@ namespace tee::ui
             c.segment(cx, cy - 7.0f, cx, cy + 7.0f, 1.5f, p.value);
             c.segment(cx, cy + 9.0f, cx, s.ground, 1.0f, p.dim);
             c.text("CM", cx - 8.0f, cy - 22.0f, look::kCaps, p.value);
-            const std::string cgWords = u.format(Quantity::mass, mass, 0) + star(fromMass) + ", " + look::num(fw * 100.0) +
+            const std::string cgWords = u.format(Quantity::mass, mass, 0) + star(fromMass) + (b ? " WITH RIDER" : "") + ", " + look::num(fw * 100.0) +
                                     star(fromFw) + " % ON THE FRONT; CM " + u.format(Quantity::length, cg, 0) + star(fromCg) +
                                      " HIGH";
             // The load on each axle, live: a bar under it, a tick at the load at rest, the number and its share.
@@ -489,14 +637,23 @@ namespace tee::ui
             for (int a = 0; a < 2; ++a)
             {
                 const float x = a == 0 ? s.front : s.rear;
-                const Rect bar{ x - 46.0f, s.ground + 10.0f, 92.0f, 8.0f };
+                // The axles close together (a bike, a small stage): narrower bars, the share under the number. Each
+                // block kept inside the panel.
+                const float spacing = s.rear - s.front, bw = std::min(92.0f, spacing - 14.0f);
+                const bool close = spacing < 120.0f;
+                const float half = close ? std::max(bw, 60.0f) * 0.5f : 70.0f;
+                const float xc = std::clamp(x, sideBox_.x + look::kPad + half, sideBox_.right() - look::kPad - half);
+                const Rect bar{ xc - bw * 0.5f, s.ground + 10.0f, bw, 8.0f };
                 const double share = std::isfinite(live[a]) ? live[a] / weight : std::nan("");
                 look::level(c, p, bar, share, a == 0 ? p.cold : p.hot, rest[a] / weight);
                 const std::string n = std::isfinite(live[a]) ? look::num(live[a] / 1000.0, "%.2f") + " kN" : "- kN";
                 const std::string sh = std::isfinite(share) ? look::num(share * 100.0) + " %" : "";
-                c.text(a == 0 ? "FRONT AXLE" : "REAR AXLE", x, s.ground + 24.0f, look::kCaps, p.label, funkgui::Align::centre);
-                c.text((n + "  " + sh).c_str(), x, s.ground + 38.0f, look::kNumberS, std::isfinite(live[a]) ? p.value : p.dim,
-                       funkgui::Align::centre);
+                c.text(a == 0 ? (close ? "FRONT" : "FRONT AXLE") : (close ? "REAR" : "REAR AXLE"), xc, s.ground + 24.0f, look::kCaps,
+                       p.label, funkgui::Align::centre);
+                c.text((close ? n : n + "  " + sh).c_str(), xc, s.ground + 38.0f, close ? look::kUnit : look::kNumberS,
+                       std::isfinite(live[a]) ? p.value : p.dim, funkgui::Align::centre);
+                if (close && !sh.empty())
+                    c.text(sh.c_str(), xc, s.ground + 50.0f, look::kUnit, p.label, funkgui::Align::centre);
             }
             // Squat or dive, in words: the load moved from where it rests.
             if (std::isfinite(live[1]))
@@ -505,7 +662,12 @@ namespace tee::ui
                 const std::string w = std::fabs(moved) < 50.0 ? "LOADS AT REST"
                                     : moved > 0.0 ? "SQUAT: " + look::num(moved / 1000.0, "%.2f") + " kN MOVED TO THE REAR"
                                                   : "DIVE: " + look::num(-moved / 1000.0, "%.2f") + " kN MOVED TO THE FRONT";
-                c.text(w.c_str(), (s.front + s.rear) * 0.5f, s.ground + 10.0f - 0.0f + 46.0f, look::kCaps,
+                const float hw = c.textWidth(w.c_str(), look::kCaps) * 0.5f;
+                const bool close = s.rear - s.front < 120.0f;
+                const float wx = close ? s.rear + 70.0f + hw   // beside the rear axle's block when the axles are close
+                                       : (s.front + s.rear) * 0.5f;
+                c.text(w.c_str(), std::clamp(wx, sideBox_.x + look::kPad + hw, sideBox_.right() - look::kPad - hw),
+                       close ? s.ground + 24.0f : s.ground + 56.0f, look::kCaps,
                        std::fabs(moved) < 50.0 ? p.label : p.value, funkgui::Align::centre);
             }
 
@@ -528,7 +690,7 @@ namespace tee::ui
             }
             const std::string dt = "DRAG " + (std::isfinite(drag) ? look::num(drag / 1000.0, "%.2f") + " kN" : std::string("-"));
             c.text(dt.c_str(), s.body.right() + 8.0f, ay + 10.0f, look::kCaps, p.text);
-            if (std::isfinite(down) && std::fabs(clA) > 1e-6)
+            if (std::isfinite(down) && std::fabs(clA) > 1e-6 && !b)
                 for (int a = 0; a < 2; ++a)
                 {
                     const double f = down * (a == 0 ? bal : 1.0 - bal);
@@ -549,7 +711,8 @@ namespace tee::ui
             // starred values at the title's right.
             const float ix = sideBox_.x + look::kPad, iw = sideBox_.w - 2.0f * look::kPad;
             const std::string l1 = "AERO AT " + (std::isfinite(v) ? u.format(Quantity::speed, v, 0) : std::string("-")) + ": CD A " +
-                                   look::num(cdA, "%.2f") + star(fromCd) + ", CL A " + look::num(clA, "%.2f") + star(fromCl) + " M2";
+                                   look::num(cdA, "%.2f") + star(fromCd) +
+                                   (b ? std::string(" M2") : ", CL A " + look::num(clA, "%.2f") + star(fromCl) + " M2");
             chart::wrap(c, l1, ix, sideBox_.y + 30.0f, iw, look::kUnit, p.label, 13.0f, 1);
             chart::wrap(c, cgWords, ix, sideBox_.y + 44.0f, iw, look::kUnit, p.label, 13.0f, 1);
             if (any)
@@ -563,15 +726,16 @@ namespace tee::ui
         // ---- the tyre's grip curve ---------------------------------------------------------------------------------
         void drawTyre(Canvas& c, const look::Palette& p) const
         {
-            bool fromC = true;
-            const Compound& k = compound(&fromC);
+            const Tyre ty = tyre();
+            const Compound& k = *ty.k;
+            const bool fromC = ty.fromBuild;
             std::string sname;
             const int s = surface(sname);
-            const std::string title = "GRIP: " + upper(k.name) + (fromC ? "" : "*") + " TYRES ON " + upper(sname);
+            const std::string title = "GRIP: " + upper(ty.name) + (fromC ? "" : "*") + " TYRES ON " + upper(sname);
             look::region(c, p, tyreBox_, title, ctx_.selection.is("car.tyres"));
             const Rect a{ tyreBox_.x + 46.0f, tyreBox_.y + 40.0f, tyreBox_.w - 46.0f - look::kPad - 4.0f, tyreBox_.h - 40.0f - 40.0f };
-            const double mu = k.mu * k.surface[s < 0 ? 0 : s];
-            const double yHi = std::ceil(std::max(mu, k.mu) * 1.15 * 5.0) / 5.0;
+            const double mu = ty.muDry * k.surface[s < 0 ? 0 : s];
+            const double yHi = std::ceil(std::max(mu, ty.muDry) * 1.15 * 5.0) / 5.0;
             const chart::Scale xs{ 0.0, 0.5, a.x, a.right() }, ys{ 0.0, yHi, a.bottom(), a.y };
             for (double y = 0.0; y <= yHi + 1e-9; y += 0.2)
             {
@@ -594,7 +758,7 @@ namespace tee::ui
                 const double f = mu * shape(k, kappa);
                 px.push_back(xs.px(kappa));
                 py.push_back(ys.px(f));
-                pd.push_back(ys.px(k.mu * shape(k, kappa)));
+                pd.push_back(ys.px(ty.muDry * shape(k, kappa)));
                 if (f > peak)
                 {
                     peak = f;
@@ -612,20 +776,21 @@ namespace tee::ui
             if (s < 0)
                 c.text(("the tyre model has no " + sname + ": drawn as dry").c_str(), a.x + 8.0f, a.bottom() - 16.0f, look::kUnit, p.dim);
             // Each driven wheel's live point; a wheel past the peak is slipping (amber, and the word).
-            const Drive d = drive();
+            const bool b = bike();
+            const Drive d = b ? Drive::rear : drive();
             int shown = 0;
             for (int w = 0; w < 4; ++w)
             {
                 const bool driven = d == Drive::all || (d == Drive::front) == (w < 2);
                 const double sl = wheelTel(kTel.slip, w);
-                if (!driven || !std::isfinite(sl))
+                if (!driven || !std::isfinite(sl) || (b && w % 2 == 1))   // a bike's wheels are [0] and [2]
                     continue;
                 const double kap = std::clamp(std::fabs(sl), 0.0, 0.5);
                 const double f = mu * shape(k, kap);
                 const bool past = kap > peakK;
                 const float x = xs.px(kap), y = ys.px(f);
                 c.disc(x, y, 5.5f, past ? p.warning : p.ok, 2.0f, p.ground);
-                const std::string lab = std::string(kWheelName[w]) + (past ? " PAST THE PEAK" : "");
+                const std::string lab = std::string(b ? (w < 2 ? "FRONT" : "REAR") : kWheelName[w]) + (past ? " PAST THE PEAK" : "");
                 const float ly = y + 10.0f + 14.0f * static_cast<float>(shown);
                 c.rrect(x + 2.0f, ly - 2.0f, c.textWidth(lab.c_str(), look::kCaps) + 8.0f, 14.0f, 3.0f, p.panel);
                 c.text(lab.c_str(), x + 6.0f, ly, look::kCaps, past ? p.warning : p.ok);
@@ -646,6 +811,7 @@ namespace tee::ui
             std::vector<Rect> diffs;   // front, rear, centre, as used
             Rect front, rear, centre;  // empty when not used
             bool compact = false;      // a narrow box: the clutch drawn in the gearbox, all-wheel drive's centre too
+            bool bike = false;         // a motorcycle: a chain to the rear wheel, one wheel an axle
         };
         Line line() const
         {
@@ -662,7 +828,8 @@ namespace tee::ui
             const float gap = std::max(8.0f, std::min(18.0f, a.w * 0.025f));
             const float dw = std::max(56.0f, std::min(104.0f, a.w * 0.17f)), dh = bh * 0.8f;
             const Drive d = drive();
-            float x = fx + (d == Drive::rear ? -bw * 0.4f : dw * 0.5f + gap);
+            const bool b = bike();
+            float x = b ? fx + ww * 0.5f + gap : fx + (d == Drive::rear ? -bw * 0.4f : dw * 0.5f + gap);
             l.engine = { x, cy - bh * 0.5f, bw, bh };
             x += bw + gap;
             if (!l.compact)
@@ -677,6 +844,29 @@ namespace tee::ui
                 l.rear = { rx - dw * 0.5f, cy - dh * 0.5f, dw, dh };
             if (d == Drive::all && !l.compact)
                 l.centre = { l.gearbox.right() + gap, cy - dh * 0.5f, dw, dh };
+            if (b)
+            {
+                // One wheel an axle, on the centre line; the chain (the sprockets) just ahead of the rear wheel.
+                l.wheels[0] = { fx - ww * 0.5f, cy - wh * 0.5f, ww, wh };
+                l.wheels[2] = { rx - ww * 0.5f, cy - wh * 0.5f, ww, wh };
+                l.wheels[1] = l.wheels[3] = Rect{};
+                l.front = l.centre = Rect{};
+                // Engine, clutch, gearbox and chain, evenly between the wheels.
+                const float x0 = l.wheels[0].right() + gap, x1 = l.wheels[2].x - gap;
+                const float n = l.compact ? 3.0f : 4.0f, w = std::min(bw, (x1 - x0 - gap * (n - 1.0f)) / n);
+                float bx = x0;
+                l.engine = { bx, cy - bh * 0.5f, w, bh };
+                bx += w + gap;
+                if (!l.compact)
+                {
+                    l.clutch = { bx, cy - bh * 0.4f, w, bh * 0.8f };
+                    bx += w + gap;
+                }
+                l.gearbox = { bx, cy - bh * 0.5f, w, bh };
+                bx += w + gap;
+                l.rear = { bx, cy - dh * 0.5f, w, dh };
+                l.bike = true;
+            }
             for (const Rect* r : { &l.front, &l.rear, &l.centre })
                 if (!r->isEmpty())
                     l.diffs.push_back(*r);
@@ -705,8 +895,10 @@ namespace tee::ui
         void drawLine(Canvas& c, const look::Palette& p) const
         {
             bool fromD = true;
-            const Drive d = drive(&fromD);
-            const char* layout = d == Drive::front ? "FRONT-WHEEL DRIVE" : d == Drive::rear ? "REAR-WHEEL DRIVE" : "ALL-WHEEL DRIVE";
+            const Drive d = bike() ? Drive::rear : drive(&fromD);
+            fromD = fromD || bike();
+            const char* layout = bike() ? "CHAIN TO THE REAR WHEEL"
+                               : d == Drive::front ? "FRONT-WHEEL DRIVE" : d == Drive::rear ? "REAR-WHEEL DRIVE" : "ALL-WHEEL DRIVE";
             look::region(c, p, lineBox_, std::string("DRIVELINE  ") + layout + (fromD ? "" : "*"), ctx_.selection.is("car.diffs"));
             const Line l = line();
             const Units& u = ctx_.units;
@@ -730,7 +922,14 @@ namespace tee::ui
                 c.segment(x, l.wheels[w0].bottom(), x, l.wheels[w0 + 1].y, 1.0f, p.dim);
             };
             const float under = cy + l.engine.h * 0.5f + 14.0f;
-            if (d == Drive::rear)
+            if (l.bike)
+            {
+                // The gearbox's sprocket to the chain's (two runs of chain), the chain to the wheel.
+                c.segment(l.gearbox.right(), cy - 6.0f, l.rear.x, cy - 6.0f, 2.0f, shaft);
+                c.segment(l.gearbox.right(), cy + 6.0f, l.rear.x, cy + 6.0f, 2.0f, shaft);
+                c.segment(l.rear.right(), cy, l.wheels[2].x, cy, 4.0f, shaft);
+            }
+            else if (d == Drive::rear)
             {
                 c.segment(l.gearbox.right(), cy, l.rear.x, cy, 4.0f, shaft);
                 axle(l.rear, 2);
@@ -769,8 +968,10 @@ namespace tee::ui
             const std::string kind = lower(gb);
             const bool conv = kind.find("automatic") != std::string::npos, cvt = kind.find("cvt") != std::string::npos;
             box(l.engine, "ENGINE", ctx_.live.has(kTel.engine) ? u.format(Quantity::rotation, ctx_.live.get(kTel.engine), 0) : "-", false);
+            const int slipperField = ctx_.doc.find("car.slipper");
+            const bool slipper = l.bike && slipperField >= 0 && ctx_.doc.get(slipperField) >= 0.5;
             if (!l.compact)
-                box(l.clutch, conv ? "CONV." : cvt ? "BELT" : "CLUTCH", "", ctx_.selection.is("car.gearbox"));
+                box(l.clutch, slipper ? "SLIPPER" : conv ? "CONV." : cvt ? "BELT" : "CLUTCH", "", ctx_.selection.is("car.gearbox"));
             const double g = ctx_.live.get(kTel.gear);
             const std::string inGear = std::isfinite(g) ? (g < 0 ? "IN R" : g < 0.5 ? "IN N" : "IN " + look::num(g)) : "-";
             std::string gsub = look::num(gears()) + " GEARS  " + inGear;
@@ -778,7 +979,7 @@ namespace tee::ui
                 gsub = inGear;
             if (l.compact && d == Drive::all)
                 gsub = look::num(field(fCentreSplit) * 100.0) + " % FRONT";
-            box(l.gearbox, gbx >= 0 ? upper(gb) : "GEARBOX", gsub, ctx_.selection.is("car.gearbox"));
+            box(l.gearbox, l.bike ? "GEARBOX" : gbx >= 0 ? upper(gb) : "GEARBOX", gsub, ctx_.selection.is("car.gearbox"));
             const bool dsel = ctx_.selection.is("car.diffs");
             // The torque reaching each axle: the sum of its wheels' drive torque.
             const auto axleTorque = [&](int w0) {
@@ -795,9 +996,18 @@ namespace tee::ui
             }
             if (!l.rear.isEmpty())
             {
-                box(l.rear, "REAR", diffKind("rear"), dsel);
+                if (l.bike)
+                {
+                    const auto teeth = [&](const char* path, double fallback) {
+                        const int i = ctx_.doc.find(path);
+                        return look::num(i >= 0 ? ctx_.doc.get(i) : fallback);
+                    };
+                    box(l.rear, "CHAIN", teeth("car.frontSprocket", 16.0) + " / " + teeth("car.rearSprocket", 42.0), dsel);
+                }
+                else
+                    box(l.rear, "REAR", diffKind("rear"), dsel);
                 const double t = axleTorque(2);
-                c.text("REAR AXLE TORQUE", l.rear.x - 6.0f, l.rear.y - 30.0f, look::kCaps, p.label, funkgui::Align::right);
+                c.text(l.bike ? "REAR WHEEL TORQUE" : "REAR AXLE TORQUE", l.rear.x - 6.0f, l.rear.y - 30.0f, look::kCaps, p.label, funkgui::Align::right);
                 c.text(std::isfinite(t) ? u.format(Quantity::torque, t, 0).c_str() : "- N m", l.rear.x - 6.0f, l.rear.y - 16.0f,
                        look::kNumberS, std::isfinite(t) ? p.value : p.dim, funkgui::Align::right);
             }
@@ -811,13 +1021,15 @@ namespace tee::ui
             for (int w = 0; w < 4; ++w)
             {
                 const Rect& r = l.wheels[w];
+                if (r.isEmpty())
+                    continue;
                 const bool driven = d == Drive::all || (d == Drive::front) == (w < 2);
                 const double sl = wheelTel(kTel.slip, w);
                 const bool slipping = driven && std::isfinite(sl) && std::fabs(sl) > 0.1;
                 c.rrect(r.x, r.y, r.w, r.h, 4.0f, driven ? p.text : p.panel, slipping ? 2.5f : 1.25f, slipping ? p.warning : p.label);
                 const bool top = w % 2 == 0;
                 const float ty = top ? r.y - 14.0f : r.bottom() + 4.0f;
-                std::string lab = kWheelName[w];
+                std::string lab = l.bike ? (w < 2 ? "FRONT" : "REAR") : kWheelName[w];
                 if (slipping)
                     lab += "  SLIP " + look::num(std::fabs(sl) * 100.0) + " %";
                 c.text(lab.c_str(), r.centreX(), ty, look::kCaps, slipping ? p.warning : p.label, funkgui::Align::centre);
@@ -919,8 +1131,10 @@ namespace tee::ui
             {
                 const float y = Y.px(u.toUser(Quantity::speed, vTop));
                 chart::stroke(c, { a.x, a.right() }, { y, y }, 1.5f, p.ok, { 7.0f, 4.0f });
-                const std::string t = "TOP SPEED " + u.format(Quantity::speed, vTop, 0) + " IN " + look::num(topGear + 1) +
-                                      (bound ? ", AT THE LIMITER" : "");
+                std::string t = "TOP SPEED " + u.format(Quantity::speed, vTop, 0) + " IN " + look::num(topGear + 1) +
+                                (bound ? ", AT THE LIMITER" : "");
+                if (c.textWidth(t.c_str(), look::kCaps) > lx - a.x - 12.0f)   // not past the limiter's line
+                    t = "TOP SPEED " + u.format(Quantity::speed, vTop, 0) + (bound ? " (LIMITER)" : "");
                 c.rrect(a.x + 2.0f, y - 18.0f, c.textWidth(t.c_str(), look::kCaps) + 8.0f, 15.0f, 3.0f, p.panel);
                 c.text(t.c_str(), a.x + 6.0f, y - 15.0f, look::kCaps, p.ok);
                 c.text(narrow ? "DERIVED: POWER MEETS DRAG" : "DERIVED: THE PREDICTED POWER AGAINST DRAG AND ROLLING", a.x, ky,
@@ -948,7 +1162,7 @@ namespace tee::ui
         const DynoTrace& pred = ctx_.dyno.predicted();
         if (pred.empty())
             return std::nan("");
-        const double cdA = field(fCdA), mass = field(fMass), eff = field(fEfficiency), crr = compound().crr;
+        const double cdA = field(fCdA), mass = totalMass(), eff = field(fEfficiency), crr = tyre().k->crr;
         const double lim = limiter();
         const auto need = [&](double v) { return (0.5 * kRho * cdA * v * v + crr * mass * kG) * v; };
         double best = std::nan("");
