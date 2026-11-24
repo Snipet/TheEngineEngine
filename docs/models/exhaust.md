@@ -185,7 +185,8 @@ Measured in the harness: the 2 L four's layout with a source of 0.12 m^3/s, gas 
 - shut, with the relief at 350 kPa: 382 kPa;
 - every sample finite.
 
-Not yet measured: a real diesel motoring in the engine, which waits for D2's hook.
+In the engine (measured by D2, tee-tests-diesel "*butterfly*"): the 15 L six with twin turbos, motoring at 2000
+rpm, pedal up. Open: pFlap 4 kPa, 54 kW retarding. Shut: flap 0.96, pFlap 362 kPa (the relief holding), 130 kW.
 
 ## The exhaust port's cooling (`portHeat`, model 1)
 

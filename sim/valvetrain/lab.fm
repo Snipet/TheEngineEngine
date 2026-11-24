@@ -395,11 +395,10 @@ module ValveLab
         }
         // the phasers
         const float share = omega / fmaxf(redline, 1.0f);
-        // (the intake's parked closing after bottom dead centre and the overlap at the seats, for the schedule: the cams'
-        // centres are in the cycle, the overlap's top dead centre at 360)
+        // (the intake's parked closing after bottom dead centre, for the schedule: the cam's centre is in the cycle, the
+        // overlap's top dead centre at 360)
         const float ivcPark = cam[VT_IN_A].centre + 0.5f * cam[VT_IN_A].durSeat - 540.0f;
-        const float olPark = (cam[VT_EX_A].centre + 0.5f * cam[VT_EX_A].durSeat) - (cam[VT_IN_A].centre - 0.5f * cam[VT_IN_A].durSeat);
-        const float wantIn = inTarget >= 0.0f ? inTarget : phIn.scheduleIntake(share, load, ivcPark, olPark);
+        const float wantIn = inTarget >= 0.0f ? inTarget : phIn.scheduleIntake(share, load, ivcPark);
         const float wantEx = exTarget >= 0.0f ? exTarget : phEx.schedule(share, load, 0);
         phIn.control(d16, wantIn, pOil, tOil);
         phEx.control(d16, wantEx, pOil, tOil);

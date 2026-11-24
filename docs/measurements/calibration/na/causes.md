@@ -267,3 +267,47 @@ combustion; no exhaust-port wall loss). Proposed to the lead and D, not changed.
 - the ITB manifold reading floored at 8 kPa (it read -11.4 kPa on the lift);
 - a rotary's burn 0.92: -4 to -6 %, boosted 318 N m at 5000 rpm for 290 to 315;
 - the charge's heating (F): in, waiting for D's `intk.tCoolant` line.
+
+## 17:20 to 17:50
+
+**The lead's gas hypothesis is refuted** (struck by the lead). The cylinder's gas is not constant-gamma air:
+`gammaAt` falls from 1.39 to 1.24, and the energy is pV/(gamma - 1). Gross indicated efficiency is right at low speed
+and 5 to 10 % over at mid and high speed: an open observation, not a miss to fit.
+
+**The phaser rule revised.** P's new runners changed where each engine wants its closing. On the V12 (0.36 m), the
+best fixed advance by speed:
+
+| rpm | 2000 | 3500 | 5000 | 6500 | 8000 |
+|---|---|---|---|---|---|
+| Best advance, deg | 30 | 30 | 10 | 0 | 0 |
+
+The 3.2 six (0.51 m) and the economy four (0.59 m) differ again. The economy four wants its earliest closing in mid
+range.
+
+- The overlap cap is removed. It was set while the cylinder made mass on its backflow; with the cylinder conserving,
+  it cost the long cams 15 % at 2000 rpm.
+- The target closing now reaches 67 degrees at three quarters of the redline.
+- Scheduled against each engine's best fixed advance: V12 0 to -2 %; 3.2 six 0 to -6 %; economy four 0 to -8 %
+  (1500 and 4500 rpm worst).
+- No single rule does better, since the best closing also follows the runner's tune. Card C's baked map is the exact
+  answer.
+
+**The intake's books** (the probe's `[.probe-books]`, from card D's running totals, g/s over 2 s). The cylinders now
+conserve: in through the valves equals out through the exhaust and the trapped air. The runners did not: a linear
+runner keeps volume, and the plenum gave up less than the valves took.
+
+| Engine | Valves ÷ throttle, idle | 3000 rpm | 6000 to 7000 rpm |
+|---|---|---|---|
+| Flat-plane V8, before | 1.37 | 1.14 | 1.15 |
+| Economy four, before | 1.06 | 1.05 | 1.01 |
+| Flat-plane V8, after | 1.006 | 0.99 | 0.97 |
+| Economy four, after | 1.009 | 0.98 | 0.97 |
+| 3.2 six (ITBs), after | 1.000 | 1.000 | 1.000 |
+
+The fix: `Intake` takes the valves' net mass from Engine (`mValves`, `haveValves`) and the plenum gives up exactly
+that. The ITBs' throttle air is the valves' too. The waves are unchanged, and full-load torque moves -3 to +4 %.
+
+The remaining 2 to 3 % at full load is the books' throttle term, not the engine. `airThrottle` converts `qThr` at
+`pBox`, where `qThr` was converted at the box's pressure `pBox + box.p`: an over-read by the box's depression.
+
+It waits for D's two lines in `engine.fm`; until then the intake keeps its old path.

@@ -267,3 +267,60 @@ TEST_CASE("probe: a warm idle", "[.probe-idle]")
     }
     SUCCEED();
 }
+
+// The air's books over a window (Engine's running totals, card D): the throttle's air, the net mass in through the
+// intake valves and the exhaust valves, the unburned gas trapped; at a warm idle on the bench and on the dyno at full
+// load. PROBE_BUILD, PROBE_RPM (the dyno's speeds), PROBE_SET, PROBE_SIM as above.
+TEST_CASE("probe: the air's books", "[.probe-books]")
+{
+    const char* buildEnv = std::getenv("PROBE_BUILD");
+    const std::string slug = buildEnv ? buildEnv : "flat-plane-v8-45";
+    const char* rpmEnv = std::getenv("PROBE_RPM");
+    const char* setEnv = std::getenv("PROBE_SET");
+    std::vector<double> rpms{0.0};
+    for (const std::string& s : split(rpmEnv ? rpmEnv : "3000,6000", ','))
+        rpms.push_back(std::atof(s.c_str()));
+    std::printf("%s%s%s: the air's books over 2 s (g/s); rpm 0 is a warm idle on the bench\n%7s %9s %9s %9s %9s %8s %8s\n", slug.c_str(),
+                setEnv ? " with " : "", setEnv ? setEnv : "", "rpm", "throttle", "valves", "exhaust", "trapped", "val/thr", "plenum");
+    for (const double rpm : rpms)
+    {
+        Probe pr;
+        tee::EnginePlayer::Options options;
+        options.directory = std::getenv("PROBE_SIM") ? std::filesystem::path(std::getenv("PROBE_SIM"))
+                                                      : std::filesystem::path(TEE_SOURCE_DIR) / "sim";
+        options.sampleRate = 48000.0;
+        std::string errors, warnings;
+        pr.p = tee::EnginePlayer::create(options, errors);
+        INFO(errors);
+        REQUIRE(pr.p != nullptr);
+        tee::EngineBuild b;
+        std::filesystem::path file = slug;
+        if (!std::filesystem::exists(file))
+            file = std::filesystem::path(TEE_SOURCE_DIR) / "content" / "builds" / "archetypes" / (slug + ".json");
+        REQUIRE(tee::loadBuild(*pr.p, file, b, errors, warnings));
+        tee::applyBuild(*pr.p, b);
+        if (setEnv)
+            for (const std::string& kv : split(setEnv, ';'))
+            {
+                const auto eq = kv.find('=');
+                std::string e;
+                REQUIRE(pr.p->setSpec(kv.substr(0, eq), std::atof(kv.c_str() + eq + 1), e));
+            }
+        auto& c = pr.p->controls();
+        c.mode = rpm > 0.0 ? 2 : 0;
+        c.dynoSpeed = float(rpm * M_PI / 30.0);
+        c.ignition = 2;
+        pr.play(1.0);
+        c.ignition = 1;
+        c.throttle = rpm > 0.0 ? 1.0f : 0.0f;
+        pr.play(3.0);
+        const double t0 = pr.get("airThrottle"), v0 = pr.get("airValves"), e0 = pr.get("gasExhaust"), a0 = pr.get("airTrapped"),
+                     m0 = pr.get("intk.mPlenum");
+        pr.play(2.0);
+        const double k = 1e3 / 2.0;
+        const double thr = (pr.get("airThrottle") - t0) * k, val = (pr.get("airValves") - v0) * k;
+        std::printf("%7.0f %9.2f %9.2f %9.2f %9.2f %8.3f %8.3f\n", rpm, thr, val, (pr.get("gasExhaust") - e0) * k,
+                    (pr.get("airTrapped") - a0) * k, val / thr, (pr.get("intk.mPlenum") - m0) * k);
+    }
+    SUCCEED();
+}
