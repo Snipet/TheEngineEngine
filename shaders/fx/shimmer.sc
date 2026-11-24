@@ -9,6 +9,6 @@ void main()
     float y = v_uv.y;
     float wave = sin(v_uv.x * 18.0 + y * 7.0 - in1 * 6.2831853 * 2.0) * sin(y * 23.0 - in1 * 6.2831853 * 3.0 + v_uv.x * 5.0);
     float bands = clamp(wave * 0.5 + 0.5, 0.0, 1.0);
-    float fade = y * clamp(1.0 - abs(v_uv.x * 2.0 - 1.0), 0.0, 1.0);   // low and central
+    float fade = y * smoothstep(0.0, 0.15, 1.0 - y) * clamp(1.0 - abs(v_uv.x * 2.0 - 1.0), 0.0, 1.0);   // low and central, no edge
     gl_FragColor = vec4(clamp(vec3(in2, in3, in4), 0.0, 1.0), h * bands * fade * 0.18);
 }

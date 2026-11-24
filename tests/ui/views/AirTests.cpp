@@ -3,6 +3,7 @@
 // pictures at density 1 and 2, 1100x700 and 1600x1000, both themes. Every picture is the software rasteriser's.
 #include "ViewKit.h"
 
+#include "app/Look.h"
 #include "views/air/AirDemo.h"
 #include "views/air/AirModel.h"
 #include "views/air/AirWorkspace.h"
@@ -228,6 +229,7 @@ namespace
 namespace tee::test::u3
 {
     funkgui::Rect frameStage(int w, int h);   // ExhaustTests.cpp
+    std::string textCollisions(const funkgui::PrimList& frame);
 }
 
 namespace
@@ -266,6 +268,58 @@ namespace
             AirRig one("turbo4", w, h, 1.0f);
             golden("air.frame." + tag + ".dpi1", *one.host);
         }
+        return 0;
+    }
+}
+
+namespace
+{
+    VIEW_TEST(testAirText, "air.text")
+    {
+        for (const auto& win : { std::pair<int, int>{ 1100, 700 }, std::pair<int, int>{ 1600, 1000 } })
+        {
+            const funkgui::Rect st = tee::test::u3::frameStage(win.first, win.second);
+            for (const char* b : { "na4-itb", "turbo4", "tt-v8", "sc-v8", "seq6", "cmp6", "cf-v8" })
+            {
+                AirRig rig(b, static_cast<int>(st.w), static_cast<int>(st.h), 1.0f);
+                const std::string hits = tee::test::u3::textCollisions(rig.host->draw());
+                CHECK_MSG(hits.empty(), std::string(b) + " at " + std::to_string(win.first) + ":\n" + hits);
+            }
+        }
+        return 0;
+    }
+}
+
+namespace
+{
+    // The collision check itself catches two texts drawn over each other, and passes two drawn apart.
+    struct TwoTexts final : public funkgui::Panel
+    {
+        float dx = 0.0f;
+        void attach(funkgui::HostServices&) override {}
+        void tick(float) override {}
+        bool wantsFullRate() const override { return false; }
+        void accessibility(std::vector<funkgui::A11yItem>&) const override {}
+        uint32_t a11yRevision() const override { return 0; }
+        void a11yAction(uint32_t, funkgui::A11yAction, double) override {}
+        void closeGestures() override {}
+        int width() const override { return 300; }
+        int height() const override { return 100; }
+        void draw(funkgui::Canvas& c, const funkgui::Theme& th) override
+        {
+            c.text("THROTTLE", 20.0f, 20.0f, tee::ui::look::kCaps, th.ink70);
+            c.text("121 C", 40.0f + dx, 22.0f, tee::ui::look::kUnit, th.ink70);
+        }
+    };
+    VIEW_TEST(testTextCheck, "air.textcheck")
+    {
+        TwoTexts t;
+        funkgui::HeadlessHost host(t, 0, 1.0f);
+        CHECK(!tee::test::u3::textCollisions(host.draw()).empty());
+        t.dx = 120.0f;
+        CHECK(tee::test::u3::textCollisions(host.draw()).empty());
+        AirRig seq("seq6", 700, 574, 1.0f);
+        picture("air.text.seq6", *seq.host);
         return 0;
     }
 }

@@ -274,8 +274,8 @@ namespace tee::ui
 
             // Under the runs' rows: the selected run's name, and its CSV.
             const float fy = runsBox_.bottom() - look::kPad - 28.0f;
-            name_->setPlace({ ix, fy, iw * 0.62f - 3.0f, 28.0f }, true);
-            copy_->setPlace({ ix + iw * 0.62f + 3.0f, fy, iw * 0.38f - 3.0f, 28.0f }, true);
+            name_->setPlace({ ix, fy, iw * 0.68f - 3.0f, 28.0f }, true);
+            copy_->setPlace({ ix + iw * 0.68f + 3.0f, fy, iw * 0.32f - 3.0f, 28.0f }, true);
             rowsArea_ = { ix, runsBox_.y + 30.0f, iw, fy - 8.0f - (runsBox_.y + 30.0f) };
         }
 
@@ -887,7 +887,7 @@ namespace tee::ui
         }
 
         // ---- state -------------------------------------------------------------------------------------------------
-        DynoRequest plan_{ false, 1500.0 * chart::kRpm, 7000.0 * chart::kRpm, 600.0 * chart::kRpm, 1.0, {} };
+        DynoRequest plan_{ false, 1500.0 * chart::kRpm, 7000.0 * chart::kRpm, 600.0 * chart::kRpm, 1.0, {}, {}, 0.6, 0 };
         int gear_ = 4;
         std::vector<RowView> rows_;
         bool showPredicted_ = true, showBefore_ = true;
