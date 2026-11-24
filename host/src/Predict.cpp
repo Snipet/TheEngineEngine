@@ -292,7 +292,10 @@ namespace tee
                 // boost need, to some three seconds
                 const int knockMost = hasRetard_ || hasBoost_
                                           ? std::max(options_.maxCycles, static_cast<int>(3.0 * speed / kFourPi)) : 0;
-                const int most = options_.holdSeconds > 0.0 ? 1 << 30 : std::max(options_.maxCycles, knockMost) + settling;
+                const int holdMost = static_cast<int>((options_.minHoldSeconds + 1.0) * speed / kFourPi);
+                const int most = options_.holdSeconds > 0.0
+                                     ? 1 << 30
+                                     : std::max({options_.maxCycles, knockMost, holdMost}) + settling;
                 double lastRetard = knockRetard();
                 double lastBoost = boostNow();
                 std::vector<double> counted;   // the counted cycles' torques
@@ -369,7 +372,8 @@ namespace tee
                                          - (counted[m - 4] + counted[m - 5] + counted[m - 6]))
                                        / 3.0
                                    <= scale;
-                        const bool steady = k + 1 >= options_.minCycles && held >= options_.holdSeconds && retardSteady
+                        const bool steady = k + 1 >= options_.minCycles && held >= options_.holdSeconds
+                                            && held >= options_.minHoldSeconds && retardSteady
                                             && boostSteady && noTrend && std::fabs(t - previous) <= scale;
                         if (steady && heatSettle_ && !resettled)
                         {
@@ -826,7 +830,7 @@ namespace tee
         std::uint64_t h = build.hash();
         for (const double v : {static_cast<double>(o.coarse), static_cast<double>(o.points), o.from, o.to, o.pedal,
                                o.tolerance, static_cast<double>(o.minCycles), static_cast<double>(o.maxCycles),
-                               o.sampleRate, static_cast<double>(o.block), o.startSeconds, o.warm ? 1.0 : 0.0, o.warmupSeconds, o.settleExhaust ? 1.0 : 0.0, o.holdSeconds, o.brake == "host" ? 1.0 : o.brake == "program" ? 2.0 : 0.0, o.innerRate, static_cast<double>(o.fields.size())})
+                               o.sampleRate, static_cast<double>(o.block), o.startSeconds, o.warm ? 1.0 : 0.0, o.warmupSeconds, o.settleExhaust ? 1.0 : 0.0, o.holdSeconds, o.brake == "host" ? 1.0 : o.brake == "program" ? 2.0 : 0.0, o.innerRate, static_cast<double>(o.fields.size()), o.minHoldSeconds})
             h = mix(h, v);
         return h;
     }

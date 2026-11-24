@@ -166,13 +166,13 @@ module AreaTable
             if (t >= tailDeg)
                 return leak;
             const float y = t * tailK;
-            int j = (int)y;
+            int j = (int)fminf(fmaxf(y, 0.0f), (float)(VT_TAIL - 1));
             if (j > VT_TAIL - 1)
                 j = VT_TAIL - 1;
             return tail[j] + (tail[j + 1] - tail[j]) * (y - (float)j);
         }
         const float x = s * k;
-        int i = (int)x;
+        int i = (int)fminf(fmaxf(x, 0.0f), (float)(VT_STEPS - 1));
         if (i > VT_STEPS - 1)
             i = VT_STEPS - 1;
         return a[i] + (a[i + 1] - a[i]) * (x - (float)i);
