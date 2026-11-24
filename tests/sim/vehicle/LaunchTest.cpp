@@ -92,7 +92,8 @@ TEST_CASE("launch.dry: from a standstill on a dry road traction control does not
     CHECK(on.speedAt2 >= off.speedAt2);
 }
 
-TEST_CASE("launch.pedal: with the driver's own clutch pedal the launch is the driver's", "[vehicle][launch]")
+// (nightly, the lead's call 2026-11-24: the dry and wet launches stay in every run)
+TEST_CASE("launch.pedal: with the driver's own clutch pedal the launch is the driver's", "[vehicle][launch][nightly]")
 {
     const Start a = standing(2, true, true);
     const Start b = standing(2, false, true);

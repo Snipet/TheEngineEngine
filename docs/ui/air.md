@@ -72,7 +72,8 @@ In the right-hand panel, as tall as what it shows:
 Card N2's `tel.boost.mismatch` bits, each with its has and wants, become a line under the charge path's row, in amber
 and words ("CHECK INTERCOOLER rated 250.0 g/s, this engine's match 680.0 g/s"). The part concerned gets an amber
 outline: the cooler (1), the turbo for the gate's spring (2), the plenum or the ITB runners for the charge pipes'
-volume (4). The thresholds are N2's judgement (sim/boost/boost.fm). The parts shorten by a line each warning (to 64
+volume (4), the turbo or the supercharger when its choke flow is far over a matched one's (8: "TURBO far too big for
+this engine: chokes at 1.94 kg/s, a matched one at 0.03"). The thresholds are N2's judgement (sim/boost/boost.fm). The parts shorten by a line each warning (to 64
 at the least), so the panels below keep their height. The line's right end is kept clear for a "match to this
 engine" button once card C's host gives the action; none is drawn until it does. No bits, no warnings. Test
 `ui.air.mismatch`.

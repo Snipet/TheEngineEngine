@@ -344,14 +344,16 @@ namespace
     // The Scope's map, as card F's simulator sends it, is drawn in place of the mirror of its arithmetic: here a map
     // made from other sizes (a larger wheel), so the picture must differ from the mirror's; its trail is the
     // simulator's ring (newest at boostTrailAt - 1). Without the arrays, the mirror again.
-    // Card N2's mismatch: the cooler, the gate's spring and the charge pipes, each an amber outline on its part and a
+    // Card N2's mismatch: the cooler, the gate's spring, the charge pipes and the compressor's size, each an amber outline on its part and a
     // line of words under the row (no bits: nothing); every text clear of every other at the frame's narrowest stage.
     VIEW_TEST(testAirMismatch, "air.mismatch")
     {
         const funkgui::Rect st = tee::test::u3::frameStage(1100, 700);
         AirRig rig("turbo4", static_cast<int>(st.w), static_cast<int>(st.h), 2.0f);
         const std::uint64_t k = rig.ws->drawKey();
-        rig.demo.engine.set("boost.mismatch", 7.0);
+        rig.demo.engine.set("boost.mismatch", 15.0);
+        rig.demo.engine.set("boost.compressorHas", 1.94);
+        rig.demo.engine.set("boost.compressorWants", 0.03);
         rig.demo.engine.set("boost.coolerHas", 0.25);
         rig.demo.engine.set("boost.coolerWants", 0.68);
         rig.demo.engine.set("boost.springHas", 10e3);
