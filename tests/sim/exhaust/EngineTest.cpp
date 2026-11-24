@@ -653,3 +653,54 @@ static void portCools(bool full)
         CHECK(th < tv);
     }
 }
+
+// A twin-turbo inline six into ONE exhaust (content/builds/archetypes/straight-six-twin-turbo-30.json, its exhaust
+// sides 1, the front three cylinders' collector and the rear three's): each collector in its own turbo's housing
+// (F's housingOf on one bank: by group), and both turbos' outlets into the one downpipe (Boost::exhaustSides, called
+// at every configure). Before it, the second turbo's outlet had no pipe: its shaft stood. Measured: both shafts' speeds
+// at 4300 rpm full throttle on the dyno, and the boost.
+TEST_CASE("a twin-turbo six into one pipe spins both turbos", "[exhaust][engine][turbine]")
+{
+    EnginePlayer& p = player();
+    p.reset();
+    EngineBuild b;
+    std::string error, warnings;
+    REQUIRE(loadBuild(p, std::filesystem::path(TEE_SOURCE_DIR) / "content/builds/archetypes/straight-six-twin-turbo-30.json",
+                      b, error, warnings));
+    b.values["exhaust.model"] = {1.0};
+    b.values["exhaust.sides"] = {1.0};
+    b.values["exhaust.primaryTo"] = {0, 0, 0, 1, 1, 1};
+    b.values["exhaust.collectorTo"] = {0, 0};
+    applyBuild(p, b);
+    EnginePlayer::Controls& c = p.controls();
+    c.mode = EnginePlayer::kModeBench;
+    c.ignition = EnginePlayer::kIgnitionStart;
+    std::vector<float> l(512), r(512);
+    bool finite = true;
+    auto run = [&](double s) {
+        for (int k = 0; k < static_cast<int>(s * 48000.0 / 512.0); ++k)
+        {
+            p.process(l.data(), r.data(), 512);
+            for (int i = 0; i < 512; ++i)
+                finite = finite && std::isfinite(l[i]) && std::fabs(l[i]) <= 1.0f;
+        }
+    };
+    run(1.5);
+    c.ignition = EnginePlayer::kIgnitionOn;
+    c.mode = 2;
+    c.dynoSpeed = static_cast<float>(4300.0 * 0.10471976);
+    c.throttle = 1.0f;
+    run(6.0);
+    const double w0 = test::field(p, "tel.boost.shaftSpeed[0]");
+    const double w1 = test::field(p, "tel.boost.shaftSpeed[1]");
+    const double boost = test::field(p, "tel.boost.pressure");
+    const double torque = test::field(p, "tel.engine.torque");
+    std::printf("twin six into one pipe at 4300 rpm full throttle: shafts %.0f and %.0f rad/s, boost %.1f kPa, %.0f N m, "
+                "the exhaust's sides %d, finite %s\n", w0, w1, boost / 1000.0, torque,
+                static_cast<int>(test::field(p, "exh.b.nSides")), finite ? "yes" : "no");
+    CHECK(finite);
+    CHECK(w0 > 3000.0);
+    CHECK(w1 > 3000.0);
+    CHECK(std::fabs(w0 - w1) < 0.2 * std::max(w0, w1));
+    CHECK(torque > 100.0);
+}
