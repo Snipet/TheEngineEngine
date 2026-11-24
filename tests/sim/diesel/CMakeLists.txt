@@ -13,4 +13,20 @@ target_compile_definitions(tee-tests-diesel PRIVATE
   "TEE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
   "TEE_SOURCE_SIM_DIR=\"${PROJECT_SOURCE_DIR}/sim/ref\""
   "TEE_SOURCE_CONTENT_DIR=\"${PROJECT_SOURCE_DIR}/content/ref\"")
-catch_discover_tests(tee-tests-diesel DISCOVERY_MODE PRE_TEST ADD_TAGS_AS_LABELS TEST_PREFIX "diesel." PROPERTIES TIMEOUT 900)
+# The fast tier as five grouped entries, each one process: the program compiles once a process (6.6 s) and the cases
+# share it (Diesel.h's kept player, reset per case), so a group costs far less than its cases apart (01-rules.md §3:
+# a group up to 90 s). The full forms, [nightly], one entry a case, labelled nightly (left out of the dev runs).
+foreach(_group IN ITEMS
+    "brakes|[brake]~[nightly]"
+    "governor-injection|[governor],[injection]"
+    "builds-cold-soak|[builds]~[nightly],[cold]~[nightly],[soak]"
+    "truck|[truck]~[nightly],[truckparts]"
+    "turbo|[turbo]~[brake]~[nightly]")
+  string(REPLACE "|" ";" _pair "${_group}")
+  list(GET _pair 0 _name)
+  list(GET _pair 1 _spec)
+  add_test(NAME "diesel.${_name}" COMMAND tee-tests-diesel "${_spec}")
+  set_tests_properties("diesel.${_name}" PROPERTIES TIMEOUT 900 LABELS "diesel")
+endforeach()
+catch_discover_tests(tee-tests-diesel TEST_SPEC "[nightly]" DISCOVERY_MODE PRE_TEST ADD_TAGS_AS_LABELS TEST_PREFIX "diesel."
+                     PROPERTIES TIMEOUT 900)
