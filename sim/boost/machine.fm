@@ -1283,7 +1283,9 @@ module BoostMachine
                 const float uRaw = 0.5f * e + integ;
                 const int cannotShut = e > 0.0f && (uRaw >= 0.95f || vanesHeld != 0);
                 const int cannotOpen = e < 0.0f && uRaw <= 0.0f;
-                if (cannotShut == 0 && cannotOpen == 0)
+                // (and held while the ECU owns the vanes, an engine brake: the boost's error then means nothing, the brake
+                // blowing the manifold up on purpose; at release the loop starts where it stood (D2's point, 25 Nov))
+                if (cannotShut == 0 && cannotOpen == 0 && cmdVanes < 0.0f)
                     integ = fminf(fmaxf(integ + 1.0f * e * d16, -0.5f), 1.0f);
                 u = fminf(fmaxf(0.5f * e + integ, 0.0f), 0.95f);
             }
