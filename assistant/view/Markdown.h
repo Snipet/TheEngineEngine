@@ -119,4 +119,7 @@ namespace tee::assistant::view::markdown
     // (its index in links, -1 none) drawn underlined. Copy buttons are the owner's.
     void draw(funkgui::Canvas& c, const funkgui::Theme& th, const Layout& l, const Metrics& m, float x0, float top,
               const funkgui::Rect& clip, int hover = -1);
+    // The same in the owner's colours (the chat's: the kit's widget look).
+    void draw(funkgui::Canvas& c, const funkgui::Theme& th, const tee::ui::style::Palette& p, const Layout& l,
+              const Metrics& m, float x0, float top, const funkgui::Rect& clip, int hover = -1);
 }

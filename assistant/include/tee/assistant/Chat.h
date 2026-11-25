@@ -7,8 +7,10 @@
 //   anthropic-version 2026-10-21, anthropic-beta server-side-fallback-2026-07-01;
 //   body: model (kDefaultModel, the one constant), max_tokens, stream true, system (byte-stable for the chat's life),
 //   tools (the tool table's, plus ask_user; byte-stable), messages, cache_control ephemeral (the API places it on the
-//   last cacheable block), output_config.effort, fallbacks "default". No thinking parameter (the model's adaptive
-//   thinking is always on), no tool_choice (forced tool use is refused by the model), no sampling parameters.
+//   last cacheable block), thinking {type adaptive, display summarized} (the model always thinks; the summary gives the
+//   panel something to show during the wait, where the default display streams empty thinking blocks),
+//   output_config.effort, fallbacks "default". No tool_choice (forced tool use is refused by the model), no sampling
+//   parameters, no thinking budget (refused by the model).
 //
 // The loop's rules, each tested on a scripted transport (tests/assistant/ChatTest.cpp):
 //   - the app's state rides in the newest user message only; the system prompt never changes;
@@ -66,6 +68,7 @@ namespace tee::assistant
             Assistant,      // Claude's words (streaming while the reply comes)
             Tool,           // a tool Claude used: its name and what came of it
             Notice,         // the chat's own words: a refusal, a cut reply, an error, a limit, a cancel
+            Thinking,       // a summary of Claude's thinking (streaming while it comes; empty while none is given)
         };
         Kind kind = Kind::Notice;
         std::string text;

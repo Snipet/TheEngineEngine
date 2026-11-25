@@ -1,4 +1,4 @@
-// assistant/view/Markdown.cpp: from TestingPlayground, Source/editor/Markdown.cpp at 47bac40327ed9e8e59928500de9f3beb63fe8636 (assistant/view/SEED.tsv); what was changed: as Markdown.h says, and code blocks drawn plain (no FMinus highlighting rules).
+// assistant/view/Markdown.cpp: from TestingPlayground, Source/editor/Markdown.cpp at 47bac40327ed9e8e59928500de9f3beb63fe8636 (assistant/view/SEED.tsv); what was changed: as Markdown.h says, code blocks drawn plain (no FMinus highlighting rules), and draw() in the owner's palette.
 // Source/editor/Markdown.cpp: see Markdown.h. Moved out of ChatView.cpp as it was (the links aside).
 #include "Markdown.h"
 
@@ -629,7 +629,12 @@ namespace tee::assistant::view::markdown
     void draw(funkgui::Canvas& c, const funkgui::Theme& th, const Layout& l, const Metrics& m, float x0, float top,
               const funkgui::Rect& clip, int hover)
     {
-        const tee::ui::style::Palette p = tee::ui::style::palette(th);
+        draw(c, th, tee::ui::style::palette(th), l, m, x0, top, clip, hover);
+    }
+
+    void draw(funkgui::Canvas& c, const funkgui::Theme& th, const tee::ui::style::Palette& p, const Layout& l,
+              const Metrics& m, float x0, float top, const funkgui::Rect& clip, int hover)
+    {
         const auto visible = [&](float y, float h) { return y + h >= clip.y && y <= clip.bottom(); };
         for (const Shape& s : l.shapes)
             if (visible(top + s.r.y, s.r.h))

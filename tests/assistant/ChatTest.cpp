@@ -262,7 +262,7 @@ namespace
 TEST_CASE("assistant: the chat's request, line by line, and the key only in its header", "[assistant][sharedsim]")
 {
     Bench b("chat-shape");
-    b.transport.script.push_back(ok(Stream().text("A V8 is open.").end("end_turn")));
+    b.transport.script.push_back(ok(Stream().thinking("Reading the status.", "sig-1").text("A V8 is open.").end("end_turn")));
     b.say("What is open?");
     REQUIRE(b.transport.count() == 1);
     const HttpRequest& r = b.transport.requests[0];
@@ -279,7 +279,10 @@ TEST_CASE("assistant: the chat's request, line by line, and the key only in its 
     CHECK(body["fallbacks"] == "default");
     CHECK(body["cache_control"]["type"] == "ephemeral");
     CHECK(body["output_config"]["effort"] == "medium");
-    for (const char* absent : {"thinking", "tool_choice", "temperature", "top_p", "top_k"})
+    // the model always thinks: the adaptive form with its summary shown, and nothing the model refuses
+    CHECK(body["thinking"] == json({{"type", "adaptive"}, {"display", "summarized"}}));
+    CHECK_FALSE(body["thinking"].contains("budget_tokens"));
+    for (const char* absent : {"tool_choice", "temperature", "top_p", "top_k"})
         CHECK_FALSE(body.contains(absent));
     CHECK(body["system"][0]["text"] == systemPromptFor(b.rig.build().fields()));
     std::set<std::string> names;
@@ -301,10 +304,17 @@ TEST_CASE("assistant: the chat's request, line by line, and the key only in its 
     for (const ChatItem& i : b.chat->items())
         CHECK(i.text.find(kKey) == std::string::npos);
     const auto items = b.chat->items();
-    REQUIRE(items.size() == 2);
-    CHECK(items[1].kind == ChatItem::Kind::Assistant);
-    CHECK(items[1].text == "A V8 is open.");
-    CHECK_FALSE(items[1].streaming);
+    REQUIRE(items.size() == 3);
+    CHECK(items[1].kind == ChatItem::Kind::Thinking);   // the summary, shown while Claude thinks
+    CHECK(items[1].text == "Reading the status.");
+    CHECK(items[2].kind == ChatItem::Kind::Assistant);
+    CHECK(items[2].text == "A V8 is open.");
+    CHECK_FALSE(items[2].streaming);
+    // echoed back unchanged, its signature with it
+    b.transport.script.push_back(ok(Stream().text("Yes.").end("end_turn")));
+    b.say("Sure?");
+    CHECK(b.transport.body(1)["messages"][1]["content"][0]
+          == json({{"type", "thinking"}, {"thinking", "Reading the status."}, {"signature", "sig-1"}}));
 }
 
 TEST_CASE("assistant: a tool turn: thinking echoed unchanged, the tool run once, one result message, the prefix stable",
@@ -379,7 +389,7 @@ TEST_CASE("assistant: nothing runs after max_tokens or a refusal", "[assistant][
         CHECK(h[2]["content"][0]["is_error"] == true);
     }
     // a refusal mid-stream, with a call: dropped whole, never run
-    b.transport.script.push_back(ok(Stream().text("Sure, ").tool("toolu_r", "set_fields", input).end("refusal", {{"category", "cyber"}})));
+    b.transport.script.push_back(ok(Stream().thinking("hmm", "sig-r").text("Sure, ").tool("toolu_r", "set_fields", input).end("refusal", {{"category", "cyber"}})));
     b.say("Again.");
     CHECK(b.rig.build().undoStep() == step);
     const json h = b.chat->history();
@@ -388,6 +398,8 @@ TEST_CASE("assistant: nothing runs after max_tokens or a refusal", "[assistant][
     CHECK(b.notices().back().text.find("cyber") != std::string::npos);
     for (const ChatItem& i : b.chat->items())
         CHECK(i.text.find("Sure,") == std::string::npos);
+    for (const ChatItem& i : b.chat->items())
+        CHECK(i.kind != ChatItem::Kind::Thinking);
     // the next request is well formed: roles alternate, every call answered
     b.transport.script.push_back(ok(Stream().text("OK.").end("end_turn")));
     b.say("Then just tell me.");

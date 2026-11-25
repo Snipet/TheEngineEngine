@@ -11,7 +11,8 @@
 //   tee::assistant::view::ChatView view({[&] { openKeyDialog(); }});
 //   view.attach(&chat);                 // the ChatPort
 //   view.setBounds({x, y, w, h});
-//   // an Item of the kit (ui/kit/gui/Items.h): the frame ticks, draws and routes input to it
+//   // a Widget of the kit (ui/kit/widgets/Widget.h: its Look, its hover help): the frame ticks, draws and routes
+//   // input to it as to any other
 //
 // Threads: the frame's.
 #pragma once
@@ -20,6 +21,7 @@
 
 #include "kit/gui/Items.h"
 #include "kit/gui/Scroll.h"
+#include "kit/widgets/Widget.h"
 
 #include "tee/assistant/Chat.h"
 
@@ -30,7 +32,7 @@
 
 namespace tee::assistant::view
 {
-    class ChatView final : public tee::ui::Item
+    class ChatView final : public tee::ui::Widget
     {
     public:
         struct Hooks
@@ -38,11 +40,9 @@ namespace tee::assistant::view
             std::function<void()> addKey;          // the empty chat's "Add a key": the frame's key dialog
         };
 
-        explicit ChatView(Hooks hooks, uint32_t a11yBase = 0x7A000000u);
+        explicit ChatView(Hooks hooks, uint32_t id = 0x7A000000u);
 
         void attach(ChatPort* port) { port_ = port; seen_ = ~0ull; }
-        void setBounds(funkgui::Rect r);
-        funkgui::Rect bounds() const noexcept { return bounds_; }
 
         // What the owner has typed and not sent.
         const std::string& draft() const noexcept { return draft_; }
@@ -64,10 +64,9 @@ namespace tee::assistant::view
         float contentHeight() const noexcept { return scroll_.content; }
         const std::string& hint() const noexcept { return hint_; }
 
-        // tee::ui::Item
+        // tee::ui::Widget
         void tick(float dt, bool hovered, bool focused, funkgui::Point pointer) override;
         void draw(funkgui::Canvas&, const funkgui::Theme&, bool focusRing) const override;
-        bool contains(funkgui::Point p) const override { return bounds_.contains(p); }
         funkgui::Cursor cursorAt(funkgui::Point p) const override;
         void pointerDown(const funkgui::PointerEvent&, funkgui::GestureController&, funkgui::HostServices&) override;
         void pointerDrag(const funkgui::PointerEvent&, funkgui::GestureController&) override;
@@ -79,7 +78,9 @@ namespace tee::assistant::view
         bool a11yAction(uint32_t id, funkgui::A11yAction, double, funkgui::GestureController&) override;
         void specLine(char* out, std::size_t n) const override;
         uint64_t drawKey() const override;
-        funkgui::Point centre() const override { return {bounds_.centreX(), bounds_.centreY()}; }
+
+    protected:
+        const char* kind() const override { return "chat"; }
 
     private:
         struct Block
@@ -100,7 +101,6 @@ namespace tee::assistant::view
         Hooks hooks_;
         uint32_t a11yBase_;
         ChatPort* port_ = nullptr;
-        funkgui::Rect bounds_{};
         std::uint64_t seen_ = ~0ull;
         float laidWidth_ = -1.0f;
         std::vector<Block> blocks_;
@@ -113,7 +113,5 @@ namespace tee::assistant::view
         std::string draft_, hint_;
         tee::ui::Scroll scroll_;
         markdown::Metrics metrics_;
-        funkgui::Point pointer_{-1.0e4f, -1.0e4f};
-        bool focused_ = false;
     };
 }

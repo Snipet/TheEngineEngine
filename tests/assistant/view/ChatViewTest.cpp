@@ -265,3 +265,34 @@ TEST_CASE("assistant: the chat panel lays out again only when the port moved, an
     CHECK(v.atEnd());
     CHECK(picture(v, "chat-long", 420, 300) > 3000);
 }
+
+TEST_CASE("assistant: the chat panel is honest about the wait: thinking, and working, shown", "[assistant][view]")
+{
+    FakePort port;
+    port.add(ChatItem::Kind::User, "Why is the torque low at 2000 rpm?");
+    port.isBusy = true;
+    ChatView v({});
+    v.attach(&port);
+    v.setBounds({0.0f, 0.0f, 420.0f, 560.0f});
+    tick(v);
+    CHECK(v.shownText().find("Claude is working") != std::string::npos);   // nothing of Claude's yet
+    ChatItem t;
+    t.kind = ChatItem::Kind::Thinking;
+    t.streaming = true;
+    port.list.push_back(t);
+    ++port.rev;
+    tick(v);
+    CHECK(v.shownText().find("thinking: Thinking...") != std::string::npos);   // thinking, no summary yet
+    port.list.back().text = "Reading the cam timing and the intake's length.";
+    ++port.rev;
+    tick(v);
+    CHECK(v.shownText().find("Thinking: Reading the cam timing") != std::string::npos);
+    CHECK(v.shownText().find("Claude is working") == std::string::npos);
+    // its hover help, as every widget of the frame has
+    std::string title, body;
+    funkgui::Rect anchor;
+    REQUIRE(v.help(title, body, anchor));
+    CHECK(title == "Chat with Claude");
+    CHECK(body.find("Undo") != std::string::npos);
+    CHECK(picture(v, "chat-thinking", 420, 560) > 1000);
+}

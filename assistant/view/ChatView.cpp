@@ -23,19 +23,44 @@ namespace tee::assistant::view
                 case ChatItem::Kind::User: return "you";
                 case ChatItem::Kind::Assistant: return "claude";
                 case ChatItem::Kind::Tool: return "tool";
+                case ChatItem::Kind::Thinking: return "thinking";
                 default: return "note";
             }
         }
+
+        // The chat's colours from the kit's widget look (ui/kit/widgets/Widget.h, the frame's tokens), in the shape the
+        // ported markdown draws with (ui/kit/gui/Style.h's Palette).
+        tee::ui::style::Palette paletteOf(const funkgui::Theme& th)
+        {
+            const tee::ui::Look l = tee::ui::Look::of(th);
+            tee::ui::style::Palette p = tee::ui::style::palette(th);
+            p.card = l.ground;
+            p.cardEdge = l.edge;
+            p.bubble = l.face;
+            p.code = l.face;
+            p.codeEdge = l.edge;
+            p.composer = l.face;
+            p.composerEdge = l.edge;
+            p.hover = l.faceHi;
+            p.raised = l.faceHi;
+            p.text = l.text;
+            p.soft = l.label;
+            p.dim = l.label;
+            p.faint = l.dim;
+            p.accent = l.accent;
+            p.danger = l.signal;
+            return p;
+        }
+
+        constexpr std::size_t kThinkingShown = 280;   // the last characters of a long summary
     }
 
-    ChatView::ChatView(Hooks hooks, uint32_t a11yBase) : hooks_(std::move(hooks)), a11yBase_(a11yBase)
+    ChatView::ChatView(Hooks hooks, uint32_t id) : Widget(id), hooks_(std::move(hooks)), a11yBase_(id)
     {
         scroll_.row = tee::ui::style::kBodyLine;
-    }
-
-    void ChatView::setBounds(funkgui::Rect r)
-    {
-        bounds_ = r;
+        setTitle("Chat with Claude");
+        setHelp("Claude, with your API key: ask about the build, or ask it to change something. Each change it makes is "
+                "one step the app's Undo takes back. Enter sends; Escape stops an answer.");
     }
 
     funkgui::Rect ChatView::composer() const noexcept
@@ -116,6 +141,22 @@ namespace tee::assistant::view
                     b.h = tee::ui::style::kSmallLine;
                     break;
                 }
+                case ChatItem::Kind::Thinking:
+                {
+                    // a summary of Claude's thinking: dim and small, its last part when long; while none is given
+                    // and it streams, a word that says Claude is thinking (the wait is honest)
+                    std::string t = tee::ui::asciiText(item.text);
+                    if (t.size() > kThinkingShown)
+                        t = "..." + t.substr(t.size() - kThinkingShown);
+                    b.text = t.empty() ? std::string(item.streaming ? "Thinking..." : "Thought") : "Thinking: " + t;
+                    if (t.empty() && !item.streaming)
+                        continue;   // a finished thought with nothing to say: no row
+                    float yy = 0.0f;
+                    b.h = markdown::flow(b.layout, metrics_, b.text, markdown::Role::faint, 0.0f, w, yy,
+                                         tee::ui::style::kSmallLine, false);
+                    b.x = kPad;
+                    break;
+                }
                 case ChatItem::Kind::Notice:
                 {
                     b.text = tee::ui::asciiText(item.text);
@@ -129,9 +170,23 @@ namespace tee::assistant::view
             y += b.h + kGap;
             blocks_.push_back(std::move(b));
         }
+        // a turn running with nothing of Claude's arriving yet (the request on its way, a tool running): said so
+        if (busy_ && (items.empty() || items.back().kind == ChatItem::Kind::User || items.back().kind == ChatItem::Kind::Tool
+                      || (items.back().kind != ChatItem::Kind::Assistant && items.back().kind != ChatItem::Kind::Thinking)))
+        {
+            Block b;
+            b.kind = ChatItem::Kind::Thinking;
+            b.y = y;
+            b.text = "Claude is working...";
+            b.layout.spans.push_back({0.0f, 0.0f, tee::ui::style::kSmallLine, b.text, markdown::Role::faint});
+            b.x = kPad;
+            b.h = tee::ui::style::kSmallLine;
+            y += b.h + kGap;
+            blocks_.push_back(std::move(b));
+        }
         // empty: what the chat is, or why it cannot be used yet
         empty_ = markdown::Layout{};
-        emptyShown_ = blocks_.empty();
+        emptyShown_ = items.empty();
         if (emptyShown_)
         {
             float yy = kPad;
@@ -163,10 +218,9 @@ namespace tee::assistant::view
         laidWidth_ = bounds_.w;
     }
 
-    void ChatView::tick(float, bool, bool focused, funkgui::Point pointer)
+    void ChatView::tick(float dt, bool hovered, bool focused, funkgui::Point pointer)
     {
-        pointer_ = pointer;
-        focused_ = focused;
+        Widget::tick(dt, hovered, focused, pointer);
         const std::uint64_t rev = port_ != nullptr ? port_->revision() : 0;
         if (rev != seen_ || laidWidth_ != bounds_.w)
         {
@@ -203,21 +257,21 @@ namespace tee::assistant::view
 
     void ChatView::draw(funkgui::Canvas& c, const funkgui::Theme& th, bool focusRing) const
     {
-        const tee::ui::style::Palette p = tee::ui::style::palette(th);
+        const tee::ui::style::Palette p = paletteOf(th);
         c.rrect(bounds_.x, bounds_.y, bounds_.w, bounds_.h, 8.0f, p.card, 1.0f, p.cardEdge);
         const funkgui::Rect area = conversation();
         const float top = area.y - scroll_.offset;
         if (emptyShown_)
-            markdown::draw(c, th, empty_, metrics_, bounds_.x, top, area);
+            markdown::draw(c, th, p, empty_, metrics_, bounds_.x, top, area);
         for (const Block& b : blocks_)
         {
             if (top + b.y + b.h < area.y || top + b.y > area.bottom())
                 continue;
-            markdown::draw(c, th, b.layout, metrics_, bounds_.x + b.x, top + b.y, area);
+            markdown::draw(c, th, p, b.layout, metrics_, bounds_.x + b.x, top + b.y, area);
         }
         scroll_.draw(c, area, th);
         if (asking_)
-            markdown::draw(c, th, question_, metrics_, bounds_.x + kPad, composer().y - kGap - questionH_, bounds_);
+            markdown::draw(c, th, p, question_, metrics_, bounds_.x + kPad, composer().y - kGap - questionH_, bounds_);
         // the message box: the draft (or its hint), and Send or Stop
         const funkgui::Rect box = composer();
         c.rrect(box.x, box.y, box.w, box.h, 8.0f, p.composer, focusRing ? 2.0f : 1.0f, focusRing ? p.accent : p.composerEdge);

@@ -336,6 +336,7 @@ namespace tee::assistant
         std::string body = "{\"model\":" + json(options_.model).dump() + ",\"max_tokens\":" + std::to_string(options_.maxTokens)
                            + ",\"stream\":true,\"system\":" + json::array({{{"type", "text"}, {"text", system_}}}).dump()
                            + ",\"tools\":" + toolsJson_ + ",\"cache_control\":{\"type\":\"ephemeral\"}"
+                           + ",\"thinking\":{\"type\":\"adaptive\",\"display\":\"summarized\"}"
                            + ",\"output_config\":" + json({{"effort", options_.effort}}).dump()
                            + ",\"fallbacks\":\"default\",\"messages\":" + messages.dump() + "}";
         return body;
@@ -391,12 +392,13 @@ namespace tee::assistant
                         message["content"][i] = e["content_block"];
                         if (partial.size() <= i)
                             partial.resize(i + 1);
-                        if (e["content_block"].value("type", "") == "text")
+                        const std::string bt = e["content_block"].value("type", "");
+                        if (bt == "text" || bt == "thinking")
                         {
                             ChatItem a;
-                            a.kind = ChatItem::Kind::Assistant;
+                            a.kind = bt == "text" ? ChatItem::Kind::Assistant : ChatItem::Kind::Thinking;
                             a.streaming = true;
-                            a.text = e["content_block"].value("text", "");
+                            a.text = e["content_block"].value(bt == "text" ? "text" : "thinking", "");
                             std::lock_guard<std::mutex> lock(mutex_);
                             items_.push_back(std::move(a));
                             r.streamingItem = items_.size() - 1;
@@ -424,7 +426,15 @@ namespace tee::assistant
                         else if (dt == "input_json_delta")
                             partial[i] += d.value("partial_json", "");
                         else if (dt == "thinking_delta")
+                        {
                             block["thinking"] = block.value("thinking", "") + d.value("thinking", "");
+                            std::lock_guard<std::mutex> lock(mutex_);
+                            if (r.streamingItem < items_.size())
+                            {
+                                items_[r.streamingItem].text += d.value("thinking", "");
+                                ++revision_;
+                            }
+                        }
                         else if (dt == "signature_delta")
                             block["signature"] = d.value("signature", "");
                         // (another delta type: not this chat's to assemble; the block is echoed as it started)
@@ -469,7 +479,7 @@ namespace tee::assistant
                 for (auto it = items_.end(); it != items_.begin();)
                 {
                     --it;
-                    if (it->kind != ChatItem::Kind::Assistant)
+                    if (it->kind != ChatItem::Kind::Assistant && it->kind != ChatItem::Kind::Thinking)
                         break;
                     it = items_.erase(it);
                 }
@@ -663,7 +673,7 @@ namespace tee::assistant
                     for (auto it = items_.end(); it != items_.begin();)
                     {
                         --it;
-                        if (it->kind != ChatItem::Kind::Assistant)
+                        if (it->kind != ChatItem::Kind::Assistant && it->kind != ChatItem::Kind::Thinking)
                             break;
                         it = items_.erase(it);
                     }
