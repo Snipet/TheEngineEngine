@@ -213,7 +213,9 @@ namespace
     int play(const std::string& build, const std::string& kindArg, const std::string& comboArg, const std::string& wav,
              const std::vector<Value>& sets)
     {
-        if (archetype(build) == nullptr)
+        // a build file (a path ending .json) plays as well as an archetype: no idle band is judged then
+        const bool file = build.size() > 5 && build.compare(build.size() - 5, 5, ".json") == 0;
+        if (!file && archetype(build) == nullptr)
         {
             std::fprintf(stderr, "tee-fuzz: no archetype %s\n", build.c_str());
             return 2;
