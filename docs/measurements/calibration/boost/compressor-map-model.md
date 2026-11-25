@@ -90,3 +90,77 @@ map-and-sizing.patch's companion below; the change itself is held, uncommitted i
 | present tree | 164 / 17 | 336 / 172 | 289 / 173 |
 | map only | 172 / 21 | 337 / 171 | 288 / 171 |
 | map and sizing | 168 / 19 | 332 / 172 | 290 / 174 |
+
+## The held change's final form (the lead's ruling on the sizing; measured, not yet in)
+
+`map-and-sizing.patch` now holds: the knee's law (floored at a tip Mach of 0.8, under the published maps' lowest
+lines: at an idle the knee moved with each firing pulse and the tractor's no-spread clatter comb fell 12.3 -> 3.7 dB),
+the choke's growth to 1.63, the island at 0.58 of the way to choke (the ridge 0.60 / 0.62 / 0.69 / 0.78 at ratios
+1.5 to 3, inside the published ranges, at their edges at 2 and 3; surge/choke unchanged), the sizing rule's 1.15
+read at the design point's tip speed (F's 1.15, its wording under the new law), F's map cases read at each speed's
+own knee, and the sequential case's low point at 2000 rpm (at 2500 the engine now draws the join flow and the valve
+cycles: a finding).
+
+| turbo four, N m / charge kPa g | 1500 | 1800 | 2500 | 4000 | 6200 |
+|---|---|---|---|---|---|
+| a18f1bd4 | 213 / 14 | 227 / 20 | 305 / 75 | 366 / 124 | 289 / 88 |
+| map alone | 218 / 16 | 242 / 26 | 394 / 123 | 364 / 124 | 290 / 88 |
+| map and sizing | 209 / 13 | 227 / 20 | 313 / 80 | 364 / 124 | 289 / 88 |
+
+The diesels' take-ups (settled N m, a18f1bd4 -> map and sizing): tractor 1300 1939 -> 2245, 2.0 at 2500 249 -> 331,
+pickup 1600 654 -> 693; the other six within 1 %.
+
+**The truck at 1300, held 30 s** (heat settled 1 s into each speed; 1 s windows): one state, reached slowly from
+below: from 800 16.1, 19.5, 26.8, 50.7, 55.3, 53.2 kPa at 5 to 30 s; from 2000 52 to 56 kPa throughout. The 5 s case
+reads the climb. Fuel 20.18 g/s on the rack's maximum in both (not a smoke limit: an air-fuel ratio near 7 low and 10
+high). The prediction above (one state within 5 % in the case's window) **failed**: 28.3 / 62.1 kPa then, 15.5 / 52.3
+on the final form, against the 45-60 it said.
+
+Open for the lead's ruling: F's EngineTest's shaft speed at 3500 rpm (79,668 against its 80,000 class bound: the wheel
+the sizing rule now builds is some 9 % larger), and the truck case's window.
+
+## Which surge line (the lead's question), measured
+
+The 0.24 / 0.29 / 0.36 / 0.44 above are on the **flag's locus, 0.8 of the knee**. On the knee itself (the speed line's
+peak) the same map reads 0.30 / 0.37 / 0.45 / 0.55 of choke: above the published ranges at every ratio.
+
+**Where the model goes unstable** (a centrifugal supercharger on F's rig at a fixed speed, bypass and blow-off
+valve off, the throttle closed in steps of 0.004, 1.5 s each, then 0.2 s of samples):
+
+| tip Mach | knee | steady down to (phi / knee) | oscillation starts (phi / knee) | flow reverses from (phi / knee) |
+|---|---|---|---|---|
+| 0.75 | 0.410 | 0.92 | 0.89 | 0.77 |
+| 0.76 | 0.410 | 0.92 | 0.88 | 0.76 |
+| 0.91 | 0.433 | 0.94 | 0.91 | 0.82 |
+
+So the model's real surge line is near 0.9 of the knee, and it runs steadily on the rising branch between there and
+the knee.
+
+**The truck at 1300 rpm** (truck-15l-six with GateTest's sets; the compressor's phi from its telemetry by the map's
+own formulas, inducer 89.2 mm): the low state sits at phi 0.257 to 0.263 of its choke at tip Mach 0.53 to 0.66,
+**0.63 to 0.64 of the knee, and steady**: block by block (10.7 ms) the flow is 0.124 to 0.165 kg/s, the firing pulses,
+never reversing, the surge flag on 100 % of the time. The high state sits at 0.65 to 0.68 of the knee and is **a deep
+surge cycle**: the flow -0.08 to +0.50 kg/s, a period near 75 ms, the flag on 52 %. At 2000 rpm and its design ratio
+(3.17) the point is at 0.91 of the knee. The engine passes 0.494 kg/s there against the 0.86 the matching assumes
+(VE 0.9 at the design ratio's density): its operating line lies left of the knee everywhere.
+
+**Prediction for the lead's (3) and (4)** (written before any run): with the knee moved to where the published surge
+lines are (0.8 of today's law, so the flag's locus becomes the knee) and the model made to surge, not sit, left of it,
+the truck at 1300 has **one state from both sides, and it is a surge cycle at about 50 kPa** (its point is still left
+of the new knee, 0.78 to 0.82 of it), not 200 kPa. The low state vanishes because it cannot sit; the boost stays low
+because the wheel is too big for what this engine passes. The cure for the boost is the wheel's size (a build's
+stated hardware, or the matching's VE), not the map.
+
+**The sequential pair's join** (F's rig, layout 3, comp[0] held 3.5 s): the 2500 rpm point's draw is 0.91 of the join
+flow on a18f1bd4 and on the map alone, 0.97 on map and sizing: inside the valve's 0.8-1.0 hysteresis on every tree,
+so the valve's state there depends on history. Read 0.5 s later than the case reads it, a18f1bd4's valve is 0.93 open.
+The first compressor there: phi 0.73 of a 0.086 kg/s choke (a18f1bd4), 0.88 of 0.077 (map alone), 0.70 of 0.103
+(map and sizing).
+
+**The turbo four's wheel (first.json; turbo-four-20-gdi differs only in name)**, built by the matching: compressor
+inducer 44.2 mm, exducer 59.6 (a18f1bd4 and the map alone: the same wheel, the map alone choking it at 0.8 of its full
+flow at its design speed), 48.3 / 65.1 mm with the sizing kept; the turbine wheel 0.9 of the exducer (53.6 / 58.6 mm);
+the turbine's nozzle 4.59 cm2 on every tree. The IS20 (P, rebuilders, about 1 mm): 42.5 / 54.0 mm compressor, 50.4 mm
+turbine inducer. A build can state them today: spec.boost.compInducer, compExducer, compAR, turbWheel, turbAR (0:
+matched); what a build cannot state is the trim apart from the two diameters, the turbine's throat area as a number
+(it follows A/R and the wheel), or a map.

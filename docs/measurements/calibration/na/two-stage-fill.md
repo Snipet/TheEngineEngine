@@ -53,8 +53,9 @@ heating. Any ledger or probe column of "T at closing" must say which angle it wa
    against 606°). Stage A pushes back 13 to 15 mg. Whether a real long cam does this at 7500 depends on the same
    runner. This is the first thing to look at again once the real runner's length is in.
 3. **Without the wave the stages are level at 7500:** A 0.849, B 0.841. B's 49 % more lift buys +5.6 % of area under
-   the tanh port limit. The K20A2's sheet gives +12.6 % (flow-sheets-vs-seat.md). The port limit's form is open: a
-   series form was tested against the sheets and does not follow them, and more four-valve sheets are asked of P.
+   the tanh port limit. The K20A2's sheet gives +12.6 % (flow-sheets-vs-seat.md). Twelve heads' sheets show the tanh
+   is the median head's shape past d / 4 (±7 %); the K20A2 is a high-rising head, so this is the build's own head's
+   under-read, recorded and not acted on (flow-sheets-vs-seat.md; the lead, 02:23).
 
 ## What stage A's card rests on (the lead's question, 02:24)
 
@@ -71,7 +72,7 @@ Honda's fact book that gave the high lobe gives the low one.
 
 ## Next
 
-1. P finds the engine's real runner: the length from the valve to the plenum or bellmouth, its diameter, and whether
-   its length changes.
-2. The port limit's form, once more four-valve sheets are in.
-3. The crossing again, with each stage held, beside the real 5500 to 5900.
+1. The runner: P found no maker's figure; forum figures (155 to 210 mm of manifold, plus the head's port) are near the
+   card's 0.30 m, so it stays, judgement as marked (the lead, 02:23).
+2. The port limit's form: settled, no change (above).
+3. Stage A's low lobe: P is asked for Honda's figure. The crossing stays a recorded miss on P's row until then.
