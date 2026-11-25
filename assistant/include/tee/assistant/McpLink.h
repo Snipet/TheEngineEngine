@@ -54,6 +54,8 @@ namespace tee::assistant
         // the socket, the folder is not private, Windows). Already on: true.
         bool start(std::string& why);
         // The switch off: the socket gone, every connection closed, the running call cancelled and waited for.
+        // Returns once both of the link's threads have ended (joined); the system may list an ended thread for a
+        // moment more (Linux's /proc), which is the kernel's, not the link's.
         void stop();
 
         struct View

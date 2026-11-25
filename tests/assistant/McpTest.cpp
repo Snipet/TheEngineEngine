@@ -317,8 +317,9 @@ TEST_CASE("assistant: the link refuses another user's peer, a folder open to oth
         REQUIRE(::poll(&p, 1, 5000) > 0);
         CHECK(read(fd, buf, sizeof buf) <= 0);   // closed, nothing said
         close(fd);
-        for (int i = 0; i < 100 && app.link.view().refused == 0; ++i)
-            usleep(10000);
+        const auto until = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+        while (app.link.view().refused == 0 && std::chrono::steady_clock::now() < until)
+            usleep(1000);
         CHECK(app.link.view().refused == 1);
         CHECK(app.link.view().connections == 0);
     }
@@ -372,7 +373,9 @@ TEST_CASE("assistant: shutting down with a call waiting on the frame cancels it 
     const double stored = rig.build().get(fields[0].first->path);
     const auto t0 = std::chrono::steady_clock::now();
     session->stop();   // no frame drains from here on
-    CHECK(std::chrono::steady_clock::now() - t0 < std::chrono::seconds(2));
+    // "at once": milliseconds here; the bound is wide for a loaded runner and still far from the alternative (the job
+    // waiting on a frame that never comes, for the turn's 300 s)
+    CHECK(std::chrono::steady_clock::now() - t0 < std::chrono::seconds(5));
     CHECK_FALSE(fs::exists(wire::socketIn(dir)));
     rig.build().endGesture();
     CHECK(rig.build().get(fields[0].first->path) == stored);
@@ -393,6 +396,22 @@ namespace
         for (auto it = fs::directory_iterator("/proc/self/task", ec); !ec && it != fs::directory_iterator(); it.increment(ec))
             ++n;
         return n;   // 0 where there is no /proc (macOS): the check below is then the folder's alone
+    }
+
+    // The threads of this process, once they are `want` again or 10 s have passed. A thread the link has joined has
+    // ended, but the kernel may list it for a moment more (glibc's join returns when the kernel clears the thread's
+    // id, before the thread leaves /proc/self/task): seen in 24 cycles of 5000 on and off, gone within 0.1 ms each.
+    // So the count is waited for, never read at an instant.
+    int threadsSettledAt(int want)
+    {
+        const auto until = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+        int n = threadsOfThisProcess();
+        while (n != want && std::chrono::steady_clock::now() < until)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            n = threadsOfThisProcess();
+        }
+        return n;
     }
 }
 
@@ -417,7 +436,7 @@ TEST_CASE("assistant: the switch off is the shipped default and costs nothing: n
         }
         CHECK_FALSE(session.desktopAllowed());
         CHECK(session.statusNote().empty());
-        CHECK(threadsOfThisProcess() == before);
+        CHECK(threadsSettledAt(before) == before);
         CHECK_FALSE(fs::exists(dir));
         // turned on and off again: everything it made is gone
         std::string why;
@@ -426,7 +445,7 @@ TEST_CASE("assistant: the switch off is the shipped default and costs nothing: n
         CHECK(fs::exists(wire::socketIn(dir.string())));
         REQUIRE(session.allowDesktop(false, why));
         CHECK_FALSE(fs::exists(wire::socketIn(dir.string())));
-        CHECK(threadsOfThisProcess() == before);
+        CHECK(threadsSettledAt(before) == before);
     }
     // and a load over unsaved changes, with no one to ask (the frame's dialog not drawn yet): refused, never silent
     {
@@ -476,7 +495,8 @@ TEST_CASE("assistant: a peer gone mid-reply, or at shutdown, never ends the app 
         REQUIRE(app.link.view().connections == 0);
     }
     // the link sees every one go
-    for (int f = 0; f < 600 && (app.link.view().connections != 0 || app.link.view().running); ++f)
+    const auto until = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+    while ((app.link.view().connections != 0 || app.link.view().running) && std::chrono::steady_clock::now() < until)
     {
         app.rig.frame();
         std::this_thread::sleep_for(std::chrono::milliseconds(2));

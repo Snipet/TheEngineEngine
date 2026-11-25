@@ -57,7 +57,7 @@ namespace
             a.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
             a.sin_port = 0;
             REQUIRE(bind(fd_, reinterpret_cast<sockaddr*>(&a), sizeof a) == 0);
-            REQUIRE(listen(fd_, 4) == 0);
+            REQUIRE(listen(fd_, SOMAXCONN) == 0);
             socklen_t n = sizeof a;
             getsockname(fd_, reinterpret_cast<sockaddr*>(&a), &n);
             port_ = ntohs(a.sin_port);
@@ -155,12 +155,17 @@ namespace
 
 TEST_CASE("assistant: the transport hands on a stream as it arrives", "[assistant]")
 {
-    Loopback server([](int fd, const std::string&) {
+    // each chunk is sent only once the client has handed on the one before: "as it arrives" by construction, not by
+    // the hope that 30 ms apart is apart enough on a loaded runner
+    std::atomic<int> handed{0};
+    Loopback server([&](int fd, const std::string&) {
         say(fd, kStreamHead);
         for (int i = 0; i < 5; ++i)
         {
             say(fd, chunk("event: ping\ndata: {\"n\":" + std::to_string(i) + "}\n\n"));
-            std::this_thread::sleep_for(std::chrono::milliseconds(30));
+            const auto until = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+            while (handed.load() <= i && std::chrono::steady_clock::now() < until)
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
         say(fd, "0\r\n\r\n");
     });
@@ -175,12 +180,13 @@ TEST_CASE("assistant: the transport hands on a stream as it arrives", "[assistan
                         CHECK(status == 200);
                         pieces.emplace_back(c);
                         all += c;
+                        handed = static_cast<int>(pieces.size());
                         return true;
                     },
                     out, nullptr));
     CHECK(out.status == 200);
     CHECK(out.header("request-id") == "req_test");
-    CHECK(pieces.size() >= 3);   // as it came, not in one piece at the end
+    CHECK(pieces.size() >= 5);   // as it came, not in one piece at the end
     CHECK(all.find("{\"n\":4}") != std::string::npos);
     // what was sent: the body and the headers given, and a POST
     CHECK(server.lastRequest().rfind("POST /v1/messages ", 0) == 0);
@@ -233,7 +239,7 @@ TEST_CASE("assistant: a cancel stops the transport mid-stream at once", "[assist
     canceller.join();
     serverDone = true;
     CHECK(out.cancelled);
-    CHECK(took < std::chrono::seconds(2));   // not the server's ten seconds
+    CHECK(took < std::chrono::seconds(5));   // not the server's ten seconds (a wide bound for a loaded runner)
 }
 
 TEST_CASE("assistant: a redirect is refused: not followed, its body and its place not handed on", "[assistant]")

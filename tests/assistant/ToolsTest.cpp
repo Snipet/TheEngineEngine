@@ -424,6 +424,7 @@ TEST_CASE("assistant: the curves yield to the app's own: never with the ribbon's
     bool raised = false, lowered = false;
     std::uint64_t atRaise = 0, atLower = 0;
     const Result r = rig.whileFrames([&] {
+        sawRibbon = ribbon.busy();   // (read here, not only between polls: the ribbon may end inside the first)
         auto f = std::async(std::launch::async, [&] { return rig.tools->call("predict_curve"); });
         while (f.wait_for(std::chrono::milliseconds(5)) != std::future_status::ready)
         {
