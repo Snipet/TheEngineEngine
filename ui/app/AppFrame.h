@@ -28,6 +28,7 @@
 // and lets every other key through unless a text field has the caret.
 #pragma once
 
+#include "app/AskDialog.h"
 #include "app/Cockpit.h"
 #include "app/KeyDialog.h"
 #include "app/LoadMeter.h"
@@ -37,14 +38,19 @@
 #include "kit/bind/Binding.h"
 #include "kit/bind/Fields.h"
 #include "kit/bind/Units.h"
+#include "kit/inspect/PartCard.h"
+#include "kit/inspect/RowsPage.h"
 #include "kit/widgets/Basic.h"
 #include "kit/widgets/Board.h"
 
 #include <tee/app/Sources.h>
 
 #include <algorithm>
+#include <deque>
 #include <functional>
+#include <future>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -108,6 +114,19 @@ namespace tee::ui
         int inspectorPageIndex() const noexcept { return page_; }
         const std::string& inspectorTitle(int p) const;
         FieldPage* inspector() const;                        // the page shown (nullptr: the units page)
+        // The shown page as Rows (J2's RowsPage, the owner's pick, 25 Nov): what the inspector shows and gives the
+        // pointer and keys to; nullptr while a FieldPage is shown (a table's page, the settings). The FieldPage under
+        // it is still made and kept (inspector(), fieldsShown()).
+        RowsPage* inspectorRows() const;
+        // A field's control in the inspector as shown, in window px: Rows' value box (a horizontal drag scrubs it, a
+        // click types it or opens its menu), else the FieldPage's control (a vertical drag turns a knob). Empty: not
+        // shown on the page in view.
+        funkgui::Rect inspectorValueRect(const std::string& path) const;
+        // The card on the picture (J2's PartCard, the owner's next pick): a press that selects a part on the stage
+        // opens a card beside it with the part's first fields; a press on no part, Escape, another workspace, the chat
+        // or the settings close it.
+        const PartCard& partCard() const { return *card_; }
+        FieldInspector& partCardItem() { return *cardItem_; }
         void showInspectorPage(int p);
         // The settings page (the top bar's SETTINGS; the inspector of a workspace with no Spec section): the audio
         // device, the theme, the units, the keys. unitsShown/showUnits are J2's names for it.
@@ -118,6 +137,9 @@ namespace tee::ui
         // The settings' CLAUDE DESKTOP row's line (FrameServices::desktopAllowed, allowDesktop, desktopStatus): a
         // refusal's why, the status (Session::statusNote), or what off means. Empty: no row.
         std::string desktopLine() const;
+        // The settings' WHEEL row's line (FrameServices::wheelOn, setWheelOn, wheelStatus: card B's G29): its status, or
+        // what off and on mean. Empty: no row.
+        std::string wheelLine() const;
 
         // The key chat (card A's ChatView: a kit Widget the shell makes and hands over, so ui/ links nothing of the
         // assistant). The top bar's CHAT opens it in the inspector's column (the page, its tabs and the ribbon give it
@@ -132,6 +154,14 @@ namespace tee::ui
         void openKeyDialog();
         bool keyDialogOpen() const noexcept { return keyDialog_ != nullptr && keyDialog_->isOpen(); }
         KeyDialog* keyDialog() const noexcept { return keyDialog_; }
+
+        // A question the assistant puts to the owner (card A's SessionParts::ask): from any thread. The frame shows one
+        // at a time (the next once the one open is answered and no key dialog is open), with the asker's words for yes
+        // and no (none: YES and NO); the future answers true for yes. NO, Escape, and a frame that goes before it is
+        // answered: false (nothing is lost by a question unanswered).
+        std::future<bool> ask(std::string question, std::string yes = {}, std::string no = {});
+        bool askOpen() const noexcept { return askDialog_ != nullptr && askDialog_->isOpen(); }
+        AskDialog* askDialog() const noexcept { return askDialog_; }
         bool ribbonFolded() const noexcept { return folded_; }
         void foldRibbon(bool folded);
 
@@ -189,7 +219,10 @@ namespace tee::ui
         {
             std::string title, gui;
             std::unique_ptr<FieldPage> panel;
+            std::unique_ptr<RowsPage> rows;                  // after panel: destroyed first
         };
+        funkgui::Panel* inspectorPane() const;               // the shown page's rows, else its FieldPage
+        void openTable(const RowsPage::Table& t);            // a table's row in Rows: its own page
         void makeWorkspaces();
         void makeCockpit();
         void makeInspector();                                // the pages for the current workspace and selection
@@ -230,10 +263,28 @@ namespace tee::ui
         Button *warmStart_ = nullptr, *coldStart_ = nullptr;   // ENGINE START (FrameServices::coldStart)
         Button *desktopOff_ = nullptr, *desktopOn_ = nullptr;  // CLAUDE DESKTOP (FrameServices::allowDesktop)
         float desktopNoteY_ = -1.0f;
+        Button *wheelOff_ = nullptr, *wheelOn_ = nullptr;      // WHEEL (FrameServices::wheelOn)
+        float wheelNoteY_ = -1.0f;
         std::string desktopWhy_;                               // the switch's last refusal (cleared by a change)
         void setDesktop(bool on);
+        // the card on the picture
+        FieldInspector* cardItem_ = nullptr;
+        std::unique_ptr<PartCard> card_;
         // the key chat
         Widget* chat_ = nullptr;
+        ChatSlot* chatSlot_ = nullptr;   // made before the dialogs: they draw over the chat
+        // the assistant's questions (ask): queued from any thread, shown on the frame's
+        struct Question
+        {
+            std::string text, yes, no;
+            std::shared_ptr<std::promise<bool>> answer;
+        };
+        std::mutex askMutex_;
+        std::deque<Question> asks_;
+        AskDialog* askDialog_ = nullptr;
+        int askIndex_ = -1;
+        void nextQuestion();
+        bool closing_ = false;           // the destructor runs: an answer given now lays nothing out
         KeyDialog* keyDialog_ = nullptr;
         int keyDialogIndex_ = -1;
         Button *chatButton_ = nullptr, *keyButton_ = nullptr;

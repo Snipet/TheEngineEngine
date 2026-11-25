@@ -327,6 +327,12 @@ namespace tee::ui
         std::function<bool(std::string typed, std::string& why)> saveKey;
         std::function<std::string()> keyMask;
         std::function<bool(std::string& why)> removeKey;
+        // A steering wheel (card B's Logitech G29, input/g29/RacingWheel.h): read now; read or not (kept in the settings'
+        // wheelOn, at once); what it says ("" nothing; "G29 read", "set the switch on the wheel to PS3", ...). The
+        // settings' WHEEL row only while all three are served (a build that reads a wheel: macOS for now).
+        std::function<bool()> wheelOn;
+        std::function<void(bool)> setWheelOn;
+        std::function<std::string()> wheelStatus;
         std::function<std::string()> tryFirst;
         std::function<void()> tryFirstDone;
         std::function<int()> loadFits;

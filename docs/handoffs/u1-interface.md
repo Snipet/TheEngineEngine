@@ -186,3 +186,30 @@ sheet will include every registered workspace.
   through `FrameServices::saveKey` and forgets it here, taken or not; REMOVE, CLOSE, Escape. The owner's yes/no dialog
   for SessionParts::ask is not built yet. Tests: frame.desktop, frame.chat (a stand-in chat), build.chat (card A's
   ChatView over a made-up port: nothing is talked to).
+- The assistant's questions to the owner (card A's `SessionParts::ask`, the lead's ask 25 Nov): `std::future<bool>
+  AppFrame::ask(question, yes, no)`, from any thread; the frame shows one at a time on its tick (ui/app/AskDialog.h)
+  with the asker's words for yes and no (none: YES, NO). The safe answer has the focus; Escape and Enter on it answer
+  no; nothing answers yes by itself; every key is the dialog's while it is open; a frame that goes answers what is left
+  no. app/Offline.cpp passes the Session an `ask` that reaches the frame while it lives (cleared before it goes: no),
+  with LOAD and KEEP for card A's load over unsaved changes. The chat is mounted in a ChatSlot made with the frame, so
+  the key dialog and the question draw over it. Test: frame.ask.
+- The owner's rule for DRIVE's dials (25 Nov, "text on visual dials overlaps the needle"): a needle never crosses a
+  number. `Gauge::setClearNumerals` now puts each number just inside the rim and ends the ticks and the needle inside
+  the nearest number's box; a face too small for the end numbers keeps the middle one (at the top), one smaller still
+  shows ticks and digits only. `setReadoutClear` on every DRIVE dial (the digits in the arc's open wedge). CLASSIC's
+  small dials re-choose their span in the unit shown to round steps, two or four (`dash::roundScale`: 0 50 100 psi, 100
+  150 200 F), a number at the ends and the middle (`Gauge::setNumeralStride`). `Gauge::labelsClearOfNeedle(t, why)`
+  is the check; drive.dials runs it on every dial at the range's bottom, middle and top, in both unit systems, at the
+  large stage and the smallest window. J2's default Gauge look is unchanged.
+- Rows in the frame (the owner's pick; J2's `RowsPage`, the hook in docs/ui-kit.md): every inspector page that is not
+  a table alone shows as Rows; the FieldPage under it is still made (`inspector()`, `fieldsShown()`); a table inside a
+  workspace's own page gets a page of its own; the filter reaches every page of the workspace.
+  `AppFrame::inspectorRows()` and `inspectorValueRect(path)` (Rows' value box, else the FieldPage's control) for
+  tests. Keyboard: Tab focuses the rows as one widget, Down picks a row (its help shows then).
+- The card on the picture (J2's `PartCard`, wired as docs/ui-kit.md's second hook): a press that selects a part on the
+  stage opens it; a press on no part, Escape, another workspace, the chat and the settings close it.
+  `AppFrame::partCard()`, `partCardItem()`. Test: frame.card (a picture: ENGINE is U2's stage).
+- The settings' WHEEL row for card B's G29: `FrameServices::wheelOn`, `setWheelOn`, `wheelStatus` (shown only while all
+  three are served; card B serves them where a wheel is read); Off / On, card B's words under it. To fit every row at
+  1100 x 700 the QUALITY sentence went (ECONOMY's hover help says it; without the shell's quality FULL and ECONOMY are
+  disabled) and CLAUDE DESKTOP's off button reads DENY (two OFFs a screen reader could not tell apart).

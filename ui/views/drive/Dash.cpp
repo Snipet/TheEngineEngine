@@ -112,6 +112,26 @@ namespace tee::ui::dash
 
     const Dial& dial(int i) { return kDialTable[std::clamp(i, 0, kDials - 1)]; }
 
+    Scale roundScale(double lo, double hi, int maxSteps, bool even)
+    {
+        if (!(hi > lo) || !fin(lo) || !fin(hi))
+            return { lo, hi, std::max(1, maxSteps) };
+        const double span = hi - lo, raw = span / std::max(1, maxSteps);
+        double mag = std::pow(10.0, std::floor(std::log10(raw)));
+        for (int tries = 0; tries < 8; ++tries, mag *= 10.0)
+            for (const double m : { 1.0, 2.0, 2.5, 5.0 })
+            {
+                const double step = m * mag;
+                const double a = std::floor(lo / step + 1e-9) * step, b = std::ceil(hi / step - 1e-9) * step;
+                const int n = static_cast<int>(std::lround((b - a) / step));
+                if (n <= maxSteps && !(even && n % 2 != 0))
+                    return { a, b, std::max(1, n) };
+                if (even && n % 2 != 0 && n + 1 <= maxSteps)   // one step more at the top: an even count
+                    return { a, b + step, n + 1 };
+            }
+        return { lo, hi, std::max(1, maxSteps) };
+    }
+
     Values Values::read(const Live& live)
     {
         Values v;

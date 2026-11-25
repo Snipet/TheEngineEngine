@@ -38,6 +38,8 @@ namespace
         // the switch (a refusal's words in `refuseWith`), the status line, the key store (what was saved, never shown).
         bool desktop = false;
         std::string refuseWith, status, savedKey, refuseKey;
+        bool wheel = false;     // card B's G29 (FrameServices::wheelOn ...), served with the assistant's: every row
+        std::string wheelSays;
         int saves = 0;
         std::unique_ptr<AppFrame> frame;
         std::unique_ptr<funkgui::HeadlessHost> host;
@@ -103,6 +105,10 @@ namespace
                     savedKey.clear();
                     return true;
                 };
+                s.wheelOn = [this] { return wheel; };
+                s.setWheelOn = [this](bool on) { wheel = on; };
+                s.wheelStatus = [this] { return wheelSays; };
+                s.audioMenu = [] {};   // the real window's: its button beside the device's line
             }
             std::vector<tee::ui::WorkspaceSlot> slots = tee::ui::defaultSlots();
             for (tee::ui::WorkspaceSlot& sl : slots)
@@ -122,6 +128,19 @@ namespace
             host->tick(60);
         }
         double value(const char* path) const { return demo.doc.get(demo.doc.find(path)); }
+        // A field's control in the inspector moved up by `amount` px of its own gesture: Rows' value box dragged right
+        // (it scrubs), a FieldPage's knob dragged up. False: the field is not on the page in view.
+        bool dragField(const char* path, float amount, int steps = 12)
+        {
+            const funkgui::Rect r = frame->inspectorValueRect(path);
+            if (r.w <= 0.0f)
+                return false;
+            if (frame->inspectorRows() != nullptr)
+                host->drag(r.centreX(), r.centreY(), r.centreX() + amount, r.centreY(), steps);
+            else
+                host->drag(r.centreX(), r.centreY(), r.centreX(), r.centreY() - amount, steps);
+            return true;
+        }
         std::string a11yValue(const std::string& title) const
         {
             for (const funkgui::A11yItem& it : host->accessibility())
@@ -190,7 +209,8 @@ namespace
         rig.showWorkspace("air");
         f.select("boost");
         rig.host->tick(2);
-        CHECK(f.inspectorPageCount() == 1 && f.inspector() != nullptr);
+        // its fields on one page (Rows), each of its tables on a page of its own after it
+        CHECK(f.inspectorPageCount() >= 1 && f.inspector() != nullptr && f.inspectorRows() != nullptr);
         CHECK(f.inspector()->params().findParam("boost.level") >= 0);
         CHECK(f.inspector()->params().findParam("intake.plenum") < 0);
         f.select("exhaust.crossover");               // a single field
@@ -225,17 +245,15 @@ namespace
         rig.showWorkspace("air");
         f.showInspectorPage(1);
         rig.host->tick(2);
-        const funkgui::Rect r = f.inspector()->controlRect("boost.level");
-        CHECK(r.w > 0.0f);
-        rig.host->drag(r.centreX(), r.centreY(), r.centreX(), r.centreY() - 80.0f, 12);
+        CHECK(rig.dragField("boost.level", 80.0f));
         CHECK(rig.value("boost.level") > 80e3);
         typeKeys(*rig.host, "cmd+z");
         CHECK_NEAR(rig.value("boost.level"), 80e3, 1e-6);
         typeKeys(*rig.host, "cmd+shift+z");
         CHECK(rig.value("boost.level") > 80e3);
-        const funkgui::Rect m = f.inspector()->controlRect("boost.kind");
+        const funkgui::Rect m = f.inspectorValueRect("boost.kind");
         rig.host->click(m.centreX(), m.centreY());
-        CHECK(rig.host->chooseMenuItem("TWIN TURBO"));
+        CHECK(rig.host->chooseMenuItem("TWIN TURBO") || rig.host->chooseMenuItem("Twin turbo"));
         rig.host->tick(2);
         CHECK(rig.value("boost.kind") == 2.0);
         // The build reads unsaved in the top bar (its name with a star).
@@ -611,19 +629,29 @@ namespace
             FrameRig rig(1100, 700, dpi);
             AppFrame& f = *rig.frame;
             rig.showWorkspace("engine");
+            // The field in sight: on the page that holds it, Rows' filter brings it to the top.
             funkgui::Rect dial{};
             for (int p = 0; p < f.inspectorPageCount() && dial.isEmpty(); ++p)
             {
                 f.showInspectorPage(p);
                 rig.host->tick(2);
-                dial = f.inspector()->controlRect("engine.compression");
+                dial = f.inspectorValueRect("engine.compression");
             }
-            CHECK(!dial.isEmpty());
+            if (f.inspectorRows() != nullptr)
+            {
+                f.inspectorRows()->rows().setFilter("compression");
+                rig.host->tick(5);
+                dial = f.inspectorValueRect("engine.compression");
+            }
+            CHECK(!dial.isEmpty() && dial.bottom() <= f.inspectorRect().bottom());
             rig.host->moveTo(dial.centreX(), dial.centreY(), 2);
             rig.host->tick(10);
-            CHECK(!f.inspector()->tooltip().shown());   // not before the rest
+            const auto paneTip = [&f]() -> const tee::ui::Tooltip& {
+                return f.inspectorRows() != nullptr ? f.inspectorRows()->tooltip() : f.inspector()->tooltip();
+            };
+            CHECK(!paneTip().shown());   // not before the rest
             rig.host->tick(30);
-            const tee::ui::Tooltip& tip = f.inspector()->tooltip();
+            const tee::ui::Tooltip& tip = paneTip();
             CHECK(tip.shown());
             const std::string text = tip.text();
             CHECK_MSG(text.find("Compression") != std::string::npos && text.find("volume at the bottom") != std::string::npos
@@ -633,7 +661,7 @@ namespace
             golden(std::string("frame.help.dial") + sfx, *rig.host);
             rig.host->moveTo(f.stageRect().centreX(), f.stageRect().centreY(), 2);
             rig.host->tick(3);
-            CHECK(!f.inspector()->tooltip().shown());   // gone with the pointer
+            CHECK(!paneTip().shown());   // gone with the pointer
             // The cockpit's START.
             const funkgui::Rect st = f.startRect();
             rig.host->moveTo(st.centreX(), st.centreY(), 2);
@@ -643,7 +671,8 @@ namespace
             if (dpi > 1.5f)
                 picture("frame.help.start", *rig.host);
         }
-        // The keyboard: Tab onto the inspector's controls; the one focused says its help after a shorter rest.
+        // The keyboard: Tab onto the inspector's controls (Rows: Tab onto the rows, Down onto a row); the one focused
+        // says its help after a shorter rest.
         {
             FrameRig rig(1280, 800, 1.0f);
             AppFrame& f = *rig.frame;
@@ -653,8 +682,12 @@ namespace
             for (int k = 0; k < 60 && !shown; ++k)
             {
                 typeKeys(*rig.host, "tab");
+                // Rows take the focus as one widget: Down picks its first row (J2's FieldInspector)
+                if (f.inspectorRows() != nullptr && f.inspectorRows()->focus() >= 0 && f.inspectorRows()->rows().focusedField() < 0)
+                    typeKeys(*rig.host, "down");
                 rig.host->tick(30);
-                shown = f.inspector() != nullptr && f.inspector()->tooltip().shown();
+                shown = f.inspectorRows() != nullptr ? f.inspectorRows()->tooltip().shown()
+                                                     : f.inspector() != nullptr && f.inspector()->tooltip().shown();
             }
             CHECK_MSG(shown, "no control reached by Tab showed its help");
         }
@@ -754,9 +787,8 @@ namespace
         CHECK(rig.demo.engine.before().empty());
         f.showInspectorPage(1);
         rig.host->tick(2);
-        const funkgui::Rect r = f.inspector()->controlRect("boost.level");
         const std::uint64_t asked = rig.demo.engine.requests();
-        rig.host->drag(r.centreX(), r.centreY(), r.centreX(), r.centreY() - 60.0f, 10);
+        CHECK(rig.dragField("boost.level", 60.0f, 10));
         rig.host->tick(60);
         CHECK(rig.demo.engine.requests() == asked + 1);   // one drag of many steps: one curve asked for, after its quiet
         CHECK(!rig.demo.engine.before().empty() && rig.demo.engine.predicted().peakTorque().value > before);
@@ -886,7 +918,8 @@ namespace
         {
             typeKeys(*rig.host, "tab");
             rail = rail || f.railFocus() >= 0;
-            inspector = inspector || (f.inspector() != nullptr && f.inspector()->focus() >= 0);
+            inspector = inspector || (f.inspectorRows() != nullptr ? f.inspectorRows()->focus() >= 0
+                                                                   : f.inspector() != nullptr && f.inspector()->focus() >= 0);
         }
         CHECK(rail && inspector);
         // Enter on a rail button shows its workspace.
@@ -1045,6 +1078,7 @@ namespace
         rig.frame->showSettings(true);
         rig.host->tick(20);
         CHECK_MSG(rig.frame->desktopLine() == "Off: the app listens on nothing.", rig.frame->desktopLine());
+        CHECK_MSG(rig.frame->wheelLine() == "Off: the wheel is not read.", rig.frame->wheelLine());
         // Every unit's stepper still above the cockpit at the smallest window, the row added.
         for (const tee::ui::Stepper* st : rig.frame->unitSteppers())
             CHECK_MSG(st->bounds().bottom() <= rig.frame->inspectorRect().bottom(), std::to_string(st->bounds().bottom()));
@@ -1054,8 +1088,12 @@ namespace
         rig.status = "Claude Desktop connected, 3 changes";
         rig.host->tick(5);
         CHECK_MSG(rig.frame->desktopLine() == "Connected, 3 changes", rig.frame->desktopLine());
+        // WHEEL on: card B's words under it.
+        rig.wheelSays = "set the switch on the wheel to PS3";
+        CHECK(clickOn(*rig.host, "On") && rig.wheel);
+        CHECK_MSG(rig.frame->wheelLine() == rig.wheelSays, rig.frame->wheelLine());
         golden("frame.desktop.connected", *rig.host);
-        CHECK(clickOn(*rig.host, "Off") && !rig.desktop);
+        CHECK(clickOn(*rig.host, "Deny") && !rig.desktop);
         rig.refuseWith = "another app has Claude Desktop's link";
         CHECK(clickOn(*rig.host, "Allow") && !rig.desktop);
         CHECK_MSG(rig.frame->desktopLine() == "Not allowed: another app has Claude Desktop's link", rig.frame->desktopLine());
@@ -1186,6 +1224,117 @@ namespace
         CHECK(clickOn(*rig.host, "Key") && f.keyDialogOpen());
         CHECK(clickOn(*rig.host, "Remove") && rig.savedKey.empty() && d.mask() == "none saved");
         CHECK(clickOn(*rig.host, "Close") && !f.keyDialogOpen());
+        return 0;
+    }
+}
+
+#include <thread>
+
+namespace
+{
+    using namespace tee::test::views;
+    using tee::ui::AppFrame;
+
+    bool ready(std::future<bool>& f) { return f.wait_for(std::chrono::seconds(0)) == std::future_status::ready; }
+
+    // The assistant's question to the owner (card A's SessionParts::ask; the lead's ask, 25 Nov): asked from another
+    // thread, shown on the frame's tick with the asker's words (LOAD, KEEP), the safe answer (KEEP) with the focus;
+    // Escape and Enter on it answer no, a press on LOAD (or Tab then Enter) yes; one question at a time, the next once
+    // the first is answered; every key the dialog's while it is open; a frame that goes answers what is left no.
+    VIEW_TEST(testFrameAsk, "frame.ask")
+    {
+        const std::string load = "Claude asks to load \"Hot cam\". The open build, \"Demo V8\", has unsaved changes, which "
+                                 "would be lost. Load it?";
+        std::future<bool> first, second, third;
+        {
+            FrameRig rig(1100, 700, 2.0f, 4.6, true, true);
+            AppFrame& f = *rig.frame;
+            std::thread worker([&] {
+                first = f.ask(load, "Load", "Keep");
+                second = f.ask("Claude asks to save this build as \"Demo V8 (2)\". Save it?");
+            });
+            worker.join();
+            CHECK(!f.askOpen());   // shown on the frame's tick, not from the asker's thread
+            rig.host->tick(5);
+            CHECK(f.askOpen() && f.askDialog()->question() == load && !f.askDialog()->focusOnYes());
+            golden("frame.ask", *rig.host);
+            // Every key is the dialog's: Ctrl-Z does not undo the build behind it.
+            funkgui::KeyEvent z;
+            z.key = funkgui::Key::character;
+            z.ch = U'z';
+            z.mods.ctrl = true;
+            CHECK(f.key(z) && f.askOpen() && !ready(first));
+            // Enter presses KEEP (the focus): no. Nothing answers yes by itself.
+            funkgui::KeyEvent enter;
+            enter.key = funkgui::Key::enter;
+            f.key(enter);
+            CHECK(ready(first) && first.get() == false);
+            rig.host->tick(5);
+            CHECK(f.askOpen() && f.askDialog()->question().find("save this build") != std::string::npos);
+            CHECK(boundsOf(*rig.host, "Yes", funkgui::A11yRole::button).w > 0.0f);   // no words given: YES and NO
+            CHECK(clickOn(*rig.host, "Yes") && ready(second) && second.get() == true && !f.askOpen());
+            // Escape is no; Tab then Enter is yes.
+            third = f.ask(load, "Load", "Keep");
+            rig.host->tick(5);
+            funkgui::KeyEvent esc;
+            esc.key = funkgui::Key::escape;
+            f.key(esc);
+            CHECK(ready(third) && third.get() == false);
+            std::future<bool> fourth = f.ask(load, "Load", "Keep");
+            rig.host->tick(5);
+            funkgui::KeyEvent tab;
+            tab.key = funkgui::Key::tab;
+            f.key(tab);
+            CHECK(f.askDialog()->focusOnYes());
+            f.key(enter);
+            CHECK(ready(fourth) && fourth.get() == true);
+            // Two left when the frame goes: both answered no.
+            first = f.ask(load, "Load", "Keep");
+            second = f.ask(load, "Load", "Keep");
+            rig.host->tick(5);
+            CHECK(f.askOpen() && !ready(first) && !ready(second));
+        }
+        CHECK(ready(first) && first.get() == false && ready(second) && second.get() == false);
+        return 0;
+    }
+}
+
+namespace
+{
+    using namespace tee::test::views;
+    using tee::ui::AppFrame;
+
+    // The card on the picture (J2's PartCard, wired by the frame): a press that selects a part on ENGINE's stage opens
+    // a card over the stage with the part's first fields; Escape closes it; a press on another part moves it; another
+    // workspace closes it. The real rail (ENGINE as its package draws it).
+    VIEW_TEST(testFramePartCard, "frame.card")
+    {
+        FrameRig rig(1280, 800, 2.0f, 4.6, false);
+        AppFrame& f = *rig.frame;
+        rig.showWorkspace("engine");
+        CHECK(!f.partCard().isOpen());
+        // A press that selects a part: a walk over the stage until one does.
+        const funkgui::Rect st = f.stageRect();
+        bool chose = false;
+        for (float y = st.y + 40.0f; y < st.bottom() - 20.0f && !chose; y += 24.0f)
+            for (float x = st.x + 40.0f; x < st.right() - 20.0f && !chose; x += 24.0f)
+            {
+                rig.host->moveTo(x, y, 1);
+                rig.host->click(x, y);
+                rig.host->tick(10);
+                chose = !f.selection().empty() && f.partCard().isOpen();
+            }
+        CHECK_MSG(chose, "no press on ENGINE's stage opened a card");
+        if (!chose)
+            return 0;
+        CHECK(f.partCardItem().shown() && st.contains({ f.partCardItem().bounds().x, f.partCardItem().bounds().y }));
+        CHECK_MSG(f.partCard().path() == f.selection().path(), f.partCard().path());
+        picture("frame.card", *rig.host);   // ENGINE is U2's stage: a picture, not a golden of mine
+        funkgui::KeyEvent esc;
+        esc.key = funkgui::Key::escape;
+        f.key(esc);
+        rig.host->tick(5);
+        CHECK(!f.partCard().isOpen() && !f.partCardItem().shown());
         return 0;
     }
 }

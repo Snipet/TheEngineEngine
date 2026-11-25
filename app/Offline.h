@@ -94,7 +94,14 @@ namespace tee::app
         Shown() = default;
         Shown(Shown&&) = default;
         Shown& operator=(Shown&&) = default;
-        ~Shown() { panel.reset(); }                 // the Panel first: it holds references into `keep`
+        // Called just before the Panel goes (the assistant's questions stop reaching the frame).
+        std::function<void()> panelGoing;
+        ~Shown()                                    // the Panel first: it holds references into `keep`
+        {
+            if (panelGoing)
+                panelGoing();
+            panel.reset();
+        }
     };
     struct Engine;
     // `controls` gives the Panel's services and takes the frame's mode and clutch; it outlives the Panel.

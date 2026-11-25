@@ -45,6 +45,7 @@ namespace tee::ui
     namespace
     {
         funkgui::TextStyle valueStyle(float side) { return { std::clamp(side * 0.13f, 12.0f, 26.0f), 0.0f, 0.0f, true }; }
+        funkgui::TextStyle numeralStyle(float side) { return { std::clamp(side * 0.075f, 10.0f, 16.0f), 0.0f, 0.0f, false }; }
         float widthOf(const std::string& t, const funkgui::TextStyle& s)
         {
             return funkgui::text::width(funkgui::FontService::get().atlas(), t.c_str(), s);
@@ -59,7 +60,106 @@ namespace tee::ui
         g.r = g.side * 0.5f - 3.0f;
         g.ra = g.r - 7.0f;
         g.hub = { bounds_.centreX(), bounds_.y + g.side * 0.5f + 2.0f };
+        numeralsOf(g);   // the tick ring's radius
         return g;
+    }
+
+    std::vector<Gauge::Label> Gauge::numeralsOf(Geometry& g) const
+    {
+        std::vector<Label> out;
+        g.ra = g.r - 7.0f;
+        if (g.side < 90.0f)
+            return out;
+        const funkgui::TextStyle numeral = numeralStyle(g.side);
+        for (int m = 0; m <= major_; ++m)
+        {
+            if (m % numeralStride_ != 0 && m != major_)
+                continue;
+            const float t = static_cast<float>(m) / static_cast<float>(major_);
+            const float a = angleOf(t), ca = std::cos(a), sa = std::sin(a);
+            const double v = lo_ + (hi_ - lo_) * static_cast<double>(t);
+            Label l;
+            l.text = numerals_ ? numerals_(v) : plain(v);
+            l.red = std::isfinite(redline_) && v >= redline_ - 1e-9;
+            const float w = widthOf(l.text, numeral);
+            float rn = 0.0f;
+            if (clearNumerals_)
+            {
+                l.hw = w * 0.5f + 3.0f;   // the backing's
+                l.hh = numeral.px * 0.5f + 2.0f;
+                rn = g.r - 3.0f - (l.hw * std::fabs(ca) + l.hh * std::fabs(sa));   // just inside the rim
+            }
+            else
+            {
+                l.hw = w * 0.5f;
+                l.hh = numeral.px * 0.5f;
+                rn = g.ra - 9.0f - numeral.px * 0.9f;
+            }
+            l.x = g.hub.x + ca * rn;
+            l.y = g.hub.y + sa * rn;
+            out.push_back(std::move(l));
+        }
+        if (clearNumerals_)
+        {
+            // The ticks (out to ra + 1) and the needle (to ra - 3) end inside the nearest numeral's box, a gap short.
+            const auto ringInside = [&g](const std::vector<Label>& ls) {
+                float nearest = g.r;
+                for (const Label& l : ls)
+                {
+                    const float dx = std::max(0.0f, std::fabs(l.x - g.hub.x) - l.hw), dy = std::max(0.0f, std::fabs(l.y - g.hub.y) - l.hh);
+                    nearest = std::min(nearest, std::sqrt(dx * dx + dy * dy));
+                }
+                return nearest - 3.0f;
+            };
+            g.ra = ringInside(out);
+            if (g.ra < 0.55f * g.r && out.size() > 2)
+            {
+                // A small face: the ends' numbers (on the diagonals, the widest along the radius) go; the ones between
+                // stay, near the top, where they cost little of the needle's length.
+                out.erase(out.begin());
+                out.pop_back();
+                g.ra = ringInside(out);
+            }
+            if (g.ra < 0.55f * g.r)
+            {
+                // No room for a sweep worth the name inside them: ticks and digits only.
+                out.clear();
+                g.ra = g.r - 7.0f;
+            }
+        }
+        return out;
+    }
+
+    std::vector<funkgui::Rect> Gauge::numeralBoxes() const
+    {
+        Geometry g = geometry();
+        std::vector<funkgui::Rect> out;
+        for (const Label& l : numeralsOf(g))
+            out.push_back({ l.x - l.hw, l.y - l.hh, 2.0f * l.hw, 2.0f * l.hh });
+        return out;
+    }
+
+    bool Gauge::labelsClearOfNeedle(double t, std::string& why) const
+    {
+        Geometry g = geometry();
+        std::vector<std::pair<funkgui::Rect, std::string>> boxes;
+        for (const Label& l : numeralsOf(g))
+            boxes.push_back({ { l.x - l.hw, l.y - l.hh, 2.0f * l.hw, 2.0f * l.hh }, "the number " + l.text });
+        const double v = lo_ + (hi_ - lo_) * t;
+        const std::string text = readout_ ? readout_(v) : plain(v);
+        boxes.push_back({ readoutBox(text), "the readout " + text + (unit_.empty() ? "" : " " + unit_) });
+        const float a = angleOf(static_cast<float>(t)), tail = g.r * (clearNumerals_ ? 0.05f : 0.12f);
+        for (const auto& [box, what] : boxes)
+        {
+            const funkgui::Rect b = box.expanded(1.25f);   // the needle's half-width
+            for (float d = -tail; d <= g.ra - 3.0f; d += 0.5f)
+                if (b.contains({ g.hub.x + std::cos(a) * d, g.hub.y + std::sin(a) * d }))
+                {
+                    why = "the needle meets " + what;
+                    return false;
+                }
+        }
+        return true;
     }
 
     funkgui::Rect Gauge::readoutBox(const std::string& text) const
@@ -88,21 +188,12 @@ namespace tee::ui
 
     std::vector<funkgui::Rect> Gauge::endNumerals() const
     {
-        // As draw() places them (its numeral's size and radius).
-        std::vector<funkgui::Rect> out;
-        const Geometry g = geometry();
-        if (g.side < 90.0f)
-            return out;
-        const funkgui::TextStyle numeral{ std::clamp(g.side * 0.075f, 10.0f, 16.0f), 0.0f, 0.0f, false };
-        for (const double v : { lo_, hi_ })
+        std::vector<funkgui::Rect> all = numeralBoxes(), out;
+        if (!all.empty())
         {
-            const float a = v == lo_ ? kA0 : kA1, ca = std::cos(a), sa = std::sin(a);
-            const std::string t = numerals_ ? numerals_(v) : plain(v);
-            const float w = widthOf(t, numeral), hw = w * 0.5f, hh = numeral.px * 0.5f;
-            const float rn = clearNumerals_ ? g.ra - 9.0f - 6.0f - (hw * std::fabs(ca) + hh * std::fabs(sa))
-                                            : g.ra - 9.0f - numeral.px * 0.9f;
-            const float x = g.hub.x + ca * rn, y = g.hub.y + sa * rn;
-            out.push_back({ x - hw - 3.0f, y - hh - 2.0f, w + 6.0f, numeral.px + 4.0f });
+            out.push_back(all.front());
+            if (all.size() > 1)
+                out.push_back(all.back());
         }
         return out;
     }
@@ -136,22 +227,16 @@ namespace tee::ui
         const funkgui::Point o{ bounds_.centreX(), bounds_.y + side * 0.5f + 2.0f };
         // The face, the track, the red band.
         c.disc(o.x, o.y, r, l.over(l.edge, 0.35f), 1.0f, l.edge);
-        const float ra = r - 7.0f;
+        Geometry g = geometry();
+        const std::vector<Label> labels = numeralsOf(g);
+        const float ra = g.ra;
         c.arc(o, ra, kA0, kA1, 2.0f, l.dim);
         if (std::isfinite(redline_) && redline_ < hi_)
             c.arc(o, ra, angleOf(fractionOf(redline_)), kA1, 5.0f, l.over(l.accent, 0.85f));
-        // Ticks and numerals. Clear numerals (U1, setClearNumerals): set further in, by their own size, and drawn after
-        // the needle on a backing of the face, so the needle passes under them; the needle's tail short.
+        // Ticks, then the numerals (numeralsOf: clear numerals out of the needle's reach, on a backing of the face).
         const int n = major_ * minor_;
-        const funkgui::TextStyle numeral{ std::clamp(side * 0.075f, 10.0f, 16.0f), 0.0f, 0.0f, false };
+        const funkgui::TextStyle numeral = numeralStyle(side);
         const funkgui::Col face = l.over(l.edge, 0.35f);
-        struct Numeral
-        {
-            std::string text;
-            float x, y;
-            bool red;
-        };
-        std::vector<Numeral> numerals;
         for (int k = 0; k <= n; ++k)
         {
             const float t = static_cast<float>(k) / static_cast<float>(n);
@@ -162,27 +247,12 @@ namespace tee::ui
             const bool red = std::isfinite(redline_) && v >= redline_ - 1e-9;
             c.segment(o.x + ca * (ra - len), o.y + sa * (ra - len), o.x + ca * (ra + 1.0f), o.y + sa * (ra + 1.0f),
                       major ? 2.0f : 1.0f, red ? l.accent : (major ? l.text : l.label));
-            if (major && side >= 90.0f)
-            {
-                std::string s = numerals_ ? numerals_(v) : plain(v);
-                float rn = ra - len - numeral.px * 0.9f;
-                if (clearNumerals_)
-                {
-                    // Inside the ticks by the numeral's own half-extent along the radius, and a gap.
-                    const float hw = c.textWidth(s.c_str(), numeral) * 0.5f, hh = numeral.px * 0.5f;
-                    rn = ra - len - 6.0f - (hw * std::fabs(ca) + hh * std::fabs(sa));
-                }
-                numerals.push_back({ std::move(s), o.x + ca * rn, o.y + sa * rn, red });
-            }
         }
         const auto drawNumerals = [&] {
-            for (const Numeral& m : numerals)
+            for (const Label& m : labels)
             {
                 if (clearNumerals_)
-                {
-                    const float w = c.textWidth(m.text.c_str(), numeral);
-                    c.rrect(m.x - w * 0.5f - 3.0f, m.y - numeral.px * 0.5f - 2.0f, w + 6.0f, numeral.px + 4.0f, 3.0f, face);
-                }
+                    c.rrect(m.x - m.hw, m.y - m.hh, 2.0f * m.hw, 2.0f * m.hh, 3.0f, face);
                 c.text(m.text.c_str(), m.x, c.capCentreTop(m.y, numeral), numeral, m.red ? l.accent : l.text, funkgui::Align::centre);
             }
         };

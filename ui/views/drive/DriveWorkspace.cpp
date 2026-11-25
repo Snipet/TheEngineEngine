@@ -64,6 +64,9 @@ namespace tee::ui
             speedo_->setTicks(6, 2);
             speedo_->setClearNumerals(true);
             speedo_->setReadout([](double v) { return look::num(v, "%.0f"); });
+            // The digits and the unit in the arc's open wedge, out of the needle's sweep at any value (the owner's rule).
+            tach_->setReadoutClear(true);
+            speedo_->setReadoutClear(true);
             tach_->setHelp("The engine's speed; the red band from its redline");
             speedo_->setHelp("The car's speed on the road");
             // CLASSIC's small dials (Dash.h's table): each reads its channel in the user's unit.
@@ -381,17 +384,20 @@ namespace tee::ui
             speedo_->setRange(0.0, std::ceil(vmax / every) * every);
             speedo_->setTicks(static_cast<int>(std::ceil(vmax / every)), 2);
             speedo_->setUnit(upper(ctx_.units.unit(Quantity::speed).name));
-            // The small dials' spans in the user's units (a unit chosen moves them).
+            // The small dials' spans in the user's units, re-chosen there to round steps (the owner's ask, 25 Nov: 0 25 50
+            // 75 100 psi, not 0 25 51 76 102), two or four steps, a number at the ends and the middle only (a face too
+            // small for the ends keeps the middle's: Gauge::setClearNumerals).
             for (int i = 0; i < dash::kDials; ++i)
             {
                 const dash::Dial& d = dash::dial(i);
                 Gauge& g = *dials_[static_cast<std::size_t>(i)];
-                const double lo = ctx_.units.toUser(d.quantity, d.lo), hi = ctx_.units.toUser(d.quantity, d.hi);
-                g.setRange(lo, hi);
+                const dash::Scale sc = dash::roundScale(ctx_.units.toUser(d.quantity, d.lo), ctx_.units.toUser(d.quantity, d.hi), 4, true);
+                g.setRange(sc.lo, sc.hi);
+                g.setTicks(sc.steps, 2);
+                g.setNumeralStride(sc.steps == 4 ? 2 : 1);   // the ends and the middle
                 g.setRedline(std::isfinite(d.red) ? ctx_.units.toUser(d.quantity, d.red) : d.red);
                 g.setUnit(ctx_.units.unit(d.quantity).name);
-                const bool fine = std::fabs(hi - lo) < 10.0;
-                g.setNumerals([fine](double v) { return look::num(v, fine ? "%.1f" : "%.0f"); });
+                g.setNumerals([](double v) { return look::num(std::fabs(v) < 1e-9 ? 0.0 : v, "%g"); });
             }
             // The shell's choice moved (another window, a reload): lay out again.
             if (style() != laidStyle_ && !stage_.isEmpty())

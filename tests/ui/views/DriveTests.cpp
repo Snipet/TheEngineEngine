@@ -302,3 +302,76 @@ namespace
         return 0;
     }
 }
+
+namespace
+{
+    using namespace tee::test::views;
+
+    // The owner's screenshot (25 Nov, the Mac build of main): DRIVE's CLASSIC at idle, 694 rpm, standing, oil 44 psi,
+    // water 207 F, at the large stage. "I'm noticing text on visual dials overlaps the needle." Pictured in both unit
+    // systems (out/ui/drive.dials.owner.metric.png, .imperial.png); each dial checked (Gauge::labelsClearOfNeedle) with
+    // its needle at the range's bottom, middle and top: no number and no readout under the needle.
+    int dialsAt(StageRig& rig, int style, const std::string& name, bool check)
+    {
+        int kept = style;
+        tee::ui::FrameServices fs;
+        fs.driveStyle = [&kept] { return kept; };
+        fs.setDriveStyle = [&kept](int s) { kept = s; };
+        rig.demo.ctx.services = &fs;
+        rig.demo.engine.set("engine.speed", 694.0 * 3.14159265358979 / 30.0);
+        rig.demo.engine.set("car.speed", 0.0);
+        rig.demo.engine.set("car.gear", 0.0);
+        rig.demo.engine.set("engine.oilPressure", 44.0 * 6894.757293168);
+        rig.demo.engine.set("engine.coolant", (207.0 - 32.0) / 1.8 + 273.15);
+        rig.demo.engine.set("engine.oilTemperature", (196.0 - 32.0) / 1.8 + 273.15);
+        rig.demo.engine.set("boost.pressure", -62e3);
+        rig.demo.engine.set("ecu.lambda", 1.0);
+        rig.demo.engine.set("ecu.fuelFlow", 0.0006);
+        rig.demo.engine.set("ecu.knockRetard", 0.0);
+        rig.demo.engine.set("exhaust.portTemperature", 640.0);
+        rig.ws->place(rig.ws->stage());
+        rig.settle();
+        picture(name, *rig.host);
+        int dials = 0;
+        if (check)
+            for (int i = 0; i < rig.ws->count(); ++i)
+                if (const auto* g = dynamic_cast<const tee::ui::Gauge*>(&rig.ws->item(i)); g != nullptr && g->shown())
+                {
+                    ++dials;
+                    for (const double t : { 0.0, 0.5, 1.0 })
+                    {
+                        std::string why;
+                        if (!g->labelsClearOfNeedle(t, why))
+                            failAt(__FILE__, __LINE__, name + ": " + g->title() + " at " + std::to_string(t) + " of its range: " + why);
+                    }
+                }
+        rig.demo.ctx.services = nullptr;
+        return dials;
+    }
+
+    VIEW_TEST(testDriveDials, "drive.dials")
+    {
+        for (const bool imperial : { false, true })
+        {
+            const std::string units = imperial ? "imperial" : "metric";
+            StageRig rig(tee::ui::makeDriveWorkspace, FrameSize::large, 2.0f, 0.5, false);
+            if (imperial)
+            {
+                rig.demo.units.choose(tee::ui::Quantity::pressure, "psi");
+                rig.demo.units.choose(tee::ui::Quantity::temperature, "F");
+                rig.demo.units.choose(tee::ui::Quantity::speed, "mph");
+            }
+            CHECK(dialsAt(rig, 1, "drive.dials.owner." + units, true) == 10);
+            CHECK(dialsAt(rig, 0, "drive.dials.standard." + units, true) == 2);
+            StageRig small(tee::ui::makeDriveWorkspace, 696, 574, 1.0f, 0.5, false);
+            if (imperial)
+            {
+                small.demo.units.choose(tee::ui::Quantity::pressure, "psi");
+                small.demo.units.choose(tee::ui::Quantity::temperature, "F");
+                small.demo.units.choose(tee::ui::Quantity::speed, "mph");
+            }
+            CHECK(dialsAt(small, 1, "drive.dials.small." + units, true) == 6);
+        }
+        return 0;
+    }
+}
