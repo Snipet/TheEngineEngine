@@ -1,7 +1,7 @@
 From d80cc3dad3f0bd5ae9012ae9a80e38f89e954cee Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Wed, 25 Nov 2026 11:49:22 +0000
-Subject: [PATCH 1/8] boost: (b) a governed diesel's compressor sized along the
+Subject: [PATCH 1/9] boost: (b) a governed diesel's compressor sized along the
  climb at its torque peak (local, not pushed: sim/ frozen)
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
@@ -183,7 +183,7 @@ index 798f01a4..e7469a53 100644
 From ddc618b6596861eb2c5a1865f138329ff27968d4 Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Wed, 25 Nov 2026 12:15:07 +0000
-Subject: [PATCH 2/8] boost: (b) the curve's plateau found in Boost::peakSpeed
+Subject: [PATCH 2/9] boost: (b) the curve's plateau found in Boost::peakSpeed
  (engine.fm keeps two call lines); the VE factor's comment says the page is
  not checked
 
@@ -343,7 +343,7 @@ index 36b36caa..2af4297d 100644
 From a1b87980f191951de8e95c7b2d436333cf210b60 Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Wed, 25 Nov 2026 12:48:30 +0000
-Subject: [PATCH 3/8] boost: no vane surge guard (the lead's ruling): its
+Subject: [PATCH 3/9] boost: no vane surge guard (the lead's ruling): its
  rescue was the truck fixture's breathing, and it pinned three builds' vanes
  open; its own case goes with it
 
@@ -467,7 +467,7 @@ index 8375db9c..37f18b23 100644
 From 3ec3100e64058d69debf8e9c76d412bb2a6de8e3 Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Wed, 25 Nov 2026 12:58:12 +0000
-Subject: [PATCH 4/8] boost: (b)'s flow law with the charge as the build's
+Subject: [PATCH 4/9] boost: (b)'s flow law with the charge as the build's
  model gives it: the map's efficiency at the margin's point and the cooler's
  pressure drop
 
@@ -515,7 +515,7 @@ index 8bdc1e71..f1c2a974 100644
 From 74a3c8e8d14c9cea3a136d0fdf07ba309e09849b Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Wed, 25 Nov 2026 13:28:40 +0000
-Subject: [PATCH 5/8] boost: a variable nozzle's matched open area passes the
+Subject: [PATCH 5/9] boost: a variable nozzle's matched open area passes the
  whole design flow (a wastegate's 0.65 kept); its stop scaled so the shut area
  is unchanged
 
@@ -563,7 +563,7 @@ index f1c2a974..24d7575b 100644
 From a647f2cb7ce41039538156d4f88230c1728e3faf Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Wed, 25 Nov 2026 15:06:07 +0000
-Subject: [PATCH 6/8] boost: the compressor map fitted to every cited map
+Subject: [PATCH 6/9] boost: the compressor map fitted to every cited map
  (rise, knee, fall, choke scale), one floor at the lowest cited line (Mach
  0.67) for the knee and the efficiency
 
@@ -705,7 +705,7 @@ index 24d7575b..0917d248 100644
 From 7a18f889de23cfb41de85d229d4ead4826b43b2d Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Wed, 25 Nov 2026 15:19:17 +0000
-Subject: [PATCH 7/8] boost: MapTest restated on the cited lines (the fitted
+Subject: [PATCH 7/9] boost: MapTest restated on the cited lines (the fitted
  rise; the 471 m/s knee against the S300SX3 and S400SX-E)
 
 (code part of 668c642e)
@@ -772,7 +772,7 @@ index 84af4102..ae68742b 100644
 From 763e4b13cab20202186ec3cdb5d7bfaa7f2ccbbd Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Wed, 25 Nov 2026 15:49:16 +0000
-Subject: [PATCH 8/8] boost: the VGT loop's integral does not accumulate while
+Subject: [PATCH 8/9] boost: the VGT loop's integral does not accumulate while
  the vanes cannot follow (conditional integration): the time over the target
  after a spool or a lift halved, the truck's ringing gone, the steady figures
  unchanged
@@ -834,6 +834,37 @@ index 0917d248..73e22f88 100644
                  turb[t].vanes += (v - turb[t].vanes) * (1.0f - expf(-d16 / 0.05f));
                  // (with vanes the gate is a relief only: well above the target)
                  if (tg > 0.0f && boost < 1.2f * tg)
+-- 
+2.43.0
+
+
+From e7c20939f57b128d17f7e503003a6eebc4a44c9c Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 25 Nov 2026 16:10:52 +0000
+Subject: [PATCH 9/9] boost: the VGT boost loop's integral held while the ECU
+ owns the vanes (an engine brake): its error means nothing then (D2's point)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01LFAGgSxnqsW2XUcFC39ruQ
+---
+ sim/boost/machine.fm | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/sim/boost/machine.fm b/sim/boost/machine.fm
+index 73e22f88..af282f36 100644
+--- a/sim/boost/machine.fm
++++ b/sim/boost/machine.fm
+@@ -1283,7 +1283,9 @@ module BoostMachine
+                 const float uRaw = 0.5f * e + integ;
+                 const int cannotShut = e > 0.0f && (uRaw >= 0.95f || vanesHeld != 0);
+                 const int cannotOpen = e < 0.0f && uRaw <= 0.0f;
+-                if (cannotShut == 0 && cannotOpen == 0)
++                // (and held while the ECU owns the vanes, an engine brake: the boost's error then means nothing, the brake
++                // blowing the manifold up on purpose; at release the loop starts where it stood (D2's point, 25 Nov))
++                if (cannotShut == 0 && cannotOpen == 0 && cmdVanes < 0.0f)
+                     integ = fminf(fmaxf(integ + 1.0f * e * d16, -0.5f), 1.0f);
+                 u = fminf(fmaxf(0.5f * e + integ, 0.0f), 0.95f);
+             }
 -- 
 2.43.0
 
