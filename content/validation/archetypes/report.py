@@ -112,6 +112,41 @@ TAKEUP = {"name": "Take-up: 90 % of peak torque after the pedal, at a lug (s)", 
                     "brochure); 5 s their slowest with margin (judgement). Not reached in the 34 s read: 34. Printed "
                     "beside it: the time to 90 %% of what it settles at, and the settled torque over the peak"}
 TAKEUP_SLUGS = ("tractor-15-inline-six",)
+_HD = ("the makers' rated curves of the class (sources section 15): Detroit's DD15 455 bhp / 1550 lb-ft flat from about "
+       "975 to 1500 rpm (brochure DDC-EMC-BRO-0192-0820) and the older 1550 lb-ft @ 1100 from about 1000 to 1400-1500 "
+       "(DDC-EMC-FLY-0001-1011); the Gen 5 505 / 1850 peaked at about 1100, some 1820 at 1200-1300 (DDC-EMC-FLY-0121-"
+       "1121); Cummins' X15 Efficiency Series \"peak torque starting at 950 rpm\", flat to 1300-1400 (Bulletin 5410582), "
+       "the ISX15 560 \"from 1150 rpm to 1500 rpm at the full 1850 lb-ft\" (Bulletin 4971488); values at 1100 to 1300 "
+       "read off the makers' charts")
+LUG = {"name": "Lug: the least torque from 1100 to 1300 rpm over the peak", "range": [0.95, 1.0], "unit": "",
+       "basis": "cited",
+       "source": _HD + ": 0.98 to 1.00 of the peak there; at least 0.95 (judgement, the charts' reading); read by "
+                 "report.py on the build's predicted full-load curve (tee-dyno --predict, 600 rpm to its top step), "
+                 "interpolated at 1100, 1200 and 1300 rpm"}
+LUG_FROM = {"name": "Lug: where the torque first reaches 0.98 of its peak (rpm)", "range": [900, 1200], "unit": "rpm",
+            "basis": "cited",
+            "source": _HD + ": the plateau starts at 950 to 1150 rpm; 900 to 1200 (judgement, the margin); read by "
+                      "report.py on the same predicted curve, interpolated"}
+
+
+def lug(pts):
+    """LUG and LUG_FROM from a predicted curve [(rad/s, N m, W)]: min torque at 1100-1300 rpm over the peak, and the
+    speed (rpm) where the torque first reaches 0.98 of the peak."""
+    c = [(w / RPM, q) for w, q, _ in pts]
+    peak = max(q for _, q in c)
+
+    def at(r):
+        for (r0, q0), (r1, q1) in zip(c, c[1:]):
+            if r0 <= r <= r1:
+                return q0 + (q1 - q0) * (r - r0) / (r1 - r0)
+        return None
+    share = min(at(r) or 0.0 for r in (1100.0, 1200.0, 1300.0)) / peak
+    first = c[-1][0]
+    for (r0, q0), (r1, q1) in zip(c, c[1:]):
+        if q1 >= 0.98 * peak:
+            first = r0 + (r1 - r0) * max(0.0, (0.98 * peak - q0)) / max(q1 - q0, 1e-9) if q0 < 0.98 * peak else r0
+            break
+    return share, first
 
 
 def takeup(bin_dir, slug, out_dir, build_path, peak):
@@ -377,7 +412,12 @@ def main():
             tops = [max(t["dyno"]["steps"]) for t in docs[s_]["targets"] if "dyno" in t and "steps" in t["dyno"]]
             plan_ = {"from": 600 * RPM, "to": max(tops)} if tops else None
             if plan_:
-                peak = max(p[1] for p in curve(a.bin, s_, a.src, os.path.join(content, docs[s_]["build"]), plan_))
+                pts_ = curve(a.bin, s_, a.src, os.path.join(content, docs[s_]["build"]), plan_)
+                peak = max(p[1] for p in pts_)
+                sh, fr = lug(pts_)
+                results[s_].append((LUG, sh, "pass" if LUG["range"][0] <= sh <= LUG["range"][1] else "FAIL"))
+                results[s_].append((LUG_FROM, fr, "pass" if LUG_FROM["range"][0] <= fr <= LUG_FROM["range"][1]
+                                    else "FAIL"))
                 tp, ts, st_ = takeup(a.bin, s_, a.src, os.path.join(content, docs[s_]["build"]), peak)
                 row = dict(TAKEUP, source=TAKEUP["source"] + "; read: to 90 %% of settled %.2f s, settled %.0f N m = "
                            "%.0f %% of the peak %.0f; the climb from 800 to 1300 rpm at full load (N2's take-up tool, 19 to 20 s on 25 Nov) not measured here"
