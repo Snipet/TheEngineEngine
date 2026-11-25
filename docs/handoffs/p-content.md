@@ -1,33 +1,35 @@
 # P: content, validation targets, the manual (handoff)
 
 Package P, branch `claude/awesome-gates-ntdb58`, cloud session. Owns `content/builds/**` (new files),
-`content/validation/**` (new files), `docs/manual/**`, this file.
+`content/validation/**`, `docs/manual/**`, `docs/measurements/validation/`, this file. Updated 25 Nov, 00:45 UTC.
 
-**Done.** 30 archetypes, `content/builds/archetypes/`, written by `generate.py`. Each is a whole build with every model on
-(custom engine with real bore, stroke and rod; valve Lab with cams by duration, lift and springs; intake runners of their
-kind's length; boost Machine; exhaust Builder; Fuels; ECU Maps; Vehicle) at 288.15 K and 101325 Pa. Dimensions are
-published figures, cited in each build's notes. **All 30 start warm and cold, idle, hold the limiter (1.005 to 1.021 of the
-redline), pull through the gears and stop at the key**: every invariant passes on the tip (`tee-render` and the `p-*`
-scenarios in `content/validation/scenarios/`). Parts in `content/builds/parts/`: 30 engines, 30 tunes, 28 cars (declared
-parts); loose cams (29), turbos (13), a supercharger and 6 exhausts (no "part" key: GARAGE applies only their fields).
-Valve springs are set so that each engine floats 10 % past its limiter (measured from `valve.floatSpeed`).
-`docs/manual/builds.md` lists every shipped build.
+**Builds.** 31 archetypes and `content/builds/first.json` (the first launch: the 2.0 turbo four, now the EA888 gen 3 of
+the Mk7 GTI), written by `content/builds/archetypes/generate.py`. Every model switch on, checked against `tee-schema`
+(the generator stops on one left at the reference). **No part comes from its own engine's targets**: NA runners by their
+manifold's class, headers by the class the real engine carries, the intercooler from swept air (all judgement, marked in
+each build's notes); hardware from a source where one was found (the cited sixteen NA petrols' bands, the 454 as the 1972
+LS5, the small block as the L48, the roadster's head, the two-stage's K20A cam, the turbo four's two-stage exhaust).
+**The generator writes nothing that does not idle**: warm within 100 rpm of its asked speed (sd < 25), cold running
+(sd < 60). Baked intake cam maps (`cams.py`: N1's `tee-dyno --bake-cam --save`, `data/cam-maps.json`) behind
+`BAKED_CAMS` (on, the lead's clearance). No sound level or camera per build (L's auto level; Tailpipe the default).
 
-**Validation.** `content/validation/archetypes/<slug>.json` holds 581 targets, each with its source and how firm it is.
-`report.py` writes `docs/manual/validation.md`, the scoreboard: **174 missed**, all invariants met. Measured peaks against
-targets are in that table; a sample (kW / N m against published): six TT 369/630 (250-340/450-600); flat-plane 4.5
-305/411 (400-445/520-560); big block 303/596 (240-310/600-690); 7.0 pushrod 373/618 (370-385/630-645); V12 526/586
-(500-590/680-730); tractor 391/2344 (300-450/2000-2780); 2.0 diesel 104/271 (100-130/320-380); hot hatch 102/151 (passes).
+**Validation.** `content/validation/archetypes/<slug>.json` (by its `generate.py`): every target says its **basis**
+(cited / recalled / judgement; a fitted part's rows judgement); the turbo four's cited torque curve as rows; hot starts;
+idle spread; the sound's floors. `report.py` re-judges re-read rows against today's ranges, counts misses by basis,
+lists the worst five, and measures the idle's standing tone itself. Timed runs by `quarter_mile.py` (shifts from the
+power curve, revs held at the green, warm tyres), regenerated on each table's pin.
 
-**Largest misses** (N1 and N2 own the patterns): kei 97 kW against 47 (boost now a production 0.65 bar, not re-measured);
-rotary torque +92 % with its boost 1.3 bar against 0.7 (sequential turbos ignore the target?); torque peaks 25 to 41 % too
-low in the revs on high-revving NA engines; NA engines near 11-13 bar BMEP whatever the head; boosted ones 20-100 %
-strong; big-cam idles lumpy (V12 709 to 1405 rpm); header gas n/a (nothing reports it).
+**Tables** (all kept in `docs/measurements/validation/`, named at real UTC): G 132 of 648, H 193 of 741, I 123, J 124 of
+772, **K (`ab107ca`) 120 of 839 (25 of 196 cited)**, power in range 15 of 31, torque 11; with its cams-off twin (128).
+Table L waits for N2's compressor-map correction (the lead).
 
-**Could not build as intended.** The compression brake (`valve.auxOn`) is always on, so the tractor and the 6.7 diesel would not start with it. It is left off; D2 is gating it. Both diesels have D2's exhaust brake on. The supercharged V8 overran a fuel-cut limiter by 3.2 % and a throttle limiter by 5.6 %. It runs the soft limiter (1.4 %). The throttle limiter's overrun with a blower is for card H. Pushrod engines need 2 to 4 times a real spring to float past their limiter, so the float model reads pessimistic for pushrod trains (card E). The quarter-mile and top-speed runs swap a manual for an automatic (an open-loop timeline cannot shift one). The tractor has no top-speed run. **Help texts:** 243 of 420 visible Spec fields had no `ui::help`. `docs/manual/help.tsv` has a sentence for every one. **Manual** (`docs/manual/`): getting started, controls, glossary, a page for each workspace and each model, builds,
-`parameters.md` (from `tee-schema --markdown`), validation.
+**Sources files:** `docs/measurements/validation/2026-11-24-2314-ea888-gen3-sources.md` (the turbo four: what is known,
+what is guessed; gen 3's exhaust cam timing the one figure not found); `docs/measurements/2026-11-25-0032-judgement-sources.md`
+(VGT vanes at idle, a diesel's cycle spread, turbine efficiency, fan switches, idle warm-up); the quarter mile one change at
+a time (`2026-11-24-2215-quarter-mile-one-change.md`).
 
-**Wanted:** an audio "line" measure (the strongest spectral line), so the firing-order predictions in each validation's description can be measured (card C); `tel.exhaust.headerTemperature` (card G).
+**Open for others:** the curves' sharp teeth (N1); the turbo four's low end (the turbine match, N2; gen 3's exhaust timing,
+unpublished); the diesels' boost at the check speed in K (N2's correction); the diesels' idle hum (D2, N2).
 
-**Not run:** macOS and Windows; nothing listened to. To listen: the flat-plane 4.5 V8 against the big block on
-free-revs (`p-free-rev`), the boxer's idle, the rotary.
+**Manual** (`docs/manual/`): getting started, controls, glossary, workspaces, models, builds, parameters, help.tsv,
+validation (the newest table). **Not run:** macOS and Windows.
