@@ -32,6 +32,18 @@
 #include "spec/telemetry.fm"
 #include "intake/lab.fm"
 
+// The least bores a person or a build may state (0 still means derived; X-040, the lead's option 2, G's design as the
+// exhaust's): a runner 8 mm (a 50 cc moped's carburettor is some 12 to 14 mm: judgement, no single source), a snorkel
+// 10 mm (as the exhaust's least pipe). A stated bore under its floor is raised to it and the telemetry says which
+// (tel.intake.boreRaised); bit for bit for every bore 0 or at or above it
+const float kRunnerBoreFloor = 0.008f;
+const float kSnorkelBoreFloor = 0.010f;
+
+float statedBore(float d, float floor)
+{
+    return d > 0.0f && d < floor ? floor : d;
+}
+
 module Intake
 {
     Duct run[MAX_PORTS];       // the intake runners
@@ -179,7 +191,7 @@ module Intake
                 heatRise += (want - heatRise) * fminf(d16 * 2.0f, 1.0f);
             tAir += heatRise;
         }
-        box.setup(spec->boxVolume, spec->snorkelLength, spec->snorkelBore, vTotal, aThrottle, rateNow);
+        box.setup(spec->boxVolume, spec->snorkelLength, statedBore(spec->snorkelBore, kSnorkelBoreFloor), vTotal, aThrottle, rateNow);
         since += d16;
         if (since >= cycle)
         {
@@ -197,7 +209,10 @@ module Intake
         if (model == 1)
         {
             if (spec->runnerBore > 0.0f)
-                aRun = 0.785398f * spec->runnerBore * spec->runnerBore;
+            {
+                const float dRun = statedBore(spec->runnerBore, kRunnerBoreFloor);
+                aRun = 0.785398f * dRun * dRun;
+            }
             len.setup(spec->runnerLength > 0.0f ? spec->runnerLength : lRun,
                       spec->runnerLength2 > 0.0f ? spec->runnerLength2 : 0.0f, spec->runnerSwitch);
             lRun = len.now;
@@ -400,5 +415,8 @@ module Intake
         t->ripple = ripple;
         t->runnerLength = run[0].len;
         t->box = model == 1 ? box.p : 0.0f;
+        t->boreRaised = model == 1 ? (spec->runnerBore > 0.0f && spec->runnerBore < kRunnerBoreFloor ? 1 : 0)
+                                         + (spec->snorkelBore > 0.0f && spec->snorkelBore < kSnorkelBoreFloor ? 2 : 0)
+                                   : 0;
     }
 };

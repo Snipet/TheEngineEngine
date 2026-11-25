@@ -349,6 +349,7 @@ module IntakeTel
     float ripple [[ui::label("Manifold ripple")]] [[ui::quantity("pressure")]] [[ui::help("Peak to peak over the last cycle")]];
     float runnerLength [[ui::label("Runner length")]] [[ui::quantity("length")]];
     float box [[ui::label("Air box")]] [[ui::quantity("pressure")]] [[ui::help("Over the air outside (model 1)")]];
+    int boreRaised [[ui::label("Bores raised")]] [[ui::help("Stated bores under their least, raised to it: 1 the runners (8 mm), 2 the snorkel (10 mm); 0 none")]];
 };
 
 module Telemetry
