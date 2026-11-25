@@ -2,7 +2,7 @@
   "format": "tee-scenario",
   "version": 1,
   "name": "qm-flat-plane-v8-39-twin-turbo",
-  "description": "Card P's drag run for \"Flat-plane 3.9 L V8, twin turbo\": card I's launch (traction control on, the car's own clutch), staged at 8.0 s, the green at 10.5 s; the upshifts where the next gear's wheel torque is the greater (from the predicted curve); the revs held at the green (the brake held, the pedal floored 1.5 s before, the launch button held); the tyres warm, in their window (placed by content/validation/archetypes/quarter_mile.py). Read car.t1320 and car.v1320.",
+  "description": "Card P's drag run for \"Flat-plane 3.9 L V8, twin turbo\": card I's launch (traction control on, the car's own clutch), staged at 8.0 s, the green at 10.5 s; the upshifts where the next gear's wheel torque is the greater (from the predicted curve); the revs held at the green (the brake held, the pedal floored 1.5 s before, the launch button held); the tyres at the air's temperature (placed by content/validation/archetypes/quarter_mile.py). Read car.t1320 and car.v1320.",
   "seconds": 50,
   "warm": true,
   "events": [
@@ -73,37 +73,37 @@
       }
     },
     {
+      "t": 10.916,
+      "press": [
+        "shiftUp"
+      ]
+    },
+    {
+      "t": 11.321,
+      "press": [
+        "shiftUp"
+      ]
+    },
+    {
       "t": 11.5,
       "ctl": {
         "buttons": 0
       }
     },
     {
-      "t": 11.671,
+      "t": 11.724,
       "press": [
         "shiftUp"
       ]
     },
     {
-      "t": 12.076,
+      "t": 18.049,
       "press": [
         "shiftUp"
       ]
     },
     {
-      "t": 12.481,
-      "press": [
-        "shiftUp"
-      ]
-    },
-    {
-      "t": 17.718,
-      "press": [
-        "shiftUp"
-      ]
-    },
-    {
-      "t": 20.598,
+      "t": 20.918,
       "press": [
         "shiftUp"
       ]
@@ -117,6 +117,5 @@
       "audio": "peak",
       "<=": 1
     }
-  ],
-  "warmTyres": true
+  ]
 }

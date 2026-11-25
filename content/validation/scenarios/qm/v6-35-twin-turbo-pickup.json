@@ -2,7 +2,7 @@
   "format": "tee-scenario",
   "version": 1,
   "name": "qm-v6-35-twin-turbo-pickup",
-  "description": "Card P's drag run for \"3.5 L twin-turbo V6 pickup\": card I's launch (traction control on, the car's own clutch), staged at 8.0 s, the green at 10.5 s; its own gearbox's shifts; the revs held at the green (the brake held, the pedal floored 1.5 s before); the tyres warm, in their window (placed by content/validation/archetypes/quarter_mile.py). Read car.t1320 and car.v1320.",
+  "description": "Card P's drag run for \"3.5 L twin-turbo V6 pickup\": card I's launch (traction control on, the car's own clutch), staged at 8.0 s, the green at 10.5 s; its own gearbox's shifts; the revs held at the green (the brake held, the pedal floored 1.5 s before); the tyres at the air's temperature (placed by content/validation/archetypes/quarter_mile.py). Read car.t1320 and car.v1320.",
   "seconds": 50,
   "warm": true,
   "events": [
@@ -75,6 +75,5 @@
       "audio": "peak",
       "<=": 1
     }
-  ],
-  "warmTyres": true
+  ]
 }
