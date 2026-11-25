@@ -2,13 +2,13 @@
   "format": "tee-build",
   "version": 1,
   "name": "2.0 L turbo four, direct injection cams",
-  "notes": "The cams, springs and phasers of the archetype \"2.0 L turbo four, direct injection\" alone (intake 240/202 degrees at the seat/1 mm, 10.7 mm; exhaust 218/180, 6.3 mm): loaded as a part, they replace only the valvetrain's cam fields.",
+  "notes": "The cams, springs and phasers of the archetype \"2.0 L turbo four, direct injection\" alone (intake 246/208 degrees at the seat/1 mm, 10.7 mm; exhaust 218/180, 6.3 mm): loaded as a part, they replace only the valvetrain's cam fields.",
   "spec": {
     "valve": {
       "model": "Lab",
       "train": "Finger",
-      "inDurSeat": 240,
-      "inDur1mm": 202.0,
+      "inDurSeat": 246.0,
+      "inDur1mm": 208,
       "inLift": 0.0107,
       "inCentre": 130.0,
       "exDurSeat": 218.0,

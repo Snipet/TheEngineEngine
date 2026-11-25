@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "Inline five turbo rally",
-  "notes": "A 2.2 L 20-valve straight five, 81 x 86.4 mm (2226 cc), 9.3:1 (the 3B kind: 162 kW at 5700 rpm, 309 N m road trim; audiworld.com), here in rally trim: 1.3 bar, anti-lag, a spark-cut limiter, race fuel; rally engines of the kind made some 220 to 260 kW. Sequential gearbox, all-wheel drive. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its cams' second duration: the seat-to-1 mm step 18 deg a side, the bucket class's rule (section 8 of the judgement sources).",
+  "notes": "A 2.2 L 20-valve straight five, 81 x 86.4 mm (2226 cc), 9.3:1 (the 3B kind: 162 kW at 5700 rpm, 309 N m road trim; audiworld.com), here in rally trim: 1.3 bar, anti-lag, a spark-cut limiter, race fuel; rally engines of the kind made some 220 to 260 kW. Sequential gearbox, all-wheel drive. Its exhaust: a cast or short log manifold, the primaries 0.61 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its cams' second duration: the seat-to-1 mm step 18 deg a side, the bucket class's rule, the 1 mm duration held and the seat moved (section 8 of the judgement sources). Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py).",
   "spec": {
     "engine": {
       "layout": "Inline 5",
@@ -58,12 +58,12 @@
       "dIn": 0.03,
       "dEx": 0.0265,
       "train": "Bucket",
-      "inDurSeat": 252,
-      "inDur1mm": 216.0,
+      "inDurSeat": 256.0,
+      "inDur1mm": 220,
       "inLift": 0.01,
       "inCentre": 108,
-      "exDurSeat": 248,
-      "exDur1mm": 212.0,
+      "exDurSeat": 252.0,
+      "exDur1mm": 216,
       "exLift": 0.0095,
       "exCentre": 110,
       "portIn": 1.75,
@@ -127,6 +127,114 @@
       },
       "knock": {
         "on": true
+      },
+      "maps": {
+        "knockLimitAuto": false,
+        "knockLimit": {
+          "x": [
+            104.72000122070312,
+            192.9837223877995,
+            281.2474435548959,
+            369.51116472199226,
+            457.77488588908864,
+            546.038607056185,
+            634.3023282232814,
+            722.5660493903778
+          ],
+          "y": [
+            0.2,
+            0.49819104455253604,
+            0.7963820891050721,
+            1.094573133657608,
+            1.392764178210144,
+            1.6909552227626803,
+            1.989146267315216,
+            2.2873373118677525
+          ],
+          "z": [
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              3.2369770622793617,
+              6.533109354150709
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.2243051131270712,
+              6.490034008026118
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          ]
+        },
+        "knockLimitKey": 1103950914
       }
     },
     "car": {
