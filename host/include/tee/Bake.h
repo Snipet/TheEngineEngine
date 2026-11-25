@@ -229,14 +229,32 @@ namespace tee
         CamBakeOptions cam;
         bool bakeCam = true;           // the intake cam too (where the program and the build have a phaser to bake)
         double debounceSeconds = 1.5;
+        // A cache across launches (the lead's): each table baked is kept under its key (knockLimitKey, intakeCamKey:
+        // the program's sources and the fields that move it) as spark-<key>.json or cam-<key>.json here, the field
+        // values its apply wrote (some 6 KB a spark table, 3 KB a cam); a stage whose key is there is taken from it at
+        // once, not measured. Empty: no cache. The folder keeps the newest cacheEntries (the oldest by their last use
+        // removed past it): some 2 MB at 256.
+        std::filesystem::path cacheDirectory;
+        std::size_t cacheEntries = 256;
+    };
+
+    // A table as its apply wrote it: (field path, the field's values) for each field it wrote, with its key
+    struct BakedFields
+    {
+        std::int64_t key = -1;
+        std::vector<std::pair<std::string, std::vector<double>>> fields;
+        std::vector<std::vector<bool>> stillKnocking;   // a spark table's: by table cell (KnockBakeResult's)
+        bool cached = false;                            // taken from the cache, not measured
     };
 
     struct CalibrationBakeResult
     {
         bool hasSpark = false;
-        KnockBakeResult spark;         // the last spark baked (after the cam, when the cam was baked)
+        BakedFields spark;             // the last spark (after the cam, when the cam was baked)
         bool hasCam = false;
-        CamBakeResult cam;
+        BakedFields cam;
+        KnockBakeResult sparkMeasured; // the measures, when the spark was baked here (not taken from the cache)
+        CamBakeResult camMeasured;
     };
 
     class CalibrationBakeService
@@ -267,10 +285,10 @@ namespace tee
         // While `predict` is busy (the ribbon's curve wanted), the bake waits between its points, so the curve a person
         // waits for has the workers (nullptr: never). The service must outlive this one, or be set to nullptr first.
         void yieldTo(const PredictService* predict) noexcept { yieldTo_.store(predict); }
-        // The spark table last applied by takeAndApply, kept for TUNE: its cells still knocking after the corrections
-        // (KnockBakeResult::stillKnocking, measured: KnockBakeCell::stillKnocking).
-        bool lastSpark(KnockBakeResult& out) const;
-        int stillKnockingCells() const;   // measured cells still knocking in it (0 with none applied)
+        // The spark table last applied by takeAndApply, kept for TUNE: its table cells still knocking after the
+        // corrections (by [speed][load], as KnockBakeResult::stillKnocking), whether baked here or taken from the cache.
+        bool lastSpark(BakedFields& out) const;
+        int stillKnockingCells() const;   // table cells still knocking in it (0 with none applied)
         std::string error() const;
         // Moves when the state or the stage changes.
         std::uint64_t revision() const noexcept { return revision_.load(); }
@@ -298,7 +316,7 @@ namespace tee
         std::atomic<int> done_points_{0}, total_points_{0};
         std::atomic<const PredictService*> yieldTo_{nullptr};
         bool haveLast_ = false;
-        KnockBakeResult last_;
+        BakedFields last_;
         bool ready_ = false;
         CalibrationBakeResult done_;
         std::string error_;
