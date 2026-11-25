@@ -159,11 +159,15 @@ namespace
                     const tee::ui::FieldInfo& info = rig.doc->info(page.params().field(k));
                     if (info.kind != tee::ui::FieldKind::number || info.def >= info.max)
                         continue;
-                    const funkgui::Rect r = page.controlRect(info.path);
+                    // the control as shown: Rows' value box (scrubbed by a drag to the right), else the knob (up)
+                    const funkgui::Rect r = f.inspectorValueRect(info.path);
                     if (r.w <= 0.0f || r.y < f.inspectorRect().y || r.bottom() > f.inspectorRect().bottom())
                         continue;
                     const double before = rig.doc->get(page.params().field(k));
-                    rig.host->drag(r.centreX(), r.centreY(), r.centreX(), r.centreY() - 50.0f, 10);
+                    if (f.inspectorRows() != nullptr)
+                        rig.host->drag(r.centreX(), r.centreY(), r.centreX() + 50.0f, r.centreY(), 10);
+                    else
+                        rig.host->drag(r.centreX(), r.centreY(), r.centreX(), r.centreY() - 50.0f, 10);
                     const double after = rig.doc->get(page.params().field(k));
                     CHECK_MSG(after > before, info.path);
                     CHECK(rig.build->undo());

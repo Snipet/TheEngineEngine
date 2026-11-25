@@ -201,3 +201,8 @@ sheet will include every registered workspace.
   150 200 F), a number at the ends and the middle (`Gauge::setNumeralStride`). `Gauge::labelsClearOfNeedle(t, why)`
   is the check; drive.dials runs it on every dial at the range's bottom, middle and top, in both unit systems, at the
   large stage and the smallest window. J2's default Gauge look is unchanged.
+- Rows in the frame (the owner's pick; J2's `RowsPage`, the hook in docs/ui-kit.md): every inspector page that is not
+  a table alone shows as Rows; the FieldPage under it is still made (`inspector()`, `fieldsShown()`); a table inside a
+  workspace's own page gets a page of its own; the filter reaches every page of the workspace.
+  `AppFrame::inspectorRows()` and `inspectorValueRect(path)` (Rows' value box, else the FieldPage's control) for
+  tests. Keyboard: Tab focuses the rows as one widget, Down picks a row (its help shows then).

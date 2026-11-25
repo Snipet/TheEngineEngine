@@ -38,6 +38,7 @@
 #include "kit/bind/Binding.h"
 #include "kit/bind/Fields.h"
 #include "kit/bind/Units.h"
+#include "kit/inspect/RowsPage.h"
 #include "kit/widgets/Basic.h"
 #include "kit/widgets/Board.h"
 
@@ -112,6 +113,14 @@ namespace tee::ui
         int inspectorPageIndex() const noexcept { return page_; }
         const std::string& inspectorTitle(int p) const;
         FieldPage* inspector() const;                        // the page shown (nullptr: the units page)
+        // The shown page as Rows (J2's RowsPage, the owner's pick, 25 Nov): what the inspector shows and gives the
+        // pointer and keys to; nullptr while a FieldPage is shown (a table's page, the settings). The FieldPage under
+        // it is still made and kept (inspector(), fieldsShown()).
+        RowsPage* inspectorRows() const;
+        // A field's control in the inspector as shown, in window px: Rows' value box (a horizontal drag scrubs it, a
+        // click types it or opens its menu), else the FieldPage's control (a vertical drag turns a knob). Empty: not
+        // shown on the page in view.
+        funkgui::Rect inspectorValueRect(const std::string& path) const;
         void showInspectorPage(int p);
         // The settings page (the top bar's SETTINGS; the inspector of a workspace with no Spec section): the audio
         // device, the theme, the units, the keys. unitsShown/showUnits are J2's names for it.
@@ -201,7 +210,10 @@ namespace tee::ui
         {
             std::string title, gui;
             std::unique_ptr<FieldPage> panel;
+            std::unique_ptr<RowsPage> rows;                  // after panel: destroyed first
         };
+        funkgui::Panel* inspectorPane() const;               // the shown page's rows, else its FieldPage
+        void openTable(const RowsPage::Table& t);            // a table's row in Rows: its own page
         void makeWorkspaces();
         void makeCockpit();
         void makeInspector();                                // the pages for the current workspace and selection

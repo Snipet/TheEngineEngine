@@ -122,6 +122,19 @@ namespace
             host->tick(60);
         }
         double value(const char* path) const { return demo.doc.get(demo.doc.find(path)); }
+        // A field's control in the inspector moved up by `amount` px of its own gesture: Rows' value box dragged right
+        // (it scrubs), a FieldPage's knob dragged up. False: the field is not on the page in view.
+        bool dragField(const char* path, float amount, int steps = 12)
+        {
+            const funkgui::Rect r = frame->inspectorValueRect(path);
+            if (r.w <= 0.0f)
+                return false;
+            if (frame->inspectorRows() != nullptr)
+                host->drag(r.centreX(), r.centreY(), r.centreX() + amount, r.centreY(), steps);
+            else
+                host->drag(r.centreX(), r.centreY(), r.centreX(), r.centreY() - amount, steps);
+            return true;
+        }
         std::string a11yValue(const std::string& title) const
         {
             for (const funkgui::A11yItem& it : host->accessibility())
@@ -190,7 +203,8 @@ namespace
         rig.showWorkspace("air");
         f.select("boost");
         rig.host->tick(2);
-        CHECK(f.inspectorPageCount() == 1 && f.inspector() != nullptr);
+        // its fields on one page (Rows), each of its tables on a page of its own after it
+        CHECK(f.inspectorPageCount() >= 1 && f.inspector() != nullptr && f.inspectorRows() != nullptr);
         CHECK(f.inspector()->params().findParam("boost.level") >= 0);
         CHECK(f.inspector()->params().findParam("intake.plenum") < 0);
         f.select("exhaust.crossover");               // a single field
@@ -225,17 +239,15 @@ namespace
         rig.showWorkspace("air");
         f.showInspectorPage(1);
         rig.host->tick(2);
-        const funkgui::Rect r = f.inspector()->controlRect("boost.level");
-        CHECK(r.w > 0.0f);
-        rig.host->drag(r.centreX(), r.centreY(), r.centreX(), r.centreY() - 80.0f, 12);
+        CHECK(rig.dragField("boost.level", 80.0f));
         CHECK(rig.value("boost.level") > 80e3);
         typeKeys(*rig.host, "cmd+z");
         CHECK_NEAR(rig.value("boost.level"), 80e3, 1e-6);
         typeKeys(*rig.host, "cmd+shift+z");
         CHECK(rig.value("boost.level") > 80e3);
-        const funkgui::Rect m = f.inspector()->controlRect("boost.kind");
+        const funkgui::Rect m = f.inspectorValueRect("boost.kind");
         rig.host->click(m.centreX(), m.centreY());
-        CHECK(rig.host->chooseMenuItem("TWIN TURBO"));
+        CHECK(rig.host->chooseMenuItem("TWIN TURBO") || rig.host->chooseMenuItem("Twin turbo"));
         rig.host->tick(2);
         CHECK(rig.value("boost.kind") == 2.0);
         // The build reads unsaved in the top bar (its name with a star).
@@ -611,19 +623,29 @@ namespace
             FrameRig rig(1100, 700, dpi);
             AppFrame& f = *rig.frame;
             rig.showWorkspace("engine");
+            // The field in sight: on the page that holds it, Rows' filter brings it to the top.
             funkgui::Rect dial{};
             for (int p = 0; p < f.inspectorPageCount() && dial.isEmpty(); ++p)
             {
                 f.showInspectorPage(p);
                 rig.host->tick(2);
-                dial = f.inspector()->controlRect("engine.compression");
+                dial = f.inspectorValueRect("engine.compression");
             }
-            CHECK(!dial.isEmpty());
+            if (f.inspectorRows() != nullptr)
+            {
+                f.inspectorRows()->rows().setFilter("compression");
+                rig.host->tick(5);
+                dial = f.inspectorValueRect("engine.compression");
+            }
+            CHECK(!dial.isEmpty() && dial.bottom() <= f.inspectorRect().bottom());
             rig.host->moveTo(dial.centreX(), dial.centreY(), 2);
             rig.host->tick(10);
-            CHECK(!f.inspector()->tooltip().shown());   // not before the rest
+            const auto paneTip = [&f]() -> const tee::ui::Tooltip& {
+                return f.inspectorRows() != nullptr ? f.inspectorRows()->tooltip() : f.inspector()->tooltip();
+            };
+            CHECK(!paneTip().shown());   // not before the rest
             rig.host->tick(30);
-            const tee::ui::Tooltip& tip = f.inspector()->tooltip();
+            const tee::ui::Tooltip& tip = paneTip();
             CHECK(tip.shown());
             const std::string text = tip.text();
             CHECK_MSG(text.find("Compression") != std::string::npos && text.find("volume at the bottom") != std::string::npos
@@ -633,7 +655,7 @@ namespace
             golden(std::string("frame.help.dial") + sfx, *rig.host);
             rig.host->moveTo(f.stageRect().centreX(), f.stageRect().centreY(), 2);
             rig.host->tick(3);
-            CHECK(!f.inspector()->tooltip().shown());   // gone with the pointer
+            CHECK(!paneTip().shown());   // gone with the pointer
             // The cockpit's START.
             const funkgui::Rect st = f.startRect();
             rig.host->moveTo(st.centreX(), st.centreY(), 2);
@@ -643,7 +665,8 @@ namespace
             if (dpi > 1.5f)
                 picture("frame.help.start", *rig.host);
         }
-        // The keyboard: Tab onto the inspector's controls; the one focused says its help after a shorter rest.
+        // The keyboard: Tab onto the inspector's controls (Rows: Tab onto the rows, Down onto a row); the one focused
+        // says its help after a shorter rest.
         {
             FrameRig rig(1280, 800, 1.0f);
             AppFrame& f = *rig.frame;
@@ -653,8 +676,12 @@ namespace
             for (int k = 0; k < 60 && !shown; ++k)
             {
                 typeKeys(*rig.host, "tab");
+                // Rows take the focus as one widget: Down picks its first row (J2's FieldInspector)
+                if (f.inspectorRows() != nullptr && f.inspectorRows()->focus() >= 0 && f.inspectorRows()->rows().focusedField() < 0)
+                    typeKeys(*rig.host, "down");
                 rig.host->tick(30);
-                shown = f.inspector() != nullptr && f.inspector()->tooltip().shown();
+                shown = f.inspectorRows() != nullptr ? f.inspectorRows()->tooltip().shown()
+                                                     : f.inspector() != nullptr && f.inspector()->tooltip().shown();
             }
             CHECK_MSG(shown, "no control reached by Tab showed its help");
         }
@@ -754,9 +781,8 @@ namespace
         CHECK(rig.demo.engine.before().empty());
         f.showInspectorPage(1);
         rig.host->tick(2);
-        const funkgui::Rect r = f.inspector()->controlRect("boost.level");
         const std::uint64_t asked = rig.demo.engine.requests();
-        rig.host->drag(r.centreX(), r.centreY(), r.centreX(), r.centreY() - 60.0f, 10);
+        CHECK(rig.dragField("boost.level", 60.0f, 10));
         rig.host->tick(60);
         CHECK(rig.demo.engine.requests() == asked + 1);   // one drag of many steps: one curve asked for, after its quiet
         CHECK(!rig.demo.engine.before().empty() && rig.demo.engine.predicted().peakTorque().value > before);
@@ -886,7 +912,8 @@ namespace
         {
             typeKeys(*rig.host, "tab");
             rail = rail || f.railFocus() >= 0;
-            inspector = inspector || (f.inspector() != nullptr && f.inspector()->focus() >= 0);
+            inspector = inspector || (f.inspectorRows() != nullptr ? f.inspectorRows()->focus() >= 0
+                                                                   : f.inspector() != nullptr && f.inspector()->focus() >= 0);
         }
         CHECK(rail && inspector);
         // Enter on a rail button shows its workspace.

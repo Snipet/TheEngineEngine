@@ -3,6 +3,7 @@
 
 #include "app/Look.h"
 #include "app/Placeholders.h"
+#include "kit/inspect/Outline.h"
 
 #include <funkgui/canvas/Canvas.h>
 #include <funkgui/core/Theme.h>
@@ -667,11 +668,18 @@ namespace tee::ui
     void AppFrame::makeInspector()
     {
         for (Page& p : pages_)
+        {
+            if (p.rows)
+            {
+                p.rows->pointerExit();
+                p.rows->closeGestures();
+            }
             if (p.panel)
             {
                 p.panel->pointerExit();
                 p.panel->closeGestures();
             }
+        }
         // The panes stop pointing at the pages before they go.
         panes_->set({ { &current(), stageRect() } });
         pages_.clear();
@@ -685,7 +693,7 @@ namespace tee::ui
         if (!unitsPage_)
         {
             if (const std::string gui = ws.inspectorPage(); !gui.empty())
-                pages_.push_back({ inspectorHead_, gui, nullptr });
+                pages_.push_back({ inspectorHead_, gui, nullptr, nullptr });
             else
             {
                 std::vector<int> fields = sel.empty() ? std::vector<int>{} : fieldsUnder(doc_, sel);
@@ -694,7 +702,7 @@ namespace tee::ui
                     const auto split = splitPages(doc_, fields, 60);
                     for (std::size_t k = 0; k < split.size(); ++k)
                         pages_.push_back({ split.size() > 1 ? std::to_string(k + 1) : inspectorHead_,
-                                           pageGui(doc_, split[k], {}), nullptr });
+                                           pageGui(doc_, split[k], {}), nullptr, nullptr });
                 }
                 else
                 {
@@ -710,11 +718,11 @@ namespace tee::ui
                         const auto split = scalars.empty() ? std::vector<std::vector<int>>{} : splitPages(doc_, scalars, 60);
                         for (std::size_t k = 0; k < split.size(); ++k)
                             pages_.push_back({ upper(sec) + (split.size() > 1 ? " " + std::to_string(k + 1) : std::string()),
-                                               pageGui(doc_, split[k], {}), nullptr });
+                                               pageGui(doc_, split[k], {}), nullptr, nullptr });
                         for (const int f : tables)
                         {
                             const FieldInfo& info = doc_.info(f);
-                            pages_.push_back({ upper(info.label.empty() ? info.path : info.label), pageGui(doc_, { f }, {}), nullptr });
+                            pages_.push_back({ upper(info.label.empty() ? info.path : info.label), pageGui(doc_, { f }, {}), nullptr, nullptr });
                         }
                     }
                 }
@@ -728,8 +736,7 @@ namespace tee::ui
             inspectorHead_ = "SETTINGS";
         }
         const funkgui::Rect room = inspectorRect();
-        for (Page& page : pages_)
-        {
+        const auto makePanel = [&](Page& page) {
             GuiPanel::Options o;
             o.width = width();
             o.height = height();
@@ -746,7 +753,48 @@ namespace tee::ui
                                                      std::move(o));
             if (host() != nullptr)
                 page.panel->attach(*host());
+        };
+        for (Page& page : pages_)
+            makePanel(page);
+        // Rows (J2's RowsPage) over every page that is not a table alone; a table inside a workspace's own page gets a
+        // page of its own (the generated pages already give each table one), and the filter reaches every page.
+        for (Page& page : pages_)
+            page.rows = RowsPage::over(*page.panel, doc_, units_);
+        const auto heldAlone = [this](int field) {
+            for (const Page& p : pages_)
+                if (!p.rows && p.panel)
+                {
+                    const std::vector<int> fs = fieldsOf(outlineOf(*p.panel, doc_));
+                    if (std::find(fs.begin(), fs.end(), field) != fs.end())
+                        return true;
+                }
+            return false;
+        };
+        std::vector<RowsPage::Table> missing;
+        for (const Page& page : pages_)
+            if (page.rows)
+                for (const RowsPage::Table& t : page.rows->tables())
+                    if (!t.fields.empty() && !heldAlone(t.fields.front())
+                        && std::none_of(missing.begin(), missing.end(), [&t](const RowsPage::Table& m) { return m.fields == t.fields; }))
+                        missing.push_back(t);
+        for (const RowsPage::Table& t : missing)
+        {
+            pages_.push_back({ upper(t.title), pageGui(doc_, t.fields, {}), nullptr, nullptr });
+            makePanel(pages_.back());
         }
+        std::vector<int> searchable;
+        for (const Page& page : pages_)
+            if (page.rows)
+                searchable.insert(searchable.end(), page.rows->fields().begin(), page.rows->fields().end());
+        for (Page& page : pages_)
+            if (page.rows)
+            {
+                page.rows->setSearchable(searchable);
+                page.rows->place(width(), height(), room);
+                page.rows->setOnTable([this](const RowsPage::Table& t) { openTable(t); });
+                if (host() != nullptr)
+                    page.rows->attach(*host());
+            }
         selectionSeen_ = selection_.revision();
         pagesFor_ = selection_.path();
         setPanes();
@@ -764,6 +812,49 @@ namespace tee::ui
         return page_ >= 0 && page_ < inspectorPageCount() ? pages_[static_cast<std::size_t>(page_)].panel.get() : nullptr;
     }
 
+    RowsPage* AppFrame::inspectorRows() const
+    {
+        return page_ >= 0 && page_ < inspectorPageCount() ? pages_[static_cast<std::size_t>(page_)].rows.get() : nullptr;
+    }
+
+    funkgui::Rect AppFrame::inspectorValueRect(const std::string& path) const
+    {
+        if (const RowsPage* rows = inspectorRows())
+        {
+            funkgui::Rect row, value;
+            const int f = doc_.find(path);
+            return f >= 0 && rows->rows().fieldRect(f, row, value) ? value : funkgui::Rect{};
+        }
+        if (FieldPage* page = inspector())
+            return page->controlRect(path);
+        return {};
+    }
+
+    funkgui::Panel* AppFrame::inspectorPane() const
+    {
+        if (RowsPage* rows = inspectorRows())
+            return rows;
+        return inspector();
+    }
+
+    void AppFrame::openTable(const RowsPage::Table& t)
+    {
+        if (t.fields.empty())
+            return;
+        for (int p = 0; p < inspectorPageCount(); ++p)
+        {
+            const Page& page = pages_[static_cast<std::size_t>(p)];
+            if (page.rows || !page.panel)
+                continue;
+            const std::vector<int> fs = fieldsOf(outlineOf(*page.panel, doc_));
+            if (std::find(fs.begin(), fs.end(), t.fields.front()) != fs.end())
+            {
+                showInspectorPage(p);
+                return;
+            }
+        }
+    }
+
     void AppFrame::showInspectorPage(int p)
     {
         if (p < 0 || p >= inspectorPageCount())
@@ -772,6 +863,11 @@ namespace tee::ui
         {
             was->pointerExit();
             was->closeGestures();
+            if (RowsPage* rows = inspectorRows())
+            {
+                rows->pointerExit();
+                rows->closeGestures();
+            }
         }
         page_ = p;
         arrange();
@@ -863,6 +959,11 @@ namespace tee::ui
             page->pointerExit();
             page->closeGestures();
         }
+        if (RowsPage* rows = inspectorRows())
+        {
+            rows->pointerExit();
+            rows->closeGestures();
+        }
         setPanes();
         arrange();
         bump();
@@ -911,8 +1012,8 @@ namespace tee::ui
     void AppFrame::setPanes()
     {
         std::vector<Panes::Pane> panes{ { &current(), current().stage().isEmpty() ? stageRect() : current().stage() } };
-        if (FieldPage* page = inspector(); page != nullptr && !chatOpen_)
-            panes.push_back({ page, inspectorRect() });
+        if (funkgui::Panel* pane = inspectorPane(); pane != nullptr && !chatOpen_)
+            panes.push_back({ pane, inspectorRect() });
         panes_->set(std::move(panes));
     }
 
@@ -1150,6 +1251,8 @@ namespace tee::ui
         for (Page& p : pages_)
         {
             p.panel->resize(width(), height());
+            if (p.rows)
+                p.rows->place(width(), height(), room);
             p.panel->setInsets(static_cast<int>(room.x) + 4, static_cast<int>(room.y) + 2,
                                std::max(0, width() - static_cast<int>(room.right()) + 4),
                                std::max(0, height() - static_cast<int>(room.bottom())));
@@ -1474,6 +1577,8 @@ namespace tee::ui
                 k.mix(ws.item(i).drawKey());
         if (const FieldPage* page = inspector())
             k.mix(page->tooltip().drawKey());   // hover help shown or gone
+        if (const RowsPage* rows = inspectorRows())
+            k.mix(rows->drawKey());             // Rows: values, typing, scroll, hover help
         k.mix(tooltip().drawKey()).mix(current().tooltip().drawKey());
         if (const FieldPage* page = inspector())
             for (const auto& it : page->items())
