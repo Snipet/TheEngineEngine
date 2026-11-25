@@ -43,6 +43,13 @@
 
 ## Landed
 
+- **25 Nov 19:44 UTC: on the branch, not in `main`:** bangs Burned in the pipe as the default with G's fix
+  (81ec1b12); the Logitech G29's first slice on macOS (5b66951a: pedals, clutch, paddles, the H shifter, the PS
+  button as the start key, the five shift lights, 900 degrees and the spring; ported from TestingPlayground;
+  never compiled on macOS before CI, never run before the owner's Mac); the bike's clutch (9eb34e2a); the chat's
+  "Add a key" (98333523); Rows and the part card in the kit (4dd26210), not yet in the frame. Found: the
+  two-stage's notch is the predictor reading a point inside the cam switch's band in the wrong stage (N1's patch
+  with C); the rotary's secondary turbo does not come on above the join (N2).
 - **25 Nov 19:21 UTC: the diesel package is on the branch at e9b2ef3f** (not in `main`; CI on it not yet read).
   N2's ten commits (the compressor map fitted to the seven cited maps; a governed diesel's wheel sized at its
   torque peak; the whole-flow VGT nozzle; no vane surge guard; the loop's integral held where the vanes cannot
