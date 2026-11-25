@@ -299,12 +299,18 @@ namespace tee::ui
         full_ = &make<Button>("Full", [this] { if (services_.setQuality) services_.setQuality(0); });
         economy_ = &make<Button>("Economy", [this] { if (services_.setQuality) services_.setQuality(1); });
         full_->setLit([quality] { return quality() == 0; });
+        full_->setEnabled([this] { return static_cast<bool>(services_.setQuality); });
+        economy_->setEnabled([this] { return static_cast<bool>(services_.setQuality); });
         economy_->setLit([quality] { return quality() == 1; });
         warmStart_ = &make<Button>("Warm", [this] { if (services_.setColdStart) services_.setColdStart(false); });
         coldStart_ = &make<Button>("Cold", [this] { if (services_.setColdStart) services_.setColdStart(true); });
         warmStart_->setLit([this] { return services_.coldStart && !services_.coldStart(); });
         coldStart_->setLit([this] { return services_.coldStart && services_.coldStart(); });
-        desktopOff_ = &make<Button>("Off", [this] { setDesktop(false); });
+        wheelOff_ = &make<Button>("Off", [this] { if (services_.setWheelOn) services_.setWheelOn(false); });
+        wheelOn_ = &make<Button>("On", [this] { if (services_.setWheelOn) services_.setWheelOn(true); });
+        wheelOff_->setLit([this] { return services_.wheelOn && !services_.wheelOn(); });
+        wheelOn_->setLit([this] { return services_.wheelOn && services_.wheelOn(); });
+        desktopOff_ = &make<Button>("Deny", [this] { setDesktop(false); });
         desktopOn_ = &make<Button>("Allow", [this] { setDesktop(true); });
         desktopOff_->setLit([this] { return services_.desktopAllowed && !services_.desktopAllowed(); });
         desktopOn_->setLit([this] { return services_.desktopAllowed && services_.desktopAllowed(); });
@@ -316,7 +322,10 @@ namespace tee::ui
         tryFirstClose_ = &make<Button>("Close", [this] { closeTryFirst(); });
         keyButton_ = &make<Button>("Key", [this] { openKeyDialog(); });   // the chat's header: its key dialog
         keyButton_->setPlace({}, false);
-        // The chat's place (mountChat fills it), then the key dialog and the assistant's question over everything.
+        // The card on the picture (over the stage), then the chat's place (mountChat fills it), then the key dialog
+        // and the assistant's question over everything.
+        cardItem_ = &make<FieldInspector>(doc_, units_, FieldInspector::Style::list);
+        card_ = std::make_unique<PartCard>(*cardItem_);
         {
             auto slot = std::make_unique<ChatSlot>();
             chatSlot_ = slot.get();
@@ -382,6 +391,9 @@ namespace tee::ui
         desktopOff_->setHelp("Claude Desktop cannot reach this app: it listens on nothing.");
         desktopOn_->setHelp("Lets Claude Desktop on this computer reach the build open here through a private link, and "
                             "change it. The status line says when it is connected and what it does.");
+        wheelOff_->setHelp("The steering wheel is not read.");
+        wheelOn_->setHelp("Reads a connected Logitech G29: its wheel, its pedals and its paddles. The line under it says "
+                          "what it is doing.");
         chatButton_->setHelp("Opens the chat with Claude in the inspector's column; again to close it.");
         keyButton_->setHelp("The Anthropic API key the chat uses: save, replace or remove it.");
         ribbon_->setHelp("The build's predicted torque and power, worked out again after each edit. The faint curves are "
@@ -642,6 +654,7 @@ namespace tee::ui
         const bool changed = i != shown_ || pages_.empty();
         if (i != shown_)
         {
+            card_->close();
             workspace(shown_).shownChanged(false);
             selection_.clear();
         }
@@ -891,6 +904,16 @@ namespace tee::ui
         return status;
     }
 
+    std::string AppFrame::wheelLine() const
+    {
+        if (!services_.wheelOn || !services_.setWheelOn || !services_.wheelStatus)
+            return {};
+        const std::string status = services_.wheelStatus();
+        if (!status.empty())
+            return status;
+        return services_.wheelOn() ? std::string("On: no wheel connected.") : std::string("Off: the wheel is not read.");
+    }
+
     void AppFrame::setDesktop(bool on)
     {
         if (!services_.allowDesktop)
@@ -954,6 +977,8 @@ namespace tee::ui
         if (chat_ == nullptr || on == chatOpen_)
             return;
         chatOpen_ = on;
+        if (on)
+            card_->close();
         if (FieldPage* page = inspector())
         {
             page->pointerExit();
@@ -992,7 +1017,10 @@ namespace tee::ui
     void AppFrame::showUnits(bool on)
     {
         if (on)
+        {
             chatOpen_ = false;
+            card_->close();
+        }
         if (on == unitsPage_)
         {
             arrange();
@@ -1199,6 +1227,7 @@ namespace tee::ui
         fold_->setTitle(folded_ ? "Open" : "Fold");
         fold_->setPlace({ rib.right() - 58.0f, rib.y + 4.0f, 48.0f, 22.0f }, !rib.isEmpty());
         ribbon_->setPlace({ rib.x + 12.0f, rib.y + 34.0f, rib.w - 24.0f, rib.h - 40.0f }, !rib.isEmpty() && !folded_);
+        card_->place(stage);
         // The chat in the column, KEY in its header; the key dialog over the whole window while it is open.
         if (chat_ != nullptr)
             chat_->setPlace(chatRect(), chatOpen_);
@@ -1279,7 +1308,7 @@ namespace tee::ui
         full_->setPlace({ settingsHeadX_, y + 16.0f, bw, 26.0f }, on);
         economy_->setPlace({ settingsHeadX_ + bw + 6.0f, y + 16.0f, bw, 26.0f }, on);
         qualityNoteY_ = y + 48.0f;
-        y += 48.0f + 13.0f * (services_.setQuality ? 2.0f : 3.0f) + 8.0f;   // the sentence's lines
+        y += 54.0f;   // (what ECONOMY does is its hover help; without the shell's quality the buttons are disabled)
         // ENGINE START: warm (the default) or cold, from the next launch; only where the shell serves it.
         const bool start = on && services_.coldStart && services_.setColdStart;
         // One row: its heading and "from the next launch" at the left, the buttons under QUALITY's at the right.
@@ -1302,7 +1331,18 @@ namespace tee::ui
         {
             settingsHeads_.push_back({ "CLAUDE DESKTOP", y + 2.0f });
             desktopNoteY_ = y + 16.0f;   // its line, wrapped to two at most under the heading (left of the buttons)
-            y += 44.0f;
+            y += 42.0f;
+        }
+        // WHEEL: Off or On (card B's G29; only where the shell reads a wheel), its status under the heading.
+        const bool wheel = on && services_.wheelOn && services_.setWheelOn && services_.wheelStatus;
+        wheelOff_->setPlace({ settingsHeadX_, y + 2.0f, bw, 26.0f }, wheel);
+        wheelOn_->setPlace({ settingsHeadX_ + bw + 6.0f, y + 2.0f, bw, 26.0f }, wheel);
+        wheelNoteY_ = -1.0f;
+        if (wheel)
+        {
+            settingsHeads_.push_back({ "WHEEL", y + 2.0f });
+            wheelNoteY_ = y + 16.0f;
+            y += 42.0f;
         }
         settingsHeads_.push_back({ "UNITS", y });
         // One column: each quantity's name in full at the left, its stepper at the right.
@@ -1361,12 +1401,10 @@ namespace tee::ui
                 c.text(heading.c_str(), heading == "QUALITY" ? settingsHeadX_ : room.x + 12.0f, hy, look::kCaps, p.label);
             if (startNoteY_ >= 0.0f)
                 c.text("from the next launch", room.x + 12.0f, startNoteY_, look::kUnit, p.label);
-            if (desktopNoteY_ >= 0.0f)
-            {
-                // Two lines at most in the left column (the buttons at the right), the second cut to fit.
+            // A row's line, two lines at most in the left column (the buttons at the right), the second cut to fit.
+            const auto rowNote = [&](const std::string& line, float ny, funkgui::Col ink) {
                 const float lw = settingsHeadX_ - room.x - 12.0f - 8.0f;
-                const std::string line = desktopLine();
-                std::string first, rest;
+                std::string first;
                 std::size_t at = 0;
                 while (at < line.size())
                 {
@@ -1377,37 +1415,15 @@ namespace tee::ui
                     first = tried;
                     at = sp + 1;
                 }
-                rest = at < line.size() ? line.substr(at) : std::string();
-                const funkgui::Col ink = desktopWhy_.empty() ? p.text : Look::of(th).error;
-                c.text(first.c_str(), room.x + 12.0f, desktopNoteY_, look::kUnit, ink);
+                const std::string rest = at < line.size() ? line.substr(at) : std::string();
+                c.text(first.c_str(), room.x + 12.0f, ny, look::kUnit, ink);
                 if (!rest.empty())
-                    c.text(fitText(c, rest, look::kUnit, lw).c_str(), room.x + 12.0f, desktopNoteY_ + 13.0f, look::kUnit, ink);
-            }
-            const std::string note = std::string("Economy: the engine at half its inner rate: about half the load, the highest "
-                                                 "octave lost.") + (services_.setQuality ? "" : " Not in this build.");
-            // Wrapped at words onto at most three lines.
-            std::string line;
-            float ny = qualityNoteY_;
-            std::size_t at = 0;
-            int lines = 0;
-            while (at <= note.size() && lines < 3)
-            {
-                const std::size_t sp = std::min(note.find(' ', at), note.size());
-                const std::string word = note.substr(at, sp - at);
-                const std::string tried = line.empty() ? word : line + " " + word;
-                if (!line.empty() && c.textWidth(tried.c_str(), look::kUnit) > room.w - 24.0f)
-                {
-                    c.text(line.c_str(), room.x + 12.0f, ny, look::kUnit, p.label);
-                    ny += 13.0f;
-                    ++lines;
-                    line = word;
-                }
-                else
-                    line = tried;
-                at = sp + 1;
-            }
-            if (!line.empty() && lines < 3)
-                c.text(line.c_str(), room.x + 12.0f, ny, look::kUnit, p.label);
+                    c.text(fitText(c, rest, look::kUnit, lw).c_str(), room.x + 12.0f, ny + 13.0f, look::kUnit, ink);
+            };
+            if (desktopNoteY_ >= 0.0f)
+                rowNote(desktopLine(), desktopNoteY_, desktopWhy_.empty() ? p.text : Look::of(th).error);
+            if (wheelNoteY_ >= 0.0f)
+                rowNote(wheelLine(), wheelNoteY_, p.text);
             // The keys of docs/controls.md (the shell reads them; they work in every workspace but a text field).
             static const char* const kKeys[][2] = {
                 { "Up / W", "throttle" }, { "Down / S", "brake" }, { "Left Shift", "clutch" }, { "Return", "start (hold: stop)" },
@@ -1515,6 +1531,7 @@ namespace tee::ui
                 arrange();
             }
         }
+        card_->update(selection_.path(), inspectorRows() != nullptr ? &inspectorRows()->rows().outline() : nullptr, stageRect());
         modes_[0]->setTitle(kModes[std::clamp(services_.mode ? services_.mode() : localMode_, 0, 2)]);
         // While the engine's program compiles START says so (drawn disabled: Button::setEnabled).
         start_->setTitle(!services_.engineReady || services_.engineReady() ? "Start" : "Compiling");
@@ -1563,6 +1580,8 @@ namespace tee::ui
         k.mix(width()).mix(height()).mix(shown_).mix(page_).mix(unitsPage_ ? 1 : 0).mix(folded_ ? 1 : 0).mix(chatOpen_ ? 1 : 0);
         if (desktopNoteY_ >= 0.0f)
             k.mix(std::hash<std::string>{}(desktopLine()));
+        if (wheelNoteY_ >= 0.0f)
+            k.mix(std::hash<std::string>{}(wheelLine()));
         k.mix(doc_.revision()).mix(selection_.revision()).mix(units_.revision()).mix(dyno_->revision());
         for (int i = 0; i < count(); ++i)
         {
@@ -1600,7 +1619,14 @@ namespace tee::ui
     void AppFrame::pointerDown(const funkgui::PointerEvent& e)
     {
         dirty_ = true;
+        // A press on the stage (not on the card itself) may open or close the card on the picture.
+        const funkgui::Point p{ e.x, e.y };
+        const std::string before = selection_.path();
+        const bool onStage = !askOpen() && !keyDialogOpen() && stageRect().contains(p)
+                             && !(card_->isOpen() && cardItem_->bounds().contains(p));
         Board::pointerDown(e);
+        if (onStage)
+            card_->afterPress(before, selection_.path(), selection_.hovered(), p);
     }
 
     void AppFrame::pointerDrag(const funkgui::PointerEvent& e)
@@ -1638,6 +1664,16 @@ namespace tee::ui
             return keyDialog_->type(e);
         if (focus() >= 0 && item(focus()).takesAllKeys() && Board::key(e))
             return true;
+        if (e.key == funkgui::Key::escape && card_->isOpen())
+        {
+            const bool taken = Board::key(e);
+            if (!taken)
+            {
+                card_->close();
+                return true;
+            }
+            return taken;
+        }
         const bool command = e.mods.cmd || e.mods.ctrl;
         if (command && e.key == funkgui::Key::character && (e.ch == 'z' || e.ch == 'Z'))
         {

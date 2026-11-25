@@ -206,3 +206,10 @@ sheet will include every registered workspace.
   workspace's own page gets a page of its own; the filter reaches every page of the workspace.
   `AppFrame::inspectorRows()` and `inspectorValueRect(path)` (Rows' value box, else the FieldPage's control) for
   tests. Keyboard: Tab focuses the rows as one widget, Down picks a row (its help shows then).
+- The card on the picture (J2's `PartCard`, wired as docs/ui-kit.md's second hook): a press that selects a part on the
+  stage opens it; a press on no part, Escape, another workspace, the chat and the settings close it.
+  `AppFrame::partCard()`, `partCardItem()`. Test: frame.card (a picture: ENGINE is U2's stage).
+- The settings' WHEEL row for card B's G29: `FrameServices::wheelOn`, `setWheelOn`, `wheelStatus` (shown only while all
+  three are served; card B serves them where a wheel is read); Off / On, card B's words under it. To fit every row at
+  1100 x 700 the QUALITY sentence went (ECONOMY's hover help says it; without the shell's quality FULL and ECONOMY are
+  disabled) and CLAUDE DESKTOP's off button reads DENY (two OFFs a screen reader could not tell apart).

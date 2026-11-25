@@ -38,6 +38,7 @@
 #include "kit/bind/Binding.h"
 #include "kit/bind/Fields.h"
 #include "kit/bind/Units.h"
+#include "kit/inspect/PartCard.h"
 #include "kit/inspect/RowsPage.h"
 #include "kit/widgets/Basic.h"
 #include "kit/widgets/Board.h"
@@ -121,6 +122,11 @@ namespace tee::ui
         // click types it or opens its menu), else the FieldPage's control (a vertical drag turns a knob). Empty: not
         // shown on the page in view.
         funkgui::Rect inspectorValueRect(const std::string& path) const;
+        // The card on the picture (J2's PartCard, the owner's next pick): a press that selects a part on the stage
+        // opens a card beside it with the part's first fields; a press on no part, Escape, another workspace, the chat
+        // or the settings close it.
+        const PartCard& partCard() const { return *card_; }
+        FieldInspector& partCardItem() { return *cardItem_; }
         void showInspectorPage(int p);
         // The settings page (the top bar's SETTINGS; the inspector of a workspace with no Spec section): the audio
         // device, the theme, the units, the keys. unitsShown/showUnits are J2's names for it.
@@ -131,6 +137,9 @@ namespace tee::ui
         // The settings' CLAUDE DESKTOP row's line (FrameServices::desktopAllowed, allowDesktop, desktopStatus): a
         // refusal's why, the status (Session::statusNote), or what off means. Empty: no row.
         std::string desktopLine() const;
+        // The settings' WHEEL row's line (FrameServices::wheelOn, setWheelOn, wheelStatus: card B's G29): its status, or
+        // what off and on mean. Empty: no row.
+        std::string wheelLine() const;
 
         // The key chat (card A's ChatView: a kit Widget the shell makes and hands over, so ui/ links nothing of the
         // assistant). The top bar's CHAT opens it in the inspector's column (the page, its tabs and the ribbon give it
@@ -254,8 +263,13 @@ namespace tee::ui
         Button *warmStart_ = nullptr, *coldStart_ = nullptr;   // ENGINE START (FrameServices::coldStart)
         Button *desktopOff_ = nullptr, *desktopOn_ = nullptr;  // CLAUDE DESKTOP (FrameServices::allowDesktop)
         float desktopNoteY_ = -1.0f;
+        Button *wheelOff_ = nullptr, *wheelOn_ = nullptr;      // WHEEL (FrameServices::wheelOn)
+        float wheelNoteY_ = -1.0f;
         std::string desktopWhy_;                               // the switch's last refusal (cleared by a change)
         void setDesktop(bool on);
+        // the card on the picture
+        FieldInspector* cardItem_ = nullptr;
+        std::unique_ptr<PartCard> card_;
         // the key chat
         Widget* chat_ = nullptr;
         ChatSlot* chatSlot_ = nullptr;   // made before the dialogs: they draw over the chat

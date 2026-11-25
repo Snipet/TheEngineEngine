@@ -38,6 +38,8 @@ namespace
         // the switch (a refusal's words in `refuseWith`), the status line, the key store (what was saved, never shown).
         bool desktop = false;
         std::string refuseWith, status, savedKey, refuseKey;
+        bool wheel = false;     // card B's G29 (FrameServices::wheelOn ...), served with the assistant's: every row
+        std::string wheelSays;
         int saves = 0;
         std::unique_ptr<AppFrame> frame;
         std::unique_ptr<funkgui::HeadlessHost> host;
@@ -103,6 +105,10 @@ namespace
                     savedKey.clear();
                     return true;
                 };
+                s.wheelOn = [this] { return wheel; };
+                s.setWheelOn = [this](bool on) { wheel = on; };
+                s.wheelStatus = [this] { return wheelSays; };
+                s.audioMenu = [] {};   // the real window's: its button beside the device's line
             }
             std::vector<tee::ui::WorkspaceSlot> slots = tee::ui::defaultSlots();
             for (tee::ui::WorkspaceSlot& sl : slots)
@@ -1072,6 +1078,7 @@ namespace
         rig.frame->showSettings(true);
         rig.host->tick(20);
         CHECK_MSG(rig.frame->desktopLine() == "Off: the app listens on nothing.", rig.frame->desktopLine());
+        CHECK_MSG(rig.frame->wheelLine() == "Off: the wheel is not read.", rig.frame->wheelLine());
         // Every unit's stepper still above the cockpit at the smallest window, the row added.
         for (const tee::ui::Stepper* st : rig.frame->unitSteppers())
             CHECK_MSG(st->bounds().bottom() <= rig.frame->inspectorRect().bottom(), std::to_string(st->bounds().bottom()));
@@ -1081,8 +1088,12 @@ namespace
         rig.status = "Claude Desktop connected, 3 changes";
         rig.host->tick(5);
         CHECK_MSG(rig.frame->desktopLine() == "Connected, 3 changes", rig.frame->desktopLine());
+        // WHEEL on: card B's words under it.
+        rig.wheelSays = "set the switch on the wheel to PS3";
+        CHECK(clickOn(*rig.host, "On") && rig.wheel);
+        CHECK_MSG(rig.frame->wheelLine() == rig.wheelSays, rig.frame->wheelLine());
         golden("frame.desktop.connected", *rig.host);
-        CHECK(clickOn(*rig.host, "Off") && !rig.desktop);
+        CHECK(clickOn(*rig.host, "Deny") && !rig.desktop);
         rig.refuseWith = "another app has Claude Desktop's link";
         CHECK(clickOn(*rig.host, "Allow") && !rig.desktop);
         CHECK_MSG(rig.frame->desktopLine() == "Not allowed: another app has Claude Desktop's link", rig.frame->desktopLine());
@@ -1284,6 +1295,46 @@ namespace
             CHECK(f.askOpen() && !ready(first) && !ready(second));
         }
         CHECK(ready(first) && first.get() == false && ready(second) && second.get() == false);
+        return 0;
+    }
+}
+
+namespace
+{
+    using namespace tee::test::views;
+    using tee::ui::AppFrame;
+
+    // The card on the picture (J2's PartCard, wired by the frame): a press that selects a part on ENGINE's stage opens
+    // a card over the stage with the part's first fields; Escape closes it; a press on another part moves it; another
+    // workspace closes it. The real rail (ENGINE as its package draws it).
+    VIEW_TEST(testFramePartCard, "frame.card")
+    {
+        FrameRig rig(1280, 800, 2.0f, 4.6, false);
+        AppFrame& f = *rig.frame;
+        rig.showWorkspace("engine");
+        CHECK(!f.partCard().isOpen());
+        // A press that selects a part: a walk over the stage until one does.
+        const funkgui::Rect st = f.stageRect();
+        bool chose = false;
+        for (float y = st.y + 40.0f; y < st.bottom() - 20.0f && !chose; y += 24.0f)
+            for (float x = st.x + 40.0f; x < st.right() - 20.0f && !chose; x += 24.0f)
+            {
+                rig.host->moveTo(x, y, 1);
+                rig.host->click(x, y);
+                rig.host->tick(10);
+                chose = !f.selection().empty() && f.partCard().isOpen();
+            }
+        CHECK_MSG(chose, "no press on ENGINE's stage opened a card");
+        if (!chose)
+            return 0;
+        CHECK(f.partCardItem().shown() && st.contains({ f.partCardItem().bounds().x, f.partCardItem().bounds().y }));
+        CHECK_MSG(f.partCard().path() == f.selection().path(), f.partCard().path());
+        picture("frame.card", *rig.host);   // ENGINE is U2's stage: a picture, not a golden of mine
+        funkgui::KeyEvent esc;
+        esc.key = funkgui::Key::escape;
+        f.key(esc);
+        rig.host->tick(5);
+        CHECK(!f.partCard().isOpen() && !f.partCardItem().shown());
         return 0;
     }
 }
