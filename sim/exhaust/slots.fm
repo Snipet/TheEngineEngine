@@ -2016,14 +2016,19 @@ module XBuild
                 {
                     const float dp = net.jP[jCol[bankCol[k]]] - pTurb;
                     pVar[k] += kMean * (dp * dp - pVar[k]);
-                    // the gas's speed through it: half its branches' flows, over the collector's pipe's area
-                    const int j = jCol[bankCol[k]];
+                    // the gas's speed through it as the blowdowns drive it: the flow its ports let in (what the
+                    // valves let out, the engine's alone), over the collector's pipe's area, never past the gas's speed
+                    // of sound (a flow chokes there). Not the junction's own flows: a bang's expansion and the waves it
+                    // leaves ringing would stir the next one's flame, a loop the pipes' linear waves let run past sound
+                    // (G's finding, 25 Nov: 2000 to 3000 m/s on a spark-cut limiter)
                     float qs = 0.0f;
-                    for (int i = 0; i < net.jN[j]; ++i)
-                        qs += fabsf(net.bQ[j * XN_BR + i]);
+                    for (int i = 0; i < net.np; ++i)
+                        if (portTo[i] == bankCol[k])
+                            qs += fmaxf(net.portQ[i], 0.0f);
                     const int sct = bangSect();
                     const float dia = fmaxf(heat.dia[sct], 0.01f);
-                    const float u = 0.5f * qs / (0.7853982f * dia * dia) + mach[sct] * sqrtf(1.33f * 287.0f * fmaxf(heat.tGas[sct], 300.0f));
+                    const float cS = sqrtf(1.33f * 287.0f * fmaxf(heat.tGas[sct], 300.0f));
+                    const float u = fminf(qs / (0.7853982f * dia * dia * fmaxf(heat.br[sct], 1.0f)) + mach[sct] * cS, cS);
                     uHold[k] = fmaxf(u, uHold[k] * kHold);
                 }
         float qi = 0.0f;

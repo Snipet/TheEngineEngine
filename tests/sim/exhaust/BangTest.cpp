@@ -140,6 +140,11 @@ TEST_CASE("measure: the engine's collector, and a cut charge's burn time there",
     {
         player->reset(48000.0);
         tee::applyBuild(*player, tee::test::engineBuild(*player, name));
+        {
+            const int i = player->specIndex("exhaust.bang");
+            REQUIRE(i >= 0);
+            player->setSpec(static_cast<std::size_t>(i), 1.0, 0);
+        }
         auto rd = [&](const std::string& path) {
             double v = 0.0;
             std::string error;
@@ -182,6 +187,57 @@ TEST_CASE("measure: the engine's collector, and a cut charge's burn time there",
                             name, thr, rd("crank.rpm"), tg, p / 1000.0, dia * 1000.0, br, u, m * 1000.0, st, len, fold * 1e3,
                             front * 1e3);
             }
+        }
+    }
+}
+
+// Each bang the account hands over on a spark-cut limiter (exhaust.bang 1, the V8 archetype): its slug and what the
+// exhaust made of it
+TEST_CASE("measure: the bangs of a spark-cut limiter, one by one", "[.][measure]")
+{
+    auto player = tee::test::enginePlayer(48000.0);
+    tee::applyBuild(*player, tee::test::engineBuild(*player, "archetypes/flat-plane-v8-45"));
+    auto rd = [&](const std::string& path) {
+        double v = 0.0;
+        std::string error;
+        INFO(path << ": " << error);
+        REQUIRE(player->read(path, v, error));
+        return v;
+    };
+    auto set = [&](const std::string& path, double v) {
+        const int i = player->specIndex(path);
+        REQUIRE(i >= 0);
+        player->setSpec(static_cast<std::size_t>(i), v, 0);
+    };
+    set("exhaust.bang", 1);
+    set("ecu.limiter.kind", 1);
+    std::vector<float> l(48), r(48);
+    auto run = [&](double s) {
+        for (int b = 0; b < static_cast<int>(s * 1000.0); ++b)
+            player->process(l.data(), r.data(), 48);
+    };
+    player->controls().mode = tee::EnginePlayer::kModeBench;
+    player->controls().ignition = tee::EnginePlayer::kIgnitionStart;
+    run(1.5);
+    player->controls().ignition = tee::EnginePlayer::kIgnitionOn;
+    run(0.5);
+    player->controls().throttle = 1.0f;
+    run(1.0);
+    double given = rd("exh.b.bangGiven");
+    int shown = 0;
+    for (int k = 0; k < 2000 && shown < 25; ++k)
+    {
+        run(0.001);
+        const double g = rd("exh.b.bangGiven");
+        if (g != given)
+        {
+            std::printf("bang: %.0f J given, %.0f J burned (share %.2f); S_L %.2f, S_T %.1f m/s, slug %.3f m, gas %.0f m/s, "
+                        "burn %.2f ms (one front %.2f ms); rpm %.0f\n", g - given, rd("exh.b.bangHeat"), rd("exh.b.bangShare"),
+                        rd("exh.b.bangSL"), rd("exh.b.bangST"), rd("exh.b.bangLen"),
+                        std::max(rd("exh.b.uHold[0]"), rd("exh.b.uHold[1]")), rd("exh.b.bangTau") * 1e3,
+                        rd("exh.b.bangTauFront") * 1e3, rd("crank.rpm"));
+            given = g;
+            shown += 1;
         }
     }
 }
