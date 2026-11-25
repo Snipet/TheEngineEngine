@@ -134,6 +134,78 @@ The 7.0's port quality from the LS7 sheet, under today's law (content, P's): lea
 - intake: +0.2 / +7.5 / 0.0 / -2.8 / -5.6 %;
 - exhaust: +3.1 / +4.3 / +0.6 / -1.7 / -3.3 %.
 
+## Ten production four-valve heads (P's sheets, 9594f39c)
+
+The heads are nine rows from Stan Weiss's compilation, at 28 in with their valves stated (a secondary compilation,
+"use at your own risk"), and DSport's FA20D, whose depression is not stated, so it counts for shape only. Each form is
+anchored at the sheet's last point as above. The arithmetic is **measured**.
+
+The sheet's rise from d / 4 to its last point, intake / exhaust:
+
+| head | rise |
+|---|---|
+| K20A2 | +14 / +14 % |
+| 2ZZ-GE | +14 / +16 % |
+| FA20D | +14 / +10 % |
+| BP 1.8 | +7 / +13 % |
+| 2JZ-GT | +7 / +8 % |
+| SR20DE | +7 / +4 % |
+| VQ35 | +6 / +3 % |
+| 4A-GE | +4 / +4 % |
+| 7M-GE | +2 / +6 % |
+| 4G63 | 0 / +10 % |
+
+The tanh over the same spans rises +4 to +7 %. The median head rises +7 % (intake) and +9 % (exhaust). From 0.2 in
+up, the model over the sheet on all ten:
+
+- tanh-min: 0.94 to 1.19, rms 5.7 % (intake) and 5.1 % (exhaust);
+- series: 0.86 to 1.01, always under, rms 6.7 % and 6.1 %.
+
+**Reading.** The heads do not agree on a shape, and the tanh sits inside their scatter. The +15 % of the first three
+sheets is the top of a spread, not the law. The K20A2 is high on both its sheets (+14 %, +15 %): that is the head's
+own port. **No change to the port limit.** The two-stage build's stage B under-read (+5.6 % against its head's
++12.6 %) is a known per-head under-read, not a model shape.
+
+**Low lift.** At 0.100 in (2.5 mm), the effective area over the curtain on the head's diameter:
+
+- four-valve intake: 0.60 to 0.79, median 0.66;
+- four-valve exhaust: 0.60 to 0.76, median 0.63;
+- two-valve: LS7 0.70 / 0.67, 882 0.78 / 0.84.
+
+The model's 0.73 governs at 0.100 in on four-valve cards with q above about 1.1. So it sits about 10 to 15 % over
+the median production four-valve head where the overlap's flow begins. A per-class coefficient is the lead's ruling
+to make. Below 2.5 mm nothing is measured.
+
+## The overlay: twelve heads normalised (the lead's item 1, 02:22)
+
+Each head's effective area over its valves' area is plotted against L / d and scaled by its own value at L / d =
+0.25. All sheets pass d / 4, and their tops fall at different L / d. The heads are ten four-valve (above) and two
+two-valve (the LS7, the 882). The arithmetic is **measured**.
+
+Median (spread) against the tanh's own ratio to its value at d / 4:
+
+| L / d | intake median | intake spread | exhaust median | exhaust spread | tanh |
+|---|---|---|---|---|---|
+| 0.100 | 0.52 | −7 to +15 % | 0.52 | −18 to +14 % | 0.63 |
+| 0.150 | 0.74 | −4 to +12 % | 0.78 | −16 to +6 % | 0.82 |
+| 0.200 | 0.91 | −5 to +7 % | 0.92 | −7 to +5 % | 0.94 |
+| 0.300 | 1.04 | −4 to +5 % | 1.04 | −3 to +3 % | 1.03 |
+| 0.350 | 1.05 | −6 to +7 % | 1.07 | −5 to +5 % | 1.05 |
+| 0.400 | — | — | 1.07 | −5 to +6 % | 1.06 |
+
+The four-valve medians equal the all-heads medians at every point, so no split by valve count shows.
+
+**Reading.**
+
+- Past the knee the heads collapse within ±3 to 7 %, onto the tanh to within 1 to 2 %. The port limit's form is the
+  median head's, and it stays.
+- The K20A2 sits at the top of the spread: 1.13 at L / d 0.35 against a median of 1.05. Between the two-stage build's
+  lifts (L / d 0.243 to 0.361) its sheet gains about +14 %, where the median head and the model gain about +6 %. The
+  build's stage B under-read is that head's own port.
+- A card cannot carry a shape today: q sets level only. A per-card rise is the lead's ruling.
+- Below the knee the sheets sit under the tanh, but there the model's 0.73 of the curtain governs (the low-lift
+  coefficient above).
+
 ## Tests
 
 Two integrated valvetrain cases that the trial flipped are kept restated on their properties, and they pass on the
