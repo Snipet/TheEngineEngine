@@ -116,8 +116,9 @@ module BoostSpec
     int heatSettle [[fminus::range(0, 1000000)]] [[fminus::default(0)]] [[ui::label("Settle the intercooler's heat")]]
         [[ui::unit("presses")]] [[ui::hidden]]
         [[ui::help("Counts requests: at each increase the intercooler's core is put where the present flow and the air through it would hold it (for a tool: a dyno's sweep without waiting for the core)")]];
-    // (card N2, the lead's ruling on the sequential join: a maker's changeover speed, which a source can fill)
+    // (card N2, the lead's ruling on the sequential join: a maker's changeover speed, which a source can fill; not hidden,
+    // since a hidden field is not read from a build's file (Build.cpp) and the build is where the source states it)
     float seqRpm [[fminus::range(0, 20000)]] [[fminus::default(0)]] [[ui::label("Second turbo joins above")]]
-        [[ui::unit("rpm")]] [[ui::hidden]]
+        [[ui::unit("rpm")]]
         [[ui::help("A sequential pair's changeover speed; 0: the speed at which the engine passes the join flow at the design boost")]];
 };
