@@ -187,6 +187,24 @@ module XBuild
     float qIn;                  // the ports' flow in and the ends' flow out, smoothed (m^3/s)
     float qOut;
     int ready;
+    // exhaust.bang 1 (Burned in the pipe): each bank's burns in its collector (bangIn), their heat released there as a
+    // volume source (docs/models/exhaust.md, "Bangs: heat released in the pipe")
+    int bangOn;
+    PipeBurn burn[2];
+    float pVar[2];              // the collector's pressure about its mean, its mean square (Pa^2; the flow's pulsing)
+    float uHold[2];             // the gas's speed through the collector (m/s), its blowdowns' peak, held over some 10 ms
+    float kHold;
+    float bangTauFront;         // the last burn's time had one front run its length (s), against the folded burn used
+    float bangTau;              // the last burn's time (s), its heat (J), the share that burned before the gas left
+    float bangHeat;
+    float bangShare;
+    float bangSL;               // its laminar and turbulent flame speeds (m/s) and the slug's length (m)
+    float bangST;
+    float bangLen;
+    float bangGiven;            // J handed to bangIn since the reset, and J of it carried out unburned (swept)
+    float bangSwept;
+    float bangRate;             // W: the heat being released now, all banks
+    float bangPeak;             // W: the largest bangRate since the reset (a test's)
 
     void setup(float rateIn)
     {
@@ -230,6 +248,8 @@ module XBuild
         k16Flow = 1.0f - expf(-16.0f / (0.06f * rate));
         kUse = 1.0f - expf(-16.0f / (0.3f * rate));
         kMean = 1.0f - expf(-4.0f / (0.2f * rate));
+        kHold = expf(-4.0f / (0.01f * rate));
+        bangReset();
         tick4 = 0;
         tickPass = 0;
         passFix = 1;
@@ -1844,6 +1864,7 @@ module XBuild
         // the exhaust flap: toward the brake's command in flapTime; its relief a spring under the plate that gives
         // above flapRelief (wide open 30 % above it), the plate following in some 20 ms (judgement: a relief's is a
         // stiff spring and a light plate)
+        bangSet(sp->bang);
         for (int s = 0; s < nSides; ++s)
         {
             const float want = sp->flapKind != 0 ? fCmd : 0.0f;
@@ -1970,6 +1991,8 @@ module XBuild
 
     void step(float* q) [[clang::nonblocking]]
     {
+        if (bangOn != 0)
+            bangStep();
         net.step(q);
         // the meters: every 4th sample (means over some 0.2 s)
         tick4 = tick4 + 1 >= 4 ? 0 : tick4 + 1;
@@ -1987,6 +2010,22 @@ module XBuild
         }
         if (nc > 0)
             pTurb += kMean * (pc / (float)nc - pTurb);
+        if (bangOn != 0)
+            for (int k = 0; k < 2; ++k)
+                if (bankCol[k] >= 0 && jCol[bankCol[k]] >= 0)
+                {
+                    const float dp = net.jP[jCol[bankCol[k]]] - pTurb;
+                    pVar[k] += kMean * (dp * dp - pVar[k]);
+                    // the gas's speed through it: half its branches' flows, over the collector's pipe's area
+                    const int j = jCol[bankCol[k]];
+                    float qs = 0.0f;
+                    for (int i = 0; i < net.jN[j]; ++i)
+                        qs += fabsf(net.bQ[j * XN_BR + i]);
+                    const int sct = bangSect();
+                    const float dia = fmaxf(heat.dia[sct], 0.01f);
+                    const float u = 0.5f * qs / (0.7853982f * dia * dia) + mach[sct] * sqrtf(1.33f * 287.0f * fmaxf(heat.tGas[sct], 300.0f));
+                    uHold[k] = fmaxf(u, uHold[k] * kHold);
+                }
         float qi = 0.0f;
         for (int i = 0; i < net.np; ++i)
             qi += net.portQ[i];
@@ -2107,6 +2146,149 @@ module XBuild
                 r = 1;
         }
         return l != 0 && r != 0 ? 2 : 1;
+    }
+
+    // ---- exhaust.bang 1: the bangs as heat released in the collector's gas ----
+
+    void bangReset()
+    {
+        for (int k = 0; k < 2; ++k)
+        {
+            burn[k].reset();
+            pVar[k] = 0.0f;
+            uHold[k] = 0.0f;
+        }
+        net.popQOn = bangOn;
+        for (int i = 0; i < XN_POPS; ++i)
+            net.popQ[i] = 0.0f;
+        bangTau = 0.0f;
+        bangHeat = 0.0f;
+        bangShare = 0.0f;
+        bangSL = 0.0f;
+        bangST = 0.0f;
+        bangLen = 0.0f;
+        bangTauFront = 0.0f;
+        bangGiven = 0.0f;
+        bangSwept = 0.0f;
+        bangRate = 0.0f;
+        bangPeak = 0.0f;
+    }
+
+    void bangSet(int on)
+    {
+        if (on != bangOn)
+        {
+            bangOn = on;
+            bangReset();
+        }
+    }
+
+    // The collector's gas where bank k's bangs burn: its section (the second level's when the first is off)
+    int bangSect()
+    {
+        return heat.on[XH_COLL] != 0 ? XH_COLL : (heat.on[XH_COLL2] != 0 ? XH_COLL2 : XH_PRIM);
+    }
+
+    float bangP()
+    {
+        return 101325.0f + pTurb;
+    }
+
+    // How long a premixed slug takes to burn (s), lit by a hot gas at one end (own 0) or burning already within (own
+    // 1: its flame still alight as it left; two fronts, judgement for "along its length"); -1 when no flame runs in it.
+    // - Its laminar flame speed: Metghalchi and Keck's correlation (Combustion and Flame 48, 1982), iso-octane's
+    //   constants (0.2632 m/s, -0.8472 m/s, phi 1.13 at the fastest: ANSYS CFX Theory Guide, Table 7.2, which gives
+    //   them; the exponents 2.18 - 0.8 (phi - 1) and -0.16 + 0.22 (phi - 1) and the burned gas's (1 - 2.1 xb), Heywood's
+    //   Table 9.3 as recalled, not re-read here), at the slug's temperature as it left and the collector's pressure.
+    // - The turbulence: a tenth of the gas's speed through the collector as its blowdowns drive it, and Damkohler's
+    //   large-scale S_T = S_L + u'.
+    // - The burning velocity is against the unburned gas: the burned gas's expansion moves the front in the pipe but
+    //   pushes the unburned gas ahead as fast, so it does not shorten the burn. The flame's area does: the hot gas
+    //   folding into the slug along its length (below) is that area.
+    float burnTime(float mass, float t, float phi, float xb, int own)
+    {
+        const int sct = bangSect();
+        const float p = bangP();
+        const float tu = fminf(fmaxf(t, 300.0f), 1500.0f);
+        const float dphi = phi - 1.13f;
+        const float sl0 = 0.2632f - 0.8472f * dphi * dphi;
+        if (sl0 <= 0.0f || phi < 0.6f || phi > 1.8f)
+            return -1.0f;
+        const float al = 2.18f - 0.8f * (phi - 1.0f);
+        const float be = -0.16f + 0.22f * (phi - 1.0f);
+        const float sl = sl0 * expf(al * logf(tu / 298.0f)) * expf(be * logf(p / 101325.0f)) * fmaxf(1.0f - 2.1f * xb, 0.0f);
+        if (sl <= 0.0f)
+            return -1.0f;
+        // the gas's speed at the slug as the blowdown that lights it drives it (the peak held over 10 ms), its
+        // turbulence a tenth of that (pipe flows' intensities run some 5 to 10 %; the upper end for a pulse's, judgement)
+        const float ue = fmaxf(uHold[0], uHold[1]);
+        const float ut = 0.1f * ue;
+        const float st = sl + ut;
+        const float dia = fmaxf(heat.dia[sct], 0.01f);
+        const float area = 0.7853982f * dia * dia * fmaxf(heat.br[sct], 1.0f);
+        const float len = mass * 287.0f * tu / p / area;
+        bangSL = sl;
+        bangST = st;
+        bangLen = len;
+        // one front along its length (own flame: two) against the hot gas folding into it: the blowdown's gas runs into
+        // the slug at its speed and the flame burns across the pipe from that interface (half the bore at S_T). Which
+        // holds is judgement (no source found for a slug in an exhaust); the folded burn is used, the front's kept
+        bangTauFront = fminf(fmaxf(len / ((own != 0 ? 2.0f : 1.0f) * st), 0.0005f), 0.5f);
+        const float fold = (own != 0 ? 0.0f : len / fmaxf(ue, 1.0f)) + 0.5f * dia / st;
+        return fminf(fmaxf(fminf(fold, bangTauFront), 0.0005f), 0.5f);
+    }
+
+    // The gas's stay from the collector to the air (s): each section's length over its mean speed
+    float stay()
+    {
+        float s = 0.0f;
+        for (int i = bangSect(); i < XH_SECT; ++i)
+            if (heat.on[i] != 0)
+            {
+                const float c = sqrtf(1.33f * 287.0f * fmaxf(heat.tGas[i], 300.0f));
+                s += heat.len[i] / fmaxf(mach[i] * c, 1.0f);
+            }
+        return s;
+    }
+
+    // A premixed burn on bank k: `q` J of heat in a slug of `mass` kg at `t` K, phi, its burned gas xb, own flame
+    void bangIn(int k, float q, float mass, float t, float phi, float xb, int own)
+    {
+        if (bangOn == 0 || k < 0 || k > 1 || bankCol[k] < 0 || q <= 0.0f)
+            return;
+        bangGiven += q;
+        const float tau = burnTime(mass, t, phi, xb, own);
+        if (tau <= 0.0f)
+        {
+            bangSwept += q;
+            return;
+        }
+        // what burns before the gas has left the pipes (what leaves burns outside: not this source)
+        const float share = fminf(stay() / tau, 1.0f);
+        bangTau = tau;
+        bangHeat = q * share;
+        bangShare = share;
+        bangSwept += q * (1.0f - share);
+        burn[k].start(q * share, tau);
+    }
+
+    // Each sample: each bank's burns' heat into its collector's gas, a volume source (Rayleigh's: the gas a heat
+    // release expands, (gamma - 1) / (gamma p) of it; gamma 1.33, the exhaust's)
+    void bangStep() [[clang::nonblocking]]
+    {
+        const float k = 0.33f / (1.33f * bangP());
+        bangRate = 0.0f;
+        for (int b = 0; b < 2; ++b)
+            if (bankCol[b] >= 0)
+                net.popQ[bankCol[b]] = 0.0f;
+        for (int b = 0; b < 2; ++b)
+            if (bankCol[b] >= 0)
+            {
+                const float w = burn[b].rate(1.0f / rate);
+                net.popQ[bankCol[b]] += k * w;
+                bangRate += w;
+            }
+        bangPeak = fmaxf(bangPeak, bangRate);
     }
 
     // A bang at a collector: the reference's pressure pulse and crackle there (card H's fuel account decides when)

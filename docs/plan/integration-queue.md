@@ -802,6 +802,33 @@ two-stage build's high lobe at 247 deg on a centre of 98).
 - N2's (b) reaches D2 as one patch file under docs/handoffs/patches/ (a docs-only push), for a first retune of the
   brake.
 
+## 25 Nov 13:59: the window's first pushes; two findings held outside it
+
+- **On the branch since `main` moved (tip 1f02d786):** the steward's 47b69019 (libcurl and libsecret in
+  scripts/bootstrap-cloud.sh) and 884e192b (the soak only on `[soak]` / `[soak-all]`, by hand, or nightly at 03:23
+  UTC once `main` carries the file); U5's 94bd0261 (a help line on every item of every stage, `ui.stages.help`
+  failing on an item without one; 546 of 546 on U5's merged tip); N1's fe250071, 4e057986, b225b7a6 (the 93 grade,
+  `spec.fuel.octane` in AKI, 0 = the grade's own). C's knock bake version 5 and U4's octane number follow N1's.
+  76420f32 (= `main`) is green on Windows too (13:50).
+- **The compressor map's two judgement coefficients are low against published maps** (N2 on P's sources, section
+  21: BorgWarner S300SX3 and S400SX-E): the rise `0.45 U^2/(cp T)` gives a knee of 3.93 at 560 m/s where the maps
+  peak at 4.6 to 4.7 at 561 (back-solved 0.512 to 0.539 at 521 to 561 m/s, 0.467 at 607; the lead's own arithmetic
+  on 4.65 at 561 m/s: 0.516); the choke flow per inducer area 164 kg/s m^2 at ratio 3.0 against 184 and 224. The
+  width is about right (2.64 at 2.6 against 2.7 and 3.0). **Ruled: a model-wide table, local, predictions first**
+  (both coefficients from the two maps by a rule stated first; validated on the same maps' lower speed lines, which
+  P has read, 7ad4c0bc; then every boosted build re-read, petrol validation rows included). It lands in its own
+  window with its own bake. **(A) is the fallback and is measured:** the tractor on (b)'s 76.2 mm with the vanes
+  fully open at rated makes 482 to 483 kW at a shaft of 0.969 to 0.985 and keeps the published 1000 (2580 N m);
+  fuel and lambda (1.67 to 1.75) unchanged, the smoke limit never cuts.
+- **The robotised clutch slips open under a strong compression brake and never closes** (D2's trace of GradeTest
+  :169 on the package's valves: -1450 N m at 1150 rpm; slip -0.4 to -30 rad/s in 1.3 s; the brake drops out at its
+  cut-out, correctly; the engine at idle with the road at 1816 rpm in gear 11). The case keeps its gear and gains a
+  check that the brake is still on at the end; the cure is the integrator's (vehicle.fm about :720-765), asked
+  13:57, local until called. Not reachable on `main`'s builds as far as measured (the old valves' -1324 N m held).
+- **Nits from the lead's look at U5's pictures (the lead's own build of 25d7b8e1):** SCOPE's tooltip for the
+  pressure plot lies over the knock-by-cylinder row its own text points to (U5, a later ui push); DYNO's "none yet:
+  edit the build" runs past its panel's right edge (U4, with the octane number's push).
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
 - **25 Nov 13:43: `main` IS AT 76420f32. THE WINDOW IS OPEN for the items named here and nothing else.** Each agent
