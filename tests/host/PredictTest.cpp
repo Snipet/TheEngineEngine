@@ -6,6 +6,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <atomic>
 #include <chrono>
 #include <cmath>
 #include <thread>
@@ -125,12 +126,18 @@ TEST_CASE("a newer request replaces the one running; only its curves come", "[pr
     options.sampleRate = 24000.0;
     options.minCycles = 30;
     options.maxCycles = 30;
+    std::atomic<int> points{0};
+    options.onPoint = [&points] { ++points; };
     PredictService service(sim, options);
     Build first(sim->fields());
     Build second(sim->fields());
     second.set("engine.torque", 300);
     service.request(first);
-    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    // the first running (a point of it taken) before the second replaces it: a state, not a time
+    const auto running = std::chrono::steady_clock::now() + std::chrono::seconds(30);
+    while (points.load() == 0 && std::chrono::steady_clock::now() < running)
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    REQUIRE(points.load() > 0);
     const std::uint64_t number = service.request(second);
     const std::vector<PredictCurve> taken = until(service, 60.0);
     REQUIRE(!taken.empty());

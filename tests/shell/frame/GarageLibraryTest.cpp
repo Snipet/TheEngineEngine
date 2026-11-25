@@ -8,10 +8,14 @@
 #include "player/SimAdapter.h"
 #define TEE_REGISTER_SHARED_SIM
 #include "support/SharedSim.h"
+#include "tee/Fields.h"
+#include "tee/Program.h"
+#include "tee/Schema.h"
 #include "tee/SimHost.h"
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
 #include <filesystem>
 #include <chrono>
 #include <memory>
@@ -158,6 +162,57 @@ TEST_CASE("shell: the garage's library over the builds on disk", "[shell][files]
     }
 }
 
+// The test suite's fixtures under content/builds (kFixtureFolders: combo/, the combination archetypes and the fuzzer's
+// findings, builds that diverge) are not the application's: GARAGE never lists one, and lists every shipped build it
+// listed before (the same count as the whole tree less the fixtures' own).
+TEST_CASE("shell: the garage's library lists no test fixture", "[shell][files][garage]")
+{
+    const fs::path shipped = fs::path(TEE_SOURCE_DIR) / "content" / "builds";
+    const fs::path combo = shipped / "combo";
+    const fs::path none = fs::path(TEE_SOURCE_DIR) / "out" / "shell" / "files" / "garage-none";
+    player::SimAdapter::Options o;
+    o.directory = fs::path(TEE_SOURCE_SIM_DIR);
+    std::string errors;
+    const std::unique_ptr<player::SimAdapter> sim = test::sharedAdapter(errors, o);
+    INFO(errors);
+    REQUIRE(sim != nullptr);
+    files::BuildFile doc(sim->build());
+    const app::GarageLibrary lib(doc, std::shared_ptr<Sim>(), shipped, none);
+    // the fixtures as the shipped directory itself: what the library read under combo/ before it was ruled out
+    const app::GarageLibrary fixtures(doc, std::shared_ptr<Sim>(), combo, none);
+    REQUIRE(fixtures.builds().size() >= 5);
+    std::size_t archetypes = 0;
+    for (const auto& b : lib.builds())
+    {
+        const std::string rel = fs::path(b.id).lexically_relative(shipped).generic_string();
+        INFO(rel);
+        CHECK(rel.rfind("combo/", 0) != 0);
+        CHECK(b.name.find("(combo)") == std::string::npos);
+        if (rel.rfind("archetypes/", 0) == 0)
+            ++archetypes;
+    }
+    // every archetype still there: as many as archetypes/ has readable builds
+    std::size_t archetypeFiles = 0;
+    for (const auto& e : fs::directory_iterator(shipped / "archetypes"))
+        if (e.path().extension() == ".json")
+            ++archetypeFiles;
+    CHECK(archetypes == archetypeFiles);
+    // and nothing else lost: the whole tree as it was read before is these plus the fixtures
+    std::size_t before = 0;
+    for (auto it = fs::recursive_directory_iterator(shipped); it != fs::recursive_directory_iterator(); ++it)
+        if (it->is_regular_file() && it->path().extension() == ".json")
+            ++before;
+    std::size_t fixtureFiles = 0;
+    for (auto it = fs::recursive_directory_iterator(combo); it != fs::recursive_directory_iterator(); ++it)
+        if (it->is_regular_file() && it->path().extension() == ".json")
+            ++fixtureFiles;
+    INFO("listed " << lib.builds().size() << ", fixtures listed alone " << fixtures.builds().size() << ", files "
+                   << before << ", fixture files " << fixtureFiles);
+    CHECK(lib.builds().size() + fixtures.builds().size() <= before);
+    CHECK(fixtures.builds().size() <= fixtureFiles);
+    CHECK(lib.builds().size() >= before - fixtureFiles - 4);   // a few shipped files may not read as builds
+}
+
 TEST_CASE("shell: the garage's library makes each whole build's curve in the background", "[shell][files][garage][nightly]")
 {
     const fs::path user = fs::path(TEE_SOURCE_DIR) / "out" / "shell" / "files" / "garage-user-curves";
@@ -195,4 +250,99 @@ TEST_CASE("shell: the garage's library makes each whole build's curve in the bac
                 CHECK(b.curve.peakPower().value > 1000.0);      // W
             }
     }
+}
+
+// The shell's BuildLibrary owns which files are builds a person opens (the lead's ruling; card A's assistant reads it):
+// its wholeBuilds() are GARAGE's whole builds, one for one, each loading by its folder-qualified name; no fixture
+// (combo/) and no part is listed or loads, each refused in words. On the real content tree; the program's front end
+// only (its Fields: no compile).
+TEST_CASE("shell: the library's whole builds are GARAGE's, by folder-qualified name; no fixture, no part",
+          "[shell][files][garage]")
+{
+    const fs::path shipped = fs::path(TEE_SOURCE_DIR) / "content" / "builds";
+    const fs::path user = fs::path(TEE_SOURCE_DIR) / "out" / "shell" / "files" / "whole-builds-user";
+    std::error_code ec;
+    fs::remove_all(user, ec);
+    std::string errors;
+    const std::unique_ptr<Program> program = Program::fromDirectory(fs::path(TEE_SOURCE_SIM_DIR), "engine.fm", {}, errors);
+    INFO(errors);
+    REQUIRE(program != nullptr);
+    std::string error;
+    const std::unique_ptr<Schema> schema = Schema::of(program->fminus(), "Engine", error);
+    REQUIRE(schema != nullptr);
+    const std::unique_ptr<Fields> fields = Fields::of(*schema, error);
+    REQUIRE(fields != nullptr);
+    tee::Build build(*fields);
+    files::BuildFile doc(build);
+
+    const app::GarageLibrary garage(doc, std::shared_ptr<Sim>(), shipped, user);
+    const files::BuildLibrary library(shipped, user);
+    const std::vector<files::WholeBuild> whole = library.wholeBuilds(*fields);
+
+    // GARAGE's whole builds, one for one
+    std::size_t garageWhole = 0, archetypes = 0;
+    std::string aPart;
+    for (const auto& b : garage.builds())
+    {
+        const fs::path rel = fs::path(b.id).lexically_relative(shipped);
+        fs::path stem = rel;
+        stem.replace_extension();
+        if (b.part != Part::whole)
+        {
+            if (aPart.empty() && rel.has_parent_path())
+                aPart = stem.generic_string();
+            continue;
+        }
+        ++garageWhole;
+        INFO(rel.generic_string());
+        const bool listed = std::any_of(whole.begin(), whole.end(), [&](const files::WholeBuild& w) {
+            return fs::equivalent(w.file, fs::path(b.id), ec);
+        });
+        CHECK(listed);
+        if (stem.generic_string().rfind("archetypes/", 0) == 0)
+            ++archetypes;
+    }
+    CHECK(whole.size() == garageWhole);
+    CHECK(archetypes >= 20);
+
+    // each loads by its name, and nothing listed is a fixture
+    for (const files::WholeBuild& w : whole)
+    {
+        INFO(w.name);
+        CHECK(w.name.rfind("combo/", 0) != 0);
+        files::BuildSummary s;
+        CHECK(library.summary(w.name, s));
+        CHECK(s.name == w.name);
+        std::vector<std::string> warnings;
+        CHECK(library.load(doc, w.name, warnings, error));
+        CHECK(fs::equivalent(doc.file(), w.file, ec));
+    }
+
+    // a fixture is refused, in words, by its qualified name
+    std::string fixture;
+    for (auto it = fs::recursive_directory_iterator(shipped / "combo"); it != fs::recursive_directory_iterator(); ++it)
+        if (it->is_regular_file() && it->path().extension() == ".json")
+        {
+            fs::path stem = it->path().lexically_relative(shipped);
+            stem.replace_extension();
+            fixture = stem.generic_string();
+            break;
+        }
+    REQUIRE_FALSE(fixture.empty());
+    std::vector<std::string> warnings;
+    CHECK_FALSE(library.load(doc, fixture, warnings, error));
+    CHECK(error.find("fixture") != std::string::npos);
+    files::BuildSummary s;
+    CHECK_FALSE(library.summary(fixture, s));
+
+    // a part (GARAGE's: what its fields hold) is not listed and is refused, in words
+    REQUIRE_FALSE(aPart.empty());
+    INFO(aPart);
+    CHECK(std::none_of(whole.begin(), whole.end(), [&](const files::WholeBuild& w) { return w.name == aPart; }));
+    CHECK_FALSE(library.load(doc, aPart, warnings, error));
+    CHECK(error.find("part") != std::string::npos);
+
+    // names that are none
+    CHECK_FALSE(library.load(doc, "archetypes/../default", warnings, error));
+    CHECK_FALSE(library.load(doc, "archetypes/no such build", warnings, error));
 }

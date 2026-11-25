@@ -2,8 +2,8 @@
 // (shell/files/BuildFiles.h), card C's tee::Build and its dyno runner:
 //
 //   builds()     every .json under content/builds (shipped, read only, its folders included: engines/, cars/,
-//                cams/...) and the user's folder (Presets::userDirectory()), shipped first, each with what its file
-//                sets (SI, by path without "spec.", the Spec's order) and its part (the file's "part", else the part
+//                cams/...; never the test suite's fixtures, kFixtureFolders) and the user's folder
+//                (Presets::userDirectory()), shipped first, each with what its file sets (SI, by path without "spec.", the Spec's order) and its part (the file's "part", else the part
 //                whose sections hold all it sets). id: the file's path. current: the file the document was last opened
 //                from or saved to, whole; its values are the document's as they stand.
 //   load(id, part)  a whole build: Build::loadFile, the document's file from then on. A part: the fields the file
@@ -43,6 +43,12 @@ namespace tee::app
     class GarageLibrary final : public ui::garage::Library
     {
     public:
+        // The shipped directory's folders that hold the test suite's fixtures, not builds the application ships (combo/:
+        // the combination archetypes, their pack and the fuzzer's findings, builds reduced until they diverge). Never
+        // listed: the owner could load one. The user's own folder is listed whole.
+        // (the rule is the shell's: files::BuildLibrary::kFixtureFolders, which the assistant reads too)
+        static constexpr const auto& kFixtureFolders = files::BuildLibrary::kFixtureFolders;
+
         // `sim` may be null (no curves), or say later what it is (a background compile): asked each tick until it has one.
         GarageLibrary(files::BuildFile& document, std::shared_ptr<Sim> sim, std::filesystem::path shipped,
                       std::filesystem::path user);

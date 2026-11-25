@@ -24,6 +24,10 @@ namespace
         e.spec("fuel.soiAdd", soiAdd);
         e.spec("fuel.overFuel", overFuel);
         e.spec("ecu.afc", afc);
+        // (the truck's torque ceiling off: these test the injection, and a tune that over-fuels lifts the ECU's torque
+        // limit with it, as diesel-pickup-tuned states none)
+        e.spec("ecu.torqueMax", 0.0);
+        e.spec("ecu.powerMax", 0.0);
         e.start();
         e.dyno(rpm, 1.0f);
         REQUIRE(e.run(3.5));

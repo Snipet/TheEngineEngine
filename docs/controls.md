@@ -99,7 +99,17 @@ in hand: the code was written against SDL's documentation and compiled.
 
 ## A wheel and pedals
 
-Not yet. `shell/input/Wheel.h` is the seam it will arrive through (the shell's second slice).
+Not driven yet: a wheel is not read by the application (never run with a real wheel). `shell/input/Wheel.h` is the
+seam it will arrive through. The first step is the owner's wheel described as the computer sees it:
+
+    TheEngineEngine --probe-input                     (macOS: ./TheEngineEngine.app/Contents/MacOS/TheEngineEngine --probe-input)
+
+It opens no window. It lists every game controller SDL sees (name, vendor and product ids, SDL's type, its axes,
+buttons and hats with each axis at rest, and whether force feedback opens from it with the effects it reports), then
+prints for 60 s (`--probe-seconds S`) every change: press each pedal fully and let go, pull each paddle, move the
+shifter through every gate, turn the wheel to each stop, press each button. It ends with each axis's rest and the
+extremes seen. It prints to the Terminal only and sends nothing anywhere. With no device it says "none seen" and what
+may be why.
 
 ## What the engine does with them
 

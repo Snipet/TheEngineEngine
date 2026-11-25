@@ -54,6 +54,8 @@ namespace tee::assistant
         // the socket, the folder is not private, Windows). Already on: true.
         bool start(std::string& why);
         // The switch off: the socket gone, every connection closed, the running call cancelled and waited for.
+        // Returns once both of the link's threads have ended (joined); the system may list an ended thread for a
+        // moment more (Linux's /proc), which is the kernel's, not the link's.
         void stop();
 
         struct View
@@ -64,6 +66,7 @@ namespace tee::assistant
             std::string tool;            // the one running, else the last
             std::uint64_t calls = 0;     // calls answered since start
             std::uint64_t refused = 0;   // connections refused for their user
+            std::uint64_t accepted = 0;  // connections accepted (their user's checked) since the object was made
         };
         View view() const;
 
@@ -89,10 +92,13 @@ namespace tee::assistant
         void remember(const Job& job, const Result& r);
 
         Tools& tools_;
-        Drivers& drivers_;
+#if !defined(_WIN32)
+        Drivers& drivers_;               // (the link's state: macOS and Linux; a Windows build carries none of it)
+#endif
         Cards& cards_;
         std::function<double()> clock_;
         Options options_;
+#if !defined(_WIN32)
         std::string dir_, path_;
         int listen_ = -1;
         int wake_[2] = {-1, -1};
@@ -104,6 +110,7 @@ namespace tee::assistant
         std::deque<Job> jobs_;
         std::shared_ptr<Job> running_;   // the call running (jobMutex_)
         bool workerStop_ = false;
+#endif
 
         mutable std::mutex viewMutex_;
         View view_;

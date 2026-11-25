@@ -25,6 +25,24 @@ namespace fs = std::filesystem;
 
 namespace
 {
+    // Counts SIGPIPEs while it lives, in place of the default (which ends the process). No case here ignores SIGPIPE:
+    // a write that would raise it must not happen at all (the library guards every one: McpWire.h's sendAll), and a
+    // case checks the count is still 0, so Linux's MSG_NOSIGNAL cannot hide a guard that macOS lacks.
+    std::atomic<int> gSigpipes{0};
+    struct SigpipeWatch
+    {
+        struct sigaction was{};
+        SigpipeWatch()
+        {
+            struct sigaction sa{};
+            sa.sa_handler = [](int) { gSigpipes.fetch_add(1); };
+            sigemptyset(&sa.sa_mask);
+            sigaction(SIGPIPE, &sa, &was);
+        }
+        ~SigpipeWatch() { sigaction(SIGPIPE, &was, nullptr); }
+        int count() const { return gSigpipes.load(); }
+    };
+
     // A private folder of the case's own for the link.
     std::string linkFolder(const std::string& name)
     {
@@ -46,7 +64,6 @@ namespace
 
         explicit Bridge(const std::string& dir)
         {
-            std::signal(SIGPIPE, SIG_IGN);
             int toChild[2], fromChild[2];
             REQUIRE(pipe(toChild) == 0);
             REQUIRE(pipe(fromChild) == 0);
@@ -236,6 +253,10 @@ TEST_CASE("assistant: Claude Desktop's path, bridge to app: tools, a change with
     for (const json& m : bridge.seen)
         CHECK_FALSE((m.contains("id") && m["id"] == 5));
 
+    // a tool that does not exist: a protocol error (MCP: -32602), not a tool's failure
+    const json unknown = bridge.ask(&app.rig, 9, "tools/call", {{"name", "delete_everything"}});
+    REQUIRE(unknown.contains("error"));
+    CHECK(unknown["error"]["code"] == -32602);
     CHECK(bridge.ask(&app.rig, 7, "ping").contains("result"));
     CHECK(bridge.ask(&app.rig, 8, "no/such")["error"]["code"] == -32601);
 }
@@ -289,14 +310,16 @@ TEST_CASE("assistant: the link refuses another user's peer, a folder open to oth
         const int fd = wire::connectTo(dir, why);
         REQUIRE(fd >= 0);
         const std::string hello = "{\"id\":1,\"method\":\"tools\"}\n";
-        [[maybe_unused]] const ssize_t w = write(fd, hello.data(), hello.size());
+        wire::noSigpipe(fd);
+        wire::sendAll(fd, hello.data(), hello.size());   // (the link may have closed it already: never a signal)
         char buf[256];
         pollfd p{fd, POLLIN, 0};
         REQUIRE(::poll(&p, 1, 5000) > 0);
         CHECK(read(fd, buf, sizeof buf) <= 0);   // closed, nothing said
         close(fd);
-        for (int i = 0; i < 100 && app.link.view().refused == 0; ++i)
-            usleep(10000);
+        const auto until = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+        while (app.link.view().refused == 0 && std::chrono::steady_clock::now() < until)
+            usleep(1000);
         CHECK(app.link.view().refused == 1);
         CHECK(app.link.view().connections == 0);
     }
@@ -350,7 +373,9 @@ TEST_CASE("assistant: shutting down with a call waiting on the frame cancels it 
     const double stored = rig.build().get(fields[0].first->path);
     const auto t0 = std::chrono::steady_clock::now();
     session->stop();   // no frame drains from here on
-    CHECK(std::chrono::steady_clock::now() - t0 < std::chrono::seconds(2));
+    // "at once": milliseconds here; the bound is wide for a loaded runner and still far from the alternative (the job
+    // waiting on a frame that never comes, for the turn's 300 s)
+    CHECK(std::chrono::steady_clock::now() - t0 < std::chrono::seconds(5));
     CHECK_FALSE(fs::exists(wire::socketIn(dir)));
     rig.build().endGesture();
     CHECK(rig.build().get(fields[0].first->path) == stored);
@@ -371,6 +396,22 @@ namespace
         for (auto it = fs::directory_iterator("/proc/self/task", ec); !ec && it != fs::directory_iterator(); it.increment(ec))
             ++n;
         return n;   // 0 where there is no /proc (macOS): the check below is then the folder's alone
+    }
+
+    // The threads of this process, once they are `want` again or 10 s have passed. A thread the link has joined has
+    // ended, but the kernel may list it for a moment more (glibc's join returns when the kernel clears the thread's
+    // id, before the thread leaves /proc/self/task): seen in 24 cycles of 5000 on and off, gone within 0.1 ms each.
+    // So the count is waited for, never read at an instant.
+    int threadsSettledAt(int want)
+    {
+        const auto until = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+        int n = threadsOfThisProcess();
+        while (n != want && std::chrono::steady_clock::now() < until)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            n = threadsOfThisProcess();
+        }
+        return n;
     }
 }
 
@@ -395,7 +436,7 @@ TEST_CASE("assistant: the switch off is the shipped default and costs nothing: n
         }
         CHECK_FALSE(session.desktopAllowed());
         CHECK(session.statusNote().empty());
-        CHECK(threadsOfThisProcess() == before);
+        CHECK(threadsSettledAt(before) == before);
         CHECK_FALSE(fs::exists(dir));
         // turned on and off again: everything it made is gone
         std::string why;
@@ -404,7 +445,7 @@ TEST_CASE("assistant: the switch off is the shipped default and costs nothing: n
         CHECK(fs::exists(wire::socketIn(dir.string())));
         REQUIRE(session.allowDesktop(false, why));
         CHECK_FALSE(fs::exists(wire::socketIn(dir.string())));
-        CHECK(threadsOfThisProcess() == before);
+        CHECK(threadsSettledAt(before) == before);
     }
     // and a load over unsaved changes, with no one to ask (the frame's dialog not drawn yet): refused, never silent
     {
@@ -420,6 +461,63 @@ TEST_CASE("assistant: the switch off is the shipped default and costs nothing: n
         CHECK(r.value["error"].get<std::string>().find("cannot be asked") != std::string::npos);
         CHECK(asked.build().hash() == hash);
     }
+}
+
+TEST_CASE("assistant: a peer gone mid-reply, or at shutdown, never ends the app with SIGPIPE", "[assistant][sharedsim]")
+{
+    const SigpipeWatch watch;
+    const int before = watch.count();
+    const std::string dir = linkFolder("gone");
+    App app("mcp-gone", dir);
+    std::string why;
+    REQUIRE(app.link.start(why));
+    // a peer that asks for a large answer and leaves before reading it, many times over: the poll thread's own replies
+    // (tools: several KB) and the worker's (a call) both go to a closed socket
+    // Each peer is accepted and seen gone before the next connects: the loop tests a peer's going, not the listener's
+    // queue (a burst would hang on the backlog's size, which differs between systems).
+    for (int i = 0; i < 20; ++i)
+    {
+        const int fd = wire::connectTo(dir, why);
+        const int err = errno;
+        INFO("peer " << i << ": " << why << " (errno " << err << ")");
+        REQUIRE(fd >= 0);
+        const std::string ask = "{\"id\":1,\"method\":\"tools\"}\n{\"id\":2,\"method\":\"call\",\"params\":{\"name\":\"get_status\"}}\n";
+        wire::sendAll(fd, ask.data(), ask.size());
+        close(fd);
+        const auto until = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+        while ((app.link.view().accepted < static_cast<std::uint64_t>(i + 1) || app.link.view().connections != 0)
+               && std::chrono::steady_clock::now() < until)
+        {
+            app.rig.frame();
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+        REQUIRE(app.link.view().accepted == static_cast<std::uint64_t>(i + 1));
+        REQUIRE(app.link.view().connections == 0);
+    }
+    // the link sees every one go
+    const auto until = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+    while ((app.link.view().connections != 0 || app.link.view().running) && std::chrono::steady_clock::now() < until)
+    {
+        app.rig.frame();
+        std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    }
+    CHECK(app.link.view().connections == 0);
+    CHECK_FALSE(app.link.view().running);
+    // a peer still connected while the switch goes off, and writing after: the app ends nothing but the link
+    const int late = wire::connectTo(dir, why);
+    REQUIRE(late >= 0);
+    for (int f = 0; f < 5; ++f)
+        app.rig.frame();
+    app.link.stop();
+    const std::string more = std::string(64 * 1024, 'x') + "\n";
+    CHECK_FALSE(wire::sendAll(late, more.data(), more.size()));   // the link is gone: an error, not a signal
+    close(late);
+    CHECK(watch.count() == before);
+    // and the link starts again and answers
+    REQUIRE(app.link.start(why));
+    Bridge bridge(dir);
+    CHECK(bridge.ask(&app.rig, 1, "ping").contains("result"));
+    CHECK(watch.count() == before);
 }
 
 #endif

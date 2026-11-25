@@ -149,6 +149,7 @@ namespace
     }
 }
 
+#include "kit/widgets/Gauge.h"
 #include "views/drive/Dash.h"
 
 namespace
@@ -162,6 +163,27 @@ namespace
             if (it.title == title && it.role == role)
                 return { it.bounds.centreX(), it.bounds.y + it.bounds.h * 0.5f };
         return { -1.0f, -1.0f };
+    }
+    // CLASSIC's small dials shown (the gauges other than the tachometer and the speedometer), each checked that its
+    // readout's box (digits and unit) misses the needle's sweep at both ends of its range and now (the lead's ask,
+    // 25 Nov: at the small stage the digits sat under the needle). Returns how many are shown, -1 when one is not
+    // clear.
+    int clearOfNeedles(tee::ui::Workspace& ws)
+    {
+        int shown = 0;
+        for (int i = 0; i < ws.count(); ++i)
+            if (const auto* g = dynamic_cast<const tee::ui::Gauge*>(&ws.item(i)))
+            {
+                if (!g->shown() || g->title() == "Engine" || g->title() == "Road speed")
+                    continue;
+                if (!g->readoutClearOfSweep())
+                {
+                    failAt(__FILE__, __LINE__, g->title() + ": its digits meet the needle's sweep");
+                    return -1;
+                }
+                ++shown;
+            }
+        return shown;
     }
     std::string valueOf(funkgui::HeadlessHost& host, const std::string& title)
     {
@@ -205,8 +227,11 @@ namespace
             golden(std::string("drive.styles.") + tee::ui::dash::styleKey(s), *rig.host);
             if (s == 1)
             {
-                // CLASSIC: the small dials read their channels in the user's units, the tachometer still the revs.
-                CHECK_MSG(valueOf(*rig.host, "Oil temp").find("99") == 0, valueOf(*rig.host, "Oil temp"));
+                // CLASSIC: the small dials read their channels in the user's units, the tachometer still the revs. At
+                // this stage four of them (boost, oil pressure, water, lambda): eight would leave no room for digits.
+                CHECK_MSG(valueOf(*rig.host, "Water").find("92") == 0, valueOf(*rig.host, "Water"));
+                CHECK(valueOf(*rig.host, "Oil temp") == "(none)");
+                CHECK(clearOfNeedles(*rig.ws) == 4);
                 CHECK_MSG(valueOf(*rig.host, "Lambda").find("0.88") == 0, valueOf(*rig.host, "Lambda"));
                 CHECK(valueOf(*rig.host, "Engine").find("50") == 0);
             }
@@ -244,7 +269,20 @@ namespace
             kept = s;
             small.settle();
             golden(std::string("drive.styles.") + tee::ui::dash::styleKey(s) + ".dpi1", *small.host);
+            if (s == 1)
+                CHECK(clearOfNeedles(*small.ws) == 4);
         }
+        // The large stage: all eight small dials, each one's digits clear of its needle.
+        StageRig large(tee::ui::makeDriveWorkspace, FrameSize::large, 2.0f, 4.6, false);
+        large.demo.ctx.services = &fs;
+        large.demo.engine.set("engine.oilTemperature", 372.0);
+        large.demo.engine.set("ecu.lambda", 0.88);
+        large.demo.engine.set("ecu.fuelFlow", 0.0124);
+        kept = 1;
+        large.settle();
+        CHECK_MSG(valueOf(*large.host, "Oil temp").find("99") == 0, valueOf(*large.host, "Oil temp"));
+        CHECK(clearOfNeedles(*large.ws) == 8);
+        golden("drive.styles.classic.large", *large.host);
         return 0;
     }
 

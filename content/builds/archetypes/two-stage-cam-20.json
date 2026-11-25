@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "Two-stage-cam 2.0 L",
-  "notes": "A 2.0 L four with two cam profiles a valve switched at 6000 rpm: 87 x 84 mm (1997 cc), 11.7:1, 9000 rpm (the F20C kind: 176 kW at 8300 rpm, 208 N m at 7500; makers' figures, from memory, firm to 5 %; the B16A's switch point of 5500 rpm: global.honda). Its high-stage cam and its 6000 rpm switch are the K20A Type R's (the DC5's), borrowed onto the F20C's bore, stroke and ratings; the high lobe's 280/278 deg and 12.65/12.14 mm from an aggregator (motorreviewer.com, no source stated, its height not stated). Its LOW stage (236/232 deg at the seat, 8.5/8.0 mm) is JUDGEMENT, no source. In a light rear-drive roadster. Its switch at the F20C's own 5850 rpm (Honda's S2000 fact book and its 2001 powertrain release). Both stages the K20A's, borrowed, from an aggregator (motorreviewer.com, no source or lift height stated): \"244/240 deg and 8.84/8.59 mm; 280/278 deg and 12.65/12.14 mm; 245/244 deg and 9.68/8.74 mm\", unlabelled; the high the second, the low the mean of the first and third (244.5/242 deg, 9.26/8.67 mm), taken as the primary and secondary low lobes: the lead's reading. The seat assumed, the 1 mm by the rocker class's rule. Its exhaust: tuned long-primary headers, the primaries 1.63 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its cams' second duration: the seat-to-1 mm step 19 deg a side, the rocker class's rule, the seat held (section 8 of the judgement sources). Its knock-limit table is baked (the degrees taken from the best-torque spark by speed and load, baked in the app's own order: cams.py). Its intake: the sports class's runner, 0.30 m from the valve to the plenum (a high-revving engine's short runners or a throttle a cylinder): JUDGEMENT, a class default, not the real engine's (no source found).",
+  "notes": "A 2.0 L four with two cam profiles a valve switched at 6000 rpm: 87 x 84 mm (1997 cc), 11.7:1, 9000 rpm (the F20C kind: 176 kW at 8300 rpm, 208 N m at 7500; makers' figures, from memory, firm to 5 %; the B16A's switch point of 5500 rpm: global.honda). Its high-stage cam and its 6000 rpm switch are the K20A Type R's (the DC5's), borrowed onto the F20C's bore, stroke and ratings; the high lobe's 280/278 deg and 12.65/12.14 mm from an aggregator (motorreviewer.com, no source stated, its height not stated). Its LOW stage (236/232 deg at the seat, 8.5/8.0 mm) is JUDGEMENT, no source. In a light rear-drive roadster. Its switch at the F20C's own 5850 rpm (Honda's S2000 fact book and its 2001 powertrain release). Both stages the K20A's, borrowed, from an aggregator (motorreviewer.com, no source or lift height stated): \"244/240 deg and 8.84/8.59 mm; 280/278 deg and 12.65/12.14 mm; 245/244 deg and 9.68/8.74 mm\", unlabelled; the high the second, the low the mean of the first and third (244.5/242 deg, 9.26/8.67 mm), taken as the primary and secondary low lobes: the lead's reading. The seat assumed, the 1 mm by the rocker class's rule. Its HIGH INTAKE lobe the F20C's own (the AP1's VTEC intake lobe: 247 deg at 1 mm on a centre of 98 deg ATDC, an S2KI thread's card, its poster calling it unverified: FORUM, UNVERIFIED; the S2000 service manual's 1 mm timing not found), held at 1 mm, its seat by the rocker class's rule; its lift still the K20A's 12.65 mm (the thread's 12.2 mm not applied). Its exhaust: tuned long-primary headers, the primaries 1.63 times the layout's length: the class the real engine carries (recalled), its length JUDGEMENT. Its cams' second duration: the seat-to-1 mm step 19 deg a side, the rocker class's rule, the seat held (section 8 of the judgement sources). Its knock-limit table is baked (the degrees taken from the best-torque spark by speed and load, baked in the app's own order: cams.py). Its intake: the sports class's runner, 0.30 m from the valve to the plenum (a high-revving engine's short runners or a throttle a cylinder): JUDGEMENT, a class default, not the real engine's (no source found).",
   "spec": {
     "engine": {
       "layout": "Inline 4",
@@ -67,14 +67,14 @@
       "springRate": 81750.0,
       "springPreload": 510.0,
       "stages": "On",
-      "inDurSeatB": 280,
-      "inDur1mmB": 242.0,
+      "inDurSeatB": 285.0,
+      "inDur1mmB": 247,
       "inLiftB": 0.01265,
+      "inCentreB": 98,
       "exDurSeatB": 278,
       "exDur1mmB": 240.0,
       "exLiftB": 0.01214,
       "stageSpeed": 612.6105674500096,
-      "inCentreB": 110,
       "exCentreB": 112
     },
     "intake": {
@@ -142,42 +142,42 @@
           ],
           "z": [
             [
-              11.966823622584343,
-              11.966823622584343,
-              11.966823622584343,
-              11.966823622584343,
-              11.966823622584343,
-              11.966823622584343,
-              11.966823622584343,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              2.592883318477791,
+              5.710875851245153,
+              8.828868384012512,
               11.783261224627495
             ],
             [
-              2.7644521378636084,
-              2.7644521378636084,
-              2.7644521378636084,
-              2.7644521378636084,
-              2.7644521378636084,
-              2.7644521378636084,
-              2.7644521378636084,
+              0.0,
+              0.0,
+              0.0,
+              0.5948909065694297,
+              1.6232439815610398,
+              2.65159705655265,
+              2.85023441649479,
               4.021465278765255
             ],
             [
-              2.845016412086279,
-              2.845016412086279,
-              2.845016412086279,
-              2.845016412086279,
-              2.845016412086279,
-              2.845016412086279,
+              0.0,
+              0.0,
+              1.0871474232424738,
+              2.694293814781667,
+              3.0019871407255745,
+              2.9165187099409517,
               2.8976282136317635,
               2.7210603837429743
             ],
             [
-              5.441238204638163,
-              5.441238204638163,
-              5.441238204638163,
-              5.441238204638163,
-              5.441238204638163,
-              5.441238204638163,
+              0.04476995586219817,
+              1.5005714629691325,
+              2.9563729700760675,
+              4.048111050226232,
+              4.626004596607796,
+              5.2038981429893605,
               5.478365928998148,
               5.546666900316874
             ],
@@ -223,7 +223,7 @@
             ]
           ]
         },
-        "knockLimitKey": 1685813732
+        "knockLimitKey": 1133243375
       }
     },
     "car": {

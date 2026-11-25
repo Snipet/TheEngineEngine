@@ -1,0 +1,41 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "X-036 (random 103: a free-valve turbo with electric assist, car.model on a 28 % downhill)",
+  "notes": "Package X's finding X-036 (2026-11-25), random seed 103 (stable draws, 10 s) reduced to 11 fields: the running mean 0.0062 of full scale against 0.005. Each field is needed (car.model 0, a flat road, boost.model 0 or no assist each pass). X-036's kind as far as shown: a DC offset that needs car.model and a turbo, as on the turbo V8 dual; the same mechanism is not shown. tee-fuzz --build <this> --seed 103 --seconds 10",
+  "spec": {
+    "boost": {
+      "assist": 11375.6396,
+      "kind": 1,
+      "model": 1
+    },
+    "car": {
+      "model": 1
+    },
+    "env": {
+      "grade": -0.276606031
+    },
+    "exhaust": {
+      "primD": [
+        0,
+        0,
+        0,
+        0,
+        0.116619252
+      ],
+      "primaryTo": [
+        -2,
+        -2,
+        -2,
+        -2,
+        -1
+      ],
+      "sides": 1
+    },
+    "valve": {
+      "freeInOpen": 691.849181,
+      "inKind": 1,
+      "model": 1
+    }
+  }
+}

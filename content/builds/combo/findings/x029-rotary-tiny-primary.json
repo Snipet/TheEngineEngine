@@ -1,0 +1,18 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "X-029 (a one-rotor rotary, exhaust.model 1, a 0.6 mm primary)",
+  "notes": "Package X's finding X-029 (2026-11-25), reduced by tee-fuzz from random seed 245 (10 s): a custom one-rotor rotary on exhaust.model 1 with its first primary 0.623 mm across diverges and the guard restarts it (about 1280 times): tee-fuzz --build <this> --seed 245 --seconds 10",
+  "spec": {
+    "engine": {
+      "custom": 1,
+      "rotors": 1
+    },
+    "exhaust": {
+      "model": 1,
+      "primD": [
+        0.00062317116
+      ]
+    }
+  }
+}

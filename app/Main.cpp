@@ -13,6 +13,7 @@
 // It is a console program on Windows for now: what it prints (the compile's time, the audio device, an error) is
 // what a person testing it is asked for (docs/checkpoints/M1.md).
 #include "Engine.h"
+#include "InputProbe.h"
 #include "Launch.h"
 #include "Offline.h"
 #include "Options.h"
@@ -54,6 +55,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <csignal>
 #include <cstdlib>
 #include <cstdint>
 #include <cstdio>
@@ -81,6 +83,9 @@ namespace
         app::Options o = given;
         SDL_SetMainReady();
         SDL_SetAppMetadata("TheEngineEngine", TEE_VERSION, "com.snipet.theengineengine");
+        // --probe-input: the game controllers SDL sees and their changes (app/InputProbe.h); no window, no engine
+        if (o.probeInput >= 0.0)
+            return app::probeInput(o.probeInput);
 
         // ---- what was remembered: the bindings, the pedals' times, the audio buffer (shell/settings/Settings.h) ------
         const settings::Loaded remembered = settings::load();
@@ -509,6 +514,7 @@ namespace
             shown.window->tryFirstDone = [&now] { now.tryFirstSeen = true; };
             shown.window->coldStart = [&now] { return now.coldStart; };
             shown.window->setColdStart = [&now](bool cold) { now.coldStart = cold; };
+            shown.window->desktopChosen = [&now](bool on) { now.allowClaudeDesktop = on; };
         }
         std::string why;
         if (!host.open(why))
@@ -719,6 +725,9 @@ namespace
 
 int main(int argc, char** argv)
 {
+#if !defined(_WIN32)
+    std::signal(SIGPIPE, SIG_IGN);   // a peer gone (Claude Desktop's bridge) is an error, never the app's end
+#endif
     tee::app::Options options;
     std::string why;
     if (!tee::app::parseOptions(argc, argv, options, why))

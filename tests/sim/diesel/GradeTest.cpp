@@ -1,9 +1,11 @@
 // tests/sim/diesel/GradeTest.cpp: card D2: the 36 t rig (content/builds/truck-15l-six.json, the vehicle model, its
 // eighteen gears worked by the paddles' robotised clutch; 300 K, 101325 Pa) pulling away loaded, up a 6 % grade and
 // held on the way down by its brakes.
-// (The case "the paddles' clutch holds the compression brake's overrun at low revs" is card D's as integrator, with the
-// lead's leave, 25 Nov.)
+// (The cases "the paddles' clutch holds the compression brake's overrun at low revs" and "...stays shut under a floored
+// pedal at low revs" are card D's as integrator, with the lead's leave, 25 Nov.)
 #include "Diesel.h"
+
+#include <cmath>
 
 #include <cstdio>
 #include <string>
@@ -158,13 +160,27 @@ TEST_CASE("diesel truck, full: on the way down a 6 % grade the brakes hold the r
         e.spec("env.grade", -0.06);
         const int gear = static_cast<int>(e.tel("car.gear"));
         double v0 = e.tel("car.speed");
+        double slipMost = 0.0;   // (the clutch's slip, rad/s, its most while the brake holds cylinders)
         for (int i = 0; i < 400; ++i)
         {
             REQUIRE(e.run(0.1));
+            if (e.tel("ecu.brakeCylinders") > 0.0)
+                slipMost = std::max(slipMost, std::fabs(e.tel("car.clutchSlip")));
             if (e.tel("engine.speed") / 0.10471976 > 2300.0)
                 break;
         }
         vEnd[k] = e.tel("car.speed");
+        if (k == 1)
+        {
+            // (the lead's ruling, 25 Nov: the brake is still on at the end, and the clutch holds while it brakes. On the
+            // truck's own valve events the brake's -1450 N m at 1150 rpm slipped the paddles' robotised clutch open
+            // (vehicle.fm, its capacity on the overrun: the integrator's), the engine fell under the brake's cut-out and
+            // idled while the rig ran away; 2 rad/s: judgement, a held clutch's slip is some tenths)
+            std::printf("  the brake's cylinders at the end %.0f; the clutch's most slip while braking %.1f rad/s\n",
+                        e.tel("ecu.brakeCylinders"), slipMost);
+            CHECK(e.tel("ecu.brakeCylinders") > 0.0);
+            CHECK(slipMost < 2.0);
+        }
         std::printf("down 6 %%, gear %d, brakes %s: %.1f km/h -> %.1f km/h after 40 s at %.0f rpm, %.0f N m on the crank\n", gear,
                     k == 0 ? "off" : "on (High, flap)", v0 * 3.6, vEnd[k] * 3.6, e.tel("engine.speed") / 0.10471976, e.tel("engine.torque"));
     }
@@ -221,4 +237,47 @@ TEST_CASE("diesel truck: the paddles' clutch holds the compression brake's overr
     CHECK(e.tel("engine.torque") < -500.0);                    // the brake still on
     CHECK(std::fabs(e.tel("engine.speed") / 0.10471976 - roadRpm()) < 30.0);   // the clutch closed: the engine at the road's
     CHECK(worst < 20.0);                                       // the slip bounded (the run-away reached 150 rad/s)
+}
+
+TEST_CASE("diesel truck: the paddles' clutch, once synchronised, stays shut under a floored pedal at low revs",
+          "[diesel][truck]")
+{
+    // (the lead's ruling, 25 Nov: the robotised clutch closing with the engine's own revs, once locked in a gear, slipped
+    // forward again under a floored pedal at 1070 rpm: the engine flared 130 rpm over the road for 3.9 s on the flat
+    // (measured 25 Nov on main's law). A real automated box's clutch, once synchronised, stays clamped: the engine pulls
+    // from the road's speed)
+    Engine e("truck-15l-six");
+    startDriving(e);
+    Driver d{e};
+    e.ctl().throttle = 1.0f;
+    double t = 0.0;
+    while (t < 60.0 && e.tel("car.speed") < 25.0 / 3.6)
+    {
+        d.step(0.1);
+        t += 0.1;
+    }
+    auto roadRpm = [&] { return e.tel("car.speed") / 0.5 * e.tel("car.ratio") / 0.10471976; };
+    e.ctl().throttle = 0.3f;
+    for (int k = 0; k < 8 && roadRpm() > 1150.0; ++k)
+    {
+        e.ctl().shiftUp += 1;
+        REQUIRE(e.run(1.5));
+    }
+    const int gear = static_cast<int>(e.tel("car.gear"));
+    const double r0 = roadRpm();
+    e.ctl().throttle = 1.0f;
+    double worst = 0.0, gap = 0.0;
+    for (int i = 0; i < 60; ++i)
+    {
+        REQUIRE(e.run(0.1));
+        worst = std::max(worst, std::fabs(e.get("car.m1.slipC")));
+        gap = std::max(gap, std::fabs(e.tel("engine.speed") / 0.10471976 - roadRpm()));
+    }
+    std::printf("floored in gear %d from %.0f rpm: after 6 s %.0f rpm (road %.0f), the clutch's slip %.2f rad/s at worst, "
+                "the engine %.0f rpm from the road at worst, %.0f N m\n",
+                gear, r0, e.tel("engine.speed") / 0.10471976, roadRpm(), worst, gap, e.tel("engine.torque"));
+    CHECK(r0 < 1150.0);                                         // (the case's own: where the clutch was half closed)
+    CHECK(static_cast<int>(e.tel("car.gear")) == gear);
+    CHECK(worst < 3.0);                                         // shut: no flare (main's law: 13.8 rad/s)
+    CHECK(gap < 30.0);                                          // the engine at the road's speed (main's: 132 rpm over it)
 }

@@ -829,24 +829,195 @@ two-stage build's high lobe at 247 deg on a centre of 98).
   pressure plot lies over the knock-by-cylinder row its own text points to (U5, a later ui push); DYNO's "none yet:
   edit the build" runs past its panel's right edge (U4, with the octane number's push).
 
+## 25 Nov 15:23: the window closed for sim; the bake done; what was found while it ran
+
+**On the branch since `main` (76420f32), all in P's bake (tools sha 758bb12f's):** the steward's packages and the
+soak by request only; U5's stage help; N1's 93 grade and `spec.fuel.octane`; C's knock bake version 5; U4's octane
+number; D2's start fuel; L's start exposure; G's bangs burned in the pipe with N1's seam (default still Carved);
+the integrator's clutch held closed on the overrun (c1ab538a); card A's assistant through A3 with its fixes (the
+manifest's valid JSON, the link's state under `!_WIN32`, the name rule: c457e849); J2's three inspector designs and
+the kit's draft field and error colour; X's soak shards; U1's ribbon marks, CLASSIC dials and a tab for every
+inspector page (cb3e97a9); B's SIGPIPE ignored in the app's mains (fb33cb9a). The lead's own runs: 581 of 581 on
+88ebef01; the 79 affected cases on the frozen tip. P: pre-bake tier 577 of 577; the bake 14:56 to 15:14, 28 knock
+tables and 14 cam maps, the gate's 31 idles before and after, five builds Current at once.
+
+**Process, the lead's faults and their cures.** (1) "A whole tier on the merged tip before every push" could not
+converge with a dozen pushers (three agents on a third run): changed to one green tier on a merged state, then
+merge a moved tip and push, CI judging the combination. (2) U1's permission check allows only a pure fast-forward
+of a fully tested state; it was not worked around: the tip was held still for it (two runs lost to pushes that
+crossed the notice; the third, on a named sha, went in). For U1 the tip is held from its merge to its push.
+
+**CI on the assistant (card A), each found by the first build on that platform:** Windows: unused private fields
+(clang-cl), cured in A3; macOS and Windows: the save-as test on a case-blind disk: ruled that a name differing only
+in case is the same name on every platform, new names plain ASCII, the test reading the folder's listing (macOS
+584 of 584 on c457e849); macOS: `assistant.sim` killed by SIGPIPE: the link never raises it (c5ef4d7: SO_NOSIGPIPE
+on every socket, the wake channel a socketpair, EPIPE = the peer is gone, a test that fails on any SIGPIPE) and the
+application ignores it (B); the `.mcpb`'s manifest was not valid JSON (the steward's first build of it), cured with
+a parse test. **Never run against Claude Desktop or the API.** Unverified until the owner tries: which MCP revision
+Claude Desktop speaks (the bridge answers the handshake of 2025-11-25; a client of 2026-07-28 alone fails);
+Gatekeeper on a CI-downloaded `.mcpb` (the quarantine flag); the Keychain and a real key.
+
+**GARAGE lists the test suite's fixtures** (app/GarageLibrary.cpp walks content/builds recursively: combo/'s five
+archetypes, pack/ and findings/ x001 to x040, builds reduced to diverge; in `main` today). Now: U5's filter with a
+test. Next window: the fixtures leave content/ in one step (X moves; N1 repoints BoostInletTest.cpp, Probe.cpp,
+X022Test.cpp; the integrator core/EngineTest.cpp:566; P the manual's table).
+
+**The soak has never been green; X's triage** (each bisected, none a pop, no bound moved; Known.h): X-030, X-031
+(the spark's ramp after the cut, c035fe75; the downshift under fuel.model 1): the steward; X-032 (576c1c6e, the
+idle valve's integral through start), X-034 (68e683f1, the valve's area), X-037 (valve.dpOverlap on the pickup):
+N1; X-033 (5c85736b): N2 finding whose; X-035 (custom engine without boost, the large diesel): the integrator and
+D2; X-036 (turbo V8 dual, running mean 0.0057 to 0.0069 against 0.005): the integrator and the steward; X-029,
+X-038 (a primary or tail of hundredths of a millimetre): G, T, N2; X-039 (a 50 cc single with a 4 L blower): N2;
+X-040 (a 0.025 mm runner): L. One cure to weigh across the near-zero pipes: the Spec's lower bounds on diameters.
+Shards: 16 triples and 4 fuzz ranges; about 53 minutes on the runner where it took 92 (first sharded run pending).
+
+**The compressor map (N2 on P's sources, sections 21 and 22).** Two judgement coefficients were low against the
+BorgWarner S300SX3 and S400SX-E (the rise 0.45 against 0.51 to 0.54 back-solved; the choke flow); a flat correction
+was refuted by the same maps' lower lines; the surge line at speed sat 1.5 times too far left. Fitted to all seven
+cited maps with a hold-out (one heavy-duty map predicting the other): c(M) = 0.608 - 0.157(M - 1); the knee
+(0.349 + 0.551(M - 1)) kAr; the fall 0.652; choke 0.506; mean error of the peak ratio 3 % (today's 14 %), of the
+surge flow 6 % (26 %); the two heavy-duty wheels disagree beyond reading precision (trim, not entered). **Ruled:
+that map, with one floor at the lowest cited line (Mach 0.67) for the knee and the efficiency.** The lead's wrong
+guesses on the way, each refuted by N2's measurement: the turbo four's loss as surge or class (it was the
+efficiency law read at Mach 0.30, under every cited line); the 2.0's vanes as a control fault (the back-pressure
+limit holds them, and forced shut the pumping takes the gain back); the nozzle matched at the torque peak (it is
+matched at rated on the flat target).
+**THE DIESEL PACKAGE, N2's half final (668c642e local; docs/handoffs/patches/n2-package.patch):** the ruled map,
+(b), the whole-flow nozzle, no guard, the taper from the fuel curve or ceiling. Tractor 72.4 mm: 2397 / 2580 / 2721
+N m at 900 / 1000 / 1100; rated on the taper 482 kW at 0.899 of the shaft's limit, no flags (a flat 260: 0.986 to
+0.990). Truck's sets 69.8 mm: 2507 / 2653 / 1867 at 1000 / 1300 / 2100, a choke flag at 2100 (known limit). The
+2.0 38.4 mm: 252 N m at 1750 against VW's 320 (a miss, to be a row; the branch as shipped reads 154), rated clear.
+Pickup 64.7 mm. Boosted validation rows: misses 45 to 46. MapTest's two knee cases restated on the cited
+heavy-duty lines (not loosened). **Research after it, replacing (b) only if every build keeps both ends:** rule (c)
+(the smallest wheel that clears rated) with the turbine's open area matched on its own efficiency at rated; first,
+why the engine flags choke where the rule's check passes.
+**D2's half:** its builds off the 88 deg dial (811c744d), the fixture's target, **the torque and power ceiling**
+(`ecu.torqueMax`, `ecu.powerMax`: the ECU's fuel ceiling for electronically governed engines; the truck's fuel
+curve, computed from its own published torque and power, was the forbidden kind and goes; **rows a ceiling holds
+by construction leave the validation counts**; a mechanical pump states a delivery, not a torque), the brake
+retuned once, GradeTest's check that the brake is still on at the end.
+
+**The clutch (the integrator).** The paddles' robotised clutch followed the engine's own speed (0.357 of capacity
+at 1116 rpm on the truck). In the bake: held closed by the road's speed once it slips backwards (c1ab538a).
+Measured on `main`'s law: a forward slip of 130 to 160 rpm for 4 to 5 s under a floored pedal at 1070 rpm. Local
+for the next window: one latch for both directions (87629688; set on the first lock, released by a shift, neutral,
+the clutch pedal or the stall band); all 46 vehicle cases and the combination's fast tier identical; the dog box's
+case and the grade's case move as the law says; a patch for bike.fm (B2's).
+
+**The bangs.** G's clips are with the owner (in G's session): Carved against Burned for first.json's fuel-cut
+limiter (Burned: 0 bangs), the flat-plane V8's spark cut (peaks -3.0 dBFS against -10.7; 10 dB over the body),
+a fuelled overrun (1 bang in 7.5 s), the rally five's anti-lag (19 dB over the body). Local: 8c9f4c20 (a bang's
+turbulence from the flow the ports let in, capped at sound: each bang's own waves had stirred the next one's flame)
+and BangTest's books (222 kJ for 5.3 g at 42.2 MJ/kg). The auto level is pulled down 8 to 13 dB by the bangs: L's
+rule to measure (a part over twice the window's 80th-percentile part does not raise the exposure). The turbine's
+books do not see the burns ahead of it (for N2's lane). The default flips only on the owner's ear.
+
+**The 2.3 kHz "mode"** (L, G): the ground's reflection at the Tailpipe camera (a path difference of 0.262 m:
+notches at 650, 1957, 3270 Hz), not a pipe or the body. Candidates for a later window: a reflection falling with
+frequency; a few millimetres of slow jitter on the image's path.
+
+**For the owner to choose:** the inspector (J2's three designs; Rows recommended, the card next); the bangs'
+default after the clips; the idle's level; the listening questions.
+
+## 25 Nov 18:37: `main` at 43006034; what the baked commit met on the way; the next window
+
+- **`main` moved 76420f32 to 43006034 at 18:37:19 UTC** (fast-forward). Run 45669105123: linux-x64 587 of 587,
+  windows-x64 580 of 580 (attempt 1), macos-arm64 587 of 587 (attempt 2: GitHub cancelled attempt 1 for runner
+  capacity before a step ran; the lead re-ran that one job). sim/, host/ and tools/ are P's bake's (758bb12f's; 0
+  lines by the lead's diff). The dispatched soak on the same content: 217 of 219 in 66 minutes (N2's known diesel
+  turbo full; fuzz random 103, a dc mean of 0.0062 against 0.005, X classifying).
+- **Four timing-dependent tests found by CI on the baked commit and cured before `main` moved, none a fault of the
+  engine or the bake:** the assistant's connect burst refused on macOS (the listener's backlog of 4: now SOMAXCONN,
+  the test waiting on `accepted`); the host's stress case on Windows (it slept 50 ms where it must wait for
+  commandsApplied; C: one writer, nothing can stay failed while audio runs); the assistant's thread count on Linux,
+  twice (the kernel's /proc entry lags pthread_join by under 0.1 ms; `allowDesktop(false)` does join); with them
+  card A restated five instant-count assertions and widened three duration bounds to 5 s (each still separating a
+  10 s or 300 s fault). The lead did not re-run a failed test to get green.
+- **P's rows on the baked content: 112 of 847 missed** (table N: 114). The V12 idles at +30.9 deg BTDC where it sat
+  at -14.5. The rotary's power and torque in band on its cited ports (206 kW, 313 N m). For N1: the rotary's torque
+  peaks at the dyno's lowest step (2294 rpm, one turbo; band 4500 to 5500); the two-stage's combined curve notches
+  13 N m across its switch; a dyno hold below the switch reads stage B (the start overshoots to 6190 rpm and the
+  hysteresis holds).
+- **The diesel package is complete locally and green on its own tree** (N2's eleven commits,
+  docs/handoffs/patches/n2-package.patch: the ruled map, (b), the whole-flow nozzle, no guard, the taper, the VGT
+  loop's conditional integration, the integral held while the ECU owns the vanes, X-039's inlet node solved
+  implicitly, the shaft's ceiling at 0.948 of omegaMax; D2's half: its builds off the 88 deg dial, the fixture's
+  target, `ecu.torqueMax` / `ecu.powerMax`, the brake retuned once without its own shaft integral, the cylinder
+  cut's case, GradeTest's checks; the integrator's one latch 87629688). Tractor at 1000 rpm 1507 to 2584 N m; the
+  truck's sets at 2000 out of a relay cycle through the relief (+4.3 %, the choke flag gone); the brake 287 / 361 /
+  331 kW; the release's shaft at most 0.981 (was 1.080). Known limits in docs/models/diesel.md.
+- **The click check is restated on its property** (X, e792f732 local): a click is a step its neighbouring firing
+  periods do not have; it still sees X-014 and X-015 on their old tree, clears X-033, X-034 and X-035 as firing
+  trains, keeps X-030, X-031, X-032.
+- **Research list (N2), nothing built:** rule (c) (the smallest wheel that clears rated, a mean phi of 0.96) with a
+  turbine matched at rated, which needs the exhaust's back pressure after the turbine from G; a feed-forward vane
+  position (the same missing p4); the re-application's ring of about 6 s and its +16 % peak; the six's unsteady
+  cell at 2000.
+
+## The owner's rulings and a new fault, 25 Nov 19:10 UTC
+
+The owner answered the open questions and named the wheel. In their words:
+
+- **The bangs' default**: "The 'Burned in the pipe' sounds better, so yes". `exhaust.bang` 1 becomes the default, in
+  this window, before the bake: G, on its 8c9f4c20 and BangTest (slot 4 of the sim order). Every default-run test
+  that assumed Carved is restated on its property or asks for 0 by name; nothing loosened. The owner did not say
+  whether the spark-cut and anti-lag bangs are too loud: levels stay. L's exposure rule follows G's push; the
+  steward's X-030 cure is tested with `exhaust.bang` 1 on G's fix.
+- **The inspector**: "As recommended": Rows now, and the card on the picture next (`docs/inspector-designs.md`,
+  designs 1 and 3). J2 finishes Rows as shipped code and writes the frame's hook for U1; then the card, ENGINE and
+  EXHAUST first. Dials is dropped.
+- **The idle's loudness**: "As designed". No change.
+- **The wheel**: "I have a Logitech G29 controller with a manual shifter attached. I should not need any external
+  software for it to work, as TestingPlayground was working without any new installed software/drivers (lights
+  included)." So no probe first: card B ports TestingPlayground's G29 code (IOKit's HID manager on macOS, the
+  switch out of compatibility mode, 900 degrees, the spring, the five shift lights, the Driving Force Shifter;
+  Linux through the kernel's hid-lg4ff; nothing on Windows yet). B's session may not read that repository (its
+  permission check refused the attach, and B did not clone it another way): the lead, whose session holds the
+  clone given for cards J and A, put the files unchanged in `docs/reference/testingplayground-wheel/` with their
+  sha256 for the SEED.tsv rows. The lead's rulings for the port: pedals and clutch to `Driver::setAnalog`; paddles
+  shift; the H shifter is the lever on a manual box with the automatic clutch off; steering is read and drives
+  nothing (a straight line); the lights follow the number the DRIVE view's own shift lights use; the PS button is
+  the starter; a WHEEL row in SETTINGS; the gamepad path must not also drive from the G29; `tee-wheel-dump` ported
+  for the owner's terminal; fake-device tests only. The macOS code is compiled by CI and never run in the cloud:
+  the owner's Mac is its first run. B's generic probe (`TheEngineEngine --probe-input`, f25b4a88) stays, for any
+  other wheel and for Windows.
+- **A fault the owner saw in `main`** (a screenshot of DRIVE's classic dials at idle): "text on visual dials
+  overlaps the needle". The small dials' numbers crowd the hub under the needle; the large dials' needle strikes
+  through the ring of numbers ("0" on ROAD SPEED); the small scales show converted values (51, 76, 102 psi). U1:
+  a needle never crosses a number or the read-out, round steps in the shown unit, and a picture test of every dial
+  at rest, mid scale and full scale.
+
+**The order of this round changed at 19:15.** U1's pure fast-forward was crossed a second time (X's 0f677370, seven
+minutes after the lead named the tip; U1 had 582 of 582 on 238bfc7b + a6e00140 and did not loop). The lead's fault:
+no "holding" was collected from X first. U1 now goes LAST in the round, with the dialog, the dials' fix and the
+Rows hook in one push; the lead collects a "holding" from every pusher before naming its tip. Released at 19:15:
+D2 (the combined diesel package), then B2; B (`wholeBuilds` 4561f81e and the probe); the steward (2fc03a65: every
+push since a16dc1f0 has started a soak); C; card A (9833352).
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
-- **25 Nov 14:38: QUIET WINDOW FOR U1. NOBODY PUSHES ANYTHING, docs included, until the lead writes here that it is
-  over** (about 15 minutes). U1's three ui commits are green on its merged state, but its session's permission check
-  refuses to push a merge its tier did not cover, and the tip has moved 46 commits under it; that check is not worked
-  around, so the tip holds still while U1 merges, runs and pushes. Keep working locally; hold the push.
-- **25 Nov 14:38: FROZEN FOR THE BAKE: sim/, host/ and tools/ are closed to everyone but P** (the tools sha is the
-  tip's, 758bb12f, unless the lead's own run of it finds a fault; then only that fix is released). In this window
-  and in the bake: the steward's packages and soak triggers; U5's stage help; N1's 93 grade and
-  `spec.fuel.octane`; C's knock bake version 5; U4's octane number; D2's start fuel; L's start exposure; G's
-  bangs burned in the pipe and N1's seam (the default still Carved); card A's assistant through A3; J2's inspector
-  designs and the kit's draft field and error colour; X's soak shards; the integrator's clutch held closed on the
-  overrun.
-- After the quiet window, OPEN for ui/, assistant/, app/, shell/, ci and docs only: card A's fix (the .mcpb's
-  manifest.json is not valid JSON; clang-cl's unused private fields in McpLink.h: **Windows is red on A2 until it
-  lands, and `main` does not move over a red Windows job**), the steward's .mcpb artifact after it, U1's switch row
-  and chat panel. The rule for those: one green whole tier on a merged state, then merge a moved tip and push.
-- **NOT open:** anything under sim/, host/ or tools/; the diesel package; N2's compressor map (stage two, local);
-  the integrator's one latch for both directions (local, with its table of moved numbers); the bangs' default
-  (after the owner has heard G's clips); M's fan cure.
-- **Docs-only pushes** resume after the quiet window: the workflow ignores them and starts no run.
+- **25 Nov 18:37: `main` HAS MOVED to 43006034.** The window is OPEN for the items below and nothing else. Rule:
+  one green whole default tier on a merged state, then merge a moved tip and push, saying what was not in the run;
+  CI judges the combination; a red tip is fixed before anything else is pushed over it. **U1:** tell the lead
+  before your final merge; the lead collects a "holding" from every pusher, then names the tip, and it is held
+  from your merge to your push.
+- **On the branch since `main`** (tests / ci / app): the steward's a16dc1f0; the integrator's 87629688 (the one
+  latch for both directions); X's measure, restated click check and tools/ commits (0f677370).
+- **Released 19:15, pushing now:** D2 (ONE push: N2's ten commits, X-039's solve dropped, and D2's six), then B2
+  (the bike's clutch); B (`wholeBuilds`, the input probe); the steward (2fc03a65); C (four sleeping tests); card A
+  ("Add a key").
+- **Then sim/, in this order, each waiting for the one before to be on the branch:**
+  4. G: 8c9f4c20 and BangTest, and **the default to Burned in the pipe** (the owner, 19:10); X-038 (near-zero
+     bores in the builder's exhaust); then L: the exposure against the bangs, measured on G's fix;
+  5. the fixtures out of content/ in one step (X moves; N1 and the integrator repoint; P the manual's table);
+  6. N1: the rotary's low end, the two-stage's notch, the start's overshoot latching stage B, X-032 / X-034 /
+     X-037; the steward: X-030 / X-031 / X-036;
+  7. ui / assistant / shell, at any time (no sim/): U1 LAST in each round (the yes/no dialog a6e00140, the dials'
+     numbers under the needle, the hook for Rows); J2 (Rows as shipped code, then the card on the picture); card A
+     (`list_builds` and `load_build` on B's `wholeBuilds`; the dialog wired to `SessionParts::ask`); B (the G29:
+     the port from `docs/reference/testingplayground-wheel/`, macOS first); M: the fan's tone (sim/: before the
+     bake).
+- **Then the lead writes FROZEN FOR THE BAKE here and P bakes** (re-timing N2's named 4 s rows, adding VW's 320
+  at 1750, marking rows held by calibration; `[soak]` alone on its own last line).
+- **NOT open:** rule (c), the feed-forward and the turbine's rated match (research).
+- **Docs-only pushes (docs/** and *.md) at any time**, except while the tip is held for U1.

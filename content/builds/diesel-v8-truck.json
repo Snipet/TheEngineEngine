@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "Truck 16 L V8",
-  "notes": "Card D2. A 16.4 L V8 truck engine (130 x 154 mm, 17.3:1, a turbo a bank as the reference's twin), electronic governor, rated 1900 rpm, a compression brake and an exhaust flap (off at their switches); the 36 t rig. Air at 300 K, 101325 Pa. Card M's voices on: a viscous fan clutch, nine blades.",
+  "notes": "Card D2. A 16.4 L V8 truck engine (130 x 154 mm, 17.3:1, a turbo a bank as the reference's twin), electronic governor, rated 1900 rpm, a compression brake and an exhaust flap (off at their switches); the 36 t rig. Air at 300 K, 101325 Pa. Card M's voices on: a viscous fan clutch, nine blades. Its valves (25 Nov): the tractor archetype's events scaled to its 130 mm bore (valve diameters and lifts x 0.949), that archetype's judgement; no cam card found. Before, the reference's cam dial at 0.9999 (300 deg on a lobe separation of 106: 88 deg of overlap), which under a turbine's back pressure blows the exhaust back into the intake (card D2's truck fixture, N2's truck-valve-events.md). Its idle trim -300 -> 50: the ECU raised a 0.9999 cam's idle by 350 rpm (idle.fm), which the old trim took back.",
   "spec": {
     "engine": {
       "layout": "V8 crossplane",
@@ -10,13 +10,27 @@
       "boreStroke": 0.844,
       "compression": 17.3,
       "flywheel": 1,
-      "idleTrim": -300,
+      "idleTrim": 50,
       "redlineTrim": -300,
       "rough": 0,
       "benchLoad": 0
     },
     "valve": {
-      "cam": 0.9999,
+      "model": "Lab",
+      "valves": 4,
+      "dIn": 0.0436,
+      "dEx": 0.0408,
+      "train": "Rocker",
+      "inDurSeat": 232,
+      "inDur1mm": 200,
+      "inLift": 0.0133,
+      "inCentre": 112,
+      "exDurSeat": 232,
+      "exDur1mm": 200,
+      "exLift": 0.0123,
+      "exCentre": 112,
+      "springRate": 25000.0,
+      "springPreload": 150.0,
       "auxOpen": 695,
       "auxDur": 100,
       "auxLift": 0.0025

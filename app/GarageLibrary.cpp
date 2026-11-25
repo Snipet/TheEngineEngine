@@ -84,8 +84,16 @@ namespace tee::app
             std::vector<fs::path> files;
             for (auto it = fs::recursive_directory_iterator(dir, ec); !ec && it != fs::recursive_directory_iterator();
                  it.increment(ec))
+            {
+                if (!user && it.depth() == 0 && it->is_directory(ec)
+                    && files::BuildLibrary::isFixture(it->path().lexically_relative(dir)))
+                {
+                    it.disable_recursion_pending();   // the test suite's fixtures: not shipped builds
+                    continue;
+                }
                 if (it->is_regular_file(ec) && it->path().extension() == ".json")
                     files.push_back(it->path());
+            }
             std::sort(files.begin(), files.end());
             for (const fs::path& f : files)
             {

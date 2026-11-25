@@ -68,14 +68,14 @@
       "springRate": 81750.0,
       "springPreload": 510.0,
       "stages": "On",
-      "inDurSeatB": 280,
-      "inDur1mmB": 242.0,
+      "inDurSeatB": 285.0,
+      "inDur1mmB": 247,
       "inLiftB": 0.01265,
+      "inCentreB": 98,
       "exDurSeatB": 278,
       "exDur1mmB": 240.0,
       "exLiftB": 0.01214,
       "stageSpeed": 612.6105674500096,
-      "inCentreB": 110,
       "exCentreB": 112
     },
     "intake": {

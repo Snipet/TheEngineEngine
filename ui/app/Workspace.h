@@ -144,6 +144,23 @@ namespace tee::ui
             const double lo = i < retardMin.size() ? retardMin[i] : 0.0, hi = i < retardMax.size() ? retardMax[i] : lo;
             return "knock-limited, retard " + deg(lo) + (std::lround(hi) != std::lround(lo) ? " to " + deg(hi) : std::string()) + " deg";
         }
+        // A predicted point's torque's standard error (N m) and the settled cycles its mean is of (card C's
+        // PredictPoint::torqueSe, settledCycles; 0 cycles: it did not settle). Empty when the source says nothing.
+        std::vector<double> torqueSe;
+        std::vector<int> settledCycles;
+        // A point whose torque is not to be trusted as drawn: it did not settle, or twice its standard error is more
+        // than 2 % of its torque. The 2 % is judgement (the lead's ruling, 25 Nov: about the change an edit of one
+        // setting makes, so a point less sure than that cannot show it), not card C's. The ribbon marks it with an
+        // open square and says "unsettled at N rpm". A limiter's point is not: it is apart already.
+        bool unsettledAt(std::size_t i) const noexcept
+        {
+            if (i >= settledCycles.size() || limitedAt(i))
+                return false;
+            if (settledCycles[i] <= 0)
+                return true;
+            const double se = i < torqueSe.size() ? torqueSe[i] : 0.0, tq = i < torque.size() ? torque[i] : 0.0;
+            return std::isfinite(se) && 2.0 * se > 0.02 * std::fabs(tq);
+        }
         const char* wallsWord() const noexcept { return settled > 0 ? "walls settled" : settled == 0 ? "cold walls" : ""; }
         bool empty() const noexcept { return speed.empty(); }
         // The peak of torque or power: its value and the speed at it (NaN, NaN when empty).
@@ -297,6 +314,19 @@ namespace tee::ui
         // shows its DASH buttons only while both are served.
         std::function<int()> driveStyle;
         std::function<void(int)> setDriveStyle;
+        // Claude Desktop's link (card A: assistant/include/tee/assistant/Session.h), the settings' CLAUDE DESKTOP row:
+        // whether it is allowed now (Session::desktopAllowed); the switch (Session::allowDesktop: false, with `why`,
+        // when it cannot be: the switch stays off and the row says why; the shell keeps a choice that took in the
+        // settings' allowClaudeDesktop); the status line (Session::statusNote: "" while off). Empty: no row.
+        std::function<bool()> desktopAllowed;
+        std::function<bool(bool on, std::string& why)> allowDesktop;
+        std::function<std::string()> desktopStatus;
+        // The key chat's key, for the frame's key dialog (Session::saveKey, keyMask, removeKey): a key as typed, saved
+        // in the system's store (false, with why: nothing changed); the saved one's mask (at most its last four
+        // characters, "" when none); the key removed. The dialog never draws, logs or keeps the key it was given.
+        std::function<bool(std::string typed, std::string& why)> saveKey;
+        std::function<std::string()> keyMask;
+        std::function<bool(std::string& why)> removeKey;
         std::function<std::string()> tryFirst;
         std::function<void()> tryFirstDone;
         std::function<int()> loadFits;

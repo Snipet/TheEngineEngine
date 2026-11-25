@@ -73,8 +73,15 @@ namespace tee::assistant
     }
 
     McpLink::McpLink(Tools& tools, Drivers& drivers, Cards& cards, std::function<double()> clock, Options options)
-        : tools_(tools), drivers_(drivers), cards_(cards), clock_(std::move(clock)), options_(std::move(options))
+        : tools_(tools),
+#if !defined(_WIN32)
+          drivers_(drivers),
+#endif
+          cards_(cards), clock_(std::move(clock)), options_(std::move(options))
     {
+#if defined(_WIN32)
+        (void)drivers;   // no link on Windows in this version: nothing drives through it
+#endif
     }
 
     McpLink::~McpLink()
@@ -124,10 +131,6 @@ namespace tee::assistant
 
     bool McpLink::start(std::string& why)
     {
-        (void)drivers_;   // (the link's, on macOS and Linux)
-        (void)listen_;
-        (void)wake_;
-        (void)workerStop_;
         why = wire::kNoLink;
         return false;
     }
@@ -175,7 +178,10 @@ namespace tee::assistant
         const mode_t was = umask(077);
         const bool bound = bind(fd, reinterpret_cast<const sockaddr*>(&a), sizeof a) == 0;
         umask(was);
-        if (!bound || ::listen(fd, 4) != 0 || !wire::wakePair(wake_))
+        // The system's largest backlog: macOS refuses a connect at once (ECONNREFUSED) when the queue is full, where
+        // Linux holds it, and the poll thread accepts only as fast as it is woken: a few bridges (or one reconnecting
+        // as Claude Desktop restarts it) must never be turned away for arriving together.
+        if (!bound || ::listen(fd, SOMAXCONN) != 0 || !wire::wakePair(wake_))
         {
             close(fd);
             unlink(path_.c_str());
@@ -230,10 +236,11 @@ namespace tee::assistant
 
     void McpLink::wake()
     {
+        // (a socket pair, not a pipe: sendAll, never a signal; a full or closed pair needs no second wake)
         if (wake_[1] >= 0)
         {
             const char c = 1;
-            [[maybe_unused]] const ssize_t n = write(wake_[1], &c, 1);
+            wire::sendAll(wake_[1], &c, 1);
         }
     }
 
@@ -277,16 +284,13 @@ namespace tee::assistant
                     else
                     {
                         timeval tv{5, 0};
-                        setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);
- #if defined(SO_NOSIGPIPE)
-                        const int one = 1;
-                        setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &one, sizeof one);
- #endif
+                        setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);   // (SO_NOSIGPIPE: acceptFrom's)
                         auto c = std::make_shared<Client>();
                         c->fd = fd;
                         clients.push_back(c);
                         std::lock_guard<std::mutex> lock(viewMutex_);
                         view_.connections = static_cast<int>(clients.size());
+                        ++view_.accepted;
                     }
                 }
             }
@@ -348,23 +352,8 @@ namespace tee::assistant
     {
         const std::string line = "{\"id\":" + id + ",\"result\":" + result.dump() + "}\n";
         std::lock_guard<std::mutex> lock(client.write);
-        std::size_t at = 0;
-        while (client.fd >= 0 && at < line.size())
-        {
- #if defined(MSG_NOSIGNAL)
-            const ssize_t n = send(client.fd, line.data() + at, line.size() - at, MSG_NOSIGNAL);
- #else
-            const ssize_t n = send(client.fd, line.data() + at, line.size() - at, 0);
- #endif
-            if (n < 0 && errno == EINTR)
-                continue;
-            if (n <= 0)
-            {
-                shutdown(client.fd, SHUT_RDWR);   // a peer not reading: the poll thread sees it close
-                return;
-            }
-            at += static_cast<std::size_t>(n);
-        }
+        if (client.fd >= 0 && !wire::sendAll(client.fd, line.data(), line.size()))
+            shutdown(client.fd, SHUT_RDWR);   // gone, or not reading: the poll thread sees it close and drops it
     }
 
     void McpLink::refuse(Client& client, const std::string& id, const std::string& why)
@@ -372,13 +361,7 @@ namespace tee::assistant
         const std::string line = "{\"id\":" + id + ",\"error\":" + json(why).dump() + "}\n";
         std::lock_guard<std::mutex> lock(client.write);
         if (client.fd >= 0)
-        {
- #if defined(MSG_NOSIGNAL)
-            [[maybe_unused]] const ssize_t n = send(client.fd, line.data(), line.size(), MSG_NOSIGNAL);
- #else
-            [[maybe_unused]] const ssize_t n = send(client.fd, line.data(), line.size(), 0);
- #endif
-        }
+            wire::sendAll(client.fd, line.data(), line.size());   // (a refusal to a peer gone: nothing more to do)
     }
 
     void McpLink::request(const std::shared_ptr<Client>& client, const std::string& line)
@@ -429,6 +412,16 @@ namespace tee::assistant
             if (!params.contains("name") || !params["name"].is_string())
             {
                 refuse(*client, id, "a call names its tool");
+                return;
+            }
+            if (tools_.find(params["name"].get<std::string>()) == nullptr)
+            {
+                // an unknown tool is a protocol error in MCP (-32602), not a tool's failure: the bridge says so
+                const std::string out = "{\"id\":" + id + ",\"error\":" + json("no tool named " + params["name"].get<std::string>().substr(0, 64)).dump()
+                                         + ",\"code\":-32602}\n";
+                std::lock_guard<std::mutex> lock(client->write);
+                if (client->fd >= 0)
+                    wire::sendAll(client->fd, out.data(), out.size());
                 return;
             }
             Job j{client, id, params["name"].get<std::string>(),

@@ -43,6 +43,28 @@
 
 ## Landed
 
+- **25 Nov 19:15 UTC: the owner's rulings** (`integration-queue.md`, "The owner's rulings and a new fault"):
+  bangs burned in the pipe become the default (G, before the bake); the inspector becomes Rows, then the card on
+  the picture (J2, U1's hook); the idle's loudness stays; the wheel is a Logitech G29 with the H shifter, to be
+  ported from TestingPlayground's working code (B; reference files in `docs/reference/testingplayground-wheel/`;
+  macOS first, never run in the cloud); a fault in DRIVE's dials, numbers under the needle (U1). Nothing of this
+  is in `main` yet.
+- **25 Nov 18:37 UTC: `main` at 43006034** (from 76420f32, fast-forward; Linux 587 of 587, macOS 587 of 587 on a
+  second attempt after GitHub had no runner for the first, Windows 580 of 580; sim/host/tools equal the bake's).
+  New in `main`: the octane as a number with the knock tables following it; bangs burned in the pipe as a choice
+  (default Carved); the start's exposure and the diesel start fuel; the clutch held on the overrun; stage help;
+  DRIVE CLASSIC's dials, the ribbon's unsettled marks, a tab for every inspector page; GARAGE without the test
+  fixtures; the rotary's cited ports and the two-stage's high lobe; the assistant (SETTINGS > CLAUDE DESKTOP, CHAT,
+  the key dialog; never run against Claude Desktop or the API); the soak by request. The next window is open (the
+  queue's FREEZE STATE): the diesel package first.
+
+- **25 Nov 15:23 UTC:** `main` still at 76420f32. The window's sim, host and tools items are on the branch and
+  baked (P: 15152e0b local, tools sha 758bb12f's; its push follows its tier and must sit on card A's SIGPIPE cure
+  and B's two lines). `main` moves when Linux, macOS and Windows are green on that push. Open meanwhile: ui/,
+  assistant/, app/, shell/, tests/, ci, docs. The queue's section of 15:23 has what was found while the bake ran
+  (the compressor map and the diesel package; the clutch; the bangs; the soak's findings; GARAGE listing fixtures;
+  the assistant's platform faults) and the next window's contents.
+
 - **25 Nov 13:59 UTC:** `main` (76420f32) green on all three platforms (Windows 13:50). The window's first three are
   on the branch (tip 1f02d786): the steward's packages and the soak by request only, U5's stage help, N1's octane
   as a free number. Held outside the window: the compressor map's two low coefficients (N2's model-wide table,

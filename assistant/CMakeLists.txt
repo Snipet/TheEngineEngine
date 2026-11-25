@@ -79,7 +79,7 @@ if(NOT WIN32)
   "display_name": "TheEngineEngine",
   "version": "@TEE_MCPB_VERSION@",
   "description": "Ask Claude about the engine open in TheEngineEngine: it reads the build, changes it a step at a time and measures its torque curve.",
-  "long_description": "Open TheEngineEngine and turn on "Allow Claude Desktop" in it, then talk to Claude about the engine on the bench. Claude reads the build, explains its fields, changes them (each change one step you can undo in the app, where it shows as a card), loads a build from the library or saves the open one under a new name, and measures its torque curve on a private copy. Loading over unsaved changes asks you in the app first. Nothing leaves your computer except your conversation with Claude: the extension talks to the app through a private local connection.",
+  "long_description": "Open TheEngineEngine and turn on 'Allow Claude Desktop' in it, then talk to Claude about the engine on the bench. Claude reads the build, explains its fields, changes them (each change one step you can undo in the app, where it shows as a card), loads a build from the library or saves the open one under a new name, and measures its torque curve on a private copy. Loading over unsaved changes asks you in the app first. Nothing leaves your computer except your conversation with Claude: the extension talks to the app through a private local connection.",
   "author": { "name": "TheEngineEngine" },
   "server": {
     "type": "binary",
