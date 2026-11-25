@@ -214,6 +214,19 @@ if(TARGET TheEngineEngine AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set_tests_properties(shell.window.twostage PROPERTIES TIMEOUT 600 LABELS "shell;window;nightly" RUN_SERIAL TRUE
       ENVIRONMENT "SDL_AUDIODRIVER=dummy;TEE_SETTINGS_DIR=${_out}/twostage-no-settings"
       PASS_REGULAR_EXPRESSION "checks: [0-9]+, 0 failed.*tee-app: ok")
+    # The input probe (TheEngineEngine --probe-input, app/InputProbe.h): with no device it says "none seen"; with
+    # SDL's own virtual joystick described as a wheel (TEE_PROBE_VIRTUAL, a test's stand-in) it reports the wheel's
+    # type, axes and buttons and the changes made to it. No real device is opened by a test.
+    add_test(NAME shell.probe.none COMMAND $<TARGET_FILE:TheEngineEngine> --probe-input --probe-seconds 0.5
+      WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
+    add_test(NAME shell.probe.virtual COMMAND $<TARGET_FILE:TheEngineEngine> --probe-input --probe-seconds 0.6
+      WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
+    set_tests_properties(shell.probe.none PROPERTIES TIMEOUT 60 LABELS "shell;probe"
+      ENVIRONMENT "SDL_AUDIODRIVER=dummy;SDL_JOYSTICK_DISABLE_UDEV=1"
+      PASS_REGULAR_EXPRESSION "none seen.*summary:.*none seen.*probe: done")
+    set_tests_properties(shell.probe.virtual PROPERTIES TIMEOUT 60 LABELS "shell;probe"
+      ENVIRONMENT "SDL_AUDIODRIVER=dummy;TEE_PROBE_VIRTUAL=1;SDL_JOYSTICK_DISABLE_UDEV=1"
+      PASS_REGULAR_EXPRESSION "SDL's type: WHEEL.*axes 4, buttons 12, hats 1.*#1 axis 1 = 32767.*#1 button 4 down.*#1 hat 0 up.*summary:.*axis 0: rest 0, seen 0 to 0 \\(did not move\\).*axis 1: rest 0, seen -32768 to 32767.*buttons pressed: 4.*probe: done")
     set_tests_properties(shell.window.gpu shell.window.ref shell.window.plain shell.window.info PROPERTIES
       TIMEOUT 600 LABELS "shell;window" ENVIRONMENT "SDL_AUDIODRIVER=dummy" RUN_SERIAL TRUE)
     # (the reference's panel and the plain Panel in a window: the soak tier's; the frame's is the default run's)

@@ -13,6 +13,7 @@
 // It is a console program on Windows for now: what it prints (the compile's time, the audio device, an error) is
 // what a person testing it is asked for (docs/checkpoints/M1.md).
 #include "Engine.h"
+#include "InputProbe.h"
 #include "Launch.h"
 #include "Offline.h"
 #include "Options.h"
@@ -82,6 +83,9 @@ namespace
         app::Options o = given;
         SDL_SetMainReady();
         SDL_SetAppMetadata("TheEngineEngine", TEE_VERSION, "com.snipet.theengineengine");
+        // --probe-input: the game controllers SDL sees and their changes (app/InputProbe.h); no window, no engine
+        if (o.probeInput >= 0.0)
+            return app::probeInput(o.probeInput);
 
         // ---- what was remembered: the bindings, the pedals' times, the audio buffer (shell/settings/Settings.h) ------
         const settings::Loaded remembered = settings::load();

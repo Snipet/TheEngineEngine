@@ -43,6 +43,19 @@
 
 ## Landed
 
+- **25 Nov 19:21 UTC: the diesel package is on the branch at e9b2ef3f** (not in `main`; CI on it not yet read).
+  N2's ten commits (the compressor map fitted to the seven cited maps; a governed diesel's wheel sized at its
+  torque peak; the whole-flow VGT nozzle; no vane surge guard; the loop's integral held where the vanes cannot
+  follow or the ECU owns them; the shaft's ceiling in the boost loop) and D2's six (the builds off the cam dial,
+  the fixture's 260 kPa target, `ecu.torqueMax` / `ecu.powerMax` with the truck's fitted fuel curve removed, the
+  brake without its own shaft integral, the cylinder cut's case, GradeTest's checks). Tier: 580 of 580 on Linux
+  before the merge of test-only commits. The baked tables are stale until P's next bake.
+- **25 Nov 19:15 UTC: the owner's rulings** (`integration-queue.md`, "The owner's rulings and a new fault"):
+  bangs burned in the pipe become the default (G, before the bake); the inspector becomes Rows, then the card on
+  the picture (J2, U1's hook); the idle's loudness stays; the wheel is a Logitech G29 with the H shifter, to be
+  ported from TestingPlayground's working code (B; reference files in `docs/reference/testingplayground-wheel/`;
+  macOS first, never run in the cloud); a fault in DRIVE's dials, numbers under the needle (U1). Nothing of this
+  is in `main` yet.
 - **25 Nov 18:37 UTC: `main` at 43006034** (from 76420f32, fast-forward; Linux 587 of 587, macOS 587 of 587 on a
   second attempt after GitHub had no runner for the first, Windows 580 of 580; sim/host/tools equal the bake's).
   New in `main`: the octane as a number with the knock tables following it; bangs burned in the pipe as a choice
