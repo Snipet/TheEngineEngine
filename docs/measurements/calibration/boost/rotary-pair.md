@@ -81,3 +81,26 @@ The next window's change then has two parts, measured against the cited torque c
 - the pair matched at the join with equal shares, the share labelled as the inference above until P finds a source.
 
 The rotary's rows above the join stay rows: they are a known miss with this cause, not held by calibration (told to P).
+
+### P's section 23 (25 Nov 19:48), which settles two of the three
+
+**The models (cited, enthusiasts' agreement):**
+- both are Hitachi HT-12, the same model, so the pair is symmetric by hardware;
+- one page has the primary as an HT-10; P judges its other details doubtful and did not use it;
+- not found: the HT-12's part numbers and wheel diameters.
+
+**The boost through the join (cited, several enthusiast sources agreeing):**
+- about 10 psi (0.7 bar) on the primary;
+- a dip to about 8 psi (0.55 bar) at the changeover near 4500 rpm (one says 4700);
+- then a steady 10 psi on the pair to the redline.
+
+The pair's target is therefore the build's 0.70 bar from the join to the redline, and a short dip at the join is real.
+Measured today the pair makes 0.45-0.53 bar above the join, under even the dip.
+
+**Each turbo's share once joined:** not stated anywhere P read. An even split is the natural reading of two HT-12s at
+one boost; it stays labelled judgement.
+
+So the re-match is:
+- each of two equal turbines passes half the engine's flow at the 0.70 bar target, from the join to the redline;
+- the single reaches 0.70 bar below the join (cited onset 1800-2500 rpm, not agreed);
+- the transfer is unrestricted.
