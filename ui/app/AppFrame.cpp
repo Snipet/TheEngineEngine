@@ -294,10 +294,47 @@ namespace tee::ui
         // The first launch's card, made last: over the stage, and the first to take a press there.
         tryFirst_ = &make<TryFirstCard>();
         tryFirstClose_ = &make<Button>("Close", [this] { closeTryFirst(); });
+        writeHelp();
 
         unitsSeen_ = units_.revision();
         selectionSeen_ = selection_.revision();
         show(std::max(0, find("engine")));
+    }
+
+    // Hover help for the frame's own items (the owner's ask: help on hover everywhere); each line says what the thing
+    // does or shows, nothing it does not.
+    void AppFrame::writeHelp()
+    {
+        load_->setHelp("What the simulator takes of one CPU core, from its busiest moment in the last second. Past 70 % it "
+                       "is tight and past 90 % the sound may drop out; Economy quality about halves it.");
+        level_->setHelp("The output's loudest sample in the last moment, in decibels below full scale (0 dB).");
+        limiter_->setHelp("How far the output limiter is turning the sound down, in decibels.");
+        unitsButton_->setHelp("The settings: the audio device, the theme, the quality, how the engine starts, and the "
+                              "units every number is shown in.");
+        undo_->setHelp("Undoes the last change to the build (Cmd or Ctrl Z).");
+        redo_->setHelp("Does again the change last undone (Cmd or Ctrl Y, or Shift Z).");
+        adviceButton_->setHelp("Opens the settings, where QUALITY can be set to Economy.");
+        clear_->setHelp("Clears the selection: the inspector shows the whole workspace's settings again.");
+        audioMenu_->setHelp("Chooses the audio output device.");
+        graphite_->setHelp("The dark theme.");
+        paper_->setHelp("The light theme.");
+        full_->setHelp("The engine computed at its full inner rate.");
+        economy_->setHelp("The engine computed at half its inner rate: about half the CPU load, the highest octave lost.");
+        warmStart_->setHelp("From the next launch the engine starts at its running temperature.");
+        coldStart_->setHelp("From the next launch the engine starts cold, as after a night parked.");
+        ribbon_->setHelp("The build's predicted torque and power, worked out again after each edit. The faint curves are "
+                         "the build before the last edit.");
+        fold_->setHelp("Folds the dyno strip to its title row and gives the inspector its room.");
+        tryFirstClose_->setHelp("Closes this card for good.");
+        for (std::size_t i = 0; i < rail_.size() && i < slots_.size(); ++i)
+            rail_[i]->setHelp("Opens " + slots_[i].title + ".");
+        static const char* const kPedalHelp[] = {
+            "The throttle pedal as the keys or a controller press it. Drag it to hold it there with the mouse.",
+            "The brake pedal as the keys or a controller press it. Drag it to hold it there with the mouse.",
+            "The clutch pedal as the keys or a controller press it. Drag it to hold it there with the mouse.",
+        };
+        for (std::size_t i = 0; i < pedals_.size() && i < std::size(kPedalHelp); ++i)
+            pedals_[i]->setHelp(kPedalHelp[i]);
     }
 
     std::string AppFrame::bakeWords() const
@@ -465,6 +502,21 @@ namespace tee::ui
             return std::isfinite(v) ? units_.number(Quantity::temperature, v, 0) : std::string("-");
         }, [this] { return std::string(units_.unit(Quantity::temperature).name); });
         brake_ = &make<BrakeLamp>(*ctx_);
+        start_->setHelp("Hold to turn the starter; let go once the engine runs.");
+        modes_[0]->setHelp("Where the engine runs: BENCH, free with no load; DYNO, held against a dynamometer; DRIVE, in "
+                           "the car. Click to change.");
+        rpm_->setHelp("Engine speed in rpm. The hatched zone is past the redline; the shift lights count down to it.");
+        brake_->setHelp("A heavy diesel's brakes: lit while each acts; the segments are the engine brake's stage.");
+        static const char* const kReadoutHelp[] = {
+            "The gear engaged (N neutral, R reverse).",
+            "Road speed.",
+            "The manifold's pressure over the air outside: boost above zero, vacuum below.",
+            "Lambda: the exhaust's air-fuel ratio over the ideal. Above 1.00 lean, below rich.",
+            "Coolant temperature. Past 110 C it says HOT.",
+            "Oil temperature.",
+        };
+        for (std::size_t i = 0; i < readouts_.size() && i < std::size(kReadoutHelp); ++i)
+            readouts_[i]->setHelp(kReadoutHelp[i]);
         // The pedals: they show the frame the application sent and, held, ask for their own.
         const auto sent = [this](float ControlsFrame::*m) {
             return [this, m] { return services_.app.controls ? services_.app.controls().*m : 0.0f; };
@@ -1181,6 +1233,9 @@ namespace tee::ui
         for (int i = 0; i < ws.count(); ++i)
             if (ws.item(i).shown())
                 k.mix(ws.item(i).drawKey());
+        if (const FieldPage* page = inspector())
+            k.mix(page->tooltip().drawKey());   // hover help shown or gone
+        k.mix(tooltip().drawKey()).mix(current().tooltip().drawKey());
         if (const FieldPage* page = inspector())
             for (const auto& it : page->items())
                 if (it->shown())

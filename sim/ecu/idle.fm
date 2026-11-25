@@ -134,6 +134,12 @@ module IdleControl
         const float tr = 1.0f + 1.6f * (target - s->avg - look * s->rate) * 0.001f + trimInt;
         if (driven)
             trim = pedal < 0.02f ? fminf(fmaxf(tr, 0.3f), 1.35f) : fminf(fmaxf(tr, 1.0f), 1.35f);
+        // (on the bench and the dyno the same rule for the pedal open: an idle spark trim belongs to a released pedal,
+        // and with it open it only helps below the idle, against a stall. Before, it cut the torque toward 0.3 above
+        // the idle with the pedal floored, to idle + 450 rpm, where it stepped back to full: a full-load dyno point or a
+        // free rev's climb in that band ran on as little as a third of its torque. The lead's ruling, 25 Nov)
+        else if (pedal >= 0.02f)
+            trim = s->avg < target + 450.0f ? fminf(fmaxf(tr, 1.0f), 1.35f) : 1.0f;
         else
             trim = s->avg < target + 450.0f ? fminf(fmaxf(tr, 0.3f), 1.35f) : 1.0f;
         // after the start, the valve closes no faster than its start position decays (2 s): an idle actuator gives

@@ -4,6 +4,8 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <functional>
+#include <string>
 
 using d2::Engine;
 
@@ -148,4 +150,59 @@ TEST_CASE("diesel governor: the full-load fuel curve shapes the torque; with non
     }
     REQUIRE(sound[0].size() == sound[1].size());
     CHECK(sound[0] == sound[1]);
+}
+
+TEST_CASE("diesel governor: below the ECU's idle + 450 rpm at full pedal on the dyno, a governed diesel burns its fuel", "[diesel][governor]")
+{
+    // The reference ECU's trim (a petrol's quick spark hand against a sagging idle, below idleRpm + 450: sim/ecu/ecu.fm)
+    // scaled a diesel's charged heat, at full pedal too on the dyno and the bench: the tractor archetype at 1000 rpm burned
+    // 0.52 of the fuel its rack and compensator let through (3330 J a cylinder-cycle against some 6250; 638 N m, 14 kPa;
+    // card D2's ledger, 25 Nov). Under D2's metered governor the charge takes none of it: the heat the cylinders' books
+    // charge is the fuel the telemetry reports, within 5 % (the charges' own scatter and bias are the rest). Measured 25 Nov:
+    // 1552 N m, 47 kPa, the port 1016 K, BSFC 209 g/kWh by the books, 213 by the telemetry
+    Engine e("archetypes/tractor-15-inline-six");
+    e.spec("env.temperature", 300.0);
+    e.spec("env.pressure", 101325.0);
+    e.start();
+    auto play = [&](double s, const std::function<void()>& each) {
+        const int calls = static_cast<int>(s * e.rate / 512.0 + 0.5);
+        for (int c = 0; c < calls; ++c)
+        {
+            e.holdWarm();
+            REQUIRE(e.run(512.0 / e.rate));
+            if (each)
+                each();
+        }
+    };
+    e.dyno(1000.0, 1.0f);
+    play(1.0, nullptr);
+    e.spec("exhaust.heatSettle", 1);
+    e.spec("boost.heatSettle", 1);
+    play(5.0, nullptr);
+    double was[6] = {-1, -1, -1, -1, -1, -1}, sum[6] = {0, 0, 0, 0, 0, 0}, ff = 0.0, tq = 0.0;
+    int n[6] = {0, 0, 0, 0, 0, 0}, k = 0;
+    play(2.0, [&] {
+        for (int c = 0; c < 6; ++c)
+        {
+            const double v = e.get("cyl[" + std::to_string(c) + "].bookCharged");
+            if (v != was[c])
+            {
+                was[c] = v;
+                sum[c] += v;
+                ++n[c];
+            }
+        }
+        ff += e.tel("ecu.fuelFlow");
+        tq += e.tel("engine.torque");
+        ++k;
+    });
+    double books = 0.0;
+    for (int c = 0; c < 6; ++c)
+        books += sum[c] / std::max(n[c], 1);
+    const double w = 1000.0 * 0.10471976;
+    const double told = (ff / k) * 4.0 * 3.14159265 / w * 42.5e6 * 0.98;   // J a cycle, the telemetry's fuel's heat
+    std::printf("tractor at 1000 rpm, full pedal on the dyno: %.0f N m; heat charged a cycle %.0f J by the books, %.0f J by the telemetry's fuel\n",
+                tq / k, books, told);
+    CHECK(books > 0.95 * told);
+    CHECK(books < 1.05 * told);
 }

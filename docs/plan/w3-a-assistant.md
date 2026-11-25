@@ -117,12 +117,15 @@ app as a card with Undo; macOS and Linux first, no Windows link in this version 
 3. **A3: the key chat:** the transport, the key store and dialog, the turn loop, the chat panel in U1's frame.
 4. **A4: what was cut,** each on its own: pictures, the sound, the live engine, tables, Windows.
 
-## The owner's to answer (defaults taken otherwise)
+## The owner's answers (25 Nov)
 
-1. Claude may **change** the build, every change one undoable step. (Otherwise: read and explain only.)
-2. **Claude Desktop first, the in-app key chat second.** (The reviewer's order; the first draft had it the other way.)
-3. The key in the **system's keychain**, not TestingPlayground's sealed file.
-4. Claude never starts the engine or overwrites a saved build without being asked in the app.
-5. A default model id written in the app's code: allowed? (The repository's rule against model names was written
-   for commit messages; the key chat needs one constant.)
-6. Windows after macOS and Linux.
+Asked as three questions; the owner: "Yes to all three defaults".
+
+1. **Claude may change the build**, every change one undoable step.
+2. **Claude Desktop first, the in-app key chat second.**
+3. **A default model id may stand in the app's code**, in one constant, when the key chat's phase arrives. The
+   repository's rule against model names stays what it was written for: commit messages and attribution.
+
+Taken as defaults, not asked one by one (the owner can overrule any): the key in the system's keychain, not
+TestingPlayground's sealed file; Claude never starts the engine or overwrites a saved build without being asked in
+the app; Windows after macOS and Linux.

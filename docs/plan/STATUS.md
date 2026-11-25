@@ -2,6 +2,12 @@
 
 *Kept by the lead. Times are UTC, 2026-11-24.*
 
+**The owner's standing words on the fleet** (the lead keeps these at the top so they survive a summary):
+- 25 Nov, about 11:29: "For future note (in the scope of this project), you may use up to 10 concurrent sessions."
+  A ceiling, not a target: a session is woken for named work and idles when it has none.
+- 25 Nov, about 10:53: "keep the fleet thin" (given when usage had just run out; the cap above came after it).
+- Earlier: new implementation agents run on Opus 5.5; `main` is fast-forwarded at each checkpoint, never forced.
+
 | Package | State | Where it runs | Since | Notes |
 |---|---|---|---|---|
 | A: FunkGui desktop | **landed and merged 13:19** | local agent (finished) | 11:22 | Snipet/FunkGui pull request 38 merged to main at `19d06ab` (version 0.28.0): `DesktopHost` on SDL3, the menu overlay, file dialogs, clipboard, preferences, `FunkGui::gpu` without JUCE; CI green on Windows (44 tests, Direct3D 11), macOS (70, Metal), Linux (70, Vulkan on lavapipe). Tagged `v0.28.0` by the owner at 13:28. 40 new golden rows of `fg.desktop.menu` are candidates the lead has not adopted yet. Handoff: `docs/handoffs/a-funkgui-desktop.md` |
@@ -36,6 +42,77 @@
 | Held: W the wheel's feedback, R release | not started | | | W cannot be proven without the owner's wheel and shares files with the shell; R needs the owner's signing identities |
 
 ## Landed
+
+- **12:20 (25 Nov) the owner: "Windows was able to launch and run"** (`main` at d0a7330e; the first run of the app by
+  a person on Windows; what beyond launching and running was tried is not known yet). README's line updated to say
+  exactly that. **The owner also asked whether the right-side controls are to be redesigned ("relatively clunky
+  still"):** no plan existed; J2 is woken to draw three designs of the inspector as real pictures (rows with typed
+  numbers and a filter; dials kept but exact; fields on the stage's picture), nothing merged until the owner picks.
+- **`main` is held at d0a7330e** on the owner's decision about one listen assertion on P's re-bake (queue, 12:16).
+- On the branch since the last entry: U1's DRIVE styles (CLASSIC, DIGITAL, RACE beside STANDARD; 545 of 545 by U1;
+  rendered by the lead and sent to the owner; CLASSIC's small dials overlap their digits at the small stage, U1 is
+  fixing that first).
+
+- **12:02 (25 Nov) check-in.** `main` at d0a7330e. P's re-bake at dbd64a5c running (pre-bake tier 540 of 540 by P);
+  sim/, host/ and tools/ frozen since 11:26, untouched by every push since (the lead's diff: 0 lines).
+- **On the branch since `main`, ui/ and app/ only:** U1's hover help (240c9a58: every bound control and the frame's
+  own items; a test that fails when a settable field has no help; 541 of 541 by U1; the lead rendered its picture in
+  its own build and sent it to the owner) and U4's fuel control (89fa786e: a FUEL band in TUNE with AKI, RON and
+  MON read from `fuels.fm`, the knock map and the bake's state after a change, the DYNO naming each run's fuel;
+  543 of 543 by U4). The owner's todos 5 and 1.
+- **The lead now builds the tree itself** (build-dev in its checkout) and re-measured two claims before they move
+  anything: D2's trim cure and N2's (b) wheel, both confirmed (numbers in the queue).
+- **Held for the next window, each built or building and each on the lead's word:** card A's `Build` step ids, A1 and
+  A2 (Claude Desktop over MCP: built and tested locally, never run against Claude Desktop); C's knock bake with
+  lighter pedals (kKnockBakeVersion 5; N1 found the V12 idling at 10.8 deg after top centre on a row copied flat);
+  N2's (b) and the surge setpoint limit (table first); G's half of the pops and N1's seam for it (G's session would
+  not take the owner's leave through the lead, so the two files went to the card that owns them); D2's start fuel;
+  N1's 93 grade. Content only, for P: the rotary's cited ports (N1: 244.5 to 320 N m at 5000 on 294) and the
+  two-stage build's high lobe on the F20C's centreline (N1: the stages cross at 5802 rpm where they crossed at
+  7188; makers' 5500 to 5900).
+- **Fleet:** nine working at times (P, N2, U1, U4, G, A, N1, D2, C), under the owner's ten.
+
+- **11:30 (25 Nov) the fleet under the owner's cap of ten.** Working: P (the re-bake at dbd64a5c for the next
+  `main`: D2's two cures under sim/), N2 (its low-speed cells again on the cured engine), U1 (hover help built,
+  then the DRIVE gauges), U4 (the fuel grade in TUNE), G (the pops), card A (the assistant, A1), N1 (the two-stage
+  build's torque dip at its cam change, the owner's own report; the rotary's 239 N m against 290 to 315, by a
+  ledger), D2 (the nightly "diesel cold, full" red, locally). Asleep: the rest.
+- **G is stopped at a permission its session will not take from the lead:** edits to `sim/ecu/overrun.fm` and the
+  account's call in `sim/combustion/combustion.fm` are outside the paths its original brief names, and a peer's word
+  does not widen them. The lead has not worked around it; the owner is asked. Meanwhile G builds inside its paths
+  (`PipeBurn`, the event inbox, the junction's source, `exhaust.bang`, tests on synthetic events). G also corrected
+  the lead's arithmetic: a burning velocity is against the unburned gas, so the expansion does not shorten a slug's
+  burn; a spark-cut charge burns in tens of ms by Metghalchi and Keck plus the collector's turbulence, not the 7 ms
+  the lead wrote.
+- **D2's two cures on the branch** (2cf55103 the diesel charge takes no idle trim with the pedal open under the
+  metered governor; c16af6a2 the same rule for petrols on the bench in `idle.fm`), both diffs read by the lead, 540
+  of 540 by D2; not in `main` until P's bake is green.
+
+- **11:15 (25 Nov) `main` moved to d0a7330e** (fast-forward from 7f64dac1): P's bake plus the owner's macOS bundle
+  fix, applied at their word ("Apply the bundle fix and keep the fleet thin", about 10:53). `app/Window.cmake`: the
+  link depends on every file of sim/ and content/ (LINK_DEPENDS over a CONFIGURE_DEPENDS glob), so an edited or
+  added file links again and the copy into the bundle and its signature follow; the mechanism proved on Linux with
+  Ninja in a scratch project, not run on macOS from here (the owner's own 392b6a4f verified it on their Mac); a
+  deleted file stays in an old bundle. Run 45599543068: linux-x64 and macos-arm64 green; windows-x64 still running
+  when `main` moved (the change is inside `if(APPLE)`; 7f64dac1 was green on Windows in both its runs). sim/, host/
+  and tools/ identical to 7f64dac1 (the lead's diff: 0 lines).
+- **The owner's five todos** (about 10:58; integration-queue.md has each checked against the tree) and "Are there
+  any other todos that can run right now?" (about 11:12). Started: **U1** hover help on every bound control, then
+  the DRIVE gauges and styles (ui/, app/); **U4** the fuel grade as a first-class control in TUNE (`spec.fuel.grade`
+  exists and re-bakes the knock table, but no view names it); **G** the exhaust pops (`sim/exhaust/pop.fm` is the
+  reference's synthesized pulse and crackle; no shipped build states `ecu.overrun.fuel`, so what fires at the
+  defaults is G's first finding; design to the lead before code); **card A** (a new session, the assistant) on phase
+  A1 of `docs/plan/w3-a-assistant.md`, the abstract plan for Claude in the app, written from a map of
+  TestingPlayground and **rewritten after an independent review** that broke several first claims (the seam is the
+  document through an inbox on the frame's thread, not the simulator's command ring; undo, range checks, the key
+  store and the socket were not as the draft said; Claude Desktop over MCP first, the key chat second).
+- **D2's trim cure, first form refused by its own tests:** skipping the trim outright under the metered governor
+  took the cranking fuel with it (233 K start 3.7 to 19 s). Ruled 10:59: pedal open, the charge takes no trim; pedal
+  shut, the trim as today (the reference author's own rule for the driven case, taken to the bench); the same rule
+  for petrols in `idle.fm`'s bench branch as a second commit (all 28 petrol builds' full-pedal dyno torque below
+  ECU idle + 450 rpm is cut today, floor 0.3; D2's read, the lines read by the lead). In progress.
+- Awake, each for named work: D2, U1, U4, G, A. Idle and waiting: P (one re-key after sim/ settles), N2. Asleep:
+  the rest. The steward was woken once to check for unpushed work: none.
 
 - **10:33 (25 Nov) `main` moved to 7f64dac1** (fast-forward from 5548dcf8; run 45592657103: linux-x64, macos-arm64
   and windows-x64 green; the soak still running). P's bake at tools sha ed025908, whose sim/, host/ and tools/ the

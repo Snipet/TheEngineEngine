@@ -156,6 +156,9 @@ namespace tee::ui
         void releaseKeys();                                // a note held is let go, a press of the pointer's ended
                                                            // (the editor closes)
 
+        // U1: the parameter slot a control item is bound to (-1: the item is not a control).
+        int slotOfItem(int item) const;
+
     private:
         GuiControlItem& control(int slot);
         std::array<GuiValue*, 5> pointerValues(const PanelPointer& p);   // x, y, down, wheel, hover's values
