@@ -1,8 +1,8 @@
 From d80cc3dad3f0bd5ae9012ae9a80e38f89e954cee Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Wed, 25 Nov 2026 11:49:22 +0000
-Subject: [PATCH 1/9] boost: (b) a governed diesel's compressor sized along the
- climb at its torque peak (local, not pushed: sim/ frozen)
+Subject: [PATCH 01/10] boost: (b) a governed diesel's compressor sized along
+ the climb at its torque peak (local, not pushed: sim/ frozen)
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01LFAGgSxnqsW2XUcFC39ruQ
@@ -183,9 +183,9 @@ index 798f01a4..e7469a53 100644
 From ddc618b6596861eb2c5a1865f138329ff27968d4 Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Wed, 25 Nov 2026 12:15:07 +0000
-Subject: [PATCH 2/9] boost: (b) the curve's plateau found in Boost::peakSpeed
- (engine.fm keeps two call lines); the VE factor's comment says the page is
- not checked
+Subject: [PATCH 02/10] boost: (b) the curve's plateau found in
+ Boost::peakSpeed (engine.fm keeps two call lines); the VE factor's comment
+ says the page is not checked
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01LFAGgSxnqsW2XUcFC39ruQ
@@ -343,7 +343,7 @@ index 36b36caa..2af4297d 100644
 From a1b87980f191951de8e95c7b2d436333cf210b60 Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Wed, 25 Nov 2026 12:48:30 +0000
-Subject: [PATCH 3/9] boost: no vane surge guard (the lead's ruling): its
+Subject: [PATCH 03/10] boost: no vane surge guard (the lead's ruling): its
  rescue was the truck fixture's breathing, and it pinned three builds' vanes
  open; its own case goes with it
 
@@ -467,7 +467,7 @@ index 8375db9c..37f18b23 100644
 From 3ec3100e64058d69debf8e9c76d412bb2a6de8e3 Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Wed, 25 Nov 2026 12:58:12 +0000
-Subject: [PATCH 4/9] boost: (b)'s flow law with the charge as the build's
+Subject: [PATCH 04/10] boost: (b)'s flow law with the charge as the build's
  model gives it: the map's efficiency at the margin's point and the cooler's
  pressure drop
 
@@ -515,7 +515,7 @@ index 8bdc1e71..f1c2a974 100644
 From 74a3c8e8d14c9cea3a136d0fdf07ba309e09849b Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Wed, 25 Nov 2026 13:28:40 +0000
-Subject: [PATCH 5/9] boost: a variable nozzle's matched open area passes the
+Subject: [PATCH 05/10] boost: a variable nozzle's matched open area passes the
  whole design flow (a wastegate's 0.65 kept); its stop scaled so the shut area
  is unchanged
 
@@ -563,7 +563,7 @@ index f1c2a974..24d7575b 100644
 From a647f2cb7ce41039538156d4f88230c1728e3faf Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Wed, 25 Nov 2026 15:06:07 +0000
-Subject: [PATCH 6/9] boost: the compressor map fitted to every cited map
+Subject: [PATCH 06/10] boost: the compressor map fitted to every cited map
  (rise, knee, fall, choke scale), one floor at the lowest cited line (Mach
  0.67) for the knee and the efficiency
 
@@ -705,7 +705,7 @@ index 24d7575b..0917d248 100644
 From 7a18f889de23cfb41de85d229d4ead4826b43b2d Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Wed, 25 Nov 2026 15:19:17 +0000
-Subject: [PATCH 7/9] boost: MapTest restated on the cited lines (the fitted
+Subject: [PATCH 07/10] boost: MapTest restated on the cited lines (the fitted
  rise; the 471 m/s knee against the S300SX3 and S400SX-E)
 
 (code part of 668c642e)
@@ -772,10 +772,10 @@ index 84af4102..ae68742b 100644
 From 763e4b13cab20202186ec3cdb5d7bfaa7f2ccbbd Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Wed, 25 Nov 2026 15:49:16 +0000
-Subject: [PATCH 8/9] boost: the VGT loop's integral does not accumulate while
- the vanes cannot follow (conditional integration): the time over the target
- after a spool or a lift halved, the truck's ringing gone, the steady figures
- unchanged
+Subject: [PATCH 08/10] boost: the VGT loop's integral does not accumulate
+ while the vanes cannot follow (conditional integration): the time over the
+ target after a spool or a lift halved, the truck's ringing gone, the steady
+ figures unchanged
 
 (code part of b4a066ad)
 
@@ -841,7 +841,7 @@ index 0917d248..73e22f88 100644
 From e7c20939f57b128d17f7e503003a6eebc4a44c9c Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Wed, 25 Nov 2026 16:10:52 +0000
-Subject: [PATCH 9/9] boost: the VGT boost loop's integral held while the ECU
+Subject: [PATCH 09/10] boost: the VGT boost loop's integral held while the ECU
  owns the vanes (an engine brake): its error means nothing then (D2's point)
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
@@ -865,6 +865,181 @@ index 73e22f88..af282f36 100644
                      integ = fminf(fmaxf(integ + 1.0f * e * d16, -0.5f), 1.0f);
                  u = fminf(fmaxf(0.5f * e + integ, 0.0f), 0.95f);
              }
+-- 
+2.43.0
+
+
+From 0ac60efbbbaeebc62022eceafaca7e9ee0591aae Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 25 Nov 2026 16:56:45 +0000
+Subject: [PATCH 10/10] boost: the inlet's pressure solved in the sample while
+ a recirculating blow-off is open (the lead's cure (a) for X-039): bisection
+ between 0.5 pOut and the highest pressure feeding it, to 1 Pa; the reduced
+ build as a case that fails before and passes after
+
+(code part of f02123b7)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01LFAGgSxnqsW2XUcFC39ruQ
+---
+ sim/boost/machine.fm                          | 50 ++++++++++++++++++-
+ tests/sim/calibration/boost/InletTest.cpp     | 46 +++++++++++++++++
+ .../builds/x039-single-blower-blowoff.json    | 20 ++++++++
+ 3 files changed, 115 insertions(+), 1 deletion(-)
+ create mode 100644 tests/sim/calibration/boost/InletTest.cpp
+ create mode 100644 tests/sim/calibration/boost/builds/x039-single-blower-blowoff.json
+
+diff --git a/sim/boost/machine.fm b/sim/boost/machine.fm
+index af282f36..a6d71c4d 100644
+--- a/sim/boost/machine.fm
++++ b/sim/boost/machine.fm
+@@ -1015,6 +1015,28 @@ module BoostMachine
+     }
+ 
+     // The charge path: flows into and out of the volumes, the volumes stepped, then the inertial flows
++    // (X-039) The inlet's flow this sample were its pressure px: what the compressors draw from it (their duct states),
++    // a positive-displacement blower's draw less its leak, less what the bypass, the sequential bleed and a
++    // recirculating blow-off return to it; each as chargeSide's own calls make it, with no coupling stand-in
++    float inletFlowAt(float px, float tx)
++    {
++        float m = 0.0f;
++        for (int t = 0; t < turbos; ++t)
++            if (compIn[t] != 1)
++                m += comp[t].mdot;
++        if (sc == 1 || sc == 2)
++        {
++            const float n = omegaCrank * 0.15915494f * scRatio;
++            m += px / (kBoostR * tx) * pd.disp * fmaxf(n, 0.0f) - boostOrificeStep(v1.p, v1.t, px, tx, pd.leakArea, 0, boostStiff(v1.vol, v1.t, 1.4f, dt));
++        }
++        if (sc != 0 && scBypass != 0)
++            m -= boostOrificeStep(v1.p, v1.t, px, tx, bypassArea * bypassOpen, 0, boostStiff(v1.vol, v1.t, 1.4f, dt));
++        if (layout == BOOST_SEQUENTIAL)
++            m -= boostOrificeStep(vSec.p, vSec.t, px, tx, 0.15f * comp[1].aInd * (1.0f - seqOpen), 0, boostStiff(vSec.vol, vSec.t, 1.4f, dt));
++        m -= fmaxf(boostOrificeStep(v2.p, v2.t, px, tOut, bovArea * bovAt, 0, boostStiff(v2.vol, v2.t, 1.4f, dt)), 0.0f);
++        return m;
++    }
++
+     void chargeSide()
+     {
+         // the filter: what the wheels drew from outside the sample before
+@@ -1028,11 +1050,37 @@ module BoostMachine
+         // ducts likewise. Taken a sample late instead, on a small engine's filter (kFilter as 1/mMatch^2) with a big
+         // compressor the loop through the valve gains: card X's X-024, an 85 mm inducer on 0.23 L, ran to megapascals
+         // standing still)
+-        const float kIn = turbos == 0 && sc == 0 ? 0.0f : 2.0f * kFilter * fabsf(mInlet);
++        float kIn = turbos == 0 && sc == 0 ? 0.0f : 2.0f * kFilter * fabsf(mInlet);
+         const float mFresh = fmaxf(mInlet, 0.0f);
+         // (what was sent back out of the inlet comes back in warm: mixed with the fresh air by their flows)
+         t1 = mBack > 1.0e-6f ? (mFresh * tOut + mBack * tBack) / fmaxf(mFresh + mBack, 1.0e-6f) : tOut;
+         t1 = fmaxf(t1, tOut);
++        // (while a recirculating blow-off stands open, the inlet's pressure is solved with this sample's own flows, the
++        // lead's ruling on card X's X-039, 25 Nov: a 4 L blower on 50 cc, its blow-off returning more than it drew,
++        // reversed the filter's flow and the one-sample-late form flipped p1 between its floor and a megapascal. The
++        // root of p1 = max(pOut - kFilter m|m|, 0.5 pOut), m the inlet's flow at p1, by bisection between the floor and
++        // the highest pressure feeding the inlet: monotone (more p1, more drawn, less returned, less filter loss), no
++        // new number; kIn, the late form's stand-in for the coupling, is then 0. Shut, nothing changes: x038-x039.md)
++        if (bovKind == 2 && bovAt > 1.0e-6f && (turbos > 0 || sc != 0))
++        {
++            float lo = 0.5f * pOut;
++            float hi = fmaxf(pOut, fmaxf(v1.p, v2.p));
++            if (layout == BOOST_SEQUENTIAL)
++                hi = fmaxf(hi, vSec.p);
++            // (to 1 Pa: some 16 to 20 halvings; the floats' own step at the air's pressure is 0.008 Pa)
++            for (int it = 0; it < 32 && hi - lo > 1.0f; ++it)
++            {
++                const float mid = 0.5f * (lo + hi);
++                const float m = inletFlowAt(mid, t1);
++                const float want = fmaxf(pOut - kFilter * m * fabsf(m), 0.5f * pOut);
++                if (mid < want)
++                    lo = mid;
++                else
++                    hi = mid;
++            }
++            p1 = 0.5f * (lo + hi);
++            kIn = 0.0f;
++        }
+         float mIn = 0.0f;
+         float mOutBack = 0.0f;
+         float hOutBack = 0.0f;
+diff --git a/tests/sim/calibration/boost/InletTest.cpp b/tests/sim/calibration/boost/InletTest.cpp
+new file mode 100644
+index 00000000..1eb82433
+--- /dev/null
++++ b/tests/sim/calibration/boost/InletTest.cpp
+@@ -0,0 +1,46 @@
++// tests/sim/calibration/boost/InletTest.cpp: card N2's: the compressor's inlet under a recirculating blow-off.
++// The engine dyno (Bench.h), from the crank.
++#include "Bench.h"
++
++#include <catch2/catch_test_macros.hpp>
++
++#include <cmath>
++#include <cstdio>
++
++using tee::calib::Row;
++
++TEST_CASE("calibration boost: a recirculating blow-off returning more than its blower draws stays finite (X-039)",
++          "[calibration][boost]")
++{
++    // Card X's X-039: a 50 cc single with a 4 L Roots, 0.5 L of charge pipes and a recirculating blow-off went
++    // non-finite 0.54 s into its crank. The blow-off, wide open, returned more than the blower drew; the filter's flow
++    // reversed and the inlet's pressure, taken a sample late, flipped between its floor and a megapascal. With it solved
++    // in the sample (machine.fm chargeSide, the lead's cure (a)) it holds for 10 s of the crank and the running after
++    std::string errors;
++    auto sim = tee::calib::compileSim(errors);
++    INFO(errors);
++    REQUIRE(sim != nullptr);
++    std::vector<Row> rows;
++    std::string error;
++    const std::vector<double> rpm(10, 3000.0);
++    const bool ok = tee::calib::dyno(sim, "tests/sim/calibration/boost/builds/x039-single-blower-blowoff.json", rpm, {},
++                                     {"boost.pressure", "boost.chargePipe", "engine.torque", "boost.blowOffValve"}, rows,
++                                     error, 0.9, 0.1, 1.2);
++    INFO(error);
++    REQUIRE(ok);
++    REQUIRE(rows.size() == rpm.size());
++    for (const Row& r : rows)
++    {
++        const double boost = r.at("boost.pressure");
++        const double pipe = r.at("boost.chargePipe");
++        std::printf("x039: boost %.1f kPa, charge pipe %.1f kPa, %.2f N m, blow-off %.2f\n", boost / 1000.0,
++                    pipe / 1000.0, r.at("engine.torque"), r.at("boost.blowOffValve"));
++        CHECK(std::isfinite(boost));
++        CHECK(std::isfinite(pipe));
++        CHECK(std::isfinite(r.at("engine.torque")));
++        // (gauge pressures: no vacuum past the air's own, nothing a 4 L Roots on 50 cc could not hold, some 20 bar)
++        CHECK(boost > -101325.0);
++        CHECK(pipe > -101325.0);
++        CHECK(pipe < 2.0e6);
++    }
++}
+diff --git a/tests/sim/calibration/boost/builds/x039-single-blower-blowoff.json b/tests/sim/calibration/boost/builds/x039-single-blower-blowoff.json
+new file mode 100644
+index 00000000..a660b7a5
+--- /dev/null
++++ b/tests/sim/calibration/boost/builds/x039-single-blower-blowoff.json
+@@ -0,0 +1,20 @@
++{
++  "format": "tee-build",
++  "version": 1,
++  "name": "X-039 (a supercharged 50 cc single, blow-off kind 2)",
++  "notes": "Card X's X-039 reduced build (content/builds/combo/findings/x039-single-blower-blowoff.json, 08b796c8), kept here for card N2's regression case: a 50 cc single, a 4 L Roots, 0.5 L of charge pipes, a recirculating blow-off at 5 kPa, boost.model 1.",
++  "spec": {
++    "boost": {
++      "blowOffKind": 2,
++      "blowOffSpring": 5000,
++      "chargeVolume": 0.0005,
++      "kind": 4,
++      "model": 1,
++      "scDisplacement": 0.004
++    },
++    "engine": {
++      "displacement": 5e-05,
++      "layout": 0
++    }
++  }
++}
+\ No newline at end of file
 -- 
 2.43.0
 
