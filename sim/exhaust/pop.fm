@@ -1,7 +1,20 @@
 // exhaust/pop.fm: a pop in the pipes (module Pop). Owner: package G.
 //
 // A pop in the pipes: unburnt fuel lighting in the hot exhaust. A sharp pressure pulse and a crackle after it.
+//
+// exhaust.bang 1 (Burned in the pipe; under exhaust.model 1 only): no pulse is drawn. The ECU's account (ecu/overrun.fm)
+// hands each burn here as an event (burnEvent: the fuel's heat, the gas it burns in, how it was lit), and the exhaust's
+// PipeBurn releases that heat into its collector's gas over the burn's own time: a volume source the junction takes, so
+// the pipes make the sound (docs/models/exhaust.md, "Bangs: heat released in the pipe").
 #pragma once
+
+enum
+{
+    POP_EVENTS = 8,     // burns handed over in one control step, a bank's, at most
+    POP_BURNS = 8,      // burns at once in a bank's collector, at most
+    BURN_PREMIXED = 1,  // a charge that left the cylinder with its own air: a flame runs through it
+    BURN_UNMIXED = 2    // a rich charge's fuel meeting another's air: it burns as the two mix
+};
 
 module Pop
 {
@@ -13,6 +26,32 @@ module Pop
     float pClick;       // the chance a sample clicks, and how hard: the same crackle at any sample rate
     float aClick;
     int rs;
+    // exhaust.bang 1: the account's burns, handed over
+    int burnPipe;               // 1: the account hands its burns here (the exhaust sets it); 0: it fires the pulse
+    int nEv;
+    float evHeat[POP_EVENTS];   // J: the fuel's heat (its mass times its lower heating value)
+    float evFuel[POP_EVENTS];   // kg
+    float evMass[POP_EVENTS];   // kg: the slug's whole gas (fuel, air, burned gas)
+    float evT[POP_EVENTS];      // K: the slug's gas as it left its cylinder
+    float evPhi[POP_EVENTS];    // its equivalence ratio
+    float evXb[POP_EVENTS];     // its burned-gas share
+    int evKind[POP_EVENTS];     // BURN_*
+    int evOwn[POP_EVENTS];      // 1: it carries its own flame (still burning as it left)
+
+    void burnEvent(float heat, float fuel, float mass, float t, float phi, float xb, int kind, int own)
+    {
+        if (nEv >= POP_EVENTS || heat <= 0.0f)
+            return;
+        evHeat[nEv] = heat;
+        evFuel[nEv] = fuel;
+        evMass[nEv] = mass;
+        evT[nEv] = t;
+        evPhi[nEv] = phi;
+        evXb[nEv] = xb;
+        evKind[nEv] = kind;
+        evOwn[nEv] = own;
+        nEv += 1;
+    }
 
     float rnd()
     {
@@ -55,5 +94,74 @@ module Pop
             crackle *= decay;
         }
         return y;
+    }
+};
+
+// The heat of a bank's burns released into its collector's gas. Each burn releases its heat Q along a Wiebe curve over
+// its time tau (x = 1 - exp(-5 (t/tau)^3), normalised to reach 1 at tau): released by differences of x, so the heat
+// released sums to Q to the float's rounding. rate() is the heat released over the last sample, J/s.
+module PipeBurn
+{
+    float q[POP_BURNS];     // J
+    float tau[POP_BURNS];   // s
+    float t[POP_BURNS];     // s since it lit
+    float xPrev[POP_BURNS];
+    int on[POP_BURNS];
+    float released;         // J released since the reset
+    float dropped;          // J of burns that found no free slot (none expected: counted)
+
+    void reset()
+    {
+        for (int i = 0; i < POP_BURNS; ++i)
+        {
+            on[i] = 0;
+            q[i] = 0.0f;
+            tau[i] = 1.0f;
+            t[i] = 0.0f;
+            xPrev[i] = 0.0f;
+        }
+        released = 0.0f;
+        dropped = 0.0f;
+    }
+
+    void start(float heat, float time)
+    {
+        for (int i = 0; i < POP_BURNS; ++i)
+            if (on[i] == 0)
+            {
+                on[i] = 1;
+                q[i] = heat;
+                tau[i] = fmaxf(time, 1.0e-4f);
+                t[i] = 0.0f;
+                xPrev[i] = 0.0f;
+                return;
+            }
+        dropped += heat;
+    }
+
+    int active()
+    {
+        int n = 0;
+        for (int i = 0; i < POP_BURNS; ++i)
+            n += on[i];
+        return n;
+    }
+
+    float rate(float dt)
+    {
+        float e = 0.0f;
+        for (int i = 0; i < POP_BURNS; ++i)
+            if (on[i] != 0)
+            {
+                t[i] += dt;
+                const float th = fminf(t[i] / tau[i], 1.0f);
+                const float x = th >= 1.0f ? 1.0f : (1.0f - expf(-5.0f * th * th * th)) / (1.0f - expf(-5.0f));
+                e += q[i] * (x - xPrev[i]);
+                xPrev[i] = x;
+                if (th >= 1.0f)
+                    on[i] = 0;
+            }
+        released += e;
+        return e / dt;
     }
 };

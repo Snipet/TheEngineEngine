@@ -371,6 +371,7 @@ namespace tee
         now = std::move(after);
         send(field);
         redo_.clear();
+        redoIds_.clear();
         if (gestureDepth_ > 0)
         {
             for (Change& had : gesture_)
@@ -382,7 +383,10 @@ namespace tee
             gesture_.push_back(std::move(c));
         }
         else
+        {
             undo_.push_back({std::move(c)});
+            undoIds_.push_back(nextStep_++);
+        }
     }
 
     void Build::beginGesture()
@@ -397,6 +401,7 @@ namespace tee
         if (--gestureDepth_ == 0 && !gesture_.empty())
         {
             undo_.push_back(std::move(gesture_));
+            undoIds_.push_back(nextStep_++);
             gesture_.clear();
         }
     }
@@ -407,6 +412,8 @@ namespace tee
             return false;
         std::vector<Change> step = std::move(undo_.back());
         undo_.pop_back();
+        redoIds_.push_back(undoIds_.back());
+        undoIds_.pop_back();
         for (auto it = step.rbegin(); it != step.rend(); ++it)
         {
             values_[static_cast<std::size_t>(it->field)] = it->before;
@@ -422,6 +429,8 @@ namespace tee
             return false;
         std::vector<Change> step = std::move(redo_.back());
         redo_.pop_back();
+        undoIds_.push_back(redoIds_.back());
+        redoIds_.pop_back();
         for (const Change& c : step)
         {
             values_[static_cast<std::size_t>(c.field)] = c.after;
@@ -516,6 +525,8 @@ namespace tee
         {
             undo_.clear();
             redo_.clear();
+            undoIds_.clear();
+            redoIds_.clear();
             gesture_.clear();
         }
         attach(host_);
