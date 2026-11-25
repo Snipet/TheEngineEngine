@@ -607,7 +607,8 @@ each; BangTest's `measure` case):
 - The downpipe head runs 4.6 to 35.2 kPa over the air, and the muffler's inlet 2.9 to 23.1 kPa.
 - The main pipe's gas is 700 to 1110 K. ṁ is 0.039 to 0.107 kg/s, estimated from the ports' volume flow at the head's
   pressure and the main pipe's temperature, so it is approximate.
-- A two-term fit, a = 1.06e5 Pa per m³/s and b = 3.63e5 Pa per (kg/m³)(m³/s)², gives an rms error of 2.2 kPa. It is
+- A two-term fit, a = 1.06e5 Pa per m³/s and b = 3.63e5 Pa per (kg/m³)(m³/s)², **first.json's alone** (another build's
+  chain gives other values), gives an rms error of 2.2 kPa over the estimated mass flows above. It is
   worst at the lowest flow: 4.6 measured against 8.9 fitted.
 - A quadratic alone gives 4.8 kPa rms.
 
