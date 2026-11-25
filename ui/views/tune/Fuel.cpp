@@ -129,6 +129,19 @@ namespace tee::ui::fuel
             if (number(knock, i, n) && n > 0.0)
                 t.exponent = n;
         }
+        // fuelOctaneExtrapolated: `ron < <lo>f || ron > <hi>f`
+        t.fitLo = t.fitHi = std::nan("");
+        if (const std::size_t x = fuels.find("int fuelOctaneExtrapolated("); x != std::string::npos)
+        {
+            const std::size_t lo = fuels.find("ron < ", x), hi = fuels.find("ron > ", x), end = fuels.find("\n}", x);
+            std::size_t i = lo + 6, j = hi + 6;
+            double a = 0.0, b = 0.0;
+            if (lo != std::string::npos && hi != std::string::npos && hi < end && number(fuels, i, a) && number(fuels, j, b) && a < b)
+            {
+                t.fitLo = a;
+                t.fitHi = b;
+            }
+        }
         return t;
     }
 
@@ -154,6 +167,33 @@ namespace tee::ui::fuel
     double Table::delayRatio(int g, int against) const
     {
         const double a = index(g), b = index(against);
+        return exponent > 0.0 && a > 0.0 && b > 0.0 ? std::pow(a / b, exponent) : std::nan("");
+    }
+    double Table::ronAt(int g, double aki) const
+    {
+        if (!(aki > 0.0))
+            return ron(g);
+        return aki + 0.5 * (ron(g) - mon(g));
+    }
+    double Table::monAt(int g, double aki) const
+    {
+        if (!(aki > 0.0))
+            return mon(g);
+        return ronAt(g, aki) - (ron(g) - mon(g));
+    }
+    double Table::indexAt(int g, double aki) const
+    {
+        const double r = ronAt(g, aki), m = monAt(g, aki);
+        return r - k * (r - m);
+    }
+    bool Table::extrapolated(int g, double aki) const
+    {
+        const double r = ronAt(g, aki);
+        return aki > 0.0 && std::isfinite(r) && std::isfinite(fitLo) && std::isfinite(fitHi) && fitHi > fitLo && (r < fitLo || r > fitHi);
+    }
+    double Table::delayRatioAt(int g, double aki, int against) const
+    {
+        const double a = indexAt(g, aki), b = index(against);
         return exponent > 0.0 && a > 0.0 && b > 0.0 ? std::pow(a / b, exponent) : std::nan("");
     }
 }
