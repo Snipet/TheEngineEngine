@@ -387,3 +387,65 @@ TEST_CASE("H9 (quick): a spark-cut limiter bangs; a clean overrun does not", "[e
     Sim f = car();                                   // the fuel-cut limiter: a spark cut's store would linger
     CHECK(bangs(f, 1.0, 1.0, false).count == 0.0);
 }
+
+// Burned in the pipe (exhaust.bang 1; card N1 with G, 25 Nov, the owner's "pops" todo; docs/handoffs/g-exhaust.md):
+// the account hands only premixed charge to the pipe. A probe: the V8's bangs by account and the exhaust's heat given,
+// on each limiter and a fuelled overrun
+TEST_CASE("probe: burned in the pipe, the account's burns and the exhaust's heat", "[.probe-burnpipe]")
+{
+    struct Case
+    {
+        const char* name;
+        int kind;
+        double share;
+        double limit, lift;
+        bool onLimiter;
+    };
+    for (const Case& k : {Case{"fuel-cut limiter, then a clean lift", 0, 0.0, 3.0, 2.0, false},
+                          Case{"spark-cut limiter", 1, 0.0, 3.0, 0.0, true},
+                          Case{"fuelled overrun 0.25, 30 deg late", 0, 0.25, 1.5, 2.5, false}})
+        for (int bang : {0, 1})
+        {
+            Sim s = car();
+            s.set("exhaust.model", 1);
+            s.set("exhaust.bang", bang);
+            s.set("ecu.limiter.kind", k.kind);
+            if (k.share > 0.0)
+            {
+                s.set("ecu.overrun.fuel", k.share);
+                s.set("ecu.overrun.retard", 30.0);
+            }
+            const double g0 = s.read("exh.b.bangGiven");
+            const Bangs b = bangs(s, k.limit, k.lift, k.onLimiter);
+            const double given = s.read("exh.b.bangGiven") - g0;
+            std::printf("[burnpipe] %-36s bang %d: %4.0f burns, %8.2f mg handed, exhaust given %8.1f J (fuel x LHV %8.1f J)\n",
+                        k.name, bang, b.count, b.burned * 1e6, given, b.burned * 42.2e6);
+            CHECK(s.finite);
+        }
+}
+
+// Burned in the pipe, quick (the owner's "pops" todo; G's half 67a8a21e): only premixed charge bangs. The fuel-cut
+// limiter and a clean lift hand the pipe nothing (rich burned gas meeting a cut charge's air is unmixed: no flame
+// runs); a spark cut's charges are premixed and the hot pipe lights them, one burn a cut charge at most. Measured on
+// the V8, 3 s on each limiter (card N1, 25 Nov): fuel cut 0 burns; spark cut 600 burns, 29.8 g handed, where the
+// carved account fired 738 pulses
+TEST_CASE("H9 (burned in the pipe, quick): a spark cut's charges burn in the pipe; a fuel-cut limiter's none", "[ecu][integrated]")
+{
+    auto run = [](int kind, bool onLimiter) {
+        Sim s = car();
+        s.set("exhaust.model", 1);
+        s.set("exhaust.bang", 1);
+        s.set("ecu.limiter.kind", kind);
+        const double g0 = s.read("exh.b.bangGiven");
+        const Bangs b = bangs(s, 1.5, onLimiter ? 0.0 : 1.0, onLimiter);
+        return std::make_pair(b, s.read("exh.b.bangGiven") - g0);
+    };
+    const auto spark = run(1, true);
+    const auto fuel = run(0, false);
+    WARN("spark cut: " << spark.first.count << " burns, " << spark.first.burned * 1e6 << " mg; fuel cut: "
+                       << fuel.first.count << " burns");
+    CHECK(spark.first.count > 5.0);
+    CHECK(spark.second > 0.0);                       // the exhaust received their heat
+    CHECK(fuel.first.count == 0.0);
+    CHECK(fuel.second == 0.0);
+}

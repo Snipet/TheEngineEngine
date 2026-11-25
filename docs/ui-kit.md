@@ -285,3 +285,50 @@ nothing. A press hides it, and it stays away until the pointer has left what was
   inspector page and the workspace shown).
 - `ui.build` checks that every Spec field a person sets has its `ui::help`; `ui.frame.help` hovers a dial, START and a
   control reached by Tab.
+
+# Inspector designs (J2, 25 Nov)
+
+*The owner, 25 Nov: "Are there any plans for redesigning the right-side controls on the views? I feel like they are
+relatively clunky still." Three designs, built and pictured; none is wired into the frame: the shipped inspector is
+J1's ported knobs on FieldPages until the owner picks one.*
+
+`ui/kit/inspect/`: `Outline` reads any inspector page the frame makes (a workspace's own `.gui` or a generated page)
+back into its headings, fields, tables and notes, in order, so every design keeps each workspace's arrangement with
+no change to the workspace. `FieldInspector` draws an outline in one of three styles, with the same behaviour:
+
+- **A value is typed.** A click on it types it; Enter keeps it when it is within the field's range (in the user's
+  unit, or any unit of its quantity named: "86", "3.39 in", "1 bar"; a choice by its name or number; an integer only
+  whole) and otherwise refuses it, saying the range ("Out of range: 0.05 to 30.00 L"), never clamping. A drag sideways
+  scrubs it (240 px the travel, Shift ten times finer), the wheel nudges it (a hundredth, Shift a thousandth; a burst
+  one undo step), a double-click is its default. Each edit is one undo step.
+- **Keyboard**: one Tab stop; Up and Down between fields, a digit or Enter types, Left and Right nudge, Space flips a
+  switch, Delete is the default, / is the filter, Escape leaves typing or clears the filter.
+- **Hover help** (U1's tooltips): each row's own (`Item::helpPart`, added to the kit for this), its `ui::help` and
+  its range and default.
+
+| Design | Style | What it is |
+|---|---|---|
+| 1, Rows | `Style::rows` | A field a row: label, typed value with its unit, a thin bar of where it sits in its range with a tick at its default; a mark on each field off its default; groups fold; a filter box finds across the workspace; CHANGED shows only what moved. |
+| 2, Dials made exact | `Style::dials` | A dial for each number (larger, 64 px), its value typed under it; choices and switches as cells; a steady grid of two columns; headings stay at the top while their group scrolls under them. |
+| 3, On the picture | `Style::list` + `setCard` | A part pressed on the stage brings a card beside it with the first six fields of its page; the column is the compact, searchable list of everything in the workspace. |
+
+**Pictures**: `tee-ui-build-tests build.inspect.pictures` (root build; the real Spec in the real frame, the design
+laid over the frame's column by a test-only Panel) writes `out/ui/inspect/`: `<design>.<page>.<small|large>.png`
+for ENGINE 1, TUNE's FUEL, EXHAUST 1 (and `.scrolled`), TUNE's ECU 1 (the choices and switches), at windows of
+1100 x 700 and 1600 x 1000; `rows.engine.*.refused`, `rows.filter.*`, `rows.changed.*`; `picture.<workspace>.*`
+(ENGINE, EXHAUST, TUNE, with a part chosen). Drawn by FunkGui's software rasteriser on Linux. Behaviour:
+`ui.inspect.type`, `.scrub`, `.filter`, `.keys`, `.dials` (tee-ui-tests, the made-up Spec).
+
+**What each costs across the eleven workspaces**
+- *Rows.* The widget is built and reads every workspace's page as it is, so the workspaces change nothing. The frame
+  needs one hook (U1's): show a `FieldInspector` over the page's outline in place of the `FieldPage`, and send a
+  table's row to the table's own page as now. What a workspace's `.gui` page does beyond fields is reduced to
+  headings and notes (no workspace's inspector page carries a plot or a gauge today). Keyboard use gains most: one
+  stop, arrows, typing. Hover help is per row.
+- *Dials.* The same plumbing. Long pages grow: EXHAUST 1's 43 numbers are about 22 rows of 136 px. Keyboard and help
+  as Rows; a dial can still be dragged, so muscle memory from the synthesiser look is kept.
+- *On the picture.* The column is design 1's list (free once Rows is in). The card anchors at the press, which works
+  today with no workspace change; a part chosen from the list or by the keyboard has no point to stand beside, so
+  each workspace would add `partRect(path)` (about twenty lines each, eleven workspaces, their packages'). Its fields
+  are the first six of the selection's page, so a workspace chooses them by ordering its page. The card is a second
+  Tab stop. Help as Rows.

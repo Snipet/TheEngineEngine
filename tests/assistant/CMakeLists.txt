@@ -20,7 +20,21 @@ if(TARGET tee-mcp)   # (macOS and Linux) the bridge, run by McpTest.cpp as Claud
   target_compile_definitions(tee-tests-assistant PRIVATE "TEE_MCP_EXE=\"$<TARGET_FILE:tee-mcp>\"")
   add_dependencies(tee-tests-assistant tee-mcp)
 endif()
+if(TARGET CURL::libcurl AND NOT WIN32)   # the real transport, tested against a loopback server
+  target_compile_definitions(tee-tests-assistant PRIVATE TEE_TEST_CURL=1)
+endif()
 add_test(NAME assistant.sim COMMAND tee-tests-assistant "[sharedsim]~[nightly]" WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
 set_tests_properties(assistant.sim PROPERTIES TIMEOUT 600 LABELS assistant)
 catch_discover_tests(tee-tests-assistant DISCOVERY_MODE PRE_TEST ADD_TAGS_AS_LABELS TEST_SPEC "~[sharedsim]"
   TEST_PREFIX "assistant." PROPERTIES TIMEOUT 120)
+
+# The chat's panel, drawn by FunkGui's software rasteriser (pictures under out/assistant/), its own executable: it needs
+# FunkGui's sources (tee_ui_test_funkgui, tests/ui), which the rest does not.
+if(TARGET tee_assistant_view AND TARGET tee_ui_test_funkgui)
+  add_executable(tee-tests-assistant-view view/ChatViewTest.cpp)
+  tee_target_defaults(tee-tests-assistant-view)
+  target_link_libraries(tee-tests-assistant-view PRIVATE Tee::assistant_view tee_ui_test_funkgui Catch2::Catch2WithMain)
+  target_compile_definitions(tee-tests-assistant-view PRIVATE "TEE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\"")
+  catch_discover_tests(tee-tests-assistant-view DISCOVERY_MODE PRE_TEST ADD_TAGS_AS_LABELS TEST_PREFIX "assistant.view."
+    PROPERTIES TIMEOUT 120)
+endif()

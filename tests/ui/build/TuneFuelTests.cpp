@@ -1,5 +1,5 @@
 // tests/ui/build/TuneFuelTests.cpp: TUNE's fuel control (ui/views/tune/, U4) over the real Spec and simulator: the grade
-// stepped in TUNE's band on first.json (Premium) reaches the build, its knock-limit table is then stale under the
+// stepped in TUNE's band on first.json (Premium), and a stated octane typed there, reach the build, its knock-limit table is then stale under the
 // host's own key (knockLimitKey: the grade is one of its fields), and the band's words carry the
 // octane numbers of the simulator's fuel table (sim/combustion/fuels.fm, served as the application serves it).
 #include "build/BuildKit.h"
@@ -41,17 +41,17 @@ namespace
         tee::ui::Workspace& ws = frame.workspace(tune);
         std::string t = tee::ui::tuneFuelText(ws);
         CHECK_MSG(t.rfind("Premium (91) | AKI 91   RON 96   MON 86 |", 0) == 0, t);
-        // Next fuel: Race, through the band's button.
+        // Next fuel, by octane: Premium (93), through the band's button.
         const funkgui::Rect next = tee::ui::tuneFuelButton(ws, 1);
         CHECK(!next.isEmpty());
         host.click(next.centreX(), next.centreY());
         host.tick(5);
-        CHECK(static_cast<int>(rig.build->get("fuel.grade")) == 3);
+        CHECK(static_cast<int>(rig.build->get("fuel.grade")) == 9);
         CHECK(tee::knockLimitKey(*rig.build, *rig.sim) != key);     // re-keyed: the shipped table is stale
         CHECK(!tee::knockLimitCurrent(*rig.build, *rig.sim));
         CHECK(tee::ui::tuneShownMap(ws) == 7);                      // the knock-limit table shown, where it lands
         t = tee::ui::tuneFuelText(ws);
-        CHECK_MSG(t.rfind("Race | AKI 100   RON 104   MON 96 | Premium (91) to Race: the knock-limit table re-bakes", 0) == 0, t);
+        CHECK_MSG(t.rfind("Premium (93) | AKI 93   RON 98   MON 88 | Premium (91) to Premium (93): the knock-limit table re-bakes", 0) == 0, t);
         const std::string shot = std::string(TEE_UI_OUT_DIR) + "/build.tune.fuel.png";
         host.draw();
         if (!host.writePng(shot.c_str(), 1))
@@ -63,6 +63,16 @@ namespace
         host.tick(5);
         CHECK(static_cast<int>(rig.build->get("fuel.grade")) == 2);
         CHECK(tee::knockLimitKey(*rig.build, *rig.sim) == key);
+        // A stated octane (spec.fuel.octane, AKI) typed in the band re-keys it too (card C's key since 582b3e55).
+        const funkgui::Rect field = tee::ui::tuneFuelButton(ws, 2);
+        CHECK(!field.isEmpty());
+        host.click(field.centreX(), field.centreY());
+        host.keys("9,5,return");
+        host.tick(5);
+        CHECK(rig.build->get("fuel.octane") == 95.0);
+        CHECK(tee::knockLimitKey(*rig.build, *rig.sim) != key);
+        t = tee::ui::tuneFuelText(ws);
+        CHECK_MSG(t.rfind("Premium (91) | AKI 95   RON 100   MON 90 |", 0) == 0, t);
         return 0;
     }
 }
