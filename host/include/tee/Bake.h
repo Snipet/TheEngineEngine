@@ -195,7 +195,9 @@ namespace tee
     //   1  (no number in the key) the first bake and its corrections
     //   2  a point on which the rev limiter acted (PredictPoint::limited) is missing, not a cell
     //   3  the top row 300 rpm under the redline, not 100 (PredictOptions::redlineMarginRpm's default)
-    inline constexpr int kKnockBakeVersion = 3;
+    //   4  a settled point's torque the mean of its settled cycles, not its last two (the table itself does not move:
+    //      the cache entries' check sets, read the old way, are kept out of the verified reuse)
+    inline constexpr int kKnockBakeVersion = 4;
 
     // The fields that move the knock limit (card N2's list): the engine's compression, displacement, bore and stroke,
     // cylinders and layout; the fuel's kind, grade and model; the boost section; the boost, lambda, cam and spark maps

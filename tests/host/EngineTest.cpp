@@ -491,6 +491,13 @@ TEST_CASE("a default predicted curve ends clear of the rev limiter: no point lim
             CHECK(p.valid);
             CHECK_FALSE(p.limited);
             CHECK(p.torque > 0.0);
+            // a settled point is the mean of its settled cycles, six at least, its standard error inside the floor
+            if (p.settled && !p.knockLimited && !p.boostHunting)
+            {
+                CAPTURE(p.settledCycles, p.torqueSe);
+                CHECK(p.settledCycles >= 6);
+                CHECK(p.torqueSe < 0.005 * p.torque);
+            }
         }
     }
 }

@@ -447,6 +447,8 @@ namespace tee
                                         continue;
                                     }
                                     p.settled = true;
+                                    p.torqueSe = 0.5 * std::fabs(last - before);
+                                    p.settledCycles = static_cast<int>(2 * w);
                                     break;
                                 }
                             }
@@ -486,6 +488,7 @@ namespace tee
                         if (steady)
                         {
                             p.settled = true;
+                            settledMean(counted, p);
                             break;
                         }
                     }
@@ -638,6 +641,41 @@ namespace tee
             }
 
         private:
+            // A settled point's torque: the mean of its settled cycles, with its standard error. The settled cycles are
+            // the counted ones since counting last began (the speed's settling, or the heat's resettle), less the
+            // leading ones while the rest's first and second halves differ by more than the tolerance (the stop's own
+            // no-trend test, over the whole run), at least six. The last two alone carried the engine's cycle-to-cycle
+            // scatter (0.5 to 0.8 % a cycle on a four: N1's measure), so neighbouring points differed by 1.5 % at random.
+            void settledMean(const std::vector<double>& cycles, PredictPoint& p) const
+            {
+                const std::size_t n = cycles.size();
+                if (n < 6)
+                    return;   // (the stop needs six: not reached)
+                const auto mean = [&](std::size_t from, std::size_t to) {
+                    double sum = 0.0;
+                    for (std::size_t i = from; i < to; ++i)
+                        sum += cycles[i];
+                    return sum / static_cast<double>(to - from);
+                };
+                std::size_t first = 0;
+                while (n - first > 6)
+                {
+                    const std::size_t mid = first + (n - first) / 2;
+                    const double a = mean(first, mid), b = mean(mid, n);
+                    if (std::fabs(a - b) <= options_.tolerance * std::max(std::fabs(0.5 * (a + b)), 1.0))
+                        break;
+                    ++first;
+                }
+                const double m = mean(first, n);
+                double squares = 0.0;
+                for (std::size_t i = first; i < n; ++i)
+                    squares += (cycles[i] - m) * (cycles[i] - m);
+                const std::size_t k = n - first;
+                p.torque = m;
+                p.torqueSe = std::sqrt(squares / static_cast<double>(k - 1)) / std::sqrt(static_cast<double>(k));
+                p.settledCycles = static_cast<int>(k);
+            }
+
             double step(double speed, int n)
             {
                 void* data = instance_->data();
