@@ -97,7 +97,10 @@ namespace tee::app
     public:
         // `cache`: the bakes' folder (CalibrationBakeOptions::cacheDirectory); empty: none.
         // `dyno`: the ribbon's, whose predictor the bake yields to (between its points while a curve is wanted).
-        LateBake(player::SimAdapter& player, const LateDyno& dyno, std::filesystem::path cache);
+        // `scenarios`: content/validation/scenarios (CalibrationBakeOptions::idleScenarios: the warm idle a reused cam
+        // map is checked with); empty: no cam map is reused.
+        LateBake(player::SimAdapter& player, const LateDyno& dyno, std::filesystem::path cache,
+                 std::filesystem::path scenarios);
         ~LateBake();
         void tick();
         std::string state() const;
@@ -106,7 +109,7 @@ namespace tee::app
     private:
         player::SimAdapter& player_;
         const LateDyno& dyno_;
-        std::filesystem::path cache_;
+        std::filesystem::path cache_, scenarios_;
         std::shared_ptr<Sim> made_;
         const ui::ServiceDyno* yieldedTo_ = nullptr;
         std::unique_ptr<ui::ServiceBake> inner_;

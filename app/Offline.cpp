@@ -129,8 +129,9 @@ namespace tee::app
             const std::filesystem::path content = findContent();
             struct Kept
             {
-                Kept(player::SimAdapter& sim, std::filesystem::path shipped, std::filesystem::path bakes)
-                    : doc(sim.build()), scope(sim.host()), dyno(sim), bake(sim, dyno, std::move(bakes)), file(sim.build()),
+                Kept(player::SimAdapter& sim, std::filesystem::path shipped, std::filesystem::path bakes,
+                     std::filesystem::path scenarios)
+                    : doc(sim.build()), scope(sim.host()), dyno(sim), bake(sim, dyno, std::move(bakes), std::move(scenarios)), file(sim.build()),
                       library(shipped, Presets::userDirectory()),
                       garage(file, [&sim] { return sim.ready() ? sim.host().sim() : std::shared_ptr<Sim>(); }, std::move(shipped),
                              Presets::userDirectory())
@@ -152,7 +153,11 @@ namespace tee::app
             const std::filesystem::path bakes = (cacheGiven != nullptr && cacheGiven[0] != '\0') || (window && !machineRun)
                                                     ? settings::cacheDirectory() / "bakes"
                                                     : std::filesystem::path();
-            const auto kept = std::make_shared<Kept>(*engine.sim, content.empty() ? content : content / "builds", bakes);
+            // (the warm idle a reused cam map is checked with: content/validation/scenarios)
+            const std::filesystem::path scenarios =
+                content.empty() ? content : content / "validation" / "scenarios";
+            const auto kept = std::make_shared<Kept>(*engine.sim, content.empty() ? content : content / "builds", bakes,
+                                                     scenarios);
             // (the build as the engine was made, a --preset applied, is the clean one: untitled, so a save asks where)
             shown.document = &kept->file;
             shown.library = &kept->library;

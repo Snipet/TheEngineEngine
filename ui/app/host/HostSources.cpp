@@ -266,11 +266,21 @@ namespace tee::ui
         if (!applyError_.empty())
             return "bake failed";
         const std::string s = tee::knockBakeStateName(bakes_.state());
+        // Done: "calibration checked" when the tables taken were a cached bake checked on this program (card C's
+        // verified reuse), else "baked".
+        if (s == "baked")
+            return bakes_.lastWasChecked() ? "calibration checked" : s;
+        const bool checking = s == "checking calibration";
+        if (s != "baking" && !checking)
+            return s;
+        // Working: its stage and its count ("baking cam 23 of 42", "checking spark map 3 of 9"); none chosen yet: the
+        // word alone ("baking", "checking calibration").
         const std::string stage = bakes_.stage();
-        if (s != "baking" || stage.empty())
+        if (stage.empty())
             return s;
         const auto p = bakes_.progress();
-        return "baking " + stage + (p.total > 0 ? " " + std::to_string(p.done) + " of " + std::to_string(p.total) : std::string());
+        return (checking ? "checking " : "baking ") + stage
+            + (p.total > 0 ? " " + std::to_string(p.done) + " of " + std::to_string(p.total) : std::string());
     }
 
     std::vector<std::vector<bool>> ServiceBake::stillKnocking() const
