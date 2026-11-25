@@ -180,11 +180,17 @@ namespace tee
         double wallSeconds = 0.0;
     };
 
+    // How the knock-limit bake chooses its table, mixed into knockLimitKey and knockLimitBaseKey (so into intakeCamKey):
+    // whoever changes how a table is chosen bumps it, with a line here saying what changed.
+    //   1  (no number in the key) the first bake and its corrections
+    //   2  a point on which the rev limiter acted (PredictPoint::limited) is missing, not a cell
+    inline constexpr int kKnockBakeVersion = 2;
+
     // The fields that move the knock limit (card N2's list): the engine's compression, displacement, bore and stroke,
     // cylinders and layout; the fuel's kind, grade and model; the boost section; the boost, lambda, cam and spark maps
     // with their Auto switches; the cams' centres and phase ranges; the exhaust's and the intake's models; and the
-    // program itself (Sim::sourceHash). Not the air's temperature (baked at the cell's 300 K) nor ecu.timing (the
-    // person's offset, on top). A 31-bit number, as spec.ecu.maps.knockLimitKey holds it.
+    // program itself (Sim::sourceHash) and kKnockBakeVersion. Not the air's temperature (baked at the cell's 300 K)
+    // nor ecu.timing (the person's offset, on top). A 31-bit number, as spec.ecu.maps.knockLimitKey holds it.
     std::int64_t knockLimitKey(const Build& build, const Sim& sim);
     // The same without the cam maps (ecu.maps.camIn, camInAuto, camEx, camExAuto): what the intake cam's bake key
     // carries of the spark (its intakeCamKey), so that the spark baked again after the cam (its key moved by the cam)
@@ -306,6 +312,9 @@ namespace tee
         void coordinator();
         void setState(KnockBakeState s);   // under mutex_
         bool camWanted(const Build& build) const;
+        // A spark-ignition build's (a diesel has no spark and no knock limit: its spark table is never baked, and
+        // reads as current, so the status line says nothing of it)
+        static bool sparkWanted(const Build& build);
 
         std::shared_ptr<Sim> sim_;
         CalibrationBakeOptions options_;
