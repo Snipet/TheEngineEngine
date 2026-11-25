@@ -15,7 +15,8 @@ add_library(tee_assistant STATIC
   src/McpLink.cpp
   src/Session.cpp
   src/Transport.cpp
-  src/Chat.cpp)
+  src/Chat.cpp
+  src/KeyStore.cpp)
 add_library(Tee::assistant ALIAS tee_assistant)
 tee_target_defaults(tee_assistant)
 target_include_directories(tee_assistant PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
@@ -26,6 +27,25 @@ target_link_libraries(tee_assistant PUBLIC Tee::host Tee::shell_files nlohmann_j
 # libcurl4-openssl-dev). Where its headers are missing the build goes on without it: the chat then says so in words.
 # Windows has none in this version.
 option(TEE_ASSISTANT_CURL "The key chat's HTTP through libcurl, where its headers are found" ON)
+# The key's store (src/KeyStore.cpp): the Keychain on macOS (the Security framework); the Secret Service on Linux through
+# libsecret (the package libsecret-1-dev), where its headers are found; else none, and the key is refused, never kept in
+# a file instead.
+if(APPLE)
+  target_link_libraries(tee_assistant PRIVATE "-framework Security" "-framework CoreFoundation")
+elseif(NOT WIN32)
+  find_package(PkgConfig QUIET)
+  if(PkgConfig_FOUND)
+    pkg_check_modules(TEE_LIBSECRET QUIET IMPORTED_TARGET libsecret-1)
+  endif()
+  if(TEE_LIBSECRET_FOUND)
+    target_link_libraries(tee_assistant PRIVATE PkgConfig::TEE_LIBSECRET)
+    target_compile_definitions(tee_assistant PRIVATE TEE_HAS_LIBSECRET=1)
+    message(STATUS "TheEngineEngine: the assistant's key store is libsecret ${TEE_LIBSECRET_VERSION}")
+  else()
+    message(STATUS "TheEngineEngine: the assistant's key store is off (no libsecret headers: libsecret-1-dev on Linux)")
+  endif()
+endif()
+
 if(TEE_ASSISTANT_CURL AND NOT WIN32)
   find_package(CURL QUIET)
   if(CURL_FOUND)
