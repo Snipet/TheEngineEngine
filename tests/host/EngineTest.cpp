@@ -435,6 +435,36 @@ namespace
     }
 } // namespace
 
+TEST_CASE("a default predicted curve ends clear of the rev limiter: no point limited, the top point's torque positive",
+          "[engine][sim][predict]")
+{
+    if (!haveSim())
+        SKIP("no simulator");
+    std::string error;
+    const auto sim = compiled(simDir(), {}, error);
+    REQUIRE(sim != nullptr);
+    // at the old margin (100 rpm) these three's top points sat on the limiter: -36, -81 and -155 N m
+    for (const char* archetype : {"economy-four-15.json", "v6-35-na.json", "flat-plane-v8-45.json"})
+    {
+        Build build(sim->fields());
+        std::vector<std::string> warnings;
+        REQUIRE(build.loadFile(std::filesystem::path(TEE_SOURCE_DIR) / "content/builds/archetypes" / archetype,
+                               BuildPart::Whole, warnings, error));
+        PredictOptions options;   // the default from and to: the bottom and the top of the ribbon
+        options.points = options.coarse = 2;
+        PredictCurve curve;
+        REQUIRE(predictCurve(sim, build, options, curve, error));
+        REQUIRE(curve.points.size() == 2);
+        for (const PredictPoint& p : curve.points)
+        {
+            CAPTURE(archetype, p.speed * 30.0 / 3.14159265358979, p.torque);
+            CHECK(p.valid);
+            CHECK_FALSE(p.limited);
+            CHECK(p.torque > 0.0);
+        }
+    }
+}
+
 TEST_CASE("a predicted point is the stepped dyno's settled torque within 3 %: the economy four at 5439 rpm",
           "[engine][sim][predict][dyno]")
 {

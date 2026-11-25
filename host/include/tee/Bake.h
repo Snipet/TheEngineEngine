@@ -129,7 +129,7 @@ namespace tee
         // many steps; then the pedals under full, at the spring's target (the loads below). 0: pedals alone. A supercharger (no loop: its boost is its pulley's)
         // has pedals alone, said in the notes.
         int boostSteps = 4;
-        int speeds = 8;               // over PredictOptions' from and to (0: 1000 rpm, the redline less 100)
+        int speeds = 8;               // over PredictOptions' from and to (0: 1000 rpm, the redline less 300)
         int loads = 8;                // the table's loads: from 0.2 atm to the most a pedal gave, evenly
         double margin = 2.0;          // degrees over the mean retard
         // Where a cell's mean retard was over correctAbove degrees (the retard at or near knock control's ceiling, its
@@ -178,7 +178,8 @@ namespace tee
     // whoever changes how a table is chosen bumps it, with a line here saying what changed.
     //   1  (no number in the key) the first bake and its corrections
     //   2  a point on which the rev limiter acted (PredictPoint::limited) is missing, not a cell
-    inline constexpr int kKnockBakeVersion = 2;
+    //   3  the top row 300 rpm under the redline, not 100 (PredictOptions::redlineMarginRpm's default)
+    inline constexpr int kKnockBakeVersion = 3;
 
     // The fields that move the knock limit (card N2's list): the engine's compression, displacement, bore and stroke,
     // cylinders and layout; the fuel's kind, grade and model; the boost section; the boost, lambda, cam and spark maps
