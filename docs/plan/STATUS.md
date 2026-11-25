@@ -37,6 +37,31 @@
 
 ## Landed
 
+- **06:11 (25 Nov) the lead's check-in; `main` stays at e7e58973; the branch's tip 430cd999 holds everything `main`
+  waits for and its run is queued.** *The gate*: Linux and macOS green outright on a commit holding N2's ef2160fd (the
+  simulator kept stepping while a turbo's shaft turns; exhaust.engine passes at 72.9 Pa; a turbo four keeps it awake
+  23 s after the key, the truck on GateTest's sets 79 s) and 9a0d4fc3 (the one-state bound at 15 %), green on Linux
+  at 362cd47c (538 of 538), **and P's 4ca747ec, the diesel cards off the cam class rule**. *Table L is published*
+  (cbc440eb; pin e43e228b, content 1efa3282): **121 of 847 missed** (cited 29 of 203), its twin on K's content 114, K
+  on its own pin 120 of 839; power 12 and torque 10 of 30 (the tractor's set by its curve and out). So the model took
+  the count from 120 to 114 and the sourced cards took it from 114 to 121. What L's content showed: **the 6.7 pickup
+  could not reach its limiter** (2861 rpm against 2982 to 3167; 252 kW): the class rule, whose sources are petrol
+  cams, had been applied to three diesel cards: reverted, `main` waits on it; the V12's, the flat-plane's and the
+  VR6's power peaks below their bands; the 7.0 over on power (406 kW against 370 to 385) on the LS7's cam and ports;
+  the two-stage crossing at 7320; the turbo four 192 / 217 / 394 / 287 N m (P's decomposition against N2's 232 and
+  270: the new cams 16 and 27 N m, the rows' 5 s step 15 and 10, a residue). **Ruled: on judgement cards the class
+  rule holds the duration at 1 mm and moves the seat** (it had held the seat and cut the 1 mm by 4 to 12 degrees: 10
+  on the V10 and the flat-plane, 12 on the V12; a rule adopted for the flank near the seat had resized the cams); the
+  cost, more overlap at the seat, to be read on the idle rows of table L2 (three columns: K's content, L, L2). The
+  next content step, after `main`. **Ruled: a row never passes on a point the predictor flags unsettled** (the
+  tractor's lug at 1100: 1922 N m held, 0.70 of its peak, a miss; its plateau "unsettled"). *N2*: the sequential
+  join's mechanism is on the branch (c1e10dfe: acts only on a build that states `seqRpm`; the rotary with 4500
+  stated: 4250 rpm from 26 to 77 kPa to 59 to 75 rising, a changeover dip of 2.8 psi; the joined pair weaker than
+  the single below about 5000, the rotary's open item); its case's bound to a reasoned 25 % (it read 14 against 15);
+  P commits the rotary's `seqRpm` 4500 (an enthusiast's measurement and a forum's quote of the workshop manual).
+  Then the tractor's low-speed end. *P*: the knock-limit pass on the 16 naturally aspirated builds running
+  (knockpass.py, e0b372c3). *D2*: no case marked; the BSFC look after.
+
 - **05:24 (25 Nov) the lead's check-in; `main` stays at e7e58973 (green on three platforms); the branch has been red
   since 04:06 on N2's commits and its cure is in hand.** *The red*: (1) exhaust.engine, EngineTest.cpp:317, the
   collectors' pressure 6 s after the key off on a twin-turbo V8: 61 Pa at e7e58973, 146 from N2's sizing commit (the
