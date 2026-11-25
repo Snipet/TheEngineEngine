@@ -559,7 +559,12 @@ module BoostMachine
             const float dT = s->turbWheel > 0.0f ? s->turbWheel : 0.9f * dEx;
             const float rc = 0.6f * dT;
             float aNoz = 0.0f;
-            const float aNozMatched = 0.65f * mt * sqrtf(kBoostR * tDesign) / (p3Design * 0.667f);
+            // (the share of the design flow the matched nozzle passes: a wastegated turbine 0.65, its gate passing the rest
+            // at full power (docs/models/boost.md); a variable nozzle the whole, since its gate is only a relief over
+            // the target (the lead's ruling, 25 Nov: matched as a wastegate's, every machine diesel's shaft ran at its
+            // relief firing at rated with the vanes wide open; healthy-match.md))
+            const float nozShare = s->vanes != 0 ? 1.0f : 0.65f;
+            const float aNozMatched = nozShare * mt * sqrtf(kBoostR * tDesign) / (p3Design * 0.667f);
             if (s->turbAR > 0.0f)
                 aNoz = s->turbAR * 0.0254f * rc;
             else
@@ -578,7 +583,10 @@ module BoostMachine
             turb[t].aNoz = aNoz;
             turb[t].etaMax = s->turbEta;
             turb[t].vgt = s->vanes;
-            turb[t].vaneMin = s->vaneMin;
+            // (the vanes' stop is a share of the open area: where the matched open nozzle passes the whole flow, the
+            // stop falls by the same factor, so the shut end is the same metal: the smallest area as a wastegate-style
+            // match gave it, the brake's back pressure unchanged (the lead's ruling))
+            turb[t].vaneMin = s->turbAR > 0.0f ? s->vaneMin : s->vaneMin * 0.65f / nozShare;
             bpLimit = s->backPressure;
             turb[t].gateExt = s->gate;
             turb[t].scrolls = scrolls;
