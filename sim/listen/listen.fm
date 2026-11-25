@@ -161,6 +161,8 @@ module Listen
     float autoRise;
     float autoKd;
     float autoKey;
+    float autoQ80;      // the parts' running 80th percentile, and its step (a part's, log)
+    float autoEta;
     float autoCrank;    // the starter's largest in this call, and the time left of a start (samples)
     float autoStart;
     float autoWin;      // the window's peak so far, and its length (samples)
@@ -291,6 +293,8 @@ module Listen
         autoRise = 0.115129255f * 0.3f / rate;
         autoKd = 1.0f - expf(-1.0f / (0.001f * rate));
         autoKey = -1.0f;
+        autoQ80 = 0.0f;
+        autoEta = 0.003f;
         autoWin = 0.0f;
         autoN = 0;
         autoCrank = 0.0f;
@@ -866,6 +870,7 @@ module Listen
         {
             autoKey = key;
             autoP = 0.0f;
+            autoQ80 = 0.0f;
         }
         // a start (the starter turning, and 1.5 s after): what it is loud with is not exposed for long
         if (autoCrank > 1.0e-6f)
@@ -887,9 +892,17 @@ module Listen
             autoN = 0;
             autoStart = 3.0f * rate;
         }
-        if (pk > autoP)
+        // A burst, a part over twice the running 80th percentile of the parts (log domain, some 50 ms), does not raise
+        // P: a bang of a few ms (a burn in the pipe, a spark cut's crack) goes to the limiter, as a real limiter takes
+        // it, and does not hold the body down for seconds. A rev's parts rise together and pass. Bursts that fill more
+        // than a fifth of the parts are the body, and are exposed for
+        if (autoQ80 <= 0.0f)
+            autoQ80 = pk;
+        autoQ80 *= pk > autoQ80 ? expf(0.8f * autoEta) : expf(-0.2f * autoEta);
+        const bool burst = pk > 4.0f * autoQ80;
+        if (pk > autoP && !burst)
             autoP = pk;
-        autoWin = fmaxf(autoWin, pk);
+        autoWin = fmaxf(autoWin, burst ? autoWin : pk);
         autoN += m;
         if ((float)autoN >= 0.1f * rate)
         {

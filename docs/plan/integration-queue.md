@@ -953,6 +953,30 @@ default after the clips; the idle's level; the listening questions.
   turbine matched at rated, which needs the exhaust's back pressure after the turbine from G; a feed-forward vane
   position (the same missing p4); the re-application's ring of about 6 s and its +16 % peak; the six's unsteady
   cell at 2000.
+- **Research list (the steward): X-030, X-031, X-032, X-036, nothing landed** (measured locally on 87a014f5, the
+  pull, six shift phases, the click step and X's excess beside it; the scratch rows in the steward's hand-off).
+  - *A wrong prediction, kept:* with `exhaust.model` on, `exhaust.bang` 1 and 0 read the same, number for number, at
+    the tip and with the cure: the bang account books only the limiter's, the overrun's and a misfire's burns, not a
+    dog box's cut. Under either choice the dog cut sounds the same today.
+  - *The cure tried* (a dog box's cut takes the fuel with the spark, `launch.dogLeft` in Ecu1's `fuelCut`; c035fe75's
+    ramp reverted): it clears X-030 on the V8 at every phase and not on the small four, so it did not land:
+
+    | fuel+ecu, pull | excess bound | the tip (reds of 6) | the cure (reds of 6) |
+    |---|---|---|---|
+    | V8 | 4.03 | 4.73 (11.02 s, X-031), 4.71 [cut], 3.73, 3.86, 3.53, 3.13 (2) | 2.86, 2.17, 2.32, 3.28, 2.39, 4.49 (11.02 s) (1) |
+    | small four | 2.85 | 3.21, 3.05, 3.13, 3.17, 3.41 [cut], 2.45 (5) | 3.18 (8.70 s), 4.70 (8.52 s, the cut's start), 2.57, 2.39, 2.44, 3.19 (11.03 s) (3) |
+
+    With `exhaust.model` on as well, the V8 is green at every phase at the tip (excess 1.9 to 2.8) and with the cure
+    (2.9 to 3.2). The small four's 8.52 s step falls as the cut begins: under fuel.model 1 the wall film still feeds
+    the cylinders after the injectors stop. Next: the cut's start and end apart (the fuel cut some ms ahead of the
+    spark, as an injection-led shifter does), both builds, six phases, before any cure is proposed.
+  - *X-031* (the V8's downshift at 11.02 s) is not the cut: one phase in six whatever the cut is, and before
+    c035fe75 too. The event there is to be found.
+  - *Realism:* a real ignition-cut quickshifter (most motorcycles', many sequential cars') sends the cut's charge to
+    the pipe and can pop; a fuel cut does not. While nothing books a cut's charge, a fuel cut loses nothing audible.
+    When G's account books it, the cut's kind becomes a stated choice by gearbox (ignition or fuel), not a default.
+  - *X-032* (the turbo six's tour, exhaust+fuel+ecu): the cause is that combination's unsettled start and idle (N1's
+    traces), not the post-start hold, which stays. *X-036* not yet measured.
 
 ## The owner's rulings and a new fault, 25 Nov 19:10 UTC
 
@@ -993,6 +1017,14 @@ no "holding" was collected from X first. U1 now goes LAST in the round, with the
 Rows hook in one push; the lead collects a "holding" from every pusher before naming its tip. Released at 19:15:
 D2 (the combined diesel package), then B2; B (`wholeBuilds` 4561f81e and the probe); the steward (2fc03a65: every
 push since a16dc1f0 has started a soak); C; card A (9833352).
+
+## Open, after the bake: the mechanical voices' cost on first.json (M, 25 Nov 20:10)
+
+`tee-bench --engine --scenarios free-revs` on first.json with the fan forced on: voices.model 1 at 3054 ns a 96 kHz
+sample against 2722 with voices.model 0, 0.24 R (simulator / reference 2.004 against 1.766), against the voices'
+budget of 0.08 R (measured 0.06 to 0.07 R on the V8 when the package landed). Not the fan's tone (that is some
++0.025 R while the fan runs, FanVoice 32 to 71 ns). One machine, one run of three repeats; its run-to-run spread is
+some 0.04 R. M profiles where it goes after the bake (`tee-bench --profile --engine`), before proposing anything.
 
 ## The round at 19:44 UTC: what landed, what was found, what was ruled
 

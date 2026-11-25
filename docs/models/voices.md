@@ -26,7 +26,7 @@ steps on or off (test `clicks`). A level of -60 dB is off and costs nothing.
 | Accessory belt | `drives.fm` | Alternator 2.8x crank, 6 pole pairs x 6 diodes = 36 a turn (100.8 per crank turn); water pump 1.2x, 6 vanes; steering pump 1.1x, 10 vanes; belt rib hiss near 3 kHz ~ speed^2 (Bosch Automotive Handbook) | crank | `vo.front` (front of engine) |
 | Cam drive | `drives.fm` | Chain: the reference's 21-tooth whine, untouched. Toothed belt: 21 a turn, half the chain's level. Gears: 30-tooth straight-cut spur, AM once a cam turn, load 0.5. | crank | `vo.front` |
 | Supercharger drive | `drives.fm` | Belt: hiss ~ speed^2 (0.3 + 0.7 boost share). Gears: 40-tooth spur, load = boost share. Only with `asp` 4. | crank, boost | `vo.front` |
-| Cooling fan | `fan.fm` | Viscous: 1.1x crank, slip 25 % cold to 90 % locked over the 15 K below `fanOn`, fluid time constant 4 s. Electric: on at `fanOn`, off 5 K lower, 40 turns/s, up in 0.35 s, coasts in 1.2 s. Blade passing + harmonic; broadband ~ tip speed^2.75 in amplitude (sound power ~ U^5.5), band at 4x BPF; tip speed at 0.4 m. | coolant (K), crank, key | `vo.front` |
+| Cooling fan | `fan.fm` | Viscous: 1.1x crank, slip 25 % cold to 90 % locked over the 15 K below `fanOn`, fluid time constant 4 s. Electric: on at `fanOn`, off 5 K lower, 40 turns/s, up in 0.35 s, coasts in 1.2 s. Rushing air with a tone inside it: broadband ~ tip speed^2.75 in amplitude (sound power ~ U^5.5), band at 2x BPF, falling above 8x; blade passing + harmonic from unevenly spaced blades (SAE 2008-01-0569), spread over the shaft orders beside them, every line 10 dB under the rush in its third octave; tip speed at 0.4 m. | coolant (K), crank, key | `vo.front` |
 | Fuel pump | `fuel.fm` | In-tank turbine pump on a DC motor, 110 turns/s free less 15 under pressure (time constant 0.25 s); 41 vanes, 8 commutator segments, once a turn. Prime `prime` s (2) at key-on, then on while the crank turns (Bosch, *Gasoline-engine management*). | ignition, state, crank | `vo.tank` (tank, rear) |
 | Direct injectors | `fuel.fm` | Gasoline DI only: a sharp tick at the injector's opening and 1.5 ms later its closing (4.5, 8.2 kHz rings, Q 20-25), and the cam's high-pressure pump (the reference's `pres`) at 0.5; port injection: no HP pump, the reference's soft click. A diesel keeps the reference's. | the cylinders' exhaust closing (the reference's injector event) | `vo.head` (head) |
 | Lifters | `valvegear.fm` | Solid: the lash's tap at every valve, strength x lash / 0.25 mm, ringing 4.8 and 7.5 kHz; at intake closing a tap 240 crank degrees later (exhaust opening), at exhaust closing one 1.4x (intake opening merged). Hydraulic: nothing added. | valve events, crank degrees | `vo.head` |
@@ -172,11 +172,53 @@ the reference's listener (`sound.model` Reference), at a warm idle, with `voices
 Each answer moves one number in the table above, at the source; whether the same holds at camera Side is a question for
 card L's path.
 
+## The fan's tone (25 Nov)
+
+The owner's hum came back whenever the fan ran: at even blade spacing and its old level the blade pass (7 x 40 =
+280 Hz) and twice it stood 7.6 to 21.7 dB over everything else in their third octaves at the cameras (12:4x, tip
+ce169231, forced on). The lead's ruling: a cooling fan is heard as rushing air with a tone inside it; every one of its
+tones at least 10 dB under the fan's own rush in its third octave, at Tailpipe, Rear, Side and Driver, when it runs.
+
+What changed (`fan.fm`):
+- **Uneven blade spacing.** Blade i of B sits at (i + d_i) / B of a turn, d_i = 0.25 sin(2 pi i / B) of a pitch; the
+  tone is the sum over shaft orders of the blades' pulses (`makeLines`), so the blade pass's energy spreads to the
+  orders beside it. Cooling fans are made this way: SAE 2008-01-0569 (Lee and Nam, "Development of Low-Noise Cooling
+  Fan Using Uneven Fan Blade Spacing"); a sinusoidal modulation of the spacing is reported to take 8 dB off a 22-blade
+  fan's fundamental (cited at second hand in Int. J. Acoustics and Vibration 29 (2024), not checked at its source).
+  The modulation here (0.25 of a pitch, once round) is **judgement**: by its own geometry it takes the blade pass
+  down 6.5 dB (J0(pi / 2)) and puts the rest at the orders either side. What would replace it: a measured spectrum of
+  a production electric cooling fan, or the SAE paper's own blade angles and figures.
+- **The tone against the rush, judgement** set to the ruling: the tone's amplitude 0.0001 at a 40 m/s tip (was
+  0.004), the rush's band at twice the blade pass (was four times). The rush's level is as it was.
+
+Measured (first.json, warm idle with the fan forced on, `fanOn` 300 K, 8 to 14 s, through Places):
+
+| Camera | Fan alone: worst line, 280 Hz third | 560 Hz third | Whole mix, 280 Hz tone ratio, fan on / muted (before: on) | 560 Hz (before: on) | The fan's sum, dBFS (before) |
+|---|---|---|---|---|---|
+| Tailpipe | -12.6 | -11.1 * | -23.6 / -27.6 (+7.6) | -15.0 / -21.0 (+8.0) | -76.6 (-66.2) |
+| Rear | -12.6 | -11.5 * | -21.9 / -27.6 (+10.4) | -15.5 / -19.8 (+7.4) | -72.9 (-62.9) |
+| Side | -12.6 | -9.2 * | -14.4 / -28.2 (+21.7) | -14.4 / -21.3 (+9.2) | -57.4 (-50.5) |
+| Driver | -12.7 | -10.7 * | -15.5 / -27.7 (+18.9) | -14.3 / -19.7 (+9.5) | -61.8 (-52.3) |
+
+(*) The 560 Hz third's worst line in the engine renders is 600 Hz, 24 x the firing rate: with the fan's tone switched
+off altogether it reads the same (-9.3 at Side), so it is the engine's (the fan's air changes the engine's heat, and so
+a little of its sound), not the fan's. The fan alone, in the rig (no engine, no path; the path is smooth within a
+third octave, the same within 0.2 dB at the four cameras): 280 Hz -13.3, 520 -14.3, 560 -16.7, 600 -14.5 dB
+(test `fan: an electric fan running`, bound -10; at even spacing and the old level it reads +13.6 at 280 and +10.1 at
+560 and fails). The fan is some 7 to 10 dB quieter in all, the tone having been most of it. The 2.30 kHz line in
+these renders is the engine's fixed resonance (25 Nov, not a voice), and is not the fan's.
+
+Cost (`tee-bench --profile --engine`, first.json with the fan forced on, 10 s): FanVoice 32 ns a sample before, 71
+after (the shaft's orders by rotation from the lowest one kept, four table reads a sample), some +0.025 R while the
+fan runs and nothing while it is off. On the same machine `tee-bench --engine` on free-revs read voices.model 1
+against 0 on first.json at 0.24 R (3054 against 2722 ns a sample): far over the voices' 0.08 R and not this change's;
+not yet profiled (25 Nov, open).
+
 ## Judgement
 
 Every level (the idle bounds above included); the constant ratio 1.55 and the 48-tooth sum; the 12 % eccentricity; the rattle's backlash, drag and
 case modes; the resonances of injectors, lifters, gate housing, starter; the 240-degree tap timing; the fan's
-clutch curve and band; the pump's speeds and vane count; the gate's chatter law.
+clutch curve and band, its blades' spacing (0.25 of a pitch) and its tone against its rush; the pump's speeds and vane count; the gate's chatter law.
 
 ## Not done
 

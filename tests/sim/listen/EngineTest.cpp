@@ -706,3 +706,58 @@ TEST_CASE("the auto level after a start: the same idle whether the starter is he
         for (std::size_t i = 15; i < g[k].size(); ++i)   // from 4 s
             CHECK(std::fabs(g[k][i] - g[k].back()) < 1.0);
 }
+
+namespace
+{
+    // The rally five (its own spark cut and anti-lag) floored 4 s from idle and let go, as card G's clips run it, its
+    // bangs Burned in the pipe (exhaust.bang 1, the default) or Carved (0): the body (the median of the 0.1 s windows'
+    // rms, dBFS) over the lift, 7 to 9.5 s from the key
+    double liftBody(int bang)
+    {
+        Bench b("archetypes/inline-five-turbo-rally");
+        const int i = b.player().specIndex("exhaust.bang");
+        REQUIRE(i >= 0);
+        b.player().setSpec(static_cast<std::size_t>(i), double(bang), 0);
+        b.ctl().mode = 1;
+        b.ctl().lever = 0;
+        b.ctl().ignition = tee::EnginePlayer::kIgnitionStart;
+        b.play(2.0);
+        b.ctl().ignition = tee::EnginePlayer::kIgnitionOn;
+        b.play(1.0);
+        b.ctl().throttle = 1.0f;
+        b.play(4.0);
+        b.ctl().throttle = 0.0f;
+        std::vector<double> rms;
+        b.play(2.5, [&] {
+            double p = 0.0;
+            for (std::size_t k = 0; k < b.left().size(); ++k)
+                p += 0.5 * (double(b.left()[k]) * b.left()[k] + double(b.right()[k]) * b.right()[k]);
+            rms.push_back(p / double(b.left().size()));
+        });
+        // 0.1 s windows of 9 blocks
+        std::vector<double> win;
+        for (std::size_t k = 0; k + 9 <= rms.size(); k += 9)
+        {
+            double s = 0.0;
+            for (std::size_t j = 0; j < 9; ++j)
+                s += rms[k + j];
+            win.push_back(10.0 * std::log10(s / 9.0 + 1e-30));
+        }
+        std::sort(win.begin(), win.end());
+        return win[win.size() / 2];
+    }
+}
+
+TEST_CASE("the auto level and the bangs: a burn in the pipe does not hold the body down", "[listen][engine]")
+{
+    // A bang burned in the pipe is a burst of 1 to 4 ms: the exposure leaves it to the limiter (a part over twice the
+    // parts' running 80th percentile does not raise P), as a real limiter takes a crack, so the body over a lift with
+    // its anti-lag bangs stays where it is without them: Burned within 2 dB of Carved. Measured: before the rule,
+    // Burned 6.4 dB under (each bang held the exposure 1.5 s, then released at 4 dB a second); with it, 1.2 dB over
+    // (tee-render, card G's clip). The limiter takes the bangs: when it acts, 3.1 dB (median)
+    const double carved = liftBody(0);
+    const double burned = liftBody(1);
+    std::printf("the rally five's lift, the body (median 0.1 s rms): Carved %.1f dBFS, Burned %.1f dBFS (%+.1f dB)\n", carved,
+                burned, burned - carved);
+    CHECK(burned > carved - 2.0);
+}

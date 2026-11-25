@@ -189,7 +189,9 @@ module Valvetrain
         if (dpN > 0)
         {
             dpOverlap += (dpSum / (float)dpN - dpOverlap) * fminf(d16 / 0.1f, 1.0f);
+            dpBack += (backSum / (float)dpN - dpBack) * fminf(d16 / 0.1f, 1.0f);
             dpSum = 0.0f;
+            backSum = 0.0f;
             dpN = 0;
         }
         lab.dpOverlap = dpOverlap;
@@ -201,11 +203,26 @@ module Valvetrain
     // ---- each sample: cylinder c at its angle a (degrees in the cycle) and the pressure across it, its intake port's
     // over its exhaust port's (Pa): kept over the overlap's crank angles the schedule would ask (lab.ovFrom to ovTo,
     // four-strokes) ----
-    void overlapSample(float a, float dp)
+    // A part whose state depends on the way it came (tel.engine.hysteresis, latched): the two-stage cam's switch, up over
+    // its speed and down only under it less the hysteresis. hysteresis(): 1 when the build has one; latched(omega): 1
+    // while the second stage is held under its up switch, a state an upward sweep would not hold at this crank speed
+    // (rad/s). A dyno reads them to approach a held point from below (card N1 with C, 25 Nov: P's 13 N m notch)
+    int hysteresis()
+    {
+        return model != 0 && lab.stagesOn != 0 ? 1 : 0;
+    }
+
+    int latched(float omega)
+    {
+        return hysteresis() != 0 && lab.stageWant == 1 && omega < lab.stageUp ? 1 : 0;
+    }
+
+    void overlapSample(float a, float dp, float back)
     {
         if (cycNow == 720.0f && a >= lab.ovFrom && a <= lab.ovTo)
         {
             dpSum += dp;
+            backSum += back;
             dpN += 1;
         }
     }
@@ -241,6 +258,10 @@ module Valvetrain
     // stands above the exhaust there and an overlap scavenges; below, the exhaust pushes back through it (N3's turbo
     // four at 1800, causes.md B-3; the V12's hole at 2000). Engine gives a sample each (overlapSample).
     float dpSum;
+    float backSum;
+    // The exhaust brake's mean back pressure in it (Pa; card D2's, 0 with none): dpOverlap less it, the waves' part
+    // alone (tel.valve.dpWave), is bounded as dpOverlap was before a brake could hold the port to its limit
+    float dpBack;
     int dpN;
     float dpOverlap;
 
@@ -302,6 +323,7 @@ module Valvetrain
         t->waiting = lab.waiting;
         t->waitTemp = lab.waitTemp;
         t->dpOverlap = dpOverlap;
+        t->dpWave = dpOverlap + dpBack;
         t->lift = lab.liftOn != 0 ? lab.liftCmd : 1.0f;
         t->active = lab.activeMask;
         t->floating = lab.floating;

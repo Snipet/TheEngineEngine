@@ -1297,7 +1297,7 @@ module Engine
                 hd.sample(cy, c, a);
             if (spec.valve.model != 0)   // (N1: the pressure across the cylinder at its overlap, for the intake's schedule)
                 vt.overlapSample(a, 2.0f * (bI - (hd.on != 0 ? bE + hd.back : bE)) + intk.run[pi].z * cy->qIa
-                                        - exh.prim[pi].z * cy->qEa);
+                                        - exh.prim[pi].z * cy->qEa, hd.on != 0 ? 2.0f * hd.back : 0.0f);
             work.sample(c, a, cy->p, cy->v);
             comb.sample(cy, c, dt);                     // card H: nothing under fuel.model 0 and ecu.model 0
             qe[pi] += cy->qEa;
@@ -1881,6 +1881,8 @@ module Engine
         tel.car.clutch = fminf(fmaxf(set.clutch, 0.0f), 1.0f);
         tel.sound.peak = peak;
         vt.telemetry(&tel.valve);
+        tel.engine.hysteresis = vt.hysteresis();               // (N1, for C's dyno: a held point approached from below)
+        tel.engine.latched = vt.latched(crank.omega);
         intk.telemetry(&tel.intake);
         hd.telemetry(&tel.ecu, &comb.diesel, fuelUse, spec.fuel.model);      // card D2: the smoke number, the diesel's measures
     }

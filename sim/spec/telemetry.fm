@@ -38,6 +38,8 @@ module EngineTel
     float torque [[ui::label("Torque")]] [[ui::quantity("torque")]]
         [[ui::help("Brake torque, its mean over some 0.1 s: the gases' less friction and a supercharger's drag; on the dyno, the absorber's")]];
     float gasTorque [[ui::label("Gas torque")]] [[ui::quantity("torque")]] [[ui::help("The gases' on the crank, its mean over some 20 ms")]];
+    int hysteresis [[fminus::range(0, 1)]] [[ui::label("Hysteresis")]] [[ui::help("1 when the build has a part whose state depends on the way it came (a two-stage cam's switch)")]];
+    int latched [[fminus::range(0, 1)]] [[ui::label("Latched")]] [[ui::help("1 while such a part holds a state an upward sweep would not hold at this speed (the second stage under its up switch)")]];
     float firing [[ui::label("Firing rate")]] [[ui::quantity("frequency")]] [[ui::help("Firings a second, every cylinder's")]];
     float power [[ui::label("Power")]] [[ui::quantity("power")]] [[ui::help("The torque (brake) times the speed")]];
     float imep [[ui::label("IMEP")]] [[ui::quantity("pressure")]] [[ui::help("Indicated mean effective pressure, gross: the power loop's, the last cycle's mean over the cylinders")]];
@@ -166,6 +168,9 @@ module ExhaustTel
         [[ui::help("The flap's closing, 0 open to 1 shut (less what its relief has blown open); 0 with none")]];
     float pFlap [[ui::label("Before the flap")]] [[ui::quantity("pressure")]]
         [[ui::help("The pressure before the flap, over the air: the brake's back pressure")]];
+    int boreRaised [[ui::label("Bores raised")]]
+        [[ui::help("Stated pipe bores under 10 mm, raised to it, a bit a kind: 1 primary, 2 collector, 4 main pipe, 8 crossover, 16 resonator, 32 bypass, 64 tailpipe; 0 none")]];
+    int boresRaised [[ui::label("Bores raised, how many")]] [[ui::help("How many stated pipe bores were raised to 10 mm")]];
     float bangHeat [[ui::label("Burning in the pipe")]] [[ui::quantity("power")]]
         [[ui::help("The heat the bangs release in the collectors' gas now (Bangs: Burned in the pipe; 0 otherwise)")]];
     float bangTime [[ui::label("Last bang's burn")]] [[ui::quantity("time")]]
@@ -321,7 +326,11 @@ module ValveTel
     int waiting [[ui::label("Waiting")]]
         [[ui::help("Why the cams are not where asked, a bit each: 1 the intake phaser parked (no oil pressure), 2 the exhaust phaser parked, 4 the phasers slowed by cold oil, 8 the cam stage waiting for the coolant, 16 for oil pressure")]];
     float waitTemp [[fminus::range(0, 1000)]] [[ui::label("Stage waits for")]] [[ui::unit("K")]] [[ui::help("The coolant temperature the cam stage waits for; 0: not waiting")]];
-    float dpOverlap [[fminus::range(-300000, 300000)]] [[ui::label("Overlap pressure")]] [[ui::unit("Pa")]] [[ui::help("The intake port's pressure over the exhaust port's around the overlap's top centre, all cylinders: above 0 an overlap scavenges, below it the exhaust pushes back")]];
+    // (dpOverlap is not bounded itself: an exhaust brake holds the exhaust port to its stated limit, up to 500 kPa times
+    // 1.2 for the vanes' kind (card D2); its waves' part, dpWave, is bounded at +-300 kPa as dpOverlap was, and with no
+    // brake it is dpOverlap to the bit. X-037: the pickup's vane brake read -394 kPa)
+    float dpOverlap [[ui::label("Overlap pressure")]] [[ui::unit("Pa")]] [[ui::help("The intake port's pressure over the exhaust port's around the overlap's top centre, all cylinders: above 0 an overlap scavenges, below it the exhaust pushes back")]];
+    float dpWave [[fminus::range(-300000, 300000)]] [[ui::label("Overlap pressure, waves")]] [[ui::unit("Pa")]] [[ui::help("The overlap pressure less an exhaust brake's back pressure: the pipes' waves alone (with no brake, the overlap pressure)")]];
     float lift [[ui::label("Lift command")]] [[ui::quantity("fraction")]];
     int active [[ui::label("Active cylinders")]] [[ui::help("A bit a cylinder, in the layout's order")]];
     int floating [[fminus::range(0, 1)]] [[ui::label("Valve float")]];
@@ -343,6 +352,7 @@ module IntakeTel
     float ripple [[ui::label("Manifold ripple")]] [[ui::quantity("pressure")]] [[ui::help("Peak to peak over the last cycle")]];
     float runnerLength [[ui::label("Runner length")]] [[ui::quantity("length")]];
     float box [[ui::label("Air box")]] [[ui::quantity("pressure")]] [[ui::help("Over the air outside (model 1)")]];
+    int boreRaised [[ui::label("Bores raised")]] [[ui::help("Stated bores under their least, raised to it: 1 the runners (8 mm), 2 the snorkel (10 mm); 0 none")]];
 };
 
 module Telemetry

@@ -24,3 +24,4 @@ rad/s" (the overrun half of the on-off cycle no longer slips the clutch at low r
 assertion count identical. The output's speed carries the rear tyre's slip, where the vehicle model reads the road's:
 B2's choice. A plain diff; base f3639cb9. Not applied.
 n1-predict-stage.patch: N1's cure for P's two-stage notch (host/src/Predict.cpp: a point under the stage switch approached from below, the latched stage let down and the speed ramped at 100 rad/s^2; a host test that fails without it), a git format-patch against 60e87aef. For C's review (the predictor is C's); not applied from here.
+n1-latched.diff: N1's FLAG_LATCHED (tel.engine.flags 8: sim/engine.fm one line for D, sim/spec/telemetry.fm, the valvetrain's latched()) and the predictor's let-down on it with PredictPoint::latched and the bake versions (cam 4, knock 6), a plain diff against 60e87aef, superseding n1-predict-stage.patch. For C's and D's review; not applied from here.

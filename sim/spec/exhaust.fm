@@ -37,7 +37,7 @@ module ExhaustSpec
     float primLen [[fminus::range(0, 3)]] [[fminus::default(0)]] [[ui::label("Primary length")]] [[ui::quantity("length")]]
         [[ui::help("0: the layout's")]] [MAX_PORTS];
     float primD [[fminus::range(0, 0.12)]] [[fminus::default(0)]] [[ui::label("Primary bore")]] [[ui::quantity("length")]]
-        [[ui::help("0: the layout's, 0.46 of the cylinder's bore")]] [MAX_PORTS];
+        [[ui::help("0: derived (the layout's, 0.46 of the cylinder's bore); otherwise at least 10 mm (a smaller value is raised to it)")]] [MAX_PORTS];
     float primSpread [[fminus::range(0, 0.3)]] [[fminus::default(0.06)]] [[ui::label("Primary differences")]]
         [[ui::quantity("fraction")]] [[ui::help("How much the primaries' lengths differ, as built (the reference's 6 %)")]];
     float primStepAt [[fminus::range(0, 0.9)]] [[fminus::default(0)]] [[ui::label("Step at")]] [[ui::quantity("fraction")]]
@@ -53,7 +53,7 @@ module ExhaustSpec
         [[ui::help("The length of the pipe after a collector")]]
         [[ui::quantity("length")]] [MAX_COLLECTORS];
     float colD [[fminus::range(0, 0.15)]] [[fminus::default(0)]] [[ui::label("Collector pipe bore")]]
-        [[ui::help("The bore of the pipe after a collector")]]
+        [[ui::help("The bore of the pipe after a collector. 0: derived; otherwise at least 10 mm (a smaller value is raised to it)")]]
         [[ui::quantity("length")]] [MAX_COLLECTORS];
     float colVol [[fminus::range(0, 0.004)]] [[fminus::default(0)]] [[ui::label("Collector volume")]]
         [[ui::quantity("volume")]] [[ui::help("Above 0: a log manifold's chamber at the collector")]] [MAX_COLLECTORS];
@@ -64,7 +64,7 @@ module ExhaustSpec
         [[ui::help("The length of each side's main pipe")]]
         [[ui::quantity("length")]] [MAX_SIDES];
     float mainD [[fminus::range(0, 0.13)]] [[fminus::default(0)]] [[ui::label("Main pipe bore")]]
-        [[ui::help("The bore of each side's main pipe")]]
+        [[ui::help("The bore of each side's main pipe. 0: derived; otherwise at least 10 mm (a smaller value is raised to it)")]]
         [[ui::quantity("length")]] [MAX_SIDES];
     int converter [[fminus::range(0, 2)]] [[fminus::default(1)]] [[ui::label("Converter")]]
         [[ui::help("Each side's catalytic converter: none, a standard one, or a high-flow one")]]
@@ -76,7 +76,7 @@ module ExhaustSpec
         [[ui::help("Where the crossover joins: near the heads or after the main pipes")]]
         [[ui::choices("Head", "After main pipe")]];
     float crossD [[fminus::range(0, 0.13)]] [[fminus::default(0)]] [[ui::label("Crossover bore")]]
-        [[ui::quantity("length")]] [[ui::help("0: the Crossover dial's area")]];
+        [[ui::quantity("length")]] [[ui::help("0: derived (the Crossover dial's area); otherwise at least 10 mm (a smaller value is raised to it)")]];
     float crossLen [[fminus::range(0.05, 1)]] [[fminus::default(0.25)]] [[ui::label("H pipe length")]]
         [[ui::help("The length of an H-pipe's crossing tube")]]
         [[ui::quantity("length")]];
@@ -90,7 +90,7 @@ module ExhaustSpec
         [[ui::help("The note a resonator is tuned to cancel")]]
         [[ui::quantity("frequency")]] [[ui::taper("log")]] [MAX_SIDES];
     float resD [[fminus::range(0, 0.13)]] [[fminus::default(0)]] [[ui::label("Resonator bore")]]
-        [[ui::quantity("length")]] [[ui::help("A stub's or a neck's; 0: the pipe's (a neck: half of it)")]] [MAX_SIDES];
+        [[ui::quantity("length")]] [[ui::help("A stub's or a neck's. 0: derived (the pipe's; a neck: half of it); otherwise at least 10 mm (a smaller value is raised to it)")]] [MAX_SIDES];
     float resVol [[fminus::range(0.0002, 0.02)]] [[fminus::default(0.003)]] [[ui::label("Chamber volume")]]
         [[ui::help("A Helmholtz resonator's chamber volume")]]
         [[ui::quantity("volume")]] [MAX_SIDES];
@@ -111,7 +111,7 @@ module ExhaustSpec
         [[ui::help("A valve around the muffler: none, always shut, always open, opened by speed and load, or by the ECU")]]
         [[ui::choices("None", "Shut", "Open", "By speed and load", "By the ECU")]] [MAX_SIDES];
     float bypassD [[fminus::range(0, 0.13)]] [[fminus::default(0)]] [[ui::label("Bypass bore")]]
-        [[ui::quantity("length")]] [[ui::help("0: the main pipe's")]];
+        [[ui::quantity("length")]] [[ui::help("0: derived (the main pipe's); otherwise at least 10 mm (a smaller value is raised to it)")]];
     float bypassRpm [[fminus::range(1000, 9000)]] [[fminus::default(3500)]] [[ui::label("Valve opens above")]]
         [[ui::help("The bypass valve opens above this speed")]]
         [[ui::unit("rpm")]];
@@ -125,7 +125,7 @@ module ExhaustSpec
         [[ui::help("Each tailpipe's length")]]
         [[ui::quantity("length")]] [MAX_SIDES];
     float tailD [[fminus::range(0, 0.13)]] [[fminus::default(0)]] [[ui::label("Tailpipe bore")]]
-        [[ui::help("Each tailpipe's bore")]]
+        [[ui::help("Each tailpipe's bore. 0: derived; otherwise at least 10 mm (a smaller value is raised to it)")]]
         [[ui::quantity("length")]] [MAX_SIDES];
     int tips [[fminus::range(1, 2)]] [[fminus::default(1)]] [[ui::label("Tips")]]
         [[ui::help("One tip or two at each tailpipe")]] [[ui::unit("tips")]] [MAX_SIDES];

@@ -48,3 +48,59 @@ band were wrong.
 
 Landing fault 1 alone would trade a choked primary for a balanced pair that makes no more torque, and it changes the
 rotary's sound and flags, so it is not landed alone.
+
+## What the pair should be matched TO (the lead's ruling, 25 Nov 19:46: sources before any number)
+
+This is the same question as rule (c) and the turbine's rated match (rated-nozzle-q2.md): what a turbine is matched
+to.
+
+**Cited** (P's sources, judgement-sources.md section 16):
+- the second turbo joins at about 4500 rpm at full throttle: an enthusiast's measurement, and a forum's quote of the
+  workshop manual;
+- it is pre-spooled from about 3000 rpm (the forum's quote only);
+- the joined state is released below about 3300 rpm;
+- Mazda's manual text: the secondary is spun before it joins "to prevent a drop of boost pressure".
+
+**What that implies for the match:**
+- the joined pair must hold the boost through and above the join, with no drop. The target is the build's 0.70 bar;
+  the sources give no boost figure;
+- below the join, the single must reach that target by itself.
+
+So the single's design point is the target at the join speed's low side. The pair's design point is the target at the
+join (4500 rpm) and on to the redline: each turbine passes its share of the engine's flow there at the p3 that makes
+the target.
+
+**Not found, so not to be invented:**
+- each turbo's share once joined. The 13B-REW's two turbos are commonly described as one model fitted twice, which
+  would give equal shares (an inference, not cited);
+- the boost through the join;
+- any maker's turbine area.
+
+The next window's change then has two parts, measured against the cited torque curve:
+- the transfer as an unrestricted path (the housing's own inlet, no new number);
+- the pair matched at the join with equal shares, the share labelled as the inference above until P finds a source.
+
+The rotary's rows above the join stay rows: they are a known miss with this cause, not held by calibration (told to P).
+
+### P's section 23 (25 Nov 19:48), which settles two of the three
+
+**The models (cited, enthusiasts' agreement):**
+- both are Hitachi HT-12, the same model, so the pair is symmetric by hardware;
+- one page has the primary as an HT-10; P judges its other details doubtful and did not use it;
+- not found: the HT-12's part numbers and wheel diameters.
+
+**The boost through the join (cited, several enthusiast sources agreeing):**
+- about 10 psi (0.7 bar) on the primary;
+- a dip to about 8 psi (0.55 bar) at the changeover near 4500 rpm (one says 4700);
+- then a steady 10 psi on the pair to the redline.
+
+The pair's target is therefore the build's 0.70 bar from the join to the redline, and a short dip at the join is real.
+Measured today the pair makes 0.45-0.53 bar above the join, under even the dip.
+
+**Each turbo's share once joined:** not stated anywhere P read. An even split is the natural reading of two HT-12s at
+one boost; it stays labelled judgement.
+
+So the re-match is:
+- each of two equal turbines passes half the engine's flow at the 0.70 bar target, from the join to the redline;
+- the single reaches 0.70 bar below the join (cited onset 1800-2500 rpm, not agreed);
+- the transfer is unrestricted.
