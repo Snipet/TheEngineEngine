@@ -316,7 +316,8 @@ TEST_CASE("the scope is copied only while asked for, and ctl.scopeOn says so", "
     CHECK(again.block < 200);   // copies stopped about half a second after the last ask
 }
 
-TEST_CASE("nothing on the audio thread allocates, and the host's own work in a block is small", "[simhost][realtime]")
+// [timing]: a wall-clock budget, so it runs alone (tests/host/CMakeLists.txt: host.timing, RUN_SERIAL)
+TEST_CASE("nothing on the audio thread allocates, and the host's own work in a block is small", "[simhost][realtime][timing]")
 {
     SimHost host;
     std::string errors;
