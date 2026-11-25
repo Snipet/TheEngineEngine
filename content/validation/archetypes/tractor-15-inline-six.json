@@ -176,8 +176,8 @@
         450000
       ],
       "unit": "W",
-      "source": "published figures of its kind (the maker's ratings, firm (the range covers its ratings)): 14.9 L; 20 to 30 kW a litre",
-      "basis": "recalled"
+      "source": "published figures of its kind (the maker's ratings, firm (the range covers its ratings)): 14.9 L; 20 to 30 kW a litre; its full-load fuel curve sets them (D2's, from the class's cited torque through the build's own 8.34 N m a mg): SET BY THE FUEL CURVE, out of the counts",
+      "basis": "set"
     },
     {
       "name": "Speed at peak power",
@@ -202,8 +202,8 @@
         209.4
       ],
       "unit": "rad/s",
-      "source": "published figures of its kind (the maker's ratings, firm (the range covers its ratings)): 14.9 L: 1600 to 2000 rpm",
-      "basis": "recalled"
+      "source": "published figures of its kind (the maker's ratings, firm (the range covers its ratings)): 14.9 L: 1600 to 2000 rpm; its full-load fuel curve sets them (D2's, from the class's cited torque through the build's own 8.34 N m a mg): SET BY THE FUEL CURVE, out of the counts",
+      "basis": "set"
     },
     {
       "name": "Peak torque",
@@ -228,8 +228,8 @@
         2780
       ],
       "unit": "N m",
-      "source": "published figures of its kind (the maker's ratings, firm (the range covers its ratings)): 14.9 L; BMEP 16.8 to 23.4 bar (a naturally aspirated petrol engine 10 to 13 bar, turbocharged 18 to 25, a modern truck diesel 20 to 25: Heywood, Internal Combustion Engine Fundamentals, ch. 2)",
-      "basis": "recalled"
+      "source": "published figures of its kind (the maker's ratings, firm (the range covers its ratings)): 14.9 L; BMEP 16.8 to 23.4 bar (a naturally aspirated petrol engine 10 to 13 bar, turbocharged 18 to 25, a modern truck diesel 20 to 25: Heywood, Internal Combustion Engine Fundamentals, ch. 2); its full-load fuel curve sets them (D2's, from the class's cited torque through the build's own 8.34 N m a mg): SET BY THE FUEL CURVE, out of the counts",
+      "basis": "set"
     },
     {
       "name": "Speed at peak torque",
@@ -254,8 +254,8 @@
         136.1
       ],
       "unit": "rad/s",
-      "source": "published figures of its kind (the maker's ratings, firm (the range covers its ratings)): 14.9 L: 900 to 1300 rpm (a turbocharged engine's plateau: its whole span)",
-      "basis": "recalled"
+      "source": "published figures of its kind (the maker's ratings, firm (the range covers its ratings)): 14.9 L: 900 to 1300 rpm (a turbocharged engine's plateau: its whole span); its full-load fuel curve sets them (D2's, from the class's cited torque through the build's own 8.34 N m a mg): SET BY THE FUEL CURVE, out of the counts",
+      "basis": "set"
     },
     {
       "name": "Warm idle",

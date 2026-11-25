@@ -13,4 +13,9 @@ target_compile_definitions(tee-tests-boost PRIVATE
   "TEE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
   "TEE_SOURCE_SIM_DIR=\"${PROJECT_SOURCE_DIR}/sim/ref\""
   "TEE_SOURCE_CONTENT_DIR=\"${PROJECT_SOURCE_DIR}/content/ref\"")
-catch_discover_tests(tee-tests-boost DISCOVERY_MODE PRE_TEST ADD_TAGS_AS_LABELS TEST_PREFIX "boost." PROPERTIES TIMEOUT 900)
+# The light cases one a process; the whole-engine cases ([engine], EngineTest.cpp's Engine) in one process, one compile
+# of sim/, the kept player reset between them (docs/plan/01-rules.md section 3).
+catch_discover_tests(tee-tests-boost DISCOVERY_MODE PRE_TEST ADD_TAGS_AS_LABELS TEST_SPEC "~[engine]" TEST_PREFIX "boost."
+                     PROPERTIES TIMEOUT 900)
+add_test(NAME "boost.engine" COMMAND tee-tests-boost "[engine]~[nightly]" --durations yes)
+set_tests_properties("boost.engine" PROPERTIES TIMEOUT 900 LABELS "boost;engine")
