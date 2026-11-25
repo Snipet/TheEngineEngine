@@ -1165,3 +1165,124 @@ TEST_CASE("probe: the idle's hunt on the bench", "[.probe-hunt]")
                 crossings > 0 ? 8.0 / crossings : 0.0, crossings, mm, msd, vm, vsd);
     SUCCEED();
 }
+
+// The intake stroke at one speed, full load, warm (the lead's ask, card N1, 25 Nov): cylinder 1's pressure and its
+// intake port's (the runner's wave at the valve) each 10 degrees from the intake's opening to past its closing, the
+// valve's flow and its Mach number (the jet's speed, |mI| over the upstream gas's density and the valve's effective
+// area, over the upstream gas's sound speed: the port's air on the way in, the cylinder's gas on the way out; and the
+// isentropic Mach the pressure ratio alone would give), then the charge at closing and what went back out before it.
+// Averaged over the cycles measured. PROBE_BUILD, PROBE_RPM (one speed), PROBE_SET, PROBE_SECONDS as [.probe].
+TEST_CASE("probe: the intake stroke at one speed", "[.probe-fill]")
+{
+    const char* buildEnv = std::getenv("PROBE_BUILD");
+    const std::string slug = buildEnv ? buildEnv : "two-stage-cam-20";
+    const double rpm = std::getenv("PROBE_RPM") ? std::atof(std::getenv("PROBE_RPM")) : 7500.0;
+    const char* setEnv = std::getenv("PROBE_SET");
+    const double measure = std::getenv("PROBE_SECONDS") ? std::atof(std::getenv("PROBE_SECONDS")) : 1.0;
+
+    Probe pr;
+    tee::EnginePlayer::Options options;
+    options.directory = std::getenv("PROBE_SIM") ? std::filesystem::path(std::getenv("PROBE_SIM")) : std::filesystem::path(TEE_SOURCE_DIR) / "sim";
+    options.sampleRate = 96000.0;
+    std::string errors, warnings;
+    pr.p = tee::EnginePlayer::create(options, errors);
+    INFO(errors);
+    REQUIRE(pr.p != nullptr);
+    tee::EngineBuild b;
+    std::filesystem::path file = slug;
+    if (!std::filesystem::exists(file))
+        file = std::filesystem::path(TEE_SOURCE_DIR) / "content" / "builds" / "archetypes" / (slug + ".json");
+    REQUIRE(tee::loadBuild(*pr.p, file, b, errors, warnings));
+    tee::applyBuild(*pr.p, b);
+    if (setEnv)
+        for (const std::string& kv : split(setEnv, ';'))
+        {
+            const auto eq = kv.find('=');
+            REQUIRE(eq != std::string::npos);
+            std::string e;
+            INFO(kv << ": " << e);
+            REQUIRE(pr.p->setSpec(kv.substr(0, eq), std::atof(kv.c_str() + eq + 1), e));
+        }
+
+    auto& c = pr.p->controls();
+    c.mode = 2;
+    c.dynoRate = 0.0f;
+    c.dynoSpeed = float(rpm * M_PI / 30.0);
+    c.ignition = 2;
+    pr.play(1.0);
+    c.ignition = 1;
+    c.throttle = 1.0f;
+    c.scopeOn = 1;
+    pr.play(2.0);
+
+    const double R = 287.0, g = 1.4;
+    const double vd = pr.get("cyl[0].vd");
+    const double ivo = pr.get("cyl[0].ivo"), idur = pr.get("cyl[0].idur");
+    const double ivc = std::fmod(ivo + idur, 720.0);
+    std::vector<double> sp(720, 0), st(720, 0), sm(720, 0), sa(720, 0), sMa(720, 0), sMi(720, 0), sMass(720, 0), sn(720, 0);
+    std::vector<double> port(720, 0);
+    double portN = 0;
+    int lastCycles = int(pr.get("scope.cycles"));
+    double back = 0, fwd = 0, pI = 0, tI = 0, mI = 0, xI = 0, nI = 0, torque = 0, tN = 0;
+    const double dt = 1.0 / pr.p->sampleRate();
+    pr.play(measure, [&] {
+        const double ang = pr.get("cyl[0].ang");
+        const int d = std::min(719, std::max(0, int(ang)));
+        const double pc = pr.get("cyl[0].p"), tc = pr.get("cyl[0].t"), mf = pr.get("cyl[0].mI"), a = pr.get("cyl[0].aI");
+        sp[d] += pc, st[d] += tc, sm[d] += mf, sa[d] += a, sMass[d] += pr.get("cyl[0].m"), sn[d] += 1;
+        if (a > 1e-9 && std::fabs(mf) > 0)
+        {
+            // upstream: the port's air drawing in (mI < 0), the cylinder's gas going out
+            const double tAir = pr.get("intk.tAir");
+            const double pPort = d < int(port.size()) && portN > 0 ? port[d] / portN : pr.get("intk.pPlenum");
+            const double pUp = mf < 0 ? pPort : pc, tUp = mf < 0 ? tAir : tc;
+            const double u = std::fabs(mf) / (pUp / (R * tUp) * a);
+            sMa[d] += u / std::sqrt(g * R * tUp);
+            const double hi = std::max(pPort, pc), lo = std::min(pPort, pc);
+            sMi[d] += std::sqrt(std::max(0.0, 2.0 / (g - 1.0) * (std::pow(hi / lo, (g - 1.0) / g) - 1.0)));
+        }
+        // after bottom dead centre (540) to the closing: what the intake pushed back out
+        const bool afterBdc = ivc > 540.0 ? (ang >= 540.0 && ang < ivc) : (ang >= 540.0 || ang < ivc);
+        if (afterBdc)
+            (mf > 0 ? back : fwd) += std::fabs(mf) * dt;
+        if (pr.get("cyl[0].ivcNow") != 0.0)
+        {
+            const double m = pr.get("cyl[0].m");
+            pI += pc, tI += tc, mI += m, xI += pr.get("cyl[0].mInert") / std::max(m, 1e-12), nI += 1;
+        }
+        const int cy = int(pr.get("scope.cycles"));
+        if (cy != lastCycles)
+        {
+            lastCycles = cy;
+            for (int k = 0; k < 720; ++k)
+                port[k] += pr.get("scope.portIntake[" + std::to_string(k) + "]");
+            portN += 1;
+        }
+        torque += pr.tel("engine.torque"), tN += 1;
+    });
+    REQUIRE(nI > 0);
+    std::printf("%s%s%s at %.0f rpm: intake opens %.0f, closes %.0f (cylinder 1's degrees; 360 the overlap's top, 540 bottom)\n",
+                slug.c_str(), setEnv ? " with " : "", setEnv ? setEnv : "", rpm, ivo, ivc);
+    std::printf("  torque %.1f N m, VE (tel) %.3f; plenum %.1f kPa\n", torque / tN, pr.tel("engine.veAir"), pr.get("intk.pPlenum") / 1e3);
+    std::printf("  %5s %8s %8s %8s %8s %8s %7s %7s %7s\n", "deg", "p cyl", "p port", "port-cyl", "T cyl", "mI g/s", "Mach u", "Mach is", "m/m_ivc");
+    const double mIvc = mI / nI;
+    const double end = ivc < ivo ? ivc + 720.0 : ivc;
+    for (double a0 = std::floor(ivo / 10.0) * 10.0; a0 <= end + 20.0; a0 += 10.0)
+    {
+        double p = 0, t = 0, m = 0, ma = 0, mi = 0, ms = 0, n = 0, pp = 0;
+        for (int k = 0; k < 10; ++k)
+        {
+            const int d = (int(a0) + k) % 720;
+            p += sp[d], t += st[d], m += sm[d], ma += sMa[d], mi += sMi[d], ms += sMass[d], n += sn[d];
+            pp += portN > 0 ? port[d] / portN : 0.0;
+        }
+        if (n == 0)
+            continue;
+        std::printf("  %5.0f %8.1f %8.1f %8.1f %8.0f %8.1f %7.2f %7.2f %7.3f\n", std::fmod(a0, 720.0), p / n / 1e3, pp / 10.0 / 1e3,
+                    (pp / 10.0 - p / n) / 1e3, t / n, 1e3 * m / n, ma / n, mi / n, ms / n / mIvc);
+    }
+    std::printf("  at closing: %.1f kPa, %.0f K, %.1f mg (%.3f of V_d's air at 101.3 kPa, 288 K), burned share %.3f\n", pI / nI / 1e3,
+                tI / nI, 1e6 * mIvc, mIvc / (vd * 101325.0 / (R * 288.15)), xI / nI);
+    std::printf("  bottom to closing, a cycle: in %.2f mg, back out %.2f mg\n", 1e6 * fwd / (nI), 1e6 * back / (nI));
+    SUCCEED();
+}
