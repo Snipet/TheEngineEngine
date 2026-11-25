@@ -47,6 +47,7 @@ namespace tee::settings
         std::string unitChoices;
         std::string lastBuild;                  // the file of the build last open; empty: none
         std::vector<std::string> recentBuilds;  // the files opened or saved last, newest first (files::RecentFiles)
+        bool wheelOn = true;                    // a Logitech G29 is read when connected (macOS: input/g29/RacingWheel.h)
         bool coldStart = false;                 // the engine starts cold (oil and water at the air's), not warm
         bool tryFirstSeen = false;              // the first build's TRY FIRST card was closed (it is not shown again)
         // Claude Desktop may reach the build (the assistant's link, assistant/include/tee/assistant/McpLink.h): the
