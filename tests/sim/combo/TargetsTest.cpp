@@ -38,10 +38,12 @@ namespace
     // The reference's own largest step through the same scenario with the targeted switches off (`make(false)`): the
     // click bound's baseline for a targeted run.
     template <class Make>
-    double baseline(Make make, const Times& tm)
+    double baseline(Make make, const Times& tm, double* excess = nullptr)
     {
         const tee::test::Run r = make(false).run(tm.end);
         const double from = tm.started + 0.5, to = tm.off > 0.0 ? tm.off : tm.end;
+        if (excess != nullptr)
+            *excess = stepExcess(r, from, to);   // the reference's own excess (the lead's ruling, 25 Nov)
         return std::max(r.left().during(from, to).largestStep(), r.right().during(from, to).largestStep());
     }
 
@@ -51,9 +53,9 @@ namespace
     // to 20.5 over six copies 0.01 K apart in the air (measured 16:40; Q's rule, docs/measurements/q-rule.md: judge a
     // chaotic engine against an ensemble). So: the largest of three such copies. judge() bounds at twice its refStep.
     template <class Make>
-    double bangBaseline(Make make, const Times& tm)
+    double bangBaseline(Make make, const Times& tm, double* excess = nullptr)
     {
-        double worst = 0.0;
+        double worst = 0.0, worstExcess = -1.0;
         for (double dT : {0.0, 0.01, 0.02})
         {
             tee::test::Scenario s = make(false);
@@ -61,7 +63,11 @@ namespace
             const tee::test::Run r = s.run(tm.end);
             const double from = tm.started + 0.5, to = tm.off > 0.0 ? tm.off : tm.end;
             worst = std::max({worst, r.left().during(from, to).largestStep(), r.right().during(from, to).largestStep()});
+            worstExcess = std::max(worstExcess, stepExcess(r, from, to));
         }
+        // the bang's excess bound as its step's: the largest of the copies (judge doubles what it is given)
+        if (excess != nullptr)
+            *excess = worstExcess >= 0.0 ? 0.5 * worstExcess : -1.0;
         return 0.5 * worst;
     }
 
@@ -104,7 +110,8 @@ TEST_CASE("targets: the new turbo with either ECU makes boost; anti-lag and nitr
         s.at(10.6).throttle(1.0).ramp(0.1);
         s.at(11.0).throttle(0.0).ramp(0.05);
         const tee::test::Run r = s.run(tm.end);
-        Verdict v = judge(r, tm, archetype("turbo-six"), true, referenceStep("turbo-six", Kind::Pull));
+        Verdict v = judge(r, tm, archetype("turbo-six"), true, referenceStep("turbo-six", Kind::Pull),
+                          referenceExcess("turbo-six", Kind::Pull));
         const double boost = r.tel("boost.pressure").during(4.0, 10.0).max();
         std::printf("targets: turbo six, boost.model 1, ecu.model %d: boost up to %.0f kPa over the air\n", ecu,
                     boost / 1000.0);
@@ -135,7 +142,9 @@ TEST_CASE("targets: launch control holds its speed on the new ECU and the new ve
         return s;
     };
     const tee::test::Run r = make(true).run(tm.end);
-    Verdict v = judge(r, tm, archetype("v8"), true, baseline(make, tm));
+    double refExcess = -1.0;
+    const double refStep = baseline(make, tm, &refExcess);
+    Verdict v = judge(r, tm, archetype("v8"), true, refStep, refExcess);
     const double held = r.tel("engine.speed").during(4.5, 5.9).mean();
     const double target = 418.879;   // ecu.launch.speed's default, 4000 rpm
     std::printf("targets: launch control held %.0f rpm (set %.0f)\n", held / kRpm, target / kRpm);
@@ -166,13 +175,14 @@ TEST_CASE("targets: a dog box's upshifts cut and its downshifts blip on the new 
             return s;
         };
     };
-    const double ref = bangBaseline(makeAt(0.0), tm);
+    double refExcess = -1.0;
+    const double ref = bangBaseline(makeAt(0.0), tm, &refExcess);
     const tee::test::Run r = makeAt(0.0)(true).run(tm.end);
-    Verdict v = judge(r, tm, archetype("v8"), true, ref);
+    Verdict v = judge(r, tm, archetype("v8"), true, ref, refExcess);
     std::printf("targets: dog box, the upshifts 0 ms later: largest step %.1f\n", v.stepMax);
     for (int k = 1; k < 6; ++k)
     {
-        const Verdict one = judge(makeAt(0.001 * k)(true).run(tm.end), tm, archetype("v8"), true, ref);
+        const Verdict one = judge(makeAt(0.001 * k)(true).run(tm.end), tm, archetype("v8"), true, ref, refExcess);
         std::printf("targets: dog box, the upshifts %d ms later: largest step %.1f\n", k, one.stepMax);
         if (one.stepMax > v.stepMax)
             v = one;
@@ -207,7 +217,9 @@ TEST_CASE("targets: traction control on a wet road holds the driven wheels' slip
         };
         const tee::test::Run r = make(true).run(tm.end);
         // traction control cuts the spark (fuel to the pipe): the bang's bound
-        Verdict v = judge(r, tm, archetype("v8"), true, tc ? bangBaseline(make, tm) : baseline(make, tm));
+        double refExcess = -1.0;
+        const double refStep = tc ? bangBaseline(make, tm, &refExcess) : baseline(make, tm, &refExcess);
+        Verdict v = judge(r, tm, archetype("v8"), true, refStep, refExcess);
         // the rear wheels' slip ratio (the coupe drives the rear: wheels 2 and 3), its mean over the pull in first
         const auto l = r.tel("car.wheelSlip[2]").during(3.6, 5.9), rr = r.tel("car.wheelSlip[3]").during(3.6, 5.9);
         slip[tc] = 0.5 * (l.mean() + rr.mean());
@@ -249,14 +261,15 @@ TEST_CASE("targets: traction control on a wet road from rolling: more speed and 
         };
         // the new ECU cuts on a shift and traction control cuts the spark: both bang (the bang's bound, from the
         // first phase's reference copies)
-        const double refStep = bangBaseline(makeAt(4.5), tm);
+        double refExcess = -1.0;
+        const double refStep = bangBaseline(makeAt(4.5), tm, &refExcess);
         Verdict v;
         double worstAt = 4.5;
         for (int k = 0; k < 6; ++k)
         {
             const double shift = 4.5 + 0.001 * k;
             const tee::test::Run r = makeAt(shift)(true).run(tm.end);
-            Verdict one = judge(r, tm, archetype("v8"), true, refStep);
+            Verdict one = judge(r, tm, archetype("v8"), true, refStep, refExcess);
             std::printf("targets: wet rolling, traction %s, the upshift at %.3f s: largest step %.1f\n",
                         tc ? "on" : "off", shift, one.stepMax);
             if (k == 0)
@@ -300,7 +313,9 @@ namespace
         };
         const tee::test::Run r = make(true).run(tm.end);
         // a spark cut (kind 1) bangs: the bang's bound; the others cut fuel: twice the reference without pops
-        Verdict v = judge(r, tm, archetype("v8"), true, kind == 1 ? bangBaseline(make, tm) : baseline(make, tm));
+        double refExcess = -1.0;
+        const double refStep = kind == 1 ? bangBaseline(make, tm, &refExcess) : baseline(make, tm, &refExcess);
+        Verdict v = judge(r, tm, archetype("v8"), true, refStep, refExcess);
         const double top = r.tel("engine.speed").during(3.3, 7.5).max();
         const double red = r.tel("engine.redline").last();
         std::printf("targets: limiter kind %d: the wheel spun the engine up to %.0f rpm (redline %.0f)\n", kind,
@@ -347,7 +362,7 @@ namespace
             s.at(3.0).mode(2).dyno(dynoRpm * kRpm);   // MODE_DYNO_ENGINE holding it
             s.at(3.5).throttle(1.0).ramp(0.3);
             const tee::test::Run r = s.run(tm.end);
-            Verdict v = judge(r, tm, &a, false, referenceStep(a.name, Kind::Tour));
+            Verdict v = judge(r, tm, &a, false, referenceStep(a.name, Kind::Tour), referenceExcess(a.name, Kind::Tour));
             torque[all] = r.tel("engine.torque").during(6.0, 9.0).mean();
             const double held = r.tel("engine.speed").during(6.0, 9.0).mean();
             if (!(torque[all] > 0.0))
@@ -411,7 +426,7 @@ TEST_CASE("fixed X-001: the custom engine over the default build, its geometry a
     tm.revTo = 8.5;
     tm.end = 10.0;
     const tee::test::Run r = s.run(tm.end);
-    const Verdict v = judge(r, tm, archetype("v8"), true, referenceStep("v8", Kind::Tour));
+    const Verdict v = judge(r, tm, archetype("v8"), true, referenceStep("v8", Kind::Tour), referenceExcess("v8", Kind::Tour));
     report(v, "engine.custom", "defaults", "X-001");
     CHECK(r.tel("engine.layoutRefused").last() == 1.0);
 }
@@ -429,7 +444,7 @@ TEST_CASE("fixed X-003: the new combustion and ECU together start the V8 at -20 
     {
         Times tm;
         const tee::test::Run r = scenario(Kind::Cold, b, mask, tm).run(tm.end);
-        const Verdict v = judge(r, tm, archetype(b), true, referenceStep(b, Kind::Cold));
+        const Verdict v = judge(r, tm, archetype(b), true, referenceStep(b, Kind::Cold), referenceExcess(b, Kind::Cold));
         report(v, comboName(mask), b, "X-003");
     }
 }
@@ -443,7 +458,7 @@ TEST_CASE("fixed X-007: the reduced Spec (an 18 kg piston on a single with the a
     Times tm;
     tee::test::Scenario s = scenario(Kind::Tour, file.string(), 0u, tm);
     const tee::test::Run r = s.run(tm.end);
-    const Verdict v = judge(r, tm, nullptr, false, referenceStep("v8", Kind::Tour));
+    const Verdict v = judge(r, tm, nullptr, false, referenceStep("v8", Kind::Tour), referenceExcess("v8", Kind::Tour));
     report(v, "as reduced", "x007-heavy-piston", "X-007");
     CHECK(r.tel("engine.state").during(3.0, 10.5).min() == 2.0);   // it runs throughout
 }
@@ -468,7 +483,7 @@ namespace
         s.at(tm.start).ignition(tee::Start);
         s.at(tm.started).ignition(tee::On);
         const tee::test::Run r = s.run(tm.end);
-        Verdict v = judge(r, tm, archetype(build), false, referenceStep(build, Kind::Tour));
+        Verdict v = judge(r, tm, archetype(build), false, referenceStep(build, Kind::Tour), referenceExcess(build, Kind::Tour));
         if (r.tel("engine.state").during(3.0, 6.0).min() != 2.0)
             v.failures.push_back({"start", "a one-second key: not running from 3 s on"});
         report(v, all ? "all" : "none", build, "short-key");
