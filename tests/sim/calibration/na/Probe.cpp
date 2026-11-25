@@ -1022,3 +1022,122 @@ TEST_CASE("probe: a cam bake applied, against the auto schedule", "[.probe-bakea
     std::printf("\n");
     SUCCEED();
 }
+
+// The idle's hunt on the bench (the lead's 2026-11-25: the turbo six hunts at its idle, worse with the models on):
+// the key, 6 s, then 8 s read every 1/32 s: the speed's mean, deviation, peak to peak and its period (from the mean's
+// crossings), the manifold's, the idle valve's. PROBE_BUILD (a file or an archetype's slug), PROBE_SET (spec writes),
+// PROBE_FREEZE ("path=value;..." instance values written every sample: a state held still, to see whether the hunt
+// needs it; "path=mean" holds it at its mean over the 6 s before the window). PROBE_SIM another tree's sim/.
+TEST_CASE("probe: the idle's hunt on the bench", "[.probe-hunt]")
+{
+    const char* buildEnv = std::getenv("PROBE_BUILD");
+    const std::string slug = buildEnv ? buildEnv : "content/builds/combo/turbo-six.json";
+    Probe pr;
+    tee::EnginePlayer::Options options;
+    options.directory = std::getenv("PROBE_SIM") ? std::filesystem::path(std::getenv("PROBE_SIM")) : std::filesystem::path(TEE_SOURCE_DIR) / "sim";
+    options.sampleRate = 48000.0;
+    std::string errors, warnings;
+    pr.p = tee::EnginePlayer::create(options, errors);
+    INFO(errors);
+    REQUIRE(pr.p != nullptr);
+    tee::EngineBuild b;
+    std::filesystem::path file = slug;
+    if (!std::filesystem::exists(file))
+        file = std::filesystem::path(TEE_SOURCE_DIR) / slug;
+    if (!std::filesystem::exists(file))
+        file = std::filesystem::path(TEE_SOURCE_DIR) / "content" / "builds" / "archetypes" / (slug + ".json");
+    REQUIRE(tee::loadBuild(*pr.p, file, b, errors, warnings));
+    tee::applyBuild(*pr.p, b);
+    applyNested(*pr.p, file);
+    if (const char* setEnv = std::getenv("PROBE_SET"))
+        for (const std::string& kv : split(setEnv, ';'))
+        {
+            const auto eq = kv.find('=');
+            std::string e;
+            REQUIRE(pr.p->setSpec(kv.substr(0, eq), std::atof(kv.c_str() + eq + 1), e));
+        }
+    struct Freeze
+    {
+        std::string path;
+        bool mean;
+        double value, sum, n;
+    };
+    std::vector<Freeze> freeze;
+    if (const char* fz = std::getenv("PROBE_FREEZE"))
+        for (const std::string& kv : split(fz, ';'))
+        {
+            const auto eq = kv.find('=');
+            const std::string v = kv.substr(eq + 1);
+            freeze.push_back({kv.substr(0, eq), v == "mean", v == "mean" ? 0.0 : std::atof(v.c_str()), 0.0, 0.0});
+        }
+    auto& c = pr.p->controls();
+    c.mode = 0;
+    c.throttle = 0.0;
+    c.ignition = 1;
+    float l = 0.0f, r = 0.0f;
+    const double fs = pr.p->sampleRate();
+    auto run = [&](double seconds, bool hold, const std::function<void()>& each) {
+        const long n = long(seconds * fs);
+        for (long i = 0; i < n; ++i)
+        {
+            std::string e;
+            for (Freeze& f : freeze)
+            {
+                if (hold)
+                    pr.p->instance().write(pr.p->schema(), f.path, f.value, e);
+                else if (f.mean)
+                    f.sum += pr.get(f.path), f.n += 1;
+            }
+            pr.p->process(&l, &r, 1);
+            if (each)
+                each();
+        }
+    };
+    run(0.2, false, {});
+    c.ignition = 2;
+    run(1.8, false, {});
+    c.ignition = 1;
+    run(4.0, false, {});
+    for (Freeze& f : freeze)
+    {
+        if (f.mean && f.n > 0)
+            f.value = f.sum / f.n;
+        std::string e;
+        const bool ok = pr.p->instance().write(pr.p->schema(), f.path, f.value, e);
+        std::printf("freeze %s at %g (%s)\n", f.path.c_str(), f.value, ok ? "written" : e.c_str());
+    }
+    std::vector<double> rpm, man, valve;
+    const long every = long(fs / 32.0);
+    long k = 0;
+    run(8.0, true, [&] {
+        if (k++ % every == 0)
+        {
+            rpm.push_back(pr.tel("engine.speed") * 30.0 / M_PI);
+            man.push_back(pr.tel("intake.manifold") / 1e3);
+            valve.push_back(pr.tel("ecu.idleValve"));
+        }
+    });
+    auto stats = [](const std::vector<double>& v, double& m, double& sd, double& lo, double& hi) {
+        m = 0, sd = 0, lo = 1e30, hi = -1e30;
+        for (double x : v)
+            m += x, lo = std::min(lo, x), hi = std::max(hi, x);
+        m /= double(v.size());
+        for (double x : v)
+            sd += (x - m) * (x - m);
+        sd = std::sqrt(sd / double(v.size()));
+    };
+    double m, sd, lo, hi, mm, msd, mlo, mhi, vm, vsd, vlo, vhi;
+    stats(rpm, m, sd, lo, hi);
+    stats(man, mm, msd, mlo, mhi);
+    stats(valve, vm, vsd, vlo, vhi);
+    int crossings = 0;
+    for (std::size_t i = 1; i < rpm.size(); ++i)
+        if ((rpm[i - 1] - m) < 0.0 && (rpm[i] - m) >= 0.0)
+            ++crossings;
+    std::printf("%s%s%s%s%s: rpm %.0f sd %.1f p-p %.0f, period %.3f s (%d up-crossings in 8 s); manifold %.1f kPa sd %.2f; "
+                "valve %.3f sd %.3f\n",
+                slug.c_str(), std::getenv("PROBE_SET") ? " set " : "", std::getenv("PROBE_SET") ? std::getenv("PROBE_SET") : "",
+                freeze.empty() ? "" : " frozen ", std::getenv("PROBE_FREEZE") ? std::getenv("PROBE_FREEZE") : "", m, sd, hi - lo,
+                crossings > 0 ? 8.0 / crossings : 0.0, crossings, mm, msd, vm, vsd);
+    SUCCEED();
+}
