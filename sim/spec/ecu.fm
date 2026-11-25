@@ -234,6 +234,17 @@ module EcuSpec
     float fuelCurveMg [[fminus::range(0, 2000)]] [[fminus::default(0)]] [[ui::label("Full-load fuel: a stroke")]]
         [[ui::group("Full-load fuel")]] [[ui::unit("mg")]]
         [[ui::help("Fuel a stroke at full rack at each speed, a cylinder; empty: the flat line set by Pump set for boost")]] [8];
+    // (card D2, the lead's ruling 25 Nov: an electronically governed diesel's torque ceiling, as a torque-based ECU holds
+    // its rated plateau: the rated torque and power, published specifications used as calibration inputs (as the rated
+    // speed is). They hold the rated rows by construction, so a build that states them validates on what they do not
+    // decide: where the plateau begins (the air's), BSFC, boost, lambda, the exhaust's heat, the smoke limit's reach.
+    // The Electronic governor only: a mechanical pump has a rack stop, not a torque estimate. 0: none, the reference)
+    float torqueMax [[fminus::range(0, 10000)]] [[fminus::default(0)]] [[ui::label("Torque ceiling")]]
+        [[ui::group("Full-load fuel")]] [[ui::quantity("torque")]]
+        [[ui::help("The electronic governor's rated torque: the full-load fuel is held so the engine's torque stays under it. 0: none")]];
+    float powerMax [[fminus::range(0, 2000000)]] [[fminus::default(0)]] [[ui::label("Power ceiling")]]
+        [[ui::group("Full-load fuel")]] [[ui::quantity("power")]]
+        [[ui::help("The electronic governor's rated power: above the speed where the torque ceiling meets it, the torque is held to it over the speed. 0: none")]];
     float overBoost [[fminus::range(-1, 400000)]] [[fminus::default(0)]] [[ui::label("Over-boost cut")]]
         [[ui::quantity("pressure")]]
         [[ui::help("The fuel is cut while the boost stays over this for 1 s, until it falls under 85 % of it (over the air). 0: the boost machine's own over-boost level, 1.3 times its target or spring (turbos); -1: never")]];

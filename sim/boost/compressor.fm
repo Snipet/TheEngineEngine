@@ -99,17 +99,19 @@ module BoostCompressor
     {
         const float a01 = sqrtf(1.4f * kBoostR * t);
         const float rho01 = p / (kBoostR * t);
-        return 0.45f * rho01 * a01 * aInd * arWide * (0.3f + 0.7f * fminf(m / 1.63f, 1.0f));
+        return 0.506f * rho01 * a01 * aInd * arWide * (0.3f + 0.7f * fminf(m / 1.63f, 1.0f));
     }
 
     // The knee and the island at a tip Mach number m (published-compressor-maps.md, above)
     void knee(float m)
     {
-        // (below a tip Mach number of 0.8, under the published maps' lowest speed lines (a ratio near 1.5), the knee is
-        // held at that line's: the law is read from those maps only, and at an idle's few hundred m/s the knee moved
-        // with every firing pulse, its 16-sample steps sounding between the firing harmonics (the diesel clatter case:
-        // 12.3 -> 3.7 dB at the tractor's warm idle))
-        phiK = fminf(fmaxf((0.40f + 0.178f * (fmaxf(m, 0.8f) - 1.0f)) * kAr, 0.2f), 0.7f);
+        // (the knee's law fitted to every cited map, the lead's ruling 25 Nov: phiK = 0.349 + 0.551 (M - 1), least
+        // squares over P's S400SX-E and S300SX3 line by line (sources section 21) and the five maps of
+        // published-compressor-maps.md ratio by ratio; docs/measurements/calibration/boost/map-shape-fit.md. Below
+        // tip Mach 0.67, the lowest cited speed line (the S400SX-E's 230 m/s), it is held at that line's: a law is read
+        // only where its maps are (at an idle's few hundred m/s the knee would otherwise move with every firing pulse,
+        // its 16-sample steps sounding between the firing harmonics: the diesel clatter case))
+        phiK = fminf(fmaxf((0.349f + 0.551f * (fmaxf(m, 0.67f) - 1.0f)) * kAr, 0.15f), 0.9f);
         phiB = phiK + 0.61f * (1.0f - phiK);
     }
 
@@ -123,10 +125,16 @@ module BoostCompressor
         mach = u / a01;
         mc = chokeFlow(mach, p1, t1);
         knee(mach);
-        tauK = 0.45f * u * u / (kBoostCpA * t1);
+        // (the rise at the knee, its fall toward choke and the choke flow's scale (chokeFlow's 0.506) fitted with the
+        // knee to every cited map (map-shape-fit.md): tau_knee = (0.608 - 0.157 (M - 1)) U^2 / (cp T), the line falling to
+        // 0.652 of it at choke; the generic wheel is the maps' mean: within some 3 % of a published wheel's peak ratio
+        // and 6 % of its surge flow on average, the two heavy-duty maps disagreeing beyond their reading precision
+        // (known limits: compressor-map-model.md). The efficiency's Mach term held at the lowest cited line (0.67),
+        // as the knee: under 230 m/s the map claims nothing and keeps that line's efficiency)
+        tauK = (0.608f - 0.157f * (mach - 1.0f)) * u * u / (kBoostCpA * t1);
         tau0 = 0.88f * tauK;
-        tauC = 0.35f * tauK;
-        const float dm = mach - 1.1f;
+        tauC = 0.652f * tauK;
+        const float dm = fmaxf(mach, 0.67f) - 1.1f;
         etaM = etaMax - 0.25f * dm * dm;
         // (a disc's churning: some hundreds of watts at full speed, about rho U^3 r^2 / 500)
         windage = 0.002f * (p1 / (kBoostR * t1)) * u * u * u * rTip * rTip;

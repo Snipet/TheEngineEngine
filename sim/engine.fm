@@ -524,6 +524,7 @@ module Engine
         // (card F: boost.model 1's machine sized to this engine, at rest, on its four-stroke-equivalent displacement: a
         // rotary's faces fire once a shaft turn and a two-stroke's cylinders once a turn, twice vTotal; nothing in model 0)
         boost.designSpeed(fuelUse != 0 ? (spec.ecu.ratedSpeed > 0.0f ? spec.ecu.ratedSpeed * 9.5492966f : ecu.redRpm) : -1.0f);   // (N2: a governed diesel's rated speed; -1 spark ignition)
+        boost.peakSpeed(&spec.ecu, spec.engine.compression);   // (N2, (b): the torque peak the compressor is sized from)
         boost.applyMachine(&spec.boost, vTotal * (lay.rotary != 0 || (spec.engine.cycle != 0 && customUse != 0) ? 2.0f : 1.0f), ecu.redRpm, 101325.0f, heat.tAmb);
         ecu.overBoostRef = boost.overBoostLevel();     // (N2: the machine's own over-boost level for ecu.model 1's cut)
         // (card T: a two-stroke, on a custom engine's geometry and mechanics: its cylinders and pipes at rest where the
@@ -889,7 +890,8 @@ module Engine
             crank.omega = 0.0f;
         // card D2: a diesel's governor and brakes (nothing at the defaults: hd.on 0, the lever the reference's)
         hd.control16(d16, fuelUse, ecu.state, ecu.throttle, crank.omega, ecu.idleRpm, ecu.redRpm, ecu.sinceStart,
-                     set.drive != 0 ? set.clutch : 0.0f, exh.mdot, exh.tPort, boost.boost, vTotal, lay.n, bore, heat.tAmb, ctl.buttons);
+                     set.drive != 0 ? set.clutch : 0.0f, exh.mdot, exh.tPort, boost.boost, vTotal, lay.n, bore, heat.tAmb, ctl.buttons,
+                     tqBrake);
         hd.feed(&comb.diesel);
         if (spec.car.truckAir)
             air.control(d16, ecu.state == 2 ? crank.omega : 0.0f, set.brake, ctl.handbrake);   // (card D2: the air system)
@@ -921,7 +923,7 @@ module Engine
             boost.testCell(dynoOn);   // (N2: an engine test cell's rated cooling, SAE J1349)
             if (hd.on != 0)
                 boost.vanesAndPurge(hd.vaneCommand(d16, boost.mach.turbos > 0 ? boost.mach.shaft[0].omega / fmaxf(boost.mach.omegaMax[0], 1.0f) : 0.0f,
-                                               boost.mach.turb[0].vaneMin), 0);   // (card D2: a VGT's brake position while a brake is on, held under the shaft's limit; -1 its own loop)
+                                               boost.mach.turb[0].vaneMin, boost.mach.turbos > 0 && boost.mach.turb[0].vgt != 0 ? 1 : 0), 0);   // (card D2: a VGT's brake position while a brake is on, held under the shaft's limit; -1 its own loop)
             boost.control16(d16, ecu.boostTarget(), ecu.antiLag(), ecu.nitrous());
             intk.pBox = boost.pressure();
             intk.fedByMachine = boost.mach.active;      // (N1: a machine's own filter before it: no air box between)
@@ -1616,6 +1618,7 @@ module Engine
             s->tsize = spec.boost.size;
             s->bov = spec.boost.blowOff;
             boost.designSpeed(fuelUse != 0 ? (spec.ecu.ratedSpeed > 0.0f ? spec.ecu.ratedSpeed * 9.5492966f : ecu.redRpm) : -1.0f);   // (N2: a governed diesel's rated speed; -1 spark ignition)
+            boost.peakSpeed(&spec.ecu, spec.engine.compression);   // (N2, (b): the torque peak the compressor is sized from)
             boost.applyMachine(&spec.boost, vTotal * (lay.rotary != 0 || (spec.engine.cycle != 0 && customUse != 0) ? 2.0f : 1.0f), ecu.redRpm, 101325.0f, heat.tAmb);
             ecu.overBoostRef = boost.overBoostLevel();     // (N2: the machine's own over-boost level for ecu.model 1's cut)
         }

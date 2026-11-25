@@ -108,13 +108,29 @@ TEST_CASE("diesel governor: the boost compensator caps the fuel; the telemetry r
 
 TEST_CASE("diesel governor: the full-load fuel curve shapes the torque; with none set, the flat line to the bit", "[diesel][governor]")
 {
-    // (1) A curved build (truck-15l-six: the class's 2779 N m held to 1400 rpm, 451 kW at 1800 and 2100) falls to its
-    // rated point as a real one does: its torque at the rated speed under 0.8 of its most below it. Measured 25 Nov:
-    // 2135 N m at 2100 against 2715 at 1300 (0.79). Before the curve it was flat (2729 at 2100).
+    // (1) A stated curve shapes the torque: the truck six with a falling curve (mg a stroke: 700 233, 800 274, 1000 and
+    // 1400 311, 1800 268, 2100 229; the numbers its build carried until 25 Nov, here a test's input, not a calibration)
+    // and its torque ceiling off falls to the curve's last point: its torque at 2100 under 0.8 of its most below.
+    // Measured 25 Nov: 2135 N m at 2100 against 2715 at 1300 (0.79); flat without (2729 at 2100)
     double most = 0.0, rated = 0.0;
     for (double rpm : {1100.0, 1300.0, 1600.0, 2100.0})
     {
         Engine e("truck-15l-six");
+        e.spec("ecu.torqueMax", 0.0);
+        e.spec("ecu.powerMax", 0.0);
+        {
+            const double cr[6] = {700.0, 800.0, 1000.0, 1400.0, 1800.0, 2100.0};
+            const double cm[6] = {233.0, 274.0, 311.0, 311.0, 268.0, 229.0};
+            const int rf = e.player->specIndex("ecu.fuelCurveRpm");
+            const int mf = e.player->specIndex("ecu.fuelCurveMg");
+            REQUIRE(rf >= 0);
+            REQUIRE(mf >= 0);
+            for (int i = 0; i < 6; ++i)
+            {
+                e.player->setSpec(static_cast<std::size_t>(rf), cr[i], static_cast<std::size_t>(i));
+                e.player->setSpec(static_cast<std::size_t>(mf), cm[i], static_cast<std::size_t>(i));
+            }
+        }
         e.start();
         e.dyno(rpm, 1.0f);
         REQUIRE(e.run(2.0));
@@ -122,7 +138,7 @@ TEST_CASE("diesel governor: the full-load fuel curve shapes the torque; with non
         e.spec("boost.heatSettle", 1);
         REQUIRE(e.run(6.0));
         const double tq = e.mean("engine.torque", 1.0);
-        std::printf("truck-15l-six's fuel curve, floored at %.0f rpm: %.0f N m\n", rpm, tq);
+        std::printf("truck-15l-six on a stated fuel curve, floored at %.0f rpm: %.0f N m\n", rpm, tq);
         if (rpm < 2000.0)
             most = std::max(most, tq);
         else
@@ -205,4 +221,68 @@ TEST_CASE("diesel governor: below the ECU's idle + 450 rpm at full pedal on the 
                 tq / k, books, told);
     CHECK(books > 0.95 * told);
     CHECK(books < 1.05 * told);
+}
+
+TEST_CASE("diesel governor: an electronic governor's torque ceiling holds a plateau, and power above it", "[diesel][governor]")
+{
+    // ecu.torqueMax / powerMax (heavy.fm control16): the full-load fuel under a share an integral moves on the engine's
+    // torque against the ceiling, 2 a second (judgement). The 2.0 common rail with VW's 320 N m: on the plateau it reads
+    // the ceiling; a step of the pedal to full overshoots it by at most a few percent in the first second; held, it
+    // ripples by little. Its stated value holds the row by construction: this tests the mechanism, not a validation
+    // (and at 2500 rpm, where the plateau begins: the ceiling's integral and the vanes' boost loop meet there, and must
+    // not hunt against each other)
+    const double ceiling = 320.0;
+    for (const double rpm : {2500.0, 3000.0})
+    {
+    double steady[2] = {0.0, 0.0};
+    for (int k = 0; k < 2; ++k)
+    {
+        Engine e("archetypes/diesel-20-common-rail");
+        e.spec("env.temperature", 300.0);
+        e.spec("env.pressure", 101325.0);
+        if (k == 1)
+            e.spec("ecu.torqueMax", ceiling);
+        e.start();
+        // (held warm, as the dyno's rows are (host/include/tee/Warm.h), 512 samples a step)
+        auto play = [&](double sec) {
+            const int calls = static_cast<int>(sec * e.rate / 512.0 + 0.5);
+            for (int c = 0; c < calls; ++c)
+            {
+                e.holdWarm();
+                REQUIRE(e.run(512.0 / e.rate));
+            }
+        };
+        // (part load first, 8 s, the boost up and the heat settled; then the pedal to full: the ceiling's integral starts
+        // from none taken, as a driver's kick-down meets it)
+        e.dyno(rpm, 0.6f);
+        play(2.0);
+        e.spec("exhaust.heatSettle", 1);
+        e.spec("boost.heatSettle", 1);
+        play(6.0);
+        e.dyno(rpm, 1.0f);
+        double most = 0.0, lo = 1.0e9, hi = 0.0;
+        for (int q = 0; q < 120; ++q)
+        {
+            play(0.05);
+            const double tq = e.tel("engine.torque");
+            if (q < 20)
+                most = std::max(most, tq);
+            if (q >= 100)
+            {
+                lo = std::min(lo, tq);
+                hi = std::max(hi, tq);
+            }
+        }
+        steady[k] = e.mean("engine.torque", 1.0);
+        std::printf("2.0 at %.0f rpm, ceiling %s: the first second's most %.0f N m, settled %.0f (%.0f to %.0f over its sixth second)\n",
+                    rpm, k == 1 ? "320 N m" : "none", most, steady[k], lo, hi);
+        if (k == 1)
+        {
+            CHECK(most < 1.05 * ceiling);
+            CHECK(std::fabs(steady[k] - ceiling) < 0.02 * ceiling);
+            CHECK(hi - lo < 0.03 * ceiling);
+        }
+    }
+    CHECK(steady[0] > steady[1]);   // (without it the pump's line gives more: 329 N m at 3000, 25 Nov)
+    }
 }

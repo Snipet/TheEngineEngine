@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "Marine 27 L V12",
-  "notes": "Card D2. A medium-speed marine V12 within the model's limits: 27 L (137 x 152 mm, 15:1, a turbo a bank), a mechanical governor with 5 % droop, rated 1800 rpm. The model holds at most 30 L and 16 cylinders, a diesel's redline some 13.5 m/s of piston speed, an idle no lower than 350 rpm: a 1000 rpm locomotive's or ship's medium-speed engine of 100 to 200 L is past it. On the bench. Air at 300 K, 101325 Pa.",
+  "notes": "Card D2. A medium-speed marine V12 within the model's limits: 27 L (137 x 152 mm, 15:1, a turbo a bank), a mechanical governor with 5 % droop, rated 1800 rpm. The model holds at most 30 L and 16 cylinders, a diesel's redline some 13.5 m/s of piston speed, an idle no lower than 350 rpm: a 1000 rpm locomotive's or ship's medium-speed engine of 100 to 200 L is past it. On the bench. Air at 300 K, 101325 Pa. Its valves (25 Nov): the tractor archetype's events, that archetype's judgement; no cam card found. Before, the reference's cam dial at 0.9999 (300 deg on a lobe separation of 106: 88 deg of overlap), which under a turbine's back pressure blows the exhaust back into the intake (card D2's truck fixture, N2's truck-valve-events.md). Its idle trim -400 -> -50: the ECU raised a 0.9999 cam's idle by 350 rpm (idle.fm), which the old trim took back.",
   "spec": {
     "engine": {
       "layout": "V12",
@@ -10,13 +10,27 @@
       "boreStroke": 0.9,
       "compression": 15,
       "flywheel": 1,
-      "idleTrim": -400,
+      "idleTrim": -50,
       "redlineTrim": -300,
       "rough": 0,
       "benchLoad": 0
     },
     "valve": {
-      "cam": 0.9999,
+      "model": "Lab",
+      "valves": 4,
+      "dIn": 0.046,
+      "dEx": 0.043,
+      "train": "Rocker",
+      "inDurSeat": 232,
+      "inDur1mm": 200,
+      "inLift": 0.014,
+      "inCentre": 112,
+      "exDurSeat": 232,
+      "exDur1mm": 200,
+      "exLift": 0.013,
+      "exCentre": 112,
+      "springRate": 25000.0,
+      "springPreload": 150.0,
       "auxOpen": 695,
       "auxDur": 100,
       "auxLift": 0.0025
