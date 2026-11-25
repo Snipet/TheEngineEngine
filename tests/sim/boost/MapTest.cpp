@@ -67,30 +67,37 @@ TEST_CASE("boost: the choke flow scales with the inducer's area", "[boost][map]"
     CHECK(choke(small, 16000.0) > choke(small, 6000.0));
 }
 
-TEST_CASE("boost: the knee's pressure ratio goes with the tip speed squared", "[boost][map]")
+TEST_CASE("boost: the knee's pressure ratio goes with the tip speed squared times the fitted rise", "[boost][map]")
 {
     Rig rig;
     sizes(rig, 0.045, 0.060);
-    // tau = PR^(1/3.5) - 1 at the knee, against the tip speed's square (the knee's flow moves with the tip Mach
-    // number, published-compressor-maps.md: each speed's own)
+    // tau = PR^(1/3.5) - 1 at the knee, against the tip speed's square times the rise coefficient fitted to every cited
+    // map, c(M) = 0.608 - 0.157 (M - 1) (map-shape-fit.md: the published lines' peak ratios fall below a flat
+    // coefficient's as the tip speed rises), the inlet at 293.15 K as the rig's
     const double u1 = 300.0;
     const double u2 = 450.0;
     const double r = 0.030;
     const double t1 = std::pow(ratio(rig, knee(rig, u1 / r), u1 / r), 1.0 / 3.5) - 1.0;
     const double phiK = knee(rig, u2 / r);
     const double t2 = std::pow(ratio(rig, phiK, u2 / r), 1.0 / 3.5) - 1.0;
-    CHECK(t2 / t1 == Catch::Approx((u2 * u2) / (u1 * u1)).epsilon(0.002));
+    const double a01 = std::sqrt(1.4 * 287.0 * 293.15);
+    const auto c = [&](double u) { return 0.608 - 0.157 * (u / a01 - 1.0); };
+    CHECK(t2 / t1 == Catch::Approx((c(u2) * u2 * u2) / (c(u1) * u1 * u1)).epsilon(0.002));
     // the knee is the line's highest point: lower toward surge and toward choke
     const double top = ratio(rig, phiK, u2 / r);
     CHECK(ratio(rig, 0.5 * phiK, u2 / r) < top);
     CHECK(ratio(rig, 0.0, u2 / r) < top);
     CHECK(ratio(rig, phiK + 0.5 * (1.0 - phiK), u2 / r) < top);
     CHECK(ratio(rig, 1.0, u2 / r) < ratio(rig, phiK + 0.5 * (1.0 - phiK), u2 / r));
-    // a 60 mm wheel at 150,000 rpm makes some 2.6 to 3.0 at its knee (published maps of the class)
+    // a 60 mm wheel at 150,000 rpm (471 m/s at the tip) makes at its knee what the cited heavy-duty lines make at that tip
+    // speed: the S400SX-E 3.21 at 461 m/s and 3.62 at 491, the S300SX3 3.14 at 443 and 3.94 at 505 (sources section 21,
+    // read off the makers' maps; their peaks interpolated to 471 m/s: 3.35 and 3.50); the generic map is their mean
+    // within its stated 3 % (map-shape-fit.md). The earlier 2.6 to 3.0 was the five passenger maps' class, which state
+    // no per-line peaks; the all-seven fit replaced the knee's law
     const double pr150 = ratio(rig, knee(rig, 150000.0 * 6.283185307 / 60.0), 150000.0 * 6.283185307 / 60.0);
     INFO("PR at 150 krpm: " << pr150);
-    CHECK(pr150 > 2.5);
-    CHECK(pr150 < 3.1);
+    CHECK(pr150 > 3.35 * 0.97);
+    CHECK(pr150 < 3.50 * 1.03);
 }
 
 TEST_CASE("boost: efficiency peaks at the best flow and a tip Mach number of 1.1", "[boost][map]")

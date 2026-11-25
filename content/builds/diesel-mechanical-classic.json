@@ -2,7 +2,7 @@
   "format": "tee-build",
   "version": 1,
   "name": "Classic 14 L mechanical six",
-  "notes": "Card D2. A 1980s 14 L inline six (140 x 152 mm, 14.5:1, one turbo) on a mechanical in-line pump: an all-speed flyweight governor that hunts at idle, low injection pressure (600 bar), injection advanced 4 degrees, no pilot: the hard clatter; a boost compensator (aneroid) at 0.8; an early compression brake; a straight stack (muffler 0). The 36 t rig. Air at 300 K, 101325 Pa. Card M's voices on: a viscous fan clutch, nine blades.",
+  "notes": "Card D2. A 1980s 14 L inline six (140 x 152 mm, 14.5:1, one turbo) on a mechanical in-line pump: an all-speed flyweight governor that hunts at idle, low injection pressure (600 bar), injection advanced 4 degrees, no pilot: the hard clatter; a boost compensator (aneroid) at 0.8; an early compression brake; a straight stack (muffler 0). The 36 t rig. Air at 300 K, 101325 Pa. Card M's voices on: a viscous fan clutch, nine blades. Its valves (25 Nov): the tractor archetype's events scaled to its 140 mm bore (valve diameters and lifts x 1.022), that archetype's judgement; no cam card found. Before, the reference's cam dial at 0.9999 (300 deg on a lobe separation of 106: 88 deg of overlap), which under a turbine's back pressure blows the exhaust back into the intake (card D2's truck fixture, N2's truck-valve-events.md). Its idle trim -350 -> 0: the ECU raised a 0.9999 cam's idle by 350 rpm (idle.fm), which the old trim took back.",
   "spec": {
     "engine": {
       "layout": "Inline 6",
@@ -10,13 +10,27 @@
       "boreStroke": 0.92,
       "compression": 14.5,
       "flywheel": 1,
-      "idleTrim": -350,
+      "idleTrim": 0,
       "redlineTrim": -300,
       "rough": 0,
       "benchLoad": 0
     },
     "valve": {
-      "cam": 0.9999,
+      "model": "Lab",
+      "valves": 4,
+      "dIn": 0.047,
+      "dEx": 0.0439,
+      "train": "Rocker",
+      "inDurSeat": 232,
+      "inDur1mm": 200,
+      "inLift": 0.0143,
+      "inCentre": 112,
+      "exDurSeat": 232,
+      "exDur1mm": 200,
+      "exLift": 0.0133,
+      "exCentre": 112,
+      "springRate": 25000.0,
+      "springPreload": 150.0,
       "auxOpen": 695,
       "auxDur": 100,
       "auxLift": 0.0025

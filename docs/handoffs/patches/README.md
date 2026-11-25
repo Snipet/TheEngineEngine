@@ -23,3 +23,4 @@ argument. Measured with it applied (bike suite, non-nightly): one print moves, "
 rad/s" (the overrun half of the on-off cycle no longer slips the clutch at low revs); every other print and every case's
 assertion count identical. The output's speed carries the rear tyre's slip, where the vehicle model reads the road's:
 B2's choice. A plain diff; base f3639cb9. Not applied.
+n1-predict-stage.patch: N1's cure for P's two-stage notch (host/src/Predict.cpp: a point under the stage switch approached from below, the latched stage let down and the speed ramped at 100 rad/s^2; a host test that fails without it), a git format-patch against 60e87aef. For C's review (the predictor is C's); not applied from here.

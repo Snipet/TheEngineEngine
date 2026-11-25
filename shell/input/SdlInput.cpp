@@ -1,6 +1,8 @@
 // shell/input/SdlInput.cpp: SdlInput.h.
 #include "input/SdlInput.h"
 
+#include "input/g29/G29.h"
+
 #include <SDL3/SDL.h>
 
 #include <algorithm>
@@ -54,6 +56,10 @@ namespace tee::input
     {
         if (gamepads_)
             return true;
+        // The G29 is the racing wheel's (input/g29/RacingWheel.h), never a gamepad here. SDL's own HIDAPI Logitech
+        // driver (SDL_hidapi_lg4ff.c, on by default but on Windows) would set its autocentre to 0 the moment it merely
+        // detected the wheel, which would undo the wheel's spring: it is turned off before SDL's joysticks start.
+        SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_LG4FF, "0");
         if (!SDL_InitSubSystem(SDL_INIT_GAMEPAD))
         {
             why = SDL_GetError();
@@ -73,7 +79,11 @@ namespace tee::input
     {
         if (pad_ != nullptr)
             return;
-        pad_ = SDL_OpenGamepad(static_cast<SDL_JoystickID>(id));
+        // a G29 (any of its three ids) is the racing wheel's: never opened as a gamepad, so it cannot drive twice
+        const auto sid = static_cast<SDL_JoystickID>(id);
+        if (g29::isG29(SDL_GetGamepadVendorForID(sid), SDL_GetGamepadProductForID(sid)))
+            return;
+        pad_ = SDL_OpenGamepad(sid);
         padId_ = pad_ != nullptr ? id : 0;
     }
 
@@ -120,8 +130,8 @@ namespace tee::input
                     int count = 0;
                     if (SDL_JoystickID* ids = SDL_GetGamepads(&count))
                     {
-                        if (count > 0)
-                            adopt(static_cast<unsigned>(ids[0]));
+                        for (int i = 0; i < count && pad_ == nullptr; ++i)
+                            adopt(static_cast<unsigned>(ids[i]));
                         SDL_free(ids);
                     }
                 }

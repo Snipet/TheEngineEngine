@@ -1,14 +1,12 @@
 // ui/kit/inspect/FieldInspector.h: an inspector's column drawn for a workshop rather than a synthesiser (the owner,
-// 25 Nov: "the right-side controls ... are relatively clunky"). One widget, three looks, the same behaviour:
+// 25 Nov: "the right-side controls ... are relatively clunky"; the owner chose Rows). One widget, two looks, the same
+// behaviour:
 //
-//   Style::rows    design 1: one field a row: its label, its value as a number and unit, a thin bar of where it sits
-//                  in its range with a tick at its default; groups fold; a filter box finds a field by name across
-//                  the workspace; a mark on each field moved off its default, and CHANGED shows those alone.
-//   Style::dials   design 2: dials kept where a dial reads well (a number), in a steady grid of two columns, larger,
-//                  each with its value typed on a click; choices and switches as cells of the grid; headings stay at
-//                  the top while their group scrolls under them.
-//   Style::list    design 3's column: compact rows, the filter first: the searchable list of everything; and the card
-//                  (setCard): the few fields of a part chosen on the stage, beside it.
+//   Style::rows    the inspector (RowsPage, the frame's pane): one field a row: its label, its value as a number and
+//                  unit, a thin bar of where it sits in its range with a tick at its default; groups fold; a filter
+//                  box finds a field by name across the workspace; a mark on each field moved off its default, and
+//                  CHANGED shows those alone.
+//   Style::list    compact rows: the card (setCard): the few fields of a part chosen on the stage, beside it.
 //
 // Every value: a click on it types it (a number with or without its unit, in the user's units: "86", "86 mm",
 // "3.39 in"; a choice by its name or number), Enter keeps it when it is within the field's range and refuses it
@@ -39,13 +37,14 @@ namespace tee::ui
     class FieldInspector final : public Widget
     {
     public:
-        enum class Style : std::uint8_t { rows, dials, list };
+        enum class Style : std::uint8_t { rows, list };
 
         FieldInspector(uint32_t id, FieldDoc& doc, const Units& units, Style style);
 
         // What it shows: the page's outline; and, while the filter holds text, the fields it searches (the
         // workspace's: every section it shows; none: the outline's own).
         void setOutline(Outline outline);
+        const Outline& outline() const noexcept { return outline_; }
         void setSearchable(std::vector<int> fields);
         // The card's look (design 3): a title, a frame and a shadow, no filter; `more` names what the column holds.
         void setCard(std::string title, std::string more);
@@ -66,10 +65,8 @@ namespace tee::ui
             Kind kind = Kind::field;
             int entry = -1;                  // in the shown outline
             int field = -1;
-            funkgui::Rect rect{}, value{};   // the row; its value's box (the dial's face for a dials number)
-            funkgui::Rect typed{};           // a dials number's typed box
+            funkgui::Rect rect{}, value{};   // the row; its value's box (an OPEN chip for a table)
             bool folded = false;
-            int col = 0;                     // dials: 0 or 1
         };
         const std::vector<Row>& rows() const noexcept { return rows_; }
         // A field's row on screen (scrolled), its value's box, and whether it is shown now.
@@ -77,6 +74,7 @@ namespace tee::ui
         funkgui::Rect filterRect() const noexcept;
         funkgui::Rect changedRect() const noexcept;
         int focusedField() const noexcept;
+        int focusedRow() const noexcept { return focus_; }   // a row of rows(): a field's, a heading's or a table's
         bool typing() const noexcept { return editing_ >= 0; }
         const std::string& typed() const noexcept { return edit_.buffer; }
         const std::string& refusal() const noexcept { return refusal_; }
@@ -135,7 +133,6 @@ namespace tee::ui
         std::string numberText(int field, double si) const;
 
         void drawRows(funkgui::Canvas& c, const Look& l) const;
-        void drawDials(funkgui::Canvas& c, const Look& l) const;
         void drawValueBox(funkgui::Canvas& c, const Look& l, const Row& r, const funkgui::Rect& box, bool hot) const;
         void drawHeading(funkgui::Canvas& c, const Look& l, const Row& r, const funkgui::Rect& at) const;
         void drawHeader(funkgui::Canvas& c, const Look& l) const;
@@ -160,11 +157,11 @@ namespace tee::ui
         funkgui::text::LineEdit edit_;
         std::string refusal_;
         int refusedField_ = -1;
-        // a press: scrub (sideways on a value), a dial's turn (up and down), or a click
+        // a press: scrub (sideways on a value) or a click
         int pressRow_ = -1;
         funkgui::Point pressAt_{};
         float press01_ = 0.0f;
-        bool scrubbing_ = false, dialing_ = false;
+        bool scrubbing_ = false;
         // the wheel's burst: one undo step until it rests
         int wheelField_ = -1;
         float wheelRest_ = 0.0f;

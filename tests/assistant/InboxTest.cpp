@@ -150,6 +150,15 @@ TEST_CASE("assistant: a build's name is a name, never a path", "[assistant]")
         CHECK_FALSE(safeBuildName(bad, why));
     }
     CHECK_FALSE(safeBuildName(std::string(65, 'a'), why));
+    // a listed build's name may carry its folder, and nothing else of a path
+    CHECK(listedBuildName("archetypes/flat-plane-v8-45", why));
+    CHECK(listedBuildName("v8", why));
+    for (const char* bad : {"", "../etc", "..", "/etc/passwd", "a\\b", "C:\\x", "C:x", ".hidden", "~root", "a\nb",
+                            "archetypes/", "a//b", "a/../b"})
+    {
+        INFO(bad);
+        CHECK_FALSE(listedBuildName(bad, why));
+    }
 }
 
 TEST_CASE("assistant: one driver at a time", "[assistant]")

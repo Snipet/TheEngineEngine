@@ -46,7 +46,8 @@ namespace tee::app
         // The shipped directory's folders that hold the test suite's fixtures, not builds the application ships (combo/:
         // the combination archetypes, their pack and the fuzzer's findings, builds reduced until they diverge). Never
         // listed: the owner could load one. The user's own folder is listed whole.
-        static constexpr const char* kFixtureFolders[] = { "combo" };
+        // (the rule is the shell's: files::BuildLibrary::kFixtureFolders, which the assistant reads too)
+        static constexpr const auto& kFixtureFolders = files::BuildLibrary::kFixtureFolders;
 
         // `sim` may be null (no curves), or say later what it is (a background compile): asked each tick until it has one.
         GarageLibrary(files::BuildFile& document, std::shared_ptr<Sim> sim, std::filesystem::path shipped,

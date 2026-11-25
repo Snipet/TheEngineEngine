@@ -1113,7 +1113,7 @@ TEST_CASE("a prediction asked while a calibration bake runs goes first: its time
     if (turbo.fieldOf("ecu.maps.knockLimitAuto") < 0)
         SKIP("the program has no knock-limit table yet");
     PredictOptions po;
-    po.points = 4;
+    po.points = 8;      // long enough that a bake not yielding makes several points meanwhile
     po.coarse = 2;
     po.threads = 2;
     po.cacheSize = 0;   // every request measured
@@ -1146,18 +1146,47 @@ TEST_CASE("a prediction asked while a calibration bake runs goes first: its time
     while (bakes.state() != KnockBakeState::Baking && std::chrono::steady_clock::now() < until)
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
     REQUIRE(bakes.state() == KnockBakeState::Baking);
-    std::this_thread::sleep_for(std::chrono::milliseconds(300));   // the bake's workers under way
+    // the bake's workers under way: a point of it measured (a state, not a time)
+    const auto working = std::chrono::steady_clock::now() + std::chrono::seconds(60);
+    while (bakes.progress().done == 0 && std::chrono::steady_clock::now() < working)
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    REQUIRE(bakes.progress().done > 0);
+    const int bakedBefore = bakes.progress().done;
     const double during = refinedAfter(predict, econ);
+    const int bakedDuring = bakes.progress().done - bakedBefore;
     INFO("the curve alone " << alone << " s, with a bake running " << during << " s");
-    std::printf("predicted curve alone %.2f s, with a calibration bake running (yielding) %.2f s\n", alone, during);
+    std::printf("predicted curve alone %.2f s, with a calibration bake running (yielding) %.2f s; bake points meanwhile %d\n",
+                alone, during, bakedDuring);
     // the bake waits between its points: the curve waits at most for the points under way (some 0.3 s each)
     CHECK(during <= 2.5 * alone + 1.0);
+    // and the yield itself, whatever the machine's cores (on four, the two services' threads do not even compete):
+    // while the curve was wanted the bake finished only the points under way, one a worker (one more, if a worker
+    // ended a point and began the next in the instant before the curve's flag went up), and began none. Not yielding
+    // (its wait taken out by hand), it made 5 over this curve on four cores
+    INFO("bake points while the curve was wanted: " << bakedDuring);
+    CHECK(bakedDuring <= bo.spark.predict.threads + 1);
     // the PredictService may go first (a reload that makes it again): the bake holds its flag, not the service
     {
         PredictService other(sim, po);
         bakes.yieldTo(other);
+        other.request(econ);   // busy when it goes: its going must let the bake go on
+        const auto busyBy = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+        while (!other.busy() && std::chrono::steady_clock::now() < busyBy)
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        REQUIRE(other.busy());
     }
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));   // the bake, past points, reads a flag still valid
+    // the bake goes on, reading the flag of a service that is gone (a state, not a time): more points than were under
+    // way when it went (those end and count before their wait), so one begun after it, or the bake finished
+    const int before = bakes.progress().done;
+    const auto moved = std::chrono::steady_clock::now() + std::chrono::seconds(60);
+    const auto past = [&] {
+        const KnockBakeState s = bakes.state();
+        return s == KnockBakeState::Ready || s == KnockBakeState::Failed
+               || bakes.progress().done > before + bo.spark.predict.threads;
+    };
+    while (!past() && std::chrono::steady_clock::now() < moved)
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    REQUIRE(past());
     CHECK(bakes.state() != KnockBakeState::Failed);
     bakes.stopYielding();
 }
@@ -1198,8 +1227,9 @@ TEST_CASE("a diesel has no spark table to bake: the calibration reads current, a
     const KnockBakeState state = bakes.consider(build);
     if (build.fieldOf("valve.inPhaseRange") < 0 || build.get("valve.inPhaseRange") <= 0.0)
     {
-        CHECK(state == KnockBakeState::Current);   // no spark, no phaser: nothing to bake, nothing said
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        // no spark, no phaser: nothing to bake, nothing said. consider() decides at once (a stale build is Waiting
+        // when it returns, and only then is the coordinator woken), so no wait is needed to know nothing was asked
+        CHECK(state == KnockBakeState::Current);
         CHECK(bakes.state() == KnockBakeState::Current);
         CHECK(bakes.stage().empty());
     }

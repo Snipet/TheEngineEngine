@@ -954,29 +954,119 @@ default after the clips; the idle's level; the listening questions.
   position (the same missing p4); the re-application's ring of about 6 s and its +16 % peak; the six's unsteady
   cell at 2000.
 
+## The owner's rulings and a new fault, 25 Nov 19:10 UTC
+
+The owner answered the open questions and named the wheel. In their words:
+
+- **The bangs' default**: "The 'Burned in the pipe' sounds better, so yes". `exhaust.bang` 1 becomes the default, in
+  this window, before the bake: G, on its 8c9f4c20 and BangTest (slot 4 of the sim order). Every default-run test
+  that assumed Carved is restated on its property or asks for 0 by name; nothing loosened. The owner did not say
+  whether the spark-cut and anti-lag bangs are too loud: levels stay. L's exposure rule follows G's push; the
+  steward's X-030 cure is tested with `exhaust.bang` 1 on G's fix.
+- **The inspector**: "As recommended": Rows now, and the card on the picture next (`docs/inspector-designs.md`,
+  designs 1 and 3). J2 finishes Rows as shipped code and writes the frame's hook for U1; then the card, ENGINE and
+  EXHAUST first. Dials is dropped.
+- **The idle's loudness**: "As designed". No change.
+- **The wheel**: "I have a Logitech G29 controller with a manual shifter attached. I should not need any external
+  software for it to work, as TestingPlayground was working without any new installed software/drivers (lights
+  included)." So no probe first: card B ports TestingPlayground's G29 code (IOKit's HID manager on macOS, the
+  switch out of compatibility mode, 900 degrees, the spring, the five shift lights, the Driving Force Shifter;
+  Linux through the kernel's hid-lg4ff; nothing on Windows yet). B's session may not read that repository (its
+  permission check refused the attach, and B did not clone it another way): the lead, whose session holds the
+  clone given for cards J and A, put the files unchanged in `docs/reference/testingplayground-wheel/` with their
+  sha256 for the SEED.tsv rows. The lead's rulings for the port: pedals and clutch to `Driver::setAnalog`; paddles
+  shift; the H shifter is the lever on a manual box with the automatic clutch off; steering is read and drives
+  nothing (a straight line); the lights follow the number the DRIVE view's own shift lights use; the PS button is
+  the starter; a WHEEL row in SETTINGS; the gamepad path must not also drive from the G29; `tee-wheel-dump` ported
+  for the owner's terminal; fake-device tests only. The macOS code is compiled by CI and never run in the cloud:
+  the owner's Mac is its first run. B's generic probe (`TheEngineEngine --probe-input`, f25b4a88) stays, for any
+  other wheel and for Windows.
+- **A fault the owner saw in `main`** (a screenshot of DRIVE's classic dials at idle): "text on visual dials
+  overlaps the needle". The small dials' numbers crowd the hub under the needle; the large dials' needle strikes
+  through the ring of numbers ("0" on ROAD SPEED); the small scales show converted values (51, 76, 102 psi). U1:
+  a needle never crosses a number or the read-out, round steps in the shown unit, and a picture test of every dial
+  at rest, mid scale and full scale.
+
+**The order of this round changed at 19:15.** U1's pure fast-forward was crossed a second time (X's 0f677370, seven
+minutes after the lead named the tip; U1 had 582 of 582 on 238bfc7b + a6e00140 and did not loop). The lead's fault:
+no "holding" was collected from X first. U1 now goes LAST in the round, with the dialog, the dials' fix and the
+Rows hook in one push; the lead collects a "holding" from every pusher before naming its tip. Released at 19:15:
+D2 (the combined diesel package), then B2; B (`wholeBuilds` 4561f81e and the probe); the steward (2fc03a65: every
+push since a16dc1f0 has started a soak); C; card A (9833352).
+
+## The round at 19:44 UTC: what landed, what was found, what was ruled
+
+**Landed on the branch since the diesel package (e9b2ef3f):** B2's bike clutch 9eb34e2a (60e87aef; the bike's suite
+on the merged state, 582 of 582 before it); the steward's 2fc03a65 (a soak only by a tag alone on a line); card A's
+"Add a key" 98333523 and ae571141 (61ca5f0d, 587 of 587); **G's bang fix and the default, Burned in the pipe**
+(81ec1b12: 8c9f4c20, BangTest, 9e71f6c7; 581 of 581; no test restated); **B's G29, first slice, macOS**
+(5b66951a: `shell/input/g29/`, 591 of 591 on Linux with fake devices; the macOS body never compiled until CI's
+macOS job, never run until the owner's Mac; the owner has the steps); J2's kit, Rows and the part card (4dd26210:
+d426a0a9, 7e7c4ef7). The lead's own build at fec0f1fc: 51 of 51 on the diesel, boost and turbo tests.
+
+**CI has not yet completed a run with the package**: each push replaced the waiting jobs. In flight at 19:43: macOS
+on 60e87aef, Linux and Windows on 61ca5f0d (all three carry the package); 4dd26210 waits behind them and is the
+first macOS compile of the wheel.
+
+**G's predictions against results on the default's flip** (first.json, Burned against Carved): revMax 0.45 / 0.46;
+exposed -5.2 / -5.3 dBFS; auto level +5.5 / +6.7 dB; near and far held (the crests' difference +0.6 from +2.4).
+G's first prediction (revMax 1 to 3 dB lower) was wrong: the carved pops were not the largest peak. On a fuel-cut
+build nothing bangs under Burned; the builds that burn are the spark cuts, anti-lag and a rich overrun: L measures
+the exposure's duck on those before landing any rule (under 2 dB: nothing lands).
+
+**N1, items 1 and 2 are one fault** (the two-stage's 13 N m notch; "the start's overshoot latching stage B"): the
+cam's switch has a band (up at 612.6 rad/s, down 31.4 below) and the predictor read a point inside it in whatever
+stage it arrived with: from a higher point (B held), or stepped from below with the absorber loop's overshoot of
+about 13 % carrying it over the switch. Not the key start. N1's cure and test are a patch for C
+(`docs/handoffs/patches/n1-predict-stage.patch`): 5740 rpm reads A at 192.1 N m (was B at 181.3). The lead's
+conditions to C: nothing-latched builds bit for bit; the predictor does not learn the cam's name (the program says
+in one place that a state is latched which an upward sweep would not hold); the overshoot path cured too. **Open,
+C measures first:** N1 saw the unramped steps between points move the two-stage's other points by up to 5 %; is a
+predicted point path-dependent on a build WITHOUT stages? If yes, it touches every validation row and comes to the
+lead before any cure.
+
+**N1, item 3, the rotary's low end, is N2's machine:** on the new map it still peaks at 2294 rpm (312.7 N m, one
+turbo at 0.70 bar). Above the 4500 rpm join the secondary compressor carries a tenth of the air (0.016 to 0.029
+against 0.13 to 0.20 kg/s), its shaft sits near 10.7 k, the primary runs into choke (0.72 falling to 0.50), boost
+0.45 to 0.53 bar with the gate shut. N2: a diagnosis by measurement first; a small cure inside sim/boost in this
+window, a change of topology in the next.
+
+**Ruled, near-zero bores (X-038 exhaust, X-040 intake; G):** a Spec range cannot refuse them, because 0 means
+"derived" on every bore. Now: in the builder and intake.fm's read sites, a stated bore in (0, floor) is raised to
+the floor and the telemetry says which (floors: exhaust pipes 10 mm, intake runner 8 mm, snorkel 10 mm; judgement,
+the smallest real part of the kind); bit for bit for every other build; finite at the floor shown, or it is a
+solver finding. Before the freeze or next window, never between (the bake's keys hash sim/). Next window, C:
+refusal at input in the loader and the inspector, by a rule in the host, NOT a new `fminus::` attribute (the
+compiler is the owner's).
+
+**A note on clocks:** N1's and L's containers run about five to seven minutes ahead of the lead's and the
+server's. A time in a message is still from `date -u`, and is that container's.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
 - **25 Nov 18:37: `main` HAS MOVED to 43006034.** The window is OPEN for the items below and nothing else. Rule:
   one green whole default tier on a merged state, then merge a moved tip and push, saying what was not in the run;
-  CI judges the combination; a red tip is fixed before anything else is pushed over it. **U1:** tell the lead
-  before your final merge; the tip is held from your merge to your push.
-- **First, tests / ci / app only (any order):** the steward (the .mcpb artifact; `[soak]` read from every commit
-  of a push; the status tool naming "not acquired (runner capacity)"); X (the excess measure, the restated click
-  check, the tools/ commits, random 103; the nightly's rotation only if X still wants it at 66 minutes); C (its
-  four sleeping host tests).
-- **Then sim/, in this order, each waiting for the one before to be on the branch:**
-  1. N2: the package's eleven commits;
-  2. the integrator: 87629688 (the one latch for both directions), itself; the bike's patch to B2;
-  3. D2: its half on top (valves and fixture, the ceiling, the brake, the cut's case, GradeTest's checks);
-  4. G: 8c9f4c20 and BangTest; X-038 (near-zero bores in the builder's exhaust); then L: the exposure against the
-     bangs, measured on G's fix;
-  5. the fixtures out of content/ in one step (X moves; N1 and the integrator repoint; P the manual's table);
-  6. N1: the rotary's low end, the two-stage's notch, the start's overshoot latching stage B, X-032 / X-034 /
-     X-037; the steward: X-030 / X-031 / X-036;
-  7. ui / assistant: card A (`list_builds` covering the archetypes GARAGE shows; the chat's "Add a key" drawn;
-     the yes/no dialog with U1); M: the fan's tone.
+  CI judges the combination; a red tip is fixed before anything else is pushed over it (one exception today: a
+  macOS red on `shell/input/g29/` alone is B's to fix at once and stops nobody else). **U1:** goes LAST in a
+  round; tells the lead before its final merge; the lead collects a "holding" from every pusher, then names the
+  tip, and it is held from U1's merge to its push.
+- **On the branch since `main`:** the steward's ci commits; the integrator's latch 87629688; X's measure, click
+  check and tee-fuzz; C's four waits; B's `wholeBuilds`, `--probe-input` and the G29's first slice; THE DIESEL
+  PACKAGE (e9b2ef3f); B2's bike clutch; card A's "Add a key"; G's bang fix and THE DEFAULT, Burned in the pipe
+  (81ec1b12); J2's Rows and part card in the kit. **The baked tables are stale until P bakes.**
+- **Still to land under sim/ or host/ before the freeze (each says early if it will not make it):**
+  - L: the exposure against the bangs on builds that burn (nothing, if the duck is under 2 dB);
+  - C: the predictor's approach from below (N1's patch), and the measurement of path-dependence without stages;
+  - N1: X-032 / X-034 / X-037;
+  - N2: the rotary's joined pair, only if the cure is small;
+  - G: the bores' floors (X-038, X-040);
+  - M: the fan's tone;
+  - the steward: X-030 / X-031 / X-036 (X-030's cure tested with `exhaust.bang` 1, now the default);
+  - the fixtures out of content/ in one step (X moves; N1 and the integrator repoint; P the manual's table).
+- **ui / assistant / shell, at any time (no sim/):** U1 (the DRIVE dials' numbers under the needle with its
+  picture test; the yes/no dialog a6e00140; J2's two hooks; a WHEEL row in SETTINGS); card A (`list_builds` and
+  `load_build` on `wholeBuilds`); B (macOS's first compile, `tee-wheel-dump`, then Linux and the learn mode).
 - **Then the lead writes FROZEN FOR THE BAKE here and P bakes** (re-timing N2's named 4 s rows, adding VW's 320
-  at 1750, marking rows held by calibration).
-- **NOT open:** the bangs' default (the owner's ear on G's clips); the inspector's redesign (the owner's choice);
-  rule (c), the feed-forward and the turbine's rated match (research).
-- **Docs-only pushes (docs/** and *.md) at any time.**
+  at 1750, marking rows held by calibration; `[soak]` alone on its own last line; the manual's "Pops" from G).
+- **NOT open:** rule (c), the feed-forward and the turbine's rated match (research); refusal of a bore at input.
+- **Docs-only pushes (docs/** and *.md) at any time**, except while the tip is held for U1.

@@ -51,7 +51,7 @@ set(TEE_UI_TESTS
   fieldport fieldparams page.generated gui.auto gui.widgets page.split
   display.tail
   gui.element page.array
-  inspect.type inspect.scrub inspect.filter inspect.keys inspect.dials
+  inspect.type inspect.scrub inspect.filter inspect.keys inspect.card inspect.page inspect.partcard
   textfield.draft look.error page.array.narrow)
 foreach(_t IN LISTS TEE_UI_TESTS)
   add_test(NAME ui.${_t} COMMAND tee-ui-tests ${_t})
