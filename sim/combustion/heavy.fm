@@ -92,6 +92,13 @@ module HeavyDiesel
     float backP;        // the back pressure over the outside (Pa)
     int exOn;
     float vaneOpen;     // the brake's vanes opened from their shut stop to hold the shaft under its limit (0 to 1)
+    int held;           // brake cylinders held off to keep the shaft under its limit (0: all the stage asks)
+    float heldT;        // how long the shaft has asked for one more held off (above 0) or one fewer (below 0), s
+    float shaftPrev;    // the shaft's share of its limit at the last call, and its rate (a second, smoothed 0.3 s)
+    float shaftRate;
+    int wasBraking;
+    int capped;         // 1: the shaft has asked for a cylinder off since the brake engaged ((d) below)
+    int vgtBrake;       // 1: the turbine has variable vanes the brake can own (Engine says so each call)
     int flapReal;       // 1: card G's butterfly is fitted (exh.flapFitted()): it makes the back pressure, not this
     // the measures (cylinder 1)
     float aPrev;
@@ -133,6 +140,13 @@ module HeavyDiesel
         exOn = 0;
         ceilK = 1.0f;
         vaneOpen = 0.0f;
+        held = 0;
+        heldT = 0.0f;
+        shaftPrev = 0.0f;
+        shaftRate = 0.0f;
+        wasBraking = 0;
+        capped = 0;
+        vgtBrake = 0;
         flapReal = 0;
         aPrev = 0.0f;
         pPrev = 101325.0f;
@@ -219,7 +233,19 @@ module HeavyDiesel
         // (the dash's stage switch; ctl.buttons' BTN_ENGINE_BRAKE, 64, held: on, at High if the switch is Off)
         const int stage = spec->brakeSwitch > 0 ? spec->brakeSwitch : ((buttons & 64) != 0 ? 3 : 0);
         braking = spec->engineBrake != 0 && stage > 0 && may ? 1 : 0;
-        stages = braking != 0 ? (nCyl * stage + 1) / 3 : 0;
+        // (a fresh engagement starts with every cylinder the stage asks; the shaft's cut (vaneCommand (c)) starts afresh.
+        // Without a variable-vane turbo the brake owns no shaft: none held)
+        if (braking != 0 && wasBraking == 0)
+        {
+            held = 0;
+            heldT = 0.0f;
+            capped = 0;
+        }
+        if (braking == 0 || vgtBrake == 0)
+            held = 0;
+        wasBraking = braking;
+        const int full = braking != 0 ? (nCyl * stage + 1) / 3 : 0;
+        stages = full - held < 1 ? (full > 0 ? 1 : 0) : full - held;
         for (int c = 0; c < HD_MAXCYL; ++c)
             want[c] = c < stages ? 1 : 0;
         // (the stages by pairs of cylinders in their order along the engine: one housing over each pair)
@@ -318,20 +344,66 @@ module HeavyDiesel
     // The plant, measured on the truck six at 2000 rpm on High with the vanes held (24 Nov): the brake bootstraps
     // itself (more boost, more gas, more turbine), so at vanes 0.3 to 0.5 the shaft runs away to the relief and back
     // every 3 s; at 0.6 it creeps up to some 11,300 rad/s; at 0.8 it settles at 6000 (omegaMax 11,932). Shut, the
-    // vanes' commands below vMin are one position. So: a proportional band over the shaft's speed, opening from the
-    // stop at 78 % of the limit to wide at 109 % (3.2 a unit), the opening slewed at 2 a second (the vanes' actuator).
-    // Settles at 0.93 of the limit with the vanes at 0.63, its spool-up overshoot at 0.98. A rate (lead) term and an
-    // integral made it hunt: the shaft's rate is noisy and the plant's gain flips with position (D2)
-    float vaneCommand(float d16, float shaft, float vMin)
+    // vanes' commands below vMin are one position.
+    // A maker's VGT brake holds its turbo's speed in this order (patents): the vanes by the measured turbo speed first,
+    // opened toward wide as it nears its limit (US6418720); and when the vanes cannot, the brake itself gives energy up
+    // (US6560963 advances the blowdown; here, measured, an earlier blowdown lowered the settled shaft only 0.5 % a 10
+    // degrees and made the rise worse, so the brake gives up cylinders instead: judgement, 25 Nov). So, each 16 samples:
+    // (a) the vanes' opening fed forward by engine speed, (rpm - 950) / 1500 (0.37 at 1500, 0.70 at 2000, wide by 2450),
+    //     as a maker's brake maps its vanes by engine speed: judgement, from the diesel package's plant (N2's matched wheel
+    //     and whole-flow nozzle, the truck's sets with their 260 kPa target, 25 Nov): from 1000 the brake held at 1500 rpm
+    //     swung 0.81 to 0.88 of the limit, from 900 it cost 2000 rpm 27 kW; with the vanes left at their stop below 1500
+    //     rpm the brake bootstrapped from 0.85 to 1.08 in 0.2 s, faster than any loop on the shaft can follow;
+    // (b) a proportional band over the shaft's speed, opening from 70 % of the limit (2.5 a unit, wide at 110 %);
+    // the larger of the two, slewed at 4 a second (the vanes' actuator: judgement, a VGT's electric actuator strokes in
+    // some 0.25 s);
+    // (c) one cylinder held off when the shaft stands over 0.985 of its limit for 0.1 s, one given back when the shaft,
+    //     looked ahead 2 s on its rate, stays under 0.92 for 1 s, or under 0.85 once (c) has cut since the brake engaged:
+    //     hysteresis, so it settles on a level (judgement). It acts only where the vanes wide open cannot hold the shaft:
+    //     BrakeTest makes it act on a compressor wheel too small for the brake's flow.
+    // (Until 25 Nov an integral on the shaft's error toward 0.93 of the limit (US6883318's loop) stood with (b), and the
+    // brake engaged with two cylinders held off above 1800 rpm; on the package neither acted (switched off, every figure
+    // the same), and the boost loop's own shaft ceiling (N2's, 0.948 of omegaMax) now keeps the shaft off its limit when
+    // the brake hands the vanes back: both removed)
+    float vaneCommand(float d16, float shaft, float vMin, int vgt)
     {
+        vgtBrake = vgt;
         const int owns = on != 0 && (braking != 0 || (exOn != 0 && spec->exhaustBrake == 2)) ? 1 : 0;
         if (owns == 0)
         {
             vaneOpen = 0.0f;
+            shaftPrev = 0.0f;
+            shaftRate = 0.0f;
             return -1.0f;
         }
-        const float want = fminf(fmaxf(3.2f * (shaft - 0.78f), 0.0f), 1.0f);
-        vaneOpen += fminf(fmaxf(want - vaneOpen, -2.0f * d16), 2.0f * d16);
+        const float rate = shaftPrev > 0.0f ? (shaft - shaftPrev) / d16 : 0.0f;
+        shaftPrev = shaft;
+        shaftRate += (rate - shaftRate) * fminf(d16 / 0.3f, 1.0f);
+        const float ff = fminf(fmaxf((omega * 9.5492966f - 950.0f) / 1500.0f, 0.0f), 1.0f);
+        if (vaneOpen <= 0.0f)
+            vaneOpen = ff;
+        const float want = fminf(fmaxf(fmaxf(2.5f * (shaft - 0.7f), ff), 0.0f), 1.0f);
+        vaneOpen += fminf(fmaxf(want - vaneOpen, -4.0f * d16), 4.0f * d16);
+        if (braking != 0)
+        {
+            if (shaft > 0.9850f)
+                heldT = fmaxf(heldT, 0.0f) + d16;
+            else if (shaft + 2.0f * fmaxf(shaftRate, 0.0f) < (capped != 0 ? 0.8500f : 0.9200f))
+                heldT = fminf(heldT, 0.0f) - d16;
+            else
+                heldT = 0.0f;
+            if (heldT > 0.1f && held < nCyl - 1)
+            {
+                held = held + 1;
+                heldT = 0.0f;
+                capped = 1;
+            }
+            if (heldT < -1.0f && held > 0)
+            {
+                held = held - 1;
+                heldT = 0.0f;
+            }
+        }
         return vMin + (1.0f - vMin) * vaneOpen;
     }
 

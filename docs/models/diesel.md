@@ -185,6 +185,31 @@ Which builds may state it: truck-15l-six and its bobtail (Electronic: they do, 2
 and diesel-pickup-tuned (Electronic: none cited, none stated); diesel-mechanical-classic and diesel-marine-v12 (Mechanical:
 never; their full-load delivery is the `fuelBoost` line, judgement).
 
+## The VGT brake on the diesel package (25 Nov)
+
+On N2's package (the compressor sized at the torque peak on the fitted map, the whole-flow nozzle, no vane guard, the
+loop's conditional integration and its shaft ceiling at 0.948 of omegaMax) and the trucks' own valve events with a 260
+kPa target, the brake (heavy.fm vaneCommand) holds its turbo by (a) the vanes fed forward by engine speed and (b) a band
+on the shaft's speed; (c) a cylinder cut past 0.985 of the limit is its last hand. Settled over 25 s on High, the shaft's
+most / settled share of omegaMax: 1500 rpm 0.950 / 0.844, 287 kW; 2000 0.937 / 0.862, 361 kW; 2400 0.713 / 0.711, 331 kW.
+Released into a full pull at 2000 the shaft peaks at 0.981 and settles on the loop's ceiling, 0.948, in some 4 s. The cut
+acts only where the vanes wide open cannot hold the shaft: on a 64 mm wheel (the rule's is 69.8) the shaft rises to
+1.036 in the first second, the brake drops to three cylinders, and it settles at 0.909 on six (BrakeTest).
+
+## The diesel package's known limits (25 Nov)
+
+- The 2.0 common rail's torque plateau begins late: 254 N m at 1800 rpm and 321 at 2100 on the package's turbo, against
+  VW's published 320 N m from 1750 (the air side's: N2's to follow; the torque ceiling holds the plateau, not its start).
+- A re-application after a lift: the boost loop rings for some 6 s and its first peak stands some 16 % over the target
+  (the loop's tuning against the plant, N2's finding), the shaft held by the ceiling (at most 1.051, the relief once).
+- The calibration harness's 4 s settle: 19 of the 53 boosted archetypes' steady cells are still spooling at 4 s and
+  read the spool's path, right only when settled (within 0.1 % over 60 s; N2's shaft-ceiling.md, section 3).
+- The truck at 2100 rpm runs near the compressor's choke (N2: the shaft 0.962, a choke flag), its rated power held by
+  calibration (the torque ceiling, 451 kW).
+- A brake on a compressor too small for its flow overshoots the shaft's limit by some 4 % for a moment before the
+  cylinder cut acts (1.036 on 64 mm, under the 1.05 relief).
+- Rows held by calibration (the trucks' 2779 N m and 451 kW; the 2.0's 320 when its build states it) are not validation.
+
 ## The idle's clatter: a hump, not a comb (24 Nov, late)
 
 Card P's idle row found the three diesel archetypes with a line 1-10 dB under their exhaust's note at a warm idle:

@@ -923,7 +923,7 @@ module Engine
             boost.testCell(dynoOn);   // (N2: an engine test cell's rated cooling, SAE J1349)
             if (hd.on != 0)
                 boost.vanesAndPurge(hd.vaneCommand(d16, boost.mach.turbos > 0 ? boost.mach.shaft[0].omega / fmaxf(boost.mach.omegaMax[0], 1.0f) : 0.0f,
-                                               boost.mach.turb[0].vaneMin), 0);   // (card D2: a VGT's brake position while a brake is on, held under the shaft's limit; -1 its own loop)
+                                               boost.mach.turb[0].vaneMin, boost.mach.turbos > 0 && boost.mach.turb[0].vgt != 0 ? 1 : 0), 0);   // (card D2: a VGT's brake position while a brake is on, held under the shaft's limit; -1 its own loop)
             boost.control16(d16, ecu.boostTarget(), ecu.antiLag(), ecu.nitrous());
             intk.pBox = boost.pressure();
             intk.fedByMachine = boost.mach.active;      // (N1: a machine's own filter before it: no air box between)
