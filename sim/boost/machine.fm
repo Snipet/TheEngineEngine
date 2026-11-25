@@ -167,6 +167,7 @@ module BoostMachine
     float bpLimit;      // a variable nozzle's limit on the pressure before the turbine over the boost (absolute)
     float bpOpen[BOOST_TURBOS];  // the limit's opening of the vanes, each turbo
     float surgeOpen[BOOST_TURBOS];  // the surge guard's opening of the vanes, each turbo
+    float omegaSlow[BOOST_TURBOS];  // each shaft's speed followed over 0.2 s (the back-pressure limit's spool test)
     float bovAt;        // the blow-off valve's opening the air sees: bovLift followed every sample by two 1 ms stages
     float bovMid;
     float kAt;          // that following's step a sample
@@ -331,6 +332,7 @@ module BoostMachine
             turb[t].vanesMid = 1.0f;
             bpOpen[t] = 0.0f;
             surgeOpen[t] = 0.0f;
+            omegaSlow[t] = 0.0f;
             gateMass[t] = 0.0f;
             gateTemp[t] = tOut;
         }
@@ -1214,7 +1216,11 @@ module BoostMachine
                     // spooling the turbine's inlet stands well over the barely-raised charge by itself, and the limit
                     // opened the vanes and held the boost low: D2's truck stood at 10 kPa with its vanes open on the
                     // true exhaust mass. Below 0.9 of it the limit only gives back)
-                    const float nearTg = boost > 0.9f * want ? 1.0f : 0.0f;
+                    // (spooling: the shaft still gaining over a tenth of its limit a second; a target out of reach
+                    // ends the spool short of it, and then the limit acts as before)
+                    const float rise = (shaft[t].omega - omegaSlow[t]) / 0.2f;
+                    omegaSlow[t] += (shaft[t].omega - omegaSlow[t]) * (1.0f - expf(-d16 / 0.2f));
+                    const float nearTg = boost > 0.9f * want || rise < 0.1f * omegaMax[t] ? 1.0f : 0.0f;
                     bpOpen[t] = fminf(fmaxf(bpOpen[t] + d16 * 3.0f * (nearTg > 0.0f ? r3 - bpLimit : -0.3f), 0.0f), 1.0f);
                     v = fmaxf(v, turb[t].vaneMin + bpOpen[t]);
                     // (the surge guard, gain-reversal protection: vanes shut past the compressor's surge line make
@@ -1231,7 +1237,9 @@ module BoostMachine
                     // (only the loop's own surge counts: with the pedal down (the plenum not under the throttle's
                     // vacuum, as the assist's test) and the boost short of what is asked; a lift's surge on a closed
                     // throttle is the blow-off valve's matter, and then the guard only gives back)
-                    const int surging = (comp[t].mdot < 0.0f || (phiS < 0.8f * comp[t].phiK && comp[t].pr > 1.15f)) &&
+                    // (a backstop only, the lead's ruling: the flow reversing through the compressor, not its point
+                    // left of the knee; the map's surge line is the matter of the map and of the target's cap)
+                    const int surging = (comp[t].mdot < 0.0f && phiS < 0.8f * comp[t].phiK) &&
                                                 pPlenum > 0.85f * pOut && boost < want
                                             ? 1
                                             : 0;

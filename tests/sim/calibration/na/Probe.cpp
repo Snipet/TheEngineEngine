@@ -1106,15 +1106,32 @@ TEST_CASE("probe: the idle's hunt on the bench", "[.probe-hunt]")
         const bool ok = pr.p->instance().write(pr.p->schema(), f.path, f.value, e);
         std::printf("freeze %s at %g (%s)\n", f.path.c_str(), f.value, ok ? "written" : e.c_str());
     }
-    std::vector<double> rpm, man, valve;
+    std::vector<double> rpm, man, valve, dil, burn;
     const long every = long(fs / 32.0);
+    const int cyls = int(pr.tel("engine.cylinders"));
     long k = 0;
+    double back = 0.0, draw = 0.0;   // the intake valves' flow, out of the cylinders (backflow) and in, every 4th sample
+    std::vector<std::string> mPath;
+    for (int ci = 0; ci < cyls; ++ci)
+        mPath.push_back("cyl[" + std::to_string(ci) + "].mI");
     run(8.0, true, [&] {
+        if ((k & 3) == 0)
+            for (const std::string& mp : mPath)
+            {
+                const double mi = pr.get(mp);
+                (mi > 0.0 ? back : draw) += mi;
+            }
         if (k++ % every == 0)
         {
             rpm.push_back(pr.tel("engine.speed") * 30.0 / M_PI);
             man.push_back(pr.tel("intake.manifold") / 1e3);
             valve.push_back(pr.tel("ecu.idleValve"));
+            // each cylinder's burned-gas share at its last intake closing, and the share of its charge its flame took
+            for (int c = 0; c < cyls; ++c)
+            {
+                dil.push_back(pr.get("comb.dilution[" + std::to_string(c) + "]"));
+                burn.push_back(pr.get("cyl[" + std::to_string(c) + "].cBurn"));
+            }
         }
     });
     auto stats = [](const std::vector<double>& v, double& m, double& sd, double& lo, double& hi) {
@@ -1130,6 +1147,13 @@ TEST_CASE("probe: the idle's hunt on the bench", "[.probe-hunt]")
     stats(rpm, m, sd, lo, hi);
     stats(man, mm, msd, mlo, mhi);
     stats(valve, vm, vsd, vlo, vhi);
+    double dm, dsd, dlo, dhi, bm, bsd, blo, bhi;
+    stats(dil, dm, dsd, dlo, dhi);
+    stats(burn, bm, bsd, blo, bhi);
+    std::printf("intake valves: drawn in %.3f g/s, pushed back %.3f g/s (%.1f %%)\n", -draw * 4e3 / (8.0 * fs), back * 4e3 / (8.0 * fs),
+                draw < 0.0 ? -100.0 * back / draw : 0.0);
+    std::printf("burned-gas share at intake closing %.3f sd %.3f (%.3f to %.3f); the flame's share %.3f sd %.3f (%.3f to %.3f)\n",
+                dm, dsd, dlo, dhi, bm, bsd, blo, bhi);
     int crossings = 0;
     for (std::size_t i = 1; i < rpm.size(); ++i)
         if ((rpm[i - 1] - m) < 0.0 && (rpm[i] - m) >= 0.0)

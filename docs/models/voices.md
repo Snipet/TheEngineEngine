@@ -83,7 +83,9 @@ Places listener (camera Side) carried a high hum. Measured (p-idle-warm, 8 to 14
 turn): the 3895 Hz line was the fuel pump's impeller (41 vanes x 95 turns/s), 760 Hz its commutator (8 x 95), 280 and
 560 Hz the electric fan's blade passing (7 x 40) and its harmonic. The fan ran because a warm idle holds the coolant
 at 368 K, which was `fanOn`'s default: a few hundredths of a kelvin either side of the hold decided whether the fan
-came in. `fanOn` is now 373 K (100 C) by default, off 5 K below (a thermo switch's two contacts): the warm hold sits
+came in. `fanOn` is now 373 K (100 C) by default, off 5 K below (a thermo switch's two contacts; cited, card P: the Mahle
+Behr 0065453924 switch, on 100 C, off 95 C; BMW's 95 / 90, VW's and Audi's two-stage switches 11 K apart;
+docs/measurements/2026-11-25-0032-judgement-sources.md): the warm hold sits
 at the off point, 5 K under the on, so every warm render has the fan off unless its coolant climbs past 373 K by
 itself (a long pull) or the build sets `fanOn` lower.
 
