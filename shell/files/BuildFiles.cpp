@@ -229,12 +229,92 @@ namespace tee::files
         return out;
     }
 
-    fs::path BuildLibrary::find(const std::string& name, bool& user) const
+    bool BuildLibrary::isFixture(const fs::path& relative)
+    {
+        const auto first = relative.begin();
+        if (first == relative.end())
+            return false;
+        const std::string top = first->string();
+        return std::any_of(std::begin(kFixtureFolders), std::end(kFixtureFolders),
+                           [&](const char* f) { return top == f; });
+    }
+
+    std::vector<WholeBuild> BuildLibrary::wholeBuilds(const Fields& fields) const
+    {
+        std::vector<WholeBuild> shipped, user;
+        const auto whole = [&fields](const fs::path& f) {
+            FileContents c;
+            std::string error;
+            return readContents(f, fields, c, error) && c.part == BuildPart::Whole;
+        };
+        std::error_code ec;
+        if (!shipped_.empty() && fs::is_directory(shipped_, ec))
+            for (auto it = fs::recursive_directory_iterator(shipped_, ec); !ec && it != fs::recursive_directory_iterator();
+                 it.increment(ec))
+            {
+                const fs::path rel = it->path().lexically_relative(shipped_);
+                if (it.depth() == 0 && it->is_directory(ec) && isFixture(rel))
+                {
+                    it.disable_recursion_pending();
+                    continue;
+                }
+                if (!it->is_regular_file(ec) || it->path().extension() != ".json" || !whole(it->path()))
+                    continue;
+                fs::path stem = rel;
+                stem.replace_extension();
+                shipped.push_back({ stem.generic_string(), it->path(), false });
+            }
+        if (!user_.empty() && fs::is_directory(user_, ec))
+            for (const fs::directory_entry& e : fs::directory_iterator(user_, ec))
+                if (e.is_regular_file(ec) && e.path().extension() == ".json" && whole(e.path()))
+                    user.push_back({ e.path().stem().string(), e.path(), true });
+        const auto byName = [](const WholeBuild& a, const WholeBuild& b) { return a.name < b.name; };
+        std::sort(shipped.begin(), shipped.end(), byName);
+        std::sort(user.begin(), user.end(), byName);
+        std::vector<WholeBuild> out;
+        for (WholeBuild& b : shipped)
+            if (std::none_of(user.begin(), user.end(), [&](const WholeBuild& u) { return u.name == b.name; }))
+                out.push_back(std::move(b));
+        for (WholeBuild& b : user)
+            out.push_back(std::move(b));
+        return out;
+    }
+
+    fs::path BuildLibrary::find(const std::string& name, bool& user, std::string* why) const
     {
         std::error_code ec;
-        std::string why;
-        if (!validName(name, why))
-            return {};
+        std::string reason;
+        const auto fail = [&](std::string r) {
+            if (why != nullptr)
+                *why = std::move(r);
+            return fs::path();
+        };
+        // a folder-qualified name: each folder a valid name, never "..", never a fixture's; the shipped folder only
+        if (name.find('/') != std::string::npos)
+        {
+            fs::path rel;
+            std::size_t at = 0;
+            while (at <= name.size())
+            {
+                const std::size_t slash = std::min(name.find('/', at), name.size());
+                const std::string part = name.substr(at, slash - at);
+                if (part == ".." || !validName(part, reason))
+                    return fail("'" + name + "' is not a build's name: " + (part == ".." ? std::string("no '..'") : reason));
+                rel /= part;
+                at = slash + 1;
+            }
+            if (isFixture(rel))
+                return fail("'" + name + "' is one of the test suite's fixtures, not a build to open");
+            rel += ".json";
+            if (!shipped_.empty() && fs::is_regular_file(shipped_ / rel, ec))
+            {
+                user = false;
+                return shipped_ / rel;
+            }
+            return fail("no build named '" + name + "'");
+        }
+        if (!validName(name, reason))
+            return fail("'" + name + "' is not a build's name: " + reason);
         if (!user_.empty() && fs::is_regular_file(user_ / (name + ".json"), ec))
         {
             user = true;
@@ -245,7 +325,7 @@ namespace tee::files
             user = false;
             return shipped_ / (name + ".json");
         }
-        return {};
+        return fail("no build named '" + name + "'");
     }
 
     bool BuildLibrary::summary(const std::string& name, BuildSummary& out) const
@@ -254,6 +334,7 @@ namespace tee::files
         const fs::path f = find(name, user);
         if (f.empty() || !readSummary(f, out))
             return false;
+        out.name = name;            // as it was asked for (a folder-qualified name stays one)
         out.user = user;
         return true;
     }
@@ -262,10 +343,16 @@ namespace tee::files
                             std::string& error) const
     {
         bool user = false;
-        const fs::path f = find(name, user);
+        const fs::path f = find(name, user, &error);
         if (f.empty())
+            return false;
+        // a part's file is not a build to open whole (GARAGE's rule: what it says, else what its fields hold)
+        FileContents c;
+        if (!readContents(f, file.build().fields(), c, error))
+            return false;
+        if (c.part != BuildPart::Whole)
         {
-            error = "no build named '" + name + "'";
+            error = "'" + name + "' holds the " + partName(c.part) + " alone (a part), not a whole build";
             return false;
         }
         return file.open(f, BuildPart::Whole, warnings, error);

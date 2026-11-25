@@ -121,6 +121,12 @@ module BoostSpec
         [[ui::help("Counts requests: at each increase the intercooler's core is put where the present flow and the air through it would hold it (for a tool: a dyno's sweep without waiting for the core)")]];
     // (card N2, the lead's ruling on the sequential join: a maker's changeover speed, which a source can fill; not hidden,
     // since a hidden field is not read from a build's file (Build.cpp) and the build is where the source states it)
+    // (card N2, the lead's ruling (b), 25 Nov: a governed diesel's compressor sized for its boost from the torque peak:
+    // the makers' speed where the build states it (a sheet's "peak torque from"); 0: the fuel curve's lowest speed within
+    // 2 % of its most, else 0.6 of rated (judgement). Spark ignition and engines without a governor ignore it)
+    float peakRpm [[fminus::range(0, 20000)]] [[fminus::default(0)]] [[ui::label("Torque peak from")]]
+        [[ui::unit("rpm")]] [[ui::group("Compressor")]]
+        [[ui::help("A governed diesel's compressor is sized to hold its boost clear of surge from this speed up; 0: the full-load fuel curve's plateau start, else 0.6 of rated")]];
     float seqRpm [[fminus::range(0, 20000)]] [[fminus::default(0)]] [[ui::label("Second turbo joins above")]]
         [[ui::unit("rpm")]]
         [[ui::help("A sequential pair's changeover speed; 0: the speed at which the engine passes the join flow at the design boost")]];

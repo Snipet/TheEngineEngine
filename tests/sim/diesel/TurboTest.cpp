@@ -35,6 +35,7 @@ namespace
         e.spec("boost.layout", layout);
         e.spec("boost.vanes", vanes);
         e.spec("boost.gateSpring", 220000.0);
+        e.spec("boost.target", 260000.0);   // (the fixture's boost target: the tractor archetype's, the same 15 L class on the same valve events; that archetype's judgement. A VGT on the spring law with no target limit-cycles, N2: nothing shipped uses it)
         e.spec("boost.icFlow", 0.8);
         e.spec("boost.chargeVolume", 0.02);
         e.start();
@@ -144,6 +145,7 @@ TEST_CASE("diesel turbo: variable vanes settle to one state at 1300 rpm, from be
         e.spec("boost.layout", 1);
         e.spec("boost.vanes", 1);
         e.spec("boost.gateSpring", 220000.0);
+        e.spec("boost.target", 260000.0);   // (the fixture's boost target: the tractor archetype's, the same 15 L class on the same valve events; that archetype's judgement. A VGT on the spring law with no target limit-cycles, N2: nothing shipped uses it)
         e.spec("boost.icFlow", 0.8);
         e.spec("boost.chargeVolume", 0.02);
         e.start();

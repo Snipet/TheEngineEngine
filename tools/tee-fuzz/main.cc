@@ -210,9 +210,12 @@ namespace
 
     int usage();
 
-    int play(const std::string& build, const std::string& kindArg, const std::string& comboArg, const std::string& wav)
+    int play(const std::string& build, const std::string& kindArg, const std::string& comboArg, const std::string& wav,
+             const std::vector<Value>& sets)
     {
-        if (archetype(build) == nullptr)
+        // a build file (a path ending .json) plays as well as an archetype: no idle band is judged then
+        const bool file = build.size() > 5 && build.compare(build.size() - 5, 5, ".json") == 0;
+        if (!file && archetype(build) == nullptr)
         {
             std::fprintf(stderr, "tee-fuzz: no archetype %s\n", build.c_str());
             return 2;
@@ -254,8 +257,13 @@ namespace
             }
         }
         Times tm;
-        const tee::test::Run r = scenario(kind, build, mask, tm).run(tm.end);
-        const Verdict v = judge(r, tm, archetype(build), true, mask == 0 ? 1e9 : referenceStep(build, kind));
+        tee::test::Scenario sc = scenario(kind, build, mask, tm);
+        // --set path=value: Spec writes at t = 0 over the switches (the bound stays the reference's own)
+        for (const Value& x : sets)
+            sc.at(0.0).spec(x.path, x.value);
+        const tee::test::Run r = sc.run(tm.end);
+        const Verdict v = judge(r, tm, archetype(build), true, mask == 0 ? 1e9 : referenceStep(build, kind),
+                                mask == 0 ? -1.0 : referenceExcess(build, kind));
         std::size_t ruled = 0;
         for (const Failure& f : v.failures)
             ruled += shiftCutRuled(comboName(mask), f) ? 1 : 0;
@@ -267,6 +275,14 @@ namespace
         for (const Failure& f : v.failures)
             std::printf("  %s%s: %s\n", shiftCutRuled(comboName(mask), f) ? "ruled, " : "", f.check.c_str(),
                         f.detail.c_str());
+        {
+            const double refExcess = referenceExcess(build, kind);
+            std::printf("  excess: %.2f at %.3f s (firing period %.1f ms); the reference's %.2f, so the bound %.2f: %s\n",
+                        v.stepExcess, v.stepAt, 1000.0 * v.firingPeriod, refExcess, 2.0 * refExcess,
+                        v.stepExcess < 0.0 || refExcess < 0.0 ? "n/a"
+                        : v.stepExcess > 2.0 * refExcess    ? "OVER"
+                                                            : "within");
+        }
         if (!wav.empty())
         {
             tee::Audio a;
@@ -324,12 +340,22 @@ int main(int argc, char** argv)
         {
             const std::string build = next(), kindArg = next(), comboArg = next();
             std::string wav;
-            if (i + 2 < argc && std::string(argv[i + 1]) == "--wav")
+            std::vector<Value> sets;
+            while (i + 2 < argc && (std::string(argv[i + 1]) == "--wav" || std::string(argv[i + 1]) == "--set"))
             {
-                ++i;
-                wav = next();
+                const std::string opt = argv[++i];
+                const std::string arg = next();
+                if (opt == "--wav")
+                    wav = arg;
+                else
+                {
+                    const auto eq = arg.find('=');
+                    if (eq == std::string::npos)
+                        return usage();
+                    sets.push_back({arg.substr(0, eq), std::atof(arg.substr(eq + 1).c_str())});
+                }
             }
-            return play(build, kindArg, comboArg, wav);
+            return play(build, kindArg, comboArg, wav, sets);
         }
         else if (a == "--match")
         {
