@@ -288,6 +288,11 @@ namespace tee::ui
         // "coldStart", taken from the next launch). The settings page's ENGINE START row; empty: not shown.
         std::function<bool()> coldStart;
         std::function<void(bool)> setColdStart;
+        // DRIVE's dash style (views/drive/Dash.h: 0 STANDARD, 1 CLASSIC, 2 DIGITAL, 3 RACE), kept in the settings (the
+        // shell's app/Offline.cpp keeps it as a line of the interface's own settings text, "drive.style=race"). DRIVE
+        // shows its DASH buttons only while both are served.
+        std::function<int()> driveStyle;
+        std::function<void(int)> setDriveStyle;
         std::function<std::string()> tryFirst;
         std::function<void()> tryFirstDone;
         std::function<int()> loadFits;
