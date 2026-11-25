@@ -88,6 +88,8 @@ endif()
 # window, TheEngineEngine, with TEE_BUILD_APP.
 add_subdirectory(shell)
 add_subdirectory(app)
+# assistant/ (docs/plan/w3-a-assistant.md): Claude in the app, its inbox and tools, and their tests.
+add_subdirectory(assistant)
 tee_check_targets()       # every target of ours has tee_target_defaults() (cmake/TeeChecks.cmake)
 
 message(STATUS "TheEngineEngine ${PROJECT_VERSION}: ${CMAKE_BUILD_TYPE}, tools ${TEE_BUILD_TOOLS}, tests "
