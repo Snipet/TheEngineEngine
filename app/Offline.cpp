@@ -130,7 +130,7 @@ namespace tee::app
             struct Kept
             {
                 Kept(player::SimAdapter& sim, std::filesystem::path shipped, std::filesystem::path bakes)
-                    : doc(sim.build()), scope(sim.host()), dyno(sim), bake(sim, std::move(bakes)), file(sim.build()),
+                    : doc(sim.build()), scope(sim.host()), dyno(sim), bake(sim, dyno, std::move(bakes)), file(sim.build()),
                       library(shipped, Presets::userDirectory()),
                       garage(file, [&sim] { return sim.ready() ? sim.host().sim() : std::shared_ptr<Sim>(); }, std::move(shipped),
                              Presets::userDirectory())
@@ -169,6 +169,7 @@ namespace tee::app
             addShellServices(frameServices, *engine.sim, controls);
             addFileServices(frameServices, kept->file, kept->library);
             frameServices.sparkMap = [kept] { return kept->bake.state(); };
+            frameServices.stillKnocking = [kept] { return kept->bake.stillKnocking(); };
             shown.frame = [kept] { kept->bake.tick(); };
             if (window)
             {

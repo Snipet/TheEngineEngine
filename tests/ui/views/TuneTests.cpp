@@ -7,6 +7,11 @@
 #include "views/tune/Tune.h"
 #include "views/tune/TuneDemo.h"
 
+namespace tee::test::u4
+{
+    std::vector<std::string> textClashesOf(const funkgui::PrimList& list, float w, float h);
+}
+
 #include <funkgui/core/Theme.h>
 
 namespace
@@ -240,6 +245,26 @@ namespace
         tee::ui::tuneChoose(*rig.ws, 0);                 // and it is said over the spark map too
         rig.settle();
         picture("tune.knocklimit.spark", *rig.host);
+        // Cells that still knock after the bake's corrections ([speed][load] on the table's grid): ringed and hatched on the
+        // knock-limit map, counted in its words.
+        {
+            const int kl = rig.demo.doc.find("ecu.maps.knockLimitAuto");
+            rig.demo.doc.beginGesture();
+            rig.demo.doc.set(kl, 0.0);                   // baked: the table in use
+            rig.demo.doc.endGesture();
+            std::vector<std::vector<bool>> grid(8, std::vector<bool>(8, false));
+            grid[5][3] = grid[6][3] = grid[6][4] = true;
+            svc.stillKnocking = [grid] { return grid; };
+            tee::ui::tuneChoose(*rig.ws, 7);
+            rig.settle();
+            const std::uint64_t before = rig.ws->drawKey();
+            picture("tune.knocklimit.still", *rig.host);
+            for (const std::string& clash : tee::test::u4::textClashesOf(rig.host->draw(), 1100.0f, 700.0f))
+                CHECK_MSG(false, clash);
+            svc.stillKnocking = [] { return std::vector<std::vector<bool>>{}; };
+            rig.settle();
+            CHECK(rig.ws->drawKey() != before);
+        }
         // The intake cam: set aside (its switch on) while the calibration bakes its cam pass, said in the same place.
         tee::ui::tuneChoose(*rig.ws, 3);
         state = "baking cam";
