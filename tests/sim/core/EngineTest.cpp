@@ -473,7 +473,11 @@ static void booksOn(const std::vector<const char*>& builds, double settle = 4.0)
         b.ctl().mode = 2;
         b.ctl().throttle = 1.0f;
         b.ctl().dynoSpeed = float(1800.0 / 9.5492966);
-        b.play(settle);         // (a boosted diesel's plenum settles slowly: the full form gives it 10 s)
+        // (a boosted diesel's plenum settles slowly: the full form gives it 10 s. The default's 4 s is kept short on
+        // purpose: the tractor's turbo still spools there (192 to 224 kPa 4 to 6 s in; the books -0.68 %, within 0.07 %
+        // from 8 s: [.tractorbooks], 25 Nov), so the bound reads the operating point too: it caught N2's 69c1fdfa taking
+        // a quarter of the tractor's torque (1.006 %; the lead's ruling, 25 Nov)
+        b.play(settle);
         double thr = 0, fr = 0, v = 0, x = 0;
         airBooks(b, 2.0, thr, fr, v, x);
         const double tq = b.tel("engine.torque");
@@ -731,6 +735,9 @@ TEST_CASE("the cylinders' books hold at idle under a big overlap, as a person ca
     b.ctl().throttle = 0.0f;
     b.play(6.0);
     double thr = 0, fr = 0, v = 0, x = 0;
+    // (running: a stalled engine's books are ratios of nothing (the CI's 0.279 at 24ccc323, an idle stall N1's
+    // 576c1c6e fixed))
+    REQUIRE(b.tel("engine.speed") * kRpm > 500.0);
     airBooks(b, 3.0, thr, fr, v, x);
     std::printf("flat-plane at idle, intake centreline 60: %.0f rpm, throttle %.3f, intake valves %.3f, exhaust valves plus the cylinders' gain %.3f g/s\n",
                 b.tel("engine.speed") * kRpm, thr, v, x);
