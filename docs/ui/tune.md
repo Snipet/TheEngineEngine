@@ -60,4 +60,4 @@ shown, the line gives the bake's state as the host says it, and once the table i
 boost (load up to 1) and on boost (above 1), the mean over its cells. With `fuel.model` on Reference it says the grade
 is not read. Pressing the band (off its buttons) selects `fuel.grade`: the inspector's menu.
 
-Tests: `ui.tune.fuel`, `ui.build.tune.fuel` (the real Spec: the grade changed in the band re-keys the knock limit, undone current again), `ui.tune.stage`, `ui.tune.large` (with `tune.paper`), `ui.tune.edit`, `ui.tune.inspector`, `ui.tune.absent`, `ui.tune.bake`, `ui.tune.knocklimit`.
+Tests: `ui.tune.fuel`, `ui.build.tune.fuel` (the real Spec: the grade changed in the band re-keys the knock limit, undone the same key), `ui.tune.stage`, `ui.tune.large` (with `tune.paper`), `ui.tune.edit`, `ui.tune.inspector`, `ui.tune.absent`, `ui.tune.bake`, `ui.tune.knocklimit`.
