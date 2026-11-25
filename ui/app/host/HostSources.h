@@ -106,7 +106,8 @@ namespace tee::ui
         // order of destruction: the service keeps the predictor's shared busy flag, not the predictor (card C's).
         void yieldTo(const ServiceDyno& dyno) { bakes_.yieldTo(dyno.predictor()); }
         void stopYielding() { bakes_.stopYielding(); }
-        // The service's words; while baking, its stage and its count: "baking cam 23 of 42".
+        // The service's words; while baking or checking, its stage and its count ("baking cam 23 of 42", "checking spark
+        // map 3 of 9"); done, "baked" or "calibration checked" (a cached bake checked on this program).
         std::string state() const;
         // The knock-limit table last applied: its cells still knocking after the corrections, [speed][load] on its grid
         // (empty: none applied); and how many.
