@@ -241,3 +241,29 @@ with its start.
   maker's sheet.)
 - **Not found:** a second source for p3/p2 at peak torque (section 18's patent's estimate the only one); Gundmalm's KTH
   thesis on divided exhaust periods (Scania, measured) unreachable on 25 Nov (the server down).
+
+## 21. Compressor maps of the tractor's class: their width, and the speed margin kept at rated (the lead's ask for N2, 25 Nov 13:39 UTC)
+
+**Read by me, from the makers' catalogue sheets' maps** (rendered and read off the gridlines: about 1 lb/min and 0.05 in ratio;
+the edges taken as the ends of the drawn speed lines: the right end is where the maker stops drawing, efficiency some 0.54 to
+0.64, not a measured choke):
+- **BorgWarner S400SX-E, part 14009097006** (borgwarnerboosted.com catalogue p. 50, `s400sx-e.pdf`): compressor wheel 72.00 mm
+  inducer, 96.00 mm outer; speed lines labelled in **corrected tip speed, 230 to 607 m/s**. Surge (the lines' left ends) and the
+  right ends, lb/min: **PR 2.0: 24 and 95, width 4.0; PR 2.6: 35 and 106, width 3.0; PR 3.0: 43 and 110, width 2.6**. The top line
+  (607 m/s, some 120,800 rpm on 96 mm) peaks near PR 5.0; at 561 m/s, 4.6; at 521, 4.1. Peak efficiency 0.80 near PR 2.1, 55
+  lb/min. (Its larger sibling, 76 / 100 mm, 14009097013/14, on the same page: top line 605 m/s.)
+- **BorgWarner S300SX3, parts 177281 / 177275** (catalogue p. 43, `s300sx3.pdf`): wheel 66.11 mm inducer, 91.44 mm outer; speed
+  lines in rpm, 58,496 to 117,199. Surge and right ends, lb/min: **PR 2.0: 19 and 66, width 3.4; PR 2.6: 27 and 74, width 2.7; PR
+  3.0: 32 and 76, width 2.35**. The top line (117,199 rpm: **561 m/s** at 91.44 mm) peaks near PR 4.7. Peak efficiency 0.76.
+- Both are the makers' aftermarket wheels of the S300 / S400 frames (a heavy-duty frame family; rated by the maker for 320-800 and
+  500-1200 hp), not an OE truck wheel's map. **Not found as a map with numbers:** Holset HX40 / HX55 / HE500 (Holset's sheets
+  show maps without numbers, per forum reports; their numbered maps circulate as forum copies, not read), Garrett GT/GTX 40-45
+  (not read this time).
+
+**The speed margin at rated, at sea level (the altitude margin): not found as a figure in a maker's guide, Watson and Janota,
+Heywood or an SAE paper read by me.** What there is: Woollenweber, US 5,025,629, the rated point "at only 94% of the maximum
+speed" (one patent's example, section 18); studies of altitude matching that treat turbo speed as a limit and report where it
+is reached (a TB28 over speed at 3500 m and 2600 rpm; an HP60 at 4000 m and 2800: IEEE 5701259, abstract only) without a
+sea-level margin; and a forum's rule of thumb that turbo speed rises some **3 % per 1000 ft** (unverified). If 3 % per 1000 ft
+held, a 6 % margin (Woollenweber's) would cover some 2000 ft (600 m); a truck sold for mountain passes (some 2500 m) would want
+nearer 20 % (judgement, from the forum's rate).
