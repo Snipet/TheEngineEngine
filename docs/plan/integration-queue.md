@@ -1003,11 +1003,17 @@ push since a16dc1f0 has started a soak); C; card A (9833352).
   from your merge to your push.
 - **On the branch since `main`** (tests / ci / app): the steward's a16dc1f0; the integrator's 87629688 (the one
   latch for both directions); X's measure, restated click check and tools/ commits (0f677370).
-- **Released 19:15, pushing now:** D2 (ONE push: N2's ten commits, X-039's solve dropped, and D2's six), then B2
-  (the bike's clutch); B (`wholeBuilds`, the input probe); the steward (2fc03a65); C (four sleeping tests); card A
-  ("Add a key").
+- **19:21: THE DIESEL PACKAGE IS ON THE BRANCH at e9b2ef3f** (D2's one push: N2's ten commits, X-039's solve
+  dropped, and D2's six; 580 of 580 on 238bfc7b + the sixteen, then combo, fuzz and host 12 of 12 on the merged
+  state; not in the run: X's and C's test commits, the probe, `wholeBuilds`). CI's first build of it on macOS and
+  Windows is the run on e9b2ef3f: the lead reads it. Also on the branch since 19:15: C's four waits (6e0f4f28, 581
+  of 581), B's `wholeBuilds` 4561f81e and `--probe-input` f25b4a88 (b75c2bef, 587 of 587). **The baked tables are
+  stale from here until P bakes** (they were already: 87629688 is under sim/).
+- **Released 19:15, not yet pushed:** B2 (the bike's clutch, after D2's sha); the steward (2fc03a65); card A ("Add
+  a key").
 - **Then sim/, in this order, each waiting for the one before to be on the branch:**
-  4. G: 8c9f4c20 and BangTest, and **the default to Burned in the pipe** (the owner, 19:10); X-038 (near-zero
+  4. G (told at 19:21 to build on e9b2ef3f; it need not wait for B2, their files do not meet): 8c9f4c20 and
+     BangTest, and **the default to Burned in the pipe** (the owner, 19:10); X-038 (near-zero
      bores in the builder's exhaust); then L: the exposure against the bangs, measured on G's fix;
   5. the fixtures out of content/ in one step (X moves; N1 and the integrator repoint; P the manual's table);
   6. N1: the rotary's low end, the two-stage's notch, the start's overshoot latching stage B, X-032 / X-034 /
