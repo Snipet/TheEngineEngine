@@ -17,8 +17,8 @@ namespace tee::balance
     namespace
     {
         // the fuels' rows (sim/combustion/fuels.fm: stoichiometric ratio, lower heating value J/kg)
-        constexpr double kAfr[] = {14.0, 14.0, 14.0, 14.6, 9.80, 6.47, 14.5, 15.6, 34.3};
-        constexpr double kLhv[] = {42.2e6, 42.2e6, 42.2e6, 44.0e6, 29.3e6, 19.9e6, 42.5e6, 46.35e6, 120.0e6};
+        constexpr double kAfr[] = {14.0, 14.0, 14.0, 14.6, 9.80, 6.47, 14.5, 15.6, 34.3, 14.0};
+        constexpr double kLhv[] = {42.2e6, 42.2e6, 42.2e6, 44.0e6, 29.3e6, 19.9e6, 42.5e6, 46.35e6, 120.0e6, 42.2e6};
 
         // sim/core/cylinder.fm's gammaAt: the physical cylinder (conserve 1) Gatowski's with the lean term on the
         // cylinder's phi (a diesel's: phi x its burned share); the reference's otherwise. (u(T) is tabulated by phi to
@@ -197,7 +197,7 @@ namespace tee::balance
             const int i = p.specIndex(path);
             return i < 0 ? std::nan("") : p.spec(std::size_t(i));
         };
-        const int grade = std::clamp(int(spec("fuel.grade")), 0, 8);
+        const int grade = std::clamp(int(spec("fuel.grade")), 0, 9);
 
         // the warm engine, and the heat settles tee-dyno makes
         auto warm = [&] {

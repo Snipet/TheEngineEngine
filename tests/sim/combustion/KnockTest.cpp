@@ -203,6 +203,68 @@ TEST_CASE("H2: the knock limit at a known operating point", "[h][combustion][kno
     CHECK(limitE85 > limit + 5.0);
 }
 
+// The 93 grade (card N1, 25 Nov: the owner's "Fuel controls for octane"): appended last, RON 98 / MON 88 against the
+// 91's 96 / 86. At the trace's knock edge it takes more advance than the 91, by Douaud and Eyzat's own exponent and the
+// table's own rows (the octane read from fuels.fm, not typed here), and less than the race fuel's; its other rows are
+// the 91's
+TEST_CASE("H2: the 93 grade takes more advance than the 91 at the knock edge, less than race fuel", "[h][combustion][knock]")
+{
+    Fm fm = trace();
+    const int premium = 2, race = 3, premium93 = 9;
+    REQUIRE(fm.call<float>("Trace::row", premium93, 3) > fm.call<float>("Trace::row", premium, 3));
+    for (int what = 0; what < 3; ++what)
+        CHECK(fm.call<float>("Trace::row", premium93, what) == fm.call<float>("Trace::row", premium, what));
+    auto edge = [&](int kind) {
+        fm.call<void>("Trace::defaults");
+        fm.set("octane", static_cast<double>(fm.call<float>("Trace::row", kind, 3)));
+        return static_cast<double>(fm.call<float>("Trace::limitAdvance"));
+    };
+    const double a91 = edge(premium), a93 = edge(premium93), aRace = edge(race);
+    WARN("knock-limited advance at the trace's case: 91 " << a91 << ", 93 " << a93 << ", race " << aRace);
+    CHECK(a93 > a91);
+    CHECK(a93 < aRace);
+}
+
+// The free octane number (spec.fuel.octane, the pump's AKI; the owner's ask, the lead's design, card N1 25 Nov): 0
+// is the grade's own to the bit; the grade's own AKI stated is its own RON; more octane takes more advance at the knock
+// edge, monotonically; a number past Douaud and Eyzat's fit (RON 80 to 100) is accepted, not clamped, and said
+TEST_CASE("H2: a stated octane: 0 and the grade's own AKI are the grade's, more takes more advance, past the fit is said",
+          "[h][combustion][knock]")
+{
+    Fm fm = trace();
+    for (int kind = 0; kind < 10; ++kind)
+    {
+        if (kind == 6)
+            continue;   // (the diesel ignores it)
+        INFO("grade " << kind);
+        const float own = fm.call<float>("Trace::row", kind, 3);
+        CHECK(fm.call<float>("Trace::octaneAt", kind, 0.0f) == own);   // 0: the grade's own, to the bit
+        // its own AKI stated: its own RON (the table's RON and MON are whole numbers, so exactly)
+        CHECK(fm.call<int>("Trace::octanePast", kind, 0.0f) == 0);
+    }
+    // the 91 (RON 96, MON 86): its AKI 91 is its own index, 93 is the 93's (98), 87 the regular's (91)... by sensitivity
+    CHECK(fm.call<float>("Trace::octaneAt", 2, 91.0f) == fm.call<float>("Trace::row", 2, 3));
+    CHECK(fm.call<float>("Trace::octaneAt", 9, 93.0f) == fm.call<float>("Trace::row", 9, 3));
+    CHECK(fm.call<float>("Trace::octaneAt", 0, 87.0f) == fm.call<float>("Trace::row", 0, 3));
+    CHECK(fm.call<float>("Trace::octaneAt", 6, 95.0f) == fm.call<float>("Trace::row", 6, 3));   // the diesel ignores it
+    // more octane, more advance at the knock edge, monotonically (the 91's grade, AKI 85 to 105)
+    double last = -1.0e9;
+    for (float aki = 85.0f; aki <= 105.0f; aki += 2.5f)
+    {
+        fm.call<void>("Trace::defaults");
+        fm.set("octane", static_cast<double>(fm.call<float>("Trace::octaneAt", 2, aki)));
+        const double a = fm.call<float>("Trace::limitAdvance");
+        INFO("AKI " << aki << ": knock-limited advance " << a);
+        CHECK(a > last);
+        last = a;
+    }
+    // past the fit: accepted (not clamped: its index still rises with it) and said; inside it not
+    CHECK(fm.call<int>("Trace::octanePast", 2, 91.0f) == 0);
+    CHECK(fm.call<int>("Trace::octanePast", 2, 100.0f) == 1);   // RON 105
+    CHECK(fm.call<int>("Trace::octanePast", 2, 70.0f) == 1);    // RON 75
+    CHECK(fm.call<float>("Trace::octaneAt", 2, 110.0f) > fm.call<float>("Trace::octaneAt", 2, 100.0f));
+}
+
 TEST_CASE("H2: what a tick of the end gas's integral costs", "[h][combustion][knock][cost]")
 {
     Fm fm = trace();
