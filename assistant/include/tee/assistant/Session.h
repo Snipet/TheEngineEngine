@@ -15,11 +15,14 @@
 #pragma once
 
 #include "tee/assistant/Cards.h"
+#include "tee/assistant/Chat.h"
+#include "tee/assistant/KeyStore.h"
 #include "tee/assistant/Inbox.h"
 #include "tee/assistant/McpLink.h"
 #include "tee/assistant/Tools.h"
 
 #include <atomic>
+#include <mutex>
 #include <memory>
 #include <string>
 
@@ -66,6 +69,16 @@ namespace tee::assistant
         Tools& tools() noexcept { return *tools_; }
         Drivers& drivers() noexcept { return drivers_; }
 
+        // The key chat (A3): the port its panel (assistant/view/ChatView.h) is mounted on. Its transport is the
+        // platform's (libcurl), its key the system's store's; where either is missing it says why (ChatPort::ready).
+        ChatPort& chat() noexcept { return *chat_; }
+        // The key dialog's (U1's): a key as typed, checked and saved in the system's store (false, with why: nothing
+        // changed); the saved one's mask ("saved, ending ...abcd"); the key removed. The key is read from the store once
+        // and held in memory after, so the panel never waits on the store while it draws.
+        bool saveKey(std::string typed, std::string& why);
+        std::string keyMask();
+        bool removeKey(std::string& why);
+
         // Every worker stopped (their calls cancelled and waited for), then the inbox closed. Idempotent.
         void stop();
 
@@ -75,6 +88,14 @@ namespace tee::assistant
         Cards cards_;
         std::unique_ptr<Tools> tools_;
         std::unique_ptr<McpLink> link_;
+        std::unique_ptr<Transport> transport_;
+        std::unique_ptr<KeyStore> keys_;
+        std::string transportWhy_, keysWhy_;
+        mutable std::mutex keyMutex_;
+        std::string key_;
+        bool keyRead_ = false;
+        std::string currentKey();
+        std::unique_ptr<Chat> chat_;
         bool stopped_ = false;
         std::atomic<bool> appBusy_{false};
     };

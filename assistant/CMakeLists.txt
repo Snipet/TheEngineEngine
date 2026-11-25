@@ -107,6 +107,16 @@ if(NOT WIN32)
   add_custom_target(tee-mcpb ALL DEPENDS "${CMAKE_BINARY_DIR}/TheEngineEngine.mcpb")
 endif()
 
+# The chat's panel (view/): one FunkGui item over ChatPort, on the interface kit (ui/kit/gui: Items, Scroll, Style),
+# with TestingPlayground's chat markdown ported (view/SEED.tsv). Built where the kit is; the frame mounts it (U1's).
+if(TARGET tee_ui_kit)
+  add_library(tee_assistant_view STATIC view/ChatView.cpp view/ChatView.h view/Markdown.cpp view/Markdown.h)
+  add_library(Tee::assistant_view ALIAS tee_assistant_view)
+  tee_target_defaults(tee_assistant_view)
+  target_include_directories(tee_assistant_view PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/view")
+  target_link_libraries(tee_assistant_view PUBLIC Tee::assistant tee_ui_kit)
+endif()
+
 if(TEE_BUILD_TESTS)
   add_subdirectory("${PROJECT_SOURCE_DIR}/tests/assistant" "${CMAKE_CURRENT_BINARY_DIR}/tests")
 endif()
