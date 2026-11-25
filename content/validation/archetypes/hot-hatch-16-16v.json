@@ -232,6 +232,23 @@
       "basis": "recalled"
     },
     {
+      "name": "Idle manifold pressure",
+      "scenario": "validation/scenarios/p-idle-warm.json",
+      "tel": "intake.manifold",
+      "measure": "mean",
+      "during": [
+        8,
+        14
+      ],
+      "range": [
+        43000.0,
+        54000.0
+      ],
+      "unit": "Pa",
+      "source": "the 4A-GE's service specification, 400 mmHg (15.75 in Hg) vacuum at 800 rpm, about 48 kPa absolute, as quoted in an aeu86.org forum post from Toyota's 1987 repair manual (the manual not read; the post also writes it 53.5 kPa absolute): 43 to 54 spans both readings and 5 kPa (judgement)",
+      "basis": "recalled"
+    },
+    {
       "name": "Idle steadiness",
       "scenario": "validation/scenarios/p-idle-warm.json",
       "tel": "engine.speed",

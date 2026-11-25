@@ -232,6 +232,23 @@
       "basis": "recalled"
     },
     {
+      "name": "Idle manifold pressure",
+      "scenario": "validation/scenarios/p-idle-warm.json",
+      "tel": "intake.manifold",
+      "measure": "mean",
+      "during": [
+        8,
+        14
+      ],
+      "range": [
+        30000.0,
+        44000.0
+      ],
+      "unit": "Pa",
+      "source": "MOTOR magazine, Vacuum Gauge & Transducer Testing (July 2006): \"On a normal engine, normal idle vacuum should be a steady reading between 17 and 21 in./Hg\" (warm), 30 to 44 kPa absolute at 101.3 kPa; the class figure, the engine's own not found; the S54 has no manifold sensor (BMW ST041), a forum's 21 in Hg (30 kPa) second-hand",
+      "basis": "recalled"
+    },
+    {
       "name": "Idle steadiness",
       "scenario": "validation/scenarios/p-idle-warm.json",
       "tel": "engine.speed",

@@ -34,6 +34,7 @@ BASIS = {
     "Port gas, mass mean (information)": "judgement",
     "Quarter mile: time": "recalled",
     "Torque at 1500 rpm": "cited", "Torque at 1800 rpm": "cited", "Torque at 2500 rpm": "cited",
+    "Idle manifold pressure": "recalled",
     "Torque at 4000 rpm": "cited", "Torque at 6200 rpm": "cited", "Quarter mile: trap speed": "recalled", "Top speed": "judgement",
 }
 # builds with a part fitted to their own rows (the lead's list, 20:46): their power, torque, speed, VE and boost rows
@@ -88,6 +89,26 @@ CITED = {
                          "920243 (the EA888 gen 3: 82.5 x 92.8 mm, 9.6:1)",
     "rotary-twin-na-side-port": "newsroom.mazda.com 2003 release (184 kW at 8500, 216 N m at 5500); "
                                 "en.wikipedia.org/wiki/Mazda_RX-8 (US 173 kW at 8250, 216 N m at 5500)",
+}
+
+# idle manifold pressure, warm (the lead, 01:46: the total trapped mass at idle; targets, nothing tuned to them), kPa
+# absolute (low, high, basis, source); docs/measurements/2026-11-25-0032-judgement-sources.md section 10
+_MOTOR = ("MOTOR magazine, Vacuum Gauge & Transducer Testing (July 2006): \"On a normal engine, normal idle vacuum "
+          "should be a steady reading between 17 and 21 in./Hg\" (warm), 30 to 44 kPa absolute at 101.3 kPa; the "
+          "class figure, the engine's own not found")
+IDLE_MAP = {
+    "economy-four-15": (20, 34, "cited", "Honda's L15 ECM/PCM data table: \"At idle speed: about 20-34 kPa (150-260 "
+                        "mmHg, 6-10 in.Hg)\", warm, in neutral or park, A/C and accessories off, 750 rpm (the L15A1/A6 "
+                        "page): the same class's engine"),
+    "hot-hatch-16-16v": (43, 54, "recalled", "the 4A-GE's service specification, 400 mmHg (15.75 in Hg) vacuum at 800 rpm, "
+                         "about 48 kPa absolute, as quoted in an aeu86.org forum post from Toyota's 1987 repair manual "
+                         "(the manual not read; the post also writes it 53.5 kPa absolute): 43 to 54 spans both readings "
+                         "and 5 kPa (judgement)"),
+    "big-bore-70-pushrod-v8": (30, 44, "recalled", _MOTOR + "; a stock LS7 at 38 kPa (an HP Tuners forum post) inside it"),
+    "straight-six-32-high-rev": (30, 44, "recalled", _MOTOR + "; the S54 has no manifold sensor (BMW ST041), a forum's "
+                                 "21 in Hg (30 kPa) second-hand"),
+    "v10-52": (30, 44, "recalled", _MOTOR),
+    "v12-65": (30, 44, "recalled", _MOTOR),
 }
 
 # slug: published peak power (kW range, rpm range), torque (N m range, rpm range), warm idle (rpm range),
@@ -192,6 +213,8 @@ def targets(slug, b):
             k["basis"] = "cited" if name.startswith("Invariant") else BASIS[name]
         # a row its build was fitted to is judgement, whatever its source (the lead, 20:52: so the cited count is not
         # flattered while the part is replaced)
+        if name == "Idle manifold pressure":
+            k["basis"] = IDLE_MAP[slug][2]
         if slug in FITTED and name in FITTED_ROWS:
             k["basis"] = "judgement"
             k["source"] = k["source"] + "; JUDGEMENT here: " + FITTED[slug]
@@ -263,6 +286,10 @@ def targets(slug, b):
         range=[round(ilo * RPM, 1), round(ihi * RPM, 1)], unit="rad/s",
         source="makers' service specifications of the kind: %d to %d rpm warm in neutral (a rule of thumb, firm to "
                "100 rpm); the ECU is asked for %d" % (ilo, ihi, round(s["ecu"]["idle"]["speed"] / RPM)))
+    if slug in IDLE_MAP:
+        lo, hi, _, msrc = IDLE_MAP[slug]
+        add(name="Idle manifold pressure", scenario=SC + "p-idle-warm.json", tel="intake.manifold", measure="mean",
+            during=[8, 14], range=[lo * 1000.0, hi * 1000.0], unit="Pa", source=msrc)
     # its spread as two targets, its highest and its lowest point about the speed asked, so a hunt cannot pass on its
     # mean (the lead, 19:50: the 7.0's idle between 497 and 929 rpm passed its mean and its old max of the range's top
     # plus 150 rpm)
