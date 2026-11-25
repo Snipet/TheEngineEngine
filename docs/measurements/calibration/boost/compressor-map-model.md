@@ -228,3 +228,29 @@ the case's 1.55; LayoutTest); the wastegate loop's overshoot where the turbo fir
 3500 rpm: 129 kPa at 3 s, 100 only after some 8 s; TurboTest); a sequential pair cycling at its join (the rotary at
 4250: 26 to 106 kPa; GateTest, new). F's "variable vanes make boost at low speed", marked since the closed exhaust,
 now passes; the diesel tier's TurboTest:118 (the big single over 30 kPa) and BrakeTest:213 pass.
+
+## first.json with the IS20's wheels (P's figures; prediction written before the run)
+
+Stated: compInducer 0.0425, compExducer 0.054, turbWheel 0.050 (rebuilders, about +-1 mm); A/R left matched. The
+matching now builds a 46.4 mm inducer: the IS20's area is 16 % smaller, its exducer 54 against some 62.6 mm, its
+turbine wheel 50 against some 56 mm (the rotor's inertia about half). **Prediction**: the low end a little better (a
+lighter rotor and a wheel nearer its own flow: 1500 / 1800 rpm some 220 / 245 N m against 216 / 237), the target still
+reached at 2500 (about 385), 4000 within 2 % (365), and the top lower, the compressor nearer its choke at 6200 (some
+270 against 288). Nothing is sized from the maker's 350.
+
+**Measured** (the same sweep, `--set` on the build, first.json itself unchanged; N m / charge kPa g / compressor eta /
+shaft krpm):
+
+| rpm | matched (46.4 mm) | the IS20's wheels | predicted |
+|---|---|---|---|
+| 1500 | 216 / 16 / .44 / 52 | **232** / 22 / .49 / 71 | ~220 |
+| 1800 | 237 / 25 / .48 / 65 | **270** / 41 / .54 / 95 | ~245 |
+| 2500 | 385 / 124 / .64 / 124 | 388 / 123 / .69 / 144 | ~385 |
+| 3000 | 351 / 122 / .66 / 123 | 362 / 122 / .71 / 145 | |
+| 4000 | 365 / 124 / .73 / 126 | 364 / 126 / .74 / 153 | ~365 |
+| 5000 | 340 / 116 / .75 / 127 | 340 / 115 / .75 / 156 | |
+| 6200 | 288 / 88 / .76 / 120 | 288 / 88 / .74 / 153 | ~270 |
+
+The prediction was **wrong at both ends**: the low end gains more (+7 % and +14 % against +2 and +3 %), and the top
+does not fall (288 either way; the IS20's compressor at 6200 still at 0.74, its tip 432 m/s, short of choke). The
+maker's 350 from 1500 is still not reached at 1500 to 1800 (232 / 270): the spool there is the turbine's matter.
