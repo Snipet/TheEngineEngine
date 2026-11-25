@@ -994,6 +994,14 @@ Rows hook in one push; the lead collects a "holding" from every pusher before na
 D2 (the combined diesel package), then B2; B (`wholeBuilds` 4561f81e and the probe); the steward (2fc03a65: every
 push since a16dc1f0 has started a soak); C; card A (9833352).
 
+## Open, after the bake: the mechanical voices' cost on first.json (M, 25 Nov 20:10)
+
+`tee-bench --engine --scenarios free-revs` on first.json with the fan forced on: voices.model 1 at 3054 ns a 96 kHz
+sample against 2722 with voices.model 0, 0.24 R (simulator / reference 2.004 against 1.766), against the voices'
+budget of 0.08 R (measured 0.06 to 0.07 R on the V8 when the package landed). Not the fan's tone (that is some
++0.025 R while the fan runs, FanVoice 32 to 71 ns). One machine, one run of three repeats; its run-to-run spread is
+some 0.04 R. M profiles where it goes after the bake (`tee-bench --profile --engine`), before proposing anything.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
 - **25 Nov 18:37: `main` HAS MOVED to 43006034.** The window is OPEN for the items below and nothing else. Rule:
