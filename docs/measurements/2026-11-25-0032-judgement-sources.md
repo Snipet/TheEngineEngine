@@ -99,3 +99,20 @@ Our cards' second duration sits 13 to 16 crank deg a side inside the seat's on e
 
 **Class rule** (written before any table; basis judgement within cited brackets): the 0.15 to 1 mm step lies inside Kelford's 0.10 to 1 mm (medians 20 and 21) and is no less than Kent's 0.25 to 1 mm (13 to 21.5). **Bucket 18 deg a side; finger follower and rocker 19 deg a side**; the seat timing kept, the 1 mm duration = seat − 2 × step. **Pushrod:** no source gives valve-lift 0.15 and 1 mm; the four pushrod cards carry a 0.050 in tappet figure (about 2 mm at the valve) in the 1 mm field, so their 1 mm duration is **too short**, not too long: judgement 20 a side for hydraulic tappets (inside the cited 22 to 31 from the larger 0.006 to 0.050 in span), taking the seat as stated. 
 **Archetypes with a source of their own:** the turbo four's exhaust (180 and 215 at 1 mm, Q, SSP 922903; seat by the rule, 218 and 253); the two-stage's B stage seat (280/278, aggregator); the 454's @0.050 in (213/217, its seat a forum post); the L48's (from memory). Every other card, and every missing figure of these, takes the class rule.
+
+## 9. Warm-idle fuel rates by engine size (N1's ask for the lead, 25 Nov 01:37 UTC)
+
+Q quoted, F read off a figure, D derived. Measured, light-duty, accessories off where stated:
+
+| Vehicle, engine | Idle fuel | Basis | Conditions | Source |
+|---|---|---|---|---|
+| Ford Focus, 2.0 L petrol | 0.16 gal/h (0.61 L/h) "no load"; 0.29 with load | Q | dyno (APRF); "no load" = no AC or fans per DOE Fact #861; gear, rpm, warmth not stated | Argonne Idling Reduction Savings Calculator, reverse table (ANL 1: Stutenberg & Lohse-Busch 2012); ORNL/TM-2016/224 pp. 25-27 |
+| VW Jetta, 2.0 L diesel | 0.17 gal/h no load; 0.39 with load | Q | as above | same |
+| Ford Crown Victoria, 4.6 L V8 | 0.39 gal/h (1.48 L/h) no load; 0.59 with load | Q | as above | same (ANL 2: Rask et al. 2013, not found) |
+| 2011 Ford Fusion, 2.5 L I4 | 0.279 cc/s = 1.00 L/h | Q (D in L/h) | warm (after catalyst light-off), 21 °C, flow meter; AC and gear not stated | Gaines, Rask & Keller, "Which Is Greener", Table 1 (afdc.energy.gov) |
+| Lancia Ypsilon, 1.24 L I4 NA | 0.60 L/h | F | +25 °C, coolant 85-95 °C, "heating, air conditioning, lighting etc. were off", minimum idle | Adamski & Polak, Combustion Engines 2017 169(2) Fig. 8 |
+| Fiat Doblo, 1.6 L turbodiesel | 0.58 L/h | F | as above, coolant only 60-70 °C | same |
+| 2009 Ford Explorer, 4.0 L V6 | about 0.36 gal/h AC off | D (from "~0.2 gal/h ... a 55% increase") | dyno | ORNL/TM-2016/275 (SAE 2013-01-0551) |
+| 2009 Toyota Corolla, 1.8 L I4 | about 0.22 gal/h AC off | D (from "~0.13 gal/h ... 60% increase") | dyno | same |
+
+**Fitted lines, not measurements:** Argonne's light-duty worksheet, 1 to 5 L: 0.16, 0.32, 0.48, 0.63, 0.79 gal/h "no accessories" (Q), no data basis stated; it is NRCan's "0.6 litres/hr per litre of engine displacement" (Q; Taylor 2003, not found) to the rounding. Argonne's own measured range: "0.2 to 0.5 gal/h for passenger vehicles across a range of sizes, and increased with idling speed" (Q). **The line over-predicts every measured warm idle above 2 L by 25 to 45 %**, and the measured rates grow less than in proportion to displacement. No source states neutral or park; none gives the idle speed.

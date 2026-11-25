@@ -37,6 +37,27 @@
 
 ## Landed
 
+- **01:49 (25 Nov) the lead's check-in; `main` stays at 09c1fb4e; fc554da is green on Linux and macOS.** Run
+  45525224026 at fc554da: 541 of 541 on both, the first green on a commit holding all ten of tonight's fixes (the
+  steward's report; the lead's first gate). **Main waits one commit more**: the app's wiring of C's bake changes. C:
+  the bake yields between points while the ribbon's predictor is busy (648e7fca; a curve in 1.05 s with a bake running
+  against 0.94 alone, where it waited about 30 s), a cache across launches by key (7f2ddfa1), progress and the cells
+  still knocking served, and the yield holds the predictor's shared busy flag, not a pointer (314e029e). B: the cache
+  folder passed (169a729a: `~/Library/Caches/TheEngineEngine/bakes` on macOS; a machine's run only with
+  `TEE_CACHE_DIR`). Outstanding: U1's `ServiceBake::yieldTo(const ServiceDyno&)`, then B's call. U1: the stage in the
+  top bar on every workspace (e8ab7047); applying a bake on a running engine does not click (53ca2fcf): nothing at
+  idle, a 0.3 s change of note at 3000 rpm light load because the cam bake has no part-load rows (in the queue).
+  *The residual at idle* moved four steps in half an hour, all measurements (the queue has the whole of it): the fresh
+  charge is right (N1), the drive is honest (D), the overlaps are ordinary so everything passes under 1 mm of lift
+  (N1; the lead's "too much overlap in the cards" withdrawn), and the passage there was 0.73 of the head-diameter
+  curtain, more than the seat's frustum holds. **Ruled: N1 commits the frustum's geometry** (`valve.model` 1; seat
+  widths and the 0.8 coefficient as constants marked judgement; no Spec field until a cited seat exists): shares
+  0.399 to 0.347 (V10), 0.488 to 0.445 (V12), 0.463 to 0.406 (hot hatch), economy four level. The yardstick becomes
+  each real engine's idle manifold pressure (P collecting). *Content*: the 7.0 on the LS7's own card (68c7c879; basis
+  search snippets, not read): share 0.476 to 0.396, full load within 2 % of K's. The IS20's wheels at rebuilders'
+  basis (dfbd36cc): compressor 42.5 / 54.0 mm, turbine 50.4 / 41.8; N2 to set the matched wheel beside them. *N2*:
+  nothing committed; measuring where the model really surges (see 01:35).
+
 - **01:35 (25 Nov) a correction to 01:30, and what `main` now waits for.** *The lead's acceptance of the map's surge
   line may have been of the wrong line*: N2 says the model goes unstable wherever a speed line rises with flow, which
   is everything left of the knee `phiK`, while the figures checked (0.24 / 0.29 / 0.36 / 0.44 of choke) may be the

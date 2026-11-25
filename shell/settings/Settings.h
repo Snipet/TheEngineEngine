@@ -56,6 +56,10 @@ namespace tee::settings
     // The folder the file lives in (it may not exist yet), and the file.
     std::filesystem::path directory();
     std::filesystem::path file();
+    // The folder for what can be made again and is kept to save time (the calibration bakes): TEE_CACHE_DIR, else the
+    // platform's cache folder (%LOCALAPPDATA%, ~/Library/Caches, $XDG_CACHE_HOME or ~/.cache) / TheEngineEngine. It
+    // may not exist yet.
+    std::filesystem::path cacheDirectory();
 
     struct Loaded
     {

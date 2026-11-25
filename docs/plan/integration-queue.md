@@ -322,3 +322,36 @@ M's four (docs/models/voices.md, "Levels at idle"): the pump's prime at key-on a
 DI tick against Port; the belt at +12 against 0. And: whether a shift on the reference's burn with ecu.model on
 should cut half its firings instead of all (the steward's option 2); whether the key-on prime should be plainly
 heard. Asked together once the fixes are in `main`.
+
+## Open: the residual at idle, N3-16, as it stands (lead, 25 Nov 01:49)
+
+Warm-idle burned shares 0.40 (V10), 0.49 (V12), 0.46 (hot hatch), 0.48 (7.0; 0.40 on the LS7's own card) against 0.17
+on the economy four. What has been measured, each a document and no fit:
+
+- **The fresh charge is right** (N1): the idles burn 0.33 to 0.45 L/h per litre; P's 496ee41a holds the published
+  rates.
+- **The drive is honest** (D, `docs/measurements/calibration/na/overlap-drivers.md`): the overlap flow is what the
+  steady pressures give; the primary's pulse carries at most 4 % of it; nothing is counted twice; with no overlap flow
+  every share would be 0.15 to 0.17.
+- **The overlaps are ordinary** (N1): 24 to 39 degrees at the seat, -4 to +6 at 1 mm, every phaser parked at its
+  least-overlap end. So all of the overlap flow passes at lifts under about 1 mm. The lead's "the cards have too much
+  overlap" was wrong and is withdrawn.
+- **Reverse flow alone cannot carry it** (N1, `reverse-flow-sizing.md`): the measured band of one small engine needs
+  the reverse flow at 0.2 to 0.3 of forward.
+- **The cam cards' flanks by class** (P's af2debe5, for table L): 0.02 to 0.04.
+- **The passage below 1 mm** (N1, ruled to commit under `valve.model` 1): the frustum normal to the seat faces, on
+  judged seat widths, with a judged coefficient of 0.8, in place of 0.73 of the head-diameter curtain (unsourced, and
+  more than the passage holds): 0.04 to 0.06 of share, idle manifolds 5 to 9 kPa lower on the big cams, the
+  economy four level, full load up to +8 % in the V12's mid-range.
+
+**The yardstick changes**: the 0.20 to 0.27 of one small engine may not be these engines' band. Idle manifold
+pressure is the total trapped mass and every service manual gives it; P is collecting the real engines' (the
+model's: 40.3 V10, 54.7 V12, 53.3 hot hatch, 48.4 the 3.2, 38.9 the 7.0 on its card, 29.6 economy four, before the
+passage change). They become idle targets with their basis; nothing is tuned to them.
+
+## Open: the cam bake's part-load rows (U1's measurement, 25 Nov 01:43)
+
+The intake cam's bake measures full load and parks the cam below 0.75 of ambient manifold. At 3000 rpm and light load
+the auto rule asked 13.6 degrees where the baked table asks 0, so when a bake goes into use on a running engine the
+note changes over 0.3 s (the phaser's own slew; no click; nothing audible at idle). Whether part load takes the auto
+rule's value, or is measured (on what criterion: fuel, not torque), is not decided. C's and N1's, after table L.
