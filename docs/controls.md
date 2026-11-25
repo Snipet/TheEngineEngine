@@ -1,6 +1,6 @@
 # Controls
 
-*What drives the engine in TheEngineEngine, as built (shell/input/). A wheel and pedals are not read yet.*
+*What drives the engine in TheEngineEngine, as built (shell/input/). A Logitech G29 is read on macOS and Linux (below).*
 
 Everything below ends in one `ControlsFrame` a frame (shell/include/tee/app/Sources.h), which is all the engine
 sees: the keys, a gamepad and the Panel's own controls are merged, and for each pedal the largest wins.
@@ -115,12 +115,12 @@ and **Linux** (the kernel's own driver, hid-lg4ff) with no software of Logitech'
 | On the wheel | What it does |
 |---|---|
 | Throttle, brake, clutch pedals | The pedals: each is the larger of the wheel's and the keys' or a gamepad's (its first 1 % of travel reads released). |
-| Right paddle / left paddle | Shift up / shift down (a press each). |
+| Right paddle / left paddle | Shift up / shift down (a press each), by default. |
 | The shifter | The gate it is in: with the automatic clutch off, the H-pattern lever itself (the clutch pedal is yours); with it on, the gear is sought through the gearbox's own shifts, as a gear key does (a sequential or an automatic box too). Out of every gate: neutral. |
-| PS button | The start key, held as long as it is held (a press starts a stopped engine; held on a running one, off). |
+| PS button | By default, the start key, held as long as it is held (a press starts a stopped engine; held on a running one, off). |
 | The steering | Read but not driven: the car runs in a straight line. |
 | Its five shift lights | The DRIVE view's own count (the same five steps below the redline), all five flashing on the limiter. |
-| Other buttons | Nothing yet (a learn mode comes later). |
+| Other buttons | Nothing until one is bound (below). |
 
 **On and off:** the settings page's WHEEL row (on macOS and Linux; its status line under it), or F9, "Read the racing wheel
 (Logitech G29)": on by default, kept in the settings file (`wheelOn`). Off,
@@ -141,8 +141,17 @@ lights stay dark (the status line says so). A rule that gives them to you, in `/
 
 `evtest` (its own package) shows what the wheel sends there; `tee-wheel-dump` is macOS's.
 
+**The buttons can be moved.** F9, "Wheel buttons": choose an action (start, shift up, shift down, neutral, handbrake,
+splitter, range, engine brake), then press the wheel's button for it within 10 s ("wheel: press the button for ...";
+a button already held counts once it is let go and pressed again). The button takes that action from any button that
+had it and loses whatever it did before; the status line says the new binding, and while it listens the buttons drive
+nothing. "The defaults" puts back the paddles and PS. The bindings are kept in the settings file (`wheelButtons`, as
+`4=shiftup,5=shiftdown,17=start`: a button's bit, the table of `shell/input/g29/G29.h`, and an action's name); a pair it
+cannot read is left out with a line on the console. The pedals, the steering and the shifter are fixed by the wheel's
+table, not bound.
+
 **Not yet:** Windows (no wheel read; SDL 3.4's own HIDAPI Logitech driver, `SDL_hidapi_lg4ff`, is the likely route, off
-by default there), a learn mode, force effects beyond the spring. A G29 is never opened as a gamepad (SDL's Logitech driver is turned off, so it
+by default there), force effects beyond the spring. A G29 is never opened as a gamepad (SDL's Logitech driver is turned off, so it
 cannot reset the spring).
 
 **To see what the wheel sends** (macOS): `tee-wheel-dump` beside the application (`build-release/bin/tee-wheel-dump`)

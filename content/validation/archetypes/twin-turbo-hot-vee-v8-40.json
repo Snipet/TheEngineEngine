@@ -168,7 +168,7 @@
           630.3,
           697.9
         ],
-        "settle": 5,
+        "settle": 20,
         "measure": 1
       },
       "measure": "maxPower",
@@ -194,7 +194,7 @@
           630.3,
           697.9
         ],
-        "settle": 5,
+        "settle": 20,
         "measure": 1
       },
       "measure": "speedAtMaxPower",
@@ -220,7 +220,7 @@
           630.3,
           697.9
         ],
-        "settle": 5,
+        "settle": 20,
         "measure": 1
       },
       "measure": "maxTorque",
@@ -246,7 +246,7 @@
           630.3,
           697.9
         ],
-        "settle": 5,
+        "settle": 20,
         "measure": 1
       },
       "measure": "speedAtMaxTorque",
@@ -311,12 +311,12 @@
     },
     {
       "name": "Boost at its target",
-      "scenario": "validation/scenarios/p-full-load-5000.json",
+      "scenario": "validation/scenarios/p-full-load-5000-long.json",
       "tel": "boost.pressure",
       "measure": "mean",
       "during": [
-        8,
-        10
+        30,
+        60
       ],
       "range": [
         105000.0,
@@ -328,12 +328,12 @@
     },
     {
       "name": "Charge temperature under boost",
-      "scenario": "validation/scenarios/p-full-load-5000.json",
+      "scenario": "validation/scenarios/p-full-load-5000-long.json",
       "tel": "boost.throttleIn",
       "measure": "mean",
       "during": [
-        8,
-        10
+        30,
+        60
       ],
       "range": [
         293,
@@ -345,12 +345,12 @@
     },
     {
       "name": "Lambda at full load under boost",
-      "scenario": "validation/scenarios/p-full-load-5000.json",
+      "scenario": "validation/scenarios/p-full-load-5000-long.json",
       "tel": "ecu.lambda",
       "measure": "mean",
       "during": [
-        8,
-        10
+        30,
+        60
       ],
       "range": [
         0.76,
@@ -362,12 +362,12 @@
     },
     {
       "name": "Port gas at full load",
-      "scenario": "validation/scenarios/p-full-load-5000.json",
+      "scenario": "validation/scenarios/p-full-load-5000-long.json",
       "tel": "exhaust.portThermocouple",
       "measure": "mean",
       "during": [
-        8,
-        10
+        30,
+        60
       ],
       "range": [
         1100,
@@ -379,12 +379,12 @@
     },
     {
       "name": "Header gas at full load",
-      "scenario": "validation/scenarios/p-full-load-5000.json",
+      "scenario": "validation/scenarios/p-full-load-5000-long.json",
       "tel": "exhaust.headerThermocouple",
       "measure": "mean",
       "during": [
-        8,
-        10
+        30,
+        60
       ],
       "range": [
         900,
@@ -396,12 +396,12 @@
     },
     {
       "name": "Port gas, mass mean (information)",
-      "scenario": "validation/scenarios/p-full-load-5000.json",
+      "scenario": "validation/scenarios/p-full-load-5000-long.json",
       "tel": "exhaust.portTemperature",
       "measure": "mean",
       "during": [
-        8,
-        10
+        30,
+        60
       ],
       "range": [
         0,

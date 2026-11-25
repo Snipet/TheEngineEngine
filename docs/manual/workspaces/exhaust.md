@@ -70,8 +70,10 @@ and its name on a tag.
    engine does: listen from the exhaust camera before and after.
 4. **Heat.** Hold full throttle on the dyno for 10 to 15 seconds and watch the port gas temperature settle (the
    simulator takes about a second to warm it). Compare with idle.
-5. **Overrun.** Rev to the limiter and lift off. With Pops set above 0 on TUNE, look for the flame at the tails on a
-   graphics card and listen for pops; set Pops to 0 and repeat.
+5. **Overrun and bangs.** On a build with the Maps ECU, the default Bangs (Burned in the pipe) are silent on a fuel-cut
+   limiter and a stock lift-off. Set the limiter to Spark cut on TUNE (or Overrun fuel to 0.25), rev to the limiter
+   and lift off: listen for the bangs, and look for the flame at the tails on a graphics card. Then set Bangs to Carved
+   on EXHAUST and repeat. On the reference ECU, the Pops dial on TUNE fires the carved pops either way.
 
 ## A two-stroke's pipe
 

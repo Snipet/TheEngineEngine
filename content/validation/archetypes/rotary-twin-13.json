@@ -177,7 +177,7 @@
         210000
       ],
       "unit": "W",
-      "source": "published figures of its kind (makers' figures, firm to 10 % (variants differ)): the 13B-REW kind: 206 to 280 PS, the latter at 6500 rpm, some 294 N m at 5000; Wikipedia, makers' figures, firm to 10 %; 145 to 161 kW a litre",
+      "source": "published figures of its kind (makers' figures, firm to 10 % (variants differ)): the 13B-REW kind: 206 to 280 PS, the latter at 6500 rpm, some 294 N m at 5000; Wikipedia, makers' figures, firm to 10 %; 145 to 161 kW a litre; A KNOWN MISS above the 4500 rpm join, its cause measured (docs/measurements/calibration/boost/rotary-pair.md, N2's): the secondary turbine starved by the transfer valve in series with its nozzle, and the pair oversized for its match; the re-match (two HT-12s at 0.70 bar, an even split: sources section 23) is a later window's",
       "basis": "recalled"
     },
     {
@@ -203,7 +203,7 @@
         733.0
       ],
       "unit": "rad/s",
-      "source": "published figures of its kind (makers' figures, firm to 10 % (variants differ)): the 13B-REW kind: 206 to 280 PS, the latter at 6500 rpm, some 294 N m at 5000; Wikipedia, makers' figures, firm to 10 %: 6300 to 7000 rpm",
+      "source": "published figures of its kind (makers' figures, firm to 10 % (variants differ)): the 13B-REW kind: 206 to 280 PS, the latter at 6500 rpm, some 294 N m at 5000; Wikipedia, makers' figures, firm to 10 %: 6300 to 7000 rpm; A KNOWN MISS above the 4500 rpm join, its cause measured (docs/measurements/calibration/boost/rotary-pair.md, N2's): the secondary turbine starved by the transfer valve in series with its nozzle, and the pair oversized for its match; the re-match (two HT-12s at 0.70 bar, an even split: sources section 23) is a later window's",
       "basis": "recalled"
     },
     {
@@ -229,7 +229,7 @@
         315
       ],
       "unit": "N m",
-      "source": "published figures of its kind (makers' figures, firm to 10 % (variants differ)): the 13B-REW kind: 206 to 280 PS, the latter at 6500 rpm, some 294 N m at 5000; Wikipedia, makers' figures, firm to 10 %; BMEP 27.9 to 30.3 bar (a naturally aspirated petrol engine 10 to 13 bar, turbocharged 18 to 25, a modern truck diesel 20 to 25: Heywood, Internal Combustion Engine Fundamentals, ch. 2)",
+      "source": "published figures of its kind (makers' figures, firm to 10 % (variants differ)): the 13B-REW kind: 206 to 280 PS, the latter at 6500 rpm, some 294 N m at 5000; Wikipedia, makers' figures, firm to 10 %; BMEP 27.9 to 30.3 bar (a naturally aspirated petrol engine 10 to 13 bar, turbocharged 18 to 25, a modern truck diesel 20 to 25: Heywood, Internal Combustion Engine Fundamentals, ch. 2); A KNOWN MISS above the 4500 rpm join, its cause measured (docs/measurements/calibration/boost/rotary-pair.md, N2's): the secondary turbine starved by the transfer valve in series with its nozzle, and the pair oversized for its match; the re-match (two HT-12s at 0.70 bar, an even split: sources section 23) is a later window's",
       "basis": "recalled"
     },
     {
@@ -255,7 +255,7 @@
         576.0
       ],
       "unit": "rad/s",
-      "source": "published figures of its kind (makers' figures, firm to 10 % (variants differ)): the 13B-REW kind: 206 to 280 PS, the latter at 6500 rpm, some 294 N m at 5000; Wikipedia, makers' figures, firm to 10 %: 4500 to 5500 rpm (a turbocharged engine's plateau: its whole span)",
+      "source": "published figures of its kind (makers' figures, firm to 10 % (variants differ)): the 13B-REW kind: 206 to 280 PS, the latter at 6500 rpm, some 294 N m at 5000; Wikipedia, makers' figures, firm to 10 %: 4500 to 5500 rpm (a turbocharged engine's plateau: its whole span); A KNOWN MISS above the 4500 rpm join, its cause measured (docs/measurements/calibration/boost/rotary-pair.md, N2's): the secondary turbine starved by the transfer valve in series with its nozzle, and the pair oversized for its match; the re-match (two HT-12s at 0.70 bar, an even split: sources section 23) is a later window's",
       "basis": "recalled"
     },
     {
@@ -323,7 +323,7 @@
         85000.0
       ],
       "unit": "Pa over the air",
-      "source": "the build's own target (0.70 bar); a wastegate or vane loop holds a steady full load within some 0.1 bar of its target once spooled (makers' boost-control tolerances; judgement)",
+      "source": "the build's own target (0.70 bar); a wastegate or vane loop holds a steady full load within some 0.1 bar of its target once spooled (makers' boost-control tolerances; judgement); A KNOWN MISS above the 4500 rpm join, its cause measured (docs/measurements/calibration/boost/rotary-pair.md, N2's): the secondary turbine starved by the transfer valve in series with its nozzle, and the pair oversized for its match; the re-match (two HT-12s at 0.70 bar, an even split: sources section 23) is a later window's",
       "basis": "judgement"
     },
     {

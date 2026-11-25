@@ -4,7 +4,9 @@
 // frame's dialog asks the owner (U1's AppFrame::ask: "Load" or "Keep"), a click answers, and the document is loaded or
 // kept. Card A's assertions (25 Nov): LOAD loads the build asked for and leaves it clean; KEEP refuses with "said no"
 // and leaves the document exactly as it was; the frame going while the question is open answers no. No reply carries
-// a file's path. Each wait is bounded by the clock (10 s), not by a count of frames.
+// a file's path. Each wait ends on the state it waits for (the dialog open, or the call over: a reply with no question
+// is a fault, printed); kGuard only stops a hang, and at it the case prints what the call, the frame and the document
+// saw, so a red explains itself (the first macOS red, f1f60ab8: the dialog not open within the old 10 s, nothing said).
 #include "Engine.h"
 #include "Offline.h"
 #include "Options.h"
@@ -33,7 +35,7 @@ namespace fs = std::filesystem;
 namespace
 {
     using Clock = std::chrono::steady_clock;
-    constexpr std::chrono::seconds kBound{ 10 };
+    constexpr std::chrono::seconds kGuard{ 120 };   // a hang's stop, as the engine's own compile wait (Rig)
 
     bool clickOn(funkgui::HeadlessHost& host, const std::string& title)
     {
@@ -99,12 +101,45 @@ namespace
             const auto start = Clock::now();
             while (!done())
             {
-                if (Clock::now() - start > kBound)
+                if (Clock::now() - start > kGuard)
                     return false;
                 tick();
                 std::this_thread::sleep_for(std::chrono::milliseconds(5));
             }
             return true;
+        }
+
+        // A load over unsaved work, waited for until its question is open or the call is over. True: asked. False:
+        // `seen` says what each part saw (the call's reply, if any; the frame; the document; the engine; the time).
+        bool waitAsked(std::future<assistant::Result>& f, std::string& seen)
+        {
+            ui::AppFrame* fr = frame();
+            const auto start = Clock::now();
+            int frames = 0;
+            const auto over = [&] { return f.wait_for(std::chrono::seconds(0)) == std::future_status::ready; };
+            while (!fr->askOpen() && !over() && Clock::now() - start < kGuard)
+            {
+                tick();
+                ++frames;
+                std::this_thread::sleep_for(std::chrono::milliseconds(5));
+            }
+            if (fr->askOpen())
+                return true;
+            const double secs = std::chrono::duration<double>(Clock::now() - start).count();
+            seen = "no question after " + std::to_string(secs) + " s, " + std::to_string(frames) + " frames; the call: ";
+            if (over())
+            {
+                const assistant::Result r = f.get();
+                seen += std::string(r.isError ? "an error " : "a reply ") + r.value.dump();
+            }
+            else
+                seen += "still running";
+            seen += "; the frame: its ask dialog " + std::string(fr->askDialog() != nullptr ? "made" : "none")
+                    + (fr->keyDialogOpen() ? ", the key dialog open (a question waits behind it)" : "");
+            seen += "; the document: " + shown.document->file().stem().string()
+                    + (shown.document->dirty() ? ", unsaved changes" : ", clean");
+            seen += "; the engine: " + std::string(engine.sim->ready() ? "ready" : "compiling");
+            return false;
         }
 
         assistant::Result finish(std::future<assistant::Result>& f)
@@ -154,7 +189,12 @@ TEST_CASE("app: the assistant's load over unsaved work asks through the frame's 
     const fs::path fileBefore = doc.file();
     const std::uint64_t hashBefore = doc.build().hash();
     auto load = rig.call("load_build", { { "name", "v10" } });
-    REQUIRE(rig.tickUntil([&] { return f->askOpen(); }));
+    {
+        std::string seen;
+        const bool asked = rig.waitAsked(load, seen);
+        INFO(seen);
+        REQUIRE(asked);
+    }
     CHECK(f->askDialog()->question().rfind("Claude asks to load \"v10\"", 0) == 0);
     CHECK(f->askDialog()->question().find("unsaved changes") != std::string::npos);
     CHECK_FALSE(f->askDialog()->focusOnYes());
@@ -181,7 +221,12 @@ TEST_CASE("app: the assistant's load over unsaved work asks through the frame's 
     const fs::path keptFile = doc.file();
     const std::uint64_t keptHash = doc.build().hash();
     auto keep = rig.call("load_build", { { "name", "v8" } });
-    REQUIRE(rig.tickUntil([&] { return f->askOpen(); }));
+    {
+        std::string seen;
+        const bool asked = rig.waitAsked(keep, seen);
+        INFO(seen);
+        REQUIRE(asked);
+    }
     REQUIRE(clickOn(*rig.host, "Keep"));
     {
         const assistant::Result r = rig.finish(keep);
@@ -201,14 +246,19 @@ TEST_CASE("app: the assistant's load over unsaved work asks through the frame's 
     const fs::path file = doc.file();
     const std::uint64_t hash = doc.build().hash();
     auto ask = rig.call("load_build", { { "name", "v10" } });
-    REQUIRE(rig.tickUntil([&] { return f->askOpen(); }));
+    {
+        std::string seen;
+        const bool asked = rig.waitAsked(ask, seen);
+        INFO(seen);
+        REQUIRE(asked);
+    }
     // the frame goes (as the window closing makes it go): the Panel first, its asker cleared
     if (rig.shown.panelGoing)
         rig.shown.panelGoing();
     rig.host.reset();
     rig.shown.panel.reset();
     const auto start = Clock::now();
-    while (ask.wait_for(std::chrono::milliseconds(5)) != std::future_status::ready && Clock::now() - start < kBound)
+    while (ask.wait_for(std::chrono::milliseconds(5)) != std::future_status::ready && Clock::now() - start < kGuard)
     {
         rig.engine.frame();
         if (rig.shown.frame)
@@ -221,4 +271,32 @@ TEST_CASE("app: the assistant's load over unsaved work asks through the frame's 
     CHECK(doc.file() == file);
     CHECK(doc.build().hash() == hash);
     CHECK(doc.dirty());
+}
+
+// The hook that stops the questions moves with the Panel: a Shown moved from never calls it. The chain above was red on
+// macOS alone (c06258e5: "the call: an error {"error":"the owner said no; nothing was loaded"}" within one frame): the
+// rig's `shown = makePanel(...)` left a moved-from Shown whose std::function libc++ keeps, and its destructor cleared
+// the live frame's asker. libstdc++ and MSVC empty a moved-from std::function, so this case was green there either way;
+// on macOS it is the line between the two.
+TEST_CASE("app: a moved-from Shown never calls the panel's going hook; a move-assignment calls the replaced one",
+          "[shell][app]")
+{
+    int calls = 0;
+    {
+        app::Shown made;
+        made.panelGoing = [&calls] { ++calls; };
+        app::Shown kept(std::move(made));
+        CHECK_FALSE(static_cast<bool>(made.panelGoing));
+        app::Shown assigned;
+        assigned = std::move(kept);                 // over a Shown with no hook: nothing called
+        CHECK(calls == 0);
+        CHECK_FALSE(static_cast<bool>(kept.panelGoing));
+        CHECK(static_cast<bool>(assigned.panelGoing));
+
+        app::Shown other;
+        other.panelGoing = [&calls] { calls += 10; };
+        assigned = std::move(other);                // the replaced Panel's hook runs, once
+        CHECK(calls == 1);
+    }
+    CHECK(calls == 11);                             // the last one, as its Shown went; the moved-from ones none
 }

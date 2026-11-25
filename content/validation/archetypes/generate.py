@@ -33,7 +33,7 @@ BASIS = {
     "Port gas at full load": "judgement", "Header gas at full load": "judgement",
     "Port gas, mass mean (information)": "judgement",
     "Quarter mile: time": "recalled",
-    "Torque at 1500 rpm": "cited", "Torque at 1800 rpm": "cited", "Torque at 2500 rpm": "cited",
+    "Torque at 1500 rpm": "cited", "Torque at 1750 rpm": "cited", "Torque at 1800 rpm": "cited", "Torque at 2500 rpm": "cited",
     "Idle manifold pressure": "recalled",
     "Torque at 4000 rpm": "cited", "Torque at 6200 rpm": "cited", "Quarter mile: trap speed": "recalled", "Top speed": "judgement",
 }
@@ -49,6 +49,33 @@ FITTED["kei-660-triple-turbo"] = "its boost taper was measured by N2 to meet the
 SET = {"tractor-15-inline-six": "its full-load fuel curve sets them (D2's, from the class's cited torque through the "
                                 "build's own 8.34 N m a mg): SET BY THE FUEL CURVE, out of the counts"}
 SET_ROWS = ("Peak power", "Peak torque", "Speed at peak power", "Speed at peak torque")
+# rows a build misses for a cause measured and named, to be cured in a later window: still rows, counted, the cause in
+# their source (the lead's ruling, 25 Nov: the rotary's rows above its second turbo's join, N2's measurement)
+KNOWN = {"rotary-twin-13": (("Peak power", "Speed at peak power", "Peak torque", "Speed at peak torque",
+                             "Boost at its target"),
+                            "A KNOWN MISS above the 4500 rpm join, its cause measured (docs/measurements/calibration/"
+                            "boost/rotary-pair.md, N2's): the secondary turbine starved by the transfer valve in series "
+                            "with its nozzle, and the pair oversized for its match; the re-match (two HT-12s at 0.70 bar, "
+                            "an even split: sources section 23) is a later window's")}
+
+# the boosted builds whose steady rows read a transient at the old settle (N2's named cells, package-final.md "Validation
+# rows that read a transient": still spooling 4 s after the step, within 0.1 % once settled for 60 s): their full-load
+# rows read on a 60 s run from 30 to 60 s (N2's convention, the last 30 of 60), their dyno steps held 20 s (the lead's
+# ruling, 25 Nov); the others as before
+RETIME = {"boxer-four-turbo-unequal", "diesel-20-common-rail", "inline-five-turbo-rally", "kei-660-triple-turbo",
+          "pickup-diesel-67-inline-six", "straight-six-twin-turbo-30", "tractor-15-inline-six", "turbo-four-20-gdi",
+          "twin-turbo-hot-vee-v8-40", "v6-35-twin-turbo-pickup"}
+RETIME_SETTLE = 20
+# TEE_RETIME=0 writes the old timing (a 10 s run read 8 to 10 s, dyno steps held 5 s) for the twin that shows each
+# re-timed row's old reading beside its new one (the lead's ask); the committed files are written with it on
+if os.environ.get("TEE_RETIME") == "0":
+    RETIME = set()
+
+# rows a ceiling the build states holds by construction (ecu.torqueMax / powerMax: docs/models/diesel.md, "What it holds
+# stops counting as validation"; the lead's ruling, 25 Nov): HELD BY CALIBRATION, shown and out of the counts. Where the
+# plateau begins, BSFC, boost, lambda and the gases stay rows: the ceiling does not decide them
+HELD = {"diesel-20-common-rail": (("Peak torque",), "its build states ecu.torqueMax 320 N m (VW's, cited): the peak is "
+                                  "held there by construction: HELD BY CALIBRATION, out of the counts")}
 FITTED_ROWS = ("Peak power", "Peak torque", "Speed at peak power", "Speed at peak torque", "Boost at its target",
                "Volumetric efficiency at its torque peak", "Volumetric efficiency low down")
 
@@ -61,6 +88,13 @@ CURVE = {
         (1500, 333, 368, _GTI % "the plateau's start"), (1800, 333, 368, _GTI % "on the plateau"),
         (2500, 333, 368, _GTI % "on the plateau"), (4000, 333, 368, _GTI % "on the plateau"),
         (6200, 237, 262, _GTI % "at rated speed, 162 kW: 250 N m")],
+    # VW's 320 N m from 1750 rpm (the Mk7 Golf Estate press presentation, volkswagen-newsroom.com: the 110 kW 2.0 TDI's
+    # "maximum torque of 320 Nm is available from 1,750 rpm (and up to 3,000 rpm)"; sources section 20), within 5 %
+    # (judgement): where the plateau begins is the air's, not the ceiling's (the lead's ruling, 25 Nov)
+    "diesel-20-common-rail": [
+        (1750, 304, 336, "VW's 2.0 TDI (110 kW): \"maximum torque of 320 Nm is available from 1,750 rpm (and up to 3,000 "
+                         "rpm)\" (volkswagen-newsroom.com, the Mk7 Golf Estate's press presentation), within 5 % "
+                         "(judgement): the plateau's start, which the torque ceiling does not decide")],
 }
 
 # archetypes whose power and torque rows were looked up (slug: the pages), turning recalled into cited
@@ -210,7 +244,7 @@ def targets(slug, b):
         lo = max(1500.0, ilo * 1.5)
         n = 9
         dyno = {"steps": [round((lo + (0.98 * red / RPM - lo) * i / (n - 1)) * RPM, 1) for i in range(n)],
-                "settle": 5, "measure": 1}
+                "settle": RETIME_SETTLE if slug in RETIME else 5, "measure": 1}
     src = "published figures of its kind (%s): %s" % (firm, b["notes"].split("(")[1].split(")")[0] if "(" in b["notes"] else "")
     out = []
 
@@ -230,6 +264,11 @@ def targets(slug, b):
         if slug in SET and name in SET_ROWS:
             k["basis"] = "set"
             k["source"] = k["source"] + "; " + SET[slug]
+        if slug in KNOWN and name in KNOWN[slug][0]:
+            k["source"] = k["source"] + "; " + KNOWN[slug][1]
+        if slug in HELD and name in HELD[slug][0]:
+            k["basis"] = "held"
+            k["source"] = k["source"] + "; " + HELD[slug][1]
         if name == "Idle manifold pressure":
             k["basis"] = IDLE_MAP[slug][2]
         if slug in FITTED and name in FITTED_ROWS:
@@ -322,26 +361,27 @@ def targets(slug, b):
 
     # ---- full load: VE, boost, the port's gas ----------------------------------------------------------------
     fl = full_load_speed(trhi if not boosted else max(boost_at, 1200), red_rpm)
+    fl_sc, fl_during = ("p-full-load-%d-long.json", [30, 60]) if slug in RETIME else ("p-full-load-%d.json", [8, 10])
     if boosted:
         fl = boost_at if boost_at and boost_at <= 0.9 * red_rpm else fl
         tgt = s["boost"]["target"]
-        add(name="Boost at its target", scenario=SC + "p-full-load-%d.json" % fl, tel="boost.pressure", measure="mean",
-            during=[8, 10], range=[tgt - 15000, tgt + 15000], unit="Pa over the air",
+        add(name="Boost at its target", scenario=SC + fl_sc % fl, tel="boost.pressure", measure="mean",
+            during=fl_during, range=[tgt - 15000, tgt + 15000], unit="Pa over the air",
             source="the build's own target (%.2f bar); a wastegate or vane loop holds a steady full load within some "
                    "0.1 bar of its target once spooled (makers' boost-control tolerances; judgement)" % (tgt / 1e5))
-        add(name="Charge temperature under boost", scenario=SC + "p-full-load-%d.json" % fl, tel="boost.throttleIn",
-            measure="mean", during=[8, 10], range=[293, 340], unit="K",
+        add(name="Charge temperature under boost", scenario=SC + fl_sc % fl, tel="boost.throttleIn",
+            measure="mean", during=fl_during, range=[293, 340], unit="K",
             source="an air-to-air intercooler of 0.6 to 0.8 effectiveness leaves the charge some 10 to 50 K over the "
                    "outside air at full boost (makers' and tuners' intake-air-temperature logs; judgement): reported so "
                    "the over-delivery at a given boost can be judged (the lead's ask)")
-        add(name="Lambda at full load under boost", scenario=SC + "p-full-load-%d.json" % fl, tel="ecu.lambda",
-            measure="mean", during=[8, 10], range=[1.2, 2.0] if diesel else [0.76, 0.88], unit="ratio",
+        add(name="Lambda at full load under boost", scenario=SC + fl_sc % fl, tel="ecu.lambda",
+            measure="mean", during=fl_during, range=[1.2, 2.0] if diesel else [0.76, 0.88], unit="ratio",
             source=("a turbo diesel at full load runs lambda 1.2 to 2 (smoke-limited; %s, ch. 10)" if diesel else
                     "a boosted petrol engine at full load is enriched to lambda 0.76 to 0.88 to cool the charge and the "
                     "turbine (factory calibrations; %s, ch. 7)") % HEYWOOD)
     else:
-        add(name="Volumetric efficiency at its torque peak", scenario=SC + "p-full-load-%d.json" % fl, tel="engine.veAir",
-            measure="mean", during=[8, 10], range=[0.82, 1.02], unit="fraction",
+        add(name="Volumetric efficiency at its torque peak", scenario=SC + fl_sc % fl, tel="engine.veAir",
+            measure="mean", during=fl_during, range=[0.82, 1.02], unit="fraction",
             source="a naturally aspirated four-stroke's VE at full load near its torque peak is 0.85 to 1.0 (%s, ch. "
                    "6, fig. 6-9 and the text); measured at %d rpm" % (HEYWOOD, fl))
         lo_rpm = 2000 if red_rpm > 4000 else 1200
@@ -350,8 +390,8 @@ def targets(slug, b):
             source="VE's shape: below the torque peak it falls away, the more so the hotter the cam (%s, ch. 6); "
                    "measured at %d rpm" % (HEYWOOD, lo_rpm))
     tport = [850, 1100] if diesel else [1100, 1300]
-    add(name="Port gas at full load", scenario=SC + "p-full-load-%d.json" % fl, tel="exhaust.portThermocouple",
-        measure="mean", during=[8, 10], range=tport, unit="K",
+    add(name="Port gas at full load", scenario=SC + fl_sc % fl, tel="exhaust.portThermocouple",
+        measure="mean", during=fl_during, range=tport, unit="K",
         source=("what a thermocouple at a diesel's exhaust port reads at full load (a time mean, below the gas's mass "
                 "mean: the blowdown is most of the mass and little of the time): some 850 to 1100 K (judgement; %s, ch. "
                 "14); tel.exhaust.portThermocouple, card G's mixing cup" if diesel else
@@ -359,15 +399,15 @@ def targets(slug, b):
                 "some 1100 to 1300 K for a spark-ignition engine (%s, ch. 14; card C's target on default.json); "
                 "tel.exhaust.portThermocouple, card G's mixing cup") % HEYWOOD)
     thead = [700, 950] if diesel else [900, 1100]
-    add(name="Header gas at full load", scenario=SC + "p-full-load-%d.json" % fl, tel="exhaust.headerThermocouple",
-        measure="mean", during=[8, 10], range=thead, unit="K",
+    add(name="Header gas at full load", scenario=SC + fl_sc % fl, tel="exhaust.headerThermocouple",
+        measure="mean", during=fl_during, range=thead, unit="K",
         source=("a thermocouple a little way down a diesel's manifold reads some 700 to 950 K at full load (makers' "
                 "pre-turbine limits near 1000 K; %s, ch. 14); tel.exhaust.headerThermocouple" if diesel else
                 "a thermocouple a little way down a primary reads 900 to 1100 K at full load on a petrol engine "
                 "(JUDGEMENT from memory of makers' exhaust-gas-temperature data, not a cited full-load figure: under "
                 "review, the lead's question of 20:17; %s, ch. 14); tel.exhaust.headerThermocouple") % HEYWOOD)
-    add(name="Port gas, mass mean (information)", scenario=SC + "p-full-load-%d.json" % fl,
-        tel="exhaust.portTemperature", measure="mean", during=[8, 10], range=[0, 3000], unit="K",
+    add(name="Port gas, mass mean (information)", scenario=SC + fl_sc % fl,
+        tel="exhaust.portTemperature", measure="mean", during=fl_during, range=[0, 3000], unit="K",
         source="the gas's mass (enthalpy) mean at the port, kept for information: above a thermocouple's reading, not "
                "a target (card G, f703892)")
 
@@ -401,7 +441,7 @@ def targets(slug, b):
     # the published torque curve where a maker gives its plateau (the lead, 22:49: the first-launch engine's low end):
     # rows on the full engine dyno at each speed, cited
     for rpm_, lo_, hi_, why in CURVE.get(slug, ()):
-        add(name="Torque at %d rpm" % rpm_, dyno={"steps": [round(rpm_ * RPM, 1)], "settle": 5, "measure": 1},
+        add(name="Torque at %d rpm" % rpm_, dyno={"steps": [round(rpm_ * RPM, 1)], "settle": RETIME_SETTLE if slug in RETIME else 5, "measure": 1},
             measure="torqueAt", at=round(rpm_ * RPM, 1), range=[lo_, hi_], unit="N m", source=why)
     return out
 
