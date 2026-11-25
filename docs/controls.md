@@ -122,7 +122,8 @@ software of Logitech's installed. Never yet run with a real wheel in this reposi
 | Its five shift lights | The DRIVE view's own count (the same five steps below the redline), all five flashing on the limiter. |
 | Other buttons | Nothing yet (a learn mode comes later). |
 
-**On and off:** F9, "Read the racing wheel (Logitech G29)": on by default, kept in the settings file (`wheelOn`). Off,
+**On and off:** the settings page's WHEEL row (on macOS; its status line under it), or F9, "Read the racing wheel
+(Logitech G29)": on by default, kept in the settings file (`wheelOn`). Off,
 the device is left open (shared: another program may read it too) but nothing is read from it or sent to it. The
 status line says what the wheel is doing ("wheel: G29 read", "wheel: set the switch on the wheel to PS3", ...), and the
 console prints each change.

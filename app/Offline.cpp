@@ -261,6 +261,15 @@ namespace tee::app
                     if (hooks->tryFirstDone)
                         hooks->tryFirstDone();
                 };
+#if defined(__APPLE__)
+                // the settings' WHEEL row: only where a wheel is read (macOS, input/g29/RacingWheelMac.cpp)
+                frameServices.wheelOn = [hooks] { return hooks->wheelOn && hooks->wheelOn(); };
+                frameServices.setWheelOn = [hooks](bool on) {
+                    if (hooks->setWheelOn)
+                        hooks->setWheelOn(on);
+                };
+                frameServices.wheelStatus = [hooks] { return hooks->wheelStatus ? hooks->wheelStatus() : std::string(); };
+#endif
                 frameServices.coldStart = [hooks] { return hooks->coldStart && hooks->coldStart(); };
                 frameServices.setColdStart = [hooks](bool cold) {
                     if (hooks->setColdStart)

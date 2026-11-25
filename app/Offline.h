@@ -79,6 +79,9 @@ namespace tee::app
             std::function<void(int)> qualityChosen;     // the QUALITY row's choice, for the settings file
             std::function<std::string()> tryFirst;      // the first build's notes while its TRY FIRST card is wanted
             std::function<void()> tryFirstDone;         // the card was closed: not again
+            std::function<bool()> wheelOn;              // the racing wheel (input/g29/RacingWheel.h): read or not,
+            std::function<void(bool)> setWheelOn;       // and what it says ("G29 read", "set the switch ... PS3")
+            std::function<std::string()> wheelStatus;
             std::function<bool()> coldStart;            // the settings' coldStart (ENGINE START: from the next launch)
             std::function<void(bool)> setColdStart;
             std::function<void(bool)> desktopChosen;     // the CLAUDE DESKTOP switch took: the settings' allowClaudeDesktop
