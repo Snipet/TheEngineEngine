@@ -38,6 +38,7 @@ namespace tee::app
             kRecord = 800,
             kQuality = 900,         // + 0 full, 1 economy
             kColdStart = 950,
+            kWheel = 960,
         };
         constexpr int kRates[] = { 0, 44100, 48000, 88200, 96000 };
         constexpr int kBuffers[] = { 64, 128, 256, 512, 1024, 2048 };
@@ -425,6 +426,9 @@ namespace tee::app
                                   now == 1, false, false, true });
             items.push_back(std::move(q));
         }
+        if (ctx_.wheel && ctx_.wheelOn && ctx_.setWheelOn && !ctx_.wheel().empty())
+            items.push_back({ kWheel, "Read the racing wheel (Logitech G29): " + ctx_.wheel(), true, ctx_.wheelOn(), false,
+                              false, true });
         if (ctx_.coldStart && ctx_.setColdStart)
             items.push_back({ kColdStart, "Start the engine cold (from the next launch)", true, ctx_.coldStart(), false,
                               false, true });
@@ -436,6 +440,13 @@ namespace tee::app
         }
         host_->showMenu(request(*host_, std::move(items)), [this, devices](int id) {
             audio::Request r = ctx_.request;
+            if (id == kWheel)
+            {
+                const bool on = !ctx_.wheelOn();
+                ctx_.setWheelOn(on);
+                say(on ? "wheel: on (a G29 is read when connected)" : "wheel: off (nothing read from it or sent to it)");
+                return;
+            }
             if (id == kColdStart)
             {
                 const bool cold = !ctx_.coldStart();

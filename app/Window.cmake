@@ -9,7 +9,7 @@
 add_executable(TheEngineEngine MACOSX_BUNDLE "${CMAKE_CURRENT_LIST_DIR}/Main.cpp"
                                              "${CMAKE_CURRENT_LIST_DIR}/WindowCommands.cpp"
                                              "${CMAKE_CURRENT_LIST_DIR}/InputProbe.cpp")
-target_link_libraries(TheEngineEngine PRIVATE FunkGui::core FunkGui::gpu FunkGui::desktop Tee::shell_sdl
+target_link_libraries(TheEngineEngine PRIVATE FunkGui::core FunkGui::gpu FunkGui::desktop Tee::shell_sdl Tee::shell_wheel
                                               Tee::shell_settings)
 tee_app_gui(TheEngineEngine)
 funkgui_compile_shaders(TheEngineEngine)

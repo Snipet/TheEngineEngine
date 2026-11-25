@@ -45,6 +45,7 @@ TEST_CASE("shell: settings read back as they were written", "[shell][settings]")
     s.lastBuild = "builds/my v8.json";
     s.tryFirstSeen = true;
     s.coldStart = true;
+    s.wheelOn = false;
     s.allowClaudeDesktop = true;
     s.audioQuality = "economy";
     s.recentBuilds = { "builds/my v8.json", "C:\\Users\\me\\a diesel.json" };
@@ -74,6 +75,7 @@ TEST_CASE("shell: settings read back as they were written", "[shell][settings]")
     CHECK(l.settings.lastBuild == s.lastBuild);
     CHECK(l.settings.tryFirstSeen);
     CHECK(l.settings.coldStart);
+    CHECK_FALSE(l.settings.wheelOn);
     CHECK(l.settings.allowClaudeDesktop);
     CHECK(l.settings.recentBuilds == s.recentBuilds);
     CHECK(l.settings.audioQuality == "economy");

@@ -60,6 +60,8 @@ namespace tee::assistant::view
         std::string shownText() const;
         std::optional<funkgui::Point> centreOfSend() const;
         std::optional<funkgui::Point> centreOfAddKey() const;
+        // The empty chat's "Add a key" button where it is drawn (none: not offered: the chat can be used, or no hook).
+        std::optional<funkgui::Rect> addKeyButton() const;
         bool atEnd() const noexcept { return scroll_.offset >= scroll_.max() - 0.5f; }
         float contentHeight() const noexcept { return scroll_.content; }
         const std::string& hint() const noexcept { return hint_; }
@@ -108,6 +110,8 @@ namespace tee::assistant::view
         float questionH_ = 0.0f;
         markdown::Layout empty_;                   // the empty chat's words
         bool emptyShown_ = false;
+        bool addKeyShown_ = false;                 // the empty chat cannot be used, and the frame has a key dialog
+        float addKeyY_ = 0.0f;                     // its top, in the conversation's content
         bool busy_ = false;
         bool asking_ = false;
         std::string draft_, hint_;

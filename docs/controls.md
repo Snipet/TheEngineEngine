@@ -99,17 +99,43 @@ in hand: the code was written against SDL's documentation and compiled.
 
 ## A wheel and pedals
 
-Not driven yet: a wheel is not read by the application (never run with a real wheel). `shell/input/Wheel.h` is the
-seam it will arrive through. The first step is the owner's wheel described as the computer sees it:
+**A Logitech G29** (the wheel, its pedals and the Driving Force Shifter on one USB cable) is read on **macOS** with no
+software of Logitech's installed. Never yet run with a real wheel in this repository: the owner's run is the first
+(the code is TestingPlayground's, where it drove the owner's G29: `shell/input/g29/SEED.tsv`).
 
-    TheEngineEngine --probe-input                     (macOS: ./TheEngineEngine.app/Contents/MacOS/TheEngineEngine --probe-input)
+- **The switch on the wheel at PS3.** At PS4 it is not read (the status line says to set it to PS3). At PS3, without
+  Logitech's software, a G29 starts in a compatibility mode: the application switches it to its full mode once each
+  time the wheel is turned on in the application ("wheel: switching to its full mode"; the wheel leaves and comes back).
+- **Read, it is set up as a game sets it up:** 900 degrees lock to lock and a moderate centring spring. Turned off, or
+  the application quitting, the spring stops and its shift lights go out. A crash or a force-quit leaves the spring on
+  until the wheel is unplugged.
+- **macOS asks** whether the application may read input devices (Privacy & Security, Input Monitoring) the first time;
+  refused, the status line says where to allow it.
 
-It opens no window. It lists every game controller SDL sees (name, vendor and product ids, SDL's type, its axes,
-buttons and hats with each axis at rest, and whether force feedback opens from it with the effects it reports), then
-prints for 60 s (`--probe-seconds S`) every change: press each pedal fully and let go, pull each paddle, move the
-shifter through every gate, turn the wheel to each stop, press each button. It ends with each axis's rest and the
-extremes seen. It prints to the Terminal only and sends nothing anywhere. With no device it says "none seen" and what
-may be why.
+| On the wheel | What it does |
+|---|---|
+| Throttle, brake, clutch pedals | The pedals: each is the larger of the wheel's and the keys' or a gamepad's (its first 1 % of travel reads released). |
+| Right paddle / left paddle | Shift up / shift down (a press each). |
+| The shifter | The gate it is in: with the automatic clutch off, the H-pattern lever itself (the clutch pedal is yours); with it on, the gear is sought through the gearbox's own shifts, as a gear key does (a sequential or an automatic box too). Out of every gate: neutral. |
+| PS button | The start key, held as long as it is held (a press starts a stopped engine; held on a running one, off). |
+| The steering | Read but not driven: the car runs in a straight line. |
+| Its five shift lights | The DRIVE view's own count (the same five steps below the redline), all five flashing on the limiter. |
+| Other buttons | Nothing yet (a learn mode comes later). |
+
+**On and off:** F9, "Read the racing wheel (Logitech G29)": on by default, kept in the settings file (`wheelOn`). Off,
+the device is left open (shared: another program may read it too) but nothing is read from it or sent to it. The
+status line says what the wheel is doing ("wheel: G29 read", "wheel: set the switch on the wheel to PS3", ...), and the
+console prints each change.
+
+**Not yet:** Windows (no wheel read; SDL 3.4's own HIDAPI Logitech driver, `SDL_hidapi_lg4ff`, is the likely route, off
+by default there), Linux (TestingPlayground's evdev body through the kernel's hid-lg4ff is the next port), a learn
+mode, force effects beyond the spring. A G29 is never opened as a gamepad (SDL's Logitech driver is turned off, so it
+cannot reset the spring).
+
+**To see what the computer sees** of any controller: `TheEngineEngine --probe-input` (macOS:
+`./TheEngineEngine.app/Contents/MacOS/TheEngineEngine --probe-input`). It opens no window; it lists every game
+controller SDL sees (name, ids, SDL's type, axes, buttons, hats, force feedback) and prints their changes for 60 s
+(`--probe-seconds S`). It prints to the Terminal only and sends nothing anywhere.
 
 ## What the engine does with them
 
