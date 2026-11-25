@@ -2,6 +2,9 @@
 // PipeBurn and bangIn; docs/models/exhaust.md, "Bangs: heat released in the pipe"). The burns are handed in here as
 // the facade hands the ECU account's, synthetically: the account's side (sim/ecu/overrun.fm) waits for its seam.
 #include "Rig.h"
+#include "sim/Twin.h"
+
+#include <tee/EnginePlayer.h>
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -118,10 +121,67 @@ TEST_CASE("measure: the burn times of slugs in the collector", "[.][measure]")
         {
             slug(rig, c.mass, c.t, c.phi, c.xb, c.own);
             rig.call("XTest::bangGo", 0.0f, 100.0f);
-            std::printf("%5.0f rpm (collector Mach %.3f, %.0f K, pulsing %.0f Pa rms): %-34s S_L %.2f, S_T %.2f m/s, %.2f m: %.1f ms, "
-                        "%.0f %% before it leaves\n", rpm, rig.get("b.mach[1]"), rig.get("b.heat.tGas[1]"),
-                        std::sqrt(rig.get("b.pVar[0]")), c.what, rig.get("b.bangSL"), rig.get("b.bangST"),
-                        rig.get("b.bangLen"), rig.get("b.bangTau") * 1e3, rig.get("b.bangShare") * 100.0);
+            std::printf("%5.0f rpm (collector Mach %.3f, %.0f K, its blowdowns' gas %.0f m/s): %-34s S_L %.2f, S_T %.2f m/s, "
+                        "%.2f m: folded %.1f ms (one front %.1f ms), %.0f %% before it leaves\n", rpm, rig.get("b.mach[1]"),
+                        rig.get("b.heat.tGas[1]"), rig.get("b.uHold[0]"), c.what, rig.get("b.bangSL"), rig.get("b.bangST"),
+                        rig.get("b.bangLen"), rig.get("b.bangTau") * 1e3, rig.get("b.bangTauFront") * 1e3,
+                        rig.get("b.bangShare") * 100.0);
+        }
+    }
+}
+
+// The engine's own collector at full throttle and on its limiter (first.json, the rally five): the gas's speed its
+// blowdowns drive (uHold), its temperature and pressure, and the burn time those give a spark-cut charge at 700 K
+// (burnTime's arithmetic, repeated here: the account's slugs wait for its seam)
+TEST_CASE("measure: the engine's collector, and a cut charge's burn time there", "[.][measure]")
+{
+    auto player = tee::test::enginePlayer(48000.0);
+    for (const char* name : {"first", "archetypes/inline-five-turbo-rally"})
+    {
+        player->reset(48000.0);
+        tee::applyBuild(*player, tee::test::engineBuild(*player, name));
+        auto rd = [&](const std::string& path) {
+            double v = 0.0;
+            std::string error;
+            INFO(path << ": " << error);
+            REQUIRE(player->read(path, v, error));
+            return v;
+        };
+        std::vector<float> l(512), r(512);
+        auto run = [&](double s) {
+            for (int b = 0; b < static_cast<int>(s * 48000.0 / 512.0 + 0.5); ++b)
+                player->process(l.data(), r.data(), 512);
+        };
+        player->controls().mode = tee::EnginePlayer::kModeBench;
+        player->controls().ignition = tee::EnginePlayer::kIgnitionStart;
+        run(1.5);
+        player->controls().ignition = tee::EnginePlayer::kIgnitionOn;
+        run(0.5);
+        const int sct = rd("exh.b.heat.on[1]") != 0.0 ? 1 : (rd("exh.b.heat.on[2]") != 0.0 ? 2 : 0);
+        for (double thr : {0.0, 1.0})
+        {
+            player->controls().throttle = static_cast<float>(thr);
+            for (int k = 0; k < (thr > 0.0 ? 6 : 1); ++k)
+            {
+                run(thr > 0.0 ? 0.4 : 1.0);
+                const double u = std::max(rd("exh.b.uHold[0]"), rd("exh.b.uHold[1]"));
+                const double tg = rd("exh.b.heat.tGas[" + std::to_string(sct) + "]");
+                const double dia = rd("exh.b.heat.dia[" + std::to_string(sct) + "]");
+                const double br = std::max(rd("exh.b.heat.br[" + std::to_string(sct) + "]"), 1.0);
+                const double p = 101325.0 + rd("exh.b.pTurb");
+                const double m = rd("cyl[0].m");
+                const double tu = 700.0, phi = 1.15, xb = 0.1;
+                const double sl = (0.2632 - 0.8472 * (phi - 1.13) * (phi - 1.13)) * std::pow(tu / 298.0, 2.18 - 0.8 * (phi - 1.0))
+                                  * std::pow(p / 101325.0, -0.16 + 0.22 * (phi - 1.0)) * (1.0 - 2.1 * xb);
+                const double st = sl + 0.1 * u;
+                const double len = m * 287.0 * tu / p / (0.7853982 * dia * dia * br);
+                const double front = len / st;
+                const double fold = std::min(len / std::max(u, 1.0) + 0.5 * dia / st, front);
+                std::printf("%-36s throttle %.0f, %5.0f rpm: collector %.0f K, %.0f kPa, bore %.0f mm x %.0f; its blowdowns' gas "
+                            "%.0f m/s; a cut charge of %.2f g at 700 K: S_T %.1f m/s, %.2f m, folded %.1f ms, one front %.1f ms\n",
+                            name, thr, rd("crank.rpm"), tg, p / 1000.0, dia * 1000.0, br, u, m * 1000.0, st, len, fold * 1e3,
+                            front * 1e3);
+            }
         }
     }
 }

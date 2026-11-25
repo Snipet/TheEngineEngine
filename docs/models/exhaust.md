@@ -522,28 +522,32 @@ second, nearly all at its 30 kPa ceiling, each with the same click tail.
   or an overrun charge burned late. A rich charge's leftover fuel is mostly CO and H₂. Once it meets another charge's
   air it lies far below their lower flammability limits in air: CO 12.5 %, H₂ 4 % (Coward and Jones, US Bureau of
   Mines Bulletin 503, 1952). No flame runs through it; it oxidises where it mixes and is left out of the sound.
-- **The burn's time.** τ = the slug's length / (fronts × S_T):
-  - The slug's length is its volume (m R T / p) over the collector's area.
-  - S_L is Metghalchi and Keck's correlation (Combustion and Flame 48, 1982). It uses iso-octane's constants,
-    0.2632 m/s and −0.8472 m/s with the fastest mixture at φ 1.13, which the ANSYS CFX Theory Guide's Table 7.2 gives.
-    The exponents 2.18 − 0.8(φ − 1) and −0.16 + 0.22(φ − 1) and the burned gas's factor (1 − 2.1 x_b) are Heywood's
-    Table 9.3, as recalled and not re-read. S_L is taken at the slug's temperature and the collector's pressure.
-  - S_T = S_L + u′ (Damköhler's large-scale limit). u′ = 0.16 Re^−1/8 of the collector's flow: its mean plus its
-    pulsing, the pressure's swing over ρc. That intensity is an engineering estimate; no primary source was found.
-  - One front when a hot blowdown lights the slug at one end; two when it carries its own flame (judgement for "along
-    its length").
+- **The burn's time.** S_L is Metghalchi and Keck's correlation (Combustion and Flame 48, 1982). It uses iso-octane's
+  constants, 0.2632 m/s and −0.8472 m/s with the fastest mixture at φ 1.13, which the ANSYS CFX Theory Guide's
+  Table 7.2 gives. The exponents 2.18 − 0.8(φ − 1) and −0.16 + 0.22(φ − 1) and the burned gas's factor (1 − 2.1 x_b)
+  are Heywood's Table 9.3, as recalled and not re-read. S_L is taken at the slug's temperature and the collector's
+  pressure.
+  - S_T = S_L + u′ (Damköhler's large-scale limit).
+  - u′ is a tenth of the gas's speed through the collector as its blowdowns drive it: half its branches' flows over
+    the pipe's area, the peak held over some 10 ms (`uHold`). Pipe flows' turbulence intensities run some 5 to 10 %;
+    the upper end is used for a pulse's, as judgement.
   - The burned gas's expansion is not counted. A burning velocity is against the unburned gas, so expansion moves the
     front but pushes the unburned gas ahead as fast.
-  - The flame's area growing in a duct is not counted either (finger flames: Clanet and Searby 1996). No source was
-    found for this case, so the times are long by that factor.
+  - Ignition and area: the blowdown that lights a slug runs into it at its own speed, so the hot gas folds into the
+    slug along its length, and the flame burns across the bore from that interface. τ = length/u + (bore/2)/S_T, at
+    most one front's length/S_T. That is the flame's area a finger flame would need a source for, given here by the
+    pulse's mixing; which holds is judgement, and both are kept (`bangTauFront`). A slug carrying its own flame burns
+    from within: (bore/2)/S_T.
   - What would still be burning when the gas leaves the pipes (the sections' lengths over their mean speeds) burns
     outside and is not this source.
-- **Measured, synthetic burns in the V8's builder** (BangTest's `measure` case; the rig holds the collector at 708 K):
-  - A spark-cut charge of 0.65 g burns in 115 to 140 ms at 1000 rpm, about 80 ms at 3000 and 45 to 58 ms at 6000, by
-    its temperature (500 to 900 K). S_L is 0.6 to 2.0 m/s and S_T 1.2 to 4.9 m/s.
-  - A quarter-charge still burning with its own flame takes 7 to 13 ms.
-  - So the flame speed gives a whoomp of tens of ms for a cut charge and a sharper report for a late burn's remainder.
-  - The engine's own numbers wait for the account's side.
+- **Measured in the engine**, bench, full throttle to the limiter (BangTest's `measure` case; a cut charge at 700 K,
+  φ 1.15, burnTime's arithmetic):
+  - first.json's collector, 52 mm: its blowdowns drive the gas at 175 to 260 m/s, so S_T is 19 to 27 m/s. A cut
+    charge of 0.5 to 1.0 g burns in 2.2 to 3.3 ms folded, or 11 to 19 ms as one front.
+  - The rally five's, 57 mm: 160 to 290 m/s, S_T 17 to 30 m/s. 1.5 to 4.0 ms folded, 5.5 to 21 ms as one front.
+  - At idle the gas runs at 14 to 17 m/s, and the burn takes 17 to 18 ms folded or about 41 ms as one front.
+  - The held rig, its flows a third of the engine's, gave 3 to 4.5 ms folded at 3000 to 6000 rpm, and 17 to 19 ms at
+    1000.
 - **The account's side** (`sim/ecu/overrun.fm`: charges kept by cylinder until their exhaust valve opens, premixed
   slugs lit by a flame or a hot blowdown while still flammable) waits for the owner's word on that file. Until then
   the carved pulse still fires from the account under either setting.
