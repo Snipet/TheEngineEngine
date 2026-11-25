@@ -946,7 +946,11 @@ def build(a):
                   % ", ".join("%d at %d rpm" % (m, r) for r, m in a["fuelCurve"]))
     if "cam" in a and rule_on(a):
         notes += " Its cams' second duration: %s (section 8 of the judgement sources)." % card(a)[4]
-    if a["slug"] in CAMS:
+    baked = CAMS.get(a["slug"], {})
+    if "knockLimit" in baked:
+        notes += (" Its knock-limit table is baked (the degrees taken from the best-torque spark by speed and load, "
+                  "baked in the app's own order: cams.py).")
+    if "camIn" in baked:
         notes += " Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py)."
     if a["slug"] in MANIFOLD:
         cls = MANIFOLD[a["slug"]]
