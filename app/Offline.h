@@ -27,6 +27,11 @@ namespace tee::files
     class BuildLibrary;
 }
 
+namespace tee::assistant
+{
+    class Session;
+}
+
 namespace tee::app
 {
     // Runs it. 0: done, and every check of the script held. 1: a check failed, or a file could not be written. 2: the
@@ -80,6 +85,10 @@ namespace tee::app
         std::shared_ptr<WindowHooks> window;
         files::BuildFile* document = nullptr;
         files::BuildLibrary* library = nullptr;
+        // The assistant over that document (assistant/include/tee/assistant/Session.h): its frame drained by `frame`
+        // above; Claude Desktop's link off until the window turns it on (the settings' allowClaudeDesktop). Owned by
+        // keep; null: not the simulator's frame.
+        assistant::Session* assistant = nullptr;
 
         Shown() = default;
         Shown(Shown&&) = default;
