@@ -303,10 +303,20 @@ arch(slug="two-stage-cam-20", runner=0.3, convK=16.0, name="Two-stage-cam 2.0 L"
      # table L (the lead, 02:06), applied with CAM_RULE: the switch at the F20C's own 5850 rpm (Honda: the 1999 S2000
      # fact book, honda.co.jp, "5,850rpm～9,000rpm ... ハイバルブタイミング域"; global.honda's F20C page; American Honda's
      # 2001 powertrain release, "a relatively low 5850 rpm"); the high stage stays the K20A's, borrowed
-     camCard=dict(stages=dict(inDurSeatB=280, inDur1mmB=248, inLiftB=0.01265, exDurSeatB=278, exDur1mmB=246,
+     # and its low stage the K20A's (the lead, 02:26): motorreviewer.com (an aggregator, no source, no lift height)
+     # lists three intake/exhaust pairs unlabelled, "244/240 deg and 8.84/8.59 mm; 280/278 deg and 12.65/12.14 mm;
+     # 245/244 deg and 9.68/8.74 mm": the two short ones taken as the primary and secondary low lobes and meaned (the
+     # cylinder sees both valves; the LEAD'S READING), 244.5/242 deg on 9.26/8.67 mm; seat assumed, 1 mm by the
+     # rocker class's rule; the centres still the generator's
+     camCard=dict(cam=(244.5, 206, 9.26, 110, 242, 204, 8.67, 112),
+                  stages=dict(inDurSeatB=280, inDur1mmB=248, inLiftB=0.01265, exDurSeatB=278, exDur1mmB=246,
                               exLiftB=0.01214, stageSpeed=5850 * RPM),
                   cardNote="Its switch at the F20C's own 5850 rpm (Honda's S2000 fact book and its 2001 powertrain "
-                           "release); its high stage still the K20A's, borrowed."),
+                           "release). Both stages the K20A's, borrowed, from an aggregator (motorreviewer.com, no source "
+                           "or lift height stated): \"244/240 deg and 8.84/8.59 mm; 280/278 deg and 12.65/12.14 mm; "
+                           "245/244 deg and 9.68/8.74 mm\", unlabelled; the high the second, the low the mean of the "
+                           "first and third (244.5/242 deg, 9.26/8.67 mm), taken as the primary and secondary low "
+                           "lobes: the lead's reading. The seat assumed, the 1 mm by the rocker class's rule."),
      grade="Premium (91)", car="roadster", timing="Chain", lifters="Solid",
      notes="A 2.0 L four with two cam profiles a valve switched at 6000 rpm: 87 x 84 mm (1997 cc), 11.7:1, 9000 rpm "
            "(the F20C kind: 176 kW at 8300 rpm, 208 N m at 7500; makers' figures, from memory, firm to 5 %; the "
