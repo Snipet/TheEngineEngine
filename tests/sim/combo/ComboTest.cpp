@@ -12,7 +12,6 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <algorithm>
-#include <chrono>
 #include <cstdint>
 #include <cstdlib>
 #include <filesystem>
@@ -142,36 +141,8 @@ PAIRS_CASE(14)
 namespace
 {
     constexpr std::size_t kTripleShards = 16;
-    // The nightly (the scheduled run: GITHUB_EVENT_NAME "schedule") runs four of the sixteen shards, chosen by the
-    // date: night d (days since 1970, UTC) runs shards k with (k - 1) mod 4 == d mod 4, so each triple runs every fourth
-    // night (the lead's ruling, 25 Nov: the soak at 116 min on a slow runner). A [soak] push, a dispatch and a run by
-    // hand run all sixteen. TEE_TRIPLES_NIGHT=<d> plays a night by hand.
-    bool tonight(std::size_t shard, std::string& why)
-    {
-        const char* event = std::getenv("GITHUB_EVENT_NAME");
-        const char* night = std::getenv("TEE_TRIPLES_NIGHT");
-        if (night == nullptr && (event == nullptr || std::string(event) != "schedule"))
-            return true;
-        const long long day = night != nullptr
-                                  ? std::atoll(night)
-                                  : static_cast<long long>(std::chrono::duration_cast<std::chrono::hours>(
-                                                               std::chrono::system_clock::now().time_since_epoch())
-                                                               .count() /
-                                                           24);
-        const std::size_t group = static_cast<std::size_t>(day % 4);
-        why = "night " + std::to_string(day) + " runs the triples' shards " + std::to_string(group + 1) + ", " +
-              std::to_string(group + 5) + ", " + std::to_string(group + 9) + " and " + std::to_string(group + 13) +
-              " of 16";
-        return shard % 4 == group;
-    }
-
     void triples(std::size_t shard)
     {
-        std::string why;
-        if (!tonight(shard, why))
-            SKIP("not tonight: " << why);
-        if (!why.empty())
-            std::printf("combo: %s (this is shard %zu)\n", why.c_str(), shard + 1);
         const auto all = subsetsOfSize(3);
         REQUIRE(all.size() >= kTripleShards);
         for (std::size_t i = shard; i < all.size(); i += kTripleShards)
