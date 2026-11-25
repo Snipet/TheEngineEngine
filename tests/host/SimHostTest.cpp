@@ -428,8 +428,15 @@ TEST_CASE("a made-up audio thread in a tight loop while another thread sets ten 
             host.setControls(c);
         }
     }
-    // let the audio thread take the rest
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    // let the audio thread take the rest: until it has applied all ten thousand (the queue holds 16384, so this thread
+    // can finish before the audio thread has run a block at all: a loaded runner that schedules it late, and a fixed
+    // sleep then stopped it before its first block, with nothing ever published: Windows CI, 9c36dbd1)
+    {
+        TelemetryFrame t;
+        const auto until = std::chrono::steady_clock::now() + std::chrono::seconds(20);
+        while (std::chrono::steady_clock::now() < until && !(host.telemetry(t) && t.host.commandsApplied == 10000))
+            std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    }
     done = true;
     audio.join();
     reader.join();
