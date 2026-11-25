@@ -39,8 +39,9 @@
 # The soak tier (the [nightly] tests, ctest --preset nightly, about 95 minutes on Linux) runs only when asked, so
 # that each soak result belongs to a named commit, not to whichever tip was current when the last soak ended
 # (docs/plan/01-rules.md section 3):
-#   a push          soaks nothing, unless its head commit's message says [soak] (Linux) or [soak-all] (all three);
-#                   the content agent's baked push, the candidate for main, says [soak]
+#   a push          soaks nothing, unless one of the commits it brings says [soak] (Linux) or [soak-all] (all
+#                   three): every commit's message is read, so a merge at the head no longer hides the tag; the
+#                   content agent's baked push, the candidate for main, says [soak]
 #   by hand         tier: fast (the default), soak, or both, on the platforms named
 #   each night      03:23 UTC, the integration branch's tip, Linux (a schedule runs main's copy of this file, so the
 #                   build job checks out claude/awesome-gates-ntdb58 for it)
@@ -119,8 +120,9 @@ jobs:
           ONLY: ${{ inputs.platforms || (github.event_name == 'schedule' && 'linux-x64') || 'all' }}
           TIER: ${{ inputs.tier || 'fast' }}
           EVENT: ${{ github.event_name }}
-          # (the head commit's message, by the environment, never pasted into the script)
-          MESSAGE: ${{ github.event.head_commit.message }}
+          # (the messages of every commit the push brings, by the environment, never pasted into the script: a merge
+          # at the head keeps the [soak] of a commit beneath it)
+          MESSAGE: ${{ join(github.event.commits.*.message, ' ') }} ${{ github.event.head_commit.message }}
           REF: ${{ github.ref }}
           ALL: >-
             [
