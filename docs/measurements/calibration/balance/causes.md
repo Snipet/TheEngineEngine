@@ -1568,3 +1568,11 @@ burned 0.0214 g at TDC, 0.084 g at BDC (0.108), 0.055 of 0.139 g at closing. The
 measured band and Cavina's form; the economy four is unchanged and agrees. What is left (about 0.2 of the charge on the
 V10, 0.25 on the V12 and the 7.0) is the overlap's drive in the cylinder (D's). The OFs in my table above were taken with
 the heads, not the curtain-capped area; Cavina's form does not read the model's area, so its column stands.
+
+*D's overlap-area sweep* (D's local probe, nothing committed; both valves' effective area times k only while both are
+open): share at closing V10 0.477 / 0.385 / 0.301, V12 0.527 / 0.471 / 0.366, 7.0 0.525 / 0.444 / 0.340, the four
+0.172 / 0.168 / 0.166 at k 1 / 0.5 / 0.25; the idle's 4 s range on the V10 856-941 to 897-904 rpm. Its k = 1 is the tree
+before N1's 68e683f1 (my reads then 0.469 / 0.528 / 0.518), so N1's curtain cap already took part of what k takes: after it,
+0.397 / 0.488 / 0.481. Cavina's effective area (about 0.24 of the curtain against the old 0.73 q) is D's k of about 0.2.
+D: the share at closing is (R + E)/(R + E + F); the late closing's push-back cancels and the runner's store does not ratchet
+([.rvstore]); the excess is the through-flow exhaust to cylinder to runner at 355 to 380 degrees.

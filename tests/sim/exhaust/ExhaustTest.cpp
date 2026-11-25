@@ -388,6 +388,8 @@ TEST_CASE("the scope shows the path's pressures", "[exhaust][scope]")
         const double p = rig.get("b.scopeP[" + std::to_string(i) + "]");
         const double x = rig.get("b.scopeX[" + std::to_string(i) + "]");
         CHECK(std::isfinite(p));
+        // the points are spaced evenly along the path by construction (x = length (n + 1/2) / 64), so each lies one
+        // sixty-fourth of the path past the last: an order, not a measured margin
         CHECK(x > xPrev);
         xPrev = x;
         lo = std::min(lo, p);
