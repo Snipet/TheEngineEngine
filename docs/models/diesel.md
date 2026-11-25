@@ -149,6 +149,24 @@ turbine's power rises with the nozzle area, some 3.5 times its power a unit of v
 the manifold is fixed, so the inlet pressure falls as the vanes open and past about 0.4 the power per step is flat to
 falling. The vanes' actuator in card F's machine is a 50 ms lag; real electric ones take 100-300 ms a stroke.
 
+## The full-load fuel curve (`ecu.fuelCurveRpm`, `ecu.fuelCurveMg`; 25 Nov)
+
+A governed diesel's full-load torque curve is its fuel curve: the maker shapes torque speed by speed with the fuel at
+full rack. Eight pairs, rpm and mg a stroke a cylinder at full rack, in the fuel's own units (a maker's
+injected-quantity table fills it directly); used where mg > 0, linear between, held outside; none set: `fuelBoost`'s
+flat line, to the bit. The over-fuel allowance and the compensator act on it as on the flat line, so it cannot give
+torque the air does not support. Where a build derives it from torque, the conversion is the build's own model torque a
+milligram (truck-15l-six: 8.94 N m/mg at 1600 rpm, fuel-limited), so the curve absorbs the model's efficiency; its
+torque and power against speed are then set by the curve, not evidence, and what still tests the model is what the
+curve does not set: BSFC (the truck 179-189 g/kWh; P's tractor archetype 202-211, against a 15 L's published minimum
+near 185-195, P to source), the boost and lambda at peak torque and rated, the take-up.
+
+truck-15l-six (and its bobtail): the class's cited 2779 N m at 1000 rpm held to 1400 and 451 kW at 1800 and 2100
+(cited), 75 and 88 % of the peak at 700 and 800 (judgement). Held, heat settled, before -> after: 1100 rpm 2671 ->
+2660 N m (lambda 1.30: air-limited on the reference turbo's 140 kPa, the curve's low points not showing), 1300 2718 ->
+2715, 1600 2759 -> 2703, 2100 2729 N m / 600 kW -> 2135 / 470 kW. The tractor archetype's curve is proposed to card P,
+who commits it with its validation rows moved to "set by the fuel curve".
+
 ## The idle's clatter: a hump, not a comb (24 Nov, late)
 
 Card P's idle row found the three diesel archetypes with a line 1-10 dB under their exhaust's note at a warm idle:

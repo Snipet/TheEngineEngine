@@ -187,6 +187,10 @@ module HeavyDiesel
         highIdle = spec->highIdle > 0.0f ? spec->highIdle : rated * (1.0f + droop);
         // the pump: the fuel a stroke at full rack for the boost it was set up for (an equivalence ratio of 0.75 there)
         fuelFull = 0.75f / 14.5f * (101325.0f + spec->fuelBoost) / (287.0f * 320.0f) * (vTotal / (float)nCyl) * 0.92f;
+        // (or the build's full-load fuel curve, mg a stroke against rpm: linear between its points, held outside them)
+        const float curve = fuelCurve(omega * 9.5492966f);
+        if (curve > 0.0f)
+            fuelFull = curve * 1.0e-6f;
         // the brakes engage with the pedal up, the clutch in, the engine running above the cut-out speed
         const bool may = state == 2 && pedal < 0.02f && clutch < 0.5f && omega > spec->brakeMin;
         // (the dash's stage switch; ctl.buttons' BTN_ENGINE_BRAKE, 64, held: on, at High if the switch is Off)
@@ -261,6 +265,30 @@ module HeavyDiesel
 
     // The turbine's vanes as the brakes want them (card F's Boost::vanesAndPurge, boost.model 1): -1 its own loop; 0 shut
     // to their stop, the gate held closed (a VGT's brake position: the compression brake's or the vanes' exhaust brake)
+    // The build's full-load fuel curve at rpm, mg a stroke (0: none set). Its points are those with mg above 0,
+    // taken in order of speed
+    float fuelCurve(float rpm)
+    {
+        float lastR = -1.0f;
+        float lastM = 0.0f;
+        int n = 0;
+        for (int i = 0; i < 8; ++i)
+        {
+            const float m = spec->fuelCurveMg[i];
+            const float r = spec->fuelCurveRpm[i];
+            if (m <= 0.0f)
+                continue;
+            if (n == 0 && rpm <= r)
+                return m;
+            if (n > 0 && rpm <= r)
+                return r > lastR + 1.0f ? lastM + (m - lastM) * (rpm - lastR) / (r - lastR) : m;
+            lastR = r;
+            lastM = m;
+            ++n;
+        }
+        return lastM;
+    }
+
     // Every 16 samples: a VGT's position while a brake owns it (-1: its own loop). shaft: the turbo shaft's speed over
     // its limit (omegaMax); vMin: the vanes' shut stop (the brake's position). As a production ECU's brake mode does it,
     // the vane command itself holds the shaft under its limit, not the machine's 105 % relief (card F's, bang-bang).
