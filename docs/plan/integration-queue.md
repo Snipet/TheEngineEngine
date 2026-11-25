@@ -919,22 +919,64 @@ frequency; a few millimetres of slow jitter on the image's path.
 **For the owner to choose:** the inspector (J2's three designs; Rows recommended, the card next); the bangs'
 default after the clips; the idle's level; the listening questions.
 
+## 25 Nov 18:37: `main` at 43006034; what the baked commit met on the way; the next window
+
+- **`main` moved 76420f32 to 43006034 at 18:37:19 UTC** (fast-forward). Run 45669105123: linux-x64 587 of 587,
+  windows-x64 580 of 580 (attempt 1), macos-arm64 587 of 587 (attempt 2: GitHub cancelled attempt 1 for runner
+  capacity before a step ran; the lead re-ran that one job). sim/, host/ and tools/ are P's bake's (758bb12f's; 0
+  lines by the lead's diff). The dispatched soak on the same content: 217 of 219 in 66 minutes (N2's known diesel
+  turbo full; fuzz random 103, a dc mean of 0.0062 against 0.005, X classifying).
+- **Four timing-dependent tests found by CI on the baked commit and cured before `main` moved, none a fault of the
+  engine or the bake:** the assistant's connect burst refused on macOS (the listener's backlog of 4: now SOMAXCONN,
+  the test waiting on `accepted`); the host's stress case on Windows (it slept 50 ms where it must wait for
+  commandsApplied; C: one writer, nothing can stay failed while audio runs); the assistant's thread count on Linux,
+  twice (the kernel's /proc entry lags pthread_join by under 0.1 ms; `allowDesktop(false)` does join); with them
+  card A restated five instant-count assertions and widened three duration bounds to 5 s (each still separating a
+  10 s or 300 s fault). The lead did not re-run a failed test to get green.
+- **P's rows on the baked content: 112 of 847 missed** (table N: 114). The V12 idles at +30.9 deg BTDC where it sat
+  at -14.5. The rotary's power and torque in band on its cited ports (206 kW, 313 N m). For N1: the rotary's torque
+  peaks at the dyno's lowest step (2294 rpm, one turbo; band 4500 to 5500); the two-stage's combined curve notches
+  13 N m across its switch; a dyno hold below the switch reads stage B (the start overshoots to 6190 rpm and the
+  hysteresis holds).
+- **The diesel package is complete locally and green on its own tree** (N2's eleven commits,
+  docs/handoffs/patches/n2-package.patch: the ruled map, (b), the whole-flow nozzle, no guard, the taper, the VGT
+  loop's conditional integration, the integral held while the ECU owns the vanes, X-039's inlet node solved
+  implicitly, the shaft's ceiling at 0.948 of omegaMax; D2's half: its builds off the 88 deg dial, the fixture's
+  target, `ecu.torqueMax` / `ecu.powerMax`, the brake retuned once without its own shaft integral, the cylinder
+  cut's case, GradeTest's checks; the integrator's one latch 87629688). Tractor at 1000 rpm 1507 to 2584 N m; the
+  truck's sets at 2000 out of a relay cycle through the relief (+4.3 %, the choke flag gone); the brake 287 / 361 /
+  331 kW; the release's shaft at most 0.981 (was 1.080). Known limits in docs/models/diesel.md.
+- **The click check is restated on its property** (X, e792f732 local): a click is a step its neighbouring firing
+  periods do not have; it still sees X-014 and X-015 on their old tree, clears X-033, X-034 and X-035 as firing
+  trains, keeps X-030, X-031, X-032.
+- **Research list (N2), nothing built:** rule (c) (the smallest wheel that clears rated, a mean phi of 0.96) with a
+  turbine matched at rated, which needs the exhaust's back pressure after the turbine from G; a feed-forward vane
+  position (the same missing p4); the re-application's ring of about 6 s and its +16 % peak; the six's unsteady
+  cell at 2000.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
-- **25 Nov 15:46: P'S BAKED PUSH IS IN: 9c36dbd1** (the bake 15152e0b at tools sha 758bb12f's; sim/, host/ and
-  tools/ 0 lines from it by the lead's diff; on top of U1's switch row and chat panel fc0e9b0a, X's 08b796c8 and
-  U5's GARAGE filter 731f7bbf).
-- **25 Nov 16:23: macOS is RED on 9c36dbd1, 586 of 587** (Linux green, 587 of 587; Windows running):
-  `assistant.sim`, card A's own new case (a peer gone mid-reply): a connect refused inside its loop of 20 (the
-  listener's backlog of 4; macOS refuses at once where Linux queues); intermittent (green on b7840f64). **Card A
-  alone is released for ONE fix** (the backlog; the test made deterministic). `main` then moves to card A's
-  commit, not 9c36dbd1, when it is green on all three; sim/, host/ and tools/ stay the bake's.
-- **CODE PUSHES ARE STOPPED FOR EVERYONE ELSE until the lead writes here that `main` has moved** (run 45648571240 on
-  9c36dbd1 must be green on linux-x64, macos-arm64 AND windows-x64; a push that builds would replace its waiting
-  jobs). The only exception: a fix the lead releases by name for a red job on that sha.
-- **Docs-only pushes (docs/** and *.md) are allowed**: the workflow ignores them and starts no run.
-- Held for after `main`: the steward's .mcpb artifact; X's tools/ commit. Then the next window, as the section of
-  15:23 lists it (the diesel package in its order; the one latch for both directions with bike.fm's patch; G's
-  8c9f4c20 and BangTest; L's exposure against the bangs; the fixtures' move out of content/; the soak's findings to
-  their owners; card A: the assistant's listing covering the archetypes GARAGE shows, the chat's "Add a key" action
-  drawn, the yes/no dialog with U1; M's fan cure).
+- **25 Nov 18:37: `main` HAS MOVED to 43006034.** The window is OPEN for the items below and nothing else. Rule:
+  one green whole default tier on a merged state, then merge a moved tip and push, saying what was not in the run;
+  CI judges the combination; a red tip is fixed before anything else is pushed over it. **U1:** tell the lead
+  before your final merge; the tip is held from your merge to your push.
+- **First, tests / ci / app only (any order):** the steward (the .mcpb artifact; `[soak]` read from every commit
+  of a push; the status tool naming "not acquired (runner capacity)"); X (the excess measure, the restated click
+  check, the tools/ commits, random 103; the nightly's rotation only if X still wants it at 66 minutes); C (its
+  four sleeping host tests).
+- **Then sim/, in this order, each waiting for the one before to be on the branch:**
+  1. N2: the package's eleven commits;
+  2. the integrator: 87629688 (the one latch for both directions), itself; the bike's patch to B2;
+  3. D2: its half on top (valves and fixture, the ceiling, the brake, the cut's case, GradeTest's checks);
+  4. G: 8c9f4c20 and BangTest; X-038 (near-zero bores in the builder's exhaust); then L: the exposure against the
+     bangs, measured on G's fix;
+  5. the fixtures out of content/ in one step (X moves; N1 and the integrator repoint; P the manual's table);
+  6. N1: the rotary's low end, the two-stage's notch, the start's overshoot latching stage B, X-032 / X-034 /
+     X-037; the steward: X-030 / X-031 / X-036;
+  7. ui / assistant: card A (`list_builds` covering the archetypes GARAGE shows; the chat's "Add a key" drawn;
+     the yes/no dialog with U1); M: the fan's tone.
+- **Then the lead writes FROZEN FOR THE BAKE here and P bakes** (re-timing N2's named 4 s rows, adding VW's 320
+  at 1750, marking rows held by calibration).
+- **NOT open:** the bangs' default (the owner's ear on G's clips); the inspector's redesign (the owner's choice);
+  rule (c), the feed-forward and the turbine's rated match (research).
+- **Docs-only pushes (docs/** and *.md) at any time.**

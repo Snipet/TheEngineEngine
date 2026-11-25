@@ -60,3 +60,24 @@ moves by a few percent. Listen for:
 - the truck at 2100 near choke: a steady whine that should not hunt;
 - the tractor's rated pull on the taper: no surge chuff;
 - the 2.0 at 1750: the spool through the climb should sound smooth and unchanged.
+
+## Validation rows that read a transient (for P to re-time; nobody tunes to them)
+
+The harness's default settle is 4 s. On these cells the engine is still spooling at 4 s: they moved by more than 0.2 %
+or 0.5 kPa when only the spool's path changed (the shaft's ceiling, shaft-ceiling.md), and agree within 0.1 % once
+settled for 60 s.
+
+| build | rpm |
+|---|---|
+| boxer four turbo | 5000 |
+| 2.0 common-rail diesel | 1500, 1900 |
+| inline five rally | 3500 |
+| kei 660 | 2000 |
+| pickup 6.7 diesel | 1000, 1500, 1900 |
+| straight six twin turbo 3.0 | 2000 (it also wanders 465-518 N m row to row), 3500 |
+| tractor 15 L | 1000, 1500 |
+| turbo four 2.0 | 2000, 3500, 6500 |
+| twin-turbo hot vee 4.0 | 2000, 3500 |
+| V6 3.5 twin turbo | 2000 |
+
+The tractor at 1900 is not one of them: it is shaft-limited on a flat 260, and the ceiling moves it at steady (+2.5 %).
