@@ -378,6 +378,18 @@ TEST_CASE("the intake cam baked by a sweep of the fast dyno: the best advance by
     CHECK(map[16 + 16 + 0 * 16 + 2] == r.best[0]);   // the bake's advance from 0.95 up
     CHECK(map[16 + 16 + 0 * 16 + 3] == r.best[0]);
     CHECK(build.canUndo());
+    // its key: current as applied; stale after an edit that moves the cam; current again when undone; never moved by a
+    // dyno's heat-settle counter (hidden) nor by the cam map it wrote
+    CHECK(r.key == intakeCamKey(build, *sim));
+    CHECK(build.get("ecu.maps.camInKey") == static_cast<double>(r.key));
+    CHECK(intakeCamCurrent(build, *sim));
+    const double centre = build.get("valve.exCentre");
+    build.set("valve.exCentre", centre + 4.0);
+    CHECK_FALSE(intakeCamCurrent(build, *sim));
+    build.set("valve.exCentre", centre);
+    CHECK(intakeCamCurrent(build, *sim));
+    build.set("exhaust.heatSettle", build.get("exhaust.heatSettle") + 1.0);
+    CHECK(intakeCamCurrent(build, *sim));
     WARN("v12-65's intake cam baked in " << r.wallSeconds << " s: " << r.best[0] << ", " << r.best[1] << ", " << r.best[2]
                                          << " deg at 2000, 4000, 6000 rpm");
 }
@@ -471,10 +483,28 @@ TEST_CASE("the knock limit's key moves with what moves the knock limit, and not 
         build.set("ecu.timing", build.get("ecu.timing") + 3.0);
         CHECK(knockLimitKey(build, *sim) == key);
     }
+    // the base key (the cam bake's): the cam maps move the key and not the base
+    const std::int64_t base = knockLimitBaseKey(build, *sim);
+    if (build.fieldOf("ecu.maps.camInAuto") >= 0)
+    {
+        const double was = build.get("ecu.maps.camInAuto");
+        build.set("ecu.maps.camInAuto", was == 0.0 ? 1.0 : 0.0);
+        CHECK(knockLimitKey(build, *sim) != key);
+        CHECK(knockLimitBaseKey(build, *sim) == base);
+        build.set("ecu.maps.camInAuto", was);
+    }
+    // the hidden counters (a dyno's heatSettle presses) move neither
+    if (build.fieldOf("boost.heatSettle") >= 0)
+    {
+        build.set("boost.heatSettle", build.get("boost.heatSettle") + 1.0);
+        CHECK(knockLimitKey(build, *sim) == key);
+        CHECK(knockLimitBaseKey(build, *sim) == base);
+    }
     // the compression, the fuel and the boost's section do
     const double compression = build.get("engine.compression");
     build.set("engine.compression", compression - 0.5);
     CHECK(knockLimitKey(build, *sim) != key);
+    CHECK(knockLimitBaseKey(build, *sim) != base);
     build.set("engine.compression", compression);
     CHECK(knockLimitKey(build, *sim) == key);
     for (const FieldInfo& f : build.fields().all())
@@ -795,4 +825,56 @@ TEST_CASE("the first frame of every telemetry field is a value the program wrote
         INFO(player->telemetryNames()[k] << " before the first call: " << player->telemetry(k));
         CHECK(written(player->telemetry(k)));
     }
+}
+
+TEST_CASE("the calibration baked in the background: the spark, the cam on that spark, the spark again; applied, both "
+          "current; an edit makes both stale",
+          "[engine][sim][bake][nightly]")
+{
+    if (!haveSim())
+        SKIP("sim/engine.fm is not there yet");
+    std::string error;
+    const auto sim = compiled(simDir(), {}, error);
+    REQUIRE(sim != nullptr);
+    Build build(sim->fields());
+    std::vector<std::string> warnings;
+    REQUIRE(build.loadFile(std::filesystem::path(TEE_SOURCE_DIR) / "content/builds/archetypes/v12-65.json",
+                           BuildPart::Whole, warnings, error));
+    if (build.fieldOf("ecu.maps.camInKey") < 0 || build.fieldOf("ecu.maps.knockLimitKey") < 0)
+        SKIP("the program has no knock-limit or cam key yet");
+    REQUIRE(build.get("valve.inPhaseRange") > 0.0);
+    CalibrationBakeOptions options;   // small, for the test
+    options.spark.speeds = 3;
+    options.spark.pedals = {1.0};
+    options.cam.step = 25.0;
+    options.cam.predict.points = options.cam.predict.coarse = 3;
+    options.debounceSeconds = 0.05;
+    CalibrationBakeService bakes(sim, options);
+
+    CHECK(bakes.consider(build) != KnockBakeState::Current);   // nothing baked: stale, asked
+    CHECK(build.get("ecu.maps.knockLimitAuto") == 1.0);
+    std::set<std::string> stages;
+    bool applied = false;
+    const auto until = std::chrono::steady_clock::now() + std::chrono::seconds(300);
+    while (!applied && std::chrono::steady_clock::now() < until)
+    {
+        REQUIRE(bakes.state() != KnockBakeState::Failed);
+        if (const std::string st = bakes.stage(); !st.empty())
+            stages.insert(st);
+        applied = bakes.takeAndApply(build, error);
+        INFO(error);
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    }
+    REQUIRE(applied);
+    CHECK(intakeCamCurrent(build, *sim));
+    CHECK(knockLimitCurrent(build, *sim));
+    CHECK(bakes.consider(build) == KnockBakeState::Current);   // spark, cam, spark: and it ends
+    INFO("stages seen: " << stages.size());
+    CHECK(stages.count("cam") == 1);
+
+    // an edit of what moves both (the compression): both stale, both set aside, a bake asked
+    build.set("engine.compression", build.get("engine.compression") - 0.5);
+    CHECK(bakes.consider(build) != KnockBakeState::Current);
+    CHECK(build.get("ecu.maps.knockLimitAuto") == 1.0);
+    CHECK(build.get("ecu.maps.camInAuto") == 1.0);
 }

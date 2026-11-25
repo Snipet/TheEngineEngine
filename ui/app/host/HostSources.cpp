@@ -227,7 +227,7 @@ namespace tee::ui
     }
 
     // ---- ServiceBake ------------------------------------------------------------------------------------------------
-    ServiceBake::ServiceBake(std::shared_ptr<tee::Sim> sim, tee::Build& build, tee::KnockBakeOptions options)
+    ServiceBake::ServiceBake(std::shared_ptr<tee::Sim> sim, tee::Build& build, tee::CalibrationBakeOptions options)
         : sim_(sim), build_(build), bakes_(std::move(sim), std::move(options))
     {
     }
@@ -242,22 +242,26 @@ namespace tee::ui
             bakes_.consider(build_);
             seen_ = build_.hash();
         }
-        tee::KnockBakeResult r;
-        if (bakes_.take(r) && tee::knockLimitKey(build_, *sim_) == r.key)
+        // What finished, applied while still the build's (the cam, then the spark: the service keeps the order).
+        std::string error;
+        const std::uint64_t before = build_.hash();
+        const bool applied = bakes_.takeAndApply(build_, error);
+        if (applied || !error.empty())
         {
-            std::string error;
-            if (tee::applyKnockLimit(build_, r, error))
-                applyError_.clear();
-            else
-                applyError_ = error;
+            applyError_ = applied ? std::string() : error;
             ++applied_;
-            seen_ = build_.hash();
         }
+        if (build_.hash() != before)
+            seen_ = build_.hash();   // its own writes are not edits to bake for
     }
 
     std::string ServiceBake::state() const
     {
-        return applyError_.empty() ? std::string(tee::knockBakeStateName(bakes_.state())) : std::string("bake failed");
+        if (!applyError_.empty())
+            return "bake failed";
+        const std::string s = tee::knockBakeStateName(bakes_.state());
+        const std::string stage = bakes_.stage();
+        return s == "baking" && !stage.empty() ? "baking " + stage : s;
     }
 
     std::string ServiceBake::error() const { return applyError_.empty() ? bakes_.error() : applyError_; }

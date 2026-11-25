@@ -111,6 +111,24 @@ its end within a rpm. Left out: the absorber's own inertia and limits.
 Eight cylinders' inertia torque, the crank's step and the work integral: 69 ns a 96 kHz sample (0.036 R, R = 1942 ns,
 the reference V8's on this machine); sixteen: 117 ns. Budget: 0.06 R.
 
+## The coolant, the warm-up and the radiator's fan (sim/core/heat.fm)
+
+The burns give the coolant some 40 % of their heat and the rubbing 60 % of its; the block and its coolant hold some
+9 kJ/K a litre, as the size's 0.9th power; the thermostat opens from 363 K. All of these are **judgement**.
+
+Measured from them (`EngineTest`, "a 2 L engine warms from 20 to 90 C in some 5 minutes at idle", [nightly]): the
+2 L turbo four warms from 20 to 90 C in 289 s (4.8 min) at idle, the same with the reference's walls. The case's band,
+3.5 to 8 minutes, is **judgement** about that measurement. heat.fm first said "some 8 minutes": that was never measured
+and had no source, so 4.8 is not a regression. A published idle warm-up time would replace the band.
+
+The radiator's fan (the lead's ruling, 24 Nov): Heat holds its physical state, an electric fan's thermoswitch
+(`voices.fanOn`, off 5 K lower, only with the key on) or a viscous clutch's lock, and package M's FanVoice reads it.
+Under the physical switches (engine.wallHeat 1 or fuel.model 1) the radiator has `still` 0.05 of a full fan's air
+with its fan off, the fan or the road (15 m/s full, driven under car.model 1) the rest; otherwise the reference's full
+air, to the bit. `still` is **judgement** from "[.fan]": the default idling warm in still air for 600 s cycles 367 to
+373 K, 8 switchings, the fan on 2.1 % (0.02: 20 switchings; 0.1: never reaches its switch), the same to the bit with
+voices on and off. Checked by "a warm idle in still air cycles the radiator's fan, and the voices leave it as it was".
+
 ## Wall heat (spec.engine.wallHeat)
 
 0 is the reference's: one coefficient by speed for every cylinder, the same all cycle. 1 is Woschni's correlation

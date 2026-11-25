@@ -316,3 +316,33 @@ TEST_CASE("standing by model", "[.standmodel]")
         std::printf("%-32s first half second %.0f dBFS\n", c.name, 10 * std::log10(std::max(sum / n, 1e-40)));
     }
 }
+
+// The fan's cycling under the physical gate (engine.wallHeat 1; the lead's ruling, 24 Nov): a warm engine idling in
+// still air, its electric fan's thermoswitch Heat's; for each candidate `still`, voices off and on
+TEST_CASE("fan cycles", "[.fan]")
+{
+    for (double still : {0.02, 0.05, 0.1})
+        for (int vo = 0; vo < 2; ++vo)
+        {
+            Bench b("default");
+            std::string e;
+            REQUIRE(b.player().setSpec("engine.wallHeat", 1, e));
+            REQUIRE(b.player().setSpec("voices.model", vo, e));
+            b.write("heat.still", still);
+            b.start();
+            b.write("heat.tCool", 368.0); b.write("heat.tOil", 378.0); b.write("heat.tSurf", 455.0); b.write("heat.warm", 1.0); b.write("heat.warmS", 1.0);
+            double lo = 1e9, hi = 0, onT = 0, t = 0, first = -1;
+            int switches = 0, last = 0;
+            b.play(600.0, [&] {
+                t += 512.0 / 48000.0;
+                const double tc = b.field("heat.tCool");
+                const int on = int(b.field("heat.fanSwitch"));
+                if (t > 60.0) { lo = std::min(lo, tc); hi = std::max(hi, tc); }
+                if (on != last) { switches += 1; if (first < 0) first = t; }
+                last = on;
+                onT += on ? 512.0 / 48000.0 : 0.0;
+            });
+            std::printf("still %.2f voices %d: coolant %.2f to %.2f K after the first minute, the fan first at %.1f s, on %.1f %% of 600 s, %d switchings, ends %.3f K, %.3f rpm\n",
+                        still, vo, lo, hi, first, 100.0 * onT / 600.0, switches, b.field("heat.tCool"), b.tel("engine.speed") * 9.5492966);
+        }
+}

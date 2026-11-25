@@ -1209,7 +1209,13 @@ module BoostMachine
                 if (cmdVanes < 0.0f)
                 {
                     const float r3 = house[hh].p / fmaxf(v2.p, 1000.0f);
-                    bpOpen[t] = fminf(fmaxf(bpOpen[t] + d16 * 3.0f * (r3 - bpLimit), 0.0f), 1.0f);
+                    // (only once the boost is near what is asked, or the spring with none asked: what the limit
+                    // protects is a loaded engine's pumping against a nozzle shut for boost it already has; while
+                    // spooling the turbine's inlet stands well over the barely-raised charge by itself, and the limit
+                    // opened the vanes and held the boost low: D2's truck stood at 10 kPa with its vanes open on the
+                    // true exhaust mass. Below 0.9 of it the limit only gives back)
+                    const float nearTg = boost > 0.9f * want ? 1.0f : 0.0f;
+                    bpOpen[t] = fminf(fmaxf(bpOpen[t] + d16 * 3.0f * (nearTg > 0.0f ? r3 - bpLimit : -0.3f), 0.0f), 1.0f);
                     v = fmaxf(v, turb[t].vaneMin + bpOpen[t]);
                     // (the surge guard, gain-reversal protection: vanes shut past the compressor's surge line make
                     // less boost, not more: it cannot deliver, the engine's air and the diesel's smoke-limited fuel fall

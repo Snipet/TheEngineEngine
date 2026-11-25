@@ -1318,3 +1318,50 @@ intake 30: 233 N m at 1500 (64 kPa), 336 at 1800 (122); with the exhaust lobe 30
 while the torque rises at 1500 by 40 %: the reading, taken around the overlap's top, does not rank the exhaust axis (the
 exhaust closing earlier shortens the overlap it reads over). A bake should rank by torque, not by it. (My "long lobe"
 rows at this merge were on the build's short lobe: the lobe P put in; withdrawn as long-lobe readings.)
+
+**N3-15, N1's reading of the intake's damping** (N1's message, 23:57 by `date -u`). Every sourced loss on the list is in
+the model: the port's bend and the seat's loss through the lab's flow-bench discharge coefficients (Idelchik's bend on
+top would count them twice); quasi-steady friction from the mean |u| at the ends (swing included); the unsteady friction
+and the oscillating thermal layer as Kirchhoff's wall loss, within 2 to 6 % of the textbook coefficient (with turbulent
+mean flow the measured damping tends to the quasi-steady value: Peters et al. 1993, N1 from memory). The flat six at
+4750 rpm, air through the valves by runner length (my probe): 0.10 1.035, 0.20 1.057, 0.25 1.074, 0.30 1.057,
+0.35 1.052, 0.40 1.110, 0.45 1.097, 0.53 1.241, 0.60 1.168, 0.70 1.252. The off-tune floor is flat at 1.04 to 1.07 from
+0.10 to 0.35 (0.30 is no trough); the tuned 0.53 and 0.70 stand 16 to 19 % over it, against 6 to 9 % published. So the
+excess is the resonance's height, not a missing loss: candidates the port's taper and area change (the model's runner one
+bore to the valve), the flow's multidimensional end at the valve, and what the experiments counted as untuned. Mine if
+the lead agrees; not started.
+
+**N3-15, the bound's sources read for what they compared, and one reproduced** (the lead's 23:58; 00:02 `date -u`, 2026-11-25).
+(1) What each source compared:
+- *Harazi et al., Jurnal Teknologi 87:5 (2025) 875-886* (the "+8.7 %, 528 mm" row; ResearchGate 394849080), full text read:
+  a **1-D simulation** (Lotus Engine Simulation), not an experiment, of the Proton CamPro 1.6 (76 x 88 mm, rod 180,
+  10:1, intake throat 28 mm, IVO 12 BTDC / IVC 48 ABDC, EVO 45 BBDC / EVC 20 ATDC, exhaust lift 8 mm; 148 N m at 4000,
+  82 kW at 6000), validated on the stock runner against Mohiuddin and Rahman's dyno VE (average error under 3 %). The
+  comparison: the stock runner, 400 mm x 39 mm, against 528 mm (wave theory; 476 mm by Helmholtz); VE (trapped air over
+  the swept volume at the inlet's 1 bar, 20 C), relative; "up to 8.17 % at mid-range rpm between 3500 and 4500 rpm and at
+  6500" (body; the abstract says 8.71); the 400 mm better between 5500 and 6000. Two lengths near tune, *not tuned against
+  untuned*. My table's "experiment" was wrong.
+- *ResearchGate 287040569* (turbo diesel, variable length, +6 %), *ScienceDirect S187661021931210X* (two-step length and
+  timing, +5.4 % average, +1.4 % from the lengths alone), *the Colorado State CFR thesis* (+10 %): not readable here
+  (403 twice; the thesis not found). What each compared is unconfirmed; they stand as abstract-level figures only.
+(2) The CamPro pair in the model: hot-hatch-16-16v given the paper's bore, stroke, rod, compression, cam centres and
+durations (the paper's events taken as seat timings; 1 mm durations 30 degrees shorter: judgement), exhaust lift 8 mm,
+runner bore 39 mm; intake lift, valve heads and plenum (1.28 L) the build's (not in the paper). VE (tel, over ambient),
+400 against 528 mm:
+
+| rpm | 1000 | 1500 | 2000 | 2500 | 3000 | 3500 | 4000 | 4500 | 5000 | 5500 | 6000 | 6500 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 400 mm | 0.684 | 0.650 | 0.694 | 0.797 | 0.830 | 0.744 | 0.837 | 0.903 | 0.984 | 0.952 | 0.972 | 1.020 |
+| 528 mm | 0.686 | 0.741 | 0.743 | 0.761 | 0.731 | 0.805 | 0.903 | 0.957 | 1.055 | 1.127 | 1.033 | 0.904 |
+| gain | +0.2 | +14.1 | +7.2 | -4.6 | -11.9 | **+8.3** | **+7.9** | **+6.0** | +7.2 | +18.4 | +6.3 | -11.4 |
+
+On the paper's own pair and band (3500 to 4500) the model reads **+6.0 to +8.3 % against the paper's 8.17 %**: by the
+lead's test the flat six's 17.6 % (0.30 against 0.53 m, an off-tune floor against a tooth) was never comparable with this
+source, and the item closes as far as this source goes. Three cautions, for the record and not reopening it:
+(a) the source is itself a 1-D code: agreement with it bounds the model against Lotus, not against an engine; the only
+measured anchor in it is the stock runner's VE. (b) Outside the band the two disagree in sign: at 5500 to 6000 the model
+prefers 528 mm (+18 and +6 %), the paper 400 mm; at 2500 to 3000 the model's 528 mm dips 5 to 12 %. (c) The level: the
+model's VE runs 0.95 to 1.13 from 5000 up on this NA four (torque 164 N m at 5000 with 400 mm against the real engine's
+148 at 4000); the paper's grid study reads 0.89. The ram's *height* against a measured engine remains unbounded by any
+source read here; the level question sits with the cam timing's reference lift (not stated in the paper) and the intake
+lift (not given), so it is not sized.

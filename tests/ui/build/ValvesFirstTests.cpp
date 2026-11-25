@@ -1,5 +1,5 @@
 // tests/ui/build/ValvesFirstTests.cpp: U2's VALVES and ENGINE on the first build a person meets (content/builds/
-// first.json: the 2.0 L turbo four, valve.model Lab, an intake phaser of 60 degrees, no two-stage cams), through the
+// first.json: the EA888 gen 3, valve.model Lab, phasers of 60 and 30 degrees, two-stage exhaust lift), through the
 // real Spec's document and the application's frame, with the first launch's TRY FIRST strip showing (the stage's rect
 // then shorter) and the simulator's telemetry names set as it gives them (a cold start, then warm).
 //
@@ -64,8 +64,10 @@ namespace
         CHECK(en::fieldValue(doc, en::EF::custom) >= 0.5);
         CHECK(!en::twoStrokeRuns(doc) && !en::twoStrokeOf(doc).on && !en::layoutOf(doc).twoStroke);
         const vv::Train t0 = vv::trainOf(doc);
-        CHECK(t0.editable && !t0.stages);
-        CHECK_MSG(std::fabs(t0.inPhaseRange - 60.0) < 1e-6, std::to_string(t0.inPhaseRange));
+        // (the EA888 gen 3 since 95f3f3fc: two-stage exhaust lift on, stage B from 3100 rpm)
+        CHECK(t0.editable && t0.stages && t0.exB.known());
+        CHECK_MSG(std::fabs(t0.inPhaseRange - 60.0) < 1e-6 && std::fabs(t0.exPhaseRange - 30.0) < 1e-6,
+                  std::to_string(t0.inPhaseRange) + " " + std::to_string(t0.exPhaseRange));
 
         // the frame over it, the strip showing, the engine cold just after a start (the oil at the air's 15 C)
         SetTelemetry tel;
@@ -118,7 +120,7 @@ namespace
         CHECK_MSG(doc.get(fd) > d0 && doc.get(fc) == c0, "the seat mark's drag did not reach the build");
         CHECK(rig.build->undo());
 
-        // cold: the phaser parked and saying why; nothing about stages (this build has one)
+        // cold: the phasers slowed and saying why; nothing about the stage (nothing waits for it)
         std::string words = tee::ui::valvesOilWords(ws);
         CHECK_MSG(words.find("SLOWED: COLD OIL") != std::string::npos, words);
         CHECK_MSG(words.find("B WAITS") == std::string::npos, words);
@@ -133,7 +135,8 @@ namespace
         host.tick(2);
         CHECK_MSG(tee::ui::valvesOilWords(ws).empty(), tee::ui::valvesOilWords(ws));
 
-        // two-stage cams on: B drawn and its handles live; stage B waits for 60 C oil, then follows tel.valve.stage
+        // two-stage cams (on in this build): B drawn and its handles live; stage B waits for the coolant, then follows
+        // tel.valve.stage
         doc.set(doc.find("valve.stages"), 1.0);
         host.tick(3);
         const vv::Train t1 = vv::trainOf(doc);

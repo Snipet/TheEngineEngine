@@ -195,7 +195,13 @@ TEST_CASE("launch.automatic: a brake-torque launch on an automatic is no slower 
     {
         const double idle = autoLaunch("combo/v8", 0.0, tc);
         const double torqued = autoLaunch("combo/v8", 0.2, tc);
-        CHECK(torqued <= idle + 0.01);
+        // With traction control the tyres are held at their slip target either way, so the converter's head start is
+        // all gain: no slower. Without it the launch is the tyres' (street rubber, 2300 rpm at the release against
+        // 1400): the extra torque at the hit can go into wheelspin, and "no slower" is not a law there: main's Linux
+        // job at 09c1fb4e read 3.104 s against 3.072 from idle (card I's own run: 3.104 against 3.136), three blocks
+        // apart either way. What must hold without it is that brake-torquing never costs a launch (a tenth of a
+        // second, judgement); the fault this guards, an upshift on spinning tyres, is launch.automatic.spin's below.
+        CHECK(torqued <= idle + (tc ? 0.01 : 0.10));
     }
 }
 

@@ -106,8 +106,11 @@ them on purpose, since the ground's comb moving with the distance is most of wha
 ## The cabin
 
 In the DRIVER camera the outside sources come through the body: the exhaust's, the tyres' and the driveline's
-through the floor (the reference's 260 Hz, Q 0.8 low-pass), the intake's and the bay's through the firewall (its
-800 Hz, Q 0.7), the wind's through the glass (a 1.2 kHz one-pole: 6 dB an octave, the mass law's slope), each with a
+through the floor (the reference's 260 Hz, Q 0.8 low-pass: the exhaust's band, where the reference's CABIN is matched),
+the intake's and the bay's through the firewall (an 800 Hz one-pole: a wall's mass law, 6 dB an octave; it was the
+reference's second order, which left the cabin's 4 and 8 kHz octaves 19 and 32 dB under the reference's CABIN on the
+engine alone, now 6.5 and 12.4, the rest from 250 Hz to 2 kHz within 4 dB; the fit unchanged, 2.86 dB rms), the
+wind's through the glass (a 1.2 kHz one-pole, the mass law's slope too), each with a
 transmission fitted to the reference's CABIN view (exhaust +2.6 dB, intake +4.3 (the air box against the firewall),
 the shaded bay -6.5, its carrying part -4.7, tyres -0.7). An open window lets each in past its filter at half its
 level, `(1 - w) filtered + 0.5 w direct`: measured in the engine, the highs' share at 2860 rpm goes from -30.8 dB
@@ -253,7 +256,8 @@ as p-idle-warm holds it (the fan runs), voices on against off, through Places an
 view (Side, Rear, Cabin). Places / the reference, the voices' share above 250 Hz: Side +18.6 / +17.7 dB, Rear
 +8.6 / +4.4, Driver +19.6 / +11.8; the fan's 560 Hz against the engine's own highs: 8.3 / 7.0 dB over, 5.6 / 8.1
 under, 9.4 / 1.4 over; on a free rev no voice's tone stands out. Tolerances 3, 6 (the fit's worst residual), 9 dB.
-Open: the cabin's firewall (800 Hz, second order) passes the fan's 560 Hz some 8 dB more than the reference's cabin.
+(With the fan running, the cabin passed its 560 Hz some 8 dB more than the reference's CABIN; M has since moved the
+fan's switch to 373 K and its level.)
 The voices' own levels are M's (the fan's 560 Hz stands 7 dB over the engine's highs even in the reference's Side).
 
 The camera matters more than any of this: the reference's Side view hears the bay 26 dB louder against the exhaust

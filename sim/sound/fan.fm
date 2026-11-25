@@ -46,6 +46,9 @@ module FanVoice
     float hzSet;        // its speed now (the clutch's, the motor's)
     float lock;         // a viscous clutch's share, 0.25 to 0.9
     int on;             // an electric fan's switch
+    int fromHeat;       // 1: the switch and the clutch are Heat's (Engine hands them over every 16 samples: card D, the
+    int heatOn;         // lead's ruling, 24 Nov: the thermoswitch a physical state, so the fan cools what switched it on);
+    float heatLock;     // 0: its own, as below (a rig with no engine)
     float blades;
     Glide aTone;
     Glide aNoise;
@@ -74,6 +77,9 @@ module FanVoice
         hzSet = 0.0f;
         lock = 0.25f;
         on = 0;
+        fromHeat = 0;
+        heatOn = 0;
+        heatLock = 0.25f;
         blades = 7.0f;
         motor = 0.0f;
         out = 0.0f;
@@ -102,6 +108,8 @@ module FanVoice
             const float x = fminf(fmaxf((coolant - (onAt - 15.0f)) / 15.0f, 0.0f), 1.0f);
             const float lockWant = 0.25f + 0.65f * x;
             lock += (lockWant - lock) * (1.0f - expf(-d16 / 4.0f));
+            if (fromHeat != 0)
+                lock = heatLock;
             want = 1.1f * crankHz * lock;
             hzSet = want;
             motor = 0.0f;
@@ -112,6 +120,8 @@ module FanVoice
                 on = 0;
             else if (coolant >= onAt)
                 on = 1;
+            if (fromHeat != 0)
+                on = heatOn;
             want = on != 0 ? 40.0f : 0.0f;
             const float tau = on != 0 ? 0.35f : 1.2f;
             hzSet += (want - hzSet) * (1.0f - expf(-d16 / tau));
