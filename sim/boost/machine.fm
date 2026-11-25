@@ -1179,8 +1179,34 @@ module BoostMachine
             // (gains 0.5 and 1 a second: the duty bleeds the whole boost off the actuator's signal, so a unit of duty
             // moves the gate signal / span, some 2.4 at 73 kPa: at 2.5 and 4 the loop cycled at the turbo four's top
             // with the gate's span widened; judgement against that plant, as a calibrator sets a boost PID)
-            integ = fminf(fmaxf(integ + 1.0f * e * d16, -0.5f), 1.0f);
-            u = fminf(fmaxf(0.5f * e + integ, 0.0f), 0.95f);
+            int vanes = 0;
+            for (int t = 0; t < turbos; ++t)
+                if (turb[t].vgt != 0)
+                    vanes = 1;
+            if (vanes != 0)
+            {
+                integ = fminf(fmaxf(integ + 1.0f * e * d16, -0.5f), 1.0f);
+                u = fminf(fmaxf(0.5f * e + integ, 0.0f), 0.95f);
+            }
+            else
+            {
+                // (a wastegate's loop as production boost controllers run it (the lead's suggestion, from practice; the
+                // numbers judgement): a feed-forward duty that puts the gate's balance at the target (the bled signal
+                // plus the exhaust's push on the poppet against the spring: 1 - (spring - push) / target), the
+                // proportional part over it (0.15: 0.5 cycled at 4500 rpm, 113 to 143 kPa), and the integral acting only
+                // from 10 % under the target up, bled over 0.3 s while the boost is further under (the spool), its
+                // authority -0.6 to +0.2 about the feed-forward (the feed-forward holds no gate lift, and the kei's gate
+                // stands at 0.3 to 0.45 at its target: a -0.2 authority left it at 82.7 kPa against 60). The integral of
+                // the plain PI gathered through the whole spool and held the gate shut past the target: first.json's
+                // tip-in at 3500 rpm peaked at 187 kPa against 120 and rang for 5 s; now 133 kPa, 0.6 s over +5 %)
+                const float push0 = kFace * (house[0].p - pOut);
+                const float ff = fminf(fmaxf(1.0f - (gateSpring - push0) / fmaxf(tg, 1000.0f), 0.0f), 0.95f);
+                if (e < 0.1f)
+                    integ = fminf(fmaxf(integ + 1.0f * e * d16, -0.6f), 0.2f);
+                else
+                    integ -= integ * fminf(d16 / 0.3f, 1.0f);
+                u = fminf(fmaxf(ff + 0.15f * e + integ, 0.0f), 0.95f);
+            }
         }
         else
             integ = 0.0f;
