@@ -169,12 +169,14 @@ namespace tee
             return false;
         }
         result.parkedCentre = build.get("valve.inCentre");
-        // The spark a cell gives up (the lead's B, 25 Nov, from C's trace): knock control's retard plus the baked
-        // knock-limit table's cell at the point (with a spark table applied the table does the retarding and control's
-        // retard reads near zero, so the gate judged on control's alone passed cells it had set aside: the economy
-        // four at 1786 rpm, 30 degrees knocking 4.3 against parked 1.4 without the table, chosen 35 with it). With no
-        // table it is control's retard as before. The table is read at the point's speed and manifold, as the
-        // simulator reads it
+        // The spark a cell gives up, reported (CamBakeResult::knock): knock control's retard plus the baked knock-limit
+        // table's cell at the point, read at its speed and manifold as the simulator reads it. Not a gate (the lead's
+        // ruling, 25 Nov, from C's trace of P's knock-limit pass): each cell's torque is already measured at the spark
+        // the engine can run there, so the bake chooses on knock-limited torque, as a calibrator does. The gate it
+        // replaced (a cell set aside when control's retard rose 2 degrees over parked's) was fooled by a spark table:
+        // the table does the retarding, control reads 0, and the table's cell knows the speed and load, not the cam
+        // (the economy four at 1786 rpm gave up 7.2 degrees at every advance on its table; alone the gate stopped it at
+        // 10 to 15 degrees, 123 N m, where 30 to 35 made 129.6 knock-limited)
         const SparkTable table(build);
         const double nan = std::numeric_limits<double>::quiet_NaN();
         PredictOptions base = options.predict;
@@ -283,15 +285,15 @@ namespace tee
             }
         }
 
-        // at each speed the most torque among the cells that do not knock more than the parked one by the limit
+        // at each speed the most torque (each cell measured at the spark the engine can run there: knock-limited torque;
+        // the lead's ruling, 25 Nov: no knock gate, see below)
         for (std::size_t s = 0; s < result.speeds.size(); ++s)
         {
             double bestT = -std::numeric_limits<double>::infinity(), bestA = 0.0;
-            const double parkedKnock = result.knock.front()[s];
             for (std::size_t a = 0; a < result.advances.size(); ++a)
             {
                 const double t = result.torque[a][s];
-                if (!std::isfinite(t) || result.knock[a][s] > parkedKnock + options.knockLimit)
+                if (!std::isfinite(t))
                     continue;
                 if (t > bestT)
                 {
@@ -376,7 +378,7 @@ namespace tee
                 for (std::size_t a = 0; a < result.advances.size(); ++a)
                 {
                     const double t = tAt[a][k];
-                    if (!std::isfinite(t) || kAt[a][k] > kAt.front()[k] + options.knockLimit)
+                    if (!std::isfinite(t))
                         continue;
                     if (t > bestT)
                         bestT = t, bestA = result.advances[a];
@@ -453,11 +455,10 @@ namespace tee
             }
             for (std::size_t sp = 0; sp < result.speeds.size(); ++sp)
             {
-                const double parkedKnock = result.knock.front()[sp];
                 for (std::size_t a = 0; a < result.advances.size(); ++a)
                 {
                     const double t = result.torque[a][sp];
-                    if (!std::isfinite(t) || !(result.knock[a][sp] <= parkedKnock + options.knockLimit))
+                    if (!std::isfinite(t))
                         continue;
                     if (t > result.bestTorque[sp] || !std::isfinite(result.bestTorque[sp]))
                     {
@@ -471,7 +472,7 @@ namespace tee
         // smooth across speed: the advances chosen together, the most torque less a cost for each step between
         // neighbouring rows (stepCost of the best torque per 10 degrees: judgement), so the map does not swing back and
         // forth between cells chasing the waves' teeth (a turbo four's grid bake read 20, 20, 0, 30, 0, 20, 30, 20; the
-        // lead's 22:35). Cells set aside for knock stay set aside. Ties (the lead's C, 25 Nov): a single predicted point
+        // lead's 22:35). Ties (the lead's C, 25 Nov): a single predicted point
         // carries a floor of about 0.5 % (its cycle averaging's stop rule: flow-sheets-vs-seat.md, measured), and above
         // some 25 degrees full load is flat to 0.2 to 0.5 % (the economy four at 2571 rpm: 137.9 / 138.3 / 138.6 at 30 /
         // 35 / 40 degrees one way, 138.6 / 138.7 / 138.6 the other), so the choice flipped between neighbours: the cells
@@ -488,7 +489,7 @@ namespace tee
             const double cost = options.stepCost * tMax / 10.0 + 1e-9 * tMax;
             const double bad = -std::numeric_limits<double>::infinity();
             auto ok = [&](std::size_t a, std::size_t s) {
-                return std::isfinite(result.torque[a][s]) && result.knock[a][s] <= result.knock.front()[s] + options.knockLimit;
+                return std::isfinite(result.torque[a][s]);
             };
             // each speed's best among the cells allowed, and a cell's torque as the path weighs it: the best's, inside
             // the floor of it

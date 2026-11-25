@@ -31,7 +31,6 @@ namespace tee
     struct CamBakeOptions
     {
         double step = 10.0;           // degrees of advance between cells, from 0 to spec.valve.inPhaseRange
-        double knockLimit = 2.0;      // degrees of knock retard over the parked cell's that set a cell aside
         // Smoothing: a path over the speeds that gives up stepCost of the best torque for each 10 degrees between
         // neighbouring rows (0: each row its own best). The turbo four's grid alone read 20, 20, 0, 30, 0, 20, 30, 20.
         double stepCost = 0.01;
@@ -91,8 +90,8 @@ namespace tee
     // its stages included, the intake, the exhaust, the boost, the engine, the fuel; never a hidden field nor an ECU
     // map) with the spark it was chosen on (knockLimitBaseKey: the knock key without the cam maps, so that the
     // calibration's order, spark then cam then spark again, ends). A 31-bit number, as spec.ecu.maps.camInKey holds it.
-    // The cam bake's own rules' version, in its key: a map baked by older rules reads stale (2: the knock gate on the
-    // spark given up, control's and the baked table's; ties inside a point's floor to the neighbours' choice)
+    // The cam bake's own rules' version, in its key: a map baked by older rules reads stale (2: no knock gate, the
+    // choice on knock-limited torque; ties inside a point's floor to the neighbours' choice)
     constexpr int kCamBakeVersion = 2;
     std::int64_t intakeCamKey(const Build& build, const Sim& sim);
     // Whether the build's cam map is baked and current: camInAuto off and camInKey this build's key
