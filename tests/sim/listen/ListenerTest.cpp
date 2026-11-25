@@ -104,6 +104,10 @@ TEST_CASE("Doppler: a pass by trackside bends the pitch as the formula says", "[
     }
     std::printf("Doppler at 30 m/s, %.1f m beside: heard from %.4f to %.4f of the pitch (formula %.4f to %.4f), worst %.3f %%\n",
                 lx, highest, lowest, kC / (kC - v), kC / (kC + v), 100.0 * worst);
+    // the pass reaches the shift's extremes: the formula's limits at 30 m/s are +9.58 % and -8.04 % (c / (c -+ v)), a
+    // pass 8.9 m beside over these chunks reaches +9.2 % and -7.9 % (the geometry, not noise: a sine, the same each run);
+    // the bounds, +7 % and -6 %, are about three quarters of the limits, a Doppler with the speed's sign or size wrong (a half,
+    // a tenth) misses them by half or more. The ratio's agreement with the formula, chunk by chunk, is the CHECK above
     CHECK(highest > 1.07);
     CHECK(lowest < 0.94);
     CHECK(checked == chunks);
@@ -174,19 +178,44 @@ TEST_CASE("the level falls 6 dB a doubling of the distance", "[listen]")
     rig.set("ss.camera", 0);
     rig.set("ss.ground", 2);
     rig.set("ln.sc.windOff", 1);
+    // The property: the level falls as 1 / the path, from each tailpipe to each capsule. What the pair hears of it is
+    // the geometry's: the two pipes 0.55 m either side and 0.35 m under the pair's 0.7 m, its cardioids 17 cm apart and
+    // turned 55 degrees out, so close up the pipes stand off the capsules' axes and the step is under 6.02 dB. That
+    // prediction (the band 100 Hz to 1.5 kHz is under the pipes' beam) is -5.58, -5.88, -5.97, -6.00 dB a doubling;
+    // measured -5.05, -5.68, -5.81, -5.95. The margin, 1 dB about the prediction, takes the rest of the distance
+    // dial (it moves the highs and the room's share as the reference's DISTANCE does: 0.53 dB at the first doubling);
+    // a level that did not fall as 1 / r (a 1 / r^2 or a constant) would miss it by 6 dB a doubling
+    auto predicted = [](double r) {
+        double p = 0.0;
+        for (double side : {-1.0, 1.0})
+        {
+            const double ax = side * 55.0 * 3.14159265358979 / 180.0;
+            for (double px : {-0.55, 0.55})
+            {
+                const double dx = px - side * 0.085, dy = r, dz = 0.35 - 0.7;
+                const double d = std::sqrt(dx * dx + dy * dy + dz * dz);
+                const double g = 0.5 + 0.5 * (std::sin(ax) * dx + std::cos(ax) * dy) / d;
+                p += (g / d) * (g / d);
+            }
+        }
+        return 10.0 * std::log10(p);
+    };
     double prev = 0.0;
+    double prevR = 0.0;
     for (double r : {2.0, 4.0, 8.0, 16.0, 30.0})
     {
         rig.set("distance", dialFor(r));
         const double p = dB(heard(rig, kTails));
         if (r > 2.0)
         {
-            const double step = (p - prev) / std::log2(r / (r > 16.0 ? 16.0 : r / 2.0));
-            std::printf("tailpipe camera, %4.1f m: %.1f dB, %.2f dB a doubling\n", r, p, step);
-            CHECK(step < -5.0);
-            CHECK(step > -7.0);
+            const double oct = std::log2(r / prevR);
+            const double step = (p - prev) / oct;
+            const double want = (predicted(r) - predicted(prevR)) / oct;
+            std::printf("tailpipe camera, %4.1f m: %.1f dB, %.2f dB a doubling (the geometry's %.2f)\n", r, p, step, want);
+            CHECK(std::fabs(step - want) < 1.0);
         }
         prev = p;
+        prevR = r;
     }
 }
 
