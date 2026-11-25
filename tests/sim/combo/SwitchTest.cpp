@@ -55,7 +55,8 @@ namespace
         sc.at(10.6).brake(0.7).ramp(0.2);
         sc.at(12.0).ignition(tee::Off);
         const tee::test::Run r = sc.run(tm.end);
-        Verdict v = judge(r, tm, archetype(build), true, referenceStep(build, Kind::Pull));
+        Verdict v = judge(r, tm, archetype(build), true, referenceStep(build, Kind::Pull),
+                              referenceExcess(build, Kind::Pull));
         mustRun(r, 3.0, 11.0, v);
         report(v, "flip " + w.path, build, "flip");
     }
@@ -95,7 +96,7 @@ namespace
         std::printf("combo: stepping %zu fields of %s over %.1f s:%s\n", list.size(), section.c_str(), t - 4.0,
                     names.c_str());
         const tee::test::Run r = sc.run(tm.end);
-        Verdict v = judge(r, tm, nullptr, false, referenceStep("v8", Kind::Tour));
+        Verdict v = judge(r, tm, nullptr, false, referenceStep("v8", Kind::Tour), referenceExcess("v8", Kind::Tour));
         mustRun(r, 3.0, tm.end, v);
         // the key stays on: a layout or a fuel swapped under the fade must leave it running (the reference's fade does)
         report(v, "step " + section, "v8", "step");
@@ -255,7 +256,8 @@ namespace
         sc.at(10.6).brake(0.7).ramp(0.2);
         sc.at(12.0).ignition(tee::Off);
         const tee::test::Run r = sc.run(tm.end);
-        Verdict v = judge(r, tm, archetype(build), true, referenceStep(build, Kind::Pull));
+        Verdict v = judge(r, tm, archetype(build), true, referenceStep(build, Kind::Pull),
+                              referenceExcess(build, Kind::Pull));
         mustRun(r, 3.0, 11.0, v);
         report(v, "flip all at once", build, "flip");
     }
