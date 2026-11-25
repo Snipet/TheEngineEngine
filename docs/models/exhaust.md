@@ -588,3 +588,38 @@ the EXHAUST workspace's warning. Every bore at 0, or at or above the floor, is b
   attribute namespace the compiler already passes through.
 - The intake's twin (X-040: runner 8 mm, snorkel 10 mm, the same rule) waits for a card whose paths hold
   sim/intake/intake.fm.
+
+## Design note for N2: the back pressure after a turbine (25 Nov; a note, nothing built)
+
+**What sets it.** Downstream of a turbine the builder has the downpipe, the converter, the main pipes, the muffler and
+the tail. Its mean pressure at the downpipe's head over the air outside (`XBuild::pConv`, a 0.2 s mean of the head
+junction) follows from two kinds of loss:
+- **Turbulent losses** (the junctions' sudden expansions and contractions, the muffler's passages, the tail's exit):
+  each is K ρu²/2 = K ρQ²/(2A²). For a given mass flow ṁ that is ∝ ṁ² T / p, since ρ = p/(RT).
+- **Laminar losses** (a converter's substrate: its many fine channels; the reference's restriction in the pipes):
+  ∝ μ(T) Q. That is the volume flow, so ∝ ṁ T / p, and more as μ rises with T.
+
+So Δp ≈ a·Q + b·ρQ² with Q the volume flow at the gas's own state: two terms, not one. A purely quadratic K
+misses the low-flow end.
+
+**Measured on first.json** (the 2.0 turbo four; engine dyno; throttle 0.3, 0.6 and 1.0 at 2000 to 6500 rpm; 3 s
+each; BangTest's `measure` case):
+- The downpipe head runs 4.6 to 35.2 kPa over the air, and the muffler's inlet 2.9 to 23.1 kPa.
+- The main pipe's gas is 700 to 1110 K. ṁ is 0.039 to 0.107 kg/s, estimated from the ports' volume flow at the head's
+  pressure and the main pipe's temperature, so it is approximate.
+- A two-term fit, a = 1.06e5 Pa per m³/s and b = 3.63e5 Pa per (kg/m³)(m³/s)², gives an rms error of 2.2 kPa. It is
+  worst at the lowest flow: 4.6 measured against 8.9 fitted.
+- A quadratic alone gives 4.8 kPa rms.
+
+**What I'd recommend** (judgement):
+1. In the running engine, a turbine on the builder needs no formula. Its housing's node already sees the downpipe's
+   pressure through the network (XJ_HOUSE into the main pipe). The back pressure there is the pipes' own, at the
+   gas's temperature, with its pulses.
+2. For N2's off-line work (a map's match, a bake), where the turbine needs a quasi-static outlet pressure:
+   - use the two-term form, Δp = a·Q + b·ρQ², with a and b fitted per build from a short dyno sweep of `pConv`;
+   - or read `pConv` from the running exhaust at the operating point, which is what the bake's runs would do anyway.
+   - A single constant or a quadratic alone will be wrong by a few kPa across the map. That is some 2 to 4 % of a
+     turbine's expansion ratio at high load: small, but systematic.
+3. Not measured: a diesel's or a twin-turbo's chain, a hot-film or particulate filter (none is modelled), and how much
+   of the head's mean is the converter's alone. A per-element breakdown needs the junctions' losses read one by one,
+   which I can do if N2 wants it.
