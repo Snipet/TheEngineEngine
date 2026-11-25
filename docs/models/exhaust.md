@@ -503,3 +503,49 @@ nearly all of it the 11 more pipes at the reference's own cost a pipe.
 The sides' gas differing; directivity (wave 2); a pipe's bends as anything but a share of each pass; the crossover's
 own small differences in length (an X with identical sides after it makes identical tails); two-stroke expansion
 chambers (wave 2, from these parts).
+
+## Bangs: heat released in the pipe
+
+`spec.exhaust.bang` (the builder only): **Carved** is the reference's pulse and crackle; **Burned in the pipe** (the
+default under `exhaust.model` 1) releases a burn's heat in its bank's collector gas. The owner heard the carved pops as
+artificial (25 Nov). The inventory found the cause: on first.json's fuel-cut limiter the account lit 25 to 50 bangs a
+second, nearly all at its 30 kPa ceiling, each with the same click tail.
+
+- **The source.** A heat release Q̇(t) in a gas expands it: a volume source q = (γ − 1)/(γ p) Q̇. This is the Rayleigh
+  term of thermoacoustics (Dowling and Stow, J. Propulsion and Power 19, 2003). The collector's junction takes it
+  beside its other sources (`network.fm` `popQ`); the pipes, the junctions and the tail make the sound. γ = 1.33 and
+  p is the collector's mean pressure.
+- **The release.** A Wiebe curve, x = 1 − exp(−5 (t/τ)³), normalised to reach 1 at τ. It is released by differences
+  of x, so the heat released sums to the heat given to the float's rounding. Its steepest rate is 2.02 Q/τ, at
+  0.51 τ (BangTest checks both).
+- **What bangs.** Only a premixed charge: fuel that left its cylinder with its own air. That is a spark cut, a misfire,
+  or an overrun charge burned late. A rich charge's leftover fuel is mostly CO and H₂. Once it meets another charge's
+  air it lies far below their lower flammability limits in air: CO 12.5 %, H₂ 4 % (Coward and Jones, US Bureau of
+  Mines Bulletin 503, 1952). No flame runs through it; it oxidises where it mixes and is left out of the sound.
+- **The burn's time.** τ = the slug's length / (fronts × S_T):
+  - The slug's length is its volume (m R T / p) over the collector's area.
+  - S_L is Metghalchi and Keck's correlation (Combustion and Flame 48, 1982). It uses iso-octane's constants,
+    0.2632 m/s and −0.8472 m/s with the fastest mixture at φ 1.13, which the ANSYS CFX Theory Guide's Table 7.2 gives.
+    The exponents 2.18 − 0.8(φ − 1) and −0.16 + 0.22(φ − 1) and the burned gas's factor (1 − 2.1 x_b) are Heywood's
+    Table 9.3, as recalled and not re-read. S_L is taken at the slug's temperature and the collector's pressure.
+  - S_T = S_L + u′ (Damköhler's large-scale limit). u′ = 0.16 Re^−1/8 of the collector's flow: its mean plus its
+    pulsing, the pressure's swing over ρc. That intensity is an engineering estimate; no primary source was found.
+  - One front when a hot blowdown lights the slug at one end; two when it carries its own flame (judgement for "along
+    its length").
+  - The burned gas's expansion is not counted. A burning velocity is against the unburned gas, so expansion moves the
+    front but pushes the unburned gas ahead as fast.
+  - The flame's area growing in a duct is not counted either (finger flames: Clanet and Searby 1996). No source was
+    found for this case, so the times are long by that factor.
+  - What would still be burning when the gas leaves the pipes (the sections' lengths over their mean speeds) burns
+    outside and is not this source.
+- **Measured, synthetic burns in the V8's builder** (BangTest's `measure` case; the rig holds the collector at 708 K):
+  - A spark-cut charge of 0.65 g burns in 115 to 140 ms at 1000 rpm, about 80 ms at 3000 and 45 to 58 ms at 6000, by
+    its temperature (500 to 900 K). S_L is 0.6 to 2.0 m/s and S_T 1.2 to 4.9 m/s.
+  - A quarter-charge still burning with its own flame takes 7 to 13 ms.
+  - So the flame speed gives a whoomp of tens of ms for a cut charge and a sharper report for a late burn's remainder.
+  - The engine's own numbers wait for the account's side.
+- **The account's side** (`sim/ecu/overrun.fm`: charges kept by cylinder until their exhaust valve opens, premixed
+  slugs lit by a flame or a hot blowdown while still flammable) waits for the owner's word on that file. Until then
+  the carved pulse still fires from the account under either setting.
+- Cost: one Wiebe step per burn alight, about 8 ns while one burns; nothing otherwise. `exhaust.model` 0 never reads
+  it (the engine identity test passes with `bang` at its default).
