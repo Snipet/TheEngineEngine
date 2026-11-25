@@ -230,6 +230,8 @@ namespace tee::ui
         std::string tryFirstNotes_;           // what the card shows now (empty: none)
         bool tryFirstClosed_ = false, sawRunning_ = false;
         void closeTryFirst();
+        std::string bakeWords() const;   // the bake's state as the status line says it (empty: nothing to say)
+        bool bakeShown_ = false;
         Button *undo_ = nullptr, *redo_ = nullptr;
         // the cockpit
         Button* start_ = nullptr;

@@ -32,6 +32,7 @@ namespace
         std::string notes;      // the first launch's TRY FIRST card's text (FrameServices::tryFirst; empty: none)
         int tryFirstDone = 0;
         bool cold = false;      // FrameServices::coldStart (the settings' ENGINE START)
+        std::string spark;      // FrameServices::sparkMap: the calibration bake's state ("" none)
         int mode = 0;
         std::unique_ptr<AppFrame> frame;
         std::unique_ptr<funkgui::HeadlessHost> host;
@@ -66,6 +67,7 @@ namespace
             s.dropouts = [this] { return dropouts; };
             s.tryFirst = [this] { return notes; };
             s.coldStart = [this] { return cold; };
+            s.sparkMap = [this] { return spark; };
             s.setColdStart = [this](bool c) { cold = c; };
             s.tryFirstDone = [this] { ++tryFirstDone; notes.clear(); };
             s.mode = [this] { return mode; };
@@ -506,6 +508,41 @@ namespace
             const std::vector<std::string> lines = tee::ui::TryFirstCard::wrap(longer, 300.0f);
             CHECK(static_cast<int>(lines.size()) == tee::ui::TryFirstCard::kMaxLines);
             CHECK(lines.back().size() >= 3 && lines.back().compare(lines.back().size() - 3, 3, "...") == 0);
+        }
+        return 0;
+    }
+
+    // The calibration bake in the status line on every workspace (the lead's ruling, 01:33): its stage in words while it
+    // works, at the smallest window too; nothing once baked.
+    VIEW_TEST(testFrameBake, "frame.bake")
+    {
+        const auto said = [](FrameRig& rig, const std::string& words) {
+            for (const funkgui::A11yItem& it : rig.host->accessibility())
+                if (it.visible && (it.value.find(words) != std::string::npos || it.title.find(words) != std::string::npos))
+                    return true;
+            return false;
+        };
+        for (const float dpi : { 2.0f, 1.0f })
+        {
+            FrameRig rig(1100, 700, dpi);
+            rig.showWorkspace("drive");
+            rig.host->tick(2);
+            CHECK(!said(rig, "Baking"));
+            rig.spark = "baking cam";
+            rig.host->tick(3);
+            CHECK(said(rig, "Baking the cam"));
+            rig.showWorkspace("dyno");
+            CHECK(said(rig, "Baking the cam"));   // on every workspace
+            rig.spark = "baking spark map again";
+            rig.host->tick(3);
+            CHECK(said(rig, "Baking the spark map again"));
+            rig.showWorkspace("drive");
+            rig.spark = "baking spark map";
+            rig.host->tick(3);
+            golden(std::string("frame.bake") + (dpi < 1.5f ? ".dpi1" : ""), *rig.host);
+            rig.spark = "baked";
+            rig.host->tick(3);
+            CHECK(!said(rig, "Baking"));
         }
         return 0;
     }
