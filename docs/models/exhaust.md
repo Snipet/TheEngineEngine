@@ -506,8 +506,8 @@ chambers (wave 2, from these parts).
 
 ## Bangs: heat released in the pipe
 
-`spec.exhaust.bang` (the builder only): **Carved** (the default until the owner has heard both) is the reference's
-pulse and crackle; **Burned in the pipe** releases a burn's heat in its bank's collector gas. The owner heard the carved pops as
+`spec.exhaust.bang` (the builder only): **Burned in the pipe** (the default since the owner heard both, 25 Nov)
+releases a burn's heat in its bank's collector gas. The owner heard the carved pops as
 artificial (25 Nov). The inventory found the cause: on first.json's fuel-cut limiter the account lit 25 to 50 bangs a
 second, nearly all at its 30 kPa ceiling, each with the same click tail.
 
@@ -551,7 +551,9 @@ second, nearly all at its 30 kPa ceiling, each with the same click tail.
 - **The account's side** (`sim/ecu/overrun.fm`, `sim/combustion/combustion.fm`: card N1's seam, 991a00d3 to
   682ba1fe, from docs/handoffs/g-exhaust.md, "The pops' seam") feeds it under `ecu.model` 1. Charges are kept by
   cylinder until their exhaust valve opens; premixed slugs are lit by their own flame or by the bank's held blowdown
-  while still flammable. The default stays Carved until the owner has heard the clips (the lead's ruling, 25 Nov); the
-  reference ECU's dice (`ecu.model` 0) fire the carved pulse under either setting.
+  while still flammable. **Carved** is the reference's pulse and crackle, kept as the choice. The reference ECU's
+  dice (`ecu.model` 0) fire the carved pulse under either setting. The owner heard Carved and Burned of the same runs
+  and chose Burned ("sounds better"), so it is the default from 25 Nov. Under it the telemetry's `flame` is a burn in
+  the collectors, not the crackle.
 - Cost: one Wiebe step per burn alight, about 8 ns while one burns; nothing otherwise. `exhaust.model` 0 never reads
   it (the engine identity test passes with `bang` at its default).

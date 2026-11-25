@@ -1840,7 +1840,8 @@ module Exhaust
             }
         }
         // a bang burns near a tail when a pop is crackling and the tail's gas is hot
-        const int burning = (pop[0].crackle > 1.0f || pop[1].crackle > 1.0f) ? 1 : 0;
+        // (Burned in the pipe draws no crackle: a burn in the collectors is its flame)
+        const int burning = (pop[0].crackle > 1.0f || pop[1].crackle > 1.0f || (model != 0 && b.bangRate > 0.0f)) ? 1 : 0;
         t->flame = burning != 0 && b.heat.tGas[XH_TAIL] > 700.0f ? 1 : 0;
         tick128 += 1;
         if (tick128 >= 8)
