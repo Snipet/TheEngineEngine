@@ -267,6 +267,14 @@ namespace
         for (const Failure& f : v.failures)
             std::printf("  %s%s: %s\n", shiftCutRuled(comboName(mask), f) ? "ruled, " : "", f.check.c_str(),
                         f.detail.c_str());
+        {
+            const double refExcess = referenceExcess(build, kind);
+            std::printf("  excess: %.2f at %.3f s (firing period %.1f ms); the reference's %.2f, so the bound %.2f: %s\n",
+                        v.stepExcess, v.stepAt, 1000.0 * v.firingPeriod, refExcess, 2.0 * refExcess,
+                        v.stepExcess < 0.0 || refExcess < 0.0 ? "n/a"
+                        : v.stepExcess > 2.0 * refExcess    ? "OVER"
+                                                            : "within");
+        }
         if (!wav.empty())
         {
             tee::Audio a;
