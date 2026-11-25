@@ -1261,13 +1261,7 @@ namespace tee::ui
                                                                                        : fieldText(f, f.def, units_)) + ".";
         else
             facts = std::string("Default ") + (f.def >= 0.5 ? "on." : "off.");
-        // The help and the facts as two sentences: a full stop after the help when it has none.
-        std::string help = f.help;
-        while (!help.empty() && help.back() == ' ')
-            help.pop_back();
-        if (!help.empty() && help.back() != '.' && help.back() != '!' && help.back() != '?' && help.back() != ':')
-            help += '.';
-        body = help.empty() ? facts : help + " " + facts;
+        body = f.help.empty() ? facts : f.help + " " + facts;
         anchor = onScreen(r.rect);
         return true;
     }
