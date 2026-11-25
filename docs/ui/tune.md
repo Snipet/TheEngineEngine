@@ -27,7 +27,9 @@
   apply", "baked", "bake failed") and whether the program runs the table (`tel ecu.knockTable`) are said at the top
   right of the spark map and of the knock limit; the table changes by itself when a bake lands (one undo step). The
   intake cam's page says the same bake's state ("Intake cam: baking cam; not in use"): its table is set aside
-  (`ecu.maps.camInAuto` on) while the calibration bakes the cam pass.
+  (`ecu.maps.camInAuto` on) while the calibration bakes the cam pass. On the knock limit, each cell that still knocks
+  after the bake's corrections (`FrameServices::stillKnocking`, [speed][load] on the table's grid) is ringed in amber
+  with a hatch in its corner, and the line counts them ("...; 3 still knock").
 
 ## What is clickable
 
