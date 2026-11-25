@@ -85,16 +85,39 @@ Together they come to 0.65, which is the lead's two thirds. eta_t is not short.
 Measured: T3 is 673 K at lambda 1.30, full load, 1000 rpm. Suspected: that is low for a heavy diesel there. It
 is the exhaust side's temperature (D's and G's), not the turbo's.
 
-## The rule's flow law against the engine at that cell
+## The rule's flow law against the engine at that cell (in the model's own terms)
 
-- **VE (veManifold) reads 0.896**, which is the rule's 0.9.
-- **The charge at the throttle is 305 K.** That is cooler than the design point's charge, so it would push the
-  point right, not left.
-- **Neither explains the gap**, so it is open. The engine sits at phi/knee 0.88 against the rule's line, which
-  is about 0.99.
+These are the model's own values, 1 s means from the instrumented copy, at 947 N m / 74 kPa. They are set beside
+the rule's evaluation at the same speed and at the PR the engine reaches, 1.75.
 
-My suspicion: the engine reaches PR 1.75 there, not the rule's binding 1.90, and phi/knee is my outside estimate.
-I have not checked the rule's own evaluation at PR 1.75.
+| term | model | rule |
+|---|---|---|
+| tip Mach | 1.005 | 0.986 |
+| knee phiK | 0.4005 | 0.3975 |
+| choke flow mc | 0.562 kg/s | 0.567 kg/s |
+| fresh air | 0.208 kg/s (compressor), 0.211 kg/s (by lambda) | 0.224 kg/s |
+| phi/phiK | **0.877** (the mean of the instantaneous phi, 0.352) | **0.995** |
+
+The gap is a product, 0.928 x 0.951 x about 1.00 = 0.884:
+
+- **Fresh-air VE: 0.836 against the rule's 0.9 (factor 0.928).** It comes from the compressor's flow at the
+  manifold's 175 kPa and 305 K.
+  - engine.veManifold reads 0.895, but it is not the fresh charge. My first reading, which said "VE matches", was
+    wrong.
+  - Suspected: residuals and backflow at p3/p2 1.40.
+  - The cooler charge, 305 K against 310 K, is inside this factor and helps by about 1.6 %.
+- **The pulse (factor 0.951).** The flag reads the instantaneous phi. Its mean is 0.352, against 0.370 as a ratio
+  of means.
+- **The map: within 1 %.**
+
+So the rule's 10 % margin is used up by VE and the pulse.
+
+The lead's ruling (10:01): when (b) is written into the matching, its margin is stated in the model's own terms.
+That means the instantaneous flow (a pulse allowance from the cylinder count and the speed) and the fresh-air VE
+under the build's back pressure. It is not sized until D2's cylinder ledger at this cell is in.
+
+At the cell, from the cylinder side: 224 mg a stroke (smoke-limited, lambda 1.30), an exhaust port at 756 K, T3 at
+673 K. Indicated efficiency is 26 %, brake efficiency 20.7 % (LHV 42.8 MJ/kg). These went to D2.
 
 ## Predictions, and how they fared
 
@@ -105,7 +128,8 @@ I have not checked the rule's own evaluation at PR 1.75.
    **2000 +87 %; 1500/1750 wrong** (+44 % and +63 %); **rated and the flag right**.
 4. Pickup: the guard does nothing. **Wrong**: at 1300 the guard pins the vanes open, 576 against 810 N m.
 5. The ledger's short term is eta_t. **Wrong**: it is T3; eta_t is 0.66.
-6. The flow-law gap is mostly VE. **Wrong**: VE is 0.896.
+6. The flow-law gap is mostly VE. **Right after all**: fresh-air VE (0.836) is the larger factor. My first reading of
+   veManifold 0.896 as the VE was wrong.
 7. The two named cases still pass. **Wrong**: TurboTest:88 and :108 fail. The one-state cases pass in the low state.
 
 Listen for (nobody here can hear): the truck at 1300 rpm full load with the guard off. Expect a turbo with no
