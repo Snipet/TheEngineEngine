@@ -23,6 +23,19 @@ namespace tee
         // geometry, the fuel. Hidden fields never (the heat-settle counters the dynos bump, the keys); the ECU's maps
         // never (the cam map is the result; the spark is carried by knockLimitBaseKey). Over-including costs a bake,
         // never a wrong map
+        // The fuel's octane as a free number (N1's, the owner's "a free number": 0 the grade's own, else the pump's AKI).
+        // In both keys, but only when not 0, so a build at the grade's own octane keys as it did before the field.
+        constexpr const char* kOctaneField = "spec.fuel.octane";
+        bool zeroOptional(const Build& build, const std::string& path, int field)
+        {
+            if (path != kOctaneField)
+                return false;
+            for (const double v : build.values(field))
+                if (v != 0.0)
+                    return false;
+            return true;
+        }
+
         bool movesCam(const FieldInfo& f)
         {
             if (f.hidden || f.block != "spec")
@@ -30,7 +43,7 @@ namespace tee
             for (const char* prefix : {"spec.valve.", "spec.intake.", "spec.exhaust.", "spec.boost.", "spec.engine."})
                 if (f.path.rfind(prefix, 0) == 0)
                     return true;
-            return f.path == "spec.fuel.kind" || f.path == "spec.fuel.grade";
+            return f.path == "spec.fuel.kind" || f.path == "spec.fuel.grade" || f.path == kOctaneField;
         }
 
         // The baked knock-limit table's retard at a speed (rad/s) and a manifold pressure (Pa), as the simulator reads
@@ -132,7 +145,7 @@ namespace tee
         const auto& all = build.fields().all();
         for (std::size_t i = 0; i < all.size(); ++i)
         {
-            if (!movesCam(all[i]))
+            if (!movesCam(all[i]) || zeroOptional(build, all[i].path, static_cast<int>(i)))
                 continue;
             mixIn(all[i].path.data(), all[i].path.size());
             for (const double v : build.values(static_cast<int>(i)))
@@ -776,7 +789,8 @@ namespace tee
             "spec.exhaust.model",      "spec.intake.model",        "spec.valve.inCentre",   "spec.valve.exCentre",
             "spec.valve.inPhaseRange", "spec.valve.exPhaseRange",  "spec.ecu.maps.boost",   "spec.ecu.maps.boostAuto",
             "spec.ecu.maps.lambda",    "spec.ecu.maps.lambdaAuto", "spec.ecu.maps.camIn",   "spec.ecu.maps.camInAuto",
-            "spec.ecu.maps.camEx",     "spec.ecu.maps.camExAuto",  "spec.ecu.maps.spark",   "spec.ecu.maps.sparkAuto"};
+            "spec.ecu.maps.camEx",     "spec.ecu.maps.camExAuto",  "spec.ecu.maps.spark",   "spec.ecu.maps.sparkAuto",
+            kOctaneField};
 
         // The intake and exhaust cam maps: in the knock limit's key, not in its base key (Bake.h)
         bool camMap(const std::string& path)
@@ -819,7 +833,8 @@ namespace tee
             const auto& all = build.fields().all();
             for (std::size_t i = 0; i < all.size(); ++i)
             {
-                if (all[i].block != "spec" || !movesKnock(all[i]) || (!withCams && camMap(all[i].path)))
+                if (all[i].block != "spec" || !movesKnock(all[i]) || (!withCams && camMap(all[i].path))
+                    || zeroOptional(build, all[i].path, static_cast<int>(i)))
                     continue;
                 mixIn(all[i].path.data(), all[i].path.size());
                 // the fields key leaves out a cam map whose Auto switch is on: unused, and the service sets a baked map
