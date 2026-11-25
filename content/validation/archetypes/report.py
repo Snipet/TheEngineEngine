@@ -66,10 +66,12 @@ CROSS = {"name": "Stages: where the high cam passes the low (rpm)", "range": [55
                    "engine 5500-5700 rpm\") and an S2000 owner's \"torque curve intersection to 5800-5900\" (S2KI, a "
                    "forum, a search snippet); measured by report.py: tee-dyno --predict from 3000 to 8500 rpm every 250 "
                    "with each stage held (valve.stageSpeed 1100 rad/s: the low stage throughout; 100: the high), the "
-                   "first speed where the high stage's torque passes the low's, interpolated; past 8500 reads 8500. "
+                   "lowest speed ABOVE WHICH the high stage stays ahead (the sustained crossing, the lead's ruling of 25 Nov: the first "
+                   "tie on a ragged high-stage curve read 3100 rpm on 223f4301's content), interpolated; past 8500 reads 8500. "
                    "NOTE: the build's low stage is judgement (no source) and its high lobe an aggregator's, so a miss "
                    "may be the card's as much as the model's"}
 CROSS_SLUGS = ("two-stage-cam-20",)
+CROSS_FIRST = {}   # slug: the old measure's reading (the first tie), printed beside the sustained crossing
 
 
 def crossing(bin_dir, slug, out_dir, build_path):
@@ -97,11 +99,23 @@ def crossing(bin_dir, slug, out_dir, build_path):
     if not lo or len(lo) != len(hi):
         return None
     d = [h[1] - l[1] for l, h in zip(lo, hi)]
-    for i in range(1, len(d)):
-        if d[i - 1] < 0 <= d[i]:
-            f = -d[i - 1] / (d[i] - d[i - 1])
-            return lo[i - 1][0] + f * (lo[i][0] - lo[i - 1][0])
-    return lo[0][0] if d[0] >= 0 else lo[-1][0]
+
+    def at(i):
+        f = -d[i - 1] / (d[i] - d[i - 1])
+        return lo[i - 1][0] + f * (lo[i][0] - lo[i - 1][0])
+    # the old measure (the first tie, kept to be printed beside the new once: the lead's ruling, 25 Nov 22:57)
+    first = next((at(i) for i in range(1, len(d)) if d[i - 1] < 0 <= d[i]), lo[0][0] if d[0] >= 0 else lo[-1][0])
+    # the sustained crossing: the lowest speed above which the high stage stays ahead (a ragged curve's early tie is
+    # not where the cam would be switched)
+    neg = [i for i in range(len(d)) if d[i] < 0]
+    if not neg:
+        sustained = lo[0][0]
+    elif neg[-1] == len(d) - 1:
+        sustained = lo[-1][0]
+    else:
+        sustained = at(neg[-1] + 1)
+    CROSS_FIRST[slug] = first
+    return sustained
 
 
 TAKEUP = {"name": "Take-up: 90 % of peak torque after the pedal, at a lug (s)", "range": [0, 5], "unit": "s",
@@ -159,6 +173,27 @@ def _first(c, peak):
         if q1 >= 0.98 * peak:
             return r0 + (r1 - r0) * max(0.0, (0.98 * peak - q0)) / max(q1 - q0, 1e-9) if q0 < 0.98 * peak else r0
     return c[-1][0]
+
+
+def plateau(bin_dir, slug, out_dir, build_path, dyno):
+    """For a build whose peak torque a stated ceiling holds (basis "held"): the speed (rpm) where the torque first
+    reaches 0.98 of its peak on the full engine dyno, on the peak rows' own steps and hold (the lead's ruling, 25 Nov
+    22:57: the arg-max of a flat plateau is not a measurement; read where the plateau begins, as the tractor's lug row
+    does). Returns (rpm, the arg-max's rpm) (cached)."""
+    csv = os.path.join(out_dir, slug + ".plateau.csv")
+    if not os.path.exists(csv):
+        cmd = [os.path.join(bin_dir, "tee-dyno"), "--build", build_path, "--steps",
+               ",".join(str(x) for x in dyno["steps"]), "--settle", str(dyno.get("settle", 5)),
+               "--measure", str(dyno.get("measure", 1)), "--csv", csv, "--quiet"] + (["--sim", SIM] if SIM else [])
+        subprocess.run(cmd, capture_output=True, text=True, cwd=ROOT)
+    if not os.path.exists(csv):
+        return None
+    rows = [l.strip().split(",") for l in open(csv)][1:]
+    c = sorted((float(r[1]), float(r[2])) for r in rows if len(r) > 2)
+    if not c:
+        return None
+    peak = max(q for _, q in c)
+    return _first(c, peak), max(c, key=lambda x: x[1])[0]
 
 
 def takeup(bin_dir, slug, out_dir, build_path, peak):
@@ -517,6 +552,22 @@ def main():
             x = crossing(a.bin, s_, a.src, os.path.join(content, docs[s_]["build"]))
             if x is not None:
                 results[s_].append((CROSS, x, "pass" if CROSS["range"][0] <= x <= CROSS["range"][1] else "FAIL"))
+    # a held peak's speed: where its plateau begins, not the arg-max of a flat line (the lead's ruling, 25 Nov 22:57)
+    for s_ in slugs:
+        held_pk = next((t for t in docs[s_]["targets"] if t["name"] == "Peak torque" and t.get("basis") == "held"), None)
+        if held_pk is None or results[s_] is None:
+            continue
+        got = plateau(a.bin, s_, a.src, os.path.join(content, docs[s_]["build"]), held_pk["dyno"])
+        if got is None:
+            continue
+        for i, (t, v, st) in enumerate(results[s_]):
+            if t["name"] == "Speed at peak torque":
+                lo, hi = sorted(t["range"])
+                v2 = got[0] * RPM
+                t2 = dict(t, name="Speed at peak torque (where its plateau begins)",
+                          source=t["source"] + "; read where the torque first reaches 0.98 of its peak (a held ceiling "
+                          "makes the peak a flat line, whose arg-max is no measurement: it read %.0f rpm)" % got[1])
+                results[s_][i] = (t2, v2, "pass" if lo <= v2 <= hi else "FAIL")
     for s_ in slugs:
         plan = next((t["dyno"] for t in docs[s_]["targets"] if "dyno" in t and "steps" not in t["dyno"]), None)
         if plan and results[s_] is not None:
