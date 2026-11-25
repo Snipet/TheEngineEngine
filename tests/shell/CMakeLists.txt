@@ -104,6 +104,23 @@ if(TARGET tee_ui_build AND TARGET tee_ui_test_funkgui AND NOT TEE_PLACEHOLDER_PA
   catch_discover_tests(tee-shell-frame-tests DISCOVERY_MODE PRE_TEST ADD_TAGS_AS_LABELS PROPERTIES TIMEOUT 600)
 endif()
 
+# The application's own panel in a test (app::makePanel, as tee-headless makes it, through tee_app_gui): the whole chain
+# of the assistant's load over unsaved work (its tool, the frame's dialog, a click, the document) in one process.
+if(TARGET tee_ui_build AND NOT TEE_PLACEHOLDER_PANEL AND COMMAND tee_app_gui)
+  add_executable(tee-shell-app-tests "${CMAKE_CURRENT_SOURCE_DIR}/app/AskChainTest.cpp")
+  target_link_libraries(tee-shell-app-tests PRIVATE FunkGui::core Catch2::Catch2WithMain)
+  tee_app_gui(tee-shell-app-tests)
+  if(TEE_BUILD_APP)
+    target_link_libraries(tee-shell-app-tests PRIVATE FunkGui::gpu FunkGui::desktop)
+    funkgui_compile_shaders(tee-shell-app-tests)
+  endif()
+  target_compile_definitions(tee-shell-app-tests PRIVATE
+    "TEE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\"" "TEE_SOURCE_SIM_DIR=\"${PROJECT_SOURCE_DIR}/sim\"")
+  add_test(NAME shell.app.cases COMMAND tee-shell-app-tests WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
+  set_tests_properties(shell.app.cases PROPERTIES TIMEOUT 600 LABELS "shell;app"
+    ENVIRONMENT "SDL_AUDIODRIVER=dummy;TEE_CONTENT_DIR=${PROJECT_SOURCE_DIR}/content;TEE_SETTINGS_DIR=${PROJECT_SOURCE_DIR}/out/shell/app-settings;TEE_USER_DIR=${PROJECT_SOURCE_DIR}/out/shell/app-user")
+endif()
+
 # Each workspace of the frame, opened by the application over the simulator (tee-headless --workspace): it opens,
 # runs 120 frames (2 s) with the engine started, draws, writes its picture (out/shell/workspace-<id>.png) and exits 0. A
 # workspace the frame does not have is an error (exit 2), so a renamed one fails here. shell.workspace.none: that.
