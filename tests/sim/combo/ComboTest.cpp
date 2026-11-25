@@ -131,15 +131,49 @@ PAIRS_CASE(12)
 PAIRS_CASE(13)
 PAIRS_CASE(14)
 
-TEST_CASE("nightly: every triple of switches on every archetype through the tour and the pull", "[nightly][triples]")
+// Every triple of switches on every archetype through the tour and the pull: about 2200 runs (5051 s as one ctest
+// entry, 84 of the soak's 92 minutes on CI's 4-core Linux runner). Sixteen shards, each its own ctest entry so the
+// runner's cores share them: shard k takes the triples whose index in subsetsOfSize(3) is k mod 16, so together they
+// cover exactly the triples the one case did.
+namespace
 {
-    for (std::uint32_t m : subsetsOfSize(3))
-        for (const Archetype& a : archetypes())
-        {
-            play(m, a.name, Kind::Tour);
-            play(m, a.name, Kind::Pull);
-        }
-}
+    constexpr std::size_t kTripleShards = 16;
+    void triples(std::size_t shard)
+    {
+        const auto all = subsetsOfSize(3);
+        REQUIRE(all.size() >= kTripleShards);
+        for (std::size_t i = shard; i < all.size(); i += kTripleShards)
+            for (const Archetype& a : archetypes())
+            {
+                play(all[i], a.name, Kind::Tour);
+                play(all[i], a.name, Kind::Pull);
+            }
+    }
+} // namespace
+
+#define TRIPLES_SHARD(k)                                                                                               \
+    TEST_CASE("nightly: every triple of switches on every archetype through the tour and the pull: shard " #k          \
+              " of 16",                                                                                                \
+              "[nightly][triples]")                                                                                    \
+    {                                                                                                                  \
+        triples(k - 1);                                                                                                \
+    }
+TRIPLES_SHARD(1)
+TRIPLES_SHARD(2)
+TRIPLES_SHARD(3)
+TRIPLES_SHARD(4)
+TRIPLES_SHARD(5)
+TRIPLES_SHARD(6)
+TRIPLES_SHARD(7)
+TRIPLES_SHARD(8)
+TRIPLES_SHARD(9)
+TRIPLES_SHARD(10)
+TRIPLES_SHARD(11)
+TRIPLES_SHARD(12)
+TRIPLES_SHARD(13)
+TRIPLES_SHARD(14)
+TRIPLES_SHARD(15)
+TRIPLES_SHARD(16)
 
 TEST_CASE("the scenario files of content/scenarios/combo are the ones the tests play", "[fast][fast-1][combo]")
 {

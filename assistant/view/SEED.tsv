@@ -1,0 +1,5 @@
+# our path	TestingPlayground's path	commit	sha256 of the file as it was there
+assistant/view/Markdown.h	Source/editor/Markdown.h	47bac40327ed9e8e59928500de9f3beb63fe8636	fda38ab3c33bc9bd99e0ed8310595c68989b6fd4ad8251873928d33fb5875d38
+assistant/view/Markdown.cpp	Source/editor/Markdown.cpp	47bac40327ed9e8e59928500de9f3beb63fe8636	fb98cd07c2e3fbf568cf158e92d20d9b164bb6ecaf5066bd8dcd3b8ce24b3a6e
+assistant/view/ChatView.h	Source/editor/ChatView.h (its shape only: rewritten over this app's ChatPort)	47bac40327ed9e8e59928500de9f3beb63fe8636	330278026ce2a445a677c36f30ab82748347c7ed8ce5d3c43f232387721d7ca3
+assistant/view/ChatView.cpp	Source/editor/ChatView.cpp (its shape only: rewritten)	47bac40327ed9e8e59928500de9f3beb63fe8636	5cb8f8bab298cf1e5e0eaf0c41c137781749b2679c757c29896ae42105f2159b

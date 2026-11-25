@@ -169,8 +169,19 @@ compressor. P rises to any peak at once and the gain follows within 1 ms, measur
 the limiter. P holds 1.5 s, then falls at 4 dB a second. It never falls below 4 times Q, the level of what is heard
 lately (0.1 s windows' peaks: Q falls over 1 s and rises at 0.3 dB a second, so a 4 s rev moves it 1.2 dB). The gain is
 0.4 / P, within -30 to +30 dB of the staged level, and rises over 0.5 s. In a start (the starter turning and 1.5 s
-after) P falls at 12 dB a second without the hold and Q follows as it comes, so the crank and the catch do not set the
-exposure. A cut (another camera, place, or the windows past half) starts afresh; silence holds it.
+after; and the first sound after silence, for 3 s) P falls at 12 dB a second without the hold and Q follows what
+comes over some 0.3 s, so the crank and the catch do not set the exposure and the catch's flare stands over the idle. A cut (another camera, place, or the windows past half)
+starts afresh; silence holds it. (Until the first sound counted as a start, a start whose starter was not heard, a
+voice muted or none, left Q at the first faint sound, rising 0.3 dB a second, and P on the catch's peak: the idle
+5.5 dB over where a heard start leaves it, +15.6 dB against +10.1 on first.json. M measured the two apart, 25 Nov;
+`the auto level after a start` holds them within 1 dB from 2 s on.)
+
+Its known limit: a sound whose loudest state is its steady one is exposed about 12 dB under the target, by design,
+for the headroom a rev would need. The tractor's cabin is the case: its governed rev rises 1.4 dB over its idle there,
+so the floor sets its exposure, and it sits 5 to 6 dB under the Rear where it is truly 0.8 dB over. Measured and set
+aside (25 Nov): a floor giving way with the throttle either lets every rising rev come in loud and settle (3 to 7 dB,
+first.json) or swells that cabin's rev; an exposure on the 0.1 s windows' 90th percentile sees a rev late (3.8 dB).
+The Rear's typical level under the cabin's (1.5 to 2.6 dB on first.json) is the exhaust's own crest, not stray cracks.
 
 What that means for a listener: a steady sound (an idle, a cruise) sits near 0.1 (12 dB under the target), which
 leaves room for a rev. A rev peaks near 0.4 to 0.55, and the gain moves only when the rev outgrows the room. A range

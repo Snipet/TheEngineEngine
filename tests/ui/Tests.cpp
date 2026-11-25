@@ -23,6 +23,8 @@
 #include "kit/shaders/ShaderText.h"
 #include <tee/app/MainPanel.h>
 #include "kit/bind/Binding.h"
+#include "kit/inspect/FieldInspector.h"
+#include "kit/inspect/Outline.h"
 #include "kit/bind/Fields.h"
 #include "kit/bind/Units.h"
 #include "kit/widgets/Basic.h"
@@ -965,6 +967,7 @@ namespace
 #include "WidgetTests.inc"
 #include "BindTests.inc"
 #include "AppTests.inc"
+#include "InspectTests.inc"
 
     int run(const std::string& name)
     {

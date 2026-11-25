@@ -82,8 +82,28 @@ TEST_CASE("fuzz: the ranges' corners with seeds 1 to 6 and six seconds of random
     fuzz(1, 6, 6.0, true, false);
 }
 
-TEST_CASE("nightly fuzz: seeds 100 to 299 random and at the corners for ten seconds each", "[nightly][fuzz-long]")
+// Seeds 100 to 299, random and at the corners, ten seconds each: 400 runs (1139 s as one ctest entry on CI's runner).
+// Four ctest entries of fifty seeds each, both kinds, so the runner's cores share them; together exactly the 400.
+TEST_CASE("nightly fuzz: seeds 100 to 149 random and at the corners for ten seconds each", "[nightly][fuzz-long]")
 {
-    fuzz(100, 200, 10.0, false, false);
-    fuzz(100, 200, 10.0, true, false);
+    fuzz(100, 50, 10.0, false, false);
+    fuzz(100, 50, 10.0, true, false);
+}
+
+TEST_CASE("nightly fuzz: seeds 150 to 199 random and at the corners for ten seconds each", "[nightly][fuzz-long]")
+{
+    fuzz(150, 50, 10.0, false, false);
+    fuzz(150, 50, 10.0, true, false);
+}
+
+TEST_CASE("nightly fuzz: seeds 200 to 249 random and at the corners for ten seconds each", "[nightly][fuzz-long]")
+{
+    fuzz(200, 50, 10.0, false, false);
+    fuzz(200, 50, 10.0, true, false);
+}
+
+TEST_CASE("nightly fuzz: seeds 250 to 299 random and at the corners for ten seconds each", "[nightly][fuzz-long]")
+{
+    fuzz(250, 50, 10.0, false, false);
+    fuzz(250, 50, 10.0, true, false);
 }

@@ -372,7 +372,20 @@ namespace tee::ui
                 return {};
             return ctx_.doc.info(f).choices[static_cast<std::size_t>(g)];
         }
-        std::string fuelName() const { return gradeName(grade()); }
+        // The fuel in words: the grade, and the pump number when one is stated (spec.fuel.octane, AKI; not for a fuel
+        // lit by compression, which ignores it): "Premium (91) at 95". "": none, or the reference burn.
+        std::string fuelName() const
+        {
+            const int g = grade();
+            std::string name = gradeName(g);
+            const int o = ctx_.doc.find("fuel.octane");
+            if (name.empty() || o < 0 || ctx_.doc.info(o).kind != FieldKind::number || name.rfind("Diesel", 0) == 0)
+                return name;
+            const double v = ctx_.doc.get(o);
+            if (std::isfinite(v) && v > 0.0)
+                name += " at " + chart::fixed(v, std::fabs(v - std::round(v)) < 0.05 ? 0 : 1);
+            return name;
+        }
         static std::uint64_t print(const DynoTrace& t)
         {
             if (t.empty())
@@ -392,7 +405,7 @@ namespace tee::ui
             if (const std::uint64_t p = print(ctx_.dyno.predicted()); p != predictedPrint_)
             {
                 predictedPrint_ = p;
-                predictedFuel_ = p != 0 ? grade() : -1;
+                predictedFuel_ = p != 0 ? fuelName() : std::string();
                 if (p != 0)
                     fuelOf_.push_back({ p, predictedFuel_ });
                 while (fuelOf_.size() > 8)
@@ -401,7 +414,7 @@ namespace tee::ui
             if (const std::uint64_t b = print(ctx_.dyno.before()); b != beforePrint_)
             {
                 beforePrint_ = b;
-                beforeFuel_ = -1;
+                beforeFuel_.clear();
                 for (const auto& [pr, g] : fuelOf_)
                     if (pr == b)
                         beforeFuel_ = g;
@@ -417,11 +430,11 @@ namespace tee::ui
         std::string rowName(int row) const
         {
             // A change of fuel between the two curves: each named with its own.
-            const bool fuels = beforeFuel_ >= 0 && predictedFuel_ >= 0 && beforeFuel_ != predictedFuel_;
+            const bool fuels = !beforeFuel_.empty() && !predictedFuel_.empty() && beforeFuel_ != predictedFuel_;
             if (row == -2)
-                return fuels ? "Predicted, " + gradeName(predictedFuel_) : std::string("Predicted");
+                return fuels ? "Predicted, " + predictedFuel_ : std::string("Predicted");
             if (row == -1)
-                return fuels ? "Before, " + gradeName(beforeFuel_) : std::string("Before last edit");
+                return fuels ? "Before, " + beforeFuel_ : std::string("Before last edit");
             return row >= 0 && row < static_cast<int>(rows_.size()) ? rows_[static_cast<std::size_t>(row)].name : "-";
         }
         bool isShown(int row) const
@@ -1194,10 +1207,10 @@ namespace tee::ui
         std::vector<RowView> rows_;
         bool showPredicted_ = true, showBefore_ = true;
         // The fuel each predicted curve was for (the grade when it came in), by the curve's print, the newest last; the
-        // fuel of the curve shown as predicted, and of the one before the last edit (-1: not known).
-        std::deque<std::pair<std::uint64_t, int>> fuelOf_;
+        // fuel of the curve shown as predicted, and of the one before the last edit ("": not known).
+        std::deque<std::pair<std::uint64_t, std::string>> fuelOf_;
         std::uint64_t predictedPrint_ = 0, beforePrint_ = 0;
-        int predictedFuel_ = -1, beforeFuel_ = -1;
+        std::string predictedFuel_, beforeFuel_;
         int selected_ = -2, extra_ = 0, cursorPx_ = -1;
         float runTime_ = 0.0f;
         std::string runName_, message_;

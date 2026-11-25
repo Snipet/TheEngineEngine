@@ -35,6 +35,6 @@ the integrated ECU's `ecu.lambda` (sensor), `ecu.lambdaTarget`, `ecu.knock` (cou
 `services->bakeMaps` and copies the bake in when it lands (`ui.tune.bake`); CAR draws `look::carProfile` (DRIVE's car).
 Still wanted: card C's DynoPlan a gear; the host adapter's `runSoFar()`. H/I: the telemetry names above, or theirs.
 **Fuel (owner's todo 1)**: TUNE's fuel band, octane from `sim/combustion/fuels.fm` via the new `FrameServices::simSource`
-(app/Offline.cpp serves it); DYNO names curves and runs by fuel. Tests `tune.fuel`, `dyno.fuel`, `build.tune.fuel`.
+(app/Offline.cpp serves it); DYNO names curves and runs by fuel. Octane as a number (`fuel.octane`): `tune.octane`. Tests `tune.fuel`, `dyno.fuel`, `build.tune.fuel`.
 **Not done**: GPU path under Xvfb not run;
 macOS/Windows only by CI. Others' failures seen: `ui.frame.workspaces`, `ui.build.frame` (scope.gui notes), `ui.exhaust.*` once.

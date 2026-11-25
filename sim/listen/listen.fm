@@ -877,11 +877,15 @@ module Listen
             return;
         if (autoP <= 0.0f)
         {
+            // the first sound after silence (a cut, or the key: the starter heard or not, a pump's prime) is a
+            // start too, for 3 s (a crank and the catch): Q follows what comes and P is not held, so neither is left
+            // at the first faint sound nor at the catch's peak
             autoP = 4.0f * pk;
             autoQ = pk;
             autoHold = 0.0f;
             autoWin = 0.0f;
             autoN = 0;
+            autoStart = 3.0f * rate;
         }
         if (pk > autoP)
             autoP = pk;
@@ -891,7 +895,7 @@ module Listen
         {
             const float n = (float)autoN;
             if (autoStart > 0.0f)
-                autoQ = autoWin;
+                autoQ *= expf(logf(fmaxf(autoWin, 1.0e-6f) / autoQ) * 0.3f);    // as it comes, over some 0.3 s
             else
                 autoQ = autoWin < autoQ ? autoQ * expf(logf(autoWin / autoQ) * fminf(n / rate, 1.0f))
                                         : fminf(autoQ * expf(n * autoRise), autoWin);
