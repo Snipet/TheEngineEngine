@@ -562,6 +562,74 @@ namespace
         return 0;
     }
 
+    // Hover help (the owner's ask, 25 Nov): a dial on an inspector page, after a short rest of the pointer, shows its
+    // label, its field's help and its range and default, beside it (never over it) and inside the window; it goes when
+    // the pointer leaves. The cockpit's START says what it does; a control the keyboard reaches by Tab shows its help
+    // too. At the smallest window, densities 2 and 1.
+    VIEW_TEST(testFrameHelp, "frame.help")
+    {
+        const auto overlap = [](const funkgui::Rect& a, const funkgui::Rect& b) {
+            return a.x < b.right() && b.x < a.right() && a.y < b.bottom() && b.y < a.bottom();
+        };
+        const auto inside = [](const funkgui::Rect& r, float w, float h) {
+            return r.x >= 0.0f && r.y >= 0.0f && r.right() <= w && r.bottom() <= h && r.w > 40.0f && r.h > 20.0f;
+        };
+        for (const float dpi : { 2.0f, 1.0f })
+        {
+            const char* sfx = dpi < 1.5f ? ".dpi1" : "";
+            FrameRig rig(1100, 700, dpi);
+            AppFrame& f = *rig.frame;
+            rig.showWorkspace("engine");
+            funkgui::Rect dial{};
+            for (int p = 0; p < f.inspectorPageCount() && dial.isEmpty(); ++p)
+            {
+                f.showInspectorPage(p);
+                rig.host->tick(2);
+                dial = f.inspector()->controlRect("engine.compression");
+            }
+            CHECK(!dial.isEmpty());
+            rig.host->moveTo(dial.centreX(), dial.centreY(), 2);
+            rig.host->tick(10);
+            CHECK(!f.inspector()->tooltip().shown());   // not before the rest
+            rig.host->tick(30);
+            const tee::ui::Tooltip& tip = f.inspector()->tooltip();
+            CHECK(tip.shown());
+            const std::string text = tip.text();
+            CHECK_MSG(text.find("Compression") != std::string::npos && text.find("volume at the bottom") != std::string::npos
+                          && text.find("default 10") != std::string::npos && text.find("7") != std::string::npos,
+                      text);
+            CHECK(!overlap(tip.box(), dial) && inside(tip.box(), 1100.0f, 700.0f));
+            golden(std::string("frame.help.dial") + sfx, *rig.host);
+            rig.host->moveTo(f.stageRect().centreX(), f.stageRect().centreY(), 2);
+            rig.host->tick(3);
+            CHECK(!f.inspector()->tooltip().shown());   // gone with the pointer
+            // The cockpit's START.
+            const funkgui::Rect st = f.startRect();
+            rig.host->moveTo(st.centreX(), st.centreY(), 2);
+            rig.host->tick(40);
+            CHECK_MSG(f.tooltip().shown() && f.tooltip().text().find("starter") != std::string::npos, f.tooltip().text());
+            CHECK(!overlap(f.tooltip().box(), st) && inside(f.tooltip().box(), 1100.0f, 700.0f));
+            if (dpi > 1.5f)
+                picture("frame.help.start", *rig.host);
+        }
+        // The keyboard: Tab onto the inspector's controls; the one focused says its help after a shorter rest.
+        {
+            FrameRig rig(1280, 800, 1.0f);
+            AppFrame& f = *rig.frame;
+            rig.showWorkspace("engine");
+            rig.host->moveTo(2.0f, 2.0f, 1);
+            bool shown = false;
+            for (int k = 0; k < 60 && !shown; ++k)
+            {
+                typeKeys(*rig.host, "tab");
+                rig.host->tick(30);
+                shown = f.inspector() != nullptr && f.inspector()->tooltip().shown();
+            }
+            CHECK_MSG(shown, "no control reached by Tab showed its help");
+        }
+        return 0;
+    }
+
     VIEW_TEST(testFrameGarage, "frame.garage")
     {
         FrameRig rig;

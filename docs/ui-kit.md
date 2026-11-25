@@ -269,3 +269,19 @@ by `GuiPanel::setInsets` (added here).
 the workspace's, the inspector page's), the workspace's own `drawKey()`, the document's, the selection's, the units'
 and the dyno's revisions, and is true after any input or while anything eases (`ui.frame.idle`). It runs at full rate
 while the engine cranks or runs (live values), while the dyno works, or while the workspace says `moving()`.
+
+### Hover help (U1, the owner's ask of 25 Nov)
+
+`kit/gui/Tooltip.h`: after a short rest of the pointer (0.55 s) or of the keyboard's focus reached by Tab (0.35 s), a
+box beside the thing it describes (below it, else above, else to a side; never over it, never past the panel's edges)
+with its title, its sentence of help and a line of facts. It is laid out once when it appears; `draw()` allocates
+nothing. A press hides it, and it stays away until the pointer has left what was pressed.
+
+- `GuiPanel`: every bound control. `Options::help(param)` gives the sentence (`FieldPage` fills it from the field's
+  `ui::help`); the facts are the parameter's range and default with its unit, or its choices. `GuiPanel::tooltip()`.
+- `Board`: any item whose `Item::help(title, body, anchor)` says something; a `Widget` says what `setHelp("...")`
+  gave it. `Board::tooltip()`.
+- An owner that draws only when its key moves mixes `tooltip().drawKey()` into it (the frame does, for itself, its
+  inspector page and the workspace shown).
+- `ui.build` checks that every Spec field a person sets has its `ui::help`; `ui.frame.help` hovers a dial, START and a
+  control reached by Tab.

@@ -118,7 +118,8 @@ namespace tee::ui
         add("engine.bore", FieldKind::number, 0.06, 0.12, 0.1016, "Bore", Quantity::length);
         add("engine.stroke", FieldKind::number, 0.05, 0.12, 0.0884, "Stroke", Quantity::length);
         add("engine.rod", FieldKind::number, 0.10, 0.20, 0.1554, "Rod", Quantity::length);
-        add("engine.compression", FieldKind::number, 7.0, 15.0, 10.0, "Compression", Quantity::ratio);
+        add("engine.compression", FieldKind::number, 7.0, 15.0, 10.0, "Compression", Quantity::ratio).help =
+            "The cylinder's volume at the bottom of the stroke over its volume at the top";   // hover help's test (frame.help)
         group = "Rotating";
         add("engine.flywheel", FieldKind::number, 0.05, 1.0, 0.25, "Flywheel", Quantity::inertia).logTaper = true;
         add("engine.friction", FieldKind::number, 0, 1, 0.3, "Friction", Quantity::fraction);
