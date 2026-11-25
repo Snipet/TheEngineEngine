@@ -25,7 +25,7 @@ namespace tee::ui
     {
         constexpr double kPi = 3.14159265358979323846;
         constexpr double kToRpm = 30.0 / kPi;
-        constexpr int kMaxTabs = 8;
+        constexpr int kMaxTabs = 16;   // TUNE has eleven pages (J2's report, 25 Nov: past eight they had no tab)
         const std::string kNone;
 
         std::string firstLine(const std::string& s) { return s.substr(0, s.find('\n')); }
@@ -775,7 +775,8 @@ namespace tee::ui
     int AppFrame::tabRows() const noexcept
     {
         const int n = unitsPage_ ? 0 : std::min(inspectorPageCount(), kMaxTabs);
-        return n <= 1 ? 0 : n <= 3 ? 1 : 2;   // more than three: two rows, so each title has room
+        // More than three: rows of four at most, two at least, so each title has room (eleven: three rows).
+        return n <= 1 ? 0 : n <= 3 ? 1 : std::max(2, (n + 3) / 4);
     }
 
     funkgui::Rect AppFrame::inspectorRect() const
