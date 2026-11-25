@@ -37,6 +37,38 @@
 
 ## Landed
 
+- **00:31 (25 Nov) the lead's check-in; `main` stays at 09c1fb4e**: its own run (45510675759) built and packed on
+  Linux, macOS and Windows, 537 of 538 on each (the launch case: the steward's idle-trim fade bb93325e had quickened
+  the idle launch by 0.064 s; reverted, 4e1c813b; the case restated by the lead as well). The owner asked for a stable
+  local build and was told to build 09c1fb4e. The next move is on a Linux and macOS job green outright on a commit
+  holding 4e1c813b, U2's 62657c07 and 1ab6affe, N2's 69c1fdfa (the surge cap reverted: it cost the turbo four 12 %
+  at 2500 on the present map), fd6ed014, L's f0512a25 and D's ee603c37: none finished yet (in flight: Linux and
+  Windows at 24ccc32, macOS at 1ab6aff). **Since 23:52.** *The compressor's map, sourced*: five published maps read
+  into numbers by a research agent of the lead's and spot-checked (`calibration/boost/published-compressor-maps.md`,
+  061428cb): surge over choke 0.22 to 0.26 at a pressure ratio of 1.5, 0.26 to 0.34 at 2.0, 0.32 to 0.42 at 2.5,
+  0.41 to 0.47 at 3.0; N2's model map in the same terms (`compressor-map-model.md`): 0.31 and 0.38 at 1.5 and 2.0
+  (too far right: its surge flow climbs 1.22 times from 1.5 to 2.0 where the published climb 1.45) and a choke
+  that stops growing above a ratio of about 1.8; the island, the efficiency near surge, the peak and the tip limit
+  already inside the ranges. N2 sets those two things from the file; the truck's two states (the shaft's
+  hysteresis inside the surge region) are the new map's test; the surge cap is held as a patch for it. *Table K*
+  (ab107ca, P): 120 of 839 missed (25 of 196 cited, the EA888's rows now among them); the baked cams alone: 14 rows
+  in, 6 out; the turbo four 189 / 217 / 303 / 352 / 281 N m against the maker's 350 and about 250; every archetype
+  hot-starts at 318 K; new worst rows the diesels' boost at the check speed (0.20 and 0.43 bar: the map). After K:
+  the exhaust phaser 42 degrees cited from the EA855, the 14 re-baked on N1's half steps; table L waits for N2's
+  map. *The cam bake as a service* (C's 879c59f2 on N1's keys): spark, cam on that spark, spark again; U1's
+  ServiceBake on it (f15422b2). *The intake's ram closed*: N1 read every sourced loss against the code (all in;
+  the plenum's end too); N3 read the "+8.7 %" source in full: a 1-D simulation of 400 against 528 mm on a 1.6, and
+  the model gives +8.3 / +7.9 / +6.0 % for that pair: the flat six's 17.6 % was never comparable; no measured bound
+  on the ram's height exists among the readable sources. *Idles* (N1): the turbo six's hunt is its wild cam's lope
+  (0.4 s, unmoved by a fourfold flywheel) with the ECU's gain ramp reading it as "far off" (c24cacf6: 151 to 127
+  rpm sd against the reference's own 113); the V10 and V12 a 1 Hz valve loop of plus or minus 25 to 31 rpm, and
+  first.json an after-start dip to 660 to 680 rpm (the integral unlearned during the flare): both being cured by
+  plant measurement, with the steward told. *Sound* (L): the cabin's firewall by a wall's mass law (f0512a25: 4 kHz
+  from -19 to -6.5 dB against the reference's CABIN); Trackside no finding; the pump at least 11.5 dB under the
+  engine's third octave at four cameras, the prime faint and present; a rev's largest bounded at the limiter's
+  ceiling. *Heat* (D): the fan cools the radiator (ee603c37: Heat's thermoswitch, the voice reading it, 2.1 % duty
+  at a warm idle); the warm-up documented as measured (4.8 minutes, band 3.5 to 8, judgement). X-028 re-proven on
+  C's fixed header (0 of 1313).
 - **23:52 the lead's check-in; `main` fast-forwarded at 23:31** from 40be51d2 to 09c1fb4e: it holds everything the
   owner reported (the cam and VVT, the hum, the airy balance on Tailpipe) and X-028, the key-on ring, the wastegate's
   limit cycle, the automatics' upshift on spinning tyres, the shift's spark ramp, the DI cooling at the cited 14 K.
