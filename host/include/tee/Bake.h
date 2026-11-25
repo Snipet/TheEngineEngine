@@ -146,7 +146,9 @@ namespace tee
     // and the program, so a build knows when its bake is stale.
     struct KnockBakeOptions
     {
-        std::vector<double> pedals = {1.0, 0.75, 0.5, 0.25};   // full first
+        // full first. The lower ones run only where the one above still knocks: at a low speed a quarter pedal is near
+        // full load (the V12 at 1000 rpm: 0.96 atm at 0.25, 0.70 at 0.08)
+        std::vector<double> pedals = {1.0, 0.75, 0.5, 0.25, 0.15, 0.08};
         // A turbo's loads above the air's (card N2's): full pedal, ecu.maps.boostAuto on, spec.boost.target stepped from
         // the build's own level down to its gate's spring (below the spring the gate does not hold a target) in this
         // many steps; then the pedals under full, at the spring's target (the loads below). 0: pedals alone. A supercharger (no loop: its boost is its pulley's)
@@ -204,11 +206,14 @@ namespace tee
     //   3  the top row 300 rpm under the redline, not 100 (PredictOptions::redlineMarginRpm's default)
     //   4  a settled point's torque the mean of its settled cycles, not its last two (the table itself does not move:
     //      the cache entries' check sets, read the old way, are kept out of the verified reuse)
-    inline constexpr int kKnockBakeVersion = 4;
+    //   5  pedals 0.15 and 0.08 below 0.25, run where 0.25 still knocks: a low speed's row measured down to a load that
+    //      does not knock, not copied flat from the lowest knocking cell (the V12's 1000 rpm row read 23.2 deg down to
+    //      0.2 atm, its idle at -2 deg of spark: N1's find); and spec.fuel.octane in the knock and cam keys (when not 0)
+    inline constexpr int kKnockBakeVersion = 5;
 
     // The fields that move the knock limit (card N2's list): the engine's compression, displacement, bore and stroke,
-    // cylinders and layout; the fuel's kind, grade and model; the boost section; the boost, lambda, cam and spark maps
-    // with their Auto switches; the cams' centres and phase ranges; the exhaust's and the intake's models; and the
+    // cylinders and layout; the fuel's kind, grade and model, and its octane number when not 0; the boost section;
+    // the boost, lambda, cam and spark maps with their Auto switches; the cams' centres and phase ranges; the exhaust's and the intake's models; and the
     // program itself (Sim::sourceHash) and kKnockBakeVersion. Not the air's temperature (baked at the cell's 300 K)
     // nor ecu.timing (the person's offset, on top). A 31-bit number, as spec.ecu.maps.knockLimitKey holds it.
     std::int64_t knockLimitKey(const Build& build, const Sim& sim);
