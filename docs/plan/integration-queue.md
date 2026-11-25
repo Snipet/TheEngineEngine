@@ -420,3 +420,24 @@ judgement; first.json will state its own wheel (compInducer 0.0425, compExducer 
 designed (tables to the lead before its push; torque and power rows of a build whose curve comes from its published
 torque marked "set by the fuel curve" and out of the counts); diesel-v8-truck's rated point air-limited under the
 cap (its own open item).
+
+## Open: the governed diesel's compressor sized at its torque-peak point (N2's (b), ruled 25 Nov 09:13)
+
+Nothing in sim/ yet; measured with `compInducer` stated on the tip. **The rule:** the compressor's surge margin (10 %
+right of the flag's line, BorgWarner's figure) held along the whole climb, PR 1.3 to target, at the build's stated
+torque-peak speed (the maker's sheet; P's sources section 20); F's 1.15 at rated only where it gives the smaller
+wheel; petrol builds unchanged. Derived default where a build states none: the lowest speed within 2 % of its fuel
+curve's maximum, else 0.6 of rated (judgement). No 1.1 factor (N2's proposal, declined: a constant placed where the
+model stops holding boost).
+
+N2's table (one agent's, not re-measured): tractor 83.2 to 76.8 mm at 1000 (80.6 at 1100), truck test build 82.8 to
+76.2; pickup and 2.0 common rail unchanged at 0.6 of rated, **to be run again at the makers' 1700 and 1750**.
+Tractor held 30 s, N m and kPa: 1000: 651/13 steady today, **775/17 to 75 pulsing on 76.8**, 657/14 steady on 80.6;
+1100: 1910/76 surging today, 2722/251 and 2720/237 steady; 1300 and 1900 within 2 %. At rated every wheel is in
+over-speed (the relief opening the vanes), not choke.
+
+**Order:** N2 measures the turbine nozzle's inlet factor as a sensitivity (1.247 today, 1.10, 1.00, 0.95) on both
+wheels: torque and boost with the 1 s spread at 1000 / 1100 / 1300 / 1900, p3/p2, BSFC, take-up at 1100 by P's
+command, and whether the build models EGR there. One patent's 0.90 to 0.93 (no EGR) is the only source; P found no
+second. Then: if 1000 holds on 76.8, (b) and the nozzle go in at the maker's point; if not, the tractor and truck
+state 1100, marked. Pushed only after the next `main`, on the lead's word.
