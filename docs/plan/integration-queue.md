@@ -662,6 +662,36 @@ engine by its own table; the top end loses 5 %). N3-16 stays recorded on the V10
 **Open, the owner asked:** octane as a free number (U4's list, item 2); not started.
 **Nightly, D2 bisecting:** TurboTest.cpp:118, the big single's boost after 2 s at 1300 rpm 28.2 against 30 kPa.
 
+## 25 Nov 12:16: (b) built and ruled in; the cap refuted; the bake held at one red listen assertion
+
+- **P's re-bake (31e23ae1, local) is whole but for one assertion**: tests/sim/listen/EngineTest.cpp, "the auto level:
+  cameras near and far brought together", `fabs(rev[1][1] - rev[1][0]) < 2.0` reads 2.64 on the re-baked first.json
+  (1.5 on the last content): true levels Rear / Driver -19.2 / -21.8 dB, with the auto level -10.3 / -7.7. The lead
+  ruled `CHECK_NOFAIL` on that one line with the finding named; **P's session refused it as weakening a test without
+  the owner's leave, and the lead did not route around it.** The owner is asked (mark it and move `main`, or hold
+  `main` for L's cure in the next window). L is on the finding. Until the owner answers, `main` stays at d0a7330e and
+  31e23ae1 stays local.
+- **N2's (b), built on a local branch (fe4582fa; b-in-the-matching.md, fde5dcd4):** `spec.boost.peakRpm` ("Torque peak
+  from"; 0: the lowest fuel-curve speed within 2 % of the curve's most, else 0.6 of rated); the wheel the smaller of
+  F's 1.15 at rated and 10 % right of the flag's line from ratio 1.3 to the design ratio at the torque peak; VE
+  `0.9 (1.4 rc - pe/pi) / (1.4 rc - 1)` (Heywood's ideal-cycle factor as recalled; **page not checked**, a search by
+  the lead did not return the equation; 0.884 against 0.879 measured). Wheels: tractor 83.9 to 76.8 mm, the truck's
+  sets 81.8 to 74.7, the 2.0 39.4 to 36.9; the pickup and the combo large diesel unchanged; the other shipped diesels
+  run the reference turbo and are untouched. Tractor 1000 rpm 1509 to 2579 N m (the lead's own build: 2580); the 2.0
+  at 2000 rpm 176 to 329; **TurboTest.cpp:118 green by (b) alone** (the single 28.3 to 62.8 kPa at 1300).
+- **Ruled in for the window, on conditions:** 540 of 540, which needs D2's cure of BrakeTest.cpp:229 first (the VGT
+  brake on High at 2000 rpm spins the 74.7 mm wheel's shaft to 11480 rad/s against omegaMax 11124; D2 asked for what
+  a maker's brake does about turbo speed); the integrator's two lines in `sim/engine.fm`; P states `peakRpm` 1750 on
+  the 2.0 and 1700 on the pickup.
+- **Withdrawn: the surge setpoint limit (the cap).** N2 measured that it latches on the climb at the torque peak
+  (tractor 1000: 2145 N m at 95 kPa against 2579 at 225; the truck 1 to 41 kPa): the flow it needs is the flow it
+  withholds. The lead's proposal, refuted.
+- **Closed: the turbine's match point does not move** (matched at the peak, 1300 rpm is worse: 49.8 kPa, surging).
+- **The guard, table first after (b):** (i) the surge flag on the cycle's mean flow, not the instantaneous (where it
+  pins with the vanes open and the flag at 0.5, the 2.0 at 1750 and the pickup at 1300, nothing is surging; the lead's
+  suggestion), against (ii) N2's test of whether opening helps, against the guard as it is.
+- Recorded for D2: the truck's sets lose VE 0.609 to 0.543 for p3/p2 1.22 to 1.32 at 1900 rpm (1997 to 1705 N m).
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
 - **25 Nov 11:26: sim/, host/ and tools/ are FROZEN** (P re-bakes at the tip for the next `main`). ui/, app/,
