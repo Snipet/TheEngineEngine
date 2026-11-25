@@ -481,7 +481,8 @@ def main():
     def cell(rows, name):
         for t, v, st in rows:
             if t["name"] == name:
-                mark = "" if st == "pass" else (" **miss**" if st == "FAIL" else " n/a")
+                mark = (" (set by the fuel curve)" if basis(t) == "set" else
+                        "" if st == "pass" else (" **miss**" if st == "FAIL" else " n/a"))
                 return "%s (%s)%s" % (show(t, v), rng(t), mark)
         return "-"
     for s in slugs:
@@ -502,9 +503,10 @@ def main():
     by = {}
     for s in slugs:
         for t, v, st in results[s] or []:
-            if st != "pass":
+            if st != "pass" and basis(t) != "set":
                 by.setdefault(t["name"], []).append((s, t, v, st))
-    total = sum(len(r or []) for r in results.values())
+    # rows a build's own stated curve sets (basis "set") are shown, not counted (the lead, 04:52)
+    total = sum(len([x for x in (r or []) if basis(x[0]) != "set"]) for r in results.values())
     missed = sum(len(v) for v in by.values())
     out += ["## The misses, target by target", "",
             "%d targets over %d archetypes; %d missed or not measurable. Each line: the archetype, what was measured, "
@@ -513,6 +515,8 @@ def main():
     kinds = {"cited": [0, 0], "recalled": [0, 0], "judgement": [0, 0]}
     for s in slugs:
         for t, v, st in results[s] or []:
+            if basis(t) == "set":
+                continue
             k = kinds[basis(t)]
             k[0] += 1
             k[1] += st != "pass"
@@ -528,7 +532,7 @@ def main():
     worst = []
     for s in slugs:
         for t, v, st in results[s] or []:
-            if st == "FAIL" and v is not None and "range" in t:
+            if st == "FAIL" and v is not None and "range" in t and basis(t) != "set":
                 lo, hi = sorted(t["range"])
                 ref = lo if v < lo else hi
                 if ref:
