@@ -635,6 +635,8 @@ namespace tee
             };
             const std::uint64_t program = sim.sourceHash();
             mixIn(&program, sizeof program);
+            const int version = kKnockBakeVersion;
+            mixIn(&version, sizeof version);
             const auto& all = build.fields().all();
             for (std::size_t i = 0; i < all.size(); ++i)
             {
@@ -796,7 +798,7 @@ namespace tee
                 cell.retardTooth = std::max(p.retardMax - p.retardMean, 0.0);
                 cell.torque = p.torque;
                 cell.knockLimited = p.knockLimited;
-                cell.valid = p.valid;
+                cell.valid = p.valid && !p.limited;   // the limiter acted: no measure, as missing
                 cell.limit = p.retardMean >= options.knockLimit ? p.retardMean + options.margin : 0.0;
                 cell.step = static_cast<int>(k);
                 result.measured[speedIndex(p.speed)].push_back(cell);
@@ -911,7 +913,7 @@ namespace tee
                         if (c.step == static_cast<int>(k))
                         {
                             ++c.corrections;
-                            c.residual = p.valid ? p.retardMean : 0.0;
+                            c.residual = p.valid && !p.limited ? p.retardMean : 0.0;
                             if (c.residual >= options.knockLimit)
                                 c.limit += c.residual;
                         }
