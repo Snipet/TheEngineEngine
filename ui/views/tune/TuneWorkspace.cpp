@@ -63,6 +63,7 @@ namespace tee::ui
         };
         constexpr int kMapCount = static_cast<int>(std::size(kMaps));
         constexpr int kKnockLimit = 7;   // kMaps' knock-limit table (its own words and its own bake)
+        constexpr int kCamIn = 3;        // kMaps' intake cam (set aside while the calibration bakes)
 
         // Telemetry, by name (ui/app/Workspace.h: NaN while absent).
         struct Tel
@@ -244,7 +245,7 @@ namespace tee::ui
         {
             DrawKey k;
             k.mix(shown_).mix(ctx_.selection.revision()).mix(ctx_.units.revision()).mix(ctx_.doc.revision()).mix(message_);
-            k.mix(historyRevision_).mix(sparkMapWords());
+            k.mix(historyRevision_).mix(bakeWords());
             return k.h;
         }
 
@@ -828,13 +829,13 @@ namespace tee::ui
                 left += c.textWidth(none, look::kBody) + 16.0f;
             }
             else
-                left = bake_->bounds().right() + 16.0f;
+                left = (bake_->shown() ? bake_->bounds().right() : auto_->bounds().right()) + 16.0f;
             const std::string words = !message_.empty() ? message_
-                                    : (shown_ == 0 || shown_ == kKnockLimit) && !sparkMapWords().empty() ? sparkMapWords()
+                                    : !bakeWords().empty() ? bakeWords()
                                     : "Shift-click a block; Page Up, Page Down nudge it.";
             // Whole, at the top right; else under the table after the tools; else (a hint) not at all.
             const float right = mapBox_.right() - look::kPad, ww = c.textWidth(words.c_str(), look::kBody);
-            const Col ink = message_.empty() ? p.dim : p.text;
+            const Col ink = message_.empty() && bakeWords().empty() ? p.dim : p.text;   // a hint dim; a state or an edit, text
             if (ww <= right - left)
                 c.text(words.c_str(), right, mapBox_.y + 36.0f, look::kBody, ink, funkgui::Align::right);
             else if (ww <= right - fill_->bounds().right() - 12.0f)
@@ -846,18 +847,49 @@ namespace tee::ui
             }
         }
 
-        // The spark map's knock limit as the host says it (card C's bake: FrameServices::sparkMap), with what the program
-        // runs (tel ecu.knockTable: 1 the baked table is in use); "" when neither is served.
-        std::string sparkMapWords() const
+        // The calibration's bake as the host says it (FrameServices::sparkMap: "baking cam", "baking spark map", "waiting
+        // to bake", "baked, to apply", "baked", "bake failed"), and whether the program uses the table it concerns: on the
+        // spark map and the knock limit, the knock-limit table (tel ecu.knockTable 1: in use); on the intake cam, the cam
+        // table (ecu.maps.camInAuto 1: set aside while the calibration bakes). "" for other maps, or when neither is said.
+        std::string bakeWords() const
         {
+            const bool knock = shown_ == 0 || shown_ == kKnockLimit, cam = shown_ == kCamIn;
+            if (!knock && !cam)
+                return {};
             const std::string state = ctx_.services != nullptr && ctx_.services->sparkMap ? ctx_.services->sparkMap() : std::string();
-            const double inUse = ctx_.live.get("ecu.knockTable");
+            double inUse = std::nan("");
+            if (knock)
+                inUse = ctx_.live.get("ecu.knockTable");
+            else if (const int f = slots_[static_cast<std::size_t>(kCamIn)].autoField; f >= 0 && !state.empty())
+                inUse = ctx_.doc.get(f) >= 0.5 ? 0.0 : 1.0;
             if (state.empty() && !std::isfinite(inUse))
                 return {};
-            std::string w = "Knock limit: " + (state.empty() ? std::string("-") : state);
+            std::string w = std::string(knock ? "Knock limit: " : "Intake cam: ") + (state.empty() ? std::string("-") : state);
             if (std::isfinite(inUse))
                 w += inUse >= 0.5 ? "; in use" : "; not in use";
+            if (knock)
+            {
+                const int n = stillKnockingCount();
+                if (n > 0)
+                    w += "; " + std::to_string(n) + " still knock";
+            }
             return w;
+        }
+
+        // The knock-limit cells that still knock after the bake's corrections (FrameServices::stillKnocking, [speed][load]
+        // on the table's own grid); empty when none or not served.
+        std::vector<std::vector<bool>> stillKnocking() const
+        {
+            return ctx_.services != nullptr && ctx_.services->stillKnocking ? ctx_.services->stillKnocking()
+                                                                            : std::vector<std::vector<bool>>{};
+        }
+        int stillKnockingCount() const
+        {
+            int n = 0;
+            for (const auto& col : stillKnocking())
+                for (const bool k : col)
+                    n += k ? 1 : 0;
+            return n;
         }
 
         // Over the table: the trail of the live point, and the formula's note while auto has the map.
@@ -904,6 +936,22 @@ namespace tee::ui
                     chart::stroke(c, px, py, 1.5f, p.mix(p.ground, p.value, 0.25f + 0.25f * static_cast<float>(part)));
                 }
             }
+            // On the knock limit: each cell that still knocks, ringed in amber with a hatch in its corner (a shape, not
+            // colour alone); the count is in the words at the top right.
+            if (shown_ == kKnockLimit)
+            {
+                const auto still = stillKnocking();
+                for (std::size_t i = 0; i < still.size() && i < static_cast<std::size_t>(m.nx); ++i)
+                    for (std::size_t j = 0; j < still[i].size() && j < static_cast<std::size_t>(m.ny); ++j)
+                        if (still[i][j])
+                        {
+                            const Rect r = s.edit->cellRect(static_cast<int>(i), static_cast<int>(j));
+                            c.rrect(r.x + 1.5f, r.y + 1.5f, r.w - 3.0f, r.h - 3.0f, 2.0f, kClear, 2.0f, p.warning);
+                            const float h = std::min(8.0f, r.h * 0.45f);
+                            c.segment(r.right() - h - 2.0f, r.y + 2.0f, r.right() - 2.0f, r.y + h + 2.0f, 1.5f, p.warning);
+                            c.segment(r.right() - h * 0.5f - 2.0f, r.y + 2.0f, r.right() - 2.0f, r.y + h * 0.5f + 2.0f, 1.5f, p.warning);
+                        }
+            }
             if (isAuto(shown_))
             {
                 const Rect b = s.edit->bounds();
@@ -922,6 +970,7 @@ namespace tee::ui
         {
             DrawKey k;
             k.mix(shown_).mix(static_cast<int>(trailPts_.size())).mix(historyRevision_).mix(ctx_.doc.revision());
+            k.mix(stillKnockingCount());
             return k.h;
         }
 

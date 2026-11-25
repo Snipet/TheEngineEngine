@@ -15,9 +15,11 @@
 #include "app/Workspace.h"
 
 #include <cstdint>
+#include <filesystem>
 #include <functional>
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace tee::input
 {
@@ -43,6 +45,7 @@ namespace tee
 namespace tee::ui
 {
     class ServiceBake;
+    class ServiceDyno;
 }
 
 namespace tee::app
@@ -75,10 +78,13 @@ namespace tee::app
         bool startRun(const ui::DynoRequest& r) override;
         bool running() const override;
         void stopRun() override;
+        // U1's ServiceDyno once made (the bake yields to its predictor); null until the engine's compile is in.
+        const ui::ServiceDyno* service() const noexcept { return service_; }
 
     private:
         player::SimAdapter& player_;
         std::unique_ptr<ui::DynoSource> inner_;
+        const ui::ServiceDyno* service_ = nullptr;
         ui::DynoTrace none_;
         std::uint64_t made_ = 0;
     };
@@ -89,14 +95,20 @@ namespace tee::app
     class LateBake
     {
     public:
-        explicit LateBake(player::SimAdapter& player);
+        // `cache`: the bakes' folder (CalibrationBakeOptions::cacheDirectory); empty: none.
+        // `dyno`: the ribbon's, whose predictor the bake yields to (between its points while a curve is wanted).
+        LateBake(player::SimAdapter& player, const LateDyno& dyno, std::filesystem::path cache);
         ~LateBake();
         void tick();
         std::string state() const;
+        std::vector<std::vector<bool>> stillKnocking() const;
 
     private:
         player::SimAdapter& player_;
+        const LateDyno& dyno_;
+        std::filesystem::path cache_;
         std::shared_ptr<Sim> made_;
+        const ui::ServiceDyno* yieldedTo_ = nullptr;
         std::unique_ptr<ui::ServiceBake> inner_;
     };
 

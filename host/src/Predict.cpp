@@ -916,6 +916,8 @@ namespace tee
                             started[r] = true;
                         }
                         const PredictPoint p = rig.point(w, cancel);
+                        if (options.onPoint)
+                            options.onPoint();
                         if (!p.valid)
                             started[r] = false;   // at rest after the fault: the next point starts it again
                         if (cancel != nullptr && cancel->load(std::memory_order_relaxed))
@@ -1061,6 +1063,7 @@ namespace tee
         wake_.notify_all();
         if (thread_.joinable())
             thread_.join();
+        busy_->store(false);   // gone: whoever still watches the flag waits no more
     }
 
     std::uint64_t PredictService::request(const Build& build)
@@ -1137,7 +1140,7 @@ namespace tee
                 waiting_ = false;
                 cancel_ = false;
             }
-            busy_ = true;
+            busy_->store(true);
             progress_ = 0.0;
             revision_.fetch_add(1);
             if (options_.innerRate > 0.0 && !innerTried_)
@@ -1184,7 +1187,7 @@ namespace tee
                         progress_ = 1.0;
                     }
                 }
-                busy_ = waiting_;
+                busy_->store(waiting_);
             }
             revision_.fetch_add(1);
         }

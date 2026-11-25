@@ -26,7 +26,9 @@ namespace tee::app
     {
         if (!inner_ && player_.ready() && player_.host().sim())
         {
-            inner_ = std::make_unique<ui::ServiceDyno>(player_.host().sim(), player_.build());
+            auto made = std::make_unique<ui::ServiceDyno>(player_.host().sim(), player_.build());
+            service_ = made.get();
+            inner_ = std::move(made);
             made_ = 1000;                         // a revision past the ones said before
         }
         if (inner_)
@@ -54,7 +56,10 @@ namespace tee::app
             inner_->stopRun();
     }
 
-    LateBake::LateBake(player::SimAdapter& player) : player_(player) {}
+    LateBake::LateBake(player::SimAdapter& player, const LateDyno& dyno, std::filesystem::path cache)
+        : player_(player), dyno_(dyno), cache_(std::move(cache))
+    {
+    }
     LateBake::~LateBake()
     {
         inner_.reset();         // before the program it bakes with
@@ -66,11 +71,26 @@ namespace tee::app
             if (std::shared_ptr<Sim> now = player_.host().sim(); now != nullptr && now != made_)
             {
                 inner_.reset();
-                inner_ = std::make_unique<ui::ServiceBake>(now, player_.build());
+                tee::CalibrationBakeOptions options;
+                options.cacheDirectory = cache_;
+                inner_ = std::make_unique<ui::ServiceBake>(now, player_.build(), options);
                 made_ = std::move(now);
+                yieldedTo_ = nullptr;
             }
+        // the bake waits between its points while the ribbon's curve is wanted: told again whenever either is made
+        // (it keeps the predictor's shared busy flag, so either may go first)
+        if (inner_ && dyno_.service() != nullptr && dyno_.service() != yieldedTo_)
+        {
+            inner_->yieldTo(*dyno_.service());
+            yieldedTo_ = dyno_.service();
+        }
         if (inner_)
             inner_->tick();
+    }
+
+    std::vector<std::vector<bool>> LateBake::stillKnocking() const
+    {
+        return inner_ ? inner_->stillKnocking() : std::vector<std::vector<bool>>();
     }
 
     std::string LateBake::state() const

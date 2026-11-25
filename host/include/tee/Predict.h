@@ -34,6 +34,7 @@
 #include <atomic>
 #include <condition_variable>
 #include <cstdint>
+#include <functional>
 #include <list>
 #include <memory>
 #include <mutex>
@@ -95,6 +96,9 @@ namespace tee
         // (PredictPoint::boostHunting). The turbo four at 6700 rpm: its last-two-cycles torque never settled in 10 s.
         double boostHuntSeconds = 1.5;
         std::size_t cacheSize = 64;   // curves kept by key
+        // Called on a worker's thread after each point (so: thread-safe), before the next: a bake counts its progress
+        // by it and waits there while the ribbon's curve is wanted (CalibrationBakeService::yieldTo). Not in the key.
+        std::function<void()> onPoint;
     };
 
     struct PredictPoint
@@ -169,7 +173,10 @@ namespace tee
         // The newest curve for the newest request since the last call: the coarse one, then each time more speeds are
         // in, then the refined one. False when there is nothing new.
         bool take(PredictCurve& out);
-        bool busy() const noexcept { return busy_.load(); }
+        bool busy() const noexcept { return busy_->load(); }
+        // The busy flag, shared: what another service watches (CalibrationBakeService::yieldTo), valid however long it
+        // is kept, false once this service is gone
+        std::shared_ptr<const std::atomic<bool>> busyFlag() const noexcept { return busy_; }
         double progress() const noexcept { return progress_.load(); }   // 0 to 1 of the speeds of the one running
         std::string error() const;    // why the newest request has no curve ("" : none)
         // Moves when a curve, the error or busy changes.
@@ -198,7 +205,7 @@ namespace tee
         std::uint64_t key_ = 0;
         std::uint64_t number_ = 0;
         std::atomic<bool> cancel_{false};
-        std::atomic<bool> busy_{false};
+        std::shared_ptr<std::atomic<bool>> busy_ = std::make_shared<std::atomic<bool>>(false);
         std::atomic<double> progress_{0.0};
         std::atomic<std::uint64_t> revision_{0};
         std::atomic<int> made_{0};

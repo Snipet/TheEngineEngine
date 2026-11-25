@@ -322,3 +322,61 @@ M's four (docs/models/voices.md, "Levels at idle"): the pump's prime at key-on a
 DI tick against Port; the belt at +12 against 0. And: whether a shift on the reference's burn with ecu.model on
 should cut half its firings instead of all (the steward's option 2); whether the key-on prime should be plainly
 heard. Asked together once the fixes are in `main`.
+
+## Open: the residual at idle, N3-16, as it stands (lead, 25 Nov 01:49)
+
+Warm-idle burned shares 0.40 (V10), 0.49 (V12), 0.46 (hot hatch), 0.48 (7.0; 0.40 on the LS7's own card) against 0.17
+on the economy four. What has been measured, each a document and no fit:
+
+- **The fresh charge is right** (N1): the idles burn 0.33 to 0.45 L/h per litre; P's 496ee41a holds the published
+  rates.
+- **The drive is honest** (D, `docs/measurements/calibration/na/overlap-drivers.md`): the overlap flow is what the
+  steady pressures give; the primary's pulse carries at most 4 % of it; nothing is counted twice; with no overlap flow
+  every share would be 0.15 to 0.17.
+- **The overlaps are ordinary** (N1): 24 to 39 degrees at the seat, -4 to +6 at 1 mm, every phaser parked at its
+  least-overlap end. So all of the overlap flow passes at lifts under about 1 mm. The lead's "the cards have too much
+  overlap" was wrong and is withdrawn.
+- **Reverse flow alone cannot carry it** (N1, `reverse-flow-sizing.md`): the measured band of one small engine needs
+  the reverse flow at 0.2 to 0.3 of forward.
+- **The cam cards' flanks by class** (P's af2debe5, for table L): 0.02 to 0.04.
+- **The passage below 1 mm: tried and refuted (02:10).** N1 built the frustum normal to a single 45-degree seat face
+  with a coefficient of 0.8 (0.04 to 0.06 of share) and the lead ruled it in at 01:49 on geometry alone. Held before
+  the push because a two-stage test's crossing moved 950 rpm; P's flow sheets (dbb23107, section 12) then showed real
+  heads passing 0.70 to 0.85 of the head-diameter curtain at 0.100 to 0.200 in, a coefficient of one or more on that
+  frustum, which no seat width saves. Dropped unpushed; the ruling withdrawn. The tip's 0.73 of the curtain sits on a
+  production LS7 head's sheet within 0.03 from 0.100 to 0.300 in. Under 0.100 in, where the overlap flow passes, no
+  sheet reaches: unmeasured, and the law there is the curtain's slope carried down, marked as that.
+- **What agrees and what misses (02:10).** The one engine on its own cam card agrees with its own idle manifold: the
+  7.0 on the LS7's card reads 38.9 kPa against an LS7's 38 (a forum figure). The misses are on cards of judgement: the
+  hot hatch at 53 to 56 against the 4A-GE's 48 or lower, on about 256 degrees at the seat and 34 of overlap where
+  that engine's timing as found is 240 and 18 (N1's probe: share 0.36 at 24 degrees of overlap, 0.27 at 14); the V12
+  at 55 to 58 against a class of normal engines at 30 to 44, with no card or figure of its own. So the gap that is
+  left is content: P gives the hot hatch its engine's timing if it is that engine; the V12 stays a recorded miss.
+
+**The yardstick changes**: the 0.20 to 0.27 of one small engine may not be these engines' band. Idle manifold
+pressure is the total trapped mass and every service manual gives it; P is collecting the real engines' (the
+model's: 40.3 V10, 54.7 V12, 53.3 hot hatch, 48.4 the 3.2, 38.9 the 7.0 on its card, 29.6 economy four, before the
+passage change, which was then dropped). P's rows (341d5bec, 148e623f): economy 1.5 at 20 to 34 (Honda, cited); the
+4A-GE at 48, possibly a minimum vacuum; the LS7 at 38 (forum); the V10 and V12 on MOTOR's class of normal engines,
+30 to 44; the 3.2's row dropped (a throttle a runner, no plenum). They are idle targets with their basis from table L
+on; nothing is tuned to them, and the burned share is no longer a target.
+
+## Open: the cam bake's part-load rows (U1's measurement, 25 Nov 01:43)
+
+The intake cam's bake measures full load and parks the cam below 0.75 of ambient manifold. At 3000 rpm and light load
+the auto rule asked 13.6 degrees where the baked table asks 0, so when a bake goes into use on a running engine the
+note changes over 0.3 s (the phaser's own slew; no click; nothing audible at idle). Whether part load takes the auto
+rule's value, or is measured (on what criterion: fuel, not torque), is not decided. C's and N1's, after table L.
+
+## Open: the two-stage build's high stage never pays (N1, 25 Nov 02:04 to 02:07)
+
+`two-stage-cam-20`, each stage held, 3000 to 7500 rpm: on the tip stage B (280 / 248 on 12.65 mm, the K20A's lobes
+borrowed) never out-pulls stage A (236 / 204 on 8.5 mm) below 7500, so the change at 6000 rpm is a torque dip of 8 %
+(17 N m) on an engine kind known for the opposite. Honda's own changeover for the F20C is 5850 rpm (cited three
+times; the card takes it for table L). N1's ledger: stage A's volumetric efficiency still rises to 0.93 at 7500 while
+paying 1.05 bar of pumping, with 405 K at closing; the port limit's tanh is flat past a quarter of the valve's
+diameter, so B's 49 % more lift buys 5.6 % more area; nothing floats. To do, in order: the K20A2 flow sheet past
+0.300 in against the model's bench on that valve (the limit's form); stage A at 7500, the cylinder's and the port's
+pressures through the intake stroke and the same with the runner too short to ring (the runner's 0.30 m is
+judgement); P looking for real dyno curves with each stage held. Not to be fixed by moving the switch or the lobes
+toward the engine's ratings.

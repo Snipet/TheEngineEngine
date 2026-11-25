@@ -651,18 +651,31 @@ TEST_CASE("the background bake: a stale table set aside at once, baked when the 
     CHECK(build.get("ecu.maps.knockLimitAuto") == 1.0);   // the engine on its knock control alone meanwhile
     CHECK(bakes.consider(build) != KnockBakeState::Current);   // asked once: a second consider asks nothing new
 
-    KnockBakeResult r;
+    // taken and applied (the UI's each frame); its progress counted in points while it baked
+    int mostDone = 0, total = 0;
+    bool applied = false;
     const auto until = std::chrono::steady_clock::now() + std::chrono::seconds(120);
-    while (!bakes.take(r) && std::chrono::steady_clock::now() < until)
+    while (!applied && std::chrono::steady_clock::now() < until)
     {
         REQUIRE(bakes.state() != KnockBakeState::Failed);
-        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        const CalibrationBakeService::Progress p = bakes.progress();
+        mostDone = std::max(mostDone, p.done);
+        total = std::max(total, p.total);
+        CHECK(p.done <= p.total);
+        applied = bakes.takeAndApply(build, error);
+        INFO(error);
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
-    REQUIRE(r.speeds.size() == 2);
-    CHECK(r.key == knockLimitKey(build, *sim));
-    REQUIRE(applyKnockLimit(build, r, error));
-    CHECK(bakes.consider(build) == KnockBakeState::Current);
+    REQUIRE(applied);
+    CHECK(total >= 2);   // two speeds at full throttle: about two points
+    CHECK(knockLimitCurrent(build, *sim));
+    CHECK(bakes.state() == KnockBakeState::Current);   // so it says once applied, without a consider()
     CHECK(std::string(knockBakeStateName(bakes.state())) == "baked");
+    BakedFields r;
+    REQUIRE(bakes.lastSpark(r));   // the table applied, kept for TUNE
+    CHECK(r.key == knockLimitKey(build, *sim));
+    CHECK(bakes.stillKnockingCells() >= 0);
+    CHECK(bakes.consider(build) == KnockBakeState::Current);
 
     // a control is not an edit of the build: nothing to consider. The compression is: stale, set aside, asked again
     build.set("engine.compression", build.get("engine.compression") - 0.5);
@@ -877,4 +890,129 @@ TEST_CASE("the calibration baked in the background: the spark, the cam on that s
     CHECK(bakes.consider(build) != KnockBakeState::Current);
     CHECK(build.get("ecu.maps.knockLimitAuto") == 1.0);
     CHECK(build.get("ecu.maps.camInAuto") == 1.0);
+}
+
+TEST_CASE("the calibration bake's cache across launches: a table baked once is taken by its key, not measured again",
+          "[engine][sim][bake]")
+{
+    if (!haveSim())
+        SKIP("sim/engine.fm is not there yet");
+    std::string error;
+    const auto sim = compiled(simDir(), {}, error);
+    REQUIRE(sim != nullptr);
+    Build build(sim->fields());
+    std::vector<std::string> warnings;
+    REQUIRE(build.loadFile(std::filesystem::path(TEE_SOURCE_DIR) / "content/builds/archetypes/turbo-four-20-gdi.json",
+                           BuildPart::Whole, warnings, error));
+    if (build.fieldOf("ecu.maps.knockLimitAuto") < 0)
+        SKIP("the program has no knock-limit table yet");
+    // a folder of the test's own, emptied first (nothing written outside it)
+    const std::filesystem::path cache = std::filesystem::path(TEE_SOURCE_DIR) / "out" / "tests" / "bake-cache";
+    std::filesystem::remove_all(cache);
+    CalibrationBakeOptions options;
+    options.spark.speeds = 2;
+    options.spark.pedals = {1.0};
+    options.spark.boostSteps = 0;
+    options.bakeCam = false;
+    options.debounceSeconds = 0.0;
+    options.cacheDirectory = cache;
+    const auto bakeOnce = [&](Build& b, bool& measured) {
+        CalibrationBakeService bakes(sim, options);
+        bakes.consider(b);
+        CalibrationBakeResult r;
+        const auto until = std::chrono::steady_clock::now() + std::chrono::seconds(120);
+        while (!bakes.take(r) && std::chrono::steady_clock::now() < until)
+        {
+            REQUIRE(bakes.state() != KnockBakeState::Failed);
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        }
+        REQUIRE(r.hasSpark);
+        measured = !r.spark.cached;
+        return r;
+    };
+    Build first(sim->fields()), second(sim->fields());
+    REQUIRE(first.load(build.save(), BuildPart::Whole, warnings, error));
+    REQUIRE(second.load(build.save(), BuildPart::Whole, warnings, error));
+    bool measured = false;
+    const CalibrationBakeResult a = bakeOnce(first, measured);
+    CHECK(measured);   // nothing kept yet: baked
+    CHECK(std::filesystem::exists(cache / ("spark-" + std::to_string(a.spark.key) + ".json")));
+    // another service (another launch), the same build: taken from the cache at once, the same values
+    const auto t0 = std::chrono::steady_clock::now();
+    const CalibrationBakeResult b = bakeOnce(second, measured);
+    const double seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+    CHECK_FALSE(measured);
+    CHECK(seconds < 1.0);
+    CHECK(b.spark.key == a.spark.key);
+    CHECK(b.spark.fields == a.spark.fields);
+    CHECK(b.spark.stillKnocking == a.spark.stillKnocking);
+    std::filesystem::remove_all(cache);
+}
+
+TEST_CASE("a prediction asked while a calibration bake runs goes first: its time within a stated factor of its time "
+          "alone",
+          "[engine][sim][bake][predict]")
+{
+    if (!haveSim())
+        SKIP("sim/engine.fm is not there yet");
+    std::string error;
+    const auto sim = compiled(simDir(), {}, error);
+    REQUIRE(sim != nullptr);
+    std::vector<std::string> warnings;
+    Build econ(sim->fields());
+    REQUIRE(econ.loadFile(std::filesystem::path(TEE_SOURCE_DIR) / "content/builds/archetypes/economy-four-15.json",
+                          BuildPart::Whole, warnings, error));
+    Build turbo(sim->fields());
+    REQUIRE(turbo.loadFile(std::filesystem::path(TEE_SOURCE_DIR) / "content/builds/archetypes/turbo-four-20-gdi.json",
+                           BuildPart::Whole, warnings, error));
+    if (turbo.fieldOf("ecu.maps.knockLimitAuto") < 0)
+        SKIP("the program has no knock-limit table yet");
+    PredictOptions po;
+    po.points = 4;
+    po.coarse = 2;
+    po.threads = 2;
+    po.cacheSize = 0;   // every request measured
+    const auto refinedAfter = [&](PredictService& predict, Build& b) {
+        const auto t0 = std::chrono::steady_clock::now();
+        predict.request(b);
+        PredictCurve curve;
+        const auto until = t0 + std::chrono::seconds(120);
+        while (std::chrono::steady_clock::now() < until)
+        {
+            if (predict.take(curve) && curve.refined)
+                break;
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        }
+        REQUIRE(curve.refined);
+        return std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+    };
+    PredictService predict(sim, po);
+    const double alone = refinedAfter(predict, econ);
+    econ.set("engine.compression", econ.get("engine.compression") - 0.1);   // another curve: not from the cache
+
+    CalibrationBakeOptions bo;
+    bo.debounceSeconds = 0.0;
+    bo.bakeCam = false;
+    bo.spark.predict.threads = 2;
+    CalibrationBakeService bakes(sim, bo);
+    bakes.yieldTo(predict);
+    bakes.consider(turbo);
+    const auto until = std::chrono::steady_clock::now() + std::chrono::seconds(30);
+    while (bakes.state() != KnockBakeState::Baking && std::chrono::steady_clock::now() < until)
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    REQUIRE(bakes.state() == KnockBakeState::Baking);
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));   // the bake's workers under way
+    const double during = refinedAfter(predict, econ);
+    INFO("the curve alone " << alone << " s, with a bake running " << during << " s");
+    std::printf("predicted curve alone %.2f s, with a calibration bake running (yielding) %.2f s\n", alone, during);
+    // the bake waits between its points: the curve waits at most for the points under way (some 0.3 s each)
+    CHECK(during <= 2.5 * alone + 1.0);
+    // the PredictService may go first (a reload that makes it again): the bake holds its flag, not the service
+    {
+        PredictService other(sim, po);
+        bakes.yieldTo(other);
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));   // the bake, past points, reads a flag still valid
+    CHECK(bakes.state() != KnockBakeState::Failed);
+    bakes.stopYielding();
 }

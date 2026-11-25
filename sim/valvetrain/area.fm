@@ -10,8 +10,8 @@
 //   A(L) = n min(q A0, A0'(0) L),   A0 = 0.4 (pi d^2 / 4) tanh(6.8 L / d) / tanh(1.7)
 //
 // n valves of diameter d, q the port's quality (1: the reference's coefficients; a good racing port flows some 20 to
-// 30 % more at the same valve). Low down this is 0.73 of the curtain, at L = d / 4 it is 0.4 of the valves' area,
-// and above it flattens (6 % more at d / 3). The diameter left at 0 is chosen from the bore as real heads have it
+// 30 % more at the same valve). Low down this is 0.73 of the curtain (four-valve heads: 0.66 and 0.63, below), at
+// L = d / 4 it is 0.4 of the valves' area, and above it flattens (6 % more at d / 3). The diameter left at 0 is chosen from the bore as real heads have it
 // (docs/models/valvetrain.md lists the heads): two valves a cylinder, an intake of 0.48 of the bore and an exhaust of
 // 0.39; three (two intakes), 0.37 and 0.44; four, 0.39 and 0.33; five (three intakes), 0.32 and 0.33.
 //
@@ -35,6 +35,8 @@ module Head
     float dEx;
     float qIn;          // the ports' quality
     float qEx;
+    float kIn;          // the low-lift curtain's share of the base form's slope (1: 0.73 of pi d L; below)
+    float kEx;
 
     // valves: 2 to 5 a cylinder; dIn, dEx: 0 to choose from the bore
     void setup(int valves, float bore, float dInSpec, float dExSpec, float qInSpec, float qExSpec)
@@ -68,10 +70,21 @@ module Head
         dEx = dExSpec > 0.0f ? dExSpec : fe * bore;
         qIn = qInSpec > 0.0f ? qInSpec : 1.0f;
         qEx = qExSpec > 0.0f ? qExSpec : 1.0f;
+        // The low-lift curtain's coefficient by the head's valves (card N1, 25 Nov; the lead's ruling on the table).
+        // Four valves: 0.66 of pi d L intake, 0.63 exhaust, the medians at 0.100 in of nine production four-valve
+        // heads' flow sheets at 28 in (Stan Weiss's compilation, a secondary source; valves stated per row): intake
+        // 0.60, 0.64, 0.66, 0.66, 0.66, 0.67, 0.67, 0.73, 0.79; exhaust 0.60, 0.60, 0.60, 0.61, 0.63, 0.64, 0.64, 0.72,
+        // 0.76 (docs/measurements/calibration/na/flow-sheets-vs-seat.md). Two valves keep the base form's 0.73: two
+        // heads measured (the LS7 0.70 / 0.67, the 882 0.78 / 0.84) straddle it and are too few to move it. Three and
+        // five valves: no sheet, unchanged. Below 0.100 in (2.5 mm) nothing is measured: the same slope carried down.
+        // It does not close N3-16 (the idle's burned share; that closes on the cards) and is tuned to no row.
+        kIn = v == 4 ? 0.66f / 0.72696f : 1.0f;
+        kEx = v == 4 ? 0.63f / 0.72696f : 1.0f;
     }
 
-    // The effective area (m^2) of n valves of diameter d, quality q, at lift L (m)
-    float areaOf(int n, float d, float q, float l)
+    // The effective area (m^2) of n valves of diameter d, quality q, at lift L (m), k the low-lift curtain's share
+    // (1: the old expression bit for bit)
+    float areaOf(int n, float d, float q, float l, float k)
     {
         if (l <= 0.0f)
             return 0.0f;
@@ -85,17 +98,17 @@ module Head
         // Cheng and Heywood's correlation, SAE 931025) and their idles wandered sd 12 and 18 rpm (card N1, 25 Nov))
         const float base = 0.4f * 0.785398f * d * d * tanhf(6.8f * l / d) / 0.9354f;
         const float curtain = 0.4f * 0.785398f * d * 6.8f * l / 0.9354f;
-        return (float)n * fminf(q * base, fmaxf(curtain, base));
+        return (float)n * fminf(q * base, k < 1.0f ? k * curtain : fmaxf(curtain, base));
     }
 
     float areaIn(float l)
     {
-        return areaOf(nIn, dIn, qIn, l);
+        return areaOf(nIn, dIn, qIn, l, kIn);
     }
 
     float areaEx(float l)
     {
-        return areaOf(nEx, dEx, qEx, l);
+        return areaOf(nEx, dEx, qEx, l, kEx);
     }
 };
 

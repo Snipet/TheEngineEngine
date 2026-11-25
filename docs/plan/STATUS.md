@@ -37,6 +37,83 @@
 
 ## Landed
 
+- **02:24 (25 Nov) `main` moved 09c1fb4e to 78cdd2f5**, fast-forward. Run 45529977919: Linux 542 of 542, macOS 542 of
+  542 (checked by the lead on the run's own jobs; Windows' job on this commit was cancelled by later pushes, so main's
+  own run is its first Windows build). It holds the ten fixes of fc554da and the bake's wiring (C's 648e7fca, 7f2ddfa1,
+  314e029e; U1's 1cfb5a6e; B's 169a729a, 02553ee2). New for the owner against 09c1fb4e: the V10's and V12's idles
+  steady; no dip after the start; the first-launch turbo four as the EA888 with a baked intake cam; Tailpipe the
+  default camera on every build; the cabin's firewall; the fan cycling on its switch; the spark and cam maps baked in
+  the background with the stage and count in the top bar, the ribbon's curve about 4 s after load, a second launch
+  taking the tables from `~/Library/Caches/TheEngineEngine/bakes`; VALVES showing the pressure across the overlap.
+  The steward's probe of the audio thread under a bake (4 vCPUs, not a real-time thread): median block 2.51 to 2.53 ms,
+  p99 4.31 to 4.77 ms, the few blocks over 10.67 ms there with or without a bake: weak evidence, not obviously bad.
+  **Not in main**: the compressor map (N2, unmeasured knee), the cam cards' changes (behind CAM_RULE until table L),
+  the four-valve low-lift coefficient (N1 probing; the lead rules on its table). *Since 02:11*: twelve heads' flow
+  sheets (P's 9594f39c; N1's overlay): the port limit's form stays (the heads collapse onto the tanh past the knee;
+  the K20A2 is a high-rising head; the series form refuted twice); at 0.100 in nine four-valve heads have medians of
+  0.66 and 0.63 of the curtain against the model's unsourced 0.73: ruled a probe and a table before any commit, and
+  the lead's "it is the head's kind" withdrawn as unestablished. `valve.portRise` declined. The two-stage build's
+  crossing is a validation row (P's 9dd37d32: 5500 to 5900 on a tuner's word; the model 8034) and a recorded miss;
+  its runner stays the class's 0.30 m (no maker's figure; forum figures near it); its switch takes the F20C's own
+  5850 (cited). The hot hatch becomes the 4A-GE whole (7b95a2e7); the 7.0's ports from the LS7's sheet (15f1f5ac).
+
+- **02:11 (25 Nov) a ruling withdrawn; the bake's wiring in; `main` still at 09c1fb4e.** *Withdrawn: the lead's
+  01:49 ruling that N1 commit the seat passage's frustum.* Held before the push when a two-stage test's crossing
+  moved 950 rpm; P's flow sheets (dbb23107) refute it (real heads pass 0.70 to 0.85 of the curtain at 0.100 to 0.200
+  in; the frustum cannot exceed 0.707). Dropped unpushed, with the idle figures the owner was shown on it. The tip's
+  low-lift area sits on a production LS7 head's sheet within 0.03. N3-16 as it now stands is in the queue: the flows
+  are honest, the one engine on its own cam card agrees with its own idle manifold (the 7.0 on the LS7's: 38.9
+  against 38), and the misses are on cards of judgement (the hot hatch to take the 4A-GE's timing if it is that
+  engine; the V12 a recorded miss). *The wiring*: U1's 1cfb5a6e and B's 02553ee2 (merged 78cdd2f5): the ribbon's
+  curve 4.3 s after load with a bake running (31 to 35 s before), a second launch "baked" in 1.5 s from the cache,
+  "Baking the cam 23 of 42" in the top bar. Run 45529977919 at 78cdd2f5 has Linux and macOS in progress: `main` moves
+  on their green. *New and open*: the two-stage build's high stage never out-pulls its low one below 7500, so its
+  change at 6000 is an 8 % dip (queue); the F20C's own changeover is 5850 (cited; into the card for table L). *N2*:
+  nothing committed; the knee's real place still to come.
+
+- **01:49 (25 Nov) the lead's check-in; `main` stays at 09c1fb4e; fc554da is green on Linux and macOS.** Run
+  45525224026 at fc554da: 541 of 541 on both, the first green on a commit holding all ten of tonight's fixes (the
+  steward's report; the lead's first gate). **Main waits one commit more**: the app's wiring of C's bake changes. C:
+  the bake yields between points while the ribbon's predictor is busy (648e7fca; a curve in 1.05 s with a bake running
+  against 0.94 alone, where it waited about 30 s), a cache across launches by key (7f2ddfa1), progress and the cells
+  still knocking served, and the yield holds the predictor's shared busy flag, not a pointer (314e029e). B: the cache
+  folder passed (169a729a: `~/Library/Caches/TheEngineEngine/bakes` on macOS; a machine's run only with
+  `TEE_CACHE_DIR`). Outstanding: U1's `ServiceBake::yieldTo(const ServiceDyno&)`, then B's call. U1: the stage in the
+  top bar on every workspace (e8ab7047); applying a bake on a running engine does not click (53ca2fcf): nothing at
+  idle, a 0.3 s change of note at 3000 rpm light load because the cam bake has no part-load rows (in the queue).
+  *The residual at idle* moved four steps in half an hour, all measurements (the queue has the whole of it): the fresh
+  charge is right (N1), the drive is honest (D), the overlaps are ordinary so everything passes under 1 mm of lift
+  (N1; the lead's "too much overlap in the cards" withdrawn), and the passage there was 0.73 of the head-diameter
+  curtain, more than the seat's frustum holds. **Ruled: N1 commits the frustum's geometry** (`valve.model` 1; seat
+  widths and the 0.8 coefficient as constants marked judgement; no Spec field until a cited seat exists): shares
+  0.399 to 0.347 (V10), 0.488 to 0.445 (V12), 0.463 to 0.406 (hot hatch), economy four level. The yardstick becomes
+  each real engine's idle manifold pressure (P collecting). *Content*: the 7.0 on the LS7's own card (68c7c879; basis
+  search snippets, not read): share 0.476 to 0.396, full load within 2 % of K's. The IS20's wheels at rebuilders'
+  basis (dfbd36cc): compressor 42.5 / 54.0 mm, turbine 50.4 / 41.8; N2 to set the matched wheel beside them. *N2*:
+  nothing committed; measuring where the model really surges (see 01:35).
+
+- **01:35 (25 Nov) a correction to 01:30, and what `main` now waits for.** *The lead's acceptance of the map's surge
+  line may have been of the wrong line*: N2 says the model goes unstable wherever a speed line rises with flow, which
+  is everything left of the knee `phiK`, while the figures checked (0.24 / 0.29 / 0.36 / 0.44 of choke) may be the
+  flag's locus at 0.8 `phiK`. If so the model's real line is at 0.30 / 0.36 / 0.45 / 0.55, above the published ranges
+  at every ratio. Not measured yet; N2 is to say which locus the figures are and measure where the model surges.
+  Ruled: the knee's place is part of the surge line's place and is settled before the commit; one commit (the map, the
+  sizing kept, the knee if it moves, the cap tried after), so that table L and the baked maps are re-made once. A
+  thought given to N2 to test: the truck's two states may be static (an engine's swallowing line crossing a rising
+  characteristic twice), in which case the low state exists only because the model lets a compressor sit left of its
+  peak. *N2's three trees* (turbo four at 1500 / 1800 / 2500 / 4000 / 6200, N m): head 213 / 227 / 305 / 366 / 289;
+  the map alone 231 / 257 / 394 / 367 / 290; the map with the sizing kept 222 / 239 / 319 / 366 / 289. The map alone
+  reaches the target at 2500 only by building a wheel a fifth smaller, so the engine's low end is the turbo's size:
+  hardware a build should state from a source (P asked for the IS20's wheel dimensions; nothing sized from the 350).
+  The 2.0 common-rail at 1800 gains nothing on either tree (turbine inlet 127 kPa absolute: spool). *`main` now also
+  waits for C's fix to the background bake*: U1 watched a real bake (0101e7f4): at load the DYNO ribbon reads "no
+  curve yet" for 31 to 35 s on 4 cores because the bake holds the workers ahead of the predictor, and every content
+  build bakes again at each launch (about 110 s, up to six workers) since all are stale against the program and
+  nothing keeps a result between launches. Asked of C, in order: the predictor ahead of the bake; a cache by key in a
+  folder the app gives; done and total per stage; the cells still knocking served. The owner was told, and that
+  `main` moves sooner if they say so. *Rulings*: the 7.0 takes the LS7's own cam card for table L (basis: search
+  snippets, the page refused, not read), shown three ways in the twin; N1 to size whether the low-lift reverse-flow
+  coefficient alone could carry the residual gap, as a diagnostic and no change.
 - **01:30 (25 Nov) between check-ins; `main` stays at 09c1fb4e.** The first run on a commit holding every one of
   tonight's fixes is in flight on Linux and macOS (45525224026 at fc554da; the ten commits checked as ancestors by the
   lead: 4e1c813b, 62657c07, 1ab6affe, fd6ed014, f0512a25, ee603c37, 576c1c6e, 68e683f1, a18f1bd4, f4cf2b39). The runs

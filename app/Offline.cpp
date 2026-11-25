@@ -13,6 +13,7 @@
 #include "player/RefAdapter.h"
 #include "player/SimAdapter.h"
 #include "panel/PlaceholderPanel.h"
+#include "settings/Settings.h"
 #include "tee/app/MainPanel.h"
 
 #include "files/BuildFiles.h"
@@ -128,8 +129,8 @@ namespace tee::app
             const std::filesystem::path content = findContent();
             struct Kept
             {
-                Kept(player::SimAdapter& sim, std::filesystem::path shipped)
-                    : doc(sim.build()), scope(sim.host()), dyno(sim), bake(sim), file(sim.build()),
+                Kept(player::SimAdapter& sim, std::filesystem::path shipped, std::filesystem::path bakes)
+                    : doc(sim.build()), scope(sim.host()), dyno(sim), bake(sim, dyno, std::move(bakes)), file(sim.build()),
                       library(shipped, Presets::userDirectory()),
                       garage(file, [&sim] { return sim.ready() ? sim.host().sim() : std::shared_ptr<Sim>(); }, std::move(shipped),
                              Presets::userDirectory())
@@ -144,7 +145,14 @@ namespace tee::app
                 files::BuildLibrary library;
                 GarageLibrary garage;             // GARAGE's (U5's Library), over `file`: after it, so destroyed first
             };
-            const auto kept = std::make_shared<Kept>(*engine.sim, content.empty() ? content : content / "builds");
+            // the bakes' cache (card C's, keyed by the program's source and the build): a person's window, or a run that
+            // names one (TEE_CACHE_DIR); not a machine's run otherwise, whose timings would hang on what an earlier left
+            const char* cacheGiven = std::getenv("TEE_CACHE_DIR");
+            const bool machineRun = o.frames >= 0 || !o.shot.empty() || o.seconds >= 0.0;
+            const std::filesystem::path bakes = (cacheGiven != nullptr && cacheGiven[0] != '\0') || (window && !machineRun)
+                                                    ? settings::cacheDirectory() / "bakes"
+                                                    : std::filesystem::path();
+            const auto kept = std::make_shared<Kept>(*engine.sim, content.empty() ? content : content / "builds", bakes);
             // (the build as the engine was made, a --preset applied, is the clean one: untitled, so a save asks where)
             shown.document = &kept->file;
             shown.library = &kept->library;
@@ -161,6 +169,7 @@ namespace tee::app
             addShellServices(frameServices, *engine.sim, controls);
             addFileServices(frameServices, kept->file, kept->library);
             frameServices.sparkMap = [kept] { return kept->bake.state(); };
+            frameServices.stillKnocking = [kept] { return kept->bake.stillKnocking(); };
             shown.frame = [kept] { kept->bake.tick(); };
             if (window)
             {

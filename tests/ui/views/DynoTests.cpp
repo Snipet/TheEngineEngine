@@ -528,3 +528,9 @@ namespace
         return 0;
     }
 }
+
+namespace tee::test::u4
+{
+    // The text check, for the other U4 test files.
+    std::vector<std::string> textClashesOf(const funkgui::PrimList& list, float w, float h) { return textClashes(list, w, h); }
+}

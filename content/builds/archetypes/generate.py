@@ -219,6 +219,15 @@ arch(slug="rotary-twin-na-side-port", clutchTorque=350.0, rotaryCam=0.15, rotary
 arch(slug="hot-hatch-16-16v", runner=0.35, convK=18.0, name="1.6 L 16-valve hot hatch", geo="ref-05-inline-4", layout="Inline 4",
      bore=81.0, stroke=77.4, rod=134.0, cr=10.4, valves=4, dIn=31.0, dEx=27.0,
      cam=(256, 224, 9.6, 108, 248, 216, 8.8, 110), train="Bucket", redline=7200, idle=850,
+     # table L (the lead, 02:12): the 4A-GE kind whole, applied with CAM_RULE. Its 81 x 77.0 mm (1587 cc) and the big-port
+     # engine's 9.4:1 (en.wikipedia.org/wiki/Toyota_AE86, "bore x stroke: 81.00 x 77.00 mm", 9.4:1 for the big port;
+     # the later small port 10.3); its cam as found (no Toyota document): 240 deg, IVO 9 BTDC / IVC 51 ABDC, EVO 51
+     # BBDC / EVC 9 ATDC, centres 111 / 111, 7.56 mm (ae86resource, club4ag.com: enthusiast references; "240 gross
+     # duration" an aeu86.org forum post), the height not stated: taken as the seat, the 1 mm by the bucket rule
+     camCard=dict(stroke=77.0, cr=9.4, cam=(240, 204, 7.56, 111, 240, 204, 7.56, 111),
+                  cardNote="Of the 4A-GE kind (big port): 81 x 77.0 mm (1587 cc), 9.4:1 (Wikipedia's AE86), its cam 240 "
+                           "deg on 111/111 centres and 7.56 mm (enthusiast references and a forum, no Toyota document; "
+                           "the height not stated, taken as the seat). Its rod length is still the generator's."),
      car="hot-hatch-light", timing="Toothed belt",
      notes="A light front-drive hatch with a twin-cam 16-valve 1.6: 81 x 77.4 mm (1595 cc), 10.4:1; engines of the "
            "kind made 85 to 118 kW at 6500 to 7600 rpm and 140 to 160 N m (makers' figures of the 1980s and 90s).")
@@ -291,10 +300,30 @@ arch(slug="two-stage-cam-20", runner=0.3, convK=16.0, name="Two-stage-cam 2.0 L"
      # stage's), switched at 6000 rpm (the DC5's: honda.co.jp factbook)
      stages=dict(inDurSeatB=280, inDur1mmB=248, inLiftB=0.01265, exDurSeatB=278, exDur1mmB=246, exLiftB=0.01214,
                  stageSpeed=6000 * RPM),
+     # table L (the lead, 02:06), applied with CAM_RULE: the switch at the F20C's own 5850 rpm (Honda: the 1999 S2000
+     # fact book, honda.co.jp, "5,850rpm～9,000rpm ... ハイバルブタイミング域"; global.honda's F20C page; American Honda's
+     # 2001 powertrain release, "a relatively low 5850 rpm"); the high stage stays the K20A's, borrowed
+     # and its low stage the K20A's (the lead, 02:26): motorreviewer.com (an aggregator, no source, no lift height)
+     # lists three intake/exhaust pairs unlabelled, "244/240 deg and 8.84/8.59 mm; 280/278 deg and 12.65/12.14 mm;
+     # 245/244 deg and 9.68/8.74 mm": the two short ones taken as the primary and secondary low lobes and meaned (the
+     # cylinder sees both valves; the LEAD'S READING), 244.5/242 deg on 9.26/8.67 mm; seat assumed, 1 mm by the
+     # rocker class's rule; the centres still the generator's
+     camCard=dict(cam=(244.5, 206, 9.26, 110, 242, 204, 8.67, 112),
+                  stages=dict(inDurSeatB=280, inDur1mmB=248, inLiftB=0.01265, exDurSeatB=278, exDur1mmB=246,
+                              exLiftB=0.01214, stageSpeed=5850 * RPM),
+                  cardNote="Its switch at the F20C's own 5850 rpm (Honda's S2000 fact book and its 2001 powertrain "
+                           "release). Both stages the K20A's, borrowed, from an aggregator (motorreviewer.com, no source "
+                           "or lift height stated): \"244/240 deg and 8.84/8.59 mm; 280/278 deg and 12.65/12.14 mm; "
+                           "245/244 deg and 9.68/8.74 mm\", unlabelled; the high the second, the low the mean of the "
+                           "first and third (244.5/242 deg, 9.26/8.67 mm), taken as the primary and secondary low "
+                           "lobes: the lead's reading. The seat assumed, the 1 mm by the rocker class's rule."),
      grade="Premium (91)", car="roadster", timing="Chain", lifters="Solid",
      notes="A 2.0 L four with two cam profiles a valve switched at 6000 rpm: 87 x 84 mm (1997 cc), 11.7:1, 9000 rpm "
            "(the F20C kind: 176 kW at 8300 rpm, 208 N m at 7500; makers' figures, from memory, firm to 5 %; the "
-           "B16A's switch point of 5500 rpm: global.honda). In a light rear-drive roadster.")
+           "B16A's switch point of 5500 rpm: global.honda). Its high-stage cam and its 6000 rpm switch are the K20A "
+           "Type R's (the DC5's), borrowed onto the F20C's bore, stroke and ratings; the high lobe's 280/278 deg and "
+           "12.65/12.14 mm from an aggregator (motorreviewer.com, no source stated, its height not stated). Its LOW "
+           "stage (236/232 deg at the seat, 8.5/8.0 mm) is JUDGEMENT, no source. In a light rear-drive roadster.")
 arch(slug="kei-660-triple-turbo", runner=0.28, convK=24.0, name="Kei 660 cc triple turbo", geo="ref-04-inline-3", layout="Inline 3",
      bore=68.0, stroke=60.4, rod=110.0, cr=8.6, valves=4, dIn=24.5, dEx=21.0,
      cam=(240, 208, 7.5, 110, 236, 204, 7.0, 112), train="Bucket", redline=8000, idle=850,
@@ -408,6 +437,19 @@ arch(slug="vr6-28", runner=0.45, name="Narrow-angle VR6 2.8 L", geo="vr6", layou
 arch(slug="straight-six-32-high-rev", name="3.2 L straight six, high-revving", geo="ref-10-inline-6",
      layout="Inline 6", bore=87.0, stroke=91.0, rod=139.0, cr=11.5, valves=4, dIn=35.0, dEx=30.5,
      cam=(264, 236, 11.8, 106, 260, 232, 11.0, 110), train="Bucket", phase=(60, 45), redline=8000, idle=850,
+     # the S54's own cams for table L (the lead, 01:55), applied with CAM_RULE: BMW ST041 and ST609 (maker's training
+     # manuals): lift 12 / 12 mm, "Camshaft Spread Angle Intake (degrees) 70 - 130 / Exhaust (degrees) 83 - 128" (crank
+     # degrees), ranges 60 and 45, "The 'default' mechanical stop position without VANOS influence is: Intake Camshaft =
+     # Retarded (130º spread angle) / Exhaust Camshaft = Advance (83º spread angle)"; a row "260/260" read as the
+     # durations (the height not stated: taken as the seat, the 1 mm by the bucket class's rule). BMW's "Advance (83º)"
+     # is doubted (an exhaust centre nearer the top is its late end): the exhaust parks at 128, the end that closes it
+     # early (the LEAD'S READING, no second BMW line found); the intake parks at 130 as BMW says
+     camCard=dict(cam=(260, 224, 12.0, 110, 260, 224, 12.0, 128), inPark=130.0,
+                  cardNote="Its cams: the S54's (BMW training manuals ST041 and ST609: 12 mm lift, spreads intake 70 "
+                           "to 130 and exhaust 83 to 128 crank degrees, ranges 60 and 45, the intake resting at 130); "
+                           "the 260 deg durations read from a row whose height is not stated (taken as the seat); the "
+                           "exhaust resting at 128, the lead's reading of BMW's \"Exhaust Camshaft = Advance (83º "
+                           "spread angle)\", which is doubted."),
      intake=dict(throttleKind="A body a runner"), grade="Premium (91)", car="coupe-six",
      timing="Chain", lifters="Solid",
      notes="A naturally aspirated 3.2 L straight six with a throttle body a cylinder: 87 x 91 mm (3246 cc), 11.5:1, "
@@ -423,6 +465,29 @@ arch(slug="four-cam-v8-50", runner=0.35, name="Four-cam 5.0 L V8", geo="ref-12-v
 arch(slug="big-bore-70-pushrod-v8", runner=0.4, name="7.0 L pushrod V8, dry sump", geo="ref-12-v8-cross",
      layout="V8 crossplane", bore=104.8, stroke=101.6, rod=158.0, cr=11.0, valves=2, dIn=56.0, dEx=41.0,
      cam=(282, 230, 15.0, 112, 288, 234, 14.0, 116), train="Pushrod", redline=7000, idle=750,
+     # its head's port quality from the LS7's own sheet (the lead, 02:11; held 02:12 until N1 says which form of the
+     # port limit stands): RLD Performance's bench, stock GM CNC LS7 ports, 28 in H2O, 2.20/1.61 valves, shaped entry,
+     # stub pipe: 315/207 cfm at 0.500 in, 348/219 at 0.600 (measured, third party; sources section 12). The value is
+     # set by N1 (02:20, the lead 02:18) on the model's bench, min(q A0, 0.73 curtain), the sheet's own valves at 28 in,
+     # least squares on the relative error from 0.300 to 0.600 in: portIn 1.44 (model over sheet +0.2, +7.5, 0.0, -2.8,
+     # -5.6 % at 0.300, 0.400, 0.500, 0.550, 0.600 in), portEx 1.68 (+3.1, +4.3, +0.6, -1.7, -3.3 %). The model's port
+     # limit (tanh) is flatter than the sheet past a quarter of the valve's diameter: balanced over 0.300 to 0.600 in it
+     # over-reads at 0.400 in by up to 7.5 % and under-reads at 0.600 in by up to 5.6 %; q is re-read for every card if
+     # the limit's form changes
+     # the LS7's own cam for table L (the lead, 01:33), applied with CAM_RULE: GM 12638426, 211/230 deg at 0.050 in
+     # tappet lift, 0.593/0.588 in valve lift on the LS7's 1.8 rockers, 121 deg lobe separation (a forum's 120): search
+     # snippets of Chevrolet Performance's listing; the page itself refused (403); not read. The seats 26 deg a side
+     # beyond the 0.050 in figure (JUDGEMENT inside the cited hydraulic rollers' 23 to 29.5); the intake centreline 112
+     # (JUDGEMENT, not found), the exhaust's 130 by the separation
+     camCard=dict(cam=(263, 211, 15.06, 112, 282, 230, 14.94, 130), portQ=(1.44, 1.68),
+                  tappet=dict(ratio=1.8, ratioBasis="the LS7's 1.8, search snippets of Chevrolet Performance's "
+                              "listing, the page not read", inAdv=263, in50=211, exAdv=282, ex50=230),
+                  cardNote="Its cam: the LS7's (GM 12638426: 211/230 deg at 0.050 in, 0.593/0.588 in lift on 1.8 "
+                           "rockers, 121 deg lobe separation; from search snippets of Chevrolet Performance's listing, "
+                           "the page itself refused and not read); the seats 26 deg a side beyond the 0.050 in figure "
+                           "and the intake centreline 112 JUDGEMENT. Its head's port quality 1.44 / 1.68 from the LS7 head's flow "
+                           "sheet (RLD Performance's bench, 28 in H2O: measured, third party), balanced from 0.300 to "
+                           "0.600 in lift; the model's port limit over-reads that head by up to 7.5 % at 0.400 in."),
      friction="Roller", grade="Premium (91)", car="front-engine-sports", timing="Chain", lifters="Hydraulic",
      notes="A 7.0 L small-block-sized pushrod V8 with titanium intake valves and a dry sump: 104.8 x 101.6 mm "
            "(7011 cc), 11:1, 7000 rpm (the LS7 kind: 377 kW at 6300 rpm, 637 N m at 4800; gmauthority.com). "
@@ -581,6 +646,10 @@ TORQUE_PEAK = {k: v[3] for k, v in _val.T.items()}
 
 # ---- writing them ------------------------------------------------------------------------------------------------
 def build(a):
+    if CAM_RULE and "camCard" in a:
+        # an engine's own card replacing the generator's (table L's content: the lead, 01:33)
+        a = dict(a, **a["camCard"])
+        a["notes"] = a["notes"] + " " + a["camCard"]["cardNote"]
     e = {"layout": a["layout"], "custom": True, "compression": a["cr"]}
     e.update(geometry(a["geo"]))
     n = e["cylinders"]
@@ -615,12 +684,15 @@ def build(a):
             # a phased intake parks late, as real phasers lock at their retarded end, and advances under load:
             # the fixed-cam centre plus 20 degrees, at most half its range (N1: the four-cam 5.0 parked at its fixed
             # centre had 38 degrees of overlap at idle and hunted 455 to 515 rpm; 20 later it idles 700, sd 6)
-            v["inCentre"] = ci + min(20.0, a["phase"][0] / 2.0)
+            v["inCentre"] = a.get("inPark", ci + min(20.0, a["phase"][0] / 2.0))
         # port quality by head (N1, from card E's calibration: q 1.35 is a stock 232 CFM small-block head; racing
         # ports flow 20 to 30 % more, Heywood fig. 6-18): two-valve wedge and pushrod heads 1.2/1.35, production
         # four-valve 1.35/1.5 (the default), high-output four-valve 1.65/1.8, race 1.75/1.9
         if a.get("ports"):
             v["portIn"], v["portEx"] = PORTS[a["ports"]]
+        if a.get("portQ"):
+            # a head's own port quality from its own flow sheet (table L's content)
+            v["portIn"], v["portEx"] = a["portQ"]
         if a["slug"] in SPRINGS:
             k, f0 = SPRINGS[a["slug"]]
             m = 1.5 if "stages" in a else 1.0

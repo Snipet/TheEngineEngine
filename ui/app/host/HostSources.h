@@ -48,6 +48,7 @@ namespace tee::ui
         bool running() const override { return running_; }
         void stopRun() override;
         bool refined() const noexcept { return refined_; }   // predicted() is the refined curve
+        const tee::PredictService& predictor() const noexcept { return predict_; }   // for ServiceBake::yieldTo
         std::uint64_t requests() const override { return requests_; }
 
         static DynoTrace traceOf(const tee::DynoCurve& c, std::string name);
@@ -101,9 +102,18 @@ namespace tee::ui
     public:
         ServiceBake(std::shared_ptr<tee::Sim> sim, tee::Build& build, tee::CalibrationBakeOptions options = {});
         void tick();
+        // While `dyno`'s predictor is busy, the bake waits between its points (the ribbon's curve first). Safe in either
+        // order of destruction: the service keeps the predictor's shared busy flag, not the predictor (card C's).
+        void yieldTo(const ServiceDyno& dyno) { bakes_.yieldTo(dyno.predictor()); }
+        void stopYielding() { bakes_.stopYielding(); }
+        // The service's words; while baking, its stage and its count: "baking cam 23 of 42".
         std::string state() const;
+        // The knock-limit table last applied: its cells still knocking after the corrections, [speed][load] on its grid
+        // (empty: none applied); and how many.
+        std::vector<std::vector<bool>> stillKnocking() const;
+        int stillKnockingCells() const { return bakes_.stillKnockingCells(); }
         std::string error() const;
-        std::uint64_t revision() const noexcept { return bakes_.revision() + applied_; }
+        std::uint64_t revision() const noexcept { return bakes_.revision() + applied_; }   // moves with each point too
 
     private:
         std::shared_ptr<tee::Sim> sim_;
