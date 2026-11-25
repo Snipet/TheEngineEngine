@@ -201,7 +201,12 @@ TEST_CASE("launch.automatic: a brake-torque launch on an automatic is no slower 
         // job at 09c1fb4e read 3.104 s against 3.072 from idle (card I's own run: 3.104 against 3.136), three blocks
         // apart either way. What must hold without it is that brake-torquing never costs a launch (a tenth of a
         // second, judgement); the fault this guards, an upshift on spinning tyres, is launch.automatic.spin's below.
-        CHECK(torqued <= idle + (tc ? 0.01 : 0.10));
+        // (the margin with traction control: the time to 60 ft is read a block at a time, 512 samples, 10.7 ms, so
+        // "no slower" is no more than one block slower; 0.01 s was less than the reading's own step. Tonight the
+        // brake-torqued launch reads 2.880 s against 2.901 from idle, two blocks ahead, and other packages' torque moves
+        // both (the near-bound survey of 2026-11-25; the lead's rule: the property and the margin's reason here)
+        const double oneBlock = 512.0 / 48000.0 + 1.0e-9;
+        CHECK(torqued <= idle + (tc ? oneBlock : 0.10));
     }
 }
 

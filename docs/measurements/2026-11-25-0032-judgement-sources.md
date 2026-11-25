@@ -79,3 +79,23 @@ Asked: Cd against L/D 0.01-0.1 for the exhaust valve flowing port to cylinder an
 - Woods & Khan, Proc. IMechE 180 (1965-66), via a 2017 Exp. Fluids snippet: below ℓ/d 0.04 the effective area is independent of pressure ratio; direction not given, no Cd.
 - Kastner, Williams & White (Proc. IMechE 1963), Heywood Fig. 6-21, Annand & Roe, Bicen, Vafidis & Whitelaw: no open copy. ENCIT2012-158: forward intake only.
 **Next:** SAE 962527 or 2001-01-1798, or Blair ch. 3, from a library. Until then any reverse Cd is judgement.
+
+## 8. Cam flanks: the seat-to-1 mm step (the lead's ask, 25 Nov 01:10 UTC)
+
+Our cards' second duration sits 13 to 16 crank deg a side inside the seat's on every overhead-cam archetype (the V10 and V12 13 to 14), all generator judgement. Durations below are crank deg, Q quoted, C computed (seat minus second, halved). Downloads 25 Nov.
+
+**Catalogue cards, pushrod** (tappet lift 0.006 in to 0.050 in; at the valve, through a 1.5 to 1.7 rocker, about 0.25 to 2 mm, **not** our 0.15 to 1 mm):
+- Hydraulic flat tappet: COMP XE268H-10 268/280 Q, 224/230 Q @0.050 (montmotorsports.com), 22/25 C; COMP CRS 268H-10 268 and 218, 25 C (manciniracing.com); Howards 110041-10 and 110051-12, 27 C (howardscams.com); Crower 00238 250/258 and 192/196, 29/31 C (crower.com card); Erson E110044 292 @0.006 in Q and 230, 31 C (enginelabs.com). Range 22 to 31 a side (44 to 62 in total).
+- Hydraulic roller: COMP XR276/282/288HR, 26 a side C, the 0.006 in quoted (streetmusclemag.com); Crower 00571/2/3 and 00462/5, 23 to 29.5 C (crower.com). Range 23 to 29.5.
+- Solid roller (lash 0.026 in and up): Crower 00425/00429/00432, Howards 110013-08: 14 to 20 a side C, checking height not stated.
+- Advertised heights are not stated by Crower or Howards; "anything from .004-inch to .022-inch" historically (enginelabs.com).
+
+**Overhead-cam four-valve grinds, metric heights:**
+- Kelford spec sheets (kelfordcams.com/wp-content/uploads/product-specs/<PN>.pdf), "Advertised Duration @ 0.10mm" and "Duration @ 1.00mm VALVE LIFT" Q: 46 sheets at 0.10 mm. Buckets, 40 lobes, 16.5 to 31 a side, **median 20.0** C (e.g. 1GR-FE 256/222, 17; 1FZ-FE 264/225, 19.5; 2AZ-FE 264/218, 23). Fingers and rockers, 52 lobes, 14 to 32, **median 21.0** C (e.g. B58 270/230, 20; K20C4 264/224, 20; EcoBoost 2.3 262/220, 21; B16A 276/248, 14).
+- Kent Cams (kentcams.com, 2019 brochure: OHC durations at 0.25 mm, "Duration @ 1mm" with a 1 mm clearance): Zetec and Duratec grinds 13 to 21.5 a side C from 0.25 mm.
+- Web Cam's "duration" has no stated height (9 to 14 a side C): not used.
+
+**Production DOHC engines:** no manual or paper found giving timing at both the seat and 1 mm, and no lift table for a named engine (manuals give one height, Europe's mostly 1 mm). Brian Crower's 2010 catalogue lists stock cams' "ADV" (height not stated) and @0.050 in: Toyota, Nissan, Subaru and Mitsubishi DOHC 18 to 28.5 a side C; Honda's 30 to 51 (its "ADV" plainly at a much lower height). Not used for the rule.
+
+**Class rule** (written before any table; basis judgement within cited brackets): the 0.15 to 1 mm step lies inside Kelford's 0.10 to 1 mm (medians 20 and 21) and is no less than Kent's 0.25 to 1 mm (13 to 21.5). **Bucket 18 deg a side; finger follower and rocker 19 deg a side**; the seat timing kept, the 1 mm duration = seat − 2 × step. **Pushrod:** no source gives valve-lift 0.15 and 1 mm; the four pushrod cards carry a 0.050 in tappet figure (about 2 mm at the valve) in the 1 mm field, so their 1 mm duration is **too short**, not too long: judgement 20 a side for hydraulic tappets (inside the cited 22 to 31 from the larger 0.006 to 0.050 in span), taking the seat as stated. 
+**Archetypes with a source of their own:** the turbo four's exhaust (180 and 215 at 1 mm, Q, SSP 922903; seat by the rule, 218 and 253); the two-stage's B stage seat (280/278, aggregator); the 454's @0.050 in (213/217, its seat a forum post); the L48's (from memory). Every other card, and every missing figure of these, takes the class rule.

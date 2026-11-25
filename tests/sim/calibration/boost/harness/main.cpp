@@ -70,6 +70,7 @@ int main(int argc, char** argv)
     std::string simFlag, buildFile, value;
     std::vector<double> rpms = {2000, 3500, 5000, 6500};
     double settle = 6.0, measure = 1.0, warmup = 8.0;
+    bool takeUp = false;       // (--take-up: the throttle opens as the windows begin: the spool from the take-up)
     bool heatSettle = false;   // (--heat-settle: at each speed, 1 s in, the exhaust's and the intercooler's heat settled)
     std::vector<std::pair<std::string, double>> sets;
     std::vector<tee::HeldValue> holds;
@@ -78,6 +79,11 @@ int main(int argc, char** argv)
     {
         if (args.is("--sim") && args.value(simFlag))
             continue;
+        if (args.is("--take-up"))
+        {
+            takeUp = true;
+            continue;
+        }
         if (args.is("--heat-settle"))
         {
             heatSettle = true;
@@ -231,8 +237,11 @@ int main(int argc, char** argv)
     play(crankEnd - 0.25, {});
     c.ignition = 1;
     play(0.5 * warmup - crankEnd, {});
+    if (takeUp)
+        play(0.5 * warmup, {});
     c.throttle = 1.0f;
-    play(0.5 * warmup, {});
+    if (!takeUp)
+        play(0.5 * warmup, {});
 
     std::printf("build %s\n", buildFile.c_str());
     for (const auto& [p, v] : specSets)
