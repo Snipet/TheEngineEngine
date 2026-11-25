@@ -1431,3 +1431,29 @@ push-back (0.079 g at share 0.5) recirculates the share through the runner, whic
    sit far below it; the threshold is not where the gap is, though the wander lives on the slope near it.
 Owners: D (the cylinder's overlap flow) and N1 (area.fm's low-lift area and q). The economy four's agreement is the
 control: an engine with almost no lift at TDC reads the correlation.
+
+**N3-16, the correlation's units as the source states them, and the overlap factors** (00:43 `date -u`; the lead's 00:42).
+*Units.* The thesis prints eq. 2.2 without units beside it; its nomenclature lists "N Engine Speed", "P Pressure", "kPa
+Kilo-Pascal", "RPM Revolutions Per Minute", every pressure in the text is in kPa and every speed in RPM, and its table 4.2
+gives OF in "[°/m]". So: OF in degrees per metre, *stated*; N in RPM and p in kPa, the thesis's own convention but *not
+printed at the equation*. The other readings, computed: N in revolutions a second makes the V10's backflow term 1.37 (a
+residual over 1: impossible), so rpm; p in bar instead of kPa divides the backflow term by 10, the clearance term
+unchanged:
+
+| engine | OF deg/m | in Fox's 0.52 to 1.43? | Fox, kPa and rpm | Fox, bar and rpm | model |
+|---|---|---|---|---|---|
+| v10-52 | 1.38 | inside | 0.023 + 0.080 = 0.103 | 0.002 + 0.080 = 0.082 | 0.469 |
+| v12-65 | 2.65 | beyond (over-predicts there: the thesis) | 0.026 + 0.059 = 0.085 | 0.003 + 0.059 = 0.062 | 0.528 |
+| big-bore-70-pushrod-v8 | 2.16 | beyond | 0.032 + 0.079 = 0.111 | 0.003 + 0.079 = 0.082 | 0.518 |
+| economy-four-15 | 0.02 | below | 0.001 + 0.132 = 0.133 | 0.000 + 0.132 = 0.132 | 0.170 |
+
+Either way the gap stands (bar only widens it). *How OF was computed* (scratchpad fox.py, for D and N1): each lobe the
+build's own generated curve (cam.fm's family: the build's seat and 1 mm durations, lift and centre, fatness 0.5, the
+phasers parked as at idle), the overlap's angles from the intake's leaving zero lift to the exhaust's reaching it (the
+curves' ends, not the 0.15 mm seat); the integral of the intake's lift from its opening to the lifts' crossing, and of the
+exhaust's from the crossing to its closing, each times the valve's head diameter times its valves a cylinder (2 on the
+four-valves, 1 on the 7.0), over one cylinder's swept volume. The heads stand in for the inner seat diameters, which are
+some 10 % smaller: the OFs about 10 % high, and the backflow terms with them.
+
+*Referee:* I hold the four idles (BAL_BENCH=1, 4 s settle, 2 s window) and will re-run them on each change D or N1 sends,
+with the share, the plenum's pressure, the overlap's backflow by window (the V10's traced cylinder) and the speed.
