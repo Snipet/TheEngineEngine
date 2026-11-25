@@ -41,13 +41,14 @@ module DieselFields
     // standard deviation, a degree of it (fuel.model 1: chargeDiesel adds socSpread x delay x a gauss to the start). A
     // diesel's ignition delay is not the same every cycle, and the longer it is the more it varies (cyclic variation
     // rising linearly with the delay: a Fischer-Tropsch-fuelled diesel, Appl. Sci. 2019, doi 10.3390/app9102032, the
-    // trend only, paper unread). The size, 0.172 a degree: 0.64 degrees at the tractor archetype's warm idle delay of
-    // 3.73 degrees, from sigma 0.64 degrees of the peak-pressure angle on a Perkins 1104D-E44TA, RECALLED FROM A SEARCH
-    // SUMMARY, PAPER UNREAD (Energies 2025, doi 10.3390/en19051343), ITS CONDITIONS NOT SEEN. The peak-pressure angle's
-    // spread is not the start of combustion's: it holds the burn's own variation too, so this likely overstates it; a
-    // measured sigma of the start of combustion or the ignition delay at idle replaces it (docs/models/diesel.md, open).
-    // It matters to the sound: the clatter (the reference's, sim/sound/extras.fm) is struck at the start of combustion,
-    // and struck at the same moment every cycle its panels ring as sharp lines at the firing harmonics (card P's idle row)
+    // trend only, paper unread). The size, 0.150 a degree: 0.559 degrees at the tractor archetype's warm idle delay of
+    // 3.73 degrees, from Szpica and Kluczynski, Energies 2026, 19, 1343 (read by card P, its Table A3): a Perkins
+    // 1104D-E44TA at idle, 800 rpm, no load, 500 cycles: the crank angle of PEAK PRESSURE, sigma 0.559 degrees (range 1
+    // to 4, about 1 degree's resolution; COV of IMEP 6.92 %). That is not the start of combustion's spread: the peak's
+    // angle holds the burn's own variation too, so this likely overstates it; no measured spread of the start at idle
+    // was found (docs/measurements/2026-11-25-0032-judgement-sources.md, 2). It matters to the sound: the clatter (the
+    // reference's, sim/sound/extras.fm) is struck at the start of combustion, and struck at the same moment every cycle
+    // its panels ring as sharp lines at the firing harmonics (card P's idle row)
     float delayDeg;
     float socSpread;
 
@@ -65,7 +66,7 @@ module DieselFields
         afcPhi = 0.0f;
         phiAsked = 0.0f;
         delayDeg = 0.0f;
-        socSpread = 0.172f;
+        socSpread = 0.150f;
     }
 
     // Card D2: the rack's fuel (over-fuelled by overFuel) against the air the cylinder holds (kg), as an equivalence
