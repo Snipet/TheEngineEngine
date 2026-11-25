@@ -76,6 +76,7 @@ namespace tee::ui
                 }, 0.0, 1.0);
                 g.setTicks(4, 2);
                 g.setClearNumerals(true);
+                g.setReadoutClear(true);   // the digits out of the needle's sweep (the lead's ask, 25 Nov)
                 g.setReadout([dec = d.decimals](double v) { return std::isfinite(v) ? formatNumber(v, dec) : std::string("-"); });
                 g.setHelp(d.help);
                 dials_[static_cast<std::size_t>(i)] = &g;
@@ -240,6 +241,10 @@ namespace tee::ui
             tree_ = { strip_.x, strip_.y, 110.0f, 26.0f + 6.0f * 19.0f + 12.0f };
         }
 
+        // A CLASSIC small dial's least size (px, its square with the title): under it four dials, not eight. At this
+        // size a face of 79 px leaves the digits and the unit's line room below the hub, clear of the needle.
+        static constexpr float kSmallDial = 96.0f;
+
         // CLASSIC, DIGITAL, RACE: the dash across the stage's top (a little taller than STANDARD's), the car and the
         // strip under it as before.
         void layoutDash(const funkgui::Rect& s, int st)
@@ -250,23 +255,42 @@ namespace tee::ui
             instruments_ = {};
             if (st == dash::kClassic)
             {
-                // Four large-dial squares in a row: eight small dials (two by two) at either end, the tachometer and
-                // the speedometer between; the band (gear, torque, power, g, lamps) under them.
+                // Eight small dials, two by two at either end, the tachometer and the speedometer between, when the
+                // small ones have room for their digits clear of the needles (a face of kSmallDial); else four larger
+                // ones, one above the other at either end: boost and oil pressure, water and lambda (the band's lamps
+                // still say oil temperature, exhaust and knock). The band (gear, torque, power, g, lamps) under them.
                 const float gap = 12.0f, bandH = 54.0f;
                 const funkgui::Rect a{ dash_.x + 10.0f, dash_.y + 10.0f, dash_.w - 20.0f, dash_.h - 20.0f - bandH - 6.0f };
-                const float b = std::floor(std::min(a.h, (a.w - 3.0f * gap) / 4.0f)), m = std::floor((b - 6.0f) * 0.5f);
-                const float total = 4.0f * b + 3.0f * gap, x0 = a.x + std::floor((a.w - total) * 0.5f);
-                const float y0 = a.y;
+                float b = std::floor(std::min(a.h, (a.w - 3.0f * gap) / 4.0f)), m = std::floor((b - 6.0f) * 0.5f);
+                const bool eight = m >= kSmallDial;
+                if (!eight)
+                {
+                    b = std::floor(std::min(a.h, (a.w - 3.0f * gap + 6.0f) / 3.0f));
+                    m = std::floor((b - 6.0f) * 0.5f);
+                }
+                const float total = eight ? 4.0f * b + 3.0f * gap : 2.0f * b + 2.0f * m + 3.0f * gap;
+                const float x0 = a.x + std::floor((a.w - total) * 0.5f), y0 = a.y;
+                const float bx0 = eight ? x0 + b + gap : x0 + m + gap;   // the tachometer's left
+                const float right = bx0 + 2.0f * (b + gap);               // the right block's left
                 for (int i = 0; i < dash::kDials; ++i)
                 {
-                    const int k = i % 4;
-                    const float bxo = i < 4 ? x0 : x0 + 3.0f * (b + gap);
-                    dials_[static_cast<std::size_t>(i)]->setPlace(
-                        { bxo + static_cast<float>(k % 2) * (m + 6.0f), y0 + static_cast<float>(k / 2) * (m + 6.0f), m, m }, true);
+                    Gauge& d = *dials_[static_cast<std::size_t>(i)];
+                    if (eight)
+                    {
+                        const int k = i % 4;
+                        const float bxo = i < 4 ? x0 : right;
+                        d.setPlace({ bxo + static_cast<float>(k % 2) * (m + 6.0f), y0 + static_cast<float>(k / 2) * (m + 6.0f), m, m }, true);
+                        continue;
+                    }
+                    static constexpr int kFour[4] = { 0, 1, 3, 5 };   // boost, oil pressure | water, lambda
+                    const int at = static_cast<int>(std::find(kFour, kFour + 4, i) - kFour);
+                    if (at < 4)
+                        d.setPlace({ at < 2 ? x0 : right, y0 + static_cast<float>(at % 2) * (m + 6.0f), m, m }, true);
                 }
-                tach_->setPlace({ x0 + b + gap, y0, b, b }, true);
-                speedo_->setPlace({ x0 + 2.0f * (b + gap), y0, b, b }, true);
-                band_ = { x0, y0 + b + 10.0f, total, bandH };
+                const float x0b = x0;
+                tach_->setPlace({ bx0, y0, b, b }, true);
+                speedo_->setPlace({ bx0 + b + gap, y0, b, b }, true);
+                band_ = { x0b, y0 + b + 10.0f, total, bandH };
                 // The dash as tall as the cluster (the car's scene takes the rest).
                 dash_.h = std::min(dash_.h, band_.bottom() + 10.0f - dash_.y);
                 topH = dash_.bottom() + 8.0f + pad - s.y;

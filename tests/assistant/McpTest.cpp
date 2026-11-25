@@ -25,6 +25,24 @@ namespace fs = std::filesystem;
 
 namespace
 {
+    // Counts SIGPIPEs while it lives, in place of the default (which ends the process). No case here ignores SIGPIPE:
+    // a write that would raise it must not happen at all (the library guards every one: McpWire.h's sendAll), and a
+    // case checks the count is still 0, so Linux's MSG_NOSIGNAL cannot hide a guard that macOS lacks.
+    std::atomic<int> gSigpipes{0};
+    struct SigpipeWatch
+    {
+        struct sigaction was{};
+        SigpipeWatch()
+        {
+            struct sigaction sa{};
+            sa.sa_handler = [](int) { gSigpipes.fetch_add(1); };
+            sigemptyset(&sa.sa_mask);
+            sigaction(SIGPIPE, &sa, &was);
+        }
+        ~SigpipeWatch() { sigaction(SIGPIPE, &was, nullptr); }
+        int count() const { return gSigpipes.load(); }
+    };
+
     // A private folder of the case's own for the link.
     std::string linkFolder(const std::string& name)
     {
@@ -46,7 +64,6 @@ namespace
 
         explicit Bridge(const std::string& dir)
         {
-            std::signal(SIGPIPE, SIG_IGN);
             int toChild[2], fromChild[2];
             REQUIRE(pipe(toChild) == 0);
             REQUIRE(pipe(fromChild) == 0);
@@ -293,7 +310,8 @@ TEST_CASE("assistant: the link refuses another user's peer, a folder open to oth
         const int fd = wire::connectTo(dir, why);
         REQUIRE(fd >= 0);
         const std::string hello = "{\"id\":1,\"method\":\"tools\"}\n";
-        [[maybe_unused]] const ssize_t w = write(fd, hello.data(), hello.size());
+        wire::noSigpipe(fd);
+        wire::sendAll(fd, hello.data(), hello.size());   // (the link may have closed it already: never a signal)
         char buf[256];
         pollfd p{fd, POLLIN, 0};
         REQUIRE(::poll(&p, 1, 5000) > 0);
@@ -424,6 +442,51 @@ TEST_CASE("assistant: the switch off is the shipped default and costs nothing: n
         CHECK(r.value["error"].get<std::string>().find("cannot be asked") != std::string::npos);
         CHECK(asked.build().hash() == hash);
     }
+}
+
+TEST_CASE("assistant: a peer gone mid-reply, or at shutdown, never ends the app with SIGPIPE", "[assistant][sharedsim]")
+{
+    const SigpipeWatch watch;
+    const int before = watch.count();
+    const std::string dir = linkFolder("gone");
+    App app("mcp-gone", dir);
+    std::string why;
+    REQUIRE(app.link.start(why));
+    // a peer that asks for a large answer and leaves before reading it, many times over: the poll thread's own replies
+    // (tools: several KB) and the worker's (a call) both go to a closed socket
+    for (int i = 0; i < 20; ++i)
+    {
+        const int fd = wire::connectTo(dir, why);
+        REQUIRE(fd >= 0);
+        const std::string ask = "{\"id\":1,\"method\":\"tools\"}\n{\"id\":2,\"method\":\"call\",\"params\":{\"name\":\"get_status\"}}\n";
+        wire::sendAll(fd, ask.data(), ask.size());
+        close(fd);
+        for (int f = 0; f < 3; ++f)
+            app.rig.frame();
+    }
+    // the link sees every one go
+    for (int f = 0; f < 600 && (app.link.view().connections != 0 || app.link.view().running); ++f)
+    {
+        app.rig.frame();
+        std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    }
+    CHECK(app.link.view().connections == 0);
+    CHECK_FALSE(app.link.view().running);
+    // a peer still connected while the switch goes off, and writing after: the app ends nothing but the link
+    const int late = wire::connectTo(dir, why);
+    REQUIRE(late >= 0);
+    for (int f = 0; f < 5; ++f)
+        app.rig.frame();
+    app.link.stop();
+    const std::string more = std::string(64 * 1024, 'x') + "\n";
+    CHECK_FALSE(wire::sendAll(late, more.data(), more.size()));   // the link is gone: an error, not a signal
+    close(late);
+    CHECK(watch.count() == before);
+    // and the link starts again and answers
+    REQUIRE(app.link.start(why));
+    Bridge bridge(dir);
+    CHECK(bridge.ask(&app.rig, 1, "ping").contains("result"));
+    CHECK(watch.count() == before);
 }
 
 #endif

@@ -233,10 +233,11 @@ namespace tee::assistant
 
     void McpLink::wake()
     {
+        // (a socket pair, not a pipe: sendAll, never a signal; a full or closed pair needs no second wake)
         if (wake_[1] >= 0)
         {
             const char c = 1;
-            [[maybe_unused]] const ssize_t n = write(wake_[1], &c, 1);
+            wire::sendAll(wake_[1], &c, 1);
         }
     }
 
@@ -280,11 +281,7 @@ namespace tee::assistant
                     else
                     {
                         timeval tv{5, 0};
-                        setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);
- #if defined(SO_NOSIGPIPE)
-                        const int one = 1;
-                        setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &one, sizeof one);
- #endif
+                        setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);   // (SO_NOSIGPIPE: acceptFrom's)
                         auto c = std::make_shared<Client>();
                         c->fd = fd;
                         clients.push_back(c);
@@ -351,23 +348,8 @@ namespace tee::assistant
     {
         const std::string line = "{\"id\":" + id + ",\"result\":" + result.dump() + "}\n";
         std::lock_guard<std::mutex> lock(client.write);
-        std::size_t at = 0;
-        while (client.fd >= 0 && at < line.size())
-        {
- #if defined(MSG_NOSIGNAL)
-            const ssize_t n = send(client.fd, line.data() + at, line.size() - at, MSG_NOSIGNAL);
- #else
-            const ssize_t n = send(client.fd, line.data() + at, line.size() - at, 0);
- #endif
-            if (n < 0 && errno == EINTR)
-                continue;
-            if (n <= 0)
-            {
-                shutdown(client.fd, SHUT_RDWR);   // a peer not reading: the poll thread sees it close
-                return;
-            }
-            at += static_cast<std::size_t>(n);
-        }
+        if (client.fd >= 0 && !wire::sendAll(client.fd, line.data(), line.size()))
+            shutdown(client.fd, SHUT_RDWR);   // gone, or not reading: the poll thread sees it close and drops it
     }
 
     void McpLink::refuse(Client& client, const std::string& id, const std::string& why)
@@ -375,13 +357,7 @@ namespace tee::assistant
         const std::string line = "{\"id\":" + id + ",\"error\":" + json(why).dump() + "}\n";
         std::lock_guard<std::mutex> lock(client.write);
         if (client.fd >= 0)
-        {
- #if defined(MSG_NOSIGNAL)
-            [[maybe_unused]] const ssize_t n = send(client.fd, line.data(), line.size(), MSG_NOSIGNAL);
- #else
-            [[maybe_unused]] const ssize_t n = send(client.fd, line.data(), line.size(), 0);
- #endif
-        }
+            wire::sendAll(client.fd, line.data(), line.size());   // (a refusal to a peer gone: nothing more to do)
     }
 
     void McpLink::request(const std::shared_ptr<Client>& client, const std::string& line)
@@ -441,13 +417,7 @@ namespace tee::assistant
                                          + ",\"code\":-32602}\n";
                 std::lock_guard<std::mutex> lock(client->write);
                 if (client->fd >= 0)
-                {
- #if defined(MSG_NOSIGNAL)
-                    [[maybe_unused]] const ssize_t n = send(client->fd, out.data(), out.size(), MSG_NOSIGNAL);
- #else
-                    [[maybe_unused]] const ssize_t n = send(client->fd, out.data(), out.size(), 0);
- #endif
-                }
+                    wire::sendAll(client->fd, out.data(), out.size());
                 return;
             }
             Job j{client, id, params["name"].get<std::string>(),

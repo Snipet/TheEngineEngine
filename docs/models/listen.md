@@ -152,6 +152,25 @@ launch with eight switches on): no guard trip. Between the compressor and the li
 by default; with it off (`spec.sound.autoLevel` 0, True levels) the stage is as described here and a build's own
 level (spec.sound.level, -24 to +12 dB) is where it is brought to the others.
 
+## The ground's comb (the "fixed mode near 2.3 kHz")
+
+The colour heard near 2.3 to 2.6 kHz on first.json at the opening camera, the same at every engine speed, is the
+ground's reflection, not a pipe mode, the body, or a filter (asked with G, 25 Nov). At the Tailpipe camera's default
+place the listener is 1.71 m behind the pipe and 0.7 m up, the pipe 0.35 m up: the direct path is 1.745 m, the ground
+image's 2.007 m, 0.262 m longer. The two add in phase every c / 0.262 = 1325 Hz and cancel half-way between, from
+c / (2 x 0.262) = 662 Hz. Measured (p-full-load-4000, Asphalt over None, the engine alone): notches at 650, 1957, 3270,
+4582, 5865 Hz, 1308 Hz apart; between the second and third, the lobe the ear takes for a mode, with -11 dB at 2 kHz and
+-6 dB at 3.15 kHz on its sides. It is gone with the ground None, gentler on grass (0.6 and a 1.8 kHz low-pass on the
+reflection), at other places in the band at other cameras (Rear, 1.2 m up and 2.3 m back: the first notch near 1 kHz),
+and it moves with DISTANCE. The engine's speed does not move it.
+
+Physical as far as it goes: hard ground near a source gives this comb, which is why microphones are laid on the ground
+to avoid it. What the model leaves out is what blurs it in life: the pipe's mouth is not a point, the ground is not
+flat to a centimetre, the air moves, and a car moves; each smears the notches over a few per cent, and the real comb
+is softer above 2 kHz. Not changed (no code in this window); if it reads as a fault, the candidates for a later one are
+a reflection that falls with frequency on asphalt as on grass (some 0.95 to 0.8 over 1 to 8 kHz), or a small, slow
+jitter of the image's path (a few millimetres) that softens the deep notches above 2 kHz.
+
 ## Auto level (`spec.sound.autoLevel`)
 
 The ruling (lead, 20:13): at the defaults a free rev peaks at 0.3 to 0.6 of full scale and the idle is plainly
