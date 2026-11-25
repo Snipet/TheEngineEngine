@@ -262,8 +262,8 @@ namespace tee::app
                     if (hooks->tryFirstDone)
                         hooks->tryFirstDone();
                 };
-#if defined(__APPLE__)
-                // the settings' WHEEL row: only where a wheel is read (macOS, input/g29/RacingWheelMac.cpp)
+#if defined(__APPLE__) || defined(__linux__)
+                // the settings' WHEEL row: only where a wheel is read (macOS's IOKit, Linux's evdev: input/g29/)
                 frameServices.wheelOn = [hooks] { return hooks->wheelOn && hooks->wheelOn(); };
                 frameServices.setWheelOn = [hooks](bool on) {
                     if (hooks->setWheelOn)

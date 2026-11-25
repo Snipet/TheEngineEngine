@@ -1,6 +1,7 @@
 // shell/input/g29/RacingWheel.h: a Logitech G29 racing wheel (its pedals and the Driving Force Shifter on its one
-// cable), read by the application. macOS: RacingWheelMac.cpp, IOKit's IOHIDManager (C API) on the main run loop; every
-// other system: RacingWheelNone.cpp (none is ever present; docs/controls.md says so). Ported from TestingPlayground's
+// cable), read by the application. macOS: RacingWheelMac.cpp, IOKit's IOHIDManager (C API) on the main run loop; Linux:
+// RacingWheelLinux.cpp, the kernel's hid-lg4ff through evdev and sysfs (G29Evdev.h); Windows: RacingWheelNone.cpp (none
+// is ever present; docs/controls.md says so). Ported from TestingPlayground's
 // Source/plugin/standalone/RacingWheel.{h,cpp} (47bac40; SEED.tsv), the MIDI taken out.
 //
 // It watches for a G29 (g29/G29.h's kindOf: vendor 0x046D, any of its three product ids) and hands what it sees to a
@@ -20,7 +21,8 @@
 // Main thread only (the window's: where SDL pumps the system's events). pump() once a frame.
 //
 // Never run with a real wheel in this repository: the macOS body is compiled by CI and run by no one but the owner;
-// tests/shell/G29Test.cpp drives the decisions (G29Driver) with fake devices.
+// tests/shell/G29Test.cpp drives the decisions (G29Driver) with fake devices, G29EvdevTest.cpp the Linux Hub over a
+// made-up kernel.
 #pragma once
 
 #include "input/g29/G29.h"

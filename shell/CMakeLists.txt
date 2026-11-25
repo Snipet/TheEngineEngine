@@ -8,7 +8,8 @@
 #   tee_shell_ref    tee_host: the reference engine and the simulator as Players (player/RefAdapter, SimAdapter)
 #   tee_shell_sdl    SDL3: the audio device (audio/AudioDevice) and SDL's events into the controls (input/SdlInput)
 #   tee_shell_wheel  the racing wheel's transport (input/g29/RacingWheel.h): macOS's IOKit HID manager
-#                    (RacingWheelMac.cpp, IOKit and CoreFoundation); elsewhere none yet (RacingWheelNone.cpp). The G29's
+#                    (RacingWheelMac.cpp, IOKit and CoreFoundation); Linux's evdev and sysfs over the kernel's hid-lg4ff
+#                    (RacingWheelLinux.cpp, G29Evdev.cpp); Windows none yet (RacingWheelNone.cpp). The G29's
 #                    map and decisions (g29/G29, G29Driver, G29Input) are the core's: plain C++, tested with fakes.
 #
 # FunkGui is in none of them: FunkGui::core is an INTERFACE library whose sources compile into the target that links
@@ -57,6 +58,11 @@ target_link_libraries(tee_shell_sdl PUBLIC Tee::shell_core SDL3::SDL3)
 if(APPLE)
   add_library(tee_shell_wheel STATIC input/g29/RacingWheelMac.cpp)
   target_link_libraries(tee_shell_wheel PUBLIC Tee::shell_core "-framework IOKit" "-framework CoreFoundation")
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  # the kernel's hid-lg4ff, read and commanded through evdev and sysfs (g29/G29Evdev.h)
+  add_library(tee_shell_wheel STATIC input/g29/RacingWheelLinux.cpp input/g29/G29Evdev.cpp
+              input/g29/G29EvdevOpen.cpp)
+  target_link_libraries(tee_shell_wheel PUBLIC Tee::shell_core)
 else()
   add_library(tee_shell_wheel STATIC input/g29/RacingWheelNone.cpp)
   target_link_libraries(tee_shell_wheel PUBLIC Tee::shell_core)
