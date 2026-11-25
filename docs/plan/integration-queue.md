@@ -924,7 +924,12 @@ default after the clips; the idle's level; the listening questions.
 - **25 Nov 15:46: P'S BAKED PUSH IS IN: 9c36dbd1** (the bake 15152e0b at tools sha 758bb12f's; sim/, host/ and
   tools/ 0 lines from it by the lead's diff; on top of U1's switch row and chat panel fc0e9b0a, X's 08b796c8 and
   U5's GARAGE filter 731f7bbf).
-- **CODE PUSHES ARE STOPPED FOR EVERYONE until the lead writes here that `main` has moved** (run 45648571240 on
+- **25 Nov 16:23: macOS is RED on 9c36dbd1, 586 of 587** (Linux green, 587 of 587; Windows running):
+  `assistant.sim`, card A's own new case (a peer gone mid-reply): a connect refused inside its loop of 20 (the
+  listener's backlog of 4; macOS refuses at once where Linux queues); intermittent (green on b7840f64). **Card A
+  alone is released for ONE fix** (the backlog; the test made deterministic). `main` then moves to card A's
+  commit, not 9c36dbd1, when it is green on all three; sim/, host/ and tools/ stay the bake's.
+- **CODE PUSHES ARE STOPPED FOR EVERYONE ELSE until the lead writes here that `main` has moved** (run 45648571240 on
   9c36dbd1 must be green on linux-x64, macos-arm64 AND windows-x64; a push that builds would replace its waiting
   jobs). The only exception: a fix the lead releases by name for a red job on that sha.
 - **Docs-only pushes (docs/** and *.md) are allowed**: the workflow ignores them and starts no run.
