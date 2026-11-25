@@ -187,8 +187,13 @@ module HeavyDiesel
         highIdle = spec->highIdle > 0.0f ? spec->highIdle : rated * (1.0f + droop);
         // the pump: the fuel a stroke at full rack for the boost it was set up for (an equivalence ratio of 0.75 there)
         fuelFull = 0.75f / 14.5f * (101325.0f + spec->fuelBoost) / (287.0f * 320.0f) * (vTotal / (float)nCyl) * 0.92f;
-        // (or the build's full-load fuel curve, mg a stroke against rpm: linear between its points, held outside them)
-        const float curve = fuelCurve(omega * 9.5492966f);
+        // (or the build's full-load fuel curve, mg a stroke against rpm: linear between its points, held outside them;
+        // a running engine's limit only. Cranking takes the pump's own start quantity, the line above, as an injection
+        // pump's start quantity is apart from its full-load curve and above it (Bosch, Diesel-Engine Management: the
+        // start quantity). Read while cranking, the truck's 233 mg at 700 rpm held down to cranking speed cut the start
+        // fuel to 0.75 of the pump's 310 and the 233 K start on the reference's fuel model took 17.5 s, not 2.9 (bisected
+        // to 75109f7f, the curve's commit; the nightly cold case, 25 Nov))
+        const float curve = state == 2 ? fuelCurve(omega * 9.5492966f) : 0.0f;
         if (curve > 0.0f)
             fuelFull = curve * 1.0e-6f;
         // the brakes engage with the pedal up, the clutch in, the engine running above the cut-out speed

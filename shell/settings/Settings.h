@@ -49,6 +49,9 @@ namespace tee::settings
         std::vector<std::string> recentBuilds;  // the files opened or saved last, newest first (files::RecentFiles)
         bool coldStart = false;                 // the engine starts cold (oil and water at the air's), not warm
         bool tryFirstSeen = false;              // the first build's TRY FIRST card was closed (it is not shown again)
+        // Claude Desktop may reach the build (the assistant's link, assistant/include/tee/assistant/McpLink.h): the
+        // owner's switch, off unless they turned it on. Off, the app listens on nothing.
+        bool allowClaudeDesktop = false;
         int windowWidth = 0, windowHeight = 0;  // logical px; 0: the Panel's own size
         // (the theme and the zoom are FunkGui's own preferences, in its file beside this one)
     };
