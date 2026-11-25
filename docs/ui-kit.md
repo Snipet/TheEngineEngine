@@ -396,6 +396,12 @@ or from the column (no press to say where the part is) would need each workspace
 `partRect(path)`, about twenty lines in each workspace's own file, and a virtual in U1's `Workspace.h`); not built,
 and not needed for the press.
 
+**The next step (not this round, the lead 25 Nov):** the card from the keyboard and from the column. U1 adds
+`virtual funkgui::Rect partRect(const std::string& path) const { return {}; }` to `Workspace`; each workspace that
+wants it returns where the part is drawn (ENGINE: a cylinder's bore, the block, the section; EXHAUST: its element's
+hit box); PartCard gains `openAt(path, rect)` and the rows a key (Enter on a field of a part with a rect) to call
+it.
+
 ## TextField for a chat, and the error colour (J2, 25 Nov, for card A)
 
 `TextField::setOptions({ enterOnly, multiline })`, both off by default (every existing field is as it was):
