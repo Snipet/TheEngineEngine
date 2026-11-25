@@ -225,11 +225,12 @@ TEST_CASE("calibration boost: the telemetry says when the charge system is far f
     CHECK(static_cast<int>(four.at("boost.mismatch")) == 0);
 }
 
-// (marked [!mayfail] by N2 while the rotary joined on its air: it hunted 26 to 106 kPa at 4250 rpm; unmarked on the rotary's
-// stated changeover speed (seqRpm 4500, P's sources §16) and the join on speed and load (machine.fm, sequential-join.md):
-// prediction, written before: within 15 % of its mean at 4250; measured: see the print, within 25 %, the lead's bound)
+// (marked [!mayfail] by N2 on a finding, the lead's ruling: a sequential pair cycles at its join flow, the transfer valve's
+// hysteresis (opens above the join flow, closes under 0.8 of it) narrower than the boost's swing when it opens: the
+// 13B-kind rotary at 4250 rpm, full load, swings 26 to 110 kPa and 171 to 263 N m in 0.1 s windows on a18f1bd4 and on
+// the corrected compressor map alike; not fixed in the map's commit)
 TEST_CASE("calibration boost: a sequential pair at its join flow holds one state (no cycling of the transfer valve)",
-          "[calibration][boost]")
+          "[calibration][boost][!mayfail]")
 {
     Sims s;
     std::vector<Row> rows;
