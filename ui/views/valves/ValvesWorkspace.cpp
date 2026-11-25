@@ -768,8 +768,13 @@ namespace tee::ui
                 // parked or slowed (the simulator's tel.valve.waiting): said, so a still phaser does not look dead
                 const std::string wait = phaserWaitWords(ctx_.live, ctx_.units, intake, true);
                 const std::string w = std::string(intake ? "INTAKE PHASER " : "EXHAUST PHASER ") + (wait.empty() ? deg(range) + " DEG" : wait);
-                // (clear of the target's ring, which stands at the band's end when it asks the whole range)
-                put(c, w, intake ? X(a0) - 12.0f : X(a1) + 12.0f, y - 1.0f, lk::kCaps, ink, intake ? Align::right : Align::left);
+                // on the band's outer side (the exhaust's at its left, the intake's at its right), so the two never
+                // meet between the cams; the inner side where the outer would leave the plot. Clear of the target's ring,
+                // which stands at the band's end when it asks the whole range.
+                const float tw = c.textWidth(w.c_str(), lk::kCaps);
+                const bool leftFits = X(a0) - 12.0f - tw >= plot_.x + 4.0f, rightFits = X(a1) + 12.0f + tw <= plot_.right() - 4.0f;
+                const bool left = intake ? !rightFits && leftFits : leftFits || !rightFits;
+                put(c, w, left ? X(a0) - 12.0f : X(a1) + 12.0f, y - 1.0f, lk::kCaps, ink, left ? Align::right : Align::left);
             };
             band(li, t.inPhaseRange, inPh, true, plot_.y + 8.0f);
             band(le, t.exPhaseRange, exPh, false, plot_.y + 8.0f);
