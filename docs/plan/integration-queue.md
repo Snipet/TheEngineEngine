@@ -831,22 +831,22 @@ two-stage build's high lobe at 247 deg on a centre of 98).
 
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
-- **25 Nov 14:38: QUIET WINDOW FOR U1. NOBODY PUSHES ANYTHING, docs included, until the lead writes here that it is
-  over** (about 15 minutes). U1's three ui commits are green on its merged state, but its session's permission check
-  refuses to push a merge its tier did not cover, and the tip has moved 46 commits under it; that check is not worked
-  around, so the tip holds still while U1 merges, runs and pushes. Keep working locally; hold the push.
-- **25 Nov 14:38: FROZEN FOR THE BAKE: sim/, host/ and tools/ are closed to everyone but P** (the tools sha is the
-  tip's, 758bb12f, unless the lead's own run of it finds a fault; then only that fix is released). In this window
-  and in the bake: the steward's packages and soak triggers; U5's stage help; N1's 93 grade and
-  `spec.fuel.octane`; C's knock bake version 5; U4's octane number; D2's start fuel; L's start exposure; G's
-  bangs burned in the pipe and N1's seam (the default still Carved); card A's assistant through A3; J2's inspector
-  designs and the kit's draft field and error colour; X's soak shards; the integrator's clutch held closed on the
-  overrun.
-- After the quiet window, OPEN for ui/, assistant/, app/, shell/, ci and docs only: card A's fix (the .mcpb's
-  manifest.json is not valid JSON; clang-cl's unused private fields in McpLink.h: **Windows is red on A2 until it
-  lands, and `main` does not move over a red Windows job**), the steward's .mcpb artifact after it, U1's switch row
-  and chat panel. The rule for those: one green whole tier on a merged state, then merge a moved tip and push.
-- **NOT open:** anything under sim/, host/ or tools/; the diesel package; N2's compressor map (stage two, local);
-  the integrator's one latch for both directions (local, with its table of moved numbers); the bangs' default
-  (after the owner has heard G's clips); M's fan cure.
-- **Docs-only pushes** resume after the quiet window: the workflow ignores them and starts no run.
+- **25 Nov 15:21: THE QUIET WINDOW IS OVER** (U1 pushed cb3e97a9, a fast-forward of a fully tested state).
+- **sim/, host/ and tools/ stay FROZEN FOR THE BAKE** (the tools sha is 758bb12f's; P is baking; Linux CI green on
+  it, 583 of 583; the lead's own runs: 581 of 581 on 88ebef01 and the 79 affected cases on the frozen tip). Nobody
+  but P pushes there until `main` has moved.
+- **OPEN now, under the rule "one green whole tier on a merged state, then merge a moved tip and push":** ui/,
+  assistant/, app/, shell/, tests/, ci and docs. Called by the lead, in this order where they touch the same files:
+  card A (c5ef4d7, the link never raises SIGPIPE; d0d19d2 docs); B (SIGPIPE ignored in the app's and the headless
+  tool's mains); U5 (GARAGE lists nothing under content/builds/combo/); the steward (the .mcpb as an artifact); X
+  (its three commits under tests/sim/combo and content/builds/combo; findings/ do NOT move yet; its tools/ commit
+  waits); U1 (the "Allow Claude Desktop" switch row and the chat's place). Docs-only pushes at any time.
+- **`main` does not move over a red macOS or Windows job** (the owner builds on both): today's reds are the
+  assistant's (the save-as test on a case-blind disk: cured by c457e849; SIGPIPE on macOS: cured by c5ef4d7 when it
+  lands).
+- **When P pushes the bake, code pushes stop for everyone** until the lead writes that `main` has moved.
+- **NOT open (the next window, after `main` moves):** the diesel package (the ruled compressor map, (b), the
+  whole-flow nozzle, the guard's removal, the taper; D2's builds off the dial, the fixture, the torque and power
+  ceiling, the brake); the integrator's one latch for both directions (87629688) with its patch for bike.fm; G's
+  8c9f4c20 and BangTest, then the bangs' default on the owner's ear; L's exposure against the bangs; X's tools/
+  commit and the fixtures' move out of content/; M's fan cure.

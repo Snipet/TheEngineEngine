@@ -30,6 +30,27 @@ namespace tee::ui
         // U1: numerals set clear of the ticks by their own size, over the needle on a backing of the face, and a short
         // needle tail (DRIVE's instruments). Off (the default): J2's look.
         void setClearNumerals(bool on) { clearNumerals_ = on; }
+        // U1: the digits (and the unit's line under them) kept out of the needle's sweep: set low in the arc's open
+        // wedge, as far below the hub as half their width (the wedge's sides are the needle at the range's ends), so the
+        // needle and the end ticks pass clear of them at any value. A small dial's (DRIVE's CLASSIC). Off (the default):
+        // under the hub at a fixed place.
+        void setReadoutClear(bool on) { readoutClear_ = on; }
+
+        // Where it draws, as placed now: the hub, the face's radius, the ticks' radius (the sweep reaches ra + 1). A
+        // face too small to draw: side < 40.
+        struct Geometry
+        {
+            funkgui::Point hub;
+            float side = 0.0f, r = 0.0f, ra = 0.0f;
+        };
+        Geometry geometry() const;
+        // The box the readout `text` (and the unit's line) is drawn in.
+        funkgui::Rect readoutBox(const std::string& text) const;
+        // Whether the needle at either end of the range (hub to the ticks' outer end, its width included) and the end
+        // numerals miss the readout's box with the value at the range's ends and now (for tests).
+        bool readoutClearOfSweep() const;
+        // The numerals' boxes at the range's ends (none on a face too small for numerals).
+        std::vector<funkgui::Rect> endNumerals() const;
 
         double value() const noexcept { return value_; }
         float needle() const noexcept { return needle_; }   // where the needle is, 0..1 of the arc
@@ -58,7 +79,7 @@ namespace tee::ui
         std::function<std::string(double)> numerals_, readout_;
         std::string unit_;
         double value_ = 0.0;
-        bool clearNumerals_ = false;
+        bool clearNumerals_ = false, readoutClear_ = false;
         float needle_ = 0.0f;
     };
 }
