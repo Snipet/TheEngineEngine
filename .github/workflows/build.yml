@@ -39,9 +39,10 @@
 # The soak tier (the [nightly] tests, ctest --preset nightly, about 95 minutes on Linux) runs only when asked, so
 # that each soak result belongs to a named commit, not to whichever tip was current when the last soak ended
 # (docs/plan/01-rules.md section 3):
-#   a push          soaks nothing, unless one of the commits it brings says [soak] (Linux) or [soak-all] (all
-#                   three): every commit's message is read, so a merge at the head no longer hides the tag; the
-#                   content agent's baked push, the candidate for main, says [soak]
+#   a push          soaks nothing, unless one of the commits it brings has [soak] (Linux) or [soak-all] (all three)
+#                   as a line of its own in its message, like a trailer (in a subject or in prose it counts for
+#                   nothing): every commit's message is read, so a merge at the head no longer hides the tag; the
+#                   content agent's baked push, the candidate for main, carries the line
 #   by hand         tier: fast (the default), soak, or both, on the platforms named
 #   each night      03:23 UTC, the integration branch's tip, Linux (a schedule runs main's copy of this file, so the
 #                   build job checks out claude/awesome-gates-ntdb58 for it)
@@ -120,9 +121,10 @@ jobs:
           ONLY: ${{ inputs.platforms || (github.event_name == 'schedule' && 'linux-x64') || 'all' }}
           TIER: ${{ inputs.tier || 'fast' }}
           EVENT: ${{ github.event_name }}
-          # (the messages of every commit the push brings, by the environment, never pasted into the script: a merge
-          # at the head keeps the [soak] of a commit beneath it)
-          MESSAGE: ${{ join(github.event.commits.*.message, ' ') }} ${{ github.event.head_commit.message }}
+          # (the messages of every commit the push brings, as a JSON array, and the head commit's, by the environment,
+          # never pasted into the script: a merge at the head keeps the [soak] of a commit beneath it)
+          MESSAGES: ${{ toJSON(github.event.commits.*.message) }}
+          MESSAGE: ${{ github.event.head_commit.message }}
           REF: ${{ github.ref }}
           ALL: >-
             [
@@ -147,10 +149,14 @@ jobs:
           fast=true; soak='[]'
           case "$EVENT" in
             push|pull_request)
-              case "$MESSAGE" in
-                *"[soak-all]"*) soak='["linux-x64","macos-arm64","windows-x64"]' ;;
-                *"[soak]"*) soak='["linux-x64"]' ;;
-              esac
+              # the tag counts only as a line of its own (spaces around it allowed), never in a subject or prose: a
+              # commit that talks about [soak] does not start one
+              lines=$( { jq -r '.[]?' <<< "${MESSAGES:-[]}" 2>/dev/null || true; printf '%s\n' "$MESSAGE"; } | tr -d '\r')
+              if grep -qxE '[[:space:]]*\[soak-all\][[:space:]]*' <<< "$lines"; then
+                soak='["linux-x64","macos-arm64","windows-x64"]'
+              elif grep -qxE '[[:space:]]*\[soak\][[:space:]]*' <<< "$lines"; then
+                soak='["linux-x64"]'
+              fi
               # main moves only forward to a commit the integration branch already carries and has soaked: main
               # builds, tests and packs the fast tier on every platform (the owner's artefacts), and soaks nothing
               [ "$REF" = refs/heads/main ] && soak='[]' ;;
