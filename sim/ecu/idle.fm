@@ -54,6 +54,7 @@ module IdleControl
 {
     float target;       // the idle speed now, rpm
     float integral;     // the idle valve's integral
+    float slow;         // the speed over some 0.5 s (how far off the target it stands, for the valve's gain)
     float bypass;       // the idle valve, 0 to 1
     float trim;         // the spark's quick hand: the torque over the map's, 0.3 to 1.35
     float look;         // the spark trim's look-ahead on the speed's rate, s: the manifold's filling time (Ecu sets it; the
@@ -65,6 +66,7 @@ module IdleControl
     void reset()
     {
         integral = 0.0f;
+        slow = 0.0f;
         look = 0.08f;
         startAir = 0.0f;
         bypass = 0.0f;
@@ -92,7 +94,13 @@ module IdleControl
     {
         const float ie = (target - s->avg) * 0.001f;
         const float iep = (target - s->avg - 0.2f * s->rate) * 0.001f;
-        if (s->avg < target + 500.0f)
+        // (not down through the start and post-start phase, the first 3 s, as Bosch's idle-speed control holds its
+        // integrator then (Gasoline-Engine Management: the start and post-start phases): the start's flare is the
+        // proportional part's to shave, not the integral's to unlearn. Unlearned, it left the valve at its idle
+        // position as the speed fell through the target after the flare, and every warm start dipped: the first
+        // build to 641 rpm against 750, the 7.0 to 433, a 1.5 four to 645, the V10 and V12 to some 720 against 900,
+        // 2 to 3 s to recover (card N1, 25 Nov; held: 737, 677, 735, 883, 865))
+        if (s->avg < target + 500.0f && !(gasoline && sinceStart < 3.0f && ie < 0.0f))
             integral = fminf(fmaxf(integral + 0.5f * ie * d16, 0.0f), 1.0f);
         // (the valve's proportional part half the reference's near the target: the plenum's filling lags the valve by
         // some 0.1 s, and at
@@ -100,7 +108,17 @@ module IdleControl
         // acts within a cycle, is the fast hand). A diesel's "valve" is its idle fuel (no plenum between): four times it
         // Far from the target (a start's flare and fall, a stall coming) the reference's full gain, to catch it
         // and for 3 s after a start, whose flare falls fast toward a stall
-        const float near = !gasoline ? 1.0f : (sinceStart < 3.0f ? 0.5f : 0.25f + 0.25f * fminf(fmaxf((fabsf(iep) - 0.15f) / 0.15f, 0.0f), 1.0f));
+        // (the gain rises from a quarter to a half as the speed stands 150 to 300 rpm off the target: read over some 0.5 s
+        // (and at once below 0.6 of the target, a stall coming), not on the quick average. On the quick one a big cam's
+        // lope (its dilution recursion, a period near 0.4 s, swinging some 200 rpm) read as far off and doubled the
+        // gain on a valve whose air arrives half a lope late: the turbo six (cam 0.9999) on the bench with the intake
+        // and boost models hunted sd 151 rpm, the valve swinging 0.04 to 0.52; with the gain read slow, 127, the
+        // V10's, V12's and turbo four's warm idles unchanged (17.7, 12.7, 6.3 against 17.7, 9.4, 6.3). The valve's
+        // quick reading itself stays: read slow (0.15 or 0.5 s) or without its rate, the V10 and V12 hunted 41 to 160
+        // rpm, their plenum's loop wanting it. 0.5 s: judgement, longer than a lope)
+        slow += (s->avg - slow) * (1.0f - expf(-d16 / 0.5f));
+        const float off = s->avg < 0.6f * target ? 1.0f : fminf(fmaxf((fabsf(target - slow) * 0.001f - 0.15f) / 0.15f, 0.0f), 1.0f);
+        const float near = !gasoline ? 1.0f : (sinceStart < 3.0f ? 0.5f : 0.25f + 0.25f * off);
         bypass = fminf(fmaxf(integral + near * iep, 0.0f), 1.0f);
         // the spark's integral: with the pedal up near the idle and the valve shut (it can take no more air away), the
         // spark takes the excess torque out over a second or two; it gives it back as the valve opens again

@@ -331,9 +331,10 @@ arch(slug="turbo-four-20-gdi", runner=0.3, name="2.0 L turbo four, direct inject
      # 6.35 mm, 180 deg at 1 mm (212 at the seat by the build's ramp), closing 2 deg ATDC (centre 88); stage B, the
      # large lobe: 10 mm, 215 deg at 1 mm (247 at the seat), closing 8 deg BTDC (centre 115.5): from gen 2's SSP 922903
      # page 8 (gen 3's not published; its reference lift not stated, 1 mm implied by the large lobe), the switch from its
-     # page 12. Intake phaser 60 deg (the earlier 2.0 TSI's, vwparts press); exhaust phaser 30 deg (JUDGEMENT: the
-     # feature is cited, SSP 920243; its range is not)
-     cam=(240, 208, 10.7, 110, 212, 180, 6.35, 88), train="Finger", phase=(60, 30), redline=6800, idle=750,
+     # page 12. Intake phaser 60 deg (the earlier 2.0 TSI's, vwparts press); exhaust phaser 42 deg, locked in advance
+     # and retarding from gen 2's closing (the EA855 2.5 TFSI's, Audi SSP 920273: gen 3's own not published; the
+     # lead's ruling, 23:35; it was 30 deg of judgement)
+     cam=(240, 208, 10.7, 110, 212, 180, 6.35, 88), train="Finger", phase=(60, 42), redline=6800, idle=750,
      stages=dict(inDurSeatB=240, inDur1mmB=208, inLiftB=0.0107, inCentreB=110,
                  exDurSeatB=247, exDur1mmB=215, exLiftB=0.010, exCentreB=115.5, stageSpeed=round(3100 * RPM, 1)),
      boost=dict(kind="Turbo", target=1.2, spring=0.6, scrolls="Twin scroll"), direct=True, grade="Premium (91)",
@@ -345,7 +346,8 @@ arch(slug="turbo-four-20-gdi", runner=0.3, name="2.0 L turbo four, direct inject
            "1500 to 4400 (VW's press presentation). What is known and what is guessed: the exhaust's two lobes are gen "
            "2's (SSP 922903: the small 6.35 mm, 180 deg, used to about 3100 rpm and from just after a start above "
            "-10 C; the large 10 mm, 215 deg; durations read at 1 mm); the intake phaser's 60 deg is the earlier "
-           "2.0 TSI's; the exhaust phaser's 30 deg is judgement; the boost taper (1.2 bar to 4500 rpm, 0.7 by 7000) is "
+           "2.0 TSI's; the exhaust phaser's 42 deg is the EA855 2.5 TFSI's (SSP 920273: gen 3's own and its parked timing "
+           "not published); the boost taper (1.2 bar to 4500 rpm, 0.7 by 7000) is "
            "judgement, its top end agreeing with an owner's stock log (81 kPa at 6048 rpm: carworklog.com); the "
            "turbine's size is the model's default until N2 reads published maps. Front drive, six-speed dual clutch.",
      balance2=True)

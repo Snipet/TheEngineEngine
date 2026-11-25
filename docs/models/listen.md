@@ -185,13 +185,15 @@ the auto level looks ahead by, which meet the limiter (0.7) instead:
 
 | build | true levels: idle / free rev peak | auto level: idle / rev typical / rev largest | auto gain |
 |---|---|---|---|
-| first.json (2.0 L turbo four, Side) | 0.02 / 0.17 | 0.10 / 0.41 / 0.50 | +7.5 dB |
-| kei 660 triple turbo | 0.01 / 0.08 | 0.10 / 0.42 / 0.50 | +15.2 dB |
-| V12 6.5 | (limited) / 0.72 | 0.10 / 0.42 / 0.53 | -17.3 dB |
-| tractor 15 L six | 0.01 / 0.06 | 0.13 / 0.18 / 0.30 | +7.0 dB |
+| first.json (2.0 L turbo four, Tailpipe) | 0.02 / 0.17 | 0.12 / 0.35 / 0.41 | +6.3 dB |
+| kei 660 triple turbo (Tailpipe) | 0.01 / 0.08 | 0.10 / 0.40 / 0.49 | +12.2 dB |
+| V12 6.5 (Tailpipe) | (limited) / 0.72 | 0.11 / 0.42 / 0.56 | -21.4 dB |
+| tractor 15 L six (Tailpipe) | 0.01 / 0.06 | 0.14 / 0.29 / 0.70 | -2.8 dB |
 
+(At the opening camera, Tailpipe, since P's builds stopped stating Rear; the true levels are Rear's at 35e355de.)
+The tractor's onset into the pipe meets the limiter (0.70; its limiter reads -2 dB at most, 6 % of them, over a rev).
 The tractor's governed rev (2100 rpm) is only some 3 dB over its idle once its onset is past; the auto level keeps
-that, as it should. The test holds the rev's largest to 0.28 to 0.7 and its typical peaks to 0.15 to 0.6.
+that, as it should. The test holds the rev's largest to 0.28 to 0.76 (the limiter's ceiling) and its typical peaks to 0.15 to 0.6.
 
 The limiter on the loud builds, at first.json's sound settings (Side, Field, +7 dB), a free rev (p-free-rev, 5 to 9 s)
 and a launch (p-quarter-mile, 10.5 to 20 s); the share is of `tel.sound.limiter`'s 0.4 s reads under -0.5 dB:
