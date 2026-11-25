@@ -2,6 +2,12 @@
 
 *Kept by the lead. Times are UTC, 2026-11-24.*
 
+**The owner's standing words on the fleet** (the lead keeps these at the top so they survive a summary):
+- 25 Nov, about 11:29: "For future note (in the scope of this project), you may use up to 10 concurrent sessions."
+  A ceiling, not a target: a session is woken for named work and idles when it has none.
+- 25 Nov, about 10:53: "keep the fleet thin" (given when usage had just run out; the cap above came after it).
+- Earlier: new implementation agents run on Opus 5.5; `main` is fast-forwarded at each checkpoint, never forced.
+
 | Package | State | Where it runs | Since | Notes |
 |---|---|---|---|---|
 | A: FunkGui desktop | **landed and merged 13:19** | local agent (finished) | 11:22 | Snipet/FunkGui pull request 38 merged to main at `19d06ab` (version 0.28.0): `DesktopHost` on SDL3, the menu overlay, file dialogs, clipboard, preferences, `FunkGui::gpu` without JUCE; CI green on Windows (44 tests, Direct3D 11), macOS (70, Metal), Linux (70, Vulkan on lavapipe). Tagged `v0.28.0` by the owner at 13:28. 40 new golden rows of `fg.desktop.menu` are candidates the lead has not adopted yet. Handoff: `docs/handoffs/a-funkgui-desktop.md` |
@@ -36,6 +42,22 @@
 | Held: W the wheel's feedback, R release | not started | | | W cannot be proven without the owner's wheel and shares files with the shell; R needs the owner's signing identities |
 
 ## Landed
+
+- **11:30 (25 Nov) the fleet under the owner's cap of ten.** Working: P (the re-bake at dbd64a5c for the next
+  `main`: D2's two cures under sim/), N2 (its low-speed cells again on the cured engine), U1 (hover help built,
+  then the DRIVE gauges), U4 (the fuel grade in TUNE), G (the pops), card A (the assistant, A1), N1 (the two-stage
+  build's torque dip at its cam change, the owner's own report; the rotary's 239 N m against 290 to 315, by a
+  ledger), D2 (the nightly "diesel cold, full" red, locally). Asleep: the rest.
+- **G is stopped at a permission its session will not take from the lead:** edits to `sim/ecu/overrun.fm` and the
+  account's call in `sim/combustion/combustion.fm` are outside the paths its original brief names, and a peer's word
+  does not widen them. The lead has not worked around it; the owner is asked. Meanwhile G builds inside its paths
+  (`PipeBurn`, the event inbox, the junction's source, `exhaust.bang`, tests on synthetic events). G also corrected
+  the lead's arithmetic: a burning velocity is against the unburned gas, so the expansion does not shorten a slug's
+  burn; a spark-cut charge burns in tens of ms by Metghalchi and Keck plus the collector's turbulence, not the 7 ms
+  the lead wrote.
+- **D2's two cures on the branch** (2cf55103 the diesel charge takes no idle trim with the pedal open under the
+  metered governor; c16af6a2 the same rule for petrols on the bench in `idle.fm`), both diffs read by the lead, 540
+  of 540 by D2; not in `main` until P's bake is green.
 
 - **11:15 (25 Nov) `main` moved to d0a7330e** (fast-forward from 7f64dac1): P's bake plus the owner's macOS bundle
   fix, applied at their word ("Apply the bundle fix and keep the fleet thin", about 10:53). `app/Window.cmake`: the
