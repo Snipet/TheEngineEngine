@@ -111,8 +111,11 @@ namespace tee
         };
     } // namespace
 
-    std::int64_t intakeCamKey(const Build& build, const Sim& sim)
+    namespace
     {
+        // intakeCamKey, or with no program (`sim` null) intakeCamFieldsKey: the same fields, the program left out
+        std::int64_t camKeyOf(const Build& build, const Sim* sim)
+        {
         std::uint64_t h = 1469598103934665603ull;
         const auto mixIn = [&h](const void* data, std::size_t n) {
             const unsigned char* b = static_cast<const unsigned char*>(data);
@@ -122,7 +125,7 @@ namespace tee
                 h *= 1099511628211ull;
             }
         };
-        const std::uint64_t program = sim.sourceHash();
+        const std::uint64_t program = sim != nullptr ? sim->sourceHash() : 0x6669656c64730000ull;   // ("fields")
         mixIn(&program, sizeof program);
         const int version = kCamBakeVersion;   // (the bake's own rules: a map baked by older rules reads stale)
         mixIn(&version, sizeof version);
@@ -137,9 +140,20 @@ namespace tee
         }
         // the spark the cam was chosen on (C's: the knock key without the cam maps, so a re-spark after the cam leaves
         // the cam current and the two bakes end)
-        const std::int64_t spark = knockLimitBaseKey(build, sim);
+        const std::int64_t spark = sim != nullptr ? knockLimitBaseKey(build, *sim) : knockLimitBaseFieldsKey(build);
         mixIn(&spark, sizeof spark);
         return static_cast<std::int64_t>(h & 0x7fffffffull);
+        }
+    } // namespace
+
+    std::int64_t intakeCamKey(const Build& build, const Sim& sim)
+    {
+        return camKeyOf(build, &sim);
+    }
+
+    std::int64_t intakeCamFieldsKey(const Build& build)
+    {
+        return camKeyOf(build, nullptr);
     }
 
     bool intakeCamCurrent(const Build& build, const Sim& sim)
@@ -786,7 +800,8 @@ namespace tee
 
     namespace
     {
-        std::int64_t knockKeyOf(const Build& build, const Sim& sim, bool withCams)
+        // knockLimitKey (with the cams) or knockLimitBaseKey; with no program (`sim` null) their fields keys
+        std::int64_t knockKeyOf(const Build& build, const Sim* sim, bool withCams)
         {
             std::uint64_t h = 1469598103934665603ull;
             const auto mixIn = [&h](const void* data, std::size_t n) {
@@ -797,7 +812,7 @@ namespace tee
                     h *= 1099511628211ull;
                 }
             };
-            const std::uint64_t program = sim.sourceHash();
+            const std::uint64_t program = sim != nullptr ? sim->sourceHash() : 0x6669656c64730000ull;   // ("fields")
             mixIn(&program, sizeof program);
             const int version = kKnockBakeVersion;
             mixIn(&version, sizeof version);
@@ -807,6 +822,12 @@ namespace tee
                 if (all[i].block != "spec" || !movesKnock(all[i]) || (!withCams && camMap(all[i].path)))
                     continue;
                 mixIn(all[i].path.data(), all[i].path.size());
+                // the fields key leaves out a cam map whose Auto switch is on: unused, and the service sets a baked map
+                // aside so (its values stay), where its first spark stage was keyed on the map it then had
+                if (sim == nullptr && (all[i].path == "spec.ecu.maps.camIn" || all[i].path == "spec.ecu.maps.camEx")
+                    && build.fieldOf(all[i].path.substr(5) + "Auto") >= 0
+                    && build.get(all[i].path.substr(5) + "Auto") != 0.0)
+                    continue;
                 for (const double v : build.values(static_cast<int>(i)))
                     mixIn(&v, sizeof v);
             }
@@ -816,12 +837,22 @@ namespace tee
 
     std::int64_t knockLimitKey(const Build& build, const Sim& sim)
     {
-        return knockKeyOf(build, sim, true);
+        return knockKeyOf(build, &sim, true);
     }
 
     std::int64_t knockLimitBaseKey(const Build& build, const Sim& sim)
     {
-        return knockKeyOf(build, sim, false);
+        return knockKeyOf(build, &sim, false);
+    }
+
+    std::int64_t knockLimitFieldsKey(const Build& build)
+    {
+        return knockKeyOf(build, nullptr, true);
+    }
+
+    std::int64_t knockLimitBaseFieldsKey(const Build& build)
+    {
+        return knockKeyOf(build, nullptr, false);
     }
 
     bool knockLimitCurrent(const Build& build, const Sim& sim)
@@ -1137,6 +1168,7 @@ namespace tee
             case KnockBakeState::Current: return "baked";
             case KnockBakeState::Waiting: return "waiting to bake";
             case KnockBakeState::Baking: return "baking";
+            case KnockBakeState::Checking: return "checking calibration";
             case KnockBakeState::Ready: return "baked, to apply";
             case KnockBakeState::Failed: return "bake failed";
         }
@@ -1181,6 +1213,42 @@ namespace tee
             return dir / (std::string(kind) + "-" + std::to_string(key) + ".json");
         }
 
+        // An entry's contents (false: not one, or damaged: then it is as if absent)
+        bool parseEntry(const nlohmann::json& j, BakedFields& out)
+        {
+            if (j.is_discarded() || !j.is_object() || !j.contains("key") || !j["key"].is_number_integer()
+                || !j.contains("fields") || !j["fields"].is_array())
+                return false;
+            out = BakedFields{};
+            out.key = j["key"].get<std::int64_t>();
+            out.cached = true;
+            for (const auto& f : j["fields"])
+                if (f.is_array() && f.size() == 2 && f[0].is_string() && f[1].is_array())
+                    out.fields.emplace_back(f[0].get<std::string>(), f[1].get<std::vector<double>>());
+            if (j.contains("stillKnocking") && j["stillKnocking"].is_array())
+                for (const auto& row : j["stillKnocking"])
+                    if (row.is_array())
+                        out.stillKnocking.push_back(row.get<std::vector<bool>>());
+            if (j.contains("fieldsKey") && j["fieldsKey"].is_number_integer())
+                out.fieldsKey = j["fieldsKey"].get<std::int64_t>();
+            if (j.contains("check") && j["check"].is_object())
+            {
+                const nlohmann::json& c = j["check"];
+                const auto list = [&c](const char* name, auto& into) {
+                    if (c.contains(name) && c[name].is_array())
+                        into = c[name].get<std::decay_t<decltype(into)>>();
+                };
+                list("speeds", out.check.speeds);
+                list("torque", out.check.torque);
+                list("retard", out.check.retard);
+                list("valid", out.check.valid);
+                const std::size_t n = out.check.speeds.size();
+                if (out.check.torque.size() != n || out.check.retard.size() != n || out.check.valid.size() != n)
+                    out.check = BakeCheck{};   // damaged: no check, so never reused
+            }
+            return !out.fields.empty();
+        }
+
         bool cacheRead(const std::filesystem::path& dir, const char* kind, std::int64_t key, BakedFields& out)
         {
             if (dir.empty())
@@ -1189,21 +1257,40 @@ namespace tee
             std::ifstream in(file, std::ios::binary);
             if (!in)
                 return false;
-            const nlohmann::json j = nlohmann::json::parse(in, nullptr, false);
-            if (j.is_discarded() || !j.is_object() || j.value("key", std::int64_t{-2}) != key || !j.contains("fields"))
+            if (!parseEntry(nlohmann::json::parse(in, nullptr, false), out) || out.key != key)
                 return false;
-            out = BakedFields{};
-            out.key = key;
-            out.cached = true;
-            for (const auto& f : j["fields"])
-                if (f.is_array() && f.size() == 2 && f[0].is_string() && f[1].is_array())
-                    out.fields.emplace_back(f[0].get<std::string>(), f[1].get<std::vector<double>>());
-            if (j.contains("stillKnocking") && j["stillKnocking"].is_array())
-                for (const auto& row : j["stillKnocking"])
-                    out.stillKnocking.push_back(row.get<std::vector<bool>>());
             std::error_code ec;
             std::filesystem::last_write_time(file, std::filesystem::file_time_type::clock::now(), ec);   // used: kept
-            return !out.fields.empty();
+            return true;
+        }
+
+        // The newest entry of `kind` baked for these fields under any program, with a check set: a candidate
+        bool cacheFindFields(const std::filesystem::path& dir, const char* kind, std::int64_t fieldsKey, BakedFields& out)
+        {
+            if (dir.empty() || fieldsKey < 0)
+                return false;
+            const std::string prefix = std::string(kind) + "-";
+            std::error_code ec;
+            std::filesystem::file_time_type newest{};
+            bool found = false;
+            for (std::filesystem::directory_iterator it(dir, ec), end; !ec && it != end; it.increment(ec))
+            {
+                const std::string name = it->path().filename().string();
+                if (it->path().extension() != ".json" || name.rfind(prefix, 0) != 0)
+                    continue;
+                const auto when = std::filesystem::last_write_time(it->path(), ec);
+                if (found && when <= newest)
+                    continue;
+                std::ifstream in(it->path(), std::ios::binary);
+                BakedFields entry;
+                if (!in || !parseEntry(nlohmann::json::parse(in, nullptr, false), entry) || entry.fieldsKey != fieldsKey
+                    || entry.check.speeds.empty())
+                    continue;
+                out = std::move(entry);
+                newest = when;
+                found = true;
+            }
+            return found;
         }
 
         void cacheWrite(const std::filesystem::path& dir, std::size_t most, const char* kind, const BakedFields& baked)
@@ -1219,6 +1306,10 @@ namespace tee
             for (const auto& [path, values] : baked.fields)
                 j["fields"].push_back(nlohmann::json::array({path, values}));
             j["stillKnocking"] = baked.stillKnocking;
+            j["fieldsKey"] = baked.fieldsKey;
+            if (!baked.check.speeds.empty())
+                j["check"] = {{"speeds", baked.check.speeds}, {"torque", baked.check.torque},
+                              {"retard", baked.check.retard}, {"valid", baked.check.valid}};
             const std::filesystem::path file = cachePath(dir, kind, baked.key);
             const std::filesystem::path temp = file.string() + ".part";
             {
@@ -1239,6 +1330,74 @@ namespace tee
                 for (std::size_t i = 0; i + most < entries.size(); ++i)
                     std::filesystem::remove(entries[i].second, ec);
             }
+        }
+
+        // The check set: the full-load row at `speeds` on `build` as it stands (its tables applied)
+        bool measureCheck(const std::shared_ptr<Sim>& sim, const Build& build, const std::vector<double>& speeds,
+                          PredictOptions predict, BakeCheck& out, std::string& error, const std::atomic<bool>* cancel)
+        {
+            out = BakeCheck{};
+            if (speeds.empty())
+                return true;
+            predict.speeds = speeds;
+            predict.pedal = 1.0;
+            predict.fields.clear();
+            PredictCurve curve;
+            if (!predictCurve(sim, build, predict, curve, error, cancel))
+                return false;
+            if (curve.points.size() != speeds.size())
+            {
+                error = "the check set's curve has another number of points";
+                return false;
+            }
+            for (const PredictPoint& p : curve.points)
+            {
+                out.speeds.push_back(p.speed);
+                out.torque.push_back(p.valid ? p.torque : 0.0);
+                out.retard.push_back(p.valid ? p.retardMean : 0.0);
+                out.valid.push_back(p.valid && !p.limited);
+            }
+            return true;
+        }
+
+        // Whether `now` is `stored` within the floor (torque a share, retard degrees; the retard ignored with
+        // retard < 0); the first disagreement said in `why`
+        bool checkAgrees(const BakeCheck& stored, const BakeCheck& now, double torque, double retard, std::string& why)
+        {
+            if (stored.speeds.size() != now.speeds.size())
+            {
+                why = "another number of points";
+                return false;
+            }
+            constexpr double kRpm = 60.0 / (2.0 * 3.14159265358979323846);
+            char line[200];
+            for (std::size_t i = 0; i < stored.speeds.size(); ++i)
+            {
+                if (stored.valid[i] != now.valid[i])
+                {
+                    std::snprintf(line, sizeof line, "at %.0f rpm the point was %s and is %s", stored.speeds[i] * kRpm,
+                                  stored.valid[i] ? "a measure" : "not", now.valid[i] ? "a measure" : "not");
+                    why = line;
+                    return false;
+                }
+                if (!stored.valid[i])
+                    continue;
+                if (std::fabs(now.torque[i] - stored.torque[i]) > torque * std::max(std::fabs(stored.torque[i]), 1.0))
+                {
+                    std::snprintf(line, sizeof line, "at %.0f rpm the torque was %.2f N m and is %.2f",
+                                  stored.speeds[i] * kRpm, stored.torque[i], now.torque[i]);
+                    why = line;
+                    return false;
+                }
+                if (retard >= 0.0 && std::fabs(now.retard[i] - stored.retard[i]) > retard)
+                {
+                    std::snprintf(line, sizeof line, "at %.0f rpm the mean retard was %.2f deg and is %.2f",
+                                  stored.speeds[i] * kRpm, stored.retard[i], now.retard[i]);
+                    why = line;
+                    return false;
+                }
+            }
+            return true;
         }
 
         bool hasTable(const Build& build)
@@ -1316,7 +1475,8 @@ namespace tee
         if (sparkCurrent && camCurrent)
         {
             const std::lock_guard<std::mutex> lock(mutex_);
-            if (asked_ || state_ == KnockBakeState::Waiting || state_ == KnockBakeState::Baking)
+            if (asked_ || state_ == KnockBakeState::Waiting || state_ == KnockBakeState::Baking
+                || state_ == KnockBakeState::Checking)
                 cancel_ = true;   // what runs is for another build: not wanted
             asked_ = false;
             ready_ = false;
@@ -1373,20 +1533,32 @@ namespace tee
         if (!take(r))
             return false;
         bool applied = false;
+        bool anyChecked = false, anyBaked = false;
+        const auto note = [&](const BakedFields& f) {
+            anyChecked = anyChecked || f.checked;
+            anyBaked = anyBaked || (!f.checked && !f.cached);
+        };
         if (r.hasCam && intakeCamKey(build, *sim_) == r.cam.key)
         {
             if (!applyFields(build, r.cam, error))
                 return false;
             applied = true;
+            note(r.cam);
         }
         if (r.hasSpark && knockLimitKey(build, *sim_) == r.spark.key)
         {
             if (!applyFields(build, r.spark, error))
                 return false;
             applied = true;
+            note(r.spark);
             const std::lock_guard<std::mutex> lock(mutex_);
             last_ = r.spark;
             haveLast_ = true;
+        }
+        if (applied)
+        {
+            const std::lock_guard<std::mutex> lock(mutex_);
+            lastChecked_ = anyChecked && !anyBaked;
         }
         // both current now: so it says (consider() need not be called for it)
         if (applied && (!sparkWanted(build) || knockLimitCurrent(build, *sim_))
@@ -1408,13 +1580,13 @@ namespace tee
     std::string CalibrationBakeService::stage() const
     {
         const std::lock_guard<std::mutex> lock(mutex_);
-        return state_ == KnockBakeState::Baking ? stage_ : std::string();
+        return state_ == KnockBakeState::Baking || state_ == KnockBakeState::Checking ? stage_ : std::string();
     }
 
     CalibrationBakeService::Progress CalibrationBakeService::progress() const
     {
         const std::lock_guard<std::mutex> lock(mutex_);
-        if (state_ != KnockBakeState::Baking)
+        if (state_ != KnockBakeState::Baking && state_ != KnockBakeState::Checking)
             return {};
         const int done = done_points_.load();
         return {done, std::max(done, total_points_.load())};
@@ -1439,6 +1611,12 @@ namespace tee
             return false;
         out = last_;
         return true;
+    }
+
+    bool CalibrationBakeService::lastWasChecked() const
+    {
+        const std::lock_guard<std::mutex> lock(mutex_);
+        return lastChecked_;
     }
 
     int CalibrationBakeService::stillKnockingCells() const
@@ -1478,7 +1656,8 @@ namespace tee
             const std::int64_t sparkKey = sparkKey_, camKey = camKey_;
             cancel_ = false;
             stage_.clear();
-            setState(KnockBakeState::Baking);
+            // (the state stays Waiting until a stage says whether it checks or bakes: a table taken from the cache by
+            // its key does neither, and the status line never says "baking" for a check)
             lock.unlock();
 
             const auto at = [&](const char* stage, int total) {
@@ -1519,16 +1698,80 @@ namespace tee
             bool ok = build.load(json, BuildPart::Whole, warnings, error);
             // a stage: taken from the cache by its key, else baked, applied to the copy, and kept
             const std::filesystem::path& cache = options_.cacheDirectory;
+            // the stage running is a check (Checking) or a bake (Baking)
+            const auto doing = [&](KnockBakeState s) {
+                const std::lock_guard<std::mutex> guard(mutex_);
+                setState(s);
+            };
+            // a candidate baked for these fields under another program, checked on this one: true when it agreed and
+            // `build` has it now, re-keyed (`keyField` set to `key`), in `out`; false to bake (or with cancel_, stop)
+            const auto verified = [&](const char* kind, const char* const* fields, std::size_t nFields,
+                                      const char* keyField, std::int64_t key, std::int64_t fieldsKey, const char* name,
+                                      bool idle, BakedFields& out) {
+                BakedFields candidate;
+                if (!options_.verifiedReuse || !cacheFindFields(cache, kind, fieldsKey, candidate))
+                    return false;
+                if (idle && options_.idleScenarios.empty())
+                    return false;   // a cam is not reused with its idle unchecked
+                doing(KnockBakeState::Checking);
+                at(name, static_cast<int>(candidate.check.speeds.size()));
+                Build trial(sim_->fields());
+                std::vector<std::string> w;
+                std::string e;
+                if (!trial.load(build.save(), BuildPart::Whole, w, e) || !applyFields(trial, candidate, e)
+                    || !trial.set(keyField, static_cast<double>(key)))
+                    return false;
+                BakeCheck now;
+                std::string why;
+                bool agrees = measureCheck(sim_, trial, candidate.check.speeds, spark.predict, now, e, &cancel_)
+                              && !cancel_.load()
+                              && checkAgrees(candidate.check, now, options_.checkTorque,
+                                             idle ? -1.0 : options_.checkRetard, why);
+                if (agrees && idle)
+                {
+                    IdleCheck ic;
+                    agrees = checkIdle(sim_, trial, options_.idleScenarios, ic, e)
+                             && std::fabs(ic.warmMean - ic.asked) <= 100.0 && ic.warmSd < 25.0;
+                }
+                if (!agrees)
+                    return false;
+                if (!applyFields(build, candidate, error) || !build.set(keyField, static_cast<double>(key)))
+                    return false;
+                out = BakedFields{};
+                out.key = key;
+                for (std::size_t i = 0; i < nFields; ++i)
+                    if (const int f = build.fieldOf(fields[i]); f >= 0)
+                        out.fields.emplace_back(fields[i], build.values(f));
+                out.stillKnocking = candidate.stillKnocking;
+                out.checked = true;
+                out.fieldsKey = fieldsKey;
+                out.check = now;
+                cacheWrite(cache, options_.cacheEntries, kind, out);
+                return true;
+            };
             const auto sparkStage = [&](const char* name) {
                 const std::int64_t key = knockLimitKey(build, *sim_);
                 if (cacheRead(cache, "spark", key, result.spark))
                     return applyFields(build, result.spark, error);
+                const std::int64_t fieldsKey = knockLimitFieldsKey(build);
+                if (verified("spark", kSparkFields, std::size(kSparkFields), "ecu.maps.knockLimitKey", key, fieldsKey,
+                             name, false, result.spark))
+                    return true;
+                if (cancel_.load())
+                    return false;
+                doing(KnockBakeState::Baking);
                 at(name, sparkPoints(build));
                 if (!bakeKnockLimit(sim_, build, spark, result.sparkMeasured, error, &cancel_)
                     || !applyKnockLimit(build, result.sparkMeasured, error))
                     return false;
                 result.spark = capture(build, kSparkFields, result.sparkMeasured.key);
                 result.spark.stillKnocking = result.sparkMeasured.stillKnocking;
+                result.spark.fieldsKey = fieldsKey;
+                // its check set, measured now with it applied: what a later program is checked against
+                if (!cache.empty() && options_.verifiedReuse
+                    && !measureCheck(sim_, build, result.sparkMeasured.speeds, spark.predict, result.spark.check, error,
+                                     &cancel_))
+                    return false;
                 if (!cancel_.load())
                     cacheWrite(cache, options_.cacheEntries, "spark", result.spark);
                 return true;
@@ -1537,11 +1780,23 @@ namespace tee
                 const std::int64_t key = intakeCamKey(build, *sim_);
                 if (cacheRead(cache, "cam", key, result.cam))
                     return applyFields(build, result.cam, error);
+                const std::int64_t fieldsKey = intakeCamFieldsKey(build);
+                if (verified("cam", kCamFields, std::size(kCamFields), "ecu.maps.camInKey", key, fieldsKey, "cam", true,
+                             result.cam))
+                    return true;
+                if (cancel_.load())
+                    return false;
+                doing(KnockBakeState::Baking);
                 at("cam", camPoints(build));
                 if (!bakeIntakeCam(sim_, build, cam, result.camMeasured, error, &cancel_)
                     || !applyIntakeCam(build, result.camMeasured, error))
                     return false;
                 result.cam = capture(build, kCamFields, result.camMeasured.key);
+                result.cam.fieldsKey = fieldsKey;
+                if (!cache.empty() && options_.verifiedReuse
+                    && !measureCheck(sim_, build, result.camMeasured.speeds, spark.predict, result.cam.check, error,
+                                     &cancel_))
+                    return false;
                 if (!cancel_.load())
                     cacheWrite(cache, options_.cacheEntries, "cam", result.cam);
                 return true;

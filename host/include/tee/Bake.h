@@ -108,6 +108,9 @@ namespace tee
     // mean of its last cycles, the floor its own standard error; the smoothing capped at 1 % of a row's best)
     constexpr int kCamBakeVersion = 3;
     std::int64_t intakeCamKey(const Build& build, const Sim& sim);
+    // The same fields without the program (CalibrationBakeService's verified reuse: a map baked for these fields under
+    // another program, a candidate to be checked, never current by itself)
+    std::int64_t intakeCamFieldsKey(const Build& build);
     // Whether the build's cam map is baked and current: camInAuto off and camInKey this build's key
     bool intakeCamCurrent(const Build& build, const Sim& sim);
 
@@ -212,6 +215,9 @@ namespace tee
     // does not make the cam stale in turn: spark, cam, spark, and it ends. Hidden fields (the heatSettle counters)
     // are in neither.
     std::int64_t knockLimitBaseKey(const Build& build, const Sim& sim);
+    // Both without the program (Sim::sourceHash): the verified reuse's keys (CalibrationBakeService), never "current"
+    std::int64_t knockLimitFieldsKey(const Build& build);
+    std::int64_t knockLimitBaseFieldsKey(const Build& build);
     // Whether the build's bake is in use and current: knockLimitAuto off and its key this build's (false when the
     // program has no knock-limit table).
     bool knockLimitCurrent(const Build& build, const Sim& sim);
@@ -244,6 +250,7 @@ namespace tee
         Current,      // the build's tables are baked and their keys are the build's
         Waiting,      // stale: a bake is asked, waiting for the edits to rest
         Baking,       // stale: being baked (stage() says which)
+        Checking,     // stale: a table baked for these fields under another program, being checked on this one
         Ready,        // baked: take() or takeAndApply() has it
         Failed,       // the bake failed (error())
     };
@@ -263,6 +270,39 @@ namespace tee
         // removed past it): some 2 MB at 256.
         std::filesystem::path cacheDirectory;
         std::size_t cacheEntries = 256;
+        // ---- the verified reuse (the lead's 06:28 ruling). The exact key (the program's sources with the fields) stays
+        // the one meaning of "current". When it misses, the newest table in the cache baked for the same fields under
+        // any program (knockLimitFieldsKey, intakeCamFieldsKey) is a candidate: applied to a copy and checked on this
+        // program at a check set, and taken (re-keyed to this program, kept in the cache under its new key) only if
+        // every point agrees within the floor; otherwise the stage is baked as before. The check set:
+        //   - the spark: the full-load row at the table's speeds with the table applied, each point's torque within
+        //     checkTorque of the one stored when it was baked (or last checked) and knock control's mean retard within
+        //     checkRetard degrees; a point the limiter cut or that faulted then must be so now, and the reverse;
+        //   - the cam: the same row with the map applied (torque only), and one warm idle (idleScenarios' p-idle-warm,
+        //     8 to 14 s) inside the idle gate's bounds (checkIdle: the mean within 100 rpm of ecu.idle.speed, the
+        //     deviation under 25 rpm), as the cam bake's gate protects it.
+        // Some 8 to 16 points and an idle: seconds, where a bake is minutes. state() is Checking meanwhile, and a
+        // result taken so says it (BakedFields::checked; lastWasChecked()).
+        //
+        // THE HOLE: the check measures full load only. A change under sim/ that moved the spark table's part-load cells
+        // while leaving its full-load row within the floor would pass it. Thought small today: those cells are 0 on
+        // every naturally aspirated archetype, and on a turbo they come from the same knock model and the same points
+        // as the full-load row, one boost step down. Whoever first bakes part load for its own sake (a cell measured at
+        // a pedal under 1 and not 0) grows the check set with it: a part-load row in it, or the reuse turned off for
+        // such a table.
+        bool verifiedReuse = true;           // with a cacheDirectory
+        std::filesystem::path idleScenarios; // content/validation/scenarios: empty, no cam is reused (the idle unchecked)
+        double checkTorque = 0.005;          // N1's floor: a share of the point's torque
+        double checkRetard = 0.5;            // degrees
+    };
+
+    // The check set a cached table carries: the full-load row with it applied, as last measured
+    struct BakeCheck
+    {
+        std::vector<double> speeds;   // rad/s
+        std::vector<double> torque;   // N m
+        std::vector<double> retard;   // degrees, knock control's mean (PredictPoint::retardMean)
+        std::vector<bool> valid;      // neither faulted nor cut by the limiter
     };
 
     // A table as its apply wrote it: (field path, the field's values) for each field it wrote, with its key
@@ -272,6 +312,9 @@ namespace tee
         std::vector<std::pair<std::string, std::vector<double>>> fields;
         std::vector<std::vector<bool>> stillKnocking;   // a spark table's: by table cell (KnockBakeResult's)
         bool cached = false;                            // taken from the cache, not measured
+        bool checked = false;                           // ... baked under another program, checked on this one
+        std::int64_t fieldsKey = -1;                    // knockLimitFieldsKey / intakeCamFieldsKey (-1: none)
+        BakeCheck check;                                // its check set (empty: never reused)
     };
 
     struct CalibrationBakeResult
@@ -301,7 +344,7 @@ namespace tee
         // The spark alone (KnockBakeService's): false when nothing is ready or the bake held a cam (use takeAndApply).
         bool take(KnockBakeResult& out);
         KnockBakeState state() const;
-        std::string stage() const;     // "spark map", "cam", "spark map again"; empty when not baking
+        std::string stage() const;     // "spark map", "cam", "spark map again"; empty when not baking or checking
         // The stage running: fast-dyno points done of about `total` (an estimate made at the stage's start, from its
         // grid; corrections and refinements add to it as they come). {0, 0} when not baking.
         struct Progress
@@ -319,6 +362,9 @@ namespace tee
         // corrections (by [speed][load], as KnockBakeResult::stillKnocking), whether baked here or taken from the cache.
         bool lastSpark(BakedFields& out) const;
         int stillKnockingCells() const;   // table cells still knocking in it (0 with none applied)
+        // The last takeAndApply applied only tables checked (or taken from the cache by their key), at least one
+        // checked: what the status line says as "calibration checked", not "baked"
+        bool lastWasChecked() const;
         std::string error() const;
         // Moves when the state or the stage changes.
         std::uint64_t revision() const noexcept { return revision_.load(); }
@@ -349,6 +395,7 @@ namespace tee
         std::atomic<int> done_points_{0}, total_points_{0};
         std::shared_ptr<const std::atomic<bool>> yieldTo_;   // under mutex_
         bool haveLast_ = false;
+        bool lastChecked_ = false;
         BakedFields last_;
         bool ready_ = false;
         CalibrationBakeResult done_;
