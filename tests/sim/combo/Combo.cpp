@@ -551,10 +551,11 @@ namespace combo
         return cost;
     }
 
-    Verdict judge(const tee::test::Run& run, const Times& tm, const Archetype* a, bool expectRunning, double refStep)
+    Verdict judge(const tee::test::Run& run, const Times& tm, const Archetype* a, bool expectRunning, double refStep,
+                  double refExcess)
     {
         Verdict v;
-        char b[256];
+        char b[512];
         if (!run.ok())
         {
             v.failures.push_back({"run", run.error()});
@@ -618,11 +619,19 @@ namespace combo
         v.stepMax = std::max(run.left().during(from, to).largestStep(), run.right().during(from, to).largestStep());
         v.stepExcess = stepExcess(run, from, to, &v.stepAt, &v.firingPeriod);
         const double clickBound = std::max(tee::test::clickLimit, 2.0 * refStep);
-        if (v.stepMax > clickBound)
+        // The lead's ruling (25 Nov 17:24): a click is a step its neighbouring firing periods do not have. Where the
+        // engine fires and a period is defined (stepExcess >= 0) and the caller gives the reference's own excess, the
+        // excess decides, against twice the reference's on the same build and scenario; where no period exists
+        // (stopped, cranking before the first firing, the starter) or no reference excess is given, the step over
+        // the local level decides as before. Both are printed in a click's detail for the next two windows. This
+        // restates the check on its property; it is not a loosened bound: it still sees the cured clicks on their
+        // old tree (X-015: 7.33 against 3.19 on the pull, 4.07 against 3.64 on the tour, its weakest proof; X-014:
+        // 7.77 against 4.60) and clears the diesel's firing trains (X-033, X-034, X-035: 1.17 to 2.59 against 3.19).
+        v.excessBound = refExcess >= 0.0 ? 2.0 * refExcess : -1.0;
+        const bool byExcess = v.excessBound >= 0.0 && v.stepExcess >= 0.0;
+        if (byExcess ? v.stepExcess > v.excessBound : v.stepMax > clickBound)
         {
-            const auto l = run.left().during(from, to), r = run.right().during(from, to);
-            const auto& ch = l.largestStep() >= r.largestStep() ? l : r;
-            const double at = from + largestStepTime(ch.samples(), ch.rate());
+            const double at = v.stepAt;
             // The lead's ruling (23:15, through the steward): an upshift's spark cut under the reference's burn
             // (ecu.model 1, fuel.model 0) is an event of the engine: about 70 ms of near silence and the charge sent
             // to the pipe lights after it (D's measure: 15 to 29 times the local level by the cut's phase; the small
@@ -650,19 +659,23 @@ namespace combo
                 const bool up = gear.size() > 1 && gear.values().back() > gear.values().front();
                 atShiftCut = cut && up;
             }
+            char both[160];
+            std::snprintf(both, sizeof both, "excess over its firing periods %.2f (bound %.2f%s)", v.stepExcess,
+                          v.excessBound, byExcess ? ", which decides" : ", not deciding: no period or no reference's");
             if (atShiftCut && v.stepMax <= kShiftCutBound)
             {
                 std::snprintf(b, sizeof b,
                               "largest step %.1f times the local level at %.3f s, at an upshift's cut (the bound there "
-                              "%.0f, the lead's ruling for ecu.model 1 under fuel.model 0; elsewhere %.1f)",
-                              v.stepMax, at, kShiftCutBound, clickBound);
+                              "%.0f, the lead's ruling for ecu.model 1 under fuel.model 0; elsewhere %.1f); %s",
+                              v.stepMax, at, kShiftCutBound, clickBound, both);
                 v.failures.push_back({"click-shift-cut", b});
             }
             else
             {
                 std::snprintf(b, sizeof b,
-                              "largest step %.1f times the local level at %.3f s (bound %.1f; the reference's %.1f%s)",
-                              v.stepMax, at, clickBound, refStep, atShiftCut ? "; at an upshift's cut, over 42" : "");
+                              "largest step %.1f times the local level at %.3f s (bound %.1f; the reference's %.1f%s); %s",
+                              v.stepMax, at, clickBound, refStep, atShiftCut ? "; at an upshift's cut, over 42" : "",
+                              both);
                 v.failures.push_back({"click", b});
             }
         }

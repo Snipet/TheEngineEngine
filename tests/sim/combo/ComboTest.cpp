@@ -34,7 +34,9 @@ namespace
     {
         Times tm;
         const tee::test::Run r = scenario(kind, build, mask, tm).run(tm.end);
-        const Verdict v = judge(r, tm, archetype(build), true, mask == 0 ? v0(r, tm) : referenceStep(build, kind));
+        const double from = tm.started + 0.5, to = tm.off > 0.0 ? tm.off : tm.end;
+        const Verdict v = judge(r, tm, archetype(build), true, mask == 0 ? v0(r, tm) : referenceStep(build, kind),
+                                mask == 0 ? stepExcess(r, from, to) : referenceExcess(build, kind));
         report(v, comboName(mask), build, kindName(kind));
     }
 
@@ -240,7 +242,7 @@ namespace
         const double from = tm.started + 0.5, to = tm.off;
         const double ref = std::max(r0.left().during(from, to).largestStep(), r0.right().during(from, to).largestStep());
         const tee::test::Run r = scenario(Kind::Tour, f.string(), 0u, tm).run(tm.end);
-        const Verdict v = judge(r, tm, &generic, true, ref);
+        const Verdict v = judge(r, tm, &generic, true, ref, stepExcess(r0, from, to));
         report(v, "as built", f.stem().string(), "tour");
     }
 
@@ -301,12 +303,13 @@ TEST_CASE("a handful of pairs where packages meet: fuel and ECU then boost and e
         // 5 ms (the steward's ask; a single draw read 31.7 against the ruled 42)
         const std::uint32_t m = bit("ecu.model") | bit("car.model");
         const double ref = 0.5 * referenceStepWithPops("v8", Kind::Launch);
+        const double refExcess = referenceExcess("v8", Kind::Launch);
         Verdict v;
         for (int k = 0; k < 6; ++k)
         {
             Times tm;
             const tee::test::Run r = scenario(Kind::Launch, "v8", m, tm, 0.001 * k).run(tm.end);
-            const Verdict one = judge(r, tm, archetype("v8"), true, ref);
+            const Verdict one = judge(r, tm, archetype("v8"), true, ref, refExcess);
             std::printf("pairs: ecu.model+car.model / v8 / launch, the upshift %d ms later: largest step %.1f\n", k,
                         one.stepMax);
             if (k == 0 || one.stepMax > v.stepMax)

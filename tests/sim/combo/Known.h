@@ -10,28 +10,20 @@ const Known kKnown[] = {
     {"X-016", "2026-11-24", "Q (cost)", "corners 1", "fuzz", "corners", "cost",
      "the ranges' corners seed 1: 2.1 to 4.9 R (Q measured 2.1 to 2.4 on a quieter host); reported as the heavy case"},
     // The soak's reds of 25 Nov (e37feb24's run; bisected over sim trees with TEE_SIM_DIR). None is a pop: each reads
-    // the same with ecu.pops 0 (tee-fuzz --play ... --set ecu.pops=0).
+    // the same with ecu.pops 0 (tee-fuzz --play ... --set ecu.pops=0). Closed by the click check's restatement (the
+    // lead's ruling, 17:24: a click is a step its neighbouring firing periods lack; Combo.cpp, judge), as a firing
+    // train, not a click: X-033 (the large diesel's custom engine on boost: excess 1.35 to 2.59 against 3.19), X-034
+    // (every switch on the large diesel: 1.17 against 3.19 and 3.22), X-035 (its custom engine without boost: 1.86 to
+    // 2.29 against 3.19). Not a loosened bound: the restated check still sees X-014 and X-015 on their old tree.
     {"X-030", "2026-11-25", "the steward (the ECU's shift cut)", "+fuel.model+ecu.model", "*", "pull", "click-shift-cut",
-     "ecu.model 1 under fuel.model 1 at an upshift's cut: 20.8 to 23.1 against 19.6 or 20.7 (not ruled: fuel.model on); "
-     "since c035fe75 (the V8 13.4 before it, 38.5 at it)"},
+     "a firing unlike its neighbours as the spark returns after an upshift's cut, ecu.model 1 under fuel.model 1: excess "
+     "3.21 to 3.80 against 2.85 (small four), 4.32 against 4.03 (V8); since c035fe75"},
     {"X-031", "2026-11-25", "the steward (the ECU's downshift)", "+fuel.model+ecu.model", "v8", "pull", "click",
-     "the V8's downshift at 11.0 s with ecu.model and fuel.model: 26.3 to 27.2 at 11.02 s against 19.6 (13.4 before "
-     "c035fe75); fuel+ecu+car 20.1 at 6.449 s"},
+     "a firing unlike its neighbours as the spark returns after the V8's downshift at 11.0 s, ecu.model and fuel.model "
+     "on: excess 4.73 to 5.17 against 4.03 (13.4 step before c035fe75)"},
     {"X-032", "2026-11-25", "N1 (the idle valve)", "exhaust.model+fuel.model+ecu.model", "turbo-six", "tour", "click",
-     "the turbo six's lift at 8.5 s: 22.2 at 8.676 s against 22.2 (11.3 before 576c1c6e, the idle valve's integral)"},
-    {"X-034", "2026-11-25", "N1 (the valve's effective area)", "all", "large-diesel", "*", "click",
-     "every switch on the large diesel: pull 15.7 at 13.24 s against 15.4, launch 15.5 at 11.45 s against 14.4; from "
-     "68e683f1 (the lesser of port and curtain), as is valve+fuel+ecu on the V8's pull (21.6)"},
-    {"X-033", "2026-11-25", "N2 (the boost's design point)", "+engine.custom+boost.model", "large-diesel", "pull", "*",
-     "the large diesel with a custom engine and boost.model: 16.7 to 19.9 against 15.4 (at the upshifts 3.6, 6.6, 8.6 "
-     "s); 5c85736b alone takes custom+boost+car from 13.8 to 17.2"},
-    {"X-035", "2026-11-25", "D (engine.custom) and D2 (the diesel)", "+engine.custom", "large-diesel", "pull", "click",
-     "a custom engine on the large diesel without boost.model: 15.6 to 19.3 against 15.4 since the first soak (never "
-     "green); custom+intake+fuel red again from 3a253ce6 (the combustion's start spread)"},
-    {"X-035", "2026-11-25", "D2 (the diesel)", "engine.wallHeat+ecu.model+voices.model", "large-diesel", "pull", "click",
-     "15.5 at 4.84 s against 15.4, since 2f86a47a"},
-    {"X-035", "2026-11-25", "D2 (the diesel)", "intake.model+fuel.model+car.model", "large-diesel", "pull", "click",
-     "15.7 at 4.93 s against 15.4, from 3a253ce6 (the combustion's start-of-combustion spread at its cited sigma)"},
+     "a firing unlike its neighbours as the turbo six lifts at 8.5 s (exhaust, fuel and ecu on): excess 3.05 against "
+     "2.97, narrowly; from 576c1c6e, the idle valve's integral"},
     {"X-036", "2026-11-25", "D (engine.custom) and the steward (car.model)", "+engine.custom+car.model", "turbo-v8-dual",
      "pull", "dc", "the turbo V8 dual's pull with a custom engine and car.model: the running mean 0.0057 to 0.0069 of "
      "full scale against 0.005, since the first soak (never green)"},

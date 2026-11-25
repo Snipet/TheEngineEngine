@@ -91,19 +91,24 @@ namespace combo
         double dcMax = 0.0;         // the running stretch's mean, as a magnitude
         double idle = 0.0;          // rad/s, mean over the idle stretch
         double revMax = 0.0;        // rad/s
-        // The step's excess over its neighbouring firing periods (measured beside stepMax, judged by nothing yet: the
-        // lead's 17:07 ask): the worst step's own measure in one firing period about it, over the median of the same
-        // measure in the periods t +- kT, k = 1 to 4. A pulse train at the firing rate reads about 1; a click its
-        // neighbours lack reads well above. -1 where the engine does not fire (no period).
+        // The step's excess over its neighbouring firing periods: the worst step's own measure in one firing period
+        // about it, over the median of the same measure in the periods t +- kT, k = 1 to 4. A pulse train at the
+        // firing rate reads about 1; a click its neighbours lack reads well above. -1 where the engine does not fire
+        // (no period). It decides a click where defined and the caller gives the reference's (judge; the lead's
+        // ruling, 25 Nov 17:24). Its proof that it bites: X-015 on 62a6a7fd's tree reads 7.33 against 3.19 on the
+        // pull and 4.07 against 3.64 on the tour (its weakest proof, a margin of 12 %); X-014 7.77 against 4.60.
         double stepExcess = -1.0;
         double stepAt = 0.0;        // seconds: where the worst step is
         double firingPeriod = 0.0;  // seconds, at stepAt
+        double excessBound = -1.0;  // twice the reference's own excess (-1: none given)
         double costR = 0.0;         // wall time a simulated second over the reference's (costOfR)
         double coreShare = 0.0;     // wall seconds a simulated second (a core's share at the run's rate)
     };
     // refStep: the reference's largest step on the same build and scenario (referenceStep), for the click bound.
+    // refExcess: the reference's own excess over its firing periods (referenceExcess); where it is given (>= 0) and
+    // the run fires, the excess decides a click (the lead's ruling, 25 Nov), else the step does.
     Verdict judge(const tee::test::Run& run, const Times& times, const Archetype* archetype, bool expectRunning,
-                  double refStep);
+                  double refStep, double refExcess = -1.0);
     // The reference's (every switch off) largest step while running, on a build through a scenario: measured once a
     // process and kept.
     double referenceStep(const std::string& build, Kind kind);
