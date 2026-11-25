@@ -103,3 +103,49 @@ TEST_CASE("diesel governor: the boost compensator caps the fuel; the telemetry r
     CHECK(lambda[1] > 0.95);
     CHECK(lambda[1] < 1.2);
 }
+
+TEST_CASE("diesel governor: the full-load fuel curve shapes the torque; with none set, the flat line to the bit", "[diesel][governor]")
+{
+    // (1) A curved build (truck-15l-six: the class's 2779 N m held to 1400 rpm, 451 kW at 1800 and 2100) falls to its
+    // rated point as a real one does: its torque at the rated speed under 0.8 of its most below it. Measured 25 Nov:
+    // 2135 N m at 2100 against 2715 at 1300 (0.79). Before the curve it was flat (2729 at 2100).
+    double most = 0.0, rated = 0.0;
+    for (double rpm : {1100.0, 1300.0, 1600.0, 2100.0})
+    {
+        Engine e("truck-15l-six");
+        e.start();
+        e.dyno(rpm, 1.0f);
+        REQUIRE(e.run(2.0));
+        e.spec("exhaust.heatSettle", 1);
+        e.spec("boost.heatSettle", 1);
+        REQUIRE(e.run(6.0));
+        const double tq = e.mean("engine.torque", 1.0);
+        std::printf("truck-15l-six's fuel curve, floored at %.0f rpm: %.0f N m\n", rpm, tq);
+        if (rpm < 2000.0)
+            most = std::max(most, tq);
+        else
+            rated = tq;
+    }
+    CHECK(rated < 0.8 * most);
+    // (2) A curve whose points carry no fuel is no curve: the same build with its speeds set and every mg 0 sounds to
+    // the bit as with none (diesel-v8-truck states none)
+    std::vector<float> sound[2];
+    for (int k = 0; k < 2; ++k)
+    {
+        Engine e("diesel-v8-truck");
+        if (k == 1)
+        {
+            const int rpmField = e.player->specIndex("ecu.fuelCurveRpm");
+            REQUIRE(rpmField >= 0);
+            for (int i = 0; i < 8; ++i)
+                e.player->setSpec(static_cast<std::size_t>(rpmField), 800.0 + 200.0 * i, static_cast<std::size_t>(i));
+        }
+        e.start();
+        e.dyno(1500.0, 1.0f);
+        e.recording = true;
+        REQUIRE(e.run(1.0));
+        sound[k] = e.rec;
+    }
+    REQUIRE(sound[0].size() == sound[1].size());
+    CHECK(sound[0] == sound[1]);
+}
