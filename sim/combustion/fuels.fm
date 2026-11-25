@@ -75,6 +75,31 @@ float fuelOctane(int kind)
     return kFuelRon[f] - kOctaneK * (kFuelRon[f] - kFuelMon[f]);
 }
 
+// The octane index with a stated pump number (spec.fuel.octane, AKI; card N1, 25 Nov, the owner's ask): 0 the grade's
+// own (fuelOctane, to the bit); else the research octane the number means by the selected grade's own sensitivity,
+// RON = AKI + (RON - MON) / 2, no new constant, and the index from it as fuelOctane's. A compression-ignition fuel
+// ignores it. Only the knock reads it: the grade's heat, ratio, flame and limits stay the grade's
+float fuelOctaneAt(int kind, float aki)
+{
+    const int f = fuelRow(kind);
+    if (aki <= 0.0f || kFuelCompression[f] != 0)
+        return fuelOctane(kind);
+    const float ron = aki + 0.5f * (kFuelRon[f] - kFuelMon[f]);
+    const float mon = ron - (kFuelRon[f] - kFuelMon[f]);
+    return ron - kOctaneK * (ron - mon);
+}
+
+// 1 where a stated pump number gives a research octane outside Douaud and Eyzat's fit (80 to 100): accepted, not
+// clamped, and said (the help text's rule, for TUNE to mark it extrapolated); 0 for the grade's own or inside the fit
+int fuelOctaneExtrapolated(int kind, float aki)
+{
+    const int f = fuelRow(kind);
+    if (aki <= 0.0f || kFuelCompression[f] != 0)
+        return 0;
+    const float ron = aki + 0.5f * (kFuelRon[f] - kFuelMon[f]);
+    return ron < 80.0f || ron > 100.0f ? 1 : 0;
+}
+
 // The heat a kilogram of air releases with this fuel at the stoichiometric mixture, burned completely, J/kg
 float fuelHeatPerAir(int kind)
 {
