@@ -19,6 +19,7 @@
 #include <array>
 #include <cmath>
 #include <cstdio>
+#include <deque>
 #include <functional>
 #include <string>
 #include <vector>
@@ -167,7 +168,7 @@ namespace tee::ui
             k.mix(static_cast<float>(plan_.from)).mix(static_cast<float>(plan_.to)).mix(static_cast<float>(plan_.pedal));
             for (const RowView& r : rows_)
                 k.mix(r.shown).mix(r.name);
-            k.mix(showPredicted_).mix(showBefore_).mix(message_).mix(stepped_);
+            k.mix(showPredicted_).mix(showBefore_).mix(message_).mix(stepped_).mix(beforeFuel_).mix(predictedFuel_);
             if (const DynoTrace* so = ctx_.dyno.runSoFar())
                 k.mix(static_cast<int>(so->speed.size()));
             return k.h;
@@ -215,6 +216,7 @@ namespace tee::ui
 
         // For tests: the rows (-2 predicted, -1 before, 0.. runs), and the cursor's speed (rad/s; NaN: none).
         int selectedRow() const noexcept { return selected_; }
+        std::string nameOfRow(int row) const { return rowName(row); }
         double cursorSpeed() const noexcept
         {
             computeScales();
@@ -224,6 +226,7 @@ namespace tee::ui
     protected:
         void step(float dt) override
         {
+            watchFuel();
             // Runs that came in: a row each, the newest chosen.
             const int n = ctx_.dyno.runCount();
             while (static_cast<int>(rows_.size()) < n)
@@ -329,6 +332,59 @@ namespace tee::ui
             int row;
         };
 
+        // ---- the fuel: the grade (sim/spec/fuel.fm) a curve was for -----------------------------------------------
+        int grade() const
+        {
+            const int f = ctx_.doc.find("fuel.grade");
+            const int m = ctx_.doc.find("fuel.model");
+            if (f < 0 || ctx_.doc.info(f).kind != FieldKind::choice || (m >= 0 && ctx_.doc.get(m) < 0.5))
+                return -1;   // none, or the reference burn (which does not read it)
+            return static_cast<int>(std::lround(ctx_.doc.get(f)));
+        }
+        std::string gradeName(int g) const
+        {
+            const int f = ctx_.doc.find("fuel.grade");
+            if (f < 0 || g < 0 || g >= static_cast<int>(ctx_.doc.info(f).choices.size()))
+                return {};
+            return ctx_.doc.info(f).choices[static_cast<std::size_t>(g)];
+        }
+        std::string fuelName() const { return gradeName(grade()); }
+        static std::uint64_t print(const DynoTrace& t)
+        {
+            if (t.empty())
+                return 0;
+            DrawKey k;
+            k.mix(static_cast<int>(t.speed.size()));
+            for (std::size_t i = 0; i < t.torque.size(); ++i)
+                k.mix(static_cast<float>(t.torque[i])).mix(static_cast<float>(t.speed[i]));
+            return k.h;
+        }
+        // Once a frame: a new predicted curve is for the grade now; the curve before the last edit is one of those.
+        void watchFuel()
+        {
+            if (ctx_.dyno.revision() == fuelRevision_)
+                return;
+            fuelRevision_ = ctx_.dyno.revision();
+            if (const std::uint64_t p = print(ctx_.dyno.predicted()); p != predictedPrint_)
+            {
+                predictedPrint_ = p;
+                predictedFuel_ = p != 0 ? grade() : -1;
+                if (p != 0)
+                    fuelOf_.push_back({ p, predictedFuel_ });
+                while (fuelOf_.size() > 8)
+                    fuelOf_.pop_front();
+            }
+            if (const std::uint64_t b = print(ctx_.dyno.before()); b != beforePrint_)
+            {
+                beforePrint_ = b;
+                beforeFuel_ = -1;
+                for (const auto& [pr, g] : fuelOf_)
+                    if (pr == b)
+                        beforeFuel_ = g;
+            }
+        }
+        std::uint64_t fuelRevision_ = ~0ull;
+
         // ---- rows: -2 predicted, -1 before the last edit, 0.. the runs ----------------------------------------------
         const DynoTrace& trace(int row) const
         {
@@ -336,10 +392,12 @@ namespace tee::ui
         }
         std::string rowName(int row) const
         {
+            // A change of fuel between the two curves: each named with its own.
+            const bool fuels = beforeFuel_ >= 0 && predictedFuel_ >= 0 && beforeFuel_ != predictedFuel_;
             if (row == -2)
-                return "Predicted";
+                return fuels ? "Predicted, " + gradeName(predictedFuel_) : std::string("Predicted");
             if (row == -1)
-                return "Before last edit";
+                return fuels ? "Before, " + gradeName(beforeFuel_) : std::string("Before last edit");
             return row >= 0 && row < static_cast<int>(rows_.size()) ? rows_[static_cast<std::size_t>(row)].name : "-";
         }
         bool isShown(int row) const
@@ -404,6 +462,8 @@ namespace tee::ui
                 for (double w = plan_.from; w <= plan_.to + 1e-6; w += 500.0 * chart::kRpm)
                     r.steps.push_back(w);
             r.name = std::string(plan_.chassis ? "Chassis " : "Engine ") + std::to_string(rows_.size() + 1);
+            if (const std::string f = fuelName(); !f.empty())
+                r.name += ", " + f;   // a run held per fuel: the grade it ran on in its name
             runTime_ = 0.0f;
             if (ctx_.dyno.startRun(r))
             {
@@ -1109,6 +1169,11 @@ namespace tee::ui
         bool stepped_ = false;
         std::vector<RowView> rows_;
         bool showPredicted_ = true, showBefore_ = true;
+        // The fuel each predicted curve was for (the grade when it came in), by the curve's print, the newest last; the
+        // fuel of the curve shown as predicted, and of the one before the last edit (-1: not known).
+        std::deque<std::pair<std::uint64_t, int>> fuelOf_;
+        std::uint64_t predictedPrint_ = 0, beforePrint_ = 0;
+        int predictedFuel_ = -1, beforeFuel_ = -1;
         int selected_ = -2, extra_ = 0, cursorPx_ = -1;
         float runTime_ = 0.0f;
         std::string runName_, message_;
@@ -1138,5 +1203,10 @@ namespace tee::ui
     {
         auto* d = dynamic_cast<DynoWorkspace*>(&w);
         return d != nullptr ? d->control(which) : funkgui::Rect{};
+    }
+    std::string dynoRowName(Workspace& w, int row)
+    {
+        auto* d = dynamic_cast<DynoWorkspace*>(&w);
+        return d != nullptr ? d->nameOfRow(row) : std::string();
     }
 }
