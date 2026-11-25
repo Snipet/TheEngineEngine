@@ -1,0 +1,75 @@
+# assistant/: Claude in the app (docs/plan/w3-a-assistant.md, card A). One static library, by what it needs:
+#
+#   tee_assistant   tee_host, tee_shell_files and nlohmann/json: the inbox between the assistant's worker and the frame
+#                   (Inbox.h), the tool table both ways in share (Tools.h), the cards of what Claude changed (Cards.h)
+#                   and the app's end of Claude Desktop's link (McpLink.h). No SDL, no FunkGui, no network.
+#   tee-mcp         the MCP server Claude Desktop starts (mcp/Main.cpp): nlohmann/json and McpWire.h only, nothing of
+#                   the host's. macOS and Linux.
+#   TheEngineEngine.mcpb   the Claude Desktop extension: manifest.json and tee-mcp, zipped (target tee-mcpb).
+#
+# Its tests (tests/assistant/) are added here, so the root names this directory once.
+add_library(tee_assistant STATIC
+  src/Inbox.cpp
+  src/Tools.cpp
+  src/Cards.cpp
+  src/McpLink.cpp
+  src/Session.cpp)
+add_library(Tee::assistant ALIAS tee_assistant)
+tee_target_defaults(tee_assistant)
+target_include_directories(tee_assistant PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
+find_package(Threads REQUIRED)
+target_link_libraries(tee_assistant PUBLIC Tee::host Tee::shell_files nlohmann_json::nlohmann_json Threads::Threads)
+
+if(NOT WIN32)
+  add_executable(tee-mcp mcp/Main.cpp)
+  tee_target_defaults(tee-mcp)
+  target_include_directories(tee-mcp PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+  target_link_libraries(tee-mcp PRIVATE nlohmann_json::nlohmann_json)
+
+  # The extension: Claude Desktop installs it with a double click and starts server/tee-mcp from it. Its version goes
+  # up with every change to the bridge or its manifest (Claude Desktop updates an installed extension only to a newer
+  # one). The manifest's shape is TestingPlayground's at 47bac40 (manifest_version 0.3).
+  set(TEE_MCPB_VERSION "0.1.0")
+  if(APPLE)
+    set(_tee_mcpb_platform "darwin")
+  else()
+    set(_tee_mcpb_platform "linux")
+  endif()
+  set(_tee_mcpb "${CMAKE_BINARY_DIR}/mcpb")
+  file(CONFIGURE OUTPUT "${_tee_mcpb}/manifest.json" @ONLY CONTENT [=[{
+  "manifest_version": "0.3",
+  "name": "theengineengine",
+  "display_name": "TheEngineEngine",
+  "version": "@TEE_MCPB_VERSION@",
+  "description": "Ask Claude about the engine open in TheEngineEngine: it reads the build, changes it a step at a time and measures its torque curve.",
+  "long_description": "Open TheEngineEngine and turn on "Allow Claude Desktop" in it, then talk to Claude about the engine on the bench. Claude reads the build, explains its fields, changes them (each change one step you can undo in the app, where it shows as a card), loads a build from the library or saves the open one under a new name, and measures its torque curve on a private copy. Loading over unsaved changes asks you in the app first. Nothing leaves your computer except your conversation with Claude: the extension talks to the app through a private local connection.",
+  "author": { "name": "TheEngineEngine" },
+  "server": {
+    "type": "binary",
+    "entry_point": "server/tee-mcp",
+    "mcp_config": { "command": "${__dirname}/server/tee-mcp", "args": [], "env": {} }
+  },
+  "tools": [
+    { "name": "get_status", "description": "The open build and the engine's gauges" },
+    { "name": "get_build", "description": "Read the build" },
+    { "name": "set_fields", "description": "Change fields, one undo step" },
+    { "name": "predict_curve", "description": "Predict the torque curve" }
+  ],
+  "tools_generated": true,
+  "compatibility": { "platforms": ["@_tee_mcpb_platform@"] }
+}
+]=])
+  add_custom_command(OUTPUT "${CMAKE_BINARY_DIR}/TheEngineEngine.mcpb"
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${_tee_mcpb}/server"
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:tee-mcp> "${_tee_mcpb}/server/tee-mcp"
+    COMMAND ${CMAKE_COMMAND} -E rm -f "${CMAKE_BINARY_DIR}/TheEngineEngine.mcpb"
+    COMMAND ${CMAKE_COMMAND} -E chdir "${_tee_mcpb}" ${CMAKE_COMMAND} -E tar cf "${CMAKE_BINARY_DIR}/TheEngineEngine.mcpb"
+            --format=zip manifest.json server/tee-mcp
+    DEPENDS tee-mcp "${_tee_mcpb}/manifest.json"
+    VERBATIM)
+  add_custom_target(tee-mcpb ALL DEPENDS "${CMAKE_BINARY_DIR}/TheEngineEngine.mcpb")
+endif()
+
+if(TEE_BUILD_TESTS)
+  add_subdirectory("${PROJECT_SOURCE_DIR}/tests/assistant" "${CMAKE_CURRENT_BINARY_DIR}/tests")
+endif()

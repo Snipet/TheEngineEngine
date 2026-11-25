@@ -79,6 +79,38 @@ namespace tee::ui
             views_[static_cast<std::size_t>(i)] = &make<Button>(kViewWords[i], [this, i] { set("sound.view", i); });
             views_[static_cast<std::size_t>(i)]->setLit([this, i] { return std::lround(field("sound.view", 0.0)) == i; });
         }
+        // Hover help (the owner's ask, 25 Nov): where each button puts the listener.
+        const char* cameraSays[kCameras] = {
+            "Listen at the tailpipe's mouth, behind the car",
+            "Listen from behind the car, a few metres back",
+            "Listen from beside the car",
+            "Listen in the engine bay, beside the engine",
+            "Listen from the driver's seat: the cabin's ways in, and the windows to open or shut",
+            "Listen from the side of the road as the car passes",
+            "Listen from a camera following the car",
+            "Listen where you put the listener: drag the point on the plan, turn it by its handle",
+        };
+        for (int i = 0; i < kCameras; ++i)
+            cameras_[static_cast<std::size_t>(i)]->setHelp(cameraSays[i]);
+        const char* placeSays[5] = {
+            "The reference's room around the car",
+            "Open ground: the ground's reflection and little else",
+            "A street between building fronts, which echo",
+            "Inside a tunnel: its walls close on both sides, a long reverberation",
+            "Inside a garage: a small hard room",
+        };
+        const char* viewSays[5] = {
+            "The reference's view at the exhaust",
+            "The reference's view from behind",
+            "The reference's view from the side",
+            "The reference's view at the engine",
+            "The reference's view from the cabin",
+        };
+        for (int i = 0; i < 5; ++i)
+        {
+            places_[static_cast<std::size_t>(i)]->setHelp(placeSays[i]);
+            views_[static_cast<std::size_t>(i)]->setHelp(viewSays[i]);
+        }
     }
 
     std::unique_ptr<Workspace> makeListenWorkspace(WorkspaceContext& c) { return std::make_unique<ListenWorkspace>(c); }

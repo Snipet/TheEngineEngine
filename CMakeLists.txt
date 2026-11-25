@@ -87,6 +87,9 @@ endif()
 # shell/ and app/ (docs/plan/w1-b-shell.md): the shell's libraries, tee-headless and their tests in every build; the
 # window, TheEngineEngine, with TEE_BUILD_APP.
 add_subdirectory(shell)
+# assistant/ (docs/plan/w3-a-assistant.md): Claude in the app, its inbox, tools and Claude Desktop's link, and their
+# tests; before app/, which links it.
+add_subdirectory(assistant)
 add_subdirectory(app)
 tee_check_targets()       # every target of ours has tee_target_defaults() (cmake/TeeChecks.cmake)
 

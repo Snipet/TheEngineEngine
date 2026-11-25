@@ -1530,6 +1530,16 @@ module Exhaust
         for (int c = 0; c < XN_POPS; ++c)
             b.net.popIn[c] = 0.0f;
         const int nb = lay->topo == 0 ? 1 : 2;
+        // exhaust.bang 1: the account's burns (premixed: a bang; unmixed: left out of the sound, docs/models/exhaust.md)
+        for (int k = 0; k < 2; ++k)
+        {
+            pop[k].burnPipe = b.bangOn;
+            for (int e = 0; e < pop[k].nEv; ++e)
+                if (pop[k].evKind[e] == BURN_PREMIXED)
+                    b.bangIn(k < nb ? k : 0, pop[k].evHeat[e], pop[k].evMass[e], pop[k].evT[e], pop[k].evPhi[e],
+                             pop[k].evXb[e], pop[k].evOwn[e]);
+            pop[k].nEv = 0;
+        }
         for (int k = 0; k < nb; ++k)
         {
             const float pv = pop[k].tick();
@@ -1752,6 +1762,10 @@ module Exhaust
         t->portExitTemperature = exitTemperature();
         t->flap = flapFitted() != 0 ? b.fEff[0] : 0.0f;
         t->pFlap = flapFitted() != 0 ? b.pFl[0] : 0.0f;
+        const int bangs = model != 0 && b.bangOn != 0 ? 1 : 0;
+        t->bangHeat = bangs != 0 ? b.bangRate : 0.0f;
+        t->bangTime = bangs != 0 ? b.bangTau : 0.0f;
+        t->bangEnergy = bangs != 0 ? b.bangHeat : 0.0f;
         const int secOfRef[7] = {0, 1, -1, 2, -1, 3, 4};
         for (int i = 0; i < 7; ++i)
         {

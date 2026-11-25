@@ -31,6 +31,9 @@
 #include "settings/Settings.h"
 #include "tee/Build.h"
 #include "tee/Telemetry.h"
+#if defined(TEE_HAS_UI_FRAME)
+ #include "tee/assistant/Session.h"   // card A: the assistant the frame holds (Shown::assistant)
+#endif
 
 #include <funkgui/core/Version.h>
 #include <funkgui/desktop/DesktopHost.h>
@@ -230,12 +233,26 @@ namespace
 
         const bool machine = o.frames >= 0 || !o.shot.empty();
 
+        // ---- Claude Desktop's link (card A): only when the owner turned it on (the settings' allowClaudeDesktop; the
+        // frame's switch is U1's to draw), never in a machine's run ----------------------------------------------------
+#if defined(TEE_HAS_UI_FRAME)
+        if (shown.assistant != nullptr && remembered.settings.allowClaudeDesktop && !machine)
+        {
+            std::string why;
+            if (shown.assistant->allowDesktop(true, why))
+                std::printf("Claude Desktop: allowed (the switch is on in the settings)\n");
+            else
+                std::fprintf(stderr, "Claude Desktop: %s\n", why.c_str());
+        }
+#endif
+
         // ---- the File and Audio menus and their keys (app/WindowCommands.h) ---------------------------------------
         settings::Settings now = remembered.settings;
         std::string note;               // the newest thing a command said, after the status line
         // the simulator's health as the host reports it (card C's HostStats): restarting after a fault; clamped (a block
         // with a sample past full scale, held to it) for a moment after it happens
         std::string health;
+        std::string claudeSaid;          // the status line's Claude Desktop part, as last said
         std::uint32_t clippedSeen = 0, faultsSeen = 0;
         double clampedLeft = 0.0, faultLeft = 0.0, loadHigh = 0.0, suggestLeft = 0.0;
         bool suggested = false;
@@ -249,6 +266,11 @@ namespace
                 line += "   " + health;
             if (stopped.empty() && !note.empty())
                 line += "   " + note;
+#if defined(TEE_HAS_UI_FRAME)
+            if (shown.assistant != nullptr)
+                if (const std::string claude = shown.assistant->statusNote(); !claude.empty())
+                    line += "   " + claude;
+#endif
             controls.setStatus(line);
         };
         app::WindowCommands::Context commandsContext;
@@ -403,6 +425,15 @@ namespace
             }
             controls.tick(dt);
             bool changed = device.pump() || compileChanged;
+#if defined(TEE_HAS_UI_FRAME)
+            // Claude Desktop's line (card A: "connected, 3 changes"), said again whenever it changes
+            if (shown.assistant != nullptr)
+                if (std::string claude = shown.assistant->statusNote(); claude != claudeSaid)
+                {
+                    claudeSaid = std::move(claude);
+                    changed = true;
+                }
+#endif
             if (changed)
                 audioLine = device.isOpen() ? device.info().line() : "the audio device went away: waiting for one";
             if (stopped.empty())

@@ -1464,3 +1464,45 @@ TEST_CASE("the verified reuse on one program: a cached table whose exact key mis
         CHECK(knockLimitCurrent(again, *sim));
     }
 }
+
+TEST_CASE("the fuel's octane number moves the knock and cam keys; at 0 (the grade's own) it keys as before it was there",
+          "[engine][sim][bake]")
+{
+    if (!haveSim())
+        SKIP("sim/engine.fm is not there yet");
+    std::string error;
+    const auto sim = compiled(simDir(), {}, error);
+    REQUIRE(sim != nullptr);
+    Build build(sim->fields());
+    std::vector<std::string> warnings;
+    REQUIRE(build.loadFile(std::filesystem::path(TEE_SOURCE_DIR) / "content/builds/archetypes/economy-four-15.json",
+                           BuildPart::Whole, warnings, error));
+    if (build.fieldOf("fuel.octane") < 0)
+        SKIP("the program has no spec.fuel.octane yet");
+    REQUIRE(build.set("fuel.octane", 0.0));
+    const std::int64_t spark = knockLimitKey(build, *sim), base = knockLimitBaseKey(build, *sim),
+                       cam = intakeCamKey(build, *sim), fields = knockLimitFieldsKey(build);
+    // a number: every key moves, so a baked table is stale
+    REQUIRE(build.set("fuel.octane", 87.0));
+    CHECK(knockLimitKey(build, *sim) != spark);
+    CHECK(knockLimitBaseKey(build, *sim) != base);
+    CHECK(intakeCamKey(build, *sim) != cam);
+    CHECK(knockLimitFieldsKey(build) != fields);
+    const std::int64_t at87 = knockLimitKey(build, *sim);
+    REQUIRE(build.set("fuel.octane", 91.0));
+    CHECK(knockLimitKey(build, *sim) != at87);
+    // back to 0: the keys of a build without the number (the field is not hashed at 0)
+    REQUIRE(build.set("fuel.octane", 0.0));
+    CHECK(knockLimitKey(build, *sim) == spark);
+    CHECK(intakeCamKey(build, *sim) == cam);
+    // and a table baked at 0 is current, at a number stale
+    KnockBakeResult r;
+    r.speeds = {200.0, 400.0};
+    r.loads = {0.5, 1.0};
+    r.limit = {{0.0, 1.0}, {0.0, 2.0}};
+    r.key = knockLimitKey(build, *sim);
+    REQUIRE(applyKnockLimit(build, r, error));
+    CHECK(knockLimitCurrent(build, *sim));
+    REQUIRE(build.set("fuel.octane", 95.0));
+    CHECK_FALSE(knockLimitCurrent(build, *sim));
+}

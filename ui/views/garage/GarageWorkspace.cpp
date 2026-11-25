@@ -229,6 +229,41 @@ namespace tee::ui
         });
         chosen_ = currentBuild() != nullptr ? currentBuild()->id : std::string();
         refilter();
+        // Hover help (the owner's ask, 25 Nov): what each control does.
+        search_->setHelp("Show only the builds whose name, description or notes hold this text, as it is typed");
+        {
+            const char* says[4] = {
+                "Order the builds by name, A to Z",
+                "Order the builds by peak power, the most first",
+                "Order the builds by displacement, the largest first",
+                "Order the builds by their number of cylinders, the fewest first",
+            };
+            for (int i = 0; i < 4; ++i)
+                sorts_[static_cast<std::size_t>(i)]->setHelp(says[i]);
+            const char* shows[5] = {
+                "Show every file: whole builds, engines, cars and tunes",
+                "Show only whole builds: an engine in a car with its tune",
+                "Show only engines, to put in this car",
+                "Show only cars, to put this engine in",
+                "Show only tunes, to try on this engine",
+            };
+            for (int i = 0; i < 5; ++i)
+                filters_[static_cast<std::size_t>(i)]->setHelp(shows[i]);
+        }
+        back_->setHelp("Leave the comparison and go back to the list of builds");
+        loadWhole_->setHelp("Load the chosen build: its engine, car and tune replace this one's; one step of undo");
+        loadEngine_->setHelp("Put the chosen build's engine in this car, keeping this car and its tune");
+        loadCar_->setHelp("Put this engine in the chosen build's car, keeping this engine and its tune");
+        loadTune_->setHelp("Try the chosen build's tune on this engine, keeping this engine and car");
+        compare_->setHelp("Compare the chosen build with this one: both curves overlaid, the differing fields listed");
+        duplicate_->setHelp("Make a copy of the chosen build among your own, to change without touching the original");
+        delete_->setHelp("Delete the chosen build from your own; asks once more before it is gone");
+        keep_->setHelp("Do not delete it after all");
+        save_->setHelp("Save this build over its file");
+        revert_->setHelp("Drop the changes since this build was last saved");
+        saveAs_->setHelp("Type a name and press Enter to save this build as a new file of your own");
+        notes_->setHelp("Your notes on this build, kept with it when it is saved");
+        curves_->setHelp("Torque and power against engine speed: this build's solid, the compared build's dashed");
     }
 
     GarageWorkspace::~GarageWorkspace() = default;
@@ -575,12 +610,14 @@ namespace tee::ui
                 if (armed_ == chosen_)
                 {
                     delete_->setTitle("CONFIRM DELETE");
+                    delete_->setHelp("Delete the chosen build for good");
                     delete_->setPlace({ ix, ry, half, kButtonH }, true);
                     keep_->setPlace({ ix + half + 6.0f, ry, half, kButtonH }, true);
                 }
                 else
                 {
                     delete_->setTitle("DELETE");
+                    delete_->setHelp("Delete the chosen build from your own; asks once more before it is gone");
                     delete_->setPlace({ ix, ry, iw, kButtonH }, true);
                 }
             }
@@ -610,6 +647,14 @@ namespace tee::ui
                                      : b->part == Part::car  ? "USE THIS CAR"
                                      : b->part == Part::tune ? "TRY THIS TUNE"
                                                              : "LOAD THIS BUILD");
+                loadWhole_->setHelp(b->part == Part::engine ? "Put the chosen engine in this car, keeping this car "
+                                                              "and its tune"
+                                    : b->part == Part::car  ? "Put this engine in the chosen car, keeping this "
+                                                              "engine and its tune"
+                                    : b->part == Part::tune ? "Try the chosen tune on this engine, keeping this "
+                                                              "engine and car"
+                                                            : "Load the chosen build: its engine, car and tune "
+                                                              "replace this one's");
                 loadWhole_->setPlace({ ix, row(), iw, kButtonH }, true);
             }
         }

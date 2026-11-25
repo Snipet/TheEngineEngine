@@ -221,6 +221,27 @@ namespace tee::ui
             modelField_ = doc.find("fuel.model");
             fuelPrev_ = &make<Button>("Prev fuel", [this] { stepGrade(-1); });
             fuelNext_ = &make<Button>("Next fuel", [this] { stepGrade(1); });
+            // Hover help (the owner's ask, 25 Nov).
+            for (Slot& sl : slots_)
+                if (sl.edit != nullptr)
+                    sl.edit->setHelp("The map: each cell's value at an engine speed and a load, the cell the engine is "
+                                     "in lit. Type a number or drag up and down to set a cell; Shift and a click "
+                                     "choose a block");
+            auto_->setHelp("On: the ECU's formula makes this map and the table is not used; off: the table as written");
+            bake_->setHelp("Bake the formula's values into this table and turn the formula off, to tune by hand "
+                           "from there; one step of undo");
+            down_->setHelp("Lower the chosen cells by one step of this map");
+            up_->setHelp("Raise the chosen cells by one step of this map");
+            smooth_->setHelp("Smooth the chosen block toward its neighbours; with one cell chosen, the whole map");
+            fill_->setHelp("Fill the chosen block evenly between its four corner cells");
+            sliceX_->setHelp("The map cut along engine speed at the load the engine is at, its cell marked");
+            sliceY_->setHelp("The map cut along load at the engine speed the engine is at, its cell marked");
+            prev_->setHelp("Show the map before this one");
+            next_->setHelp("Show the next map");
+            fuelPrev_->setHelp("The fuel before this one in the list (Regular, Midgrade, Premium, Race, E85, "
+                               "Methanol...)");
+            fuelNext_->setHelp("The fuel after this one in the list (Regular, Midgrade, Premium, Race, E85, "
+                               "Methanol...)");
             for (int i = 0; i < kMapCount; ++i)
                 if (slots_[static_cast<std::size_t>(i)].field >= 0)
                 {
