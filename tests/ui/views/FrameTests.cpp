@@ -34,6 +34,11 @@ namespace
         bool cold = false;      // FrameServices::coldStart (the settings' ENGINE START)
         std::string spark;      // FrameServices::sparkMap: the calibration bake's state ("" none)
         int mode = 0;
+        // Card A's Session as the frame sees it (FrameServices::desktopAllowed ... removeKey), served when `assistant`:
+        // the switch (a refusal's words in `refuseWith`), the status line, the key store (what was saved, never shown).
+        bool desktop = false;
+        std::string refuseWith, status, savedKey, refuseKey;
+        int saves = 0;
         std::unique_ptr<AppFrame> frame;
         std::unique_ptr<funkgui::HeadlessHost> host;
 
@@ -43,7 +48,8 @@ namespace
         bool own;
         std::string idOf(const std::string& id) const { return own && id != "drive" ? "own-" + id : id; }
 
-        explicit FrameRig(int w = 1280, int h = 800, float dpi = 2.0f, double t = 4.6, bool ownSlots = true) : demo(t, !ownSlots), own(ownSlots)
+        explicit FrameRig(int w = 1280, int h = 800, float dpi = 2.0f, double t = 4.6, bool ownSlots = true, bool assistant = false)
+            : demo(t, !ownSlots), own(ownSlots)
         {
             demo.engine.hold(true);   // every picture at the same moment of the script
             tee::ui::FrameServices s;
@@ -73,6 +79,31 @@ namespace
             s.mode = [this] { return mode; };
             s.setMode = [this](int m) { mode = m; };
             s.clutch = [this](float v) { clutch = v; };
+            if (assistant)
+            {
+                s.desktopAllowed = [this] { return desktop; };
+                s.allowDesktop = [this](bool on, std::string& why) {
+                    if (on && !refuseWith.empty())
+                        return why = refuseWith, false;
+                    desktop = on;
+                    return true;
+                };
+                s.desktopStatus = [this] { return desktop ? status : std::string(); };
+                s.saveKey = [this](std::string typed, std::string& why) {
+                    ++saves;
+                    if (!refuseKey.empty())
+                        return why = refuseKey, false;
+                    savedKey = std::move(typed);
+                    return true;
+                };
+                s.keyMask = [this] {
+                    return savedKey.empty() ? std::string("none saved") : "saved, ending ..." + savedKey.substr(savedKey.size() - 4);
+                };
+                s.removeKey = [this](std::string&) {
+                    savedKey.clear();
+                    return true;
+                };
+            }
             std::vector<tee::ui::WorkspaceSlot> slots = tee::ui::defaultSlots();
             for (tee::ui::WorkspaceSlot& sl : slots)
                 sl.id = idOf(sl.id);
@@ -965,6 +996,196 @@ namespace
         }
         sheet(2.0f, "sheet.frame.png");
         sheet(1.0f, "sheet.frame.dpi1.png");
+        return 0;
+    }
+}
+
+namespace
+{
+    using namespace tee::test::views;
+    using tee::ui::AppFrame;
+
+    // The item of `role` titled `title`: its bounds (empty: none shown).
+    funkgui::Rect boundsOf(funkgui::HeadlessHost& host, const std::string& title, funkgui::A11yRole role)
+    {
+        for (const funkgui::A11yItem& it : host.accessibility())
+            if (it.title == title && it.role == role)
+                return it.bounds;
+        return {};
+    }
+    bool clickOn(funkgui::HeadlessHost& host, const std::string& title, funkgui::A11yRole role = funkgui::A11yRole::button)
+    {
+        const funkgui::Rect r = boundsOf(host, title, role);
+        if (r.isEmpty())
+            return false;
+        host.click(r.centreX(), r.centreY());
+        host.tick(20);
+        return true;
+    }
+    std::string allText(funkgui::HeadlessHost& host)
+    {
+        std::string out;
+        for (const funkgui::A11yItem& it : host.accessibility())
+            out += it.title + "|" + it.value + "|" + it.description + "\n";
+        return out;
+    }
+
+    // The settings' CLAUDE DESKTOP row (card A's switch; the lead's ask, 25 Nov): off by default ("the app listens on
+    // nothing"), Allow turns it on and the line follows the status (Session::statusNote), a refusal leaves it off and
+    // says why in words; with no assistant served, no row.
+    VIEW_TEST(testFrameDesktop, "frame.desktop")
+    {
+        {
+            FrameRig bare(1100, 700, 2.0f);
+            bare.frame->showSettings(true);
+            bare.host->tick(20);
+            CHECK(bare.frame->desktopLine().empty() && boundsOf(*bare.host, "Allow", funkgui::A11yRole::button).isEmpty());
+        }
+        FrameRig rig(1100, 700, 2.0f, 4.6, true, true);
+        rig.frame->showSettings(true);
+        rig.host->tick(20);
+        CHECK_MSG(rig.frame->desktopLine() == "Off: the app listens on nothing.", rig.frame->desktopLine());
+        // Every unit's stepper still above the cockpit at the smallest window, the row added.
+        for (const tee::ui::Stepper* st : rig.frame->unitSteppers())
+            CHECK_MSG(st->bounds().bottom() <= rig.frame->inspectorRect().bottom(), std::to_string(st->bounds().bottom()));
+        golden("frame.desktop.off", *rig.host);
+        CHECK(clickOn(*rig.host, "Allow") && rig.desktop);
+        CHECK_MSG(rig.frame->desktopLine() == "Allowed", rig.frame->desktopLine());
+        rig.status = "Claude Desktop connected, 3 changes";
+        rig.host->tick(5);
+        CHECK_MSG(rig.frame->desktopLine() == "Connected, 3 changes", rig.frame->desktopLine());
+        golden("frame.desktop.connected", *rig.host);
+        CHECK(clickOn(*rig.host, "Off") && !rig.desktop);
+        rig.refuseWith = "another app has Claude Desktop's link";
+        CHECK(clickOn(*rig.host, "Allow") && !rig.desktop);
+        CHECK_MSG(rig.frame->desktopLine() == "Not allowed: another app has Claude Desktop's link", rig.frame->desktopLine());
+        golden("frame.desktop.refused", *rig.host);
+        return 0;
+    }
+
+    // A stand-in for card A's ChatView (ui/ links nothing of the assistant; its own panel is drawn in the root build's
+    // build.chat): a framed box with a line of words and an "Add a key" button that calls the frame's key dialog.
+    class StandInChat final : public tee::ui::Widget
+    {
+    public:
+        StandInChat(uint32_t id, std::function<void()> addKey) : Widget(id), addKey_(std::move(addKey)) { title_ = "Chat"; }
+        funkgui::Rect addKeyRect() const { return { bounds_.x + 12.0f, bounds_.y + 40.0f, 110.0f, 28.0f }; }
+        void draw(funkgui::Canvas& c, const funkgui::Theme& th, bool) const override
+        {
+            const tee::ui::look::Palette p = tee::ui::look::Palette::of(th);
+            c.rrect(bounds_.x, bounds_.y, bounds_.w, bounds_.h, 6.0f, p.panel, 1.0f, p.edge);
+            c.text("THE CHAT'S PANEL (CARD A'S)", bounds_.x + 12.0f, bounds_.y + 14.0f, tee::ui::look::kCaps, p.label);
+            const funkgui::Rect b = addKeyRect();
+            c.rrect(b.x, b.y, b.w, b.h, 5.0f, p.raised, 1.0f, p.edge);
+            c.text("ADD A KEY", b.centreX(), b.y + 9.0f, tee::ui::look::kCaps, p.value, funkgui::Align::centre);
+        }
+        void pointerDown(const funkgui::PointerEvent& e, funkgui::GestureController&, funkgui::HostServices&) override
+        {
+            if (addKeyRect().contains({ e.x, e.y }) && addKey_)
+                addKey_();
+        }
+        void accessibility(std::vector<funkgui::A11yItem>& out) const override
+        {
+            funkgui::A11yItem it;
+            it.id = id_;
+            it.role = funkgui::A11yRole::staticText;
+            it.bounds = bounds_;
+            it.title = "Chat";
+            out.push_back(it);
+        }
+        bool a11yAction(uint32_t, funkgui::A11yAction, double, funkgui::GestureController&) override { return false; }
+
+    protected:
+        const char* kind() const override { return "chat"; }
+
+    private:
+        std::function<void()> addKey_;
+    };
+
+    funkgui::KeyEvent ch(char c, bool command = false)
+    {
+        funkgui::KeyEvent e;
+        e.key = funkgui::Key::character;
+        e.ch = static_cast<char32_t>(c);
+        e.mods.ctrl = command;
+        return e;
+    }
+    funkgui::KeyEvent keyOf(funkgui::Key k)
+    {
+        funkgui::KeyEvent e;
+        e.key = k;
+        return e;
+    }
+
+    // The chat's place (the lead's ask, 25 Nov): no CHAT until a chat is mounted; CHAT opens it in the inspector's
+    // column (the tabs and the ribbon give it room) and closes it; SETTINGS takes the column back. Its key dialog
+    // (from the chat's "Add a key" and from KEY): the key typed and pasted shows as stars and a count, never itself
+    // (not drawn, not in accessibility), Enter saves it through the shell and forgets it here, a refusal is said in
+    // words, Escape closes; while it is open the frame behind takes no key.
+    VIEW_TEST(testFrameChat, "frame.chat")
+    {
+        FrameRig rig(1100, 700, 2.0f, 4.6, true, true);
+        AppFrame& f = *rig.frame;
+        rig.showWorkspace("tune");
+        CHECK(boundsOf(*rig.host, "Chat", funkgui::A11yRole::button).isEmpty() && !f.chatMounted());
+        auto chat = std::make_unique<StandInChat>(f.nextId(), [&f] { f.openKeyDialog(); });
+        StandInChat* const panel = chat.get();
+        f.mountChat(std::move(chat));
+        rig.host->tick(10);
+        CHECK(!f.chatOpen() && !panel->shown());   // closed at first
+        CHECK(clickOn(*rig.host, "Chat") && f.chatOpen() && panel->shown());
+        CHECK(panel->bounds().x >= f.stageRect().right() && f.ribbonRect().isEmpty() && f.inspectorTabRect(0).bottom() > 0.0f);
+        for (int p = 0; p < f.inspectorPageCount(); ++p)   // the tabs give their room
+            CHECK(boundsOf(*rig.host, f.inspectorTitle(p), funkgui::A11yRole::button).isEmpty() || f.inspectorPageCount() < 2);
+        golden("frame.chat.open", *rig.host);
+        // SETTINGS takes the column; CHAT again gives it back to the chat; CHAT closes it, the inspector as it was.
+        CHECK(clickOn(*rig.host, "Settings") && !f.chatOpen() && f.settingsShown());
+        CHECK(clickOn(*rig.host, "Chat") && f.chatOpen());
+        CHECK(clickOn(*rig.host, "Settings") && !f.chatOpen() && f.settingsShown());
+        CHECK(clickOn(*rig.host, "Settings") && !f.settingsShown());
+        CHECK(clickOn(*rig.host, "Chat") && clickOn(*rig.host, "Chat") && !f.chatOpen() && !f.ribbonRect().isEmpty());
+        // The key dialog from the chat's "Add a key".
+        CHECK(clickOn(*rig.host, "Chat"));
+        const funkgui::Rect add = panel->addKeyRect();
+        rig.host->click(add.centreX(), add.centreY());
+        rig.host->tick(10);
+        CHECK(f.keyDialogOpen());
+        tee::ui::KeyDialog& d = *f.keyDialog();
+        CHECK(d.mask() == "none saved");
+        const std::string secret = "sk-ant-api03-TESTKEYabcdefghijklmnopqrstuvwxyz0123456789-wxyz";
+        for (const char c : std::string("sk-ant-"))
+            f.key(ch(c));
+        rig.host->setClipboard(secret.substr(7) + "\n");
+        f.key(ch('v', true));                          // pasted: its line break dropped
+        rig.host->tick(10);
+        CHECK_MSG(d.typed() == secret.size(), std::to_string(d.typed()));
+        CHECK(f.key(ch('z', true)) && rig.demo.doc.canUndo() == false);   // Ctrl-Z is the dialog's (typed nothing), not the build's undo
+        CHECK(d.typed() == secret.size());
+        // Never the key: not in accessibility, not in the words drawn (the field says how many characters).
+        const std::string said = allText(*rig.host);
+        CHECK_MSG(said.find("TESTKEY") == std::string::npos && said.find(std::to_string(secret.size()) + " characters") != std::string::npos, said);
+        golden("frame.chat.key", *rig.host);
+        // A refusal in words; the typed key forgotten all the same.
+        rig.refuseKey = "the key was refused: 401, not a valid key";
+        f.key(keyOf(funkgui::Key::enter));
+        rig.host->tick(5);
+        CHECK(rig.saves == 1 && d.typed() == 0 && d.messageIsError() && d.message() == rig.refuseKey && f.keyDialogOpen());
+        picture("frame.chat.key.refused", *rig.host);
+        // Saved: the mask's last four, the key forgotten here.
+        rig.refuseKey.clear();
+        rig.host->setClipboard(secret);
+        f.key(ch('v', true));
+        f.key(keyOf(funkgui::Key::enter));
+        rig.host->tick(5);
+        CHECK(rig.savedKey == secret && d.typed() == 0 && !d.messageIsError());
+        CHECK_MSG(d.mask() == "saved, ending ...wxyz", d.mask());
+        // Escape closes it; KEY in the chat's header opens it again, REMOVE removes the key.
+        f.key(keyOf(funkgui::Key::escape));
+        rig.host->tick(5);
+        CHECK(!f.keyDialogOpen() && f.chatOpen());
+        CHECK(clickOn(*rig.host, "Key") && f.keyDialogOpen());
+        CHECK(clickOn(*rig.host, "Remove") && rig.savedKey.empty() && d.mask() == "none saved");
+        CHECK(clickOn(*rig.host, "Close") && !f.keyDialogOpen());
         return 0;
     }
 }

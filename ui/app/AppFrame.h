@@ -29,6 +29,7 @@
 #pragma once
 
 #include "app/Cockpit.h"
+#include "app/KeyDialog.h"
 #include "app/LoadMeter.h"
 #include "app/TryFirst.h"
 #include "app/Panes.h"
@@ -114,6 +115,23 @@ namespace tee::ui
         bool settingsShown() const noexcept { return unitsPage_; }
         void showUnits(bool on);
         void showSettings(bool on) { showUnits(on); }
+        // The settings' CLAUDE DESKTOP row's line (FrameServices::desktopAllowed, allowDesktop, desktopStatus): a
+        // refusal's why, the status (Session::statusNote), or what off means. Empty: no row.
+        std::string desktopLine() const;
+
+        // The key chat (card A's ChatView: a kit Widget the shell makes and hands over, so ui/ links nothing of the
+        // assistant). The top bar's CHAT opens it in the inspector's column (the page, its tabs and the ribbon give it
+        // the room and come back as they were when it closes); closed at first. Its key dialog (KeyDialog.h) opens from
+        // the chat's "Add a key" (the shell's hook calls openKeyDialog) and from KEY in the column's header. With no
+        // chat mounted there is no CHAT and no dialog.
+        Widget& mountChat(std::unique_ptr<Widget> chat);
+        bool chatMounted() const noexcept { return chat_ != nullptr; }
+        bool chatOpen() const noexcept { return chatOpen_; }
+        void openChat(bool on);
+        funkgui::Rect chatRect() const;                      // the chat's room in the column (empty: closed)
+        void openKeyDialog();
+        bool keyDialogOpen() const noexcept { return keyDialog_ != nullptr && keyDialog_->isOpen(); }
+        KeyDialog* keyDialog() const noexcept { return keyDialog_; }
         bool ribbonFolded() const noexcept { return folded_; }
         void foldRibbon(bool folded);
 
@@ -210,6 +228,16 @@ namespace tee::ui
         Label* audioLine_ = nullptr;
         Button *audioMenu_ = nullptr, *graphite_ = nullptr, *paper_ = nullptr, *full_ = nullptr, *economy_ = nullptr;
         Button *warmStart_ = nullptr, *coldStart_ = nullptr;   // ENGINE START (FrameServices::coldStart)
+        Button *desktopOff_ = nullptr, *desktopOn_ = nullptr;  // CLAUDE DESKTOP (FrameServices::allowDesktop)
+        float desktopNoteY_ = -1.0f;
+        std::string desktopWhy_;                               // the switch's last refusal (cleared by a change)
+        void setDesktop(bool on);
+        // the key chat
+        Widget* chat_ = nullptr;
+        KeyDialog* keyDialog_ = nullptr;
+        int keyDialogIndex_ = -1;
+        Button *chatButton_ = nullptr, *keyButton_ = nullptr;
+        bool chatOpen_ = false;
         float startNoteY_ = -1.0f;
         float qualityNoteY_ = 0.0f, settingsHeadX_ = 0.0f;
         std::vector<std::pair<std::string, float>> settingsHeads_;   // a heading and its y (arrange's)
