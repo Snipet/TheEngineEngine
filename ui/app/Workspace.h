@@ -122,6 +122,10 @@ namespace tee::ui
         // Knock-limited points (card C's PredictPoint/DynoPoint::knockLimited, 765684a): knock control's retard reached
         // 0.5 degrees there, the torque a mean over its sawtooth; empty when the source says nothing. Mark such a
         // point (not by colour alone) and say knockText(i): "knock-limited, retard 7 to 11 deg".
+        // Points the rev limiter acted on (card C's PredictPoint::limited): the torque is the cut's, no measure of the
+        // engine. Drawn apart (not joined to the curve), left out of the peaks. Empty when the source says nothing.
+        std::vector<char> limited;
+        bool limitedAt(std::size_t i) const noexcept { return i < limited.size() && limited[i] != 0; }
         std::vector<char> knock;
         std::vector<double> retardMin, retardMax;   // degrees, at each point
         bool knockLimited(std::size_t i) const noexcept { return i < knock.size() && knock[i] != 0; }
@@ -155,7 +159,7 @@ namespace tee::ui
         {
             Peak p;
             for (std::size_t i = 0; i < v.size() && i < speed.size(); ++i)
-                if (std::isfinite(v[i]) && !(v[i] <= p.value))
+                if (std::isfinite(v[i]) && !(v[i] <= p.value) && !limitedAt(i))
                     p = { v[i], speed[i] };
             return p;
         }
