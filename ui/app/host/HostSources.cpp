@@ -266,7 +266,16 @@ namespace tee::ui
             return "bake failed";
         const std::string s = tee::knockBakeStateName(bakes_.state());
         const std::string stage = bakes_.stage();
-        return s == "baking" && !stage.empty() ? "baking " + stage : s;
+        if (s != "baking" || stage.empty())
+            return s;
+        const auto p = bakes_.progress();
+        return "baking " + stage + (p.total > 0 ? " " + std::to_string(p.done) + " of " + std::to_string(p.total) : std::string());
+    }
+
+    std::vector<std::vector<bool>> ServiceBake::stillKnocking() const
+    {
+        tee::BakedFields last;
+        return bakes_.lastSpark(last) ? last.stillKnocking : std::vector<std::vector<bool>>{};
     }
 
     std::string ServiceBake::error() const { return applyError_.empty() ? bakes_.error() : applyError_; }

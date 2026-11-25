@@ -231,6 +231,7 @@ namespace tee::ui
         bool tryFirstClosed_ = false, sawRunning_ = false;
         void closeTryFirst();
         std::string bakeWords() const;   // the bake's state as the status line says it (empty: nothing to say)
+        static std::string bakeWordsOf(const std::string& state);   // the same, a state without its count
         bool bakeShown_ = false;
         Button *undo_ = nullptr, *redo_ = nullptr;
         // the cockpit

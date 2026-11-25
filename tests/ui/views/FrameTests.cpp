@@ -536,6 +536,9 @@ namespace
             rig.spark = "baking spark map again";
             rig.host->tick(3);
             CHECK(said(rig, "Baking the spark map again"));
+            rig.spark = "baking cam 23 of 42";   // with card C's count
+            rig.host->tick(3);
+            CHECK(said(rig, "Baking the cam 23 of 42"));
             rig.showWorkspace("drive");
             rig.spark = "baking spark map";
             rig.host->tick(3);

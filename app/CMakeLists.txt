@@ -19,7 +19,7 @@ function(tee_app_gui target)
   target_sources(${target} PRIVATE "${PROJECT_SOURCE_DIR}/app/Offline.cpp" "${PROJECT_SOURCE_DIR}/app/FrameSources.cpp"
                                    "${PROJECT_SOURCE_DIR}/app/GarageLibrary.cpp"
                                    "${TEE_SHELL_PANEL_SOURCE}")
-  target_link_libraries(${target} PRIVATE tee_app FMinus::FMinus)
+  target_link_libraries(${target} PRIVATE tee_app Tee::shell_settings FMinus::FMinus)
   target_compile_definitions(${target} PRIVATE "TEE_VERSION=\"${PROJECT_VERSION}\"")
   funkgui_configure_product(${target} PRODUCT TheEngineEngine OBJC_PREFIX Tee ENV_PREFIX TEE_
                             PREFS_FOLDER TheEngineEngine)
