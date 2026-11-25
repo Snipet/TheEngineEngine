@@ -268,3 +268,28 @@ section 9): what `SimHost` keeps when `LoadOptions::log` is on, and what `tee::r
 
 A Spec write is the bytes at an offset of the main module, so a log belongs to the program it was made with (a log of
 another layout is refused when an offset fits no field).
+
+## A bake cache entry: `tee-bake-cache`
+
+`CalibrationBakeOptions::cacheDirectory` holds one file per table baked (host/include/tee/Bake.h):
+`spark-<key>.json` for a knock-limit table and `cam-<key>.json` for an intake cam map. `<key>` is the table's exact
+key: `knockLimitKey` or `intakeCamKey`, made from the program's sources and the fields that move the table. The newest
+256 files are kept, by their last use. Each file is one line of JSON:
+
+```json
+{"format": "tee-bake-cache", "key": 1208261038, "fieldsKey": 377154212,
+ "fields": [["ecu.maps.knockLimit", [...]], ["ecu.maps.knockLimitAuto", [0]], ["ecu.maps.knockLimitKey", [1208261038]]],
+ "stillKnocking": [[false, false], [true, false]],
+ "check": {"speeds": [104.7, 209.4], "torque": [68.0, 123.1], "retard": [0.0, 3.9], "valid": [true, true]}}
+```
+
+- `fields`: the values the table's apply wrote, field by field.
+- `stillKnocking`: a spark table's cells still knocking after its corrections, by speed and load.
+- `fieldsKey`: the same key without the program (`knockLimitFieldsKey` or `intakeCamFieldsKey`).
+- `check`: the full-load row measured with the table applied: speeds in rad/s, torque in N m, and knock control's
+  mean retard in degrees. `valid` is false where the point faulted or the limiter cut it.
+
+A stage whose exact key has a file takes it at once. When the exact key misses, the newest file with the same
+`fieldsKey` and a `check` is a candidate, baked under another program. It is checked on today's program and taken only
+if every point agrees (Bake.h says how); then it is written again under today's key. A file without `fieldsKey` or
+`check` (written before the verified reuse) is never a candidate. A damaged file counts as absent.
