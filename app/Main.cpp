@@ -510,6 +510,7 @@ namespace
             shown.window->tryFirstDone = [&now] { now.tryFirstSeen = true; };
             shown.window->coldStart = [&now] { return now.coldStart; };
             shown.window->setColdStart = [&now](bool cold) { now.coldStart = cold; };
+            shown.window->desktopChosen = [&now](bool on) { now.allowClaudeDesktop = on; };
         }
         std::string why;
         if (!host.open(why))

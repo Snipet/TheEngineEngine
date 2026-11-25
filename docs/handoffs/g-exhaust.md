@@ -130,3 +130,12 @@ exhaust sets it each sample: exhaust.model 1 and exhaust.bang 1), the account ha
   3. Per event, a spark cut's premixed heat and its peak source exceed a fuel cut's, which has none. The ordering is
      over the rally five against first.json.
 - Not in this seam: anti-lag's heat into the turbine (the lead: listed, not built).
+
+**The turbine's books and the bangs (for N2's lane, the lead's flag, 25 Nov).** Under Burned in the pipe, a burn's heat
+enters as a volume source at the collector. Its expansion raises the pressure ahead of a turbine: the rally five's
+collector reached 4.4 to 5.6 bar mean on anti-lag. `bookLet`, which closes the turbines' mass against what the valves
+let out, never sees that heat, and the housing's gas temperature doesn't either.
+- bookLet would need the burns' heat in its energy book: the enthalpy into the housing per block, `b.burn[k].released`'s
+  increase, alongside the valves' `mE`.
+- The housing's inlet temperature would need to rise by that heat over the block's mass flow and cp.
+- Not built (anti-lag's turbine drive waits: the lead's ruling).

@@ -314,6 +314,19 @@ namespace tee::ui
         // shows its DASH buttons only while both are served.
         std::function<int()> driveStyle;
         std::function<void(int)> setDriveStyle;
+        // Claude Desktop's link (card A: assistant/include/tee/assistant/Session.h), the settings' CLAUDE DESKTOP row:
+        // whether it is allowed now (Session::desktopAllowed); the switch (Session::allowDesktop: false, with `why`,
+        // when it cannot be: the switch stays off and the row says why; the shell keeps a choice that took in the
+        // settings' allowClaudeDesktop); the status line (Session::statusNote: "" while off). Empty: no row.
+        std::function<bool()> desktopAllowed;
+        std::function<bool(bool on, std::string& why)> allowDesktop;
+        std::function<std::string()> desktopStatus;
+        // The key chat's key, for the frame's key dialog (Session::saveKey, keyMask, removeKey): a key as typed, saved
+        // in the system's store (false, with why: nothing changed); the saved one's mask (at most its last four
+        // characters, "" when none); the key removed. The dialog never draws, logs or keeps the key it was given.
+        std::function<bool(std::string typed, std::string& why)> saveKey;
+        std::function<std::string()> keyMask;
+        std::function<bool(std::string& why)> removeKey;
         std::function<std::string()> tryFirst;
         std::function<void()> tryFirstDone;
         std::function<int()> loadFits;

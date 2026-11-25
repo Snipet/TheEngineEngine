@@ -28,6 +28,9 @@
  #include "views/drive/Dash.h"          // DRIVE's dash style, a line of the interface's settings text
  #include "tee/Build.h"
  #include "tee/assistant/Session.h"
+ #if defined(TEE_HAS_CHAT_VIEW)
+  #include "ChatView.h"                 // card A's key chat panel, mounted by the frame (U1's place)
+ #endif
 #endif
 
 #include <fminus/FMinus.h>
@@ -199,6 +202,12 @@ namespace tee::app
                 return dir.empty() || !in ? std::string() : std::string(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
             };
             shown.assistant = &kept->assistant;
+            // The settings' CLAUDE DESKTOP row and the chat's key dialog (U1's, over card A's Session).
+            frameServices.desktopAllowed = [kept] { return kept->assistant.desktopAllowed(); };
+            frameServices.desktopStatus = [kept] { return kept->assistant.statusNote(); };
+            frameServices.saveKey = [kept](std::string typed, std::string& why) { return kept->assistant.saveKey(std::move(typed), why); };
+            frameServices.keyMask = [kept] { return kept->assistant.keyMask(); };
+            frameServices.removeKey = [kept](std::string& why) { return kept->assistant.removeKey(why); };
             shown.frame = [kept] {
                 kept->bake.tick();
                 // the app's own heavy work (the ribbon's curve, the bake baking or checking), sampled here on the frame's
@@ -241,10 +250,29 @@ namespace tee::app
                     if (hooks->audioMenu)
                         hooks->audioMenu();
                 };
+                // The switch: a change that took is the settings' allowClaudeDesktop (a refusal leaves it as it was).
+                frameServices.allowDesktop = [kept, hooks](bool on, std::string& why) {
+                    if (!kept->assistant.allowDesktop(on, why))
+                        return false;
+                    if (hooks->desktopChosen)
+                        hooks->desktopChosen(on);
+                    return true;
+                };
             }
             std::unique_ptr<ui::AppFrame> frame =
                 ui::makeAppFrame(kept->doc, kept->units, player, std::move(frameServices), &kept->dyno, &kept->scope);
             frame->setLibrary(&kept->garage);
+           #if defined(TEE_HAS_CHAT_VIEW)
+            // The key chat: card A's panel on the Session's port, in the frame's column (closed at first); its "Add a
+            // key" opens the frame's key dialog.
+            {
+                ui::AppFrame* const fr = frame.get();
+                auto chat = std::make_unique<assistant::view::ChatView>(
+                    assistant::view::ChatView::Hooks{ [fr] { fr->openKeyDialog(); } }, 0x7A000000u);
+                chat->attach(&kept->assistant.chat());
+                frame->mountChat(std::move(chat));
+            }
+           #endif
             shown.waitForDyno = [kept](double seconds, std::string& error) {
                 const bool got = waitForCurve(kept->dyno, seconds);
                 error = kept->dyno.error();

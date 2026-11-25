@@ -208,6 +208,12 @@ arch(slug="rotary-twin-13", name="Rotary twin", geo="ref-16-rotary-2", layout="R
      # RX-7 workshop manual ("at about 4500 rpm", a search snippet); no Mazda figure read (sources section 16)
      # stated again at N2's word (25 Nov, 08:03: the join's cure in, its cases read this build); taken off 06:40 to 08:03
      boost=dict(kind="Twin turbos", layout="Sequential", target=0.7, spring=0.5, seqRpm=4500),
+     # its ports from the 13B-REW's timing (N1, 25 Nov 11:37, the lead's go 14:39), eccentric-shaft degrees: exhaust opens
+     # 75 BBDC, closes 48 ATDC; primary intake opens 45 ATDC, secondary 32 ATDC, both close 50 ABDC (the factory shop
+     # manual as quoted on the LinkECU forum; MotoIQ's FD build; AusRotary): in the generator's convention N1's
+     # (130.0, 392.0, 381.3, 573.3), 11 deg of overlap, the two intake ports taken as one at the secondary's opening
+     # (JUDGEMENT); before, the cam dial at 0.55 (judgement, some 47 deg of overlap)
+     rotaryPorts=(130.0, 392.0, 381.3, 573.3),
      grade="Premium (91)", car="light-coupe-rotary", timing="Gears",
      notes="A twin-rotor Wankel, 2 x 654 cc, 9.0:1, with two sequential turbos (the 13B-REW kind: 206 to 280 PS, "
            "the latter at 6500 rpm, some 294 N m at 5000; Wikipedia, makers' figures, firm to 10 %). Its second turbo "
@@ -297,7 +303,7 @@ arch(slug="boxer-four-turbo-unequal", runner=0.3, name="Boxer four turbo with un
            "393 N m at 4000; Wikipedia and enthusiasts' tables). Its headers' primaries of unequal length are the "
            "burble: written in the exhaust builder (primSpread), which the program does not yet run. All-wheel "
            "drive, six-speed manual.")
-arch(slug="two-stage-cam-20", runner=0.3, convK=16.0, name="Two-stage-cam 2.0 L", geo="ref-05-inline-4", layout="Inline 4",
+arch(slug="two-stage-cam-20", runner=0.3, convK=16.0, camOwn={"inB": "1mm"}, name="Two-stage-cam 2.0 L", geo="ref-05-inline-4", layout="Inline 4",
      bore=87.0, stroke=84.0, rod=153.0, cr=11.7, valves=4, dIn=34.0, dEx=29.0,
      cam=(236, 204, 8.5, 110, 232, 200, 8.0, 112), train="Rocker", redline=9000, idle=900,
      # the high stage as the K20A Type R's (N3, 20:18): 280/278 deg, 12.65/12.14 mm lift (motorreviewer.com, an
@@ -314,14 +320,18 @@ arch(slug="two-stage-cam-20", runner=0.3, convK=16.0, name="Two-stage-cam 2.0 L"
      # cylinder sees both valves; the LEAD'S READING), 244.5/242 deg on 9.26/8.67 mm; seat assumed, 1 mm by the
      # rocker class's rule; the centres still the generator's
      camCard=dict(cam=(244.5, 206, 9.26, 110, 242, 204, 8.67, 112),
-                  stages=dict(inDurSeatB=280, inDur1mmB=248, inLiftB=0.01265, exDurSeatB=278, exDur1mmB=246,
-                              exLiftB=0.01214, stageSpeed=5850 * RPM),
+                  stages=dict(inDurSeatB=280, inDur1mmB=247, inLiftB=0.01265, inCentreB=98, exDurSeatB=278,
+                              exDur1mmB=246, exLiftB=0.01214, stageSpeed=5850 * RPM),
                   cardNote="Its switch at the F20C's own 5850 rpm (Honda's S2000 fact book and its 2001 powertrain "
                            "release). Both stages the K20A's, borrowed, from an aggregator (motorreviewer.com, no source "
                            "or lift height stated): \"244/240 deg and 8.84/8.59 mm; 280/278 deg and 12.65/12.14 mm; "
                            "245/244 deg and 9.68/8.74 mm\", unlabelled; the high the second, the low the mean of the "
                            "first and third (244.5/242 deg, 9.26/8.67 mm), taken as the primary and secondary low "
-                           "lobes: the lead's reading. The seat assumed, the 1 mm by the rocker class's rule."),
+                           "lobes: the lead's reading. The seat assumed, the 1 mm by the rocker class's rule. Its HIGH "
+                           "INTAKE lobe the F20C's own (the AP1's VTEC intake lobe: 247 deg at 1 mm on a centre of 98 "
+                           "deg ATDC, an S2KI thread's card, its poster calling it unverified: FORUM, UNVERIFIED; the "
+                           "S2000 service manual's 1 mm timing not found), held at 1 mm, its seat by the rocker class's "
+                           "rule; its lift still the K20A's 12.65 mm (the thread's 12.2 mm not applied)."),
      grade="Premium (91)", car="roadster", timing="Chain", lifters="Solid",
      notes="A 2.0 L four with two cam profiles a valve switched at 6000 rpm: 87 x 84 mm (1997 cc), 11.7:1, 9000 rpm "
            "(the F20C kind: 176 kW at 8300 rpm, 208 N m at 7500; makers' figures, from memory, firm to 5 %; the "

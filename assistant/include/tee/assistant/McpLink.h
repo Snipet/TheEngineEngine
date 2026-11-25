@@ -54,6 +54,8 @@ namespace tee::assistant
         // the socket, the folder is not private, Windows). Already on: true.
         bool start(std::string& why);
         // The switch off: the socket gone, every connection closed, the running call cancelled and waited for.
+        // Returns once both of the link's threads have ended (joined); the system may list an ended thread for a
+        // moment more (Linux's /proc), which is the kernel's, not the link's.
         void stop();
 
         struct View
@@ -64,6 +66,7 @@ namespace tee::assistant
             std::string tool;            // the one running, else the last
             std::uint64_t calls = 0;     // calls answered since start
             std::uint64_t refused = 0;   // connections refused for their user
+            std::uint64_t accepted = 0;  // connections accepted (their user's checked) since the object was made
         };
         View view() const;
 

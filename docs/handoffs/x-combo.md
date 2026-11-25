@@ -43,3 +43,15 @@ hear in each group and the yes-or-no lines.
 
 **Not run**: the .ps1 (no Windows here), the whole pack (only --quick), the hour soak, the nightly triples; nothing
 on macOS or Windows by me (CI only). Nobody has listened to anything. **Outside my paths**: none. **FMinus**: no issue.
+
+**Moving the fixtures out of content/** (the lead's ruling, 25 Nov 15:09; one coordinated step in the next window, the
+lead calls the order). `content/builds/combo/findings/` (x001 to x040), `pack/` and the five combo archetypes go to
+`tests/sim/combo/builds/`. U5's GarageLibrary already lists nothing under `content/builds/combo/`. Every path that
+reads them today (grep of the tip at 15:08):
+- mine: `tests/sim/combo/Combo.cpp` (buildPath: `content/builds/combo/<name>.json`), `DecisionsTest.cpp` (buildWith),
+  `tools/tee-fuzz/main.cc` (--play archetypes), `scripts/listening-pack.tsv` (the pack's and archetypes' builds);
+- N1: `tests/sim/calibration/na/BoostInletTest.cpp:86, 92-93` (x022, x024, x026-redline, x026-single-big-blower,
+  x026-single-small-pipe, x026-tiny-engine-supercharger, x026-seed298-leak-back), `Probe.cpp:516, 782, 841`,
+  `X022Test.cpp:32` (x022, x026-single-big-blower);
+- the integrator: `tests/sim/core/EngineTest.cpp:566` (Bench("combo/findings/x025-two-stroke-rotary-silent"));
+- P: `docs/manual/builds.md:149-161` (the manual's table of content builds lists x001 to x026).
