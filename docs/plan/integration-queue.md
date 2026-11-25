@@ -1136,6 +1136,22 @@ next message boundary: C announced a push while "holding" was still unread, and 
 the turn stopped it. So: the hold is asked first, every answer is collected, and a session that has not answered
 is interrupted, not assumed.
 
+## Card D, for the next window (25 Nov 22:05 UTC; the lead's ruling)
+
+1. **First: a state differs at the start between "written after init" and "initialised over it" (first.json).** The
+   first route is what the application does every time a person loads a build, so a stale field there is a real fault,
+   however small. Measured on the baked tables at 5 to 6 s: with the same cylinder bias draws written on both routes
+   they still part by 0.06 to 1.6 %, and with the same bias and the same states of both engine noise streams
+   (noise.rs, ex.noise.rs) by 1.37 / 0.09 / -1.46 %. Next: the diff of every field right after start between the two
+   routes; pair them on what differs; anything one route sets and the other does not is a finding in the init order,
+   to the lead before any bound moves. Then core :680 bounds the paired difference by its measure (keeping the exact
+   check of every model switch and tq[0] == tq[2]); its bound today (f6c5d1ba: 2.5 % against a measured 2.4 % spread
+   of fourteen inits) is thin.
+2. The engine dyno's absorber loop overshoots a step by some 13 % (a PI's zero at zeta 1): to measure and weigh against
+   C's ramped approach (docs/handoffs/d-mechanics.md).
+3. The clutch's latch (87629688, on `main` after this bake): nothing open; the bike's form is B2's
+   (docs/handoffs/patches/d-bike-synced.patch).
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
 - **25 Nov 20:41 UTC: FROZEN FOR THE BAKE at 9c33806c.** Nothing is pushed under `sim/`, `host/` or `tools/`

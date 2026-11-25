@@ -90,7 +90,7 @@ either takes out the step's overshoot without slowing the loop's hold of a lumpy
 on the default V8 and the two-stage), predict the change in every dyno test's print, and weigh against C's ramped
 approach (C ramps the stepped dyno's approach next window; with the ramp the overshoot may no longer matter).
 
-**Open for the next window (25 Nov, core :680, first.json's two routes)**: 8c0f746a reads the routes settled (5 to 6 s)
+**Open for the next window, its FIRST item by the lead's ruling (25 Nov 22:00; core :680, first.json's two routes; a state that differs between the application's own load and an init is a real fault, however small)**: 8c0f746a (on the branch as f6c5d1ba) reads the routes settled (5 to 6 s)
 within 2.5 %, against a measured spread of 2.4 % across fourteen inits (each route's cylinders draw their own bias), with
 every model switch held exactly across the routes. The margin is thin: a later bake may go red with no fault (the lead's
 point). The sharper form, the same bias draws on both routes and the paired difference bounded, does not yet pair them:
