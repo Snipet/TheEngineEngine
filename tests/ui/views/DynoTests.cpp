@@ -584,6 +584,14 @@ namespace tee::test::u4
         doc.endGesture();
         wait();
         CHECK_MSG(tee::ui::dynoRowName(*rig.ws, -1) == "Before last edit", tee::ui::dynoRowName(*rig.ws, -1));
+        // A stated octane (spec.fuel.octane, AKI) is carried in a run's name.
+        doc.beginGesture();
+        doc.set(doc.find("fuel.octane"), 95.0);
+        doc.endGesture();
+        wait();
+        rig.host->click(start.centreX(), start.centreY());
+        wait();
+        CHECK_MSG(tee::ui::dynoRowName(*rig.ws, 2) == "Engine 3, Regular (87) at 95", tee::ui::dynoRowName(*rig.ws, 2));
         return 0;
     }
 }

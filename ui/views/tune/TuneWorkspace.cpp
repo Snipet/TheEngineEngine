@@ -221,6 +221,20 @@ namespace tee::ui
             modelField_ = doc.find("fuel.model");
             fuelPrev_ = &make<Button>("Prev fuel", [this] { stepGrade(-1); });
             fuelNext_ = &make<Button>("Next fuel", [this] { stepGrade(1); });
+            // The octane as a number (spec.fuel.octane, the pump's AKI; 0: the grade's own), typed; one press back to
+            // the grade's own; over the field while it is 0, the grade's own AKI in a quieter weight.
+            octaneField_ = doc.find("fuel.octane");
+            if (octaneField_ >= 0 && doc.info(octaneField_).kind != FieldKind::number)
+                octaneField_ = -1;
+            octane_ = &make<TextField>(std::string(), [this] { return octaneText(); },
+                                       [this](const std::string& t) { return typeOctane(t); }, 6);
+            ownOctane_ = &make<Button>("Grade's own", [this] { setOctane(0.0); });
+            octane_->setHelp("The pump number (AKI) this build burns; empty or 0: the grade's own, shown dim. It moves the "
+                             "knock only, read as research octane by the grade's own sensitivity");
+            ownOctane_->setHelp("Back to the grade's own octane");
+            octaneOver_ = &make<chart::Layer>([this](Canvas& cv, const funkgui::Theme& th) { drawOctaneOver(cv, th); },
+                                              [this] { return DrawKey{}.mix(octane()).mix(octane_->editing()).mix(octane_->shown())
+                                                                  .mix(gradeAki()).h; });
             // Hover help (the owner's ask, 25 Nov).
             for (Slot& sl : slots_)
                 if (sl.edit != nullptr)
@@ -320,7 +334,8 @@ namespace tee::ui
                         ctx_.selection.select("ecu.maps");
                     return;
                 }
-            if (fuel_.contains({ e.x, e.y }) && !fuelButton(-1).contains({ e.x, e.y }) && !fuelButton(1).contains({ e.x, e.y }))
+            if (fuel_.contains({ e.x, e.y }) && !fuelButton(-1).contains({ e.x, e.y }) && !fuelButton(1).contains({ e.x, e.y })
+                && !fuelButton(2).contains({ e.x, e.y }) && !fuelButton(3).contains({ e.x, e.y }))
             {
                 ctx_.selection.select("fuel.grade");
                 return;
@@ -348,13 +363,13 @@ namespace tee::ui
         funkgui::Rect bakeRect() const { return bake_->shown() ? bake_->bounds() : funkgui::Rect{}; }
         funkgui::Rect fuelButton(int dir) const
         {
-            const Button* b = dir < 0 ? fuelPrev_ : fuelNext_;
+            const Widget* b = dir < 0 ? static_cast<const Widget*>(fuelPrev_) : dir == 1 ? fuelNext_ : dir == 2 ? static_cast<const Widget*>(octane_) : ownOctane_;
             return b->shown() ? b->bounds() : funkgui::Rect{};
         }
         std::string fuelText() const
         {
             const FuelWords w = fuelWords();
-            return w.name + " | " + w.octane + " | " + w.effect;
+            return w.name + " | " + w.octane + " | " + (w.mark.empty() ? std::string() : w.mark + " | ") + w.effect;
         }
 
     protected:
@@ -429,7 +444,8 @@ namespace tee::ui
             const float sliceW = narrow_ ? 0.0f : std::clamp(s.w * 0.24f, 230.0f, 340.0f);
             const float traceH = std::clamp(s.h * 0.30f, 180.0f, 300.0f);
             // The fuel's band across the top, when the build has a grade.
-            const float fuelH = gradeField_ >= 0 ? kFuelH : 0.0f, top = s.y + pad + (fuelH > 0.0f ? fuelH + 10.0f : 0.0f);
+            numbersBelow_ = octaneField_ >= 0 && s.w < 900.0f;   // a narrow band: the octane's numbers on a row of their own
+            const float fuelH = gradeField_ >= 0 ? kFuelH + (numbersBelow_ ? 18.0f : 0.0f) : 0.0f, top = s.y + pad + (fuelH > 0.0f ? fuelH + 10.0f : 0.0f);
             fuel_ = fuelH > 0.0f ? Rect{ s.x + pad, s.y + pad, s.w - 2.0f * pad, fuelH } : Rect{};
             const float topH = s.y + s.h - 2.0f * pad - traceH - top;
             list_ = narrow_ ? Rect{} : Rect{ s.x + pad, top, listW, topH };
@@ -440,6 +456,11 @@ namespace tee::ui
             const bool stepped = fuelH > 0.0f && !compressionLit();
             fuelPrev_->setPlace({ fuel_.x + 52.0f, fuel_.y + 6.0f, kFuelButtonW, 20.0f }, stepped);
             fuelNext_->setPlace({ fuel_.x + 52.0f + kFuelButtonW + kFuelNameW + 12.0f, fuel_.y + 6.0f, kFuelButtonW, 20.0f }, stepped);
+            const bool octaneShown = fuelH > 0.0f && octaneField_ >= 0 && !compressionLit();
+            octaneX_ = fuelNext_->bounds().right() + 16.0f;
+            octane_->setPlace({ octaneX_ + kOctaneLabelW, fuel_.y + 4.0f, 52.0f, 24.0f }, octaneShown);
+            ownOctane_->setPlace({ octane_->bounds().right() + 6.0f, fuel_.y + 6.0f, 96.0f, 20.0f }, octaneShown);
+            octaneOver_->setPlace(octane_->bounds(), octaneShown);
             prev_->setPlace({ mapBox_.right() - look::kPad - 116.0f, mapBox_.y + 4.0f, 56.0f, 20.0f }, narrow_);
             next_->setPlace({ mapBox_.right() - look::kPad - 56.0f, mapBox_.y + 4.0f, 56.0f, 20.0f }, narrow_);
             fill_->setTitle(narrow_ ? "Fill" : "Fill between corners");
@@ -814,7 +835,63 @@ namespace tee::ui
         }
 
         // ---- the fuel ----------------------------------------------------------------------------------------------
-        static constexpr float kFuelH = 56.0f, kFuelNameW = 128.0f, kFuelButtonW = 84.0f;
+        static constexpr float kFuelH = 56.0f, kFuelNameW = 128.0f, kFuelButtonW = 84.0f, kOctaneLabelW = 56.0f;
+
+        // The stated octane (AKI; 0: the grade's own, and none for a fuel lit by compression).
+        double octane() const
+        {
+            if (octaneField_ < 0 || compressionLit())
+                return 0.0;
+            const double v = ctx_.doc.get(octaneField_);
+            return std::isfinite(v) && v > 0.0 ? v : 0.0;
+        }
+        double gradeAki() const { return gradeField_ >= 0 ? fuelTable_.aki(grade()) : std::nan(""); }
+        static std::string octaneNumber(double v)
+        {
+            return chart::fixed(v, std::fabs(v - std::round(v)) < 0.05 ? 0 : 1);
+        }
+        std::string octaneText() const { return octane() > 0.0 ? octaneNumber(octane()) : std::string(); }
+        // A grade and a stated number as words: "Premium (91)", "Premium (91) at 95".
+        std::string fuelLabel(int g, double aki) const
+        {
+            return gradeName(g) + (aki > 0.0 ? " at " + octaneNumber(aki) : std::string());
+        }
+        void setOctane(double v)
+        {
+            if (octaneField_ < 0)
+                return;
+            ctx_.doc.beginGesture();
+            ctx_.doc.set(octaneField_, v);
+            ctx_.doc.endGesture();
+        }
+        // Typed: a number in the field's range (0 or empty: the grade's own); anything else refused (the field stays open).
+        bool typeOctane(const std::string& typed)
+        {
+            std::size_t a = typed.find_first_not_of(" \t"), b = typed.find_last_not_of(" \t");
+            const std::string t = a == std::string::npos ? std::string() : typed.substr(a, b - a + 1);
+            if (t.empty())
+            {
+                setOctane(0.0);
+                return true;
+            }
+            char* end = nullptr;
+            const double v = std::strtod(t.c_str(), &end);
+            const FieldInfo& f = ctx_.doc.info(octaneField_);
+            if (end != t.c_str() + t.size() || !std::isfinite(v) || v < f.min || v > f.max)
+                return false;
+            setOctane(v);
+            return true;
+        }
+        // While the number is the grade's own: the grade's AKI in the field, dim, with words; nothing while typing.
+        void drawOctaneOver(Canvas& c, const funkgui::Theme& th) const
+        {
+            if (!octane_->shown() || octane_->editing() || octane() > 0.0)
+                return;
+            const look::Palette p = look::Palette::of(th);
+            const Rect r = octane_->bounds();
+            const double own = gradeAki();
+            c.text(std::isfinite(own) ? octaneNumber(own).c_str() : "-", r.x + 7.0f, r.centreY() - 6.0f, look::kBody, p.dim);
+        }
 
         int grade() const { return gradeField_ >= 0 ? static_cast<int>(std::lround(ctx_.doc.get(gradeField_))) : -1; }
         std::string gradeName(int g) const
@@ -842,12 +919,25 @@ namespace tee::ui
         {
             if (gradeField_ < 0 || compressionLit())
                 return;
+            // In the order of their octane (the table's AKI), the index where the table has none (after those it has).
             const FieldInfo& f = ctx_.doc.info(gradeField_);
-            for (int g = grade() + dir; g >= static_cast<int>(f.min) && g <= static_cast<int>(f.max); g += dir)
+            std::vector<std::pair<double, int>> order;
+            for (int g = static_cast<int>(f.min); g <= static_cast<int>(f.max); ++g)
                 if (!compressionLit(g))
                 {
+                    const double a = fuelTable_.aki(g);
+                    order.push_back({ std::isfinite(a) ? a : 1000.0 + g, g });
+                }
+            std::stable_sort(order.begin(), order.end());
+            const int now = grade();
+            for (std::size_t i = 0; i < order.size(); ++i)
+                if (order[i].second == now)
+                {
+                    const long j = static_cast<long>(i) + dir;
+                    if (j < 0 || j >= static_cast<long>(order.size()))
+                        return;
                     ctx_.doc.beginGesture();
-                    ctx_.doc.set(gradeField_, static_cast<double>(g));
+                    ctx_.doc.set(gradeField_, static_cast<double>(order[static_cast<std::size_t>(j)].second));
                     ctx_.doc.endGesture();
                     return;
                 }
@@ -865,18 +955,21 @@ namespace tee::ui
                 layout(stage_);
             }
             const int g = grade();
-            if (g == gradeSeen_)
+            const double o = octane();
+            if (g == gradeSeen_ && o == octaneSeen_)
                 return;
             const Slot& k = slots_[static_cast<std::size_t>(kKnockLimit)];
             if (gradeSeen_ >= 0 && g >= 0)
             {
                 gradeFrom_ = gradeSeen_;
+                octaneFrom_ = octaneSeen_;
                 knockFrom_ = k.field >= 0 ? ctx_.doc.map(k.field) : Map16{};
                 knockFromBaked_ = k.field >= 0 && k.autoField >= 0 && ctx_.doc.get(k.autoField) < 0.5;
                 if (k.field >= 0 && !compressionLit(g))
                     showMap(kKnockLimit);
             }
             gradeSeen_ = g;
+            octaneSeen_ = o;
             layout(stage_);
         }
 
@@ -931,8 +1024,9 @@ namespace tee::ui
 
         struct FuelWords
         {
-            std::string name, octane, effect;
+            std::string name, octane, mark, effect;
             bool warn = false;   // untested: the name in amber (and its word)
+            bool own = true;     // the octane is the grade's own (its numbers in a quieter weight)
         };
         // The band's words: the grade's name; its octane numbers from the simulator's table (a dash where the table has
         // none); and one line of what it changes: after a change of grade, the bake's state and then what the
@@ -951,9 +1045,15 @@ namespace tee::ui
                 w.octane = "No octane: lit by compression";
             else
             {
-                w.octane = "AKI " + num(t.aki(g)) + "   RON " + num(t.ron(g)) + "   MON " + num(t.mon(g));
-                if (t.has(g) && std::isfinite(t.index(g)) && std::fabs(t.index(g) - t.ron(g)) > 0.05)
-                    w.octane += "   knock model reads " + num(t.index(g));
+                // A stated number: its RON and MON as the simulator derives them (fuels.fm fuelOctaneAt); past the knock
+                // law's fit, said in words.
+                const double aki = octane();
+                w.own = !(aki > 0.0);
+                w.octane = "AKI " + num(w.own ? t.aki(g) : aki) + "   RON " + num(t.ronAt(g, aki)) + "   MON " + num(t.monAt(g, aki));
+                if (t.has(g) && std::isfinite(t.indexAt(g, aki)) && std::fabs(t.indexAt(g, aki) - t.ronAt(g, aki)) > 0.05)
+                    w.octane += "   knock model reads " + num(t.indexAt(g, aki));
+                if (t.extrapolated(g, aki))
+                    w.mark = "EXTRAPOLATED: the knock fit is RON " + num(t.fitLo) + " to " + num(t.fitHi);
             }
             const std::string untestedWords = w.warn ? " Untested: nothing has run this fuel through an engine." : "";
             if (referenceBurn())
@@ -976,7 +1076,7 @@ namespace tee::ui
             const std::string state = ctx_.services != nullptr && ctx_.services->sparkMap ? ctx_.services->sparkMap() : std::string();
             if (gradeFrom_ >= 0 && k.field >= 0)
             {
-                const std::string from = gradeName(gradeFrom_) + " to " + w.name + ": ";
+                const std::string from = fuelLabel(gradeFrom_, octaneFrom_) + " to " + fuelLabel(g, octane()) + ": ";
                 const Map16 now = ctx_.doc.map(k.field);
                 const bool baked = k.autoField >= 0 && ctx_.doc.get(k.autoField) < 0.5;
                 const bool done = baked && !sameMap(now, knockFrom_) && (state.empty() || state.rfind("baked", 0) == 0 || state == "calibration checked");
@@ -1009,8 +1109,8 @@ namespace tee::ui
                 return w;
             }
             // Before any change: what the knock model's delay says against the lowest grade.
-            const double ratio = t.delayRatio(g, 0);
-            if (g == 0 || !std::isfinite(ratio))
+            const double ratio = t.delayRatioAt(g, octane(), 0);
+            if ((g == 0 && !(octane() > 0.0)) || !std::isfinite(ratio))
                 w.effect = "Its octane sets how much advance and boost fit before knock; a change re-bakes the knock-limit table." + untestedWords;
             else
                 w.effect = "Against " + gradeName(0) + ", the end gas waits " + chart::fixed(ratio, 2) +
@@ -1030,9 +1130,21 @@ namespace tee::ui
             const float nx = stepped ? fuelPrev_->bounds().right() + 6.0f : fuel_.x + 52.0f;
             c.text(w.name.c_str(), nx + (stepped ? kFuelNameW * 0.5f : 0.0f), fuel_.y + 9.0f, look::kBody, w.warn ? p.warning : p.value,
                    stepped ? funkgui::Align::centre : funkgui::Align::left);
-            const float ox = stepped ? fuelNext_->bounds().right() + 16.0f : nx + std::max(kFuelNameW, c.textWidth(w.name.c_str(), look::kBody)) + 16.0f;
-            c.text(w.octane.c_str(), ox, fuel_.y + 9.0f, look::kBody, w.octane.rfind("AKI -", 0) == 0 ? p.dim : p.text);
-            chart::wrap(c, w.effect, fuel_.x + look::kPad, fuel_.y + 30.0f, fuel_.w - 2.0f * look::kPad, look::kBody, p.label, 12.0f, 2);
+            // The octane: its label before the field (the field, its button and the dim own number are widgets).
+            const bool typed = octane_->shown();
+            if (typed)
+                c.text(upper(ctx_.doc.info(octaneField_).label).c_str(), octaneX_, fuel_.y + 11.0f, look::kCaps, p.label);
+            // Its numbers: after the controls, or on a row of their own in a narrow band; the grade's own quieter.
+            const float ox = typed ? (numbersBelow_ ? fuel_.x + look::kPad : ownOctane_->bounds().right() + 16.0f)
+                           : stepped ? fuelNext_->bounds().right() + 16.0f
+                                     : nx + std::max(kFuelNameW, c.textWidth(w.name.c_str(), look::kBody)) + 16.0f;
+            const float oy = typed && numbersBelow_ ? fuel_.y + 30.0f : fuel_.y + 9.0f;
+            c.text(w.octane.c_str(), ox, oy, look::kBody, w.octane.rfind("AKI -", 0) == 0 ? p.dim : w.own ? p.label : p.value);
+            // The mark past the knock law's fit after them (amber, and in words); then the line of what it changes.
+            if (!w.mark.empty())
+                c.text(w.mark.c_str(), ox + c.textWidth(w.octane.c_str(), look::kBody) + 16.0f, oy, look::kBody, p.warning);
+            const float ey = fuel_.y + 30.0f + (typed && numbersBelow_ ? 18.0f : 0.0f);
+            chart::wrap(c, w.effect, fuel_.x + look::kPad, ey, fuel_.w - 2.0f * look::kPad, look::kBody, p.label, 12.0f, 2);
         }
 
         // ---- drawing -----------------------------------------------------------------------------------------------
@@ -1454,7 +1566,13 @@ namespace tee::ui
         // The fuel: its fields, the simulator's table (read once served), the grade last seen, and what a change of
         // grade left to compare: the grade before, and the knock-limit table (and whether it was in use) then.
         Button *fuelPrev_ = nullptr, *fuelNext_ = nullptr;
-        int gradeField_ = -1, modelField_ = -1;
+        int gradeField_ = -1, modelField_ = -1, octaneField_ = -1;
+        TextField* octane_ = nullptr;
+        Button* ownOctane_ = nullptr;
+        chart::Layer* octaneOver_ = nullptr;
+        float octaneX_ = 0.0f;
+        bool numbersBelow_ = false;
+        double octaneSeen_ = 0.0, octaneFrom_ = 0.0;
         fuel::Table fuelTable_;
         bool fuelRead_ = false;
         int gradeSeen_ = -1, gradeFrom_ = -1;
