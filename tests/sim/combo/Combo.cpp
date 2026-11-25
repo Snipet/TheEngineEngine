@@ -778,12 +778,18 @@ namespace combo
         return list;
     }
 
+    // Each field draws from its own generator, seeded by the seed and the field's path (FNV-1a), so a field added to
+    // the Schema or un-hidden leaves every other field's draw as it was: a seed names the same Spec across commits
+    // (on 25 Nov un-hiding boost.seqRpm, 9b0bab54, redrew every seed, and four "new" soak reds were new territory).
     std::vector<Value> randomSpec(std::uint64_t seed, bool corners)
     {
-        std::mt19937_64 g(seed * 0x9E3779B97F4A7C15ull + 1);
         std::vector<Value> out;
         for (const Field& f : fuzzFields())
         {
+            std::uint64_t h = 0xCBF29CE484222325ull;
+            for (const char c : f.path)
+                h = (h ^ static_cast<unsigned char>(c)) * 0x100000001B3ull;
+            std::mt19937_64 g((seed * 0x9E3779B97F4A7C15ull + 1) ^ h);
             double v;
             if (corners)
                 v = rng01(g, 0.5) ? f.lo : f.hi;
