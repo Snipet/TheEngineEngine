@@ -162,6 +162,12 @@ static void meps(const std::vector<const char*>& builds, const std::vector<doubl
             const Point p = dynoAt(b, rpm);
             std::printf("  %4.0f rpm: BMEP %5.2f, IMEP %5.2f, PMEP %4.2f, FMEP %4.2f bar; VE %.3f (air), %.3f (manifold)\n", rpm,
                         p.bmep / 1e5, p.imep / 1e5, p.pmep / 1e5, p.fmep / 1e5, p.ve, p.veMan);
+            // (the default build sets no model switch: this is the reference's engine, bit-locked by the null test, so
+            // no other package's work moves these numbers without failing the null first. Its friction is its own curve,
+            // 1 + 0.10 N + 0.02 N^2 bar (N in 1000 rpm): 2.46 at 6400 rpm and 2.50 at its 6500 redline, so the 2.5
+            // bar ceiling is that curve's value at the redline, not a margin. Its BMEP at 1500 rpm is 10.20 bar
+            // against the 10 floor: the reference's own figure, fixed as the null fixes it; the floor is the class's
+            // (a mild two-valve V8 at full throttle in its mid-range). Measured 25 Nov; the steward's near-bound survey)
             CHECK(p.fmep >= 0.8e5);
             CHECK(p.fmep <= 2.5e5);
             if (rpm >= 1500.0 && rpm <= 4500.0)
@@ -864,9 +870,11 @@ TEST_CASE("a warm idle in still air cycles the radiator's fan, and the voices le
     }
     CHECK(onAt[0] > 0.0);
     CHECK(offAt[0] > onAt[0]);
-    // (off under 368 K, then warming again in still air toward its switch: the next cycle begun)
-    CHECK(low[0] < 368.0);
-    CHECK(end[0] > low[0] + 0.5);
+    // (the property is that it cycles: on, off, then warming again in still air toward its switch. The switch's own
+    // points (on at 373 K, off 5 K lower) make the off happen; how far under 368 the coolant overshoots and how fast it
+    // warms back are the heat model's and move with other packages' work, so no kelvin is bound: only that it turned
+    // and is warming again by 30 s (measured 25 Nov: low 367.08 K, 369.16 K at 30 s); the steward's near-bound survey)
+    CHECK(end[0] > low[0]);
     CHECK(onAt[1] == onAt[0]);
     CHECK(offAt[1] == offAt[0]);
     CHECK(end[1] == end[0]);

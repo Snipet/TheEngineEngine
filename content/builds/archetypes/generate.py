@@ -190,6 +190,10 @@ arch(slug="big-block-74-pushrod-v8", name="Big-block 7.4 L pushrod V8", geo="ref
      # seat 268/274 deg (a corvetteforum post, unverified)
      layout="V8 crossplane", bore=107.95, stroke=101.6, rod=155.8, cr=8.5, valves=2, dIn=52.3, dEx=43.7,
      cam=(268, 213, 11.7, 110, 274, 217, 12.4, 114), train="Pushrod", redline=5600, idle=650,
+     # the card's 268/274 and 213/217 are tappet lift at 0.006 and 0.050 in: the big block's 1.7 rocker (the nominal
+     # factory ratio, vendors' and enthusiasts' tables: jegs.com, enginelabs.com; recalled widely, GM's sheet not found)
+     tappet=dict(ratio=1.7, ratioBasis="the big block's nominal 1.7, vendors' tables", inAdv=268, in50=213,
+                 exAdv=274, ex50=217),
      intake=dict(runnerLength=0.20, plenumVolume=0.003), friction="Flat tappet", grade="Regular (87)",
      car="muscle-auto", timing="Chain", fan="Viscous clutch",
      notes="A 1972 454 cubic inch big block (the LS5): 4.25 x 4.00 in (107.95 x 101.6 mm, 7440 cc), 8.5:1, two "
@@ -236,6 +240,11 @@ arch(slug="small-block-57-carb", name="Small-block 5.7 L, carburettor-like", geo
      # the L48's cam (N3, 20:06: toward the target's middle, not the hotter L82's): about 195/202 deg at 0.050 in and
      # 0.390/0.410 in lift (from memory, firm to some 5 deg), the seat some 54 deg longer as this hydraulic flat tappet's
      cam=(251, 197, 9.9, 110, 256, 204, 10.4, 114), train="Pushrod", redline=5500, idle=700,
+     # tappet lift at 0.006 and 0.050 in, the seat's 54 deg (27 a side) judgement inside the cited 22 to 31 of
+     # hydraulic flat tappets; the small block's 1.5 rocker (Chevrolet Performance's replacement kit, nominal 1.5:
+     # chevrolet.com; a magazine's measured stock rockers 1.46 to 1.51 at half lift)
+     tappet=dict(ratio=1.5, ratioBasis="the small block's nominal 1.5, Chevrolet Performance", inAdv=251, in50=197,
+                 exAdv=256, ex50=204),
      intake=dict(runnerLength=0.18, plenumVolume=0.0025), friction="Flat tappet", grade="Regular (87)",
      car="muscle-manual", timing="Chain", fan="Viscous clutch",
      notes="A 350 cubic inch small block (4.00 x 3.48 in: 101.6 x 88.4 mm, 5733 cc), 8.5:1, two valves on pushrods, a "
@@ -335,6 +344,7 @@ arch(slug="turbo-four-20-gdi", runner=0.3, name="2.0 L turbo four, direct inject
      # and retarding from gen 2's closing (the EA855 2.5 TFSI's, Audi SSP 920273: gen 3's own not published; the
      # lead's ruling, 23:35; it was 30 deg of judgement)
      cam=(240, 208, 10.7, 110, 212, 180, 6.35, 88), train="Finger", phase=(60, 42), redline=6800, idle=750,
+     camOwn={"ex": "1mm", "exB": "1mm"},  # the exhaust lobes' 180 and 215 deg are at 1 mm (SSP 922903): the seat by rule
      stages=dict(inDurSeatB=240, inDur1mmB=208, inLiftB=0.0107, inCentreB=110,
                  exDurSeatB=247, exDur1mmB=215, exLiftB=0.010, exCentreB=115.5, stageSpeed=round(3100 * RPM, 1)),
      boost=dict(kind="Turbo", target=1.2, spring=0.6, scrolls="Twin scroll"), direct=True, grade="Premium (91)",
@@ -497,6 +507,70 @@ for _a in A:
     if _a["slug"] in SPORTS:
         _a.setdefault("exhaust", {}).update({"converter": [2, 2], "mufKind": [1, 1]})
 # the torque-peak speeds of each kind (rpm), from the validation's table, for the runners
+# The cam card's second duration (the lead, 01:24): a side from the seat (0.15 mm) to 1 mm of valve lift by valvetrain
+# class, the seat's timing kept. Cited: Kelford's spec sheets, "Advertised Duration @ 0.10mm" and "Duration @ 1.00mm
+# VALVE LIFT", 92 overhead-cam lobes, medians 20.0 (buckets) and 21.0 (fingers and rockers) a side; Kent Cams' 0.25 to
+# 1 mm, 13 to 21.5; pushrod catalogue cards 0.006 to 0.050 in tappet lift, 22 to 31 a side hydraulic (COMP, Howards,
+# Crower, Erson). JUDGEMENT, the one step in it: from the catalogues' 0.10 mm to our 0.15 mm seat, a degree or two
+# (docs/measurements/2026-11-25-0032-judgement-sources.md, section 8).
+# Off until N1 has reported what it does (the lead, 01:24: a report, not a gate); on for table L's content.
+# TEE_CAM_RULE=1 turns it on for a trial run.
+CAM_RULE = os.environ.get("TEE_CAM_RULE") == "1"
+FLANK = {"Bucket": 18.0, "Finger": 19.0, "Rocker": 19.0, "Pushrod": 20.0}
+SEAT_M, ONE_M, INCH = 0.0001524, 0.001, 0.0254
+
+
+def _raw(u, p, k):
+    s = math.sin(math.pi * u)
+    return 0.0 if s <= 0.0 else s ** p * (1.0 - math.exp(-k * k * s * s))
+
+
+def _rise(h, p, k):
+    # where the rising side of sim/valvetrain/cam.fm's curve reaches h, a share of its most (u in [0, 0.5])
+    top, lo, hi = 1.0 - math.exp(-k * k), 0.0, 0.5
+    for _ in range(50):
+        mid = 0.5 * (lo + hi)
+        lo, hi = (mid, hi) if _raw(mid, p, k) < h * top else (lo, mid)
+    return 0.5 * (lo + hi)
+
+
+def tappet_card(adv, d50, lift_mm, ratio, fat=0.5):
+    """A pushrod cam card (advertised at 0.006 in and @0.050 in, both TAPPET lift) through the rocker ratio to the
+    valve's heights, solved in the simulator's own lift curve (sim/valvetrain/cam.fm: a sine to the power p, its
+    ramp k), and read back at the simulator's seat (0.15 mm) and 1 mm of valve lift."""
+    p, L = 2.0 - 1.5 * fat, lift_mm / 1000.0
+    ha, hb = 0.006 * INCH * ratio / L, 0.050 * INCH * ratio / L
+    want, lo, hi = d50 / adv, -3.0, 6.0
+    for _ in range(60):
+        mid = 0.5 * (lo + hi)
+        k = math.exp(mid)
+        r = (1 - 2 * _rise(hb, p, k)) / (1 - 2 * _rise(ha, p, k))
+        lo, hi = (mid, hi) if r < want else (lo, mid)
+    k = math.exp(0.5 * (lo + hi))
+    span = adv / (1 - 2 * _rise(ha, p, k))
+    return (round(span * (1 - 2 * _rise(SEAT_M / L, p, k)), 1), round(span * (1 - 2 * _rise(ONE_M / L, p, k)), 1))
+
+
+def card(a):
+    """The cam fields after the rule: (inSeat, in1mm, exSeat, ex1mm) and the stage B's, with how each was had."""
+    di, d1, li, ci, de, d1e, le, ce = a["cam"]
+    if not CAM_RULE:
+        return di, d1, de, d1e, None
+    f = FLANK[a["train"]]
+    own = a.get("camOwn", {})
+    if "tappet" in a:
+        t = a["tappet"]
+        si, oi = tappet_card(t["inAdv"], t["in50"], li, t["ratio"])
+        se, oe = tappet_card(t["exAdv"], t["ex50"], le, t["ratio"])
+        how = ("its card's advertised and 0.050 in durations are tappet lift: through its %.1f rocker (%s) to the "
+               "valve, solved in the simulator's lift curve" % (t["ratio"], t["ratioBasis"]))
+        return si, oi, se, oe, how
+    si, oi = (d1 + 2 * f, d1) if own.get("in") == "1mm" else (di, di - 2 * f)
+    se, oe = (d1e + 2 * f, d1e) if own.get("ex") == "1mm" else (de, de - 2 * f)
+    how = "the seat-to-1 mm step %.0f deg a side, the %s class's rule" % (f, a["train"].lower())
+    return si, oi, se, oe, how
+
+
 import importlib.util as _iu
 import sys as _sys
 _sys.dont_write_bytecode = True    # no __pycache__ beside the validation's generator
@@ -532,6 +606,7 @@ def build(a):
     v = {"model": "Lab"}
     if "cam" in a:
         di, d1, li, ci, de, d1e, le, ce = a["cam"]
+        di, d1, de, d1e, _how = card(a)
         v.update(valves=a["valves"], dIn=a["dIn"] / 1000.0, dEx=a["dEx"] / 1000.0, train=a["train"],
                  inDurSeat=di, inDur1mm=d1, inLift=li / 1000.0, inCentre=ci,
                  exDurSeat=de, exDur1mm=d1e, exLift=le / 1000.0, exCentre=ce)
@@ -553,6 +628,13 @@ def build(a):
         if "stages" in a:
             v["stages"] = "On"
             v.update(a["stages"])
+            # stage B by the same rule, keeping the height it has a source for
+            fl, own = FLANK[a["train"]], a.get("camOwn", {})
+            for side in (("in", "ex") if CAM_RULE else ()):
+                if own.get(side + "B") == "1mm":
+                    v[side + "DurSeatB"] = v[side + "Dur1mmB"] + 2 * fl
+                else:
+                    v[side + "Dur1mmB"] = v[side + "DurSeatB"] - 2 * fl
             v.setdefault("inCentreB", ci)
             v.setdefault("exCentreB", ce)
         # a compression-release brake's lobe (the ECU decides when it acts; valve.auxOn stays Off: card D2's)
@@ -725,6 +807,8 @@ def build(a):
         hc = EXHAUST_CLASS[a["slug"]]
         notes += (" Its exhaust: %s, the primaries %.2f times the layout's length: the class the real engine carries "
                   "(recalled), its length JUDGEMENT." % (HEADER[hc][1], math.exp(0.9808293 * (HEADER[hc][0] - 0.5))))
+    if "cam" in a and CAM_RULE:
+        notes += " Its cams' second duration: %s (section 8 of the judgement sources)." % card(a)[4]
     if a["slug"] in CAMS:
         notes += " Its intake cam map is baked (the cam swept at full load, the best advance by speed: cams.py)."
     if a["slug"] in MANIFOLD:
