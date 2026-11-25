@@ -99,9 +99,13 @@ namespace
         // low down: more, by a few percent to twenty
         CHECK(low > 1.02);
         CHECK(low < 1.25);
-        // at the top the advantage is gone or reversed
+        // at the top the advantage is mostly gone or reversed: the gain there under half the gain low down ("costs it at
+        // the top": most of it lost). Measured on the tip: +1.0 % against +17.8 % (0.06 of it); a trial low-lift law
+        // (the seat's frustum, refuted by flow sheets, docs/measurements/calibration/na/flow-sheets-vs-seat.md) read
+        // +2.5 % against +17.6 % (0.14) and flipped the old "under 2 %", which sat half a point from its reading. The half
+        // leaves room both ways for a lift curve's honest change (restated on the ratio: the lead, card N1)
         CHECK(top < low - 0.03);
-        CHECK(top < 1.02);
+        CHECK(top - 1.0 < 0.5 * (low - 1.0));
         // a later intake closing moves the peak up (or keeps it)
         CHECK(peakOf(rpms, ret) >= peakOf(rpms, adv) - 100.0);
     }
@@ -197,18 +201,27 @@ TEST_CASE("9: two stages: the curves cross, and a change set at the crossing sho
         envAt.push_back(block);
         i += n;
     }
-    double stepAt = 0.0, stepElse = 0.0;
+    double stepAt = 0.0, stepElse = 0.0, signedAt = 0.0;
     for (std::size_t k = 2; k < env.size(); ++k)
     {
         const double step = std::fabs(std::log(env[k] / env[k - 1]));
         if (envAt[k] + 2 >= at && envAt[k] <= at + 6)
+        {
+            if (step > stepAt)
+                signedAt = std::log(env[k] / env[k - 1]);
             stepAt = std::max(stepAt, step);
+        }
         else
             stepElse = std::max(stepElse, step);
     }
+    std::printf("[e] (the change's largest step, signed: %+.2f dB)\n", 8.686 * signedAt);
     std::printf("[e] the output's level, firing to firing: the largest step at the change %.2f dB, elsewhere %.2f dB\n",
                 8.686 * stepAt, 8.686 * stepElse);
-    CHECK(stepAt <= stepElse);
+    // no dip: at the change the level falls no more than it steps anywhere else. Measured on the tip: the change's
+    // largest step 1.45 dB against 3.59 elsewhere. A trial low-lift law (refuted, flow-sheets-vs-seat.md) moved the
+    // crossing to 3801 rpm and made the change's largest step a rise of 3.51 dB against 2.10: the louder stage arriving,
+    // not a dip, which the old "no larger than elsewhere" failed. Restated on the dip the case names (card N1, the lead)
+    CHECK(signedAt >= -stepElse);
 }
 
 TEST_CASE("10: deactivation on a V8: half the firing lines, and the manifold's pressure up for the same torque",
