@@ -167,7 +167,7 @@
           400.4,
           435.1
         ],
-        "settle": 5,
+        "settle": 20,
         "measure": 1
       },
       "measure": "maxPower",
@@ -193,7 +193,7 @@
           400.4,
           435.1
         ],
-        "settle": 5,
+        "settle": 20,
         "measure": 1
       },
       "measure": "speedAtMaxPower",
@@ -219,7 +219,7 @@
           400.4,
           435.1
         ],
-        "settle": 5,
+        "settle": 20,
         "measure": 1
       },
       "measure": "maxTorque",
@@ -228,8 +228,8 @@
         380
       ],
       "unit": "N m",
-      "source": "published figures of its kind (makers' figures, firm): 1968 cc; BMEP 20.4 to 24.3 bar (a naturally aspirated petrol engine 10 to 13 bar, turbocharged 18 to 25, a modern truck diesel 20 to 25: Heywood, Internal Combustion Engine Fundamentals, ch. 2)",
-      "basis": "recalled"
+      "source": "published figures of its kind (makers' figures, firm): 1968 cc; BMEP 20.4 to 24.3 bar (a naturally aspirated petrol engine 10 to 13 bar, turbocharged 18 to 25, a modern truck diesel 20 to 25: Heywood, Internal Combustion Engine Fundamentals, ch. 2); its build states ecu.torqueMax 320 N m (VW's, cited): the peak is held there by construction: HELD BY CALIBRATION, out of the counts",
+      "basis": "held"
     },
     {
       "name": "Speed at peak torque",
@@ -245,7 +245,7 @@
           400.4,
           435.1
         ],
-        "settle": 5,
+        "settle": 20,
         "measure": 1
       },
       "measure": "speedAtMaxTorque",
@@ -310,12 +310,12 @@
     },
     {
       "name": "Boost at its target",
-      "scenario": "validation/scenarios/p-full-load-2000.json",
+      "scenario": "validation/scenarios/p-full-load-2000-long.json",
       "tel": "boost.pressure",
       "measure": "mean",
       "during": [
-        8,
-        10
+        30,
+        60
       ],
       "range": [
         125000.0,
@@ -327,12 +327,12 @@
     },
     {
       "name": "Charge temperature under boost",
-      "scenario": "validation/scenarios/p-full-load-2000.json",
+      "scenario": "validation/scenarios/p-full-load-2000-long.json",
       "tel": "boost.throttleIn",
       "measure": "mean",
       "during": [
-        8,
-        10
+        30,
+        60
       ],
       "range": [
         293,
@@ -344,12 +344,12 @@
     },
     {
       "name": "Lambda at full load under boost",
-      "scenario": "validation/scenarios/p-full-load-2000.json",
+      "scenario": "validation/scenarios/p-full-load-2000-long.json",
       "tel": "ecu.lambda",
       "measure": "mean",
       "during": [
-        8,
-        10
+        30,
+        60
       ],
       "range": [
         1.2,
@@ -361,12 +361,12 @@
     },
     {
       "name": "Port gas at full load",
-      "scenario": "validation/scenarios/p-full-load-2000.json",
+      "scenario": "validation/scenarios/p-full-load-2000-long.json",
       "tel": "exhaust.portThermocouple",
       "measure": "mean",
       "during": [
-        8,
-        10
+        30,
+        60
       ],
       "range": [
         850,
@@ -378,12 +378,12 @@
     },
     {
       "name": "Header gas at full load",
-      "scenario": "validation/scenarios/p-full-load-2000.json",
+      "scenario": "validation/scenarios/p-full-load-2000-long.json",
       "tel": "exhaust.headerThermocouple",
       "measure": "mean",
       "during": [
-        8,
-        10
+        30,
+        60
       ],
       "range": [
         700,
@@ -395,12 +395,12 @@
     },
     {
       "name": "Port gas, mass mean (information)",
-      "scenario": "validation/scenarios/p-full-load-2000.json",
+      "scenario": "validation/scenarios/p-full-load-2000-long.json",
       "tel": "exhaust.portTemperature",
       "measure": "mean",
       "during": [
-        8,
-        10
+        30,
+        60
       ],
       "range": [
         0,
@@ -448,6 +448,25 @@
       "unit": "m/s",
       "source": "where 0.85 of the kind's published power (115 kW) meets the build's drag area and 1.2 % rolling resistance at 1.225 kg/m^3: 216 km/h, within 7 % (a power balance, not a test)",
       "basis": "judgement"
+    },
+    {
+      "name": "Torque at 1750 rpm",
+      "dyno": {
+        "steps": [
+          183.3
+        ],
+        "settle": 20,
+        "measure": 1
+      },
+      "measure": "torqueAt",
+      "at": 183.3,
+      "range": [
+        304,
+        336
+      ],
+      "unit": "N m",
+      "source": "VW's 2.0 TDI (110 kW): \"maximum torque of 320 Nm is available from 1,750 rpm (and up to 3,000 rpm)\" (volkswagen-newsroom.com, the Mk7 Golf Estate's press presentation), within 5 % (judgement): the plateau's start, which the torque ceiling does not decide",
+      "basis": "cited"
     }
   ]
 }

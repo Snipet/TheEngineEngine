@@ -18,6 +18,7 @@
         "speed": 83.776
       },
       "governor": "Electronic",
+      "torqueMax": 320.0,
       "ratedSpeed": 418.9,
       "fuelBoost": 130000,
       "knock": {

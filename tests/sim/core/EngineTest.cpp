@@ -653,6 +653,7 @@ TEST_CASE("the application's first build, written after a default init, runs as 
     // (EnginePlayer::reset keeping the Spec) is the reference: the decisions the switches make, and the torque on the
     // engine dyno at 3000 rpm full load, the same)
     double tq[3] = {0.0, 0.0, 0.0};
+    double use[3][11] = {};
     for (int route = 0; route < 3; ++route)
     {
         Bench b("first");
@@ -664,20 +665,35 @@ TEST_CASE("the application's first build, written after a default init, runs as 
         CHECK(b.field("cyl[0].conserve") == 1.0);
         CHECK(b.field("exh.implied") == 1.0);
         CHECK(b.field("exh.model") == 1.0);
+        for (int k = 0; k < 11; ++k)
+            use[route][k] = b.field("modelUse[" + std::to_string(k) + "]");
         b.ctl().mode = 2;
         b.ctl().throttle = 1.0f;
         b.ctl().dynoSpeed = float(3000.0 / kRpm);
-        b.play(3.0);
+        b.play(5.0);
         double s = 0.0, n = 0.0;
         b.play(1.0, [&] { s += b.tel("engine.torque"); n += 1.0; });
         tq[route] = s / n;
     }
-    std::printf("first.json at 3000 rpm full load: written after init %.1f N m, initialised over it %.1f N m, written after init again %.1f\n", tq[0], tq[1], tq[2]);
-    // (the decisions are held exactly above; the torque within 2 %: each cylinder's small lasting difference in what it
-    // burns (Cylinder::bias, some 1.5 %) is drawn from the noise stream at each configure, and the two routes configure
-    // a different number of times, so they draw different ones: measured 474.7 against 470.6 N m, the same route twice
-    // 474.7 to the bit; [.firstdiff] lists the fields that differ)
-    CHECK(std::fabs(tq[0] / tq[1] - 1.0) < 0.02);
+    std::printf("first.json at 3000 rpm full load, 5 to 6 s: written after init %.1f N m, initialised over it %.1f N m, written after init again %.1f\n", tq[0], tq[1], tq[2]);
+    // (every model switch in use the same on both routes, exactly: a switch one route dropped fails here whatever its
+    // torque (intake.model dropped moves this point 2.1 %, ecu.model 0.3 %: under the draws' spread below))
+    for (int k = 0; k < 11; ++k)
+    {
+        INFO("modelUse[" << k << "]");
+        CHECK(use[1][k] == use[0][k]);
+        CHECK(use[2][k] == use[0][k]);
+    }
+    // (the torque: the routes differ no more than inits of one route do. Each cylinder's small lasting difference in
+    // what it burns (Cylinder::bias) and the noise stream after it are drawn at each configure, and the two routes
+    // configure a different number of times, so they draw different ones: the same route twice is the same to the bit.
+    // Measured 25 Nov on the baked first.json (knock 6, cam 4) with six bias draws written on each route: the two routes
+    // pair within 1 % draw by draw (route 1 not systematically low), and the fourteen inits span 344.5 to 352.9 N m at 5
+    // to 6 s (2.4 %; at 3 to 4 s, while the turbo engine still rises some 7 %, 318.9 to 336.1, 5.4 %: the reason the
+    // read is at 5 to 6 s). Routes measured 349.2 against 346.7 (0.7 %), 1.8 % on the tables before the bake. A dropped
+    // valve.model moves it 9.7 %, fuel.model 3.7 %: caught here too. The earlier 2 % bound was read at 3 to 4 s on an
+    // older engine (474.7 against 470.6 N m))
+    CHECK(std::fabs(tq[0] / tq[1] - 1.0) < 0.025);
     CHECK(tq[0] == tq[2]);
 }
 
