@@ -46,6 +46,7 @@ namespace tee::ui
             t.speed.push_back(p.speed);
             t.torque.push_back(p.torque);
             t.power.push_back(p.power);
+            t.limited.push_back(p.limited ? 1 : 0);
             t.knock.push_back(p.knockLimited ? 1 : 0);
             t.retardMin.push_back(p.retardMin);
             t.retardMax.push_back(p.retardMax);
