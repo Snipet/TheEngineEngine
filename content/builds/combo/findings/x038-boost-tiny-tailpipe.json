@@ -1,0 +1,19 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "X-038 (boost.model 1, a 0.07 mm tailpipe)",
+  "notes": "Package X's finding X-038 (2026-11-25), reduced from random seed 167 (stable draws, 10 s): boost.model 1 with the first tailpipe 0.072 mm across diverges at once and the guard restarts it: tee-fuzz --build <this> --seed 167 --seconds 10",
+  "spec": {
+    "boost": {
+      "model": 1
+    },
+    "exhaust": {
+      "tailD": [
+        7.2263032e-05
+      ],
+      "tailLen": [
+        1.92294519
+      ]
+    }
+  }
+}

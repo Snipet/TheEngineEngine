@@ -168,7 +168,7 @@ namespace
         {
             const long id = nextId_++;
             const std::string line = json({{"id", id}, {"method", method}, {"params", std::move(params)}}).dump() + "\n";
-            if (!writeAll(app_, line))
+            if (!wire::sendAll(app_, line.data(), line.size()))   // (to the app: never a signal, the app gone is EPIPE)
             {
                 if (method != "cancel")
                     pending_[id] = std::move(p);
