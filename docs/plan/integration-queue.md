@@ -571,3 +571,27 @@ never reused; append-only): yes, pushed early and alone with the library's skele
 host/ change is on the branch before the next bake starts. Added: the assistant's `predict_curve` and `run_dyno`
 join the predictor's and the bake's sharing (`yieldTo`), with a test. The frame's drain calls in app/Main.cpp and
 app/Offline.cpp (B's, asleep) at A2, the exact lines to the lead first.
+
+## D2's two cures are on the branch (25 Nov 11:25; diffs read by the lead)
+
+- **2cf55103, the diesel:** `trimD = diesel.metered != 0 && ecu->pedal >= 0.02f ? 1.0f : ecu->trim` in
+  `chargeDiesel`. Cranking (the reference ECU's pedal 0) keeps its 1.35; cold starts identical to the reading.
+  Tractor at full pedal on the dyno, 800 / 900 / 1000 rpm: 792 / 603 / 638 to 1176 / 1309 / 1552 N m (D2's table).
+  The listen case passes unsplit (the tractor's largest 0.35; its old onset falls at 965 to 995 rpm, not at the
+  trim's step, so that comment's cause was not the trim).
+- **c16af6a2, the petrols (`ecu.model` 1, `sim/ecu/idle.fm`):** on the bench with the pedal open the trim is
+  `clamp(tr, 1.0, 1.35)` below target + 450, as the driven branch already was. Full-load dyno inside the band, N m:
+  small-block 5.7 at 800 / 950 / 1100: 325 / 253 / 151 to 380 / 395 / 409; economy four at 850 / 1000 / 1150: 85 /
+  69 / 43 to 93 / 101 / 107; V12 at 1000 / 1150 / 1300: 489 / 368 / 218 to 566 / 566 / 591; unchanged above the
+  band. Bench free revs come close to the in-car ones (first.json to 97 % of the redline 1.48 to 1.31 s). Idles and
+  cold starts identical to the reading.
+- Whole default tier on the merged tip 28e41156: 540 of 540 (D2).
+- **Found, not caused, not chased:** the nightly "diesel cold, full" case is red on `main` as it stands (governors 1
+  and 2 on models 0 take 17.5 s at 233 K against 8 s). D2's, after this window.
+- Known remainder: `tel.ecu.fuelFlow` under-reads by the trim while cranking and with the pedal shut.
+
+## FREEZE STATE (the lead keeps this the last section; read it before every push)
+
+- **25 Nov 11:26: sim/, host/ and tools/ are FROZEN** (P re-bakes at the tip for the next `main`). ui/, app/,
+  assistant/, tests/ and docs/ pushes are allowed until the line below changes.
+- When P's baked content is pushed, **all pushes freeze** until `main` has moved; the lead will write it here.
