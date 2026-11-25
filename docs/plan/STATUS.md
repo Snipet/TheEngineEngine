@@ -37,6 +37,27 @@
 
 ## Landed
 
+- **01:30 (25 Nov) between check-ins; `main` stays at 09c1fb4e.** The first run on a commit holding every one of
+  tonight's fixes is in flight on Linux and macOS (45525224026 at fc554da; the ten commits checked as ancestors by the
+  lead: 4e1c813b, 62657c07, 1ab6affe, fd6ed014, f0512a25, ee603c37, 576c1c6e, 68e683f1, a18f1bd4, f4cf2b39). The runs
+  before it (483886d, 2f86a47) were red on ui.build alone, the phaser range held as a constant, which f4cf2b39 ends.
+  *The compressor map* (N2, measured, not committed): knee `phiK = (0.45 + 0.2 (M - 1))` x the A/R factor, the choke
+  growing to tip Mach 1.63. The lead checked it against `published-compressor-maps.md`: surge over choke 0.24 / 0.29 /
+  0.36 / 0.44 at ratios 1.5 / 2 / 2.5 / 3, inside the published ranges at each; the efficiency ridge inside at 1.5 and
+  2.5 and **left of every published map at 2.0 (0.56 against 0.62 to 0.76) and 3.0 (0.72 against 0.75 to 0.78)**, to
+  be moved if one constant does it without touching the surge line, else written down as open. **N2's prediction
+  failed**: the truck at 1300 rpm still has two states (28.3 kPa / 1202 N m from 800, 62.1 kPa / 1661 N m from 2000;
+  one state at 45 to 60 was predicted), so the map's shape is not the whole cause; the lead asked for the loop's terms
+  at the low state (fuel on the smoke limit or not, turbine against compressor power, the point against surge) before
+  another guess. **Ruled: the sizing keeps its meaning.** F's rule set the full choke at 1.15 x the design flow; with
+  the full choke now at Mach 1.63 that leaves a turbo near a ratio of 2 with 0.94 of its own design flow at its design
+  speed, so the rule is restated as the choke at the design point's own tip speed. Nothing commits until the 2.0 at
+  1800, the turbo four at five speeds (three columns), F's cases with no bound moved, the boost and diesel tiers, the
+  nine take-ups and the truck again are shown. *The cam cards' class rule* (P's af2debe5, off until table L; N1's
+  rows): residual share V10 0.399 to 0.371, V12 0.488 to 0.447, 7.0 0.476 to 0.491; the overhead-cam mid-range up to
+  +12 %, the tops 1 to 3 % down: a sourced correction that closes about a tenth of the gap to the measured 0.20 to
+  0.27, so N3-16 stays open on the reverse-flow coefficient. U1's 0101e7f4: the background bake says "baked" once
+  applied, with a test that watches a real bake.
 - **01:11 (25 Nov) the lead's check-in; `main` stays at 09c1fb4e.** No Linux and macOS job is green outright on a
   commit holding tonight's fixes: macOS at 2f86a47 (run 45521139814) is red on one case, ui.build's
   ValvesFirstTests.cpp:70, which held first.json's exhaust phaser as the constant 30 where P's cited 42 now stands
