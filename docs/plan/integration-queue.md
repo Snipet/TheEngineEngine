@@ -739,8 +739,46 @@ the window after):
 Then sim/, host/ and tools/ freeze and P bakes, with the content-only items (the rotary's cited ports; the
 two-stage build's high lobe at 247 deg on a centre of 98).
 
+## 25 Nov 13:16: `main` held by macOS; the diesel package's root cause
+
+- **The baked tip ce169231 is green on Linux and Windows and RED on macOS, 2 of 545, both U4's fuel control:**
+  `ui.tune.fuel` (SegFault) and `ui.build.tune.fuel` ("The simulator's fuel table was not read": AKI - RON - MON -).
+  The lead's diagnosis by reading ui/views/tune/Fuel.cpp: the table's values are written `91.0f` and read with
+  `istringstream >> double`, which fails on libc++ (the trailing `f` is gathered and the conversion refused), so the
+  table comes back empty on macOS only. U4 is released from the freeze for one ui/tests push with the cure; `main`
+  moves to that commit when Linux and macOS are green on it (sim/, host/, tools/ still the bake's).
+- **The diesels' root cause (D2, c24c127e local): 88 deg of valve overlap** from the reference's cam dial at 0.9999 on
+  every D2 build (diesel-v8-truck, diesel-mechanical-classic, diesel-pickup-tuned, diesel-marine-v12, the two
+  trucks). Harmless on the reference turbo, ruinous under a machine's back pressure: the truck at 1000 / 1300 rpm
+  makes 665 / 1121 N m on the dial, 1521 / 2572 on the tractor archetype's events, 758 / 1324 with the dial's overlap
+  alone. Ruled: all of them come off the dial (cited events where found, else the tractor archetype's as its
+  judgement), the fixture states a boost target (the no-target spring law limit-cycles every 2 s: N2).
+- **The corrected fixture shows the machine's turbo at its limit while firing:** with a 260 kPa target the shaft
+  stands at 1.000 to 1.050 of omegaMax at 1500 to 2000 rpm with the vanes wide open, on both wheels, so no brake
+  control can engage (D2). N2 re-reads the match on a healthy engine first (the wheel past its choke at rated, the
+  turbine's match, or a target held flat where a maker's tapers); then D2 retunes the brake once.
+- N2's (b) after its rule's correction (ed48581f: the map's own efficiency at the margin's point, the cooler's
+  drop): tractor 76.2 mm, the truck's sets 73.9, the 2.0 36.6. The lead's build, tractor on 76.2: 1458 / 2577 / 2718
+  / 2815 N m at 900 / 1000 / 1100 / 1300. The guard's removal is cff355f9 on (b): no shipped build gains a low
+  state; tractor 900 1403 to 2080 N m, pickup 1500 698 to 955, the 2.0 at 1750 158 to 253 (N2).
+- **The diesel package (a later window, together):** D2's builds off the dial and the fixture's target; N2's match
+  re-read, (b), the guard's removal; D2's brake cure on the result.
+- Card A: all of A1, A2 and A3 built and tested locally (the transport on a loopback server, the turn loop on
+  scripted streams, the keychain store, the chat panel on this tree's kit with a thinking row). For J2 from it: a
+  `TextField` where only Enter commits and leaving keeps the draft (multi-line with Shift+Enter); an error colour in
+  the kit's Look.
+- L: today's exposure stays (the percentile pumps; the crack rule is inert; the throttle's cue pumps or swells); the
+  tractor's cabin written down as the design's limit. **L's first item now: the starter's peak holds the exposure
+  6.1 to 6.8 dB low for ten seconds and more after every start** (M's table; first.json's `sound.autoGain` +9.2
+  against +16.0 with the starter muted), for the next window if ready.
+- M: the owner's hum closed at a warm idle (the pump's 3895 Hz from +8.6 dB over its band at Side on the owner's
+  build to undetectable; the voices' sum 39 to 56 dB under the body). The fan's 280 Hz tone returns whenever the fan
+  runs (+7.6 to +21.7 dB over its band): a cure held for a later window (its tones 10 dB under its own rush).
+  A fixed mode near 2.2 to 2.3 kHz excited at the firing rate, no voice: for G and L.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
-- **25 Nov 12:31: ALL PUSHES ARE FROZEN** (sim/, host/, tools/, ui/, app/, tests/, docs/: everything). P's baked
-  content is the tip ce169231 and its CI run decides whether `main` moves. Work locally.
+- **25 Nov 13:16: CODE PUSHES ARE FROZEN for everyone but U4** (sim/, host/, tools/, ui/, app/, shell/, tests/,
+  assistant/): the next push that builds must be U4's macOS fix alone, so its CI run decides `main`.
+- **Docs-only pushes (docs/** and *.md) are allowed at any time**: the workflow ignores them and starts no run.
 - The lead writes here when `main` has moved and what may be pushed then.
