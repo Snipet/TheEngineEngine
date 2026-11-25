@@ -1290,7 +1290,10 @@ TEST_CASE("probe: the intake stroke at one speed", "[.probe-fill]")
 // The cam bake's proof (C's, after fab9ae4c; card N1's rules of 25 Nov): a build's cam baked on knock control alone and
 // on its own fresh spark table, each by the old rules (a cell the predictor's two-cycle mean, a constant floor, no cap)
 // and by the new (the mean of its last cycles, its own standard error the floor, the smoothing capped at 1 % of a
-// row's best). Each row: rpm, then advance/N m for the four. PROBE_BUILD (an archetype's slug).
+// row's best). Each row: rpm, then advance/N m for the four. PROBE_BUILD (an archetype's slug). The economy four, 25
+// Nov: the rows where control and table differ went from 6 of 8 (old) to 2 (new), at 4029 and 4786 rpm, 40 against 35
+// degrees, half a step apart. Not a failure: there the spark table's retard moves the torque at each advance by more
+// than a cycle's error, so the two bakes measure genuinely different rows (docs/models/valvetrain.md).
 TEST_CASE("probe: the cam bake's proof, old rules against new", "[.probe-bakeproof]")
 {
     const std::string slug = std::getenv("PROBE_BUILD") ? std::getenv("PROBE_BUILD") : "economy-four-15";
