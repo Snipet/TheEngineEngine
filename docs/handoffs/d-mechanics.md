@@ -79,3 +79,13 @@ standing wave (not the cylinder; N1's end loss ab65e06 takes most of it); a firi
 **Listening note (19:30)**: builds and renders before f89d40c are not the ones to judge the default V8's model-on sound on, where a model switch was written while the engine stood (after the program's init, with no layout or size change to follow it): those ran without the physical cylinder and the implied exhaust.
 
 **Listening note (20:20)**: under the physical cylinder every petrol engine's blowdown is a little softer and cooler since 3990ee47 (Gatowski's gamma); the default V8 at full load is the one to hear.
+
+**Open for the next window (25 Nov, the lead's note)**: the engine dyno's absorber loop (sim/core/dyno.fm) overshoots a
+step in its set speed by some 13 % (N1: 150 to 597 rad/s reaching about 655, estimated, not traced), which is what let a
+held dyno step latch the two-stage cam's high stage. The cause is the loop's form, not its tuning: a PI placed at zeta 1
+puts a zero at s = -wn/2, and that zero alone overshoots a step by about 13.5 % though the poles are critically damped.
+The candidate cure is set-point weighting (the proportional part on the speed alone, not on a step of the set speed;
+the integral and the feed-forward of a sweep's acceleration kept), or a first-order prefilter on the set speed at wn/2:
+either takes out the step's overshoot without slowing the loop's hold of a lumpy cam. To measure first (trace the step
+on the default V8 and the two-stage), predict the change in every dyno test's print, and weigh against C's ramped
+approach (C ramps the stepped dyno's approach next window; with the ramp the overshoot may no longer matter).
