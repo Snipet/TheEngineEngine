@@ -71,3 +71,36 @@ Card N1 ([w2-n-calibration.md](../plan/w2-n-calibration.md)), branch `claude/awe
 - The V12, V10 and flat-plane V8 at a warm idle; they now lope at 880 to 1000 rpm, where they held
 1100 to 1300. The 3.2 six and the V12 on a full-throttle sweep through 2500 to 5500 rpm; the phaser's holes are gone,
 and the note should carry no dip there. The 3.2 six's lift after the limiter (the ITB reading floored).
+
+## 25 Nov, the window before the bake: the two-stage's stage latch, the rotary, X-032 / X-034 / X-037 / X-040
+
+**The two-stage's 13 N m notch and P's start overshoot are one fault** (measured, tip 60e87aef). two-stage-cam-20's
+switch is speed-only: up over 612.6 rad/s (5850 rpm), down under 581.2 (the 31.4 rad/s hysteresis). A held point
+inside the band reads the stage of the way it came.
+- The predictor: its 5740 rpm point read stage B at 181.3 N m (neighbours 194.5 at 5197, A; 202.5 at 6283, B). The
+  worker loop, instrumented, showed both paths: from 6826.8 rpm with B held, and a step up from a lower point that the
+  absorber's loop carried over the switch. Approached from below: A, 192.1 to 192.6 N m.
+- The stepped dyno, upward steps 5197 / 5740 / 6283: 193.9 / 190.3 (A) / 212.1 N m.
+- **The stepped dyno is exposed too (measured):** a single held step at 597 rad/s reads stage B at 191.6 N m from the
+  default `from` (150 rad/s), and at 184.7 N m from `from` 590. The jump 150 to 597 is estimated, not traced, to
+  overshoot about 13 % of the step, to some 655 rad/s (6250 rpm; P saw 6190). The lead gave the stepped dyno to C with
+  the predictor's ramp, and the absorber loop's overshoot (core/dyno.fm) to the integrator.
+- The cure: `tel.engine.hysteresis` and `tel.engine.latched` (the valvetrain's `hysteresis()`, `latched(omega)`; D's
+  fields), read by C's predictor, which lets a latched point down and approaches it from below; kCamBakeVersion 4,
+  kKnockBakeVersion 6 (every table re-bakes).
+
+**The rotary's low end** (rotary-twin-13, the new compressor map, P's steps): peak 312.7 N m at 2294 rpm on one turbo at
+the 0.70 bar target; joined above 4500 rpm the boost falls to 0.45 to 0.53 bar with the gate shut (the secondary
+compressor a tenth of the air, its shaft at some 10.7 k, the primary choking, efficiency 0.72 to 0.50). N2's machine:
+N2 found the transfer's width evens the pair but gains under 2 %; the pair's match itself (the next window).
+
+**The soak's findings:** X-034 closed (a firing train, X's restated check). X-037 (the pickup's dpOverlap -394 kPa)
+is the vane brake's back pressure (tip: -298 kPa, the brake 359 kPa); restated as two checks, `tel.valve.dpWave` (the
+waves' part, +-300 kPa) and the brake's own limit; suspected: D2's retune moved it. X-032 (the turbo six's lift, 3.05
+against 2.97) stands: the lift is the same with or without the idle valve's start hold (576c1c6e, sourced, kept); the
+hold changes the start's history (that combination's idle never settles before the throttle: 100 to 190 rad/s against
+134), so the lift's firings fall at another phase; the steward's. X-040: the intake's least bores (runner 8 mm,
+snorkel 10 mm, G's design): the finding runs finite.
+
+**H9 and the bangs' default:** H9 runs `Sim("v8")` under exhaust.model 0, where the pipe is cleared; bang 0 and 1 read
+the same. Under exhaust.model 1 its fuelled-overrun part would rest on one 0.04 mg burn (not its configuration).

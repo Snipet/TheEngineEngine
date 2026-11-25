@@ -321,3 +321,42 @@ TEST_CASE("the bangs' books: the account's fuel is the exhaust's heat; a spark c
     CHECK(fuel.peak == 0.0);
     CHECK(spark.peak > fuel.peak);
 }
+
+// For N2's note: the pressure at the head of each side's chain (after a turbine: the downpipe's head, before the
+// converter) against the flow the ports let in and the main pipe's gas, first.json held at a series of speeds on the
+// dyno at full throttle and at part throttle
+TEST_CASE("measure: the exhaust's back pressure after the turbine against flow and temperature", "[.][measure]")
+{
+    auto player = tee::test::enginePlayer(48000.0);
+    tee::applyBuild(*player, tee::test::engineBuild(*player, "first"));
+    auto rd = [&](const std::string& path) {
+        double v = 0.0;
+        std::string error;
+        INFO(path << ": " << error);
+        REQUIRE(player->read(path, v, error));
+        return v;
+    };
+    std::vector<float> l(512), r(512);
+    auto run = [&](double s) {
+        for (int b = 0; b < static_cast<int>(s * 48000.0 / 512.0 + 0.5); ++b)
+            player->process(l.data(), r.data(), 512);
+    };
+    player->controls().mode = tee::EnginePlayer::kModeBench;
+    player->controls().ignition = tee::EnginePlayer::kIgnitionStart;
+    run(1.5);
+    player->controls().ignition = tee::EnginePlayer::kIgnitionOn;
+    run(0.5);
+    player->controls().mode = 2;
+    for (double thr : {0.3, 0.6, 1.0})
+        for (double rpm : {2000.0, 3500.0, 5000.0, 6500.0})
+        {
+            player->controls().dynoSpeed = static_cast<float>(rpm / 9.5492966);
+            player->controls().throttle = static_cast<float>(thr);
+            run(3.0);
+            const double q = rd("exh.b.qIn"), tm = rd("exh.b.heat.tGas[3]"), pc = rd("exh.b.pConv[0]"), pm = rd("exh.b.pMuf[0]");
+            const double mdot = (101325.0 + pc) * q / (287.0 * std::max(tm, 300.0));
+            std::printf("throttle %.1f, %4.0f rpm: ports' flow %.3f m3/s, main pipe gas %.0f K, mass %.3f kg/s; downpipe head %.1f kPa, "
+                        "before the muffler %.1f kPa over the air; (head) / (m^2 T) %.3g\n", thr, rd("crank.rpm"), q, tm, mdot,
+                        pc / 1e3, pm / 1e3, pc / (mdot * mdot * std::max(tm, 300.0)));
+        }
+}
