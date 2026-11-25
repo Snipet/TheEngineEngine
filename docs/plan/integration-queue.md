@@ -643,6 +643,25 @@ adjusters locked at standstill with the intake advanced and the exhaust retarded
 210 deg; no idle positions, no valve events. With the exhaust at 210 deg at 1 mm (the card: 232) the V10 idles at
 40.0 kPa, inside its class's 30 to 44.
 
+## Added to the held list (25 Nov 12:02)
+
+| What | Whose | State | Under |
+|---|---|---|---|
+| The start's fuel apart from the full-load curve (the curve a running engine's limit only); the tractor split out of the listen quick case as `[!mayfail]` naming the start-history finding | D2 | 9ef985c2 local; bisected to D2's own 75109f7f; cold cases 17.5 to 2.9 s at 233 K; 539 of 540 before the split | sim/, tests/sim/listen |
+| A 93 grade, appended | N1 | asked | sim/combustion/fuels.fm, sim/spec/fuel.fm |
+| The assistant's A2 (the MCP server `tee-mcp`, the link with its peer check, the cards, the `.mcpb`) and its wiring in app/ and shell/settings (`allowClaudeDesktop`, default false) | card A | 6d1b977 local; assistant.sim 14 cases | assistant/, app/, shell/ |
+| The frame's "Allow Claude Desktop" switch row and status line (then the cards strip and the yes/no dialog) | U1, after card A's push | not started | ui/ |
+
+**The lead's own second measurements** (its own build of the tip, `tee-dyno`, 20 s settle and 10 s measure, full
+pedal): the tractor as shipped 800 / 900 / 1000 / 1100 / 1300 rpm: 1218 / 1357 / 1599 / 2090 / 2757 N m (D2: 1176 /
+1309 / 1552 at the first three; before the cure 792 / 603 / 638); on the 76.8 mm wheel: 1260 / 1448 / **2580** /
+2718 / 2811 (N2: 2580 at 1000, 2719 at 1100). Both confirmed.
+
+**Closed:** the V10's exhaust at 210 deg does not go on its card (N1's two checks: Audi's SSP 994376AG is the S6 / S8's
+engine by its own table; the top end loses 5 %). N3-16 stays recorded on the V10's and the V12's cards.
+**Open, the owner asked:** octane as a free number (U4's list, item 2); not started.
+**Nightly, D2 bisecting:** TurboTest.cpp:118, the big single's boost after 2 s at 1300 rpm 28.2 against 30 kPa.
+
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
 - **25 Nov 11:26: sim/, host/ and tools/ are FROZEN** (P re-bakes at the tip for the next `main`). ui/, app/,

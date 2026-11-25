@@ -284,6 +284,10 @@ namespace tee::ui
         // The knock-limit table last baked: its cells still knocking after the corrections, [speed][load] on
         // ecu.maps.knockLimit's grid (empty: none, or not served). TUNE marks them on that map.
         std::function<std::vector<std::vector<bool>>()> stillKnocking;
+        // A source file of the simulator in use, by its path under sim/ ("combustion/fuels.fm"): its text, or "" when
+        // there is none or it cannot be read. Empty function: not served. TUNE reads the fuels' octane table from it, so
+        // no view types the simulator's numbers in by hand (U4's fuel control).
+        std::function<std::string(const std::string& file)> simSource;
         // How the engine starts (the lead's ruling: warm, a cold start the person's choice; card B's settings key
         // "coldStart", taken from the next launch). The settings page's ENGINE START row; empty: not shown.
         std::function<bool()> coldStart;
