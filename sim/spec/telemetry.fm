@@ -38,6 +38,8 @@ module EngineTel
     float torque [[ui::label("Torque")]] [[ui::quantity("torque")]]
         [[ui::help("Brake torque, its mean over some 0.1 s: the gases' less friction and a supercharger's drag; on the dyno, the absorber's")]];
     float gasTorque [[ui::label("Gas torque")]] [[ui::quantity("torque")]] [[ui::help("The gases' on the crank, its mean over some 20 ms")]];
+    int hysteresis [[fminus::range(0, 1)]] [[ui::label("Hysteresis")]] [[ui::help("1 when the build has a part whose state depends on the way it came (a two-stage cam's switch)")]];
+    int latched [[fminus::range(0, 1)]] [[ui::label("Latched")]] [[ui::help("1 while such a part holds a state an upward sweep would not hold at this speed (the second stage under its up switch)")]];
     float firing [[ui::label("Firing rate")]] [[ui::quantity("frequency")]] [[ui::help("Firings a second, every cylinder's")]];
     float power [[ui::label("Power")]] [[ui::quantity("power")]] [[ui::help("The torque (brake) times the speed")]];
     float imep [[ui::label("IMEP")]] [[ui::quantity("pressure")]] [[ui::help("Indicated mean effective pressure, gross: the power loop's, the last cycle's mean over the cylinders")]];

@@ -105,8 +105,9 @@ namespace tee
     // calibration's order, spark then cam then spark again, ends). A 31-bit number, as spec.ecu.maps.camInKey holds it.
     // The cam bake's own rules' version, in its key: a map baked by older rules reads stale (2: no knock gate, the
     // choice on knock-limited torque; ties inside a point's floor to the neighbours' choice. 3: a cell's torque the
-    // mean of its last cycles, the floor its own standard error; the smoothing capped at 1 % of a row's best)
-    constexpr int kCamBakeVersion = 3;
+    // mean of its last cycles, the floor its own standard error; the smoothing capped at 1 % of a row's best. 4: a point
+    // read as an upward sweep reaches it, a latched state let down first (tel.engine.hysteresis, latched; C's predictor))
+    constexpr int kCamBakeVersion = 4;
     std::int64_t intakeCamKey(const Build& build, const Sim& sim);
     // The same fields without the program (CalibrationBakeService's verified reuse: a map baked for these fields under
     // another program, a candidate to be checked, never current by itself)

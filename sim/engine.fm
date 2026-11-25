@@ -1881,6 +1881,8 @@ module Engine
         tel.car.clutch = fminf(fmaxf(set.clutch, 0.0f), 1.0f);
         tel.sound.peak = peak;
         vt.telemetry(&tel.valve);
+        tel.engine.hysteresis = vt.hysteresis();               // (N1, for C's dyno: a held point approached from below)
+        tel.engine.latched = vt.latched(crank.omega);
         intk.telemetry(&tel.intake);
         hd.telemetry(&tel.ecu, &comb.diesel, fuelUse, spec.fuel.model);      // card D2: the smoke number, the diesel's measures
     }

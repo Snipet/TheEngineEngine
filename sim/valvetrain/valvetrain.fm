@@ -201,6 +201,20 @@ module Valvetrain
     // ---- each sample: cylinder c at its angle a (degrees in the cycle) and the pressure across it, its intake port's
     // over its exhaust port's (Pa): kept over the overlap's crank angles the schedule would ask (lab.ovFrom to ovTo,
     // four-strokes) ----
+    // A part whose state depends on the way it came (tel.engine.hysteresis, latched): the two-stage cam's switch, up over
+    // its speed and down only under it less the hysteresis. hysteresis(): 1 when the build has one; latched(omega): 1
+    // while the second stage is held under its up switch, a state an upward sweep would not hold at this crank speed
+    // (rad/s). A dyno reads them to approach a held point from below (card N1 with C, 25 Nov: P's 13 N m notch)
+    int hysteresis()
+    {
+        return model != 0 && lab.stagesOn != 0 ? 1 : 0;
+    }
+
+    int latched(float omega)
+    {
+        return hysteresis() != 0 && lab.stageWant == 1 && omega < lab.stageUp ? 1 : 0;
+    }
+
     void overlapSample(float a, float dp)
     {
         if (cycNow == 720.0f && a >= lab.ovFrom && a <= lab.ovTo)
