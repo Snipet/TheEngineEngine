@@ -48,3 +48,36 @@ band were wrong.
 
 Landing fault 1 alone would trade a choked primary for a balanced pair that makes no more torque, and it changes the
 rotary's sound and flags, so it is not landed alone.
+
+## What the pair should be matched TO (the lead's ruling, 25 Nov 19:46: sources before any number)
+
+This is the same question as rule (c) and the turbine's rated match (rated-nozzle-q2.md): what a turbine is matched
+to.
+
+**Cited** (P's sources, judgement-sources.md section 16):
+- the second turbo joins at about 4500 rpm at full throttle: an enthusiast's measurement, and a forum's quote of the
+  workshop manual;
+- it is pre-spooled from about 3000 rpm (the forum's quote only);
+- the joined state is released below about 3300 rpm;
+- Mazda's manual text: the secondary is spun before it joins "to prevent a drop of boost pressure".
+
+**What that implies for the match:**
+- the joined pair must hold the boost through and above the join, with no drop. The target is the build's 0.70 bar;
+  the sources give no boost figure;
+- below the join, the single must reach that target by itself.
+
+So the single's design point is the target at the join speed's low side. The pair's design point is the target at the
+join (4500 rpm) and on to the redline: each turbine passes its share of the engine's flow there at the p3 that makes
+the target.
+
+**Not found, so not to be invented:**
+- each turbo's share once joined. The 13B-REW's two turbos are commonly described as one model fitted twice, which
+  would give equal shares (an inference, not cited);
+- the boost through the join;
+- any maker's turbine area.
+
+The next window's change then has two parts, measured against the cited torque curve:
+- the transfer as an unrestricted path (the housing's own inlet, no new number);
+- the pair matched at the join with equal shares, the share labelled as the inference above until P finds a source.
+
+The rotary's rows above the join stay rows: they are a known miss with this cause, not held by calibration (told to P).
