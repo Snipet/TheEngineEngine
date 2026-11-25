@@ -751,6 +751,11 @@ namespace
             CHECK_MSG(d.knockText(last) == "knock-limited, retard 6 to 10 deg", d.knockText(last));
             CHECK_MSG(plotText().find("; KNOCK-LIMITED 4500-7000 RPM, RETARD 1 TO 10 DEG") != std::string::npos, plotText());
             picture("frame.ribbon.knock", *rig.host);
+            // Unsettled points (card C's torqueSe, settledCycles; the demo's from 185 kPa: 6250 rpm unsure, 6500 not
+            // settled): an open square each on the torque curve, the speeds in the plot's accessible text.
+            CHECK(d.unsettledAt(d.speed.size() - 4) && d.unsettledAt(d.speed.size() - 3) && !d.unsettledAt(d.speed.size() - 5));
+            CHECK_MSG(plotText().find("; unsettled at 6250 rpm; unsettled at 6500 rpm") != std::string::npos, plotText());
+            golden("frame.ribbon.unsettled", *rig.host);
         }
         const float open = f.inspectorRect().h;
         f.foldRibbon(true);

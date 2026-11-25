@@ -42,6 +42,29 @@ namespace
         for (int w = 0; w < f.workspaceCount(); ++w)
         {
             f.show(w);
+            // Every page has its tab, and every tab is above the page (J2's report, 25 Nov: TUNE's eleven tabs at the
+            // smallest window ran into the page), at the smallest window and a large one.
+            for (const auto& [ww, hh] : { std::pair{ 1100, 700 }, std::pair{ 1600, 1000 } })
+            {
+                rig.host->resize(ww, hh);
+                rig.host->tick(2);
+                const float top = f.inspectorRect().y;
+                for (int p = 0; p < f.inspectorPageCount() && f.inspectorPageCount() > 1; ++p)   // one page: no tabs
+                {
+                    const funkgui::Rect t = f.inspectorTabRect(p);
+                    CHECK_MSG(!t.isEmpty() && t.bottom() <= top && t.right() <= static_cast<float>(ww),
+                              f.slot(w).id + " / " + f.inspectorTitle(p) + ": its tab at y " + std::to_string(t.y) + " to "
+                                  + std::to_string(t.bottom()) + ", the page from " + std::to_string(top) + ", of "
+                                  + std::to_string(f.inspectorPageCount()) + " pages");
+                }
+                // TUNE's three rows at the smallest window: its picture (not a golden), out/ui/build.frame.tune.png.
+                if (f.slot(w).id == "tune" && ww == 1100)
+                {
+                    rig.host->tick(2);
+                    rig.host->draw();
+                    rig.host->writePng((std::string(TEE_UI_OUT_DIR) + "/build.frame.tune.png").c_str(), 1);
+                }
+            }
             for (int p = 0; p < f.inspectorPageCount(); ++p)
             {
                 ++pages;
