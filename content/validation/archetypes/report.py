@@ -122,18 +122,25 @@ LUG = {"name": "Lug: the least torque from 1100 to 1300 rpm over the peak", "ran
        "basis": "cited",
        "source": _HD + ": 0.98 to 1.00 of the peak there; at least 0.95 (judgement, the charts' reading); read by "
                  "report.py on the build's predicted full-load curve (tee-dyno --predict, 600 rpm to its top step), "
-                 "interpolated at 1100, 1200 and 1300 rpm"}
+                 "its own points from 1100 to 1300 rpm (never across the spool's edge near 1040 to 1080, card C)"}
 LUG_FROM = {"name": "Lug: where the torque first reaches 0.98 of its peak (rpm)", "range": [900, 1200], "unit": "rpm",
             "basis": "cited",
             "source": _HD + ": the plateau starts at 950 to 1150 rpm; 900 to 1200 (judgement, the margin); read by "
                       "report.py on the same predicted curve, interpolated"}
 
 
-def lug(pts):
+def lug(pts, lug_pts=None):
     """LUG and LUG_FROM from a predicted curve [(rad/s, N m, W)]: min torque at 1100-1300 rpm over the peak, and the
-    speed (rpm) where the torque first reaches 0.98 of the peak."""
+    speed (rpm) where the torque first reaches 0.98 of the peak. `lug_pts`: the curve's own points from 1100 to 1300
+    rpm (card C, 04:24: the tractor's spool turns on a knife-edge near 1060 rpm, so the band is read on points of its
+    own, never interpolated across 1040 to 1080)."""
     c = [(w / RPM, q) for w, q, _ in pts]
     peak = max(q for _, q in c)
+    if lug_pts:
+        b = [(w / RPM, q) for w, q, _ in lug_pts]
+        top = max(peak, max(q for _, q in b))
+        merged = sorted(dict(c + b).items())
+        return min(q for _, q in b) / top, _first(merged, top)
 
     def at(r):
         for (r0, q0), (r1, q1) in zip(c, c[1:]):
@@ -141,12 +148,15 @@ def lug(pts):
                 return q0 + (q1 - q0) * (r - r0) / (r1 - r0)
         return None
     share = min(at(r) or 0.0 for r in (1100.0, 1200.0, 1300.0)) / peak
-    first = c[-1][0]
+    return share, _first(c, peak)
+
+
+def _first(c, peak):
+    """The speed (rpm) where the curve [(rpm, N m)] first reaches 0.98 of `peak`, interpolated."""
     for (r0, q0), (r1, q1) in zip(c, c[1:]):
         if q1 >= 0.98 * peak:
-            first = r0 + (r1 - r0) * max(0.0, (0.98 * peak - q0)) / max(q1 - q0, 1e-9) if q0 < 0.98 * peak else r0
-            break
-    return share, first
+            return r0 + (r1 - r0) * max(0.0, (0.98 * peak - q0)) / max(q1 - q0, 1e-9) if q0 < 0.98 * peak else r0
+    return c[-1][0]
 
 
 def takeup(bin_dir, slug, out_dir, build_path, peak):
@@ -310,10 +320,10 @@ def rng(t):
     return "%s to %s" % (show(t, a), show(t, b))
 
 
-def curve(bin_dir, slug, out_dir, build_path, plan):
+def curve(bin_dir, slug, out_dir, build_path, plan, tag="curve"):
     """The predicted curve at tee-validate's own spacing (Validation.cpp: one point every 15 rad/s, 8 to 48 points),
     from tee-dyno --predict, cached as out_dir/<slug>.curve.csv: [(rad/s, N m, W)]."""
-    path = os.path.join(out_dir, slug + ".curve.txt")
+    path = os.path.join(out_dir, slug + "." + tag + ".txt")
     if not os.path.exists(path):
         n = min(max(int((plan["to"] - plan["from"]) / 15.0) + 1, 8), 48)
         cmd = [os.path.join(bin_dir, "tee-dyno"), "--predict", "--points", str(n), "--from", str(plan["from"]),
@@ -414,7 +424,9 @@ def main():
             if plan_:
                 pts_ = curve(a.bin, s_, a.src, os.path.join(content, docs[s_]["build"]), plan_)
                 peak = max(p[1] for p in pts_)
-                sh, fr = lug(pts_)
+                band_ = curve(a.bin, s_, a.src, os.path.join(content, docs[s_]["build"]),
+                              {"from": 1100 * RPM, "to": 1300 * RPM}, tag="lug")
+                sh, fr = lug(pts_, band_)
                 results[s_].append((LUG, sh, "pass" if LUG["range"][0] <= sh <= LUG["range"][1] else "FAIL"))
                 results[s_].append((LUG_FROM, fr, "pass" if LUG_FROM["range"][0] <= fr <= LUG_FROM["range"][1]
                                     else "FAIL"))
