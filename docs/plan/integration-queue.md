@@ -1250,11 +1250,27 @@ small dials' numbers if the owner asks; card A: nothing owed.
 ## FREEZE STATE (the lead keeps this the last section; read it before every push)
 
 - **25 Nov 23:25 UTC: `main` IS AT b557c4a1** (the bake abadfb4b; Linux, macOS and Windows green on that commit).
-- **`sim/`, `host/` and `tools/` ARE CLOSED until the lead opens the next window here** (its list is the section
-  above). Prepare locally; measure; do not push under those trees. A cure that needs them waits for the window.
-- **Open now:** `ui/`, `app/`, `shell/`, `assistant/`, `tests/`, `content/` (not the baked tables), docs. Push
-  rule: one green whole default tier on a merged state, then merge a moved tip and push, saying what was not in
-  the run; `scripts/lint.sh` before pushing; wait on the tier's process, not on a line in a reused log.
-- **U1** pushes only a pure fast-forward of a tested state: it tells the lead; the lead collects a "holding"
-  from every pusher (breaking into running turns), then names the tip.
-- **The next `main`** needs a bake again once anything under `sim/`, `host/` or `tools/` has moved.
+- **25 Nov 23:27 UTC: THE NEXT WINDOW IS OPEN under `sim/`, `host/` and `tools/`** for the items of the list in
+  the section above, and nothing else. From the first push under those trees the branch's baked tables are
+  stale until the next bake; `main` stays the stable build.
+- **Order under `sim/` (each waits for the one before to be on the branch where their files meet; say early what
+  will not make the window):**
+  1. G, then N2: the burn's heat as hot gas; the turbine seeing it; the rally five on its limiter re-measured.
+  2. the integrator: the starting state that differs between the two init routes; #337's paired form.
+  3. N2 with the integrator: the turbine's match under `engine.custom`.
+  4. N1: the two-stage's switch against its crossing; the ragged high stage.
+  5. the steward: X-032 (the turbo six's start and idle), X-031, X-036; X-030 after G's item 1.
+  6. C (`host/`): the stepped dyno's approach from below; refusal of a bore at input by a rule in the host.
+  7. N2: the rotary's pair, rule (c), the rated match (a design first, to the lead, before any number).
+  8. the integrator: the dyno loop's step overshoot, after C's item 6.
+  9. L: X-039's check with N2's inlet solve; the V8's dense bangs, after G's item 1.
+  10. M: the voices' cost on first.json (measure and report first).
+- **Rules, as before:** a prediction before each measurement; no part built from its own validation targets; a
+  red default-run test fixed or restated on its property with proof it bites, never loosened; one green whole
+  default tier on a merged state, then merge a moved tip and push, saying what was not in the run;
+  `scripts/lint.sh` before pushing; wait on the tier's process, not on a line in a reused log; a refusal of a
+  session's permission check is never worked around.
+- **Outside those trees, open at any time:** `ui/`, `app/`, `shell/`, `assistant/`, `tests/`, `content/` (not the
+  baked tables), docs. **U1** pushes only a pure fast-forward of a tested state: it tells the lead; the lead
+  collects a "holding" from every pusher (breaking into running turns), then names the tip.
+- **Then the lead writes FROZEN FOR THE BAKE here, P bakes, and `main` follows the baked commit's CI.**
