@@ -449,7 +449,14 @@ module BoostMachine
         const float prDesign = fmaxf((pOut + asked) / pOut, 1.3f);
         const float p3Design = 1.247f * prDesign * pOut;
         const float tDesign = dsl != 0 ? 900.0f : 1150.0f;
-        mMatch = fmaxf(vd * nDesign / 120.0f * 1.204f * prDesign * 0.9f, 0.01f);
+        // (the charge's density at the design point, the lead's ruling: the compressor's outlet at the design ratio
+        // (its efficiency the spec's peak, compEta), cooled by the build's intercooler (icEffect; 0: none), in place of
+        // 1.204 x the ratio, the air's own temperature: the 15 L truck passed 58 % of the flow so matched at its design
+        // speed, the tractor 87 %, first.json 77 % (compressor-map-model.md). The 0.9 is F's, unchanged)
+        const float tauDes = expf(logf(prDesign) / 3.5f) - 1.0f;
+        const float t2Des = tOut * (1.0f + tauDes / fmaxf(s->compEta, 0.3f));
+        const float tCharge = t2Des - s->icEffect * (t2Des - tOut);
+        mMatch = fmaxf(vd * nDesign / 120.0f * (prDesign * pOut / (kBoostR * tCharge)) * 0.9f, 0.01f);
         // (the sizing rule's wording under the corrected map, the lead's ruling, not a new constant: F's rule is that
         // the choke is 1.15 x the design flow (F's judgement, unchanged), meaning the choke the wheel has at its design
         // speed. Under the old map the full choke came at a tip Mach of 1.2, so the full choke was that; the choke now
