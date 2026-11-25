@@ -483,7 +483,7 @@ module Combustion
                 // (what lights a waiting slug: the hottest gas it meets, this blowdown's or the bank's recent one held, as
                 // the account's store has always read it: under a hard spark cut no charge fires for a while, and the
                 // pipe's gas from the last fired ones still lights what follows them)
-                acct->release(c, b, cy->m, cy->t, ecu->blow[b], own, 1, 0.5f + 0.5f * nz->rnd());
+                acct->release(c, b, cy->m, cy->t, ecu->blow[b], own, 0.5f + 0.5f * nz->rnd());
                 const float lhv = kFuelLhv[fuelRow(fuel->grade)];
                 for (int e = 0; e < acct->nOut; ++e)
                     pop[b].burnEvent(acct->outFuel[e] * lhv, acct->outFuel[e], acct->outMass[e], acct->outT[e],

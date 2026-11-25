@@ -174,16 +174,16 @@ module FuelAccount
 
     // Burned in the pipe: cylinder ci of bank b opens its exhaust, its gas `mass` kg at `t` K; tLight the blowdown's
     // heat that lights what waits (a charge still burning: its flame, 2000 K, as the account's hold takes it); own 1 when
-    // its charge is still burning (its flame goes with it), fired 1 when it burned this cycle, u a uniform number in
-    // [0, 1). Fills out* with the burns this opening lights
-    void release(int ci, int b, float mass, float t, float tLight, int own, int fired, float u)
+    // its charge is still burning (its flame goes with it), u a uniform number in [0, 1). Fills out* with the burns this
+    // opening lights
+    void release(int ci, int b, float mass, float t, float tLight, int own, float u)
     {
         nOut = 0;
         const int c = ci < ACCT_CYL ? ci : ACCT_CYL - 1;
         const int k = b == 1 ? 1 : 0;
-        // the gas this opening meets lights the slugs already waiting, by its heat (fired: 0 to let it light nothing)
+        // the gas this opening meets lights the slugs already waiting, by its heat
         const float chance = fminf(fmaxf((tLight - 900.0f) / 300.0f, 0.0f), 1.0f);
-        if (fired != 0 && sN[k] > 0 && u < chance)
+        if (sN[k] > 0 && u < chance)
         {
             for (int i = 0; i < sN[k]; ++i)
                 handOut(sFuel[k][i], sMass[k][i], sT[k][i], sPhi[k][i], sXb[k][i], 0);
