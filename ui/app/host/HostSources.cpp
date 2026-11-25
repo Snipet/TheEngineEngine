@@ -252,7 +252,12 @@ namespace tee::ui
             ++applied_;
         }
         if (build_.hash() != before)
-            seen_ = build_.hash();   // its own writes are not edits to bake for
+        {
+            // The tables written: the service asked again, so it says "baked" (left alone it stays "baked, to apply";
+            // found in a real run on first.json), and these writes are not taken for an edit to bake for.
+            bakes_.consider(build_);
+            seen_ = build_.hash();
+        }
     }
 
     std::string ServiceBake::state() const
