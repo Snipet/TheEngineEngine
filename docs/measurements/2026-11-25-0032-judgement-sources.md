@@ -267,3 +267,52 @@ is reached (a TB28 over speed at 3500 m and 2600 rpm; an HP60 at 4000 m and 2800
 sea-level margin; and a forum's rule of thumb that turbo speed rises some **3 % per 1000 ft** (unverified). If 3 % per 1000 ft
 held, a 6 % margin (Woollenweber's) would cover some 2000 ft (600 m); a truck sold for mountain passes (some 2500 m) would want
 nearer 20 % (judgement, from the forum's rate).
+
+**Continued: each speed line of the same two maps** (the lead's ask for N2's table, 25 Nov 13:56 UTC). PRINTED: what the sheet
+prints as text. READ: read by me off the drawing, the maps rendered at 600 dpi (S400) and 300 dpi (S300) and read against the
+gridlines: flow to about **±0.7 lb/min (S400) and ±1 lb/min (S300)**, pressure ratio to about **±0.03**. A line's surge end is
+its drawn left end; its right end is where the maker stops drawing it (not a stated choke). Tip speed U = pi D N.
+
+*Wheels and conditions (PRINTED):* S400SX-E 14009097006: "Comp. Wheel Inducer Dia. (mm) 72.00", "Comp. Wheel Outer Dia. (mm)
+96.00" (trim (72/96)^2 = 56.3, computed); S300SX3 177281/177275: inducer 66.11, outer 91.44 mm (trim 52.3, computed). Flow axis
+"Compressor Flow (lb/min)" on both; the S400's speed lines are labelled "uredC" in m/s (a corrected tip speed), its efficiency
+"ηisC". **Not printed on either sheet: the flow's correction (corrected or actual), its reference temperature and pressure, and
+the exducer as such** (the outer diameter is taken as the exducer). 
+
+*S400SX-E (72 / 96 mm)*: speed PRINTED (uredC, m/s); rpm computed on 96.00 mm; the rest READ.
+
+| uredC m/s | rpm | peak PR, at flow (lb/min) | surge end: flow, PR | right end: flow, PR |
+|---|---|---|---|---|
+| 230 | 45,760 | 1.41 at 15-18 | 12.0, 1.40 | 45.4, 1.22 |
+| 310 | 61,670 | 1.82 at 21 | 21.2, 1.82 | 66.9, 1.42 |
+| 370 | 73,610 | 2.25 at 29 (2.22 to 46) | 28.6, 2.25 | 81.2, 1.63 |
+| 421 | 83,760 | 2.72 at 41-53 (flat) | 40.8, 2.72 | 90.5, 1.85 |
+| 461 | 91,710 | 3.21 at 47 (3.20 at 63) | 47.1, 3.21 | 96.6, 2.05 |
+| 491 | 97,680 | 3.62 at 62-68 | 62.2, 3.62 | 100.4, 2.22 |
+| 521 | 103,650 | 4.10 at 65 | 64.8, 4.10 | 103.2, 2.40 |
+| 561 | 111,610 | 4.63 at 72 | 71.6, 4.63 | 106.7, 2.69 |
+| 607 | 120,760 | 4.99 at 78-79 (at the map's top edge) | 78.5, 4.99 | 110.3, 3.08 |
+
+Efficiency (READ, ±0.02 on a contour's place): the island **ηisC = 0.8 (PRINTED)** at some **55 to 62 lb/min, PR 2.05 to 2.30**
+(its centre about 58, 2.15). Along the top line (607) the highest contour crossed is 0.64 (PRINTED labels: it enters the 0.64
+contour near 80 lb/min and leaves it near 107); along 561, 0.68 (the label sits on it near 73 lb/min), with 0.66 at both its
+ends. The lines' right ends lie among the contours labelled at the map's right edge, 0.64 down to 0.54 (PRINTED), the lower
+lines' ends nearer 0.6 to 0.62: **not assignable line by line by eye**.
+
+*S300SX3 (66.11 / 91.44 mm)*: speed PRINTED (rpm); tip speed computed on 91.44 mm; the rest READ.
+
+| rpm | U m/s | peak PR, at flow (lb/min) | surge end: flow, PR | right end: flow, PR |
+|---|---|---|---|---|
+| 58,496 | 280 | 1.68 at 15-21 | 14.9, 1.68 | 43.6, 1.39 |
+| 77,362 | 370 | 2.34 at 26-34 | 25.7, 2.34 | 60.7, 1.78 |
+| 92,449 | 443 | 3.14 at 35 | 35.3, 3.14 | 71.5, 2.25 |
+| 105,437 | 505 | 3.94 at 46 (3.91 to 61) | 46.2, 3.94 | 75.7, 2.84 |
+| 117,199 | 561 | 4.71 at 55 (4.69 to 66) | 55.1, 4.71 | 77.8, 3.64 |
+
+Efficiency (READ): the highest contour **0.76 (PRINTED)**, its island near **45 to 52 lb/min, PR 2.4 to 2.8** (label at about
+50, 2.77); 0.74 next (label near 59, 3.3). Along 117,199 the highest contour crossed is 0.66 to 0.68 (labels 0.66 near 58 lb/min
+and 0.68 near 72, PR 4.4); along 105,437, 0.72 (its label on the line near 63 lb/min). The right ends lie between the contours
+labelled 0.66 and 0.62 at the lower right: not assigned line by line.
+
+*For N2's model (computed here from the READ peaks, not a source's):* the peak ratio against corrected tip speed falls on one
+curve for both wheels within the reading's error: at U = 370 m/s, 2.25 (S400) and 2.34 (S300); at 561 m/s, 4.63 and 4.71.

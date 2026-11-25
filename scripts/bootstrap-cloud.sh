@@ -8,7 +8,9 @@
 # What it does:
 #   1. apt packages: Ninja, clang and lld, clang's sanitizer runtimes (the tsan preset), Flex and Bison (FMinus's
 #      grammar), ccache, and what FunkGui's GPU path and SDL3 need to build and to run without a screen (X11 and
-#      Vulkan development packages, Xvfb, Mesa's software Vulkan, openbox: scripts/xvfb-run.sh).
+#      Vulkan development packages, Xvfb, Mesa's software Vulkan, openbox: scripts/xvfb-run.sh), and libcurl and
+#      libsecret for card A's assistant (its HTTPS transport and its key in the desktop's secret store; without them
+#      those two parts compile off and say so).
 #   2. CMake 3.30 or newer (Ubuntu 24.04 has 3.28): pip's, when the one on the PATH is older.
 #   3. FMinus's prebuilt LLVM, checked against its release's SHA-256, into $TEE_DEPS_DIR/install (scripts/fetch-llvm.sh).
 #   4. Every dependency's source, cloned by git at its pinned commit into $TEE_DEPS_DIR/src (cmake/TeeFetch.cmake):
@@ -33,6 +35,7 @@ packages=(
   libxss-dev libxtst-dev libxkbcommon-dev
   libgl1-mesa-dev libegl1-mesa-dev libvulkan-dev vulkan-tools mesa-vulkan-drivers
   libasound2-dev libpulse-dev libudev-dev libdbus-1-dev
+  libcurl4-openssl-dev libsecret-1-dev
   xvfb xauth openbox
 )
 missing=()
