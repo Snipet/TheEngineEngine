@@ -1,7 +1,7 @@
 # P: content, validation targets, the manual (handoff)
 
 Package P, branch `claude/awesome-gates-ntdb58`, cloud session. Owns `content/builds/**` (new files),
-`content/validation/**`, `docs/manual/**`, `docs/measurements/validation/`, this file. Updated 25 Nov, 08:25 UTC.
+`content/validation/**`, `docs/manual/**`, `docs/measurements/validation/`, this file. Updated 25 Nov, 10:34 UTC.
 
 **Builds.** 31 archetypes and `content/builds/first.json` (the first launch: the 2.0 turbo four, now the EA888 gen 3 of
 the Mk7 GTI), written by `content/builds/archetypes/generate.py`. Every model switch on, checked against `tee-schema`
@@ -21,15 +21,16 @@ lists the worst five, and measures the idle's standing tone itself. Timed runs b
 power curve, revs held at the green, warm tyres), regenerated on each table's pin.
 
 **Tables** (all kept in `docs/measurements/validation/`, named at real UTC): G 132 of 648, H 193 of 741, I 123, J 124 of
-772, K (`ab107ca`) 120 of 839, **L final (`066165a0` on `32320974`) 120 of 847 (31 of 203 cited)**, power in range 12
-of 30, torque 12; its columns on K's content 116 and on L's seat-held cards 118 (the first L superseded, kept).
+772, K (`ab107ca`) 120 of 839, L final (`066165a0`) 120 of 847 with its columns on K's content 116 and L's seat-held
+cards 118 (the first L superseded, kept); **M (`7f64dac1`, `main` since 10:33) 115 of 847 (31 of 203 cited)**: the
+cured bake's means, the rotary's join stated.
 
 **Sources files:** `docs/measurements/validation/2026-11-24-2314-ea888-gen3-sources.md` (the turbo four: what is known,
 what is guessed; gen 3's exhaust cam timing the one figure not found); `docs/measurements/2026-11-25-0032-judgement-sources.md`
 (VGT vanes at idle, a diesel's cycle spread, turbine efficiency, fan switches, idle warm-up); the quarter mile one change at
 a time (`2026-11-24-2215-quarter-mile-one-change.md`).
 
-**Next:** one bake once C's, N1's and N2's are in (every key moves), then the rows again. **Open for others:** the long-seat
+**Next:** one re-key at the lead's word, after D2's idle-trim cure (C's verified reuse where it agrees, a bake where not). **Open for others:** the long-seat
 cards' idle vacuum (V10, V12: N1's overlap); the curves' sharp teeth (N1); the turbo four's low end (the turbine match, N2; gen 3's exhaust timing,
 unpublished); the diesels' boost at the check speed in K (N2's correction); the diesels' idle hum (D2, N2).
 
