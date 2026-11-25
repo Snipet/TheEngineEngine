@@ -37,6 +37,23 @@
 
 ## Landed
 
+- **03:55 (25 Nov) `main` moved 78cdd2f5 to e7e58973**, fast-forward: run 45539104538, Linux and macOS green outright
+  (checked on the run's own jobs; Windows' job on it still running, main's own run to follow). Against 78cdd2f5 it
+  adds N1's four-valve low-lift curtain (6771c402), D2's diesel telemetry (a90cd20f: fuelFlow the fuel injected,
+  lambda filled), N2's two test and tool commits, and P's rows and cards (the cards behind CAM_RULE, so no build
+  changes): the tractor's take-up and lug rows (least torque from 1100 to 1300 over the peak: 0.64 against 0.95 or
+  more on five makers' curves; the plateau from about 1476 rpm against 900 to 1200). Since 03:13: D2's baseline
+  splits the tractor archetype's shortfall in two (boost at 1100 to 1300, the vanes open: 29 and 94.5 kPa; above
+  about 1400 the single `fuelBoost` sized for 108 kPa, burning at 0.51 of stoichiometric at 238 kPa) and D2's own
+  truck is flat where a real one falls a quarter to rated. **Ruled: a full-load fuel curve for governed diesels**
+  (`fuelCurveRpm[8]`, `fuelCurveMg[8]`, mass a stroke at full rack, used where set, the flat line and the null test
+  untouched otherwise; the compensator still caps it), built after N2's commit, tables first; where a curve is derived
+  from its engine's published torque those torque and power rows are marked "set by the fuel curve" and leave the
+  counts, and the model is tested there by boost, lambda, BSFC, turbine inlet temperature and the take-up. The take-up
+  row is (b): held at 1100 rpm, the pedal stepped, 90 % of the build's own peak within 5 s; the pedal's own response
+  at a held 1300 is 0.41 s and the 19 to 20 s is the climb from 800, which the lead had run together for the owner
+  and has corrected. N2 working on the tip (knee, flag, the matching's charge temperature); nothing of it pushed yet.
+
 - **03:13 (25 Nov) the lead's check-in; `main` at 78cdd2f5, green on all three platforms** (its own run 45532730896:
   macOS, Linux and Windows each 542 of 542, application and build packed; the steward). *Landed since 02:24*: N1's
   6771c402, four-valve heads' low-lift curtain at the sheets' medians (0.66 intake, 0.63 exhaust of the curtain, nine
