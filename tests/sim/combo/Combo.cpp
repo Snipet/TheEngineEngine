@@ -582,7 +582,7 @@ namespace combo
             // is a click.
             constexpr double kShiftCutBound = 42.0;
             // An upshift's cut: the car asks it (car.flags 32, car.model 1) or the ECU cuts the spark (ecu.flags 4,
-            // with the classic car), in the 0.15 s before the step, while the gear rises in the 0.3 s before it (so a
+            // with the classic car), in the 0.15 s before the step, while the gear rises from 0.3 s before it to 0.15 s after (so a
             // limiter's spark cut is not one)
             bool atShiftCut = false;
             {
@@ -594,7 +594,9 @@ namespace combo
                     cut = cut || (static_cast<int>(x) & 32) != 0;
                 for (double x : ecuFlags.values())
                     cut = cut || (static_cast<int>(x) & 4) != 0;
-                const auto gear = run.tel("car.gear").during(std::max(from, at - 0.3), cutTo);
+                // the gear may change after a step early in the cut (the small four's at 8.518 s, the gear at about
+                // 8.55): the rise is looked for up to 0.15 s after the step too
+                const auto gear = run.tel("car.gear").during(std::max(from, at - 0.3), at + 0.15);
                 const bool up = gear.size() > 1 && gear.values().back() > gear.values().front();
                 atShiftCut = cut && up;
             }
@@ -776,12 +778,18 @@ namespace combo
         return list;
     }
 
+    // Each field draws from its own generator, seeded by the seed and the field's path (FNV-1a), so a field added to
+    // the Schema or un-hidden leaves every other field's draw as it was: a seed names the same Spec across commits
+    // (on 25 Nov un-hiding boost.seqRpm, 9b0bab54, redrew every seed, and four "new" soak reds were new territory).
     std::vector<Value> randomSpec(std::uint64_t seed, bool corners)
     {
-        std::mt19937_64 g(seed * 0x9E3779B97F4A7C15ull + 1);
         std::vector<Value> out;
         for (const Field& f : fuzzFields())
         {
+            std::uint64_t h = 0xCBF29CE484222325ull;
+            for (const char c : f.path)
+                h = (h ^ static_cast<unsigned char>(c)) * 0x100000001B3ull;
+            std::mt19937_64 g((seed * 0x9E3779B97F4A7C15ull + 1) ^ h);
             double v;
             if (corners)
                 v = rng01(g, 0.5) ? f.lo : f.hi;

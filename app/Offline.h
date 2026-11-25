@@ -81,6 +81,7 @@ namespace tee::app
             std::function<void()> tryFirstDone;         // the card was closed: not again
             std::function<bool()> coldStart;            // the settings' coldStart (ENGINE START: from the next launch)
             std::function<void(bool)> setColdStart;
+            std::function<void(bool)> desktopChosen;     // the CLAUDE DESKTOP switch took: the settings' allowClaudeDesktop
         };
         std::shared_ptr<WindowHooks> window;
         files::BuildFile* document = nullptr;

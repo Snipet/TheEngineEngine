@@ -1,0 +1,16 @@
+{
+  "format": "tee-build",
+  "version": 1,
+  "name": "X-040 (intake.model 1, a 0.025 mm runner)",
+  "notes": "Package X's finding X-040 (2026-11-25), reduced from random seed 251 (stable draws, 10 s): intake.model 1 with a 0.025 mm runner bore (sound.model 1) puts intake.box non-finite at 0.26 s: tee-fuzz --build <this> --seed 251 --seconds 10",
+  "spec": {
+    "intake": {
+      "model": 1,
+      "runnerBore": 2.54521853e-05,
+      "runnerLength": 0.950194758
+    },
+    "sound": {
+      "model": 1
+    }
+  }
+}
