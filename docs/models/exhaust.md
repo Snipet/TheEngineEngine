@@ -557,3 +557,34 @@ second, nearly all at its 30 kPa ceiling, each with the same click tail.
   the collectors, not the crackle.
 - Cost: one Wiebe step per burn alight, about 8 ns while one burns; nothing otherwise. `exhaust.model` 0 never reads
   it (the engine identity test passes with `bang` at its default).
+
+## Stated bores: the least, 10 mm (X-038, X-029)
+
+Every pipe bore a person or a build can state (`primD`, `colD`, `mainD`, `crossD`, `resD`, `bypassD`, `tailD`) takes
+0 to mean derived. A stated bore under **10 mm** is not used: the builder raises it to 10 mm (`XBuild::pipeBore`, at
+every read site). `tel.exhaust.boreRaised` says which kinds were raised, a bit a kind (1 primary, 2 collector, 4 main
+pipe, 8 crossover, 16 resonator, 32 bypass, 64 tailpipe), and `tel.exhaust.boresRaised` how many; they are ready for
+the EXHAUST workspace's warning. Every bore at 0, or at or above the floor, is bit for bit as before.
+
+- **The floor is the part's, not the solver's.** The smallest road exhausts, on 50 cc scooters and mopeds, run some 16
+  to 19 mm headers (judgement from typical parts; no single source), so 10 mm sits under any real engine's pipe.
+- **The solver's own limit, measured** (each finding's reproduction, tee-fuzz at its seed for 10 s, the tiny bore
+  raised to the floor shown):
+
+  | build | as found | 2 mm | 5 mm | 10 mm |
+  |---|---|---|---|---|
+  | X-038, a 0.011 mm primary (seed 298) | the guard at 0.41 s | ok | ok | ok |
+  | X-038, a 0.072 mm tailpipe (seed 167) | the guard at 0.26 s | ok | ok | ok |
+  | X-029, a rotary's 0.62 mm primary (seed 245) | the guard at 0.31 s | the guard at 0.30 s | ok | ok |
+
+  The limit lies between 2 and 5 mm on these three cases; this is not a sweep. The 10 mm floor stands at twice that
+  margin. With the floor in, all three run as found: 1.47, 1.33 and 0.56 R.
+- **In content/**, only X's finding builds state a bore under the floor: x029 and the two x038 builds (X-040's runner
+  is the intake's, not this floor). A person's saved build under it loads and plays with the bore raised, and the
+  telemetry says so.
+- **Refusal at input** (the loader and the inspector refusing a value in (0, floor), as they refuse one out of its
+  range) is the next window's, card C's. The FMinus compiler is the owner's and not ours to change, so it adds no new
+  `fminus::` attribute: the rule lives in the host (a table beside the Spec's lint in host/src/Fields.cpp) or in an
+  attribute namespace the compiler already passes through.
+- The intake's twin (X-040: runner 8 mm, snorkel 10 mm, the same rule) waits for a card whose paths hold
+  sim/intake/intake.fm.
