@@ -43,6 +43,16 @@
 
 ## Landed
 
+- **12:20 (25 Nov) the owner: "Windows was able to launch and run"** (`main` at d0a7330e; the first run of the app by
+  a person on Windows; what beyond launching and running was tried is not known yet). README's line updated to say
+  exactly that. **The owner also asked whether the right-side controls are to be redesigned ("relatively clunky
+  still"):** no plan existed; J2 is woken to draw three designs of the inspector as real pictures (rows with typed
+  numbers and a filter; dials kept but exact; fields on the stage's picture), nothing merged until the owner picks.
+- **`main` is held at d0a7330e** on the owner's decision about one listen assertion on P's re-bake (queue, 12:16).
+- On the branch since the last entry: U1's DRIVE styles (CLASSIC, DIGITAL, RACE beside STANDARD; 545 of 545 by U1;
+  rendered by the lead and sent to the owner; CLASSIC's small dials overlap their digits at the small stage, U1 is
+  fixing that first).
+
 - **12:02 (25 Nov) check-in.** `main` at d0a7330e. P's re-bake at dbd64a5c running (pre-bake tier 540 of 540 by P);
   sim/, host/ and tools/ frozen since 11:26, untouched by every push since (the lead's diff: 0 lines).
 - **On the branch since `main`, ui/ and app/ only:** U1's hover help (240c9a58: every bound control and the frame's
