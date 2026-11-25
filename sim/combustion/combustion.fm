@@ -257,6 +257,8 @@ module Combustion
         cy->qTot = q;
         cy->lateFuel = 1;
         cy->phi = q > 0.0f ? phi : 0.0f;   // (the physical cylinder's gamma reads it, a cut or unlit charge plain air's: card D)
+        if (diesel.metered != 0)
+            diesel.phiBurned = cy->phi;      // (card D2: tel.ecu.lambda on the reference's ECU; 0 while the fuel is cut)
         heat->heatJ += q;
         diesel.delayDeg = delay;
         float soc = rough * nz->gauss();
