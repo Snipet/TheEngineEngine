@@ -139,7 +139,8 @@ namespace
 TEST_CASE("diesel clatter: at a warm idle the tractor's clatter is a hump, not a comb", "[diesel][injection][sound]")
 {
     // (the bounds, judgement: the property is the reduction: with the spread the firing harmonics from 1 to 3 kHz stand
-    // at least 4 dB lower over the spectrum midway between them than without it; and, as a wide guard only, at most
+    // at least 3 dB lower over the spectrum midway between them than without it (judgement: clearly a smear, not noise;
+    // the reduction itself moves with the tip, 8.2 then 5.5 dB, as the exhaust's own harmonics do not take the spread); and, as a wide guard only, at most
     // 10 dB. The baseline moves with the exhaust and the turbine (24 Nov's tip 9.3 -> 5.5 dB, 25 Nov's 14.2 -> 6.0; one
     // tip between read 7.8 with the spread), so an absolute bound near the reading goes red on others' commits. What
     // remains with the spread is not only the clatter: the exhaust's blowdown, as periodic as the revs, has its own
@@ -149,5 +150,5 @@ TEST_CASE("diesel clatter: at a warm idle the tractor's clatter is a hump, not a
     std::printf("tractor warm idle %.0f rpm, ignition delay %.2f deg: the firing harmonics 1-3 kHz over the spectrum between "
                 "them: %.1f dB with no spread, %.1f dB with the model's\n", on.rpm, on.delay, off.depth, on.depth);
     CHECK(on.depth <= 10.0);
-    CHECK(on.depth <= off.depth - 4.0);
+    CHECK(on.depth <= off.depth - 3.0);
 }
