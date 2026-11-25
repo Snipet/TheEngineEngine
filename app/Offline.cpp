@@ -27,6 +27,7 @@
  #include "kit/bind/host/BuildDoc.h"
  #include "views/drive/Dash.h"          // DRIVE's dash style, a line of the interface's settings text
  #include "tee/Build.h"
+ #include "tee/assistant/Session.h"
 #endif
 
 #include <fminus/FMinus.h>
@@ -36,6 +37,7 @@
 #include <funkgui/text/FontService.h>
 
 #include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <cctype>
 #include <cmath>
@@ -137,7 +139,10 @@ namespace tee::app
                     : doc(sim.build()), scope(sim.host()), dyno(sim), bake(sim, dyno, std::move(bakes), std::move(scenarios)), file(sim.build()),
                       library(shipped, Presets::userDirectory()),
                       garage(file, [&sim] { return sim.ready() ? sim.host().sim() : std::shared_ptr<Sim>(); }, std::move(shipped),
-                             Presets::userDirectory())
+                             Presets::userDirectory()),
+                      assistant({file, library, [&sim]() -> SimHost* { return sim.ready() ? &sim.host() : nullptr; },
+                                 [&sim] { return sim.ready() ? sim.host().sim() : std::shared_ptr<Sim>(); },
+                                 [this] { return frames.load() / 60.0; }, nullptr, nullptr, {}})
                 {
                 }
                 ui::BuildDoc doc;
@@ -149,6 +154,13 @@ namespace tee::app
                 files::BuildLibrary library;
                 GarageLibrary garage;             // GARAGE's (U5's Library), over `file`: after it, so destroyed first
                 int driveStyle = 0;               // DRIVE's dash (views/drive/Dash.h), kept with the units' choices
+                // The assistant (card A): its tools' jobs run on this frame (assistant.frame, below), its clock this
+                // frame count at 60 a second (tee-headless's simulated clock; about the window's). Last, so destroyed
+                // first: its destructor stops Claude Desktop's link (the call running cancelled and waited for) and
+                // closes its inbox before the document and the library it acts on go. No question can be put to the
+                // owner yet (`ask` null until U1's dialog): a load over unsaved changes is refused, never silent.
+                std::atomic<double> frames{0.0};   // (read by the link's worker: a turn's clock)
+                assistant::Session assistant;
             };
             // the bakes' cache (card C's, keyed by the program's source and the build): a person's window, or a run that
             // names one (TEE_CACHE_DIR); not a machine's run otherwise, whose timings would hang on what an earlier left
@@ -186,7 +198,15 @@ namespace tee::app
                 std::ifstream in(dir / file, std::ios::binary);
                 return dir.empty() || !in ? std::string() : std::string(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
             };
-            shown.frame = [kept] { kept->bake.tick(); };
+            shown.assistant = &kept->assistant;
+            shown.frame = [kept] {
+                kept->bake.tick();
+                // the app's own heavy work (the ribbon's curve, the bake baking or checking), sampled here on the frame's
+                // thread for the assistant's curves to yield to
+                const std::string bake = kept->bake.state();
+                kept->assistant.frame(kept->dyno.busy() || bake.rfind("baking", 0) == 0 || bake.rfind("checking", 0) == 0);
+                kept->frames.store(kept->frames.load() + 1.0);
+            };
             if (window)
             {
                 const auto hooks = std::make_shared<Shown::WindowHooks>();

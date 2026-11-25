@@ -35,6 +35,11 @@ module XTest
     double dS1;
     double dS2;
     int nS;
+    float bgMass;       // bangGo's slug: its gas (kg), temperature (K), phi, burned share, own flame
+    float bgT;
+    float bgPhi;
+    float bgXb;
+    int bgOwn;
     float energy;       // the waves in flight in the builder's pipes, after the last sample (J, up to a constant)
 
     void init(float rateIn)
@@ -99,6 +104,7 @@ module XTest
         spec.flapTime = 0.15f;
         spec.portHeat = 1;
         spec.flowClose = 1;
+        spec.bang = 0;
         for (int s = 0; s < XS_SIDES; ++s)
         {
             spec.mainLen[s] = 0.0f;
@@ -440,5 +446,12 @@ module XTest
     void popAt(int c, float a)
     {
         b.popAt(c, a);
+    }
+
+    // exhaust.bang 1: a premixed burn of q J handed in on bank k (as the facade hands the account's), its slug as
+    // bgMass, bgT, bgPhi, bgXb, bgOwn say
+    void bangGo(float k, float q)
+    {
+        b.bangIn((int)k, q, bgMass, bgT, bgPhi, bgXb, bgOwn);
     }
 };
