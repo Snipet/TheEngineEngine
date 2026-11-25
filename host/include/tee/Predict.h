@@ -56,7 +56,8 @@ namespace tee
         int coarse = 6;               // speeds in the first curve
         int points = 16;              // speeds in the refined curve (the coarse ones among them)
         double from = 0.0;            // rad/s; 0: 1000 rpm, or the idle's speed when that is higher
-        double to = 0.0;              // rad/s; 0: just under the redline (tel.engine.redline)
+        double to = 0.0;              // rad/s; 0: redlineMarginRpm under the redline (tel.engine.redline)
+        double redlineMarginRpm = 100.0;   // the top speed's margin under the redline when `to` is 0
         std::vector<double> speeds;   // rad/s, ascending: these speeds instead of from, to and points (a bake's own)
         double pedal = 1.0;           // the throttle, 0 to 1
         double tolerance = 0.01;      // two cycles in a row within this share of each other: settled
@@ -119,6 +120,9 @@ namespace tee
         double retardMin = 0.0, retardMax = 0.0;
         double retardMean = 0.0;      // the mean retard over those windows (else the retard at the point's end)
         bool boostHunting = false;    // its boost hunted: the mean over windows (PredictOptions::boostHuntSeconds)
+        // The rev limiter (tel.engine.flags' FLAG_LIMITER; a diesel's governor) acted in a counted cycle: the torque is
+        // the cut's, no measure of the engine. Still valid (valid is a fault's), but a bake treats it as missing.
+        bool limited = false;
         std::vector<double> history;  // each cycle's mean torque there, in order (the first after a change of speed)
     };
 
