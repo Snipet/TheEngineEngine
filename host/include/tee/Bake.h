@@ -300,6 +300,9 @@ namespace tee
         void coordinator();
         void setState(KnockBakeState s);   // under mutex_
         bool camWanted(const Build& build) const;
+        // A spark-ignition build's (a diesel has no spark and no knock limit: its spark table is never baked, and
+        // reads as current, so the status line says nothing of it)
+        static bool sparkWanted(const Build& build);
 
         std::shared_ptr<Sim> sim_;
         CalibrationBakeOptions options_;

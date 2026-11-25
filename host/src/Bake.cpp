@@ -1124,6 +1124,11 @@ namespace tee
         }
     }
 
+    bool CalibrationBakeService::sparkWanted(const Build& build)
+    {
+        return hasTable(build) && !(build.fieldOf("fuel.kind") >= 0 && build.get("fuel.kind") == 1.0);   // 1: Diesel
+    }
+
     bool CalibrationBakeService::camWanted(const Build& build) const
     {
         return options_.bakeCam && build.fieldOf("ecu.maps.camInKey") >= 0 && build.fieldOf("ecu.maps.camIn") >= 0
@@ -1132,15 +1137,17 @@ namespace tee
 
     KnockBakeState CalibrationBakeService::consider(Build& build)
     {
+        const bool wantSpark = sparkWanted(build);
+        const bool wantCam = camWanted(build);
         if (!hasTable(build))
         {
             const std::lock_guard<std::mutex> lock(mutex_);
             setState(KnockBakeState::NoTable);
             return state_;
         }
-        const bool wantCam = camWanted(build);
         const bool camCurrent = !wantCam || intakeCamCurrent(build, *sim_);
-        if (knockLimitCurrent(build, *sim_) && camCurrent)
+        const bool sparkCurrent = !wantSpark || knockLimitCurrent(build, *sim_);
+        if (sparkCurrent && camCurrent)
         {
             const std::lock_guard<std::mutex> lock(mutex_);
             if (asked_ || state_ == KnockBakeState::Waiting || state_ == KnockBakeState::Baking)
@@ -1153,9 +1160,9 @@ namespace tee
         // stale: the stale tables set aside now (the engine on its knock control and its auto cam), a bake asked
         if (wantCam && !camCurrent && build.get("ecu.maps.camInAuto") == 0.0)
             build.set("ecu.maps.camInAuto", 1.0);
-        if (!knockLimitCurrent(build, *sim_) && build.get("ecu.maps.knockLimitAuto") == 0.0)
+        if (!sparkCurrent && build.get("ecu.maps.knockLimitAuto") == 0.0)
             build.set("ecu.maps.knockLimitAuto", 1.0);
-        const std::int64_t sparkKey = knockLimitKey(build, *sim_);
+        const std::int64_t sparkKey = wantSpark ? knockLimitKey(build, *sim_) : 0;
         const std::int64_t camKey = wantCam ? intakeCamKey(build, *sim_) : 0;
         const std::lock_guard<std::mutex> lock(mutex_);
         if (sparkKey == sparkKey_ && camKey == camKey_ && state_ != KnockBakeState::Failed
@@ -1216,7 +1223,8 @@ namespace tee
             haveLast_ = true;
         }
         // both current now: so it says (consider() need not be called for it)
-        if (applied && knockLimitCurrent(build, *sim_) && (!camWanted(build) || intakeCamCurrent(build, *sim_)))
+        if (applied && (!sparkWanted(build) || knockLimitCurrent(build, *sim_))
+            && (!camWanted(build) || intakeCamCurrent(build, *sim_)))
         {
             const std::lock_guard<std::mutex> lock(mutex_);
             if (!asked_)
@@ -1372,8 +1380,8 @@ namespace tee
                     cacheWrite(cache, options_.cacheEntries, "cam", result.cam);
                 return true;
             };
-            // the spark, if stale, applied to the copy
-            if (ok && !knockLimitCurrent(build, *sim_))
+            // the spark, if wanted and stale, applied to the copy
+            if (ok && sparkWanted(build) && !knockLimitCurrent(build, *sim_))
             {
                 ok = sparkStage("spark map");
                 result.hasSpark = ok;
@@ -1383,7 +1391,7 @@ namespace tee
             {
                 ok = camStage();
                 result.hasCam = ok;
-                if (ok && !knockLimitCurrent(build, *sim_))
+                if (ok && sparkWanted(build) && !knockLimitCurrent(build, *sim_))
                 {
                     ok = sparkStage("spark map again");
                     result.hasSpark = ok;

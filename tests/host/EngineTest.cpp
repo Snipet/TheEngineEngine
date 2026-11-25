@@ -1028,3 +1028,34 @@ TEST_CASE("a slowly spooling turbo diesel's predicted points at its lug are its 
     // the engine's own, not a reading of the predictor's
     predictedMatchesSteps("tractor-15-inline-six.json", {115.19, 136.14}, 0.04, 20.0);   // 1100, 1300 rpm
 }
+
+TEST_CASE("a diesel has no spark table to bake: the calibration reads current, and nothing is asked", "[engine][sim][bake]")
+{
+    if (!haveSim())
+        SKIP("sim/engine.fm is not there yet");
+    std::string error;
+    const auto sim = compiled(simDir(), {}, error);
+    REQUIRE(sim != nullptr);
+    Build build(sim->fields());
+    std::vector<std::string> warnings;
+    REQUIRE(build.loadFile(std::filesystem::path(TEE_SOURCE_DIR) / "content/builds/archetypes/tractor-15-inline-six.json",
+                           BuildPart::Whole, warnings, error));
+    if (build.fieldOf("ecu.maps.knockLimitAuto") < 0)
+        SKIP("the program has no knock-limit table yet");
+    REQUIRE(build.get("fuel.kind") == 1.0);   // diesel
+    CalibrationBakeOptions options;
+    options.debounceSeconds = 0.0;
+    CalibrationBakeService bakes(sim, options);
+    const double knockAuto = build.get("ecu.maps.knockLimitAuto");
+    const KnockBakeState state = bakes.consider(build);
+    if (build.fieldOf("valve.inPhaseRange") < 0 || build.get("valve.inPhaseRange") <= 0.0)
+    {
+        CHECK(state == KnockBakeState::Current);   // no spark, no phaser: nothing to bake, nothing said
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        CHECK(bakes.state() == KnockBakeState::Current);
+        CHECK(bakes.stage().empty());
+    }
+    else
+        CHECK(bakes.stage() != "spark map");   // a phaser: its cam baked, never a spark map
+    CHECK(build.get("ecu.maps.knockLimitAuto") == knockAuto);   // the spark table left as it was
+}
