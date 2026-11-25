@@ -82,6 +82,8 @@ namespace tee::ui
         {
             slowButton_ = &make<Button>("SLOW", [this] { slow_ = !slow_; play_ = clock_; });
             slowButton_->setLit([this] { return slow_; });
+            slowButton_->setHelp("Replay the last pipe pressures at an eighth of their pace, to follow the pulses; "
+                                 "again for live");
         }
 
         const char* id() const override { return "exhaust"; }

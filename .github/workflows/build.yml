@@ -36,6 +36,16 @@
 # artefacts and main's own green mark, and skips the soak tier, which the integration branch's runs already give that
 # commit (and which would hold a Linux runner for the longest job twice).
 #
+# The soak tier (the [nightly] tests, ctest --preset nightly, about 95 minutes on Linux) runs only when asked, so
+# that each soak result belongs to a named commit, not to whichever tip was current when the last soak ended
+# (docs/plan/01-rules.md section 3):
+#   a push          soaks nothing, unless its head commit's message says [soak] (Linux) or [soak-all] (all three);
+#                   the content agent's baked push, the candidate for main, says [soak]
+#   by hand         tier: fast (the default), soak, or both, on the platforms named
+#   each night      03:23 UTC, the integration branch's tip, Linux (a schedule runs main's copy of this file, so the
+#                   build job checks out claude/awesome-gates-ntdb58 for it)
+# The soak summary names the commit it ran on.
+#
 # On Linux the preset's tree is built right after the configure, before the application: a compile error anywhere
 # fails the run in about three minutes instead of eight (every session's push lands here; docs/plan/01-rules.md §3).
 #
@@ -59,7 +69,9 @@
 # Xvfb with Mesa's software Vulkan, which must work; macOS and Windows: reported, and no reason to fail the job).
 #
 # Run by hand (Actions, Build, Run workflow), `platforms` builds only the platforms named (macos-arm64, windows-x64,
-# linux-x64; spaces or commas between them; "all", the default, every one).
+# linux-x64; spaces or commas between them; "all", the default, every one), and `tier` says which tiers: fast (the
+# default), soak or both. From a shell: gh api -X POST repos/<owner>/<repo>/actions/workflows/build.yml/dispatches
+# -f ref=<branch> -f 'inputs[tier]=soak' -f 'inputs[platforms]=linux-x64'.
 #
 # Each action is pinned to its release's full commit SHA, with the tag in a comment: a tag can be moved, a SHA cannot.
 name: Build
@@ -76,6 +88,14 @@ on:
         description: "The platforms to build: all, or some of macos-arm64 windows-x64 linux-x64"
         type: string
         default: all
+      tier:
+        description: "The tiers: fast (the default tests), soak (the [nightly] tests) or both"
+        type: choice
+        options: [fast, soak, both]
+        default: fast
+  # the nightly soak of the integration branch's tip (see the header)
+  schedule:
+    - cron: "23 3 * * *"
 
 # nothing by default; each job asks for what it needs
 permissions: {}
@@ -94,7 +114,9 @@ jobs:
       - id: platforms
         shell: bash
         env:
-          ONLY: ${{ inputs.platforms || 'all' }}
+          ONLY: ${{ inputs.platforms || (github.event_name == 'schedule' && 'linux-x64') || 'all' }}
+          TIER: ${{ inputs.tier || 'fast' }}
+          EVENT: ${{ github.event_name }}
           # (the head commit's message, by the environment, never pasted into the script)
           MESSAGE: ${{ github.event.head_commit.message }}
           REF: ${{ github.ref }}
@@ -116,16 +138,29 @@ jobs:
             done
             matrix=$(jq -c --arg names "$names" '($names | split("\n")) as $n | map(select(.platform as $p | any($n[]; . == $p)))' <<< "$ALL")
           fi
-          # two tiers (docs/plan/01-rules.md §3): `fast`, every platform, the default tests; `soak`, the [nightly]
-          # tests (ctest --preset nightly): Linux at every push, macOS and Windows when the head commit's message
-          # says [soak] (their minutes are dear)
-          soak='["linux-x64"]'
-          case "$MESSAGE" in *"[soak]"*) soak='["linux-x64","macos-arm64","windows-x64"]' ;; esac
-          # main moves only forward to a commit the integration branch already carries, which its own soak covers: main
-          # builds, tests and packs the fast tier on every platform (the owner's artefacts), and soaks nothing
-          [ "$REF" = refs/heads/main ] && soak='[]'
-          matrix=$(jq -c --argjson soak "$soak" \
-            'map(. + {tier: "fast"}) + map(select(.platform as $p | $soak | index($p)) + {tier: "soak"})' <<< "$matrix")
+          # two tiers (docs/plan/01-rules.md §3): `fast`, the default tests; `soak`, the [nightly] tests (ctest
+          # --preset nightly), only when asked (see the header): a push's [soak] or [soak-all], by hand, each night
+          fast=true; soak='[]'
+          case "$EVENT" in
+            push|pull_request)
+              case "$MESSAGE" in
+                *"[soak-all]"*) soak='["linux-x64","macos-arm64","windows-x64"]' ;;
+                *"[soak]"*) soak='["linux-x64"]' ;;
+              esac
+              # main moves only forward to a commit the integration branch already carries and has soaked: main
+              # builds, tests and packs the fast tier on every platform (the owner's artefacts), and soaks nothing
+              [ "$REF" = refs/heads/main ] && soak='[]' ;;
+            workflow_dispatch)
+              case "$TIER" in
+                soak) fast=false; soak=$(jq -c 'map(.platform)' <<< "$matrix") ;;
+                both) soak=$(jq -c 'map(.platform)' <<< "$matrix") ;;
+              esac ;;
+            schedule) fast=false; soak='["linux-x64"]' ;;
+          esac
+          matrix=$(jq -c --argjson soak "$soak" --argjson fast "$fast" \
+            '(if $fast then map(. + {tier: "fast"}) else [] end)
+             + map(select(.platform as $p | $soak | index($p)) + {tier: "soak"})' <<< "$matrix")
+          [ "$(jq length <<< "$matrix")" -gt 0 ] || { echo "::error::nothing to build"; exit 1; }
           echo "building: $(jq -r 'map(.platform + " " + .tier) | join(", ")' <<< "$matrix")"
           echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
 
@@ -141,7 +176,7 @@ jobs:
     # a platform's job in flight finishes; only its newest waiting one is kept (a pull request's newer push replaces
     # even the one in flight)
     concurrency:
-      group: ${{ matrix.tier == 'soak' && 'soak' || 'build' }}-${{ github.ref }}-${{ matrix.platform }}
+      group: ${{ matrix.tier == 'soak' && 'soak' || 'build' }}-${{ github.event_name == 'schedule' && 'refs/heads/claude/awesome-gates-ntdb58' || github.ref }}-${{ matrix.platform }}
       cancel-in-progress: ${{ github.event_name == 'pull_request' }}
     strategy:
       fail-fast: false
@@ -156,6 +191,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          # the nightly soak runs main's copy of this file on the integration branch's tip
+          ref: ${{ github.event_name == 'schedule' && 'claude/awesome-gates-ntdb58' || '' }}
 
       # the platform rules a Linux build cannot see (M_PI's kin is the configure's: cmake/TeeChecks.cmake), in a
       # second, before the macOS and Windows jobs would find them
@@ -591,9 +628,10 @@ jobs:
           if [ "$TIER" = soak ]; then
             # the failures by kind, each with its run and the tee-fuzz command that reproduces it (scripts/soak-summary.py)
             py=python3; command -v python3 > /dev/null || py=python
-            # which commit this soak ran on: a soak job is never cancelled in flight, so it may be several pushes behind
-            echo "### The soak tier at ${GITHUB_SHA::7} ($(git log -1 --format='%cI %s' | cut -c1-100))" >> "$GITHUB_STEP_SUMMARY"
-            echo "soak tier at $GITHUB_SHA"
+            # which commit this soak ran on (the checkout's: a nightly soak runs main's workflow on the branch's tip)
+            head=$(git rev-parse HEAD)
+            echo "### The soak tier at ${head::7} ($(git log -1 --format='%cI %s' | cut -c1-100))" >> "$GITHUB_STEP_SUMMARY"
+            echo "soak tier at $head"
             "$py" scripts/soak-summary.py "$log" >> "$GITHUB_STEP_SUMMARY" || echo "::warning::soak-summary.py did not run"
           fi
           exit $rc
