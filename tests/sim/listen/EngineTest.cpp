@@ -371,9 +371,10 @@ TEST_CASE("the auto level: cameras near and far brought together; off, each its 
     // moment (the louder of the rev's largest peak and 12 dB over the idle's): that lands at the target, 0.4 (-8 dBFS),
     // within -11 dB and the limiter's ceiling, at both. What it does not keep is the typical level's order: Rear's rev
     // carries the exhaust's cracks 5 dB over its typical peaks, the cabin's 2 (its floor takes them), so exposed for
-    // its cracks the Rear's typical level ends under the cabin's (1.5 dB on first.json, 2.6 after the re-bake). A
-    // "within x dB" or "the gap smaller" on typical levels is not a property of an exposure on peaks
+    // its cracks the Rear's typical level ends under the cabin's (1.5 dB on first.json, 2.6 after the re-bake): the
+    // crests' difference, checked below with what remains
     double rev[2][2];
+    double largest[2][2];
     double exposed[2][2];
     const int cams[] = {1, 4};          // Rear, Driver (the cabin, some 2 to 3 dB down in truth)
     for (int on = 0; on < 2; ++on)
@@ -384,6 +385,7 @@ TEST_CASE("the auto level: cameras near and far brought together; off, each its 
             sound(b, "autoLevel", on);
             const Rev r = freeRev(b);
             rev[on][c] = 20.0 * std::log10(r.rev);
+            largest[on][c] = 20.0 * std::log10(r.revMax);
             exposed[on][c] = 20.0 * std::log10(std::max(r.revMax, 4.0 * r.idle));
             CHECK(r.finite);
             CHECK(r.all < 1.0);
@@ -392,12 +394,23 @@ TEST_CASE("the auto level: cameras near and far brought together; off, each its 
         }
     std::printf("free rev, camera Rear and Driver: typical peaks, true levels %.1f and %.1f dB, auto %.1f and %.1f dB; "
                 "exposed for, auto, %.1f and %.1f dBFS\n", rev[0][0], rev[0][1], rev[1][0], rev[1][1], exposed[1][0], exposed[1][1]);
-    CHECK(exposed[0][1] < exposed[0][0]);   // true levels: the cabin under the Rear (by 3.1 dB)
+    // true levels: the cabin under the Rear (by 3.1 dB on first.json; the margin, 1.5, half of it)
+    CHECK(exposed[0][1] < exposed[0][0] - 1.5);
     for (int c = 0; c < 2; ++c)
     {
         CHECK(exposed[1][c] > -11.0);
         CHECK(exposed[1][c] < -2.4);        // the limiter's ceiling, 0.76
     }
+    // With the auto level, the gap in typical levels (cabin less Rear) is the difference of the two crests (the rev's
+    // largest peak over its typical, Rear's less the cabin's) plus what is left of the gap in largest peaks, which the
+    // exposure brings together: that remainder is the property. 1.8 dB on first.json (the cabin's exposure is its
+    // idle's floor, 1.1 dB over its largest); a camera that drifts from the other for any reason but its crest moves it.
+    // The tolerance, 3.5 dB, about 2 over the reading
+    const double gapTypical = rev[1][1] - rev[1][0];
+    const double crestDiff = (largest[1][0] - rev[1][0]) - (largest[1][1] - rev[1][1]);
+    std::printf("auto level, cabin less Rear: typical %+.1f dB = crests' difference %+.1f dB %+.1f (the largest peaks' gap)\n",
+                gapTypical, crestDiff, gapTypical - crestDiff);
+    CHECK(std::fabs(gapTypical - crestDiff) < 3.5);
 }
 
 namespace
