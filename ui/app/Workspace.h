@@ -271,8 +271,9 @@ namespace tee::ui
         // The first launch's TRY FIRST card (TryFirst.h; the lead's ask 20:19): the build's notes while the card should
         // show (empty: not, as after it was closed), and the call that closes it for good (a per-viewer setting the
         // shell keeps). The frame closes it at its Close button or once the engine has been started and stopped.
-        // The spark map's knock limit (card C's bake, ServiceBake in app/host/HostSources.h): "no table", "waiting to
-        // bake", "baking", "baked, to apply", "baked", "bake failed"; empty function: not served. TUNE shows it.
+        // The calibration's bake (card C's: the intake cam, then the spark map's knock limit; ServiceBake in
+        // app/host/HostSources.h): "no table", "waiting to bake", "baking spark map", "baking cam", "baking spark map
+        // again", "baked, to apply", "baked", "bake failed"; empty function: not served. TUNE shows it.
         std::function<std::string()> sparkMap;
         // How the engine starts (the lead's ruling: warm, a cold start the person's choice; card B's settings key
         // "coldStart", taken from the next launch). The settings page's ENGINE START row; empty: not shown.
