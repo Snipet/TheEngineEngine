@@ -34,6 +34,10 @@ namespace tee::ui::fuel
         double delayRatio(int grade, int against) const;
     };
 
+    // The numbers of a braced list of C literals ("{ 91.0f, 96.0f, 100.0F, 87 }"), in order; empty when any does not
+    // read (the platform's stream parser is not used: Fuel.cpp).
+    std::vector<double> numberList(const std::string& braces);
+
     // The table from fuels.fm's text and knock.fm's (either may be empty: then what it gives is missing).
     Table parse(const std::string& fuels, const std::string& knock);
 }
